@@ -1,0 +1,6 @@
+2025-04-22 10:48:54.572 [info] Started local extension host with pid 73271.
+2025-04-22 10:48:57.203 [info] [perf] Render performance baseline is 14ms
+2025-04-22 10:48:59.868 [error] [Extension Host] View has not been initialized after retrying for 5 seconds.
+2025-04-22 10:49:08.316 [info] Started local extension host with pid 73646.
+2025-04-22 10:49:10.886 [info] [perf] Render performance baseline is 12ms
+2025-04-22 10:49:13.876 [error] [Extension Host] View has not been initialized after retrying for 5 seconds.

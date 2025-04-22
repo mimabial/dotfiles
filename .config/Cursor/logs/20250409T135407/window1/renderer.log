@@ -1,0 +1,390 @@
+2025-04-09 13:54:08.575 [warning] Via 'product.json#extensionEnabledApiProposals' extension 'ms-vscode.vscode-selfhost-test-provider' wants API proposal 'attributableCoverage' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+2025-04-09 13:54:08.575 [warning] Via 'product.json#extensionEnabledApiProposals' extension 'ms-toolsai.datawrangler' wants API proposal 'debugFocus' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+2025-04-09 13:54:08.575 [warning] Via 'product.json#extensionEnabledApiProposals' extension 'ms-python.python' wants API proposal 'contribIssueReporter' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+2025-04-09 13:54:08.575 [warning] Via 'product.json#extensionEnabledApiProposals' extension 'ms-python.debugpy' wants API proposal 'contribIssueReporter' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+2025-04-09 13:54:08.575 [warning] Via 'product.json#extensionEnabledApiProposals' extension 'ms-azuretools.vscode-azure-github-copilot' wants API proposal 'lmTools' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+2025-04-09 13:54:08.575 [warning] Via 'product.json#extensionEnabledApiProposals' extension 'ms-vscode.cpptools' wants API proposal 'lmTools' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+2025-04-09 13:54:08.576 [warning] Via 'product.json#extensionEnabledApiProposals' extension 'vscjava.vscode-java-pack' wants API proposal 'lmTools' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+2025-04-09 13:54:08.576 [warning] Via 'product.json#extensionEnabledApiProposals' extension 'apidev.azure-api-center' wants API proposal 'chatParticipant' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+2025-04-09 13:54:08.576 [warning] Via 'product.json#extensionEnabledApiProposals' extension 'apidev.azure-api-center' wants API proposal 'languageModels' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+2025-04-09 13:54:08.591 [warning] Missing property "modes" in oldValue. Filling with value from initValue. Please add a migration if necessary.
+2025-04-09 13:54:08.591 [warning] Missing property "modes2" in oldValue. Filling with value from initValue. Please add a migration if necessary.
+2025-04-09 13:54:08.591 [warning] Missing property "modes3" in oldValue. Filling with value from initValue. Please add a migration if necessary.
+2025-04-09 13:54:08.591 [warning] Missing property "explicitEnableOrDisable" in oldValue. Filling with value from initValue. Please add a migration if necessary.
+2025-04-09 13:54:08.591 [warning] Missing property "lastBackgroundBugbotAt" in oldValue. Filling with value from initValue. Please add a migration if necessary.
+2025-04-09 13:54:08.591 [warning] Missing property "cppConfig" in oldValue. Filling with value from initValue. Please add a migration if necessary.
+2025-04-09 13:54:08.750 [info] Started local extension host with pid 39480.
+2025-04-09 13:54:09.247 [error] [Extension Host] (node:39480) ExperimentalWarning: Use `importAttributes` instead of `importAssertions`
+(Use `exe --trace-warnings ...` to show where the warning was created)
+2025-04-09 13:54:10.375 [error] [unauthenticated] Error: ConnectError: [unauthenticated] Error
+    at t (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:2405:131870)
+    at async Object.availableModels (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:98:15147)
+    at async sEi.keepCppModelStateUpdated (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:4972:11402)
+    at async sEi.loadCppConfigIncludingHandlingProAccess (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:4987:1027) [unauthenticated] Error
+2025-04-09 13:54:10.521 [error] [unauthenticated] Error: ConnectError: [unauthenticated] Error
+    at t (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:2405:131870)
+    at async Object.getDefaultModelNudgeData (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:98:15147)
+    at async d3t.performDefaultModelRequest (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:593:38078) [unauthenticated] Error
+2025-04-09 13:54:11.699 [info] [perf] Render performance baseline is 20ms
+2025-04-09 13:59:09.917 [error] [unauthenticated] Error: ConnectError: [unauthenticated] Error
+    at t (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:2405:131870)
+    at async Object.getDefaultModelNudgeData (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:98:15147)
+    at async d3t.performDefaultModelRequest (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:593:38078)
+    at async Promise.all (index 1)
+    at async gjt.withSemaphore (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:892:34502) [unauthenticated] Error
+2025-04-09 14:04:09.909 [error] [unauthenticated] Error: ConnectError: [unauthenticated] Error
+    at t (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:2405:131870)
+    at async Object.getDefaultModelNudgeData (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:98:15147)
+    at async d3t.performDefaultModelRequest (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:593:38078)
+    at async Promise.all (index 1)
+    at async gjt.withSemaphore (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:892:34502) [unauthenticated] Error
+2025-04-09 14:24:31.934 [error] [unauthenticated] Error: ConnectError: [unauthenticated] Error
+    at t (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:2405:131870)
+    at async Object.getDefaultModelNudgeData (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:98:15147)
+    at async d3t.performDefaultModelRequest (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:593:38078)
+    at async Promise.all (index 1)
+    at async gjt.withSemaphore (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:892:34502) [unauthenticated] Error
+2025-04-09 14:29:32.466 [error] [unauthenticated] Error: ConnectError: [unauthenticated] Error
+    at t (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:2405:131870)
+    at async Object.getDefaultModelNudgeData (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:98:15147)
+    at async d3t.performDefaultModelRequest (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:593:38078)
+    at async Promise.all (index 1)
+    at async gjt.withSemaphore (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:892:34502) [unauthenticated] Error
+2025-04-09 14:35:17.497 [error] [unauthenticated] Error: ConnectError: [unauthenticated] Error
+    at t (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:2405:131870)
+    at async Object.getDefaultModelNudgeData (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:98:15147)
+    at async d3t.performDefaultModelRequest (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:593:38078)
+    at async Promise.all (index 1)
+    at async gjt.withSemaphore (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:892:34502) [unauthenticated] Error
+2025-04-09 14:40:17.462 [error] [unauthenticated] Error: ConnectError: [unauthenticated] Error
+    at t (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:2405:131870)
+    at async Object.getDefaultModelNudgeData (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:98:15147)
+    at async d3t.performDefaultModelRequest (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:593:38078)
+    at async Promise.all (index 1)
+    at async gjt.withSemaphore (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:892:34502) [unauthenticated] Error
+2025-04-09 14:45:17.464 [error] [unauthenticated] Error: ConnectError: [unauthenticated] Error
+    at t (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:2405:131870)
+    at async Object.getDefaultModelNudgeData (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:98:15147)
+    at async d3t.performDefaultModelRequest (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:593:38078)
+    at async Promise.all (index 1)
+    at async gjt.withSemaphore (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:892:34502) [unauthenticated] Error
+2025-04-09 14:50:17.550 [error] [unauthenticated] Error: ConnectError: [unauthenticated] Error
+    at t (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:2405:131870)
+    at async Object.getDefaultModelNudgeData (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:98:15147)
+    at async d3t.performDefaultModelRequest (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:593:38078)
+    at async Promise.all (index 1)
+    at async gjt.withSemaphore (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:892:34502) [unauthenticated] Error
+2025-04-09 14:55:17.462 [error] [unauthenticated] Error: ConnectError: [unauthenticated] Error
+    at t (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:2405:131870)
+    at async Object.getDefaultModelNudgeData (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:98:15147)
+    at async d3t.performDefaultModelRequest (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:593:38078)
+    at async Promise.all (index 1)
+    at async gjt.withSemaphore (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:892:34502) [unauthenticated] Error
+2025-04-09 15:00:17.499 [error] [unauthenticated] Error: ConnectError: [unauthenticated] Error
+    at t (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:2405:131870)
+    at async Object.getDefaultModelNudgeData (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:98:15147)
+    at async d3t.performDefaultModelRequest (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:593:38078)
+    at async Promise.all (index 1)
+    at async gjt.withSemaphore (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:892:34502) [unauthenticated] Error
+2025-04-09 15:05:17.484 [error] [unauthenticated] Error: ConnectError: [unauthenticated] Error
+    at t (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:2405:131870)
+    at async Object.getDefaultModelNudgeData (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:98:15147)
+    at async d3t.performDefaultModelRequest (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:593:38078)
+    at async Promise.all (index 1)
+    at async gjt.withSemaphore (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:892:34502) [unauthenticated] Error
+2025-04-09 15:10:17.478 [error] [unauthenticated] Error: ConnectError: [unauthenticated] Error
+    at t (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:2405:131870)
+    at async Object.getDefaultModelNudgeData (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:98:15147)
+    at async d3t.performDefaultModelRequest (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:593:38078)
+    at async Promise.all (index 1)
+    at async gjt.withSemaphore (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:892:34502) [unauthenticated] Error
+2025-04-09 15:15:17.481 [error] [unauthenticated] Error: ConnectError: [unauthenticated] Error
+    at t (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:2405:131870)
+    at async Object.getDefaultModelNudgeData (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:98:15147)
+    at async d3t.performDefaultModelRequest (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:593:38078)
+    at async Promise.all (index 1)
+    at async gjt.withSemaphore (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:892:34502) [unauthenticated] Error
+2025-04-09 15:20:17.473 [error] [unauthenticated] Error: ConnectError: [unauthenticated] Error
+    at t (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:2405:131870)
+    at async Object.getDefaultModelNudgeData (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:98:15147)
+    at async d3t.performDefaultModelRequest (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:593:38078)
+    at async Promise.all (index 1)
+    at async gjt.withSemaphore (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:892:34502) [unauthenticated] Error
+2025-04-09 15:25:17.457 [error] [unauthenticated] Error: ConnectError: [unauthenticated] Error
+    at t (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:2405:131870)
+    at async Object.getDefaultModelNudgeData (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:98:15147)
+    at async d3t.performDefaultModelRequest (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:593:38078)
+    at async Promise.all (index 1)
+    at async gjt.withSemaphore (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:892:34502) [unauthenticated] Error
+2025-04-09 15:30:17.459 [error] [unauthenticated] Error: ConnectError: [unauthenticated] Error
+    at t (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:2405:131870)
+    at async Object.getDefaultModelNudgeData (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:98:15147)
+    at async d3t.performDefaultModelRequest (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:593:38078)
+    at async Promise.all (index 1)
+    at async gjt.withSemaphore (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:892:34502) [unauthenticated] Error
+2025-04-09 15:35:17.487 [error] [unauthenticated] Error: ConnectError: [unauthenticated] Error
+    at t (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:2405:131870)
+    at async Object.getDefaultModelNudgeData (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:98:15147)
+    at async d3t.performDefaultModelRequest (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:593:38078)
+    at async Promise.all (index 1)
+    at async gjt.withSemaphore (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:892:34502) [unauthenticated] Error
+2025-04-09 15:40:17.467 [error] [unauthenticated] Error: ConnectError: [unauthenticated] Error
+    at t (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:2405:131870)
+    at async Object.getDefaultModelNudgeData (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:98:15147)
+    at async d3t.performDefaultModelRequest (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:593:38078)
+    at async Promise.all (index 1)
+    at async gjt.withSemaphore (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:892:34502) [unauthenticated] Error
+2025-04-09 15:45:17.480 [error] [unauthenticated] Error: ConnectError: [unauthenticated] Error
+    at t (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:2405:131870)
+    at async Object.getDefaultModelNudgeData (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:98:15147)
+    at async d3t.performDefaultModelRequest (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:593:38078)
+    at async Promise.all (index 1)
+    at async gjt.withSemaphore (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:892:34502) [unauthenticated] Error
+2025-04-09 15:50:17.485 [error] [unauthenticated] Error: ConnectError: [unauthenticated] Error
+    at t (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:2405:131870)
+    at async Object.getDefaultModelNudgeData (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:98:15147)
+    at async d3t.performDefaultModelRequest (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:593:38078)
+    at async Promise.all (index 1)
+    at async gjt.withSemaphore (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:892:34502) [unauthenticated] Error
+2025-04-09 15:55:17.482 [error] [unauthenticated] Error: ConnectError: [unauthenticated] Error
+    at t (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:2405:131870)
+    at async Object.getDefaultModelNudgeData (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:98:15147)
+    at async d3t.performDefaultModelRequest (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:593:38078)
+    at async Promise.all (index 1)
+    at async gjt.withSemaphore (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:892:34502) [unauthenticated] Error
+2025-04-09 16:00:17.464 [error] [unauthenticated] Error: ConnectError: [unauthenticated] Error
+    at t (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:2405:131870)
+    at async Object.getDefaultModelNudgeData (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:98:15147)
+    at async d3t.performDefaultModelRequest (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:593:38078)
+    at async Promise.all (index 1)
+    at async gjt.withSemaphore (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:892:34502) [unauthenticated] Error
+2025-04-09 16:05:17.458 [error] [unauthenticated] Error: ConnectError: [unauthenticated] Error
+    at t (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:2405:131870)
+    at async Object.getDefaultModelNudgeData (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:98:15147)
+    at async d3t.performDefaultModelRequest (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:593:38078)
+    at async Promise.all (index 1)
+    at async gjt.withSemaphore (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:892:34502) [unauthenticated] Error
+2025-04-09 16:10:17.466 [error] [unauthenticated] Error: ConnectError: [unauthenticated] Error
+    at t (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:2405:131870)
+    at async Object.getDefaultModelNudgeData (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:98:15147)
+    at async d3t.performDefaultModelRequest (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:593:38078)
+    at async Promise.all (index 1)
+    at async gjt.withSemaphore (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:892:34502) [unauthenticated] Error
+2025-04-09 16:15:17.835 [error] [unauthenticated] Error: ConnectError: [unauthenticated] Error
+    at t (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:2405:131870)
+    at async Object.getDefaultModelNudgeData (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:98:15147)
+    at async d3t.performDefaultModelRequest (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:593:38078)
+    at async Promise.all (index 1)
+    at async gjt.withSemaphore (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:892:34502) [unauthenticated] Error
+2025-04-09 16:20:17.502 [error] [unauthenticated] Error: ConnectError: [unauthenticated] Error
+    at t (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:2405:131870)
+    at async Object.getDefaultModelNudgeData (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:98:15147)
+    at async d3t.performDefaultModelRequest (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:593:38078)
+    at async Promise.all (index 1)
+    at async gjt.withSemaphore (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:892:34502) [unauthenticated] Error
+2025-04-09 16:24:14.545 [info] Starting polling for login
+2025-04-09 16:24:14.745 [info] Beginning of Login Poll
+2025-04-09 16:24:14.945 [info] Beginning of Login Poll
+2025-04-09 16:24:15.110 [info] Got login result 404
+2025-04-09 16:24:15.145 [info] Beginning of Login Poll
+2025-04-09 16:24:15.199 [info] Got login result 404
+2025-04-09 16:24:15.291 [info] Got login result 404
+2025-04-09 16:24:15.345 [info] Beginning of Login Poll
+2025-04-09 16:24:15.436 [info] Got login result 404
+2025-04-09 16:24:15.545 [info] Beginning of Login Poll
+2025-04-09 16:24:15.636 [info] Got login result 404
+2025-04-09 16:24:15.745 [info] Beginning of Login Poll
+2025-04-09 16:24:15.839 [info] Got login result 404
+2025-04-09 16:24:15.945 [info] Beginning of Login Poll
+2025-04-09 16:24:16.038 [info] Got login result 404
+2025-04-09 16:24:16.145 [info] Beginning of Login Poll
+2025-04-09 16:24:16.235 [info] Got login result 404
+2025-04-09 16:24:16.345 [info] Beginning of Login Poll
+2025-04-09 16:24:16.435 [info] Got login result 404
+2025-04-09 16:24:16.545 [info] Beginning of Login Poll
+2025-04-09 16:24:16.636 [info] Got login result 404
+2025-04-09 16:24:16.745 [info] Beginning of Login Poll
+2025-04-09 16:24:16.838 [info] Got login result 404
+2025-04-09 16:24:16.945 [info] Beginning of Login Poll
+2025-04-09 16:24:17.036 [info] Got login result 404
+2025-04-09 16:24:17.145 [info] Beginning of Login Poll
+2025-04-09 16:24:17.237 [info] Got login result 404
+2025-04-09 16:24:17.345 [info] Beginning of Login Poll
+2025-04-09 16:24:17.437 [info] Got login result 404
+2025-04-09 16:24:17.545 [info] Beginning of Login Poll
+2025-04-09 16:24:17.652 [info] Got login result 404
+2025-04-09 16:24:17.745 [info] Beginning of Login Poll
+2025-04-09 16:24:17.837 [info] Got login result 404
+2025-04-09 16:24:17.945 [info] Beginning of Login Poll
+2025-04-09 16:24:18.038 [info] Got login result 404
+2025-04-09 16:24:18.145 [info] Beginning of Login Poll
+2025-04-09 16:24:18.235 [info] Got login result 404
+2025-04-09 16:24:18.345 [info] Beginning of Login Poll
+2025-04-09 16:24:18.437 [info] Got login result 404
+2025-04-09 16:24:18.545 [info] Beginning of Login Poll
+2025-04-09 16:24:18.638 [info] Got login result 404
+2025-04-09 16:24:18.745 [info] Beginning of Login Poll
+2025-04-09 16:24:18.837 [info] Got login result 404
+2025-04-09 16:24:18.945 [info] Beginning of Login Poll
+2025-04-09 16:24:19.035 [info] Got login result 404
+2025-04-09 16:24:19.145 [info] Beginning of Login Poll
+2025-04-09 16:24:19.237 [info] Got login result 404
+2025-04-09 16:24:19.345 [info] Beginning of Login Poll
+2025-04-09 16:24:19.438 [info] Got login result 404
+2025-04-09 16:24:19.545 [info] Beginning of Login Poll
+2025-04-09 16:24:19.641 [info] Got login result 404
+2025-04-09 16:24:19.745 [info] Beginning of Login Poll
+2025-04-09 16:24:19.838 [info] Got login result 404
+2025-04-09 16:24:19.945 [info] Beginning of Login Poll
+2025-04-09 16:24:20.038 [info] Got login result 404
+2025-04-09 16:24:20.145 [info] Beginning of Login Poll
+2025-04-09 16:24:20.236 [info] Got login result 404
+2025-04-09 16:24:20.345 [info] Beginning of Login Poll
+2025-04-09 16:24:20.440 [info] Got login result 404
+2025-04-09 16:24:20.545 [info] Beginning of Login Poll
+2025-04-09 16:24:20.637 [info] Got login result 404
+2025-04-09 16:24:20.745 [info] Beginning of Login Poll
+2025-04-09 16:24:20.834 [info] Got login result 404
+2025-04-09 16:24:20.945 [info] Beginning of Login Poll
+2025-04-09 16:24:21.036 [info] Got login result 404
+2025-04-09 16:24:21.145 [info] Beginning of Login Poll
+2025-04-09 16:24:21.240 [info] Got login result 404
+2025-04-09 16:24:21.345 [info] Beginning of Login Poll
+2025-04-09 16:24:21.441 [info] Got login result 404
+2025-04-09 16:24:21.545 [info] Beginning of Login Poll
+2025-04-09 16:24:21.640 [info] Got login result 404
+2025-04-09 16:24:21.745 [info] Beginning of Login Poll
+2025-04-09 16:24:21.839 [info] Got login result 404
+2025-04-09 16:24:21.945 [info] Beginning of Login Poll
+2025-04-09 16:24:22.041 [info] Got login result 404
+2025-04-09 16:24:22.145 [info] Beginning of Login Poll
+2025-04-09 16:24:22.238 [info] Got login result 404
+2025-04-09 16:24:22.345 [info] Beginning of Login Poll
+2025-04-09 16:24:22.437 [info] Got login result 404
+2025-04-09 16:24:22.545 [info] Beginning of Login Poll
+2025-04-09 16:24:22.637 [info] Got login result 404
+2025-04-09 16:24:22.745 [info] Beginning of Login Poll
+2025-04-09 16:24:22.838 [info] Got login result 404
+2025-04-09 16:24:22.945 [info] Beginning of Login Poll
+2025-04-09 16:24:23.037 [info] Got login result 404
+2025-04-09 16:24:23.145 [info] Beginning of Login Poll
+2025-04-09 16:24:23.238 [info] Got login result 404
+2025-04-09 16:24:23.345 [info] Beginning of Login Poll
+2025-04-09 16:24:23.438 [info] Got login result 404
+2025-04-09 16:24:23.546 [info] Beginning of Login Poll
+2025-04-09 16:24:23.642 [info] Got login result 404
+2025-04-09 16:24:23.745 [info] Beginning of Login Poll
+2025-04-09 16:24:23.850 [info] Got login result 404
+2025-04-09 16:24:23.945 [info] Beginning of Login Poll
+2025-04-09 16:24:24.039 [info] Got login result 404
+2025-04-09 16:24:24.145 [info] Beginning of Login Poll
+2025-04-09 16:24:24.238 [info] Got login result 404
+2025-04-09 16:24:24.345 [info] Beginning of Login Poll
+2025-04-09 16:24:24.437 [info] Got login result 404
+2025-04-09 16:24:24.545 [info] Beginning of Login Poll
+2025-04-09 16:24:24.639 [info] Got login result 404
+2025-04-09 16:24:24.745 [info] Beginning of Login Poll
+2025-04-09 16:24:24.840 [info] Got login result 404
+2025-04-09 16:24:24.945 [info] Beginning of Login Poll
+2025-04-09 16:24:25.037 [info] Got login result 404
+2025-04-09 16:24:25.145 [info] Beginning of Login Poll
+2025-04-09 16:24:25.239 [info] Got login result 404
+2025-04-09 16:24:25.345 [info] Beginning of Login Poll
+2025-04-09 16:24:25.437 [info] Got login result 404
+2025-04-09 16:24:25.545 [info] Beginning of Login Poll
+2025-04-09 16:24:25.638 [info] Got login result 404
+2025-04-09 16:24:25.745 [info] Beginning of Login Poll
+2025-04-09 16:24:25.838 [info] Got login result 404
+2025-04-09 16:24:25.945 [info] Beginning of Login Poll
+2025-04-09 16:24:26.039 [info] Got login result 404
+2025-04-09 16:24:26.145 [info] Beginning of Login Poll
+2025-04-09 16:24:26.238 [info] Got login result 404
+2025-04-09 16:24:26.345 [info] Beginning of Login Poll
+2025-04-09 16:24:26.439 [info] Got login result 404
+2025-04-09 16:24:26.545 [info] Beginning of Login Poll
+2025-04-09 16:24:26.638 [info] Got login result 404
+2025-04-09 16:24:26.745 [info] Beginning of Login Poll
+2025-04-09 16:24:26.838 [info] Got login result 404
+2025-04-09 16:24:26.945 [info] Beginning of Login Poll
+2025-04-09 16:24:27.038 [info] Got login result 404
+2025-04-09 16:24:27.145 [info] Beginning of Login Poll
+2025-04-09 16:24:27.235 [info] Got login result 200
+2025-04-09 16:24:27.235 [info] Got login json {"accessToken":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJnb29nbGUtb2F1dGgyfHVzZXJfMDFKUkRGMDRSVzdQSks3UjJKWUg4NTZGNUQiLCJ0aW1lIjoiMTc0NDIwODY2NyIsInJhbmRvbW5lc3MiOiI2ZmJmOTc2MC1kODAyLTQ0YjEiLCJleHAiOjE3NDkzOTI2NjcsImlzcyI6Imh0dHBzOi8vYXV0aGVudGljYXRpb24uY3Vyc29yLnNoIiwic2NvcGUiOiJvcGVuaWQgcHJvZmlsZSBlbWFpbCBvZmZsaW5lX2FjY2VzcyIsImF1ZCI6Imh0dHBzOi8vY3Vyc29yLmNvbSJ9.0K2_NSDVAgMjOBhgDZvSVqT5s54zV6M0IVYvBkrvD9c","refreshToken":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJnb29nbGUtb2F1dGgyfHVzZXJfMDFKUkRGMDRSVzdQSks3UjJKWUg4NTZGNUQiLCJ0aW1lIjoiMTc0NDIwODY2NyIsInJhbmRvbW5lc3MiOiI2ZmJmOTc2MC1kODAyLTQ0YjEiLCJleHAiOjE3NDkzOTI2NjcsImlzcyI6Imh0dHBzOi8vYXV0aGVudGljYXRpb24uY3Vyc29yLnNoIiwic2NvcGUiOiJvcGVuaWQgcHJvZmlsZSBlbWFpbCBvZmZsaW5lX2FjY2VzcyIsImF1ZCI6Imh0dHBzOi8vY3Vyc29yLmNvbSJ9.0K2_NSDVAgMjOBhgDZvSVqT5s54zV6M0IVYvBkrvD9c","challenge":"nWRWQ1N0XHetkxUdUOisTZEWq4CU2O6AEOnplNk_hk0","authId":"google-oauth2|user_01JRDF04RW7PJK7R2JYH856F5D","uuid":"82508aba-670f-401a-a70f-7c5498ed8c3d"}
+2025-04-09 16:24:27.345 [info] Beginning of Login Poll
+2025-04-09 16:24:27.436 [info] Got login result 200
+2025-04-09 16:24:27.437 [info] Got login json {"accessToken":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJnb29nbGUtb2F1dGgyfHVzZXJfMDFKUkRGMDRSVzdQSks3UjJKWUg4NTZGNUQiLCJ0aW1lIjoiMTc0NDIwODY2NyIsInJhbmRvbW5lc3MiOiI4NDkzMmU2OS1kY2IwLTQ1NTMiLCJleHAiOjE3NDkzOTI2NjcsImlzcyI6Imh0dHBzOi8vYXV0aGVudGljYXRpb24uY3Vyc29yLnNoIiwic2NvcGUiOiJvcGVuaWQgcHJvZmlsZSBlbWFpbCBvZmZsaW5lX2FjY2VzcyIsImF1ZCI6Imh0dHBzOi8vY3Vyc29yLmNvbSJ9.W4V8Q2mFATT79OP-Hjacd9_7-D7ZNiG6SzBfs8d_Lyw","refreshToken":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJnb29nbGUtb2F1dGgyfHVzZXJfMDFKUkRGMDRSVzdQSks3UjJKWUg4NTZGNUQiLCJ0aW1lIjoiMTc0NDIwODY2NyIsInJhbmRvbW5lc3MiOiI4NDkzMmU2OS1kY2IwLTQ1NTMiLCJleHAiOjE3NDkzOTI2NjcsImlzcyI6Imh0dHBzOi8vYXV0aGVudGljYXRpb24uY3Vyc29yLnNoIiwic2NvcGUiOiJvcGVuaWQgcHJvZmlsZSBlbWFpbCBvZmZsaW5lX2FjY2VzcyIsImF1ZCI6Imh0dHBzOi8vY3Vyc29yLmNvbSJ9.W4V8Q2mFATT79OP-Hjacd9_7-D7ZNiG6SzBfs8d_Lyw","challenge":"nWRWQ1N0XHetkxUdUOisTZEWq4CU2O6AEOnplNk_hk0","authId":"google-oauth2|user_01JRDF04RW7PJK7R2JYH856F5D","uuid":"82508aba-670f-401a-a70f-7c5498ed8c3d"}
+2025-04-09 16:24:27.545 [info] Beginning of Login Poll
+2025-04-09 16:24:27.636 [info] Got login result 200
+2025-04-09 16:24:27.636 [info] Got login json {"accessToken":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJnb29nbGUtb2F1dGgyfHVzZXJfMDFKUkRGMDRSVzdQSks3UjJKWUg4NTZGNUQiLCJ0aW1lIjoiMTc0NDIwODY2NyIsInJhbmRvbW5lc3MiOiI2YWRmMTMxNC1iNTViLTRhZTEiLCJleHAiOjE3NDkzOTI2NjcsImlzcyI6Imh0dHBzOi8vYXV0aGVudGljYXRpb24uY3Vyc29yLnNoIiwic2NvcGUiOiJvcGVuaWQgcHJvZmlsZSBlbWFpbCBvZmZsaW5lX2FjY2VzcyIsImF1ZCI6Imh0dHBzOi8vY3Vyc29yLmNvbSJ9.YxaY8bkYPBarU2MFNP5ZLcEGR5mCo6fka9-lLKEmqZ0","refreshToken":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJnb29nbGUtb2F1dGgyfHVzZXJfMDFKUkRGMDRSVzdQSks3UjJKWUg4NTZGNUQiLCJ0aW1lIjoiMTc0NDIwODY2NyIsInJhbmRvbW5lc3MiOiI2YWRmMTMxNC1iNTViLTRhZTEiLCJleHAiOjE3NDkzOTI2NjcsImlzcyI6Imh0dHBzOi8vYXV0aGVudGljYXRpb24uY3Vyc29yLnNoIiwic2NvcGUiOiJvcGVuaWQgcHJvZmlsZSBlbWFpbCBvZmZsaW5lX2FjY2VzcyIsImF1ZCI6Imh0dHBzOi8vY3Vyc29yLmNvbSJ9.YxaY8bkYPBarU2MFNP5ZLcEGR5mCo6fka9-lLKEmqZ0","challenge":"nWRWQ1N0XHetkxUdUOisTZEWq4CU2O6AEOnplNk_hk0","authId":"google-oauth2|user_01JRDF04RW7PJK7R2JYH856F5D","uuid":"82508aba-670f-401a-a70f-7c5498ed8c3d"}
+2025-04-09 16:24:27.745 [info] Beginning of Login Poll
+2025-04-09 16:24:27.836 [info] Got login result 200
+2025-04-09 16:24:27.837 [info] Got login json {"accessToken":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJnb29nbGUtb2F1dGgyfHVzZXJfMDFKUkRGMDRSVzdQSks3UjJKWUg4NTZGNUQiLCJ0aW1lIjoiMTc0NDIwODY2NyIsInJhbmRvbW5lc3MiOiI4ZTNiMWQwMi00MjE2LTQ3NzMiLCJleHAiOjE3NDkzOTI2NjcsImlzcyI6Imh0dHBzOi8vYXV0aGVudGljYXRpb24uY3Vyc29yLnNoIiwic2NvcGUiOiJvcGVuaWQgcHJvZmlsZSBlbWFpbCBvZmZsaW5lX2FjY2VzcyIsImF1ZCI6Imh0dHBzOi8vY3Vyc29yLmNvbSJ9.86Y8sdMt6FhMn-jhtSQSP7-p3WLTovMdaHRce4yf3A4","refreshToken":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJnb29nbGUtb2F1dGgyfHVzZXJfMDFKUkRGMDRSVzdQSks3UjJKWUg4NTZGNUQiLCJ0aW1lIjoiMTc0NDIwODY2NyIsInJhbmRvbW5lc3MiOiI4ZTNiMWQwMi00MjE2LTQ3NzMiLCJleHAiOjE3NDkzOTI2NjcsImlzcyI6Imh0dHBzOi8vYXV0aGVudGljYXRpb24uY3Vyc29yLnNoIiwic2NvcGUiOiJvcGVuaWQgcHJvZmlsZSBlbWFpbCBvZmZsaW5lX2FjY2VzcyIsImF1ZCI6Imh0dHBzOi8vY3Vyc29yLmNvbSJ9.86Y8sdMt6FhMn-jhtSQSP7-p3WLTovMdaHRce4yf3A4","challenge":"nWRWQ1N0XHetkxUdUOisTZEWq4CU2O6AEOnplNk_hk0","authId":"google-oauth2|user_01JRDF04RW7PJK7R2JYH856F5D","uuid":"82508aba-670f-401a-a70f-7c5498ed8c3d"}
+2025-04-09 16:25:44.220 [warning] Via 'product.json#extensionEnabledApiProposals' extension 'ms-vscode.vscode-selfhost-test-provider' wants API proposal 'attributableCoverage' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+2025-04-09 16:25:44.220 [warning] Via 'product.json#extensionEnabledApiProposals' extension 'ms-toolsai.datawrangler' wants API proposal 'debugFocus' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+2025-04-09 16:25:44.220 [warning] Via 'product.json#extensionEnabledApiProposals' extension 'ms-python.python' wants API proposal 'contribIssueReporter' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+2025-04-09 16:25:44.220 [warning] Via 'product.json#extensionEnabledApiProposals' extension 'ms-python.debugpy' wants API proposal 'contribIssueReporter' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+2025-04-09 16:25:44.220 [warning] Via 'product.json#extensionEnabledApiProposals' extension 'ms-azuretools.vscode-azure-github-copilot' wants API proposal 'lmTools' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+2025-04-09 16:25:44.220 [warning] Via 'product.json#extensionEnabledApiProposals' extension 'ms-vscode.cpptools' wants API proposal 'lmTools' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+2025-04-09 16:25:44.220 [warning] Via 'product.json#extensionEnabledApiProposals' extension 'vscjava.vscode-java-pack' wants API proposal 'lmTools' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+2025-04-09 16:25:44.220 [warning] Via 'product.json#extensionEnabledApiProposals' extension 'apidev.azure-api-center' wants API proposal 'chatParticipant' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+2025-04-09 16:25:44.220 [warning] Via 'product.json#extensionEnabledApiProposals' extension 'apidev.azure-api-center' wants API proposal 'languageModels' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+2025-04-09 16:25:44.233 [warning] Missing property "modes" in oldValue. Filling with value from initValue. Please add a migration if necessary.
+2025-04-09 16:25:44.233 [warning] Missing property "modes2" in oldValue. Filling with value from initValue. Please add a migration if necessary.
+2025-04-09 16:25:44.233 [warning] Missing property "modes3" in oldValue. Filling with value from initValue. Please add a migration if necessary.
+2025-04-09 16:25:44.233 [warning] Missing property "explicitEnableOrDisable" in oldValue. Filling with value from initValue. Please add a migration if necessary.
+2025-04-09 16:25:44.233 [warning] Missing property "lastBackgroundBugbotAt" in oldValue. Filling with value from initValue. Please add a migration if necessary.
+2025-04-09 16:25:44.233 [warning] Missing property "shouldHideWarning" in oldValue. Filling with value from initValue. Please add a migration if necessary.
+2025-04-09 16:25:44.233 [warning] Missing property "persistentChatMetadata" in oldValue. Filling with value from initValue. Please add a migration if necessary.
+2025-04-09 16:25:44.233 [warning] Missing property "aiPanePosition" in oldValue. Filling with value from initValue. Please add a migration if necessary.
+2025-04-09 16:25:44.233 [warning] Missing property "shouldRerankByDefault" in oldValue. Filling with value from initValue. Please add a migration if necessary.
+2025-04-09 16:25:44.233 [warning] Missing property "indexingData" in oldValue. Filling with value from initValue. Please add a migration if necessary.
+2025-04-09 16:25:44.233 [warning] Missing property "composerState" in oldValue. Filling with value from initValue. Please add a migration if necessary.
+2025-04-09 16:25:44.233 [warning] Missing property "isCursorPredictionOutOfRangeIndicatorMinimized2" in oldValue. Filling with value from initValue. Please add a migration if necessary.
+2025-04-09 16:25:44.233 [warning] Missing property "needsComposerInitialOpening" in oldValue. Filling with value from initValue. Please add a migration if necessary.
+2025-04-09 16:25:44.233 [warning] Missing property "approvedProjectMcpServers" in oldValue. Filling with value from initValue. Please add a migration if necessary.
+2025-04-09 16:25:44.233 [warning] Missing property "disabledMcpServers" in oldValue. Filling with value from initValue. Please add a migration if necessary.
+2025-04-09 16:25:44.363 [info] Started local extension host with pid 118554.
+2025-04-09 16:25:44.850 [error] [Extension Host] (node:118554) ExperimentalWarning: Use `importAttributes` instead of `importAssertions`
+(Use `exe --trace-warnings ...` to show where the warning was created)
+2025-04-09 16:25:44.850 [warning] No search provider registered for scheme: file, waiting
+2025-04-09 16:25:47.013 [info] [perf] Render performance baseline is 12ms
+2025-04-09 21:49:15.901 [warning] Via 'product.json#extensionEnabledApiProposals' extension 'ms-vscode.vscode-selfhost-test-provider' wants API proposal 'attributableCoverage' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+2025-04-09 21:49:15.902 [warning] Via 'product.json#extensionEnabledApiProposals' extension 'ms-toolsai.datawrangler' wants API proposal 'debugFocus' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+2025-04-09 21:49:15.902 [warning] Via 'product.json#extensionEnabledApiProposals' extension 'ms-python.python' wants API proposal 'contribIssueReporter' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+2025-04-09 21:49:15.902 [warning] Via 'product.json#extensionEnabledApiProposals' extension 'ms-python.debugpy' wants API proposal 'contribIssueReporter' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+2025-04-09 21:49:15.902 [warning] Via 'product.json#extensionEnabledApiProposals' extension 'ms-azuretools.vscode-azure-github-copilot' wants API proposal 'lmTools' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+2025-04-09 21:49:15.902 [warning] Via 'product.json#extensionEnabledApiProposals' extension 'ms-vscode.cpptools' wants API proposal 'lmTools' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+2025-04-09 21:49:15.902 [warning] Via 'product.json#extensionEnabledApiProposals' extension 'vscjava.vscode-java-pack' wants API proposal 'lmTools' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+2025-04-09 21:49:15.902 [warning] Via 'product.json#extensionEnabledApiProposals' extension 'apidev.azure-api-center' wants API proposal 'chatParticipant' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+2025-04-09 21:49:15.902 [warning] Via 'product.json#extensionEnabledApiProposals' extension 'apidev.azure-api-center' wants API proposal 'languageModels' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+2025-04-09 21:49:15.915 [warning] Missing property "modes" in oldValue. Filling with value from initValue. Please add a migration if necessary.
+2025-04-09 21:49:15.915 [warning] Missing property "modes2" in oldValue. Filling with value from initValue. Please add a migration if necessary.
+2025-04-09 21:49:15.915 [warning] Missing property "modes3" in oldValue. Filling with value from initValue. Please add a migration if necessary.
+2025-04-09 21:49:15.915 [warning] Missing property "explicitEnableOrDisable" in oldValue. Filling with value from initValue. Please add a migration if necessary.
+2025-04-09 21:49:15.915 [warning] Missing property "lastBackgroundBugbotAt" in oldValue. Filling with value from initValue. Please add a migration if necessary.
+2025-04-09 21:49:15.915 [warning] Missing property "shouldHideWarning" in oldValue. Filling with value from initValue. Please add a migration if necessary.
+2025-04-09 21:49:15.915 [warning] Missing property "persistentChatMetadata" in oldValue. Filling with value from initValue. Please add a migration if necessary.
+2025-04-09 21:49:15.915 [warning] Missing property "aiPanePosition" in oldValue. Filling with value from initValue. Please add a migration if necessary.
+2025-04-09 21:49:15.916 [warning] Missing property "shouldRerankByDefault" in oldValue. Filling with value from initValue. Please add a migration if necessary.
+2025-04-09 21:49:15.916 [warning] Missing property "indexingData" in oldValue. Filling with value from initValue. Please add a migration if necessary.
+2025-04-09 21:49:15.916 [warning] Missing property "composerState" in oldValue. Filling with value from initValue. Please add a migration if necessary.
+2025-04-09 21:49:15.916 [warning] Missing property "isCursorPredictionOutOfRangeIndicatorMinimized2" in oldValue. Filling with value from initValue. Please add a migration if necessary.
+2025-04-09 21:49:15.916 [warning] Missing property "needsComposerInitialOpening" in oldValue. Filling with value from initValue. Please add a migration if necessary.
+2025-04-09 21:49:15.916 [warning] Missing property "approvedProjectMcpServers" in oldValue. Filling with value from initValue. Please add a migration if necessary.
+2025-04-09 21:49:15.916 [warning] Missing property "disabledMcpServers" in oldValue. Filling with value from initValue. Please add a migration if necessary.
+2025-04-09 21:49:16.043 [info] Started local extension host with pid 216520.
+2025-04-09 21:49:16.480 [error] [Extension Host] (node:216520) ExperimentalWarning: Use `importAttributes` instead of `importAssertions`
+(Use `exe --trace-warnings ...` to show where the warning was created)
+2025-04-09 21:49:16.480 [warning] No search provider registered for scheme: file, waiting
+2025-04-09 21:49:18.694 [info] [perf] Render performance baseline is 13ms
+2025-04-09 21:49:31.953 [error] File seems to be binary and cannot be opened as text: Error: File seems to be binary and cannot be opened as text
+    at O1i.M (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:4856:9502)
+    at async O1i.readStream (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:4856:9129)
+    at async $ft.Db (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:2925:12123)
+    at async $ft.resolve (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:2925:10598)
+    at async M1i.W (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:4856:5900)
+    at async Pti.r (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:2925:21118) File seems to be binary and cannot be opened as text
+2025-04-09 21:52:54.292 [error] [canceled] This operation was aborted: ConnectError: [canceled] This operation was aborted
+    at t (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:2405:131870)
+    at async Object.countTokens (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:98:15147)
+    at async oni.updateTokenCount (vscode-file://vscode-app/tmp/.mount_cursorkUeM0V/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:3063:4843) [canceled] This operation was aborted

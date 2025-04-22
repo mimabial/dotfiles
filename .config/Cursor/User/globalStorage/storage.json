@@ -1,0 +1,65 @@
+{
+    "telemetry.sqmId": "",
+    "telemetry.macMachineId": "4130bce0627801ac9ff51e7128a8431f0dd93a7a756edb83b14330733c9fa60c",
+    "telemetry.machineId": "2aec47b8fc4fa17084ebfe2643097a87203489e479c330db37e5a43101820d08",
+    "telemetry.devDeviceId": "13c31b10-efce-4c8a-907c-e73eba64c81c",
+    "backupWorkspaces": {
+        "workspaces": [],
+        "folders": [
+            {
+                "folderUri": "file:///home/rifle/bema-next"
+            }
+        ],
+        "emptyWindows": []
+    },
+    "profileAssociations": {
+        "workspaces": {
+            "file:///home/rifle/bema-next": "__default__profile__",
+            "file:///home/rifle": "__default__profile__"
+        },
+        "emptyWindows": {}
+    },
+    "windowControlHeight": 35,
+    "theme": "vs-dark",
+    "themeBackground": "#1e2127",
+    "windowSplash": {
+        "zoomLevel": 0,
+        "baseTheme": "vs-dark",
+        "colorInfo": {
+            "foreground": "#7b88a1",
+            "background": "#1e2127",
+            "editorBackground": "#1e2127",
+            "titleBarBackground": "#191c22",
+            "titleBarBorder": "rgba(255, 255, 255, 0.05)",
+            "activityBarBackground": "#191c22",
+            "sideBarBackground": "#191c22",
+            "sideBarBorder": "rgba(255, 255, 255, 0.05)",
+            "statusBarBackground": "#191c22",
+            "statusBarBorder": "rgba(255, 255, 255, 0.05)",
+            "statusBarNoFolderBackground": "#191c22"
+        },
+        "layoutInfo": {
+            "sideBarSide": "left",
+            "editorPartMinWidth": 220,
+            "titleBarHeight": 35,
+            "activityBarWidth": 0,
+            "sideBarWidth": 230,
+            "statusBarHeight": 22,
+            "windowBorder": false
+        }
+    },
+    "windowsState": {
+        "lastActiveWindow": {
+            "folder": "file:///home/rifle/bema-next",
+            "backupPath": "/home/rifle/.config/Cursor/Backups/4a10abc37d3c686e648fb16aeaa90a98",
+            "uiState": {
+                "mode": 0,
+                "x": 0,
+                "y": 0,
+                "width": 3440,
+                "height": 1440
+            }
+        },
+        "openedWindows": []
+    }
+}

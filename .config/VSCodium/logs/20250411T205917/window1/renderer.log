@@ -1,0 +1,26 @@
+2025-04-11 20:59:18.243 [info] Started local extension host with pid 172336.
+2025-04-11 20:59:20.812 [info] [perf] Render performance baseline is 11ms
+2025-04-12 00:02:06.173 [warning] Settings pattern "issueReporter.*" doesn't match any settings
+2025-04-12 00:02:23.599 [warning] Settings pattern "issueReporter.*" doesn't match any settings
+2025-04-12 00:17:50.004 [error] Illegal value for lineNumber: Error: Illegal value for lineNumber
+    at Sg.getLineMaxColumn (vscode-file://vscode-app/usr/share/vscodium/resources/app/out/vs/workbench/workbench.desktop.main.js:253:144)
+    at vscode-file://vscode-app/usr/share/vscodium/resources/app/out/vs/workbench/workbench.desktop.main.js:2001:13639
+    at HI._computeFn (vscode-file://vscode-app/usr/share/vscodium/resources/app/out/vs/workbench/workbench.desktop.main.js:31:26325)
+    at HI._recompute (vscode-file://vscode-app/usr/share/vscodium/resources/app/out/vs/workbench/workbench.desktop.main.js:31:28296)
+    at HI.get (vscode-file://vscode-app/usr/share/vscodium/resources/app/out/vs/workbench/workbench.desktop.main.js:31:27919)
+    at HI.reportChanges (vscode-file://vscode-app/usr/share/vscodium/resources/app/out/vs/workbench/workbench.desktop.main.js:31:17032)
+    at nse.endUpdate (vscode-file://vscode-app/usr/share/vscodium/resources/app/out/vs/workbench/workbench.desktop.main.js:31:24811)
+    at HI.endUpdate (vscode-file://vscode-app/usr/share/vscodium/resources/app/out/vs/workbench/workbench.desktop.main.js:31:29207)
+    at UW.finish (vscode-file://vscode-app/usr/share/vscodium/resources/app/out/vs/workbench/workbench.desktop.main.js:31:19015)
+    at Hi (vscode-file://vscode-app/usr/share/vscodium/resources/app/out/vs/workbench/workbench.desktop.main.js:31:18372)
+2025-04-12 04:01:30.263 [error] Illegal value for lineNumber: Error: Illegal value for lineNumber
+    at Sg.getLineMaxColumn (vscode-file://vscode-app/usr/share/vscodium/resources/app/out/vs/workbench/workbench.desktop.main.js:253:144)
+    at vscode-file://vscode-app/usr/share/vscodium/resources/app/out/vs/workbench/workbench.desktop.main.js:2001:13639
+    at HI._computeFn (vscode-file://vscode-app/usr/share/vscodium/resources/app/out/vs/workbench/workbench.desktop.main.js:31:26325)
+    at HI._recompute (vscode-file://vscode-app/usr/share/vscodium/resources/app/out/vs/workbench/workbench.desktop.main.js:31:28296)
+    at HI.get (vscode-file://vscode-app/usr/share/vscodium/resources/app/out/vs/workbench/workbench.desktop.main.js:31:27919)
+    at HI.reportChanges (vscode-file://vscode-app/usr/share/vscodium/resources/app/out/vs/workbench/workbench.desktop.main.js:31:17032)
+    at nse.endUpdate (vscode-file://vscode-app/usr/share/vscodium/resources/app/out/vs/workbench/workbench.desktop.main.js:31:24811)
+    at HI.endUpdate (vscode-file://vscode-app/usr/share/vscodium/resources/app/out/vs/workbench/workbench.desktop.main.js:31:29207)
+    at UW.finish (vscode-file://vscode-app/usr/share/vscodium/resources/app/out/vs/workbench/workbench.desktop.main.js:31:19015)
+    at Hi (vscode-file://vscode-app/usr/share/vscodium/resources/app/out/vs/workbench/workbench.desktop.main.js:31:18372)

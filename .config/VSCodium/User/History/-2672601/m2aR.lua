@@ -1,0 +1,1 @@
+{ "MunifTanjim/nui.nvim", lazy = true }

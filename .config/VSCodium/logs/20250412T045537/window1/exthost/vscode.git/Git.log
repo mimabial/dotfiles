@@ -1,0 +1,1019 @@
+2025-04-12 04:55:38.046 [info] [main] Log level: Info
+2025-04-12 04:55:38.046 [info] [main] Validating found git in: "git"
+2025-04-12 04:55:38.046 [info] [main] Using git "2.49.0" from "git"
+2025-04-12 04:55:38.046 [info] [Model][doInitialScan] Initial repository scan started
+2025-04-12 04:55:38.046 [info] > git rev-parse --show-toplevel [4ms]
+2025-04-12 04:55:38.046 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:55:38.046 [info] > git rev-parse --show-toplevel [2ms]
+2025-04-12 04:55:38.046 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:55:38.046 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 04:55:38.046 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:55:38.050 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 04:55:38.050 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:55:38.052 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 04:55:38.052 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:55:38.055 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 04:55:38.055 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:55:38.057 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 04:55:38.057 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:55:38.060 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 04:55:38.060 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:55:38.062 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 04:55:38.062 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:55:38.064 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 04:55:38.064 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:55:38.067 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 04:55:38.067 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:55:38.069 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 04:55:38.069 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:55:38.071 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 04:55:38.071 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:55:38.073 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 04:55:38.073 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:55:38.076 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 04:55:38.076 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:55:38.078 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 04:55:38.078 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:55:38.080 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 04:55:38.080 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:55:38.083 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 04:55:38.083 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:55:38.085 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 04:55:38.085 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:55:38.087 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 04:55:38.087 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:55:38.089 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 04:55:38.089 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:55:38.092 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 04:55:38.092 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:55:38.094 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 04:55:38.094 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:55:38.096 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 04:55:38.096 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:55:38.098 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 04:55:38.098 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:55:38.100 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 04:55:38.100 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:55:38.103 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 04:55:38.105 [info] > git rev-parse --git-dir --git-common-dir [0ms]
+2025-04-12 04:55:38.109 [info] [Model][openRepository] Opened repository: /home/rifle/bema-next
+2025-04-12 04:55:38.114 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 04:55:38.114 [info] > git config --get commit.template [2ms]
+2025-04-12 04:55:38.119 [info] > git rev-parse --git-dir --git-common-dir [3ms]
+2025-04-12 04:55:38.121 [info] [Model][openRepository] Opened repository: /home/rifle/mpvpaper
+2025-04-12 04:55:38.121 [info] [Model][doInitialScan] Initial repository scan completed - repositories (2), closed repositories (0), parent repositories (0), unsafe repositories (0)
+2025-04-12 04:55:38.123 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/master refs/remotes/master [4ms]
+2025-04-12 04:55:38.126 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/bema-next/.git/refs/remotes/origin/master'
+2025-04-12 04:55:38.126 [info] > git config --get commit.template [3ms]
+2025-04-12 04:55:38.126 [info] > git rev-parse refs/remotes/origin/master [0ms]
+2025-04-12 04:55:38.134 [info] > git status -z -uall [5ms]
+2025-04-12 04:55:38.134 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [3ms]
+2025-04-12 04:55:38.146 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/master refs/remotes/master [4ms]
+2025-04-12 04:55:38.149 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/master refs/remotes/master [16ms]
+2025-04-12 04:55:38.151 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/mpvpaper/.git/refs/remotes/origin/master'
+2025-04-12 04:55:38.152 [info] > git config --get --local branch.master.vscode-merge-base [3ms]
+2025-04-12 04:55:38.154 [info] > git config --get commit.template [9ms]
+2025-04-12 04:55:38.154 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/origin/master refs/remotes/origin/master [0ms]
+2025-04-12 04:55:38.157 [info] > git rev-parse refs/remotes/origin/master [6ms]
+2025-04-12 04:55:38.163 [info] > git status -z -uall [4ms]
+2025-04-12 04:55:38.163 [info] > git merge-base refs/heads/master refs/remotes/origin/master [6ms]
+2025-04-12 04:55:38.175 [info] > git diff --name-status -z --diff-filter=ADMR 8a66f8282e06330b6809ffc02b9f8ea34aedb246...refs/remotes/origin/master [10ms]
+2025-04-12 04:55:38.175 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/master refs/remotes/master [12ms]
+2025-04-12 04:55:38.175 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [14ms]
+2025-04-12 04:55:38.182 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/bema-next/.git/refs/remotes/origin/master'
+2025-04-12 04:55:38.184 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/master refs/remotes/master [5ms]
+2025-04-12 04:55:38.187 [info] > git config --get commit.template [3ms]
+2025-04-12 04:55:38.187 [info] > git rev-parse refs/remotes/origin/master [5ms]
+2025-04-12 04:55:38.191 [info] > git status -z -uall [2ms]
+2025-04-12 04:55:38.191 [info] > git config --get --local branch.master.vscode-merge-base [5ms]
+2025-04-12 04:55:38.196 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [5ms]
+2025-04-12 04:55:38.197 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/master refs/remotes/master [2ms]
+2025-04-12 04:55:38.197 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/origin/master refs/remotes/origin/master [4ms]
+2025-04-12 04:55:38.202 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/mpvpaper/.git/refs/remotes/origin/master'
+2025-04-12 04:55:38.203 [info] > git merge-base refs/heads/master refs/remotes/origin/master [4ms]
+2025-04-12 04:55:38.205 [info] > git rev-parse refs/remotes/origin/master [3ms]
+2025-04-12 04:55:38.210 [info] > git status -z -uall [3ms]
+2025-04-12 04:55:38.210 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [1ms]
+2025-04-12 04:55:38.213 [info] > git diff --name-status -z --diff-filter=ADMR ee7541800f930ea32bc3d5364f37cf3838b4a9d3...refs/remotes/origin/master [9ms]
+2025-04-12 04:55:38.213 [info] > git merge-base refs/heads/master refs/remotes/origin/master [1ms]
+2025-04-12 04:55:38.216 [info] > git diff --name-status -z --diff-filter=ADMR ee7541800f930ea32bc3d5364f37cf3838b4a9d3...refs/remotes/origin/master [1ms]
+2025-04-12 04:55:40.009 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 04:55:40.009 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:56:20.533 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 04:56:20.533 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:56:20.544 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 04:56:20.544 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:56:20.547 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 04:56:20.547 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:56:23.089 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 04:56:23.089 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:56:23.099 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 04:56:23.099 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:56:23.102 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 04:56:23.102 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:56:26.585 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 04:56:26.585 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:56:26.626 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 04:56:26.626 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:56:26.629 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 04:56:26.629 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:56:31.535 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 04:56:31.535 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:56:31.540 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 04:56:31.540 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:56:31.545 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 04:56:31.545 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:56:32.861 [info] > git rev-parse --show-toplevel [2ms]
+2025-04-12 04:56:32.861 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:56:32.882 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 04:56:32.882 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:56:32.885 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 04:56:32.885 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 04:56:33.464 [info] > git check-ignore -v -z --stdin [13ms]
+2025-04-12 04:56:33.465 [info] > git check-ignore -v -z --stdin [3ms]
+2025-04-12 05:14:08.679 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:14:08.679 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:14:08.728 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 05:14:08.728 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:14:08.731 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:14:08.731 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:14:10.289 [info] > git rev-parse --show-toplevel [2ms]
+2025-04-12 05:14:10.289 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:14:10.307 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 05:14:10.307 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:14:10.310 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 05:14:10.310 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:14:19.732 [info] > git rev-parse --show-toplevel [2ms]
+2025-04-12 05:14:19.745 [info] > git rev-parse --git-dir --git-common-dir [2ms]
+2025-04-12 05:14:19.746 [info] [Model][openRepository] Opened repository: /home/rifle/.local/share/nvim/lazy/LazyVim
+2025-04-12 05:14:19.756 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:14:19.756 [info] > git config --get commit.template [4ms]
+2025-04-12 05:14:19.762 [info] > git rev-parse --git-dir --git-common-dir [4ms]
+2025-04-12 05:14:19.764 [info] [Model][openRepository] Opened repository: /home/rifle/.local/share/nvim/lazy/blink.cmp
+2025-04-12 05:14:19.769 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [8ms]
+2025-04-12 05:14:19.772 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/LazyVim/.git/refs/remotes/origin/main'
+2025-04-12 05:14:19.772 [info] > git rev-parse --show-toplevel [3ms]
+2025-04-12 05:14:19.772 [info] > git config --get commit.template [5ms]
+2025-04-12 05:14:19.776 [info] > git rev-parse refs/remotes/origin/main [4ms]
+2025-04-12 05:14:19.782 [info] > git status -z -uall [4ms]
+2025-04-12 05:14:19.782 [info] > git rev-parse --git-dir --git-common-dir [7ms]
+2025-04-12 05:14:19.784 [info] [Model][openRepository] Opened repository: /home/rifle/.local/share/nvim/lazy/blink.compat
+2025-04-12 05:14:19.790 [info] > git for-each-ref --format %(refname) %(objectname) %(*objectname) refs/tags [7ms]
+2025-04-12 05:14:19.794 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [13ms]
+2025-04-12 05:14:19.807 [info] > git status -z -uall [15ms]
+2025-04-12 05:14:19.807 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [3ms]
+2025-04-12 05:14:19.809 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [16ms]
+2025-04-12 05:14:19.811 [info] > git rev-parse --show-toplevel [22ms]
+2025-04-12 05:14:19.811 [info] > git config --get commit.template [24ms]
+2025-04-12 05:14:19.819 [info] > git config --get --local branch.main.vscode-merge-base [10ms]
+2025-04-12 05:14:19.823 [info] > git config --get commit.template [17ms]
+2025-04-12 05:14:19.827 [info] > git rev-parse --git-dir --git-common-dir [8ms]
+2025-04-12 05:14:19.829 [info] [Model][openRepository] Opened repository: /home/rifle/.local/share/nvim/lazy/bufferline.nvim
+2025-04-12 05:14:19.829 [info] > git config --get commit.template [13ms]
+2025-04-12 05:14:19.837 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [10ms]
+2025-04-12 05:14:19.837 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/origin/main refs/remotes/origin/main [14ms]
+2025-04-12 05:14:19.848 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/blink.compat/.git/refs/remotes/origin/main'
+2025-04-12 05:14:19.848 [info] > git merge-base refs/heads/main refs/remotes/origin/main [8ms]
+2025-04-12 05:14:19.852 [info] > git rev-parse --show-toplevel [16ms]
+2025-04-12 05:14:19.852 [info] > git config --get commit.template [18ms]
+2025-04-12 05:14:19.852 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [20ms]
+2025-04-12 05:14:19.865 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/LazyVim/.git/refs/remotes/origin/main'
+2025-04-12 05:14:19.865 [info] > git diff --name-status -z --diff-filter=ADMR ec5981dfb1222c3bf246d9bcaa713d5cfa486fbd...refs/remotes/origin/main [13ms]
+2025-04-12 05:14:19.865 [info] > git rev-parse refs/remotes/origin/main [17ms]
+2025-04-12 05:14:19.872 [info] > git for-each-ref --format %(refname) %(objectname) %(*objectname) refs/tags [27ms]
+2025-04-12 05:14:19.882 [info] > git status -z -uall [13ms]
+2025-04-12 05:14:19.882 [info] > git status -z -uall [7ms]
+2025-04-12 05:14:19.882 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [10ms]
+2025-04-12 05:14:19.887 [info] > git rev-parse refs/remotes/origin/main [22ms]
+2025-04-12 05:14:19.891 [info] > git rev-parse --git-dir --git-common-dir [32ms]
+2025-04-12 05:14:19.892 [info] [Model][openRepository] Opened repository: /home/rifle/.local/share/nvim/lazy/catppuccin
+2025-04-12 05:14:19.902 [info] > git status -z -uall [13ms]
+2025-04-12 05:14:19.902 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [16ms]
+2025-04-12 05:14:19.907 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [26ms]
+2025-04-12 05:14:19.908 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [29ms]
+2025-04-12 05:14:19.915 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/bufferline.nvim/.git/refs/remotes/origin/main'
+2025-04-12 05:14:19.915 [info] > git config --get --local branch.main.vscode-merge-base [8ms]
+2025-04-12 05:14:19.917 [info] > git rev-parse --show-toplevel [16ms]
+2025-04-12 05:14:19.917 [info] > git config --get commit.template [19ms]
+2025-04-12 05:14:19.917 [info] > git config --get commit.template [22ms]
+2025-04-12 05:14:19.918 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [26ms]
+2025-04-12 05:14:19.929 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/origin/main refs/remotes/origin/main [12ms]
+2025-04-12 05:14:19.932 [info] > git rev-parse refs/remotes/origin/main [17ms]
+2025-04-12 05:14:19.941 [info] > git status -z -uall [7ms]
+2025-04-12 05:14:19.941 [info] > git merge-base refs/heads/main refs/remotes/origin/main [9ms]
+2025-04-12 05:14:19.943 [info] > git rev-parse --git-dir --git-common-dir [14ms]
+2025-04-12 05:14:19.944 [info] [Model][openRepository] Opened repository: /home/rifle/.local/share/nvim/lazy/conform.nvim
+2025-04-12 05:14:19.949 [info] > git diff --name-status -z --diff-filter=ADMR 2ed6d9a28b07fa6f3bface818470605f8896408c...refs/remotes/origin/main [6ms]
+2025-04-12 05:14:19.949 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [8ms]
+2025-04-12 05:14:19.949 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [10ms]
+2025-04-12 05:14:19.949 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [13ms]
+2025-04-12 05:14:19.956 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/blink.compat/.git/refs/remotes/origin/main'
+2025-04-12 05:14:19.958 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/catppuccin/.git/refs/remotes/origin/main'
+2025-04-12 05:14:19.961 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [8ms]
+2025-04-12 05:14:19.963 [info] > git rev-parse --show-toplevel [14ms]
+2025-04-12 05:14:19.963 [info] > git config --get commit.template [16ms]
+2025-04-12 05:14:19.965 [info] > git config --get commit.template [5ms]
+2025-04-12 05:14:19.965 [info] > git rev-parse refs/remotes/origin/main [7ms]
+2025-04-12 05:14:19.969 [info] > git rev-parse refs/remotes/origin/main [13ms]
+2025-04-12 05:14:19.977 [info] > git status -z -uall [10ms]
+2025-04-12 05:14:19.977 [info] > git status -z -uall [6ms]
+2025-04-12 05:14:19.977 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [8ms]
+2025-04-12 05:14:19.981 [info] > git rev-parse --git-dir --git-common-dir [16ms]
+2025-04-12 05:14:19.983 [info] [Model][openRepository] Opened repository: /home/rifle/.local/share/nvim/lazy/flash.nvim
+2025-04-12 05:14:19.983 [info] > git config --get --local branch.main.vscode-merge-base [20ms]
+2025-04-12 05:14:19.996 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/origin/main refs/remotes/origin/main [10ms]
+2025-04-12 05:14:20.000 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [20ms]
+2025-04-12 05:14:20.004 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/master refs/remotes/master [28ms]
+2025-04-12 05:14:20.005 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [30ms]
+2025-04-12 05:14:20.010 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/conform.nvim/.git/refs/remotes/origin/master'
+2025-04-12 05:14:20.010 [info] > git config --get --local branch.main.vscode-merge-base [6ms]
+2025-04-12 05:14:20.013 [info] > git merge-base refs/heads/main refs/remotes/origin/main [13ms]
+2025-04-12 05:14:20.015 [info] > git rev-parse --show-toplevel [20ms]
+2025-04-12 05:14:20.015 [info] > git config --get commit.template [23ms]
+2025-04-12 05:14:20.015 [info] > git config --get commit.template [25ms]
+2025-04-12 05:14:20.015 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [27ms]
+2025-04-12 05:14:20.020 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/bufferline.nvim/.git/refs/remotes/origin/main'
+2025-04-12 05:14:20.022 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/origin/main refs/remotes/origin/main [9ms]
+2025-04-12 05:14:20.025 [info] > git rev-parse refs/remotes/origin/master [15ms]
+2025-04-12 05:14:20.034 [info] > git status -z -uall [7ms]
+2025-04-12 05:14:20.034 [info] > git merge-base refs/heads/main refs/remotes/origin/main [9ms]
+2025-04-12 05:14:20.036 [info] > git rev-parse refs/remotes/origin/main [16ms]
+2025-04-12 05:14:20.040 [info] > git rev-parse --git-dir --git-common-dir [22ms]
+2025-04-12 05:14:20.041 [info] [Model][openRepository] Opened repository: /home/rifle/.local/share/nvim/lazy/friendly-snippets
+2025-04-12 05:14:20.042 [info] > git diff --name-status -z --diff-filter=ADMR 655133c3b4c3e5e05ec549b9f8cc2894ac6f51b3...refs/remotes/origin/main [27ms]
+2025-04-12 05:14:20.047 [info] > git status -z -uall [9ms]
+2025-04-12 05:14:20.047 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [7ms]
+2025-04-12 05:14:20.048 [info] > git diff --name-status -z --diff-filter=ADMR 5b5e3aef9ad7af84f463d17b5479f06b87d5c429...refs/remotes/origin/main [12ms]
+2025-04-12 05:14:20.048 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [15ms]
+2025-04-12 05:14:20.048 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [17ms]
+2025-04-12 05:14:20.049 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [19ms]
+2025-04-12 05:14:20.055 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/flash.nvim/.git/refs/remotes/origin/main'
+2025-04-12 05:14:20.057 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/catppuccin/.git/refs/remotes/origin/main'
+2025-04-12 05:14:20.059 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/master refs/remotes/master [7ms]
+2025-04-12 05:14:20.061 [info] > git rev-parse --show-toplevel [15ms]
+2025-04-12 05:14:20.062 [info] > git config --get commit.template [17ms]
+2025-04-12 05:14:20.065 [info] > git config --get --local branch.master.vscode-merge-base [4ms]
+2025-04-12 05:14:20.067 [info] > git config --get commit.template [8ms]
+2025-04-12 05:14:20.067 [info] > git rev-parse refs/remotes/origin/main [10ms]
+2025-04-12 05:14:20.071 [info] > git rev-parse refs/remotes/origin/main [16ms]
+2025-04-12 05:14:20.077 [info] > git status -z -uall [8ms]
+2025-04-12 05:14:20.077 [info] > git status -z -uall [4ms]
+2025-04-12 05:14:20.077 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [6ms]
+2025-04-12 05:14:20.079 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/origin/master refs/remotes/origin/master [12ms]
+2025-04-12 05:14:20.081 [info] > git rev-parse --git-dir --git-common-dir [17ms]
+2025-04-12 05:14:20.082 [info] [Model][openRepository] Opened repository: /home/rifle/.local/share/nvim/lazy/gitsigns.nvim
+2025-04-12 05:14:20.089 [info] > git merge-base refs/heads/master refs/remotes/origin/master [7ms]
+2025-04-12 05:14:20.091 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [14ms]
+2025-04-12 05:14:20.091 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [16ms]
+2025-04-12 05:14:20.097 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/friendly-snippets/.git/refs/remotes/origin/main'
+2025-04-12 05:14:20.100 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [6ms]
+2025-04-12 05:14:20.102 [info] > git diff --name-status -z --diff-filter=ADMR eebc724d12c5579d733d1f801386e0ceb909d001...refs/remotes/origin/master [11ms]
+2025-04-12 05:14:20.103 [info] > git rev-parse --show-toplevel [15ms]
+2025-04-12 05:14:20.103 [info] > git config --get commit.template [17ms]
+2025-04-12 05:14:20.103 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/master refs/remotes/master [19ms]
+2025-04-12 05:14:20.109 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/conform.nvim/.git/refs/remotes/origin/master'
+2025-04-12 05:14:20.110 [info] > git config --get --local branch.main.vscode-merge-base [7ms]
+2025-04-12 05:14:20.112 [info] > git config --get commit.template [13ms]
+2025-04-12 05:14:20.112 [info] > git rev-parse refs/remotes/origin/main [15ms]
+2025-04-12 05:14:20.119 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/origin/main refs/remotes/origin/main [7ms]
+2025-04-12 05:14:20.122 [info] > git rev-parse refs/remotes/origin/master [13ms]
+2025-04-12 05:14:20.125 [info] > git rev-parse --git-dir --git-common-dir [18ms]
+2025-04-12 05:14:20.126 [info] [Model][openRepository] Opened repository: /home/rifle/.local/share/nvim/lazy/grug-far.nvim
+2025-04-12 05:14:20.133 [info] > git status -z -uall [19ms]
+2025-04-12 05:14:20.133 [info] > git status -z -uall [10ms]
+2025-04-12 05:14:20.133 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [8ms]
+2025-04-12 05:14:20.134 [info] > git merge-base refs/heads/main refs/remotes/origin/main [13ms]
+2025-04-12 05:14:20.136 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [17ms]
+2025-04-12 05:14:20.136 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [19ms]
+2025-04-12 05:14:20.142 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/gitsigns.nvim/.git/refs/remotes/origin/main'
+2025-04-12 05:14:20.144 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [5ms]
+2025-04-12 05:14:20.146 [info] > git diff --name-status -z --diff-filter=ADMR 3c942666f115e2811e959eabbdd361a025db8b63...refs/remotes/origin/main [10ms]
+2025-04-12 05:14:20.147 [info] > git rev-parse --show-toplevel [15ms]
+2025-04-12 05:14:20.147 [info] > git config --get commit.template [17ms]
+2025-04-12 05:14:20.147 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [19ms]
+2025-04-12 05:14:20.151 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/flash.nvim/.git/refs/remotes/origin/main'
+2025-04-12 05:14:20.152 [info] > git config --get --local branch.main.vscode-merge-base [6ms]
+2025-04-12 05:14:20.154 [info] > git config --get commit.template [10ms]
+2025-04-12 05:14:20.154 [info] > git rev-parse refs/remotes/origin/main [12ms]
+2025-04-12 05:14:20.162 [info] > git status -z -uall [6ms]
+2025-04-12 05:14:20.162 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/origin/main refs/remotes/origin/main [8ms]
+2025-04-12 05:14:20.164 [info] > git rev-parse refs/remotes/origin/main [13ms]
+2025-04-12 05:14:20.168 [info] > git rev-parse --git-dir --git-common-dir [18ms]
+2025-04-12 05:14:20.169 [info] [Model][openRepository] Opened repository: /home/rifle/.local/share/nvim/lazy/gruvbox-material
+2025-04-12 05:14:20.178 [info] > git status -z -uall [12ms]
+2025-04-12 05:14:20.178 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [10ms]
+2025-04-12 05:14:20.179 [info] > git merge-base refs/heads/main refs/remotes/origin/main [15ms]
+2025-04-12 05:14:20.182 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [21ms]
+2025-04-12 05:14:20.182 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [24ms]
+2025-04-12 05:14:20.192 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [5ms]
+2025-04-12 05:14:20.195 [info] > git diff --name-status -z --diff-filter=ADMR efff286dd74c22f731cdec26a70b46e5b203c619...refs/remotes/origin/main [14ms]
+2025-04-12 05:14:20.196 [info] > git rev-parse --show-toplevel [19ms]
+2025-04-12 05:14:20.196 [info] > git config --get commit.template [22ms]
+2025-04-12 05:14:20.196 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [24ms]
+2025-04-12 05:14:20.204 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/friendly-snippets/.git/refs/remotes/origin/main'
+2025-04-12 05:14:20.205 [info] > git config --get --local branch.main.vscode-merge-base [10ms]
+2025-04-12 05:14:20.207 [info] > git config --get commit.template [17ms]
+2025-04-12 05:14:20.209 [info] > git rev-parse refs/remotes/origin/main [5ms]
+2025-04-12 05:14:20.214 [info] > git rev-parse --git-dir --git-common-dir [11ms]
+2025-04-12 05:14:20.215 [info] [Model][openRepository] Opened repository: /home/rifle/.local/share/nvim/lazy/lazy.nvim
+2025-04-12 05:14:20.227 [info] > git status -z -uall [16ms]
+2025-04-12 05:14:20.227 [info] > git status -z -uall [9ms]
+2025-04-12 05:14:20.228 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [14ms]
+2025-04-12 05:14:20.228 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/master refs/remotes/master [19ms]
+2025-04-12 05:14:20.228 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/origin/main refs/remotes/origin/main [21ms]
+2025-04-12 05:14:20.234 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/gruvbox-material/.git/refs/remotes/origin/master'
+2025-04-12 05:14:20.234 [info] > git merge-base refs/heads/main refs/remotes/origin/main [3ms]
+2025-04-12 05:14:20.236 [info] > git rev-parse --show-toplevel [9ms]
+2025-04-12 05:14:20.236 [info] > git config --get commit.template [11ms]
+2025-04-12 05:14:20.236 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [14ms]
+2025-04-12 05:14:20.236 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [16ms]
+2025-04-12 05:14:20.246 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/gitsigns.nvim/.git/refs/remotes/origin/main'
+2025-04-12 05:14:20.249 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [9ms]
+2025-04-12 05:14:20.252 [info] > git diff --name-status -z --diff-filter=ADMR 17ab794b6fce6fce768430ebc925347e349e1d60...refs/remotes/origin/main [16ms]
+2025-04-12 05:14:20.252 [info] > git rev-parse refs/remotes/origin/master [18ms]
+2025-04-12 05:14:20.263 [info] > git config --get --local branch.main.vscode-merge-base [11ms]
+2025-04-12 05:14:20.266 [info] > git config --get commit.template [17ms]
+2025-04-12 05:14:20.266 [info] > git rev-parse refs/remotes/origin/main [20ms]
+2025-04-12 05:14:20.271 [info] > git rev-parse --git-dir --git-common-dir [27ms]
+2025-04-12 05:14:20.272 [info] [Model][openRepository] Opened repository: /home/rifle/.local/share/nvim/lazy/lazydev.nvim
+2025-04-12 05:14:20.278 [info] > git status -z -uall [23ms]
+2025-04-12 05:14:20.278 [info] > git status -z -uall [10ms]
+2025-04-12 05:14:20.278 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [7ms]
+2025-04-12 05:14:20.279 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/origin/main refs/remotes/origin/main [13ms]
+2025-04-12 05:14:20.282 [info] > git for-each-ref --format %(refname) %(objectname) %(*objectname) refs/tags [20ms]
+2025-04-12 05:14:20.286 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [27ms]
+2025-04-12 05:14:20.298 [info] > git status -z -uall [14ms]
+2025-04-12 05:14:20.299 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [12ms]
+2025-04-12 05:14:20.303 [info] > git merge-base refs/heads/main refs/remotes/origin/main [21ms]
+2025-04-12 05:14:20.306 [info] > git rev-parse --show-toplevel [28ms]
+2025-04-12 05:14:20.306 [info] > git config --get commit.template [30ms]
+2025-04-12 05:14:20.312 [info] > git diff --name-status -z --diff-filter=ADMR 29f460c5c24765cba54952ce2de781e5d82ee6f6...refs/remotes/origin/main [6ms]
+2025-04-12 05:14:20.312 [info] > git config --get commit.template [15ms]
+2025-04-12 05:14:20.312 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [19ms]
+2025-04-12 05:14:20.312 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/master refs/remotes/master [24ms]
+2025-04-12 05:14:20.316 [info] > git rev-parse --git-dir --git-common-dir [5ms]
+2025-04-12 05:14:20.317 [info] [Model][openRepository] Opened repository: /home/rifle/.local/share/nvim/lazy/lualine.nvim
+2025-04-12 05:14:20.318 [info] > git config --get commit.template [9ms]
+2025-04-12 05:14:20.325 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [9ms]
+2025-04-12 05:14:20.325 [info] > git config --get --local branch.master.vscode-merge-base [11ms]
+2025-04-12 05:14:20.333 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/lazydev.nvim/.git/refs/remotes/origin/main'
+2025-04-12 05:14:20.333 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/origin/master refs/remotes/origin/master [6ms]
+2025-04-12 05:14:20.335 [info] > git rev-parse --show-toplevel [11ms]
+2025-04-12 05:14:20.335 [info] > git config --get commit.template [13ms]
+2025-04-12 05:14:20.335 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/master refs/remotes/master [15ms]
+2025-04-12 05:14:20.343 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/gruvbox-material/.git/refs/remotes/origin/master'
+2025-04-12 05:14:20.344 [info] > git status -z -uall [7ms]
+2025-04-12 05:14:20.344 [info] > git rev-parse refs/remotes/origin/main [11ms]
+2025-04-12 05:14:20.349 [info] > git for-each-ref --format %(refname) %(objectname) %(*objectname) refs/tags [18ms]
+2025-04-12 05:14:20.356 [info] > git status -z -uall [10ms]
+2025-04-12 05:14:20.357 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [8ms]
+2025-04-12 05:14:20.360 [info] > git rev-parse refs/remotes/origin/master [17ms]
+2025-04-12 05:14:20.363 [info] > git rev-parse --git-dir --git-common-dir [22ms]
+2025-04-12 05:14:20.364 [info] [Model][openRepository] Opened repository: /home/rifle/.local/share/nvim/lazy/mason-lspconfig.nvim
+2025-04-12 05:14:20.365 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [25ms]
+2025-04-12 05:14:20.366 [info] > git merge-base refs/heads/master refs/remotes/origin/master [31ms]
+2025-04-12 05:14:20.375 [info] > git status -z -uall [24ms]
+2025-04-12 05:14:20.375 [info] > git status -z -uall [13ms]
+2025-04-12 05:14:20.375 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [12ms]
+2025-04-12 05:14:20.378 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [19ms]
+2025-04-12 05:14:20.380 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/master refs/remotes/master [24ms]
+2025-04-12 05:14:20.381 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [27ms]
+2025-04-12 05:14:20.387 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/lualine.nvim/.git/refs/remotes/origin/master'
+2025-04-12 05:14:20.388 [info] > git config --get --local branch.main.vscode-merge-base [8ms]
+2025-04-12 05:14:20.390 [info] > git merge-base refs/heads/master refs/remotes/origin/master [12ms]
+2025-04-12 05:14:20.391 [info] > git rev-parse --show-toplevel [17ms]
+2025-04-12 05:14:20.392 [info] > git config --get commit.template [18ms]
+2025-04-12 05:14:20.392 [info] > git config --get commit.template [22ms]
+2025-04-12 05:14:20.392 [info] > git diff --name-status -z --diff-filter=ADMR e69dbfe66a228191d257e2b19fe11cbd3002a6a2...refs/remotes/origin/master [24ms]
+2025-04-12 05:14:20.396 [info] > git diff --name-status -z --diff-filter=ADMR e69dbfe66a228191d257e2b19fe11cbd3002a6a2...refs/remotes/origin/master [5ms]
+2025-04-12 05:14:20.396 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/origin/main refs/remotes/origin/main [6ms]
+2025-04-12 05:14:20.398 [info] > git rev-parse refs/remotes/origin/master [11ms]
+2025-04-12 05:14:20.406 [info] > git status -z -uall [6ms]
+2025-04-12 05:14:20.406 [info] > git merge-base refs/heads/main refs/remotes/origin/main [8ms]
+2025-04-12 05:14:20.409 [info] > git rev-parse --git-dir --git-common-dir [13ms]
+2025-04-12 05:14:20.410 [info] [Model][openRepository] Opened repository: /home/rifle/.local/share/nvim/lazy/mason.nvim
+2025-04-12 05:14:20.414 [info] > git diff --name-status -z --diff-filter=ADMR 2367a6c0a01eb9edb0464731cc0fb61ed9ab9d2c...refs/remotes/origin/main [6ms]
+2025-04-12 05:14:20.414 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [8ms]
+2025-04-12 05:14:20.414 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [10ms]
+2025-04-12 05:14:20.414 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [12ms]
+2025-04-12 05:14:20.420 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/mason-lspconfig.nvim/.git/refs/remotes/origin/main'
+2025-04-12 05:14:20.421 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/lazydev.nvim/.git/refs/remotes/origin/main'
+2025-04-12 05:14:20.424 [info] > git rev-parse --show-toplevel [10ms]
+2025-04-12 05:14:20.424 [info] > git config --get commit.template [12ms]
+2025-04-12 05:14:20.426 [info] > git config --get commit.template [3ms]
+2025-04-12 05:14:20.426 [info] > git rev-parse refs/remotes/origin/main [5ms]
+2025-04-12 05:14:20.431 [info] > git rev-parse refs/remotes/origin/main [11ms]
+2025-04-12 05:14:20.438 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/master refs/remotes/master [21ms]
+2025-04-12 05:14:20.448 [info] > git status -z -uall [19ms]
+2025-04-12 05:14:20.448 [info] > git status -z -uall [13ms]
+2025-04-12 05:14:20.448 [info] > git config --get --local branch.master.vscode-merge-base [6ms]
+2025-04-12 05:14:20.453 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [15ms]
+2025-04-12 05:14:20.458 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [27ms]
+2025-04-12 05:14:20.460 [info] > git rev-parse --git-dir --git-common-dir [34ms]
+2025-04-12 05:14:20.466 [info] [Model][openRepository] Opened repository: /home/rifle/.local/share/nvim/lazy/mini.ai
+2025-04-12 05:14:20.481 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [23ms]
+2025-04-12 05:14:20.484 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/origin/master refs/remotes/origin/master [31ms]
+2025-04-12 05:14:20.487 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [40ms]
+2025-04-12 05:14:20.489 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/mason.nvim/.git/refs/remotes/origin/main'
+2025-04-12 05:14:20.490 [info] > git merge-base refs/heads/master refs/remotes/origin/master [4ms]
+2025-04-12 05:14:20.492 [info] > git config --get --local branch.main.vscode-merge-base [8ms]
+2025-04-12 05:14:20.494 [info] > git rev-parse --show-toplevel [13ms]
+2025-04-12 05:14:20.494 [info] > git config --get commit.template [17ms]
+2025-04-12 05:14:20.494 [info] > git config --get commit.template [19ms]
+2025-04-12 05:14:20.494 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/master refs/remotes/master [22ms]
+2025-04-12 05:14:20.499 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/lualine.nvim/.git/refs/remotes/origin/master'
+2025-04-12 05:14:20.499 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/origin/main refs/remotes/origin/main [6ms]
+2025-04-12 05:14:20.501 [info] > git diff --name-status -z --diff-filter=ADMR 0ea56f91b7f51a37b749c050a5e5dfdd56b302b3...refs/remotes/origin/master [10ms]
+2025-04-12 05:14:20.501 [info] > git rev-parse refs/remotes/origin/main [12ms]
+2025-04-12 05:14:20.510 [info] > git status -z -uall [7ms]
+2025-04-12 05:14:20.510 [info] > git merge-base refs/heads/main refs/remotes/origin/main [9ms]
+2025-04-12 05:14:20.512 [info] > git rev-parse refs/remotes/origin/master [13ms]
+2025-04-12 05:14:20.516 [info] > git rev-parse --git-dir --git-common-dir [19ms]
+2025-04-12 05:14:20.517 [info] [Model][openRepository] Opened repository: /home/rifle/.local/share/nvim/lazy/mini.icons
+2025-04-12 05:14:20.522 [info] > git status -z -uall [8ms]
+2025-04-12 05:14:20.522 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [6ms]
+2025-04-12 05:14:20.523 [info] > git diff --name-status -z --diff-filter=ADMR 1a31f824b9cd5bc6f342fc29e9a53b60d74af245...refs/remotes/origin/main [11ms]
+2025-04-12 05:14:20.523 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [13ms]
+2025-04-12 05:14:20.523 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [15ms]
+2025-04-12 05:14:20.523 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [18ms]
+2025-04-12 05:14:20.529 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/mason-lspconfig.nvim/.git/refs/remotes/origin/main'
+2025-04-12 05:14:20.531 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/mini.ai/.git/refs/remotes/origin/main'
+2025-04-12 05:14:20.533 [info] > git rev-parse --show-toplevel [11ms]
+2025-04-12 05:14:20.533 [info] > git config --get commit.template [14ms]
+2025-04-12 05:14:20.537 [info] > git config --get commit.template [4ms]
+2025-04-12 05:14:20.537 [info] > git rev-parse refs/remotes/origin/main [6ms]
+2025-04-12 05:14:20.541 [info] > git rev-parse refs/remotes/origin/main [12ms]
+2025-04-12 05:14:20.545 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [18ms]
+2025-04-12 05:14:20.550 [info] > git status -z -uall [11ms]
+2025-04-12 05:14:20.550 [info] > git status -z -uall [7ms]
+2025-04-12 05:14:20.550 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [5ms]
+2025-04-12 05:14:20.552 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [11ms]
+2025-04-12 05:14:20.555 [info] > git rev-parse --git-dir --git-common-dir [18ms]
+2025-04-12 05:14:20.556 [info] [Model][openRepository] Opened repository: /home/rifle/.local/share/nvim/lazy/mini.pairs
+2025-04-12 05:14:20.564 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [9ms]
+2025-04-12 05:14:20.566 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [17ms]
+2025-04-12 05:14:20.566 [info] > git config --get --local branch.main.vscode-merge-base [19ms]
+2025-04-12 05:14:20.571 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/mini.icons/.git/refs/remotes/origin/main'
+2025-04-12 05:14:20.572 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/origin/main refs/remotes/origin/main [4ms]
+2025-04-12 05:14:20.574 [info] > git config --get --local branch.main.vscode-merge-base [8ms]
+2025-04-12 05:14:20.576 [info] > git rev-parse --show-toplevel [12ms]
+2025-04-12 05:14:20.576 [info] > git config --get commit.template [14ms]
+2025-04-12 05:14:20.576 [info] > git config --get commit.template [16ms]
+2025-04-12 05:14:20.576 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [18ms]
+2025-04-12 05:14:20.581 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/mason.nvim/.git/refs/remotes/origin/main'
+2025-04-12 05:14:20.581 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/origin/main refs/remotes/origin/main [5ms]
+2025-04-12 05:14:20.583 [info] > git merge-base refs/heads/main refs/remotes/origin/main [9ms]
+2025-04-12 05:14:20.585 [info] > git rev-parse refs/remotes/origin/main [14ms]
+2025-04-12 05:14:20.594 [info] > git status -z -uall [6ms]
+2025-04-12 05:14:20.594 [info] > git diff --name-status -z --diff-filter=ADMR fc98833b6da5de5a9c5b1446ac541577059555be...refs/remotes/origin/main [9ms]
+2025-04-12 05:14:20.594 [info] > git merge-base refs/heads/main refs/remotes/origin/main [11ms]
+2025-04-12 05:14:20.597 [info] > git rev-parse refs/remotes/origin/main [16ms]
+2025-04-12 05:14:20.602 [info] > git rev-parse --git-dir --git-common-dir [23ms]
+2025-04-12 05:14:20.604 [info] [Model][openRepository] Opened repository: /home/rifle/.local/share/nvim/lazy/noice.nvim
+2025-04-12 05:14:20.610 [info] > git status -z -uall [10ms]
+2025-04-12 05:14:20.610 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [8ms]
+2025-04-12 05:14:20.611 [info] > git diff --name-status -z --diff-filter=ADMR e139eb1101beb0250fea322f8c07a42f0f175688...refs/remotes/origin/main [14ms]
+2025-04-12 05:14:20.611 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [17ms]
+2025-04-12 05:14:20.611 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [19ms]
+2025-04-12 05:14:20.611 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [21ms]
+2025-04-12 05:14:20.616 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/mini.pairs/.git/refs/remotes/origin/main'
+2025-04-12 05:14:20.618 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/mini.ai/.git/refs/remotes/origin/main'
+2025-04-12 05:14:20.621 [info] > git rev-parse --show-toplevel [11ms]
+2025-04-12 05:14:20.621 [info] > git config --get commit.template [14ms]
+2025-04-12 05:14:20.624 [info] > git config --get commit.template [4ms]
+2025-04-12 05:14:20.624 [info] > git rev-parse refs/remotes/origin/main [6ms]
+2025-04-12 05:14:20.628 [info] > git rev-parse refs/remotes/origin/main [12ms]
+2025-04-12 05:14:20.632 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [18ms]
+2025-04-12 05:14:20.636 [info] > git status -z -uall [10ms]
+2025-04-12 05:14:20.636 [info] > git status -z -uall [6ms]
+2025-04-12 05:14:20.637 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [5ms]
+2025-04-12 05:14:20.641 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [13ms]
+2025-04-12 05:14:20.646 [info] > git rev-parse --git-dir --git-common-dir [22ms]
+2025-04-12 05:14:20.649 [info] [Model][openRepository] Opened repository: /home/rifle/.local/share/nvim/lazy/nui.nvim
+2025-04-12 05:14:20.666 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [26ms]
+2025-04-12 05:14:20.668 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [32ms]
+2025-04-12 05:14:20.668 [info] > git config --get --local branch.main.vscode-merge-base [34ms]
+2025-04-12 05:14:20.676 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/noice.nvim/.git/refs/remotes/origin/main'
+2025-04-12 05:14:20.677 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/origin/main refs/remotes/origin/main [6ms]
+2025-04-12 05:14:20.679 [info] > git config --get --local branch.main.vscode-merge-base [11ms]
+2025-04-12 05:14:20.682 [info] > git rev-parse --show-toplevel [16ms]
+2025-04-12 05:14:20.682 [info] > git config --get commit.template [19ms]
+2025-04-12 05:14:20.682 [info] > git config --get commit.template [22ms]
+2025-04-12 05:14:20.682 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [28ms]
+2025-04-12 05:14:20.686 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/mini.icons/.git/refs/remotes/origin/main'
+2025-04-12 05:14:20.686 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/origin/main refs/remotes/origin/main [4ms]
+2025-04-12 05:14:20.689 [info] > git merge-base refs/heads/main refs/remotes/origin/main [10ms]
+2025-04-12 05:14:20.691 [info] > git rev-parse refs/remotes/origin/main [15ms]
+2025-04-12 05:14:20.700 [info] > git status -z -uall [8ms]
+2025-04-12 05:14:20.700 [info] > git diff --name-status -z --diff-filter=ADMR 397ed3807e96b59709ef3292f0a3e253d5c1dc0a...refs/remotes/origin/main [9ms]
+2025-04-12 05:14:20.700 [info] > git merge-base refs/heads/main refs/remotes/origin/main [11ms]
+2025-04-12 05:14:20.703 [info] > git rev-parse refs/remotes/origin/main [17ms]
+2025-04-12 05:14:20.712 [info] > git rev-parse --git-dir --git-common-dir [28ms]
+2025-04-12 05:14:20.714 [info] [Model][openRepository] Opened repository: /home/rifle/.local/share/nvim/lazy/nvim-lint
+2025-04-12 05:14:20.723 [info] > git status -z -uall [16ms]
+2025-04-12 05:14:20.723 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [12ms]
+2025-04-12 05:14:20.724 [info] > git diff --name-status -z --diff-filter=ADMR 69864a2efb36c030877421634487fd90db1e4298...refs/remotes/origin/main [21ms]
+2025-04-12 05:14:20.724 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [25ms]
+2025-04-12 05:14:20.724 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [27ms]
+2025-04-12 05:14:20.725 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [30ms]
+2025-04-12 05:14:20.733 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/mini.pairs/.git/refs/remotes/origin/main'
+2025-04-12 05:14:20.735 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/nui.nvim/.git/refs/remotes/origin/main'
+2025-04-12 05:14:20.737 [info] > git rev-parse --show-toplevel [14ms]
+2025-04-12 05:14:20.737 [info] > git config --get commit.template [18ms]
+2025-04-12 05:14:20.740 [info] > git config --get commit.template [3ms]
+2025-04-12 05:14:20.741 [info] > git rev-parse refs/remotes/origin/main [5ms]
+2025-04-12 05:14:20.746 [info] > git rev-parse refs/remotes/origin/main [12ms]
+2025-04-12 05:14:20.753 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [23ms]
+2025-04-12 05:14:20.764 [info] > git status -z -uall [21ms]
+2025-04-12 05:14:20.764 [info] > git status -z -uall [15ms]
+2025-04-12 05:14:20.764 [info] > git config --get --local branch.main.vscode-merge-base [7ms]
+2025-04-12 05:14:20.769 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [16ms]
+2025-04-12 05:14:20.770 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [25ms]
+2025-04-12 05:14:20.774 [info] > git rev-parse --git-dir --git-common-dir [34ms]
+2025-04-12 05:14:20.775 [info] [Model][openRepository] Opened repository: /home/rifle/.local/share/nvim/lazy/nvim-lspconfig
+2025-04-12 05:14:20.785 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [12ms]
+2025-04-12 05:14:20.787 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/origin/main refs/remotes/origin/main [18ms]
+2025-04-12 05:14:20.790 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/master refs/remotes/master [27ms]
+2025-04-12 05:14:20.793 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/nvim-lint/.git/refs/remotes/origin/master'
+2025-04-12 05:14:20.793 [info] > git merge-base refs/heads/main refs/remotes/origin/main [4ms]
+2025-04-12 05:14:20.795 [info] > git config --get --local branch.main.vscode-merge-base [8ms]
+2025-04-12 05:14:20.797 [info] > git rev-parse --show-toplevel [12ms]
+2025-04-12 05:14:20.798 [info] > git config --get commit.template [14ms]
+2025-04-12 05:14:20.798 [info] > git config --get commit.template [18ms]
+2025-04-12 05:14:20.798 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [20ms]
+2025-04-12 05:14:20.802 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/noice.nvim/.git/refs/remotes/origin/main'
+2025-04-12 05:14:20.802 [info] > git diff --name-status -z --diff-filter=ADMR 0427460c2d7f673ad60eb02b35f5e9926cf67c59...refs/remotes/origin/main [7ms]
+2025-04-12 05:14:20.802 [info] > git rev-parse refs/remotes/origin/master [9ms]
+2025-04-12 05:14:20.810 [info] > git status -z -uall [6ms]
+2025-04-12 05:14:20.810 [info] > git rev-parse refs/remotes/origin/main [8ms]
+2025-04-12 05:14:20.814 [info] > git rev-parse --git-dir --git-common-dir [14ms]
+2025-04-12 05:14:20.815 [info] [Model][openRepository] Opened repository: /home/rifle/.local/share/nvim/lazy/nvim-treesitter-textobjects
+2025-04-12 05:14:20.815 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/origin/main refs/remotes/origin/main [18ms]
+2025-04-12 05:14:20.824 [info] > git status -z -uall [12ms]
+2025-04-12 05:14:20.824 [info] > git merge-base refs/heads/main refs/remotes/origin/main [6ms]
+2025-04-12 05:14:20.826 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [12ms]
+2025-04-12 05:14:20.828 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/master refs/remotes/master [18ms]
+2025-04-12 05:14:20.828 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [20ms]
+2025-04-12 05:14:20.828 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [22ms]
+2025-04-12 05:14:20.835 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/nui.nvim/.git/refs/remotes/origin/main'
+2025-04-12 05:14:20.837 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/master refs/remotes/master [6ms]
+2025-04-12 05:14:20.839 [info] > git diff --name-status -z --diff-filter=ADMR 8d3bce9764e627b62b07424e0df77f680d47ffdb...refs/remotes/origin/main [13ms]
+2025-04-12 05:14:20.839 [info] > git rev-parse --show-toplevel [16ms]
+2025-04-12 05:14:20.840 [info] > git config --get commit.template [19ms]
+2025-04-12 05:14:20.843 [info] > git config --get --local branch.master.vscode-merge-base [4ms]
+2025-04-12 05:14:20.845 [info] > git config --get commit.template [8ms]
+2025-04-12 05:14:20.845 [info] > git rev-parse refs/remotes/origin/main [10ms]
+2025-04-12 05:14:20.854 [info] > git status -z -uall [7ms]
+2025-04-12 05:14:20.854 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/origin/master refs/remotes/origin/master [9ms]
+2025-04-12 05:14:20.858 [info] > git rev-parse --git-dir --git-common-dir [15ms]
+2025-04-12 05:14:20.860 [info] [Model][openRepository] Opened repository: /home/rifle/.local/share/nvim/lazy/nvim-treesitter
+2025-04-12 05:14:20.879 [info] > git status -z -uall [15ms]
+2025-04-12 05:14:20.879 [info] > git merge-base refs/heads/master refs/remotes/origin/master [21ms]
+2025-04-12 05:14:20.881 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/master refs/remotes/master [27ms]
+2025-04-12 05:14:20.881 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [31ms]
+2025-04-12 05:14:20.885 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/nvim-treesitter-textobjects/.git/refs/remotes/origin/master'
+2025-04-12 05:14:20.885 [info] > git diff --name-status -z --diff-filter=ADMR 5b1bdf306bd3e565908145279e8bbfc594dac3b3...refs/remotes/origin/master [4ms]
+2025-04-12 05:14:20.885 [info] > git rev-parse --show-toplevel [6ms]
+2025-04-12 05:14:20.885 [info] > git config --get commit.template [9ms]
+2025-04-12 05:14:20.885 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/master refs/remotes/master [12ms]
+2025-04-12 05:14:20.885 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [17ms]
+2025-04-12 05:14:20.894 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/nvim-lint/.git/refs/remotes/origin/master'
+2025-04-12 05:14:20.896 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/master refs/remotes/master [8ms]
+2025-04-12 05:14:20.898 [info] > git rev-parse refs/remotes/origin/master [13ms]
+2025-04-12 05:14:20.905 [info] > git status -z -uall [5ms]
+2025-04-12 05:14:20.905 [info] > git config --get --local branch.master.vscode-merge-base [7ms]
+2025-04-12 05:14:20.908 [info] > git config --get commit.template [12ms]
+2025-04-12 05:14:20.908 [info] > git rev-parse refs/remotes/origin/master [14ms]
+2025-04-12 05:14:20.912 [info] > git rev-parse --git-dir --git-common-dir [20ms]
+2025-04-12 05:14:20.913 [info] [Model][openRepository] Opened repository: /home/rifle/.local/share/nvim/lazy/nvim-ts-autotag
+2025-04-12 05:14:20.917 [info] > git status -z -uall [7ms]
+2025-04-12 05:14:20.917 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [5ms]
+2025-04-12 05:14:20.918 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/origin/master refs/remotes/origin/master [10ms]
+2025-04-12 05:14:20.920 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/master refs/remotes/master [15ms]
+2025-04-12 05:14:20.920 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [18ms]
+2025-04-12 05:14:20.929 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/nvim-treesitter/.git/refs/remotes/origin/master'
+2025-04-12 05:14:20.932 [info] > git merge-base refs/heads/master refs/remotes/origin/master [12ms]
+2025-04-12 05:14:20.935 [info] > git rev-parse --show-toplevel [18ms]
+2025-04-12 05:14:20.935 [info] > git config --get commit.template [20ms]
+2025-04-12 05:14:20.938 [info] > git config --get commit.template [6ms]
+2025-04-12 05:14:20.938 [info] > git rev-parse refs/remotes/origin/master [9ms]
+2025-04-12 05:14:20.942 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/master refs/remotes/master [16ms]
+2025-04-12 05:14:20.942 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/master refs/remotes/master [19ms]
+2025-04-12 05:14:20.949 [info] > git config --get --local branch.master.vscode-merge-base [4ms]
+2025-04-12 05:14:20.951 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [9ms]
+2025-04-12 05:14:20.951 [info] > git rev-parse --git-dir --git-common-dir [13ms]
+2025-04-12 05:14:20.952 [info] [Model][openRepository] Opened repository: /home/rifle/.local/share/nvim/lazy/persistence.nvim
+2025-04-12 05:14:20.952 [info] > git diff --name-status -z --diff-filter=ADMR 94dda50b2d9a29d0b76562a9027029538840e2d7...refs/remotes/origin/master [17ms]
+2025-04-12 05:14:20.959 [info] > git status -z -uall [19ms]
+2025-04-12 05:14:20.959 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/origin/master refs/remotes/origin/master [8ms]
+2025-04-12 05:14:20.961 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [13ms]
+2025-04-12 05:14:20.963 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/nvim-ts-autotag/.git/refs/remotes/origin/main'
+2025-04-12 05:14:20.963 [info] > git rev-parse --show-toplevel [4ms]
+2025-04-12 05:14:20.963 [info] > git config --get commit.template [6ms]
+2025-04-12 05:14:20.964 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/master refs/remotes/master [9ms]
+2025-04-12 05:14:20.975 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/nvim-treesitter-textobjects/.git/refs/remotes/origin/master'
+2025-04-12 05:14:20.977 [info] > git status -z -uall [8ms]
+2025-04-12 05:14:20.978 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/master refs/remotes/master [12ms]
+2025-04-12 05:14:20.981 [info] > git rev-parse refs/remotes/origin/main [18ms]
+2025-04-12 05:14:20.988 [info] > git merge-base refs/heads/master refs/remotes/origin/master [27ms]
+2025-04-12 05:14:20.997 [info] > git status -z -uall [13ms]
+2025-04-12 05:14:20.997 [info] > git diff --name-status -z --diff-filter=ADMR 698b5f805722254bca3c509591c1806d268b6c2f...refs/remotes/origin/master [6ms]
+2025-04-12 05:14:20.997 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [9ms]
+2025-04-12 05:14:21.002 [info] > git config --get --local branch.master.vscode-merge-base [22ms]
+2025-04-12 05:14:21.004 [info] > git config --get commit.template [27ms]
+2025-04-12 05:14:21.004 [info] > git rev-parse refs/remotes/origin/master [29ms]
+2025-04-12 05:14:21.009 [info] > git rev-parse --git-dir --git-common-dir [36ms]
+2025-04-12 05:14:21.010 [info] [Model][openRepository] Opened repository: /home/rifle/.local/share/nvim/lazy/plenary.nvim
+2025-04-12 05:14:21.010 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [39ms]
+2025-04-12 05:14:21.017 [info] > git status -z -uall [11ms]
+2025-04-12 05:14:21.017 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [8ms]
+2025-04-12 05:14:21.018 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/origin/master refs/remotes/origin/master [14ms]
+2025-04-12 05:14:21.021 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [20ms]
+2025-04-12 05:14:21.023 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [27ms]
+2025-04-12 05:14:21.027 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/persistence.nvim/.git/refs/remotes/origin/main'
+2025-04-12 05:14:21.027 [info] > git config --get --local branch.main.vscode-merge-base [4ms]
+2025-04-12 05:14:21.029 [info] > git merge-base refs/heads/master refs/remotes/origin/master [9ms]
+2025-04-12 05:14:21.031 [info] > git rev-parse --show-toplevel [14ms]
+2025-04-12 05:14:21.031 [info] > git config --get commit.template [16ms]
+2025-04-12 05:14:21.031 [info] > git config --get commit.template [18ms]
+2025-04-12 05:14:21.035 [info] > git diff --name-status -z --diff-filter=ADMR 0e21ee8df6235511c02bab4a5b391d18e165a58d...refs/remotes/origin/master [4ms]
+2025-04-12 05:14:21.035 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/origin/main refs/remotes/origin/main [6ms]
+2025-04-12 05:14:21.037 [info] > git rev-parse refs/remotes/origin/main [10ms]
+2025-04-12 05:14:21.041 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/master refs/remotes/master [16ms]
+2025-04-12 05:14:21.047 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/nvim-treesitter/.git/refs/remotes/origin/master'
+2025-04-12 05:14:21.047 [info] > git status -z -uall [8ms]
+2025-04-12 05:14:21.047 [info] > git merge-base refs/heads/main refs/remotes/origin/main [10ms]
+2025-04-12 05:14:21.049 [info] > git rev-parse --git-dir --git-common-dir [14ms]
+2025-04-12 05:14:21.050 [info] [Model][openRepository] Opened repository: /home/rifle/.local/share/nvim/lazy/snacks.nvim
+2025-04-12 05:14:21.055 [info] > git diff --name-status -z --diff-filter=ADMR a1d526af391f6aebb25a8795cbc05351ed3620b5...refs/remotes/origin/main [6ms]
+2025-04-12 05:14:21.055 [info] > git rev-parse refs/remotes/origin/master [8ms]
+2025-04-12 05:14:21.059 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/master refs/remotes/master [14ms]
+2025-04-12 05:14:21.059 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [16ms]
+2025-04-12 05:14:21.059 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [18ms]
+2025-04-12 05:14:21.065 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/plenary.nvim/.git/refs/remotes/origin/master'
+2025-04-12 05:14:21.067 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/nvim-ts-autotag/.git/refs/remotes/origin/main'
+2025-04-12 05:14:21.069 [info] > git status -z -uall [12ms]
+2025-04-12 05:14:21.069 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [7ms]
+2025-04-12 05:14:21.071 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [12ms]
+2025-04-12 05:14:21.071 [info] > git rev-parse --show-toplevel [17ms]
+2025-04-12 05:14:21.071 [info] > git config --get commit.template [19ms]
+2025-04-12 05:14:21.074 [info] > git config --get --local branch.main.vscode-merge-base [3ms]
+2025-04-12 05:14:21.076 [info] > git config --get commit.template [7ms]
+2025-04-12 05:14:21.076 [info] > git rev-parse refs/remotes/origin/main [9ms]
+2025-04-12 05:14:21.080 [info] > git rev-parse refs/remotes/origin/master [15ms]
+2025-04-12 05:14:21.087 [info] > git status -z -uall [9ms]
+2025-04-12 05:14:21.087 [info] > git status -z -uall [5ms]
+2025-04-12 05:14:21.088 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [3ms]
+2025-04-12 05:14:21.091 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [11ms]
+2025-04-12 05:14:21.092 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/origin/main refs/remotes/origin/main [16ms]
+2025-04-12 05:14:21.094 [info] > git rev-parse --git-dir --git-common-dir [20ms]
+2025-04-12 05:14:21.095 [info] [Model][openRepository] Opened repository: /home/rifle/.local/share/nvim/lazy/supermaven-nvim
+2025-04-12 05:14:21.107 [info] > git merge-base refs/heads/main refs/remotes/origin/main [13ms]
+2025-04-12 05:14:21.110 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/master refs/remotes/master [19ms]
+2025-04-12 05:14:21.112 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [25ms]
+2025-04-12 05:14:21.114 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/snacks.nvim/.git/refs/remotes/origin/main'
+2025-04-12 05:14:21.115 [info] > git config --get --local branch.master.vscode-merge-base [4ms]
+2025-04-12 05:14:21.117 [info] > git diff --name-status -z --diff-filter=ADMR 166a79a55bfa7a4db3e26fc031b4d92af71d0b51...refs/remotes/origin/main [8ms]
+2025-04-12 05:14:21.117 [info] > git rev-parse --show-toplevel [10ms]
+2025-04-12 05:14:21.117 [info] > git config --get commit.template [12ms]
+2025-04-12 05:14:21.117 [info] > git config --get commit.template [15ms]
+2025-04-12 05:14:21.117 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [19ms]
+2025-04-12 05:14:21.122 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/persistence.nvim/.git/refs/remotes/origin/main'
+2025-04-12 05:14:21.122 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/origin/master refs/remotes/origin/master [5ms]
+2025-04-12 05:14:21.125 [info] > git rev-parse refs/remotes/origin/main [11ms]
+2025-04-12 05:14:21.139 [info] > git merge-base refs/heads/master refs/remotes/origin/master [14ms]
+2025-04-12 05:14:21.142 [info] > git rev-parse refs/remotes/origin/main [20ms]
+2025-04-12 05:14:21.150 [info] > git rev-parse --git-dir --git-common-dir [30ms]
+2025-04-12 05:14:21.153 [info] [Model][openRepository] Opened repository: /home/rifle/.local/share/nvim/lazy/todo-comments.nvim
+2025-04-12 05:14:21.160 [info] > git status -z -uall [14ms]
+2025-04-12 05:14:21.160 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [10ms]
+2025-04-12 05:14:21.161 [info] > git diff --name-status -z --diff-filter=ADMR 857c5ac632080dba10aae49dba902ce3abf91b35...refs/remotes/origin/master [19ms]
+2025-04-12 05:14:21.161 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [22ms]
+2025-04-12 05:14:21.161 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/master refs/remotes/master [26ms]
+2025-04-12 05:14:21.161 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [30ms]
+2025-04-12 05:14:21.164 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/supermaven-nvim/.git/refs/remotes/origin/main'
+2025-04-12 05:14:21.166 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/plenary.nvim/.git/refs/remotes/origin/master'
+2025-04-12 05:14:21.167 [info] > git rev-parse --show-toplevel [7ms]
+2025-04-12 05:14:21.167 [info] > git config --get commit.template [10ms]
+2025-04-12 05:14:21.169 [info] > git rev-parse refs/remotes/origin/master [3ms]
+2025-04-12 05:14:21.175 [info] > git rev-parse refs/remotes/origin/main [11ms]
+2025-04-12 05:14:21.183 [info] > git status -z -uall [55ms]
+2025-04-12 05:14:21.183 [info] > git status -z -uall [11ms]
+2025-04-12 05:14:21.183 [info] > git status -z -uall [5ms]
+2025-04-12 05:14:21.183 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [8ms]
+2025-04-12 05:14:21.185 [info] > git rev-parse --git-dir --git-common-dir [16ms]
+2025-04-12 05:14:21.185 [info] [Model][openRepository] Opened repository: /home/rifle/.local/share/nvim/lazy/tokyonight.nvim
+2025-04-12 05:14:21.197 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [7ms]
+2025-04-12 05:14:21.199 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [16ms]
+2025-04-12 05:14:21.199 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [19ms]
+2025-04-12 05:14:21.205 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/todo-comments.nvim/.git/refs/remotes/origin/main'
+2025-04-12 05:14:21.207 [info] > git config --get --local branch.main.vscode-merge-base [8ms]
+2025-04-12 05:14:21.209 [info] > git config --get commit.template [12ms]
+2025-04-12 05:14:21.209 [info] > git rev-parse --show-toplevel [14ms]
+2025-04-12 05:14:21.209 [info] > git config --get commit.template [16ms]
+2025-04-12 05:14:21.213 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/origin/main refs/remotes/origin/main [4ms]
+2025-04-12 05:14:21.215 [info] > git config --get commit.template [8ms]
+2025-04-12 05:14:21.215 [info] > git rev-parse refs/remotes/origin/main [10ms]
+2025-04-12 05:14:21.220 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [18ms]
+2025-04-12 05:14:21.226 [info] > git status -z -uall [9ms]
+2025-04-12 05:14:21.226 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [6ms]
+2025-04-12 05:14:21.230 [info] > git merge-base refs/heads/main refs/remotes/origin/main [15ms]
+2025-04-12 05:14:21.232 [info] > git rev-parse --git-dir --git-common-dir [20ms]
+2025-04-12 05:14:21.235 [info] [Model][openRepository] Opened repository: /home/rifle/.local/share/nvim/lazy/trouble.nvim
+2025-04-12 05:14:21.249 [info] > git diff --name-status -z --diff-filter=ADMR bc0630e43be5699bb94dadc302c0d21615421d93...refs/remotes/origin/main [17ms]
+2025-04-12 05:14:21.249 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [19ms]
+2025-04-12 05:14:21.251 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [25ms]
+2025-04-12 05:14:21.251 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [27ms]
+2025-04-12 05:14:21.251 [info] > git config --get --local branch.main.vscode-merge-base [29ms]
+2025-04-12 05:14:21.256 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/snacks.nvim/.git/refs/remotes/origin/main'
+2025-04-12 05:14:21.258 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/tokyonight.nvim/.git/refs/remotes/origin/main'
+2025-04-12 05:14:21.258 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/origin/main refs/remotes/origin/main [4ms]
+2025-04-12 05:14:21.261 [info] > git config --get --local branch.main.vscode-merge-base [10ms]
+2025-04-12 05:14:21.263 [info] > git rev-parse --show-toplevel [17ms]
+2025-04-12 05:14:21.263 [info] > git config --get commit.template [20ms]
+2025-04-12 05:14:21.263 [info] > git config --get commit.template [23ms]
+2025-04-12 05:14:21.263 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [25ms]
+2025-04-12 05:14:21.269 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/supermaven-nvim/.git/refs/remotes/origin/main'
+2025-04-12 05:14:21.269 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/origin/main refs/remotes/origin/main [6ms]
+2025-04-12 05:14:21.272 [info] > git merge-base refs/heads/main refs/remotes/origin/main [12ms]
+2025-04-12 05:14:21.274 [info] > git rev-parse refs/remotes/origin/main [16ms]
+2025-04-12 05:14:21.281 [info] > git rev-parse refs/remotes/origin/main [25ms]
+2025-04-12 05:14:21.293 [info] > git status -z -uall [16ms]
+2025-04-12 05:14:21.293 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [12ms]
+2025-04-12 05:14:21.299 [info] > git diff --name-status -z --diff-filter=ADMR 07d20fce48a5629686aefb0a7cd4b25e33947d50...refs/remotes/origin/main [25ms]
+2025-04-12 05:14:21.299 [info] > git merge-base refs/heads/main refs/remotes/origin/main [28ms]
+2025-04-12 05:14:21.301 [info] > git rev-parse refs/remotes/origin/main [32ms]
+2025-04-12 05:14:21.305 [info] > git rev-parse --git-dir --git-common-dir [38ms]
+2025-04-12 05:14:21.306 [info] [Model][openRepository] Opened repository: /home/rifle/.local/share/nvim/lazy/ts-comments.nvim
+2025-04-12 05:14:21.312 [info] > git status -z -uall [9ms]
+2025-04-12 05:14:21.312 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [7ms]
+2025-04-12 05:14:21.313 [info] > git diff --name-status -z --diff-filter=ADMR 304a8d204ee787d2544d8bc23cd38d2f929e7cc5...refs/remotes/origin/main [12ms]
+2025-04-12 05:14:21.313 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [14ms]
+2025-04-12 05:14:21.315 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [22ms]
+2025-04-12 05:14:21.315 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [25ms]
+2025-04-12 05:14:21.315 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [28ms]
+2025-04-12 05:14:21.318 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/todo-comments.nvim/.git/refs/remotes/origin/main'
+2025-04-12 05:14:21.319 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/trouble.nvim/.git/refs/remotes/origin/main'
+2025-04-12 05:14:21.320 [info] > git status -z -uall [36ms]
+2025-04-12 05:14:21.320 [info] > git config --get --local branch.main.vscode-merge-base [5ms]
+2025-04-12 05:14:21.322 [info] > git rev-parse --show-toplevel [10ms]
+2025-04-12 05:14:21.322 [info] > git config --get commit.template [12ms]
+2025-04-12 05:14:21.322 [info] > git config --get commit.template [14ms]
+2025-04-12 05:14:21.324 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/origin/main refs/remotes/origin/main [2ms]
+2025-04-12 05:14:21.327 [info] > git rev-parse refs/remotes/origin/main [8ms]
+2025-04-12 05:14:21.331 [info] > git rev-parse refs/remotes/origin/main [13ms]
+2025-04-12 05:14:21.340 [info] > git status -z -uall [11ms]
+2025-04-12 05:14:21.340 [info] > git status -z -uall [7ms]
+2025-04-12 05:14:21.340 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [5ms]
+2025-04-12 05:14:21.341 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [10ms]
+2025-04-12 05:14:21.347 [info] > git merge-base refs/heads/main refs/remotes/origin/main [20ms]
+2025-04-12 05:14:21.351 [info] > git rev-parse --git-dir --git-common-dir [27ms]
+2025-04-12 05:14:21.352 [info] [Model][openRepository] Opened repository: /home/rifle/.local/share/nvim/lazy/which-key.nvim
+2025-04-12 05:14:21.358 [info] > git diff --name-status -z --diff-filter=ADMR 057ef5d260c1931f1dffd0f052c685dcd14100a3...refs/remotes/origin/main [7ms]
+2025-04-12 05:14:21.358 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [11ms]
+2025-04-12 05:14:21.360 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [20ms]
+2025-04-12 05:14:21.360 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [22ms]
+2025-04-12 05:14:21.363 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/ts-comments.nvim/.git/refs/remotes/origin/main'
+2025-04-12 05:14:21.365 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/tokyonight.nvim/.git/refs/remotes/origin/main'
+2025-04-12 05:14:21.365 [info] > git config --get --local branch.main.vscode-merge-base [5ms]
+2025-04-12 05:14:21.368 [info] > git config --get commit.template [11ms]
+2025-04-12 05:14:21.368 [info] > git config --get commit.template [13ms]
+2025-04-12 05:14:21.368 [info] > git rev-parse refs/remotes/origin/main [3ms]
+2025-04-12 05:14:21.372 [info] > git rev-parse refs/remotes/origin/main [9ms]
+2025-04-12 05:14:21.381 [info] > git status -z -uall [11ms]
+2025-04-12 05:14:21.381 [info] > git status -z -uall [7ms]
+2025-04-12 05:14:21.381 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [9ms]
+2025-04-12 05:14:21.383 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/origin/main refs/remotes/origin/main [16ms]
+2025-04-12 05:14:21.386 [info] > git merge-base refs/heads/main refs/remotes/origin/main [1ms]
+2025-04-12 05:14:21.388 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [7ms]
+2025-04-12 05:14:21.388 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [9ms]
+2025-04-12 05:14:21.388 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [11ms]
+2025-04-12 05:14:21.394 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/which-key.nvim/.git/refs/remotes/origin/main'
+2025-04-12 05:14:21.396 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/trouble.nvim/.git/refs/remotes/origin/main'
+2025-04-12 05:14:21.398 [info] > git diff --name-status -z --diff-filter=ADMR 85bedb7eb7fa331a2ccbecb9202d8abba64d37b3...refs/remotes/origin/main [10ms]
+2025-04-12 05:14:21.398 [info] > git config --get commit.template [0ms]
+2025-04-12 05:14:21.398 [info] > git rev-parse refs/remotes/origin/main [2ms]
+2025-04-12 05:14:21.402 [info] > git rev-parse refs/remotes/origin/main [8ms]
+2025-04-12 05:14:21.406 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [15ms]
+2025-04-12 05:14:21.409 [info] > git status -z -uall [9ms]
+2025-04-12 05:14:21.409 [info] > git status -z -uall [5ms]
+2025-04-12 05:14:21.409 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [3ms]
+2025-04-12 05:14:21.416 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [14ms]
+2025-04-12 05:14:21.426 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [11ms]
+2025-04-12 05:14:21.431 [info] > git config --get --local branch.main.vscode-merge-base [22ms]
+2025-04-12 05:14:21.436 [info] > git config --get --local branch.main.vscode-merge-base [5ms]
+2025-04-12 05:14:21.440 [info] > git config --get commit.template [14ms]
+2025-04-12 05:14:21.440 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [18ms]
+2025-04-12 05:14:21.444 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/ts-comments.nvim/.git/refs/remotes/origin/main'
+2025-04-12 05:14:21.445 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/origin/main refs/remotes/origin/main [9ms]
+2025-04-12 05:14:21.454 [info] > git rev-parse refs/remotes/origin/main [10ms]
+2025-04-12 05:14:21.461 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/origin/main refs/remotes/origin/main [22ms]
+2025-04-12 05:14:21.465 [info] > git status -z -uall [7ms]
+2025-04-12 05:14:21.466 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [5ms]
+2025-04-12 05:14:21.470 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/main refs/remotes/main [17ms]
+2025-04-12 05:14:21.470 [info] > git merge-base refs/heads/main refs/remotes/origin/main [21ms]
+2025-04-12 05:14:21.475 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/.local/share/nvim/lazy/which-key.nvim/.git/refs/remotes/origin/main'
+2025-04-12 05:14:21.475 [info] > git merge-base refs/heads/main refs/remotes/origin/main [5ms]
+2025-04-12 05:14:21.478 [info] > git merge-base refs/heads/main refs/remotes/origin/main [13ms]
+2025-04-12 05:14:21.481 [info] > git diff --name-status -z --diff-filter=ADMR 1bd9d0ba1d8b336c3db50692ffd0955fe1bb9f0c...refs/remotes/origin/main [3ms]
+2025-04-12 05:14:21.481 [info] > git rev-parse refs/remotes/origin/main [6ms]
+2025-04-12 05:14:21.486 [info] > git diff --name-status -z --diff-filter=ADMR 1bd9d0ba1d8b336c3db50692ffd0955fe1bb9f0c...refs/remotes/origin/main [14ms]
+2025-04-12 05:14:21.486 [info] > git status -z -uall [2ms]
+2025-04-12 05:14:21.486 [info] > git diff --name-status -z --diff-filter=ADMR 370ec46f710e058c9c1646273e6b225acf47cbed...refs/remotes/origin/main [5ms]
+2025-04-12 05:14:21.487 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [0ms]
+2025-04-12 05:19:42.932 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 05:19:42.932 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:19:42.950 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 05:19:42.951 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:19:42.954 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:19:42.954 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:21:12.075 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:21:12.075 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:21:12.085 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:21:12.085 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:21:12.088 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:21:12.088 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:21:19.800 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:21:19.800 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:21:19.810 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:21:19.810 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:21:19.813 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:21:19.813 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:22:25.416 [info] > git rev-parse --show-toplevel [2ms]
+2025-04-12 05:22:25.416 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:22:25.454 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 05:22:25.454 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:22:25.457 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 05:22:25.457 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:22:34.409 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 05:22:34.409 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:22:34.415 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:22:34.415 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:22:34.419 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:22:34.419 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:22:37.135 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:22:37.135 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:22:37.141 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:22:37.141 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:22:37.143 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 05:22:37.144 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:22:37.693 [info] > git check-ignore -v -z --stdin [10ms]
+2025-04-12 05:22:37.694 [info] > git check-ignore -v -z --stdin [2ms]
+2025-04-12 05:22:41.049 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:22:41.049 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:22:41.062 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 05:22:41.062 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:22:41.065 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:22:41.065 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:35:17.857 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:35:17.857 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:35:17.862 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:35:17.862 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:35:17.865 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:35:17.865 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:35:21.089 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 05:35:21.089 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:35:21.094 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 05:35:21.094 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:35:21.097 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:35:21.097 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:35:44.796 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:35:44.796 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:35:44.800 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 05:35:44.800 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:35:44.803 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 05:35:44.803 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:35:50.212 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 05:35:50.212 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:35:50.217 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:35:50.217 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:35:50.220 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:35:50.220 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:35:51.813 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:35:51.813 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:35:51.823 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:35:51.823 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:35:51.826 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:35:51.826 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:37:58.456 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 05:37:58.456 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:37:58.462 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 05:37:58.462 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:37:58.465 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 05:37:58.465 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:38:00.597 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 05:38:00.597 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:38:00.606 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:38:00.606 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:38:00.609 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:38:00.609 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:38:17.009 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 05:38:17.009 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:38:17.014 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:38:17.014 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:38:17.019 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:38:17.019 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:38:20.703 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 05:38:20.703 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:38:20.715 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:38:20.715 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:38:20.720 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:38:20.720 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:38:24.269 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:38:24.269 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:38:24.278 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 05:38:24.278 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:38:24.281 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 05:38:24.281 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:38:28.425 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:38:28.425 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:38:28.430 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:38:28.430 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:38:28.432 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 05:38:28.432 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:38:29.259 [info] > git rev-parse --show-toplevel [2ms]
+2025-04-12 05:38:29.259 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:38:29.280 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:38:29.280 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:38:29.283 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:38:29.284 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:38:58.228 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:38:58.229 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:38:58.240 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:38:58.240 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:38:58.244 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:38:58.244 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:39:09.326 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 05:39:09.326 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:39:09.337 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:39:09.337 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:39:09.340 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:39:09.340 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:39:13.724 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:39:13.724 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:39:13.729 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:39:13.729 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:39:13.731 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 05:39:13.731 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:39:16.752 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 05:39:16.752 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:39:16.757 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:39:16.757 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:39:16.760 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:39:16.760 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:39:18.120 [info] > git rev-parse --show-toplevel [2ms]
+2025-04-12 05:39:18.120 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:39:18.133 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:39:18.133 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:39:18.136 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:39:18.136 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:39:18.139 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:39:18.139 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:39:45.143 [info] > git rev-parse --show-toplevel [2ms]
+2025-04-12 05:39:45.143 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:39:45.176 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:39:45.176 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:39:45.179 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 05:39:45.179 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:40:15.876 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:40:15.876 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:40:15.915 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:40:15.915 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:40:15.918 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:40:15.918 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:41:33.364 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 05:41:33.364 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:41:33.415 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 05:41:33.415 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:41:33.418 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 05:41:33.418 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:42:21.707 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:42:21.707 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:42:21.716 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:42:21.716 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:42:21.720 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:42:21.720 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:42:26.534 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:42:26.534 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:42:26.541 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 05:42:26.541 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:42:26.545 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:42:26.545 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:43:02.436 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 05:43:02.436 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:43:02.441 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:43:02.441 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:43:02.444 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:43:02.444 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:43:18.311 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:43:18.311 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:43:18.322 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:43:18.322 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:43:18.325 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 05:43:18.325 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:44:19.775 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 05:44:19.775 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:44:19.780 [info] > git rev-parse --show-toplevel [0ms]
+2025-04-12 05:44:19.780 [info] fatal: not a git repository (or any of the parent directories): .git
+2025-04-12 05:44:19.783 [info] > git rev-parse --show-toplevel [1ms]
+2025-04-12 05:44:19.783 [info] fatal: not a git repository (or any of the parent directories): .git

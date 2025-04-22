@@ -1,0 +1,29 @@
+[general]
+import = [
+  "~/.config/alacritty/themes/gruvbox_material_hard_dark.toml"
+]
+
+[terminal]
+[terminal.shell]
+args = ["-l", "-c", "tmux attach || tmux"]
+program = "/bin/zsh"
+
+[font]
+size = 14
+[font.normal]
+family = "Fira Code Nerd Font"
+[font.offset]
+x = 0
+y = 4
+
+[mouse]
+hide_when_typing = true
+
+[window]
+decorations = "None"
+opacity = 0.85
+blur = false
+dynamic_padding = true
+[window.padding]
+x = 0
+y = 2

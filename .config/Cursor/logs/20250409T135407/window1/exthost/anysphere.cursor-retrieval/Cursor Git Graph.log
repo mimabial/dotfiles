@@ -1,0 +1,38 @@
+2025-04-09 13:54:09.690 [info] Using repo backend url https://repo42.cursor.sh
+2025-04-09 13:54:11.673 [error] Failed to get git graph client
+2025-04-09 13:59:13.676 [error] Failed to get git graph client
+2025-04-09 14:04:13.676 [error] Failed to get git graph client
+2025-04-09 14:24:35.581 [error] Failed to get git graph client
+2025-04-09 14:29:36.221 [error] Failed to get git graph client
+2025-04-09 14:34:36.225 [error] Failed to get git graph client
+2025-04-09 14:39:36.226 [error] Failed to get git graph client
+2025-04-09 14:44:36.227 [error] Failed to get git graph client
+2025-04-09 14:49:36.228 [error] Failed to get git graph client
+2025-04-09 14:54:36.229 [error] Failed to get git graph client
+2025-04-09 14:59:36.228 [error] Failed to get git graph client
+2025-04-09 15:04:36.228 [error] Failed to get git graph client
+2025-04-09 15:09:36.231 [error] Failed to get git graph client
+2025-04-09 15:14:36.233 [error] Failed to get git graph client
+2025-04-09 15:19:36.234 [error] Failed to get git graph client
+2025-04-09 15:24:36.235 [error] Failed to get git graph client
+2025-04-09 15:29:36.236 [error] Failed to get git graph client
+2025-04-09 15:34:36.235 [error] Failed to get git graph client
+2025-04-09 15:39:36.236 [error] Failed to get git graph client
+2025-04-09 15:44:36.239 [error] Failed to get git graph client
+2025-04-09 15:49:36.241 [error] Failed to get git graph client
+2025-04-09 15:54:36.241 [error] Failed to get git graph client
+2025-04-09 15:59:36.241 [error] Failed to get git graph client
+2025-04-09 16:04:36.242 [error] Failed to get git graph client
+2025-04-09 16:09:36.242 [error] Failed to get git graph client
+2025-04-09 16:14:36.242 [error] Failed to get git graph client
+2025-04-09 16:19:36.245 [error] Failed to get git graph client
+2025-04-09 16:24:28.583 [info] Using repo backend url https://repo42.cursor.sh
+2025-04-09 16:24:34.547 [info] Git graph is disabled. shouldIndex: true isEnabled: false
+2025-04-09 16:25:45.379 [info] Using repo backend url https://repo42.cursor.sh
+2025-04-09 16:25:46.484 [info] Using repo backend url https://repo42.cursor.sh
+2025-04-09 16:25:47.835 [info] Git graph is disabled. shouldIndex: true isEnabled: false
+2025-04-09 21:47:00.573 [error] Failed to check if git graph is enabled [aborted] read ECONNRESET
+2025-04-09 21:49:17.041 [info] Using repo backend url https://repo42.cursor.sh
+2025-04-09 21:49:18.257 [info] Using repo backend url https://repo42.cursor.sh
+2025-04-09 21:49:19.543 [info] Git graph is disabled. shouldIndex: true isEnabled: false
+2025-04-09 23:57:31.245 [error] Failed to check if git graph is enabled [aborted] read ECONNRESET

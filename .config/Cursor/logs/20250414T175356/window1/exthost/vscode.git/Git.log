@@ -1,0 +1,35 @@
+2025-04-14 17:53:58.282 [info] [main] Log level: Info
+2025-04-14 17:53:58.282 [info] [main] Validating found git in: "git"
+2025-04-14 17:53:58.282 [info] [main] Using git "2.49.0" from "git"
+2025-04-14 17:53:58.282 [info] [Model][doInitialScan] Initial repository scan started
+2025-04-14 17:53:58.282 [info] > git rev-parse --show-toplevel [2ms]
+2025-04-14 17:53:58.282 [info] > git rev-parse --git-dir --git-common-dir [1ms]
+2025-04-14 17:53:58.282 [info] [Model][openRepository] Opened repository: /home/rifle/bema-next
+2025-04-14 17:53:58.653 [info] > git rev-parse --show-toplevel [364ms]
+2025-04-14 17:53:58.653 [info] > git config --get commit.template [367ms]
+2025-04-14 17:53:58.692 [info] > git rev-parse --show-toplevel [13ms]
+2025-04-14 17:53:58.696 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/master refs/remotes/master [6ms]
+2025-04-14 17:53:58.704 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/bema-next/.git/refs/remotes/origin/master'
+2025-04-14 17:53:58.704 [info] > git rev-parse --show-toplevel [9ms]
+2025-04-14 17:53:58.711 [info] > git rev-parse --show-toplevel [3ms]
+2025-04-14 17:53:58.711 [info] > git rev-parse refs/remotes/origin/master [7ms]
+2025-04-14 17:53:58.723 [info] > git status -z -uall [9ms]
+2025-04-14 17:53:58.723 [info] > git rev-parse --show-toplevel [2ms]
+2025-04-14 17:53:58.723 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [5ms]
+2025-04-14 17:53:58.738 [info] > git rev-parse --show-toplevel [4ms]
+2025-04-14 17:53:58.739 [info] [Model][doInitialScan] Initial repository scan completed - repositories (1), closed repositories (0), parent repositories (0), unsafe repositories (0)
+2025-04-14 17:53:58.746 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/master refs/remotes/master [17ms]
+2025-04-14 17:53:58.749 [info] > git show --textconv :src/lib/email/templates/email-verification.tsx [7ms]
+2025-04-14 17:53:58.749 [info] > git ls-files --stage -- /home/rifle/bema-next/src/lib/email/templates/email-verification.tsx [4ms]
+2025-04-14 17:53:58.753 [info] > git config --get commit.template [16ms]
+2025-04-14 17:53:58.760 [info] > git config --local branch.master.vscode-merge-base [12ms]
+2025-04-14 17:53:58.779 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/origin/master refs/remotes/origin/master [16ms]
+2025-04-14 17:53:58.787 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) refs/heads/master refs/remotes/master [31ms]
+2025-04-14 17:53:58.787 [info] > git cat-file -s 28d3ed20b6716e57e576416650d87484ce8445a9 [35ms]
+2025-04-14 17:53:58.798 [warning] [Git][revParse] Unable to read file: ENOENT: no such file or directory, open '/home/rifle/bema-next/.git/refs/remotes/origin/master'
+2025-04-14 17:53:58.799 [info] > git merge-base refs/heads/master refs/remotes/origin/master [15ms]
+2025-04-14 17:53:58.803 [info] > git rev-parse refs/remotes/origin/master [5ms]
+2025-04-14 17:53:58.809 [info] > git status -z -uall [3ms]
+2025-04-14 17:53:58.809 [info] > git diff --name-status -z --diff-filter=ADMR 8a66f8282e06330b6809ffc02b9f8ea34aedb246...refs/remotes/origin/master [7ms]
+2025-04-14 17:53:58.810 [info] > git for-each-ref --sort -committerdate --format %(refname) %(objectname) %(*objectname) [1ms]
+2025-04-14 17:53:59.162 [info] > git check-ignore -v -z --stdin [3ms]

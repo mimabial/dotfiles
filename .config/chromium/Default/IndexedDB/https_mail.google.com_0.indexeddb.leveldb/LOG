@@ -1,0 +1,6 @@
+2025/04/06-14:56:01.375 2507e Creating DB /home/rifle/.config/chromium/Default/IndexedDB/https_mail.google.com_0.indexeddb.leveldb since it was missing.
+2025/04/06-14:56:01.382 2507e Reusing MANIFEST /home/rifle/.config/chromium/Default/IndexedDB/https_mail.google.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/04/06-15:13:38.077 2507f Level-0 table #5: started
+2025/04/06-15:13:38.079 2507f Level-0 table #5: 2129 bytes OK
+2025/04/06-15:13:38.081 2507f Delete type=0 #3
+2025/04/06-15:13:38.081 2507f Manual compaction at level-0 from (begin) .. (end); will stop at (end)

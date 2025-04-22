@@ -1,0 +1,21 @@
+2025/04/07-18:23:05.710 a4d09 Reusing MANIFEST /home/rifle/.config/Slack/Local Storage/leveldb/MANIFEST-000001
+2025/04/07-18:23:05.710 a4d09 Recovering log #8
+2025/04/07-18:23:05.712 a4d09 Reusing old log /home/rifle/.config/Slack/Local Storage/leveldb/000008.log 
+2025/04/07-18:24:05.867 a4d09 Level-0 table #12: started
+2025/04/07-18:24:05.870 a4d09 Level-0 table #12: 13964 bytes OK
+2025/04/07-18:24:05.873 a4d09 Delete type=0 #8
+2025/04/07-18:26:05.868 a4d08 Level-0 table #14: started
+2025/04/07-18:26:05.871 a4d08 Level-0 table #14: 10690 bytes OK
+2025/04/07-18:26:05.874 a4d08 Delete type=0 #11
+2025/04/07-19:21:44.575 a4d08 Level-0 table #16: started
+2025/04/07-19:21:44.580 a4d08 Level-0 table #16: 15394 bytes OK
+2025/04/07-19:21:44.584 a4d08 Delete type=0 #13
+2025/04/07-19:21:44.585 a4d08 Compacting 4@0 + 1@1 files
+2025/04/07-19:21:44.588 a4d08 Generated table #17@0: 11 keys, 9576 bytes
+2025/04/07-19:21:44.588 a4d08 Compacted 4@0 + 1@1 files => 9576 bytes
+2025/04/07-19:21:44.591 a4d08 compacted to: files[ 0 1 1 0 0 0 0 ]
+2025/04/07-19:21:44.592 a4d08 Delete type=2 #9
+2025/04/07-19:21:44.592 a4d08 Delete type=2 #14
+2025/04/07-19:21:44.592 a4d08 Delete type=2 #12
+2025/04/07-19:21:44.592 a4d08 Delete type=2 #16
+2025/04/07-19:21:44.592 a4d08 Delete type=2 #7

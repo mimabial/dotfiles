@@ -1,0 +1,17 @@
+[Colors:View]
+BackgroundNormal=#363942
+
+[General]
+TerminalApplication=/usr/bin/alacritty
+
+[Icons]
+Theme=Gruvbox-Plus-Dark
+
+[KDE]
+widgetStyle=kvantum
+
+[UiSettings]
+ColorScheme=colors
+
+[Wallet]
+Enabled=false

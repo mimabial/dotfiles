@@ -1,0 +1,10 @@
+2025-04-12 12:18:48.683 [info] Started local extension host with pid 127841.
+2025-04-12 12:18:51.249 [info] [perf] Render performance baseline is 9ms
+2025-04-12 12:38:04.834 [error] Error: The editor could not be opened because the file was not found.
+    at Swe.handleSetInputError (vscode-file://vscode-app/usr/share/vscodium/resources/app/out/vs/workbench/workbench.desktop.main.js:2136:138488)
+    at async Swe.setInput (vscode-file://vscode-app/usr/share/vscodium/resources/app/out/vs/workbench/workbench.desktop.main.js:2136:137500)
+    at async MWe.doSetInput (vscode-file://vscode-app/usr/share/vscodium/resources/app/out/vs/workbench/workbench.desktop.main.js:684:26129)
+    at async MWe.doOpenEditor (vscode-file://vscode-app/usr/share/vscodium/resources/app/out/vs/workbench/workbench.desktop.main.js:684:23883)
+    at async MWe.openEditor (vscode-file://vscode-app/usr/share/vscodium/resources/app/out/vs/workbench/workbench.desktop.main.js:684:22810)
+    at async vscode-file://vscode-app/usr/share/vscodium/resources/app/out/vs/workbench/workbench.desktop.main.js:796:31969
+    at async r (vscode-file://vscode-app/usr/share/vscodium/resources/app/out/vs/workbench/workbench.desktop.main.js:688:57586)

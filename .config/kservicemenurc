@@ -1,0 +1,9 @@
+[Show]
+Menu-Refresh=true
+compressfileitemaction=true
+extractfileitemaction=true
+forgetfileitemaction=true
+kactivitymanagerd_fileitem_linking_plugin=true
+kdeconnectfileitemaction=true
+movetonewfolderitemaction=true
+tagsfileitemaction=true

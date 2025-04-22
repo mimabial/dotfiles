@@ -1,0 +1,2 @@
+2025-04-12 09:43:16.564 [error] [File Watcher] Unexpected error: inotify_add_watch on '/home/rifle/.librewolf/uithc02c.default-release/storage/default/https+++duckduckgo.com/ls' failed: No such file or directory (EUNKNOWN) (path: /home/rifle)
+2025-04-12 09:43:16.564 [error] [File Watcher (universal)] inotify_add_watch on '/home/rifle/.librewolf/uithc02c.default-release/storage/default/https+++duckduckgo.com/ls' failed: No such file or directory

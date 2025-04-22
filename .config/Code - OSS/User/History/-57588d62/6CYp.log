@@ -1,0 +1,4 @@
+2025-04-12 05:46:00.257 [error] [File Watcher] Unexpected error: inotify_add_watch on '/home/rifle/.librewolf/uithc02c.default-release/storage/default/https+++github.com/ls' failed: No such file or directory (EUNKNOWN) (path: /home/rifle)
+2025-04-12 05:46:00.257 [error] [File Watcher (universal)] inotify_add_watch on '/home/rifle/.librewolf/uithc02c.default-release/storage/default/https+++github.com/ls' failed: No such file or directory
+2025-04-12 08:03:21.998 [warning] [File Watcher] Watcher shutdown because watched path got deleted (path: /home/rifle/.cache/hydra/themepatcher/Catppuccin-Latte-Hydra-Project)
+2025-04-12 08:03:22.020 [warning] [File Watcher (node.js)] Watcher shutdown because watched path got deleted

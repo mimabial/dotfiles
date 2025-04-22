@@ -1,0 +1,19 @@
+2025-04-12 09:42:35.989 [info] Extension host with pid 2467 started
+2025-04-12 09:42:35.989 [info] Skipping acquiring lock for /home/rifle/.config/Code - OSS/User/workspaceStorage/911d93a4c755317f98242e68be1e83bd.
+2025-04-12 09:42:36.005 [info] ExtensionService#_doActivateExtension vscode.configuration-editing, startup: false, activationEvent: 'onLanguage:jsonc'
+2025-04-12 09:42:36.011 [info] ExtensionService#_doActivateExtension vscode.json-language-features, startup: false, activationEvent: 'onLanguage:jsonc'
+2025-04-12 09:42:36.038 [info] ExtensionService#_doActivateExtension vscode.typescript-language-features, startup: false, activationEvent: 'onLanguage:jsonc'
+2025-04-12 09:42:36.062 [info] ExtensionService#_doActivateExtension vscode.emmet, startup: false, activationEvent: 'onLanguage'
+2025-04-12 09:42:36.173 [info] ExtensionService#_doActivateExtension vscode.git-base, startup: true, activationEvent: '*', root cause: vscode.git
+2025-04-12 09:42:36.175 [info] ExtensionService#_doActivateExtension vscode.git, startup: true, activationEvent: '*'
+2025-04-12 09:42:36.195 [info] ExtensionService#_doActivateExtension vscode.github, startup: true, activationEvent: '*'
+2025-04-12 09:42:36.223 [info] Eager extensions activated
+2025-04-12 09:42:36.229 [info] ExtensionService#_doActivateExtension vscode.debug-auto-launch, startup: false, activationEvent: 'onStartupFinished'
+2025-04-12 09:42:36.230 [info] ExtensionService#_doActivateExtension vscode.merge-conflict, startup: false, activationEvent: 'onStartupFinished'
+2025-04-12 09:42:36.366 [info] ExtensionService#_doActivateExtension vscode.github-authentication, startup: false, activationEvent: 'onAuthenticationRequest:github'
+2025-04-12 10:51:52.620 [warning] [Decorations] CAPPING events from decorations provider vscode.git 262
+2025-04-12 10:52:09.736 [warning] [Decorations] CAPPING events from decorations provider vscode.git 278
+2025-04-12 10:52:14.238 [info] ExtensionService#_doActivateExtension vscode.media-preview, startup: false, activationEvent: 'onCustomEditor:imagePreview.previewEditor'
+2025-04-12 10:52:43.639 [warning] [Decorations] CAPPING events from decorations provider vscode.git 400
+2025-04-12 10:53:08.507 [warning] [Decorations] CAPPING events from decorations provider vscode.git 538
+2025-04-12 10:53:18.416 [warning] [Decorations] CAPPING events from decorations provider vscode.git 554

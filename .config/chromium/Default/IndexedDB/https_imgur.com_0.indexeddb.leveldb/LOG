@@ -1,0 +1,46 @@
+2025/04/06-19:11:57.080 2507f Reusing MANIFEST /home/rifle/.config/chromium/Default/IndexedDB/https_imgur.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/04/06-19:11:57.080 2507f Recovering log #9
+2025/04/06-19:11:57.081 2507f Reusing old log /home/rifle/.config/chromium/Default/IndexedDB/https_imgur.com_0.indexeddb.leveldb/000009.log 
+2025/04/06-19:11:57.081 2507f Delete type=2 #8
+2025/04/06-19:11:57.150 2507e Level-0 table #14: started
+2025/04/06-19:11:57.152 2507e Level-0 table #14: 645 bytes OK
+2025/04/06-19:11:57.153 2507e Delete type=0 #9
+2025/04/06-19:11:57.153 2507e Manual compaction at level-0 from '\x00\x06\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x07\x00\x00\x00' @ 0 : 0; will stop at '\x00\x06\x00\x00\x05' @ 262 : 1
+2025/04/06-19:11:57.154 2507e Compacting 1@0 + 1@1 files
+2025/04/06-19:11:57.156 2507e Generated table #15@0: 96 keys, 2252 bytes
+2025/04/06-19:11:57.156 2507e Compacted 1@0 + 1@1 files => 2252 bytes
+2025/04/06-19:11:57.158 2507e compacted to: files[ 0 1 1 0 0 0 0 ]
+2025/04/06-19:11:57.159 2507e Delete type=2 #14
+2025/04/06-19:11:57.159 2507e Manual compaction at level-0 from '\x00\x06\x00\x00\x05' @ 262 : 1 .. '\x00\x07\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/04/06-19:11:57.498 25080 Manual compaction at level-0 from '\x00\x07\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x08\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/04/06-19:11:57.499 2507e Level-0 table #17: started
+2025/04/06-19:11:57.501 2507e Level-0 table #17: 3516 bytes OK
+2025/04/06-19:11:57.503 2507e Delete type=0 #13
+2025/04/06-19:11:57.503 2507e Delete type=2 #11
+2025/04/06-19:11:57.503 2507e Manual compaction at level-0 from '\x00\x08\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x09\x00\x00\x00' @ 0 : 0; will stop at '\x00\x08\x00\x00\x05' @ 379 : 1
+2025/04/06-19:11:57.503 2507e Compacting 1@0 + 1@1 files
+2025/04/06-19:11:57.506 2507e Generated table #18@0: 111 keys, 2482 bytes
+2025/04/06-19:11:57.506 2507e Compacted 1@0 + 1@1 files => 2482 bytes
+2025/04/06-19:11:57.508 2507e compacted to: files[ 0 1 1 0 0 0 0 ]
+2025/04/06-19:11:57.508 2507e Delete type=2 #17
+2025/04/06-19:11:57.508 2507e Manual compaction at level-0 from '\x00\x08\x00\x00\x05' @ 379 : 1 .. '\x00\x09\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/04/06-19:29:27.178 2507f Level-0 table #20: started
+2025/04/06-19:29:27.181 2507f Level-0 table #20: 249 bytes OK
+2025/04/06-19:29:27.183 2507f Delete type=0 #16
+2025/04/06-19:29:27.183 2507f Delete type=2 #15
+2025/04/06-19:29:27.183 2507f Manual compaction at level-0 from (begin) .. (end); will stop at '\x00\x00\x00\x002\x02\x0b\x01\x00\x00\x00\x00\x00\x00\x00\x00' @ 394 : 0
+2025/04/06-19:29:27.183 2507f Compacting 1@0 + 1@1 files
+2025/04/06-19:29:27.187 2507f Generated table #21@0: 112 keys, 2482 bytes
+2025/04/06-19:29:27.187 2507f Compacted 1@0 + 1@1 files => 2482 bytes
+2025/04/06-19:29:27.189 2507f compacted to: files[ 0 1 1 0 0 0 0 ]
+2025/04/06-19:29:27.190 2507f Delete type=2 #20
+2025/04/06-19:29:27.190 2507f Delete type=2 #18
+2025/04/06-19:29:27.190 2507f Manual compaction at level-0 from '\x00\x00\x00\x002\x02\x0b\x01\x00\x00\x00\x00\x00\x00\x00\x00' @ 394 : 0 .. (end); will stop at (end)
+2025/04/06-19:29:27.190 2507f Manual compaction at level-1 from (begin) .. (end); will stop at '\x00\x03\x01\x02\x013\x00[\x00D\x00E\x00F\x00A\x00U\x00L\x00T\x00]\x00!\x001\x00:\x007\x001\x008\x007\x007\x000\x001\x002\x005\x001\x009\x004\x00:\x00w\x00e\x00b\x00:\x006\x00a\x00f\x003\x00e\x009\x005\x00a\x006\x00d\x004\x005\x001\x000\x005\x00d\x004\x00a\x00f\x000\x007\x003' @ 307 : 1
+2025/04/06-19:29:27.190 2507f Compacting 1@1 + 1@2 files
+2025/04/06-19:29:27.192 2507f Generated table #22@1: 36 keys, 1710 bytes
+2025/04/06-19:29:27.192 2507f Compacted 1@1 + 1@2 files => 1710 bytes
+2025/04/06-19:29:27.194 2507f compacted to: files[ 0 0 1 0 0 0 0 ]
+2025/04/06-19:29:27.195 2507f Delete type=2 #21
+2025/04/06-19:29:27.195 2507f Delete type=2 #5
+2025/04/06-19:29:27.195 2507f Manual compaction at level-1 from '\x00\x03\x01\x02\x013\x00[\x00D\x00E\x00F\x00A\x00U\x00L\x00T\x00]\x00!\x001\x00:\x007\x001\x008\x007\x007\x000\x001\x002\x005\x001\x009\x004\x00:\x00w\x00e\x00b\x00:\x006\x00a\x00f\x003\x00e\x009\x005\x00a\x006\x00d\x004\x005\x001\x000\x005\x00d\x004\x00a\x00f\x000\x007\x003' @ 307 : 1 .. (end); will stop at (end)

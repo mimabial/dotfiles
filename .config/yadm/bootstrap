@@ -1,0 +1,144 @@
+#!/usr/bin/env zsh --no-rcs
+# vim:set noet sts=0 sw=4 ts=4 tw=79 fdm=marker:
+
+# Ask for the administrator password upfront
+sudo -v
+
+# Keep-alive: update existing `sudo` time stamp until `bootstrap` has finished
+while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
+
+# ~/.gitconfig has insteadOf configs that changes https to git. This won't work
+# unless we already have the .ssh decrypted. Moving it out and in is the safest
+# option
+if [ ! -f ~/.ssh/id_rsa ]; then
+	echo "ssh identify not found, checking url.git* configs"
+	URL_GITHUB="$(git config --global --get url.git@github.com:.insteadof)"
+	if [ -n ${URL_GITHUB} ]; then
+		trap "git config --global url.git@github.com:.insteadof ${URL_GITHUB}" EXIT INT TERM
+		git config --global --unset url.git@github.com:.insteadof
+	fi
+fi
+
+cd "$HOME"
+
+
+export YADM_BOOTSTRAPPING=yes
+
+echo "\nInit submodules\n"
+yadm submodule update --recursive --init
+
+OS=$(uname -s) # Linux or Darwin
+
+if [ -f "$HOME/.Brewfile" ]; then
+	echo "\nUpdating homebrew bundle\n"
+	brew bundle --global
+fi
+
+[ -z "${HOMEBREW_PREFIX}" ] && eval "$(brew shellenv)"
+
+# Zsh {{{ commented out - using git submodules instead - more reliable
+# if [ ! -d "$HOME/.oh-my-zsh/.git" ]; then
+# 	echo "\nInstalling oh-my-zsh\n"
+# 	# https://ohmyz.sh/#install
+# 	sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+# 	source "$HOME/.zshrc"
+# fi
+
+typeset -A MY_ZSH_PLUGINS
+MY_ZSH_PLUGINS=(
+	you-should-use https://github.com/MichaelAquilina/zsh-you-should-use.git
+	zsh-autosuggestions https://github.com/zsh-users/zsh-autosuggestions.git
+)
+
+for NAME ("${(@k)MY_ZSH_PLUGINS}"); do
+	DIR=${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/${NAME}
+	GIT_REPO=$MY_ZSH_PLUGINS[$NAME]
+	if [ ! -d ${DIR} ]; then
+		echo "\nInstalling ohmyzsh plugin ${NAME}\n"
+		git clone ${GIT_REPO} ${DIR}
+	fi
+done
+
+if [ ! -d $HOME/.config/base16-shell ]; then
+	echo "\nInstalling base16 shell\n"
+	git clone https://github.com/chriskempson/base16-shell.git ~/.config/base16-shell
+fi
+
+# }}}
+
+# Tmux {{{ already in .tmux.conf
+if [ ! -d $HOME/.tmux/plugins/tpm ]; then
+	echo "\nBootstrapping tmux\n"
+	git clone https://github.com/tmux-plugins/tpm $HOME/.tmux/plugins/tpm
+	tmux new-session -d "tmux source-file $HOME/.tmux.conf && tmux kill-server"
+	$HOME/.tmux/plugins/tpm/bin/install_plugins
+fi
+# }}}
+
+
+# if ! command -v node >/dev/null 2>&1; then
+# 	# TODO: need to be the same as ~/.Brewfile:13
+# 	echo "\nLinking brew node to a version\n"
+# 	brew link node@14
+# fi
+
+# coc.nvim dependencies {{{
+# This happens before Neovim setup:
+# 1. this only installs coc extensions in the nodejs system
+# 2. this should reduce the errors
+echo "\nBootstrapping coc.nvim\n"
+
+${HOMEBREW_PREFIX}/bin/pip3 install pynvim # coc snippet requirement
+pushd ~/.config/coc/extensions && yarn -s && popd # coc extensions
+
+# lsp servers
+# }}}
+
+# Neovim {{{
+if command -v nvim >/dev/null 2>&1; then
+	echo "\nBootstrapping Neovim\n"
+	PLUG_VIM="${XDG_DATA_HOME:-$HOME/.local/share}"/nvim/site/autoload/plug.vim
+	[ ! -f "${PLUG_VIM}" ] && curl -fLo "${PLUG_VIM}" --create-dirs \
+       https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+	nvim -e -u $HOME/.config/nvim/init.vim \
+		-c "redir! > /tmp/nvim-plug-install.log" \
+		-c "PlugInstall --sync" -c "qa"
+fi
+
+# fzf theme using base16. FZF is installed via nvim plugin
+if [ ! -d "$HOME/.config/base16-fzf/" ]; then
+	echo "\nInstalling base16-fzf\n"
+	git clone https://github.com/fnune/base16-fzf.git $HOME/.config/base16-fzf/
+fi
+# }}}
+
+if [ "${OS}" = "Darwin" ]; then
+	echo "\nSetting MacOS defaults\n"
+	bash $HOME/.config/yadm/macos
+fi
+
+echo "\n# Now clone encrypt notes:"
+echo
+echo "gpg --import gpg-priv-jackie-space.key"
+echo
+echo "yadm decrypt # this requirees the gpg key to be imported"
+
+if [[ -f ~/.gitconfig && -d ~/.ssh/id_rsa ]] ; then
+	echo "\nUpdating the yadm repo origin URL\n"
+	yadm remote set-url origin "git@github.com:jackielii/dotfiles.git"
+else
+	echo "\n# After restore ssh keys, do:"
+	echo "yadm remote set-url origin git@github.com:jackielii/dotfiles.git"
+fi
+
+echo
+echo "git clone gcrypt::git@github.com:jackielii/notes.git"
+echo "cd notes"
+echo "git checkout main"
+echo
+echo "# restart these after giving permissions"
+echo "brew services restart yabai"
+echo "brew services restart skhd"
+echo
+echo "# Also checkout yabai wiki to disable SIP"
+echo "# https://github.com/koekeishiya/yabai/wiki/"

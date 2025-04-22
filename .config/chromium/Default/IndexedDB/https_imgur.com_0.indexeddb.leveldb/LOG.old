@@ -1,0 +1,17 @@
+2025/03/31-01:43:20.449 28f7 Reusing MANIFEST /home/rifle/.config/chromium/Default/IndexedDB/https_imgur.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/03/31-01:43:20.449 28f7 Recovering log #4
+2025/03/31-01:43:20.449 28f7 Reusing old log /home/rifle/.config/chromium/Default/IndexedDB/https_imgur.com_0.indexeddb.leveldb/000004.log 
+2025/03/31-01:43:20.508 28f9 Level-0 table #8: started
+2025/03/31-01:43:20.511 28f9 Level-0 table #8: 4000 bytes OK
+2025/03/31-01:43:20.513 28f9 Delete type=0 #4
+2025/03/31-01:43:20.513 28f8 Manual compaction at level-0 from '\x00\x05\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x06\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/03/31-01:43:26.270 28f7 Level-0 table #10: started
+2025/03/31-01:43:26.272 28f7 Level-0 table #10: 1681 bytes OK
+2025/03/31-01:43:26.274 28f7 Delete type=0 #7
+2025/03/31-01:43:26.274 28f7 Manual compaction at level-0 from '\x00\x04\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x05\x00\x00\x00' @ 0 : 0; will stop at '\x00\x04\x00\x00\xc8\x06\x00v\x00i\x00s\x00i\x00t\x00s' @ 256 : 0
+2025/03/31-01:43:26.274 28f7 Compacting 1@0 + 1@1 files
+2025/03/31-01:43:26.276 28f7 Generated table #11@0: 96 keys, 2242 bytes
+2025/03/31-01:43:26.276 28f7 Compacted 1@0 + 1@1 files => 2242 bytes
+2025/03/31-01:43:26.279 28f7 compacted to: files[ 0 1 1 0 0 0 0 ]
+2025/03/31-01:43:26.279 28f7 Delete type=2 #10
+2025/03/31-01:43:26.279 28f7 Manual compaction at level-0 from '\x00\x04\x00\x00\xc8\x06\x00v\x00i\x00s\x00i\x00t\x00s' @ 256 : 0 .. '\x00\x05\x00\x00\x00' @ 0 : 0; will stop at (end)

@@ -1,0 +1,79 @@
+<application>
+  <component name="ActionsLocalSummary">
+    <e n="$Copy">
+      <i c="1" l="1745308024634" />
+    </e>
+    <e n="$Paste">
+      <i c="1" l="1745308028713" />
+    </e>
+    <e n="EditorBackSpace">
+      <i c="7" l="1745307824871" />
+    </e>
+    <e n="EditorChooseLookupItem">
+      <i c="1" l="1745307933132" />
+    </e>
+    <e n="EditorCut">
+      <i c="1" l="1745279660662" />
+    </e>
+    <e n="EditorEnter">
+      <i c="4" l="1745307917778" />
+    </e>
+    <e n="EditorPaste">
+      <i c="2" l="1745307905314" />
+    </e>
+    <e n="EditorUp">
+      <i c="2" l="1745279662306" />
+    </e>
+    <e n="Find">
+      <i c="1" l="1745279511889" />
+    </e>
+    <e n="NewFile">
+      <i c="1" l="1745307889739" />
+    </e>
+    <e n="OpenFile">
+      <i c="1" l="1745310809297" />
+    </e>
+    <e n="RedesignedRunConfigurationSelector">
+      <i c="1" l="1745307449808" />
+    </e>
+    <e n="SaveAll">
+      <i c="2" l="1745279570252" />
+    </e>
+    <e n="SearchEverywhere">
+      <i c="1" l="1745308056514" />
+    </e>
+    <e n="ToggleLineBreakpoint">
+      <i c="2" l="1745307682205" />
+    </e>
+    <e n="WelcomeScreen.OpenDirectoryProject">
+      <i c="1" l="1745279408284" />
+    </e>
+    <e n="com.intellij.find.SearchReplaceComponent$CloseAction">
+      <i c="1" l="1745307467535" />
+    </e>
+    <e n="com.intellij.find.SearchReplaceComponent$ModeAction">
+      <i c="1" l="1745279513142" />
+    </e>
+    <e n="com.intellij.find.editorHeaderActions.NextOccurrenceAction">
+      <i c="1" l="1745279558823" />
+    </e>
+    <e n="com.intellij.find.editorHeaderActions.TogglePreserveCaseAction">
+      <i c="1" l="1745279523915" />
+    </e>
+    <e n="com.intellij.find.editorHeaderActions.ToggleWholeWordsOnlyAction">
+      <i c="3" l="1745279527552" />
+    </e>
+    <e n="com.intellij.ide.ReopenProjectAction">
+      <i c="1" l="1745311375394" />
+    </e>
+    <e n="com.intellij.openapi.fileEditor.impl.tabActions.CloseTab">
+      <i c="2" l="1745307444665" />
+    </e>
+    <e n="com.intellij.openapi.wm.impl.SquareAnActionButton">
+      <i c="1" l="1745279444937" />
+    </e>
+    <e n="com.intellij.toolWindow.ToolWindowHeader$HideAction">
+      <i c="1" l="1745311419548" />
+    </e>
+  </component>
+</application>
