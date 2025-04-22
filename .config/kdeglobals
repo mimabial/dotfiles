@@ -2,7 +2,7 @@
 BackgroundNormal=#282828
 
 [General]
-TerminalApplication=/usr/bin/alacritty
+TerminalApplication=/sbin/alacritty
 
 [Icons]
 Theme=buuf-nestort
