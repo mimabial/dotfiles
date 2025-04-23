@@ -1,0 +1,11 @@
+[default-routes]
+alsa_card.pci-0000_03_00.1:output:hdmi-output-0={"mute":false, "iec958Codecs":["PCM"], "latencyOffsetNsec":0, "channelVolumes":[1.000000, 1.000000], "channelMap":["FL", "FR"]}
+alsa_card.pci-0000_03_00.1:profile:output:hdmi-stereo=["hdmi-output-0"]
+alsa_card.usb-046d_HD_Pro_Webcam_C920_12E2D72F-02:input:analog-input-mic={"latencyOffsetNsec":0, "mute":false, "channelMap":["FL", "FR"], "channelVolumes":[0.075968, 0.075968]}
+alsa_card.usb-046d_HD_Pro_Webcam_C920_12E2D72F-02:input:iec958-stereo-input={"mute":false, "channelVolumes":[0.497066, 0.497066], "channelMap":["FL", "FR"], "iec958Codecs":[], "latencyOffsetNsec":0}
+alsa_card.usb-046d_HD_Pro_Webcam_C920_12E2D72F-02:profile:input:analog-stereo=["analog-input-mic"]
+alsa_card.usb-046d_HD_Pro_Webcam_C920_12E2D72F-02:profile:input:iec958-stereo=["iec958-stereo-input"]
+alsa_card.usb-Generic_USB_Audio-00:output:\oOut\c\sSPDIF={"latencyOffsetNsec":0, "channelMap":["FL", "FR"], "mute":false, "channelVolumes":[1.000000, 1.000000]}
+alsa_card.usb-Generic_USB_Audio-00:profile:HiFi=["[Out] SPDIF"]
+alsa_card.usb-Universal_Audio_Volt_2_21492037014187-00:output:\oOut\c\sLine1={"latencyOffsetNsec":0, "mute":false, "channelVolumes":[0.091123, 0.091123], "channelMap":["FL", "FR"]}
+alsa_card.usb-Universal_Audio_Volt_2_21492037014187-00:profile:HiFi=["[Out] Line1"]

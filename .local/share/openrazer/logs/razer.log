@@ -1,0 +1,310 @@
+2025-04-01 09:01:28 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 24014
+2025-04-01 09:01:28 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-01 09:01:28 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000B
+2025-04-01 09:01:28 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-01 09:01:28 | razer                          | INFO     | Serving DBus
+2025-04-01 19:38:28 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-02 15:20:45 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1050
+2025-04-02 15:20:45 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-02 15:20:45 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000D
+2025-04-02 15:20:45 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-02 15:20:45 | razer                          | INFO     | Serving DBus
+2025-04-03 03:19:31 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-03 08:49:56 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1049
+2025-04-03 08:49:56 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-03 08:49:56 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000D
+2025-04-03 08:49:56 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-03 08:49:56 | razer                          | INFO     | Serving DBus
+2025-04-03 08:50:08 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-03 16:17:34 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1094
+2025-04-03 16:17:34 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-03 16:17:34 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.0010
+2025-04-03 16:17:34 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-03 16:17:34 | razer                          | INFO     | Serving DBus
+2025-04-03 23:42:33 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-04 18:33:27 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1067
+2025-04-04 18:33:27 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-04 18:33:27 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.0010
+2025-04-04 18:33:27 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-04 18:33:27 | razer                          | INFO     | Serving DBus
+2025-04-04 19:11:26 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-04 19:12:35 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1338
+2025-04-04 19:12:35 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-04 19:12:35 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.0010
+2025-04-04 19:12:35 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-04 19:12:35 | razer                          | INFO     | Serving DBus
+2025-04-05 02:32:56 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-05 12:19:47 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1320
+2025-04-05 12:19:47 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-05 12:19:47 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.0010
+2025-04-05 12:19:47 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-05 12:19:47 | razer                          | INFO     | Serving DBus
+2025-04-05 16:54:37 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-05 19:21:46 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1328
+2025-04-05 19:21:46 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-05 19:21:46 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000D
+2025-04-05 19:21:46 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-05 19:21:46 | razer                          | INFO     | Serving DBus
+2025-04-05 22:39:18 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-06 01:25:49 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1316
+2025-04-06 01:25:49 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-06 01:25:49 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000D
+2025-04-06 01:25:49 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-06 01:25:49 | razer                          | INFO     | Serving DBus
+2025-04-06 04:36:03 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-06 12:20:11 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1318
+2025-04-06 12:20:11 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-06 12:20:11 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000D
+2025-04-06 12:20:11 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-06 12:20:11 | razer                          | INFO     | Serving DBus
+2025-04-06 22:16:58 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-07 02:31:52 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1323
+2025-04-07 02:31:52 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-07 02:31:52 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000D
+2025-04-07 02:31:52 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-07 02:31:52 | razer                          | INFO     | Serving DBus
+2025-04-07 20:32:49 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-08 00:03:43 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1369
+2025-04-08 00:03:43 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-08 00:03:43 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000D
+2025-04-08 00:03:43 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-08 00:03:43 | razer                          | INFO     | Serving DBus
+2025-04-08 00:13:40 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-08 00:15:10 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1407
+2025-04-08 00:15:10 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-08 00:15:10 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000D
+2025-04-08 00:15:10 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-08 00:15:10 | razer                          | INFO     | Serving DBus
+2025-04-08 10:10:16 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-08 10:20:24 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1442
+2025-04-08 10:20:24 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-08 10:20:24 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000D
+2025-04-08 10:20:24 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-08 10:20:24 | razer                          | INFO     | Serving DBus
+2025-04-09 07:07:24 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-09 10:24:58 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1478
+2025-04-09 10:24:58 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-09 10:24:58 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.0010
+2025-04-09 10:24:58 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-09 10:24:58 | razer                          | INFO     | Serving DBus
+2025-04-09 11:03:37 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-09 11:04:43 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1403
+2025-04-09 11:04:43 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-09 11:04:43 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.0010
+2025-04-09 11:04:43 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-09 11:04:43 | razer                          | INFO     | Serving DBus
+2025-04-09 13:10:13 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-09 13:11:32 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1373
+2025-04-09 13:11:32 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-09 13:11:32 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.0010
+2025-04-09 13:11:32 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-09 13:11:32 | razer                          | INFO     | Serving DBus
+2025-04-10 12:20:09 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1512
+2025-04-10 12:20:09 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-10 12:20:09 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000D
+2025-04-10 12:20:09 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-10 12:20:09 | razer                          | INFO     | Serving DBus
+2025-04-10 20:39:42 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-10 23:42:48 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1367
+2025-04-10 23:42:48 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-10 23:42:48 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000D
+2025-04-10 23:42:48 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-10 23:42:48 | razer                          | INFO     | Serving DBus
+2025-04-11 10:14:58 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-11 10:16:14 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1415
+2025-04-11 10:16:14 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-11 10:16:14 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000D
+2025-04-11 10:16:14 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-11 10:16:14 | razer                          | INFO     | Serving DBus
+2025-04-11 10:41:49 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-11 16:52:03 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1405
+2025-04-11 16:52:03 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-11 16:52:03 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000D
+2025-04-11 16:52:03 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-11 16:52:03 | razer                          | INFO     | Serving DBus
+2025-04-12 08:19:03 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-12 08:21:52 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1404
+2025-04-12 08:21:52 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-12 08:21:52 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000D
+2025-04-12 08:21:52 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-12 08:21:52 | razer                          | INFO     | Serving DBus
+2025-04-12 08:56:22 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-12 08:57:39 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1390
+2025-04-12 08:57:39 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-12 08:57:39 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000D
+2025-04-12 08:57:39 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-12 08:57:39 | razer                          | INFO     | Serving DBus
+2025-04-12 09:40:48 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-12 09:41:53 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1376
+2025-04-12 09:41:53 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-12 09:41:53 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000D
+2025-04-12 09:41:53 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-12 09:41:53 | razer                          | INFO     | Serving DBus
+2025-04-12 13:42:37 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-12 13:48:47 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1418
+2025-04-12 13:48:47 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-12 13:48:47 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000D
+2025-04-12 13:48:47 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-12 13:48:47 | razer                          | INFO     | Serving DBus
+2025-04-12 14:32:51 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-12 20:37:38 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1385
+2025-04-12 20:37:38 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-12 20:37:38 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000D
+2025-04-12 20:37:38 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-12 20:37:38 | razer                          | INFO     | Serving DBus
+2025-04-13 02:22:42 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-13 04:55:45 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1417
+2025-04-13 04:55:45 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-13 04:55:45 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000D
+2025-04-13 04:55:45 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-13 04:55:45 | razer                          | INFO     | Serving DBus
+2025-04-13 16:22:29 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-13 19:14:15 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1396
+2025-04-13 19:14:15 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-13 19:14:15 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000E
+2025-04-13 19:14:15 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-13 19:14:15 | razer                          | INFO     | Serving DBus
+2025-04-14 08:58:04 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-14 08:59:18 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1420
+2025-04-14 08:59:18 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-14 08:59:18 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000A
+2025-04-14 08:59:18 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-14 08:59:18 | razer                          | INFO     | Serving DBus
+2025-04-14 10:48:02 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-14 13:30:29 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1533
+2025-04-14 13:30:29 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-14 13:30:29 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000A
+2025-04-14 13:30:29 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-14 13:30:29 | razer                          | INFO     | Serving DBus
+2025-04-14 21:31:04 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-14 21:32:18 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1387
+2025-04-14 21:32:18 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-14 21:32:18 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000A
+2025-04-14 21:32:18 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-14 21:32:18 | razer                          | INFO     | Serving DBus
+2025-04-14 22:44:38 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-15 05:48:00 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1431
+2025-04-15 05:48:00 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-15 05:48:00 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000A
+2025-04-15 05:48:00 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-15 05:48:00 | razer                          | INFO     | Serving DBus
+2025-04-15 05:48:11 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-15 05:50:42 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1383
+2025-04-15 05:50:42 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-15 05:50:42 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000A
+2025-04-15 05:50:42 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-15 05:50:42 | razer                          | INFO     | Serving DBus
+2025-04-15 21:07:09 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-16 09:19:22 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1404
+2025-04-16 09:19:22 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-16 09:19:22 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000A
+2025-04-16 09:19:22 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-16 09:19:22 | razer                          | INFO     | Serving DBus
+2025-04-18 16:40:58 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-20 17:27:53 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1580
+2025-04-20 17:27:53 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-20 17:27:53 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000A
+2025-04-20 17:27:53 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-20 17:27:53 | razer                          | INFO     | Serving DBus
+2025-04-20 21:08:13 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-20 23:04:27 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1414
+2025-04-20 23:04:27 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-20 23:04:27 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000A
+2025-04-20 23:04:27 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-20 23:04:27 | razer                          | INFO     | Serving DBus
+2025-04-21 00:39:03 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-21 10:47:20 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1412
+2025-04-21 10:47:20 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-21 10:47:20 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000B
+2025-04-21 10:47:20 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-21 10:47:20 | razer                          | INFO     | Serving DBus
+2025-04-21 11:14:46 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-21 11:18:42 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1261
+2025-04-21 11:18:42 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-21 11:18:42 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000B
+2025-04-21 11:18:42 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-21 11:18:42 | razer                          | INFO     | Serving DBus
+2025-04-21 11:19:59 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-21 11:27:21 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1265
+2025-04-21 11:27:21 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-21 11:27:21 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000B
+2025-04-21 11:27:21 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-21 11:27:21 | razer                          | INFO     | Serving DBus
+2025-04-21 11:28:23 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-21 11:30:44 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1272
+2025-04-21 11:30:44 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-21 11:30:44 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000B
+2025-04-21 11:30:44 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-21 11:30:44 | razer                          | INFO     | Serving DBus
+2025-04-21 11:32:43 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-21 11:33:54 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1227
+2025-04-21 11:33:54 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-21 11:33:54 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000B
+2025-04-21 11:33:54 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-21 11:33:54 | razer                          | INFO     | Serving DBus
+2025-04-21 11:34:18 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-21 11:36:00 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1246
+2025-04-21 11:36:00 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-21 11:36:00 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000B
+2025-04-21 11:36:00 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-21 11:36:00 | razer                          | INFO     | Serving DBus
+2025-04-21 11:45:13 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-21 11:46:40 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1248
+2025-04-21 11:46:40 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-21 11:46:40 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000B
+2025-04-21 11:46:40 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-21 11:46:40 | razer                          | INFO     | Serving DBus
+2025-04-21 11:49:42 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-21 11:50:49 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1237
+2025-04-21 11:50:49 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-21 11:50:49 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000B
+2025-04-21 11:50:49 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-21 11:50:49 | razer                          | INFO     | Serving DBus
+2025-04-21 11:51:04 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-21 11:51:16 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1359
+2025-04-21 11:51:16 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-21 11:51:16 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000B
+2025-04-21 11:51:16 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-21 11:51:16 | razer                          | INFO     | Serving DBus
+2025-04-21 11:51:41 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-21 11:52:00 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1501
+2025-04-21 11:52:00 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-21 11:52:00 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000B
+2025-04-21 11:52:00 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-21 11:52:00 | razer                          | INFO     | Serving DBus
+2025-04-21 12:26:52 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-21 12:27:52 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1248
+2025-04-21 12:27:52 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-21 12:27:52 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000B
+2025-04-21 12:27:52 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-21 12:27:52 | razer                          | INFO     | Serving DBus
+2025-04-21 12:38:30 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-21 12:39:51 | razer                          | INFO     | Initialising Daemon (v3.10.1). Pid: 1252
+2025-04-21 12:39:51 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-21 12:39:51 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000B
+2025-04-21 12:39:51 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-21 12:39:51 | razer                          | INFO     | Serving DBus
+2025-04-21 17:00:18 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-21 17:06:16 | razer                          | INFO     | Initialising Daemon (v3.10.2). Pid: 1231
+2025-04-21 17:06:16 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-21 17:06:16 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000B
+2025-04-21 17:06:16 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-21 17:06:16 | razer                          | INFO     | Serving DBus
+2025-04-21 21:44:15 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-22 00:00:04 | razer                          | INFO     | Initialising Daemon (v3.10.2). Pid: 1242
+2025-04-22 00:00:04 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-22 00:00:04 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000B
+2025-04-22 00:00:04 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-22 00:00:04 | razer                          | INFO     | Serving DBus
+2025-04-22 01:48:26 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-22 01:49:26 | razer                          | INFO     | Initialising Daemon (v3.10.2). Pid: 1289
+2025-04-22 01:49:26 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-22 01:49:26 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000B
+2025-04-22 01:49:26 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-22 01:49:26 | razer                          | INFO     | Serving DBus
+2025-04-22 18:47:14 | razer                          | INFO     | Stopping daemon on signal 15
+2025-04-22 21:34:00 | razer                          | INFO     | Initialising Daemon (v3.10.2). Pid: 1306
+2025-04-22 21:34:00 | razer.screensaver              | INFO     | Initialising DBus Screensaver Monitor
+2025-04-22 21:34:00 | razer                          | INFO     | Found device.0: 0003:1532:0F1F.000B
+2025-04-22 21:34:00 | razer.device0                  | INFO     | Initialising device.0 RazerChromaARGB
+2025-04-22 21:34:01 | razer                          | INFO     | Serving DBus

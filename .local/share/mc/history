@@ -1,0 +1,20 @@
+[cmdline]
+0=/jjj
+1=
+
+[Dir Hist New Right Panel]
+0=/home/rifle/.config/mc
+1=/home/rifle/.local/share/mc/skins
+2=/home/rifle/dotfiles/.config
+3=/home/rifle
+
+[Dir Hist New Left Panel]
+0=/home/rifle/.config/mc
+1=/home/rifle/.local/share/mc/skins
+2=/home/rifle/.local/share/mc
+3=/home/rifle/.local/share
+4=/home/rifle/Downloads
+5=/home/rifle/dotfiles/.config
+6=/bin
+7=/
+8=/home/rifle

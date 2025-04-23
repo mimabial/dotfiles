@@ -1,0 +1,2050 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xbel version="1.0"
+      xmlns:bookmark="http://www.freedesktop.org/standards/desktop-bookmarks"
+      xmlns:mime="http://www.freedesktop.org/standards/shared-mime-info"
+>
+  <bookmark href="file:///home/rifle/jackielii-dotfiles" added="2025-03-30T19:53:58.971803Z" modified="2025-03-30T19:53:58.971808Z" visited="2025-03-30T19:53:58.971804Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="inode/directory"/>
+        <bookmark:applications>
+          <bookmark:application name="codium" exec="&apos;codium %u&apos;" modified="2025-03-30T19:53:58.971805Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle" added="2025-03-30T23:34:15.728113Z" modified="2025-04-22T09:17:54.806242Z" visited="2025-04-21T12:56:05.270000Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="inode/directory"/>
+        <bookmark:applications>
+          <bookmark:application name="codium" exec="&apos;codium %u&apos;" modified="2025-04-12T09:42:15.881584Z" count="2"/>
+          <bookmark:application name="org.kde.ark" exec="ark %u" modified="2025-04-12T05:18:20.242000Z" count="9"/>
+          <bookmark:application name="cursor" exec="&apos;cursor %u&apos;" modified="2025-04-09T19:49:15.518689Z" count="1"/>
+          <bookmark:application name="electron" exec="&apos;electron %u&apos;" modified="2025-04-22T09:17:54.806239Z" count="3"/>
+          <bookmark:application name="" exec="dolphin %f" modified="2025-04-21T12:56:05.270000Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///run/media/rifle/HGST/slim/Pictures/Wallpapers/three-illustrations-by-astral-grave-3440x1440-v0-kp4thopw1bfd1.png" added="2025-03-31T13:03:59.873000Z" modified="2025-03-31T13:16:48.140000Z" visited="2025-03-31T13:16:48.140000Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/webp"/>
+        <bookmark:groups>
+          <bookmark:group>Graphics</bookmark:group>
+        </bookmark:groups>
+        <bookmark:applications>
+          <bookmark:application name="gimp" exec="gimp-3.0 %u" modified="2025-03-31T13:03:59.873000Z" count="1"/>
+          <bookmark:application name="GNU Image Manipulation Program" exec="&apos;gimp-3.0 %u&apos;" modified="2025-03-31T13:04:05.955848Z" count="1"/>
+          <bookmark:application name="vimiv" exec="vimiv --start-from-desktop %f" modified="2025-03-31T13:16:48.140000Z" count="2"/>
+          <bookmark:application name="satty" exec="satty -f %f" modified="2025-03-31T13:04:33.961000Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///run/media/rifle/HGST/slim/Pictures/Wallpapers/flzqw7ixg00b1.jpg" added="2025-03-31T13:04:48.989000Z" modified="2025-03-31T13:05:44.830838Z" visited="2025-03-31T13:05:34.875000Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:groups>
+          <bookmark:group>Graphics</bookmark:group>
+        </bookmark:groups>
+        <bookmark:applications>
+          <bookmark:application name="satty" exec="satty -f %f" modified="2025-03-31T13:04:48.989000Z" count="1"/>
+          <bookmark:application name="gimp" exec="gimp-3.0 %u" modified="2025-03-31T13:05:34.875000Z" count="1"/>
+          <bookmark:application name="GNU Image Manipulation Program" exec="&apos;gimp-3.0 %u&apos;" modified="2025-03-31T13:05:44.830838Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///run/media/rifle/HGST/slim/Pictures/Wallpapers/three-illustrations-by-astral-grave-3440x1440-v0-krvpv3vd46fd1.png" added="2025-03-31T13:16:53.859000Z" modified="2025-03-31T13:16:53.859000Z" visited="2025-03-31T13:16:53.859000Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:groups>
+          <bookmark:group>Graphics</bookmark:group>
+        </bookmark:groups>
+        <bookmark:applications>
+          <bookmark:application name="vimiv" exec="vimiv --start-from-desktop %f" modified="2025-03-31T13:16:53.859000Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///run/media/rifle/HGST/slim/Pictures/Wallpapers/three-illustrations-by-astral-grave-3440x1440-v0-23t67uhd46fd1.png" added="2025-03-31T13:16:55.710000Z" modified="2025-03-31T13:17:13.392000Z" visited="2025-03-31T13:17:13.392000Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:groups>
+          <bookmark:group>Graphics</bookmark:group>
+        </bookmark:groups>
+        <bookmark:applications>
+          <bookmark:application name="vimiv" exec="vimiv --start-from-desktop %f" modified="2025-03-31T13:16:55.710000Z" count="1"/>
+          <bookmark:application name="satty" exec="satty -f %f" modified="2025-03-31T13:17:13.392000Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/ergo-trimode.json" added="2025-04-01T09:49:45.831377Z" modified="2025-04-01T09:49:52.975790Z" visited="2025-04-01T09:49:45.831380Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="application/json"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-01T09:49:52.975788Z" count="2"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/maths.pdf" added="2025-04-06T15:12:43.824251Z" modified="2025-04-06T15:12:50.887122Z" visited="2025-04-06T15:12:43.824253Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="application/pdf"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-06T15:12:50.887119Z" count="2"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/declaratio_prestations_caf.pdf" added="2025-04-07T12:35:45.340705Z" modified="2025-04-07T12:35:45.340715Z" visited="2025-04-07T12:35:45.340707Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="application/pdf"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T12:35:45.340710Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/R%C3%A9capitulatif_inscription_FT_07_04_2025.pdf" added="2025-04-07T12:58:34.713982Z" modified="2025-04-07T12:58:34.713996Z" visited="2025-04-07T12:58:34.713984Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="application/pdf"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T12:58:34.713989Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/FantasqueSansMono-NoLoopK.zip" added="2025-04-07T21:19:11.691118Z" modified="2025-04-07T21:19:51.816505Z" visited="2025-04-07T21:19:11.691120Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="application/zip"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T21:19:11.691124Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;ark %U&apos;" modified="2025-04-07T21:19:51.816502Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gharly/park-junkyu-kakaotalk-20190924-182144671119.jpg" added="2025-04-07T21:42:25.020251Z" modified="2025-04-07T23:12:14.465270Z" visited="2025-04-07T21:42:25.020252Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:groups>
+          <bookmark:group>Graphics</bookmark:group>
+        </bookmark:groups>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T21:42:25.020257Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;vimiv --start-from-desktop %F&apos;" modified="2025-04-07T23:06:39.000472Z" count="1"/>
+          <bookmark:application name="GNU Image Manipulation Program" exec="&apos;gimp-3.0 %u&apos;" modified="2025-04-07T23:12:14.465269Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gharly/park-junkyu-kakaotalk-20190924-182145141111.jpg" added="2025-04-07T21:42:29.413464Z" modified="2025-04-12T22:31:40.719451Z" visited="2025-04-07T21:42:29.413466Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:groups>
+          <bookmark:group>Graphics</bookmark:group>
+        </bookmark:groups>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T21:42:29.413470Z" count="1"/>
+          <bookmark:application name="GNU Image Manipulation Program" exec="&apos;gimp-3.0 %u&apos;" modified="2025-04-12T22:31:40.719450Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gharly/park-junkyu-tshirt1.jpg" added="2025-04-07T21:42:53.987977Z" modified="2025-04-07T21:42:53.988050Z" visited="2025-04-07T21:42:53.987978Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T21:42:53.988043Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gharly/undefined%20-%20Imgur.png" added="2025-04-07T21:53:16.693272Z" modified="2025-04-07T23:25:27.529367Z" visited="2025-04-07T21:53:16.693273Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:groups>
+          <bookmark:group>Graphics</bookmark:group>
+        </bookmark:groups>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T21:53:16.693277Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;vimiv --start-from-desktop %F&apos;" modified="2025-04-07T23:04:59.093253Z" count="1"/>
+          <bookmark:application name="GNU Image Manipulation Program" exec="&apos;gimp-3.0 %u&apos;" modified="2025-04-07T23:25:27.529366Z" count="2"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gharly/undefined%20-%20Imgur2.png" added="2025-04-07T21:54:08.995949Z" modified="2025-04-12T23:31:09.166061Z" visited="2025-04-07T21:54:08.995950Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:groups>
+          <bookmark:group>Graphics</bookmark:group>
+        </bookmark:groups>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T21:54:08.995954Z" count="1"/>
+          <bookmark:application name="GNU Image Manipulation Program" exec="&apos;gimp-3.0 %u&apos;" modified="2025-04-12T23:31:09.166060Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/furina-masquerade-of-the-guilty.3840x2160.mp4" added="2025-04-07T21:57:20.655350Z" modified="2025-04-08T04:13:05.659331Z" visited="2025-04-07T21:57:20.655351Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-07T21:57:20.655354Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;/usr/bin/vlc --started-from-file %U&apos;" modified="2025-04-08T04:13:05.659329Z" count="3"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/katana-pinky-girl.3840x2160.mp4" added="2025-04-07T21:57:49.764050Z" modified="2025-04-08T04:13:10.755126Z" visited="2025-04-07T21:57:49.764051Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-07T21:57:49.764054Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;/usr/bin/vlc --started-from-file %U&apos;" modified="2025-04-08T04:13:10.755125Z" count="2"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/emily-in-the-cyberpunk-city.3840x2160.mp4" added="2025-04-07T21:58:18.377176Z" modified="2025-04-08T04:12:48.220997Z" visited="2025-04-07T21:58:18.377178Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-07T21:58:18.377180Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;/usr/bin/vlc --started-from-file %U&apos;" modified="2025-04-08T04:12:48.220995Z" count="2"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/yanagi-zenless-zone-zero.3840x2160.mp4" added="2025-04-07T21:59:01.466618Z" modified="2025-04-08T04:14:25.657999Z" visited="2025-04-07T21:59:01.466620Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-08T04:14:25.657997Z" count="2"/>
+          <bookmark:application name="nemo" exec="&apos;/usr/bin/vlc --started-from-file %U&apos;" modified="2025-04-08T04:13:40.831838Z" count="3"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/kasumizawa-miyu-blue-archive.3840x2160.mp4" added="2025-04-07T22:00:28.953766Z" modified="2025-04-08T04:13:08.051031Z" visited="2025-04-07T22:00:28.953768Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-07T22:00:28.953770Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;/usr/bin/vlc --started-from-file %U&apos;" modified="2025-04-08T04:13:08.051027Z" count="2"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/system-error-arona-blue-archive.3840x2160.mp4" added="2025-04-07T22:03:45.220362Z" modified="2025-04-08T04:13:22.552880Z" visited="2025-04-07T22:03:45.220363Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-07T22:03:45.220366Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;/usr/bin/vlc --started-from-file %U&apos;" modified="2025-04-08T04:13:22.552878Z" count="2"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/anime-girl-kiana-kaslana-herrscher-of-the-void.3840x2160.mp4" added="2025-04-07T22:05:27.124638Z" modified="2025-04-08T04:12:45.671744Z" visited="2025-04-07T22:05:27.124639Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-07T22:05:27.124640Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;/usr/bin/vlc --started-from-file %U&apos;" modified="2025-04-08T04:12:45.671740Z" count="2"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/akali-league-of-legends.3840x2160.mp4" added="2025-04-07T22:07:41.358894Z" modified="2025-04-08T04:12:40.345074Z" visited="2025-04-07T22:07:41.358896Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-07T22:07:41.358899Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;/usr/bin/vlc --started-from-file %U&apos;" modified="2025-04-08T04:12:40.345071Z" count="2"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/lofi-girl-animated.1920x1080.mp4" added="2025-04-07T22:08:48.543491Z" modified="2025-04-08T04:13:19.988767Z" visited="2025-04-07T22:08:48.543492Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-07T22:08:48.543495Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;/usr/bin/vlc --started-from-file %U&apos;" modified="2025-04-08T04:13:19.988765Z" count="2"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/yor-forger.1920x1080.mp4" added="2025-04-07T22:11:01.048858Z" modified="2025-04-08T04:13:36.958883Z" visited="2025-04-07T22:11:01.048860Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-08T04:08:39.559846Z" count="2"/>
+          <bookmark:application name="nemo" exec="&apos;/usr/bin/vlc --started-from-file %U&apos;" modified="2025-04-08T04:13:36.958875Z" count="2"/>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-08T04:04:26.501937Z" count="3"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/cherry-blossom.png" added="2025-04-07T22:41:16.432483Z" modified="2025-04-07T23:01:04.502089Z" visited="2025-04-07T22:41:16.432485Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:41:16.432489Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;vimiv --start-from-desktop %F&apos;" modified="2025-04-07T23:01:04.502085Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/ign-waifu.png" added="2025-04-07T22:42:02.043110Z" modified="2025-04-07T22:42:02.043121Z" visited="2025-04-07T22:42:02.043112Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:42:02.043115Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/satellites.png" added="2025-04-07T22:42:41.335230Z" modified="2025-04-07T23:01:44.825211Z" visited="2025-04-07T22:42:41.335231Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:42:41.335236Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;vimiv --start-from-desktop %F&apos;" modified="2025-04-07T23:01:44.825208Z" count="2"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/sushi.jpg" added="2025-04-07T22:42:48.463451Z" modified="2025-04-07T22:42:48.463462Z" visited="2025-04-07T22:42:48.463453Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:42:48.463456Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/wallhaven-2e2xyx.jpg" added="2025-04-07T22:43:21.378380Z" modified="2025-04-07T22:43:21.378390Z" visited="2025-04-07T22:43:21.378382Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:43:21.378384Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/anime_skull.png" added="2025-04-07T22:43:42.451530Z" modified="2025-04-10T21:43:07.942767Z" visited="2025-04-07T22:43:42.451531Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:43:42.451535Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;vimiv --start-from-desktop %F&apos;" modified="2025-04-10T21:43:07.942764Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/animeskull.png" added="2025-04-07T22:43:48.827788Z" modified="2025-04-07T23:01:00.676144Z" visited="2025-04-07T22:43:48.827790Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:43:48.827795Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;vimiv --start-from-desktop %F&apos;" modified="2025-04-07T23:01:00.676141Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/code_blocks_light.png" added="2025-04-07T22:45:10.101646Z" modified="2025-04-07T22:45:10.101658Z" visited="2025-04-07T22:45:10.101647Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:45:10.101652Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/cocoa.png" added="2025-04-07T22:45:51.762567Z" modified="2025-04-07T23:01:07.874116Z" visited="2025-04-07T22:45:51.762569Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:45:51.762574Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;vimiv --start-from-desktop %F&apos;" modified="2025-04-07T23:01:07.874110Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/door.png" added="2025-04-07T22:46:42.639121Z" modified="2025-04-07T22:46:42.639131Z" visited="2025-04-07T22:46:42.639122Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:46:42.639126Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/fingerprint.png" added="2025-04-07T22:46:57.632363Z" modified="2025-04-07T22:46:57.632376Z" visited="2025-04-07T22:46:57.632365Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:46:57.632369Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/gruvbox_astro.jpg" added="2025-04-07T22:47:18.161551Z" modified="2025-04-07T22:47:18.161564Z" visited="2025-04-07T22:47:18.161552Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:47:18.161557Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/great-wave-of-kanagawa-gruvbox.png" added="2025-04-07T22:47:23.477505Z" modified="2025-04-07T22:47:23.477515Z" visited="2025-04-07T22:47:23.477506Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:47:23.477509Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/gruvbox_grid.png" added="2025-04-07T22:47:35.904167Z" modified="2025-04-08T03:02:09.683403Z" visited="2025-04-07T22:47:35.904168Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:47:35.904172Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;vimiv --start-from-desktop %F&apos;" modified="2025-04-08T03:02:09.683400Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/gruvbox_spac.jpg" added="2025-04-07T22:47:49.421715Z" modified="2025-04-07T22:47:49.421720Z" visited="2025-04-07T22:47:49.421716Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:47:49.421717Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/gruv-focus.png" added="2025-04-07T22:48:14.293223Z" modified="2025-04-07T22:48:14.293234Z" visited="2025-04-07T22:48:14.293224Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:48:14.293228Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/gruv-kanji.png" added="2025-04-07T22:48:27.194009Z" modified="2025-04-07T22:48:27.194020Z" visited="2025-04-07T22:48:27.194011Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:48:27.194014Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/gruv-estimate.png" added="2025-04-07T22:48:36.339612Z" modified="2025-04-07T22:48:36.339624Z" visited="2025-04-07T22:48:36.339614Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:48:36.339618Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/gruv-commit.png" added="2025-04-07T22:48:53.234209Z" modified="2025-04-07T22:48:53.234220Z" visited="2025-04-07T22:48:53.234211Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:48:53.234214Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/gruv-portal-cake.png" added="2025-04-07T22:49:20.523097Z" modified="2025-04-07T22:49:20.523113Z" visited="2025-04-07T22:49:20.523099Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:49:20.523103Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/gruv-samurai-cyberpunk2077.png" added="2025-04-07T22:49:26.001795Z" modified="2025-04-07T22:49:26.001807Z" visited="2025-04-07T22:49:26.001797Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:49:26.001801Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/moon.png" added="2025-04-07T22:50:00.085020Z" modified="2025-04-08T03:02:47.214934Z" visited="2025-04-07T22:50:00.085021Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:50:00.085024Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;vimiv --start-from-desktop %F&apos;" modified="2025-04-08T03:02:47.214928Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/netbsd.png" added="2025-04-07T22:50:20.574140Z" modified="2025-04-07T22:50:20.574153Z" visited="2025-04-07T22:50:20.574142Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:50:20.574147Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/nasa.png" added="2025-04-07T22:50:25.585930Z" modified="2025-04-07T22:50:25.585954Z" visited="2025-04-07T22:50:25.585932Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:50:25.585934Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/nasa-2.png" added="2025-04-07T22:50:47.440020Z" modified="2025-04-07T22:50:47.440031Z" visited="2025-04-07T22:50:47.440021Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:50:47.440025Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/nasa-3.png" added="2025-04-07T22:50:52.475730Z" modified="2025-04-07T22:50:52.475741Z" visited="2025-04-07T22:50:52.475732Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:50:52.475735Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/pacman-ghosts.png" added="2025-04-07T22:51:09.299733Z" modified="2025-04-07T22:51:09.299743Z" visited="2025-04-07T22:51:09.299734Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:51:09.299738Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/snake.png" added="2025-04-07T22:51:34.167254Z" modified="2025-04-07T23:02:59.103493Z" visited="2025-04-07T22:51:34.167256Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:51:34.167260Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;vimiv --start-from-desktop %F&apos;" modified="2025-04-07T23:02:59.103487Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/rocket.png" added="2025-04-07T22:51:52.776818Z" modified="2025-04-07T22:51:52.776829Z" visited="2025-04-07T22:51:52.776820Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:51:52.776823Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/sunset.png" added="2025-04-07T22:52:12.500980Z" modified="2025-04-07T22:52:12.500994Z" visited="2025-04-07T22:52:12.500981Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:52:12.500987Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/this-wallpaper-is-not-available.png" added="2025-04-07T22:52:22.716677Z" modified="2025-04-07T22:52:22.716690Z" visited="2025-04-07T22:52:22.716678Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:52:22.716683Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/vim.png" added="2025-04-07T22:52:34.656616Z" modified="2025-04-07T22:52:34.656629Z" visited="2025-04-07T22:52:34.656618Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:52:34.656622Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/wallpaper.png" added="2025-04-07T22:52:43.977714Z" modified="2025-04-07T22:52:43.977724Z" visited="2025-04-07T22:52:43.977715Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:52:43.977719Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/wp11058333.png" added="2025-04-07T22:52:53.436189Z" modified="2025-04-07T22:52:53.436202Z" visited="2025-04-07T22:52:53.436191Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:52:53.436195Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/houses.png" added="2025-04-07T22:54:48.338083Z" modified="2025-04-07T22:54:48.338093Z" visited="2025-04-07T22:54:48.338085Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:54:48.338087Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/mountain.jpg" added="2025-04-07T22:55:04.213375Z" modified="2025-04-07T23:01:47.476791Z" visited="2025-04-07T22:55:04.213376Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:55:04.213378Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;vimiv --start-from-desktop %F&apos;" modified="2025-04-07T23:01:47.476789Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/titlwinzbst81.jpg" added="2025-04-07T22:55:39.830472Z" modified="2025-04-07T22:55:39.830485Z" visited="2025-04-07T22:55:39.830474Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:55:39.830479Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/gruvbox_image40.png" added="2025-04-07T22:56:17.148007Z" modified="2025-04-07T23:01:54.734974Z" visited="2025-04-07T22:56:17.148008Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:56:17.148012Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;vimiv --start-from-desktop %F&apos;" modified="2025-04-07T23:01:54.734968Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/gruvbox_image31.png" added="2025-04-07T22:56:34.418767Z" modified="2025-04-07T22:56:34.418780Z" visited="2025-04-07T22:56:34.418769Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:56:34.418773Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/wallpaper2.png" added="2025-04-07T22:57:23.125054Z" modified="2025-04-07T23:01:34.327293Z" visited="2025-04-07T22:57:23.125056Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T22:57:23.125061Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;vimiv --start-from-desktop %F&apos;" modified="2025-04-07T23:01:34.327281Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/Untitled.xcf" added="2025-04-07T23:12:44.090849Z" modified="2025-04-07T23:12:44.367045Z" visited="2025-04-07T23:12:44.090851Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/x-xcf"/>
+        <bookmark:groups>
+          <bookmark:group>Graphics</bookmark:group>
+        </bookmark:groups>
+        <bookmark:applications>
+          <bookmark:application name="GNU Image Manipulation Program" exec="&apos;gimp-3.0 %u&apos;" modified="2025-04-07T23:12:44.367044Z" count="2"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gharly/park-junkyu-kakaotalk.png" added="2025-04-07T23:13:31.507564Z" modified="2025-04-07T23:13:54.947718Z" visited="2025-04-07T23:13:31.507565Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:groups>
+          <bookmark:group>Graphics</bookmark:group>
+        </bookmark:groups>
+        <bookmark:applications>
+          <bookmark:application name="GNU Image Manipulation Program" exec="&apos;gimp-3.0 %u&apos;" modified="2025-04-07T23:13:53.107865Z" count="2"/>
+          <bookmark:application name="nemo" exec="&apos;vimiv --start-from-desktop %F&apos;" modified="2025-04-07T23:13:54.947714Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/PhotoGIMP-linux.zip" added="2025-04-07T23:27:45.999764Z" modified="2025-04-07T23:31:35.881810Z" visited="2025-04-07T23:27:45.999766Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="application/zip"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T23:31:20.075499Z" count="2"/>
+          <bookmark:application name="nemo" exec="&apos;ark %U&apos;" modified="2025-04-07T23:31:35.881808Z" count="3"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/PhotoGIMP.zip" added="2025-04-07T23:29:30.860083Z" modified="2025-04-07T23:30:37.721099Z" visited="2025-04-07T23:29:30.860085Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="application/zip"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-07T23:30:34.040967Z" count="2"/>
+          <bookmark:application name="nemo" exec="&apos;ark %U&apos;" modified="2025-04-07T23:30:37.721096Z" count="3"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/yor-forger1920x1080.mp4" added="2025-04-08T04:02:32.594410Z" modified="2025-04-08T04:03:02.904676Z" visited="2025-04-08T04:02:32.594411Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-08T04:02:32.594414Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;/usr/bin/vlc --started-from-file %U&apos;" modified="2025-04-08T04:03:02.904673Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/yor-forger3440x1440.mp4" added="2025-04-08T04:10:40.895342Z" modified="2025-04-08T04:10:40.895350Z" visited="2025-04-08T04:10:40.895343Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-08T04:10:40.895345Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/yor-forger3440x1440.mp4" added="2025-04-08T04:11:08.536630Z" modified="2025-04-08T04:11:08.536639Z" visited="2025-04-08T04:11:08.536632Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="nemo" exec="&apos;/usr/bin/vlc --started-from-file %U&apos;" modified="2025-04-08T04:11:08.536634Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/yanagi-zenless-zone-zero.3440x1440.mp4" added="2025-04-08T04:17:42.534122Z" modified="2025-04-08T04:17:42.534130Z" visited="2025-04-08T04:17:42.534123Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-08T04:17:42.534125Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/anime-girl-chilling-on-a-tank-in-the-forest-moewalls-com.mp4" added="2025-04-08T04:21:20.826029Z" modified="2025-04-08T04:21:20.826038Z" visited="2025-04-08T04:21:20.826031Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-08T04:21:20.826034Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/anime-girl-full-moon-moewalls-com.mp4" added="2025-04-08T04:21:48.821976Z" modified="2025-04-12T11:54:50.338000Z" visited="2025-04-12T11:54:50.338000Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-08T04:21:48.821979Z" count="1"/>
+          <bookmark:application name="vlc" exec="/usr/bin/vlc --started-from-file %u" modified="2025-04-12T11:54:50.338000Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/megarex-muse-dash-moewalls-com.mp4" added="2025-04-08T04:22:09.368237Z" modified="2025-04-08T04:22:09.368245Z" visited="2025-04-08T04:22:09.368238Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-08T04:22:09.368241Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/otori-emu-project-sekai-moewalls-com.mp4" added="2025-04-08T04:23:55.736918Z" modified="2025-04-08T04:23:55.736921Z" visited="2025-04-08T04:23:55.736918Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-08T04:23:55.736919Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/oni-anime-girl-moewalls-com.mp4" added="2025-04-08T04:24:07.008954Z" modified="2025-04-08T04:24:07.008956Z" visited="2025-04-08T04:24:07.008954Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-08T04:24:07.008955Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/assassin-anime-girl-moewalls-com.mp4" added="2025-04-08T04:24:25.805635Z" modified="2025-04-08T04:24:25.805641Z" visited="2025-04-08T04:24:25.805636Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-08T04:24:25.805638Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/anime-girl-colorful-1-moewalls-com.mp4" added="2025-04-08T04:25:39.368277Z" modified="2025-04-08T04:25:39.368307Z" visited="2025-04-08T04:25:39.368280Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-08T04:25:39.368291Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/broken-glass-yor-forger-moewalls-com.mp4" added="2025-04-08T04:29:27.907412Z" modified="2025-04-08T04:29:27.907426Z" visited="2025-04-08T04:29:27.907414Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-08T04:29:27.907419Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/yor-forger-assassin-spy-x-family-moewalls-com.mp4" added="2025-04-08T04:29:45.762859Z" modified="2025-04-08T04:29:45.762862Z" visited="2025-04-08T04:29:45.762860Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-08T04:29:45.762860Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/sunday-picnic-spy-x-family-moewalls-com.mp4" added="2025-04-08T04:30:53.767889Z" modified="2025-04-08T04:30:53.767895Z" visited="2025-04-08T04:30:53.767890Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-08T04:30:53.767892Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/phoebe-sleeping-wuthering-waves-moewalls-com.mp4" added="2025-04-08T04:56:11.474270Z" modified="2025-04-08T04:56:11.474281Z" visited="2025-04-08T04:56:11.474271Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-08T04:56:11.474274Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/frieren-in-the-field-beyond-journeys-end-moewalls-com.mp4" added="2025-04-08T04:59:06.448182Z" modified="2025-04-08T04:59:06.448193Z" visited="2025-04-08T04:59:06.448183Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-08T04:59:06.448187Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/spells-frieren-beyond-journeys-end-moewalls-com.mp4" added="2025-04-08T04:59:49.982427Z" modified="2025-04-08T04:59:49.982430Z" visited="2025-04-08T04:59:49.982428Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-08T04:59:49.982429Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/frieren-in-the-field-beyond-journeys-end-moewalls-com2.mp4" added="2025-04-08T05:01:01.771311Z" modified="2025-04-08T20:24:18.264180Z" visited="2025-04-08T05:01:01.771312Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-08T05:01:01.771313Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;/usr/bin/vlc --started-from-file %U&apos;" modified="2025-04-08T20:24:18.264176Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/yunli-honkai-star-rail-moewalls-com.mp4" added="2025-04-08T07:23:27.456083Z" modified="2025-04-08T07:23:27.456085Z" visited="2025-04-08T07:23:27.456083Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-08T07:23:27.456084Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/jane-doe-zenless-zone-zero-1-moewalls-com.mp4" added="2025-04-08T07:24:25.917193Z" modified="2025-04-08T07:24:25.917208Z" visited="2025-04-08T07:24:25.917195Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-08T07:24:25.917200Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/jane-doe-zenless-zone-zero-moewalls-com.mp4" added="2025-04-08T07:24:32.511075Z" modified="2025-04-08T07:24:32.511083Z" visited="2025-04-08T07:24:32.511076Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-08T07:24:32.511078Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/0YKFrDLBGsffmRh_Www%202%20Prob4.mp4" added="2025-04-08T07:26:59.802971Z" modified="2025-04-08T07:26:59.802975Z" visited="2025-04-08T07:26:59.802972Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-08T07:26:59.802973Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/YgKfcI7pyX0R1bG_Retro%20Vaporwave%20Anime%20Girl%20Live%20Wallpaper_2_prob4.mp4" added="2025-04-08T07:28:27.517036Z" modified="2025-04-08T07:28:27.517042Z" visited="2025-04-08T07:28:27.517037Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-08T07:28:27.517039Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/QFiUsi7RvckZsMS_Nun%20With%20Cybernetic%20Hands%20Live%20Wallpaper(1)_2_prob4.mp4" added="2025-04-08T07:29:05.151543Z" modified="2025-04-08T07:29:05.151551Z" visited="2025-04-08T07:29:05.151544Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-08T07:29:05.151547Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/rhtz64CD2O-FrierenTheSlayerLiveWallpaper.mp4" added="2025-04-08T07:30:33.516727Z" modified="2025-04-08T07:30:33.516746Z" visited="2025-04-08T07:30:33.516728Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-08T07:30:33.516735Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/8ZfforKqYd03Egc_Torii%20Qhd%20Edit_2_prob4.mp4" added="2025-04-08T07:31:43.588688Z" modified="2025-04-21T22:01:24.480385Z" visited="2025-04-08T07:31:43.588689Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-08T07:31:43.588691Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;/usr/bin/vlc --started-from-file %U&apos;" modified="2025-04-21T22:01:24.480381Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/ulxbBcyg31jOYym_Its%20Been%20A%20Long%20Night_2_prob4.mp4" added="2025-04-08T07:32:02.764472Z" modified="2025-04-08T07:32:02.764477Z" visited="2025-04-08T07:32:02.764473Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-08T07:32:02.764474Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/DA318iW7u8gPs8w_Samurai%20Girl_2_prob4.mp4" added="2025-04-08T07:33:46.281842Z" modified="2025-04-08T07:33:46.281847Z" visited="2025-04-08T07:33:46.281843Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-08T07:33:46.281844Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/HbXPoHgd2msYg3C_Waterfall%20Ember%20Moon%204K_2_prob4.mp4" added="2025-04-08T07:34:00.871842Z" modified="2025-04-08T07:34:00.871844Z" visited="2025-04-08T07:34:00.871842Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-08T07:34:00.871843Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/FlXbPtzmNstetCc_Hinata%20Hyuga_2_prob4.mp4" added="2025-04-08T07:35:42.021065Z" modified="2025-04-08T07:35:42.021102Z" visited="2025-04-08T07:35:42.021067Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-08T07:35:42.021076Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/yKvDWD99t46nmBe_Neon%20Samurai_5_092550.mp4" added="2025-04-08T07:36:02.695777Z" modified="2025-04-08T07:36:02.695782Z" visited="2025-04-08T07:36:02.695778Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-08T07:36:02.695779Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/05iaUElST2OsDId_Silent%20Whispers_4_135013.mp4" added="2025-04-08T07:37:04.908939Z" modified="2025-04-08T07:37:04.908944Z" visited="2025-04-08T07:37:04.908940Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-08T07:37:04.908941Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/Ob4WzyO9kcDtKft_Above%20the%20clouds_1_155846.mp4" added="2025-04-08T07:37:28.900391Z" modified="2025-04-08T07:37:28.900408Z" visited="2025-04-08T07:37:28.900393Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-08T07:37:28.900397Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/y43UIKzQCzywOKU_Girl%20Elf%20Cyberpunk_2_120257.mp4" added="2025-04-08T07:39:08.269341Z" modified="2025-04-08T07:39:08.269352Z" visited="2025-04-08T07:39:08.269343Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-08T07:39:08.269346Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/3beaMq6tmKqSTMl_School%20Rascal%20Jinx_2_135544.mp4" added="2025-04-08T07:39:18.799339Z" modified="2025-04-08T07:47:34.557889Z" visited="2025-04-08T07:39:18.799341Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-08T07:39:18.799343Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;/usr/bin/vlc --started-from-file %U&apos;" modified="2025-04-08T07:47:34.557884Z" count="2"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/k5fHmI3jNxAtE9O_Matrix-Nun-Girl-4K_7_135543.mp4" added="2025-04-08T07:40:37.712192Z" modified="2025-04-08T07:50:19.063760Z" visited="2025-04-08T07:40:37.712193Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-08T07:40:37.712195Z" count="1"/>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-08T07:50:19.063759Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/AC0nVw88jeyqDIH_Jinx%20in%20Rain%20Live%20Wallpaper_2_184114.mp4" added="2025-04-08T07:42:18.464073Z" modified="2025-04-08T07:47:32.588746Z" visited="2025-04-08T07:42:18.464074Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-08T07:42:18.464078Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;/usr/bin/vlc --started-from-file %U&apos;" modified="2025-04-08T07:47:32.588743Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/yellow-matrix.mp4" added="2025-04-08T07:52:30.120214Z" modified="2025-04-08T07:52:30.120221Z" visited="2025-04-08T07:52:30.120215Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-08T07:52:30.120217Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/girl-under-the-trees.3840x2160.mp4" added="2025-04-08T17:45:51.175011Z" modified="2025-04-09T11:19:42.421314Z" visited="2025-04-08T17:45:51.175013Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-09T11:19:42.421311Z" count="4"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/girl-under-the-trees.3440x1440.mp4" added="2025-04-09T11:21:36.005759Z" modified="2025-04-09T11:21:36.005767Z" visited="2025-04-09T11:21:36.005760Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-09T11:21:36.005763Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/bema-next" added="2025-04-09T14:25:43.909530Z" modified="2025-04-21T23:10:41.528799Z" visited="2025-04-09T14:25:43.909530Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="inode/directory"/>
+        <bookmark:applications>
+          <bookmark:application name="cursor" exec="&apos;cursor %u&apos;" modified="2025-04-13T06:58:09.883342Z" count="2"/>
+          <bookmark:application name="electron" exec="&apos;electron %u&apos;" modified="2025-04-21T23:10:41.528797Z" count="2"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/tmux.txt" added="2025-04-10T15:25:47.102467Z" modified="2025-04-10T15:59:17.110183Z" visited="2025-04-10T15:25:47.102468Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="text/plain"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-10T15:59:17.110180Z" count="2"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/zshrc.txt" added="2025-04-10T15:57:12.771334Z" modified="2025-04-10T15:59:22.986149Z" visited="2025-04-10T15:57:12.771335Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="text/plain"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-10T15:59:22.986145Z" count="2"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/anime-girl-mask-katana-4k-wallpaper-uhdpaper.com-532@5@c.jpg" added="2025-04-10T21:50:05.911057Z" modified="2025-04-10T21:50:05.911067Z" visited="2025-04-10T21:50:05.911058Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-10T21:50:05.911061Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/frieren-sousou-no-frieren-4k-wallpaper-uhdpaper.com-585@1@n.jpg" added="2025-04-10T21:52:04.596246Z" modified="2025-04-10T21:52:04.596258Z" visited="2025-04-10T21:52:04.596248Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-10T21:52:04.596252Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/anime-girl-school-uniform-4k-wallpaper-uhdpaper.com-260@5@b.jpg" added="2025-04-10T21:55:16.554920Z" modified="2025-04-10T21:55:16.554931Z" visited="2025-04-10T21:55:16.554922Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-10T21:55:16.554925Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/anime-girl-red-eyes-glaesses-katana-sword-4k-wallpaper-uhdpaper.com-281@5@b.jpg" added="2025-04-10T21:55:30.900897Z" modified="2025-04-10T21:55:30.900907Z" visited="2025-04-10T21:55:30.900898Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-10T21:55:30.900901Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/anime-girl-nun-tongue-out-4k-wallpaper-uhdpaper.com-390@5@d.jpg" added="2025-04-10T21:56:10.105206Z" modified="2025-04-10T21:56:10.105218Z" visited="2025-04-10T21:56:10.105208Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-10T21:56:10.105212Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/anime-girl-sniper-rifle-4k-wallpaper-uhdpaper.com-371@5@c.jpg" added="2025-04-10T21:57:40.495108Z" modified="2025-04-10T21:57:40.495122Z" visited="2025-04-10T21:57:40.495110Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-10T21:57:40.495114Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/anime-girl-katana-tongue-out-4k-wallpaper-uhdpaper.com-735@0@j.jpg" added="2025-04-10T22:00:01.628377Z" modified="2025-04-10T22:00:01.628389Z" visited="2025-04-10T22:00:01.628379Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-10T22:00:01.628382Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/anime-girl-nun-with-tattoo-4k-wallpaper-uhdpaper.com-740@3@a.jpg" added="2025-04-10T22:00:14.208947Z" modified="2025-04-10T22:00:14.208959Z" visited="2025-04-10T22:00:14.208949Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-10T22:00:14.208953Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/anime-girl-galsses-tongue-out-4k-wallpaper-uhdpaper.com-728@3@a.jpg" added="2025-04-10T22:00:33.487340Z" modified="2025-04-10T22:00:33.487352Z" visited="2025-04-10T22:00:33.487342Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-10T22:00:33.487346Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/road-sunset-car-city-buildings-scenery-digital-art-4k-wallpaper-uhdpaper.com-334@1@m.jpg" added="2025-04-10T22:00:46.678692Z" modified="2025-04-10T22:00:46.678706Z" visited="2025-04-10T22:00:46.678694Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-10T22:00:46.678699Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/sports-car-burning-explosion-digital-art-4k-wallpaper-uhdpaper.com-536@0@i.jpg" added="2025-04-10T22:00:59.286296Z" modified="2025-04-10T22:00:59.286308Z" visited="2025-04-10T22:00:59.286298Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-10T22:00:59.286301Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/sports-car-mountains-retrowave-synthwave-4k-wallpaper-uhdpaper.com-233@0@k.jpg" added="2025-04-10T22:01:16.095313Z" modified="2025-04-10T22:01:16.095327Z" visited="2025-04-10T22:01:16.095315Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-10T22:01:16.095320Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/anime-girl-dragon-tattoo-4k-wallpaper-uhdpaper.com-628@0@j.jpg" added="2025-04-10T22:01:29.805487Z" modified="2025-04-10T22:08:38.056854Z" visited="2025-04-10T22:01:29.805489Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-10T22:01:29.805492Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;vimiv --start-from-desktop %F&apos;" modified="2025-04-10T22:08:38.056850Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/sci-fi-girl-warrior-sword-4k-wallpaper-uhdpaper.com-316@5@d.jpg" added="2025-04-10T22:04:19.065909Z" modified="2025-04-10T22:04:19.065923Z" visited="2025-04-10T22:04:19.065911Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-10T22:04:19.065916Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/astronaut-girl-sci-fi-4k-wallpaper-uhdpaper.com-704@0@j.jpg" added="2025-04-10T22:04:50.667558Z" modified="2025-04-10T22:04:50.667572Z" visited="2025-04-10T22:04:50.667560Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-10T22:04:50.667565Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/cyberpunk-girl-digital-art-4k-wallpaper-uhdpaper.com-785@0@i.jpg" added="2025-04-10T22:05:08.255584Z" modified="2025-04-10T22:05:08.255595Z" visited="2025-04-10T22:05:08.255585Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-10T22:05:08.255589Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/cyberpunk-girl-pink-hair-sci-fi-4k-wallpaper-uhdpaper.com-384@5@d.jpg" added="2025-04-10T22:05:23.798520Z" modified="2025-04-10T22:05:23.798530Z" visited="2025-04-10T22:05:23.798521Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-10T22:05:23.798524Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/cyberpunk-girl-katana-sci-fi-4k-wallpaper-uhdpaper.com-378@5@d.jpg" added="2025-04-10T22:05:54.005215Z" modified="2025-04-10T22:05:54.005226Z" visited="2025-04-10T22:05:54.005216Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-10T22:05:54.005220Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/fantasy-anime-girl-power-4k-wallpaper-uhdpaper.com-253@5@b.jpg" added="2025-04-10T22:07:59.982626Z" modified="2025-04-10T22:07:59.982637Z" visited="2025-04-10T22:07:59.982627Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-10T22:07:59.982631Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/gruvbox_wallpapers/anime-girl-red-eyes-katana-fantasy-4k-wallpaper-uhdpaper.com-279@5@b.jpg" added="2025-04-10T22:08:16.746717Z" modified="2025-04-10T22:08:16.746737Z" visited="2025-04-10T22:08:16.746719Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-10T22:08:16.746722Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/anime-girl-galsses-tongue-out-4k-wallpaper-uhdpaper.com-728@3@a.jpg" added="2025-04-11T08:06:38.710000Z" modified="2025-04-11T08:06:38.710000Z" visited="2025-04-11T08:06:38.710000Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:groups>
+          <bookmark:group>Graphics</bookmark:group>
+        </bookmark:groups>
+        <bookmark:applications>
+          <bookmark:application name="satty" exec="satty -f %f" modified="2025-04-11T08:06:38.710000Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/goddess-parvati-7680x4320-14446.png" added="2025-04-11T14:58:57.042407Z" modified="2025-04-11T14:58:57.042417Z" visited="2025-04-11T14:58:57.042408Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-11T14:58:57.042411Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/hello-typography-gradient-background-colorful-white-5120x2880-5956.jpg" added="2025-04-11T14:59:12.956493Z" modified="2025-04-11T14:59:12.956504Z" visited="2025-04-11T14:59:12.956495Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-11T14:59:12.956498Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/godzilla-artwork-5k-kaiju-5120x2880-18099.jpg" added="2025-04-11T15:04:16.562891Z" modified="2025-04-11T15:04:16.562902Z" visited="2025-04-11T15:04:16.562893Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-11T15:04:16.562896Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/sunset-scenery-minimalist-digital-art-8k-wallpaper-uhdpaper.com-172@5@b.jpg" added="2025-04-11T15:07:53.000887Z" modified="2025-04-11T15:07:53.000900Z" visited="2025-04-11T15:07:53.000889Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-11T15:07:53.000893Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/volcano-volcanic-erruption-digital-art-4k-wallpaper-uhdpaper.com-248@0@k.jpg" added="2025-04-11T15:09:39.695390Z" modified="2025-04-11T15:09:39.695405Z" visited="2025-04-11T15:09:39.695392Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-11T15:09:39.695398Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/lord-krishna-5120x2880-18377.jpg" added="2025-04-11T15:16:07.619223Z" modified="2025-04-11T15:16:07.619233Z" visited="2025-04-11T15:16:07.619225Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-11T15:16:07.619228Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/sci-fi-girl-warrior-sword-4k-wallpaper-uhdpaper.com-316@5@d.jpg" added="2025-04-11T16:59:16.686000Z" modified="2025-04-11T16:59:16.686000Z" visited="2025-04-11T16:59:16.686000Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:groups>
+          <bookmark:group>Graphics</bookmark:group>
+        </bookmark:groups>
+        <bookmark:applications>
+          <bookmark:application name="vimiv" exec="vimiv --start-from-desktop %f" modified="2025-04-11T16:59:16.686000Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/anime-girl-katana-white-hair-4k-wallpaper-uhdpaper.com-399@5@d.jpg" added="2025-04-11T17:05:34.279630Z" modified="2025-04-11T17:05:34.279640Z" visited="2025-04-11T17:05:34.279632Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-11T17:05:34.279634Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/anime-girl-red-eyes-tattoo-4k-wallpaper-uhdpaper.com-273@5@b.jpg" added="2025-04-11T17:05:57.960822Z" modified="2025-04-14T07:21:14.873227Z" visited="2025-04-11T17:05:57.960824Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:groups>
+          <bookmark:group>Graphics</bookmark:group>
+        </bookmark:groups>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-11T17:05:57.960826Z" count="1"/>
+          <bookmark:application name="GNU Image Manipulation Program" exec="&apos;gimp-3.0 %u&apos;" modified="2025-04-14T07:21:14.873226Z" count="5"/>
+          <bookmark:application name="nemo" exec="&apos;gimp-3.0 %U&apos;" modified="2025-04-14T07:17:45.298877Z" count="2"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/anime-girl-red-eyes-glaesses-katana-sword-4k-wallpaper-uhdpaper.com-281@5@b.jpg" added="2025-04-11T17:06:14.256000Z" modified="2025-04-12T22:09:58.250590Z" visited="2025-04-11T17:06:14.256000Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:groups>
+          <bookmark:group>Graphics</bookmark:group>
+        </bookmark:groups>
+        <bookmark:applications>
+          <bookmark:application name="vimiv" exec="vimiv --start-from-desktop %f" modified="2025-04-11T17:06:14.256000Z" count="1"/>
+          <bookmark:application name="GNU Image Manipulation Program" exec="&apos;gimp-3.0 %u&apos;" modified="2025-04-12T22:09:58.250589Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/fingerprint.png" added="2025-04-11T17:09:19.700000Z" modified="2025-04-11T17:09:25.571569Z" visited="2025-04-11T17:09:19.700000Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:groups>
+          <bookmark:group>Graphics</bookmark:group>
+        </bookmark:groups>
+        <bookmark:applications>
+          <bookmark:application name="gimp" exec="gimp-3.0 %u" modified="2025-04-11T17:09:19.700000Z" count="1"/>
+          <bookmark:application name="GNU Image Manipulation Program" exec="&apos;gimp-3.0 %u&apos;" modified="2025-04-11T17:09:25.571568Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/diablo-4-hell-gate-art-uhdpaper.com-8K-7.279.jpg" added="2025-04-11T18:02:25.628603Z" modified="2025-04-11T18:02:25.628613Z" visited="2025-04-11T18:02:25.628604Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-11T18:02:25.628607Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/Gruvbox.tar.gz" added="2025-04-11T23:43:48.553670Z" modified="2025-04-11T23:47:21.323000Z" visited="2025-04-11T23:47:21.323000Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="application/x-compressed-tar"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-11T23:43:48.553674Z" count="1"/>
+          <bookmark:application name="org.kde.ark" exec="ark %u" modified="2025-04-11T23:47:21.323000Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/buuf3.46.tar.xz" added="2025-04-12T00:01:17.079493Z" modified="2025-04-12T00:01:27.066000Z" visited="2025-04-12T00:01:27.066000Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="application/x-xz-compressed-tar"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-12T00:01:17.079500Z" count="1"/>
+          <bookmark:application name="org.kde.ark" exec="ark %u" modified="2025-04-12T00:01:27.066000Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/buuf-nestort-master.tar.gz" added="2025-04-12T00:13:20.941242Z" modified="2025-04-12T00:14:14.060000Z" visited="2025-04-12T00:14:14.060000Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="application/x-compressed-tar"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-12T00:13:20.941247Z" count="1"/>
+          <bookmark:application name="org.kde.ark" exec="ark %u" modified="2025-04-12T00:14:14.060000Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/Hackneyed-Dark-0.9.3-right-handed.tar.tar" added="2025-04-12T04:56:48.779127Z" modified="2025-04-12T05:18:10.741000Z" visited="2025-04-12T05:18:10.741000Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="application/x-tar"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-12T04:56:48.779134Z" count="1"/>
+          <bookmark:application name="org.kde.ark" exec="ark %u" modified="2025-04-12T05:18:10.741000Z" count="2"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/Hackneyed-Dark-0.9.3-right-handed.tar" added="2025-04-12T05:18:07.780000Z" modified="2025-04-12T05:18:07.780000Z" visited="2025-04-12T05:18:07.780000Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="application/x-tar"/>
+        <bookmark:applications>
+          <bookmark:application name="org.kde.ark" exec="ark %u" modified="2025-04-12T05:18:07.780000Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/Hackneyed-0.9.3-right-handed.tar.tar" added="2025-04-12T05:22:40.637615Z" modified="2025-04-12T05:23:04.198000Z" visited="2025-04-12T05:23:04.198000Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="application/x-tar"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;librewolf %u&apos;" modified="2025-04-12T05:22:40.637621Z" count="1"/>
+          <bookmark:application name="org.kde.ark" exec="ark %u" modified="2025-04-12T05:23:04.198000Z" count="2"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/Hackneyed-0.9.3-right-handed.tar" added="2025-04-12T05:23:07.789000Z" modified="2025-04-12T05:23:07.789000Z" visited="2025-04-12T05:23:07.789000Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="application/x-tar"/>
+        <bookmark:applications>
+          <bookmark:application name="org.kde.ark" exec="ark %u" modified="2025-04-12T05:23:07.789000Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home" added="2025-04-12T06:28:53.426014Z" modified="2025-04-12T06:28:53.426022Z" visited="2025-04-12T06:28:53.426016Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="inode/directory"/>
+        <bookmark:applications>
+          <bookmark:application name="electron" exec="&apos;electron %u&apos;" modified="2025-04-12T06:28:53.426018Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///" added="2025-04-12T06:29:05.557730Z" modified="2025-04-12T06:29:05.557732Z" visited="2025-04-12T06:29:05.557730Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="inode/directory"/>
+        <bookmark:applications>
+          <bookmark:application name="electron" exec="&apos;electron %u&apos;" modified="2025-04-12T06:29:05.557731Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///usr/share/sddm/themes" added="2025-04-12T09:26:20.777671Z" modified="2025-04-12T09:26:20.777677Z" visited="2025-04-12T09:26:20.777672Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="inode/directory"/>
+        <bookmark:applications>
+          <bookmark:application name="codium" exec="&apos;codium %u&apos;" modified="2025-04-12T09:26:20.777673Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/anime-girl-red-eyes-katana-fantasy-4k-wallpaper-uhdpaper.com-279@5@b.jpg" added="2025-04-12T22:10:07.947095Z" modified="2025-04-12T22:10:07.947097Z" visited="2025-04-12T22:10:07.947095Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:groups>
+          <bookmark:group>Graphics</bookmark:group>
+        </bookmark:groups>
+        <bookmark:applications>
+          <bookmark:application name="GNU Image Manipulation Program" exec="&apos;gimp-3.0 %u&apos;" modified="2025-04-12T22:10:07.947096Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/anime-girl-mask-katana-4k-wallpaper-uhdpaper.com-532@5@c.jpg" added="2025-04-12T22:22:03.517919Z" modified="2025-04-12T22:22:03.517922Z" visited="2025-04-12T22:22:03.517920Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:groups>
+          <bookmark:group>Graphics</bookmark:group>
+        </bookmark:groups>
+        <bookmark:applications>
+          <bookmark:application name="GNU Image Manipulation Program" exec="&apos;gimp-3.0 %u&apos;" modified="2025-04-12T22:22:03.517921Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/astronaut-girl-sci-fi-4k-wallpaper-uhdpaper.com-704@0@j.jpg" added="2025-04-12T22:23:43.065839Z" modified="2025-04-12T22:23:43.065841Z" visited="2025-04-12T22:23:43.065839Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:groups>
+          <bookmark:group>Graphics</bookmark:group>
+        </bookmark:groups>
+        <bookmark:applications>
+          <bookmark:application name="GNU Image Manipulation Program" exec="&apos;gimp-3.0 %u&apos;" modified="2025-04-12T22:23:43.065840Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/bema-next/public/avatar.jpg" added="2025-04-12T22:36:52.129561Z" modified="2025-04-12T22:36:52.129563Z" visited="2025-04-12T22:36:52.129561Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:groups>
+          <bookmark:group>Graphics</bookmark:group>
+        </bookmark:groups>
+        <bookmark:applications>
+          <bookmark:application name="GNU Image Manipulation Program" exec="&apos;gimp-3.0 %u&apos;" modified="2025-04-12T22:36:52.129562Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/Untitled.xcf" added="2025-04-13T03:00:41.886664Z" modified="2025-04-13T03:00:44.868341Z" visited="2025-04-13T03:00:41.886665Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/x-xcf"/>
+        <bookmark:groups>
+          <bookmark:group>Graphics</bookmark:group>
+        </bookmark:groups>
+        <bookmark:applications>
+          <bookmark:application name="nemo" exec="&apos;gimp-3.0 %U&apos;" modified="2025-04-13T03:00:41.886669Z" count="1"/>
+          <bookmark:application name="GNU Image Manipulation Program" exec="&apos;gimp-3.0 %u&apos;" modified="2025-04-13T03:00:44.868340Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/the-wrong-turn-pixel-moewalls-com.mp4" added="2025-04-13T03:11:33.345151Z" modified="2025-04-13T03:11:33.345157Z" visited="2025-04-13T03:11:33.345152Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;firefox %u&apos;" modified="2025-04-13T03:11:33.345155Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/coastal-moewalls-com.mp4" added="2025-04-13T03:12:12.579907Z" modified="2025-04-13T03:12:12.579966Z" visited="2025-04-13T03:12:12.579914Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;firefox %u&apos;" modified="2025-04-13T03:12:12.579932Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/night-city-pixel-moewalls-com.mp4" added="2025-04-13T03:12:51.305279Z" modified="2025-04-13T03:12:51.305287Z" visited="2025-04-13T03:12:51.305281Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;firefox %u&apos;" modified="2025-04-13T03:12:51.305284Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/backiee-308746-landscape.jpg" added="2025-04-13T03:14:24.856791Z" modified="2025-04-13T13:11:24.503795Z" visited="2025-04-13T03:14:24.856792Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="Firefox" exec="&apos;firefox %u&apos;" modified="2025-04-13T03:14:24.856794Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;vimiv --start-from-desktop %F&apos;" modified="2025-04-13T13:11:24.503791Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/anime-girl-nun-with-tattoo-4k-wallpaper-uhdpaper.com-740@3@a.jpg" added="2025-04-13T03:14:40.303476Z" modified="2025-04-13T03:14:40.303484Z" visited="2025-04-13T03:14:40.303477Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="nemo" exec="&apos;vimiv --start-from-desktop %F&apos;" modified="2025-04-13T03:14:40.303480Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/titlwinzbst81.jpg" added="2025-04-13T13:12:11.175541Z" modified="2025-04-13T13:12:11.175550Z" visited="2025-04-13T13:12:11.175542Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="nemo" exec="&apos;vimiv --start-from-desktop %F&apos;" modified="2025-04-13T13:12:11.175544Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/wallhaven-2yp6gg.png" added="2025-04-13T13:13:53.057112Z" modified="2025-04-13T13:13:53.057121Z" visited="2025-04-13T13:13:53.057113Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-13T13:13:53.057116Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/wallhaven-rrk6pj.jpg" added="2025-04-13T13:14:51.037664Z" modified="2025-04-14T08:02:01.454000Z" visited="2025-04-14T08:02:01.454000Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-13T13:14:51.037668Z" count="1"/>
+          <bookmark:application name="vimiv" exec="vimiv --start-from-desktop %f" modified="2025-04-14T08:02:01.454000Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/wallhaven-vq72xm.png" added="2025-04-13T13:16:12.012213Z" modified="2025-04-13T13:16:12.012222Z" visited="2025-04-13T13:16:12.012215Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-13T13:16:12.012217Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/wallhaven-1p7dww.jpg" added="2025-04-13T13:17:07.144213Z" modified="2025-04-13T13:53:41.104098Z" visited="2025-04-13T13:17:07.144215Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-13T13:17:07.144218Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;vimiv --start-from-desktop %F&apos;" modified="2025-04-13T13:53:41.104084Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/wallhaven-rrv6r7.jpg" added="2025-04-13T13:17:25.360327Z" modified="2025-04-14T08:01:52.024000Z" visited="2025-04-14T08:01:52.024000Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-13T13:17:25.360332Z" count="1"/>
+          <bookmark:application name="vimiv" exec="vimiv --start-from-desktop %f" modified="2025-04-14T08:01:52.024000Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/wallhaven-9d3r28.jpg" added="2025-04-13T13:18:46.671152Z" modified="2025-04-13T13:18:46.671161Z" visited="2025-04-13T13:18:46.671153Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-13T13:18:46.671156Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/wallhaven-1p7xvv.png" added="2025-04-13T13:19:18.379762Z" modified="2025-04-13T13:19:18.379771Z" visited="2025-04-13T13:19:18.379763Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-13T13:19:18.379766Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/wallhaven-kxmgv1.jpg" added="2025-04-13T13:19:44.893507Z" modified="2025-04-13T13:19:44.893515Z" visited="2025-04-13T13:19:44.893508Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-13T13:19:44.893510Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/wallhaven-1p75xv.jpg" added="2025-04-13T13:20:50.847070Z" modified="2025-04-13T13:20:50.847079Z" visited="2025-04-13T13:20:50.847071Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-13T13:20:50.847074Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/wallhaven-3lx1zd.jpg" added="2025-04-13T13:21:55.614831Z" modified="2025-04-13T13:21:55.614840Z" visited="2025-04-13T13:21:55.614832Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-13T13:21:55.614835Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/wallhaven-2ypq8m.jpg" added="2025-04-13T13:22:30.711211Z" modified="2025-04-14T20:16:59.499000Z" visited="2025-04-14T20:16:59.499000Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-13T13:22:30.711216Z" count="1"/>
+          <bookmark:application name="vimiv" exec="vimiv --start-from-desktop %f" modified="2025-04-14T20:16:59.499000Z" count="2"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/wallhaven-vq7698.jpg" added="2025-04-13T13:22:46.809474Z" modified="2025-04-13T13:22:46.809483Z" visited="2025-04-13T13:22:46.809476Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-13T13:22:46.809478Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/wallhaven-3lxde3.jpg" added="2025-04-13T13:26:50.210568Z" modified="2025-04-13T13:26:50.210578Z" visited="2025-04-13T13:26:50.210569Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-13T13:26:50.210573Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/wallhaven-l8egzr.jpg" added="2025-04-13T13:32:01.139453Z" modified="2025-04-13T13:32:01.139462Z" visited="2025-04-13T13:32:01.139454Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-13T13:32:01.139457Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/wallhaven-yxz65x.jpg" added="2025-04-13T13:35:50.873152Z" modified="2025-04-14T08:02:26.297000Z" visited="2025-04-14T08:02:26.297000Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-13T13:35:50.873156Z" count="1"/>
+          <bookmark:application name="vimiv" exec="vimiv --start-from-desktop %f" modified="2025-04-14T08:02:26.297000Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/annie-spratt-gCuSEdv7W7w-unsplash.jpg" added="2025-04-13T13:38:56.962043Z" modified="2025-04-13T13:38:56.962053Z" visited="2025-04-13T13:38:56.962045Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-13T13:38:56.962048Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/broken_window_3840x2160.mp4" added="2025-04-13T17:21:42.848811Z" modified="2025-04-13T17:22:01.555229Z" visited="2025-04-13T17:21:42.848813Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-13T17:21:42.848816Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;/usr/bin/vlc --started-from-file %U&apos;" modified="2025-04-13T17:22:01.555227Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/houses.png" added="2025-04-14T08:01:05.147000Z" modified="2025-04-14T08:01:05.147000Z" visited="2025-04-14T08:01:05.147000Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:groups>
+          <bookmark:group>Graphics</bookmark:group>
+        </bookmark:groups>
+        <bookmark:applications>
+          <bookmark:application name="vimiv" exec="vimiv --start-from-desktop %f" modified="2025-04-14T08:01:05.147000Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/wallpapers/backiee-308746-landscape.jpg" added="2025-04-14T08:12:41.848000Z" modified="2025-04-14T08:12:41.848000Z" visited="2025-04-14T08:12:41.848000Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:groups>
+          <bookmark:group>Graphics</bookmark:group>
+        </bookmark:groups>
+        <bookmark:applications>
+          <bookmark:application name="vimiv" exec="vimiv --start-from-desktop %f" modified="2025-04-14T08:12:41.848000Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/mylivewallpapers-com-Stray-Cat-4K.zip" added="2025-04-14T11:32:18.022789Z" modified="2025-04-14T11:32:18.022833Z" visited="2025-04-14T11:32:18.022792Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="application/zip"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-14T11:32:18.022821Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/mylivewallpapers-com-Ancient-Rome-Pool-4K.zip" added="2025-04-14T11:36:52.638253Z" modified="2025-04-14T11:36:52.638262Z" visited="2025-04-14T11:36:52.638254Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="application/zip"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-14T11:36:52.638257Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/mylivewallpapers-com-Hellblade-II-4Kmylivewallpapers-com-Hellblade-II-4K.zip" added="2025-04-14T11:39:13.659401Z" modified="2025-04-14T11:39:13.659410Z" visited="2025-04-14T11:39:13.659402Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="application/zip"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-14T11:39:13.659405Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/sd" added="2025-04-14T16:07:59.270205Z" modified="2025-04-14T16:07:59.270207Z" visited="2025-04-14T16:07:59.270205Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="application/octet-stream"/>
+        <bookmark:applications>
+          <bookmark:application name="electron" exec="&apos;electron %u&apos;" modified="2025-04-14T16:07:59.270206Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/cheat_sheets/tmux.png" added="2025-04-21T12:42:11.320527Z" modified="2025-04-21T12:42:11.320536Z" visited="2025-04-21T12:42:11.320528Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/png"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-21T12:42:11.320531Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+</xbel>
