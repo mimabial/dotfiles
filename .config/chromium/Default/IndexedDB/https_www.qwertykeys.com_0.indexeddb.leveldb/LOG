@@ -1,6 +1,0 @@
-2025/04/01-11:49:25.262 7b1 Creating DB /home/rifle/.config/chromium/Default/IndexedDB/https_www.qwertykeys.com_0.indexeddb.leveldb since it was missing.
-2025/04/01-11:49:25.267 7b1 Reusing MANIFEST /home/rifle/.config/chromium/Default/IndexedDB/https_www.qwertykeys.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/04/01-11:49:40.960 7b2 Level-0 table #5: started
-2025/04/01-11:49:40.963 7b2 Level-0 table #5: 1473 bytes OK
-2025/04/01-11:49:40.967 7b2 Delete type=0 #3
-2025/04/01-11:49:40.967 7b2 Manual compaction at level-0 from (begin) .. (end); will stop at (end)

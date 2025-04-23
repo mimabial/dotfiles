@@ -1,6 +1,0 @@
-2025/04/03-20:59:18.856 4becf Creating DB /home/rifle/.config/chromium/Default/IndexedDB/https_www.fandom.com_0.indexeddb.leveldb since it was missing.
-2025/04/03-20:59:18.862 4becf Reusing MANIFEST /home/rifle/.config/chromium/Default/IndexedDB/https_www.fandom.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/04/03-23:21:33.075 4bed0 Level-0 table #5: started
-2025/04/03-23:21:33.078 4bed0 Level-0 table #5: 3195 bytes OK
-2025/04/03-23:21:33.081 4bed0 Delete type=0 #3
-2025/04/03-23:21:33.081 4bed0 Manual compaction at level-0 from (begin) .. (end); will stop at (end)

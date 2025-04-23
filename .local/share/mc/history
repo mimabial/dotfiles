@@ -7,6 +7,7 @@
 1=/home/rifle/.local/share/mc/skins
 2=/home/rifle/dotfiles/.config
 3=/home/rifle
+4=/home/rifle/dotfiles
 
 [Dir Hist New Left Panel]
 0=/home/rifle/.config/mc
@@ -18,3 +19,4 @@
 6=/bin
 7=/
 8=/home/rifle
+9=/home/rifle/dotfiles

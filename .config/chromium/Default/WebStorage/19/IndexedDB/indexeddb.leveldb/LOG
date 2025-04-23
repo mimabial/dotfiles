@@ -1,6 +1,0 @@
-2025/04/03-19:05:20.596 6df Creating DB /home/rifle/.config/chromium/Default/WebStorage/19/IndexedDB/indexeddb.leveldb since it was missing.
-2025/04/03-19:05:20.602 6df Reusing MANIFEST /home/rifle/.config/chromium/Default/WebStorage/19/IndexedDB/indexeddb.leveldb/MANIFEST-000001
-2025/04/03-19:06:28.377 6de Level-0 table #5: started
-2025/04/03-19:06:28.379 6de Level-0 table #5: 15142 bytes OK
-2025/04/03-19:06:28.382 6de Delete type=0 #3
-2025/04/03-19:06:28.382 6de Manual compaction at level-0 from (begin) .. (end); will stop at (end)

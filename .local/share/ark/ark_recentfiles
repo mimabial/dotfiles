@@ -1,8 +1,6 @@
 [RecentFiles]
 files\1\displayName=Hackneyed-0.9.3-right-handed.tar
 files\1\url="@Variant(\0\0\0\x11\0\0\0=file:///home/rifle/Downloads/Hackneyed-0.9.3-right-handed.tar)"
-files\10\displayName=FantasqueSansMono-NoLoopK.zip
-files\10\url=@Variant(\0\0\0\x11\0\0\0:file:///home/rifle/Downloads/FantasqueSansMono-NoLoopK.zip)
 files\2\displayName=Hackneyed-0.9.3-right-handed.tar.tar
 files\2\url=@Variant(\0\0\0\x11\0\0\0\x41\x66ile:///home/rifle/Downloads/Hackneyed-0.9.3-right-handed.tar.tar)
 files\3\displayName=Hackneyed-Dark-0.9.3-right-handed.tar
@@ -19,4 +17,4 @@ files\8\displayName=PhotoGIMP-linux.zip
 files\8\url=@Variant(\0\0\0\x11\0\0\0\x30\x66ile:///home/rifle/Downloads/PhotoGIMP-linux.zip)
 files\9\displayName=PhotoGIMP.zip
 files\9\url=@Variant(\0\0\0\x11\0\0\0*file:///home/rifle/Downloads/PhotoGIMP.zip)
-files\size=10
+files\size=9
