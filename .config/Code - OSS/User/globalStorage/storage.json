@@ -9,11 +9,7 @@
                 "folderUri": "file:///home/rifle"
             }
         ],
-        "emptyWindows": [
-            {
-                "backupFolder": "1745313460725"
-            }
-        ]
+        "emptyWindows": []
     },
     "windowControlHeight": 35,
     "profileAssociations": {

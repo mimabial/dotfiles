@@ -46,9 +46,13 @@
       </file>
       <file current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/app/[locale]/(auth)/signup/form.tsx">
-          <provider editor-type-id="text-editor" selected="true" />
+          <provider editor-type-id="text-editor" selected="true">
+            <state>
+              <caret column="1" selection-start-column="1" selection-end-column="1" />
+            </state>
+          </provider>
         </entry>
-        <tab><![CDATA[{"tabTitle":"form.tsx","foregroundColor":-2104859,"textAttributes":{"name":"a"},"icon":[10,57,99,111,109,46,105,110,116,101,108,108,105,106,46,117,105,46,105,99,111,110,115,46,82,97,115,116,101,114,105,122,101,100,73,109,97,103,101,68,97,116,97,76,111,97,100,101,114,68,101,115,99,114,105,112,116,111,114,18,76,10,23,105,99,111,110,115,47,102,105,108,101,84,121,112,101,115,47,84,83,88,46,115,118,103,18,29,105,99,111,110,115,47,101,120,112,117,105,47,102,105,108,101,84,121,112,101,115,47,116,115,120,46,115,118,103,26,10,74,97,118,97,83,99,114,105,112,116,40,-73,-58,-99,-13,3,48,0]}]]></tab>
+        <tab><![CDATA[{"tabTitle":"form.tsx","foregroundColor":-9392385,"textAttributes":{"name":"a","children":[{"name":"option","attributes":{"name":"FOREGROUND","value":"70aeff"}},{"name":"option","attributes":{"name":"EFFECT_COLOR","value":"fa6675"}},{"name":"option","attributes":{"name":"EFFECT_TYPE","value":"2"}}]},"icon":[10,57,99,111,109,46,105,110,116,101,108,108,105,106,46,117,105,46,105,99,111,110,115,46,82,97,115,116,101,114,105,122,101,100,73,109,97,103,101,68,97,116,97,76,111,97,100,101,114,68,101,115,99,114,105,112,116,111,114,18,76,10,23,105,99,111,110,115,47,102,105,108,101,84,121,112,101,115,47,84,83,88,46,115,118,103,18,29,105,99,111,110,115,47,101,120,112,117,105,47,102,105,108,101,84,121,112,101,115,47,116,115,120,46,115,118,103,26,10,74,97,118,97,83,99,114,105,112,116,40,-73,-58,-99,-13,3,48,0]}]]></tab>
       </file>
       <file>
         <entry file="file://$PROJECT_DIR$/src/app/[locale]/(main)/test/layout.tsx">
@@ -89,14 +93,15 @@
     </replaceStrings>
   </component>
   <component name="GitSEFilterConfiguration">{}</component>
-  <component name="IdeDocumentHistory">{
-  &quot;changedPaths&quot;: [
-    &quot;/home/rifle/bema-next/src/app/[locale]/(main)/test/page.tsx&quot;,
-    &quot;/home/rifle/bema-next/src/app/[locale]/layout.tsx&quot;,
-    &quot;/home/rifle/bema-next/src/app/[locale]/(main)/test/test.css&quot;,
-    &quot;/home/rifle/bema-next/src/app/[locale]/(main)/test/layout.tsx&quot;
+  <component name="IdeDocumentHistory"><![CDATA[{
+  "changedPaths": [
+    "/home/rifle/bema-next/src/app/[locale]/(main)/test/page.tsx",
+    "/home/rifle/bema-next/src/app/[locale]/layout.tsx",
+    "/home/rifle/bema-next/src/app/[locale]/(main)/test/test.css",
+    "/home/rifle/bema-next/src/app/[locale]/(main)/test/layout.tsx",
+    "/home/rifle/bema-next/src/app/[locale]/(auth)/signup/form.tsx"
   ]
-}</component>
+}]]></component>
   <component name="IgnoredFileRootStore">
     <option name="generatedRoots">
       <set>
@@ -1039,7 +1044,7 @@
     </option>
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="8244000" />
+    <option name="totallyTimeSpent" value="10691000" />
   </component>
   <component name="ToolWindowManager">
     <layoutV2>
@@ -1083,7 +1088,11 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/app/[locale]/(auth)/signup/form.tsx">
-      <provider selected="true" editor-type-id="text-editor" />
+      <provider selected="true" editor-type-id="text-editor">
+        <state>
+          <caret column="1" selection-start-column="1" selection-end-column="1" />
+        </state>
+      </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/app/[locale]/(main)/test/layout.tsx">
       <provider selected="true" editor-type-id="text-editor">
