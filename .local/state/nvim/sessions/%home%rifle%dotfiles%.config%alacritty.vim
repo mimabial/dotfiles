@@ -17,7 +17,7 @@ if &shortmess =~ 'A'
 else
   set shortmess=aoO
 endif
-badd +3 alacritty.toml
+badd +32 alacritty.toml
 argglobal
 %argdel
 $argadd alacritty.toml
@@ -38,14 +38,16 @@ setlocal foldlevel=99
 setlocal foldminlines=1
 setlocal foldnestmax=20
 setlocal foldenable
-1
+4
 normal! zo
-let s:l = 3 - ((2 * winheight(0) + 23) / 47)
+5
+normal! zo
+let s:l = 32 - ((31 * winheight(0) + 23) / 46)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
-keepjumps 3
-normal! 024|
+keepjumps 32
+normal! 05|
 tabnext 1
 if exists('s:wipebuf') && len(win_findbuf(s:wipebuf)) == 0 && getbufvar(s:wipebuf, '&buftype') isnot# 'terminal'
   silent exe 'bwipe ' . s:wipebuf

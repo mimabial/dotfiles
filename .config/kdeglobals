@@ -1,11 +1,11 @@
 [Colors:View]
-BackgroundNormal=#282828
+BackgroundNormal=#1B1D22
 
 [General]
 TerminalApplication=/sbin/kitty
 
 [Icons]
-Theme=buuf-nestort
+Theme=Tela-circle-dracula
 
 [KDE]
 ShowDeleteCommand=true

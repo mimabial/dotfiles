@@ -17,11 +17,18 @@ if &shortmess =~ 'A'
 else
   set shortmess=aoO
 endif
-badd +0 hyprlock.conf
+badd +97 keybindings.conf
 argglobal
 %argdel
-$argadd hyprlock.conf
-edit hyprlock.conf
+$argadd keybindings.conf
+edit keybindings.conf
+wincmd t
+let s:save_winminheight = &winminheight
+let s:save_winminwidth = &winminwidth
+set winminheight=0
+set winheight=1
+set winminwidth=0
+set winwidth=1
 argglobal
 setlocal foldmethod=expr
 setlocal foldexpr=v:lua.require'lazyvim.util'.ui.foldexpr()
@@ -31,12 +38,12 @@ setlocal foldlevel=99
 setlocal foldminlines=1
 setlocal foldnestmax=20
 setlocal foldenable
-let s:l = 1 - ((0 * winheight(0) + 23) / 47)
+let s:l = 97 - ((41 * winheight(0) + 23) / 46)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
-keepjumps 1
-normal! 0
+keepjumps 97
+normal! 029|
 tabnext 1
 if exists('s:wipebuf') && len(win_findbuf(s:wipebuf)) == 0 && getbufvar(s:wipebuf, '&buftype') isnot# 'terminal'
   silent exe 'bwipe ' . s:wipebuf
@@ -44,6 +51,8 @@ endif
 unlet! s:wipebuf
 set winheight=1 winwidth=20
 let &shortmess = s:shortmess_save
+let &winminheight = s:save_winminheight
+let &winminwidth = s:save_winminwidth
 let s:sx = expand("<sfile>:p:r")."x.vim"
 if filereadable(s:sx)
   exe "source " . fnameescape(s:sx)

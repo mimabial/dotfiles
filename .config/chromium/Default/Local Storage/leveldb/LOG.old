@@ -1,48 +1,36 @@
-2025/04/23-15:30:51.918 4 Reusing MANIFEST /home/rifle/.config/chromium/Default/Local Storage/leveldb/MANIFEST-000001
-2025/04/23-15:30:51.922 4 Recovering log #32
-2025/04/23-15:30:51.923 4 Reusing old log /home/rifle/.config/chromium/Default/Local Storage/leveldb/000032.log 
-2025/04/23-15:54:20.749 4 Level-0 table #37: started
-2025/04/23-15:54:20.756 4 Level-0 table #37: 18567 bytes OK
-2025/04/23-15:54:20.761 4 Delete type=0 #32
-2025/04/23-15:56:03.020 4 Level-0 table #39: started
-2025/04/23-15:56:03.026 4 Level-0 table #39: 62616 bytes OK
-2025/04/23-15:56:03.031 4 Delete type=0 #36
-2025/04/23-16:10:50.068 4 Level-0 table #41: started
-2025/04/23-16:10:50.073 4 Level-0 table #41: 38195 bytes OK
-2025/04/23-16:10:50.077 4 Delete type=0 #38
-2025/04/23-16:40:50.068 5 Level-0 table #43: started
-2025/04/23-16:40:50.073 5 Level-0 table #43: 18334 bytes OK
-2025/04/23-16:40:50.079 5 Delete type=0 #40
-2025/04/23-16:40:50.080 5 Compacting 4@0 + 1@1 files
-2025/04/23-16:40:50.106 5 Generated table #44@0: 251 keys, 572208 bytes
-2025/04/23-16:40:50.106 5 Compacted 4@0 + 1@1 files => 572208 bytes
-2025/04/23-16:40:50.109 5 compacted to: files[ 0 1 1 0 0 0 0 ]
-2025/04/23-16:40:50.110 5 Delete type=2 #43
-2025/04/23-16:40:50.110 5 Delete type=2 #39
-2025/04/23-16:40:50.111 5 Delete type=2 #41
-2025/04/23-16:40:50.111 5 Delete type=2 #37
-2025/04/23-16:40:50.111 5 Delete type=2 #34
-2025/04/23-16:58:21.658 4 Level-0 table #46: started
-2025/04/23-16:58:21.665 4 Level-0 table #46: 48704 bytes OK
-2025/04/23-16:58:21.671 4 Delete type=0 #42
-2025/04/23-17:11:50.068 4 Level-0 table #48: started
-2025/04/23-17:11:50.072 4 Level-0 table #48: 27328 bytes OK
-2025/04/23-17:11:50.080 4 Delete type=0 #45
-2025/04/23-17:29:50.068 4 Level-0 table #50: started
-2025/04/23-17:29:50.072 4 Level-0 table #50: 36391 bytes OK
-2025/04/23-17:29:50.078 4 Delete type=0 #47
-2025/04/23-17:34:50.068 5 Level-0 table #52: started
-2025/04/23-17:34:50.075 5 Level-0 table #52: 60328 bytes OK
-2025/04/23-17:34:50.080 5 Delete type=0 #49
-2025/04/23-17:34:50.081 5 Compacting 4@0 + 1@1 files
-2025/04/23-17:34:50.106 5 Generated table #53@0: 254 keys, 603925 bytes
-2025/04/23-17:34:50.106 5 Compacted 4@0 + 1@1 files => 603925 bytes
-2025/04/23-17:34:50.109 5 compacted to: files[ 0 1 1 0 0 0 0 ]
-2025/04/23-17:34:50.111 5 Delete type=2 #48
-2025/04/23-17:34:50.111 5 Delete type=2 #46
-2025/04/23-17:34:50.111 5 Delete type=2 #44
-2025/04/23-17:34:50.111 5 Delete type=2 #52
-2025/04/23-17:34:50.111 5 Delete type=2 #50
-2025/04/23-17:43:55.130 5 Level-0 table #55: started
-2025/04/23-17:43:55.134 5 Level-0 table #55: 35015 bytes OK
-2025/04/23-17:43:55.138 5 Delete type=0 #51
+2025/04/24-09:22:28.611 4 Reusing MANIFEST /home/rifle/.config/chromium/Default/Local Storage/leveldb/MANIFEST-000001
+2025/04/24-09:22:28.614 4 Recovering log #113
+2025/04/24-09:22:28.614 4 Reusing old log /home/rifle/.config/chromium/Default/Local Storage/leveldb/000113.log 
+2025/04/24-09:55:43.053 4 Level-0 table #117: started
+2025/04/24-09:55:43.058 4 Level-0 table #117: 26596 bytes OK
+2025/04/24-09:55:43.062 4 Delete type=0 #113
+2025/04/24-09:55:43.062 4 Compacting 4@0 + 1@1 files
+2025/04/24-09:55:43.087 4 Generated table #118@0: 360 keys, 921722 bytes
+2025/04/24-09:55:43.087 4 Compacted 4@0 + 1@1 files => 921722 bytes
+2025/04/24-09:55:43.089 4 compacted to: files[ 0 1 1 0 0 0 0 ]
+2025/04/24-09:55:43.090 4 Delete type=2 #112
+2025/04/24-09:55:43.090 4 Delete type=2 #114
+2025/04/24-09:55:43.090 4 Delete type=2 #108
+2025/04/24-09:55:43.090 4 Delete type=2 #110
+2025/04/24-09:55:43.090 4 Delete type=2 #117
+2025/04/24-10:45:38.711 4 Level-0 table #120: started
+2025/04/24-10:45:38.716 4 Level-0 table #120: 70159 bytes OK
+2025/04/24-10:45:38.720 4 Delete type=0 #116
+2025/04/24-10:47:35.289 4 Level-0 table #122: started
+2025/04/24-10:47:35.309 4 Level-0 table #122: 528618 bytes OK
+2025/04/24-10:47:35.312 4 Delete type=0 #119
+2025/04/24-12:10:57.867 5 Level-0 table #124: started
+2025/04/24-12:10:57.874 5 Level-0 table #124: 47601 bytes OK
+2025/04/24-12:10:57.878 5 Delete type=0 #121
+2025/04/24-13:13:06.481 4 Level-0 table #126: started
+2025/04/24-13:13:06.484 4 Level-0 table #126: 40459 bytes OK
+2025/04/24-13:13:06.488 4 Delete type=0 #123
+2025/04/24-13:13:06.488 4 Compacting 4@0 + 1@1 files
+2025/04/24-13:13:06.515 4 Generated table #127@0: 372 keys, 1447814 bytes
+2025/04/24-13:13:06.515 4 Compacted 4@0 + 1@1 files => 1447814 bytes
+2025/04/24-13:13:06.516 4 compacted to: files[ 0 1 1 0 0 0 0 ]
+2025/04/24-13:13:06.517 4 Delete type=2 #120
+2025/04/24-13:13:06.517 4 Delete type=2 #118
+2025/04/24-13:13:06.517 4 Delete type=2 #122
+2025/04/24-13:13:06.517 4 Delete type=2 #124
+2025/04/24-13:13:06.517 4 Delete type=2 #126

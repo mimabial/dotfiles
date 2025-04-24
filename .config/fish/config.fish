@@ -10,7 +10,7 @@ if status is-interactive
     # Custom aliases
     alias ll "ls -la"
     alias la "ls -a"
-    # alias rmf "rm -rf"
+    alias c clear
     alias g git
 
     # Path additions (customize as needed)

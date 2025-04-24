@@ -17,11 +17,11 @@ if &shortmess =~ 'A'
 else
   set shortmess=aoO
 endif
-badd +247 .tmux.conf
+badd +41 .zshrc
 argglobal
 %argdel
-$argadd .tmux.conf
-edit .tmux.conf
+$argadd .zshrc
+edit .zshrc
 wincmd t
 let s:save_winminheight = &winminheight
 let s:save_winminwidth = &winminwidth
@@ -38,11 +38,11 @@ setlocal foldlevel=99
 setlocal foldminlines=1
 setlocal foldnestmax=20
 setlocal foldenable
-let s:l = 247 - ((30 * winheight(0) + 26) / 52)
+let s:l = 41 - ((40 * winheight(0) + 24) / 49)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
-keepjumps 247
+keepjumps 41
 normal! 0
 tabnext 1
 if exists('s:wipebuf') && len(win_findbuf(s:wipebuf)) == 0 && getbufvar(s:wipebuf, '&buftype') isnot# 'terminal'

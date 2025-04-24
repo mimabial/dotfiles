@@ -904,7 +904,7 @@
       "LSP"
     ],
     "source": {
-      "id": "pkg:pypi/basedpyright@1.29.0"
+      "id": "pkg:pypi/basedpyright@1.29.1"
     },
     "schemas": {
       "lsp": "vscode:https://raw.githubusercontent.com/DetachHead/basedpyright/v{{version}}/packages/vscode-pyright/package.json"
@@ -1287,7 +1287,7 @@
       "LSP"
     ],
     "source": {
-      "id": "pkg:npm/brighterscript@0.69.6"
+      "id": "pkg:npm/brighterscript@0.69.7"
     },
     "bin": {
       "bsc": "npm:bsc"
@@ -2116,7 +2116,7 @@
       "LSP"
     ],
     "source": {
-      "id": "pkg:github/clojure-lsp/clojure-lsp@2025.03.27-20.21.36",
+      "id": "pkg:github/clojure-lsp/clojure-lsp@2025.04.23-18.16.46",
       "asset": [
         {
           "target": "darwin_arm64",
@@ -2549,7 +2549,7 @@
       "LSP"
     ],
     "source": {
-      "id": "pkg:npm/%40github/copilot-language-server@1.304.0"
+      "id": "pkg:npm/%40github/copilot-language-server@1.306.0"
     },
     "bin": {
       "copilot-language-server": "npm:copilot-language-server"
@@ -2851,10 +2851,10 @@
       "Formatter"
     ],
     "source": {
-      "id": "pkg:nuget/csharpier@0.30.6"
+      "id": "pkg:nuget/csharpier@1.0.0"
     },
     "bin": {
-      "dotnet-csharpier": "nuget:dotnet-csharpier"
+      "csharpier": "nuget:csharpier"
     }
   },
   {
@@ -4961,7 +4961,7 @@
     "languages": [],
     "categories": [],
     "source": {
-      "id": "pkg:github/cli/cli@v2.70.0",
+      "id": "pkg:github/cli/cli@v2.71.0",
       "asset": [
         {
           "target": "darwin_x64",
@@ -6572,7 +6572,7 @@
       "LSP"
     ],
     "source": {
-      "id": "pkg:golang/github.com/hyprland-community/hyprls@v0.5.2#cmd/hyprls"
+      "id": "pkg:golang/github.com/hyprland-community/hyprls@v0.6.0#cmd/hyprls"
     },
     "bin": {
       "hyprls": "golang:hyprls"
@@ -9012,13 +9012,13 @@
       "GPL-3.0-or-later"
     ],
     "languages": [
-      "Nginx"
+      "nginx"
     ],
     "categories": [
       "LSP"
     ],
     "source": {
-      "id": "pkg:pypi/nginx-language-server@0.8.0"
+      "id": "pkg:pypi/nginx-language-server@0.9.0"
     },
     "bin": {
       "nginx-language-server": "pypi:nginx-language-server"
@@ -11773,6 +11773,10 @@
     "categories": [
       "LSP"
     ],
+    "deprecation": {
+      "since": "v0.0.61",
+      "message": "please use the mason package `ruff` as replacement. The command `ruff server` supports the same feature set as ruff-lsp, but with superior performance and no installation required. ruff server was marked as stable in Ruff v0.5.3."
+    },
     "source": {
       "id": "pkg:pypi/ruff-lsp@0.0.62"
     },
@@ -12529,17 +12533,32 @@
       "LSP"
     ],
     "source": {
-      "id": "pkg:github/awslabs/smithy-language-server@0.6.0",
+      "id": "pkg:github/awslabs/smithy-language-server@0.7.0",
       "asset": [
         {
-          "target": "unix",
-          "file": "smithy-language-server-{{version}}.zip",
-          "bin": "smithy-language-server-{{version}}/bin/smithy-language-server"
+          "target": "darwin_x64",
+          "file": "smithy-language-server-darwin-x86_64.zip",
+          "bin": "smithy-language-server-darwin-x86_64/bin/smithy-language-server"
         },
         {
-          "target": "win",
-          "file": "smithy-language-server-{{version}}.zip",
-          "bin": "smithy-language-server-{{version}}/bin/smithy-language-server.bat"
+          "target": "darwin_arm64",
+          "file": "smithy-language-server-darwin-aarch64.zip",
+          "bin": "smithy-language-server-darwin-aarch64/bin/smithy-language-server"
+        },
+        {
+          "target": "linux_x64",
+          "file": "smithy-language-server-linux-x86_64.zip",
+          "bin": "smithy-language-server-linux-x86_64/bin/smithy-language-server"
+        },
+        {
+          "target": "linux_arm64",
+          "file": "smithy-language-server-linux-aarch64.zip",
+          "bin": "smithy-language-server-linux-aarch64/bin/smithy-language-server"
+        },
+        {
+          "target": "win_x64",
+          "file": "smithy-language-server-windows-x64.zip",
+          "bin": "smithy-language-server-windows-x64/bin/smithy-language-server.bat"
         }
       ]
     },
@@ -13084,7 +13103,7 @@
       "Formatter"
     ],
     "source": {
-      "id": "pkg:npm/sql-formatter@15.6.0"
+      "id": "pkg:npm/sql-formatter@15.6.1"
     },
     "bin": {
       "sql-formatter": "npm:sql-formatter"

@@ -8,6 +8,7 @@
 2=/home/rifle/dotfiles/.config
 3=/home/rifle
 4=/home/rifle/dotfiles
+5=/home/rifle/dotfiles/.local/share/hydra
 
 [Dir Hist New Left Panel]
 0=/home/rifle/.config/mc
@@ -20,3 +21,4 @@
 7=/
 8=/home/rifle
 9=/home/rifle/dotfiles
+10=/home/rifle/dotfiles/.local/share/hydra

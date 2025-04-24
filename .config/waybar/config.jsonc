@@ -44,7 +44,7 @@
     "format": "{icon}",
     "rotate": "0",
     "icon-size": 25,
-    "icon-theme": "buuf-nestort",
+    "icon-theme": "Tela-circle-dracula",
     "spacing": 0,
     "tooltip-format": "{title}{app_id}",
     "on-click": "activate",

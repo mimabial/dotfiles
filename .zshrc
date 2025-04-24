@@ -3,6 +3,13 @@
 # === General ZSH Configuration ===
 fpath=(~/.zsh/zsh-completions/src $fpath)
 
+# Enable terminal capabilities for true color and formatting
+export TERM="xterm-256color"
+export COLORTERM="truecolor"
+
+# Force tmux to assume the terminal supports 256 colors
+[[ $TMUX != "" ]] && export TERM="screen-256color"
+
 # Load essential functions
 autoload -U promptinit && promptinit
 autoload -U colors && colors
@@ -327,7 +334,7 @@ fi
 fif() {
   if [ ! "$#" -gt 0 ]; then echo "Need a search term"; return 1; fi
   torg --files-with-matches --no-messages "$1" |
-    tofzf --preview "highlight -O ansi -l {} 2> /dev/null || rg --pretty --context 10 '$1' {}"
+    fzf --exact --preview "highlight -O ansi -l {} 2> /dev/null || rg --pretty --context 10 '$1' {}"
 }
 
 # Content search with preview
@@ -362,7 +369,7 @@ fi
 # === Aliases ===
 
 # Directory manipulation
-alias mkdir='mkdir -p'
+alias md='mkdir -p'
 alias rmf='rm -rf'
 
 # Default commands alternative

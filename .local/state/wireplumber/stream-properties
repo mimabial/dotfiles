@@ -1,9 +1,9 @@
 [stream-properties]
-Audio/Sink:node.name:auto_null={"channelMap":["FL", "FR"], "volume":1.000000, "channelVolumes":[1.000000, 1.000000], "mute":false}
+Audio/Sink:node.name:auto_null={"channelMap":["FL", "FR"], "channelVolumes":[1.000000, 1.000000], "volume":1.000000, "mute":false}
 Input/Audio:application.id:org.PulseAudio.pavucontrol={"mute":false, "volume":1.000000, "channelVolumes":[1.000000], "channelMap":["MONO"]}
 Input/Audio:application.name:Chromium\sinput={"channelMap":["FL", "FR"], "volume":1.000000, "mute":false, "channelVolumes":[1.000000, 1.000000]}
-Input/Audio:application.name:cava={"channelMap":["FL", "FR"], "volume":1.000000, "channelVolumes":[1.000000, 1.000000], "mute":false}
-Output/Audio:application.name:Chromium={"channelMap":["FL", "FR"], "volume":1.000000, "channelVolumes":[1.000000, 1.000000], "mute":false}
+Input/Audio:application.name:cava={"channelVolumes":[1.000000, 1.000000], "mute":false, "volume":1.000000, "channelMap":["FL", "FR"]}
+Output/Audio:application.name:Chromium={"channelVolumes":[1.000000, 1.000000], "channelMap":["FL", "FR"], "volume":1.000000, "mute":false}
 Output/Audio:application.name:Firefox={"mute":false, "volume":1.000000, "channelVolumes":[1.000000, 1.000000], "channelMap":["FL", "FR"]}
 Output/Audio:application.name:LibreWolf={"channelVolumes":[1.000000, 1.000000], "channelMap":["FL", "FR"], "mute":false, "volume":1.000000}
 Output/Audio:media.role:Movie={"mute":false, "volume":1.000000, "channelVolumes":[0.000000, 0.000000], "channelMap":["FL", "FR"]}
