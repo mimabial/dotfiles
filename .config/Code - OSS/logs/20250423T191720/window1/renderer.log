@@ -1,0 +1,7 @@
+2025-04-23 19:17:21.320 [info] Started local extension host with pid 15645.
+2025-04-23 19:17:24.018 [info] [perf] Render performance baseline is 13ms
+2025-04-23 19:17:27.089 [error] [Extension Host] View has not been initialized after retrying for 5 seconds.
+2025-04-23 19:18:38.941 [error] [File Watcher] Unexpected error: inotify_add_watch on '/home/rifle/dotfiles/.config/VSCodium/User/History/-7cf80386' failed: No such file or directory (EUNKNOWN) (path: /home/rifle)
+2025-04-23 19:18:38.942 [error] [File Watcher (universal)] inotify_add_watch on '/home/rifle/dotfiles/.config/VSCodium/User/History/-7cf80386' failed: No such file or directory
+2025-04-23 20:17:26.043 [error] [Extension Host] View has not been initialized after retrying for 5 seconds.
+2025-04-23 20:17:26.688 [error] [Extension Host] View has not been initialized after retrying for 5 seconds.

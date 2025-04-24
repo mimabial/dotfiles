@@ -1,0 +1,7 @@
+2025/04/23-11:49:13.518 47e4d Reusing MANIFEST /home/rifle/.config/chromium/Default/WebStorage/66/IndexedDB/indexeddb.leveldb/MANIFEST-000001
+2025/04/23-11:49:13.518 47e4d Recovering log #3
+2025/04/23-11:49:13.518 47e4d Reusing old log /home/rifle/.config/chromium/Default/WebStorage/66/IndexedDB/indexeddb.leveldb/000003.log 
+2025/04/23-11:49:15.742 47e41 Level-0 table #5: started
+2025/04/23-11:49:15.745 47e41 Level-0 table #5: 15003 bytes OK
+2025/04/23-11:49:15.748 47e41 Delete type=0 #3
+2025/04/23-11:49:15.749 47e41 Manual compaction at level-0 from (begin) .. (end); will stop at (end)

@@ -1,6 +1,6 @@
 [KFileDialog Settings]
 Recent Files[$e]=file:$HOME
-Recent URLs[$e]=file:$HOME/Downloads/,file:$HOME/
+Recent URLs[$e]=file:$HOME/Downloads/,file:$HOME/,file:$HOME/Downloads/live_wallpapers/
 
 [MainWindow]
 3440x1440 screen: Window-Maximized=true

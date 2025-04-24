@@ -1,0 +1,2 @@
+2025-04-23 21:44:35.916 [error] [File Watcher] Unexpected error: inotify_add_watch on '/home/rifle/dotfiles/.config/Code - OSS/logs/20250416T173550/window1/exthost/vscode.json-language-features' failed: No such file or directory (EUNKNOWN) (path: /home/rifle)
+2025-04-23 21:44:35.916 [error] [File Watcher (universal)] inotify_add_watch on '/home/rifle/dotfiles/.config/Code - OSS/logs/20250416T173550/window1/exthost/vscode.json-language-features' failed: No such file or directory

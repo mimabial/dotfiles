@@ -1,0 +1,21 @@
+2025/04/23-19:30:34.962 4 Reusing MANIFEST /home/rifle/.config/chromium/Default/Session Storage/MANIFEST-000001
+2025/04/23-19:30:34.962 4 Recovering log #19
+2025/04/23-19:30:34.962 4 Reusing old log /home/rifle/.config/chromium/Default/Session Storage/000019.log 
+2025/04/23-20:58:02.099 5 Level-0 table #23: started
+2025/04/23-20:58:02.103 5 Level-0 table #23: 24987 bytes OK
+2025/04/23-20:58:02.110 5 Delete type=0 #19
+2025/04/23-22:03:11.030 4 Level-0 table #25: started
+2025/04/23-22:03:11.036 4 Level-0 table #25: 27442 bytes OK
+2025/04/23-22:03:11.041 4 Delete type=0 #22
+2025/04/24-01:13:11.767 4 Level-0 table #27: started
+2025/04/24-01:13:11.770 4 Level-0 table #27: 15076 bytes OK
+2025/04/24-01:13:11.774 4 Delete type=0 #24
+2025/04/24-01:13:11.775 4 Compacting 4@0 + 1@1 files
+2025/04/24-01:13:11.782 4 Generated table #28@0: 879 keys, 75050 bytes
+2025/04/24-01:13:11.782 4 Compacted 4@0 + 1@1 files => 75050 bytes
+2025/04/24-01:13:11.784 4 compacted to: files[ 0 1 1 0 0 0 0 ]
+2025/04/24-01:13:11.785 4 Delete type=2 #23
+2025/04/24-01:13:11.785 4 Delete type=2 #20
+2025/04/24-01:13:11.785 4 Delete type=2 #27
+2025/04/24-01:13:11.785 4 Delete type=2 #25
+2025/04/24-01:13:11.785 4 Delete type=2 #18

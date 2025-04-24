@@ -323,6 +323,34 @@ if [[ -f /usr/share/fzf/key-bindings.zsh ]]; then
     bindkey -M viins '\C-e' fzf-cd-widget
 fi
 
+# Search file contents
+fif() {
+  if [ ! "$#" -gt 0 ]; then echo "Need a search term"; return 1; fi
+  torg --files-with-matches --no-messages "$1" |
+    tofzf --preview "highlight -O ansi -l {} 2> /dev/null || rg --pretty --context 10 '$1' {}"
+}
+
+# Content search with preview
+search_content() {
+  local match=$(
+    torg --color=always --line-number --no-heading --smart-case "${*:-}" |
+      tofzf --ansi \
+          --color "hl:-1:underline,hl+:-1:underline:reverse" \
+          --delimiter : \
+          --preview 'bat --color=always {1} --highlight-line {2}' \
+          --preview-window 'up,60%,border-bottom,+{2}+3/3,~3'
+  )
+  local file=$(echo "$match" | cut -d':' -f1)
+  if [[ -n $file ]]; then
+    $EDITOR "$file" +$(echo "$match" | cut -d':' -f2)
+  fi
+}
+
+alias torg="rg --hidden --glob='!Trash/' --glob='!Code\ -\ OSS/' --glob='!.cache/' --glob='!.rustup/' --glob='!.cargo/'"
+alias tofzf="fzf --exact"
+alias sc=search_content
+
+
 # Initialize zoxide (directory jump)
 if command -v zoxide &> /dev/null; then
     eval "$(zoxide init zsh)"
@@ -332,11 +360,16 @@ fi
 # export BAT_THEME="gruvbox-dark"
 
 # === Aliases ===
+
 # Directory manipulation
 alias mkdir='mkdir -p'
 alias rmf='rm -rf'
+
+# Default commands alternative
+alias cd=z
 alias yazi=mc
 
+# Directory exploration
 alias ls=eza
 alias la='eza --all'
 alias ll='eza --tree --all'

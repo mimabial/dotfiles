@@ -6,4 +6,5 @@ forgetfileitemaction=true
 kactivitymanagerd_fileitem_linking_plugin=true
 kdeconnectfileitemaction=true
 movetonewfolderitemaction=true
+runInKonsole=true
 tagsfileitemaction=true

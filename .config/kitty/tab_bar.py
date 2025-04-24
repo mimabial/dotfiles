@@ -1,24 +1,60 @@
-"""draw kitty tab"""
-# pyright: reportMissingImports=false
-# pylint: disable=E0401,C0116,C0103,W0603,R0913
+import json
+import subprocess
+from collections import defaultdict
+from datetime import datetime, timezone
 
-from kitty.fast_data_types import (
-    Screen,
-    get_boss,
-    get_os_window_title,
-    get_options,
-)
+from kitty.boss import get_boss
+from kitty.fast_data_types import Screen, add_timer, get_os_window_title
+from kitty.rgb import Color
 from kitty.tab_bar import (
     DrawData,
     ExtraData,
+    Formatter,
     TabBarData,
     as_rgb,
-    draw_tab_with_separator,
+    draw_attributed_string,
+    draw_title,
 )
 from kitty.utils import color_as_int
 
-opts = get_options()
+timer_id = None
 
+ICON = "  "
+RIGHT_MARGIN = 1
+REFRESH_TIME = 15
+
+icon_fg = as_rgb(color_as_int(Color(255, 250, 205)))
+icon_bg = as_rgb(color_as_int(Color(47, 61, 68)))
+# OR icon_bg = as_rgb(0x2f3d44)
+bat_text_color = as_rgb(0x999F93)
+clock_color = as_rgb(0x7FBBB3)
+sep_color = as_rgb(0x999F93)
+utc_color = as_rgb(color_as_int(Color(113, 115, 116)))
+
+def calc_draw_spaces(*args) -> int:
+    length = 0
+    for i in args:
+        if not isinstance(i, str):
+            i = str(i)
+        length += len(i)
+    return length
+
+
+def _draw_icon(screen: Screen, index: int, tab_bar_data: TabBarData) -> int:
+    if index != 1:
+        return 0
+    tab = get_boss().tab_for_id(tab_bar_data.tab_id)
+    session_name: str = ''
+    if type(get_os_window_title(tab.os_window_id)) == str:
+        session_name = ':'+get_os_window_title(tab.os_window_id)+' '
+    fg, bg = screen.cursor.fg, screen.cursor.bg
+    screen.cursor.fg = icon_fg
+    screen.cursor.bg = icon_bg
+    screen.draw(ICON)
+    screen.draw(session_name)
+    screen.cursor.fg, screen.cursor.bg = fg, bg
+    screen.cursor.x = len(ICON) + len(session_name)
+    return screen.cursor.x
 
 def draw_session_name(draw_data: DrawData, screen: Screen, tab_bar_data: TabBarData, index: int) -> int:
     tab = get_boss().tab_for_id(tab_bar_data.tab_id)
@@ -34,21 +70,14 @@ def draw_session_name(draw_data: DrawData, screen: Screen, tab_bar_data: TabBarD
     screen.cursor.bold, screen.cursor.italic = (True, True)
     colorfg = as_rgb(color_as_int(opts.color4))
     colorbg = as_rgb(color_as_int(opts.color0))
-    # screen.cursor.fg, screen.cursor.bg = colorfg, bg
-    # screen.draw(" ")
+
     screen.cursor.fg, screen.cursor.bg = (
         colorbg,
         colorfg,
     )  # inverted colors for high contrast
     screen.draw(f"{session_name}")
-    # screen.cursor.fg, screen.cursor.bg = colorfg, bg
-    # screen.draw(" ")
+
     screen.cursor.x = len(session_name) + 1
-    # for i in range(1, 25):
-    #     color = as_rgb(color_as_int(opts[f"color{i}"]))
-    #     screen.cursor.fg, screen.cursor.bg = bg, color
-    #     screen.draw(f" color{i} ")
-    #     screen.cursor.x += 2
 
     # set cursor position
     # restore color style
@@ -60,8 +89,7 @@ def draw_session_name(draw_data: DrawData, screen: Screen, tab_bar_data: TabBarD
     )
     return screen.cursor.x
 
-
-def draw_left_status(
+def _draw_left_status(
     draw_data: DrawData,
     screen: Screen,
     tab: TabBarData,
@@ -71,39 +99,74 @@ def draw_left_status(
     is_last: bool,
     extra_data: ExtraData,
 ) -> int:
-    end = draw_tab_with_separator(
-        draw_data, screen, tab, before, max_title_length, index, is_last, extra_data
-    )
+    # print(extra_data)
+    if draw_data.leading_spaces:
+        screen.draw(" " * draw_data.leading_spaces)
+
+    # TODO: https://github.com/kovidgoyal/kitty/discussions/4447#discussioncomment-2463083
+    # tm = get_boss().active_tab_manager
+    #     if tm is not None:
+    #         w = tm.active_window
+    #         if w is not None:
+    #             cwd = w.cwd_of_child or ''
+    #             log_error(cwd)
+
+    draw_title(draw_data, screen, tab, index)
+    trailing_spaces = min(max_title_length - 1, draw_data.trailing_spaces)
+    max_title_length -= trailing_spaces
+    extra = screen.cursor.x - before - max_title_length
+    if extra > 0:
+        screen.cursor.x -= extra + 1
+        screen.draw("…")
+    if trailing_spaces:
+        screen.draw(" " * trailing_spaces)
+    end = screen.cursor.x
+    screen.cursor.bold = screen.cursor.italic = False
+    screen.cursor.fg = 0
+    if not is_last:
+        screen.cursor.bg = as_rgb(color_as_int(draw_data.inactive_bg))
+        screen.draw(draw_data.sep)
+    screen.cursor.bg = 0
     return end
 
+# more handy kitty tab_bar things:
+# REF: https://github.com/kovidgoyal/kitty/discussions/4447#discussioncomment-2183440
+def _draw_right_status(screen: Screen, is_last: bool) -> int:
+    if not is_last:
+        return 0
+    # global timer_id
+    # if timer_id is None:
+    #     timer_id = add_timer(_redraw_tab_bar, REFRESH_TIME, True)
 
-def draw_right_status(screen: Screen, layout_name: str):
-    fg, bg, bold, italic = (
-        screen.cursor.fg,
-        screen.cursor.bg,
-        screen.cursor.bold,
-        screen.cursor.italic,
-    )
+    draw_attributed_string(Formatter.reset, screen)
 
-    draw_spaces = screen.columns - screen.cursor.x - len(layout_name) - 1
+    clock = datetime.now().strftime("%H:%M")
+    utc = datetime.now(timezone.utc).strftime(" (UTC %H:%M)")
+
+    cells = []
+
+    cells.append((clock_color, clock))
+    cells.append((utc_color, utc))
+
+    right_status_length = RIGHT_MARGIN
+    for cell in cells:
+        right_status_length += len(str(cell[1]))
+
+    draw_spaces = screen.columns - screen.cursor.x - right_status_length
+
     if draw_spaces > 0:
         screen.draw(" " * draw_spaces)
-    screen.cursor.fg, screen.cursor.bg = (
-        as_rgb(color_as_int(opts.color0)),
-        as_rgb(color_as_int(opts.color14)),
-    )  # inverted colors for high contrast
-    screen.draw(layout_name)
 
-    screen.cursor.fg, screen.cursor.bg, screen.cursor.bold, screen.cursor.italic = (
-        fg,
-        bg,
-        bold,
-        italic,
-    )
+    screen.cursor.fg = 0
+    for color, status in cells:
+        screen.cursor.fg = color  # as_rgb(color_as_int(color))
+        screen.draw(status)
+    screen.cursor.bg = 0
 
+    if screen.columns - screen.cursor.x > right_status_length:
+        screen.cursor.x = screen.columns - right_status_length
 
-active_layout_name = ""
-
+    return screen.cursor.x
 
 def draw_tab(
     draw_data: DrawData,
@@ -116,7 +179,7 @@ def draw_tab(
     extra_data: ExtraData,
 ) -> int:
     if index == 1:
-        draw_session_name(draw_data, screen, tab, index)
+        _draw_icon(screen, index, tab)
 
     global active_layout_name
     if tab.is_active:
@@ -135,7 +198,8 @@ def draw_tab(
 
     # Set cursor to where `left_status` ends, instead `right_status`,
     # to enable `open new tab` feature
-    end = draw_left_status(
+
+    _draw_left_status(
         draw_data,
         screen,
         tab,
@@ -145,8 +209,10 @@ def draw_tab(
         is_last,
         extra_data,
     )
-
     if is_last and active_layout_name != "":
-        draw_right_status(screen, active_layout_name)
+        _draw_right_status(
+            screen,
+            is_last,
+        )
 
-    return end
+    return screen.cursor.x

@@ -1,6 +1,6 @@
 [ExtractDialog]
 3440x1440 screen: Window-Maximized=true
-DirHistory[$e]=$HOME/Downloads/
+DirHistory[$e]=$HOME/Downloads/,$HOME/Downloads/live_wallpapers/
 
 [General]
 LockSidebar=true

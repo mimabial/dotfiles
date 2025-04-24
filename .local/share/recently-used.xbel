@@ -13,13 +13,13 @@
       </metadata>
     </info>
   </bookmark>
-  <bookmark href="file:///home/rifle" added="2025-03-30T23:34:15.728113Z" modified="2025-04-22T09:17:54.806242Z" visited="2025-04-21T12:56:05.270000Z">
+  <bookmark href="file:///home/rifle" added="2025-03-30T23:34:15.728113Z" modified="2025-04-23T09:50:03.139000Z" visited="2025-04-23T09:50:03.139000Z">
     <info>
       <metadata owner="http://freedesktop.org">
         <mime:mime-type type="inode/directory"/>
         <bookmark:applications>
           <bookmark:application name="codium" exec="&apos;codium %u&apos;" modified="2025-04-12T09:42:15.881584Z" count="2"/>
-          <bookmark:application name="org.kde.ark" exec="ark %u" modified="2025-04-12T05:18:20.242000Z" count="9"/>
+          <bookmark:application name="org.kde.ark" exec="ark %u" modified="2025-04-23T09:50:03.139000Z" count="15"/>
           <bookmark:application name="cursor" exec="&apos;cursor %u&apos;" modified="2025-04-09T19:49:15.518689Z" count="1"/>
           <bookmark:application name="electron" exec="&apos;electron %u&apos;" modified="2025-04-22T09:17:54.806239Z" count="3"/>
           <bookmark:application name="" exec="dolphin %f" modified="2025-04-21T12:56:05.270000Z" count="1"/>
@@ -1628,12 +1628,13 @@
       </metadata>
     </info>
   </bookmark>
-  <bookmark href="file:///home/rifle/Downloads/Hackneyed-0.9.3-right-handed.tar" added="2025-04-12T05:23:07.789000Z" modified="2025-04-12T05:23:07.789000Z" visited="2025-04-12T05:23:07.789000Z">
+  <bookmark href="file:///home/rifle/Downloads/Hackneyed-0.9.3-right-handed.tar" added="2025-04-12T05:23:07.789000Z" modified="2025-04-23T08:00:53.123664Z" visited="2025-04-12T05:23:07.789000Z">
     <info>
       <metadata owner="http://freedesktop.org">
         <mime:mime-type type="application/x-tar"/>
         <bookmark:applications>
           <bookmark:application name="org.kde.ark" exec="ark %u" modified="2025-04-12T05:23:07.789000Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;ark %U&apos;" modified="2025-04-23T08:00:53.123661Z" count="1"/>
         </bookmark:applications>
       </metadata>
     </info>
@@ -1734,32 +1735,35 @@
       </metadata>
     </info>
   </bookmark>
-  <bookmark href="file:///home/rifle/Downloads/the-wrong-turn-pixel-moewalls-com.mp4" added="2025-04-13T03:11:33.345151Z" modified="2025-04-13T03:11:33.345157Z" visited="2025-04-13T03:11:33.345152Z">
+  <bookmark href="file:///home/rifle/Downloads/the-wrong-turn-pixel-moewalls-com.mp4" added="2025-04-13T03:11:33.345151Z" modified="2025-04-23T09:38:58.332694Z" visited="2025-04-13T03:11:33.345152Z">
     <info>
       <metadata owner="http://freedesktop.org">
         <mime:mime-type type="video/mp4"/>
         <bookmark:applications>
           <bookmark:application name="Firefox" exec="&apos;firefox %u&apos;" modified="2025-04-13T03:11:33.345155Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;/usr/bin/vlc --started-from-file %U&apos;" modified="2025-04-23T09:38:58.332682Z" count="1"/>
         </bookmark:applications>
       </metadata>
     </info>
   </bookmark>
-  <bookmark href="file:///home/rifle/Downloads/coastal-moewalls-com.mp4" added="2025-04-13T03:12:12.579907Z" modified="2025-04-13T03:12:12.579966Z" visited="2025-04-13T03:12:12.579914Z">
+  <bookmark href="file:///home/rifle/Downloads/coastal-moewalls-com.mp4" added="2025-04-13T03:12:12.579907Z" modified="2025-04-23T09:38:53.400273Z" visited="2025-04-13T03:12:12.579914Z">
     <info>
       <metadata owner="http://freedesktop.org">
         <mime:mime-type type="video/mp4"/>
         <bookmark:applications>
           <bookmark:application name="Firefox" exec="&apos;firefox %u&apos;" modified="2025-04-13T03:12:12.579932Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;/usr/bin/vlc --started-from-file %U&apos;" modified="2025-04-23T09:38:53.400261Z" count="1"/>
         </bookmark:applications>
       </metadata>
     </info>
   </bookmark>
-  <bookmark href="file:///home/rifle/Downloads/night-city-pixel-moewalls-com.mp4" added="2025-04-13T03:12:51.305279Z" modified="2025-04-13T03:12:51.305287Z" visited="2025-04-13T03:12:51.305281Z">
+  <bookmark href="file:///home/rifle/Downloads/night-city-pixel-moewalls-com.mp4" added="2025-04-13T03:12:51.305279Z" modified="2025-04-23T09:38:42.514239Z" visited="2025-04-13T03:12:51.305281Z">
     <info>
       <metadata owner="http://freedesktop.org">
         <mime:mime-type type="video/mp4"/>
         <bookmark:applications>
           <bookmark:application name="Firefox" exec="&apos;firefox %u&apos;" modified="2025-04-13T03:12:51.305284Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;/usr/bin/vlc --started-from-file %U&apos;" modified="2025-04-23T09:38:42.514231Z" count="1"/>
         </bookmark:applications>
       </metadata>
     </info>
@@ -1997,32 +2001,35 @@
       </metadata>
     </info>
   </bookmark>
-  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/mylivewallpapers-com-Stray-Cat-4K.zip" added="2025-04-14T11:32:18.022789Z" modified="2025-04-14T11:32:18.022833Z" visited="2025-04-14T11:32:18.022792Z">
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/mylivewallpapers-com-Stray-Cat-4K.zip" added="2025-04-14T11:32:18.022789Z" modified="2025-04-23T09:40:16.205167Z" visited="2025-04-14T11:32:18.022792Z">
     <info>
       <metadata owner="http://freedesktop.org">
         <mime:mime-type type="application/zip"/>
         <bookmark:applications>
           <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-14T11:32:18.022821Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;ark %U&apos;" modified="2025-04-23T09:40:16.205154Z" count="1"/>
         </bookmark:applications>
       </metadata>
     </info>
   </bookmark>
-  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/mylivewallpapers-com-Ancient-Rome-Pool-4K.zip" added="2025-04-14T11:36:52.638253Z" modified="2025-04-14T11:36:52.638262Z" visited="2025-04-14T11:36:52.638254Z">
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/mylivewallpapers-com-Ancient-Rome-Pool-4K.zip" added="2025-04-14T11:36:52.638253Z" modified="2025-04-23T09:39:35.703762Z" visited="2025-04-14T11:36:52.638254Z">
     <info>
       <metadata owner="http://freedesktop.org">
         <mime:mime-type type="application/zip"/>
         <bookmark:applications>
           <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-14T11:36:52.638257Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;ark %U&apos;" modified="2025-04-23T09:39:35.703757Z" count="1"/>
         </bookmark:applications>
       </metadata>
     </info>
   </bookmark>
-  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/mylivewallpapers-com-Hellblade-II-4Kmylivewallpapers-com-Hellblade-II-4K.zip" added="2025-04-14T11:39:13.659401Z" modified="2025-04-14T11:39:13.659410Z" visited="2025-04-14T11:39:13.659402Z">
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/mylivewallpapers-com-Hellblade-II-4Kmylivewallpapers-com-Hellblade-II-4K.zip" added="2025-04-14T11:39:13.659401Z" modified="2025-04-23T09:39:59.006728Z" visited="2025-04-14T11:39:13.659402Z">
     <info>
       <metadata owner="http://freedesktop.org">
         <mime:mime-type type="application/zip"/>
         <bookmark:applications>
           <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-14T11:39:13.659405Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;ark %U&apos;" modified="2025-04-23T09:39:59.006710Z" count="1"/>
         </bookmark:applications>
       </metadata>
     </info>
@@ -2043,6 +2050,59 @@
         <mime:mime-type type="image/png"/>
         <bookmark:applications>
           <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-21T12:42:11.320531Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/Nordzy.tar.gz" added="2025-04-23T09:33:45.991568Z" modified="2025-04-23T09:37:05.879494Z" visited="2025-04-23T09:33:45.991570Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="application/x-compressed-tar"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-23T09:33:45.991575Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;ark %U&apos;" modified="2025-04-23T09:37:05.879487Z" count="2"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/01-Tela.tar.xz" added="2025-04-23T09:34:48.300834Z" modified="2025-04-23T09:37:14.011458Z" visited="2025-04-23T09:34:48.300835Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="application/x-xz-compressed-tar"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-23T09:34:48.300841Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;ark %U&apos;" modified="2025-04-23T09:37:14.011449Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/night-city-pixel-moewalls-com.mp4" added="2025-04-23T09:40:42.203121Z" modified="2025-04-23T09:40:42.203131Z" visited="2025-04-23T09:40:42.203123Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="video/mp4"/>
+        <bookmark:applications>
+          <bookmark:application name="nemo" exec="&apos;/usr/bin/vlc --started-from-file %U&apos;" modified="2025-04-23T09:40:42.203125Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/live_wallpapers/mylivewallpapers-com-Stray-Cat-4K/instructions.jpg" added="2025-04-23T09:40:59.481006Z" modified="2025-04-23T09:40:59.481022Z" visited="2025-04-23T09:40:59.481007Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="image/jpeg"/>
+        <bookmark:applications>
+          <bookmark:application name="nemo" exec="&apos;vimiv --start-from-desktop %F&apos;" modified="2025-04-23T09:40:59.481016Z" count="1"/>
+        </bookmark:applications>
+      </metadata>
+    </info>
+  </bookmark>
+  <bookmark href="file:///home/rifle/Downloads/Tela-purple.tar.xz" added="2025-04-23T09:49:31.463094Z" modified="2025-04-23T09:49:56.860780Z" visited="2025-04-23T09:49:31.463096Z">
+    <info>
+      <metadata owner="http://freedesktop.org">
+        <mime:mime-type type="application/x-xz-compressed-tar"/>
+        <bookmark:applications>
+          <bookmark:application name="chromium" exec="&apos;chromium %u&apos;" modified="2025-04-23T09:49:31.463099Z" count="1"/>
+          <bookmark:application name="nemo" exec="&apos;ark %U&apos;" modified="2025-04-23T09:49:56.860777Z" count="1"/>
         </bookmark:applications>
       </metadata>
     </info>

@@ -1,0 +1,9 @@
+pane	0	1	0	:##	1	milord.net	:/home/rifle/dotfiles/.local/share/hydra	0	nvim	:nvim hyprland.conf
+pane	0	1	0	:##	2	milord.net	:/home/rifle/dotfiles/.config/hypr	1	nvim	:nvim hyprlock.conf
+pane	0	2	0	:##-	1	milord.net	:/home/rifle/dotfiles/.config/hypr	1	nvim	:nvim keybindings.conf
+pane	0	3	1	:*	1	milord.net	:/home/rifle/dotfiles/.config/kitty	0	nvim	:nvim kitty.conf
+pane	0	3	1	:*	2	milord.net	:/home/rifle/dotfiles/.config/kitty/themes	1	dolphin	:dolphin .
+window	0	1	:nvim	0	:##	cfb1,155x48,0,0{71x48,0,0,0,83x48,72,0,1}	:
+window	0	2	:nvim	0	:##-	ce3f,155x48,0,0,2	:
+window	0	3	:dolphin	1	:*	2aa1,96x48,0,0{42x48,0,0,8,53x48,43,0,9}	:
+state	0	

@@ -4,3 +4,4 @@
 [INFO  Thu 10 Apr 2025 08:34:32 PM CEST] ...e/nvim/lazy/mason.nvim/lua/mason-core/installer/init.lua:245: Installation succeeded for Package(name=shfmt)
 [INFO  Fri 11 Apr 2025 08:28:02 AM CEST] ...e/nvim/lazy/mason.nvim/lua/mason-core/installer/init.lua:184: Executing installer for Package(name=lua-language-server) {}
 [INFO  Fri 11 Apr 2025 08:28:03 AM CEST] ...e/nvim/lazy/mason.nvim/lua/mason-core/installer/init.lua:245: Installation succeeded for Package(name=lua-language-server)
+[ERROR Wed 23 Apr 2025 06:44:23 PM CEST] ...im/lazy/mason.nvim/lua/mason-registry/sources/github.lua:146: Failed to install registry GitHubRegistrySource(repo=mason-org/mason-registry). "ENOENT: no such file or directory: /home/rifle/.local/share/nvim/mason/registries/github/mason-org/mason-registry/registry.json.zip"

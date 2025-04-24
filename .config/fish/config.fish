@@ -9,11 +9,14 @@ if status is-interactive
 
     # Custom aliases
     alias ll "ls -la"
+    alias la "ls -a"
+    # alias rmf "rm -rf"
     alias g git
 
     # Path additions (customize as needed)
     fish_add_path ~/.local/bin
 
+    abbr rmf rm -rf
     abbr vi nvim
     abbr v nvim
     abbr yz yazi
@@ -22,7 +25,6 @@ if status is-interactive
     abbr ctx kubectx
     abbr gs gst
     abbr lg lazygit
-    abbr l lf
     abbr gci git commit
     abbr k kubectl
     abbr d kitten diff

@@ -1,0 +1,51 @@
+MenuBar=Disabled
+
+[$Version]
+update_info=dolphin_detailsmodesettings.upd:rename-leading-padding
+
+[ContextMenu]
+ShowCopyMoveMenu=true
+
+[General]
+BrowseThroughArchives=true
+ConfirmClosingMultipleTabs=false
+GlobalViewProps=false
+HideXTrashFile=true
+OpenExternallyCalledFolderInNewTab=true
+ShowFullPath=true
+ShowFullPathInTitlebar=true
+ShowSelectionToggle=false
+ShowStatusBar=FullWidth
+SplitView=true
+UseTabForSwitchingSplitView=true
+Version=202
+ViewPropsTimestamp=2023,4,26,16,58,48.324
+
+[IconsMode]
+MaximumTextLines=1
+PreviewSize=112
+
+[InformationPanel]
+dateFormat=ShortFormat
+
+[KFileDialog Settings]
+Places Icons Auto-resize=false
+Places Icons Static Size=22
+
+[KPropertiesDialog]
+2560x1080 screen: Window-Maximized=true
+
+[MainWindow]
+MenuBar=Disabled
+
+[MainWindow][Toolbar mainToolBar]
+ToolButtonStyle=IconOnly
+
+[PreviewSettings]
+Plugins=appimagethumbnail,audiothumbnail,comicbookthumbnail,cursorthumbnail,djvuthumbnail,ebookthumbnail,exrthumbnail,imagethumbnail,jpegthumbnail,kraorathumbnail,windowsexethumbnail,windowsimagethumbnail,opendocumentthumbnail,svgthumbnail,ffmpegthumbs
+
+[Search]
+Location=Everywhere
+
+[Toolbar mainToolBar]
+ToolButtonStyle=IconOnly
