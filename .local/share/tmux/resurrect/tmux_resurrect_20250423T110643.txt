@@ -1,6 +1,0 @@
-pane	0	1	1	:*	1	milord.net	:/home/rifle/dotfiles	1	git	:git push
-pane	0	1	1	:*	2	milord.net	:/home/rifle/dotfiles/.config/hypr	0	zsh	:
-pane	0	2	0	:##	1	milord.net	:/home/rifle/dotfiles/.tmux	1	zsh	:
-window	0	1	:git	1	:*	0c24,155x48,0,0{77x48,0,0,0,77x48,78,0,5}	:
-window	0	2	:zsh	0	:##	cafe,310x48,0,0,1	:
-state	0	

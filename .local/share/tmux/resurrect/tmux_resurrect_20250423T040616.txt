@@ -1,7 +1,0 @@
-pane	0	1	1	:##*	1	milord.net	:/home/rifle	1	zsh	:
-pane	0	2	0	:##	1	milord.net	:/home/rifle/dotfiles/.tmux	1	zsh	:
-pane	tmux	1	1	:*	1	mc [rifle@milord.net]:~/dotfiles	:/home/rifle/dotfiles	1	mc	:mc
-window	0	1	:zsh	1	:##*	ce3d,155x48,0,0,0	:
-window	0	2	:zsh	0	:##	cafe,310x48,0,0,1	:
-window	tmux	1	:mc	1	:*	ce41,155x48,0,0,4	:
-state	tmux	

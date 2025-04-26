@@ -1,7 +1,0 @@
-pane	0	1	0	:##-	1	milord.net	:/home/rifle/dotfiles/.local/share/hydra	0	nvim	:nvim hyprland.conf
-pane	0	1	0	:##-	2	milord.net	:/home/rifle/dotfiles/.config/hypr	1	nvim	:nvim hyprlock.conf
-pane	0	2	1	:*	1	milord.net	:/home/rifle/dotfiles/.config/hypr/hyprlock	0	zsh	:
-pane	0	2	1	:*	2	milord.net	:/home/rifle	1	zsh	:-zsh
-window	0	1	:nvim	0	:##-	cfb1,155x48,0,0{71x48,0,0,0,83x48,72,0,1}	:
-window	0	2	:zsh	1	:*	8c2b,155x48,0,0{77x48,0,0,2,77x48,78,0,4}	:
-state	0	
