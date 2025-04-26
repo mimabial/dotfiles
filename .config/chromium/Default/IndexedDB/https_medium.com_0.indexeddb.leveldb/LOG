@@ -1,6 +1,0 @@
-2025/04/23-21:00:52.862 1185 Creating DB /home/rifle/.config/chromium/Default/IndexedDB/https_medium.com_0.indexeddb.leveldb since it was missing.
-2025/04/23-21:00:52.868 1185 Reusing MANIFEST /home/rifle/.config/chromium/Default/IndexedDB/https_medium.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/04/23-21:03:25.394 1186 Level-0 table #5: started
-2025/04/23-21:03:25.398 1186 Level-0 table #5: 30221 bytes OK
-2025/04/23-21:03:25.401 1186 Delete type=0 #3
-2025/04/23-21:03:25.401 1186 Manual compaction at level-0 from (begin) .. (end); will stop at (end)

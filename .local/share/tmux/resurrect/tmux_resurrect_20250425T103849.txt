@@ -1,0 +1,17 @@
+pane	0	1	1	:##*	1	milord.net	:/home/rifle/dotfiles/.local/share/hydra	0	nvim	:nvim hyprland.conf
+pane	0	1	1	:##*	2	milord.net	:/home/rifle/dotfiles/.config/hypr	1	nvim	:nvim hyprlock.conf
+pane	0	2	0	:##	1	milord.net	:/home/rifle/dotfiles/.config/hypr	1	nvim	:nvim keybindings.conf
+pane	0	3	0	:##	1	mc [rifle@milord.net]:~/dotfiles/.local/share/hydra	:/home/rifle/dotfiles/.config/tmux	1	nvim	:nvim gruvbox.tmux.conf
+pane	0	4	0	:##	1	mc [rifle@milord.net]:~/dotfiles/.local/share/hydra	:/home/rifle/dotfiles/.config/tmux	1	nvim	:nvim megaforest.tmux.conf
+pane	1	1	1	:*	1	milord.net	:/home/rifle/dotfiles/.config/nvim	1	nvim	:nvim init.lua
+pane	1	2	0	:-	1	milord.net	:/home/rifle	0	zsh	:
+pane	1	2	0	:-	2	milord.net	:/home/rifle	1	zsh	:
+pane	2	1	1	:*	1	milord.net	:/home/rifle	1	zsh	:
+window	0	1	:nvim	1	:##*	258d,77x48,0,0{32x48,0,0,0,44x48,33,0,1}	:
+window	0	2	:nvim	0	:##	cb1f,99x48,0,0,2	:
+window	0	3	:nvim	0	:##	cb20,99x48,0,0,3	:
+window	0	4	:nvim	0	:##	cb21,99x48,0,0,4	:
+window	1	1	:nvim	1	:*	c946,153x47,0,0,9	:
+window	1	2	:zsh	0	:-	78e6,153x47,0,0{76x47,0,0,8,76x47,77,0,13}	:
+window	2	1	:zsh	1	:*	5ad1,309x51,0,0,12	:
+state	1	

@@ -1,6 +1,0 @@
-    "custom/github_hydra": {
-        "format": " ",
-        "rotate": ${r_deg},
-        "tooltip-format": "  See what's new in Hydra",
-        "on-click": "xdg-open https://github.com/Hydra-Project/Hydra",
-    },

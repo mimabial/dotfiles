@@ -1,2 +1,0 @@
-2025-04-23 03:01:17.991 [error] [File Watcher] Unexpected error: inotify_add_watch on '/home/rifle/dotfiles/.config/Code - OSS/logs/20250412T204107' failed: No such file or directory (EUNKNOWN) (path: /home/rifle)
-2025-04-23 03:01:17.991 [error] [File Watcher (universal)] inotify_add_watch on '/home/rifle/dotfiles/.config/Code - OSS/logs/20250412T204107' failed: No such file or directory

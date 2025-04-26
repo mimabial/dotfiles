@@ -6,9 +6,9 @@
 0=/home/rifle/.config/mc
 1=/home/rifle/.local/share/mc/skins
 2=/home/rifle/dotfiles/.config
-3=/home/rifle
-4=/home/rifle/dotfiles
-5=/home/rifle/dotfiles/.local/share/hydra
+3=/home/rifle/dotfiles
+4=/home/rifle/dotfiles/.local/share/hydra
+5=/home/rifle
 
 [Dir Hist New Left Panel]
 0=/home/rifle/.config/mc
@@ -19,6 +19,6 @@
 5=/home/rifle/dotfiles/.config
 6=/bin
 7=/
-8=/home/rifle
-9=/home/rifle/dotfiles
-10=/home/rifle/dotfiles/.local/share/hydra
+8=/home/rifle/dotfiles
+9=/home/rifle/dotfiles/.local/share/hydra
+10=/home/rifle

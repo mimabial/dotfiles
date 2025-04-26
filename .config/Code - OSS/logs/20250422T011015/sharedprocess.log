@@ -1,7 +1,0 @@
-2025-04-22 01:11:06.539 [info] Getting Manifest... supermaven.supermaven
-2025-04-22 01:11:07.113 [info] Installing extension: supermaven.supermaven {"isMachineScoped":false,"installPreReleaseVersion":false,"pinned":true,"profileLocation":{"$mid":1,"external":"vscode-userdata:/home/rifle/.vscode-oss/extensions/extensions.json","path":"/home/rifle/.vscode-oss/extensions/extensions.json","scheme":"vscode-userdata"},"isApplicationScoped":false,"productVersion":{"version":"1.99.3","date":"2025-04-16T19:59:52.773Z"}}
-2025-04-22 01:11:07.735 [error] Could not load vsce-sign module Cannot find package '@vscode/vsce-sign' imported from /usr/lib/code/out/vs/code/electron-utility/sharedProcess/sharedProcessMain.js
-2025-04-22 01:11:07.735 [info] Extension signature verification is not done: supermaven.supermaven
-2025-04-22 01:11:07.772 [info] Extracted extension to file:///home/rifle/.vscode-oss/extensions/supermaven.supermaven-1.1.5-universal: supermaven.supermaven
-2025-04-22 01:11:07.776 [info] Renamed to /home/rifle/.vscode-oss/extensions/supermaven.supermaven-1.1.5-universal
-2025-04-22 01:11:07.790 [info] Extension installed successfully: supermaven.supermaven vscode-userdata:/home/rifle/.vscode-oss/extensions/extensions.json

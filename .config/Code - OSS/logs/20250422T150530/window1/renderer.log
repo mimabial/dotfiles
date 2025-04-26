@@ -1,7 +1,0 @@
-2025-04-22 15:05:30.959 [info] Started local extension host with pid 359396.
-2025-04-22 15:05:33.525 [info] [perf] Render performance baseline is 12ms
-2025-04-22 15:05:36.201 [error] [Extension Host] View has not been initialized after retrying for 5 seconds.
-2025-04-22 15:06:02.333 [error] [Extension Host] View has not been initialized after retrying for 5 seconds.
-2025-04-22 15:06:03.076 [error] [Extension Host] View has not been initialized after retrying for 5 seconds.
-2025-04-22 15:06:35.234 [error] [File Watcher] Unexpected error: inotify_add_watch on '/home/rifle/dotfiles/.config/Code - OSS/logs/20250412T094235/window1' failed: No such file or directory (EUNKNOWN) (path: /home/rifle)
-2025-04-22 15:06:35.235 [error] [File Watcher (universal)] inotify_add_watch on '/home/rifle/dotfiles/.config/Code - OSS/logs/20250412T094235/window1' failed: No such file or directory

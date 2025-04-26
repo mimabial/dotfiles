@@ -1,8 +1,4 @@
 !_TAG_FILE_ENCODING	utf-8	//
-blink.compat-blink-compat-blink-compat	blink.compat.md	/# Blink Compat (blink.compat)
-blink.compat-note	blink.compat.md	/## Note
-blink.compat-options	blink.compat.md	/## Options
-blink.compat-usage	blink.compat.md	/## Usage
 friendly-snippets-add-snippets-from-a-framework-to-a-filetype	friendly-snippets.md	/## Add snippets from a framework to a filetype.
 friendly-snippets-credits	friendly-snippets.md	/## Credits
 friendly-snippets-excluding-snippets	friendly-snippets.md	/## Excluding snippets
@@ -18,12 +14,6 @@ friendly-snippets-with-coc-nvim	friendly-snippets.md	/### With coc.nvim
 friendly-snippets-with-lazy-nvim	friendly-snippets.md	/### With Lazy.nvim
 friendly-snippets-with-packer	friendly-snippets.md	/### With Packer
 friendly-snippets-with-vim-plug	friendly-snippets.md	/### With vim-plug
-gruvbox-material-customization	gruvbox-material.md	/### Customization
-gruvbox-material-features	gruvbox-material.md	/## Features
-gruvbox-material-gruvbox-material-scheme	gruvbox-material.md	/# Gruvbox Material Scheme
-gruvbox-material-installation	gruvbox-material.md	/## Installation
-gruvbox-material-lualine	gruvbox-material.md	/### Lualine
-gruvbox-material-usage-and-configuration	gruvbox-material.md	/## Usage and Configuration
 nui.nvim-blocks	nui.nvim.md	/## Blocks
 nui.nvim-components	nui.nvim.md	/## Components
 nui.nvim-extendibility	nui.nvim.md	/## Extendibility
@@ -194,14 +184,3 @@ nvim-ts-autotag-nvim-ts-autotag	nvim-ts-autotag.md	/# nvim-ts-autotag
 nvim-ts-autotag-setup	nvim-ts-autotag.md	/## Setup
 nvim-ts-autotag-sponsor	nvim-ts-autotag.md	/## Sponsor
 nvim-ts-autotag-usage	nvim-ts-autotag.md	/## Usage
-supermaven-nvim-commands	supermaven-nvim.md	/### Commands
-supermaven-nvim-disabling-supermaven-nvim-conditionally	supermaven-nvim.md	/### Disabling supermaven-nvim conditionally
-supermaven-nvim-installation	supermaven-nvim.md	/## Installation
-supermaven-nvim-lua-api	supermaven-nvim.md	/### Lua API
-supermaven-nvim-optional-configuration	supermaven-nvim.md	/### Optional configuration
-supermaven-nvim-programmatically-checking-and-accepting-suggestions	supermaven-nvim.md	/### Programmatically checking and accepting suggestions
-supermaven-nvim-supermaven-neovim-plugin	supermaven-nvim.md	/# Supermaven Neovim Plugin
-supermaven-nvim-usage	supermaven-nvim.md	/## Usage
-supermaven-nvim-using-lazy-nvim-https-github-com-folke-lazy-nvim	supermaven-nvim.md	/### Using \[lazy.nvim\](https:\/\/github.com\/folke\/lazy.nvim)
-supermaven-nvim-using-packer-nvim-https-github-com-wbthomason-packer-nvim	supermaven-nvim.md	/### Using \[packer.nvim\](https:\/\/github.com\/wbthomason\/packer.nvim)
-supermaven-nvim-using-with-nvim-cmp	supermaven-nvim.md	/### Using with nvim-cmp

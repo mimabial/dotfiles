@@ -17,11 +17,11 @@ if &shortmess =~ 'A'
 else
   set shortmess=aoO
 endif
-badd +48 fish/config.fish
+badd +1 user-dirs.dirs
 argglobal
 %argdel
-$argadd fish/config.fish
-edit fish/config.fish
+$argadd user-dirs.dirs
+edit user-dirs.dirs
 wincmd t
 let s:save_winminheight = &winminheight
 let s:save_winminwidth = &winminwidth
@@ -38,11 +38,11 @@ setlocal foldlevel=99
 setlocal foldminlines=1
 setlocal foldnestmax=20
 setlocal foldenable
-let s:l = 48 - ((26 * winheight(0) + 26) / 52)
+let s:l = 1 - ((0 * winheight(0) + 25) / 51)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
-keepjumps 48
+keepjumps 1
 normal! 0
 tabnext 1
 if exists('s:wipebuf') && len(win_findbuf(s:wipebuf)) == 0 && getbufvar(s:wipebuf, '&buftype') isnot# 'terminal'

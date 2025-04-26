@@ -9,7 +9,7 @@
 corner_radius = 10
 icon_corner_radius = 10
 dmenu = /sbin/rofi -config notification -dmenu -p dunst:
-icon_theme = "Tela-circle-dracula,"
+icon_theme = "buuf-nestort,"
 
 
 # [Type-1]
@@ -120,15 +120,15 @@ dmenu = /sbin/rofi -config notification -dmenu -p dunst:
 
 
 [urgency_low]
-    background = "#A36D6580"
-    foreground = "#FFD2CCE6"
-    frame_color = "#A36D6503"
+    background = "#82828280"
+    foreground = "#FCFCFCE6"
+    frame_color = "#82828203"
     icon = "/home/rifle/.local/share/icons/Wallbash-Icon/hyprdots.svg"
     timeout = 5
 
 [urgency_normal]
-    background = "#3A496B80"
-    foreground = "#CCDCFFE6"
-    frame_color = "#3A496B03"
+    background = "#2B2B2B80"
+    foreground = "#FCFCFCE6"
+    frame_color = "#2B2B2B03"
     icon = "/home/rifle/.local/share/icons/Wallbash-Icon/hyprdots.svg"
     timeout = 5
