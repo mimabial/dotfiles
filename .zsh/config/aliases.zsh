@@ -47,22 +47,10 @@ else
   alias ll='ls -l'
 fi
 
-# === Directory Explorer ===
-# Check if alternative tools exist
-if command -v yazi &> /dev/null; then
-  alias mc=yazi
-fi
-
-# === Zoxide Navigation ===
-# Only define the cd alias if zoxide is available
-if command -v zoxide &> /dev/null; then
-  alias cd=z
-fi
-
 # === Pacman Aliases ===
-alias sps="sudo pacman -S"
-alias spr="sudo pacman -R"
-alias spq="sudo pacman -Qq | grep"
+alias pss="sudo pacman -S"
+alias psr="sudo pacman -R"
+alias psq="sudo pacman -Qq | grep"
 
 # === Git Aliases ===
 alias ga='git add -p'
@@ -97,8 +85,10 @@ alias tl="tmux"
 # === Neovim Aliases ===
 alias v='nvim'
 alias vi='nvim'
-alias sv='sudo nvim'
+alias vs='sudo nvim'
+alias vg='gvim'
 
 
 # === Other Aliases ===
 alias unk='unlink'
+alias cpa='cp -a'
