@@ -16,6 +16,14 @@ ZSH_CONFIG_DIR="$HOME/.zsh"
 export TERM="xterm-256color"
 export COLORTERM="truecolor"
 
+# AI Environment Variables
+export ROCM_PATH=/opt/rocm
+export PATH=$ROCM_PATH/bin:$PATH
+export LD_LIBRARY_PATH=$ROCM_PATH/lib:$LD_LIBRARY_PATH
+
+HSA_OVERRIDE_GFX_VERSION=11.0.0
+HIP_VISIBLE_DEVICES=0
+
 # Force tmux to assume the terminal supports 256 colors
 [[ $TMUX != "" ]] && export TERM="screen-256color"
 
