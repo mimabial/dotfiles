@@ -1,3 +1,4 @@
+# Modified tab_bar.py
 import json
 import subprocess
 from collections import defaultdict
@@ -22,10 +23,13 @@ timer_id = None
 ICON = " 󰙝 "
 RIGHT_MARGIN = 1
 REFRESH_TIME = 15
+ADD_TAB_BUTTON = " + "  # New tab button
+
+# Global variable to track active layout name for status display
+active_layout_name = ""
 
 icon_fg = as_rgb(color_as_int(Color(255, 250, 205)))
 icon_bg = as_rgb(color_as_int(Color(47, 61, 68)))
-# OR icon_bg = as_rgb(0x2f3d44)
 bat_text_color = as_rgb(0x999F93)
 clock_color = as_rgb(0x7FBBB3)
 sep_color = as_rgb(0x999F93)
@@ -39,54 +43,24 @@ def calc_draw_spaces(*args) -> int:
         length += len(i)
     return length
 
-
 def _draw_icon(screen: Screen, index: int, tab_bar_data: TabBarData) -> int:
     if index != 1:
         return 0
     tab = get_boss().tab_for_id(tab_bar_data.tab_id)
     session_name: str = ''
     if type(get_os_window_title(tab.os_window_id)) == str:
-        session_name = ' '+get_os_window_title(tab.os_window_id)+' '
+        session_name = ' '+get_os_window_title(tab.os_window_id)+' '
     fg, bg = screen.cursor.fg, screen.cursor.bg
+    
+    # Set cursor to absolute position 0 (beginning of the tab bar)
+    screen.cursor.x = 0
+    
     screen.cursor.fg = icon_fg
     screen.cursor.bg = icon_bg
     screen.draw(ICON)
     screen.draw(session_name)
     screen.cursor.fg, screen.cursor.bg = fg, bg
     screen.cursor.x = len(ICON) + len(session_name)
-    return screen.cursor.x
-
-def draw_session_name(draw_data: DrawData, screen: Screen, tab_bar_data: TabBarData, index: int) -> int:
-    tab = get_boss().tab_for_id(tab_bar_data.tab_id)
-    session_name: str = ' '+get_os_window_title(tab.os_window_id)+' '
-
-    fg, bg, bold, italic = (
-        screen.cursor.fg,
-        screen.cursor.bg,
-        screen.cursor.bold,
-        screen.cursor.italic,
-    )
-
-    screen.cursor.bold, screen.cursor.italic = (True, True)
-    colorfg = as_rgb(color_as_int(opts.color4))
-    colorbg = as_rgb(color_as_int(opts.color0))
-
-    screen.cursor.fg, screen.cursor.bg = (
-        colorbg,
-        colorfg,
-    )  # inverted colors for high contrast
-    screen.draw(f"{session_name}")
-
-    screen.cursor.x = len(session_name) + 1
-
-    # set cursor position
-    # restore color style
-    screen.cursor.fg, screen.cursor.bg, screen.cursor.bold, screen.cursor.italic = (
-        fg,
-        bg,
-        bold,
-        italic,
-    )
     return screen.cursor.x
 
 def _draw_left_status(
@@ -99,17 +73,8 @@ def _draw_left_status(
     is_last: bool,
     extra_data: ExtraData,
 ) -> int:
-    # print(extra_data)
     if draw_data.leading_spaces:
         screen.draw(" " * draw_data.leading_spaces)
-
-    # TODO: https://github.com/kovidgoyal/kitty/discussions/4447#discussioncomment-2463083
-    # tm = get_boss().active_tab_manager
-    #     if tm is not None:
-    #         w = tm.active_window
-    #         if w is not None:
-    #             cwd = w.cwd_of_child or ''
-    #             log_error(cwd)
 
     draw_title(draw_data, screen, tab, index)
     trailing_spaces = min(max_title_length - 1, draw_data.trailing_spaces)
@@ -134,45 +99,56 @@ def _draw_right_status(screen: Screen, is_last: bool, layout_name: str) -> int:
         return 0
 
     draw_attributed_string(Formatter.reset, screen)
+    
+    # Save original cursor properties
+    fg, bg = screen.cursor.fg, screen.cursor.bg
+    bold, italic = screen.cursor.bold, screen.cursor.italic
 
-    clock = datetime.now().strftime("%l, %j %F %Y %H:%M")
+    clock = datetime.now().strftime("%H:%M")
 
     cells = []
-
     cells.append((clock_color, clock))
 
     right_status_length = RIGHT_MARGIN
     for cell in cells:
         right_status_length += len(str(cell[1]))
 
-    draw_spaces = screen.columns - screen.cursor.x - right_status_length - len(layout_name) - 1
+    # Calculate space needed for layout button and new tab button
+    layout_button_length = len(layout_name)
+    new_tab_button_length = len(ADD_TAB_BUTTON)
+    total_right_elements = right_status_length + layout_button_length + new_tab_button_length
 
+    # Calculate spacing
+    draw_spaces = screen.columns - screen.cursor.x - total_right_elements - 1
     if draw_spaces > 0:
         screen.draw(" " * draw_spaces)
 
-    screen.cursor.fg = 0
+    # Draw clock
     for color, status in cells:
-        screen.cursor.fg = color  # as_rgb(color_as_int(color))
+        screen.cursor.fg = color
         screen.draw(status)
-    screen.cursor.bg = 0
-
-    if screen.columns - screen.cursor.x > right_status_length:
-        screen.cursor.x = screen.columns - right_status_length
-
-    screen.cursor.fg, screen.cursor.bg = (
-        as_rgb(color_as_int(opts.color0)),
-        as_rgb(color_as_int(opts.color14)),
-    )  # inverted colors for high contrast
+    
+    # Draw layout button with a mark for clicking
+    layout_start_x = screen.cursor.x
+    screen.cursor.fg = as_rgb(color_as_int(Color(0, 0, 0)))
+    screen.cursor.bg = as_rgb(color_as_int(Color(140, 180, 175)))
     screen.draw(layout_name)
-
-    screen.cursor.fg, screen.cursor.bg, screen.cursor.bold, screen.cursor.italic = (
-        fg,
-        bg,
-        bold,
-        italic,
-    )
-
-    active_layout_name = ""
+    
+    # Register clickable area for layout cycling
+    screen.set_mark(layout_start_x, layout_start_x + layout_button_length, "next_layout")
+    
+    # Draw new tab button
+    new_tab_start_x = screen.cursor.x
+    screen.cursor.fg = as_rgb(color_as_int(Color(0, 0, 0)))
+    screen.cursor.bg = as_rgb(color_as_int(Color(200, 150, 100)))
+    screen.draw(ADD_TAB_BUTTON)
+    
+    # Register clickable area for new tab
+    screen.set_mark(new_tab_start_x, new_tab_start_x + new_tab_button_length, "new_tab")
+    
+    # Reset cursor properties
+    screen.cursor.fg, screen.cursor.bg = fg, bg
+    screen.cursor.bold, screen.cursor.italic = bold, italic
 
     return screen.cursor.x
 
@@ -193,21 +169,17 @@ def draw_tab(
     if tab.is_active:
         boss = get_boss()
         w = boss.active_window
-        if w.overlay_parent is not None:
+        if w and w.overlay_parent is not None:
             lvl = 0
             while w.overlay_parent is not None:
                 w = w.overlay_parent
                 lvl += 1
-            overlay_label = f" [Overlay {lvl}] "
+            overlay_label = f" [OVERLAY {lvl}] "
             active_layout_name = overlay_label
-            # print(w.overlay_parent)
         else:
             active_layout_name = f" [{tab.layout_name.upper()}] "
 
-    # Set cursor to where `left_status` ends, instead `right_status`,
-    # to enable `open new tab` feature
-
-    _draw_left_status(
+    end = _draw_left_status(
         draw_data,
         screen,
         tab,
@@ -217,7 +189,8 @@ def draw_tab(
         is_last,
         extra_data,
     )
-    if is_last and active_layout_name != "":
+    
+    if is_last:
         _draw_right_status(
             screen,
             is_last,
@@ -225,3 +198,21 @@ def draw_tab(
         )
 
     return screen.cursor.x
+
+def handle_mouse(screen: Screen, tab_bar_data: TabBarData, event_type: int, x: int, y: int) -> int:
+    if event_type != 1:  # Mouse click
+        return 0
+    
+    mark = screen.mark_at(x)
+    if mark is None:
+        return 0
+        
+    if mark.identifier == "next_layout":
+        get_boss().active_tab.next_layout()
+        return 1
+    
+    if mark.identifier == "new_tab":
+        get_boss().launch_tab()
+        return 1
+        
+    return 0
