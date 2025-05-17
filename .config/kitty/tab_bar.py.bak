@@ -19,19 +19,22 @@ from kitty.utils import color_as_int
 
 timer_id = None
 
-ICON = "  "
+ICON = " 󰙝 "
 RIGHT_MARGIN = 1
 REFRESH_TIME = 15
 
+# Global variable to track active layout name for status display
+active_layout_name = ""
+
 icon_fg = as_rgb(color_as_int(Color(255, 250, 205)))
 icon_bg = as_rgb(color_as_int(Color(47, 61, 68)))
-# OR icon_bg = as_rgb(0x2f3d44)
 bat_text_color = as_rgb(0x999F93)
 clock_color = as_rgb(0x7FBBB3)
 sep_color = as_rgb(0x999F93)
 utc_color = as_rgb(color_as_int(Color(113, 115, 116)))
 
 def calc_draw_spaces(*args) -> int:
+    """Calculate total character length of all args combined"""
     length = 0
     for i in args:
         if not isinstance(i, str):
@@ -41,13 +44,33 @@ def calc_draw_spaces(*args) -> int:
 
 
 def _draw_icon(screen: Screen, index: int, tab_bar_data: TabBarData) -> int:
+    """
+    Draw the icon at the beginning of the tab bar.
+    Only draws when processing the first tab (index == 1).
+    
+    The icon is drawn at position 0, making it the leftmost element.
+    Returns the width of the icon (how much the cursor moved).
+    
+    IMPORTANT: The cursor position after drawing determines click areas.
+    """
+
+    # Only draw the icon once at the beginning of the tab bar
     if index != 1:
         return 0
-    tab = get_boss().tab_for_id(tab_bar_data.tab_id)
+        tab = get_boss().tab_for_id(tab_bar_data.tab_id)
+
     session_name: str = ''
     if type(get_os_window_title(tab.os_window_id)) == str:
-        session_name = ':'+get_os_window_title(tab.os_window_id)+' '
+        session_name = ' '+get_os_window_title(tab.os_window_id)+' '
+    
+    # Save current colors
     fg, bg = screen.cursor.fg, screen.cursor.bg
+    
+    # Set cursor to absolute position 0 (beginning of the tab bar)
+    # This is critical for making the icon clickable
+    screen.cursor.x = 0
+    
+    # Draw the icon with custom colors
     screen.cursor.fg = icon_fg
     screen.cursor.bg = icon_bg
     screen.draw(ICON)
@@ -140,13 +163,13 @@ def _draw_right_status(screen: Screen, is_last: bool) -> int:
 
     draw_attributed_string(Formatter.reset, screen)
 
-    clock = datetime.now().strftime("%H:%M")
-    utc = datetime.now(timezone.utc).strftime(" (UTC %H:%M)")
+    clock = datetime.now().strftime("%H:%M %y-%m-%d ")
+    # utc = datetime.now(timezone.utc).strftime(" (UTC %H:%M)")
 
     cells = []
 
     cells.append((clock_color, clock))
-    cells.append((utc_color, utc))
+    # cells.append((utc_color, utc))
 
     right_status_length = RIGHT_MARGIN
     for cell in cells:
