@@ -1,4 +1,3 @@
-# Modified tab_bar.py
 import json
 import subprocess
 from collections import defaultdict
@@ -44,12 +43,15 @@ def calc_draw_spaces(*args) -> int:
     return length
 
 def _draw_icon(screen: Screen, index: int, tab_bar_data: TabBarData) -> int:
+    # Always draw the icon for the first tab, regardless of total tab count
     if index != 1:
         return 0
+    
     tab = get_boss().tab_for_id(tab_bar_data.tab_id)
     session_name: str = ''
     if type(get_os_window_title(tab.os_window_id)) == str:
         session_name = ' '+get_os_window_title(tab.os_window_id)+' '
+    
     fg, bg = screen.cursor.fg, screen.cursor.bg
     
     # Set cursor to absolute position 0 (beginning of the tab bar)
@@ -95,6 +97,7 @@ def _draw_left_status(
     return end
 
 def _draw_right_status(screen: Screen, is_last: bool, layout_name: str) -> int:
+    # Always draw the right status for the last tab
     if not is_last:
         return 0
 
@@ -162,6 +165,7 @@ def draw_tab(
     is_last: bool,
     extra_data: ExtraData,
 ) -> int:
+    # Always draw the icon for the first tab
     if index == 1:
         _draw_icon(screen, index, tab)
 
@@ -190,7 +194,8 @@ def draw_tab(
         extra_data,
     )
     
-    if is_last:
+    # Always draw the right status for the last tab
+    if is_last and active_layout_name:
         _draw_right_status(
             screen,
             is_last,
@@ -200,17 +205,20 @@ def draw_tab(
     return screen.cursor.x
 
 def handle_mouse(screen: Screen, tab_bar_data: TabBarData, event_type: int, x: int, y: int) -> int:
-    if event_type != 1:  # Mouse click
+    # Only handle mouse click events (type 1)
+    if event_type != 1:  
         return 0
     
     mark = screen.mark_at(x)
     if mark is None:
         return 0
         
+    # Handle layout button click
     if mark.identifier == "next_layout":
         get_boss().active_tab.next_layout()
         return 1
     
+    # Handle new tab button click
     if mark.identifier == "new_tab":
         get_boss().launch_tab()
         return 1
