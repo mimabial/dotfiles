@@ -57,9 +57,6 @@ autoload -U colors && colors
 # Load key bindings
 [[ -f "$ZSH_CONFIG_DIR/config/keybindings.zsh" ]] && source "$ZSH_CONFIG_DIR/config/keybindings.zsh"
 
-# Load prompt configuration
-[[ -f "$ZSH_CONFIG_DIR/config/prompt.zsh" ]] && source "$ZSH_CONFIG_DIR/config/prompt.zsh"
-
 # Load plugins
 [[ -f "$ZSH_CONFIG_DIR/config/plugins.zsh" ]] && source "$ZSH_CONFIG_DIR/config/plugins.zsh"
 

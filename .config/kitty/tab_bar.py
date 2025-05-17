@@ -19,7 +19,7 @@ from kitty.utils import color_as_int
 
 timer_id = None
 
-ICON = "  "
+ICON = ""
 RIGHT_MARGIN = 1
 REFRESH_TIME = 15
 
@@ -46,7 +46,7 @@ def _draw_icon(screen: Screen, index: int, tab_bar_data: TabBarData) -> int:
     tab = get_boss().tab_for_id(tab_bar_data.tab_id)
     session_name: str = ''
     if type(get_os_window_title(tab.os_window_id)) == str:
-        session_name = ':'+get_os_window_title(tab.os_window_id)+' '
+        session_name = ' '+get_os_window_title(tab.os_window_id)+' '
     fg, bg = screen.cursor.fg, screen.cursor.bg
     screen.cursor.fg = icon_fg
     screen.cursor.bg = icon_bg

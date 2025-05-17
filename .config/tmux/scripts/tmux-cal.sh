@@ -46,7 +46,7 @@ get_next_meeting() {
     --excludeAllDayEvents \
     --separateByDate \
     --bullet "" \
-    --includeCals "seth@ternit.com" \
+    --includeCals "mabialamirion@hotmail.fr" \
     eventsToday)
 }
 
@@ -64,7 +64,7 @@ get_next_next_meeting() {
       --excludeAllDayEvents \
       --separateByDate \
       --bullet "" \
-      --includeCals "seth@ternit.com" \
+      --includeCals "mabialamirion@hotmail.fr" \
       eventsFrom:"${end_timestamp}" to:"${tonight}"
   )
 }
@@ -126,7 +126,7 @@ print_tmux_status() {
       echo "#[fg=#d8caac]$NERD_FONT_MEETING $title  in $hours_mins_till_meeting"
     fi
   else
-    echo "$NERD_FONT_FREE $(date +"%a.%d|%m")"
+    echo "$NERD_FONT_FREE $(date +"%y.%m.%d")"
   fi
 
   if [[ $epoc_diff -gt $POPUP_BEFORE_SECONDS && epoc_diff -lt $POPUP_BEFORE_SECONDS+10 ]]; then
