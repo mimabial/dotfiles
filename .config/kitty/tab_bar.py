@@ -25,7 +25,7 @@ REFRESH_TIME = 15
 ADD_TAB_BUTTON = " + "  # New tab button
 
 # Global variable to track active layout name for status display
-active_layout_name = ""
+active_layout_name = " [STACK] "  # Default value
 
 icon_fg = as_rgb(color_as_int(Color(255, 250, 205)))
 icon_bg = as_rgb(color_as_int(Color(47, 61, 68)))
@@ -43,7 +43,7 @@ def calc_draw_spaces(*args) -> int:
     return length
 
 def _draw_icon(screen: Screen, index: int, tab_bar_data: TabBarData) -> int:
-    # Always draw the icon for the first tab, regardless of total tab count
+    # Draw the icon regardless of total tab count, but only for the first tab
     if index != 1:
         return 0
     
@@ -97,7 +97,7 @@ def _draw_left_status(
     return end
 
 def _draw_right_status(screen: Screen, is_last: bool, layout_name: str) -> int:
-    # Always draw the right status for the last tab
+    # Only draw for the last tab
     if not is_last:
         return 0
 
@@ -119,31 +119,32 @@ def _draw_right_status(screen: Screen, is_last: bool, layout_name: str) -> int:
     # Calculate space needed for layout button and new tab button
     layout_button_length = len(layout_name)
     new_tab_button_length = len(ADD_TAB_BUTTON)
-    total_right_elements = right_status_length + layout_button_length + new_tab_button_length
+    total_right_elements = right_status_length + layout_button_length + new_tab_button_length + 2  # +2 for padding
 
-    # Calculate spacing
-    draw_spaces = screen.columns - screen.cursor.x - total_right_elements - 1
-    if draw_spaces > 0:
-        screen.draw(" " * draw_spaces)
+    # Calculate spacing - ensure positive value
+    remaining_space = max(0, screen.columns - screen.cursor.x - total_right_elements)
+    if remaining_space > 0:
+        screen.draw(" " * remaining_space)
 
     # Draw clock
     for color, status in cells:
         screen.cursor.fg = color
         screen.draw(status)
+    screen.draw(" ")  # Add a space before buttons
     
     # Draw layout button with a mark for clicking
     layout_start_x = screen.cursor.x
-    screen.cursor.fg = as_rgb(color_as_int(Color(0, 0, 0)))
-    screen.cursor.bg = as_rgb(color_as_int(Color(140, 180, 175)))
+    screen.cursor.fg = as_rgb(color_as_int(Color(0, 0, 0)))  # Black text
+    screen.cursor.bg = as_rgb(color_as_int(Color(140, 180, 175)))  # Light teal background
     screen.draw(layout_name)
     
     # Register clickable area for layout cycling
     screen.set_mark(layout_start_x, layout_start_x + layout_button_length, "next_layout")
     
-    # Draw new tab button
+    # Draw new tab button with distinct color
     new_tab_start_x = screen.cursor.x
-    screen.cursor.fg = as_rgb(color_as_int(Color(0, 0, 0)))
-    screen.cursor.bg = as_rgb(color_as_int(Color(200, 150, 100)))
+    screen.cursor.fg = as_rgb(color_as_int(Color(0, 0, 0)))  # Black text
+    screen.cursor.bg = as_rgb(color_as_int(Color(200, 150, 100)))  # Orange/amber background
     screen.draw(ADD_TAB_BUTTON)
     
     # Register clickable area for new tab
@@ -165,7 +166,7 @@ def draw_tab(
     is_last: bool,
     extra_data: ExtraData,
 ) -> int:
-    # Always draw the icon for the first tab
+    # Always draw the icon for the first tab, regardless of total tab count
     if index == 1:
         _draw_icon(screen, index, tab)
 
@@ -195,7 +196,7 @@ def draw_tab(
     )
     
     # Always draw the right status for the last tab
-    if is_last and active_layout_name:
+    if is_last:
         _draw_right_status(
             screen,
             is_last,
