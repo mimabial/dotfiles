@@ -1,5 +1,5 @@
 <!DOCTYPE gui>
-<gui name="dolphin" translationDomain="kxmlgui6" version="40">
+<gui name="dolphin" translationDomain="kxmlgui6" version="42">
  <MenuBar alreadyVisited="1">
   <Menu alreadyVisited="1" name="file" noMerge="1">
    <text translationDomain="kxmlgui6">&amp;File</text>
@@ -98,21 +98,36 @@
    <Action name="bookmarks"/>
    <Action name="closed_tabs"/>
   </Menu>
+  <Separator weakSeparator="1"/>
+  <Separator weakSeparator="1"/>
+  <Separator weakSeparator="1"/>
+  <Separator weakSeparator="1"/>
+  <Separator weakSeparator="1"/>
+  <Separator weakSeparator="1"/>
+  <Separator weakSeparator="1"/>
+  <Separator weakSeparator="1"/>
+  <Separator weakSeparator="1"/>
+  <Separator weakSeparator="1"/>
+  <Separator weakSeparator="1"/>
+  <Separator weakSeparator="1"/>
+  <Separator weakSeparator="1"/>
+  <Separator weakSeparator="1"/>
+  <Separator weakSeparator="1"/>
+  <Separator weakSeparator="1"/>
+  <Separator weakSeparator="1"/>
   <Menu alreadyVisited="1" name="tools" noMerge="1">
    <text translationDomain="kxmlgui6">&amp;Tools</text>
    <Action name="open_preferred_search_tool"/>
    <Action name="open_terminal"/>
    <Action name="open_terminal_here"/>
-   <Action name="focus_terminal_panel"/>
    <Action name="compare_files"/>
    <Action name="change_remote_encoding"/>
   </Menu>
-  <Menu name="settings" noMerge="1">
+  <Menu alreadyVisited="1" name="settings" noMerge="1">
    <text translationDomain="kxmlgui6">&amp;Settings</text>
    <Action name="options_show_menubar"/>
    <Merge name="StandardToolBarMenuHandler"/>
    <Merge name="KMDIViewActions"/>
-   <Action name="options_show_statusbar"/>
    <Separator weakSeparator="1"/>
    <Action name="switch_application_language"/>
    <Action name="options_configure_keybinding"/>
@@ -120,7 +135,7 @@
    <Action name="options_configure"/>
   </Menu>
   <Separator weakSeparator="1"/>
-  <Menu name="help" noMerge="1">
+  <Menu alreadyVisited="1" name="help" noMerge="1">
    <text translationDomain="kxmlgui6">&amp;Help</text>
    <Action name="help_contents"/>
    <Action name="help_whats_this"/>
@@ -136,12 +151,21 @@
  </MenuBar>
  <ToolBar alreadyVisited="1" name="mainToolBar" noMerge="1">
   <Spacer name="spacer_0"/>
-  <Action name="invert_selection"/>
-  <Action name="show_hidden_files"/>
-  <Action name="create_dir"/>
+  <Action name="icons"/>
   <text context="@title:menu" translationDomain="dolphin">Main Toolbar</text>
-  <Action name="split_view"/>
-  <Action name="hamburger_menu"/>
+  <Action name="compact"/>
+  <Action name="details"/>
+  <Separator name="separator_0"/>
+  <Action name="toggle_filter"/>
+  <Action name="toggle_search"/>
+  <Separator name="separator_1"/>
+  <Action name="split_view_menu"/>
+  <Separator name="separator_2"/>
+  <Action name="sort"/>
+  <Separator name="separator_3"/>
+  <Action name="open_terminal_here"/>
+  <Separator name="separator_4"/>
+  <Action name="show_hidden_files"/>
  </ToolBar>
  <State name="new_file">
   <disable>
