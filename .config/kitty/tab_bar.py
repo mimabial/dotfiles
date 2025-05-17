@@ -19,24 +19,19 @@ from kitty.utils import color_as_int
 
 timer_id = None
 
-# Icon that will be clickable to create a new tab
 ICON = " 󰙝 "
 RIGHT_MARGIN = 1
 REFRESH_TIME = 15
 
-# Global variable to track active layout name for status display
-active_layout_name = ""
-
-# Colors for various tab bar elements
 icon_fg = as_rgb(color_as_int(Color(255, 250, 205)))
 icon_bg = as_rgb(color_as_int(Color(47, 61, 68)))
+# OR icon_bg = as_rgb(0x2f3d44)
 bat_text_color = as_rgb(0x999F93)
 clock_color = as_rgb(0x7FBBB3)
 sep_color = as_rgb(0x999F93)
 utc_color = as_rgb(color_as_int(Color(113, 115, 116)))
 
 def calc_draw_spaces(*args) -> int:
-    """Calculate total character length of all args combined"""
     length = 0
     for i in args:
         if not isinstance(i, str):
@@ -44,48 +39,24 @@ def calc_draw_spaces(*args) -> int:
         length += len(i)
     return length
 
+
 def _draw_icon(screen: Screen, index: int, tab_bar_data: TabBarData) -> int:
-    """
-    Draw the icon at the beginning of the tab bar.
-    Only draws when processing the first tab (index == 1).
-    
-    The icon is drawn at position 0, making it the leftmost element.
-    Returns the width of the icon (how much the cursor moved).
-    
-    IMPORTANT: The cursor position after drawing determines click areas.
-    """
-    # Only draw the icon once at the beginning of the tab bar
     if index != 1:
         return 0
-    
     tab = get_boss().tab_for_id(tab_bar_data.tab_id)
     session_name: str = ''
     if type(get_os_window_title(tab.os_window_id)) == str:
-        session_name = ' '+get_os_window_title(tab.os_window_id)+' '
-    
-    # Save current colors
+        session_name = ' '+get_os_window_title(tab.os_window_id)+' '
     fg, bg = screen.cursor.fg, screen.cursor.bg
-    
-    # Set cursor to absolute position 0 (beginning of the tab bar)
-    # This is critical for making the icon clickable
-    screen.cursor.x = 0
-    
-    # Draw the icon with custom colors
     screen.cursor.fg = icon_fg
     screen.cursor.bg = icon_bg
     screen.draw(ICON)
     screen.draw(session_name)
-    
-    # Restore original colors
     screen.cursor.fg, screen.cursor.bg = fg, bg
-    
-    # Return the width of the drawn content
-    # This ensures subsequent elements are positioned correctly
-    icon_width = len(ICON) + len(session_name)
-    return icon_width
+    screen.cursor.x = len(ICON) + len(session_name)
+    return screen.cursor.x
 
 def draw_session_name(draw_data: DrawData, screen: Screen, tab_bar_data: TabBarData, index: int) -> int:
-    """Draw the session name with custom formatting"""
     tab = get_boss().tab_for_id(tab_bar_data.tab_id)
     session_name: str = ' '+get_os_window_title(tab.os_window_id)+' '
 
@@ -108,7 +79,8 @@ def draw_session_name(draw_data: DrawData, screen: Screen, tab_bar_data: TabBarD
 
     screen.cursor.x = len(session_name) + 1
 
-    # Restore original styles
+    # set cursor position
+    # restore color style
     screen.cursor.fg, screen.cursor.bg, screen.cursor.bold, screen.cursor.italic = (
         fg,
         bg,
@@ -127,20 +99,19 @@ def _draw_left_status(
     is_last: bool,
     extra_data: ExtraData,
 ) -> int:
-    """
-    Draw the left part of the tab bar (tab titles).
-    Returns the x position after drawing.
-    
-    This function handles the actual tab title drawing and is important
-    for mouse click detection since the cursor position after this
-    determines where tab clicks are registered.
-    """
+    # print(extra_data)
     if draw_data.leading_spaces:
         screen.draw(" " * draw_data.leading_spaces)
 
-    # Draw the tab title
+    # TODO: https://github.com/kovidgoyal/kitty/discussions/4447#discussioncomment-2463083
+    # tm = get_boss().active_tab_manager
+    #     if tm is not None:
+    #         w = tm.active_window
+    #         if w is not None:
+    #             cwd = w.cwd_of_child or ''
+    #             log_error(cwd)
+
     draw_title(draw_data, screen, tab, index)
-    
     trailing_spaces = min(max_title_length - 1, draw_data.trailing_spaces)
     max_title_length -= trailing_spaces
     extra = screen.cursor.x - before - max_title_length
@@ -149,58 +120,49 @@ def _draw_left_status(
         screen.draw("…")
     if trailing_spaces:
         screen.draw(" " * trailing_spaces)
-    
-    # Save the end position which will be returned
     end = screen.cursor.x
-    
-    # Reset formatting
     screen.cursor.bold = screen.cursor.italic = False
     screen.cursor.fg = 0
-    
-    # Add separator between tabs if not the last tab
     if not is_last:
         screen.cursor.bg = as_rgb(color_as_int(draw_data.inactive_bg))
         screen.draw(draw_data.sep)
     screen.cursor.bg = 0
-    
     return end
 
+# more handy kitty tab_bar things:
+# REF: https://github.com/kovidgoyal/kitty/discussions/4447#discussioncomment-2183440
 def _draw_right_status(screen: Screen, is_last: bool) -> int:
-    """
-    Draw the right status area (clock, etc).
-    This is only drawn once when processing the last tab.
-    
-    Returns the new cursor position.
-    """
     if not is_last:
         return 0
+    # global timer_id
+    # if timer_id is None:
+    #     timer_id = add_timer(_redraw_tab_bar, REFRESH_TIME, True)
 
     draw_attributed_string(Formatter.reset, screen)
 
-    # Format the clock and date
-    clock = datetime.now().strftime("%H:%M %y-%m-%d ")
+    clock = datetime.now().strftime("%H:%M  %y-%m-%d ")
+    # utc = datetime.now(timezone.utc).strftime(" (UTC %H:%M)")
 
     cells = []
-    cells.append((clock_color, clock))
 
-    # Calculate the width of right status content
+    cells.append((clock_color, clock))
+    # cells.append((utc_color, utc))
+
     right_status_length = RIGHT_MARGIN
     for cell in cells:
         right_status_length += len(str(cell[1]))
 
-    # Draw spaces to position the right status at the end
     draw_spaces = screen.columns - screen.cursor.x - right_status_length
+
     if draw_spaces > 0:
         screen.draw(" " * draw_spaces)
 
-    # Draw the right status content
     screen.cursor.fg = 0
     for color, status in cells:
-        screen.cursor.fg = color
+        screen.cursor.fg = color  # as_rgb(color_as_int(color))
         screen.draw(status)
     screen.cursor.bg = 0
 
-    # Ensure cursor is correctly positioned
     if screen.columns - screen.cursor.x > right_status_length:
         screen.cursor.x = screen.columns - right_status_length
 
@@ -216,42 +178,28 @@ def draw_tab(
     is_last: bool,
     extra_data: ExtraData,
 ) -> int:
-    """
-    Main entry point for drawing each tab.
-    
-    For the first tab (index == 1), we draw the icon at position 0.
-    Then we draw the actual tab title.
-    
-    The cursor positions after drawing determine click areas:
-    - Position 0 to icon_width: clicking here will trigger the "prefix_area" mouse action
-      (add a mouse_map in kitty.conf for this)
-    - After tabs, before right status: clicking here creates a new tab (built-in)
-    """
-    global active_layout_name
-    
-    # Draw the clickable icon before the first tab
-    icon_width = 0
     if index == 1:
-        icon_width = _draw_icon(screen, index, tab)
-        # Update the starting position for the tab title
-        before += icon_width
+        _draw_icon(screen, index, tab)
 
-    # Handle layout name for status display
+    global active_layout_name
     if tab.is_active:
         boss = get_boss()
         w = boss.active_window
-        if w and w.overlay_parent is not None:
+        if w.overlay_parent is not None:
             lvl = 0
             while w.overlay_parent is not None:
                 w = w.overlay_parent
                 lvl += 1
             overlay_label = f" [Overlay {lvl}] "
             active_layout_name = overlay_label
+            # print(w.overlay_parent)
         else:
             active_layout_name = f" [{tab.layout_name.upper()}] "
 
-    # Draw the tab title and get the ending position
-    end_pos = _draw_left_status(
+    # Set cursor to where `left_status` ends, instead `right_status`,
+    # to enable `open new tab` feature
+
+    _draw_left_status(
         draw_data,
         screen,
         tab,
@@ -261,14 +209,10 @@ def draw_tab(
         is_last,
         extra_data,
     )
-    
-    # Draw the right status area if this is the last tab
     if is_last and active_layout_name != "":
         _draw_right_status(
             screen,
             is_last,
         )
 
-    # Return the cursor position after drawing this tab
-    # This is important for kitty to know where to detect clicks
-    return end_pos
+    return screen.cursor.x
