@@ -19,7 +19,7 @@ from kitty.utils import color_as_int
 
 timer_id = None
 
-ICON = ""
+ICON = " 󰙝 "
 RIGHT_MARGIN = 1
 REFRESH_TIME = 15
 
@@ -46,7 +46,7 @@ def _draw_icon(screen: Screen, index: int, tab_bar_data: TabBarData) -> int:
     tab = get_boss().tab_for_id(tab_bar_data.tab_id)
     session_name: str = ''
     if type(get_os_window_title(tab.os_window_id)) == str:
-        session_name = ' '+get_os_window_title(tab.os_window_id)+' '
+        session_name = ' '+get_os_window_title(tab.os_window_id)+' '
     fg, bg = screen.cursor.fg, screen.cursor.bg
     screen.cursor.fg = icon_fg
     screen.cursor.bg = icon_bg
@@ -140,13 +140,13 @@ def _draw_right_status(screen: Screen, is_last: bool) -> int:
 
     draw_attributed_string(Formatter.reset, screen)
 
-    clock = datetime.now().strftime("%H:%M")
-    utc = datetime.now(timezone.utc).strftime(" (UTC %H:%M)")
+    clock = datetime.now().strftime("%H:%M %y-%m-%d ")
+    # utc = datetime.now(timezone.utc).strftime(" (UTC %H:%M)")
 
     cells = []
 
     cells.append((clock_color, clock))
-    cells.append((utc_color, utc))
+    # cells.append((utc_color, utc))
 
     right_status_length = RIGHT_MARGIN
     for cell in cells:
