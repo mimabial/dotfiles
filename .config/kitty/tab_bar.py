@@ -4,7 +4,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 
 from kitty.boss import get_boss
-from kitty.fast_data_types import Screen, add_timer, get_os_window_title
+from kitty.fast_data_types import Screen, add_timer, get_os_window_title, set_tab_bar_render_data
 from kitty.rgb import Color
 from kitty.tab_bar import (
     DrawData,
@@ -23,11 +23,20 @@ ICON = " 󰙝 "
 RIGHT_MARGIN = 1
 REFRESH_TIME = 15
 
+LAYOUTS = ["stack", "tall", "fat", "grid", "horizontal", "vertical", "splits"]
+NEW_TAB_BUTTON = " + "
+layout_color = as_rgb(0xD8A657)
+new_tab_color = as_rgb(0xA9B665)
+
+# Global variable to track active layout name for status display
+active_layout_name = ""
+
 icon_fg = as_rgb(color_as_int(Color(255, 250, 205)))
 icon_bg = as_rgb(color_as_int(Color(47, 61, 68)))
-# OR icon_bg = as_rgb(0x2f3d44)
 bat_text_color = as_rgb(0x999F93)
 clock_color = as_rgb(0x7FBBB3)
+layout_color = as_rgb(0x87c095)  # Green color for layout indicator
+new_tab_color = as_rgb(0xe67e80)  # Red color for new tab button
 sep_color = as_rgb(0x999F93)
 utc_color = as_rgb(color_as_int(Color(113, 115, 116)))
 
@@ -131,7 +140,7 @@ def _draw_left_status(
 
 # more handy kitty tab_bar things:
 # REF: https://github.com/kovidgoyal/kitty/discussions/4447#discussioncomment-2183440
-def _draw_right_status(screen: Screen, is_last: bool) -> int:
+def _draw_right_status(screen: Screen, is_last: bool, layout_name: str) -> int:
     if not is_last:
         return 0
     # global timer_id
@@ -148,7 +157,8 @@ def _draw_right_status(screen: Screen, is_last: bool) -> int:
     cells.append((clock_color, clock))
     # cells.append((utc_color, utc))
 
-    right_status_length = RIGHT_MARGIN
+    layout_name_length = len(layout_name.strip().replace('[', '').replace(']', '')) + 2  # +2 for spacing
+    right_status_length = RIGHT_MARGIN + len(NEW_TAB_BUTTON) + layout_name_length
     for cell in cells:
         right_status_length += len(str(cell[1]))
 
@@ -157,6 +167,13 @@ def _draw_right_status(screen: Screen, is_last: bool) -> int:
     if draw_spaces > 0:
         screen.draw(" " * draw_spaces)
 
+    # Draw the layout button first
+    _draw_layout_button(screen, is_last, layout_name)
+    
+    # Then draw the new tab button
+    _draw_new_tab_button(screen, is_last)
+    
+    # Finally draw the clock
     screen.cursor.fg = 0
     for color, status in cells:
         screen.cursor.fg = color  # as_rgb(color_as_int(color))
@@ -166,6 +183,41 @@ def _draw_right_status(screen: Screen, is_last: bool) -> int:
     if screen.columns - screen.cursor.x > right_status_length:
         screen.cursor.x = screen.columns - right_status_length
 
+    return screen.cursor.x
+
+def _draw_layout_button(screen: Screen, is_last: bool, layout_name: str) -> int:
+    if not is_last:
+        return 0
+        
+    # Strip brackets from layout name for display
+    clean_layout = layout_name.strip().replace('[', '').replace(']', '')
+    
+    # Mark the region as clickable
+    start_x = screen.cursor.x
+    
+    # Draw the layout button
+    screen.cursor.fg = layout_color
+    screen.draw(f" {clean_layout} ")
+    
+    # Register marker for click action to cycle layouts
+    screen.set_marker(1, start_x, screen.cursor.x - 1)
+    
+    return screen.cursor.x
+
+def _draw_new_tab_button(screen: Screen, is_last: bool) -> int:
+    if not is_last:
+        return 0
+        
+    # Mark the region as clickable
+    start_x = screen.cursor.x
+    
+    # Draw the new tab button
+    screen.cursor.fg = new_tab_color
+    screen.draw(NEW_TAB_BUTTON)
+    
+    # Register marker for click action to create new tab
+    screen.set_marker(2, start_x, screen.cursor.x - 1)
+    
     return screen.cursor.x
 
 def draw_tab(
@@ -182,6 +234,8 @@ def draw_tab(
         _draw_icon(screen, index, tab)
 
     global active_layout_name
+    current_layout = ""
+    
     if tab.is_active:
         boss = get_boss()
         w = boss.active_window
@@ -192,12 +246,9 @@ def draw_tab(
                 lvl += 1
             overlay_label = f" [Overlay {lvl}] "
             active_layout_name = overlay_label
-            # print(w.overlay_parent)
         else:
-            active_layout_name = f" [{tab.layout_name.upper()}] "
-
-    # Set cursor to where `left_status` ends, instead `right_status`,
-    # to enable `open new tab` feature
+            active_layout_name = f"{tab.layout_name.upper()}"
+        current_layout = active_layout_name
 
     _draw_left_status(
         draw_data,
@@ -209,10 +260,43 @@ def draw_tab(
         is_last,
         extra_data,
     )
+    
     if is_last and active_layout_name != "":
         _draw_right_status(
             screen,
             is_last,
+            current_layout,
         )
 
     return screen.cursor.x
+
+def handle_mouse(screen: Screen, tab_id: int, x: int, button: int) -> bool:
+    marker = screen.marker_from_position(x)
+    if marker is None:
+        return False
+        
+    if marker.id == 1:  # Layout button was clicked
+        boss = get_boss()
+        tab = boss.tab_for_id(tab_id)
+        if tab:
+            # Get current layout index
+            current_layout = tab.current_layout.name
+            try:
+                idx = LAYOUTS.index(current_layout)
+                # Cycle to next layout
+                next_idx = (idx + 1) % len(LAYOUTS)
+                next_layout = LAYOUTS[next_idx]
+                # Change the layout
+                tab.goto_layout(next_layout)
+            except ValueError:
+                # If current layout not in list, go to first one
+                tab.goto_layout(LAYOUTS[0])
+        return True
+        
+    if marker.id == 2:  # New tab button was clicked
+        boss = get_boss()
+        # Create a new tab
+        boss.create_tab(tab_type="", cwd_from=None)
+        return True
+        
+    return False
