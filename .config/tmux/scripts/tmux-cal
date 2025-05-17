@@ -1,4 +1,4 @@
-r#!/bin/bash
+#!/bin/bash
 
 DISPLAY_IF_IN_NEXT_MINUTES=90
 ALERT_IF_IN_NEXT_MINUTES=15
@@ -21,7 +21,7 @@ get_attendees() {
       --separateByDate \
       --excludeEndDates \
       --bullet "" \
-      --includeCals "seth@ternit.com" \
+      --includeCals "mabialamirion@hotmail.fr" \
       eventsToday
   )
 }
@@ -126,7 +126,7 @@ print_tmux_status() {
       echo "#[fg=#d8caac]$NERD_FONT_MEETING $title  in $hours_mins_till_meeting"
     fi
   else
-    echo "$NERD_FONT_FREE $(date +"%a %b %d")"
+    echo "$NERD_FONT_FREE $(date +"%a.%d|%m")"
   fi
 
   if [[ $epoc_diff -gt $POPUP_BEFORE_SECONDS && epoc_diff -lt $POPUP_BEFORE_SECONDS+10 ]]; then
