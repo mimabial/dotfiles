@@ -11,6 +11,104 @@
 #
 #   for i in {0..255}; do print -Pn "%K{$i}  %k%F{$i}${(l:3::0:)i}%f " ${${(M)$((i%6)):#3}:+$'\n'}; done
 
+# ────────────────────────────────────────────────────────────────────
+# Color-scheme loader: change P10K_SCHEME_NAME to switch palettes
+typeset -g P10K_SCHEME_NAME=${P10K_SCHEME_NAME:-everforest}
+function p10k_load_colors() {
+  case $P10K_SCHEME_NAME in
+    everforest)
+      typeset -g SC_BG    ='#2b3339'  # base0
+      typeset -g SC_BG1   ='#343d46'  # base1
+      typeset -g SC_BG2   ='#3e4c59'  # base2
+      typeset -g SC_FG    ='#dfe1e8'  # foreground
+      typeset -g SC_GREEN ='#859966'
+      typeset -g SC_CYAN  ='#7daea3'
+      typeset -g SC_YELL  ='#e6c384'
+      typeset -g SC_ORNG  ='#d699b6'
+      typeset -g SC_RED   ='#e67e80'
+      ;;
+
+    gruvbox)
+      typeset -g SC_BG   ='#282828'
+      typeset -g SC_BG1  ='#3c3836'
+      typeset -g SC_BG2  ='#504945'
+      typeset -g SC_FG   ='#ebdbb2'
+      typeset -g SC_RED  ='#fb4934'
+      typeset -g SC_GREEN ='#b8bb26'
+      typeset -g SC_YELL  ='#fabd2f'
+      typeset -g SC_CYAN  ='#8ec07c'
+      typeset -g SC_ORNG  ='#fe8019'
+      ;;
+
+    nord)
+      typeset -g SC_BG   ='#2E3440'
+      typeset -g SC_BG1  ='#3B4252'
+      typeset -g SC_BG2  ='#434C5E'
+      typeset -g SC_FG   ='#ECEFF4'
+      typeset -g SC_RED  ='#BF616A'
+      typeset -g SC_GREEN ='#A3BE8C'
+      typeset -g SC_YELL  ='#EBCB8B'
+      typeset -g SC_CYAN  ='#88C0D0'
+      typeset -g SC_ORNG  ='#D08770'
+      ;;
+
+    kanagawa)
+      typeset -g SC_BG   ='#1F1F28'
+      typeset -g SC_BG1  ='#2A2A37'
+      typeset -g SC_BG2  ='#363646'
+      typeset -g SC_FG   ='#DCD7BA'
+      typeset -g SC_RED  ='#E82424'
+      typeset -g SC_GREEN ='#76946A'
+      typeset -g SC_YELL  ='#FF9E3B'
+      typeset -g SC_CYAN  ='#6A9589'
+      typeset -g SC_ORNG  ='#DCA561'
+      ;;
+
+    rose-pine)
+      typeset -g SC_BG   ='#191724'
+      typeset -g SC_BG1  ='#1F1D2E'
+      typeset -g SC_BG2  ='#26233A'
+      typeset -g SC_FG   ='#E0DEF4'
+      typeset -g SC_RED  ='#EB6F92'
+      typeset -g SC_GREEN ='#31748F'
+      typeset -g SC_YELL  ='#F6C177'
+      typeset -g SC_CYAN  ='#9CCFD8'
+      typeset -g SC_ORNG  ='#F6C177'
+      ;;
+
+    *)
+      echo "Unknown P10K_SCHEME_NAME: $P10K_SCHEME_NAME" >&2
+      ;;
+  esac
+}
+p10k_load_colors
+# ────────────────────────────────────────────────────────────────────
+
+# Core prompt background & text
+typeset -g POWERLEVEL9K_BACKGROUND=$SC_BG
+typeset -g POWERLEVEL9K_PROMPT_FOREGROUND=$SC_FG
+
+# Exit status
+typeset -g POWERLEVEL9K_STATUS_OK_FOREGROUND=$SC_GREEN
+typeset -g POWERLEVEL9K_STATUS_ERROR_FOREGROUND=$SC_RED
+
+# Current directory
+typeset -g POWERLEVEL9K_DIR_FOREGROUND=$SC_GREEN
+typeset -g POWERLEVEL9K_DIR_HOME_FOREGROUND=$SC_CYAN
+
+# Git / VCS
+typeset -g POWERLEVEL9K_VCS_CLEAN_FOREGROUND=$SC_GREEN
+typeset -g POWERLEVEL9K_VCS_MODIFIED_FOREGROUND=$SC_ORNG
+typeset -g POWERLEVEL9K_VCS_UNTRACKED_FOREGROUND=$SC_YELL
+
+# Time
+typeset -g POWERLEVEL9K_TIME_FOREGROUND=$SC_YELL
+
+# Bonus: set everything else you care about to cyan by default
+for seg in AWS AZURE GCLOUD GOOGLE_APP_CRED TOOLBOX CONTEXT; do
+  typeset -g POWERLEVEL9K_${seg}_FOREGROUND=$SC_CYAN
+done
+
 # Temporarily change options.
 'builtin' 'local' '-a' 'p10k_config_opts'
 [[ ! -o 'aliases'         ]] || p10k_config_opts+=('aliases')
