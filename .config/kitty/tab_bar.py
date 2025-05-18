@@ -43,27 +43,31 @@ def calc_draw_spaces(*args) -> int:
     return length
 
 def _draw_icon(screen: Screen, index: int, tab_bar_data: TabBarData) -> int:
-    # Draw the icon regardless of total tab count, but only for the first tab
-    if index != 1:
+    # Only on the very first tab, draw icon+session name and return its width.
+    if index != 0:
         return 0
-    
-    tab = get_boss().tab_for_id(tab_bar_data.tab_id)
-    session_name: str = ''
-    if type(get_os_window_title(tab.os_window_id)) == str:
-        session_name = ' '+get_os_window_title(tab.os_window_id)+' '
-    
+
+    # Where the cursor begins
+    start_x = screen.cursor.x
+
+    # Swap in our icon colors
     fg, bg = screen.cursor.fg, screen.cursor.bg
-    
-    # Set cursor to absolute position 0 (beginning of the tab bar)
-    screen.cursor.x = 0
-    
-    screen.cursor.fg = icon_fg
-    screen.cursor.bg = icon_bg
+    screen.cursor.fg, screen.cursor.bg = icon_fg, icon_bg
+
+    # Draw the icon
     screen.draw(ICON)
-    screen.draw(session_name)
+
+    # If the window title exists, draw that too
+    tab = get_boss().tab_for_id(tab_bar_data.tab_id)
+    title = get_os_window_title(tab.os_window_id)
+    if isinstance(title, str) and title:
+        screen.draw(" " + title + " ")
+
+    # Restore the original colors
     screen.cursor.fg, screen.cursor.bg = fg, bg
-    screen.cursor.x = len(ICON) + len(session_name)
-    return screen.cursor.x
+
+    # Return how many cells we used
+    return screen.cursor.x - start_x
 
 def _draw_left_status(
     draw_data: DrawData,
@@ -167,8 +171,8 @@ def draw_tab(
     extra_data: ExtraData,
 ) -> int:
     # Always draw the icon for the first tab, regardless of total tab count
-    if index == 1:
-        _draw_icon(screen, index, tab)
+    if index == 0:
+        before += _draw_icon(screen, index, tab)
 
     global active_layout_name
     if tab.is_active:
@@ -194,16 +198,11 @@ def draw_tab(
         is_last,
         extra_data,
     )
-    
-    # Always draw the right status for the last tab
+    # Draw the right‐hand status on the final tab and update end
     if is_last:
-        _draw_right_status(
-            screen,
-            is_last,
-            active_layout_name
-        )
+        end = _draw_right_status(screen, is_last, active_layout_name)
 
-    return screen.cursor.x
+    return end
 
 def handle_mouse(screen: Screen, tab_bar_data: TabBarData, event_type: int, x: int, y: int) -> int:
     # Only handle mouse click events (type 1)
