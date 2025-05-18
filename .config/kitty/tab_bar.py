@@ -139,11 +139,11 @@ def _draw_right_status(screen: Screen, is_last: bool, layout_name: str) -> int:
 
     draw_attributed_string(Formatter.reset, screen)
 
-    clock = datetime.now().strftime("%H:%M")
+    clock = datetime.now().strftime("%Y-%m-%d %H:%M")
 
     cells = []
 
-    cells.append((clock_color, clock))
+    cells.append((icon_bg, clock))
     cells.append((layout_color, layout_name))
 
     right_status_length = RIGHT_MARGIN
