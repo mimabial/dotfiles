@@ -1,10 +1,15 @@
+# pyright: reportMissingImports=false
 import json
 import subprocess
 from collections import defaultdict
 from datetime import datetime, timezone
 
 from kitty.boss import get_boss
-from kitty.fast_data_types import Screen, add_timer, get_os_window_title
+from kitty.fast_data_types import (
+    Screen,
+    get_options,
+    get_os_window_title,
+)
 from kitty.rgb import Color
 from kitty.tab_bar import (
     DrawData,
@@ -17,22 +22,21 @@ from kitty.tab_bar import (
 )
 from kitty.utils import color_as_int
 
+opts = get_options()
 timer_id = None
 
-ICON = " 󰙝 "
+ICON = ""
 RIGHT_MARGIN = 1
 REFRESH_TIME = 15
-ADD_TAB_BUTTON = " + "  # New tab button
-
-# Global variable to track active layout name for status display
-active_layout_name = " [STACK] "  # Default value
 
 icon_fg = as_rgb(color_as_int(Color(255, 250, 205)))
 icon_bg = as_rgb(color_as_int(Color(47, 61, 68)))
+
 bat_text_color = as_rgb(0x999F93)
 clock_color = as_rgb(0x7FBBB3)
 sep_color = as_rgb(0x999F93)
-utc_color = as_rgb(color_as_int(Color(113, 115, 116)))
+layout_color = as_rgb(color_as_int(opts.color14))
+
 
 def calc_draw_spaces(*args) -> int:
     length = 0
@@ -42,32 +46,59 @@ def calc_draw_spaces(*args) -> int:
         length += len(i)
     return length
 
+
 def _draw_icon(screen: Screen, index: int, tab_bar_data: TabBarData) -> int:
-    # Only on the very first tab, draw icon+session name and return its width.
-    if index != 0:
+    if index != 1:
         return 0
-
-    # Where the cursor begins
-    start_x = screen.cursor.x
-
-    # Swap in our icon colors
-    fg, bg = screen.cursor.fg, screen.cursor.bg
-    screen.cursor.fg, screen.cursor.bg = icon_fg, icon_bg
-
-    # Draw the icon
-    screen.draw(ICON)
-
-    # If the window title exists, draw that too
     tab = get_boss().tab_for_id(tab_bar_data.tab_id)
-    title = get_os_window_title(tab.os_window_id)
-    if isinstance(title, str) and title:
-        screen.draw(" " + title + " ")
-
-    # Restore the original colors
+    session_name: str = ""
+    if type(get_os_window_title(tab.os_window_id)) == str:
+        session_name = " " + get_os_window_title(tab.os_window_id) + " "
+    fg, bg = screen.cursor.fg, screen.cursor.bg
+    screen.cursor.fg = icon_fg
+    screen.cursor.bg = icon_bg
+    screen.draw(ICON)
+    screen.draw(session_name)
     screen.cursor.fg, screen.cursor.bg = fg, bg
+    screen.cursor.x = len(ICON) + len(session_name)
+    return screen.cursor.x
 
-    # Return how many cells we used
-    return screen.cursor.x - start_x
+
+def draw_session_name(
+    draw_data: DrawData, screen: Screen, tab_bar_data: TabBarData, index: int
+) -> int:
+    tab = get_boss().tab_for_id(tab_bar_data.tab_id)
+    session_name: str = " " + get_os_window_title(tab.os_window_id) + " "
+
+    fg, bg, bold, italic = (
+        screen.cursor.fg,
+        screen.cursor.bg,
+        screen.cursor.bold,
+        screen.cursor.italic,
+    )
+
+    screen.cursor.bold, screen.cursor.italic = (True, True)
+    colorfg = as_rgb(color_as_int(opts.color4))
+    colorbg = as_rgb(color_as_int(opts.color0))
+
+    screen.cursor.fg, screen.cursor.bg = (
+        colorbg,
+        colorfg,
+    )  # inverted colors for high contrast
+    screen.draw(f"{session_name}")
+
+    screen.cursor.x = len(session_name) + 1
+
+    # set cursor position
+    # restore color style
+    screen.cursor.fg, screen.cursor.bg, screen.cursor.bold, screen.cursor.italic = (
+        fg,
+        bg,
+        bold,
+        italic,
+    )
+    return screen.cursor.x
+
 
 def _draw_left_status(
     draw_data: DrawData,
@@ -79,6 +110,7 @@ def _draw_left_status(
     is_last: bool,
     extra_data: ExtraData,
 ) -> int:
+    # print(extra_data)
     if draw_data.leading_spaces:
         screen.draw(" " * draw_data.leading_spaces)
 
@@ -100,65 +132,43 @@ def _draw_left_status(
     screen.cursor.bg = 0
     return end
 
+
 def _draw_right_status(screen: Screen, is_last: bool, layout_name: str) -> int:
-    # Only draw for the last tab
     if not is_last:
         return 0
 
     draw_attributed_string(Formatter.reset, screen)
-    
-    # Save original cursor properties
-    fg, bg = screen.cursor.fg, screen.cursor.bg
-    bold, italic = screen.cursor.bold, screen.cursor.italic
 
     clock = datetime.now().strftime("%H:%M")
 
     cells = []
+
     cells.append((clock_color, clock))
+    cells.append((layout_color, layout_name))
 
     right_status_length = RIGHT_MARGIN
     for cell in cells:
         right_status_length += len(str(cell[1]))
 
-    # Calculate space needed for layout button and new tab button
-    layout_button_length = len(layout_name)
-    new_tab_button_length = len(ADD_TAB_BUTTON)
-    total_right_elements = right_status_length + layout_button_length + new_tab_button_length + 2  # +2 for padding
+    draw_spaces = screen.columns - screen.cursor.x - right_status_length
 
-    # Calculate spacing - ensure positive value
-    remaining_space = max(0, screen.columns - screen.cursor.x - total_right_elements)
-    if remaining_space > 0:
-        screen.draw(" " * remaining_space)
+    if draw_spaces > 0:
+        screen.draw(" " * draw_spaces)
 
-    # Draw clock
+    screen.cursor.fg = 0
     for color, status in cells:
-        screen.cursor.fg = color
+        screen.cursor.fg = color  # as_rgb(color_as_int(color))
         screen.draw(status)
-    screen.draw(" ")  # Add a space before buttons
-    
-    # Draw layout button with a mark for clicking
-    layout_start_x = screen.cursor.x
-    screen.cursor.fg = as_rgb(color_as_int(Color(0, 0, 0)))  # Black text
-    screen.cursor.bg = as_rgb(color_as_int(Color(140, 180, 175)))  # Light teal background
-    screen.draw(layout_name)
-    
-    # Register clickable area for layout cycling
-    screen.set_mark(layout_start_x, layout_start_x + layout_button_length, "next_layout")
-    
-    # Draw new tab button with distinct color
-    new_tab_start_x = screen.cursor.x
-    screen.cursor.fg = as_rgb(color_as_int(Color(0, 0, 0)))  # Black text
-    screen.cursor.bg = as_rgb(color_as_int(Color(200, 150, 100)))  # Orange/amber background
-    screen.draw(ADD_TAB_BUTTON)
-    
-    # Register clickable area for new tab
-    screen.set_mark(new_tab_start_x, new_tab_start_x + new_tab_button_length, "new_tab")
-    
-    # Reset cursor properties
-    screen.cursor.fg, screen.cursor.bg = fg, bg
-    screen.cursor.bold, screen.cursor.italic = bold, italic
+    screen.cursor.bg = 0
+
+    if screen.columns - screen.cursor.x > right_status_length:
+        screen.cursor.x = screen.columns - right_status_length
 
     return screen.cursor.x
+
+
+active_layout_name = ""
+
 
 def draw_tab(
     draw_data: DrawData,
@@ -170,24 +180,25 @@ def draw_tab(
     is_last: bool,
     extra_data: ExtraData,
 ) -> int:
-    # Always draw the icon for the first tab, regardless of total tab count
-    if index == 0:
-        before += _draw_icon(screen, index, tab)
+    if index == 1:
+        _draw_icon(screen, index, tab)
 
     global active_layout_name
     if tab.is_active:
         boss = get_boss()
         w = boss.active_window
-        if w and w.overlay_parent is not None:
+        if w.overlay_parent is not None:
             lvl = 0
             while w.overlay_parent is not None:
                 w = w.overlay_parent
                 lvl += 1
-            overlay_label = f" [OVERLAY {lvl}] "
+            overlay_label = f" [Overlay {lvl}] "
             active_layout_name = overlay_label
         else:
-            active_layout_name = f" [{tab.layout_name.upper()}] "
+            active_layout_name = f" ({tab.layout_name.upper()}) "
 
+    # Set cursor to where `left_status` ends, instead `right_status`,
+    # to enable `open new tab` feature
     end = _draw_left_status(
         draw_data,
         screen,
@@ -198,29 +209,7 @@ def draw_tab(
         is_last,
         extra_data,
     )
-    # Draw the right‐hand status on the final tab and update end
-    if is_last:
-        end = _draw_right_status(screen, is_last, active_layout_name)
+    if is_last and active_layout_name != "":
+        _draw_right_status(screen, is_last, active_layout_name)
 
     return end
-
-def handle_mouse(screen: Screen, tab_bar_data: TabBarData, event_type: int, x: int, y: int) -> int:
-    # Only handle mouse click events (type 1)
-    if event_type != 1:  
-        return 0
-    
-    mark = screen.mark_at(x)
-    if mark is None:
-        return 0
-        
-    # Handle layout button click
-    if mark.identifier == "next_layout":
-        get_boss().active_tab.next_layout()
-        return 1
-    
-    # Handle new tab button click
-    if mark.identifier == "new_tab":
-        get_boss().launch_tab()
-        return 1
-        
-    return 0
