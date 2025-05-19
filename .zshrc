@@ -11,7 +11,7 @@ fi
 ZSH_CONFIG_DIR="$HOME/.zsh"
 
 # === Load Core Settings ===
-
+# export P10K_SCHEME_NAME=kanagawa
 # Terminal capabilities
 export TERM="xterm-256color"
 export COLORTERM="truecolor"
