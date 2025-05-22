@@ -16,9 +16,13 @@ if status is-interactive
     # Path additions (customize as needed)
     fish_add_path ~/.local/bin
 
+    abbr md mkdir -p
+    abbr pss sudo pacman -S
+    abbr psr sudo pacman -R
     abbr rmf rm -rf
     abbr vi nvim
-    abbr v nvim
+    abbr vg gvim
+    abbr vs sudo nvim
     abbr yz yazi
     abbr dc docker-compose
     abbr ns kubens
@@ -35,7 +39,7 @@ if status is-interactive
     abbr gcm git checkout main
     abbr gcim git commit -m
     abbr glola git log --oneline --decorate --color --graph --all
-    abbr - cd -
+    abbr - z -
     abbr dcps docker-compose ps
     abbr dcupd docker-compose up -d
     abbr dcup docker-compose up
