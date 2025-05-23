@@ -321,13 +321,13 @@ c.colors.prompts.selected.bg = everforest["bg3"]
 c.colors.prompts.selected.fg = everforest["fg"]
 
 # Statusbar colors
-c.colors.statusbar.normal.bg = everforest["bg0"]
+c.colors.statusbar.normal.bg = "#00000000"
 c.colors.statusbar.normal.fg = everforest["fg"]
 c.colors.statusbar.insert.bg = everforest["green"]
 c.colors.statusbar.insert.fg = everforest["bg0"]
 c.colors.statusbar.passthrough.bg = everforest["blue"]
 c.colors.statusbar.passthrough.fg = everforest["bg0"]
-c.colors.statusbar.command.bg = everforest["bg0"]
+c.colors.statusbar.command.bg = "#00000000"
 c.colors.statusbar.command.fg = everforest["fg"]
 c.colors.statusbar.command.private.bg = everforest["purple"]
 c.colors.statusbar.command.private.fg = everforest["bg0"]
@@ -344,10 +344,10 @@ c.colors.statusbar.url.warn.fg = everforest["orange"]
 c.colors.statusbar.url.error.fg = everforest["red"]
 
 # Tab bar colors
-c.colors.tabs.bar.bg = everforest["bg0"]
-c.colors.tabs.even.bg = everforest["bg0"]
+c.colors.tabs.bar.bg = "#00000000"
+c.colors.tabs.even.bg = "#00000000"
 c.colors.tabs.even.fg = everforest["fg"]
-c.colors.tabs.odd.bg = everforest["bg0"]
+c.colors.tabs.odd.bg = "#00000000"
 c.colors.tabs.odd.fg = everforest["fg"]
 c.colors.tabs.selected.even.bg = everforest["bg3"]
 c.colors.tabs.selected.even.fg = everforest["fg"]
@@ -509,7 +509,6 @@ c.content.media.audio_video_capture = "ask"
 # Set window title format for better Hyprland window rules
 # This helps you create specific Hyprland rules for qutebrowser windows
 c.window.title_format = "{perc}{current_title}{title_sep}qutebrowser"
-c.tabs.title.format = "{audio}{current_title}"
 
 # Disable Qt's built-in compositor bypass
 # This prevents conflicts with Hyprland's compositor
