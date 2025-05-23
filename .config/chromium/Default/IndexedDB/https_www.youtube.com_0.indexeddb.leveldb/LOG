@@ -1,0 +1,12 @@
+2025/05/22-15:27:11.210 105d Reusing MANIFEST /home/rifle/.config/chromium/Default/IndexedDB/https_www.youtube.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/05/22-15:27:11.210 105d Recovering log #23
+2025/05/22-15:27:11.210 105d Reusing old log /home/rifle/.config/chromium/Default/IndexedDB/https_www.youtube.com_0.indexeddb.leveldb/000023.log 
+2025/05/22-17:40:09.764 104b Level-0 table #28: started
+2025/05/22-17:40:09.772 104b Level-0 table #28: 1364974 bytes OK
+2025/05/22-17:40:09.774 104b Delete type=0 #23
+2025/05/22-17:40:17.732 104b Compacting 1@1 + 1@2 files
+2025/05/22-17:40:17.738 104b Generated table #29@1: 344 keys, 65101 bytes
+2025/05/22-17:40:17.738 104b Compacted 1@1 + 1@2 files => 65101 bytes
+2025/05/22-17:40:17.740 104b compacted to: files[ 0 0 1 0 0 0 0 ]
+2025/05/22-17:40:17.740 104b Delete type=2 #28
+2025/05/22-17:40:17.740 104b Delete type=2 #25

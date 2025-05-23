@@ -1,0 +1,6 @@
+2025/04/26-00:02:18.134 14c1 Creating DB /home/rifle/.config/chromium/Default/IndexedDB/https_windsurf.com_0.indexeddb.leveldb since it was missing.
+2025/04/26-00:02:18.139 14c1 Reusing MANIFEST /home/rifle/.config/chromium/Default/IndexedDB/https_windsurf.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/04/26-00:02:18.267 14cd Level-0 table #5: started
+2025/04/26-00:02:18.269 14cd Level-0 table #5: 1316 bytes OK
+2025/04/26-00:02:18.272 14cd Delete type=0 #3
+2025/04/26-00:02:18.272 14c0 Manual compaction at level-0 from '\x00\x01\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x02\x00\x00\x00' @ 0 : 0; will stop at (end)

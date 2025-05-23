@@ -1,0 +1,6 @@
+2025/04/28-17:23:27.128 115e Creating DB /home/rifle/.config/chromium/Default/IndexedDB/https_www.schoolmouv.fr_0.indexeddb.leveldb since it was missing.
+2025/04/28-17:23:27.133 115e Reusing MANIFEST /home/rifle/.config/chromium/Default/IndexedDB/https_www.schoolmouv.fr_0.indexeddb.leveldb/MANIFEST-000001
+2025/04/28-17:27:24.821 115e Level-0 table #5: started
+2025/04/28-17:27:24.824 115e Level-0 table #5: 825 bytes OK
+2025/04/28-17:27:24.829 115e Delete type=0 #3
+2025/04/28-17:27:24.829 115e Manual compaction at level-0 from (begin) .. (end); will stop at (end)

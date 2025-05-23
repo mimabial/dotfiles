@@ -1,0 +1,13 @@
+2025/04/26-00:04:24.564 14c1 Reusing MANIFEST /home/rifle/.config/chromium/Default/IndexedDB/https_windsurf.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/04/26-00:04:24.564 14c1 Recovering log #4
+2025/04/26-00:04:24.564 14c1 Reusing old log /home/rifle/.config/chromium/Default/IndexedDB/https_windsurf.com_0.indexeddb.leveldb/000004.log 
+2025/04/26-00:04:24.671 14c0 Level-0 table #8: started
+2025/04/26-00:04:24.674 14c0 Level-0 table #8: 2715 bytes OK
+2025/04/26-00:04:24.676 14c0 Delete type=0 #4
+2025/04/26-00:04:24.676 14c0 Manual compaction at level-0 from '\x00\x04\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x05\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/04/26-00:05:43.503 14c1 Compacting 1@1 + 1@2 files
+2025/04/26-00:05:43.505 14c1 Generated table #9@1: 42 keys, 1243 bytes
+2025/04/26-00:05:43.505 14c1 Compacted 1@1 + 1@2 files => 1243 bytes
+2025/04/26-00:05:43.507 14c1 compacted to: files[ 0 0 1 0 0 0 0 ]
+2025/04/26-00:05:43.507 14c1 Delete type=2 #8
+2025/04/26-00:05:43.507 14c1 Delete type=2 #5

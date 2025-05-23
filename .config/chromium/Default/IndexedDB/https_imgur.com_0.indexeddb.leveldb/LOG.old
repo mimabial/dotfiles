@@ -1,0 +1,29 @@
+2025/05/01-17:47:54.443 771 Creating DB /home/rifle/.config/chromium/Default/IndexedDB/https_imgur.com_0.indexeddb.leveldb since it was missing.
+2025/05/01-17:47:54.447 771 Reusing MANIFEST /home/rifle/.config/chromium/Default/IndexedDB/https_imgur.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/05/01-17:47:54.545 773 Level-0 table #5: started
+2025/05/01-17:47:54.546 773 Level-0 table #5: 760 bytes OK
+2025/05/01-17:47:54.548 773 Delete type=0 #3
+2025/05/01-17:47:54.548 772 Manual compaction at level-0 from '\x00\x01\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x02\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/05/01-17:47:58.556 772 Level-0 table #7: started
+2025/05/01-17:47:58.559 772 Level-0 table #7: 3812 bytes OK
+2025/05/01-17:47:58.561 772 Delete type=0 #4
+2025/05/01-17:47:58.561 772 Manual compaction at level-0 from '\x00\x04\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x05\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/05/01-17:48:02.793 772 Level-0 table #9: started
+2025/05/01-17:48:02.796 772 Level-0 table #9: 249 bytes OK
+2025/05/01-17:48:02.799 772 Delete type=0 #6
+2025/05/01-17:48:02.800 772 Manual compaction at level-0 from (begin) .. (end); will stop at '\x00\x00\x00\x002\x02\x0e\x01\x00\x00\x00\x00\x00\x00\x00\x00' @ 213 : 0
+2025/05/01-17:48:02.800 772 Compacting 1@0 + 1@1 files
+2025/05/01-17:48:02.803 772 Generated table #10@0: 91 keys, 2093 bytes
+2025/05/01-17:48:02.803 772 Compacted 1@0 + 1@1 files => 2093 bytes
+2025/05/01-17:48:02.806 772 compacted to: files[ 0 1 1 0 0 0 0 ]
+2025/05/01-17:48:02.807 772 Delete type=2 #9
+2025/05/01-17:48:02.807 772 Delete type=2 #7
+2025/05/01-17:48:02.808 772 Manual compaction at level-0 from '\x00\x00\x00\x002\x02\x0e\x01\x00\x00\x00\x00\x00\x00\x00\x00' @ 213 : 0 .. (end); will stop at (end)
+2025/05/01-17:48:02.808 772 Manual compaction at level-1 from (begin) .. (end); will stop at '\x00\x03\x01\x02\x013\x00[\x00D\x00E\x00F\x00A\x00U\x00L\x00T\x00]\x00!\x001\x00:\x007\x001\x008\x007\x007\x000\x001\x002\x005\x001\x009\x004\x00:\x00w\x00e\x00b\x00:\x006\x00a\x00f\x003\x00e\x009\x005\x00a\x006\x00d\x004\x005\x001\x000\x005\x00d\x004\x00a\x00f\x000\x007\x003' @ 184 : 1
+2025/05/01-17:48:02.808 772 Compacting 1@1 + 1@2 files
+2025/05/01-17:48:02.810 772 Generated table #11@1: 36 keys, 1601 bytes
+2025/05/01-17:48:02.811 772 Compacted 1@1 + 1@2 files => 1601 bytes
+2025/05/01-17:48:02.813 772 compacted to: files[ 0 0 1 0 0 0 0 ]
+2025/05/01-17:48:02.813 772 Delete type=2 #10
+2025/05/01-17:48:02.813 772 Delete type=2 #5
+2025/05/01-17:48:02.814 772 Manual compaction at level-1 from '\x00\x03\x01\x02\x013\x00[\x00D\x00E\x00F\x00A\x00U\x00L\x00T\x00]\x00!\x001\x00:\x007\x001\x008\x007\x007\x000\x001\x002\x005\x001\x009\x004\x00:\x00w\x00e\x00b\x00:\x006\x00a\x00f\x003\x00e\x009\x005\x00a\x006\x00d\x004\x005\x001\x000\x005\x00d\x004\x00a\x00f\x000\x007\x003' @ 184 : 1 .. (end); will stop at (end)
