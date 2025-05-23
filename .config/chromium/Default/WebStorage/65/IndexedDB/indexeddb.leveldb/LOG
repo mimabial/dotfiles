@@ -1,3 +1,0 @@
-2025/05/17-18:08:55.970 88b Creating DB /home/rifle/.config/chromium/Default/WebStorage/65/IndexedDB/indexeddb.leveldb since it was missing.
-2025/05/17-18:08:55.976 88b Reusing MANIFEST /home/rifle/.config/chromium/Default/WebStorage/65/IndexedDB/indexeddb.leveldb/MANIFEST-000001
-2025/05/17-18:08:56.193 88c Manual compaction at level-0 from '\x00\x02\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x03\x00\x00\x00' @ 0 : 0; will stop at (end)

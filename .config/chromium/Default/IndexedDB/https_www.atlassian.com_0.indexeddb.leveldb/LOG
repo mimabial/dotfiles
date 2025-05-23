@@ -1,7 +1,0 @@
-2025/05/04-20:52:29.924 d126b Reusing MANIFEST /home/rifle/.config/chromium/Default/IndexedDB/https_www.atlassian.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/05/04-20:52:29.925 d126b Recovering log #3
-2025/05/04-20:52:29.925 d126b Reusing old log /home/rifle/.config/chromium/Default/IndexedDB/https_www.atlassian.com_0.indexeddb.leveldb/000003.log 
-2025/05/06-13:28:38.077 d125d Level-0 table #5: started
-2025/05/06-13:28:38.081 d125d Level-0 table #5: 83947 bytes OK
-2025/05/06-13:28:38.085 d125d Delete type=0 #3
-2025/05/06-13:28:38.085 d125d Manual compaction at level-0 from (begin) .. (end); will stop at (end)
