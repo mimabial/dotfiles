@@ -36,6 +36,7 @@ bat_text_color = as_rgb(0x999F93)
 clock_color = as_rgb(0x7FBBB3)
 sep_color = as_rgb(0x999F93)
 layout_color = as_rgb(color_as_int(opts.color14))
+alt_color = as_rgb(color_as_int(Color(113, 115, 116)))
 
 
 def calc_draw_spaces(*args) -> int:
@@ -56,7 +57,7 @@ def _draw_icon(screen: Screen, index: int, tab_bar_data: TabBarData) -> int:
         session_name = " " + get_os_window_title(tab.os_window_id) + " "
     fg, bg = screen.cursor.fg, screen.cursor.bg
     screen.cursor.fg = icon_fg
-    screen.cursor.bg = icon_bg
+    screen.cursor.bg = 0
     screen.draw(ICON)
     screen.draw(session_name)
     screen.cursor.fg, screen.cursor.bg = fg, bg
@@ -139,11 +140,12 @@ def _draw_right_status(screen: Screen, is_last: bool, layout_name: str) -> int:
 
     draw_attributed_string(Formatter.reset, screen)
 
-    clock = datetime.now().strftime("%Y-%m-%d %H:%M")
+    clock = datetime.now().strftime("%H:%M %d|%m")
 
     cells = []
 
-    cells.append((icon_bg, clock))
+    cells.append((alt_color, clock))
+    # cells.append((sep_color, " ⋮ "))
     cells.append((layout_color, layout_name))
 
     right_status_length = RIGHT_MARGIN
@@ -195,7 +197,7 @@ def draw_tab(
             overlay_label = f" [Overlay {lvl}] "
             active_layout_name = overlay_label
         else:
-            active_layout_name = f" ({tab.layout_name.upper()}) "
+            active_layout_name = f" [{tab.layout_name.upper()}]"
 
     # Set cursor to where `left_status` ends, instead `right_status`,
     # to enable `open new tab` feature
