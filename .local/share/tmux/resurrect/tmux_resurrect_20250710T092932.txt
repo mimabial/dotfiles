@@ -1,0 +1,9 @@
+pane	0	1	1	:*	1	hypr.theme - NVIM	:/home/slim/.config/denv/themes	1	nvim	:nvim .
+pane	0	2	0	:	1	keybindings.conf - NVIM	:/home/slim/.config/hypr	1	nvim	:nvim .
+pane	0	3	0	:	1	Untitled - NVIM	:/home/slim/.local/share/icons	1	nvim	:nvim .
+pane	0	4	0	:-	1	slim-laptop	:/home/slim	1	zsh	:
+window	0	1	:nvim	1	:*	b03d,155x31,0,0,0	:
+window	0	2	:nvim	0	:	b03e,155x31,0,0,1	:
+window	0	3	:nvim	0	:	b03f,155x31,0,0,2	:
+window	0	4	:zsh	0	:-	b040,155x31,0,0,3	:
+state	0	

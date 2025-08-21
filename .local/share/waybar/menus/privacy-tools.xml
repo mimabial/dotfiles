@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+    <object class="GtkMenu" id="menu">
+        <child>
+            <object class="GtkMenuItem" id="privacy-analysis">
+                <property name="label">📊 Privacy Analysis</property>
+            </object>
+        </child>
+        <child>
+            <object class="GtkMenuItem" id="comprehensive-report">
+                <property name="label">📋 Full Report</property>
+            </object>
+        </child>
+        <child>
+            <object class="GtkSeparatorMenuItem" />
+        </child>
+        <child>
+            <object class="GtkMenuItem" id="debug-camera">
+                <property name="label">🔧 Debug Camera</property>
+            </object>
+        </child>
+        <child>
+            <object class="GtkMenuItem" id="debug-network">
+                <property name="label">🌐 Debug Network</property>
+            </object>
+        </child>
+        <child>
+            <object class="GtkSeparatorMenuItem" />
+        </child>
+        <child>
+            <object class="GtkMenuItem" id="open-settings">
+                <property name="label">⚙️ Open Settings</property>
+            </object>
+        </child>
+    </object>
+</interface>

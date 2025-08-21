@@ -1,0 +1,7 @@
+pane	0	1	0	:##-	1	hyprlock.sh - NVIM	:/home/slim/.config	1	nvim	:nvim .
+pane	0	2	0	:	1	hyprlock.conf - NVIM	:/home/slim/.config/hypr	1	nvim	:nvim hyprlock.conf
+pane	0	3	1	:*	1	slim-laptop	:/home/slim/.local/lib/denv	1	sudo	:sudo pacman -S linux-firmware
+window	0	1	:nvim	0	:##-	aa9d,75x31,0,0,0	:
+window	0	2	:nvim	0	:	aaa0,75x31,0,0,3	:
+window	0	3	:sudo	1	:*	aaa1,75x31,0,0,4	:
+state	0	

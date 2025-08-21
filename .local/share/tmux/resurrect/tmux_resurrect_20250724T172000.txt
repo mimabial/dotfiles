@@ -1,0 +1,5 @@
+pane	0	1	1	:*	1	hyprland.conf - NVIM	:/home/slim/hyprdots	1	zsh	:
+pane	0	2	0	:-	1	slim-laptop	:/home/slim	1	git	:git clone git@github.com:mimabial/hyprdots.git
+window	0	1	:zsh	1	:*	abdd,68x31,0,0,0	:
+window	0	2	:git	0	:-	abdf,68x31,0,0,2	:
+state	0	

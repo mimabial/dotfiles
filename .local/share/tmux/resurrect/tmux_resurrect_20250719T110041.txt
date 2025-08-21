@@ -1,0 +1,7 @@
+pane	0	1	0	:	1	slim-laptop	:/home/slim/DENv/Configs/.config/waybar	1	zsh	:
+pane	0	2	1	:*	1	style.css - NVIM	:/home/slim/.config/waybar	1	nvim	:nvim .
+pane	0	3	0	:-	1	slim-laptop	:/home/slim/.local/share	1	zsh	:
+window	0	1	:zsh	0	:	aa9d,75x31,0,0,0	:
+window	0	2	:nvim	1	:*	aa9f,75x31,0,0,2	:
+window	0	3	:zsh	0	:-	aaa0,75x31,0,0,3	:
+state	0	

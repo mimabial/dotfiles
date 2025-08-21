@@ -1,0 +1,14 @@
+{
+  "pulseaudio#microphone": {
+    "format": "{format_source}",
+    "rotate": 0,
+    "format-source": "",
+    "format-source-muted": " ",
+    "on-click": "pavucontrol -t 4",
+    "on-click-middle": "denv-shell volumecontrol -i m",
+    "on-scroll-up": "denv-shell volumecontrol -i i",
+    "on-scroll-down": "denv-shell volumecontrol -i d",
+    "tooltip-format": "{format_source} {source_desc} // {source_volume}%",
+    "scroll-step": 5
+  }
+}

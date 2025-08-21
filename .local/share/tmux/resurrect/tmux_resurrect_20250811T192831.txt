@@ -1,0 +1,7 @@
+pane	0	1	1	:##*	1	Untitled - NVIM	:/home/slim/.config	1	nvim	:nvim .
+pane	0	2	0	:##	1	slim-laptop	:/home/slim/.config	1	zsh	:
+pane	1	1	1	:*	1	status.tmux.conf - NVIM	:/home/slim/.config/tmux	1	nvim	:nvim .
+window	0	1	:nvim	1	:##*	c27d,169x35,0,0,0	:
+window	0	2	:zsh	0	:##	c27e,169x35,0,0,1	:
+window	1	1	:nvim	1	:*	c5df,83x38,0,0,2	:
+state	1	

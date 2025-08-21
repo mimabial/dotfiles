@@ -1,0 +1,9 @@
+pane	0	1	0	:	1	pkg_core.lst - NVIM	:/home/slim/DENv/Scripts	1	nvim	:nvim .
+pane	0	2	0	:##-	1	keybindings.conf - NVIM	:/home/slim/.config	1	nvim	:nvim .
+pane	0	3	0	:##	1	theme_select.sh - NVIM	:/home/slim/.local/lib/denv	1	nvim	:nvim .
+pane	0	4	1	:*	1	slim-laptop	:/home/slim	1	zsh	:
+window	0	1	:nvim	0	:	b43e,155x32,0,0,1	:
+window	0	2	:nvim	0	:##-	b43f,155x32,0,0,2	:
+window	0	3	:nvim	0	:##	b440,155x32,0,0,3	:
+window	0	4	:zsh	1	:*	b441,155x32,0,0,4	:
+state	0	

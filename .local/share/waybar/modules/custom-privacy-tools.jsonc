@@ -1,0 +1,20 @@
+{
+  "custom/privacy-tools": {
+    "format": "{}",
+    "return-type": "json",
+    "exec": "denv-shell privacy_tools",
+    "on-click": "denv-shell privacy_tools privacy-analysis",
+    "menu": "on-click-right",
+    "menu-file": "${XDG_DATA_HOME:-$HOME/.local/share}/waybar/menus/privacy-tools.xml",
+    "menu-actions": {
+      "debug-camera": "denv-shell privacy_tools debug-camera",
+      "debug-network": "denv-shell privacy_tools debug-network",
+      "privacy-analysis": "denv-shell privacy_tools privacy-analysis",
+      "comprehensive-report": "denv-shell privacy_tools comprehensive-report",
+      "open-settings": "denv-shell privacy_tools open-settings"
+    },
+    "interval": 10,
+    "tooltip": true,
+    "escape": true
+  }
+}

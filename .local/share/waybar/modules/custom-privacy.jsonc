@@ -1,0 +1,26 @@
+{
+  "custom/privacy": {
+    "format": "{}",
+    "return-type": "json",
+    "exec": "denv-shell privacy",
+    "on-click": "denv-shell privacy open-settings",
+    "on-click-middle": "denv-shell privacy toggle-webcam",
+    "menu": "on-click-right",
+    "menu-file": "${DENV_WAYBAR_MENU_DIR:-$XDG_DATA_HOME/waybar/menus}/privacy.xml",
+    "menu-actions": {
+      "toggle-microphone": "denv-shell privacy toggle-microphone",
+      "toggle-webcam": "denv-shell privacy toggle-webcam",
+      "kill-camera-apps": "denv-shell privacy kill-camera-apps",
+      "status": "denv-shell privacy status",
+      "who-is-using": "denv-shell privacy who-is-using",
+      "list-devices": "denv-shell privacy list-devices",
+      "explain-devices": "denv-shell privacy explain-devices",
+      "debug-toggle": "denv-shell privacy debug-toggle",
+      "debug-pipewire": "denv-shell privacy debug-pipewire",
+      "open-settings": "denv-shell privacy open-settings"
+    },
+    "interval": 2,
+    "tooltip": true,
+    "escape": true
+  }
+}

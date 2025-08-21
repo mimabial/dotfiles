@@ -1,0 +1,7 @@
+pane	0	1	1	:##*	1	Untitled - NVIM	:/home/slim	1	zsh	:
+pane	0	2	0	:##	1	slim-laptop	:/home/slim/.config	1	zsh	:
+pane	11	1	1	:*	1	slim-laptop	:/home/slim	1	zsh	:
+window	0	1	:zsh	1	:##*	b95d,82x35,0,0,0	:
+window	0	2	:zsh	0	:##	c27e,169x35,0,0,1	:
+window	11	1	:zsh	1	:*	b95f,82x35,0,0,2	:
+state	11	

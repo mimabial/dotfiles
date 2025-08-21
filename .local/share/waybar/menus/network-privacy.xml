@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+    <object class="GtkMenu" id="menu">
+        <child>
+            <object class="GtkMenuItem" id="status">
+                <property name="label">🔍 Network Status</property>
+            </object>
+        </child>
+        <child>
+            <object class="GtkMenuItem" id="connections">
+                <property name="label">📡 Active Connections</property>
+            </object>
+        </child>
+        <child>
+            <object class="GtkSeparatorMenuItem"/>
+        </child>
+        <child>
+            <object class="GtkMenuItem" id="vpn-menu">
+                <property name="label">🛡️ VPN Manager</property>
+            </object>
+        </child>
+        <child>
+            <object class="GtkMenuItem" id="vpn-disconnect">
+                <property name="label">🔻 Disconnect VPN</property>
+            </object>
+        </child>
+        <child>
+            <object class="GtkMenuItem" id="vpn-list">
+                <property name="label">📋 List VPN Configs</property>
+            </object>
+        </child>
+        <child>
+            <object class="GtkSeparatorMenuItem"/>
+        </child>
+        <child>
+            <object class="GtkMenuItem" id="quick-disconnect">
+                <property name="label">❌ Disconnect All VPNs</property>
+            </object>
+        </child>
+    </object>
+</interface>

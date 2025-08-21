@@ -1,0 +1,5 @@
+pane	0	1	1	:*	1	waybar.py - NVIM	:/home/slim/.local/lib/denv	1	nvim	:nvim waybar.py
+pane	0	2	0	:##-	1	denv-shell - NVIM	:/home/slim/.local/lib/denv	1	nvim	:nvim hyprlock.sh
+window	0	1	:nvim	1	:*	aa9d,75x31,0,0,0	:
+window	0	2	:nvim	0	:##-	aa9e,75x31,0,0,1	:
+state	0	

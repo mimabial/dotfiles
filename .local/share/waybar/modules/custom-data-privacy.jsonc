@@ -1,0 +1,18 @@
+{
+  "custom/data-privacy": {
+    "format": "{}",
+    "return-type": "json",
+    "exec": "denv-shell data_privacy",
+    "on-click": "denv-shell data_privacy status",
+    "menu": "on-click-right",
+    "menu-file": "${XDG_DATA_HOME:-$HOME/.local/share}/waybar/menus/data-privacy.xml",
+    "menu-actions": {
+      "status": "denv-shell data_privacy status",
+      "clear-clipboard": "denv-shell data_privacy clear-clipboard",
+      "clipboard-content": "denv-shell data_privacy clipboard-content"
+    },
+    "interval": 2,
+    "tooltip": true,
+    "escape": true
+  }
+}

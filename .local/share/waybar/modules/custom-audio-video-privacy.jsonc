@@ -1,0 +1,23 @@
+{
+  "custom/audio-video-privacy": {
+    "format": "{} ",
+    "return-type": "json",
+    "exec": "denv-shell audio_video_privacy",
+    "on-click": "pavucontrol -t 4",
+    "on-click-middle": "denv-shell volumecontrol -i m",
+    "on-scroll-up": "denv-shell volumecontrol -i i",
+    "on-scroll-down": "denv-shell volumecontrol -i d",
+    "menu": "on-click-right",
+    "menu-file": "${XDG_DATA_HOME:-$HOME/.local/share}/waybar/menus/audio-video-privacy.xml",
+    "menu-actions": {
+      "toggle-microphone": "denv-shell audio_video_privacy toggle-microphone",
+      "toggle-webcam": "denv-shell audio_video_privacy toggle-webcam",
+      "kill-camera-apps": "denv-shell audio_video_privacy kill-camera-apps",
+      "status": "denv-shell audio_video_privacy status"
+    },
+    "interval": 2,
+    "tooltip": true,
+    "escape": true,
+    "scroll-step": 5
+  }
+}

@@ -1,84 +1,80 @@
 set -g fish_greeting
 
-source ~/.config/fish/hydra_config.fish
+source ~/.config/fish/conf.d/denv.fish
+source ~/.config/fish/user.fish
 
-if status is-interactive
-    # Basic settings
-    set -g fish_greeting "" # Disable greeting
-    set -gx EDITOR nvim # Set editor (change to your preference)
 
-    # Custom aliases
-    alias ll "ls -la"
-    alias la "ls -a"
-    alias c clear
-    alias g git
 
-    # Path additions (customize as needed)
-    fish_add_path ~/.local/bin
-
-    abbr md mkdir -p
-    abbr pss sudo pacman -S
-    abbr psr sudo pacman -R
-    abbr rmf rm -rf
-    abbr vi nvim
-    abbr vg gvim
-    abbr vs sudo nvim
-    abbr yz yazi
-    abbr dc docker-compose
-    abbr ns kubens
-    abbr ctx kubectx
-    abbr gs gst
-    abbr lg lazygit
-    abbr gci git commit
-    abbr k kubectl
-    abbr d kitten diff
-    abbr gd git difftool --no-symlinks --dir-diff
-    abbr gds git difftool --no-symlinks --dir-diff --staged
-    abbr gsh git difftool --no-symlinks --dir-diff HEAD~1 HEAD
-    abbr gr8 git rev-parse --short=8 HEAD
-    abbr gcm git checkout main
-    abbr gcim git commit -m
-    abbr glola git log --oneline --decorate --color --graph --all
-    abbr - z -
-    abbr dcps docker-compose ps
-    abbr dcupd docker-compose up -d
-    abbr dcup docker-compose up
-    abbr dcdn docker-compose down
-    abbr ly lazygit -ucd ~/.local/share/yadm/lazygit -w ~ -g ~/.local/share/yadm/repo.git
-
+if type -q starship
     starship init fish | source
-    zoxide init fish | source
-    fzf --fish | source
-
-    # Handy change dir shortcuts
-    abbr .. 'cd ..'
-    abbr ... 'cd ../..'
-    abbr .3 'cd ../../..'
-    abbr .4 'cd ../../../..'
-    abbr .5 'cd ../../../../..'
-
-    # Always mkdir a path (this doesn't inhibit functionality to make a single dir)
-    abbr mkdir 'mkdir -p'
-
-    # FZF configuration
-    set -gx FZF_DEFAULT_OPTS "--height 99% --preview-window 'right:99%' --style minimal --border"
-    set -gx FZF_DEFAULT_COMMAND "fd --type f --hidden --follow --exclude .git"
-
-    # Set different preview commands based on the context
-    ## Enhanced preview for files
-    set -gx FZF_CTRL_F_OPTS "--preview 'bat --style=numbers --color=always --line-range :500 {}'"
-    ## Preview directories with tree or ls
-    set -gx FZF_CTRL_O_OPTS "--preview 'ls -la {} | head -50'"
-
-    # Key bindings for our custom functions
-    bind \cf __fzf_find_file
-    bind \cr __fzf_history
-    bind \co __fzf_cd
-
-    # Kitty integration (if needed)
-    if set -q KITTY_INSTALLATION_DIR
-        set --global KITTY_SHELL_INTEGRATION enabled
-        source "$KITTY_INSTALLATION_DIR/shell-integration/fish/vendor_conf.d/kitty-shell-integration.fish"
-    end
-
+    set -gx STARSHIP_CACHE $XDG_CACHE_HOME/starship
+    set -gx STARSHIP_CONFIG $XDG_CONFIG_HOME/starship/starship.toml
 end
+
+
+if type -q duf
+    function df -d "Run duf with last argument if valid, else run duf"
+        if set -q argv[-1] && test -e $argv[-1]
+            duf $argv[-1]
+        else
+            duf
+        end
+    end
+end
+
+# fzf 
+if type -q fzf
+    fzf --fish | source 
+    for file in ~/.config/fish/functions/fzf/*.fish
+        source $file
+        # NOTE: these funtions are built on top of fzf builtin widgets
+        # they help you navigate through directories and files "Blazingly" fast
+        # to get help on each one, just type `ff` in terminal and press `TAB`
+        # keep in mind all of them require an argument to be passed after the alias
+    end
+end
+
+
+# NOTE: binds Alt+n to inserting the nth command from history in edit buffer
+# e.g. Alt+4 is same as pressing Up arrow key 4 times
+# really helpful if you get used to it
+bind_M_n_history
+
+
+
+# example integration with bat : <cltr+f>
+# bind -M insert \ce '$EDITOR $(fzf --preview="bat --color=always --plain {}")' 
+
+
+set fish_pager_color_prefix cyan
+set fish_color_autosuggestion brblack 
+
+# List Directory
+alias cl='clear'                                                        
+alias lh='eza -lh --icons=never'                                         
+alias lmo='eza -1 --icons=never'                                         
+alias lha='eza -lha --icons=never --sort=name --group-directories-first' 
+alias lhD='eza -lhD --icons=never'                                       
+alias lt='eza --icons=never --tree'                                     
+alias yRns='$aurhelper -Rns'                                             
+alias ySyu='$aurhelper -Syu'                                             
+alias yQs='$aurhelper -Qs'                                              
+alias ySs='$aurhelper -Ss'                                              
+alias ySc='$aurhelper -Sc'                                              
+alias Qtdq='$aurhelper -Qtdq | $aurhelper -Rns -'                        
+alias vc='code'                                                        
+
+# Directory navigation shortcuts
+alias ..='cd ..'
+alias ...='cd ../..'
+alias .3='cd ../../..'
+alias .4='cd ../../../..'
+alias .5='cd ../../../../..'
+
+abbr mkdir 'mkdir -p'
+
+
+
+
+
+

@@ -1,0 +1,7 @@
+pane	0	1	0	:	1	khing.jsonc - NVIM	:/home/slim/.local/share/waybar	1	nvim	:nvim .
+pane	0	2	0	:-	1	custom-gamemode.jsonc - NVIM	:/home/slim/.local/share/waybar	1	nvim	:nvim .
+pane	0	3	1	:*	1	gamemode.sh - NVIM	:/home/slim/.local/lib/denv	1	nvim	:nvim .
+window	0	1	:nvim	0	:	ac5d,69x31,0,0,0	:
+window	0	2	:nvim	0	:-	ac5f,69x31,0,0,2	:
+window	0	3	:nvim	1	:*	ac60,69x31,0,0,3	:
+state	0	

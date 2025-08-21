@@ -1,0 +1,14 @@
+/*
+ Dynamic Style Configuration *
+ This is handled by denv
+
+ To generate a dynamic configuration 
+ base on theme and user settings
+
+*/
+
+* {
+  border-radius: 0em;
+  font-family: "JetBrainsMono Nerd Font, Font Awesome 7 Free";
+  font-size: 10px;
+}

@@ -1,0 +1,5 @@
+pane	0	1	0	:-	1	pkg_core.lst - NVIM	:/home/slim/DENv/Scripts	1	nvim	:nvim .
+pane	0	2	1	:*	1	slim-laptop	:/home/slim	1	zsh	:
+window	0	1	:nvim	0	:-	ac9e,90x32,0,0,1	:
+window	0	2	:yay	1	:*	b43f,155x32,0,0,2	:
+state	0	

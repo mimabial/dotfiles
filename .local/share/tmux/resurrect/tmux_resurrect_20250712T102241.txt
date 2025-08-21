@@ -1,0 +1,7 @@
+pane	0	1	0	:	1	Untitled - NVIM	:/home/slim/.config/denv/themes	1	nvim	:nvim .
+pane	0	2	1	:*	1	hypridle.conf - NVIM	:/home/slim/.config/hypr	1	nvim	:nvim .
+pane	0	3	0	:##-	1	Untitled - NVIM	:/home/slim/.local/share/icons	1	nvim	:nvim .
+window	0	1	:nvim	0	:	b03d,155x31,0,0,0	:
+window	0	2	:nvim	1	:*	b03e,155x31,0,0,1	:
+window	0	3	:nvim	0	:##-	b03f,155x31,0,0,2	:
+state	0	

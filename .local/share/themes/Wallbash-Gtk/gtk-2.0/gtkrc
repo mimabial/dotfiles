@@ -2,7 +2,7 @@
 # Modified for Wallbash template
 
 gtk-color-scheme =
-"base_color:#282828\nbg_color:#3C403E\ntooltip_bg_color:#595A51\nselected_bg_color:#999278\ntext_color:#FFFFFF\nfg_color:#FFFFFF\ntooltip_fg_color:#FFFFFF\nselected_fg_color:#FFFFFF\nmenubar_bg_color:#595A51\nmenubar_fg_color:#FFFFFF\ntoolbar_bg_color:#999278\ntoolbar_fg_color:#FFFFFF\nmenu_bg_color:#3C403E\nmenu_fg_color:#FFFFFF\npanel_bg_color:#282828\npanel_fg_color:#1A1A1A\nlink_color:#999278\nbtn_bg_color:#595A51\nbtn_fg_color:#FFFFFF\ntitlebar_bg_color:#999278\ntitlebar_fg_color:#FFFFFF\nprimary_caret_color:#FFFFFF\nsecondary_caret_color:#131313\naccent_bg_color:#595A51\n"
+"base_color:#2F3B4B\nbg_color:#324D67\ntooltip_bg_color:#376686\nselected_bg_color:#958D84\ntext_color:#FFFFFF\nfg_color:#FFFFFF\ntooltip_fg_color:#FFFFFF\nselected_fg_color:#FFFFFF\nmenubar_bg_color:#376686\nmenubar_fg_color:#FFFFFF\ntoolbar_bg_color:#958D84\ntoolbar_fg_color:#FFFFFF\nmenu_bg_color:#324D67\nmenu_fg_color:#FFFFFF\npanel_bg_color:#2F3B4B\npanel_fg_color:#293E52\nlink_color:#958D84\nbtn_bg_color:#376686\nbtn_fg_color:#FFFFFF\ntitlebar_bg_color:#958D84\ntitlebar_fg_color:#FFFFFF\nprimary_caret_color:#FFFFFF\nsecondary_caret_color:#121212\naccent_bg_color:#376686\n"
 # Default Style
 
 style "murrine-default" {

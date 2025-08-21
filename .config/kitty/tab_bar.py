@@ -1,15 +1,12 @@
-# pyright: reportMissingImports=false
 import json
+import os
 import subprocess
 from collections import defaultdict
 from datetime import datetime, timezone
+from pathlib import Path
 
 from kitty.boss import get_boss
-from kitty.fast_data_types import (
-    Screen,
-    get_options,
-    get_os_window_title,
-)
+from kitty.fast_data_types import Screen, add_timer, get_os_window_title
 from kitty.rgb import Color
 from kitty.tab_bar import (
     DrawData,
@@ -22,22 +19,83 @@ from kitty.tab_bar import (
 )
 from kitty.utils import color_as_int
 
-opts = get_options()
 timer_id = None
 
-ICON = ""
+ICON = " 󰾰 "
 RIGHT_MARGIN = 1
 REFRESH_TIME = 15
 
-icon_fg = as_rgb(color_as_int(Color(255, 250, 205)))
-icon_bg = as_rgb(color_as_int(Color(47, 61, 68)))
+# Wallbash theme config path
+THEME_CONFIG_PATH = Path.home() / ".config" / "kitty" / "theme.conf"
 
-bat_text_color = as_rgb(0x999F93)
-clock_color = as_rgb(0x7FBBB3)
-sep_color = as_rgb(0x999F93)
-layout_color = as_rgb(color_as_int(opts.color14))
-alt_color = as_rgb(color_as_int(Color(113, 115, 116)))
+# Fallback colors (original hardcoded values)
+FALLBACK_COLORS = {
+    "icon_fg": "#FFFACD",
+    "icon_bg": "#2F3D44", 
+    "bat_text": "#999F93",
+    "clock": "#7FBBB3",
+    "separator": "#999F93",
+    "utc": "#717374"
+}
 
+def load_wallbash_colors():
+    """Load colors from kitty theme.conf file with fallback to defaults."""
+    colors = FALLBACK_COLORS.copy()
+    
+    if THEME_CONFIG_PATH.exists():
+        try:
+            theme_colors = {}
+            with open(THEME_CONFIG_PATH, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#'):
+                        parts = line.split()
+                        if len(parts) >= 2:
+                            theme_colors[parts[0]] = parts[1]
+            
+            # Map theme colors to our usage
+            color_mapping = {
+                "icon_fg": theme_colors.get("foreground", theme_colors.get("color15", colors["icon_fg"])),
+                "icon_bg": theme_colors.get("background", theme_colors.get("color0", colors["icon_bg"])),
+                "bat_text": theme_colors.get("color8", colors["bat_text"]), 
+                "clock": theme_colors.get("color6", colors["clock"]),
+                "separator": theme_colors.get("color8", colors["separator"]),
+                "utc": theme_colors.get("color8", colors["utc"])
+            }
+            
+            colors.update(color_mapping)
+                
+        except (OSError, ValueError):
+            pass
+    
+    return colors
+
+def hex_to_rgb_int(hex_color):
+    """Convert hex color to RGB integer."""
+    if hex_color.startswith('#'):
+        hex_color = hex_color[1:]
+    return int(hex_color, 16)
+
+# Load colors dynamically
+_colors = load_wallbash_colors()
+icon_fg = as_rgb(hex_to_rgb_int(_colors["icon_fg"]))
+icon_bg = as_rgb(hex_to_rgb_int(_colors["icon_bg"]))
+bat_text_color = as_rgb(hex_to_rgb_int(_colors["bat_text"]))
+clock_color = as_rgb(hex_to_rgb_int(_colors["clock"]))
+sep_color = as_rgb(hex_to_rgb_int(_colors["separator"]))
+utc_color = as_rgb(hex_to_rgb_int(_colors["utc"]))
+
+def refresh_colors():
+    """Refresh colors from wallbash config - called periodically."""
+    global icon_fg, icon_bg, bat_text_color, clock_color, sep_color, utc_color
+    
+    colors = load_wallbash_colors()
+    icon_fg = as_rgb(hex_to_rgb_int(colors["icon_fg"]))
+    icon_bg = as_rgb(hex_to_rgb_int(colors["icon_bg"]))
+    bat_text_color = as_rgb(hex_to_rgb_int(colors["bat_text"]))
+    clock_color = as_rgb(hex_to_rgb_int(colors["clock"]))
+    sep_color = as_rgb(hex_to_rgb_int(colors["separator"]))
+    utc_color = as_rgb(hex_to_rgb_int(colors["utc"]))
 
 def calc_draw_spaces(*args) -> int:
     length = 0
@@ -48,58 +106,17 @@ def calc_draw_spaces(*args) -> int:
     return length
 
 
-def _draw_icon(screen: Screen, index: int, tab_bar_data: TabBarData) -> int:
+def _draw_icon(screen: Screen, index: int) -> int:
     if index != 1:
         return 0
-    tab = get_boss().tab_for_id(tab_bar_data.tab_id)
-    session_name: str = ""
-    if type(get_os_window_title(tab.os_window_id)) == str:
-        session_name = " " + get_os_window_title(tab.os_window_id) + " "
+
     fg, bg = screen.cursor.fg, screen.cursor.bg
     screen.cursor.fg = icon_fg
-    screen.cursor.bg = 0
+    screen.cursor.bg = icon_bg
     screen.draw(ICON)
-    screen.draw(session_name)
     screen.cursor.fg, screen.cursor.bg = fg, bg
-    screen.cursor.x = len(ICON) + len(session_name)
+    screen.cursor.x = len(ICON)
     return screen.cursor.x
-
-
-def draw_session_name(
-    draw_data: DrawData, screen: Screen, tab_bar_data: TabBarData, index: int
-) -> int:
-    tab = get_boss().tab_for_id(tab_bar_data.tab_id)
-    session_name: str = " " + get_os_window_title(tab.os_window_id) + " "
-
-    fg, bg, bold, italic = (
-        screen.cursor.fg,
-        screen.cursor.bg,
-        screen.cursor.bold,
-        screen.cursor.italic,
-    )
-
-    screen.cursor.bold, screen.cursor.italic = (True, True)
-    colorfg = as_rgb(color_as_int(opts.color4))
-    colorbg = as_rgb(color_as_int(opts.color0))
-
-    screen.cursor.fg, screen.cursor.bg = (
-        colorbg,
-        colorfg,
-    )  # inverted colors for high contrast
-    screen.draw(f"{session_name}")
-
-    screen.cursor.x = len(session_name) + 1
-
-    # set cursor position
-    # restore color style
-    screen.cursor.fg, screen.cursor.bg, screen.cursor.bold, screen.cursor.italic = (
-        fg,
-        bg,
-        bold,
-        italic,
-    )
-    return screen.cursor.x
-
 
 def _draw_left_status(
     draw_data: DrawData,
@@ -111,7 +128,6 @@ def _draw_left_status(
     is_last: bool,
     extra_data: ExtraData,
 ) -> int:
-    # print(extra_data)
     if draw_data.leading_spaces:
         screen.draw(" " * draw_data.leading_spaces)
 
@@ -133,20 +149,19 @@ def _draw_left_status(
     screen.cursor.bg = 0
     return end
 
-
-def _draw_right_status(screen: Screen, is_last: bool, layout_name: str) -> int:
+def _draw_right_status(screen: Screen, is_last: bool) -> int:
     if not is_last:
         return 0
 
     draw_attributed_string(Formatter.reset, screen)
 
-    clock = datetime.now().strftime("%H:%M %d|%m")
+    clock = datetime.now().strftime("%H:%M")
+    utc = datetime.now(timezone.utc).strftime(" (UTC %H:%M)")
 
     cells = []
 
-    cells.append((alt_color, clock))
-    # cells.append((sep_color, " ⋮ "))
-    cells.append((layout_color, layout_name))
+    cells.append((clock_color, clock))
+    cells.append((utc_color, utc))
 
     right_status_length = RIGHT_MARGIN
     for cell in cells:
@@ -168,10 +183,6 @@ def _draw_right_status(screen: Screen, is_last: bool, layout_name: str) -> int:
 
     return screen.cursor.x
 
-
-active_layout_name = ""
-
-
 def draw_tab(
     draw_data: DrawData,
     screen: Screen,
@@ -182,26 +193,11 @@ def draw_tab(
     is_last: bool,
     extra_data: ExtraData,
 ) -> int:
-    if index == 1:
-        _draw_icon(screen, index, tab)
+    if timer_id is None:
+        add_timer(refresh_colors, REFRESH_TIME, True)
 
-    global active_layout_name
-    if tab.is_active:
-        boss = get_boss()
-        w = boss.active_window
-        if w.overlay_parent is not None:
-            lvl = 0
-            while w.overlay_parent is not None:
-                w = w.overlay_parent
-                lvl += 1
-            overlay_label = f" [Overlay {lvl}] "
-            active_layout_name = overlay_label
-        else:
-            active_layout_name = f" [{tab.layout_name.upper()}]"
-
-    # Set cursor to where `left_status` ends, instead `right_status`,
-    # to enable `open new tab` feature
-    end = _draw_left_status(
+    _draw_icon(screen, index)
+    _draw_left_status(
         draw_data,
         screen,
         tab,
@@ -211,7 +207,9 @@ def draw_tab(
         is_last,
         extra_data,
     )
-    if is_last and active_layout_name != "":
-        _draw_right_status(screen, is_last, active_layout_name)
+    _draw_right_status(
+        screen,
+        is_last,
+    )
 
-    return end
+    return screen.cursor.x

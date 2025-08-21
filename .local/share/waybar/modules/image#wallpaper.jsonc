@@ -1,0 +1,9 @@
+{
+    "image#wallpaper": {
+	"exec": "realpath $XDG_CACHE_HOME/denv/wall.set; echo -e \"◉ Right-click: Select theme | ◈ Left-click: Select wallpaper\"",
+    "on-click" : "denv-shell wallpaper --select --global;pkill -RTMIN+19 waybar",
+    "on-click-right" : "denv-shell theme.select;pkill -RTMIN+19 waybar",
+    "tooltip" : true,
+    "signal": 19
+}
+}

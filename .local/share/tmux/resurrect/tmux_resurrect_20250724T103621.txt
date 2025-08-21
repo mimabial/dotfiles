@@ -1,0 +1,5 @@
+pane	0	1	1	:*	1	denv-shell - NVIM	:/home/slim	1	nvim	:nvim .
+pane	0	2	0	:##-	1	Untitled - NVIM	:/home/slim/.local/lib/denv	1	nvim	:nvim .
+window	0	1	:nvim	1	:*	aa1d,74x31,0,0,0	:
+window	0	2	:nvim	0	:##-	aa1e,74x31,0,0,1	:
+state	0	

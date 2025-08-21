@@ -1,0 +1,5 @@
+pane	0	1	0	:##-	1	install_pre.sh - NVIM	:/home/slim/DENv/Scripts	1	nvim	:nvim .
+pane	0	2	1	:*	1	config_manager.sh - NVIM	:/home/slim/.local/lib/denv	1	nvim	:nvim .
+window	0	1	:nvim	0	:##-	b43e,155x32,0,0,1	:
+window	0	2	:nvim	1	:*	ac5f,80x32,0,0,2	:
+state	0	

@@ -1,0 +1,18 @@
+{
+  "custom/gpuinfo": {
+    "exec": "denv-shell gpuinfo",
+    "return-type": "json",
+    "format": "{0}",
+    "rotate": 0,
+    "interval": 5,
+    "tooltip": true,
+    "max-length": 1000,
+    "on-click": "denv-shell gpuinfo --toggle",
+    "menu": "on-click-right",
+    "menu-file": "${DENV_WAYBAR_MENU_DIR:-$XDG_DATA_HOME/waybar/menus}/gpuinfo.xml",
+    "menu-actions": {
+      "toggle": "denv-shell gpuinfo --toggle",
+      "reset": "denv-shell gpuinfo --reset"
+    }
+  }
+}

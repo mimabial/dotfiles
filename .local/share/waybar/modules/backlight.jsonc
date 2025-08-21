@@ -1,0 +1,43 @@
+{
+  "backlight": {
+    "rotate": 0,
+    "format": "{icon} {percent}%",
+    "format-icons": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ],
+    "on-scroll-up": "denv-shell brightnesscontrol i 1",
+    "on-scroll-down": "denv-shell brightnesscontrol d 1",
+    "min-length": 6,
+    "tooltip": true,
+    "tooltip-format": "Backlight level: {icon} {percent}%"
+  },
+  "backlight#intel_backlight": {
+    "device": "intel_backlight",
+    "rotate": 0,
+    "format": "{icon} {percent}%",
+    "format-icons": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ],
+    "on-scroll-up": "denv-shell brightnesscontrol i 1",
+    "on-scroll-down": "denv-shell brightnesscontrol d 1",
+    "min-length": 6,
+    "tooltip": true,
+    "tooltip-format": "Backlight level: {icon} {percent}%\nUsing: intel_backlight"
+  }
+}

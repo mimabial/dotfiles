@@ -1,0 +1,5 @@
+pane	2	1	1	:##*	1	slim-laptop	:/home/slim/.config	1	zsh	:
+pane	5	1	1	:*	1	slim-laptop	:/home/slim	1	zsh	:
+window	2	1	:zsh	1	:##*	b95d,82x35,0,0,0	:
+window	5	1	:zsh	1	:*	b6c1,156x42,0,0,4	:
+state	5	

@@ -1,0 +1,3 @@
+# Configuration file for DENv
+# Environment variables should be on top
+# Updated config.toml file can be found at $HOME/.local/share/denv/config.toml

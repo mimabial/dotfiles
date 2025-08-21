@@ -1,0 +1,15 @@
+pane	0	1	1	:##*	1	Untitled - NVIM	:/home/slim	1	nvim	:nvim .zsh
+pane	0	2	0	:##	1	Untitled - NVIM	:/home/slim/.config	1	nvim	:nvim .
+pane	0	3	0	:##	1	slim-laptop	:/home/slim	1	zsh	:
+pane	1	1	0	:	1	wallbashtoggle.sh - NVIM	:/home/slim/.local/lib	1	nvim	:nvim .
+pane	1	2	0	:	1	keybindings.conf - NVIM	:/home/slim/.config/hypr	1	nvim	:nvim .
+pane	1	3	0	:-	1	wallbash.rasi - NVIM	:/home/slim/.config	1	nvim	:nvim .
+pane	1	4	1	:*	1	slim-laptop	:/home/slim/.config/denv	1	zsh	:
+window	0	1	:nvim	1	:##*	b43d,155x32,0,0,0	:
+window	0	2	:nvim	0	:##	b43e,155x32,0,0,1	:
+window	0	3	:zsh	0	:##	b43f,155x32,0,0,2	:
+window	1	1	:nvim	0	:	b440,155x32,0,0,3	:
+window	1	2	:nvim	0	:	b441,155x32,0,0,4	:
+window	1	3	:nvim	0	:-	b443,155x32,0,0,6	:
+window	1	4	:zsh	1	:*	b444,155x32,0,0,7	:
+state	1	

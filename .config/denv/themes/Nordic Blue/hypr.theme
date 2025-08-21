@@ -1,0 +1,38 @@
+$HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
+
+$GTK_THEME = Nordic-Blue
+$ICON_THEME = Nordzy
+$COLOR_SCHEME = prefer-dark
+
+general {
+    gaps_in = 2
+    gaps_out = 5
+    border_size = 2
+    col.active_border = rgba(5A9ACAB4) rgba(ECD3A0FF) 45deg
+    col.inactive_border = rgba(1E8B50D9) rgba(32B032D9) 45deg
+    layout = dwindle
+    resize_on_border = true
+}
+
+group {
+    col.border_active = rgba(5A9ACAB4) rgba(ECD3A0FF) 45deg
+    col.border_inactive = rgba(1E8B50D9) rgba(32B032D9) 45deg
+    col.border_locked_active = rgba(5A9ACAB4) rgba(ECD3A0FF) 45deg
+    col.border_locked_inactive = rgba(1E8B50D9) rgba(32B032D9) 45deg
+}
+
+decoration {
+    rounding = 7
+    shadow:enabled = false
+
+    blur {
+        enabled = yes
+        size = 5
+        passes = 3
+        new_optimizations = on
+        ignore_opacity = on
+        xray = false
+    }
+}
+
+blurls = waybar

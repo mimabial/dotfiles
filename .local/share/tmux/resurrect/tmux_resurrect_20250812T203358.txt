@@ -1,0 +1,9 @@
+pane	2	1	1	:##*	1	slim-laptop	:/home/slim/.config	1	zsh	:
+pane	3	1	1	:*	1	slim-laptop	:/home/slim/.local/share/waybar/modules	1	zsh	:
+pane	6	1	1	:##*	1	Untitled - NVIM	:/home/slim/.local/share/waybar	1	nvim	:nvim .
+pane	6	2	0	:##	1	Untitled - NVIM	:/home/slim/.local/lib	1	nvim	:nvim .
+window	2	1	:zsh	1	:##*	b95d,82x35,0,0,0	:
+window	3	1	:zsh	1	:*	c9e0,83x39,0,0,3	:
+window	6	1	:nvim	1	:##*	c9de,83x39,0,0,1	:
+window	6	2	:nvim	0	:##	c9df,83x39,0,0,2	:
+state	3	

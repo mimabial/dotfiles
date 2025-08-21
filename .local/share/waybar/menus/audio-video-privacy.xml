@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+    <object class="GtkMenu" id="menu">
+        <child>
+            <object class="GtkMenuItem" id="microphone_menu">
+                <property name="label">🎤 Microphone</property>
+                <child type="submenu">
+                    <object class="GtkMenu">
+
+                        <child>
+                            <object class="GtkMenuItem" id="toggle-microphone">
+                                <property name="label">Toggle Mute/Unmute</property>
+                            </object>
+                        </child>
+
+                    </object>
+                </child>
+            </object>
+        </child>
+
+        <child>
+            <object class="GtkMenuItem" id="camera_menu">
+                <property name="label">📷 Camera</property>
+                <child type="submenu">
+                    <object class="GtkMenu">
+
+                        <child>
+                            <object class="GtkMenuItem" id="toggle-webcam">
+                                <property name="label">Toggle Camera</property>
+                            </object>
+                        </child>
+
+                        <child>
+                            <object class="GtkMenuItem" id="kill-camera-apps">
+                                <property name="label">Stop Camera Apps</property>
+                            </object>
+                        </child>
+
+                    </object>
+                </child>
+            </object>
+        </child>
+
+        <child>
+            <object class="GtkSeparatorMenuItem" id="delimiter-1" />
+        </child>
+
+        <child>
+            <object class="GtkMenuItem" id="open-settings">
+                <property name="label">⚙️ Open Settings</property>
+            </object>
+        </child>
+
+    </object>
+</interface>

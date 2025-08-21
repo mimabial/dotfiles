@@ -1,0 +1,12 @@
+{
+  "custom/gpuinfo#amd": {
+    "exec-if": "denv-shell gpuinfo --stat amd", 
+    "exec": "denv-shell gpuinfo --use amd ",
+    "return-type": "json",
+    "format": "{0}",
+    "rotate": 0,
+    "interval": 5,
+    "tooltip": true,
+    "max-length": 1000
+  }
+}

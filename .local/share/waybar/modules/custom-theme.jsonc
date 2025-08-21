@@ -1,0 +1,12 @@
+{
+    "custom/theme": {
+        "format": "{0}",
+        "rotate": 0,
+        "exec": "echo ; echo \udb81\udfe1 switch theme",
+        "on-click": "denv-shell themeswitch -n",
+        "on-click-right": "denv-shell themeswitch -p",
+        "on-click-middle": "sleep 0.1 && denv-shell themeselect", 
+        "interval": 86400,
+        "tooltip": true
+    }
+}

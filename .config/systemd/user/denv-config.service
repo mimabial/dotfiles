@@ -1,0 +1,19 @@
+[Unit]
+Description=DENv Configuration Parser Service
+Documentation=https://github.com/DENv-Project/denv-config
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/lib/denv/denv-config
+Restart=on-failure
+RestartSec=5s
+Environment="DISPLAY=:0"
+
+# Make sure the required directories exist
+ExecStartPre=/bin/mkdir -p %h/.config/denv
+ExecStartPre=/bin/mkdir -p %h/.local/state/denv
+
+[Install]
+WantedBy=graphical-session.target

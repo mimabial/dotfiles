@@ -1,0 +1,5 @@
+pane	0	1	0	:##-	1	style.css - NVIM	:/home/slim/DENv	1	nvim	:nvim .
+pane	0	2	1	:*	1	Untitled - NVIM	:/home/slim/.config/hypr	1	nvim	:nvim keybindings.conf
+window	0	1	:nvim	0	:##-	aa9d,75x31,0,0,0	:
+window	0	2	:nvim	1	:*	aa9f,75x31,0,0,2	:
+state	0	

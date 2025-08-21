@@ -1,0 +1,12 @@
+{
+  "hyprland/language": {
+    "format": "{short}",
+    "format-fr": "FR",
+    "format-us": "US",
+    "rotate": 0,
+    "on-click": "denv-shell keyboardswitch",
+    "tooltip": true,
+    "tooltip-format": "Layout: {long}",
+    "keyboard-name": "all"
+  }
+}

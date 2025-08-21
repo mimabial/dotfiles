@@ -1,0 +1,7 @@
+pane	0	1	1	:*	1	.zshenv - NVIM	:/home/slim/.config/waybar	1	nvim	:nvim .
+pane	0	2	0	:	1	Untitled - NVIM	:/home/slim/.local/share/waybar	1	nvim	:nvim .
+pane	0	3	0	:-	1	pm.sh - NVIM	:/home/slim/.local/lib/denv	1	nvim	:nvim waybar.py
+window	0	1	:nvim	1	:*	a8dd,81x31,0,0,0	:
+window	0	2	:nvim	0	:	a8de,81x31,0,0,1	:
+window	0	3	:nvim	0	:-	a8df,81x31,0,0,2	:
+state	0	

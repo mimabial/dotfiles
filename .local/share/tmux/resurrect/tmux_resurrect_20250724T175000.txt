@@ -1,0 +1,5 @@
+pane	0	1	1	:*	1	hyprdots.css - NVIM	:/home/slim/.local/share/waybar	1	nvim	:nvim .
+pane	0	2	0	:-	1	slim-laptop	:/home/slim	1	git	:git clone git@github.com:mimabial/hyprdots.git
+window	0	1	:nvim	1	:*	ac5d,69x31,0,0,0	:
+window	0	2	:git	0	:-	abdf,68x31,0,0,2	:
+state	0	
