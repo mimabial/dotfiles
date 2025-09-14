@@ -1,5 +1,0 @@
-pane	0	1	0	:-	1	slim-laptop	:/home/slim	1	zsh	:
-pane	0	2	1	:*	1	keybindings.conf - NVIM	:/home/slim/.config/hypr	1	nvim	:nvim keybindings.conf
-window	0	1	:zsh	0	:-	aa9d,75x31,0,0,0	:
-window	0	2	:nvim	1	:*	aa9f,75x31,0,0,2	:
-state	0	

@@ -17,8 +17,6 @@
     "telemetry.telemetryLevel": "off",
     "workbench.activityBar.location": "top",
     "window.customTitleBarVisibility": "auto",
-    "workbench.sideBar.location": "right",
-    "editor.minimap.enabled": false,
-    "files.autoSave": "afterDelay"
+    "workbench.sideBar.location": "right"
   }
   

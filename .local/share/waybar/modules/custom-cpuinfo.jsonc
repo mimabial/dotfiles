@@ -1,6 +1,6 @@
 {
   "custom/cpuinfo": {
-    "exec": "denv-shell cpuinfo",
+    "exec": "hyde-shell cpuinfo",
     "return-type": "json",
     "format": "{0}",
     "rotate": 0,

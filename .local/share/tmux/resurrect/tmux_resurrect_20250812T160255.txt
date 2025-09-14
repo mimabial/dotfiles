@@ -1,5 +1,0 @@
-pane	2	1	1	:##*	1	slim-laptop	:/home/slim/.config	1	zsh	:
-pane	6	1	1	:*	1	custom-cliphist.jsonc - NVIM	:/home/slim/.local/share/waybar	1	nvim	:nvim .
-window	2	1	:zsh	1	:##*	b95d,82x35,0,0,0	:
-window	6	1	:nvim	1	:*	c9e2,83x39,0,0,5	:
-state	6	

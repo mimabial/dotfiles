@@ -3,9 +3,6 @@ MenuBar=Disabled
 [$Version]
 update_info=dolphin_detailsmodesettings.upd:rename-leading-padding
 
-[DetailsMode]
-PreviewSize=16
-
 [General]
 ShowSelectionToggle=false
 ShowStatusBar=false
@@ -14,7 +11,7 @@ ViewPropsTimestamp=2023,4,26,16,58,48.324
 
 [IconsMode]
 MaximumTextLines=1
-PreviewSize=80
+PreviewSize=112
 
 [InformationPanel]
 dateFormat=ShortFormat
@@ -30,6 +27,7 @@ Places Icons Static Size=16
 MenuBar=Disabled
 
 [MainWindow][Toolbar mainToolBar]
+IconSize=16
 ToolButtonStyle=IconOnly
 
 [PlacesPanel]

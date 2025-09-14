@@ -20,10 +20,14 @@
 @import "../../../../.config/waybar/includes/border-radius.css";
 @import "../../../../.config/waybar/includes/global.css";
 
-/* Base denv Styles */
+/* Base HyDE Styles */
 
 window#waybar {
-  background: @bar-bg;
+    background: @bar-bg;
+}
+
+.module {
+    color: @main-fg;
 }
 
 /*
@@ -43,79 +47,86 @@ window#waybar {
 #pill-up,
 #pill-in,
 #pill-out {
-  background-color: @main-bg;
-  border-style: solid;
-  border-color: @main-bg;
+    background-color: @main-bg;
+    border-style: solid;
+    border-color: @main-bg;
 }
 
+
+
+
+
 #workspaces button {
-  box-shadow: none;
-  text-shadow: none;
-  padding: 0em;
-  margin-top: 0.3em;
-  margin-bottom: 0.3em;
-  margin-left: 0em;
-  padding-left: 0.3em;
-  padding-right: 0.3em;
-  margin-right: 0em;
-  color: @main-fg;
-  animation: ws_normal 20s ease-in-out 1;
+    box-shadow: none;
+    text-shadow: none;
+    padding: 0em;
+    margin-top: 0.3em;
+    margin-bottom: 0.3em;
+    margin-left: 0em;
+    padding-left: 0.3em;
+    padding-right: 0.3em;
+    margin-right: 0em;
+    color: @main-fg;
+    animation: ws_normal 20s ease-in-out 1;
 }
 
 #workspaces button.active {
-  background: @wb-act-bg;
-  color: @wb-act-fg;
-  margin-left: 0.3em;
-  padding-left: 1.2em;
-  padding-right: 1.2em;
-  margin-right: 0.3em;
-  animation: ws_active 20s ease-in-out 1;
-  transition: all 0.4s cubic-bezier(.55, -0.68, .48, 1.682);
+    background: @wb-act-bg;
+    color: @wb-act-fg;
+    margin-left: 0.3em;
+    padding-left: 1.2em;
+    padding-right: 1.2em;
+    margin-right: 0.3em;
+    animation: ws_active 20s ease-in-out 1;
+    transition: all 0.4s cubic-bezier(.55, -0.68, .48, 1.682);
 }
 
 #workspaces button:hover {
-  background: @wb-hvr-bg;
-  color: @wb-hvr-fg;
-  animation: ws_hover 20s ease-in-out 1;
-  transition: all 0.3s cubic-bezier(.55, -0.68, .48, 1.682);
+    background: @wb-hvr-bg;
+    color: @wb-hvr-fg;
+    animation: ws_hover 20s ease-in-out 1;
+    transition: all 0.3s cubic-bezier(.55, -0.68, .48, 1.682);
 }
 
 #taskbar button {
-  box-shadow: none;
-  text-shadow: none;
-  padding: 0em;
-  margin-top: 0.3em;
-  margin-bottom: 0.3em;
-  margin-left: 0em;
-  padding-left: 0.3em;
-  padding-right: 0.3em;
-  margin-right: 0em;
-  color: @wb-color;
-  animation: tb_normal 20s ease-in-out 1;
+    box-shadow: none;
+    text-shadow: none;
+    padding: 0em;
+    margin-top: 0.3em;
+    margin-bottom: 0.3em;
+    margin-left: 0em;
+    padding-left: 0.3em;
+    padding-right: 0.3em;
+    margin-right: 0em;
+    color: @wb-color;
+    animation: tb_normal 20s ease-in-out 1;
 }
 
 #taskbar button.active {
-  background: @wb-act-bg;
-  color: @wb-act-color;
-  margin-left: 0.3em;
-  padding-left: 1.2em;
-  padding-right: 1.2em;
-  margin-right: 0.3em;
-  animation: tb_active 20s ease-in-out 1;
-  transition: all 0.4s cubic-bezier(.55, -0.68, .48, 1.682);
+    background: @wb-act-bg;
+    color: @wb-act-color;
+    margin-left: 0.3em;
+    padding-left: 1.2em;
+    padding-right: 1.2em;
+    margin-right: 0.3em;
+    animation: tb_active 20s ease-in-out 1;
+    transition: all 0.4s cubic-bezier(.55, -0.68, .48, 1.682);
 }
 
 #taskbar button:hover {
-  background: @wb-hvr-bg;
-  color: @wb-hvr-color;
-  animation: tb_hover 20s ease-in-out 1;
-  transition: all 0.3s cubic-bezier(.55, -0.68, .48, 1.682);
+    background: @wb-hvr-bg;
+    color: @wb-hvr-color;
+    animation: tb_hover 20s ease-in-out 1;
+    transition: all 0.3s cubic-bezier(.55, -0.68, .48, 1.682);
 }
+
+
 
 #workspaces,
 #taskbar {
-  padding: 0em;
+    padding: 0em;
 }
+
 
 window#waybar.top .modules-left,
 window#waybar.top .modules-center,
@@ -123,26 +134,27 @@ window#waybar.top .modules-right,
 window#waybar.bottom .modules-left,
 window#waybar.bottom .modules-center,
 window#waybar.bottom .modules-right {
-  padding-left: 0.3em;
-  padding-right: 0.3em;
-  margin-left: 0.3em;
-  margin-right: 0.3em;
+    padding-left: 0.3em;
+    padding-right: 0.3em;
+    margin-left: 0.3em;
+    margin-right: 0.3em;
+
 }
 
 window#waybar.top label.module,
 window#waybar.bottom label.module {
-  padding-left: 0.2em;
-  padding-right: 0.2em;
-  margin-left: 0.2em;
-  margin-right: 0.2em;
+    padding-left: 0.2em;
+    padding-right: 0.2em;
+    margin-left: 0.2em;
+    margin-right: 0.2em;
 }
 
 window#waybar.left label.module,
 window#waybar.right label.module {
-  padding-top: 0.2em;
-  padding-bottom: 0.2em;
-  margin-top: 0.2em;
-  margin-bottom: 0.2em;
+    padding-top: 0.2em;
+    padding-bottom: 0.2em;
+    margin-top: 0.2em;
+    margin-bottom: 0.2em;
 }
 
 window#waybar.right #leaf,
@@ -171,7 +183,7 @@ window#waybar.right #pill-in,
 window#waybar.left #pill-in,
 window#waybar.right #pill-out,
 window#waybar.left #pill-out {
-  padding: 0em;
+    padding: 0em;
 }
 
 window#waybar.bottom #leaf,
@@ -200,101 +212,49 @@ window#waybar.top #pill-down,
 window#waybar.top #pill-up,
 window#waybar.top #pill-in,
 window#waybar.top #pill-out {
-  padding: 0em 1em;
+    padding: 0em 1em;
 }
 
 /* ? Dynamic button */
 
 window#waybar.top button,
 window#waybar.bottom button {
-  margin: 0.41em 0.11em;
-  border: 0em;
-  /* padding: 0.1em 0.5em; */
+    margin: 0.41em 0.11em;
+    border: 0em;
+    /* padding: 0.1em 0.5em; */
 
 }
 
 window#waybar.left button,
 window#waybar.right button {
-  margin: 0.11em 0.41em;
-  border: 0em
+    margin: 0.11em 0.41em;
+    border: 0em
 }
 
 
 tooltip {
-  /* all: unset; */
-  background: @main-bg;
-  color: @main-fg;
-  border-width: 0.1pt;
-  border-color: @main-fg ;
+    /* all: unset; */
+    background: @main-bg;
+    color: @main-fg;
+    border-width: 0.1pt;
+    border-color: @main-fg ;
 }
 
 #tray menu * {
-  min-height: 1.6em;
+    min-height: 1.6em;
 
 }
 
 #tray menu separator {
-  min-height: 0.1em;
+    min-height: 0.1em;
 }
 
 #language {
-  min-width: 1.11em;
+    min-width: 1.11em;
 }
 
-/* Audio/Video Privacy */
-.custom-audio-video-privacy.webcam-active {
-  color: #ff0000;
-}
-
-.custom-audio-video-privacy.microphone-muted {
-  color: #ffaa00;
-}
-
-.custom-audio-video-privacy.av-secure {
-  color: #00ff00;
-}
-
-/* Network Privacy */
-.custom-network-privacy.vpn-active {
-  color: #00ff00;
-}
-
-.custom-network-privacy.network-exposed {
-  color: #ff0000;
-}
-
-.custom-network-privacy.tor-active {
-  color: #9966cc;
-}
-
-/* Hardware Privacy */
-.custom-hardware-privacy.bluetooth-discoverable {
-  color: #ff0000;
-}
-
-.custom-hardware-privacy.usb-storage {
-  color: #ffaa00;
-}
-
-/* Data Privacy */
-.custom-data-privacy.clipboard-sensitive {
-  color: #ff6600;
-}
-
-.custom-data-privacy.file-sharing-active {
-  color: #ff0000;
-}
-
-/* System Privacy */
-.custom-system-privacy.location-active {
-  color: #ff0000;
-}
-
-.custom-system-privacy.privacy-warning {
-  color: #ff0000;
-}
-
-/* Privacy Tools */
-.custom-privacy-tools {
-  color: #666666;
+#temperature,
+#temperature.warning,
+#temperature.critical {
+    background-color: transparent;
 }

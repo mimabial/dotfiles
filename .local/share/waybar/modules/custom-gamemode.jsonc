@@ -1,12 +1,8 @@
 {
-  "format": "{icon}",
-  "custom/gamemode": {
-    "return-type": "json",
-    "exec": "denv-shell gamemode waybar",
-    "rotate": 0,
-    "on-click": "denv-shell gamemode toggle",
-    "interval": "once",
-    "signal": 10,
-    "tooltip": true
-  }
+    "custom/gamemode": {
+        "format": " ",
+        "tooltip-format": " Toggle game mode",
+        "rotate": 0,
+        "on-click": "hyde-shell gamemode"
+    }
 }

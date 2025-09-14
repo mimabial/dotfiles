@@ -1,9 +1,0 @@
-pane	0	1	0	:	1	config.toml - NVIM	:/home/slim/.local/share/waybar	1	nvim	:nvim .
-pane	0	2	0	:##	1	parse.config.py - NVIM	:/home/slim/.local/lib/denv	1	nvim	:nvim eyecare-status.sh
-pane	0	3	1	:*	1	hyprland.conf - NVIM	:/home/slim/.local/bin	1	nvim	:nvim denv-shell
-pane	0	4	0	:-	1	slim-laptop	:/home/slim/.local/share/waybar	1	zsh	:
-window	0	1	:nvim	0	:	aa1e,74x31,0,0,1	:
-window	0	2	:nvim	0	:##	aa1f,74x31,0,0,2	:
-window	0	3	:nvim	1	:*	a9e0,64x31,0,0,3	:
-window	0	4	:zsh	0	:-	a9e2,64x31,0,0,5	:
-state	0	

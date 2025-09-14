@@ -1,13 +1,13 @@
 {
   "pulseaudio": {
-    "format": "{icon} {volume}%",
+    "format": "{icon} {volume}",
     "rotate": 0,
-    "format-muted": " {volume}%",
+    "format-muted": "婢",
     "on-click": "pavucontrol -t 3",
-    "on-click-right": "denv-shell volumecontrol -s ''",
-    "on-click-middle": "denv-shell volumecontrol -o m",
-    "on-scroll-up": "denv-shell volumecontrol -o i",
-    "on-scroll-down": "denv-shell volumecontrol -o d",
+    "on-click-right": "hyde-shell volumecontrol -s ''",
+    "on-click-middle": "hyde-shell volumecontrol -o m",
+    "on-scroll-up": "hyde-shell volumecontrol -o i",
+    "on-scroll-down": "hyde-shell volumecontrol -o d",
     "tooltip-format": "{icon} {desc} // {volume}%",
     "scroll-step": 5,
     "format-icons": {
@@ -17,11 +17,7 @@
       "phone": "",
       "portable": "",
       "car": "",
-      "default": [
-        "",
-        "",
-        ""
-      ]
+      "default": ["", "", ""]
     }
   }
 }

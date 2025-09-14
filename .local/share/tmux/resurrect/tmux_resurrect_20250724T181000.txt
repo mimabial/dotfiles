@@ -1,5 +1,0 @@
-pane	0	1	1	:*	1	khing.jsonc - NVIM	:/home/slim/.local/share/waybar	1	nvim	:nvim .
-pane	0	2	0	:-	1	slim-laptop	:/home/slim	1	zsh	:
-window	0	1	:nvim	1	:*	ac5d,69x31,0,0,0	:
-window	0	2	:zsh	0	:-	ac5f,69x31,0,0,2	:
-state	0	

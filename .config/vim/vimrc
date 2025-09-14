@@ -1,6 +1,6 @@
-" Load the denv config
+" Load the hyde config
 let s:VIM_DIR = fnamemodify($MYVIMRC, ':h')
-execute 'source ' . s:VIM_DIR . '/denv.vim'
+execute 'source ' . s:VIM_DIR . '/hyde.vim'
 
 " Adding your custom colorschem
 "colorscheme zaibatsu "the only nice built-in colorscheme 

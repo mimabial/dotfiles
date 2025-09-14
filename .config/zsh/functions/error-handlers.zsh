@@ -25,7 +25,7 @@ function command_not_found_handler {
 # Function to display a slow load warning
 # the intention is for hyprdots users who might have multiple zsh initialization
 function _slow_load_warning {
-    local lock_file="/tmp/.denv_slow_load_warning.lock"
+    local lock_file="/tmp/.hyde_slow_load_warning.lock"
     local load_time=$SECONDS
 
     # Check if the lock file exists
@@ -42,15 +42,15 @@ function _slow_load_warning {
         2. Duplicate plugins initialization.
             - navigate to ~/.zshrc and remove any 'source ZSH/oh-my-zsh.sh' or
                 'source ~/.oh-my-zsh/oh-my-zsh.sh' lines.
-            - DENv already sources the oh-my-zsh.sh file for you.
-            - It is important to remove all DENv related
-                configurations from your .zshrc file as DENv will handle it for you.
+            - HyDE already sources the oh-my-zsh.sh file for you.
+            - It is important to remove all HyDE related
+                configurations from your .zshrc file as HyDE will handle it for you.
             - Check the '.zshrc' file from the repo for a clean configuration.
-                https://github.com/DENv-Project/DENv/blob/master/Configs/.zshrc
+                https://github.com/HyDE-Project/HyDE/blob/master/Configs/.zshrc
         3. Check the '~/.user.zsh' file for any slow initialization scripts.
 
     For more information, on the possible causes of slow shell startup, see:
-        🌐 https://github.com/DENv-Project/DENv/wiki
+        🌐 https://github.com/HyDE-Project/HyDE/wiki
 
 EOF
         fi

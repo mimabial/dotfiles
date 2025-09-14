@@ -1,9 +1,0 @@
-DENV_THEME="Abyssal Wave"
-rofiStyle="style_1"
-enableWallDcol="0"
-HYPR_ANIMATION="disable"
-HYPR_WORKFLOW="editing"
-HYPRLOCK_LAYOUT="Theme Preference"
-WAYBAR_LAYOUT_PATH=/home/slim/.local/share/waybar/layouts/hyprdots/16.jsonc
-WAYBAR_LAYOUT_NAME=hyprdots/16
-WAYBAR_STYLE_PATH=/home/slim/.local/share/waybar/styles/hyprdots.css

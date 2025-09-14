@@ -1,5 +1,6 @@
 # Add user configurations here
-
+# For HyDE to not touch your beloved configurations,
+# we added a config file for you to customize HyDE
 
 #  Aliases 
 # Override aliases here in 'config.fish' (already set )
@@ -33,8 +34,8 @@
 #  This is your file 
 # Add your configurations here
 
-set EDITOR nvim
-# set EDITOR code
+# set EDITOR nvim
+set EDITOR code
 
 # set aurhelper yay
 set aurhelper yay

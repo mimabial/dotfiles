@@ -1,5 +1,0 @@
-pane	0	1	1	:*	1	Untitled - NVIM	:/home/slim/.config/waybar	1	nvim	:nvim .
-pane	0	2	0	:-	1	wbarstylegen.sh - NVIM	:/home/slim/.config	1	nvim	:nvim .
-window	0	1	:nvim	1	:*	afbd,154x31,0,0,0	:
-window	0	2	:nvim	0	:-	afbe,154x31,0,0,1	:
-state	0	

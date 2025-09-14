@@ -3,6 +3,7 @@
 // You can add a group module to a group module
 // This module is used to control media playback
 // It includes a drawer that is hovered over to reveal additional options // next ,play, previous
+
 {
   "group/mediaplayer": {
     "orientation": "inherit",

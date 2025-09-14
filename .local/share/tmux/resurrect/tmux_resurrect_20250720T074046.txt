@@ -1,9 +1,0 @@
-pane	0	1	1	:*	1	Untitled - NVIM	:/home/slim/.config/waybar	1	nvim	:nvim .
-pane	0	2	0	:##-	1	Untitled - NVIM	:/home/slim/.local/share/waybar	1	nvim	:nvim .
-pane	0	3	0	:	1	waybar.py - NVIM	:/home/slim/.local/lib/denv	1	nvim	:nvim .
-pane	0	4	0	:	1	slim-laptop	:/home/slim/.local/state	1	zsh	:
-window	0	1	:nvim	1	:*	aa9d,75x31,0,0,0	:
-window	0	2	:nvim	0	:##-	aa9f,75x31,0,0,2	:
-window	0	3	:nvim	0	:	aaa0,75x31,0,0,3	:
-window	0	4	:zsh	0	:	aaa1,75x31,0,0,4	:
-state	0	

@@ -1,5 +1,0 @@
-pane	0	1	0	:-	1	hyprlock.sh - NVIM	:/home/slim/.config	1	nvim	:nvim .
-pane	0	2	1	:*	1	hyplock.conf - NVIM	:/home/slim/.config/hypr	1	nvim	:nvim hyplock.conf
-window	0	1	:nvim	0	:-	aa9d,75x31,0,0,0	:
-window	0	2	:nvim	1	:*	aaa0,75x31,0,0,3	:
-state	0	

@@ -1,4 +1,5 @@
 // https://man.archlinux.org/man/waybar-gamemode.5.en
+
 {
   "gamemode": {
     "format": "{glyph}",

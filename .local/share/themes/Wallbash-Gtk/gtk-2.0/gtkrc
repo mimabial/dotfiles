@@ -2,7 +2,7 @@
 # Modified for Wallbash template
 
 gtk-color-scheme =
-"base_color:#2F3B4B\nbg_color:#324D67\ntooltip_bg_color:#376686\nselected_bg_color:#958D84\ntext_color:#FFFFFF\nfg_color:#FFFFFF\ntooltip_fg_color:#FFFFFF\nselected_fg_color:#FFFFFF\nmenubar_bg_color:#376686\nmenubar_fg_color:#FFFFFF\ntoolbar_bg_color:#958D84\ntoolbar_fg_color:#FFFFFF\nmenu_bg_color:#324D67\nmenu_fg_color:#FFFFFF\npanel_bg_color:#2F3B4B\npanel_fg_color:#293E52\nlink_color:#958D84\nbtn_bg_color:#376686\nbtn_fg_color:#FFFFFF\ntitlebar_bg_color:#958D84\ntitlebar_fg_color:#FFFFFF\nprimary_caret_color:#FFFFFF\nsecondary_caret_color:#121212\naccent_bg_color:#376686\n"
+"base_color:#1B1A29\nbg_color:#272E3C\ntooltip_bg_color:#2D4E5B\nselected_bg_color:#974C4E\ntext_color:#FFFFFF\nfg_color:#FFFFFF\ntooltip_fg_color:#FFFFFF\nselected_fg_color:#FFFFFF\nmenubar_bg_color:#2D4E5B\nmenubar_fg_color:#FFFFFF\ntoolbar_bg_color:#974C4E\ntoolbar_fg_color:#FFFFFF\nmenu_bg_color:#272E3C\nmenu_fg_color:#FFFFFF\npanel_bg_color:#1B1A29\npanel_fg_color:#293652\nlink_color:#974C4E\nbtn_bg_color:#2D4E5B\nbtn_fg_color:#FFFFFF\ntitlebar_bg_color:#974C4E\ntitlebar_fg_color:#FFFFFF\nprimary_caret_color:#FFFFFF\nsecondary_caret_color:#FFFFFF\naccent_bg_color:#2D4E5B\n"
 # Default Style
 
 style "murrine-default" {
@@ -26,7 +26,7 @@ style "murrine-default" {
 
 	GtkCheckButton::indicator-size = 30
 
-	# The following line hints to gecko (and possibly other appliations)
+	# The following line hints to gecko (and possibly other applications)
 	# that the entry should be drawn transparently on the canvas.
 	# Without this, gecko will fill in the background of the entry.
 	GtkEntry::honors-transparent-bg-hint = 1
@@ -136,7 +136,7 @@ style "murrine-default" {
 		border_colors = { mix(0.2, @fg_color, @bg_color), mix(0.2, @fg_color, @bg_color) }
 		colorize_scrollbar = FALSE
 		comboboxstyle = 0 # 0 = normal combobox, 1 = colorized combobox below arrow
-		contrast = 0.8 # overal contrast with borders
+		contrast = 0.8 # overall contrast with borders
 		focusstyle = 3 # 0 = none, 1 = grey dotted, 2 = colored with fill, 3 = colored glow
 		glazestyle = 0 # 0 = flat highlight, 1 = curved highlight, 2 = concave, 3 = top curved highlight, 4 = beryl highlight
 		glowstyle = 0 # 0 = glow on top, 1 = glow on bottom, 2 = glow on top and bottom, 3 = glow on middle vertically, 4 = glow on middle horizontally, 5 = glow on all sides

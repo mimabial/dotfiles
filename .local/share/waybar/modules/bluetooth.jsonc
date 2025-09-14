@@ -1,24 +1,12 @@
 {
   "bluetooth": {
-    "format": " ",
+    "format": "",
     "rotate": 0,
-    "format-disabled": " off",
+    "format-disabled": "",
     "format-connected": " {num_connections}",
     "format-connected-battery": "{icon} {num_connections}",
     // "format-connected-battery": "{icon} {device_alias}-{device_battery_percentage}%",
-    "format-icons": [
-      "󰥇",
-      "󰤾",
-      "󰤿",
-      "󰥀",
-      "󰥁",
-      "󰥂",
-      "󰥃",
-      "󰥄",
-      "󰥅",
-      "󰥆",
-      "󰥈"
-    ],
+    "format-icons": ["󰥇", "󰤾", "󰤿", "󰥀", "󰥁", "󰥂", "󰥃", "󰥄", "󰥅", "󰥆", "󰥈"],
     // "format-device-preference": [ "device1", "device2" ], // preference list deciding the displayed device If this config option is not defined or none of the devices in the list are connected, it will fall back to showing the last connected device.
     "tooltip-format": "{controller_alias}\n{num_connections} connected",
     "tooltip-format-connected": "{controller_alias}\n{num_connections} connected\n\n{device_enumerate}",
