@@ -1,7 +1,7 @@
 $HOME/.config/kitty/theme.conf | killall -SIGUSR1 kitty
 
 foreground              #FFFFFF
-background              #1A1D23
+background              #171B20
 
 selection_foreground    #0A1010
 selection_background    #FFFFFF

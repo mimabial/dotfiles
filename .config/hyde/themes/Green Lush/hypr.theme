@@ -1,32 +1,26 @@
 $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
 
-
-#$SDDM-THEME = Gruvbox-Plus-Dark
 $GTK-THEME = Decay-Green
 $ICON-THEME = Tela-circle-green
-
-exec = gsettings set org.gnome.desktop.interface icon-theme '$ICON-THEME'
-exec = gsettings set org.gnome.desktop.interface gtk-theme '$GTK-THEME'
-exec = gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
-
-#Set the sddm theme here
-#exec = Hyde sddm set $SDDM-THEME
+$COLOR_SCHEME = prefer-dark
+$NVIM_SCHEME = ayu
+$NVIM_VARIANT = mirage
 
 general {
-    gaps_in = 3
-    gaps_out = 8
+    gaps_in = 2
+    gaps_out = 4
     border_size = 2
-    col.active_border = rgba(118911ff) rgba(295252ff) 45deg
-    col.inactive_border = rgba(0A1010ff) rgba(1A2525ff) 45deg
+    col.active_border = rgba(118911ff)
+    col.inactive_border = rgba(0A1010ff)
     layout = dwindle
     resize_on_border = true
 }
 
 group {
-    col.border_active = rgba(118911ff) rgba(295252ff) 45deg
-    col.border_inactive = rgba(0A1010cc) rgba(1A2525cc) 45deg
-    col.border_locked_active = rgba(FFFFFFff) rgba(FFFFFFff) 45deg
-    col.border_locked_inactive = rgba(FFFFFFcc) rgba(FFFFFFcc) 45deg
+    col.border_active = rgba(118911ff)
+    col.border_inactive = rgba(0A1010cc)
+    col.border_locked_active = rgba(FFFFFFff)
+    col.border_locked_inactive = rgba(FFFFFFcc)
 }
 
 decoration {

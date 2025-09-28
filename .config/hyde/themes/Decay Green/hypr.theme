@@ -1,36 +1,30 @@
 $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
-#  P̳r̳a̳s̳a̳n̳t̳h̳ R̳a̳n̳g̳a̳n̳
 
 $GTK_THEME = Decay-Green
 $ICON_THEME = Tela-circle-green
 $COLOR_SCHEME = prefer-dark
-
-# Optional: The varibles above will be set automatically when the theme is loaded
-# This exec commands will soon be deprecated
-
-exec = gsettings set org.gnome.desktop.interface icon-theme $ICON_THEME
-exec = gsettings set org.gnome.desktop.interface gtk-theme $GTK_THEME
-exec = gsettings set org.gnome.desktop.interface color-scheme $COLOR_SCHEME
+$NVIM_SCHEME = decay
+$NVIM_VARIANT = decayce
 
 general {
-    gaps_in = 3
-    gaps_out = 8
+    gaps_in = 2
+    gaps_out = 4
     border_size = 2
-    col.active_border = rgba(90ceaaff) rgba(ecd3a0ff) 45deg
-    col.inactive_border = rgba(86aaeccc) rgba(93cee9cc) 45deg
+    col.active_border = rgba(90ceaaff)
+    col.inactive_border = rgba(93cee9cc)
     layout = dwindle
     resize_on_border = true
 }
 
 group {
-    col.border_active = rgba(90ceaaff) rgba(ecd3a0ff) 45deg
-    col.border_inactive = rgba(86aaeccc) rgba(93cee9cc) 45deg
-    col.border_locked_active = rgba(90ceaaff) rgba(ecd3a0ff) 45deg
-    col.border_locked_inactive = rgba(86aaeccc) rgba(93cee9cc) 45deg
+    col.border_active = rgba(90ceaaff)
+    col.border_inactive = rgba(93cee9cc)
+    col.border_locked_active = rgba(90ceaaff)
+    col.border_locked_inactive = rgba(93cee9cc)
 }
 
 decoration {
-    rounding = 10
+    rounding = 3
     shadow:enabled = false
 
     blur {

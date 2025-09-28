@@ -5,20 +5,20 @@ update_info=dolphin_detailsmodesettings.upd:rename-leading-padding
 
 [General]
 ShowSelectionToggle=false
-ShowStatusBar=false
+ShowStatusBar=Disabled
 Version=202
 ViewPropsTimestamp=2023,4,26,16,58,48.324
 
 [IconsMode]
 MaximumTextLines=1
-PreviewSize=112
+PreviewSize=208
 
 [InformationPanel]
 dateFormat=ShortFormat
 
 [KFileDialog Settings]
 Places Icons Auto-resize=false
-Places Icons Static Size=16
+Places Icons Static Size=48
 
 [KPropertiesDialog]
 2560x1080 screen: Window-Maximized=true
@@ -31,10 +31,10 @@ IconSize=16
 ToolButtonStyle=IconOnly
 
 [PlacesPanel]
-IconSize=16
+IconSize=48
 
 [PreviewSettings]
-Plugins=appimagethumbnail,audiothumbnail,comicbookthumbnail,cursorthumbnail,djvuthumbnail,ebookthumbnail,exrthumbnail,imagethumbnail,jpegthumbnail,kraorathumbnail,windowsexethumbnail,windowsimagethumbnail,opendocumentthumbnail,svgthumbnail,ffmpegthumbs
+Plugins=appimagethumbnail,audiothumbnail,comicbookthumbnail,cursorthumbnail,djvuthumbnail,ebookthumbnail,exrthumbnail,imagethumbnail,jpegthumbnail,jxl,kraorathumbnail,windowsexethumbnail,windowsimagethumbnail,opendocumentthumbnail,svgthumbnail,ffmpegthumbs
 
 [Toolbar mainToolBar]
 ToolButtonStyle=IconOnly

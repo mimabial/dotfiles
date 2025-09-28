@@ -1,0 +1,47 @@
+$HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
+
+$GTK_THEME = Catppuccin-Dark-Frappe
+$CURSOR_THEME= material_light_cursors
+$NVIM_SCHEME = bauhaus
+
+general {
+    gaps_in = 2
+    gaps_out = 4
+    border_size = 2
+    col.active_border = rgba(003DA5ff)
+    col.inactive_border = rgba(4A4A4Aff)
+    layout = dwindle
+    resize_on_border = true
+}
+
+group {
+    col.border_active = rgba(003DA5ff)
+    col.border_inactive = rgba(4A4A4Affcc)
+    col.border_locked_active = rgba(228B22ff)
+    col.border_locked_inactive = rgba(4A4A4Acc)
+}
+
+decoration {
+    rounding = 10
+    active_opacity = 0.95
+    inactive_opacity = 0.90
+
+    shadow {
+    enabled = false
+    ignore_window = true
+    render_power = 5
+    color = 0x80000000
+    range = 5
+    offset = 4 4
+    }
+
+    blur {
+        enabled = yes
+        size = 4
+        passes = 4
+        new_optimizations = on
+        ignore_opacity = on
+        xray = false
+    }
+}
+

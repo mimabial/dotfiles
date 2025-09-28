@@ -1,45 +1,46 @@
-$HOME/.config/kitty/theme.conf|killall -SIGUSR1 kitty
+# $HOME/.config/kitty/theme.conf|killall -SIGUSR1 kitty
 
 foreground              #FFFFFF
-background              #0A0101
-selection_foreground    #0A0101
-selection_background    #FFFFFF
-cursor                  #B41211 
+background              #121212
+selection_foreground    #121212
+selection_background    #CC4444
+url_color               #E85555
+cursor                  #DD2222
 cursor_text_color       #FFFFFF
 
-active_tab_foreground     #0A0101
-active_tab_background     #4E0405
-inactive_tab_foreground   #4E0405
-inactive_tab_background   #0A0101
+active_tab_foreground   #121212
+active_tab_background   #BB3333
+inactive_tab_foreground #555555
+inactive_tab_background #121212
 
-# black
-color0      #522929
-color8      #8F5757
+# Black tones - slightly warmer than pure black
+color0      #1F1515
+color8      #553333
 
-# red
-color1      #FFCCCC
-color9      #F0ABAA
+# Red - balanced intensity
+color1      #EE4444
+color9      #EE4444
 
-# green
-color2      #FFCCCC
-color10     #F0AAAA
+# Green (red-tinted for consistency)
+color2      #FF9999
+color10     #FF9999
 
-# yellow
-color3      #FFCCCD
-color11     #F0AAAB
+# Yellow (warm red-orange)
+color3      #FF7777
+color11     #FF7777
 
-# blue
-color4      #E69A9A
-color12     #E69A9A
+# Blue (red-purple)
+color4      #DD5555
+color12     #DD5555
 
-# magenta
-color5      #E69A9A
-color13     #E69A9A
+# Magenta (deep red)
+color5      #CC3333
+color13     #CC3333
 
-# cyan
-color6      #E69A9B
-color14     #E69A9B
+# Cyan (lighter red-pink)
+color6      #EE6666
+color14     #EE6666
 
-# white
+# White (soft pink-white)
 color7      #FFCCCC
 color15     #F0ABAA

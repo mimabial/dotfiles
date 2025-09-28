@@ -1,10 +1,10 @@
 $HOME/.config/kitty/theme.conf|killall -SIGUSR1 kitty
 
 # pixel font
-font_family      Monocraft Nerd Font
+# font_family      Monocraft Nerd Font
 
 # alternative font if you want more visibility
-#font_family     Miracode
+font_family     Miracode
 
 background #1d2021
 foreground #d4be98

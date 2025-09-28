@@ -1,0 +1,1 @@
+launch /bin/zsh -l -c "exec tmux new-session"

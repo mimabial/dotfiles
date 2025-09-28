@@ -1,4 +1,8 @@
 HYDE_THEME="Catppuccin Mocha"
-WAYBAR_LAYOUT_PATH=/home/rifle/.local/share/waybar/layouts/hyprdots/02.jsonc
-WAYBAR_LAYOUT_NAME=hyprdots/02
-WAYBAR_STYLE_PATH=/home/rifle/.local/share/waybar/styles/hyprdots.css
+HYPR_SHADER="disable"
+HYPR_ANIMATION="theme"
+HYPR_WORKFLOW="editing"
+enableWallDcol="0"
+WAYBAR_LAYOUT_PATH=/home/rifle/.local/share/waybar/layouts/default.jsonc
+WAYBAR_LAYOUT_NAME=default
+WAYBAR_STYLE_PATH=/home/rifle/.local/share/waybar/styles/defaults.css

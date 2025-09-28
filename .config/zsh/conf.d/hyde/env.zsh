@@ -7,7 +7,6 @@
 #! ██████╔╝╚█████╔╝  ██║░╚███║╚█████╔╝░░░██║░░░  ███████╗██████╔╝██║░░░██║░░░
 #! ╚═════╝░░╚════╝░  ╚═╝░░╚══╝░╚════╝░░░░╚═╝░░░  ╚══════╝╚═════╝░╚═╝░░░╚═╝░░░
 
-# Hyde's Shell Environment Initialization Script
 # If users used UWSM, uwsm will override any variables set anywhere in your shell configurations
 
 # Basic PATH prepending (user local bin)
@@ -43,7 +42,7 @@ TERMINFO_DIRS="$XDG_DATA_HOME"/terminfo:/usr/share/terminfo
 WGETRC="${XDG_CONFIG_HOME}/wgetrc"
 PYTHON_HISTORY="$XDG_STATE_HOME/python_history"
 
-# HyDEs Compositor Configuration
+# Compositor Configuration
 export HYPRLAND_CONFIG="${XDG_DATA_HOME:-$HOME/.local/share}/hypr/hyprland.conf"
 
 # Export all variables

@@ -1,0 +1,48 @@
+$HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
+
+$GTK_THEME = Everforest-Dark
+$ICON_THEME = Gruvbox-Plus-Dark
+$COLOR_SCHEME = prefer-dark
+$NVIM_SCHEME = everforest
+$NVIM_VARIANT = soft
+
+general {
+    gaps_in = 3
+    gaps_out = 5
+    border_size = 3
+    col.active_border = rgba(a6a6a6ff)
+    col.inactive_border = rgba(404040cc)
+    layout = dwindle
+    resize_on_border = true
+}
+
+group {
+    col.border_active = rgba(a6a6a6ff)
+    col.border_inactive = rgba(404040cc)
+    col.border_locked_active = rgba(a6a6a6ff)
+    col.border_locked_inactive = rgba(404040cc)
+}
+
+
+decoration {
+    rounding = 6
+    shadow {
+        enabled = true
+        ignore_window = true
+        range = 3
+        render_power = 8
+        scale = 1
+        color = 0xff26233a
+        color_inactive = 0xff26233a
+    }
+    blur {
+        enabled = yes
+        size = 3
+        passes = 6
+        new_optimizations = on
+        ignore_opacity = on
+        xray = false
+    }
+}
+
+layerrule = blur,waybar 

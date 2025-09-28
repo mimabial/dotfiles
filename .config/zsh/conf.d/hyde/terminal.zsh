@@ -7,10 +7,9 @@
 #! ██████╔╝╚█████╔╝  ██║░╚███║╚█████╔╝░░░██║░░░  ███████╗██████╔╝██║░░░██║░░░
 #! ╚═════╝░░╚════╝░  ╚═╝░░╚══╝░╚════╝░░░░╚═╝░░░  ╚══════╝╚═════╝░╚═╝░░░╚═╝░░░
 
-# HyDE's ZSH env configuration
 # This file is sourced by ZSH on startup
 # And ensures that we have an obstruction-free .zshrc file
-# This also ensures that the proper HyDE $ENVs are loaded
+# This also ensures that the proper $ENVs are loaded
 
 function _load_functions() {
     # Load all custom function files // Directories are ignored
@@ -25,28 +24,37 @@ function _load_completions() {
     done
 }
 
-function _dedup_zsh_plugins {
-    unset -f _dedup_zsh_plugins
-    # Oh-my-zsh installation path
-    zsh_paths=(
-        "$HOME/.oh-my-zsh"
-        "/usr/local/share/oh-my-zsh"
-        "/usr/share/oh-my-zsh"
-    )
-    for zsh_path in "${zsh_paths[@]}"; do [[ -d $zsh_path ]] && export ZSH=$zsh_path && break; done
-    # Load Plugins
-    hyde_plugins=(git zsh-256color zsh-autosuggestions zsh-syntax-highlighting)
-    plugins+=("${plugins[@]}" "${hyde_plugins[@]}")
-    # Deduplicate plugins
-    plugins=("${plugins[@]}")
-    plugins=($(printf "%s\n" "${plugins[@]}" | sort -u))
-    # Defer oh-my-zsh loading until after prompt appears
-    typeset -g DEFER_OMZ_LOAD=1
+function _init_zinit() {
+    # Initialize zinit
+    local zinit_home="/usr/share/zinit"
+    
+    # Install zinit if not present
+    if [[ ! -d "$zinit_home" ]]; then
+        mkdir -p "$(dirname "$zinit_home")"
+        git clone https://github.com/zdharma-continuum/zinit.git "$zinit_home"
+    fi
+    
+    # Source zinit
+    source "${zinit_home}/zinit.zsh"
+    
+    # Configure oh-my-zsh integration
+    zinit snippet OMZL::git.zsh
+    zinit snippet OMZP::git
+    
+    # Load essential plugins
+    zinit light "chrissicool/zsh-256color"
+    zinit light "zsh-users/zsh-autosuggestions"
+    zinit light "zsh-users/zsh-syntax-highlighting"
+    
+    # Load additional user plugins if they exist
+    if [[ -f "$ZDOTDIR/plugins.zsh" ]]; then
+        source "$ZDOTDIR/plugins.zsh"
+    fi
 }
 
-function _defer_omz_after_prompt_before_input() {
+function _defer_zinit_after_prompt_before_input() {
 
-    [[ -r $ZSH/oh-my-zsh.sh ]] && source $ZSH/oh-my-zsh.sh
+    _init_zinit
     #! Never load time consuming functions here
 
     # Add your completions directory to fpath
@@ -65,20 +73,20 @@ function _defer_omz_after_prompt_before_input() {
     [[ -r $ZDOTDIR/.zshrc ]] && source $ZDOTDIR/.zshrc
 }
 
-function _load_deferred_plugin_system_by_hyde() {
+function _load_deferred_plugin_system() {
 
     # Exit early if HYDE_ZSH_DEFER is not set to 1
     if [[ "${HYDE_ZSH_DEFER}" != "1" ]]; then
-        unset -f _load_deferred_plugin_system_by_hyde
+        unset -f _load_deferred_plugin_system
         return
     fi
 
-    # Defer oh-my-zsh loading until after prompt appears
-    # Load oh-my-zsh when line editor initializes // before user input
-    if [[ -n $DEFER_OMZ_LOAD ]]; then
-        unset DEFER_OMZ_LOAD
+    # Defer zinit loading until after prompt appears
+    # Load zinit when line editor initializes // before user input
+    if [[ -n $DEFER_ZINIT_LOAD ]]; then
+        unset DEFER_ZINIT_LOAD
         [[ ${VSCODE_INJECTION} == 1 ]] || chmod -r $ZDOTDIR/.zshrc # let vscode read .zshrc
-        zle -N zle-line-init _defer_omz_after_prompt_before_input  # Loads when the line editor initializes // The best option
+        zle -N zle-line-init _defer_zinit_after_prompt_before_input  # Loads when the line editor initializes // The best option
     fi
     #  Below this line are the commands that are executed after the prompt appears
 
@@ -152,8 +160,8 @@ function _load_compinit() {
 
 function _load_prompt() {
     # Try to load prompts immediately
-    if ! source ${ZDOTDIR}/prompt.zsh >/dev/null 2>&1; then
-        [[ -f $ZDOTDIR/conf.d/hyde/prompt.zsh ]] && source $ZDOTDIR/conf.d/hyde/prompt.zsh
+    if [ -f $ZDOTDIR/conf.d/hyde/prompt.zsh ]; then
+        source $ZDOTDIR/conf.d/hyde/prompt.zsh
     fi
 }
 
@@ -161,9 +169,12 @@ function _load_prompt() {
 # cleaning up home folder
 # ZSH Plugin Configuration
 
-HYDE_ZSH_DEFER="1"      #Unset this variable in $ZDOTDIR/user.zsh to disable HyDE's deferred Zsh loading.
-HYDE_ZSH_PROMPT="1"     #Unset this variable in $ZDOTDIR/user.zsh to disable HyDE's prompt customization.
-HYDE_ZSH_NO_PLUGINS="0" #Set this variable to "1" in $ZDOTDIR/user.zsh to disable HyDE's Zsh plugin loading.
+
+ZINIT_DIR="/usr/share/zinit"
+
+HYDE_ZSH_DEFER="1"      #Unset this variable in $ZDOTDIR/startup.zsh to disable HaLL's deferred Zsh loading.
+HYDE_ZSH_PROMPT="1"     #Unset this variable in $ZDOTDIR/startup.zsh to disable HaLL's prompt customization.
+HYDE_ZSH_NO_PLUGINS="0" #Set this variable to "1" in $ZDOTDIR/startup.zsh to disable HaLL's Zsh plugin loading.
 
 ZSH_AUTOSUGGEST_STRATEGY=(history completion)
 
@@ -179,65 +190,47 @@ SAVEHIST=10000
 
 export HISTFILE ZSH_AUTOSUGGEST_STRATEGY HISTSIZE SAVEHIST
 
-# HyDE Package Manager
+# HaLL Package Manager
 PM_COMMAND=(hyde-shell pm)
 
 # Optionally load user configuration // useful for customizing the shell without modifying the main file
-if [[ -f $HOME/.hyde.zshrc ]]; then
-    source $HOME/.hyde.zshrc # for backward compatibility
-elif [[ -f $HOME/.user.zsh ]]; then
-    source $HOME/.user.zsh # renamed to .user.zsh for intuitiveness that it is a user config
-elif [[ -f $ZDOTDIR/user.zsh ]]; then
-    source $ZDOTDIR/user.zsh
+if [[ -f $HOME/.startup.zsh ]]; then
+    source $HOME/.startup.zsh # renamed to .startup.zsh for intuitiveness that it is a user config
+elif [[ -f $ZDOTDIR/startup.zsh ]]; then
+    source $ZDOTDIR/startup.zsh
 fi
 
 _load_compinit
 
 if [[ ${HYDE_ZSH_NO_PLUGINS} != "1" ]]; then
-    _dedup_zsh_plugins
-    if [[ "$HYDE_ZSH_OMZ_DEFER" == "1" ]] && [[ -r $ZSH/oh-my-zsh.sh ]]; then
-        # Loads the buggy deferred oh-my-zsh plugin system by HyDE // This is only for oh-my-zsh and compatibility
-        _load_deferred_plugin_system_by_hyde
+    if [[ "$HYDE_ZSH_DEFER" == "1" ]] && [[ -d "$ZINIT_DIR" ]]; then
+        # Set flag for deferred loading
+        typeset -g DEFER_ZINIT_LOAD=1
+        # Loads the deferred zinit plugin system
+        _load_deferred_plugin_system
         _load_prompt # This disables transient prompts sadly
-    elif source $ZDOTDIR/plugin.zsh >/dev/null 2>&1; then
-        # Load plugins from the user's plugin.zsh file
-        # This is useful for users who want to use their own plugin system
-        source $ZDOTDIR/plugin.zsh
-        _load_prompt
-        _load_functions
-        _load_completions
-    elif [[ -r $ZSH/oh-my-zsh.sh ]]; then
-        # Load oh-my-zsh if it exists in the ZSH directory
-        #  Default if the $ZDOTDIR/plugin.zsh file does not exist or returns an error
-        source $ZSH/oh-my-zsh.sh
+    elif [[ -d "$ZINIT_DIR" ]]; then
+        # Load zinit immediately if not deferring
+        _init_zinit
         _load_prompt
         _load_functions
         _load_completions
     else
-        echo "No plugin system found. Please install a plugin system or create a $ZDOTDIR/plugin.zsh file."
-        echo "You can use $ZDOTDIR/plugin.zsh file to load your own plugins."
+        echo "No plugin system found. Please install a plugin system or create a $ZDOTDIR/plugins.zsh file."
     fi
-else
-    # Load user plugins if they exist
-    # Assumes user has a plugin.zsh file in their $ZDOTDIR
-    [[ -r $ZDOTDIR/plugin.zsh ]] && source $ZDOTDIR/plugin.zsh
-    _load_prompt
-    _load_functions
-    _load_completions
 fi
 
 __package_manager () { 
     ${PM_COMMAND[@]} "$@"
 }
 
-alias c='clear' \
+alias cl='clear' \
     in='__package_manager install' \
     un='__package_manager remove' \
     up='__package_manager upgrade' \
     pl='__package_manager search installed' \
     pa='__package_manager search all' \
     vc='code' \
-    fastfetch='fastfetch --logo-type kitty' \
     ..='cd ..' \
     ...='cd ../..' \
     .3='cd ../../..' \

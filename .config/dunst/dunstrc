@@ -8,8 +8,8 @@
 [global]
 corner_radius = 10
 icon_corner_radius = 10
-dmenu = /sbin/rofi -config notification -dmenu -p dunst:
-icon_theme = "Tela-circle-dracula,"
+dmenu = /usr/bin/rofi -config notification -dmenu -p dunst:
+icon_theme = "Tela-circle-dracula,Papirus-Everblush,Papirus-Latte,Tela-circle-blue,Tela-circle-red,Monokai,Tela-circle-black,Tela-circle-purple,Tela-circle-yellow,Tela-circle-green,Wallbash-Icon,Vivid-Glassy-Dark-Icons,Nordzy,Papirus-Nordic,Tela-circle-solarized,Gruvbox-Plus-Dark,Papirus-kanagawa,Tela-circle-pink,Tela-circle-nord,Tela-circle-grey,Tela-circle-dracula"
 
 
 # [Type-1]
@@ -112,7 +112,7 @@ new_icon = skype
 # font_size = 10
 font = Mononoki Nerd Font Mono 10,JetBrainsMono Nerd Font 10
 
-dmenu = /sbin/rofi -config notification -dmenu -p dunst:
+dmenu = /usr/bin/rofi -config notification -dmenu -p dunst:
 
 
 # Wallbash section
@@ -120,15 +120,15 @@ dmenu = /sbin/rofi -config notification -dmenu -p dunst:
 
 
 [urgency_low]
-    background = "#6592A380"
-    foreground = "#CCF1FFE6"
-    frame_color = "#6592A303"
+    background = "#A3658B80"
+    foreground = "#FFCCEBE6"
+    frame_color = "#A3658B03"
     icon = "/home/rifle/.local/share/icons/Wallbash-Icon/hyprdots.svg"
     timeout = 5
 
 [urgency_normal]
-    background = "#3A4A6B80"
-    foreground = "#CCDDFFE6"
-    frame_color = "#3A4A6B03"
+    background = "#3A406B80"
+    foreground = "#CCD2FFE6"
+    frame_color = "#3A406B03"
     icon = "/home/rifle/.local/share/icons/Wallbash-Icon/hyprdots.svg"
     timeout = 5
