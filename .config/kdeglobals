@@ -1,11 +1,11 @@
 [Colors:View]
-BackgroundNormal=#1C1F2DFF
+BackgroundNormal=#1E2222FF
 
 [General]
 TerminalApplication=kitty
 
 [Icons]
-Theme=Tela-circle-dracula
+Theme=Gruvbox-Plus-Dark
 
 [KDE]
 widgetStyle=kvantum

@@ -9,7 +9,7 @@
 corner_radius = 10
 icon_corner_radius = 10
 dmenu = /usr/bin/rofi -config notification -dmenu -p dunst:
-icon_theme = "Tela-circle-dracula,Papirus-Everblush,Papirus-Latte,Tela-circle-blue,Tela-circle-red,Monokai,Tela-circle-black,Tela-circle-purple,Tela-circle-yellow,Tela-circle-green,Wallbash-Icon,Vivid-Glassy-Dark-Icons,Nordzy,Papirus-Nordic,Tela-circle-solarized,Gruvbox-Plus-Dark,Papirus-kanagawa,Tela-circle-pink,Tela-circle-nord,Tela-circle-grey,Tela-circle-dracula"
+icon_theme = "Tela-circle-dracula,"
 
 
 # [Type-1]
@@ -120,15 +120,15 @@ dmenu = /usr/bin/rofi -config notification -dmenu -p dunst:
 
 
 [urgency_low]
-    background = "#A3658B80"
-    foreground = "#FFCCEBE6"
-    frame_color = "#A3658B03"
+    background = "#65A37E80"
+    foreground = "#CCFFE0E6"
+    frame_color = "#65A37E03"
     icon = "/home/rifle/.local/share/icons/Wallbash-Icon/hyprdots.svg"
     timeout = 5
 
 [urgency_normal]
-    background = "#3A406B80"
-    foreground = "#CCD2FFE6"
-    frame_color = "#3A406B03"
+    background = "#3A6B5A80"
+    foreground = "#CCFFEDE6"
+    frame_color = "#3A6B5A03"
     icon = "/home/rifle/.local/share/icons/Wallbash-Icon/hyprdots.svg"
     timeout = 5

@@ -43,5 +43,4 @@ zinit light djui/alias-tips
 # Deferred loading for non-essential plugins (improves startup time)
 zinit wait lucid light-mode for \
     "OMZP::colored-man-pages" \
-    "OMZP::command-not-found" \
     "OMZP::extract"
