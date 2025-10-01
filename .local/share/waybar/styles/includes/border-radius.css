@@ -23,5 +23,5 @@ window#waybar.top #pill menu,
 window#waybar.top #pill tooltip,
 window#waybar.top #pill,
 window#waybar.top #pill button {
-    border-radius: 10pt 10pt 10pt 10pt;
+    border-radius: 30pt;
 }

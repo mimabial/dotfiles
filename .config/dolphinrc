@@ -4,6 +4,7 @@ MenuBar=Disabled
 update_info=dolphin_detailsmodesettings.upd:rename-leading-padding
 
 [General]
+LockPanels=false
 ShowSelectionToggle=false
 ShowStatusBar=Disabled
 Version=202
@@ -11,10 +12,11 @@ ViewPropsTimestamp=2023,4,26,16,58,48.324
 
 [IconsMode]
 MaximumTextLines=1
-PreviewSize=208
+PreviewSize=48
 
 [InformationPanel]
 dateFormat=ShortFormat
+showHovered=false
 
 [KFileDialog Settings]
 Places Icons Auto-resize=false

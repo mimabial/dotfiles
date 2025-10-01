@@ -1,7 +1,6 @@
-# version: 1.0.0
-
 add_newline = true
 continuation_prompt = "[▸▹ ](dimmed white)"
+follow_symlinks = true
 
 format = """
 $singularity\
@@ -87,8 +86,7 @@ $env_var\
 $jobs\
 $sudo\
 $username\
-$character\
-"""
+$character"""
 
 right_format = """
 """
@@ -125,7 +123,7 @@ show_always = false
 
 [directory]
 home_symbol = "⌂"
-truncation_length = 2
+truncation_length = 5
 truncation_symbol = "□ "
 read_only = " ◈"
 use_os_path_sep = true

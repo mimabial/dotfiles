@@ -7,7 +7,7 @@
 /*
 "../../../" Use relative path to navigate $HOME $HOME/
 */
-@import "./includes/border-radius.css";
+@import "../../../../.config/waybar/includes/border-radius.css";
 @import "./includes/global.css";
 
 /* Base Styles */
@@ -106,7 +106,7 @@ window#waybar.bottom .modules-left,
 window#waybar.bottom .modules-center,
 window#waybar.bottom .modules-right {
     padding: 0em;
-    margin: 0em;
+    margin: 0em 0.1em;
 }
 
 window#waybar.top label.module,
@@ -120,7 +120,7 @@ window#waybar.bottom label.module {
 window#waybar.bottom #pill,
 window#waybar.top #pill {
     padding: 0em 1em;
-    margin: 0.1em;
+    margin: 0em 0.2em;
 }
 
 /* ? Dynamic button */

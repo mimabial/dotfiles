@@ -1,11 +1,11 @@
 [Colors:View]
-BackgroundNormal=#1E2222FF
+BackgroundNormal=#313642FF
 
 [General]
 TerminalApplication=kitty
 
 [Icons]
-Theme=Gruvbox-Plus-Dark
+Theme=Papirus-Yellow
 
 [KDE]
 widgetStyle=kvantum
@@ -21,7 +21,7 @@ Show Full Path=false
 Show Inline Previews=true
 Show Preview=false
 Show Speedbar=true
-Show hidden files=false
+Show hidden files=true
 Sort by=Name
 Sort directories first=true
 Sort hidden files last=false
