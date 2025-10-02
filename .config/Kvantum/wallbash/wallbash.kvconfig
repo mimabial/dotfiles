@@ -1,6 +1,4 @@
 [%General]
-author=Vince Liuice, based on KvAdapta by Tsu Jan
-comment=Solarized Light theme for Kvantum
 x11drag=menubar_and_primary_toolbar
 alt_mnemonic=true
 left_tabs=true
