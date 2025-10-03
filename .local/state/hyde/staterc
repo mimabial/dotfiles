@@ -1,6 +1,6 @@
 HYDE_THEME="Bauhaus 80"
 HYPR_SHADER="disable"
-HYPR_ANIMATION="theme"
+HYPR_ANIMATION="minimal"
 HYPR_WORKFLOW="editing"
 enableWallDcol="0"
 WAYBAR_LAYOUT_PATH=/home/rifle/.local/share/waybar/layouts/default.jsonc

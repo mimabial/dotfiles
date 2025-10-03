@@ -222,8 +222,8 @@ def _draw_right_status(screen: Screen, is_last: bool) -> int:
     cells = []
 
     cells.append((utc_color, date))
-    cells.append((sep_color, separator))
-    cells.append((icon_fg, clock))
+    # cells.append((sep_color, separator))
+    # cells.append((icon_fg, clock))
 
     right_status_length = RIGHT_MARGIN
     for cell in cells:

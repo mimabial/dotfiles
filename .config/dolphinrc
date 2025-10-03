@@ -3,8 +3,10 @@ MenuBar=Disabled
 [$Version]
 update_info=dolphin_detailsmodesettings.upd:rename-leading-padding
 
+[DetailsMode]
+PreviewSize=16
+
 [General]
-LockPanels=false
 ShowSelectionToggle=false
 ShowStatusBar=Disabled
 Version=202
@@ -29,7 +31,6 @@ Places Icons Static Size=48
 MenuBar=Disabled
 
 [MainWindow][Toolbar mainToolBar]
-IconSize=16
 ToolButtonStyle=IconOnly
 
 [PlacesPanel]

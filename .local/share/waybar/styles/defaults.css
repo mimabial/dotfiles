@@ -101,12 +101,17 @@ window#waybar {
 
 window#waybar.top .modules-left,
 window#waybar.top .modules-center,
-window#waybar.top .modules-right,
+window#waybar.top .modules-right {
+    padding: 0em;
+    margin: 0em 0.1em;
+    margin-top: 0.2em;
+}
 window#waybar.bottom .modules-left,
 window#waybar.bottom .modules-center,
 window#waybar.bottom .modules-right {
     padding: 0em;
     margin: 0em 0.1em;
+  margin-bottom: 0.2em;
 }
 
 window#waybar.top label.module,
