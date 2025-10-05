@@ -1,4 +1,3 @@
-
 # Additional Zinit Plugins
 # This file loads extra plugins beyond the core ones in terminal.zsh
 # Add your custom plugins here

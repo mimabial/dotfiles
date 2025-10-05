@@ -2,7 +2,8 @@
   "custom/mediaplayer": {
     "exec": "hyde-shell mediaplayer.py",
     "return-type": "json",
-    "format": "{0}",
+    "format": "{alt}",
+    "format-alt": "{0}",
     "tooltip": true,
     "on-click": "playerctl play-pause",
     "on-click-middle": "playerctl previous",

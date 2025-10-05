@@ -7,14 +7,11 @@
 #! ██████╔╝╚█████╔╝  ██║░╚███║╚█████╔╝░░░██║░░░  ███████╗██████╔╝██║░░░██║░░░
 #! ╚═════╝░░╚════╝░  ╚═╝░░╚══╝░╚════╝░░░░╚═╝░░░  ╚══════╝╚═════╝░╚═╝░░░╚═╝░░░
 
-
-# Sources vital global environment variables and configurations // Users are encouraged to use ./user.zsh for customization
-# shellcheck disable=SC1091
-if ! . "$ZDOTDIR/conf.d/hyde/env.zsh"; then
-    echo "Error: Could not source $ZDOTDIR/conf.d/hyde/env.zsh"
-    return 1
+if [[ "${ZSH_PROMPT}" != "1" ]]; then
+    return
 fi
 
-if [[ $- == *i* ]] && [ -f "$ZDOTDIR/conf.d/hyde/terminal.zsh" ]; then
-    . "$ZDOTDIR/conf.d/hyde/terminal.zsh" || echo "Error: Could not source $ZDOTDIR/conf.d/hyde/terminal.zsh"
+if command -v starship &>/dev/null; then
+    eval "$(starship init zsh)"
+    export STARSHIP_CONFIG=$XDG_CONFIG_HOME/starship.toml
 fi

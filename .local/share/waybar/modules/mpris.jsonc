@@ -4,8 +4,16 @@
 {
   "mpris": {
     "justify": "center",
-    "dynamic-importance-order" : ["title", "artist", "album"],
-    "dynamic-order:" : ["title", "artist", "album"],
+    "dynamic-importance-order": [
+      "title",
+      "artist",
+      "album"
+    ],
+    "dynamic-order:": [
+      "title",
+      "artist",
+      "album"
+    ],
     "format": "{player_icon} {dynamic}",
     "format-paused": "{status_icon} <i> {dynamic} </i>",
     "format-stopped": "{status_icon}",
@@ -28,7 +36,7 @@
     "on-scroll-up": "playerctl position 1-",
     "on-scroll-down": "playerctl position 1+",
     "tooltip": true,
-    "tooltip-format": "{title}\nby: {artist}\n{position} / {length}\nPlayer: {player}\n\n󰐎 Click to play/pause\n󰺤 Scroll to seek\n󰙤 Middle click previous\n󰙢 Right click next",  
+    "tooltip-format": "{title}\nby: {artist}\n{position} / {length}\nPlayer: {player}\n\n󰐎 Click to play/pause\n󰺤 Scroll to seek\n󰙤 Middle click previous\n󰙢 Right click next",
     "tooltip-format-stopped": "Player: {player}\n\n󰐎 Click to play/pause\n󰺤 Scroll to seek\n󰙤 Middle click previous\n󰙢 Right click next"
   }
 }

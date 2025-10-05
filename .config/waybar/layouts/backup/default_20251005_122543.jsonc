@@ -16,7 +16,7 @@
     "group/pill#left1",
     "group/pill#left2",
     "group/pill#left3",
-    "group/pill#left4"
+    "group/pill#left4",
   ],
   "group/pill#left1": {
     "orientation": "inherit",
@@ -42,7 +42,9 @@
   "group/pill#left4": {
     "orientation": "inherit",
     "modules": [
-      "wlr/taskbar"
+      "wlr/taskbar",
+      "mpris", // media info
+      "custom/cava" // cava visualizer
     ]
   },
   "modules-center": [
@@ -57,17 +59,9 @@
   "modules-right": [
     "group/pill#right1",
     "group/pill#right2",
-    "group/pill#right3",
-    "group/pill#right4"
+    "group/pill#right3"
   ],
   "group/pill#right1": {
-    "orientation": "inherit",
-    "modules": [
-      "custom/cava",
-      "custom/mediaplayer"
-    ]
-  },
-  "group/pill#right2": {
     "orientation": "inherit",
     "modules": [
       "backlight",
@@ -78,14 +72,14 @@
       "custom/keybindhint"
     ]
   },
-  "group/pill#right3": {
+  "group/pill#right2": {
     "orientation": "inherit",
     "modules": [
       "privacy",
       "tray"
     ]
   },
-  "group/pill#right4": {
+  "group/pill#right3": {
     "orientation": "inherit",
     "modules": [
       "custom/wallchange",
@@ -104,6 +98,33 @@
     "on-click": "~/.config/waybar/scripts/theme-switcher.sh",
     "min-length": 3,
     "max-length": 3
+  },
+  // ─────────────────────────────────────────────────────────┤ media info ├───
+  "mpris": {
+    "format": "{player_icon} {title} - {artist}",
+    "format-paused": "{status_icon} {title} - {artist}",
+    "player-icons": {
+      "default": "󰝚 ",
+      "spotify": "<span foreground='#a6da95'>󰓇 </span>",
+      "firefox": "<span foreground='#ed8796'>󰗃 </span>"
+    },
+    "status-icons": {
+      "paused": "<span color='#b7bdf8'>\u200A\u200A󰏤\u2009\u2009</span>"
+    },
+    "tooltip-format": "Playing: {title} - {artist}",
+    "tooltip-format-paused": "Paused: {title} - {artist}",
+    "min-length": 5,
+    "max-length": 25
+  },
+  // ──────────────────────────────────────────────────────────────┤ cava ├───
+  "custom/cava": {
+    "exec": "python3 ~/.config/waybar/scripts/cava.py waybar --json --hide-when-inactive",
+    "return-type": "json",
+    "format": "{}",
+    "restart-interval": 0,
+    "tooltip": false,
+    "min-length": 0,
+    "max-length": 50
   },
   // ────────────────────────────────────────────────────────┤ rofi ├───
   "custom/rofi": {
@@ -166,7 +187,49 @@
     "tooltip-format": "Candy-Settings",
     "on-click": "~/.ultracandy/GJS/toggle-control-center.sh",
   },
+  // ─────────────────────────────────────────────────────┤ idle inhibitor ├───
+  "idle_inhibitor": {
+    "format": "{icon}",
+    "format-icons": {
+      "activated": "󰅶 ",
+      "deactivated": "󰾪 "
+    },
+    "tooltip-format-activated": "Caffeine Mode On",
+    "tooltip-format-deactivated": "Caffeine Mode Off",
+    "start-activated": true
+  },
   // ───────────────────────────────────────────────────────────────┤ time ├───
+  "clock#time": {
+    "format": "{:%H:%M}",
+    "tooltip": true,
+    //"tooltip-format": "Standard Time: {:%I:%M %p}",
+    "tooltip-format": "Launch tty-clock",
+    "min-length": 6,
+    "max-length": 6,
+    "on-click": "bash ~/.config/hypr/scripts/tty-clock.sh",
+  },
+  // ───────────────────────────────────────────────────────────────┤ date ├───
+  "clock#date": {
+    "format": "󰸗 {:%m-%d}",
+    "tooltip-format": "<tt>{calendar}</tt>",
+    "calendar": {
+      "mode": "month",
+      "mode-mon-col": 3,
+      "on-click": "mode",
+      "format": {
+        "months": "<span color='#b7bdf8'><b>{}</b></span>",
+        "weekdays": "<span color='#a5adcb' font='7'>{}</span>",
+        "today": "<span color='#ed8796'><b>{}</b></span>"
+      }
+    },
+    "actions": {
+      "on-click": "mode"
+    },
+    "on-click-right": "gnome-calendar",
+    "min-length": 8,
+    "max-length": 8
+  },
+  // ──────────────────────────────────────────────────────────────┤ wi-fi ├───
   "custom/wifi": {
     "exec": "~/.config/waybar/scripts/wifi-status.sh",
     "return-type": "json",

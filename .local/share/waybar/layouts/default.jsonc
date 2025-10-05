@@ -57,9 +57,17 @@
   "modules-right": [
     "group/pill#right1",
     "group/pill#right2",
-    "group/pill#right3"
+    "group/pill#right3",
+    "group/pill#right4"
   ],
   "group/pill#right1": {
+    "orientation": "inherit",
+    "modules": [
+      "custom/cava",
+      "custom/mediaplayer"
+    ]
+  },
+  "group/pill#right2": {
     "orientation": "inherit",
     "modules": [
       "backlight",
@@ -70,14 +78,14 @@
       "custom/keybindhint"
     ]
   },
-  "group/pill#right2": {
+  "group/pill#right3": {
     "orientation": "inherit",
     "modules": [
       "privacy",
       "tray"
     ]
   },
-  "group/pill#right3": {
+  "group/pill#right4": {
     "orientation": "inherit",
     "modules": [
       "custom/wallchange",
@@ -87,5 +95,315 @@
       "custom/hyde-menu",
       "custom/power"
     ]
+  },
+  // ─────────────────────────────────────────────────────┤ theme switcher ├───
+  "custom/theme": {
+    "exec": "~/.config/waybar/scripts/current-theme.sh",
+    "return-type": "json",
+    "format": " 󰍜 ",
+    "on-click": "~/.config/waybar/scripts/theme-switcher.sh",
+    "min-length": 3,
+    "max-length": 3
+  },
+  // ────────────────────────────────────────────────────────┤ rofi ├───
+  "custom/rofi": {
+    "format": "󰍜 ",
+    "tooltip": true,
+    "tooltip-format": "Utilities",
+    "on-click": "DRI_PRIME=1 ~/.config/hypr/scripts/rofi-menus.sh",
+    "min-length": 1,
+    "max-length": 7
+  },
+  // ────────────────────────────────────────────────────────┤ weather ├───
+  "custom/weather": {
+    "format": " ",
+    "tooltip": true,
+    "tooltip-format": "Left-click: Weather-widget\nRight-click: Weather-app",
+    "on-click": " ~/.ultracandy/GJS/toggle-weather-widget.sh",
+    "on-click-right": "gnome-weather",
+    "min-length": 1,
+    "max-length": 7
+  },
+  // ────────────────────────────────────────────────────────┤ player ├───
+  "custom/player": {
+    "format": "󰝚 ",
+    "tooltip": true,
+    "tooltip-format": "Media-Player",
+    "on-click": "~/.ultracandy/GJS/toggle-media-player.sh",
+    "min-length": 1,
+    "max-length": 7
+  },
+  // ─────────────────────────────────────────────────────────────┤ memory ├───
+  //"memory": {
+  //"states": {
+  // "warning": 75,
+  // "critical": 90
+  // },
+  // "format": "󰘚 {percentage}%",
+  // "format-critical": "󰀦 {percentage}%",
+  // "tooltip": false,
+  // "tooltip-format": "Memory Used: {used:0.1f} GB / {total:0.1f} GB",
+  // "interval": 5,
+  // "min-length": 7,
+  // "max-length": 7
+  // },
+  // ────────────────────────────────────────────────────────────────┤ cpu ├───
+  //"cpu": {
+  // "format": "󰍛 {usage}%",
+  // "tooltip": true,
+  // "interval": 5,
+  // "min-length": 6,
+  // "max-length": 6
+  // },
+  // ──────────────────────────────────────────────────────────────┤ distro ├───
+  "custom/distro": {
+    "format": "{icon}",
+    "icon-size": 12,
+    "format-icons": {
+      "default": "",
+    },
+    "tooltip": true,
+    "tooltip-format": "Candy-Settings",
+    "on-click": "~/.ultracandy/GJS/toggle-control-center.sh",
+  },
+  // ───────────────────────────────────────────────────────────────┤ time ├───
+  "custom/wifi": {
+    "exec": "~/.config/waybar/scripts/wifi-status.sh",
+    "return-type": "json",
+    "format": "{}",
+    "on-click": "~/.config/waybar/scripts/wifi-menu.sh",
+    "on-click-right": "kitty --title '󰤨  Network Manager TUI' bash -c nmtui",
+    "interval": 300,
+    "min-length": 1,
+    "max-length": 1
+  },
+  // ──────────────────────────────────────────────────────────┤ bluetooth ├───
+  "bluetooth": {
+    "format": "󰂰",
+    "format-disabled": "󰂲",
+    "format-connected": "󰂱",
+    "format-connected-battery": "󰂱",
+    "tooltip-format": "{num_connections} connected",
+    "tooltip-format-disabled": "Bluetooth Disabled",
+    "tooltip-format-connected": "{device_enumerate}",
+    "tooltip-format-enumerate-connected": "{device_alias}",
+    "tooltip-format-enumerate-connected-battery": ":: {device_alias}: 󱊣 {device_battery_percentage}%",
+    "on-click": "~/.config/waybar/scripts/bluetooth-menu.sh",
+    "on-click-right": "kitty --title '󰂯  Bluetooth TUI' bash -c bluetui",
+    "interval": 1,
+    "min-length": 1,
+    "max-length": 1
+  },
+  // ──────────────────────────────────────────────────────┤ system update ├───
+  "custom/update": {
+    "exec": "~/.config/waybar/scripts/system-update.sh",
+    "return-type": "json",
+    "format": "{}",
+    "on-click": "~/.config/waybar/scripts/system-update.sh up",
+    "interval": 3600,
+    "min-length": 1,
+    "max-length": 1
+  },
+  // ─────────────────────────────────────────────────────────────┤ window ├───
+  "hyprland/window": {
+    "swap-icon-label": false,
+    "format": "",
+    "icon": true,
+    "icon-size": 16,
+    "tooltip": false,
+    "min-length": 0,
+    "max-length": 0,
+  },
+  // ──────────────────────────────────────────────────────────────┤ tray ├───
+  "tray": {
+    "icon-size": 12,
+    "spacing": 6
+  },
+  // ───────────────────────────────────────────────────────────┤ SwayNC ├───
+  "custom/notification": {
+    "tooltip-format": "Left-click: Notifications\nRight-click: Do not disturb",
+    "format": "{icon}",
+    "format-icons": {
+      "notification": "󰅸",
+      "none": "󰂜",
+      "dnd-notification": "󱅫",
+      "dnd-none": "󰂠",
+      "inhibited-notification": "󰅸",
+      "inhibited-none": "󱏬",
+      "dnd-inhibited-notification": "󱅫",
+      "dnd-inhibited-none": "󱏫"
+    },
+    "return-type": "json",
+    "exec-if": "which swaync-client",
+    "exec": "swaync-client -swb",
+    "on-click": "swaync-client -t -sw",
+    "on-click-right": "swaync-client -d -sw",
+    "escape": true
+  },
+  // ────────────────────────────────────────────────────┤ power-profiles ├───
+  "power-profiles-daemon": {
+    "format": "{icon}",
+    "tooltip-format": "Power profile: {profile}\nDriver: {driver}",
+    "tooltip": true,
+    "format-icons": {
+      "default": "",
+      "performance": "󰠠",
+      "balanced": "󰽣",
+      "power-saver": "󰽥"
+    }
+  },
+  // ──────────────────────────────────────────────────────┤ output device ├───
+  "pulseaudio": {
+    "format": "{icon} {volume}%",
+    "format-muted": "󰝟 {volume}%",
+    "format-icons": {
+      "default": [
+        "󰕿",
+        "󰖀",
+        "󰕾"
+      ],
+      "headphone": "󰋋",
+      "headset": "󰋋"
+    },
+    "tooltip": false,
+    "tooltip-format": "Device: {desc}",
+    "on-click": "~/.config/waybar/scripts/volume-control.sh -o m",
+    "on-scroll-up": "~/.config/waybar/scripts/volume-control.sh -o i",
+    "on-scroll-down": "~/.config/waybar/scripts/volume-control.sh -o d",
+    "min-length": 6,
+    "max-length": 6
+  },
+  // ─────────────────────────────────────────────────────────┤ brightness ├───
+  "backlight": {
+    "format": "{icon} {percent}%",
+    "format-icons": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ],
+    "tooltip": false,
+    "on-scroll-up": "~/.config/waybar/scripts/brightness-control.sh -o i",
+    "on-scroll-down": "~/.config/waybar/scripts/brightness-control.sh -o d",
+    "min-length": 6,
+    "max-length": 6
+  },
+  // ────────────────────────────────────────────────────────────┤ battery ├───
+  "battery": {
+    "states": {
+      "warning": 20,
+      "critical": 10
+    },
+    "format": "{icon} {capacity}%",
+    "format-icons": [
+      "󰂎",
+      "󰁻",
+      "󰁼",
+      "󰁽",
+      "󰁾",
+      "󰁿",
+      "󰂀",
+      "󰂁",
+      "󰂂",
+      "󰁹"
+    ],
+    "format-charging": " {capacity}%",
+    "tooltip-format": "Discharging: {time}",
+    "tooltip-format-charging": "Charging: {time}",
+    "interval": 1,
+    "min-length": 6,
+    "max-length": 6,
+    "on-click": "~/.ultracandy/GJS/toggle-system-monitor.sh",
+    "on-click-right": "gnome-system-monitor"
+  },
+  // ───────────────────────────────────────────────────────┤ power button ├───
+  "custom/power": {
+    "format": " ",
+    "tooltip": false,
+    // "tooltip-format": "Power Menu",
+    "on-click": "~/.config/waybar/scripts/wlogout.sh"
+    // "on-click-right": "~/.config/waybar/scripts/power-menu.sh"
+  },
+  // ────────────────────────────────────────────────────────────┤ padding ├───
+  "custom/paddw": {
+    "format": " ",
+    "tooltip": false
+  },
+  "custom/paddc": {
+    "format": " ",
+    "tooltip": false
+  },
+  // ────────────────────────────────────────────────────────┤ left arrows ├───
+  "custom/left1": {
+    "format": "",
+    "tooltip": false
+  },
+  "custom/left2": {
+    "format": "",
+    "tooltip": false
+  },
+  "custom/left3": {
+    "format": "",
+    "tooltip": false
+  },
+  "custom/left4": {
+    "format": "",
+    "tooltip": false
+  },
+  "custom/left5": {
+    "format": "",
+    "tooltip": false
+  },
+  "custom/left6": {
+    "format": "",
+    "tooltip": false
+  },
+  "custom/left7": {
+    "format": "",
+    "tooltip": false
+  },
+  "custom/left8": {
+    "format": "",
+    "tooltip": false
+  },
+  // ───────────────────────────────────────────────────────┤ right arrows ├───
+  "custom/right1": {
+    "format": "",
+    "tooltip": false
+  },
+  "custom/right2": {
+    "format": "",
+    "tooltip": false
+  },
+  "custom/right3": {
+    "format": "",
+    "tooltip": false
+  },
+  "custom/right4": {
+    "format": "",
+    "tooltip": false
+  },
+  "custom/right5": {
+    "format": "",
+    "tooltip": false
+  },
+  // ───────────────────────────────────────────────────────┤ left inverse ├───
+  "custom/leftin1": {
+    "format": "",
+    "tooltip": false
+  },
+  "custom/leftin2": {
+    "format": "",
+    "tooltip": false
+  },
+  // ──────────────────────────────────────────────────────┤ right inverse ├───
+  "custom/rightin1": {
+    "format": "",
+    "tooltip": false
   }
 }

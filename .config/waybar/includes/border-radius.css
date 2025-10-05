@@ -23,7 +23,7 @@ window#waybar.top #pill menu,
 window#waybar.top #pill tooltip,
 window#waybar.top #pill,
 window#waybar.top #pill button {
-    border-radius: 13pt 13pt 13pt 13pt;
+    border-radius: 6pt 6pt 6pt 6pt;
 }
 
 window#waybar.left #pill menuitem,
@@ -36,5 +36,5 @@ window#waybar.right #pill menu,
 window#waybar.right #pill tooltip,
 window#waybar.right #pill,
 window#waybar.right #pill button {
-    border-radius: 13pt 13pt 13pt 13pt;
+    border-radius: 6pt 6pt 6pt 6pt;
 }

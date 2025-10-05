@@ -7,12 +7,14 @@
 #! ██████╔╝╚█████╔╝  ██║░╚███║╚█████╔╝░░░██║░░░  ███████╗██████╔╝██║░░░██║░░░
 #! ╚═════╝░░╚════╝░  ╚═╝░░╚══╝░╚════╝░░░░╚═╝░░░  ╚══════╝╚═════╝░╚═╝░░░╚═╝░░░
 
-if [[ "${HYDE_ZSH_PROMPT}" != "1" ]]; then
-    return
+
+# Sources vital global environment variables and configurations
+# shellcheck disable=SC1091
+if ! . "$ZDOTDIR/conf.d/global/env.zsh"; then
+    echo "Error: Could not source $ZDOTDIR/conf.d/global/env.zsh"
+    return 1
 fi
 
-if command -v starship &>/dev/null; then
-    eval "$(starship init zsh)"
-    export STARSHIP_CACHE=$XDG_CACHE_HOME/starship
-    export STARSHIP_CONFIG=$XDG_CONFIG_HOME/starship/starship.toml
+if [[ $- == *i* ]] && [ -f "$ZDOTDIR/conf.d/global/terminal.zsh" ]; then
+    . "$ZDOTDIR/conf.d/global/terminal.zsh" || echo "Error: Could not source $ZDOTDIR/conf.d/global/terminal.zsh"
 fi

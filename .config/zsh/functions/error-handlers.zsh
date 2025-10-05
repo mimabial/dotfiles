@@ -25,7 +25,7 @@ function command_not_found_handler {
 # Function to display a slow load warning
 # the intention is for hyprdots users who might have multiple zsh initialization
 function _slow_load_warning {
-    local lock_file="/tmp/.hyde_slow_load_warning.lock"
+    local lock_file="/tmp/.slow_load_warning.lock"
     local load_time=$SECONDS
 
     # Check if the lock file exists
@@ -40,17 +40,7 @@ function _slow_load_warning {
     ⚠️ Warning: Shell startup took more than ${time_limit} seconds. Consider optimizing your configuration.
         1. This might be due to slow plugins, slow initialization scripts.
         2. Duplicate plugins initialization.
-            - navigate to ~/.zshrc and remove any 'source ZSH/oh-my-zsh.sh' or
-                'source ~/.oh-my-zsh/oh-my-zsh.sh' lines.
-            - HyDE already sources the oh-my-zsh.sh file for you.
-            - It is important to remove all HyDE related
-                configurations from your .zshrc file as HyDE will handle it for you.
-            - Check the '.zshrc' file from the repo for a clean configuration.
-                https://github.com/HyDE-Project/HyDE/blob/master/Configs/.zshrc
-        3. Check the '~/.user.zsh' file for any slow initialization scripts.
-
-    For more information, on the possible causes of slow shell startup, see:
-        🌐 https://github.com/HyDE-Project/HyDE/wiki
+        3. Slow initialization scripts.
 
 EOF
         fi
@@ -64,14 +54,9 @@ function handle_init_error {
     fi
 }
 
-
 function no_such_file_or_directory_handler {
     local red='\e[1;31m' reset='\e[0m'
     printf "${red}zsh: no such file or directory: %s${reset}\n" "$1"
     return 127
 }
 
-# ------------------------------------------------------------
-
-# # Warn if the shell is slow to load
-# add-zsh-hook -Uz precmd _slow_load_warning #! try to not use for now as we already move zshrc

@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
 import os
+
 import gi
 
 gi.require_version("Playerctl", "2.0")
-from gi.repository import Playerctl, GLib  # noqa: E402
 import argparse  # noqa: E402
-import logging  # noqa: E402
-import sys  # noqa: E402
-import signal  # noqa: E402
 import json  # noqa: E402
-import pyutils.logger as logger  # noqa: E402
-from pyutils.xdg_base_dirs import (  # noqa: E402
-    xdg_state_home,
-    xdg_cache_home,
-)
+import logging  # noqa: E402
+import signal  # noqa: E402
+import sys  # noqa: E402
 
+import pyutils.logger as logger  # noqa: E402
+from gi.repository import GLib, Playerctl  # noqa: E402
+from pyutils.xdg_base_dirs import (  # noqa: E402
+    xdg_cache_home,
+    xdg_state_home,
+)
 
 logger = logger.get_logger()
 
@@ -55,7 +56,13 @@ def format_time(seconds) -> str:
 
 
 def create_tooltip_text(
-    artist, track, current_position_seconds, duration_seconds, p_name, loop_status=None, shuffle_status=None
+    artist,
+    track,
+    current_position_seconds,
+    duration_seconds,
+    p_name,
+    loop_status=None,
+    shuffle_status=None,
 ) -> str:
     """
     Build the tooltip text showing artist, track, current position vs duration, loop status, and shuffle status.
@@ -75,7 +82,7 @@ def create_tooltip_text(
                 loop_glyphs = {
                     "None": "󰑓 No Loop",
                     "Track": "󰑖 Loop Once",
-                    "Playlist": "󰑘 Loop Playlist"
+                    "Playlist": "󰑘 Loop Playlist",
                 }
                 loop_display = loop_glyphs.get(loop_status, str(loop_status))
                 tooltip += f"\n<span foreground='{track_color}'>{loop_display}</span>"
@@ -83,13 +90,13 @@ def create_tooltip_text(
             if shuffle_status is not None:
                 shuffle_glyph = "󰒟 Shuffle On" if shuffle_status else "󰒞 Shuffle Off"
                 tooltip += f"\n<span foreground='{track_color}'>{shuffle_glyph}</span>"
-        tooltip += f'\n<span>{p_name}</span>'
+        tooltip += f"\n<span>{p_name}</span>"
     # Always add usage tips at the bottom
     tooltip += (
         f"\n<span size='x-small' foreground='{track_color}'>"
         f"\n󰐎 click to play/pause"  # play/pause glyph
-        f"\n scroll to seek"         # seek glyph
-        f"\n󱥣 rightclick for options" # right-click/options glyph
+        f"\n scroll to seek"  # seek glyph
+        f"\n󱥣 rightclick for options"  # right-click/options glyph
         f"</span>"
     )
     return tooltip
@@ -131,7 +138,11 @@ def format_artist_track(artist, track, playing, max_length):
         output_text = f"{prefix}{prefix_separator}<i>{artist}</i>{artist_track_separator}<b>{track}</b>"
     else:
         # If there is a player but no track/artist, show player name instead of 'Nothing playing'
-        if current_player and hasattr(current_player, 'props') and hasattr(current_player.props, 'player_name'):
+        if (
+            current_player
+            and hasattr(current_player, "props")
+            and hasattr(current_player.props, "player_name")
+        ):
             output_text = f"<b>{standby_text} {current_player.props.player_name}</b>"
         else:
             output_text = "<b>{standby_text}</b>"
@@ -144,7 +155,7 @@ def write_output(track, artist, playing, player, tooltip_text):
     output_data = {
         "text": escape(format_artist_track(artist, track, playing, max_length_module)),
         "class": "custom-" + player.props.player_name,
-        "alt": player.props.player_name,
+        "alt": f" {player.props.status} {player.props.player_name}",
         "tooltip": escape(tooltip_text),
     }
 
@@ -200,7 +211,7 @@ def on_player_appeared(manager, player, selected_players=None):
         p = init_player(manager, player)
         set_player(manager, p)
         # Start polling if it is not already running
-        if not hasattr(manager, '_polling') or not manager._polling:
+        if not hasattr(manager, "_polling") or not manager._polling:
             manager._polling = True
             GLib.timeout_add_seconds(1, poll_if_players, manager)
         update_positions(manager)  # Force immediate update when a new player appears
@@ -224,7 +235,7 @@ def on_player_vanished(manager, player, loop):
         output = {
             "text": standby_text,
             "class": "custom-nothing-playing",
-            "alt": "player-closed",
+            "alt": " Shhh…",
             "tooltip": "",
         }
         sys.stdout.write(json.dumps(output) + "\n")
@@ -281,10 +292,14 @@ def update_positions(manager):
             except Exception as e:
                 logger.warning(f"Could not get position for {p_name}: {e}")
                 continue
-            tooltip_text += (
-                create_tooltip_text(
-                    artist, track, position, duration_seconds, p_name, loop_status, shuffle_status
-                )
+            tooltip_text += create_tooltip_text(
+                artist,
+                track,
+                position,
+                duration_seconds,
+                p_name,
+                loop_status,
+                shuffle_status,
             )
         player = manager.props.players[0]
         p_name = player.props.player_name
@@ -299,14 +314,16 @@ def update_positions(manager):
             shuffle_status = player.get_shuffle()
         except Exception:
             shuffle_status = None
-        write_output(track, artist, player.props.status == "Playing", player, tooltip_text)
+        write_output(
+            track, artist, player.props.status == "Playing", player, tooltip_text
+        )
         return True  # Keep polling if there are players
     else:
         # No players: output standby text and stop polling
         output = {
             "text": standby_text,
             "class": "custom-nothing-playing",
-            "alt": "player-closed",
+            "alt": " Shhh…",
             "tooltip": "",
         }
         sys.stdout.write(json.dumps(output) + "\n")
@@ -371,10 +388,10 @@ def main():
 
     # Pull values from environment variables
     # You can configure these in ~/.config/hyde/config.toml
-    prefix_playing = os.getenv("MEDIAPLAYER_PREFIX_PLAYING", "")
-    prefix_paused = os.getenv("MEDIAPLAYER_PREFIX_PAUSED", "  ")
+    prefix_playing = os.getenv("MEDIAPLAYER_PREFIX_PLAYING", "")
+    prefix_paused = os.getenv("MEDIAPLAYER_PREFIX_PAUSED", "")
     max_length_module = int(os.getenv("MEDIAPLAYER_MAX_LENGTH", "70"))
-    standby_text = os.getenv("MEDIAPLAYER_STANDBY_TEXT", "  Music")
+    standby_text = os.getenv("MEDIAPLAYER_STANDBY_TEXT", " MPlayer")
     artist_track_separator = os.getenv("MEDIAPLAYER_ARTIST_TRACK_SEPARATOR", "  ")
 
     # Initialize tooltip colors
@@ -464,7 +481,7 @@ def main():
         output = {
             "text": standby_text,
             "class": "custom-nothing-playing",
-            "alt": "player-closed",
+            "alt": " Shhh…",
             "tooltip": "",
         }
         sys.stdout.write(json.dumps(output) + "\n")

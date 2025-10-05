@@ -55,7 +55,6 @@
     ]
   },
   "modules-right": [
-    "group/pill#right1",
     "group/pill#right2",
     "group/pill#right3",
     "group/pill#right4"
@@ -64,7 +63,6 @@
     "orientation": "inherit",
     "modules": [
       "custom/cava",
-      "custom/mediaplayer"
     ]
   },
   "group/pill#right2": {
@@ -72,6 +70,7 @@
     "modules": [
       "backlight",
       "network",
+      "custom/mediaplayer",
       "pulseaudio",
       "pulseaudio#microphone",
       "custom/updates",

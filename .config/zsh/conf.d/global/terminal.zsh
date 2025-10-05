@@ -75,8 +75,8 @@ function _defer_zinit_after_prompt_before_input() {
 
 function _load_deferred_plugin_system() {
 
-    # Exit early if HYDE_ZSH_DEFER is not set to 1
-    if [[ "${HYDE_ZSH_DEFER}" != "1" ]]; then
+    # Exit early if ZSH_DEFER is not set to 1
+    if [[ "${ZSH_DEFER}" != "1" ]]; then
         unset -f _load_deferred_plugin_system
         return
     fi
@@ -149,7 +149,7 @@ function _load_compinit() {
     setopt EXTENDED_GLOB
 
     # Fastest - use glob qualifiers on directory pattern
-    if [[ -n ${ZDOTDIR}/.zcompdump(#qN.mh+${HYDE_ZSH_COMPINIT_CHECK:-1}) ]]; then
+    if [[ -n ${ZDOTDIR}/.zcompdump(#qN.mh+${ZSH_COMPINIT_CHECK:-1}) ]]; then
         compinit
     else
         compinit -C
@@ -160,8 +160,8 @@ function _load_compinit() {
 
 function _load_prompt() {
     # Try to load prompts immediately
-    if [ -f $ZDOTDIR/conf.d/hyde/prompt.zsh ]; then
-        source $ZDOTDIR/conf.d/hyde/prompt.zsh
+    if [ -f $ZDOTDIR/conf.d/global/prompt.zsh ]; then
+        source $ZDOTDIR/conf.d/global/prompt.zsh
     fi
 }
 
@@ -169,12 +169,11 @@ function _load_prompt() {
 # cleaning up home folder
 # ZSH Plugin Configuration
 
-
 ZINIT_DIR="/usr/share/zinit"
 
-HYDE_ZSH_DEFER="1"      #Unset this variable in $ZDOTDIR/startup.zsh to disable HaLL's deferred Zsh loading.
-HYDE_ZSH_PROMPT="1"     #Unset this variable in $ZDOTDIR/startup.zsh to disable HaLL's prompt customization.
-HYDE_ZSH_NO_PLUGINS="0" #Set this variable to "1" in $ZDOTDIR/startup.zsh to disable HaLL's Zsh plugin loading.
+ZSH_DEFER="1"      #Unset this variable in $ZDOTDIR/startup.zsh to disable HaLL's deferred Zsh loading.
+ZSH_PROMPT="1"     #Unset this variable in $ZDOTDIR/startup.zsh to disable HaLL's prompt customization.
+ZSH_NO_PLUGINS="0" #Set this variable to "1" in $ZDOTDIR/startup.zsh to disable HaLL's Zsh plugin loading.
 
 ZSH_AUTOSUGGEST_STRATEGY=(history completion)
 
@@ -202,8 +201,8 @@ fi
 
 _load_compinit
 
-if [[ ${HYDE_ZSH_NO_PLUGINS} != "1" ]]; then
-    if [[ "$HYDE_ZSH_DEFER" == "1" ]] && [[ -d "$ZINIT_DIR" ]]; then
+if [[ ${ZSH_NO_PLUGINS} != "1" ]]; then
+    if [[ "$ZSH_DEFER" == "1" ]] && [[ -d "$ZINIT_DIR" ]]; then
         # Set flag for deferred loading
         typeset -g DEFER_ZINIT_LOAD=1
         # Loads the deferred zinit plugin system

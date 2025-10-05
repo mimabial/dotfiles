@@ -1,50 +1,114 @@
-{
+{ 
   "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
-  "logo": null,
-  "display": {
-    "separator": " : "
+  "logo": {
+    /*"type": "small",*/ //uncomment this line if switching to the ascii art then comment the 'source', 'height, and 'width' lines
+    "source": "$(find \"${XDG_CONFIG_HOME:-$HOME/.config}/fastfetch/pngs/\" -name \"*.png\" | shuf -n 1)",
+    "height": 15,
+    "width": 35,
+      "padding": {
+      "top": 3, //change this value to 6 when changing to ascii art and coomment the 'left' and 'right' lines
+      "left": 0,
+      "right": 1
+      }
   },
-  "modules": [
-    {
-      "type": "colors",
-      "paddingLeft": 2,
-      "symbol": "circle"
-    },
-    "break",
-    {
-      "type": "cpu",
-      "format": "{1} @ {7}",
-      "key": "   CPU",
-      "keyColor": "red"
-    },
-    {
-      "type": "gpu",
-      "format": "{1} {2}",
-      "key": "  󰊴 GPU",
-      "keyColor": "green"
-    },
-    {
-      "type": "gpu",
-      "format": "{3}",
-      "key": "   GPU Driver",
-      "keyColor": "yellow"
-    },
-    {
-      "type": "memory",
-      "key": "   Memory ",
-      "keyColor": "blue"
-    },
-    {
-      "type": "disk",
-      "key": "  󱦟 OS Age ",
-      "folders": "/",
-      "keyColor": "magenta",
-      "format": "{days} days"
-    },
-    {
-      "type": "uptime",
-      "key": "  󱫐 Uptime ",
-      "keyColor": "cyan"
-    }
-  ]
+  "display": {
+        "separator": " "
+  },
+    "modules": [
+        {
+            "key": "╭───────────╮╭───────────────────────────────────────────────────╮",
+            "type": "custom"
+        },
+        {
+            "key": "│ {#31} user    {#keys}││ ",
+            "type": "title",
+            "format": "User  {user-name}  Root  {host-name}"
+        },
+        {
+            "key": "│ {#39}󰇄 device  {#keys}││ ",
+            "type": "host",
+            "format": "{5} {2}"
+        },
+        {
+            "key": "│ {#36}{icon} distro  {#keys}││ ",
+            "type": "os"
+        },
+        {
+            "key": "│ {#32} kernel  {#keys}││ ",
+            "type": "kernel"
+        },
+        {
+            "key": "│ {#35}󱫐 wm      {#keys}││ ",
+            "type": "wm"
+        },
+        /*{
+            "key": "│ {#36} cursor  {#keys}││ ",
+            "type": "cursor"
+        },
+        {
+            "key": "│ {#39}󰀻 icons   {#keys}││ ",
+            "type": "icons"
+        },*/
+        {
+            "key": "│ {#34} term    {#keys}││ ",
+            "type": "terminal"
+        },
+        {
+            "key": "│ {#33} shell   {#keys}││ ",
+            "type": "shell"
+        },
+        /*{
+            "key": "│ {#39}󰏗 packages{#keys}││ ",
+            "type": "packages"
+        },*/
+        {
+            "key": "│ {#32}󰉉 disk    {#keys}││ ",
+            "type": "disk"
+        },
+        {
+            "key": "│ {#33} memory  {#keys}││ ",
+            "type": "memory"
+        },
+        {
+            "key": "│ {#34}󰓡 swap    {#keys}││ ",
+            "type": "swap"
+        },
+        {
+            "key": "│ {#35}󰅐 os age  {#keys}││ ",
+            "type": "disk",
+            "folders": "/",
+            "format": "{days} days"
+        },
+        {
+            "key": "│ {#36}󰅐 uptime  {#keys}││ ",
+            "type": "uptime"
+        },
+        {
+            "key": "│ {#39}󰍛 cpu     {#keys}││ ",
+            "type": "cpu",
+            "showPeCoreCount": true
+        },
+        {
+            "key": "│ {#31}󰇺 gpu     {#keys}││ ",
+            "type": "gpu",
+            "format": "{2} {3}"
+        },
+        {
+            "key": "╰───────────╯╰───────────────────────────────────────────────────╯",
+            "type": "custom"
+        },
+        {
+            "key": "╭───────────╮╭───────────────────────────────────────────────────╮",
+            "type": "custom"
+        },
+        {
+            "key": "│ {#39} colors  {#keys}││                 ",
+            "type": "colors",
+            "symbol": "circle"
+        },
+        {
+            "key": "╰───────────╯╰───────────────────────────────────────────────────╯",
+            "type": "custom"
+        },
+    ]
 }
