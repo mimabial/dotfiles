@@ -1,10 +1,11 @@
 * {
-    main-bg:            #002b36e6;
-    main-fg:            #93a1a1ff;
-    main-br:            #268bd2ff;
-    main-ex:            #2aa198cc;
-    select-bg:          #268bd2ff;
-    select-fg:          #002b36ff;
-    separatorcolor:     transparent;
-    border-color:       transparent;
+    main-bg:            #2d2a2e; /* Monokai Pro background */
+    main-fg:            #f8f8f2; /* Monokai Pro foreground (text) */
+    main-br:            #fc9867; /* Monokai Pro bright accent */
+    main-ex:            #ffd866; /* Monokai Pro secondary accent */
+    select-bg:          #f0aaaa; /* Monokai Pro selection background */
+    select-fg:          #2d2a2e; /* Monokai Pro selection text */
+    separatorcolor:     #44475a; /* Monokai Pro separator */
+    border-color:       #44475a; /* Monokai Pro border */
 }
+

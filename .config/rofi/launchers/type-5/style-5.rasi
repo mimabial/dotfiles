@@ -1,0 +1,168 @@
+/*****----- Configuration -----*****/
+configuration {
+	modi:                       "drun";
+    show-icons:                 true;
+    display-drun:               "";
+    display-run:                "";
+    display-filebrowser:        "";
+    display-window:             "";
+	drun-display-format:        "{name} [<span weight='light' size='small'><i>({generic})</i></span>]";
+	window-format:              "{w}   {c}   {t}";
+}
+
+@theme "~/.cache/hyde/wallbash/wallbash.rasi"
+@theme "~/.config/rofi/theme.rasi"
+
+/*****----- Global Properties -----*****/
+* {
+    font:                        "Iosevka Nerd Font 10";
+}
+
+/*****----- Main Window -----*****/
+window {
+    /* properties for window widget */
+    transparency:                "real";
+    location:                    center;
+    anchor:                      center;
+    fullscreen:                  false;
+    width:                       23em;
+    max-height:                  30em;
+    x-offset:                    0em;
+    y-offset:                    0em;
+
+    /* properties for all widgets */
+    enabled:                     true;
+    margin:                      0em;
+    padding:                     0em;
+    border-radius:               1em;
+    cursor:                      "default";
+    background-color:            transparent;
+}
+
+/*****----- Main Box -----*****/
+mainbox {
+    enabled:                     true;
+    spacing:                     1em;
+    background-color:            transparent;
+    children:                    [ "inputbar", "listview" ];
+}
+
+/*****----- Inputbar -----*****/
+inputbar {
+    enabled:                     true;
+    spacing:                     0em;
+    margin:                      0em;
+    padding:                     0.5em;
+    border:                      0.15em;
+    border-radius:               1em;
+    border-color:                @main-br;
+    background-color:            @main-bg;
+    background-image:            url("~/.cache/hyde/wall.set.png", width);
+    children:                    [ "textbox-prompt-colon", "entry" ];
+}
+
+textbox-prompt-colon {
+    enabled:                     true;
+    expand:                      false;
+    padding:                     0.5em 0.5em 0.5em 0.7em;
+    border-radius:               0.5em;
+    background-color:            @main-bg;
+    text-color:                  @main-fg;
+    str:                         "";
+}
+textbox-custom {
+    padding:                     0.5em 0.75em;
+    border:                      0em;
+    background-color:            transparent;
+    text-color:                  @main-fg;
+    vertical-align:              0.5;
+    horizontal-align:            0.0;  
+    expand:                      false;
+    content:                     "Wi-Fi";
+}
+entry {
+    enabled:                     true;
+    padding:                     0.5em 0.75em;
+    border:                      0em;
+    background-color:            transparent;
+    text-color:                  @main-fg;
+    cursor:                      text;
+    placeholder:                 "Search...";
+    placeholder-color:           inherit;
+    vertical-align:              0.5;
+    horizontal-align:            0.0;
+}
+
+/*****----- Listview -----*****/
+listview {
+    click-action:                "select";
+    enabled:                     true;
+    columns:                     1;
+    lines:                       9;
+    cycle:                       true;
+    dynamic:                     true;
+    scrollbar:                   false;
+    layout:                      vertical;
+    reverse:                     false;
+    fixed-height:                true;
+    fixed-columns:               true;
+    
+    spacing:                     0.6em;
+    margin:                      0em;
+    padding:                     0.6em;
+    border:                      0.15em;
+    border-radius:               1em;
+    border-color:                @main-br;
+    background-color:            @main-bg;
+    cursor:                      "default";
+}
+
+/*****----- Elements -----*****/
+element {
+    enabled:                     true;
+    spacing:                     0.6em;
+    margin:                      0em;
+    padding:                     0em 0.6em;
+    border:                      0em;
+    border-radius:               1.15em;
+    border-color:                @main-br;
+    background-color:            transparent;
+    text-color:                  @main-fg;
+    cursor:                      pointer;
+}
+element selected.normal {
+    background-color:            @select-bg;
+    text-color:                  @select-fg;
+}
+element-icon {
+    background-color:            transparent;
+    size:                        2em;
+    cursor:                      inherit;
+}
+element-text {
+    background-color:            inherit;
+    text-color:                  inherit;
+    cursor:                      inherit;
+    vertical-align:              0.5;
+    horizontal-align:            0.0;
+}
+
+/*****----- Message -----*****/
+error-message {
+    padding:                     1.25em;
+    background-color:            transparent;
+    text-color:                  @main-fg;
+}
+message {
+    padding:                     0em;
+    background-color:            inherit;
+    text-color:                  #FF9030;
+}
+textbox {
+    padding:                     0px;
+    border-radius:               0px;
+    background-color:            inherit;
+    text-color:                  inherit;
+    vertical-align:              0.5;
+    horizontal-align:            0.0;
+}

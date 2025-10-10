@@ -1,13 +1,14 @@
 [Colors:View]
-BackgroundNormal=#04252BFF
+BackgroundNormal=#0B161BFF
 
 [General]
 TerminalApplication=kitty
 
 [Icons]
-Theme=Tela-circle-solarized
+Theme=Tela-circle-dracula
 
 [KDE]
+ShowDeleteCommand=false
 widgetStyle=kvantum
 
 [KFileDialog Settings]

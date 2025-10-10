@@ -8,7 +8,8 @@
     "format-linked": "\udb80\ude00 {ifname} (No IP)",
     "format-disconnected": "\udb81\uddaa ",
     "tooltip-format-disconnected": "Disconnected",
-    "format-alt": "<span foreground='#99ffdd'>\uf019 {bandwidthDownBytes}</span> <span foreground='#ffcc66'>\uf093 {bandwidthUpBytes}</span>",
+    "on-click": "hyde-shell wifi-menu",
+    // "on-click-right": "alacritty --title '󰤨  Network Manager TUI' -e nmtui",
     "interval": 2
   }
 }

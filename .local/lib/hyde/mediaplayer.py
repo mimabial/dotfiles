@@ -10,15 +10,15 @@ import logging  # noqa: E402
 import signal  # noqa: E402
 import sys  # noqa: E402
 
-import pyutils.logger as logger  # noqa: E402
 from gi.repository import GLib, Playerctl  # noqa: E402
+
+import pyutils.logger as logger  # noqa: E402
 from pyutils.xdg_base_dirs import (  # noqa: E402
     xdg_cache_home,
     xdg_state_home,
 )
 
 logger = logger.get_logger()
-
 
 #
 # Global dictionary to store the track, artist, and total duration
@@ -52,6 +52,10 @@ def format_time(seconds) -> str:
     """
     m = int(seconds // 60)
     s = int(seconds % 60)
+    if m >= 60:
+        h = m // 60
+        m = m % 60
+        return f"{h:02d}:{m:02d}:{s:02d}"
     return f"{m:02d}:{s:02d}"
 
 
@@ -152,10 +156,15 @@ def format_artist_track(artist, track, playing, max_length):
 def write_output(track, artist, playing, player, tooltip_text):
     logger.info("Writing output")
 
+    p_name = player.props.player_name
+    position_seconds = player.get_position() / 1e6
+    duration_seconds = players_data[p_name]["duration"]
+    time_left_seconds = duration_seconds - position_seconds
     output_data = {
         "text": escape(format_artist_track(artist, track, playing, max_length_module)),
         "class": "custom-" + player.props.player_name,
-        "alt": f" {player.props.status} {player.props.player_name}",
+        # "alt": f"{position}/{duration}",
+        "alt": format_time(time_left_seconds),
         "tooltip": escape(tooltip_text),
     }
 
@@ -235,7 +244,8 @@ def on_player_vanished(manager, player, loop):
         output = {
             "text": standby_text,
             "class": "custom-nothing-playing",
-            "alt": " Shhh…",
+            # "alt": "Shhh…",
+            "alt": "",
             "tooltip": "",
         }
         sys.stdout.write(json.dumps(output) + "\n")
@@ -269,6 +279,7 @@ def update_positions(manager):
         tooltip_text = ""
         for player in manager.props.players:
             p_name = player.props.player_name
+
             if p_name not in players_data:
                 try:
                     on_metadata(player, player.props.metadata, manager)
@@ -323,7 +334,8 @@ def update_positions(manager):
         output = {
             "text": standby_text,
             "class": "custom-nothing-playing",
-            "alt": " Shhh…",
+            # "alt": "Shhh…",
+            "alt": "",
             "tooltip": "",
         }
         sys.stdout.write(json.dumps(output) + "\n")
@@ -481,7 +493,8 @@ def main():
         output = {
             "text": standby_text,
             "class": "custom-nothing-playing",
-            "alt": " Shhh…",
+            # "alt": "Shhh…",
+            "alt": "",
             "tooltip": "",
         }
         sys.stdout.write(json.dumps(output) + "\n")

@@ -8,17 +8,17 @@ This script can act as both a manager (server) and client (reader)
 - Client: Connects to the socket and reads cava data with formatting
 """
 
+import argparse
+import atexit
+import json
+import os
+import shlex
+import signal
 import socket
 import subprocess
-import os
 import sys
 import threading
 import time
-import argparse
-import signal
-import atexit
-import json
-import shlex
 from pathlib import Path
 
 

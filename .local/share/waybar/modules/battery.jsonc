@@ -1,15 +1,30 @@
 {
   "battery": {
     "states": {
-      // "good": 95,
-      // "warning": 30,
-      // "critical": 20
+      "good": 80,
+      "warning": 20,
+      "critical": 10
     },
-    "format": "{icon} {capacity}%",
+    "format": "{icon} {capacity}",
     "rotate": 0,
-    "format-charging": " {capacity}%",
-    "format-plugged": " {capacity}%",
+    "format-charging": " {capacity}",
+    "format-plugged": " {capacity}",
     "format-alt": "{time} {icon}",
-    "format-icons": ["󰂎", "󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"]
+    "tooltip-format": "{time} until full",
+    "tooltip-format-charging": "{time} remaining",
+    "on-click": "~/.ultracandy/GJS/toggle-system-monitor.sh",
+    "format-icons": [
+      "󰂎",
+      "󰁺",
+      "󰁻",
+      "󰁼",
+      "󰁽",
+      "󰁾",
+      "󰁿",
+      "󰂀",
+      "󰂁",
+      "󰂂",
+      "󰁹"
+    ]
   }
 }

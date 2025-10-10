@@ -1,0 +1,8 @@
+{
+  "custom/powermode": {
+    "format": " ",
+    "tooltip-format": " Toggle performance mode",
+    "rotate": 0,
+    "on-click": "hyde-shell powermode"
+  }
+}

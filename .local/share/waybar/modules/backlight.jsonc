@@ -1,8 +1,18 @@
 {
   "backlight": {
     "rotate": 0,
-    "format": "{icon} {percent}%",
-    "format-icons": ["", "", "", "", "", "", "", "", ""],
+    "format": "{icon} {percent}",
+    "format-icons": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ],
     "on-scroll-up": "hyde-shell brightnesscontrol i 1",
     "on-scroll-down": "hyde-shell brightnesscontrol d 1",
     "min-length": 6,
@@ -13,7 +23,17 @@
     "device": "intel_backlight",
     "rotate": 0,
     "format": "{icon} {percent}%",
-    "format-icons": ["", "", "", "", "", "", "", "", ""],
+    "format-icons": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ],
     "on-scroll-up": "hyde-shell brightnesscontrol i 1",
     "on-scroll-down": "hyde-shell brightnesscontrol d 1",
     "min-length": 6,

@@ -1,8 +1,8 @@
 {
   "pulseaudio": {
     "format": "{icon} {volume}",
+    "format-muted": "󰝟 {volume}",
     "rotate": 0,
-    "format-muted": "婢",
     "on-click": "pavucontrol -t 3",
     "on-click-right": "hyde-shell volumecontrol -s ''",
     "on-click-middle": "hyde-shell volumecontrol -o m",
@@ -11,13 +11,17 @@
     "tooltip-format": "{icon} {desc} // {volume}%",
     "scroll-step": 5,
     "format-icons": {
-      "headphone": "",
-      "hands-free": "",
-      "headset": "",
+      "headphone": "󰋋",
+      "headset": "󰋋",
+      "hands-free": "󰋋",
       "phone": "",
       "portable": "",
       "car": "",
-      "default": ["", "", ""]
+      "default": [
+        "󰕿",
+        "󰖀",
+        "󰕾"
+      ]
     }
   }
 }

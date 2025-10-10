@@ -1,0 +1,37 @@
+// ─────────────────────────────────────────────────────┤ theme switcher ├───
+// "custom/theme-candy": {
+//   "exec": "~/.config/waybar/scripts/current-theme.sh",
+//   "return-type": "json",
+//   "format": " 󰍜 ",
+//   "on-click": "~/.config/waybar/scripts/theme-switcher.sh",
+//   "min-length": 3,
+//   "max-length": 3
+// },
+// "custom/rofi-candy": {
+//   "format": "󰍜 ",
+//   "tooltip": true,
+//   "tooltip-format": "Utilities",
+//   "on-click": "DRI_PRIME=1 ~/.config/hypr/scripts/rofi-menus.sh",
+//   "min-length": 1,
+//   "max-length": 7
+// },
+// "custom/update-candy": {
+//   "exec": "~/.config/waybar/scripts/system-update.sh",
+//   "return-type": "json",
+//   "format": "{}",
+//   "on-click": "~/.config/waybar/scripts/system-update.sh up",
+//   "interval": 3600,
+//   "min-length": 1,
+//   "max-length": 1
+// },
+// "power-profiles-daemon-candy": {
+//   "format": "{icon}",
+//   "tooltip-format": "Power profile: {profile}\nDriver: {driver}",
+//   "tooltip": true,
+//   "format-icons": {
+//     "default": "",
+//     "performance": "󰠠",
+//     "balanced": "󰽣",
+//     "power-saver": "󰽥"
+//   }
+// }

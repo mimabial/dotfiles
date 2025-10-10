@@ -1,12 +1,12 @@
 {
   "memory": {
     "states": {
-      "c": 90,
-      "h": 60,
-      "m": 30
+      "warning": 70,
+      "critical": 90
     },
     "interval": 30,
-    "format": "\uefc5 {percentage}%",
+    "format": "󰘚 {percentage}%",
+    "format-critical": " {percentage}%",
     "rotate": 0,
     "max-length": 10,
     "tooltip": true,

@@ -3,22 +3,30 @@ MenuBar=Disabled
 [$Version]
 update_info=dolphin_detailsmodesettings.upd:rename-leading-padding
 
+[ContentDisplay]
+UsePermissionsFormat=NumericFormat
+
+[ContextMenu]
+ShowCopyMoveMenu=true
+ShowOpenTerminal=false
+
 [DetailsMode]
-PreviewSize=16
+LeftPadding=0
+PreviewSize=32
+RightPadding=0
 
 [General]
+BrowseThroughArchives=true
+CloseActiveSplitView=false
+DynamicView=true
+GlobalViewProps=false
 ShowSelectionToggle=false
-ShowStatusBar=Disabled
 Version=202
 ViewPropsTimestamp=2023,4,26,16,58,48.324
 
 [IconsMode]
-MaximumTextLines=1
 PreviewSize=128
-
-[InformationPanel]
-dateFormat=ShortFormat
-showHovered=false
+TextWidthIndex=0
 
 [KFileDialog Settings]
 Places Icons Auto-resize=false
@@ -37,7 +45,7 @@ ToolButtonStyle=IconOnly
 IconSize=48
 
 [PreviewSettings]
-Plugins=appimagethumbnail,audiothumbnail,comicbookthumbnail,cursorthumbnail,djvuthumbnail,ebookthumbnail,exrthumbnail,imagethumbnail,jpegthumbnail,jxl,kraorathumbnail,windowsexethumbnail,windowsimagethumbnail,opendocumentthumbnail,svgthumbnail,ffmpegthumbs
+Plugins=appimagethumbnail,audiothumbnail,glycin-heif,comicbookthumbnail,cursorthumbnail,djvuthumbnail,ebookthumbnail,exrthumbnail,imagethumbnail,glycin-image-rs,jpegthumbnail,jxl,glycin-jxl,kraorathumbnail,windowsexethumbnail,windowsimagethumbnail,opendocumentthumbnail,glycin-svg,librsvg,svgthumbnail,ffmpegthumbs
 
 [Toolbar mainToolBar]
 ToolButtonStyle=IconOnly

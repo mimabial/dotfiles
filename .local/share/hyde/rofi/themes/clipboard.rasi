@@ -53,7 +53,7 @@ wallframe {
     padding:                     0em;
     expand:                      false;
     background-color:            @main-bg;
-    background-image:            url("~/.cache/hyde/wall.quad", width);
+    background-image:            url("~/.cache/hyde/wall.sqre", width);
 }
 
 
@@ -65,6 +65,7 @@ inputbar {
     background-color:            @main-bg;
     expand:                      true;
 }
+
 entry {
     enabled:                     true;
     padding:                     1.8em;
