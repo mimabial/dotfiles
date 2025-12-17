@@ -1,0 +1,14 @@
+* {
+    background:            #3B4252E6;
+    foreground:            #D8DEE9FF;
+    border:            #4C566AFF;
+    accent:            #2E3440CC;
+    selected-background:          #4C566AFF;
+    selected-foreground:          #81A1C1FF;
+    separator:           #80808080;
+    urgent:              #4C566AFF;
+    active:              #2E3440CC;
+    separatorcolor:     transparent;
+    border-color:       transparent;
+    font: "Jetbrains Mono 11";
+}

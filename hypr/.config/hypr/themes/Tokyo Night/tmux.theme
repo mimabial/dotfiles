@@ -1,0 +1,54 @@
+$HOME/.config/tmux/theme.conf|tmux source-file ~/.config/tmux/tmux.conf
+
+# Tmux theme for Tokyo Night
+# Auto-generated from kitty.theme colors
+
+# ============================================================================
+# Standard 16 color palette
+# ============================================================================
+set -g @color0 "#414868"
+set -g @color1 "#f7768e"
+set -g @color2 "#73daca"
+set -g @color3 "#e0af68"
+set -g @color4 "#7aa2f7"
+set -g @color5 "#bb9af7"
+set -g @color6 "#7dcfff"
+set -g @color7 "#c0caf5"
+set -g @color8 "#414868"
+set -g @color9 "#f7768e"
+set -g @color10 "#73daca"
+set -g @color11 "#e0af68"
+set -g @color12 "#7aa2f7"
+set -g @color13 "#bb9af7"
+set -g @color14 "#7dcfff"
+set -g @color15 "#c0caf5"
+
+# ============================================================================
+# Semantic color aliases
+# ============================================================================
+set -g @theme_bg "#24283b"
+set -g @theme_fg "#a9b1d6"
+set -g @theme_accent "#7aa2f7"
+set -g @theme_gray "#414868"
+set -g @theme_highlight "#3d59a1"
+set -g @theme_red "#f7768e"
+set -g @theme_brightred "#f7768e"
+set -g @theme_green "#73daca"
+set -g @theme_yellow "#e0af68"
+set -g @theme_blue "#7aa2f7"
+set -g @theme_magenta "#bb9af7"
+set -g @theme_cyan "#7dcfff"
+
+# ============================================================================
+# Tmux color settings
+# ============================================================================
+set -g status-style "bg=#24283b,fg=#a9b1d6"
+set -g message-style "bg=#24283b,fg=#7aa2f7"
+set -g message-command-style "bg=#24283b,fg=#7aa2f7"
+set -g pane-border-style "fg=#414868"
+set -g pane-active-border-style "fg=#3d59a1"
+set -g window-status-style "fg=#414868"
+set -g window-status-current-style "fg=#7aa2f7,bold"
+set -g mode-style "bg=#7aa2f7,fg=#24283b"
+set -g clock-mode-colour "#7aa2f7"
+

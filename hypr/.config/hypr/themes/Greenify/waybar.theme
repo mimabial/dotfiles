@@ -1,0 +1,39 @@
+$HOME/.config/waybar/theme.css|${scrDir}/wbarconfgen.sh
+
+@define-color bg rgb(14,28,15);
+@define-color fg #95C2A1;
+
+@define-color bg_alt #11b811; /* bright green */
+@define-color alt-fg rgb(170,240,188);
+@define-color warning #AAF0F0; /* cyan */
+
+@define-color bg_selected #1E4E50;
+@define-color border #568270; /* cursor green */
+
+@define-color accent #9DC6A9; /* green */
+@define-color wb-act-bg rgb(30,55,52);
+@define-color wb-act-fg rgb(204,255,249);
+@define-color border_alt #9AE6E6; /* cyan */
+
+@define-color hover #AAF0AA; /* light green */
+@define-color wb-hvr-bg rgba(75,125,111,0.4);
+@define-color hover rgba(170,240,229,0.8);
+
+/* Standard color palette - base colors */
+@define-color c0 #152326;
+@define-color c1 #FF5B61;
+@define-color c2 #9DC6A9;
+@define-color c3 #FFCF99;
+@define-color c4 #86BFD2;
+@define-color c5 #D59CCE;
+@define-color c6 #79C2B6;
+@define-color c7 #91A4AD;
+
+/* Standard color palette - bright/accent variants */
+@define-color c8 #568270;
+@define-color c9 #a95712;
+@define-color c10 #95C2A1;
+@define-color c11 #FDD9AF;
+@define-color c13 #D9ADD4;
+@define-color c14 #87CBB1;
+@define-color c15 #DBD0C6;

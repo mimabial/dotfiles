@@ -1,0 +1,40 @@
+# Color mapping for pywal replacement
+# Format: #hexcolor=pywal_variable
+# Theme: Tokyo Night
+
+# Background / surfaces
+#000000=background
+#24283b=background
+#141414=color0
+#1a1b26=color0
+#31363b=color0
+#414868=color0
+#565f89=color8
+#7f7f7f=color8
+#919191=color7
+#999999=color7
+#a6a6a6=color7
+#c0caf5=color7
+
+# Text
+#a9b1d6=foreground
+#b4b4b4=foreground
+#b6b6b6=foreground
+#bebebe=foreground
+#bfbfbf=foreground
+#cdd6f4=foreground
+#cfc9c2=foreground
+#d1d1d1=foreground
+#d2d2d2=foreground
+#d6d6d6=foreground
+#dcdcdc=foreground
+#eaeaea=foreground
+#ffffff=foreground
+
+# Accents
+#2ac3de=color6
+#73daca=color6
+#7aa2f7=color4
+#7dcfff=color6
+#b4f9f8=color6
+#cba6f7=color5

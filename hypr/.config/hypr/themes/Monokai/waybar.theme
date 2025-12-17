@@ -1,0 +1,58 @@
+$HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfgen.sh
+@define-color bg #2C2525;
+
+@define-color bg_selected #87B0F9;
+@define-color border #87B0F9;
+@define-color fg #F8F8F2; 
+
+@define-color bg_alt #87B0F9;
+@define-color warning #87B0F9;
+
+@define-color accent #F92672; 
+@define-color border_alt #F38BA8; 
+@define-color wb-act-fg #F8F8F2; 
+
+@define-color wb-hvr-bg #F5C2E7; 
+@define-color hover #AE81FF;
+@define-color fg_selected #A6E22E; 
+
+@define-color highlight-bg #87B0F9; 
+@define-color highlight-fg #F8F8F2; 
+
+@define-color warning-bg #F38BA8;
+@define-color warning-fg #272822; 
+
+@define-color success-bg #A6E3A1; 
+@define-color success-fg #272822; 
+
+@define-color error-bg #F38BA8; 
+@define-color error-fg #272822; 
+
+@define-color info-bg #66D9EF; 
+@define-color info-fg #F8F8F2; 
+
+@define-color neutral-bg #49483E; 
+@define-color neutral-fg #A6E22E; 
+
+@define-color secondary-bg #75715E; 
+@define-color secondary-fg #F8F8F2; 
+
+@define-color accent-bg #AE81FF; 
+@define-color accent-fg #F8F8F2;
+
+@define-color c0 #272822;
+@define-color c8 #807d74;
+@define-color c1 #fd6883;
+@define-color c9 #ff6188;
+@define-color c2 #adda78;
+@define-color c10 #9eaf8a;
+@define-color c3 #f9cc6c;
+@define-color c11 #fc9867;
+@define-color c4 #85dacc;
+@define-color c12 #78dce8;
+@define-color purple #a8a9eb;
+@define-color purple-bright #ab9df2;
+@define-color aqua #85dacc;
+@define-color aqua-bright #78dce8;
+@define-color c7 #f8f8f2;
+@define-color c15 #f8f8f2;

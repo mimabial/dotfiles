@@ -1,0 +1,12 @@
+{
+  "custom/caffeine": {
+    "justify": "center",
+    "return-type": "json",
+    "format": "{}",
+    "exec": "hyprshell waybar/caffeine.sh",
+    "on-click": "hyprshell session/toggle-keep-awake.sh",
+    "interval": "once",
+    "tooltip": true,
+    "signal": 21
+  }
+}

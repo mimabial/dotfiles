@@ -1,0 +1,47 @@
+$HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfgen.sh
+
+/* Tooltip and menu borders */
+@define-color tt-br #93a1a1; /* base1 */
+@define-color tt-bg #eee8d5; /* base2 */
+@define-color tt-fg #586e75; /* base01 */
+
+@define-color mn-br #839496; /* base0 */
+@define-color mn-bg #fdf6e3; /* base3 */
+@define-color mn-fg #586e75; /* base01 */
+
+/* Main colors */
+@define-color bg #eee8d5; /* base2 */
+
+@define-color bg_selected #fdf6e3; /* base3 */
+@define-color fg #657b83; /* base00 */
+@define-color border #93a1a1; /* base1 */
+
+/* Active workspace colors */
+@define-color accent #268bd2; /* blue */
+@define-color wb-act-fg #fdf6e3; /* base3 */
+@define-color border_alt #268bd2; /* blue */
+
+/* Hover colors */
+@define-color wb-hvr-bg #2aa198; /* cyan */
+@define-color fg_selected #fdf6e3; /* base3 */
+@define-color hover #2aa198; /* cyan */
+
+/* Standard color palette - base colors */
+@define-color c1 #dc322f;
+@define-color c2 #859900;
+@define-color c3 #b58900;
+@define-color c4 #268bd2;
+@define-color purple #6c71c4; /* violet */
+@define-color c6 #2aa198;
+@define-color orange #cb4b16;
+@define-color gray #657b83; /* base00 */
+
+/* Standard color palette - bright/accent variants */
+@define-color c9 #dc322f;
+@define-color c10 #859900;
+@define-color c11 #b58900;
+@define-color c12 #268bd2;
+@define-color purple-bright #d33682; /* magenta */
+@define-color c14 #2aa198;
+@define-color orange-bright #cb4b16;
+@define-color gray-bright #586e75; /* base01 */

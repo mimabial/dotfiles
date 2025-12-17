@@ -1,0 +1,26 @@
+# Color mapping for pywal replacement
+# Format: #hexcolor=pywal_variable
+# Theme: Red Stone
+
+# Background / surfaces
+#000000=background
+#0a0101=background
+#522929=color0
+#6b3a3a=color0
+#7d4b4b=color8
+#8f5757=color8
+
+# Text
+#cfc9c2=foreground
+#d1d1d1=foreground
+#d2d2d2=foreground
+#d6d6d6=foreground
+#dcdcdc=foreground
+#eaeaea=foreground
+#ffffff=foreground
+
+# Accents
+#e69a9a=color9
+#f0aaaa=color9
+#f0abaa=color9
+#ffcccc=color9

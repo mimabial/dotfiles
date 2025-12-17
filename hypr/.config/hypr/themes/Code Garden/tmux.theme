@@ -1,0 +1,54 @@
+$HOME/.config/tmux/theme.conf|tmux source-file ~/.config/tmux/tmux.conf
+
+# Tmux theme for Code Garden
+# Auto-generated from kitty.theme colors
+
+# ============================================================================
+# Standard 16 color palette
+# ============================================================================
+set -g @color0 "#1A1A1A"
+set -g @color1 "#FF007F"
+set -g @color2 "#00FF80"
+set -g @color3 "#56A0D3"
+set -g @color4 "#0080C6"
+set -g @color5 "#A981FC"
+set -g @color6 "#00FFE6"
+set -g @color7 "#F0F0F0"
+set -g @color8 "#555555"
+set -g @color9 "#FF00FF"
+set -g @color10 "#00FFBF"
+set -g @color11 "#56A0D3"
+set -g @color12 "#0099FF"
+set -g @color13 "#CC00FF"
+set -g @color14 "#00FFCC"
+set -g @color15 "#FFFFFF"
+
+# ============================================================================
+# Semantic color aliases
+# ============================================================================
+set -g @theme_bg "#1A1D23"
+set -g @theme_fg "#FFFFFF"
+set -g @theme_accent "#0080C6"
+set -g @theme_gray "#555555"
+set -g @theme_highlight "#0080C6"
+set -g @theme_red "#FF007F"
+set -g @theme_brightred "#FF00FF"
+set -g @theme_green "#00FF80"
+set -g @theme_yellow "#56A0D3"
+set -g @theme_blue "#0080C6"
+set -g @theme_magenta "#A981FC"
+set -g @theme_cyan "#00FFE6"
+
+# ============================================================================
+# Tmux color settings
+# ============================================================================
+set -g status-style "bg=#1A1D23,fg=#FFFFFF"
+set -g message-style "bg=#1A1D23,fg=#0080C6"
+set -g message-command-style "bg=#1A1D23,fg=#0080C6"
+set -g pane-border-style "fg=#555555"
+set -g pane-active-border-style "fg=#0080C6"
+set -g window-status-style "fg=#555555"
+set -g window-status-current-style "fg=#0080C6,bold"
+set -g mode-style "bg=#0080C6,fg=#1A1D23"
+set -g clock-mode-colour "#0080C6"
+

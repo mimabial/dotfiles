@@ -1,0 +1,5 @@
+{
+  "format": "󰖩",
+  "on-click": "omarchy-launch-wifi",
+  "tooltip-format": "WiFi Manager (Impala)"
+}

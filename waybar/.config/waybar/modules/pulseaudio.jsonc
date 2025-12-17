@@ -1,0 +1,26 @@
+{
+  "pulseaudio": {
+    "format": "{icon}",
+    "format-bluetooth": "{icon}",
+    "format-muted": "󰝟",
+    "on-click": "hyprshell volumecontrol -o m",
+    "on-click-right": "pavucontrol -t 3",
+    "on-scroll-up": "hyprshell volumecontrol -o i",
+    "on-scroll-down": "hyprshell volumecontrol -o d",
+    "smooth-scrolling-threshold": 1,
+    "tooltip-format": "{volume}% {icon} | {desc}",
+    "format-icons": {
+      "headphone": "",
+      "hands-free": "",
+      "headset": "",
+      "phone": "",
+      "portable": "",
+      "car": "",
+      "default": [
+        "󰕿",
+        "󰖀",
+        "󰕾"
+      ]
+    }
+  }
+}

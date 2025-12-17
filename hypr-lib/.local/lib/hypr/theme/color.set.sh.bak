@@ -1,0 +1,717 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC2154,SC1091
+
+[[ "${HYPR_SHELL_INIT}" -ne 1 ]] && eval "$(hyprshell init)"
+
+# Lockfile for process synchronization
+LOCK_FILE="${XDG_RUNTIME_DIR:-/tmp}/color-gen.lock"
+STATE_FILE="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/color.gen.state"
+# Signal file for waybar watcher
+THEME_UPDATE_LOCK="${XDG_RUNTIME_DIR:-/tmp}/theme-update.lock"
+mkdir -p "$(dirname "$LOCK_FILE")" "$(dirname "$STATE_FILE")"
+
+exec 200>"${LOCK_FILE}"
+! flock -n 200 && {
+  print_log -sec "pywal16" -stat "wait" "Another process running"
+  flock 200
+}
+
+# Create theme update lock to prevent waybar from reacting to intermediate changes
+touch "${THEME_UPDATE_LOCK}"
+
+# Setup EXIT trap handler to run all cleanup tasks
+cleanup() {
+  rm -f "${THEME_UPDATE_LOCK}"
+  [[ -n "${HYPRLAND_INSTANCE_SIGNATURE}" ]] && hyprctl reload config-only -q
+}
+trap cleanup EXIT
+
+# Disable Hyprland autoreload during theme application
+[[ -n $HYPRLAND_INSTANCE_SIGNATURE ]] && hyprctl keyword misc:disable_autoreload 1 -q
+
+# Get mode from state
+dcol_mode="${dcol_mode:-dark}"
+[ -f "$HYPR_STATE_HOME/mode" ] && dcol_mode=$(cat "$HYPR_STATE_HOME/mode")
+
+# Check enableWallDcol (0=theme, 1=auto, 2=dark, 3=light)
+[ -f "$HYPR_STATE_HOME/config" ] && source "$HYPR_STATE_HOME/config"
+enableWallDcol="${enableWallDcol:-1}"
+
+# Always determine current theme (needed for Kvantum in both modes)
+if [ -z "${HYPR_THEME}" ]; then
+  # Try to read from wal.conf
+  WAL_CONF="${HYPR_CONFIG_HOME}/themes/wal.conf"
+  if [ -f "${WAL_CONF}" ]; then
+    HYPR_THEME=$(grep '^\$HYPR_THEME=' "${WAL_CONF}" | cut -d'=' -f2)
+  fi
+
+  # Fallback to first theme if still not set
+  if [ -z "${HYPR_THEME}" ]; then
+    if [ -d "${HYPR_CONFIG_HOME}/themes" ]; then
+      HYPR_THEME=$(find "${HYPR_CONFIG_HOME}/themes" -mindepth 1 -maxdepth 1 -type d | sort | head -1 | xargs basename)
+    fi
+  fi
+fi
+
+# Set HYPR_THEME_DIR if we have a theme
+if [ -n "${HYPR_THEME}" ] && [ -z "${HYPR_THEME_DIR}" ]; then
+  export HYPR_THEME="${HYPR_THEME}"
+  export HYPR_THEME_DIR="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}"
+  print_log -sec "theme" -stat "detected" "${HYPR_THEME}"
+fi
+
+# Override mode based on enableWallDcol
+case "${enableWallDcol}" in
+  2) dcol_mode="dark" ;;
+  3) dcol_mode="light" ;;
+esac
+
+WAL_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/wal"
+mkdir -p "${WAL_CACHE}"
+
+# Centralized color file symlink definitions
+declare -gA COLOR_LINKS=(
+  ["colors-alacritty.toml"]="${HOME}/.config/alacritty/colors.toml"
+  ["colors-kitty.conf"]="${HOME}/.config/kitty/colors.conf"
+  ["colors-rofi.rasi"]="${HOME}/.config/rofi/colors.rasi"
+  ["colors-wofi.css"]="${HOME}/.config/wofi/style.css"
+  ["colors-walker.css"]="${HOME}/.config/walker/themes/pywal16/style.css"
+  ["colors-waybar.css"]="${HOME}/.config/waybar/colors.css"
+  ["colors-swaync.css"]="${HOME}/.config/swaync/colors.css"
+  ["colors-hyprland.conf"]="${HOME}/.config/hypr/themes/colors.conf"
+  ["colors-hyprshade.glsl"]="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wal/colors.inc"
+  ["colors-gtk.css"]="${HOME}/.config/gtk-3.0/colors.css"
+  ["colors-tmux.conf"]="${HOME}/.config/tmux/colors.conf"
+  ["colors-rmpc.ron"]="${HOME}/.config/rmpc/themes/pywal16.ron"
+  ["colors--big-rmpc.ron"]="${HOME}/.config/rmpc/themes/pywal16-big.ron"
+  ["colors--small-rmpc.ron"]="${HOME}/.config/rmpc/themes/pywal16-small.ron"
+  ["colors-wal.vim"]="${HOME}/.vim/colors/pywal16.vim"
+  ["colors-tridactyl.css"]="${HOME}/.config/tridactyl/themes/pywal.css"
+  ["colors-qutebrowser.py"]="${HOME}/.config/qutebrowser/pywal-colors.py"
+)
+
+# Generate colors from wallpaper (always, even in theme mode)
+WALLPAPER_IMAGE="${1:-${wallpaper_image:-${wal_image}}}"
+
+[ -z "${WALLPAPER_IMAGE}" ] && {
+  print_log -sec "pywal16" -err "no wallpaper"
+  exit 1
+}
+[ ! -f "${WALLPAPER_IMAGE}" ] && {
+  print_log -sec "pywal16" -err "wallpaper not found"
+  exit 1
+}
+
+print_log -sec "pywal16" -stat "generate" "$(basename "${WALLPAPER_IMAGE}") (${dcol_mode})"
+
+# Build pywal16 command
+WAL_OPTS=("-i" "${WALLPAPER_IMAGE}" "-n" "-s" "-t" "-e")
+[ "${dcol_mode}" == "light" ] && WAL_OPTS+=("-l")
+
+# Use colorthief backend (more reliable than wal/imagemagick)
+# Can be overridden by setting PYWAL_BACKEND env var
+PYWAL_BACKEND="${PYWAL_BACKEND:-wal}"
+WAL_OPTS+=("--backend" "${PYWAL_BACKEND}")
+
+wal_output=$(wal "${WAL_OPTS[@]}" 2>&1)
+wal_exit=$?
+
+[[ "${LOG_LEVEL}" == "debug" ]] && echo "${wal_output}" | while read -r line; do
+  print_log -sec "pywal16" -stat "debug" "${line}"
+done
+
+[ $wal_exit -ne 0 ] && {
+  print_log -sec "pywal16" -err "failed"
+  echo "${wal_output}" >&2
+  exit 1
+}
+
+print_log -sec "pywal16" -stat "complete" "color generation"
+
+# Generate hyprlock integer rgba colors
+if [ -f "${LIB_DIR}/hypr/wal/wal.hyprlock.sh" ]; then
+  bash "${LIB_DIR}/hypr/wal/wal.hyprlock.sh"
+  print_log -sec "hyprlock" -stat "generated" "integer rgba colors"
+fi
+
+# Post-process RGB-dependent templates
+# Convert hex colors to RGB for hyprshade.glsl
+if [ -f "${WAL_CACHE}/colors-hyprshade.glsl" ]; then
+  source "${WAL_CACHE}/colors-shell.sh"
+  for i in {0..15}; do
+    eval "hex=\$color$i"
+    hex="${hex#\#}"
+    r=$((16#${hex:0:2}))
+    g=$((16#${hex:2:2}))
+    b=$((16#${hex:4:2}))
+    sed -i "s/COLOR${i}_RGB/${r}, ${g}, ${b}/g" "${WAL_CACHE}/colors-hyprshade.glsl"
+  done
+  # Background and foreground
+  bg_hex="${background#\#}"
+  fg_hex="${foreground#\#}"
+  sed -i "s/BACKGROUND_RGB/$((16#${bg_hex:0:2})), $((16#${bg_hex:2:2})), $((16#${bg_hex:4:2}))/g" "${WAL_CACHE}/colors-hyprshade.glsl"
+  sed -i "s/FOREGROUND_RGB/$((16#${fg_hex:0:2})), $((16#${fg_hex:2:2})), $((16#${fg_hex:4:2}))/g" "${WAL_CACHE}/colors-hyprshade.glsl"
+fi
+
+# Convert hex colors to RGB for rmpc.ron
+if [ -f "${WAL_CACHE}/colors-rmpc.ron" ]; then
+  source "${WAL_CACHE}/colors-shell.sh"
+  # color0 (background)
+  hex="${color0#\#}"
+  sed -i "s/COLOR0_R/$((16#${hex:0:2}))/g; s/COLOR0_G/$((16#${hex:2:2}))/g; s/COLOR0_B/$((16#${hex:4:2}))/g" "${WAL_CACHE}/colors-rmpc.ron"
+  # color15 (foreground)
+  hex="${color15#\#}"
+  sed -i "s/COLOR15_R/$((16#${hex:0:2}))/g; s/COLOR15_G/$((16#${hex:2:2}))/g; s/COLOR15_B/$((16#${hex:4:2}))/g" "${WAL_CACHE}/colors-rmpc.ron"
+  # color4 (highlight)
+  hex="${color4#\#}"
+  sed -i "s/COLOR4_R/$((16#${hex:0:2}))/g; s/COLOR4_G/$((16#${hex:2:2}))/g; s/COLOR4_B/$((16#${hex:4:2}))/g" "${WAL_CACHE}/colors-rmpc.ron"
+fi
+
+# Convert hex colors to RGB for hyprland rgba variables
+if [ -f "${WAL_CACHE}/colors-hyprland.conf" ]; then
+  source "${WAL_CACHE}/colors-shell.sh"
+  for i in 0 4 7 8 15; do
+    var="color${i}"
+    hex="${!var#\#}"
+    r=$((16#${hex:0:2}))
+    g=$((16#${hex:2:2}))
+    b=$((16#${hex:4:2}))
+    sed -i "s/COLOR${i}_RGB/${r},${g},${b}/g" "${WAL_CACHE}/colors-hyprland.conf"
+  done
+fi
+
+# Source pywal16-generated colors
+set -a
+[ -f "${WAL_CACHE}/colors.sh" ] && source "${WAL_CACHE}/colors-shell.sh"
+set +a
+
+# Pywal16 generates all color files to ~/.cache/wal/
+# Now create symlinks to expected locations
+print_log -sec "pywal16" -stat "linking" "creating symlinks to color files"
+
+for cache_file in "${!COLOR_LINKS[@]}"; do
+  # In theme mode, Hyprland colors are derived from the theme palette (not the wallpaper).
+  # Keep pywal16's cache output available, but don't link it over the theme colors.
+  if [[ "${enableWallDcol}" -eq 0 ]] && [[ "${cache_file}" == "colors-hyprland.conf" ]]; then
+    continue
+  fi
+
+  source="${WAL_CACHE}/${cache_file}"
+  target="${COLOR_LINKS[$cache_file]}"
+  if [ -f "${source}" ]; then
+    mkdir -p "$(dirname "${target}")"
+    if ln -sf "${source}" "${target}"; then
+      [[ "${LOG_LEVEL}" == "debug" ]] && print_log -sec "symlink" -stat "linked" "${cache_file}"
+    else
+      print_log -sec "symlink" -warn "failed" "could not link ${cache_file}"
+    fi
+  else
+    [[ "${LOG_LEVEL}" == "debug" ]] && print_log -sec "symlink" -warn "skip" "${cache_file} not generated"
+  fi
+done
+
+# In theme mode, ensure Hyprland `colors.conf` matches the selected theme palette.
+generate_hypr_colors_from_theme() {
+  local kitty_theme_file="${HYPR_THEME_DIR}/kitty.theme"
+  local out_file="${HOME}/.config/hypr/themes/colors.conf"
+  local tmp_file="${out_file}.tmp.$$"
+
+  [[ -n "${HYPR_THEME_DIR}" ]] || return 1
+  [[ -r "${kitty_theme_file}" ]] || {
+    print_log -sec "theme" -warn "colors" "missing kitty.theme: ${kitty_theme_file}"
+    return 1
+  }
+
+  local theme_bg theme_fg
+  theme_bg="$(awk '$1=="background"{print $2; exit}' "${kitty_theme_file}")"
+  theme_fg="$(awk '$1=="foreground"{print $2; exit}' "${kitty_theme_file}")"
+  [[ "${theme_bg}" =~ ^#[0-9A-Fa-f]{6}$ ]] || theme_bg=""
+  [[ "${theme_fg}" =~ ^#[0-9A-Fa-f]{6}$ ]] || theme_fg=""
+
+  local -a theme_colors=()
+  local i key val
+  for i in {0..15}; do
+    key="color${i}"
+    val="$(awk -v key="${key}" '$1==key{print $2; exit}' "${kitty_theme_file}")"
+    [[ "${val}" =~ ^#[0-9A-Fa-f]{6}$ ]] || val=""
+    theme_colors[$i]="${val}"
+  done
+
+  # Require a complete palette; fall back if a theme is incomplete.
+  for i in {0..15}; do
+    key="color${i}"
+    [[ -n "${theme_colors[$i]}" ]] || {
+      print_log -sec "theme" -warn "colors" "missing ${key} in ${kitty_theme_file}"
+      return 1
+    }
+  done
+
+	  [[ -n "${theme_bg}" ]] || theme_bg="${theme_colors[0]}"
+	  [[ -n "${theme_fg}" ]] || theme_fg="${theme_colors[15]}"
+
+	  local active_border inactive_border_bg inactive_border_fg
+	  active_border="${theme_colors[4]#\#}ff"
+	  inactive_border_bg="${theme_colors[0]#\#}cc"
+	  inactive_border_fg="${theme_colors[8]#\#}cc"
+
+	  mkdir -p "$(dirname "${out_file}")"
+	  [[ -L "${out_file}" ]] && rm -f "${out_file}"
+
+	  {
+	    echo "# Autogenerated theme colors (from kitty.theme)"
+	    echo "# Theme: ${HYPR_THEME}"
+	    echo "# Source: ${kitty_theme_file}"
+	    echo
+	    echo "# Standard theme colors"
+	    for i in {0..15}; do
+	      printf '$color%s = %s\n' "${i}" "${theme_colors[$i]}"
+	    done
+	    echo
+	    echo "# Hyprland-friendly helpers (no leading '#')"
+	    for i in {0..15}; do
+	      local hex="${theme_colors[$i]#\#}"
+	      printf '$color%see = %s\n' "${i}" "${hex}ee"
+	    done
+	    echo
+	    printf '$background = %s\n' "${theme_bg}"
+	    printf '$foreground = %s\n' "${theme_fg}"
+	    printf '$cursor = %s\n' "${theme_fg}"
+	    echo
+
+	    cat <<EOF
+
+general {
+    col.active_border = rgba(${active_border}) rgba(${active_border}) 45deg
+    col.inactive_border = rgba(${inactive_border_bg}) rgba(${inactive_border_fg}) 45deg
+}
+
+group {
+    col.border_active = rgba(${active_border}) rgba(${active_border}) 45deg
+    col.border_inactive = rgba(${inactive_border_bg}) rgba(${inactive_border_fg}) 45deg
+    col.border_locked_active = rgba(${active_border}) rgba(${active_border}) 45deg
+    col.border_locked_inactive = rgba(${inactive_border_bg}) rgba(${inactive_border_fg}) 45deg
+}
+EOF
+	  } >"${tmp_file}"
+
+  mv -f "${tmp_file}" "${out_file}"
+  print_log -sec "theme" -stat "colors" "wrote ${out_file}"
+}
+
+if [[ "${enableWallDcol}" -eq 0 ]]; then
+  if ! generate_hypr_colors_from_theme; then
+    print_log -sec "theme" -warn "colors" "falling back to pywal16 Hyprland colors"
+    ln -sf "${WAL_CACHE}/colors-hyprland.conf" "${HOME}/.config/hypr/themes/colors.conf" 2>/dev/null || true
+  fi
+fi
+
+# Handle Kvantum theme - always use theme's structure, optionally replace colors
+if [ -n "${HYPR_THEME_DIR}" ]; then
+  THEME_KVANTUM_DIR="${HYPR_THEME_DIR}/kvantum"
+  PYWAL_KVANTUM_DIR="${HOME}/.config/Kvantum/pywal16"
+
+  if [ -d "${THEME_KVANTUM_DIR}" ]; then
+    mkdir -p "${PYWAL_KVANTUM_DIR}"
+
+    # Copy theme's kvconfig
+    if [ -f "${THEME_KVANTUM_DIR}/kvconfig.theme" ]; then
+      cp -f "${THEME_KVANTUM_DIR}/kvconfig.theme" "${PYWAL_KVANTUM_DIR}/pywal16.kvconfig"
+      print_log -sec "kvantum" -stat "copied" "kvconfig from ${HYPR_THEME}"
+    fi
+
+    # Copy theme's SVG
+    if [ -f "${THEME_KVANTUM_DIR}/kvantum.theme" ]; then
+      cp -f "${THEME_KVANTUM_DIR}/kvantum.theme" "${PYWAL_KVANTUM_DIR}/pywal16.svg"
+      print_log -sec "kvantum" -stat "copied" "svg from ${HYPR_THEME}"
+    fi
+
+    # In wallpaper mode, replace colors with pywal colors using colors.map
+    if [ "${enableWallDcol}" -ne 0 ]; then
+      COLOR_MAP="${THEME_KVANTUM_DIR}/colors.map"
+
+      if [ -f "${COLOR_MAP}" ]; then
+        source "${WAL_CACHE}/colors.sh"
+
+        # Build sed command from colors.map
+        SED_ARGS=()
+        while IFS='=' read -r hex_color pywal_var || [ -n "${hex_color}" ]; do
+          # Skip comments and empty lines
+          [[ "${hex_color}" =~ ^#.*$ && ! "${hex_color}" =~ ^#[0-9A-Fa-f]{6}$ ]] && continue
+          [[ -z "${hex_color}" ]] && continue
+
+          # Get the pywal color value
+          pywal_value="${!pywal_var}"
+          [ -z "${pywal_value}" ] && continue
+
+          # Add case-insensitive replacement
+          SED_ARGS+=(-e "s/${hex_color}/${pywal_value}/gi")
+        done <"${COLOR_MAP}"
+
+        # Apply replacements to kvconfig
+        if [ -f "${PYWAL_KVANTUM_DIR}/pywal16.kvconfig" ] && [ ${#SED_ARGS[@]} -gt 0 ]; then
+          sed -i "${SED_ARGS[@]}" "${PYWAL_KVANTUM_DIR}/pywal16.kvconfig"
+          print_log -sec "kvantum" -stat "applied" "pywal colors to kvconfig"
+        fi
+
+        # Apply replacements to SVG
+        if [ -f "${PYWAL_KVANTUM_DIR}/pywal16.svg" ] && [ ${#SED_ARGS[@]} -gt 0 ]; then
+          sed -i "${SED_ARGS[@]}" "${PYWAL_KVANTUM_DIR}/pywal16.svg"
+          print_log -sec "kvantum" -stat "applied" "pywal colors to svg"
+        fi
+
+        # Fix selection colors for various elements (places panel, toolbar buttons)
+        # These elements often have hardcoded colors not in colors.map
+        if [ -f "${PYWAL_KVANTUM_DIR}/pywal16.svg" ]; then
+          # Replace all fill colors within itemview-toggled and itemview-pressed groups
+          # This includes the main element and border elements (left, right, top, bottom, corners)
+          sed -i -E '
+            /id="itemview-(toggled|pressed)/,/<\/g>|<\/(rect|path)>/ {
+              s/fill:#[0-9a-fA-F]{6}/fill:'"${color4}"'/g
+            }
+          ' "${PYWAL_KVANTUM_DIR}/pywal16.svg"
+
+          # Fix toolbar button toggled/pressed colors (including border elements)
+          # Note: focused (hover) is left as subtle overlay to match places panel
+          sed -i -E '
+            /id="tbutton-(toggled|pressed)/,/<\/g>|<\/(rect|path)>/ {
+              s/fill:#[0-9a-fA-F]{6}/fill:'"${color4}"'/g
+            }
+          ' "${PYWAL_KVANTUM_DIR}/pywal16.svg"
+
+          # Fix regular button toggled/pressed colors (including border elements)
+          # Use exact match to avoid affecting menubaritem, etc.
+          sed -i -E '
+            /id="button-(toggled|pressed)(-|")/,/<\/g>|<\/(rect|path)>/ {
+              s/fill:#[0-9a-fA-F]{6}/fill:'"${color4}"'/g
+            }
+          ' "${PYWAL_KVANTUM_DIR}/pywal16.svg"
+
+        fi
+      else
+        [[ "${LOG_LEVEL}" == "debug" ]] && print_log -sec "kvantum" -warn "skip" "no colors.map in theme ${HYPR_THEME}"
+      fi
+    fi
+  else
+    [[ "${LOG_LEVEL}" == "debug" ]] && print_log -sec "kvantum" -warn "skip" "no kvantum dir in theme ${HYPR_THEME}"
+  fi
+fi
+
+print_log -sec "pywal16" -stat "complete" "color files ready"
+
+# Application theming - deploy generated templates
+print_log -sec "pywal16" -stat "deploy" "applying themes to applications"
+
+# Cava theme
+if [ -f "${LIB_DIR}/hypr/wal/wal.cava.sh" ]; then
+  bash "${LIB_DIR}/hypr/wal/wal.cava.sh"
+fi
+
+# GTK theme structure
+if [ -f "${LIB_DIR}/hypr/wal/wal.gtk.sh" ]; then
+  bash "${LIB_DIR}/hypr/wal/wal.gtk.sh"
+fi
+
+# Pywalfox - update Firefox via native Theme API
+if command -v pywalfox &>/dev/null; then
+  pywalfox update &>/dev/null && print_log -sec "pywalfox" -stat "updated" "Firefox theme"
+fi
+
+# VSCode theme
+if [ -f "${LIB_DIR}/hypr/wal/wal.vscode.sh" ]; then
+  bash "${LIB_DIR}/hypr/wal/wal.vscode.sh"
+fi
+
+# SwayNC theme
+if [ -f "${LIB_DIR}/hypr/wal/wal.swaync.sh" ]; then
+  # Get current rounding from theme.conf to pass to swaync
+  theme_conf="${HYPR_CONFIG_HOME}/themes/theme.conf"
+  if [ -f "${theme_conf}" ]; then
+    hypr_border=$(grep "rounding" "${theme_conf}" | grep "=" | head -1 | awk '{print $NF}')
+    export hypr_border
+  fi
+  bash "${LIB_DIR}/hypr/wal/wal.swaync.sh"
+fi
+
+# Tmux theme
+if [ -f "${LIB_DIR}/hypr/wal/wal.tmux.sh" ]; then
+  bash "${LIB_DIR}/hypr/wal/wal.tmux.sh"
+fi
+
+# Qutebrowser theme
+if [ -f "${LIB_DIR}/hypr/wal/wal.qutebrowser.sh" ]; then
+  bash "${LIB_DIR}/hypr/wal/wal.qutebrowser.sh"
+fi
+
+# Hyprshade color normalization (convert RGB 0-255 to 0.0-1.0 range for GLSL)
+if [ -f "${cacheDir}/colors-hyprshade.glsl" ]; then
+  sed -i 's/vec3(\([0-9]\+\), \([0-9]\+\), \([0-9]\+\))/vec3(\1\/255.0, \2\/255.0, \3\/255.0)/g' "${cacheDir}/colors-hyprshade.glsl"
+fi
+
+# Reload live applications
+pkill -SIGUSR1 kitty 2>/dev/null                                                        # Reload kitty terminal colors
+pkill -USR2 cava 2>/dev/null                                                            # Reload cava visualizer colors
+tmux list-sessions &>/dev/null && tmux source-file ~/.config/tmux/tmux.conf 2>/dev/null # Reload tmux if running
+
+# Theme symlinks are already created at lines 99-117, no need to modify them here
+
+# Process .theme files from theme directory
+process_theme_files() {
+  [ -z "${HYPR_THEME_DIR}" ] && {
+    print_log -sec "theme" -warn "skip" "HYPR_THEME_DIR not set"
+    return 0
+  }
+  [ ! -d "${HYPR_THEME_DIR}" ] && {
+    print_log -sec "theme" -warn "skip" "theme directory not found: ${HYPR_THEME_DIR}"
+    return 0
+  }
+
+  print_log -sec "theme" -stat "processing" ".theme files from ${HYPR_THEME}"
+
+  # Array to collect post-write commands
+  local -a post_commands=()
+
+  # First pass: Write all files and collect commands
+  while IFS= read -r theme_file; do
+    [ ! -f "${theme_file}" ] && continue
+    [ "$(basename "${theme_file}")" = "hypr.theme" ] && continue
+    # Skip kvantum .theme files (handled separately in Kvantum section above)
+    [[ "${theme_file}" =~ /kvantum/.*\.theme$ ]] && continue
+
+    # Parse first line: target_path | exec_command
+    local first_line
+    first_line=$(head -1 "${theme_file}")
+
+    # Extract target path (before pipe)
+    local target_path
+    target_path=$(echo "${first_line}" | cut -d'|' -f1 | xargs)
+
+    # Expand variables in path safely (only common shell variables, no command substitution)
+    target_path="${target_path//\$HOME/$HOME}"
+    target_path="${target_path//\$XDG_CONFIG_HOME/${XDG_CONFIG_HOME:-$HOME/.config}}"
+    target_path="${target_path//\$XDG_CACHE_HOME/${XDG_CACHE_HOME:-$HOME/.cache}}"
+    target_path="${target_path//\$XDG_DATA_HOME/${XDG_DATA_HOME:-$HOME/.local/share}}"
+    target_path="${target_path//\$USER/$USER}"
+
+    # Extract exec command (after pipe, optional)
+    local exec_cmd
+    exec_cmd=$(echo "${first_line}" | cut -d'|' -f2 | xargs)
+
+    # Expand variables in command safely (only whitelisted variables)
+    if [ -n "${exec_cmd}" ]; then
+      exec_cmd="${exec_cmd//\$HOME/$HOME}"
+      exec_cmd="${exec_cmd//\$XDG_CONFIG_HOME/${XDG_CONFIG_HOME:-$HOME/.config}}"
+      exec_cmd="${exec_cmd//\$XDG_CACHE_HOME/${XDG_CACHE_HOME:-$HOME/.cache}}"
+      exec_cmd="${exec_cmd//\$XDG_DATA_HOME/${XDG_DATA_HOME:-$HOME/.local/share}}"
+      exec_cmd="${exec_cmd//\$USER/$USER}"
+      exec_cmd="${exec_cmd//\$\{scrDir\}/${scrDir:-$HOME/.local/lib/hypr}}"
+      exec_cmd="${exec_cmd//\$scrDir/${scrDir:-$HOME/.local/lib/hypr}}"
+      exec_cmd="${exec_cmd//\$\{LIB_DIR\}/${LIB_DIR:-$HOME/.local/lib}}"
+      exec_cmd="${exec_cmd//\$LIB_DIR/${LIB_DIR:-$HOME/.local/lib}}"
+    fi
+
+    [ -z "${target_path}" ] && {
+      print_log -sec "theme" -warn "skip" "no target path in $(basename "${theme_file}")"
+      continue
+    }
+
+    # Create target directory
+    mkdir -p "$(dirname "${target_path}")"
+
+    # Write content (skip first line) to target
+    sed '1d' "${theme_file}" >"${target_path}"
+
+    print_log -sec "theme" -stat "wrote" "${target_path}"
+
+    # Collect command for later execution
+    if [ -n "${exec_cmd}" ]; then
+      # After variable expansion, check for remaining $ (command substitution or non-whitelisted vars)
+      if [[ "${exec_cmd}" =~ \$|\` ]]; then
+        print_log -sec "theme" -warn "blocked" "command contains unexpanded variables or substitution in $(basename "${theme_file}"): ${exec_cmd}"
+      else
+        post_commands+=("${exec_cmd}")
+      fi
+    fi
+
+  done < <(find "${HYPR_THEME_DIR}" -type f -name "*.theme" 2>/dev/null)
+
+  # Second pass: Execute all collected commands after all files are written
+  if [ ${#post_commands[@]} -gt 0 ]; then
+    print_log -sec "theme" -stat "executing" "${#post_commands[@]} post-write commands"
+    for cmd in "${post_commands[@]}"; do
+      print_log -sec "theme" -stat "exec" "${cmd}"
+      bash -c "${cmd}" &
+    done
+    # Wait for all background commands to complete before proceeding
+    wait
+    print_log -sec "theme" -stat "complete" "all post-write commands finished"
+  fi
+
+  # Note: waybar reload is handled by the watcher when THEME_UPDATE_LOCK is removed
+  # The watcher batches all file change events and reloads once at the end
+}
+
+# Only process .theme files in theme mode
+if [ "${enableWallDcol}" -eq 0 ]; then
+  process_theme_files
+else
+  # In wallpaper mode, clear theme override files to prevent stale theme colors
+  # Write minimal valid content to avoid parser errors during live reload
+  print_log -sec "theme" -stat "cleanup" "clearing theme files (wallpaper mode)"
+  : >"${HOME}/.config/waybar/theme.css"
+  : >"${HOME}/.config/kitty/theme.conf"
+  echo "# Empty theme file" >"${HOME}/.config/alacritty/theme.toml"
+  : >"${HOME}/.config/swaync/theme.css"
+  # Rofi themes expect variables like @background/@foreground; keep a valid fallback
+  # that pulls from pywal16-generated ~/.config/rofi/colors.rasi.
+  cat >"${HOME}/.config/rofi/theme.rasi" <<'EOF'
+/* Wallpaper mode (auto/dark/light): use pywal16 colors */
+@import "~/.config/rofi/colors.rasi"
+* {
+    separatorcolor:     transparent;
+    border-color:       transparent;
+}
+EOF
+  : >"${HOME}/.config/tmux/theme.conf"
+
+  # Reload apps to apply cleared theme files
+  # Note: waybar reload is handled by the watcher when THEME_UPDATE_LOCK is removed
+  pkill -SIGUSR1 kitty 2>/dev/null
+  swaync-client -rs 2>/dev/null
+  tmux source-file ~/.config/tmux/tmux.conf 2>/dev/null
+fi
+
+# Hyprland metadata
+if [ -f "${LIB_DIR}/hypr/wal/wal.hypr.sh" ]; then
+  source "${LIB_DIR}/hypr/wal/wal.hypr.sh"
+fi
+
+# Chrome theming
+if [ -f "${LIB_DIR}/hypr/wal/wal.chrome.sh" ]; then
+  source "${LIB_DIR}/hypr/wal/wal.chrome.sh"
+fi
+
+# QT theming
+if [ -f "${LIB_DIR}/hypr/wal/wal.qt.sh" ]; then
+  source "${LIB_DIR}/hypr/wal/wal.qt.sh"
+fi
+
+# dconf/kdeglobals
+if [ -f "${LIB_DIR}/hypr/theme/dconf.set.sh" ]; then
+  # Ensure ICON_THEME is set correctly before dconf/kdeglobals updates.
+  if command -v hyq &>/dev/null; then
+    theme_conf="${HYPR_CONFIG_HOME}/themes/theme.conf"
+    if [ "${enableWallDcol}" -eq 0 ] && [ -r "${theme_conf}" ]; then
+      eval "$(
+        hyq "${theme_conf}" --export env --allow-missing \
+          -Q "\$ICON_THEME[string]"
+      )"
+      [ -n "${__ICON_THEME}" ] && ICON_THEME="${__ICON_THEME}"
+    elif [ -z "${ICON_THEME}" ]; then
+      eval "$(
+        hyq "${HYPR_CONFIG_HOME}/hyprland.conf" --source --export env \
+          --allow-missing \
+          -Q "\$ICON_THEME[string]"
+      )"
+      ICON_THEME=${__ICON_THEME:-$ICON_THEME}
+    fi
+  fi
+  # Export ICON_THEME so dconf.set.sh uses the theme icon instead of falling back to default
+  export ICON_THEME
+  source "${LIB_DIR}/hypr/theme/dconf.set.sh"
+fi
+
+# KDE/Dolphin settings
+if [ -n "${background}" ] && [ -n "${foreground}" ]; then
+  kdeglobals="${XDG_CONFIG_HOME:-$HOME/.config}/kdeglobals"
+
+  # Update icon theme (must be done before colors, uses ICON_THEME from dconf.set.sh)
+  if [ -n "${ICON_THEME}" ]; then
+    toml_write "$kdeglobals" "Icons" "Theme" "${ICON_THEME}"
+  fi
+
+  # Preserve terminal application setting
+  if [ -n "${TERMINAL}" ]; then
+    toml_write "$kdeglobals" "General" "TerminalApplication" "${TERMINAL}"
+  fi
+
+  # Helper to convert hex to R,G,B format
+  hex_to_rgb() {
+    local hex="${1#\#}"
+    printf "%d,%d,%d" "0x${hex:0:2}" "0x${hex:2:2}" "0x${hex:4:2}"
+  }
+
+  # In theme mode, use Kvantum theme colors instead of pywal wallpaper-extracted colors
+  if [ "${enableWallDcol}" -eq 0 ]; then
+    THEME_KVCONFIG="${HYPR_THEME_DIR}/kvantum/kvconfig.theme"
+    if [ -f "$THEME_KVCONFIG" ]; then
+      # Extract exact theme colors from theme's kvconfig.theme
+      kv_window_bg=$(grep '^window\.color=' "$THEME_KVCONFIG" | cut -d= -f2)
+      kv_text_fg=$(grep '^text\.color=' "$THEME_KVCONFIG" | cut -d= -f2)
+      kv_highlight=$(grep '^highlight\.color=' "$THEME_KVCONFIG" | cut -d= -f2)
+
+      # Override pywal colors with theme's exact colors
+      [ -n "$kv_window_bg" ] && background="$kv_window_bg"
+      [ -n "$kv_text_fg" ] && foreground="$kv_text_fg"
+      [ -n "$kv_highlight" ] && color4="$kv_highlight" && color5="$kv_highlight"
+    fi
+  fi
+
+  bg_rgb=$(hex_to_rgb "$background")
+  fg_rgb=$(hex_to_rgb "$foreground")
+  accent_rgb=$(hex_to_rgb "$color4")
+  hover_rgb=$(hex_to_rgb "$color5")
+
+  # View colors
+  toml_write "$kdeglobals" "Colors:View" "BackgroundNormal" "$bg_rgb"
+  toml_write "$kdeglobals" "Colors:View" "ForegroundNormal" "$fg_rgb"
+  toml_write "$kdeglobals" "Colors:View" "DecorationFocus" "$accent_rgb"
+  toml_write "$kdeglobals" "Colors:View" "DecorationHover" "$hover_rgb"
+
+  # Selection colors (for selected items in Dolphin places panel)
+  toml_write "$kdeglobals" "Colors:Selection" "BackgroundNormal" "$accent_rgb"
+  toml_write "$kdeglobals" "Colors:Selection" "BackgroundAlternate" "$accent_rgb"
+  toml_write "$kdeglobals" "Colors:Selection" "ForegroundNormal" "$fg_rgb"
+  toml_write "$kdeglobals" "Colors:Selection" "ForegroundActive" "$fg_rgb"
+  toml_write "$kdeglobals" "Colors:Selection" "DecorationFocus" "$accent_rgb"
+  toml_write "$kdeglobals" "Colors:Selection" "DecorationHover" "$hover_rgb"
+
+  # Window colors
+  toml_write "$kdeglobals" "Colors:Window" "BackgroundNormal" "$bg_rgb"
+  toml_write "$kdeglobals" "Colors:Window" "ForegroundNormal" "$fg_rgb"
+fi
+
+# Kvantum highlight colors (for Dolphin places panel selection)
+if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/Kvantum/pywal16/pywal16.kvconfig" ]; then
+  kvconfig="${XDG_CONFIG_HOME:-$HOME/.config}/Kvantum/pywal16/pywal16.kvconfig"
+  toml_write "$kvconfig" '%General' 'reduce_menu_opacity' 0
+  # Update highlight colors to use accent color
+  sed -i "s/^highlight\.color=.*/highlight.color=${color4}/" "$kvconfig"
+  sed -i "s/^inactive\.highlight\.color=.*/inactive.highlight.color=${color4}/" "$kvconfig"
+  sed -i "s/^highlight\.text\.color=.*/highlight.text.color=${foreground}/" "$kvconfig"
+fi
+
+[[ -n "${HYPRLAND_INSTANCE_SIGNATURE}" ]] && {
+  if ! hyprshell shaders --reload 2>&1 | grep -q "error"; then
+    [[ "${LOG_LEVEL}" == "debug" ]] && print_log -sec "hyprshell" -stat "reload" "shaders"
+  else
+    print_log -sec "hyprshell" -warn "reload" "shader reload failed"
+  fi
+}
+
+# Update waybar border-radius to match Hyprland rounding
+if command -v hyprshell &>/dev/null; then
+  hyprshell waybar --update-border-radius &>/dev/null
+  print_log -sec "waybar" -stat "updated" "border-radius from theme"
+fi
+
+# Print colors if in terminal
+[ -t 1 ] && [ -f "${LIB_DIR}/hypr/wal/wal.print.colors.sh" ] && bash "${LIB_DIR}/hypr/wal/wal.print.colors.sh"
+
+# State
+echo "${WALLPAPER_IMAGE:-theme}:${dcol_mode}" >"${STATE_FILE}"
+
+# Notify
+command -v notify-send &>/dev/null \
+  && notify-send "Theme Updated" "${dcol_mode} mode" -i preferences-desktop-theme -t 2000
+
+print_log -sec "pywal16" -stat "complete" "applied"

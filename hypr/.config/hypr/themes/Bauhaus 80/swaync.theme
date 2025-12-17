@@ -1,0 +1,26 @@
+$HOME/.config/swaync/theme.css|swaync-client -R && swaync-client -rs
+
+/* Foreground colors */
+@define-color fg-primary #657b83;     /* base00 - primary content */
+@define-color fg-secondary #93a1a1;   /* base1 - secondary content */
+
+/* Background colors */
+@define-color bg-primary #fdf6e3;     /* base3 - primary background */
+@define-color bg-secondary #eee8d5;   /* base2 - secondary background */
+@define-color bg-tertiary #e6dfd0;    /* slightly darker than base2 */
+
+/* Accent colors - Solarized palette */
+@define-color accent-red #dc322f;     /* red */
+@define-color accent-green #859900;   /* green */
+@define-color accent-yellow #b58900;  /* yellow */
+@define-color accent-blue #268bd2;    /* blue */
+@define-color accent-purple #6c71c4;  /* violet */
+@define-color accent-aqua #2aa198;    /* cyan */
+@define-color accent-orange #cb4b16;  /* orange */
+
+/* Border colors */
+@define-color border-primary #93a1a1;    /* base1 */
+@define-color border-secondary #839496;  /* base0 */
+
+/* Gray */
+@define-color gray #93a1a1;           /* base1 */

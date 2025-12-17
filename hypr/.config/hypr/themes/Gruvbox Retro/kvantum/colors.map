@@ -1,0 +1,46 @@
+# Color mapping for pywal replacement
+# Format: #hexcolor=pywal_variable
+# Theme: Gruvbox Retro
+
+# Background / surfaces
+#000000=background
+#232323=background
+#141414=color0
+#141b1e=color0
+#192023=color0
+#1d2021=color0
+#202324=color0
+#212c31=color0
+#222d32=color0
+#252f35=color0
+#282828=color0
+#2e2e2e=color0
+#304048=color0
+#353535=color0
+#3c3836=color0
+#3f3f3f=color0
+#504945=color8
+#565b5e=color8
+#5c616c=color8
+#7b7b7b=color8
+#a89984=color8
+#acb1bc=color7
+
+# Text
+#cfd8dc=foreground
+#d1d1d1=foreground
+#d5c4a1=foreground
+#e4e5e8=foreground
+#ebdbb2=foreground
+#fbf1c7=foreground
+#fbfbfc=foreground
+#ffffff=foreground
+
+# Accents
+#00bcd4=color6
+#458588=color4
+#82b3a8=color6
+#98971a=color2
+#b74aff=color5
+#b8bb26=color2
+#cc241d=color1

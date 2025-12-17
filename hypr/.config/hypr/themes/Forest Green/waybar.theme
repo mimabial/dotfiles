@@ -1,0 +1,37 @@
+$HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfgen.sh
+
+@define-color bg #5d6b66;
+
+@define-color bg_selected #374145;
+@define-color fg #D3C6AA;
+@define-color border #48584e; 
+
+@define-color accent #708089;
+@define-color wb-act-fg #D3C6AA;
+@define-color border_alt #859289;
+
+@define-color bg_alt #3f5865;
+@define-color alt-fg #D3C6AA;
+@define-color warning #a6a6a6;
+
+@define-color fg_selected #7fbbb3;
+@define-color wb-hvr-bg #D3C6AA;
+@define-color hover #e67e80;
+
+@define-color c0 #3c474d;
+@define-color c1 #59464c;
+@define-color c2 #48584e;
+@define-color c3 #55544a;
+@define-color c4 #3f5865;
+@define-color c5 #4e4953;
+@define-color c6 #5c3f4f;
+@define-color c7 #859289;
+
+@define-color c8 #868d80;
+@define-color c9 #e67e80;
+@define-color c10 #a7c080;
+@define-color c11 #dbbc7f;
+@define-color c12 #7fbbb3;
+@define-color purple-bright #d699b6;
+@define-color c14 #83c092;
+@define-color c15 #9da9a0;

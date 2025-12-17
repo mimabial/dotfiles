@@ -1,0 +1,38 @@
+$HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfgen.sh
+
+/* Main colors */
+@define-color bg rgb(10,50,10); 
+
+@define-color bg_selected rgb(75,125,125); /* Very dark green, 80% opacity */
+@define-color fg rgb(170,240,240); /* Light green, 80% opacity */
+@define-color border rgb(75,125,125); /* foreground muted */
+
+/* Active workspace colors */
+@define-color accent rgb(17,180,180); /* Light blue, 40% opacity */
+@define-color border_alt rgb(204,255,255); /* Light blue, full opacity */
+
+
+/* Hover colors */
+@define-color hover #f28779; /* Muted blue-green, 40% opacity */
+@define-color fg_selected rgb(170,240,240); /* Light blue-green, 80% opacity */
+
+@define-color bg_alt rgb(75,125,125); /* Light blue, full opacity */
+@define-color warning rgb(75,125,125); /* Light blue, full opacity */
+
+@define-color c0 #191e2a;
+@define-color c1 #f28779;
+@define-color c2 #bae67e;
+@define-color c3 #ffd580;
+@define-color c4 #73d0ff;
+@define-color c5 #d4bfff;
+@define-color c6 #95e6cb;
+@define-color c7 #c7c7c7;
+
+@define-color c8 #686868;
+@define-color c9 #f28779;
+@define-color c10 #bae67e;
+@define-color c11 #ffd580;
+@define-color c12 #73d0ff;
+@define-color c13 #d4bfff;
+@define-color c14 #95e6cb;
+@define-color c15 #ffffff;

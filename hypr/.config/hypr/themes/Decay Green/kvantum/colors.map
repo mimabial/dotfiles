@@ -1,0 +1,46 @@
+# Color mapping for pywal replacement
+# Format: #hexcolor=pywal_variable
+# Theme: Decay Green
+
+# Background / surfaces
+#000000=background
+#0d0f18=background
+#13131e=color0
+#141414=color0
+#151720=color0
+#181623=color0
+#1a1a25=color0
+#1c1e27=color0
+#303339=color0
+
+# Mid neutrals
+#7f7f7f=color8
+#919191=color7
+#999999=color7
+#a6a6a6=color7
+
+# Text
+#b4b4b4=foreground
+#b6b6b6=foreground
+#bebebe=foreground
+#bfbfbf=foreground
+#cbced3=foreground
+#cbcff2=foreground
+#cdd6f4=foreground
+#d1d1d1=foreground
+#d2d2d2=foreground
+#d6d6d6=foreground
+#dcdcdc=foreground
+#eaeaea=foreground
+#ffffff=foreground
+
+# Accents
+#8fccb0=color2
+#90ceaa=color2
+#92c2e7=color4
+#95d3af=color2
+#c296eb=color5
+#c79bf0=color5
+#cc94e9=color5
+#d4a4f5=color5
+#ecd3a0=color3

@@ -1,0 +1,199 @@
+.blank-window {
+  background: transparent;
+}
+
+/* Control Center */
+.control-center {
+  background-color: alpha(@bg-primary, 0.8);
+  border-radius: 0px;
+}
+
+/* Notifications */
+.notification {
+  border-color: alpha(@border-primary, 0.2);
+  margin: 8px 2px;
+}
+
+.notification > *:last-child > * {
+  margin: 5px;
+}
+
+.notification-content {
+  padding: 15px 10px 10px 20px;
+}
+
+.notification-default-action:hover {
+  background-color: alpha(@hover-bg, 0.2);
+}
+
+/* Notification Actions */
+.notification-action > button {
+  padding: unset;
+  margin: unset;
+}
+
+.notification-action > label {
+  font-size: 1rem;
+  font-weight: normal;
+}
+
+/* Notification Priority Styles */
+.notification.critical {
+  background-color: alpha(@accent-red, 0.8);
+  box-shadow: 0 0 5px 0 rgba(0, 0, 0, 0.2);
+}
+
+.notification.low,
+.notification.normal {
+  background-color: alpha(@bg-primary, 0.8);
+  box-shadow: 0 0 5px 0 rgba(0, 0, 0, 0.2);
+}
+
+/* Notification groups */
+.notification-group {
+  background-color: alpha(@bg-tertiary, 0);
+  padding-top: 10px;
+}
+
+.notification-group-header {
+  margin-left: -37px;
+  margin-right: 37px;
+}
+
+.notification-group-icon {
+  -gtk-icon-transform: scale(0); /* A more direct GTK way to hide it */
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.notification-group-collapse-button,
+.notification-group-close-all-button {
+  border: 1px solid alpha(@border-primary, 0.2);
+}
+
+.notification-group-close-all-button {
+  margin-left: 6px;
+  margin-right: -2px;
+}
+
+.notification-group-collapse-button:hover {
+  color: @accent-blue;
+}
+
+.notification-group-close-all-button:hover {
+  color: @accent-red;
+}
+
+/* Text */
+.summary {
+  font-size: 1.1rem;
+}
+
+.time {
+  font-size: 0.8rem;
+  color: @text-muted;
+}
+
+.body {
+  font-size: 1rem;
+}
+
+/* Close Button */
+.close-button {
+  margin-top: 1.1rem;
+  background-color: transparent;
+  border-radius: 50%;
+}
+
+.close-button:hover {
+  background-color: alpha(@red, 0.2);
+}
+
+/* scrollbar & sliders */
+scrollbar,
+scrollbar * {
+  all: unset;
+  background: transparent;
+  border: none;
+  min-width: 0;
+  min-height: 0;
+}
+
+scrollbar slider {
+  background: transparent;
+}
+
+trough highlight {
+  background: @accent-blue;
+}
+
+scale trough {
+  margin: 0rem 1rem;
+  background-color: @bg-tertiary;
+  min-height: 2px;
+}
+
+tooltip {
+  background-color: @bg-tertiary;
+}
+
+/* DND Widget */
+.widget-dnd {
+  font-weight: bold;
+  margin: 0px 22px;
+  padding: 0px;
+  padding-top: 20px;
+  border-top: 1px solid alpha(@border-subtle, 0.4);
+  border-radius: 0px;
+}
+
+.widget-dnd > switch {
+  background: alpha(@bg-secondary, 0.5);
+  border: 1px solid @border-primary;
+}
+
+.widget-dnd > switch:checked {
+  background: alpha(@red, 0.8);
+  border-color: @red;
+}
+
+.widget-dnd > switch slider {
+  background: @fg-primary;
+  min-width: 18px;
+  min-height: 18px;
+  border-radius: 50%;
+}
+
+/* Title Widget */
+.widget-title {
+  margin: -45px 12px 0px;
+  font-weight: bold;
+}
+
+.widget-title > button {
+  padding: 0px 8px;
+  background: alpha(@accent-red, 0.8);
+  border: 1px solid @accent-red;
+}
+
+.widget-title > button:hover {
+  background: @accent-red;
+}
+
+.widget-buttons-grid > flowbox > flowboxchild > button:hover {
+  background: @accent-green;
+}
+
+.widget-buttons-grid > flowbox > flowboxchild > button.toggle:checked {
+  background: @accent-green;
+}
+
+.widget-buttons-grid > flowbox > flowboxchild > button.toggle:checked:hover {
+  background: @accent-green;
+}
+
+.widget-buttons-grid > flowbox > flowboxchild > button {
+  background-color: alpha(@bg-primary, 0.8);
+}

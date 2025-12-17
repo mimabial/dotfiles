@@ -1,0 +1,18 @@
+# Color mapping for pywal replacement
+# Format: #hexcolor=pywal_variable
+# Theme: Forest Green
+
+# Primary backgrounds
+#293136=background
+#333c43=color0
+#3a464c=color0
+#3B4252=color0
+#434f55=color0
+#48584e=color0
+#4c566a=color0
+#5d6b66=color8
+#7fbbb3=color6
+#9da9a0=color7
+#d3c6aa=foreground
+#d699b6=color9
+#e67e80=color9

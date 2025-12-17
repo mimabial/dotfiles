@@ -1,0 +1,12 @@
+{
+  echo "# Pacman packages"
+  pacman -Qq
+  echo -e "\n# AUR packages"
+  if command -v yay &>/dev/null; then
+    yay -Qmq
+  elif command -v paru &>/dev/null; then
+    paru -Qmq
+  fi
+  echo -e "\n# Flatpak packages"
+  flatpak list --app --columns=application
+} >~/installed_packages.txt

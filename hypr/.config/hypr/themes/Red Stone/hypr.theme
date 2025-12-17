@@ -1,0 +1,50 @@
+$HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
+
+
+$SDDM_THEME = Red-Stone
+$GTK_THEME = Red-Stone
+$ICON_THEME = Tela-circle-red
+$COLOR_SCHEME=prefer-dark
+$NVIM_SCHEME = ashen
+
+exec = gsettings set org.gnome.desktop.interface icon-theme '$ICON_THEME'
+exec = gsettings set org.gnome.desktop.interface gtk-theme '$GTK_THEME'
+exec = gsettings set org.gnome.desktop.interface color-scheme '$COLOR_SCHEME'
+
+general {
+    gaps_in = 2
+    gaps_out = 4
+    border_size = 2
+    col.active_border = rgba(d4896bff)
+    col.inactive_border = rgba(3d3935ff)
+    layout = dwindle
+    resize_on_border = true
+}
+
+group {
+    col.border_active = rgba(d4896bff)
+    col.border_inactive = rgba(3d3935cc)
+    col.border_locked_active = rgba(FFFFFFff)
+    col.border_locked_inactive = rgba(FFFFFFcc)
+}
+
+decoration {
+    rounding = 3
+
+    blur {
+        enabled = yes
+        size = 4
+        passes = 2
+        new_optimizations = on
+        ignore_opacity = on
+        xray = false
+    }
+    shadow {
+        enabled = false
+    }
+}
+
+layerrule = blur,waybar
+layerrule = ignorezero,waybar
+
+

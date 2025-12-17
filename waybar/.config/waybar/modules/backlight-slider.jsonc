@@ -1,0 +1,9 @@
+{
+  "backlight/slider": {
+    "justify": "center",
+    "min": 5,
+    "max": 100,
+    "orientation": "horizontal",
+    "device": "intel_backlight"
+  }
+}

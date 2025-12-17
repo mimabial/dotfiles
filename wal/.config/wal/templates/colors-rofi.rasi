@@ -1,0 +1,11 @@
+* {{
+    background:          {background};
+    foreground:          {foreground};
+    border:              {color12};
+    accent:              {color11};
+    selected-background: {color4};
+    selected-foreground: {background};
+    separator:           {color8};
+    urgent:              {color1};
+    active:              {color2};
+}}

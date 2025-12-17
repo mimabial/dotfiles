@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Prefer restarting the watcher service (it owns Waybar lifecycle in this setup).
+if systemctl --user is-active --quiet hyprland-waybar-watcher.service 2>/dev/null; then
+  systemctl --user restart hyprland-waybar-watcher.service
+  exit 0
+fi
+
+# Fallback: hot reload or restart Waybar directly.
+if pgrep -x waybar >/dev/null 2>&1; then
+  pkill -SIGUSR2 waybar 2>/dev/null || pkill -x waybar
+else
+  uwsm-app -- waybar >/dev/null 2>&1 &
+fi

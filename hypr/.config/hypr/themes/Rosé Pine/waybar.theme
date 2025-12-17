@@ -1,0 +1,48 @@
+$HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfgen.sh
+/* Rose Pine Main Theme for Waybar */
+/* Generic color names for theme-switching compatibility */
+
+/* Main colors */
+@define-color bg #1f1d2e; /* surface */
+
+@define-color bg_selected #26233a;
+@define-color fg #ebbcba;
+@define-color border #9ccfd8; /* overlay */
+
+@define-color bg_alt #26233a;
+@define-color alt-fg #ebbcba;
+@define-color warning #9ccfd8;
+
+/* Active workspace colors */
+@define-color accent #31748f;
+@define-color wb-act-fg #9ccfd8;
+@define-color border_alt #31748f; /* iris */
+
+/* Hover colors */
+@define-color wb-hvr-bg #191724; /* base */
+@define-color fg_selected #f6c177;
+@define-color hover #eb6f92;
+
+/* Standard color palette - base colors */
+@define-color c0   #26233a;
+@define-color c1 #eb6f92; /* love */
+@define-color c2 #31748f; /* pine */
+@define-color c3 #f6c177; /* gold */
+@define-color c4 #9ccfd8; /* foam */
+@define-color purple #c4a7e7; /* iris */
+@define-color c6 #9ccfd8; /* foam */
+@define-color orange #f6c177; /* gold */
+@define-color gray #6e6a86; /* muted */
+@define-color c7  #e0def4;
+
+/* Standard color palette - bright/accent variants */
+@define-color c8   #6e6a86;
+@define-color c9 #eb6f92; /* love */
+@define-color c10 #31748f; /* pine */
+@define-color c11 #f6c177; /* gold */
+@define-color c12 #9ccfd8; /* foam */
+@define-color purple-bright #c4a7e7; /* iris */
+@define-color c14 #9ccfd8; /* foam */
+@define-color orange-bright #f6c177; /* gold */
+@define-color gray-bright #908caa; /* subtle */
+@define-color c15  #e0def4;

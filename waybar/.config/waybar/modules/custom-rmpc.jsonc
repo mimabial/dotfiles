@@ -1,0 +1,5 @@
+{
+  "format": "",
+  "on-click": "xdg-terminal-exec --app-id=com.omarchy.Rmpc -e rmpc",
+  "tooltip-format": "Music Player (Rmpc)\nSUPER+SHIFT+M"
+}

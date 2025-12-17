@@ -1,0 +1,44 @@
+$HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
+
+$GTK_THEME = Decay-Green
+$ICON_THEME = Newaita-reborn-manjaro
+$COLOR_SCHEME = prefer-dark
+$NVIM_SCHEME = ayu
+$NVIM_VARIANT = mirage
+$NVIM_TRANSPARENCY = false
+
+exec = gsettings set org.gnome.desktop.interface icon-theme '$ICON_THEME'
+exec = gsettings set org.gnome.desktop.interface gtk-theme '$GTK_THEME'
+exec = gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
+
+general {
+    gaps_in = 3
+    gaps_out = 8
+    border_size = 2
+    col.active_border = rgba(a6cc70ff)
+    col.inactive_border = rgba(1A2525ff) 
+    layout = dwindle
+    resize_on_border = true
+}
+
+group {
+    col.border_active = rgba(a6cc70ff)
+    col.border_inactive =  rgba(1A2525cc) 
+    col.border_locked_active = rgba(FFFFFFff) 
+    col.border_locked_inactive = rgba(FFFFFFcc) 
+}
+
+decoration {
+    rounding = 2
+    blur {
+        enabled = yes
+        size = 4
+        passes = 2
+        new_optimizations = on
+        ignore_opacity = on
+        xray = false
+    }
+    shadow {
+        enabled = false
+    }
+}

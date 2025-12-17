@@ -1,0 +1,42 @@
+$HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfgen.sh
+
+/* Main colors */
+@define-color bg #1F1F28; /* sumiInk3 */
+
+@define-color fg_selected #FFA066; 
+@define-color wb-hvr-bg #DCD7BA; 
+@define-color hover #FF5D62; /* sumiInk4 */
+
+@define-color bg_selected #2D4F67; 
+@define-color fg #DCD7BA; 
+@define-color border #72A7BC; /* sumiInk4 */
+
+/* Active workspace colors */
+@define-color bg_alt #957FB8;
+@define-color alt-fg #DCD7BA;
+@define-color warning #938AA9; /* crystalBlue */
+
+/* Hover colors */
+@define-color accent #6A9589;
+@define-color wb-act-fg #DCD7BA;
+@define-color border_alt #7aa89f; /* springBlue */
+
+/* Standard color palette - base colors */
+@define-color c0 #16161D; /* roninYellow */
+@define-color c1 #C34043; /* autumnRed */
+@define-color c2 #76946A; /* autumnGreen */
+@define-color c3 #c0a36e; /* autumnYellow */
+@define-color c4 #7E9CD8; /* crystalBlue */
+@define-color c5 #957FB8; /* oniViolet */
+@define-color c6 #6A9589; /* waveAqua1 */
+@define-color c7 #C8C093; /* fujiGray */
+
+/* Standard color palette - bright/accent variants */
+@define-color c8 #727169;
+@define-color c9 #E82424; /* samuraiRed */
+@define-color c10 #98bb6c; /* autumnGreen */
+@define-color c11 #e6c384; /* autumnYellow */
+@define-color c12 #7FB4CA; /* springBlue */
+@define-color c13 #938AA9; /* springViolet1 */
+@define-color c14 #7aa89f; /* waveAqua1 */
+@define-color c15 #DCD7BA; /* oldWhite */

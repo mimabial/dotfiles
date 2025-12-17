@@ -1,0 +1,46 @@
+$HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfgen.sh
+
+/* Main colors */
+@define-color bg #282c34; /* bg */
+
+@define-color bg_selected #282c34; /* bg */
+@define-color fg #abb2bf; /* fg */
+@define-color border #434852; /* gray */
+
+@define-color bg_alt #282c34; /* bg */
+@define-color alt-fg #abb2bf; /* fg */
+@define-color warning #434852; /* gray */
+
+/* Active workspace colors */
+@define-color accent #61afef; /* blue */
+@define-color wb-act-fg #282c34; /* bg */
+@define-color border_alt #61afef; /* blue */
+
+/* Hover colors */
+@define-color fg_selected #89ca78; /* cyan */
+@define-color wb-hvr-bg #282c34; /* bg */
+@define-color hover #2bbac5; /* cyan */
+
+/* Standard color palette - base colors */
+@define-color c0 #282c34;
+@define-color c8 #393e48;
+@define-color c1 #ef596f;
+@define-color c2 #89ca78;
+@define-color c3 #e5c07b;
+@define-color c4 #61afef;
+@define-color purple #d55fde;
+@define-color c6 #2bbac5;
+@define-color orange #d19a66;
+@define-color gray #7f848e; /* comment */
+
+/* Standard color palette - bright/accent variants */
+@define-color c9 #ef596f;
+@define-color c10 #89ca78;
+@define-color c11 #e2be7d; /* highlight */
+@define-color c12 #61afef;
+@define-color purple-bright #d55fde;
+@define-color c14 #2bbac5;
+@define-color orange-bright #d19a66;
+@define-color gray-bright #abb2bf; /* white */
+@define-color c7  #979eab;
+@define-color c15 #abb2bf;

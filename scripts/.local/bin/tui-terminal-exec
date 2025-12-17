@@ -1,0 +1,9 @@
+#!/bin/bash
+# Wrapper for TUI applications
+# Uses $TERMINAL_TUI instead of xdg-terminal-exec's auto-detection
+
+# Get TERMINAL_TUI from Hyprland variables or fallback
+TERMINAL_TUI="${TERMINAL_TUI:-kitty}"
+
+# Execute the terminal with all arguments passed through
+exec "${TERMINAL_TUI}" "$@"

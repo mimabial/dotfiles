@@ -1,0 +1,47 @@
+$HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
+
+$GTK_THEME = LimeGTK
+$ICON_THEME = Tela-circle-green
+$COLOR_SCHEME = prefer-dark
+$NVIM_SCHEME = bamboo
+$NVIM_VARIANT = vulgaris
+
+$CURSOR_THEME=LimeCursor
+$CURSOR_SIZE=18
+
+exec = gsettings set org.gnome.desktop.interface icon-theme '$ICON_THEME'
+exec = gsettings set org.gnome.desktop.interface gtk-theme '$GTK_THEME'
+exec = gsettings set org.gnome.desktop.interface color-scheme '$COLOR_SCHEME'
+exec = hyprctl setcursor $CURSOR_THEME $CURSOR_SIZE
+
+general {
+    gaps_in = 3
+    gaps_out = 8
+    border_size = 2
+    col.active_border = rgba(69e252ff)
+    col.inactive_border = rgba(1c1e1bcc)
+    layout = dwindle
+    resize_on_border = true
+}
+
+group {
+    col.border_active = rgba(d79921ff) rgba(98971aff) 45deg
+    col.border_inactive = rgba(665c54cc) rgba(3c3836cc) 45deg
+    col.border_locked_active = rgba(d79921ff) rgba(98971aff) 45deg
+    col.border_locked_inactive = rgba(665c54cc) rgba(3c3836cc) 45deg
+}
+
+decoration {
+    rounding = 4
+    blur {
+        enabled = yes
+        size = 4
+        passes = 2
+        new_optimizations = on
+        ignore_opacity = on
+        xray = false
+    }
+    shadow {
+        enabled = false
+    }
+}

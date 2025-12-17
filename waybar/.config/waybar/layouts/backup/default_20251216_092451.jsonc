@@ -1,0 +1,164 @@
+{
+  "layer": "top",
+  "position": "right",
+  "output": ["*"],
+  "exclusive": true,
+  "passthrough": false,
+  "reload_style_on_change": true,
+  "include": [
+    "$XDG_CONFIG_HOME/waybar/modules/*json*",
+    "$XDG_CONFIG_HOME/waybar/includes/includes.json",
+  ],
+  "modules-left": [
+    "group/datetime",
+    "group/tui",
+    "hyprland/workspaces#hindi",
+    "hyprland/submap",
+    "group/forecast",
+    "group/info",
+  ],
+  "modules-right": [
+    "group/mark",
+    "custom/mediaplayer",
+    "privacy",
+    "group/volumecontrol",
+    "group/eyecare",
+    "group/screen",
+    "group/connection",
+    "group/notification",
+    "group/forever",
+  ],
+  "group/tui": {
+    "orientation": "inherit",
+    "drawer": {
+      "transition-duration": 500,
+      "transition-left-to-right": true,
+    },
+    "modules": ["custom/terminal", "custom/updates"],
+  },
+  "group/screen": {
+    "orientation": "inherit",
+    "drawer": {
+      "transition-duration": 500,
+      "transition-left-to-right": false,
+    },
+    "modules": ["custom/screenrecord", "custom/screenshot"],
+  },
+  "group/datetime": {
+    "orientation": "inherit",
+    "drawer": {
+      "transition-duration": 500,
+      "transition-left-to-right": true,
+    },
+    "modules": ["clock#time", "clock#date"],
+  },
+  "group/info": {
+    "orientation": "inherit",
+    "drawer": {
+      "transition-duration": 500,
+      "transition-left-to-right": true,
+    },
+    "modules": [
+      "custom/dmark",
+      "custom/gpuinfo",
+      "custom/cpuinfo",
+      "memory",
+      "custom/fanspeedinfo",
+    ],
+  },
+  "group/forecast": {
+    "orientation": "inherit",
+    "drawer": {
+      "transition-duration": 500,
+      "transition-left-to-right": true,
+    },
+    "modules": [
+      "custom/weather",
+      "custom/weather#minmax",
+      "custom/weather#sunrise",
+      "custom/weather#sunset",
+    ],
+  },
+  "group/mark": {
+    "orientation": "inherit",
+    "drawer": {
+      "transition-duration": 500,
+      "transition-left-to-right": false,
+    },
+    "modules": [
+      "custom/mark",
+      "custom/keybindhint",
+      "custom/colormode",
+      "custom/focusmode",
+      "custom/themeswitch",
+      "custom/wallchange",
+      "custom/cliphist",
+      "custom/caffeine",
+    ],
+  },
+  "group/volumecontrol": {
+    "orientation": "inherit",
+    "drawer": {
+      "transition-duration": 500,
+      "transition-left-to-right": false,
+    },
+    "modules": ["pulseaudio", "pulseaudio#microphone", "pulseaudio/slider"],
+  },
+  "group/eyecare": {
+    "orientation": "inherit",
+    "drawer": {
+      "transition-duration": 500,
+      "transition-left-to-right": false,
+    },
+    "modules": ["backlight", "custom/hyprsunset", "backlight/slider"],
+  },
+  "group/notification": {
+    "orientation": "inherit",
+    "drawer": {
+      "transition-duration": 500,
+      "transition-left-to-right": false,
+    },
+    "modules": ["custom/swaync", "custom/github#notifications"],
+  },
+  "group/connection": {
+    "orientation": "inherit",
+    "drawer": {
+      "transition-duration": 500,
+      "transition-left-to-right": false,
+    },
+    "modules": ["tray", "group/web", "group/wireless", "custom/vpn"],
+  },
+  "group/forever": {
+    "orientation": "inherit",
+    "modules": ["group/power", "custom/powermenu"],
+  },
+  "group/web": {
+    "orientation": "inherit",
+    "drawer": {
+      "transition-duration": 500,
+      "transition-left-to-right": false,
+    },
+    "modules": ["network", "custom/network#speed"],
+  },
+  "group/wireless": {
+    "orientation": "inherit",
+    "drawer": {
+      "transition-duration": 500,
+      "transition-left-to-right": false,
+    },
+    "modules": ["bluetooth", "bluetooth#status"],
+  },
+  "group/power": {
+    "orientation": "inherit",
+    "drawer": {
+      "transition-duration": 500,
+      "transition-left-to-right": false,
+    },
+    "modules": [
+      "custom/hyprmenu",
+      "custom/colorpicker",
+      "hyprland/language",
+      "battery",
+    ],
+  },
+}

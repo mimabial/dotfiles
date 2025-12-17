@@ -1,0 +1,69 @@
+[general]
+import = ["./colors.toml", "./theme.toml", ".keybindings.toml"]
+live_config_reload = true
+working_directory = "None"
+
+[env]
+TERM = "alacritty"
+
+[terminal]
+
+[terminal.shell]
+args = ["-l", "-c", "tmux attach || tmux"]
+program = "/bin/zsh"
+
+[font]
+builtin_box_drawing = true
+size = 9
+
+[font.normal]
+family = "JetBrainsMono Nerd Font"
+style = "Regular"
+
+[font.bold]
+family = "JetBrainsMono Nerd Font"
+style = "Bold"
+
+[font.italic]
+family = "JetBrainsMono Nerd Font"
+style = "Italic"
+
+[font.bold_italic]
+family = "JetBrainsMono Nerd Font"
+style = "Bold Italic"
+
+[font.offset]
+x = 0
+y = 2
+
+[window]
+dynamic_title = true
+dynamic_padding = true
+decorations = "none"
+
+[window.padding]
+x = 10
+y = 4
+
+[window.class]
+instance = "Alacritty"
+general = "Alacritty"
+
+[cursor]
+style.shape = "block"
+unfocused_hollow = true
+
+[selection]
+semantic_escape_chars = ",│`|:\"' ()[]{}<>\t"
+save_to_clipboard = true
+
+[mouse]
+hide_when_typing = true
+
+[[mouse.bindings]]
+mouse = "Middle"
+action = "PasteSelection"
+
+[scrolling]
+history = 10000
+multiplier = 6

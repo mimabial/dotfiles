@@ -1,0 +1,54 @@
+$HOME/.config/tmux/theme.conf|tmux source-file ~/.config/tmux/tmux.conf
+
+# Tmux theme for Material Sakura
+# Auto-generated from kitty.theme colors
+
+# ============================================================================
+# Standard 16 color palette
+# ============================================================================
+set -g @color0 "#f2e9e1"
+set -g @color1 "#b4637a"
+set -g @color2 "#286983"
+set -g @color3 "#ea9d34"
+set -g @color4 "#56949f"
+set -g @color5 "#907aa9"
+set -g @color6 "#d7827e"
+set -g @color7 "#575279"
+set -g @color8 "#9893a5"
+set -g @color9 "#b4637a"
+set -g @color10 "#286983"
+set -g @color11 "#ea9d34"
+set -g @color12 "#56949f"
+set -g @color13 "#907aa9"
+set -g @color14 "#d7827e"
+set -g @color15 "#575279"
+
+# ============================================================================
+# Semantic color aliases
+# ============================================================================
+set -g @theme_bg "#faf4ed"
+set -g @theme_fg "#575279"
+set -g @theme_accent "#56949f"
+set -g @theme_gray "#9893a5"
+set -g @theme_highlight "#286983"
+set -g @theme_red "#b4637a"
+set -g @theme_brightred "#b4637a"
+set -g @theme_green "#286983"
+set -g @theme_yellow "#ea9d34"
+set -g @theme_blue "#56949f"
+set -g @theme_magenta "#907aa9"
+set -g @theme_cyan "#d7827e"
+
+# ============================================================================
+# Tmux color settings
+# ============================================================================
+set -g status-style "bg=#faf4ed,fg=#575279"
+set -g message-style "bg=#faf4ed,fg=#56949f"
+set -g message-command-style "bg=#faf4ed,fg=#56949f"
+set -g pane-border-style "fg=#9893a5"
+set -g pane-active-border-style "fg=#286983"
+set -g window-status-style "fg=#9893a5"
+set -g window-status-current-style "fg=#56949f,bold"
+set -g mode-style "bg=#56949f,fg=#faf4ed"
+set -g clock-mode-colour "#56949f"
+

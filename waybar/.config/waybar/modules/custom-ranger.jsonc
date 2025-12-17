@@ -1,0 +1,5 @@
+{
+  "format": "",
+  "on-click": "xdg-terminal-exec --app-id=com.omarchy.Ranger -e ranger",
+  "tooltip-format": "Ranger File Manager (SUPER+SHIFT+F)"
+}

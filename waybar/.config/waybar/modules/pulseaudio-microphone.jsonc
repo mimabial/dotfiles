@@ -1,0 +1,13 @@
+{
+  "pulseaudio#microphone": {
+    "format": "{format_source}",
+    "format-source": "",
+    "format-source-muted": "",
+    "on-click": "hyprshell volumecontrol -i m",
+    "on-click-right": "pavucontrol -t 4",
+    "on-scroll-up": "hyprshell volumecontrol -i i",
+    "on-scroll-down": "hyprshell volumecontrol -i d",
+    "tooltip-format": "{volume}% {format_source} | {desc}",
+    "scroll-step": 5
+  }
+}

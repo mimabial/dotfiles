@@ -1,0 +1,5 @@
+{
+  "format": "󰊢",
+  "on-click": "omarchy-launch-lazygit",
+  "tooltip-format": "LazyGit (SUPER+SHIFT+G)"
+}

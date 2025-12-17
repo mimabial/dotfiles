@@ -1,0 +1,54 @@
+$HOME/.config/tmux/theme.conf|tmux source-file ~/.config/tmux/tmux.conf
+
+# Tmux theme for One Dark
+# Auto-generated from kitty.theme colors
+
+# ============================================================================
+# Standard 16 color palette
+# ============================================================================
+set -g @color0 "#282c34"
+set -g @color1 "#e06c75"
+set -g @color2 "#98c379"
+set -g @color3 "#e5c07b"
+set -g @color4 "#61afef"
+set -g @color5 "#c678dd"
+set -g @color6 "#65b6c2"
+set -g @color7 "#979eab"
+set -g @color8 "#393e48"
+set -g @color9 "#d77c75"
+set -g @color10 "#a8d386"
+set -g @color11 "#ddc985"
+set -g @color12 "#6bb9e5"
+set -g @color13 "#c691dd"
+set -g @color14 "#65d2c2"
+set -g @color15 "#abb2bf"
+
+# ============================================================================
+# Semantic color aliases
+# ============================================================================
+set -g @theme_bg "#282c34"
+set -g @theme_fg "#979eab"
+set -g @theme_accent "#61afef"
+set -g @theme_gray "#393e48"
+set -g @theme_highlight "#61afef"
+set -g @theme_red "#e06c75"
+set -g @theme_brightred "#d77c75"
+set -g @theme_green "#98c379"
+set -g @theme_yellow "#e5c07b"
+set -g @theme_blue "#61afef"
+set -g @theme_magenta "#c678dd"
+set -g @theme_cyan "#65b6c2"
+
+# ============================================================================
+# Tmux color settings
+# ============================================================================
+set -g status-style "bg=#282c34,fg=#979eab"
+set -g message-style "bg=#282c34,fg=#61afef"
+set -g message-command-style "bg=#282c34,fg=#61afef"
+set -g pane-border-style "fg=#393e48"
+set -g pane-active-border-style "fg=#61afef"
+set -g window-status-style "fg=#393e48"
+set -g window-status-current-style "fg=#61afef,bold"
+set -g mode-style "bg=#61afef,fg=#282c34"
+set -g clock-mode-colour "#61afef"
+

@@ -1,0 +1,22 @@
+$HOME/.config/swaync/theme.css|swaync-client -R && swaync-client -rs
+
+@define-color fg-primary #f1eff0;
+@define-color fg-secondary #c3b7b8;
+
+@define-color bg-primary #2c2525;
+@define-color bg-secondary #403838;
+@define-color bg-tertiary #4c4545;
+
+@define-color accent-red #fd6883;
+@define-color accent-green #adda78;
+@define-color accent-yellow #f9cc6c;
+@define-color accent-blue #85dacc;
+@define-color accent-purple #a8a9eb;
+@define-color accent-aqua #85dacc;
+@define-color accent-orange #f38d70;
+
+@define-color border-primary #72696a;
+@define-color border-secondary #948a8b;
+
+@define-color gray #72696a;
+

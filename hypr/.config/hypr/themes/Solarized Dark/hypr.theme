@@ -1,0 +1,51 @@
+$HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
+
+$GTK_THEME = Solarized Dark
+$ICON_THEME = Tela-circle-solarized
+$COLOR_SCHEME=prefer-dark
+$CURSOR_THEME = Capitaine-Cursors-White
+$CURSOR_SIZE=20
+$CODE_THEME=Solarized Dark
+$NVIM_SCHEME = solarized
+$NVIM_BACKGROUND = dark
+$NVIM_TRANSPARENCY = false
+
+exec = gsettings set org.gnome.desktop.interface icon-theme '$ICON_THEME'
+exec = gsettings set org.gnome.desktop.interface gtk-theme '$GTK_THEME'
+exec = gsettings set org.gnome.desktop.interface color-scheme '$COLOR_SCHEME'
+
+general {
+    gaps_in = 3
+    gaps_out = 6
+    border_size = 2
+    col.active_border = rgba(b58900ff)
+    col.inactive_border = rgba(93a1a1cc)
+    layout = dwindle
+    resize_on_border = true
+}
+
+group {
+    col.border_active = rgba(b58900ff)
+    col.border_inactive = rgba(93a1a1cc)
+    col.border_locked_active = rgba(b58900ff)
+    col.border_locked_inactive = rgba(93a1a1cc)
+}
+
+decoration {
+    rounding = 4
+
+    blur {
+        enabled = yes
+        size = 6
+        passes = 3
+        new_optimizations = on
+        ignore_opacity = on
+        xray = false
+    }
+
+    shadow {
+        enabled = false
+    }
+}
+
+layerrule = blur,waybar

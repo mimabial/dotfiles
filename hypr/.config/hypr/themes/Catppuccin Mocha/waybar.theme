@@ -1,0 +1,35 @@
+$HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfgen.sh
+
+@define-color bg #181825; /* Mantle */
+
+@define-color bg_selected #11111b;
+@define-color fg #cdd6f4; /* Text */
+@define-color border #f5c2e7; /* Surface1 */
+
+@define-color alt-fg #11111b;
+@define-color bg_alt #cdd6f4; /* Text */
+@define-color warning #f5c2e7; /* Surface1 */
+
+@define-color accent #a6adc8;
+@define-color wb-act-fg #313244;
+@define-color border_alt #CBA6F7; /* Flamingo */
+
+@define-color hover #f38ba8;
+@define-color wb-hvr-bg #313244;
+@define-color fg_selected #89b4fa; /* Rosewater */
+
+@define-color c1 #f38ba8;
+@define-color c2 #a6e3a1;
+@define-color c3 #f9e2af;
+@define-color c4 #89b4fa;
+@define-color purple #cba6f7;
+@define-color c6 #94e2d5;
+@define-color c7 #6c7086;
+
+@define-color c9 #eba0ac;
+@define-color c10 #a6e3a1;
+@define-color c11 #fab387;
+@define-color c12 #89dceb;
+@define-color purple-bright #f5c2e7;
+@define-color c14 #89dceb;
+@define-color c15 #9399b2;

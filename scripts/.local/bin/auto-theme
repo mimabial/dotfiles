@@ -1,0 +1,77 @@
+#!/bin/bash
+# Auto-theme control script
+
+DAEMON_SCRIPT="$HOME/.local/lib/hypr/theme/auto_theme.py"
+PYTHON="$HOME/.local/state/hypr/pip_env/bin/python"
+
+case "$1" in
+    start)
+        echo "Starting auto-theme daemon..."
+        systemctl --user start auto-theme.service
+        ;;
+    stop)
+        echo "Stopping auto-theme daemon..."
+        systemctl --user stop auto-theme.service
+        ;;
+    restart)
+        echo "Restarting auto-theme daemon..."
+        systemctl --user restart auto-theme.service
+        ;;
+    enable)
+        echo "Enabling auto-theme daemon..."
+        systemctl --user enable auto-theme.service
+        ;;
+    disable)
+        echo "Disabling auto-theme daemon..."
+        systemctl --user disable auto-theme.service
+        ;;
+    status)
+        systemctl --user status auto-theme.service --no-pager
+        echo ""
+        $PYTHON "$DAEMON_SCRIPT" --status
+        ;;
+    toggle)
+        # Send toggle signal to daemon, or run once if not running
+        if systemctl --user is-active auto-theme.service &>/dev/null; then
+            systemctl --user kill -s USR1 auto-theme.service
+            echo "Toggle signal sent to daemon"
+        else
+            echo "Daemon not running, applying toggle once..."
+            $PYTHON "$DAEMON_SCRIPT" --toggle
+        fi
+        ;;
+    refresh)
+        # Force refresh (clears manual override)
+        if systemctl --user is-active auto-theme.service &>/dev/null; then
+            systemctl --user kill -s USR2 auto-theme.service
+            echo "Refresh signal sent to daemon"
+        else
+            echo "Daemon not running, applying refresh once..."
+            $PYTHON "$DAEMON_SCRIPT" --once
+        fi
+        ;;
+    once)
+        # Run single check without daemon
+        $PYTHON "$DAEMON_SCRIPT" --once
+        ;;
+    config)
+        ${EDITOR:-nvim} "$HOME/.config/hypr/auto_theme.conf"
+        ;;
+    *)
+        echo "Auto-theme control script"
+        echo ""
+        echo "Usage: auto-theme <command>"
+        echo ""
+        echo "Commands:"
+        echo "  start    - Start the daemon"
+        echo "  stop     - Stop the daemon"
+        echo "  restart  - Restart the daemon"
+        echo "  enable   - Enable daemon at login"
+        echo "  disable  - Disable daemon at login"
+        echo "  status   - Show daemon status and current mode"
+        echo "  toggle   - Manually toggle light/dark (with override timer)"
+        echo "  refresh  - Force refresh (clear manual override)"
+        echo "  once     - Run single check without daemon"
+        echo "  config   - Edit configuration file"
+        ;;
+esac

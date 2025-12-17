@@ -1,0 +1,24 @@
+//  User can copy this module to their ~/.config/waybar/modules directory
+// and remove --interval 5 from the exec command to let waybar poll the sensorsinfo script every second
+// ONLY do that to save memory but CPU usage will increase
+// Using this uses memory and but the CPU syscalls are less frequent
+{
+  "custom/fanspeedinfo": {
+    "justify": "right",
+    "align": 0,
+    "exec": "hyprshell fanspeedinfo",
+    "format": "<span size='12pt'></span>\n{}",
+    "return-type": "json",
+    "interval": 5,
+    "tooltip": true,
+    "class": "default-margin-padding",
+    "on-click": "hyprshell fanspeedinfo.py --toggle",
+    "menu": "on-click-right",
+    "menu-file": "$XDG_CONFIG_HOME/waybar/menus/fanspeedinfo.xml",
+    "menu-actions": {
+      "toggle": "hyprshell fanspeedinfo.py --toggle",
+      "reset": "hyprshell fanspeedinfo.py --reset"
+    },
+    "signal": 19
+  }
+}

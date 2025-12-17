@@ -1,0 +1,54 @@
+$HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
+
+$GTK_THEME = Gruvbox-Retro
+$ICON_THEME = Gruvbox-Plus-Dark
+$CURSOR_THEME = Gruvbox-Retro
+$CURSOR_SIZE = 20
+$COLOR_SCHEME = prefer-dark
+$NVIM_SCHEME = gruvbox-material
+$NVIM_VARIANT = medium
+$NVIM_BACKGROUND = dark
+$NVIM_TRANSPARENCY = false
+
+# Optional: The varibles above will be set automatically when the theme is loaded
+# This exec commands will soon be deprecated
+
+exec = gsettings set org.gnome.desktop.interface icon-theme $ICON_THEME
+exec = gsettings set org.gnome.desktop.interface gtk-theme $GTK_THEME
+exec = gsettings set org.gnome.desktop.interface color-scheme $COLOR_SCHEME
+exec = gsettings set org.gnome.desktop.interface cursor-theme $CURSOR_THEME
+exec = gsettings set org.gnome.desktop.interface cursor-size $CURSOR_SIZE
+exec = hyprctl setcursor $CURSOR_THEME $CURSOR_SIZE
+
+general {
+    gaps_in = 3
+    gaps_out = 6
+    border_size = 2
+    col.active_border = rgba(ecd3a0ff) 
+    col.inactive_border = rgba(665c54d9) 
+    layout = dwindle
+    resize_on_border = true
+}
+
+group {
+    col.border_active = rgba(ecd3a0ff) 
+    col.border_inactive = rgba(665c54d9) 
+    col.border_locked_active = rgba(ecd3a0ff) 
+    col.border_locked_inactive = rgba(665c54d9) 
+}
+
+decoration {
+    rounding = 4
+    shadow:enabled = false
+
+    blur {
+        enabled = yes
+        size = 4
+        passes = 2
+        new_optimizations = on
+        ignore_opacity = on
+        xray = false
+    }
+}
+
+layerrule = blur,waybar

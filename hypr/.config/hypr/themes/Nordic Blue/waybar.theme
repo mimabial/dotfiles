@@ -1,0 +1,40 @@
+$HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfgen.sh
+
+/* Main colors */
+@define-color bg #3b4252; /* nord1 */
+
+@define-color bg_selected #476A84;
+@define-color fg #D9D9D9;
+@define-color border #434c5e; /* nord2 */
+
+@define-color bg_alt #476A84;
+@define-color alt-fg #D9D9D9;
+@define-color warning #434c5e; /* nord2 */
+
+/* Active workspace colors */
+@define-color border_alt #a3be8c;
+@define-color wb-act-fg #EFEFF5;
+@define-color accent #a3be8c; /* nord8 */
+
+/* Hover colors */
+@define-color fg_selected #7287FD;
+@define-color wb-hvr-bg #EFEFF5;
+@define-color hover #81a1c1; /* nord9 */
+
+@define-color c0 #3B4252;
+@define-color c8 #4C566A;
+@define-color c1 #bf616a;
+@define-color c9 #d08770;
+@define-color c2 #a3be8c;
+@define-color c10 #8fbcbb;
+@define-color c3 #ebcb8b;
+@define-color c11 #d08770;
+@define-color c4 #5e81ac;
+@define-color c12 #81a1c1;
+@define-color c5 #b48ead;
+@define-color c13 #b48ead;
+@define-color c6 #88c0d0;
+@define-color c14 #8fbcbb;
+@define-color c7 #E5E9F0;
+@define-color c15 #ECEFF4;
+

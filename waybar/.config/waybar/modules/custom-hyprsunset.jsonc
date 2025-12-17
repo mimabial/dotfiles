@@ -1,0 +1,34 @@
+{
+  "custom/hyprsunset": {
+    "justify": "center",
+    "return-type": "json",
+    "format": "{0} ",
+    "exec": "hyprshell hyprsunset -rq",
+    "on-click": "hyprshell hyprsunset -t -P waybar:19",
+    "on-scroll-up": "hyprshell hyprsunset -i '' -P waybar:19",
+    "on-scroll-down": "hyprshell hyprsunset -d '' -P waybar:19",
+    "interval": "once",
+    "tooltip": true,
+    "signal": 19,
+    "menu": "on-click-right",
+    "menu-file": "$XDG_CONFIG_HOME/waybar/menus/hyprsunset.xml",
+    "menu-actions": {
+      "warm-candle": "hyprshell hyprsunset --cm temp -s 3000 -P waybar:19",
+      "soft-warm": "hyprshell hyprsunset --cm temp -s 4000 -P waybar:19",
+      "neutral-white": "hyprshell hyprsunset --cm temp -s 5000 -P waybar:19",
+      "daylight": "hyprshell hyprsunset --cm temp -s 6500 -P waybar:19",
+      "cool-white": "hyprshell hyprsunset --cm temp -s 7500 -P waybar:19",
+      "bright-blue": "hyprshell hyprsunset --cm temp -s 9000 -P waybar:19",
+      "arctic-blue": "hyprshell hyprsunset --cm temp -s 10000 -P waybar:19",
+      "gamma-20": "hyprshell hyprsunset --cm gamma -s 20 -P waybar:19",
+      "gamma-30": "hyprshell hyprsunset --cm gamma -s 30 -P waybar:19",
+      "gamma-40": "hyprshell hyprsunset --cm gamma -s 40 -P waybar:19",
+      "gamma-50": "hyprshell hyprsunset --cm gamma -s 50 -P waybar:19",
+      "gamma-60": "hyprshell hyprsunset --cm gamma -s 60 -P waybar:19",
+      "gamma-70": "hyprshell hyprsunset --cm gamma -s 70 -P waybar:19",
+      "gamma-80": "hyprshell hyprsunset --cm gamma -s 80 -P waybar:19",
+      "gamma-90": "hyprshell hyprsunset --cm gamma -s 90 -P waybar:19",
+      "gamma-100": "hyprshell hyprsunset --cm gamma -s 100 -P waybar:19"
+    }
+  }
+}

@@ -1,0 +1,54 @@
+$HOME/.config/tmux/theme.conf|tmux source-file ~/.config/tmux/tmux.conf
+
+# Tmux theme for Gruvbox Retro
+# Auto-generated from kitty.theme colors
+
+# ============================================================================
+# Standard 16 color palette
+# ============================================================================
+set -g @color0 "#272727"
+set -g @color1 "#cc231c"
+set -g @color2 "#989719"
+set -g @color3 "#d79920"
+set -g @color4 "#448488"
+set -g @color5 "#b16185"
+set -g @color6 "#689d69"
+set -g @color7 "#a89983"
+set -g @color8 "#928373"
+set -g @color9 "#fb4833"
+set -g @color10 "#b8ba25"
+set -g @color11 "#fabc2e"
+set -g @color12 "#83a597"
+set -g @color13 "#d3859a"
+set -g @color14 "#8ec07b"
+set -g @color15 "#ebdbb2"
+
+# ============================================================================
+# Semantic color aliases
+# ============================================================================
+set -g @theme_bg "#272727"
+set -g @theme_fg "#ebdbb2"
+set -g @theme_accent "#448488"
+set -g @theme_gray "#928373"
+set -g @theme_highlight "#d3869b"
+set -g @theme_red "#cc231c"
+set -g @theme_brightred "#fb4833"
+set -g @theme_green "#989719"
+set -g @theme_yellow "#d79920"
+set -g @theme_blue "#448488"
+set -g @theme_magenta "#b16185"
+set -g @theme_cyan "#689d69"
+
+# ============================================================================
+# Tmux color settings
+# ============================================================================
+set -g status-style "bg=#272727,fg=#ebdbb2"
+set -g message-style "bg=#272727,fg=#448488"
+set -g message-command-style "bg=#272727,fg=#448488"
+set -g pane-border-style "fg=#928373"
+set -g pane-active-border-style "fg=#d3869b"
+set -g window-status-style "fg=#928373"
+set -g window-status-current-style "fg=#448488,bold"
+set -g mode-style "bg=#448488,fg=#272727"
+set -g clock-mode-colour "#448488"
+

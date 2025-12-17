@@ -1,0 +1,54 @@
+$HOME/.config/tmux/theme.conf|tmux source-file ~/.config/tmux/tmux.conf
+
+# Tmux theme for Rosé Pine
+# Auto-generated from kitty.theme colors
+
+# ============================================================================
+# Standard 16 color palette
+# ============================================================================
+set -g @color0 "#26233a"
+set -g @color1 "#eb6f92"
+set -g @color2 "#31748f"
+set -g @color3 "#f6c177"
+set -g @color4 "#9ccfd8"
+set -g @color5 "#c4a7e7"
+set -g @color6 "#ebbcba"
+set -g @color7 "#e0def4"
+set -g @color8 "#6e6a86"
+set -g @color9 "#eb6f92"
+set -g @color10 "#31748f"
+set -g @color11 "#f6c177"
+set -g @color12 "#9ccfd8"
+set -g @color13 "#c4a7e7"
+set -g @color14 "#ebbcba"
+set -g @color15 "#e0def4"
+
+# ============================================================================
+# Semantic color aliases
+# ============================================================================
+set -g @theme_bg "#191724"
+set -g @theme_fg "#e0def4"
+set -g @theme_accent "#9ccfd8"
+set -g @theme_gray "#6e6a86"
+set -g @theme_highlight "#31748f"
+set -g @theme_red "#eb6f92"
+set -g @theme_brightred "#eb6f92"
+set -g @theme_green "#31748f"
+set -g @theme_yellow "#f6c177"
+set -g @theme_blue "#9ccfd8"
+set -g @theme_magenta "#c4a7e7"
+set -g @theme_cyan "#ebbcba"
+
+# ============================================================================
+# Tmux color settings
+# ============================================================================
+set -g status-style "bg=#191724,fg=#e0def4"
+set -g message-style "bg=#191724,fg=#9ccfd8"
+set -g message-command-style "bg=#191724,fg=#9ccfd8"
+set -g pane-border-style "fg=#6e6a86"
+set -g pane-active-border-style "fg=#31748f"
+set -g window-status-style "fg=#6e6a86"
+set -g window-status-current-style "fg=#9ccfd8,bold"
+set -g mode-style "bg=#9ccfd8,fg=#191724"
+set -g clock-mode-colour "#9ccfd8"
+

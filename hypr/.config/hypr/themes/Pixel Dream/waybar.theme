@@ -1,0 +1,40 @@
+$HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfgen.sh
+
+@define-color bg_selected #282828;
+@define-color fg #ebdbb2;
+@define-color border #98971a;
+
+@define-color bg_alt #282828;
+@define-color alt-fg #ebdbb2;
+@define-color warning #98971a;
+
+@define-color accent #fabd2f;
+@define-color border_alt #d79921;
+@define-color wb-act-fg #282828;
+
+@define-color fg_selected #a9b665;
+@define-color wb-hvr-bg #282828;
+@define-color hover #f2594b;
+
+* {
+    font-family: "Miracode";
+}
+
+@define-color bg #32302f;
+
+@define-color c1 #ea6962;
+@define-color c9 #f2594b;
+@define-color c2 #a9b665;
+@define-color c10 #a9b665;
+@define-color c3 #d8a657;
+@define-color c11 #e78a4e;
+@define-color c4 #7daea3;
+@define-color c12 #7daea3;
+@define-color purple #d3869b;
+@define-color purple-bright #e78a4e;
+@define-color aqua #89b482;
+@define-color aqua-bright #7daea3;
+@define-color c0 #272727;
+@define-color c8 #928373;
+@define-color c7 #a89983;
+@define-color c15 #ebdbb2;

@@ -1,0 +1,41 @@
+{
+  "backlight": {
+    "format": "{icon}",
+    "format-icons": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ],
+    "on-scroll-down": "hyprshell brightnesscontrol.sh d",
+    "on-scroll-up": "hyprshell brightnesscontrol.sh i",
+    "smooth-scrolling-threshold": 1,
+    "tooltip": false,
+    "tooltip-format": "Brightness: {percent}% "
+  },
+  "backlight#intel_backlight": {
+    "device": "intel_backlight",
+    "format": "{icon}",
+    "format-icons": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ],
+    "on-scroll-down": "hyprshell brightnesscontrol.sh d",
+    "on-scroll-up": "hyprshell brightnesscontrol.sh i",
+    "smooth-scrolling-threshold": 1,
+    "tooltip": true,
+    "tooltip-format": "Backlight level: {icon} {percent}%\nUsing: intel_backlight"
+  }
+}

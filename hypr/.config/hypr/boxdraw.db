@@ -1,0 +1,253 @@
+─	horizontal line
+━	heavy horizontal
+│	vertical line
+┃	heavy vertical
+┌	down and right
+┍	down light and right heavy
+┎	down heavy and right light
+┏	heavy down and right
+┐	down and left
+┑	down light and left heavy
+┒	down heavy and left light
+┓	heavy down and left
+└	up and right
+┕	up light and right heavy
+┖	up heavy and right light
+┗	heavy up and right
+┘	up and left
+┙	up light and left heavy
+┚	up heavy and left light
+┛	heavy up and left
+├	vertical and right
+┝	vertical light and right heavy
+┞	up heavy and right down light
+┟	down heavy and right up light
+┠	vertical heavy and right light
+┡	down light and right up heavy
+┢	up light and right down heavy
+┣	heavy vertical and right
+┤	vertical and left
+┥	vertical light and left heavy
+┦	up heavy and left down light
+┧	down heavy and left up light
+┨	vertical heavy and left light
+┩	down light and left up heavy
+┪	up light and left down heavy
+┫	heavy vertical and left
+┬	down and horizontal
+┭	left heavy and right down light
+┮	right heavy and left down light
+┯	down light and horizontal heavy
+┰	down heavy and horizontal light
+┱	right light and left down heavy
+┲	left light and right down heavy
+┳	heavy down and horizontal
+┴	up and horizontal
+┵	left heavy and right up light
+┶	right heavy and left up light
+┷	up light and horizontal heavy
+┸	up heavy and horizontal light
+┹	right light and left up heavy
+┺	left light and right up heavy
+┻	heavy up and horizontal
+┼	vertical and horizontal
+┽	left heavy and right vertical light
+┾	right heavy and left vertical light
+┿	vertical light and horizontal heavy
+╀	up heavy and down horizontal light
+╁	down heavy and up horizontal light
+╂	vertical heavy and horizontal light
+╃	left up heavy and right down light
+╄	right up heavy and left down light
+╅	left down heavy and right up light
+╆	right down heavy and left up light
+╇	down light and up horizontal heavy
+╈	up light and down horizontal heavy
+╉	right light and left vertical heavy
+╊	left light and right vertical heavy
+╋	heavy vertical and horizontal
+╴	light left
+╵	light up
+╶	light right
+╷	light down
+╸	heavy left
+╹	heavy up
+╺	heavy right
+╻	heavy down
+╼	light left and heavy right
+╽	light up and heavy down
+╾	heavy left and light right
+╿	heavy up and light down
+╌	light double dash horizontal
+╍	heavy double dash horizontal
+╎	light double dash vertical
+╏	heavy double dash vertical
+┄	light triple dash horizontal
+┅	heavy triple dash horizontal
+┆	light triple dash vertical
+┇	heavy triple dash vertical
+┈	light quadruple dash horizontal
+┉	heavy quadruple dash horizontal
+┊	light quadruple dash vertical
+┋	heavy quadruple dash vertical
+╭	arc down and right
+╮	arc down and left
+╯	arc up and left
+╰	arc up and right
+╱	diagonal upper right to lower left
+╲	diagonal upper left to lower right
+╳	diagonal cross
+═	double horizontal
+║	double vertical
+╒	down single and right double
+╓	down double and right single
+╔	double down and right
+╕	down single and left double
+╖	down double and left single
+╗	double down and left
+╘	up single and right double
+╙	up double and right single
+╚	double up and right
+╛	up single and left double
+╜	up double and left single
+╝	double up and left
+╞	vertical single and right double
+╟	vertical double and right single
+╠	double vertical and right
+╡	vertical single and left double
+╢	vertical double and left single
+╣	double vertical and left
+╤	down single and horizontal double
+╥	down double and horizontal single
+╦	double down and horizontal
+╧	up single and horizontal double
+╨	up double and horizontal single
+╩	double up and horizontal
+╪	vertical single and horizontal double
+╫	vertical double and horizontal single
+╬	double vertical and horizontal
+▀	upper half block
+▄	lower half block
+█	full block
+▌	left half block
+▐	right half block
+▖	quadrant lower left
+▗	quadrant lower right
+▘	quadrant upper left
+▝	quadrant upper right
+▚	quadrant upper left and lower right
+▞	quadrant upper right and lower left
+░	light shade
+▒	medium shade
+▓	dark shade
+▔	upper one eighth block
+▕	right one eighth block
+▁	lower one eighth block
+▂	lower one quarter block
+▃	lower three eighths block
+▅	lower five eighths block
+▆	lower three quarters block
+▇	lower seven eighths block
+▉	left seven eighths block
+▊	left three quarters block
+▋	left five eighths block
+▍	left three eighths block
+▎	left one quarter block
+▏	left one eighth block
+◢	black lower right triangle
+◣	black lower left triangle
+◤	black upper left triangle
+◥	black upper right triangle
+◰	white square with upper left quadrant
+◱	white square with lower left quadrant
+◲	white square with lower right quadrant
+◳	white square with upper right quadrant
+◧	square with upper right diagonal half black
+◨	square with lower left diagonal half black
+◩	white square with diagonal crosshatch fill
+◪	square with diagonal crosshatch fill
+◫	white square with vertical bisecting line
+◬	white up-pointing triangle with dot
+◭	up-pointing triangle with left half black
+◮	up-pointing triangle with right half black
+■	black square
+□	white square
+▢	white square with rounded corners
+▣	white square containing black small square
+▤	square with horizontal fill
+▥	square with vertical fill
+▦	square with orthogonal crosshatch fill
+▧	square with upper left to lower right fill
+▨	square with upper right to lower left fill
+▩	square with diagonal crosshatch fill
+▪	black small square
+▫	white small square
+▬	black rectangle
+▭	white rectangle
+▮	black vertical rectangle
+▯	white vertical rectangle
+▰	black parallelogram
+▱	white parallelogram
+△	white up-pointing triangle
+▲	black up-pointing triangle
+▴	black up-pointing small triangle
+▵	white up-pointing small triangle
+▶	black right-pointing triangle
+▷	white right-pointing triangle
+▸	black right-pointing small triangle
+▹	white right-pointing small triangle
+►	black right-pointing pointer
+▻	white right-pointing pointer
+▼	black down-pointing triangle
+▽	white down-pointing triangle
+▾	black down-pointing small triangle
+▿	white down-pointing small triangle
+◀	black left-pointing triangle
+◁	white left-pointing triangle
+◂	black left-pointing small triangle
+◃	white left-pointing small triangle
+◄	black left-pointing pointer
+◅	white left-pointing pointer
+◆	black diamond
+◇	white diamond
+◈	white diamond containing black small diamond
+◉	fisheye
+◊	lozenge
+○	white circle
+◌	dotted circle
+◍	circle with vertical fill
+◎	bullseye
+●	black circle
+◐	circle with left half black
+◑	circle with right half black
+◒	circle with lower half black
+◓	circle with upper half black
+◔	circle with upper right quadrant black
+◕	circle with all but upper left quadrant black
+◖	left half black circle
+◗	right half black circle
+◘	inverse bullet
+◙	inverse white circle
+◚	upper half inverse white circle
+◛	lower half inverse white circle
+◜	upper left quadrant circular arc
+◝	upper right quadrant circular arc
+◞	lower right quadrant circular arc
+◟	lower left quadrant circular arc
+◠	upper half circle
+◡	lower half circle
+⬒	black large square
+⬓	white large square
+⬔	black very small square
+⬕	white very small square
+⬖	black pentagon
+⬗	white pentagon
+⬘	black hexagon
+⬙	white hexagon
+⬚	black medium square
+⬛	black large square
+⬜	white large square
+⬝	black medium small square
+⬞	white medium small square
+⯀	lower right drop-shadowed white square
+⯁	upper right drop-shadowed white square

@@ -1,0 +1,54 @@
+$HOME/.config/tmux/theme.conf|tmux source-file ~/.config/tmux/tmux.conf
+
+# Tmux theme for Solarized Dark
+# Auto-generated from kitty.theme colors
+
+# ============================================================================
+# Standard 16 color palette
+# ============================================================================
+set -g @color0 "#002731"
+set -g @color1 "#d01b24"
+set -g @color2 "#6bbe6c"
+set -g @color3 "#a57705"
+set -g @color4 "#2075c7"
+set -g @color5 "#c61b6e"
+set -g @color6 "#259185"
+set -g @color7 "#e9e2cb"
+set -g @color8 "#006388"
+set -g @color9 "#f4153b"
+set -g @color10 "#50ee84"
+set -g @color11 "#b17e28"
+set -g @color12 "#178dc7"
+set -g @color13 "#e14d8e"
+set -g @color14 "#00b29e"
+set -g @color15 "#fcf4dc"
+
+# ============================================================================
+# Semantic color aliases
+# ============================================================================
+set -g @theme_bg "#002b36"
+set -g @theme_fg "#9bc1c2"
+set -g @theme_accent "#2075c7"
+set -g @theme_gray "#006388"
+set -g @theme_highlight "#2075c7"
+set -g @theme_red "#d01b24"
+set -g @theme_brightred "#f4153b"
+set -g @theme_green "#6bbe6c"
+set -g @theme_yellow "#a57705"
+set -g @theme_blue "#2075c7"
+set -g @theme_magenta "#c61b6e"
+set -g @theme_cyan "#259185"
+
+# ============================================================================
+# Tmux color settings
+# ============================================================================
+set -g status-style "bg=#002b36,fg=#9bc1c2"
+set -g message-style "bg=#002b36,fg=#2075c7"
+set -g message-command-style "bg=#002b36,fg=#2075c7"
+set -g pane-border-style "fg=#006388"
+set -g pane-active-border-style "fg=#2075c7"
+set -g window-status-style "fg=#006388"
+set -g window-status-current-style "fg=#2075c7,bold"
+set -g mode-style "bg=#2075c7,fg=#002b36"
+set -g clock-mode-colour "#2075c7"
+

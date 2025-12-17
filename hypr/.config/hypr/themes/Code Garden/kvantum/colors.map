@@ -1,0 +1,47 @@
+# Color mapping for pywal replacement
+# Format: #hexcolor=pywal_variable
+# Used by color.set.sh to replace theme colors with pywal colors in wallpaper mode
+
+# Primary backgrounds
+#2e3440=background
+#22252e=color0
+#151926=color0
+#1e1e20=color0
+#232325=color0
+#26272a=color0
+#28282a=color0
+#323234=color0
+#343031=color0
+#001419=color0
+#000000=color0
+#111111=color0
+
+# Secondary backgrounds / borders
+#4c566a=color4
+#48484a=color8
+#525254=color8
+#565658=color8
+#606062=color8
+#646466=color8
+#666666=color8
+
+# Muted foreground
+#727274=color7
+#7a7a7c=color7
+#88888a=color7
+#989898=color7
+#aaaaac=color7
+#c8c8ca=color7
+#d2d2d4=color7
+#d8dee9=color7
+
+# Primary foreground
+#eceff4=foreground
+
+# Accent colors
+#5e81ac=color5
+#81a1c1=color6
+#8fbcbb=color6
+#bf616a=color1
+#333399=color4
+#ff00cc=color5

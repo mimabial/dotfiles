@@ -1,0 +1,54 @@
+$HOME/.config/tmux/theme.conf|tmux source-file ~/.config/tmux/tmux.conf
+
+# Tmux theme for Catppuccin Latte
+# Auto-generated from kitty.theme colors
+
+# ============================================================================
+# Standard 16 color palette
+# ============================================================================
+set -g @color0 "#4C4F69"
+set -g @color1 "#D20F39"
+set -g @color2 "#40A02B"
+set -g @color3 "#DF8E1D"
+set -g @color4 "#1E66F5"
+set -g @color5 "#EA76CB"
+set -g @color6 "#179299"
+set -g @color7 "#9ca0b0"
+set -g @color8 "#6C6F85"
+set -g @color9 "#D20F39"
+set -g @color10 "#40A02B"
+set -g @color11 "#DF8E1D"
+set -g @color12 "#1E66F5"
+set -g @color13 "#EA76CB"
+set -g @color14 "#179299"
+set -g @color15 "#bcc0cc"
+
+# ============================================================================
+# Semantic color aliases
+# ============================================================================
+set -g @theme_bg "#eff1f5"
+set -g @theme_fg "#3b3e55"
+set -g @theme_accent "#1E66F5"
+set -g @theme_gray "#6C6F85"
+set -g @theme_highlight "#7287fd"
+set -g @theme_red "#D20F39"
+set -g @theme_brightred "#D20F39"
+set -g @theme_green "#40A02B"
+set -g @theme_yellow "#DF8E1D"
+set -g @theme_blue "#1E66F5"
+set -g @theme_magenta "#EA76CB"
+set -g @theme_cyan "#179299"
+
+# ============================================================================
+# Tmux color settings
+# ============================================================================
+set -g status-style "bg=#eff1f5,fg=#3b3e55"
+set -g message-style "bg=#eff1f5,fg=#1E66F5"
+set -g message-command-style "bg=#eff1f5,fg=#1E66F5"
+set -g pane-border-style "fg=#6C6F85"
+set -g pane-active-border-style "fg=#7287fd"
+set -g window-status-style "fg=#6C6F85"
+set -g window-status-current-style "fg=#1E66F5,bold"
+set -g mode-style "bg=#1E66F5,fg=#eff1f5"
+set -g clock-mode-colour "#1E66F5"
+

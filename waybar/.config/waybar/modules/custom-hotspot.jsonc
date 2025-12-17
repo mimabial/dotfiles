@@ -1,0 +1,12 @@
+{
+  "custom/hotspot": {
+    "justify": "center",
+    "format": "{}",
+    "exec": "hyprshell waybar.hotspot.sh",
+    "return-type": "json",
+    "on-click": "hyprshell waybar.hotspot.toggle.sh",
+    "on-click-right": "nm-connection-editor",
+    "tooltip": true,
+    "interval": 5,
+  },
+}

@@ -1,0 +1,42 @@
+$HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfgen.sh
+
+/* Main colors */
+@define-color bg #1c1c1c; /* bg */
+
+@define-color bg_selected #262626;
+@define-color fg #ffffff;
+@define-color border #d9d9d9; /* visual */
+
+/* Active workspace colors */
+@define-color accent #1bfd9c; /* glow_color/operator */
+@define-color wb-act-fg #1c1c1c; /* bg */
+@define-color border_alt #1bfd9c; /* glow_color */
+
+/* Hover colors */
+@define-color fg_selected #66b2b2; /* cursor/title */
+@define-color wb-hvr-bg #1c1c1c; /* bg */
+@define-color hover #bdfe58; /* cursor */
+
+@define-color bg_alt #d9d9d9;
+@define-color alt-fg #262626;
+@define-color warning #1bfd9c; /* glow_color */
+
+/* Standard color palette - base colors */
+@define-color c0 #1c1c1c;
+@define-color c1 #dea6a0; /* error */
+@define-color c2 #baffc9; /* added */
+@define-color c3 #ffffba; /* changed */
+@define-color c4 #7fa1c3; /* info */
+@define-color purple #a1a1a1; /* type */
+@define-color c6 #66b2b2; /* bool */
+@define-color c7 #c0c0c0;
+
+/* Standard color palette - bright/accent variants */
+@define-color c8 #404040;
+@define-color c9 #dea6a0; /* error */
+@define-color c10 #baffc9; /* added */
+@define-color c11 #ffffba; /* changed */
+@define-color c12 #7fa1c3; /* info */
+@define-color purple-bright #c5c5c5; /* type_builtin */
+@define-color c14 #b2d8d8; /* constant */
+@define-color c15 #f1f1f1;

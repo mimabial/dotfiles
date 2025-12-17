@@ -1,0 +1,150 @@
+/**
+ * Pywal16 Mode Selector Theme
+ *
+ * Simple rofi theme for pywal16 color mode selection
+ * Uses pywal16-generated colors
+ **/
+
+/*****----- Global Properties -----*****/
+@import "~/.config/rofi/colors.rasi"
+@import "~/.config/rofi/theme.rasi"
+
+configuration {
+    modes:                        "drun";
+    show-icons:                  true;
+    drun-display-format:         "{name}";
+    font:                        "JetBrainsMono Nerd Font 9";
+}
+
+* {
+    /* Override theme colors if needed */
+    background-color:            var(background);
+    foreground-color:            var(foreground);
+    border-color:                var(border);
+    selected-color:              var(selected-background);
+
+    /* Border settings */
+    element-border-radius:       5px;
+    window-border-radius:        20px;
+}
+
+/*****----- Main Window -----*****/
+window {
+    enabled:                     true;
+    fullscreen:                  false;
+    width:                       58em;
+    height:                      33em;
+    transparency:                "real";
+    cursor:                      "default";
+    spacing:                     0em;
+    padding:                     0em;
+    border:                      0.15em;
+    border-radius:               0em;
+    border-color:                @border;
+    background-color:            @background;
+    background-image:            url("~/.cache/hypr/wall.set.png",height);
+}
+
+/*****----- Main Box -----*****/
+mainbox {
+    enabled:                     true;
+    orientation:                 horizontal;
+    children:                    [ "listbox", "dummy", "imagebox" ];
+    background-color:            transparent;
+}
+
+/*****----- Inputbar -----*****/
+inputbar {
+    enabled:                     true;
+    spacing:                     1em;
+    background-color:            transparent;
+    text-color:                  @foreground;
+    children:                    [ "dummy", "textbox-prompt-colon", "prompt", "dummy"];
+}
+
+textbox-prompt-colon {
+    enabled:                     true;
+    expand:                      false;
+    str:                         "";
+    padding:                     10px 15px 10px 13px;
+    border-radius:               0px;
+    background-color:            @urgent;
+    text-color:                  @background;
+}
+
+prompt {
+    enabled:                     true;
+    padding:                     10px;
+    border-radius:               0px;
+    background-color:            @active;
+    text-color:                  @background;
+}
+
+/*****----- Listview -----*****/
+imagebox {
+    background-color:            transparent;
+    children:                    [ "dummy", "inputbar", "dummy" ];
+}
+
+listbox {
+    spacing:                     0em;
+    padding:                     2em;
+    children:                    [ "dummy" , "listview" ];
+    background-color:            transparent;
+    background-image:            url("~/.cache/hypr/wall.blur", height);
+}
+
+listview {
+    enabled:                     true;
+    columns:                     1;
+    lines:                       4;
+    cycle:                       true;
+    dynamic:                     true;
+    scrollbar:                   false;
+    layout:                      vertical;
+    reverse:                     false;
+    fixed-height:                true;
+    fixed-columns:               true;
+
+    spacing:                     5px;
+    margin:                      0px;
+    padding:                     0px;
+    border:                      0px solid;
+    border-radius:               0px;
+    border-color:                @border-color;
+    background-color:            transparent;
+    text-color:                  @foreground-color;
+    cursor:                      "default";
+}
+
+/*****----- Elements -----*****/
+element {
+    enabled:                     true;
+    spacing:                     1em;
+    padding:                     0.9em;
+    cursor:                      pointer;
+    background-color:            transparent;
+    text-color:                  @foreground;
+}
+
+element selected.normal {
+    background-color:            @selected-background;
+    text-color:                  @selected-foreground;
+}
+
+element-icon {
+    enabled:                     false;
+}
+
+element-text {
+    vertical-align:              0.5;
+    horizontal-align:            0.1;
+    cursor:                      inherit;
+    background-color:            transparent;
+    text-color:                  inherit;
+}
+
+/*****----- Dummy -----*****/
+dummy {
+    background-color:            transparent;
+}

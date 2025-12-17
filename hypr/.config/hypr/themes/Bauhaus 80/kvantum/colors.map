@@ -1,0 +1,24 @@
+# Color mapping for pywal replacement
+# Format: #hexcolor=pywal_variable
+# Theme: Bauhaus 80
+
+# Primary backgrounds
+#000000=background
+#1e1e1e=color0
+#212121=color0
+#268bd2=color4
+#268db2=color4
+#343031=color0
+#586e75=color8
+#5a616e=color0
+#657b83=color8
+#666666=color8
+#93a1a1=color6
+#b6b6b6=foreground
+#b74aff=color4
+#d1d1d1=foreground
+#d33682=color1
+#eee8d5=foreground
+#f04a50=color1
+#f2f2f2=foreground
+#fdf6e3=color7

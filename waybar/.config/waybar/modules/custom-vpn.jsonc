@@ -1,0 +1,11 @@
+{
+  "custom/vpn": {
+    "justify": "center",
+    "format": "{}",
+    "exec": "hyprshell waybar.vpn.sh",
+    "return-type": "json",
+    "on-click": "hyprshell waybar.vpn.toggle.sh",
+    "tooltip": true,
+    "interval": 5,
+  },
+}

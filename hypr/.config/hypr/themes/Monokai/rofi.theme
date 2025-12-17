@@ -1,0 +1,18 @@
+$HOME/.config/rofi/theme.rasi
+* {
+    background:            #2d2a2e; /* Monokai Pro background */
+    foreground:            #f8f8f2; /* Monokai Pro foreground (text) */
+    border:            #fc9867; /* Monokai Pro bright accent */
+    accent:            #ffd866; /* Monokai Pro secondary accent */
+    selected-background:          #f0aaaa; /* Monokai Pro selection background */
+    selected-foreground:          #2d2a2e; /* Monokai Pro selection text */
+    separator:           #80808080;
+    urgent:              #f92672ff;
+    active:              #a6e22eff;
+    separator:           #80808080;
+    urgent:              #f92672ff;
+    active:              #a6e22eff;
+    separatorcolor:     #44475a; /* Monokai Pro separator */
+    border-color:       #44475a; /* Monokai Pro border */
+}
+

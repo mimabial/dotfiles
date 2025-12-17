@@ -1,0 +1,46 @@
+$HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfgen.sh
+
+/* Main colors */
+@define-color bg #1d1d1d; /* g_10 */
+
+@define-color bg_selected #4A8B8B; /* background */
+@define-color fg #e5e5e5; /* g_1 */
+@define-color border #4A8B8B; /* g_9 */
+
+@define-color bg_alt #4A8B8B; /* background */
+@define-color alt-fg #e5e5e5; /* g_1 */
+@define-color warning #4A8B8B; /* g_9 */
+
+/* Active workspace colors */
+@define-color wb-hvr-bg #121212; /* background */
+@define-color fg_selected #7A3D82; /* orange_glow */
+@define-color hover #1E6F54; /* orange_glow */
+
+/* Hover colors */
+@define-color accent #D87C4A; /* red_glowing */
+@define-color wb-act-fg #121212; /* background */
+@define-color border_alt #D87C4A; /* red_glowing */
+
+/* Standard color palette - base colors */
+@define-color c0 #1a1815;
+@define-color c1 #C53030; /* red_flame */
+@define-color c2 #1E6F54; /* green */
+@define-color c3 #E5A72A; /* orange_golden */
+@define-color c4 #4A8B8B; /* blue */
+@define-color purple #7A3D82; /* purple */
+@define-color c6 #4A8B8B; /* blue */
+@define-color orange #D87C4A; /* orange_glow */
+@define-color gray #737373; /* g_6 */
+@define-color c7 #c9b9a8;
+
+/* Standard color palette - bright/accent variants */
+@define-color c8 #4a4541;
+@define-color c9 #DF6464; /* red_glowing */
+@define-color c10 #629C7D; /* green_light */
+@define-color c11 #E5A72A; /* orange_golden */
+@define-color c12 #6E91C4; /* cyan */
+@define-color purple-bright #8E5E93; /* violet */
+@define-color c14 #4AC4C4; /* aqua */
+@define-color orange-bright #E49A44; /* orange_smolder */
+@define-color gray-bright #b4b4b4; /* g_3 */
+@define-color c15 #dfd2c4;

@@ -1,0 +1,38 @@
+{
+  "hyprland/workspaces#roman": {
+    "class": "no-margin-padding",
+    "all-outputs": true,
+    "active-only": false,
+    "on-click": "activate",
+    "disable-scroll": false,
+    "on-scroll-up": "hyprctl dispatch workspace -1",
+    "on-scroll-down": "hyprctl dispatch workspace +1",
+    "persistent-workspaces": {},
+    "format": "{icon}",
+    "format-icons": {
+      "1": "१",
+      "2": "२",
+      "3": "३",
+      "4": "४",
+      "5": "५",
+      "6": "६",
+      "7": "७",
+      "8": "८",
+      "9": "९",
+      "10": "०",
+      "11": "XI",
+      "12": "XII",
+      "13": "XIII",
+      "14": "XIV",
+      "15": "XV",
+      "16": "XVII",
+      "17": "XVI",
+      "18": "XVIII",
+      "19": "XIX",
+      "20": "XX",
+      "urgent": "",
+      "focused": "",
+      "default": " "
+    }
+  }
+}

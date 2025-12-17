@@ -1,0 +1,6 @@
+# Generated files (don't track)
+*.pyc
+__pycache__/
+.DS_Store
+# State files (include defaults, ignore runtime)
+# hypr/.config/hypr/themes/*/wallpapers/  # Optional: exclude large wallpapers
