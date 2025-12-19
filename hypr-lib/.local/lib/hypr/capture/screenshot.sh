@@ -81,14 +81,14 @@ fi
 # Add any additional annotation arguments
 [[ -n "${SCREENSHOT_ANNOTATION_ARGS[*]}" ]] && annotation_args+=("${SCREENSHOT_ANNOTATION_ARGS[@]}")
 
-# Get rectangles for smart selection (from Omarchy)
+# Get rectangles for smart selection
 get_rectangles() {
   local active_workspace=$(hyprctl monitors -j | jq -r '.[] | select(.focused == true) | .activeWorkspace.id')
   hyprctl monitors -j | jq -r --arg ws "$active_workspace" '.[] | select(.activeWorkspace.id == ($ws | tonumber)) | "\(.x),\(.y) \((.width / .scale) | floor)x\((.height / .scale) | floor)"'
   hyprctl clients -j | jq -r --arg ws "$active_workspace" '.[] | select(.workspace.id == ($ws | tonumber)) | "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"'
 }
 
-# Smart screenshot with frozen screen (enhanced with Omarchy's smart detection)
+# Smart screenshot with frozen screen and smart detection
 smart_screenshot() {
   local destination="$1"
   local RECTS=$(get_rectangles)

@@ -1,0 +1,7 @@
+{
+  "custom/audiomenu": {
+    "format": "",
+    "on-click": "hyprshell rofi/menu.sh audio",
+    "tooltip-format": "Audio Setup\n• Pavucontrol (GUI)\n• Wiremix (TUI)"
+  }
+}

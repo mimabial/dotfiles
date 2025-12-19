@@ -1,10 +1,10 @@
 $HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfgen.sh
 
-@define-color bg #5d6b66;
+@define-color bg #53605b;
 
 @define-color bg_selected #374145;
 @define-color fg #D3C6AA;
-@define-color border #48584e; 
+@define-color border #5d6b66; 
 
 @define-color accent #708089;
 @define-color wb-act-fg #D3C6AA;

@@ -1,12 +1,16 @@
 $HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfgen.sh
 
 /* Main colors */
-@define-color bg #575279; /* surface */
 
+@define-color bg #faf4ed;
+@define-color fg #575279;
 
-@define-color fg #fffaf3;
-@define-color bg_selected #907aa9;
-@define-color border #286983; /* overlay */
+@define-color wb-hvr-bg #56949f;
+@define-color fg_selected #fffaf3;
+
+@define-color bg_selected #b4637a;
+@define-color wb-act-fg #fffaf3;
+@define-color border #9893a5; /* overlay */
 
 @define-color alt-fg #faf4ed;
 @define-color bg_alt #907aa9;
@@ -14,12 +18,9 @@ $HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfge
 
 /* Active workspace colors */
 @define-color border_alt #b4637a;
-@define-color wb-act-fg #fffaf3;
 @define-color accent #907aa9; /* iris */
 
 /* Hover colors */
-@define-color fg_selected #56949f;
-@define-color wb-hvr-bg #fffaf3;
 @define-color hover #d7827e; /* rose */
 
 /* Standard color palette - base colors */

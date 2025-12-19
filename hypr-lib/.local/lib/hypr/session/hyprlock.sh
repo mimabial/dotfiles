@@ -527,6 +527,12 @@ if [ -z "${*}" ]; then
   # Auto-update profile if .face.icon changed
   fn_profile
   check_and_sanitize_process
+
+  # Lock Bitwarden if running
+  if pgrep -x "bitwarden" >/dev/null; then
+    bitwarden-desktop --lock &
+  fi
+
   app2unit.sh -u "${HYPRLOCK_SCOPE_NAME}" -t scope -- hyprlock
   exit 0
 fi

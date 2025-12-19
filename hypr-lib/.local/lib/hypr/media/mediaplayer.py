@@ -258,7 +258,22 @@ def write_output(current_player):
             "duration": duration_seconds,
         }
 
-    is_playing = current_player.props.status == "Playing"
+    player_status = current_player.props.status
+    is_playing = player_status == "Playing"
+    is_stopped = player_status == "Stopped"
+
+    # --- If stopped, clear cache and output nothing (hide module) ---
+    if is_stopped:
+        _last_metadata = {"track": "", "artist": "", "duration": 0.0}
+        output = {
+            "text": "",
+            "class": "custom-stopped",
+            "alt": "",
+            "tooltip": "",
+        }
+        sys.stdout.write(json.dumps(output) + "\n")
+        sys.stdout.flush()
+        return
 
     # --- Normalize values to avoid float drift ---
     position_seconds = max(0.0, round(position_seconds, 2))

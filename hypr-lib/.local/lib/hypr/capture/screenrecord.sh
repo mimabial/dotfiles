@@ -16,7 +16,7 @@ fi
 
 RECORDER="wf-recorder"
 RECORDING_FILE="${XDG_RUNTIME_DIR:-/tmp}/screenrecord.pid"
-OUTPUT_DIR="${OMARCHY_SCREENRECORD_DIR:-${XDG_VIDEOS_DIR:-$HOME/Videos}/Recordings}"
+OUTPUT_DIR="${HYPR_SCREENRECORD_DIR:-${XDG_VIDEOS_DIR:-$HOME/Videos}/Recordings}"
 
 # Validate and create output directory
 if [[ ! -d "$OUTPUT_DIR" ]]; then
@@ -49,7 +49,7 @@ Examples:
     hyprshell screenrecord --toggle --audio
 
 Environment:
-    OMARCHY_SCREENRECORD_DIR    Custom output directory (default: ~/Videos/Recordings)
+    HYPR_SCREENRECORD_DIR    Custom output directory (default: ~/Videos/Recordings)
 
 USAGE
 }

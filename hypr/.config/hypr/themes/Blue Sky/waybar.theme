@@ -1,0 +1,51 @@
+$HOME/.config/waybar/theme.css|${scrDir}/wbarconfgen.sh
+
+@define-color bg #3b4252;
+
+@define-color bg_selected #13131D;
+@define-color fg #FFFFFF;
+@define-color border #5e81ac;
+
+@define-color accent #6AA9C9;
+@define-color wb-act-fg #EFEFF5;
+@define-color border_alt #81a1c1;
+
+@define-color wb-hvr-bg #020817;
+@define-color fg_selected #6AA9C9;
+@define-color hover #ae00f3;
+
+@define-color bg_alt #8fbcbb;
+@define-color alt-fg #FFFFFF;
+@define-color warning #78c6eb;
+
+@define-color c0 #294052;
+@define-color c8 #57778F;
+
+@define-color c1 #88C0D0;
+@define-color c9 #9FC8E0;
+
+@define-color c2 #B8CCDB;
+@define-color c10 #D8DEE9;
+
+@define-color c3 #81A1C1;
+@define-color c11 #A8C3D0;
+
+@define-color c4 #6FA8DC;
+@define-color c12 #85B3D8;
+
+@define-color c5 #C9D6E2;
+@define-color c13 #7B9FC4;
+
+@define-color c6 #8FBCBB;
+@define-color c14 #88C0D0;
+
+@define-color c7 #E5E9F0;
+@define-color c15 #C5D4E3;
+
+@define-color bg rgba(18,45,65,0.8);
+@define-color fg rgba(170,210,240,0.8);
+@define-color wb-act-bg rgba(211,220,230,0.4);
+@define-color fg_selected rgba(204,228,255,1);
+@define-color wb-hvr-bg rgba(75,99,125,0.4);
+@define-color hover rgba(170,203,240,0.8);
+

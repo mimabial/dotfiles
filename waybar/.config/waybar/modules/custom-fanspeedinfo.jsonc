@@ -7,7 +7,7 @@
     "justify": "right",
     "align": 0,
     "exec": "hyprshell fanspeedinfo",
-    "format": "<span size='12pt'></span>\n{}",
+    "format": "<span size='12pt'></span>\n{}",
     "return-type": "json",
     "interval": 5,
     "tooltip": true,

@@ -1,0 +1,62 @@
+$HOME/.config/kitty/theme.conf|killall -SIGUSR1 kitty
+# Kitty configuration file for BlueSky theme
+
+foreground #FFFFFF
+background #122D41
+selection_foreground #122D41
+selection_background #FFFFFF
+cursor #D3DCE6
+cursor_text_color #060605
+
+active_tab_foreground #6FA8DC
+active_tab_background #7F9FC2
+inactive_tab_foreground #7F9FC2
+inactive_tab_background #122D41
+tab_bar_background #294052
+
+# URL underline
+url_color #8FBCBB
+
+# ANSI color palette - Refined blues
+# Black
+color0 #294052
+color8 #57778F
+
+# Red - Muted sky blue as "red"
+color1 #88C0D0
+color9 #9FC8E0
+
+# Green - Soft blue-gray as "green"
+color2 #B8CCDB
+color10 #D8DEE9
+
+# Yellow - Muted blue as "yellow"
+color3 #81A1C1
+color11 #A8C3D0
+
+# Blue - Medium blues
+color4 #6FA8DC
+color12 #85B3D8
+
+# Magenta - Soft blues
+color5 #C9D6E2
+color13 #7B9FC4
+
+# Cyan - Nord-inspired frost
+color6 #8FBCBB
+color14 #88C0D0
+
+# White - Light blues to white
+color7 #E5E9F0
+color15 #C5D4E3
+
+# Extended colors
+mark1_foreground #1e1e1e
+mark1_background #88C0D0
+mark2_foreground #1e1e1e
+mark2_background #7F9FC2
+mark3_foreground #1e1e1e
+mark3_background #B8CCDB
+
+# Bell
+bell_border_color #88C0D0

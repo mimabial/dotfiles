@@ -5,19 +5,19 @@ $HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfge
 
 @define-color bg_selected #1d2021;
 @define-color fg #fffcd8;
-@define-color border #ff9933; /* orange/red */
+@define-color border #ff7e01; /* orange/red */
 
-@define-color bg_alt #d4be98; /* selection */
+@define-color bg_alt #b8beb8; /* selection */
 @define-color alt-fg #1d2021;
 @define-color warning #ffad4d; /* cursor */
 
 /* Active workspace colors */
 @define-color accent #7daea3; /* blue */
 @define-color wb-act-fg #fffcd8;
-@define-color border_alt #b3d966; /* green */
+@define-color border_alt #f73718; /* green */
 
 /* Hover colors */
-@define-color hover #ff708c; /* magenta */
+@define-color hover #f73718; /* magenta */
 @define-color wb-hvr-bg #1d2021;
 @define-color fg_selected #cce680; /* bright green */
 

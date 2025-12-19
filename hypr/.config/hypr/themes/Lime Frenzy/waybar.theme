@@ -1,9 +1,9 @@
 $HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfgen.sh
-@define-color bg #252623;
+@define-color bg #1c1e1b;
 
-@define-color bg_selected #5AA65F;
+@define-color bg_selected #12b812;
 @define-color fg #fff8f0;
-@define-color border #282828;
+@define-color border #1c1e1b;
 
 @define-color bg_alt #5AA65F;
 @define-color alt-fg #fff8f0;

@@ -1,5 +1,7 @@
 {
-  "format": "",
-  "on-click": "xdg-terminal-exec --app-id=com.omarchy.Ranger -e ranger",
-  "tooltip-format": "Ranger File Manager (SUPER+SHIFT+F)"
+  "custom/ranger": {
+    "format": "",
+    "on-click": "hyprshell launch/tui.sh ranger",
+    "tooltip-format": "Ranger File Manager (SUPER+SHIFT+F)"
+  }
 }

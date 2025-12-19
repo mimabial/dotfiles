@@ -5,7 +5,7 @@ $ICON_THEME = Tela-circle-black
 $COLOR_SCHEME = prefer-light
 $NVIM_SCHEME = rose-pine
 $NVIM_VARIANT = dawn
-$CURSOR_THEME=material_light_cursors
+$CURSOR_THEME=Sweet-cursors
 $CURSOR_SIZE=15
 
 # Optional: The varibles above will be set automatically when the theme is loaded

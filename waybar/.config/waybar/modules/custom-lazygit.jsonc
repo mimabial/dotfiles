@@ -1,5 +1,7 @@
 {
-  "format": "󰊢",
-  "on-click": "omarchy-launch-lazygit",
-  "tooltip-format": "LazyGit (SUPER+SHIFT+G)"
+  "custom/lazygit": {
+    "format": "󰊢",
+    "on-click": "hyprshell launch/lazygit.sh",
+    "tooltip-format": "LazyGit (SUPER+SHIFT+G)"
+  }
 }

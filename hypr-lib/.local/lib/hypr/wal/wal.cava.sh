@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# shellcheck source=/home/khing/.local/bin/hyde-shell
+# shellcheck source=/home/rifle/.local/bin/hyprshell
 # shellcheck disable=SC1091
 if ! source "$(which hyprshell)"; then
   echo "[pywal16] code :: Error: hyprshell not found."

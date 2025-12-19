@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Unified font manager for HyDE + Omarchy hybrid setup
-# Sets monospace font across terminals, waybar, and HyDE variables
+# Unified font manager for Hyprland
+# Sets monospace font across terminals, waybar, and environment variables
 
 set -eo pipefail
 
@@ -13,10 +13,10 @@ FONT_NAME="${1}"
 
 usage() {
   cat <<EOF
-Usage: hypr-font-set <font-name>
+Usage: hyprshell fonts/font-set.sh <font-name>
 
 Sets monospace font system-wide across:
-  • HyDE variables (\$MONOSPACE_FONT)
+  • Environment variables (\$MONOSPACE_FONT)
   • Kitty terminal
   • Alacritty terminal
   • Ghostty terminal (if installed)
@@ -65,7 +65,7 @@ echo ""
 UPDATED=()
 
 # ============================================================================
-# 1. UPDATE HYDE VARIABLES
+# 1. UPDATE HYPR VARIABLES
 # ============================================================================
 
 VARIABLES_FILE="${HYPR_CONFIG_HOME:-$HOME/.config/hypr}/variables.conf"
@@ -93,22 +93,22 @@ update_or_add_var() {
 }
 
 if [[ -f "$VARIABLES_FILE" ]]; then
-  echo "📝 Updating HyDE variables..."
+  echo "📝 Updating Hypr variables..."
 
   # Update $MONOSPACE_FONT
   if grep -q '^\$MONOSPACE_FONT=' "$VARIABLES_FILE"; then
     sed -i "s|^\$MONOSPACE_FONT=.*|\$MONOSPACE_FONT=$FONT_NAME|" "$VARIABLES_FILE"
-    UPDATED+=("HyDE \$MONOSPACE_FONT variable")
+    UPDATED+=("Hypr \$MONOSPACE_FONT variable")
   fi
 
   # Also update UI fonts (Waybar/Rofi) for consistency
   if grep -q '^\$BAR_FONT=' "$VARIABLES_FILE"; then
     sed -i "s|^\$BAR_FONT=.*|\$BAR_FONT=$FONT_NAME|" "$VARIABLES_FILE"
-    UPDATED+=("HyDE \$BAR_FONT variable")
+    UPDATED+=("Hypr \$BAR_FONT variable")
   fi
   if grep -q '^\$MENU_FONT=' "$VARIABLES_FILE"; then
     sed -i "s|^\$MENU_FONT=.*|\$MENU_FONT=$FONT_NAME|" "$VARIABLES_FILE"
-    UPDATED+=("HyDE \$MENU_FONT variable")
+    UPDATED+=("Hypr \$MENU_FONT variable")
   fi
 
   # Also update theme.conf if it exists (for current session)
@@ -204,7 +204,7 @@ if [[ -f "$SWAYOSD_STYLE" ]]; then
   sed -i "s|font-family: .*|font-family: '$FONT_NAME';|g" "$SWAYOSD_STYLE"
 
   # Restart SwayOSD if running
-  hyprshell hypr-restart-swayosd.sh >/dev/null 2>&1 || true
+  hyprshell service/restart-swayosd.sh >/dev/null 2>&1 || true
 
   UPDATED+=("SwayOSD style")
 fi
@@ -218,7 +218,7 @@ fi
 # theme changes and ensure includes/global.css is current
 
 echo "📝 Reloading Waybar..."
-hyprshell hypr-restart-waybar.sh >/dev/null 2>&1 || true
+hyprshell service/restart-waybar.sh >/dev/null 2>&1 || true
 UPDATED+=("Waybar (reload)")
 
 # ============================================================================
@@ -226,7 +226,7 @@ UPDATED+=("Waybar (reload)")
 # ============================================================================
 
 if pgrep -x rofi >/dev/null 2>&1; then
-  hyprshell hypr-restart-walker.sh >/dev/null 2>&1 || true
+  hyprshell service/restart-walker.sh >/dev/null 2>&1 || true
   UPDATED+=("Walker launcher")
 fi
 

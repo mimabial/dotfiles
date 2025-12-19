@@ -18,7 +18,7 @@
         "/home/rifle/.config/waybar/modules/custom-mediaplayer.jsonc",
         "/home/rifle/.config/waybar/modules/custom-network#speed.jsonc",
         "/home/rifle/.config/waybar/modules/pulseaudio-slider.jsonc",
-        "/home/rifle/.config/waybar/modules/custom-omarchy-dev-menu.jsonc",
+        "/home/rifle/.config/waybar/modules/custom-devmenu.jsonc",
         "/home/rifle/.config/waybar/modules/custom-weather.jsonc",
         "/home/rifle/.config/waybar/modules/tray.jsonc",
         "/home/rifle/.config/waybar/modules/custom-powermenu.jsonc",
@@ -51,7 +51,7 @@
         "/home/rifle/.config/waybar/modules/memory.jsonc",
         "/home/rifle/.config/waybar/modules/disk.jsonc",
         "/home/rifle/.config/waybar/modules/custom-keybindhint.jsonc",
-        "/home/rifle/.config/waybar/modules/custom-omarchy-audio.jsonc",
+        "/home/rifle/.config/waybar/modules/custom-audiomenu.jsonc",
         "/home/rifle/.config/waybar/modules/hyprland-workspaces#roman.jsonc",
         "/home/rifle/.config/waybar/modules/custom-cliphist.jsonc",
         "/home/rifle/.config/waybar/modules/custom-colormode.jsonc",
@@ -65,8 +65,8 @@
         "/home/rifle/.config/waybar/modules/custom-ranger.jsonc",
         "/home/rifle/.config/waybar/modules/bluetooth.jsonc",
         "/home/rifle/.config/waybar/modules/custom-screenrecord.jsonc",
-        "/home/rifle/.config/waybar/modules/custom-omarchy-main-menu.jsonc",
-        "/home/rifle/.config/waybar/modules/custom-omarchy-wifi.jsonc"
+        "/home/rifle/.config/waybar/modules/custom-mainmenu.jsonc",
+        "/home/rifle/.config/waybar/modules/custom-wifimenu.jsonc"
     ],
     "privacy": {
         "icon-size": 10,
