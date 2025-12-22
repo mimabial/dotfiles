@@ -42,7 +42,7 @@ flags:
 notes: 
        --backend <backend> is also use to cache wallpapers/background images e.g. hyprlock
            when '--backend hyprlock' is used, the wallpaper will be cached in
-           ~/.cache/hypr/wallpapers/hyprlock.png
+           ~/.cache/hypr/wallpaper/current/hyprlock.png
 
        --global flag is used to set the wallpaper as global, this means all
          thumbnails will be updated to reflect the new wallpaper
@@ -77,7 +77,6 @@ Wall_Cache() {
     ln -fs "${thmbDir}/${wallHash[setIndex]}.thmb" "${wallTmb}"
     ln -fs "${thmbDir}/${wallHash[setIndex]}.blur" "${wallBlr}"
     ln -fs "${thmbDir}/${wallHash[setIndex]}.quad" "${wallQad}"
-    ln -fs "${dcolDir}/${wallHash[setIndex]}.dcol" "${wallDcl}"
   fi
 
 }
@@ -97,6 +96,90 @@ Wall_Change() {
   Wall_Cache "${wallList[setIndex]}"
 }
 
+Wall_Hashmap_Cached() {
+  unset wallHash wallList
+
+  local -a wall_sources=("$@")
+  local -a supported_files=("gif" "jpg" "jpeg" "png" "${WALLPAPER_FILETYPES[@]}")
+  if [[ ${#WALLPAPER_OVERRIDE_FILETYPES[@]} -gt 0 ]]; then
+    supported_files=("${WALLPAPER_OVERRIDE_FILETYPES[@]}")
+  fi
+
+  local cache_root="${WALLPAPER_CACHE_DIR}"
+  [[ -z "${cache_root}" ]] && cache_root="${HYPR_CACHE_HOME:-$HOME/.cache/hypr}/wallpaper"
+  local cache_dir="${cache_root}/hashmap"
+  local hash_cmd="${hashMech:-sha1sum}"
+
+  local cache_key
+  cache_key="$(printf '%s\n' "${wall_sources[@]}" "${supported_files[@]}" | "${hash_cmd}" | awk '{print $1}')"
+  local cache_file="${cache_dir}/${cache_key}.tsv"
+  mkdir -p "${cache_dir}"
+
+  if [[ ${#wall_sources[@]} -eq 0 ]]; then
+    get_hashmap "${wall_sources[@]}"
+    return 0
+  fi
+
+  local -A cache_hash
+  local -A cache_meta
+  if [[ -f "${cache_file}" ]]; then
+    while IFS=$'\t' read -r hash mtime size path; do
+      [[ -n "${path}" ]] || continue
+      cache_hash["${path}"]="${hash}"
+      cache_meta["${path}"]="${mtime}"$'\t'"${size}"
+    done < "${cache_file}"
+  fi
+
+  local regex_ext=""
+  local ext
+  for ext in "${supported_files[@]}"; do
+    [[ -n "${ext}" ]] || continue
+    if [[ -z "${regex_ext}" ]]; then
+      regex_ext="${ext}"
+    else
+      regex_ext="${regex_ext}|${ext}"
+    fi
+  done
+  [[ -z "${regex_ext}" ]] && regex_ext="gif|jpg|jpeg|png"
+
+  local tmp_cache="${cache_file}.tmp"
+  : > "${tmp_cache}"
+
+  local wall_file wall_meta wall_hash
+  while IFS= read -r -d '' wall_file; do
+    wall_meta="$(stat -c '%Y\t%s' -- "${wall_file}" 2>/dev/null)" || continue
+    if [[ "${cache_meta["${wall_file}"]}" == "${wall_meta}" ]]; then
+      wall_hash="${cache_hash["${wall_file}"]}"
+    else
+      wall_hash="$("${hash_cmd}" "${wall_file}" | awk '{print $1}')"
+    fi
+    wallHash+=("${wall_hash}")
+    wallList+=("${wall_file}")
+    printf '%s\t%s\t%s\n' "${wall_hash}" "${wall_meta}" "${wall_file}" >> "${tmp_cache}"
+  done < <(
+    find -H "${wall_sources[@]}" -type f -regextype posix-extended \
+      -iregex ".*\\.(${regex_ext})$" ! -path "*/logo/*" -print0 2>/dev/null | sort -z
+  )
+
+  if [[ ${#wallList[@]} -eq 0 ]]; then
+    rm -f "${tmp_cache}"
+    get_hashmap "${wall_sources[@]}"
+    if [[ ${#wallList[@]} -gt 0 ]]; then
+      tmp_cache="${cache_file}.tmp"
+      : > "${tmp_cache}"
+      local i
+      for i in "${!wallList[@]}"; do
+        wall_meta="$(stat -c '%Y\t%s' -- "${wallList[i]}" 2>/dev/null)" || continue
+        printf '%s\t%s\t%s\n' "${wallHash[i]}" "${wall_meta}" "${wallList[i]}" >> "${tmp_cache}"
+      done
+      mv -f "${tmp_cache}" "${cache_file}"
+    fi
+    return 0
+  fi
+
+  mv -f "${tmp_cache}" "${cache_file}"
+}
+
 # * Method to list wallpapers from hashmaps into json
 Wall_Json() {
   setIndex=0
@@ -108,14 +191,14 @@ Wall_Json() {
   fi
   wallPathArray+=("${WALLPAPER_CUSTOM_PATHS[@]}")
 
-  get_hashmap "${wallPathArray[@]}" # get the hashmap provides wallList and wallHash
+  Wall_Hashmap_Cached "${wallPathArray[@]}" # get the hashmap provides wallList and wallHash
 
   # Prepare data for jq
   wallListJson=$(printf '%s\n' "${wallList[@]}" | jq -R . | jq -s .)
   wallHashJson=$(printf '%s\n' "${wallHash[@]}" | jq -R . | jq -s .)
 
   # Create JSON using jq
-  jq -n --argjson wallList "$wallListJson" --argjson wallHash "$wallHashJson" --arg cacheHome "${HYPR_CACHE_HOME:-$HOME/.cache/hypr}" '
+  jq -n --argjson wallList "$wallListJson" --argjson wallHash "$wallHashJson" --arg cacheHome "${WALLPAPER_CACHE_DIR:-${HYPR_CACHE_HOME:-$HOME/.cache/hypr}/wallpaper}" '
         [range(0; $wallList | length) as $i | 
             {
                 path: $wallList[$i], 
@@ -125,7 +208,6 @@ Wall_Json() {
                 sqre: "\($cacheHome)/thumbs/\($wallHash[$i]).sqre",
                 blur: "\($cacheHome)/thumbs/\($wallHash[$i]).blur",
                 quad: "\($cacheHome)/thumbs/\($wallHash[$i]).quad",
-                dcol: "\($cacheHome)/dcols/\($wallHash[$i]).dcol",
                 rofi_sqre: "\($wallList[$i] | split("/") | last):::\($wallList[$i]):::\($cacheHome)/thumbs/\($wallHash[$i]).sqre\u0000icon\u001f\($cacheHome)/thumbs/\($wallHash[$i]).sqre",
                 rofi_thmb: "\($wallList[$i] | split("/") | last):::\($wallList[$i]):::\($cacheHome)/thumbs/\($wallHash[$i]).thmb\u0000icon\u001f\($cacheHome)/thumbs/\($wallHash[$i]).thmb",
                 rofi_blur: "\($wallList[$i] | split("/") | last):::\($wallList[$i]):::\($cacheHome)/thumbs/\($wallHash[$i]).blur\u0000icon\u001f\($cacheHome)/thumbs/\($wallHash[$i]).blur",
@@ -228,16 +310,16 @@ main() {
   # * --global flag is used to set the wallpaper as global, this means caching the wallpaper to thumbnails
   #  If wallpaper is used for thumbnails, set the following variables
   if [ "$set_as_global" == "true" ]; then
+    mkdir -p "${WALLPAPER_CURRENT_DIR}"
     wallSet="${HYPR_THEME_DIR}/wall.set"
-    wallCur="${HYPR_CACHE_HOME}/wall.set"
-    wallSqr="${HYPR_CACHE_HOME}/wall.sqre"
-    wallTmb="${HYPR_CACHE_HOME}/wall.thmb"
-    wallBlr="${HYPR_CACHE_HOME}/wall.blur"
-    wallQad="${HYPR_CACHE_HOME}/wall.quad"
-    wallDcl="${HYPR_CACHE_HOME}/wall.dcol"
+    wallCur="${WALLPAPER_CURRENT_DIR}/wall.set"
+    wallSqr="${WALLPAPER_CURRENT_DIR}/wall.sqre"
+    wallTmb="${WALLPAPER_CURRENT_DIR}/wall.thmb"
+    wallBlr="${WALLPAPER_CURRENT_DIR}/wall.blur"
+    wallQad="${WALLPAPER_CURRENT_DIR}/wall.quad"
   elif [ -n "${wallpaper_backend}" ]; then
-    mkdir -p "${HYPR_CACHE_HOME}/wallpapers"
-    wallCur="${HYPR_CACHE_HOME}/wallpapers/${wallpaper_backend}.png"
+    mkdir -p "${WALLPAPER_CURRENT_DIR}"
+    wallCur="${WALLPAPER_CURRENT_DIR}/${wallpaper_backend}.png"
     wallSet="${HYPR_THEME_DIR}/wall.${wallpaper_backend}.png"
   else
     wallSet="${HYPR_THEME_DIR}/wall.set"
@@ -265,7 +347,7 @@ main() {
         Wall_Cache "${wallList[setIndex]}"
         ;;
       s)
-        if [ -z "${wallpaper_path}" ] && [ ! -f "${wallpaper_path}" ]; then
+        if [ -z "${wallpaper_path}" ] || [ ! -f "${wallpaper_path}" ]; then
           print_log -err "wallpaper" "Wallpaper not found: ${wallpaper_path}"
           exit 1
         fi
@@ -319,7 +401,7 @@ main() {
       "wallpaper.${wallpaper_backend}.sh" "${wallSet}"
     else
       print_log -warn "wallpaper" "No backend script found for ${wallpaper_backend}"
-      print_log -warn "wallpaper" "Created: $HYPR_CACHE_HOME/wallpapers/${wallpaper_backend}.png instead"
+      print_log -warn "wallpaper" "Created: $WALLPAPER_CURRENT_DIR/${wallpaper_backend}.png instead"
     fi
   fi
 
@@ -347,11 +429,9 @@ fi
 LONGOPTS="link,global,select,json,next,previous,random,set:,start,backend:,get,output:,help,filetypes:"
 
 # Parse options
-PARSED=$(
-  if getopt --options GSjnprb:s:t:go:h --longoptions $LONGOPTS --name "$0" -- "$@"; then
-    exit 2
-  fi
-)
+if ! PARSED=$(getopt --options GSjnprb:s:t:go:h --longoptions "$LONGOPTS" --name "$0" -- "$@"); then
+  exit 2
+fi
 
 # Initialize the array for filetypes
 WALLPAPER_OVERRIDE_FILETYPES=()

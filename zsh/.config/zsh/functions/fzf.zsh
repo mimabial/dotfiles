@@ -18,7 +18,6 @@ typeset -ga _FZF_EXCLUDE_DIRS=(
     'chromium'
     'code_tracker'
     'dist'
-    'dotfiles'
     'flatpak'
     'libreoffice'
     'logs'
@@ -172,8 +171,8 @@ _fuzzy_edit_search_file_content_dynamic() {
             --preview "$preview_cmd" \
             --query "$initial_query" \
             --prompt "Search: " \
-            --bind "start:reload(find . -type f $grep_excludes -exec grep -Hn --color=always '.' {} + 2>/dev/null | head -500 || true)" \
-            --bind "change:reload(sleep 0.1; if [[ -n {q} ]]; then find . -type f $grep_excludes -exec grep -Hn --color=always {q} {} + 2>/dev/null | head -1000 || true; fi)" \
+            --bind "start:reload(find -L . -type f $grep_excludes -exec grep -Hn --color=always '.' {} + 2>/dev/null | head -500 || true)" \
+            --bind "change:reload(sleep 0.1; if [[ -n {q} ]]; then find -L . -type f $grep_excludes -exec grep -Hn --color=always {q} {} + 2>/dev/null | head -1000 || true; fi)" \
             --bind "enter:execute(
                 if [[ -n {} ]]; then
                     f=\$(echo {} | cut -d: -f1)
@@ -224,7 +223,7 @@ _fuzzy_change_directory() {
     # Use find with explicit hidden directory support
     # \( -name X -o -name Y ... \) groups all dir names to exclude
     # -prune skips them, -o means "otherwise", -type d -print shows all other directories (including hidden)
-    selected_dir=$(eval "find . -maxdepth $max_depth \\( $exclude_pattern \\) -prune -o -type d -print 2>/dev/null" | fzf "${fzf_options[@]}")
+    selected_dir=$(eval "find -L . -maxdepth $max_depth \\( $exclude_pattern \\) -prune -o -type d -print 2>/dev/null" | fzf "${fzf_options[@]}")
 
     if [[ -n "$selected_dir" && -d "$selected_dir" ]]; then
         cd "$selected_dir" || return 1
@@ -251,7 +250,7 @@ _fuzzy_edit_search_file_content() {
             search_cmd="rg --line-number --column --color=always --smart-case --hidden --max-count=50 $rg_globs '$search_term' 2>/dev/null"
         else
             # Show all files with line numbers
-            search_cmd="find . -type f $grep_excludes 2>/dev/null | head -1000 | xargs -I {} echo '{}:1:'"
+            search_cmd="find -L . -type f $grep_excludes 2>/dev/null | head -1000 | xargs -I {} echo '{}:1:'"
             fzf_options+=("--query=" "--print-query")
         fi
         
@@ -260,10 +259,10 @@ _fuzzy_edit_search_file_content() {
     else
         # Fallback to grep with consistent exclusion patterns
         if [[ -n "$search_term" ]]; then
-            search_cmd="find . -type f $grep_excludes -exec grep -Hn --color=always '$search_term' {} + 2>/dev/null | head -2500"
+            search_cmd="find -L . -type f $grep_excludes -exec grep -Hn --color=always '$search_term' {} + 2>/dev/null | head -2500"
         else
             # Show files instead of grepping all content
-            search_cmd="find . -type f $grep_excludes 2>/dev/null | head -1000 | xargs -I {} echo '{}:1:'"
+            search_cmd="find -L . -type f $grep_excludes 2>/dev/null | head -1000 | xargs -I {} echo '{}:1:'"
             fzf_options+=("--query=" "--print-query")
         fi
         
@@ -322,7 +321,7 @@ _fuzzy_edit_search_file() {
         fzf_options+=("--query=$initial_query")
     fi
 
-    selected_file=$(find . -maxdepth $max_depth -type f 2>/dev/null | fzf "${fzf_options[@]}")
+    selected_file=$(find -L . -maxdepth $max_depth -type f 2>/dev/null | fzf "${fzf_options[@]}")
 
     if [[ -n "$selected_file" && -f "$selected_file" ]]; then
         if command -v "$EDITOR" &>/dev/null; then

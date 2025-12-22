@@ -12,15 +12,21 @@ cacheDir="$XDG_CACHE_HOME"
 cvaDir="${confDir}/cava"
 CAVA_CONF="${cvaDir}/config"
 CAVA_DCOL="${cacheDir}/wal/colors-cava"
-
-TMP="$(mktemp)"
-trap 'rm -f "$TMP"' EXIT
+hashFile="${XDG_RUNTIME_DIR:-/tmp}/wal-cava-hash"
 
 # Ensure color file exists
 if [ ! -f "$CAVA_DCOL" ]; then
-  echo "Color file not found: $CAVA_DCOL"
-  exit 1
+  exit 0
 fi
+
+# Change detection: skip if colors unchanged
+input_hash=$(md5sum "$CAVA_DCOL" 2>/dev/null | cut -d' ' -f1)
+if [[ -f "$hashFile" && "$(cat "$hashFile" 2>/dev/null)" == "$input_hash" ]]; then
+  exit 0
+fi
+
+TMP="$(mktemp)"
+trap 'rm -f "$TMP"' EXIT
 
 if pkg_installed cava; then
   if [[ ! -d "${cvaDir}" ]]; then
@@ -62,6 +68,9 @@ if pkg_installed cava; then
     # Move final file in place
     mv "$TMP" "$CAVA_CONF"
     trap - EXIT
+
+    # Save hash for next run
+    echo "$input_hash" > "$hashFile"
 
     echo "Updated Cava color section in $CAVA_CONF"
   fi

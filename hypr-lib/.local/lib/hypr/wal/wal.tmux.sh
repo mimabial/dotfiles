@@ -1,11 +1,19 @@
 #!/usr/bin/env bash
 # wal.tmux.sh - Apply pywal16 colors to tmux with theme override support
 
+hashFile="${XDG_RUNTIME_DIR:-/tmp}/wal-tmux-hash"
+
 # Source pywal16 colors
 if [ ! -f ~/.cache/wal/colors.sh ]; then
-  echo "[tmux] Error: pywal16 colors not found"
-  exit 1
+  exit 0
 fi
+
+# Change detection: skip if colors unchanged
+input_hash=$(md5sum ~/.cache/wal/colors.sh 2>/dev/null | cut -d' ' -f1)
+if [[ -f "$hashFile" && "$(cat "$hashFile" 2>/dev/null)" == "$input_hash" ]]; then
+  exit 0
+fi
+
 source ~/.cache/wal/colors.sh
 
 # Map pywal colors to tmux theme variables
@@ -102,6 +110,9 @@ setw -g window-status-format "  #I:#W#(echo #{window_panes} | sed 's/0/⁰/g;s/1
 set -g status-right "#{?#{!=:#{battery_percentage},0},#[nobold,fg=#{battery_color_fg}]#{battery_icon} #{battery_percentage}#[default],} #[fg=#{@theme_gray}]#($XDG_CONFIG_HOME/tmux/scripts/tmux-player)#[default] #[bold]#{pomodoro_status}#[default] #[fg=#{@theme_accent}]⋮#[default] #[bold]#{cpu_fg_color}#{cpu_percentage}#[default] #[bold]#{ram_fg_color}#{ram_icon}#[default] "
 set -g status-right-length 200
 EOF
+
+# Save hash for next run
+echo "$input_hash" > "$hashFile"
 
 echo "[tmux] Generated tmux color configs"
 

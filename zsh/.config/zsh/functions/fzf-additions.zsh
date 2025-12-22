@@ -90,7 +90,7 @@ fzv() {
                 --bind 'ctrl-/:toggle-preview' \
                 --header 'View file | Enter: Open with bat')
     else
-        file=$(find . -type f -not -path '*/\.git/*' -not -path '*/node_modules/*' | \
+        file=$(find -L . -type f -not -path '*/\.git/*' -not -path '*/node_modules/*' | \
             fzf --height 80% --reverse \
                 --preview 'bat --color=always --style=numbers {} 2>/dev/null || cat {}' \
                 --preview-window 'right,70%' \

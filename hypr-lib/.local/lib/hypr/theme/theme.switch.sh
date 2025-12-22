@@ -18,7 +18,19 @@ exec 201>"${THEME_SWITCH_LOCK}"
   print_log -sec "theme.switch" -stat "wait" "Another theme operation in progress, waiting..."
   flock 201
 }
-trap 'flock -u 201 2>/dev/null' EXIT
+theme_notify_id=""
+theme_notify_supports_p=""
+theme_notify_tag="theme-switch"
+theme_notify_active=false
+theme_notify_app="Theme switch"
+theme_notify_icon="preferences-desktop-theme"
+
+cleanup_theme_switch() {
+  local exit_code=$?
+  theme_notify_finish "${exit_code}"
+  flock -u 201 2>/dev/null
+}
+trap 'cleanup_theme_switch' EXIT
 
 #// define functions
 
@@ -78,6 +90,25 @@ load_hypr_variables() {
     return 1
   fi
 
+  # Cache setup: use file path hash + mtime as cache key
+  local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/hyq/cache"
+  local file_hash file_mtime cache_key cache_file
+  file_hash=$(echo -n "${hypr_file}" | md5sum | cut -d' ' -f1)
+  file_mtime=$(stat -c %Y "${hypr_file}" 2>/dev/null || echo "0")
+  cache_key="${file_hash}-${file_mtime}"
+  cache_file="${cache_dir}/${cache_key}.cache"
+
+  # Check cache hit
+  if [[ -f "${cache_file}" ]]; then
+    # shellcheck disable=SC1090
+    source "${cache_file}"
+    _apply_hypr_variables
+    return 0
+  fi
+
+  # Cache miss - run hyq
+  mkdir -p "${cache_dir}"
+
   # Normalize legacy theme keys (some themes used $GTK-THEME / $ICON-THEME)
   tmp_file="$(mktemp)"
   sed -E \
@@ -88,8 +119,9 @@ load_hypr_variables() {
     "${hypr_file}" >"${tmp_file}"
   hypr_file_normalized="${tmp_file}"
 
-  #? Load theme specific variables
-  eval "$(
+  #? Load theme specific variables and cache the result
+  local hyq_output
+  hyq_output="$(
     hyq "${hypr_file_normalized}" \
       --export env \
       --allow-missing \
@@ -107,6 +139,19 @@ load_hypr_variables() {
   )"
   rm -f "${tmp_file}"
 
+  # Save to cache (atomic write)
+  echo "${hyq_output}" >"${cache_file}.tmp" && mv "${cache_file}.tmp" "${cache_file}"
+
+  # Clean old cache entries (keep last 20)
+  find "${cache_dir}" -name "*.cache" -type f -printf '%T@ %p\n' 2>/dev/null \
+    | sort -rn | tail -n +21 | cut -d' ' -f2- | xargs -r rm -f
+
+  eval "${hyq_output}"
+  _apply_hypr_variables
+}
+
+# Helper to apply loaded variables (avoids duplication)
+_apply_hypr_variables() {
   GTK_THEME=${__GTK_THEME:-$GTK_THEME}
   ICON_THEME=${__ICON_THEME:-$ICON_THEME}
   CURSOR_THEME=${__CURSOR_THEME:-$CURSOR_THEME}
@@ -122,6 +167,50 @@ load_hypr_variables() {
   BAR_FONT=${__BAR_FONT:-$BAR_FONT}
   MENU_FONT=${__MENU_FONT:-$MENU_FONT}
   NOTIFICATION_FONT=${__NOTIFICATION_FONT:-$NOTIFICATION_FONT}
+}
+
+# Batch write INI-style config files (single sed pass per file)
+# Usage: ini_write_batch "file" "group1:key1=value1" "group2:key2=value2" ...
+ini_write_batch() {
+  local config_file="$1"
+  shift
+  local sed_args=()
+  local groups_to_add=()
+  declare -A group_keys
+
+  # Ensure file exists
+  [ ! -f "$config_file" ] && mkdir -p "$(dirname "$config_file")" && touch "$config_file"
+
+  for entry in "$@"; do
+    local group="${entry%%:*}"
+    local rest="${entry#*:}"
+    local key="${rest%%=*}"
+    local value="${rest#*=}"
+
+    # Build sed expression to update existing key or mark for addition
+    sed_args+=(-e "/^\[${group}\]/,/^\[/ { s/^${key}=.*/${key}=${value}/ }")
+
+    # Track group/key pairs for adding missing ones
+    group_keys["${group}"]="${group_keys["${group}"]} ${key}=${value}"
+  done
+
+  # Apply existing key updates
+  if [ ${#sed_args[@]} -gt 0 ]; then
+    sed -i "${sed_args[@]}" "$config_file"
+  fi
+
+  # Add missing groups and keys
+  for group in "${!group_keys[@]}"; do
+    if ! grep -q "^\[${group}\]" "$config_file"; then
+      echo -e "\n[${group}]" >>"$config_file"
+    fi
+    for kv in ${group_keys[$group]}; do
+      local key="${kv%%=*}"
+      if ! grep -q "^${key}=" "$config_file"; then
+        sed -i "/^\[${group}\]/a ${kv}" "$config_file"
+      fi
+    done
+  done
 }
 
 sanitize_hypr_theme() {
@@ -167,6 +256,74 @@ sanitize_hypr_theme() {
 
 }
 
+theme_notify_send() {
+  local title="$1"
+  local body="$2"
+  local timeout="$3"
+
+  [[ -z "${quiet}" ]] && quiet=false
+  [[ "${quiet}" == true ]] && return 0
+  command -v notify-send >/dev/null 2>&1 || return 0
+  [[ -z "${timeout}" ]] && timeout=1500
+
+  local args=(
+    -a "${theme_notify_app}"
+    -i "${theme_notify_icon}"
+    -t "${timeout}"
+    -h "string:x-canonical-private-synchronous:${theme_notify_tag}"
+  )
+  [[ -n "${theme_notify_id}" ]] && args+=(-r "${theme_notify_id}")
+
+  if [[ -z "${theme_notify_supports_p}" ]]; then
+    if notify-send --help 2>&1 | grep -q -- "--print-id"; then
+      theme_notify_supports_p=true
+    else
+      theme_notify_supports_p=false
+    fi
+  fi
+
+  if [[ "${theme_notify_supports_p}" == true ]]; then
+    local new_id=""
+    new_id="$(notify-send -p "${args[@]}" "${title}" "${body}" 2>/dev/null)" || {
+      notify-send "${args[@]}" "${title}" "${body}" &
+      return 0
+    }
+    new_id="${new_id//$'\n'/}"
+    [[ -n "${new_id}" ]] && theme_notify_id="${new_id}"
+  else
+    notify-send "${args[@]}" "${title}" "${body}" &
+  fi
+}
+
+theme_notify_clear() {
+  local theme_name="${themeSet}"
+  [[ -z "${theme_name}" ]] && theme_name="${HYPR_THEME}"
+  theme_notify_send "Theme switched" "${theme_name}" 800
+}
+
+theme_notify_start() {
+  local theme_name="${themeSet}"
+  [[ -z "${theme_name}" ]] && theme_name="${HYPR_THEME}"
+  theme_notify_send "Switching theme" "${theme_name}" 0
+  theme_notify_active=true
+}
+
+theme_notify_finish() {
+  local exit_code="$1"
+  [[ "${theme_notify_active}" == true ]] || return 0
+  theme_notify_active=false
+  [[ -z "${exit_code}" ]] && exit_code=0
+
+  local theme_name="${themeSet}"
+  [[ -z "${theme_name}" ]] && theme_name="${HYPR_THEME}"
+
+  if [[ "${exit_code}" -eq 0 ]]; then
+    theme_notify_clear
+  else
+    theme_notify_send "Theme switch interrupted" "${theme_name}" 2500
+  fi
+}
+
 #// evaluate options
 quiet=false
 while getopts "qnps:" option; do
@@ -205,6 +362,7 @@ done
 
 set_conf "HYPR_THEME" "${themeSet}"
 print_log -sec "theme" -stat "apply" "${themeSet}"
+theme_notify_start
 
 export reload_flag=1
 source "${LIB_DIR}/hypr/globalcontrol.sh"
@@ -248,39 +406,39 @@ if [ ! -d "${themesDir}/${GTK_THEME}" ] && [ -d "$HOME/.themes/${GTK_THEME}" ]; 
   cp -rns "$HOME/.themes/${GTK_THEME}" "${themesDir}/${GTK_THEME}"
 fi
 
-#// qt5ct
+#// qt5ct + qt6ct (batched)
 
 QT5_FONT="${QT5_FONT:-${FONT}}"
 QT5_FONT_SIZE="${QT5_FONT_SIZE:-${FONT_SIZE}}"
 QT5_MONOSPACE_FONT="${QT5_MONOSPACE_FONT:-${MONOSPACE_FONT}}"
 QT5_MONOSPACE_FONT_SIZE="${QT5_MONOSPACE_FONT_SIZE:-${MONOSPACE_FONT_SIZE:-9}}"
-
-toml_write "${confDir}/qt5ct/qt5ct.conf" "Appearance" "icon_theme" "${ICON_THEME}"
-toml_write "${confDir}/qt5ct/qt5ct.conf" "Fonts" "general" "\"${QT5_FONT},${QT5_FONT_SIZE},-1,5,400,0,0,0,0,0,0,0,0,0,0,1,${FONT_STYLE}\""
-toml_write "${confDir}/qt5ct/qt5ct.conf" "Fonts" "fixed" "\"${QT5_MONOSPACE_FONT},${QT5_MONOSPACE_FONT_SIZE},-1,5,400,0,0,0,0,0,0,0,0,0,0,1\""
-
-# // qt6ct
-
 QT6_FONT="${QT6_FONT:-${FONT}}"
 QT6_FONT_SIZE="${QT6_FONT_SIZE:-${FONT_SIZE}}"
 QT6_MONOSPACE_FONT="${QT6_MONOSPACE_FONT:-${MONOSPACE_FONT}}"
 QT6_MONOSPACE_FONT_SIZE="${QT6_MONOSPACE_FONT_SIZE:-${MONOSPACE_FONT_SIZE:-9}}"
 
-toml_write "${confDir}/qt6ct/qt6ct.conf" "Appearance" "icon_theme" "${ICON_THEME}"
-toml_write "${confDir}/qt6ct/qt6ct.conf" "Fonts" "general" "\"${QT6_FONT},${QT6_FONT_SIZE},-1,5,400,0,0,0,0,0,0,0,0,0,0,1,${FONT_STYLE}\""
-toml_write "${confDir}/qt6ct/qt6ct.conf" "Fonts" "fixed" "\"${QT6_MONOSPACE_FONT},${QT6_MONOSPACE_FONT_SIZE:-9},-1,5,400,0,0,0,0,0,0,0,0,0,0,1\""
+ini_write_batch "${confDir}/qt5ct/qt5ct.conf" \
+  "Appearance:icon_theme=${ICON_THEME}" \
+  "Fonts:general=\"${QT5_FONT},${QT5_FONT_SIZE},-1,5,400,0,0,0,0,0,0,0,0,0,0,1,${FONT_STYLE}\"" \
+  "Fonts:fixed=\"${QT5_MONOSPACE_FONT},${QT5_MONOSPACE_FONT_SIZE},-1,5,400,0,0,0,0,0,0,0,0,0,0,1\""
 
-# // kde plasma
+ini_write_batch "${confDir}/qt6ct/qt6ct.conf" \
+  "Appearance:icon_theme=${ICON_THEME}" \
+  "Fonts:general=\"${QT6_FONT},${QT6_FONT_SIZE},-1,5,400,0,0,0,0,0,0,0,0,0,0,1,${FONT_STYLE}\"" \
+  "Fonts:fixed=\"${QT6_MONOSPACE_FONT},${QT6_MONOSPACE_FONT_SIZE:-9},-1,5,400,0,0,0,0,0,0,0,0,0,0,1\""
 
-toml_write "${confDir}/kdeglobals" "Icons" "Theme" "${ICON_THEME}"
-toml_write "${confDir}/kdeglobals" "General" "TerminalApplication" "${TERMINAL}"
-toml_write "${confDir}/kdeglobals" "UiSettings" "ColorScheme" "colors"
-toml_write "${confDir}/kdeglobals" "KDE" "widgetStyle" "kvantum"
+# // kde plasma (batched)
+
+ini_write_batch "${confDir}/kdeglobals" \
+  "Icons:Theme=${ICON_THEME}" \
+  "General:TerminalApplication=${TERMINAL}" \
+  "UiSettings:ColorScheme=colors" \
+  "KDE:widgetStyle=kvantum"
 
 # // The default cursor theme // fallback
 
-toml_write "${XDG_DATA_HOME}/icons/default/index.theme" "Icon Theme" "Inherits" "${CURSOR_THEME}"
-toml_write "${HOME}/.icons/default/index.theme" "Icon Theme" "Inherits" "${CURSOR_THEME}"
+ini_write_batch "${XDG_DATA_HOME}/icons/default/index.theme" "Icon Theme:Inherits=${CURSOR_THEME}"
+ini_write_batch "${HOME}/.icons/default/index.theme" "Icon Theme:Inherits=${CURSOR_THEME}"
 
 # // gtk2
 
@@ -289,16 +447,17 @@ sed -i -e "/^gtk-theme-name=/c\gtk-theme-name=\"${GTK_THEME}\"" \
   -e "/^gtk-cursor-theme-name=/c\gtk-cursor-theme-name=\"${CURSOR_THEME}\"" \
   -e "/^gtk-icon-theme-name=/c\gtk-icon-theme-name=\"${ICON_THEME}\"" "$HOME/.gtkrc-2.0"
 
-#// gtk3
+#// gtk3 (batched)
 
 GTK3_FONT="${GTK3_FONT:-${FONT}}"
 GTK3_FONT_SIZE="${GTK3_FONT_SIZE:-${FONT_SIZE}}"
 
-toml_write "${confDir}/gtk-3.0/settings.ini" "Settings" "gtk-theme-name" "${GTK_THEME}"
-toml_write "${confDir}/gtk-3.0/settings.ini" "Settings" "gtk-icon-theme-name" "${ICON_THEME}"
-toml_write "${confDir}/gtk-3.0/settings.ini" "Settings" "gtk-cursor-theme-name" "${CURSOR_THEME}"
-toml_write "${confDir}/gtk-3.0/settings.ini" "Settings" "gtk-cursor-theme-size" "${CURSOR_SIZE}"
-toml_write "${confDir}/gtk-3.0/settings.ini" "Settings" "gtk-font-name" "${GTK3_FONT} ${GTK3_FONT_SIZE}"
+ini_write_batch "${confDir}/gtk-3.0/settings.ini" \
+  "Settings:gtk-theme-name=${GTK_THEME}" \
+  "Settings:gtk-icon-theme-name=${ICON_THEME}" \
+  "Settings:gtk-cursor-theme-name=${CURSOR_THEME}" \
+  "Settings:gtk-cursor-theme-size=${CURSOR_SIZE}" \
+  "Settings:gtk-font-name=${GTK3_FONT} ${GTK3_FONT_SIZE}"
 
 #// gtk4
 if [ -d "${themesDir}/${GTK_THEME}/gtk-4.0" ]; then
@@ -381,7 +540,7 @@ fi
 #// wallpaper
 export -f pkg_installed
 
-[[ -d "$HYPR_CACHE_HOME/wallpapers/" ]] && find -H "$HYPR_CACHE_HOME/wallpapers" -name "*.png" -exec sh -c '
+[[ -d "$WALLPAPER_CURRENT_DIR" ]] && find -H "$WALLPAPER_CURRENT_DIR" -name "*.png" -exec sh -c '
     for file; do
         base=$(basename "$file" .png)
         if pkg_installed ${base}; then

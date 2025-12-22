@@ -16,6 +16,6 @@
   font-size: 10pt;
   text-shadow: none;
   color: @fg-primary;
-  border-radius: 4px;
-  -gtk-icon-theme-name: "Tela-circle-green";
+  border-radius: 0px;
+  -gtk-icon-theme-name: "Papirus-Nordic";
 }

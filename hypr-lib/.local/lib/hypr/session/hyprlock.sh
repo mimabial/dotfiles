@@ -20,7 +20,10 @@ fi
 scrDir=${scrDir:-$HOME/.local/lib/hypr}
 confDir="${confDir:-$XDG_CONFIG_HOME}"
 cacheDir="${HYPR_CACHE_HOME:-"${XDG_CACHE_HOME}/hypr"}"
-WALLPAPER="${cacheDir}/wall.set"
+WALLPAPER_CACHE_DIR="${WALLPAPER_CACHE_DIR:-${cacheDir}/wallpaper}"
+WALLPAPER_CURRENT_DIR="${WALLPAPER_CURRENT_DIR:-${WALLPAPER_CACHE_DIR}/current}"
+WALLPAPER_VIDEO_DIR="${WALLPAPER_VIDEO_DIR:-${WALLPAPER_CURRENT_DIR}/thumbnails}"
+WALLPAPER="${WALLPAPER_CURRENT_DIR}/wall.set"
 HYPRLOCK_SCOPE_NAME="${XDG_SESSION_DESKTOP:-unknown}-lockscreen.scope"
 
 USAGE() {
@@ -42,31 +45,46 @@ USAGE() {
 EOF
 }
 
-# Converts and ensures background to be a png
+# Converts and ensures background to be a png (with hash-based caching)
 fn_background() {
-  local wp bg bg_tmp mime cached_thumb is_video
+  local wp bg bg_tmp mime cached_thumb is_video wp_hash png_cache
   wp="$(realpath "${WALLPAPER}" 2>/dev/null)" || return 1
-  bg="${cacheDir}/wall.set.png"
-  bg_tmp="${cacheDir}/.wall.set.tmp.${$}.png"
-  mkdir -p "${cacheDir}"
+  bg="${WALLPAPER_CURRENT_DIR}/wall.set.png"
+  bg_tmp="${WALLPAPER_CURRENT_DIR}/.wall.set.tmp.${$}.png"
+  mkdir -p "${WALLPAPER_CURRENT_DIR}"
 
   mime="$(file --mime-type -b "${wp}" 2>/dev/null || true)"
   is_video=$(grep -c '^video/' <<<"${mime}")
   if [ "${is_video}" -eq 1 ]; then
     print_log -sec "wallpaper" -stat "converting video" "${wp}"
-    mkdir -p "${cacheDir}/wallpapers/thumbnails"
-    cached_thumb="${cacheDir}/wallpapers/$(${hashMech:-sha1sum} "${wp}" | cut -d' ' -f1).png"
+    mkdir -p "${WALLPAPER_VIDEO_DIR}"
+    cached_thumb="${WALLPAPER_VIDEO_DIR}/$(${hashMech:-sha1sum} "${wp}" | cut -d' ' -f1).png"
     extract_thumbnail "${wp}" "${cached_thumb}"
     wp="${cached_thumb}"
   fi
 
   mime="$(file --mime-type -b "${wp}" 2>/dev/null || true)"
+
+  # Check PNG cache by wallpaper hash
+  wp_hash="$(${hashMech:-sha1sum} "${wp}" | cut -d' ' -f1)"
+  png_cache="${WALLPAPER_CACHE_DIR}/png_cache/${wp_hash}.png"
+
+  if [[ -f "${png_cache}" ]]; then
+    # Use cached PNG
+    cp -f "${png_cache}" "${bg}"
+    return 0
+  fi
+
   # Convert synchronously to ensure hyprlock has a complete image (hyprlock expects PNG)
+  mkdir -p "${WALLPAPER_CACHE_DIR}/png_cache"
   if [[ "${mime}" == "image/png" ]]; then
     cp -f "${wp}" "${bg_tmp}"
   else
     magick "${wp}[0]" "png:${bg_tmp}"
   fi
+
+  # Cache the converted PNG
+  cp -f "${bg_tmp}" "${png_cache}"
   mv -f "${bg_tmp}" "${bg}"
 }
 
@@ -112,6 +130,27 @@ colorize_fallback_icon() {
     -modulate 100,60,100 \
     -fill "${color4:-#458588}" -colorize 60% \
     "$output_path"
+}
+
+ensure_transparent_png() {
+  local output_path="$1"
+  [ -z "${output_path}" ] && return 1
+  [ -f "${output_path}" ] && return 0
+  mkdir -p "$(dirname "${output_path}")"
+  local tmp_path="${output_path}.tmp.$$"
+  magick -size 1x1 xc:none "png:${tmp_path}" 2>/dev/null || return 1
+  mv -f "${tmp_path}" "${output_path}"
+}
+
+set_mpris_blurred_empty() {
+  local output_path="$1"
+  [ -z "${output_path}" ] && return 1
+  local empty_png="${cacheDir}/landing/transparent.png"
+  ensure_transparent_png "${empty_png}" || return 1
+  if [ ! -f "${output_path}" ] || ! cmp -s "${empty_png}" "${output_path}"; then
+    cp -f "${empty_png}" "${output_path}" 2>/dev/null || return 1
+    reload_hyprlock
+  fi
 }
 
 fn_profile() {
@@ -271,7 +310,6 @@ fn_mpris() {
   # Legacy function - combined text format for backward compatibility
   local player=${1:-$(playerctl --list-all 2>/dev/null | head -n 1)}
   THUMB="${cacheDir}/landing/mpris"
-  WALL="${cacheDir}/wall.set"
   player_status="$(playerctl -p "${player}" status 2>/dev/null)"
 
   if [[ "${player_status}" == "Playing" ]]; then
@@ -285,11 +323,7 @@ fn_mpris() {
       mv "$temp_colored" "${THUMB}.png"
       reload_hyprlock
     fi
-    # Use normal wallpaper as fallback (no blur)
-    if [ ! -f "${THUMB}.blurred.png" ]; then
-      cp -f "${WALL}.png" "${THUMB}.blurred.png" 2>/dev/null
-      reload_hyprlock
-    fi
+    set_mpris_blurred_empty "${THUMB}.blurred.png"
   fi
 }
 
@@ -311,17 +345,23 @@ fn_update_art() {
   # Ensures album art is fetched and cached
   local player=${1:-$(playerctl --list-all 2>/dev/null | head -n 1)}
   THUMB="${cacheDir}/landing/mpris"
-  WALL="${cacheDir}/wall.set"
   player_status="$(playerctl -p "${player}" status 2>/dev/null)"
 
   if [[ "${player_status}" == "Playing" ]] || [[ "${player_status}" == "Paused" ]]; then
     mpris_thumb "${player}"
   else
     rm -f "${THUMB}".lnk "${THUMB}".art 2>/dev/null
-    colorize_fallback_icon "${THUMB}.png"
-    # Use normal wallpaper as fallback (no blur)
-    cp -f "${WALL}.png" "${THUMB}.blurred.png" 2>/dev/null
-    reload_hyprlock
+    local temp_colored="${cacheDir}/landing/hypr-colored.tmp.png"
+    colorize_fallback_icon "${temp_colored}"
+    if [ -f "${temp_colored}" ]; then
+      if ! cmp -s "${temp_colored}" "${THUMB}.png"; then
+        mv "${temp_colored}" "${THUMB}.png"
+        reload_hyprlock
+      else
+        rm -f "${temp_colored}"
+      fi
+    fi
+    set_mpris_blurred_empty "${THUMB}.blurred.png"
   fi
 }
 
@@ -511,19 +551,13 @@ ${layout_items}"
 }
 
 if [ -z "${*}" ]; then
-  if [[ ! -f "${cacheDir}/wall.set.png" ]] || ! file -b "${cacheDir}/wall.set.png" 2>/dev/null | grep -q '^PNG'; then
+  if [[ ! -f "${WALLPAPER_CURRENT_DIR}/wall.set.png" ]] || ! file -b "${WALLPAPER_CURRENT_DIR}/wall.set.png" 2>/dev/null | grep -q '^PNG'; then
     fn_background || true
   fi
 
-  if [ ! -f "${cacheDir}/wallpapers/hyprlock.png" ]; then
-    print_log -sec "hyprlock" -stat "setting" " ${cacheDir}/wallpapers/hyprlock.png"
-    "${scrDir}/wallpaper.sh" -s "$(readlink "${HYPR_THEME_DIR}/wall.set")" --backend hyprlock
-  fi
   # Ensure MPRIS fallback wallpaper exists before launching hyprlock
   THUMB="${cacheDir}/landing/mpris"
-  if [[ ! -f "${THUMB}.blurred.png" ]] || ! file -b "${THUMB}.blurred.png" 2>/dev/null | grep -q '^PNG'; then
-    cp -f "${cacheDir}/wall.set.png" "${THUMB}.blurred.png" 2>/dev/null
-  fi
+  set_mpris_blurred_empty "${THUMB}.blurred.png"
   # Auto-update profile if .face.icon changed
   fn_profile
   check_and_sanitize_process

@@ -10,14 +10,15 @@ if ! source "$(which hyprshell)"; then
   echo "[hyprshell] code :: Error: hyprshell not found."
   exit 1
 fi
+[[ "${HYPR_SHELL_INIT}" -ne 1 ]] && eval "$(hyprshell init)"
 
 # ? Be sure the wallpaper daemon is running
-if [[ ! -f "${XDG_RUNTIME_FIR}/hypr/$HYPRLAND_INSTANCE_SIGNATURE/hyprpaper.lock" ]]; then
+if [[ ! -f "${XDG_RUNTIME_DIR}/hypr/$HYPRLAND_INSTANCE_SIGNATURE/hyprpaper.lock" ]]; then
   systemctl --user start hyprpaper.service || setsid hyprpaper &
   sleep 1
 fi
 
-selected_wall="${1:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wall.set}"
+selected_wall="${1:-${WALLPAPER_CURRENT_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wallpaper/current}/wall.set}"
 [ -z "${selected_wall}" ] && echo "No input wallpaper" && exit 1
 selected_wall="$(readlink -f "${selected_wall}")"
 
@@ -25,8 +26,8 @@ selected_wall="$(readlink -f "${selected_wall}")"
 is_video=$(file --mime-type -b "${selected_wall}" | grep -c '^video/')
 if [ "${is_video}" -eq 1 ]; then
   print_log -sec "wallpaper" -stat "converting video" "$selected_wall"
-  mkdir -p "${HYPR_CACHE_HOME}/wallpapers/thumbnails"
-  cached_thumb="$HYPR_CACHE_HOME/wallpapers/$(${hashMech:-sha1sum} "${selected_wall}" | cut -d' ' -f1).png"
+  mkdir -p "${WALLPAPER_VIDEO_DIR}"
+  cached_thumb="${WALLPAPER_VIDEO_DIR}/$(${hashMech:-sha1sum} "${selected_wall}" | cut -d' ' -f1).png"
   extract_thumbnail "${selected_wall}" "${cached_thumb}"
   selected_wall="${cached_thumb}"
 fi

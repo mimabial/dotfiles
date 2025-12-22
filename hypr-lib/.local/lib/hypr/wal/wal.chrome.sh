@@ -8,7 +8,7 @@ if ! source "${HOME}/.cache/wal/colors-shell.sh" 2>/dev/null; then
   exit 1
 fi
 
-THEME_NAME="Wallust"
+THEME_NAME="Pywal16"
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/hypr"
 THEME_DIR="${CACHE_DIR}/${THEME_NAME}-chrome-theme"
 

@@ -42,7 +42,7 @@ window {
     border-radius:               0em;
     border-color:                @border;
     background-color:            @background;
-    background-image:            url("~/.cache/hypr/wall.set.png",height);
+    background-image:            url("~/.cache/hypr/wallpaper/current/wall.set.png",height);
 }
 
 /*****----- Main Box -----*****/
@@ -91,7 +91,7 @@ listbox {
     padding:                     2em;
     children:                    [ "dummy" , "listview" ];
     background-color:            transparent;
-    background-image:            url("~/.cache/hypr/wall.blur", height);
+    background-image:            url("~/.cache/hypr/wallpaper/current/wall.blur", height);
 }
 
 listview {

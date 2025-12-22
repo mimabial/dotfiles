@@ -49,15 +49,6 @@ if [[ -z $1 || -z $2 ]]; then
   exit 1
 fi
 
-PYWAL16_DIRS=(
-  "${XDG_CONFIG_HOME:-$HOME.config}/hypr/wal"
-  "${XDG_DATA_HOME:-$HOME/.local/share}/hypr/wal"
-  "${XDG_DATA_HOME}/wal"
-  "${XDG_DATA_HOME}/hypr/wal"
-  "/usr/local/share/hypr/wal"
-  "/usr/share/hypr/wal"
-)
-
 # set parameters
 THEME_NAME="$1"
 
@@ -114,8 +105,7 @@ print_log "Patching" -g " --// ${THEME_NAME} //-- " "from " -b "${THEME_DIR}\n"
 FAV_THEME_DIR="${THEME_DIR}/Configs/.config/hypr/themes/${THEME_NAME}"
 [ ! -d "${FAV_THEME_DIR}" ] && print_log -r "[ERROR] " "'${FAV_THEME_DIR}'" -y " Do not Exist" && exit 1
 
-# config=$(find "${dcolDir}" -type f -name "*.dcol" | awk -v favTheme="${THEME_NAME}" -F 'theme/' '{gsub(/\.dcol$/, ".theme"); print ".config/hypr/themes/" favTheme "/" $2}')
-config=$(find -H "${PYWAL16_DIRS[@]}" -type f -path "*/theme*" -name "*.dcol" 2>/dev/null | awk '!seen[substr($0, match($0, /[^/]+$/))]++' | awk -v favTheme="${THEME_NAME}" -F 'theme/' '{gsub(/\.dcol$/, ".theme"); print ".config/hypr/themes/" favTheme "/" $2}')
+config=$(find -H "${FAV_THEME_DIR}" -type f -name "*.theme" -printf ".config/hypr/themes/${THEME_NAME}/%P\n")
 restore_list=""
 
 while IFS= read -r fileCheck; do
@@ -129,11 +119,6 @@ while IFS= read -r fileCheck; do
     print_log -y "[note] " "${fileCheck} --> " -r "do not exist in " "${THEME_DIR}/Configs/"
   fi
 done <<<"$config"
-if [ -f "${FAV_THEME_DIR}/theme.dcol" ]; then
-  print_log -n "[note] " "found theme.dcol to override wallpaper dominant colors"
-  restore_list+="Y|Y|\${HOME}/.config/hypr/themes/${THEME_NAME}|theme.dcol|hyprland\n"
-fi
-
 [[ "${LOG_LEVEL}" == "debug" ]] && print_log -n "[debug] " "restore_list: ${restore_list}"
 
 readonly restore_list

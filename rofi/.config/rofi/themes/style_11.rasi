@@ -57,7 +57,7 @@ inputbar {
     children:                    [ "entry" ];
     expand:                      false;
     background-color:            @background;
-    background-image:            url("~/.cache/hypr/wall.quad", width);
+    background-image:            url("~/.cache/hypr/wallpaper/current/wall.quad", width);
     border-radius:               1em 0em 0em 1em;
 }
 entry {

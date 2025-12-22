@@ -13,6 +13,7 @@ source "${LIB_DIR}/hypr/globalcontrol.sh"
 confDir="${confDir:-$HOME/.config}"
 cacheDir="${cacheDir:-$XDG_CACHE_HOME/hypr}"
 swayncDir="${confDir}/swaync"
+hashFile="${XDG_RUNTIME_DIR:-/tmp}/wal-swaync-hash"
 
 # Get settings
 gtkIcon="${ICON_THEME:-${GTK_ICON}}"
@@ -36,6 +37,14 @@ if [ -f "${theme_conf}" ]; then
   hypr_border="${hypr_border_from_conf:-${hypr_border:-5}}"
 else
   hypr_border="${hypr_border:-5}"
+fi
+
+# Change detection: skip if inputs unchanged
+input_hash=$(echo "${gtkIcon}${font_name}${font_size}${hypr_border}" | md5sum | cut -d' ' -f1)
+colors_hash=$(md5sum "${swayncDir}/colors.css" 2>/dev/null | cut -d' ' -f1)
+combined_hash="${input_hash}-${colors_hash}"
+if [[ -f "$hashFile" && "$(cat "$hashFile" 2>/dev/null)" == "$combined_hash" ]]; then
+  exit 0
 fi
 
 # Get screen height dynamically
@@ -192,6 +201,9 @@ cat <<STYLE >"${swayncDir}/style.css"
   -gtk-icon-theme-name: "${gtkIcon}";
 }
 STYLE
+
+# Save hash for next run
+echo "$combined_hash" > "$hashFile"
 
 # Reload swaync
 swaync-client -R 2>/dev/null

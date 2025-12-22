@@ -7,11 +7,9 @@ scrDir="$(dirname "$(realpath "$0")")"
 source "${scrDir}/globalcontrol.sh"
 export scrDir
 export thmbDir
-export dcolDir
 # shellcheck disable=SC2154
 [ -d "${HYPR_THEME_DIR}" ] && cacheIn="${HYPR_THEME_DIR}" || exit 1
 [ -d "${thmbDir}" ] || mkdir -p "${thmbDir}"
-[ -d "${dcolDir}" ] || mkdir -p "${dcolDir}"
 # shellcheck disable=SC2154
 [ -d "${cacheDir}/landing" ] || mkdir -p "${cacheDir}/landing"
 [ -d "${cacheDir}/wal" ] || mkdir -p "${cacheDir}/wal"
@@ -31,8 +29,7 @@ fn_wallcache() {
       [ ! -e "${thmbDir}/${x_hash}.thmb" ] \
         || [ ! -e "${thmbDir}/${x_hash}.sqre" ] \
         || [ ! -e "${thmbDir}/${x_hash}.blur" ] \
-        || [ ! -e "${thmbDir}/${x_hash}.quad" ] \
-        || [ ! -e "${dcolDir}/${x_hash}.dcol" ]
+        || [ ! -e "${thmbDir}/${x_hash}.quad" ]
     then
       local temp_image="/tmp/${x_hash}.png"
       notify-send -a "Wallpaper cache" "Extracting thumbnail from video wallpaper..."

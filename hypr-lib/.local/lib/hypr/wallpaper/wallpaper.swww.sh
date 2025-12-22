@@ -13,7 +13,7 @@
 #   In this case we used the method `extract_thumbnail`
 #   to generate a png from a video file as swww do not support video
 
-selected_wall="${1:-"$$HYPR_CACHE_HOME/wall.set"}"
+selected_wall="${1:-"${WALLPAPER_CURRENT_DIR:-${HYPR_CACHE_HOME:-$HOME/.cache/hypr}/wallpaper/current}/wall.set"}"
 lockFile="$XDG_RUNTIME_DIR/$(basename "${0}").lock"
 if [ -e "${lockFile}" ]; then
   cat <<EOF
@@ -31,15 +31,17 @@ scrDir="$(dirname "$(dirname "$(realpath "$0")")")"
 # shellcheck disable=SC1091
 source "${scrDir}/globalcontrol.sh"
 
+#// set defaults
+xtrans="${WALLPAPER_SWWW_TRANSITION_DEFAULT:-fade}"
+[ -z "${xtrans}" ] && xtrans="fade"
+
 # Handle transition
 case "${WALLPAPER_SET_FLAG}" in
   p)
-    xtrans=${WALLPAPER_SWWW_TRANSITION_PREV}
-    xtrans="${xtrans:-"outer"}"
+    xtrans="${WALLPAPER_SWWW_TRANSITION_PREV:-$xtrans}"
     ;;
   n)
-    xtrans=${WALLPAPER_SWWW_TRANSITION_NEXT}
-    xtrans="${xtrans:-"grow"}"
+    xtrans="${WALLPAPER_SWWW_TRANSITION_NEXT:-$xtrans}"
     ;;
 
 esac
@@ -57,17 +59,13 @@ fi
 is_video=$(file --mime-type -b "${selected_wall}" | grep -c '^video/')
 if [ "${is_video}" -eq 1 ]; then
   print_log -sec "wallpaper" -stat "converting video" "$selected_wall"
-  mkdir -p "${HYPR_CACHE_HOME}/wallpapers/thumbnails"
-  cached_thumb="$HYPR_CACHE_HOME/wallpapers/$(${hashMech:-sha1sum} "${selected_wall}" | cut -d' ' -f1).png"
+  mkdir -p "${WALLPAPER_VIDEO_DIR}"
+  cached_thumb="${WALLPAPER_VIDEO_DIR}/$(${hashMech:-sha1sum} "${selected_wall}" | cut -d' ' -f1).png"
   extract_thumbnail "${selected_wall}" "${cached_thumb}"
   selected_wall="${cached_thumb}"
 fi
-
-#// set defaults
-xtrans=${WALLPAPER_SWWW_TRANSITION_DEFAULT}
-[ -z "${xtrans}" ] && xtrans="grow"
 [ -z "${wallFramerate}" ] && wallFramerate=60
-[ -z "${wallTransDuration}" ] && wallTransDuration=0.4
+[ -z "${wallTransDuration}" ] && wallTransDuration=0.6
 
 #// apply wallpaper
 # TODO: add support for other backends

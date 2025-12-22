@@ -26,12 +26,16 @@ export scrDir="${LIB_DIR:-$HOME/.local/lib}/hypr"
 export confDir="${XDG_CONFIG_HOME:-$HOME/.config}"
 export hyprConfDir="$HYPR_CONFIG_HOME"
 export cacheDir="$HYPR_CACHE_HOME"
-export thmbDir="$HYPR_CACHE_HOME/thumbs"
-export dcolDir="$HYPR_CACHE_HOME/dcols"
+export WALLPAPER_CACHE_DIR="${HYPR_CACHE_HOME}/wallpaper"
+export WALLPAPER_CURRENT_DIR="${WALLPAPER_CACHE_DIR}/current"
+export WALLPAPER_THUMB_DIR="${WALLPAPER_CACHE_DIR}/thumbs"
+export WALLPAPER_VIDEO_DIR="${WALLPAPER_CURRENT_DIR}/thumbnails"
+export thmbDir="$WALLPAPER_THUMB_DIR"
 export iconsDir="$ICONS_DIR"
 export themesDir="$THEMES_DIR"
 export fontsDir="$FONTS_DIR"
-export hashMech="sha1sum"
+# Use xxh64sum for faster hashing (3x faster than sha1sum)
+export hashMech="xxh64sum"
 
 #? avoid notify-send to stall the script
 send_notifs() {

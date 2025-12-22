@@ -30,6 +30,35 @@ def load_env_file(filepath: str) -> None:
         print(f"ERROR: Error loading environment file {filepath}: {e}", file=sys.stderr)
 
 
+def load_pywal_colors(cache_root: str) -> dict:
+    colors = {}
+    colors_json = os.path.join(cache_root, "wal", "colors.json")
+    try:
+        with open(colors_json, encoding="utf-8") as f:
+            data = json.load(f)
+        colors.update(data.get("special", {}))
+        colors.update(data.get("colors", {}))
+    except (FileNotFoundError, OSError, json.JSONDecodeError):
+        return {}
+    return colors
+
+
+def normalize_color(value: str, wal_colors: dict, fallback: str) -> str:
+    if not value:
+        return fallback
+    value = value.strip()
+    if not value:
+        return fallback
+    lookup = wal_colors.get(value) or wal_colors.get(value.lower())
+    if lookup:
+        return lookup
+    if value.startswith("#"):
+        return value
+    if len(value) in (3, 6, 8):
+        return f"#{value}"
+    return fallback
+
+
 def validate_config() -> None:
     """Validate and sanitize configuration values"""
     global \
@@ -58,21 +87,31 @@ def validate_config() -> None:
     ]
 
     # Validate color formats
+    xdg_cache = os.path.expanduser(os.getenv("XDG_CACHE_HOME", "~/.cache"))
+    wal_colors = load_pywal_colors(xdg_cache)
+    default_artist = wal_colors.get("color4", "#FFFFFF")
+    default_track = wal_colors.get("foreground", "#FFFFFF")
+    default_progress = wal_colors.get("color2", default_artist)
+    default_empty = wal_colors.get("color8", wal_colors.get("color0", "#666666"))
+    default_time = wal_colors.get("foreground", "#FFFFFF")
+
     color_vars = {
-        "artist_color": os.getenv(
-            "MEDIAPLAYER_TOOLTIP_ARTIST_COLOR", "#" + os.getenv("dcol_3xa8", "FFFFFF")
+        "artist_color": normalize_color(
+            os.getenv("MEDIAPLAYER_TOOLTIP_ARTIST_COLOR", ""), wal_colors, default_artist
         ),
-        "track_color": os.getenv(
-            "MEDIAPLAYER_TOOLTIP_TRACK_COLOR", "#" + os.getenv("dcol_txt1", "FFFFFF")
+        "track_color": normalize_color(
+            os.getenv("MEDIAPLAYER_TOOLTIP_TRACK_COLOR", ""), wal_colors, default_track
         ),
-        "progress_color": os.getenv(
-            "MEDIAPLAYER_TOOLTIP_PROGRESS_COLOR", "#" + os.getenv("dcol_pry4", "FFFFFF")
+        "progress_color": normalize_color(
+            os.getenv("MEDIAPLAYER_TOOLTIP_PROGRESS_COLOR", ""),
+            wal_colors,
+            default_progress,
         ),
-        "empty_color": os.getenv(
-            "MEDIAPLAYER_TOOLTIP_EMPTY_COLOR", "#" + os.getenv("dcol_1xa3", "FFFFFF")
+        "empty_color": normalize_color(
+            os.getenv("MEDIAPLAYER_TOOLTIP_EMPTY_COLOR", ""), wal_colors, default_empty
         ),
-        "time_color": os.getenv(
-            "MEDIAPLAYER_TOOLTIP_TIME_COLOR", "#" + os.getenv("dcol_txt1", "FFFFFF")
+        "time_color": normalize_color(
+            os.getenv("MEDIAPLAYER_TOOLTIP_TIME_COLOR", ""), wal_colors, default_time
         ),
     }
 
@@ -449,11 +488,8 @@ def main():
     xdg_state = os.path.expanduser(os.getenv("XDG_STATE_HOME", "~/.local/state"))
     xdg_cache = os.path.expanduser(os.getenv("XDG_CACHE_HOME", "~/.cache"))
     config_file = os.path.join(xdg_state, "hypr", "config")
-    colors_file = os.path.join(xdg_cache, "hypr/wall.dcol")
     if os.path.exists(config_file):
         load_env_file(config_file)
-    if os.path.exists(colors_file):
-        load_env_file(colors_file)
 
     # Validate all configuration values
     validate_config()

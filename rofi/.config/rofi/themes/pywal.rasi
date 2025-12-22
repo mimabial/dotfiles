@@ -33,7 +33,7 @@ window {
     border-radius:               0em;
     border-color:                @border;
     background-color:            @background;
-    background-image:            url("~/.cache/hypr/wall.set.png",height);
+    background-image:            url("~/.cache/hypr/wallpaper/current/wall.set.png",height);
 }
 mainbox {
     enabled:                     true;
@@ -59,7 +59,7 @@ listview {
     reverse:                     true;
     cursor:                      "default";
     background-color:            transparent;
-    background-image:            url("~/.cache/hypr/wall.blur", height);
+    background-image:            url("~/.cache/hypr/wallpaper/current/wall.blur", height);
     text-color:                  @foreground;
 }
 

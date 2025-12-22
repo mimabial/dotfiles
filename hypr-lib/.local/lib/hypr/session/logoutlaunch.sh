@@ -57,20 +57,48 @@ export fntSize=$((y_mon * 2 / 100))
 #// detect wallpaper brightness
 
 cacheDir="${HYPR_CACHE_HOME}"
+WALLPAPER_CURRENT_DIR="${WALLPAPER_CURRENT_DIR:-${cacheDir}/wallpaper/current}"
 dcol_mode="${dcol_mode:-dark}"
-# shellcheck disable=SC1091
-[ -f "${cacheDir}/wall.dcol" ] && source "${cacheDir}/wall.dcol"
+BtnCol="${BtnCol:-}"
+wal_cache="${XDG_CACHE_HOME:-$HOME/.cache}/wal"
+wal_background=""
+
+if [ -r "${wal_cache}/colors.json" ]; then
+  wal_background="$(jq -r '.special.background // empty' "${wal_cache}/colors.json")"
+fi
+
+if [ -z "${wal_background}" ] && [ -r "${wal_cache}/colors.sh" ]; then
+  # shellcheck disable=SC1090
+  source "${wal_cache}/colors.sh"
+  wal_background="${background:-}"
+fi
+
+if [ -n "${wal_background}" ]; then
+  hex="${wal_background#\#}"
+  if [[ "${#hex}" -ge 6 ]]; then
+    r=$((16#${hex:0:2}))
+    g=$((16#${hex:2:2}))
+    b=$((16#${hex:4:2}))
+    luma=$(((r * 299 + g * 587 + b * 114) / 1000))
+    if [ "${luma}" -lt 128 ]; then
+      BtnCol="white"
+    else
+      BtnCol="black"
+    fi
+  fi
+fi
 
 #  Theme mode: detects the color-scheme set in hypr.theme and falls back if nothing is parsed.
 enableWallDcol="${enableWallDcol:-1}"
-if [ "${enableWallDcol}" -eq 0 ]; then
-  HYPR_THEME_DIR="${HYPR_THEME_DIR:-$confDir/hypr/themes/$HYPR_THEME}"
-  dcol_mode=$(get_hyprConf "COLOR_SCHEME")
-  dcol_mode=${dcol_mode#prefer-}
-  # shellcheck disable=SC1091
-  [ -f "${HYPR_THEME_DIR}/theme.dcol" ] && source "${HYPR_THEME_DIR}/theme.dcol"
+if [ -z "${BtnCol}" ]; then
+  if [ "${enableWallDcol}" -eq 0 ]; then
+    HYPR_THEME_DIR="${HYPR_THEME_DIR:-$confDir/hypr/themes/$HYPR_THEME}"
+    dcol_mode=$(get_hyprConf "COLOR_SCHEME")
+    dcol_mode=${dcol_mode#prefer-}
+  fi
+  { [ "${dcol_mode}" == "dark" ] && BtnCol="white"; } || BtnCol="black"
 fi
-{ [ "${dcol_mode}" == "dark" ] && export BtnCol="white"; } || export BtnCol="black"
+export BtnCol
 
 #// eval hypr border radius
 

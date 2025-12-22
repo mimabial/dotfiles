@@ -23,7 +23,10 @@ enableWallDcol="${enableWallDcol:-1}"
 
 # Mode definitions
 colorModes=("Theme" "Auto" "Dark" "Light")
-mode="${colorModes[${enableWallDcol}]}"
+mode="Unknown"
+if [[ "${enableWallDcol}" =~ ^[0-9]+$ ]] && [ "${enableWallDcol}" -ge 0 ] && [ "${enableWallDcol}" -lt "${#colorModes[@]}" ]; then
+  mode="${colorModes[${enableWallDcol}]}"
+fi
 
 # Icons for each mode
 case "${enableWallDcol}" in

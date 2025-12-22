@@ -5,9 +5,16 @@ confDir="${XDG_CONFIG_HOME:-$HOME/.config}"
 cacheDir="${XDG_CACHE_HOME:-$HOME/.cache}/wal"
 THEME_NAME="pywal16"
 THEME_JSON="${cacheDir}/colors-vscode.json"
+hashFile="${XDG_RUNTIME_DIR:-/tmp}/wal-vscode-hash"
 
 # Exit if theme JSON doesn't exist
 [ ! -f "${THEME_JSON}" ] && exit 0
+
+# Change detection: skip if colors unchanged
+input_hash=$(md5sum "${THEME_JSON}" 2>/dev/null | cut -d' ' -f1)
+if [[ -f "$hashFile" && "$(cat "$hashFile" 2>/dev/null)" == "$input_hash" ]]; then
+  exit 0
+fi
 
 # Find all VSCode-like editors (with timeout protection)
 readarray -t code_dirs < <(find -L "$confDir" -mindepth 1 -maxdepth 1 -type d \( -name "Code*" -o -name "VSCodium*" -o -name "Cursor*" \) 2>/dev/null | sort)
@@ -89,3 +96,6 @@ EOF
     fi
   fi
 done
+
+# Save hash for next run
+echo "$input_hash" > "$hashFile"

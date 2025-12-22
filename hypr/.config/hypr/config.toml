@@ -2,20 +2,6 @@
 # This file contains default values for all configuration options
 # Generated from schema
 
-
-# Wallpaper configuration.
-[wallpaper]
-custom_paths = [] # List of paths to search for wallpapers.
-backend = "swww"  # Wallpaper backend, requires 'wallpaper.<backend>.sh' as handler script in $PATH
-# swwwallselect.sh configuration.
-[wallpaper.swww]
-framerate = 60              # Transition framerate.
-duration = 1                # Transition duration.
-transition_next = "grow"    # Transition type for next wallpaper.
-transition_prev = "outer"   # Transition type for previous wallpaper.
-transition_default = "grow" # Transition type for default wallpaper.
-
-
 # Global rofi configuration.
 [rofi]
 scale = 8 # Rofi default scaling.
@@ -74,30 +60,6 @@ scale = 8
 # wlogout configuration.
 [wlogout]
 style = 2 # Style for wlogout.
-
-# waybar configuration.
-[waybar]
-font = "JetBrainsMono Nerd Font" # Font for waybar.
-scale = 10                       # Total scaling for waybar.
-icon_size = 10                   # Icon size for waybar.
-position = "top"                 # A fallback position of the waybar.  
-
-# volumecontrol.sh configuration.
-[volume]
-notify = true     # Enable notifications for volume control.
-steps = 5         # Number of steps to increase/decrease volume.
-boost = false     # Enable volume boost.
-boost_limit = 120 # Volume boost limit.
-
-# brightnesscontrol.sh configuration.
-[brightness]
-notify = true # Enable notifications for brightness control.
-steps = 5     # Number of steps to increase/decrease brightness.
-
-# Notification script configuration.
-[notification]
-font = "mononoki Nerd Font" # Font for notifications.
-font_size = 10              # Font size for notifications.
 
 # Hyprland configuration.
 [hyprland]

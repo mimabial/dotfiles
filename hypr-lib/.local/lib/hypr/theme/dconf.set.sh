@@ -118,17 +118,32 @@ if [[ "${revert_colors:-0}" -eq 1 ]] ||
 fi
 
 DCONF_FILE="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/dconf"
+mkdir -p "$(dirname "${DCONF_FILE}")"
 
-# Finalize the env variables
+# Generate new dconf content
+new_content="$(dconf_populate)"
 
-{ dconf load -f / <"${DCONF_FILE}" && print_log -sec "dconf" -stat "preserve" "${DCONF_FILE}"; } || print_log -sec "dconf" -warn "failed to preserve" "${DCONF_FILE}"
-{ dconf_populate >"${DCONF_FILE}" && print_log -sec "dconf" -stat "populated" "${DCONF_FILE}"; } || print_log -sec "dconf" -warn "failed to populate" "${DCONF_FILE}"
-{ dconf reset -f / <"${DCONF_FILE}" && print_log -sec "dconf" -stat "reset" "${DCONF_FILE}"; } || print_log -sec "dconf" -warn "failed to reset" "${DCONF_FILE}"
-{ dconf load -f / <"${DCONF_FILE}" && print_log -sec "dconf" -stat "loaded" "${DCONF_FILE}"; } || print_log -sec "dconf" -warn "failed to load" "${DCONF_FILE}"
+# Hash-based skip: only update if content changed
+old_hash=""
+new_hash="$(echo "${new_content}" | md5sum | cut -d' ' -f1)"
+[ -f "${DCONF_FILE}" ] && old_hash="$(md5sum "${DCONF_FILE}" 2>/dev/null | cut -d' ' -f1)"
 
-[[ -n "${HYPRLAND_INSTANCE_SIGNATURE}" ]] && hyprctl setcursor "${CURSOR_THEME}" "${CURSOR_SIZE}"
+if [ "${new_hash}" != "${old_hash}" ]; then
+  echo "${new_content}" > "${DCONF_FILE}"
+  # Single dconf load is all that's needed
+  if dconf load -f / < "${DCONF_FILE}"; then
+    print_log -sec "dconf" -stat "loaded" "${DCONF_FILE}"
+  else
+    print_log -sec "dconf" -warn "failed" "${DCONF_FILE}"
+  fi
+else
+  print_log -sec "dconf" -stat "skip" "unchanged"
+fi
 
-print_log -sec "dconf" -stat "Loaded dconf settings"
+# Set cursor (run in background, non-blocking)
+[[ -n "${HYPRLAND_INSTANCE_SIGNATURE}" ]] && hyprctl setcursor "${CURSOR_THEME}" "${CURSOR_SIZE}" &
+
+print_log -sec "dconf" -stat "Loaded dconf settings" "::"
 print_log -y "#-----------------------------------------------#"
 dconf_populate
 print_log -y "#-----------------------------------------------#"

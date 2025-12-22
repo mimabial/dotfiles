@@ -4,6 +4,7 @@
 configDir="${XDG_CONFIG_HOME:-$HOME/.config}/qutebrowser"
 cacheDir="${XDG_CACHE_HOME:-$HOME/.cache}/wal"
 stateDir="${XDG_STATE_HOME:-$HOME/.local/state}/hypr"
+hashFile="${XDG_RUNTIME_DIR:-/tmp}/wal-qutebrowser-hash"
 
 # Create config directory if needed
 mkdir -p "$configDir"
@@ -32,6 +33,12 @@ if [ -f "$stateDir/staterc" ]; then
     if ! [[ "$color_mode" =~ ^[0-3]$ ]]; then
         color_mode=2
     fi
+fi
+
+# Change detection: skip if inputs unchanged
+combined_hash="${hypr_border}-${color_mode}"
+if [[ -f "$hashFile" && "$(cat "$hashFile" 2>/dev/null)" == "$combined_hash" ]]; then
+    exit 0
 fi
 
 # Color mode names for logging
@@ -82,6 +89,9 @@ elif color_mode == 3:  # Light mode
 # Log for debugging
 print(f'Hyprland sync: border_radius={hypr_border}px, color_mode={color_mode_name} ({color_mode})')
 PYEOF
+
+# Save hash for next run
+echo "$combined_hash" > "$hashFile"
 
 # ============================================================================
 # Log Result

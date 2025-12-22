@@ -15,6 +15,8 @@ import json
 import time
 import signal
 import subprocess
+import shutil
+import threading
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Optional, Literal
@@ -71,6 +73,7 @@ class AutoTheme:
         self._resolve_auto_location()
         self.state = self._load_state()
         self.running = True
+        self.stop_event = threading.Event()
         self.sensor_available = self._check_sensor()
 
         # Setup signal handlers
@@ -78,6 +81,101 @@ class AutoTheme:
         signal.signal(signal.SIGINT, self._handle_signal)
         signal.signal(signal.SIGUSR1, self._handle_toggle)  # Manual toggle
         signal.signal(signal.SIGUSR2, self._handle_refresh)  # Force refresh
+
+    def _state_home(self) -> Path:
+        return Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
+
+    def _config_home(self) -> Path:
+        return Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+
+    def _cache_home(self) -> Path:
+        return Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+
+    def _color_state_file(self) -> Path:
+        return self._cache_home() / "hypr" / "color.gen.state"
+
+    def _read_staterc(self) -> dict:
+        staterc = self._state_home() / "hypr" / "staterc"
+        if not staterc.exists():
+            return {}
+        values = {}
+        for line in staterc.read_text().splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            values[key.strip()] = value.strip().strip('"')
+        return values
+
+    def _read_mode_file(self) -> Optional[str]:
+        mode_file = self._state_home() / "hypr" / "mode"
+        if mode_file.exists():
+            return mode_file.read_text().strip()
+        return None
+
+    def _read_color_state(self) -> dict:
+        state_file = self._color_state_file()
+        if not state_file.exists():
+            return {}
+        data = {}
+        try:
+            for line in state_file.read_text().splitlines():
+                if "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                data[key.strip()] = value.strip()
+        except Exception:
+            return {}
+        return data
+
+    def _pywal_state_matches(self, mode: Literal["light", "dark"], staterc_values: dict) -> bool:
+        state = self._read_color_state()
+        if not state:
+            return False
+        colormode_raw = state.get("colormode")
+        try:
+            colormode = int(colormode_raw) if colormode_raw is not None else None
+        except ValueError:
+            colormode = None
+        if colormode != 1:
+            return False
+        if state.get("mode") != mode:
+            return False
+        wallpaper = self._resolve_wallpaper(staterc_values)
+        if wallpaper and state.get("wallpaper") and str(wallpaper) != state.get("wallpaper"):
+            return False
+        return True
+
+    def _read_theme_from_wal_conf(self) -> Optional[str]:
+        wal_conf = self._config_home() / "hypr" / "themes" / "wal.conf"
+        if not wal_conf.exists():
+            return None
+        for line in wal_conf.read_text().splitlines():
+            line = line.strip()
+            if line.startswith("$HYPR_THEME="):
+                return line.split("=", 1)[1].strip().strip('"')
+        return None
+
+    def _resolve_wallpaper(self, staterc_values: dict) -> Optional[Path]:
+        cache_wall = self._cache_home() / "hypr" / "wallpaper" / "current" / "wall.set"
+        if cache_wall.exists():
+            return cache_wall.resolve()
+
+        theme = staterc_values.get("HYPR_THEME") or self._read_theme_from_wal_conf()
+        if theme:
+            theme_wall = self._config_home() / "hypr" / "themes" / theme / "wall.set"
+            if theme_wall.exists():
+                return theme_wall.resolve()
+        return None
+
+    def _resolve_hyprshell(self) -> Optional[str]:
+        hyprshell = shutil.which("hyprshell")
+        if hyprshell:
+            return hyprshell
+        candidate = Path.home() / ".local" / "bin" / "hyprshell"
+        if candidate.exists():
+            return str(candidate)
+        return None
 
     def _resolve_auto_location(self):
         """Resolve 'auto' location via IP geolocation."""
@@ -277,6 +375,11 @@ class AutoTheme:
     def _apply_mode(self, mode: Literal["light", "dark"], reason: str):
         """Apply the theme mode to all configured targets."""
         if mode == self.state["current_mode"]:
+            if self.config["control_hyprland"]:
+                current_mode = self._read_mode_file()
+                staterc_values = self._read_staterc()
+                if current_mode != mode or not self._pywal_state_matches(mode, staterc_values):
+                    self._apply_hyprland(mode)
             return  # No change needed
 
         print(f"[{datetime.now().strftime('%H:%M:%S')}] Switching to {mode} mode ({reason})")
@@ -318,32 +421,122 @@ class AutoTheme:
     def _apply_hyprland(self, mode: Literal["light", "dark"]):
         """Update Hyprland/system theme."""
         try:
-            # Update staterc
-            staterc = Path.home() / ".local/state/hypr/staterc"
-            if staterc.exists():
-                content = staterc.read_text()
-                # Update or add BACKGROUND_MODE
-                if "BACKGROUND_MODE=" in content:
-                    lines = content.split('\n')
-                    for i, line in enumerate(lines):
-                        if line.startswith("BACKGROUND_MODE="):
-                            lines[i] = f'BACKGROUND_MODE="{mode}"'
-                            break
-                    content = '\n'.join(lines)
-                else:
-                    content += f'\nBACKGROUND_MODE="{mode}"\n'
-                staterc.write_text(content)
+            state_home = self._state_home()
+            staterc = state_home / "hypr" / "staterc"
+            staterc.parent.mkdir(parents=True, exist_ok=True)
 
-            # Could also trigger a full theme refresh here if needed
-            # subprocess.run(["hyprshell", "wal.toggle.sh", "-n"], capture_output=True)
+            staterc_values = self._read_staterc()
+            lines = staterc.read_text().splitlines() if staterc.exists() else []
+            updated = False
+            for i, line in enumerate(lines):
+                if line.startswith("BACKGROUND_MODE="):
+                    lines[i] = f'BACKGROUND_MODE="{mode}"'
+                    updated = True
+                    break
+            if not updated:
+                lines.append(f'BACKGROUND_MODE="{mode}"')
+
+            enable_wall_dcol = None
+            raw_enable = staterc_values.get("enableWallDcol")
+            if raw_enable is not None:
+                try:
+                    enable_wall_dcol = int(raw_enable)
+                except ValueError:
+                    enable_wall_dcol = None
+            if enable_wall_dcol != 1:
+                updated = False
+                for i, line in enumerate(lines):
+                    if line.startswith("enableWallDcol="):
+                        lines[i] = 'enableWallDcol="1"'
+                        updated = True
+                        break
+                if not updated:
+                    lines.append('enableWallDcol="1"')
+                enable_wall_dcol = 1
+
+            staterc.write_text("\n".join(lines) + "\n")
+
+            mode_file = state_home / "hypr" / "mode"
+            mode_file.parent.mkdir(parents=True, exist_ok=True)
+            current_mode = mode_file.read_text().strip() if mode_file.exists() else ""
+            if current_mode != mode:
+                mode_file.write_text(f"{mode}\n")
+
+            wallpaper = self._resolve_wallpaper(staterc_values)
+            if not wallpaper or not wallpaper.exists():
+                print("Warning: Could not resolve current wallpaper for pywal update")
+                return
+
+            hyprshell = self._resolve_hyprshell()
+            if not hyprshell:
+                print("Warning: hyprshell not found, cannot apply pywal colors")
+                return
+
+            env = os.environ.copy()
+            env_path = env.get("PATH", "")
+            env["PATH"] = f"{Path.home() / '.local' / 'bin'}:{env_path}"
+            result = subprocess.run(
+                [hyprshell, "color.set", str(wallpaper)],
+                env=env,
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode != 0:
+                detail = (result.stderr or result.stdout or "").strip()
+                print(f"Warning: Failed to apply pywal colors: {detail or 'unknown error'}")
+            else:
+                self._prewarm_pywal_cache(hyprshell, wallpaper, mode)
 
         except Exception as e:
             print(f"Warning: Failed to update Hyprland: {e}")
+
+    def _prewarm_pywal_cache(self, hyprshell: str, wallpaper: Path, mode: Literal["light", "dark"]):
+        if mode not in ("light", "dark"):
+            return
+        if not wallpaper or not wallpaper.exists():
+            return
+
+        target_mode = "dark" if mode == "light" else "light"
+        prewarm_key = f"{wallpaper}|{target_mode}"
+
+        if self.state.get("last_prewarm") == prewarm_key:
+            return
+
+        last_pid = self.state.get("last_prewarm_pid")
+        if last_pid:
+            try:
+                if Path(f"/proc/{int(last_pid)}").exists():
+                    return
+            except Exception:
+                pass
+
+        env = os.environ.copy()
+        env["HYPR_WAL_CACHE_ONLY"] = "1"
+        env["HYPR_WAL_MODE_OVERRIDE"] = target_mode
+        env_path = env.get("PATH", "")
+        env["PATH"] = f"{Path.home() / '.local' / 'bin'}:{env_path}"
+
+        try:
+            proc = subprocess.Popen(
+                [hyprshell, "color.set", str(wallpaper)],
+                env=env,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+            )
+        except Exception as e:
+            print(f"Warning: Failed to prewarm pywal cache: {e}")
+            return
+
+        self.state["last_prewarm"] = prewarm_key
+        self.state["last_prewarm_pid"] = proc.pid
+        self._save_state()
 
     def _handle_signal(self, signum, frame):
         """Handle termination signals."""
         print(f"\nReceived signal {signum}, shutting down...")
         self.running = False
+        self.stop_event.set()
 
     def _handle_toggle(self, signum, frame):
         """Handle manual toggle (SIGUSR1)."""
@@ -377,7 +570,8 @@ class AutoTheme:
 
         while self.running:
             try:
-                time.sleep(self.config["check_interval_seconds"])
+                if self.stop_event.wait(self.config["check_interval_seconds"]):
+                    break
 
                 should_be_light, reason = self._should_be_light()
                 self._apply_mode("light" if should_be_light else "dark", reason)

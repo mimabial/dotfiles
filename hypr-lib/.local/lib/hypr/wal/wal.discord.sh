@@ -4,9 +4,16 @@
 cacheDir="${XDG_CACHE_HOME:-$HOME/.cache}"
 confDir="${XDG_CONFIG_HOME:-$HOME/.config}"
 discord_css="${cacheDir}/wal/discord.css"
+hashFile="${XDG_RUNTIME_DIR:-/tmp}/wal-discord-hash"
 
 # Exit if source file doesn't exist
 [ ! -f "${discord_css}" ] && exit 0
+
+# Change detection: skip if CSS unchanged
+input_hash=$(md5sum "${discord_css}" 2>/dev/null | cut -d' ' -f1)
+if [[ -f "$hashFile" && "$(cat "$hashFile" 2>/dev/null)" == "$input_hash" ]]; then
+  exit 0
+fi
 
 # List of Discord client CSS locations
 declare -a clients=(
@@ -23,3 +30,6 @@ for client in "${clients[@]}"; do
     cp "$discord_css" "$client"
   fi
 done
+
+# Save hash for next run
+echo "$input_hash" > "$hashFile"

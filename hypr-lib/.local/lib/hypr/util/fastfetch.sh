@@ -30,6 +30,7 @@ USAGE
 confDir="${XDG_CONFIG_HOME:-$HOME/.config}"
 iconDir="${XDG_DATA_HOME:-$HOME/.local/share}/icons"
 cacheDir="${XDG_CACHE_HOME:-$HOME/.cache}/hypr"
+WALLPAPER_CURRENT_DIR="${WALLPAPER_CURRENT_DIR:-${cacheDir}/wallpaper/current}"
 image_dirs=()
 distro_logo=${iconDir}/Wallbash-Icon/distro/$LOGO
 
@@ -45,11 +46,11 @@ case $1 in
         fi
         # [ -d "$cacheDir" ] && image_dirs+=("$cacheDir")
         [ -f "$distro_logo" ] && echo "${distro_logo}"
-        image_dirs+=("$cacheDir/wall.quad")
-        image_dirs+=("$cacheDir/wall.sqre")
+        image_dirs+=("$WALLPAPER_CURRENT_DIR/wall.quad")
+        image_dirs+=("$WALLPAPER_CURRENT_DIR/wall.sqre")
         [ -f "$HOME/.face.icon" ] && image_dirs+=("$HOME/.face.icon")
         # also .bash_logout may be matched with this find
-        find -L "${image_dirs[@]}" -maxdepth 1 -type f \( -name "wall.quad" -o -name "wall.sqre" -o -name "*.icon" -o -name "*logo*" -o -name "*.png" \) ! -path "*/wall.set*" ! -path "*/wallpapers/*.png" 2>/dev/null
+        find -L "${image_dirs[@]}" -maxdepth 1 -type f \( -name "wall.quad" -o -name "wall.sqre" -o -name "*.icon" -o -name "*logo*" -o -name "*.png" \) ! -path "*/wall.set*" ! -path "*/wallpaper/current/*.png" ! -path "*/wallpapers/*.png" 2>/dev/null
       ) | shuf -n 1
     }
     help() {
@@ -83,10 +84,10 @@ HELP
       for arg in "$@"; do
         case $arg in
           --quad)
-            image_dirs+=("$cacheDir/wall.quad")
+            image_dirs+=("$WALLPAPER_CURRENT_DIR/wall.quad")
             ;;
           --sqre)
-            image_dirs+=("$cacheDir/wall.sqre")
+            image_dirs+=("$WALLPAPER_CURRENT_DIR/wall.sqre")
             ;;
           --prof)
             [ -f "$HOME/.face.icon" ] && image_dirs+=("$HOME/.face.icon")
@@ -107,7 +108,7 @@ HELP
             ;;
         esac
       done
-      find -L "${image_dirs[@]}" -maxdepth 1 -type f \( -name "wall.quad" -o -name "wall.sqre" -o -name "*.icon" -o -name "*logo*" -o -name "*.png" \) ! -path "*/wall.set*" ! -path "*/wallpapers/*.png" 2>/dev/null
+      find -L "${image_dirs[@]}" -maxdepth 1 -type f \( -name "wall.quad" -o -name "wall.sqre" -o -name "*.icon" -o -name "*logo*" -o -name "*.png" \) ! -path "*/wall.set*" ! -path "*/wallpaper/current/*.png" ! -path "*/wallpapers/*.png" 2>/dev/null
     ) | shuf -n 1
 
     ;;

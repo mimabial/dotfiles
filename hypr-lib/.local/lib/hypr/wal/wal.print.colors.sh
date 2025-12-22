@@ -23,7 +23,7 @@ print_color() {
 }
 
 echo "#-----------------------------------------------#"
-echo "  Wallust Color Palette"
+echo "  Pywall16 Color Palette"
 echo "#-----------------------------------------------#"
 echo ""
 
