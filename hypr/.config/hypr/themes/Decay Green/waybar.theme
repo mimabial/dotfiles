@@ -1,8 +1,8 @@
-$HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfgen.sh
+$HOME/.config/waybar/theme.css
 
 @define-color warning #485385; /* brackets */
 @define-color bg_alt #0b0d16; /* contrast */
-@define-color alt-fg #a5b6cf; /* foreground */
+@define-color fg_alt #a5b6cf; /* foreground */
 
 @define-color bg #0f111a; /* statusline_bg */
 
@@ -11,11 +11,11 @@ $HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfge
 @define-color border #a5b6cf; /* cursorline */
 
 @define-color accent #93cee9;
-@define-color wb-act-fg #1f2328;
+@define-color workspace_active_fg #1f2328;
 @define-color border_alt #90ceaa; /* accent */
 
 @define-color fg_selected #8baff1;
-@define-color wb-hvr-bg #1f2328;
+@define-color workspace_hover_bg #1f2328;
 @define-color hover #90ceaa; /* green */
 
 @define-color c0 #151720;
@@ -34,5 +34,30 @@ $HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfge
 @define-color c12 #8baff1;
 @define-color c13 #c79bf0;
 @define-color c14 #98d3ee;
-@define-color orange-bright #E59D8C;
+@define-color orange_bright #E59D8C;
 @define-color c15 #d0d3d8;
+
+@define-color critical @c1;
+@define-color accent_bg @accent;
+@define-color accent_fg @accent;
+@define-color warning_bg @warning;
+@define-color warning_fg @warning;
+@define-color error_bg @critical;
+@define-color error_fg @critical;
+@define-color info_bg @accent;
+@define-color info_fg @accent;
+@define-color success_bg @c2;
+@define-color success_fg @c2;
+@define-color neutral_bg @bg_alt;
+@define-color neutral_fg @fg;
+@define-color secondary_bg @bg_alt;
+@define-color secondary_fg @fg;
+@define-color highlight_bg @bg_selected;
+@define-color highlight_fg @fg_selected;
+@define-color menu_bg @bg;
+@define-color menu_fg @fg;
+@define-color menu_border @border;
+@define-color tooltip_bg @bg_alt;
+@define-color tooltip_fg @fg;
+@define-color tooltip_border @border;
+@define-color workspace_active_bg @bg_selected;

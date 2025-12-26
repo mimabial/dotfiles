@@ -1,6 +1,23 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2154
 # shellcheck disable=SC1091
+#
+# theme.switch.sh - Theme switching orchestrator
+#
+# OVERVIEW:
+#   Switches between HyDE themes, updating all configuration files and
+#   triggering color regeneration via color.set.sh.
+#
+# USAGE:
+#   theme.switch.sh -s "Theme Name"   # Switch to specific theme
+#   theme.switch.sh -n                # Switch to next theme
+#   theme.switch.sh -p                # Switch to previous theme
+#
+# KEY FUNCTIONS:
+#   Theme_Change()         - Navigate to next/previous theme
+#   load_hypr_variables()  - Extract variables from theme's hypr.theme
+#   sanitize_hypr_theme()  - Remove exec/shadow lines from theme config
+#   write_theme_conf()     - Write active theme configuration
 
 [[ "${HYPR_SHELL_INIT}" -ne 1 ]] && eval "$(hyprshell init)"
 
@@ -35,20 +52,37 @@ trap 'cleanup_theme_switch' EXIT
 #// define functions
 
 Theme_Change() {
-  local x_switch=$1
+  local x_switch="$1"
+
+  # Validate input parameter
+  if [[ ! "${x_switch}" =~ ^[np]$ ]]; then
+    print_log -sec "theme" -err "Theme_Change" "invalid direction '${x_switch}' (expected 'n' or 'p')"
+    return 1
+  fi
 
   # shellcheck disable=SC2154
+  local found=false
   for i in "${!thmList[@]}"; do
     if [ "${thmList[i]}" == "${HYPR_THEME}" ]; then
+      found=true
       if [ "${x_switch}" == 'n' ]; then
         setIndex=$(((i + 1) % ${#thmList[@]}))
       elif [ "${x_switch}" == 'p' ]; then
         setIndex=$((i - 1))
+        # Handle negative wrap-around
+        [[ ${setIndex} -lt 0 ]] && setIndex=$(( ${#thmList[@]} - 1 ))
       fi
       themeSet="${thmList[setIndex]}"
       break
     fi
   done
+
+  if [[ "${found}" != true ]]; then
+    print_log -sec "theme" -warn "Theme_Change" "current theme '${HYPR_THEME}' not found in theme list"
+    # Default to first theme
+    setIndex=0
+    themeSet="${thmList[0]}"
+  fi
 }
 
 show_theme_status() {
@@ -98,7 +132,7 @@ load_hypr_variables() {
   cache_key="${file_hash}-${file_mtime}"
   cache_file="${cache_dir}/${cache_key}.cache"
 
-  # Check cache hit
+  # Check cache hit - cache files are pre-validated
   if [[ -f "${cache_file}" ]]; then
     # shellcheck disable=SC1090
     source "${cache_file}"
@@ -139,14 +173,36 @@ load_hypr_variables() {
   )"
   rm -f "${tmp_file}"
 
-  # Save to cache (atomic write)
-  echo "${hyq_output}" >"${cache_file}.tmp" && mv "${cache_file}.tmp" "${cache_file}"
+  # SECURITY: Validate hyq output before sourcing (safe: only allow expected variable patterns)
+  # Expected format: __VARIABLE_NAME="value" or __VARIABLE_NAME=number
+  local validated_output=""
+  local allowed_vars="^__(GTK_THEME|ICON_THEME|CURSOR_THEME|CURSOR_SIZE|FONT|FONT_SIZE|FONT_STYLE|DOCUMENT_FONT|DOCUMENT_FONT_SIZE|MONOSPACE_FONT|MONOSPACE_FONT_SIZE|BAR_FONT|MENU_FONT|NOTIFICATION_FONT|TERMINAL)="
+  while IFS= read -r line; do
+    # Skip empty lines
+    [[ -z "${line}" ]] && continue
+    # Validate line matches expected pattern: __VAR_NAME="value" or __VAR_NAME=number
+    if [[ "${line}" =~ ${allowed_vars} ]]; then
+      # Additional check: ensure no command substitution or dangerous characters
+      if [[ ! "${line}" =~ \$\(|\`|\; ]]; then
+        validated_output+="${line}"$'\n'
+      else
+        print_log -sec "theme" -warn "security" "blocked unsafe pattern in: ${line}"
+      fi
+    else
+      print_log -sec "theme" -warn "security" "blocked unexpected variable: ${line}"
+    fi
+  done <<< "${hyq_output}"
+
+  # Save validated output to cache (atomic write)
+  echo "${validated_output}" >"${cache_file}.tmp" && mv "${cache_file}.tmp" "${cache_file}"
 
   # Clean old cache entries (keep last 20)
   find "${cache_dir}" -name "*.cache" -type f -printf '%T@ %p\n' 2>/dev/null \
     | sort -rn | tail -n +21 | cut -d' ' -f2- | xargs -r rm -f
 
-  eval "${hyq_output}"
+  # Source validated output (safe: contains only validated variable assignments)
+  # shellcheck disable=SC1090
+  source <(echo "${validated_output}")
   _apply_hypr_variables
 }
 
@@ -169,6 +225,11 @@ _apply_hypr_variables() {
   NOTIFICATION_FONT=${__NOTIFICATION_FONT:-$NOTIFICATION_FONT}
 }
 
+# Escape special regex characters for sed/grep
+escape_regex() {
+  printf '%s' "$1" | sed 's/[][\/.^$*]/\\&/g'
+}
+
 # Batch write INI-style config files (single sed pass per file)
 # Usage: ini_write_batch "file" "group1:key1=value1" "group2:key2=value2" ...
 ini_write_batch() {
@@ -186,9 +247,12 @@ ini_write_batch() {
     local rest="${entry#*:}"
     local key="${rest%%=*}"
     local value="${rest#*=}"
+    local group_esc key_esc
+    group_esc="$(escape_regex "$group")"
+    key_esc="$(escape_regex "$key")"
 
     # Build sed expression to update existing key or mark for addition
-    sed_args+=(-e "/^\[${group}\]/,/^\[/ { s/^${key}=.*/${key}=${value}/ }")
+    sed_args+=(-e "/^\[${group_esc}\]/,/^\[/ { s/^${key_esc}=.*/${key}=${value}/ }")
 
     # Track group/key pairs for adding missing ones
     group_keys["${group}"]="${group_keys["${group}"]} ${key}=${value}"
@@ -201,13 +265,17 @@ ini_write_batch() {
 
   # Add missing groups and keys
   for group in "${!group_keys[@]}"; do
-    if ! grep -q "^\[${group}\]" "$config_file"; then
+    local group_esc
+    group_esc="$(escape_regex "$group")"
+    if ! grep -q "^\[${group_esc}\]" "$config_file"; then
       echo -e "\n[${group}]" >>"$config_file"
     fi
     for kv in ${group_keys[$group]}; do
       local key="${kv%%=*}"
-      if ! grep -q "^${key}=" "$config_file"; then
-        sed -i "/^\[${group}\]/a ${kv}" "$config_file"
+      local key_esc
+      key_esc="$(escape_regex "$key")"
+      if ! grep -q "^${key_esc}=" "$config_file"; then
+        sed -i "/^\[${group_esc}\]/a ${kv}" "$config_file"
       fi
     done
   done
@@ -246,9 +314,18 @@ sanitize_hypr_theme() {
 
   # Loop through each pattern and remove matching lines
   for pattern in "${dirty_regex[@]}"; do
-    grep -E "${pattern}" "${buffer_file}" | while read -r line; do
+    # Read matching lines into array (avoids subshell)
+    local -a matches=()
+    while IFS= read -r line; do
+      matches+=("$line")
+    done < <(grep -E "${pattern}" "${buffer_file}" 2>/dev/null)
+
+    # Remove each match with sed
+    for line in "${matches[@]}"; do
+      [[ -n "$line" ]] || continue
       sed -i "\|${line}|d" "${buffer_file}"
-      print_log -sec "theme" -warn "sanitize" "${line}"
+      local log_line="${line#"${line%%[![:space:]]*}"}"
+      print_log -sec "theme" -warn "sanitize" "${log_line}"
     done
   done
   cat "${buffer_file}" >"${output_file}"
@@ -373,7 +450,7 @@ if [[ -r "${HYPRLAND_CONFIG}" ]]; then
 
   # shellcheck disable=SC2154
   # Updates the compositor theme data in advance
-  [[ -n $HYPRLAND_INSTANCE_SIGNATURE ]] && hyprctl keyword misc:disable_autoreload 1 -q
+  [[ -n "${HYPRLAND_INSTANCE_SIGNATURE}" ]] && hyprctl keyword misc:disable_autoreload 1 -q
   [[ -r "${HYPR_THEME_DIR}/hypr.theme" ]] && sanitize_hypr_theme "${HYPR_THEME_DIR}/hypr.theme" "${XDG_CONFIG_HOME}/hypr/themes/theme.conf"
 
   #? Load theme specific variables
@@ -543,14 +620,25 @@ export -f pkg_installed
 [[ -d "$WALLPAPER_CURRENT_DIR" ]] && find -H "$WALLPAPER_CURRENT_DIR" -name "*.png" -exec sh -c '
     for file; do
         base=$(basename "$file" .png)
-        if pkg_installed ${base}; then
+        if pkg_installed "${base}"; then
             "${LIB_DIR}/hypr/wallpaper/wallpaper.sh" --link --backend "${base}"
         fi
     done
 ' sh {} + &
 
+wallpaper_target="${HYPR_THEME_DIR}/wall.set"
+wallpaper_path="$(
+  readlink -f -- "${wallpaper_target}" 2>/dev/null \
+    || realpath -- "${wallpaper_target}" 2>/dev/null \
+    || printf '%s' "${wallpaper_target}"
+)"
 if [ "$quiet" = true ]; then
-  "${LIB_DIR}/hypr/wallpaper/wallpaper.sh" -s "$(readlink "${HYPR_THEME_DIR}/wall.set")" --global >/dev/null 2>&1
+  "${LIB_DIR}/hypr/wallpaper/wallpaper.sh" -s "${wallpaper_path}" --global >/dev/null 2>&1
 else
-  "${LIB_DIR}/hypr/wallpaper/wallpaper.sh" -s "$(readlink "${HYPR_THEME_DIR}/wall.set")" --global
+  "${LIB_DIR}/hypr/wallpaper/wallpaper.sh" -s "${wallpaper_path}" --global
+fi
+
+#// nvim sync (after wallpaper/colors so pywal theme reads correct colors)
+if [[ -x "${scrDir}/util/nvim-theme-sync.sh" ]]; then
+  "${scrDir}/util/nvim-theme-sync.sh" >/dev/null 2>&1 || true
 fi

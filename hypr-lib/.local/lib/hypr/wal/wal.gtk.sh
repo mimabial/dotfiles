@@ -152,7 +152,8 @@ if command -v xsettingsd &>/dev/null && pgrep -x xsettingsd >/dev/null; then
 fi
 
 # Method 2: Update GTK settings.ini files (triggers inotify watches)
-for gtk_config in ~/.config/gtk-3.0/settings.ini ~/.config/gtk-4.0/settings.ini; do
+gtk_config_dir="${XDG_CONFIG_HOME:-$HOME/.config}"
+for gtk_config in "${gtk_config_dir}/gtk-3.0/settings.ini" "${gtk_config_dir}/gtk-4.0/settings.ini"; do
     if [ -f "$gtk_config" ]; then
         sed -i 's/^gtk-theme-name=.*/gtk-theme-name=Adwaita/' "$gtk_config"
     fi
@@ -160,7 +161,7 @@ done
 
 sleep 0.05  # Reduced from 0.1
 
-for gtk_config in ~/.config/gtk-3.0/settings.ini ~/.config/gtk-4.0/settings.ini; do
+for gtk_config in "${gtk_config_dir}/gtk-3.0/settings.ini" "${gtk_config_dir}/gtk-4.0/settings.ini"; do
     if [ -f "$gtk_config" ]; then
         sed -i 's/^gtk-theme-name=.*/gtk-theme-name=Pywal16-Gtk/' "$gtk_config"
     fi

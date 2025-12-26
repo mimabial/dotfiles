@@ -6,7 +6,7 @@
 
 # shellcheck source=$HOME/.local/bin/hyprshell
 # shellcheck disable=SC1091
-if ! source "$(which hyprshell)"; then
+if ! source "$(command -v hyprshell)"; then
   echo "[hyprshell] code :: Error: hyprshell not found."
   exit 1
 fi

@@ -3,7 +3,6 @@
 
 script_dir=$(dirname "$(realpath "$0")")
 # shellcheck disable=SC1091
-# if [ $? -ne 0 ]; then
 if ! source "${script_dir}/globalcontrol.sh"; then
   echo "Error: unable to source globalcontrol.sh..."
   exit 1
@@ -68,7 +67,7 @@ else
     else
       echo "Select a Branch"
       select branch in "${branches_array[@]}"; do
-        [[ -n $branch ]] && break || echo "Invalid selection. Please try again."
+        [[ -n "${branch}" ]] && break || echo "Invalid selection. Please try again."
       done
     fi
   fi

@@ -1,6 +1,26 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC1091
 # shellcheck disable=SC1090
+#
+# globalcontrol.sh - Core utilities for HyDE shell scripts
+#
+# This file provides common functions and environment setup for all HyDE scripts.
+# Source this file at the start of any script that needs access to theme settings,
+# wallpaper management, or system configuration.
+#
+# Key exports:
+#   HYPR_CONFIG_HOME, HYPR_DATA_HOME, HYPR_CACHE_HOME, HYPR_STATE_HOME
+#   LIB_DIR, scrDir, confDir
+#
+# Key functions:
+#   print_log()        - Colored logging output
+#   get_hashmap()      - Find wallpapers with hashes for caching
+#   get_themes()       - Populate theme list arrays
+#   export_hypr_config() - Load state variables from staterc/config
+#   get_hyprConf()     - Get value from theme's hypr.theme file
+#   set_conf()         - Update a variable in staterc
+#   pkg_installed()    - Check if a package is installed
+#   state_get/set()    - Unified state management API
 
 # xdg resolution
 export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
@@ -119,30 +139,17 @@ get_hashmap() {
   unset skipStrays
   unset filetypes
 
-  list_extensions() {
-    # Define supported file extensions
-    supported_files=(
-      "gif"
-      "jpg"
-      "jpeg"
-      "png"
-      "${WALLPAPER_FILETYPES[@]}"
-    )
-    if [ -n "${WALLPAPER_OVERRIDE_FILETYPES}" ]; then
-      supported_files=("${WALLPAPER_OVERRIDE_FILETYPES[@]}")
-    fi
-
-    printf -- "-iname \"*.%s\" -o " "${supported_files[@]}" | sed 's/ -o $//'
-
-  }
-
-  list_skipped_path() {
-    local skip_path=(
-      "*/logo/*"
-    )
-    # output a list of paths to be skipped in find snippet
-    printf -- "! -path \"%s\" " "${skip_path[@]}" | sed 's/ $//'
-  }
+  # Initialize supported file extensions (safe: no eval needed)
+  local -a supported_files=(
+    "gif"
+    "jpg"
+    "jpeg"
+    "png"
+    "${WALLPAPER_FILETYPES[@]}"
+  )
+  if [ -n "${WALLPAPER_OVERRIDE_FILETYPES}" ]; then
+    supported_files=("${WALLPAPER_OVERRIDE_FILETYPES[@]}")
+  fi
 
   find_wallpapers() {
     local wallSource="$1"
@@ -152,13 +159,27 @@ get_hashmap() {
       return 1
     fi
 
-    local find_command
-    find_command="find -H \"${wallSource}\" -type f \\( $(list_extensions) \\) $(list_skipped_path) -exec \"${hashMech}\" {} +"
+    # Build find arguments safely using arrays (no eval needed)
+    local -a find_args=(-H "${wallSource}" -type f \()
+    local first_ext=true
 
-    [ "${LOG_LEVEL}" == "debug" ] && print_log -g "DEBUG:" -b "Running command:" "${find_command}"
+    # Add file extension patterns
+    for ext in "${supported_files[@]}"; do
+      if [[ "${first_ext}" == true ]]; then
+        find_args+=(-iname "*.${ext}")
+        first_ext=false
+      else
+        find_args+=(-o -iname "*.${ext}")
+      fi
+    done
+    find_args+=(\) ! -path "*/logo/*" -exec "${hashMech}" {} +)
 
+    [ "${LOG_LEVEL}" == "debug" ] && print_log -g "DEBUG:" -b "Running find with args:" "${find_args[*]}"
+
+    local tmpfile error_output
     tmpfile=$(mktemp)
-    eval "${find_command}" 2>"$tmpfile" | sort -k2
+    # Execute find directly with array expansion (safe: no eval, proper quoting)
+    find "${find_args[@]}" 2>"$tmpfile" | sort -k2
     error_output=$(<"$tmpfile") && rm -f "$tmpfile"
     [ -n "${error_output}" ] && print_log -err "ERROR:" -b "found an error: " -r "${error_output}" -y " skipping..."
 
@@ -223,6 +244,25 @@ get_hashmap() {
   fi
 }
 
+# ============================================================================
+# get_themes - Populate theme list arrays from themes directory
+# ============================================================================
+# Arguments: none
+# Global variables set:
+#   thmList[] - Array of theme names
+#   thmWall[] - Array of wallpaper paths (corresponding to thmList)
+#   thmSort[] - Array of sort order values
+# Returns:
+#   0 - Always succeeds
+# Notes:
+#   - Reads from $HYPR_CONFIG_HOME/themes/
+#   - Sorts themes by .sort file value
+#   - Fixes broken wall.set symlinks automatically
+# Example:
+#   get_themes
+#   for i in "${!thmList[@]}"; do
+#     echo "Theme: ${thmList[$i]}, Wallpaper: ${thmWall[$i]}"
+#   done
 # shellcheck disable=SC2120
 get_themes() {
   unset thmSortS
@@ -281,49 +321,87 @@ export_hypr_config() {
   [ -f "${user_conf}" ] && source "${user_conf}"
 }
 
-export_hypr_config
+# ============================================================================
+# GLOBAL INITIALIZATION
+# ============================================================================
+# This section handles initialization that happens when the script is sourced.
+# Use HYPR_SKIP_INIT=1 to skip auto-initialization (for scripts that need
+# to control when state is loaded).
+#
+# To reload state after changes: call export_hypr_config explicitly
+# To force full re-init: unset HYPR_GLOBAL_INIT and source again
+# ============================================================================
 
-case "${enableWallDcol}" in
-  0 | 1 | 2 | 3) ;;
-  *) enableWallDcol=0 ;;
-esac
+# Initialize hypr environment (loads state, sets defaults)
+# Called automatically unless HYPR_SKIP_INIT=1
+init_hypr_globals() {
+  # Guard against re-initialization (unless reload_flag is set)
+  if [[ "${HYPR_GLOBAL_INIT:-0}" -eq 1 ]] && [[ "${reload_flag:-0}" -ne 1 ]]; then
+    return 0
+  fi
 
-if [ -z "${HYPR_THEME}" ] || [ ! -d "${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}" ]; then
-  get_themes
-  HYPR_THEME="${thmList[0]}"
+  # Load user state
+  export_hypr_config
+
+  # Validate color mode
+  case "${enableWallDcol}" in
+    0 | 1 | 2 | 3) ;;
+    *) enableWallDcol=0 ;;
+  esac
+
+  # Set theme if not already set
+  if [ -z "${HYPR_THEME}" ] || [ ! -d "${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}" ]; then
+    get_themes
+    HYPR_THEME="${thmList[0]}"
+  fi
+
+  # Derived paths
+  HYPR_THEME_DIR="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}"
+
+  # Export theme variables
+  export HYPR_THEME \
+    HYPR_THEME_DIR \
+    enableWallDcol
+
+  # Hyprland-specific settings (only if running under Hyprland)
+  if [ -n "${HYPRLAND_INSTANCE_SIGNATURE}" ]; then
+    hypr_border="$(hyprctl -j getoption decoration:rounding 2>/dev/null | jq '.int' 2>/dev/null)"
+    hypr_width="$(hyprctl -j getoption general:border_size 2>/dev/null | jq '.int' 2>/dev/null)"
+  fi
+  export hypr_border=${hypr_border:-${HYPR_BORDER_RADIUS:-2}}
+  export hypr_width=${hypr_width:-${HYPR_BORDER_WIDTH:-2}}
+
+  # Mark as initialized
+  HYPR_GLOBAL_INIT=1
+}
+
+# Auto-initialize unless explicitly skipped
+if [[ "${HYPR_SKIP_INIT:-0}" -ne 1 ]]; then
+  init_hypr_globals
 fi
-
-HYPR_THEME_DIR="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}"
-PYWAL16_DIRS=(
-  "${XDG_CONFIG_HOME}/wallbash"
-  "${XDG_CONFIG_HOME}/hypr/wallbash"
-  "${XDG_DATA_HOME}/wallbash"
-  "${XDG_DATA_HOME}/hypr/wallbash"
-  "/usr/local/share/hypr/wallbash"
-  "/usr/share/hypr/wallbash"
-)
-
-pywalDirs=("${PYWAL16_DIRS[@]}")
-
-export HYPR_THEME \
-  HYPR_THEME_DIR \
-  PYWAL16_DIRS \
-  pywalDirs \
-  enableWallDcol
-
-#// hypr vars
-
-if [ -n "$HYPRLAND_INSTANCE_SIGNATURE" ]; then
-  hypr_border="$(hyprctl -j getoption decoration:rounding | jq '.int')"
-  hypr_width="$(hyprctl -j getoption general:border_size | jq '.int')"
-fi
-export hypr_border=${hypr_border:-${HYPR_BORDER_RADIUS:-2}}
-export hypr_width=${hypr_width:-${HYPR_BORDER_WIDTH:-2}}
 
 #// extra fns
 
+# ============================================================================
+# pkg_installed - Check if a package is installed
+# ============================================================================
+# Arguments:
+#   $1 - Package name to check
+# Returns:
+#   0 - Package is installed (via command, flatpak, or package manager)
+#   1 - Package is not installed or invalid input
+# Example:
+#   if pkg_installed "rofi"; then
+#     echo "rofi is available"
+#   fi
 pkg_installed() {
-  local pkgIn=$1
+  local pkgIn="${1}"
+
+  # Validate input
+  if [[ -z "${pkgIn}" ]]; then
+    return 1
+  fi
+
   if command -v "${pkgIn}" &>/dev/null; then
     return 0
   elif command -v "flatpak" &>/dev/null && flatpak info "${pkgIn}" &>/dev/null; then
@@ -344,20 +422,184 @@ get_aurhlpr() {
   fi
 }
 
-set_conf() {
-  local varName="${1}"
-  local varData="${2}"
-  touch "${XDG_STATE_HOME}/hypr/staterc"
+# ============================================================================
+# UNIFIED STATE MANAGEMENT
+# ============================================================================
+# All state is stored in key=value format in these files:
+#   - staterc: User/runtime state (HYPR_THEME, enableWallDcol, etc.)
+#   - config:  Exported environment config
+#   - mode:    Current color mode (dark/light)
+#
+# Use these functions for consistent state access across all scripts:
+#   state_get  - Read a state variable
+#   state_set  - Write a state variable (atomic)
+#   state_file - Get path to a state file
+# ============================================================================
 
-  if [ "$(grep -c "^${varName}=" "${XDG_STATE_HOME}/hypr/staterc")" -eq 1 ]; then
-    sed -i "/^${varName}=/c${varName}=\"${varData}\"" "${XDG_STATE_HOME}/hypr/staterc"
+# State file paths (centralized definition)
+[[ -z "${STATE_DIR}" ]] && STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/hypr"
+readonly STATE_DIR
+[[ -z "${STATE_RC}" ]] && STATE_RC="${STATE_DIR}/staterc"
+readonly STATE_RC
+[[ -z "${STATE_CONFIG}" ]] && STATE_CONFIG="${STATE_DIR}/config"
+readonly STATE_CONFIG
+[[ -z "${STATE_MODE}" ]] && STATE_MODE="${STATE_DIR}/mode"
+readonly STATE_MODE
+
+# Get a state variable value
+# Usage: state_get VARIABLE_NAME [default_value]
+# Checks: staterc, config, then returns default
+state_get() {
+  local var_name="$1"
+  local default_value="${2:-}"
+  local value=""
+
+  # Validate input
+  if [[ -z "${var_name}" ]]; then
+    echo "${default_value}"
+    return 1
+  fi
+
+  # Check staterc first (primary state file)
+  if [[ -f "${STATE_RC}" ]]; then
+    value=$(grep "^${var_name}=" "${STATE_RC}" 2>/dev/null | tail -1 | cut -d'=' -f2- | sed 's/^"//;s/"$//')
+  fi
+
+  # Fall back to config if not found
+  if [[ -z "${value}" ]] && [[ -f "${STATE_CONFIG}" ]]; then
+    value=$(grep "^${var_name}=" "${STATE_CONFIG}" 2>/dev/null | tail -1 | cut -d'=' -f2- | sed 's/^"//;s/"$//')
+  fi
+
+  # Return value or default
+  echo "${value:-${default_value}}"
+}
+
+# Set a state variable (atomic write to prevent race conditions)
+# Usage: state_set VARIABLE_NAME value [file]
+# file: "staterc" (default), "config", or "mode"
+state_set() {
+  local var_name="$1"
+  local var_value="$2"
+  local target_file="${3:-staterc}"
+  local state_file
+
+  # Validate input
+  if [[ -z "${var_name}" ]]; then
+    print_log -sec "state" -err "state_set" "variable name required"
+    return 1
+  fi
+
+  # Determine target file
+  case "${target_file}" in
+    staterc) state_file="${STATE_RC}" ;;
+    config)  state_file="${STATE_CONFIG}" ;;
+    mode)    state_file="${STATE_MODE}" ;;
+    *)       state_file="${STATE_RC}" ;;
+  esac
+
+  if [[ -z "${state_file}" ]]; then
+    case "${target_file}" in
+      staterc) state_file="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/staterc" ;;
+      config)  state_file="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/config" ;;
+      mode)    state_file="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/mode" ;;
+    esac
+  fi
+
+  if [[ -z "${state_file}" ]]; then
+    print_log -sec "state" -err "state_set" "state file not set"
+    return 1
+  fi
+
+  # Ensure directory exists
+  mkdir -p "$(dirname "${state_file}")"
+
+  # Special case for mode file (single value, no key)
+  if [[ "${target_file}" == "mode" ]]; then
+    echo "${var_value}" > "${state_file}.tmp" && mv -f "${state_file}.tmp" "${state_file}"
+    return $?
+  fi
+
+  # Atomic update using temp file
+  local tmp_file="${state_file}.tmp.$$"
+  touch "${state_file}"
+
+  # Remove old value and add new one atomically
+  {
+    grep -v "^${var_name}=" "${state_file}" 2>/dev/null || true
+    echo "${var_name}=\"${var_value}\""
+  } > "${tmp_file}"
+
+  # Atomic move
+  if mv -f "${tmp_file}" "${state_file}"; then
+    return 0
   else
-    echo "${varName}=\"${varData}\"" >>"${XDG_STATE_HOME}/hypr/staterc"
+    rm -f "${tmp_file}" 2>/dev/null
+    print_log -sec "state" -err "state_set" "failed to write ${var_name}"
+    return 1
   fi
 }
 
+# Get the current color mode
+# Returns: dark, light, or empty
+state_get_mode() {
+  if [[ -f "${STATE_MODE}" ]]; then
+    cat "${STATE_MODE}" 2>/dev/null
+  else
+    echo "dark"  # Default
+  fi
+}
+
+# Set the current color mode
+# Usage: state_set_mode dark|light
+state_set_mode() {
+  local mode="$1"
+  if [[ ! "${mode}" =~ ^(dark|light)$ ]]; then
+    print_log -sec "state" -err "state_set_mode" "invalid mode '${mode}' (expected dark|light)"
+    return 1
+  fi
+  state_set "" "${mode}" "mode"
+}
+
+# ============================================================================
+# set_conf - Set a state variable (legacy wrapper)
+# ============================================================================
+# Arguments:
+#   $1 - Variable name
+#   $2 - Variable value
+# Returns:
+#   0 - Success
+#   1 - Failure
+# Notes:
+#   Legacy function - prefer state_set() for new code
+set_conf() {
+  local varName="${1}"
+  local varData="${2}"
+  state_set "${varName}" "${varData}" "staterc"
+}
+
+# ============================================================================
+# set_hash - Generate hash for an image file
+# ============================================================================
+# Arguments:
+#   $1 - Path to image file
+# Output:
+#   Prints hash string to stdout
+# Returns:
+#   0 - Success
+#   1 - Invalid input or file not readable
+# Example:
+#   hash=$(set_hash "/path/to/wallpaper.png")
 set_hash() {
   local hashImage="${1}"
+
+  # Validate input
+  if [[ -z "${hashImage}" ]]; then
+    return 1
+  fi
+  if [[ ! -r "${hashImage}" ]]; then
+    return 1
+  fi
+
   "${hashMech}" "${hashImage}" | awk '{print $1}'
 }
 
@@ -381,10 +623,35 @@ check_package() {
   touch "$lock_file"
 }
 
-# Yes this is so slow but it's the only way to ensure that parsing behaves correctly
+# ============================================================================
+# get_hyprConf - Get a variable value from Hyprland theme config
+# ============================================================================
+# Arguments:
+#   $1 - Variable name (without $ prefix)
+#   $2 - Config file path (optional, defaults to current theme's hypr.theme)
+# Output:
+#   Prints variable value to stdout
+# Returns:
+#   0 - Variable found
+#   1 - Variable not found or invalid input
+# Notes:
+#   - Tries hyq first for fast parsing, falls back to grep/awk
+#   - Checks theme file, then gsettings execs, then defaults
+# Example:
+#   gtk_theme=$(get_hyprConf "GTK_THEME")
 get_hyprConf() {
   local hyVar="${1}"
   local file="${2:-"$HYPR_THEME_DIR/hypr.theme"}"
+
+  # Validate input
+  if [[ -z "${hyVar}" ]]; then
+    return 1
+  fi
+
+  # Validate file exists
+  if [[ ! -r "${file}" ]]; then
+    return 1
+  fi
 
   # First try using hyq for fast config parsing if available
   if command -v hyq &>/dev/null; then
@@ -598,12 +865,31 @@ is_hovered() {
   return 1
 }
 
+# ============================================================================
+# toml_write - Write a key=value pair to a TOML/INI config file
+# ============================================================================
+# Arguments:
+#   $1 - Config file path
+#   $2 - Group/section name (e.g., "General", "Colors:View")
+#   $3 - Key name
+#   $4 - Value to write
+# Returns:
+#   0 - Always succeeds
+# Notes:
+#   - Uses kwriteconfig6 if available, falls back to sed
+#   - Creates group section if it doesn't exist
+# Example:
+#   toml_write "$HOME/.config/kdeglobals" "Icons" "Theme" "Papirus"
 toml_write() {
-  # Use kwriteconfig6 to write to config files in toml format
-  local config_file=$1
-  local group=$2
-  local key=$3
-  local value=$4
+  local config_file="${1}"
+  local group="${2}"
+  local key="${3}"
+  local value="${4}"
+
+  # Validate inputs
+  [[ -z "${config_file}" ]] && return 1
+  [[ -z "${group}" ]] && return 1
+  [[ -z "${key}" ]] && return 1
 
   if ! kwriteconfig6 --file "${config_file}" --group "${group}" --key "${key}" "${value}" 2>/dev/null; then
     if ! grep -q "^\[${group}\]" "${config_file}"; then
@@ -614,7 +900,18 @@ toml_write() {
   fi
 }
 
-# Function to extract thumbnail from video
+# ============================================================================
+# extract_thumbnail - Extract a thumbnail frame from a video file
+# ============================================================================
+# Arguments:
+#   $1 - Path to video file
+#   $2 - Output path for thumbnail image
+# Returns:
+#   0 - Success
+#   1 - Failed to extract thumbnail
+# Notes:
+#   - Uses ffmpeg to extract frame
+#   - Extracts 5th frame by default
 # shellcheck disable=SC2317
 extract_thumbnail() {
   local x_wall="${1}"
@@ -659,5 +956,6 @@ if [ -n "$BASH_VERSION" ]; then
     pkg_installed paste_string \
     extract_thumbnail accepted_mime_types \
     dconf_write send_notifs \
-    export_hypr_config
+    export_hypr_config init_hypr_globals \
+    state_get state_set state_get_mode state_set_mode
 fi

@@ -1,4 +1,4 @@
-$HOME/.config/waybar/theme.css | ${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfgen.sh
+$HOME/.config/waybar/theme.css | hyprshell wbarstylegen && hyprshell waybar --update
 
 @define-color bg rgb(255, 255, 255);
 @define-color border rgb(10, 16, 16);
@@ -7,16 +7,16 @@ $HOME/.config/waybar/theme.css | ${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconf
 
 /* Active workspace colors */
 @define-color accent rgb(129, 161, 193);
-@define-color wb-act-fg rgb(255, 255, 255);
+@define-color workspace_active_fg rgb(255, 255, 255);
 @define-color border_alt rgb(129, 161, 193);
 
 /* Hover colors */
-@define-color wb-hvr-bg rgb(76, 86, 106);
+@define-color workspace_hover_bg rgb(76, 86, 106);
 @define-color hover #78dba9;
 @define-color fg_selected #70a5eb; /* blue */
 
 @define-color bg_alt rgb(129, 161, 193);
-@define-color alt-fg rgb(255, 255, 255);
+@define-color fg_alt rgb(255, 255, 255);
 @define-color warning #70a5eb; /* green/accent */
 
 /* Standard color palette - base colors */
@@ -38,3 +38,28 @@ $HOME/.config/waybar/theme.css | ${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconf
 @define-color c13 #cb8ff3;
 @define-color c14 #79c3ee;
 @define-color c15 #e3e6eb;
+
+@define-color critical @c1;
+@define-color accent_bg @accent;
+@define-color accent_fg @accent;
+@define-color warning_bg @warning;
+@define-color warning_fg #e05f65;
+@define-color error_bg @critical;
+@define-color error_fg @critical;
+@define-color info_bg @accent;
+@define-color info_fg @accent;
+@define-color success_bg @c2;
+@define-color success_fg @c2;
+@define-color neutral_bg @bg_alt;
+@define-color neutral_fg @fg;
+@define-color secondary_bg @bg_alt;
+@define-color secondary_fg @fg;
+@define-color highlight_bg @bg_selected;
+@define-color highlight_fg @fg_selected;
+@define-color menu_bg @bg;
+@define-color menu_fg @fg;
+@define-color menu_border @border;
+@define-color tooltip_bg @bg_alt;
+@define-color tooltip_fg @fg;
+@define-color tooltip_border @border;
+@define-color workspace_active_bg @bg_selected;

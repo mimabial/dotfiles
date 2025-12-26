@@ -22,8 +22,7 @@ print_color() {
   printf "\e[48;2;%d;%d;%dm  \e[0m %-10s %s\n" "$r" "$g" "$b" "$name" "#$hex"
 }
 
-echo "#-----------------------------------------------#"
-echo "  Pywall16 Color Palette"
+echo "  Pywal16 Color Palette"
 echo "#-----------------------------------------------#"
 echo ""
 

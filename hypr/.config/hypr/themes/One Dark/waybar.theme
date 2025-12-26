@@ -1,46 +1,69 @@
-$HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfgen.sh
+$HOME/.config/waybar/theme.css
 
 /* Main colors */
 @define-color bg #282c34; /* bg */
 
 @define-color bg_selected #282c34; /* bg */
 @define-color fg #abb2bf; /* fg */
-@define-color border #434852; /* gray */
+@define-color border #282c34; /* gray */
 
 @define-color bg_alt #282c34; /* bg */
-@define-color alt-fg #abb2bf; /* fg */
+@define-color fg_alt #abb2bf; /* fg */
 @define-color warning #434852; /* gray */
 
 /* Active workspace colors */
 @define-color accent #61afef; /* blue */
-@define-color wb-act-fg #282c34; /* bg */
+@define-color workspace_active_fg #282c34; /* bg */
 @define-color border_alt #61afef; /* blue */
 
 /* Hover colors */
 @define-color fg_selected #89ca78; /* cyan */
-@define-color wb-hvr-bg #282c34; /* bg */
+@define-color workspace_hover_bg #282c34; /* bg */
 @define-color hover #2bbac5; /* cyan */
 
 /* Standard color palette - base colors */
 @define-color c0 #282c34;
-@define-color c8 #393e48;
 @define-color c1 #ef596f;
 @define-color c2 #89ca78;
 @define-color c3 #e5c07b;
 @define-color c4 #61afef;
-@define-color purple #d55fde;
+@define-color c5 @accent;
 @define-color c6 #2bbac5;
-@define-color orange #d19a66;
-@define-color gray #7f848e; /* comment */
+@define-color c7  #979eab;
 
 /* Standard color palette - bright/accent variants */
+@define-color c8 #7f848e;
 @define-color c9 #ef596f;
 @define-color c10 #89ca78;
 @define-color c11 #e2be7d; /* highlight */
 @define-color c12 #61afef;
-@define-color purple-bright #d55fde;
+@define-color c13 @c5;
 @define-color c14 #2bbac5;
-@define-color orange-bright #d19a66;
-@define-color gray-bright #abb2bf; /* white */
-@define-color c7  #979eab;
+@define-color c19 #d19a66;
 @define-color c15 #abb2bf;
+@define-color c16 #d55fde;
+
+@define-color critical @c1;
+@define-color accent_bg @accent;
+@define-color accent_fg @accent;
+@define-color warning_bg @warning;
+@define-color warning_fg @warning;
+@define-color error_bg @critical;
+@define-color error_fg @critical;
+@define-color info_bg @accent;
+@define-color info_fg @accent;
+@define-color success_bg @c2;
+@define-color success_fg @c2;
+@define-color neutral_bg @bg_alt;
+@define-color neutral_fg @fg;
+@define-color secondary_bg @bg_alt;
+@define-color secondary_fg @fg;
+@define-color highlight_bg @bg_selected;
+@define-color highlight_fg @fg_selected;
+@define-color menu_bg @bg;
+@define-color menu_fg @fg;
+@define-color menu_border @border;
+@define-color tooltip_bg @bg_alt;
+@define-color tooltip_fg @fg;
+@define-color tooltip_border @border;
+@define-color workspace_active_bg @bg_selected;

@@ -1,0 +1,155 @@
+#!/usr/bin/env bash
+
+# Log to file for debugging
+LOGFILE="/tmp/rmpc-resize.log"
+exec >> "$LOGFILE" 2>&1
+echo "=== $(date) ==="
+
+# rmpc doesn't pass dimensions, so get them from the running process
+PID=$(pgrep rmpc)
+
+# Get terminal size from stty via the process's controlling terminal
+if [[ -n "$PID" ]]; then
+  # Try to get size from /proc
+  TERM_SIZE=$(ps -o tty= -p "$PID" 2>/dev/null)
+  if [[ -n "$TERM_SIZE" && "$TERM_SIZE" != "?" ]]; then
+    SIZE=$(stty size < /dev/"$TERM_SIZE" 2>/dev/null)
+    ROWS=$(echo "$SIZE" | cut -d' ' -f1)
+    COLS=$(echo "$SIZE" | cut -d' ' -f2)
+  fi
+fi
+
+# Fallback to environment or defaults
+COLS="${COLS:-${COLUMNS:-80}}"
+ROWS="${ROWS:-${LINES:-24}}"
+
+echo "PID: $PID"
+echo "COLS: $COLS"
+echo "ROWS: $ROWS"
+echo "TERM: $TERM"
+
+if [[ -z "$PID" ]]; then
+  echo "ERROR: rmpcd is not running"
+  exit 1
+fi
+
+# Determine which theme to use based on terminal size
+if ((COLS < 90 && ROWS < 30)); then
+  TARGET_THEME="pywal16-small"
+  TARGET_THEME_PATH="$HOME/.config/rmpc/themes/pywal16-small.ron"
+elif ((COLS < 90 || ROWS < 30)); then
+  TARGET_THEME="pywal16"
+  TARGET_THEME_PATH="$HOME/.config/rmpc/themes/pywal16.ron"
+else
+  TARGET_THEME="pywal16-big"
+  TARGET_THEME_PATH="$HOME/.config/rmpc/themes/pywal16-big.ron"
+fi
+
+echo "Target theme: $TARGET_THEME"
+
+# Get current theme from config file
+CURRENT_THEME=$(grep -oP 'theme:\s*Some\("\K[^"]+' ~/.config/rmpc/config.ron 2>/dev/null || echo "")
+
+# If theme changed, update config
+if [[ "$TARGET_THEME" != "$CURRENT_THEME" ]]; then
+  echo "Theme changed from '$CURRENT_THEME' to '$TARGET_THEME'"
+
+  # Create backup before modifying
+  cp ~/.config/rmpc/config.ron ~/.config/rmpc/config.ron.bak
+
+  # Update config.ron with new theme name
+  sed -i "s/theme: Some(\"[^\"]*\")/theme: Some(\"$TARGET_THEME\")/" ~/.config/rmpc/config.ron
+
+  # Extract tabs section from theme file
+  echo "Extracting tabs from theme file: $TARGET_THEME_PATH"
+
+  # Use awk for more precise extraction - match tabs: [ to its closing ],
+  TABS_FILE=$(mktemp)
+  awk '
+    /^    tabs:[[:space:]]*\[/ { in_tabs=1 }
+    in_tabs { print }
+    in_tabs && /^    \],?[[:space:]]*$/ { exit }
+  ' "$TARGET_THEME_PATH" > "$TABS_FILE"
+
+  if [[ -s "$TABS_FILE" ]]; then
+    echo "Tabs extracted, line count: $(wc -l < "$TABS_FILE")"
+
+    # Build new config with Python for reliability
+    TABS_PATH="$TABS_FILE" python3 << 'PYEOF'
+import os
+
+config_path = "/home/rifle/.config/rmpc/config.ron"
+tabs_path = os.environ['TABS_PATH']
+
+# Read config lines
+with open(config_path, 'r') as f:
+    lines = f.readlines()
+
+# Read tabs content
+with open(tabs_path, 'r') as f:
+    tabs_content = f.read()
+
+# Remove existing tabs section if present
+new_lines = []
+in_tabs = False
+tabs_indent_level = None
+
+for line in lines:
+    # Detect start of tabs section
+    if '    tabs:' in line and '[' in line:
+        in_tabs = True
+        tabs_indent_level = len(line) - len(line.lstrip())
+        continue
+
+    # Detect end of tabs section (closing bracket at same indent level)
+    if in_tabs:
+        indent = len(line) - len(line.lstrip())
+        stripped = line.strip()
+        if indent == tabs_indent_level and (stripped == '],' or stripped == ']'):
+            in_tabs = False
+            continue
+
+    # Keep line if not in tabs section
+    if not in_tabs:
+        new_lines.append(line)
+
+# Find the final closing ) and insert tabs before it
+for i in range(len(new_lines) - 1, -1, -1):
+    if new_lines[i].strip() == ')':
+        # Remove any trailing blank lines before the closing )
+        while i > 0 and new_lines[i-1].strip() == '':
+            i -= 1
+            new_lines.pop(i)
+
+        # Insert tabs with one blank line before and after
+        new_lines.insert(i, '\n')
+        new_lines.insert(i, tabs_content + '\n')
+        new_lines.insert(i, '\n')
+        break
+
+# Write back
+with open(config_path, 'w') as f:
+    f.writelines(new_lines)
+
+print("Tabs injection successful")
+PYEOF
+
+    rm "$TABS_FILE"
+
+    if [[ $? -eq 0 ]]; then
+      echo "Tabs section updated successfully"
+      rm ~/.config/rmpc/config.ron.bak
+    else
+      echo "ERROR: Python script failed, restoring backup"
+      mv ~/.config/rmpc/config.ron.bak ~/.config/rmpc/config.ron
+    fi
+  else
+    echo "WARNING: Could not extract tabs from theme file"
+    mv ~/.config/rmpc/config.ron.bak ~/.config/rmpc/config.ron
+  fi
+
+  # rmpc has automatic config hot reload - it will detect the config change
+  # and reload tabs from the updated config.ron
+else
+  echo "Theme unchanged: $CURRENT_THEME"
+fi

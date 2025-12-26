@@ -1,10 +1,10 @@
-$HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfgen.sh
+$HOME/.config/waybar/theme.css
 
 /* Main colors */
 @define-color bg #1F1F28; /* sumiInk3 */
 
 @define-color fg_selected #FFA066; 
-@define-color wb-hvr-bg #DCD7BA; 
+@define-color workspace_hover_bg #DCD7BA; 
 @define-color hover #FF5D62; /* sumiInk4 */
 
 @define-color bg_selected #2D4F67; 
@@ -13,12 +13,12 @@ $HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfge
 
 /* Active workspace colors */
 @define-color bg_alt #957FB8;
-@define-color alt-fg #DCD7BA;
+@define-color fg_alt #DCD7BA;
 @define-color warning #938AA9; /* crystalBlue */
 
 /* Hover colors */
 @define-color accent #6A9589;
-@define-color wb-act-fg #DCD7BA;
+@define-color workspace_active_fg #DCD7BA;
 @define-color border_alt #7aa89f; /* springBlue */
 
 /* Standard color palette - base colors */
@@ -40,3 +40,29 @@ $HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfge
 @define-color c13 #938AA9; /* springViolet1 */
 @define-color c14 #7aa89f; /* waveAqua1 */
 @define-color c15 #DCD7BA; /* oldWhite */
+
+@define-color critical @c1;
+@define-color accent_bg @accent;
+@define-color accent_fg #FFA066;
+@define-color warning_bg @warning;
+@define-color warning_fg #FF5D62;
+@define-color error_bg @critical;
+@define-color error_fg @critical;
+@define-color info_bg @accent;
+@define-color info_fg @accent;
+@define-color success_bg @c2;
+@define-color success_fg @c2;
+@define-color neutral_bg @bg_alt;
+@define-color neutral_fg @fg;
+@define-color secondary_bg @bg_alt;
+@define-color secondary_fg @fg;
+@define-color highlight_bg @bg_selected;
+@define-color highlight_fg @fg_selected;
+@define-color menu_bg @bg;
+@define-color menu_fg @fg;
+@define-color menu_border @border;
+@define-color tooltip_bg @bg_alt;
+@define-color tooltip_fg @fg;
+@define-color tooltip_border @border;
+@define-color workspace_active_bg @bg_selected;
+

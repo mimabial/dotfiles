@@ -2,19 +2,21 @@
 # wal.tmux.sh - Apply pywal16 colors to tmux with theme override support
 
 hashFile="${XDG_RUNTIME_DIR:-/tmp}/wal-tmux-hash"
+WAL_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/wal"
+TMUX_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/tmux/tmux.conf"
 
 # Source pywal16 colors
-if [ ! -f ~/.cache/wal/colors.sh ]; then
+if [ ! -f "${WAL_CACHE}/colors.sh" ]; then
   exit 0
 fi
 
 # Change detection: skip if colors unchanged
-input_hash=$(md5sum ~/.cache/wal/colors.sh 2>/dev/null | cut -d' ' -f1)
+input_hash=$(md5sum "${WAL_CACHE}/colors.sh" 2>/dev/null | cut -d' ' -f1)
 if [[ -f "$hashFile" && "$(cat "$hashFile" 2>/dev/null)" == "$input_hash" ]]; then
   exit 0
 fi
 
-source ~/.cache/wal/colors.sh
+source "${WAL_CACHE}/colors.sh"
 
 # Map pywal colors to tmux theme variables
 # Note: Theme-specific tmux colors are handled by color.set.sh processing tmux.theme files
@@ -32,7 +34,7 @@ tmux_magenta="$color5"
 tmux_cyan="$color6"
 
 # Generate colors-tmux.conf
-cat > ~/.cache/wal/colors-tmux.conf << EOF
+cat > "${WAL_CACHE}/colors-tmux.conf" << EOF
 # ============================================================================
 # Standard 16 color palette (from pywal16)
 # ============================================================================
@@ -84,7 +86,7 @@ set -g clock-mode-colour "${tmux_accent:-$color4}"
 EOF
 
 # Generate status.tmux.conf
-cat > ~/.cache/wal/status.tmux.conf << 'EOF'
+cat > "${WAL_CACHE}/status.tmux.conf" << 'EOF'
 # --- pane-border configuration ------------------------------------------------
 setw -g pane-border-status top
 setw -g pane-border-format "#(sleep 0.5; tmux-icons $(ps -t #{pane_tty} -o args= | head -n 2))"
@@ -118,5 +120,5 @@ echo "[tmux] Generated tmux color configs"
 
 # Reload tmux if running
 if command -v tmux &>/dev/null && tmux list-sessions &>/dev/null; then
-  tmux source-file ~/.config/tmux/tmux.conf 2>/dev/null && echo "[tmux] Reloaded tmux config"
+  tmux source-file "${TMUX_CONFIG}" 2>/dev/null && echo "[tmux] Reloaded tmux config"
 fi

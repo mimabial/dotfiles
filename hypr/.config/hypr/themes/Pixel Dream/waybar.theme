@@ -1,19 +1,19 @@
-$HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfgen.sh
+$HOME/.config/waybar/theme.css
 
 @define-color bg_selected #282828;
 @define-color fg #ebdbb2;
 @define-color border #98971a;
 
 @define-color bg_alt #282828;
-@define-color alt-fg #ebdbb2;
+@define-color fg_alt #ebdbb2;
 @define-color warning #98971a;
 
 @define-color accent #fabd2f;
 @define-color border_alt #d79921;
-@define-color wb-act-fg #282828;
+@define-color workspace_active_fg #282828;
 
 @define-color fg_selected #a9b665;
-@define-color wb-hvr-bg #282828;
+@define-color workspace_hover_bg #282828;
 @define-color hover #f2594b;
 
 * {
@@ -31,10 +31,39 @@ $HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfge
 @define-color c4 #7daea3;
 @define-color c12 #7daea3;
 @define-color purple #d3869b;
-@define-color purple-bright #e78a4e;
+@define-color purple_bright #e78a4e;
 @define-color aqua #89b482;
-@define-color aqua-bright #7daea3;
+@define-color aqua_bright #7daea3;
 @define-color c0 #272727;
 @define-color c8 #928373;
 @define-color c7 #a89983;
 @define-color c15 #ebdbb2;
+
+@define-color critical @c1;
+@define-color c5 @accent;
+@define-color c6 @hover;
+@define-color c13 @c5;
+@define-color c14 @c6;
+@define-color accent_bg @accent;
+@define-color accent_fg @accent;
+@define-color warning_bg @warning;
+@define-color warning_fg @warning;
+@define-color error_bg @critical;
+@define-color error_fg @critical;
+@define-color info_bg @accent;
+@define-color info_fg @accent;
+@define-color success_bg @c2;
+@define-color success_fg @c2;
+@define-color neutral_bg @bg_alt;
+@define-color neutral_fg @fg;
+@define-color secondary_bg @bg_alt;
+@define-color secondary_fg @fg;
+@define-color highlight_bg @bg_selected;
+@define-color highlight_fg @fg_selected;
+@define-color menu_bg @bg;
+@define-color menu_fg @fg;
+@define-color menu_border @border;
+@define-color tooltip_bg @bg_alt;
+@define-color tooltip_fg @fg;
+@define-color tooltip_border @border;
+@define-color workspace_active_bg @bg_selected;

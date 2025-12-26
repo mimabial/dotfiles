@@ -28,6 +28,21 @@ mon_x_res=$((mon_x_res * 100 / mon_scale))
 mon_y_res=$((mon_y_res * 100 / mon_scale))
 
 selector_menu() {
+  # ============================================================================
+  # Layout Constants
+  # ============================================================================
+  # Theme preview images are 256x256 pixels (scaled 2x for HiDPI)
+  local -r PREVIEW_IMAGE_SIZE=256
+  local -r HIDPI_SCALE=2
+  # Maximum columns/rows to prevent overly dense layouts
+  local -r MAX_COLUMNS=5
+  local -r MIN_ROWS=2
+  local -r MAX_ROWS=4
+  # Padding around content (in font_scale units)
+  local -r HORIZONTAL_PADDING=8
+  local -r VERTICAL_PADDING=16
+  # Border multiplier relative to Hyprland rounding
+  local -r BORDER_MULTIPLIER=5
 
   #// set rofi scaling
   font_scale="${ROFI_THEME_SCALE}"
@@ -43,17 +58,17 @@ selector_menu() {
   # set rofi font override
   font_override="* {font: \"${font_name} ${font_scale}\";}"
 
-  elem_border=$((hypr_border * 5))
+  elem_border=$((hypr_border * BORDER_MULTIPLIER))
   icon_border=$((elem_border - 5))
-  elm_width=$((256 * 2)) #TODO: This is 256 as the images are 256x256 px
-  elm_height=$((256 * 2))
-  max_avail_x=$((mon_x_res - (8 * font_scale)))
-  max_avail_y=$((mon_y_res - (16 * font_scale)))
+  elm_width=$((PREVIEW_IMAGE_SIZE * HIDPI_SCALE))
+  elm_height=$((PREVIEW_IMAGE_SIZE * HIDPI_SCALE))
+  max_avail_x=$((mon_x_res - (HORIZONTAL_PADDING * font_scale)))
+  max_avail_y=$((mon_y_res - (VERTICAL_PADDING * font_scale)))
   col_count=$((max_avail_x / elm_width))
   row_count=$((max_avail_y / elm_height))
-  [[ "${col_count}" -gt 5 ]] && col_count=5
-  [[ "${row_count}" -lt 2 ]] && row_count=2
-  [[ "${row_count}" -gt 4 ]] && row_count=4
+  [[ "${col_count}" -gt ${MAX_COLUMNS} ]] && col_count=${MAX_COLUMNS}
+  [[ "${row_count}" -lt ${MIN_ROWS} ]] && row_count=${MIN_ROWS}
+  [[ "${row_count}" -gt ${MAX_ROWS} ]] && row_count=${MAX_ROWS}
 
   r_override="window{width:100%;height:100%;fullscreen:true;}
                 listview{columns:${col_count};lines:${row_count};cycle:true;}
@@ -183,7 +198,7 @@ get_themes
 # shellcheck disable=SC2154
 rofiSel=$(
   i=0
-  while [ $i -lt ${#thmList[@]} ]; do
+  while [ "${i}" -lt ${#thmList[@]} ]; do
     echo -en "${thmList[$i]}\x00icon\x1f${thmbDir}/$(set_hash "${thmWall[$i]}").${thmbExtn:-sqre}\n"
     i=$((i + 1))
   done | rofi -dmenu -i \

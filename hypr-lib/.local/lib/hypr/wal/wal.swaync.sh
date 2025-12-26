@@ -2,7 +2,7 @@
 # SwayNC config generator for pywal16
 
 # shellcheck source=$HOME/.local/bin/hyprshell
-if ! source "$(which hyprshell)" 2>/dev/null; then
+if ! source "$(command -v hyprshell)" 2>/dev/null; then
   echo "[swaync] Error: hyprshell not found"
   exit 1
 fi

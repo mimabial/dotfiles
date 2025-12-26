@@ -5,6 +5,9 @@ if [[ "${HYPR_SHELL_INIT}" -ne 1 ]]; then
   eval "$(hyprshell init)"
 else
   export_hypr_config
+  # Recalculate HYPR_THEME_DIR after reloading config
+  # (export_hypr_config only sources staterc, doesn't update derived paths)
+  HYPR_THEME_DIR="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}"
 fi
 
 # Lock file to prevent concurrent wallpaper operations
@@ -73,6 +76,8 @@ Wall_Cache() {
     print_log -sec "wallpaper" "Setting Wallpaper as global"
     "${LIB_DIR}/hypr/wallpaper/swwwallcache.sh" -w "${wallList[setIndex]}" &>/dev/null
     "${LIB_DIR}/hypr/theme/color.set.sh" "${wallList[setIndex]}"
+    # Sync nvim after colors are generated
+    [[ -x "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" ]] && "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" >/dev/null 2>&1 &
     ln -fs "${thmbDir}/${wallHash[setIndex]}.sqre" "${wallSqr}"
     ln -fs "${thmbDir}/${wallHash[setIndex]}.thmb" "${wallTmb}"
     ln -fs "${thmbDir}/${wallHash[setIndex]}.blur" "${wallBlr}"
@@ -88,7 +93,7 @@ Wall_Change() {
       if [ "${1}" == "n" ]; then
         setIndex=$(((i + 1) % ${#wallList[@]}))
       elif [ "${1}" == "p" ]; then
-        setIndex=$((i - 1))
+        setIndex=$(((i - 1 + ${#wallList[@]}) % ${#wallList[@]}))
       fi
       break
     fi
@@ -274,6 +279,8 @@ Wall_Select() {
       -theme "${ROFI_WALLPAPER_STYLE:-wallpaper}" \
       -select "$(basename "$(readlink "$wallSet")")"
   )
+  # Exit early if rofi was cancelled
+  [[ -z "${entry}" ]] && exit 0
   selected_thumbnail="$(awk -F ':::' '{print $3}' <<<"${entry}")"
   selected_wallpaper_path="$(awk -F ':::' '{print $2}' <<<"${entry}")"
   selected_wallpaper="$(awk -F ':::' '{print $1}' <<<"${entry}")"
@@ -286,6 +293,8 @@ Wall_Select() {
 
 Wall_Hash() {
   # * Method to load wallpapers in hashmaps and fix broken links per theme
+  # Skip if already loaded (avoid redundant get_hashmap calls)
+  [[ ${#wallList[@]} -gt 0 ]] && return 0
   setIndex=0
   [ ! -d "${HYPR_THEME_DIR}" ] && echo "ERROR: \"${HYPR_THEME_DIR}\" does not exist" && exit 0
   wallPathArray=("${HYPR_THEME_DIR}/wallpapers")

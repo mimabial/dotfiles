@@ -1,4 +1,4 @@
-$HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfgen.sh
+$HOME/.config/waybar/theme.css
 
 /* Main colors */
 @define-color bg #073642; /* base02 */
@@ -8,16 +8,16 @@ $HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfge
 @define-color border #268bd2; /* base01 */
 
 @define-color bg_alt #268bd2;
-@define-color alt-fg #fdf6e3;
+@define-color fg_alt #fdf6e3;
 @define-color warning #268bd2;
 
 /* Active workspace colors */
 @define-color accent #2aa198;
-@define-color wb-act-fg #fdf6e3;
+@define-color workspace_active_fg #fdf6e3;
 @define-color border_alt #2aa198; /* blue */
 
 /* Hover colors */
-@define-color wb-hvr-bg #eee8d5;
+@define-color workspace_hover_bg #eee8d5;
 @define-color fg_selected #b58900;
 @define-color hover #cb4b16; /* cyan */
 
@@ -27,7 +27,7 @@ $HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfge
 @define-color c2 #859900;
 @define-color c3 #b58900;
 @define-color c4 #268bd2;
-@define-color purple #6c71c4; /* violet */
+@define-color c5 #6c71c4; /* violet */
 @define-color c6 #2aa198;
 @define-color c7 #e9e2cb;
 
@@ -37,6 +37,33 @@ $HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfge
 @define-color c10 #859900;
 @define-color c11 #b58900;
 @define-color c12 #268bd2;
-@define-color purple-bright #d33682; /* magenta */
+@define-color c13 #d33682; /* magenta */
 @define-color c14 #2aa198;
 @define-color c15 #fcf4dc;
+
+@define-color critical @c1;
+@define-color accent_bg @accent;
+@define-color accent_fg @accent;
+@define-color warning_bg @warning;
+@define-color warning_fg @warning;
+@define-color error_bg @critical;
+@define-color error_fg @critical;
+@define-color info_bg @accent;
+@define-color info_fg @accent;
+@define-color success_bg @c2;
+@define-color success_fg @c2;
+@define-color neutral_bg @bg_alt;
+@define-color neutral_fg @fg;
+@define-color secondary_bg @bg_alt;
+@define-color secondary_fg @fg;
+@define-color highlight_bg @bg_selected;
+@define-color highlight_fg @fg_selected;
+@define-color menu_bg @bg;
+@define-color menu_fg @fg;
+@define-color menu_border @border;
+@define-color tooltip_bg @bg_alt;
+@define-color tooltip_fg @fg;
+@define-color tooltip_border @border;
+@define-color workspace_active_bg #002731;
+@define-color workspace_active_br #b58900;
+

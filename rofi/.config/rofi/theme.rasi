@@ -1,14 +1,13 @@
 * {
-    background:            #3B4252E6;
-    foreground:            #D8DEE9FF;
-    border:            #4C566AFF;
-    accent:            #2E3440CC;
-    selected-background:          #4C566AFF;
-    selected-foreground:          #81A1C1FF;
+    background:            #fdf6e3B3;
+    foreground:            #000000E6;
+    border:            #6600AAE6;
+    accent:            #AA0066E6;
+    selected-background:          #003DA580;
+    selected-foreground:          #fdf6e3E6;
     separator:           #80808080;
-    urgent:              #4C566AFF;
-    active:              #2E3440CC;
+    urgent:              #6600AAE6;
+    active:              #AA0066E6;
     separatorcolor:     transparent;
     border-color:       transparent;
-    font: "Jetbrains Mono 11";
 }

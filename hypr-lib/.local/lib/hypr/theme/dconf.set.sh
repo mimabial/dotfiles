@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+#
+# dconf.set.sh - Apply GNOME/GTK settings via dconf
+#
+# OVERVIEW:
+#   Reads theme settings from Hyprland config and applies them to
+#   dconf (GNOME settings database) for GTK applications.
 
 # shellcheck disable=SC2154
 # shellcheck disable=SC1091
@@ -7,6 +13,37 @@
 
 # Stores default values for the theme to avoid breakages.
 [[ -f "${HYPR_CONFIG_HOME}/env-theme" ]] && source "${HYPR_CONFIG_HOME}/env-theme"
+
+# ============================================================================
+# safe_hyq_source - Safely parse hyq output without eval
+# ============================================================================
+# Arguments:
+#   $1 - hyq output string
+# Notes:
+#   - Only allows whitelisted variable names
+#   - Rejects lines containing command substitution or other dangers
+#   - Sets __VARNAME variables that caller can use
+safe_hyq_source() {
+  local hyq_output="$1"
+  local allowed_vars="^__(GTK_THEME|ICON_THEME|COLOR_SCHEME|CURSOR_THEME|CURSOR_SIZE|TERMINAL|FONT|FONT_SIZE|DOCUMENT_FONT|DOCUMENT_FONT_SIZE|MONOSPACE_FONT|MONOSPACE_FONT_SIZE|BUTTON_LAYOUT|FONT_ANTIALIASING|FONT_HINTING)="
+  local validated_output=""
+
+  while IFS= read -r line; do
+    [[ -z "${line}" ]] && continue
+    # Only process lines matching allowed variable pattern
+    if [[ "${line}" =~ ${allowed_vars} ]]; then
+      # Reject lines with command substitution or semicolons
+      if [[ ! "${line}" =~ \$\(|\`|\; ]]; then
+        validated_output+="${line}"$'\n'
+      fi
+    fi
+  done <<< "${hyq_output}"
+
+  # Source validated output
+  if [[ -n "${validated_output}" ]]; then
+    source <(echo "${validated_output}")
+  fi
+}
 
 dconf_populate() {
   # Build the dconf content
@@ -31,7 +68,6 @@ button-layout='$BUTTON_LAYOUT'
 EOF
 }
 
-# HYPR_THEME="$(hyq "${HYPRLAND_CONFIG}" --source --query 'hypr:theme')"
 COLOR_SCHEME="prefer-${dcol_mode}"
 
 # Only use Pywal16-Gtk in wallpaper mode (enableWallDcol != 0)
@@ -50,11 +86,12 @@ if [[ -r "${HYPRLAND_CONFIG}" ]] &&
   if [[ "${enableWallDcol:-1}" -eq 0 ]]; then
     theme_conf="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/theme.conf"
     if [[ -r "${theme_conf}" ]]; then
-      eval "$(
+      theme_hyq_output=$(
         hyq "${theme_conf}" --export env --allow-missing \
           -Q '$GTK_THEME[string]' \
           -Q '$ICON_THEME[string]'
-      )"
+      )
+      safe_hyq_source "${theme_hyq_output}"
       GTK_THEME=${__GTK_THEME:-$GTK_THEME}
       ICON_THEME=${__ICON_THEME:-$ICON_THEME}
     fi
@@ -88,7 +125,7 @@ if [[ -r "${HYPRLAND_CONFIG}" ]] &&
   fi
 
   query_output=$(hyq "${hyq_args[@]}")
-  eval "$query_output"
+  safe_hyq_source "${query_output}"
   GTK_THEME=${__GTK_THEME:-$GTK_THEME}
   COLOR_SCHEME=${__COLOR_SCHEME:-$COLOR_SCHEME}
   ICON_THEME=${__ICON_THEME:-$ICON_THEME}
@@ -131,7 +168,7 @@ new_hash="$(echo "${new_content}" | md5sum | cut -d' ' -f1)"
 if [ "${new_hash}" != "${old_hash}" ]; then
   echo "${new_content}" > "${DCONF_FILE}"
   # Single dconf load is all that's needed
-  if dconf load -f / < "${DCONF_FILE}"; then
+  if dconf load -f / < "${DCONF_FILE}" >/dev/null 2>&1; then
     print_log -sec "dconf" -stat "loaded" "${DCONF_FILE}"
   else
     print_log -sec "dconf" -warn "failed" "${DCONF_FILE}"
@@ -141,7 +178,7 @@ else
 fi
 
 # Set cursor (run in background, non-blocking)
-[[ -n "${HYPRLAND_INSTANCE_SIGNATURE}" ]] && hyprctl setcursor "${CURSOR_THEME}" "${CURSOR_SIZE}" &
+[[ -n "${HYPRLAND_INSTANCE_SIGNATURE}" ]] && hyprctl setcursor "${CURSOR_THEME}" "${CURSOR_SIZE}" &>/dev/null &
 
 print_log -sec "dconf" -stat "Loaded dconf settings" "::"
 print_log -y "#-----------------------------------------------#"

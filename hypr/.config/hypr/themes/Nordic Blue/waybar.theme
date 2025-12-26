@@ -1,28 +1,28 @@
-$HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfgen.sh
+$HOME/.config/waybar/theme.css
 
 /* Main colors */
 @define-color bg #3b4252; /* nord1 */
 
 @define-color bg_selected #476A84;
 @define-color fg #D9D9D9;
-@define-color border #434c5e; /* nord2 */
+@define-color border #a3be8c; /* nord2 */
 
 @define-color bg_alt #476A84;
-@define-color alt-fg #D9D9D9;
+@define-color fg_alt #D9D9D9;
 @define-color warning #434c5e; /* nord2 */
 
 /* Active workspace colors */
 @define-color border_alt #a3be8c;
-@define-color wb-act-fg #EFEFF5;
+@define-color workspace_active_fg #EFEFF5;
 @define-color accent #a3be8c; /* nord8 */
 
 /* Hover colors */
 @define-color fg_selected #7287FD;
-@define-color wb-hvr-bg #EFEFF5;
+@define-color workspace_hover_bg #EFEFF5;
 @define-color hover #81a1c1; /* nord9 */
 
 @define-color c0 #3B4252;
-@define-color c8 #4C566A;
+@define-color c8 #D9D9D9;
 @define-color c1 #bf616a;
 @define-color c9 #d08770;
 @define-color c2 #a3be8c;
@@ -38,3 +38,28 @@ $HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfge
 @define-color c7 #E5E9F0;
 @define-color c15 #ECEFF4;
 
+@define-color critical @c1;
+@define-color accent_bg @accent;
+@define-color accent_fg @accent;
+@define-color warning_bg @warning;
+@define-color warning_fg @warning;
+@define-color error_bg @critical;
+@define-color error_fg @critical;
+@define-color info_bg @accent;
+@define-color info_fg @accent;
+@define-color success_bg @c2;
+@define-color success_fg @c2;
+@define-color neutral_bg @bg_alt;
+@define-color neutral_fg @fg;
+@define-color secondary_bg @bg_alt;
+@define-color secondary_fg @fg;
+@define-color highlight_bg @bg_selected;
+@define-color highlight_fg @fg_selected;
+@define-color menu_bg @bg;
+@define-color menu_fg @fg;
+@define-color menu_border @border;
+@define-color tooltip_bg @bg_alt;
+@define-color tooltip_fg @fg;
+@define-color tooltip_border @border;
+@define-color workspace_active_bg @bg_selected;
+@define-color workspace_active_br #7287FD;

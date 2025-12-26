@@ -47,15 +47,18 @@ rofi_pywal16() {
   hypr_border="${hypr_border:-5}"
   elem_border=$((hypr_border * 4))
   r_override="prompt{border-radius:${hypr_border}px;} textbox-prompt-colon {border-radius:${hypr_border}px;} window{border-radius:${elem_border}px;} element{border-radius:${hypr_border}px;}"
-  rofiSel=$(parallel echo {} ::: "${colorModes[@]}" | rofi -dmenu \
+  rofiSel=$(printf '%s\n' "${colorModes[@]}" | rofi -dmenu \
     -theme-str "${r_scale}" \
     -theme-str "${r_override}" \
     -theme-str 'textbox-prompt-colon {str: "";}' \
     -p "Color Mode" \
     -theme "${XDG_CONFIG_HOME:-$HOME/.config}/rofi/pywal16.rasi" \
     -select "${colorModes[${enableWallDcol}]}")
-  if [ ! -z "${rofiSel}" ]; then
-    setMode="$(parallel --link echo {} ::: "${!colorModes[@]}" ::: "${colorModes[@]}" ::: "${rofiSel}" | awk '{if ($2 == $3) print $1}')"
+  if [[ -n "${rofiSel}" ]]; then
+    # Find index of selected mode
+    for i in "${!colorModes[@]}"; do
+      [[ "${colorModes[i]}" == "${rofiSel}" ]] && setMode="$i" && break
+    done
   else
     exit 0
   fi
@@ -69,7 +72,7 @@ step_pywal16() {
       if [ "${1}" == "n" ]; then
         setMode=$(((i + 1) % ${#colorModes[@]}))
       elif [ "${1}" == "p" ]; then
-        setMode=$((i - 1))
+        setMode=$(((i - 1 + ${#colorModes[@]}) % ${#colorModes[@]}))
       fi
       break
     fi
@@ -166,10 +169,15 @@ auto_theme_run_once() {
 }
 
 resolve_wallpaper() {
+  local resolved_path=""
   local cache_wall="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wallpaper/current/wall.set"
   if [ -e "${cache_wall}" ]; then
-    readlink -f "${cache_wall}"
-    return 0
+    resolved_path="$(readlink -f "${cache_wall}")"
+    # Verify resolved path exists
+    if [ -f "${resolved_path}" ]; then
+      echo "${resolved_path}"
+      return 0
+    fi
   fi
 
   local theme="${HYPR_THEME:-}"
@@ -183,8 +191,12 @@ resolve_wallpaper() {
   if [ -n "${theme}" ]; then
     local theme_wall="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/${theme}/wall.set"
     if [ -e "${theme_wall}" ]; then
-      readlink -f "${theme_wall}"
-      return 0
+      resolved_path="$(readlink -f "${theme_wall}")"
+      # Verify resolved path exists
+      if [ -f "${resolved_path}" ]; then
+        echo "${resolved_path}"
+        return 0
+      fi
     fi
   fi
 
@@ -220,6 +232,9 @@ apply_color_mode() {
   else
     "${LIB_DIR}/hypr/theme/color.set.sh" "${wallpaper}"
   fi
+
+  # Sync nvim after colors are generated
+  [[ -x "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" ]] && "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" >/dev/null 2>&1 &
 }
 
 #// apply pywal16 mode

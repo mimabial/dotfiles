@@ -1,22 +1,22 @@
 $HOME/.config/waybar/theme.css|${scrDir}/wbarconfgen.sh
 
 @define-color bg rgb(14,28,15);
-@define-color fg #95C2A1;
+@define-color fg #DBD0C6;
 
-@define-color bg_alt #11b811; /* bright green */
-@define-color alt-fg rgb(170,240,188);
+@define-color bg_alt rgb(14,28,15); /* bright green */
+@define-color fg_alt rgb(170,240,188);
 @define-color warning #AAF0F0; /* cyan */
 
 @define-color bg_selected #1E4E50;
 @define-color border #568270; /* cursor green */
 
 @define-color accent #9DC6A9; /* green */
-@define-color wb-act-bg rgb(30,55,52);
-@define-color wb-act-fg rgb(204,255,249);
-@define-color border_alt #9AE6E6; /* cyan */
+@define-color workspace_active_bg rgb(30,55,52);
+@define-color workspace_active_fg rgb(204,255,249);
+@define-color border_alt #568270; /* cyan */
 
 @define-color hover #AAF0AA; /* light green */
-@define-color wb-hvr-bg rgba(75,125,111,0.4);
+@define-color workspace_hover_bg rgb(75,125,111);
 
 /* Standard color palette - base colors */
 @define-color c0 #152326;
@@ -36,3 +36,31 @@ $HOME/.config/waybar/theme.css|${scrDir}/wbarconfgen.sh
 @define-color c13 #D9ADD4;
 @define-color c14 #87CBB1;
 @define-color c15 #DBD0C6;
+
+@define-color fg_selected @fg;
+@define-color critical @c1;
+@define-color c12 @c4;
+@define-color accent_bg @accent;
+@define-color accent_fg #9DC6A9;
+@define-color warning_bg @warning;
+@define-color warning_fg @warning;
+@define-color error_bg @critical;
+@define-color error_fg @critical;
+@define-color info_bg @accent;
+@define-color info_fg @accent;
+@define-color success_bg @c2;
+@define-color success_fg @c2;
+@define-color neutral_bg @bg_alt;
+@define-color neutral_fg @fg;
+@define-color secondary_bg @bg_alt;
+@define-color secondary_fg @fg;
+@define-color highlight_bg @bg_selected;
+@define-color highlight_fg @fg_selected;
+@define-color menu_bg @bg;
+@define-color menu_fg @fg;
+@define-color menu_border @border;
+@define-color tooltip_bg @bg_alt;
+@define-color tooltip_fg @fg;
+@define-color tooltip_border @border;
+@define-color workspace_active_br #95C2A1;
+

@@ -14,18 +14,15 @@
 #   to generate a png from a video file as swww do not support video
 
 selected_wall="${1:-"${WALLPAPER_CURRENT_DIR:-${HYPR_CACHE_HOME:-$HOME/.cache/hypr}/wallpaper/current}/wall.set"}"
-lockFile="$XDG_RUNTIME_DIR/$(basename "${0}").lock"
-if [ -e "${lockFile}" ]; then
-  cat <<EOF
 
-Error: Another instance of $(basename "${0}") is running.
-If you are sure that no other instance is running, remove the lock file:
-    ${lockFile}
-EOF
-  exit 1
+# Use flock for robust locking (releases automatically on exit/crash)
+SWWW_LOCK="${XDG_RUNTIME_DIR:-/tmp}/wallpaper-swww.lock"
+exec 203>"${SWWW_LOCK}"
+if ! flock -n 203; then
+  echo "Another swww wallpaper operation in progress, skipping..."
+  exit 0
 fi
-touch "${lockFile}"
-trap 'rm -f ${lockFile}' EXIT
+trap 'flock -u 203 2>/dev/null' EXIT
 
 scrDir="$(dirname "$(dirname "$(realpath "$0")")")"
 # shellcheck disable=SC1091
@@ -51,7 +48,8 @@ selected_wall="$1"
 selected_wall="$(readlink -f "${selected_wall}")"
 
 if ! swww query &>/dev/null; then
-  swww-daemon --format xrgb &
+  # Close lock file descriptors before starting daemon to prevent inheritance
+  swww-daemon --format xrgb 200>&- 201>&- 202>&- 203>&- &
   disown
   swww query && swww restore
 fi
@@ -71,9 +69,29 @@ fi
 # TODO: add support for other backends
 print_log -sec "wallpaper" -stat "apply" "$selected_wall"
 
+# Resolve the wallpaper path
+resolved_wall="$(readlink -f "$selected_wall")"
+if [ -z "${resolved_wall}" ] || [ ! -f "${resolved_wall}" ]; then
+  print_log -sec "swww" -err "wallpaper not found: ${selected_wall} -> ${resolved_wall}"
+  exit 1
+fi
+
+# Get cursor position (fallback to center if unavailable)
+cursor_pos="$(hyprctl cursorpos 2>/dev/null | grep -E '^[0-9]' || echo "0,0")"
+
+# Build swww command
+swww_cmd=(swww img "${resolved_wall}"
+  --transition-bezier .43,1.19,1,.4
+  --transition-type "${xtrans}"
+  --transition-duration "${wallTransDuration}"
+  --transition-fps "${wallFramerate}"
+  --invert-y
+  --transition-pos "${cursor_pos}")
+
 # Don't run in background during startup to ensure GIF animation loads properly
 if [ "${WALLPAPER_SET_FLAG}" == "start" ]; then
-  swww img "$(readlink -f "$selected_wall")" --transition-bezier .43,1.19,1,.4 --transition-type "${xtrans}" --transition-duration "${wallTransDuration}" --transition-fps "${wallFramerate}" --invert-y --transition-pos "$(hyprctl cursorpos | grep -E '^[0-9]' || echo "0,0")"
+  "${swww_cmd[@]}"
 else
-  swww img "$(readlink -f "$selected_wall")" --transition-bezier .43,1.19,1,.4 --transition-type "${xtrans}" --transition-duration "${wallTransDuration}" --transition-fps "${wallFramerate}" --invert-y --transition-pos "$(hyprctl cursorpos | grep -E '^[0-9]' || echo "0,0")" &
+  # Run in background but log any errors
+  ( "${swww_cmd[@]}" || print_log -sec "swww" -err "failed to set wallpaper" ) &
 fi

@@ -4,7 +4,7 @@ $GTK_THEME = Edge-Runner
 $ICON_THEME = Tela-circle-yellow
 $COLOR_SCHEME = prefer-dark
 
-$CURSOR_THEME=ComixCursors-White
+$CURSOR_THEME=Quintom_Ink
 $CURSOR_SIZE=35
 
 # Optional: The varibles above will be set automatically when the theme is loaded

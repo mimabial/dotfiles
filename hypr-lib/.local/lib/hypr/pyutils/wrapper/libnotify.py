@@ -2,6 +2,7 @@
 # coding: utf-8
 
 import os
+import shutil
 import threading
 from subprocess import CalledProcessError, TimeoutExpired, run
 from typing import Optional
@@ -22,11 +23,7 @@ def _is_gui_available():
 
 def _has_notify_send():
     """Check if notify-send command is available."""
-    try:
-        run(["which", "notify-send"], capture_output=True, check=True, timeout=2)
-        return True
-    except (CalledProcessError, TimeoutExpired, FileNotFoundError):
-        return False
+    return shutil.which("notify-send") is not None
 
 
 def send(

@@ -8,7 +8,7 @@ fi
 # source variables
 scrDir=$(dirname "$(realpath "$0")")
 # shellcheck disable=SC1091
-source "$scrDir/globalcontrol.sh"
+source "$scrDir/../globalcontrol.sh"
 get_aurhlpr
 export -f pkg_installed
 fpk_exup="pkg_installed flatpak && flatpak update"
@@ -45,8 +45,8 @@ if [ "$1" == "up" ]; then
 fi
 
 # Get detailed update information
-temp_db=$(mktemp -u "${XDG_RUNTIME_DIR:-"/tmp"}/checkupdates_db_XXXXXX")
-trap '[ -f "$temp_db" ] && rm "$temp_db" 2>/dev/null' EXIT INT TERM
+temp_db=$(mktemp -d "${XDG_RUNTIME_DIR:-"/tmp"}/checkupdates_db_XXXXXX")
+trap '[ -n "$temp_db" ] && rm -rf "$temp_db" 2>/dev/null' EXIT INT TERM
 
 # Official updates with details
 ofc_list=$(CHECKUPDATES_DB="$temp_db" checkupdates 2>/dev/null)

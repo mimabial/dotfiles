@@ -28,8 +28,49 @@
 @define-color accent {color4};
 @define-color hover {color3};
 @define-color warning {color3};
+@define-color critical {color1};
 
 /* Selected/active states */
 @define-color bg_selected {color4};
 @define-color fg_selected {foreground};
 @define-color bg_alt {color8};
+
+/* Extended semantic pairs */
+@define-color fg_alt @fg;
+@define-color accent_bg @accent;
+@define-color accent_fg @accent;
+@define-color warning_bg @warning;
+@define-color warning_fg @warning;
+@define-color error_bg @critical;
+@define-color error_fg @critical;
+@define-color info_bg @accent;
+@define-color info_fg @accent;
+@define-color success_bg @c2;
+@define-color success_fg @c2;
+@define-color neutral_bg @bg_alt;
+@define-color neutral_fg @fg;
+@define-color secondary_bg @bg_alt;
+@define-color secondary_fg @fg;
+@define-color highlight_bg @bg_selected;
+@define-color highlight_fg @fg_selected;
+
+/* Component tokens */
+@define-color menu_bg @bg;
+@define-color menu_fg @fg;
+@define-color menu_border @border;
+@define-color tooltip_bg @bg_alt;
+@define-color tooltip_fg @fg;
+@define-color tooltip_border @border;
+@define-color workspace_active_bg @bg_selected;
+@define-color workspace_active_fg @fg_selected;
+@define-color workspace_hover_bg @hover;
+
+/* Named accents */
+@define-color gray @c8;
+@define-color gray_bright @c7;
+@define-color orange @c4;
+@define-color orange_bright @c12;
+@define-color purple @c5;
+@define-color purple_bright @c13;
+@define-color aqua @c6;
+@define-color aqua_bright @c14;

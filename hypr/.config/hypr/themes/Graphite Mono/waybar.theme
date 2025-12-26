@@ -1,7 +1,7 @@
-$HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfgen.sh
+$HOME/.config/waybar/theme.css
 
 /* Main colors */
-@define-color bg #1c1c1c; /* bg */
+@define-color bg rgb(38, 38, 38); /* bg */
 
 @define-color bg_selected #262626;
 @define-color fg #ffffff;
@@ -9,16 +9,16 @@ $HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfge
 
 /* Active workspace colors */
 @define-color accent #1bfd9c; /* glow_color/operator */
-@define-color wb-act-fg #1c1c1c; /* bg */
+@define-color workspace_active_fg #1c1c1c; /* bg */
 @define-color border_alt #1bfd9c; /* glow_color */
 
 /* Hover colors */
 @define-color fg_selected #66b2b2; /* cursor/title */
-@define-color wb-hvr-bg #1c1c1c; /* bg */
+@define-color workspace_hover_bg #1c1c1c; /* bg */
 @define-color hover #bdfe58; /* cursor */
 
-@define-color bg_alt #d9d9d9;
-@define-color alt-fg #262626;
+@define-color fg_alt #d9d9d9;
+@define-color bg_alt #262626;
 @define-color warning #1bfd9c; /* glow_color */
 
 /* Standard color palette - base colors */
@@ -27,16 +27,45 @@ $HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfge
 @define-color c2 #baffc9; /* added */
 @define-color c3 #ffffba; /* changed */
 @define-color c4 #7fa1c3; /* info */
-@define-color purple #a1a1a1; /* type */
 @define-color c6 #66b2b2; /* bool */
 @define-color c7 #c0c0c0;
 
 /* Standard color palette - bright/accent variants */
-@define-color c8 #404040;
+@define-color c8 #a1a1a1;
 @define-color c9 #dea6a0; /* error */
 @define-color c10 #baffc9; /* added */
 @define-color c11 #ffffba; /* changed */
 @define-color c12 #7fa1c3; /* info */
-@define-color purple-bright #c5c5c5; /* type_builtin */
 @define-color c14 #b2d8d8; /* constant */
 @define-color c15 #f1f1f1;
+
+@define-color c16 #a1a1a1; /* type */
+@define-color c17 #c5c5c5; /* type_builtin */
+
+@define-color critical @c1;
+@define-color c5 @accent;
+@define-color c13 @c5;
+@define-color accent_bg @accent;
+@define-color accent_fg @accent;
+@define-color warning_bg @warning;
+@define-color warning_fg #bdfe58;
+@define-color error_bg @critical;
+@define-color error_fg @critical;
+@define-color info_bg @accent;
+@define-color info_fg @accent;
+@define-color success_bg @c2;
+@define-color success_fg @c2;
+@define-color neutral_bg @bg_alt;
+@define-color neutral_fg @fg;
+@define-color secondary_bg @bg_alt;
+@define-color secondary_fg @fg;
+@define-color highlight_bg @bg_selected;
+@define-color highlight_fg @fg_selected;
+@define-color menu_bg @bg;
+@define-color menu_fg @fg;
+@define-color menu_border @border;
+@define-color tooltip_bg @bg_alt;
+@define-color tooltip_fg @fg;
+@define-color tooltip_border @border;
+@define-color workspace_active_bg @bg_selected;
+@define-color workspace_active_br #d9d9d9;

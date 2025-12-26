@@ -15,12 +15,15 @@ src_file="${confDir}/hypr/themes/theme.conf"
 
 # calculate height from control file or monitor res
 
-b_height=${WAYBAR_SCALE:-$(grep '^1|' "$conf_ctl" | cut -d '|' -f 2)}
+b_height="${WAYBAR_SCALE:-}"
+if [[ -z "${b_height}" ]] && [[ -r "${conf_ctl}" ]]; then
+  b_height="$(grep '^1|' "$conf_ctl" | cut -d '|' -f 2)"
+fi
 
 if [ -z "$b_height" ] || [ "$b_height" == "0" ]; then
-    y_monres=$(cat /sys/class/drm/*/modes | head -1 | cut -d 'x' -f 2)
-    y_monres=$(hyprctl -j monitors | jq '.[] | select(.focused == true) | (.height / .scale)')
-    b_height=$((y_monres * 3 / 100))
+  y_monres=$(cat /sys/class/drm/*/modes | head -1 | cut -d 'x' -f 2)
+  y_monres=$(hyprctl -j monitors | jq '.[] | select(.focused == true) | (.height / .scale)')
+  b_height=$((y_monres * 3 / 100))
 fi
 
 # calculate values based on height
@@ -39,18 +42,28 @@ export w_padact=$((b_height * 40 / 100)) # workspace active padding 40% of heigh
 export s_fontpx=$((b_height * 34 / 100)) # font size 34% of height
 
 if [ "$b_height" -lt 30 ]; then
-    export e_paddin=0
+  export e_paddin=0
 fi
 if [ $s_fontpx -lt 10 ]; then
-    export s_fontpx=10
+  export s_fontpx=10
 fi
 
 # adjust values for vert/horz
 
-w_position="$(grep '^1|' "$conf_ctl" | cut -d '|' -f 3)"
-export w_position
-case ${w_position} in
-top | bottom)
+w_position=""
+if [[ -r "${conf_ctl}" ]]; then
+  w_position="$(grep '^1|' "$conf_ctl" | cut -d '|' -f 3)"
+fi
+layout_position="${w_position:-${WAYBAR_POSITION:-right}}"
+case ${layout_position} in
+  top | bottom | left | right) ;;
+  *)
+    print_log -sec "waybar" -warn "position" "invalid '${layout_position}', defaulting to right"
+    layout_position="right"
+    ;;
+esac
+case ${layout_position} in
+  top | bottom)
     export x1g_margin=${g_margin}
     export x2g_margin=0
     export x3g_margin=${g_margin}
@@ -76,7 +89,7 @@ top | bottom)
     export x3="left"
     export x4="right"
     ;;
-left | right)
+  left | right)
     export x1g_margin=0
     export x2g_margin=${g_margin}
     export x3g_margin=0
@@ -104,6 +117,14 @@ left | right)
     ;;
 esac
 
+style_position="${layout_position}"
+style_file="${waybar_dir}/styles/${style_position}.css"
+if [[ ! -r "${style_file}" ]]; then
+  print_log -sec "waybar" -warn "style" "missing ${style_file}, falling back to right.css"
+  style_position="right"
+fi
+export w_position="${style_position}"
+
 font_name=${WAYBAR_FONT:-}
 font_name=${font_name:-$(hyprshell fonts/font-get.sh bar 2>/dev/null || true)}
 font_name=${font_name:-$(get_hyprConf "BAR_FONT")}
@@ -120,5 +141,5 @@ envsubst <"$in_file" >"$out_file"
 hypr_border=$(awk -F '=' '{if($1~" rounding ") print $2}' "$src_file" | sed 's/ //g')
 hypr_border=${hypr_border:-$WAYBAR_BORDER_RADIUS}
 if [ "$hypr_border" == "0" ] || [ -z "$hypr_border" ]; then
-    sed -i "/border-radius: /c\    border-radius: 0px;" "$out_file"
+  sed -i "/border-radius: /c\    border-radius: 0px;" "$out_file"
 fi

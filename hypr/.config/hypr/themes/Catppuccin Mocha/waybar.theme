@@ -1,4 +1,4 @@
-$HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfgen.sh
+$HOME/.config/waybar/theme.css
 
 @define-color bg #181825; /* Mantle */
 
@@ -6,16 +6,16 @@ $HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfge
 @define-color fg #cdd6f4; /* Text */
 @define-color border #f5c2e7; /* Surface1 */
 
-@define-color alt-fg #11111b;
+@define-color fg_alt #11111b;
 @define-color bg_alt #cdd6f4; /* Text */
 @define-color warning #f5c2e7; /* Surface1 */
 
 @define-color accent #a6adc8;
-@define-color wb-act-fg #313244;
+@define-color workspace_active_fg #313244;
 @define-color border_alt #CBA6F7; /* Flamingo */
 
 @define-color hover #f38ba8;
-@define-color wb-hvr-bg #313244;
+@define-color workspace_hover_bg #313244;
 @define-color fg_selected #89b4fa; /* Rosewater */
 
 @define-color c1 #f38ba8;
@@ -30,6 +30,35 @@ $HOME/.config/waybar/theme.css|${scrDir}/wbarstylegen.sh && ${scrDir}/wbarconfge
 @define-color c10 #a6e3a1;
 @define-color c11 #fab387;
 @define-color c12 #89dceb;
-@define-color purple-bright #f5c2e7;
+@define-color purple_bright #f5c2e7;
 @define-color c14 #89dceb;
 @define-color c15 #9399b2;
+
+@define-color critical @c1;
+@define-color c0 @bg;
+@define-color c5 @accent;
+@define-color c8 @bg_alt;
+@define-color c13 @c5;
+@define-color accent_bg @accent;
+@define-color accent_fg @accent;
+@define-color warning_bg @warning;
+@define-color warning_fg @warning;
+@define-color error_bg @critical;
+@define-color error_fg @critical;
+@define-color info_bg @accent;
+@define-color info_fg @accent;
+@define-color success_bg @c2;
+@define-color success_fg @c2;
+@define-color neutral_bg @bg_alt;
+@define-color neutral_fg @fg;
+@define-color secondary_bg @bg_alt;
+@define-color secondary_fg @fg;
+@define-color highlight_bg @bg_selected;
+@define-color highlight_fg @fg_selected;
+@define-color menu_bg @bg;
+@define-color menu_fg @fg;
+@define-color menu_border @border;
+@define-color tooltip_bg @bg_alt;
+@define-color tooltip_fg @fg;
+@define-color tooltip_border @border;
+@define-color workspace_active_bg @bg_selected;
