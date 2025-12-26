@@ -34,6 +34,7 @@ dotfiles/
 ├── zsh/            # Zsh shell configuration
 ├── kitty/          # Kitty terminal
 ├── alacritty/      # Alacritty terminal
+├── tmux/           # Tmux config
 ├── rofi/           # Application launcher
 ├── waybar/         # Status bar
 ├── swaync/         # Notification daemon
@@ -46,14 +47,14 @@ dotfiles/
 
 ### Themes
 
-| | | | |
-|:---:|:---:|:---:|:---:|
-| Abyssal Wave | Catppuccin Mocha | Edge Runner | Gruvbox Retro |
-| Another World | Code Garden | Eternal Arctic | Lime Frenzy |
-| Ayu Mirage | Decay Green | Forest Green | Material Sakura |
-| Bauhaus 80 | Doom Bringers | Graphite Mono | Monokai |
-| Blue Sky | Nordic Blue | One Dark | Oxo Carbon |
-| Catppuccin Latte | Greenify | Grukai | And more... |
+|                  |                  |                |                 |
+| :--------------: | :--------------: | :------------: | :-------------: |
+|   Abyssal Wave   | Catppuccin Mocha |  Edge Runner   |  Gruvbox Retro  |
+|  Another World   |   Code Garden    | Eternal Arctic |   Lime Frenzy   |
+|    Ayu Mirage    |   Decay Green    |  Forest Green  | Material Sakura |
+|    Bauhaus 80    |  Doom Bringers   | Graphite Mono  |     Monokai     |
+|     Blue Sky     |   Nordic Blue    |    One Dark    |   Oxo Carbon    |
+| Catppuccin Latte |     Greenify     |     Grukai     |   And more...   |
 
 ---
 
@@ -100,6 +101,7 @@ stow hypr hypr-lib zsh kitty waybar rofi swaync starship scripts
 stow hypr        # Hyprland config → ~/.config/hypr
 stow hypr-lib    # Scripts → ~/.local/lib/hypr
 stow scripts     # Utilities → ~/.local/bin
+
 ```
 
 ### Post-Install
@@ -121,43 +123,43 @@ Hyprland
 
 ### Key Bindings
 
-| Binding | Action |
-|---------|--------|
-| `Super + T` | Terminal |
-| `Super + A` | Application launcher |
-| `Super + E` | File explorer |
-| `Super + B` | Browser |
-| `Super + Q` | Close window |
-| `Super + W` | Toggle floating |
-| `Super + F` | Fullscreen |
-| `Super + L` | Lock screen |
-| `Super + Tab` | Window switcher |
-| `Super + V` | Clipboard |
-| `Super + /` | Keybindings help |
+| Binding       | Action               |
+| ------------- | -------------------- |
+| `Super + T`   | Terminal             |
+| `Super + A`   | Application launcher |
+| `Super + E`   | File explorer        |
+| `Super + B`   | Browser              |
+| `Super + Q`   | Close window         |
+| `Super + W`   | Toggle floating      |
+| `Super + F`   | Fullscreen           |
+| `Super + L`   | Lock screen          |
+| `Super + Tab` | Window switcher      |
+| `Super + V`   | Clipboard            |
+| `Super + /`   | Keybindings help     |
 
 #### Theming
 
-| Binding | Action |
-|---------|--------|
-| `Super + Shift + T` | Theme selector |
+| Binding             | Action             |
+| ------------------- | ------------------ |
+| `Super + Shift + T` | Theme selector     |
 | `Super + Shift + W` | Wallpaper selector |
-| `Super + Shift + R` | Color mode toggle |
+| `Super + Shift + R` | Color mode toggle  |
 
 #### Workspaces
 
-| Binding | Action |
-|---------|--------|
-| `Super + 1-0` | Switch workspace |
-| `Super + Shift + 1-0` | Move window to workspace |
-| `Super + Mouse Scroll` | Cycle workspaces |
+| Binding                | Action                   |
+| ---------------------- | ------------------------ |
+| `Super + 1-0`          | Switch workspace         |
+| `Super + Shift + 1-0`  | Move window to workspace |
+| `Super + Mouse Scroll` | Cycle workspaces         |
 
 #### Dev Tools
 
-| Binding | Action |
-|---------|--------|
-| `Super + Shift + G` | LazyGit |
-| `Super + Shift + D` | LazyDocker |
-| `Super + Shift + F` | Ranger |
+| Binding             | Action                  |
+| ------------------- | ----------------------- |
+| `Super + Shift + G` | LazyGit                 |
+| `Super + Shift + D` | LazyDocker              |
+| `Super + Shift + F` | Ranger                  |
 | `Super + Shift + B` | Bottom (system monitor) |
 
 ### Theme Switching
@@ -177,12 +179,12 @@ hyprshell wallpaper.sh -Gn
 
 The theming system has four modes controlled by clicking the color mode indicator in Waybar or pressing `Super + Shift + R`:
 
-| Mode | Description |
-|------|-------------|
-| **Theme** | Uses pre-defined theme colors |
-| **Auto** | Extracts colors from wallpaper (auto dark/light) |
-| **Dark** | Forces dark mode color extraction |
-| **Light** | Forces light mode color extraction |
+| Mode      | Description                                      |
+| --------- | ------------------------------------------------ |
+| **Theme** | Uses pre-defined theme colors                    |
+| **Auto**  | Extracts colors from wallpaper (auto dark/light) |
+| **Dark**  | Forces dark mode color extraction                |
+| **Light** | Forces light mode color extraction               |
 
 ---
 
@@ -220,6 +222,7 @@ hyprshell colorpicker.sh
 ### Customization
 
 User-specific overrides go in:
+
 - `~/.config/hypr/userprefs.conf` — Hyprland settings
 - `~/.config/zsh/.zshrc` — Shell configuration
 - `~/.config/waybar/user-style.css` — Waybar styling
@@ -256,6 +259,7 @@ Theme/Wallpaper Change
 ### Border-Radius Syncing
 
 Hyprland's `decoration:rounding` value is automatically synced to:
+
 - Waybar modules
 - GTK widgets (proportionally scaled)
 - Qt applications via Kvantum
