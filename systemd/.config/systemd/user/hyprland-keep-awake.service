@@ -1,0 +1,13 @@
+[Unit]
+Description=Keep awake (idle inhibit)
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=systemd-inhibit --what=idle --mode=block --why="Keep awake (manual)" sleep infinity
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target

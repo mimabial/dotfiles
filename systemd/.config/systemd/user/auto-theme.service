@@ -1,0 +1,17 @@
+[Unit]
+Description=Auto Theme Daemon (sunrise/sunset + ambient light)
+Documentation=man:auto_theme.py
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/state/hypr/pip_env/bin/python %h/.local/lib/hypr/theme/auto_theme.py
+ExecReload=/bin/kill -USR2 $MAINPID
+Restart=on-failure
+RestartSec=5
+
+# Environment
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=graphical-session.target

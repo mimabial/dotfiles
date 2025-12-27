@@ -8,6 +8,7 @@ packages=(
   alacritty
   cava
   fastfetch
+  gtk
   hypr
   hypr-lib
   hypr-share
@@ -17,9 +18,11 @@ packages=(
   rmpc
   rofi
   scripts
+  systemd
   starship
   swaync
   tmux
+  uwsm
   wal
   waybar
   wlogout
