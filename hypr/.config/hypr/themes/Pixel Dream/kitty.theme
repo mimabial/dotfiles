@@ -5,6 +5,7 @@ $HOME/.config/kitty/theme.conf|killall -SIGUSR1 kitty
 
 # alternative font if you want more visibility
 font_family     Miracode
+# font_family       More Perfect DOS VGA
 
 background #1d2021
 foreground #d4be98

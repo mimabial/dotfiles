@@ -88,7 +88,7 @@ update_or_add_var() {
   if grep -q "${key_regex}" "$file_path"; then
     sed -i "s|${key_regex}.*|${replacement_escaped}|" "$file_path"
   else
-    printf '\\n$%s=%s\\n' "$var_name" "$var_value" >>"$file_path"
+    printf '\n$%s=%s\n' "$var_name" "$var_value" >>"$file_path"
   fi
 }
 

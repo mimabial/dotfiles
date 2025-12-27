@@ -12,10 +12,10 @@
 /* Global Styles */
 * {
   outline: none;
-  font-family: "mononoki Nerd Font", monospace;
-  font-size: 10pt;
+  font-family: "More Perfect DOS VGA", monospace;
+  font-size: 18pt;
   text-shadow: none;
   color: @fg-primary;
-  border-radius: 4px;
-  -gtk-icon-theme-name: "Tela-circle-blue";
+  border-radius: 0px;
+  -gtk-icon-theme-name: "pixelitos-dark";
 }

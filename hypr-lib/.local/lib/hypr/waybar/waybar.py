@@ -574,23 +574,40 @@ def is_waybar_running_for_current_user():
     return get_waybar_pid() is not None
 
 
-def restart_waybar():
-    """Restart Waybar - skip if watcher is handling it."""
-    # Check if watcher service is running
-    watcher_unit = f"{os.getenv('XDG_SESSION_DESKTOP')}-waybar-watcher.service"
+def _iter_watcher_units():
+    session = os.getenv("XDG_SESSION_DESKTOP", "").strip()
+    candidates = []
+    if session:
+        candidates.append(f"{session}-waybar-watcher.service")
+        session_lower = session.lower()
+        if session_lower != session:
+            candidates.append(f"{session_lower}-waybar-watcher.service")
+    candidates.append("hyprland-waybar-watcher.service")
+
+    seen = set()
+    for unit in candidates:
+        if unit and unit not in seen:
+            seen.add(unit)
+            yield unit
+
+
+def _is_unit_active(unit):
     try:
         result = subprocess.run(
-            ["systemctl", "--user", "is-active", watcher_unit],
-            capture_output=True,
+            ["systemctl", "--user", "is-active", "--quiet", unit],
             timeout=2,
         )
+        return result.returncode == 0
+    except Exception:
+        return False
 
-        if result.returncode == 0:
-            # Watcher is active - skip restart, watcher will detect config changes
-            logger.debug("Watcher active - skipping restart, watcher will handle it")
+
+def restart_waybar():
+    """Restart Waybar - skip if watcher is handling it."""
+    for unit in _iter_watcher_units():
+        if _is_unit_active(unit):
+            logger.debug(f"Watcher active ({unit}) - skipping restart, watcher will handle it")
             return
-    except:
-        pass
 
     # No watcher - do manual restart
     logger.debug("No watcher detected, restarting manually")
@@ -604,16 +621,13 @@ def kill_waybar_and_watcher():
     logger.debug("Killed Waybar processes for current user.")
 
     try:
-        watcher_unit = f"{os.getenv('XDG_SESSION_DESKTOP')}-waybar-watcher.service"
-        result = subprocess.run(
-            ["systemctl", "--user", "is-active", watcher_unit],
-            capture_output=True,
-            text=True,
-        )
-
-        if result.returncode == 0:
-            subprocess.run(["systemctl", "--user", "stop", watcher_unit])
-            logger.debug("Killed all waybar.py watcher scripts for current user.")
+        stopped_any = False
+        for unit in _iter_watcher_units():
+            if _is_unit_active(unit):
+                subprocess.run(["systemctl", "--user", "stop", unit], check=False)
+                stopped_any = True
+        if stopped_any:
+            logger.debug("Stopped waybar watcher service(s) for current user.")
     except Exception as e:
         logger.error(f"Error killing waybar.py processes: {e}")
 
@@ -1436,16 +1450,24 @@ def watch_waybar():
 
 def get_waybar_pid():
     """Get waybar PID if running, None otherwise."""
+    pids = get_waybar_pids()
+    if pids:
+        return pids[0]
+    return None
+
+
+def get_waybar_pids():
+    """Get all Waybar PIDs for the current user."""
     try:
         result = subprocess.run(
             ["pgrep", "-x", "waybar"], capture_output=True, text=True
         )
         if result.returncode == 0 and result.stdout.strip():
-            return int(result.stdout.strip().split()[0])
-        return None
+            return [int(pid) for pid in result.stdout.strip().split()]
+        return []
     except Exception as e:
         logger.error(f"Error checking waybar PID: {e}")
-        return None
+        return []
 
 
 def start_waybar():
@@ -1483,29 +1505,37 @@ def start_waybar():
 
 def stop_waybar():
     """Stop waybar gracefully."""
-    pid = get_waybar_pid()
-    if not pid:
+    pids = get_waybar_pids()
+    if not pids:
         WAYBAR_LOCK.unlink(missing_ok=True)
         logger.debug("Waybar not running")
         return
 
     try:
-        os.kill(pid, signal.SIGTERM)
-        logger.debug(f"Sent SIGTERM to waybar (PID {pid})")
+        for pid in pids:
+            try:
+                os.kill(pid, signal.SIGTERM)
+                logger.debug(f"Sent SIGTERM to waybar (PID {pid})")
+            except ProcessLookupError:
+                continue
 
         # Wait for it to die (max 5 seconds)
         for _ in range(50):
-            if not get_waybar_pid():
+            if not get_waybar_pids():
                 logger.debug("Waybar stopped gracefully")
                 WAYBAR_LOCK.unlink(missing_ok=True)
                 return
             time.sleep(0.1)
 
         # Force kill if still alive
-        pid = get_waybar_pid()
-        if pid:
+        pids = get_waybar_pids()
+        if pids:
             logger.warning("Waybar didn't stop, sending SIGKILL")
-            os.kill(pid, signal.SIGKILL)
+            for pid in pids:
+                try:
+                    os.kill(pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    continue
             time.sleep(0.2)
             WAYBAR_LOCK.unlink(missing_ok=True)
 

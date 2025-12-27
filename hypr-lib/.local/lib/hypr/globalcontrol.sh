@@ -947,6 +947,31 @@ dconf_write() {
   fi
 }
 
+hyprlogout() {
+  if command -v hyprctl >/dev/null 2>&1; then
+    if hyprctl dispatch exit; then
+      return 0
+    fi
+  fi
+
+  if command -v loginctl >/dev/null 2>&1; then
+    if [[ -n "${XDG_SESSION_ID:-}" ]] && loginctl terminate-session "${XDG_SESSION_ID}"; then
+      return 0
+    fi
+    if [[ -n "${USER:-}" ]] && loginctl terminate-user "${USER}"; then
+      return 0
+    fi
+  fi
+
+  if command -v systemctl >/dev/null 2>&1; then
+    systemctl --user exit
+    return $?
+  fi
+
+  print_log -err "ERROR: No supported logout method found"
+  return 1
+}
+
 if [ -n "$BASH_VERSION" ]; then
   export -f get_hyprConf get_rofi_pos \
     is_hovered toml_write \
@@ -956,6 +981,7 @@ if [ -n "$BASH_VERSION" ]; then
     pkg_installed paste_string \
     extract_thumbnail accepted_mime_types \
     dconf_write send_notifs \
+    hyprlogout \
     export_hypr_config init_hypr_globals \
     state_get state_set state_get_mode state_set_mode
 fi

@@ -266,19 +266,35 @@ Wall_Select() {
     element-text{padding:1em;}"
 
   #// launch rofi menu
-  local entry
-  entry=$(
+  local entry wall_json_file selected_row current_hash
+  wall_json_file="$(mktemp)"
+  Wall_Json > "${wall_json_file}"
 
-    Wall_Json | jq -r '.[].rofi_sqre' | rofi -dmenu -i \
-      -display-column-separator ":::" \
-      -display-columns 1 \
-      -show-icons \
-      -theme-str "${font_override}" \
-      -theme-str "${r_override}" \
-      -theme-str "listview { show-icons: true; }" \
-      -theme "${ROFI_WALLPAPER_STYLE:-wallpaper}" \
-      -select "$(basename "$(readlink "$wallSet")")"
+  selected_row=""
+  if [[ -e "${wallSet}" ]]; then
+    current_hash="$(set_hash "${wallSet}")"
+    if [[ -n "${current_hash}" ]]; then
+      selected_row="$(jq -r --arg hash "${current_hash}" '[.[].hash] | index($hash) // empty' "${wall_json_file}")"
+    fi
+  fi
+
+  local -a rofi_args
+  rofi_args=(
+    -dmenu -i
+    -display-column-separator ":::"
+    -display-columns 1
+    -show-icons
+    -theme-str "${font_override}"
+    -theme-str "${r_override}"
+    -theme-str "listview { show-icons: true; }"
+    -theme "${ROFI_WALLPAPER_STYLE:-wallpaper}"
   )
+  if [[ -n "${selected_row}" ]]; then
+    rofi_args+=(-selected-row "${selected_row}")
+  fi
+
+  entry=$(jq -r '.[].rofi_sqre' "${wall_json_file}" | rofi "${rofi_args[@]}")
+  rm -f "${wall_json_file}"
   # Exit early if rofi was cancelled
   [[ -z "${entry}" ]] && exit 0
   selected_thumbnail="$(awk -F ':::' '{print $3}' <<<"${entry}")"

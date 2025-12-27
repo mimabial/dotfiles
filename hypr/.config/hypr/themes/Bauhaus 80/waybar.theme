@@ -68,5 +68,5 @@ $HOME/.config/waybar/theme.css
 @define-color secondary_fg @fg;
 @define-color highlight_bg @bg_selected;
 @define-color highlight_fg @fg_selected;
-@define-color workspace_active_bg #fdf6e3;
+@define-color workspace_active_bg #eee8d5;
 @define-color workspace_active_br #268bd2;

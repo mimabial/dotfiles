@@ -39,8 +39,71 @@ else
   hypr_border="${hypr_border:-5}"
 fi
 
+# Match swaync margins to Hyprland gaps_out
+gaps_out="$(hyprctl -j getoption general:gaps_out 2>/dev/null | jq -r '.int // empty')"
+if [[ -z "${gaps_out}" || "${gaps_out}" == "null" ]]; then
+  gaps_out=""
+fi
+if [[ -z "${gaps_out}" && -f "${theme_conf}" ]]; then
+  gaps_out="$(grep "gaps_out" "${theme_conf}" | grep "=" | head -1 | awk '{print $NF}')"
+fi
+gaps_out="${gaps_out:-6}"
+
+# Read waybar position to align swaync
+waybar_config="${confDir}/waybar/config.jsonc"
+waybar_position=""
+if [[ -r "${waybar_config}" ]]; then
+  waybar_position=$(grep '"position"' "${waybar_config}" | head -1 | sed 's/.*"position"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
+fi
+if [[ -z "${waybar_position}" ]]; then
+  waybar_position="top"
+fi
+
+case "${waybar_position}" in
+  "top")
+    swaync_pos_x="right"
+    swaync_pos_y="top"
+    margin_top="${gaps_out}"
+    margin_bottom=0
+    margin_left=0
+    margin_right="${gaps_out}"
+    ;;
+  "bottom")
+    swaync_pos_x="right"
+    swaync_pos_y="bottom"
+    margin_top=0
+    margin_bottom="${gaps_out}"
+    margin_left=0
+    margin_right="${gaps_out}"
+    ;;
+  "left")
+    swaync_pos_x="left"
+    swaync_pos_y="top"
+    margin_top=0
+    margin_bottom=0
+    margin_left="${gaps_out}"
+    margin_right=0
+    ;;
+  "right")
+    swaync_pos_x="right"
+    swaync_pos_y="top"
+    margin_top=0
+    margin_bottom=0
+    margin_left=0
+    margin_right="${gaps_out}"
+    ;;
+  *)
+    swaync_pos_x="right"
+    swaync_pos_y="top"
+    margin_top="${gaps_out}"
+    margin_bottom=0
+    margin_left=0
+    margin_right="${gaps_out}"
+    ;;
+esac
+
 # Change detection: skip if inputs unchanged
-input_hash=$(echo "${gtkIcon}${font_name}${font_size}${hypr_border}" | md5sum | cut -d' ' -f1)
+input_hash=$(echo "${gtkIcon}${font_name}${font_size}${hypr_border}${swaync_pos_x}${swaync_pos_y}${margin_top}${margin_bottom}${margin_left}${margin_right}" | md5sum | cut -d' ' -f1)
 colors_hash=$(md5sum "${swayncDir}/colors.css" 2>/dev/null | cut -d' ' -f1)
 combined_hash="${input_hash}-${colors_hash}"
 if [[ -f "$hashFile" && "$(cat "$hashFile" 2>/dev/null)" == "$combined_hash" ]]; then
@@ -55,15 +118,15 @@ screen_height="${screen_height:-1080}"
 cat <<CONFIG >"${swayncDir}/config.json"
 {
   "$schema": "/etc/xdg/swaync/configSchema.json",
-  "positionX": "right",
-  "positionY": "top",
+  "positionX": "${swaync_pos_x}",
+  "positionY": "${swaync_pos_y}",
   "cssPriority": "user",
   "control-center-width": 400,
   "control-center-height": 720, 
-  "control-center-margin-top": 0,
-  "control-center-margin-bottom": 0,
-  "control-center-margin-right": 6,
-  "control-center-margin-left": 0,
+  "control-center-margin-top": ${margin_top},
+  "control-center-margin-bottom": ${margin_bottom},
+  "control-center-margin-right": ${margin_right},
+  "control-center-margin-left": ${margin_left},
 
   "notification-window-width": 320,
   "notification-icon-size": 50,
@@ -203,7 +266,7 @@ cat <<STYLE >"${swayncDir}/style.css"
 STYLE
 
 # Save hash for next run
-echo "$combined_hash" > "$hashFile"
+echo "$combined_hash" >"$hashFile"
 
 # Reload swaync
 swaync-client -R 2>/dev/null

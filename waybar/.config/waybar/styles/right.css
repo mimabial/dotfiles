@@ -132,8 +132,8 @@ menu label {
 
 #workspaces button.active {
   padding: 4px 0px;
-  background: alpha(@workspace_active_bg, 0.5);
   color: @fg_selected;
+  background: alpha(@workspace_active_bg, 0.5);
   border: 1px solid @workspace_active_br;
   margin: 2px 0px;
 }

@@ -1,11 +1,7 @@
-@import './default.css';
+@import "./right.css";
 
 window#waybar {
   background: alpha(@bg, 0.8);
   border-left: transparent;
   border-right: 1px solid alpha(@bg, 0.1);
-}
-
-#workspaces button.active {
-  background: alpha(@bg_selected, 0.3);
 }

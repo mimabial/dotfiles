@@ -1,13 +1,12 @@
 $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
 
 $GTK_THEME=Pixel-Dream
-$ICON_THEME=pixel-dream
+$ICON_THEME=pixelitos-dark
 $COLOR_SCHEME=prefer-dark
-$CURSOR_THEME=Quintom_Ink
-$CURSOR_SIZE=20
-$FONT=Monocraft Nerd Font Book
-# $CURSOR_THEME=pixelfun2
-# $FONT=More Perfect DOS VGA
+$CURSOR_SIZE=25
+# $FONT=Monocraft Nerd Font Book
+$CURSOR_THEME=pixelfun2
+$FONT=More Perfect DOS VGA
 $NVIM_SCHEME=gruvbox
 $NVIM_VARIANT=dark-hard
 
@@ -15,6 +14,7 @@ exec = gsettings set org.gnome.desktop.interface icon-theme '$ICON_THEME'
 exec = gsettings set org.gnome.desktop.interface gtk-theme '$GTK_THEME'
 exec = gsettings set org.gnome.desktop.interface color-scheme '$COLOR_SCHEME'
 exec = gsettings set org.gnome.desktop.interface font-name '$FONT'
+exec = hyprctl setcursor $CURSOR_THEME $CURSOR_SIZE
 
 general {
     gaps_in = 3
@@ -49,6 +49,5 @@ decoration {
         enabled = false
     }
 }
-
 
 layerrule = blur,waybar

@@ -14,14 +14,14 @@ general {
     gaps_in = 2
     gaps_out = 4
     border_size = 2
-    col.active_border = rgba(d4896bff)
+    col.active_border = rgba(B41211ff)
     col.inactive_border = rgba(3d3935ff)
     layout = dwindle
     resize_on_border = true
 }
 
 group {
-    col.border_active = rgba(d4896bff)
+    col.border_active = rgba(B41211ff)
     col.border_inactive = rgba(3d3935cc)
     col.border_locked_active = rgba(FFFFFFff)
     col.border_locked_inactive = rgba(FFFFFFcc)

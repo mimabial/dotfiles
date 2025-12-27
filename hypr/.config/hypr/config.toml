@@ -38,7 +38,7 @@ args = ["-multi-select"] # Additional arguments for emoji picker.
 
 # theme.select.sh configuration.
 [rofi.theme]
-scale = 10 # Scaling for theme selector.
+scale = 7 # Scaling for theme selector.
 
 # hyprshell rofi.websearch.sh configuration.
 [rofi.websearch]
@@ -70,7 +70,7 @@ cursor_size = 24                                # Cursor size.
 cursor_theme = "Bibata-Modern-Ice"              # Cursor theme.
 button_layout = ""                              # Button layout. (gtk only)
 document_font_size = 10                         # Document font size.
-font = "Cantarell"                              # Font.
+font = ""                                       # Font.
 font_antialiasing = "rgba"                      # Font antialiasing.
 font_hinting = "full"                           # Font hinting.
 font_size = 10                                  # Font size.
@@ -80,19 +80,19 @@ background_path = ""                            # LockScreen's Background path.
 
 # Qt5 configuration.
 [qt5]
-font = "Cantarell"                              # Qt5 font.
+font = ""                                       # Qt5 font.
 font_size = 10                                  # Qt5 font size.
 monospace_font = "CaskaydiaCove Nerd Font Mono" # Qt5 monospace font.
 monospace_font_size = 9                         # Qt5 monospace font size.
 
 # Qt6 configuration.
 [qt6]
-font = "Cantarell"                              # Qt6 font.
+font = ""                                       # Qt6 font.
 font_size = 10                                  # Qt6 font size.
 monospace_font = "CaskaydiaCove Nerd Font Mono" # Qt6 monospace font.
 monospace_font_size = 9                         # Qt6 monospace font size.
 
 # GTK3 configuration.
 [gtk3]
-font = "Cantarell" # GTK3 font.
-font_size = 10     # GTK3 font size.
+font = ""      # GTK3 font.
+font_size = 10 # GTK3 font size.

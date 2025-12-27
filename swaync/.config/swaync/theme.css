@@ -1,25 +1,20 @@
 
-/* Foreground colors */
-@define-color fg-primary #657b83;     /* base00 - primary content */
-@define-color fg-secondary #93a1a1;   /* base1 - secondary content */
+@define-color fg-primary #ddc7a1;
+@define-color fg-secondary #c5b597;
 
-/* Background colors */
-@define-color bg-primary #fdf6e3;     /* base3 - primary background */
-@define-color bg-secondary #eee8d5;   /* base2 - secondary background */
-@define-color bg-tertiary #e6dfd0;    /* slightly darker than base2 */
+@define-color bg-primary #282828;
+@define-color bg-secondary #32302f;
+@define-color bg-tertiary #3c3836;
 
-/* Accent colors - Solarized palette */
-@define-color accent-red #dc322f;     /* red */
-@define-color accent-green #859900;   /* green */
-@define-color accent-yellow #b58900;  /* yellow */
-@define-color accent-blue #268bd2;    /* blue */
-@define-color accent-purple #6c71c4;  /* violet */
-@define-color accent-aqua #2aa198;    /* cyan */
-@define-color accent-orange #cb4b16;  /* orange */
+@define-color accent-red #ea6962;
+@define-color accent-green #a9b665;
+@define-color accent-yellow #d8a657;
+@define-color accent-blue #7daea3;
+@define-color accent-purple #d3869b;
+@define-color accent-aqua #89b482;
+@define-color accent-orange #e78a4e;
 
-/* Border colors */
-@define-color border-primary #93a1a1;    /* base1 */
-@define-color border-secondary #839496;  /* base0 */
+@define-color border-primary #504945;
+@define-color border-secondary #665c54;
 
-/* Gray */
-@define-color gray #93a1a1;           /* base1 */
+@define-color gray #928374;

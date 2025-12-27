@@ -236,7 +236,6 @@ ini_write_batch() {
   local config_file="$1"
   shift
   local sed_args=()
-  local groups_to_add=()
   declare -A group_keys
 
   # Ensure file exists
@@ -247,15 +246,16 @@ ini_write_batch() {
     local rest="${entry#*:}"
     local key="${rest%%=*}"
     local value="${rest#*=}"
-    local group_esc key_esc
+    local group_esc key_esc value_esc
     group_esc="$(escape_regex "$group")"
     key_esc="$(escape_regex "$key")"
+    value_esc="$(printf '%s' "$value" | sed 's/[&\\/]/\\&/g')"
 
     # Build sed expression to update existing key or mark for addition
-    sed_args+=(-e "/^\[${group_esc}\]/,/^\[/ { s/^${key_esc}=.*/${key}=${value}/ }")
+    sed_args+=(-e "/^\[${group_esc}\]/,/^\[/ { s/^${key_esc}=.*/${key}=${value_esc}/ }")
 
     # Track group/key pairs for adding missing ones
-    group_keys["${group}"]="${group_keys["${group}"]} ${key}=${value}"
+    group_keys["${group}"]+="${key}=${value}"$'\n'
   done
 
   # Apply existing key updates
@@ -270,14 +270,15 @@ ini_write_batch() {
     if ! grep -q "^\[${group_esc}\]" "$config_file"; then
       echo -e "\n[${group}]" >>"$config_file"
     fi
-    for kv in ${group_keys[$group]}; do
+    while IFS= read -r kv; do
+      [[ -z "${kv}" ]] && continue
       local key="${kv%%=*}"
       local key_esc
       key_esc="$(escape_regex "$key")"
       if ! grep -q "^${key_esc}=" "$config_file"; then
         sed -i "/^\[${group_esc}\]/a ${kv}" "$config_file"
       fi
-    done
+    done <<< "${group_keys[$group]}"
   done
 }
 
@@ -305,9 +306,6 @@ sanitize_hypr_theme() {
     "^ *shadow_"
     "^ *col.shadow*"
     "^ *shadow:"
-    "^ *col\\.active_border"
-    "^ *col\\.inactive_border"
-    "^ *col\\.border_"
   )
 
   dirty_regex+=("${HYPR_CONFIG_SANITIZE[@]}")

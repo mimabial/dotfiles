@@ -4,7 +4,7 @@
 
 /* Control Center */
 .control-center {
-  background-color: alpha(@bg-primary, 0.8);
+  background-color: alpha(@bg-primary, 0.4);
   border-radius: 0px;
 }
 
@@ -39,13 +39,13 @@
 
 /* Notification Priority Styles */
 .notification.critical {
-  background-color: alpha(@accent-red, 0.8);
+  background-color: alpha(@accent-red, 0.7);
   box-shadow: 0 0 5px 0 rgba(0, 0, 0, 0.2);
 }
 
 .notification.low,
 .notification.normal {
-  background-color: alpha(@bg-primary, 0.8);
+  background-color: alpha(@bg-primary, 0.7);
   box-shadow: 0 0 5px 0 rgba(0, 0, 0, 0.2);
 }
 
@@ -195,5 +195,5 @@ tooltip {
 }
 
 .widget-buttons-grid > flowbox > flowboxchild > button {
-  background-color: alpha(@bg-primary, 0.8);
+  background-color: alpha(@bg-primary, 0.4);
 }

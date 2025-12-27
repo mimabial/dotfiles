@@ -205,6 +205,19 @@ def get_timestamp(time_str):
     return time_str
 
 
+def split_time_parts(time_str):
+    time_str = time_str.strip()
+    if " " in time_str:
+        time_main, suffix = time_str.split(" ", 1)
+    else:
+        time_main, suffix = time_str, ""
+    if ":" in time_main:
+        hour, minute = time_main.split(":", 1)
+    else:
+        hour, minute = time_main, ""
+    return hour, minute, suffix
+
+
 def format_chances(hour):
     chances = {
         "chanceoffog": "Fog",
@@ -355,16 +368,16 @@ elif args.sunrise:
     today = weather["weather"][0]
     sunrise = get_sunrise(today)
     sunset = get_sunset(today)
-    sunrise_h, sunrise_m = sunrise.split(":")
-    sunset_h, sunset_m = sunset.split(":")
+    sunrise_h, sunrise_m, sunrise_period = split_time_parts(sunrise)
+    sunrise_suffix = f"\n{sunrise_period}" if sunrise_period else ""
     data["text"] = f"  \n{sunrise_h}:\n{sunrise_m}|"
 elif args.sunset:
     # Show sunset time
     today = weather["weather"][0]
     sunrise = get_sunrise(today)
     sunset = get_sunset(today)
-    sunrise_h, sunrise_m = sunrise.split(":")
-    sunset_h, sunset_m = sunset.split(":")
+    sunset_h, sunset_m, sunset_period = split_time_parts(sunset)
+    sunset_suffix = f"\n{sunset_period}" if sunset_period else ""
     data["text"] = f"  \n|{sunset_h}\n:{sunset_m}"
 else:
     data["text"] = get_feels_like(current_weather)

@@ -27,22 +27,22 @@ $HOME/.config/waybar/theme.css
 @define-color c2 #1E6F54; /* green */
 @define-color c3 #E5A72A; /* orange_golden */
 @define-color c4 #4A8B8B; /* blue */
-@define-color purple #7A3D82; /* purple */
+@define-color c5 #7A3D82; /* purple */
 @define-color c6 #4A8B8B; /* blue */
-@define-color orange #D87C4A; /* orange_glow */
-@define-color gray #737373; /* g_6 */
+@define-color c16 #D87C4A; /* orange_glow */
+@define-color c17 #737373; /* g_6 */
 @define-color c7 #c9b9a8;
 
 /* Standard color palette - bright/accent variants */
-@define-color c8 #4a4541;
+@define-color c8 #737373;
 @define-color c9 #DF6464; /* red_glowing */
 @define-color c10 #629C7D; /* green_light */
 @define-color c11 #E5A72A; /* orange_golden */
 @define-color c12 #6E91C4; /* cyan */
-@define-color purple_bright #8E5E93; /* violet */
+@define-color c13 #8E5E93; /* violet */
 @define-color c14 #4AC4C4; /* aqua */
-@define-color orange_bright #E49A44; /* orange_smolder */
-@define-color gray_bright #b4b4b4; /* g_3 */
+@define-color c18 #E49A44; /* orange_smolder */
+@define-color c19 #b4b4b4; /* g_3 */
 @define-color c15 #dfd2c4;
 
 @define-color critical @c1;
@@ -70,9 +70,6 @@ $HOME/.config/waybar/theme.css
 @define-color tooltip_bg @bg_alt;
 @define-color tooltip_fg @fg;
 @define-color tooltip_border @border;
-@define-color workspace_active_br #FFCCCC;
-
-@define-color workspace_active_bg #4a4541;
-
-
+@define-color workspace_active_br #B41211;
+@define-color workspace_active_bg #522929;
 

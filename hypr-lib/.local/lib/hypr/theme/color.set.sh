@@ -965,10 +965,23 @@ else
   # In wallpaper mode, clear theme override files to prevent stale theme colors
   # Write minimal valid content to avoid parser errors during live reload
   print_log -sec "theme" -stat "cleanup" "clearing theme files (wallpaper mode)"
-  : >"${HOME}/.config/waybar/theme.css"
+
+  clear_theme_file() {
+    local target="$1"
+    if [[ ! -f "${target}" ]]; then
+      : >"${target}"
+      return
+    fi
+    # Avoid touching files that are already empty/whitespace-only.
+    if grep -q '[^[:space:]]' "${target}"; then
+      : >"${target}"
+    fi
+  }
+
+  clear_theme_file "${HOME}/.config/waybar/theme.css"
   : >"${HOME}/.config/kitty/theme.conf"
   echo "# Empty theme file" >"${HOME}/.config/alacritty/theme.toml"
-  : >"${HOME}/.config/swaync/theme.css"
+  clear_theme_file "${HOME}/.config/swaync/theme.css"
   # Rofi themes expect variables like @background/@foreground; keep a valid fallback
   # that pulls from pywal16-generated ~/.config/rofi/colors.rasi.
   cat >"${HOME}/.config/rofi/theme.rasi" <<'EOF'

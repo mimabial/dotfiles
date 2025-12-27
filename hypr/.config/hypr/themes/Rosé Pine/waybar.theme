@@ -53,7 +53,7 @@ $HOME/.config/waybar/theme.css
 @define-color accent_bg @accent;
 @define-color accent_fg @accent;
 @define-color warning_bg @warning;
-@define-color warning_fg @warning;
+@define-color warning_fg #f6c177;
 @define-color error_bg @critical;
 @define-color error_fg @critical;
 @define-color info_bg @accent;
@@ -72,4 +72,5 @@ $HOME/.config/waybar/theme.css
 @define-color tooltip_bg @bg_alt;
 @define-color tooltip_fg @fg;
 @define-color tooltip_border @border;
-@define-color workspace_active_bg @bg_selected;
+@define-color workspace_active_bg #26233a;
+@define-color workspace_active_br #9ccfd8;

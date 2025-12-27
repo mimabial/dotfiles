@@ -1,12 +1,11 @@
 {
   "layer": "top",
   "position": "left",
-  "output": [
-    "*"
-  ],
+  "output": ["*"],
   "exclusive": true,
   "passthrough": false,
   "reload_style_on_change": true,
+  "ipc": true,
   "include": [
     "$XDG_CONFIG_HOME/waybar/modules/*json*",
     "$XDG_CONFIG_HOME/waybar/includes/includes.json"
@@ -26,8 +25,8 @@
     "group/volumecontrol",
     "group/eyecare",
     "group/screen",
-    "group/connection",
     "group/notification",
+    "group/connection",
     "group/forever"
   ],
   "group/tui": {
@@ -36,10 +35,7 @@
       "transition-duration": 500,
       "transition-left-to-right": true
     },
-    "modules": [
-      "custom/terminal",
-      "custom/updates"
-    ]
+    "modules": ["custom/terminal", "custom/updates"]
   },
   "group/screen": {
     "orientation": "inherit",
@@ -47,10 +43,7 @@
       "transition-duration": 500,
       "transition-left-to-right": false
     },
-    "modules": [
-      "custom/screenrecord",
-      "custom/screenshot"
-    ]
+    "modules": ["custom/screenrecord", "custom/screenshot"]
   },
   "group/datetime": {
     "orientation": "inherit",
@@ -58,10 +51,7 @@
       "transition-duration": 500,
       "transition-left-to-right": true
     },
-    "modules": [
-      "clock#time",
-      "clock#date"
-    ]
+    "modules": ["clock#time", "clock#date"]
   },
   "group/info": {
     "orientation": "inherit",
@@ -69,13 +59,7 @@
       "transition-duration": 500,
       "transition-left-to-right": true
     },
-    "modules": [
-      "custom/dmark",
-      "custom/gpuinfo",
-      "custom/cpuinfo",
-      "memory",
-      "custom/fanspeedinfo"
-    ]
+    "modules": ["custom/dmark", "custom/gpuinfo", "custom/cpuinfo", "memory", "custom/fanspeedinfo"]
   },
   "group/forecast": {
     "orientation": "inherit",
@@ -85,7 +69,9 @@
     },
     "modules": [
       "custom/weather",
-      "custom/weather#minmax"
+      "custom/weather#minmax",
+      "custom/weather#sunrise",
+      "custom/weather#sunset"
     ]
   },
   "group/mark": {
@@ -96,13 +82,13 @@
     },
     "modules": [
       "custom/mark",
-      "custom/display",
+      "custom/keybindhint",
+      "custom/colormode",
       "custom/focusmode",
-      "custom/themeswitch",
-      "custom/wallchange",
-      "custom/wbarswitch",
       "custom/cliphist",
-      "idle_inhibitor"
+      "custom/caffeine",
+      "custom/wallchange",
+      "custom/themeswitch"
     ]
   },
   "group/volumecontrol": {
@@ -111,11 +97,7 @@
       "transition-duration": 500,
       "transition-left-to-right": false
     },
-    "modules": [
-      "pulseaudio",
-      "pulseaudio#microphone",
-      "pulseaudio/slider"
-    ]
+    "modules": ["pulseaudio", "pulseaudio#microphone", "pulseaudio/slider"]
   },
   "group/eyecare": {
     "orientation": "inherit",
@@ -123,10 +105,7 @@
       "transition-duration": 500,
       "transition-left-to-right": false
     },
-    "modules": [
-      "backlight",
-      "custom/hyprsunset"
-    ]
+    "modules": ["backlight", "custom/hyprsunset", "backlight/slider"]
   },
   "group/notification": {
     "orientation": "inherit",
@@ -134,10 +113,7 @@
       "transition-duration": 500,
       "transition-left-to-right": false
     },
-    "modules": [
-      "custom/swaync",
-      "custom/github#notifications"
-    ]
+    "modules": ["custom/swaync", "custom/github#notifications"]
   },
   "group/connection": {
     "orientation": "inherit",
@@ -145,19 +121,11 @@
       "transition-duration": 500,
       "transition-left-to-right": false
     },
-    "modules": [
-      "tray",
-      "group/web",
-      "group/wireless",
-      "custom/vpn"
-    ]
+    "modules": ["tray", "group/web", "group/wireless", "custom/vpn"]
   },
   "group/forever": {
     "orientation": "inherit",
-    "modules": [
-      "group/power",
-      "custom/powermenu"
-    ]
+    "modules": ["group/power", "custom/powermenu"]
   },
   "group/web": {
     "orientation": "inherit",
@@ -165,10 +133,7 @@
       "transition-duration": 500,
       "transition-left-to-right": false
     },
-    "modules": [
-      "network",
-      "custom/network#speed"
-    ]
+    "modules": ["network", "custom/network#speed"]
   },
   "group/wireless": {
     "orientation": "inherit",
@@ -176,10 +141,7 @@
       "transition-duration": 500,
       "transition-left-to-right": false
     },
-    "modules": [
-      "bluetooth",
-      "bluetooth#status"
-    ]
+    "modules": ["bluetooth", "bluetooth#status"]
   },
   "group/power": {
     "orientation": "inherit",
@@ -187,24 +149,6 @@
       "transition-duration": 500,
       "transition-left-to-right": false
     },
-    "modules": [
-      "custom/hyprmenu",
-      "custom/colorpicker",
-      "hyprland/language",
-      "battery"
-    ]
-  },
-  "custom/hotspot": {
-    "format": "{} ",
-    "exec": "~/.config/waybar/bin/hotspot",
-    "return-type": "json",
-    "on-click": "hash wihotspot && wihotspot",
-    "interval": 5
-  },
-  "custom/vpn": {
-    "format": "{} ",
-    "exec": "~/.config/waybar/bin/vpn",
-    "return-type": "json",
-    "interval": 5
+    "modules": ["custom/hyprmenu", "custom/colorpicker", "hyprland/language", "battery"]
   }
 }

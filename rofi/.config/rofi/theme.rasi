@@ -1,13 +1,14 @@
 * {
-    background:            #fdf6e3B3;
-    foreground:            #000000E6;
-    border:            #6600AAE6;
-    accent:            #AA0066E6;
-    selected-background:          #003DA580;
-    selected-foreground:          #fdf6e3E6;
+    background:            #282828e6;
+    foreground:            #ebdbb2ff;
+    border:            #d79921ff;
+    accent:            #fabd2fff;
+    selected-background:          #98971aff;
+    selected-foreground:          #282828ff;
     separator:           #80808080;
-    urgent:              #6600AAE6;
-    active:              #AA0066E6;
-    separatorcolor:     transparent;
-    border-color:       transparent;
+    urgent:              #fb4934ff;
+    active:              #b8bb26ff;
+    separatorcolor:     #504945ff;
+    border-color:       #665c54ff;
+    font: "Monocraft Nerd Font 10";
 }
