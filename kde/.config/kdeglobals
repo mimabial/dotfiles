@@ -1,16 +1,16 @@
 [Colors:Selection]
-BackgroundAlternate=197,14,210
-BackgroundNormal=197,14,210
-DecorationFocus=197,14,210
-DecorationHover=197,14,210
-ForegroundActive=195,199,209
-ForegroundNormal=195,199,209
+BackgroundAlternate=102,92,84
+BackgroundNormal=102,92,84
+DecorationFocus=102,92,84
+DecorationHover=102,92,84
+ForegroundActive=235,219,178
+ForegroundNormal=235,219,178
 
 [Colors:View]
-BackgroundNormal=22,25,37
-DecorationFocus=197,14,210
-DecorationHover=197,14,210
-ForegroundNormal=195,199,209
+BackgroundNormal=35,35,35
+DecorationFocus=102,92,84
+DecorationHover=102,92,84
+ForegroundNormal=235,219,178
 Test1=50,50,50
 Test10=50,50,50
 Test11=50,50,50
@@ -25,15 +25,15 @@ Test8=50,50,50
 Test9=50,50,50
 
 [Colors:Window]
-BackgroundNormal=22,25,37
-ForegroundNormal=195,199,209
+BackgroundNormal=35,35,35
+ForegroundNormal=235,219,178
 
 [General]
-TerminalApplication=kitty
+TerminalApplication=
 TerminalService=kitty.desktop
 
 [Icons]
-Theme=candy-icons
+Theme=pixelitos-dark
 
 [KDE]
 ShowDeleteCommand=false

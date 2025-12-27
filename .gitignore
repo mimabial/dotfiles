@@ -4,3 +4,6 @@ __pycache__/
 .DS_Store
 # State files (include defaults, ignore runtime)
 # hypr/.config/hypr/themes/*/wallpapers/  # Optional: exclude large wallpapers
+# Zsh runtime files
+zsh/.config/zsh/.zcompdump*
+zsh/.config/zsh/.zsh_history
