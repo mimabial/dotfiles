@@ -80,9 +80,9 @@ list_script() {
     [[ -d "$dir" ]] && SCRIPT_DIRS+=("$dir")
   done
 
-  # Find scripts in all configured directories
+  # Find scripts in all configured directories (top-level + one subdir)
   for dir in "${SCRIPT_DIRS[@]}"; do
-    find -L "$dir" -maxdepth 1 -type f \( -name "*.sh" -o -name "*.py" \) -exec basename {} \; 2>/dev/null
+    find -L "$dir" -maxdepth 2 -type f \( -name "*.sh" -o -name "*.py" \) -exec basename {} \; 2>/dev/null
   done | sort -u
 }
 
