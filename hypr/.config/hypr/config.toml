@@ -66,33 +66,25 @@ style = 2 # Style for wlogout.
 color_scheme = "prefer-dark"                    # Color scheme.
 gtk_theme = "Pywal16-Gtk"                       # GTK theme.
 icon_theme = "Tela-circle-dracula"              # Icon theme.
-cursor_size = 24                                # Cursor size.
 cursor_theme = "Bibata-Modern-Ice"              # Cursor theme.
 button_layout = ""                              # Button layout. (gtk only)
-document_font_size = 10                         # Document font size.
 font = ""                                       # Font.
 font_antialiasing = "rgba"                      # Font antialiasing.
 font_hinting = "full"                           # Font hinting.
-font_size = 10                                  # Font size.
 monospace_font = "CaskaydiaCove Nerd Font Mono" # Monospace font.
-monospace_font_size = 9                         # Monospace font size.
 background_path = ""                            # LockScreen's Background path.
 
 # Qt5 configuration.
 [qt5]
 font = ""                                       # Qt5 font.
-font_size = 10                                  # Qt5 font size.
 monospace_font = "CaskaydiaCove Nerd Font Mono" # Qt5 monospace font.
 monospace_font_size = 9                         # Qt5 monospace font size.
 
 # Qt6 configuration.
 [qt6]
 font = ""                                       # Qt6 font.
-font_size = 10                                  # Qt6 font size.
 monospace_font = "CaskaydiaCove Nerd Font Mono" # Qt6 monospace font.
-monospace_font_size = 9                         # Qt6 monospace font size.
 
 # GTK3 configuration.
 [gtk3]
-font = ""      # GTK3 font.
-font_size = 10 # GTK3 font size.
+font = "" # GTK3 font.

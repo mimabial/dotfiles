@@ -504,11 +504,22 @@ ini_write_batch "${confDir}/qt6ct/qt6ct.conf" \
 
 # // kde plasma (batched)
 
-ini_write_batch "${confDir}/kdeglobals" \
-  "Icons:Theme=${ICON_THEME}" \
-  "General:TerminalApplication=${TERMINAL}" \
-  "UiSettings:ColorScheme=colors" \
+if [[ -z "${TERMINAL}" ]]; then
+  TERMINAL="$(get_hyprConf "TERMINAL" "${HYPR_CONFIG_HOME}/variables.conf")"
+fi
+
+kdeglobals_entries=(
+  "Icons:Theme=${ICON_THEME}"
+  "UiSettings:ColorScheme=colors"
   "KDE:widgetStyle=kvantum"
+)
+if [[ -n "${TERMINAL}" ]]; then
+  kdeglobals_entries+=("General:TerminalApplication=${TERMINAL}")
+else
+  print_log -sec "theme" -warn "terminal" "TerminalApplication is empty; leaving kdeglobals value unchanged"
+fi
+
+ini_write_batch "${confDir}/kdeglobals" "${kdeglobals_entries[@]}"
 
 # // The default cursor theme // fallback
 

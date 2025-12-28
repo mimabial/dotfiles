@@ -12,10 +12,10 @@
 /* Global Styles */
 * {
   outline: none;
-  font-family: "More Perfect DOS VGA", monospace;
+  font-family: "", monospace;
   font-size: 18pt;
   text-shadow: none;
   color: @fg-primary;
-  border-radius: 0px;
-  -gtk-icon-theme-name: "pixelitos-dark";
+  border-radius: 3px;
+  -gtk-icon-theme-name: "Beauty-yellow-dark";
 }

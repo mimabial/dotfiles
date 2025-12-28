@@ -4,9 +4,8 @@ $GTK_THEME=Pixel-Dream
 $ICON_THEME=pixelitos-dark
 $COLOR_SCHEME=prefer-dark
 $CURSOR_SIZE=25
-# $FONT=Monocraft Nerd Font Book
-$CURSOR_THEME=pixelfun2
-$FONT=More Perfect DOS VGA
+$CURSOR_THEME=pixelfun2-dracula
+$FONT=Miracode
 $NVIM_SCHEME=gruvbox
 $NVIM_VARIANT=dark-hard
 
