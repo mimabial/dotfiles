@@ -16,6 +16,6 @@
   font-size: 18pt;
   text-shadow: none;
   color: @fg-primary;
-  border-radius: 3px;
-  -gtk-icon-theme-name: "Beauty-yellow-dark";
+  border-radius: 0px;
+  -gtk-icon-theme-name: "Fluent-grey-dark";
 }

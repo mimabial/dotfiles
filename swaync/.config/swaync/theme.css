@@ -1,20 +1,29 @@
 
-@define-color fg-primary #FFFFFF;
-@define-color fg-secondary #FFE4CC;
+/* Foreground Colors - Grayscale with high contrast */
+@define-color fg-primary #c0c0c0;
+@define-color fg-secondary #b1b1b1;
 
-@define-color bg-primary #131311;
-@define-color bg-secondary #525229;
-@define-color bg-tertiary #8F8F57;
+/* Background Colors - Deep void dark grays */
+@define-color bg-primary #1c1c1c;
+@define-color bg-secondary #262626;
+@define-color bg-tertiary #303030;
 
-@define-color accent-red #FFE4CC;
-@define-color accent-green #FFE1CC;
-@define-color accent-yellow #FFE1CC;
-@define-color accent-blue #E6E69A;
-@define-color accent-purple #E6B99A;
-@define-color accent-aqua #E6B99A;
-@define-color accent-orange #F0CBAA;
+/* Accent Colors - Signature glow colors from darkvoid */
+@define-color accent-red #ffb3ba;
+@define-color accent-green #baffc9;
+@define-color accent-yellow #ffffba;
+@define-color accent-blue #7fa1c3;
+@define-color accent-purple #bedc74;
+@define-color accent-aqua #1bfd9c;
+@define-color accent-orange #dea6a0;
 
-@define-color border-primary #8F8F57;
-@define-color border-secondary #5E4533;
+/* Border Colors - Muted grays */
+@define-color border-primary #404040;
+@define-color border-secondary #585858;
 
-@define-color gray #8F8F57;
+/* Utility Colors */
+@define-color gray #585858;
+
+/* Glow Colors - The signature darkvoid glow */
+@define-color glow-primary #1bfd9c;
+@define-color glow-secondary #bdfe58;

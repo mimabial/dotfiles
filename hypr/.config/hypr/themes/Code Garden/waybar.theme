@@ -1,9 +1,12 @@
-$HOME/.config/waybar/theme.css | hyprshell wbarstylegen && hyprshell waybar --update
+$HOME/.config/waybar/theme.css
 
 @define-color bg rgb(255, 255, 255);
-@define-color border rgb(10, 16, 16);
+@define-color border #4d5768;
 @define-color bg_selected rgb(255, 255, 255);
 @define-color fg rgb(76, 86, 106); /* cursorline */
+
+@define-color bg rgb(10, 16, 16);
+@define-color fg rgb(255, 255, 255);
 
 /* Active workspace colors */
 @define-color accent rgb(129, 161, 193);
@@ -62,4 +65,5 @@ $HOME/.config/waybar/theme.css | hyprshell wbarstylegen && hyprshell waybar --up
 @define-color tooltip_bg @bg_alt;
 @define-color tooltip_fg @fg;
 @define-color tooltip_border @border;
-@define-color workspace_active_bg @bg_selected;
+@define-color workspace_active_bg rgb(129, 161, 193);
+@define-color workspace_active_br rgb(255, 255, 255);

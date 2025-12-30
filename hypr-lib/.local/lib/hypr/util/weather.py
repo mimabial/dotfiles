@@ -370,7 +370,7 @@ elif args.sunrise:
     sunset = get_sunset(today)
     sunrise_h, sunrise_m, sunrise_period = split_time_parts(sunrise)
     sunrise_suffix = f"\n{sunrise_period}" if sunrise_period else ""
-    data["text"] = f"  \n{sunrise_h}:\n{sunrise_m}|"
+    data["text"] = f"  \n{sunrise_h}:\n{sunrise_m} "
 elif args.sunset:
     # Show sunset time
     today = weather["weather"][0]
@@ -378,7 +378,7 @@ elif args.sunset:
     sunset = get_sunset(today)
     sunset_h, sunset_m, sunset_period = split_time_parts(sunset)
     sunset_suffix = f"\n{sunset_period}" if sunset_period else ""
-    data["text"] = f"  \n|{sunset_h}\n:{sunset_m}"
+    data["text"] = f"  \n {sunset_h}\n:{sunset_m}"
 else:
     data["text"] = get_feels_like(current_weather)
     if show_icon:

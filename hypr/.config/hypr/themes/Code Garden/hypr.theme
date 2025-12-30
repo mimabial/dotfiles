@@ -1,13 +1,15 @@
 $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
 
 $GTK_THEME=Fluent
-$ICON_THEME=Fluent
-$CURSOR_THEME=Sweet-cursors
+$ICON_THEME=Spectrum-Color-Dark-Icons
 $COLOR_SCHEME=prefer-dark
-$CURSOR_SIZE=20
+$CURSOR_THEME=material_light_cursors
+$CURSOR_SIZE=28
 $FONT=Noto_Sans
 $NVIM_SCHEME = decay
 $NVIM_VARIANT = default
+$NVIM_BACKGROUND = dark
+$NVIM_TRANSPARENCY = false
 
 exec = gsettings set org.gnome.desktop.interface icon-theme '$ICON_THEME'
 exec = gsettings set org.gnome.desktop.interface gtk-theme '$GTK_THEME'

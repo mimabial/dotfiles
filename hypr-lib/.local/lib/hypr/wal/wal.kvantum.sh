@@ -25,8 +25,12 @@ if [ ! -d "${THEME_KVANTUM_DIR}" ]; then
 fi
 
 # Change detection: hash inputs (theme kvantum files + pywal colors + mode)
-input_files="${THEME_KVANTUM_DIR}/kvconfig.theme ${THEME_KVANTUM_DIR}/kvantum.theme ${THEME_KVANTUM_DIR}/colors.map"
-input_hash=$(cat $input_files "${WAL_CACHE}/colors.sh" 2>/dev/null | md5sum | cut -d' ' -f1)
+input_files=(
+    "${THEME_KVANTUM_DIR}/kvconfig.theme"
+    "${THEME_KVANTUM_DIR}/kvantum.theme"
+    "${THEME_KVANTUM_DIR}/colors.map"
+)
+input_hash=$(cat "${input_files[@]}" "${WAL_CACHE}/colors.sh" 2>/dev/null | md5sum | cut -d' ' -f1)
 combined_hash="${input_hash}-${enableWallDcol}"
 
 if [[ -f "$hashFile" && "$(cat "$hashFile" 2>/dev/null)" == "$combined_hash" ]]; then

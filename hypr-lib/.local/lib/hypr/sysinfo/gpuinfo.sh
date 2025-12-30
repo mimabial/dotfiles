@@ -120,9 +120,14 @@ query() {
     echo "GPUINFO_NVIDIA_GPU=\"Linux\"" >>"${gpuinfo_file}" #? Incase If nouveau is installed
     echo "GPUINFO_NVIDIA_ENABLE=1 # Using nouveau an open-source nvidia driver" >>"${gpuinfo_file}"
   elif command -v nvidia-smi &>/dev/null; then
-    GPUINFO_NVIDIA_GPU=$(nvidia-smi --query-gpu=gpu_name --format=csv,noheader,nounits | head -n 1)
+    local nvidia_smi_output=""
+    if nvidia_smi_output=$(nvidia-smi --query-gpu=gpu_name --format=csv,noheader,nounits 2>&1); then
+      GPUINFO_NVIDIA_GPU=$(printf '%s\n' "${nvidia_smi_output}" | head -n 1)
+    else
+      GPUINFO_NVIDIA_GPU=""
+    fi
     if [[ -n "${GPUINFO_NVIDIA_GPU}" ]]; then                             # Check for NVIDIA GPU
-      if [[ "${GPUINFO_NVIDIA_GPU}" == *"NVIDIA-SMI has failed"* ]]; then #? Second Layer for dGPU
+      if [[ "${GPUINFO_NVIDIA_GPU}" == *"NVIDIA-SMI has failed"* ]] || [[ "${GPUINFO_NVIDIA_GPU}" == *"Failed to initialize NVML"* ]]; then #? Second Layer for dGPU
         echo "GPUINFO_NVIDIA_ENABLE=0 # NVIDIA-SMI has failed" >>"${gpuinfo_file}"
       else
         NVIDIA_ADDR=$(lspci | grep -Ei "VGA|3D" | grep -i "${GPUINFO_NVIDIA_GPU/NVIDIA /}" | cut -d' ' -f1)
@@ -132,6 +137,24 @@ query() {
           echo "GPUINFO_NVIDIA_ENABLE=1"
         } >>"${gpuinfo_file}"
       fi
+    fi
+  fi
+
+  if ! grep -q "GPUINFO_NVIDIA_ENABLE=1" "${gpuinfo_file}"; then
+    local nvidia_line=""
+    nvidia_line=$(lspci -nn | grep -Ei "(VGA|3D)" | grep -m 1 "10de" || true)
+    if [[ -n "${nvidia_line}" ]]; then
+      NVIDIA_ADDR=$(echo "${nvidia_line}" | awk '{print $1}')
+      local nvidia_name=""
+      nvidia_name=$(echo "${nvidia_line}" | sed -n 's/.*\[\(.*\)\].*/\1/p')
+      if [[ -z "${nvidia_name}" ]]; then
+        nvidia_name=$(echo "${nvidia_line}" | sed -n 's/.*NVIDIA Corporation //p' | sed 's/ *\[[^]]*\]//; s/ *([^)]*)//')
+      fi
+      {
+        echo "NVIDIA_ADDR=\"${NVIDIA_ADDR}\""
+        echo "GPUINFO_NVIDIA_GPU=\"${nvidia_name}\""
+        echo "GPUINFO_NVIDIA_ENABLE=1 # NVIDIA detected via lspci"
+      } >>"${gpuinfo_file}"
     fi
   fi
 
@@ -224,6 +247,9 @@ map_floor() {
 # Function to determine color based on temperature
 get_temp_color() {
   local temp=$1
+  if [[ -z "${temp}" || ! "${temp}" =~ ^-?[0-9]+([.][0-9]+)?$ ]]; then
+    return
+  fi
   declare -A temp_colors=(
     [90]="#8b0000" # Dark Red for 90 and above
     [85]="#ad1f2f" # Red for 85 to 89
@@ -303,6 +329,7 @@ $thermo Temperature: ${temperature}°C"
   fi
   if [[ -n "${power_discharge}" ]] && [[ "${power_discharge}" != "0" ]]; then tooltip_parts[" Power Discharge: "]="${power_discharge} W"; fi
   if [[ -n "${fan_speed}" ]]; then tooltip_parts[" Fan Speed: "]="${fan_speed} RPM"; fi
+  if [[ -n "${gpu_error}" ]]; then tooltip_parts["NVIDIA-SMI: "]="${gpu_error}"; fi
 
   # Construct tooltip
   for key in "${!tooltip_parts[@]}"; do
@@ -523,19 +550,32 @@ intel_GPU() { #? Function to query basic intel GPU
 
 nvidia_GPU() { #? Function to query Nvidia GPU
   primary_gpu="NVIDIA ${GPUINFO_NVIDIA_GPU}"
+  gpu_error=""
+  if [[ -z "${NVIDIA_ADDR}" ]]; then
+    NVIDIA_ADDR=$(lspci -nn | grep -Ei "(VGA|3D)" | grep -m 1 "10de" | awk '{print $1}')
+  fi
   if [[ "${GPUINFO_NVIDIA_GPU}" == "Linux" ]]; then
     general_query
     return
   fi #? Open source driver
   #? Tired Flag for not using nvidia-smi if GPU is in suspend mode.
-  if ${tired}; then
+  if ${tired} && [[ -n "${NVIDIA_ADDR}" ]]; then
     is_suspend="$(cat /sys/bus/pci/devices/0000:"${NVIDIA_ADDR}"/power/runtime_status)"
     if [[ ${is_suspend} == *"suspend"* ]]; then
       printf '{"text":"󰤂", "tooltip":"%s ⏾ Suspended mode"}' "${primary_gpu}"
       exit
     fi
   fi
-  gpu_info=$(nvidia-smi --query-gpu=temperature.gpu,utilization.gpu,clocks.current.graphics,clocks.max.graphics,power.draw,power.limit --format=csv,noheader,nounits)
+  if ! gpu_info=$(nvidia-smi --query-gpu=temperature.gpu,utilization.gpu,clocks.current.graphics,clocks.max.graphics,power.draw,power.limit --format=csv,noheader,nounits 2>&1); then
+    gpu_error="${gpu_info%%$'\n'*}"
+    general_query
+    return
+  fi
+  if [[ "${gpu_info}" == *"NVIDIA-SMI has failed"* ]] || [[ "${gpu_info}" == *"Failed to initialize NVML"* ]]; then
+    gpu_error="${gpu_info%%$'\n'*}"
+    general_query
+    return
+  fi
   # Split the comma-separated values into an array
   IFS=',' read -ra gpu_data <<<"${gpu_info}"
   # Extract individual values

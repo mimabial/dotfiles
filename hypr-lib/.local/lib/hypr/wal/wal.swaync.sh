@@ -133,9 +133,9 @@ cat <<CONFIG >"${swayncDir}/config.json"
   "notification-body-image-height": 150,
   "notification-body-image-width": 150,
 
-  "timeout": 5,
-  "timeout-low": 3,
-  "timeout-critical": 7,
+  "timeout": 2,
+  "timeout-low": 1,
+  "timeout-critical": 4,
   
   "fit-to-screen": false,
   "keyboard-shortcuts": true,

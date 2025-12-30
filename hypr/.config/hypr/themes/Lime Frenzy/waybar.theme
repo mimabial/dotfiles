@@ -1,8 +1,9 @@
 $HOME/.config/waybar/theme.css
-@define-color bg #1c1e1b;
 
-@define-color border #8fb573;
+@define-color bg #1c1e1b;
 @define-color fg #fff8f0;
+
+@define-color border #5AA65F;
 @define-color bg_selected #1E4E50;
 
 @define-color bg_alt #5AA65F;
@@ -64,5 +65,5 @@ $HOME/.config/waybar/theme.css
 @define-color tooltip_bg @bg_alt;
 @define-color tooltip_fg @fg;
 @define-color tooltip_border @border;
-@define-color workspace_active_bg @bg_selected;
-@define-color workspace_active_br #8fb573;
+@define-color workspace_active_bg #005C4F;
+@define-color workspace_active_br #d79921;

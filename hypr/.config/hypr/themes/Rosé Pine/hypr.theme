@@ -5,6 +5,8 @@ $ICON_THEME = Tela-circle-pink
 $COLOR_SCHEME = prefer-dark
 $NVIM_SCHEME = rose-pine
 $NVIM_VARIANT = main
+$NVIM_BACKGROUND = dark
+$NVIM_TRANSPARENCY = false
 
 # Optional: The varibles above will be set automatically when the theme is loaded
 # This exec commands will soon be deprecated

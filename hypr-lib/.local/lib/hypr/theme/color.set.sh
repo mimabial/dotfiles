@@ -1065,6 +1065,17 @@ run_secondary_theming
 # Wait for parallel operations to complete (with timeout)
 maybe_wait
 
+# Update waybar border-radius before background tasks so it stays within the theme-update lock
+if [[ "${SKIP_WAYBAR_UPDATE}" -ne 1 ]]; then
+  if [[ -x "${LIB_DIR}/hypr/waybar/waybar.py" ]]; then
+    "${LIB_DIR}/hypr/waybar/waybar.py" --update-border-radius &>/dev/null
+    print_log -sec "waybar" -stat "updated" "border-radius from theme"
+  elif command -v hyprshell &>/dev/null; then
+    hyprshell waybar --update-border-radius &>/dev/null
+    print_log -sec "waybar" -stat "updated" "border-radius from theme"
+  fi
+fi
+
 post_updates() {
   # KDE/Dolphin settings
   if [ -n "${background}" ] && [ -n "${foreground}" ]; then
@@ -1144,16 +1155,6 @@ post_updates() {
     fi
   }
 
-  # Update waybar border-radius to match Hyprland rounding
-  if [[ "${SKIP_WAYBAR_UPDATE}" -ne 1 ]]; then
-    if [[ -x "${LIB_DIR}/hypr/waybar/waybar.py" ]]; then
-      "${LIB_DIR}/hypr/waybar/waybar.py" --update-border-radius &>/dev/null
-      print_log -sec "waybar" -stat "updated" "border-radius from theme"
-    elif command -v hyprshell &>/dev/null; then
-      hyprshell waybar --update-border-radius &>/dev/null
-      print_log -sec "waybar" -stat "updated" "border-radius from theme"
-    fi
-  fi
 }
 
 # post_updates writes KDE/kdeglobals settings - runs in background by default

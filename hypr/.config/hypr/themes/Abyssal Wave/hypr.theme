@@ -1,26 +1,27 @@
 $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
 
 $GTK_THEME = Abyssal-Wave
-$ICON_THEME = Papirus-kanagawa
-$COLOR_SCHEME=prefer-dark   
+$ICON_THEME = Papirus-Bluegrey-Dark
+$COLOR_SCHEME = prefer-dark   
 $NVIM_SCHEME = kanagawa
 $NVIM_VARIANT = wave
+$NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
-$CURSOR_THEME=Hackneyed
-$CURSOR_SIZE=15
+$CURSOR_THEME = McMojave-cursors
+$CURSOR_SIZE = 22
 
 exec = gsettings set org.gnome.desktop.interface icon-theme '$ICON_THEME'
 exec = gsettings set org.gnome.desktop.interface gtk-theme '$GTK_THEME'
 exec = gsettings set org.gnome.desktop.interface color-scheme '$COLOR_SCHEME'
 
 general {
-    border_size = 2
+    border_size = 3
     col.inactive_border = rgba(6a9589b0) # Kanagawa crust color with opacity
     col.active_border = rgba(957fb8b0)
 
-    gaps_in = 4
-    gaps_out = 8
+    gaps_in = 3
+    gaps_out = 6
 }
 
 decoration {

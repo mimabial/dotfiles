@@ -7,6 +7,8 @@ $CURSOR_THEME = Capitaine-Cursors
 $CURSOR_SIZE=20
 $CODE_THEME=oxocarbon
 $NVIM_SCHEME = oxocarbon
+$NVIM_BACKGROUND = dark
+$NVIM_TRANSPARENCY = false
 
 exec = gsettings set org.gnome.desktop.interface icon-theme '$ICON_THEME'
 exec = gsettings set org.gnome.desktop.interface gtk-theme '$GTK_THEME'

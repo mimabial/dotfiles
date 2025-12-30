@@ -41,18 +41,17 @@ $HOME/.config/waybar/theme.css
 
 @define-color c16 #a1a1a1; /* type */
 @define-color c17 #c5c5c5; /* type_builtin */
-
 @define-color critical @c1;
 @define-color c5 @accent;
 @define-color c13 @c5;
 @define-color accent_bg @accent;
 @define-color accent_fg @accent;
 @define-color warning_bg @warning;
-@define-color warning_fg #bdfe58;
+@define-color warning_fg #d6efd8;
 @define-color error_bg @critical;
-@define-color error_fg @critical;
+@define-color error_fg #dea6a0;
 @define-color info_bg @accent;
-@define-color info_fg @accent;
+@define-color info_fg #7fa1c3;
 @define-color success_bg @c2;
 @define-color success_fg @c2;
 @define-color neutral_bg @bg_alt;

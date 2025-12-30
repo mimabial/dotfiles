@@ -1,10 +1,13 @@
 $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
 
 $GTK_THEME = Catppuccin-Latte
-$ICON_THEME = Papirus-Latte
+$ICON_THEME = Papirus-Purple-Light
 $COLOR_SCHEME = prefer-light
+$CURSOR_THEME = Layan-white-cursors
+$CURSOR_SIZE = 28
 $NVIM_SCHEME = catppuccin
 $NVIM_VARIANT = latte
+$NVIM_BACKGROUND = light
 $NVIM_TRANSPARENCY = false
 
 
@@ -19,17 +22,17 @@ general {
     gaps_in = 3
     gaps_out = 6
     border_size = 2
-    col.active_border = rgba(dc8a78ff) rgba(8839efff) 45deg
-    col.inactive_border = rgba(7287fdcc) rgba(179299cc) 45deg
+    col.active_border = rgba(8839efff) 
+    col.inactive_border = rgba(179299cc)
     layout = dwindle
     resize_on_border = true
 }
 
 group {
-    col.border_active = rgba(dc8a78ff) rgba(8839efff) 45deg
-    col.border_inactive = rgba(7287fdcc) rgba(179299cc) 45deg
-    col.border_locked_active = rgba(dc8a78ff) rgba(8839efff) 45deg
-    col.border_locked_inactive = rgba(7287fdcc) rgba(179299cc) 45deg
+    col.border_active = rgba(8839efff) 
+    col.border_inactive = rgba(179299cc)
+    col.border_locked_active = rgba(8839efff) 
+    col.border_locked_inactive = rgba(179299cc)
 }
 
 decoration {

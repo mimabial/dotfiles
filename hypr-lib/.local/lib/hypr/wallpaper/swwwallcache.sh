@@ -7,6 +7,15 @@ scrDir="$(dirname "$(realpath "$0")")"
 source "${scrDir}/globalcontrol.sh"
 export scrDir
 export thmbDir
+
+# Lock file to prevent concurrent cache rebuilds
+WALLPAPER_CACHE_LOCK="${XDG_RUNTIME_DIR:-/tmp}/wallpaper-cache.lock"
+exec 204>"${WALLPAPER_CACHE_LOCK}"
+if ! flock -n 204; then
+  flock 204
+fi
+trap 'flock -u 204 2>/dev/null' EXIT
+
 # shellcheck disable=SC2154
 [ -d "${HYPR_THEME_DIR}" ] && cacheIn="${HYPR_THEME_DIR}" || exit 1
 [ -d "${thmbDir}" ] || mkdir -p "${thmbDir}"

@@ -1,10 +1,15 @@
 $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
 
 $GTK_THEME = Graphite-Mono
-$ICON_THEME = Tela-circle-grey
+$ICON_THEME = Fluent-grey-dark
 $COLOR_SCHEME = prefer-dark
 $NVIM_SCHEME = darkvoid
 $NVIM_VARIANT = glow
+$NVIM_BACKGROUND = dark
+$NVIM_TRANSPARENCY = false
+
+$CURSOR_THEME = Simp1e-Breeze
+$CURSOR_SIZE = 29
 
 # Optional: The varibles above will be set automatically when the theme is loaded
 # This exec commands will soon be deprecated

@@ -2,9 +2,14 @@ $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
 
 $GTK_THEME = Everforest-Dark
 $ICON_THEME = Gruvbox-Plus-Dark
-$COLOR_SCHEME=prefer-dark
+$COLOR_SCHEME = prefer-dark
 $NVIM_SCHEME = everforest
 $NVIM_VARIANT = soft
+$NVIM_BACKGROUND = dark
+$NVIM_TRANSPARENCY = false
+
+$CURSOR_THEME = volantes_cursors
+$CURSOR_SIZE = 29
 
 exec = gsettings set org.gnome.desktop.interface icon-theme '$ICON_THEME'
 exec = gsettings set org.gnome.desktop.interface gtk-theme '$GTK_THEME'

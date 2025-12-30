@@ -5,6 +5,11 @@ $ICON_THEME = Tela-circle-green
 $COLOR_SCHEME=prefer-dark
 $NVIM_SCHEME = thorn
 $NVIM_VARIANT = dark
+$NVIM_BACKGROUND = dark
+$NVIM_TRANSPARENCY = false
+
+$CURSOR_THEME = Quintom_Snow
+$CURSOR_SIZE = 28
 
 exec = gsettings set org.gnome.desktop.interface icon-theme '$ICON_THEME'
 exec = gsettings set org.gnome.desktop.interface gtk-theme '$GTK_THEME'

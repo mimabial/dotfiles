@@ -5,6 +5,8 @@ $ICON_THEME = Nordzy
 $CURSOR_SIZE = 20
 $COLOR_SCHEME = prefer-dark
 $NVIM_SCHEME = nord
+$NVIM_BACKGROUND = dark
+$NVIM_TRANSPARENCY = false
 
 # Optional: The varibles above will be set automatically when the theme is loaded
 # This exec commands will soon be deprecated

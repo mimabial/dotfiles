@@ -5,6 +5,8 @@ $ICON_THEME = One-Dark
 $COLOR_SCHEME = prefer-dark
 $NVIM_SCHEME = onedark
 $NVIM_VARIANT = dark
+$NVIM_BACKGROUND = dark
+$NVIM_TRANSPARENCY = false
 
 exec = gsettings set org.gnome.desktop.interface icon-theme 'One-Dark'
 exec = gsettings set org.gnome.desktop.interface gtk-theme 'One-Dark'

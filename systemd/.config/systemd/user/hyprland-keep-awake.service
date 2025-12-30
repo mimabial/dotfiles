@@ -1,13 +1,14 @@
 [Unit]
-Description=Keep awake (idle inhibit)
-After=graphical-session.target
+Description=Hyprland keep-awake inhibitor
+Documentation=https://wiki.hyprland.org/Hypr-Ecosystem/hypridle
 PartOf=graphical-session.target
+After=graphical-session.target
+ConditionEnvironment=WAYLAND_DISPLAY
 
 [Service]
 Type=simple
-ExecStart=systemd-inhibit --what=idle --mode=block --why="Keep awake (manual)" sleep infinity
+ExecStart=/usr/bin/systemd-inhibit --what=idle --who=hyprland-keep-awake --why="Keep awake enabled" --mode=block /usr/bin/sleep infinity
 Restart=on-failure
-RestartSec=2
 
 [Install]
 WantedBy=graphical-session.target

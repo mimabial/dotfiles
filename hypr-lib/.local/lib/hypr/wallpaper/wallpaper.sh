@@ -59,6 +59,13 @@ EOF
 #// Set and Cache Wallpaper
 
 Wall_Cache() {
+  local wallpaper_async="${WALLPAPER_ASYNC:-1}"
+
+  case "${wallpaper_async,,}" in
+    1 | true | yes | on) wallpaper_async=1 ;;
+    0 | false | no | off) wallpaper_async=0 ;;
+    *) wallpaper_async=1 ;;
+  esac
 
   # Experimental, set to 1 if stable
   if [[ "${WALLPAPER_RELOAD_ALL:-1}" -eq 1 ]] && [[ ${wallpaper_setter_flag} != "link" ]]; then
@@ -70,14 +77,23 @@ Wall_Cache() {
   ln -fs "${wallList[setIndex]}" "${wallCur}"
 
   # Update hyprlock background
-  command -v hyprlock.sh &>/dev/null && hyprlock.sh --background &
+  command -v hyprlock.sh &>/dev/null && hyprlock.sh --background 202>&- &
 
   if [ "${set_as_global}" == "true" ]; then
     print_log -sec "wallpaper" "Setting Wallpaper as global"
-    "${LIB_DIR}/hypr/wallpaper/swwwallcache.sh" -w "${wallList[setIndex]}" &>/dev/null
-    "${LIB_DIR}/hypr/theme/color.set.sh" "${wallList[setIndex]}"
-    # Sync nvim after colors are generated
-    [[ -x "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" ]] && "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" >/dev/null 2>&1 &
+    if [[ "${wallpaper_async}" -eq 1 ]]; then
+      "${LIB_DIR}/hypr/wallpaper/swwwallcache.sh" -w "${wallList[setIndex]}" &>/dev/null 202>&- &
+      {
+        HYPR_WAL_ASYNC_APPS=1 "${LIB_DIR}/hypr/theme/color.set.sh" "${wallList[setIndex]}" &>/dev/null
+        # Sync nvim after colors are generated
+        [[ -x "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" ]] && "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" >/dev/null 2>&1
+      } 202>&- &
+    else
+      "${LIB_DIR}/hypr/wallpaper/swwwallcache.sh" -w "${wallList[setIndex]}" &>/dev/null
+      "${LIB_DIR}/hypr/theme/color.set.sh" "${wallList[setIndex]}"
+      # Sync nvim after colors are generated
+      [[ -x "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" ]] && "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" >/dev/null 2>&1 202>&- &
+    fi
     ln -fs "${thmbDir}/${wallHash[setIndex]}.sqre" "${wallSqr}"
     ln -fs "${thmbDir}/${wallHash[setIndex]}.thmb" "${wallTmb}"
     ln -fs "${thmbDir}/${wallHash[setIndex]}.blur" "${wallBlr}"

@@ -6,6 +6,8 @@ $COLOR_SCHEME = prefer-dark
 $CURSOR_THEME = Colloid-Dracula-cursors-dark
 $CURSOR_SIZE = 30
 $NVIM_SCHEME = dracula
+$NVIM_BACKGROUND = dark
+$NVIM_TRANSPARENCY = false
 $CODE_THEME = Modern Purple Theme Dark
 
 exec = gsettings set org.gnome.desktop.interface icon-theme '$ICON_THEME'

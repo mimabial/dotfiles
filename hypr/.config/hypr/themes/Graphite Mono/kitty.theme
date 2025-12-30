@@ -2,7 +2,9 @@ $HOME/.config/kitty/theme.conf|killall -SIGUSR1 kitty
 
 # Basic colors
 foreground #c0c0c0
+foreground              #D9D9D9
 background #1c1c1c
+background              #262626
 selection_foreground #1c1c1c
 selection_background #1bfd9c
 
@@ -15,14 +17,15 @@ url_color #1bfd9c
 
 # Kitty window border colors
 active_border_color #1bfd9c
-inactive_border_color #585858
+inactive_border_color   #595959
+bell_border_color       #595959
 
 # Tab bar colors
 active_tab_background #1c1c1c
 active_tab_foreground #1bfd9c
-inactive_tab_foreground #c0c0c0
+inactive_tab_foreground #D9D9D9
 inactive_tab_background #303030
-tab_bar_background #1c1c1c
+tab_bar_background #595959
 
 # Colors for marks (marked text in the terminal)
 mark1_foreground #1c1c1c
@@ -64,4 +67,5 @@ color14 #bdfe58
 
 # white
 color7 #c0c0c0
+color7  #D9D9D9
 color15 #f1f1f1

@@ -78,7 +78,6 @@ background_path = ""                            # LockScreen's Background path.
 [qt5]
 font = ""                                       # Qt5 font.
 monospace_font = "CaskaydiaCove Nerd Font Mono" # Qt5 monospace font.
-monospace_font_size = 9                         # Qt5 monospace font size.
 
 # Qt6 configuration.
 [qt6]
