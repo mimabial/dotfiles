@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="48"
+   height="48"
+   viewBox="0 0 48 48"
+   version="1.1"
+   id="svg1"
+   inkscape:version="1.4.2 (ebf0e940d0, 2025-05-08)"
+   sodipodi:docname="start-here-kde-symbolic.svg"
+   inkscape:export-filename="icons/NsCDE/22x22/apps/brightness-high.png"
+   inkscape:export-xdpi="96"
+   inkscape:export-ydpi="96"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#cfcfcf"
+     bordercolor="#111111"
+     borderopacity="1"
+     inkscape:showpageshadow="0"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="1"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="px"
+     inkscape:zoom="9.4359147"
+     inkscape:cx="15.419809"
+     inkscape:cy="35.926565"
+     inkscape:current-layer="layer1"
+     showgrid="true"
+     showguides="true">
+    <inkscape:grid
+       id="grid3"
+       units="px"
+       originx="0"
+       originy="0"
+       spacingx="1"
+       spacingy="1"
+       empcolor="#0099e5"
+       empopacity="0.30196078"
+       color="#0099e5"
+       opacity="0.14902"
+       empspacing="5"
+       dotted="false"
+       gridanglex="30"
+       gridanglez="30"
+       visible="true" />
+    <sodipodi:guide
+       position="33.912981,27.440255"
+       orientation="0,-1"
+       id="guide7"
+       inkscape:locked="false" />
+  </sodipodi:namedview>
+  <defs
+     id="defs1">
+    <style
+       id="current-color-scheme"
+       type="text/css">
+      .ColorScheme-Text {
+      }
+      .ColorScheme-Background{
+      }
+      .ColorScheme-Highlight{
+      color:#993399;
+      }
+      .ColorScheme-ViewText {
+      }
+      .ColorScheme-ViewBackground{
+      }
+      .ColorScheme-ViewHover {
+      }
+      .ColorScheme-ViewFocus{
+      }
+      .ColorScheme-ButtonText {
+      }
+      .ColorScheme-ButtonBackground{
+      }
+      .ColorScheme-ButtonHover {
+      }
+      .ColorScheme-ButtonFocus{
+      }
+    </style>
+  </defs>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <g
+       id="g9"
+       transform="translate(1.0000007,1.0153423)"
+       style="opacity:0.25">
+      <path
+         style="fill:none;stroke:#000000;stroke-width:7;stroke-dasharray:none;stroke-opacity:1"
+         d="M 19.967576,4.7921775 40.597365,20.149127 25.125023,35.506076"
+         id="path8"
+         class="ColorScheme-Highlight" />
+      <path
+         style="fill:none;stroke:#000000;stroke-width:7;stroke-dasharray:none;stroke-opacity:1"
+         d="M 3.9999993,42.5 H 22"
+         id="path9"
+         class="ColorScheme-Highlight" />
+      <circle
+         style="fill:#000000;stroke:none;stroke-width:6.99999;stroke-dasharray:none;stroke-opacity:1"
+         id="circle9"
+         cx="13"
+         cy="19.987427"
+         r="4.5"
+         class="ColorScheme-Highlight" />
+    </g>
+    <g
+       id="g11"
+       transform="translate(-0.9999993,-0.98465772)"
+       style="opacity:0.2">
+      <path
+         style="fill:none;stroke:#ffffff;stroke-width:7;stroke-dasharray:none;stroke-opacity:1"
+         d="M 19.967576,4.7921775 40.597365,20.149127 25.125023,35.506076"
+         id="path10"
+         class="ColorScheme-Highlight" />
+      <path
+         style="fill:none;stroke:#ffffff;stroke-width:7;stroke-dasharray:none;stroke-opacity:1"
+         d="M 3.9999993,42.5 H 22"
+         id="path11"
+         class="ColorScheme-Highlight" />
+      <circle
+         style="fill:#ffffff;stroke:none;stroke-width:6.99999;stroke-dasharray:none;stroke-opacity:1"
+         id="circle11"
+         cx="13"
+         cy="19.987427"
+         r="4.5"
+         class="ColorScheme-Highlight" />
+    </g>
+    <g
+       id="g7">
+      <path
+         style="fill:none;stroke:currentColor;stroke-width:7;stroke-dasharray:none;stroke-opacity:1"
+         d="M 19.967576,4.7921775 40.597365,20.149127 25.125023,35.506076"
+         id="path5"
+         class="ColorScheme-Highlight" />
+      <path
+         style="fill:none;stroke:currentColor;stroke-width:7;stroke-dasharray:none;stroke-opacity:1"
+         d="M 3.9999993,42.5 H 22"
+         id="path6"
+         class="ColorScheme-Highlight" />
+      <circle
+         style="fill:currentColor;stroke:none;stroke-width:6.99999;stroke-dasharray:none;stroke-opacity:1"
+         id="path7"
+         cx="13"
+         cy="19.987427"
+         r="4.5"
+         class="ColorScheme-Highlight" />
+    </g>
+  </g>
+</svg>

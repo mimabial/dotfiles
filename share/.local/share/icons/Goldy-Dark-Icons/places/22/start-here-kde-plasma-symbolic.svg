@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="22"
+   version="1.1"
+   height="22"
+   id="svg1"
+   sodipodi:docname="start-here-kde.svg"
+   inkscape:version="1.3.2 (091e20ef0f, 2023-11-25)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#999999"
+     borderopacity="1"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="16.83798"
+     inkscape:cx="10.808898"
+     inkscape:cy="11.402793"
+     inkscape:window-width="1920"
+     inkscape:window-height="996"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs5455" />
+  <metadata
+     id="metadata5458" />
+  <g
+     inkscape:label="Capa 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-417.57143,-660.798)">
+    <flowRoot
+       line-height="125%"
+       style="font-size:32.5px;font-family:sans-serif"
+       id="flowRoot4170"><flowRegion
+         id="flowRegion4172"><rect
+           width="87.75001"
+           x="452.32144"
+           y="489.79807"
+           height="48.750004"
+           id="rect4174" /></flowRegion><flowPara
+         id="flowPara4176">Plasm</flowPara></flowRoot>
+    <g
+       id="22-22-start-here-kde"
+       transform="translate(417.57143,660.798)">
+      <rect
+         style="fill:none;fill-opacity:1;stroke:none"
+         id="rect4150"
+         width="22"
+         height="22"
+         x="0"
+         y="0" />
+      <path
+         sodipodi:type="arc"
+         sodipodi:cx="11.153647"
+         sodipodi:cy="11.140292"
+         sodipodi:rx="9.4754696"
+         sodipodi:ry="9.4620619"
+         sodipodi:start="1.8148121"
+         sodipodi:end="6.0278024"
+         sodipodi:arc-type="arc"
+         d="M 8.864361,20.322046 A 9.4754696,9.4620619 0 0 1 1.706656,10.407249 9.4754696,9.4620619 0 0 1 10.31223,1.71561 9.4754696,9.4620619 0 0 1 20.321796,8.7500247"
+         id="path7-7-75-3"
+         class=" "
+         sodipodi:open="true"
+         style="fill:none;fill-opacity:1;stroke:#af905e;stroke-width:1.35591;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;stop-color:#31363b" />
+      <path
+         d="m 20.999753,15.166488 c 0,3.221718 -2.611601,5.833259 -5.833264,5.833259 -3.221643,0 -5.8332572,-2.611601 -5.8332572,-5.833259 0,-3.221641 2.6116142,-5.8332635 5.8332572,-5.8332635 3.221663,0 5.833264,2.6116225 5.833264,5.8332635"
+         id="path3950-3-6"
+         class=" "
+         style="fill:#666666;fill-opacity:1;stroke:none;stroke-width:0.0407498" />
+      <path
+         id="path11-3-7"
+         style="color:#31363b;fill:#fefefe;fill-opacity:1;stroke-width:0.691646"
+         d="m 13.124845,11.400249 c -0.383527,0 -0.69444,0.308402 -0.69444,0.688849 0,0.380446 0.310913,0.68885 0.69444,0.68885 0.383531,0 0.694441,-0.308404 0.694441,-0.68885 0,-0.380447 -0.31091,-0.688849 -0.694441,-0.688849 z m 3.472183,0 c -0.611053,-0.275248 -1.338318,0.341817 -1.041657,1.033274 l 1.736087,1.722124 -1.736087,1.722111 c -0.365127,0.647993 0.348827,1.369859 1.041657,1.033284 l 2.777744,-2.755395 z m -4.861049,3.099822 c -0.383532,0 -0.69444,0.308407 -0.69444,0.688842 0,0.380436 0.310908,0.688845 0.69444,0.688845 0.383516,0 0.694426,-0.308409 0.694426,-0.688845 0,-0.380435 -0.31091,-0.688842 -0.694426,-0.688842 z m 2.430524,3.099821 c -0.575287,0 -1.041658,0.462606 -1.041658,1.033258 0,0.570667 0.466371,1.033283 1.041658,1.033283 0.575288,0 1.041647,-0.462616 1.041647,-1.033283 0,-0.570652 -0.466359,-1.033258 -1.041647,-1.033258 z"
+         class="ColorScheme-Text"
+         sodipodi:nodetypes="ssssscccccccssssssssss" />
+    </g>
+  </g>
+</svg>

@@ -17,6 +17,7 @@ packages=(
   kvantum
   rmpc
   rofi
+  share
   scripts
   systemd
   starship
