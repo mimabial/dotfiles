@@ -207,6 +207,11 @@ apply_color_mode() {
   local wallpaper
   local state_file="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/color.gen.state"
 
+  if [ "${setMode}" -eq 0 ]; then
+    "${LIB_DIR}/hypr/theme/color.set.sh"
+    return 0
+  fi
+
   wallpaper="$(resolve_wallpaper)" || return 1
 
   if [ "${setMode}" -eq 2 ] || [ "${setMode}" -eq 3 ]; then

@@ -1,0 +1,9 @@
+# Enable user units managed by dotfiles.
+enable auto-theme.service
+enable elephant.service
+enable hypr-config.service
+enable hypr-ipc.service
+enable hyprland-hypridle.service
+enable hyprland-keep-awake.service
+enable inhibit-idle-on-audio.service
+enable zsh-zcompdump-clean.timer

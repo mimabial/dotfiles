@@ -8,8 +8,8 @@ $NVIM_VARIANT = decayce
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
-$CURSOR_THEME = Hackneyed
-$CURSOR_SIZE = 24
+$CURSOR_THEME = Capitaine-Cursors-White
+$CURSOR_SIZE = 28
 
 # Optional: The varibles above will be set automatically when the theme is loaded
 # This exec commands will soon be deprecated

@@ -5,12 +5,12 @@ source = /tmp/mpd.fifo
 [color]
 gradient = 1
 gradient_count = 8
-gradient_color_1 = '#58586B'
-gradient_color_2 = '#905451'
-gradient_color_3 = '#978279'
-gradient_color_4 = '#3E5F81'
-gradient_color_5 = '#567289'
-gradient_color_6 = '#628A98'
-gradient_color_7 = '#567289'
-gradient_color_8 = '#628A98'
+gradient_color_1 = '#eb6f92'
+gradient_color_2 = '#31748f'
+gradient_color_3 = '#f6c177'
+gradient_color_4 = '#9ccfd8'
+gradient_color_5 = '#c4a7e7'
+gradient_color_6 = '#ebbcba'
+gradient_color_7 = '#c4a7e7'
+gradient_color_8 = '#ebbcba'
 

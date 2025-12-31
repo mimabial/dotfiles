@@ -30,7 +30,7 @@ source "${scrDir}/globalcontrol.sh"
 
 #// set defaults
 xtrans="${WALLPAPER_SWWW_TRANSITION_DEFAULT:-fade}"
-[ -z "${xtrans}" ] && xtrans="fade"
+[[ -z "${xtrans}" ]] && xtrans="fade"
 
 # Handle transition
 case "${WALLPAPER_SET_FLAG}" in
@@ -43,8 +43,7 @@ case "${WALLPAPER_SET_FLAG}" in
 
 esac
 
-selected_wall="$1"
-[ -z "${selected_wall}" ] && echo "No input wallpaper" && exit 1
+[[ -z "${selected_wall}" ]] && echo "No input wallpaper" && exit 1
 selected_wall="$(readlink -f "${selected_wall}")"
 
 if ! swww query &>/dev/null; then
@@ -55,15 +54,15 @@ if ! swww query &>/dev/null; then
 fi
 
 is_video=$(file --mime-type -b "${selected_wall}" | grep -c '^video/')
-if [ "${is_video}" -eq 1 ]; then
+if [[ "${is_video}" -eq 1 ]]; then
   print_log -sec "wallpaper" -stat "converting video" "$selected_wall"
   mkdir -p "${WALLPAPER_VIDEO_DIR}"
   cached_thumb="${WALLPAPER_VIDEO_DIR}/$(${hashMech:-sha1sum} "${selected_wall}" | cut -d' ' -f1).png"
   extract_thumbnail "${selected_wall}" "${cached_thumb}"
   selected_wall="${cached_thumb}"
 fi
-[ -z "${wallFramerate}" ] && wallFramerate=60
-[ -z "${wallTransDuration}" ] && wallTransDuration=0.6
+[[ -z "${wallFramerate}" ]] && wallFramerate=60
+[[ -z "${wallTransDuration}" ]] && wallTransDuration=0.6
 
 #// apply wallpaper
 # TODO: add support for other backends
@@ -89,7 +88,7 @@ swww_cmd=(swww img "${resolved_wall}"
   --transition-pos "${cursor_pos}")
 
 # Don't run in background during startup to ensure GIF animation loads properly
-if [ "${WALLPAPER_SET_FLAG}" == "start" ]; then
+if [[ "${WALLPAPER_SET_FLAG}" == "start" ]]; then
   "${swww_cmd[@]}"
 else
   # Run in background but log any errors

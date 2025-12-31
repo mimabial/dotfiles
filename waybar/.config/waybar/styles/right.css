@@ -191,9 +191,9 @@ menu label {
 #custom-fanspeedinfo {
   font-weight: bold;
   margin: 0px 2px 8px 8px;
-  color: @c8;
+  color: @c7;
   background: transparent;
-  border: 1px solid alpha(@c8, 0.4);
+  border: 1px solid alpha(@c7, 0.4);
   border-left: transparent;
   border-bottom: transparent;
   font-size: 12px;
@@ -202,7 +202,7 @@ menu label {
 
 #custom-dmark {
   font-weight: bold;
-  color: @c8;
+  color: @c7;
 }
 
 /* ============================================

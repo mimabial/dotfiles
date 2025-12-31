@@ -1491,7 +1491,10 @@ def start_waybar():
         except:
             WAYBAR_LOCK.unlink(missing_ok=True)
 
+    old_sigchld = signal.getsignal(signal.SIGCHLD)
     try:
+        # Let waybar auto-reap module execs to avoid zombie accumulation.
+        signal.signal(signal.SIGCHLD, signal.SIG_IGN)
         proc = subprocess.Popen(
             ["/usr/bin/waybar"],
             stdout=subprocess.DEVNULL,
@@ -1505,6 +1508,11 @@ def start_waybar():
 
     except Exception as e:
         logger.error(f"Failed to start waybar: {e}")
+    finally:
+        try:
+            signal.signal(signal.SIGCHLD, old_sigchld)
+        except Exception:
+            pass
 
 
 def stop_waybar():

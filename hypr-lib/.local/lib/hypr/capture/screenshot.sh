@@ -43,12 +43,15 @@ post_cmd() {
   for cmd in "${SCREENSHOT_POST_COMMAND[@]}"; do
     eval "$cmd"
   done
+  if [[ -n "${temp_screenshot:-}" && -f "${temp_screenshot}" ]]; then
+    rm -f "${temp_screenshot}"
+  fi
 }
 
 # Create secure temporary file
 temp_screenshot=$(mktemp -t screenshot_XXXXXX.png)
 
-if [ -z "$XDG_PICTURES_DIR" ]; then
+if [[ -z "${XDG_PICTURES_DIR}" ]]; then
   XDG_PICTURES_DIR="$HOME/Pictures"
 fi
 
@@ -80,6 +83,14 @@ fi
 
 # Add any additional annotation arguments
 [[ -n "${SCREENSHOT_ANNOTATION_ARGS[*]}" ]] && annotation_args+=("${SCREENSHOT_ANNOTATION_ARGS[@]}")
+
+run_annotation() {
+  if [[ -z "${annotation_tool}" ]]; then
+    notify-send -a "Screenshot" "Screenshot Error" "No annotation tool found (swappy/satty)"
+    return 1
+  fi
+  "${annotation_tool}" "${annotation_args[@]}"
+}
 
 # Get rectangles for smart selection
 get_rectangles() {
@@ -129,7 +140,7 @@ smart_screenshot() {
     grim -g "$SELECTION" "${save_dir}/${save_file}"
   else
     grim -g "$SELECTION" "$temp_screenshot"
-    if ! "${annotation_tool}" "${annotation_args[@]}"; then
+    if ! run_annotation; then
       notify-send -a "Screenshot" "Screenshot Error" "Failed to open annotation tool"
       return 1
     fi
@@ -144,7 +155,7 @@ take_screenshot() {
 
   # execute grimblast with given args
   if "$LIB_DIR/hypr/capture/grimblast" "${extra_args[@]}" copysave "$mode" "$temp_screenshot"; then
-    if ! "${annotation_tool}" "${annotation_args[@]}"; then
+    if ! run_annotation; then
       notify-send -a "Screenshot" "Screenshot Error" "Failed to open annotation tool"
       return 1
     fi
@@ -192,7 +203,7 @@ ocr_screenshot() {
       tesseract \
         --psm 6 \
         --oem 3 \
-        -l ${tesseract_languages_prepared} \
+        -l "${tesseract_languages_prepared}" \
         "${temp_screenshot}" \
         stdout
       2>/dev/null
@@ -223,10 +234,10 @@ case $1 in
     ;;
   w) # window selection with frozen screen
     # Select from visible windows/monitors
-    local SELECTION=$(get_rectangles | slurp -r 2>/dev/null)
+    SELECTION=$(get_rectangles | slurp -r 2>/dev/null)
     if [[ -n "$SELECTION" ]]; then
       grim -g "$SELECTION" "$temp_screenshot"
-      "${annotation_tool}" "${annotation_args[@]}"
+      run_annotation
     fi
     ;;
   m) # print focused monitor
@@ -243,8 +254,6 @@ case $1 in
     fi
     ;;
 esac
-
-[ -f "${temp_screenshot}" ] && rm "${temp_screenshot}"
 
 if [ -f "${save_dir}/${save_file}" ]; then
   notify-send -a "Screenshot" -i "${save_dir}/${save_file}" "saved in ${save_dir}"

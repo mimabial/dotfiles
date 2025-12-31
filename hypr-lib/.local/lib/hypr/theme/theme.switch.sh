@@ -647,6 +647,11 @@ else
   "${LIB_DIR}/hypr/wallpaper/wallpaper.sh" -s "${wallpaper_path}" --global
 fi
 
+# Theme mode: apply theme palette and .theme files (wallpaper sets no colors here)
+if [[ "${enableWallDcol}" -eq 0 ]]; then
+  "${LIB_DIR}/hypr/theme/color.set.sh"
+fi
+
 #// nvim sync (after wallpaper/colors so pywal theme reads correct colors)
 if [[ -x "${scrDir}/util/nvim-theme-sync.sh" ]]; then
   "${scrDir}/util/nvim-theme-sync.sh" >/dev/null 2>&1 || true

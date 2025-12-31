@@ -2,8 +2,8 @@
 
 #// set variables
 
-# Toggle: if wofi is running for current user, kill it and exit
-if pgrep -u "$USER" wofi >/dev/null 2>&1; then
+# Toggle: if rofi is running for current user, kill it and exit
+if pgrep -u "$USER" rofi >/dev/null 2>&1; then
   pkill -u "$USER" rofi
   exit 0
 fi
@@ -29,7 +29,7 @@ font_scale="${ROFI_LAUNCH_SCALE}"
 [[ "${font_scale}" =~ ^[0-9]+$ ]] || font_scale=${ROFI_SCALE:-10}
 
 rofi_args=(
-  -show-iconr
+  -show-icons
 )
 
 #// rofi action

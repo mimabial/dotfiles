@@ -18,23 +18,23 @@ $HOME/.config/waybar/theme.css
 @define-color workspace_hover_bg #D3C6AA;
 @define-color hover #e67e80;
 
-@define-color c0 #3c474d;
-@define-color c1 #59464c;
-@define-color c2 #48584e;
-@define-color c3 #55544a;
-@define-color c4 #3f5865;
-@define-color c5 #4e4953;
-@define-color c6 #5c3f4f;
-@define-color c7 #859289;
+@define-color c0 #343f44;
+@define-color c1 #e67e80;
+@define-color c2 #a7c080;
+@define-color c3 #dbbc7f;
+@define-color c4 #7fbbb3;
+@define-color c5 #d699b6;
+@define-color c6 #83c092;
+@define-color c7 #d3c6aa;
 
-@define-color c8 #868d80;
+@define-color c8 #859289;
 @define-color c9 #e67e80;
 @define-color c10 #a7c080;
 @define-color c11 #dbbc7f;
 @define-color c12 #7fbbb3;
 @define-color purple_bright #d699b6;
 @define-color c14 #83c092;
-@define-color c15 #9da9a0;
+@define-color c15 #d3c6aa;
 
 @define-color critical @c1;
 @define-color c13 @c5;

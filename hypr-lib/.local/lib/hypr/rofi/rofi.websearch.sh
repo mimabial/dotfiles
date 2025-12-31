@@ -26,29 +26,24 @@ load_search_engines() {
     exit 1
   fi
 
-  # Use awk to parse all files at once
-  # awk splits lines by '|', trims whitespace, and prints shell assignments
-  #? This is faster but a forbidden technique!
-  eval "$(
-    awk -F'|' '
-        function trim(s) {
-            gsub(/^[ \t\r\n]+|[ \t\r\n]+$/, "", s);
-            return s
-        }
-        {
-            icon = trim($1);
-            key = trim($2);
-            url = trim($3);
-            if (key != "" && url != "") {
-                #! Escape double quotes and backslashes in url and icon for safe shell eval
-                gsub(/["\\]/, "\\\\&", url);
-                gsub(/["\\]/, "\\\\&", icon);
-                print "SITES[\"" key "\"]=\"" url "\""
-                print "SITES_ICON[\"" key "\"]=\"" icon "\""
-            }
-        }
-        ' "${lst_files[@]}"
-  )"
+  trim() {
+    local s="$1"
+    s="${s#"${s%%[![:space:]]*}"}"
+    s="${s%"${s##*[![:space:]]}"}"
+    printf "%s" "$s"
+  }
+
+  local icon key url
+  for f in "${lst_files[@]}"; do
+    while IFS='|' read -r icon key url _; do
+      icon="$(trim "${icon}")"
+      key="$(trim "${key}")"
+      url="$(trim "${url}")"
+      [[ -z "${key}" || -z "${url}" ]] && continue
+      SITES["${key}"]="${url}"
+      SITES_ICON["${key}"]="${icon}"
+    done < "${f}"
+  done
 }
 
 # Generate the list of sites

@@ -2,7 +2,7 @@ $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
 
 # $SDDM_THEME = Monokai
 $GTK_THEME = Monokai
-$ICON_THEME = Goldy-Dark-Icons
+$ICON_THEME = Monokai
 $COLOR_SCHEME=prefer-dark
 $NVIM_SCHEME = monokai-pro
 $NVIM_VARIANT = ristretto 

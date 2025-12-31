@@ -1,46 +1,44 @@
 
 /* Main colors */
-@define-color bg #282c34; /* bg */
+@define-color bg #073642; /* base02 */
 
-@define-color bg_selected #282c34; /* bg */
-@define-color fg #abb2bf; /* fg */
-@define-color border #282c34; /* gray */
+@define-color bg_selected #268bd2;
+@define-color fg #fdf6e3;
+@define-color border #268bd2; /* base01 */
 
-@define-color bg_alt #282c34; /* bg */
-@define-color fg_alt #abb2bf; /* fg */
-@define-color warning #434852; /* gray */
+@define-color bg_alt #268bd2;
+@define-color fg_alt #fdf6e3;
+@define-color warning #268bd2;
 
 /* Active workspace colors */
-@define-color accent #61afef; /* blue */
-@define-color workspace_active_fg #282c34; /* bg */
-@define-color border_alt #61afef; /* blue */
+@define-color accent #2aa198;
+@define-color workspace_active_fg #fdf6e3;
+@define-color border_alt #2aa198; /* blue */
 
 /* Hover colors */
-@define-color fg_selected #89ca78; /* cyan */
-@define-color workspace_hover_bg #282c34; /* bg */
-@define-color hover #2bbac5; /* cyan */
+@define-color workspace_hover_bg #eee8d5;
+@define-color fg_selected #b58900;
+@define-color hover #cb4b16; /* cyan */
 
 /* Standard color palette - base colors */
-@define-color c0 #282c34;
-@define-color c1 #ef596f;
-@define-color c2 #89ca78;
-@define-color c3 #e5c07b;
-@define-color c4 #61afef;
-@define-color c5 @accent;
-@define-color c6 #2bbac5;
-@define-color c7  #979eab;
+@define-color c0 #002731;
+@define-color c1 #dc322f;
+@define-color c2 #859900;
+@define-color c3 #b58900;
+@define-color c4 #268bd2;
+@define-color c5 #6c71c4; /* violet */
+@define-color c6 #2aa198;
+@define-color c7 #e9e2cb;
 
 /* Standard color palette - bright/accent variants */
-@define-color c8 #7f848e;
-@define-color c9 #ef596f;
-@define-color c10 #89ca78;
-@define-color c11 #e2be7d; /* highlight */
-@define-color c12 #61afef;
-@define-color c13 @c5;
-@define-color c14 #2bbac5;
-@define-color c19 #d19a66;
-@define-color c15 #abb2bf;
-@define-color c16 #d55fde;
+@define-color c8 #006388;
+@define-color c9 #dc322f;
+@define-color c10 #859900;
+@define-color c11 #b58900;
+@define-color c12 #268bd2;
+@define-color c13 #d33682; /* magenta */
+@define-color c14 #2aa198;
+@define-color c15 #fcf4dc;
 
 @define-color critical @c1;
 @define-color accent_bg @accent;
@@ -65,4 +63,5 @@
 @define-color tooltip_bg @bg_alt;
 @define-color tooltip_fg @fg;
 @define-color tooltip_border @border;
-@define-color workspace_active_bg @bg_selected;
+@define-color workspace_active_bg #002731;
+@define-color workspace_active_br #b58900;

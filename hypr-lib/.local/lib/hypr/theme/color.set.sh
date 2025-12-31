@@ -186,6 +186,90 @@ if [ -n "${HYPR_THEME}" ] && [ -z "${HYPR_THEME_DIR}" ]; then
   print_log -sec "theme" -stat "detected" "${HYPR_THEME}"
 fi
 
+THEME_KITTY_FILE="${HYPR_THEME_DIR}/kitty.theme"
+THEME_BG=""
+THEME_FG=""
+THEME_CURSOR=""
+THEME_COLORS=()
+
+load_theme_palette() {
+  local theme_file="${1}"
+  [[ -r "${theme_file}" ]] || return 1
+
+  THEME_BG="$(awk '$1=="background"{print $2; exit}' "${theme_file}")"
+  THEME_FG="$(awk '$1=="foreground"{print $2; exit}' "${theme_file}")"
+  THEME_CURSOR="$(awk '$1=="cursor"{print $2; exit}' "${theme_file}")"
+
+  local i key val
+  THEME_COLORS=()
+  for i in {0..15}; do
+    key="color${i}"
+    val="$(awk -v key="${key}" '$1==key{print $2; exit}' "${theme_file}")"
+    [[ "${val}" =~ ^#[0-9A-Fa-f]{6}$ ]] || val=""
+    THEME_COLORS[$i]="${val}"
+  done
+
+  for i in {0..15}; do
+    [[ -n "${THEME_COLORS[$i]}" ]] || return 1
+  done
+
+  [[ "${THEME_BG}" =~ ^#[0-9A-Fa-f]{6}$ ]] || THEME_BG="${THEME_COLORS[0]}"
+  [[ "${THEME_FG}" =~ ^#[0-9A-Fa-f]{6}$ ]] || THEME_FG="${THEME_COLORS[15]}"
+  [[ "${THEME_CURSOR}" =~ ^#[0-9A-Fa-f]{6}$ ]] || THEME_CURSOR="${THEME_FG}"
+  return 0
+}
+
+write_wal_theme_file() {
+  local out_file="$1"
+  local tmp_file="${out_file}.tmp.$$"
+
+  mkdir -p "$(dirname "${out_file}")"
+
+  cat >"${tmp_file}" <<EOF
+{
+  "special": {
+    "background": "${THEME_BG}",
+    "foreground": "${THEME_FG}",
+    "cursor": "${THEME_CURSOR}"
+  },
+  "colors": {
+    "color0": "${THEME_COLORS[0]}",
+    "color1": "${THEME_COLORS[1]}",
+    "color2": "${THEME_COLORS[2]}",
+    "color3": "${THEME_COLORS[3]}",
+    "color4": "${THEME_COLORS[4]}",
+    "color5": "${THEME_COLORS[5]}",
+    "color6": "${THEME_COLORS[6]}",
+    "color7": "${THEME_COLORS[7]}",
+    "color8": "${THEME_COLORS[8]}",
+    "color9": "${THEME_COLORS[9]}",
+    "color10": "${THEME_COLORS[10]}",
+    "color11": "${THEME_COLORS[11]}",
+    "color12": "${THEME_COLORS[12]}",
+    "color13": "${THEME_COLORS[13]}",
+    "color14": "${THEME_COLORS[14]}",
+    "color15": "${THEME_COLORS[15]}"
+  }
+}
+EOF
+
+  mv -f "${tmp_file}" "${out_file}"
+}
+
+resolve_wallpaper_fallback() {
+  local cache_wall="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wallpaper/current/wall.set"
+  if [[ -e "${cache_wall}" ]]; then
+    readlink -f "${cache_wall}" 2>/dev/null && return 0
+  fi
+
+  local theme_wall="${HYPR_THEME_DIR}/wall.set"
+  if [[ -e "${theme_wall}" ]]; then
+    readlink -f "${theme_wall}" 2>/dev/null && return 0
+  fi
+
+  return 1
+}
+
 SKIP_WAYBAR_UPDATE="${SKIP_WAYBAR_UPDATE:-0}"
 
 # Override mode based on enableWallDcol
@@ -233,29 +317,65 @@ declare -gA COLOR_LINKS=(
   ["colors-qutebrowser.py"]="${HOME}/.config/qutebrowser/pywal-colors.py"
 )
 
-# Generate colors from wallpaper (always, even in theme mode)
-WALLPAPER_IMAGE="${1:-${wallpaper_image:-${wal_image}}}"
+# Determine palette source (theme vs wallpaper)
+PALETTE_SOURCE="wallpaper"
+PALETTE_LABEL=""
+STATE_WALLPAPER=""
+WAL_THEME_FILE=""
 
-[ -z "${WALLPAPER_IMAGE}" ] && {
-  print_log -sec "pywal16" -err "no wallpaper"
-  exit 1
-}
-[ ! -f "${WALLPAPER_IMAGE}" ] && {
-  print_log -sec "pywal16" -err "wallpaper not found"
-  exit 1
-}
+if [[ "${enableWallDcol}" -eq 0 ]]; then
+  PALETTE_SOURCE="theme"
+fi
 
-print_log -sec "pywal16" -stat "generate" "$(basename "${WALLPAPER_IMAGE}") (${dcol_mode})"
+if [[ "${PALETTE_SOURCE}" == "theme" ]]; then
+  if ! load_theme_palette "${THEME_KITTY_FILE}"; then
+    print_log -sec "theme" -warn "palette" "missing or incomplete ${THEME_KITTY_FILE}, falling back to wallpaper"
+    PALETTE_SOURCE="wallpaper"
+  else
+    WAL_THEME_FILE="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wal/theme-${HYPR_THEME// /_}.json"
+    write_wal_theme_file "${WAL_THEME_FILE}"
+    WALLPAPER_IMAGE="${WAL_THEME_FILE}"
+    STATE_WALLPAPER="theme:${HYPR_THEME}"
+    PALETTE_LABEL="theme:${HYPR_THEME}"
+  fi
+fi
 
-# Build pywal16 command
-WAL_OPTS_BASE=("-i" "${WALLPAPER_IMAGE}" "-n" "-s" "-t" "-e")
-[ "${dcol_mode}" == "light" ] && WAL_OPTS_BASE+=("-l")
+if [[ "${PALETTE_SOURCE}" == "wallpaper" ]]; then
+  WALLPAPER_IMAGE="${1:-${wallpaper_image:-${wal_image}}}"
 
-# Use haishoku backend by default; fall back to others on failure.
-# Override with PYWAL_BACKEND / PYWAL_BACKEND_FALLBACKS.
-PYWAL_BACKEND="${PYWAL_BACKEND:-wal}"
-PYWAL_BACKEND_FALLBACKS="${PYWAL_BACKEND_FALLBACKS:-colorthief haishoku colorz}"
-WAL_OPTS=("${WAL_OPTS_BASE[@]}" "--backend" "${PYWAL_BACKEND}")
+  if [[ -z "${WALLPAPER_IMAGE}" ]]; then
+    WALLPAPER_IMAGE="$(resolve_wallpaper_fallback)" || {
+      print_log -sec "pywal16" -err "no wallpaper"
+      exit 1
+    }
+  fi
+  [ ! -f "${WALLPAPER_IMAGE}" ] && {
+    print_log -sec "pywal16" -err "wallpaper not found"
+    exit 1
+  }
+
+  STATE_WALLPAPER="${WALLPAPER_IMAGE}"
+  PALETTE_LABEL="$(basename "${WALLPAPER_IMAGE}")"
+fi
+
+print_log -sec "pywal16" -stat "generate" "${PALETTE_LABEL} (${dcol_mode})"
+
+# Build wal command
+if [[ "${PALETTE_SOURCE}" == "theme" ]]; then
+  WAL_OPTS_BASE=("--theme" "${WAL_THEME_FILE}" "-n" "-s" "-t" "-e")
+  PYWAL_BACKEND="theme"
+  PYWAL_BACKEND_FALLBACKS=""
+  WAL_OPTS=("${WAL_OPTS_BASE[@]}")
+else
+  WAL_OPTS_BASE=("-i" "${WALLPAPER_IMAGE}" "-n" "-s" "-t" "-e")
+  [ "${dcol_mode}" == "light" ] && WAL_OPTS_BASE+=("-l")
+
+  # Use haishoku backend by default; fall back to others on failure.
+  # Override with PYWAL_BACKEND / PYWAL_BACKEND_FALLBACKS.
+  PYWAL_BACKEND="${PYWAL_BACKEND:-wal}"
+  PYWAL_BACKEND_FALLBACKS="${PYWAL_BACKEND_FALLBACKS:-colorthief haishoku colorz}"
+  WAL_OPTS=("${WAL_OPTS_BASE[@]}" "--backend" "${PYWAL_BACKEND}")
+fi
 
 # Cache pywal output per wallpaper hash + mode (avoids rerunning wal on repeats)
 HYPR_WAL_CACHE_ENABLE="${HYPR_WAL_CACHE_ENABLE:-1}"
@@ -360,9 +480,11 @@ if [[ "${HYPR_WAL_CACHE_ENABLE}" -eq 1 ]]; then
   fi
 
   allow_fast_path=0
-  if [[ "${FORCE_COLOR_REGEN:-0}" -ne 1 ]] && [[ "${enableWallDcol}" -ne 0 ]]; then
-    if [[ "${prev_colormode}" =~ ^[0-9]+$ ]] && [[ "${prev_colormode}" -ne 0 ]]; then
-      allow_fast_path=1
+  if [[ "${FORCE_COLOR_REGEN:-0}" -ne 1 ]]; then
+    if [[ "${enableWallDcol}" -eq 0 ]]; then
+      [[ "${prev_colormode}" =~ ^[0-9]+$ ]] && [[ "${prev_colormode}" -eq 0 ]] && allow_fast_path=1
+    else
+      [[ "${prev_colormode}" =~ ^[0-9]+$ ]] && [[ "${prev_colormode}" -ne 0 ]] && allow_fast_path=1
     fi
   fi
 
@@ -390,33 +512,38 @@ if [[ "${HYPR_WAL_CACHE_ENABLE}" -eq 1 ]]; then
 fi
 
 if [[ -z "${wal_exit}" ]]; then
-  declare -A backend_seen=()
-  backend_list=()
-  backend_list+=("${PYWAL_BACKEND}")
-  backend_seen["${PYWAL_BACKEND}"]=1
-
-  if [[ -n "${PYWAL_BACKEND_FALLBACKS}" ]]; then
-    for backend in ${PYWAL_BACKEND_FALLBACKS//,/ }; do
-      [[ -n "${backend}" ]] || continue
-      [[ -n "${backend_seen[$backend]:-}" ]] && continue
-      backend_list+=("${backend}")
-      backend_seen["${backend}"]=1
-    done
-  fi
-
-  wal_exit=1
-  for backend in "${backend_list[@]}"; do
-    WAL_OPTS=("${WAL_OPTS_BASE[@]}" "--backend" "${backend}")
+  if [[ "${PALETTE_SOURCE}" == "theme" ]]; then
     wal_output=$(XDG_CACHE_HOME="${WAL_XDG_CACHE_HOME}" wal "${WAL_OPTS[@]}" 2>&1)
     wal_exit=$?
-    if [[ "${wal_exit}" -eq 0 ]]; then
-      if [[ "${backend}" != "${PYWAL_BACKEND}" ]]; then
-        print_log -sec "pywal16" -warn "backend" "fallback to ${backend}"
-      fi
-      PYWAL_BACKEND="${backend}"
-      break
+  else
+    declare -A backend_seen=()
+    backend_list=()
+    backend_list+=("${PYWAL_BACKEND}")
+    backend_seen["${PYWAL_BACKEND}"]=1
+
+    if [[ -n "${PYWAL_BACKEND_FALLBACKS}" ]]; then
+      for backend in ${PYWAL_BACKEND_FALLBACKS//,/ }; do
+        [[ -n "${backend}" ]] || continue
+        [[ -n "${backend_seen[$backend]:-}" ]] && continue
+        backend_list+=("${backend}")
+        backend_seen["${backend}"]=1
+      done
     fi
-  done
+
+    wal_exit=1
+    for backend in "${backend_list[@]}"; do
+      WAL_OPTS=("${WAL_OPTS_BASE[@]}" "--backend" "${backend}")
+      wal_output=$(XDG_CACHE_HOME="${WAL_XDG_CACHE_HOME}" wal "${WAL_OPTS[@]}" 2>&1)
+      wal_exit=$?
+      if [[ "${wal_exit}" -eq 0 ]]; then
+        if [[ "${backend}" != "${PYWAL_BACKEND}" ]]; then
+          print_log -sec "pywal16" -warn "backend" "fallback to ${backend}"
+        fi
+        PYWAL_BACKEND="${backend}"
+        break
+      fi
+    done
+  fi
 
   [[ "${HYPR_WAL_CACHE_ENABLE}" -eq 1 ]] && wal_cache_populate=1
 fi
@@ -517,7 +644,7 @@ wal_cache_store() {
 
   {
     echo "${wal_cache_key}"
-    echo "wallpaper=${WALLPAPER_IMAGE}"
+    echo "wallpaper=${STATE_WALLPAPER:-${WALLPAPER_IMAGE}}"
     echo "mode=${dcol_mode}"
     echo "backend=${PYWAL_BACKEND}"
   } >"${tmp_dir}/.meta"
@@ -621,32 +748,19 @@ generate_hypr_colors_from_theme() {
     return 1
   }
 
-  local theme_bg theme_fg
-  theme_bg="$(awk '$1=="background"{print $2; exit}' "${kitty_theme_file}")"
-  theme_fg="$(awk '$1=="foreground"{print $2; exit}' "${kitty_theme_file}")"
-  [[ "${theme_bg}" =~ ^#[0-9A-Fa-f]{6}$ ]] || theme_bg=""
-  [[ "${theme_fg}" =~ ^#[0-9A-Fa-f]{6}$ ]] || theme_fg=""
+  if ! load_theme_palette "${kitty_theme_file}"; then
+    print_log -sec "theme" -warn "colors" "incomplete palette in ${kitty_theme_file}"
+    return 1
+  fi
 
   local -a theme_colors=()
-  local i key val
+  local i
   for i in {0..15}; do
-    key="color${i}"
-    val="$(awk -v key="${key}" '$1==key{print $2; exit}' "${kitty_theme_file}")"
-    [[ "${val}" =~ ^#[0-9A-Fa-f]{6}$ ]] || val=""
-    theme_colors[$i]="${val}"
+    theme_colors[$i]="${THEME_COLORS[$i]}"
   done
 
-  # Require a complete palette; fall back if a theme is incomplete.
-  for i in {0..15}; do
-    key="color${i}"
-    [[ -n "${theme_colors[$i]}" ]] || {
-      print_log -sec "theme" -warn "colors" "missing ${key} in ${kitty_theme_file}"
-      return 1
-    }
-  done
-
-  [[ -n "${theme_bg}" ]] || theme_bg="${theme_colors[0]}"
-  [[ -n "${theme_fg}" ]] || theme_fg="${theme_colors[15]}"
+  local theme_bg="${THEME_BG}"
+  local theme_fg="${THEME_FG}"
 
   local active_border inactive_border_bg inactive_border_fg
   active_border="${theme_colors[4]#\#}ff"
@@ -1183,9 +1297,10 @@ colormode_changed=false
 [[ -n "${prev_colormode}" && "${prev_colormode}" != "${enableWallDcol}" ]] && colormode_changed=true
 
 # State
+state_wallpaper="${STATE_WALLPAPER:-${WALLPAPER_IMAGE:-theme}}"
 {
-  echo "${wal_cache_key:-${WALLPAPER_IMAGE:-theme}:${dcol_mode}}"
-  echo "wallpaper=${WALLPAPER_IMAGE}"
+  echo "${wal_cache_key:-${state_wallpaper}:${dcol_mode}}"
+  echo "wallpaper=${state_wallpaper}"
   echo "mode=${dcol_mode}"
   echo "colormode=${enableWallDcol}"
   echo "backend=${PYWAL_BACKEND}"

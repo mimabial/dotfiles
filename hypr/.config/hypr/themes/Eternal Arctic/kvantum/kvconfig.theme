@@ -28,7 +28,7 @@ progressbar_thickness=2
 menubar_mouse_tracking=true
 toolbutton_style=1
 double_click=false
-translucent_windows=false
+translucent_windows=true
 blurring=true
 popup_blurring=true
 vertical_spin_indicators=false
@@ -93,7 +93,7 @@ progress.indicator.text.color=#d8dee9
 
 [Hacks]
 transparent_ktitle_label=true
-transparent_dolphin_view=false
+transparent_dolphin_view=true
 transparent_pcmanfm_sidepane=true
 blur_translucent=true
 transparent_menutitle=true

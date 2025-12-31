@@ -3,7 +3,7 @@ $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
 $GTK_THEME = Gruvbox-Retro
 $ICON_THEME = Gruvbox-Plus-Dark
 $CURSOR_THEME = Gruvbox-Retro
-$CURSOR_SIZE = 20
+$CURSOR_SIZE = 24
 $COLOR_SCHEME = prefer-dark
 $NVIM_SCHEME = gruvbox-material
 $NVIM_VARIANT = medium

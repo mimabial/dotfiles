@@ -51,35 +51,36 @@ echo "PID FILE: $pidFile" >>/tmp/sysmon-debug.log
 
 # TODO: As there is no proper protocol at terminals, we need to find a way to kill the processes
 # * This enables toggling the sysmonitor on and off
-if [ -f "$pidFile" ]; then
+if [[ -f "${pidFile}" ]]; then
   echo "PID FILE EXISTS - toggling off" >>/tmp/sysmon-debug.log
   while IFS= read -r line; do
     pid=$(awk -F ':::' '{print $1}' <<<"$line")
-    if [ -d "/proc/${pid}" ]; then
+    if [[ -d "/proc/${pid}" ]]; then
       cmd=$(awk -F ':::' '{print $2}' <<<"$line")
       pkill -P "$pid"
       pkg_installed flatpak && flatpak kill "$cmd" 2>/dev/null
-      rm "$pidFile"
+      rm -f "$pidFile"
       echo "KILLED PID $pid" >>/tmp/sysmon-debug.log
       exit 0
     fi
   done <"$pidFile"
-  rm "$pidFile"
+  rm -f "$pidFile"
 fi
 
 echo "CHECKING MONITORS..." >>/tmp/sysmon-debug.log
 
 pkgChk=("htop" "btop" "top")                                                      # Array of commands to check
 pkgChk+=("${SYSMONITOR_COMMANDS[@]}")                                             # Add the user defined array commands
-[ -n "${SYSMONITOR_EXECUTE}" ] && pkgChk=("${SYSMONITOR_EXECUTE}" "${pkgChk[@]}") # Add the user defined executable
+if [[ -n "${SYSMONITOR_EXECUTE}" ]]; then
+  pkgChk=("${SYSMONITOR_EXECUTE}" "${pkgChk[@]}")
+fi
 
-for sysMon in "${!pkgChk[@]}"; do
-  if pkg_installed "${pkgChk[sysMon]}"; then
-    term=${TERMINAL:-kitty} # Use env var
-    term=${SYSMONITOR_TERMINAL:-$term}
-    ${term} --class=sysmonitor -e "${pkgChk[sysMon]}" &
+for sysMon in "${pkgChk[@]}"; do
+  if pkg_installed "${sysMon}"; then
+    term="${SYSMONITOR_TERMINAL:-${TERMINAL:-kitty}}"
+    "${term}" --class=sysmonitor -e "${sysMon}" &
     pid=$!
-    echo "${pid}:::${pkgChk[sysMon]}" >"$pidFile"
+    echo "${pid}:::${sysMon}" >"$pidFile"
     disown
     break
   fi
