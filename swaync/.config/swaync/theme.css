@@ -1,20 +1,20 @@
 
-@define-color fg-primary #839496;
-@define-color fg-secondary #93a1a1;
+@define-color fg-primary #bfc1c9;
+@define-color fg-secondary #9ea0a8;
 
-@define-color bg-primary #002b36;
-@define-color bg-secondary #073642;
-@define-color bg-tertiary #094352;
+@define-color bg-primary #0d0f14;
+@define-color bg-secondary #181b23;
+@define-color bg-tertiary #21242c;
 
-@define-color accent-red #dc322f;
-@define-color accent-green #859900;
-@define-color accent-yellow #b58900;
-@define-color accent-blue #268bd2;
-@define-color accent-purple #6c71c4;
-@define-color accent-aqua #2aa198;
-@define-color accent-orange #cb4b16;
+@define-color accent-red #ca6f67;
+@define-color accent-green #a6be9f;
+@define-color accent-yellow #d6b89f;
+@define-color accent-blue #6ba4b8;
+@define-color accent-purple #b094b8;
+@define-color accent-aqua #87a987;
+@define-color accent-orange #d6a679;
 
-@define-color border-primary #586e75;
-@define-color border-secondary #657b83;
+@define-color border-primary #515561;
+@define-color border-secondary #6a6e7c;
 
-@define-color gray #586e75;
+@define-color gray #515561;

@@ -28,6 +28,17 @@ confDir="${XDG_CONFIG_HOME:-$HOME/.config}"
 # Set default HYPRLAND_CONFIG if not defined
 HYPRLAND_CONFIG="${HYPRLAND_CONFIG:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr/hyprland.conf}"
 
+# Track and restore Hyprland autoreload setting during theme switch.
+hypr_autoreload_prev=""
+hypr_autoreload_set=0
+if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE}" ]] && command -v hyprctl >/dev/null 2>&1; then
+  hypr_autoreload_prev="$(hyprctl getoption misc:disable_autoreload 2>/dev/null | awk -F': ' '/int/ {print $2; exit}')"
+  if [[ -n "${hypr_autoreload_prev}" ]]; then
+    hyprctl keyword misc:disable_autoreload 1 -q
+    hypr_autoreload_set=1
+  fi
+fi
+
 # Lock file to prevent concurrent theme switching
 THEME_SWITCH_LOCK="${XDG_RUNTIME_DIR:-/tmp}/theme-switch.lock"
 exec 201>"${THEME_SWITCH_LOCK}"
@@ -45,6 +56,9 @@ theme_notify_icon="preferences-desktop-theme"
 cleanup_theme_switch() {
   local exit_code=$?
   theme_notify_finish "${exit_code}"
+  if [[ "${hypr_autoreload_set}" -eq 1 ]] && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE}" ]] && command -v hyprctl >/dev/null 2>&1; then
+    hyprctl keyword misc:disable_autoreload "${hypr_autoreload_prev}" -q
+  fi
   flock -u 201 2>/dev/null
 }
 trap 'cleanup_theme_switch' EXIT
@@ -448,7 +462,6 @@ if [[ -r "${HYPRLAND_CONFIG}" ]]; then
 
   # shellcheck disable=SC2154
   # Updates the compositor theme data in advance
-  [[ -n "${HYPRLAND_INSTANCE_SIGNATURE}" ]] && hyprctl keyword misc:disable_autoreload 1 -q
   [[ -r "${HYPR_THEME_DIR}/hypr.theme" ]] && sanitize_hypr_theme "${HYPR_THEME_DIR}/hypr.theme" "${XDG_CONFIG_HOME}/hypr/themes/theme.conf"
 
   #? Load theme specific variables
@@ -466,6 +479,11 @@ if [[ -r "${HYPRLAND_CONFIG}" ]]; then
 fi
 
 show_theme_status
+
+# Apply cursor immediately so UI feedback isn't delayed by long theming tasks.
+if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE}" ]] && [[ -n "${CURSOR_THEME}" ]] && [[ -n "${CURSOR_SIZE}" ]]; then
+  hyprctl setcursor "${CURSOR_THEME}" "${CURSOR_SIZE}" >/dev/null 2>&1 &
+fi
 
 # Early load the icon theme so that it is available for the rest of the script
 if ! dconf write /org/gnome/desktop/interface/icon-theme "'${ICON_THEME}'"; then
@@ -649,6 +667,10 @@ fi
 
 # Theme mode: apply theme palette and .theme files (wallpaper sets no colors here)
 if [[ "${enableWallDcol}" -eq 0 ]]; then
+  # Default to async app theming during theme switches to keep UI responsive.
+  if [[ -z "${HYPR_WAL_ASYNC_APPS:-}" ]]; then
+    export HYPR_WAL_ASYNC_APPS=1
+  fi
   "${LIB_DIR}/hypr/theme/color.set.sh"
 fi
 

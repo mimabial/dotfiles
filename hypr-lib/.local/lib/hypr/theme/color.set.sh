@@ -91,6 +91,7 @@ CACHE_ONLY="${HYPR_WAL_CACHE_ONLY:-0}"
 ASYNC_APPS="${HYPR_WAL_ASYNC_APPS:-0}"
 MODE_OVERRIDE="${HYPR_WAL_MODE_OVERRIDE:-}"
 CACHE_ONLY_ROOT=""
+HYPR_AUTO_RELOAD_PREV=""
 mkdir -p "$(dirname "$LOCK_FILE")" "$(dirname "$STATE_FILE")"
 
 exec 200>"${LOCK_FILE}"
@@ -132,6 +133,9 @@ cleanup() {
       if ! hyprctl reload config-only >/dev/null 2>&1; then
         print_log -sec "cleanup" -warn "hyprctl" "config reload failed"
       fi
+      if [[ -n "${HYPR_AUTO_RELOAD_PREV}" ]]; then
+        hyprctl keyword misc:disable_autoreload "${HYPR_AUTO_RELOAD_PREV}" -q || true
+      fi
     fi
   fi
   # Spawn pre-cache after releasing the lock (safe: no eval, direct execution with validated params)
@@ -151,7 +155,10 @@ cleanup() {
 trap cleanup EXIT
 
 # Disable Hyprland autoreload during theme application
-[[ -n "${HYPRLAND_INSTANCE_SIGNATURE}" && "${CACHE_ONLY}" -ne 1 ]] && hyprctl keyword misc:disable_autoreload 1 -q
+if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE}" && "${CACHE_ONLY}" -ne 1 ]]; then
+  HYPR_AUTO_RELOAD_PREV="$(hyprctl getoption misc:disable_autoreload 2>/dev/null | awk -F': ' '/int/ {print $2; exit}')"
+  [[ -n "${HYPR_AUTO_RELOAD_PREV}" ]] && hyprctl keyword misc:disable_autoreload 1 -q
+fi
 
 # Check enableWallDcol (0=theme, 1=auto, 2=dark, 3=light)
 [ -f "$HYPR_STATE_HOME/config" ] && source "$HYPR_STATE_HOME/config"
@@ -1188,6 +1195,11 @@ if [[ "${SKIP_WAYBAR_UPDATE}" -ne 1 ]]; then
     hyprshell waybar --update-border-radius &>/dev/null
     print_log -sec "waybar" -stat "updated" "border-radius from theme"
   fi
+fi
+
+# Release the theme-update lock once Waybar files are settled.
+if [[ "${CACHE_ONLY}" -ne 1 ]]; then
+  rm -f "${THEME_UPDATE_LOCK}"
 fi
 
 post_updates() {

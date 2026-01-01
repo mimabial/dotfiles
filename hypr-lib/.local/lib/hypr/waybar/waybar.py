@@ -13,6 +13,7 @@ import struct
 import subprocess
 import sys
 import time
+import tempfile
 from pathlib import Path
 
 # Add the parent hypr lib directory to path so we can import pyutils
@@ -32,7 +33,8 @@ from pyutils.xdg_base_dirs import (
 
 logger = logger.get_logger()
 
-if shutil.which("waybar") is None:
+WAYBAR_BIN = shutil.which("waybar")
+if WAYBAR_BIN is None:
     logger.info("Waybar binary not found! Is waybar installed? Exiting...")
     print("Waybar binary not found! Is waybar installed? Exiting...")
     sys.exit(0)
@@ -78,8 +80,10 @@ class InotifyWatcher:
     """Native inotify watcher using ctypes."""
 
     IN_MODIFY = 0x00000002
+    IN_ATTRIB = 0x00000004
     IN_CLOSE_WRITE = 0x00000008
     IN_MOVED_TO = 0x00000080
+    IN_CREATE = 0x00000100
 
     def __init__(self):
         try:
@@ -136,6 +140,53 @@ def get_file_hash(filepath):
         while chunk := file.read(8192):
             sha256.update(chunk)
     return sha256.hexdigest()
+
+
+def atomic_write_text(filepath, content):
+    """Write text to a file atomically to avoid partial reads."""
+    filepath = os.fspath(filepath)
+    directory = os.path.dirname(filepath)
+    os.makedirs(directory, exist_ok=True)
+    prefix = f".tmp.{os.path.basename(filepath)}."
+    fd, tmp_path = tempfile.mkstemp(prefix=prefix, dir=directory)
+    try:
+        with os.fdopen(fd, "w") as file:
+            file.write(content)
+            file.flush()
+            os.fsync(file.fileno())
+        os.replace(tmp_path, filepath)
+    finally:
+        try:
+            if os.path.exists(tmp_path):
+                os.unlink(tmp_path)
+        except Exception:
+            pass
+
+
+def atomic_write_json(filepath, data):
+    """Write JSON to a file atomically."""
+    content = json.dumps(data, indent=4) + "\n"
+    atomic_write_text(filepath, content)
+
+
+def atomic_copy_file(src, dest):
+    """Copy a file atomically to avoid partial reads."""
+    src = os.fspath(src)
+    dest = os.fspath(dest)
+    directory = os.path.dirname(dest)
+    os.makedirs(directory, exist_ok=True)
+    prefix = f".tmp.{os.path.basename(dest)}."
+    fd, tmp_path = tempfile.mkstemp(prefix=prefix, dir=directory)
+    os.close(fd)
+    try:
+        shutil.copy2(src, tmp_path)
+        os.replace(tmp_path, dest)
+    finally:
+        try:
+            if os.path.exists(tmp_path):
+                os.unlink(tmp_path)
+        except Exception:
+            pass
 
 
 def find_layout_files():
@@ -242,7 +293,7 @@ def get_current_layout_from_config():
         set_state_value("WAYBAR_LAYOUT_PATH", layout)
         set_state_value("WAYBAR_LAYOUT_NAME", layout_name)
 
-        shutil.copyfile(layout, CONFIG_JSONC)
+        atomic_copy_file(layout, CONFIG_JSONC)
         logger.debug(f"Created config.jsonc with first layout: {layout}")
         return layout
 
@@ -270,7 +321,7 @@ def get_current_layout_from_config():
         set_state_value("WAYBAR_LAYOUT_PATH", layout)
         set_state_value("WAYBAR_LAYOUT_NAME", layout_name)
 
-        shutil.copyfile(layout, CONFIG_JSONC)
+        atomic_copy_file(layout, CONFIG_JSONC)
         logger.debug(f"Updated config.jsonc with layout: {layout}")
 
     return layout
@@ -389,7 +440,7 @@ def set_layout(layout):
     set_state_value("WAYBAR_STYLE_PATH", style_path)
 
     style_filepath = os.path.join(str(xdg_config_home()), "waybar", "style.css")
-    shutil.copyfile(layout_path, CONFIG_JSONC)
+    atomic_copy_file(layout_path, CONFIG_JSONC)
     write_style_file(style_filepath, style_path)
     update_icon_size()
     update_border_radius()
@@ -546,8 +597,7 @@ def write_style_file(style_filepath, source_filepath):
     /* Theme configuration is generated through the `theme.css` file */
     @import "theme.css";
     """
-    with open(style_filepath, "w") as file:
-        file.write(style_css)
+    atomic_write_text(style_filepath, style_css)
     logger.debug(f"Successfully wrote style to '{style_filepath}'")
 
 
@@ -806,7 +856,7 @@ def layout_selector():
                 break
         else:
             style_path = resolve_style_path(selected_layout)
-        shutil.copyfile(selected_layout, CONFIG_JSONC)
+        atomic_copy_file(selected_layout, CONFIG_JSONC)
         set_state_value("WAYBAR_LAYOUT_PATH", selected_layout)
         set_state_value(
             "WAYBAR_LAYOUT_NAME",
@@ -871,7 +921,7 @@ def backup_layout(layout_name):
     backup_path = os.path.join(backup_dir, backup_filename)
 
     try:
-        shutil.copyfile(CONFIG_JSONC, backup_path)
+        atomic_copy_file(CONFIG_JSONC, backup_path)
         logger.debug(f"Created backup at {backup_path}")
         return str(backup_path)
     except Exception as e:
@@ -951,8 +1001,7 @@ def update_icon_size():
 
     includes_data.update(updated_entries)
 
-    with open(includes_file, "w") as file:
-        json.dump(includes_data, file, indent=4)
+    atomic_write_json(includes_file, includes_data)
     logger.debug(
         f"Successfully updated icon sizes and appended to '{includes_file}' with {len(updated_entries)} entries."
     )
@@ -986,8 +1035,7 @@ def update_global_css():
 }}
 """
 
-    with open(global_css_path, "w") as file:
-        file.write(global_css_content)
+    atomic_write_text(global_css_path, global_css_content)
     logger.debug(f"Successfully generated global CSS at '{global_css_path}'")
 
 
@@ -1154,7 +1202,7 @@ def update_border_radius():
                 logger.debug(
                     f"Found template at {template_path}, copying to {css_filepath}"
                 )
-                shutil.copyfile(template_path, css_filepath)
+                atomic_copy_file(template_path, css_filepath)
                 break
         else:
             logger.error("Template for border-radius.css not found in INCLUDES_DIRS")
@@ -1248,48 +1296,7 @@ def update_border_radius():
         logger.debug("Border radius unchanged; skipping write")
         return
 
-    with open(css_filepath, "w") as file:
-        file.write(updated_content)
-    logger.debug(f"Successfully updated border radius in {css_filepath}")
-
-    if not border_radius:
-        logger.debug("Trying to get border radius from hyprctl")
-        result = subprocess.run(
-            ["hyprctl", "getoption", "decoration:rounding", "-j"],
-            capture_output=True,
-            text=True,
-        )
-
-        if result.returncode == 0:
-            logger.debug(f"hyprctl command succeeded: {result.stdout}")
-            try:
-                data = json.loads(result.stdout)
-                border_radius = data.get("int", 3)
-                logger.debug(f"Parsed border radius from hyprctl: {border_radius}")
-            except (json.JSONDecodeError, ValueError) as e:
-                logger.error(f"Failed to parse JSON output: {e}")
-                border_radius = 3
-                logger.debug(f"Using fallback border radius: {border_radius}")
-        else:
-            logger.error(f"Failed to run hyprctl command: {result.stderr}")
-            border_radius = 2
-            logger.debug(f"Using second fallback border radius: {border_radius}")
-
-    if border_radius is None or int(border_radius) < 0:
-        border_radius = 2
-        logger.debug(f"Border radius is invalid, using default: {border_radius}")
-
-    logger.debug(f"Final border radius value: {border_radius}")
-
-    with open(css_filepath, "r") as file:
-        content = file.read()
-    logger.debug(f"Read {len(content)} bytes from {css_filepath}")
-
-    updated_content = re.sub(r"\d+pt", f"{border_radius}pt", content)
-    logger.debug("Applied border radius value to CSS content")
-
-    with open(css_filepath, "w") as file:
-        file.write(updated_content)
+    atomic_write_text(css_filepath, updated_content)
     logger.debug(f"Successfully updated border radius in {css_filepath}")
 
 
@@ -1323,8 +1330,7 @@ def generate_includes():
         position = "top"
     includes_data["position"] = position
 
-    with open(includes_file, "w") as file:
-        json.dump(includes_data, file, indent=4)
+    atomic_write_json(includes_file, includes_data)
     logger.debug(
         f"Successfully updated '{includes_file}' with {len(includes)} entries and position '{position}'."
     )
@@ -1332,7 +1338,7 @@ def generate_includes():
 
 def update_config(config_path):
     CONFIG_JSONC = os.path.join(str(xdg_config_home()), "waybar", "config.jsonc")
-    shutil.copyfile(config_path, CONFIG_JSONC)
+    atomic_copy_file(config_path, CONFIG_JSONC)
     logger.debug(f"Successfully copied config from '{config_path}' to '{CONFIG_JSONC}'")
 
 
@@ -1346,8 +1352,7 @@ def update_style(style_path):
     ensure_directory_exists(user_style_filepath)
 
     if not os.path.exists(user_style_filepath):
-        with open(user_style_filepath, "w") as file:
-            file.write("/* User custom styles */\n")
+        atomic_write_text(user_style_filepath, "/* User custom styles */\n")
         logger.debug(f"Created '{user_style_filepath}'")
 
     if not os.path.exists(theme_style_filepath):
@@ -1366,6 +1371,76 @@ def update_style(style_path):
         logger.error(f"Cannot reconcile style path: {style_path}")
         sys.exit(1)
     write_style_file(style_filepath, style_path)
+
+
+WATCHED_SUFFIXES = {".css", ".json", ".jsonc"}
+
+
+def _is_relevant_waybar_path(path):
+    name = path.name
+    if not name:
+        return False
+    if name.startswith("."):
+        return False
+    if name.endswith("~") or name.endswith(".swp"):
+        return False
+    return path.suffix.lower() in WATCHED_SUFFIXES
+
+
+def filter_waybar_events(events):
+    filtered = []
+    for event in events:
+        try:
+            path = Path(event)
+        except Exception:
+            continue
+        if _is_relevant_waybar_path(path):
+            filtered.append(str(path))
+    return filtered
+
+
+def poll_waybar_events(directories, last_mtimes):
+    events = []
+    for directory in directories:
+        if not directory.exists():
+            continue
+        try:
+            entries = list(directory.iterdir())
+        except FileNotFoundError:
+            continue
+        for path in entries:
+            if not path.is_file():
+                continue
+            if not _is_relevant_waybar_path(path):
+                continue
+            key = str(path)
+            try:
+                mtime = path.stat().st_mtime
+            except FileNotFoundError:
+                continue
+            prev = last_mtimes.get(key)
+            if prev is None:
+                last_mtimes[key] = mtime
+                continue
+            if mtime != prev:
+                last_mtimes[key] = mtime
+                events.append(str(path))
+    for key in list(last_mtimes.keys()):
+        if not Path(key).exists():
+            last_mtimes.pop(key, None)
+    return events
+
+
+def get_watch_interval_seconds():
+    raw_interval = os.getenv("WAYBAR_WATCH_INTERVAL", "").strip()
+    if raw_interval:
+        try:
+            interval = float(raw_interval)
+            if interval > 0:
+                return interval
+        except ValueError:
+            logger.warning(f"Invalid WAYBAR_WATCH_INTERVAL='{raw_interval}', using default")
+    return 0.2
 
 
 def smart_reload_waybar(changed_files):
@@ -1403,19 +1478,27 @@ def watch_waybar():
     waybar_dir = Path(xdg_config_home()) / "waybar"
     includes_dir = waybar_dir / "includes"
     theme_update_lock = Path(xdg_runtime_dir()) / "theme-update.lock"
+    watch_dirs = [waybar_dir, includes_dir]
 
     watcher = InotifyWatcher()
-    mask = (
-        InotifyWatcher.IN_MODIFY
-        | InotifyWatcher.IN_CLOSE_WRITE
-        | InotifyWatcher.IN_MOVED_TO
-    )
-    watcher.add_watch(str(waybar_dir), mask)
-    watcher.add_watch(str(includes_dir), mask)
-    logger.debug("Using inotify for file watching")
+    use_polling = watcher.fd is None
+    if use_polling:
+        logger.warning("inotify unavailable, using polling for Waybar config reloads")
+    else:
+        mask = (
+            InotifyWatcher.IN_CLOSE_WRITE
+            | InotifyWatcher.IN_MOVED_TO
+            | InotifyWatcher.IN_CREATE
+            | InotifyWatcher.IN_ATTRIB
+        )
+        watcher.add_watch(str(waybar_dir), mask)
+        watcher.add_watch(str(includes_dir), mask)
+        logger.debug("Using inotify for file watching")
 
     # Batch events that occur during theme updates
     pending_events = []
+    poll_state = {}
+    watch_interval = get_watch_interval_seconds()
     theme_update_in_progress = False
 
     hidden_state_file = Path(xdg_runtime_dir()) / "waybar-hidden"
@@ -1424,7 +1507,6 @@ def watch_waybar():
         if not is_waybar_running_for_current_user() and not hidden_state_file.exists():
             start_waybar()
 
-        events = watcher.read_events(timeout=0.2)
         lock_exists = theme_update_lock.exists()
 
         # Detect start of theme update
@@ -1433,23 +1515,31 @@ def watch_waybar():
             theme_update_in_progress = True
             pending_events = []
 
-        # Collect events during theme update
+        if use_polling:
+            events = poll_waybar_events(watch_dirs, poll_state)
+            time.sleep(watch_interval)
+        else:
+            events = watcher.read_events(timeout=watch_interval)
+
+        events = filter_waybar_events(events)
         if events:
-            if theme_update_in_progress:
-                pending_events.extend(events)
-            else:
-                # No theme update in progress, process immediately
-                smart_reload_waybar(events)
+            pending_events.extend(events)
 
         # Detect end of theme update
+        lock_exists = theme_update_lock.exists()
         if not lock_exists and theme_update_in_progress:
             theme_update_in_progress = False
-            if pending_events:
-                # Deduplicate and process all events from the theme update
-                unique_events = list(set(pending_events))
-                logger.debug(f"Theme update complete, processing {len(unique_events)} unique file changes")
-                smart_reload_waybar(unique_events)
-                pending_events = []
+
+        if theme_update_in_progress:
+            continue
+
+        if pending_events and not events:
+            unique_events = list(dict.fromkeys(pending_events))
+            logger.debug(
+                f"Processing {len(unique_events)} file changes after idle tick"
+            )
+            smart_reload_waybar(unique_events)
+            pending_events = []
 
 
 def get_waybar_pid():
@@ -1496,7 +1586,7 @@ def start_waybar():
         # Let waybar auto-reap module execs to avoid zombie accumulation.
         signal.signal(signal.SIGCHLD, signal.SIG_IGN)
         proc = subprocess.Popen(
-            ["/usr/bin/waybar"],
+            [WAYBAR_BIN],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             start_new_session=True,
@@ -1638,7 +1728,7 @@ def main():
                 if not CONFIG_JSONC.exists():
                     logger.debug("Config file missing, creating from layout path")
                     CONFIG_JSONC.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copyfile(layout_path, CONFIG_JSONC)
+                    atomic_copy_file(layout_path, CONFIG_JSONC)
                     logger.debug("Created config.jsonc from state file layout")
                 else:
                     config_hash = get_file_hash(CONFIG_JSONC)
@@ -1652,7 +1742,7 @@ def main():
                         backup_layout(layout_name)
 
                     try:
-                        shutil.copyfile(layout_path, CONFIG_JSONC)
+                        atomic_copy_file(layout_path, CONFIG_JSONC)
                         logger.debug("Updated config.jsonc with layout from state file")
                     except Exception as e:
                         logger.error(f"Failed to update config.jsonc: {e}")
@@ -1681,7 +1771,7 @@ def main():
                             if config_hash != layout_hash:
                                 backup_layout(layout_name)
 
-                        shutil.copyfile(found_layout, CONFIG_JSONC)
+                        atomic_copy_file(found_layout, CONFIG_JSONC)
                         logger.debug("Updated config.jsonc with layout by name")
                     else:
                         logger.error(f"Could not find layout by name: {layout_name}")
@@ -1695,7 +1785,7 @@ def main():
                             set_state_value("WAYBAR_LAYOUT_PATH", first_layout)
                             set_state_value("WAYBAR_LAYOUT_NAME", first_layout_name)
                             CONFIG_JSONC.parent.mkdir(parents=True, exist_ok=True)
-                            shutil.copyfile(first_layout, CONFIG_JSONC)
+                            atomic_copy_file(first_layout, CONFIG_JSONC)
                             logger.debug(f"Used first available layout: {first_layout}")
             else:
                 # No layout path in state file or layout path is empty
@@ -1705,7 +1795,7 @@ def main():
                 current_layout = get_current_layout_from_config()
                 if current_layout:
                     CONFIG_JSONC.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copyfile(current_layout, CONFIG_JSONC)
+                    atomic_copy_file(current_layout, CONFIG_JSONC)
                     logger.debug(
                         f"Created config.jsonc from determined layout: {current_layout}"
                     )
