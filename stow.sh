@@ -37,12 +37,6 @@ for pkg in "${packages[@]}"; do
   packages_no_tmux+=("$pkg")
 done
 
-stow_backup_root="${STOW_BACKUP_ROOT:-}"
-if [[ -z "$stow_backup_root" ]]; then
-  stow_backup_root="$HOME/.local/state/dotfiles-stow-backup"
-fi
-stow_backup_dir=""
-
 link_points_to_expected() {
   local target="$1"
   local expected="$2"
@@ -53,26 +47,6 @@ link_points_to_expected() {
   resolved_expected="$(readlink -f "$expected" 2>/dev/null || true)"
 
   [[ -n "$resolved_target" ]] && [[ -n "$resolved_expected" ]] && [[ "$resolved_target" == "$resolved_expected" ]]
-}
-
-ensure_backup_dir() {
-  if [[ -z "$stow_backup_dir" ]]; then
-    stow_backup_dir="$stow_backup_root/$(date +%Y%m%d-%H%M%S)"
-    mkdir -p "$stow_backup_dir"
-    echo "Backing up conflicting paths to $stow_backup_dir"
-  fi
-}
-
-backup_target_path() {
-  local target="$1"
-  local rel="$2"
-  local dest=""
-
-  ensure_backup_dir
-
-  dest="$stow_backup_dir/$rel"
-  mkdir -p "$(dirname "$dest")"
-  mv "$target" "$dest"
 }
 
 override_stow_targets() {
@@ -93,7 +67,7 @@ override_stow_targets() {
     fi
 
     if [[ -e "$target" || -L "$target" ]]; then
-      backup_target_path "$target" "$rel"
+      rm -rf -- "$target"
     fi
   done < <(find "$pkg_dir" -mindepth 1 \( -type f -o -type l \) -print0)
 }
