@@ -37,19 +37,7 @@ for pkg in "${packages[@]}"; do
   packages_no_tmux+=("$pkg")
 done
 
-link_points_to_expected() {
-  local target="$1"
-  local expected="$2"
-  local resolved_target=""
-  local resolved_expected=""
-
-  resolved_target="$(readlink -f "$target" 2>/dev/null || true)"
-  resolved_expected="$(readlink -f "$expected" 2>/dev/null || true)"
-
-  [[ -n "$resolved_target" ]] && [[ -n "$resolved_expected" ]] && [[ "$resolved_target" == "$resolved_expected" ]]
-}
-
-override_stow_targets() {
+purge_package_targets() {
   local pkg="$1"
   local pkg_dir="$dotfiles_dir/$pkg"
   local removed=0
@@ -58,32 +46,46 @@ override_stow_targets() {
   [[ -d "$pkg_dir" ]] || return 0
 
   if [[ "$verbose" -ne 0 ]]; then
-    echo "Scanning ${pkg} for conflicts..."
+    echo "Purging targets for ${pkg}..."
   fi
 
-  local path=""
-  local rel=""
-  local target=""
-  while IFS= read -r -d '' path; do
-    rel="${path#"$pkg_dir"/}"
-    target="$HOME/$rel"
+  purge_children() {
+    local rel_root="$1"
+    local pkg_root="$pkg_dir/$rel_root"
+    local target_root="$HOME/$rel_root"
+    local path=""
+    local rel=""
+    local target=""
 
-    if [[ -L "$target" ]] && link_points_to_expected "$target" "$path"; then
-      continue
-    fi
+    [[ -d "$pkg_root" ]] || return 0
 
-    if [[ -e "$target" || -L "$target" ]]; then
-      if [[ "$verbose" -ne 0 ]]; then
-        if [[ -d "$target" && ! -L "$target" ]]; then
-          echo "Removing dir: $target"
-        else
-          echo "Removing: $target"
+    while IFS= read -r -d '' path; do
+      rel="${path#"$pkg_root"/}"
+      target="$target_root/$rel"
+
+      if [[ -e "$target" || -L "$target" ]]; then
+        if [[ "$verbose" -ne 0 ]]; then
+          if [[ -d "$target" && ! -L "$target" ]]; then
+            echo "Removing dir: $target"
+          else
+            echo "Removing: $target"
+          fi
         fi
+        rm -rf -- "$target"
+        removed=$((removed + 1))
       fi
-      rm -rf -- "$target"
-      removed=$((removed + 1))
-    fi
-  done < <(find "$pkg_dir" -mindepth 1 \( -type f -o -type l \) -print0)
+    done < <(find "$pkg_root" -mindepth 1 -maxdepth 1 -print0)
+  }
+
+  purge_children ".config"
+  purge_children ".local/bin"
+  purge_children ".local/lib"
+  purge_children ".local/libexec"
+  purge_children ".local/share"
+  purge_children ".local/state"
+  purge_children ".cache"
+  purge_children ".icons"
+  purge_children ".themes"
 
   if [[ "$verbose" -ne 0 ]]; then
     echo "Removed ${removed} paths for ${pkg}."
@@ -91,7 +93,7 @@ override_stow_targets() {
 }
 
 for pkg in "${packages[@]}"; do
-  override_stow_targets "$pkg"
+  purge_package_targets "$pkg"
 done
 
 stow --restow --dir="$dotfiles_dir" --target="$HOME" "${packages_no_tmux[@]}"
