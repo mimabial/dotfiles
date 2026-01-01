@@ -52,8 +52,14 @@ link_points_to_expected() {
 override_stow_targets() {
   local pkg="$1"
   local pkg_dir="$dotfiles_dir/$pkg"
+  local removed=0
+  local verbose="${STOW_VERBOSE:-1}"
 
   [[ -d "$pkg_dir" ]] || return 0
+
+  if [[ "$verbose" -ne 0 ]]; then
+    echo "Scanning ${pkg} for conflicts..."
+  fi
 
   local path=""
   local rel=""
@@ -67,9 +73,21 @@ override_stow_targets() {
     fi
 
     if [[ -e "$target" || -L "$target" ]]; then
+      if [[ "$verbose" -ne 0 ]]; then
+        if [[ -d "$target" && ! -L "$target" ]]; then
+          echo "Removing dir: $target"
+        else
+          echo "Removing: $target"
+        fi
+      fi
       rm -rf -- "$target"
+      removed=$((removed + 1))
     fi
   done < <(find "$pkg_dir" -mindepth 1 \( -type f -o -type l \) -print0)
+
+  if [[ "$verbose" -ne 0 ]]; then
+    echo "Removed ${removed} paths for ${pkg}."
+  fi
 }
 
 for pkg in "${packages[@]}"; do
