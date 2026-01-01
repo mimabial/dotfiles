@@ -110,7 +110,12 @@ fi
 
 # Create theme update lock to prevent waybar from reacting to intermediate changes
 if [[ "${CACHE_ONLY}" -ne 1 ]]; then
-  touch "${THEME_UPDATE_LOCK}"
+  lock_tmp="${THEME_UPDATE_LOCK}.tmp.$$"
+  {
+    printf 'pid=%s\n' "$$"
+    printf 'started=%s\n' "$(date +%s)"
+    printf 'cmd=%s\n' "${BASH_SOURCE[0]##*/}"
+  } >"${lock_tmp}" && mv -f "${lock_tmp}" "${THEME_UPDATE_LOCK}"
 fi
 
 # Pre-cache info (set later, executed in cleanup after lock release)
@@ -488,9 +493,8 @@ if [[ "${HYPR_WAL_CACHE_ENABLE}" -eq 1 ]]; then
 
   allow_fast_path=0
   if [[ "${FORCE_COLOR_REGEN:-0}" -ne 1 ]]; then
-    if [[ "${enableWallDcol}" -eq 0 ]]; then
-      [[ "${prev_colormode}" =~ ^[0-9]+$ ]] && [[ "${prev_colormode}" -eq 0 ]] && allow_fast_path=1
-    else
+    # Only fast-path in wallpaper modes; theme mode still needs .theme reapply.
+    if [[ "${enableWallDcol}" -ne 0 ]]; then
       [[ "${prev_colormode}" =~ ^[0-9]+$ ]] && [[ "${prev_colormode}" -ne 0 ]] && allow_fast_path=1
     fi
   fi

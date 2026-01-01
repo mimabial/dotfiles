@@ -40,6 +40,7 @@ options:
 flags:
     -b, --backend <backend>   Set wallpaper backend to use (swww, hyprpaper, etc.)
     -G, --global              Set wallpaper as global
+        --clean-thumbs        Remove cached thumbs with no matching wallpapers
 
 
 notes: 
@@ -157,7 +158,7 @@ Wall_Hashmap_Cached() {
       [[ -n "${path}" ]] || continue
       cache_hash["${path}"]="${hash}"
       cache_meta["${path}"]="${mtime}"$'\t'"${size}"
-    done < "${cache_file}"
+    done <"${cache_file}"
   fi
 
   local regex_ext=""
@@ -173,7 +174,7 @@ Wall_Hashmap_Cached() {
   [[ -z "${regex_ext}" ]] && regex_ext="gif|jpg|jpeg|png"
 
   local tmp_cache="${cache_file}.tmp"
-  : > "${tmp_cache}"
+  : >"${tmp_cache}"
 
   local wall_file wall_meta wall_hash
   while IFS= read -r -d '' wall_file; do
@@ -185,7 +186,7 @@ Wall_Hashmap_Cached() {
     fi
     wallHash+=("${wall_hash}")
     wallList+=("${wall_file}")
-    printf '%s\t%s\t%s\n' "${wall_hash}" "${wall_meta}" "${wall_file}" >> "${tmp_cache}"
+    printf '%s\t%s\t%s\n' "${wall_hash}" "${wall_meta}" "${wall_file}" >>"${tmp_cache}"
   done < <(
     find -H "${wall_sources[@]}" -type f -regextype posix-extended \
       -iregex ".*\\.(${regex_ext})$" ! -path "*/logo/*" -print0 2>/dev/null | sort -z
@@ -196,11 +197,11 @@ Wall_Hashmap_Cached() {
     get_hashmap "${wall_sources[@]}"
     if [[ ${#wallList[@]} -gt 0 ]]; then
       tmp_cache="${cache_file}.tmp"
-      : > "${tmp_cache}"
+      : >"${tmp_cache}"
       local i
       for i in "${!wallList[@]}"; do
         wall_meta="$(stat -c '%Y\t%s' -- "${wallList[i]}" 2>/dev/null)" || continue
-        printf '%s\t%s\t%s\n' "${wallHash[i]}" "${wall_meta}" "${wallList[i]}" >> "${tmp_cache}"
+        printf '%s\t%s\t%s\n' "${wallHash[i]}" "${wall_meta}" "${wallList[i]}" >>"${tmp_cache}"
       done
       mv -f "${tmp_cache}" "${cache_file}"
     fi
@@ -210,8 +211,140 @@ Wall_Hashmap_Cached() {
   mv -f "${tmp_cache}" "${cache_file}"
 }
 
+Wall_Ensure_Thumbs() {
+  local ext="${1}"
+  [[ -z "${ext}" ]] && ext="sqre"
+  local -a missing_walls=()
+  local thumb hash i
+  local sync_limit="${WALLPAPER_THUMBS_SYNC_LIMIT:-3}"
+  local sync_mode="${WALLPAPER_THUMBS_SYNC:-}"
+  local run_async=1
+
+  [[ "${sync_limit}" =~ ^[0-9]+$ ]] || sync_limit=3
+  case "${sync_mode,,}" in
+    1 | true | yes | on) run_async=0 ;;
+    0 | false | no | off | "") run_async=1 ;;
+  esac
+
+  for i in "${!wallList[@]}"; do
+    hash="${wallHash[i]}"
+    [[ -n "${hash}" ]] || continue
+    thumb="${thmbDir}/${hash}.${ext}"
+    [[ -e "${thumb}" ]] || missing_walls+=("${wallList[i]}")
+  done
+
+  if ((${#missing_walls[@]} > 0)); then
+    if [[ "${run_async}" -eq 0 ]] && [[ "${sync_limit}" -eq 0 ]]; then
+      run_async=1
+    fi
+    if [[ "${run_async}" -eq 0 ]] && [[ "${sync_limit}" -gt 0 ]] && ((${#missing_walls[@]} > sync_limit)); then
+      run_async=1
+    fi
+    local -a cache_args=()
+    for wall in "${missing_walls[@]}"; do
+      cache_args+=(-w "${wall}")
+    done
+    if [[ "${run_async}" -eq 1 ]]; then
+      "${LIB_DIR}/hypr/wallpaper/swwwallcache.sh" "${cache_args[@]}" &>/dev/null &
+    else
+      "${LIB_DIR}/hypr/wallpaper/swwwallcache.sh" "${cache_args[@]}" &>/dev/null
+    fi
+  fi
+}
+
+Wall_Precache_Thumbs() {
+  local lib_dir="${LIB_DIR}"
+  local cache_script=""
+  local theme_name="${HYPR_THEME}"
+
+  [[ "${set_as_global}" == "true" ]] || return 0
+  case "${wallpaper_setter_flag}" in
+    "" | g | o | link) return 0 ;;
+  esac
+  [[ -z "${theme_name}" ]] && return 0
+
+  [[ -z "${lib_dir}" ]] && lib_dir="${HOME}/.local/lib"
+  cache_script="${lib_dir}/hypr/wallpaper/swwwallcache.sh"
+  [[ -x "${cache_script}" ]] || return 0
+
+  "${cache_script}" -t "${theme_name}" &>/dev/null &
+}
+
+Wall_Clean_Thumbs() {
+  local thumb_dir="${thmbDir}"
+  local cache_home="${HYPR_CACHE_HOME}"
+  local config_home="${HYPR_CONFIG_HOME}"
+  local runtime_dir="${XDG_RUNTIME_DIR}"
+  local themes_root=""
+  local lock_file=""
+  local removed=0
+  local file base hash
+  local -a wall_sources=()
+  local -A valid_hashes=()
+
+  [[ -z "${runtime_dir}" ]] && runtime_dir="/run/user/$(id -u)"
+  lock_file="${runtime_dir}/wallpaper-cache.lock"
+
+  [[ -z "${cache_home}" ]] && cache_home="${XDG_CACHE_HOME:-$HOME/.cache}/hypr"
+  [[ -z "${thumb_dir}" ]] && thumb_dir="${cache_home}/wallpaper/thumbs"
+  [[ -d "${thumb_dir}" ]] || return 0
+
+  [[ -z "${config_home}" ]] && config_home="${XDG_CONFIG_HOME:-$HOME/.config}/hypr"
+  themes_root="${config_home}/themes"
+  if [[ -d "${themes_root}" ]]; then
+    wall_sources+=("${themes_root}")
+  fi
+  if [[ ${#WALLPAPER_CUSTOM_PATHS[@]} -gt 0 ]]; then
+    local src
+    for src in "${WALLPAPER_CUSTOM_PATHS[@]}"; do
+      [[ -e "${src}" ]] || continue
+      wall_sources+=("${src}")
+    done
+  fi
+  [[ ${#wall_sources[@]} -gt 0 ]] || return 0
+
+  exec 204>"${lock_file}"
+  if ! flock -n 204; then
+    flock 204
+  fi
+
+  if ! get_hashmap "${wall_sources[@]}" --no-notify --skipstrays; then
+    flock -u 204 2>/dev/null
+    exec 204>&-
+    return 0
+  fi
+
+  for hash in "${wallHash[@]}"; do
+    [[ -n "${hash}" ]] || continue
+    valid_hashes["${hash}"]=1
+  done
+
+  while IFS= read -r -d '' file; do
+    base="$(basename "${file}")"
+    if [[ "${base}" =~ ^\.?([0-9a-fA-F]+)\.(thmb|sqre|blur|quad)(\.png)?$ ]]; then
+      hash="${BASH_REMATCH[1]}"
+      if [[ -z "${valid_hashes["${hash}"]}" ]]; then
+        rm -f -- "${file}"
+        removed=$((removed + 1))
+      fi
+    fi
+  done < <(find -H "${thumb_dir}" -maxdepth 1 -type f -print0 2>/dev/null)
+
+  flock -u 204 2>/dev/null
+  exec 204>&-
+
+  if [[ "${removed}" -gt 0 ]]; then
+    print_log -sec "wallpaper" -stat "clean" "Removed ${removed} stale thumbs"
+  fi
+}
+
 # * Method to list wallpapers from hashmaps into json
 Wall_Json() {
+  local ensure_thumbs=0
+  if [[ "${1}" == "--ensure-thumbs" ]]; then
+    ensure_thumbs=1
+    shift
+  fi
   setIndex=0
   [ ! -d "${HYPR_THEME_DIR}" ] && echo "ERROR: \"${HYPR_THEME_DIR}\" does not exist" && exit 0
   if [ -d "${HYPR_THEME_DIR}/wallpapers" ]; then
@@ -222,6 +355,9 @@ Wall_Json() {
   wallPathArray+=("${WALLPAPER_CUSTOM_PATHS[@]}")
 
   Wall_Hashmap_Cached "${wallPathArray[@]}" # get the hashmap provides wallList and wallHash
+  if [[ "${ensure_thumbs}" -eq 1 ]]; then
+    Wall_Ensure_Thumbs "sqre"
+  fi
 
   # Prepare data for jq
   wallListJson=$(printf '%s\n' "${wallList[@]}" | jq -R . | jq -s .)
@@ -293,7 +429,7 @@ Wall_Select() {
   #// launch rofi menu
   local entry wall_json_file selected_row current_hash
   wall_json_file="$(mktemp)"
-  Wall_Json > "${wall_json_file}"
+  Wall_Json --ensure-thumbs >"${wall_json_file}"
 
   selected_row=""
   if [[ -e "${wallSet}" ]]; then
@@ -350,7 +486,8 @@ main() {
     && [ "$wallpaper_setter_flag" != "o" ] \
     && [ "$wallpaper_setter_flag" != "g" ] \
     && [ "$wallpaper_setter_flag" != "select" ] \
-    && [ "$wallpaper_setter_flag" != "start" ]; then
+    && [ "$wallpaper_setter_flag" != "start" ] \
+    && [ "$wallpaper_setter_flag" != "clean" ]; then
     print_log -sec "wallpaper" -err "No backend specified"
     print_log -sec "wallpaper" " Please specify a backend, try '--backend swww'"
     print_log -sec "wallpaper" " See available commands: '--help | -h'"
@@ -429,6 +566,10 @@ main() {
           cp -f "${wallSet}" "${wallpaper_output}"
         fi
         ;;
+      clean)
+        Wall_Clean_Thumbs
+        exit 0
+        ;;
       select)
         Wall_Select
         get_hashmap "${selected_wallpaper_path}"
@@ -466,6 +607,8 @@ main() {
       notify-send -a "Wallpaper" "Wallpaper not found"
     fi
   fi
+
+  Wall_Precache_Thumbs
 }
 
 #// evaluate options
@@ -476,7 +619,7 @@ if [ -z "${*}" ]; then
 fi
 
 # Define long options
-LONGOPTS="link,global,select,json,next,previous,random,set:,start,backend:,get,output:,help,filetypes:"
+LONGOPTS="link,global,select,json,clean-thumbs,next,previous,random,set:,start,backend:,get,output:,help,filetypes:"
 
 # Parse options
 if ! PARSED=$(getopt --options GSjnprb:s:t:go:h --longoptions "$LONGOPTS" --name "$0" -- "$@"); then
@@ -496,6 +639,10 @@ while true; do
       set_as_global=true
       shift
       ;;
+    --clean-thumbs)
+      wallpaper_setter_flag=clean
+      shift
+      ;;
     --link)
       wallpaper_setter_flag="link"
       shift
@@ -505,7 +652,6 @@ while true; do
       exit 0
       ;;
     -S | --select)
-      "${LIB_DIR}/hypr/wallpaper/swwwallcache.sh" w &>/dev/null &
       wallpaper_setter_flag=select
       shift
       ;;

@@ -19,8 +19,10 @@
 ## https://github.com/swaywm/sway/blob/master/contrib/grimshot
 
 # Check whether another instance is running
-
-grimblastInstanceCheck="${XDG_RUNTIME_DIR:-$XDG_CACHE_DIR:-$HOME/.cache}/grimblast.lock"
+cache_home="${XDG_CACHE_HOME:-$HOME/.cache}"
+runtime_dir="${XDG_RUNTIME_DIR:-$cache_home}"
+mkdir -p "${runtime_dir}"
+grimblastInstanceCheck="${runtime_dir}/grimblast.lock"
 if [ -e "$grimblastInstanceCheck" ]; then
   exit 2
 else

@@ -413,6 +413,30 @@ theme_notify_finish() {
   fi
 }
 
+theme_thumbs_precache() {
+  local -a cache_args=()
+  local wall
+  local lib_dir="${LIB_DIR}"
+  local cache_script=""
+
+  if [[ ${#thmWall[@]} -eq 0 ]]; then
+    get_themes
+  fi
+
+  for wall in "${thmWall[@]}"; do
+    [[ -n "${wall}" ]] || continue
+    [[ -r "${wall}" ]] || continue
+    cache_args+=(-w "${wall}")
+  done
+
+  [[ -z "${lib_dir}" ]] && lib_dir="${HOME}/.local/lib"
+  cache_script="${lib_dir}/hypr/wallpaper/swwwallcache.sh"
+  [[ -x "${cache_script}" ]] || return 0
+  [[ ${#cache_args[@]} -eq 0 ]] && return 0
+
+  "${cache_script}" "${cache_args[@]}" &>/dev/null &
+}
+
 #// evaluate options
 quiet=false
 while getopts "qnps:" option; do
@@ -468,6 +492,8 @@ if [[ -r "${HYPRLAND_CONFIG}" ]]; then
   load_hypr_variables "${HYPR_THEME_DIR}/hypr.theme"
   theme_gtk_theme="${__GTK_THEME:-}"
   theme_icon_theme="${__ICON_THEME:-}"
+  theme_cursor_theme="${__CURSOR_THEME:-}"
+  theme_cursor_size="${__CURSOR_SIZE:-}"
 
   #? Load User's hyprland overrides
   load_hypr_variables "${XDG_STATE_HOME:-$HOME/.local/state}/hypr/hyprland.conf"
@@ -475,6 +501,8 @@ if [[ -r "${HYPRLAND_CONFIG}" ]]; then
   # Keep theme-provided GTK/Icon theme if set (prevents config.toml defaults overriding theme packs)
   [[ -n "${theme_gtk_theme}" ]] && GTK_THEME="${theme_gtk_theme}"
   [[ -n "${theme_icon_theme}" ]] && ICON_THEME="${theme_icon_theme}"
+  [[ -n "${theme_cursor_theme}" ]] && CURSOR_THEME="${theme_cursor_theme}"
+  [[ -n "${theme_cursor_size}" ]] && CURSOR_SIZE="${theme_cursor_size}"
 
 fi
 
@@ -678,3 +706,5 @@ fi
 if [[ -x "${scrDir}/util/nvim-theme-sync.sh" ]]; then
   "${scrDir}/util/nvim-theme-sync.sh" >/dev/null 2>&1 || true
 fi
+
+theme_thumbs_precache

@@ -1,5 +1,7 @@
 $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
 
+$CURSOR_THEME = Capitaine-Cursors
+$CURSOR_SIZE=24
 $GTK_THEME = One-Dark
 $ICON_THEME = One-Dark
 $COLOR_SCHEME = prefer-dark

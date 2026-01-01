@@ -1443,6 +1443,113 @@ def get_watch_interval_seconds():
     return 0.2
 
 
+def get_theme_lock_ttl_seconds():
+    raw_ttl = os.getenv("WAYBAR_THEME_LOCK_TTL", "").strip()
+    if raw_ttl:
+        try:
+            ttl = float(raw_ttl)
+            if ttl > 0:
+                return ttl
+            return 0
+        except ValueError:
+            logger.warning(f"Invalid WAYBAR_THEME_LOCK_TTL='{raw_ttl}', using default")
+    return 120.0
+
+
+def get_pid_cmdline(pid):
+    try:
+        with open(f"/proc/{pid}/cmdline", "rb") as file:
+            raw = file.read()
+        if not raw:
+            return ""
+        return raw.replace(b"\x00", b" ").decode("utf-8", errors="ignore").strip()
+    except FileNotFoundError:
+        return ""
+    except Exception as exc:
+        logger.debug(f"Failed to read cmdline for PID {pid}: {exc}")
+        return ""
+
+
+def read_theme_lock_meta(lock_path):
+    pid = None
+    cmd = None
+    try:
+        with open(lock_path, "r") as file:
+            for line in file:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                key = key.strip()
+                value = value.strip()
+                if key == "pid":
+                    try:
+                        pid = int(value)
+                    except ValueError:
+                        logger.warning(f"Invalid pid in theme-update.lock: {value}")
+                elif key == "cmd":
+                    cmd = value
+    except FileNotFoundError:
+        return None, None
+    except Exception as exc:
+        logger.debug(f"Failed to read theme-update.lock metadata: {exc}")
+        return None, None
+    return pid, cmd
+
+
+def pid_is_active(pid, cmd_hint):
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+
+    if cmd_hint:
+        cmdline = get_pid_cmdline(pid)
+        if cmdline and cmd_hint not in cmdline:
+            logger.warning(
+                f"Theme update lock PID {pid} does not match '{cmd_hint}'; clearing lock"
+            )
+            return False
+    return True
+
+
+def theme_update_lock_active(lock_path, ttl_seconds):
+    if not lock_path.exists():
+        return False
+
+    pid, cmd_hint = read_theme_lock_meta(lock_path)
+    if pid:
+        cmd_hint = cmd_hint or "color.set.sh"
+        if pid_is_active(pid, cmd_hint):
+            return True
+        try:
+            lock_path.unlink()
+        except Exception as exc:
+            logger.error(f"Failed to remove stale theme-update.lock: {exc}")
+        return False
+
+    if ttl_seconds <= 0:
+        return True
+    try:
+        age = time.time() - lock_path.stat().st_mtime
+    except FileNotFoundError:
+        return False
+    if age <= ttl_seconds:
+        return True
+    logger.warning(
+        f"Theme update lock stale ({age:.1f}s > {ttl_seconds:.1f}s); removing"
+    )
+    try:
+        lock_path.unlink()
+    except Exception as exc:
+        logger.error(f"Failed to remove stale theme-update.lock: {exc}")
+    return False
+
+
 def smart_reload_waybar(changed_files):
     """Reload waybar based on what changed."""
     # Only restart Waybar when its structure changes.
@@ -1499,6 +1606,7 @@ def watch_waybar():
     pending_events = []
     poll_state = {}
     watch_interval = get_watch_interval_seconds()
+    theme_lock_ttl = get_theme_lock_ttl_seconds()
     theme_update_in_progress = False
 
     hidden_state_file = Path(xdg_runtime_dir()) / "waybar-hidden"
@@ -1507,7 +1615,7 @@ def watch_waybar():
         if not is_waybar_running_for_current_user() and not hidden_state_file.exists():
             start_waybar()
 
-        lock_exists = theme_update_lock.exists()
+        lock_exists = theme_update_lock_active(theme_update_lock, theme_lock_ttl)
 
         # Detect start of theme update
         if lock_exists and not theme_update_in_progress:
@@ -1526,7 +1634,7 @@ def watch_waybar():
             pending_events.extend(events)
 
         # Detect end of theme update
-        lock_exists = theme_update_lock.exists()
+        lock_exists = theme_update_lock_active(theme_update_lock, theme_lock_ttl)
         if not lock_exists and theme_update_in_progress:
             theme_update_in_progress = False
 

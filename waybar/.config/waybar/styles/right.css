@@ -22,7 +22,7 @@
 }
 
 window#waybar {
-  background: alpha(@bg, 0.8);
+  background: alpha(@bg, 0.5);
   border-left: 1px solid alpha(@bg, 0.1);
   border-radius: 0px;
 }
@@ -134,7 +134,7 @@ menu label {
   padding: 4px 0px;
   color: @fg_selected;
   background: alpha(@workspace_active_bg, 0.5);
-  border: 1px solid @workspace_active_br;
+  border: 1.5px solid @workspace_active_br;
   margin: 2px 0px;
 }
 
@@ -440,7 +440,7 @@ menu label {
 #screen,
 #notification {
   margin: 2px 2px 4px 2px;
-  border: 1px solid alpha(@border_alt, 0.3);
+  border: 1px solid alpha(@border, 0.3);
   background-color: alpha(@bg_alt, 0.1);
 }
 

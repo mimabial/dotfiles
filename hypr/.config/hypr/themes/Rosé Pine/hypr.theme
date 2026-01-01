@@ -1,5 +1,7 @@
 $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
 
+$CURSOR_THEME = Capitaine-Cursors-White
+$CURSOR_SIZE=24
 $GTK_THEME = Rose-Pine
 $ICON_THEME = Tela-circle-pink
 $COLOR_SCHEME = prefer-dark

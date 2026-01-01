@@ -483,12 +483,6 @@ state_set() {
   local target_file="${3:-staterc}"
   local state_file
 
-  # Validate input
-  if [[ -z "${var_name}" ]]; then
-    print_log -sec "state" -err "state_set" "variable name required"
-    return 1
-  fi
-
   # Determine target file
   case "${target_file}" in
     staterc) state_file="${STATE_RC}" ;;
@@ -513,28 +507,68 @@ state_set() {
   # Ensure directory exists
   mkdir -p "$(dirname "${state_file}")"
 
+  # Lock state updates to avoid concurrent writers clobbering each other.
+  local lock_dir="${XDG_RUNTIME_DIR:-/tmp}/hypr"
+  local lock_file="${lock_dir}/state-${target_file}.lock"
+  local lock_timeout="${STATE_LOCK_TIMEOUT:-5}"
+  local lock_fd
+
+  mkdir -p "${lock_dir}"
+  if ! exec {lock_fd}>"${lock_file}"; then
+    print_log -sec "state" -err "state_set" "failed to open lock ${lock_file}"
+    return 1
+  fi
+  if ! flock -w "${lock_timeout}" "${lock_fd}"; then
+    print_log -sec "state" -warn "state_set" "lock busy (${lock_file})"
+    exec {lock_fd}>&-
+    return 1
+  fi
+
   # Special case for mode file (single value, no key)
   if [[ "${target_file}" == "mode" ]]; then
-    echo "${var_value}" > "${state_file}.tmp" && mv -f "${state_file}.tmp" "${state_file}"
-    return $?
+    if [[ -z "${var_value}" ]]; then
+      print_log -sec "state" -err "state_set" "mode value required"
+      flock -u "${lock_fd}" 2>/dev/null || true
+      exec {lock_fd}>&-
+      return 1
+    fi
+    printf "%s\n" "${var_value}" > "${state_file}.tmp" && mv -f "${state_file}.tmp" "${state_file}"
+    local rc=$?
+    flock -u "${lock_fd}" 2>/dev/null || true
+    exec {lock_fd}>&-
+    return "${rc}"
+  fi
+
+  # Validate input
+  if [[ -z "${var_name}" ]]; then
+    print_log -sec "state" -err "state_set" "variable name required"
+    flock -u "${lock_fd}" 2>/dev/null || true
+    exec {lock_fd}>&-
+    return 1
   fi
 
   # Atomic update using temp file
   local tmp_file="${state_file}.tmp.$$"
   touch "${state_file}"
+  local var_escaped
+  var_escaped="$(printf "%s" "${var_name}" | sed 's/[][\\.^$*+?()|{}]/\\&/g')"
 
   # Remove old value and add new one atomically
   {
-    grep -v "^${var_name}=" "${state_file}" 2>/dev/null || true
+    grep -v "^${var_escaped}=" "${state_file}" 2>/dev/null || true
     echo "${var_name}=\"${var_value}\""
   } > "${tmp_file}"
 
   # Atomic move
   if mv -f "${tmp_file}" "${state_file}"; then
+    flock -u "${lock_fd}" 2>/dev/null || true
+    exec {lock_fd}>&-
     return 0
   else
     rm -f "${tmp_file}" 2>/dev/null
     print_log -sec "state" -err "state_set" "failed to write ${var_name}"
+    flock -u "${lock_fd}" 2>/dev/null || true
+    exec {lock_fd}>&-
     return 1
   fi
 }

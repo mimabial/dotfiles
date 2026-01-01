@@ -85,7 +85,7 @@ main() {
         pm_detect
     fi
 
-    PM_CACHE_DIR=${XDG_CACHE_DIR:-$HOME/.cache}/pm/$PM
+    PM_CACHE_DIR=${XDG_CACHE_HOME:-$HOME/.cache}/pm/$PM
     mkdir -p "$PM_CACHE_DIR"
 
     COMMAND=$1

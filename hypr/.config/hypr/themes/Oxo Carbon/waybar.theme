@@ -69,3 +69,4 @@ $HOME/.config/waybar/theme.css
 @define-color tooltip_fg @fg;
 @define-color tooltip_border @border;
 @define-color workspace_active_bg @bg_selected;
+@define-color workspace_active_br #be95ff;

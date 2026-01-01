@@ -129,13 +129,51 @@ fn_status() {
   esac
 }
 
+get_battery_percentage() {
+  local battery=$1
+  local percent=""
+
+  if [[ -r "$battery/capacity" ]]; then
+    percent=$(<"$battery/capacity")
+  elif [[ -r "$battery/energy_now" && -r "$battery/energy_full" ]]; then
+    local energy_now energy_full
+    energy_now=$(<"$battery/energy_now")
+    energy_full=$(<"$battery/energy_full")
+    if [[ "$energy_full" =~ ^[0-9]+$ ]] && ((energy_full > 0)); then
+      percent=$((energy_now * 100 / energy_full))
+    fi
+  elif [[ -r "$battery/charge_now" && -r "$battery/charge_full" ]]; then
+    local charge_now charge_full
+    charge_now=$(<"$battery/charge_now")
+    charge_full=$(<"$battery/charge_full")
+    if [[ "$charge_full" =~ ^[0-9]+$ ]] && ((charge_full > 0)); then
+      percent=$((charge_now * 100 / charge_full))
+    fi
+  elif [[ -r "$battery/uevent" ]]; then
+    percent=$(awk -F= '/^POWER_SUPPLY_CAPACITY=/{print $2}' "$battery/uevent")
+  fi
+
+  if [[ "$percent" =~ ^[0-9]+$ ]]; then
+    echo "$percent"
+  fi
+}
+
 get_battery_info() { #TODO Might change this if we can get an effective way to parse dbus. I will do it some time...
   total_percentage=0 battery_count=0
   for battery in /sys/class/power_supply/BAT*; do
-    battery_status=$(<"$battery/status") battery_percentage=$(<"$battery/capacity")
+    [[ -r "$battery/status" ]] || continue
+    battery_status=$(<"$battery/status")
+    battery_percentage=$(get_battery_percentage "$battery")
+    if [[ -z "$battery_percentage" ]]; then
+      continue
+    fi
     total_percentage=$((total_percentage + battery_percentage))
     battery_count=$((battery_count + 1))
   done
+  if ((battery_count == 0)); then
+    echo "Battery capacity unavailable. Exiting battery notify." >&2
+    exit 0
+  fi
   battery_percentage=$((total_percentage / battery_count)) #? For Multiple Battery
 }
 

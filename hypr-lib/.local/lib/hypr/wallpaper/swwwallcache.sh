@@ -119,17 +119,18 @@ export -f fn_wallcache fn_wallcache_force extract_thumbnail
 
 #// evaluate options
 
-single_wallpaper=0
+wall_inputs=()
+invalid_inputs=0
 
 while getopts "w:t:f" option; do
   case $option in
     w) # generate cache for input wallpaper
-      if [ -z "${OPTARG}" ] || [ ! -f "${OPTARG}" ]; then
-        echo "Error: Input wallpaper \"${OPTARG}\" not found!"
-        exit 1
+      if [[ -z "${OPTARG}" ]] || [[ ! -f "${OPTARG}" ]]; then
+        echo "Error: Input wallpaper \"${OPTARG}\" not found!" >&2
+        invalid_inputs=1
+        continue
       fi
-      cacheIn="$(realpath "${OPTARG}")"
-      single_wallpaper=1
+      wall_inputs+=("$(realpath "${OPTARG}")")
       ;;
     t) # generate cache for input theme
       cacheIn="$(dirname "${HYPR_THEME_DIR}")/${OPTARG}"
@@ -153,19 +154,28 @@ while getopts "w:t:f" option; do
   esac
 done
 
+if [[ ${#wall_inputs[@]} -eq 0 ]] && [[ "${invalid_inputs}" -eq 1 ]]; then
+  exit 1
+fi
+
 #// generate cache
 
 fn_envar_cache
 
-if [[ "${single_wallpaper}" -eq 1 ]]; then
-  wallHash=("$(${hashMech:-sha1sum} "${cacheIn}" | awk '{print $1}')")
-  wallList=("${cacheIn}")
+if [[ ${#wall_inputs[@]} -gt 0 ]]; then
+  unset wallHash wallList
+  for wall_input in "${wall_inputs[@]}"; do
+    wallHash+=("$("${hashMech:-sha1sum}" "${wall_input}" | awk '{print $1}')")
+    wallList+=("${wall_input}")
+  done
 else
   wallPathArray=("${cacheIn}")
   wallPathArray+=("${WALLPAPER_CUSTOM_PATHS[@]}")
   get_hashmap "${wallPathArray[@]}" --no-notify
 fi
 
+# shellcheck disable=SC2154
+[[ ${#wallList[@]} -eq 0 ]] && exit 0
 # shellcheck disable=SC2154
 parallel --bar --link "fn_wallcache${mode}" ::: "${wallHash[@]}" ::: "${wallList[@]}"
 exit 0

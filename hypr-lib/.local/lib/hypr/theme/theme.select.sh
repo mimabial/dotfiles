@@ -104,6 +104,48 @@ selector_menu() {
   exit 0
 }
 
+ensure_theme_thumbs() {
+  local ext="${1}"
+  [[ -z "${ext}" ]] && ext="sqre"
+  local -a missing_walls=()
+  local wall hash thumb
+  local sync_limit="${THEME_THUMBS_SYNC_LIMIT:-${WALLPAPER_THUMBS_SYNC_LIMIT:-4}}"
+  local sync_mode="${THEME_THUMBS_SYNC:-${WALLPAPER_THUMBS_SYNC:-}}"
+  local run_async=1
+
+  [[ "${sync_limit}" =~ ^[0-9]+$ ]] || sync_limit=12
+  case "${sync_mode,,}" in
+    1 | true | yes | on) run_async=0 ;;
+    0 | false | no | off | "") run_async=1 ;;
+  esac
+
+  for wall in "${thmWall[@]}"; do
+    [[ -n "${wall}" ]] || continue
+    [[ -r "${wall}" ]] || continue
+    hash="$(set_hash "${wall}")" || continue
+    thumb="${thmbDir}/${hash}.${ext}"
+    [[ -e "${thumb}" ]] || missing_walls+=("${wall}")
+  done
+
+  if ((${#missing_walls[@]} > 0)); then
+    if [[ "${run_async}" -eq 0 ]] && [[ "${sync_limit}" -eq 0 ]]; then
+      run_async=1
+    fi
+    if [[ "${run_async}" -eq 0 ]] && [[ "${sync_limit}" -gt 0 ]] && ((${#missing_walls[@]} > sync_limit)); then
+      run_async=1
+    fi
+    local -a cache_args=()
+    for wall in "${missing_walls[@]}"; do
+      cache_args+=(-w "${wall}")
+    done
+    if [[ "${run_async}" -eq 1 ]]; then
+      "${LIB_DIR}/hypr/wallpaper/swwwallcache.sh" "${cache_args[@]}" &>/dev/null &
+    else
+      "${LIB_DIR}/hypr/wallpaper/swwwallcache.sh" "${cache_args[@]}" &>/dev/null
+    fi
+  fi
+}
+
 help_message() {
   cat <<HELP
 Usage: $(basename "${0}") --select-menu|-s  [style]
@@ -195,6 +237,7 @@ esac
 #// launch rofi menu
 
 get_themes
+ensure_theme_thumbs "${thmbExtn:-sqre}"
 # shellcheck disable=SC2154
 rofiSel=$(
   i=0

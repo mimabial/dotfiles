@@ -239,10 +239,11 @@ def format_chances(hour):
 
 
 ### Variables ###
-load_env_file(
-    os.path.join(os.environ.get("HOME"), ".rlocal", "state", "hypr", "staterc")
+state_home = os.environ.get("XDG_STATE_HOME") or os.path.join(
+    os.environ.get("HOME"), ".local", "state"
 )
-load_env_file(os.path.join(os.environ.get("HOME"), ".local", "state", "hypr", "config"))
+load_env_file(os.path.join(state_home, "hypr", "staterc"))
+load_env_file(os.path.join(state_home, "hypr", "config"))
 
 temp_unit = os.getenv(
     "WEATHER_TEMPERATURE_UNIT", "c"

@@ -8,9 +8,9 @@ $HOME/.config/waybar/theme.css
 
 /* Active workspace colors */
 
-@define-color accent #ea76cb; /* Flamingo for active workspace background */
+@define-color accent #dd7878; /* Flamingo for active workspace background */
 @define-color workspace_active_fg #eff1f5; /* Light foreground for active workspace text/icon */
-@define-color border_alt #dd7878; /* Flamingo for active elements */
+@define-color border_alt #179299; /* Flamingo for active elements */
 
 /* Hover colors */
 @define-color fg_selected #7287fd; /* Rosewater accent */
@@ -64,4 +64,5 @@ $HOME/.config/waybar/theme.css
 @define-color tooltip_bg @bg_alt;
 @define-color tooltip_fg @fg;
 @define-color tooltip_border @border;
-@define-color workspace_active_bg @bg_selected;
+@define-color workspace_active_bg #eff1f5;
+@define-color workspace_active_br #7287fd;

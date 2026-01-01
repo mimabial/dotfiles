@@ -466,6 +466,17 @@ generate_conf() {
   local path="${1:-$confDir/hypr/hyprlock/theme.conf}"
   local target_file="${2:-$confDir/hypr/hyprlock.conf}"
   local hyprlock_conf=${SHARE_DIR:-$XDG_DATA_HOME}/hypr/hyprlock.conf
+  local xdg_config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
+  local xdg_data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
+  local layout_path="${path}"
+  local source_conf="${hyprlock_conf}"
+
+  if [[ "${layout_path}" == "${xdg_config_home}/"* ]]; then
+    layout_path="\$XDG_CONFIG_HOME${layout_path#${xdg_config_home}}"
+  fi
+  if [[ "${source_conf}" == "${xdg_data_home}/"* ]]; then
+    source_conf="\$XDG_DATA_HOME${source_conf#${xdg_data_home}}"
+  fi
 
   cat <<CONF >"${target_file}"
 #! █░█ █▄█ █▀█ █▀█ █░░ █▀█ █▀▀ █▄▀
@@ -479,9 +490,9 @@ generate_conf() {
 #*│                                                                            │
 #*└────────────────────────────────────────────────────────────────────────────┘
 
-\$LAYOUT_PATH=${path}
+\$LAYOUT_PATH=${layout_path}
 
-source = ${hyprlock_conf}
+source = ${source_conf}
 
 CONF
 }

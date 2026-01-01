@@ -16,18 +16,13 @@ cursor_stop_blinking_after 15.0
 # URL underline color when hovering with mouse
 url_color               #c678dd
 
-active_tab_foreground   #abb2bf
+active_tab_foreground   #dcdcdc
 active_tab_background   #282c34
 
 inactive_tab_foreground #979eab
 inactive_tab_background #1e222a
 
 tab_bar_background #1e222a
-
-# OS Window titlebar colors
-wayland_titlebar_color system
-macos_titlebar_color system
-
 
 # The 16 terminal colors
 
