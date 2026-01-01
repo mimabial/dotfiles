@@ -2,7 +2,6 @@ $HOME/.config/waybar/theme.css
 
 @define-color bg rgb(14,28,15);
 @define-color fg #DBD0C6;
-
 @define-color bg_alt rgb(14,28,15); /* bright green */
 @define-color fg_alt rgb(170,240,188);
 @define-color warning #AAF0F0; /* cyan */
@@ -27,19 +26,17 @@ $HOME/.config/waybar/theme.css
 @define-color c5 #D59CCE;
 @define-color c6 #79C2B6;
 @define-color c7 #91A4AD;
-
 /* Standard color palette - bright/accent variants */
 @define-color c8 #568270;
-@define-color c9 #a95712;
+@define-color c9 #D48588;
 @define-color c10 #95C2A1;
 @define-color c11 #FDD9AF;
 @define-color c13 #D9ADD4;
 @define-color c14 #87CBB1;
 @define-color c15 #DBD0C6;
-
 @define-color fg_selected @fg;
 @define-color critical @c1;
-@define-color c12 @c4;
+@define-color c12 #A7CBEA;
 @define-color accent_bg @accent;
 @define-color accent_fg #9DC6A9;
 @define-color warning_bg @warning;

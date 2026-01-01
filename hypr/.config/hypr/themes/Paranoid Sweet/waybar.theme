@@ -3,14 +3,11 @@ $HOME/.config/waybar/theme.css
 @define-color bg #161925;
 @define-color fg #c74ded;
 @define-color fg #A56DF2;
-
 @define-color bg_selected #00c1e4;
 @define-color fg_selected #463465;
-
 @define-color workspace_hover_bg #71f79f;
 @define-color hover #495495;
 @define-color hover #F2CB07;
-
 @define-color border #564873; /* yellow cursor */
 
 @define-color bg_alt #564873; /* pink/blue */
@@ -23,25 +20,23 @@ $HOME/.config/waybar/theme.css
 @define-color border_alt #4DBD4F; /* green */
 
 /* Standard color palette - base colors */
-@define-color c0 #1F2229;
-@define-color c1 #D62246;
-@define-color c2 #4DBD4F;
-@define-color c3 #FDF500;
-@define-color c4 #F29C6B;
-@define-color c5 #A56DF2;
-@define-color c6 #2CF6B3;
-@define-color c7 #E6E6E6;
-
+@define-color c0 #697388;
+@define-color c1 #ed254e;
+@define-color c2 #71f79f;
+@define-color c3 #f9dc5c;
+@define-color c4 #7cb7ff;
+@define-color c5 #c74ded;
+@define-color c6 #00c1e4;
+@define-color c7 #dcdfe4;
 /* Standard color palette - bright/accent variants */
-@define-color c8 #E6E6E6;
-@define-color c9 #EC0101;
-@define-color c10 #1F5322;
-@define-color c11 #F2CB07;
-@define-color c12 #FFA6C2;
-@define-color c13 #564873;
-@define-color c14 #37EBF3;
-@define-color c15 #FFFFFF;
-
+@define-color c8 #697388;
+@define-color c9 #ed254e;
+@define-color c10 #71f79f;
+@define-color c11 #f9dc5c;
+@define-color c12 #7cb7ff;
+@define-color c13 #c74ded;
+@define-color c14 #00c1e4;
+@define-color c15 #dcdfe4;
 @define-color critical @c1;
 @define-color accent_bg @accent;
 @define-color accent_fg @accent;

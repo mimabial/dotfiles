@@ -13,7 +13,7 @@
     mdp_write_timeout_ms: 5000,
     rewind_to_start_sec: None,
     keep_stage_on_song_change: true,
-    theme: Some("pywal16-big"),
+    theme: Some("pywal16-small"),
     album_art: (
       method: Auto,
       order: EmbeddedeFirst,
@@ -153,46 +153,39 @@
     directories_sort: SortFormat(group_by_type: true, reverse: false),
 
     tabs: [
-        (name: " Home", pane: Split(direction: Horizontal, panes: [
-              (size: "67%", borders: "NONE", pane: Split(direction: Vertical,panes: [
-                          (size: "100%", borders: "ALL", pane: Pane(Queue)),
-                      ])
+        (
+          name: " Queue",
+          pane: Split(
+            size: "100%",
+            direction: Vertical,
+            panes: [
+              (
+                size: "2",
+                pane: Component("custom_song_table_header"),
               ),
-              (size: "33%", borders: "NONE", pane: Split(direction: Vertical, panes: [
-                          (size: "100%", borders: "TOP", pane: Pane(Lyrics)),
-                          (size: "0.5r", borders: "BOTTOM", pane: Pane(AlbumArt)),
-                      ])
+              (
+                size: "100%",
+                pane: Pane(Queue),
               ),
-          ])
-        ),
-        (name: "󱏒 Files", pane: Split(direction: Horizontal,panes: [
-                    (size: "100%", borders: "ALL", pane: Pane(Directories)),
-                ])
-        ),
-        (name: "󰲹 Playlists", pane: Split(direction: Horizontal, panes: [
-                    (size: "100%", borders: "ALL", pane: Pane(Playlists)),
-                ])
-        ),
 
-        (name: "󱝠 Genre", pane: Split(direction: Horizontal, panes: [
-                    (size: "100%", borders: "ALL", pane: Pane(Browser(root_tag: "genre", separator: ";"))),
-                ])
+            ]
+          )
         ),
-        (name: "󰥩 Search", pane: Split(direction: Horizontal, panes: [
-                    (size: "100%", borders: "ALL", pane: Pane(Search)),
-                ])
+        (
+          name: "󱏒 Files",
+          pane: Pane(Directories),
         ),
-        (name: "󰳩 Artists", pane: Split(direction: Horizontal, panes: [
-                    (size: "100%", borders: "ALL", pane: Pane(Artists)),
-                ])
+        (
+          name: " Lyrics",
+          pane: Pane(Lyrics),
         ),
-        (name: "󰀥 Albums", pane: Split(direction: Horizontal, panes: [
-                    (size: "100%", borders: "ALL", pane: Pane(Albums)),
-                ])
+        (
+          name: "󰥩 Search",
+          pane: Pane(Search),
         ),
-        (name: "󰳩 Album Artists", pane: Split(direction: Horizontal, panes: [
-                    (size: "100%", borders: "ALL", pane: Pane(AlbumArtists)),
-                ])
+        (
+          name: "󰲹 PlayLists",
+          pane: Pane(Playlists),
         ),
     ],
 

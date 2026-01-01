@@ -108,6 +108,7 @@ Wall_Cache() {
     ln -fs "${thmbDir}/${wallHash[setIndex]}.thmb" "${wallTmb}"
     ln -fs "${thmbDir}/${wallHash[setIndex]}.blur" "${wallBlr}"
     ln -fs "${thmbDir}/${wallHash[setIndex]}.quad" "${wallQad}"
+    rm -f "${WALLPAPER_CURRENT_DIR}/wall.fit"
   fi
 
 }

@@ -22,22 +22,21 @@ $HOME/.config/waybar/theme.css
 @define-color hover #81a1c1; /* nord9 */
 
 @define-color c0 #3B4252;
-@define-color c8 #D9D9D9;
-@define-color c1 #bf616a;
-@define-color c9 #d08770;
-@define-color c2 #a3be8c;
-@define-color c10 #8fbcbb;
-@define-color c3 #ebcb8b;
-@define-color c11 #d08770;
-@define-color c4 #5e81ac;
-@define-color c12 #81a1c1;
-@define-color c5 #b48ead;
-@define-color c13 #b48ead;
-@define-color c6 #88c0d0;
-@define-color c14 #8fbcbb;
+@define-color c8 #4C566A;
+@define-color c1 #BF616A;
+@define-color c9 #BF616A;
+@define-color c2 #A3BE8C;
+@define-color c10 #A3BE8C;
+@define-color c3 #EBCB8B;
+@define-color c11 #EBCB8B;
+@define-color c4 #81A1C1;
+@define-color c12 #81A1C1;
+@define-color c5 #B48EAD;
+@define-color c13 #B48EAD;
+@define-color c6 #88C0D0;
+@define-color c14 #8FBCBB;
 @define-color c7 #E5E9F0;
 @define-color c15 #ECEFF4;
-
 @define-color critical @c1;
 @define-color accent_bg @accent;
 @define-color accent_fg @accent;

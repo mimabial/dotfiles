@@ -18,27 +18,25 @@ $HOME/.config/waybar/theme.css
 @define-color workspace_hover_bg #313244;
 @define-color fg_selected #89b4fa; /* Rosewater */
 
-@define-color c1 #f38ba8;
-@define-color c2 #a6e3a1;
-@define-color c3 #f9e2af;
-@define-color c4 #89b4fa;
+@define-color c1 #F38BA8;
+@define-color c2 #A6E3A1;
+@define-color c3 #F9E2AF;
+@define-color c4 #87B0F9;
 @define-color purple #cba6f7;
-@define-color c6 #94e2d5;
-@define-color c7 #6c7086;
-
-@define-color c9 #eba0ac;
-@define-color c10 #a6e3a1;
-@define-color c11 #fab387;
-@define-color c12 #89dceb;
+@define-color c6 #94E2D5;
+@define-color c7 #CDD6F4;
+@define-color c9 #F38BA8;
+@define-color c10 #A6E3A1;
+@define-color c11 #F9E2AF;
+@define-color c12 #87B0F9;
 @define-color purple_bright #f5c2e7;
-@define-color c14 #89dceb;
-@define-color c15 #9399b2;
-
+@define-color c14 #94E2D5;
+@define-color c15 #A1A8C9;
 @define-color critical @c1;
-@define-color c0 @bg;
-@define-color c5 @accent;
-@define-color c8 @bg_alt;
-@define-color c13 @c5;
+@define-color c0 #43465A;
+@define-color c5 #F5C2E7;
+@define-color c8 #43465A;
+@define-color c13 #F5C2E7;
 @define-color accent_bg @accent;
 @define-color accent_fg @accent;
 @define-color warning_bg @warning;

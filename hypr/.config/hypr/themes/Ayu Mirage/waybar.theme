@@ -1,8 +1,7 @@
 $HOME/.config/waybar/theme.css
 
 /* Main colors */
-@define-color bg rgb(10,50,10); 
-
+@define-color bg rgb(10,50,10);
 @define-color bg_selected rgb(75,125,125); /* Very dark green, 80% opacity */
 @define-color fg rgb(170,240,240); /* Light green, 80% opacity */
 @define-color border rgb(75,125,125); /* foreground muted */
@@ -20,14 +19,13 @@ $HOME/.config/waybar/theme.css
 @define-color warning rgb(75,125,125); /* Light blue, full opacity */
 
 @define-color c0 #191e2a;
-@define-color c1 #f28779;
-@define-color c2 #bae67e;
-@define-color c3 #ffd580;
-@define-color c4 #73d0ff;
-@define-color c5 #d4bfff;
-@define-color c6 #95e6cb;
+@define-color c1 #ed8274;
+@define-color c2 #a6cc70;
+@define-color c3 #fad07b;
+@define-color c4 #6dcbfa;
+@define-color c5 #cfbafa;
+@define-color c6 #90e1c6;
 @define-color c7 #c7c7c7;
-
 @define-color c8 #686868;
 @define-color c9 #f28779;
 @define-color c10 #bae67e;
@@ -36,7 +34,6 @@ $HOME/.config/waybar/theme.css
 @define-color c13 #d4bfff;
 @define-color c14 #95e6cb;
 @define-color c15 #ffffff;
-
 @define-color critical @c1;
 @define-color fg_alt @fg;
 @define-color accent_bg @accent;

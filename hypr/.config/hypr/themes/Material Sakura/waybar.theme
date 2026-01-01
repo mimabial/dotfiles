@@ -4,10 +4,8 @@ $HOME/.config/waybar/theme.css
 
 @define-color bg #faf4ed;
 @define-color fg #575279;
-
 @define-color workspace_hover_bg #56949f;
 @define-color fg_selected #fffaf3;
-
 @define-color bg_selected #b4637a;
 @define-color workspace_active_fg #fffaf3;
 @define-color border #9893a5; /* overlay */
@@ -29,21 +27,19 @@ $HOME/.config/waybar/theme.css
 @define-color c2 #286983; /* pine */
 @define-color c3 #ea9d34; /* gold */
 @define-color c4 #56949f; /* foam */
-@define-color c6 #56949f; /* foam */
+@define-color c6 #d7827e; /* foam */
 @define-color c7   #575279;
-
 /* Standard color palette - bright/accent variants */
 @define-color c8 #9893a5;
 @define-color c9 #b4637a; /* love */
 @define-color c10 #286983; /* pine */
 @define-color c11 #ea9d34; /* gold */
 @define-color c12 #56949f; /* foam */
-@define-color c14 #56949f; /* foam */
+@define-color c14 #d7827e; /* foam */
 @define-color c15 #575279;
-
 @define-color critical @c1;
-@define-color c5 @accent;
-@define-color c13 @c5;
+@define-color c5 #907aa9;
+@define-color c13 #907aa9;
 @define-color accent_bg @accent;
 @define-color accent_fg @accent;
 @define-color warning_bg @warning;

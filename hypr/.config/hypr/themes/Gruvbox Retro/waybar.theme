@@ -24,25 +24,22 @@ $HOME/.config/waybar/theme.css
 
 /* Standard color palette - base colors */
 @define-color c0 #272727;
-@define-color c1 #ea6962;
-@define-color c2 #a9b665;
-@define-color c3 #d8a657;
-@define-color c4 #7daea3;
-@define-color c5 #d3869b;
-@define-color c6 #89b482;
+@define-color c1 #cc231c;
+@define-color c2 #989719;
+@define-color c3 #d79920;
+@define-color c4 #448488;
+@define-color c5 #b16185;
+@define-color c6 #689d69;
 @define-color c7 #a89983;
-
 /* Standard color palette - bright/accent variants */
 @define-color c8 #928373;
-@define-color c9 #ea6962;
-@define-color c10 #a9b665;
-@define-color c11 #d8a657;
-@define-color c12 #7daea3;
-@define-color c13 #d3869b;
-@define-color c14 #89b482;
+@define-color c9 #fb4833;
+@define-color c10 #b8ba25;
+@define-color c11 #fabc2e;
+@define-color c12 #83a597;
+@define-color c13 #d3859a;
+@define-color c14 #8ec07b;
 @define-color c15 #ebdbb2;
-
-
 @define-color critical @c1;
 @define-color accent_bg @accent;
 @define-color accent_fg @accent;

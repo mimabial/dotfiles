@@ -23,25 +23,23 @@ $HOME/.config/waybar/theme.css
 @define-color warning #70a5eb; /* green/accent */
 
 /* Standard color palette - base colors */
-@define-color c0 #1a1a1a;
-@define-color c1 #e05f65;
-@define-color c2 #78dba9;
-@define-color c3 #f1cf8a;
-@define-color c4 #70a5eb;
-@define-color c5 #c68aee;
-@define-color c6 #74bee9;
-@define-color c7 #485263;
-
+@define-color c0 #101419;
+@define-color c1 #903035;
+@define-color c2 #3c6843;
+@define-color c3 #a08652;
+@define-color c4 #234d87;
+@define-color c5 #7f529d;
+@define-color c6 #73C0C9;
+@define-color c7 #c5c8cd;
 /* Standard color palette - bright/accent variants */
 @define-color c8 #555555;
-@define-color c9 #e5646a;
-@define-color c10 #94f7c5;
-@define-color c11 #E89777;
-@define-color c12 #75aaf0;
-@define-color c13 #cb8ff3;
-@define-color c14 #79c3ee;
-@define-color c15 #e3e6eb;
-
+@define-color c9 #8f5155;
+@define-color c10 #538b5b;
+@define-color c11 #a06d52;
+@define-color c12 #3e6699;
+@define-color c13 #a86cd0;
+@define-color c14 #417998;
+@define-color c15 #989ba0;
 @define-color critical @c1;
 @define-color accent_bg @accent;
 @define-color accent_fg @accent;

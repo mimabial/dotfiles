@@ -1,48 +1,44 @@
 
 /* Main colors */
-@define-color bg #282c34; /* bg */
+@define-color bg #262626; /* base01 */
 
-@define-color bg_selected #282c34; /* bg */
-@define-color fg #abb2bf; /* fg */
-@define-color border #282c34; /* gray */
+@define-color bg_selected #161616; /* base00 */
+@define-color fg #f2f4f8; /* base05 */
+@define-color border #595969; /* base02 */
 
-@define-color bg_alt #282c34; /* bg */
-@define-color fg_alt #abb2bf; /* fg */
-@define-color warning #434852; /* gray */
+@define-color bg_alt #161616; /* base00 */
+@define-color fg_alt #f2f4f8; /* base05 */
+@define-color warning #393939; /* base02 */
 
 /* Active workspace colors */
-@define-color accent #61afef; /* blue */
-@define-color workspace_active_fg #282c34; /* bg */
-@define-color border_alt #61afef; /* blue */
+@define-color accent #78a9ff; /* base09 - blue */
+@define-color workspace_active_fg #161616; /* base00 */
+@define-color border_alt #78a9ff; /* base09 */
 
 /* Hover colors */
-@define-color fg_selected #89ca78; /* cyan */
-@define-color workspace_hover_bg #282c34; /* bg */
-@define-color hover #2bbac5; /* cyan */
+@define-color fg_selected #be95ff; /* base08 - cyan */
+@define-color workspace_hover_bg #161616; /* base00 */
+@define-color hover #3ddbd9; /* base08 */
 
 /* Standard color palette - base colors */
-@define-color c0 #282c34;
-@define-color c1 #ef596f;
-@define-color c2 #89ca78;
-@define-color c3 #e5c07b;
-@define-color c4 #61afef;
-@define-color c5 @accent;
-@define-color c6 #2bbac5;
-@define-color c7  #979eab;
-
+@define-color c0 #262626;
+@define-color c1 #ee5396; /* base10 */
+@define-color c2 #42be65; /* base13 */
+@define-color c3 #ffe97b; /* base15 */
+@define-color c4 #33b1ff; /* base09 */
+@define-color c6 #3ddbd9; /* base08 */
+@define-color c7 #dde1e6; /* base04 */
 /* Standard color palette - bright/accent variants */
-@define-color c8 #7f848e;
-@define-color c9 #ef596f;
-@define-color c10 #89ca78;
-@define-color c11 #e2be7d; /* highlight */
-@define-color c12 #61afef;
-@define-color c13 @c5;
-@define-color c14 #2bbac5;
-@define-color c19 #d19a66;
-@define-color c15 #abb2bf;
-@define-color c16 #d55fde;
-
+@define-color c8 #393939;
+@define-color c9 #ee5396; /* base10 */
+@define-color c10 #42be65; /* base13 */
+@define-color c11 #ffe97b; /* base15 */
+@define-color c12 #33b1ff; /* base11 */
+@define-color c14 #3ddbd9; /* base07 */
+@define-color c15 #ffffff; /* base06 */
 @define-color critical @c1;
+@define-color c5 #ff7eb6;
+@define-color c13 #ff7eb6;
 @define-color accent_bg @accent;
 @define-color accent_fg @accent;
 @define-color warning_bg @warning;
@@ -65,4 +61,5 @@
 @define-color tooltip_bg @bg_alt;
 @define-color tooltip_fg @fg;
 @define-color tooltip_border @border;
-@define-color workspace_active_bg @bg_selected;
+@define-color workspace_active_bg #161616;
+@define-color workspace_active_br #be95ff;

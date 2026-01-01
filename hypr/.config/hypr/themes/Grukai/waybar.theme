@@ -30,7 +30,6 @@ $HOME/.config/waybar/theme.css
 @define-color c5 #E6B99A;
 @define-color c6 #E6B99A;
 @define-color c7 #FFE4CC;
-
 /* Standard color palette - bright/accent variants */
 @define-color c8 #8F8F57;
 @define-color c9 #F0CBAA;
@@ -40,7 +39,6 @@ $HOME/.config/waybar/theme.css
 @define-color c13 #E6B99A;
 @define-color c14 #E6B99A;
 @define-color c15 #F0CBAA;
-
 @define-color critical @c1;
 @define-color accent_bg @accent;
 @define-color accent_fg @accent;

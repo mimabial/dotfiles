@@ -45,14 +45,14 @@ mainbox {
     spacing:                     0em;
     padding:                     0em;
     orientation:                 horizontal;
-    children:                    [ "listbox", "dummywall" ];
+    children:                    [ "listbox", "dummy", "dummywall" ];
     background-color:            transparent;
 }
 dummywall {
     spacing:                     0em;
     padding:                     0em;
     width:                       28em;
-    expand:                      false;
+    expand:                      true;
     orientation:                 horizontal;
     children:                    [ "dummy", "inputbar", "mode-switcher" ];
     background-color:            transparent;

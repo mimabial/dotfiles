@@ -1,11 +1,13 @@
 $HOME/.config/waybar/theme.css
 
 /* Main colors */
-@define-color bg #282c34; /* bg */
 
+@define-color bg #282c34;
+@define-color fg #979eab;
+@define-color wb-hvr-bg #e06c75;
+@define-color wb-hvr-fg #282c34;
 @define-color bg_selected #282c34; /* bg */
-@define-color fg #abb2bf; /* fg */
-@define-color border #282c34; /* gray */
+@define-color border #979eab; /* gray */
 
 @define-color bg_alt #282c34; /* bg */
 @define-color fg_alt #abb2bf; /* fg */
@@ -23,31 +25,31 @@ $HOME/.config/waybar/theme.css
 
 /* Standard color palette - base colors */
 @define-color c0 #282c34;
-@define-color c1 #ef596f;
-@define-color c2 #89ca78;
+@define-color c1 #e06c75;
+@define-color c2 #98c379;
 @define-color c3 #e5c07b;
 @define-color c4 #61afef;
-@define-color c5 @accent;
-@define-color c6 #2bbac5;
+@define-color c5 #c678dd;
+@define-color c6 #65b6c2;
 @define-color c7  #979eab;
 
 /* Standard color palette - bright/accent variants */
-@define-color c8 #7f848e;
-@define-color c9 #ef596f;
-@define-color c10 #89ca78;
-@define-color c11 #e2be7d; /* highlight */
-@define-color c12 #61afef;
-@define-color c13 @c5;
-@define-color c14 #2bbac5;
-@define-color c19 #d19a66;
+@define-color c8 #393e48;
+@define-color c9 #d77c75;
+@define-color c10 #a8d386;
+@define-color c11 #ddc985; /* highlight */
+@define-color c12 #6bb9e5;
+@define-color c13 #c691dd;
+@define-color c14 #65d2c2;
 @define-color c15 #abb2bf;
-@define-color c16 #d55fde;
 
+@define-color c16 #d55fde;
+@define-color c19 #d19a66;
 @define-color critical @c1;
 @define-color accent_bg @accent;
 @define-color accent_fg @accent;
 @define-color warning_bg @warning;
-@define-color warning_fg @warning;
+@define-color warning_fg #d19a66;
 @define-color error_bg @critical;
 @define-color error_fg @critical;
 @define-color info_bg @accent;
@@ -66,4 +68,5 @@ $HOME/.config/waybar/theme.css
 @define-color tooltip_bg @bg_alt;
 @define-color tooltip_fg @fg;
 @define-color tooltip_border @border;
-@define-color workspace_active_bg @bg_selected;
+@define-color workspace_active_bg #1e222a;
+@define-color workspace_active_br #98c379;

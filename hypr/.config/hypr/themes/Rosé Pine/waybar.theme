@@ -30,11 +30,10 @@ $HOME/.config/waybar/theme.css
 @define-color c3 #f6c177; /* gold */
 @define-color c4 #9ccfd8; /* foam */
 @define-color purple #c4a7e7; /* iris */
-@define-color c6 #9ccfd8; /* foam */
+@define-color c6 #ebbcba; /* foam */
 @define-color orange #f6c177; /* gold */
 @define-color gray #6e6a86; /* muted */
 @define-color c7  #e0def4;
-
 /* Standard color palette - bright/accent variants */
 @define-color c8   #6e6a86;
 @define-color c9 #eb6f92; /* love */
@@ -42,14 +41,13 @@ $HOME/.config/waybar/theme.css
 @define-color c11 #f6c177; /* gold */
 @define-color c12 #9ccfd8; /* foam */
 @define-color purple_bright #c4a7e7; /* iris */
-@define-color c14 #9ccfd8; /* foam */
+@define-color c14 #ebbcba; /* foam */
 @define-color orange_bright #f6c177; /* gold */
 @define-color gray_bright #908caa; /* subtle */
 @define-color c15  #e0def4;
-
 @define-color critical @c1;
-@define-color c5 @accent;
-@define-color c13 @c5;
+@define-color c5 #c4a7e7;
+@define-color c13 #c4a7e7;
 @define-color accent_bg @accent;
 @define-color accent_fg @accent;
 @define-color warning_bg @warning;

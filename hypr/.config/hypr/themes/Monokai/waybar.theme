@@ -1,63 +1,49 @@
 $HOME/.config/waybar/theme.css
 @define-color bg #2C2525;
-
 @define-color bg_selected #87B0F9;
 @define-color border #87B0F9;
-@define-color fg #F8F8F2; 
-
+@define-color fg #F8F8F2;
 @define-color bg_alt #87B0F9;
 @define-color warning #87B0F9;
-
-@define-color accent #F92672; 
-@define-color border_alt #F38BA8; 
-@define-color workspace_active_fg #F8F8F2; 
-
-@define-color workspace_hover_bg #F5C2E7; 
+@define-color accent #F92672;
+@define-color border_alt #F38BA8;
+@define-color workspace_active_fg #F8F8F2;
+@define-color workspace_hover_bg #F5C2E7;
 @define-color hover #AE81FF;
-@define-color fg_selected #A6E22E; 
-
-@define-color highlight_bg #87B0F9; 
-@define-color highlight_fg #F8F8F2; 
-
+@define-color fg_selected #A6E22E;
+@define-color highlight_bg #87B0F9;
+@define-color highlight_fg #F8F8F2;
 @define-color warning_bg #F38BA8;
-@define-color warning_fg #272822; 
-
-@define-color success_bg #A6E3A1; 
-@define-color success_fg #272822; 
-
-@define-color error_bg #F38BA8; 
-@define-color error_fg #272822; 
-
-@define-color info_bg #66D9EF; 
-@define-color info_fg #F8F8F2; 
-
-@define-color neutral_bg #49483E; 
-@define-color neutral_fg #A6E22E; 
-
-@define-color secondary_bg #75715E; 
-@define-color secondary_fg #F8F8F2; 
-
-@define-color accent_bg #AE81FF; 
+@define-color warning_fg #272822;
+@define-color success_bg #A6E3A1;
+@define-color success_fg #272822;
+@define-color error_bg #F38BA8;
+@define-color error_fg #272822;
+@define-color info_bg #66D9EF;
+@define-color info_fg #F8F8F2;
+@define-color neutral_bg #49483E;
+@define-color neutral_fg #A6E22E;
+@define-color secondary_bg #75715E;
+@define-color secondary_fg #F8F8F2;
+@define-color accent_bg #AE81FF;
 @define-color accent_fg #F8F8F2;
-
-@define-color c0 #272822;
-@define-color c8 #807d74;
-@define-color c1 #fd6883;
-@define-color c9 #ff6188;
-@define-color c2 #adda78;
-@define-color c10 #9eaf8a;
-@define-color c3 #f9cc6c;
-@define-color c11 #fc9867;
-@define-color c4 #85dacc;
-@define-color c12 #78dce8;
-@define-color c7 #f8f8f2;
-@define-color c15 #f8f8f2;
-
+@define-color c0 #403838;
+@define-color c8 #72696a;
+@define-color c1 #F92672;
+@define-color c9 #F92672;
+@define-color c2 #A6E3A1;
+@define-color c10 #A6E3A1;
+@define-color c3 #F9E2AF;
+@define-color c11 #F9E2AF;
+@define-color c4 #F38D70;
+@define-color c12 #F38D70;
+@define-color c7 #F8F8F2;
+@define-color c15 #F8F8F2;
 @define-color critical @c1;
-@define-color c5 @accent;
-@define-color c6 @hover;
-@define-color c13 @c5;
-@define-color c14 @c6;
+@define-color c5 #F5C2E7;
+@define-color c6 #94E2D5;
+@define-color c13 #F5C2E7;
+@define-color c14 #94E2D5;
 @define-color fg_alt @fg;
 @define-color menu_bg @bg;
 @define-color menu_fg @fg;

@@ -27,30 +27,28 @@ $HOME/.config/waybar/theme.css
 @define-color hover #2aa198; /* cyan */
 
 /* Standard color palette - base colors */
-@define-color c1 #dc322f;
-@define-color c2 #859900;
-@define-color c3 #b58900;
-@define-color c4 #268bd2;
-@define-color c5 #6c71c4; /* violet */
-@define-color c6 #2aa198;
-@define-color c7 #cb4b16;
-@define-color c8 #657b83; /* base00 */
-
+@define-color c1 #D0021B;
+@define-color c2 #00A651;
+@define-color c3 #E85D00;
+@define-color c4 #005CAB;
+@define-color c5 #D0021B; /* violet */
+@define-color c6 #005CAB;
+@define-color c7 #000000;
+@define-color c8 #839496; /* base00 */
 /* Standard color palette - bright/accent variants */
-@define-color c9 #dc322f;
-@define-color c10 #859900;
-@define-color c11 #b58900;
-@define-color c12 #268bd2;
-@define-color c13 #d33682; /* magenta */
-@define-color c14 #2aa198;
-@define-color c15 #cb4b16;
+@define-color c9 #E1261C;
+@define-color c10 #00C853;
+@define-color c11 #FF8000;
+@define-color c12 #0066CC;
+@define-color c13 #E1261C; /* magenta */
+@define-color c14 #0066CC;
+@define-color c15 #A4A4A4;
 @define-color c16 #586e75; /* base01 */
 
 @define-color bg_alt @bg;
 @define-color warning @c3;
 @define-color critical @c1;
-@define-color c0 @bg;
-
+@define-color c0 #666666;
 @define-color fg_alt @fg;
 @define-color accent_bg @accent;
 @define-color accent_fg @accent;

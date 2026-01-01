@@ -5,6 +5,8 @@
 # Global rofi configuration.
 [rofi]
 scale = 8 # Rofi default scaling.
+[rofi.menu]
+scale = 10 # Scaling for menu.
 # 'hyprlock.sh select' configuration.
 [rofi.hyprlock]
 scale = 10 # Scaling for hyprlock.
@@ -20,7 +22,7 @@ args = ["-multi-select"] # Additional arguments for glyph picker.
 
 # rofilaunch.sh configuration.
 [rofi.launch]
-scale = 10 # Scaling for launch.
+scale = 8 # Scaling for launch.
 
 # cliphist.sh configuration.
 [rofi.cliphist]

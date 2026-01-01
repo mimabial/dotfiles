@@ -23,31 +23,29 @@ $HOME/.config/waybar/theme.css
 
 /* Standard color palette - base colors */
 @define-color c0 #1a1815;
-@define-color c1 #C53030; /* red_flame */
-@define-color c2 #1E6F54; /* green */
-@define-color c3 #E5A72A; /* orange_golden */
-@define-color c4 #4A8B8B; /* blue */
-@define-color c5 #7A3D82; /* purple */
-@define-color c6 #4A8B8B; /* blue */
+@define-color c1 #c15959; /* red_flame */
+@define-color c2 #d4896b; /* green */
+@define-color c3 #d9a364; /* orange_golden */
+@define-color c4 #7293a8; /* blue */
+@define-color c5 #b5746b; /* purple */
+@define-color c6 #7fa09e; /* blue */
 @define-color c16 #D87C4A; /* orange_glow */
 @define-color c17 #737373; /* g_6 */
 @define-color c7 #c9b9a8;
-
 /* Standard color palette - bright/accent variants */
-@define-color c8 #737373;
-@define-color c9 #DF6464; /* red_glowing */
-@define-color c10 #629C7D; /* green_light */
-@define-color c11 #E5A72A; /* orange_golden */
-@define-color c12 #6E91C4; /* cyan */
-@define-color c13 #8E5E93; /* violet */
-@define-color c14 #4AC4C4; /* aqua */
+@define-color c8 #4a4541;
+@define-color c9 #d47065; /* red_glowing */
+@define-color c10 #e69b7f; /* green_light */
+@define-color c11 #e6b373; /* orange_golden */
+@define-color c12 #86a8bd; /* cyan */
+@define-color c13 #c98b82; /* violet */
+@define-color c14 #93b4b2; /* aqua */
 @define-color c18 #E49A44; /* orange_smolder */
 @define-color c19 #b4b4b4; /* g_3 */
 @define-color c15 #dfd2c4;
-
 @define-color critical @c1;
-@define-color c5 @accent;
-@define-color c13 @c5;
+@define-color c5 #b5746b;
+@define-color c13 #c98b82;
 @define-color accent_bg @accent;
 @define-color accent_fg @accent;
 @define-color warning_bg @warning;

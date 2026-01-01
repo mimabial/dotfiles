@@ -55,7 +55,7 @@ inputbar {
     padding:                     4em;
     children:                    [ "entry" ];
     background-color:            @background;
-    background-image:            url("~/.cache/hypr/wallpaper/current/wall.thmb", width);
+    background-image:            url("~/.cache/hypr/wallpaper/current/wall.thmb", height);
     border-radius:               1em 1em 0em 0em;
 }
 entry {

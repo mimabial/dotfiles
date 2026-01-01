@@ -3,15 +3,12 @@ $HOME/.config/waybar/theme.css
 @define-color bg_selected #282828;
 @define-color fg #ebdbb2;
 @define-color border #98971a;
-
 @define-color bg_alt #282828;
 @define-color fg_alt #ebdbb2;
 @define-color warning #98971a;
-
 @define-color accent #fabd2f;
 @define-color border_alt #d79921;
 @define-color workspace_active_fg #282828;
-
 @define-color fg_selected #a9b665;
 @define-color workspace_hover_bg #282828;
 @define-color hover #f2594b;
@@ -21,29 +18,27 @@ $HOME/.config/waybar/theme.css
 }
 
 @define-color bg #32302f;
-
 @define-color c1 #ea6962;
-@define-color c9 #f2594b;
+@define-color c9 #ea6962;
 @define-color c2 #a9b665;
 @define-color c10 #a9b665;
-@define-color c3 #d8a657;
-@define-color c11 #e78a4e;
+@define-color c3 #e78a4e;
+@define-color c11 #d8a657;
 @define-color c4 #7daea3;
 @define-color c12 #7daea3;
 @define-color purple #d3869b;
 @define-color purple_bright #e78a4e;
 @define-color aqua #89b482;
 @define-color aqua_bright #7daea3;
-@define-color c0 #272727;
-@define-color c8 #928373;
-@define-color c7 #a89983;
-@define-color c15 #ebdbb2;
-
+@define-color c0 #665c54;
+@define-color c8 #928374;
+@define-color c7 #d4be98;
+@define-color c15 #d4be98;
 @define-color critical @c1;
-@define-color c5 @accent;
-@define-color c6 @hover;
-@define-color c13 @c5;
-@define-color c14 @c6;
+@define-color c5 #d3869b;
+@define-color c6 #89b482;
+@define-color c13 #d3869b;
+@define-color c14 #89b482;
 @define-color accent_bg @accent;
 @define-color accent_fg @accent;
 @define-color warning_bg @warning;

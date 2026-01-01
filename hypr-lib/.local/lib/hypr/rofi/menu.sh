@@ -33,10 +33,10 @@ menu() {
   hypr_border=${hypr_border:-2}
   elem_border=$((hypr_border / 2))
 
-  font_scale="${ROFI_MAIN_SCALE}"
+  font_scale="${ROFI_MENU_SCALE:-$ROFI_SCALE}"
   [[ "${font_scale}" =~ ^[0-9]+$ ]] || font_scale=${ROFI_SCALE:-10}
 
-  font_name=${ROFI_MAIN_MENU_FONT:-$ROFI_FONT}
+  font_name=${ROFI_MENU_FONT:-$ROFI_FONT}
   font_name=${font_name:-$(hyprshell fonts/font-get.sh menu 2>/dev/null || true)}
   font_name=${font_name:-$(get_hyprConf "MENU_FONT")}
   font_name=${font_name:-$(get_hyprConf "FONT")}
@@ -97,7 +97,7 @@ get_aur_helper() {
   elif command -v paru &>/dev/null; then
     echo "paru"
   else
-    echo "yay"  # Default, will fail with helpful message
+    echo "yay" # Default, will fail with helpful message
   fi
 }
 
@@ -130,7 +130,7 @@ show_learn_menu() {
 }
 
 show_neovim_menu() {
-  case $(menu "Neovim" "  Neovim Docs\n  Built-in Help\n  Lua Guide\n  Kickstart.nvim\n  Plugin Development\n  Keymaps Cheatsheet") in
+  case $(menu "Neovim" "󰈙  Neovim Docs\n󰞋  Built-in Help\n  Lua Guide\n󰑓  Kickstart.nvim\n󰏗  Plugin Development\n  Keymaps Cheatsheet") in
     *"Neovim Docs"*) hyprshell launch/webapp.sh "https://neovim.io/doc/" ;;
     *"Built-in Help"*) present_terminal "nvim +':help' +only" ;;
     *"Lua Guide"*) hyprshell launch/webapp.sh "https://neovim.io/doc/user/lua-guide.html" ;;
@@ -142,7 +142,7 @@ show_neovim_menu() {
 }
 
 show_scripting_menu() {
-  case $(menu "Scripting" "󱆃  Bash\n  Python\n  hyprctl\n  jq\n  systemd\n  D-Bus\n  udev") in
+  case $(menu "Scripting" "󱆃  Bash\n  Python\n  hyprctl\n󰘦  jq\n󰒋  systemd\n󰙲  D-Bus\n󰉵  udev") in
     *Bash*) show_bash_scripting_menu ;;
     *Python*) show_python_scripting_menu ;;
     *hyprctl*) hyprshell launch/webapp.sh "https://wiki.hyprland.org/Configuring/Using-hyprctl/" ;;
@@ -155,7 +155,7 @@ show_scripting_menu() {
 }
 
 show_bash_scripting_menu() {
-  case $(menu "Bash Scripting" "󱆃  Bash Cheatsheet\n  ShellCheck\n  POSIX Shell\n  wl-clipboard\n  rofi\n  grim/slurp\n  wf-recorder\n  notify-send") in
+  case $(menu "Bash Scripting" "󱆃  Bash Cheatsheet\n󰄬  ShellCheck\n  POSIX Shell\n󰅍  wl-clipboard\n  rofi\n  grim/slurp\n  wf-recorder\n󰂚  notify-send") in
     *"Bash Cheatsheet"*) hyprshell launch/webapp.sh "https://devhints.io/bash" ;;
     *ShellCheck*) hyprshell launch/webapp.sh "https://www.shellcheck.net/wiki/" ;;
     *"POSIX Shell"*) hyprshell launch/webapp.sh "https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html" ;;
@@ -169,7 +169,7 @@ show_bash_scripting_menu() {
 }
 
 show_python_scripting_menu() {
-  case $(menu "Python Scripting" "  Python Docs\n  pip/pipx\n  PyGObject\n  subprocess\n  pywal\n  pydbus\n  pathlib\n  argparse\n  requests\n  psutil") in
+  case $(menu "Python Scripting" "  Python Docs\n󰏓  pip/pipx\n󰮲  PyGObject\n󱃾  subprocess\n  pywal\n󰙲  pydbus\n󰉋  pathlib\n󰘦  argparse\n󰖟  requests\n󰍛  psutil") in
     *"Python Docs"*) hyprshell launch/webapp.sh "https://docs.python.org/3/" ;;
     *pip/pipx*) hyprshell launch/webapp.sh "https://packaging.python.org/en/latest/guides/tool-recommendations/" ;;
     *PyGObject*) hyprshell launch/webapp.sh "https://pygobject.readthedocs.io/" ;;
@@ -239,7 +239,7 @@ show_toggle_menu() {
 }
 
 show_style_menu() {
-  case $(menu "Style" "󰸌  Theme\n  Wallpaper\n  Font") in
+  case $(menu "Style" "󰸌  Theme\n  Wallpaper\n  Font") in
     *Theme*) hyprshell theme.select.sh ;;
     *Wallpaper*) hyprshell wallpaper.sh -SG ;;
     *Font*) show_font_menu ;;
@@ -289,7 +289,7 @@ show_setup_menu() {
 }
 
 show_dev_tools_menu() {
-  case $(menu "Dev Tools" "󰊢  Git (LazyGit)\n  Docker (LazyDocker)\n  File Manager (Ranger)\n󰻠  CPU Monitor (Htop)\n  GPU Monitor (Nvtop)\n  Disk Usage (Dua)\n  Music Player (Rmpc)") in
+  case $(menu "Dev Tools" "󰊢  Git (LazyGit)\n  Docker (LazyDocker)\n  File Manager (Ranger)\n󰻠  CPU Monitor (Htop)\n  GPU Monitor (Nvtop)\n  Disk Usage (Dua)\n  Music Player (Rmpc)") in
     *Git*) hyprshell launch/lazygit.sh ;;
     *Docker*) hyprshell launch/lazydocker.sh ;;
     *File*) present_terminal "ranger" ;;
@@ -320,7 +320,7 @@ show_setup_security_menu() {
 }
 
 show_install_menu() {
-  case $(menu "Install" "󰣇  Package\n󰣇  AUR\n  Web App\n  TUI\n  Font\n󰵮  Development\n󰍲  Windows\n   Gaming") in
+  case $(menu "Install" "󰣇  Package\n󰣇  AUR\n  Web App\n  TUI\n  Font\n󰵮  Development\n󰍲  Windows\n  Gaming") in
     *Package*) terminal hyprshell pkg/install.sh ;;
     *AUR*) terminal hyprshell pkg/aur-install.sh ;;
     *Web*) present_terminal hyprshell install/webapp.sh ;;
@@ -409,7 +409,7 @@ show_install_elixir_menu() {
 }
 
 show_install_font_menu() {
-  case $(menu "Install" "  Meslo LG Mono\n  Fira Code\n  Victor Code\n  Bistream Vera Mono" "--width 350") in
+  case $(menu "Install" "  Meslo LG Mono\n  Fira Code\n  Victor Code\n  Bistream Vera Mono" "--width 350") in
     *Meslo*) install_font "Meslo LG Mono" "ttf-meslo-nerd" "MesloLGL Nerd Font" ;;
     *Fira*) install_font "Fira Code" "ttf-firacode-nerd" "FiraCode Nerd Font" ;;
     *Victor*) install_font "Victor Code" "ttf-victor-mono-nerd" "VictorMono Nerd Font" ;;
@@ -431,7 +431,7 @@ show_remove_menu() {
 }
 
 show_update_menu() {
-  case $(menu "Update" "  Config\n  Process\n󰇅  Hardware\n  Firmware\n  Password\n  Timezone\n  Time") in
+  case $(menu "Update" "  Config\n  Process\n󰇅  Hardware\n  Firmware\n  Password\n  Timezone\n  Time") in
     *Config*) show_update_config_menu ;;
     *Process*) show_update_process_menu ;;
     *Hardware*) show_update_hardware_menu ;;

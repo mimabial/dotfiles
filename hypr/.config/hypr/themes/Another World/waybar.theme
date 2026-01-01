@@ -1,40 +1,34 @@
 $HOME/.config/waybar/theme.css
 @define-color bg #13131D;
-
 @define-color bg_selected #13131D;
 @define-color fg #FFFFFF;
 @define-color border #81a1c1;
-
 @define-color accent #6AA9C9;
 @define-color workspace_active_fg #EFEFF5;
 @define-color border_alt #81a1c1;
-
 @define-color workspace_hover_bg #020817;
 @define-color fg_selected #6AA9C9;
 @define-color hover #ae00f3;
-
 @define-color bg_alt #8fbcbb;
 @define-color fg_alt #FFFFFF;
 @define-color warning #78c6eb;
-
-@define-color c1 #bf616a;
-@define-color c9 #d08770;
-@define-color c2 #a3be8c;
-@define-color c10 #8fbcbb;
-@define-color c3 #ebcb8b;
-@define-color c11 #d08770;
-@define-color c4 #5e81ac;
-@define-color c12 #81a1c1;
-@define-color c5 #b48ead;
-@define-color c13 #b48ead;
-@define-color c6 #88c0d0;
-@define-color c14 #8fbcbb;
-@define-color c8 #4c566a;
-
+@define-color c1 #40E0D0;
+@define-color c9 #d94a8a;
+@define-color c2 #abf157;
+@define-color c10 #daffa8;
+@define-color c3 #fdcd5e;
+@define-color c11 #fee6a8;
+@define-color c4 #78C6EB;
+@define-color c12 #b1bdf9;
+@define-color c5 #DE3163;
+@define-color c13 #fda4cc;
+@define-color c6 #78C6EB;
+@define-color c14 #a4bc86;
+@define-color c8 #6c5a30;
 @define-color critical @c1;
-@define-color c0 @bg;
-@define-color c7 @fg;
-@define-color c15 @c7;
+@define-color c0 #03063c;
+@define-color c7 #f8f9f9;
+@define-color c15 #f6ffec;
 @define-color accent_bg @accent;
 @define-color accent_fg @accent;
 @define-color warning_bg @warning;
