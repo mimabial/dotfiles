@@ -149,6 +149,12 @@
       "transition-duration": 500,
       "transition-left-to-right": false
     },
-    "modules": ["custom/hyprmenu", "custom/colorpicker", "hyprland/language", "battery"]
+    "modules": [
+      "custom/hyprmenu",
+      "power-profiles-daemon",
+      "custom/colorpicker",
+      "hyprland/language",
+      "battery"
+    ]
   }
 }

@@ -413,6 +413,11 @@ menu label {
   background: transparent;
 }
 
+#power-profiles-daemon {
+  margin: 1px 0px 4px;
+  background: transparent;
+}
+
 #custom-powermenu {
   font-size: 18px;
   padding-right: 4px;
