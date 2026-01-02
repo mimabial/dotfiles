@@ -1660,12 +1660,38 @@ def get_waybar_pid():
 
 def get_waybar_pids():
     """Get all Waybar PIDs for the current user."""
+    def pid_is_zombie(pid):
+        try:
+            with open(f"/proc/{pid}/stat", "r") as file:
+                data = file.read()
+        except FileNotFoundError:
+            return False
+        except Exception as exc:
+            logger.debug(f"Failed to read /proc/{pid}/stat: {exc}")
+            return False
+
+        rparen = data.rfind(")")
+        if rparen == -1 or rparen + 2 >= len(data):
+            return False
+        state = data[rparen + 2 :].strip().split(" ", 1)[0]
+        return state == "Z"
+
     try:
         result = subprocess.run(
             ["pgrep", "-x", "waybar"], capture_output=True, text=True
         )
         if result.returncode == 0 and result.stdout.strip():
-            return [int(pid) for pid in result.stdout.strip().split()]
+            pids = []
+            for pid_str in result.stdout.strip().split():
+                try:
+                    pid = int(pid_str)
+                except ValueError:
+                    continue
+                if pid_is_zombie(pid):
+                    logger.debug(f"Ignoring zombie waybar PID {pid}")
+                    continue
+                pids.append(pid)
+            return pids
         return []
     except Exception as e:
         logger.error(f"Error checking waybar PID: {e}")
