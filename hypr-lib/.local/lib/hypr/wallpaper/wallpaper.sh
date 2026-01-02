@@ -104,34 +104,62 @@ Wall_Cache() {
         [[ -x "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" ]] && "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" >/dev/null 2>&1 202>&- &
       fi
     fi
-    ln -fs "${thmbDir}/${wallHash[setIndex]}.sqre" "${wallSqr}"
-    ln -fs "${thmbDir}/${wallHash[setIndex]}.thmb" "${wallTmb}"
-    ln -fs "${thmbDir}/${wallHash[setIndex]}.blur" "${wallBlr}"
-    ln -fs "${thmbDir}/${wallHash[setIndex]}.quad" "${wallQad}"
+    if [[ -n "${wallList[setIndex]:-}" ]] && [[ -z "${wallHash[setIndex]:-}" ]]; then
+      wallHash[setIndex]="$(set_hash "${wallList[setIndex]}")"
+    fi
+    if [[ -n "${wallHash[setIndex]:-}" ]]; then
+      ln -fs "${thmbDir}/${wallHash[setIndex]}.sqre" "${wallSqr}"
+      ln -fs "${thmbDir}/${wallHash[setIndex]}.thmb" "${wallTmb}"
+      ln -fs "${thmbDir}/${wallHash[setIndex]}.blur" "${wallBlr}"
+      ln -fs "${thmbDir}/${wallHash[setIndex]}.quad" "${wallQad}"
+    else
+      print_log -warn "wallpaper" "missing hash for ${wallList[setIndex]:-unknown}"
+    fi
     rm -f "${WALLPAPER_CURRENT_DIR}/wall.fit"
   fi
 
+  Wall_Auto_Prune
 }
 
 Wall_Change() {
-  curWall="$(set_hash "${wallSet}")"
-  for i in "${!wallHash[@]}"; do
-    if [ "${curWall}" == "${wallHash[i]}" ]; then
-      if [ "${1}" == "n" ]; then
+  local curWall found
+  found=false
+  curWall="$(
+    readlink -f -- "${wallSet}" 2>/dev/null \
+      || realpath -- "${wallSet}" 2>/dev/null \
+      || printf '%s' "${wallSet}"
+  )"
+  for i in "${!wallList[@]}"; do
+    if [[ "${curWall}" == "${wallList[i]}" ]]; then
+      found=true
+      if [[ "${1}" == "n" ]]; then
         setIndex=$(((i + 1) % ${#wallList[@]}))
-      elif [ "${1}" == "p" ]; then
+      elif [[ "${1}" == "p" ]]; then
         setIndex=$(((i - 1 + ${#wallList[@]}) % ${#wallList[@]}))
       fi
       break
     fi
   done
+  if [[ "${found}" != true ]]; then
+    setIndex=0
+  fi
   Wall_Cache "${wallList[setIndex]}"
 }
 
 Wall_Hashmap_Cached() {
   unset wallHash wallList
 
-  local -a wall_sources=("$@")
+  local -a wall_sources=()
+  local skip_strays=0
+  local no_notify=0
+  local arg
+  for arg in "$@"; do
+    case "${arg}" in
+      --skipstrays) skip_strays=1 ;;
+      --no-notify) no_notify=1 ;;
+      *) wall_sources+=("${arg}") ;;
+    esac
+  done
   local -a supported_files=("gif" "jpg" "jpeg" "png" "${WALLPAPER_FILETYPES[@]}")
   if [[ ${#WALLPAPER_OVERRIDE_FILETYPES[@]} -gt 0 ]]; then
     supported_files=("${WALLPAPER_OVERRIDE_FILETYPES[@]}")
@@ -145,12 +173,38 @@ Wall_Hashmap_Cached() {
   local cache_key
   cache_key="$(printf '%s\n' "${wall_sources[@]}" "${supported_files[@]}" | "${hash_cmd}" | awk '{print $1}')"
   local cache_file="${cache_dir}/${cache_key}.tsv"
+  local cache_meta_file="${cache_file}.meta"
   mkdir -p "${cache_dir}"
 
   if [[ ${#wall_sources[@]} -eq 0 ]]; then
     get_hashmap "${wall_sources[@]}"
     return 0
   fi
+
+  local -a get_hashmap_args=("${wall_sources[@]}")
+  [[ "${no_notify}" -eq 1 ]] && get_hashmap_args+=(--no-notify)
+  [[ "${skip_strays}" -eq 1 ]] && get_hashmap_args+=(--skipstrays)
+
+  local meta_tmp="${cache_meta_file}.tmp"
+  {
+    printf 'created=%s\n' "$(date +%s)"
+    local src resolved
+    for src in "${wall_sources[@]}"; do
+      [[ -n "${src}" ]] || continue
+      [[ -e "${src}" ]] || continue
+      resolved="$(
+        readlink -f -- "${src}" 2>/dev/null \
+          || realpath -- "${src}" 2>/dev/null \
+          || printf '%s' "${src}"
+      )"
+      printf 'source=%s\n' "${resolved}"
+    done
+    local ext
+    for ext in "${supported_files[@]}"; do
+      [[ -n "${ext}" ]] || continue
+      printf 'ext=%s\n' "${ext}"
+    done
+  } >"${meta_tmp}" && mv -f "${meta_tmp}" "${cache_meta_file}"
 
   local -A cache_hash
   local -A cache_meta
@@ -195,7 +249,7 @@ Wall_Hashmap_Cached() {
 
   if [[ ${#wallList[@]} -eq 0 ]]; then
     rm -f "${tmp_cache}"
-    get_hashmap "${wall_sources[@]}"
+    get_hashmap "${get_hashmap_args[@]}"
     if [[ ${#wallList[@]} -gt 0 ]]; then
       tmp_cache="${cache_file}.tmp"
       : >"${tmp_cache}"
@@ -229,6 +283,10 @@ Wall_Ensure_Thumbs() {
 
   for i in "${!wallList[@]}"; do
     hash="${wallHash[i]}"
+    if [[ -z "${hash}" ]]; then
+      hash="$(set_hash "${wallList[i]}")"
+      wallHash[i]="${hash}"
+    fi
     [[ -n "${hash}" ]] || continue
     thumb="${thmbDir}/${hash}.${ext}"
     [[ -e "${thumb}" ]] || missing_walls+=("${wallList[i]}")
@@ -309,7 +367,13 @@ Wall_Clean_Thumbs() {
     flock 204
   fi
 
-  if ! get_hashmap "${wall_sources[@]}" --no-notify --skipstrays; then
+  if ! Wall_Hashmap_Cached "${wall_sources[@]}" --no-notify --skipstrays; then
+    flock -u 204 2>/dev/null
+    exec 204>&-
+    return 0
+  fi
+
+  if [[ ${#wallList[@]} -eq 0 ]]; then
     flock -u 204 2>/dev/null
     exec 204>&-
     return 0
@@ -337,6 +401,112 @@ Wall_Clean_Thumbs() {
   if [[ "${removed}" -gt 0 ]]; then
     print_log -sec "wallpaper" -stat "clean" "Removed ${removed} stale thumbs"
   fi
+}
+
+Wall_Prune_Hashmap_Caches() {
+  local cache_root="${WALLPAPER_CACHE_DIR}"
+  [[ -z "${cache_root}" ]] && cache_root="${HYPR_CACHE_HOME:-$HOME/.cache/hypr}/wallpaper"
+  local cache_dir="${cache_root}/hashmap"
+  [[ -d "${cache_dir}" ]] || return 0
+
+  local ttl="${WALLPAPER_HASHMAP_PRUNE_TTL:-2592000}"
+  [[ "${ttl}" =~ ^[0-9]+$ ]] || ttl=2592000
+  local now
+  now="$(date +%s)"
+
+  local file meta line src source_found mtime age
+  while IFS= read -r -d '' file; do
+    meta="${file}.meta"
+    if [[ -f "${meta}" ]]; then
+      source_found=0
+      while IFS= read -r line; do
+        case "${line}" in
+          source=*)
+            src="${line#source=}"
+            if [[ -n "${src}" ]] && [[ -e "${src}" ]]; then
+              source_found=1
+              break
+            fi
+            ;;
+        esac
+      done <"${meta}"
+
+      if [[ "${source_found}" -eq 0 ]]; then
+        rm -f -- "${file}" "${meta}"
+        continue
+      fi
+
+      if [[ "${ttl}" -gt 0 ]]; then
+        mtime="$(stat -c %Y "${meta}" 2>/dev/null || stat -c %Y "${file}" 2>/dev/null || echo 0)"
+        [[ "${mtime}" =~ ^[0-9]+$ ]] || mtime=0
+        age=$((now - mtime))
+        if (( age > ttl )); then
+          rm -f -- "${file}" "${meta}"
+        fi
+      fi
+    else
+      if [[ "${ttl}" -gt 0 ]]; then
+        mtime="$(stat -c %Y "${file}" 2>/dev/null || echo 0)"
+        [[ "${mtime}" =~ ^[0-9]+$ ]] || mtime=0
+        age=$((now - mtime))
+        if (( age > ttl )); then
+          rm -f -- "${file}"
+        fi
+      fi
+    fi
+  done < <(find -H "${cache_dir}" -maxdepth 1 -type f -name "*.tsv" -print0 2>/dev/null)
+}
+
+Wall_Auto_Prune() {
+  local enabled="${WALLPAPER_AUTO_PRUNE:-1}"
+  case "${enabled,,}" in
+    1 | true | yes | on) enabled=1 ;;
+    0 | false | no | off) enabled=0 ;;
+    *) enabled=1 ;;
+  esac
+  [[ "${enabled}" -eq 1 ]] || return 0
+
+  local ttl="${WALLPAPER_AUTO_PRUNE_TTL:-21600}"
+  [[ "${ttl}" =~ ^[0-9]+$ ]] || ttl=21600
+
+  local cache_root="${WALLPAPER_CACHE_DIR}"
+  [[ -z "${cache_root}" ]] && cache_root="${HYPR_CACHE_HOME:-$HOME/.cache/hypr}/wallpaper"
+  local stamp_file="${cache_root}/.auto_prune.ts"
+  mkdir -p "$(dirname "${stamp_file}")"
+
+  local now last
+  now="$(date +%s)"
+  last=0
+  if [[ -f "${stamp_file}" ]]; then
+    last="$(cat "${stamp_file}" 2>/dev/null)"
+    [[ "${last}" =~ ^[0-9]+$ ]] || last=0
+  fi
+  if [[ "${ttl}" -gt 0 ]] && (( now - last < ttl )); then
+    return 0
+  fi
+
+  (
+    exec 200>&- 201>&- 202>&- 203>&-
+    local lock_file="${XDG_RUNTIME_DIR:-/tmp}/wallpaper-auto-prune.lock"
+    exec 205>"${lock_file}"
+    flock -n 205 || exit 0
+
+    local now_ts last_ts
+    now_ts="$(date +%s)"
+    last_ts=0
+    if [[ -f "${stamp_file}" ]]; then
+      last_ts="$(cat "${stamp_file}" 2>/dev/null)"
+      [[ "${last_ts}" =~ ^[0-9]+$ ]] || last_ts=0
+    fi
+    if [[ "${ttl}" -gt 0 ]] && (( now_ts - last_ts < ttl )); then
+      exit 0
+    fi
+
+    printf '%s\n' "${now_ts}" > "${stamp_file}.tmp" && mv -f "${stamp_file}.tmp" "${stamp_file}"
+    Wall_Clean_Thumbs --no-notify --skipstrays
+    Wall_Prune_Hashmap_Caches
+  ) &
+  disown
 }
 
 # * Method to list wallpapers from hashmaps into json
@@ -469,6 +639,52 @@ Wall_Select() {
   fi
 }
 
+Wall_List() {
+  unset wallHash wallList
+
+  local -a wall_sources=("$@")
+  local -a supported_files=("gif" "jpg" "jpeg" "png" "${WALLPAPER_FILETYPES[@]}")
+  if [[ ${#WALLPAPER_OVERRIDE_FILETYPES[@]} -gt 0 ]]; then
+    supported_files=("${WALLPAPER_OVERRIDE_FILETYPES[@]}")
+  fi
+
+  local -a find_sources=()
+  local src resolved
+  for src in "${wall_sources[@]}"; do
+    [[ -n "${src}" ]] || continue
+    [[ -e "${src}" ]] || continue
+    resolved="$(
+      readlink -f -- "${src}" 2>/dev/null \
+        || realpath -- "${src}" 2>/dev/null \
+        || printf '%s' "${src}"
+    )"
+    find_sources+=("${resolved}")
+  done
+  [[ ${#find_sources[@]} -eq 0 ]] && return 1
+
+  local regex_ext=""
+  local ext
+  for ext in "${supported_files[@]}"; do
+    [[ -n "${ext}" ]] || continue
+    if [[ -z "${regex_ext}" ]]; then
+      regex_ext="${ext}"
+    else
+      regex_ext="${regex_ext}|${ext}"
+    fi
+  done
+  [[ -z "${regex_ext}" ]] && regex_ext="gif|jpg|jpeg|png"
+
+  local wall_file
+  while IFS= read -r -d '' wall_file; do
+    wallList+=("${wall_file}")
+  done < <(
+    find -H "${find_sources[@]}" -type f -regextype posix-extended \
+      -iregex ".*\\.(${regex_ext})$" ! -path "*/logo/*" -print0 2>/dev/null | sort -z
+  )
+
+  [[ ${#wallList[@]} -gt 0 ]]
+}
+
 Wall_Hash() {
   # * Method to load wallpapers in hashmaps and fix broken links per theme
   # Skip if already loaded (avoid redundant get_hashmap calls)
@@ -477,7 +693,10 @@ Wall_Hash() {
   [ ! -d "${HYPR_THEME_DIR}" ] && echo "ERROR: \"${HYPR_THEME_DIR}\" does not exist" && exit 0
   wallPathArray=("${HYPR_THEME_DIR}/wallpapers")
   wallPathArray+=("${WALLPAPER_CUSTOM_PATHS[@]}")
-  get_hashmap "${wallPathArray[@]}"
+  if ! Wall_List "${wallPathArray[@]}"; then
+    print_log -err "wallpaper" "No compatible wallpapers found in theme paths"
+    exit 1
+  fi
   [ ! -e "$(readlink -f "${wallSet}")" ] && echo "fixing link :: ${wallSet}" && ln -fs "${wallList[setIndex]}" "${wallSet}"
 }
 

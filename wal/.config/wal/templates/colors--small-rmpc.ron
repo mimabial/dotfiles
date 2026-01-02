@@ -71,8 +71,8 @@
     ),
   browser_column_widths: [20, 38, 42],
   text_color: "{color7}",
-  background_color: "{color0}",
-  header_background_color: "{color0}",
+  background_color: "{background}",
+  header_background_color: "{background}",
   modal_background_color: None,
   modal_backdrop: false,
   tab_bar: (

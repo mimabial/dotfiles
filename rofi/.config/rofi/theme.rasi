@@ -1,14 +1,16 @@
 * {
-    background:            #161616e6;
-    foreground:            #f2f4f8ff;
-    border:            #ee5396ff;
-    accent:            #ee5396cc;
-    selected-background:          #ee5396ff;
-    selected-foreground:          #161616ff;
+    background:            #2d2a2e; /* Monokai Pro background */
+    foreground:            #f8f8f2; /* Monokai Pro foreground (text) */
+    border:            #fc9867; /* Monokai Pro bright accent */
+    accent:            #ffd866; /* Monokai Pro secondary accent */
+    selected-background:          #f0aaaa; /* Monokai Pro selection background */
+    selected-foreground:          #2d2a2e; /* Monokai Pro selection text */
     separator:           #80808080;
-    urgent:              #ee5396ff;
-    active:              #ee5396cc;
-    separatorcolor:     transparent;
-    border-color:       transparent;
-    //font: "Jetbrains Mono 11";
+    urgent:              #f92672ff;
+    active:              #a6e22eff;
+    separator:           #80808080;
+    urgent:              #f92672ff;
+    active:              #a6e22eff;
+    separatorcolor:     #44475a; /* Monokai Pro separator */
+    border-color:       #44475a; /* Monokai Pro border */
 }

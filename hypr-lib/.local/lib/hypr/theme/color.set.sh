@@ -27,6 +27,11 @@
 # ENVIRONMENT:
 #   HYPR_WAL_CACHE_ONLY=1    - Only generate cache, don't apply
 #   HYPR_WAL_ASYNC_APPS=1    - Run app theming in background
+#   HYPR_WAL_CACHE_CLEANUP=1 - Async cleanup stale cache entries
+#   HYPR_WAL_CACHE_ASYNC_STORE=1 - Store cache in background
+#   HYPR_WAL_DEFER_COLD=1    - Defer color generation on cold cache to background
+#   HYPR_WAL_CACHE_PRUNE=1   - Auto-prune wal cache entries for missing wallpapers/themes
+#   HYPR_WAL_CACHE_PRUNE_TTL=21600 - Minimum seconds between prune runs
 #   HYPR_WAL_MODE_OVERRIDE   - Force dark/light mode
 #   enableWallDcol           - Color mode (0=theme, 1=auto, 2=dark, 3=light)
 #
@@ -77,6 +82,29 @@ safe_hyprctl() {
   return 0
 }
 
+# Cold-cache deferral to keep first run responsive (skip during cache-only runs).
+CACHE_ONLY="${HYPR_WAL_CACHE_ONLY:-0}"
+DEFER_COLD="${HYPR_WAL_DEFER_COLD:-1}"
+case "${DEFER_COLD,,}" in
+  1 | true | yes | on) DEFER_COLD=1 ;;
+  0 | false | no | off) DEFER_COLD=0 ;;
+  *) DEFER_COLD=1 ;;
+esac
+
+if [[ "${CACHE_ONLY}" -ne 1 ]] && [[ "${DEFER_COLD}" -eq 1 ]] && [[ -z "${HYPR_WAL_DEFERRED:-}" ]]; then
+  if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    cold_state_file="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/color.gen.state"
+    cold_wal_dir="${XDG_CACHE_HOME:-$HOME/.cache}/wal"
+    if [[ ! -f "${cold_state_file}" || ! -f "${cold_wal_dir}/colors.json" ]]; then
+      print_log -sec "pywal16" -stat "defer" "cold cache: warming colors in background"
+      export HYPR_WAL_DEFERRED=1
+      ( bash "${BASH_SOURCE[0]}" "$@" ) &>/dev/null &
+      disown
+      exit 0
+    fi
+  fi
+fi
+
 # ============================================================================
 # SECTION 2: LOCK MANAGEMENT
 # ============================================================================
@@ -87,7 +115,7 @@ LOCK_FILE="${XDG_RUNTIME_DIR:-/tmp}/color-gen.lock"
 STATE_FILE="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/color.gen.state"
 # Signal file for waybar watcher
 THEME_UPDATE_LOCK="${XDG_RUNTIME_DIR:-/tmp}/theme-update.lock"
-CACHE_ONLY="${HYPR_WAL_CACHE_ONLY:-0}"
+CACHE_ONLY="${CACHE_ONLY:-${HYPR_WAL_CACHE_ONLY:-0}}"
 ASYNC_APPS="${HYPR_WAL_ASYNC_APPS:-0}"
 MODE_OVERRIDE="${HYPR_WAL_MODE_OVERRIDE:-}"
 CACHE_ONLY_ROOT=""
@@ -308,6 +336,32 @@ fi
 WAL_CACHE="${WAL_XDG_CACHE_HOME}/wal"
 mkdir -p "${WAL_CACHE}"
 
+CACHE_CLEANUP_ENABLED="${HYPR_WAL_CACHE_CLEANUP:-1}"
+CACHE_ASYNC_STORE="${HYPR_WAL_CACHE_ASYNC_STORE:-1}"
+CACHE_CLEANUP_LOCK="${XDG_RUNTIME_DIR:-/tmp}/wal-cache-clean.lock"
+CACHE_STORE_LOCK="${XDG_RUNTIME_DIR:-/tmp}/wal-cache-store.lock"
+
+# Include user template changes in wal cache key.
+template_hash_suffix=""
+compute_template_hash() {
+  local template_dir="${XDG_CONFIG_HOME:-$HOME/.config}/wal/templates"
+  local hash_cmd="${hashMech:-sha1sum}"
+  local raw_hash
+
+  [[ -d "${template_dir}" ]] || return 0
+  command -v "${hash_cmd}" &>/dev/null || hash_cmd="sha1sum"
+  command -v "${hash_cmd}" &>/dev/null || return 0
+
+  raw_hash="$(
+    find "${template_dir}" -type f -print0 2>/dev/null \
+      | sort -z \
+      | xargs -0 "${hash_cmd}" 2>/dev/null \
+      | "${hash_cmd}" 2>/dev/null \
+      | awk '{print $1}'
+  )"
+  [[ -n "${raw_hash}" ]] && template_hash_suffix="_tpl${raw_hash:0:12}"
+}
+
 # Centralized color file symlink definitions
 declare -gA COLOR_LINKS=(
   ["colors-alacritty.toml"]="${HOME}/.config/alacritty/colors.toml"
@@ -392,6 +446,16 @@ fi
 # Cache pywal output per wallpaper hash + mode (avoids rerunning wal on repeats)
 HYPR_WAL_CACHE_ENABLE="${HYPR_WAL_CACHE_ENABLE:-1}"
 HYPR_WAL_CACHE_DIR="${HYPR_WAL_CACHE_DIR:-${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/wal/cache}"
+WAL_CACHE_PRUNE_ENABLED="${HYPR_WAL_CACHE_PRUNE:-1}"
+WAL_CACHE_PRUNE_TTL="${HYPR_WAL_CACHE_PRUNE_TTL:-21600}"
+WAL_CACHE_PRUNE_LOCK="${XDG_RUNTIME_DIR:-/tmp}/wal-cache-prune.lock"
+WAL_CACHE_PRUNE_STAMP="${HYPR_WAL_CACHE_DIR}/.prune.ts"
+case "${WAL_CACHE_PRUNE_ENABLED,,}" in
+  1 | true | yes | on) WAL_CACHE_PRUNE_ENABLED=1 ;;
+  0 | false | no | off) WAL_CACHE_PRUNE_ENABLED=0 ;;
+  *) WAL_CACHE_PRUNE_ENABLED=1 ;;
+esac
+[[ "${WAL_CACHE_PRUNE_TTL}" =~ ^[0-9]+$ ]] || WAL_CACHE_PRUNE_TTL=21600
 wal_cache_key=""
 wal_cache_path=""
 wal_cache_populate=0
@@ -467,6 +531,131 @@ wal_cache_valid() {
   return 0
 }
 
+cache_cleanup_stale() {
+  local cache_dir="$1"
+  local keep_suffix="$2"
+  local dir base
+
+  [[ -d "${cache_dir}" ]] || return 0
+
+  while IFS= read -r -d '' dir; do
+    base="${dir##*/}"
+    case "${base}" in
+      *.tmp.* | *.bak.*) continue ;;
+    esac
+
+    if ! wal_cache_valid "${dir}"; then
+      rm -rf "${dir}" 2>/dev/null || true
+      continue
+    fi
+
+    if [[ -n "${keep_suffix}" ]] && [[ "${base}" != *"${keep_suffix}" ]]; then
+      rm -rf "${dir}" 2>/dev/null || true
+    fi
+  done < <(find "${cache_dir}" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
+}
+
+queue_cache_cleanup() {
+  local cache_dir="$1"
+  local keep_suffix="$2"
+
+  [[ "${CACHE_CLEANUP_ENABLED}" -eq 1 ]] || return 0
+  [[ "${CACHE_ONLY}" -ne 1 ]] || return 0
+  [[ -d "${cache_dir}" ]] || return 0
+
+  (
+    exec 200>&- 201>&- 202>&- 203>&-
+    exec 201>"${CACHE_CLEANUP_LOCK}"
+    flock -n 201 || exit 0
+    cache_cleanup_stale "${cache_dir}" "${keep_suffix}"
+  ) &
+  disown
+}
+
+queue_wal_cache_prune() {
+  [[ "${WAL_CACHE_PRUNE_ENABLED}" -eq 1 ]] || return 0
+  [[ "${CACHE_ONLY}" -ne 1 ]] || return 0
+  [[ -d "${HYPR_WAL_CACHE_DIR}" ]] || return 0
+
+  local ttl="${WAL_CACHE_PRUNE_TTL}"
+  [[ "${ttl}" =~ ^[0-9]+$ ]] || ttl=21600
+
+  local stamp="${WAL_CACHE_PRUNE_STAMP}"
+  local now last
+  now="$(date +%s)"
+  last=0
+  if [[ -f "${stamp}" ]]; then
+    last="$(cat "${stamp}" 2>/dev/null)"
+    [[ "${last}" =~ ^[0-9]+$ ]] || last=0
+  fi
+  if [[ "${ttl}" -gt 0 ]] && (( now - last < ttl )); then
+    return 0
+  fi
+
+  (
+    exec 200>&- 201>&- 202>&- 203>&-
+    exec 205>"${WAL_CACHE_PRUNE_LOCK}"
+    flock -n 205 || exit 0
+
+    local now_ts last_ts
+    now_ts="$(date +%s)"
+    last_ts=0
+    if [[ -f "${stamp}" ]]; then
+      last_ts="$(cat "${stamp}" 2>/dev/null)"
+      [[ "${last_ts}" =~ ^[0-9]+$ ]] || last_ts=0
+    fi
+    if [[ "${ttl}" -gt 0 ]] && (( now_ts - last_ts < ttl )); then
+      exit 0
+    fi
+    printf '%s\n' "${now_ts}" > "${stamp}.tmp" && mv -f "${stamp}.tmp" "${stamp}"
+
+    local theme_root="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}/themes"
+    local dir base meta wallpaper theme_name
+    while IFS= read -r -d '' dir; do
+      base="${dir##*/}"
+      case "${base}" in
+        *.tmp.* | *.bak.*) continue ;;
+      esac
+
+      if ! wal_cache_valid "${dir}"; then
+        rm -rf -- "${dir}"
+        continue
+      fi
+
+      meta="${dir}/.meta"
+      if [[ ! -f "${meta}" ]]; then
+        rm -rf -- "${dir}"
+        continue
+      fi
+
+      wallpaper="$(sed -n 's/^wallpaper=//p' "${meta}" | head -1)"
+      if [[ -z "${wallpaper}" ]]; then
+        rm -rf -- "${dir}"
+        continue
+      fi
+
+      case "${wallpaper}" in
+        theme:*)
+          theme_name="${wallpaper#theme:}"
+          if [[ -n "${theme_name}" ]] && [[ -d "${theme_root}/${theme_name}" ]]; then
+            continue
+          fi
+          rm -rf -- "${dir}"
+          continue
+          ;;
+        theme)
+          continue
+          ;;
+      esac
+
+      if [[ ! -e "${wallpaper}" ]]; then
+        rm -rf -- "${dir}"
+      fi
+    done < <(find -H "${HYPR_WAL_CACHE_DIR}" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
+  ) &
+  disown
+}
+
 wal_used_cache=0
 wal_output=""
 wal_exit=""
@@ -474,9 +663,12 @@ wal_exit=""
 if [[ "${HYPR_WAL_CACHE_ENABLE}" -eq 1 ]]; then
   mkdir -p "${HYPR_WAL_CACHE_DIR}" 2>/dev/null || true
   wall_hash="$(${hashMech:-sha1sum} "${WALLPAPER_IMAGE}" | awk '{print $1}')"
-  wal_cache_key="${wall_hash}_${dcol_mode}_${PYWAL_BACKEND}"
+  compute_template_hash
+  wal_cache_key="${wall_hash}_${dcol_mode}_${PYWAL_BACKEND}${template_hash_suffix}"
   wal_cache_path="${HYPR_WAL_CACHE_DIR}/${wal_cache_key}"
   wal_cache_backend="${PYWAL_BACKEND}"
+  queue_cache_cleanup "${HYPR_WAL_CACHE_DIR}" "${template_hash_suffix}"
+  queue_wal_cache_prune
 
   prev_key=""
   prev_colormode=""
@@ -560,7 +752,7 @@ if [[ -z "${wal_exit}" ]]; then
 fi
 
 if [[ "${HYPR_WAL_CACHE_ENABLE}" -eq 1 ]] && [[ -n "${wall_hash:-}" ]] && [[ "${wal_cache_backend:-}" != "${PYWAL_BACKEND}" ]]; then
-  wal_cache_key="${wall_hash}_${dcol_mode}_${PYWAL_BACKEND}"
+  wal_cache_key="${wall_hash}_${dcol_mode}_${PYWAL_BACKEND}${template_hash_suffix}"
   wal_cache_path="${HYPR_WAL_CACHE_DIR}/${wal_cache_key}"
 fi
 
@@ -683,8 +875,52 @@ wal_cache_store() {
   print_log -sec "pywal16" -stat "cache" "stored"
 }
 
+wal_cache_store_async() {
+  local src_dir="$1"
+  local dest_dir="$2"
+  local cache_key="${wal_cache_key}"
+  local state_wallpaper="${STATE_WALLPAPER:-${WALLPAPER_IMAGE}}"
+  local mode="${dcol_mode}"
+  local backend="${PYWAL_BACKEND}"
+  local hash_cmd="${hashMech:-sha1sum}"
+
+  (
+    exec 200>&- 201>&- 202>&- 203>&-
+    exec 202>"${CACHE_STORE_LOCK}"
+    flock -n 202 || exit 0
+    [[ -d "${src_dir}" ]] || exit 0
+    [[ -f "${src_dir}/colors.json" ]] || exit 0
+    command -v "${hash_cmd}" &>/dev/null || hash_cmd="sha1sum"
+    command -v "${hash_cmd}" &>/dev/null || hash_cmd=""
+    start_hash=""
+    end_hash=""
+
+    if [[ -n "${hash_cmd}" ]]; then
+      start_hash="$("${hash_cmd}" "${src_dir}/colors.json" 2>/dev/null | awk '{print $1}')"
+    fi
+
+    wal_cache_key="${cache_key}"
+    STATE_WALLPAPER="${state_wallpaper}"
+    dcol_mode="${mode}"
+    PYWAL_BACKEND="${backend}"
+    wal_cache_store "${src_dir}" "${dest_dir}" || exit 0
+
+    if [[ -n "${hash_cmd}" && -n "${start_hash}" ]]; then
+      end_hash="$("${hash_cmd}" "${src_dir}/colors.json" 2>/dev/null | awk '{print $1}')"
+      if [[ -n "${end_hash}" && "${start_hash}" != "${end_hash}" ]]; then
+        rm -rf "${dest_dir}" 2>/dev/null || true
+      fi
+    fi
+  ) &
+  disown
+}
+
 if [[ "${wal_cache_populate}" -eq 1 ]] && [[ "${wal_used_cache}" -eq 0 ]] && [[ -n "${wal_cache_path}" ]]; then
-  wal_cache_store "${WAL_CACHE}" "${wal_cache_path}" || print_log -sec "pywal16" -warn "cache" "store failed"
+  if [[ "${CACHE_ASYNC_STORE}" -eq 1 ]] && [[ "${CACHE_ONLY}" -ne 1 ]]; then
+    wal_cache_store_async "${WAL_CACHE}" "${wal_cache_path}"
+  else
+    wal_cache_store "${WAL_CACHE}" "${wal_cache_path}" || print_log -sec "pywal16" -warn "cache" "store failed"
+  fi
 fi
 
 # Pre-cache opposite light/dark mode in background for faster mode switching
@@ -695,7 +931,7 @@ if [[ "${CACHE_ONLY}" -ne 1 ]] && [[ "${enableWallDcol}" -ne 0 ]] && [[ "${HYPR_
   [[ "${dcol_mode}" == "light" ]] && opposite_mode="dark"
 
   if [[ -n "${opposite_mode}" ]] && [[ -n "${wall_hash:-}" ]]; then
-    opposite_cache_key="${wall_hash}_${opposite_mode}_${PYWAL_BACKEND}"
+    opposite_cache_key="${wall_hash}_${opposite_mode}_${PYWAL_BACKEND}${template_hash_suffix}"
     opposite_cache_path="${HYPR_WAL_CACHE_DIR}/${opposite_cache_key}"
 
     if ! wal_cache_valid "${opposite_cache_path}"; then

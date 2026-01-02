@@ -2,7 +2,7 @@
 
 # Log to file for debugging
 LOGFILE="/tmp/rmpc-resize.log"
-exec >> "$LOGFILE" 2>&1
+exec >>"$LOGFILE" 2>&1
 echo "=== $(date) ==="
 
 # rmpc doesn't pass dimensions, so get them from the running process
@@ -13,7 +13,7 @@ if [[ -n "$PID" ]]; then
   # Try to get size from /proc
   TERM_SIZE=$(ps -o tty= -p "$PID" 2>/dev/null)
   if [[ -n "$TERM_SIZE" && "$TERM_SIZE" != "?" ]]; then
-    SIZE=$(stty size < /dev/"$TERM_SIZE" 2>/dev/null)
+    SIZE=$(stty size </dev/"$TERM_SIZE" 2>/dev/null)
     ROWS=$(echo "$SIZE" | cut -d' ' -f1)
     COLS=$(echo "$SIZE" | cut -d' ' -f2)
   fi
@@ -69,13 +69,13 @@ if [[ "$TARGET_THEME" != "$CURRENT_THEME" ]]; then
     /^    tabs:[[:space:]]*\[/ { in_tabs=1 }
     in_tabs { print }
     in_tabs && /^    \],?[[:space:]]*$/ { exit }
-  ' "$TARGET_THEME_PATH" > "$TABS_FILE"
+  ' "$TARGET_THEME_PATH" >"$TABS_FILE"
 
   if [[ -s "$TABS_FILE" ]]; then
-    echo "Tabs extracted, line count: $(wc -l < "$TABS_FILE")"
+    echo "Tabs extracted, line count: $(wc -l <"$TABS_FILE")"
 
     # Build new config with Python for reliability
-    TABS_PATH="$TABS_FILE" python3 << 'PYEOF'
+    TABS_PATH="$TABS_FILE" python3 <<'PYEOF'
 import os
 
 config_path = "/home/rifle/.config/rmpc/config.ron"

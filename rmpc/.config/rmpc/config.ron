@@ -13,7 +13,7 @@
     mdp_write_timeout_ms: 5000,
     rewind_to_start_sec: None,
     keep_stage_on_song_change: true,
-    theme: Some("pywal16-small"),
+    theme: Some("pywal16"),
     album_art: (
       method: Auto,
       order: EmbeddedeFirst,
@@ -154,7 +154,7 @@
 
     tabs: [
         (
-          name: " Queue",
+          name: " Home",
           pane: Split(
             size: "100%",
             direction: Vertical,
@@ -163,6 +163,20 @@
                 size: "2",
                 pane: Component("custom_song_table_header"),
               ),
+              (
+                size: "100%",
+                pane: Pane(Queue),
+              ),
+
+            ]
+          )
+        ),
+        (
+          name: " Queue",
+          pane: Split(
+            size: "100%",
+            direction: Vertical,
+            panes: [
               (
                 size: "100%",
                 pane: Pane(Queue),
@@ -182,6 +196,14 @@
         (
           name: "󰥩 Search",
           pane: Pane(Search),
+        ),
+        (
+          name: "󰀥 Albums",
+          pane: Pane(Albums),
+        ),
+        (
+          name: " Artists",
+          pane: Pane(Artists),
         ),
         (
           name: "󰲹 PlayLists",

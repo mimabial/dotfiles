@@ -17,5 +17,5 @@
   text-shadow: none;
   color: @fg-primary;
   border-radius: 4px;
-  -gtk-icon-theme-name: "Tela-circle-pink";
+  -gtk-icon-theme-name: "Monokai";
 }
