@@ -8,9 +8,8 @@ if systemctl --user is-active --quiet hyprland-waybar-watcher.service 2>/dev/nul
   exit 0
 fi
 
-# Fallback: hot reload or restart Waybar directly.
+# Fallback: restart Waybar directly (avoid SIGUSR2 reload zombies).
 if pgrep -x waybar >/dev/null 2>&1; then
-  pkill -SIGUSR2 waybar 2>/dev/null || pkill -x waybar
-else
-  uwsm-app -- waybar >/dev/null 2>&1 &
+  pkill -x waybar 2>/dev/null || true
 fi
+uwsm-app -- waybar >/dev/null 2>&1 &

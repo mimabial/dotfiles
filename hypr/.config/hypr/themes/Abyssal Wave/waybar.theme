@@ -10,7 +10,7 @@ $HOME/.config/waybar/theme.css
 @define-color bg_selected #2D4F67;
 @define-color fg #DCD7BA;
 @define-color border #727169; /* sumiInk4 */
-@define-color border_alt #727169; /* springBlue */
+@define-color border_alt #6A9589; /* springBlue */
 
 /* Active workspace colors */
 @define-color bg_alt #2D4F67;
@@ -18,7 +18,7 @@ $HOME/.config/waybar/theme.css
 @define-color warning #938AA9; /* crystalBlue */
 
 /* Hover colors */
-@define-color accent #6A9589;
+@define-color accent #FFA066;
 @define-color workspace_active_fg #DCD7BA;
 
 /* Standard color palette - base colors */

@@ -4,18 +4,17 @@ $HOME/.config/waybar/theme.css
 @define-color bg rgb(10,50,10);
 @define-color bg_selected rgb(75,125,125); /* Very dark green, 80% opacity */
 @define-color fg rgb(170,240,240); /* Light green, 80% opacity */
-@define-color border rgb(75,125,125); /* foreground muted */
+@define-color border #c7c7c7; /* foreground muted */
 
 /* Active workspace colors */
 @define-color accent rgb(17,180,180); /* Light blue, 40% opacity */
 @define-color border_alt rgb(204,255,255); /* Light blue, full opacity */
 
-
 /* Hover colors */
 @define-color hover #f28779; /* Muted blue-green, 40% opacity */
 @define-color fg_selected rgb(170,240,240); /* Light blue-green, 80% opacity */
 
-@define-color bg_alt rgb(75,125,125); /* Light blue, full opacity */
+@define-color bg_alt #73d0ff; /* Light blue, full opacity */
 @define-color warning rgb(75,125,125); /* Light blue, full opacity */
 
 @define-color c0 #191e2a;
@@ -39,7 +38,7 @@ $HOME/.config/waybar/theme.css
 @define-color accent_bg @accent;
 @define-color accent_fg @accent;
 @define-color warning_bg @warning;
-@define-color warning_fg @warning;
+@define-color warning_fg #f28779;
 @define-color error_bg @critical;
 @define-color error_fg @critical;
 @define-color info_bg @accent;

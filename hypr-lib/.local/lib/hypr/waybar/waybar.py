@@ -313,8 +313,6 @@ def get_current_layout_from_config():
     # If no hash match found, use first layout as fallback
     if not layout:
         logger.debug("No current layout found by hash comparison, using first layout")
-        current_layout_name = "unknown"
-        backup_layout(current_layout_name)
         layout = layouts[0]
 
         layout_name = os.path.basename(layout).replace(".jsonc", "")
@@ -463,11 +461,7 @@ def set_layout(layout):
 def handle_layout_navigation(option):
     """Handle --next, --prev, and --set options."""
     layouts_data = list_layouts()
-    layout_list = [
-        layout["layout"]
-        for layout in layouts_data["layouts"]
-        if not layout.get("is_backup_entry")
-    ]
+    layout_list = [layout["layout"] for layout in layouts_data["layouts"]]
     current_layout = None
 
     with open(STATE_FILE, "r") as file:
@@ -503,25 +497,16 @@ def handle_layout_navigation(option):
 
 
 def list_layouts():
-    """List all layouts with their matching styles and backups."""
+    """List all layouts with their matching styles."""
     layouts = find_layout_files()
     layout_style_pairs = []
-    backup_layouts = []
 
     for layout in layouts:
+        if "/backup/" in layout or "\\backup\\" in layout:
+            continue
         for layout_dir in LAYOUT_DIRS:
             if layout.startswith(layout_dir):
                 relative_path = os.path.relpath(layout, start=layout_dir)
-                if "/backup/" in layout or "\\backup\\" in layout:
-                    name = relative_path.replace(".jsonc", "")
-                    backup_layouts.append(
-                        {
-                            "layout": layout,
-                            "name": name,
-                        }
-                    )
-                    continue
-
                 name = relative_path.replace(".jsonc", "")
                 style_path = resolve_style_path(layout)
                 layout_style_pairs.append(
@@ -529,23 +514,11 @@ def list_layouts():
                 )
                 break
 
-    result = {"layouts": layout_style_pairs, "backups": backup_layouts}
-
-    if len(backup_layouts) > 0:
-        layout_style_pairs.append(
-            {
-                "name": f"List all {len(backup_layouts)} Backup(s) saved",
-                "style": "",
-                "layout": "",
-                "is_backup_entry": True,
-            }
-        )
-
-    return result
+    return {"layouts": layout_style_pairs}
 
 
 def list_layouts_json():
-    """List all layouts in JSON format with their matching styles and backups."""
+    """List all layouts in JSON format with their matching styles."""
     layouts_data = list_layouts()
     layouts_json = json.dumps(layouts_data, indent=4)
     print(layouts_json)
@@ -849,9 +822,6 @@ def layout_selector():
         # Find the layout pair
         for pair in layouts_data["layouts"]:
             if pair["layout"] == selected_layout:
-                if pair.get("is_backup_entry", False):
-                    handle_backup_display()
-                    return
                 style_path = pair["style"]
                 break
         else:
@@ -896,70 +866,6 @@ def select_layout_and_style():
         style_selector(selected_layout)
     else:
         sys.exit(0)
-
-
-def backup_layout(layout_name):
-    """Backup the current config.jsonc file to a layout-specific named backup.
-
-    Args:
-        layout_name: Name of the layout to use in backup filename
-    Returns:
-        str: Path to the created backup file
-    """
-    if not CONFIG_JSONC.exists():
-        logger.debug("No config file to backup")
-        return None
-
-    config_dir = CONFIG_JSONC.parent
-    layouts_dir = os.path.join(str(config_dir), "layouts")
-    os.makedirs(layouts_dir, exist_ok=True)
-    backup_dir = os.path.join(layouts_dir, "backup")
-    os.makedirs(backup_dir, exist_ok=True)
-
-    timestamp = time.strftime("%Y%m%d_%H%M%S")
-    backup_filename = f"{layout_name}_{timestamp}.jsonc"
-    backup_path = os.path.join(backup_dir, backup_filename)
-
-    try:
-        atomic_copy_file(CONFIG_JSONC, backup_path)
-        logger.debug(f"Created backup at {backup_path}")
-        return str(backup_path)
-    except Exception as e:
-        logger.error(f"Failed to create backup: {e}")
-        return None
-
-
-def handle_backup_display():
-    """Show a menu of backup layouts and allow trying them before applying."""
-    layouts_data = list_layouts()
-    backup_layouts = layouts_data["backups"]
-
-    if not backup_layouts:
-        notify.send("Waybar", "No backup layouts found", replace_id=9)
-        return
-
-    backup_names = [pair["name"] for pair in backup_layouts]
-
-    hyprland = HYPRLAND.HyprctlWrapper()
-    override_string = hyprland.get_rofi_override_string()
-    rofi_pos_string = hyprland.get_rofi_pos()
-
-    rofi_flags = [
-        "-p",
-        "Select a backup to try:",
-        "-theme",
-        "clipboard",
-        "-theme-str",
-        override_string,
-        "-theme-str",
-        rofi_pos_string,
-    ]
-
-    rofi_dmenu(
-        backup_names,
-        rofi_flags,
-    )
-    sys.exit(0)
 
 
 def update_icon_size():
@@ -1565,15 +1471,17 @@ def smart_reload_waybar(changed_files):
         return
 
     if needs_restart:
-        logger.debug(f"Structural files changed: {[Path(f).name for f in changed_files]}, full restart")
-        stop_waybar()
-        start_waybar()
+        logger.debug(
+            f"Structural files changed: {[Path(f).name for f in changed_files]}, full restart"
+        )
     else:
-        logger.debug(f"CSS files changed: {[Path(f).name for f in changed_files]}, hot reload")
-        try:
-            os.kill(pid, signal.SIGUSR2)
-        except ProcessLookupError:
-            start_waybar()
+        logger.debug(
+            f"CSS files changed: {[Path(f).name for f in changed_files]}, full restart"
+        )
+
+    # Avoid SIGUSR2 reload: Waybar spawns defunct child processes on reload.
+    stop_waybar()
+    start_waybar()
 
 
 def watch_waybar():
@@ -1675,7 +1583,6 @@ def get_waybar_pids():
             return False
         state = data[rparen + 2 :].strip().split(" ", 1)[0]
         return state == "Z"
-
     try:
         result = subprocess.run(
             ["pgrep", "-x", "waybar"], capture_output=True, text=True
@@ -1715,15 +1622,17 @@ def start_waybar():
         except:
             WAYBAR_LOCK.unlink(missing_ok=True)
 
-    old_sigchld = signal.getsignal(signal.SIGCHLD)
-    try:
-        # Let waybar auto-reap module execs to avoid zombie accumulation.
+    def _waybar_preexec():
+        # Ensure Waybar auto-reaps child module execs to prevent zombies.
         signal.signal(signal.SIGCHLD, signal.SIG_IGN)
+
+    try:
         proc = subprocess.Popen(
             [WAYBAR_BIN],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             start_new_session=True,
+            preexec_fn=_waybar_preexec,
         )
 
         # Write lock file immediately
@@ -1732,11 +1641,6 @@ def start_waybar():
 
     except Exception as e:
         logger.error(f"Failed to start waybar: {e}")
-    finally:
-        try:
-            signal.signal(signal.SIGCHLD, old_sigchld)
-        except Exception:
-            pass
 
 
 def stop_waybar():
@@ -1870,10 +1774,8 @@ def main():
 
                     if config_hash != layout_hash:
                         logger.debug(
-                            "Config hash differs from layout hash, creating backup"
+                            "Config hash differs from layout hash, updating config"
                         )
-                        layout_name = os.path.basename(layout_path).replace(".jsonc", "")
-                        backup_layout(layout_name)
 
                     try:
                         atomic_copy_file(layout_path, CONFIG_JSONC)
@@ -1903,7 +1805,9 @@ def main():
                             config_hash = get_file_hash(CONFIG_JSONC)
                             layout_hash = get_file_hash(found_layout)
                             if config_hash != layout_hash:
-                                backup_layout(layout_name)
+                                logger.debug(
+                                    "Config hash differs from layout hash, updating config"
+                                )
 
                         atomic_copy_file(found_layout, CONFIG_JSONC)
                         logger.debug("Updated config.jsonc with layout by name")

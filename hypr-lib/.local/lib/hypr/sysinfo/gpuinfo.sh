@@ -244,6 +244,123 @@ map_floor() {
   [ -n "$def_val" ] && echo $def_val || echo " "
 }
 
+# Keep icon levels stable near thresholds.
+is_number() {
+  [[ "$1" =~ ^-?[0-9]+([.][0-9]+)?$ ]]
+}
+
+update_state_var() {
+  local key="$1"
+  local value="$2"
+
+  [[ -z "${key}" ]] && return
+  if grep -q "^${key}=" "${gpuinfo_file}"; then
+    sed -i "s/^${key}=.*/${key}=${value}/" "${gpuinfo_file}"
+  else
+    echo "${key}=${value}" >>"${gpuinfo_file}"
+  fi
+}
+
+hysteresis_bucket() {
+  local value="$1"
+  local prev="$2"
+  local high="$3"
+  local mid="$4"
+  local low="$5"
+  local hyst="$6"
+  local val raw next threshold
+
+  if [[ -z "${value}" ]] || ! is_number "${value}"; then
+    if [[ "${prev}" =~ ^[0-3]$ ]]; then
+      echo "${prev}"
+    else
+      echo ""
+    fi
+    return
+  fi
+
+  val="${value%%.*}"
+  if ((val >= high)); then
+    raw=3
+  elif ((val >= mid)); then
+    raw=2
+  elif ((val >= low)); then
+    raw=1
+  else
+    raw=0
+  fi
+
+  if [[ -z "${prev}" ]] || [[ ! "${prev}" =~ ^[0-3]$ ]]; then
+    echo "${raw}"
+    return
+  fi
+
+  if [[ -z "${hyst}" ]] || [[ ! "${hyst}" =~ ^[0-9]+$ ]] || [[ "${hyst}" -le 0 ]]; then
+    echo "${raw}"
+    return
+  fi
+
+  next="${prev}"
+  threshold="${low}"
+
+  if ((raw > prev)); then
+    case "${raw}" in
+      1) threshold="${low}" ;;
+      2) threshold="${mid}" ;;
+      3) threshold="${high}" ;;
+    esac
+    if ((val >= threshold + hyst)); then
+      next="${raw}"
+    fi
+  elif ((raw < prev)); then
+    case "${prev}" in
+      1) threshold="${low}" ;;
+      2) threshold="${mid}" ;;
+      3) threshold="${high}" ;;
+    esac
+    if ((val < threshold - hyst)); then
+      next="${raw}"
+    fi
+  else
+    next="${raw}"
+  fi
+
+  echo "${next}"
+}
+
+# Try to read Intel utilization from intel_gpu_top JSON output.
+intel_gpu_top_util() {
+  command -v intel_gpu_top &>/dev/null || return 1
+
+  local sample util jq_filter
+  sample=$(intel_gpu_top -J -s 1000 -o - 2>/dev/null | head -n 1)
+  [[ -z "${sample}" ]] && return 1
+
+  jq_filter='
+    def asnum:
+      if type == "number" then .
+      elif type == "string" then (tonumber? // empty)
+      elif type == "object" then
+        (.busy? // .["busy"]? // .["busy%"]? // .["busy_percent"]? // empty) | asnum
+      else empty end;
+    def sum_busy($obj):
+      [ $obj | to_entries[] |
+        select(.key|test("render|blitter|video|vecs|vcs|rcs|bcs|compute|ccs|copy|3d|media|engine"; "i")) |
+        .value | asnum
+      ] | add;
+    (if has("engines") then sum_busy(.engines) else sum_busy(.) end) as $sum
+    | if ($sum|type) == "number" then $sum
+      elif has("rc6") then (.rc6 | asnum) as $rc6 | if ($rc6|type) == "number" then 100 - $rc6 else empty end
+      else empty end
+  '
+
+  util=$(jq -r "${jq_filter}" <<<"${sample}" 2>/dev/null)
+  [[ -z "${util}" || "${util}" == "null" ]] && return 1
+  [[ ! "${util}" =~ ^-?[0-9]+([.][0-9]+)?$ ]] && return 1
+
+  printf "%.0f" "${util}"
+}
+
 # Function to determine color based on temperature
 get_temp_color() {
   local temp=$1
@@ -277,18 +394,40 @@ get_temp_color() {
 
 generate_json() {
 
-  if [[ $GPUINFO_EMOJI -ne 1 ]]; then
-    temp_lv="85:, 65:, 45:☁, ❄"
-  else
-    temp_lv="85:🌋, 65:🔥, 45:☁️, ❄️"
-  fi
+  local util_high=90 util_mid=60 util_low=30
+  local temp_high=85 temp_mid=65 temp_low=45
+  local util_hyst="${GPUINFO_UTIL_HYSTERESIS:-5}"
+  local temp_hyst="${GPUINFO_TEMP_HYSTERESIS:-2}"
+
+  temp_lv="85:, 65:, 45:, "
   util_lv="90:, 60:󰓅, 30:󰾅, 󰾆"
 
-  # Generate glyphs
-  icons="$(map_floor "$util_lv" "$utilization")$(map_floor "$temp_lv" "${temperature}")"
-  speedo=${icons:0:1}
-  thermo=${icons:1:1}
-  emoji=${icons:2}
+  local util_bucket temp_bucket speedo thermo status_icon temp_color
+  local util_icons=("󰾆" "󰾅" "󰓅" "")
+  local temp_icons=("" "" "" "")
+  local temp_status_icons=("" "" "" "")
+
+  util_bucket=$(hysteresis_bucket "${utilization}" "${GPUINFO_UTIL_BUCKET}" "${util_high}" "${util_mid}" "${util_low}" "${util_hyst}")
+  temp_bucket=$(hysteresis_bucket "${temperature}" "${GPUINFO_TEMP_BUCKET}" "${temp_high}" "${temp_mid}" "${temp_low}" "${temp_hyst}")
+
+  if [[ -n "${util_bucket}" ]]; then
+    speedo="${util_icons[${util_bucket}]}"
+    update_state_var "GPUINFO_UTIL_BUCKET" "${util_bucket}"
+  else
+    speedo="$(map_floor "$util_lv" "$utilization")"
+  fi
+
+  if [[ -n "${temp_bucket}" ]]; then
+    thermo="${temp_icons[${temp_bucket}]}"
+    status_icon="${temp_status_icons[${temp_bucket}]}"
+    update_state_var "GPUINFO_TEMP_BUCKET" "${temp_bucket}"
+  else
+    local temp_pair
+    temp_pair="$(map_floor "$temp_lv" "${temperature}")"
+    thermo="${temp_pair:0:1}"
+    status_icon="${temp_pair:1:1}"
+  fi
+
   temp_color=$(get_temp_color "${temperature}")
 
   # Set vendor-specific icon for thermo_alt
@@ -311,36 +450,35 @@ generate_json() {
     icon_text="<span size='14pt'>$thermo_alt</span>"
   fi
 
-  # Build tooltip with newlines
-  tooltip="$emoji $primary_gpu
+  status_icon="${status_icon:-$thermo_alt}"
+
+  # Build tooltip with ordered lines
+  tooltip="$status_icon $primary_gpu
 $thermo Temperature: ${temperature}°C"
 
-  #TODO Add Something incase needed.
-  declare -A tooltip_parts
-  if [[ -n "${utilization}" ]]; then tooltip_parts["$speedo Utilization: "]="${utilization}%"; fi
-  if [[ -n "${current_clock_speed}" ]] && [[ -n "${max_clock_speed}" ]]; then tooltip_parts[" Clock Speed: "]="${current_clock_speed}/${max_clock_speed} MHz"; fi
-  if [[ -n "${core_clock}" ]]; then tooltip_parts[" Clock Speed: "]="${core_clock} MHz"; fi
+  local tooltip_lines=()
+  if [[ -n "${utilization}" ]]; then tooltip_lines+=("$speedo Utilization: ${utilization}%"); fi
+  if [[ -n "${core_clock}" ]]; then
+    tooltip_lines+=(" Clock Speed: ${core_clock} MHz")
+  elif [[ -n "${current_clock_speed}" ]] && [[ -n "${max_clock_speed}" ]]; then
+    tooltip_lines+=(" Clock Speed: ${current_clock_speed}/${max_clock_speed} MHz")
+  fi
   if [[ -n "${power_usage}" ]]; then
     if [[ -n "${power_limit}" ]]; then
-      tooltip_parts["󱪉 Power Usage: "]="${power_usage}/${power_limit} W"
+      tooltip_lines+=("󱪉 Power Usage: ${power_usage}/${power_limit} W")
     else
-      tooltip_parts["󱪉 Power Usage: "]="${power_usage} W"
+      tooltip_lines+=("󱪉 Power Usage: ${power_usage} W")
     fi
   fi
-  if [[ -n "${power_discharge}" ]] && [[ "${power_discharge}" != "0" ]]; then tooltip_parts[" Power Discharge: "]="${power_discharge} W"; fi
-  if [[ -n "${fan_speed}" ]]; then tooltip_parts[" Fan Speed: "]="${fan_speed} RPM"; fi
-  if [[ -n "${gpu_error}" ]]; then tooltip_parts["NVIDIA-SMI: "]="${gpu_error}"; fi
+  if [[ -n "${power_discharge}" ]] && [[ "${power_discharge}" != "0" ]]; then tooltip_lines+=(" Power Discharge: ${power_discharge} W"); fi
+  if [[ -n "${fan_speed}" ]]; then tooltip_lines+=(" Fan Speed: ${fan_speed} RPM"); fi
+  if [[ -n "${gpu_error}" ]]; then tooltip_lines+=("NVIDIA-SMI: ${gpu_error}"); fi
 
-  # Construct tooltip
-  for key in "${!tooltip_parts[@]}"; do
-    local value="${tooltip_parts[${key}]}"
-    if [[ -n "${value}" && "${value}" =~ [a-zA-Z0-9] ]]; then
-      json+=$'\n'"${key}${value}"
+  for line in "${tooltip_lines[@]}"; do
+    if [[ -n "${line}" && "${line}" =~ [a-zA-Z0-9] ]]; then
+      tooltip+=$'\n'"${line}"
     fi
   done
-
-  # Add the additional info to tooltip
-  tooltip="${tooltip}${json}"
 
   # Write cache using jq
 
@@ -460,6 +598,10 @@ general_query() {
 
     # Intel: Use i915 sysfs if available
     if [[ "${vendor}" == "intel" ]]; then
+      if [[ -z "${utilization}" ]]; then
+        utilization=$(intel_gpu_top_util) || true
+      fi
+
       # Intel GT frequency files
       if [[ -f "${card_path}/gt_cur_freq_mhz" ]]; then
         current_clock_speed=$(cat "${card_path}/gt_cur_freq_mhz" 2>/dev/null)

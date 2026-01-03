@@ -16,6 +16,6 @@
   font-size: 18pt;
   text-shadow: none;
   color: @fg-primary;
-  border-radius: 2px;
-  -gtk-icon-theme-name: "Vivid-Glassy-Dark-Icons";
+  border-radius: 3px;
+  -gtk-icon-theme-name: "Newaita-reborn-manjaro";
 }

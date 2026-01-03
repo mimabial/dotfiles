@@ -446,7 +446,7 @@ menu label {
 #notification {
   margin: 2px 2px 4px 2px;
   border: 1px solid alpha(@border, 0.3);
-  background-color: alpha(@bg_alt, 0.1);
+  background-color: alpha(@bg, 0.1);
 }
 
 #custom-swaync {
