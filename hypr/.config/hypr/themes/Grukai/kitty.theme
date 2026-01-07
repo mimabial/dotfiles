@@ -6,10 +6,11 @@ selection_background    #FFFFFF
 cursor                  #8B6F56
 cursor_text_color       #FFFFFF
 
-active_tab_foreground     #131311
+active_tab_foreground     #E6E69A
 active_tab_background     #5E4533
-inactive_tab_foreground   #5E4533
+inactive_tab_foreground   #8F8F57
 inactive_tab_background   #131311
+tab_bar_background        #525229
 
 # black
 color0      #525229

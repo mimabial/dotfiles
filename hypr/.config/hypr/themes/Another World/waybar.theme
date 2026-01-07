@@ -3,7 +3,7 @@ $HOME/.config/waybar/theme.css
 @define-color bg_selected #13131D;
 @define-color fg #FFFFFF;
 @define-color border #81a1c1;
-@define-color accent #6AA9C9;
+@define-color accent #8fbcbb;
 @define-color workspace_active_fg #EFEFF5;
 @define-color border_alt #81a1c1;
 @define-color workspace_hover_bg #020817;
@@ -52,3 +52,4 @@ $HOME/.config/waybar/theme.css
 @define-color tooltip_fg @fg;
 @define-color tooltip_border @border;
 @define-color workspace_active_bg @bg_selected;
+@define-color workspace_active_br #6c5a30;

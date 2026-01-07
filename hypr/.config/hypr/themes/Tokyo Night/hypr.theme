@@ -8,6 +8,9 @@ $NVIM_VARIANT = storm
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
+$CURSOR_THEME=Emo
+$CURSOR_SIZE=24
+
 # Optional: The varibles above will be set automatically when the theme is loaded
 # This exec commands will soon be deprecated
 

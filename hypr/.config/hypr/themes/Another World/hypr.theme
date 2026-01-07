@@ -2,7 +2,7 @@ $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
 
 $GTK_THEME=Kripton
 $ICON_THEME=Vivid-Glassy-Dark-Icons
-$CURSOR_THEME=Sweet-cursors
+$CURSOR_THEME=Hackneyed-Dark
 $CURSOR_SIZE=24
 $COLOR_SCHEME=prefer-dark
 $NVIM_SCHEME=nord

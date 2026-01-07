@@ -2,7 +2,7 @@ $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
 
 $GTK_THEME = Material-Sakura
 $ICON_THEME = Tela-circle-black
-$COLOR_SCHEME = prefer-light
+$COLOR_SCHEME = prefer-dark
 $NVIM_SCHEME = rose-pine
 $NVIM_VARIANT = dawn
 $NVIM_BACKGROUND = light

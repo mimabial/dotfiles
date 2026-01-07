@@ -1,7 +1,7 @@
 $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
 
 $GTK_THEME = Everforest-Dark
-$ICON_THEME = Gruvbox-Plus-Dark
+$ICON_THEME = Vimix-dark
 $COLOR_SCHEME = prefer-dark
 $NVIM_SCHEME = everforest
 $NVIM_VARIANT = soft

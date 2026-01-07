@@ -1,7 +1,7 @@
 $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
 
 $GTK_THEME = Abyssal-Wave
-$ICON_THEME = Papirus-kanagawa
+$ICON_THEME = Vimix-beryl-dark
 $COLOR_SCHEME = prefer-dark   
 $NVIM_SCHEME = kanagawa
 $NVIM_VARIANT = wave
@@ -22,6 +22,7 @@ general {
 
     gaps_in = 3
     gaps_out = 6
+    resize_on_border = true
 }
 
 decoration {

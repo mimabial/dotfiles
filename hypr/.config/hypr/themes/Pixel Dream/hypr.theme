@@ -3,7 +3,7 @@ $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
 $GTK_THEME=Pixel-Dream
 $ICON_THEME=pixelitos-dark
 $COLOR_SCHEME=prefer-dark
-$CURSOR_THEME=pixelfun2-dracula
+$CURSOR_THEME=pixelfun2
 $CURSOR_SIZE=28
 $FONT=Miracode
 $NVIM_SCHEME=gruvbox

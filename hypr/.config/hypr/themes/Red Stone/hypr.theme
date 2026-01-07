@@ -3,9 +3,9 @@ $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
 $SDDM_THEME = Red-Stone
 $GTK_THEME = Red-Stone
 $ICON_THEME = Tela-circle-red
-$CURSOR_THEME=Mocu-Black-Right
-$CURSOR_SIZE=25
-$COLOR_SCHEME=prefer-dark
+$CURSOR_THEME = Skyrim-cursors
+$CURSOR_SIZE = 27
+$COLOR_SCHEME = prefer-dark
 $NVIM_SCHEME = ashen
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
