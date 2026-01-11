@@ -89,8 +89,20 @@ purge_package_targets() {
                 removed=$((removed + 1))
               fi
             done < <(find "$path" \( -type f -o -type l \) -print0)
-          elif [[ "$verbose" -ne 0 ]]; then
-            echo "Skipping dir target for file source: $target"
+
+            # Clean out empty dirs so stow can recreate directory symlinks when safe.
+            find "$target" -type d -empty -delete >/dev/null 2>&1 || true
+            if ! find "$target" -mindepth 1 -print -quit >/dev/null 2>&1; then
+              rmdir -- "$target" 2>/dev/null || true
+            fi
+          else
+            # Source is a file but target is a dir; only remove if empty to avoid data loss.
+            find "$target" -type d -empty -delete >/dev/null 2>&1 || true
+            if ! find "$target" -mindepth 1 -print -quit >/dev/null 2>&1; then
+              rmdir -- "$target" 2>/dev/null || true
+            elif [[ "$verbose" -ne 0 ]]; then
+              echo "Conflict: target dir blocks file source: $target"
+            fi
           fi
         fi
       fi
