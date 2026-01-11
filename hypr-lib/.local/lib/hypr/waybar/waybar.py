@@ -1227,7 +1227,19 @@ def generate_includes():
         includes.extend(glob.glob(os.path.join(directory, "*.json")))
         includes.extend(glob.glob(os.path.join(directory, "*.jsonc")))
 
-    includes_data["include"] = list(dict.fromkeys(includes))
+    config_root = str(xdg_config_home())
+    data_root = str(xdg_data_home())
+
+    def normalize_include_path(path):
+        if path.startswith(config_root + os.sep):
+            return path.replace(config_root, "$XDG_CONFIG_HOME", 1)
+        if path.startswith(data_root + os.sep):
+            return path.replace(data_root, "$XDG_DATA_HOME", 1)
+        return path
+
+    includes_data["include"] = [
+        normalize_include_path(path) for path in list(dict.fromkeys(includes))
+    ]
 
     position = get_config_value("WAYBAR_POSITION")
     if position:
