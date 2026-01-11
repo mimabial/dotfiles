@@ -8,7 +8,7 @@ $NVIM_VARIANT = soft
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
-$CURSOR_THEME = volantes_cursors
+$CURSOR_THEME = McMojave-cursors
 $CURSOR_SIZE = 29
 
 exec = gsettings set org.gnome.desktop.interface icon-theme '$ICON_THEME'

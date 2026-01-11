@@ -1,0 +1,14 @@
+[Unit]
+Description=Hyprland idle manager (manual keep-awake + audio playing)
+After=graphical-session.target
+PartOf=graphical-session.target
+ConditionEnvironment=WAYLAND_DISPLAY
+
+[Service]
+Type=simple
+ExecStart=%h/.local/lib/hypr/session/idle-manager.sh
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target

@@ -5,7 +5,8 @@
     "format": "{}",
     "exec": "hyprshell waybar/caffeine.sh",
     "on-click": "hyprshell session/toggle-keep-awake.sh",
-    "interval": "once",
+    "on-click-right": "hyprshell session/toggle-audio-keep-awake.sh",
+    "interval": 2,
     "tooltip": true,
     "signal": 21
   }

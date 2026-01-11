@@ -161,3 +161,5 @@ frame.bottom=4
 frame.left=4
 frame.right=4
 
+[Hacks]
+transparent_dolphin_view=true

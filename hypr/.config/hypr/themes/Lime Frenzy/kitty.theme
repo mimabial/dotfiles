@@ -11,7 +11,7 @@ selection_foreground    #ece1c0
 cursor #0daa0d 
 cursor_text_color       #fff8f0
 
-active_tab_foreground           #1E4E50
+active_tab_foreground           #1E5E60
 inactive_tab_foreground         #5b5e5a
 
 active_tab_font_style bold

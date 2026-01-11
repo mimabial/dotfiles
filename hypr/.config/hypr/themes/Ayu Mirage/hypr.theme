@@ -1,7 +1,7 @@
 $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
 
 $GTK_THEME = Decay-Green
-$ICON_THEME = Newaita-reborn-manjaro-dark
+$ICON_THEME = Tela-manjaro-dark
 $COLOR_SCHEME = prefer-dark
 $NVIM_SCHEME = ayu
 $NVIM_VARIANT = mirage

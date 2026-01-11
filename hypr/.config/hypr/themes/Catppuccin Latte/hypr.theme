@@ -1,7 +1,7 @@
 $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
 
 $GTK_THEME = Catppuccin-Latte
-$ICON_THEME = Papirus-Purple-Light
+$ICON_THEME = Tela-purple-light
 $COLOR_SCHEME = prefer-light
 $CURSOR_THEME = Layan-white-cursors
 $CURSOR_SIZE = 28

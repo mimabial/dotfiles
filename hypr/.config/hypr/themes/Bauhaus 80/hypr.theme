@@ -2,7 +2,7 @@ $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
 
 # $GTK_THEME = Frosted-Glass
 $GTK_THEME = Orchis-Light
-$ICON_THEME = Tela-circle-blue
+$ICON_THEME = Tela-blue-light
 $COLOR_SCHEME = prefer-light
 $CURSOR_THEME = GoogleDot-Blue
 $NVIM_SCHEME = solarized

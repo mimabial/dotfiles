@@ -1,38 +1,48 @@
 
-@define-color bg #1c1e1b;
-@define-color fg #fff8f0;
-@define-color border #5AA65F;
-@define-color bg_selected #1E4E50;
-@define-color bg_alt #5AA65F;
-@define-color fg_alt #fff8f0;
-@define-color warning #282828;
-@define-color border_alt #282828;
-@define-color workspace_active_fg #fff8f0;
-@define-color accent #69e252;
-@define-color fg_selected #98971a;
-@define-color workspace_hover_bg #5AA65F;
-@define-color hover #d79921;
-@define-color c0 #1c1e1b;
-@define-color c8 #5b5e5a;
-@define-color c1 #8aff8a;
-@define-color c9 #AAF0AA;
-@define-color c2  #fcff31;
-@define-color c10 #b2f0aa;
-@define-color c3  #CCFFCC;
-@define-color c11 #AAF0AA;
-@define-color c4  #12b812;
-@define-color c12 #12b812;
-@define-color c5  #9AE6E6;
-@define-color c13 #9AE6E6;
-@define-color c6  #9BE6E6;
-@define-color c14 #9BE6E6;
-@define-color c7  #f1e9dc;
-@define-color c15 #fff8f0;
+/* Main colors */
+@define-color bg #1F1F28; /* sumiInk3 */
+
+@define-color fg_selected #FFA066;
+@define-color workspace_hover_bg #DCD7BA;
+@define-color hover #FF5D62; /* sumiInk4 */
+
+@define-color bg_selected #2D4F67;
+@define-color fg #c8c8c8;
+@define-color border #6a9589; /* sumiInk4 */
+@define-color border_alt #957fb8; /* springBlue */
+
+/* Active workspace colors */
+@define-color bg_alt #2D4F67;
+@define-color fg_alt #DCD7BA;
+@define-color warning #938AA9; /* crystalBlue */
+
+/* Hover colors */
+@define-color accent #FFA066;
+@define-color workspace_active_fg #DCD7BA;
+
+/* Standard color palette - base colors */
+@define-color c0 #16161D; /* roninYellow */
+@define-color c1 #C34043; /* autumnRed */
+@define-color c2 #76946A; /* autumnGreen */
+@define-color c3 #C0A36E; /* autumnYellow */
+@define-color c4 #7E9CD8; /* crystalBlue */
+@define-color c5 #957FB8; /* oniViolet */
+@define-color c6 #6A9589; /* waveAqua1 */
+@define-color c7 #C8C093; /* fujiGray */
+/* Standard color palette - bright/accent variants */
+@define-color c8 #727169;
+@define-color c9 #E82424; /* samuraiRed */
+@define-color c10 #98BB6C; /* autumnGreen */
+@define-color c11 #E6C384; /* autumnYellow */
+@define-color c12 #7FB4CA; /* springBlue */
+@define-color c13 #938AA9; /* springViolet1 */
+@define-color c14 #7AA89F; /* waveAqua1 */
+@define-color c15 #DCD7BA; /* oldWhite */
 @define-color critical @c1;
-@define-color accent_bg @accent;
-@define-color accent_fg @accent;
+@define-color accent_bg #7aa2f7;
+@define-color accent_fg #6A9589;
 @define-color warning_bg @warning;
-@define-color warning_fg #d79921;
+@define-color warning_fg #f7768e;
 @define-color error_bg @critical;
 @define-color error_fg @critical;
 @define-color info_bg @accent;
@@ -51,5 +61,5 @@
 @define-color tooltip_bg @bg_alt;
 @define-color tooltip_fg @fg;
 @define-color tooltip_border @border;
-@define-color workspace_active_bg #005C4F;
-@define-color workspace_active_br #d79921;
+@define-color workspace_active_br #DCD7BA;
+@define-color workspace_active_bg #16161D;

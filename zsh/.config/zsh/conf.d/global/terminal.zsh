@@ -26,10 +26,31 @@ function _load_completions() {
 
 function _init_zinit() {
     ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
-    [ ! -d $ZINIT_HOME ] && mkdir -p "$(dirname $ZINIT_HOME)"
-    [ ! -d $ZINIT_HOME/.git ] && git clone https://github.com/zdharma-continuum/zinit.git "$ZINIT_HOME"
-    source "${ZINIT_HOME}/zinit.zsh"
+    if [[ ! -d "$ZINIT_HOME/.git" ]]; then
+        mkdir -p "${ZINIT_HOME:h}"
+        if command -v git >/dev/null 2>&1; then
+            git clone https://github.com/zdharma-continuum/zinit.git "$ZINIT_HOME"
+        else
+            print -u2 "zinit: git not found; skipping install."
+            return 1
+        fi
+    fi
+
+    if [[ ! -r "$ZINIT_HOME/zinit.zsh" ]]; then
+        print -u2 "zinit: missing $ZINIT_HOME/zinit.zsh"
+        return 1
+    fi
+
+    source "$ZINIT_HOME/zinit.zsh"
     
+    # Load a few important annexes, without Turbo
+    # (this is currently required for annexes)
+    zinit light-mode for \
+        zdharma-continuum/zinit-annex-as-monitor \
+        zdharma-continuum/zinit-annex-bin-gem-node \
+        zdharma-continuum/zinit-annex-patch-dl \
+        zdharma-continuum/zinit-annex-rust
+
     # Configure oh-my-zsh integration
     zinit snippet OMZL::git.zsh
     zinit snippet OMZP::git
@@ -62,8 +83,10 @@ function _defer_zinit_after_prompt_before_input() {
         _zsh_autosuggest_start
     fi
 
-    chmod +r $ZDOTDIR/.zshrc # Make sure .zshrc is readable
-    [[ -r $ZDOTDIR/.zshrc ]] && source $ZDOTDIR/.zshrc
+    if [[ -z ${ZSHRC_LOADED-} ]]; then
+        chmod +r "$ZDOTDIR/.zshrc" # Make sure .zshrc is readable
+        [[ -r "$ZDOTDIR/.zshrc" ]] && source "$ZDOTDIR/.zshrc"
+    fi
 }
 
 function _load_deferred_plugin_system() {
@@ -143,10 +166,13 @@ function _load_compinit() {
     setopt EXTENDED_GLOB
 
     # Fastest - use glob qualifiers on directory pattern
-    if [[ -n ${ZDOTDIR}/.zcompdump(#qN.mh+${ZSH_COMPINIT_CHECK:-1}) ]]; then
-        compinit
+    local compdump="${ZSH_COMPDUMP:-$ZDOTDIR/.zcompdump}"
+    if [[ ! -e "$compdump" ]]; then
+        compinit -d "$compdump"
+    elif [[ -n ${compdump}(#qN.mh+${ZSH_COMPINIT_CHECK:-1}) ]]; then
+        compinit -d "$compdump"
     else
-        compinit -C
+        compinit -C -d "$compdump"
     fi
 
     _comp_options+=(globdots) # tab complete hidden files
@@ -170,6 +196,14 @@ ZSH_PROMPT="1"     #Unset this variable in $ZDOTDIR/startup.zsh to disable HaLL'
 ZSH_NO_PLUGINS="0" #Set this variable to "1" in $ZDOTDIR/startup.zsh to disable HaLL's Zsh plugin loading.
 
 ZSH_AUTOSUGGEST_STRATEGY=(history completion)
+
+# Create state/cache dirs for interactive use only.
+if [[ -n "$ZSH_STATE_DIR" ]]; then
+    [[ -d "$ZSH_STATE_DIR" ]] || mkdir -p "$ZSH_STATE_DIR"
+fi
+if [[ -n "$ZSH_CACHE_DIR" ]]; then
+    [[ -d "$ZSH_CACHE_DIR" ]] || mkdir -p "$ZSH_CACHE_DIR"
+fi
 
 # # History configuration
 HISTFILE=${HISTFILE:-$ZDOTDIR/.zsh_history}
@@ -195,21 +229,19 @@ fi
 
 
 if [[ ${ZSH_NO_PLUGINS} != "1" ]]; then
-    if [[ "$ZSH_DEFER" == "1" ]] && [[ -d "$ZINIT_DIR" ]]; then
+    if [[ "$ZSH_DEFER" == "1" ]]; then
         # Set flag for deferred loading
         typeset -g DEFER_ZINIT_LOAD=1
         # Loads the deferred zinit plugin system
         _load_deferred_plugin_system
         _load_prompt # This disables transient prompts sadly
-    elif [[ -d "$ZINIT_DIR" ]]; then
+    else
         # Load zinit immediately if not deferring
         _init_zinit
         _load_compinit
         _load_prompt
         _load_functions
         _load_completions
-    else
-        echo "No plugin system found. Please install a plugin system or create a $ZDOTDIR/plugins.zsh file."
     fi
 fi
 
@@ -232,4 +264,3 @@ alias cl='clear' \
     .4='cd ../../../..' \
     .5='cd ../../../../..' \
     mkdir='mkdir -p'
-

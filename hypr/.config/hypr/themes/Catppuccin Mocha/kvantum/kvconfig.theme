@@ -74,7 +74,7 @@ tooltip_blur_radius=6
 
 [GeneralColors]
 window.color=#24273a
-base.color=#1e2030
+base.color=#1e203000
 alt.base.color=#1e2030
 button.color=#363a4f
 light.color=#494d64

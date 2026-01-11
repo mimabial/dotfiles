@@ -27,7 +27,7 @@ check_size=14
 menubar_mouse_tracking=true
 toolbutton_style=0
 double_click=false
-translucent_windows=false
+translucent_windows=true
 blurring=true
 popup_blurring=true
 vertical_spin_indicators=true
@@ -76,7 +76,7 @@ tooltip_blur_radius=14
 
 [GeneralColors]
 window.color=#2e3440
-base.color=#2e3440
+base.color=#2e344000
 alt.base.color=#2e3440
 button.color=#4c566a
 light.color=#eceff4

@@ -518,8 +518,10 @@ Wall_Json() {
   fi
   setIndex=0
   [ ! -d "${HYPR_THEME_DIR}" ] && echo "ERROR: \"${HYPR_THEME_DIR}\" does not exist" && exit 0
-  if [ -d "${HYPR_THEME_DIR}/wallpapers" ]; then
+  if [[ -d "${HYPR_THEME_DIR}/wallpapers" ]]; then
     wallPathArray=("${HYPR_THEME_DIR}/wallpapers")
+  elif [[ -d "${HYPR_THEME_DIR}/wallpaper" ]]; then
+    wallPathArray=("${HYPR_THEME_DIR}/wallpaper")
   else
     wallPathArray=("${HYPR_THEME_DIR}")
   fi
@@ -691,7 +693,13 @@ Wall_Hash() {
   [[ ${#wallList[@]} -gt 0 ]] && return 0
   setIndex=0
   [ ! -d "${HYPR_THEME_DIR}" ] && echo "ERROR: \"${HYPR_THEME_DIR}\" does not exist" && exit 0
-  wallPathArray=("${HYPR_THEME_DIR}/wallpapers")
+  if [[ -d "${HYPR_THEME_DIR}/wallpapers" ]]; then
+    wallPathArray=("${HYPR_THEME_DIR}/wallpapers")
+  elif [[ -d "${HYPR_THEME_DIR}/wallpaper" ]]; then
+    wallPathArray=("${HYPR_THEME_DIR}/wallpaper")
+  else
+    wallPathArray=("${HYPR_THEME_DIR}")
+  fi
   wallPathArray+=("${WALLPAPER_CUSTOM_PATHS[@]}")
   if ! Wall_List "${wallPathArray[@]}"; then
     print_log -err "wallpaper" "No compatible wallpapers found in theme paths"

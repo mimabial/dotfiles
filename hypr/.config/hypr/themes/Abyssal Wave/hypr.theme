@@ -1,7 +1,7 @@
 $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
 
 $GTK_THEME = Abyssal-Wave
-$ICON_THEME = Vimix-beryl-dark
+$ICON_THEME = Kanagawa
 $COLOR_SCHEME = prefer-dark   
 $NVIM_SCHEME = kanagawa
 $NVIM_VARIANT = wave
@@ -17,11 +17,11 @@ exec = gsettings set org.gnome.desktop.interface color-scheme '$COLOR_SCHEME'
 
 general {
     border_size = 3
-    col.inactive_border = rgba(223249CC)
-    col.active_border = rgba(957FB8FF)
+    col.inactive_border = rgba(6a9589b0)
+    col.active_border = rgba(dcd7baee)
 
-    gaps_in = 3
-    gaps_out = 6
+    gaps_in = 4
+    gaps_out = 8
     resize_on_border = true
 }
 
@@ -56,10 +56,10 @@ decoration {
 }
 
 group {
-    col.border_active = rgba(957FB8FF)
-    col.border_inactive = rgba(223249CC)
-    col.border_locked_active = rgba(957FB8FF)
-    col.border_locked_inactive = rgba(223249CC)
+    col.border_active = rgba(dcd7baee)
+    col.border_inactive = rgba(6a9589b0)
+    col.border_locked_active = rgba(dcd7baee)
+    col.border_locked_inactive = rgba(6a9589b0)
 
     groupbar {
       col.active = rgba(957fb8cc) # Kanagawa lavender with opacity

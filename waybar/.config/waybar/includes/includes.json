@@ -49,7 +49,6 @@
         "/home/rifle/.config/waybar/modules/custom-focusmode.jsonc",
         "/home/rifle/.config/waybar/modules/custom-gpuinfo.jsonc",
         "/home/rifle/.config/waybar/modules/custom-screenshot.jsonc",
-        "/home/rifle/.config/waybar/modules/idle_inhibitor.jsonc",
         "/home/rifle/.config/waybar/modules/clock#date.jsonc",
         "/home/rifle/.config/waybar/modules/memory.jsonc",
         "/home/rifle/.config/waybar/modules/disk.jsonc",

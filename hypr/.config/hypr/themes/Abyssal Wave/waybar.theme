@@ -8,9 +8,9 @@ $HOME/.config/waybar/theme.css
 @define-color hover #FF5D62; /* sumiInk4 */
 
 @define-color bg_selected #2D4F67;
-@define-color fg #DCD7BA;
-@define-color border #727169; /* sumiInk4 */
-@define-color border_alt #6A9589; /* springBlue */
+@define-color fg #c8c8c8;
+@define-color border #6a9589; /* sumiInk4 */
+@define-color border_alt #957fb8; /* springBlue */
 
 /* Active workspace colors */
 @define-color bg_alt #2D4F67;
@@ -40,10 +40,10 @@ $HOME/.config/waybar/theme.css
 @define-color c14 #7AA89F; /* waveAqua1 */
 @define-color c15 #DCD7BA; /* oldWhite */
 @define-color critical @c1;
-@define-color accent_bg @accent;
+@define-color accent_bg #7aa2f7;
 @define-color accent_fg #6A9589;
 @define-color warning_bg @warning;
-@define-color warning_fg #FF5D62;
+@define-color warning_fg #f7768e;
 @define-color error_bg @critical;
 @define-color error_fg @critical;
 @define-color info_bg @accent;
@@ -62,6 +62,6 @@ $HOME/.config/waybar/theme.css
 @define-color tooltip_bg @bg_alt;
 @define-color tooltip_fg @fg;
 @define-color tooltip_border @border;
-@define-color workspace_active_br #957FB8;
+@define-color workspace_active_br #DCD7BA;
 @define-color workspace_active_bg #16161D;
 

@@ -8,8 +8,7 @@ systemd_units=(
   hypr-config.service
   hypr-ipc.service
   hyprland-hypridle.service
-  hyprland-keep-awake.service
-  inhibit-idle-on-audio.service
+  hyprland-idle-manager.service
   zsh-zcompdump-clean.timer
 )
 

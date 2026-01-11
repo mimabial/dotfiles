@@ -2,7 +2,13 @@
 
 set -euo pipefail
 
-IDLE_UNIT="hyprland-hypridle.service"
+STATE_DIR="${XDG_STATE_HOME:-}"
+if [[ -z "${STATE_DIR}" ]]; then
+  STATE_DIR="$HOME/.local/state"
+fi
+STATE_DIR="${STATE_DIR}/hypr"
+KEEP_AWAKE_STATE_FILE="${STATE_DIR}/keep-awake.state"
+MANAGER_UNIT="hyprland-idle-manager.service"
 
 notify() {
   if command -v notify-send >/dev/null 2>&1; then
@@ -10,33 +16,32 @@ notify() {
   fi
 }
 
+update_waybar() {
+  pkill -RTMIN+21 waybar 2>/dev/null || true
+}
+
 systemd_user_ok() {
   systemctl --user is-active default.target >/dev/null 2>&1
 }
 
-if systemd_user_ok; then
-  if systemctl --user is-active --quiet "${IDLE_UNIT}" >/dev/null 2>&1; then
-    systemctl --user stop "${IDLE_UNIT}" >/dev/null 2>&1 || true
-    notify "Stop locking computer when idle"
-    exit 0
+ensure_manager_running() {
+  if systemd_user_ok && systemctl --user list-unit-files "${MANAGER_UNIT}" >/dev/null 2>&1; then
+    systemctl --user start --no-block "${MANAGER_UNIT}" >/dev/null 2>&1 || true
   fi
+}
 
-  if systemctl --user list-unit-files "${IDLE_UNIT}" >/dev/null 2>&1; then
-    systemctl --user start "${IDLE_UNIT}" >/dev/null 2>&1 || true
-    notify "Now locking computer when idle"
-    exit 0
-  fi
-fi
+keep_awake_enabled() {
+  [[ -f "${KEEP_AWAKE_STATE_FILE}" ]]
+}
 
-# Fallback: toggle the process directly if systemd user bus/unit isn't available.
-if pgrep -x hypridle >/dev/null 2>&1; then
-  pkill -x hypridle >/dev/null 2>&1 || true
-  notify "Stop locking computer when idle"
+if keep_awake_enabled; then
+  rm -f "${KEEP_AWAKE_STATE_FILE}"
+  notify "Idle actions enabled"
 else
-  if command -v uwsm-app >/dev/null 2>&1; then
-    uwsm-app -- hypridle >/dev/null 2>&1 &
-  else
-    hypridle >/dev/null 2>&1 &
-  fi
-  notify "Now locking computer when idle"
+  mkdir -p "${STATE_DIR}"
+  printf "%s\n" "1" > "${KEEP_AWAKE_STATE_FILE}"
+  notify "Idle actions disabled"
 fi
+
+ensure_manager_running
+update_waybar
