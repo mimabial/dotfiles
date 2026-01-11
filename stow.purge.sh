@@ -49,6 +49,9 @@ purge_package_targets() {
     local path=""
     local rel=""
     local target=""
+    local file=""
+    local file_rel=""
+    local target_file=""
 
     [[ -d "$pkg_root" ]] || return 0
 
@@ -58,14 +61,38 @@ purge_package_targets() {
 
       if [[ -e "$target" || -L "$target" ]]; then
         if [[ "$verbose" -ne 0 ]]; then
-          if [[ -d "$target" && ! -L "$target" ]]; then
-            echo "Removing dir: $target"
+          if [[ -L "$target" ]]; then
+            echo "Removing symlink: $target"
+          elif [[ -f "$target" ]]; then
+            echo "Removing file: $target"
           else
-            echo "Removing: $target"
+            echo "Cleaning files under: $target"
           fi
         fi
-        rm -rf -- "$target"
-        removed=$((removed + 1))
+        if [[ -L "$target" ]]; then
+          rm -f -- "$target"
+          removed=$((removed + 1))
+        elif [[ -f "$target" ]]; then
+          rm -f -- "$target"
+          removed=$((removed + 1))
+        elif [[ -d "$target" ]]; then
+          if [[ -d "$path" ]]; then
+            while IFS= read -r -d '' file; do
+              file_rel="${file#"$path"/}"
+              target_file="$target/$file_rel"
+
+              if [[ -L "$target_file" || -f "$target_file" ]]; then
+                if [[ "$verbose" -ne 0 ]]; then
+                  echo "Removing file: $target_file"
+                fi
+                rm -f -- "$target_file"
+                removed=$((removed + 1))
+              fi
+            done < <(find "$path" \( -type f -o -type l \) -print0)
+          elif [[ "$verbose" -ne 0 ]]; then
+            echo "Skipping dir target for file source: $target"
+          fi
+        fi
       fi
     done < <(find "$pkg_root" -mindepth 1 -maxdepth 1 -print0)
   }

@@ -2,6 +2,32 @@
 *.pyc
 __pycache__/
 .DS_Store
+# Theme/wallpaper generated files (HyDE/pywal16)
+alacritty/.config/alacritty/colors.toml
+alacritty/.config/alacritty/theme.toml
+cava/.config/cava/config
+hypr/.config/hypr/hyprlock/colors.conf
+hypr/.config/hypr/themes/colors.conf
+hypr/.config/hypr/themes/theme.conf
+hypr/.config/hypr/themes/wal.conf
+hypr/.config/hypr/themes/*/wall.set
+kitty/.config/kitty/colors.conf
+kitty/.config/kitty/theme.conf
+kvantum/.config/Kvantum/pywal16/
+rofi/.config/rofi/colors.rasi
+rofi/.config/rofi/theme.rasi
+share/.local/share/icons/default/index.theme
+share/.local/share/themes/Pywal16-Gtk/gtk-3.0/gtk.css
+share/.local/share/themes/Pywal16-Gtk/gtk-4.0/gtk.css
+swaync/.config/swaync/colors.css
+swaync/.config/swaync/config.json
+swaync/.config/swaync/style.css
+swaync/.config/swaync/theme.css
+tmux/.config/tmux/colors.conf
+tmux/.config/tmux/theme.conf
+waybar/.config/waybar/colors.css
+waybar/.config/waybar/theme.css
+waybar/.config/waybar/includes/border-radius.css
 # State files (include defaults, ignore runtime)
 # hypr/.config/hypr/themes/*/wallpapers/  # Optional: exclude large wallpapers
 # Zsh runtime files
