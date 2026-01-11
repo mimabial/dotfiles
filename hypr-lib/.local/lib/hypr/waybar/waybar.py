@@ -1643,6 +1643,12 @@ def start_waybar():
         except:
             WAYBAR_LOCK.unlink(missing_ok=True)
 
+    # Ensure required include files exist before Waybar loads CSS.
+    try:
+        update_border_radius()
+    except Exception as e:
+        logger.debug(f"Failed to update border-radius.css before start: {e}")
+
     def _waybar_preexec():
         # Ensure Waybar auto-reaps child module execs to prevent zombies.
         signal.signal(signal.SIGCHLD, signal.SIG_IGN)

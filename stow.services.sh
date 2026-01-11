@@ -12,6 +12,32 @@ systemd_units=(
   zsh-zcompdump-clean.timer
 )
 
+set_colormode_theme() {
+  local state_home="${XDG_STATE_HOME:-}"
+  if [[ -z "${state_home}" ]]; then
+    state_home="$HOME/.local/state"
+  fi
+  local state_dir="${state_home}/hypr"
+  local staterc="${state_dir}/staterc"
+
+  mkdir -p "${state_dir}"
+
+  if [[ -f "${staterc}" ]]; then
+    if grep -q '^enableWallDcol=' "${staterc}"; then
+      sed -i 's/^enableWallDcol=.*/enableWallDcol="0"/' "${staterc}"
+    else
+      if [[ -s "${staterc}" ]] && [[ "$(tail -c1 "${staterc}")" != $'\n' ]]; then
+        printf '\n' >> "${staterc}"
+      fi
+      printf 'enableWallDcol="0"\n' >> "${staterc}"
+    fi
+  else
+    printf 'enableWallDcol="0"\n' > "${staterc}"
+  fi
+
+  systemctl --user stop auto-theme.service >/dev/null 2>&1 || true
+}
+
 enable_user_units() {
   if ! command -v systemctl >/dev/null 2>&1; then
     echo "systemctl not found; skipping user unit enablement."
@@ -37,6 +63,7 @@ enable_user_units() {
     if ! systemctl --user start "${systemd_units[@]}"; then
       echo "Some user units failed to start; check systemctl --user status."
     fi
+    set_colormode_theme
     return 0
   fi
 
@@ -44,6 +71,7 @@ enable_user_units() {
     echo "Timer failed to start; check systemctl --user status."
   fi
   echo "graphical-session.target not active; graphical units will start on next login."
+  set_colormode_theme
 }
 
 enable_user_units

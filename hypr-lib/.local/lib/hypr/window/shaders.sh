@@ -197,9 +197,9 @@ parse_includes_and_update() {
 # name of the shader
 \$SCREEN_SHADER = "${selected_shader}"
 # path to the shader
-\$SCREEN_SHADER_PATH = "\$XDG_CONFIG_HOME/hypr/shaders/${selected_shader}.frag"
+\$SCREEN_SHADER_PATH = \$XDG_CONFIG_HOME/hypr/shaders/${selected_shader}.frag
 # path to the compiled shader // override this in '../hypr/config.toml'
-\$SCREEN_SHADER_COMPILED = "\$XDG_CONFIG_HOME/hypr/shaders/.compiled.cache.glsl"
+\$SCREEN_SHADER_COMPILED = \$XDG_CONFIG_HOME/hypr/shaders/.compiled.cache.glsl
 
 
 EOF
