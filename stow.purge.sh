@@ -3,6 +3,17 @@
 set -euo pipefail
 
 dotfiles_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+dotfiles_root="$(realpath "$dotfiles_dir" 2>/dev/null || echo "$dotfiles_dir")"
+
+is_in_dotfiles() {
+  local resolved=""
+  resolved="$(readlink -f -- "$1" 2>/dev/null || true)"
+  [[ -n "$resolved" ]] || return 1
+  case "$resolved" in
+    "$dotfiles_root"|"$dotfiles_root"/*) return 0 ;;
+  esac
+  return 1
+}
 
 packages=(
   alacritty
@@ -60,6 +71,10 @@ purge_package_targets() {
       target="$target_root/$rel"
 
       if [[ -e "$target" || -L "$target" ]]; then
+        if is_in_dotfiles "$target"; then
+          [[ "$verbose" -ne 0 ]] && echo "Skipping repo path: $target"
+          continue
+        fi
         if [[ "$verbose" -ne 0 ]]; then
           if [[ -L "$target" ]]; then
             echo "Removing symlink: $target"
@@ -82,6 +97,10 @@ purge_package_targets() {
               target_file="$target/$file_rel"
 
               if [[ -L "$target_file" || -f "$target_file" ]]; then
+                if is_in_dotfiles "$target_file"; then
+                  [[ "$verbose" -ne 0 ]] && echo "Skipping repo path: $target_file"
+                  continue
+                fi
                 if [[ "$verbose" -ne 0 ]]; then
                   echo "Removing file: $target_file"
                 fi
@@ -126,6 +145,10 @@ purge_package_targets() {
       esac
 
       target="$HOME/$rel"
+      if is_in_dotfiles "$target"; then
+        [[ "$verbose" -ne 0 ]] && echo "Skipping repo path: $target"
+        continue
+      fi
       if [[ -L "$target" || -f "$target" ]]; then
         [[ "$verbose" -ne 0 ]] && echo "Removing file: $target"
         rm -f -- "$target"
