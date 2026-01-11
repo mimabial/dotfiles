@@ -109,6 +109,39 @@ purge_package_targets() {
     done < <(find "$pkg_root" -mindepth 1 -maxdepth 1 -print0)
   }
 
+  purge_dotfiles_root() {
+    local pkg_root="$pkg_dir"
+    local path=""
+    local rel=""
+    local target=""
+
+    while IFS= read -r -d '' path; do
+      rel="${path#"$pkg_root"/}"
+      [[ "$rel" == .* ]] || continue
+
+      case "$rel" in
+        .config|.local|.cache|.themes|.icons)
+          continue
+          ;;
+      esac
+
+      target="$HOME/$rel"
+      if [[ -L "$target" || -f "$target" ]]; then
+        [[ "$verbose" -ne 0 ]] && echo "Removing file: $target"
+        rm -f -- "$target"
+        removed=$((removed + 1))
+      elif [[ -d "$target" ]]; then
+        find "$target" -type d -empty -delete >/dev/null 2>&1 || true
+        if ! find "$target" -mindepth 1 -print -quit >/dev/null 2>&1; then
+          rmdir -- "$target" 2>/dev/null || true
+          removed=$((removed + 1))
+        elif [[ "$verbose" -ne 0 ]]; then
+          echo "Conflict: target dir blocks file source: $target"
+        fi
+      fi
+    done < <(find "$pkg_root" -mindepth 1 -maxdepth 1 -print0)
+  }
+
   purge_children ".config"
   purge_children ".local/bin"
   purge_children ".local/lib"
@@ -118,6 +151,7 @@ purge_package_targets() {
   purge_children ".cache"
   purge_children ".icons"
   purge_children ".themes"
+  purge_dotfiles_root
 
   if [[ "$verbose" -ne 0 ]]; then
     echo "Removed ${removed} paths for ${pkg}."
