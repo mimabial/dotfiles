@@ -1,0 +1,77 @@
+$HOME/.config/waybar/theme.css
+/* To enable blur please make sure alpha is greater than 0 */
+
+@define-color bg #262335;
+@define-color fg #ff7edb;
+
+@define-color wb-act-bg #03edf9;
+@define-color wb-act-fg #463465;
+
+@define-color wb-hvr-bg #72f1b8;
+@define-color wb-hvr-fg #495495;
+
+@define-color bg_selected #65baff;
+@define-color fg_selected #e2e8ff;
+@define-color bg_alt #3c3f58;
+@define-color fg_alt @fg;
+@define-color border #65baff;
+@define-color border_alt #65baff;
+@define-color accent #65baff;
+@define-color hover #ff87d4;
+@define-color warning #ff87d4;
+
+@define-color c0 #1a1b27;
+@define-color c1 #ff517d;
+@define-color c2 #8cffd1;
+@define-color c3 #ff87d4;
+@define-color c4 #65baff;
+@define-color c5 #fede5d;
+@define-color c6 #78faff;
+@define-color c7 #ffffff;
+@define-color c8 #3c3f58;
+@define-color c9 #ff517d;
+@define-color c10 #8cffd1;
+@define-color c11 #ff87d4;
+@define-color c12 #65baff;
+@define-color c13 #ffd36e;
+@define-color c14 #78faff;
+@define-color c15 #ffffff;
+
+@define-color critical @c1;
+@define-color accent_bg @accent;
+@define-color accent_fg #65baff;
+@define-color warning_bg @warning;
+@define-color warning_fg @warning;
+@define-color error_bg @critical;
+@define-color error_fg @critical;
+@define-color info_bg @accent;
+@define-color info_fg @accent;
+@define-color success_bg @c2;
+@define-color success_fg @c2;
+@define-color neutral_bg @bg_alt;
+@define-color neutral_fg @fg;
+@define-color secondary_bg @bg_alt;
+@define-color secondary_fg @fg;
+@define-color highlight_bg @bg_selected;
+@define-color highlight_fg @fg_selected;
+
+@define-color menu_bg @bg;
+@define-color menu_fg @fg;
+@define-color menu_border @border;
+@define-color tooltip_bg @bg_alt;
+@define-color tooltip_fg @fg;
+@define-color tooltip_border @border;
+
+@define-color workspace_active_bg #463465;
+@define-color workspace_active_fg @fg_selected;
+@define-color workspace_active_br #03edf9;
+@define-color workspace_hover_bg @hover;
+
+@define-color gray @c8;
+@define-color gray_bright @c7;
+@define-color orange @c4;
+@define-color orange_bright @c12;
+@define-color purple @c5;
+@define-color purple_bright @c13;
+@define-color aqua @c6;
+@define-color aqua_bright @c14;

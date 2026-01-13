@@ -4,7 +4,7 @@ $HOME/.config/waybar/theme.css
 @define-color bg #131311; /* background */
 
 @define-color bg_selected #362920;
-@define-color fg #FFFFFF;
+@define-color fg #F4FaFc;
 @define-color border #5E4533; /* active tab */
 
 @define-color bg_alt #8B6F56; /* cursor */
@@ -32,7 +32,7 @@ $HOME/.config/waybar/theme.css
 @define-color c7 #FFE4CC;
 /* Standard color palette - bright/accent variants */
 @define-color c8 #8F8F57;
-@define-color c9 #F0CBAA;
+@define-color c9 #B1610B ;
 @define-color c10 #F0C7AA;
 @define-color c11 #F0C7AA;
 @define-color c12 #E6E69A;
@@ -41,7 +41,7 @@ $HOME/.config/waybar/theme.css
 @define-color c15 #F0CBAA;
 @define-color critical @c1;
 @define-color accent_bg @accent;
-@define-color accent_fg @accent;
+@define-color accent_fg #6c4c2f;
 @define-color warning_bg @warning;
 @define-color warning_fg @warning;
 @define-color error_bg @critical;
@@ -62,4 +62,5 @@ $HOME/.config/waybar/theme.css
 @define-color tooltip_bg @bg_alt;
 @define-color tooltip_fg @fg;
 @define-color tooltip_border @border;
-@define-color workspace_active_bg @bg_selected;
+@define-color workspace_active_bg #131311;
+@define-color workspace_active_br #4B5320;

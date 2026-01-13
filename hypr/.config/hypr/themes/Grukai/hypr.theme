@@ -1,7 +1,7 @@
 $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
 
 $GTK_THEME=Grukai
-$ICON_THEME=buuf-icons-for-plasma
+$ICON_THEME=buuf-nestort
 $COLOR_SCHEME=prefer-dark
 $NVIM_BACKGROUND=dark
 $NVIM_TRANSPARENCY=false
@@ -18,7 +18,7 @@ general {
     gaps_in = 3
     gaps_out = 5
     border_size = 2
-    col.active_border = rgba(B3BBA3ff)
+    col.active_border = rgba(525229ff)
     col.inactive_border = rgba(232425ff)
     layout = dwindle
     resize_on_border = true

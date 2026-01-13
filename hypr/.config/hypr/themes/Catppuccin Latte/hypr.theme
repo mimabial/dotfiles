@@ -19,8 +19,8 @@ exec = gsettings set org.gnome.desktop.interface gtk-theme $GTK_THEME
 exec = gsettings set org.gnome.desktop.interface color-scheme $COLOR_SCHEME
 
 general {
-    gaps_in = 3
-    gaps_out = 6
+    gaps_in = 5
+    gaps_out = 8
     border_size = 2
     col.active_border = rgba(8839efff) 
     col.inactive_border = rgba(179299cc)

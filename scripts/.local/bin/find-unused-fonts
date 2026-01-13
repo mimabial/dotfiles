@@ -17,16 +17,33 @@ USED_FONTS=(
   "alfaslabone"
 )
 
-# Get all installed font packages
+# Get all installed font packages that actually ship font files
 echo "Scanning installed font packages..."
-INSTALLED_FONTS=$(pacman -Qq | grep -E "font|ttf|otf|nerd" | sort)
+FONT_EXT_REGEX="\\.(ttf|otf|ttc|otb|pfa|pfb|woff2?)$"
+CANDIDATE_FONTS=$(pacman -Qq | grep -Ei "font|ttf|otf|nerd" | sort)
+INSTALLED_FONTS=()
+
+while IFS= read -r font_pkg; do
+  if pacman -Qlq "$font_pkg" 2>/dev/null | grep -Eqi "$FONT_EXT_REGEX"; then
+    INSTALLED_FONTS+=("$font_pkg")
+  fi
+done <<< "$CANDIDATE_FONTS"
 
 # Arrays to store results
 UNUSED_FONTS=()
 USED_FONT_PKGS=()
+BLOCKED_FONTS=()
+
+is_required_by() {
+  local pkg="$1"
+  local required_by
+
+  required_by=$(pacman -Qi "$pkg" 2>/dev/null | awk -F ': ' '/^Required By/ {print $2}')
+  [[ -n "$required_by" && "$required_by" != "None" ]]
+}
 
 # Check each installed font package
-while IFS= read -r font_pkg; do
+for font_pkg in "${INSTALLED_FONTS[@]}"; do
   is_used=false
 
   # Check if this font package matches any used font
@@ -41,11 +58,16 @@ while IFS= read -r font_pkg; do
   # If not used, add to unused list
   if [ "$is_used" = false ]; then
     # Skip essential system fonts
-    if [[ ! "$font_pkg" =~ ^(fontconfig|freetype2|cairo|pango)$ ]]; then
-      UNUSED_FONTS+=("$font_pkg")
+    if [[ "$font_pkg" =~ ^(fontconfig|freetype2|cairo|pango)$ ]]; then
+      continue
     fi
+    if is_required_by "$font_pkg"; then
+      BLOCKED_FONTS+=("$font_pkg")
+      continue
+    fi
+    UNUSED_FONTS+=("$font_pkg")
   fi
-done <<< "$INSTALLED_FONTS"
+done
 
 # Display results
 echo ""
@@ -87,6 +109,17 @@ else
     echo "To remove fonts manually, run:"
     echo "  sudo pacman -Rns ${UNUSED_FONTS[*]}"
   fi
+fi
+
+if [ ${#BLOCKED_FONTS[@]} -gt 0 ]; then
+  echo ""
+  echo "======================================"
+  echo "SKIPPED (REQUIRED BY OTHER PACKAGES):"
+  echo "======================================"
+  for font in "${BLOCKED_FONTS[@]}"; do
+    required_by=$(pacman -Qi "$font" 2>/dev/null | awk -F ': ' '/^Required By/ {print $2}')
+    echo "  • $font (required by: $required_by)"
+  done
 fi
 
 echo ""

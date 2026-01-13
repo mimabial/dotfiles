@@ -1,13 +1,13 @@
 $HOME/.config/waybar/theme.css
 
 @define-color bg #1c1e1b;
-@define-color fg #fff8f0;
-@define-color border #5AA65F;
+@define-color fg #dbf1fd;
+@define-color border #1E4E50;
 @define-color bg_selected #1E4E50;
-@define-color bg_alt #5AA65F;
+@define-color border_alt #282828;
 @define-color fg_alt #fff8f0;
 @define-color warning #282828;
-@define-color border_alt #282828;
+@define-color bg_alt #0daa0d;
 @define-color workspace_active_fg #fff8f0;
 @define-color accent #69e252;
 @define-color fg_selected #98971a;

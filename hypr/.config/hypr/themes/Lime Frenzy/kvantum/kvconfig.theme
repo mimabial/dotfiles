@@ -1,7 +1,7 @@
 [%General]
 author=prasanth rangan
 comment=wallbash
-spread_menuitems=true
+spread_menuitems=false
 left_tabs=true
 mirror_doc_tabs=true
 scroll_width=8
