@@ -39,7 +39,7 @@ $HOME/.config/waybar/theme.css
 @define-color c15 #ECEFF4;
 @define-color critical @c1;
 @define-color accent_bg @accent;
-@define-color accent_fg @accent;
+@define-color accent_fg #A3BE8C;
 @define-color warning_bg @warning;
 @define-color warning_fg @warning;
 @define-color error_bg @critical;
