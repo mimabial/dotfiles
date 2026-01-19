@@ -10,7 +10,7 @@ $HOME/.config/waybar/theme.css
 @define-color fg #93cee9;
 @define-color border #a5b6cf; /* cursorline */
 
-@define-color accent #93cee9;
+@define-color accent #8baff1;
 @define-color workspace_active_fg #1f2328;
 @define-color border_alt #90ceaa; /* accent */
 
@@ -59,3 +59,4 @@ $HOME/.config/waybar/theme.css
 @define-color tooltip_fg @fg;
 @define-color tooltip_border @border;
 @define-color workspace_active_bg @bg_selected;
+@define-color workspace_active_br #90ceaa;

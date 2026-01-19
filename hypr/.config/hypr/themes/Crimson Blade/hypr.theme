@@ -11,8 +11,8 @@ exec = gsettings set org.gnome.desktop.interface color-scheme '$COLOR_SCHEME'
 
 general {
     gaps_in = 4
-    gaps_out = 8
-    border_size = 2
+    gaps_out = 7
+    border_size = 3
     col.active_border = rgba(114ccfff)
     col.inactive_border = rgba(7, 15, 42, 0.58)
     layout = dwindle

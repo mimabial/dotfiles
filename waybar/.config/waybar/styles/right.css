@@ -285,7 +285,7 @@ menu label {
 }
 
 #pulseaudio {
-  padding: 4px 2px 4px 0px;
+  padding: 4px 4px 4px 0px;
   margin: 2px 2px 4px;
   background-color: alpha(@bg, 0.1);
   border: 1px solid alpha(@border, 0.3);
