@@ -33,7 +33,6 @@ window#waybar {
 
 menu {
   background: alpha(@bg, 0.9);
-  /* border: 2px solid alpha(@c10, 0.6); */
   padding: 4px;
 }
 
@@ -69,8 +68,7 @@ menu label {
 
 .modules-right,
 .modules-left {
-  margin: 2px;
-  color: lighter(@fg_selected);
+  margin: 0px 2px;
 }
 
 /* ============================================
@@ -83,7 +81,7 @@ menu label {
 }
 
 #clock.time {
-  color: @accent_fg;
+  color: @accent;
 }
 
 #clock.date {
@@ -132,7 +130,7 @@ menu label {
 
 #workspaces button.active {
   padding: 4px 0px;
-  color: @fg_selected;
+  color: @workspace_active_fg;
   background: alpha(@workspace_active_bg, 0.5);
   border: 1.6px solid @workspace_active_br;
   margin: 2px 0px;
@@ -141,7 +139,7 @@ menu label {
 #workspaces button.urgent {
   font-weight: bold;
   color: @c9;
-  background: alpha(@warning_bg, 0.3);
+  background: alpha(@warning, 0.3);
 }
 
 #workspaces button:hover {
@@ -213,10 +211,10 @@ menu label {
   font-size: 13px;
   padding: 0px 0px 0px 3px;
   margin: 2px 3px 4px 3px;
-  border: 1px solid alpha(@warning_fg, 0.6);
+  border: 1px solid alpha(@warning, 0.6);
   border-bottom: transparent;
   border-left: transparent;
-  color: alpha(@accent_fg, 0.8);
+  color: alpha(@accent, 0.8);
 }
 
 #network.wifi,
@@ -236,11 +234,11 @@ menu label {
 }
 
 #custom-vpn.connected {
-  color: @accent_fg;
+  color: @accent;
 }
 
 #custom-vpn.connecting {
-  color: alpha(@accent_fg, 0.7);
+  color: alpha(@accent, 0.7);
   animation-name: blink-active;
   animation-duration: 1.5s;
   animation-timing-function: linear;
@@ -248,7 +246,7 @@ menu label {
 }
 
 #custom-vpn.error {
-  color: @error_fg;
+  color: @error;
 }
 
 /* ============================================
@@ -260,7 +258,7 @@ menu label {
 }
 
 #bluetooth.status {
-  color: alpha(@accent_fg, 0.7);
+  color: alpha(@accent, 0.7);
 }
 
 #bluetooth.discoverable,
@@ -281,7 +279,7 @@ menu label {
   margin: 2px 2px 4px;
   border-radius: 0px;
   border-left: 1px solid alpha(@hover, 0.7);
-  color: alpha(@accent_fg, 0.7);
+  color: alpha(@accent, 0.7);
 }
 
 #pulseaudio {
