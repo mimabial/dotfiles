@@ -11,6 +11,7 @@ typeset -g _FZF_WARNED_BAT=0
 typeset -ga _FZF_EXCLUDE_DIRS=(
     'BraveSoftware'
     'History'
+    'HyDE'
     'Signal'
     'Trash'
     'build'
@@ -25,6 +26,7 @@ typeset -ga _FZF_EXCLUDE_DIRS=(
     'logs'
     'node_modules'
     'obs-studio'
+    'pip_env'
     'resurrect'
     'sessions'
     'target'

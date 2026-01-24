@@ -220,7 +220,7 @@ detect_folders = ["node_modules"]
 detect_extensions = []
 
 [python]
-format = " [py](italic) [${symbol}${version}]($style)"
+format = " [py](italic) [${symbol}${version}( \\[$virtualenv\\])]($style)"
 symbol = "[⌉](bold bright-blue)⌊ "
 version_format = "${raw}"
 style = "bold bright-yellow"

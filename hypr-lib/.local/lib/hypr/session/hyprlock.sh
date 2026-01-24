@@ -45,6 +45,61 @@ USAGE() {
 EOF
 }
 
+# Apply ImageMagick limits to avoid OOM during large conversions.
+MAGICK_LIMITS=()
+resolve_magick_limits() {
+  local cores mem_avail_kb mem_avail_mb
+  local magick_mem_mb magick_map_mb magick_threads
+
+  cores="$(nproc --all 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)"
+  [[ "${cores}" =~ ^[0-9]+$ ]] || cores=1
+
+  mem_avail_kb="$(awk '/MemAvailable/ {print $2; exit}' /proc/meminfo 2>/dev/null)"
+  if [[ -z "${mem_avail_kb}" ]]; then
+    mem_avail_kb="$(awk '/MemTotal/ {print $2; exit}' /proc/meminfo 2>/dev/null)"
+  fi
+  [[ "${mem_avail_kb}" =~ ^[0-9]+$ ]] || mem_avail_kb=0
+  mem_avail_mb=$((mem_avail_kb / 1024))
+
+  magick_mem_mb="${WALLPAPER_MAGICK_MEM_MB:-}"
+  [[ "${magick_mem_mb}" =~ ^[0-9]+$ ]] || magick_mem_mb=""
+  if [[ -z "${magick_mem_mb}" ]]; then
+    if (( mem_avail_mb > 0 )); then
+      magick_mem_mb=$((mem_avail_mb / 8))
+      (( magick_mem_mb < 256 )) && magick_mem_mb=256
+      (( magick_mem_mb > 1024 )) && magick_mem_mb=1024
+    else
+      magick_mem_mb=512
+    fi
+  fi
+
+  magick_map_mb="${WALLPAPER_MAGICK_MAP_MB:-}"
+  [[ "${magick_map_mb}" =~ ^[0-9]+$ ]] || magick_map_mb=""
+  if [[ -z "${magick_map_mb}" ]]; then
+    magick_map_mb=$((magick_mem_mb * 2))
+    (( magick_map_mb < 512 )) && magick_map_mb=512
+    (( magick_map_mb > 4096 )) && magick_map_mb=4096
+  fi
+
+  magick_threads="${WALLPAPER_MAGICK_THREADS:-}"
+  [[ "${magick_threads}" =~ ^[0-9]+$ ]] || magick_threads=""
+  if [[ -z "${magick_threads}" ]]; then
+    if (( cores > 4 )); then
+      magick_threads=4
+    elif (( cores > 0 )); then
+      magick_threads="${cores}"
+    else
+      magick_threads=1
+    fi
+  fi
+
+  MAGICK_LIMITS=()
+  [[ -n "${magick_mem_mb}" ]] && MAGICK_LIMITS+=(-limit memory "${magick_mem_mb}MiB")
+  [[ -n "${magick_map_mb}" ]] && MAGICK_LIMITS+=(-limit map "${magick_map_mb}MiB")
+  [[ -n "${magick_threads}" ]] && MAGICK_LIMITS+=(-limit thread "${magick_threads}")
+}
+resolve_magick_limits
+
 # Converts and ensures background to be a png (with hash-based caching)
 fn_background() {
   local wp bg bg_tmp mime cached_thumb is_video wp_hash png_cache
@@ -80,7 +135,7 @@ fn_background() {
   if [[ "${mime}" == "image/png" ]]; then
     cp -f "${wp}" "${bg_tmp}"
   else
-    magick "${wp}[0]" "png:${bg_tmp}"
+    magick "${MAGICK_LIMITS[@]}" "${wp}[0]" "png:${bg_tmp}"
   fi
 
   # Cache the converted PNG
@@ -103,7 +158,7 @@ ensure_face_icon_png() {
   fi
 
   # Not a PNG, convert it
-  magick "${face_icon}[0]" "png:${face_icon}.tmp.png" 2>/dev/null || return 1
+  magick "${MAGICK_LIMITS[@]}" "${face_icon}[0]" "png:${face_icon}.tmp.png" 2>/dev/null || return 1
   mv -f "${face_icon}.tmp.png" "$face_icon" || return 1
   return 0
 }
@@ -126,7 +181,7 @@ colorize_fallback_icon() {
 
   # Apply colorization - tint the icon while preserving detail
   # Modulate reduces saturation and colorize adds a stronger tint
-  magick "$source_icon" \
+  magick "${MAGICK_LIMITS[@]}" "$source_icon" \
     -modulate 100,60,100 \
     -fill "${color4:-#458588}" -colorize 60% \
     "$output_path"
@@ -138,7 +193,7 @@ ensure_transparent_png() {
   [ -f "${output_path}" ] && return 0
   mkdir -p "$(dirname "${output_path}")"
   local tmp_path="${output_path}.tmp.$$"
-  magick -size 1x1 xc:none "png:${tmp_path}" 2>/dev/null || return 1
+  magick "${MAGICK_LIMITS[@]}" -size 1x1 xc:none "png:${tmp_path}" 2>/dev/null || return 1
   mv -f "${tmp_path}" "${output_path}"
 }
 
@@ -224,12 +279,12 @@ mpris_thumb() {
       curl -Lso "${THUMB}".art "$artUrl" 2>/dev/null
     fi
     # Create regular thumbnail
-    magick "${THUMB}.art" -quality 50 "${THUMB}.png" 2>/dev/null || return 1
+    magick "${MAGICK_LIMITS[@]}" "${THUMB}.art" -quality 50 "${THUMB}.png" 2>/dev/null || return 1
     # Create blurred version - use physical monitor resolution (hyprlock handles scaling with fractional_scaling=1)
     local monitor_info=$(hyprctl monitors -j | jq -r '.[0] | "\(.width)x\(.height)"')
     local width=$(echo "$monitor_info" | cut -d'x' -f1)
     local height=$(echo "$monitor_info" | cut -d'x' -f2)
-    magick "${THUMB}.art" -blur 20x3 -resize ${width}x^ -gravity center -extent ${width}x${height}\! "${THUMB}.blurred.png" 2>/dev/null
+    magick "${MAGICK_LIMITS[@]}" "${THUMB}.art" -blur 20x3 -resize ${width}x^ -gravity center -extent ${width}x${height}\! "${THUMB}.blurred.png" 2>/dev/null
 
     reload_hyprlock
   fi

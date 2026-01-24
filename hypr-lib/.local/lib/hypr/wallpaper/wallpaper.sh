@@ -57,6 +57,17 @@ notes:
 EOF
   exit 0
 }
+
+run_low_prio() {
+  local nice_level="${WALLPAPER_NICE_LEVEL:-10}"
+  [[ "${nice_level}" =~ ^-?[0-9]+$ ]] || nice_level=10
+
+  if command -v ionice &>/dev/null; then
+    ionice -c 3 nice -n "${nice_level}" "$@"
+  else
+    nice -n "${nice_level}" "$@"
+  fi
+}
 #// Set and Cache Wallpaper
 
 Wall_Cache() {
@@ -83,19 +94,21 @@ Wall_Cache() {
   ln -fs "${wallList[setIndex]}" "${wallCur}"
 
   # Update hyprlock background
-  command -v hyprlock.sh &>/dev/null && hyprlock.sh --background 202>&- &
+  if command -v hyprlock.sh &>/dev/null; then
+    run_low_prio hyprlock.sh --background 202>&- &
+  fi
 
   if [ "${set_as_global}" == "true" ]; then
     print_log -sec "wallpaper" "Setting Wallpaper as global"
     if [[ "${wallpaper_async}" -eq 1 ]]; then
-      "${LIB_DIR}/hypr/wallpaper/swwwallcache.sh" -w "${wallList[setIndex]}" &>/dev/null 202>&- &
-      if [[ "${apply_colors}" -eq 1 ]]; then
-        {
-          HYPR_WAL_ASYNC_APPS=1 "${LIB_DIR}/hypr/theme/color.set.sh" "${wallList[setIndex]}" &>/dev/null
+      {
+        run_low_prio "${LIB_DIR}/hypr/wallpaper/swwwallcache.sh" -w "${wallList[setIndex]}" &>/dev/null
+        if [[ "${apply_colors}" -eq 1 ]]; then
+          HYPR_WAL_ASYNC_APPS=1 run_low_prio "${LIB_DIR}/hypr/theme/color.set.sh" "${wallList[setIndex]}" &>/dev/null
           # Sync nvim after colors are generated
           [[ -x "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" ]] && "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" >/dev/null 2>&1
-        } 202>&- &
-      fi
+        fi
+      } 202>&- &
     else
       "${LIB_DIR}/hypr/wallpaper/swwwallcache.sh" -w "${wallList[setIndex]}" &>/dev/null
       if [[ "${apply_colors}" -eq 1 ]]; then
@@ -326,7 +339,15 @@ Wall_Precache_Thumbs() {
   cache_script="${lib_dir}/hypr/wallpaper/swwwallcache.sh"
   [[ -x "${cache_script}" ]] || return 0
 
-  "${cache_script}" -t "${theme_name}" &>/dev/null &
+  local -a precache_env=()
+  if [[ "${WALLPAPER_PRECACHE_JOBS:-}" =~ ^[0-9]+$ ]] && (( WALLPAPER_PRECACHE_JOBS > 0 )); then
+    precache_env+=(WALLPAPER_CACHE_JOBS="${WALLPAPER_PRECACHE_JOBS}")
+  fi
+  if [[ "${WALLPAPER_PRECACHE_THREADS:-}" =~ ^[0-9]+$ ]] && (( WALLPAPER_PRECACHE_THREADS > 0 )); then
+    precache_env+=(WALLPAPER_MAGICK_THREADS="${WALLPAPER_PRECACHE_THREADS}")
+  fi
+
+  "${precache_env[@]}" run_low_prio "${cache_script}" -t "${theme_name}" &>/dev/null &
 }
 
 Wall_Clean_Thumbs() {
@@ -466,8 +487,8 @@ Wall_Auto_Prune() {
   esac
   [[ "${enabled}" -eq 1 ]] || return 0
 
-  local ttl="${WALLPAPER_AUTO_PRUNE_TTL:-21600}"
-  [[ "${ttl}" =~ ^[0-9]+$ ]] || ttl=21600
+  local ttl="${WALLPAPER_AUTO_PRUNE_TTL:-86400}"
+  [[ "${ttl}" =~ ^[0-9]+$ ]] || ttl=86400
 
   local cache_root="${WALLPAPER_CACHE_DIR}"
   [[ -z "${cache_root}" ]] && cache_root="${HYPR_CACHE_HOME:-$HOME/.cache/hypr}/wallpaper"

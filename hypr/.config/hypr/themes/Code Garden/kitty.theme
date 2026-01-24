@@ -13,7 +13,6 @@ active_tab_background   #000000
 active_tab_foreground   #56A0D3
 inactive_tab_foreground #1f2328
 inactive_tab_background #000000
-tab_bar_background      #000000
 
 color7     #c5c8cd
 color1     #903035
