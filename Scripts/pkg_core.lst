@@ -18,10 +18,10 @@ playerctl                                              # media controls
 udiskie                                                # manage removable media
 
 # --------------------------------------------------- // Display Manager
-ly                                                   # display manager for KDE plasma
-qt5-quickcontrols                                      # for sddm theme ui elements
-qt5-quickcontrols2                                     # for sddm theme ui elements
-qt5-graphicaleffects                                   # for sddm theme effects
+ly                                                     # display manager
+
+# --------------------------------------------------- // Bootloader
+limine                                                 # bootloader
 
 # --------------------------------------------------- // Window Manager
 hyprland                                               # wlroots-based wayland compositor

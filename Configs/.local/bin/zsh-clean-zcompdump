@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+zcompdump="${ZSH_COMPDUMP:-${XDG_CACHE_HOME:-$HOME/.cache}/zsh/.zcompdump}"
+dump_dir="$(dirname "$zcompdump")"
+dump_base="$(basename "$zcompdump")"
+[[ -d "$dump_dir" ]] || exit 0
+
+while IFS= read -r -d '' file; do
+  base="${file##*/}"
+  pid="${base##*.}"
+  [[ "$pid" =~ ^[0-9]+$ ]] || continue
+  comm="$(ps -p "$pid" -o comm= 2>/dev/null || true)"
+  [[ "$comm" == "zsh" ]] && continue
+  rm -f -- "$file"
+done < <(find "$dump_dir" -maxdepth 1 -type f -name "${dump_base}.*.*" -mtime +1 -print0)

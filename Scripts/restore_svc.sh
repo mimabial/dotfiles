@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 #|---/ /+-------------------------+---/ /|#
 #|--/ /-| Service restore script  |--/ /-|#
-#|-/ /--| Prasanth Rangan         |-/ /--|#
 #|/ /---+-------------------------+/ /---|#
 
 scrDir="$(dirname "$(realpath "$0")")"

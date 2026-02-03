@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 #|---/ /+-------------------------------+---/ /|#
 #|--/ /-| Script to remove HyDE configs |--/ /-|#
-#|-/ /--| Prasanth Rangan               |-/ /--|#
 #|/ /---+-------------------------------+/ /---|#
 
 cat <<"EOF"
@@ -17,13 +16,13 @@ cat <<"EOF"
 -------------------------------------------------
 
 
-.: WARNING :: This will remove all config files related to HyDE :.
+.: WARNING :: This will remove all config files related to these dotfiles :.
 
-please type "DONT HYDE" to continue...
+please type "DONT HYPR" to continue...
 EOF
 
 read -r PROMPT_INPUT
-[ "${PROMPT_INPUT}" == "DONT HYDE" ] || exit 0
+[ "${PROMPT_INPUT}" == "DONT HYPR" ] || exit 0
 
 cat <<"EOF"
 
@@ -69,16 +68,16 @@ cat "${CfgLst}" | while read lst; do
     done
 done
 
-[ -d "$HOME/.config/hyde" ] && rm -rf "$HOME/.config/hyde"
-[ -d "$HOME/.cache/hyde" ] && rm -rf "$HOME/.cache/hyde"
-[ -d "$HOME/.local/state/hyde" ] && rm -rf "$HOME/.local/state/hyde"
+[ -d "$HOME/.config/hypr" ] && rm -rf "$HOME/.config/hypr"
+[ -d "$HOME/.cache/hypr" ] && rm -rf "$HOME/.cache/hypr"
+[ -d "$HOME/.local/state/hypr" ] && rm -rf "$HOME/.local/state/hypr"
 
 cat <<"NOTE"
 -------------------------------------------------------
 .: Manual action required to complete uninstallation :.
 -------------------------------------------------------
 
-Remove HyDE related backups/icons/fonts/themes manually from these paths
+Remove dotfiles-related backups/icons/fonts/themes manually from these paths
 $HOME/.config/cfg_backups               # remove all previous backups
 $HOME/.local/share/fonts                # remove fonts from here
 $HOME/.local/share/icons                # remove fonts from here

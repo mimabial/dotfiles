@@ -1,0 +1,78 @@
+# Color mapping for pywal replacement
+# Format: #hexcolor=pywal_variable
+# Theme: Abyssal Wave
+
+# Primary backgrounds
+#000000=background
+#001419=color0
+#0c0e14=color0
+#0c0e15=color0
+#131621=color0
+#151926=color0
+#16161d=color0
+#16161D=color0
+#1e1e20=color0
+#1f1f28=background
+#1F1F28=background
+#22252e=color0
+#232325=color0
+#26272a=color0
+#28282a=color0
+
+# Secondary backgrounds (buttons, elements) - use accent for visibility
+#2a2a37=color4
+#2a2a37=color4
+#2e3440=color0
+#2E3440=color0
+#323234=color0
+#343031=color0
+#363646=color0
+#48484a=color8
+#4C566A=color8
+#525254=color8
+#54546d=color8
+#555761=color8
+#565658=color8
+#606062=color8
+
+# Mid tones (borders)
+#646466=color8
+#666666=color8
+#6e6e70=color8
+#727169=color8
+#727274=color8
+#7a7a7c=color8
+
+# Muted foreground
+#88888a=color7
+#8c8c8e=color7
+#989898=color7
+#aaaaac=color7
+
+# Highlight color (use accent for visibility)
+#c8c093=color5
+#c8c093=color5
+#c8c8ca=foreground
+#d2d2d4=foreground
+#D8DEE9=foreground
+#dcd7ba=foreground
+#DCD7BA=foreground
+#ffffff=foreground
+
+# Accent colors - IMPORTANT for buttons/highlights
+#223249=color4
+#2D4F67=color4
+#333399=color4
+#3daee9=color4
+#5e81ac=color4
+#5E81AC=color4
+#b74aff=color5
+#957fb8=color5
+#BF616A=color1
+#d27e99=color5
+#ff5d62=color1
+#002700=color2
+#fc0181=color5
+#fc01cb=color5
+#ff0000=color1
+#ff00cc=color5

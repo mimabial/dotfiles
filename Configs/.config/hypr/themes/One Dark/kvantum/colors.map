@@ -1,0 +1,50 @@
+# Color mapping for pywal replacement
+# Format: #hexcolor=pywal_variable
+# Theme: One Dark
+
+# Background / surfaces
+#000000=background
+#282c34=background
+#1a1a1a=color0
+#1e1e1e=color0
+#1f1f1f=color0
+#212121=color0
+#241b2f=color0
+#26272a=color0
+#333333=color0
+#343031=color0
+#393e48=color0
+#525252=color0
+#5a5a5a=color0
+#5a616e=color0
+
+# Mid neutrals
+#646464=color8
+#666666=color8
+#696969=color8
+#787878=color8
+#989898=color7
+#acb1bc=color7
+
+# Text
+#979eab=foreground
+#abb2bf=foreground
+#b6b6b6=foreground
+#c1c1c1=foreground
+#cccccc=foreground
+#d1d1d1=foreground
+#dfdfdf=foreground
+
+# Accents
+#065b6c=color6
+#56b6c2=color6
+#61afef=color4
+#65b6c2=color6
+#98c379=color2
+#a8d386=color2
+#b74aff=color5
+#c678dd=color5
+#c691dd=color5
+#e06c75=color9
+#e5c07b=color3
+#f04a50=color1

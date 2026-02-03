@@ -1,0 +1,7 @@
+{
+  "custom/wifimenu": {
+    "format": "󰖩",
+    "on-click": "hyprshell launch/wifi.sh",
+    "tooltip-format": "WiFi Manager (Impala)"
+  }
+}

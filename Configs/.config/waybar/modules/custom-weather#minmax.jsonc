@@ -1,0 +1,10 @@
+{
+  "custom/weather#minmax": {
+    "exec": "hyprshell weather -m",
+    "justify": "right",
+    "tooltip": true,
+    "format": "{0}",
+    "interval": 3600,
+    "return-type": "json"
+  }
+}

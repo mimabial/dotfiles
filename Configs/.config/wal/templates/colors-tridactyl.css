@@ -1,0 +1,208 @@
+/* Tridactyl Theme - Pywal Integration
+ * Generated from pywal16 colors
+ * Location: ~/.cache/wal/tridactyl-pywal.css
+ * Symlinked to: ~/.config/tridactyl/themes/pywal.css
+ */
+
+:root {{
+    /* Pywal colors */
+    --background: {background};
+    --foreground: {foreground};
+    --cursor: {cursor};
+
+    /* 16-color palette */
+    --color0: {color0};
+    --color1: {color1};
+    --color2: {color2};
+    --color3: {color3};
+    --color4: {color4};
+    --color5: {color5};
+    --color6: {color6};
+    --color7: {color7};
+    --color8: {color8};
+    --color9: {color9};
+    --color10: {color10};
+    --color11: {color11};
+    --color12: {color12};
+    --color13: {color13};
+    --color14: {color14};
+    --color15: {color15};
+
+    /* Semantic colors for Tridactyl UI */
+    --tridactyl-bg: var(--background);
+    --tridactyl-fg: var(--foreground);
+    --tridactyl-border: var(--color4);
+    --tridactyl-highlight-bg: var(--color4);
+    --tridactyl-highlight-fg: var(--background);
+    --tridactyl-url-fg: var(--color12);
+    --tridactyl-url-bg: var(--background);
+    --tridactyl-of-fg: var(--color8);
+    --tridactyl-cmdline-bg: var(--color0);
+    --tridactyl-cmdline-fg: var(--foreground);
+    --tridactyl-hint-bg: var(--color11);
+    --tridactyl-hint-fg: var(--background);
+    --tridactyl-hint-border: var(--color3);
+    --tridactyl-hint-active-bg: var(--color2);
+    --tridactyl-hint-active-fg: var(--background);
+}}
+
+/* Command line */
+#command-line-holder {{
+    background: var(--tridactyl-cmdline-bg) !important;
+    color: var(--tridactyl-cmdline-fg) !important;
+    border-top: 2px solid var(--tridactyl-border) !important;
+    font-family: monospace !important;
+    font-size: 14px !important;
+    padding: 8px !important;
+}}
+
+#tridactyl-input {{
+    background: var(--tridactyl-cmdline-bg) !important;
+    color: var(--tridactyl-cmdline-fg) !important;
+    border: none !important;
+    padding: 4px 8px !important;
+    font-family: monospace !important;
+}}
+
+/* Completion menu */
+#completions {{
+    background: var(--tridactyl-bg) !important;
+    color: var(--tridactyl-fg) !important;
+    border: 1px solid var(--tridactyl-border) !important;
+}}
+
+.CompletionOption {{
+    background: var(--tridactyl-bg) !important;
+    color: var(--tridactyl-fg) !important;
+    padding: 4px 8px !important;
+}}
+
+.CompletionOption:hover,
+.CompletionOption.focused {{
+    background: var(--tridactyl-highlight-bg) !important;
+    color: var(--tridactyl-highlight-fg) !important;
+}}
+
+.CompletionOption .url {{
+    color: var(--tridactyl-url-fg) !important;
+}}
+
+.CompletionOption .title {{
+    color: var(--tridactyl-fg) !important;
+    font-weight: bold !important;
+}}
+
+/* Hints (link following) */
+span.TridactylHint {{
+    background: var(--tridactyl-hint-bg) !important;
+    color: var(--tridactyl-hint-fg) !important;
+    border: 1px solid var(--tridactyl-hint-border) !important;
+    font-family: monospace !important;
+    font-size: 12px !important;
+    font-weight: bold !important;
+    padding: 2px 4px !important;
+    border-radius: 3px !important;
+    text-transform: uppercase !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+    z-index: 2147483647 !important;
+}}
+
+span.TridactylHint.TridactylHintActive {{
+    background: var(--tridactyl-hint-active-bg) !important;
+    color: var(--tridactyl-hint-active-fg) !important;
+    border-color: var(--tridactyl-hint-active-bg) !important;
+}}
+
+/* Mode indicator */
+#mode-indicator {{
+    background: var(--tridactyl-highlight-bg) !important;
+    color: var(--tridactyl-highlight-fg) !important;
+    border: 1px solid var(--tridactyl-border) !important;
+    padding: 4px 8px !important;
+    font-family: monospace !important;
+    font-size: 12px !important;
+    font-weight: bold !important;
+    border-radius: 4px !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+}}
+
+/* Status line */
+#tridactyl-status-indicator {{
+    background: var(--tridactyl-bg) !important;
+    color: var(--tridactyl-fg) !important;
+    border: 1px solid var(--tridactyl-border) !important;
+    font-family: monospace !important;
+    padding: 2px 6px !important;
+}}
+
+/* Error messages */
+.TridactylErrorMessage {{
+    background: var(--color1) !important;
+    color: var(--foreground) !important;
+    border: 1px solid var(--color9) !important;
+}}
+
+/* Info messages */
+.TridactylInfoMessage {{
+    background: var(--color4) !important;
+    color: var(--background) !important;
+    border: 1px solid var(--color12) !important;
+}}
+
+/* Warning messages */
+.TridactylWarningMessage {{
+    background: var(--color3) !important;
+    color: var(--background) !important;
+    border: 1px solid var(--color11) !important;
+}}
+
+/* Scrollbar (if visible) */
+::-webkit-scrollbar {{
+    width: 8px !important;
+    background: var(--tridactyl-bg) !important;
+}}
+
+::-webkit-scrollbar-thumb {{
+    background: var(--tridactyl-border) !important;
+    border-radius: 4px !important;
+}}
+
+::-webkit-scrollbar-thumb:hover {{
+    background: var(--tridactyl-highlight-bg) !important;
+}}
+
+/* Help page styling */
+.TridactylHelp {{
+    background: var(--tridactyl-bg) !important;
+    color: var(--tridactyl-fg) !important;
+}}
+
+.TridactylHelp h1,
+.TridactylHelp h2,
+.TridactylHelp h3 {{
+    color: var(--tridactyl-highlight-bg) !important;
+    border-bottom: 1px solid var(--tridactyl-border) !important;
+}}
+
+.TridactylHelp code {{
+    background: var(--color0) !important;
+    color: var(--color2) !important;
+    padding: 2px 4px !important;
+    border-radius: 2px !important;
+}}
+
+.TridactylHelp pre {{
+    background: var(--color0) !important;
+    border: 1px solid var(--tridactyl-border) !important;
+    padding: 8px !important;
+    border-radius: 4px !important;
+}}
+
+.TridactylHelp a {{
+    color: var(--tridactyl-url-fg) !important;
+}}
+
+.TridactylHelp a:hover {{
+    color: var(--tridactyl-highlight-bg) !important;
+    text-decoration: underline !important;
+}}

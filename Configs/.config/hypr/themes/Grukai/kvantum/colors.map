@@ -1,0 +1,40 @@
+# Color mapping for pywal replacement
+# Format: #hexcolor=pywal_variable
+# Theme: Grukai
+
+# Backgrounds / surfaces
+#000000=background
+#131311=background
+#141414=color0
+#31363b=color0
+#525229=color0
+#6b6b3a=color0
+
+# Midtones
+#7d7d4b=color8
+#7f7f7f=color8
+#8f8f57=color8
+
+# Light neutrals
+#919191=color7
+#999999=color7
+#a6a6a6=color7
+#b4b4b4=color7
+#b6b6b6=color7
+#bebebe=color7
+#bfbfbf=color7
+#ffe4cc=color7
+#ffffcc=color7
+
+# Light / text
+#d2d2d2=foreground
+#d6d6d6=foreground
+#dcdcdc=foreground
+#eaeaea=foreground
+#ffffff=foreground
+
+# Accents
+#a38265=color4
+#e6bd9a=color5
+#f0c7aa=color10
+#f0cbaa=color9

@@ -1,0 +1,54 @@
+$HOME/.config/tmux/theme.conf|tmux source-file ~/.config/tmux/tmux.conf
+
+# Tmux theme for Monokai
+# Auto-generated from kitty.theme colors
+
+# ============================================================================
+# Standard 16 color palette
+# ============================================================================
+set -g @color0 "#272822"
+set -g @color1 "#F92672"
+set -g @color2 "#A6E3A1"
+set -g @color3 "#F9E2AF"
+set -g @color4 "#F38D70"
+set -g @color5 "#F5C2E7"
+set -g @color6 "#94E2D5"
+set -g @color7 "#F8F8F2"
+set -g @color8 "#807d74"
+set -g @color9 "#F92672"
+set -g @color10 "#A6E3A1"
+set -g @color11 "#F9E2AF"
+set -g @color12 "#F38D70"
+set -g @color13 "#F5C2E7"
+set -g @color14 "#94E2D5"
+set -g @color15 "#F8F8F2"
+
+# ============================================================================
+# Semantic color aliases
+# ============================================================================
+set -g @theme_bg "#2C2525"
+set -g @theme_fg "#F8F8F2"
+set -g @theme_accent "#F38D70"
+set -g @theme_gray "#807d74"
+set -g @theme_highlight "#F92672"
+set -g @theme_red "#F92672"
+set -g @theme_brightred "#F92672"
+set -g @theme_green "#A6E3A1"
+set -g @theme_yellow "#F9E2AF"
+set -g @theme_blue "#F38D70"
+set -g @theme_magenta "#F5C2E7"
+set -g @theme_cyan "#94E2D5"
+
+# ============================================================================
+# Tmux color settings
+# ============================================================================
+set -g status-style "bg=#2C2525,fg=#F8F8F2"
+set -g message-style "bg=#2C2525,fg=#F38D70"
+set -g message-command-style "bg=#2C2525,fg=#F38D70"
+set -g pane-border-style "fg=#807d74"
+set -g pane-active-border-style "fg=#F92672"
+set -g window-status-style "fg=#807d74"
+set -g window-status-current-style "fg=#F38D70,bold"
+set -g mode-style "bg=#F38D70,fg=#2C2525"
+set -g clock-mode-colour "#F38D70"
+

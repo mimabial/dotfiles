@@ -1,0 +1,10 @@
+{
+  "custom/weather": {
+    "exec": "hyprshell weather",
+    "justify": "center",
+    "tooltip": false,
+    "format": "{0}",
+    "interval": 600,
+    "return-type": "json"
+  }
+}

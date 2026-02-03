@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 #|---/ /+-------------------------------------------+---/ /|#
 #|--/ /-| Script to install aur helper, yay or paru |--/ /-|#
-#|-/ /--| Prasanth Rangan                           |-/ /--|#
 #|/ /---+-------------------------------------------+/ /---|#
 
 scrDir=$(dirname "$(realpath "$0")")

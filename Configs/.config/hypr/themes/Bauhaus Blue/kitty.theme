@@ -1,0 +1,53 @@
+$HOME/.config/kitty/theme.conf|killall -SIGUSR1 kitty
+
+foreground              #000000
+background              #fdf6e3
+selection_foreground    #FFFFFF
+selection_background    #005CAB
+cursor                  #E1261C
+cursor_text_color       #FFFFFF
+
+active_tab_foreground   #003DA5
+active_tab_background   #fdf6e3
+inactive_tab_foreground #839496
+inactive_tab_background #eee8d5
+tab_bar_background      #eee8d5
+
+color0                  #666666
+color8                  #839496
+
+color1                  #D0021B
+color9                  #E1261C
+
+color2                  #00A651
+color10                 #00C853
+
+color3                  #E85D00
+color11                 #FF8000
+
+color4                  #005CAB
+color12                 #0066CC
+
+color5                  #D0021B
+color13                 #E1261C
+
+color6                  #005CAB
+color14                 #0066CC
+
+color7                  #000000
+color15                 #A4A4A4
+
+# Proper yellow
+# Default Bauhaus use orange for readibility
+
+# color3                  #FFC425
+# color11                 #FFD500
+
+# Proper cyan and magenta 
+# Default Bauhaus use primary blue and red
+
+# color5                  #9B26AF
+# color13                 #B833CC
+
+# color6                  #00A6A6
+# color14                 #00D4D4

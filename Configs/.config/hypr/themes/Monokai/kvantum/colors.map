@@ -1,0 +1,40 @@
+# Color mapping for pywal replacement
+# Format: #hexcolor=pywal_variable
+# Theme: Monokai
+
+# Primary backgrounds
+#000000=background
+#141414=color0
+#1A1A1A=color0
+#2C2525=color0
+#31363b=color0
+#3A3A3A=color0
+#3D3D3D=color0
+#3E3D32=color4
+#49483E=color0
+#636363=color0
+#66D9EF=color6
+#75715E=color8
+#7f7f7f=color8
+#919191=color7
+#999999=color7
+#A59F85=color7
+#a6a6a6=color7
+#AE81FF=color12
+#b4b4b4=foreground
+#b6b6b6=foreground
+#B8B8B8=foreground
+#bebebe=foreground
+#bfbfbf=foreground
+#d2d2d2=foreground
+#d6d6d6=foreground
+#D6D6D6=foreground
+#dcdcdc=foreground
+#eaeaea=foreground
+#F8F8F2=foreground
+#F92672=color5
+#FCFCFC=foreground
+#cdd6f4=foreground
+#cfc9c2=foreground
+#d1d1d1=foreground
+#ffffff=foreground

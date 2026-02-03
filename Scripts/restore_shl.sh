@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 #|---/ /+---------------------------+---/ /|#
 #|--/ /-| Script to configure shell |--/ /-|#
-#|-/ /--| Prasanth Rangan           |-/ /--|#
 #|/ /---+---------------------------+/ /---|#
 
 scrDir=$(dirname "$(realpath "$0")")

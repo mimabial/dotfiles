@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   id="svg11024"
+   height="32"
+   width="32"
+   version="1.1"
+   sodipodi:docname="copy.svg"
+   inkscape:version="1.4.2 (ebf0e940d0, 2025-05-08)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1" />
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#999999"
+     borderopacity="1"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="8"
+     inkscape:cx="13.8125"
+     inkscape:cy="18.125"
+     inkscape:window-width="1920"
+     inkscape:window-height="1006"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg11024" />
+  <filter
+     id="filter7078"
+     color-interpolation-filters="sRGB"
+     x="-0.11785656"
+     y="-0.078292553"
+     width="1.2357131"
+     height="1.1565851">
+    <feGaussianBlur
+       id="feGaussianBlur7080"
+       stdDeviation=".657" />
+  </filter>
+  <text
+     xml:space="preserve"
+     style="font-size:17.5642px;line-height:1.25;font-family:'Monster Hunter Staggered';-inkscape-font-specification:'Monster Hunter Staggered';text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;stroke-width:0.32933"
+     x="13.385862"
+     y="19.216391"
+     id="text1"><tspan
+       sodipodi:role="line"
+       id="tspan1"
+       x="13.385862"
+       y="19.216391"
+       style="stroke-width:0.32933">🍡</tspan></text>
+  <path
+     id="hotspot"
+     d="m 4.3573311,4.2026654 h 1 v 1 h -1 z"
+     display="none"
+     fill="#333333" />
+  <text
+     xml:space="preserve"
+     style="font-size:12.4601px;line-height:1.25;font-family:'Monster Hunter Staggered';-inkscape-font-specification:'Monster Hunter Staggered';text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;stroke-width:0.233627"
+     x="48.383663"
+     y="-4.9319453"
+     id="text2"><tspan
+       sodipodi:role="line"
+       id="tspan2"
+       x="48.383663"
+       y="-4.9319453"
+       style="stroke-width:0.233627">🚫</tspan></text>
+  <text
+     xml:space="preserve"
+     style="font-size:7.79111px;line-height:1.25;font-family:'Monster Hunter Staggered';-inkscape-font-specification:'Monster Hunter Staggered';text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;stroke-width:0.146083"
+     x="28.328896"
+     y="30.295694"
+     id="text3"><tspan
+       sodipodi:role="line"
+       id="tspan3"
+       x="28.328896"
+       y="30.295694"
+       style="stroke-width:0.146083">📄</tspan></text>
+  <text
+     xml:space="preserve"
+     style="font-size:7.79111px;line-height:1.25;font-family:'Monster Hunter Staggered';-inkscape-font-specification:'Monster Hunter Staggered';text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;stroke-width:0.146083"
+     x="25.79262"
+     y="27.202103"
+     id="text4"><tspan
+       sodipodi:role="line"
+       id="tspan4"
+       x="25.79262"
+       y="27.202103"
+       style="stroke-width:0.146083">📄</tspan></text>
+</svg>

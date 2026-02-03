@@ -1,0 +1,54 @@
+$HOME/.config/tmux/theme.conf|tmux source-file ~/.config/tmux/tmux.conf
+
+# Tmux theme for Lime Frenzy
+# Auto-generated from kitty.theme colors
+
+# ============================================================================
+# Standard 16 color palette
+# ============================================================================
+set -g @color0 "#1c1e1b"
+set -g @color1 "#8aff8a"
+set -g @color2 "#fcff31"
+set -g @color3 "#CCFFCC"
+set -g @color4 "#12b812"
+set -g @color5 "#9AE6E6"
+set -g @color6 "#9BE6E6"
+set -g @color7 "#f1e9dc"
+set -g @color8 "#5b5e5a"
+set -g @color9 "#AAF0AA"
+set -g @color10 "#b2f0aa"
+set -g @color11 "#AAF0AA"
+set -g @color12 "#12b812"
+set -g @color13 "#9AE6E6"
+set -g @color14 "#9BE6E6"
+set -g @color15 "#fff8f0"
+
+# ============================================================================
+# Semantic color aliases
+# ============================================================================
+set -g @theme_bg "#252623"
+set -g @theme_fg "#ece1c0"
+set -g @theme_accent "#12b812"
+set -g @theme_gray "#5b5e5a"
+set -g @theme_highlight "#12b812"
+set -g @theme_red "#8aff8a"
+set -g @theme_brightred "#AAF0AA"
+set -g @theme_green "#fcff31"
+set -g @theme_yellow "#CCFFCC"
+set -g @theme_blue "#12b812"
+set -g @theme_magenta "#9AE6E6"
+set -g @theme_cyan "#9BE6E6"
+
+# ============================================================================
+# Tmux color settings
+# ============================================================================
+set -g status-style "bg=#252623,fg=#ece1c0"
+set -g message-style "bg=#252623,fg=#12b812"
+set -g message-command-style "bg=#252623,fg=#12b812"
+set -g pane-border-style "fg=#5b5e5a"
+set -g pane-active-border-style "fg=#12b812"
+set -g window-status-style "fg=#5b5e5a"
+set -g window-status-current-style "fg=#12b812,bold"
+set -g mode-style "bg=#12b812,fg=#252623"
+set -g clock-mode-colour "#12b812"
+

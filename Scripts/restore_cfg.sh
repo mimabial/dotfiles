@@ -3,7 +3,6 @@
 # shellcheck disable=SC1091
 #|---/ /+--------------------------------+---/ /|#
 #|--/ /-| Script to restore hyde configs |--/ /-|#
-#|-/ /--| Prasanth Rangan                |-/ /--|#
 #|/ /---+--------------------------------+/ /---|#
 
 deploy_list() {
@@ -25,12 +24,14 @@ deploy_list() {
         cfg=$(awk -F '|' '{print $4}' <<<"${lst}")
         pkg=$(awk -F '|' '{print $5}' <<<"${lst}")
 
-        while read -r pkg_chk; do
-            if ! pkg_installed "${pkg_chk}"; then
-                echo -e "\033[0;33m[skip]\033[0m ${pth}/${cfg} as dependency ${pkg_chk} is not installed..."
-                continue 2
-            fi
-        done < <(echo "${pkg}" | xargs -n 1)
+        if [[ -n "${pkg// }" ]]; then
+            while read -r pkg_chk; do
+                if ! pkg_installed "${pkg_chk}"; then
+                    echo -e "\033[0;33m[skip]\033[0m ${pth}/${cfg} as dependency ${pkg_chk} is not installed..."
+                    continue 2
+                fi
+            done < <(echo "${pkg}" | xargs -n 1)
+        fi
 
         echo "${cfg}" | xargs -n 1 | while read -r cfg_chk; do
             if [[ -z "${pth}" ]]; then continue; fi
@@ -99,16 +100,18 @@ deploy_psv() {
         fi
 
         # Start a loop that reads each line from the output of the command enclosed within the process substitution '< <(...)'
-        while read -r pkg_chk; do
+        if [[ -n "${pkg// }" ]]; then
+            while read -r pkg_chk; do
 
-            # Call the function pkg_installed with the argument pkg_chk. If the function returns false (the package is not installed), then...
-            if ! pkg_installed "${pkg_chk}"; then
-                # Print a message stating that the current configuration is being skipped because a dependency is not installed
-                print_log -y "[skip] " -r "missing" -b " :: " -y "missing dependency" -g " '${pkg_chk}'" -r " --> " "${pth}/${cfg}"
-                # Skip the rest of the current loop iteration and proceed to the next iteration
-                continue 2
-            fi
-        done < <(echo "${pkg}" | xargs -n 1)
+                # Call the function pkg_installed with the argument pkg_chk. If the function returns false (the package is not installed), then...
+                if ! pkg_installed "${pkg_chk}"; then
+                    # Print a message stating that the current configuration is being skipped because a dependency is not installed
+                    print_log -y "[skip] " -r "missing" -b " :: " -y "missing dependency" -g " '${pkg_chk}'" -r " --> " "${pth}/${cfg}"
+                    # Skip the rest of the current loop iteration and proceed to the next iteration
+                    continue 2
+                fi
+            done < <(echo "${pkg}" | xargs -n 1)
+        fi
 
         # Pipe the value of cfg to xargs, which splits it into separate arguments based on spaces, and then pipe the output to a while loop
         echo "${cfg}" | xargs -n 1 | while read -r cfg_chk; do
@@ -196,14 +199,14 @@ hyprland_hook() {
 
     local hyde_config="${cloneDir}/Configs/.config/hypr/hyprland.conf"
     local hyprland_default_config="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprland.conf"
-    local hyq_exec="${cloneDir}/Configs/.local/lib/hyde/hyq"
+    local hyq_exec="${cloneDir}/Configs/.local/bin/hyq"
     if [[ ! -x "${hyq_exec}" ]]; then
         print_log -r "[error] :: " "Required executable '${hyq_exec}' not found or not executable. Please ensure it exists and has execute permissions."
         return 1
     fi
-    if ! "${hyq_exec}" "${hyprland_default_config}" --query "\$HYDE_HYPRLAND"; then
+    if ! "${hyq_exec}" "${hyprland_default_config}" --source --query "\$DOTFILES_HYPRLAND"; then
         mkdir -p "$(dirname "${hyprland_default_config}")" "${BkpDir}/.config/hypr"
-        print_log -g "[hook] " -b "hyprland :: " "No HYDE_HYPRLAND variable found in ${hyprland_default_config}, restoring default HyDE marker..."
+        print_log -g "[hook] " -b "hyprland :: " "No DOTFILES_HYPRLAND variable found in ${hyprland_default_config}, restoring default marker..."
 
         if [[ ${flg_DryRun} -ne 1 && -f "${hyprland_default_config}" ]]; then
             cp -f "${hyprland_default_config}" "${BkpDir}/.config/hypr/hyprland.conf"
@@ -266,16 +269,19 @@ echo ""
 
 hyprland_hook
 
-print_log -g "[python env]" -b " :: " "Rebuilding HyDE Python environment..."
-if command -v hyde-shell >/dev/null 2>&1; then
-    hyde-shell pyinit
-else
-    "${HOME}/.local/bin/hyde-shell" pyinit
+if [ "${flg_DryRun}" -ne 1 ]; then
+    print_log -g "[python env]" -b " :: " "Rebuilding Hypr Python environment..."
+    if command -v hyprshell >/dev/null 2>&1; then
+        hyprshell pyinit
+    else
+        "${HOME}/.local/bin/hyprshell" pyinit
+    fi
+
+    print_log -g "[version]" -b " :: " "saving version info..."
+    "${scrDir}/version.sh" --cache || echo "Failed to save version info."
+
+    state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/hypr"
+    mkdir -p "${state_dir}"
+    clone_dir=$(git rev-parse --show-toplevel 2>/dev/null || echo "${HOME}/dotfiles")
+    [[ -f ${clone_dir}/CHANGELOG.md ]] && cp -f "${clone_dir}/CHANGELOG.md" "${state_dir}/CHANGELOG.md"
 fi
-
-print_log -g "[version]" -b " :: " "saving version info..."
-"${scrDir}/version.sh" --cache || echo "Failed to save version info."
-
-state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/hyde"
-clone_dir=$(git rev-parse --show-toplevel 2>/dev/null || echo "${HOME}/HyDE")
-[[ -f ${clone_dir}/CHANGELOG.md ]] && cp -f "${clone_dir}/CHANGELOG.md" "${state_dir}/CHANGELOG.md"

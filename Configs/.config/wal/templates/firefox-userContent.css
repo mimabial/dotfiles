@@ -1,0 +1,64 @@
+/* Pywal16 Firefox content theme (optional) */
+/* Place in ~/.mozilla/firefox/YOUR_PROFILE/chrome/userContent.css */
+/* This styles about: pages and optionally web content */
+
+/* Text selection on ALL web pages */
+@-moz-document url-prefix("http://"), url-prefix("https://"), url-prefix("file://") {{
+  *::selection {{
+    background-color: {color4} !important;
+    color: {color0} !important;
+  }}
+
+  *::-moz-selection {{
+    background-color: {color4} !important;
+    color: {color0} !important;
+  }}
+}}
+
+@-moz-document url-prefix(about:) {{
+  * {{
+    background-color: {color0} !important;
+    color: {color15} !important;
+  }}
+
+  a {{
+    color: {color4} !important;
+  }}
+
+  a:visited {{
+    color: {color5} !important;
+  }}
+
+  button {{
+    background-color: {color8} !important;
+    color: {color15} !important;
+    border: 1px solid {color8} !important;
+  }}
+
+  button:hover {{
+    background-color: {color4} !important;
+    color: {color0} !important;
+  }}
+
+  input, select, textarea {{
+    background-color: {color8} !important;
+    color: {color15} !important;
+    border: 1px solid {color8} !important;
+  }}
+
+  input:focus, select:focus, textarea:focus {{
+    border-color: {color4} !important;
+  }}
+}}
+
+/* Style new tab page */
+@-moz-document url(about:home), url(about:newtab) {{
+  body {{
+    background-color: {color0} !important;
+  }}
+
+  .search-wrapper input {{
+    background-color: {color8} !important;
+    color: {color15} !important;
+  }}
+}}

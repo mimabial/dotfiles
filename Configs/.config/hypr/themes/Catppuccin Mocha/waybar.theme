@@ -1,0 +1,39 @@
+$HOME/.config/waybar/theme.css
+
+@define-color bg #181825; /* Mantle */
+@define-color fg #cdd6f4; /* Text */
+@define-color bg_alt #cdd6f4; /* Text */
+@define-color fg_alt #11111b;
+@define-color bg_selected #11111b;
+@define-color fg_selected #89b4fa; /* Rosewater */
+
+@define-color border #f5c2e7; /* Surface1 */
+@define-color border_alt #CBA6F7; /* Flamingo */
+
+@define-color accent #a6adc8;
+@define-color error @c1;
+@define-color hover #f38ba8;
+@define-color warning #f5c2e7; /* Surface1 */
+
+@define-color workspace_active_bg @bg_selected;
+@define-color workspace_active_br #CBA6F7;
+@define-color workspace_active_fg #313244;
+@define-color workspace_hover_bg #313244;
+
+@define-color c0 #43465A;
+@define-color c1 #F38BA8;
+@define-color c2 #A6E3A1;
+@define-color c3 #F9E2AF;
+@define-color c4 #87B0F9;
+@define-color c5 #F5C2E7;
+@define-color c6 #94E2D5;
+@define-color c7 #CDD6F4;
+
+@define-color c8 #43465A;
+@define-color c9 #F38BA8;
+@define-color c10 #A6E3A1;
+@define-color c11 #F9E2AF;
+@define-color c12 #87B0F9;
+@define-color c13 #F5C2E7;
+@define-color c14 #94E2D5;
+@define-color c15 #A1A8C9;

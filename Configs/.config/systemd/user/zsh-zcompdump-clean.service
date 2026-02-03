@@ -1,0 +1,6 @@
+[Unit]
+Description=Clean stale zcompdump temp files
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/zsh-clean-zcompdump

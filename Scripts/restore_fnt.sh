@@ -2,7 +2,6 @@
 # shellcheck disable=SC2154
 #|---/ /+------------------------------------+---/ /|#
 #|--/ /-| Script to extract fonts and themes |--/ /-|#
-#|-/ /--| Prasanth Rangan                    |-/ /--|#
 #|/ /---+------------------------------------+/ /---|#
 
 flg_DryRun=${flg_DryRun:-0}

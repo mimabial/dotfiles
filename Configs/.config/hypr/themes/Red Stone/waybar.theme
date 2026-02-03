@@ -1,0 +1,38 @@
+$HOME/.config/waybar/theme.css
+
+@define-color bg #1d1d1d; /* g_10 */
+@define-color fg #e5e5e5; /* g_1 */
+@define-color bg_alt #6E91C4; /* background */
+@define-color fg_alt #e5e5e5; /* g_1 */
+@define-color bg_selected #4A8B8B; /* background */
+@define-color fg_selected #7A3D82; /* orange_glow */
+
+@define-color border #7A3D82; /* g_9 */
+@define-color border_alt #B41211; /* red_glowing */
+
+@define-color accent #D87C4A; /* red_glowing */
+@define-color error @c1;
+@define-color hover #1E6F54; /* orange_glow */
+@define-color warning #4A8B8B; /* g_9 */
+
+@define-color workspace_active_bg #522929;
+@define-color workspace_active_br #B41211;
+@define-color workspace_active_fg #121212; /* background */
+@define-color workspace_hover_bg #121212; /* background */
+
+@define-color c0 #1a1815;
+@define-color c1 #c15959; /* red_flame */
+@define-color c2 #d4896b; /* green */
+@define-color c3 #d9a364; /* orange_golden */
+@define-color c4 #7293a8; /* blue */
+@define-color c5 #b5746b;
+@define-color c6 #7fa09e; /* blue */
+@define-color c7 #c9b9a8;
+@define-color c8 #4a4541;
+@define-color c9 #d47065; /* red_glowing */
+@define-color c10 #e69b7f; /* green_light */
+@define-color c11 #e6b373; /* orange_golden */
+@define-color c12 #86a8bd; /* cyan */
+@define-color c13 #c98b82;
+@define-color c14 #93b4b2; /* aqua */
+@define-color c15 #dfd2c4;

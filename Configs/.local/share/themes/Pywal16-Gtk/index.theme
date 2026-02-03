@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=X-GNOME-Metatheme
+Name=Pywal16-Gtk
+Comment=Dynamic GTK theme generated from pywal16 colors
+Encoding=UTF-8
+
+[X-GNOME-Metatheme]
+GtkTheme=Pywal16-Gtk
+MetacityTheme=Pywal16-Gtk
+IconTheme=Adwaita
+CursorTheme=Adwaita
+ButtonLayout=close,minimize,maximize:menu

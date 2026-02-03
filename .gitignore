@@ -28,8 +28,36 @@ tmux/.config/tmux/theme.conf
 waybar/.config/waybar/colors.css
 waybar/.config/waybar/theme.css
 waybar/.config/waybar/includes/border-radius.css
+# Configs/ generated files (mirror of above)
+Configs/.config/alacritty/colors.toml
+Configs/.config/alacritty/theme.toml
+Configs/.config/cava/config
+Configs/.config/hypr/hyprlock/colors.conf
+Configs/.config/hypr/themes/colors.conf
+Configs/.config/hypr/themes/theme.conf
+Configs/.config/hypr/themes/wal.conf
+Configs/.config/hypr/themes/*/wall.set
+Configs/.config/kitty/colors.conf
+Configs/.config/kitty/theme.conf
+Configs/.config/Kvantum/pywal16/
+Configs/.config/rofi/colors.rasi
+Configs/.config/rofi/theme.rasi
+Configs/.local/share/icons/default/index.theme
+Configs/.local/share/themes/Pywal16-Gtk/gtk-3.0/gtk.css
+Configs/.local/share/themes/Pywal16-Gtk/gtk-4.0/gtk.css
+Configs/.config/swaync/colors.css
+Configs/.config/swaync/config.json
+Configs/.config/swaync/style.css
+Configs/.config/swaync/theme.css
+Configs/.config/tmux/colors.conf
+Configs/.config/tmux/theme.conf
+Configs/.config/waybar/colors.css
+Configs/.config/waybar/theme.css
+Configs/.config/waybar/includes/border-radius.css
 # State files (include defaults, ignore runtime)
 # hypr/.config/hypr/themes/*/wallpapers/  # Optional: exclude large wallpapers
 # Zsh runtime files
 zsh/.config/zsh/.zcompdump*
 zsh/.config/zsh/.zsh_history
+Configs/.config/zsh/.zcompdump*
+Configs/.config/zsh/.zsh_history

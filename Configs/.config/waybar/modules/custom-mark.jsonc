@@ -1,0 +1,8 @@
+{
+  "custom/mark": {
+    "justify": "center",
+    // "format": "",
+    "format": "—",
+    "tooltip": false
+  }
+}

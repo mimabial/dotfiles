@@ -1,8 +1,0 @@
-{
-  "custom/focusmode": {
-    "justify": "center",
-    "format": "󰽏",
-    "tooltip-format": "󰽏 Toggle editing workflow",
-    "on-click": "hyprshell focusmode",
-  },
-}

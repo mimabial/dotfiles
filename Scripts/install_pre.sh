@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 #|---/ /+-------------------------------------+---/ /|#
 #|--/ /-| Script to apply pre install configs |--/ /-|#
-#|-/ /--| Prasanth Rangan                     |-/ /--|#
 #|/ /---+-------------------------------------+/ /---|#
 
 scrDir=$(dirname "$(realpath "$0")")
@@ -13,8 +12,22 @@ fi
 
 flg_DryRun=${flg_DryRun:-0}
 
+# bootloader selection
+use_limine=false
+if [[ "${USE_LIMINE:-}" == "true" ]]; then
+    use_limine=true
+elif [ -f /boot/limine.conf ] || [ -f /boot/limine.cfg ]; then
+    use_limine=true
+elif grep -q '^limine' "${scrDir}/pkg_core.lst" 2>/dev/null; then
+    use_limine=true
+elif pkg_installed limine; then
+    use_limine=true
+fi
+
 # grub
-if pkg_installed grub && [ -f /boot/grub/grub.cfg ]; then
+if [ "${use_limine}" = true ]; then
+    print_log -sec "bootloader" -stat "skip" "limine selected; skipping grub/systemd-boot tweaks..."
+elif pkg_installed grub && [ -f /boot/grub/grub.cfg ]; then
     print_log -sec "bootloader" -b "detected :: " "grub..."
 
     if [ ! -f /etc/default/grub.hyde.bkp ] && [ ! -f /boot/grub/grub.hyde.bkp ]; then
@@ -44,16 +57,21 @@ if pkg_installed grub && [ -f /boot/grub/grub.cfg ]; then
             print_log -g "[bootloader] " -b "skip :: " "grub theme selection skipped..."
             echo ""
         else
-            print_log -g "[bootloader] " -b "set :: " "grub theme // ${grubtheme}"
-            echo ""
-            # shellcheck disable=SC2154
-            [ "${flg_DryRun}" -eq 1 ] || sudo tar -xzf "${cloneDir}/Source/arcs/Grub_${grubtheme}.tar.gz" -C /usr/share/grub/themes/
-            [ "${flg_DryRun}" -eq 1 ] || sudo sed -i "/^GRUB_DEFAULT=/c\GRUB_DEFAULT=saved
-            /^GRUB_GFXMODE=/c\GRUB_GFXMODE=1280x1024x32,auto
-            /^GRUB_THEME=/c\GRUB_THEME=\"/usr/share/grub/themes/${grubtheme}/theme.txt\"
-            /^#GRUB_THEME=/c\GRUB_THEME=\"/usr/share/grub/themes/${grubtheme}/theme.txt\"
-            /^#GRUB_SAVEDEFAULT=true/c\GRUB_SAVEDEFAULT=true" /etc/default/grub
-            [ "${flg_DryRun}" -eq 1 ] || sudo grub-mkconfig -o /boot/grub/grub.cfg
+            grub_archive="${cloneDir}/Source/arcs/Grub_${grubtheme}.tar.gz"
+            if [ ! -f "${grub_archive}" ]; then
+                print_log -y "[bootloader] " -b "skip :: " "missing grub theme archive: ${grub_archive}"
+            else
+                print_log -g "[bootloader] " -b "set :: " "grub theme // ${grubtheme}"
+                echo ""
+                # shellcheck disable=SC2154
+                [ "${flg_DryRun}" -eq 1 ] || sudo tar -xzf "${grub_archive}" -C /usr/share/grub/themes/
+                [ "${flg_DryRun}" -eq 1 ] || sudo sed -i "/^GRUB_DEFAULT=/c\GRUB_DEFAULT=saved
+                /^GRUB_GFXMODE=/c\GRUB_GFXMODE=1280x1024x32,auto
+                /^GRUB_THEME=/c\GRUB_THEME=\"/usr/share/grub/themes/${grubtheme}/theme.txt\"
+                /^#GRUB_THEME=/c\GRUB_THEME=\"/usr/share/grub/themes/${grubtheme}/theme.txt\"
+                /^#GRUB_SAVEDEFAULT=true/c\GRUB_SAVEDEFAULT=true" /etc/default/grub
+                [ "${flg_DryRun}" -eq 1 ] || sudo grub-mkconfig -o /boot/grub/grub.cfg
+            fi
         fi
 
     else
@@ -62,7 +80,7 @@ if pkg_installed grub && [ -f /boot/grub/grub.cfg ]; then
 fi
 
 # systemd-boot
-if pkg_installed systemd && nvidia_detect && [ "$(bootctl status 2>/dev/null | awk '{if ($1 == "Product:") print $2}')" == "systemd-boot" ]; then
+if [ "${use_limine}" != true ] && pkg_installed systemd && nvidia_detect && [ "$(bootctl status 2>/dev/null | awk '{if ($1 == "Product:") print $2}')" == "systemd-boot" ]; then
     print_log -sec "bootloader" -stat "detected" "systemd-boot"
 
     if [ "$(find /boot/loader/entries/ -type f -name '*.conf.hyde.bkp' 2>/dev/null | wc -l)" -ne "$(find /boot/loader/entries/ -type f -name '*.conf' 2>/dev/null | wc -l)" ]; then

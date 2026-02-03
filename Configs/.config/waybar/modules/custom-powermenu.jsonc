@@ -1,0 +1,21 @@
+{
+  "custom/powermenu": {
+    "justify": "center",
+    "format": "󰨚",
+    "tooltip": false,
+    "on-click": "hyprshell logoutlaunch 1",
+    "menu": "on-click-right",
+    "menu-file": "$XDG_CONFIG_HOME/waybar/menus/power.xml",
+    "menu-actions": {
+      "lock": "hyprshell lockscreen.sh",
+      "logout": "hyprctl dispatch exit 0",
+      "shutdown-now": "shutdown now",
+      "shutdown-wait": "systemctl poweroff",
+      "reboot-now": "systemctl reboot",
+      "reboot-firmware": "systemctl reboot --firmware-setup",
+      "suspend": "systemctl suspend",
+      "hibernate": "systemctl hibernate"
+    },
+    "signal": 1
+  }
+}

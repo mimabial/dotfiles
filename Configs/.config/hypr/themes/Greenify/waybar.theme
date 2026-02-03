@@ -1,0 +1,38 @@
+$HOME/.config/waybar/theme.css
+
+@define-color bg rgb(14,28,15);
+@define-color fg #DBD0C6;
+@define-color bg_alt rgb(14,28,15); /* bright green */
+@define-color fg_alt rgb(170,240,188);
+@define-color bg_selected #1E4E50;
+@define-color fg_selected @fg;
+
+@define-color border #568270; /* cursor green */
+@define-color border_alt #568270; /* cyan */
+
+@define-color accent #5AA65F;
+@define-color error @c1;
+@define-color hover #AAF0AA; /* light green */
+@define-color warning #AAF0F0; /* cyan */
+
+@define-color workspace_active_bg rgb(30,55,52);
+@define-color workspace_active_br #568270;
+@define-color workspace_active_fg rgb(204,255,249);
+@define-color workspace_hover_bg rgb(75,125,111);
+
+@define-color c0 #152326;
+@define-color c1 #FF5B61;
+@define-color c2 #9DC6A9;
+@define-color c3 #FFCF99;
+@define-color c4 #86BFD2;
+@define-color c5 #D59CCE;
+@define-color c6 #79C2B6;
+@define-color c7 #91A4AD;
+@define-color c8 #568270;
+@define-color c9 #D48588;
+@define-color c10 #95C2A1;
+@define-color c11 #FDD9AF;
+@define-color c12 #A7CBEA;
+@define-color c13 #D9ADD4;
+@define-color c14 #87CBB1;
+@define-color c15 #DBD0C6;

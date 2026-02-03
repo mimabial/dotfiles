@@ -1,0 +1,174 @@
+/* Pywal16 Firefox theme */
+/* Place in ~/.mozilla/firefox/YOUR_PROFILE/chrome/userChrome.css */
+/* Enable in about:config: toolkit.legacyUserProfileCustomizations.stylesheets = true */
+
+:root {{
+  /* Primary toolbar colors - explicit opaque backgrounds */
+  --toolbar-bgcolor: {color0} !important;
+  --toolbar-color: {color15} !important;
+  --toolbar-non-lwt-bgcolor: {color0} !important;
+  --toolbar-non-lwt-textcolor: {color15} !important;
+
+  /* URL/Search bar */
+  --toolbar-field-background-color: {color8} !important;
+  --toolbar-field-color: {color15} !important;
+  --toolbar-field-border-color: {color8} !important;
+  --toolbar-field-focus-background-color: {color0} !important;
+  --toolbar-field-focus-color: {color15} !important;
+  --toolbar-field-focus-border-color: {color4} !important;
+  --lwt-toolbar-field-background-color: {color8} !important;
+  --lwt-toolbar-field-focus: {color0} !important;
+
+  /* Tabs */
+  --tab-selected-bgcolor: {color8} !important;
+  --tab-selected-textcolor: {color15} !important;
+  --tab-loading-fill: {color4} !important;
+  --lwt-tab-text: {color15} !important;
+
+  /* LWT (Lightweight Theme) colors */
+  --lwt-accent-color: {color0} !important;
+  --lwt-text-color: {color15} !important;
+  --lwt-selected-tab-background-color: {color8} !important;
+  --lwt-toolbar-field-border-color: {color8} !important;
+
+  /* Panels and popups */
+  --arrowpanel-background: {color0} !important;
+  --arrowpanel-color: {color15} !important;
+  --arrowpanel-border-color: {color8} !important;
+  --panel-background: {color0} !important;
+  --panel-border-color: {color8} !important;
+
+  /* Autocomplete/URL suggestions */
+  --autocomplete-popup-background: {color0} !important;
+  --autocomplete-popup-color: {color15} !important;
+  --autocomplete-popup-highlight-background: {color4} !important;
+  --autocomplete-popup-highlight-color: {color0} !important;
+
+  /* Sidebar */
+  --sidebar-background-color: {color0} !important;
+  --sidebar-text-color: {color15} !important;
+  --sidebar-border-color: {color8} !important;
+
+  /* Override transparency */
+  --lwt-additional-images: none !important;
+  --lwt-background-alignment: none !important;
+  --lwt-background-tiling: none !important;
+}}
+
+/* Force opaque toolbar background */
+#navigator-toolbox {{
+  background: {color0} !important;
+}}
+
+#nav-bar {{
+  background: {color0} !important;
+  box-shadow: none !important;
+}}
+
+#PersonalToolbar {{
+  background: {color0} !important;
+}}
+
+/* Tab bar background */
+#titlebar {{
+  background: {color0} !important;
+}}
+
+#TabsToolbar {{
+  background: {color0} !important;
+}}
+
+.toolbar-items {{
+  background: {color0} !important;
+}}
+
+/* Tabs */
+.tabbrowser-tab[selected] .tab-background {{
+  background: {color8} !important;
+}}
+
+.tabbrowser-tab:not([selected]) .tab-background {{
+  background: {color0} !important;
+}}
+
+.tabbrowser-tab:hover:not([selected]) .tab-background {{
+  background: {color8} !important;
+  opacity: 0.6;
+}}
+
+/* URL bar */
+#urlbar, #searchbar {{
+  background-color: {color8} !important;
+  color: {color15} !important;
+  border-color: {color8} !important;
+}}
+
+#urlbar[focused], #searchbar[focused] {{
+  background-color: {color0} !important;
+  border-color: {color4} !important;
+}}
+
+/* Dropdown menus */
+menupopup, panel {{
+  background-color: {color0} !important;
+  color: {color15} !important;
+  border-color: {color8} !important;
+}}
+
+menuitem:hover, menu:hover {{
+  background-color: {color4} !important;
+  color: {color0} !important;
+}}
+
+/* Sidebar */
+#sidebar-box {{
+  background-color: {color0} !important;
+  color: {color15} !important;
+}}
+
+/* Context menus - right click menus */
+#contentAreaContextMenu,
+#context-navigation,
+.menupopup-arrowscrollbox {{
+  background-color: {color0} !important;
+  color: {color15} !important;
+}}
+
+#contentAreaContextMenu menuitem,
+#contentAreaContextMenu menu {{
+  color: {color15} !important;
+}}
+
+#contentAreaContextMenu menuitem:hover,
+#contentAreaContextMenu menu:hover {{
+  background-color: {color4} !important;
+  color: {color0} !important;
+}}
+
+menuseparator {{
+  border-color: {color8} !important;
+}}
+
+/* Selection colors in browser UI */
+::selection {{
+  background-color: {color4} !important;
+  color: {color0} !important;
+}}
+
+::-moz-selection {{
+  background-color: {color4} !important;
+  color: {color0} !important;
+}}
+
+/* Scrollbars */
+scrollbar {{
+  background-color: {color0} !important;
+}}
+
+thumb {{
+  background-color: {color8} !important;
+}}
+
+thumb:hover {{
+  background-color: {color7} !important;
+}}

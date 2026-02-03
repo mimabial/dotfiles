@@ -1,0 +1,10 @@
+{
+  "custom/weather#sunset": {
+    "exec": "hyprshell weather -S",
+    "justify": "right",
+    "tooltip": false,
+    "format": "{0}",
+    "interval": 3600,
+    "return-type": "json",
+  },
+}

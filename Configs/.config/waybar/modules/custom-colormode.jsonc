@@ -1,0 +1,15 @@
+{
+  "custom/colormode": {
+    "justify": "center",
+    "format": "{}",
+    "exec": "hyprshell waybar.colormode.sh",
+    "return-type": "json",
+    "tooltip-format": "󰏙 {1} color mode",
+    "on-click": "hyprshell wal.toggle -m",
+    "on-click-right": "hyprshell wal.toggle -p",
+    "on-click-middle": "hyprshell wal.toggle -n",
+    "interval": 86400,
+    "signal": 8,
+    "tooltip": true,
+  },
+}

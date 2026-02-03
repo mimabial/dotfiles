@@ -1,0 +1,73 @@
+# Color mapping for pywal replacement
+# Format: #hexcolor=pywal_variable
+# Theme: Paranoid Sweet
+
+# Background / surfaces
+#000000=background
+#161925=background
+#0c0e14=color0
+#0c0e15=color0
+#10121c=color0
+#131621=color0
+#151926=color0
+#181b28=color0
+#1e1e20=color0
+#1e2134=color0
+#1e2233=color0
+#22252e=color0
+#232325=color0
+#252a3f=color0
+#28282a=color0
+#2d334c=color0
+#303651=color0
+#31363b=color0
+#323234=color0
+#393b39=color0
+#3c4366=color0
+#414143=color0
+#424b71=color0
+#48484a=color0
+#4b4b4d=color0
+#525254=color0
+#555564=color0
+#555761=color0
+#565658=color0
+#5c616c=color0
+#606062=color0
+#002700=color0
+
+# Mid neutrals
+#646466=color8
+#646464=color8
+#666666=color8
+#6e6e70=color8
+#727274=color8
+#7a7a7c=color8
+#88888a=color8
+#7f8c8d=color7
+#8c8c8e=color7
+#aaaaac=color7
+
+# Text
+#c3c7d1=foreground
+#c8c8ca=foreground
+#d1d1d1=foreground
+#d2d2d4=foreground
+#dadadc=foreground
+#ffffff=foreground
+
+# Accents
+#00e8c6=color6
+#13d931=color2
+#138d21=color2
+#3daee9=color4
+#333399=color4
+#bd93f9=color5
+#c50ed2=color5
+#654ea3=color5
+#e323f0=color5
+#ff00ff=color5
+#ff00cc=color5
+#fc01cb=color5
+#fc0181=color1
+#da4453=color1

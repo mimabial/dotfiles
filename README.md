@@ -29,6 +29,8 @@ A modular, highly customizable desktop environment built on **Hyprland** (Waylan
 
 ```
 dotfiles/
+├── Configs/        # Install source (mirrors ~/.config and ~/.local)
+├── Scripts/        # Install/update scripts
 ├── hypr/           # Hyprland compositor configuration
 ├── hypr-lib/       # HyDE library (100+ scripts)
 ├── zsh/            # Zsh shell configuration
@@ -64,7 +66,7 @@ dotfiles/
 
 - Arch Linux (or Arch-based distro)
 - Hyprland
-- [GNU Stow](https://www.gnu.org/software/stow/)
+- git
 
 ### Install Dependencies
 
@@ -88,20 +90,30 @@ paru -S ttf-jetbrains-mono-nerd ttf-nerd-fonts-symbols
 paru -S alacritty fastfetch cava
 ```
 
-### Clone and Stow
+### Install (HyDE-style)
 
 ```bash
 git clone https://github.com/yourusername/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 
-# Stow all configurations
-stow hypr hypr-lib zsh kitty waybar rofi swaync starship scripts
+# Restore configs only (recommended)
+./install.sh -r
 
-# Or stow individually
-stow hypr        # Hyprland config → ~/.config/hypr
-stow hypr-lib    # Scripts → ~/.local/lib/hypr
-stow scripts     # Utilities → ~/.local/bin
+# Full install (packages + configs + services)
+./install.sh
 
+# Full install + limine bootloader
+BOOTLOADER=limine ./install.sh
+
+# Dry-run to see what would happen
+./install.sh -t
+```
+
+### Update
+
+```bash
+cd ~/dotfiles
+./update.sh
 ```
 
 ### Post-Install

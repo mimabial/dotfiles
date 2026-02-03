@@ -1,8 +1,0 @@
-{
-  "custom/keybindhint": {
-    "justify": "center",
-    "format": "",
-    "tooltip-format": "  Keybinds hint",
-    "on-click": "hyprshell keybinds_hint",
-  },
-}

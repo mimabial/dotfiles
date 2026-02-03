@@ -1,0 +1,12 @@
+{
+  "clock#time": {
+    "justify": "center",
+    "format": "{:%H\n%M}",
+    "tooltip": false,
+    "interval": 60,
+    "actions": {
+      "on-scroll-up": "tz_up",
+      "on-scroll-down": "tz_down"
+    }
+  }
+}

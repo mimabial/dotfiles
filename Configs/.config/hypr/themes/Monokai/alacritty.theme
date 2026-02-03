@@ -1,0 +1,33 @@
+$HOME/.config/alacritty/theme.toml
+
+[colors.primary]
+foreground = "#F8F8F2"
+background = "#2C2525"
+
+[colors.cursor]
+text = "#2C2525"
+cursor = "#F8F8F2"
+
+[colors.selection]
+text = "#F8F8F2"
+background = "#2C2525"
+
+[colors.normal]
+black = "#272822"
+red = "#F92672"
+green = "#A6E3A1"
+yellow = "#F9E2AF"
+blue = "#F38D70"
+magenta = "#F5C2E7"
+cyan = "#94E2D5"
+white = "#F8F8F2"
+
+[colors.bright]
+black = "#807d74"
+red = "#F92672"
+green = "#A6E3A1"
+yellow = "#F9E2AF"
+blue = "#F38D70"
+magenta = "#F5C2E7"
+cyan = "#94E2D5"
+white = "#F8F8F2"

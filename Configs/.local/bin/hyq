@@ -1,0 +1,551 @@
+#!/usr/bin/env python3
+"""
+hyq - Hyprland configuration query tool
+A Python implementation with full hyprlang parsing support
+"""
+
+import argparse
+import glob as globlib
+import json
+import logging
+import os
+import re
+import sys
+from typing import Any, Dict, List, Optional, Tuple
+
+# Configure logging
+logger = logging.getLogger("hyq")
+
+
+class HyprlangParser:
+    """Parser for Hyprland configuration files"""
+
+    def __init__(self, follow_source: bool = False, config_dir: str = None):
+        self.variables: Dict[str, str] = {}
+        self.config: Dict[str, Any] = {}
+        self.follow_source = follow_source
+        self.config_dir = config_dir or os.getcwd()
+
+    def normalize_path(self, path: str) -> str:
+        """Normalize and expand path"""
+        # Remove quotes
+        path = path.strip().strip('"').strip("'")
+
+        # Expand ~ to home
+        if path.startswith("~"):
+            path = os.path.expanduser(path)
+
+        # Expand environment variables
+        path = os.path.expandvars(path)
+
+        # Make absolute if relative
+        if not os.path.isabs(path):
+            path = os.path.join(self.config_dir, path)
+
+        return path
+
+    def resolve_glob(self, pattern: str) -> List[str]:
+        """Resolve glob pattern"""
+        pattern = self.normalize_path(pattern)
+        matches = globlib.glob(pattern)
+        return sorted(matches)
+
+    def resolve_variable(self, value: str, depth: int = 0, max_depth: int = 10) -> str:
+        """Recursively resolve variable references"""
+        if depth >= max_depth:
+            return value
+
+        # Pattern: $VAR or ${VAR}
+        pattern = r"\$\{?([A-Za-z_][A-Za-z0-9_-]*)\}?"
+
+        def replacer(match):
+            var_name = match.group(1)
+            if var_name in self.variables:
+                return self.resolve_variable(self.variables[var_name], depth + 1)
+            # Try environment variable
+            return os.environ.get(var_name, match.group(0))
+
+        return re.sub(pattern, replacer, value)
+
+    def strip_comment(self, line: str) -> str:
+        """Remove comments from line"""
+        # Find # that's not inside quotes
+        in_quotes = False
+        quote_char = None
+        for i, char in enumerate(line):
+            if char in ('"', "'") and (i == 0 or line[i - 1] != "\\"):
+                if not in_quotes:
+                    in_quotes = True
+                    quote_char = char
+                elif char == quote_char:
+                    in_quotes = False
+            elif char == "#" and not in_quotes:
+                return line[:i].rstrip()
+        return line
+
+    def parse_value(self, value_str: str) -> Any:
+        """Parse a value string into appropriate type"""
+        value_str = value_str.strip()
+
+        # Remove quotes
+        if (value_str.startswith('"') and value_str.endswith('"')) or (
+            value_str.startswith("'") and value_str.endswith("'")
+        ):
+            return value_str[1:-1]
+
+        # Boolean
+        if value_str.lower() in ("true", "yes", "on"):
+            return True
+        if value_str.lower() in ("false", "no", "off"):
+            return False
+
+        # Hex
+        if value_str.startswith("0x") or value_str.startswith("0X"):
+            try:
+                return int(value_str, 16)
+            except ValueError:
+                pass
+
+        # Integer
+        try:
+            return int(value_str)
+        except ValueError:
+            pass
+
+        # Float
+        try:
+            return float(value_str)
+        except ValueError:
+            pass
+
+        # RGB/RGBA colors
+        rgb_match = re.match(r"rgba?\((.*?)\)", value_str)
+        if rgb_match:
+            return value_str
+
+        # Default: string
+        return value_str
+
+    def set_nested_value(self, keys: List[str], value: Any):
+        """Set a value in nested dictionary"""
+        current = self.config
+        for key in keys[:-1]:
+            if key not in current:
+                current[key] = {}
+            elif not isinstance(current[key], dict):
+                # Convert to dict if it was a value
+                current[key] = {"_value": current[key]}
+            current = current[key]
+
+        final_key = keys[-1]
+        if (
+            final_key in current
+            and isinstance(current[final_key], dict)
+            and "_value" not in current[final_key]
+        ):
+            # Key exists as a section, store value specially
+            current[final_key]["_value"] = value
+        else:
+            current[final_key] = value
+
+    def get_nested_value(self, keys: List[str]) -> Optional[Any]:
+        """Get a value from nested dictionary"""
+        current = self.config
+        for key in keys[:-1]:
+            if key not in current:
+                return None
+            current = current[key]
+            if not isinstance(current, dict):
+                return None
+
+        final_key = keys[-1]
+        if final_key not in current:
+            return None
+
+        value = current[final_key]
+        # If it's a dict with _value, return that
+        if isinstance(value, dict) and "_value" in value:
+            return value["_value"]
+        return value
+
+    def parse_file(self, filepath: str, context_stack: Optional[List[str]] = None):
+        """Parse a configuration file"""
+        if context_stack is None:
+            context_stack = []
+
+        filepath = self.normalize_path(filepath)
+
+        if not os.path.exists(filepath):
+            logger.error(f"File not found: {filepath}")
+            return
+
+        logger.debug(f"Parsing file: {filepath}")
+
+        # Update config_dir for relative paths in source directives
+        old_config_dir = self.config_dir
+        self.config_dir = os.path.dirname(filepath)
+
+        with open(filepath, "r") as f:
+            lines = f.readlines()
+
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            i += 1
+
+            # Strip comments
+            line = self.strip_comment(line)
+            line = line.strip()
+
+            if not line:
+                continue
+
+            # Handle multiline (backslash continuation)
+            while line.endswith("\\") and i < len(lines):
+                line = line[:-1] + " " + self.strip_comment(lines[i]).strip()
+                i += 1
+
+            # Variable assignment: $VAR = value
+            var_match = re.match(r"\$([A-Za-z_][A-Za-z0-9_-]*)\s*=\s*(.+)", line)
+            if var_match:
+                var_name = var_match.group(1)
+                var_value = var_match.group(2).strip()
+                # Resolve existing variables in the value
+                var_value = self.resolve_variable(var_value)
+                self.variables[var_name] = var_value
+                logger.debug(f"Variable: ${var_name} = {var_value}")
+                continue
+
+            # Source directive: source = path
+            source_match = re.match(r"source\s*=\s*(.+)", line)
+            if source_match and self.follow_source:
+                source_path = source_match.group(1).strip()
+                source_path = self.resolve_variable(source_path)
+
+                # Handle glob patterns
+                source_files = self.resolve_glob(source_path)
+                for src_file in source_files:
+                    if os.path.isfile(src_file):
+                        logger.debug(f"Following source: {src_file}")
+                        self.parse_file(src_file, context_stack[:])
+                continue
+
+            # Section start: section {
+            section_match = re.match(
+                r"([A-Za-z_][A-Za-z0-9_-]*(?:\[[^\]]+\])?)\s*\{", line
+            )
+            if section_match:
+                section_name = section_match.group(1)
+                # Remove brackets for generic sections
+                section_name = re.sub(r"\[.*?\]", "", section_name)
+                context_stack.append(section_name)
+                logger.debug(f"Entering section: {':'.join(context_stack)}")
+                continue
+
+            # Section end: }
+            if line == "}":
+                if context_stack:
+                    context_stack.pop()
+                    logger.debug(
+                        f"Exiting section, now at: {':'.join(context_stack) or 'root'}"
+                    )
+                continue
+
+            # Key-value assignment: key = value
+            kv_match = re.match(r"([A-Za-z_][A-Za-z0-9_:-]*)\s*=\s*(.+)", line)
+            if kv_match:
+                key = kv_match.group(1)
+                value_str = kv_match.group(2).strip()
+
+                # Resolve variables
+                value_str = self.resolve_variable(value_str)
+
+                # Parse value
+                value = self.parse_value(value_str)
+
+                # Build full key path
+                full_path = context_stack + [key]
+                self.set_nested_value(full_path, value)
+
+                logger.debug(f"Config: {':'.join(full_path)} = {value}")
+                continue
+
+        # Restore config_dir
+        self.config_dir = old_config_dir
+
+    def query(self, query_str: str) -> Optional[Any]:
+        """Query a configuration value"""
+        # Handle variable queries
+        if query_str.startswith("$"):
+            var_name = query_str[1:]
+            if var_name in self.variables:
+                return self.resolve_variable(self.variables[var_name])
+            return None
+
+        # Handle nested keys with : separator
+        keys = query_str.split(":")
+        return self.get_nested_value(keys)
+
+
+class SchemaLoader:
+    """Load and apply schema defaults"""
+
+    def __init__(self, schema_path: str):
+        self.schema_path = schema_path
+        self.schema = None
+        self.load_schema()
+
+    def load_schema(self):
+        """Load schema from JSON file"""
+        if not os.path.exists(self.schema_path):
+            logger.error(f"Schema file not found: {self.schema_path}")
+            return
+
+        try:
+            with open(self.schema_path, "r") as f:
+                self.schema = json.load(f)
+            logger.debug(f"Loaded schema from {self.schema_path}")
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse schema JSON: {e}")
+
+    def get_default(self, key: str) -> Optional[Any]:
+        """Get default value for a key from schema"""
+        if not self.schema or "hyprlang_schema" not in self.schema:
+            return None
+
+        for option in self.schema["hyprlang_schema"]:
+            if option.get("value") == key:
+                data = option.get("data", {})
+                if "default" in data:
+                    return data["default"]
+        return None
+
+    def get_type(self, key: str) -> Optional[str]:
+        """Get expected type for a key from schema"""
+        if not self.schema or "hyprlang_schema" not in self.schema:
+            return None
+
+        for option in self.schema["hyprlang_schema"]:
+            if option.get("value") == key:
+                return option.get("type")
+        return None
+
+
+def infer_type(value: Any) -> str:
+    """Infer type name from value"""
+    if value is None:
+        return "NULL"
+    elif isinstance(value, bool):
+        return "BOOL"
+    elif isinstance(value, int):
+        return "INT"
+    elif isinstance(value, float):
+        return "FLOAT"
+    elif isinstance(value, str):
+        # Check if it's a color/gradient
+        if value.startswith("rgb") or value.startswith("0x") or value.startswith("#"):
+            return "COLOR"
+        return "STRING"
+    else:
+        return "CUSTOM"
+
+
+def normalize_type(type_str: str) -> str:
+    """Normalize type string for comparison"""
+    return type_str.upper().replace("_", "").replace("-", "")
+
+
+def matches_regex(value: str, pattern: str) -> bool:
+    """Check if value matches regex pattern"""
+    try:
+        return bool(re.match(pattern, value))
+    except re.error:
+        logger.error(f"Invalid regex pattern: {pattern}")
+        return False
+
+
+def parse_query_input(query_str: str) -> Tuple[str, Optional[str], Optional[str]]:
+    """
+    Parse query string in format: query[expectedType][expectedRegex]
+    Returns: (query, expected_type, expected_regex)
+    """
+    # Extract query and optional type/regex
+    match = re.match(r"^([^\[]+)(?:\[([^\]]*)\])?(?:\[([^\]]*)\])?", query_str)
+    if not match:
+        return query_str, None, None
+
+    query = match.group(1)
+    expected_type = match.group(2) if match.group(2) else None
+    expected_regex = match.group(3) if match.group(3) else None
+
+    return query, expected_type, expected_regex
+
+
+def process_query(
+    parser: HyprlangParser,
+    schema: Optional[SchemaLoader],
+    query_str: str,
+    allow_missing: bool,
+) -> Dict[str, Any]:
+    """Process a single query and return result"""
+    query, expected_type, expected_regex = parse_query_input(query_str)
+
+    # Get value from config
+    value = parser.query(query)
+
+    # Try schema default if not found
+    if value is None and schema:
+        value = schema.get_default(query)
+
+    # Determine result
+    if value is None:
+        if allow_missing:
+            return {"key": query, "value": "", "type": "NULL", "flags": []}
+        else:
+            return {"key": query, "value": "", "type": "NULL", "flags": []}
+
+    # Convert value to string
+    value_str = str(value)
+    value_type = infer_type(value)
+
+    # Type filtering
+    if expected_type:
+        actual_type_norm = normalize_type(value_type)
+        expected_type_norm = normalize_type(expected_type)
+
+        if actual_type_norm != expected_type_norm:
+            return {"key": query, "value": "", "type": "NULL", "flags": []}
+
+    # Regex filtering
+    if expected_regex and not matches_regex(value_str, expected_regex):
+        return {"key": query, "value": "", "type": "NULL", "flags": []}
+
+    return {"key": query, "value": value_str, "type": value_type, "flags": []}
+
+
+def export_json(results: List[Dict[str, Any]]):
+    """Export results as JSON"""
+    output = []
+    for result in results:
+        output.append(
+            {
+                "key": result["key"],
+                "val": result["value"],
+                "type": result["type"],
+                "flags": result["flags"],
+            }
+        )
+    print(json.dumps(output, indent=2))
+
+
+def export_env(results: List[Dict[str, Any]], queries: List[str]):
+    """Export results as environment variables"""
+    for i, result in enumerate(results):
+        query = queries[i]
+
+        # Remove $ prefix if present
+        if query.startswith("$"):
+            query = query[1:]
+
+        # Strip type/regex annotations
+        query = re.sub(r"\[.*?\]", "", query)
+
+        # Transform key: replace : and - with _
+        env_key = query.replace(":", "_").replace("-", "_")
+
+        # Add prefix
+        is_dynamic = queries[i].startswith("$")
+        prefix = "__" if is_dynamic else "_"
+
+        print(f'{prefix}{env_key}="{result["value"]}"')
+
+
+def export_plain(results: List[Dict[str, Any]], delimiter: str):
+    """Export results as plain text with delimiter"""
+    values = [r["value"] if r["type"] != "NULL" else "" for r in results]
+    print(delimiter.join(values))
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="hyq - A configuration parser for hypr* config files",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+
+    parser.add_argument("config_file", help="Configuration file")
+    parser.add_argument(
+        "--query",
+        "-Q",
+        action="append",
+        dest="queries",
+        required=True,
+        help="Query to execute (format: query[expectedType][expectedRegex])",
+    )
+    parser.add_argument("--schema", help="Schema file")
+    parser.add_argument(
+        "--allow-missing", action="store_true", help="Allow missing values"
+    )
+    parser.add_argument(
+        "--get-defaults", action="store_true", help="Get default keys from schema"
+    )
+    parser.add_argument("--strict", action="store_true", help="Enable strict mode")
+    parser.add_argument(
+        "--export", choices=["json", "env"], help="Export format: json or env"
+    )
+    parser.add_argument(
+        "--source", "-s", action="store_true", help="Follow the source command"
+    )
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+    parser.add_argument(
+        "--delimiter",
+        "-D",
+        default="\n",
+        help="Delimiter for plain output (default: newline)",
+    )
+
+    args = parser.parse_args()
+
+    # Setup logging
+    if args.debug:
+        logging.basicConfig(level=logging.DEBUG, format="[%(levelname)s] %(message)s")
+    else:
+        logging.basicConfig(level=logging.WARNING)
+
+    # Check if config file exists
+    config_file = args.config_file
+    if not os.path.exists(config_file):
+        print(
+            f"Error: Configuration file does not exist: {config_file}", file=sys.stderr
+        )
+        return 1
+
+    # Load schema if provided
+    schema = None
+    if args.schema:
+        schema = SchemaLoader(args.schema)
+
+    # Parse configuration
+    hypr_parser = HyprlangParser(follow_source=args.source)
+    hypr_parser.parse_file(config_file)
+
+    # Process queries
+    results = []
+    for query in args.queries:
+        result = process_query(hypr_parser, schema, query, args.allow_missing)
+        results.append(result)
+
+    # Export results
+    if args.export == "json":
+        export_json(results)
+    elif args.export == "env":
+        export_env(results, args.queries)
+    else:
+        export_plain(results, args.delimiter)
+
+    # Return error code if any query returned NULL
+    null_count = sum(1 for r in results if r["type"] == "NULL")
+    return 1 if null_count > 0 else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

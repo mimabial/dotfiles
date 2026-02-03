@@ -1,0 +1,38 @@
+$HOME/.config/waybar/theme.css
+
+@define-color bg #3b4252; /* nord1 */
+@define-color fg #D9D9D9;
+@define-color bg_alt #476A84;
+@define-color fg_alt #D9D9D9;
+@define-color bg_selected #476A84;
+@define-color fg_selected #7287FD;
+
+@define-color border #a3be8c; /* nord2 */
+@define-color border_alt #a3be8c;
+
+@define-color accent #A3BE8C;
+@define-color error @c1;
+@define-color hover #81a1c1; /* nord9 */
+@define-color warning #434c5e; /* nord2 */
+
+@define-color workspace_active_bg @bg_selected;
+@define-color workspace_active_br #7287FD;
+@define-color workspace_active_fg #EFEFF5;
+@define-color workspace_hover_bg #EFEFF5;
+
+@define-color c0 #3B4252;
+@define-color c1 #BF616A;
+@define-color c2 #A3BE8C;
+@define-color c3 #EBCB8B;
+@define-color c4 #81A1C1;
+@define-color c5 #B48EAD;
+@define-color c6 #88C0D0;
+@define-color c7 #E5E9F0;
+@define-color c8 #4C566A;
+@define-color c9 #BF616A;
+@define-color c10 #A3BE8C;
+@define-color c11 #EBCB8B;
+@define-color c12 #81A1C1;
+@define-color c13 #B48EAD;
+@define-color c14 #8FBCBB;
+@define-color c15 #ECEFF4;

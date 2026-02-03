@@ -1,0 +1,26 @@
+{
+  "custom/mediaplayer": {
+    "justify": "center",
+    "exec": "hyprshell mediaplayer.py",
+    "return-type": "json",
+    "format": "{alt}",
+    "tooltip": true,
+    "on-click": "playerctl play-pause",
+    "on-click-middle": "playerctl previous",
+    "on-scroll-up": "playerctl position 1+",
+    "on-scroll-down": "playerctl position 1-",
+    "menu": "on-click-right",
+    "menu-file": "$XDG_CONFIG_HOME/waybar/menus/mediaplayer.xml",
+    "menu-actions": {
+      "play-pause": "playerctl play-pause",
+      "next": "playerctl next",
+      "previous": "playerctl previous",
+      "stop": "playerctl stop",
+      "shuffle": "playerctl shuffle toggle",
+      "repeat": "playerctl loop Track",
+      "loop": "playerctl loop Playlist",
+      "disable-loop": "playerctl loop None"
+    },
+    "restart-interval": 5
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "custom/lazygit": {
+    "format": "󰊢",
+    "on-click": "hyprshell launch/lazygit.sh",
+    "tooltip-format": "LazyGit (SUPER+SHIFT+G)"
+  }
+}

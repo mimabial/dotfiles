@@ -1,0 +1,28 @@
+{
+  "bluetooth": {
+    "justify": "center",
+    "format": "",
+    "format-on": "",
+    "format-off": "󰂲",
+    "format-disabled": "",
+    "format-connected": "<b>󰂱</b>",
+    "format-icons": [
+      "󰥇",
+      "󰤾",
+      "󰤿",
+      "󰥀",
+      "󰥁",
+      "󰥂",
+      "󰥃",
+      "󰥄",
+      "󰥅",
+      "󰥆",
+      "󰥈"
+    ],
+    "tooltip-format": "{controller_alias}\n{controller_address}\n{num_connections} connected",
+    "tooltip-format-connected": "{controller_alias}\n{controller_address}\n{num_connections} connected\n\n{device_enumerate}",
+    "tooltip-format-enumerate-connected": "{device_alias}\n{controller_address}",
+    "tooltip-format-enumerate-connected-battery": "{device_alias}\t{device_address}\t{icon} {device_battery_percentage}%",
+    "on-click": "rfkill toggle bluetooth"
+  }
+}

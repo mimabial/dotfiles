@@ -98,12 +98,12 @@ if [[ -z $1 || -z $2 ]]; then
 fi
 
 wallbashDirs=(
-    "${XDG_CONFIG_HOME:-$HOME.config}/hyde/wallbash"
-    "${XDG_DATA_HOME:-$HOME/.local/share}/hyde/wallbash"
+    "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/wallbash"
+    "${XDG_DATA_HOME:-$HOME/.local/share}/hypr/wallbash"
     "${XDG_DATA_HOME}/wallbash"
-    "${XDG_DATA_HOME}/hyde/wallbash"
-    "/usr/local/share/hyde/wallbash"
-    "/usr/share/hyde/wallbash"
+    "${XDG_DATA_HOME}/hypr/wallbash"
+    "/usr/local/share/hypr/wallbash"
+    "/usr/share/hypr/wallbash"
 )
 
 # set parameters
@@ -133,7 +133,7 @@ else
     Git_Path=${Git_Repo#*://*/}
     Git_Owner=${Git_Path%/*}
     branch_dir=${branch//\//_}
-    cacheDir=${cacheDir:-"$HOME/.cache/hyde"}
+    cacheDir=${cacheDir:-"$HOME/.cache/hypr"}
     Theme_Dir="${cacheDir}/themepatcher/${branch_dir}-${Git_Owner}"
 
     if [ -d "$Theme_Dir" ]; then
@@ -156,11 +156,11 @@ fi
 
 print_prompt "Patching" -g " --// ${Fav_Theme} //-- " "from " -b "${Theme_Dir}\n"
 
-Fav_Theme_Dir="${Theme_Dir}/Configs/.config/hyde/themes/${Fav_Theme}"
+Fav_Theme_Dir="${Theme_Dir}/Configs/.config/hypr/themes/${Fav_Theme}"
 [ ! -d "${Fav_Theme_Dir}" ] && print_prompt -r "[ERROR] " "'${Fav_Theme_Dir}'" -y " Do not Exist" && exit 1
 
-# config=$(find "${dcolDir}" -type f -name "*.dcol" | awk -v favTheme="${Fav_Theme}" -F 'theme/' '{gsub(/\.dcol$/, ".theme"); print ".config/hyde/themes/" favTheme "/" $2}')
-config=$(find "${wallbashDirs[@]}" -type f -path "*/theme*" -name "*.dcol" 2>/dev/null | awk '!seen[substr($0, match($0, /[^/]+$/))]++' | awk -v favTheme="${Fav_Theme}" -F 'theme/' '{gsub(/\.dcol$/, ".theme"); print ".config/hyde/themes/" favTheme "/" $2}')
+# config=$(find "${dcolDir}" -type f -name "*.dcol" | awk -v favTheme="${Fav_Theme}" -F 'theme/' '{gsub(/\.dcol$/, ".theme"); print ".config/hypr/themes/" favTheme "/" $2}')
+config=$(find "${wallbashDirs[@]}" -type f -path "*/theme*" -name "*.dcol" 2>/dev/null | awk '!seen[substr($0, match($0, /[^/]+$/))]++' | awk -v favTheme="${Fav_Theme}" -F 'theme/' '{gsub(/\.dcol$/, ".theme"); print ".config/hypr/themes/" favTheme "/" $2}')
 restore_list=""
 
 while IFS= read -r fileCheck; do
@@ -175,7 +175,7 @@ while IFS= read -r fileCheck; do
 done <<<"$config"
 if [ -f "${Fav_Theme_Dir}/theme.dcol" ]; then
     print_prompt -n "[note] " "found theme.dcol to override wallpaper dominant colors"
-    restore_list+="Y|Y|\${HOME}/.config/hyde/themes/${Fav_Theme}|theme.dcol|hyprland\n"
+    restore_list+="Y|Y|\${HOME}/.config/hypr/themes/${Fav_Theme}|theme.dcol|hyprland\n"
 fi
 readonly restore_list
 
@@ -323,14 +323,14 @@ done
 confDir=${XDG_CONFIG_HOME:-"$HOME/.config"}
 
 # populate wallpaper
-Fav_Theme_Walls="${confDir}/hyde/themes/${Fav_Theme}/wallpapers"
+Fav_Theme_Walls="${confDir}/hypr/themes/${Fav_Theme}/wallpapers"
 [ ! -d "${Fav_Theme_Walls}" ] && mkdir -p "${Fav_Theme_Walls}"
 while IFS= read -r walls; do
     cp -f "${walls}" "${Fav_Theme_Walls}"
 done <<<"${wallpapers}"
 
 # populate logos
-Fav_Theme_Logos="${confDir}/hyde/themes/${Fav_Theme}/logo"
+Fav_Theme_Logos="${confDir}/hypr/themes/${Fav_Theme}/logo"
 if [ -n "${logos}" ]; then
     [ ! -d "${Fav_Theme_Logos}" ] && mkdir -p "${Fav_Theme_Logos}"
     while IFS= read -r logo; do
@@ -347,8 +347,8 @@ echo -en "${restore_list}" >"${Theme_Dir}/restore_cfg.lst"
 print_prompt -g "\n[exec] " "restore_cfg.sh \"${Theme_Dir}/restore_cfg.lst\" \"${Theme_Dir}/Configs\" \"${Fav_Theme}\"\n"
 "${scrDir}/restore_cfg.sh" "${Theme_Dir}/restore_cfg.lst" "${Theme_Dir}/Configs" "${Fav_Theme}" &>/dev/null
 if [ "${3}" != "--skipcaching" ]; then
-    "$HOME/.local/lib/hyde/swwwallcache.sh" -t "${Fav_Theme}"
-    "$HOME/.local/lib/hyde/theme.switch.sh"
+    "$HOME/.local/lib/hypr/swwwallcache.sh" -t "${Fav_Theme}"
+    "$HOME/.local/lib/hypr/theme.switch.sh"
 fi
 
 print_prompt -y "\nNote: Warnings are not errors. Review the output to check if it concerns you."

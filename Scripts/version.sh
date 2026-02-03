@@ -40,7 +40,7 @@ echo "Remote: $HYDE_REMOTE"
 echo ""
 
 if [[ "$1" == "--cache" ]]; then
-  state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/hyde"
+  state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/hypr"
   mkdir -p "$state_dir"
   version_file="$state_dir/version"
 

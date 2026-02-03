@@ -1,0 +1,17 @@
+#!/bin/bash
+
+for pkg in "$@"; do
+  if ! pacman -Q "$pkg" &>/dev/null; then
+    sudo pacman -S --noconfirm --needed "$pkg" || exit 1
+  fi
+done
+
+for pkg in "$@"; do
+  # Secondary check to handle states where pacman doesn't actually register an error
+  if ! pacman -Q "$pkg" &>/dev/null; then
+    echo -e "\033[31mError: Package '$pkg' did not install\033[0m" >&2
+    exit 1
+  fi
+done
+
+exit 0

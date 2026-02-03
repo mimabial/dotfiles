@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 #|---/ /+-----------------------------------+---/ /|#
 #|--/ /-| Script to install flatpaks (user) |--/ /-|#
-#|-/ /--| Prasanth Rangan                   |-/ /--|#
 #|/ /---+-----------------------------------+/ /---|#
 
 baseDir=$(dirname "$(realpath "$0")")

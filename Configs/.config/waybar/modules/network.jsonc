@@ -1,0 +1,40 @@
+{
+  "network": {
+    "interface": "wl*",
+    "justify": "center",
+    "format": "{icon}",
+    "format-icons": {
+      "wifi": [
+        "󰤯",
+        "󰤟",
+        "󰤢",
+        "󰤥",
+        "󰤨"
+      ],
+      "ethernet": [
+        "󰈀"
+      ],
+      "linked": [
+        "󰈁"
+      ],
+      "disabled": [
+        "󰤭"
+      ],
+      "disconnected": [
+        "󰤩"
+      ]
+    },
+    "format-wifi": "{icon}",
+    "format-ethernet": "{icon}",
+    "format-disconnected": "{icon}",
+    "format-disabled": "{icon}",
+    "format-linked": "{icon}",
+    "tooltip-format": "{ipaddr}",
+    "tooltip-format-wifi": "{ifname} ({ipaddr})\nSignal: {signalStrength}%\nUp: {bandwidthUpBits} | Down: {bandwidthDownBits}\nSSID: {essid}\nFrequency: {frequency} GHz",
+    "tooltip-format-ethernet": "{ifname} 󰈀\n{ipaddr}",
+    "tooltip-format-disconnected": "Not Connected to any type of Network",
+    "tooltip": true,
+    "on-click": "rfkill toggle wifi",
+    "interval": 2
+  }
+}

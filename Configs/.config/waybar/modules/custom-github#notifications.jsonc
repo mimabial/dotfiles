@@ -1,0 +1,11 @@
+{
+  "custom/github#notifications": {
+    "justify": "center",
+    "format": "{}",
+    "return-type": "json",
+    "interval": 3600,
+    "signal": 9,
+    "exec": "hyprshell github-notifications",
+    "on-click": "xdg-open https://github.com/notifications;pkill -RTMIN+9 waybar",
+  },
+}

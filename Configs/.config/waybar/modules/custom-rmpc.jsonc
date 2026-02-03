@@ -1,0 +1,7 @@
+{
+  "custom/rmpc": {
+    "format": "",
+    "on-click": "hyprshell launch/tui.sh rmpc",
+    "tooltip-format": "Music Player (Rmpc)\nSUPER+SHIFT+M"
+  }
+}

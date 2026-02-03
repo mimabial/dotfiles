@@ -1,0 +1,38 @@
+$HOME/.config/waybar/theme.css
+
+@define-color bg #2C2525;
+@define-color fg #F8F8F2;
+@define-color bg_alt #75715E;
+@define-color fg_alt @fg;
+@define-color bg_selected #87B0F9;
+@define-color fg_selected #A6E22E;
+
+@define-color border #6c7086;
+@define-color border_alt #A6E3A1;
+
+@define-color accent #AE81FF;
+@define-color error #272822;
+@define-color hover #AE81FF;
+@define-color warning #87B0F9;
+
+@define-color workspace_active_bg #403838;
+@define-color workspace_active_br #A6E22E;
+@define-color workspace_active_fg #F8F8F2;
+@define-color workspace_hover_bg #F5C2E7;
+
+@define-color c0 #403838;
+@define-color c1 #F92672;
+@define-color c2 #A6E3A1;
+@define-color c3 #F9E2AF;
+@define-color c4 #F38D70;
+@define-color c5 #F5C2E7;
+@define-color c6 #94E2D5;
+@define-color c7 #F8F8F2;
+@define-color c8 #72696a;
+@define-color c9 #F92672;
+@define-color c10 #A6E3A1;
+@define-color c11 #F9E2AF;
+@define-color c12 #F38D70;
+@define-color c13 #F5C2E7;
+@define-color c14 #94E2D5;
+@define-color c15 #F8F8F2;

@@ -1,0 +1,38 @@
+$HOME/.config/waybar/theme.css
+
+@define-color bg #fdf6e3; /* base2 */
+@define-color fg #657b83; /* base00 */
+@define-color bg_alt @bg;
+@define-color fg_alt @fg;
+@define-color bg_selected #fdf6e3; /* base3 */
+@define-color fg_selected #fdf6e3; /* base3 */
+
+@define-color border #93a1a1; /* base1 */
+@define-color border_alt #268bd2; /* blue */
+
+@define-color accent #268bd2; /* blue */
+@define-color error @c1;
+@define-color hover #2aa198; /* cyan */
+@define-color warning @c3;
+
+@define-color workspace_active_bg #A4A4A4;
+@define-color workspace_active_br #268bd2;
+@define-color workspace_active_fg #fdf6e3; /* base3 */
+@define-color workspace_hover_bg #2aa198; /* cyan */
+
+@define-color c0 #666666;
+@define-color c1 #D0021B;
+@define-color c2 #00A651;
+@define-color c3 #E85D00;
+@define-color c4 #005CAB;
+@define-color c5 #D0021B; /* violet */
+@define-color c6 #005CAB;
+@define-color c7 #000000;
+@define-color c8 #839496; /* base00 */
+@define-color c9 #E1261C;
+@define-color c10 #00C853;
+@define-color c11 #FF8000;
+@define-color c12 #0066CC;
+@define-color c13 #E1261C; /* magenta */
+@define-color c14 #0066CC;
+@define-color c15 #A4A4A4;

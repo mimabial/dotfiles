@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Install QtWebEngine dictionaries for qutebrowser spellcheck
+
+DICT_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/qutebrowser/qtwebengine_dictionaries"
+DICT_URL="https://chromium.googlesource.com/chromium/deps/hunspell_dictionaries/+archive/refs/heads/main.tar.gz"
+
+echo "Installing qutebrowser dictionaries..."
+
+# Create directory
+mkdir -p "$DICT_DIR"
+cd "$DICT_DIR" || exit 1
+
+# Download dictionaries archive
+echo "Downloading dictionaries..."
+curl -sL "$DICT_URL" -o main.tar.gz
+
+# Extract en-US dictionary
+echo "Extracting en-US dictionary..."
+tar -xzf main.tar.gz en-US-10-1.bdic
+
+# Cleanup
+rm main.tar.gz
+
+# Check result
+if [ -f en-US-10-1.bdic ]; then
+    echo "✓ Dictionary installed successfully!"
+    ls -lh en-US*.bdic
+else
+    echo "✗ Installation failed"
+    exit 1
+fi

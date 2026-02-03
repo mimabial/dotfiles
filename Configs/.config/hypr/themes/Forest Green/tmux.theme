@@ -1,0 +1,54 @@
+$HOME/.config/tmux/theme.conf|tmux source-file ~/.config/tmux/tmux.conf
+
+# Tmux theme for Forest Green
+# Auto-generated from kitty.theme colors
+
+# ============================================================================
+# Standard 16 color palette
+# ============================================================================
+set -g @color0 "#3c474d"
+set -g @color1 "#e68183"
+set -g @color2 "#a7c080"
+set -g @color3 "#d9bb80"
+set -g @color4 "#83b6af"
+set -g @color5 "#d39bb6"
+set -g @color6 "#87c095"
+set -g @color7 "#868d80"
+set -g @color8 "#868d80"
+set -g @color9 "#e68183"
+set -g @color10 "#a7c080"
+set -g @color11 "#d9bb80"
+set -g @color12 "#83b6af"
+set -g @color13 "#d39bb6"
+set -g @color14 "#87c095"
+set -g @color15 "#868d80"
+
+# ============================================================================
+# Semantic color aliases
+# ============================================================================
+set -g @theme_bg "#323d43"
+set -g @theme_fg "#d8caac"
+set -g @theme_accent "#83b6af"
+set -g @theme_gray "#868d80"
+set -g @theme_highlight "#83b6af"
+set -g @theme_red "#e68183"
+set -g @theme_brightred "#e68183"
+set -g @theme_green "#a7c080"
+set -g @theme_yellow "#d9bb80"
+set -g @theme_blue "#83b6af"
+set -g @theme_magenta "#d39bb6"
+set -g @theme_cyan "#87c095"
+
+# ============================================================================
+# Tmux color settings
+# ============================================================================
+set -g status-style "bg=#323d43,fg=#d8caac"
+set -g message-style "bg=#323d43,fg=#83b6af"
+set -g message-command-style "bg=#323d43,fg=#83b6af"
+set -g pane-border-style "fg=#868d80"
+set -g pane-active-border-style "fg=#83b6af"
+set -g window-status-style "fg=#868d80"
+set -g window-status-current-style "fg=#83b6af,bold"
+set -g mode-style "bg=#83b6af,fg=#323d43"
+set -g clock-mode-colour "#83b6af"
+

@@ -1,8 +1,0 @@
-{
-  "custom/dmark": {
-    // "format": "",
-    "format": "—",
-    "justify": "center",
-    "tooltip": false
-  }
-}

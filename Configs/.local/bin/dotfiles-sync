@@ -1,0 +1,185 @@
+#!/usr/bin/env bash
+# Sync configuration files to dotfiles directory
+# Usage: dotfiles-sync [--dry-run]
+
+set -euo pipefail
+
+DOTFILES_DIR="$HOME/.dotfiles"
+DRY_RUN=false
+
+[[ "${1:-}" == "--dry-run" ]] && DRY_RUN=true
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
+log_success() { echo -e "${GREEN}[OK]${NC} $1"; }
+log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+
+# Create dotfiles directory structure
+create_dirs() {
+  local dirs=(
+    "$DOTFILES_DIR/.config"
+    "$DOTFILES_DIR/.local/bin"
+    "$DOTFILES_DIR/.local/lib"
+    "$DOTFILES_DIR/.local/share"
+  )
+
+  for dir in "${dirs[@]}"; do
+    if $DRY_RUN; then
+      echo "Would create: $dir"
+    else
+      mkdir -p "$dir"
+    fi
+  done
+}
+
+# Copy a config directory
+copy_config() {
+  local src="$1"
+  local dest="$2"
+  local name="$3"
+
+  if [[ ! -e "$src" ]]; then
+    log_warn "Skipping $name (not found: $src)"
+    return
+  fi
+
+  if $DRY_RUN; then
+    echo "Would copy: $src -> $dest"
+  else
+    # Remove old version if exists
+    rm -rf "$dest"
+
+    # Copy with rsync for better handling
+    if command -v rsync &>/dev/null; then
+      rsync -a --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' \
+            --exclude='node_modules' --exclude='.cache' --exclude='lazy-lock.json' \
+            "$src" "$(dirname "$dest")/"
+    else
+      cp -r "$src" "$dest"
+    fi
+    log_success "Copied $name"
+  fi
+}
+
+# Copy a single file
+copy_file() {
+  local src="$1"
+  local dest="$2"
+  local name="$3"
+
+  if [[ ! -f "$src" ]]; then
+    log_warn "Skipping $name (not found: $src)"
+    return
+  fi
+
+  if $DRY_RUN; then
+    echo "Would copy: $src -> $dest"
+  else
+    mkdir -p "$(dirname "$dest")"
+    cp "$src" "$dest"
+    log_success "Copied $name"
+  fi
+}
+
+echo "========================================="
+echo "  Dotfiles Sync"
+echo "========================================="
+echo "Target: $DOTFILES_DIR"
+$DRY_RUN && echo "(DRY RUN - no changes will be made)"
+echo
+
+# Create directory structure
+log_info "Creating directory structure..."
+create_dirs
+echo
+
+# ~/.config directories
+log_info "Syncing ~/.config..."
+
+# Hyprland ecosystem
+copy_config "$HOME/.config/hypr" "$DOTFILES_DIR/.config/hypr" "hypr"
+copy_config "$HOME/.config/waybar" "$DOTFILES_DIR/.config/waybar" "waybar"
+copy_config "$HOME/.config/rofi" "$DOTFILES_DIR/.config/rofi" "rofi"
+copy_config "$HOME/.config/swaync" "$DOTFILES_DIR/.config/swaync" "swaync"
+copy_config "$HOME/.config/wlogout" "$DOTFILES_DIR/.config/wlogout" "wlogout"
+
+# Terminals
+copy_config "$HOME/.config/kitty" "$DOTFILES_DIR/.config/kitty" "kitty"
+copy_config "$HOME/.config/alacritty" "$DOTFILES_DIR/.config/alacritty" "alacritty"
+
+# Shell
+copy_config "$HOME/.config/zsh" "$DOTFILES_DIR/.config/zsh" "zsh"
+copy_file "$HOME/.zshenv" "$DOTFILES_DIR/.zshenv" ".zshenv"
+
+# Editor
+copy_config "$HOME/neocode" "$DOTFILES_DIR/neocode" "neovim (neocode)"
+
+# Theming
+copy_config "$HOME/.config/wal" "$DOTFILES_DIR/.config/wal" "wal"
+copy_config "$HOME/.config/Kvantum" "$DOTFILES_DIR/.config/Kvantum" "Kvantum"
+
+# Other apps
+copy_config "$HOME/.config/tmux" "$DOTFILES_DIR/.config/tmux" "tmux"
+copy_config "$HOME/.config/starship.toml" "$DOTFILES_DIR/.config/starship.toml" "starship"
+copy_config "$HOME/.config/fastfetch" "$DOTFILES_DIR/.config/fastfetch" "fastfetch"
+copy_config "$HOME/.config/btop" "$DOTFILES_DIR/.config/btop" "btop"
+copy_config "$HOME/.config/cava" "$DOTFILES_DIR/.config/cava" "cava"
+
+echo
+
+# ~/.local directories
+log_info "Syncing ~/.local..."
+
+# Scripts library
+copy_config "$HOME/.local/lib/hypr" "$DOTFILES_DIR/.local/lib/hypr" "lib/hypr scripts"
+
+# Share files
+copy_config "$HOME/.local/share/hypr" "$DOTFILES_DIR/.local/share/hypr" "share/hypr"
+
+# Select bin scripts (not all, just custom ones)
+log_info "Syncing selected bin scripts..."
+mkdir -p "$DOTFILES_DIR/.local/bin"
+
+# Core hypr tools
+for script in hyprshell hydectl hyq hypr-ipc; do
+  copy_file "$HOME/.local/bin/$script" "$DOTFILES_DIR/.local/bin/$script" "bin/$script"
+done
+
+# Omarchy scripts
+if $DRY_RUN; then
+  echo "Would copy: omarchy-* scripts"
+else
+  for script in "$HOME"/.local/bin/omarchy-*; do
+    [[ -f "$script" ]] && cp "$script" "$DOTFILES_DIR/.local/bin/"
+  done
+  log_success "Copied omarchy-* scripts"
+fi
+
+echo
+
+# System documentation
+log_info "Syncing documentation..."
+copy_file "$HOME/SYSTEM_DOCUMENTATION.md" "$DOTFILES_DIR/SYSTEM_DOCUMENTATION.md" "SYSTEM_DOCUMENTATION.md"
+
+echo
+echo "========================================="
+if $DRY_RUN; then
+  echo "Dry run complete. Run without --dry-run to apply."
+else
+  log_success "Dotfiles sync complete!"
+  echo "Location: $DOTFILES_DIR"
+  echo
+  echo "Next steps:"
+  echo "  cd $DOTFILES_DIR"
+  echo "  git init"
+  echo "  git add ."
+  echo "  git commit -m 'Initial dotfiles'"
+fi
+echo "========================================="

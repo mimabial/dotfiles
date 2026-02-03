@@ -1,0 +1,91 @@
+# Hyprland Configuration File
+# This file contains default values for all configuration options
+# Generated from schema
+
+# Global rofi configuration.
+[rofi]
+scale = 8 # Rofi default scaling.
+[rofi.menu]
+scale = 10 # Scaling for menu.
+# 'hyprlock.sh select' configuration.
+[rofi.hyprlock]
+scale = 10 # Scaling for hyprlock.
+
+# 'animation.sh select' configuration.
+[rofi.animation]
+scale = 10 # Scaling for animation.
+
+# glyph-picker.sh configuration.
+[rofi.glyph]
+scale = 10               # Scaling for glyph picker.
+args = ["-multi-select"] # Additional arguments for glyph picker.
+
+# rofilaunch.sh configuration.
+[rofi.launch]
+scale = 8 # Scaling for launch.
+
+# cliphist.sh configuration.
+[rofi.cliphist]
+scale = 10 # Scaling for cliphist.
+
+# swwwallselect.sh configuration.
+[rofi.wallpaper]
+scale = 10 # Scaling for wallpaper.
+
+# emoji-picker.sh configuration.
+[rofi.emoji]
+style = 1                # Style for emoji picker.
+scale = 10               # Scaling for emoji picker.
+args = ["-multi-select"] # Additional arguments for emoji picker.
+
+# theme.select.sh configuration.
+[rofi.theme]
+scale = 7 # Scaling for theme selector.
+
+# hyprshell rofi.websearch.sh configuration.
+[rofi.websearch]
+style = ""                       # Style for rofi websearch.
+args = []                        # Additional arguments for websearch.
+scale = 10                       # Scaling for websearch.
+font = "JetBrainsMono Nerd Font" # Font for websearch.
+
+# hyprshell rofi.bookmarks.sh configuration.
+[rofi.bookmarks]
+style = ""                       # Style for rofi bookmarks.
+args = []                        # Additional arguments for bookmarks.
+scale = 10                       # Scaling for bookmarks.
+font = "JetBrainsMono Nerd Font" # Font for bookmarks.
+
+[rofi.pywal]
+scale = 8
+
+# wlogout configuration.
+[wlogout]
+style = 2 # Style for wlogout.
+
+# Hyprland configuration.
+[hyprland]
+color_scheme = "prefer-dark"                    # Color scheme.
+gtk_theme = "Pywal16-Gtk"                       # GTK theme.
+icon_theme = "Tela-circle-dracula"              # Icon theme.
+cursor_theme = "Bibata-Modern-Ice"              # Cursor theme.
+button_layout = ""                              # Button layout. (gtk only)
+font = ""                                       # Font.
+font_antialiasing = "rgba"                      # Font antialiasing.
+font_hinting = "full"                           # Font hinting.
+monospace_font = "CaskaydiaCove Nerd Font Mono" # Monospace font.
+background_path = ""                            # LockScreen's Background path.
+
+# Qt5 configuration.
+[qt5]
+font = ""                                       # Qt5 font.
+monospace_font = "CaskaydiaCove Nerd Font Mono" # Qt5 monospace font.
+
+# Qt6 configuration.
+[qt6]
+font = ""                                       # Qt6 font.
+monospace_font = "CaskaydiaCove Nerd Font Mono" # Qt6 monospace font.
+
+# GTK3 configuration.
+[gtk3]
+font = "" # GTK3 font.

@@ -23,7 +23,7 @@ if [ "$flg_ThemeInstall" -eq 1 ]; then
     while IFS='"' read -r _ themeName _ themeRepo; do
         themeNameQ+=("${themeName//\"/}")
         themeRepoQ+=("${themeRepo//\"/}")
-        themePath="${confDir}/hyde/themes/${themeName}"
+        themePath="${confDir}/hypr/themes/${themeName}"
         [ -d "${themePath}" ] || mkdir -p "${themePath}"
         [ -f "${themePath}/.sort" ] || echo "${#themeNameQ[@]}" >"${themePath}/.sort"
 

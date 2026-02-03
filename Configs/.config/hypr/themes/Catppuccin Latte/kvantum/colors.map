@@ -1,0 +1,34 @@
+# Color mapping for pywal replacement
+# Format: #hexcolor=pywal_variable
+# Theme: Catppuccin Latte
+
+# Background / surfaces
+#000000=background
+#EFF1F5=background
+#E6E9EF=color0
+#141414=color0
+#31363b=color0
+#CCD0DA=color0
+#BCC0CC=color8
+#7f7f7f=color8
+#919191=color7
+#999999=color7
+#a6a6a6=color7
+#ACB0BE=color7
+
+# Text
+#4C4F69=foreground
+#b4b4b4=foreground
+#b6b6b6=foreground
+#bebebe=foreground
+#bfbfbf=foreground
+#d2d2d2=foreground
+#d6d6d6=foreground
+#dcdcdc=foreground
+#eaeaea=foreground
+
+# Accents
+#1E66F5=color4
+#8839EF=color5
+#DC8A78=color3
+#D20F39=color1

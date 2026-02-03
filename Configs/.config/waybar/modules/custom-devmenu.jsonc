@@ -1,0 +1,7 @@
+{
+  "custom/devmenu": {
+    "format": "",
+    "on-click": "hyprshell rofi/menu.sh dev",
+    "tooltip-format": "Dev Tools Menu\n• LazyGit\n• LazyDocker\n• Ranger\n• Bottom\n• Rmpc"
+  }
+}

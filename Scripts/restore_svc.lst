@@ -5,11 +5,11 @@
 # Examples:
 # NetworkManager|root |enable
 # bluetooth|root|enable --now
-# sddm|root|enable --now
+# ly|root|enable --now
 # hyde-config|user|start
 #
 # Legacy format (single service per line) is still supported:
 
 NetworkManager|root|enable --now
 bluetooth|root|enable --now
-sddm|root|enable
+ly|root|enable --now

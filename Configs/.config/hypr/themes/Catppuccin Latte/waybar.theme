@@ -1,0 +1,38 @@
+$HOME/.config/waybar/theme.css
+
+@define-color bg #eff1f5;
+@define-color fg #4c4f69; /* Latte text color */
+@define-color bg_alt #eff1f5;
+@define-color fg_alt #4c4f69;
+@define-color bg_selected #eff1f5; /* Latte base */
+@define-color fg_selected #7287fd; /* Rosewater accent */
+
+@define-color border #9ca0b0; /* Surface0 for subtle borders */
+@define-color border_alt #179299; /* Flamingo for active elements */
+
+@define-color accent #dd7878; /* Flamingo for active workspace background */
+@define-color error @c1;
+@define-color hover #ea76cb; /* Rosewater for hover state */
+@define-color warning #eff1f5;
+
+@define-color workspace_active_bg #eff1f5;
+@define-color workspace_active_br #7287fd;
+@define-color workspace_active_fg #eff1f5; /* Light foreground for active workspace text/icon */
+@define-color workspace_hover_bg #eff1f5; /* Light text color on hover */
+
+@define-color c0 #4C4F69;
+@define-color c1 #D20F39;
+@define-color c2 #40A02B;
+@define-color c3 #DF8E1D;
+@define-color c4 #1E66F5;
+@define-color c5 #EA76CB;
+@define-color c6 #179299;
+@define-color c7 #9ca0b0;
+@define-color c8 #6C6F85;
+@define-color c9 #D20F39;
+@define-color c10 #40A02B;
+@define-color c11 #DF8E1D;
+@define-color c12 #1E66F5;
+@define-color c13 #EA76CB;
+@define-color c14 #179299;
+@define-color c15 #bcc0cc;

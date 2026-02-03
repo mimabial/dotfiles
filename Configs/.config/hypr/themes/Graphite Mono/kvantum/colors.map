@@ -1,0 +1,49 @@
+# Color mapping for pywal replacement
+# Format: #hexcolor=pywal_variable
+# Theme: Graphite Mono
+
+# Background / surfaces
+#000000=background
+#2c2c2c=background
+#1a1a1a=color0
+#1e1e1e=color0
+#1f1f1f=color0
+#212121=color0
+#26272a=color0
+#282828=color0
+#2e2e2e=color0
+#323232=color0
+#333333=color0
+#343031=color0
+#3c3c3c=color0
+#4d4d4d=color0
+
+# Mid neutrals
+#474747=color8
+#525252=color8
+#535353=color8
+#5a5a5a=color8
+#5a616e=color8
+#646464=color8
+#666666=color8
+#696969=color8
+#787878=color8
+#989898=color7
+#acb1bc=color7
+
+# Text
+#b6b6b6=foreground
+#c1c1c1=foreground
+#cccccc=foreground
+#dfdfdf=foreground
+#efefef=foreground
+#f2f2f2=foreground
+#ffffff=foreground
+
+# Accents
+#0057ae=color4
+#4285f4=color4
+#b74aff=color5
+#e040fb=color5
+#e0e0e0=color7
+#f04a50=color1

@@ -1,0 +1,11 @@
+{
+  "custom/colorpicker": {
+    "justify": "center",
+    "format": "{}",
+    "return-type": "json",
+    "interval": "once",
+    "exec": "hyprshell colorpicker -j",
+    "on-click": "sleep 1 && hyprshell colorpicker",
+    "signal": 1
+  }
+}

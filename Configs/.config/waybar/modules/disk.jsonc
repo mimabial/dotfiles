@@ -1,0 +1,10 @@
+{
+  "disk": {
+    "justify": "right",
+    "align": 0,
+    "interval": 600,
+    "format": "<span size='11pt'>󰋊</span>\n{percentage_used}󱉸",
+    "tooltip-format": "Used: {used} / {total} ({percentage_used}%)\nAvailable: {free} ({percentage_free}%)",
+    "path": "/"
+  }
+}

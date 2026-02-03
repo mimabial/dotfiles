@@ -1,0 +1,53 @@
+$HOME/.config/tmux/theme.conf|tmux source-file ~/.config/tmux/tmux.conf
+
+# Tmux theme for Eternal Arctic
+# Auto-generated from kitty.theme colors
+
+# ============================================================================
+# Standard 16 color palette
+# ============================================================================
+set -g @color0 "#3B4252"
+set -g @color1 "#BF616A"
+set -g @color2 "#A3BE8C"
+set -g @color3 "#EBCB8B"
+set -g @color4 "#81A1C1"
+set -g @color5 "#B48EAD"
+set -g @color6 "#88C0D0"
+set -g @color7 "#E5E9F0"
+set -g @color8 "#4C566A"
+set -g @color9 "#BF616A"
+set -g @color10 "#A3BE8C"
+set -g @color11 "#EBCB8B"
+set -g @color12 "#81A1C1"
+set -g @color13 "#B48EAD"
+set -g @color14 "#8FBCBB"
+set -g @color15 "#ECEFF4"
+
+# ============================================================================
+# Semantic color aliases
+# ============================================================================
+set -g @theme_bg "#2E3440"
+set -g @theme_fg "#D8DEE9"
+set -g @theme_accent "#81A1C1"
+set -g @theme_gray "#4C566A"
+set -g @theme_highlight "#8FBCBB"
+set -g @theme_red "#BF616A"
+set -g @theme_brightred "#BF616A"
+set -g @theme_green "#A3BE8C"
+set -g @theme_yellow "#EBCB8B"
+set -g @theme_blue "#81A1C1"
+set -g @theme_magenta "#B48EAD"
+set -g @theme_cyan "#88C0D0"
+
+# ============================================================================
+# Tmux color settings
+# ============================================================================
+set -g status-style "bg=#2E3440,fg=#D8DEE9"
+set -g message-style "bg=#2E3440,fg=#81A1C1"
+set -g message-command-style "bg=#2E3440,fg=#81A1C1"
+set -g pane-border-style "fg=#4C566A"
+set -g pane-active-border-style "fg=#8FBCBB"
+set -g window-status-style "fg=#4C566A"
+set -g window-status-current-style "fg=#81A1C1,bold"
+set -g mode-style "bg=#81A1C1,fg=#2E3440"
+set -g clock-mode-colour "#81A1C1"

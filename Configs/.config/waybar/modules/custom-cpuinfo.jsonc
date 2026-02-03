@@ -1,0 +1,10 @@
+{
+  "custom/cpuinfo": {
+    "justify": "right",
+    "align": 0,
+    "exec": "hyprshell cpuinfo",
+    "return-type": "json",
+    "tooltip": true,
+    "interval": 5
+  }
+}

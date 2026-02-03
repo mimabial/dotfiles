@@ -3,7 +3,6 @@
 # shellcheck disable=SC1091
 #|---/ /+----------------------------------------+---/ /|#
 #|--/ /-| Script to install pkgs from input list |--/ /-|#
-#|-/ /--| Prasanth Rangan                        |-/ /--|#
 #|/ /---+----------------------------------------+/ /---|#
 
 scrDir=$(dirname "$(realpath "$0")")

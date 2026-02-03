@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 #|---/ /+---------------------------+---/ /|#
 #|--/ /-| Script to mount my drives |--/ /-|#
-#|-/ /--| Prasanth Rangan           |-/ /--|#
 #|/ /---+---------------------------+/ /---|#
 
 while read -r fst uuid name; do

@@ -1,0 +1,15 @@
+$HOME/.config/rofi/theme.rasi
+* {
+    background:            #2f3330;    /* Background color (Everforest bg) */
+    foreground:            #d8dee9;    /* Main text color (Everforest fg) */
+    border:            #3b4252;    /* Main border color (Everforest br) */
+    accent:            #e5c07b;    /* Accent color (Everforest ex) */
+    selected-background:          #3b4252;    /* Selection background (Everforest select-bg) */
+    selected-foreground:          #eceff4;    /* Selection text color (Everforest select-fg) */
+    separator:           #80808080;
+    urgent:              #cc6666ff;
+    active:              #b5bd68ff;
+    separatorcolor:     transparent;
+    border-color:       transparent;
+}
+

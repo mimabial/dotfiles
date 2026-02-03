@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 #|---/ /+------------------+---/ /|#
 #|--/ /-| Global functions |--/ /-|#
-#|-/ /--| Prasanth Rangan  |-/ /--|#
 #|/ /---+------------------+/ /---|#
 
 set -e
@@ -10,10 +9,10 @@ scrDir="$(dirname "$(realpath "$0")")"
 cloneDir="$(dirname "${scrDir}")" # fallback, we will use CLONE_DIR now
 cloneDir="${CLONE_DIR:-${cloneDir}}"
 confDir="${XDG_CONFIG_HOME:-$HOME/.config}"
-cacheDir="${XDG_CACHE_HOME:-$HOME/.cache}/hyde"
+cacheDir="${XDG_CACHE_HOME:-$HOME/.cache}/hypr"
 aurList=("yay" "paru")
 shlList=("zsh" "fish")
-pacmanCmd=${cloneDir}/Configs/.local/lib/hyde/pm.sh
+pacmanCmd=${cloneDir}/Configs/.local/lib/hypr/system/pm.sh
 
 export cloneDir
 export confDir

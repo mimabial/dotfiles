@@ -1,0 +1,21 @@
+[Unit]
+Description=HyDE IPC Service for Hyprland
+Documentation=https://github.com/HyDE-Project/hyde-ipc
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Type=simple
+
+# JSON-RPC server mode (for backward compatibility)
+ExecStart=%h/.local/bin/hypr-ipc server
+
+# Alternative: Event automation mode (uncomment to use reactions.toml)
+# ExecStart=%h/.local/bin/hypr-ipc react -c %h/.config/hyde/reactions.toml
+
+Restart=on-failure
+RestartSec=5s
+Environment="DISPLAY=:0"
+
+[Install]
+WantedBy=graphical-session.target

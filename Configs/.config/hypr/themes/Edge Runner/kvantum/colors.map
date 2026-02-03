@@ -1,0 +1,45 @@
+# Color mapping for pywal replacement
+# Format: #hexcolor=pywal_variable
+# Theme: Edge Runner
+
+# Backgrounds
+#000000=background
+
+# Dark surfaces / text
+#1a1a1a=color0
+#1e1e1e=color0
+#1f1f1f=color0
+#1f5322=color2
+#212121=color0
+#26272a=color0
+#333333=color0
+#343031=color0
+#525252=color0
+#5a5a5a=color0
+#5a616e=color0
+
+# Midtones
+#5032ac=color5
+#646464=color8
+#666666=color8
+#787878=color8
+
+# Light neutrals
+#989898=color7
+#acb1bc=color7
+#b6b6b6=foreground
+#c1c1c1=foreground
+#cccccc=foreground
+#d1d1d1=foreground
+#dfdfdf=foreground
+#f2f2f2=foreground
+#ffffff=foreground
+
+# Accents
+#fada16=color3
+#4285f4=color4
+#f04a50=color1
+#a56df2=color5
+#b74aff=color5
+#ffa6c2=color5
+#564873=color5

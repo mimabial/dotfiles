@@ -1,7 +1,0 @@
-{
-  "hyprland/language": {
-    "justify": "center",
-    "format": "{short}",
-    "on-click": "hyprshell keyboardswitch"
-  }
-}

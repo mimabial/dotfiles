@@ -1,0 +1,10 @@
+{
+  "custom/screenshot": {
+    "format": "󰄄",
+    "tooltip": true,
+    "tooltip-format": "<b>Screenshot</b>\nLeft: Select Area\nRight: Menu\nMiddle: Full Screen\nShift+Left: OCR",
+    "on-click": "hyprshell screenshot s",
+    "on-click-right": "hyprshell screenshot m",
+    "return-type": "",
+  },
+}

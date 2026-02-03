@@ -1,0 +1,12 @@
+{
+  "custom/wallchange": {
+    "justify": "center",
+    "format": "\udb80\udd8a",
+    "tooltip-format": "\udb80\udd8a Switch wallpaper",
+    "on-click": "hyprshell wallpaper -n",
+    "on-click-right": "hyprshell wallpaper -p",
+    "on-click-middle": "hyprshell wallpaper --select",
+    "interval": 86400,
+    "tooltip": true
+  }
+}

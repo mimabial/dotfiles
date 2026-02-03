@@ -1,8 +1,0 @@
-{
-  "custom/terminal": {
-    "format": "",
-    "tooltip": false,
-    "justify": "center",
-    "on-click": "kitty"
-  }
-}
