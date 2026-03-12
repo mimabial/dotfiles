@@ -2,8 +2,7 @@
 # pywal16.gtk.sh - Create Pywal16-Gtk theme with dynamic border-radius
 # Optimized: single awk pass + change detection
 
-themesDir="${XDG_DATA_HOME:-$HOME/.local/share}/themes"
-cacheDir="${XDG_CACHE_HOME:-$HOME/.cache}/wal"
+THEMES_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/themes"
 hashFile="${XDG_RUNTIME_DIR:-/tmp}/wal-gtk-hash"
 
 # Get Hyprland border radius
@@ -14,14 +13,14 @@ else
 fi
 
 # Change detection: skip if inputs unchanged
-input_hash=$(cat "$cacheDir/colors-gtk3.css" "$cacheDir/colors-gtk4.css" 2>/dev/null | md5sum | cut -d' ' -f1)
+input_hash=$(cat "${XDG_CACHE_HOME:-$HOME/.cache}/wal/colors-gtk3.css" "${XDG_CACHE_HOME:-$HOME/.cache}/wal/colors-gtk4.css" 2>/dev/null | md5sum | cut -d' ' -f1)
 combined_hash="${input_hash}-${hypr_border}"
 if [[ -f "$hashFile" && "$(cat "$hashFile" 2>/dev/null)" == "$combined_hash" ]]; then
     exit 0  # Nothing changed
 fi
 
 # Create theme directory structure
-mkdir -p "$themesDir/Pywal16-Gtk/gtk-3.0" "$themesDir/Pywal16-Gtk/gtk-4.0"
+mkdir -p "$THEMES_DIR/Pywal16-Gtk/gtk-3.0" "$THEMES_DIR/Pywal16-Gtk/gtk-4.0"
 
 # Awk script for border-radius scaling (single pass, all patterns)
 scale_radius() {
@@ -79,44 +78,44 @@ scale_radius() {
 }
 
 # GTK 3.0
-if [ -f "$cacheDir/colors-gtk3.css" ]; then
+if [ -f "${XDG_CACHE_HOME:-$HOME/.cache}/wal/colors-gtk3.css" ]; then
     {
         echo "/* Hyprland border radius: ${hypr_border}px */"
         echo ""
-        cat "$cacheDir/colors-gtk3.css"
-    } > "$themesDir/Pywal16-Gtk/gtk-3.0/gtk.css.tmp"
+        cat "${XDG_CACHE_HOME:-$HOME/.cache}/wal/colors-gtk3.css"
+    } > "$THEMES_DIR/Pywal16-Gtk/gtk-3.0/gtk.css.tmp"
 
-    scale_radius "$themesDir/Pywal16-Gtk/gtk-3.0/gtk.css.tmp" "$themesDir/Pywal16-Gtk/gtk-3.0/gtk.css"
-    rm -f "$themesDir/Pywal16-Gtk/gtk-3.0/gtk.css.tmp"
+    scale_radius "$THEMES_DIR/Pywal16-Gtk/gtk-3.0/gtk.css.tmp" "$THEMES_DIR/Pywal16-Gtk/gtk-3.0/gtk.css"
+    rm -f "$THEMES_DIR/Pywal16-Gtk/gtk-3.0/gtk.css.tmp"
 
     # Create gtk-dark.css symlink
-    ln -sf gtk.css "$themesDir/Pywal16-Gtk/gtk-3.0/gtk-dark.css"
+    ln -sf gtk.css "$THEMES_DIR/Pywal16-Gtk/gtk-3.0/gtk-dark.css"
 fi
 
 # GTK 4.0
-if [ -f "$cacheDir/colors-gtk4.css" ]; then
+if [ -f "${XDG_CACHE_HOME:-$HOME/.cache}/wal/colors-gtk4.css" ]; then
     {
         echo "/* Hyprland border radius: ${hypr_border}px */"
         echo ""
-        cat "$cacheDir/colors-gtk4.css"
-    } > "$themesDir/Pywal16-Gtk/gtk-4.0/gtk.css.tmp"
+        cat "${XDG_CACHE_HOME:-$HOME/.cache}/wal/colors-gtk4.css"
+    } > "$THEMES_DIR/Pywal16-Gtk/gtk-4.0/gtk.css.tmp"
 
-    scale_radius "$themesDir/Pywal16-Gtk/gtk-4.0/gtk.css.tmp" "$themesDir/Pywal16-Gtk/gtk-4.0/gtk.css"
-    rm -f "$themesDir/Pywal16-Gtk/gtk-4.0/gtk.css.tmp"
+    scale_radius "$THEMES_DIR/Pywal16-Gtk/gtk-4.0/gtk.css.tmp" "$THEMES_DIR/Pywal16-Gtk/gtk-4.0/gtk.css"
+    rm -f "$THEMES_DIR/Pywal16-Gtk/gtk-4.0/gtk.css.tmp"
 
     # Create gtk-dark.css symlink
-    ln -sf gtk.css "$themesDir/Pywal16-Gtk/gtk-4.0/gtk-dark.css"
+    ln -sf gtk.css "$THEMES_DIR/Pywal16-Gtk/gtk-4.0/gtk-dark.css"
 fi
 
 # GTK 2.0
-if [ -f "$cacheDir/colors-gtk2.rc" ]; then
-    mkdir -p "$themesDir/Pywal16-Gtk/gtk-2.0"
-    cp "$cacheDir/colors-gtk2.rc" "$themesDir/Pywal16-Gtk/gtk-2.0/gtkrc"
+if [ -f "${XDG_CACHE_HOME:-$HOME/.cache}/wal/colors-gtk2.rc" ]; then
+    mkdir -p "$THEMES_DIR/Pywal16-Gtk/gtk-2.0"
+    cp "${XDG_CACHE_HOME:-$HOME/.cache}/wal/colors-gtk2.rc" "$THEMES_DIR/Pywal16-Gtk/gtk-2.0/gtkrc"
 fi
 
 # Create index.theme if it doesn't exist
-if [ ! -f "$themesDir/Pywal16-Gtk/index.theme" ]; then
-    cat > "$themesDir/Pywal16-Gtk/index.theme" <<EOF
+if [ ! -f "$THEMES_DIR/Pywal16-Gtk/index.theme" ]; then
+    cat > "$THEMES_DIR/Pywal16-Gtk/index.theme" <<EOF
 [Desktop Entry]
 Type=X-GNOME-Metatheme
 Name=Pywal16-Gtk

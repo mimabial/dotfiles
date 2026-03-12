@@ -8,8 +8,7 @@ if ! source "$(command -v hyprshell)"; then
 fi
 
 # Set variables
-confDir="${XDG_CONFIG_HOME:-$HOME/.config}"
-animations_dir="$confDir/hypr/animations"
+animations_dir="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/animations"
 
 # Ensure the animations directory exists
 if [ ! -d "$animations_dir" ]; then
@@ -109,7 +108,7 @@ $animation_items"
       ;;
   esac
 
-  set_conf "HYPR_ANIMATION" "$selected_animation"
+  state_set "HYPR_ANIMATION" "$selected_animation" "staterc"
   fn_update
   # Notify the user
   notify-send -i "preferences-desktop-display" "Animation:" "$selected_animation"
@@ -118,10 +117,10 @@ $animation_items"
 fn_update() {
   [ -f "$HYPR_STATE_HOME/config" ] && source "$HYPR_STATE_HOME/config"
   [ -f "$HYPR_STATE_HOME/staterc" ] && source "$HYPR_STATE_HOME/staterc"
-  local animDir="$confDir/hypr/animations"
+  local animDir="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/animations"
   current_animation=${HYPR_ANIMATION:-"theme"}
   echo "Animation updated to: $current_animation"
-  cat <<EOF >"${confDir}/hypr/animations.conf"
+  cat <<EOF >"${XDG_CONFIG_HOME:-$HOME/.config}/hypr/animations.conf"
 
 #! ▄▀█ █▄░█ █ █▀▄▀█ ▄▀█ ▀█▀ █ █▀█ █▄░█
 #! █▀█ █░▀█ █ █░▀░█ █▀█ ░█░ █ █▄█ █░▀█
@@ -139,7 +138,7 @@ fn_update() {
 \$ANIMATION_PATH=./animations/${current_animation}.conf
 source = \$ANIMATION_PATH
 EOF
-  # cat "${animDir}/${current_animation}.conf" >>"${confDir}/hypr/animations.conf"
+  # cat "${animDir}/${current_animation}.conf" >>"${XDG_CONFIG_HOME:-$HOME/.config}/hypr/animations.conf"
 }
 
 # Process options

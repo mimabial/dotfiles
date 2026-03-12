@@ -71,8 +71,8 @@ for theme_dir in "${THEMES_DIR}"/*/; do
 
             if ! $already_mapped; then
                 # Try to map based on similarity to kvconfig colors
-                # For now, map accent/highlight colors to theme's highlight
-                # and neutrals to theme's similar neutrals
+                # Map accent/highlight colors to the theme highlight
+                # and neutrals to the closest matching neutral colors.
                 case "${template_svg_color}" in
                     "#7aa2f7"|"#2ac3de"|"#73daca"|"#b4f9f8"|"#cba6f7")
                         # Template accent colors -> theme highlight

@@ -1,10 +1,22 @@
 #!/usr/bin/env bash
 
-# Get mic volume percentage
-vol=$(pactl get-source-volume @DEFAULT_SOURCE@ | awk '{print $5}' | head -n1 | tr -d '%')
+set -u
 
-# Get mute state
-mute=$(pactl get-source-mute @DEFAULT_SOURCE@ | awk '{print $2}')
+if ! command -v wpctl >/dev/null 2>&1; then
+  echo '{"text":" ░░░░░░░░░░","tooltip":"wpctl not found","class":"mic-slider"}'
+  exit 0
+fi
+
+# Get mic volume percentage from PipeWire.
+vol="$(wpctl get-volume @DEFAULT_AUDIO_SOURCE@ 2>/dev/null | awk '{printf "%.0f\n", $2 * 100}')"
+[ -z "${vol}" ] && vol=0
+
+# Get mute state from PipeWire.
+if wpctl get-volume @DEFAULT_AUDIO_SOURCE@ 2>/dev/null | grep -q "MUTED"; then
+  mute="yes"
+else
+  mute="no"
+fi
 
 # Clamp to 0–140 just like Waybar output slider
 [ "$vol" -gt 140 ] && vol=140

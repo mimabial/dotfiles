@@ -23,7 +23,7 @@
       "music-notification": "",
       "volume-notification": "󰟅",
       "dnd": "󱅭",
-      "none": "󰍥",
+      "none": "󰍥"
     },
     "return-type": "json",
     "exec": "pgrep -x swaync && swaync-client -swb",
@@ -35,7 +35,7 @@
       "toggle-dnd": "swaync-client --toggle-dnd",
       "reload-config": "swaync-client --reload-config",
       "reload-css": "swaync-client --reload-css",
-      "clear-all": "swaync-client --close-all",
-    },
-  },
+      "clear-all": "swaync-client --close-all"
+    }
+  }
 }

@@ -30,6 +30,16 @@ ensure_manager_running() {
   fi
 }
 
+notify_manager() {
+  if systemd_user_ok && systemctl --user is-active --quiet "${MANAGER_UNIT}" >/dev/null 2>&1; then
+    systemctl --user kill --signal=USR1 "${MANAGER_UNIT}" >/dev/null 2>&1 || true
+    return 0
+  fi
+  while IFS= read -r pid; do
+    kill -USR1 "${pid}" 2>/dev/null || true
+  done < <(pgrep -f "${HOME}/.local/lib/hypr/session/idle-manager.sh" 2>/dev/null || true)
+}
+
 audio_enabled() {
   if [[ -f "${AUDIO_STATE_FILE}" ]]; then
     local value=""
@@ -50,4 +60,5 @@ else
 fi
 
 ensure_manager_running
+notify_manager
 update_waybar

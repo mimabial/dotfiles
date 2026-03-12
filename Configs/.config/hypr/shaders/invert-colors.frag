@@ -1,6 +1,6 @@
 // Invert colors shader
 // Known to have some quirks with some frames, example: when exiting an application,animations, and some blur effects
-// TODO: Fix the quirkiness of this shader, it is not a priority right now!!!
+// TODO: Reduce artifacts during animation and blur transitions.
 
 /*
 To override this parameters create a file named './invert-colors.inc'

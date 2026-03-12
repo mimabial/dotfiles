@@ -3,9 +3,6 @@ import = ["./colors.toml", "./theme.toml", ".keybindings.toml"]
 live_config_reload = true
 working_directory = "None"
 
-[env]
-TERM = "alacritty"
-
 [terminal]
 
 [terminal.shell]

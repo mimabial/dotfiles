@@ -1,20 +1,21 @@
 #!/usr/bin/env bash
 
-scrDir=$(dirname "$(realpath "$0")")
-source $scrDir/globalcontrol.sh
-rofDir="${confDir}/rofi"
+scrDir="$(dirname "$(realpath "$0")")"
+# shellcheck disable=SC1091
+source "${scrDir}/../globalcontrol.sh"
+rofDir="${XDG_CONFIG_HOME}/rofi"
 
 if [ "${1}" == "--verbose" ] || [ "${1}" == "-v" ]; then
 
     case ${enableWallDcol} in
-    0) wallbashStatus="disabled" ;;
-    1) wallbashStatus="enabled // auto change based on wallpaper brightness" ;;
-    2) wallbashStatus="enabled // dark mode --forced" ;;
-    3) wallbashStatus="enabled // light mode --forced" ;;
+    0) colorModeStatus="theme colors only" ;;
+    1) colorModeStatus="auto from wallpaper brightness" ;;
+    2) colorModeStatus="forced dark mode" ;;
+    3) colorModeStatus="forced light mode" ;;
     esac
 
     echo -e "\n\ncurrent theme :: \"${HYPR_THEME}\" :: \"$(readlink "${HYPR_THEME_DIR}/wall.set")\""
-    echo -e "wallbash status :: ${enableWallDcol} :: ${wallbashStatus}\n"
+    echo -e "color mode status :: ${enableWallDcol} :: ${colorModeStatus}\n"
     get_themes
 
     for x in "${!thmList[@]}"; do

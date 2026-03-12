@@ -1,0 +1,53 @@
+$HOME/.config/tmux/theme.conf|tmux source-file ~/.config/tmux/tmux.conf
+
+# Tmux theme for Tundra
+# Auto-generated from kitty.theme colors
+
+# ============================================================================
+# Standard 16 color palette
+# ============================================================================
+set -g @color0 "#293a52"
+set -g @color1 "#ffddcc"
+set -g @color2 "#dfccff"
+set -g @color3 "#ffccd9"
+set -g @color4 "#9abae6"
+set -g @color5 "#b69ae6"
+set -g @color6 "#e69aad"
+set -g @color7 "#ffddcc"
+set -g @color8 "#576f8f"
+set -g @color9 "#f0c1aa"
+set -g @color10 "#c4aaf0"
+set -g @color11 "#f0aabc"
+set -g @color12 "#9abae6"
+set -g @color13 "#b69ae6"
+set -g @color14 "#e69aad"
+set -g @color15 "#f0c1aa"
+
+# ============================================================================
+# Semantic color aliases
+# ============================================================================
+set -g @theme_bg "#132b4b"
+set -g @theme_fg "#ffffff"
+set -g @theme_accent "#9abae6"
+set -g @theme_gray "#576f8f"
+set -g @theme_highlight "#9abae6"
+set -g @theme_red "#ffddcc"
+set -g @theme_brightred "#f0c1aa"
+set -g @theme_green "#dfccff"
+set -g @theme_yellow "#ffccd9"
+set -g @theme_blue "#9abae6"
+set -g @theme_magenta "#b69ae6"
+set -g @theme_cyan "#e69aad"
+
+# ============================================================================
+# Tmux color settings
+# ============================================================================
+set -g status-style "bg=#132b4b,fg=#ffffff"
+set -g message-style "bg=#132b4b,fg=#9abae6"
+set -g message-command-style "bg=#132b4b,fg=#9abae6"
+set -g pane-border-style "fg=#576f8f"
+set -g pane-active-border-style "fg=#9abae6"
+set -g window-status-style "fg=#576f8f"
+set -g window-status-current-style "fg=#9abae6,bold"
+set -g mode-style "bg=#9abae6,fg=#132b4b"
+set -g clock-mode-colour "#9abae6"

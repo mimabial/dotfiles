@@ -19,6 +19,12 @@ zshaddhistory() {
 # zinit plugins are loaded in $ZDOTDIR/startup.zsh file, see the file for more information
 #  Aliases 
 # Override aliases here in '$ZDOTDIR/.zshrc' (already set in .zshenv)
+alias ytx='yt-dlp --no-playlist -x --audio-format best'
+alias yta='yt-dlp -x --audio-format best'
+alias yts="yt-dlp --no-playlist -x --audio-format best \
+          --parse-metadata 'title:^(?P<artist>.+?)\s*-\s*(?P<title>.+)$' \
+          --replace-in-metadata 'title' '(?i)\s*[\(\[]\s*(official music video(?:\s+(?:hd|hq|4k|8k))?|official video(?:\s+(?:hd|hq|4k|8k))?|music video(?:\s+(?:hd|hq|4k|8k))?|official performance video|performance video|video clip|official visuali[sz]er|visuali[sz]er|official lyric video|lyric video|official lyric visuali[sz]er|lyric visuali[sz]er|official audio)\s*[\)\]]\s*$' '' \
+          --replace-in-metadata 'title' '(?i)\s*[|:-]\s*(official music video(?:\s+(?:hd|hq|4k|8k))?|official video(?:\s+(?:hd|hq|4k|8k))?|music video(?:\s+(?:hd|hq|4k|8k))?|official performance video|performance video|video clip|official visuali[sz]er|visuali[sz]er|official lyric video|lyric video|official lyric visuali[sz]er|lyric visuali[sz]er|official audio)\s*$' ''"
 export EDITOR=nvim
 # export EDITOR=code
 # unset -f command_not_found_handler # Uncomment to prevent searching for commands not found in package manager

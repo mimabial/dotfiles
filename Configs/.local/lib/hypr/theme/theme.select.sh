@@ -84,10 +84,10 @@ selector_menu() {
         echo -en "${styleNum}\x00icon\x1f${rofiAssetDir}/theme_style_${styleNum}.png\n"
       done | sort -n \
       | rofi -dmenu -i \
+        -theme "${ROFI_THEME_MENU_STYLE:-theme_select}" \
         -theme-str "${font_override}" \
         -theme-str "${r_override}" \
-        -select "${ROFI_THEME_STYLE}" \
-        -theme "${ROFI_THEME_MENU_STYLE:-theme_select}"
+        -select "${ROFI_THEME_STYLE}"
   )
 
   #// apply selected theme
@@ -99,7 +99,7 @@ selector_menu() {
     notify-send -a "Theme select" -i "${rofiAssetDir}/theme_style_${selectedStyle}.png" "Style ${selectedStyle} applied..."
 
     #// save selection in config file
-    set_conf "ROFI_THEME_STYLE" "${selectedStyle}"
+    state_set "ROFI_THEME_STYLE" "${selectedStyle}" "staterc"
   fi
   exit 0
 }
@@ -109,39 +109,25 @@ ensure_theme_thumbs() {
   [[ -z "${ext}" ]] && ext="sqre"
   local -a missing_walls=()
   local wall hash thumb
-  local sync_limit="${THEME_THUMBS_SYNC_LIMIT:-${WALLPAPER_THUMBS_SYNC_LIMIT:-4}}"
-  local sync_mode="${THEME_THUMBS_SYNC:-${WALLPAPER_THUMBS_SYNC:-}}"
-  local run_async=1
-
-  [[ "${sync_limit}" =~ ^[0-9]+$ ]] || sync_limit=12
-  case "${sync_mode,,}" in
-    1 | true | yes | on) run_async=0 ;;
-    0 | false | no | off | "") run_async=1 ;;
-  esac
 
   for wall in "${thmWall[@]}"; do
     [[ -n "${wall}" ]] || continue
     [[ -r "${wall}" ]] || continue
     hash="$(set_hash "${wall}")" || continue
-    thumb="${thmbDir}/${hash}.${ext}"
+    thumb="${WALLPAPER_THUMB_DIR}/${hash}.${ext}"
     [[ -e "${thumb}" ]] || missing_walls+=("${wall}")
   done
 
   if ((${#missing_walls[@]} > 0)); then
-    if [[ "${run_async}" -eq 0 ]] && [[ "${sync_limit}" -eq 0 ]]; then
-      run_async=1
-    fi
-    if [[ "${run_async}" -eq 0 ]] && [[ "${sync_limit}" -gt 0 ]] && ((${#missing_walls[@]} > sync_limit)); then
-      run_async=1
-    fi
     local -a cache_args=()
+    local queue_script="${LIB_DIR}/hypr/wallpaper/wallcache.daemon.sh"
     for wall in "${missing_walls[@]}"; do
       cache_args+=(-w "${wall}")
     done
-    if [[ "${run_async}" -eq 1 ]]; then
-      "${LIB_DIR}/hypr/wallpaper/swwwallcache.sh" "${cache_args[@]}" &>/dev/null &
+    if [[ -x "${queue_script}" ]]; then
+      "${queue_script}" --enqueue "${cache_args[@]}" &>/dev/null &
     else
-      "${LIB_DIR}/hypr/wallpaper/swwwallcache.sh" "${cache_args[@]}" &>/dev/null
+      "${LIB_DIR}/hypr/wallpaper/swwwallcache.sh" "${cache_args[@]}" &>/dev/null &
     fi
   fi
 }
@@ -242,12 +228,12 @@ ensure_theme_thumbs "${thmbExtn:-sqre}"
 rofiSel=$(
   i=0
   while [ "${i}" -lt ${#thmList[@]} ]; do
-    echo -en "${thmList[$i]}\x00icon\x1f${thmbDir}/$(set_hash "${thmWall[$i]}").${thmbExtn:-sqre}\n"
+    echo -en "${thmList[$i]}\x00icon\x1f${WALLPAPER_THUMB_DIR}/$(set_hash "${thmWall[$i]}").${thmbExtn:-sqre}\n"
     i=$((i + 1))
   done | rofi -dmenu -i \
+    -theme "${ROFI_THEME_STYLE:-selector}" \
     -theme-str "${font_override}" \
     -theme-str "${r_override}" \
-    -theme "${ROFI_THEME_STYLE:-selector}" \
     -select "${HYPR_THEME}"
 )
 
@@ -256,5 +242,5 @@ rofiSel=$(
 if [ -n "${rofiSel}" ]; then
   "${LIB_DIR}/hypr/theme/theme.switch.sh" -s "${rofiSel}"
   # shellcheck disable=SC2154
-  notify-send -a "Theme select" -i "${iconsDir}/Pywal16-Icon/hypr.png" " ${rofiSel}"
+  notify-send -a "Theme select" -i "${ICONS_DIR}/Pywal16-Icon/hypr.png" " ${rofiSel}"
 fi

@@ -1,0 +1,53 @@
+$HOME/.config/tmux/theme.conf|tmux source-file ~/.config/tmux/tmux.conf
+
+# Tmux theme for Synth Wave
+# Auto-generated from kitty.theme colors
+
+# ============================================================================
+# Standard 16 color palette
+# ============================================================================
+set -g @color0 "#1a1b27"
+set -g @color1 "#ff517d"
+set -g @color2 "#8cffd1"
+set -g @color3 "#ff87d4"
+set -g @color4 "#65baff"
+set -g @color5 "#fede5d"
+set -g @color6 "#78faff"
+set -g @color7 "#ffffff"
+set -g @color8 "#3c3f58"
+set -g @color9 "#ff517d"
+set -g @color10 "#8cffd1"
+set -g @color11 "#ff87d4"
+set -g @color12 "#65baff"
+set -g @color13 "#ffd36e"
+set -g @color14 "#78faff"
+set -g @color15 "#ffffff"
+
+# ============================================================================
+# Semantic color aliases
+# ============================================================================
+set -g @theme_bg "#2a2139"
+set -g @theme_fg "#e2e8ff"
+set -g @theme_accent "#65baff"
+set -g @theme_gray "#3c3f58"
+set -g @theme_highlight "#65baff"
+set -g @theme_red "#ff517d"
+set -g @theme_brightred "#ff517d"
+set -g @theme_green "#8cffd1"
+set -g @theme_yellow "#ff87d4"
+set -g @theme_blue "#65baff"
+set -g @theme_magenta "#fede5d"
+set -g @theme_cyan "#78faff"
+
+# ============================================================================
+# Tmux color settings
+# ============================================================================
+set -g status-style "bg=#2a2139,fg=#e2e8ff"
+set -g message-style "bg=#2a2139,fg=#65baff"
+set -g message-command-style "bg=#2a2139,fg=#65baff"
+set -g pane-border-style "fg=#3c3f58"
+set -g pane-active-border-style "fg=#65baff"
+set -g window-status-style "fg=#3c3f58"
+set -g window-status-current-style "fg=#65baff,bold"
+set -g mode-style "bg=#65baff,fg=#2a2139"
+set -g clock-mode-colour "#65baff"

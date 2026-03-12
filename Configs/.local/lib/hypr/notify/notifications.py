@@ -1,55 +1,76 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
-import subprocess
 import json
+import shutil
+import subprocess
 import sys
 
-def get_dunst_history():
-    result = subprocess.run(['dunstctl', 'history'], stdout=subprocess.PIPE, check=True)
-    history = json.loads(result.stdout.decode('utf-8'))
-    return history
 
-def format_history(history):
-    count = len(history['data'][0])
-    alt = 'none'
-    tooltip_click = []
-    tooltip_click.append("󰎟 Notifications")
-    tooltip_click.append("󰳽 scroll-down:  history pop")
-    tooltip_click.append("󰳽 click-left:  Enable & Disable DND")
-    tooltip_click.append("󰳽 click-middle: 󰛌 clear history")
-    tooltip_click.append("󰳽 click-right: 󱄊 close all")
+def _run(cmd):
+    return subprocess.run(
+        cmd,
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=2,
+    ).stdout.strip()
 
-    tooltip = []
 
-    if count > 0:
-        notifications = history['data'][0][:10]  # Get the first 10 notifications
-        for notification in notifications:
-            body = notification.get('body', {}).get('data', '')
-            category = notification.get('category', {}).get('data', '')
-            if category:
-                alt = category + '-notification'
-                tooltip.append(f" {body} ({category})\n")
-            else:
-                alt = 'notification'
-                tooltip.append(f" {body}\n")
+def _status_error(message):
+    return {
+        "text": "?",
+        "alt": "error",
+        "tooltip": message,
+        "class": "error",
+    }
 
-    isDND = subprocess.run(['dunstctl', 'get-pause-level'], stdout=subprocess.PIPE, check=True)
-    isDND = isDND.stdout.decode('utf-8').strip()
-    if isDND != '0':
-        alt = "dnd"
-    formatted_history = {
+
+def get_swaync_status():
+    if shutil.which("swaync-client") is None:
+        return _status_error("swaync-client not found")
+
+    # Primary path: let swaync render waybar-compatible JSON.
+    try:
+        raw = _run(["swaync-client", "-swb"])
+        data = json.loads(raw)
+        if isinstance(data, dict):
+            data.setdefault("text", "0")
+            data.setdefault("alt", "none")
+            data.setdefault("tooltip", "Notifications")
+            data.setdefault("class", data.get("alt", "none"))
+            return data
+    except (subprocess.SubprocessError, json.JSONDecodeError):
+        pass
+
+    # Fallback path: derive minimal status from count + DND.
+    try:
+        count_raw = _run(["swaync-client", "-c"])
+        dnd_raw = _run(["swaync-client", "-D"]).lower()
+        count = int(count_raw) if count_raw.isdigit() else 0
+        dnd = dnd_raw == "true"
+    except (subprocess.SubprocessError, ValueError):
+        return _status_error("Failed to query swaync status")
+
+    if dnd:
+        alt = "dnd-notification" if count > 0 else "dnd-none"
+        tooltip = f"Do Not Disturb: ON\\nNotifications waiting: {count}"
+    else:
+        alt = "notification" if count > 0 else "none"
+        tooltip = f"Do Not Disturb: OFF\\nNotifications: {count}"
+
+    return {
         "text": str(count),
         "alt": alt,
-        "tooltip": '\n '.join(tooltip_click) + '\n\n ' + '\n '.join(tooltip),
-        "class": alt
+        "tooltip": tooltip,
+        "class": alt,
     }
-    return formatted_history
+
 
 def main():
-    history = get_dunst_history()
-    formatted_history = format_history(history)
-    sys.stdout.write(json.dumps(formatted_history) + '\n')
+    status = get_swaync_status()
+    sys.stdout.write(json.dumps(status) + "\n")
     sys.stdout.flush()
+
 
 if __name__ == "__main__":
     main()

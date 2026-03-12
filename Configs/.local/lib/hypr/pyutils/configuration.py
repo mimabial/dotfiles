@@ -6,7 +6,7 @@ from typing import Optional
 from xdg_base_dirs import xdg_config_home, xdg_data_home
 
 
-#! Soo will be deprecated in favor of hyprquery
+# Shared configuration variable lookup for Python helpers.
 def get_var(theme_var: str, file: Optional[str] = None) -> Optional[str]:
     """Get theme variable value from configuration files.
 
@@ -58,13 +58,8 @@ def get_var(theme_var: str, file: Optional[str] = None) -> Optional[str]:
         except FileNotFoundError:
             pass
 
-    if theme_var == "CODE_THEME":
-        return "Wallbash"
-    if theme_var == "SDDM_THEME":
-        return ""
-
     default_configs = [
-        Path(xdg_data_home) / "hypr/hyprland.conf",
+        Path(xdg_data_home()) / "hypr/hyprland.conf",
     ]
 
     for config in default_configs:

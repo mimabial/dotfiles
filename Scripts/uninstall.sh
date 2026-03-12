@@ -47,12 +47,19 @@ if [ ! -f "${CfgLst}" ]; then
     exit 1
 fi
 
+expand_home_path() {
+    local path="$1"
+    path="${path//'${HOME}'/${HOME}}"
+    path="${path//\$HOME/${HOME}}"
+    printf '%s\n' "${path}"
+}
+
 BkpDir="${HOME}/.config/cfg_backups/$(date +'%y%m%d_%Hh%Mm%Ss')_remove"
 mkdir -p "${BkpDir}"
 
 cat "${CfgLst}" | while read lst; do
     pth=$(echo "${lst}" | awk -F '|' '{print $3}')
-    pth=$(eval echo "${pth}")
+    pth="$(expand_home_path "${pth}")"
     cfg=$(echo "${lst}" | awk -F '|' '{print $4}')
 
     echo "${cfg}" | xargs -n 1 | while read -r cfg_chk; do

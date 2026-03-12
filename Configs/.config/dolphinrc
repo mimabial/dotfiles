@@ -4,6 +4,7 @@ MenuBar=Disabled
 update_info=dolphin_detailsmodesettings.upd:rename-leading-padding
 
 [DetailsMode]
+LeftPadding=0
 PreviewSize=32
 
 [General]
@@ -18,7 +19,7 @@ Version=202
 ViewPropsTimestamp=2023,4,26,16,58,48.324
 
 [IconsMode]
-PreviewSize=256
+PreviewSize=160
 
 [InformationPanel]
 dateFormat=ShortFormat

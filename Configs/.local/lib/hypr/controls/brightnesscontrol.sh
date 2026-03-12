@@ -1,76 +1,88 @@
 #!/usr/bin/env bash
 
-scrDir=$(dirname "$(realpath "$0")")
+set -u
+
+scr_dir="$(cd -- "$(dirname -- "$0")" && pwd -P)"
 # shellcheck disable=SC1091
-source "$scrDir/globalcontrol.sh"
+source "${scr_dir}/lib/control.common.bash"
 
-# Check if SwayOSD is installed
-use_swayosd=false
-isNotify=${BRIGHTNESS_NOTIFY:-true}
-if command -v swayosd-client >/dev/null 2>&1 && pgrep -x swayosd-server >/dev/null; then
-  use_swayosd=true
-fi
+is_notify="${BRIGHTNESS_NOTIFY:-true}"
+default_step="${BRIGHTNESS_STEPS:-5}"
 
-print_error() {
+print_usage() {
   local cmd
-  cmd=$(basename "$0")
+  cmd="$(basename "$0")"
   cat <<EOF
-    "${cmd}" <action> [step]
-    ...valid actions are...
-        i -- <i>ncrease brightness [+5%]
-        d -- <d>ecrease brightness [-5%]
+Usage: ${cmd} <action> [step]
 
-    Example:
-        "${cmd}" i 10    # Increase brightness by 10%
-        "${cmd}" d       # Decrease brightness by default step (5%)
+Actions:
+  i | -i   Increase brightness
+  d | -d   Decrease brightness
+
+Examples:
+  ${cmd} i 10
+  ${cmd} d
 EOF
 }
 
+require_cmd brightnessctl || {
+  echo "brightnessctl is required"
+  exit 1
+}
+
+current_brightness() {
+  brightnessctl -m | awk -F, 'NR==1 { gsub(/%/, "", $4); print $4 + 0 }'
+}
+
+brightness_device() {
+  brightnessctl info | awk -F"'" '/Device/ { print $2; exit }'
+}
+
 send_notification() {
-  brightness=$(brightnessctl info | grep -oP "(?<=\()\d+(?=%)" | cat)
-  brightinfo=$(brightnessctl info | awk -F "'" '/Device/ {print $2}')
-  angle="$((((brightness + 2) / 5) * 5))"
-  # shellcheck disable=SC2154
-  ico="${iconsDir}/Wallbash-Icon/media/knob-${angle}.svg"
-  bar=$(seq -s "." $((brightness / 15)) | sed 's/[0-9]//g')
-  [[ "${isNotify}" == true ]] && notify-send -a "Brightness control" -r 7 -t 800 -i "${ico}" "${brightness}${bar}" "${brightinfo}"
+  is_true "${is_notify}" || return 0
+
+  local brightness brightinfo angle icon bar icon_dir
+  brightness="$(current_brightness)"
+  brightinfo="$(brightness_device)"
+  angle=$((((brightness + 2) / 5) * 5))
+  ((angle < 0)) && angle=0
+  ((angle > 100)) && angle=100
+
+  icon_dir="${ICONS_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/icons}"
+  icon="${icon_dir}/Pywal16-Icon/media/knob-${angle}.svg"
+  bar="$(printf '%*s' $((brightness / 15)) '' | tr ' ' '.')"
+
+  notify-send -a "Brightness control" -r 7 -t 800 -i "${icon}" "${brightness}${bar}" "${brightinfo}"
 }
 
-get_brightness() {
-  brightnessctl -m | grep -o '[0-9]\+%' | head -c-2
-}
+action="${1:-}"
+step="${2:-${default_step}}"
 
-step=${BRIGHTNESS_STEPS:-5}
-step="${2:-$step}"
+if [[ ! "${step}" =~ ^[0-9]+$ ]]; then
+  echo "Invalid step: ${step}"
+  print_usage
+  exit 1
+fi
 
-case $1 in
-  i | -i) # increase the backlight
-    if [[ $(get_brightness) -lt 10 ]]; then
-      # increase the backlight by 1% if less than 10%
-      step=1
-    fi
-
-    $use_swayosd && swayosd-client --brightness raise "$step" && exit 0
-    brightnessctl set +"${step}"%
+case "${action}" in
+  i | -i)
+    current="$(current_brightness)"
+    ((current < 10)) && step=1
+    brightnessctl set +"${step}%" >/dev/null
     send_notification
     ;;
-  d | -d) # decrease the backlight
-
-    if [[ $(get_brightness) -le 10 ]]; then
-      # decrease the backlight by 1% if less than 10%
-      step=1
-    fi
-
-    if [[ $(get_brightness) -le 1 ]]; then
-      brightnessctl set "${step}"%
-      $use_swayosd && exit 0
+  d | -d)
+    current="$(current_brightness)"
+    ((current <= 10)) && step=1
+    if ((current <= 1)); then
+      brightnessctl set "${step}%" >/dev/null
     else
-      $use_swayosd && swayosd-client --brightness lower "$step" && exit 0
-      brightnessctl set "${step}"%-
+      brightnessctl set "${step}%-" >/dev/null
     fi
-
     send_notification
     ;;
-  *) # print error
-    print_error ;;
+  *)
+    print_usage
+    exit 1
+    ;;
 esac

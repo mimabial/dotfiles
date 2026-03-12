@@ -4,7 +4,7 @@
 MODE=${1}
 scrDir=$(dirname "$(realpath "$0")")
 source $scrDir/../globalcontrol.sh
-# ThemeSet="${confDir}/hypr/themes/theme.conf"
+# ThemeSet="${HYPR_CONFIG_HOME}/themes/theme.conf"
 
 if [[ "$MODE" =~ ^[0-9]+$ ]]; then
   RofiConf="gamelauncher_${MODE}"
@@ -101,7 +101,7 @@ fn_steam() {
 
     headerImage=$(find "${SteamThumb}/${launchid}/" -type f -name "*${libraryHeaderName}")
     ${steamlaunch} -applaunch "${launchid} [gamemoderun %command%]" &
-    # dunstify "Game launcher" -a "Launching ${RofiSel}..." -i ${SteamThumb}/${launchid}_header.jpg -r 91190 -t 2200
+    # notify-send "Game launcher" -a "Launching ${RofiSel}..." -i ${SteamThumb}/${launchid}_header.jpg -r 91190 -t 2200
     notify-send -a "Game launcher" -i "$headerImage" "Launching ${RofiSel}..."
   fi
 }

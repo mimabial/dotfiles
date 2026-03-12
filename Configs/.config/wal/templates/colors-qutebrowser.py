@@ -103,8 +103,7 @@ c.colors.prompts.bg = bg
 c.colors.prompts.border = color0
 c.colors.prompts.selected.fg = bg
 c.colors.prompts.selected.bg = accent
-# Note: colors.prompts.selected.border was removed in qutebrowser 3.x
-# Border color is now derived from bg automatically
+# qutebrowser derives the selected prompt border from the background, so there is no separate setting here.
 
 # Statusbar (bottom bar)
 c.colors.statusbar.normal.fg = fg

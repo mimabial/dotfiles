@@ -14,6 +14,13 @@ if ! source "${scrDir}/global_fn.sh"; then
     exit 1
 fi
 
+expand_home_path() {
+    local path="$1"
+    path="${path//'${HOME}'/${HOME}}"
+    path="${path//\$HOME/${HOME}}"
+    printf '%s\n' "${path}"
+}
+
 while read -r lst; do
     # Skip lines starting with #
     if [[ "$lst" =~ ^[[:space:]]*# ]]; then
@@ -26,7 +33,7 @@ while read -r lst; do
 
     fnt=$(awk -F '|' '{print $1}' <<<"$lst")
     tgt=$(awk -F '|' '{print $2}' <<<"$lst")
-    tgt=$(eval "echo $tgt")
+    tgt="$(expand_home_path "${tgt}")"
 
     if [[ "${tgt}" =~ /(usr|usr\/local)\/share/ && -d /run/current-system/sw/share/ ]]; then
         echo "Detected NixOS system, changing target to /run/current-system/sw/share/..."

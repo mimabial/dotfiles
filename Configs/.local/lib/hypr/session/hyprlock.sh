@@ -17,10 +17,9 @@ if [[ -z "${XDG_DATA_HOME:-}" ]]; then
   export XDG_DATA_HOME="$HOME/.local/share"
 fi
 
+HYPR_CACHE_HOME="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME}/hypr}"
 scrDir=${scrDir:-$HOME/.local/lib/hypr}
-confDir="${confDir:-$XDG_CONFIG_HOME}"
-cacheDir="${HYPR_CACHE_HOME:-"${XDG_CACHE_HOME}/hypr"}"
-WALLPAPER_CACHE_DIR="${WALLPAPER_CACHE_DIR:-${cacheDir}/wallpaper}"
+WALLPAPER_CACHE_DIR="${WALLPAPER_CACHE_DIR:-${HYPR_CACHE_HOME}/wallpaper}"
 WALLPAPER_CURRENT_DIR="${WALLPAPER_CURRENT_DIR:-${WALLPAPER_CACHE_DIR}/current}"
 WALLPAPER_VIDEO_DIR="${WALLPAPER_VIDEO_DIR:-${WALLPAPER_CURRENT_DIR}/thumbnails}"
 WALLPAPER="${WALLPAPER_CURRENT_DIR}/wall.set"
@@ -200,7 +199,7 @@ ensure_transparent_png() {
 set_mpris_blurred_empty() {
   local output_path="$1"
   [ -z "${output_path}" ] && return 1
-  local empty_png="${cacheDir}/landing/transparent.png"
+  local empty_png="${HYPR_CACHE_HOME}/landing/transparent.png"
   ensure_transparent_png "${empty_png}" || return 1
   if [ ! -f "${output_path}" ] || ! cmp -s "${empty_png}" "${output_path}"; then
     cp -f "${empty_png}" "${output_path}" 2>/dev/null || return 1
@@ -209,7 +208,7 @@ set_mpris_blurred_empty() {
 }
 
 fn_profile() {
-  local profile_dir="${cacheDir}/landing"
+  local profile_dir="${HYPR_CACHE_HOME}/landing"
   local profile_png="${profile_dir}/profile.png"
   local face_icon="$HOME/.face.icon"
 
@@ -253,7 +252,7 @@ mpris_icon() {
 
 mpris_thumb() {
   local player=${1:-""}
-  THUMB="${cacheDir}/landing/mpris"
+  THUMB="${HYPR_CACHE_HOME}/landing/mpris"
 
   artUrl=$(playerctl -p "${player}" metadata --format '{{mpris:artUrl}}' 2>/dev/null)
   if [ -z "$artUrl" ]; then
@@ -362,9 +361,9 @@ fn_length() {
 }
 
 fn_mpris() {
-  # Legacy function - combined text format for backward compatibility
+  # Combined MPRIS formatter used by the lockscreen text widgets.
   local player=${1:-$(playerctl --list-all 2>/dev/null | head -n 1)}
-  THUMB="${cacheDir}/landing/mpris"
+  THUMB="${HYPR_CACHE_HOME}/landing/mpris"
   player_status="$(playerctl -p "${player}" status 2>/dev/null)"
 
   if [[ "${player_status}" == "Playing" ]]; then
@@ -372,7 +371,7 @@ fn_mpris() {
     mpris_thumb "${player}" &
   else
     # Colorize fallback icon (cache in temp location to compare)
-    local temp_colored="${cacheDir}/landing/hypr-colored.tmp.png"
+    local temp_colored="${HYPR_CACHE_HOME}/landing/hypr-colored.tmp.png"
     colorize_fallback_icon "$temp_colored"
     if ! cmp -s "$temp_colored" "${THUMB}.png"; then
       mv "$temp_colored" "${THUMB}.png"
@@ -393,20 +392,20 @@ fn_cava() {
 }
 
 fn_art() {
-  echo "${cacheDir}/landing/mpris.art"
+  echo "${HYPR_CACHE_HOME}/landing/mpris.art"
 }
 
 fn_update_art() {
   # Ensures album art is fetched and cached
   local player=${1:-$(playerctl --list-all 2>/dev/null | head -n 1)}
-  THUMB="${cacheDir}/landing/mpris"
+  THUMB="${HYPR_CACHE_HOME}/landing/mpris"
   player_status="$(playerctl -p "${player}" status 2>/dev/null)"
 
   if [[ "${player_status}" == "Playing" ]] || [[ "${player_status}" == "Paused" ]]; then
     mpris_thumb "${player}"
   else
     rm -f "${THUMB}".lnk "${THUMB}".art 2>/dev/null
-    local temp_colored="${cacheDir}/landing/hypr-colored.tmp.png"
+    local temp_colored="${HYPR_CACHE_HOME}/landing/hypr-colored.tmp.png"
     colorize_fallback_icon "${temp_colored}"
     if [ -f "${temp_colored}" ]; then
       if ! cmp -s "${temp_colored}" "${THUMB}.png"; then
@@ -453,7 +452,7 @@ append_label_to_file() {
   cat <<EOF >>"${file}"
 label {
   text = PREVIEW! Press a key or swipe to exit.
-  color = rgba(\$wallbash_txt122)
+  color = \$foreground
   font_size = 50
   position = 0, 0
   halign = center
@@ -463,7 +462,7 @@ label {
 
 label {
   text = PREVIEW! Press a key or swipe to exit.
-  color = rgba(\$wallbash_txt122)
+  color = \$foreground
   font_size = 50
   position = 0, 0
   halign = center
@@ -473,7 +472,7 @@ label {
 
 label {
   text = PREVIEW! Press a key or swipe to exit.
-  color = rgba(\$wallbash_txt122)
+  color = \$foreground
   font_size = 50
   position = 0, 0
   halign = center
@@ -518,9 +517,9 @@ rofi_test_preview() {
 }
 
 generate_conf() {
-  local path="${1:-$confDir/hypr/hyprlock/theme.conf}"
-  local target_file="${2:-$confDir/hypr/hyprlock.conf}"
-  local hyprlock_conf=${SHARE_DIR:-$XDG_DATA_HOME}/hypr/hyprlock.conf
+  local path="${1:-${HYPR_CONFIG_HOME}/hyprlock/theme.conf}"
+  local target_file="${2:-${HYPR_CONFIG_HOME}/hyprlock.conf}"
+  local hyprlock_conf="${HYPR_DATA_HOME:-${XDG_DATA_HOME}/hypr}/hyprlock.conf"
   local xdg_config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
   local xdg_data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
   local layout_path="${path}"
@@ -576,7 +575,7 @@ fn_select() {
   r_override="window{border:${hypr_width}px;border-radius:${wind_border}px;} wallbox{border-radius:${elem_border}px;} element{border-radius:${elem_border}px;}"
 
   # List available .conf files in hyprlock directory
-  layout_dir="$confDir/hypr/hyprlock"
+  layout_dir="${HYPR_CONFIG_HOME}/hyprlock"
   layout_items=$(find -L "${layout_dir}" -name "*.conf" ! -name "theme.conf" 2>/dev/null | sed 's/\.conf$//')
 
   if [ -z "$layout_items" ]; then
@@ -602,7 +601,7 @@ ${layout_items}"
     exit 0
   fi
 
-  set_conf "HYPRLOCK_LAYOUT" "${selected_layout}"
+  state_set "HYPRLOCK_LAYOUT" "${selected_layout}" "staterc"
   if [ "$selected_layout" == "Theme Preference" ]; then
     selected_layout="theme"
   fi
@@ -622,7 +621,7 @@ if [ -z "${*}" ]; then
   fi
 
   # Ensure MPRIS fallback wallpaper exists before launching hyprlock
-  THUMB="${cacheDir}/landing/mpris"
+  THUMB="${HYPR_CACHE_HOME}/landing/mpris"
   set_mpris_blurred_empty "${THUMB}.blurred.png"
   # Auto-update profile if .face.icon changed
   fn_profile

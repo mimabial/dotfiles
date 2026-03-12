@@ -26,10 +26,7 @@
 #
 # ENVIRONMENT:
 #   HYPR_WAL_CACHE_ONLY=1    - Only generate cache, don't apply
-#   HYPR_WAL_ASYNC_APPS=1    - Run app theming in background
 #   HYPR_WAL_CACHE_CLEANUP=1 - Async cleanup stale cache entries
-#   HYPR_WAL_CACHE_ASYNC_STORE=1 - Store cache in background
-#   HYPR_WAL_DEFER_COLD=1    - Defer color generation on cold cache to background
 #   HYPR_WAL_CACHE_PRUNE=1   - Auto-prune wal cache entries for missing wallpapers/themes
 #   HYPR_WAL_CACHE_PRUNE_TTL=21600 - Minimum seconds between prune runs
 #   HYPR_WAL_MODE_OVERRIDE   - Force dark/light mode
@@ -84,12 +81,7 @@ safe_hyprctl() {
 
 # Cold-cache deferral to keep first run responsive (skip during cache-only runs).
 CACHE_ONLY="${HYPR_WAL_CACHE_ONLY:-0}"
-DEFER_COLD="${HYPR_WAL_DEFER_COLD:-1}"
-case "${DEFER_COLD,,}" in
-  1 | true | yes | on) DEFER_COLD=1 ;;
-  0 | false | no | off) DEFER_COLD=0 ;;
-  *) DEFER_COLD=1 ;;
-esac
+DEFER_COLD=1
 
 if [[ "${CACHE_ONLY}" -ne 1 ]] && [[ "${DEFER_COLD}" -eq 1 ]] && [[ -z "${HYPR_WAL_DEFERRED:-}" ]]; then
   if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
@@ -116,7 +108,8 @@ STATE_FILE="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/color.gen.state"
 # Signal file for waybar watcher
 THEME_UPDATE_LOCK="${XDG_RUNTIME_DIR:-/tmp}/theme-update.lock"
 CACHE_ONLY="${CACHE_ONLY:-${HYPR_WAL_CACHE_ONLY:-0}}"
-ASYNC_APPS="${HYPR_WAL_ASYNC_APPS:-0}"
+ASYNC_APPS=1
+ASYNC_POST_UPDATES=1
 MODE_OVERRIDE="${HYPR_WAL_MODE_OVERRIDE:-}"
 CACHE_ONLY_ROOT=""
 HYPR_AUTO_RELOAD_PREV=""
@@ -337,7 +330,7 @@ WAL_CACHE="${WAL_XDG_CACHE_HOME}/wal"
 mkdir -p "${WAL_CACHE}"
 
 CACHE_CLEANUP_ENABLED="${HYPR_WAL_CACHE_CLEANUP:-1}"
-CACHE_ASYNC_STORE="${HYPR_WAL_CACHE_ASYNC_STORE:-1}"
+CACHE_ASYNC_STORE=1
 CACHE_CLEANUP_LOCK="${XDG_RUNTIME_DIR:-/tmp}/wal-cache-clean.lock"
 CACHE_STORE_LOCK="${XDG_RUNTIME_DIR:-/tmp}/wal-cache-store.lock"
 
@@ -368,7 +361,6 @@ declare -gA COLOR_LINKS=(
   ["colors-kitty.conf"]="${HOME}/.config/kitty/colors.conf"
   ["colors-rofi.rasi"]="${HOME}/.config/rofi/colors.rasi"
   ["colors-wofi.css"]="${HOME}/.config/wofi/style.css"
-  ["colors-walker.css"]="${HOME}/.config/walker/themes/pywal16/style.css"
   ["colors-waybar.css"]="${HOME}/.config/waybar/colors.css"
   ["colors-swaync.css"]="${HOME}/.config/swaync/colors.css"
   ["colors-hyprland.conf"]="${HOME}/.config/hypr/themes/colors.conf"
@@ -916,7 +908,7 @@ wal_cache_store_async() {
 }
 
 if [[ "${wal_cache_populate}" -eq 1 ]] && [[ "${wal_used_cache}" -eq 0 ]] && [[ -n "${wal_cache_path}" ]]; then
-  if [[ "${CACHE_ASYNC_STORE}" -eq 1 ]] && [[ "${CACHE_ONLY}" -ne 1 ]]; then
+  if [[ "${CACHE_ONLY}" -ne 1 ]]; then
     wal_cache_store_async "${WAL_CACHE}" "${wal_cache_path}"
   else
     wal_cache_store "${WAL_CACHE}" "${wal_cache_path}" || print_log -sec "pywal16" -warn "cache" "store failed"
@@ -1065,7 +1057,7 @@ if [[ "${enableWallDcol}" -eq 0 ]]; then
   fi
 fi
 
-# Kvantum theme is now handled in parallel by wal.kvantum.sh
+# Kvantum theme application is delegated to wal.kvantum.sh in parallel.
 
 print_log -sec "pywal16" -stat "complete" "color files ready"
 
@@ -1130,7 +1122,6 @@ declare -a APP_THEMING_SCRIPTS=(
   "wal/wal.kvantum.sh"
   "wal/wal.cava.sh"
   "wal/wal.gtk.sh"
-  "wal/wal.vscode.sh"
   "wal/wal.swaync.sh"
   "wal/wal.tmux.sh"
   "wal/wal.qutebrowser.sh"
@@ -1164,8 +1155,8 @@ fi
 maybe_wait
 
 # Hyprshade color normalization (convert RGB 0-255 to 0.0-1.0 range for GLSL)
-if [ -f "${cacheDir}/colors-hyprshade.glsl" ]; then
-  sed -i 's/vec3(\([0-9]\+\), \([0-9]\+\), \([0-9]\+\))/vec3(\1\/255.0, \2\/255.0, \3\/255.0)/g' "${cacheDir}/colors-hyprshade.glsl"
+if [ -f "${HYPR_CACHE_HOME}/colors-hyprshade.glsl" ]; then
+  sed -i 's/vec3(\([0-9]\+\), \([0-9]\+\), \([0-9]\+\))/vec3(\1\/255.0, \2\/255.0, \3\/255.0)/g' "${HYPR_CACHE_HOME}/colors-hyprshade.glsl"
 fi
 
 # Reload live applications
@@ -1446,6 +1437,9 @@ post_updates() {
   # KDE/Dolphin settings
   if [ -n "${background}" ] && [ -n "${foreground}" ]; then
     kdeglobals="${XDG_CONFIG_HOME:-$HOME/.config}/kdeglobals"
+    local kde_scheme_name="${KDE_COLOR_SCHEME:-colors}"
+    local kde_scheme_dir="${XDG_DATA_HOME:-$HOME/.local/share}/color-schemes"
+    local kde_scheme_file="${kde_scheme_dir}/${kde_scheme_name}.colors"
 
     # Helper to convert hex to R,G,B format
     hex_to_rgb() {
@@ -1481,12 +1475,47 @@ post_updates() {
     hover_rgb=$(hex_to_rgb "$color5")
 
     # Hash-check: skip kdeglobals writes if colors unchanged
-    local color_hash="${bg_rgb}|${fg_rgb}|${accent_rgb}|${ICON_THEME:-}"
+    local color_hash="${bg_rgb}|${fg_rgb}|${accent_rgb}|${ICON_THEME:-}|${kde_scheme_name}"
     local hash_file="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/kdeglobals.hash"
     local prev_hash=""
+    local scheme_missing=0
     [ -f "$hash_file" ] && prev_hash=$(cat "$hash_file" 2>/dev/null)
+    [ ! -f "${kde_scheme_file}" ] && scheme_missing=1
 
-    if [ "$color_hash" != "$prev_hash" ]; then
+    mkdir -p "${kde_scheme_dir}"
+    if [ ! -f "${kde_scheme_file}" ]; then
+      if [ -f "/usr/share/color-schemes/Kvantum.colors" ]; then
+        cp -f "/usr/share/color-schemes/Kvantum.colors" "${kde_scheme_file}"
+      elif [ -f "/usr/share/color-schemes/BreezeDark.colors" ]; then
+        cp -f "/usr/share/color-schemes/BreezeDark.colors" "${kde_scheme_file}"
+      fi
+    fi
+
+    # Always enforce valid scheme identity and kdeglobals selection, even when
+    # the color hash is unchanged.
+    if [ -f "${kde_scheme_file}" ]; then
+      toml_write "${kde_scheme_file}" "General" "Name" "${kde_scheme_name}"
+      toml_write "${kde_scheme_file}" "General" "ColorScheme" "${kde_scheme_name}"
+      toml_write "$kdeglobals" "UiSettings" "ColorScheme" "${kde_scheme_name}"
+    fi
+
+    if [ "$color_hash" != "$prev_hash" ] || [ "${scheme_missing}" -eq 1 ]; then
+      # Keep a valid KDE scheme file so Qt/KDE apps don't fall back to defaults.
+      if [ -f "${kde_scheme_file}" ]; then
+        toml_write "${kde_scheme_file}" "Colors:View" "BackgroundNormal" "${bg_rgb}"
+        toml_write "${kde_scheme_file}" "Colors:View" "ForegroundNormal" "${fg_rgb}"
+        toml_write "${kde_scheme_file}" "Colors:View" "DecorationFocus" "${accent_rgb}"
+        toml_write "${kde_scheme_file}" "Colors:View" "DecorationHover" "${hover_rgb}"
+        toml_write "${kde_scheme_file}" "Colors:Selection" "BackgroundNormal" "${accent_rgb}"
+        toml_write "${kde_scheme_file}" "Colors:Selection" "BackgroundAlternate" "${accent_rgb}"
+        toml_write "${kde_scheme_file}" "Colors:Selection" "ForegroundNormal" "${fg_rgb}"
+        toml_write "${kde_scheme_file}" "Colors:Selection" "ForegroundActive" "${fg_rgb}"
+        toml_write "${kde_scheme_file}" "Colors:Selection" "DecorationFocus" "${accent_rgb}"
+        toml_write "${kde_scheme_file}" "Colors:Selection" "DecorationHover" "${hover_rgb}"
+        toml_write "${kde_scheme_file}" "Colors:Window" "BackgroundNormal" "${bg_rgb}"
+        toml_write "${kde_scheme_file}" "Colors:Window" "ForegroundNormal" "${fg_rgb}"
+      fi
+
       # Update icon theme
       [ -n "${ICON_THEME}" ] && toml_write "$kdeglobals" "Icons" "Theme" "${ICON_THEME}"
       # Terminal setting
@@ -1496,6 +1525,12 @@ post_updates() {
       toml_write "$kdeglobals" "Colors:View" "ForegroundNormal" "$fg_rgb"
       toml_write "$kdeglobals" "Colors:View" "DecorationFocus" "$accent_rgb"
       toml_write "$kdeglobals" "Colors:View" "DecorationHover" "$hover_rgb"
+      # Button colors (Dolphin toolbar/buttons)
+      toml_write "$kdeglobals" "Colors:Button" "BackgroundNormal" "$bg_rgb"
+      toml_write "$kdeglobals" "Colors:Button" "BackgroundAlternate" "$bg_rgb"
+      toml_write "$kdeglobals" "Colors:Button" "ForegroundNormal" "$fg_rgb"
+      toml_write "$kdeglobals" "Colors:Button" "DecorationFocus" "$accent_rgb"
+      toml_write "$kdeglobals" "Colors:Button" "DecorationHover" "$hover_rgb"
       # Selection colors
       toml_write "$kdeglobals" "Colors:Selection" "BackgroundNormal" "$accent_rgb"
       toml_write "$kdeglobals" "Colors:Selection" "BackgroundAlternate" "$accent_rgb"
@@ -1506,12 +1541,21 @@ post_updates() {
       # Window colors
       toml_write "$kdeglobals" "Colors:Window" "BackgroundNormal" "$bg_rgb"
       toml_write "$kdeglobals" "Colors:Window" "ForegroundNormal" "$fg_rgb"
+      # Header/tooltip/complementary colors used by KDE apps (including Dolphin panes)
+      toml_write "$kdeglobals" "Colors:Header" "BackgroundNormal" "$bg_rgb"
+      toml_write "$kdeglobals" "Colors:Header" "ForegroundNormal" "$fg_rgb"
+      toml_write "$kdeglobals" "Colors:Header" "DecorationFocus" "$accent_rgb"
+      toml_write "$kdeglobals" "Colors:Header" "DecorationHover" "$hover_rgb"
+      toml_write "$kdeglobals" "Colors:Tooltip" "BackgroundNormal" "$bg_rgb"
+      toml_write "$kdeglobals" "Colors:Tooltip" "ForegroundNormal" "$fg_rgb"
+      toml_write "$kdeglobals" "Colors:Complementary" "BackgroundNormal" "$bg_rgb"
+      toml_write "$kdeglobals" "Colors:Complementary" "ForegroundNormal" "$fg_rgb"
       # Save hash
       echo "$color_hash" > "$hash_file"
     fi
   fi
 
-  # Kvantum highlight colors now handled by wal.kvantum.sh in parallel
+  # Kvantum highlight colors are applied by wal.kvantum.sh in parallel.
 
   [[ -n "${HYPRLAND_INSTANCE_SIGNATURE}" ]] && {
     if ! hyprshell shaders --reload 2>&1 | grep -q "error"; then
@@ -1523,10 +1567,14 @@ post_updates() {
 
 }
 
-# post_updates writes KDE/kdeglobals settings - runs in background by default
-# since these don't need to block the main theme application
-# Redirect output to avoid partial line "%" in zsh when background output appears after prompt
-post_updates &>/dev/null &
+# post_updates writes KDE/kdeglobals settings.
+# Keep async execution to avoid blocking callers.
+# Redirect output to avoid partial line "%" in zsh when background output appears after prompt.
+if [[ "${ASYNC_POST_UPDATES}" -eq 1 ]]; then
+  post_updates &>/dev/null &
+else
+  post_updates &>/dev/null
+fi
 
 # Print colors if in terminal
 [ -t 1 ] && [ -f "${LIB_DIR}/hypr/wal/wal.print.colors.sh" ] && bash "${LIB_DIR}/hypr/wal/wal.print.colors.sh"

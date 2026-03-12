@@ -1,6 +1,6 @@
 [%General]
 author=prasanth rangan
-comment=wallbash
+comment=pywal16
 spread_menuitems=false
 left_tabs=true
 mirror_doc_tabs=true
@@ -74,7 +74,7 @@ tooltip_blur_radius=6
 
 [GeneralColors]
 window.color=#0E120F
-base.color=#29523300
+base.color=#295233
 alt.base.color=#295233
 button.color=#3A6B46
 light.color=#4B7D57

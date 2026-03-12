@@ -25,7 +25,7 @@ macos_titlebar_color system
 # Tab bar colors
 active_tab_foreground   #FADA16
 active_tab_background   #000000
-inactive_tab_foreground #1B1C22
+inactive_tab_foreground #1F5322
 inactive_tab_background #FADA16
 tab_bar_background      #000000
 

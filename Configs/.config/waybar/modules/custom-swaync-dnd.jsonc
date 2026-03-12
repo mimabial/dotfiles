@@ -1,0 +1,14 @@
+{
+  "custom/swaync-dnd": {
+    "justify": "center",
+    "exec-if": "which swaync-client",
+    "format": "{text}",
+    "return-type": "json",
+    "interval": 2,
+    "exec": "hyprshell waybar/swaync-dnd.sh",
+    "on-click": "swaync-client --toggle-dnd",
+    "on-click-right": "swaync-client --close-all -sw",
+    "on-click-middle": "swaync-client --open-panel -sw",
+    "escape": true
+  }
+}

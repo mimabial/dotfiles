@@ -2,45 +2,46 @@
 
 set -euo pipefail
 
-if [[ "${HYPR_SHELL_INIT:-0}" -ne 1 ]]; then
-  eval "$(hyprshell init)"
-fi
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
+source "${script_dir}/service.lib.bash"
 
-rel_path="${1:-}"
-if [[ -z "${rel_path}" || "${rel_path}" == "-h" || "${rel_path}" == "--help" ]]; then
-  echo "Usage: hyprshell service/refresh-config.sh <relative-path-under-config>" >&2
-  echo "Example: hyprshell service/refresh-config.sh waybar/config.jsonc" >&2
+show_diff=1
+quiet=0
+rel_path=""
+
+while (($#)); do
+  case "$1" in
+    -h | --help)
+      hypr_service_usage_refresh_config
+      exit 0
+      ;;
+    -q | --quiet)
+      quiet=1
+      ;;
+    --diff)
+      show_diff=1
+      ;;
+    --no-diff)
+      show_diff=0
+      ;;
+    -*)
+      hypr_service_die "Unknown option: $1"
+      ;;
+    *)
+      if [[ -n "${rel_path}" ]]; then
+        hypr_service_die "Only one config path is supported per call."
+      fi
+      rel_path="$1"
+      ;;
+  esac
+  shift
+done
+
+if [[ -z "${rel_path}" ]]; then
+  hypr_service_usage_refresh_config
   exit 2
 fi
 
-target="${XDG_CONFIG_HOME:-$HOME/.config}/${rel_path}"
-
-# Prefer local config templates if present.
-source_candidates=(
-  "${HOME}/.local/share/hypr/defaults/.config/${rel_path}"
-)
-
-src=""
-for candidate in "${source_candidates[@]}"; do
-  if [[ -f "${candidate}" ]]; then
-    src="${candidate}"
-    break
-  fi
-done
-
-if [[ -z "${src}" ]]; then
-  echo "No template found for: ${rel_path}" >&2
-  echo "Tried:" >&2
-  printf "  - %s\n" "${source_candidates[@]}" >&2
-  exit 1
-fi
-
-mkdir -p "$(dirname "${target}")"
-
-if [[ -f "${target}" ]]; then
-  ts="$(date +%Y%m%d_%H%M%S)"
-  cp -f "${target}" "${target}.bak.${ts}"
-fi
-
-cp -f "${src}" "${target}"
-echo "Refreshed: ${target}"
+hypr_service_init
+hypr_service_refresh_config "${rel_path}" "${show_diff}" "${quiet}"

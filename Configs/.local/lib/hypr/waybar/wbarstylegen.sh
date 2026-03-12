@@ -6,12 +6,12 @@ scrDir=$(dirname "$(realpath "$0")")
 # shellcheck disable=SC1091
 source "$(dirname "${scrDir}")/globalcontrol.sh"
 # shellcheck disable=SC2154
-waybar_dir="${confDir}/waybar"
+waybar_dir="${XDG_CONFIG_HOME}/waybar"
 modules_dir="$waybar_dir/modules"
 conf_ctl="$waybar_dir/config.ctl"
 in_file="$waybar_dir/modules/style.css"
 out_file="$waybar_dir/style.css"
-src_file="${confDir}/hypr/themes/theme.conf"
+src_file="${HYPR_CONFIG_HOME}/themes/theme.conf"
 
 # calculate height from control file or monitor res
 

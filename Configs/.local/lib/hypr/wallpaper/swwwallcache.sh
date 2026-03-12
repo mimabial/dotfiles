@@ -6,7 +6,7 @@ scrDir="$(dirname "$(realpath "$0")")"
 # shellcheck disable=SC1091
 source "${scrDir}/globalcontrol.sh"
 export scrDir
-export thmbDir
+export WALLPAPER_THUMB_DIR
 
 # Lock file to prevent concurrent cache rebuilds
 WALLPAPER_CACHE_LOCK="${XDG_RUNTIME_DIR:-/tmp}/wallpaper-cache.lock"
@@ -18,10 +18,10 @@ trap 'flock -u 204 2>/dev/null' EXIT
 
 # shellcheck disable=SC2154
 [ -d "${HYPR_THEME_DIR}" ] && cacheIn="${HYPR_THEME_DIR}" || exit 1
-[ -d "${thmbDir}" ] || mkdir -p "${thmbDir}"
+[ -d "${WALLPAPER_THUMB_DIR}" ] || mkdir -p "${WALLPAPER_THUMB_DIR}"
 # shellcheck disable=SC2154
-[ -d "${cacheDir}/landing" ] || mkdir -p "${cacheDir}/landing"
-[ -d "${cacheDir}/wal" ] || mkdir -p "${cacheDir}/wal"
+[ -d "${HYPR_CACHE_HOME}/landing" ] || mkdir -p "${HYPR_CACHE_HOME}/landing"
+[ -d "${HYPR_CACHE_HOME}/wal" ] || mkdir -p "${HYPR_CACHE_HOME}/wal"
 
 # Adaptive cache limits (jobs + magick) with env overrides
 resolve_cache_limits() {
@@ -115,10 +115,10 @@ fn_wallcache() {
 
   if [ "${is_video}" -eq 1 ]; then
     if
-      [ ! -e "${thmbDir}/${x_hash}.thmb" ] \
-        || [ ! -e "${thmbDir}/${x_hash}.sqre" ] \
-        || [ ! -e "${thmbDir}/${x_hash}.blur" ] \
-        || [ ! -e "${thmbDir}/${x_hash}.quad" ]
+      [ ! -e "${WALLPAPER_THUMB_DIR}/${x_hash}.thmb" ] \
+        || [ ! -e "${WALLPAPER_THUMB_DIR}/${x_hash}.sqre" ] \
+        || [ ! -e "${WALLPAPER_THUMB_DIR}/${x_hash}.blur" ] \
+        || [ ! -e "${WALLPAPER_THUMB_DIR}/${x_hash}.quad" ]
     then
       local temp_image="/tmp/${x_hash}.png"
       notify-send -a "Wallpaper cache" "Extracting thumbnail from video wallpaper..."
@@ -127,18 +127,18 @@ fn_wallcache() {
     fi
   fi
 
-  if [ ! -e "${thmbDir}/${x_hash}.thmb" ]; then
-    tmp_thmb="${thmbDir}/.${x_hash}.thmb"
+  if [ ! -e "${WALLPAPER_THUMB_DIR}/${x_hash}.thmb" ]; then
+    tmp_thmb="${WALLPAPER_THUMB_DIR}/.${x_hash}.thmb"
     magick "${magick_args[@]}" "${x_wall}"[0] -strip -resize 1000 -gravity center -extent 1000 -quality 90 "${tmp_thmb}" \
-      && mv -f "${tmp_thmb}" "${thmbDir}/${x_hash}.thmb" || rm -f "${tmp_thmb}"
+      && mv -f "${tmp_thmb}" "${WALLPAPER_THUMB_DIR}/${x_hash}.thmb" || rm -f "${tmp_thmb}"
   fi
-  [ ! -e "${thmbDir}/${x_hash}.sqre" ] && magick "${magick_args[@]}" "${x_wall}"[0] -strip -thumbnail 500x500^ -gravity center -extent 500x500 "${thmbDir}/${x_hash}.sqre.png" && mv "${thmbDir}/${x_hash}.sqre.png" "${thmbDir}/${x_hash}.sqre"
-  if [ ! -e "${thmbDir}/${x_hash}.blur" ]; then
-    tmp_blur="${thmbDir}/.${x_hash}.blur"
+  [ ! -e "${WALLPAPER_THUMB_DIR}/${x_hash}.sqre" ] && magick "${magick_args[@]}" "${x_wall}"[0] -strip -thumbnail 500x500^ -gravity center -extent 500x500 "${WALLPAPER_THUMB_DIR}/${x_hash}.sqre.png" && mv "${WALLPAPER_THUMB_DIR}/${x_hash}.sqre.png" "${WALLPAPER_THUMB_DIR}/${x_hash}.sqre"
+  if [ ! -e "${WALLPAPER_THUMB_DIR}/${x_hash}.blur" ]; then
+    tmp_blur="${WALLPAPER_THUMB_DIR}/.${x_hash}.blur"
     magick "${magick_args[@]}" "${x_wall}"[0] -strip -scale 10% -blur 0x3 -resize 100% "${tmp_blur}" \
-      && mv -f "${tmp_blur}" "${thmbDir}/${x_hash}.blur" || rm -f "${tmp_blur}"
+      && mv -f "${tmp_blur}" "${WALLPAPER_THUMB_DIR}/${x_hash}.blur" || rm -f "${tmp_blur}"
   fi
-  [ ! -e "${thmbDir}/${x_hash}.quad" ] && magick "${magick_args[@]}" "${thmbDir}/${x_hash}.sqre" \( -size 500x500 xc:white -fill "rgba(0,0,0,0.7)" -draw "rectangle 400,0 500,500" -fill black -draw "rectangle 450,0 500,500" \) -alpha Off -compose CopyOpacity -composite "${thmbDir}/${x_hash}.quad.png" && mv "${thmbDir}/${x_hash}.quad.png" "${thmbDir}/${x_hash}.quad"
+  [ ! -e "${WALLPAPER_THUMB_DIR}/${x_hash}.quad" ] && magick "${magick_args[@]}" "${WALLPAPER_THUMB_DIR}/${x_hash}.sqre" \( -size 500x500 xc:white -fill "rgba(0,0,0,0.7)" -draw "rectangle 400,0 500,500" -fill black -draw "rectangle 450,0 500,500" \) -alpha Off -compose CopyOpacity -composite "${WALLPAPER_THUMB_DIR}/${x_hash}.quad.png" && mv "${WALLPAPER_THUMB_DIR}/${x_hash}.quad.png" "${WALLPAPER_THUMB_DIR}/${x_hash}.quad"
 
   if [ "${is_video}" -eq 1 ]; then
     rm -f "${temp_image}"
@@ -164,14 +164,14 @@ fn_wallcache_force() {
     x_wall="${temp_image}"
   fi
 
-  tmp_thmb="${thmbDir}/.${x_hash}.thmb"
+  tmp_thmb="${WALLPAPER_THUMB_DIR}/.${x_hash}.thmb"
   magick "${magick_args[@]}" "${x_wall}"[0] -strip -resize 1000 -gravity center -extent 1000 -quality 90 "${tmp_thmb}" \
-    && mv -f "${tmp_thmb}" "${thmbDir}/${x_hash}.thmb" || rm -f "${tmp_thmb}"
-  magick "${magick_args[@]}" "${x_wall}"[0] -strip -thumbnail 500x500^ -gravity center -extent 500x500 "${thmbDir}/${x_hash}.sqre.png" && mv "${thmbDir}/${x_hash}.sqre.png" "${thmbDir}/${x_hash}.sqre"
-  tmp_blur="${thmbDir}/.${x_hash}.blur"
+    && mv -f "${tmp_thmb}" "${WALLPAPER_THUMB_DIR}/${x_hash}.thmb" || rm -f "${tmp_thmb}"
+  magick "${magick_args[@]}" "${x_wall}"[0] -strip -thumbnail 500x500^ -gravity center -extent 500x500 "${WALLPAPER_THUMB_DIR}/${x_hash}.sqre.png" && mv "${WALLPAPER_THUMB_DIR}/${x_hash}.sqre.png" "${WALLPAPER_THUMB_DIR}/${x_hash}.sqre"
+  tmp_blur="${WALLPAPER_THUMB_DIR}/.${x_hash}.blur"
   magick "${magick_args[@]}" "${x_wall}"[0] -strip -scale 10% -blur 0x3 -resize 100% "${tmp_blur}" \
-    && mv -f "${tmp_blur}" "${thmbDir}/${x_hash}.blur" || rm -f "${tmp_blur}"
-  magick "${magick_args[@]}" "${thmbDir}/${x_hash}.sqre" \( -size 500x500 xc:white -fill "rgba(0,0,0,0.7)" -draw "polygon 400,500 500,500 500,0 450,0" -fill black -draw "polygon 500,500 500,0 450,500" \) -alpha Off -compose CopyOpacity -composite "${thmbDir}/${x_hash}.quad.png" && mv "${thmbDir}/${x_hash}.quad.png" "${thmbDir}/${x_hash}.quad"
+    && mv -f "${tmp_blur}" "${WALLPAPER_THUMB_DIR}/${x_hash}.blur" || rm -f "${tmp_blur}"
+  magick "${magick_args[@]}" "${WALLPAPER_THUMB_DIR}/${x_hash}.sqre" \( -size 500x500 xc:white -fill "rgba(0,0,0,0.7)" -draw "polygon 400,500 500,500 500,0 450,0" -fill black -draw "polygon 500,500 500,0 450,500" \) -alpha Off -compose CopyOpacity -composite "${WALLPAPER_THUMB_DIR}/${x_hash}.quad.png" && mv "${WALLPAPER_THUMB_DIR}/${x_hash}.quad.png" "${WALLPAPER_THUMB_DIR}/${x_hash}.quad"
 
   if [ "${is_video}" -eq 1 ]; then
     rm -f "${temp_image}"

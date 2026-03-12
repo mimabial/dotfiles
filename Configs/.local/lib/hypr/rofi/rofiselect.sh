@@ -67,7 +67,7 @@ RofiSel=$(
 #// apply rofi style
 
 if [ -n "${RofiSel}" ]; then
-  set_conf "rofiStyle" "${RofiSel}"
+  state_set "rofiStyle" "${RofiSel}" "staterc"
   notify-send -a "Rofi select" -r 2 -t 2200 -i "${rofiAssetDir}/${RofiSel}.png" " style ${RofiSel} applied..."
 fi
 if [ -n "$ROFI_LAUNCH_STYLE" ]; then

@@ -5,6 +5,8 @@ QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-wayland;xcb}"                               
 QT_AUTO_SCREEN_SCALE_FACTOR="${QT_AUTO_SCREEN_SCALE_FACTOR:-1}"                 # Enables automatic scaling, based on the monitor’s pixel density
 QT_WAYLAND_DISABLE_WINDOWDECORATION="${QT_WAYLAND_DISABLE_WINDOWDECORATION:-1}" # Disables window decorations on Qt applications
 QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-qt6ct}"                           # Tells Qt based applications to pick your theme from qt5ct, use with Kvantum.
+# Keep Qt Quick Controls style unset by default; forcing org.kde.desktop can
+# cause first-launch light fallback in Kirigami apps outside full Plasma.
 
 # # Hyprland Environment Variables
 MOZ_ENABLE_WAYLAND="${MOZ_ENABLE_WAYLAND:-1}"                        # Enable Wayland for Firefox

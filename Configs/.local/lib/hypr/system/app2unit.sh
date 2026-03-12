@@ -48,7 +48,6 @@ usage() {
 				;;
 			esac
 		)
-		    [--fuzzel-compat] \\
 		    [--test] \\
 		    [--] $(
 			case "$SELF_NAME" in
@@ -140,12 +139,8 @@ help() {
 			    This mode can also be selected if \$0 ends with '-open', also optionally
 			    followed by '-scope' or '-service' unit type suffixes.
 
-			  --fuzzel-compat
-			    For using in fuzzel like this:
-			      fuzzel --launch-prefix='app2unit --fuzzel-compat --'
-
-		EOF
-		;;
+			EOF
+			;;
 	esac
 
 	shcat <<-EOF
@@ -804,16 +799,10 @@ parse_entry_key() {
 			return 1
 		fi
 		;;
-	Terminal)
-		debug "captured '$key' '$value'"
-		case "$FUZZEL_COMPAT" in
-		true)
-			debug "ignoring Terminal in fuzzel compat mode"
-			return 0
-			;;
-		esac
-		case "$value" in
-		true)
+		Terminal)
+			debug "captured '$key' '$value'"
+			case "$value" in
+			true)
 			# if terminal was not requested explicitly, check terminal handler
 			case "$TERMINAL" in
 			false) check_terminal_handler ;;
@@ -1389,7 +1378,6 @@ else
 fi
 
 TERMINAL=false
-FUZZEL_COMPAT=false
 OPENER_MODE=false
 
 capture_terminal_args=false
@@ -1591,13 +1579,8 @@ while [ "$#" -gt "0" ]; do
 		debug "arg '$1'"
 		shift
 		;;
-	--fuzzel-compat)
-		FUZZEL_COMPAT=true
-		debug "arg '$1'"
-		shift
-		;;
-	--test)
-		TEST_MODE=true
+		--test)
+			TEST_MODE=true
 		debug "arg '$1'"
 		shift
 		;;
@@ -1631,17 +1614,6 @@ if [ "$#" -eq "0" ] && [ "$TERMINAL" = "false" ]; then
 	exit 1
 fi
 
-if [ "$FUZZEL_COMPAT" = "true" ]; then
-	if [ -z "${FUZZEL_DESKTOP_FILE_ID:-}" ]; then
-		debug "no FUZZEL_DESKTOP_FILE_ID, cancelling FUZZEL_COMPAT"
-		FUZZEL_COMPAT=false
-	fi
-	if [ "$OPENER_MODE" = "true" ]; then
-		debug "opener mode, cancelling FUZZEL_COMPAT"
-		FUZZEL_COMPAT=false
-	fi
-fi
-
 if [ "$OPENER_MODE" = "true" ]; then
 	if [ "$#" = "0" ]; then
 		error "File(s) or URL(s) expected for open mode."
@@ -1663,19 +1635,6 @@ if [ "$OPENER_MODE" = "true" ]; then
 			exit 1
 		fi
 	done
-elif [ "$FUZZEL_COMPAT" = "true" ]; then
-	debug "setting MAIN_ARG from FUZZEL_DESKTOP_FILE_ID: '$FUZZEL_DESKTOP_FILE_ID'" "passing arguments to exec array"
-	MAIN_ARG=$FUZZEL_DESKTOP_FILE_ID
-	# Fuzzel compat mode, awaiting for https://codeberg.org/dnkl/fuzzel/issues/292
-	# ignore command from entry, take only metadata, use arg array as is.
-	if ! type "$1" >/dev/null 2>&1; then
-		error "Executable not found: '$1'"
-		exit 1
-	fi
-	EXEC_RSEP_USEP=$(
-		printf "%s${USEP}" "$@"
-	)
-	EXEC_RSEP_USEP=${EXEC_RSEP_USEP%"$USEP"}
 elif [ "$#" -eq "0" ] && [ "$TERMINAL" = "true" ]; then
 	# special case for launching just terminal
 
@@ -1767,10 +1726,7 @@ gen_unit_id
 # compose and execute arguments
 if [ -n "$ENTRY_ID" ]; then
 
-	# do not bother with fields in fuzzel compat, since there are no open args
-	case "$FUZZEL_COMPAT" in
-	false) de_inject_fields "$@" ;;
-	esac
+	de_inject_fields "$@"
 
 	# deal with potential multiple iterations
 	case "$EXEC_RSEP_USEP" in

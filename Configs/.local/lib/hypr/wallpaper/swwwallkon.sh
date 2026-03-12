@@ -49,7 +49,7 @@ if [ ! -z "${setTheme}" ] && [ ! -z "${setWall}" ]; then
   inwallHash="$(set_hash "${setWall}")"
   get_hashmap "${tgtPath}/${setTheme}"
   if [[ "${wallHash[@]}" == *"${inwallHash}"* ]]; then
-    notify-send -a "Swww wallpaper" -i "${thmbDir}/${inwallHash}.sqre" "Error" "Hash matched in ${setTheme}"
+    notify-send -a "Swww wallpaper" -i "${WALLPAPER_THUMB_DIR}/${inwallHash}.sqre" "Error" "Hash matched in ${setTheme}"
     exit 0
   fi
 
@@ -57,7 +57,7 @@ if [ ! -z "${setTheme}" ] && [ ! -z "${setWall}" ]; then
   ln -fs "${tgtPath}/${setTheme}/wallpapers/$(basename "${setWall}")" "${tgtPath}/${setTheme}/wall.set"
 
   "${scrDir}/theme.switch.sh" -s "${setTheme}"
-  notify-send -a "Swww wallpaper" -i "${thmbDir}/${inwallHash}.sqre" "Wallpaper set in ${setTheme}"
+  notify-send -a "Swww wallpaper" -i "${WALLPAPER_THUMB_DIR}/${inwallHash}.sqre" "Wallpaper set in ${setTheme}"
 
 else
 

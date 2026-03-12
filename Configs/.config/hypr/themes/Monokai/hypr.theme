@@ -1,6 +1,5 @@
 $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
 
-# $SDDM_THEME = Monokai
 $GTK_THEME = Monokai
 $ICON_THEME = Fluent-green-dark
 $COLOR_SCHEME=prefer-dark
@@ -52,12 +51,12 @@ decoration {
     
 }
 
-#windowrule=opacity 1 override 1 override,title:(.*)
-windowrulev2 = opacity 0.80 0.70,class:^(pavucontrol)$
-windowrulev2 = opacity 0.80 0.70,class:^(blueman-manager)$
-windowrulev2 = opacity 0.80 0.70,class:^(nm-applet)$
-windowrulev2 = opacity 0.80 0.70,class:^(nm-connection-editor)$
-windowrulev2 = opacity 0.70 0.70,class:^(kitty)$
-windowrulev2 = opacity 0.80 0.70,class:^(dev.warp.Warp)$
-layerrule = blur,waybar 
-layerrule = blur,rofi 
+# windowrule = opacity 1 override 1 override, match:title (.*)
+windowrule = opacity 0.80 0.70, match:class ^(wiremix)$
+windowrule = opacity 0.80 0.70, match:class ^(blueman-manager)$
+windowrule = opacity 0.80 0.70, match:class ^(nm-applet)$
+windowrule = opacity 0.80 0.70, match:class ^(nm-connection-editor)$
+windowrule = opacity 0.70 0.70, match:class ^(kitty)$
+windowrule = opacity 0.80 0.70, match:class ^(dev.warp.Warp)$
+layerrule = blur on, match:namespace waybar
+layerrule = blur on, match:namespace rofi

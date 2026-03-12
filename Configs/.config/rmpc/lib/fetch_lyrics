@@ -1,0 +1,622 @@
+#!/usr/bin/env sh
+
+LYRICS_RUNTIME_SH="$HOME/.local/lib/hypr/media/lyrics_runtime.sh"
+TRACK_FETCHER="$HOME/.local/lib/hypr/media/fetch_track_lyrics.py"
+STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
+LYRICS_DEBUG_DIR="${STATE_HOME}/hypr/lyrics"
+LYRICS_DEBUG_LOG="${LYRICS_DEBUG_DIR}/fetch.log"
+
+trim_value() {
+  printf '%s' "$1" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//'
+}
+
+is_enabled_flag() {
+  case "$(printf '%s' "${1:-}" | tr '[:upper:]' '[:lower:]')" in
+    1 | true | yes | on)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+positive_int_or_default() {
+  value="$(trim_value "${1:-}")"
+  fallback="$2"
+  case "$value" in
+    '' | *[!0-9]*)
+      printf '%s' "$fallback"
+      return
+      ;;
+  esac
+  if [ "$value" -gt 0 ]; then
+    printf '%s' "$value"
+  else
+    printf '%s' "$fallback"
+  fi
+}
+
+remaining_lookup_budget() {
+  deadline_epoch="$1"
+  now_epoch="$(date +%s)"
+  remaining_sec=$((deadline_epoch - now_epoch))
+  if [ "$remaining_sec" -lt 0 ]; then
+    remaining_sec=0
+  fi
+  printf '%s' "$remaining_sec"
+}
+
+normalize_artist_token() {
+  printf '%s' "${1:-}" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^[:alnum:]]+/ /g; s/^[[:space:]]+//; s/[[:space:]]+$//'
+}
+
+artist_matches_title_prefix() {
+  artist_name="$(trim_value "${1:-}")"
+  title_value="$(trim_value "${2:-}")"
+  [ -n "$artist_name" ] || return 1
+  [ -n "$title_value" ] || return 1
+
+  title_prefix="$(artist_before_dash "$title_value")"
+  [ -n "$title_prefix" ] || return 1
+
+  artist_norm="$(normalize_artist_token "$artist_name")"
+  prefix_norm="$(normalize_artist_token "$title_prefix")"
+  [ -n "$artist_norm" ] || return 1
+  [ -n "$prefix_norm" ] || return 1
+
+  awk -v artist="$artist_norm" -v prefix="$prefix_norm" 'BEGIN { exit (index(prefix, artist) > 0 || index(artist, prefix) > 0) ? 0 : 1 }'
+}
+
+resolve_timeout_cmd() {
+  if [ -n "${LYRICS_TIMEOUT_BIN:-}" ] && [ -x "${LYRICS_TIMEOUT_BIN}" ]; then
+    printf '%s' "${LYRICS_TIMEOUT_BIN}"
+    return
+  fi
+
+  timeout_cmd="$(command -v timeout 2>/dev/null || true)"
+  if [ -n "$timeout_cmd" ]; then
+    printf '%s' "$timeout_cmd"
+    return
+  fi
+
+  for candidate in /usr/sbin/timeout /usr/bin/timeout /bin/timeout; do
+    if [ -x "$candidate" ]; then
+      printf '%s' "$candidate"
+      return
+    fi
+  done
+
+  printf ''
+}
+
+append_unique_line() {
+  current="$1"
+  value="$(trim_value "$2")"
+
+  [ -n "$value" ] || {
+    printf '%s' "$current"
+    return
+  }
+
+  if [ -n "$current" ] && printf '%s\n' "$current" | awk -v needle="$value" '$0 == needle { found = 1 } END { exit found ? 0 : 1 }'; then
+    printf '%s' "$current"
+    return
+  fi
+
+  if [ -z "$current" ]; then
+    printf '%s' "$value"
+  else
+    printf '%s\n%s' "$current" "$value"
+  fi
+}
+
+title_after_dash() {
+  value="$(trim_value "$1")"
+  case "$value" in
+    *" - "*)
+      printf '%s' "${value#* - }"
+      ;;
+    *" – "*)
+      printf '%s' "${value#* – }"
+      ;;
+    *" — "*)
+      printf '%s' "${value#* — }"
+      ;;
+    *)
+      printf '%s' "$value"
+      ;;
+  esac
+}
+
+artist_before_dash() {
+  value="$(trim_value "$1")"
+  case "$value" in
+    *" - "*)
+      printf '%s' "$(trim_value "${value%% - *}")"
+      ;;
+    *" – "*)
+      printf '%s' "$(trim_value "${value%% – *}")"
+      ;;
+    *" — "*)
+      printf '%s' "$(trim_value "${value%% — *}")"
+      ;;
+    *)
+      printf ''
+      ;;
+  esac
+}
+
+title_from_file_value() {
+  value="$(trim_value "$1")"
+  [ -n "$value" ] || {
+    printf ''
+    return
+  }
+
+  value="${value##*/}"
+  value="${value%.*}"
+  printf '%s' "$(trim_value "$value")"
+}
+
+strip_title_noise() {
+  value="$(trim_value "$1")"
+  [ -n "$value" ] || {
+    printf '%s' "$value"
+    return
+  }
+
+  title_noise_tag='official[[:space:]]+music[[:space:]]+video([[:space:]]+(hd|hq|4k|8k))?|official[[:space:]]+video([[:space:]]+(hd|hq|4k|8k))?|music[[:space:]]+video([[:space:]]+(hd|hq|4k|8k))?|official[[:space:]]+performance[[:space:]]+video|performance[[:space:]]+video|video[[:space:]]+clip|official[[:space:]]+visuali[sz]er|visuali[sz]er|official[[:space:]]+lyric[[:space:]]+video|lyric[[:space:]]+video|official[[:space:]]+lyric[[:space:]]+visuali[sz]er|lyric[[:space:]]+visuali[sz]er|official[[:space:]]+audio'
+
+  while :; do
+    next="$(printf '%s' "$value" | sed -E "s/[[:space:]]*\\(([[:space:]]*)(${title_noise_tag})([[:space:]]*)\\)[[:space:]]*$//I; s/[[:space:]]*\\[([[:space:]]*)(${title_noise_tag})([[:space:]]*)\\][[:space:]]*$//I")"
+    next="$(trim_value "$next")"
+    [ "$next" = "$value" ] && break
+    value="$next"
+  done
+
+  value="$(printf '%s' "$value" | sed -E "s/[[:space:]]*[|:-][[:space:]]*(${title_noise_tag})[[:space:]]*$//I")"
+  value="$(trim_value "$value")"
+
+  if [ -n "$value" ]; then
+    printf '%s' "$value"
+  else
+    printf '%s' "$(trim_value "$1")"
+  fi
+}
+
+strip_title_feature_suffix() {
+  value="$(trim_value "$1")"
+  [ -n "$value" ] || {
+    printf '%s' "$value"
+    return
+  }
+
+  while :; do
+    next="$(printf '%s' "$value" | sed -E 's/[[:space:]]*\(([[:space:]]*)((feat|ft)\.?|featuring)[[:space:]]+[^)]*\)[[:space:]]*$//I; s/[[:space:]]*\[([[:space:]]*)((feat|ft)\.?|featuring)[[:space:]]+[^]]*\][[:space:]]*$//I')"
+    next="$(trim_value "$next")"
+    [ "$next" = "$value" ] && break
+    value="$next"
+  done
+
+  value="$(printf '%s' "$value" | sed -E 's/[[:space:]]*[|:-][[:space:]]*((feat|ft)\.?|featuring)[[:space:]]+.+$//I')"
+  value="$(printf '%s' "$value" | sed -E 's/[[:space:]]+((feat|ft)\.?|featuring)[[:space:]]+.+$//I')"
+  value="$(trim_value "$value")"
+
+  if [ -n "$value" ]; then
+    printf '%s' "$value"
+  else
+    printf '%s' "$(trim_value "$1")"
+  fi
+}
+
+append_title_with_feature_variants() {
+  current="$1"
+  title_value="$(trim_value "$2")"
+  [ -n "$title_value" ] || {
+    printf '%s' "$current"
+    return
+  }
+
+  featureless_title="$(strip_title_feature_suffix "$title_value")"
+  if [ -n "$featureless_title" ] && [ "$featureless_title" != "$title_value" ]; then
+    current="$(append_unique_line "$current" "$featureless_title")"
+  fi
+  current="$(append_unique_line "$current" "$title_value")"
+  printf '%s' "$current"
+}
+
+build_lookup_titles() {
+  raw_title="$(trim_value "${TITLE:-}")"
+  track_artist="$(trim_value "${ARTIST:-}")"
+  album_artist="$(trim_value "${ALBUM_ARTIST:-${ALBUMARTIST:-}}")"
+  file_title="$(title_from_file_value "${FILE:-}")"
+  if [ -z "$raw_title" ] && [ -n "$file_title" ]; then
+    raw_title="$file_title"
+  fi
+
+  cleanup_enabled=0
+  if is_enabled_flag "${LYRICS_TITLE_CLEANUP:-1}"; then
+    cleanup_enabled=1
+  fi
+
+  split_title="$(title_after_dash "$raw_title")"
+  if [ "$split_title" != "$raw_title" ]; then
+    if [ -z "$track_artist" ] && [ -z "$album_artist" ]; then
+      raw_title="$split_title"
+    elif artist_matches_title_prefix "$track_artist" "$raw_title" || artist_matches_title_prefix "$album_artist" "$raw_title"; then
+      raw_title="$split_title"
+    fi
+  fi
+
+  file_split_title="$(title_after_dash "$file_title")"
+  if [ -n "$file_title" ] && [ "$file_split_title" != "$file_title" ]; then
+    if [ -z "$track_artist" ] && [ -z "$album_artist" ]; then
+      file_title="$file_split_title"
+    elif artist_matches_title_prefix "$track_artist" "$file_title" || artist_matches_title_prefix "$album_artist" "$file_title"; then
+      file_title="$file_split_title"
+    fi
+  fi
+
+  split_title="$(title_after_dash "$raw_title")"
+  file_split_title="$(title_after_dash "$file_title")"
+
+  raw_clean="$raw_title"
+  split_clean="$split_title"
+  file_clean="$file_title"
+  file_split_clean="$file_split_title"
+  if [ "$cleanup_enabled" -eq 1 ]; then
+    raw_clean="$(strip_title_noise "$raw_title")"
+    split_clean="$(strip_title_noise "$split_title")"
+    file_clean="$(strip_title_noise "$file_title")"
+    file_split_clean="$(strip_title_noise "$file_split_title")"
+  fi
+
+  candidates=""
+
+  # Prefer cleaned titles first, then keep raw forms as late fallback.
+  candidates="$(append_title_with_feature_variants "$candidates" "$raw_clean")"
+  if [ "$split_title" != "$raw_title" ]; then
+    candidates="$(append_title_with_feature_variants "$candidates" "$split_clean")"
+  fi
+
+  if [ -n "$file_title" ]; then
+    candidates="$(append_title_with_feature_variants "$candidates" "$file_clean")"
+    if [ "$file_split_title" != "$file_title" ]; then
+      candidates="$(append_title_with_feature_variants "$candidates" "$file_split_clean")"
+    fi
+  fi
+
+  candidates="$(append_title_with_feature_variants "$candidates" "$raw_title")"
+  if [ "$split_title" != "$raw_title" ]; then
+    candidates="$(append_title_with_feature_variants "$candidates" "$split_title")"
+  fi
+  if [ -n "$file_title" ]; then
+    candidates="$(append_title_with_feature_variants "$candidates" "$file_title")"
+    if [ "$file_split_title" != "$file_title" ]; then
+      candidates="$(append_title_with_feature_variants "$candidates" "$file_split_title")"
+    fi
+  fi
+
+  if [ -z "$candidates" ]; then
+    candidates="Unknown Title"
+  fi
+
+  printf '%s\n' "$candidates"
+}
+
+first_lookup_title() {
+  printf '%s\n' "$1" | awk 'NF { print; exit }'
+}
+
+is_generic_album_artist() {
+  norm="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
+  norm="$(trim_value "$norm")"
+  case "$norm" in
+    "various artists" | "various artist" | "various" | "va" | "soundtrack" | "original soundtrack" | "original motion picture soundtrack")
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+build_lookup_artists() {
+  track_artist="$(trim_value "${ARTIST:-}")"
+  album_artist="$(trim_value "${ALBUM_ARTIST:-${ALBUMARTIST:-}}")"
+  raw_title="$(trim_value "${TITLE:-}")"
+  file_title="$(title_from_file_value "${FILE:-}")"
+  if [ -z "$raw_title" ] && [ -n "$file_title" ]; then
+    raw_title="$file_title"
+  fi
+
+  title_artist="$(artist_before_dash "$raw_title")"
+  if [ -z "$title_artist" ] && [ -n "$file_title" ]; then
+    title_artist="$(artist_before_dash "$file_title")"
+  fi
+
+  if is_enabled_flag "${LYRICS_TITLE_CLEANUP:-1}"; then
+    cleaned_title_artist="$(artist_before_dash "$(strip_title_noise "$raw_title")")"
+    if [ -n "$cleaned_title_artist" ]; then
+      title_artist="$cleaned_title_artist"
+    fi
+    if [ -z "$title_artist" ] && [ -n "$file_title" ]; then
+      cleaned_file_title_artist="$(artist_before_dash "$(strip_title_noise "$file_title")")"
+      if [ -n "$cleaned_file_title_artist" ]; then
+        title_artist="$cleaned_file_title_artist"
+      fi
+    fi
+  fi
+
+  candidates=""
+  if [ -n "$title_artist" ] && [ -n "$track_artist" ] && [ "$title_artist" != "$track_artist" ]; then
+    candidates="$(append_unique_line "$candidates" "$title_artist")"
+  fi
+
+  if [ -n "$album_artist" ] && ! is_generic_album_artist "$album_artist"; then
+    candidates="$(append_unique_line "$candidates" "$album_artist")"
+  fi
+
+  if [ -n "$track_artist" ]; then
+    candidates="$(append_unique_line "$candidates" "$track_artist")"
+  fi
+
+  if [ -z "$candidates" ] && [ -n "$album_artist" ]; then
+    candidates="$(append_unique_line "$candidates" "$album_artist")"
+  fi
+  if [ -n "$title_artist" ]; then
+    candidates="$(append_unique_line "$candidates" "$title_artist")"
+  fi
+  if [ -z "$candidates" ]; then
+    candidates="Unknown Artist"
+  fi
+
+  printf '%s\n' "$candidates"
+}
+
+first_lookup_artist() {
+  printf '%s\n' "$1" | awk 'NF { print; exit }'
+}
+
+detect_expected_duration() {
+  command -v ffprobe >/dev/null 2>&1 || return 1
+  [ -n "${LRC_FILE:-}" ] || return 1
+
+  base_path="${LRC_FILE%.*}"
+  for ext in flac mp3 m4a ogg opus wav aac; do
+    audio_file="${base_path}.${ext}"
+    [ -f "$audio_file" ] || continue
+    ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$audio_file" 2>/dev/null | awk 'NR==1 { printf "%.3f", $1 + 0; exit }'
+    return 0
+  done
+
+  return 1
+}
+
+log_track_fetch_error() {
+  rc="$1"
+  details_file="$2"
+
+  if [ "$rc" -lt 2 ] && [ "$rc" -ne 124 ]; then
+    return
+  fi
+
+  mkdir -p "$LYRICS_DEBUG_DIR" 2>/dev/null || return
+  {
+    printf '[%s] rc=%s file=%s artist=%s title=%s\n' \
+      "$(date '+%Y-%m-%d %H:%M:%S')" \
+      "$rc" \
+      "${FILE:-}" \
+      "${ARTIST:-}" \
+      "${TITLE:-}"
+    if [ -s "$details_file" ]; then
+      sed -n '1,200p' "$details_file"
+    else
+      printf '(no stderr output)\n'
+    fi
+    printf '\n'
+  } >>"$LYRICS_DEBUG_LOG" 2>/dev/null || true
+}
+
+run_track_fetcher() {
+  timeout_override="$1"
+  shift
+
+  timeout_seconds="$(positive_int_or_default "${LYRICS_TRACK_TIMEOUT_SEC:-20}" 20)"
+  timeout_override="$(trim_value "$timeout_override")"
+  case "$timeout_override" in
+    '' | *[!0-9]*)
+      :
+      ;;
+    *)
+      if [ "$timeout_override" -gt 0 ] && [ "$timeout_override" -lt "$timeout_seconds" ]; then
+        timeout_seconds="$timeout_override"
+      fi
+      ;;
+  esac
+
+  tmp_log="$(mktemp "${TMPDIR:-/tmp}/fetch_lyrics.XXXXXX" 2>/dev/null || true)"
+  timeout_cmd="$(resolve_timeout_cmd)"
+
+  if [ -n "$timeout_cmd" ] && [ "$timeout_seconds" -gt 0 ]; then
+    if [ -n "$tmp_log" ]; then
+      "$timeout_cmd" "$timeout_seconds" "$PYTHON_EXEC" "$TRACK_FETCHER" "$@" >"$tmp_log" 2>&1
+    else
+      "$timeout_cmd" "$timeout_seconds" "$PYTHON_EXEC" "$TRACK_FETCHER" "$@" >/dev/null 2>&1
+    fi
+    rc=$?
+  else
+    if [ -n "$tmp_log" ]; then
+      "$PYTHON_EXEC" "$TRACK_FETCHER" "$@" >"$tmp_log" 2>&1
+    else
+      "$PYTHON_EXEC" "$TRACK_FETCHER" "$@" >/dev/null 2>&1
+    fi
+    rc=$?
+  fi
+
+  if [ -n "$tmp_log" ]; then
+    log_track_fetch_error "$rc" "$tmp_log"
+    rm -f "$tmp_log"
+  fi
+
+  if [ "$rc" -eq 124 ]; then
+    return 2
+  fi
+
+  return "$rc"
+}
+
+fetch_candidate_track() {
+  candidate_artist="$1"
+  candidate_title="$2"
+  mode="${3:-any}"
+  call_timeout="${4:-}"
+
+  if [ -n "${EXPECTED_DURATION:-}" ]; then
+    if [ "$mode" = "synced" ]; then
+      run_track_fetcher "$call_timeout" \
+        --artist "$candidate_artist" \
+        --title "$candidate_title" \
+        --album "$ALBUM" \
+        --lrc-file "$LRC_FILE" \
+        --expected-duration "$EXPECTED_DURATION" \
+        --require-synced
+      return $?
+    fi
+
+    run_track_fetcher "$call_timeout" \
+      --artist "$candidate_artist" \
+      --title "$candidate_title" \
+      --album "$ALBUM" \
+      --lrc-file "$LRC_FILE" \
+      --expected-duration "$EXPECTED_DURATION"
+    return $?
+  fi
+
+  if [ "$mode" = "synced" ]; then
+    run_track_fetcher "$call_timeout" \
+      --artist "$candidate_artist" \
+      --title "$candidate_title" \
+      --album "$ALBUM" \
+      --lrc-file "$LRC_FILE" \
+      --require-synced
+    return $?
+  fi
+
+  run_track_fetcher "$call_timeout" \
+    --artist "$candidate_artist" \
+    --title "$candidate_title" \
+    --album "$ALBUM" \
+    --lrc-file "$LRC_FILE"
+}
+
+run_lookup_phase() {
+  phase_mode="$1"
+  phase_deadline_epoch="$2"
+
+  while IFS= read -r candidate_title; do
+    [ -n "$candidate_title" ] || continue
+    while IFS= read -r candidate_artist; do
+      [ -n "$candidate_artist" ] || continue
+
+      remaining_sec="$(remaining_lookup_budget "$phase_deadline_epoch")"
+      if [ "$remaining_sec" -le 0 ]; then
+        return 124
+      fi
+
+      TRY_RC=0
+      fetch_candidate_track "$candidate_artist" "$candidate_title" "$phase_mode" "$remaining_sec" || TRY_RC=$?
+      if [ "$TRY_RC" -eq 0 ]; then
+        LOOKUP_ARTIST="$candidate_artist"
+        LOOKUP_TITLE="$candidate_title"
+        FOUND=1
+        return 0
+      fi
+      if [ "$TRY_RC" -ge 2 ]; then
+        MULTI_RC="$TRY_RC"
+      fi
+    done <<EOF
+$LOOKUP_ARTISTS
+EOF
+  done <<EOF
+$LOOKUP_TITLES
+EOF
+
+  return 1
+}
+
+if [ -n "${LRC_FILE:-}" ] && [ -s "$LRC_FILE" ]; then
+  rmpc remote --pid "$PID" indexlrc --path "$LRC_FILE"
+  exit
+fi
+
+if [ -z "${LRC_FILE:-}" ]; then
+  rmpc remote --pid "$PID" status "Lyrics path not provided" --level error
+  exit
+fi
+
+if [ ! -s "$LRC_FILE" ]; then
+  mkdir -p "$(dirname "$LRC_FILE")"
+
+  if [ ! -f "$LYRICS_RUNTIME_SH" ]; then
+    rmpc remote --pid "$PID" status "Lyrics runtime helper not found" --level error
+    exit
+  fi
+  if [ ! -f "$TRACK_FETCHER" ]; then
+    rmpc remote --pid "$PID" status "Track lyrics fetcher not found" --level error
+    exit
+  fi
+
+  # shellcheck disable=SC1090
+  . "$LYRICS_RUNTIME_SH"
+  PYTHON_EXEC="$(resolve_lyrics_python 2>/dev/null || true)"
+  if [ -z "$PYTHON_EXEC" ]; then
+    rmpc remote --pid "$PID" status "No Python interpreter available for lyrics fetch" --level error
+    exit
+  fi
+
+  LOOKUP_ARTISTS="$(build_lookup_artists)"
+  LOOKUP_TITLES="$(build_lookup_titles)"
+  EXPECTED_DURATION="$(detect_expected_duration 2>/dev/null || true)"
+
+  MULTI_RC=0
+  LOOKUP_ARTIST=""
+  LOOKUP_TITLE=""
+  FOUND=0
+  LOOKUP_TIMED_OUT=0
+  LOOKUP_MAX_TOTAL_SEC="$(positive_int_or_default "${LYRICS_MAX_TOTAL_SEC:-20}" 20)"
+  LOOKUP_DEADLINE_EPOCH=$(( $(date +%s) + LOOKUP_MAX_TOTAL_SEC ))
+
+  PHASE_RC=0
+  run_lookup_phase "synced" "$LOOKUP_DEADLINE_EPOCH" || PHASE_RC=$?
+  if [ "$PHASE_RC" -eq 124 ]; then
+    LOOKUP_TIMED_OUT=1
+  fi
+
+  if [ "$FOUND" -ne 1 ] && [ "$PHASE_RC" -ne 124 ]; then
+    PHASE_RC=0
+    run_lookup_phase "any" "$LOOKUP_DEADLINE_EPOCH" || PHASE_RC=$?
+    if [ "$PHASE_RC" -eq 124 ]; then
+      LOOKUP_TIMED_OUT=1
+    fi
+  fi
+
+  if [ "$FOUND" -ne 1 ]; then
+    DISPLAY_ARTIST="$(first_lookup_artist "$LOOKUP_ARTISTS")"
+    DISPLAY_TITLE="$(first_lookup_title "$LOOKUP_TITLES")"
+    [ -n "$DISPLAY_ARTIST" ] || DISPLAY_ARTIST="${ARTIST:-Unknown Artist}"
+    [ -n "$DISPLAY_TITLE" ] || DISPLAY_TITLE="${TITLE:-Unknown Title}"
+    if [ "$LOOKUP_TIMED_OUT" -eq 1 ]; then
+      rmpc remote --pid "$PID" status "Lyrics lookup timed out for $DISPLAY_ARTIST - $DISPLAY_TITLE (see $LYRICS_DEBUG_LOG)" --level error
+    elif [ "$MULTI_RC" -ge 2 ]; then
+      rmpc remote --pid "$PID" status "Multi-source lyrics lookup failed for $DISPLAY_ARTIST - $DISPLAY_TITLE (see $LYRICS_DEBUG_LOG)" --level error
+    else
+      rmpc remote --pid "$PID" status "Lyrics for $DISPLAY_ARTIST - $DISPLAY_TITLE not found" --level warn
+    fi
+    exit
+  fi
+
+  [ -n "$LOOKUP_TITLE" ] || LOOKUP_TITLE="$(first_lookup_title "$LOOKUP_TITLES")"
+  [ -n "$LOOKUP_TITLE" ] || LOOKUP_TITLE="${TITLE:-Unknown Title}"
+  rmpc remote --pid "$PID" indexlrc --path "$LRC_FILE"
+  rmpc remote --pid "$PID" status "Downloaded lyrics for $LOOKUP_ARTIST - $LOOKUP_TITLE" --level info
+fi

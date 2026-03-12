@@ -1,13 +1,39 @@
 #!/usr/bin/env bash
 # Sync configuration files to dotfiles directory
-# Usage: dotfiles-sync [--dry-run]
+# Usage: dotfiles-sync [--dry-run|--list]
 
 set -euo pipefail
 
-DOTFILES_DIR="$HOME/.dotfiles"
+DOTFILES_DIR="${DOTFILES_DIR:-$HOME/dotfiles/Configs}"
 DRY_RUN=false
+LIST_ONLY=false
 
-[[ "${1:-}" == "--dry-run" ]] && DRY_RUN=true
+usage() {
+  cat <<USAGE
+Usage: $(basename "$0") [options]
+Options:
+  --dry-run   Preview actual sync changes without writing
+  --list      List configured sync mappings only
+  -h, --help  Show this help
+USAGE
+}
+
+while [[ $# -gt 0 ]]; do
+  case "${1}" in
+    --dry-run) DRY_RUN=true ;;
+    --list) LIST_ONLY=true ;;
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: ${1}" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+  shift
+done
 
 # Colors for output
 RED='\033[0;31m'
@@ -21,6 +47,25 @@ log_success() { echo -e "${GREEN}[OK]${NC} $1"; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
+emit_preview_result() {
+  local name="$1"
+  local output="$2"
+
+  log_info "Preview $name"
+  if [[ -n "$output" ]]; then
+    printf '%s\n' "$output"
+  else
+    echo "No changes."
+  fi
+}
+
+require_rsync() {
+  if ! command -v rsync &>/dev/null; then
+    log_error "rsync is required (cp fallback removed). Install rsync and rerun."
+    exit 1
+  fi
+}
+
 # Create dotfiles directory structure
 create_dirs() {
   local dirs=(
@@ -31,7 +76,9 @@ create_dirs() {
   )
 
   for dir in "${dirs[@]}"; do
-    if $DRY_RUN; then
+    if $LIST_ONLY; then
+      echo "PLAN DIR    $dir"
+    elif $DRY_RUN; then
       echo "Would create: $dir"
     else
       mkdir -p "$dir"
@@ -44,28 +91,58 @@ copy_config() {
   local src="$1"
   local dest="$2"
   local name="$3"
+  local extra_exclude="${4:-}"
+  local rsync_args=()
+  local output=""
+
+  if $LIST_ONLY; then
+    if [[ -n "$extra_exclude" ]]; then
+      echo "PLAN DIR    $src -> $dest (exclude: $extra_exclude)"
+    else
+      echo "PLAN DIR    $src -> $dest"
+    fi
+    return
+  fi
 
   if [[ ! -e "$src" ]]; then
     log_warn "Skipping $name (not found: $src)"
     return
   fi
 
-  if $DRY_RUN; then
-    echo "Would copy: $src -> $dest"
-  else
-    # Remove old version if exists
-    rm -rf "$dest"
-
-    # Copy with rsync for better handling
-    if command -v rsync &>/dev/null; then
-      rsync -a --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' \
-            --exclude='node_modules' --exclude='.cache' --exclude='lazy-lock.json' \
-            "$src" "$(dirname "$dest")/"
-    else
-      cp -r "$src" "$dest"
-    fi
-    log_success "Copied $name"
+  if [[ ! -d "$src" ]]; then
+    copy_file "$src" "$dest" "$name"
+    return
   fi
+
+  rsync_args=(
+    -a
+    --mkpath
+    --delete
+    --delete-excluded
+    --exclude='.git'
+    --exclude='__pycache__'
+    --exclude='*.pyc'
+    --exclude='node_modules'
+    --exclude='.cache'
+    --exclude='lazy-lock.json'
+  )
+  if [[ -n "$extra_exclude" ]]; then
+    rsync_args+=(--exclude="$extra_exclude")
+  fi
+
+  if $DRY_RUN; then
+    rsync_args+=(--dry-run --itemize-changes)
+    if ! output=$(rsync "${rsync_args[@]}" "$src"/ "$dest"/ 2>&1); then
+      log_error "Preview failed for $name"
+      printf '%s\n' "$output" >&2
+      return 1
+    fi
+    emit_preview_result "$name" "$output"
+    return
+  fi
+
+  rsync "${rsync_args[@]}" "$src"/ "$dest"/
+  log_success "Copied $name"
 }
 
 # Copy a single file
@@ -73,19 +150,60 @@ copy_file() {
   local src="$1"
   local dest="$2"
   local name="$3"
+  local rsync_args=(-a --mkpath)
+  local output=""
 
-  if [[ ! -f "$src" ]]; then
-    log_warn "Skipping $name (not found: $src)"
+  if $LIST_ONLY; then
+    echo "PLAN FILE   $src -> $dest"
     return
   fi
 
-  if $DRY_RUN; then
-    echo "Would copy: $src -> $dest"
-  else
-    mkdir -p "$(dirname "$dest")"
-    cp "$src" "$dest"
-    log_success "Copied $name"
+  if [[ ! -e "$src" && ! -L "$src" ]]; then
+    if [[ -e "$dest" || -L "$dest" ]]; then
+      if $DRY_RUN; then
+        emit_preview_result "$name" "*deleting   $(basename "$dest")"
+      else
+        rm -rf -- "$dest"
+        log_success "Removed stale $name"
+      fi
+    else
+      log_warn "Skipping $name (not found: $src)"
+    fi
+    return
   fi
+
+  if [[ -d "$dest" && ! -L "$dest" ]]; then
+    if $DRY_RUN; then
+      emit_preview_result "$name" $'*deleting   '"$(basename "$dest")"$'\n>f+++++++++ '"$(basename "$dest")"
+      return
+    fi
+    rm -rf -- "$dest"
+  fi
+
+  if $DRY_RUN; then
+    rsync_args+=(--dry-run --itemize-changes)
+    if output=$(rsync "${rsync_args[@]}" "$src" "$dest" 2>&1); then
+      emit_preview_result "$name" "$output"
+      return
+    fi
+
+    if [[ ! -d "$(dirname "$dest")" && "$(basename "$src")" == "$(basename "$dest")" ]]; then
+      if ! output=$(rsync "${rsync_args[@]}" "$src" "$(dirname "$dest")"/ 2>&1); then
+        log_error "Preview failed for $name"
+        printf '%s\n' "$output" >&2
+        return 1
+      fi
+      emit_preview_result "$name" "$output"
+      return
+    fi
+
+    log_error "Preview failed for $name"
+    printf '%s\n' "$output" >&2
+    return 1
+  fi
+
+  rsync "${rsync_args[@]}" "$src" "$dest"
+  log_success "Copied $name"
 }
 
 echo "========================================="
@@ -93,15 +211,28 @@ echo "  Dotfiles Sync"
 echo "========================================="
 echo "Target: $DOTFILES_DIR"
 $DRY_RUN && echo "(DRY RUN - no changes will be made)"
+$LIST_ONLY && echo "(LIST MODE - plan only, no checks or filesystem writes)"
 echo
 
+if ! $LIST_ONLY; then
+  require_rsync
+fi
+
 # Create directory structure
-log_info "Creating directory structure..."
+if $LIST_ONLY; then
+  log_info "Planning directory structure..."
+else
+  log_info "Creating directory structure..."
+fi
 create_dirs
 echo
 
 # ~/.config directories
-log_info "Syncing ~/.config..."
+if $LIST_ONLY; then
+  log_info "Planning ~/.config mappings..."
+else
+  log_info "Syncing ~/.config..."
+fi
 
 # Hyprland ecosystem
 copy_config "$HOME/.config/hypr" "$DOTFILES_DIR/.config/hypr" "hypr"
@@ -118,15 +249,28 @@ copy_config "$HOME/.config/alacritty" "$DOTFILES_DIR/.config/alacritty" "alacrit
 copy_config "$HOME/.config/zsh" "$DOTFILES_DIR/.config/zsh" "zsh"
 copy_file "$HOME/.zshenv" "$DOTFILES_DIR/.zshenv" ".zshenv"
 
-# Editor
-copy_config "$HOME/neocode" "$DOTFILES_DIR/neocode" "neovim (neocode)"
-
 # Theming
 copy_config "$HOME/.config/wal" "$DOTFILES_DIR/.config/wal" "wal"
 copy_config "$HOME/.config/Kvantum" "$DOTFILES_DIR/.config/Kvantum" "Kvantum"
+copy_config "$HOME/.config/gtk-3.0" "$DOTFILES_DIR/.config/gtk-3.0" "gtk-3.0"
 
 # Other apps
-copy_config "$HOME/.config/tmux" "$DOTFILES_DIR/.config/tmux" "tmux"
+copy_config "$HOME/.config/qt5ct" "$DOTFILES_DIR/.config/qt5ct" "qt5ct"
+copy_config "$HOME/.config/qt6ct" "$DOTFILES_DIR/.config/qt6ct" "qt6ct"
+copy_config "$HOME/.config/qutebrowser" "$DOTFILES_DIR/.config/qutebrowser" "qutebrowser"
+copy_config "$HOME/.config/nwg-look" "$DOTFILES_DIR/.config/nwg-look" "nwg-look"
+copy_config "$HOME/.config/menus" "$DOTFILES_DIR/.config/menus" "menus"
+copy_config "$HOME/.config/vim" "$DOTFILES_DIR/.config/vim" "vim"
+copy_config "$HOME/.config/xsettingsd" "$DOTFILES_DIR/.config/xsettingsd" "xsettingsd"
+copy_config "$HOME/.config/rmpc" "$DOTFILES_DIR/.config/rmpc" "rmpc"
+copy_config "$HOME/.config/systemd" "$DOTFILES_DIR/.config/systemd" "systemd"
+copy_config "$HOME/.config/uwsm" "$DOTFILES_DIR/.config/uwsm" "uwsm"
+copy_file "$HOME/.config/xdg-terminals.list" "$DOTFILES_DIR/.config/xdg-terminals.list" "xdg-terminals.list"
+copy_file "$HOME/.config/kdeglobals" "$DOTFILES_DIR/.config/kdeglobals" "kdeglobals"
+copy_file "$HOME/.config/mdp.conf" "$DOTFILES_DIR/.config/mdp.conf" "mdp.conf"
+copy_file "$HOME/.config/baloofilerc" "$DOTFILES_DIR/.config/baloofilerc" "baloofilerc"
+copy_file "$HOME/.config/dolphinrc" "$DOTFILES_DIR/.config/dolphinrc" "dolphinrc"
+copy_config "$HOME/.config/tmux" "$DOTFILES_DIR/.config/tmux" "tmux" "plugins/"
 copy_config "$HOME/.config/starship.toml" "$DOTFILES_DIR/.config/starship.toml" "starship"
 copy_config "$HOME/.config/fastfetch" "$DOTFILES_DIR/.config/fastfetch" "fastfetch"
 copy_config "$HOME/.config/btop" "$DOTFILES_DIR/.config/btop" "btop"
@@ -135,42 +279,34 @@ copy_config "$HOME/.config/cava" "$DOTFILES_DIR/.config/cava" "cava"
 echo
 
 # ~/.local directories
-log_info "Syncing ~/.local..."
+if $LIST_ONLY; then
+  log_info "Planning ~/.local mappings..."
+else
+  log_info "Syncing ~/.local..."
+fi
 
 # Scripts library
 copy_config "$HOME/.local/lib/hypr" "$DOTFILES_DIR/.local/lib/hypr" "lib/hypr scripts"
 
-# Share files
+# Share files (explicit allowlist)
+copy_config "$HOME/.local/share/fonts" "$DOTFILES_DIR/.local/share/fonts" "share/fonts"
 copy_config "$HOME/.local/share/hypr" "$DOTFILES_DIR/.local/share/hypr" "share/hypr"
+copy_config "$HOME/.local/share/icons" "$DOTFILES_DIR/.local/share/icons" "share/icons"
+copy_config "$HOME/.local/share/themes" "$DOTFILES_DIR/.local/share/themes" "share/themes"
 
-# Select bin scripts (not all, just custom ones)
-log_info "Syncing selected bin scripts..."
-mkdir -p "$DOTFILES_DIR/.local/bin"
-
-# Core hypr tools
-for script in hyprshell hydectl hyq hypr-ipc; do
-  copy_file "$HOME/.local/bin/$script" "$DOTFILES_DIR/.local/bin/$script" "bin/$script"
-done
-
-# Omarchy scripts
-if $DRY_RUN; then
-  echo "Would copy: omarchy-* scripts"
+# Sync ~/.local/bin as a real mirror, excluding the claude launcher symlink
+if $LIST_ONLY; then
+  log_info "Planning ~/.local/bin mappings (excluding claude)..."
 else
-  for script in "$HOME"/.local/bin/omarchy-*; do
-    [[ -f "$script" ]] && cp "$script" "$DOTFILES_DIR/.local/bin/"
-  done
-  log_success "Copied omarchy-* scripts"
+  log_info "Syncing ~/.local/bin (excluding claude)..."
 fi
-
-echo
-
-# System documentation
-log_info "Syncing documentation..."
-copy_file "$HOME/SYSTEM_DOCUMENTATION.md" "$DOTFILES_DIR/SYSTEM_DOCUMENTATION.md" "SYSTEM_DOCUMENTATION.md"
+copy_config "$HOME/.local/bin" "$DOTFILES_DIR/.local/bin" "bin" "claude"
 
 echo
 echo "========================================="
-if $DRY_RUN; then
+if $LIST_ONLY; then
+  echo "List complete."
+elif $DRY_RUN; then
   echo "Dry run complete. Run without --dry-run to apply."
 else
   log_success "Dotfiles sync complete!"

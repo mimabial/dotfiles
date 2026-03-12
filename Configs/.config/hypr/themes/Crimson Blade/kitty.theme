@@ -1,6 +1,6 @@
 $HOME/.config/kitty/theme.conf|killall -SIGUSR1 kitty
 
-active_tab_foreground   #f6ffec
+active_tab_foreground   #e9114f
 inactive_tab_foreground #6c5a30
 tab_bar_background      #03063c
 

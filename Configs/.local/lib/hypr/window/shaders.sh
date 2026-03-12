@@ -3,8 +3,7 @@
 [[ "${HYPR_SHELL_INIT}" -ne 1 ]] && eval "$(hyprshell init)"
 
 # Set variables
-confDir="${XDG_CONFIG_HOME:-$HOME/.config}"
-shaders_dir="$confDir/hypr/shaders"
+shaders_dir="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/shaders"
 
 # Ensure the shaders directory exists
 if [ ! -d "$shaders_dir" ]; then
@@ -96,7 +95,7 @@ fn_select() {
     exit 0
   fi
 
-  set_conf "HYPR_SHADER" "$selected_shader"
+  state_set "HYPR_SHADER" "$selected_shader" "staterc"
   fn_update "$selected_shader"
   send_notifs -i "preferences-desktop-display" "Shader:" "$selected_shader"
 }
@@ -105,7 +104,7 @@ fn_reload() {
   if [ -z "$HYPR_SHADER" ]; then
     HYPR_SHADER="disable"
   fi
-  set_conf "HYPR_SHADER" "$HYPR_SHADER"
+  state_set "HYPR_SHADER" "$HYPR_SHADER" "staterc"
   fn_update "$HYPR_SHADER"
   send_notifs -i "preferences-desktop-display" "Shader reloaded:" "$HYPR_SHADER"
 }
@@ -178,7 +177,7 @@ parse_includes_and_update() {
     return 1
   fi
   # Write the shaders.conf file with the requested banner and path
-  cat <<EOF >"$confDir/hypr/shaders.conf"
+  cat <<EOF >"${XDG_CONFIG_HOME:-$HOME/.config}/hypr/shaders.conf"
 
 #! █▀ █░█ ▄▀█ █▀▄ █▀▀ █▀█ █▀
 #! ▄█ █▀█ █▀█ █▄▀ ██▄ █▀▄ ▄█

@@ -10,7 +10,17 @@ fi
 STATE_DIR="${STATE_DIR}/hypr"
 KEEP_AWAKE_STATE_FILE="${STATE_DIR}/keep-awake.state"
 AUDIO_STATE_FILE="${STATE_DIR}/keep-awake-audio.state"
-POLL_INTERVAL="${HYPR_IDLE_MANAGER_POLL:-2}"
+WATCHDOG_INTERVAL="${HYPR_IDLE_MANAGER_WATCHDOG:-60}"
+PLAYER_FOLLOW_RETRY="${HYPR_IDLE_MANAGER_PLAYER_RETRY:-2}"
+
+[[ "${WATCHDOG_INTERVAL}" =~ ^[0-9]+$ ]] || WATCHDOG_INTERVAL=60
+[[ "${PLAYER_FOLLOW_RETRY}" =~ ^[0-9]+$ ]] || PLAYER_FOLLOW_RETRY=2
+(( WATCHDOG_INTERVAL < 1 )) && WATCHDOG_INTERVAL=60
+(( PLAYER_FOLLOW_RETRY < 1 )) && PLAYER_FOLLOW_RETRY=2
+
+WAKE_SLEEP_PID=""
+WAKE_SIGNALLED=0
+declare -a WATCHER_PIDS=()
 
 systemd_user_ok() {
   systemctl --user is-active default.target >/dev/null 2>&1
@@ -71,7 +81,7 @@ stop_hypridle() {
 
 last_mode=""
 
-while true; do
+reconcile_mode() {
   manual_on=0
   audio_on=0
   if manual_active; then
@@ -105,6 +115,70 @@ while true; do
       fi
     fi
   fi
+}
 
-  sleep "${POLL_INTERVAL}"
+watch_state_files() {
+  command -v inotifywait >/dev/null 2>&1 || return 0
+  mkdir -p "${STATE_DIR}"
+  (
+    set +e
+    while :; do
+      inotifywait -m -q \
+        -e close_write -e create -e delete -e moved_to -e moved_from -e attrib \
+        --format '%f' "${STATE_DIR}" 2>/dev/null | while IFS= read -r changed_file; do
+        case "${changed_file}" in
+          "$(basename "${KEEP_AWAKE_STATE_FILE}")" | "$(basename "${AUDIO_STATE_FILE}")")
+            kill -USR1 "$$" 2>/dev/null || true
+            ;;
+        esac
+      done || true
+      sleep 1
+    done
+  ) &
+  WATCHER_PIDS+=("$!")
+}
+
+watch_player_events() {
+  command -v playerctl >/dev/null 2>&1 || return 0
+  (
+    set +e
+    while :; do
+      playerctl -a --follow status 2>/dev/null | while IFS= read -r _; do
+        kill -USR1 "$$" 2>/dev/null || true
+      done || true
+      sleep "${PLAYER_FOLLOW_RETRY}"
+    done
+  ) &
+  WATCHER_PIDS+=("$!")
+}
+
+cleanup() {
+  if [[ -n "${WAKE_SLEEP_PID}" ]]; then
+    kill "${WAKE_SLEEP_PID}" 2>/dev/null || true
+  fi
+  if ((${#WATCHER_PIDS[@]} > 0)); then
+    kill "${WATCHER_PIDS[@]}" 2>/dev/null || true
+    wait "${WATCHER_PIDS[@]}" 2>/dev/null || true
+  fi
+}
+
+trap 'WAKE_SIGNALLED=1; [[ -n "${WAKE_SLEEP_PID}" ]] && kill "${WAKE_SLEEP_PID}" 2>/dev/null || true' USR1
+trap 'exit 0' INT TERM
+trap cleanup EXIT
+
+mkdir -p "${STATE_DIR}"
+watch_state_files
+watch_player_events
+
+reconcile_mode
+while :; do
+  WAKE_SIGNALLED=0
+  sleep "${WATCHDOG_INTERVAL}" &
+  WAKE_SLEEP_PID="$!"
+  if (( WAKE_SIGNALLED == 1 )); then
+    kill "${WAKE_SLEEP_PID}" 2>/dev/null || true
+  fi
+  wait "${WAKE_SLEEP_PID}" 2>/dev/null || true
+  WAKE_SLEEP_PID=""
+  reconcile_mode
 done

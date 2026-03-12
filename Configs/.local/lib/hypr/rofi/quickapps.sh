@@ -5,8 +5,7 @@
 scrDir=$(dirname "$(realpath "$0")")
 scrDir="${scrDir:-$HOME/.local/lib/hypr}"
 source "$scrDir/globalcontrol.sh"
-confDir=${confDir:-$XDG_CONFIG_HOME}
-rofi_config="$confDir/rofi/quickapps.rasi"
+rofi_config="${XDG_CONFIG_HOME}/rofi/quickapps.rasi"
 
 if [ $# -eq 0 ]; then
   echo "usage: ./quickapps.sh <app1> <app2> ... <app[n]>"

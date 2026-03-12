@@ -68,7 +68,12 @@ UPDATED=()
 # 1. UPDATE HYPR VARIABLES
 # ============================================================================
 
-VARIABLES_FILE="${HYPR_CONFIG_HOME:-$HOME/.config/hypr}/variables.conf"
+HYPR_SHARED_DIR="${HYPR_DATA_HOME:-$HOME/.local/share/hypr}"
+if [[ -f "${HYPR_SHARED_DIR}/variables.conf" ]]; then
+  VARIABLES_FILE="${HYPR_SHARED_DIR}/variables.conf"
+else
+  VARIABLES_FILE="${HYPR_CONFIG_HOME:-$HOME/.config/hypr}/variables.conf"
+fi
 USER_FONTS_FILE="${HYPR_CONFIG_HOME:-$HOME/.config/hypr}/userfonts.conf"
 
 update_or_add_var() {
@@ -195,22 +200,7 @@ if [[ -f "$FONTCONFIG_FILE" ]]; then
 fi
 
 # ============================================================================
-# 4. UPDATE SWAYOSD STYLE
-# ============================================================================
-
-SWAYOSD_STYLE="$HOME/.config/swayosd/style.css"
-if [[ -f "$SWAYOSD_STYLE" ]]; then
-  echo "📝 Updating SwayOSD..."
-  sed -i "s|font-family: .*|font-family: '$FONT_NAME';|g" "$SWAYOSD_STYLE"
-
-  # Restart SwayOSD if running
-  hyprshell service/restart-swayosd.sh >/dev/null 2>&1 || true
-
-  UPDATED+=("SwayOSD style")
-fi
-
-# ============================================================================
-# 5. REGENERATE WAYBAR (reads from $BAR_FONT, not $MONOSPACE_FONT)
+# 4. REGENERATE WAYBAR (reads from $BAR_FONT, not $MONOSPACE_FONT)
 # ============================================================================
 
 # NOTE: Waybar uses $BAR_FONT from variables.conf, not $MONOSPACE_FONT
@@ -222,16 +212,16 @@ hyprshell service/restart-waybar.sh >/dev/null 2>&1 || true
 UPDATED+=("Waybar (reload)")
 
 # ============================================================================
-# 6. OPTIONAL: WALKER (if used)
+# 5. OPTIONAL: RELOAD ROFI (if running)
 # ============================================================================
 
 if pgrep -x rofi >/dev/null 2>&1; then
-  hyprshell service/restart-walker.sh >/dev/null 2>&1 || true
-  UPDATED+=("Walker launcher")
+  pkill -x rofi >/dev/null 2>&1 || true
+  UPDATED+=("Rofi launcher")
 fi
 
 # ============================================================================
-# 7. REFRESH FONT CACHE
+# 6. REFRESH FONT CACHE
 # ============================================================================
 
 echo "📝 Refreshing font cache..."

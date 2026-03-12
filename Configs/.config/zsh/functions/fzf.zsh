@@ -19,6 +19,7 @@ typeset -ga _FZF_EXCLUDE_DIRS=(
     'cfg_backups'
     'chromium'
     'code_tracker'
+    'dotfiles'
     'dist'
     'flatpak'
     'go'
@@ -60,9 +61,61 @@ typeset -ga _FZF_SYMLINK_EXCLUDE_PATHS=()
 typeset -g _FZF_SYMLINK_EXCLUDE_RG=""
 typeset -ga _FZF_SYMLINK_EXCLUDE_FD=()
 typeset -g _FZF_SYMLINK_EXCLUDE_FIND=""
+typeset -g _FZF_SEARCH_ROOT=""
+typeset -g _FZF_SEARCH_QUERY=""
+
+_fzf_term_columns() {
+    local cols="${FZF_LAYOUT_COLUMNS:-$COLUMNS}"
+    if [[ -z "$cols" || "$cols" != <-> ]]; then
+        cols=$(command tput cols 2>/dev/null)
+    fi
+    [[ -z "$cols" || "$cols" != <-> ]] && cols=120
+    print -r -- "$cols"
+}
+
+_fzf_layout_mode() {
+    local cols="$(_fzf_term_columns)"
+    local breakpoint="${FZF_LAYOUT_BREAKPOINT:-100}"
+    if [[ -z "$breakpoint" || "$breakpoint" != <-> || "$breakpoint" -lt 80 ]]; then
+        breakpoint=100
+    fi
+
+    if (( cols >= breakpoint )); then
+        print -r -- "wide"
+    else
+        print -r -- "narrow"
+    fi
+}
+
+_fzf_height_for() {
+    local mode="$1"
+    local profile="${2:-content}"
+    case "$profile:$mode" in
+        dynamic:wide) print -r -- "95%" ;;
+        dynamic:narrow) print -r -- "100%" ;;
+        content:wide) print -r -- "90%" ;;
+        content:narrow) print -r -- "100%" ;;
+        file:wide|dir:wide) print -r -- "80%" ;;
+        file:narrow|dir:narrow) print -r -- "92%" ;;
+        *) print -r -- "90%" ;;
+    esac
+}
+
+_fzf_preview_window_for() {
+    local mode="$1"
+    local profile="${2:-content}"
+    case "$profile:$mode" in
+        dynamic:wide|content:wide) print -r -- "right,60%,border-sharp" ;;
+        dynamic:narrow|content:narrow) print -r -- "down,52%,border-top" ;;
+        file:wide|dir:wide) print -r -- "right,60%,border-sharp" ;;
+        file:narrow|dir:narrow) print -r -- "down,42%,border-top" ;;
+        *) print -r -- "right,60%,border-sharp" ;;
+    esac
+}
 
 _refresh_symlink_excludes() {
-    local root="$PWD"
+    local root="${1:-$PWD}"
+    root="${root:A}"
     if [[ "$_FZF_SYMLINK_EXCLUDE_PWD" == "$root" ]]; then
         return
     fi
@@ -82,7 +135,7 @@ _refresh_symlink_excludes() {
     fi
 
     local has_symlink
-    has_symlink=$(find . -maxdepth "$maxdepth" -type l -print -quit 2>/dev/null)
+    has_symlink=$(find "$root" -maxdepth "$maxdepth" -type l -print -quit 2>/dev/null)
     if [[ -z "$has_symlink" ]]; then
         return
     fi
@@ -91,16 +144,59 @@ _refresh_symlink_excludes() {
     while IFS= read -r sym; do
         target=$(readlink -f -- "$sym" 2>/dev/null) || continue
         if [[ "$target" == "$root"* ]]; then
-            rel="${sym#./}"
+            rel="${sym#$root/}"
+            [[ "$rel" == "$sym" ]] && continue
             _FZF_SYMLINK_EXCLUDE_PATHS+=("$rel")
         fi
-    done < <(find . -maxdepth "$maxdepth" -type l 2>/dev/null)
+    done < <(find "$root" -maxdepth "$maxdepth" -type l 2>/dev/null)
 
     for rel in "${_FZF_SYMLINK_EXCLUDE_PATHS[@]}"; do
         _FZF_SYMLINK_EXCLUDE_RG+=" --glob='!$rel' --glob='!$rel/**'"
         _FZF_SYMLINK_EXCLUDE_FD+=(--exclude "$rel")
         _FZF_SYMLINK_EXCLUDE_FIND+=" -not -path './$rel' -not -path './$rel/*'"
     done
+}
+
+_parse_fzf_scope_args() {
+    local root="$PWD"
+    local -a query_parts=()
+
+    while (($#)); do
+        case "$1" in
+            --home)
+                root="$HOME"
+                ;;
+            --cwd|--here)
+                root="$PWD"
+                ;;
+            --root)
+                shift
+                if (($# == 0)); then
+                    echo "ERROR: --root requires a directory path"
+                    return 1
+                fi
+                root="$1"
+                ;;
+            --)
+                shift
+                query_parts+=("$@")
+                break
+                ;;
+            *)
+                query_parts+=("$1")
+                ;;
+        esac
+        shift
+    done
+
+    root="${root:A}"
+    if [[ ! -d "$root" ]]; then
+        echo "ERROR: Search root not found: $root"
+        return 1
+    fi
+
+    _FZF_SEARCH_ROOT="$root"
+    _FZF_SEARCH_QUERY="${(j: :)query_parts}"
 }
 
 # Generate find exclusion arguments: returns "-name .git -prune -o -name node_modules -prune -o ..."
@@ -169,51 +265,60 @@ _check_dependencies() {
 
 _fuzzy_edit_search_file_content_dynamic() {
     _check_dependencies || return 1
-    
-    local initial_query="$1"
+
+    _parse_fzf_scope_args "$@" || return 1
+    local search_root="$_FZF_SEARCH_ROOT"
+    local initial_query="$_FZF_SEARCH_QUERY"
     local selected_result
     local rg_globs="$(_get_rg_globs)"
     local grep_excludes="$(_get_grep_excludes)"
-    _refresh_symlink_excludes
+    _refresh_symlink_excludes "$search_root"
     local rg_symlink_globs="$_FZF_SYMLINK_EXCLUDE_RG"
     local find_symlink_excludes="$_FZF_SYMLINK_EXCLUDE_FIND"
     local preview_cmd='f=$(echo {} | cut -d: -f1); f=${f%\^@}; line=$(echo {} | cut -d: -f2); if command -v "bat" &>/dev/null; then bat --color=always --style=numbers --highlight-line=$line --line-range=$((line > 5 ? line - 5 : 1)): "$f"; else cat -n "$f" | awk -v line=$line "NR>=line-5 && NR<=line+20 {if(NR==line) print \" -> \" \$0; else print \$0}"; fi'
+    local fzf_mode="$(_fzf_layout_mode)"
+    local fzf_height="$(_fzf_height_for "$fzf_mode" dynamic)"
+    local fzf_preview_window="$(_fzf_preview_window_for "$fzf_mode" dynamic)"
     
     if command -v "rg" &>/dev/null; then
         # Dynamic ripgrep search - re-runs on every keystroke
-        selected_result=$(fzf \
-            --disabled \
-            --ansi \
-            --delimiter=: \
-            --height "95%" \
-            --layout=reverse \
-            --preview-window "right,60%,border-sharp,<60(down,50%,border-top)" \
-            --cycle \
-            --preview "$preview_cmd" \
-            --expect=ctrl-o \
-            --query "$initial_query" \
-            --prompt "Search: " \
-            --bind "start:reload(if [[ -n {q} ]]; then rg --hidden --follow --line-number --column --color=always --smart-case --max-count=30 $rg_globs $rg_symlink_globs {q} 2>/dev/null; fi || true)" \
-            --bind "change:reload(sleep 0.1; if [[ -n {q} ]]; then rg --hidden --follow --line-number --column --color=always --smart-case --max-count=30 $rg_globs $rg_symlink_globs {q} 2>/dev/null || true; fi)" \
-            --header "Dynamic Search | Enter: Edit | Ctrl-O: View"
+        selected_result=$(
+            cd "$search_root" || exit 1
+            fzf \
+                --disabled \
+                --ansi \
+                --delimiter=: \
+                --height "$fzf_height" \
+                --layout=reverse \
+                --preview-window "$fzf_preview_window" \
+                --cycle \
+                --preview "$preview_cmd" \
+                --expect=ctrl-o \
+                --query "$initial_query" \
+                --prompt "Search: " \
+                --bind "start:reload(if [[ -n {q} ]]; then rg --hidden --follow --line-number --column --color=always --smart-case --max-count=30 $rg_globs $rg_symlink_globs {q} 2>/dev/null; fi || true)" \
+                --bind "change:reload(sleep 0.1; if [[ -n {q} ]]; then rg --hidden --follow --line-number --column --color=always --smart-case --max-count=30 $rg_globs $rg_symlink_globs {q} 2>/dev/null || true; fi)" \
+                --header "Dynamic Search | Enter: Edit | Ctrl-O: View"
         )
     else
         # Dynamic grep fallback
-        selected_result=$(fzf \
-            --disabled \
-            --ansi \
-            --delimiter=: \
-            --height "90%" \
-            --layout=reverse \
-            --preview-window "right,60%,border-sharp,<60(down,50%,border-top)" \
-            --cycle \
-            --preview "$preview_cmd" \
-            --expect=ctrl-o \
-            --query "$initial_query" \
-            --prompt "Search: " \
-            --bind "start:reload(if [[ -n {q} ]]; then find -L . -type f $grep_excludes $find_symlink_excludes -exec grep -Hn --color=always {q} {} + 2>/dev/null | head -500; fi || true)" \
-            --bind "change:reload(sleep 0.1; if [[ -n {q} ]]; then find -L . -type f $grep_excludes $find_symlink_excludes -exec grep -Hn --color=always {q} {} + 2>/dev/null | head -1000 || true; fi)" \
-            --header "Dynamic Search | Enter: Edit | Ctrl-O: View"
+        selected_result=$(
+            cd "$search_root" || exit 1
+            fzf \
+                --disabled \
+                --ansi \
+                --delimiter=: \
+                --height "$fzf_height" \
+                --layout=reverse \
+                --preview-window "$fzf_preview_window" \
+                --cycle \
+                --preview "$preview_cmd" \
+                --expect=ctrl-o \
+                --query "$initial_query" \
+                --prompt "Search: " \
+                --bind "start:reload(if [[ -n {q} ]]; then find -L . -type f $grep_excludes $find_symlink_excludes -exec grep -Hn --color=always {q} {} + 2>/dev/null | head -500; fi || true)" \
+                --bind "change:reload(sleep 0.1; if [[ -n {q} ]]; then find -L . -type f $grep_excludes $find_symlink_excludes -exec grep -Hn --color=always {q} {} + 2>/dev/null | head -1000 || true; fi)" \
+                --header "Dynamic Search | Enter: Edit | Ctrl-O: View"
         )
     fi
 
@@ -224,6 +329,7 @@ _fuzzy_edit_search_file_content_dynamic() {
         local _fzf_sel="${_fzf_lines[-1]}"
         local f="${_fzf_sel%%:*}"
         f="${f%\^@}"
+        [[ "$f" != /* ]] && f="${search_root%/}/${f#./}"
         local line="${_fzf_sel#*:}"
         line="${line%%:*}"
         if [[ -z "$line" || "$line" != <-> ]]; then
@@ -248,12 +354,18 @@ _fuzzy_edit_search_file_content_dynamic() {
 _fuzzy_change_directory() {
     _check_dependencies || return 1
 
-    local initial_query="$1"
+    _parse_fzf_scope_args "$@" || return 1
+    local search_root="$_FZF_SEARCH_ROOT"
+    local initial_query="$_FZF_SEARCH_QUERY"
     local selected_dir
-    local fzf_options=('--preview=ls -Ap {}' '--preview-window=right,60%,<100(down,40%,border-top)')
-    fzf_options+=(--height "80%" --layout=reverse --cycle -i)
+    local fzf_mode="$(_fzf_layout_mode)"
+    local fzf_height="$(_fzf_height_for "$fzf_mode" dir)"
+    local fzf_preview_window="$(_fzf_preview_window_for "$fzf_mode" dir)"
+    local fzf_options=('--preview=ls -Ap {}')
+    fzf_options+=(--preview-window "$fzf_preview_window")
+    fzf_options+=(--height "$fzf_height" --layout=reverse --cycle -i)
     local max_depth=7
-    _refresh_symlink_excludes
+    _refresh_symlink_excludes "$search_root"
     local find_symlink_excludes="$_FZF_SYMLINK_EXCLUDE_FIND"
     local -a fd_symlink_excludes=("${_FZF_SYMLINK_EXCLUDE_FD[@]}")
 
@@ -282,13 +394,25 @@ _fuzzy_change_directory() {
             fd_args+=(--exclude "$file")
         done
         fd_args+=("${fd_symlink_excludes[@]}")
-        selected_dir=$(fd "${fd_args[@]}" . | fzf "${fzf_options[@]}")
+        selected_dir=$(
+            cd "$search_root" || exit 1
+            command fd "${fd_args[@]}" . | fzf "${fzf_options[@]}"
+        )
     else
-        selected_dir=$(eval "find -L . -maxdepth $max_depth \\( $exclude_pattern \\) -prune -o $find_symlink_excludes -type d -print 2>/dev/null" | fzf "${fzf_options[@]}")
+        selected_dir=$(
+            cd "$search_root" || exit 1
+            eval "find -L . -maxdepth $max_depth \\( $exclude_pattern \\) -prune -o $find_symlink_excludes -type d -print 2>/dev/null" | fzf "${fzf_options[@]}"
+        )
     fi
 
-    if [[ -n "$selected_dir" && -d "$selected_dir" ]]; then
-        cd "$selected_dir" || return 1
+    if [[ -n "$selected_dir" ]]; then
+        local target_dir="$selected_dir"
+        [[ "$target_dir" != /* ]] && target_dir="${search_root%/}/${target_dir#./}"
+        if [[ -d "$target_dir" ]]; then
+            cd "$target_dir" || return 1
+        else
+            return 1
+        fi
     else
         return 1
     fi
@@ -297,16 +421,21 @@ _fuzzy_change_directory() {
 _fuzzy_edit_search_file_content() {
     # [f]uzzy [e]dit  [s]earch [f]ile [c]ontent
     _check_dependencies || return 1
-    
-    local search_term="$1"
+
+    _parse_fzf_scope_args "$@" || return 1
+    local search_root="$_FZF_SEARCH_ROOT"
+    local search_term="$_FZF_SEARCH_QUERY"
     local fzf_options=()
     local search_cmd
     local preview_cmd
     local rg_globs="$(_get_rg_globs)"
     local grep_excludes="$(_get_grep_excludes)"
-    _refresh_symlink_excludes
+    _refresh_symlink_excludes "$search_root"
     local rg_symlink_globs="$_FZF_SYMLINK_EXCLUDE_RG"
     local find_symlink_excludes="$_FZF_SYMLINK_EXCLUDE_FIND"
+    local fzf_mode="$(_fzf_layout_mode)"
+    local fzf_height="$(_fzf_height_for "$fzf_mode" content)"
+    local fzf_preview_window="$(_fzf_preview_window_for "$fzf_mode" content)"
     
     # Check if ripgrep is available (faster and better than grep)
     if command -v "rg" &>/dev/null; then
@@ -349,9 +478,9 @@ _fuzzy_edit_search_file_content() {
     fi
     
     fzf_options+=(
-        --height "90%" 
+        --height "$fzf_height"
         --layout=reverse 
-        --preview-window "right,60%,border-sharp,<60(down,50%,border-top)"
+        --preview-window "$fzf_preview_window"
         --cycle
         --ansi
         --delimiter=:
@@ -360,7 +489,10 @@ _fuzzy_edit_search_file_content() {
         --header "Enter: Edit file at line | Ctrl-O: View file"
     )
     local fzf_output
-    fzf_output=$(fzf "${fzf_options[@]}" --bind "start:reload($search_cmd || true)")
+    fzf_output=$(
+        cd "$search_root" || exit 1
+        fzf "${fzf_options[@]}" --bind "start:reload($search_cmd || true)"
+    )
     if [[ -n "$fzf_output" ]]; then
         local -a _fzf_lines
         _fzf_lines=("${(f)fzf_output}")
@@ -368,6 +500,7 @@ _fuzzy_edit_search_file_content() {
         local _fzf_sel="${_fzf_lines[-1]}"
         local f="${_fzf_sel%%:*}"
         f="${f%\^@}"
+        [[ "$f" != /* ]] && f="${search_root%/}/${f#./}"
         local line="${_fzf_sel#*:}"
         line="${line%%:*}"
         if [[ -z "$line" || "$line" != <-> ]]; then
@@ -391,21 +524,26 @@ _fuzzy_edit_search_file_content() {
 
 _fuzzy_edit_search_file() {
     _check_dependencies || return 1
-    
-    local initial_query="$1"
+
+    _parse_fzf_scope_args "$@" || return 1
+    local search_root="$_FZF_SEARCH_ROOT"
+    local initial_query="$_FZF_SEARCH_QUERY"
     local selected_file
     local fzf_options=()
     local preview_cmd='if command -v "bat" &>/dev/null; then bat --color=always --style=numbers {}; else cat {}; fi'
-    _refresh_symlink_excludes
+    _refresh_symlink_excludes "$search_root"
     local find_symlink_excludes="$_FZF_SYMLINK_EXCLUDE_FIND"
     local rg_symlink_globs="$_FZF_SYMLINK_EXCLUDE_RG"
     local -a fd_symlink_excludes=("${_FZF_SYMLINK_EXCLUDE_FD[@]}")
+    local fzf_mode="$(_fzf_layout_mode)"
+    local fzf_height="$(_fzf_height_for "$fzf_mode" file)"
+    local fzf_preview_window="$(_fzf_preview_window_for "$fzf_mode" file)"
     
     fzf_options+=(
-        --height "80%" 
+        --height "$fzf_height"
         --layout=reverse 
         --preview "$preview_cmd"
-        --preview-window "right,60%,<100(down,40%,border-top)"
+        --preview-window "$fzf_preview_window"
         --cycle
     )
     local max_depth=5
@@ -424,12 +562,25 @@ _fuzzy_edit_search_file() {
             fd_args+=(--exclude "$file")
         done
         fd_args+=("${fd_symlink_excludes[@]}")
-        selected_file=$(fd "${fd_args[@]}" . | fzf "${fzf_options[@]}")
+        selected_file=$(
+            cd "$search_root" || exit 1
+            command fd "${fd_args[@]}" . | fzf "${fzf_options[@]}"
+        )
     elif command -v "rg" &>/dev/null; then
         local rg_globs="$(_get_rg_globs)"
-        selected_file=$(eval "rg --files --hidden --follow --max-depth $max_depth $rg_globs $rg_symlink_globs ." | fzf "${fzf_options[@]}")
+        selected_file=$(
+            cd "$search_root" || exit 1
+            eval "rg --files --hidden --follow --max-depth $max_depth $rg_globs $rg_symlink_globs ." | fzf "${fzf_options[@]}"
+        )
     else
-        selected_file=$(find -L . -maxdepth $max_depth -type f $find_symlink_excludes 2>/dev/null | fzf "${fzf_options[@]}")
+        selected_file=$(
+            cd "$search_root" || exit 1
+            find -L . -maxdepth $max_depth -type f $find_symlink_excludes 2>/dev/null | fzf "${fzf_options[@]}"
+        )
+    fi
+
+    if [[ -n "$selected_file" ]]; then
+        [[ "$selected_file" != /* ]] && selected_file="${search_root%/}/${selected_file#./}"
     fi
 
     if [[ -n "$selected_file" && -f "$selected_file" ]]; then
@@ -490,8 +641,9 @@ zle -N _fuzzy_search_cmd_history
 # Bind to Ctrl+X R for fuzzy command history
 bindkey '^Xr' _fuzzy_search_cmd_history
 
-alias fec='_fuzzy_edit_search_file_content' \
-    fecd='_fuzzy_edit_search_file_content_dynamic' \
-    fcd='_fuzzy_change_directory' \
-    fe='_fuzzy_edit_search_file' \
-    fch='_fuzzy_search_cmd_history'
+unalias ff fs fS fj fh fd 2>/dev/null
+alias fs='_fuzzy_edit_search_file_content' \
+      fS='_fuzzy_edit_search_file_content_dynamic' \
+      fj='_fuzzy_change_directory' \
+      ff='_fuzzy_edit_search_file' \
+      fh='_fuzzy_search_cmd_history'

@@ -42,7 +42,7 @@ if check nmcli; then
   fi
 fi
 
-# Fallback: Check for ap0 interface (legacy create_ap or other tools)
+# Fallback: check for an ap0 interface created by alternate hotspot tools.
 if [ "$hotspot_active" = false ]; then
   if test -d /proc/sys/net/ipv4/conf/ap0; then
     hotspot_active=true

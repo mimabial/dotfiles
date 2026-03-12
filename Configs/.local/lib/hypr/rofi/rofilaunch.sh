@@ -39,7 +39,7 @@ case "${1}" in
     r_mode="drun"
     rofi_config="${ROFI_LAUNCH_DRUN_STYLE:-$rofi_config}"
     rofi_args+=("${ROFI_LAUNCH_DRUN_ARGS[@]:-}")
-    rofi_args+=("-run-command" "app2unit.sh  --fuzzel-compat -- {cmd}")
+    rofi_args+=("-run-command" "app2unit.sh -- {cmd}")
     ;;
   w | --window)
     r_mode="window"
@@ -54,7 +54,7 @@ case "${1}" in
   r | --run)
     r_mode="run"
     rofi_config="${ROFI_LAUNCH_RUN_STYLE:-$rofi_config}"
-    rofi_args+=("-run-command" "app2unit.sh  --fuzzel-compat -- {cmd}")
+    rofi_args+=("-run-command" "app2unit.sh -- {cmd}")
     rofi_args+=("${ROFI_LAUNCH_RUN_ARGS[@]:-}")
     ;;
   h | --help)
@@ -69,7 +69,7 @@ case "${1}" in
     r_mode="drun"
     ROFI_LAUNCH_DRUN_STYLE="${ROFI_LAUNCH_DRUN_STYLE:-$ROFI_LAUNCH_STYLE}"
     rofi_args+=("${ROFI_LAUNCH_DRUN_ARGS[@]:-}")
-    rofi_args+=("-run-command" "app2unit.sh  --fuzzel-compat -- {cmd}")
+    rofi_args+=("-run-command" "app2unit.sh -- {cmd}")
     rofi_config="${ROFI_LAUNCH_DRUN_STYLE:-$rofi_config}"
     ;;
 esac

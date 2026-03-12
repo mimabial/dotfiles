@@ -27,24 +27,23 @@ USAGE
 [ -f "/etc/os-release" ] && source "/etc/os-release"
 
 # Set the variables
-confDir="${XDG_CONFIG_HOME:-$HOME/.config}"
 iconDir="${XDG_DATA_HOME:-$HOME/.local/share}/icons"
-cacheDir="${XDG_CACHE_HOME:-$HOME/.cache}/hypr"
-WALLPAPER_CURRENT_DIR="${WALLPAPER_CURRENT_DIR:-${cacheDir}/wallpaper/current}"
+HYPR_CACHE_HOME="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}"
+WALLPAPER_CURRENT_DIR="${WALLPAPER_CURRENT_DIR:-${HYPR_CACHE_HOME}/wallpaper/current}"
 image_dirs=()
-distro_logo=${iconDir}/Wallbash-Icon/distro/$LOGO
+distro_logo=${iconDir}/Pywal16-Icon/distro/$LOGO
 
 # Parse the main command
 case $1 in
   logo) # eats around 13 ms
     random() {
       (
-        image_dirs+=("${confDir}/fastfetch/logo")
-        image_dirs+=("${iconDir}/Wallbash-Icon/fastfetch/")
-        if [ -n "${HYPR_THEME}" ] && [ -d "${confDir}/hypr/themes/${HYPR_THEME}/logo" ]; then
-          image_dirs+=("${confDir}/hypr/themes/${HYPR_THEME}/logo")
+        image_dirs+=("${XDG_CONFIG_HOME:-$HOME/.config}/fastfetch/logo")
+        image_dirs+=("${iconDir}/Pywal16-Icon/fastfetch/")
+        if [ -n "${HYPR_THEME}" ] && [ -d "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/${HYPR_THEME}/logo" ]; then
+          image_dirs+=("${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/${HYPR_THEME}/logo")
         fi
-        # [ -d "$cacheDir" ] && image_dirs+=("$cacheDir")
+        # [ -d "${HYPR_CACHE_HOME}" ] && image_dirs+=("${HYPR_CACHE_HOME}")
         [ -f "$distro_logo" ] && echo "${distro_logo}"
         image_dirs+=("$WALLPAPER_CURRENT_DIR/wall.quad")
         image_dirs+=("$WALLPAPER_CURRENT_DIR/wall.sqre")
@@ -63,7 +62,7 @@ options:
   --prof    Display your profile picture (~/.face.icon)
   --os      Display the distro logo
   --local   Display a logo inside the fastfetch logo directory
-  --wall    Display a logo inside the wallbash fastfetch directory
+  --wall    Display a logo inside the pywal16 fastfetch directory
   --theme   Display a logo inside the theme directory
   --rand    Display a random logo
   *         Display a random logo
@@ -96,14 +95,14 @@ HELP
             [ -f "$distro_logo" ] && image_dirs+=("$distro_logo")
             ;;
           --local)
-            image_dirs+=("${confDir}/fastfetch/logo")
+            image_dirs+=("${XDG_CONFIG_HOME:-$HOME/.config}/fastfetch/logo")
             ;;
           --wall)
-            image_dirs+=("${iconDir}/Wallbash-Icon/fastfetch/")
+            image_dirs+=("${iconDir}/Pywal16-Icon/fastfetch/")
             ;;
           --theme)
-            if [ -n "${HYPR_THEME}" ] && [ -d "${confDir}/hypr/themes/${HYPR_THEME}/logo" ]; then
-              image_dirs+=("${confDir}/hypr/themes/${HYPR_THEME}/logo")
+            if [ -n "${HYPR_THEME}" ] && [ -d "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/${HYPR_THEME}/logo" ]; then
+              image_dirs+=("${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/${HYPR_THEME}/logo")
             fi
             ;;
         esac

@@ -12,6 +12,33 @@ fi
 
 flg_DryRun=${flg_DryRun:-0}
 
+apply_user_presets() {
+    if [ "$flg_DryRun" -eq 1 ]; then
+        print_log -c "[dry-run] " "systemctl --user daemon-reload"
+        print_log -c "[dry-run] " "systemctl --user preset-all --preset-mode=enable-only"
+        return 0
+    fi
+
+    if [[ -z "${DBUS_SESSION_BUS_ADDRESS:-}" || -z "${XDG_RUNTIME_DIR:-}" ]]; then
+        print_log -sec "services" -warn "user preset skipped" "DBUS session or XDG_RUNTIME_DIR missing"
+        return 1
+    fi
+
+    if systemctl --user daemon-reload; then
+        print_log -sec "services" -stat "daemon-reload" "user units reloaded"
+    else
+        print_log -sec "services" -warn "daemon-reload failed" "continuing"
+    fi
+
+    if systemctl --user preset-all --preset-mode=enable-only; then
+        print_log -sec "services" -stat "preset" "applied user presets (enable-only)"
+    elif systemctl --user preset-all; then
+        print_log -sec "services" -stat "preset" "applied user presets"
+    else
+        print_log -sec "services" -warn "preset failed" "continuing"
+    fi
+}
+
 # Legacy function for backward compatibility with old system_ctl.lst format
 handle_legacy_service() {
     local serviceChk="$1"
@@ -29,6 +56,7 @@ handle_legacy_service() {
 
 # Main processing
 print_log -sec "services" -stat "restore" "system services..."
+apply_user_presets || true
 
 while IFS='|' read -r service context command || [ -n "$service" ]; do
     # Skip empty lines and comments

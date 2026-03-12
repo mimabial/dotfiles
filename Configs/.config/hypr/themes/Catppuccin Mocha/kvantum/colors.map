@@ -4,20 +4,20 @@
 
 # Background / surfaces
 #000000=background
-#1E1E2E=background
-#181825=color0
+#24273a=background
+#1e2030=color0
 #141414=color0
-#313244=color0
 #31363b=color0
-#45475A=color0
-#585B70=color8
+#363a4f=color0
+#494d64=color8
+#5b6078=color8
 #7f7f7f=color8
 #919191=color7
 #999999=color7
 #a6a6a6=color7
 
 # Text
-#CDD6F4=foreground
+#cad3f5=foreground
 #b4b4b4=foreground
 #b6b6b6=foreground
 #bebebe=foreground
@@ -28,8 +28,6 @@
 #eaeaea=foreground
 
 # Accents
-#89B4FA=color4
-#CBA6F7=color5
-#9670B0=color5
-#F38BA8=color1
-#F5E0DC=color3
+#8aadf4=color4
+#c6a0f6=color5
+#ed8796=color1

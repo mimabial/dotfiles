@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-echo -e "Restarting pipewire audio service...\n"
+set -euo pipefail
+
 systemctl --user restart pipewire.service

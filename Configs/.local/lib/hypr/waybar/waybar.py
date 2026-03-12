@@ -43,15 +43,15 @@ if WAYBAR_BIN is None:
 MODULE_DIRS = [
     os.path.join(str(xdg_config_home()), "waybar", "modules"),
     os.path.join(str(xdg_data_home()), "waybar", "modules"),
-    os.path.join("usr", "local", "share", "waybar", "modules"),
-    os.path.join("usr", "share", "waybar", "modules"),
+    os.path.join("/", "usr", "local", "share", "waybar", "modules"),
+    os.path.join("/", "usr", "share", "waybar", "modules"),
 ]
 
 LAYOUT_DIRS = [
     os.path.join(str(xdg_config_home()), "waybar", "layouts"),
     os.path.join(str(xdg_data_home()), "waybar", "layouts"),
-    os.path.join("usr", "local", "share", "waybar", "layouts"),
-    os.path.join("usr", "share", "waybar", "layouts"),
+    os.path.join("/", "usr", "local", "share", "waybar", "layouts"),
+    os.path.join("/", "usr", "share", "waybar", "layouts"),
 ]
 
 LAYOUT_IGNORE = ["test.jsonc", "dock#sample.jsonc"]
@@ -64,8 +64,8 @@ STYLE_DIRS = [
 INCLUDES_DIRS = [
     os.path.join(str(xdg_config_home()), "waybar", "includes"),
     os.path.join(str(xdg_data_home()), "waybar", "includes"),
-    os.path.join("usr", "local", "share", "waybar", "includes"),
-    os.path.join("usr", "share", "waybar", "includes"),
+    os.path.join("/", "usr", "local", "share", "waybar", "includes"),
+    os.path.join("/", "usr", "share", "waybar", "includes"),
 ]
 
 CONFIG_JSONC = Path(os.path.join(str(xdg_config_home()), "waybar", "config.jsonc"))
@@ -446,7 +446,7 @@ def set_layout(layout):
     update_global_css()
 
     # Sync swaync position to match waybar
-    sync_script = os.path.join(os.path.dirname(__file__), "waybar.swaync.sync.sh")
+    sync_script = os.path.join(os.path.dirname(__file__), "..", "wal", "wal.swaync.sh")
     if os.path.exists(sync_script):
         try:
             subprocess.run([sync_script], timeout=5)
@@ -525,11 +525,115 @@ def list_layouts_json():
     sys.exit(0)
 
 
+def normalize_jsonc(content):
+    """Convert JSONC content to strict JSON by removing comments and trailing commas."""
+    no_comments = []
+    in_string = False
+    escaped = False
+    in_line_comment = False
+    in_block_comment = False
+    i = 0
+    length = len(content)
+
+    while i < length:
+        char = content[i]
+        next_char = content[i + 1] if i + 1 < length else ""
+
+        if in_line_comment:
+            if char == "\n":
+                in_line_comment = False
+                no_comments.append(char)
+            i += 1
+            continue
+
+        if in_block_comment:
+            if char == "*" and next_char == "/":
+                in_block_comment = False
+                i += 2
+                continue
+            if char == "\n":
+                no_comments.append(char)
+            i += 1
+            continue
+
+        if in_string:
+            no_comments.append(char)
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            i += 1
+            continue
+
+        if char == '"':
+            in_string = True
+            no_comments.append(char)
+            i += 1
+            continue
+
+        if char == "/" and next_char == "/":
+            in_line_comment = True
+            i += 2
+            continue
+
+        if char == "/" and next_char == "*":
+            in_block_comment = True
+            i += 2
+            continue
+
+        no_comments.append(char)
+        i += 1
+
+    cleaned = "".join(no_comments)
+
+    result = []
+    in_string = False
+    escaped = False
+    i = 0
+    length = len(cleaned)
+
+    while i < length:
+        char = cleaned[i]
+        if in_string:
+            result.append(char)
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            i += 1
+            continue
+
+        if char == '"':
+            in_string = True
+            result.append(char)
+            i += 1
+            continue
+
+        if char == ",":
+            j = i + 1
+            while j < length and cleaned[j].isspace():
+                j += 1
+            if j < length and cleaned[j] in "}]":
+                i += 1
+                continue
+
+        result.append(char)
+        i += 1
+
+    return "".join(result)
+
+
 def parse_json_file(filepath):
     """Parse a JSON file and return the data."""
-    with open(filepath, "r") as file:
-        data = json.load(file)
-    return data
+    with open(filepath, "r", encoding="utf-8") as file:
+        content = file.read()
+    if os.fspath(filepath).endswith(".jsonc"):
+        content = normalize_jsonc(content)
+    return json.loads(content)
 
 
 def modify_json_key(data, key, value):
@@ -849,7 +953,9 @@ def layout_selector():
         update_global_css()
 
         # Sync swaync position to match waybar
-        sync_script = os.path.join(os.path.dirname(__file__), "waybar.swaync.sync.sh")
+        sync_script = os.path.join(
+            os.path.dirname(__file__), "..", "wal", "wal.swaync.sh"
+        )
         if os.path.exists(sync_script):
             try:
                 subprocess.run([sync_script], timeout=5)
@@ -897,21 +1003,22 @@ def update_icon_size():
     updated_entries = {}
 
     for directory in MODULE_DIRS:
-        for json_file in glob.glob(os.path.join(directory, "*.json")):
-            data = parse_json_file(json_file)
+        for pattern in ("*.json", "*.jsonc"):
+            for json_file in glob.glob(os.path.join(directory, pattern)):
+                data = parse_json_file(json_file)
 
-            for key, value in data.items():
-                if isinstance(value, dict):
-                    icon_size_multiplier = value.get("icon-size-multiplier", 1)
-                    final_icon_size = int(icon_size * icon_size_multiplier)
+                for key, value in data.items():
+                    if isinstance(value, dict):
+                        icon_size_multiplier = value.get("icon-size-multiplier", 1)
+                        final_icon_size = int(icon_size * icon_size_multiplier)
 
-                    data[key] = modify_json_key(value, "icon-size", final_icon_size)
-                    data[key] = modify_json_key(
-                        value, "tooltip-icon-size", final_icon_size
-                    )
-                    data[key] = modify_json_key(value, "size", final_icon_size)
+                        data[key] = modify_json_key(value, "icon-size", final_icon_size)
+                        data[key] = modify_json_key(
+                            value, "tooltip-icon-size", final_icon_size
+                        )
+                        data[key] = modify_json_key(value, "size", final_icon_size)
 
-            updated_entries.update(data)
+                updated_entries.update(data)
 
     includes_data.update(updated_entries)
 

@@ -4,50 +4,7 @@
 #   Time (mean ± σ):     159.4 ms ±  26.1 ms    [User: 38.6 ms, System: 62.2 ms]
 #   Range (min … max):    99.8 ms … 182.7 ms    17 runs
 
-# Parse arguments
-OUTPUT_MODE="all"
-while [[ $# -gt 0 ]]; do
-  case $1 in
-    -i | --icon)
-      OUTPUT_MODE="icon"
-      shift
-      ;;
-    -u | --util)
-      OUTPUT_MODE="util"
-      shift
-      ;;
-    -t | --temp)
-      OUTPUT_MODE="temp"
-      shift
-      ;;
-    -a | --all)
-      OUTPUT_MODE="all"
-      shift
-      ;;
-    *) shift ;;
-  esac
-done
-
-cpuinfo_file="/tmp/${UID}-processors"
-cache_file="/tmp/cpuinfo-cache-${UID}.json"
-
-# -i and -u read from cache if it exists
-if [[ "$OUTPUT_MODE" != "all" && -f "$cache_file" ]]; then
-  case $OUTPUT_MODE in
-    "icon")
-      jq -c '{text: .icon, tooltip: .tooltip}' "$cache_file"
-      exit 0
-      ;;
-    "util")
-      jq -c '{text: .util, tooltip: .tooltip}' "$cache_file"
-      exit 0
-      ;;
-    "temp")
-      jq -c '{text: .temp, tooltip: .tooltip}' "$cache_file"
-      exit 0
-      ;;
-  esac
-fi
+cpuinfo_file="${XDG_RUNTIME_DIR:-/tmp}/hypr-$UID-processors"
 
 map_floor() {
   IFS=', ' read -r -a pairs <<<"$1"
@@ -134,19 +91,54 @@ get_utilization() {
 source "${cpuinfo_file}"
 init_query
 
-if [[ $CPUINFO_EMOJI -ne 1 ]]; then
-  temp_lv="85:, 65:,, 45:, "
-else
-  temp_lv="85:🌋, 65:🔥, 45:☁️, ❄️"
-fi
+temp_lv="85:, 65:,, 45:, "
 util_lv="90:, 60:󰓅, 30:󰾅, 󰾆"
 
 sensors_json=$(sensors -j 2>/dev/null)
-
-cpu_temps="$(jq -r '[.["coretemp-isa-0000"], .["k10temp-pci-00c3"]] | map(select(. != null)) | map(to_entries) | add | map(select(.value | objects) | "\(.key): \((.value | to_entries[] | select(.key | test("temp[0-9]+_input")) | .value | floor))°C") | join(", ")' <<<"$sensors_json")"
+cpu_temps="$(perl -e '
+use strict;
+use warnings;
+my $parser;
+BEGIN {
+    eval { require Cpanel::JSON::XS; $parser = Cpanel::JSON::XS->new->utf8; 1 }
+      or eval { require JSON::XS; $parser = JSON::XS->new->utf8; 1 }
+      or do { require JSON::PP; $parser = JSON::PP->new->utf8; };
+}
+my $json = do { local $/; <> };
+my $data = eval { $parser->decode($json) } || {};
+my @chips = ("coretemp-isa-0000","k10temp-pci-00c3","zenpower-pci-00c3");
+my @lines;
+for my $chip (@chips) {
+    next unless exists $data->{$chip} && ref $data->{$chip} eq "HASH";
+    my $entries = $data->{$chip};
+    my @labels = keys %$entries;
+    my (@packages, @others);
+    for my $label (@labels) {
+        if ($label =~ /^Package id\s+(\d+)/i) {
+            push @packages, [$1, $label];
+        } else {
+            push @others, $label;
+        }
+    }
+    @packages = map { $_->[1] } sort { $a->[0] <=> $b->[0] } @packages;
+    @others = sort @others;
+    for my $label (@packages, @others) {
+        my $obj = $entries->{$label};
+        next unless ref $obj eq "HASH";
+        my $temp;
+        for my $k (keys %$obj) {
+            next unless $k =~ /^temp\d+_input$/;
+            $temp = int($obj->{$k});
+            last;
+        }
+        push @lines, "$label: ${temp}°C" if defined $temp;
+    }
+}
+print join("\n", @lines);
+' <<<"$sensors_json")"
 
 if [ -n "${CPUINFO_TEMPERATURE_ID}" ]; then
-  temperature=$(grep -oP "(?<=${CPUINFO_TEMPERATURE_ID}: )\d+" <<<"${cpu_temps}")
+  temperature=$(perl -ne 'BEGIN{$id=shift} if (/^\Q$id\E:\s*([0-9]+)/){print $1; exit}' "$CPUINFO_TEMPERATURE_ID" <<<"$cpu_temps")
 fi
 
 if [[ -z "$temperature" ]]; then
@@ -154,20 +146,25 @@ if [[ -z "$temperature" ]]; then
   temperature="${cpu_temp_line#*: }"
 fi
 
+if [[ -n "$cpu_temps" ]]; then
+  cpu_temps_indented=$'\t'"${cpu_temps//$'\n'/$'\n\t'}"
+elif [[ -n "$temperature" ]]; then
+  cpu_temps_indented=$'\t'"${temperature}°C"
+else
+  cpu_temps_indented=$'\t'"N/A"
+fi
+
 utilization=$(get_utilization)
-frequency=$(perl -ne 'BEGIN { $sum = 0; $count = 0 } if (/cpu MHz\s+:\s+([\d.]+)/) { $sum += $1; $count++ } END { if ($count > 0) { printf "%.2f\n", $sum / $count } else { print "NaN\n" } }' /proc/cpuinfo)
+frequency=$(perl -ne 'BEGIN { $sum = 0; $count = 0 } if (/cpu MHz\s+:\s+([\d.]+)/) { $sum += $1; $count++ } END { if ($count > 0) { printf "%.0f\n", $sum / $count } else { print "NaN\n" } }' /proc/cpuinfo)
 
 icons="$(map_floor "$util_lv" "$utilization")$(map_floor "$temp_lv" "$temperature")"
-speedo="${icons:0:1}"
+speed="${icons:0:1}"
 thermo="${icons:1:1}"
 thermo_alt=󰻠 # better looking icon
-emoji="${icons:2}"
-
 # Build tooltip with newlines
-tooltip="$emoji $CPUINFO_MODEL
-$thermo Temperature: $cpu_temps
-$speedo Utilization: $utilization%
-  Clock Speed: $frequency/$CPUINFO_MAX_FREQ MHz"
+tooltip="$CPUINFO_MODEL"$'\n'"$thermo Temperature:"$'\n'"$cpu_temps_indented"
+tooltip+=$'\n'"$speed Utilization: $utilization%"
+tooltip+=$'\n'" Clock Speed: $frequency/$CPUINFO_MAX_FREQ MHz"
 
 color=$(get_temp_color "${temperature}")
 if [[ -n "$color" ]]; then
@@ -176,22 +173,11 @@ else
   icon_text="<span size='14pt'>$thermo_alt</span>"
 fi
 
-# Write cache
-
 # Format utilization with two digits for text display only
 formatted_util=$(printf "%02d" "$utilization")
 
 jq -n -c \
-  --arg temp "${temperature}°C" \
   --arg icon "$icon_text" \
   --arg util "${formatted_util}󱉸" \
   --arg tooltip "$tooltip" \
-  '{temp: $temp, icon: $icon, util: $util, tooltip: $tooltip}' >"$cache_file"
-
-# Output
-case $OUTPUT_MODE in
-  "icon") jq -c '{text: .icon, tooltip: .tooltip}' "$cache_file" ;;
-  "util") jq -c '{text: .util, tooltip: .tooltip}' "$cache_file" ;;
-  "temp") jq -c '{text: .temp, tooltip: .tooltip}' "$cache_file" ;;
-  *) jq -c --arg r $'\r' '{text: (.icon + $r + .util), tooltip: .tooltip}' "$cache_file" ;;
-esac
+  '{text: ($icon + "\r" + $util), tooltip: $tooltip}'

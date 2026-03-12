@@ -1,7 +1,9 @@
+astral
+inotify_simple
+jsonschema
 loguru==0.7.3
 pulsectl==24.12.0
-requests==2.32.4
-inotify_simple
-pywayland
 PyGObject
 PyQt6
+pywayland
+requests==2.32.4

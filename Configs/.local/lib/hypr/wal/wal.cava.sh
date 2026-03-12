@@ -7,11 +7,9 @@ if ! source "$(command -v hyprshell)"; then
   exit 1
 fi
 
-confDir="$XDG_CONFIG_HOME"
-cacheDir="$XDG_CACHE_HOME"
-cvaDir="${confDir}/cava"
+cvaDir="${XDG_CONFIG_HOME}/cava"
 CAVA_CONF="${cvaDir}/config"
-CAVA_DCOL="${cacheDir}/wal/colors-cava"
+CAVA_DCOL="${XDG_CACHE_HOME}/wal/colors-cava"
 hashFile="${XDG_RUNTIME_DIR:-/tmp}/wal-cava-hash"
 
 # Ensure color file exists
@@ -30,7 +28,7 @@ trap 'rm -f "$TMP"' EXIT
 
 if pkg_installed cava; then
   if [[ ! -d "${cvaDir}" ]]; then
-    print_log -sec "wallbash" -warn "Not initialized" "cava config directory not found. Try running cava first."
+    print_log -sec "pywal16" -warn "Not initialized" "cava config directory not found. Try running cava first."
   else
     # Replace [color] section in-place, preserving its position
     # If no [color] section exists, append it at the end

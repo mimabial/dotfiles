@@ -17,10 +17,9 @@ active_border_color   #8FBCBB
 inactive_border_color #4C566A
 
 
-active_tab_foreground #4C566A
-active_tab_background #88C0D0
+active_tab_foreground #88C0D0
 inactive_tab_foreground #D8DEE9
-inactive_tab_background #4C566A
+tab_bar_background #3B4252
 
 # black
 color0   #3B4252

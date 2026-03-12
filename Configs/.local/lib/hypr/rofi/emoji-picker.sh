@@ -71,11 +71,22 @@ setup_rofi_config() {
   # local elem_border=$((hypr_border == 0 ? 5 : hypr_border))
   local elem_border=${hypr_border}
 
-  # get_rofi_pos will auto-calculate clipboard theme dimensions based on ROFI_SCALE
-  rofi_position=$(get_rofi_pos)
-
   local hypr_width=${hypr_width:-"$(hyprctl -j getoption general:border_size | jq '.int')"}
   r_override="window{border:${hypr_width}px;border-radius:${wind_border}px;}listview{border-radius:${elem_border}px;} element{border-radius:${elem_border}px;}"
+
+  local emoji_window_width_em="${ROFI_EMOJI_WIDTH_EM:-36}"
+  local emoji_window_height_em="${ROFI_EMOJI_HEIGHT_EM:-30}"
+  [[ "${emoji_window_width_em}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || emoji_window_width_em="40.5"
+  [[ "${emoji_window_height_em}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || emoji_window_height_em="30"
+
+  local emoji_window_width_px
+  emoji_window_width_px="$(awk -v em="${emoji_window_width_em}" -v scale="${font_scale}" 'BEGIN { printf "%d", (em * scale * 2) }')"
+  [[ "${emoji_window_width_px}" =~ ^[0-9]+$ ]] || emoji_window_width_px=$((81 * font_scale))
+  local emoji_window_height_px
+  emoji_window_height_px="$(awk -v em="${emoji_window_height_em}" -v scale="${font_scale}" 'BEGIN { printf "%d", (em * scale * 2) }')"
+  [[ "${emoji_window_height_px}" =~ ^[0-9]+$ ]] || emoji_window_height_px=$((60 * font_scale))
+
+  rofi_position=$(get_rofi_pos "${emoji_window_width_px}" "${emoji_window_height_px}")
 }
 
 get_emoji_selection() {
@@ -115,8 +126,6 @@ get_emoji_selection() {
   # Build display strings (emoji + label if present and not a category marker), strip variation selectors for display
   awk -F'\t' '{
     e=$1; l=$2;
-    gsub(/\ufe0f/,"",e);
-    gsub(/\ufe0f/,"",l);
     if (l != "" && l !~ /^:cat:/) {
       print e " " l;
     } else {
@@ -163,7 +172,10 @@ get_emoji_selection() {
 
   rm -f "${display_data}"
 
-  [[ -z "${selection_index}" ]] && { rm -f "${temp_data}"; return; }
+  [[ -z "${selection_index}" ]] && {
+    rm -f "${temp_data}"
+    return
+  }
   # rofi returns 0-based index; fetch raw line (keeps category markers)
   local raw_line
   raw_line=$(awk -v idx=$((selection_index + 1)) 'NR==idx{print;exit}' "${temp_data}")
@@ -449,12 +461,15 @@ main() {
     exit 0
   fi
 
-  # Check if it's a category selection (marker is at the end now)
+  # Check for a category marker at the end of the selection payload.
   if [[ "${data_emoji}" =~ :cat:([a-z]+):$ ]]; then
     local category="${BASH_REMATCH[1]}"
     data_emoji=$(show_category_menu "${category}")
     # Esc in category: go back to main menu
-    [[ -z "${data_emoji}" ]] && { main "$@"; exit 0; }
+    [[ -z "${data_emoji}" ]] && {
+      main "$@"
+      exit 0
+    }
 
     # Handle back navigation from category menu
     if [[ "${data_emoji}" =~ :b:a:c:k:$ ]]; then

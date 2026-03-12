@@ -1,28 +1,45 @@
 # Color mapping for pywal replacement
 # Format: #hexcolor=pywal_variable
-# Used by color.set.sh to replace theme colors with pywal colors in wallpaper mode
+# Theme: Code Garden
 
-# Primary backgrounds
-#dee1e6=background
-#d4d7dc=color0
-#cfd2d7=color0
-#c5c8cd=color0
-#e3e6eb=color0
-#f0f0f0=color0
+# Background / surfaces
+#000000=background
+#2e3440=background
+#001419=color0
+#111111=color0
+#151926=color0
+#1e1e20=color0
+#22252e=color0
+#232325=color0
+#26272a=color0
+#28282a=color0
+#323234=color0
+#343031=color0
+#48484a=color0
+#4c566a=color0
+#525254=color0
+#565658=color0
+#606062=color0
 
-# Secondary backgrounds / borders
-#4d5768=color4
-#72757b=color8
+# Mid neutrals
+#646466=color8
+#666666=color8
+#727274=color8
+#7a7a7c=color8
+#88888a=color8
+#989898=color7
+#aaaaac=color7
 
-# Muted foreground
-#989ba0=color7
+# Text
+#c8c8ca=foreground
+#d2d2d4=foreground
+#d8dee9=foreground
+#eceff4=foreground
 
-# Primary foreground
-#1a1d23=foreground
-
-# Accent colors
-#56a0d3=color5
-#234d87=color4
-#7f529d=color5
-#903035=color1
-#a86cd0=color5
+# Accents
+#333399=color4
+#5e81ac=color4
+#81a1c1=color4
+#8fbcbb=color6
+#bf616a=color1
+#ff00cc=color5

@@ -12,7 +12,15 @@ EOF
 }
 
 token=""
-[ -f "$HOME/.config/ipinfo.token" ] && token="$(cat "$HOME"/.config/ipinfo.token)"
+[ -f "$HOME/.config/ipinfo.token" ] && token="$(tr -d '[:space:]' < "$HOME"/.config/ipinfo.token)"
+
+fetch_ipinfo() {
+  local url="https://ipinfo.io/json"
+  if [ -n "$token" ]; then
+    url="${url}?token=${token}"
+  fi
+  curl -fsS --max-time 5 "$url" 2>/dev/null
+}
 
 vpn_state="none" # none, disconnected, connected, error
 vpn_info=""
@@ -55,7 +63,10 @@ if [ "$vpn_state" != "connected" ] && [ "$vpn_state" != "connecting" ]; then
     if [ -d "$iface" ]; then
       has_vpn_client=true
       vpn_state="connected"
-      gip_data=$(check curl && curl -su "$token": http://ipinfo.io 2>/dev/null)
+      gip_data=""
+      if check curl; then
+        gip_data=$(fetch_ipinfo)
+      fi
       if [ -n "$gip_data" ]; then
         vpn_info=$(echo "$gip_data" | jq -r '"<b>WireGuard VPN</b>\nIP: " + .ip + "\n" + .city + ", " + .region + ", " + .country')
       else
@@ -72,7 +83,10 @@ if [ "$vpn_state" != "connected" ] && [ "$vpn_state" != "connecting" ]; then
   if test -d /proc/sys/net/ipv4/conf/tun0; then
     has_vpn_client=true
     vpn_state="connected"
-    gip_data=$(check curl && curl -su "$token": http://ipinfo.io 2>/dev/null)
+    gip_data=""
+    if check curl; then
+      gip_data=$(fetch_ipinfo)
+    fi
     if [ -n "$gip_data" ]; then
       vpn_info=$(echo "$gip_data" | jq -r '"<b>OpenVPN</b>\nIP: " + .ip + "\n" + .city + ", " + .region + ", " + .country')
     else

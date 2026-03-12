@@ -14,9 +14,8 @@ scrDir=$(dirname "$(realpath "$0")")
 source "$scrDir/globalcontrol.sh"
 [ -n "${1}" ] && wlogoutStyle="${1}"
 wlogoutStyle=${wlogoutStyle:-$WLOGOUT_STYLE}
-confDir="${confDir:-$HOME/.config}"
-wLayout="${confDir}/wlogout/layout_${wlogoutStyle}"
-wlTmplt="${confDir}/wlogout/style_${wlogoutStyle}.css"
+wLayout="${XDG_CONFIG_HOME:-$HOME/.config}/wlogout/layout_${wlogoutStyle}"
+wlTmplt="${XDG_CONFIG_HOME:-$HOME/.config}/wlogout/style_${wlogoutStyle}.css"
 echo "wlogoutStyle: ${wlogoutStyle}"
 echo "wLayout: ${wLayout}"
 echo "wlTmplt: ${wlTmplt}"
@@ -24,8 +23,8 @@ echo "wlTmplt: ${wlTmplt}"
 if [ ! -f "${wLayout}" ] || [ ! -f "${wlTmplt}" ]; then
   echo "ERROR: Config ${wlogoutStyle} not found..."
   wlogoutStyle=1
-  wLayout="${confDir}/wlogout/layout_${wlogoutStyle}"
-  wlTmplt="${confDir}/wlogout/style_${wlogoutStyle}.css"
+  wLayout="${XDG_CONFIG_HOME:-$HOME/.config}/wlogout/layout_${wlogoutStyle}"
+  wlTmplt="${XDG_CONFIG_HOME:-$HOME/.config}/wlogout/style_${wlogoutStyle}.css"
 fi
 
 #// detect monitor res
@@ -56,8 +55,7 @@ export fntSize=$((y_mon * 2 / 100))
 
 #// detect wallpaper brightness
 
-cacheDir="${HYPR_CACHE_HOME}"
-WALLPAPER_CURRENT_DIR="${WALLPAPER_CURRENT_DIR:-${cacheDir}/wallpaper/current}"
+WALLPAPER_CURRENT_DIR="${WALLPAPER_CURRENT_DIR:-${HYPR_CACHE_HOME}/wallpaper/current}"
 dcol_mode="${dcol_mode:-dark}"
 BtnCol="${BtnCol:-}"
 wal_cache="${XDG_CACHE_HOME:-$HOME/.cache}/wal"
@@ -92,7 +90,7 @@ fi
 enableWallDcol="${enableWallDcol:-1}"
 if [ -z "${BtnCol}" ]; then
   if [ "${enableWallDcol}" -eq 0 ]; then
-    HYPR_THEME_DIR="${HYPR_THEME_DIR:-$confDir/hypr/themes/$HYPR_THEME}"
+    HYPR_THEME_DIR="${HYPR_THEME_DIR:-${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}}"
     dcol_mode=$(get_hyprConf "COLOR_SCHEME")
     dcol_mode=${dcol_mode#prefer-}
   fi

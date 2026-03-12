@@ -1,69 +1,98 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Check if swayosd is available
-use_swayosd=false
-if command -v swayosd-client &> /dev/null && pgrep -x swayosd-server &> /dev/null; then
-  use_swayosd=true
-  focused_monitor="$(hyprctl monitors -j | jq -r '.[] | select(.focused == true).name')"
-fi
+set -u
 
-sinks=$(pactl -f json list sinks | jq '[.[] | select((.ports | length == 0) or ([.ports[]? | .availability != "not available"] | any))]')
-sinks_count=$(echo "$sinks" | jq '. | length')
+scr_dir="$(cd -- "$(dirname -- "$0")" && pwd -P)"
+# shellcheck disable=SC1091
+source "${scr_dir}/lib/control.common.bash"
 
-if [ "$sinks_count" -eq 0 ]; then
-  if [ "$use_swayosd" = true ]; then
-    swayosd-client \
-      --monitor "$focused_monitor" \
-      --custom-message "No audio devices found"
+require_cmd wpctl || {
+  echo "wpctl is required"
+  exit 1
+}
+require_cmd pw-dump || {
+  echo "pw-dump is required"
+  exit 1
+}
+require_cmd jq || {
+  echo "jq is required"
+  exit 1
+}
+require_cmd notify-send || {
+  echo "notify-send is required"
+  exit 1
+}
+
+list_sinks_tsv() {
+  pw-dump |
+    jq -r '.[] | select(.type=="PipeWire:Interface:Node" and .info?.props?."media.class"=="Audio/Sink") | [.info.props."object.id", (.info.props."node.description" // .info.props."node.name" // "Unknown")] | @tsv'
+}
+
+current_sink_id() {
+  wpctl inspect @DEFAULT_AUDIO_SINK@ 2>/dev/null |
+    awk '/^id / { gsub(/,/, "", $2); print $2; exit }'
+}
+
+sink_volume_pct() {
+  local sink_id="$1"
+  wpctl get-volume "${sink_id}" 2>/dev/null | awk '{ printf "%.0f\n", $2 * 100 }'
+}
+
+sink_is_muted() {
+  local sink_id="$1"
+  wpctl get-volume "${sink_id}" 2>/dev/null | grep -q "MUTED"
+}
+
+volume_icon_state() {
+  local vol="$1"
+  local muted="$2"
+  if [[ "${muted}" == "true" || "${vol}" -eq 0 ]]; then
+    printf 'muted\n'
+  elif [[ "${vol}" -le 33 ]]; then
+    printf 'low\n'
+  elif [[ "${vol}" -le 66 ]]; then
+    printf 'medium\n'
   else
-    notify-send -u critical "Audio" "No audio devices found"
+    printf 'high\n'
   fi
+}
+
+mapfile -t sinks < <(list_sinks_tsv)
+if (( ${#sinks[@]} == 0 )); then
+  notify-send -u critical "Audio" "No audio devices found"
   exit 1
 fi
 
-current_sink_name=$(pactl get-default-sink)
-current_sink_index=$(echo "$sinks" | jq -r --arg name "$current_sink_name" 'map(.name) | index($name)')
+cur_id="$(current_sink_id)"
+cur_idx=-1
+for i in "${!sinks[@]}"; do
+  sink_id="${sinks[$i]%%$'\t'*}"
+  if [[ "${sink_id}" == "${cur_id}" ]]; then
+    cur_idx="${i}"
+    break
+  fi
+done
 
-if [ "$current_sink_index" != "null" ]; then
-  next_sink_index=$(((current_sink_index + 1) % sinks_count))
+if (( cur_idx < 0 )); then
+  next_idx=0
 else
-  next_sink_index=0
+  next_idx=$(((cur_idx + 1) % ${#sinks[@]}))
 fi
 
-next_sink=$(echo "$sinks" | jq -r ".[$next_sink_index]")
-next_sink_name=$(echo "$next_sink" | jq -r '.name')
+next_line="${sinks[$next_idx]}"
+next_id="${next_line%%$'\t'*}"
+next_desc="${next_line#*$'\t'}"
 
-next_sink_description=$(echo "$next_sink" | jq -r '.description')
-if [ "$next_sink_description" = "(null)" ] || [ "$next_sink_description" = "null" ] || [ -z "$next_sink_description" ]; then
-  sink_id=$(echo "$next_sink" | jq -r '.properties."object.id"')
-  next_sink_description=$(wpctl status | grep -E "\s+\*?\s+${sink_id}\." | sed -E 's/^.*[0-9]+\.\s+//' | sed -E 's/\s+\[.*$//')
+if [[ "${next_id}" != "${cur_id}" ]]; then
+  wpctl set-default "${next_id}"
 fi
 
-next_sink_volume=$(echo "$next_sink" | jq -r \
-  '.volume | to_entries[0].value.value_percent | sub("%"; "")')
-next_sink_is_muted=$(echo "$next_sink" | jq -r '.mute')
-
-if [ "$next_sink_is_muted" = "true" ] || [ "$next_sink_volume" -eq 0 ]; then
-  icon_state="muted"
-elif [ "$next_sink_volume" -le 33 ]; then
-  icon_state="low"
-elif [ "$next_sink_volume" -le 66 ]; then
-  icon_state="medium"
+next_vol="$(sink_volume_pct "${next_id}")"
+if sink_is_muted "${next_id}"; then
+  next_muted="true"
 else
-  icon_state="high"
+  next_muted="false"
 fi
 
-next_sink_volume_icon="sink-volume-${icon_state}-symbolic"
-
-if [ "$next_sink_name" != "$current_sink_name" ]; then
-  pactl set-default-sink "$next_sink_name"
-fi
-
-if [ "$use_swayosd" = true ]; then
-  swayosd-client \
-    --monitor "$focused_monitor" \
-    --custom-message "$next_sink_description" \
-    --custom-icon "$next_sink_volume_icon"
-else
-  notify-send -i "audio-card" "Audio Output" "$next_sink_description"
-fi
+icon_state="$(volume_icon_state "${next_vol}" "${next_muted}")"
+notify-send -i "audio-volume-${icon_state}-symbolic" "Audio Output" "${next_desc}"

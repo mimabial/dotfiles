@@ -1,5 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-echo -e "Unblocking wifi...\n"
+set -euo pipefail
+
 rfkill unblock wifi
 rfkill list wifi

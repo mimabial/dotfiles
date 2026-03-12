@@ -17,6 +17,49 @@ if lib_dir is None:
     sys.exit(1)
 
 
+def is_venv_valid(venv_path):
+    """Returns whether the venv is valid or not
+
+    Args:
+        venv_path: Path to the virtual environment to validate
+    """
+    python_exe = os.path.join(venv_path, "bin", "python")
+    pyvenv_cfg = os.path.join(venv_path, "pyvenv.cfg")
+
+    # 1.- Must have its own python file and it must be executable
+    if not (os.path.isfile(python_exe) and os.access(python_exe, os.X_OK)):
+        return False
+
+    # 2.- Python inside venv must be able to import pip
+    try:
+        res = subprocess.run(
+            [python_exe, "-c", "import pip"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=5,
+        )
+        if res.returncode != 0:
+            return False
+    except Exception:
+        return False
+
+    # 3.- Python version used to create the venv must match current one
+    if os.path.exists(pyvenv_cfg):
+        try:
+            with open(pyvenv_cfg, "r") as f:
+                for line in f:
+                    key, sep, value = line.partition("=")
+                    if sep and key.strip() == "version":
+                        venv_version = value.strip()
+                        cur_version = f"{sys.version_info.major}.{sys.version_info.minor}"
+                        if not venv_version.startswith(cur_version):
+                            return False
+        except Exception:
+            return False
+
+    return True
+
+
 def get_venv_path():
     """Set up the virtual environment path and modify sys.path."""
     venv_path = os.path.join(xdg_base_dirs.xdg_state_home(), "hypr", "pip_env")
@@ -83,6 +126,12 @@ def install_dependencies(venv_path, requirements_file):
 
 def install_package(venv_path, package):
     """Install a single package in the virtual environment."""
+    if os.path.exists(venv_path) and not is_venv_valid(venv_path):
+        notify.send(
+            "PIP",
+            "⚠️ Python version changed or virtualenv is broken, rebuilding…",
+        )
+        destroy_venv(venv_path)
     if not os.path.exists(venv_path):
         create_venv(venv_path)
     pip_executable = os.path.join(venv_path, "bin", "pip")
@@ -157,7 +206,7 @@ def rebuild_venv(venv_path=None, requirements_file=None):
 
     # Upgrade all installed packages (list outdated and upgrade)
     result = subprocess.run(
-        [pip_executable, "list", "--outdated", "--format=freeze"],
+        [pip_executable, "list", "--outdated", "--format=json"],
         capture_output=True,
         text=True,
     )
@@ -167,10 +216,20 @@ def rebuild_venv(venv_path=None, requirements_file=None):
             f"Failed to list outdated packages:\n{result.stderr or result.stdout}",
             urgency="critical",
         )
-    # Don't re-raise here; just stop after notifying so caller can continue
-    return
+        return
 
-    outdated = [line.split("==")[0] for line in result.stdout.splitlines() if line]
+    import json
+
+    try:
+        outdated_packages = json.loads(result.stdout) if result.stdout.strip() else []
+        outdated = [pkg["name"] for pkg in outdated_packages]
+    except (json.JSONDecodeError, KeyError) as e:
+        notify.send(
+            "PIP",
+            f"Failed to parse outdated packages: {e}",
+            urgency="critical",
+        )
+        return
     if outdated:
         res2 = subprocess.run(
             [pip_executable, "install", "--upgrade", "-q"] + outdated,
@@ -305,7 +364,7 @@ def main(args):
 
     venv_path = get_venv_path()
     requirements_file = os.path.join(
-        os.path.expanduser("~/.local/lib/hypr/pyutils"), "requirements.txt"
+        xdg_base_dirs.user_lib_dir(), "hypr", "pyutils", "requirements.txt"
     )
 
     if args.command == "create":

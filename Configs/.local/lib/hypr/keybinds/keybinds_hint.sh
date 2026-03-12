@@ -7,8 +7,7 @@ fi
 
 [[ "${HYPR_SHELL_INIT}" -ne 1 ]] && eval "$(hyprshell init)"
 
-confDir="${XDG_CONFIG_HOME:-$HOME/.config}"
-keyconfDir="$confDir/hypr"
+keyconfDir="${XDG_CONFIG_HOME:-$HOME/.config}/hypr"
 kb_hint_conf=("$keyconfDir/hyprland.conf" "$keyconfDir/keybindings.conf" "$keyconfDir/userprefs.conf")
 kb_hint_conf+=("${ROFI_KEYBIND_HINT_CONFIG[@]}")
 

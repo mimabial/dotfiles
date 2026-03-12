@@ -58,6 +58,7 @@
         "$XDG_CONFIG_HOME/waybar/modules/custom-colormode.jsonc",
         "$XDG_CONFIG_HOME/waybar/modules/custom-fanspeedinfo.jsonc",
         "$XDG_CONFIG_HOME/waybar/modules/privacy.jsonc",
+        "$XDG_CONFIG_HOME/waybar/modules/custom-swaync-dnd.jsonc",
         "$XDG_CONFIG_HOME/waybar/modules/temperature.jsonc",
         "$XDG_CONFIG_HOME/waybar/modules/custom-caffeine.jsonc",
         "$XDG_CONFIG_HOME/waybar/modules/custom-workflows.jsonc",
@@ -68,24 +69,996 @@
         "$XDG_CONFIG_HOME/waybar/modules/custom-screenrecord.jsonc"
     ],
     "privacy": {
+        "justify": "center",
+        "orientation": "vertical",
+        "icon-spacing": 4,
         "icon-size": 10,
-        "icon-size-multiplier": 1
+        "transition-duration": 250,
+        "modules": [
+            {
+                "type": "screenshare",
+                "tooltip": true,
+                "tooltip-icon-size": 10
+            },
+            {
+                "type": "audio-in",
+                "tooltip": true,
+                "tooltip-icon-size": 10
+            }
+        ],
+        "ignore-monitor": true,
+        "ignore": [
+            {
+                "type": "audio-in",
+                "name": "cava"
+            },
+            {
+                "type": "screenshare",
+                "name": "obs"
+            }
+        ]
     },
     "image#wallpaper": {
         "size": 30,
         "icon-size-multiplier": 3
     },
     "wlr/taskbar": {
-        "icon-size": 16,
-        "icon-size-multiplier": 1.6
+        "all-outputs": true,
+        "active-first": false,
+        "markup": true,
+        "format": "{icon}",
+        "rotate": 0,
+        "spacing": 20,
+        "tooltip-format": "{title} | {app_id}",
+        "on-click": "activate",
+        "on-click-right": "fullscreen",
+        "on-click-middle": "close",
+        "class": "no-margin-padding",
+        "ignore-list": [
+            ""
+        ],
+        "app_ids-mapping": {
+            "firefoxdeveloperedition": "firefox-developer-edition",
+            "firefoxnightly": "firefox-nightly",
+            "Spotify Free": "Spotify"
+        },
+        "rewrite": {
+            "Firefox Web Browser": "Firefox",
+            "Foot Server": "Terminal",
+            "Spotify Free": "Spotify",
+            "org.kde.dolphin": "Dolphin",
+            "libreoffice-writer": "Writer"
+        }
     },
     "wlr/taskbar#windows": {
-        "icon-size": 16,
-        "icon-size-multiplier": 1.6
+        "format": "{icon}{app_id}",
+        "rotate": 0,
+        "spacing": 0,
+        "tooltip-format": "{title}",
+        "on-click": "activate",
+        "on-click-middle": "close",
+        "ignore-list": [
+            "Alacritty"
+        ],
+        "app_ids-mapping": {
+            "firefoxdeveloperedition": "firefox-developer-edition",
+            "jetbrains-datagrip": "DataGrip"
+        }
     },
     "tray": {
-        "icon-size": 16,
-        "icon-size-multiplier": 1.6
+        "icon-size": 10,
+        "spacing": 10,
+        "tooltip": "false"
     },
-    "position": "top"
+    "position": "top",
+    "custom/terminal": {
+        "format": "\uf489",
+        "tooltip": false,
+        "justify": "center",
+        "on-click": "kitty"
+    },
+    "hyprland/workspaces#hindi": {
+        "justify": "center",
+        "class": "no-margin-padding",
+        "all-outputs": true,
+        "active-only": false,
+        "on-click": "activate",
+        "disable-scroll": false,
+        "on-scroll-up": "hyprctl dispatch workspace -1",
+        "on-scroll-down": "hyprctl dispatch workspace +1",
+        "persistent-workspaces": {},
+        "format": "{icon}",
+        "format-icons": {
+            "1": "\u0967",
+            "2": "\u0968",
+            "3": "\u0969",
+            "4": "\u096a",
+            "5": "\u096b",
+            "6": "\u096c",
+            "7": "\u096d",
+            "8": "\u096e",
+            "9": "\u096f",
+            "10": "\u0967\u0966",
+            "11": "\u0967\u0967",
+            "12": "\u0967\u0968",
+            "13": "\u0967\u0969",
+            "14": "\u0967\u096a",
+            "15": "\u0967\u096b",
+            "16": "\u0967\u096c",
+            "17": "\u0967\u096d",
+            "18": "\u0967\u096e",
+            "19": "\u0967\u096f",
+            "20": "\u0968\u0966",
+            "urgent": "\uf06a",
+            "focused": "\uf192",
+            "default": "\uf111 "
+        }
+    },
+    "custom/hyprsunset": {
+        "justify": "center",
+        "return-type": "json",
+        "format": "{0} ",
+        "exec": "hyprshell hyprsunset -rq",
+        "on-click": "hyprshell hyprsunset -t -P waybar:19",
+        "on-scroll-up": "hyprshell hyprsunset -i '' -P waybar:19",
+        "on-scroll-down": "hyprshell hyprsunset -d '' -P waybar:19",
+        "interval": "once",
+        "tooltip": true,
+        "signal": 19,
+        "menu": "on-click-right",
+        "menu-file": "$XDG_CONFIG_HOME/waybar/menus/hyprsunset.xml",
+        "menu-actions": {
+            "warm-candle": "hyprshell hyprsunset --cm temp -s 3000 -P waybar:19",
+            "soft-warm": "hyprshell hyprsunset --cm temp -s 4000 -P waybar:19",
+            "neutral-white": "hyprshell hyprsunset --cm temp -s 5000 -P waybar:19",
+            "daylight": "hyprshell hyprsunset --cm temp -s 6500 -P waybar:19",
+            "cool-white": "hyprshell hyprsunset --cm temp -s 7500 -P waybar:19",
+            "bright-blue": "hyprshell hyprsunset --cm temp -s 9000 -P waybar:19",
+            "arctic-blue": "hyprshell hyprsunset --cm temp -s 10000 -P waybar:19",
+            "gamma-20": "hyprshell hyprsunset --cm gamma -s 20 -P waybar:19",
+            "gamma-30": "hyprshell hyprsunset --cm gamma -s 30 -P waybar:19",
+            "gamma-40": "hyprshell hyprsunset --cm gamma -s 40 -P waybar:19",
+            "gamma-50": "hyprshell hyprsunset --cm gamma -s 50 -P waybar:19",
+            "gamma-60": "hyprshell hyprsunset --cm gamma -s 60 -P waybar:19",
+            "gamma-70": "hyprshell hyprsunset --cm gamma -s 70 -P waybar:19",
+            "gamma-80": "hyprshell hyprsunset --cm gamma -s 80 -P waybar:19",
+            "gamma-90": "hyprshell hyprsunset --cm gamma -s 90 -P waybar:19",
+            "gamma-100": "hyprshell hyprsunset --cm gamma -s 100 -P waybar:19"
+        }
+    },
+    "custom/wallchange": {
+        "justify": "center",
+        "format": "\udb80\udd8a",
+        "tooltip-format": "\udb80\udd8a Switch wallpaper",
+        "on-click": "hyprshell wallpaper -n",
+        "on-click-right": "hyprshell wallpaper -p",
+        "on-click-middle": "hyprshell wallpaper --select",
+        "interval": 86400,
+        "tooltip": true
+    },
+    "custom/lazygit": {
+        "format": "\udb80\udea2",
+        "on-click": "hyprshell launch/lazygit.sh",
+        "tooltip-format": "LazyGit (SUPER+SHIFT+G)"
+    },
+    "custom/weather#sunset": {
+        "exec": "hyprshell weather -S",
+        "justify": "right",
+        "tooltip": false,
+        "format": "{0}",
+        "interval": 3600,
+        "return-type": "json"
+    },
+    "power-profiles-daemon": {
+        "justify": "center",
+        "format": "{icon}",
+        "tooltip-format": "Power profile: {profile}\nDriver: {driver}",
+        "tooltip": true,
+        "format-icons": {
+            "default": "\uf0e7",
+            "performance": "<span color='#B37F34'><small>\uf0e7</small></span>",
+            "balanced": "<span><small>\uf24e </small></span>",
+            "power-saver": "<span color='#a6e3a1'><small>\uf06c</small></span>"
+        }
+    },
+    "custom/dmark": {
+        "format": "\u2014",
+        "justify": "center",
+        "tooltip": false
+    },
+    "custom/mark": {
+        "justify": "center",
+        "format": "\u2014",
+        "tooltip": false
+    },
+    "custom/github#notifications": {
+        "justify": "center",
+        "format": "{}",
+        "return-type": "json",
+        "interval": 3600,
+        "signal": 9,
+        "exec": "hyprshell github-notifications",
+        "on-click": "xdg-open https://github.com/notifications;pkill -RTMIN+9 waybar"
+    },
+    "battery": {
+        "justify": "center",
+        "rotate": 270,
+        "states": {
+            "good": 80,
+            "warning": 30,
+            "critical": 20
+        },
+        "format": "{icon}",
+        "format-full": "<span color='#82A55F'><b>{icon}</b></span>",
+        "format-icons": [
+            "\udb80\udc7a",
+            "\udb80\udc7b",
+            "\udb80\udc7c",
+            "\udb80\udc7d",
+            "\udb80\udc7e",
+            "\udb80\udc7f",
+            "\udb80\udc80",
+            "\udb80\udc81",
+            "\udb80\udc82",
+            "\udb80\udc79"
+        ],
+        "format-charging": "\udb80\udc84",
+        "format-plugged": "\udb81\udea5",
+        "format-critical": "\udb80\udc83",
+        "tooltip-format": "{timeTo} {capacity} % | {power} W"
+    },
+    "backlight": {
+        "format": "{icon}",
+        "format-icons": [
+            "\ue38d",
+            "\ue3d3",
+            "\ue3d1",
+            "\ue3cf",
+            "\ue3ce",
+            "\ue3cd",
+            "\ue3ca",
+            "\ue3c8",
+            "\ue39b"
+        ],
+        "on-scroll-down": "hyprshell brightnesscontrol.sh d",
+        "on-scroll-up": "hyprshell brightnesscontrol.sh i",
+        "smooth-scrolling-threshold": 1,
+        "tooltip": false,
+        "tooltip-format": "Brightness: {percent}% "
+    },
+    "backlight#intel_backlight": {
+        "device": "intel_backlight",
+        "format": "{icon}",
+        "format-icons": [
+            "\ue38d",
+            "\ue3d3",
+            "\ue3d1",
+            "\ue3cf",
+            "\ue3ce",
+            "\ue3cd",
+            "\ue3ca",
+            "\ue3c8",
+            "\ue39b"
+        ],
+        "on-scroll-down": "hyprshell brightnesscontrol.sh d",
+        "on-scroll-up": "hyprshell brightnesscontrol.sh i",
+        "smooth-scrolling-threshold": 1,
+        "tooltip": true,
+        "tooltip-format": "Backlight level: {icon} {percent}%\nUsing: intel_backlight"
+    },
+    "hyprland/submap": {
+        "format": "<b>\udb80\uddd8</b>",
+        "max-length": 8,
+        "tooltip": true
+    },
+    "hyprland/workspaces#kanji": {
+        "class": "no-margin-padding",
+        "all-outputs": true,
+        "active-only": false,
+        "on-click": "activate",
+        "disable-scroll": false,
+        "on-scroll-up": "hyprctl dispatch workspace -1",
+        "on-scroll-down": "hyprctl dispatch workspace +1",
+        "persistent-workspaces": {},
+        "format": "{icon}",
+        "format-icons": {
+            "1": "\u4e00",
+            "2": "\u4e8c",
+            "3": "\u4e09",
+            "4": "\u56db",
+            "5": "\u4e94",
+            "6": "\u516d",
+            "7": "\u4e03",
+            "8": "\u516b",
+            "9": "\u4e5d",
+            "10": "\u5341",
+            "11": "\u5341\u4e00",
+            "12": "\u5341\u4e8c",
+            "13": "\u5341\u4e09",
+            "14": "\u5341\u56db",
+            "15": "\u5341\u4e94",
+            "16": "\u5341\u516d",
+            "17": "\u5341\u4e03",
+            "18": "\u5341\u516b",
+            "19": "\u5341\u4e5d",
+            "20": "\u4e8c\u5341",
+            "urgent": "\uf06a",
+            "focused": "\uf192",
+            "default": "\uf111 "
+        }
+    },
+    "pulseaudio": {
+        "format": "{icon}",
+        "format-bluetooth": "{icon}",
+        "format-muted": "\udb81\udf5f",
+        "on-click": "hyprshell volumecontrol -o m",
+        "on-click-right": "pavucontrol -t 3",
+        "on-scroll-up": "hyprshell volumecontrol -o i",
+        "on-scroll-down": "hyprshell volumecontrol -o d",
+        "smooth-scrolling-threshold": 1,
+        "tooltip-format": "{volume}% {icon} | {desc}",
+        "format-icons": {
+            "headphone": "\uf025",
+            "hands-free": "\uf025",
+            "headset": "\uf025",
+            "phone": "\uf095",
+            "portable": "\uf095",
+            "car": "\uf1b9",
+            "default": [
+                "\udb81\udd7f",
+                "\udb81\udd80",
+                "\udb81\udd7e"
+            ]
+        }
+    },
+    "custom/mediaplayer": {
+        "justify": "center",
+        "exec": "hyprshell mediaplayer.py",
+        "return-type": "json",
+        "format": "{alt}",
+        "tooltip": true,
+        "on-click": "playerctl play-pause",
+        "on-click-middle": "playerctl previous",
+        "on-scroll-up": "playerctl position 1+",
+        "on-scroll-down": "playerctl position 1-",
+        "menu": "on-click-right",
+        "menu-file": "$XDG_CONFIG_HOME/waybar/menus/mediaplayer.xml",
+        "menu-actions": {
+            "play-pause": "playerctl play-pause",
+            "next": "playerctl next",
+            "previous": "playerctl previous",
+            "stop": "playerctl stop",
+            "shuffle": "playerctl shuffle toggle",
+            "repeat": "playerctl loop Track",
+            "loop": "playerctl loop Playlist",
+            "disable-loop": "playerctl loop None"
+        },
+        "restart-interval": 5
+    },
+    "custom/network#speed": {
+        "justify": "center",
+        "exec": "hyprshell network-speed",
+        "return-type": "json",
+        "format": "{}",
+        "interval": 3,
+        "tooltip": false,
+        "on-click": "pgrep -x rofi &>/dev/null && notify-send rofi || networkmanager_dmenu"
+    },
+    "pulseaudio/slider": {
+        "min": 0,
+        "max": 140,
+        "orientation": "horizontal"
+    },
+    "custom/weather": {
+        "exec": "hyprshell weather",
+        "justify": "center",
+        "tooltip": false,
+        "format": "{0}",
+        "interval": 600,
+        "return-type": "json"
+    },
+    "custom/powermenu": {
+        "justify": "center",
+        "format": "\udb82\ude1a",
+        "tooltip": false,
+        "on-click": "hyprshell logoutlaunch 1",
+        "menu": "on-click-right",
+        "menu-file": "$XDG_CONFIG_HOME/waybar/menus/power.xml",
+        "menu-actions": {
+            "lock": "hyprshell lockscreen.sh",
+            "logout": "hyprctl dispatch exit 0",
+            "shutdown-now": "shutdown now",
+            "shutdown-wait": "systemctl poweroff",
+            "reboot-now": "systemctl reboot",
+            "reboot-firmware": "systemctl reboot --firmware-setup",
+            "suspend": "systemctl suspend",
+            "hibernate": "systemctl hibernate"
+        },
+        "signal": 1
+    },
+    "hyprland/language": {
+        "justify": "center",
+        "format": "{short}",
+        "on-click": "hyprshell keyboardswitch"
+    },
+    "custom/cpuinfo": {
+        "justify": "right",
+        "align": 0,
+        "exec": "hyprshell cpuinfo",
+        "return-type": "json",
+        "tooltip": true,
+        "interval": 5
+    },
+    "hyprland/window": {
+        "format": " \uf303 {0}",
+        "rotate": 0,
+        "separate-outputs": true,
+        "rewrite": {
+            "(.*)@archlinux:(.*)": "$1 \uf489\u2005",
+            "(.*) \u2014 Mozilla Firefox": "$1 \udb80\ude39\u2005",
+            "(.*)Mozilla Firefox": "Firefox \udb80\ude39\u2005",
+            "(.*) - Visual Studio Code": "$1 \udb82\ude1e\u2005",
+            "(.*)Visual Studio Code": "Code \udb82\ude1e\u2005",
+            "(.*) - Code - OSS": "$1 \udb82\ude1e\u2005",
+            "(.*)Code - OSS": "Code \udb82\ude1e\u2005",
+            "(.*) \u2014 Dolphin": "$1 \udb80\ude4b\u2005",
+            "(.*)Spotify": "Spotify \udb81\udcc7\u2005",
+            "(.*)Steam": "Steam \udb81\udcd3\u2005",
+            "(.*) - Discord": "$1 \uf1ff\u2005",
+            "(.*)Netflix": "Netflix \udb81\udf46\u2005",
+            "(.*) \u2014 Google chrome": "$1 \ue743\u2005",
+            "(.*)Google chrome": "Google chrome \ue743\u2005",
+            "(.*) \u2014 Github": "$1 \ue709\u2005",
+            "(.*)Github": "Github \ue709\u2005",
+            "(.*)Spotify Free": "Spotify \udb81\udcc7\u2005",
+            "(.*)Spotify Premiun": "Spotify \udb81\udcc7\u2005"
+        },
+        "max-length": 50
+    },
+    "custom/hyprmenu": {
+        "justify": "center",
+        "format": "\udb80\udf5c",
+        "tooltip": false,
+        "tooltip-format": "Click for more options",
+        "menu": "on-click",
+        "menu-file": "$XDG_CONFIG_HOME/waybar/menus/hyprmenu.xml",
+        "menu-actions": {
+            "animations-select": "hyprshell animations --select",
+            "wallpaper-select": "hyprshell wallpaper --select --global",
+            "wallpaper-next": "hyprshell wallpaper --backend swww --next --global",
+            "wallpaper-previous": "hyprshell wallpaper --backend swww --previous --global",
+            "wallpaper-random": "hyprshell wallpaper --backend swww --random --global",
+            "theme-next": "hyprshell theme.switch -n",
+            "theme-previous": "hyprshell theme.switch -p",
+            "theme-select": "hyprshell theme.select",
+            "waybar-restart": "hyprshell waybar -ubg",
+            "waybar-reload-css": "sed -i '${/^$/d;}'  $XDG_CONFIG_HOME/waybar/style.css",
+            "waybar-layout-select": "hyprshell waybar --select-layout",
+            "waybar-style-select": "hyprshell waybar --select-style",
+            "waybar-layout-next": "hyprshell waybar --update --next",
+            "waybar-layout-previous": "hyprshell waybar --update --prev",
+            "lockscreen-select": "hyprshell lockscreen --select",
+            "workflows-select": "hyprshell workflows --select;pkill -RTMIN+19 waybar",
+            "shaders-select": "hyprshell shaders --select;pkill -RTMIN+19 waybar",
+            "keybinds-hint": "hyprshell keybinds_hint"
+        }
+    },
+    "custom/updates": {
+        "justify": "center",
+        "exec": "hyprshell system/system.update.sh",
+        "return-type": "json",
+        "format": "{0}",
+        "rotate": 0,
+        "on-click": "hyprctl dispatch exec -- hyprshell system/system.update.sh up",
+        "interval": 86400,
+        "tooltip": true,
+        "signal": 20
+    },
+    "custom/mainmenu": {
+        "format": "",
+        "on-click": "hyprshell rofi/menu.sh",
+        "tooltip-format": "Main Menu\n\u2022 Appearance\n\u2022 Applications\n\u2022 Dev Tools\n\u2022 Install\n\u2022 Settings"
+    },
+    "custom/themeswitch": {
+        "justify": "center",
+        "format": "\udb81\udfe1",
+        "rotate": 0,
+        "tooltip-format": "\udb81\udfe1 Switch theme",
+        "on-click": "setsid -f hyprshell theme.switch.sh -n",
+        "on-click-right": "setsid -f hyprshell theme.switch.sh -p",
+        "on-click-middle": "sleep 0.1 && hyprshell theme.select",
+        "interval": 86400,
+        "tooltip": true
+    },
+    "custom/wifimenu": {
+        "format": "\udb81\udda9",
+        "on-click": "hyprshell launch/wifi.sh",
+        "tooltip-format": "WiFi Manager (Impala)"
+    },
+    "custom/swaync": {
+        "justify": "center",
+        "exec-if": "which swaync-client",
+        "format": "{icon}",
+        "tooltip": true,
+        "tooltip-format": "<b>Sway Notification Center</b>\n{0} new notifications",
+        "format-icons": {
+            "notification": "\udb80\udf6a",
+            "dnd-notification": "\udb84\udd75",
+            "inhibited-notification": "\udb80\udf6a",
+            "inhibited-none": "\udb80\udf65",
+            "dnd-inhibited-notification": "\udb84\udd75",
+            "dnd-inhibited-none": "\udb84\udd6d",
+            "dnd-none": "\udb84\udd6d",
+            "email-notification": "\udb83\udd42",
+            "chat-notification": "\udb84\udec9",
+            "warning-notification": "<span foreground='yellow'>\udb85\udf3b</span>",
+            "error-notification": "<span foreground='red'>\udb82\ude04</span>",
+            "network-notification": "\udb83\udc8a",
+            "battery-notification": "\udb84\udccd",
+            "update-notification": "\udb81\udeb0",
+            "music-notification": "\uec1b",
+            "volume-notification": "\udb81\udfc5",
+            "dnd": "\udb84\udd6d",
+            "none": "\udb80\udf65"
+        },
+        "return-type": "json",
+        "exec": "pgrep -x swaync && swaync-client -swb",
+        "on-click": "swaync-client -t -sw",
+        "escape": true,
+        "menu": "on-click-right",
+        "menu-file": "$XDG_CONFIG_HOME/waybar/menus/swaync.xml",
+        "menu-actions": {
+            "toggle-dnd": "swaync-client --toggle-dnd",
+            "reload-config": "swaync-client --reload-config",
+            "reload-css": "swaync-client --reload-css",
+            "clear-all": "swaync-client --close-all"
+        }
+    },
+    "pulseaudio#microphone": {
+        "format": "{format_source}",
+        "format-source": "\uec1c",
+        "format-source-muted": "\uec12",
+        "on-click": "hyprshell volumecontrol -i m",
+        "on-click-right": "pavucontrol -t 4",
+        "on-scroll-up": "hyprshell volumecontrol -i i",
+        "on-scroll-down": "hyprshell volumecontrol -i d",
+        "tooltip-format": "{volume}% {format_source} | {desc}",
+        "scroll-step": 5
+    },
+    "custom/weather#sunrise": {
+        "exec": "hyprshell weather -s",
+        "justify": "left",
+        "tooltip": false,
+        "format": "{0}",
+        "interval": 3600,
+        "return-type": "json"
+    },
+    "clock#time": {
+        "justify": "center",
+        "format": "{:%H\n%M}",
+        "tooltip": false,
+        "interval": 60,
+        "actions": {
+            "on-scroll-up": "tz_up",
+            "on-scroll-down": "tz_down"
+        }
+    },
+    "custom/wbarswitch": {
+        "justify": "center",
+        "format": "\uf1a5",
+        "rotate": 0,
+        "tooltip-format": "\uf205 Switch bar | \uf2d5 dock",
+        "on-click": "hyprshell waybar -n",
+        "on-click-right": "hyprshell waybar -p",
+        "on-click-middle": "hyprshell quickapps",
+        "interval": 86400,
+        "tooltip": true
+    },
+    "custom/display": {
+        "justify": "center",
+        "format": "\udb84\udd04",
+        "tooltip-format": "\udb84\udd04  Display settings",
+        "on-click": "nwg-displays"
+    },
+    "custom/devmenu": {
+        "format": "",
+        "on-click": "hyprshell rofi/menu.sh dev",
+        "tooltip-format": "Dev Tools Menu\n\u2022 LazyGit\n\u2022 LazyDocker\n\u2022 Ranger\n\u2022 Bottom\n\u2022 Rmpc"
+    },
+    "backlight/slider": {
+        "justify": "center",
+        "min": 5,
+        "max": 100,
+        "orientation": "horizontal",
+        "device": "intel_backlight"
+    },
+    "custom/weather#minmax": {
+        "exec": "hyprshell weather -m",
+        "justify": "right",
+        "tooltip": true,
+        "format": "{0}",
+        "interval": 3600,
+        "return-type": "json"
+    },
+    "custom/hotspot": {
+        "justify": "center",
+        "format": "{}",
+        "exec": "hyprshell waybar.hotspot.sh",
+        "return-type": "json",
+        "on-click": "hyprshell waybar.hotspot.toggle.sh",
+        "on-click-right": "nm-connection-editor",
+        "tooltip": true,
+        "interval": 5
+    },
+    "custom/colorpicker": {
+        "justify": "center",
+        "format": "{}",
+        "return-type": "json",
+        "interval": "once",
+        "exec": "hyprshell colorpicker -j",
+        "on-click": "sleep 1 && hyprshell colorpicker",
+        "signal": 1
+    },
+    "custom/audiomenu": {
+        "format": "",
+        "on-click": "hyprshell rofi/menu.sh audio",
+        "tooltip-format": "Audio Setup\n\u2022 Pavucontrol (GUI)\n\u2022 Wiremix (TUI)"
+    },
+    "network": {
+        "interface": "wl*",
+        "justify": "center",
+        "format": "{icon}",
+        "format-icons": {
+            "wifi": [
+                "\udb82\udd2f",
+                "\udb82\udd1f",
+                "\udb82\udd22",
+                "\udb82\udd25",
+                "\udb82\udd28"
+            ],
+            "ethernet": [
+                "\udb80\ude00"
+            ],
+            "linked": [
+                "\udb80\ude01"
+            ],
+            "disabled": [
+                "\udb82\udd2d"
+            ],
+            "disconnected": [
+                "\udb82\udd29"
+            ]
+        },
+        "format-wifi": "{icon}",
+        "format-ethernet": "{icon}",
+        "format-disconnected": "{icon}",
+        "format-disabled": "{icon}",
+        "format-linked": "{icon}",
+        "tooltip-format": "{ipaddr}",
+        "tooltip-format-wifi": "{ifname} ({ipaddr})\nSignal: {signalStrength}%\nUp: {bandwidthUpBits} | Down: {bandwidthDownBits}\nSSID: {essid}\nFrequency: {frequency} GHz",
+        "tooltip-format-ethernet": "{ifname} \udb80\ude00\n{ipaddr}",
+        "tooltip-format-disconnected": "Not Connected to any type of Network",
+        "tooltip": true,
+        "on-click": "rfkill toggle wifi",
+        "interval": 2
+    },
+    "custom/vpn": {
+        "justify": "center",
+        "format": "{}",
+        "exec": "hyprshell waybar.vpn.sh",
+        "return-type": "json",
+        "on-click": "hyprshell waybar.vpn.toggle.sh",
+        "tooltip": true,
+        "interval": 5
+    },
+    "bluetooth#status": {
+        "justify": "center",
+        "format-on": "",
+        "format-off": "",
+        "format-disabled": "",
+        "format-connected": "<b>{num_connections}</b>",
+        "format-connected-battery": "<small><b>{device_battery_percentage}</b></small>",
+        "format-icons": [
+            "\udb82\udd47",
+            "\udb82\udd3e",
+            "\udb82\udd3f",
+            "\udb82\udd40",
+            "\udb82\udd41",
+            "\udb82\udd42",
+            "\udb82\udd43",
+            "\udb82\udd44",
+            "\udb82\udd45",
+            "\udb82\udd46",
+            "\udb82\udd48"
+        ],
+        "tooltip": false,
+        "tooltip-format": "{controller_alias}\n{controller_address}\n{num_connections} connected",
+        "tooltip-format-connected": "{controller_alias}\n{controller_address}\n{num_connections} connected\n\n{device_enumerate}",
+        "tooltip-format-enumerate-connected": "{device_alias}\n{controller_address}",
+        "tooltip-format-enumerate-connected-battery": "{device_alias}\t{device_address}\t{icon} {device_battery_percentage}%"
+    },
+    "custom/focusmode": {
+        "justify": "center",
+        "format": "\udb83\udf4f",
+        "tooltip-format": "\udb83\udf4f Toggle editing workflow",
+        "on-click": "hyprshell focusmode"
+    },
+    "custom/gpuinfo": {
+        "justify": "right",
+        "align": 0,
+        "exec": "hyprshell gpuinfo",
+        "return-type": "json",
+        "interval": 5,
+        "tooltip": true,
+        "on-click": "hyprshell gpuinfo --toggle",
+        "menu": "on-click-right",
+        "menu-file": "$XDG_CONFIG_HOME/waybar/menus/gpuinfo.xml",
+        "menu-actions": {
+            "toggle": "hyprshell gpuinfo --toggle",
+            "reset": "hyprshell gpuinfo --reset"
+        }
+    },
+    "custom/screenshot": {
+        "format": "\udb80\udd04",
+        "tooltip": true,
+        "tooltip-format": "<b>Screenshot</b>\nLeft: Select Area\nRight: Menu\nMiddle: Full Screen\nShift+Left: OCR",
+        "on-click": "hyprshell screenshot s",
+        "on-click-right": "hyprshell screenshot m",
+        "return-type": ""
+    },
+    "clock#date": {
+        "justify": "center",
+        "format": "{:%a\n%d\n%b}",
+        "tooltip-format": "<span>{calendar}</span>",
+        "calendar": {
+            "mode": "month",
+            "mode-mon-col": 3,
+            "weeks-pos": "right",
+            "on-scroll": 1,
+            "on-click-right": "mode",
+            "format": {
+                "months": "<span color='#ffead3'><b>{}</b></span>",
+                "weekdays": "<span color='#ffcc66'><b>{}</b></span>",
+                "today": "<span color='#ff6699'><b>{}</b></span>"
+            }
+        },
+        "actions": {
+            "on-click-right": "mode",
+            "on-scroll-up": "shift_up",
+            "on-scroll-down": "shift_down"
+        },
+        "interval": 3600
+    },
+    "memory": {
+        "justify": "right",
+        "align": 0,
+        "interval": 30,
+        "format": "<span size='9pt'>\uf200</span>\n{:2}\udb84\ude78",
+        "tooltip": true,
+        "tooltip-format": "\udb83\udf86 Memory usage: {percentage}%\n\ue266 Used: {used:0.2f}GB / {total:0.2f}GB\n\uf85a Available: {avail:0.2f}GB\n\uf233 Swap used: {swapUsed:0.2f}GB / {swapTotal:0.2f}GB ({swapPercentage}%)"
+    },
+    "disk": {
+        "justify": "right",
+        "align": 0,
+        "interval": 600,
+        "format": "<span size='11pt'>\udb80\udeca</span>\n{percentage_used}\udb84\ude78",
+        "tooltip-format": "Used: {used} / {total} ({percentage_used}%)\nAvailable: {free} ({percentage_free}%)",
+        "path": "/"
+    },
+    "custom/keybindhint": {
+        "justify": "center",
+        "format": "\uf11c",
+        "tooltip-format": "\uf11c  Keybinds hint",
+        "on-click": "hyprshell keybinds_hint"
+    },
+    "hyprland/workspaces#roman": {
+        "class": "no-margin-padding",
+        "all-outputs": true,
+        "active-only": false,
+        "on-click": "activate",
+        "disable-scroll": false,
+        "on-scroll-up": "hyprctl dispatch workspace -1",
+        "on-scroll-down": "hyprctl dispatch workspace +1",
+        "persistent-workspaces": {},
+        "format": "{icon}",
+        "format-icons": {
+            "1": "I",
+            "2": "II",
+            "3": "III",
+            "4": "IV",
+            "5": "V",
+            "6": "VI",
+            "7": "VII",
+            "8": "VIII",
+            "9": "IX",
+            "10": "X",
+            "11": "XI",
+            "12": "XII",
+            "13": "XIII",
+            "14": "XIV",
+            "15": "XV",
+            "16": "XVII",
+            "17": "XVI",
+            "18": "XVIII",
+            "19": "XIX",
+            "20": "XX",
+            "urgent": "\uf06a",
+            "focused": "\uf192",
+            "default": "\uf111 "
+        }
+    },
+    "custom/cliphist": {
+        "justify": "center",
+        "format": "\ued7b",
+        "tooltip-format": "\ued7b Clipboard history",
+        "on-click": "sleep 0.1 && hyprshell cliphist -c",
+        "menu": "on-click-right",
+        "menu-file": "$XDG_CONFIG_HOME/waybar/menus/clipboard.xml",
+        "menu-actions": {
+            "favorites": "hyprshell cliphist --favorites",
+            "history": "hyprshell cliphist --copy",
+            "delete-history": "hyprshell cliphist --delete",
+            "manage-favorites": "hyprshell cliphist 'Manage Favorites'",
+            "clear-history": "hyprshell cliphist --wipe"
+        },
+        "interval": 86400,
+        "tooltip": true
+    },
+    "custom/colormode": {
+        "justify": "center",
+        "format": "{}",
+        "exec": "hyprshell waybar.colormode.sh",
+        "return-type": "json",
+        "tooltip-format": "\udb80\udfd9 {1} color mode",
+        "on-click": "hyprshell wal.toggle -m",
+        "on-click-right": "hyprshell wal.toggle -p",
+        "on-click-middle": "hyprshell wal.toggle -n",
+        "interval": 86400,
+        "signal": 8,
+        "tooltip": true
+    },
+    "custom/fanspeedinfo": {
+        "justify": "right",
+        "align": 0,
+        "exec": "hyprshell fanspeedinfo",
+        "format": "<span size='12pt'>\ue7f3</span>\n{}",
+        "return-type": "json",
+        "interval": 5,
+        "tooltip": true,
+        "class": "default-margin-padding",
+        "on-click": "hyprshell fanspeedinfo.py --toggle",
+        "menu": "on-click-right",
+        "menu-file": "$XDG_CONFIG_HOME/waybar/menus/fanspeedinfo.xml",
+        "menu-actions": {
+            "toggle": "hyprshell fanspeedinfo.py --toggle",
+            "reset": "hyprshell fanspeedinfo.py --reset"
+        },
+        "signal": 19
+    },
+    "temperature#2": {
+        "thermal-zone": 2,
+        "critical-threshold": 65,
+        "warning-threshold": 55,
+        "interval": 2,
+        "format": "\uf2ca {temperatureC}\u00b0C",
+        "format-warning": "<span foreground='#fab387'>\uf2ca</span> <span foreground='#fab387'>{temperatureC}\u00b0C</span>",
+        "format-critical": "<span foreground='#f38ba8'>\uf2ca</span> <span foreground='#f38ba8'>{temperatureC}\u00b0C</span>",
+        "tooltip": true,
+        "tooltip-format": "GPU Temperature: {temperatureC}\u00b0C\nNVIDIA GeForce MX250",
+        "max-length": 12,
+        "min-length": 2
+    },
+    "temperature#27": {
+        "thermal-zone": 27,
+        "critical-threshold": 85,
+        "warning-threshold": 70,
+        "interval": 2,
+        "format": "\uf2ca {temperatureC}\u00b0C",
+        "format-warning": "<span foreground='#fab387'>\uf2ca</span> <span foreground='#fab387'>{temperatureC}\u00b0C</span>",
+        "format-critical": "<span foreground='#f38ba8'>\uf2ca</span> <span foreground='#f38ba8'>{temperatureC}\u00b0C</span>",
+        "tooltip": true,
+        "tooltip-format": "CPU Temperature: {temperatureC}\u00b0C\nIntel(R) Core(TM) i7-10510U",
+        "max-length": 12,
+        "min-length": 2
+    },
+    "temperature#0": {
+        "thermal-zone": 0,
+        "critical-threshold": 50,
+        "warning-threshold": 40,
+        "interval": 5,
+        "format": "\udb81\udd0f {temperatureC}\u00b0C",
+        "format-warning": "<span foreground='#fab387'>\udb81\udd0f</span> <span foreground='#fab387'>{temperatureC}\u00b0C</span>",
+        "format-critical": "<span foreground='#f38ba8'>\udb81\udd0f</span> <span foreground='#f38ba8'>{temperatureC}\u00b0C</span>",
+        "tooltip": true,
+        "tooltip-format": "System Temperature: {temperatureC}\u00b0C\nACPI Thermal Zone",
+        "max-length": 12,
+        "min-length": 2
+    },
+    "custom/caffeine": {
+        "justify": "center",
+        "return-type": "json",
+        "format": "{}",
+        "exec": "hyprshell waybar/caffeine.sh",
+        "on-click": "hyprshell session/toggle-keep-awake.sh",
+        "on-click-right": "hyprshell session/toggle-audio-keep-awake.sh",
+        "interval": 2,
+        "tooltip": true,
+        "signal": 21
+    },
+    "custom/workflows": {
+        "justify": "center",
+        "format": "{}",
+        "interval": "once",
+        "exec": "hyprshell workflows --waybar",
+        "on-click": "hyprshell workflows --select;pkill -RTMIN+19 waybar",
+        "tooltip": true,
+        "return-type": "json",
+        "signal": 19
+    },
+    "hyprland/workspaces": {
+        "all-outputs": true,
+        "active-only": false,
+        "on-click": "activate",
+        "disable-scroll": false,
+        "on-scroll-up": "hyprctl dispatch workspace -1",
+        "on-scroll-down": "hyprctl dispatch workspace +1",
+        "persistent-workspaces": {}
+    },
+    "custom/rmpc": {
+        "format": "",
+        "on-click": "hyprshell launch/tui.sh rmpc",
+        "tooltip-format": "Music Player (Rmpc)\nSUPER+SHIFT+M"
+    },
+    "custom/ranger": {
+        "format": "",
+        "on-click": "hyprshell launch/tui.sh ranger",
+        "tooltip-format": "Ranger File Manager (SUPER+SHIFT+F)"
+    },
+    "bluetooth": {
+        "justify": "center",
+        "format": "",
+        "format-on": "\uf294",
+        "format-off": "\udb80\udcb2",
+        "format-disabled": "\uf293",
+        "format-connected": "<b>\udb80\udcb1</b>",
+        "format-icons": [
+            "\udb82\udd47",
+            "\udb82\udd3e",
+            "\udb82\udd3f",
+            "\udb82\udd40",
+            "\udb82\udd41",
+            "\udb82\udd42",
+            "\udb82\udd43",
+            "\udb82\udd44",
+            "\udb82\udd45",
+            "\udb82\udd46",
+            "\udb82\udd48"
+        ],
+        "tooltip-format": "{controller_alias}\n{controller_address}\n{num_connections} connected",
+        "tooltip-format-connected": "{controller_alias}\n{controller_address}\n{num_connections} connected\n\n{device_enumerate}",
+        "tooltip-format-enumerate-connected": "{device_alias}\n{controller_address}",
+        "tooltip-format-enumerate-connected-battery": "{device_alias}\t{device_address}\t{icon} {device_battery_percentage}%",
+        "on-click": "rfkill toggle bluetooth"
+    },
+    "custom/screenrecord": {
+        "justify": "center",
+        "format": "{}",
+        "return-type": "json",
+        "interval": 1,
+        "exec": "hyprshell screenrecord --status",
+        "on-click": "hyprshell screenrecord --toggle",
+        "on-click-right": "hyprshell screenrecord --quit"
+    },
+    "custom/swaync-dnd": {
+        "justify": "center",
+        "exec-if": "which swaync-client",
+        "format": "{text}",
+        "return-type": "json",
+        "interval": 2,
+        "exec": "hyprshell waybar/swaync-dnd.sh",
+        "on-click": "swaync-client --toggle-dnd",
+        "on-click-right": "swaync-client --close-all -sw",
+        "on-click-middle": "swaync-client --open-panel -sw",
+        "escape": true
+    }
 }

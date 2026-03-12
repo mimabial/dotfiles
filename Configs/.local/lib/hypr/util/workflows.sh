@@ -7,8 +7,7 @@ if ! source "$(command -v hyprshell)"; then
   exit 1
 fi
 # Set variables
-confDir="${XDG_CONFIG_HOME:-$HOME/.config}"
-workflows_dir="$confDir/hypr/workflows"
+workflows_dir="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/workflows"
 
 # Ensure the workflows directory exists
 if [ ! -d "$workflows_dir" ]; then
@@ -109,7 +108,7 @@ fn_select() {
 
   # Extract the workflow name (remove the icon and tab)
   selected_workflow=$(awk -F'\t' '{print $2}' <<<"${selected_workflow}" | xargs)
-  set_conf "HYPR_WORKFLOW" "$selected_workflow"
+  state_set "HYPR_WORKFLOW" "$selected_workflow" "staterc"
   fn_update
 }
 
@@ -128,7 +127,7 @@ get_info() {
 
 fn_update() {
   get_info
-  cat <<EOF >"${confDir}/hypr/workflows.conf"
+  cat <<EOF >"${XDG_CONFIG_HOME:-$HOME/.config}/hypr/workflows.conf"
 #! █░█░█ █▀█ █▀█ █▄▀ █▀▀ █░░ █▀█ █░█░█ █▀
 #! ▀▄▀▄▀ █▄█ █▀▄ █░█ █▀░ █▄▄ █▄█ ▀▄▀▄▀ ▄█
 
@@ -186,7 +185,7 @@ while true; do
         echo "Error: --set requires a workflow name"
         exit 1
       fi
-      set_conf "HYPR_WORKFLOW" "$2"
+      state_set "HYPR_WORKFLOW" "$2" "staterc"
       fn_update
       # refresh waybar module only if waybar is running
       if pgrep -x waybar >/dev/null; then

@@ -9,7 +9,6 @@ Type=simple
 ExecStart=%h/.local/state/hypr/pip_env/bin/python %h/.local/lib/hypr/util/parse.config.py --daemon --export
 Restart=on-failure
 RestartSec=5s
-Environment="DISPLAY=:0"
 Environment="PYTHONPATH=%h/.local/lib/hypr"
 
 # Make sure the required directories exist

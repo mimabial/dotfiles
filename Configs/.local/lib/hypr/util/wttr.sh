@@ -64,7 +64,7 @@ refresh_cache() {
     city="$WEATHER_LOCATION"
   else
     # Priority 2: Fetch location from IP
-    local location=$(curl -s --max-time 5 ipinfo.io 2>/dev/null)
+    local location=$(curl -fsS --max-time 5 "https://ipinfo.io/json" 2>/dev/null)
     country=$(echo "$location" | jq -r '.country' 2>/dev/null)
     city=$(echo "$location" | jq -r '.city' 2>/dev/null)
 
@@ -89,7 +89,7 @@ refresh_cache() {
   fi
 
   # Fetch weather using JSON format to get numeric weather code
-  local weather_json=$(curl -s --max-time 5 "wttr.in/${location}?format=j1" 2>/dev/null)
+  local weather_json=$(curl -fsS --max-time 5 "https://wttr.in/${location}?format=j1" 2>/dev/null)
 
   # Extract weather data using jq
   if command -v jq >/dev/null 2>&1 && [ -n "$weather_json" ]; then
@@ -99,7 +99,7 @@ refresh_cache() {
     temp="+${temp}°C"
   else
     # Fallback to simple format if jq is not available
-    local weather=$(curl -s --max-time 5 "wttr.in/${location}?format=%c|%C|%f" 2>/dev/null)
+    local weather=$(curl -fsS --max-time 5 "https://wttr.in/${location}?format=%c|%C|%f" 2>/dev/null)
     IFS='|' read -r code desc temp <<<"$weather"
   fi
 

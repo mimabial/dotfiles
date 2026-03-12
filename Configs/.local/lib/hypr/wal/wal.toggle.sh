@@ -2,9 +2,9 @@
 
 #// set variables
 
-if [[ "${HYPR_SHELL_INIT}" -ne 1 ]]; then
+if [[ "${HYPR_SHELL_INIT:-0}" -ne 1 ]]; then
   eval "$(hyprshell init)"
-elif ! declare -F set_conf >/dev/null; then
+elif ! declare -F state_set >/dev/null; then
   # HYPR_SHELL_INIT can be exported from non-bash shells; ensure functions exist.
   if [[ -r "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh" ]]; then
     # shellcheck disable=SC1090
@@ -26,11 +26,8 @@ trap 'flock -u 203 2>/dev/null' EXIT
 colorModes=("Theme" "Auto" "Dark" "Light")
 AUTO_THEME_PY="${HOME}/.local/lib/hypr/theme/auto_theme.py"
 
-# Read current mode (prefer staterc, fall back to config)
+# Read current mode from staterc
 [ -f "${XDG_STATE_HOME:-$HOME/.local/state}/hypr/staterc" ] && source "${XDG_STATE_HOME:-$HOME/.local/state}/hypr/staterc"
-if [ -z "${enableWallDcol}" ]; then
-  [ -f "$HYPR_STATE_HOME/config" ] && source "$HYPR_STATE_HOME/config"
-fi
 enableWallDcol="${enableWallDcol:-1}"
 
 # Rofi selector
@@ -47,12 +44,73 @@ rofi_pywal16() {
   hypr_border="${hypr_border:-5}"
   elem_border=$((hypr_border * 4))
   r_override="prompt{border-radius:${hypr_border}px;} textbox-prompt-colon {border-radius:${hypr_border}px;} window{border-radius:${elem_border}px;} element{border-radius:${hypr_border}px;}"
+  rofi_theme_file="${XDG_CONFIG_HOME:-$HOME/.config}/rofi/pywal16.rasi"
+  width_override=""
+  margin_px="${ROFI_PYWAL16_MARGIN_PX:-${ROFI_PYWAL16_MARGIN:-0}}"
+  [[ "${margin_px}" =~ ^[0-9]+$ ]] || margin_px=0
+  mon_data="$(hyprctl -j monitors 2>/dev/null || true)"
+  mon_width="$(jq -r '.[] | select(.focused==true) | .width' <<<"${mon_data}" 2>/dev/null | head -1)"
+  mon_scale="$(jq -r '.[] | select(.focused==true) | .scale' <<<"${mon_data}" 2>/dev/null | head -1)"
+  mon_width_logical=""
+  if [[ "${mon_width}" =~ ^[0-9]+$ ]]; then
+    if [[ "${mon_scale}" =~ ^[0-9]+([.][0-9]+)?$ ]] && awk "BEGIN { exit !(${mon_scale} > 0) }"; then
+      mon_width_logical="$(awk -v w="${mon_width}" -v sc="${mon_scale}" 'BEGIN { printf "%.2f", (w / sc) }')"
+    else
+      mon_width_logical="${mon_width}"
+    fi
+  fi
+  wall_cache_root="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wallpaper/current"
+  wall_image="${wall_cache_root}/wall.thmb"
+
+  if [[ -f "${wall_image}" ]] && [[ -f "${rofi_theme_file}" ]] && command -v magick >/dev/null 2>&1; then
+    read -r theme_height theme_height_unit < <(
+      awk '
+        /^[[:space:]]*window[[:space:]]*\{/ {in_window=1; next}
+        in_window && /^[[:space:]]*}/ {exit}
+        in_window && /^[[:space:]]*height[[:space:]]*:/ {
+          if (match($0, /:[[:space:]]*([0-9]+([.][0-9]+)?)([a-z%]*)/, m)) {
+            print m[1], m[3]
+          }
+          exit
+        }
+      ' "${rofi_theme_file}"
+    )
+
+    if [[ "${theme_height_unit}" == "em" || "${theme_height_unit}" == "px" ]]; then
+      read -r img_w img_h < <(magick identify -format "%w %h" "${wall_image}" 2>/dev/null || true)
+      if [[ "${img_w}" =~ ^[0-9]+$ && "${img_h}" =~ ^[0-9]+$ && "${img_h}" -gt 0 ]]; then
+        ratio="$(awk -v w="${img_w}" -v h="${img_h}" 'BEGIN { if (h <= 0) { print 0 } else { printf "%.6f", (w / h) } }')"
+        if [[ "${theme_height_unit}" == "px" ]]; then
+          width_value="$(awk -v h="${theme_height}" -v r="${ratio}" 'BEGIN { printf "%.2f", (h * r) }')"
+          if [[ -n "${mon_width_logical}" ]] && awk -v w="${mon_width_logical}" -v m="${margin_px}" 'BEGIN { exit !(w > (m * 2)) }'; then
+            max_width_px="$(awk -v w="${mon_width_logical}" -v m="${margin_px}" 'BEGIN { val = w - (m * 2); if (val < 0) val = 0; printf "%.2f", val }')"
+            width_value="$(awk -v w="${width_value}" -v max="${max_width_px}" 'BEGIN { if (w > max) w = max; printf "%.2f", w }')"
+          fi
+          width_override="window { width: ${width_value}px; }"
+        else
+          width_value="$(awk -v h="${theme_height}" -v r="${ratio}" 'BEGIN { printf "%.2f", (h * r) }')"
+          if [[ -n "${mon_width_logical}" && "${font_scale}" =~ ^[0-9]+$ && "${font_scale}" -gt 0 ]]; then
+            font_px="$(awk -v fs="${font_scale}" 'BEGIN { printf "%.3f", (fs * 96 / 72) }')"
+            max_width_em="$(awk -v w="${mon_width_logical}" -v m="${margin_px}" -v fp="${font_px}" 'BEGIN { val = (w - (m * 2)) / fp; if (val < 0) val = 0; printf "%.2f", val }')"
+            width_value="$(awk -v w="${width_value}" -v max="${max_width_em}" 'BEGIN { if (w > max) w = max; printf "%.2f", w }')"
+          fi
+          width_override="window { width: ${width_value}em; }"
+        fi
+      fi
+    fi
+  fi
+  width_override_args=()
+  if [[ -n "${width_override}" ]]; then
+    width_override_args=(-theme-str "${width_override}")
+  fi
+
   rofiSel=$(printf '%s\n' "${colorModes[@]}" | rofi -dmenu \
     -theme-str "${r_scale}" \
     -theme-str "${r_override}" \
+    "${width_override_args[@]}" \
     -theme-str 'textbox-prompt-colon {str: "";}' \
     -p "Color Mode" \
-    -theme "${XDG_CONFIG_HOME:-$HOME/.config}/rofi/pywal16.rasi" \
+    -theme "${rofi_theme_file}" \
     -select "${colorModes[${enableWallDcol}]}")
   if [[ -n "${rofiSel}" ]]; then
     # Find index of selected mode
@@ -155,17 +213,29 @@ stop_auto_theme_fallback() {
   done
 }
 
-auto_theme_run_once() {
-  local python_bin
-  python_bin="$(resolve_auto_theme_python)" || {
-    print_log -sec "wal.toggle" -warn "auto" "python not found, cannot apply"
-    return 1
-  }
-  if [[ ! -f "${AUTO_THEME_PY}" ]]; then
-    print_log -sec "wal.toggle" -warn "auto" "missing ${AUTO_THEME_PY}"
-    return 1
+auto_theme_systemd_available() {
+  command -v systemctl &>/dev/null || return 1
+  systemctl --user show-environment &>/dev/null
+}
+
+start_auto_theme_daemon() {
+  if auto_theme_systemd_available; then
+    systemctl --user start auto-theme.service 2>/dev/null || {
+      print_log -sec "wal.toggle" -warn "auto" "failed to start auto-theme.service"
+      return 1
+    }
+    return 0
   fi
-  "${python_bin}" "${AUTO_THEME_PY}" --once 2>/dev/null
+
+  print_log -sec "wal.toggle" -warn "auto" "systemd --user unavailable, using fallback daemon"
+  start_auto_theme_fallback
+}
+
+stop_auto_theme_daemon() {
+  if auto_theme_systemd_available; then
+    systemctl --user stop auto-theme.service 2>/dev/null || true
+  fi
+  stop_auto_theme_fallback
 }
 
 resolve_wallpaper() {
@@ -232,11 +302,7 @@ apply_color_mode() {
     fi
   fi
 
-  if [ "${setMode}" -eq 2 ] || [ "${setMode}" -eq 3 ]; then
-    HYPR_WAL_ASYNC_APPS=1 "${LIB_DIR}/hypr/theme/color.set.sh" "${wallpaper}"
-  else
-    "${LIB_DIR}/hypr/theme/color.set.sh" "${wallpaper}"
-  fi
+  "${LIB_DIR}/hypr/theme/color.set.sh" "${wallpaper}"
 
   # Sync nvim after colors are generated
   [[ -x "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" ]] && "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" >/dev/null 2>&1 &
@@ -261,27 +327,42 @@ if [ -z "${setMode}" ]; then
   exit 1
 fi
 
-set_conf "enableWallDcol" "${setMode}"
+prevMode="${enableWallDcol}"
+if [[ ! "${prevMode}" =~ ^[0-3]$ ]]; then
+  prevMode=1
+fi
 
 # Auto mode uses auto_theme daemon
 if [ "${setMode}" -eq 1 ]; then
-  # Start auto_theme daemon if not running
-  if ! systemctl --user is-active auto-theme.service &>/dev/null; then
-    systemctl --user start auto-theme.service 2>/dev/null || {
-      # Fallback: run daemon directly if systemd service not available
-      start_auto_theme_fallback
-    }
+  state_set "enableWallDcol" "${setMode}" "staterc"
+
+  if ! start_auto_theme_daemon; then
+    print_log -sec "wal.toggle" -warn "auto" "activation failed, reverting mode"
+    setMode="${prevMode}"
+    state_set "enableWallDcol" "${setMode}" "staterc"
+    if [ "${setMode}" -ne 1 ]; then
+      stop_auto_theme_daemon
+      if ! apply_color_mode; then
+        print_log -sec "wal.toggle" -warn "wallpaper" "no current wallpaper, falling back to theme switch"
+        "${LIB_DIR}/hypr/theme/theme.switch.sh"
+      fi
+    fi
+    pkill -RTMIN+8 waybar >/dev/null 2>&1 || true
+    exit 1
   fi
-  # Run once immediately to apply current state
-  auto_theme_run_once
+
+  # Daemon performs its own initial apply on startup.
+  # Avoid a second one-shot apply here to prevent duplicate color.set runs.
 else
+  # Stop auto_theme daemon before writing state to avoid stale writes racing us.
+  stop_auto_theme_daemon
+  state_set "enableWallDcol" "${setMode}" "staterc"
+
   # Stop auto_theme daemon when switching away from Auto mode
-  systemctl --user stop auto-theme.service 2>/dev/null || true
-  stop_auto_theme_fallback
   if ! apply_color_mode; then
     print_log -sec "wal.toggle" -warn "wallpaper" "no current wallpaper, falling back to theme switch"
     "${LIB_DIR}/hypr/theme/theme.switch.sh"
   fi
 fi
 
-pkill -RTMIN+8 waybar # Update waybar colormode indicator
+pkill -RTMIN+8 waybar >/dev/null 2>&1 || true # Update waybar colormode indicator

@@ -55,7 +55,6 @@ if [[ -z "${XDG_PICTURES_DIR}" ]]; then
   XDG_PICTURES_DIR="$HOME/Pictures"
 fi
 
-confDir="${confDir:-$XDG_CONFIG_HOME}"
 save_dir="${2:-$XDG_PICTURES_DIR/Screenshots}"
 save_file=$(date +'%y%m%d_%Hh%Mm%Ss_screenshot.png')
 annotation_tool=${SCREENSHOT_ANNOTATION_TOOL}
@@ -72,7 +71,7 @@ mkdir -p "$save_dir"
 
 # Fixes the issue where the annotation tool doesn't save the file in the correct directory
 if [[ "$annotation_tool" == "swappy" ]]; then
-  swpy_dir="${confDir}/swappy"
+  swpy_dir="${XDG_CONFIG_HOME}/swappy"
   mkdir -p "$swpy_dir"
   echo -e "[Default]\nsave_dir=$save_dir\nsave_filename_format=$save_file" >"${swpy_dir}"/config
 fi

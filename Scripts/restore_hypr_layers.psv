@@ -1,0 +1,10 @@
+# Hypr layer restore (manual use only)
+# Restores the HyDE-style split:
+# - user layer: ~/.config/hypr
+# - shared layer: ~/.local/share/hypr
+
+# Cleanup legacy consolidated-core files from user layer.
+T|${HOME}/.config/hypr|variables.conf defaults.conf env.conf dynamic.conf startup.conf finale.conf|hyprland
+
+S|${HOME}/.config|hypr|hyprland
+S|${HOME}/.local/share|hypr|hyprland

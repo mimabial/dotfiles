@@ -2,9 +2,11 @@
 # This file contains default values for all configuration options
 # Generated from schema
 
+"$schema" = "$XDG_DATA_HOME/hypr/schema/config.toml.json"
+
 # Global rofi configuration.
 [rofi]
-scale = 8 # Rofi default scaling.
+scale = 10 # Rofi default scaling.
 [rofi.menu]
 scale = 10 # Scaling for menu.
 # 'hyprlock.sh select' configuration.
@@ -67,25 +69,8 @@ style = 2 # Style for wlogout.
 [hyprland]
 color_scheme = "prefer-dark"                    # Color scheme.
 gtk_theme = "Pywal16-Gtk"                       # GTK theme.
-icon_theme = "Tela-circle-dracula"              # Icon theme.
-cursor_theme = "Bibata-Modern-Ice"              # Cursor theme.
 button_layout = ""                              # Button layout. (gtk only)
-font = ""                                       # Font.
 font_antialiasing = "rgba"                      # Font antialiasing.
 font_hinting = "full"                           # Font hinting.
 monospace_font = "CaskaydiaCove Nerd Font Mono" # Monospace font.
 background_path = ""                            # LockScreen's Background path.
-
-# Qt5 configuration.
-[qt5]
-font = ""                                       # Qt5 font.
-monospace_font = "CaskaydiaCove Nerd Font Mono" # Qt5 monospace font.
-
-# Qt6 configuration.
-[qt6]
-font = ""                                       # Qt6 font.
-monospace_font = "CaskaydiaCove Nerd Font Mono" # Qt6 monospace font.
-
-# GTK3 configuration.
-[gtk3]
-font = "" # GTK3 font.

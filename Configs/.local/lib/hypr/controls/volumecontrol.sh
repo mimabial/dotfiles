@@ -1,280 +1,305 @@
 #!/usr/bin/env bash
 
-# Source global control script
-scrDir=$(dirname "$(realpath "$0")")
-# shellcheck disable=SC1091
-source "$scrDir/globalcontrol.sh"
-confDir=${confDir:-$XDG_CONFIG_HOME}
+set -u
 
-# Check if SwayOSD is installed
-use_swayosd=false
-isNotify=${VOLUME_NOTIFY:-true}
-if command -v swayosd-client >/dev/null 2>&1 && pgrep -x swayosd-server >/dev/null; then
-    use_swayosd=true
-fi
+scr_dir="$(cd -- "$(dirname -- "$0")" && pwd -P)"
+# shellcheck disable=SC1091
+source "${scr_dir}/lib/control.common.bash"
+
+isNotify="${VOLUME_NOTIFY:-true}"
 isVolumeBoost="${VOLUME_BOOST:-false}"
-# Define functions
+step_default="${VOLUME_STEPS:-5}"
+ICONS_DIR="${ICONS_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/icons}"
+icodir="${ICONS_DIR}/Pywal16-Icon/media"
+
+device=""
+srce=""
+target=""
+nsink=""
 
 print_usage() {
-    cat <<EOF
+  cat <<EOF
 Usage: $(basename "$0") -[device] <action> [step]
 
-Devices/Actions:
-    -i    Input device
-    -o    Output device
-    -p    Player application
-    -s    Select output device
-    -t    Toggle to next output device
+Devices:
+  -i    Input device (default source)
+  -o    Output device (default sink)
+  -p    Player application
+  -s    Select output device
+  -t    Toggle to next output device
+  -q    Quiet mode (no notifications)
 
 Actions:
-    i     Increase volume
-    d     Decrease volume
-    m     Toggle mute
-    q     Quiet mode (no notifications)
-
-Optional:
-    step  Volume change step (default: 5)
-
-Examples:
-    $(basename "$0") -o i 5     # Increase output volume by 5
-    $(basename "$0") -i m       # Toggle input mute
-    $(basename "$0") -p spotify d 10  # Decrease Spotify volume by 10
-    $(basename "$0") -p '' d 10  # Decrease volume by 10 for all players
-    $(basename "$0") -s          # Select output device
-    $(basename "$0") -t          # Toggle to next output device
-    $(basename "$0") -q    # Increase output volume by 5 in quiet mode
+  i     Increase volume
+  d     Decrease volume
+  m     Toggle mute
 EOF
-    exit 1
+  exit 1
 }
 
-notify_vol() {
-    local vol=$1
-    angle=$((((vol + 2) / 5) * 5))
-    iconStyle="knob"
-    # cap the icon at 100 if vol > 100
-    [ "$angle" -gt 100 ] && angle=100
-    ico="${icodir}/${iconStyle}-${angle}.svg"
-    bar=$(seq -s "." $((vol / 15)) | sed 's/[0-9]//g')
-    [[ "${isNotify}" == true ]] && notify-send -a "Volume control" -r 8 -t 800 -i "${ico}" "${vol}${bar}" "${nsink}"
+require_cmd wpctl || {
+  echo "wpctl is required"
+  exit 1
 }
-
-notify_mute() {
-    mute=$(pamixer "${srce}" --get-mute | cat)
-    [ "${srce}" == "--default-source" ] && dvce="microphone" || dvce="speaker"
-    if [ "${mute}" == "true" ]; then
-        [[ "${isNotify}" == true ]] && notify-send -a "Volume control" -r 8 -t 800 -i "${icodir}/muted-${dvce}.svg" "muted" "${nsink}"
-    else
-        [[ "${isNotify}" == true ]] && notify-send -a "Volume control" -r 8 -t 800 -i "${icodir}/unmuted-${dvce}.svg" "unmuted" "${nsink}"
-    fi
+require_cmd pw-dump || {
+  echo "pw-dump is required"
+  exit 1
 }
-
-change_volume() {
-    local action=$1
-    local step=$2
-    local device=$3
-    local delta="-"
-    local mode="--output-volume"
-
-    [ "${action}" = "i" ] && delta="+"
-    [ "${srce}" = "--default-source" ] && mode="--input-volume"
-    case $device in
-    "pamixer")
-        if [[ "${use_pipewire}" == true ]]; then
-            [ "${srce}" = "--default-source" ] && srce="@DEFAULT_AUDIO_SOURCE@"
-            [ "${srce}" = "" ]                 && srce="@DEFAULT_AUDIO_SINK@"
-            if [ "${isVolumeBoost}" = true ]; then
-                $use_swayosd && swayosd-client ${mode} "${delta}${step}" --max-volume "${VOLUME_BOOST_LIMIT:-150}" && exit 0
-                # Convert percentage limit to decimal (150% -> 1.5)
-                boost_limit_decimal=$(awk -v limit="${VOLUME_BOOST_LIMIT:-150}" 'BEGIN {print limit/100}')
-                wpctl set-volume -l "${boost_limit_decimal}" "${srce}" "${step}%${delta}"
-            else
-                $use_swayosd && swayosd-client ${mode} "${delta}${step}" && exit 0
-                wpctl set-volume -l 1.0 "${srce}" "${step}%${delta}"
-            fi
-            vol=$(wpctl get-volume "${srce}" | awk '{print $2 * 100}')
-        else
-            if [ "${isVolumeBoost}" = true ]; then
-                $use_swayosd && swayosd-client ${mode} "${delta}${step}" --max-volume "${VOLUME_BOOST_LIMIT:-150}" && exit 0
-                pamixer "$srce" "${allow_boost:-}" --allow-boost --set-limit "${VOLUME_BOOST_LIMIT:-150}" -"${action}" "$step"
-            else
-                $use_swayosd && swayosd-client ${mode} "${delta}${step}" && exit 0
-                pamixer "$srce" -"${action}" "$step"
-            fi
-            vol=$(pamixer "$srce" --get-volume)
-        fi
-        ;;
-    "playerctl")
-        playerctl --player="$srce" volume "$(awk -v step="$step" 'BEGIN {print step/100}')${delta}"
-        vol=$(playerctl --player="$srce" volume | awk '{ printf "%.0f\n", $0 * 100 }')
-        ;;
-    esac
-
-    notify_vol "$vol"
+require_cmd jq || {
+  echo "jq is required"
+  exit 1
 }
-
-toggle_mute() {
-    local device=$1
-    local mode="--output-volume"
-    [ "${srce}" = "--default-source" ] && mode="--input-volume"
-    case $device in
-    "pamixer")
-        $use_swayosd && swayosd-client "${mode}" mute-toggle && exit 0
-        if [[ "${use_pipewire}" == true ]]; then
-            [ "${srce}" = "--default-source" ] && srce="@DEFAULT_AUDIO_SOURCE@"
-            [ "${srce}" = "" ]                 && srce="@DEFAULT_AUDIO_SINK@"
-            wpctl set-mute "${srce}" toggle
-        else
-            pamixer "$srce" -t
-        fi
-        notify_mute
-        ;;
-    "playerctl")
-        local volume_file
-        volume_file="/tmp/$(basename "$0")_last_volume_${srce:-all}"
-        if [ "$(playerctl --player="$srce" volume | awk '{ printf "%.2f", $0 }')" != "0.00" ]; then
-            playerctl --player="$srce" volume | awk '{ printf "%.2f", $0 }' >"$volume_file"
-            playerctl --player="$srce" volume 0
-        else
-            if [ -f "$volume_file" ]; then
-                last_volume=$(cat "$volume_file")
-                playerctl --player="$srce" volume "$last_volume"
-            else
-                playerctl --player="$srce" volume 0.5 # Default to 50% if no saved volume
-            fi
-        fi
-        notify_mute
-        ;;
-    esac
-}
-
-select_output() {
-    local selection=$1
-    if [[ "${use_pipewire}" == true ]]; then
-        if [ -n "$selection" ]; then
-            device=$(pw-dump | sel=${selection} jq -r '.[] | select(.info?.props?."media.class" == "Audio/Sink" and .info?.props?."node.description" == env.sel) | .info?.props?."object.id"' | xargs)
-            if wpctl set-default "$device"; then
-                notify-send -t 800 -i "${icodir}/unmuted-speaker.svg" -r 8 -u low "Activated: $selection"
-            else
-                notify-send -t 800 -r 8 -u critical "Error activating $selection"
-            fi
-        else
-            pw-dump | jq -r '.[] | select(.info?.props?."media.class" == "Audio/Sink") | .info?.props?."node.description"' | sort
-        fi
-    else
-        if [ -n "$selection" ]; then
-            device=$(pactl list sinks | grep -C2 -F "Description: $selection" | grep Name | cut -d: -f2 | xargs)
-            if pactl set-default-sink "$device"; then
-                notify-send -t 800 -i "${icodir}/unmuted-speaker.svg" -r 8 -u low "Activated: $selection"
-            else
-                notify-send -t 800 -r 8 -u critical "Error activating $selection"
-            fi
-        else
-            pactl list sinks | grep -ie "Description:" | awk -F ': ' '{print $2}' | sort
-        fi
-    fi
+require_cmd notify-send || {
+  echo "notify-send is required"
+  exit 1
 }
 
 get_default_sink() {
-    local default_sink
-    if [[ "${use_pipewire}" == true ]]; then
-        # More reliable method to get the actual default sink
-        default_sink=$(wpctl inspect @DEFAULT_AUDIO_SINK@ | grep -oP 'node.description = "\K[^"]+' | head -1)
-        # Fallback method if above fails
-        if [ -z "$default_sink" ]; then
-            default_sink=$(pw-dump | jq -r '[.[] | select(.info?.props?."media.class" == "Audio/Sink")] | min_by(.info.props."priority.session" // 9999) | .info.props."node.description"')
-        fi
-    else
-        default_sink=$(pamixer --get-default-sink | awk -F '"' 'END{print $(NF - 1)}')
-    fi
-    echo "${default_sink}"
+  wpctl inspect @DEFAULT_AUDIO_SINK@ 2>/dev/null |
+    grep -oP 'node.description = "\K[^"]+' |
+    head -1
 }
 
 get_default_source() {
-    local default_source
-    if [[ "${use_pipewire}" == true ]]; then
-        default_source=$(wpctl inspect @DEFAULT_AUDIO_SOURCE@ | grep -oP 'node.description = "\K[^"]+' | head -1)
-        if [ -z "$default_source" ]; then
-            default_source=$(pw-dump | jq -r '[.[] | select(.info?.props?."media.class" == "Audio/Source")] | min_by(.info.props."priority.session" // 9999) | .info.props."node.description"')
-        fi
-    else
-        default_source=$(pamixer --list-sources | awk -F '"' 'END {print $(NF - 1)}')
-    fi
-    echo "${default_source}"
+  wpctl inspect @DEFAULT_AUDIO_SOURCE@ 2>/dev/null |
+    grep -oP 'node.description = "\K[^"]+' |
+    head -1
+}
+
+get_default_sink_id() {
+  wpctl inspect @DEFAULT_AUDIO_SINK@ 2>/dev/null |
+    awk '/^id / { gsub(/,/, "", $2); print $2; exit }'
+}
+
+list_sinks_tsv() {
+  pw-dump |
+    jq -r '.[] | select(.type=="PipeWire:Interface:Node" and .info?.props?."media.class"=="Audio/Sink") | [.info.props."object.id", (.info.props."node.description" // .info.props."node.name" // "Unknown")] | @tsv'
+}
+
+playerctl_cmd() {
+  if [[ -n "${srce}" ]]; then
+    playerctl --player="${srce}" "$@"
+  else
+    playerctl "$@"
+  fi
+}
+
+target_volume_pct() {
+  local tgt="$1"
+  wpctl get-volume "${tgt}" 2>/dev/null | awk '{ printf "%.0f\n", $2 * 100 }'
+}
+
+target_is_muted() {
+  local tgt="$1"
+  wpctl get-volume "${tgt}" 2>/dev/null | grep -q "MUTED"
+}
+
+notify_vol() {
+  local vol="$1"
+  is_true "${isNotify}" || return 0
+
+  local angle icon bar
+  angle=$((((vol + 2) / 5) * 5))
+  ((angle > 100)) && angle=100
+  ((angle < 0)) && angle=0
+  icon="${icodir}/knob-${angle}.svg"
+  bar="$(printf '%*s' $((vol / 15)) '' | tr ' ' '.')"
+  notify-send -a "Volume control" -r 8 -t 800 -i "${icon}" "${vol}${bar}" "${nsink}"
+}
+
+notify_mute() {
+  local muted="$1"
+  local icon_suffix="speaker"
+
+  is_true "${isNotify}" || return 0
+  [[ "${device}" == "source" ]] && icon_suffix="microphone"
+
+  if [[ "${muted}" == "true" ]]; then
+    notify-send -a "Volume control" -r 8 -t 800 -i "${icodir}/muted-${icon_suffix}.svg" "muted" "${nsink}"
+  else
+    notify-send -a "Volume control" -r 8 -t 800 -i "${icodir}/unmuted-${icon_suffix}.svg" "unmuted" "${nsink}"
+  fi
+}
+
+set_output_by_description() {
+  local selection="$1"
+  local sink_id
+
+  sink_id="$(list_sinks_tsv | awk -F'\t' -v sel="${selection}" '$2==sel { print $1; exit }')"
+  if [[ -z "${sink_id}" ]]; then
+    notify-send -u critical -a "Volume control" "Audio Output" "Unable to resolve: ${selection}"
+    return 1
+  fi
+
+  if wpctl set-default "${sink_id}"; then
+    notify-send -t 800 -i "${icodir}/unmuted-speaker.svg" -r 8 -u low "Activated: ${selection}"
+  else
+    notify-send -t 800 -r 8 -u critical "Error activating ${selection}"
+    return 1
+  fi
+}
+
+select_output() {
+  local selection="${1:-}"
+  if [[ -n "${selection}" ]]; then
+    set_output_by_description "${selection}"
+    return
+  fi
+  list_sinks_tsv | cut -f2 | awk 'NF' | sort -u
 }
 
 toggle_output() {
-    local default_sink
-    local current_index
-    default_sink=$(get_default_sink)
-    mapfile -t sink_array < <(select_output)
-    current_index=$(printf '%s\n' "${sink_array[@]}" | grep -n "$default_sink" | cut -d: -f1)
-    local next_index=$(((current_index % ${#sink_array[@]}) + 1))
-    local next_sink="${sink_array[next_index - 1]}"
-    select_output "$next_sink"
+  local current_id current_index=-1 next_index next_line next_id next_desc
+  local -a sinks
+
+  mapfile -t sinks < <(list_sinks_tsv)
+  (( ${#sinks[@]} == 0 )) && return 1
+
+  current_id="$(get_default_sink_id)"
+  for i in "${!sinks[@]}"; do
+    sink_id="${sinks[$i]%%$'\t'*}"
+    if [[ "${sink_id}" == "${current_id}" ]]; then
+      current_index="${i}"
+      break
+    fi
+  done
+
+  if (( current_index < 0 )); then
+    next_index=0
+  else
+    next_index=$(((current_index + 1) % ${#sinks[@]}))
+  fi
+
+  next_line="${sinks[$next_index]}"
+  next_id="${next_line%%$'\t'*}"
+  next_desc="${next_line#*$'\t'}"
+  if wpctl set-default "${next_id}"; then
+    notify-send -t 800 -i "${icodir}/unmuted-speaker.svg" -r 8 -u low "Activated: ${next_desc}"
+  else
+    notify-send -t 800 -r 8 -u critical "Error activating ${next_desc}"
+    return 1
+  fi
 }
 
-# Main script logic
+change_volume() {
+  local action="$1"
+  local step="$2"
+  local delta="-"
 
-# Set default variables
-iconsDir="${iconsDir:-$XDG_DATA_HOME/icons}"
-icodir="${iconsDir}/Wallbash-Icon/media"
-step=${VOLUME_STEPS:-5}
+  [[ "${action}" == "i" ]] && delta="+"
 
-# Detect pipewire
-if pactl info | grep -q "PipeWire" || ${VOLUME_PIPEWIRE_ENABLE} == true ; then
-    use_pipewire=true
-else
-    use_pipewire=false
-fi
+  case "${device}" in
+    sink|source)
+      if is_true "${isVolumeBoost}"; then
+        boost_limit_decimal="$(awk -v limit="${VOLUME_BOOST_LIMIT:-150}" 'BEGIN { print limit / 100 }')"
+        wpctl set-volume -l "${boost_limit_decimal}" "${target}" "${step}%${delta}"
+      else
+        wpctl set-volume -l 1.0 "${target}" "${step}%${delta}"
+      fi
+      vol="$(target_volume_pct "${target}")"
+      notify_vol "${vol}"
+      ;;
+    player)
+      require_cmd playerctl || {
+        echo "playerctl is required for -p"
+        exit 1
+      }
+      playerctl_cmd volume "$(awk -v s="${step}" 'BEGIN { print s / 100 }')${delta}"
+      vol="$(playerctl_cmd volume | awk '{ printf "%.0f\n", $0 * 100 }')"
+      notify_vol "${vol}"
+      ;;
+  esac
+}
+
+toggle_mute() {
+  local muted="false"
+  case "${device}" in
+    sink|source)
+      wpctl set-mute "${target}" toggle
+      if target_is_muted "${target}"; then
+        muted="true"
+      fi
+      notify_mute "${muted}"
+      ;;
+    player)
+      local volume_file current_volume
+      require_cmd playerctl || {
+        echo "playerctl is required for -p"
+        exit 1
+      }
+      volume_file="/tmp/$(basename "$0")_last_volume_${srce:-all}"
+      current_volume="$(playerctl_cmd volume | awk '{ printf "%.2f", $0 }')"
+      if [[ "${current_volume}" != "0.00" ]]; then
+        printf '%s\n' "${current_volume}" > "${volume_file}"
+        playerctl_cmd volume 0
+        muted="true"
+      else
+        if [[ -f "${volume_file}" ]]; then
+          playerctl_cmd volume "$(cat "${volume_file}")"
+        else
+          playerctl_cmd volume 0.5
+        fi
+      fi
+      notify_mute "${muted}"
+      ;;
+  esac
+}
 
 while getopts "iop:stq" opt; do
-    case $opt in
+  case "${opt}" in
     i)
-        device="pamixer"
-        srce="--default-source"
-        nsink=$(get_default_source)
-        ;;
+      device="source"
+      target="@DEFAULT_AUDIO_SOURCE@"
+      nsink="$(get_default_source)"
+      ;;
     o)
-        device="pamixer"
-        srce=""
-        nsink=$(get_default_sink)
-        ;;
+      device="sink"
+      target="@DEFAULT_AUDIO_SINK@"
+      nsink="$(get_default_sink)"
+      ;;
     p)
-        device="playerctl"
-        srce="${OPTARG}"
-        nsink=$(playerctl --list-all | grep -w "$srce")
-        ;;
+      device="player"
+      srce="${OPTARG}"
+      nsink="${srce:-all players}"
+      ;;
     s)
-        if ! selected_output=$(hyprland-dialog --text "$(
-            echo -e "Devices:"
-            select_output | sed 's/^/           🔈 /'
-        )" \
-            --title "Choose an output device" \
-            --buttons "$(select_output | sed 's/$/;/')"); then
-            selected_output=$(select_output | rofi -dmenu -theme "notification")
-        fi
-        select_output "${selected_output}"
-        exit
-        ;;
+      require_cmd rofi || {
+        echo "rofi is required for output selection"
+        exit 1
+      }
+      selected_output="$(select_output | rofi -dmenu -theme "notification" -p "Audio Output")" || exit 0
+      [[ -z "${selected_output}" ]] && exit 0
+      select_output "${selected_output}"
+      exit
+      ;;
     t)
-        toggle_output
-        exit
-        ;;
+      toggle_output
+      exit
+      ;;
     q)
-        isNotify=false
-        ;;
-    *) print_usage ;;
-    esac
+      isNotify=false
+      ;;
+    *)
+      print_usage
+      ;;
+  esac
 done
 
 shift $((OPTIND - 1))
 
-# Check if device is set
-[ -z "$device" ] && print_usage
+[[ -z "${device}" ]] && print_usage
 
-# Execute action
-case $1 in
-i | d) change_volume "$1" "${2:-$step}" "$device" ;;
-m) toggle_mute "$device" ;;
-*) print_usage ;;
-esac
+action="${1:-}"
+step="${2:-${step_default}}"
+
+if [[ "${action}" == "i" || "${action}" == "d" ]]; then
+  if [[ ! "${step}" =~ ^[0-9]+$ ]]; then
+    echo "Invalid step: ${step}"
+    exit 1
+  fi
+  change_volume "${action}" "${step}"
+elif [[ "${action}" == "m" ]]; then
+  toggle_mute
+else
+  print_usage
+fi

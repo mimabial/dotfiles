@@ -22,8 +22,13 @@ EOF
 [[ -z "${kind}" || "${kind}" == "-h" || "${kind}" == "--help" ]] && usage && exit 0
 
 hypr_config_dir="${HYPR_CONFIG_HOME:-$HOME/.config/hypr}"
+hypr_shared_dir="${HYPR_DATA_HOME:-$HOME/.local/share/hypr}"
 userfonts_file="${hypr_config_dir}/userfonts.conf"
-variables_file="${hypr_config_dir}/variables.conf"
+if [[ -f "${hypr_shared_dir}/variables.conf" ]]; then
+  variables_file="${hypr_shared_dir}/variables.conf"
+else
+  variables_file="${hypr_config_dir}/variables.conf"
+fi
 
 get_var_from_file() {
   local file_path="$1"

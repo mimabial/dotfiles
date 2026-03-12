@@ -113,7 +113,7 @@
       "transition-duration": 500,
       "transition-left-to-right": false
     },
-    "modules": ["custom/swaync", "custom/github#notifications"]
+    "modules": ["custom/swaync-dnd", "custom/github#notifications"]
   },
   "group/connection": {
     "orientation": "inherit",

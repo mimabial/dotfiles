@@ -2,32 +2,6 @@
 *.pyc
 __pycache__/
 .DS_Store
-# Theme/wallpaper generated files (HyDE/pywal16)
-alacritty/.config/alacritty/colors.toml
-alacritty/.config/alacritty/theme.toml
-cava/.config/cava/config
-hypr/.config/hypr/hyprlock/colors.conf
-hypr/.config/hypr/themes/colors.conf
-hypr/.config/hypr/themes/theme.conf
-hypr/.config/hypr/themes/wal.conf
-hypr/.config/hypr/themes/*/wall.set
-kitty/.config/kitty/colors.conf
-kitty/.config/kitty/theme.conf
-kvantum/.config/Kvantum/pywal16/
-rofi/.config/rofi/colors.rasi
-rofi/.config/rofi/theme.rasi
-share/.local/share/icons/default/index.theme
-share/.local/share/themes/Pywal16-Gtk/gtk-3.0/gtk.css
-share/.local/share/themes/Pywal16-Gtk/gtk-4.0/gtk.css
-swaync/.config/swaync/colors.css
-swaync/.config/swaync/config.json
-swaync/.config/swaync/style.css
-swaync/.config/swaync/theme.css
-tmux/.config/tmux/colors.conf
-tmux/.config/tmux/theme.conf
-waybar/.config/waybar/colors.css
-waybar/.config/waybar/theme.css
-waybar/.config/waybar/includes/border-radius.css
 # Configs/ generated files (mirror of above)
 Configs/.config/alacritty/colors.toml
 Configs/.config/alacritty/theme.toml
@@ -37,27 +11,34 @@ Configs/.config/hypr/themes/colors.conf
 Configs/.config/hypr/themes/theme.conf
 Configs/.config/hypr/themes/wal.conf
 Configs/.config/hypr/themes/*/wall.set
+Configs/.config/hypr/themes/*/wall.swww.png
+Configs/.config/hypr/themes/*/wall.hyprlock.png
+Configs/.config/hypr/monitors.conf
 Configs/.config/kitty/colors.conf
 Configs/.config/kitty/theme.conf
 Configs/.config/Kvantum/pywal16/
 Configs/.config/rofi/colors.rasi
 Configs/.config/rofi/theme.rasi
+Configs/.config/gtk-3.0/colors.css
 Configs/.local/share/icons/default/index.theme
 Configs/.local/share/themes/Pywal16-Gtk/gtk-3.0/gtk.css
+Configs/.local/share/themes/Pywal16-Gtk/gtk-3.0/gtk-dark.css
 Configs/.local/share/themes/Pywal16-Gtk/gtk-4.0/gtk.css
+Configs/.local/share/themes/Pywal16-Gtk/gtk-4.0/gtk-dark.css
 Configs/.config/swaync/colors.css
 Configs/.config/swaync/config.json
 Configs/.config/swaync/style.css
 Configs/.config/swaync/theme.css
 Configs/.config/tmux/colors.conf
 Configs/.config/tmux/theme.conf
+Configs/.config/tmux/plugins/
 Configs/.config/waybar/colors.css
 Configs/.config/waybar/theme.css
 Configs/.config/waybar/includes/border-radius.css
+Configs/.config/rmpc/themes/pywal16*.ron
+Configs/.config/systemd/user/*.target.wants/
 # State files (include defaults, ignore runtime)
 # hypr/.config/hypr/themes/*/wallpapers/  # Optional: exclude large wallpapers
 # Zsh runtime files
-zsh/.config/zsh/.zcompdump*
-zsh/.config/zsh/.zsh_history
 Configs/.config/zsh/.zcompdump*
 Configs/.config/zsh/.zsh_history

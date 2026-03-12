@@ -106,7 +106,6 @@ run_app_theming() {
     "wal/wal.kvantum.sh"
     "wal/wal.cava.sh"
     "wal/wal.gtk.sh"
-    "wal/wal.vscode.sh"
     "wal/wal.swaync.sh"
     "wal/wal.tmux.sh"
     "wal/wal.qutebrowser.sh"

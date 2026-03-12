@@ -7,8 +7,7 @@ $COLOR_SCHEME = prefer-dark
 $CURSOR_THEME=phinger-cursors-dark
 $CURSOR_SIZE=25
 
-# Optional: The varibles above will be set automatically when the theme is loaded
-# This exec commands will soon be deprecated
+# Theme variables above are the primary inputs used by theme.switch.sh.
 
 exec = gsettings set org.gnome.desktop.interface icon-theme $ICON_THEME
 exec = gsettings set org.gnome.desktop.interface gtk-theme $GTK_THEME

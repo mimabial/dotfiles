@@ -1,16 +1,37 @@
+[Colors:Button]
+BackgroundAlternate=14,18,15
+BackgroundNormal=14,18,15
+DecorationFocus=170,240,231
+DecorationHover=170,240,231
+ForegroundNormal=255,255,255
+
+[Colors:Complementary]
+BackgroundNormal=14,18,15
+ForegroundNormal=255,255,255
+
+[Colors:Header]
+BackgroundNormal=14,18,15
+DecorationFocus=170,240,231
+DecorationHover=170,240,231
+ForegroundNormal=255,255,255
+
 [Colors:Selection]
-BackgroundAlternate=102,92,84
-BackgroundNormal=102,92,84
-DecorationFocus=102,92,84
-DecorationHover=102,92,84
-ForegroundActive=235,219,178
-ForegroundNormal=235,219,178
+BackgroundAlternate=170,240,231
+BackgroundNormal=170,240,231
+DecorationFocus=170,240,231
+DecorationHover=170,240,231
+ForegroundActive=255,255,255
+ForegroundNormal=255,255,255
+
+[Colors:Tooltip]
+BackgroundNormal=14,18,15
+ForegroundNormal=255,255,255
 
 [Colors:View]
-BackgroundNormal=35,35,35
-DecorationFocus=102,92,84
-DecorationHover=102,92,84
-ForegroundNormal=235,219,178
+BackgroundNormal=14,18,15
+DecorationFocus=170,240,231
+DecorationHover=170,240,231
+ForegroundNormal=255,255,255
 Test1=50,50,50
 Test10=50,50,50
 Test11=50,50,50
@@ -25,15 +46,16 @@ Test8=50,50,50
 Test9=50,50,50
 
 [Colors:Window]
-BackgroundNormal=35,35,35
-ForegroundNormal=235,219,178
+BackgroundNormal=14,18,15
+ForegroundNormal=255,255,255
 
 [General]
-TerminalApplication=
+ColorScheme=colors
+TerminalApplication=kitty
 TerminalService=kitty.desktop
 
 [Icons]
-Theme=pixelitos-dark
+Theme=Tela-green-dark
 
 [KDE]
 ShowDeleteCommand=false

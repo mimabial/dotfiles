@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # pywal16.spotify.sh - Apply pywal16 colors to Spotify via spicetify
 
-cacheDir="${XDG_CACHE_HOME:-$HOME/.cache}"
-spotify_colors="${cacheDir}/wal/spotify.ini"
+spotify_colors="${XDG_CACHE_HOME:-$HOME/.cache}/wal/spotify.ini"
 hashFile="${XDG_RUNTIME_DIR:-/tmp}/wal-spotify-hash"
 
 # Exit if spicetify is not installed

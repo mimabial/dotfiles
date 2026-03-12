@@ -1,5 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-echo -e "Unblocking bluetooth...\n"
+set -euo pipefail
+
 rfkill unblock bluetooth
 rfkill list bluetooth

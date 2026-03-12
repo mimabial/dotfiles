@@ -38,35 +38,44 @@ setup_rofi_config() {
   local wind_border=$((hypr_border * 3 / 2))
   local elem_border=${hypr_border}
 
-  rofi_position=$(get_rofi_pos)
-
   local hypr_width=${hypr_width:-"$(hyprctl -j getoption general:border_size | jq '.int')"}
   r_override="window{border:${hypr_width}px;border-radius:${wind_border}px;}listview{border-radius:${elem_border}px;} element{border-radius:${elem_border}px;}"
 
-  # Derive grid size from monitor dimensions and font scale (overridable via env)
+  # Derive grid size from logical monitor dimensions (scale-aware).
   local mon_size
-  mon_size=$(hyprctl -j monitors 2>/dev/null | jq -r '.[] | select(.focused==true) | "\(.width) \(.height)"' | head -n 1)
-  read -r mon_width mon_height <<<"${mon_size:-1920 1080}"
+  mon_size=$(hyprctl -j monitors 2>/dev/null | jq -r '.[] | select(.focused==true) | if (.transform % 2 == 0) then "\(.width) \(.height) \(.scale)" else "\(.height) \(.width) \(.scale)" end' | head -n 1)
+  read -r mon_width mon_height mon_scale <<<"${mon_size:-1920 1080 1}"
+  [[ "${mon_scale}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || mon_scale=1
+  local logical_width logical_height
+  logical_width="$(awk -v w="${mon_width}" -v s="${mon_scale}" 'BEGIN { if (s + 0 <= 0) s = 1; v = int(w / s); if (v < 1) v = 1; print v }')"
+  logical_height="$(awk -v h="${mon_height}" -v s="${mon_scale}" 'BEGIN { if (s + 0 <= 0) s = 1; v = int(h / s); if (v < 1) v = 1; print v }')"
 
   boxdraw_columns="${ROFI_BOXDRAW_COLUMNS}"
   if [[ -z "${boxdraw_columns}" || ! "${boxdraw_columns}" =~ ^[0-9]+$ ]]; then
-    local calc_cols=$((mon_width / (font_scale * 20)))
-    ((calc_cols > 5)) && calc_cols=5
+    local calc_cols=$((logical_width / (font_scale * 40)))
+    ((calc_cols < 2)) && calc_cols=2
     ((calc_cols > 12)) && calc_cols=12
     boxdraw_columns=${calc_cols}
   fi
 
   boxdraw_lines="${ROFI_BOXDRAW_LINES}"
   if [[ -z "${boxdraw_lines}" || ! "${boxdraw_lines}" =~ ^[0-9]+$ ]]; then
-    local calc_lines=$((mon_height / (font_scale * 12)))
+    local calc_lines=$((logical_height / (font_scale * 8)))
     ((calc_lines < 6)) && calc_lines=6
     ((calc_lines > 14)) && calc_lines=14
     boxdraw_lines=${calc_lines}
   fi
 
-  local default_width=$((boxdraw_columns * 9))
+  local default_width=$((boxdraw_columns * 14))
   boxdraw_window_width="${ROFI_BOXDRAW_WIDTH_EM:-${default_width}}"
   [[ "${boxdraw_window_width}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || boxdraw_window_width=${default_width}
+  local boxdraw_window_height_em=$((boxdraw_lines * 2 + 8))
+  local boxdraw_window_width_px
+  boxdraw_window_width_px="$(awk -v em="${boxdraw_window_width}" -v scale="${font_scale}" 'BEGIN { printf "%d", (em * scale * 2) }')"
+  [[ "${boxdraw_window_width_px}" =~ ^[0-9]+$ ]] || boxdraw_window_width_px=$((default_width * font_scale * 2))
+  local boxdraw_window_height_px=$((boxdraw_window_height_em * font_scale * 2))
+
+  rofi_position=$(get_rofi_pos "${boxdraw_window_width_px}" "${boxdraw_window_height_px}")
 }
 
 get_boxdraw_selection() {
@@ -241,7 +250,7 @@ main() {
 
   [[ -z "${data_boxdraw}" ]] && exit 0
 
-  # Check if it's a category selection (marker is at the end now)
+  # Check for a category marker at the end of the selection payload.
   if [[ "${data_boxdraw}" =~ :cat:([a-z]+):$ ]]; then
     local category="${BASH_REMATCH[1]}"
     data_boxdraw=$(show_category_menu "${category}")

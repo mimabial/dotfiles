@@ -10,9 +10,7 @@ fi
 source "${LIB_DIR}/hypr/globalcontrol.sh"
 
 # Configuration
-confDir="${confDir:-$HOME/.config}"
-cacheDir="${cacheDir:-$XDG_CACHE_HOME/hypr}"
-swayncDir="${confDir}/swaync"
+swayncDir="${XDG_CONFIG_HOME:-$HOME/.config}/swaync"
 hashFile="${XDG_RUNTIME_DIR:-/tmp}/wal-swaync-hash"
 
 # Get settings
@@ -50,7 +48,7 @@ fi
 gaps_out="${gaps_out:-6}"
 
 # Read waybar position to align swaync
-waybar_config="${confDir}/waybar/config.jsonc"
+waybar_config="${XDG_CONFIG_HOME:-$HOME/.config}/waybar/config.jsonc"
 waybar_position=""
 if [[ -r "${waybar_config}" ]]; then
   waybar_position=$(grep '"position"' "${waybar_config}" | head -1 | sed 's/.*"position"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
@@ -168,10 +166,7 @@ cat <<CONFIG >"${swayncDir}/config.json"
     "title": {
       "text": "",
       "clear-all-button": true,
-      "button-text": "  "
-    },
-    "dnd": {
-      "text": "Do not disturb"
+      "button-text": ""
     },
     "label": {
       "max-lines": 1,
@@ -180,61 +175,6 @@ cat <<CONFIG >"${swayncDir}/config.json"
     "mpris": {
       "image-size": 96,
       "image-radius": 12
-    },
-    "volume": {
-      "label": "󰕾 ",
-      "show-per-app": false
-    },
-    "backlight": {
-      "label": "󰃟 ",
-      "device": "amdgpu_bl2"
-    },
-    "buttons-grid": {
-      "actions": [
-        {
-          "label": "󰖁",
-          "command": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
-          "type": "toggle"
-        },
-        {
-          "label": "󰍭",
-          "command": "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle",
-	  "type": "toggle"
-        },
-        {
-          "label": "󰤨",
-          "command": "nm-connection-editor"
-        },
-        {
-          "label": "󰂯",
-          "command": "blueman-manager"
-        },
-        {
-          "label": "",
-          "command": "nwg-look"
-        },
-        { 
-          "label": "󰻂",
-          "command": "obs"
-        },
-	{
-	  "label": "󰌾",
-	  "command": "hyprlock"
-	},
-	{
-	  "label":"󰜉",
-	  "command": "reboot"
-	},
-	{
-	  "label":"󰐥",
-	  "command": "shutdown now"
-	},
-	{
-	  "label":"󰀝",
-	  "command": "bash -c $HOME/.config/hypr/scripts/airplaneMode.sh",
-	  "type": "toggle"
-	}
-      ]
     }
   }
 }

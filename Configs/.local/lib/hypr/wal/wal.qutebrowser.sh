@@ -2,7 +2,6 @@
 # wal.qutebrowser.sh - Generate qutebrowser config with dynamic settings
 
 configDir="${XDG_CONFIG_HOME:-$HOME/.config}/qutebrowser"
-cacheDir="${XDG_CACHE_HOME:-$HOME/.cache}/wal"
 stateDir="${XDG_STATE_HOME:-$HOME/.local/state}/hypr"
 hashFile="${XDG_RUNTIME_DIR:-/tmp}/wal-qutebrowser-hash"
 

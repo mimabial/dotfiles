@@ -67,7 +67,7 @@ menu() {
 }
 
 terminal() {
-  xdg-terminal-exec --app-id=org.tui.Omarchy "$@"
+  xdg-terminal-exec --app-id=org.tui.HyprShell "$@"
 }
 
 present_terminal() {
@@ -149,7 +149,7 @@ aur_install_and_launch() {
 
 show_learn_menu() {
   case $(menu "Learn" "  Keybindings\n  Neovim\n󱆃  Scripting") in
-    *Keybindings*) hyprshell keybinds_hint.sh c ;;
+    *Keybindings*) hyprshell keybinds/keybinds_hint.sh c ;;
     *Neovim*) show_neovim_menu ;;
     *Scripting*) show_scripting_menu ;;
     *) show_main_menu ;;
@@ -223,25 +223,25 @@ show_capture_menu() {
   case $(menu "Capture" "  Screenshot\n  Screenrecord\n󰃉  Color") in
     *Screenshot*) show_screenshot_menu ;;
     *Screenrecord*) show_screenrecord_menu ;;
-    *Color*) hyprshell colorpicker.sh ;;
+    *Color*) hyprshell rofi/colorpicker.sh ;;
     *) show_trigger_menu ;;
   esac
 }
 
 show_screenshot_menu() {
   case $(menu "Screenshot" "  Snap with Editing\n  Straight to Clipboard") in
-    *Editing*) hyprshell screenshot.sh smart ;;
-    *Clipboard*) hyprshell screenshot.sh smart clipboard ;;
+    *Editing*) hyprshell capture/screenshot.sh smart ;;
+    *Clipboard*) hyprshell capture/screenshot.sh smart clipboard ;;
     *) show_capture_menu ;;
   esac
 }
 
 show_screenrecord_menu() {
   case $(menu "Screenrecord" "  Region\n  Region + Audio\n  Display\n  Display + Audio\n") in
-    *"Region + Audio"*) hyprshell screenrecord.sh --start --audio ;;
-    *"Region"*) hyprshell screenrecord.sh --start ;;
-    *"Display + Audio"*) hyprshell screenrecord.sh --start --output --audio ;;
-    *"Display"*) hyprshell screenrecord.sh --start --output ;;
+    *"Region + Audio"*) hyprshell capture/screenrecord.sh --start --audio ;;
+    *"Region"*) hyprshell capture/screenrecord.sh --start ;;
+    *"Display + Audio"*) hyprshell capture/screenrecord.sh --start --output --audio ;;
+    *"Display"*) hyprshell capture/screenrecord.sh --start --output ;;
     *) back_to show_capture_menu ;;
   esac
 }
@@ -257,17 +257,17 @@ show_share_menu() {
 
 show_toggle_menu() {
   case $(menu "Toggle" "󰔎  Nightlight\n󱫖  Keep Awake\n󰍜  Waybar") in
-    *Nightlight*) hyprshell hyprsunset --toggle && pkill waybar ;;
+    *Nightlight*) hyprshell hyprsunset --toggle && pkill -SIGUSR2 waybar ;;
     *Keep*) hyprshell session/toggle-keep-awake.sh ;;
-    *Waybar*) hyprshell waybar.py --hide ;;
+    *Waybar*) hyprshell waybar/waybar.py --hide ;;
     *) show_trigger_menu ;;
   esac
 }
 
 show_style_menu() {
   case $(menu "Style" "󰸌  Theme\n  Wallpaper\n  Font") in
-    *Theme*) hyprshell theme.select.sh ;;
-    *Wallpaper*) hyprshell wallpaper.sh -SG ;;
+    *Theme*) hyprshell theme/theme.select.sh ;;
+    *Wallpaper*) hyprshell wallpaper/wallpaper.sh -SG ;;
     *Font*) show_font_menu ;;
     *) show_main_menu ;;
   esac
@@ -315,13 +315,14 @@ show_setup_menu() {
 }
 
 show_dev_tools_menu() {
-  case $(menu "Dev Tools" "󰊢  Git (LazyGit)\n  Docker (LazyDocker)\n  File Manager (Ranger)\n󰻠  CPU Monitor (Htop)\n  GPU Monitor (Nvtop)\n  Disk Usage (Dua)\n  Music Player (Rmpc)") in
+  case $(menu "Dev Tools" "󰊢  Git (LazyGit)\n  Docker (LazyDocker)\n  File Manager (Ranger)\n󰻠  CPU Monitor (Htop)\n  GPU Monitor (Nvtop)\n  Disk Usage (Dua)\n  Calculator\n  Music Player (Rmpc)") in
     *Git*) hyprshell launch/lazygit.sh ;;
     *Docker*) hyprshell launch/lazydocker.sh ;;
     *File*) present_terminal --app-id org.tui.Ranger --title Ranger ranger ;;
     *CPU*) present_terminal --app-id org.tui.Htop --title Htop htop ;;
     *GPU*) present_terminal --app-id org.tui.Nvtop --title Nvtop nvtop ;;
     *Disk*) present_terminal --app-id org.tui.Dua --title Dua dua i ;;
+    *Calculator*) hyprshell rofi/calculator.sh ;;
     *Music*) present_terminal --app-id org.tui.Rmpc --title Rmpc rmpc ;;
     *) show_main_menu ;;
   esac
@@ -470,26 +471,24 @@ show_update_menu() {
 }
 
 show_update_process_menu() {
-  case $(menu "Restart" "  Hypridle\n  Hyprsunset\n  Swayosd\n󰌧  Walker\n󰍜  Waybar") in
+  case $(menu "Restart" "  Hypridle\n  Hyprsunset\n󰍜  Waybar\n󰀻  Rofi") in
     *Hypridle*) hyprshell service/restart-hypridle.sh ;;
     *Hyprsunset*) hyprshell service/restart-hyprsunset.sh ;;
-    *Swayosd*) hyprshell service/restart-swayosd.sh ;;
-    *Walker*) hyprshell service/restart-walker.sh ;;
     *Waybar*) hyprshell service/restart-waybar.sh ;;
+    *Rofi*) pkill -x rofi >/dev/null 2>&1 || true ;;
     *) show_update_menu ;;
   esac
 }
 
 show_update_config_menu() {
-  case $(menu "Use default config" "  Hyprland\n  Hypridle\n  Hyprlock\n  Hyprsunset\n󱣴  Plymouth\n  Swayosd\n󰌧  Walker\n󰍜  Waybar") in
+  case $(menu "Use default config" "  Hyprland\n󰟨  Hypr Shared\n  Hypridle\n  Hyprlock\n  Hyprsunset\n󰍜  Waybar\n󰀻  Rofi") in
     *Hyprland*) present_terminal hyprshell service/refresh-hyprland.sh ;;
+    *"Hypr Shared"*) present_terminal hyprshell service/refresh-hypr-shared.sh ;;
     *Hypridle*) present_terminal hyprshell service/refresh-hypridle.sh ;;
     *Hyprlock*) present_terminal hyprshell service/refresh-hyprlock.sh ;;
     *Hyprsunset*) present_terminal hyprshell service/refresh-hyprsunset.sh ;;
-    *Plymouth*) present_terminal hyprshell service/refresh-plymouth.sh ;;
-    *Swayosd*) present_terminal hyprshell service/refresh-swayosd.sh ;;
-    *Walker*) present_terminal hyprshell service/refresh-walker.sh ;;
     *Waybar*) present_terminal hyprshell service/refresh-waybar.sh ;;
+    *Rofi*) present_terminal hyprshell service/refresh-rofi.sh ;;
     *) show_update_menu ;;
   esac
 }
@@ -513,7 +512,7 @@ show_update_password_menu() {
 
 show_system_menu() {
   case $(menu "System" "  Lock\n󰤄  Suspend\n󰜉  Restart\n󰐥  Shutdown") in
-    *Lock*) hyprshell session/lock.sh ;;
+    *Lock*) hyprshell session/hyprlock.sh ;;
     *Suspend*) systemctl suspend ;;
     *Restart*) hyprshell cmd-restart ;;
     *Shutdown*) hyprshell util/state.sh clear re*-required && systemctl poweroff --no-wall ;;
@@ -541,10 +540,11 @@ show_search_all_menu() {
   add "Dev › CPU Monitor (Htop)" "present_terminal --app-id org.tui.Htop --title Htop htop"
   add "Dev › GPU Monitor (Nvtop)" "present_terminal --app-id org.tui.Nvtop --title Nvtop nvtop"
   add "Dev › Disk Usage (Dua)" "present_terminal --app-id org.tui.Dua --title Dua dua i"
+  add "Dev › Calculator" "hyprshell rofi/calculator.sh"
   add "Dev › Music Player (Rmpc)" "present_terminal --app-id org.tui.Rmpc --title Rmpc rmpc"
 
   # Learn (from show_learn_menu)
-  add "Learn › Keybindings" "hyprshell keybinds_hint.sh c"
+  add "Learn › Keybindings" "hyprshell keybinds/keybinds_hint.sh c"
 
   # Learn › Neovim (from show_neovim_menu)
   add "Learn › Neovim › Docs" "hyprshell launch/webapp.sh https://neovim.io/doc/"
@@ -583,17 +583,17 @@ show_search_all_menu() {
   add "Learn › Scripting › Python › psutil" "hyprshell launch/webapp.sh https://psutil.readthedocs.io/"
 
   # Trigger › Screenshot (from show_screenshot_menu)
-  add "Trigger › Screenshot › Snap with Editing" "hyprshell screenshot.sh smart"
-  add "Trigger › Screenshot › Straight to Clipboard" "hyprshell screenshot.sh smart clipboard"
+  add "Trigger › Screenshot › Snap with Editing" "hyprshell capture/screenshot.sh smart"
+  add "Trigger › Screenshot › Straight to Clipboard" "hyprshell capture/screenshot.sh smart clipboard"
 
   # Trigger › Screenrecord (from show_screenrecord_menu)
-  add "Trigger › Screenrecord › Region" "hyprshell screenrecord.sh --start"
-  add "Trigger › Screenrecord › Region + Audio" "hyprshell screenrecord.sh --start --audio"
-  add "Trigger › Screenrecord › Display" "hyprshell screenrecord.sh --start --output"
-  add "Trigger › Screenrecord › Display + Audio" "hyprshell screenrecord.sh --start --output --audio"
+  add "Trigger › Screenrecord › Region" "hyprshell capture/screenrecord.sh --start"
+  add "Trigger › Screenrecord › Region + Audio" "hyprshell capture/screenrecord.sh --start --audio"
+  add "Trigger › Screenrecord › Display" "hyprshell capture/screenrecord.sh --start --output"
+  add "Trigger › Screenrecord › Display + Audio" "hyprshell capture/screenrecord.sh --start --output --audio"
 
   # Trigger › Capture › Color (from show_capture_menu)
-  add "Trigger › Capture › Color Picker" "hyprshell colorpicker.sh"
+  add "Trigger › Capture › Color Picker" "hyprshell rofi/colorpicker.sh"
 
   # Trigger › Share (from show_share_menu)
   add "Trigger › Share › Clipboard" "terminal bash -c 'hyprshell cmd/share.sh clipboard'"
@@ -601,13 +601,13 @@ show_search_all_menu() {
   add "Trigger › Share › Folder" "terminal bash -c 'hyprshell cmd/share.sh folder'"
 
   # Trigger › Toggle (from show_toggle_menu)
-  add "Trigger › Toggle › Nightlight" "hyprshell toggle/nightlight.sh"
+  add "Trigger › Toggle › Nightlight" "hyprshell hyprsunset --toggle && pkill -SIGUSR2 waybar"
   add "Trigger › Toggle › Keep Awake" "hyprshell session/toggle-keep-awake.sh"
-  add "Trigger › Toggle › Waybar" "hyprshell waybar.py --hide"
+  add "Trigger › Toggle › Waybar" "hyprshell waybar/waybar.py --hide"
 
   # Style (from show_style_menu)
-  add "Style › Theme" "hyprshell theme.select.sh"
-  add "Style › Wallpaper" "hyprshell wallpaper.sh -SG"
+  add "Style › Theme" "hyprshell theme/theme.select.sh"
+  add "Style › Wallpaper" "hyprshell wallpaper/wallpaper.sh -SG"
   add "Style › Font" "show_font_menu"
 
   # Setup (from show_setup_menu)
@@ -627,7 +627,7 @@ show_search_all_menu() {
   # System (from show_system_menu)
   add "System › Shutdown" "hyprshell util/state.sh clear re*-required && systemctl poweroff --no-wall"
   add "System › Reboot" "hyprshell util/state.sh clear re*-required && systemctl reboot --no-wall"
-  add "System › Lock" "hyprshell session/lock.sh"
+  add "System › Lock" "hyprshell session/hyprlock.sh"
   add "System › Logout" "hyprshell util/confirm.sh --logout"
   add "System › Sleep" "hyprshell util/confirm.sh --suspend"
 
@@ -654,12 +654,12 @@ go_to_menu() {
   case "${1,,}" in
     *search*) show_search_all_menu ;;
     *tools*) show_dev_tools_menu ;;
-    *apps*) hyprshell rofilaunch.sh ;;
+    *apps*) hyprshell rofi/rofilaunch.sh ;;
     *learn*) show_learn_menu ;;
     *trigger*) show_trigger_menu ;;
     *style*) show_style_menu ;;
-    *theme*) hyprshell theme.select.sh ;;
-    *wallpaper*) hyprshell wallpaper.sh ;;
+    *theme*) hyprshell theme/theme.select.sh ;;
+    *wallpaper*) hyprshell wallpaper/wallpaper.sh ;;
     *setup*) show_setup_menu ;;
     *power*) show_setup_power_menu ;;
     *install*) show_install_menu ;;

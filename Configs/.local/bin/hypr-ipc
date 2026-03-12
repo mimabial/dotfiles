@@ -1,0 +1,613 @@
+#!/usr/bin/env python3
+"""
+hypr-ipc - IPC Service for Hyprland
+Full-featured IPC tool with event listening, keyword management, and automation
+Full-featured event/listener parity for Hyprland workflows
+"""
+
+import argparse
+import json
+import os
+import socket
+import subprocess
+import sys
+import threading
+import time
+import tomllib
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+# XDG paths
+XDG_CONFIG_HOME = Path(os.getenv('XDG_CONFIG_HOME', os.path.expanduser('~/.config')))
+XDG_RUNTIME_DIR = Path(os.getenv('XDG_RUNTIME_DIR', '/tmp'))
+
+# Hyprland socket paths
+HYPRLAND_SIGNATURE = os.getenv('HYPRLAND_INSTANCE_SIGNATURE')
+if HYPRLAND_SIGNATURE:
+    HYPRLAND_SOCKET = Path(f"/tmp/hypr/{HYPRLAND_SIGNATURE}/.socket.sock")
+    HYPRLAND_EVENT_SOCKET = Path(f"/tmp/hypr/{HYPRLAND_SIGNATURE}/.socket2.sock")
+else:
+    HYPRLAND_SOCKET = None
+    HYPRLAND_EVENT_SOCKET = None
+
+LOG_PREFIX = "[hypr-ipc]"
+
+
+def log(message: str) -> None:
+    """Log to stderr"""
+    print(f"{LOG_PREFIX} {message}", file=sys.stderr, flush=True)
+
+
+def error(message: str) -> None:
+    """Log error to stderr"""
+    print(f"{LOG_PREFIX} ERROR: {message}", file=sys.stderr, flush=True)
+
+
+class HyprlandIPC:
+    """IPC interface for Hyprland"""
+
+    def __init__(self):
+        if not HYPRLAND_SIGNATURE:
+            error("HYPRLAND_INSTANCE_SIGNATURE not set. Is Hyprland running?")
+            sys.exit(1)
+
+    def execute(self, command: str) -> dict:
+        """Execute a hyprctl command"""
+        try:
+            result = subprocess.run(
+                ["hyprctl", "-j"] + command.split(),
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+
+            if result.returncode != 0:
+                return {
+                    "success": False,
+                    "error": result.stderr.strip(),
+                    "data": None
+                }
+
+            # Try to parse as JSON
+            try:
+                data = json.loads(result.stdout) if result.stdout.strip() else None
+            except json.JSONDecodeError:
+                data = result.stdout.strip()
+
+            return {
+                "success": True,
+                "error": None,
+                "data": data
+            }
+
+        except subprocess.TimeoutExpired:
+            return {
+                "success": False,
+                "error": "Command timeout",
+                "data": None
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "data": None
+            }
+
+    def keyword_get(self, keyword: str) -> Optional[str]:
+        """Get Hyprland keyword value"""
+        try:
+            result = subprocess.run(
+                ["hyprctl", "-j", "getoption", keyword],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+
+            if result.returncode != 0:
+                return None
+
+            data = json.loads(result.stdout)
+            # Return the appropriate value type
+            return data.get("str") or str(data.get("int", ""))
+
+        except Exception as e:
+            error(f"Failed to get keyword {keyword}: {e}")
+            return None
+
+    def keyword_set(self, keyword: str, value: str) -> bool:
+        """Set Hyprland keyword value"""
+        try:
+            result = subprocess.run(
+                ["hyprctl", "keyword", keyword, value],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            return result.returncode == 0
+
+        except Exception as e:
+            error(f"Failed to set keyword {keyword}={value}: {e}")
+            return False
+
+    def dispatch(self, dispatcher: str, args: List[str] = None, async_mode: bool = False) -> dict:
+        """Execute a Hyprland dispatcher"""
+        cmd = ["hyprctl", "dispatch"]
+        if async_mode:
+            cmd.append("--")  # async flag
+
+        cmd.append(dispatcher)
+        if args:
+            cmd.extend(args)
+
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+
+            return {
+                "success": result.returncode == 0,
+                "error": result.stderr.strip() if result.returncode != 0 else None
+            }
+
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e)
+            }
+
+    def query(self, query_type: str) -> Optional[Any]:
+        """Query Hyprland state"""
+        valid_queries = ['activewindow', 'workspaces', 'clients', 'monitors', 'version', 'devices']
+
+        if query_type not in valid_queries:
+            error(f"Invalid query type: {query_type}")
+            return None
+
+        result = self.execute(query_type)
+        return result["data"] if result["success"] else None
+
+
+class EventListener:
+    """Listen to Hyprland events"""
+
+    def __init__(self, ipc: HyprlandIPC):
+        self.ipc = ipc
+
+    def listen(self, event_filter: Optional[str] = None, max_events: Optional[int] = None, json_output: bool = False):
+        """Listen to Hyprland events"""
+        if not HYPRLAND_EVENT_SOCKET or not HYPRLAND_EVENT_SOCKET.exists():
+            error(f"Hyprland event socket not found: {HYPRLAND_EVENT_SOCKET}")
+            sys.exit(1)
+
+        log(f"Listening to Hyprland events{f' (filter: {event_filter})' if event_filter else ''}...")
+
+        try:
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
+                sock.connect(str(HYPRLAND_EVENT_SOCKET))
+
+                event_count = 0
+                buffer = b""
+
+                while max_events is None or event_count < max_events:
+                    data = sock.recv(4096)
+                    if not data:
+                        break
+
+                    buffer += data
+
+                    # Process complete lines
+                    while b'\\n' in buffer:
+                        line, buffer = buffer.split(b'\\n', 1)
+                        event = line.decode('utf-8').strip()
+
+                        if not event:
+                            continue
+
+                        # Apply filter
+                        if event_filter and event_filter not in event:
+                            continue
+
+                        # Output
+                        if json_output:
+                            parts = event.split('>>', 1)
+                            event_data = {
+                                "type": parts[0] if parts else "",
+                                "data": parts[1] if len(parts) > 1 else ""
+                            }
+                            print(json.dumps(event_data))
+                        else:
+                            print(event)
+
+                        sys.stdout.flush()
+                        event_count += 1
+
+                        if max_events and event_count >= max_events:
+                            break
+
+        except KeyboardInterrupt:
+            log("Stopped listening")
+        except Exception as e:
+            error(f"Event listening error: {e}")
+            sys.exit(1)
+
+
+class ReactionHandler:
+    """Handle event-driven automation reactions"""
+
+    def __init__(self, ipc: HyprlandIPC, listener: EventListener, reactions: List[Dict]):
+        self.ipc = ipc
+        self.listener = listener
+        self.reactions = reactions
+        self.reaction_counts = {}
+
+    def match_event(self, event: str, event_type: Any) -> bool:
+        """Check if event matches the reaction event type"""
+        # Simple event type can be a string
+        if isinstance(event_type, str):
+            return event_type.lower() in event.lower()
+
+        # Complex event type like {"Window": "Opened"}
+        if isinstance(event_type, dict):
+            for key, value in event_type.items():
+                if key.lower() in event.lower() and value.lower() in event.lower():
+                    return True
+            return False
+
+        return False
+
+    def match_filter(self, event: str, window_filter: Optional[str]) -> bool:
+        """Check if event matches window filter"""
+        if not window_filter:
+            return True
+        return window_filter in event
+
+    def execute_dispatchers(self, dispatchers: Any) -> None:
+        """Execute dispatcher(s) for a reaction"""
+        # Single dispatcher
+        if isinstance(dispatchers, dict):
+            dispatchers = [dispatchers]
+
+        # Multiple dispatchers (chained)
+        for dispatcher in dispatchers:
+            name = dispatcher.get("name")
+            args = dispatcher.get("args", [])
+
+            if not name:
+                continue
+
+            # Handle special Exec dispatcher
+            if name == "Exec":
+                subprocess.Popen(args)
+            else:
+                self.ipc.dispatch(name, args)
+
+            time.sleep(0.05)  # Small delay between chained dispatchers
+
+    def process_event(self, event: str):
+        """Process an event and trigger matching reactions"""
+        for idx, reaction in enumerate(self.reactions):
+            event_type = reaction.get("event_type")
+            window_filter = reaction.get("window_filter")
+            dispatchers = reaction.get("dispatchers") or reaction.get("dispatcher")
+            max_count = reaction.get("max_count", 0)
+
+            # Check if event matches
+            if not self.match_event(event, event_type):
+                continue
+
+            # Check window filter
+            if not self.match_filter(event, window_filter):
+                continue
+
+            # Check max count
+            if max_count > 0:
+                current_count = self.reaction_counts.get(idx, 0)
+                if current_count >= max_count:
+                    continue
+                self.reaction_counts[idx] = current_count + 1
+
+            # Execute dispatchers
+            self.execute_dispatchers(dispatchers)
+
+    def react(self):
+        """Start reacting to events"""
+        if not HYPRLAND_EVENT_SOCKET or not HYPRLAND_EVENT_SOCKET.exists():
+            error(f"Hyprland event socket not found: {HYPRLAND_EVENT_SOCKET}")
+            sys.exit(1)
+
+        log(f"Started reacting to events ({len(self.reactions)} reactions loaded)...")
+
+        try:
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
+                sock.connect(str(HYPRLAND_EVENT_SOCKET))
+
+                buffer = b""
+
+                while True:
+                    data = sock.recv(4096)
+                    if not data:
+                        break
+
+                    buffer += data
+
+                    # Process complete lines
+                    while b'\\n' in buffer:
+                        line, buffer = buffer.split(b'\\n', 1)
+                        event = line.decode('utf-8').strip()
+
+                        if event:
+                            self.process_event(event)
+
+        except KeyboardInterrupt:
+            log("Stopped reacting")
+        except Exception as e:
+            error(f"React error: {e}")
+            sys.exit(1)
+
+
+class JSONRPCServer:
+    """JSON-RPC server for legacy compatibility"""
+
+    def __init__(self, ipc: HyprlandIPC, socket_path: Path):
+        self.ipc = ipc
+        self.socket_path = socket_path
+
+    def handle_request(self, data: bytes) -> bytes:
+        """Handle incoming JSON-RPC request"""
+        try:
+            request = json.loads(data.decode('utf-8'))
+            method = request.get("method")
+            params = request.get("params", [])
+            request_id = request.get("id")
+
+            # Dispatch methods
+            if method == "execute":
+                result = self.ipc.execute(params[0] if params else "")
+            elif method == "dispatch":
+                result = self.ipc.dispatch(params[0] if params else "", params[1:])
+            elif method == "activewindow":
+                result = self.ipc.query("activewindow")
+            elif method == "workspaces":
+                result = self.ipc.query("workspaces")
+            elif method == "clients":
+                result = self.ipc.query("clients")
+            elif method == "monitors":
+                result = self.ipc.query("monitors")
+            elif method == "ping":
+                result = {"pong": True}
+            else:
+                result = {"error": f"Unknown method: {method}"}
+
+            response = {
+                "jsonrpc": "2.0",
+                "id": request_id,
+                "result": result
+            }
+
+            return json.dumps(response).encode('utf-8')
+
+        except Exception as e:
+            error_response = {
+                "jsonrpc": "2.0",
+                "id": None,
+                "error": {"code": -32700, "message": str(e)}
+            }
+            return json.dumps(error_response).encode('utf-8')
+
+    def serve(self):
+        """Start JSON-RPC server"""
+        # Remove old socket
+        if self.socket_path.exists():
+            self.socket_path.unlink()
+
+        server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        server.bind(str(self.socket_path))
+        server.listen(5)
+
+        log(f"JSON-RPC server listening on {self.socket_path}")
+
+        try:
+            while True:
+                client, _ = server.accept()
+                threading.Thread(target=self._handle_client, args=(client,), daemon=True).start()
+
+        except KeyboardInterrupt:
+            log("Shutting down server...")
+        finally:
+            server.close()
+            if self.socket_path.exists():
+                self.socket_path.unlink()
+
+    def _handle_client(self, client: socket.socket):
+        """Handle client connection"""
+        try:
+            data = client.recv(4096)
+            if data:
+                response = self.handle_request(data)
+                client.sendall(response)
+        except Exception as e:
+            error(f"Client handling error: {e}")
+        finally:
+            client.close()
+
+
+def list_dispatchers():
+    """Print list of available dispatchers"""
+    print("""Available dispatchers:
+  Basic commands:
+    exec <command>                     - Execute a command
+    killactive                         - Kill the active window
+    exit                               - Exit Hyprland
+
+  Window management:
+    togglefloating [window]            - Toggle floating mode
+    fullscreen [type]                  - Toggle fullscreen (0=off, 1=full, 2=maximize)
+    pseudo                             - Toggle pseudo tiling
+    pin                                - Pin window to all workspaces
+
+  Focus control:
+    movefocus <direction>              - Move focus (l/r/u/d/left/right/up/down)
+    focuswindow <window>               - Focus specific window
+    focusmonitor <monitor>             - Focus specific monitor
+
+  Window movement:
+    movewindow <direction>             - Move window in direction
+    moveactive <x> <y>                 - Move active window by pixels
+    resizeactive <x> <y>               - Resize active window
+
+  Workspace management:
+    workspace <workspace>              - Switch to workspace
+    movetoworkspace <workspace>        - Move window to workspace
+    movetoworkspacesilent <workspace>  - Move window without switching
+
+  Cursor control:
+    movecursor <x> <y>                 - Move cursor to position
+
+Window identifiers:
+    class:<regex>                      - Match window by class
+    title:<regex>                      - Match window by title
+    address:<addr>                     - Match window by address
+    pid:<pid>                          - Match window by PID
+
+Examples:
+    hypr-ipc dispatch exec "kitty"
+    hypr-ipc dispatch togglefloating
+    hypr-ipc dispatch workspace 1
+    hypr-ipc dispatch focuswindow "class:^(firefox)$"
+""")
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='hypr-ipc - Full-featured IPC tool for Hyprland'
+    )
+    subparsers = parser.add_subparsers(dest='command', help='Available commands')
+
+    # keyword command
+    keyword_parser = subparsers.add_parser('keyword', help='Get/set Hyprland keywords')
+    keyword_parser.add_argument('--get', '-g', action='store_true', help='Get keyword value')
+    keyword_parser.add_argument('--set', '-s', action='store_true', help='Set keyword value')
+    keyword_parser.add_argument('--async', '-a', dest='async_mode', action='store_true', help='Async execution')
+    keyword_parser.add_argument('keyword', help='Keyword name (e.g., decoration:blur:size)')
+    keyword_parser.add_argument('value', nargs='?', help='Value to set')
+
+    # listen command
+    listen_parser = subparsers.add_parser('listen', help='Listen to Hyprland events')
+    listen_parser.add_argument('--filter', '-f', help='Filter events by type')
+    listen_parser.add_argument('--max-events', '-m', type=int, help='Max events to receive')
+    listen_parser.add_argument('--json', '-j', action='store_true', help='JSON output')
+
+    # dispatch command
+    dispatch_parser = subparsers.add_parser('dispatch', help='Execute Hyprland dispatcher')
+    dispatch_parser.add_argument('--async', '-a', dest='async_mode', action='store_true', help='Async execution')
+    dispatch_parser.add_argument('--list-dispatchers', '-l', action='store_true', help='List dispatchers')
+    dispatch_parser.add_argument('dispatcher', nargs='?', help='Dispatcher name')
+    dispatch_parser.add_argument('args', nargs='*', help='Dispatcher arguments')
+
+    # react command
+    react_parser = subparsers.add_parser('react', help='Event-driven automation')
+    react_parser.add_argument('--config', '-c', type=Path, help='TOML config file')
+    react_parser.add_argument('--event', '-e', help='Event type to react to')
+    react_parser.add_argument('--dispatch', '-d', help='Dispatcher to execute')
+    react_parser.add_argument('--max-reactions', '-m', type=int, help='Max reactions')
+
+    # query command
+    query_parser = subparsers.add_parser('query', help='Query Hyprland state')
+    query_parser.add_argument('query_type', choices=['activewindow', 'workspaces', 'clients', 'monitors'])
+
+    # server command (JSON-RPC server)
+    server_parser = subparsers.add_parser('server', help='Run JSON-RPC server')
+    server_parser.add_argument('--socket', type=Path, help='Socket path')
+
+    args = parser.parse_args()
+
+    # Create IPC instance
+    ipc = HyprlandIPC()
+
+    # Handle commands
+    if args.command == 'keyword':
+        if args.set and not args.value:
+            error("--set requires a value")
+            sys.exit(1)
+
+        if args.get:
+            value = ipc.keyword_get(args.keyword)
+            if value:
+                print(value)
+            else:
+                sys.exit(1)
+        elif args.set:
+            success = ipc.keyword_set(args.keyword, args.value)
+            sys.exit(0 if success else 1)
+        else:
+            error("Specify --get or --set")
+            sys.exit(1)
+
+    elif args.command == 'listen':
+        listener = EventListener(ipc)
+        listener.listen(
+            event_filter=args.filter,
+            max_events=args.max_events,
+            json_output=args.json
+        )
+
+    elif args.command == 'dispatch':
+        if args.list_dispatchers:
+            list_dispatchers()
+        elif args.dispatcher:
+            result = ipc.dispatch(args.dispatcher, args.args, async_mode=args.async_mode)
+            if not result["success"]:
+                error(f"Dispatch failed: {result['error']}")
+                sys.exit(1)
+        else:
+            dispatch_parser.print_help()
+
+    elif args.command == 'react':
+        if args.config:
+            # Load reactions from TOML
+            with open(args.config, 'rb') as f:
+                config = tomllib.load(f)
+                reactions = config.get('reactions', [])
+
+            listener = EventListener(ipc)
+            handler = ReactionHandler(ipc, listener, reactions)
+            handler.react()
+
+        elif args.event and args.dispatch:
+            # Inline reaction
+            reactions = [{
+                "event_type": args.event,
+                "dispatcher": {"name": args.dispatch, "args": []},
+                "max_count": args.max_reactions or 0
+            }]
+
+            listener = EventListener(ipc)
+            handler = ReactionHandler(ipc, listener, reactions)
+            handler.react()
+
+        else:
+            error("Specify --config or both --event and --dispatch")
+            react_parser.print_help()
+            sys.exit(1)
+
+    elif args.command == 'query':
+        result = ipc.query(args.query_type)
+        if result:
+            print(json.dumps(result, indent=2))
+        else:
+            sys.exit(1)
+
+    elif args.command == 'server':
+        socket_path = args.socket or (XDG_RUNTIME_DIR / f"hypr-ipc-{os.getenv('USER', 'user')}.sock")
+        server = JSONRPCServer(ipc, socket_path)
+        server.serve()
+
+    else:
+        parser.print_help()
+
+
+if __name__ == '__main__':
+    main()

@@ -29,22 +29,11 @@ A modular, highly customizable desktop environment built on **Hyprland** (Waylan
 
 ```
 dotfiles/
-├── Configs/        # Install source (mirrors ~/.config and ~/.local)
-├── Scripts/        # Install/update scripts
-├── hypr/           # Hyprland compositor configuration
-├── hypr-lib/       # HyDE library (100+ scripts)
-├── zsh/            # Zsh shell configuration
-├── kitty/          # Kitty terminal
-├── alacritty/      # Alacritty terminal
-├── tmux/           # Tmux config
-├── rofi/           # Application launcher
-├── waybar/         # Status bar
-├── swaync/         # Notification daemon
-├── starship/       # Shell prompt
-├── fastfetch/      # System info
-├── cava/           # Audio visualizer
-├── wal/            # Pywal16 templates
-└── scripts/        # User utilities
+├── Configs/        # Portable mirror of ~/.config and ~/.local
+├── Scripts/        # Install, restore, and uninstall helpers
+├── install.sh      # Main install entrypoint
+├── update.sh       # Update/sync entrypoint
+└── README.md
 ```
 
 ### Themes
@@ -114,6 +103,13 @@ BOOTLOADER=limine ./install.sh
 ```bash
 cd ~/dotfiles
 ./update.sh
+```
+
+### Manual Hypr Layer Restore
+
+```bash
+cd ~/dotfiles/Scripts
+./restore_hypr_layers.sh
 ```
 
 ### Post-Install
@@ -204,17 +200,26 @@ The theming system has four modes controlled by clicking the color mode indicato
 
 ### Hyprland
 
-The main configuration is split into modular files:
+Hyprland follows a two-layer split:
 
 ```
+~/.local/share/hypr/
+├── hyprland.conf      # Shared orchestrator
+├── variables.conf     # Core variables
+├── defaults.conf      # Shared defaults
+├── env.conf           # Shared env setup
+├── dynamic.conf       # Theme/dynamic layer
+├── startup.conf       # Shared startup execs
+└── finale.conf        # Shared finalize layer
+
 ~/.config/hypr/
-├── hyprland.conf      # Entry point (sources everything)
-├── variables.conf     # $mainMod, $TERMINAL, etc.
-├── keybindings.conf   # All keyboard shortcuts
-├── windowrules.conf   # Per-application rules
-├── animations/        # Animation presets
-├── workflows/         # Workflow modes (gaming, powersaver, etc.)
-└── themes/            # 28 theme directories with wallpapers
+├── hyprland.conf      # Thin user wrapper (sources shared orchestrator)
+├── keybindings.conf   # User keybindings
+├── windowrules.conf   # User window rules
+├── monitors.conf      # User monitor layout
+├── userprefs.conf     # User preferences
+├── workflows.conf     # Workflow overrides
+└── themes/            # Theme packs and wallpaper sets
 ```
 
 ### Scripts

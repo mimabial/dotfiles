@@ -57,14 +57,9 @@ def send(
     replace_id : Optional[int]
         The ID of the notification to replace.
     """
-    # Fallback to console output if GUI is not available or notify-send is missing
+    # Return failure when desktop notifications are unavailable.
     if not _is_gui_available() or not _has_notify_send():
-        prefix = f"[{app_name or DEFAULT_APP_NAME}]"
-        message = f"{summary}"
-        if body:
-            message += f": {body}"
-        print(f"{prefix} {message}")
-        return
+        return False
 
     command = ["notify-send"]
 
@@ -90,16 +85,13 @@ def send(
         try:
             run(command, check=True, timeout=3, capture_output=True)
         except (CalledProcessError, TimeoutExpired, FileNotFoundError):
-            # Fallback to console output if notification fails
-            prefix = f"[{app_name or DEFAULT_APP_NAME}]"
-            message = f"{summary}"
-            if body:
-                message += f": {body}"
-            print(f"{prefix} {message}")
+            # Explicitly ignore delivery failures; caller can check environment first.
+            return
 
     # Run in daemon thread so it doesn't block main thread
     thread = threading.Thread(target=_send_in_background, daemon=True)
     thread.start()
+    return True
 
 
 # Example usage

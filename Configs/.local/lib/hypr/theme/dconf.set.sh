@@ -82,18 +82,23 @@ fi
 if [[ -r "${HYPRLAND_CONFIG}" ]] &&
   command -v "hyq" &>/dev/null; then
 
-  # In theme mode, prefer theme.conf for GTK/icon theme (avoid config.toml defaults overriding theme packs)
+  # In theme mode, prefer theme.conf for GTK/icon/cursor values
+  # (avoid config.toml defaults overriding theme packs)
   if [[ "${enableWallDcol:-1}" -eq 0 ]]; then
     theme_conf="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/theme.conf"
     if [[ -r "${theme_conf}" ]]; then
       theme_hyq_output=$(
         hyq "${theme_conf}" --export env --allow-missing \
           -Q '$GTK_THEME[string]' \
-          -Q '$ICON_THEME[string]'
+          -Q '$ICON_THEME[string]' \
+          -Q '$CURSOR_THEME[string]' \
+          -Q '$CURSOR_SIZE'
       )
       safe_hyq_source "${theme_hyq_output}"
       GTK_THEME=${__GTK_THEME:-$GTK_THEME}
       ICON_THEME=${__ICON_THEME:-$ICON_THEME}
+      CURSOR_THEME=${__CURSOR_THEME:-$CURSOR_THEME}
+      CURSOR_SIZE=${__CURSOR_SIZE:-$CURSOR_SIZE}
     fi
   fi
 
@@ -102,8 +107,6 @@ if [[ -r "${HYPRLAND_CONFIG}" ]] &&
     --source
     --export env
     -Q '$COLOR_SCHEME[string]'
-    -Q '$CURSOR_THEME[string]'
-    -Q '$CURSOR_SIZE'
     -Q '$TERMINAL[string]'
     -Q '$FONT[string]'
     -Q '$FONT_SIZE'
@@ -116,11 +119,13 @@ if [[ -r "${HYPRLAND_CONFIG}" ]] &&
     -Q '$FONT_HINTING[string]'
   )
 
-  # Only pull GTK/icon theme from the full config in wallpaper mode.
+  # Only pull GTK/icon/cursor from full config in wallpaper mode.
   if [[ "${enableWallDcol:-1}" -ne 0 ]]; then
     hyq_args+=(
       -Q '$GTK_THEME[string]'
       -Q '$ICON_THEME[string]'
+      -Q '$CURSOR_THEME[string]'
+      -Q '$CURSOR_SIZE'
     )
   fi
 
@@ -178,7 +183,9 @@ else
 fi
 
 # Set cursor (run in background, non-blocking)
-[[ -n "${HYPRLAND_INSTANCE_SIGNATURE}" ]] && hyprctl setcursor "${CURSOR_THEME}" "${CURSOR_SIZE}" &>/dev/null &
+if [[ -n "${CURSOR_THEME}" ]] && [[ -n "${CURSOR_SIZE}" ]]; then
+  hyprctl setcursor "${CURSOR_THEME}" "${CURSOR_SIZE}" &>/dev/null &
+fi
 
 print_log -sec "dconf" -stat "Loaded dconf settings" "::"
 print_log -y "#-----------------------------------------------#"

@@ -5,7 +5,6 @@ $ICON_THEME = Tela-blue-dark
 $COLOR_SCHEME=prefer-dark
 $CURSOR_THEME = Capitaine-Cursors
 $CURSOR_SIZE=24
-$CODE_THEME=oxocarbon
 $NVIM_SCHEME = oxocarbon
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
@@ -48,4 +47,4 @@ decoration {
     }
 }
 
-layerrule = blur,waybar
+layerrule = blur on, match:namespace waybar

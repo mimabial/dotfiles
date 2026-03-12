@@ -11,58 +11,8 @@
 #   Time (mean ± σ):     246.9 ms ±  22.5 ms    [User: 112.4 ms, System: 87.5 ms]
 # Range (min … max):   184.0 ms … 272.1 ms    12 runs
 
-# Parse arguments for output mode
-OUTPUT_MODE=""
-STARTUP_ARG=""
-USE_ARG=""
-while [[ $# -gt 0 ]]; do
-  case $1 in
-    -i | --icon)
-      OUTPUT_MODE="icon"
-      shift
-      ;;
-    -u | --util)
-      OUTPUT_MODE="util"
-      shift
-      ;;
-    -a | --all)
-      OUTPUT_MODE="all"
-      shift
-      ;;
-    --startup)
-      STARTUP_ARG="--startup"
-      shift
-      ;;
-    --use)
-      USE_ARG="$2"
-      shift 2
-      ;;
-    --toggle | -t | --reset | -rf | --tired | --emoji | --stat) break ;;
-    *) shift ;;
-  esac
-done
-
 scrDir=$(dirname "$(realpath "$0")")
-gpuinfo_file="/tmp/${UID}-gpuinfo"
-cache_file="/tmp/gpuinfo-cache-${UID}.json"
-
-# -i and -u read from cache if it exists
-if [[ -n "$OUTPUT_MODE" && -f "$cache_file" ]]; then
-  case $OUTPUT_MODE in
-    "icon")
-      jq -c '{text: .icon, tooltip: .tooltip}' "$cache_file"
-      exit 0
-      ;;
-    "util")
-      jq -c '{text: .util, tooltip: .tooltip}' "$cache_file"
-      exit 0
-      ;;
-    "all")
-      cat "$cache_file"
-      exit 0
-      ;;
-  esac
-fi
+gpuinfo_file="/tmp/hypr-${UID}-gpuinfo"
 
 # Use the AQ_DRM_DEVICES variable to set the priority of the GPUs
 AQ_DRM_DEVICES="${AQ_DRM_DEVICES:-WLR_DRM_DEVICES}"
@@ -126,7 +76,7 @@ query() {
     else
       GPUINFO_NVIDIA_GPU=""
     fi
-    if [[ -n "${GPUINFO_NVIDIA_GPU}" ]]; then                             # Check for NVIDIA GPU
+    if [[ -n "${GPUINFO_NVIDIA_GPU}" ]]; then                                                                                               # Check for NVIDIA GPU
       if [[ "${GPUINFO_NVIDIA_GPU}" == *"NVIDIA-SMI has failed"* ]] || [[ "${GPUINFO_NVIDIA_GPU}" == *"Failed to initialize NVML"* ]]; then #? Second Layer for dGPU
         echo "GPUINFO_NVIDIA_ENABLE=0 # NVIDIA-SMI has failed" >>"${gpuinfo_file}"
       else
@@ -402,30 +352,27 @@ generate_json() {
   temp_lv="85:, 65:, 45:, "
   util_lv="90:, 60:󰓅, 30:󰾅, 󰾆"
 
-  local util_bucket temp_bucket speedo thermo status_icon temp_color
+  local util_bucket temp_bucket speed thermo temp_color
   local util_icons=("󰾆" "󰾅" "󰓅" "")
   local temp_icons=("" "" "" "")
-  local temp_status_icons=("" "" "" "")
 
   util_bucket=$(hysteresis_bucket "${utilization}" "${GPUINFO_UTIL_BUCKET}" "${util_high}" "${util_mid}" "${util_low}" "${util_hyst}")
   temp_bucket=$(hysteresis_bucket "${temperature}" "${GPUINFO_TEMP_BUCKET}" "${temp_high}" "${temp_mid}" "${temp_low}" "${temp_hyst}")
 
   if [[ -n "${util_bucket}" ]]; then
-    speedo="${util_icons[${util_bucket}]}"
+    speed="${util_icons[${util_bucket}]}"
     update_state_var "GPUINFO_UTIL_BUCKET" "${util_bucket}"
   else
-    speedo="$(map_floor "$util_lv" "$utilization")"
+    speed="$(map_floor "$util_lv" "$utilization")"
   fi
 
   if [[ -n "${temp_bucket}" ]]; then
     thermo="${temp_icons[${temp_bucket}]}"
-    status_icon="${temp_status_icons[${temp_bucket}]}"
     update_state_var "GPUINFO_TEMP_BUCKET" "${temp_bucket}"
   else
     local temp_pair
     temp_pair="$(map_floor "$temp_lv" "${temperature}")"
     thermo="${temp_pair:0:1}"
-    status_icon="${temp_pair:1:1}"
   fi
 
   temp_color=$(get_temp_color "${temperature}")
@@ -450,21 +397,19 @@ generate_json() {
     icon_text="<span size='14pt'>$thermo_alt</span>"
   fi
 
-  status_icon="${status_icon:-$thermo_alt}"
-
   # Build tooltip with ordered lines
-  tooltip="$status_icon $primary_gpu
+  tooltip="$primary_gpu
 $thermo Temperature: ${temperature}°C"
 
   local tooltip_lines=()
-  if [[ -n "${utilization}" ]]; then tooltip_lines+=("$speedo Utilization: ${utilization}%"); fi
+  if [[ -n "${utilization}" ]]; then tooltip_lines+=("$speed Utilization: ${utilization}%"); fi
   if [[ -n "${core_clock}" ]]; then
     tooltip_lines+=(" Clock Speed: ${core_clock} MHz")
   elif [[ -n "${current_clock_speed}" ]] && [[ -n "${max_clock_speed}" ]]; then
     tooltip_lines+=(" Clock Speed: ${current_clock_speed}/${max_clock_speed} MHz")
   fi
   if [[ -n "${power_usage}" ]]; then
-    if [[ -n "${power_limit}" ]]; then
+    if [[ -n "${power_limit}" && "${power_limit}" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
       tooltip_lines+=("󱪉 Power Usage: ${power_usage}/${power_limit} W")
     else
       tooltip_lines+=("󱪉 Power Usage: ${power_usage} W")
@@ -480,8 +425,6 @@ $thermo Temperature: ${temperature}°C"
     fi
   done
 
-  # Write cache using jq
-
   # Format utilization with two digits (pad with leading zero if needed)
   local formatted_util
   if [[ -n "${utilization}" && "${utilization}" != "N/A" ]]; then
@@ -491,11 +434,10 @@ $thermo Temperature: ${temperature}°C"
   fi
 
   jq -n -c \
-    --arg temp "${temperature}°C" \
     --arg icon "$icon_text" \
     --arg util "${formatted_util}󱉸" \
     --arg tooltip "$tooltip" \
-    '{temp: $temp, icon: $icon, util: $util, tooltip: $tooltip}' >"$cache_file"
+    '{text: ($icon + "\r" + $util), tooltip: $tooltip}'
 }
 
 general_query() {
@@ -673,7 +615,7 @@ general_query() {
     # Some Intel GPUs expose RC6 residency - we can estimate inverse utilization
     if [[ -f "${card_path}/power/rc6_residency_ms" ]]; then
       # This is a cumulative counter, would need previous value to calculate
-      # For now, leave empty or set a placeholder
+      # RC6 residency needs delta sampling, so report N/A here.
       utilization="N/A"
     else
       utilization="N/A"
@@ -803,11 +745,6 @@ case "$1" in
 --use [GPU]      * Only call the specified GPU (Useful for adding specific GPU on waybar)
 --reset          *  Remove & restart all query
 
-[output modes]
--i, --icon       * Output colored icon with tooltip
--u, --util       * Output utilization percentage with tooltip
--a, --all        * Output all data as JSON
-
 [flags]
 --tired            * Adding this option will not query nvidia-smi if gpu is in suspend mode
 --startup          * Useful if you want a certain GPU to be set at startup
@@ -842,10 +779,3 @@ if [[ -n "${utilization}" && "${utilization}" != "N/A" ]]; then
 fi
 
 generate_json #? AutoGen the Json txt for Waybar
-
-case $OUTPUT_MODE in
-  "icon") jq -c '{text: .icon, tooltip: .tooltip}' "$cache_file" ;;
-  "util") jq -c '{text: .util, tooltip: .tooltip}' "$cache_file" ;;
-  "all") cat "$cache_file" ;;
-  *) jq -c '{text: (.icon + "\r" + .util), tooltip: .tooltip}' "$cache_file" ;;
-esac

@@ -5,7 +5,7 @@
   default_album_art_path: None,
   draw_borders: false,
   show_song_table_header: false,
-  symbols: (song: "🎵", dir: "📁", playlist: "🎼", marker: "\u{{e0b0}}"),
+  symbols: (song: "󰎇", dir: "󱍙", playlist: "󰲹", marker: "\u{{e0b0}}"),
   layout: Split(
     direction: Vertical,
     panes: [
@@ -18,7 +18,10 @@
         pane: Split(
           direction: Horizontal,
           panes: [
-
+            (
+              size: "55%",
+              pane: Pane(TabContent),
+            ),
             (
               size: "45%",
               borders: "TOP",
@@ -26,7 +29,14 @@
                 direction: Vertical,
                 size: "100%",
                 panes: [
-
+                  (
+                    size: "1",
+                    pane: Pane(Property(
+                      content: [
+                        (kind: Text("")),
+                      ],
+                    )),
+                  ),
                   (
                     size: "100%",
                     pane: Pane(AlbumArt),
@@ -34,11 +44,6 @@
                 ]
               )
             ),
-            (
-              size: "55%",
-              pane: Pane(TabContent),
-            ),
-
           ]
         )
       ),
@@ -58,17 +63,17 @@
     ],
   ),
   progress_bar: (
-    symbols: ["[", "-", ">", " ", "]"],
-    track_style: (fg: "{color5}", bg: "{color0}"),
-    elapsed_style: (fg: "{color6}", bg: "{color0}"),
-    thumb_style: (fg: "{color5}", bg: "{color0}"),
+    symbols: ["▪", "▪", "▪", " ", "▪"],
+    track_style: (fg: "{color5}"),
+    elapsed_style: (fg: "{color0}"),
+    thumb_style: (fg: "{color5}"),
   ),
-    scrollbar: (
-        symbols: [" ", "🮐", "🮑", "🮒"],
-        track_style: (fg: "{color4}"),
-        ends_style: (fg: "{color4}"),
-        thumb_style: (fg: "{color4}"),
-    ),
+  scrollbar: (
+      symbols: [" ", "🮐", "🮑", "🮒"],
+      track_style: (fg: "{color4}"),
+      ends_style: (fg: "{color4}"),
+      thumb_style: (fg: "{color4}"),
+  ),
   browser_column_widths: [20, 38, 42],
   text_color: "{color7}",
   background_color: "{background}",
@@ -83,6 +88,13 @@
   highlighted_item_style: (fg: "{color5}", modifiers: "Bold"),
   current_item_style: (fg: "black", bg: "{color4}", modifiers: "Bold"),
   highlight_border_style: (fg: "{color5}"),
+  level_styles: (
+    info: (fg: "{color2}", bg: "{background}"),
+    warn: (fg: "{color3}", bg: "{background}"),
+    error: (fg: "{color1}", bg: "{background}"),
+    debug: (fg: "{color9}", bg: "{background}"),
+    trace: (fg: "{color13}", bg: "{background}"),
+  ),
   song_table_format: [
     (
       prop: (kind: Property(Title), style: (fg: "{color6}"), default: (kind: Text("Unknown"))),
@@ -147,19 +159,71 @@
         ),
         (
           name: "󱏒 Files",
-          pane: Pane(Directories),
+          pane: Split(
+            size: "100%",
+            direction: Vertical,
+            panes: [
+              (
+                size: "2",
+                pane: Component("custom_song_table_header"),
+              ),
+              (
+                size: "100%",
+                pane: Pane(Directories),
+              ),
+            ]
+          )
         ),
         (
           name: " Lyrics",
-          pane: Pane(Lyrics),
+          pane: Split(
+            size: "100%",
+            direction: Vertical,
+            panes: [
+              (
+                size: "2",
+                pane: Component("custom_song_table_header"),
+              ),
+              (
+                size: "100%",
+                pane: Pane(Lyrics),
+              ),
+            ]
+          )
         ),
         (
           name: "󰥩 Search",
-          pane: Pane(Search),
+          pane: Split(
+            size: "100%",
+            direction: Vertical,
+            panes: [
+              (
+                size: "2",
+                pane: Component("custom_song_table_header"),
+              ),
+              (
+                size: "100%",
+                pane: Pane(Search),
+              ),
+            ]
+          )
         ),
         (
           name: "󰲹 PlayLists",
-          pane: Pane(Playlists),
+          pane: Split(
+            size: "100%",
+            direction: Vertical,
+            panes: [
+              (
+                size: "2",
+                pane: Component("custom_song_table_header"),
+              ),
+              (
+                size: "100%",
+                pane: Pane(Playlists),
+              ),
+            ]
+          )
         ),
     ],
 )

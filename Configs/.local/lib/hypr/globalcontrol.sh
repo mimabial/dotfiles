@@ -2,15 +2,15 @@
 # shellcheck disable=SC1091
 # shellcheck disable=SC1090
 #
-# globalcontrol.sh - Core utilities for HyDE shell scripts
+# globalcontrol.sh - Core utilities for Hypr shell scripts
 #
-# This file provides common functions and environment setup for all HyDE scripts.
+# This file provides common functions and environment setup for all Hypr scripts.
 # Source this file at the start of any script that needs access to theme settings,
 # wallpaper management, or system configuration.
 #
 # Key exports:
 #   HYPR_CONFIG_HOME, HYPR_DATA_HOME, HYPR_CACHE_HOME, HYPR_STATE_HOME
-#   LIB_DIR, scrDir, confDir
+#   LIB_DIR, scrDir
 #
 # Key functions:
 #   print_log()        - Colored logging output
@@ -18,7 +18,6 @@
 #   get_themes()       - Populate theme list arrays
 #   export_hypr_config() - Load state variables from staterc/config
 #   get_hyprConf()     - Get value from theme's hypr.theme file
-#   set_conf()         - Update a variable in staterc
 #   pkg_installed()    - Check if a package is installed
 #   state_get/set()    - Unified state management API
 
@@ -39,23 +38,35 @@ export ICONS_DIR="${XDG_DATA_HOME}/icons"
 export FONTS_DIR="${XDG_DATA_HOME}/fonts"
 export THEMES_DIR="${XDG_DATA_HOME}/themes"
 
-#legacy hypr envs // should be deprecated
+# Compatibility exports used across Hypr scripts.
 
-export SHARE_DIR="${XDG_DATA_HOME}"
 export scrDir="${LIB_DIR:-$HOME/.local/lib}/hypr"
-export confDir="${XDG_CONFIG_HOME:-$HOME/.config}"
-export hyprConfDir="$HYPR_CONFIG_HOME"
-export cacheDir="$HYPR_CACHE_HOME"
 export WALLPAPER_CACHE_DIR="${HYPR_CACHE_HOME}/wallpaper"
 export WALLPAPER_CURRENT_DIR="${WALLPAPER_CACHE_DIR}/current"
 export WALLPAPER_THUMB_DIR="${WALLPAPER_CACHE_DIR}/thumbs"
 export WALLPAPER_VIDEO_DIR="${WALLPAPER_CURRENT_DIR}/thumbnails"
-export thmbDir="$WALLPAPER_THUMB_DIR"
-export iconsDir="$ICONS_DIR"
-export themesDir="$THEMES_DIR"
-export fontsDir="$FONTS_DIR"
 # Use xxh64sum for faster hashing (3x faster than sha1sum)
 export hashMech="xxh64sum"
+
+# Resolve shared-core files first (shared/user split), then user layer fallback.
+hypr_core_file() {
+  local rel_path="$1"
+  local shared_file="${HYPR_DATA_HOME}/${rel_path}"
+  local user_file="${HYPR_CONFIG_HOME}/${rel_path}"
+
+  if [[ -f "${shared_file}" ]]; then
+    printf '%s\n' "${shared_file}"
+  elif [[ -f "${user_file}" ]]; then
+    printf '%s\n' "${user_file}"
+  else
+    # Prefer shared path as canonical target for new writes/read attempts.
+    printf '%s\n' "${shared_file}"
+  fi
+}
+
+hypr_variables_file() {
+  hypr_core_file "variables.conf"
+}
 
 #? avoid notify-send to stall the script
 send_notifs() {
@@ -486,16 +497,16 @@ state_set() {
   # Determine target file
   case "${target_file}" in
     staterc) state_file="${STATE_RC}" ;;
-    config)  state_file="${STATE_CONFIG}" ;;
-    mode)    state_file="${STATE_MODE}" ;;
-    *)       state_file="${STATE_RC}" ;;
+    config) state_file="${STATE_CONFIG}" ;;
+    mode) state_file="${STATE_MODE}" ;;
+    *) state_file="${STATE_RC}" ;;
   esac
 
   if [[ -z "${state_file}" ]]; then
     case "${target_file}" in
       staterc) state_file="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/staterc" ;;
-      config)  state_file="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/config" ;;
-      mode)    state_file="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/mode" ;;
+      config) state_file="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/config" ;;
+      mode) state_file="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/mode" ;;
     esac
   fi
 
@@ -532,7 +543,7 @@ state_set() {
       exec {lock_fd}>&-
       return 1
     fi
-    printf "%s\n" "${var_value}" > "${state_file}.tmp" && mv -f "${state_file}.tmp" "${state_file}"
+    printf "%s\n" "${var_value}" >"${state_file}.tmp" && mv -f "${state_file}.tmp" "${state_file}"
     local rc=$?
     flock -u "${lock_fd}" 2>/dev/null || true
     exec {lock_fd}>&-
@@ -557,7 +568,7 @@ state_set() {
   {
     grep -v "^${var_escaped}=" "${state_file}" 2>/dev/null || true
     echo "${var_name}=\"${var_value}\""
-  } > "${tmp_file}"
+  } >"${tmp_file}"
 
   # Atomic move
   if mv -f "${tmp_file}" "${state_file}"; then
@@ -579,7 +590,7 @@ state_get_mode() {
   if [[ -f "${STATE_MODE}" ]]; then
     cat "${STATE_MODE}" 2>/dev/null
   else
-    echo "dark"  # Default
+    echo "dark" # Default
   fi
 }
 
@@ -592,23 +603,6 @@ state_set_mode() {
     return 1
   fi
   state_set "" "${mode}" "mode"
-}
-
-# ============================================================================
-# set_conf - Set a state variable (legacy wrapper)
-# ============================================================================
-# Arguments:
-#   $1 - Variable name
-#   $2 - Variable value
-# Returns:
-#   0 - Success
-#   1 - Failure
-# Notes:
-#   Legacy function - prefer state_set() for new code
-set_conf() {
-  local varName="${1}"
-  local varData="${2}"
-  state_set "${varName}" "${varData}" "staterc"
 }
 
 # ============================================================================
@@ -717,8 +711,6 @@ get_hyprConf() {
     [FONT_SIZE]="font-size"
     [DOCUMENT_FONT_SIZE]="document-font-size"
     [MONOSPACE_FONT_SIZE]="monospace-font-size"
-    # [CODE_THEME]="Wallbash"
-    # [SDDM_THEME]=""
   )
 
   # Try parse gsettings
@@ -727,15 +719,13 @@ get_hyprConf() {
   fi
 
   if [ -z "${gsVal}" ] || [[ "${gsVal}" == \$* ]]; then
-    case "${hyVar}" in
-      "CODE_THEME") echo "Wallbash" ;;
-      "SDDM_THEME") echo "" ;;
-      *)
-        grep "^[[:space:]]*\$default.${hyVar}\s*=" \
-          "$HYPR_CONFIG_HOME/variables.conf" |
-          cut -d '=' -f2 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | head -n 1
-        ;;
-    esac
+    local defaults_file
+    defaults_file="$(hypr_variables_file)"
+    if [[ -f "${defaults_file}" ]]; then
+      grep "^[[:space:]]*\$default.${hyVar}\s*=" \
+        "${defaults_file}" \
+        | cut -d '=' -f2 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | head -n 1
+    fi
   else
     echo "${gsVal}"
   fi
@@ -767,16 +757,21 @@ get_rofi_pos() {
   offRes=("${offRes// / }")
 
   # Calculate available space and determine anchor
-  local edge_padding=10  # Minimum distance from screen edges
+  local edge_padding=10 # Minimum distance from screen edges
   local available_right=$((monRes[0] - curPos[0] - offRes[2]))
   local available_left=$((curPos[0] - offRes[0]))
   local available_bottom=$((monRes[1] - curPos[1] - offRes[3]))
   local available_top=$((curPos[1] - offRes[1]))
+  local usable_width=$((monRes[0] - offRes[0] - offRes[2]))
+  local usable_height=$((monRes[1] - offRes[1] - offRes[3]))
+  [ "$usable_width" -lt $((edge_padding * 2)) ] && usable_width=$((edge_padding * 2))
+  [ "$usable_height" -lt $((edge_padding * 2)) ] && usable_height=$((edge_padding * 2))
 
   # Calculate max safe offset to prevent window from going off screen
-  # Add extra padding to account for window size estimation errors
-  local max_safe_right=$((monRes[0] - window_width - offRes[2] - edge_padding))
-  local max_safe_bottom=$((monRes[1] - window_height - offRes[3] - edge_padding))
+  local max_safe_right=$((usable_width - window_width - edge_padding))
+  local max_safe_bottom=$((usable_height - window_height - edge_padding))
+  [ "$max_safe_right" -lt "$edge_padding" ] && max_safe_right="$edge_padding"
+  [ "$max_safe_bottom" -lt "$edge_padding" ] && max_safe_bottom="$edge_padding"
 
   # X positioning with overflow prevention
   if [ "$window_width" -gt 0 ]; then
@@ -784,23 +779,27 @@ get_rofi_pos() {
       # Enough space on the right - stick to cursor
       local x_pos="west"
       local x_off="$((curPos[0] - offRes[0]))"
-      # Clamp to prevent overflow
+      [ "$x_off" -lt "$edge_padding" ] && x_off="$edge_padding"
       [ "$x_off" -gt "$max_safe_right" ] && x_off="$max_safe_right"
     elif [ "$available_left" -ge "$window_width" ]; then
       # Enough space on the left - stick to cursor
       local x_pos="east"
-      local x_off="-$((monRes[0] - curPos[0] - offRes[2]))"
-      # Clamp to prevent overflow (negative direction)
       local abs_x_off=$((monRes[0] - curPos[0] - offRes[2]))
-      [ "$abs_x_off" -gt "$max_safe_right" ] && x_off="-$max_safe_right"
+      local x_off
+      [ "$abs_x_off" -lt "$edge_padding" ] && abs_x_off="$edge_padding"
+      if [ "$abs_x_off" -gt "$max_safe_right" ]; then
+        x_off="-$max_safe_right"
+      else
+        x_off="-$abs_x_off"
+      fi
     else
       # Not enough space either side, use the side with more space
       if [ "$available_right" -ge "$available_left" ]; then
         local x_pos="west"
-        local x_off="$edge_padding"  # Stick to left edge with padding
+        local x_off="$edge_padding" # Stick to left edge with padding
       else
         local x_pos="east"
-        local x_off="-$((monRes[0] - window_width - offRes[2] - edge_padding))"  # Stick to right edge with padding
+        local x_off="-$edge_padding" # Stick to right edge with padding
       fi
     fi
   else
@@ -820,23 +819,27 @@ get_rofi_pos() {
       # Enough space below - stick to cursor
       local y_pos="north"
       local y_off="$((curPos[1] - offRes[1]))"
-      # Clamp to prevent overflow
+      [ "$y_off" -lt "$edge_padding" ] && y_off="$edge_padding"
       [ "$y_off" -gt "$max_safe_bottom" ] && y_off="$max_safe_bottom"
     elif [ "$available_top" -ge "$window_height" ]; then
       # Enough space above - stick to cursor
       local y_pos="south"
-      local y_off="-$((monRes[1] - curPos[1] - offRes[3]))"
-      # Clamp to prevent overflow (negative direction)
       local abs_y_off=$((monRes[1] - curPos[1] - offRes[3]))
-      [ "$abs_y_off" -gt "$max_safe_bottom" ] && y_off="-$max_safe_bottom"
+      local y_off
+      [ "$abs_y_off" -lt "$edge_padding" ] && abs_y_off="$edge_padding"
+      if [ "$abs_y_off" -gt "$max_safe_bottom" ]; then
+        y_off="-$max_safe_bottom"
+      else
+        y_off="-$abs_y_off"
+      fi
     else
       # Not enough space either direction, use the side with more space
       if [ "$available_bottom" -ge "$available_top" ]; then
         local y_pos="north"
-        local y_off="$edge_padding"  # Stick to top edge with padding
+        local y_off="$edge_padding" # Stick to top edge with padding
       else
         local y_pos="south"
-        local y_off="-$((monRes[1] - window_height - offRes[3] - edge_padding))"  # Stick to bottom edge with padding
+        local y_off="-$edge_padding" # Stick to bottom edge with padding
       fi
     fi
   else
@@ -1010,7 +1013,7 @@ if [ -n "$BASH_VERSION" ]; then
   export -f get_hyprConf get_rofi_pos \
     is_hovered toml_write \
     get_hashmap get_aurhlpr \
-    set_conf set_hash check_package \
+    set_hash check_package \
     get_themes print_log \
     pkg_installed paste_string \
     extract_thumbnail accepted_mime_types \

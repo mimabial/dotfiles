@@ -1,0 +1,53 @@
+$HOME/.config/tmux/theme.conf|tmux source-file ~/.config/tmux/tmux.conf
+
+# Tmux theme for Crimson Blade
+# Auto-generated from kitty.theme colors
+
+# ============================================================================
+# Standard 16 color palette
+# ============================================================================
+set -g @color0 "#03063c"
+set -g @color1 "#c60049"
+set -g @color2 "#abf157"
+set -g @color3 "#fdcd5e"
+set -g @color4 "#525fb8"
+set -g @color5 "#976f81"
+set -g @color6 "#968662"
+set -g @color7 "#eceffc"
+set -g @color8 "#6c5a30"
+set -g @color9 "#d94a8a"
+set -g @color10 "#daffa8"
+set -g @color11 "#fee6a8"
+set -g @color12 "#b1bdf9"
+set -g @color13 "#fda4cc"
+set -g @color14 "#a4bc86"
+set -g @color15 "#f6ffec"
+
+# ============================================================================
+# Semantic color aliases
+# ============================================================================
+set -g @theme_bg "#0c0b16"
+set -g @theme_fg "#eceffd"
+set -g @theme_accent "#525fb8"
+set -g @theme_gray "#6c5a30"
+set -g @theme_highlight "#525fb8"
+set -g @theme_red "#c60049"
+set -g @theme_brightred "#d94a8a"
+set -g @theme_green "#abf157"
+set -g @theme_yellow "#fdcd5e"
+set -g @theme_blue "#525fb8"
+set -g @theme_magenta "#976f81"
+set -g @theme_cyan "#968662"
+
+# ============================================================================
+# Tmux color settings
+# ============================================================================
+set -g status-style "bg=#0c0b16,fg=#eceffd"
+set -g message-style "bg=#0c0b16,fg=#525fb8"
+set -g message-command-style "bg=#0c0b16,fg=#525fb8"
+set -g pane-border-style "fg=#6c5a30"
+set -g pane-active-border-style "fg=#525fb8"
+set -g window-status-style "fg=#6c5a30"
+set -g window-status-current-style "fg=#525fb8,bold"
+set -g mode-style "bg=#525fb8,fg=#0c0b16"
+set -g clock-mode-colour "#525fb8"

@@ -1,5 +1,5 @@
 [Unit]
-Description=Auto Theme Daemon (sunrise/sunset + ambient light)
+Description=Auto Theme Daemon (sunrise/sunset)
 Documentation=man:auto_theme.py
 After=graphical-session.target
 

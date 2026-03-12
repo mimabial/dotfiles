@@ -5,6 +5,13 @@
 #|--/ /-| Script to restore hyde configs |--/ /-|#
 #|/ /---+--------------------------------+/ /---|#
 
+expand_home_path() {
+    local path="$1"
+    path="${path//'${HOME}'/${HOME}}"
+    path="${path//\$HOME/${HOME}}"
+    printf '%s\n' "${path}"
+}
+
 deploy_list() {
 
     while read -r lst; do
@@ -20,7 +27,7 @@ deploy_list() {
         ovrWrte=$(awk -F '|' '{print $1}' <<<"${lst}")
         bkpFlag=$(awk -F '|' '{print $2}' <<<"${lst}")
         pth=$(awk -F '|' '{print $3}' <<<"${lst}")
-        pth=$(eval echo "${pth}")
+        pth="$(expand_home_path "${pth}")"
         cfg=$(awk -F '|' '{print $4}' <<<"${lst}")
         pkg=$(awk -F '|' '{print $5}' <<<"${lst}")
 
@@ -89,7 +96,7 @@ deploy_psv() {
 
         ctlFlag=$(awk -F '|' '{print $1}' <<<"${lst}")
         pth=$(awk -F '|' '{print $2}' <<<"${lst}")
-        pth=$(eval "echo ${pth}")
+        pth="$(expand_home_path "${pth}")"
         cfg=$(awk -F '|' '{print $3}' <<<"${lst}")
         pkg=$(awk -F '|' '{print $4}' <<<"${lst}")
 
@@ -176,7 +183,7 @@ deploy_psv() {
                     ;;
                 "P") # Preserve
                     [ "${flg_DryRun}" -ne 1 ] && cp -r "${pth}/${cfg_chk}" "${BkpDir}${tgt}"
-                    if ! [ "${flg_DryRun}" -ne 1 ] && cp -rn "${CfgDir}${tgt}/${cfg_chk}" "${pth}" 2>/dev/null; then
+                    if [ "${flg_DryRun}" -ne 1 ] && cp -rn "${CfgDir}${tgt}/${cfg_chk}" "${pth}" 2>/dev/null; then
                         print_log -g "[copy to backup]" " > " -y "[populate]" -b " :: " "${pth}${tgt}/${cfg_chk}"
                     else
                         print_log -g "[copy to backup]" " > " -y "[preserved]" -b " :: " "${pth}" + 208 " <--  " "${CfgDir}${tgt}/${cfg_chk}"
@@ -197,25 +204,35 @@ deploy_psv() {
 
 hyprland_hook() {
 
-    local hyde_config="${cloneDir}/Configs/.config/hypr/hyprland.conf"
+    local template_config="${CfgDir}/.config/hypr/hyprland.conf"
     local hyprland_default_config="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprland.conf"
-    local hyq_exec="${cloneDir}/Configs/.local/bin/hyq"
-    if [[ ! -x "${hyq_exec}" ]]; then
-        print_log -r "[error] :: " "Required executable '${hyq_exec}' not found or not executable. Please ensure it exists and has execute permissions."
+    if [[ ! -f "${template_config}" ]]; then
+        print_log -r "[error] :: " "Template missing: ${template_config}"
         return 1
     fi
-    if ! "${hyq_exec}" "${hyprland_default_config}" --source --query "\$DOTFILES_HYPRLAND"; then
+
+    if [[ ! -f "${hyprland_default_config}" ]]; then
         mkdir -p "$(dirname "${hyprland_default_config}")" "${BkpDir}/.config/hypr"
-        print_log -g "[hook] " -b "hyprland :: " "No DOTFILES_HYPRLAND variable found in ${hyprland_default_config}, restoring default marker..."
-
-        if [[ ${flg_DryRun} -ne 1 && -f "${hyprland_default_config}" ]]; then
-            cp -f "${hyprland_default_config}" "${BkpDir}/.config/hypr/hyprland.conf"
-        fi
-
-        print_log -r "[backup] :: " "${hyprland_default_config} to ${BkpDir}/.config/hypr/hyprland.conf"
-        [[ ${flg_DryRun} -ne 1 ]] && cp -f "${hyde_config}" "${hyprland_default_config}"
-        print_log -g "[restore] :: " "${hyde_config} to ${hyprland_default_config}"
+        [[ ${flg_DryRun} -ne 1 ]] && cp -f "${template_config}" "${hyprland_default_config}"
+        print_log -g "[restore] :: " "${template_config} to ${hyprland_default_config}"
+        return 0
     fi
+
+    if grep -Eq '^\s*\$(DOTFILES_HYPRLAND|HYPR_USER_WRAPPER|HYDE_HYPRLAND)\s*=' "${hyprland_default_config}" \
+        || grep -Eq '^\s*source\s*=.*\.local/share/hypr/hyprland\.conf' "${hyprland_default_config}"; then
+        return 0
+    fi
+
+    mkdir -p "$(dirname "${hyprland_default_config}")" "${BkpDir}/.config/hypr"
+    print_log -g "[hook] " -b "hyprland :: " "No recognized wrapper marker in ${hyprland_default_config}, restoring template..."
+
+    if [[ ${flg_DryRun} -ne 1 && -f "${hyprland_default_config}" ]]; then
+        cp -f "${hyprland_default_config}" "${BkpDir}/.config/hypr/hyprland.conf"
+    fi
+
+    print_log -r "[backup] :: " "${hyprland_default_config} to ${BkpDir}/.config/hypr/hyprland.conf"
+    [[ ${flg_DryRun} -ne 1 ]] && cp -f "${template_config}" "${hyprland_default_config}"
+    print_log -g "[restore] :: " "${template_config} to ${hyprland_default_config}"
 }
 
 # shellcheck disable=SC2034

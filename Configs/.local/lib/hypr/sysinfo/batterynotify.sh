@@ -221,7 +221,7 @@ main() {                                    # Main function
   config_info
   if $verbose; then
     for line in "Verbose Mode is ON..." "" "" "" ""; do echo "${line}"; done
-  #TODO Might still need this in the future but for now we don't have any battery notify issues
+  # Debug helper to pause other battery-notify instances during verbose runs.
   # current_pid=$$
   # pids=$(pgrep -f "/usr/bin/env bash ${scrDir}/battery.notify.sh" )
   # for pid in $pids ; do if [ "$pid" -ne $current_pid ] ;then kill -STOP "$pid" ;notify-send -a "Battery Notify" -t 2000 -r 9889 -u "CRITICAL" "Debugging STARTED, Pausing Regular Process" ;fi ; done  ; trap resume_processes SIGINT ;

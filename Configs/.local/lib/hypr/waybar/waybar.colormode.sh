@@ -2,7 +2,7 @@
 # Waybar color mode indicator
 
 # Initialize hyprshell environment
-if [[ "${HYPR_SHELL_INIT}" -ne 1 ]]; then
+if [[ "${HYPR_SHELL_INIT:-0}" -ne 1 ]]; then
   if ! eval "$(hyprshell init 2>/dev/null)"; then
     # Fallback if hyprshell init fails
     export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"

@@ -5,7 +5,6 @@ $ICON_THEME=Tela-nord-dark
 $COLOR_SCHEME=prefer-dark
 $CURSOR_THEME=Sunity-cursors
 $CURSOR_SIZE=24
-$CODE_THEME=Nord
 $NVIM_SCHEME = nord
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
@@ -69,4 +68,3 @@ group {
 
 
 blurls = waybar
-
