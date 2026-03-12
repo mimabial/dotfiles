@@ -59,6 +59,17 @@ emit_preview_result() {
   fi
 }
 
+emit_apply_result() {
+  local name="$1"
+  local output="$2"
+
+  if [[ -n "$output" ]]; then
+    log_success "Updated $name"
+  else
+    log_info "Unchanged $name"
+  fi
+}
+
 require_rsync() {
   if ! command -v rsync &>/dev/null; then
     log_error "rsync is required (cp fallback removed). Install rsync and rerun."
@@ -141,8 +152,13 @@ copy_config() {
     return
   fi
 
-  rsync "${rsync_args[@]}" "$src"/ "$dest"/
-  log_success "Copied $name"
+  rsync_args+=(--itemize-changes)
+  if ! output=$(rsync "${rsync_args[@]}" "$src"/ "$dest"/ 2>&1); then
+    log_error "Sync failed for $name"
+    printf '%s\n' "$output" >&2
+    return 1
+  fi
+  emit_apply_result "$name" "$output"
 }
 
 # Copy a single file
@@ -202,8 +218,13 @@ copy_file() {
     return 1
   fi
 
-  rsync "${rsync_args[@]}" "$src" "$dest"
-  log_success "Copied $name"
+  rsync_args+=(--itemize-changes)
+  if ! output=$(rsync "${rsync_args[@]}" "$src" "$dest" 2>&1); then
+    log_error "Sync failed for $name"
+    printf '%s\n' "$output" >&2
+    return 1
+  fi
+  emit_apply_result "$name" "$output"
 }
 
 echo "========================================="
@@ -267,13 +288,15 @@ copy_config "$HOME/.config/systemd" "$DOTFILES_DIR/.config/systemd" "systemd"
 copy_config "$HOME/.config/uwsm" "$DOTFILES_DIR/.config/uwsm" "uwsm"
 copy_file "$HOME/.config/xdg-terminals.list" "$DOTFILES_DIR/.config/xdg-terminals.list" "xdg-terminals.list"
 copy_file "$HOME/.config/kdeglobals" "$DOTFILES_DIR/.config/kdeglobals" "kdeglobals"
-copy_file "$HOME/.config/mdp.conf" "$DOTFILES_DIR/.config/mdp.conf" "mdp.conf"
 copy_file "$HOME/.config/baloofilerc" "$DOTFILES_DIR/.config/baloofilerc" "baloofilerc"
 copy_file "$HOME/.config/dolphinrc" "$DOTFILES_DIR/.config/dolphinrc" "dolphinrc"
+copy_file "$HOME/.config/satty/config.toml" "$DOTFILES_DIR/.config/satty/config.toml" "satty/config.toml"
+copy_file "$HOME/.config/mpd/mpd.conf" "$DOTFILES_DIR/.config/mpd/mpd.conf" "mpd/mpd.conf"
+copy_file "$HOME/.config/yt-dlp/config" "$DOTFILES_DIR/.config/yt-dlp/config" "yt-dlp/config"
+copy_file "$HOME/.config/bat/config" "$DOTFILES_DIR/.config/bat/config" "bat/config"
 copy_config "$HOME/.config/tmux" "$DOTFILES_DIR/.config/tmux" "tmux" "plugins/"
 copy_config "$HOME/.config/starship.toml" "$DOTFILES_DIR/.config/starship.toml" "starship"
 copy_config "$HOME/.config/fastfetch" "$DOTFILES_DIR/.config/fastfetch" "fastfetch"
-copy_config "$HOME/.config/btop" "$DOTFILES_DIR/.config/btop" "btop"
 copy_config "$HOME/.config/cava" "$DOTFILES_DIR/.config/cava" "cava"
 
 echo
@@ -311,11 +334,5 @@ elif $DRY_RUN; then
 else
   log_success "Dotfiles sync complete!"
   echo "Location: $DOTFILES_DIR"
-  echo
-  echo "Next steps:"
-  echo "  cd $DOTFILES_DIR"
-  echo "  git init"
-  echo "  git add ."
-  echo "  git commit -m 'Initial dotfiles'"
 fi
 echo "========================================="

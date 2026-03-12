@@ -8,6 +8,7 @@ gi.require_version("Playerctl", "2.0")
 import argparse
 import json
 import logging
+import shlex
 import shutil
 import signal
 import subprocess
@@ -25,6 +26,7 @@ _ytdlp_duration_cache = {}
 _ytdlp_duration_lock = threading.Lock()
 _ytdlp_inflight = set()
 _ytdlp_timeout_seconds = 20.0
+_ytdlp_auth_args_cache = None
 
 
 def load_env_file(filepath: str) -> None:
@@ -174,6 +176,42 @@ def _parse_ytdlp_duration(stdout: str) -> float | None:
     return None
 
 
+def _get_ytdlp_auth_args() -> list[str]:
+    global _ytdlp_auth_args_cache
+    if _ytdlp_auth_args_cache is not None:
+        return list(_ytdlp_auth_args_cache)
+
+    config_home = os.path.expanduser(os.getenv("XDG_CONFIG_HOME", "~/.config"))
+    config_path = os.path.join(config_home, "yt-dlp", "config")
+    args = []
+
+    try:
+        tokens = []
+        with open(config_path, encoding="utf-8") as file:
+            for raw_line in file:
+                line = raw_line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                tokens.extend(shlex.split(line))
+
+        idx = 0
+        while idx < len(tokens):
+            token = tokens[idx]
+            if token in ("--cookies-from-browser", "--cookies"):
+                if idx + 1 < len(tokens):
+                    args.extend((token, tokens[idx + 1]))
+                idx += 2
+                continue
+            if token.startswith("--cookies-from-browser=") or token.startswith("--cookies="):
+                args.append(token)
+            idx += 1
+    except (FileNotFoundError, OSError, ValueError):
+        args = []
+
+    _ytdlp_auth_args_cache = tuple(args)
+    return list(_ytdlp_auth_args_cache)
+
+
 def _fetch_ytdlp_duration(url: str) -> None:
     duration_value = None
     now = time.time()
@@ -185,6 +223,7 @@ def _fetch_ytdlp_duration(url: str) -> None:
                 [
                     ytdlp_bin,
                     "--ignore-config",
+                    *_get_ytdlp_auth_args(),
                     "--no-warnings",
                     "--skip-download",
                     "--no-playlist",
@@ -407,7 +446,13 @@ def format_artist_track(artist, track, playing, max_length):
     return output_text
 
 
-_last_metadata = {"track": "", "artist": "", "track_id": "", "duration": 0.0}
+_last_metadata = {
+    "track": "",
+    "artist": "",
+    "track_id": "",
+    "media_url": "",
+    "duration": 0.0,
+}
 _last_valid_player = None
 _last_seek_event = {"at": 0.0, "position": None}
 _position_state = {
@@ -484,13 +529,19 @@ def write_output(current_player):
         pass
 
     ytdlp_duration = get_ytdlp_duration_seconds(media_url)
-    # Trust MPRIS duration when it is present; only fallback to yt-dlp when missing.
-    if ytdlp_duration and ytdlp_duration > 0 and duration_seconds <= 0:
+    # Browser MPRIS duration can be wrong for YouTube; prefer yt-dlp when it resolves.
+    if is_youtube_url(media_url):
+        if ytdlp_duration and ytdlp_duration > 0:
+            duration_seconds = ytdlp_duration
+        elif duration_seconds >= 4 * 3600:
+            duration_seconds = 0.0
+    elif ytdlp_duration and ytdlp_duration > 0 and duration_seconds <= 0:
         duration_seconds = ytdlp_duration
 
     raw_track = track
     raw_artist = artist
     raw_track_id = track_id
+    raw_media_url = media_url
 
     player_status = current_player.props.status
     is_playing = player_status == "Playing"
@@ -510,14 +561,22 @@ def write_output(current_player):
         and position_seconds <= 3.0
     )
 
-    raw_identity_present = bool(raw_track_id or raw_track or raw_artist)
+    raw_identity_present = bool(raw_media_url or raw_track_id or raw_track or raw_artist)
     same_track_as_last = False
-    if raw_track_id and _last_metadata["track_id"]:
-        same_track_as_last = raw_track_id == _last_metadata["track_id"]
+    if raw_media_url and _last_metadata["media_url"]:
+        same_track_as_last = raw_media_url == _last_metadata["media_url"]
     elif raw_track and _last_metadata["track"]:
         same_track_as_last = raw_track == _last_metadata["track"]
         if raw_artist and _last_metadata["artist"]:
             same_track_as_last = same_track_as_last and raw_artist == _last_metadata["artist"]
+    elif raw_track_id and _last_metadata["track_id"]:
+        same_track_as_last = raw_track_id == _last_metadata["track_id"]
+
+    youtube_url_changed = (
+        is_youtube_url(raw_media_url)
+        and bool(_last_metadata["media_url"])
+        and raw_media_url != _last_metadata["media_url"]
+    )
 
     # Keep text strict during likely rollovers/jumps, but allow duration carry-over
     # on same-track transitions to avoid transient 0 timer flashes.
@@ -541,6 +600,12 @@ def write_output(current_player):
     ):
         duration_seconds = _last_metadata["duration"]
 
+    # Firefox often keeps the previous track length briefly after a manual YouTube
+    # change. Show no duration until yt-dlp resolves the new URL instead of
+    # displaying the old song's remaining time.
+    if youtube_url_changed and not (ytdlp_duration and ytdlp_duration > 0):
+        duration_seconds = 0.0
+
     # --- Cache current metadata for next iteration ---
     if track or artist or duration_seconds > 0:
         cached_track_id = track_id
@@ -550,6 +615,7 @@ def write_output(current_player):
             "track": track,
             "artist": artist,
             "track_id": cached_track_id,
+            "media_url": raw_media_url,
             "duration": duration_seconds if duration_seconds > 0 else 0.0,
         }
 
@@ -565,7 +631,13 @@ def write_output(current_player):
 
     # --- If stopped, clear cache and output nothing (hide module) ---
     if is_stopped:
-        _last_metadata = {"track": "", "artist": "", "track_id": "", "duration": 0.0}
+        _last_metadata = {
+            "track": "",
+            "artist": "",
+            "track_id": "",
+            "media_url": "",
+            "duration": 0.0,
+        }
         output = {
             "text": "",
             "class": "custom-stopped",
@@ -593,7 +665,7 @@ def write_output(current_player):
 
     # --- Anchored playback clock ---
     now = now_mono
-    track_key = f"{p_name}|{track_id}|{track}|{artist}|{duration_seconds:.3f}"
+    track_key = f"{p_name}|{track_id}|{media_url}|{track}|{artist}|{duration_seconds:.3f}"
     raw_position = max(0.0, position_seconds)
 
     previous_track_key = str(_position_state.get("track_key", ""))
