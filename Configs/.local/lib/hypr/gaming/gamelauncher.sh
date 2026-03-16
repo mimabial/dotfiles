@@ -2,7 +2,6 @@
 
 # set variables
 MODE=${1}
-scrDir=$(dirname "$(realpath "$0")")
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
 # ThemeSet="${HYPR_CONFIG_HOME}/themes/theme.conf"
 

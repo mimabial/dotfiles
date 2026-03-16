@@ -319,7 +319,8 @@ sed -i -e "/^Net\/ThemeName /c\Net\/ThemeName \"${GTK_THEME}\"" \
   -e "/^Gtk\/CursorThemeSize /c\Gtk\/CursorThemeSize ${CURSOR_SIZE}" \
   "${XDG_CONFIG_HOME}/xsettingsd/xsettingsd.conf"
 
-# // Legacy themes using ~/.themes also fixed GTK4 not following xdg
+# Ensure the active GTK theme is also available under ~/.themes for apps that
+# still look there instead of the XDG theme directory.
 
 if [ ! -L "$HOME/.themes/${GTK_THEME}" ] && [ -d "${THEMES_DIR}/${GTK_THEME}" ]; then
   print_log -sec "theme" -warn "linking" "${GTK_THEME} to ~/.themes to fix GTK4 not following xdg"
@@ -406,8 +407,9 @@ else
 fi
 
 #// nvim sync (after wallpaper/colors so pywal theme reads correct colors)
-if [[ -x "${scrDir}/util/nvim-theme-sync.sh" ]]; then
-  "${scrDir}/util/nvim-theme-sync.sh" >/dev/null 2>&1 || true
+if [[ -x "${HYPR_LIB_DIR}/util/nvim-theme-sync.sh" ]]; then
+  "${HYPR_LIB_DIR}/util/nvim-theme-sync.sh" >/dev/null 2>&1 || true
 fi
 
 theme_thumbs_precache
+theme_colors_precache

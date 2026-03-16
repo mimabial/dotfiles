@@ -49,6 +49,13 @@ def get_fan_speed(fan_data):
     return 0
 
 
+def format_fan_speed_multiline(fan_rpm):
+    """Format fan speed as thousands over three-digit remainder."""
+    thousands = fan_rpm // 1000
+    remainder = fan_rpm % 1000
+    return f"{thousands}".rjust(3, "_") + f"\n{remainder:03d}"
+
+
 def get_current_fan_index(total_fans):
     """Get current fan index from file."""
     if os.path.exists(FAN_INDEX_FILE):
@@ -98,7 +105,7 @@ def generate_output(fans):
         fan_rpm = get_fan_speed(current_fan)
 
         # Format for display:
-        text = f"{fan_rpm // 10}"
+        text = format_fan_speed_multiline(fan_rpm)
 
         # Build tooltip with all fans
         tooltip_lines = ["Fan Speeds:"]

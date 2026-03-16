@@ -23,7 +23,7 @@ Wall_Hashmap_Cached() {
 
   local cache_root=""
   local cache_dir=""
-  local hash_cmd="${hashMech:-sha1sum}"
+  local hash_cmd="${HYPR_HASH_COMMAND:-sha1sum}"
   local cache_key=""
   local cache_file=""
   local cache_meta_file=""

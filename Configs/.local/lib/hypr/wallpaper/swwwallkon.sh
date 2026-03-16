@@ -2,7 +2,7 @@
 
 #// Set variables
 
-scrDir=$(dirname "$(realpath "$0")")
+script_dir=$(dirname "$(realpath "$0")")
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
 scrName="$(basename "$0")"
 kmenuPath="$HOME/.local/share/kio/servicemenus"
@@ -56,7 +56,7 @@ if [ ! -z "${setTheme}" ] && [ ! -z "${setWall}" ]; then
   cp "${setWall}" "${tgtPath}/${setTheme}/wallpapers"
   ln -fs "${tgtPath}/${setTheme}/wallpapers/$(basename "${setWall}")" "${tgtPath}/${setTheme}/wall.set"
 
-  "${scrDir}/theme.switch.sh" -s "${setTheme}"
+  "${script_dir}/theme.switch.sh" -s "${setTheme}"
   send_ephemeral_notif "hypr-wallpaper-kon" -a "Swww wallpaper" -i "${WALLPAPER_THUMB_DIR}/${inwallHash}.sqre" -t 2000 "Wallpaper set in ${setTheme}"
 
 else

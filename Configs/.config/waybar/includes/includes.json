@@ -888,7 +888,7 @@
         "justify": "right",
         "align": 0,
         "exec": "hyprshell fanspeedinfo",
-        "format": "<span size='12pt'>\ue7f3</span>\n{}",
+        "format": "<span size='12pt'>\uefa7</span>\n{}",
         "return-type": "json",
         "interval": 5,
         "tooltip": true,
@@ -922,10 +922,6 @@
         ],
         "ignore-monitor": true,
         "ignore": [
-            {
-                "type": "audio-in",
-                "name": "cava"
-            },
             {
                 "type": "screenshare",
                 "name": "obs"

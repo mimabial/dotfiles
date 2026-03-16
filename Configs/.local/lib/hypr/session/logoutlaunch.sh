@@ -9,7 +9,6 @@ fi
 
 #// set file variables
 
-scrDir=$(dirname "$(realpath "$0")")
 # shellcheck disable=SC1091
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
 [ -n "${1}" ] && wlogoutStyle="${1}"

@@ -24,7 +24,6 @@ if ! flock -n 203; then
 fi
 trap 'flock -u 203 2>/dev/null' EXIT
 
-scrDir="$(dirname "$(dirname "$(realpath "$0")")")"
 # shellcheck disable=SC1091
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
 
@@ -57,7 +56,7 @@ is_video=$(file --mime-type -b "${selected_wall}" | grep -c '^video/')
 if [[ "${is_video}" -eq 1 ]]; then
   print_log -sec "wallpaper" -stat "converting video" "$selected_wall"
   mkdir -p "${WALLPAPER_VIDEO_DIR}"
-  cached_thumb="${WALLPAPER_VIDEO_DIR}/$(${hashMech:-sha1sum} "${selected_wall}" | cut -d' ' -f1).png"
+  cached_thumb="${WALLPAPER_VIDEO_DIR}/$(${HYPR_HASH_COMMAND:-sha1sum} "${selected_wall}" | cut -d' ' -f1).png"
   extract_thumbnail "${selected_wall}" "${cached_thumb}"
   selected_wall="${cached_thumb}"
 fi

@@ -31,7 +31,6 @@ declare -a APP_THEMING_PIDS=()
 # not need to shadow the same orchestration logic.
 declare -a APP_THEMING_SCRIPTS=(
   "wal/wal.kvantum.sh"
-  "wal/wal.cava.sh"
   "wal/wal.gtk.sh"
   "wal/wal.tmux.sh"
   "wal/wal.qutebrowser.sh"
@@ -172,11 +171,9 @@ run_secondary_theming() {
 #   0 - Signals sent (apps may or may not be running)
 # Notes:
 #   - Kitty: SIGUSR1 for color reload
-#   - Cava: SIGUSR2 for color reload
 #   - Tmux: source-file for config reload
 reload_live_apps() {
   pkill -SIGUSR1 kitty 2>/dev/null || true
-  pkill -USR2 cava 2>/dev/null || true
 
   local tmux_config="${XDG_CONFIG_HOME:-$HOME/.config}/tmux/tmux.conf"
   if command -v tmux &>/dev/null && tmux list-sessions &>/dev/null; then

@@ -18,7 +18,7 @@ if [[ -z "${XDG_DATA_HOME:-}" ]]; then
 fi
 
 HYPR_CACHE_HOME="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME}/hypr}"
-scrDir=${scrDir:-$HOME/.local/lib/hypr}
+HYPR_LIB_DIR=${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}
 WALLPAPER_CACHE_DIR="${WALLPAPER_CACHE_DIR:-${HYPR_CACHE_HOME}/wallpaper}"
 WALLPAPER_CURRENT_DIR="${WALLPAPER_CURRENT_DIR:-${WALLPAPER_CACHE_DIR}/current}"
 WALLPAPER_VIDEO_DIR="${WALLPAPER_VIDEO_DIR:-${WALLPAPER_CURRENT_DIR}/thumbnails}"
@@ -39,7 +39,6 @@ USAGE() {
       --status           - Returns MPRIS play/pause status icon
       --length           - Returns MPRIS song length (MM:SS)
       --profile          - Generates the profile picture
-      --cava             - Placeholder function for cava
       --art              - Prints the path to the mpris art
       --select      -S   - Selects the hyprlock layout
       --help       -h    - Displays this help message
@@ -114,7 +113,7 @@ fn_background() {
   if [ "${is_video}" -eq 1 ]; then
     print_log -sec "wallpaper" -stat "converting video" "${wp}"
     mkdir -p "${WALLPAPER_VIDEO_DIR}"
-    cached_thumb="${WALLPAPER_VIDEO_DIR}/$(${hashMech:-sha1sum} "${wp}" | cut -d' ' -f1).png"
+    cached_thumb="${WALLPAPER_VIDEO_DIR}/$(${HYPR_HASH_COMMAND:-sha1sum} "${wp}" | cut -d' ' -f1).png"
     extract_thumbnail "${wp}" "${cached_thumb}"
     wp="${cached_thumb}"
   fi
@@ -122,7 +121,7 @@ fn_background() {
   mime="$(file --mime-type -b "${wp}" 2>/dev/null || true)"
 
   # Check PNG cache by wallpaper hash
-  wp_hash="$(${hashMech:-sha1sum} "${wp}" | cut -d' ' -f1)"
+  wp_hash="$(${HYPR_HASH_COMMAND:-sha1sum} "${wp}" | cut -d' ' -f1)"
   png_cache="${WALLPAPER_CACHE_DIR}/png_cache/${wp_hash}.png"
 
   if [[ -f "${png_cache}" ]]; then
@@ -383,16 +382,6 @@ fn_mpris() {
   fi
 }
 
-fn_cava() {
-  local tempFile=/tmp/hyprlock-cava
-  [ -f "${tempFile}" ] && tail -n 1 "${tempFile}"
-  config_file="${XDG_RUNTIME_DIR}/cava.hyprlock"
-  if [ "$(pgrep -c -f "cava -p ${config_file}")" -eq 0 ]; then
-    trap 'rm -f ${tempFile}' EXIT
-    "$scrDir/cava.sh" hyprlock >${tempFile} 2>&1
-  fi
-}
-
 fn_art() {
   echo "${HYPR_CACHE_HOME}/landing/mpris.art"
 }
@@ -624,10 +613,6 @@ source = ${source_conf}
 # \$GREET_ICON
 # - Greeting icon that changes with the time of day.
 #
-# \$CAVA_CMD
-# - Reserved visualizer command.
-# - Currently disabled in this stack.
-#
 # \$WEATHER_CMD
 # - Inline weather command using wttr.in output.
 #
@@ -711,7 +696,7 @@ ${layout_items}"
   local hyprlock_conf_path
   hyprlock_conf_path=$(find_filepath "${selected_layout}")
   generate_conf "$hyprlock_conf_path"
-  "${scrDir}/font.sh" resolve "$hyprlock_conf_path"
+  "${HYPR_LIB_DIR}/font.sh" resolve "$hyprlock_conf_path"
   fn_profile
 
   # Notify the user
@@ -752,7 +737,7 @@ case "$1" in
 esac
 
 # Define long options
-LONGOPTS="select,background,profile,title,artist,source,status,length,update-art,cava,art,help,test:,test-preview:"
+LONGOPTS="select,background,profile,title,artist,source,status,length,update-art,art,help,test:,test-preview:"
 
 # Parse options
 PARSED=$(getopt --options Shb --longoptions $LONGOPTS --name "$0" -- "$@")
@@ -807,10 +792,6 @@ while true; do
       ;;
     --update-art)
       fn_update_art
-      exit 0
-      ;;
-    cava | --cava)
-      fn_cava
       exit 0
       ;;
     art | --art)

@@ -77,6 +77,7 @@ CONFIG_JSONC = CONFIG_WAYBAR_DIR / "config.jsonc"
 STATE_FILE = Path(os.path.join(str(xdg_state_home()), "hypr", "staterc"))
 HYPR_CONFIG = Path(os.path.join(str(xdg_state_home()), "hypr", "config"))
 UNIT_NAME = f"{os.environ.get('XDG_SESSION_DESKTOP', 'unknown')}-bar.service"
+DUNST_SYNC_SCRIPT = os.path.join(os.path.dirname(__file__), "..", "wal", "wal.dunst.sh")
 
 WAYBAR_LOCK = Path(f"/tmp/waybar-{os.getuid()}.lock")
 
@@ -517,15 +518,9 @@ def set_layout(layout):
     generate_includes()
     update_global_css()
 
-    # Sync dunst position to match waybar
-    sync_script = os.path.join(os.path.dirname(__file__), "..", "wal", "wal.dunst.sh")
-    if os.path.exists(sync_script):
-        try:
-            subprocess.run([sync_script], timeout=5)
-            logger.debug("Synced dunst position with waybar")
-        except Exception as e:
-            logger.warning(f"Failed to sync dunst position: {e}")
-
+    sync_dunst_position("--write-only")
+    restart_waybar()
+    sync_dunst_position_after_waybar_restart()
     notify.send(
         "Waybar",
         f"Layout changed to {layout}",
@@ -535,7 +530,6 @@ def set_layout(layout):
         transient=True,
         sync_tag="hypr-waybar-layout",
     )
-    restart_waybar()
 
 
 def handle_layout_navigation(option):
@@ -835,6 +829,70 @@ def restart_waybar():
     run_waybar()
 
 
+def sync_dunst_position(mode=None):
+    if not os.path.exists(DUNST_SYNC_SCRIPT):
+        return
+
+    cmd = [DUNST_SYNC_SCRIPT]
+    if mode:
+        cmd.append(mode)
+    try:
+        subprocess.run(cmd, timeout=5, check=False)
+        logger.debug(f"Synced dunst position with waybar ({mode or 'write-and-reload'})")
+    except Exception as exc:
+        logger.warning(f"Failed to sync dunst position: {exc}")
+
+
+def get_waybar_position():
+    try:
+        with open(CONFIG_JSONC, "r") as file:
+            return json.load(file).get("position", "right")
+    except Exception:
+        return "right"
+
+
+def read_focused_monitor_reserved():
+    try:
+        result = subprocess.run(
+            ["hyprctl", "monitors", "-j"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False,
+        )
+        if result.returncode != 0 or not result.stdout.strip():
+            return None
+        monitors = json.loads(result.stdout)
+        if not monitors:
+            return None
+        monitor = next((item for item in monitors if item.get("focused")), monitors[0])
+        reserved = monitor.get("reserved")
+        if isinstance(reserved, list) and len(reserved) == 4:
+            return reserved
+    except Exception as exc:
+        logger.debug(f"Failed to read monitor reserved edges: {exc}")
+    return None
+
+
+def wait_for_waybar_reserved_edge(position, timeout=2.0):
+    edge_index = {"left": 0, "top": 1, "right": 2, "bottom": 3}.get(position)
+    if edge_index is None:
+        return False
+
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        reserved = read_focused_monitor_reserved()
+        if reserved and reserved[edge_index] > 0:
+            return True
+        time.sleep(0.05)
+    return False
+
+
+def sync_dunst_position_after_waybar_restart():
+    wait_for_waybar_reserved_edge(get_waybar_position())
+    sync_dunst_position("--reload-only")
+
+
 def kill_waybar_and_watcher():
     """Kill all Waybar instances and watcher scripts for the current user."""
     kill_waybar()
@@ -1043,17 +1101,9 @@ def layout_selector():
         generate_includes()
         update_global_css()
 
-        # Sync dunst position to match waybar
-        sync_script = os.path.join(
-            os.path.dirname(__file__), "..", "wal", "wal.dunst.sh"
-        )
-        if os.path.exists(sync_script):
-            try:
-                subprocess.run([sync_script], timeout=5)
-                logger.debug("Synced dunst position with waybar")
-            except Exception as e:
-                logger.warning(f"Failed to sync dunst position: {e}")
-
+        sync_dunst_position("--write-only")
+        restart_waybar()
+        sync_dunst_position_after_waybar_restart()
         notify.send(
             "Waybar",
             f"Layout changed to {display_func(selected_layout, os.path.dirname(selected_layout))}",
@@ -1061,7 +1111,6 @@ def layout_selector():
             icon="preferences-desktop-display",
             replace_id=9,
         )
-        restart_waybar()
     ensure_state_file()
     return None
 

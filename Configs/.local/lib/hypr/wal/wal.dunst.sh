@@ -29,7 +29,7 @@ touch "${DUNST_THEME}"
 
 reload_dunst_runtime() {
   if pgrep -x dunst >/dev/null 2>&1; then
-    dunstctl reload "${DUNST_CONF}" >/dev/null 2>&1 || pkill -HUP dunst 2>/dev/null || true
+    dunstctl reload >/dev/null 2>&1 || pkill -HUP dunst 2>/dev/null || true
   fi
 }
 
@@ -396,4 +396,4 @@ if [[ "${mode}" == "write-only" ]] || [[ -e "${THEME_SWITCH_LOCK}" ]]; then
 fi
 
 reload_dunst_runtime
-echo "[dunst] Generated dunstrc"
+echo "[dunst] Generated and reloaded dunstrc"

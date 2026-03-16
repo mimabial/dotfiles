@@ -1,297 +1,272 @@
-# Dotfiles
+<div align="center">
 
-Arch Linux + Hyprland configuration with dynamic theming, 28 pre-built themes, 255 wallpapers, and 100+ utility scripts.
+# rifle's dotfiles
 
-![Hyprland](https://img.shields.io/badge/Hyprland-Wayland-blue?style=flat-square&logo=wayland)
-![Arch Linux](https://img.shields.io/badge/Arch-Linux-1793D1?style=flat-square&logo=archlinux&logoColor=white)
-![Shell](https://img.shields.io/badge/Shell-Zsh-green?style=flat-square&logo=gnu-bash&logoColor=white)
+Personal Arch Linux + Hyprland setup derived from [HyDE](https://github.com/HyDE-Project/HyDE), rebuilt around a repo-first workflow, explicit state management, and a cleaner theme / wallpaper pipeline.
 
----
+![Hyprland](https://img.shields.io/badge/Hyprland-Wayland-58E1FF?style=for-the-badge&logo=wayland&logoColor=black)
+![Arch Linux](https://img.shields.io/badge/Arch-Linux-1793D1?style=for-the-badge&logo=archlinux&logoColor=white)
+![HyDE Derived](https://img.shields.io/badge/Base-HyDE-9B7BFF?style=for-the-badge)
+![Themes](https://img.shields.io/badge/Themes-30-3CB371?style=for-the-badge)
+![Wallpapers](https://img.shields.io/badge/Wallpapers-372-FFB347?style=for-the-badge)
+
+</div>
+
+<div align="center">
+
+<a href="#installation"><kbd> <br> Installation <br> </kbd></a>&ensp;
+<a href="#updating"><kbd> <br> Updating <br> </kbd></a>&ensp;
+<a href="#layout"><kbd> <br> Layout <br> </kbd></a>&ensp;
+<a href="#daily-use"><kbd> <br> Daily Use <br> </kbd></a>&ensp;
+<a href="#theming"><kbd> <br> Theming <br> </kbd></a>&ensp;
+<a href="#themes"><kbd> <br> Themes <br> </kbd></a>&ensp;
+<a href="KEYBINDINGS.md"><kbd> <br> Keybindings <br> </kbd></a>&ensp;
+<a href="#differences-from-upstream-hyde"><kbd> <br> Differences <br> </kbd></a>&ensp;
+<a href="#credits"><kbd> <br> Credits <br> </kbd></a>
+
+</div>
 
 ## Overview
 
-A modular, highly customizable desktop environment built on **Hyprland** (Wayland compositor), derived from [HyDE](https://github.com/prasanthrangan/hyprdots). Features a sophisticated dynamic theming system powered by **pywal16** that propagates colors across 10+ applications simultaneously.
+This repository is the source of truth for my Hyprland desktop.
 
-### Key Features
+It keeps the live system and the repo aligned through a `Configs/` mirror and a small install / restore toolchain under `Scripts/`.
 
-- **Dynamic Theming** — Colors extracted from wallpapers via pywal16, or use pre-defined theme palettes
-- **28 Themes** — Complete color schemes with matching wallpapers, icons, and fonts
-- **255 Wallpapers** — Curated collection across all themes
-- **100+ Scripts** — Utilities for theming, wallpapers, screenshots, system controls, and more
-- **Waybar Integration** — Dynamic border-radius syncing with Hyprland
-- **Multiple Terminals** — Kitty (primary) and Alacritty configurations
-- **Vi Mode Shell** — Zsh with cursor shape changes and fast ESC timeout
-- **Rofi Menus** — Application launcher, emoji picker, glyph picker, clipboard manager
+What is in here:
 
----
+- 30 bundled theme packs under `Configs/.config/hypr/themes/`
+- 372 wallpapers tracked with those themes
+- 220+ Hypr helper scripts under `Configs/.local/lib/hypr/`
+- theme-mode and wallpaper-mode color application via `pywal16`
+- integrated theming for Hyprland, Waybar, Rofi, Dunst, Hyprlock, Kitty, Alacritty, GTK, Qt, Kvantum, tmux and more
+- host-specific overlays in `Configs/hosts/`
 
-## What's Included
+This is not a generic "copy these files into any Linux setup" repository. It is an opinionated desktop stack with install, restore, service, shell, theming, and bootloader assumptions.
 
-```
-dotfiles/
-├── Configs/        # Portable mirror of ~/.config and ~/.local
-├── Scripts/        # Install, restore, and uninstall helpers
-├── install.sh      # Main install entrypoint
-├── update.sh       # Update/sync entrypoint
-└── README.md
-```
+> [!IMPORTANT]
+> The install scripts are meant for Arch Linux or close Arch-based systems.
+> They can modify GTK / Qt theming, shell setup, user services, login/session behavior, and optionally bootloader state.
 
-### Themes
-
-|                  |                  |                |                 |
-| :--------------: | :--------------: | :------------: | :-------------: |
-|   Abyssal Wave   | Catppuccin Mocha |  Edge Runner   |  Gruvbox Retro  |
-|  Another World   |   Code Garden    | Eternal Arctic |   Lime Frenzy   |
-|    Ayu Mirage    |   Decay Green    |  Forest Green  | Material Sakura |
-|    Bauhaus 80    |  Doom Bringers   | Graphite Mono  |     Monokai     |
-|     Blue Sky     |   Nordic Blue    |    One Dark    |   Oxo Carbon    |
-| Catppuccin Latte |     Greenify     |     Grukai     |   And more...   |
-
----
+> [!CAUTION]
+> If you do not want the installer to own those pieces, use `./install.sh -r` and restore only the config layer you actually want.
 
 ## Installation
 
-### Prerequisites
-
-- Arch Linux (or Arch-based distro)
-- Hyprland
-- git
-
-### Install Dependencies
+Clone the repo:
 
 ```bash
-# Core
-paru -S hyprland waybar rofi-wayland kitty swaync
-
-# Theming
-paru -S python-pywal16 kvantum nwg-look
-
-# Utilities
-paru -S swww cliphist grim slurp wl-clipboard
-
-# Shell
-paru -S zsh starship zoxide
-
-# Fonts
-paru -S ttf-jetbrains-mono-nerd ttf-nerd-fonts-symbols
-
-# Optional
-paru -S alacritty fastfetch cava
+git clone --depth 1 https://github.com/mimabial/dotfiles ~/dotfiles
+cd ~/dotfiles
 ```
 
-### Install (HyDE-style)
+Common entrypoints:
 
 ```bash
-git clone https://github.com/yourusername/dotfiles.git ~/dotfiles
-cd ~/dotfiles
-
-# Restore configs only (recommended)
+# Restore configs onto an already-prepared system
 ./install.sh -r
 
-# Full install (packages + configs + services)
+# Full install + restore + service setup
 ./install.sh
 
-# Full install + limine bootloader
+# Full install, but skip NVIDIA-specific actions
+./install.sh -irsn
+
+# Full install with Limine handling enabled
 BOOTLOADER=limine ./install.sh
 
-# Dry-run to see what would happen
-./install.sh -t
+# Dry-run the full install / restore / service flow
+./install.sh -irst
 ```
 
-### Update
+Supported `Scripts/install.sh` flags:
+
+| Flag | Meaning |
+| --- | --- |
+| `-i` | Install packages without restoring configs |
+| `-d` | Install defaults with `--noconfirm`, no config restore |
+| `-r` | Restore config files |
+| `-s` | Enable / restore services |
+| `-n` | Skip NVIDIA-specific actions |
+| `-h` | Re-evaluate shell handling |
+| `-m` | Skip theme reinstallations |
+| `-t` | Dry-run mode |
+
+The top-level wrappers are thin:
+
+- `install.sh` -> `Scripts/install.sh`
+- `update.sh` -> `git pull --ff-only` + `Scripts/install.sh -r -s`
+
+## Updating
+
+To update the repo and re-apply the restored config/service layers:
 
 ```bash
 cd ~/dotfiles
 ./update.sh
 ```
 
-### Manual Hypr Layer Restore
+If you only want to sync live changes back into the repo mirror from the running system:
 
 ```bash
-cd ~/dotfiles/Scripts
-./restore_hypr_layers.sh
+~/.local/bin/dotfiles-sync
 ```
 
-### Post-Install
+## Layout
+
+```text
+dotfiles/
+├── Configs/
+│   ├── .config/              # Mirror of user config
+│   ├── .local/               # Mirror of user-local scripts/stateful assets
+│   └── hosts/                # Host-specific overlays
+├── Scripts/                  # Install / restore / service / migration helpers
+├── install.sh                # Wrapper to Scripts/install.sh
+├── update.sh                 # Pull + restore wrapper
+└── README.md
+```
+
+Important directories inside `Configs/`:
+
+- `Configs/.config/hypr/`
+  - Hyprland entry config, themes, keybindings, monitor rules
+- `Configs/.local/lib/hypr/`
+  - the actual orchestration scripts for themes, wallpapers, Waybar, Rofi, controls, capture, media, notifications, lockscreen, etc.
+- `Configs/.local/share/hypr/`
+  - shared/generated Hypr data used by the live system
+- `Configs/hosts/`
+  - per-machine overrides layered on top of the common config
+
+For VM-based testing, see:
+
+- `Scripts/hydevm/README.md`
+
+## Daily Use
+
+Useful live commands:
 
 ```bash
-# Initialize Zinit (Zsh plugin manager)
-source ~/.config/zsh/.zshrc
-
-# Set Zsh as default shell
-chsh -s $(which zsh)
-
-# Start Hyprland
-Hyprland
-```
-
----
-
-## Usage
-
-### Key Bindings
-
-| Binding       | Action               |
-| ------------- | -------------------- |
-| `Super + T`   | Terminal             |
-| `Super + A`   | Application launcher |
-| `Super + E`   | File explorer        |
-| `Super + B`   | Browser              |
-| `Super + Q`   | Close window         |
-| `Super + W`   | Toggle floating      |
-| `Super + F`   | Fullscreen           |
-| `Super + L`   | Lock screen          |
-| `Super + Tab` | Window switcher      |
-| `Super + V`   | Clipboard            |
-| `Super + /`   | Keybindings help     |
-
-#### Theming
-
-| Binding             | Action             |
-| ------------------- | ------------------ |
-| `Super + Shift + T` | Theme selector     |
-| `Super + Shift + W` | Wallpaper selector |
-| `Super + Shift + R` | Color mode toggle  |
-
-#### Workspaces
-
-| Binding                | Action                   |
-| ---------------------- | ------------------------ |
-| `Super + 1-0`          | Switch workspace         |
-| `Super + Shift + 1-0`  | Move window to workspace |
-| `Super + Mouse Scroll` | Cycle workspaces         |
-
-#### Dev Tools
-
-| Binding             | Action                  |
-| ------------------- | ----------------------- |
-| `Super + Shift + G` | LazyGit                 |
-| `Super + Shift + D` | LazyDocker              |
-| `Super + Shift + F` | Ranger                  |
-| `Super + Shift + B` | Bottom (system monitor) |
-
-### Theme Switching
-
-```bash
-# Via keybind
-Super + Shift + T
-
-# Via command
-hyprshell theme.switch.sh "Catppuccin Mocha"
-
-# Change wallpaper (regenerates colors)
-hyprshell wallpaper.sh -Gn
-```
-
-### Color Modes
-
-The theming system has four modes controlled by clicking the color mode indicator in Waybar or pressing `Super + Shift + R`:
-
-| Mode      | Description                                      |
-| --------- | ------------------------------------------------ |
-| **Theme** | Uses pre-defined theme colors                    |
-| **Auto**  | Extracts colors from wallpaper (auto dark/light) |
-| **Dark**  | Forces dark mode color extraction                |
-| **Light** | Forces light mode color extraction               |
-
----
-
-## Configuration
-
-### Hyprland
-
-Hyprland follows a two-layer split:
-
-```
-~/.local/share/hypr/
-├── hyprland.conf      # Shared orchestrator
-├── variables.conf     # Core variables
-├── defaults.conf      # Shared defaults
-├── env.conf           # Shared env setup
-├── dynamic.conf       # Theme/dynamic layer
-├── startup.conf       # Shared startup execs
-└── finale.conf        # Shared finalize layer
-
-~/.config/hypr/
-├── hyprland.conf      # Thin user wrapper (sources shared orchestrator)
-├── keybindings.conf   # User keybindings
-├── windowrules.conf   # User window rules
-├── monitors.conf      # User monitor layout
-├── userprefs.conf     # User preferences
-├── workflows.conf     # Workflow overrides
-└── themes/            # Theme packs and wallpaper sets
-```
-
-### Scripts
-
-All scripts are in `~/.local/lib/hypr/` and accessed via `hyprshell`:
-
-```bash
-# List available scripts
+# List available hyprshell targets
 hyprshell list
 
-# Run a script
-hyprshell volumecontrol.sh -o i
-hyprshell screenshot.sh -m region
-hyprshell colorpicker.sh
+# Switch theme
+hyprshell theme.switch.sh "Tokyo Night"
+
+# Rotate wallpaper and regenerate colors
+hyprshell wallpaper.sh -Gn
+
+# Validate Hyprland config after changes
+hyprctl configerrors
+
+# Regenerate Waybar config/style from the current state
+hyprshell waybar --update
 ```
 
-### Customization
+Repo-maintenance commands:
 
-User-specific overrides go in:
+```bash
+# Sync live ~/.config and ~/.local changes back into this repo
+~/.local/bin/dotfiles-sync
 
-- `~/.config/hypr/userprefs.conf` — Hyprland settings
-- `~/.config/zsh/.zshrc` — Shell configuration
-- `~/.config/waybar/user-style.css` — Waybar styling
-
----
-
-## Architecture
-
-### Theming Flow
-
-```
-Theme/Wallpaper Change
-        ↓
-    File Lock (prevents race conditions)
-        ↓
-    color.set.sh (main engine)
-        ↓
-    ┌─ pywal16 (if wallpaper mode)
-    │  └─ Generates colors from wallpaper
-    └─ Theme files (if theme mode)
-       └─ Uses pre-defined colors
-        ↓
-    Apply to Applications
-    ├── Hyprland borders/shadows
-    ├── Waybar (CSS + border-radius)
-    ├── GTK theme (scaled border-radius)
-    ├── Qt/Kvantum theme
-    ├── Kitty/Alacritty terminals
-    ├── Rofi launcher
-    ├── SwayNC notifications
-    └── Others...
+# Review recent live behavior changes noted during maintenance
+cat ~/UPDATES.md
 ```
 
-### Border-Radius Syncing
+## Theming
 
-Hyprland's `decoration:rounding` value is automatically synced to:
+The theme pipeline supports two broad sources of color:
 
-- Waybar modules
-- GTK widgets (proportionally scaled)
-- Qt applications via Kvantum
+1. Theme mode
+   - uses the selected theme pack's palette and assets
+2. Wallpaper mode
+   - uses `pywal16` against the current wallpaper
 
----
+Available color modes:
+
+| Mode | Meaning |
+| --- | --- |
+| `Theme` | Use the selected theme pack colors |
+| `Auto` | Use wallpaper-derived colors with automatic dark/light resolution |
+| `Dark` | Force wallpaper-derived dark colors |
+| `Light` | Force wallpaper-derived light colors |
+
+The main engine is:
+
+- `Configs/.local/lib/hypr/theme/color.set.sh`
+
+That script is responsible for:
+
+- palette generation or restore from cache
+- app-specific theme outputs
+- Hyprland color files
+- Waybar / Rofi / Dunst / terminal integration
+- state updates for the running desktop
+
+Current visible theme switching is intentionally committed as one coordinated boundary:
+
+1. generate / restore colors
+2. write theme files
+3. reload Dunst
+4. apply theme wallpaper
+5. reload Hyprland config
+6. restart Waybar
+
+Non-visible work stays off that critical path where possible.
+
+## Themes
+
+Included theme packs:
+
+- Another World
+- Ayu Green
+- Bauhaus Blue
+- Catppuccin Latte
+- Catppuccin Mocha
+- Code Garden
+- Crimson Blade
+- Decay Green
+- Edge Runner
+- Eternal Arctic
+- Forest Green
+- Graphite Mono
+- Greenify
+- Grukai
+- Gruvbox Retro
+- Lime Frenzy
+- Material Sakura
+- Monokai
+- Nordic Blue
+- One Dark
+- Oxo Carbon
+- Paranoid Sweet
+- Peace Of Mind
+- Pixel Dream
+- Red Stone
+- Rosé Pine
+- Solarized Dark
+- Synth Wave
+- Tokyo Night
+- Tundra
+
+All theme packs live in:
+
+- `Configs/.config/hypr/themes/`
+
+## Differences From Upstream HyDE
+
+This repo is HyDE-derived, but it is not a straight mirror.
+
+Major differences in the current stack include:
+
+- repo-first sync workflow through `Configs/` and `dotfiles-sync`
+- a rebuilt theme / wallpaper / state pipeline under `~/.local/lib/hypr/`
+- Dunst-based notifications instead of upstream SwayNC usage
+- host overlay support in `Configs/hosts/`
+- a narrower, more explicit visible commit path for theme switching
+- local cleanup and consolidation of old HyDE-era compatibility layers that are not used here
 
 ## Credits
 
-- [HyDE](https://github.com/prasanthrangan/hyprdots) — Original desktop environment this is derived from
-- [pywal16](https://github.com/eylles/pywal16) — Color extraction
-- [Hyprland](https://hyprland.org) — Wayland compositor
-- Theme authors for the various colorschemes
-
----
-
-## License
-
-MIT
+- [HyDE](https://github.com/HyDE-Project/HyDE) for the original base and installer model
+- [Hyprland](https://hyprland.org/) for the compositor
+- [pywal16](https://github.com/eylles/pywal16) for wallpaper-derived color generation
+- the original authors of the bundled themes, assets, and upstream tooling this setup builds on

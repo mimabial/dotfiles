@@ -240,7 +240,7 @@ wal_cache_key_generate() {
   [[ -z "${backend}" ]] && return 1
 
   local hash
-  hash=$(${hashMech:-xxh64sum} "${wallpaper}" 2>/dev/null | cut -d' ' -f1)
+  hash=$(${HYPR_HASH_COMMAND:-xxh64sum} "${wallpaper}" 2>/dev/null | cut -d' ' -f1)
   [[ -z "${hash}" ]] && return 1
 
   echo "${hash}_${mode}_${backend}"

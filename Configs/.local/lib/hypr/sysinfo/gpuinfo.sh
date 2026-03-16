@@ -11,7 +11,7 @@
 #   Time (mean ± σ):     246.9 ms ±  22.5 ms    [User: 112.4 ms, System: 87.5 ms]
 # Range (min … max):   184.0 ms … 272.1 ms    12 runs
 
-scrDir=$(dirname "$(realpath "$0")")
+script_dir=$(dirname "$(realpath "$0")")
 gpuinfo_file="/tmp/hypr-${UID}-gpuinfo"
 
 # Use the AQ_DRM_DEVICES variable to set the priority of the GPUs
@@ -674,7 +674,7 @@ nvidia_GPU() { #? Function to query Nvidia GPU
 amd_GPU() { #? Function to query amd GPU
   primary_gpu="AMD ${GPUINFO_AMD_GPU}"
   # Execute the AMD GPU Python script and use its output
-  amd_output=$(python3 ${scrDir}/amdgpu.py)
+  amd_output=$(python3 ${script_dir}/amdgpu.py)
   if [[ ! ${amd_output} == *"No AMD GPUs detected."* ]] && [[ ! ${amd_output} == *"Unknown query failure"* ]]; then
     # Extract GPU Temperature, GPU Load, GPU Core Clock, and GPU Power Usage from amd_output
     temperature=$(echo "${amd_output}" | jq -r '.["GPU Temperature"]' | sed 's/°C//')

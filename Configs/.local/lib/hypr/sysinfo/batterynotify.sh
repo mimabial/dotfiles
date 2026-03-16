@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-scrDir=$(dirname "$(realpath "$0")")
 # shellcheck disable=SC1091
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
 dock=${BATTERY_NOTIFY_DOCK:-false}
@@ -223,7 +222,7 @@ main() {                                    # Main function
     for line in "Verbose Mode is ON..." "" "" "" ""; do echo "${line}"; done
   # Debug helper to pause other battery-notify instances during verbose runs.
   # current_pid=$$
-  # pids=$(pgrep -f "/usr/bin/env bash ${scrDir}/battery.notify.sh" )
+  # pids=$(pgrep -f "/usr/bin/env bash ${script_dir}/battery.notify.sh" )
   # for pid in $pids ; do if [ "$pid" -ne $current_pid ] ;then kill -STOP "$pid" ;dunstify -a "Battery Notify" -t 2000 -r 9889 -u "CRITICAL" "Debugging STARTED, Pausing Regular Process" ;fi ; done  ; trap resume_processes SIGINT ;
   fi
   get_battery_info # initiate the function

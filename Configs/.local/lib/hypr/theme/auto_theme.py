@@ -533,17 +533,22 @@ class AutoTheme:
 
     def _load_state(self) -> dict:
         """Load persisted state."""
-        if STATE_FILE.exists():
-            try:
-                with open(STATE_FILE) as f:
-                    return json.load(f)
-            except:
-                pass
-        return {
+        defaults = {
             "current_mode": "dark",
             "last_change": None,
             "manual_override_until": None,
         }
+        if STATE_FILE.exists():
+            try:
+                with open(STATE_FILE) as f:
+                    state = json.load(f)
+                if isinstance(state, dict):
+                    state.pop("last_prewarm", None)
+                    state.pop("last_prewarm_pid", None)
+                    return {**defaults, **state}
+            except:
+                pass
+        return defaults
 
     def _save_state(self):
         """Persist state to file."""
@@ -743,53 +748,9 @@ class AutoTheme:
             if result.returncode != 0:
                 detail = (result.stderr or result.stdout or "").strip()
                 print(f"Warning: Failed to apply pywal colors: {detail or 'unknown error'}")
-            else:
-                self._prewarm_pywal_cache(hyprshell, wallpaper, mode)
 
         except Exception as e:
             print(f"Warning: Failed to update Hyprland: {e}")
-
-    def _prewarm_pywal_cache(self, hyprshell: str, wallpaper: Path, mode: Literal["light", "dark"]):
-        if mode not in ("light", "dark"):
-            return
-        if not wallpaper or not wallpaper.exists():
-            return
-
-        target_mode = "dark" if mode == "light" else "light"
-        prewarm_key = f"{wallpaper}|{target_mode}"
-
-        if self.state.get("last_prewarm") == prewarm_key:
-            return
-
-        last_pid = self.state.get("last_prewarm_pid")
-        if last_pid:
-            try:
-                if Path(f"/proc/{int(last_pid)}").exists():
-                    return
-            except Exception:
-                pass
-
-        env = os.environ.copy()
-        env["HYPR_WAL_CACHE_ONLY"] = "1"
-        env["HYPR_WAL_MODE_OVERRIDE"] = target_mode
-        env_path = env.get("PATH", "")
-        env["PATH"] = f"{Path.home() / '.local' / 'bin'}:{env_path}"
-
-        try:
-            proc = subprocess.Popen(
-                [hyprshell, "color.set", str(wallpaper)],
-                env=env,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                start_new_session=True,
-            )
-        except Exception as e:
-            print(f"Warning: Failed to prewarm pywal cache: {e}")
-            return
-
-        self.state["last_prewarm"] = prewarm_key
-        self.state["last_prewarm_pid"] = proc.pid
-        self._save_state()
 
     def _handle_signal(self, signum, frame):
         """Handle termination signals."""

@@ -10,7 +10,7 @@
 #
 # Key exports:
 #   HYPR_CONFIG_HOME, HYPR_DATA_HOME, HYPR_CACHE_HOME, HYPR_STATE_HOME
-#   LIB_DIR, scrDir
+#   LIB_DIR, HYPR_LIB_DIR
 #
 # Key functions:
 #   print_log()        - Colored logging output
@@ -38,15 +38,15 @@ export ICONS_DIR="${XDG_DATA_HOME}/icons"
 export FONTS_DIR="${XDG_DATA_HOME}/fonts"
 export THEMES_DIR="${XDG_DATA_HOME}/themes"
 
-# Compatibility exports used across Hypr scripts.
+# Shared helper exports used across Hypr scripts.
 
-export scrDir="${LIB_DIR:-$HOME/.local/lib}/hypr"
+export HYPR_LIB_DIR="${LIB_DIR:-$HOME/.local/lib}/hypr"
 export WALLPAPER_CACHE_DIR="${HYPR_CACHE_HOME}/wallpaper"
 export WALLPAPER_CURRENT_DIR="${WALLPAPER_CACHE_DIR}/current"
 export WALLPAPER_THUMB_DIR="${WALLPAPER_CACHE_DIR}/thumbs"
 export WALLPAPER_VIDEO_DIR="${WALLPAPER_CURRENT_DIR}/thumbnails"
 # Use xxh64sum for faster hashing (3x faster than sha1sum)
-export hashMech="xxh64sum"
+export HYPR_HASH_COMMAND="xxh64sum"
 
 # Resolve shared-core files first (shared/user split), then user layer fallback.
 hypr_core_file() {
@@ -331,7 +331,7 @@ get_hashmap() {
         find_args+=(-o -iname "*.${ext}")
       fi
     done
-    find_args+=(\) ! -path "*/logo/*" -exec "${hashMech}" {} +)
+    find_args+=(\) ! -path "*/logo/*" -exec "${HYPR_HASH_COMMAND}" {} +)
 
     [ "${LOG_LEVEL}" == "debug" ] && print_log -g "DEBUG:" -b "Running find with args:" "${find_args[*]}"
 
@@ -365,7 +365,7 @@ get_hashmap() {
     hashMap=$(find_wallpapers "${wallSource}") # Enable debug mode for testing
 
     # hashMap=$(
-    # find "${wallSource}" -type f \( -iname "*.gif" -o -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.mkv"  \) ! -path "*/logo/*" -exec "${hashMech}" {} + | sort -k2
+    # find "${wallSource}" -type f \( -iname "*.gif" -o -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.mkv"  \) ! -path "*/logo/*" -exec "${HYPR_HASH_COMMAND}" {} + | sort -k2
     # )
 
     if [ -z "${hashMap}" ]; then
@@ -776,7 +776,7 @@ set_hash() {
     return 1
   fi
 
-  "${hashMech}" "${hashImage}" | awk '{print $1}'
+  "${HYPR_HASH_COMMAND}" "${hashImage}" | awk '{print $1}'
 }
 
 check_package() {

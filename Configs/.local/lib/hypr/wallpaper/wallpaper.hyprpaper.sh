@@ -27,7 +27,7 @@ is_video=$(file --mime-type -b "${selected_wall}" | grep -c '^video/')
 if [ "${is_video}" -eq 1 ]; then
   print_log -sec "wallpaper" -stat "converting video" "$selected_wall"
   mkdir -p "${WALLPAPER_VIDEO_DIR}"
-  cached_thumb="${WALLPAPER_VIDEO_DIR}/$(${hashMech:-sha1sum} "${selected_wall}" | cut -d' ' -f1).png"
+  cached_thumb="${WALLPAPER_VIDEO_DIR}/$(${HYPR_HASH_COMMAND:-sha1sum} "${selected_wall}" | cut -d' ' -f1).png"
   extract_thumbnail "${selected_wall}" "${cached_thumb}"
   selected_wall="${cached_thumb}"
 fi

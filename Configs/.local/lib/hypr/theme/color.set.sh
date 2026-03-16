@@ -30,6 +30,8 @@
 #   HYPR_WAL_CACHE_PRUNE=1   - Auto-prune wal cache entries for missing wallpapers/themes
 #   HYPR_WAL_CACHE_PRUNE_TTL=21600 - Minimum seconds between prune runs
 #   HYPR_WAL_MODE_OVERRIDE   - Force dark/light mode
+#   HYPR_THEME_OVERRIDE      - Force a specific theme directory for this run
+#   HYPR_COLOR_MODE_OVERRIDE - Force selected_color_mode for this run
 #   selected_color_mode           - Color mode (0=theme, 1=auto, 2=dark, 3=light)
 #
 # ============================================================================
@@ -50,6 +52,34 @@ fi
 if declare -F export_hypr_config >/dev/null; then
   export_hypr_config
 fi
+
+apply_color_set_runtime_overrides() {
+  local theme_override="${HYPR_THEME_OVERRIDE:-}"
+  local color_mode_override="${HYPR_COLOR_MODE_OVERRIDE:-}"
+
+  if [[ -n "${theme_override}" ]]; then
+    if [[ ! -d "${HYPR_CONFIG_HOME}/themes/${theme_override}" ]]; then
+      print_log -sec "theme" -err "override" "theme not found: ${theme_override}"
+      return 1
+    fi
+    HYPR_THEME="${theme_override}"
+    HYPR_THEME_DIR="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}"
+  fi
+
+  if [[ -n "${color_mode_override}" ]]; then
+    case "${color_mode_override}" in
+      0 | 1 | 2 | 3) selected_color_mode="${color_mode_override}" ;;
+      *)
+        print_log -sec "theme" -err "override" "invalid color mode override: ${color_mode_override}"
+        return 1
+        ;;
+    esac
+  fi
+
+  export HYPR_THEME HYPR_THEME_DIR selected_color_mode
+}
+
+apply_color_set_runtime_overrides || exit 1
 
 # Source modular components
 SCRIPT_DIR="${SCRIPT_DIR:-$(dirname "$(realpath "${BASH_SOURCE[0]}")")}"
@@ -89,6 +119,7 @@ CACHE_ONLY="${HYPR_WAL_CACHE_ONLY:-0}"
 readonly LOCK_TIMEOUT_SECONDS=60
 
 LOCK_FILE="${XDG_RUNTIME_DIR:-/tmp}/color-gen.lock"
+CACHE_ONLY_LOCK_FILE="${XDG_RUNTIME_DIR:-/tmp}/color-cache-only.lock"
 STATE_FILE="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/color.gen.state"
 # Signal file for waybar watcher
 THEME_UPDATE_LOCK="${XDG_RUNTIME_DIR:-/tmp}/theme-update.lock"
@@ -102,17 +133,21 @@ HYPR_AUTO_RELOAD_PREV=""
 THEME_UPDATE_LOCK_OWNED=0
 mkdir -p "$(dirname "$LOCK_FILE")" "$(dirname "$STATE_FILE")"
 
-exec 200>"${LOCK_FILE}"
-if ! flock -n 200; then
-  if [[ "${CACHE_ONLY}" -eq 1 ]]; then
-    print_log -sec "pywal16" -stat "skip" "cache-only: another process running"
+if [[ "${CACHE_ONLY}" -eq 1 ]]; then
+  exec 200>"${CACHE_ONLY_LOCK_FILE}"
+  if ! flock -n 200; then
+    print_log -sec "pywal16" -stat "skip" "cache-only: another prewarm process running"
     exit 0
   fi
-  print_log -sec "pywal16" -stat "wait" "Another process running (timeout: ${LOCK_TIMEOUT_SECONDS}s)"
-  # Wait with timeout to prevent infinite hangs
-  if ! flock -w "${LOCK_TIMEOUT_SECONDS}" 200; then
-    print_log -sec "pywal16" -err "lock" "timeout after ${LOCK_TIMEOUT_SECONDS}s - aborting"
-    exit 1
+else
+  exec 200>"${LOCK_FILE}"
+  if ! flock -n 200; then
+    print_log -sec "pywal16" -stat "wait" "Another process running (timeout: ${LOCK_TIMEOUT_SECONDS}s)"
+    # Wait with timeout to prevent infinite hangs
+    if ! flock -w "${LOCK_TIMEOUT_SECONDS}" 200; then
+      print_log -sec "pywal16" -err "lock" "timeout after ${LOCK_TIMEOUT_SECONDS}s - aborting"
+      exit 1
+    fi
   fi
 fi
 
@@ -332,7 +367,7 @@ CACHE_STORE_LOCK="${XDG_RUNTIME_DIR:-/tmp}/wal-cache-store.lock"
 template_hash_suffix=""
 compute_template_hash() {
   local template_dir="${XDG_CONFIG_HOME:-$HOME/.config}/wal/templates"
-  local hash_cmd="${hashMech:-sha1sum}"
+  local hash_cmd="${HYPR_HASH_COMMAND:-sha1sum}"
   local raw_hash
 
   [[ -d "${template_dir}" ]] || return 0
@@ -647,7 +682,7 @@ wal_exit=""
 
 if [[ "${HYPR_WAL_CACHE_ENABLE}" -eq 1 ]]; then
   mkdir -p "${HYPR_WAL_CACHE_DIR}" 2>/dev/null || true
-  wall_hash="$(${hashMech:-sha1sum} "${WALLPAPER_IMAGE}" | awk '{print $1}')"
+  wall_hash="$(${HYPR_HASH_COMMAND:-sha1sum} "${WALLPAPER_IMAGE}" | awk '{print $1}')"
   compute_template_hash
   wal_cache_key="${wall_hash}_${resolved_color_variant}_${PYWAL_BACKEND}${template_hash_suffix}"
   wal_cache_path="${HYPR_WAL_CACHE_DIR}/${wal_cache_key}"
@@ -670,15 +705,16 @@ if [[ "${HYPR_WAL_CACHE_ENABLE}" -eq 1 ]]; then
 
   allow_fast_path=0
   if [[ "${FORCE_COLOR_REGEN:-0}" -ne 1 ]]; then
-    # Only fast-path in wallpaper modes; theme mode still needs .theme reapply.
+    # Fast-path is allowed only in wallpaper modes. Theme mode always reapplies
+    # the generated .theme targets.
     if [[ "${selected_color_mode}" -ne 0 ]]; then
       [[ "${previous_selected_color_mode}" =~ ^[0-9]+$ ]] && [[ "${previous_selected_color_mode}" -ne 0 ]] && allow_fast_path=1
     fi
   fi
 
   if [[ "${prev_key}" == "${wal_cache_key}" ]]; then
-    # Fast-path: wallpaper unchanged, skip pywal and downstream work
-    # Only safe in wallpaper mode if the previous run was also wallpaper mode.
+    # When the active cache key is unchanged, wallpaper mode can exit early if
+    # the previous run also used wallpaper colors.
     if [[ "${allow_fast_path}" -eq 1 ]]; then
       print_log -sec "pywal16" -stat "cache" "current (fast-path)"
       rm -f "${THEME_UPDATE_LOCK}"
@@ -860,6 +896,20 @@ wal_cache_store() {
   print_log -sec "pywal16" -stat "cache" "stored"
 }
 
+wal_cache_store_with_lock() {
+  local src_dir="$1"
+  local dest_dir="$2"
+  local cache_store_fd=""
+
+  exec {cache_store_fd}>"${CACHE_STORE_LOCK}"
+  flock "${cache_store_fd}"
+  wal_cache_store "${src_dir}" "${dest_dir}"
+  local store_exit=$?
+  flock -u "${cache_store_fd}" 2>/dev/null || true
+  exec {cache_store_fd}>&-
+  return "${store_exit}"
+}
+
 wal_cache_store_async() {
   local src_dir="$1"
   local dest_dir="$2"
@@ -867,7 +917,7 @@ wal_cache_store_async() {
   local state_wallpaper="${STATE_WALLPAPER:-${WALLPAPER_IMAGE}}"
   local color_variant="${resolved_color_variant}"
   local backend="${PYWAL_BACKEND}"
-  local hash_cmd="${hashMech:-sha1sum}"
+  local hash_cmd="${HYPR_HASH_COMMAND:-sha1sum}"
 
   (
     exec 200>&- 201>&- 202>&- 203>&-
@@ -904,7 +954,7 @@ if [[ "${wal_cache_populate}" -eq 1 ]] && [[ "${wal_used_cache}" -eq 0 ]] && [[ 
   if [[ "${CACHE_ONLY}" -ne 1 ]]; then
     wal_cache_store_async "${WAL_CACHE}" "${wal_cache_path}"
   else
-    wal_cache_store "${WAL_CACHE}" "${wal_cache_path}" || print_log -sec "pywal16" -warn "cache" "store failed"
+    wal_cache_store_with_lock "${WAL_CACHE}" "${wal_cache_path}" || print_log -sec "pywal16" -warn "cache" "store failed"
   fi
 fi
 
@@ -1171,8 +1221,8 @@ process_theme_files() {
       exec_cmd="${exec_cmd//\$XDG_CACHE_HOME/${XDG_CACHE_HOME:-$HOME/.cache}}"
       exec_cmd="${exec_cmd//\$XDG_DATA_HOME/${XDG_DATA_HOME:-$HOME/.local/share}}"
       exec_cmd="${exec_cmd//\$USER/$USER}"
-      exec_cmd="${exec_cmd//\$\{scrDir\}/${scrDir:-$HOME/.local/lib/hypr}}"
-      exec_cmd="${exec_cmd//\$scrDir/${scrDir:-$HOME/.local/lib/hypr}}"
+      exec_cmd="${exec_cmd//\$\{HYPR_LIB_DIR\}/${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}}"
+      exec_cmd="${exec_cmd//\$HYPR_LIB_DIR/${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}}"
       exec_cmd="${exec_cmd//\$\{LIB_DIR\}/${LIB_DIR:-$HOME/.local/lib}}"
       exec_cmd="${exec_cmd//\$LIB_DIR/${LIB_DIR:-$HOME/.local/lib}}"
 

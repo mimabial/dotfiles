@@ -24,8 +24,23 @@ Options:
 HELP
 }
 
+normalize_shader_name() {
+  local name="${1:-neutral}"
+  name="${name%.frag}"
+
+  case "${name}" in
+    "")
+      printf 'neutral\n'
+      ;;
+    *)
+      printf '%s\n' "${name}"
+      ;;
+  esac
+}
+
 resolve_shader_path() {
-  local name="${1:-disable}"
+  local name
+  name="$(normalize_shader_name "${1:-neutral}")"
   name="${name%.frag}"
 
   if [[ "${name}" == */* ]] && [[ -f "${name}" ]]; then
@@ -68,7 +83,7 @@ list_shader_names() {
     [[ -d "${dir}" ]] || continue
     while IFS= read -r -d '' path; do
       name="$(basename "${path}" .frag)"
-      [[ "${name}" == "disable" ]] && continue
+      [[ "${name}" == "neutral" ]] && continue
       [[ -n "${seen[${name}]:-}" ]] && continue
       seen["${name}"]=1
       printf '%s\n' "${name}"
@@ -82,8 +97,8 @@ fn_select() {
   local hypr_border wind_border elem_border hypr_width r_override
 
   shader_items="$(list_shader_names)"
-  if resolve_shader_path disable >/dev/null 2>&1; then
-    shader_items=$(printf 'disable\n%s\n' "${shader_items}" | sed '/^$/d')
+  if resolve_shader_path neutral >/dev/null 2>&1; then
+    shader_items=$(printf 'neutral\n%s\n' "${shader_items}" | sed '/^$/d')
   fi
 
   [[ -n "${shader_items}" ]] || {
@@ -108,7 +123,7 @@ fn_select() {
   r_override="window{border:${hypr_width}px;border-radius:${wind_border}px;} wallbox{border-radius:${elem_border}px;} element{border-radius:${elem_border}px;}"
 
   selected_shader=$(printf '%s\n' "${shader_items}" |
-    rofi -dmenu -i -select "${HYPR_SHADER:-disable}" \
+    rofi -dmenu -i -select "$(normalize_shader_name "${HYPR_SHADER:-neutral}")" \
       -p "Select shader" \
       -theme-str "entry { placeholder: \"🎨 Select shader...\"; }" \
       -theme-str "${font_override}" \
@@ -117,6 +132,7 @@ fn_select() {
       -theme "clipboard")
 
   [[ -n "${selected_shader}" ]] || exit 0
+  selected_shader="$(normalize_shader_name "${selected_shader}")"
 
   state_set "HYPR_SHADER" "${selected_shader}" "staterc"
   fn_update "${selected_shader}"
@@ -124,7 +140,8 @@ fn_select() {
 }
 
 fn_reload() {
-  local shader_name="${HYPR_SHADER:-disable}"
+  local shader_name
+  shader_name="$(normalize_shader_name "${HYPR_SHADER:-neutral}")"
   state_set "HYPR_SHADER" "${shader_name}" "staterc"
   fn_update "${shader_name}"
   send_ephemeral_notif "hypr-shader" -t 2000 -i "preferences-desktop-display" "Shader reloaded" "${shader_name}"
@@ -158,7 +175,8 @@ concat_shader_files() {
 }
 
 parse_includes_and_update() {
-  local selected_shader="${1}"
+  local selected_shader
+  selected_shader="$(normalize_shader_name "${1}")"
   local resolved_shader_path shader_path_compact compiled_path_compact
   local source_var inc_file
   local files=()

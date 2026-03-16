@@ -20,10 +20,6 @@
     "ignore-monitor": true,
     "ignore": [
       {
-        "type": "audio-in",
-        "name": "cava"
-      },
-      {
         "type": "screenshare",
         "name": "obs"
       }

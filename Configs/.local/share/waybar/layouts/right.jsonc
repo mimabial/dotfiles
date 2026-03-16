@@ -60,7 +60,7 @@
       "transition-duration": 500,
       "transition-left-to-right": true
     },
-    "modules": ["custom/dmark", "custom/gpuinfo", "custom/cpuinfo", "memory", "custom/fanspeedinfo"]
+    "modules": ["custom/dmark", "custom/gpuinfo", "custom/cpuinfo", "memory", "disk"]
   },
   "group/forecast": {
     "orientation": "inherit",
@@ -150,6 +150,6 @@
       "transition-duration": 500,
       "transition-left-to-right": false
     },
-    "modules": ["custom/hyprmenu", "custom/colorpicker", "hyprland/language", "battery"]
+    "modules": ["custom/hyprmenu", "battery"]
   }
 }

@@ -6,7 +6,6 @@ if [ ! -f /etc/arch-release ]; then
 fi
 
 # source variables
-scrDir=$(dirname "$(realpath "$0")")
 # shellcheck disable=SC1091
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
 get_aurhlpr

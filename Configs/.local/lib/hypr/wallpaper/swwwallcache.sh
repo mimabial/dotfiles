@@ -2,10 +2,8 @@
 
 #// set variables
 
-scrDir="$(dirname "$(realpath "$0")")"
 # shellcheck disable=SC1091
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
-export scrDir
 export WALLPAPER_THUMB_DIR
 
 # Lock file to prevent concurrent cache rebuilds
@@ -255,7 +253,7 @@ fi
 if [[ ${#wall_inputs[@]} -gt 0 ]]; then
   unset wallHash wallList
   for wall_input in "${wall_inputs[@]}"; do
-    wallHash+=("$("${hashMech:-sha1sum}" "${wall_input}" | awk '{print $1}')")
+    wallHash+=("$("${HYPR_HASH_COMMAND:-sha1sum}" "${wall_input}" | awk '{print $1}')")
     wallList+=("${wall_input}")
   done
 else
