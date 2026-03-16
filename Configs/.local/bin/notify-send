@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+real_dunstify="$(command -v dunstify || true)"
+real_notify_send="/usr/sbin/notify-send"
+
+if [[ -z "${real_dunstify}" ]]; then
+  exec "${real_notify_send}" "$@"
+fi
+
+has_timeout=0
+app_name=""
+summary=""
+body=""
+
+forward_args=()
+positionals=()
+
+while (($#)); do
+  case "$1" in
+    -u|-t|-a|-i|-n|-c|-h|-r|-A|--urgency|--expire-time|--app-name|--icon|--app-icon|--category|--hint|--replace-id|--action|--id-fd|--selected-action-fd|--activation-token-fd)
+      opt="$1"
+      val="${2-}"
+      forward_args+=("$opt")
+      [[ -n "${val}" ]] && forward_args+=("$val")
+      case "$opt" in
+        -t|--expire-time) has_timeout=1 ;;
+        -a|--app-name) app_name="${val}" ;;
+      esac
+      shift
+      (($#)) && shift
+      ;;
+    --urgency=*|--expire-time=*|--app-name=*|--icon=*|--app-icon=*|--category=*|--hint=*|--replace-id=*|--action=*|--id-fd=*|--selected-action-fd=*|--activation-token-fd=*)
+      forward_args+=("$1")
+      case "$1" in
+        --expire-time=*|--timeout=*) has_timeout=1 ;;
+        --app-name=*) app_name="${1#*=}" ;;
+      esac
+      shift
+      ;;
+    -p|--print-id|-w|--wait|-v|--version|-?|-help|--help)
+      forward_args+=("$1")
+      shift
+      ;;
+    -e|--transient)
+      # The current dunstify build on this machine advertises transient but does
+      # not parse it correctly. Ignore the flag and rely on explicit timeout.
+      shift
+      ;;
+    --)
+      shift
+      while (($#)); do
+        positionals+=("$1")
+        shift
+      done
+      ;;
+    -*)
+      forward_args+=("$1")
+      shift
+      ;;
+    *)
+      positionals+=("$1")
+      shift
+      ;;
+  esac
+done
+
+if ((${#positionals[@]} > 0)); then
+  summary="${positionals[0]}"
+fi
+if ((${#positionals[@]} > 1)); then
+  body="${positionals[*]:1}"
+fi
+
+if (( ! has_timeout )); then
+  forward_args+=(--expire-time=2000)
+fi
+
+summary_lc="$(printf '%s' "${summary}" | tr '[:upper:]' '[:lower:]')"
+body_lc="$(printf '%s' "${body}" | tr '[:upper:]' '[:lower:]')"
+
+if [[ "${app_name}" == "kitty" ]]; then
+  if [[ "${summary_lc}" == approval\ requested:* || "${body_lc}" == codex\ wants\ to* ]]; then
+    forward_args+=("--hint=string:x-dunst-stack-tag:codex-approval")
+  elif [[ "${summary_lc}" == *codex* || "${body_lc}" == *codex* ]]; then
+    forward_args+=("--hint=string:x-dunst-stack-tag:codex")
+  fi
+fi
+
+exec "${real_dunstify}" "${forward_args[@]}" "${positionals[@]}"

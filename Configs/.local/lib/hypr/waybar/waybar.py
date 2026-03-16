@@ -488,6 +488,47 @@ def resolve_style_path(layout_path):
     return os.path.join(STYLE_DIRS[0], "defaults.css")
 
 
+def refresh_waybar_assets():
+    """Regenerate derived Waybar config and CSS assets after layout/style changes."""
+    update_icon_size()
+    update_border_radius()
+    generate_includes()
+    update_global_css()
+
+
+def apply_layout_change(
+    layout_path,
+    layout_name,
+    style_path,
+    notification_body,
+    replace_id,
+    transient=False,
+    sync_tag=None,
+):
+    """Apply a resolved layout/style pair, then sync Waybar and dunst state."""
+    set_state_value("WAYBAR_LAYOUT_PATH", layout_path)
+    set_state_value("WAYBAR_LAYOUT_NAME", layout_name)
+    set_state_value("WAYBAR_STYLE_PATH", style_path)
+
+    style_filepath = os.path.join(str(xdg_config_home()), "waybar", "style.css")
+    atomic_copy_file(layout_path, CONFIG_JSONC)
+    write_style_file(style_filepath, style_path)
+    refresh_waybar_assets()
+
+    sync_dunst_position("--write-only")
+    restart_waybar()
+    sync_dunst_position_after_waybar_restart()
+    notify.send(
+        "Waybar",
+        notification_body,
+        expire_time=2000,
+        icon="preferences-desktop-display",
+        replace_id=replace_id,
+        transient=transient,
+        sync_tag=sync_tag,
+    )
+
+
 def set_layout(layout):
     """Set the layout and corresponding style."""
     layouts_data = list_layouts()
@@ -506,26 +547,11 @@ def set_layout(layout):
         logger.error(f"Layout {layout} not found")
         sys.exit(1)
 
-    set_state_value("WAYBAR_LAYOUT_PATH", layout_path)
-    set_state_value("WAYBAR_LAYOUT_NAME", layout_name)
-    set_state_value("WAYBAR_STYLE_PATH", style_path)
-
-    style_filepath = os.path.join(str(xdg_config_home()), "waybar", "style.css")
-    atomic_copy_file(layout_path, CONFIG_JSONC)
-    write_style_file(style_filepath, style_path)
-    update_icon_size()
-    update_border_radius()
-    generate_includes()
-    update_global_css()
-
-    sync_dunst_position("--write-only")
-    restart_waybar()
-    sync_dunst_position_after_waybar_restart()
-    notify.send(
-        "Waybar",
+    apply_layout_change(
+        layout_path,
+        layout_name,
+        style_path,
         f"Layout changed to {layout}",
-        expire_time=2000,
-        icon="preferences-desktop-display",
         replace_id=91,
         transient=True,
         sync_tag="hypr-waybar-layout",
@@ -1039,10 +1065,7 @@ def style_selector(current_layout=None):
         style_filepath = os.path.join(str(xdg_config_home()), "waybar", "style.css")
         write_style_file(style_filepath, selected_style)
         set_state_value("WAYBAR_STYLE_PATH", selected_style)
-        update_icon_size()
-        update_border_radius()
-        generate_includes()
-        update_global_css()
+        refresh_waybar_assets()
         notify.send(
             "Waybar",
             f"Style changed to {os.path.basename(selected_style)}",
@@ -1087,28 +1110,11 @@ def layout_selector():
                 break
         else:
             style_path = resolve_style_path(selected_layout)
-        atomic_copy_file(selected_layout, CONFIG_JSONC)
-        set_state_value("WAYBAR_LAYOUT_PATH", selected_layout)
-        set_state_value(
-            "WAYBAR_LAYOUT_NAME",
+        apply_layout_change(
+            selected_layout,
             os.path.basename(selected_layout).replace(".jsonc", ""),
-        )
-        set_state_value("WAYBAR_STYLE_PATH", style_path)
-        style_filepath = os.path.join(str(xdg_config_home()), "waybar", "style.css")
-        write_style_file(style_filepath, style_path)
-        update_icon_size()
-        update_border_radius()
-        generate_includes()
-        update_global_css()
-
-        sync_dunst_position("--write-only")
-        restart_waybar()
-        sync_dunst_position_after_waybar_restart()
-        notify.send(
-            "Waybar",
+            style_path,
             f"Layout changed to {display_func(selected_layout, os.path.dirname(selected_layout))}",
-            expire_time=2000,
-            icon="preferences-desktop-display",
             replace_id=9,
         )
     ensure_state_file()
@@ -2223,10 +2229,7 @@ def main():
             update_config(current_layout)
             update_style(style_path)
             set_state_value("WAYBAR_STYLE_PATH", style_path)
-        update_icon_size()
-        update_border_radius()
-        generate_includes()
-        update_global_css()
+        refresh_waybar_assets()
         logger.debug("Updating config and style...")
     if args.update_global_css:
         update_global_css()
@@ -2278,10 +2281,7 @@ def main():
 
     if not specific_action_taken:
         # No specific flags - run default full update
-        update_icon_size()
-        update_border_radius()
-        generate_includes()
-        update_global_css()
+        refresh_waybar_assets()
         update_style(args.style)
         restart_waybar()
         return
