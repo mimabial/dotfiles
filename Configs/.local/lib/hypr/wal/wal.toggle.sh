@@ -23,15 +23,14 @@ exec 203>"${MODE_SWITCH_LOCK}"
 }
 trap 'flock -u 203 2>/dev/null' EXIT
 
-colorModes=("Theme" "Auto" "Dark" "Light")
-AUTO_THEME_PY="${HOME}/.local/lib/hypr/theme/auto_theme.py"
+color_mode_labels=("Theme" "Auto" "Dark" "Light")
 
 # Read current mode from staterc
 [ -f "${XDG_STATE_HOME:-$HOME/.local/state}/hypr/staterc" ] && source "${XDG_STATE_HOME:-$HOME/.local/state}/hypr/staterc"
-enableWallDcol="${enableWallDcol:-1}"
+selected_color_mode="${selected_color_mode:-1}"
 
 # Rofi selector
-rofi_pywal16() {
+select_color_mode_with_rofi() {
   pkill -u "$USER" rofi && exit 0
   font_scale=$ROFI_PYWAL16_SCALE
   [[ "${font_scale}" =~ ^[0-9]+$ ]] || font_scale=${ROFI_SCALE:-10}
@@ -44,7 +43,7 @@ rofi_pywal16() {
   hypr_border="${hypr_border:-5}"
   elem_border=$((hypr_border * 4))
   r_override="prompt{border-radius:${hypr_border}px;} textbox-prompt-colon {border-radius:${hypr_border}px;} window{border-radius:${elem_border}px;} element{border-radius:${hypr_border}px;}"
-  rofi_theme_file="${XDG_CONFIG_HOME:-$HOME/.config}/rofi/pywal16.rasi"
+  rofi_theme_file="$(rofi_resolve_theme pywal16)"
   width_override=""
   margin_px="${ROFI_PYWAL16_MARGIN_PX:-${ROFI_PYWAL16_MARGIN:-0}}"
   [[ "${margin_px}" =~ ^[0-9]+$ ]] || margin_px=0
@@ -104,18 +103,18 @@ rofi_pywal16() {
     width_override_args=(-theme-str "${width_override}")
   fi
 
-  rofiSel=$(printf '%s\n' "${colorModes[@]}" | rofi -dmenu \
+  selected_color_mode_label=$(printf '%s\n' "${color_mode_labels[@]}" | rofi -dmenu \
     -theme-str "${r_scale}" \
     -theme-str "${r_override}" \
     "${width_override_args[@]}" \
     -theme-str 'textbox-prompt-colon {str: "";}' \
     -p "Color Mode" \
     -theme "${rofi_theme_file}" \
-    -select "${colorModes[${enableWallDcol}]}")
-  if [[ -n "${rofiSel}" ]]; then
+    -select "${color_mode_labels[${selected_color_mode}]}")
+  if [[ -n "${selected_color_mode_label}" ]]; then
     # Find index of selected mode
-    for i in "${!colorModes[@]}"; do
-      [[ "${colorModes[i]}" == "${rofiSel}" ]] && setMode="$i" && break
+    for i in "${!color_mode_labels[@]}"; do
+      [[ "${color_mode_labels[i]}" == "${selected_color_mode_label}" ]] && target_color_mode="$i" && break
     done
   else
     exit 0
@@ -124,13 +123,13 @@ rofi_pywal16() {
 
 #// switch mode
 
-step_pywal16() {
-  for i in "${!colorModes[@]}"; do
-    if [ "${enableWallDcol}" == "${i}" ]; then
+cycle_color_mode() {
+  for i in "${!color_mode_labels[@]}"; do
+    if [ "${selected_color_mode}" == "${i}" ]; then
       if [ "${1}" == "n" ]; then
-        setMode=$(((i + 1) % ${#colorModes[@]}))
+        target_color_mode=$(((i + 1) % ${#color_mode_labels[@]}))
       elif [ "${1}" == "p" ]; then
-        setMode=$(((i - 1 + ${#colorModes[@]}) % ${#colorModes[@]}))
+        target_color_mode=$(((i - 1 + ${#color_mode_labels[@]}) % ${#color_mode_labels[@]}))
       fi
       break
     fi
@@ -145,10 +144,10 @@ set_mode_from_arg() {
   fi
 
   case "${mode_arg,,}" in
-    0 | theme) setMode=0 ;;
-    1 | auto) setMode=1 ;;
-    2 | dark) setMode=2 ;;
-    3 | light) setMode=3 ;;
+    0 | theme) target_color_mode=0 ;;
+    1 | auto) target_color_mode=1 ;;
+    2 | dark) target_color_mode=2 ;;
+    3 | light) target_color_mode=3 ;;
     *)
       echo "Error: invalid mode: ${mode_arg}"
       echo "Valid modes: theme, auto, dark, light (or 0-3)"
@@ -157,85 +156,27 @@ set_mode_from_arg() {
   esac
 }
 
-resolve_auto_theme_python() {
-  local venv_py="${HOME}/.local/state/hypr/pip_env/bin/python"
-  if [[ -x "${venv_py}" ]]; then
-    echo "${venv_py}"
-    return 0
-  fi
-  if command -v python3 &>/dev/null; then
-    echo "python3"
-    return 0
-  fi
-  if command -v python &>/dev/null; then
-    echo "python"
-    return 0
-  fi
-  return 1
-}
-
-auto_theme_pid_running() {
-  local pidfile pid
-  for pidfile in /tmp/auto_theme_*.pid; do
-    [[ -e "${pidfile}" ]] || break
-    pid="$(cat "${pidfile}" 2>/dev/null)"
-    if [[ -n "${pid}" ]] && kill -0 "${pid}" 2>/dev/null; then
-      return 0
-    fi
-    rm -f "${pidfile}" 2>/dev/null || true
-  done
-  return 1
-}
-
-start_auto_theme_fallback() {
-  auto_theme_pid_running && return 0
-  local python_bin
-  python_bin="$(resolve_auto_theme_python)" || {
-    print_log -sec "wal.toggle" -warn "auto" "python not found, cannot start daemon"
-    return 1
-  }
-  if [[ ! -f "${AUTO_THEME_PY}" ]]; then
-    print_log -sec "wal.toggle" -warn "auto" "missing ${AUTO_THEME_PY}"
-    return 1
-  fi
-  nohup "${python_bin}" "${AUTO_THEME_PY}" >/dev/null 2>&1 &
-}
-
-stop_auto_theme_fallback() {
-  local pidfile pid
-  for pidfile in /tmp/auto_theme_*.pid; do
-    [[ -e "${pidfile}" ]] || break
-    pid="$(cat "${pidfile}" 2>/dev/null)"
-    if [[ -n "${pid}" ]]; then
-      kill "${pid}" 2>/dev/null || true
-    fi
-    rm -f "${pidfile}" 2>/dev/null || true
-  done
-}
-
 auto_theme_systemd_available() {
   command -v systemctl &>/dev/null || return 1
   systemctl --user show-environment &>/dev/null
 }
 
-start_auto_theme_daemon() {
-  if auto_theme_systemd_available; then
-    systemctl --user start auto-theme.service 2>/dev/null || {
-      print_log -sec "wal.toggle" -warn "auto" "failed to start auto-theme.service"
-      return 1
-    }
-    return 0
+start_auto_theme_service() {
+  if ! auto_theme_systemd_available; then
+    print_log -sec "wal.toggle" -warn "auto" "systemd --user unavailable, auto-theme.service is required"
+    return 1
   fi
 
-  print_log -sec "wal.toggle" -warn "auto" "systemd --user unavailable, using fallback daemon"
-  start_auto_theme_fallback
+  systemctl --user start auto-theme.service 2>/dev/null || {
+    print_log -sec "wal.toggle" -warn "auto" "failed to start auto-theme.service"
+    return 1
+  }
 }
 
-stop_auto_theme_daemon() {
+stop_auto_theme_service() {
   if auto_theme_systemd_available; then
     systemctl --user stop auto-theme.service 2>/dev/null || true
   fi
-  stop_auto_theme_fallback
 }
 
 resolve_wallpaper() {
@@ -277,24 +218,24 @@ apply_color_mode() {
   local wallpaper
   local state_file="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/color.gen.state"
 
-  if [ "${setMode}" -eq 0 ]; then
+  if [ "${target_color_mode}" -eq 0 ]; then
     "${LIB_DIR}/hypr/theme/color.set.sh"
     return 0
   fi
 
   wallpaper="$(resolve_wallpaper)" || return 1
 
-  if [ "${setMode}" -eq 2 ] || [ "${setMode}" -eq 3 ]; then
+  if [ "${target_color_mode}" -eq 2 ] || [ "${target_color_mode}" -eq 3 ]; then
     local target_mode="dark"
-    [ "${setMode}" -eq 3 ] && target_mode="light"
+    [ "${target_color_mode}" -eq 3 ] && target_mode="light"
 
     if [ -r "${state_file}" ]; then
-      local state_wall state_mode state_colormode
+      local state_wall state_color_variant state_selected_color_mode
       state_wall="$(awk -F= '/^wallpaper=/{print $2; exit}' "${state_file}")"
-      state_mode="$(awk -F= '/^mode=/{print $2; exit}' "${state_file}")"
-      state_colormode="$(awk -F= '/^colormode=/{print $2; exit}' "${state_file}")"
-      if [ "${state_wall}" == "${wallpaper}" ] && [ "${state_mode}" == "${target_mode}" ]; then
-        if [ -n "${state_colormode}" ] && [ "${state_colormode}" != "0" ]; then
+      state_color_variant="$(awk -F= '/^color_variant=/{print $2; exit}' "${state_file}")"
+      state_selected_color_mode="$(awk -F= '/^selected_color_mode=/{print $2; exit}' "${state_file}")"
+      if [ "${state_wall}" == "${wallpaper}" ] && [ "${state_color_variant}" == "${target_mode}" ]; then
+        if [ -n "${state_selected_color_mode}" ] && [ "${state_selected_color_mode}" != "0" ]; then
           print_log -sec "wal.toggle" -stat "skip" "colors already ${target_mode}"
           return 0
         fi
@@ -311,37 +252,36 @@ apply_color_mode() {
 #// apply pywal16 mode
 
 case "${1}" in
-  m | -m | --menu) rofi_pywal16 ;;
-  n | -n | --next) step_pywal16 n ;;
-  p | -p | --prev) step_pywal16 p ;;
+  m | -m | --menu) select_color_mode_with_rofi ;;
+  n | -n | --next) cycle_color_mode n ;;
+  p | -p | --prev) cycle_color_mode p ;;
   -s | --set) set_mode_from_arg "${2}" ;;
   --set=*) set_mode_from_arg "${1#--set=}" ;;
-  *) step_pywal16 n ;;
+  *) cycle_color_mode n ;;
 esac
 
-export reload_flag=1
-[[ "${setMode}" -lt 0 ]] && setMode=$((${#colorModes[@]} - 1))
+[[ "${target_color_mode}" -lt 0 ]] && target_color_mode=$((${#color_mode_labels[@]} - 1))
 
-if [ -z "${setMode}" ]; then
-  echo "Error: setMode not set"
+if [ -z "${target_color_mode}" ]; then
+  echo "Error: target_color_mode not set"
   exit 1
 fi
 
-prevMode="${enableWallDcol}"
-if [[ ! "${prevMode}" =~ ^[0-3]$ ]]; then
-  prevMode=1
+previous_color_mode="${selected_color_mode}"
+if [[ ! "${previous_color_mode}" =~ ^[0-3]$ ]]; then
+  previous_color_mode=1
 fi
 
-# Auto mode uses auto_theme daemon
-if [ "${setMode}" -eq 1 ]; then
-  state_set "enableWallDcol" "${setMode}" "staterc"
+# Auto mode uses auto-theme.service
+if [ "${target_color_mode}" -eq 1 ]; then
+  state_set "selected_color_mode" "${target_color_mode}" "staterc"
 
-  if ! start_auto_theme_daemon; then
+  if ! start_auto_theme_service; then
     print_log -sec "wal.toggle" -warn "auto" "activation failed, reverting mode"
-    setMode="${prevMode}"
-    state_set "enableWallDcol" "${setMode}" "staterc"
-    if [ "${setMode}" -ne 1 ]; then
-      stop_auto_theme_daemon
+    target_color_mode="${previous_color_mode}"
+    state_set "selected_color_mode" "${target_color_mode}" "staterc"
+    if [ "${target_color_mode}" -ne 1 ]; then
+      stop_auto_theme_service
       if ! apply_color_mode; then
         print_log -sec "wal.toggle" -warn "wallpaper" "no current wallpaper, falling back to theme switch"
         "${LIB_DIR}/hypr/theme/theme.switch.sh"
@@ -351,14 +291,14 @@ if [ "${setMode}" -eq 1 ]; then
     exit 1
   fi
 
-  # Daemon performs its own initial apply on startup.
+  # The service performs its own initial apply on startup.
   # Avoid a second one-shot apply here to prevent duplicate color.set runs.
 else
-  # Stop auto_theme daemon before writing state to avoid stale writes racing us.
-  stop_auto_theme_daemon
-  state_set "enableWallDcol" "${setMode}" "staterc"
+  # Stop auto-theme.service before writing state to avoid stale writes racing us.
+  stop_auto_theme_service
+  state_set "selected_color_mode" "${target_color_mode}" "staterc"
 
-  # Stop auto_theme daemon when switching away from Auto mode
+  # Stop auto-theme.service when switching away from Auto mode
   if ! apply_color_mode; then
     print_log -sec "wal.toggle" -warn "wallpaper" "no current wallpaper, falling back to theme switch"
     "${LIB_DIR}/hypr/theme/theme.switch.sh"

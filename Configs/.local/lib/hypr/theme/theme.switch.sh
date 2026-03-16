@@ -14,7 +14,7 @@
 #   theme.switch.sh -p                # Switch to previous theme
 #
 # KEY FUNCTIONS:
-#   Theme_Change()         - Navigate to next/previous theme
+#   select_adjacent_theme() - Navigate to next/previous theme
 #   load_hypr_variables()  - Extract variables from theme's hypr.theme
 #   sanitize_hypr_theme()  - Remove exec/shadow lines from theme config
 #   write_theme_conf()     - Write active theme configuration
@@ -40,17 +40,57 @@ fi
 
 # Lock file to prevent concurrent theme switching
 THEME_SWITCH_LOCK="${XDG_RUNTIME_DIR:-/tmp}/theme-switch.lock"
+THEME_UPDATE_LOCK="${XDG_RUNTIME_DIR:-/tmp}/theme-update.lock"
 exec 201>"${THEME_SWITCH_LOCK}"
 ! flock -n 201 && {
-  print_log -sec "theme.switch" -stat "wait" "Another theme operation in progress, waiting..."
-  flock 201
+  print_log -sec "theme.switch" -stat "drop" "Another theme operation is already in progress"
+  exit 0
 }
-theme_notify_id=""
-theme_notify_supports_p=""
-theme_notify_tag="theme-switch"
-theme_notify_active=false
-theme_notify_app="Theme switch"
-theme_notify_icon="preferences-desktop-theme"
+theme_update_lock_created=0
+
+theme_switch_create_update_lock() {
+  local lock_tmp
+  [[ -e "${THEME_UPDATE_LOCK}" ]] && return 0
+  lock_tmp="${THEME_UPDATE_LOCK}.tmp.$$"
+  {
+    printf 'pid=%s\n' "$$"
+    printf 'started=%s\n' "$(date +%s)"
+    printf 'cmd=%s\n' "${BASH_SOURCE[0]##*/}"
+    printf 'waybar_reload=%s\n' "direct"
+  } >"${lock_tmp}" && mv -f "${lock_tmp}" "${THEME_UPDATE_LOCK}"
+  theme_update_lock_created=1
+}
+
+theme_switch_release_update_lock() {
+  [[ "${theme_update_lock_created}" -eq 1 ]] || return 0
+  rm -f "${THEME_UPDATE_LOCK}"
+  theme_update_lock_created=0
+}
+
+theme_switch_reload_dunst_runtime() {
+  if [[ -x "${LIB_DIR}/hypr/wal/wal.dunst.sh" ]]; then
+    "${LIB_DIR}/hypr/wal/wal.dunst.sh" --reload-only >/dev/null 2>&1 || true
+  fi
+}
+
+theme_switch_reload_hypr_config() {
+  if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE}" ]] && command -v hyprctl >/dev/null 2>&1; then
+    if ! hyprctl reload config-only >/dev/null 2>&1; then
+      print_log -sec "theme.switch" -warn "hyprctl" "config reload failed"
+    fi
+  fi
+}
+
+theme_switch_restart_waybar() {
+  local waybar_script="${LIB_DIR}/hypr/waybar/waybar.py"
+  if [[ -x "${waybar_script}" ]]; then
+    "${waybar_script}" >/dev/null 2>&1 || true
+    return 0
+  fi
+  if command -v hyprshell >/dev/null 2>&1; then
+    hyprshell waybar >/dev/null 2>&1 || true
+  fi
+}
 
 theme_switch_source_lib() {
   local lib_file="$1"
@@ -69,6 +109,7 @@ theme_switch_source_lib "${LIB_DIR}/hypr/theme/lib/theme.switch.wallpaper.bash" 
 cleanup_theme_switch() {
   local exit_code=$?
   theme_notify_finish "${exit_code}"
+  theme_switch_release_update_lock
   if [[ "${hypr_autoreload_set}" -eq 1 ]] && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE}" ]] && command -v hyprctl >/dev/null 2>&1; then
     hyprctl keyword misc:disable_autoreload "${hypr_autoreload_prev}" -q
   fi
@@ -82,13 +123,13 @@ while getopts "qnps:" option; do
   case $option in
 
     n) # set next theme
-      Theme_Change n
-      export xtrans="grow"
+      select_adjacent_theme n
+      export wallpaper_transition_type="grow"
       ;;
 
     p) # set previous theme
-      Theme_Change p
-      export xtrans="outer"
+      select_adjacent_theme p
+      export wallpaper_transition_type="outer"
       ;;
 
     s) # set selected theme
@@ -114,10 +155,7 @@ done
 
 state_set "HYPR_THEME" "${themeSet}" "staterc"
 print_log -sec "theme" -stat "apply" "${themeSet}"
-theme_notify_start
-
-export reload_flag=1
-source "${LIB_DIR}/hypr/globalcontrol.sh"
+declare -F export_hypr_config >/dev/null 2>&1 && export_hypr_config
 [[ -f "${HYPR_CONFIG_HOME}/env-theme" ]] && source "${HYPR_CONFIG_HOME}/env-theme"
 
 #// hypr
@@ -340,15 +378,31 @@ wallpaper_path="$(
     || realpath -- "${wallpaper_target}" 2>/dev/null \
     || printf '%s' "${wallpaper_target}"
 )"
-if [ "$quiet" = true ]; then
-  "${LIB_DIR}/hypr/wallpaper/wallpaper.sh" -s "${wallpaper_path}" --global >/dev/null 2>&1
-else
-  "${LIB_DIR}/hypr/wallpaper/wallpaper.sh" -s "${wallpaper_path}" --global
-fi
+
+apply_theme_wallpaper() {
+  local -a wallpaper_args=(
+    -s "${wallpaper_path}"
+    --global
+    --notify-body "Theme: ${themeSet}"
+  )
+  if [ "$quiet" = true ]; then
+    "${LIB_DIR}/hypr/wallpaper/wallpaper.sh" "${wallpaper_args[@]}" >/dev/null 2>&1
+  else
+    "${LIB_DIR}/hypr/wallpaper/wallpaper.sh" "${wallpaper_args[@]}"
+  fi
+}
 
 # Theme mode: apply theme palette and .theme files (wallpaper sets no colors here)
-if [[ "${enableWallDcol}" -eq 0 ]]; then
-  "${LIB_DIR}/hypr/theme/color.set.sh"
+if [[ "${selected_color_mode}" -eq 0 ]]; then
+  theme_switch_create_update_lock
+  "${LIB_DIR}/hypr/theme/color.set.sh" || exit 1
+  theme_switch_reload_dunst_runtime
+  apply_theme_wallpaper || exit 1
+  theme_switch_reload_hypr_config
+  theme_switch_restart_waybar
+  theme_switch_release_update_lock
+else
+  apply_theme_wallpaper || exit 1
 fi
 
 #// nvim sync (after wallpaper/colors so pywal theme reads correct colors)

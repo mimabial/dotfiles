@@ -8,6 +8,7 @@
   "ipc": true,
   "include": [
     "$XDG_CONFIG_HOME/waybar/modules/*json*",
+    "$XDG_DATA_HOME/waybar/modules/*json*",
     "$XDG_CONFIG_HOME/waybar/includes/includes.json"
   ],
   "modules-left": [
@@ -113,7 +114,7 @@
       "transition-duration": 500,
       "transition-left-to-right": false
     },
-    "modules": ["custom/swaync-dnd", "custom/github#notifications"]
+    "modules": ["custom/dunst", "custom/github#notifications"]
   },
   "group/connection": {
     "orientation": "inherit",

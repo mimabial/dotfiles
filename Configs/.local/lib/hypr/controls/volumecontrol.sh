@@ -49,8 +49,8 @@ require_cmd jq || {
   echo "jq is required"
   exit 1
 }
-require_cmd notify-send || {
-  echo "notify-send is required"
+require_cmd dunstify || {
+  echo "dunstify is required"
   exit 1
 }
 
@@ -104,7 +104,7 @@ notify_vol() {
   ((angle < 0)) && angle=0
   icon="${icodir}/knob-${angle}.svg"
   bar="$(printf '%*s' $((vol / 15)) '' | tr ' ' '.')"
-  notify-send -a "Volume control" -r 8 -t 800 -i "${icon}" "${vol}${bar}" "${nsink}"
+  dunstify -a "Volume control" -r 8 -t 800 -i "${icon}" "${vol}${bar}" "${nsink}"
 }
 
 notify_mute() {
@@ -115,9 +115,9 @@ notify_mute() {
   [[ "${device}" == "source" ]] && icon_suffix="microphone"
 
   if [[ "${muted}" == "true" ]]; then
-    notify-send -a "Volume control" -r 8 -t 800 -i "${icodir}/muted-${icon_suffix}.svg" "muted" "${nsink}"
+    dunstify -a "Volume control" -r 8 -t 800 -i "${icodir}/muted-${icon_suffix}.svg" "muted" "${nsink}"
   else
-    notify-send -a "Volume control" -r 8 -t 800 -i "${icodir}/unmuted-${icon_suffix}.svg" "unmuted" "${nsink}"
+    dunstify -a "Volume control" -r 8 -t 800 -i "${icodir}/unmuted-${icon_suffix}.svg" "unmuted" "${nsink}"
   fi
 }
 
@@ -127,14 +127,14 @@ set_output_by_description() {
 
   sink_id="$(list_sinks_tsv | awk -F'\t' -v sel="${selection}" '$2==sel { print $1; exit }')"
   if [[ -z "${sink_id}" ]]; then
-    notify-send -u critical -a "Volume control" "Audio Output" "Unable to resolve: ${selection}"
+    dunstify -u critical -a "Volume control" "Audio Output" "Unable to resolve: ${selection}"
     return 1
   fi
 
   if wpctl set-default "${sink_id}"; then
-    notify-send -t 800 -i "${icodir}/unmuted-speaker.svg" -r 8 -u low "Activated: ${selection}"
+    dunstify -t 800 -i "${icodir}/unmuted-speaker.svg" -r 8 -u low "Activated: ${selection}"
   else
-    notify-send -t 800 -r 8 -u critical "Error activating ${selection}"
+    dunstify -t 800 -r 8 -u critical "Error activating ${selection}"
     return 1
   fi
 }
@@ -174,9 +174,9 @@ toggle_output() {
   next_id="${next_line%%$'\t'*}"
   next_desc="${next_line#*$'\t'}"
   if wpctl set-default "${next_id}"; then
-    notify-send -t 800 -i "${icodir}/unmuted-speaker.svg" -r 8 -u low "Activated: ${next_desc}"
+    dunstify -t 800 -i "${icodir}/unmuted-speaker.svg" -r 8 -u low "Activated: ${next_desc}"
   else
-    notify-send -t 800 -r 8 -u critical "Error activating ${next_desc}"
+    dunstify -t 800 -r 8 -u critical "Error activating ${next_desc}"
     return 1
   fi
 }

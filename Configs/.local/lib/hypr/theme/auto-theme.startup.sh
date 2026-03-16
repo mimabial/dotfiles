@@ -11,8 +11,8 @@ elif ! declare -F state_get >/dev/null; then
   fi
 fi
 
-mode="$(state_get "enableWallDcol" "1")"
-[[ "${mode}" =~ ^[0-3]$ ]] || mode=1
+selected_color_mode="$(state_get "selected_color_mode" "1")"
+[[ "${selected_color_mode}" =~ ^[0-3]$ ]] || selected_color_mode=1
 
 if ! command -v systemctl &>/dev/null; then
   type print_log &>/dev/null && print_log -sec "auto-theme" -warn "startup" "systemctl not available"
@@ -24,7 +24,7 @@ if ! systemctl --user show-environment &>/dev/null; then
   exit 0
 fi
 
-if [[ "${mode}" -eq 1 ]]; then
+if [[ "${selected_color_mode}" -eq 1 ]]; then
   systemctl --user start --no-block auto-theme.service 2>/dev/null || {
     type print_log &>/dev/null && print_log -sec "auto-theme" -warn "startup" "failed to start auto-theme.service"
   }

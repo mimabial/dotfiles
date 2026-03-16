@@ -7,6 +7,8 @@ if [[ "${HYPR_SHELL_INIT}" -ne 1 ]]; then
 else
   export_hypr_config
 fi
+# shellcheck source=/dev/null
+source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
 
 boxdraw_dir=${HYPR_CONFIG_HOME:-$HOME/.config/hypr}
 boxdraw_data="${boxdraw_dir}/boxdraw.db"
@@ -23,32 +25,16 @@ save_recent_entry() {
 }
 
 setup_rofi_config() {
-  local font_scale="${ROFI_BOXDRAW_SCALE}"
-  [[ "${font_scale}" =~ ^[0-9]+$ ]] || font_scale=${ROFI_SCALE:-10}
-
-  local font_name=${ROFI_BOXDRAW_FONT:-$ROFI_FONT}
-  font_name=${font_name:-$(hyprshell fonts/font-get.sh menu 2>/dev/null || true)}
-  font_name=${font_name:-$(get_hyprConf "MENU_FONT")}
-  font_name=${font_name:-$(get_hyprConf "FONT")}
-  font_name=${font_name:-monospace}
-
-  font_override="* {font: \"${font_name} ${font_scale}\";}"
-
-  local hypr_border=${hypr_border:-"$(hyprctl -j getoption decoration:rounding | jq '.int')"}
-  local wind_border=$((hypr_border * 3 / 2))
-  local elem_border=${hypr_border}
-
-  local hypr_width=${hypr_width:-"$(hyprctl -j getoption general:border_size | jq '.int')"}
-  r_override="window{border:${hypr_width}px;border-radius:${wind_border}px;}listview{border-radius:${elem_border}px;} element{border-radius:${elem_border}px;}"
-
-  # Derive grid size from logical monitor dimensions (scale-aware).
-  local mon_size
-  mon_size=$(hyprctl -j monitors 2>/dev/null | jq -r '.[] | select(.focused==true) | if (.transform % 2 == 0) then "\(.width) \(.height) \(.scale)" else "\(.height) \(.width) \(.scale)" end' | head -n 1)
-  read -r mon_width mon_height mon_scale <<<"${mon_size:-1920 1080 1}"
-  [[ "${mon_scale}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || mon_scale=1
+  local font_scale
+  local font_name
   local logical_width logical_height
-  logical_width="$(awk -v w="${mon_width}" -v s="${mon_scale}" 'BEGIN { if (s + 0 <= 0) s = 1; v = int(w / s); if (v < 1) v = 1; print v }')"
-  logical_height="$(awk -v h="${mon_height}" -v s="${mon_scale}" 'BEGIN { if (s + 0 <= 0) s = 1; v = int(h / s); if (v < 1) v = 1; print v }')"
+  font_scale="$(rofi_effective_font_scale "${ROFI_BOXDRAW_SCALE}")"
+  font_name="$(rofi_effective_font_name "${ROFI_BOXDRAW_FONT:-$ROFI_FONT}")"
+
+  font_override="$(rofi_font_override "${font_name}" "${font_scale}")"
+  r_override="$(rofi_standard_window_theme listview same)"
+
+  read -r logical_width logical_height <<<"$(rofi_focused_monitor_logical_size)"
 
   boxdraw_columns="${ROFI_BOXDRAW_COLUMNS}"
   if [[ -z "${boxdraw_columns}" || ! "${boxdraw_columns}" =~ ^[0-9]+$ ]]; then
@@ -71,7 +57,7 @@ setup_rofi_config() {
   [[ "${boxdraw_window_width}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || boxdraw_window_width=${default_width}
   local boxdraw_window_height_em=$((boxdraw_lines * 2 + 8))
   local boxdraw_window_width_px
-  boxdraw_window_width_px="$(awk -v em="${boxdraw_window_width}" -v scale="${font_scale}" 'BEGIN { printf "%d", (em * scale * 2) }')"
+  boxdraw_window_width_px="$(rofi_em_to_px "${boxdraw_window_width}" "${font_scale}")"
   [[ "${boxdraw_window_width_px}" =~ ^[0-9]+$ ]] || boxdraw_window_width_px=$((default_width * font_scale * 2))
   local boxdraw_window_height_px=$((boxdraw_window_height_em * font_scale * 2))
 
@@ -111,7 +97,7 @@ get_boxdraw_selection() {
           -theme-str "${font_override}" \
           -theme-str "${size_override}" \
           -theme-str "window { width: ${boxdraw_window_width}em; }" \
-          -theme "${ROFI_BOXDRAW_STYLE:-clipboard}" \
+          -theme "$(rofi_resolve_theme "${ROFI_BOXDRAW_STYLE:-clipboard}")" \
           -no-custom)
         ;;
       1 | list)
@@ -119,7 +105,7 @@ get_boxdraw_selection() {
           -theme-str "entry { placeholder: \"  Box Drawing\";} ${rofi_position} ${r_override}" \
           -theme-str "${font_override}" \
           -theme-str "window { width: ${boxdraw_window_width}em; }" \
-          -theme "${ROFI_BOXDRAW_STYLE:-clipboard}" \
+          -theme "$(rofi_resolve_theme "${ROFI_BOXDRAW_STYLE:-clipboard}")" \
           -no-custom)
         ;;
       *)
@@ -127,7 +113,7 @@ get_boxdraw_selection() {
           -theme-str "entry { placeholder: \" 📐 Box Drawing\";} ${rofi_position} ${r_override}" \
           -theme-str "${font_override}" \
           -theme-str "window { width: ${boxdraw_window_width}em; }" \
-          -theme "${style_type:-${ROFI_BOXDRAW_STYLE:-clipboard}}" \
+          -theme "$(rofi_resolve_theme "${style_type:-${ROFI_BOXDRAW_STYLE:-clipboard}}")" \
           -no-custom)
         ;;
     esac
@@ -169,7 +155,6 @@ Usage:
                         Add 'boxdraw_style=[1|2]' variable in config
                             1 = list
                             2 = grid (default)
-                        or select styles from 'rofi-theme-selector'
 HELP
 
         exit 0
@@ -186,12 +171,12 @@ show_category_menu() {
   # Handle special categories
   if [[ "${category}" == "recent" ]]; then
     if [[ ! -f "${recent_data}" ]] || [[ ! -s "${recent_data}" ]]; then
-      notify-send "No recently used box drawing characters"
+      dunstify "No recently used box drawing characters"
       return 1
     fi
     category_file="${recent_data}"
   else
-    notify-send "Category not found: ${category}"
+    dunstify "Category not found: ${category}"
     return 1
   fi
 
@@ -213,21 +198,21 @@ show_category_menu() {
         -theme-str "listview {columns: 12;}" \
         -theme-str "entry { placeholder: \"📂 ${category}\";} ${rofi_position} ${r_override}" \
         -theme-str "${font_override}" \
-        -theme "clipboard" \
+        -theme "$(rofi_resolve_theme clipboard)" \
         -no-custom)
       ;;
     1 | list)
       selected=$(cat "${temp_category}" | rofi -dmenu -i -display-columns 1 \
         -theme-str "entry { placeholder: \"📂 ${category}\";} ${rofi_position} ${r_override}" \
         -theme-str "${font_override}" \
-        -theme "clipboard" \
+        -theme "$(rofi_resolve_theme clipboard)" \
         -no-custom)
       ;;
     *)
       selected=$(cat "${temp_category}" | rofi -dmenu -i -display-columns 1 \
         -theme-str "entry { placeholder: \"📂 ${category}\";} ${rofi_position} ${r_override}" \
         -theme-str "${font_override}" \
-        -theme "${style_type:-clipboard}" \
+        -theme "$(rofi_resolve_theme "${style_type:-clipboard}")" \
         -no-custom)
       ;;
   esac

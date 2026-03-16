@@ -30,7 +30,7 @@
 #   HYPR_WAL_CACHE_PRUNE=1   - Auto-prune wal cache entries for missing wallpapers/themes
 #   HYPR_WAL_CACHE_PRUNE_TTL=21600 - Minimum seconds between prune runs
 #   HYPR_WAL_MODE_OVERRIDE   - Force dark/light mode
-#   enableWallDcol           - Color mode (0=theme, 1=auto, 2=dark, 3=light)
+#   selected_color_mode           - Color mode (0=theme, 1=auto, 2=dark, 3=light)
 #
 # ============================================================================
 
@@ -79,23 +79,8 @@ safe_hyprctl() {
   return 0
 }
 
-# Cold-cache deferral to keep first run responsive (skip during cache-only runs).
+# Cache-only mode skips live application and only prepares cached outputs.
 CACHE_ONLY="${HYPR_WAL_CACHE_ONLY:-0}"
-DEFER_COLD=1
-
-if [[ "${CACHE_ONLY}" -ne 1 ]] && [[ "${DEFER_COLD}" -eq 1 ]] && [[ -z "${HYPR_WAL_DEFERRED:-}" ]]; then
-  if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    cold_state_file="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/color.gen.state"
-    cold_wal_dir="${XDG_CACHE_HOME:-$HOME/.cache}/wal"
-    if [[ ! -f "${cold_state_file}" || ! -f "${cold_wal_dir}/colors.json" ]]; then
-      print_log -sec "pywal16" -stat "defer" "cold cache: warming colors in background"
-      export HYPR_WAL_DEFERRED=1
-      ( bash "${BASH_SOURCE[0]}" "$@" ) &>/dev/null &
-      disown
-      exit 0
-    fi
-  fi
-fi
 
 # ============================================================================
 # SECTION 2: LOCK MANAGEMENT
@@ -107,12 +92,14 @@ LOCK_FILE="${XDG_RUNTIME_DIR:-/tmp}/color-gen.lock"
 STATE_FILE="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/color.gen.state"
 # Signal file for waybar watcher
 THEME_UPDATE_LOCK="${XDG_RUNTIME_DIR:-/tmp}/theme-update.lock"
+THEME_SWITCH_LOCK="${XDG_RUNTIME_DIR:-/tmp}/theme-switch.lock"
 CACHE_ONLY="${CACHE_ONLY:-${HYPR_WAL_CACHE_ONLY:-0}}"
 ASYNC_APPS=1
 ASYNC_POST_UPDATES=1
 MODE_OVERRIDE="${HYPR_WAL_MODE_OVERRIDE:-}"
 CACHE_ONLY_ROOT=""
 HYPR_AUTO_RELOAD_PREV=""
+THEME_UPDATE_LOCK_OWNED=0
 mkdir -p "$(dirname "$LOCK_FILE")" "$(dirname "$STATE_FILE")"
 
 exec 200>"${LOCK_FILE}"
@@ -131,12 +118,15 @@ fi
 
 # Create theme update lock to prevent waybar from reacting to intermediate changes
 if [[ "${CACHE_ONLY}" -ne 1 ]]; then
-  lock_tmp="${THEME_UPDATE_LOCK}.tmp.$$"
-  {
-    printf 'pid=%s\n' "$$"
-    printf 'started=%s\n' "$(date +%s)"
-    printf 'cmd=%s\n' "${BASH_SOURCE[0]##*/}"
-  } >"${lock_tmp}" && mv -f "${lock_tmp}" "${THEME_UPDATE_LOCK}"
+  if [[ ! -e "${THEME_UPDATE_LOCK}" ]]; then
+    lock_tmp="${THEME_UPDATE_LOCK}.tmp.$$"
+    {
+      printf 'pid=%s\n' "$$"
+      printf 'started=%s\n' "$(date +%s)"
+      printf 'cmd=%s\n' "${BASH_SOURCE[0]##*/}"
+    } >"${lock_tmp}" && mv -f "${lock_tmp}" "${THEME_UPDATE_LOCK}"
+    THEME_UPDATE_LOCK_OWNED=1
+  fi
 fi
 
 # Pre-cache info (set later, executed in cleanup after lock release)
@@ -153,11 +143,15 @@ cleanup() {
     rm -rf "${CACHE_ONLY_ROOT}" 2>/dev/null || true
   fi
   if [[ "${CACHE_ONLY}" -ne 1 ]]; then
-    rm -f "${THEME_UPDATE_LOCK}"
+    if [[ "${THEME_UPDATE_LOCK_OWNED}" -eq 1 ]]; then
+      rm -f "${THEME_UPDATE_LOCK}"
+    fi
     # Reload Hyprland config - log failure but don't block cleanup
     if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE}" ]]; then
-      if ! hyprctl reload config-only >/dev/null 2>&1; then
-        print_log -sec "cleanup" -warn "hyprctl" "config reload failed"
+      if [[ ! -e "${THEME_SWITCH_LOCK}" ]]; then
+        if ! hyprctl reload config-only >/dev/null 2>&1; then
+          print_log -sec "cleanup" -warn "hyprctl" "config reload failed"
+        fi
       fi
       if [[ -n "${HYPR_AUTO_RELOAD_PREV}" ]]; then
         hyprctl keyword misc:disable_autoreload "${HYPR_AUTO_RELOAD_PREV}" -q || true
@@ -186,14 +180,14 @@ if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE}" && "${CACHE_ONLY}" -ne 1 ]]; then
   [[ -n "${HYPR_AUTO_RELOAD_PREV}" ]] && hyprctl keyword misc:disable_autoreload 1 -q
 fi
 
-# Check enableWallDcol (0=theme, 1=auto, 2=dark, 3=light)
+# Check selected_color_mode (0=theme, 1=auto, 2=dark, 3=light)
 [ -f "$HYPR_STATE_HOME/config" ] && source "$HYPR_STATE_HOME/config"
-enableWallDcol="${enableWallDcol:-1}"
+selected_color_mode="${selected_color_mode:-1}"
 
-# Get mode from state (auto mode only)
-dcol_mode="${dcol_mode:-dark}"
-if [[ -z "${MODE_OVERRIDE}" ]] && [[ "${enableWallDcol}" == "1" ]] && [ -f "$HYPR_STATE_HOME/mode" ]; then
-  dcol_mode=$(cat "$HYPR_STATE_HOME/mode")
+# Get resolved light/dark variant from state (auto mode only)
+resolved_color_variant="${resolved_color_variant:-dark}"
+if [[ -z "${MODE_OVERRIDE}" ]] && [[ "${selected_color_mode}" == "1" ]] && [ -f "$HYPR_STATE_HOME/color_variant" ]; then
+  resolved_color_variant=$(cat "$HYPR_STATE_HOME/color_variant")
 fi
 
 # Always determine current theme (needed for Kvantum in both modes)
@@ -305,14 +299,14 @@ resolve_wallpaper_fallback() {
 
 SKIP_WAYBAR_UPDATE="${SKIP_WAYBAR_UPDATE:-0}"
 
-# Override mode based on enableWallDcol
-case "${enableWallDcol}" in
-  2) dcol_mode="dark" ;;
-  3) dcol_mode="light" ;;
+# Override mode based on selected_color_mode
+case "${selected_color_mode}" in
+  2) resolved_color_variant="dark" ;;
+  3) resolved_color_variant="light" ;;
 esac
 if [[ -n "${MODE_OVERRIDE}" ]]; then
   case "${MODE_OVERRIDE}" in
-    dark | light) dcol_mode="${MODE_OVERRIDE}" ;;
+    dark | light) resolved_color_variant="${MODE_OVERRIDE}" ;;
     *) print_log -sec "pywal16" -warn "mode" "invalid override: ${MODE_OVERRIDE}" ;;
   esac
 fi
@@ -362,7 +356,6 @@ declare -gA COLOR_LINKS=(
   ["colors-rofi.rasi"]="${HOME}/.config/rofi/colors.rasi"
   ["colors-wofi.css"]="${HOME}/.config/wofi/style.css"
   ["colors-waybar.css"]="${HOME}/.config/waybar/colors.css"
-  ["colors-swaync.css"]="${HOME}/.config/swaync/colors.css"
   ["colors-hyprland.conf"]="${HOME}/.config/hypr/themes/colors.conf"
   ["colors-hyprshade.glsl"]="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wal/colors.inc"
   ["colors-gtk.css"]="${HOME}/.config/gtk-3.0/colors.css"
@@ -381,7 +374,7 @@ PALETTE_LABEL=""
 STATE_WALLPAPER=""
 WAL_THEME_FILE=""
 
-if [[ "${enableWallDcol}" -eq 0 ]]; then
+if [[ "${selected_color_mode}" -eq 0 ]]; then
   PALETTE_SOURCE="theme"
 fi
 
@@ -416,7 +409,7 @@ if [[ "${PALETTE_SOURCE}" == "wallpaper" ]]; then
   PALETTE_LABEL="$(basename "${WALLPAPER_IMAGE}")"
 fi
 
-print_log -sec "pywal16" -stat "generate" "${PALETTE_LABEL} (${dcol_mode})"
+print_log -sec "pywal16" -stat "generate" "${PALETTE_LABEL} (${resolved_color_variant})"
 
 # Build wal command
 if [[ "${PALETTE_SOURCE}" == "theme" ]]; then
@@ -426,7 +419,7 @@ if [[ "${PALETTE_SOURCE}" == "theme" ]]; then
   WAL_OPTS=("${WAL_OPTS_BASE[@]}")
 else
   WAL_OPTS_BASE=("-i" "${WALLPAPER_IMAGE}" "-n" "-s" "-t" "-e")
-  [ "${dcol_mode}" == "light" ] && WAL_OPTS_BASE+=("-l")
+  [ "${resolved_color_variant}" == "light" ] && WAL_OPTS_BASE+=("-l")
 
   # Use haishoku backend by default; fall back to others on failure.
   # Override with PYWAL_BACKEND / PYWAL_BACKEND_FALLBACKS.
@@ -656,30 +649,30 @@ if [[ "${HYPR_WAL_CACHE_ENABLE}" -eq 1 ]]; then
   mkdir -p "${HYPR_WAL_CACHE_DIR}" 2>/dev/null || true
   wall_hash="$(${hashMech:-sha1sum} "${WALLPAPER_IMAGE}" | awk '{print $1}')"
   compute_template_hash
-  wal_cache_key="${wall_hash}_${dcol_mode}_${PYWAL_BACKEND}${template_hash_suffix}"
+  wal_cache_key="${wall_hash}_${resolved_color_variant}_${PYWAL_BACKEND}${template_hash_suffix}"
   wal_cache_path="${HYPR_WAL_CACHE_DIR}/${wal_cache_key}"
   wal_cache_backend="${PYWAL_BACKEND}"
   queue_cache_cleanup "${HYPR_WAL_CACHE_DIR}" "${template_hash_suffix}"
   queue_wal_cache_prune
 
   prev_key=""
-  prev_colormode=""
+  previous_selected_color_mode=""
   if [[ -r "${STATE_FILE}" ]]; then
-    # Single awk call to get first line and colormode
+    # Single awk call to get the cache key and selected color mode.
     prev_state="$(awk -F= '
       NR==1 {key=$0}
-      /^colormode=/ {c=$2}
+      /^selected_color_mode=/ {c=$2}
       END {print key"|"c}
     ' "${STATE_FILE}" 2>/dev/null || true)"
     prev_key="${prev_state%%|*}"
-    prev_colormode="${prev_state#*|}"
+    previous_selected_color_mode="${prev_state#*|}"
   fi
 
   allow_fast_path=0
   if [[ "${FORCE_COLOR_REGEN:-0}" -ne 1 ]]; then
     # Only fast-path in wallpaper modes; theme mode still needs .theme reapply.
-    if [[ "${enableWallDcol}" -ne 0 ]]; then
-      [[ "${prev_colormode}" =~ ^[0-9]+$ ]] && [[ "${prev_colormode}" -ne 0 ]] && allow_fast_path=1
+    if [[ "${selected_color_mode}" -ne 0 ]]; then
+      [[ "${previous_selected_color_mode}" =~ ^[0-9]+$ ]] && [[ "${previous_selected_color_mode}" -ne 0 ]] && allow_fast_path=1
     fi
   fi
 
@@ -744,7 +737,7 @@ if [[ -z "${wal_exit}" ]]; then
 fi
 
 if [[ "${HYPR_WAL_CACHE_ENABLE}" -eq 1 ]] && [[ -n "${wall_hash:-}" ]] && [[ "${wal_cache_backend:-}" != "${PYWAL_BACKEND}" ]]; then
-  wal_cache_key="${wall_hash}_${dcol_mode}_${PYWAL_BACKEND}${template_hash_suffix}"
+  wal_cache_key="${wall_hash}_${resolved_color_variant}_${PYWAL_BACKEND}${template_hash_suffix}"
   wal_cache_path="${HYPR_WAL_CACHE_DIR}/${wal_cache_key}"
 fi
 
@@ -840,7 +833,7 @@ wal_cache_store() {
   {
     echo "${wal_cache_key}"
     echo "wallpaper=${STATE_WALLPAPER:-${WALLPAPER_IMAGE}}"
-    echo "mode=${dcol_mode}"
+    echo "color_variant=${resolved_color_variant}"
     echo "backend=${PYWAL_BACKEND}"
   } >"${tmp_dir}/.meta"
   touch "${tmp_dir}/.complete"
@@ -872,7 +865,7 @@ wal_cache_store_async() {
   local dest_dir="$2"
   local cache_key="${wal_cache_key}"
   local state_wallpaper="${STATE_WALLPAPER:-${WALLPAPER_IMAGE}}"
-  local mode="${dcol_mode}"
+  local color_variant="${resolved_color_variant}"
   local backend="${PYWAL_BACKEND}"
   local hash_cmd="${hashMech:-sha1sum}"
 
@@ -893,7 +886,7 @@ wal_cache_store_async() {
 
     wal_cache_key="${cache_key}"
     STATE_WALLPAPER="${state_wallpaper}"
-    dcol_mode="${mode}"
+    resolved_color_variant="${color_variant}"
     PYWAL_BACKEND="${backend}"
     wal_cache_store "${src_dir}" "${dest_dir}" || exit 0
 
@@ -917,10 +910,10 @@ fi
 
 # Pre-cache opposite light/dark mode in background for faster mode switching
 # Only in wallpaper mode (not theme mode) and not during cache-only runs
-if [[ "${CACHE_ONLY}" -ne 1 ]] && [[ "${enableWallDcol}" -ne 0 ]] && [[ "${HYPR_WAL_CACHE_ENABLE}" -eq 1 ]]; then
+if [[ "${CACHE_ONLY}" -ne 1 ]] && [[ "${selected_color_mode}" -ne 0 ]] && [[ "${HYPR_WAL_CACHE_ENABLE}" -eq 1 ]]; then
   opposite_mode=""
-  [[ "${dcol_mode}" == "dark" ]] && opposite_mode="light"
-  [[ "${dcol_mode}" == "light" ]] && opposite_mode="dark"
+  [[ "${resolved_color_variant}" == "dark" ]] && opposite_mode="light"
+  [[ "${resolved_color_variant}" == "light" ]] && opposite_mode="dark"
 
   if [[ -n "${opposite_mode}" ]] && [[ -n "${wall_hash:-}" ]]; then
     opposite_cache_key="${wall_hash}_${opposite_mode}_${PYWAL_BACKEND}${template_hash_suffix}"
@@ -954,7 +947,7 @@ print_log -sec "pywal16" -stat "linking" "creating symlinks to color files"
 for cache_file in "${!COLOR_LINKS[@]}"; do
   # In theme mode, Hyprland colors are derived from the theme palette (not the wallpaper).
   # Keep pywal16's cache output available, but don't link it over the theme colors.
-  if [[ "${enableWallDcol}" -eq 0 ]] && [[ "${cache_file}" == "colors-hyprland.conf" ]]; then
+  if [[ "${selected_color_mode}" -eq 0 ]] && [[ "${cache_file}" == "colors-hyprland.conf" ]]; then
     continue
   fi
   if [[ "${SKIP_WAYBAR_UPDATE}" -eq 1 ]] && [[ "${cache_file}" == "colors-waybar.css" ]]; then
@@ -1050,7 +1043,7 @@ EOF
   print_log -sec "theme" -stat "colors" "wrote ${out_file}"
 }
 
-if [[ "${enableWallDcol}" -eq 0 ]]; then
+if [[ "${selected_color_mode}" -eq 0 ]]; then
   if ! generate_hypr_colors_from_theme; then
     print_log -sec "theme" -warn "colors" "falling back to pywal16 Hyprland colors"
     ln -sf "${WAL_CACHE}/colors-hyprland.conf" "${HOME}/.config/hypr/themes/colors.conf" 2>/dev/null || true
@@ -1064,46 +1057,6 @@ print_log -sec "pywal16" -stat "complete" "color files ready"
 # Application theming - deploy generated templates (run in parallel)
 print_log -sec "pywal16" -stat "deploy" "applying themes to applications"
 
-# Track background job PIDs for proper synchronization
-declare -a APP_THEMING_PIDS=()
-
-# Wait with timeout to prevent hangs (safe: bounded wait time)
-wait_with_timeout() {
-  local timeout="${1:-30}"  # Default 30 second timeout
-  local pids=("${@:2}")
-
-  if [[ ${#pids[@]} -eq 0 ]]; then
-    return 0
-  fi
-
-  local start_time elapsed
-  start_time=$(date +%s)
-
-  for pid in "${pids[@]}"; do
-    # Check if process is still running
-    if kill -0 "${pid}" 2>/dev/null; then
-      elapsed=$(( $(date +%s) - start_time ))
-      local remaining=$(( timeout - elapsed ))
-      if [[ ${remaining} -le 0 ]]; then
-        print_log -sec "pywal16" -warn "timeout" "killing stalled background job ${pid}"
-        kill -TERM "${pid}" 2>/dev/null
-        continue
-      fi
-      # Wait for this specific PID with remaining timeout
-      timeout "${remaining}" tail --pid="${pid}" -f /dev/null 2>/dev/null || true
-    fi
-  done
-}
-
-maybe_wait() {
-  if [[ "${ASYNC_APPS}" -eq 1 ]]; then
-    return 0
-  fi
-  # Wait with 30s timeout per batch (safe: prevents infinite hangs)
-  wait_with_timeout 30 "${APP_THEMING_PIDS[@]}"
-  APP_THEMING_PIDS=()
-}
-
 # Get hypr_border early for scripts that need it
 theme_conf="${HYPR_CONFIG_HOME}/themes/theme.conf"
 if [ -f "${theme_conf}" ]; then
@@ -1114,37 +1067,6 @@ fi
 # ============================================================================
 # APP THEMING - Run independent theming scripts in parallel
 # ============================================================================
-# Each script reads from ~/.cache/wal/ and applies colors to its target app.
-# Scripts are run in parallel for speed, with PID tracking for synchronization.
-
-# List of app theming scripts to run (order doesn't matter - they're independent)
-declare -a APP_THEMING_SCRIPTS=(
-  "wal/wal.kvantum.sh"
-  "wal/wal.cava.sh"
-  "wal/wal.gtk.sh"
-  "wal/wal.swaync.sh"
-  "wal/wal.tmux.sh"
-  "wal/wal.qutebrowser.sh"
-)
-
-# Run all app theming scripts in parallel
-run_app_theming() {
-  local script_path
-  for script in "${APP_THEMING_SCRIPTS[@]}"; do
-    script_path="${LIB_DIR}/hypr/${script}"
-    if [[ -f "${script_path}" ]]; then
-      bash "${script_path}" &
-      APP_THEMING_PIDS+=($!)
-    fi
-  done
-
-  # Special case: pywalfox (not a script, a command)
-  if command -v pywalfox &>/dev/null; then
-    { pywalfox update &>/dev/null && print_log -sec "pywalfox" -stat "updated" "Firefox theme"; } &
-    APP_THEMING_PIDS+=($!)
-  fi
-}
-
 run_app_theming
 
 if [[ "${ASYNC_APPS}" -eq 1 ]]; then
@@ -1152,7 +1074,7 @@ if [[ "${ASYNC_APPS}" -eq 1 ]]; then
 fi
 
 # Wait for all background app theming jobs to complete
-maybe_wait
+wait_for_theming_jobs_when_async_disabled
 
 # Hyprshade color normalization (convert RGB 0-255 to 0.0-1.0 range for GLSL)
 if [ -f "${HYPR_CACHE_HOME}/colors-hyprshade.glsl" ]; then
@@ -1160,9 +1082,7 @@ if [ -f "${HYPR_CACHE_HOME}/colors-hyprshade.glsl" ]; then
 fi
 
 # Reload live applications
-pkill -SIGUSR1 kitty 2>/dev/null                                                        # Reload kitty terminal colors
-pkill -USR2 cava 2>/dev/null                                                            # Reload cava visualizer colors
-tmux list-sessions &>/dev/null && tmux source-file "${XDG_CONFIG_HOME:-$HOME/.config}/tmux/tmux.conf" 2>/dev/null # Reload tmux if running
+reload_live_apps
 
 # Theme symlinks are already created at lines 99-117, no need to modify them here
 
@@ -1181,6 +1101,7 @@ process_theme_files() {
 
   # Array to collect post-write commands
   local -a post_commands=()
+  local -A seen_post_commands=()
 
   should_queue_exec_cmd() {
     local cmd="$1"
@@ -1280,16 +1201,21 @@ process_theme_files() {
       echo "${new_content}" >"${target_path}"
       print_log -sec "theme" -stat "wrote" "${target_path}"
 
-      # Only queue exec command if file actually changed
-      if [ -n "${exec_cmd}" ]; then
-        if [[ "${exec_cmd}" =~ \$|\` ]]; then
-          print_log -sec "theme" -warn "blocked" "command contains unexpanded variables or substitution in $(basename "${theme_file}"): ${exec_cmd}"
-        elif should_queue_exec_cmd "${exec_cmd}"; then
-          post_commands+=("${exec_cmd}")
-        fi
-      fi
     else
       [[ "${LOG_LEVEL}" == "debug" ]] && print_log -sec "theme" -stat "skip" "${target_path} (unchanged)"
+    fi
+
+    # Queue post-write commands once per theme pass, even if the file content is
+    # unchanged. Some commands depend on runtime/theme state beyond this single
+    # file's content (for example wal.dunst.sh also depends on colors and
+    # geometry), so gating execution on file hash alone is incorrect.
+    if [ -n "${exec_cmd}" ] && [ -z "${seen_post_commands[${exec_cmd}]:-}" ]; then
+      if [[ "${exec_cmd}" =~ \$|\` ]]; then
+        print_log -sec "theme" -warn "blocked" "command contains unexpanded variables or substitution in $(basename "${theme_file}"): ${exec_cmd}"
+      elif should_queue_exec_cmd "${exec_cmd}"; then
+        post_commands+=("${exec_cmd}")
+        seen_post_commands["${exec_cmd}"]=1
+      fi
     fi
 
   done < <(find "${HYPR_THEME_DIR}" -type f -name "*.theme" 2>/dev/null)
@@ -1311,7 +1237,7 @@ process_theme_files() {
 }
 
 # Only process .theme files in theme mode
-if [ "${enableWallDcol}" -eq 0 ]; then
+if [ "${selected_color_mode}" -eq 0 ]; then
   process_theme_files
 else
   # In wallpaper mode, clear theme override files to prevent stale theme colors
@@ -1333,7 +1259,8 @@ else
   clear_theme_file "${HOME}/.config/waybar/theme.css"
   : >"${HOME}/.config/kitty/theme.conf"
   echo "# Empty theme file" >"${HOME}/.config/alacritty/theme.toml"
-  clear_theme_file "${HOME}/.config/swaync/theme.css"
+  : >"${HOME}/.config/dunst/theme.conf"
+  bash "${LIB_DIR}/hypr/wal/wal.dunst.sh" >/dev/null 2>&1 || true
   # Rofi themes expect variables like @background/@foreground; keep a valid fallback
   # that pulls from pywal16-generated ~/.config/rofi/colors.rasi.
   cat >"${HOME}/.config/rofi/theme.rasi" <<'EOF'
@@ -1349,7 +1276,6 @@ EOF
   # Reload apps to apply cleared theme files
   # Note: waybar reload is handled by the watcher when THEME_UPDATE_LOCK is removed
   pkill -SIGUSR1 kitty 2>/dev/null
-  swaync-client -rs 2>/dev/null
   tmux source-file "${XDG_CONFIG_HOME:-$HOME/.config}/tmux/tmux.conf" 2>/dev/null
 fi
 
@@ -1374,7 +1300,7 @@ _safe_hyq_get() {
 
 if command -v hyq &>/dev/null; then
   theme_conf="${HYPR_CONFIG_HOME}/themes/theme.conf"
-  if [ "${enableWallDcol}" -eq 0 ] && [ -r "${theme_conf}" ]; then
+  if [ "${selected_color_mode}" -eq 0 ] && [ -r "${theme_conf}" ]; then
     hyq_out="$(hyq "${theme_conf}" --export env --allow-missing -Q "\$ICON_THEME[string]" 2>/dev/null)"
     hyq_icon="$(_safe_hyq_get "${hyq_out}" "ICON_THEME")"
     [ -n "${hyq_icon}" ] && ICON_THEME="${hyq_icon}"
@@ -1393,179 +1319,26 @@ export ICON_THEME
 # Hyprland metadata (fast, run inline - provides variables for other scripts)
 [ -f "${LIB_DIR}/hypr/wal/wal.hypr.sh" ] && source "${LIB_DIR}/hypr/wal/wal.hypr.sh"
 
-# Secondary theming scripts (depend on icon theme being set)
-declare -a SECONDARY_THEMING_SCRIPTS=(
-  "wal/wal.chrome.sh"
-  "wal/wal.qt.sh"
-  "theme/dconf.set.sh"
-)
-
-run_secondary_theming() {
-  APP_THEMING_PIDS=()
-  local script_path
-  for script in "${SECONDARY_THEMING_SCRIPTS[@]}"; do
-    script_path="${LIB_DIR}/hypr/${script}"
-    if [[ -f "${script_path}" ]]; then
-      bash "${script_path}" &
-      APP_THEMING_PIDS+=($!)
-    fi
-  done
-}
-
 run_secondary_theming
 
 # Wait for parallel operations to complete (with timeout)
-maybe_wait
+wait_for_theming_jobs_when_async_disabled
 
 # Update waybar border-radius before background tasks so it stays within the theme-update lock
-if [[ "${SKIP_WAYBAR_UPDATE}" -ne 1 ]]; then
-  if [[ -x "${LIB_DIR}/hypr/waybar/waybar.py" ]]; then
-    "${LIB_DIR}/hypr/waybar/waybar.py" --update-border-radius &>/dev/null
-    print_log -sec "waybar" -stat "updated" "border-radius from theme"
-  elif command -v hyprshell &>/dev/null; then
-    hyprshell waybar --update-border-radius &>/dev/null
-    print_log -sec "waybar" -stat "updated" "border-radius from theme"
+  if [[ "${SKIP_WAYBAR_UPDATE}" -ne 1 ]]; then
+    if [[ -x "${LIB_DIR}/hypr/waybar/waybar.py" ]]; then
+      WAYBAR_BORDER_RADIUS="${hypr_border:-}" "${LIB_DIR}/hypr/waybar/waybar.py" --update-border-radius &>/dev/null
+      print_log -sec "waybar" -stat "updated" "border-radius from theme"
+    elif command -v hyprshell &>/dev/null; then
+      WAYBAR_BORDER_RADIUS="${hypr_border:-}" hyprshell waybar --update-border-radius &>/dev/null
+      print_log -sec "waybar" -stat "updated" "border-radius from theme"
+    fi
   fi
-fi
 
 # Release the theme-update lock once Waybar files are settled.
 if [[ "${CACHE_ONLY}" -ne 1 ]]; then
   rm -f "${THEME_UPDATE_LOCK}"
 fi
-
-post_updates() {
-  # KDE/Dolphin settings
-  if [ -n "${background}" ] && [ -n "${foreground}" ]; then
-    kdeglobals="${XDG_CONFIG_HOME:-$HOME/.config}/kdeglobals"
-    local kde_scheme_name="${KDE_COLOR_SCHEME:-colors}"
-    local kde_scheme_dir="${XDG_DATA_HOME:-$HOME/.local/share}/color-schemes"
-    local kde_scheme_file="${kde_scheme_dir}/${kde_scheme_name}.colors"
-
-    # Helper to convert hex to R,G,B format
-    hex_to_rgb() {
-      local hex="${1#\#}"
-      printf "%d,%d,%d" "0x${hex:0:2}" "0x${hex:2:2}" "0x${hex:4:2}"
-    }
-
-    # In theme mode, use Kvantum theme colors instead of pywal wallpaper-extracted colors
-    if [ "${enableWallDcol}" -eq 0 ]; then
-      THEME_KVCONFIG="${HYPR_THEME_DIR}/kvantum/kvconfig.theme"
-      if [ -f "$THEME_KVCONFIG" ]; then
-        # Single awk call instead of 3 grep|cut pipelines
-        local kv_colors
-        kv_colors=$(awk -F= '
-          /^window\.color=/ {bg=$2}
-          /^text\.color=/   {fg=$2}
-          /^highlight\.color=/ {hl=$2}
-          END {print bg"|"fg"|"hl}
-        ' "$THEME_KVCONFIG")
-        kv_window_bg="${kv_colors%%|*}"
-        kv_colors="${kv_colors#*|}"
-        kv_text_fg="${kv_colors%%|*}"
-        kv_highlight="${kv_colors#*|}"
-        [ -n "$kv_window_bg" ] && background="$kv_window_bg"
-        [ -n "$kv_text_fg" ] && foreground="$kv_text_fg"
-        [ -n "$kv_highlight" ] && color4="$kv_highlight" && color5="$kv_highlight"
-      fi
-    fi
-
-    bg_rgb=$(hex_to_rgb "$background")
-    fg_rgb=$(hex_to_rgb "$foreground")
-    accent_rgb=$(hex_to_rgb "$color4")
-    hover_rgb=$(hex_to_rgb "$color5")
-
-    # Hash-check: skip kdeglobals writes if colors unchanged
-    local color_hash="${bg_rgb}|${fg_rgb}|${accent_rgb}|${ICON_THEME:-}|${kde_scheme_name}"
-    local hash_file="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/kdeglobals.hash"
-    local prev_hash=""
-    local scheme_missing=0
-    [ -f "$hash_file" ] && prev_hash=$(cat "$hash_file" 2>/dev/null)
-    [ ! -f "${kde_scheme_file}" ] && scheme_missing=1
-
-    mkdir -p "${kde_scheme_dir}"
-    if [ ! -f "${kde_scheme_file}" ]; then
-      if [ -f "/usr/share/color-schemes/Kvantum.colors" ]; then
-        cp -f "/usr/share/color-schemes/Kvantum.colors" "${kde_scheme_file}"
-      elif [ -f "/usr/share/color-schemes/BreezeDark.colors" ]; then
-        cp -f "/usr/share/color-schemes/BreezeDark.colors" "${kde_scheme_file}"
-      fi
-    fi
-
-    # Always enforce valid scheme identity and kdeglobals selection, even when
-    # the color hash is unchanged.
-    if [ -f "${kde_scheme_file}" ]; then
-      toml_write "${kde_scheme_file}" "General" "Name" "${kde_scheme_name}"
-      toml_write "${kde_scheme_file}" "General" "ColorScheme" "${kde_scheme_name}"
-      toml_write "$kdeglobals" "UiSettings" "ColorScheme" "${kde_scheme_name}"
-    fi
-
-    if [ "$color_hash" != "$prev_hash" ] || [ "${scheme_missing}" -eq 1 ]; then
-      # Keep a valid KDE scheme file so Qt/KDE apps don't fall back to defaults.
-      if [ -f "${kde_scheme_file}" ]; then
-        toml_write "${kde_scheme_file}" "Colors:View" "BackgroundNormal" "${bg_rgb}"
-        toml_write "${kde_scheme_file}" "Colors:View" "ForegroundNormal" "${fg_rgb}"
-        toml_write "${kde_scheme_file}" "Colors:View" "DecorationFocus" "${accent_rgb}"
-        toml_write "${kde_scheme_file}" "Colors:View" "DecorationHover" "${hover_rgb}"
-        toml_write "${kde_scheme_file}" "Colors:Selection" "BackgroundNormal" "${accent_rgb}"
-        toml_write "${kde_scheme_file}" "Colors:Selection" "BackgroundAlternate" "${accent_rgb}"
-        toml_write "${kde_scheme_file}" "Colors:Selection" "ForegroundNormal" "${fg_rgb}"
-        toml_write "${kde_scheme_file}" "Colors:Selection" "ForegroundActive" "${fg_rgb}"
-        toml_write "${kde_scheme_file}" "Colors:Selection" "DecorationFocus" "${accent_rgb}"
-        toml_write "${kde_scheme_file}" "Colors:Selection" "DecorationHover" "${hover_rgb}"
-        toml_write "${kde_scheme_file}" "Colors:Window" "BackgroundNormal" "${bg_rgb}"
-        toml_write "${kde_scheme_file}" "Colors:Window" "ForegroundNormal" "${fg_rgb}"
-      fi
-
-      # Update icon theme
-      [ -n "${ICON_THEME}" ] && toml_write "$kdeglobals" "Icons" "Theme" "${ICON_THEME}"
-      # Terminal setting
-      [ -n "${TERMINAL}" ] && toml_write "$kdeglobals" "General" "TerminalApplication" "${TERMINAL}"
-      # View colors
-      toml_write "$kdeglobals" "Colors:View" "BackgroundNormal" "$bg_rgb"
-      toml_write "$kdeglobals" "Colors:View" "ForegroundNormal" "$fg_rgb"
-      toml_write "$kdeglobals" "Colors:View" "DecorationFocus" "$accent_rgb"
-      toml_write "$kdeglobals" "Colors:View" "DecorationHover" "$hover_rgb"
-      # Button colors (Dolphin toolbar/buttons)
-      toml_write "$kdeglobals" "Colors:Button" "BackgroundNormal" "$bg_rgb"
-      toml_write "$kdeglobals" "Colors:Button" "BackgroundAlternate" "$bg_rgb"
-      toml_write "$kdeglobals" "Colors:Button" "ForegroundNormal" "$fg_rgb"
-      toml_write "$kdeglobals" "Colors:Button" "DecorationFocus" "$accent_rgb"
-      toml_write "$kdeglobals" "Colors:Button" "DecorationHover" "$hover_rgb"
-      # Selection colors
-      toml_write "$kdeglobals" "Colors:Selection" "BackgroundNormal" "$accent_rgb"
-      toml_write "$kdeglobals" "Colors:Selection" "BackgroundAlternate" "$accent_rgb"
-      toml_write "$kdeglobals" "Colors:Selection" "ForegroundNormal" "$fg_rgb"
-      toml_write "$kdeglobals" "Colors:Selection" "ForegroundActive" "$fg_rgb"
-      toml_write "$kdeglobals" "Colors:Selection" "DecorationFocus" "$accent_rgb"
-      toml_write "$kdeglobals" "Colors:Selection" "DecorationHover" "$hover_rgb"
-      # Window colors
-      toml_write "$kdeglobals" "Colors:Window" "BackgroundNormal" "$bg_rgb"
-      toml_write "$kdeglobals" "Colors:Window" "ForegroundNormal" "$fg_rgb"
-      # Header/tooltip/complementary colors used by KDE apps (including Dolphin panes)
-      toml_write "$kdeglobals" "Colors:Header" "BackgroundNormal" "$bg_rgb"
-      toml_write "$kdeglobals" "Colors:Header" "ForegroundNormal" "$fg_rgb"
-      toml_write "$kdeglobals" "Colors:Header" "DecorationFocus" "$accent_rgb"
-      toml_write "$kdeglobals" "Colors:Header" "DecorationHover" "$hover_rgb"
-      toml_write "$kdeglobals" "Colors:Tooltip" "BackgroundNormal" "$bg_rgb"
-      toml_write "$kdeglobals" "Colors:Tooltip" "ForegroundNormal" "$fg_rgb"
-      toml_write "$kdeglobals" "Colors:Complementary" "BackgroundNormal" "$bg_rgb"
-      toml_write "$kdeglobals" "Colors:Complementary" "ForegroundNormal" "$fg_rgb"
-      # Save hash
-      echo "$color_hash" > "$hash_file"
-    fi
-  fi
-
-  # Kvantum highlight colors are applied by wal.kvantum.sh in parallel.
-
-  [[ -n "${HYPRLAND_INSTANCE_SIGNATURE}" ]] && {
-    if ! hyprshell shaders --reload 2>&1 | grep -q "error"; then
-      [[ "${LOG_LEVEL}" == "debug" ]] && print_log -sec "hyprshell" -stat "reload" "shaders"
-    else
-      print_log -sec "hyprshell" -warn "reload" "shader reload failed"
-    fi
-  }
-
-}
 
 # post_updates writes KDE/kdeglobals settings.
 # Keep async execution to avoid blocking callers.
@@ -1579,37 +1352,37 @@ fi
 # Print colors if in terminal
 [ -t 1 ] && [ -f "${LIB_DIR}/hypr/wal/wal.print.colors.sh" ] && bash "${LIB_DIR}/hypr/wal/wal.print.colors.sh"
 
-prev_mode=""
-prev_colormode=""
+previous_color_variant=""
+previous_selected_color_mode=""
 if [[ -r "${STATE_FILE}" ]]; then
   # Single awk call to extract both values
   prev_state="$(awk -F= '
-    /^mode=/ {m=$2}
-    /^colormode=/ {c=$2}
+    /^color_variant=/ {m=$2}
+    /^selected_color_mode=/ {c=$2}
     END {print m"|"c}
   ' "${STATE_FILE}")"
-  prev_mode="${prev_state%%|*}"
-  prev_colormode="${prev_state#*|}"
+  previous_color_variant="${prev_state%%|*}"
+  previous_selected_color_mode="${prev_state#*|}"
 fi
-mode_changed=false
-colormode_changed=false
-[[ -n "${prev_mode}" && "${prev_mode}" != "${dcol_mode}" ]] && mode_changed=true
-[[ -n "${prev_colormode}" && "${prev_colormode}" != "${enableWallDcol}" ]] && colormode_changed=true
+color_variant_changed=false
+selected_color_mode_changed=false
+[[ -n "${previous_color_variant}" && "${previous_color_variant}" != "${resolved_color_variant}" ]] && color_variant_changed=true
+[[ -n "${previous_selected_color_mode}" && "${previous_selected_color_mode}" != "${selected_color_mode}" ]] && selected_color_mode_changed=true
 
 # State
 state_wallpaper="${STATE_WALLPAPER:-${WALLPAPER_IMAGE:-theme}}"
 {
-  echo "${wal_cache_key:-${state_wallpaper}:${dcol_mode}}"
+  echo "${wal_cache_key:-${state_wallpaper}:${resolved_color_variant}}"
   echo "wallpaper=${state_wallpaper}"
-  echo "mode=${dcol_mode}"
-  echo "colormode=${enableWallDcol}"
+  echo "color_variant=${resolved_color_variant}"
+  echo "selected_color_mode=${selected_color_mode}"
   echo "backend=${PYWAL_BACKEND}"
 } >"${STATE_FILE}"
 
 # Notify
-if [[ "${CACHE_ONLY}" -ne 1 ]] && [[ "${mode_changed}" == true || "${colormode_changed}" == true ]]; then
-  command -v notify-send &>/dev/null \
-    && notify-send "Theme Updated" "${dcol_mode} mode" -i preferences-desktop-theme -t 2000
+if [[ "${CACHE_ONLY}" -ne 1 ]] && [[ "${color_variant_changed}" == true || "${selected_color_mode_changed}" == true ]]; then
+  command -v dunstify &>/dev/null \
+    && dunstify "Theme Updated" "${resolved_color_variant} mode" -i preferences-desktop-theme -t 2000
 fi
 
 print_log -sec "pywal16" -stat "complete" "applied"

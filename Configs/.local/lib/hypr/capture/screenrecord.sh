@@ -10,7 +10,7 @@ set -eo pipefail
 
 # Check if wf-recorder is installed
 if ! command -v wf-recorder &>/dev/null; then
-  notify-send -a "Screen Recorder" "wf-recorder not found" "Install it with: sudo pacman -S wf-recorder" -u critical
+  dunstify -a "Screen Recorder" "wf-recorder not found" "Install it with: sudo pacman -S wf-recorder" -u critical
   exit 1
 fi
 
@@ -21,7 +21,7 @@ OUTPUT_DIR="${HYPR_SCREENRECORD_DIR:-${XDG_VIDEOS_DIR:-$HOME/Videos}/Recordings}
 # Validate and create output directory
 if [[ ! -d "$OUTPUT_DIR" ]]; then
   mkdir -p "$OUTPUT_DIR" 2>/dev/null || {
-    notify-send -a "Screen Recorder" "Directory error" "Cannot create $OUTPUT_DIR" -u critical
+    dunstify -a "Screen Recorder" "Directory error" "Cannot create $OUTPUT_DIR" -u critical
     exit 1
   }
 fi
@@ -83,7 +83,7 @@ handle_recording() {
     }')"
 
     if [[ -z "$GEOM" ]]; then
-      notify-send -a "Screen Recorder" "Cancelled" "No region selected"
+      dunstify -a "Screen Recorder" "Cancelled" "No region selected"
       return 1
     fi
 
@@ -93,7 +93,7 @@ handle_recording() {
   wf-recorder "${parameters[@]}" -f "${filename}" &>/dev/null &
   echo $! > "$RECORDING_FILE"
   pkill -RTMIN+8 waybar  # Update indicator
-  notify-send -a "Screen Recorder" "Recording started" "Using wf-recorder"
+  dunstify -a "Screen Recorder" "Recording started" "Using wf-recorder"
 }
 
 stop_recording() {
@@ -103,7 +103,7 @@ stop_recording() {
       kill -SIGINT "$PID"
       rm "$RECORDING_FILE"
       pkill -RTMIN+8 waybar  # Update indicator
-      notify-send -a "Screen Recorder" "Recording saved" "Check $OUTPUT_DIR"
+      dunstify -a "Screen Recorder" "Recording saved" "Check $OUTPUT_DIR"
     else
       rm "$RECORDING_FILE"
     fi

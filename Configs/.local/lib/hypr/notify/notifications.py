@@ -25,49 +25,91 @@ def _status_error(message):
     }
 
 
-def get_swaync_status():
-    if shutil.which("swaync-client") is None:
-        return _status_error("swaync-client not found")
+def _get_history_items():
+    raw = _run(["dunstctl", "history"])
+    payload = json.loads(raw)
+    data = payload.get("data")
+    if not isinstance(data, list) or not data:
+        return []
+    items = data[0]
+    return items if isinstance(items, list) else []
 
-    # Primary path: let swaync render waybar-compatible JSON.
+
+def _get_count(kind):
+    raw = _run(["dunstctl", "count", kind])
+    return int(raw) if raw.isdigit() else 0
+
+
+def _extract_field(item, key):
+    value = item.get(key, {})
+    if isinstance(value, dict):
+        return str(value.get("data", "")).strip()
+    return str(value).strip()
+
+
+def get_dunst_status():
+    if shutil.which("dunstctl") is None:
+        return _status_error("dunstctl not found")
+
     try:
-        raw = _run(["swaync-client", "-swb"])
-        data = json.loads(raw)
-        if isinstance(data, dict):
-            data.setdefault("text", "0")
-            data.setdefault("alt", "none")
-            data.setdefault("tooltip", "Notifications")
-            data.setdefault("class", data.get("alt", "none"))
-            return data
-    except (subprocess.SubprocessError, json.JSONDecodeError):
-        pass
+        history = _get_history_items()
+        paused = _run(["dunstctl", "is-paused"]).strip().lower() == "true"
+        displayed = _get_count("displayed")
+        waiting = _get_count("waiting")
+        history_count = _get_count("history")
+    except (subprocess.SubprocessError, json.JSONDecodeError, ValueError):
+        return _status_error("Failed to query dunst status")
 
-    # Fallback path: derive minimal status from count + DND.
-    try:
-        count_raw = _run(["swaync-client", "-c"])
-        dnd_raw = _run(["swaync-client", "-D"]).lower()
-        count = int(count_raw) if count_raw.isdigit() else 0
-        dnd = dnd_raw == "true"
-    except (subprocess.SubprocessError, ValueError):
-        return _status_error("Failed to query swaync status")
+    count = max(history_count, displayed + waiting, len(history))
+    category_map = {
+        "email": "email-notification",
+        "chat": "chat-notification",
+        "warning": "warning-notification",
+        "error": "error-notification",
+        "network": "network-notification",
+        "battery": "battery-notification",
+        "update": "update-notification",
+        "music": "music-notification",
+        "volume": "volume-notification",
+    }
 
-    if dnd:
+    alt = "none"
+    if paused:
         alt = "dnd-notification" if count > 0 else "dnd-none"
-        tooltip = f"Do Not Disturb: ON\\nNotifications waiting: {count}"
-    else:
-        alt = "notification" if count > 0 else "none"
-        tooltip = f"Do Not Disturb: OFF\\nNotifications: {count}"
+    elif count > 0:
+        alt = "notification"
+        if history:
+            category = _extract_field(history[0], "category").lower()
+            alt = category_map.get(category, alt)
+
+    tooltip_lines = [
+        "Notifications",
+        "scroll-down: show latest from history",
+        "left-click: toggle do not disturb",
+        "middle-click: open menu",
+        "right-click: clear notifications",
+    ]
+
+    if history:
+        tooltip_lines.append("")
+        for item in history[:8]:
+            summary = _extract_field(item, "summary")
+            body = _extract_field(item, "body")
+            line = summary or body or "Notification"
+            if summary and body and body != summary:
+                line = f"{summary}: {body}"
+            tooltip_lines.append(f"• {line}")
 
     return {
-        "text": str(count),
+        "text": "",
         "alt": alt,
-        "tooltip": tooltip,
+        "tooltip": "\n".join(tooltip_lines),
         "class": alt,
     }
 
 
 def main():
-    status = get_swaync_status()
+    status = get_dunst_status()
     sys.stdout.write(json.dumps(status) + "\n")
     sys.stdout.flush()
 

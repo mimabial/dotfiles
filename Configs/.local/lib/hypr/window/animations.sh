@@ -7,87 +7,89 @@ if ! source "$(command -v hyprshell)"; then
   exit 1
 fi
 
-# Set variables
-animations_dir="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/animations"
+animations_user_dir="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}/animations"
+animations_shared_dir="${HYPR_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/hypr}/animations"
+animations_state_file="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/animations.conf"
 
-# Ensure the animations directory exists
-if [ ! -d "$animations_dir" ]; then
-  notify-send -i "preferences-desktop-display" "Error" "Animations directory does not exist at $animations_dir"
-  exit 1
-fi
-
-# Show help function
 show_help() {
   cat <<HELP
 Usage: $0 [OPTIONS]
 
 Options:
-    --select | -S       Select an animation from the available options  
+    --select | -S       Select an animation from the available options
+    --reload | -r       Reload the current animation
     --help   | -h       Show this help message
 HELP
 }
 
-if [ -z "${*}" ]; then
-  echo "No arguments provided"
-  show_help
-fi
+resolve_animation_path() {
+  local name="${1:-theme}"
+  name="${name%.conf}"
 
-# Define long options
-LONGOPTS="select,help"
-
-# Parse options
-PARSED=$(
-  if getopt --options Sh --longoptions "${LONGOPTS}" --name "$0" -- "$@"; then
-    exit 2
+  if [[ "${name}" == */* ]] && [[ -f "${name}" ]]; then
+    printf '%s\n' "${name}"
+    return 0
   fi
-)
-eval set -- "${PARSED}"
-# Default action if no arguments are provided
-if [ -z "$1" ]; then
-  echo "No arguments provided"
-  show_help
-  exit 1
-fi
 
-# Functions
+  local candidate
+  for candidate in \
+    "${animations_user_dir}/${name}.conf" \
+    "${animations_shared_dir}/${name}.conf"; do
+    if [[ -f "${candidate}" ]]; then
+      printf '%s\n' "${candidate}"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+list_animation_names() {
+  local dir path name
+  local -A seen=()
+
+  for dir in "${animations_user_dir}" "${animations_shared_dir}"; do
+    [[ -d "${dir}" ]] || continue
+    while IFS= read -r -d '' path; do
+      name="$(basename "${path}" .conf)"
+      [[ "${name}" == "disable" || "${name}" == "theme" ]] && continue
+      [[ -n "${seen[${name}]:-}" ]] && continue
+      seen["${name}"]=1
+      printf '%s\n' "${name}"
+    done < <(find -L "${dir}" -maxdepth 1 -type f -name '*.conf' -print0 | sort -z)
+  done
+}
+
 fn_select() {
-  animation_items=$(find -L "$animations_dir" -name "*.conf" ! -name "disable.conf" ! -name "theme.conf" 2>/dev/null | sed 's/\.conf$//')
+  local animation_items rofi_select selected_animation
+  local font_scale font_name font_override
+  local hypr_border wind_border elem_border hypr_width r_override
 
-  if [ -z "$animation_items" ]; then
-    notify-send -i "preferences-desktop-display" "Error" "No .conf files found in $animations_dir"
-    exit 1
-  fi
+  animation_items="$(list_animation_names)"
+  animation_items=$(printf 'Disable Animation\nTheme Preference\n%s\n' "${animation_items}" | sed '/^$/d')
 
-  # Set rofi scaling
   font_scale="${ROFI_ANIMATION_SCALE}"
   [[ "${font_scale}" =~ ^[0-9]+$ ]] || font_scale=${ROFI_SCALE:-10}
 
-  # Set font name
   font_name=${ROFI_ANIMATION_FONT:-$ROFI_FONT}
   font_name=${font_name:-$(hyprshell fonts/font-get.sh menu 2>/dev/null || true)}
   font_name=${font_name:-$(get_hyprConf "MENU_FONT")}
   font_name=${font_name:-$(get_hyprConf "FONT")}
   font_name=${font_name:-monospace}
-
-  # Set rofi font override
   font_override="* {font: \"${font_name} ${font_scale}\";}"
 
-  # Window and element styling
   hypr_border=${hypr_border:-"$(hyprctl -j getoption decoration:rounding | jq '.int')"}
   wind_border=$((hypr_border * 3 / 2))
   elem_border=$((hypr_border == 0 ? 5 : hypr_border))
   hypr_width=${hypr_width:-"$(hyprctl -j getoption general:border_size | jq '.int')"}
   r_override="window{border:${hypr_width}px;border-radius:${wind_border}px;} wallbox{border-radius:${elem_border}px;} element{border-radius:${elem_border}px;}"
 
-  animation_items="Disable Animation
-Theme Preference
-$animation_items"
-  rofi_select="${HYPR_ANIMATION/theme/Theme Preference}"
+  rofi_select="${HYPR_ANIMATION:-theme}"
+  rofi_select="${rofi_select/theme/Theme Preference}"
   rofi_select="${rofi_select/disable/Disable Animation}"
 
-  # Display options using Rofi with custom scaling, positioning, and placeholder
-  selected_animation=$(awk -F/ '{print $NF}' <<<"$animation_items" |
-    rofi -dmenu -i -select "$rofi_select" \
+  selected_animation=$(printf '%s\n' "${animation_items}" |
+    rofi -dmenu -i -select "${rofi_select}" \
       -p "Select animation" \
       -theme-str "entry { placeholder: \"Select animation...\"; }" \
       -theme-str "${font_override}" \
@@ -95,57 +97,76 @@ $animation_items"
       -theme-str "$(get_rofi_pos)" \
       -theme "clipboard")
 
-  # Exit if no selection was made
-  if [ -z "$selected_animation" ]; then
-    exit 0
-  fi
-  case $selected_animation in
-    "Disable Animation")
-      selected_animation="disable"
-      ;;
-    "Theme Preference")
-      selected_animation="theme"
-      ;;
+  [[ -n "${selected_animation}" ]] || exit 0
+
+  case "${selected_animation}" in
+    "Disable Animation") selected_animation="disable" ;;
+    "Theme Preference") selected_animation="theme" ;;
   esac
 
-  state_set "HYPR_ANIMATION" "$selected_animation" "staterc"
+  state_set "HYPR_ANIMATION" "${selected_animation}" "staterc"
   fn_update
-  # Notify the user
-  notify-send -i "preferences-desktop-display" "Animation:" "$selected_animation"
+  send_ephemeral_notif "hypr-animation" -t 2000 -i "preferences-desktop-display" "Animation selected" "${selected_animation}"
 }
 
 fn_update() {
+  local current_animation animation_path compact_path
+
   [ -f "$HYPR_STATE_HOME/config" ] && source "$HYPR_STATE_HOME/config"
   [ -f "$HYPR_STATE_HOME/staterc" ] && source "$HYPR_STATE_HOME/staterc"
-  local animDir="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/animations"
-  current_animation=${HYPR_ANIMATION:-"theme"}
-  echo "Animation updated to: $current_animation"
-  cat <<EOF >"${XDG_CONFIG_HOME:-$HOME/.config}/hypr/animations.conf"
 
+  current_animation=${HYPR_ANIMATION:-theme}
+  animation_path="$(resolve_animation_path "${current_animation}")" || {
+    send_ephemeral_notif "hypr-animation-error" -t 3000 -i "preferences-desktop-display" "Error" "Animation '${current_animation}' not found in ${animations_user_dir} or ${animations_shared_dir}"
+    return 1
+  }
+
+  mkdir -p "$(dirname "${animations_state_file}")"
+  compact_path="$(hypr_compact_path "${animation_path}")"
+
+  cat <<CONF >"${animations_state_file}"
 #! ▄▀█ █▄░█ █ █▀▄▀█ ▄▀█ ▀█▀ █ █▀█ █▄░█
 #! █▀█ █░▀█ █ █░▀░█ █▀█ ░█░ █ █▄█ █░▀█
 
 
 #*┌────────────────────────────────────────────────────────────────────────────┐
-#*│ # See https://wiki.hyprland.org/Configuring/Animations/                    │
-#*│ # System Controlled content // DO NOT EDIT                                   │
-#*│ # Edit or add animations in the ./hypr/animations/ directory               │
-#*│ # and run the 'animations.sh --select' command to update this file         │
-#*│                                                                            │
+#*│ # System controlled content // DO NOT EDIT                                │
+#*│ # User overrides live in ~/.config/hypr/animations/                       │
+#*│ # Shared stock lives in ~/.local/share/hypr/animations/                   │
+#*│ # Run 'hyprshell window/animations.sh --select' to change the current one │
 #*└────────────────────────────────────────────────────────────────────────────┘
 
 \$ANIMATION=${current_animation}
-\$ANIMATION_PATH=./animations/${current_animation}.conf
+\$ANIMATION_PATH=${compact_path}
 source = \$ANIMATION_PATH
-EOF
-  # cat "${animDir}/${current_animation}.conf" >>"${XDG_CONFIG_HOME:-$HOME/.config}/hypr/animations.conf"
+CONF
 }
 
-# Process options
+fn_reload() {
+  local animation_name="${HYPR_ANIMATION:-theme}"
+  state_set "HYPR_ANIMATION" "${animation_name}" "staterc"
+  fn_update
+  send_ephemeral_notif "hypr-animation" -t 2000 -i "preferences-desktop-display" "Animation reloaded" "${animation_name}"
+}
+
+if [[ -z "${*}" ]]; then
+  echo "No arguments provided"
+  show_help
+  exit 1
+fi
+
+LONGOPTS="select,reload,help"
+PARSED=$(getopt --options Srh --longoptions "${LONGOPTS}" --name "$0" -- "$@") || exit 2
+eval set -- "${PARSED}"
+
 while true; do
   case "$1" in
     -S | --select)
       fn_select
+      exit 0
+      ;;
+    -r | --reload)
+      fn_reload
       exit 0
       ;;
     --help | -h)

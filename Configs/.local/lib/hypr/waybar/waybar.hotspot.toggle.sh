@@ -6,7 +6,7 @@ check() {
 
 # Check if nmcli is available
 if ! check nmcli; then
-  notify-send "Hotspot Error" "NetworkManager (nmcli) is not installed" -u critical
+  dunstify "Hotspot Error" "NetworkManager (nmcli) is not installed" -u critical
   exit 1
 fi
 
@@ -22,9 +22,9 @@ done)
 if [ -n "$active_hotspot" ]; then
   # Hotspot is active - disconnect it
   if nmcli connection down "$active_hotspot" 2>/dev/null; then
-    notify-send "Hotspot Disabled" "Disconnected from: $active_hotspot" -u normal
+    dunstify "Hotspot Disabled" "Disconnected from: $active_hotspot" -u normal
   else
-    notify-send "Hotspot Error" "Failed to disconnect: $active_hotspot" -u critical
+    dunstify "Hotspot Error" "Failed to disconnect: $active_hotspot" -u critical
   fi
 else
   # No active hotspot - try to start one
@@ -37,11 +37,11 @@ else
     active_wifi=$(nmcli -t -f NAME,DEVICE connection show --active 2>/dev/null | grep ":$wifi_device" | cut -d: -f1)
 
     # Ask user if they want to disconnect from WiFi
-    notify-send "Hotspot" "You're connected to: $active_wifi\n\nDisconnecting WiFi to enable hotspot..." -u normal
+    dunstify "Hotspot" "You're connected to: $active_wifi\n\nDisconnecting WiFi to enable hotspot..." -u normal
 
     # Disconnect from WiFi
     if ! nmcli connection down "$active_wifi" 2>/dev/null; then
-      notify-send "Hotspot Error" "Failed to disconnect from WiFi" -u critical
+      dunstify "Hotspot Error" "Failed to disconnect from WiFi" -u critical
       exit 1
     fi
 
@@ -63,9 +63,9 @@ else
     exit_code=$?
 
     if [ $exit_code -eq 0 ]; then
-      notify-send "Hotspot Enabled" "Connected to: $hotspot_name" -u normal
+      dunstify "Hotspot Enabled" "Connected to: $hotspot_name" -u normal
     else
-      notify-send "Hotspot Error" "Failed to start: $hotspot_name\n\n$error_msg" -u critical
+      dunstify "Hotspot Error" "Failed to start: $hotspot_name\n\n$error_msg" -u critical
 
       # Try to reconnect to WiFi if hotspot failed
       if [ -n "$active_wifi" ]; then
@@ -77,15 +77,15 @@ else
     default_ssid="MyHotspot-${HOSTNAME:-$(cat /etc/hostname 2>/dev/null || echo "PC")}"
     default_password="hotspot123"
 
-    notify-send "Creating Hotspot" "Setting up: $default_ssid" -u normal
+    dunstify "Creating Hotspot" "Setting up: $default_ssid" -u normal
 
     error_msg=$(nmcli device wifi hotspot ssid "$default_ssid" password "$default_password" 2>&1)
     exit_code=$?
 
     if [ $exit_code -eq 0 ]; then
-      notify-send "Hotspot Created" "SSID: $default_ssid\nPassword: $default_password\n\nUse nm-connection-editor to customize" -u normal
+      dunstify "Hotspot Created" "SSID: $default_ssid\nPassword: $default_password\n\nUse nm-connection-editor to customize" -u normal
     else
-      notify-send "Hotspot Error" "Failed to create hotspot\n\n$error_msg\n\nTry using nm-connection-editor" -u critical
+      dunstify "Hotspot Error" "Failed to create hotspot\n\n$error_msg\n\nTry using nm-connection-editor" -u critical
 
       # Try to reconnect to WiFi if hotspot failed
       if [ -n "$active_wifi" ]; then

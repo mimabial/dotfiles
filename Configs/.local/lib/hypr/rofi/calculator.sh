@@ -6,8 +6,8 @@
 
 # Check if qalculate-gtk is installed
 if ! command -v qalculate-gtk &> /dev/null; then
-    notify-send "Calculator" "qalculate-gtk is not installed. Installing..." -t 3000
-    $TERMINAL -e bash -c "sudo pacman -S --noconfirm qalculate-gtk && notify-send 'Calculator' 'qalculate-gtk installed successfully'"
+    dunstify "Calculator" "qalculate-gtk is not installed. Installing..." -t 3000
+    $TERMINAL -e bash -c "sudo pacman -S --noconfirm qalculate-gtk && dunstify 'Calculator' 'qalculate-gtk installed successfully'"
     exit 0
 fi
 

@@ -8,7 +8,7 @@
 
 HYPR_THEME="${HYPR_THEME:-}"
 HYPR_THEME_DIR="${HYPR_THEME_DIR:-${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}}"
-enableWallDcol="${enableWallDcol:-1}"
+selected_color_mode="${selected_color_mode:-1}"
 
 # Get theme settings
 if [ ! -f "${HYPR_THEME_DIR}/hypr.theme" ]; then
@@ -32,7 +32,7 @@ eval "$(
 )"
 
 # Pywal16 mode mapping
-case "${enableWallDcol}" in
+case "${selected_color_mode}" in
   0) mode_name="theme" ;;
   1) mode_name="auto" ;;
   2) mode_name="dark" ;;
@@ -91,7 +91,7 @@ if grep -q "#//---Wallpaper mode enabled---\|#//---Pywal16 mode enabled---" "${H
   sed -i '/#\/\/---Wallpaper mode enabled---/,$d; /#\/\/---Pywal16 mode enabled---/,$d' "${HYPR_CONFIG_HOME}/themes/wal.conf"
 fi
 
-if [[ "${enableWallDcol}" -gt 0 ]]; then
+if [[ "${selected_color_mode}" -gt 0 ]]; then
   cat <<ON_WAL >>"${HYPR_CONFIG_HOME}/themes/wal.conf"
 
 #//---Wallpaper mode enabled---

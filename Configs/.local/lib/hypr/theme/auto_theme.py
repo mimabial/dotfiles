@@ -278,7 +278,7 @@ class AutoTheme:
             CONFIG_FILE,
             self._state_config_file(),
             self._state_home() / "hypr" / "staterc",
-            self._state_home() / "hypr" / "mode",
+            self._state_home() / "hypr" / "color_variant",
             self._color_state_file(),
         ]
 
@@ -335,10 +335,10 @@ class AutoTheme:
             values[key.strip()] = value.strip().strip('"')
         return values
 
-    def _read_mode_file(self) -> Optional[str]:
-        mode_file = self._state_home() / "hypr" / "mode"
-        if mode_file.exists():
-            return mode_file.read_text().strip()
+    def _read_color_variant_file(self) -> Optional[str]:
+        color_variant_file = self._state_home() / "hypr" / "color_variant"
+        if color_variant_file.exists():
+            return color_variant_file.read_text().strip()
         return None
 
     def _read_color_state(self) -> dict:
@@ -360,14 +360,14 @@ class AutoTheme:
         state = self._read_color_state()
         if not state:
             return False
-        colormode_raw = state.get("colormode")
+        selected_color_mode_raw = state.get("selected_color_mode")
         try:
-            colormode = int(colormode_raw) if colormode_raw is not None else None
+            selected_color_mode = int(selected_color_mode_raw) if selected_color_mode_raw is not None else None
         except ValueError:
-            colormode = None
-        if colormode != 1:
+            selected_color_mode = None
+        if selected_color_mode != 1:
             return False
-        if state.get("mode") != mode:
+        if state.get("color_variant") != mode:
             return False
         wallpaper = self._resolve_wallpaper(staterc_values)
         if wallpaper and state.get("wallpaper") and str(wallpaper) != state.get("wallpaper"):
@@ -639,9 +639,9 @@ class AutoTheme:
         """Apply the theme mode to all configured targets."""
         if mode == self.state["current_mode"]:
             if self.config["control_hyprland"]:
-                current_mode = self._read_mode_file()
+                current_color_variant = self._read_color_variant_file()
                 staterc_values = self._read_staterc()
-                if current_mode != mode or not self._pywal_state_matches(mode, staterc_values):
+                if current_color_variant != mode or not self._pywal_state_matches(mode, staterc_values):
                     if self._theme_update_lock_file().exists():
                         return  # Color pipeline already in progress; avoid duplicate color.set
                     self._apply_hyprland(mode)
@@ -693,15 +693,15 @@ class AutoTheme:
             staterc_values = self._read_staterc()
             lines = staterc.read_text().splitlines() if staterc.exists() else []
 
-            enable_wall_dcol = None
-            raw_enable = staterc_values.get("enableWallDcol")
-            if raw_enable is not None:
+            selected_color_mode = None
+            raw_selected_color_mode = staterc_values.get("selected_color_mode")
+            if raw_selected_color_mode is not None:
                 try:
-                    enable_wall_dcol = int(raw_enable)
+                    selected_color_mode = int(raw_selected_color_mode)
                 except ValueError:
-                    enable_wall_dcol = None
-            if enable_wall_dcol != 1:
-                print(f"Auto mode inactive (enableWallDcol={raw_enable!r}), skipping Hyprland apply")
+                    selected_color_mode = None
+            if selected_color_mode != 1:
+                print(f"Auto mode inactive (selected_color_mode={raw_selected_color_mode!r}), skipping Hyprland apply")
                 return
 
             updated = False
@@ -715,11 +715,11 @@ class AutoTheme:
 
             staterc.write_text("\n".join(lines) + "\n")
 
-            mode_file = state_home / "hypr" / "mode"
-            mode_file.parent.mkdir(parents=True, exist_ok=True)
-            current_mode = mode_file.read_text().strip() if mode_file.exists() else ""
-            if current_mode != mode:
-                mode_file.write_text(f"{mode}\n")
+            color_variant_file = state_home / "hypr" / "color_variant"
+            color_variant_file.parent.mkdir(parents=True, exist_ok=True)
+            current_color_variant = color_variant_file.read_text().strip() if color_variant_file.exists() else ""
+            if current_color_variant != mode:
+                color_variant_file.write_text(f"{mode}\n")
 
             wallpaper = self._resolve_wallpaper(staterc_values)
             if not wallpaper or not wallpaper.exists():

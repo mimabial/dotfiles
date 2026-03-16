@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 """
-#TODO: I am trying to learn a good way to use sockets.
-#? This implementation is a POC for other rewrites to avoid multiple IO and System calls.
 Cava Manager and Client using Unix Sockets
 This script can act as both a manager (server) and client (reader)
 - Manager: Runs a single cava instance and broadcasts to multiple clients via socket

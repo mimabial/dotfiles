@@ -179,18 +179,18 @@ help() {
 error() {
 	# Print messages to stderr, send notification (only first arg) if stderr is not interactive
 	printf '%s\n' "$@" >&2
-	# if notify-send is installed and stderr is not a terminal, also send notification
-	if [ ! -t 2 ] && command -v notify-send >/dev/null; then
-		notify-send -u critical -i error -a "${SELF_NAME}" "Error" "$1"
+	# if dunstify is installed and stderr is not a terminal, also send notification
+	if [ ! -t 2 ] && command -v dunstify >/dev/null; then
+		dunstify -u critical -i error -a "${SELF_NAME}" "Error" "$1"
 	fi
 }
 
 message() {
 	# Print messages to stdout, send notification (only first arg) if stdout is not interactive
 	printf '%s\n' "$@"
-	# if notify-send is installed and stdout is not a terminal, also send notification
-	if [ ! -t 1 ] && command -v notify-send >/dev/null; then
-		notify-send -u normal -i info -a "${SELF_NAME}" "Info" "$1"
+	# if dunstify is installed and stdout is not a terminal, also send notification
+	if [ ! -t 1 ] && command -v dunstify >/dev/null; then
+		dunstify -u normal -i info -a "${SELF_NAME}" "Info" "$1"
 	fi
 }
 

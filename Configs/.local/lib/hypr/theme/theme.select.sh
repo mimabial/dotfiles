@@ -8,7 +8,7 @@ else
   export_hypr_config
 fi
 
-rofiAssetDir="${XDG_CONFIG_HOME:-$HOME/.config}/rofi/assets"
+rofiAssetDir="$(rofi_shared_dir)/assets"
 
 hypr_border=${hypr_border:-"$(hyprctl -j getoption decoration:rounding | jq '.int')"}
 hypr_border=${hypr_border:-2}
@@ -26,6 +26,21 @@ mon_scale=${mon_scale:-1}
 
 mon_x_res=$((mon_x_res * 100 / mon_scale))
 mon_y_res=$((mon_y_res * 100 / mon_scale))
+
+theme_select_notify() {
+  command -v dunstify >/dev/null 2>&1 || return 0
+
+  local icon_path="$1"
+  shift
+  local -a args=(
+    -a "Theme select"
+    -t 2000
+    -r 92
+  )
+
+  [[ -n "${icon_path}" ]] && args+=(-i "${icon_path}")
+  dunstify "${args[@]}" "$@"
+}
 
 selector_menu() {
   # ============================================================================
@@ -78,13 +93,13 @@ selector_menu() {
 
   #// launch rofi menu
   RofiSel=$(
-    find -L "${rofiAssetDir}" -name "theme_style_*" \
+    rofi_list_asset_files 'theme_style_*' \
       | awk -F '[_.]' '{print $((NF - 1))}' \
       | while read -r styleNum; do
-        echo -en "${styleNum}\x00icon\x1f${rofiAssetDir}/theme_style_${styleNum}.png\n"
+        echo -en "${styleNum}\x00icon\x1f$(rofi_resolve_asset "theme_style_${styleNum}.png")\n"
       done | sort -n \
       | rofi -dmenu -i \
-        -theme "${ROFI_THEME_MENU_STYLE:-theme_select}" \
+        -theme "$(rofi_resolve_theme "${ROFI_THEME_MENU_STYLE:-theme_select}")" \
         -theme-str "${font_override}" \
         -theme-str "${r_override}" \
         -select "${ROFI_THEME_STYLE}"
@@ -96,7 +111,7 @@ selector_menu() {
     selectedStyle=$(echo "${RofiSel}" | awk -F '\x00' '{print $1}' | sed 's/Style //')
 
     #// notify the user
-    notify-send -a "Theme select" -i "${rofiAssetDir}/theme_style_${selectedStyle}.png" "Style ${selectedStyle} applied..."
+    theme_select_notify "$(rofi_resolve_asset "theme_style_${selectedStyle}.png")" "Style ${selectedStyle} applied..."
 
     #// save selection in config file
     state_set "ROFI_THEME_STYLE" "${selectedStyle}" "staterc"
@@ -225,13 +240,13 @@ esac
 get_themes
 ensure_theme_thumbs "${thmbExtn:-sqre}"
 # shellcheck disable=SC2154
-rofiSel=$(
+selected_theme_name=$(
   i=0
   while [ "${i}" -lt ${#thmList[@]} ]; do
     echo -en "${thmList[$i]}\x00icon\x1f${WALLPAPER_THUMB_DIR}/$(set_hash "${thmWall[$i]}").${thmbExtn:-sqre}\n"
     i=$((i + 1))
   done | rofi -dmenu -i \
-    -theme "${ROFI_THEME_STYLE:-selector}" \
+    -theme "$(rofi_resolve_theme "${ROFI_THEME_STYLE:-selector}")" \
     -theme-str "${font_override}" \
     -theme-str "${r_override}" \
     -select "${HYPR_THEME}"
@@ -239,8 +254,6 @@ rofiSel=$(
 
 #// apply theme
 
-if [ -n "${rofiSel}" ]; then
-  "${LIB_DIR}/hypr/theme/theme.switch.sh" -s "${rofiSel}"
-  # shellcheck disable=SC2154
-  notify-send -a "Theme select" -i "${ICONS_DIR}/Pywal16-Icon/hypr.png" " ${rofiSel}"
+if [ -n "${selected_theme_name}" ]; then
+  "${LIB_DIR}/hypr/theme/theme.switch.sh" -s "${selected_theme_name}"
 fi

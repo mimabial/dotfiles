@@ -1,0 +1,12 @@
+{
+  "custom/wbarswitch": {
+    "justify": "center",
+    "format": "", //    //
+    "rotate": 0,
+    "tooltip-format": "\uf205 Switch bar",
+    "on-click": "hyprshell waybar -n",
+    "on-click-right": "hyprshell waybar -p",
+    "interval": 86400,
+    "tooltip": true
+  }
+}

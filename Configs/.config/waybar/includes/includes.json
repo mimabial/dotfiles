@@ -1,155 +1,72 @@
 {
     "include": [
-        "$XDG_CONFIG_HOME/waybar/modules/custom-terminal.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/hyprland-workspaces#hindi.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-hyprsunset.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-wallchange.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-lazygit.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-weather#sunset.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/power-profiles-daemon.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-dmark.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-mark.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-github#notifications.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/battery.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/backlight.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/hyprland-submap.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/hyprland-workspaces#kanji.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/pulseaudio.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-mediaplayer.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-network#speed.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/pulseaudio-slider.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-weather.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/tray.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-powermenu.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/hyprland-language.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-cpuinfo.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/wlr-taskbar.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/hyprland-window.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-hyprmenu.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-updates.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-mainmenu.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-themeswitch.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-wifimenu.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-swaync.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/pulseaudio-microphone.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-weather#sunrise.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/clock#time.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-wbarswitch.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/wlr-taskbar#windows.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-display.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-devmenu.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/backlight-slider.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-weather#minmax.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-hotspot.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-colorpicker.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-audiomenu.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/network.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-vpn.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/bluetooth#status.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-focusmode.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-gpuinfo.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-screenshot.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/clock#date.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/memory.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/disk.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-keybindhint.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/hyprland-workspaces#roman.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-cliphist.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-colormode.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-fanspeedinfo.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/privacy.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-swaync-dnd.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/backlight-slider.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/backlight.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/battery.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/bluetooth#status.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/bluetooth.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/clock#date.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/clock#time.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-audiomenu.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-caffeine.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-cliphist.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-colormode.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-colorpicker.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-cpuinfo.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-devmenu.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-display.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-dmark.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-dunst.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-fanspeedinfo.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-focusmode.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-github#notifications.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-gpuinfo.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-hotspot.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-hyprmenu.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-hyprsunset.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-keybindhint.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-lazygit.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-mainmenu.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-mark.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-mediaplayer.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-network#speed.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-powermenu.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-ranger.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-rmpc.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-screenrecord.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-screenshot.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-terminal.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-themeswitch.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-updates.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-vpn.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-wallchange.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-wbarswitch.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-weather#minmax.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-weather#sunrise.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-weather#sunset.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-weather.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-wifimenu.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-workflows.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/disk.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/hyprland-language.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/hyprland-submap.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/hyprland-window.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/hyprland-workspaces#hindi.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/hyprland-workspaces#kanji.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/hyprland-workspaces#roman.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/hyprland-workspaces.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/memory.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/network.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/power-profiles-daemon.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/privacy.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/pulseaudio-microphone.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/pulseaudio-slider.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/pulseaudio.jsonc",
         "$XDG_CONFIG_HOME/waybar/modules/temperature.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-caffeine.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-workflows.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/hyprland-workspaces.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-rmpc.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-ranger.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/bluetooth.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-screenrecord.jsonc"
+        "$XDG_DATA_HOME/waybar/modules/tray.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/wlr-taskbar#windows.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/wlr-taskbar.jsonc"
     ],
-    "privacy": {
-        "justify": "center",
-        "orientation": "vertical",
-        "icon-spacing": 4,
-        "icon-size": 10,
-        "transition-duration": 250,
-        "modules": [
-            {
-                "type": "screenshare",
-                "tooltip": true,
-                "tooltip-icon-size": 10
-            },
-            {
-                "type": "audio-in",
-                "tooltip": true,
-                "tooltip-icon-size": 10
-            }
-        ],
-        "ignore-monitor": true,
-        "ignore": [
-            {
-                "type": "audio-in",
-                "name": "cava"
-            },
-            {
-                "type": "screenshare",
-                "name": "obs"
-            }
-        ]
-    },
-    "image#wallpaper": {
-        "size": 30,
-        "icon-size-multiplier": 3
-    },
-    "wlr/taskbar": {
-        "all-outputs": true,
-        "active-first": false,
-        "markup": true,
-        "format": "{icon}",
-        "rotate": 0,
-        "spacing": 20,
-        "tooltip-format": "{title} | {app_id}",
-        "on-click": "activate",
-        "on-click-right": "fullscreen",
-        "on-click-middle": "close",
-        "class": "no-margin-padding",
-        "ignore-list": [
-            ""
-        ],
-        "app_ids-mapping": {
-            "firefoxdeveloperedition": "firefox-developer-edition",
-            "firefoxnightly": "firefox-nightly",
-            "Spotify Free": "Spotify"
-        },
-        "rewrite": {
-            "Firefox Web Browser": "Firefox",
-            "Foot Server": "Terminal",
-            "Spotify Free": "Spotify",
-            "org.kde.dolphin": "Dolphin",
-            "libreoffice-writer": "Writer"
-        }
-    },
-    "wlr/taskbar#windows": {
-        "format": "{icon}{app_id}",
-        "rotate": 0,
-        "spacing": 0,
-        "tooltip-format": "{title}",
-        "on-click": "activate",
-        "on-click-middle": "close",
-        "ignore-list": [
-            "Alacritty"
-        ],
-        "app_ids-mapping": {
-            "firefoxdeveloperedition": "firefox-developer-edition",
-            "jetbrains-datagrip": "DataGrip"
-        }
-    },
-    "tray": {
-        "icon-size": 10,
-        "spacing": 10,
-        "tooltip": "false"
-    },
     "position": "top",
     "custom/terminal": {
         "format": "\uf489",
@@ -206,7 +123,7 @@
         "tooltip": true,
         "signal": 19,
         "menu": "on-click-right",
-        "menu-file": "$XDG_CONFIG_HOME/waybar/menus/hyprsunset.xml",
+        "menu-file": "$XDG_DATA_HOME/waybar/menus/hyprsunset.xml",
         "menu-actions": {
             "warm-candle": "hyprshell hyprsunset --cm temp -s 3000 -P waybar:19",
             "soft-warm": "hyprshell hyprsunset --cm temp -s 4000 -P waybar:19",
@@ -351,6 +268,48 @@
         "max-length": 8,
         "tooltip": true
     },
+    "custom/dunst": {
+        "justify": "center",
+        "format": "{icon}",
+        "tooltip": true,
+        "return-type": "json",
+        "interval": 2,
+        "exec-if": "command -v dunstctl >/dev/null 2>&1 && dunstctl is-paused >/dev/null 2>&1",
+        "exec": "hyprshell notifications",
+        "on-scroll-down": "dunstctl history-pop",
+        "on-click": "dunstctl set-paused toggle",
+        "on-click-right": "sh -c 'dunstctl history-clear; dunstctl close-all'",
+        "escape": true,
+        "menu": "on-click-middle",
+        "menu-file": "$XDG_DATA_HOME/waybar/menus/dunst.xml",
+        "menu-actions": {
+            "show": "dunstctl history-pop",
+            "toggle-dnd": "dunstctl set-paused toggle",
+            "clear": "sh -c 'dunstctl history-clear; dunstctl close-all'",
+            "close-all": "dunstctl close-all"
+        },
+        "format-icons": {
+            "notification": "\udb80\udf6a",
+            "dnd-notification": "\udb84\udd75",
+            "inhibited-notification": "\udb80\udf6a",
+            "inhibited-none": "\udb80\udf65",
+            "dnd-inhibited-notification": "\udb84\udd75",
+            "dnd-inhibited-none": "\udb84\udd6d",
+            "dnd-none": "\udb84\udd6d",
+            "email-notification": "\udb83\udd42",
+            "chat-notification": "\udb84\udec9",
+            "warning-notification": "<span foreground='yellow'>\udb85\udf3b</span>",
+            "error": "<span foreground='red'>\udb82\ude04</span>",
+            "error-notification": "<span foreground='red'>\udb82\ude04</span>",
+            "network-notification": "\udb83\udc8a",
+            "battery-notification": "\udb84\udccd",
+            "update-notification": "\udb81\udeb0",
+            "music-notification": "\uec1b",
+            "volume-notification": "\udb81\udfc5",
+            "dnd": "\udb84\udd6d",
+            "none": "\udb80\udf65"
+        }
+    },
     "hyprland/workspaces#kanji": {
         "class": "no-margin-padding",
         "all-outputs": true,
@@ -422,7 +381,7 @@
         "on-scroll-up": "playerctl position 1+",
         "on-scroll-down": "playerctl position 1-",
         "menu": "on-click-right",
-        "menu-file": "$XDG_CONFIG_HOME/waybar/menus/mediaplayer.xml",
+        "menu-file": "$XDG_DATA_HOME/waybar/menus/mediaplayer.xml",
         "menu-actions": {
             "play-pause": "playerctl play-pause",
             "next": "playerctl next",
@@ -457,13 +416,18 @@
         "interval": 600,
         "return-type": "json"
     },
+    "tray": {
+        "icon-size": 10,
+        "spacing": 10,
+        "tooltip": "false"
+    },
     "custom/powermenu": {
         "justify": "center",
         "format": "\udb82\ude1a",
         "tooltip": false,
         "on-click": "hyprshell logoutlaunch 1",
         "menu": "on-click-right",
-        "menu-file": "$XDG_CONFIG_HOME/waybar/menus/power.xml",
+        "menu-file": "$XDG_DATA_HOME/waybar/menus/power.xml",
         "menu-actions": {
             "lock": "hyprshell lockscreen.sh",
             "logout": "hyprctl dispatch exit 0",
@@ -488,6 +452,34 @@
         "return-type": "json",
         "tooltip": true,
         "interval": 5
+    },
+    "wlr/taskbar": {
+        "all-outputs": true,
+        "active-first": false,
+        "markup": true,
+        "format": "{icon}",
+        "rotate": 0,
+        "spacing": 20,
+        "tooltip-format": "{title} | {app_id}",
+        "on-click": "activate",
+        "on-click-right": "fullscreen",
+        "on-click-middle": "close",
+        "class": "no-margin-padding",
+        "ignore-list": [
+            ""
+        ],
+        "app_ids-mapping": {
+            "firefoxdeveloperedition": "firefox-developer-edition",
+            "firefoxnightly": "firefox-nightly",
+            "Spotify Free": "Spotify"
+        },
+        "rewrite": {
+            "Firefox Web Browser": "Firefox",
+            "Foot Server": "Terminal",
+            "Spotify Free": "Spotify",
+            "org.kde.dolphin": "Dolphin",
+            "libreoffice-writer": "Writer"
+        }
     },
     "hyprland/window": {
         "format": " \uf303 {0}",
@@ -521,7 +513,7 @@
         "tooltip": false,
         "tooltip-format": "Click for more options",
         "menu": "on-click",
-        "menu-file": "$XDG_CONFIG_HOME/waybar/menus/hyprmenu.xml",
+        "menu-file": "$XDG_DATA_HOME/waybar/menus/hyprmenu.xml",
         "menu-actions": {
             "animations-select": "hyprshell animations --select",
             "wallpaper-select": "hyprshell wallpaper --select --global",
@@ -575,45 +567,6 @@
         "on-click": "hyprshell launch/wifi.sh",
         "tooltip-format": "WiFi Manager (Impala)"
     },
-    "custom/swaync": {
-        "justify": "center",
-        "exec-if": "which swaync-client",
-        "format": "{icon}",
-        "tooltip": true,
-        "tooltip-format": "<b>Sway Notification Center</b>\n{0} new notifications",
-        "format-icons": {
-            "notification": "\udb80\udf6a",
-            "dnd-notification": "\udb84\udd75",
-            "inhibited-notification": "\udb80\udf6a",
-            "inhibited-none": "\udb80\udf65",
-            "dnd-inhibited-notification": "\udb84\udd75",
-            "dnd-inhibited-none": "\udb84\udd6d",
-            "dnd-none": "\udb84\udd6d",
-            "email-notification": "\udb83\udd42",
-            "chat-notification": "\udb84\udec9",
-            "warning-notification": "<span foreground='yellow'>\udb85\udf3b</span>",
-            "error-notification": "<span foreground='red'>\udb82\ude04</span>",
-            "network-notification": "\udb83\udc8a",
-            "battery-notification": "\udb84\udccd",
-            "update-notification": "\udb81\udeb0",
-            "music-notification": "\uec1b",
-            "volume-notification": "\udb81\udfc5",
-            "dnd": "\udb84\udd6d",
-            "none": "\udb80\udf65"
-        },
-        "return-type": "json",
-        "exec": "pgrep -x swaync && swaync-client -swb",
-        "on-click": "swaync-client -t -sw",
-        "escape": true,
-        "menu": "on-click-right",
-        "menu-file": "$XDG_CONFIG_HOME/waybar/menus/swaync.xml",
-        "menu-actions": {
-            "toggle-dnd": "swaync-client --toggle-dnd",
-            "reload-config": "swaync-client --reload-config",
-            "reload-css": "swaync-client --reload-css",
-            "clear-all": "swaync-client --close-all"
-        }
-    },
     "pulseaudio#microphone": {
         "format": "{format_source}",
         "format-source": "\uec1c",
@@ -647,12 +600,26 @@
         "justify": "center",
         "format": "\uf1a5",
         "rotate": 0,
-        "tooltip-format": "\uf205 Switch bar | \uf2d5 dock",
+        "tooltip-format": "\uf205 Switch bar",
         "on-click": "hyprshell waybar -n",
         "on-click-right": "hyprshell waybar -p",
-        "on-click-middle": "hyprshell quickapps",
         "interval": 86400,
         "tooltip": true
+    },
+    "wlr/taskbar#windows": {
+        "format": "{icon}{app_id}",
+        "rotate": 0,
+        "spacing": 0,
+        "tooltip-format": "{title}",
+        "on-click": "activate",
+        "on-click-middle": "close",
+        "ignore-list": [
+            "Alacritty"
+        ],
+        "app_ids-mapping": {
+            "firefoxdeveloperedition": "firefox-developer-edition",
+            "jetbrains-datagrip": "DataGrip"
+        }
     },
     "custom/display": {
         "justify": "center",
@@ -792,7 +759,7 @@
         "tooltip": true,
         "on-click": "hyprshell gpuinfo --toggle",
         "menu": "on-click-right",
-        "menu-file": "$XDG_CONFIG_HOME/waybar/menus/gpuinfo.xml",
+        "menu-file": "$XDG_DATA_HOME/waybar/menus/gpuinfo.xml",
         "menu-actions": {
             "toggle": "hyprshell gpuinfo --toggle",
             "reset": "hyprshell gpuinfo --reset"
@@ -893,7 +860,7 @@
         "tooltip-format": "\ued7b Clipboard history",
         "on-click": "sleep 0.1 && hyprshell cliphist -c",
         "menu": "on-click-right",
-        "menu-file": "$XDG_CONFIG_HOME/waybar/menus/clipboard.xml",
+        "menu-file": "$XDG_DATA_HOME/waybar/menus/clipboard.xml",
         "menu-actions": {
             "favorites": "hyprshell cliphist --favorites",
             "history": "hyprshell cliphist --copy",
@@ -928,51 +895,42 @@
         "class": "default-margin-padding",
         "on-click": "hyprshell fanspeedinfo.py --toggle",
         "menu": "on-click-right",
-        "menu-file": "$XDG_CONFIG_HOME/waybar/menus/fanspeedinfo.xml",
+        "menu-file": "$XDG_DATA_HOME/waybar/menus/fanspeedinfo.xml",
         "menu-actions": {
             "toggle": "hyprshell fanspeedinfo.py --toggle",
             "reset": "hyprshell fanspeedinfo.py --reset"
         },
         "signal": 19
     },
-    "temperature#2": {
-        "thermal-zone": 2,
-        "critical-threshold": 65,
-        "warning-threshold": 55,
-        "interval": 2,
-        "format": "\uf2ca {temperatureC}\u00b0C",
-        "format-warning": "<span foreground='#fab387'>\uf2ca</span> <span foreground='#fab387'>{temperatureC}\u00b0C</span>",
-        "format-critical": "<span foreground='#f38ba8'>\uf2ca</span> <span foreground='#f38ba8'>{temperatureC}\u00b0C</span>",
-        "tooltip": true,
-        "tooltip-format": "GPU Temperature: {temperatureC}\u00b0C\nNVIDIA GeForce MX250",
-        "max-length": 12,
-        "min-length": 2
-    },
-    "temperature#27": {
-        "thermal-zone": 27,
-        "critical-threshold": 85,
-        "warning-threshold": 70,
-        "interval": 2,
-        "format": "\uf2ca {temperatureC}\u00b0C",
-        "format-warning": "<span foreground='#fab387'>\uf2ca</span> <span foreground='#fab387'>{temperatureC}\u00b0C</span>",
-        "format-critical": "<span foreground='#f38ba8'>\uf2ca</span> <span foreground='#f38ba8'>{temperatureC}\u00b0C</span>",
-        "tooltip": true,
-        "tooltip-format": "CPU Temperature: {temperatureC}\u00b0C\nIntel(R) Core(TM) i7-10510U",
-        "max-length": 12,
-        "min-length": 2
-    },
-    "temperature#0": {
-        "thermal-zone": 0,
-        "critical-threshold": 50,
-        "warning-threshold": 40,
-        "interval": 5,
-        "format": "\udb81\udd0f {temperatureC}\u00b0C",
-        "format-warning": "<span foreground='#fab387'>\udb81\udd0f</span> <span foreground='#fab387'>{temperatureC}\u00b0C</span>",
-        "format-critical": "<span foreground='#f38ba8'>\udb81\udd0f</span> <span foreground='#f38ba8'>{temperatureC}\u00b0C</span>",
-        "tooltip": true,
-        "tooltip-format": "System Temperature: {temperatureC}\u00b0C\nACPI Thermal Zone",
-        "max-length": 12,
-        "min-length": 2
+    "privacy": {
+        "justify": "center",
+        "orientation": "vertical",
+        "icon-spacing": 4,
+        "icon-size": 10,
+        "transition-duration": 250,
+        "modules": [
+            {
+                "type": "screenshare",
+                "tooltip": true,
+                "tooltip-icon-size": 10
+            },
+            {
+                "type": "audio-in",
+                "tooltip": true,
+                "tooltip-icon-size": 10
+            }
+        ],
+        "ignore-monitor": true,
+        "ignore": [
+            {
+                "type": "audio-in",
+                "name": "cava"
+            },
+            {
+                "type": "screenshare",
+                "name": "obs"
+            }
+        ]
     },
     "custom/caffeine": {
         "justify": "center",
@@ -1049,16 +1007,43 @@
         "on-click": "hyprshell screenrecord --toggle",
         "on-click-right": "hyprshell screenrecord --quit"
     },
-    "custom/swaync-dnd": {
-        "justify": "center",
-        "exec-if": "which swaync-client",
-        "format": "{text}",
-        "return-type": "json",
+    "temperature#2": {
+        "thermal-zone": 2,
+        "critical-threshold": 65,
+        "warning-threshold": 55,
         "interval": 2,
-        "exec": "hyprshell waybar/swaync-dnd.sh",
-        "on-click": "swaync-client --toggle-dnd",
-        "on-click-right": "swaync-client --close-all -sw",
-        "on-click-middle": "swaync-client --open-panel -sw",
-        "escape": true
+        "format": "\uf2ca {temperatureC}\u00b0C",
+        "format-warning": "<span foreground='#fab387'>\uf2ca</span> <span foreground='#fab387'>{temperatureC}\u00b0C</span>",
+        "format-critical": "<span foreground='#f38ba8'>\uf2ca</span> <span foreground='#f38ba8'>{temperatureC}\u00b0C</span>",
+        "tooltip": true,
+        "tooltip-format": "GPU Temperature: {temperatureC}\u00b0C\nNVIDIA GeForce MX250",
+        "max-length": 12,
+        "min-length": 2
+    },
+    "temperature#27": {
+        "thermal-zone": 27,
+        "critical-threshold": 85,
+        "warning-threshold": 70,
+        "interval": 2,
+        "format": "\uf2ca {temperatureC}\u00b0C",
+        "format-warning": "<span foreground='#fab387'>\uf2ca</span> <span foreground='#fab387'>{temperatureC}\u00b0C</span>",
+        "format-critical": "<span foreground='#f38ba8'>\uf2ca</span> <span foreground='#f38ba8'>{temperatureC}\u00b0C</span>",
+        "tooltip": true,
+        "tooltip-format": "CPU Temperature: {temperatureC}\u00b0C\nIntel(R) Core(TM) i7-10510U",
+        "max-length": 12,
+        "min-length": 2
+    },
+    "temperature#0": {
+        "thermal-zone": 0,
+        "critical-threshold": 50,
+        "warning-threshold": 40,
+        "interval": 5,
+        "format": "\udb81\udd0f {temperatureC}\u00b0C",
+        "format-warning": "<span foreground='#fab387'>\udb81\udd0f</span> <span foreground='#fab387'>{temperatureC}\u00b0C</span>",
+        "format-critical": "<span foreground='#f38ba8'>\udb81\udd0f</span> <span foreground='#f38ba8'>{temperatureC}\u00b0C</span>",
+        "tooltip": true,
+        "tooltip-format": "System Temperature: {temperatureC}\u00b0C\nACPI Thermal Zone",
+        "max-length": 12,
+        "min-length": 2
     }
 }

@@ -1,37 +1,37 @@
 [Colors:Button]
-BackgroundAlternate=10,17,36
-BackgroundNormal=10,17,36
-DecorationFocus=197,14,210
-DecorationHover=197,14,210
-ForegroundNormal=230,220,190
+BackgroundAlternate=238,232,213
+BackgroundNormal=238,232,213
+DecorationFocus=38,139,210
+DecorationHover=38,139,210
+ForegroundNormal=0,0,0
 
 [Colors:Complementary]
-BackgroundNormal=10,17,36
-ForegroundNormal=230,220,190
+BackgroundNormal=238,232,213
+ForegroundNormal=0,0,0
 
 [Colors:Header]
-BackgroundNormal=10,17,36
-DecorationFocus=197,14,210
-DecorationHover=197,14,210
-ForegroundNormal=230,220,190
+BackgroundNormal=238,232,213
+DecorationFocus=38,139,210
+DecorationHover=38,139,210
+ForegroundNormal=0,0,0
 
 [Colors:Selection]
-BackgroundAlternate=197,14,210
-BackgroundNormal=197,14,210
-DecorationFocus=197,14,210
-DecorationHover=197,14,210
-ForegroundActive=230,220,190
-ForegroundNormal=230,220,190
+BackgroundAlternate=38,139,210
+BackgroundNormal=38,139,210
+DecorationFocus=38,139,210
+DecorationHover=38,139,210
+ForegroundActive=0,0,0
+ForegroundNormal=0,0,0
 
 [Colors:Tooltip]
-BackgroundNormal=10,17,36
-ForegroundNormal=230,220,190
+BackgroundNormal=238,232,213
+ForegroundNormal=0,0,0
 
 [Colors:View]
-BackgroundNormal=10,17,36
-DecorationFocus=197,14,210
-DecorationHover=197,14,210
-ForegroundNormal=230,220,190
+BackgroundNormal=238,232,213
+DecorationFocus=38,139,210
+DecorationHover=38,139,210
+ForegroundNormal=0,0,0
 Test1=50,50,50
 Test10=50,50,50
 Test11=50,50,50
@@ -46,8 +46,8 @@ Test8=50,50,50
 Test9=50,50,50
 
 [Colors:Window]
-BackgroundNormal=10,17,36
-ForegroundNormal=230,220,190
+BackgroundNormal=238,232,213
+ForegroundNormal=0,0,0
 
 [General]
 ColorScheme=colors
@@ -55,7 +55,7 @@ TerminalApplication=kitty
 TerminalService=kitty.desktop
 
 [Icons]
-Theme=Miya-dark
+Theme=Tela-blue-light
 
 [KDE]
 ShowDeleteCommand=false

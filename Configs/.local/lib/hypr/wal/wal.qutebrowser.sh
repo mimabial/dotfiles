@@ -27,7 +27,7 @@ fi
 
 color_mode=2  # Default to Dark mode
 if [ -f "$stateDir/staterc" ]; then
-    color_mode=$(grep 'enableWallDcol=' "$stateDir/staterc" | sed 's/enableWallDcol=//;s/"//g')
+    color_mode=$(grep 'selected_color_mode=' "$stateDir/staterc" | sed 's/selected_color_mode=//;s/"//g')
     # Validate it's a number
     if ! [[ "$color_mode" =~ ^[0-3]$ ]]; then
         color_mode=2

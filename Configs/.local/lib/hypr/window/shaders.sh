@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
 
-[[ "${HYPR_SHELL_INIT}" -ne 1 ]] && eval "$(hyprshell init)"
-
-# Set variables
-shaders_dir="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/shaders"
-
-# Ensure the shaders directory exists
-if [ ! -d "$shaders_dir" ]; then
-  send_notifs -i "preferences-desktop-display" "Error" "Shaders directory does not exist at $shaders_dir"
+# shellcheck source=$HOME/.local/bin/hyprshell
+# shellcheck disable=SC1091
+if ! source "$(command -v hyprshell)"; then
+  echo "[$0] :: Error: hyprshell not found."
   exit 1
 fi
 
-# Show help function
+shaders_user_dir="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}/shaders"
+shaders_shared_dir="${HYPR_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/hypr}/shaders"
+shaders_state_file="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/shaders.conf"
+shaders_cache_dir="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/shaders"
+compiled_shader_file="${shaders_cache_dir}/compiled.cache.glsl"
+
 show_help() {
   cat <<HELP
 Usage: $0 [OPTIONS]
@@ -23,66 +24,91 @@ Options:
 HELP
 }
 
-if [ -z "${*}" ]; then
-  echo "No arguments provided"
-  show_help
-fi
+resolve_shader_path() {
+  local name="${1:-disable}"
+  name="${name%.frag}"
 
-# Define long options
-LONG_OPTS="select,help,reload"
-SHORT_OPTS="Shr"
-# Parse options
-PARSED=$(getopt --options ${SHORT_OPTS} --longoptions "${LONG_OPTS}" --name "$0" -- "$@")
-if [ $? -ne 0 ]; then
-  exit 2
-fi
-eval set -- "${PARSED}"
+  if [[ "${name}" == */* ]] && [[ -f "${name}" ]]; then
+    printf '%s\n' "${name}"
+    return 0
+  fi
 
-# Default action if no arguments are provided
-if [ -z "$1" ]; then
-  echo "No arguments provided"
-  show_help
-  exit 1
-fi
+  local candidate
+  for candidate in \
+    "${shaders_user_dir}/${name}.frag" \
+    "${shaders_shared_dir}/${name}.frag"; do
+    if [[ -f "${candidate}" ]]; then
+      printf '%s\n' "${candidate}"
+      return 0
+    fi
+  done
 
-# Functions
+  return 1
+}
+
+resolve_shader_inc_path() {
+  local name="${1:-}"
+  local candidate
+  for candidate in \
+    "${shaders_user_dir}/${name}.inc" \
+    "${shaders_shared_dir}/${name}.inc"; do
+    if [[ -f "${candidate}" ]]; then
+      printf '%s\n' "${candidate}"
+      return 0
+    fi
+  done
+  return 1
+}
+
+list_shader_names() {
+  local dir path name
+  local -A seen=()
+
+  for dir in "${shaders_user_dir}" "${shaders_shared_dir}"; do
+    [[ -d "${dir}" ]] || continue
+    while IFS= read -r -d '' path; do
+      name="$(basename "${path}" .frag)"
+      [[ "${name}" == "disable" ]] && continue
+      [[ -n "${seen[${name}]:-}" ]] && continue
+      seen["${name}"]=1
+      printf '%s\n' "${name}"
+    done < <(find -L "${dir}" -maxdepth 1 -type f -name '*.frag' -print0 | sort -z)
+  done
+}
+
 fn_select() {
-  # List all .frag shaders except user-defines, disable, and .cache
-  shader_items=$(find -L "$shaders_dir" -maxdepth 1 -name "*.frag" ! -name "disable.frag" ! -name ".compiled.cache.glsl" -print0 2>/dev/null | xargs -0 -n1 basename | sed 's/\.frag$//')
-  # Add 'disable' on top if it exists
-  if [ -f "$shaders_dir/disable.frag" ]; then
-    shader_items="disable\n$shader_items"
+  local shader_items selected_shader
+  local font_scale font_name font_override
+  local hypr_border wind_border elem_border hypr_width r_override
+
+  shader_items="$(list_shader_names)"
+  if resolve_shader_path disable >/dev/null 2>&1; then
+    shader_items=$(printf 'disable\n%s\n' "${shader_items}" | sed '/^$/d')
   fi
 
-  if [ -z "$shader_items" ]; then
-    send_notifs -i "preferences-desktop-display" "Error" "No .frag files found in $shaders_dir"
+  [[ -n "${shader_items}" ]] || {
+    send_ephemeral_notif "hypr-shader-error" -t 3000 -i "preferences-desktop-display" "Error" "No shader files found in ${shaders_user_dir} or ${shaders_shared_dir}"
     exit 1
-  fi
+  }
 
-  # Set rofi scaling
   font_scale="${ROFI_SHADER_SCALE}"
   [[ "${font_scale}" =~ ^[0-9]+$ ]] || font_scale=${ROFI_SCALE:-10}
 
-  # Set font name
   font_name=${ROFI_SHADER_FONT:-$ROFI_FONT}
   font_name=${font_name:-$(hyprshell fonts/font-get.sh menu 2>/dev/null || true)}
   font_name=${font_name:-$(get_hyprConf "MENU_FONT")}
   font_name=${font_name:-$(get_hyprConf "FONT")}
   font_name=${font_name:-monospace}
-
-  # Set rofi font override
   font_override="* {font: \"${font_name} ${font_scale}\";}"
 
-  # Window and element styling
   hypr_border=${hypr_border:-"$(hyprctl -j getoption decoration:rounding | jq '.int')"}
   wind_border=$((hypr_border * 3 / 2))
   elem_border=$((hypr_border == 0 ? 5 : hypr_border))
   hypr_width=${hypr_width:-"$(hyprctl -j getoption general:border_size | jq '.int')"}
   r_override="window{border:${hypr_width}px;border-radius:${wind_border}px;} wallbox{border-radius:${elem_border}px;} element{border-radius:${elem_border}px;}"
 
-  # Display options using Rofi
-  selected_shader=$(echo -e "$shader_items" |
-    rofi -dmenu -i -select "$HYPR_SHADER" \
+  selected_shader=$(printf '%s\n' "${shader_items}" |
+    rofi -dmenu -i -select "${HYPR_SHADER:-disable}" \
       -p "Select shader" \
       -theme-str "entry { placeholder: \"🎨 Select shader...\"; }" \
       -theme-str "${font_override}" \
@@ -90,125 +116,114 @@ fn_select() {
       -theme-str "$(get_rofi_pos)" \
       -theme "clipboard")
 
-  # Exit if no selection was made
-  if [ -z "$selected_shader" ]; then
-    exit 0
-  fi
+  [[ -n "${selected_shader}" ]] || exit 0
 
-  state_set "HYPR_SHADER" "$selected_shader" "staterc"
-  fn_update "$selected_shader"
-  send_notifs -i "preferences-desktop-display" "Shader:" "$selected_shader"
+  state_set "HYPR_SHADER" "${selected_shader}" "staterc"
+  fn_update "${selected_shader}"
+  send_ephemeral_notif "hypr-shader" -t 2000 -i "preferences-desktop-display" "Shader selected" "${selected_shader}"
 }
 
 fn_reload() {
-  if [ -z "$HYPR_SHADER" ]; then
-    HYPR_SHADER="disable"
-  fi
-  state_set "HYPR_SHADER" "$HYPR_SHADER" "staterc"
-  fn_update "$HYPR_SHADER"
-  send_notifs -i "preferences-desktop-display" "Shader reloaded:" "$HYPR_SHADER"
+  local shader_name="${HYPR_SHADER:-disable}"
+  state_set "HYPR_SHADER" "${shader_name}" "staterc"
+  fn_update "${shader_name}"
+  send_ephemeral_notif "hypr-shader" -t 2000 -i "preferences-desktop-display" "Shader reloaded" "${shader_name}"
 }
 
 concat_shader_files() {
   local files=("$@")
   local version_directive=""
-  local compiled_file="$shaders_dir/.compiled.cache.glsl"
-
-  # Extract version directive from the main .frag file (last file in array)
   local main_frag_file="${files[-1]}"
-  if [ -f "$main_frag_file" ]; then
-    version_directive=$(grep -E '^\s*#version\s+' "$main_frag_file" | head -n1)
-    if [ -n "$version_directive" ]; then
-      print_log -g "Found version directive" " $version_directive"
-    else
-      print_log -y "Warning" " No #version directive found in $main_frag_file"
-      version_directive="#version 300 es" # Default fallback
+
+  mkdir -p "${shaders_cache_dir}"
+
+  if [[ -f "${main_frag_file}" ]]; then
+    version_directive=$(grep -E '^\s*#version\s+' "${main_frag_file}" | head -n1)
+    if [[ -z "${version_directive}" ]]; then
+      print_log -y "Warning" " No #version directive found in ${main_frag_file}"
+      version_directive="#version 300 es"
     fi
   fi
 
-  # Start with version directive
-  echo "$version_directive" >"$compiled_file"
-  echo "" >>"$compiled_file"
+  printf '%s\n\n' "${version_directive}" >"${compiled_shader_file}"
 
-  # Process each file and remove #version directives
-  for f in "${files[@]}"; do
-    if [ -f "$f" ]; then
-      print_log -g "Processing shader" " file: $f"
-      # Remove #version lines and append to compiled file
-      sed '/^\s*#version\s/d' "$f" >>"$compiled_file"
-      echo "" >>"$compiled_file" # Add blank line between files
+  local shader_file
+  for shader_file in "${files[@]}"; do
+    if [[ -f "${shader_file}" ]]; then
+      print_log -g "Processing shader" " file: ${shader_file}"
+      sed '/^\s*#version\s/d' "${shader_file}" >>"${compiled_shader_file}"
+      printf '\n' >>"${compiled_shader_file}"
     fi
   done
 }
 
 parse_includes_and_update() {
-  local selected_shader="$1"
+  local selected_shader="${1}"
+  local resolved_shader_path shader_path_compact compiled_path_compact
+  local source_var inc_file
   local files=()
 
-  # Look for a comment line with !source = ... (whitespace-insensitive)
-  local source_var
-  source_var=$(grep -iE '^\s*//\s*!source\s*=\s*.*' "$shaders_dir/${selected_shader}.frag" 2>/dev/null | head -n1 | sed -E 's/^\s*\/\/\s*!source\s*=\s*//I' | xargs)
-  if [ -n "$source_var" ]; then
-    # Expand variables in the source path
-    source_var=$(eval echo "$source_var")
-    if [ -f "$source_var" ]; then
-      files+=("$source_var")
-      print_log -g "Found source include" " $source_var"
+  resolved_shader_path="$(resolve_shader_path "${selected_shader}")" || {
+    print_log -r "Error" " Shader ${selected_shader} not found"
+    return 1
+  }
+
+  source_var=$(grep -iE '^\s*//\s*!source\s*=\s*.*' "${resolved_shader_path}" 2>/dev/null | head -n1 | sed -E 's/^\s*\/\/\s*!source\s*=\s*//I' | xargs)
+  if [[ -n "${source_var}" ]]; then
+    source_var=$(eval echo "${source_var}")
+    if [[ -f "${source_var}" ]]; then
+      files+=("${source_var}")
+      print_log -g "Found source include" " ${source_var}"
     else
-      print_log -y "Warning" " Source file not found: $source_var"
+      print_log -y "Warning" " Source file not found: ${source_var}"
     fi
   fi
 
-  # Automatically include .inc file if it exists
-  local inc_file="$shaders_dir/${selected_shader}.inc"
-  if [ -f "$inc_file" ]; then
-    files+=("$inc_file")
-    print_log -g "Found inc file" " $inc_file"
+  inc_file="$(resolve_shader_inc_path "${selected_shader}" || true)"
+  if [[ -n "${inc_file}" ]]; then
+    files+=("${inc_file}")
+    print_log -g "Found inc file" " ${inc_file}"
   fi
 
-  # Add main .frag file last (to extract version from it)
-  files+=("$shaders_dir/${selected_shader}.frag")
+  files+=("${resolved_shader_path}")
+  concat_shader_files "${files[@]}"
 
-  # Compile the shader files
-  if concat_shader_files "${files[@]}"; then
-    print_log -g "Shader" " $selected_shader compiled successfully."
-  else
-    print_log -r "Error" " Failed to compile shader $selected_shader"
-    return 1
-  fi
-  # Write the shaders.conf file with the requested banner and path
-  cat <<EOF >"${XDG_CONFIG_HOME:-$HOME/.config}/hypr/shaders.conf"
+  mkdir -p "$(dirname "${shaders_state_file}")"
+  shader_path_compact="$(hypr_compact_path "${resolved_shader_path}")"
+  compiled_path_compact="$(hypr_compact_path "${compiled_shader_file}")"
 
+  cat <<CONF >"${shaders_state_file}"
 #! █▀ █░█ ▄▀█ █▀▄ █▀▀ █▀█ █▀
 #! ▄█ █▀█ █▀█ █▄▀ ██▄ █▀▄ ▄█
 
-# *┌────────────────────────────────────────────────────────────────────────────┐
-# *│                                                                            |
-# *│ System Controlled content DO NOT EDIT!                                      |
-# *│ Edit or add shaders in the ./shaders/ directory                           |
-# *│ and run the 'shaders.sh --select' command to update this file             |
-# *│ Modify ./shaders/shader-name.inc to add your own custom defines         |
-# *│ The 'shader.sh' script will automatically copy this file to the cache     |
-# *│ and the cache will be used in the shader                                  |
-# *│                                                                            |
-# *└────────────────────────────────────────────────────────────────────────────┘
+# *┌───────────────────────────────────────────────────────────────────────────┐
+# *│ System controlled content // DO NOT EDIT                                 │
+# *│ User overrides live in ~/.config/hypr/shaders/                           │
+# *│ Shared stock lives in ~/.local/share/hypr/shaders/                       │
+# *│ Compiled cache lives in ~/.cache/hypr/shaders/                           │
+# *└───────────────────────────────────────────────────────────────────────────┘
 
-# name of the shader
 \$SCREEN_SHADER = "${selected_shader}"
-# path to the shader
-\$SCREEN_SHADER_PATH = \$XDG_CONFIG_HOME/hypr/shaders/${selected_shader}.frag
-# path to the compiled shader // override this in '../hypr/config.toml'
-\$SCREEN_SHADER_COMPILED = \$XDG_CONFIG_HOME/hypr/shaders/.compiled.cache.glsl
-
-
-EOF
+\$SCREEN_SHADER_PATH = ${shader_path_compact}
+\$SCREEN_SHADER_COMPILED = ${compiled_path_compact}
+CONF
 }
 
 fn_update() {
   parse_includes_and_update "$1"
 }
 
-# Process options
+if [[ -z "${*}" ]]; then
+  echo "No arguments provided"
+  show_help
+  exit 1
+fi
+
+LONG_OPTS="select,help,reload"
+SHORT_OPTS="Shr"
+PARSED=$(getopt --options "${SHORT_OPTS}" --longoptions "${LONG_OPTS}" --name "$0" -- "$@") || exit 2
+eval set -- "${PARSED}"
+
 while true; do
   case "$1" in
     -S | --select)

@@ -6,42 +6,24 @@ script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=/dev/null
 source "${script_dir}/service.lib.bash"
 
-show_diff=1
-quiet=0
-rel_path=""
+case "${1:-}" in
+  -h|--help|help)
+    hypr_service_usage_refresh_config
+    exit 0
+    ;;
+esac
 
-while (($#)); do
-  case "$1" in
-    -h | --help)
-      hypr_service_usage_refresh_config
-      exit 0
-      ;;
-    -q | --quiet)
-      quiet=1
-      ;;
-    --diff)
-      show_diff=1
-      ;;
-    --no-diff)
-      show_diff=0
-      ;;
-    -*)
-      hypr_service_die "Unknown option: $1"
-      ;;
-    *)
-      if [[ -n "${rel_path}" ]]; then
-        hypr_service_die "Only one config path is supported per call."
-      fi
-      rel_path="$1"
-      ;;
-  esac
-  shift
-done
+hypr_service_parse_refresh_args "$@"
 
-if [[ -z "${rel_path}" ]]; then
+if [[ "${#hypr_service_cli_args[@]}" -ne 1 ]]; then
   hypr_service_usage_refresh_config
-  exit 2
+  exit 1
 fi
 
+rel_path="${hypr_service_cli_args[0]}"
+hypr_service_is_safe_relpath "${rel_path}" || hypr_service_die "Invalid config path: ${rel_path}"
+
 hypr_service_init
-hypr_service_refresh_config "${rel_path}" "${show_diff}" "${quiet}"
+hypr_service_apply_cli_env
+hypr_service_refresh_config "${rel_path}" "${hypr_service_cli_show_diff}" "${hypr_service_cli_quiet}"
+hypr_service_maybe_report_backup_root

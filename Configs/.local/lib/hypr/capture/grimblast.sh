@@ -7,7 +7,7 @@
 ##  - `hyprpicker`: to freeze the screen when selecting area
 ##  - `wl-copy`: clipboard utility (provided by wl-clipboard)
 ##  - `jq`: json utility to parse hyprctl output
-##  - `notify-send`: to show notifications (provided by libnotify)
+##  - `dunstify`: to show notifications (provided by dunst)
 ## Those are needed to be installed, if unsure, run `grimblast check`
 ##
 ## See `man 1 grimblast` or `grimblast usage` for further details.
@@ -148,7 +148,7 @@ if [ "$ACTION" != "save" ] && [ "$ACTION" != "copy" ] && [ "$ACTION" != "edit" ]
 fi
 
 notify() {
-  notify-send -t 3000 -a grimblast "$@"
+  dunstify -t 3000 -a grimblast "$@"
 }
 
 notifyOk() {
@@ -167,7 +167,7 @@ notifyOpen() {
       if dbus-send --session --print-reply --dest=org.freedesktop.FileManager1 --type=method_call /org/freedesktop/FileManager1 org.freedesktop.FileManager1.ShowItems array:string:"file://$4" string:""; then
         :
       else
-        notify-send -t 3000 -a grimblast "Error displaying folder with dbus-send"
+        dunstify -t 3000 -a grimblast "Error displaying folder with dbus-send"
         echo "Displayed: Error displaying folder with dbus-send"
       fi
     fi
@@ -241,7 +241,7 @@ if [ "$ACTION" = "check" ]; then
   check hyprpicker
   check wl-copy
   check jq
-  check notify-send
+  check dunstify
   exit
 elif [ "$SUBJECT" = "active" ]; then
   wait

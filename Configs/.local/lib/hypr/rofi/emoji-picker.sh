@@ -7,6 +7,8 @@ if [[ "${HYPR_SHELL_INIT}" -ne 1 ]]; then
 else
   export_hypr_config
 fi
+# shellcheck source=/dev/null
+source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
 
 emoji_dir=${HYPR_CONFIG_HOME:-$HOME/.config/hypr}
 emoji_data="${emoji_dir}/emoji.db"
@@ -46,33 +48,22 @@ toggle_favorite() {
   if grep -Fxq "${emoji_line}" "${favorites_data}" 2>/dev/null; then
     # Remove from favorites
     grep -Fxv "${emoji_line}" "${favorites_data}" >temp && mv temp "${favorites_data}"
-    notify-send "⭐ Removed from favorites"
+    dunstify "⭐ Removed from favorites"
   else
     # Add to favorites
     echo "${emoji_line}" >>"${favorites_data}"
-    notify-send "⭐ Added to favorites"
+    dunstify "⭐ Added to favorites"
   fi
 }
 
 setup_rofi_config() {
-  local font_scale="${ROFI_EMOJI_SCALE}"
-  [[ "${font_scale}" =~ ^[0-9]+$ ]] || font_scale=${ROFI_SCALE:-10}
+  local font_scale
+  local font_name
+  font_scale="$(rofi_effective_font_scale "${ROFI_EMOJI_SCALE}")"
+  font_name="$(rofi_effective_font_name "${ROFI_EMOJI_FONT:-$ROFI_FONT}")"
 
-  local font_name=${ROFI_EMOJI_FONT:-$ROFI_FONT}
-  font_name=${font_name:-$(hyprshell fonts/font-get.sh menu 2>/dev/null || true)}
-  font_name=${font_name:-$(get_hyprConf "MENU_FONT")}
-  font_name=${font_name:-$(get_hyprConf "FONT")}
-  font_name=${font_name:-monospace}
-
-  font_override="* {font: \"${font_name} ${font_scale}\";}"
-
-  local hypr_border=${hypr_border:-"$(hyprctl -j getoption decoration:rounding | jq '.int')"}
-  local wind_border=$((hypr_border * 3 / 2))
-  # local elem_border=$((hypr_border == 0 ? 5 : hypr_border))
-  local elem_border=${hypr_border}
-
-  local hypr_width=${hypr_width:-"$(hyprctl -j getoption general:border_size | jq '.int')"}
-  r_override="window{border:${hypr_width}px;border-radius:${wind_border}px;}listview{border-radius:${elem_border}px;} element{border-radius:${elem_border}px;}"
+  font_override="$(rofi_font_override "${font_name}" "${font_scale}")"
+  r_override="$(rofi_standard_window_theme listview same)"
 
   local emoji_window_width_em="${ROFI_EMOJI_WIDTH_EM:-36}"
   local emoji_window_height_em="${ROFI_EMOJI_HEIGHT_EM:-30}"
@@ -80,10 +71,10 @@ setup_rofi_config() {
   [[ "${emoji_window_height_em}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || emoji_window_height_em="30"
 
   local emoji_window_width_px
-  emoji_window_width_px="$(awk -v em="${emoji_window_width_em}" -v scale="${font_scale}" 'BEGIN { printf "%d", (em * scale * 2) }')"
+  emoji_window_width_px="$(rofi_em_to_px "${emoji_window_width_em}" "${font_scale}")"
   [[ "${emoji_window_width_px}" =~ ^[0-9]+$ ]] || emoji_window_width_px=$((81 * font_scale))
   local emoji_window_height_px
-  emoji_window_height_px="$(awk -v em="${emoji_window_height_em}" -v scale="${font_scale}" 'BEGIN { printf "%d", (em * scale * 2) }')"
+  emoji_window_height_px="$(rofi_em_to_px "${emoji_window_height_em}" "${font_scale}")"
   [[ "${emoji_window_height_px}" =~ ^[0-9]+$ ]] || emoji_window_height_px=$((60 * font_scale))
 
   rofi_position=$(get_rofi_pos "${emoji_window_width_px}" "${emoji_window_height_px}")
@@ -93,7 +84,8 @@ get_emoji_selection() {
   local style_type="${emoji_style:-$ROFI_EMOJI_STYLE}"
   local size_override=""
   local iconless_theme_str="listview { show-icons: false; } element { children: [ \"element-text\" ]; } element-icon { enabled: false; size: 0em; width: 0em; padding: 0; margin: 0; border: 0; }"
-  local emoji_theme="${ROFI_EMOJI_THEME:-clipboard}"
+  local emoji_theme
+  emoji_theme="$(rofi_resolve_theme "${ROFI_EMOJI_THEME:-clipboard}")"
   local rofi_base_opts=(-no-config -no-default-config -theme "${emoji_theme}")
   local emoji_args=()
   for arg in "${ROFI_EMOJI_ARGS[@]}"; do
@@ -208,7 +200,6 @@ Usage:
                         Add 'emoji_style=[1|2]' variable in ~/.config/hypr/config.toml'
                             1 = list
                             2 = grid
-                        or select styles from 'rofi-theme-selector'
 HELP
 
         exit 0
@@ -235,7 +226,7 @@ show_multi_person_skin_tone_selector() {
     | rofi -dmenu -i -p "Person 1 Skin Tone" -no-show-icons \
       -theme-str "entry { placeholder: \"Choose skin tone for person 1...\";} ${rofi_position} ${r_override}" \
       -theme-str "${font_override}" \
-      -theme "clipboard")
+      -theme "$(rofi_resolve_theme clipboard)")
 
   [[ -z "${tone1}" ]] && return 1
 
@@ -245,7 +236,7 @@ show_multi_person_skin_tone_selector() {
     | rofi -dmenu -i -p "Person 2 Skin Tone" -no-show-icons \
       -theme-str "entry { placeholder: \"Choose skin tone for person 2...\";} ${rofi_position} ${r_override}" \
       -theme-str "${font_override}" \
-      -theme "clipboard")
+      -theme "$(rofi_resolve_theme clipboard)")
 
   [[ -z "${tone2}" ]] && return 1
 
@@ -301,7 +292,7 @@ show_gender_variant_selector() {
     | rofi -dmenu -i -p "Gender Variant" \
       -theme-str "entry { placeholder: \"Choose gender variant...\";} ${rofi_position} ${r_override}" \
       -theme-str "${font_override}" \
-      -theme "clipboard")
+      -theme "$(rofi_resolve_theme clipboard)")
 
   [[ -z "${gender_choice}" ]] && return 1
 
@@ -354,7 +345,7 @@ show_skin_tone_selector() {
     | rofi -dmenu -i -p "Select Skin Tone" \
       -theme-str "entry { placeholder: \"Choose skin tone...\";} ${rofi_position} ${r_override}" \
       -theme-str "${font_override}" \
-      -theme "clipboard")
+      -theme "$(rofi_resolve_theme clipboard)")
 
   # Extract just the skin tone part from selection
   if [[ "${selected_tone}" == *"🏻"* ]]; then
@@ -383,18 +374,18 @@ show_category_menu() {
   # Handle special categories
   if [[ "${category}" == "recent" ]]; then
     if [[ ! -f "${recent_data}" ]] || [[ ! -s "${recent_data}" ]]; then
-      notify-send "No recently used emojis"
+      dunstify "No recently used emojis"
       return 1
     fi
     category_file="${recent_data}"
   elif [[ "${category}" == "favorites" ]]; then
     if [[ ! -f "${favorites_data}" ]] || [[ ! -s "${favorites_data}" ]]; then
-      notify-send "No favorite emojis yet"
+      dunstify "No favorite emojis yet"
       return 1
     fi
     category_file="${favorites_data}"
   elif [[ ! -f "${category_file}" ]]; then
-    notify-send "Category file not found: ${category}"
+    dunstify "Category file not found: ${category}"
     return 1
   fi
 
@@ -415,7 +406,7 @@ show_category_menu() {
         -theme-str "listview {columns: 9;}" \
         -theme-str "entry { placeholder: \"📂 ${category}\";} ${rofi_position} ${r_override}" \
         -theme-str "${font_override}" \
-        -theme "clipboard" \
+        -theme "$(rofi_resolve_theme clipboard)" \
         -no-custom)
       ;;
     1 | list)
@@ -424,7 +415,7 @@ show_category_menu() {
         -theme-str "${iconless_theme_str}" \
         -theme-str "entry { placeholder: \"📂 ${category}\";} ${rofi_position} ${r_override}" \
         -theme-str "${font_override}" \
-        -theme "clipboard" \
+        -theme "$(rofi_resolve_theme clipboard)" \
         -no-custom)
       ;;
     *)
@@ -433,7 +424,7 @@ show_category_menu() {
         -theme-str "${iconless_theme_str}" \
         -theme-str "entry { placeholder: \"📂 ${category}\";} ${rofi_position} ${r_override}" \
         -theme-str "${font_override}" \
-        -theme "${style_type:-clipboard}" \
+        -theme "$(rofi_resolve_theme "${style_type:-clipboard}")" \
         -no-custom)
       ;;
   esac

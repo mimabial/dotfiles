@@ -55,9 +55,9 @@ send_notification() {
 
   # Send notification with title and message separated
   if [ -n "$message" ]; then
-    notify-send -a "hyprsunset" -r 19 -t 800 -i redshift "$message" "$title"
+    dunstify -a "hyprsunset" -r 19 -t 800 -i redshift "$message" "$title"
   else
-    notify-send -a "hyprsunset" -r 19 -t 800 -i redshift "$title"
+    dunstify -a "hyprsunset" -r 19 -t 800 -i redshift "$title"
   fi
 }
 # Signal process function

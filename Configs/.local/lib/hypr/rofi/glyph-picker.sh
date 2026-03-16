@@ -7,6 +7,8 @@ if [[ "${HYPR_SHELL_INIT}" -ne 1 ]]; then
 else
   export_hypr_config
 fi
+# shellcheck source=/dev/null
+source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
 
 glyph_dir=${HYPR_CONFIG_HOME:-$HOME/.config/hypr}
 glyph_data="${glyph_dir}/glyph.db"
@@ -48,32 +50,16 @@ save_recent_entry() {
 }
 
 setup_rofi_config() {
-  local font_scale="${ROFI_GLYPH_SCALE}"
-  [[ "${font_scale}" =~ ^[0-9]+$ ]] || font_scale=${ROFI_SCALE:-10}
-
-  local font_name=${ROFI_GLYPH_FONT:-$ROFI_FONT}
-  font_name=${font_name:-$(hyprshell fonts/font-get.sh menu 2>/dev/null || true)}
-  font_name=${font_name:-$(get_hyprConf "MENU_FONT")}
-  font_name=${font_name:-$(get_hyprConf "FONT")}
-  font_name=${font_name:-monospace}
-
-  font_override="* {font: \"${font_name} ${font_scale}\";}"
-
-  local hypr_border=${hypr_border:-"$(hyprctl -j getoption decoration:rounding | jq '.int')"}
-  local wind_border=$((hypr_border * 3 / 2))
-  local elem_border=${hypr_border}
-
-  local hypr_width=${hypr_width:-"$(hyprctl -j getoption general:border_size | jq '.int')"}
-  r_override="window{border:${hypr_width}px;border-radius:${wind_border}px;}listview{border-radius:${elem_border}px;} element{border-radius:${elem_border}px;}"
-
-  # Derive grid size from logical monitor dimensions (scale-aware).
-  local mon_size
-  mon_size=$(hyprctl -j monitors 2>/dev/null | jq -r '.[] | select(.focused==true) | if (.transform % 2 == 0) then "\(.width) \(.height) \(.scale)" else "\(.height) \(.width) \(.scale)" end' | head -n 1)
-  read -r mon_width mon_height mon_scale <<<"${mon_size:-1920 1080 1}"
-  [[ "${mon_scale}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || mon_scale=1
+  local font_scale
+  local font_name
   local logical_width logical_height
-  logical_width="$(awk -v w="${mon_width}" -v s="${mon_scale}" 'BEGIN { if (s + 0 <= 0) s = 1; v = int(w / s); if (v < 1) v = 1; print v }')"
-  logical_height="$(awk -v h="${mon_height}" -v s="${mon_scale}" 'BEGIN { if (s + 0 <= 0) s = 1; v = int(h / s); if (v < 1) v = 1; print v }')"
+  font_scale="$(rofi_effective_font_scale "${ROFI_GLYPH_SCALE}")"
+  font_name="$(rofi_effective_font_name "${ROFI_GLYPH_FONT:-$ROFI_FONT}")"
+
+  font_override="$(rofi_font_override "${font_name}" "${font_scale}")"
+  r_override="$(rofi_standard_window_theme listview same)"
+
+  read -r logical_width logical_height <<<"$(rofi_focused_monitor_logical_size)"
 
   glyph_columns="${ROFI_GLYPH_COLUMNS}"
   if [[ -z "${glyph_columns}" || ! "${glyph_columns}" =~ ^[0-9]+$ ]]; then
@@ -96,7 +82,7 @@ setup_rofi_config() {
   [[ "${glyph_window_width}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || glyph_window_width=${default_width}
   local glyph_window_height_em=$((glyph_lines * 2 + 8))
   local glyph_window_width_px
-  glyph_window_width_px="$(awk -v em="${glyph_window_width}" -v scale="${font_scale}" 'BEGIN { printf "%d", (em * scale * 2) }')"
+  glyph_window_width_px="$(rofi_em_to_px "${glyph_window_width}" "${font_scale}")"
   [[ "${glyph_window_width_px}" =~ ^[0-9]+$ ]] || glyph_window_width_px=$((default_width * font_scale * 2))
   local glyph_window_height_px=$((glyph_window_height_em * font_scale * 2))
 
@@ -111,7 +97,7 @@ setup_rofi_config() {
     -theme-str "${font_override}"
     -theme-str "window { width: ${glyph_window_width}em; }"
     -theme-str "${r_override}"
-    -theme "${ROFI_GLYPH_STYLE:-clipboard}"
+    -theme "$(rofi_resolve_theme "${ROFI_GLYPH_STYLE:-clipboard}")"
   )
 }
 
@@ -188,7 +174,6 @@ Usage:
                         Add 'glyph_style=[1|2]' variable in config
                             1 = list
                             2 = grid (default)
-                        or select styles from 'rofi-theme-selector'
 HELP
 
         exit 0

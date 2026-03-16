@@ -39,17 +39,22 @@ if WAYBAR_BIN is None:
     print("Waybar binary not found! Is waybar installed? Exiting...")
     sys.exit(0)
 
+CONFIG_WAYBAR_DIR = Path(xdg_config_home()) / "waybar"
+DATA_WAYBAR_DIR = Path(xdg_data_home()) / "waybar"
+CONFIG_ROFI_DIR = Path(xdg_config_home()) / "rofi"
+DATA_ROFI_DIR = Path(xdg_data_home()) / "rofi"
+
 
 MODULE_DIRS = [
-    os.path.join(str(xdg_config_home()), "waybar", "modules"),
-    os.path.join(str(xdg_data_home()), "waybar", "modules"),
+    os.path.join(str(CONFIG_WAYBAR_DIR), "modules"),
+    os.path.join(str(DATA_WAYBAR_DIR), "modules"),
     os.path.join("/", "usr", "local", "share", "waybar", "modules"),
     os.path.join("/", "usr", "share", "waybar", "modules"),
 ]
 
 LAYOUT_DIRS = [
-    os.path.join(str(xdg_config_home()), "waybar", "layouts"),
-    os.path.join(str(xdg_data_home()), "waybar", "layouts"),
+    os.path.join(str(CONFIG_WAYBAR_DIR), "layouts"),
+    os.path.join(str(DATA_WAYBAR_DIR), "layouts"),
     os.path.join("/", "usr", "local", "share", "waybar", "layouts"),
     os.path.join("/", "usr", "share", "waybar", "layouts"),
 ]
@@ -57,18 +62,18 @@ LAYOUT_DIRS = [
 LAYOUT_IGNORE = ["test.jsonc", "dock#sample.jsonc"]
 
 STYLE_DIRS = [
-    os.path.join(str(xdg_config_home()), "waybar", "styles"),
-    os.path.join(str(xdg_data_home()), "waybar", "styles"),
+    os.path.join(str(CONFIG_WAYBAR_DIR), "styles"),
+    os.path.join(str(DATA_WAYBAR_DIR), "styles"),
 ]
 
 INCLUDES_DIRS = [
-    os.path.join(str(xdg_config_home()), "waybar", "includes"),
-    os.path.join(str(xdg_data_home()), "waybar", "includes"),
+    os.path.join(str(CONFIG_WAYBAR_DIR), "includes"),
+    os.path.join(str(DATA_WAYBAR_DIR), "includes"),
     os.path.join("/", "usr", "local", "share", "waybar", "includes"),
     os.path.join("/", "usr", "share", "waybar", "includes"),
 ]
 
-CONFIG_JSONC = Path(os.path.join(str(xdg_config_home()), "waybar", "config.jsonc"))
+CONFIG_JSONC = CONFIG_WAYBAR_DIR / "config.jsonc"
 STATE_FILE = Path(os.path.join(str(xdg_state_home()), "hypr", "staterc"))
 HYPR_CONFIG = Path(os.path.join(str(xdg_state_home()), "hypr", "config"))
 UNIT_NAME = f"{os.environ.get('XDG_SESSION_DESKTOP', 'unknown')}-bar.service"
@@ -191,13 +196,72 @@ def atomic_copy_file(src, dest):
 
 def find_layout_files():
     """Recursively find all layout files in the specified directories."""
-    layouts = []
-    for layout_dir in LAYOUT_DIRS:
+    layouts = {}
+    for layout_dir in reversed(LAYOUT_DIRS):
+        if not os.path.isdir(layout_dir):
+            continue
         for root, _, files in os.walk(layout_dir):
             for file in files:
                 if file.endswith(".jsonc") and file not in LAYOUT_IGNORE:
-                    layouts.append(os.path.join(root, file))
-    return sorted(layouts)
+                    path = os.path.join(root, file)
+                    relative_path = os.path.relpath(path, start=layout_dir)
+                    layouts[relative_path] = path
+    return [layouts[key] for key in sorted(layouts)]
+
+
+def resolve_rofi_theme(theme_name):
+    """Resolve a rofi theme file from user overrides first, then shared stock."""
+    if not theme_name:
+        return theme_name
+
+    if os.path.isfile(theme_name):
+        return theme_name
+
+    candidates = [
+        CONFIG_ROFI_DIR / "themes" / f"{theme_name}.rasi",
+        CONFIG_ROFI_DIR / "themes" / theme_name,
+        CONFIG_ROFI_DIR / f"{theme_name}.rasi",
+        CONFIG_ROFI_DIR / theme_name,
+        DATA_ROFI_DIR / "themes" / f"{theme_name}.rasi",
+        DATA_ROFI_DIR / "themes" / theme_name,
+        DATA_ROFI_DIR / f"{theme_name}.rasi",
+        DATA_ROFI_DIR / theme_name,
+    ]
+    for candidate in candidates:
+        if candidate.is_file():
+            return str(candidate)
+    return theme_name
+
+
+def normalize_menu_file_path(raw_path):
+    """Prefer user menu overrides, then shared stock menus."""
+    if not isinstance(raw_path, str) or not raw_path:
+        return raw_path
+
+    menu_name = os.path.basename(raw_path)
+    config_menu = CONFIG_WAYBAR_DIR / "menus" / menu_name
+    if config_menu.is_file():
+        return f"$XDG_CONFIG_HOME/waybar/menus/{menu_name}"
+
+    shared_menu = DATA_WAYBAR_DIR / "menus" / menu_name
+    if shared_menu.is_file():
+        return f"$XDG_DATA_HOME/waybar/menus/{menu_name}"
+
+    return raw_path
+
+
+def rewrite_module_paths(data):
+    """Normalize layered file references inside module definitions."""
+    if isinstance(data, dict):
+        for key, value in data.items():
+            if key == "menu-file":
+                data[key] = normalize_menu_file_path(value)
+            elif isinstance(value, (dict, list)):
+                rewrite_module_paths(value)
+    elif isinstance(data, list):
+        for item in data:
+            rewrite_module_paths(item)
+    return data
 
 
 def get_state_value(key, default=None):
@@ -259,7 +323,7 @@ def set_state_value(key, value):
 
 
 def get_current_layout_from_config():
-    """Get the current layout from state file or by comparing hash of layout files with current config.jsonc."""
+    """Get the current layout from state, then recover from the generated config if needed."""
     logger.debug("Getting current layout")
 
     layout_path = get_state_value("WAYBAR_LAYOUT_PATH")
@@ -275,7 +339,7 @@ def get_current_layout_from_config():
                 logger.debug(f"Found current layout by name in state file: {layout}")
                 return layout
 
-    logger.debug("Fallback to legacy hash comparison method")
+    logger.debug("Recovering current layout from config hash")
     logger.debug(f"Checking config: {CONFIG_JSONC}")
 
     layouts = find_layout_files()
@@ -297,7 +361,7 @@ def get_current_layout_from_config():
         logger.debug(f"Created config.jsonc with first layout: {layout}")
         return layout
 
-    # Try hash comparison for existing config
+    # Recover the current layout by matching the generated config against stock layouts.
     config_hash = get_file_hash(CONFIG_JSONC)
     layout = None
 
@@ -357,12 +421,17 @@ def ensure_state_file():
     layout_path_exists = any(line.startswith("WAYBAR_LAYOUT_PATH=") for line in lines)
     layout_name_exists = any(line.startswith("WAYBAR_LAYOUT_NAME=") for line in lines)
     style_path_exists = any(line.startswith("WAYBAR_STYLE_PATH=") for line in lines)
+    style_path_value = get_state_value("WAYBAR_STYLE_PATH")
+    style_path_invalid = bool(style_path_value) and not os.path.exists(style_path_value)
 
-    if not layout_path_exists or not layout_name_exists or not style_path_exists:
+    if (
+        not layout_path_exists
+        or not layout_name_exists
+        or not style_path_exists
+        or style_path_invalid
+    ):
         logger.debug("State file is missing entries, updating it")
-        current_layout = (
-            get_current_layout_from_config() if not layout_path_exists else None
-        )
+        current_layout = get_current_layout_from_config()
         if current_layout:
             layout_name = os.path.basename(current_layout).replace(".jsonc", "")
             style_path = resolve_style_path(current_layout)
@@ -377,6 +446,9 @@ def ensure_state_file():
                 if not style_path_exists:
                     file.write(f"WAYBAR_STYLE_PATH={style_path}\n")
                     logger.debug(f"Added WAYBAR_STYLE_PATH={style_path}")
+            if style_path_invalid:
+                set_state_value("WAYBAR_STYLE_PATH", style_path)
+                logger.debug(f"Replaced stale WAYBAR_STYLE_PATH={style_path}")
 
 
 def resolve_style_path(layout_path):
@@ -445,16 +517,24 @@ def set_layout(layout):
     generate_includes()
     update_global_css()
 
-    # Sync swaync position to match waybar
-    sync_script = os.path.join(os.path.dirname(__file__), "..", "wal", "wal.swaync.sh")
+    # Sync dunst position to match waybar
+    sync_script = os.path.join(os.path.dirname(__file__), "..", "wal", "wal.dunst.sh")
     if os.path.exists(sync_script):
         try:
             subprocess.run([sync_script], timeout=5)
-            logger.debug("Synced swaync position with waybar")
+            logger.debug("Synced dunst position with waybar")
         except Exception as e:
-            logger.warning(f"Failed to sync swaync position: {e}")
+            logger.warning(f"Failed to sync dunst position: {e}")
 
-    notify.send("Waybar", f"Layout changed to {layout}", replace_id=9)
+    notify.send(
+        "Waybar",
+        f"Layout changed to {layout}",
+        expire_time=2000,
+        icon="preferences-desktop-display",
+        replace_id=91,
+        transient=True,
+        sync_tag="hypr-waybar-layout",
+    )
     restart_waybar()
 
 
@@ -660,18 +740,17 @@ def write_style_file(style_filepath, source_filepath):
         else "/*  pywal16 gtk.css not found   */"
     )
     config_root = os.path.join(str(xdg_config_home()), "waybar")
-    data_root = os.path.join(str(xdg_data_home()), "waybar")
     style_import = source_filepath
-    if source_filepath.startswith(config_root + os.sep) or source_filepath.startswith(
-        data_root + os.sep
-    ):
+    if source_filepath.startswith(config_root + os.sep):
         style_import = os.path.relpath(source_filepath, start=config_root)
 
     style_css = f"""
     /*!  DO NOT EDIT THIS FILE */
 
     /* Modify/add style in ~/.config/waybar/styles/ */
-    @import "{style_import}";
+    @import "includes/global.css";
+    @import "includes/font.css";
+    @import "includes/border-radius.css";
 
     /* Imports pywal16 colors */
     /* {pywal_gtk_css_file_str} */
@@ -681,6 +760,12 @@ def write_style_file(style_filepath, source_filepath):
 
     /* Theme configuration is generated through the `theme.css` file */
     @import "theme.css";
+
+    /* Shared or user-selected base style */
+    @import "{style_import}";
+
+    /* Users override the current style here */
+    @import "user-style.css";
     """
     atomic_write_text(style_filepath, style_css)
     logger.debug(f"Successfully wrote style to '{style_filepath}'")
@@ -791,7 +876,7 @@ def rofi_file_selector(
     """
     files = []
     file_roots = []
-    for d in dirs:
+    for d in reversed(dirs):
         if recursive:
             found = [
                 f
@@ -806,17 +891,21 @@ def rofi_file_selector(
             ]
         files.extend(found)
         file_roots.extend([d] * len(found))
-    # Remove duplicates
-    seen = set()
-    unique = []
-    unique_roots = []
+    # Remove duplicates by relative path so user overrides shadow shared stock.
+    layered = {}
     for f, r in zip(files, file_roots):
-        if f not in seen:
-            unique.append(f)
-            unique_roots.append(r)
-            seen.add(f)
-    files = unique
-    file_roots = unique_roots
+        try:
+            key = os.path.relpath(f, start=r)
+        except ValueError:
+            key = os.path.basename(f)
+        layered[key] = (f, r)
+
+    files = []
+    file_roots = []
+    for key in sorted(layered):
+        file_path, root_dir = layered[key]
+        files.append(file_path)
+        file_roots.append(root_dir)
     if not files:
         logger.error(f"No files found for extension {extension} in {dirs}")
         return None
@@ -856,7 +945,7 @@ def rofi_file_selector(
             "-select",
             current_name,
             "-theme",
-            "clipboard",
+            resolve_rofi_theme("clipboard"),
             "-theme-str",
             override_string,
             "-theme-str",
@@ -869,7 +958,7 @@ def rofi_file_selector(
             "-select",
             current_name,
             "-theme",
-            "clipboard",
+            resolve_rofi_theme("clipboard"),
         ]
     if extra_flags:
         rofi_flags.extend(extra_flags)
@@ -899,6 +988,8 @@ def style_selector(current_layout=None):
         notify.send(
             "Waybar",
             f"Style changed to {os.path.basename(selected_style)}",
+            expire_time=2000,
+            icon="preferences-desktop-display",
             replace_id=9,
         )
         restart_waybar()
@@ -952,20 +1043,22 @@ def layout_selector():
         generate_includes()
         update_global_css()
 
-        # Sync swaync position to match waybar
+        # Sync dunst position to match waybar
         sync_script = os.path.join(
-            os.path.dirname(__file__), "..", "wal", "wal.swaync.sh"
+            os.path.dirname(__file__), "..", "wal", "wal.dunst.sh"
         )
         if os.path.exists(sync_script):
             try:
                 subprocess.run([sync_script], timeout=5)
-                logger.debug("Synced swaync position with waybar")
+                logger.debug("Synced dunst position with waybar")
             except Exception as e:
-                logger.warning(f"Failed to sync swaync position: {e}")
+                logger.warning(f"Failed to sync dunst position: {e}")
 
         notify.send(
             "Waybar",
             f"Layout changed to {display_func(selected_layout, os.path.dirname(selected_layout))}",
+            expire_time=2000,
+            icon="preferences-desktop-display",
             replace_id=9,
         )
         restart_waybar()
@@ -992,17 +1085,21 @@ def update_icon_size():
     if os.path.exists(includes_file):
         try:
             with open(includes_file, "r") as file:
-                includes_data = json.load(file)
+                existing_data = json.load(file)
         except (json.JSONDecodeError, FileNotFoundError):
-            includes_data = {"include": []}
+            existing_data = {"include": []}
     else:
-        includes_data = {"include": []}
+        existing_data = {"include": []}
+
+    includes_data = {"include": existing_data.get("include", [])}
+    if "position" in existing_data:
+        includes_data["position"] = existing_data["position"]
 
     icon_size = get_waybar_icon_size()
 
     updated_entries = {}
 
-    for directory in MODULE_DIRS:
+    for directory in reversed(MODULE_DIRS):
         for pattern in ("*.json", "*.jsonc"):
             for json_file in glob.glob(os.path.join(directory, pattern)):
                 data = parse_json_file(json_file)
@@ -1018,6 +1115,7 @@ def update_icon_size():
                         )
                         data[key] = modify_json_key(value, "size", final_icon_size)
 
+                data = rewrite_module_paths(data)
                 updated_entries.update(data)
 
     includes_data.update(updated_entries)
@@ -1235,34 +1333,25 @@ def update_border_radius():
     logger.debug(f"WAYBAR_BORDER_RADIUS env: {border_radius}")
 
     if not border_radius:
-        # Check if we're in a theme switch context
-        reload_flag = os.getenv("reload_flag")
-        logger.debug(f"reload_flag: {reload_flag}")
+        border_radius = os.getenv("hypr_border")
+        logger.debug(f"hypr_border env: {border_radius}")
 
-        if reload_flag == "1":
-            # Priority 2a: During theme switch, read from theme.conf file
-            logger.debug("Theme switch detected, reading from theme.conf")
-            theme_conf = os.path.join(
-                str(xdg_config_home()), "hypr", "themes", "theme.conf"
-            )
+    if not border_radius:
+        logger.debug("Reading border radius from theme.conf")
+        theme_conf = os.path.join(str(xdg_config_home()), "hypr", "themes", "theme.conf")
 
-            if os.path.exists(theme_conf):
-                try:
-                    with open(theme_conf, "r") as f:
-                        for line in f:
-                            if "rounding" in line and "=" in line:
-                                border_radius = line.split("=")[1].strip().split()[0]
-                                logger.debug(
-                                    f"Got border radius from theme.conf: {border_radius}"
-                                )
-                                break
-                except Exception as e:
-                    logger.error(f"Error reading theme.conf: {e}")
-        else:
-            # Priority 2b: Normal operation, read from hypr_border env
-            logger.debug("Normal operation, reading from hypr_border")
-            border_radius = os.getenv("hypr_border")
-            logger.debug(f"Got border radius from hypr_border: {border_radius}")
+        if os.path.exists(theme_conf):
+            try:
+                with open(theme_conf, "r") as f:
+                    for line in f:
+                        if "rounding" in line and "=" in line:
+                            border_radius = line.split("=")[1].strip().split()[0]
+                            logger.debug(
+                                f"Got border radius from theme.conf: {border_radius}"
+                            )
+                            break
+            except Exception as e:
+                logger.error(f"Error reading theme.conf: {e}")
 
     # Priority 3: Fallback to querying theme
     if not border_radius:
@@ -1335,13 +1424,15 @@ def generate_includes():
     else:
         includes_data = {"include": []}
 
-    includes = []
-    for directory in MODULE_DIRS:
+    includes = {}
+    for directory in reversed(MODULE_DIRS):
         if not os.path.isdir(directory):
             logger.debug(f"Directory '{directory}' does not exist, skipping...")
             continue
-        includes.extend(glob.glob(os.path.join(directory, "*.json")))
-        includes.extend(glob.glob(os.path.join(directory, "*.jsonc")))
+        for pattern in ("*.json", "*.jsonc"):
+            for path in glob.glob(os.path.join(directory, pattern)):
+                relative_path = os.path.relpath(path, start=directory)
+                includes[relative_path] = path
 
     config_root = str(xdg_config_home())
     data_root = str(xdg_data_home())
@@ -1354,7 +1445,7 @@ def generate_includes():
         return path
 
     includes_data["include"] = [
-        normalize_include_path(path) for path in list(dict.fromkeys(includes))
+        normalize_include_path(includes[key]) for key in sorted(includes)
     ]
 
     position = get_config_value("WAYBAR_POSITION")
@@ -1366,7 +1457,7 @@ def generate_includes():
 
     atomic_write_json(includes_file, includes_data)
     logger.debug(
-        f"Successfully updated '{includes_file}' with {len(includes)} entries and position '{position}'."
+        f"Successfully updated '{includes_file}' with {len(includes_data['include'])} entries and position '{position}'."
     )
 
 
@@ -1505,8 +1596,7 @@ def get_pid_cmdline(pid):
 
 
 def read_theme_lock_meta(lock_path):
-    pid = None
-    cmd = None
+    meta = {}
     try:
         with open(lock_path, "r") as file:
             for line in file:
@@ -1518,19 +1608,21 @@ def read_theme_lock_meta(lock_path):
                 key, value = line.split("=", 1)
                 key = key.strip()
                 value = value.strip()
-                if key == "pid":
-                    try:
-                        pid = int(value)
-                    except ValueError:
-                        logger.warning(f"Invalid pid in theme-update.lock: {value}")
-                elif key == "cmd":
-                    cmd = value
+                meta[key] = value
     except FileNotFoundError:
-        return None, None
+        return {}
     except Exception as exc:
         logger.debug(f"Failed to read theme-update.lock metadata: {exc}")
-        return None, None
-    return pid, cmd
+        return {}
+
+    pid_raw = meta.get("pid", "")
+    if pid_raw:
+        try:
+            meta["pid"] = int(pid_raw)
+        except ValueError:
+            logger.warning(f"Invalid pid in theme-update.lock: {pid_raw}")
+            meta.pop("pid", None)
+    return meta
 
 
 def pid_is_active(pid, cmd_hint):
@@ -1555,7 +1647,9 @@ def theme_update_lock_active(lock_path, ttl_seconds):
     if not lock_path.exists():
         return False
 
-    pid, cmd_hint = read_theme_lock_meta(lock_path)
+    lock_meta = read_theme_lock_meta(lock_path)
+    pid = lock_meta.get("pid")
+    cmd_hint = lock_meta.get("cmd")
     if pid:
         cmd_hint = cmd_hint or "color.set.sh"
         if pid_is_active(pid, cmd_hint):
@@ -1618,10 +1712,11 @@ def watch_waybar():
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
 
-    waybar_dir = Path(xdg_config_home()) / "waybar"
+    waybar_dir = CONFIG_WAYBAR_DIR
     includes_dir = waybar_dir / "includes"
+    shared_waybar_dir = DATA_WAYBAR_DIR
     theme_update_lock = Path(xdg_runtime_dir()) / "theme-update.lock"
-    watch_dirs = [waybar_dir, includes_dir]
+    watch_dirs = [waybar_dir, includes_dir, shared_waybar_dir]
 
     watcher = InotifyWatcher()
     use_polling = watcher.fd is None
@@ -1636,6 +1731,7 @@ def watch_waybar():
         )
         watcher.add_watch(str(waybar_dir), mask)
         watcher.add_watch(str(includes_dir), mask)
+        watcher.add_watch(str(shared_waybar_dir), mask)
         logger.debug("Using inotify for file watching")
 
     # Batch events that occur during theme updates
@@ -1644,6 +1740,7 @@ def watch_waybar():
     watch_interval = get_watch_interval_seconds()
     theme_lock_ttl = get_theme_lock_ttl_seconds()
     theme_update_in_progress = False
+    theme_update_meta = {}
 
     hidden_state_file = Path(xdg_runtime_dir()) / "waybar-hidden"
 
@@ -1658,6 +1755,7 @@ def watch_waybar():
             logger.debug("Theme update started, batching events")
             theme_update_in_progress = True
             pending_events = []
+            theme_update_meta = read_theme_lock_meta(theme_update_lock)
 
         if use_polling:
             events = poll_waybar_events(watch_dirs, poll_state)
@@ -1677,6 +1775,16 @@ def watch_waybar():
         if theme_update_in_progress:
             continue
 
+        if not pending_events and not events:
+            theme_update_meta = {}
+            continue
+
+        if pending_events and theme_update_meta.get("waybar_reload") == "direct":
+            logger.debug("Skipping watcher reload; theme switch committed Waybar directly")
+            pending_events = []
+            theme_update_meta = {}
+            continue
+
         if pending_events and not events:
             unique_events = list(dict.fromkeys(pending_events))
             logger.debug(
@@ -1684,6 +1792,7 @@ def watch_waybar():
             )
             smart_reload_waybar(unique_events)
             pending_events = []
+            theme_update_meta = {}
 
 
 def get_waybar_pid():
@@ -2059,6 +2168,12 @@ def main():
     # Note: --hide and --kill are handled early in main() before file operations
 
     if args.update:
+        current_layout = get_current_layout_from_config()
+        if current_layout:
+            style_path = resolve_style_path(current_layout)
+            update_config(current_layout)
+            update_style(style_path)
+            set_state_value("WAYBAR_STYLE_PATH", style_path)
         update_icon_size()
         update_border_radius()
         generate_includes()

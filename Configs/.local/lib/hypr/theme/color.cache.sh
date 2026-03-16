@@ -146,7 +146,7 @@ wal_cache_swap_dir() {
 # Global variables used:
 #   wal_cache_key   - Cache key (wallpaper_hash_mode_backend)
 #   WALLPAPER_IMAGE - Path to current wallpaper
-#   dcol_mode       - Current color mode (dark/light)
+#   resolved_color_variant       - Current resolved dark/light variant
 #   PYWAL_BACKEND   - Pywal16 backend used
 # Returns:
 #   0 - Store successful
@@ -190,7 +190,7 @@ wal_cache_store() {
   {
     echo "${wal_cache_key}"
     echo "wallpaper=${WALLPAPER_IMAGE}"
-    echo "mode=${dcol_mode}"
+    echo "color_variant=${resolved_color_variant}"
     echo "backend=${PYWAL_BACKEND}"
   } >"${tmp_dir}/.meta"
   touch "${tmp_dir}/.complete"

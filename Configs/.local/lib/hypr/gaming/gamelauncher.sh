@@ -3,7 +3,7 @@
 # set variables
 MODE=${1}
 scrDir=$(dirname "$(realpath "$0")")
-source $scrDir/../globalcontrol.sh
+source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
 # ThemeSet="${HYPR_CONFIG_HOME}/themes/theme.conf"
 
 if [[ "$MODE" =~ ^[0-9]+$ ]]; then
@@ -12,6 +12,7 @@ else
   RofiConf="${MODE:-$ROFI_GAMELAUNCHER_STYLE}"
 fi
 RofiConf=${RofiConf:-"steam_deck"}
+RofiConf="$(rofi_resolve_theme "${RofiConf}")"
 
 # set rofi override
 elem_border=$((hypr_border * 2))
@@ -33,7 +34,7 @@ case ${MODE:-5} in
     # Calculate display height adjusted for scale (95% of actual height)
     monitor_height=$((monitor_info[1] * $percent / monitor_scale))
 
-    BG=$HOME/.config/rofi/assets/steamdeck_holographic.png
+    BG="$(rofi_resolve_asset "steamdeck_holographic.png")"
     BGfx=$HOME/.cache/hypr/landing/steamdeck_holographic_${monitor_width}x${monitor_height}.png
 
     # Construct the command
@@ -52,7 +53,7 @@ esac
 
 fn_steam() {
 
-  notify-send -a "Game launcher" "Please wait... " -t 4000
+  dunstify -a "Game launcher" "Please wait... " -t 4000
 
   libraryThumbName="library_600x900.jpg"
   libraryHeaderName="header.jpg"
@@ -65,7 +66,7 @@ fn_steam() {
   done)
 
   if [ -z "${ManifestList}" ]; then
-    notify-send -a "Game launcher" "Cannot Fetch Steam Games!" && exit 1
+    dunstify -a "Game launcher" "Cannot Fetch Steam Games!" && exit 1
   fi
 
   # read installed games
@@ -101,8 +102,8 @@ fn_steam() {
 
     headerImage=$(find "${SteamThumb}/${launchid}/" -type f -name "*${libraryHeaderName}")
     ${steamlaunch} -applaunch "${launchid} [gamemoderun %command%]" &
-    # notify-send "Game launcher" -a "Launching ${RofiSel}..." -i ${SteamThumb}/${launchid}_header.jpg -r 91190 -t 2200
-    notify-send -a "Game launcher" -i "$headerImage" "Launching ${RofiSel}..."
+    # dunstify "Game launcher" -a "Launching ${RofiSel}..." -i ${SteamThumb}/${launchid}_header.jpg -r 91190 -t 2200
+    dunstify -a "Game launcher" -i "$headerImage" "Launching ${RofiSel}..."
   fi
 }
 
@@ -111,10 +112,8 @@ fn_lutris() {
   [ ! -e "${icon_path}" ] && icon_path="${HOME}/.cache/lutris/coverart"
   meta_data="/tmp/hyprdots-$(id -u)-lutrisgames.json"
 
-  # Retrieve the list of games from Lutris in JSON format
-  #TODO Only call this if new apps are installed...
-  # [ ! -s "${meta_data}" ] &&
-  notify-send -a "Game launcher" "Please wait... " -t 4000
+  # Rebuild the Lutris cache on launch so newly installed games appear immediately.
+  dunstify -a "Game launcher" "Please wait... " -t 4000
 
   cat <<EOF
 "Fetching Lutris Games..."
@@ -125,7 +124,7 @@ EOF
 
   eval "${run_lutris}" -j -l 2>/dev/null | jq --arg icons "$icon_path/" --arg prefix ".jpg" '.[] |= . + {"select": (.name + "\u0000icon\u001f" + $icons + .slug + $prefix)}' >"${meta_data}"
 
-  [ ! -s "${meta_data}" ] && notify-send -a "Game launcher" "Cannot Fetch Lutris Games!" && exit 1
+  [ ! -s "${meta_data}" ] && dunstify -a "Game launcher" "Cannot Fetch Lutris Games!" && exit 1
   CHOICE=$(
     jq -r '.[].select' "${meta_data}" | rofi -dmenu -p Lutris \
       -theme-str "${r_override}" \
@@ -133,7 +132,7 @@ EOF
   )
   [ -z "$CHOICE" ] && exit 0
   SLUG=$(jq -r --arg choice "$CHOICE" '.[] | select(.name == $choice).slug' "${meta_data}")
-  notify-send -a "Game launcher" -i "${icon_path}/${SLUG}.jpg" "Launching ${CHOICE}..."
+  dunstify -a "Game launcher" -i "${icon_path}/${SLUG}.jpg" "Launching ${CHOICE}..."
   exec xdg-open "lutris:rungame/${SLUG}"
 }
 
@@ -158,7 +157,7 @@ if [ -z "${run_lutris}" ] || echo "$*" | grep -q "steam"; then
   fi
 
   if [ ! -f $SteamLib ] || [ ! -d $SteamThumb ]; then
-    notify-send -a "Game launcher" "Steam library not found!"
+    dunstify -a "Game launcher" "Steam library not found!"
     exit 1
   fi
   fn_steam

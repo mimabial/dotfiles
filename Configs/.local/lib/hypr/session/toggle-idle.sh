@@ -11,8 +11,8 @@ KEEP_AWAKE_STATE_FILE="${STATE_DIR}/keep-awake.state"
 MANAGER_UNIT="hyprland-idle-manager.service"
 
 notify() {
-  if command -v notify-send >/dev/null 2>&1; then
-    notify-send "$@"
+  if command -v dunstify >/dev/null 2>&1; then
+    dunstify "$@"
   fi
 }
 

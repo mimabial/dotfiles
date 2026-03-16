@@ -6,5 +6,18 @@ script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=/dev/null
 source "${script_dir}/service.lib.bash"
 
+case "${1:-}" in
+  -h | --help)
+    printf 'Usage: hyprshell service/refresh-hyprlock.sh [--dry-run] [--quiet] [--diff|--no-diff] [--backup-label <name>]\n'
+    exit 0
+    ;;
+esac
+
+hypr_service_parse_refresh_args "$@"
+[[ "${#hypr_service_cli_args[@]}" -eq 0 ]] || hypr_service_die "refresh-hyprlock.sh does not take positional arguments."
+
 hypr_service_init
-hypr_service_refresh_config "hypr/hyprlock.conf" 0 0
+hypr_service_apply_cli_env
+hypr_service_refresh_manifest_domains "${hypr_service_cli_show_diff}" "${hypr_service_cli_quiet}" hyprlock
+
+hypr_service_maybe_report_backup_root

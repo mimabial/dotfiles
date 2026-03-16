@@ -2,7 +2,7 @@
 
 scrDir=$(dirname "$(realpath "$0")")
 # shellcheck disable=SC1091
-source "$scrDir/globalcontrol.sh"
+source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
 
 PREVIEW=${1}
 MESSAGE=${2}

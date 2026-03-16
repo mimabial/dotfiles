@@ -1,0 +1,26 @@
+# domain|layer|kind|mode|backup|relative-path
+
+# Hypr user-facing config layer
+hypr-config|config|file|preserve|never|hypr/hyprland.conf
+hypr-config|config|file|preserve|never|hypr/windowrules.conf
+hypr-config|config|file|preserve|never|hypr/keybindings.conf
+hypr-config|config|file|preserve|never|hypr/userprefs.conf
+hypr-config|config|file|preserve|never|hypr/userfonts.conf
+hypr-config|config|file|preserve|never|hypr/workspaces.conf
+
+# Generated current state
+hypr-state|state|file|preserve|never|hypr/animations.conf
+hypr-state|state|file|preserve|never|hypr/shaders.conf
+hypr-state|state|file|preserve|never|hypr/workflows.conf
+
+# Single-file refresh targets
+hyprlock|config|file|preserve|never|hypr/hyprlock.conf
+hypridle|config|file|preserve|never|hypr/hypridle.conf
+
+# Waybar split
+waybar|config|file|preserve|never|waybar/config.jsonc
+waybar|config|file|preserve|never|waybar/style.css
+
+# Rofi split
+rofi|config|file|preserve|never|rofi/config.rasi
+rofi|config|file|preserve|never|rofi/theme.rasi

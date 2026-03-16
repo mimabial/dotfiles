@@ -24,6 +24,6 @@ set wildmenu " auto completion, trigger with <C-n>
 
 
 let s:VIM_DIR = fnamemodify($MYVIMRC, ':h')
-if filereadable(s:VIM_DIR . '/colors/wallbash.vim')
-    colorscheme wallbash
+if filereadable(s:VIM_DIR . '/colors/pywal16.vim')
+    colorscheme pywal16
 endif

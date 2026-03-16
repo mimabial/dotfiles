@@ -10,6 +10,7 @@ check() {
 NOTIF_TOKEN_FILE="$HOME/.config/github/notifications.token"
 ALERTS_TOKEN_FILE="$HOME/.config/github/alerts.token"
 REPOS_CACHE="$HOME/.cache/github/repos.list"
+SECURITY_CACHE="$HOME/.cache/github/security-summary.json"
 GITHUB_API="https://api.github.com"
 
 print_json() {
@@ -123,6 +124,98 @@ github_get_code() {
     "$url"
 }
 
+get_security_cache_ttl_seconds() {
+  local raw="${GITHUB_SECURITY_CACHE_TTL_MINUTES:-240}"
+
+  [[ "$raw" =~ ^[0-9]+$ ]] || raw=240
+  printf '%s' $((raw * 60))
+}
+
+cache_is_fresh() {
+  local cache_file="$1"
+  local ttl_seconds="$2"
+  local now mtime
+
+  [ "$ttl_seconds" -gt 0 ] || return 1
+  [ -s "$cache_file" ] || return 1
+
+  mtime="$(stat -c %Y "$cache_file" 2>/dev/null || echo 0)"
+  [[ "$mtime" =~ ^[0-9]+$ ]] || return 1
+
+  now="$(date +%s)"
+  [[ "$now" =~ ^[0-9]+$ ]] || return 1
+  [ $((now - mtime)) -le "$ttl_seconds" ]
+}
+
+security_cache_is_fresh() {
+  local ttl_seconds
+
+  ttl_seconds="$(get_security_cache_ttl_seconds)"
+  cache_is_fresh "$SECURITY_CACHE" "$ttl_seconds" || return 1
+
+  if [ -e "$REPOS_CACHE" ] && [ "$REPOS_CACHE" -nt "$SECURITY_CACHE" ]; then
+    return 1
+  fi
+
+  return 0
+}
+
+load_security_cache() {
+  [ -s "$SECURITY_CACHE" ] || return 1
+
+  security_available="$(jq -r '.security_available // 0' "$SECURITY_CACHE" 2>/dev/null)" || return 1
+  security_count="$(jq -r '.security_count // 0' "$SECURITY_CACHE" 2>/dev/null)" || return 1
+  dependabot_count="$(jq -r '.dependabot_count // 0' "$SECURITY_CACHE" 2>/dev/null)" || return 1
+  code_scanning_count="$(jq -r '.code_scanning_count // 0' "$SECURITY_CACHE" 2>/dev/null)" || return 1
+  secret_scanning_count="$(jq -r '.secret_scanning_count // 0' "$SECURITY_CACHE" 2>/dev/null)" || return 1
+  dependabot_details="$(jq -r '.dependabot_details // ""' "$SECURITY_CACHE" 2>/dev/null)" || return 1
+  code_scanning_details="$(jq -r '.code_scanning_details // ""' "$SECURITY_CACHE" 2>/dev/null)" || return 1
+  secret_scanning_details="$(jq -r '.secret_scanning_details // ""' "$SECURITY_CACHE" 2>/dev/null)" || return 1
+  security_note="$(jq -r '.security_note // ""' "$SECURITY_CACHE" 2>/dev/null)" || return 1
+  security_issue="$(jq -r '.security_issue // ""' "$SECURITY_CACHE" 2>/dev/null)" || return 1
+
+  return 0
+}
+
+save_security_cache() {
+  local tmp_cache created_at
+
+  mkdir -p "$(dirname "$SECURITY_CACHE")"
+  tmp_cache="$(mktemp)"
+  created_at="$(date +%s)"
+
+  if ! jq -n \
+    --argjson created_at "${created_at}" \
+    --argjson security_available "${security_available}" \
+    --argjson security_count "${security_count}" \
+    --argjson dependabot_count "${dependabot_count}" \
+    --argjson code_scanning_count "${code_scanning_count}" \
+    --argjson secret_scanning_count "${secret_scanning_count}" \
+    --arg dependabot_details "${dependabot_details}" \
+    --arg code_scanning_details "${code_scanning_details}" \
+    --arg secret_scanning_details "${secret_scanning_details}" \
+    --arg security_note "${security_note}" \
+    --arg security_issue "${security_issue}" \
+    '{
+      created_at: $created_at,
+      security_available: $security_available,
+      security_count: $security_count,
+      dependabot_count: $dependabot_count,
+      code_scanning_count: $code_scanning_count,
+      secret_scanning_count: $secret_scanning_count,
+      dependabot_details: $dependabot_details,
+      code_scanning_details: $code_scanning_details,
+      secret_scanning_details: $secret_scanning_details,
+      security_note: $security_note,
+      security_issue: $security_issue
+    }' >"$tmp_cache"; then
+    rm -f "$tmp_cache"
+    return 1
+  fi
+
+  mv -f "$tmp_cache" "$SECURITY_CACHE"
+}
+
 refresh_repo_cache() {
   local tmp_repos page body_file headers_file code count
   local msg context
@@ -211,6 +304,7 @@ code_scanning_details=""
 secret_scanning_details=""
 security_note=""
 security_issue=""
+security_from_cache=0
 
 # Inbox notifications: degrade gracefully when token/endpoint is incompatible.
 notif_body="$(mktemp)"
@@ -258,14 +352,21 @@ if [ "$cache_is_stale" -eq 1 ]; then
   fi
 fi
 
-dep_failed_requests=0
-code_failed_requests=0
-secret_failed_requests=0
-dep_first_error=""
-code_first_error=""
-secret_first_error=""
+if security_cache_is_fresh && load_security_cache; then
+  security_from_cache=1
+  if [ -n "$security_issue" ]; then
+    security_note="${security_note:+$security_note"$'\n'"}Using cached security summary."
+    security_note+=$'\n'"${security_issue}"
+    security_issue=""
+  fi
+elif [ "$security_available" -eq 1 ] && [ -s "$REPOS_CACHE" ]; then
+  dep_failed_requests=0
+  code_failed_requests=0
+  secret_failed_requests=0
+  dep_first_error=""
+  code_first_error=""
+  secret_first_error=""
 
-if [ "$security_available" -eq 1 ] && [ -s "$REPOS_CACHE" ]; then
   while IFS= read -r repo; do
     [ -z "$repo" ] && continue
     repo_name="${repo#*/}"
@@ -395,16 +496,20 @@ elif [ "$security_available" -eq 1 ] && [ ! -s "$REPOS_CACHE" ]; then
   security_issue="repos endpoint: No accessible repositories found for this token/repo selection."
 fi
 
-security_count=$((dependabot_count + code_scanning_count + secret_scanning_count))
+if [ "$security_from_cache" -ne 1 ]; then
+  security_count=$((dependabot_count + code_scanning_count + secret_scanning_count))
 
-if [ "$dep_failed_requests" -gt 0 ] || [ "$code_failed_requests" -gt 0 ] || [ "$secret_failed_requests" -gt 0 ]; then
-  security_note="${security_note:+$security_note"$'\n'"}Some security endpoint requests failed:"
-  [ "$dep_failed_requests" -gt 0 ] && security_note+=$'\n'"  dependabot: ${dep_failed_requests} repo request(s)"
-  [ "$code_failed_requests" -gt 0 ] && security_note+=$'\n'"  code-scanning: ${code_failed_requests} repo request(s)"
-  [ "$secret_failed_requests" -gt 0 ] && security_note+=$'\n'"  secret-scanning: ${secret_failed_requests} repo request(s)"
-  [ -n "$dep_first_error" ] && security_note+=$'\n'"${dep_first_error}"
-  [ -n "$code_first_error" ] && security_note+=$'\n'"${code_first_error}"
-  [ -n "$secret_first_error" ] && security_note+=$'\n'"${secret_first_error}"
+  if [ "${dep_failed_requests:-0}" -gt 0 ] || [ "${code_failed_requests:-0}" -gt 0 ] || [ "${secret_failed_requests:-0}" -gt 0 ]; then
+    security_note="${security_note:+$security_note"$'\n'"}Some security endpoint requests failed:"
+    [ "${dep_failed_requests:-0}" -gt 0 ] && security_note+=$'\n'"  dependabot: ${dep_failed_requests} repo request(s)"
+    [ "${code_failed_requests:-0}" -gt 0 ] && security_note+=$'\n'"  code-scanning: ${code_failed_requests} repo request(s)"
+    [ "${secret_failed_requests:-0}" -gt 0 ] && security_note+=$'\n'"  secret-scanning: ${secret_failed_requests} repo request(s)"
+    [ -n "${dep_first_error:-}" ] && security_note+=$'\n'"${dep_first_error}"
+    [ -n "${code_first_error:-}" ] && security_note+=$'\n'"${code_first_error}"
+    [ -n "${secret_first_error:-}" ] && security_note+=$'\n'"${secret_first_error}"
+  fi
+
+  [ "$security_available" -eq 1 ] && save_security_cache >/dev/null 2>&1 || true
 fi
 
 tooltip="<b>GitHub Notifications</b>"

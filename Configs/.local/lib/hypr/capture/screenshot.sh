@@ -85,7 +85,7 @@ fi
 
 run_annotation() {
   if [[ -z "${annotation_tool}" ]]; then
-    notify-send -a "Screenshot" "Screenshot Error" "No annotation tool found (swappy/satty)"
+    dunstify -a "Screenshot" "Screenshot Error" "No annotation tool found (swappy/satty)"
     return 1
   fi
   "${annotation_tool}" "${annotation_args[@]}"
@@ -134,13 +134,13 @@ smart_screenshot() {
   # Take screenshot with grim
   if [[ "$destination" == "clipboard" ]]; then
     grim -g "$SELECTION" - | wl-copy
-    notify-send -a "Screenshot" "Copied to clipboard" -i "camera-photo"
+    dunstify -a "Screenshot" "Copied to clipboard" -i "camera-photo"
   elif [[ "$destination" == "save" ]]; then
     grim -g "$SELECTION" "${save_dir}/${save_file}"
   else
     grim -g "$SELECTION" "$temp_screenshot"
     if ! run_annotation; then
-      notify-send -a "Screenshot" "Screenshot Error" "Failed to open annotation tool"
+      dunstify -a "Screenshot" "Screenshot Error" "Failed to open annotation tool"
       return 1
     fi
   fi
@@ -155,11 +155,11 @@ take_screenshot() {
   # execute grimblast with given args
   if "$LIB_DIR/hypr/capture/grimblast" "${extra_args[@]}" copysave "$mode" "$temp_screenshot"; then
     if ! run_annotation; then
-      notify-send -a "Screenshot" "Screenshot Error" "Failed to open annotation tool"
+      dunstify -a "Screenshot" "Screenshot Error" "Failed to open annotation tool"
       return 1
     fi
   else
-    notify-send -a "Screenshot" "Screenshot Error" "Failed to take screenshot"
+    dunstify -a "Screenshot" "Screenshot Error" "Failed to take screenshot"
     return 1
   fi
 }
@@ -183,14 +183,14 @@ ocr_screenshot() {
         -deskew 40% \
         "${temp_screenshot}"
     else
-      notify-send -a "Screenshot" "OCR: imagemagick is not installed, recognition accuracy is reduced" -e -i "dialog-warning"
+      dunstify -a "Screenshot" "OCR: imagemagick is not installed, recognition accuracy is reduced" -i "dialog-warning"
     fi
     tesseract_package_prefix="tesseract-data-"
     tesseract_packages=("${tesseract_languages[@]/#/$tesseract_package_prefix}")
     tesseract_packages+=("tesseract")
     for pkg in "${tesseract_packages[@]}"; do
       if ! pkg_installed "${pkg}"; then
-        notify-send -a "Screenshot" "$(echo -e "OCR: required package is not installed\n ${pkg}")" -e -i "dialog-error"
+        dunstify -a "Screenshot" "$(echo -e "OCR: required package is not installed\n ${pkg}")" -i "dialog-error"
         return 1
       fi
     done
@@ -208,10 +208,10 @@ ocr_screenshot() {
       2>/dev/null
     )
     printf "%s" "$tesseract_output" | wl-copy
-    notify-send -a "Screenshot" "$(echo -e "OCR: ${#tesseract_output} symbols recognized\n\nLanguages used ${tesseract_languages[@]/#/'\n '}")" -i "${temp_screenshot}" -e
+    dunstify -a "Screenshot" "$(echo -e "OCR: ${#tesseract_output} symbols recognized\n\nLanguages used ${tesseract_languages[@]/#/'\n '}")" -i "${temp_screenshot}"
     rm -f "${temp_screenshot}"
   else
-    notify-send -a "Screenshot" "OCR: screenshot error" -e -i "dialog-error"
+    dunstify -a "Screenshot" "OCR: screenshot error" -i "dialog-error"
     return 1
   fi
 }
@@ -255,5 +255,5 @@ case $1 in
 esac
 
 if [ -f "${save_dir}/${save_file}" ]; then
-  notify-send -a "Screenshot" -i "${save_dir}/${save_file}" "saved in ${save_dir}"
+  dunstify -a "Screenshot" -i "${save_dir}/${save_file}" "saved in ${save_dir}"
 fi

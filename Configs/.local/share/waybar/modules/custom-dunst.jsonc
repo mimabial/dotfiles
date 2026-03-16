@@ -1,0 +1,44 @@
+{
+  "custom/dunst": {
+    "justify": "center",
+    "format": "{icon}",
+    "tooltip": true,
+    "return-type": "json",
+    "interval": 2,
+    "exec-if": "command -v dunstctl >/dev/null 2>&1 && dunstctl is-paused >/dev/null 2>&1",
+    "exec": "hyprshell notifications",
+    "on-scroll-down": "dunstctl history-pop",
+    "on-click": "dunstctl set-paused toggle",
+    "on-click-right": "sh -c 'dunstctl history-clear; dunstctl close-all'",
+    "escape": true,
+    "menu": "on-click-middle",
+    "menu-file": "$XDG_DATA_HOME/waybar/menus/dunst.xml",
+    "menu-actions": {
+      "show": "dunstctl history-pop",
+      "toggle-dnd": "dunstctl set-paused toggle",
+      "clear": "sh -c 'dunstctl history-clear; dunstctl close-all'",
+      "close-all": "dunstctl close-all"
+    },
+    "format-icons": {
+      "notification": "\udb80\udf6a",
+      "dnd-notification": "\udb84\udd75",
+      "inhibited-notification": "\udb80\udf6a",
+      "inhibited-none": "\udb80\udf65",
+      "dnd-inhibited-notification": "\udb84\udd75",
+      "dnd-inhibited-none": "\udb84\udd6d",
+      "dnd-none": "\udb84\udd6d",
+      "email-notification": "\udb83\udd42",
+      "chat-notification": "\udb84\udec9",
+      "warning-notification": "<span foreground='yellow'>\udb85\udf3b</span>",
+      "error": "<span foreground='red'>\udb82\ude04</span>",
+      "error-notification": "<span foreground='red'>\udb82\ude04</span>",
+      "network-notification": "\udb83\udc8a",
+      "battery-notification": "\udb84\udccd",
+      "update-notification": "\udb81\udeb0",
+      "music-notification": "\uec1b",
+      "volume-notification": "\udb81\udfc5",
+      "dnd": "\udb84\udd6d",
+      "none": "\udb80\udf65"
+    }
+  }
+}

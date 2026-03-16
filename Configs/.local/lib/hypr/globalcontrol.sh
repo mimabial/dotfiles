@@ -68,10 +68,158 @@ hypr_variables_file() {
   hypr_core_file "variables.conf"
 }
 
-#? avoid notify-send to stall the script
+hypr_compact_path() {
+  local path="$1"
+
+  case "${path}" in
+    "${XDG_CONFIG_HOME}"/*)
+      printf '$XDG_CONFIG_HOME%s\n' "${path#${XDG_CONFIG_HOME}}"
+      ;;
+    "${XDG_DATA_HOME}"/*)
+      printf '$XDG_DATA_HOME%s\n' "${path#${XDG_DATA_HOME}}"
+      ;;
+    "${XDG_STATE_HOME}"/*)
+      printf '$XDG_STATE_HOME%s\n' "${path#${XDG_STATE_HOME}}"
+      ;;
+    "${XDG_CACHE_HOME}"/*)
+      printf '$XDG_CACHE_HOME%s\n' "${path#${XDG_CACHE_HOME}}"
+      ;;
+    "${HOME}"/*)
+      printf '$HOME%s\n' "${path#${HOME}}"
+      ;;
+    *)
+      printf '%s\n' "${path}"
+      ;;
+  esac
+}
+
+rofi_user_dir() {
+  printf '%s\n' "${XDG_CONFIG_HOME}/rofi"
+}
+
+rofi_shared_dir() {
+  printf '%s\n' "${XDG_DATA_HOME}/rofi"
+}
+
+rofi_resolve_theme() {
+  local ref="$1"
+  local user_dir shared_dir
+  user_dir="$(rofi_user_dir)"
+  shared_dir="$(rofi_shared_dir)"
+
+  [[ -n "${ref}" ]] || return 1
+
+  if [[ -f "${ref}" ]]; then
+    printf '%s\n' "${ref}"
+    return 0
+  fi
+
+  local candidate
+  for candidate in \
+    "${user_dir}/themes/${ref}.rasi" \
+    "${user_dir}/themes/${ref}" \
+    "${user_dir}/${ref}.rasi" \
+    "${user_dir}/${ref}" \
+    "${shared_dir}/themes/${ref}.rasi" \
+    "${shared_dir}/themes/${ref}" \
+    "${shared_dir}/${ref}.rasi" \
+    "${shared_dir}/${ref}"
+  do
+    if [[ -f "${candidate}" ]]; then
+      printf '%s\n' "${candidate}"
+      return 0
+    fi
+  done
+
+  printf '%s\n' "${shared_dir}/themes/${ref}.rasi"
+  return 1
+}
+
+rofi_resolve_asset() {
+  local ref="$1"
+  local user_dir shared_dir
+  user_dir="$(rofi_user_dir)"
+  shared_dir="$(rofi_shared_dir)"
+
+  [[ -n "${ref}" ]] || return 1
+
+  if [[ -f "${ref}" ]]; then
+    printf '%s\n' "${ref}"
+    return 0
+  fi
+
+  local candidate
+  for candidate in \
+    "${user_dir}/assets/${ref}" \
+    "${user_dir}/${ref}" \
+    "${shared_dir}/assets/${ref}" \
+    "${shared_dir}/${ref}"
+  do
+    if [[ -f "${candidate}" ]]; then
+      printf '%s\n' "${candidate}"
+      return 0
+    fi
+  done
+
+  printf '%s\n' "${shared_dir}/assets/${ref}"
+  return 1
+}
+
+rofi_list_theme_files() {
+  local -A seen=()
+  local dir file base
+
+  for dir in "$(rofi_user_dir)/themes" "$(rofi_shared_dir)/themes"; do
+    [[ -d "${dir}" ]] || continue
+    while IFS= read -r file; do
+      base="$(basename "${file}")"
+      [[ -n "${seen[${base}]:-}" ]] && continue
+      seen["${base}"]=1
+      printf '%s\n' "${file}"
+    done < <(find -L "${dir}" -maxdepth 1 -type f -name '*.rasi' | sort)
+  done
+}
+
+rofi_list_asset_files() {
+  local pattern="${1:-*}"
+  local -A seen=()
+  local dir file base
+
+  for dir in "$(rofi_user_dir)/assets" "$(rofi_shared_dir)/assets"; do
+    [[ -d "${dir}" ]] || continue
+    while IFS= read -r file; do
+      base="$(basename "${file}")"
+      [[ -n "${seen[${base}]:-}" ]] && continue
+      seen["${base}"]=1
+      printf '%s\n' "${file}"
+    done < <(find -L "${dir}" -maxdepth 1 -type f -name "${pattern}" | sort)
+  done
+}
+
+#? avoid notification calls stalling the script
+notify_send_safe() {
+  if ! command -v dunstify >/dev/null 2>&1; then
+    return 0
+  fi
+
+  if command -v timeout >/dev/null 2>&1; then
+    timeout 2 dunstify "$@" >/dev/null 2>&1 || true
+  else
+    dunstify "$@" >/dev/null 2>&1 || true
+  fi
+}
+
 send_notifs() {
-  local args=("$@")
-  notify-send "${args[@]}" &
+  notify_send_safe "$@"
+}
+
+send_ephemeral_notif() {
+  local sync_tag="$1"
+  shift
+  local args=(
+    -h "string:x-canonical-private-synchronous:${sync_tag}"
+  )
+  notify_send_safe "${args[@]}" "$@"
 }
 
 print_log() {
@@ -242,7 +390,7 @@ get_hashmap() {
       return 1
     else
       echo "ERROR: No image found in any source"
-      [ -n "${no_notify}" ] && notify-send -a "Global control" "WARNING: No compatible wallpapers found in: ${no_wallpapers[*]}"
+      [ -n "${no_notify}" ] && dunstify -a "Global control" "WARNING: No compatible wallpapers found in: ${no_wallpapers[*]}"
       exit 1
     fi
   fi
@@ -330,6 +478,23 @@ export_hypr_config() {
 
   [ -f "${user_conf_state}" ] && source "${user_conf_state}"
   [ -f "${user_conf}" ] && source "${user_conf}"
+  refresh_hypr_runtime_state
+}
+
+refresh_hypr_runtime_state() {
+  # Keep derived theme/runtime paths in sync after reloading state.
+  case "${selected_color_mode}" in
+    0 | 1 | 2 | 3) ;;
+    *) selected_color_mode=0 ;;
+  esac
+
+  if [ -z "${HYPR_THEME}" ] || [ ! -d "${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}" ]; then
+    get_themes
+    HYPR_THEME="${thmList[0]}"
+  fi
+
+  HYPR_THEME_DIR="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}"
+  export HYPR_THEME HYPR_THEME_DIR selected_color_mode
 }
 
 # ============================================================================
@@ -346,33 +511,16 @@ export_hypr_config() {
 # Initialize hypr environment (loads state, sets defaults)
 # Called automatically unless HYPR_SKIP_INIT=1
 init_hypr_globals() {
-  # Guard against re-initialization (unless reload_flag is set)
-  if [[ "${HYPR_GLOBAL_INIT:-0}" -eq 1 ]] && [[ "${reload_flag:-0}" -ne 1 ]]; then
+# Guard against re-initialization. Call export_hypr_config explicitly when a
+# script needs fresh state in the current shell.
+  if [[ "${HYPR_GLOBAL_INIT:-0}" -eq 1 ]]; then
     return 0
   fi
 
   # Load user state
   export_hypr_config
 
-  # Validate color mode
-  case "${enableWallDcol}" in
-    0 | 1 | 2 | 3) ;;
-    *) enableWallDcol=0 ;;
-  esac
-
-  # Set theme if not already set
-  if [ -z "${HYPR_THEME}" ] || [ ! -d "${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}" ]; then
-    get_themes
-    HYPR_THEME="${thmList[0]}"
-  fi
-
-  # Derived paths
-  HYPR_THEME_DIR="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}"
-
-  # Export theme variables
-  export HYPR_THEME \
-    HYPR_THEME_DIR \
-    enableWallDcol
+  refresh_hypr_runtime_state
 
   # Hyprland-specific settings (only if running under Hyprland)
   if [ -n "${HYPRLAND_INSTANCE_SIGNATURE}" ]; then
@@ -437,9 +585,9 @@ get_aurhlpr() {
 # UNIFIED STATE MANAGEMENT
 # ============================================================================
 # All state is stored in key=value format in these files:
-#   - staterc: User/runtime state (HYPR_THEME, enableWallDcol, etc.)
-#   - config:  Exported environment config
-#   - mode:    Current color mode (dark/light)
+#   - staterc:        User/runtime state (HYPR_THEME, selected_color_mode, etc.)
+#   - config:         Exported environment config
+#   - color_variant:  Current resolved dark/light variant
 #
 # Use these functions for consistent state access across all scripts:
 #   state_get  - Read a state variable
@@ -448,14 +596,14 @@ get_aurhlpr() {
 # ============================================================================
 
 # State file paths (centralized definition)
-[[ -z "${STATE_DIR}" ]] && STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/hypr"
+[[ -z "${STATE_DIR:-}" ]] && STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/hypr"
 readonly STATE_DIR
-[[ -z "${STATE_RC}" ]] && STATE_RC="${STATE_DIR}/staterc"
+[[ -z "${STATE_RC:-}" ]] && STATE_RC="${STATE_DIR}/staterc"
 readonly STATE_RC
-[[ -z "${STATE_CONFIG}" ]] && STATE_CONFIG="${STATE_DIR}/config"
+[[ -z "${STATE_CONFIG:-}" ]] && STATE_CONFIG="${STATE_DIR}/config"
 readonly STATE_CONFIG
-[[ -z "${STATE_MODE}" ]] && STATE_MODE="${STATE_DIR}/mode"
-readonly STATE_MODE
+[[ -z "${STATE_COLOR_VARIANT:-}" ]] && STATE_COLOR_VARIANT="${STATE_DIR}/color_variant"
+readonly STATE_COLOR_VARIANT
 
 # Get a state variable value
 # Usage: state_get VARIABLE_NAME [default_value]
@@ -487,7 +635,7 @@ state_get() {
 
 # Set a state variable (atomic write to prevent race conditions)
 # Usage: state_set VARIABLE_NAME value [file]
-# file: "staterc" (default), "config", or "mode"
+# file: "staterc" (default), "config", or "color_variant"
 state_set() {
   local var_name="$1"
   local var_value="$2"
@@ -498,7 +646,7 @@ state_set() {
   case "${target_file}" in
     staterc) state_file="${STATE_RC}" ;;
     config) state_file="${STATE_CONFIG}" ;;
-    mode) state_file="${STATE_MODE}" ;;
+    color_variant) state_file="${STATE_COLOR_VARIANT}" ;;
     *) state_file="${STATE_RC}" ;;
   esac
 
@@ -506,7 +654,7 @@ state_set() {
     case "${target_file}" in
       staterc) state_file="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/staterc" ;;
       config) state_file="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/config" ;;
-      mode) state_file="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/mode" ;;
+      color_variant) state_file="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/color_variant" ;;
     esac
   fi
 
@@ -535,10 +683,10 @@ state_set() {
     return 1
   fi
 
-  # Special case for mode file (single value, no key)
-  if [[ "${target_file}" == "mode" ]]; then
+  # Special case for the color-variant file (single value, no key)
+  if [[ "${target_file}" == "color_variant" ]]; then
     if [[ -z "${var_value}" ]]; then
-      print_log -sec "state" -err "state_set" "mode value required"
+      print_log -sec "state" -err "state_set" "color variant value required"
       flock -u "${lock_fd}" 2>/dev/null || true
       exec {lock_fd}>&-
       return 1
@@ -584,25 +732,25 @@ state_set() {
   fi
 }
 
-# Get the current color mode
+# Get the current resolved dark/light variant
 # Returns: dark, light, or empty
-state_get_mode() {
-  if [[ -f "${STATE_MODE}" ]]; then
-    cat "${STATE_MODE}" 2>/dev/null
+state_get_color_variant() {
+  if [[ -f "${STATE_COLOR_VARIANT}" ]]; then
+    cat "${STATE_COLOR_VARIANT}" 2>/dev/null
   else
     echo "dark" # Default
   fi
 }
 
-# Set the current color mode
-# Usage: state_set_mode dark|light
-state_set_mode() {
-  local mode="$1"
-  if [[ ! "${mode}" =~ ^(dark|light)$ ]]; then
-    print_log -sec "state" -err "state_set_mode" "invalid mode '${mode}' (expected dark|light)"
+# Set the current resolved dark/light variant
+# Usage: state_set_color_variant dark|light
+state_set_color_variant() {
+  local color_variant="$1"
+  if [[ ! "${color_variant}" =~ ^(dark|light)$ ]]; then
+    print_log -sec "state" -err "state_set_color_variant" "invalid color variant '${color_variant}' (expected dark|light)"
     return 1
   fi
-  state_set "" "${mode}" "mode"
+  state_set "" "${color_variant}" "color_variant"
 }
 
 # ============================================================================
@@ -967,7 +1115,7 @@ accepted_mime_types() {
       return 0
     else
       print_log -err "File type not supported for this wallpaper backend."
-      notify-send -u critical -a "Global control" "File type not supported for this wallpaper backend."
+      dunstify -u critical -a "Global control" "File type not supported for this wallpaper backend."
     fi
 
   done
@@ -1011,14 +1159,18 @@ hyprlogout() {
 
 if [ -n "$BASH_VERSION" ]; then
   export -f get_hyprConf get_rofi_pos \
+    rofi_user_dir rofi_shared_dir \
+    rofi_resolve_theme rofi_resolve_asset \
+    rofi_list_theme_files rofi_list_asset_files \
     is_hovered toml_write \
     get_hashmap get_aurhlpr \
     set_hash check_package \
     get_themes print_log \
     pkg_installed paste_string \
     extract_thumbnail accepted_mime_types \
-    dconf_write send_notifs \
+    dconf_write notify_send_safe send_notifs \
     hyprlogout \
-    export_hypr_config init_hypr_globals \
-    state_get state_set state_get_mode state_set_mode
+    refresh_hypr_runtime_state export_hypr_config init_hypr_globals \
+    state_get state_set state_get_color_variant state_set_color_variant \
+    send_ephemeral_notif
 fi

@@ -39,10 +39,6 @@ drun_args = []                # Additional arguments for drun mode.
 run_args = []                 # Additional arguments for run mode.
 window_args = []              # Additional arguments for window mode.
 filebrowser_args = []         # Additional arguments for filebrowser mode.
-drun_style = "style_1"        # Style for drun mode.
-window_style = "style_1"      # Style for window mode.
-run_style = "style_1"         # Style for run mode.
-filebrowser_style = "style_1" # Style for filebrowser mode.
 
 # cliphist.sh configuration.
 [rofi.cliphist]
@@ -234,7 +230,6 @@ explorer = "dolphin"                            # File manager.
 idle = "hypridle"                               # Idle manager.
 lockscreen = "lockscreen.sh"                    # Lockscreen.
 terminal = "kitty"                              # Terminal.
-quickapps = "kitty"                             # Quick apps.
 bar = "waybar"                                  # Bar.
 color_scheme = "prefer-dark"                    # Color scheme.
 gtk_theme = "Pywal16-Gtk"                       # GTK theme.
@@ -280,7 +275,7 @@ dbus_share_picker = "dbus-update-activation-environment --systemd --all"        
 idle_daemon = "hypridle"                                                                                              # Idle daemon.
 image_clipboard = "wl-paste --type image --watch cliphist store"                                                      # Image clipboard.
 network_manager = "nm-applet --indicator"                                                                             # Network manager.
-notifications = "swaync"                                                                                              # Notifications.
+notifications = "dunst"                                                                                              # Notifications.
 removable_media = "udiskie --no-automount --smart-tray"                                                               # Removable media manager.
 systemd_share_picker = "systemctl --user import-environment QT_QPA_PLATFORMTHEME WAYLAND_DISPLAY XDG_CURRENT_DESKTOP" # Systemd share picker.
 text_clipboard = "wl-paste --type text --watch cliphist store"                                                        # Text clipboard.

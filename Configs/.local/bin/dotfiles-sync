@@ -7,6 +7,7 @@ set -euo pipefail
 DOTFILES_DIR="${DOTFILES_DIR:-$HOME/dotfiles/Configs}"
 DRY_RUN=false
 LIST_ONLY=false
+HOST_PROFILE_STATE_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/host-profile"
 
 usage() {
   cat <<USAGE
@@ -77,6 +78,79 @@ require_rsync() {
   fi
 }
 
+host_profile_is_valid() {
+  local profile="${1:-}"
+  [[ -n "${profile}" && "${profile}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]
+}
+
+get_host_profile() {
+  local profile=""
+
+  if [[ -f "${HOST_PROFILE_STATE_FILE}" ]]; then
+    read -r profile <"${HOST_PROFILE_STATE_FILE}" || true
+  fi
+
+  if [[ -n "${profile}" ]] && ! host_profile_is_valid "${profile}"; then
+    log_warn "Ignoring invalid host profile in ${HOST_PROFILE_STATE_FILE}: ${profile}"
+    return 1
+  fi
+
+  [[ -n "${profile}" ]] || return 1
+  printf '%s\n' "${profile}"
+}
+
+remove_path() {
+  local dest="$1"
+  local name="$2"
+  local rel_dest="${dest#${DOTFILES_DIR}/}"
+
+  if $LIST_ONLY; then
+    echo "PLAN ABSENT ${dest}"
+    return
+  fi
+
+  if [[ ! -e "${dest}" && ! -L "${dest}" ]]; then
+    return
+  fi
+
+  if $DRY_RUN; then
+    emit_preview_result "${name}" "*deleting   ${rel_dest}"
+    return
+  fi
+
+  rm -rf -- "${dest}"
+  log_success "Removed ${name}"
+}
+
+sync_host_profile_files() {
+  local profile=""
+  local host_root=""
+
+  if profile="$(get_host_profile)"; then
+    host_root="${DOTFILES_DIR}/hosts/${profile}"
+  else
+    log_warn "No host profile selected; managed host-specific files will not be saved. Use dotfiles-host-profile set <profile>."
+  fi
+
+  remove_path "${DOTFILES_DIR}/.config/hypr/monitors.conf" "root host file .config/hypr/monitors.conf"
+  remove_path "${DOTFILES_DIR}/.config/hypr/nvidia.conf" "root host file .config/hypr/nvidia.conf"
+  remove_path "${DOTFILES_DIR}/.config/waybar/modules/temperature.jsonc" "root host file .config/waybar/modules/temperature.jsonc"
+
+  if [[ -z "${host_root}" ]]; then
+    return
+  fi
+
+  if $LIST_ONLY; then
+    log_info "Planning host profile mappings (${profile})..."
+  else
+    log_info "Syncing host profile '${profile}'..."
+  fi
+
+  copy_file "$HOME/.config/hypr/monitors.conf" "${host_root}/.config/hypr/monitors.conf" "hosts/${profile}/hypr/monitors.conf"
+  copy_file "$HOME/.config/hypr/nvidia.conf" "${host_root}/.config/hypr/nvidia.conf" "hosts/${profile}/hypr/nvidia.conf"
+  copy_file "$HOME/.config/waybar/modules/temperature.jsonc" "${host_root}/.config/waybar/modules/temperature.jsonc" "hosts/${profile}/waybar/modules/temperature.jsonc"
+}
+
 # Create dotfiles directory structure
 create_dirs() {
   local dirs=(
@@ -84,6 +158,7 @@ create_dirs() {
     "$DOTFILES_DIR/.local/bin"
     "$DOTFILES_DIR/.local/lib"
     "$DOTFILES_DIR/.local/share"
+    "$DOTFILES_DIR/hosts"
   )
 
   for dir in "${dirs[@]}"; do
@@ -102,13 +177,18 @@ copy_config() {
   local src="$1"
   local dest="$2"
   local name="$3"
-  local extra_exclude="${4:-}"
+  shift 3
+  local extra_excludes=("$@")
   local rsync_args=()
   local output=""
+  local exclude_pattern=""
+  local exclude_preview=""
 
   if $LIST_ONLY; then
-    if [[ -n "$extra_exclude" ]]; then
-      echo "PLAN DIR    $src -> $dest (exclude: $extra_exclude)"
+    if ((${#extra_excludes[@]})); then
+      exclude_preview="$(printf '%s, ' "${extra_excludes[@]}")"
+      exclude_preview="${exclude_preview%, }"
+      echo "PLAN DIR    $src -> $dest (exclude: $exclude_preview)"
     else
       echo "PLAN DIR    $src -> $dest"
     fi
@@ -137,9 +217,9 @@ copy_config() {
     --exclude='.cache'
     --exclude='lazy-lock.json'
   )
-  if [[ -n "$extra_exclude" ]]; then
-    rsync_args+=(--exclude="$extra_exclude")
-  fi
+  for exclude_pattern in "${extra_excludes[@]}"; do
+    rsync_args+=(--exclude="$exclude_pattern")
+  done
 
   if $DRY_RUN; then
     rsync_args+=(--dry-run --itemize-changes)
@@ -231,6 +311,11 @@ echo "========================================="
 echo "  Dotfiles Sync"
 echo "========================================="
 echo "Target: $DOTFILES_DIR"
+if profile="$(get_host_profile 2>/dev/null)"; then
+  echo "Host profile: ${profile}"
+else
+  echo "Host profile: (not set)"
+fi
 $DRY_RUN && echo "(DRY RUN - no changes will be made)"
 $LIST_ONLY && echo "(LIST MODE - plan only, no checks or filesystem writes)"
 echo
@@ -256,10 +341,14 @@ else
 fi
 
 # Hyprland ecosystem
-copy_config "$HOME/.config/hypr" "$DOTFILES_DIR/.config/hypr" "hypr"
-copy_config "$HOME/.config/waybar" "$DOTFILES_DIR/.config/waybar" "waybar"
+copy_config "$HOME/.config/hypr" "$DOTFILES_DIR/.config/hypr" "hypr" \
+  "monitors.conf" \
+  "nvidia.conf" \
+  "shaders/.compiled.cache.glsl"
+copy_config "$HOME/.config/waybar" "$DOTFILES_DIR/.config/waybar" "waybar" \
+  "modules/temperature.jsonc"
 copy_config "$HOME/.config/rofi" "$DOTFILES_DIR/.config/rofi" "rofi"
-copy_config "$HOME/.config/swaync" "$DOTFILES_DIR/.config/swaync" "swaync"
+copy_config "$HOME/.config/dunst" "$DOTFILES_DIR/.config/dunst" "dunst"
 copy_config "$HOME/.config/wlogout" "$DOTFILES_DIR/.config/wlogout" "wlogout"
 
 # Terminals
@@ -267,7 +356,9 @@ copy_config "$HOME/.config/kitty" "$DOTFILES_DIR/.config/kitty" "kitty"
 copy_config "$HOME/.config/alacritty" "$DOTFILES_DIR/.config/alacritty" "alacritty"
 
 # Shell
-copy_config "$HOME/.config/zsh" "$DOTFILES_DIR/.config/zsh" "zsh"
+copy_config "$HOME/.config/zsh" "$DOTFILES_DIR/.config/zsh" "zsh" \
+  ".zcompdump" \
+  ".zsh_history"
 copy_file "$HOME/.zshenv" "$DOTFILES_DIR/.zshenv" ".zshenv"
 
 # Theming
@@ -281,7 +372,8 @@ copy_config "$HOME/.config/qt6ct" "$DOTFILES_DIR/.config/qt6ct" "qt6ct"
 copy_config "$HOME/.config/qutebrowser" "$DOTFILES_DIR/.config/qutebrowser" "qutebrowser"
 copy_config "$HOME/.config/nwg-look" "$DOTFILES_DIR/.config/nwg-look" "nwg-look"
 copy_config "$HOME/.config/menus" "$DOTFILES_DIR/.config/menus" "menus"
-copy_config "$HOME/.config/vim" "$DOTFILES_DIR/.config/vim" "vim"
+copy_config "$HOME/.config/vim" "$DOTFILES_DIR/.config/vim" "vim" \
+  ".netrwhist"
 copy_config "$HOME/.config/xsettingsd" "$DOTFILES_DIR/.config/xsettingsd" "xsettingsd"
 copy_config "$HOME/.config/rmpc" "$DOTFILES_DIR/.config/rmpc" "rmpc"
 copy_config "$HOME/.config/systemd" "$DOTFILES_DIR/.config/systemd" "systemd"
@@ -298,6 +390,7 @@ copy_config "$HOME/.config/tmux" "$DOTFILES_DIR/.config/tmux" "tmux" "plugins/"
 copy_config "$HOME/.config/starship.toml" "$DOTFILES_DIR/.config/starship.toml" "starship"
 copy_config "$HOME/.config/fastfetch" "$DOTFILES_DIR/.config/fastfetch" "fastfetch"
 copy_config "$HOME/.config/cava" "$DOTFILES_DIR/.config/cava" "cava"
+sync_host_profile_files
 
 echo
 
@@ -314,6 +407,8 @@ copy_config "$HOME/.local/lib/hypr" "$DOTFILES_DIR/.local/lib/hypr" "lib/hypr sc
 # Share files (explicit allowlist)
 copy_config "$HOME/.local/share/fonts" "$DOTFILES_DIR/.local/share/fonts" "share/fonts"
 copy_config "$HOME/.local/share/hypr" "$DOTFILES_DIR/.local/share/hypr" "share/hypr"
+copy_config "$HOME/.local/share/waybar" "$DOTFILES_DIR/.local/share/waybar" "share/waybar"
+copy_config "$HOME/.local/share/rofi" "$DOTFILES_DIR/.local/share/rofi" "share/rofi"
 copy_config "$HOME/.local/share/icons" "$DOTFILES_DIR/.local/share/icons" "share/icons"
 copy_config "$HOME/.local/share/themes" "$DOTFILES_DIR/.local/share/themes" "share/themes"
 

@@ -7,6 +7,8 @@ if [[ "${HYPR_SHELL_INIT}" -ne 1 ]]; then
 else
   export_hypr_config
 fi
+# shellcheck source=/dev/null
+source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
 
 cached_search_dir="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/landing/websearch"
 
@@ -144,28 +146,12 @@ smart_input() {
 
 # setup rofi configuration
 setup_rofi_config() {
-  # font scale
-  local font_scale="${ROFI_WEBSEARCH_SCALE}"
-  [[ "${font_scale}" =~ ^[0-9]+$ ]] || font_scale=${ROFI_SCALE:-10}
-
-  # set font name
-  local font_name=${ROFI_WEBSEARCH_FONT:-$ROFI_FONT}
-  font_name=${font_name:-$(hyprshell fonts/font-get.sh menu 2>/dev/null || true)}
-  font_name=${font_name:-$(get_hyprConf "MENU_FONT")}
-  font_name=${font_name:-$(get_hyprConf "FONT")}
-  font_name=${font_name:-monospace}
-
-  # set rofi font override
-  font_override="* {font: \"${font_name} ${font_scale}\";}"
-
-  # border settings
-  local hypr_border=${hypr_border:-"$(hyprctl -j getoption decoration:rounding | jq '.int')"}
-  local wind_border=$((hypr_border * 3 / 2))
-  local elem_border=$((hypr_border == 0 ? 5 : hypr_border))
-
-  # border width
-  local hypr_width=${hypr_width:-"$(hyprctl -j getoption general:border_size | jq '.int')"}
-  r_override="window{border:${hypr_width}px;border-radius:${wind_border}px;}wallbox{border-radius:${elem_border}px;} element{border-radius:${elem_border}px;}"
+  local font_scale
+  local font_name
+  font_scale="$(rofi_effective_font_scale "${ROFI_WEBSEARCH_SCALE}")"
+  font_name="$(rofi_effective_font_name "${ROFI_WEBSEARCH_FONT:-$ROFI_FONT}")"
+  font_override="$(rofi_font_override "${font_name}" "${font_scale}")"
+  r_override="$(rofi_standard_window_theme wallbox min5)"
 }
 
 usage() {
@@ -187,6 +173,8 @@ EOF
 rofi_interactive() {
   unset FINAL_SITE FINAL_QUERY
   setup_rofi_config
+  local rofi_style
+  rofi_style="$(rofi_resolve_theme "${ROFI_WEBSEARCH_STYLE:-clipboard}")"
 
   if [[ -n "${SITE_TO_USE}" ]]; then
     if [[ -z "${SITES[$SITE_TO_USE]}" ]]; then
@@ -203,7 +191,7 @@ rofi_interactive() {
         | rofi -dmenu -i "${ROFI_WEBSEARCH_ARGS[@]}" \
           -p "🔎 Select engine" \
           -theme-str "${r_override}" \
-          -config "${ROFI_WEBSEARCH_STYLE:-clipboard}" \
+          -config "${rofi_style}" \
           -theme-str "entry { placeholder: \"🔎 Search engine...\";}" \
           -theme-str "${font_override}" \
           -theme-str "window {width: 30%;}" \
@@ -227,7 +215,7 @@ rofi_interactive() {
       get_queries_list "$FINAL_SITE" \
         | rofi -dmenu -i "${ROFI_WEBSEARCH_ARGS[@]}" \
           -theme-str "${r_override}" \
-          -config "${ROFI_WEBSEARCH_STYLE:-clipboard}" \
+          -config "${rofi_style}" \
           -theme-str "entry { placeholder: \"🔎 Query...\";}" \
           -theme-str "${font_override}" \
           -theme-str "window {width: 30%;}"

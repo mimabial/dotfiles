@@ -5,7 +5,7 @@ _hypr_shell() {
     cur="${words[CURRENT]}"
     prev="${words[CURRENT-1]}"
     
-    local built_in_commands hypr_scripts wallbash_scripts
+    local built_in_commands hypr_scripts
     built_in_commands=("--help" "help" "-h" "-r" "reload" "--version" "version" "-v" "--release-notes" "release-notes" "--list-script" "--list-script-path" "--completions")
     
     # Get dynamic completions

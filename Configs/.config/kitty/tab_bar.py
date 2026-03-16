@@ -1,4 +1,4 @@
-"""Custom Kitty tab bar with wallbash color integration."""
+"""Custom Kitty tab bar with pywal16-aware color integration."""
 # pylint: disable=C0111,E0401,E0611
 # type: ignore
 # pyright: reportMissingImports=false
@@ -103,7 +103,7 @@ FALLBACK_COLORS = {
 }
 
 
-def load_wallbash_colors():
+def load_theme_colors():
     """Load colors from kitty theme.conf file with fallback to colors.conf and defaults."""
     colors = FALLBACK_COLORS.copy()
     theme_colors = {}
@@ -169,7 +169,7 @@ def hex_to_rgb_int(hex_color):
 
 
 # Load colors dynamically
-_colors = load_wallbash_colors()
+_colors = load_theme_colors()
 icon_fg = as_rgb(hex_to_rgb_int(_colors["icon_fg"]))  # type: ignore
 icon_bg = as_rgb(hex_to_rgb_int(_colors["icon_bg"]))  # type: ignore
 bat_text_color = as_rgb(hex_to_rgb_int(_colors["bat_text"]))  # type: ignore
@@ -183,7 +183,7 @@ active_tab_bg = as_rgb(hex_to_rgb_int(_colors["active_tab_bg"]))  # type: ignore
 
 
 def refresh_colors():
-    """Refresh colors from wallbash config - only if file has changed."""
+    """Refresh colors from kitty theme or pywal16 colors if the source files changed."""
     global \
         icon_fg, \
         icon_bg, \
@@ -214,7 +214,7 @@ def refresh_colors():
             _last_mtime = current_theme_mtime
             _colors_last_mtime = current_colors_mtime
 
-            colors = load_wallbash_colors()
+            colors = load_theme_colors()
             icon_fg = as_rgb(hex_to_rgb_int(colors["icon_fg"]))  # type: ignore
             icon_bg = as_rgb(hex_to_rgb_int(colors["icon_bg"]))  # type: ignore
             bat_text_color = as_rgb(hex_to_rgb_int(colors["bat_text"]))  # type: ignore

@@ -2,6 +2,7 @@
 # QT theming for pywal16
 
 [[ "${HYPR_SHELL_INIT}" -ne 1 ]] && eval "$(hyprshell init)"
+LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 source "${LIB_DIR}/hypr/globalcontrol.sh"
 
 # Source pywal16 colors

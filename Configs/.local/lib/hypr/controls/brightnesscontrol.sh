@@ -52,7 +52,7 @@ send_notification() {
   icon="${icon_dir}/Pywal16-Icon/media/knob-${angle}.svg"
   bar="$(printf '%*s' $((brightness / 15)) '' | tr ' ' '.')"
 
-  notify-send -a "Brightness control" -r 7 -t 800 -i "${icon}" "${brightness}${bar}" "${brightinfo}"
+  dunstify -a "Brightness control" -r 7 -t 800 -i "${icon}" "${brightness}${bar}" "${brightinfo}"
 }
 
 action="${1:-}"

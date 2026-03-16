@@ -8,6 +8,11 @@ fi
 
 # Set to true when going directly to a submenu, so we can exit directly
 BACK_TO_EXIT=false
+MENU_BORDER_RADIUS=""
+MENU_ELEMENT_RADIUS=""
+MENU_FONT_SCALE_CACHE=""
+MENU_FONT_NAME_CACHE=""
+MENU_MAX_HEIGHT=""
 
 back_to() {
   local parent_menu="$1"
@@ -26,44 +31,58 @@ menu() {
   local options="$2"
   local extra="$3"
   local preselect="$4"
-
+  local options_rendered=""
   local rofi_args=()
+  local line=""
+  local index=0
 
-  hypr_border=${hypr_border:-"$(hyprctl -j getoption decoration:rounding | jq '.int')"}
-  hypr_border=${hypr_border:-2}
-  elem_border=$((hypr_border / 2))
+  if [[ -z "${MENU_BORDER_RADIUS}" ]]; then
+    MENU_BORDER_RADIUS="$(hyprctl -j getoption decoration:rounding 2>/dev/null | jq -r '.int // empty' 2>/dev/null || true)"
+    [[ "${MENU_BORDER_RADIUS}" =~ ^[0-9]+$ ]] || MENU_BORDER_RADIUS=2
+    MENU_ELEMENT_RADIUS=$((MENU_BORDER_RADIUS / 2))
+  fi
 
-  font_scale="${ROFI_MENU_SCALE:-$ROFI_SCALE}"
-  [[ "${font_scale}" =~ ^[0-9]+$ ]] || font_scale=${ROFI_SCALE:-10}
+  if [[ -z "${MENU_FONT_SCALE_CACHE}" ]]; then
+    MENU_FONT_SCALE_CACHE="${ROFI_MENU_SCALE:-$ROFI_SCALE}"
+    [[ "${MENU_FONT_SCALE_CACHE}" =~ ^[0-9]+$ ]] || MENU_FONT_SCALE_CACHE=${ROFI_SCALE:-10}
+  fi
 
-  font_name=${ROFI_MENU_FONT:-$ROFI_FONT}
-  font_name=${font_name:-$(hyprshell fonts/font-get.sh menu 2>/dev/null || true)}
-  font_name=${font_name:-$(get_hyprConf "MENU_FONT")}
-  font_name=${font_name:-$(get_hyprConf "FONT")}
-  font_name=${font_name:-monospace}
+  if [[ -z "${MENU_FONT_NAME_CACHE}" ]]; then
+    MENU_FONT_NAME_CACHE="${ROFI_MENU_FONT:-$ROFI_FONT}"
+    MENU_FONT_NAME_CACHE=${MENU_FONT_NAME_CACHE:-$(hyprshell fonts/font-get.sh menu 2>/dev/null || true)}
+    MENU_FONT_NAME_CACHE=${MENU_FONT_NAME_CACHE:-$(get_hyprConf "MENU_FONT")}
+    MENU_FONT_NAME_CACHE=${MENU_FONT_NAME_CACHE:-$(get_hyprConf "FONT")}
+    MENU_FONT_NAME_CACHE=${MENU_FONT_NAME_CACHE:-monospace}
+  fi
 
-  # Get screen height and calculate max height (80% of screen)
-  local screen_height=$(hyprctl -j monitors | jq '.[0].height')
-  local max_height=$((screen_height * 90 / 100))
+  if [[ -z "${MENU_MAX_HEIGHT}" ]]; then
+    local screen_height=""
+    screen_height="$(hyprctl -j monitors 2>/dev/null | jq -r '.[0].height // empty' 2>/dev/null || true)"
+    [[ "${screen_height}" =~ ^[0-9]+$ ]] || screen_height=1080
+    MENU_MAX_HEIGHT=$((screen_height * 90 / 100))
+  fi
 
-  rofi_args+=("-theme-str" "* {font: \"${font_name} ${font_scale}\";}")
-  rofi_args+=("-theme-str" "window {border-radius: ${hypr_border}px; max-height: ${max_height}px;}")
-  rofi_args+=("-theme-str" "element {border-radius: ${hypr_border}px;}")
-  rofi_args+=("-theme-str" "textbox-prompt-colon {border-radius: ${elem_border}px; str: \"$prompt\";}")
+  options_rendered="$(printf '%b' "${options}")"
+
+  rofi_args+=("-theme-str" "* {font: \"${MENU_FONT_NAME_CACHE} ${MENU_FONT_SCALE_CACHE}\";}")
+  rofi_args+=("-theme-str" "window {border-radius: ${MENU_BORDER_RADIUS}px; max-height: ${MENU_MAX_HEIGHT}px;}")
+  rofi_args+=("-theme-str" "element {border-radius: ${MENU_BORDER_RADIUS}px;}")
+  rofi_args+=("-theme-str" "textbox-prompt-colon {border-radius: ${MENU_ELEMENT_RADIUS}px; str: \"$prompt\";}")
   rofi_args+=("-theme-str" "entry {placeholder: \"Hello ${USER^}!\";}")
-  rofi_args+=("-theme-str" "element selected.normal {border-radius: ${elem_border}px;}")
+  rofi_args+=("-theme-str" "element selected.normal {border-radius: ${MENU_ELEMENT_RADIUS}px;}")
 
   # Handle preselection
   if [[ -n "$preselect" ]]; then
-    local index
-    index=$(echo -e "$options" | grep -nxF "$preselect" | cut -d: -f1)
-    if [[ -n "$index" ]]; then
-      # rofi uses 0-based indexing, grep uses 1-based
-      rofi_args+=("-selected-row" "$((index - 1))")
-    fi
+    while IFS= read -r line; do
+      ((index += 1))
+      if [[ "${line}" == "${preselect}" ]]; then
+        rofi_args+=("-selected-row" "$((index - 1))")
+        break
+      fi
+    done <<< "${options_rendered}"
   fi
 
-  echo -e "$options" | rofi -dmenu -i -no-show-icons -p "$prompt" -theme menutree "${rofi_args[@]}" 2>/dev/null
+  printf '%s' "${options_rendered}" | rofi -dmenu -i -no-show-icons -p "$prompt" -theme "$(rofi_resolve_theme menutree)" "${rofi_args[@]}" 2>/dev/null
 }
 
 terminal() {
@@ -109,7 +128,7 @@ present_terminal() {
 }
 
 open_in_editor() {
-  notify-send "Editing config file" "$1"
+  dunstify "Editing config file" "$1"
   hyprshell launch/editor.sh "$1"
 }
 
@@ -265,9 +284,14 @@ show_toggle_menu() {
 }
 
 show_style_menu() {
-  case $(menu "Style" "󰸌  Theme\n  Wallpaper\n  Font") in
+  case $(menu "Style" "󰸌  Theme\n  Wallpaper\n  Color Mode\n󰍜  Waybar Layout\n󰹑  Animations\n󰏘  Lock Layout\n󰩨  Theme Menu Style\n  Font") in
     *Theme*) hyprshell theme/theme.select.sh ;;
     *Wallpaper*) hyprshell wallpaper/wallpaper.sh -SG ;;
+    *"Color Mode"*) hyprshell wal.toggle.sh -m ;;
+    *Waybar*) hyprshell waybar.py --select ;;
+    *Animations*) hyprshell animations.sh --select ;;
+    *"Lock Layout"*) hyprshell hyprlock.sh --select ;;
+    *"Theme Menu Style"*) hyprshell theme.select.sh -s ;;
     *Font*) show_font_menu ;;
     *) show_main_menu ;;
   esac
@@ -481,14 +505,12 @@ show_update_process_menu() {
 }
 
 show_update_config_menu() {
-  case $(menu "Use default config" "  Hyprland\n󰟨  Hypr Shared\n  Hypridle\n  Hyprlock\n  Hyprsunset\n󰍜  Waybar\n󰀻  Rofi") in
-    *Hyprland*) present_terminal hyprshell service/refresh-hyprland.sh ;;
-    *"Hypr Shared"*) present_terminal hyprshell service/refresh-hypr-shared.sh ;;
-    *Hypridle*) present_terminal hyprshell service/refresh-hypridle.sh ;;
-    *Hyprlock*) present_terminal hyprshell service/refresh-hyprlock.sh ;;
-    *Hyprsunset*) present_terminal hyprshell service/refresh-hyprsunset.sh ;;
-    *Waybar*) present_terminal hyprshell service/refresh-waybar.sh ;;
-    *Rofi*) present_terminal hyprshell service/refresh-rofi.sh ;;
+  case $(menu "Restore stock config" "  Hyprland\n  Hypridle\n  Hyprlock\n󰍜  Waybar\n󰀻  Rofi") in
+    *Hyprland*) present_terminal hyprshell service/restore-hyprland.sh ;;
+    *Hypridle*) present_terminal hyprshell service/restore-hypridle.sh ;;
+    *Hyprlock*) present_terminal hyprshell service/restore-hyprlock.sh ;;
+    *Waybar*) present_terminal hyprshell service/restore-waybar.sh ;;
+    *Rofi*) present_terminal hyprshell service/restore-rofi.sh ;;
     *) show_update_menu ;;
   esac
 }
@@ -521,13 +543,18 @@ show_system_menu() {
 }
 
 show_search_all_menu() {
-  local flat_list=""
+  local -a search_labels=()
+  local -A search_commands=()
+  local selection=""
+  local options=""
+  local command=""
 
   # Helper function to add items (reduces duplication)
   add() {
     local path="$1"
     local command="$2"
-    flat_list+="${path}|${command}\n"
+    search_labels+=("${path}")
+    search_commands["${path}"]="${command}"
   }
 
   # The only maintenance needed: when you add a menu item to any show_*_menu function,
@@ -608,6 +635,11 @@ show_search_all_menu() {
   # Style (from show_style_menu)
   add "Style › Theme" "hyprshell theme/theme.select.sh"
   add "Style › Wallpaper" "hyprshell wallpaper/wallpaper.sh -SG"
+  add "Style › Color Mode" "hyprshell wal.toggle.sh -m"
+  add "Style › Waybar Layout" "hyprshell waybar.py --select"
+  add "Style › Animations" "hyprshell animations.sh --select"
+  add "Style › Lock Layout" "hyprshell hyprlock.sh --select"
+  add "Style › Theme Menu Style" "hyprshell theme.select.sh -s"
   add "Style › Font" "show_font_menu"
 
   # Setup (from show_setup_menu)
@@ -632,14 +664,12 @@ show_search_all_menu() {
   add "System › Sleep" "hyprshell util/confirm.sh --suspend"
 
   # Show menu and execute
-  local selection
-  selection=$(echo -e "$flat_list" | cut -d'|' -f1 | menu "Search All" "$(cat)")
+  options="$(printf '%s\n' "${search_labels[@]}")"
+  selection="$(menu "Search All" "${options}")"
 
   if [[ -n "$selection" ]]; then
-    local command=$(echo -e "$flat_list" | grep -F "${selection}|" | head -1 | cut -d'|' -f2-)
-    if [[ -n "$command" ]]; then
-      eval "$command"
-    fi
+    command="${search_commands["${selection}"]:-}"
+    [[ -n "${command}" ]] && eval "${command}"
   else
     show_main_menu
   fi

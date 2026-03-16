@@ -2,12 +2,29 @@
 
 # Script to check and optionally fix color naming inconsistencies in rofi themes
 
+ROFI_ROOTS=(
+  "$HOME/.config/rofi"
+  "$HOME/.local/share/rofi"
+)
+ACTIVE_ROOTS=()
+for root in "${ROFI_ROOTS[@]}"; do
+  [[ -d "${root}" ]] && ACTIVE_ROOTS+=("${root}")
+done
+
+grep_rofi() {
+  grep -r "$@" "${ACTIVE_ROOTS[@]}" --include="*.rasi"
+}
+
+find_rofi() {
+  find "${ACTIVE_ROOTS[@]}" "$@"
+}
+
 echo "Analyzing rofi color variable naming..."
 echo ""
 
 # Find inconsistencies
-BRITISH_VARS=$(grep -r "^\s*\(border-colour\|background-colour\|foreground-colour\|handle-colour\):" .config/rofi --include="*.rasi" | wc -l)
-AMERICAN_USAGE=$(grep -r "border-color:\s*@border-colour\|background-color:\s*@background-colour" .config/rofi --include="*.rasi" | wc -l)
+BRITISH_VARS=$(grep_rofi "^\s*\(border-colour\|background-colour\|foreground-colour\|handle-colour\):" | wc -l)
+AMERICAN_USAGE=$(grep_rofi "border-color:\s*@border-colour\|background-color:\s*@background-colour" | wc -l)
 
 echo "======================================"
 echo "COLOR NAMING ANALYSIS:"
@@ -24,8 +41,8 @@ echo ""
 echo "======================================"
 echo "FILES WITH MIXED NAMING:"
 echo "======================================"
-FILES_WITH_BRITISH=$(grep -l "border-colour\|background-colour\|foreground-colour" .config/rofi -r --include="*.rasi" | wc -l)
-TOTAL_FILES=$(find .config/rofi -name "*.rasi" | wc -l)
+FILES_WITH_BRITISH=$(grep_rofi -l "border-colour\|background-colour\|foreground-colour" | wc -l)
+TOTAL_FILES=$(find_rofi -name "*.rasi" | wc -l)
 
 echo ""
 echo "Files using British variable names: $FILES_WITH_BRITISH / $TOTAL_FILES"
@@ -33,7 +50,7 @@ echo ""
 
 # List affected files
 echo "Files with British-spelled variables:"
-grep -l "border-colour\|background-colour\|foreground-colour" .config/rofi -r --include="*.rasi" | sed 's|.config/rofi/||' | head -20
+grep_rofi -l "border-colour\|background-colour\|foreground-colour" | sed "s|$HOME/.config/rofi/||; s|$HOME/.local/share/rofi/|shared/|" | head -20
 echo "... (showing first 20)"
 echo ""
 
@@ -44,7 +61,7 @@ echo "======================================"
 echo ""
 
 # Check if variables are defined but not used correctly
-UNDEFINED_REFS=$(grep -rh "@.*-colour" .config/rofi --include="*.rasi" | grep -v "^\s*\(border-colour\|background-colour\|foreground-colour\|handle-colour\):" | wc -l)
+UNDEFINED_REFS=$(grep_rofi -h "@.*-colour" | grep -v "^\s*\(border-colour\|background-colour\|foreground-colour\|handle-colour\):" | wc -l)
 
 if [ "$UNDEFINED_REFS" -gt 0 ]; then
   echo "⚠ Found $UNDEFINED_REFS references to -colour variables"
@@ -88,9 +105,9 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
   echo ""
 
   for dir in launchers/type-1 launchers/type-2 launchers/type-3 launchers/type-4 powermenu themes applets; do
-    if [ -d ".config/rofi/$dir" ]; then
-      count=$(find ".config/rofi/$dir" -name "*.rasi" -exec grep -l "colour" {} \; 2>/dev/null | wc -l)
-      total=$(find ".config/rofi/$dir" -name "*.rasi" 2>/dev/null | wc -l)
+    if [ -d "$HOME/.local/share/rofi/$dir" ]; then
+      count=$(find "$HOME/.local/share/rofi/$dir" -name "*.rasi" -exec grep -l "colour" {} \; 2>/dev/null | wc -l)
+      total=$(find "$HOME/.local/share/rofi/$dir" -name "*.rasi" 2>/dev/null | wc -l)
       if [ $total -gt 0 ]; then
         echo "$dir: $count/$total files use British spelling"
       fi

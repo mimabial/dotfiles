@@ -166,9 +166,9 @@ Wall_Hash() {
   fi
 
   local resolved_set=""
-  resolved_set="$(wallpaper_resolve_path "${wallSet}")"
+  resolved_set="$(wallpaper_resolve_path "${active_wallpaper_link}")"
   if [[ ! -e "${resolved_set}" ]]; then
-    echo "fixing link :: ${wallSet}"
-    ln -fs "${wallList[setIndex]}" "${wallSet}"
+    echo "fixing link :: ${active_wallpaper_link}"
+    ln -fs "${wallList[setIndex]}" "${active_wallpaper_link}"
   fi
 }

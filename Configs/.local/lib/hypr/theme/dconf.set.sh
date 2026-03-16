@@ -68,11 +68,11 @@ button-layout='$BUTTON_LAYOUT'
 EOF
 }
 
-COLOR_SCHEME="prefer-${dcol_mode}"
+COLOR_SCHEME="prefer-${resolved_color_variant}"
 
-# Only use Pywal16-Gtk in wallpaper mode (enableWallDcol != 0)
-# In theme mode (enableWallDcol == 0), use the theme's GTK_THEME
-if [[ "${enableWallDcol:-1}" -ne 0 ]]; then
+# Only use Pywal16-Gtk in wallpaper mode (selected_color_mode != 0)
+# In theme mode (selected_color_mode == 0), use the theme's GTK_THEME
+if [[ "${selected_color_mode:-1}" -ne 0 ]]; then
   GTK_THEME="Pywal16-Gtk"
 else
   GTK_THEME=""  # Will be populated from theme.conf via hyq below
@@ -84,7 +84,7 @@ if [[ -r "${HYPRLAND_CONFIG}" ]] &&
 
   # In theme mode, prefer theme.conf for GTK/icon/cursor values
   # (avoid config.toml defaults overriding theme packs)
-  if [[ "${enableWallDcol:-1}" -eq 0 ]]; then
+  if [[ "${selected_color_mode:-1}" -eq 0 ]]; then
     theme_conf="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/theme.conf"
     if [[ -r "${theme_conf}" ]]; then
       theme_hyq_output=$(
@@ -120,7 +120,7 @@ if [[ -r "${HYPRLAND_CONFIG}" ]] &&
   )
 
   # Only pull GTK/icon/cursor from full config in wallpaper mode.
-  if [[ "${enableWallDcol:-1}" -ne 0 ]]; then
+  if [[ "${selected_color_mode:-1}" -ne 0 ]]; then
     hyq_args+=(
       -Q '$GTK_THEME[string]'
       -Q '$ICON_THEME[string]'
@@ -150,9 +150,9 @@ fi
 
 # Check if we need inverted colors
 if [[ "${revert_colors:-0}" -eq 1 ]] ||
-  [[ "${enableWallDcol:-0}" -eq 2 && "${dcol_mode:-}" == "light" ]] ||
-  [[ "${enableWallDcol:-0}" -eq 3 && "${dcol_mode:-}" == "dark" ]]; then
-  if [[ "${dcol_mode}" == "dark" ]]; then
+  [[ "${selected_color_mode:-0}" -eq 2 && "${resolved_color_variant:-}" == "light" ]] ||
+  [[ "${selected_color_mode:-0}" -eq 3 && "${resolved_color_variant:-}" == "dark" ]]; then
+  if [[ "${resolved_color_variant}" == "dark" ]]; then
     COLOR_SCHEME="prefer-light"
   else
     COLOR_SCHEME="prefer-dark"

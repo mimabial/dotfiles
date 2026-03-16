@@ -126,8 +126,8 @@ Wall_Select() {
   Wall_Json --ensure-thumbs >"${wall_json_file}"
 
   selected_row=""
-  if [[ -e "${wallSet}" ]]; then
-    current_hash="$(set_hash "${wallSet}")"
+  if [[ -e "${active_wallpaper_link}" ]]; then
+    current_hash="$(set_hash "${active_wallpaper_link}")"
     if [[ -n "${current_hash}" ]]; then
       selected_row="$(jq -r --arg hash "${current_hash}" '[.[].hash] | index($hash) // empty' "${wall_json_file}")"
     fi

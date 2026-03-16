@@ -4,7 +4,7 @@
 
 scrDir="$(dirname "$(realpath "$0")")"
 # shellcheck disable=SC1091
-source "${scrDir}/globalcontrol.sh"
+source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
 export scrDir
 export WALLPAPER_THUMB_DIR
 
@@ -121,7 +121,7 @@ fn_wallcache() {
         || [ ! -e "${WALLPAPER_THUMB_DIR}/${x_hash}.quad" ]
     then
       local temp_image="/tmp/${x_hash}.png"
-      notify-send -a "Wallpaper cache" "Extracting thumbnail from video wallpaper..."
+      send_ephemeral_notif "hypr-wallpaper-cache" -a "Wallpaper cache" -t 2000 "Extracting thumbnail from video wallpaper..."
       extract_thumbnail "${x_wall}" "${temp_image}"
       x_wall="${temp_image}"
     fi

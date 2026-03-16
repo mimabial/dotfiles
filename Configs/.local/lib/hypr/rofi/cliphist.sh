@@ -7,12 +7,15 @@ if [[ "${HYPR_SHELL_INIT}" -ne 1 ]]; then
 else
   export_hypr_config
 fi
+# shellcheck source=/dev/null
+source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
 
 # define paths and files
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}"
 favorites_file="${cache_dir}/landing/cliphist_favorites"
 [ -f "$HOME/.cliphist_favorites" ] && favorites_file="$HOME/.cliphist_favorites"
 cliphist_style="${ROFI_CLIPHIST_STYLE:-clipboard}"
+cliphist_style="$(rofi_resolve_theme "${cliphist_style}")"
 del_mode=false
 
 # process clipboard selections for multi-select mode
@@ -70,7 +73,7 @@ process_selections() {
         break
       elif [ -n "$line" ]; then
         cliphist delete <<<"${line}"
-        notify-send "Deleted" "${line}"
+        dunstify "Deleted" "${line}"
       fi
     done
     exit 0
@@ -87,7 +90,7 @@ check_content() {
     img_idx=$(awk -F '\t' '{print $1}' <<<"$line")
     local temp_preview="${XDG_RUNTIME_DIR}/hypr/pastebin-preview_${img_idx}"
     wl-paste >"${temp_preview}"
-    notify-send -a "Pastebin:" "Preview: ${img_idx}" -i "${temp_preview}" -t 2000
+    dunstify -a "Pastebin:" "Preview: ${img_idx}" -i "${temp_preview}" -t 2000
     return 1
   fi
 }
@@ -108,31 +111,15 @@ run_rofi() {
 
 # setup rofi configuration
 setup_rofi_config() {
-  # font scale
-  local font_scale="${ROFI_CLIPHIST_SCALE}"
-  [[ "${font_scale}" =~ ^[0-9]+$ ]] || font_scale=${ROFI_SCALE:-10}
+  local font_scale
+  local font_name
+  font_scale="$(rofi_effective_font_scale "${ROFI_CLIPHIST_SCALE}")"
+  font_name="$(rofi_effective_font_name "${ROFI_CLIPHIST_FONT:-$ROFI_FONT}")"
 
-  # set font name
-  local font_name=${ROFI_CLIPHIST_FONT:-$ROFI_FONT}
-  font_name=${font_name:-$(hyprshell fonts/font-get.sh menu 2>/dev/null || true)}
-  font_name=${font_name:-$(get_hyprConf "MENU_FONT")}
-  font_name=${font_name:-$(get_hyprConf "FONT")}
-  font_name=${font_name:-monospace}
+  font_override="$(rofi_font_override "${font_name}" "${font_scale}")"
 
-  # set font override
-  font_override="* {font: \"${font_name} ${font_scale}\";}"
-
-  # border settings
-  local hypr_border=${hypr_border:-"$(hyprctl -j getoption decoration:rounding | jq '.int')"}
-  local wind_border=$((hypr_border * 3 / 2))
-  local elem_border=${hypr_border}
-
-  # rofi position
   rofi_position=$(get_rofi_pos 2>/dev/null || echo "")
-
-  # border width
-  local hypr_width=${hypr_width:-"$(hyprctl -j getoption general:border_size | jq '.int')"}
-  r_override="window{border:${hypr_width}px;border-radius:${wind_border}px;}wallbox{border-radius:${elem_border}px;} element{border-radius:${elem_border}px;}"
+  r_override="$(rofi_standard_window_theme wallbox same)"
 }
 
 # create favorites directory if it doesn't exist
@@ -202,7 +189,7 @@ delete_items() {
 # favorite clipboard items
 view_favorites() {
   prepare_favorites_for_display || {
-    notify-send "No favorites."
+    dunstify "No favorites."
     return
   }
 
@@ -225,9 +212,9 @@ view_favorites() {
       local selected_encoded_favorite="${favorites[$((index - 1))]}"
       echo "$selected_encoded_favorite" | base64 --decode | wl-copy
       paste_string "${@}"
-      notify-send "Copied to clipboard."
+      dunstify "Copied to clipboard."
     else
-      notify-send "Error: Selected favorite not found."
+      dunstify "Error: Selected favorite not found."
     fi
   fi
 }
@@ -257,10 +244,10 @@ add_to_favorites() {
 
     # Check if the item is already in the favorites file
     if [ -f "$favorites_file" ] && grep -Fxq "$encoded_item" "$favorites_file"; then
-      notify-send "Item is already in favorites."
+      dunstify "Item is already in favorites."
     else
       echo "$encoded_item" >>"$favorites_file"
-      notify-send "Added to favorites."
+      dunstify "Added to favorites."
     fi
   fi
 }
@@ -268,7 +255,7 @@ add_to_favorites() {
 # delete from favorites
 delete_from_favorites() {
   prepare_favorites_for_display || {
-    notify-send "No favorites to remove."
+    dunstify "No favorites to remove."
     return
   }
 
@@ -295,9 +282,9 @@ delete_from_favorites() {
         grep -vF -x "$selected_encoded_favorite" "$favorites_file" >"${favorites_file}.tmp" \
           && mv "${favorites_file}.tmp" "$favorites_file"
       fi
-      notify-send "Item removed from favorites."
+      dunstify "Item removed from favorites."
     else
-      notify-send "Error: Selected favorite not found."
+      dunstify "Error: Selected favorite not found."
     fi
   fi
 }
@@ -310,13 +297,13 @@ clear_favorites() {
 
     if [ "$confirm" = "Yes" ]; then
       : >"$favorites_file"
-      notify-send "All favorites have been deleted."
+      dunstify "All favorites have been deleted."
     elif [ "$confirm" = "Back" ]; then
       manage_favorites
       return
     fi
   else
-    notify-send "No favorites to delete."
+    dunstify "No favorites to delete."
   fi
 }
 
@@ -354,7 +341,7 @@ clear_history() {
 
   if [ "$confirm" = "Yes" ]; then
     cliphist wipe
-    notify-send "Clipboard history cleared."
+    dunstify "Clipboard history cleared."
   elif [ "$confirm" = "Back" ]; then
     main
     return

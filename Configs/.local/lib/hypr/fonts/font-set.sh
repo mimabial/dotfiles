@@ -249,8 +249,8 @@ echo "Note: Waybar and many Rofi themes use the UI font variables."
 echo "      This script updates \$BAR_FONT and \$MENU_FONT to match the selected font."
 
 # Notify user
-if command -v notify-send >/dev/null 2>&1; then
-  notify-send -a "Font Manager" -i "preferences-desktop-font" \
+if command -v dunstify >/dev/null 2>&1; then
+  dunstify -a "Font Manager" -i "preferences-desktop-font" \
     "Font Changed" "Monospace font set to $FONT_NAME" -t 3000
 fi
 

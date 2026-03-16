@@ -5,7 +5,13 @@ if pgrep -x rofi >/dev/null 2>&1; then
   exit 0
 fi
 
-[[ "${HYPR_SHELL_INIT}" -ne 1 ]] && eval "$(hyprshell init)"
+if [[ "${HYPR_SHELL_INIT:-0}" -ne 1 ]]; then
+  eval "$(hyprshell init)"
+else
+  export_hypr_config
+fi
+# shellcheck source=/dev/null
+source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
 
 keyconfDir="${XDG_CONFIG_HOME:-$HOME/.config}/hypr"
 kb_hint_conf=("$keyconfDir/hyprland.conf" "$keyconfDir/keybindings.conf" "$keyconfDir/userprefs.conf")
@@ -13,14 +19,13 @@ kb_hint_conf+=("${ROFI_KEYBIND_HINT_CONFIG[@]}")
 
 kb_cache="${XDG_RUNTIME_DIR}/hypr/keybinds_hint.rofi"
 
-# Check if cache needs regeneration based on config file modification times
 needs_regeneration=false
-if [ -f "$kb_cache" ]; then
-  cache_mtime=$(stat -c %Y "$kb_cache" 2>/dev/null || echo 0)
+if [[ -f "${kb_cache}" ]]; then
+  cache_mtime=$(stat -c %Y "${kb_cache}" 2>/dev/null || echo 0)
   for conf_file in "${kb_hint_conf[@]}"; do
-    if [ -f "$conf_file" ]; then
-      conf_mtime=$(stat -c %Y "$conf_file" 2>/dev/null || echo 0)
-      if [ "$conf_mtime" -gt "$cache_mtime" ]; then
+    if [[ -f "${conf_file}" ]]; then
+      conf_mtime=$(stat -c %Y "${conf_file}" 2>/dev/null || echo 0)
+      if [[ "${conf_mtime}" -gt "${cache_mtime}" ]]; then
         needs_regeneration=true
         break
       fi
@@ -30,76 +35,76 @@ else
   needs_regeneration=true
 fi
 
-output="$(
-  if [ "$needs_regeneration" = true ]; then
-    keybinds.hint.py --format rofi | tee "$kb_cache"
+output="$({
+  if [[ "${needs_regeneration}" == true ]]; then
+    keybinds.hint.py --format rofi | tee "${kb_cache}"
   else
-    cat "$kb_cache"
+    cat "${kb_cache}"
   fi
-)"
-wait
-if [ -z "$output" ]; then
-  notify-send "Keybind Hint" "Initialization failed."
+})"
+
+if [[ -z "${output}" ]]; then
+  dunstify "Keybind Hint" "Initialization failed."
   exit 0
 fi
 
-if ! command -v rofi &>/dev/null; then
-  echo "$output"
-  echo "rofi not detected. Displaying on terminal instead"
+if ! command -v rofi >/dev/null 2>&1; then
+  printf '%s\n' "${output}"
+  printf '%s\n' "rofi not detected. Displaying on terminal instead"
   exit 0
 fi
 
-# Rofi widget settings
-hypr_border=${hypr_border:-$(hyprctl -j getoption decoration:rounding | jq '.int')}
-hypr_width=${hypr_width:-$(hyprctl -j getoption general:border_size | jq '.int')}
-wind_border=$((hypr_border * 3 / 2))
-# elem_border=$([ "$hypr_border" -eq 0 ] && echo "5" || echo "$hypr_border")
-elem_border=$hypr_border
+font_scale="$(rofi_effective_font_scale "${ROFI_KEYBIND_HINT_SCALE}")"
+font_name="$(rofi_effective_font_name "${ROFI_KEYBIND_HINT_FONT:-$ROFI_FONT}")"
+font_override="$(rofi_font_override "${font_name}" "${font_scale}")"
+icon_override="$(rofi_icon_theme_override)"
+r_override="$(rofi_standard_window_theme listview same)"
+read -r logical_width logical_height <<<"$(rofi_focused_monitor_logical_size)"
 
-# TODO Dynamic scaling for text and the window >>> I do not know if rofi is capable of this
-kb_hint_width="$ROFI_KEYBIND_HINT_WIDTH"
-kb_hint_height="$ROFI_KEYBIND_HINT_HEIGHT"
-kb_hint_line="$ROFI_KEYBIND_HINT_LINE"
-r_width="width: ${kb_hint_width:-35em};"
-r_height="height: ${kb_hint_height:-35em};"
-r_listview="listview { lines: ${kb_hint_line:-13}; }"
-r_override="window {$r_height $r_width border: ${hypr_width}px; border-radius: ${wind_border}px;} entry {border-radius: ${elem_border}px;} element {border-radius: ${elem_border}px;} ${r_listview} "
+entry_count=$(printf '%s\n' "${output}" | sed '/^[[:space:]]*$/d' | wc -l)
+entry_count=${entry_count//[[:space:]]/}
+[[ "${entry_count}" =~ ^[0-9]+$ ]] || entry_count=13
 
-# Read hypr font size
-font_scale="${ROFI_KEYBIND_HINT_SCALE:-$(gsettings get org.gnome.desktop.interface font-name | awk '{gsub(/'\''/,""); print $NF}')}"
-[[ "${font_scale}" =~ ^[0-9]+$ ]] || font_scale=${ROFI_SCALE:-10}
+kb_hint_width="${ROFI_KEYBIND_HINT_WIDTH:-}"
+if [[ ! "${kb_hint_width}" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+  kb_hint_width="$(awk -v w="${logical_width:-1280}" -v fs="${font_scale}" 'BEGIN { v = w / (fs * 2.15); if (v < 35) v = 35; if (v > 72) v = 72; printf "%.1f", v }')"
+fi
 
-# set font name
-font_name=${ROFI_KEYBIND_HINT_FONT:-$ROFI_FONT}
-font_name=${font_name:-$(hyprshell fonts/font-get.sh menu 2>/dev/null || true)}
-font_name=${font_name:-$(get_hyprConf "MENU_FONT")}
-font_name=${font_name:-$(get_hyprConf "FONT")}
-font_name=${font_name:-monospace}
+kb_hint_line="${ROFI_KEYBIND_HINT_LINE:-}"
+if [[ ! "${kb_hint_line}" =~ ^[0-9]+$ ]]; then
+  kb_hint_line=$(( (${logical_height:-720}) / (font_scale * 5) ))
+  ((kb_hint_line < 10)) && kb_hint_line=10
+  ((kb_hint_line > 26)) && kb_hint_line=26
+  ((entry_count > 0 && kb_hint_line > entry_count)) && kb_hint_line=${entry_count}
+fi
 
-# set rofi font override
-font_override="* {font: \"${font_name} ${font_scale}\";}"
+kb_hint_height="${ROFI_KEYBIND_HINT_HEIGHT:-}"
+if [[ ! "${kb_hint_height}" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+  kb_hint_height="$(awk -v lines="${kb_hint_line}" 'BEGIN { v = (lines * 1.9) + 7; if (v < 24) v = 24; if (v > 48) v = 48; printf "%.1f", v }')"
+fi
 
-# Read hypr theme icon
-icon_override=$(gsettings get org.gnome.desktop.interface icon-theme | sed "s/'//g")
-icon_override="configuration {icon-theme: \"${icon_override}\";}"
-#? Actions to do when selected
-selected=$(echo -e "$output" | rofi -dmenu -p \
-  -theme-str "entry { placeholder: \"\t Keybindings \";}" \
-  " Keybinds \t\tﴕ Description" \
-  -p -i \
+kb_hint_width_px="$(rofi_em_to_px "${kb_hint_width}" "${font_scale}")"
+kb_hint_height_px="$(rofi_em_to_px "${kb_hint_height}" "${font_scale}")"
+rofi_position="$(get_rofi_pos "${kb_hint_width_px}" "${kb_hint_height_px}")"
+layout_override="window { width: ${kb_hint_width}em; height: ${kb_hint_height}em; } listview { lines: ${kb_hint_line}; } ${rofi_position}"
+
+selected=$(printf '%s\n' "${output}" | rofi -dmenu -p " Keybinds" -i \
   -display-columns 1 \
   -display-column-separator ":::" \
+  -theme-str "entry { placeholder: \"Keybindings\"; }" \
   -theme-str "${font_override}" \
-  -theme-str "${r_override}" \
   -theme-str "${icon_override}" \
-  -theme "${ROFI_KEYBIND_HINT_STYLE:-clipboard}" | sed 's/.*\s*//')
-if [[ -z "${selected}" ]]; then exit 0; fi
-dispatch=$(awk -F ':::' '{print $2}' <<<"$selected" | xargs)
-arg=$(awk -F ':::' '{print $3}' <<<"$selected" | xargs)
-repeat=$(awk -F ':::' '{print $4}' <<<"$selected" | xargs)
+  -theme-str "${r_override}" \
+  -theme-str "${layout_override}" \
+  -theme "$(rofi_resolve_theme "${ROFI_KEYBIND_HINT_STYLE:-clipboard}")" \
+  | sed 's/.*\s*//')
+[[ -z "${selected}" ]] && exit 0
 
-# Run the command
-RUN() {
+dispatch=$(awk -F ':::' '{print $2}' <<<"${selected}" | xargs)
+arg=$(awk -F ':::' '{print $3}' <<<"${selected}" | xargs)
+repeat=$(awk -F ':::' '{print $4}' <<<"${selected}" | xargs)
+
+run_dispatch() {
   local output
   if [[ -n "${arg}" ]]; then
     output=$(hyprctl dispatch "${dispatch}" "${arg}" 2>&1)
@@ -110,21 +115,20 @@ RUN() {
     *"Not enough arguments"*) exec "$0" ;;
   esac
 }
-#? If flag is repeat then repeat rofi if not then just execute once
+
 if [[ -n "${dispatch}" && "${dispatch}" != *$'\n'* ]]; then
   if [[ "${repeat}" == "repeat" ]]; then
     while true; do
-      repeat_command=$(echo -e "Repeat" | rofi -dmenu -no-custom -p - "[Enter] repeat; [ESC] exit" -theme "notification") #? Needed a separate Rasi ? Dunno how to make; Maybe Something like confirmation rasi for buttons Yes and No then the -p will be the Question like Proceed? Repeat?
+      repeat_command=$(printf 'Repeat\n' | rofi -dmenu -no-custom -p "Repeat command?" -theme "notification")
       if [[ "${repeat_command}" == "Repeat" ]]; then
-        # Repeat the command here
-        RUN
+        run_dispatch
       else
         exit 0
       fi
     done
   else
-    RUN
+    run_dispatch
   fi
 else
-  exec $0
+  exec "$0"
 fi

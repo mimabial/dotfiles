@@ -8,7 +8,7 @@ fi
 # source variables
 scrDir=$(dirname "$(realpath "$0")")
 # shellcheck disable=SC1091
-source "$scrDir/../globalcontrol.sh"
+source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
 get_aurhlpr
 export -f pkg_installed
 fpk_exup="pkg_installed flatpak && flatpak update"

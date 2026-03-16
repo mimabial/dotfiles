@@ -5,8 +5,8 @@ check() {
 }
 
 notify() {
-  check notify-send && {
-    notify-send -a "Color Picker" "$@"
+  check dunstify && {
+    dunstify -a "Color Picker" "$@"
     return
   }
   echo "$@"

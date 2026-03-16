@@ -5,31 +5,17 @@ if [[ "${HYPR_SHELL_INIT}" -ne 1 ]]; then
 else
   export_hypr_config
 fi
+# shellcheck source=/dev/null
+source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
 
 # setup rofi configuration
 setup_rofi_config() {
-  # font scale
-  local font_scale="${ROFI_BOOKMARKS_SCALE}"
-  [[ "${font_scale}" =~ ^[0-9]+$ ]] || font_scale=${ROFI_SCALE:-10}
-
-  # set font name
-  local font_name=${ROFI_BOOKMARKS_FONT:-$ROFI_FONT}
-  font_name=${font_name:-$(hyprshell fonts/font-get.sh menu 2>/dev/null || true)}
-  font_name=${font_name:-$(get_hyprConf "MENU_FONT")}
-  font_name=${font_name:-$(get_hyprConf "FONT")}
-  font_name=${font_name:-monospace}
-
-  # set rofi font override
-  font_override="* {font: \"${font_name} ${font_scale}\";}"
-
-  # border settings
-  local hypr_border=${hypr_border:-"$(hyprctl -j getoption decoration:rounding | jq '.int')"}
-  local wind_border=$((hypr_border * 3 / 2))
-  local elem_border=$((hypr_border == 0 ? 5 : hypr_border))
-
-  # border width
-  local hypr_width=${hypr_width:-"$(hyprctl -j getoption general:border_size | jq '.int')"}
-  r_override="window{border:${hypr_width}px;border-radius:${wind_border}px;}wallbox{border-radius:${elem_border}px;} element{border-radius:${elem_border}px;}"
+  local font_scale
+  local font_name
+  font_scale="$(rofi_effective_font_scale "${ROFI_BOOKMARKS_SCALE}")"
+  font_name="$(rofi_effective_font_name "${ROFI_BOOKMARKS_FONT:-$ROFI_FONT}")"
+  font_override="$(rofi_font_override "${font_name}" "${font_scale}")"
+  r_override="$(rofi_standard_window_theme wallbox min5)"
 }
 
 setup_rofi_config
@@ -38,7 +24,7 @@ browser_name=${BROWSER:-${browser_name}}
 
 selection=$(python "$LIB_DIR/hypr/rofi/bookmarks.py" --list | rofi -dmenu -i \
   -theme-str "entry { placeholder: \" 🌐 Launch: ${browser_name} \";}" \
-  -config "${ROFI_BOOKMARK_STYLE:-clipboard}" \
+  -config "$(rofi_resolve_theme "${ROFI_BOOKMARK_STYLE:-clipboard}")" \
   -theme-str "${r_override}" \
   -theme-str "${font_override}" \
   -theme-str "window {width: 50%;}")

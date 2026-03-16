@@ -181,7 +181,7 @@ map_floor() {
     IFS=':' read -r key value <<<"$pair"
     num="${2%%.*}"
     # if awk -v num="$2" -v k="$key" 'BEGIN { exit !(num > k) }'; then #! causes 50ms+ delay
-    if [[ "$num" =~ ^-?[0-9]+$ && "$key" =~ ^-?[0-9]+$ ]]; then # TODO Faster than awk but I might be dumb so checks might be lacking
+    if [[ "$num" =~ ^-?[0-9]+$ && "$key" =~ ^-?[0-9]+$ ]]; then # Prefer bash integer compares here to avoid spawning awk in the hot path.
       if ((num > key)); then
         echo "$value"
         return

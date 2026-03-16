@@ -1,0 +1,181 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+DOTFILES_DIR="${DOTFILES_DIR:-$HOME/dotfiles/Configs}"
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/hypr"
+STATE_FILE="${STATE_DIR}/host-profile"
+HOST_TARGETS=(
+  ".config/hypr/monitors.conf"
+  ".config/hypr/nvidia.conf"
+  ".config/waybar/modules/temperature.jsonc"
+)
+
+usage() {
+  cat <<USAGE
+Usage: $(basename "$0") <command> [args]
+Commands:
+  show                Print the selected host profile
+  list                List available host profiles from dotfiles
+  path [profile]      Print the dotfiles path for a host profile
+  set <profile>       Select a host profile and create its dotfiles directory
+  apply [profile]     Apply a host profile onto the live config paths
+  apply --dry-run     Preview host profile changes without writing
+  help                Show this help
+USAGE
+}
+
+die() {
+  printf '%s\n' "$*" >&2
+  exit 1
+}
+
+require_rsync() {
+  command -v rsync >/dev/null 2>&1 || die "rsync is required"
+}
+
+validate_profile() {
+  local profile="${1:-}"
+  [[ -n "${profile}" && "${profile}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || \
+    die "Invalid host profile: ${profile:-<empty>}"
+}
+
+current_profile() {
+  local profile=""
+  [[ -f "${STATE_FILE}" ]] || return 1
+  read -r profile <"${STATE_FILE}" || true
+  validate_profile "${profile}"
+  printf '%s\n' "${profile}"
+}
+
+profile_dir() {
+  local profile="$1"
+  validate_profile "${profile}"
+  printf '%s\n' "${DOTFILES_DIR}/hosts/${profile}"
+}
+
+list_profiles() {
+  local hosts_dir="${DOTFILES_DIR}/hosts"
+
+  [[ -d "${hosts_dir}" ]] || return 0
+  find "${hosts_dir}" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort
+}
+
+set_profile() {
+  local profile="$1"
+
+  validate_profile "${profile}"
+  mkdir -p "${STATE_DIR}" "$(profile_dir "${profile}")"
+  printf '%s\n' "${profile}" >"${STATE_FILE}"
+  printf 'Selected host profile: %s\n' "${profile}"
+  printf 'Dotfiles path: %s\n' "$(profile_dir "${profile}")"
+}
+
+apply_profile() {
+  local profile="$1"
+  local dry_run="$2"
+  local host_dir=""
+  local rel=""
+  local src=""
+  local dest=""
+  local output=""
+  local found=0
+
+  if [[ -z "${profile}" ]]; then
+    profile="$(current_profile || true)"
+  fi
+  [[ -n "${profile}" ]] || die "No host profile selected. Use dotfiles-host-profile set <profile>."
+  validate_profile "${profile}"
+
+  host_dir="$(profile_dir "${profile}")"
+  [[ -d "${host_dir}" ]] || die "Host profile directory does not exist: ${host_dir}"
+
+  require_rsync
+
+  printf 'Applying host profile: %s\n' "${profile}"
+  printf 'Source: %s\n' "${host_dir}"
+  $dry_run && echo '(DRY RUN - no changes will be made)'
+
+  for rel in "${HOST_TARGETS[@]}"; do
+    src="${host_dir}/${rel}"
+    [[ -e "${src}" || -L "${src}" ]] || continue
+    found=1
+    dest="${HOME}/${rel}"
+
+    if $dry_run; then
+      if ! output=$(rsync -a --mkpath --dry-run --itemize-changes "${src}" "${dest}" 2>&1); then
+        die "Preview failed for ${rel}: ${output}"
+      fi
+    else
+      if ! output=$(rsync -a --mkpath --itemize-changes "${src}" "${dest}" 2>&1); then
+        die "Apply failed for ${rel}: ${output}"
+      fi
+    fi
+
+    if [[ -n "${output}" ]]; then
+      printf 'Changes for %s:\n%s\n' "${rel}" "${output}"
+    else
+      printf 'Unchanged: %s\n' "${rel}"
+    fi
+  done
+
+  (( found == 1 )) || die "No managed host files found in ${host_dir}"
+}
+
+command_name="${1:-show}"
+shift $(( $# > 0 ? 1 : 0 ))
+
+case "${command_name}" in
+  show)
+    if profile="$(current_profile 2>/dev/null)"; then
+      printf '%s\n' "${profile}"
+    else
+      echo '(not set)'
+    fi
+    ;;
+  list)
+    list_profiles
+    ;;
+  path)
+    if [[ $# -gt 0 ]]; then
+      profile="$1"
+    else
+      profile="$(current_profile || true)"
+    fi
+    [[ -n "${profile}" ]] || die "No host profile selected. Use dotfiles-host-profile set <profile>."
+    profile_dir "${profile}"
+    ;;
+  set)
+    [[ $# -ge 1 ]] || die "Usage: $(basename "$0") set <profile>"
+    profile="$1"
+    set_profile "${profile}"
+    if [[ "${2:-}" == "--apply" ]]; then
+      apply_profile "${profile}" false
+    fi
+    ;;
+  apply)
+    dry_run=false
+    profile=""
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --dry-run) dry_run=true ;;
+        -h|--help)
+          usage
+          exit 0
+          ;;
+        *)
+          [[ -z "${profile}" ]] || die "Only one profile may be provided"
+          profile="$1"
+          ;;
+      esac
+      shift
+    done
+    apply_profile "${profile}" "${dry_run}"
+    ;;
+  help|-h|--help)
+    usage
+    ;;
+  *)
+    die "Unknown command: ${command_name}"
+    ;;
+esac

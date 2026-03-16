@@ -11,7 +11,7 @@ fi
 
 scrDir=$(dirname "$(realpath "$0")")
 # shellcheck disable=SC1091
-source "$scrDir/globalcontrol.sh"
+source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
 [ -n "${1}" ] && wlogoutStyle="${1}"
 wlogoutStyle=${wlogoutStyle:-$WLOGOUT_STYLE}
 wLayout="${XDG_CONFIG_HOME:-$HOME/.config}/wlogout/layout_${wlogoutStyle}"
@@ -56,7 +56,7 @@ export fntSize=$((y_mon * 2 / 100))
 #// detect wallpaper brightness
 
 WALLPAPER_CURRENT_DIR="${WALLPAPER_CURRENT_DIR:-${HYPR_CACHE_HOME}/wallpaper/current}"
-dcol_mode="${dcol_mode:-dark}"
+resolved_color_variant="${resolved_color_variant:-dark}"
 BtnCol="${BtnCol:-}"
 wal_cache="${XDG_CACHE_HOME:-$HOME/.cache}/wal"
 wal_background=""
@@ -87,14 +87,14 @@ if [ -n "${wal_background}" ]; then
 fi
 
 #  Theme mode: detects the color-scheme set in hypr.theme and falls back if nothing is parsed.
-enableWallDcol="${enableWallDcol:-1}"
+selected_color_mode="${selected_color_mode:-1}"
 if [ -z "${BtnCol}" ]; then
-  if [ "${enableWallDcol}" -eq 0 ]; then
+  if [ "${selected_color_mode}" -eq 0 ]; then
     HYPR_THEME_DIR="${HYPR_THEME_DIR:-${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}}"
-    dcol_mode=$(get_hyprConf "COLOR_SCHEME")
-    dcol_mode=${dcol_mode#prefer-}
+    resolved_color_variant=$(get_hyprConf "COLOR_SCHEME")
+    resolved_color_variant=${resolved_color_variant#prefer-}
   fi
-  { [ "${dcol_mode}" == "dark" ] && BtnCol="white"; } || BtnCol="black"
+  { [ "${resolved_color_variant}" == "dark" ] && BtnCol="white"; } || BtnCol="black"
 fi
 export BtnCol
 

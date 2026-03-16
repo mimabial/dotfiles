@@ -10,7 +10,7 @@ PYWAL_KVANTUM_DIR="${HOME}/.config/Kvantum/pywal16"
 
 # Get required variables from environment or state
 [ -f "$HYPR_STATE_HOME/config" ] && source "$HYPR_STATE_HOME/config"
-enableWallDcol="${enableWallDcol:-1}"
+selected_color_mode="${selected_color_mode:-1}"
 
 # Determine theme directory
 if [ -z "${HYPR_THEME_DIR}" ] && [ -n "${HYPR_THEME}" ]; then
@@ -31,7 +31,7 @@ input_files=(
     "${THEME_KVANTUM_DIR}/colors.map"
 )
 input_hash=$(cat "${input_files[@]}" "${WAL_CACHE}/colors.sh" 2>/dev/null | md5sum | cut -d' ' -f1)
-combined_hash="${input_hash}-${enableWallDcol}"
+combined_hash="${input_hash}-${selected_color_mode}"
 
 if [[ -f "$hashFile" && "$(cat "$hashFile" 2>/dev/null)" == "$combined_hash" ]]; then
     exit 0  # Nothing changed
@@ -55,7 +55,7 @@ if [ -f "${WAL_CACHE}/colors.sh" ]; then
 fi
 
 # In wallpaper mode, replace colors using colors.map
-if [ "${enableWallDcol}" -ne 0 ]; then
+if [ "${selected_color_mode}" -ne 0 ]; then
     COLOR_MAP="${THEME_KVANTUM_DIR}/colors.map"
 
     if [ -f "${COLOR_MAP}" ]; then
@@ -114,7 +114,7 @@ fi
 kvconfig="${PYWAL_KVANTUM_DIR}/pywal16.kvconfig"
 if [ -f "$kvconfig" ] && [ -n "${color4}" ]; then
     # In theme mode, extract colors from the theme's kvconfig
-    if [ "${enableWallDcol}" -eq 0 ]; then
+    if [ "${selected_color_mode}" -eq 0 ]; then
         THEME_KVCONFIG="${THEME_KVANTUM_DIR}/kvconfig.theme"
         if [ -f "$THEME_KVCONFIG" ]; then
             kv_highlight=$(grep '^highlight\.color=' "$THEME_KVCONFIG" | cut -d= -f2)

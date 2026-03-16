@@ -26,19 +26,19 @@ trap 'flock -u 203 2>/dev/null' EXIT
 
 scrDir="$(dirname "$(dirname "$(realpath "$0")")")"
 # shellcheck disable=SC1091
-source "${scrDir}/globalcontrol.sh"
+source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
 
 #// set defaults
-xtrans="${WALLPAPER_SWWW_TRANSITION_DEFAULT:-fade}"
-[[ -z "${xtrans}" ]] && xtrans="fade"
+wallpaper_transition_type="${wallpaper_transition_type:-${WALLPAPER_SWWW_TRANSITION_DEFAULT:-fade}}"
+[[ -z "${wallpaper_transition_type}" ]] && wallpaper_transition_type="fade"
 
 # Handle transition
 case "${WALLPAPER_SET_FLAG}" in
   p)
-    xtrans="${WALLPAPER_SWWW_TRANSITION_PREV:-$xtrans}"
+    wallpaper_transition_type="${WALLPAPER_SWWW_TRANSITION_PREV:-$wallpaper_transition_type}"
     ;;
   n)
-    xtrans="${WALLPAPER_SWWW_TRANSITION_NEXT:-$xtrans}"
+    wallpaper_transition_type="${WALLPAPER_SWWW_TRANSITION_NEXT:-$wallpaper_transition_type}"
     ;;
 
 esac
@@ -64,8 +64,7 @@ fi
 [[ -z "${wallFramerate}" ]] && wallFramerate=60
 [[ -z "${wallTransDuration}" ]] && wallTransDuration=0.6
 
-#// apply wallpaper
-# TODO: add support for other backends
+# Apply wallpaper through the swww backend.
 print_log -sec "wallpaper" -stat "apply" "$selected_wall"
 
 # Resolve the wallpaper path
@@ -81,7 +80,7 @@ cursor_pos="$(hyprctl cursorpos 2>/dev/null | grep -E '^[0-9]' || echo "0,0")"
 # Build swww command
 swww_cmd=(swww img "${resolved_wall}"
   --transition-bezier .43,1.19,1,.4
-  --transition-type "${xtrans}"
+  --transition-type "${wallpaper_transition_type}"
   --transition-duration "${wallTransDuration}"
   --transition-fps "${wallFramerate}"
   --invert-y
