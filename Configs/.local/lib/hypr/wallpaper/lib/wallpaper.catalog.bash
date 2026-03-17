@@ -3,7 +3,8 @@
 # Build wallpaper lists/hashes with lightweight caching.
 
 Wall_Hashmap_Cached() {
-  unset wallHash wallList
+  wallHash=()
+  wallList=()
 
   local -a wall_sources=()
   local skip_strays=0
@@ -85,8 +86,8 @@ Wall_Hashmap_Cached() {
   local wall_file wall_meta wall_hash
   while IFS= read -r -d '' wall_file; do
     wall_meta="$(stat -c '%Y\t%s' -- "${wall_file}" 2>/dev/null)" || continue
-    if [[ "${cache_meta["${wall_file}"]}" == "${wall_meta}" ]]; then
-      wall_hash="${cache_hash["${wall_file}"]}"
+    if [[ "${cache_meta["${wall_file}"]-}" == "${wall_meta}" ]]; then
+      wall_hash="${cache_hash["${wall_file}"]-}"
     else
       wall_hash="$("${hash_cmd}" "${wall_file}" | awk '{print $1}')"
     fi
@@ -118,7 +119,8 @@ Wall_Hashmap_Cached() {
 }
 
 Wall_List() {
-  unset wallHash wallList
+  wallHash=()
+  wallList=()
 
   local -a wall_sources=("$@")
   local -a supported_files=()

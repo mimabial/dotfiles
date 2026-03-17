@@ -251,7 +251,8 @@ if [[ "${LOG_LEVEL:-}" == "debug" ]]; then
 fi
 
 if [[ ${#wall_inputs[@]} -gt 0 ]]; then
-  unset wallHash wallList
+  wallHash=()
+  wallList=()
   for wall_input in "${wall_inputs[@]}"; do
     wallHash+=("$("${HYPR_HASH_COMMAND:-sha1sum}" "${wall_input}" | awk '{print $1}')")
     wallList+=("${wall_input}")

@@ -48,6 +48,14 @@ export WALLPAPER_VIDEO_DIR="${WALLPAPER_CURRENT_DIR}/thumbnails"
 # Use xxh64sum for faster hashing (3x faster than sha1sum)
 export HYPR_HASH_COMMAND="xxh64sum"
 
+# Wallpaper helpers expect these arrays to exist, even when empty.
+declare -p WALLPAPER_FILETYPES >/dev/null 2>&1 || declare -ag WALLPAPER_FILETYPES=()
+declare -p WALLPAPER_OVERRIDE_FILETYPES >/dev/null 2>&1 || declare -ag WALLPAPER_OVERRIDE_FILETYPES=()
+declare -p WALLPAPER_CUSTOM_PATHS >/dev/null 2>&1 || declare -ag WALLPAPER_CUSTOM_PATHS=()
+declare -p wallHash >/dev/null 2>&1 || declare -ag wallHash=()
+declare -p wallList >/dev/null 2>&1 || declare -ag wallList=()
+declare -p wallPathArray >/dev/null 2>&1 || declare -ag wallPathArray=()
+
 # Resolve shared-core files first (shared/user split), then user layer fallback.
 hypr_core_file() {
   local rel_path="$1"
@@ -293,8 +301,8 @@ print_log() {
 }
 
 get_hashmap() {
-  unset wallHash
-  unset wallList
+  wallHash=()
+  wallList=()
   unset skipStrays
   unset filetypes
 
@@ -306,7 +314,7 @@ get_hashmap() {
     "png"
     "${WALLPAPER_FILETYPES[@]}"
   )
-  if [ -n "${WALLPAPER_OVERRIDE_FILETYPES}" ]; then
+  if (( ${#WALLPAPER_OVERRIDE_FILETYPES[@]} > 0 )); then
     supported_files=("${WALLPAPER_OVERRIDE_FILETYPES[@]}")
   fi
 

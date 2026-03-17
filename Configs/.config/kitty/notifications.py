@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 
@@ -9,6 +10,10 @@ import subprocess
 DEFAULT_TIMEOUT_MS = 4000
 DEFAULT_URGENCY = "normal"
 DUNST_APP_NAME = "Codex"
+DEFAULT_ICON_CANDIDATES = (
+    "/usr/lib/kitty/logo/kitty.png",
+    "/usr/share/icons/hicolor/256x256/apps/kitty.png",
+)
 
 
 def _text(value: object) -> str:
@@ -61,6 +66,44 @@ def _stack_tag(cmd: object) -> str:
     return "codex"
 
 
+def _normalized_content(cmd: object) -> tuple[str, str]:
+    title = _text(getattr(cmd, "title", "")).strip()
+    body = _text(getattr(cmd, "body", "")).strip()
+
+    lower_title = title.lower()
+    if lower_title.startswith("approval requested:"):
+        remainder = title.split(":", 1)[1].strip()
+        title = "Approval requested"
+        if remainder and not body:
+            body = remainder
+    elif lower_title.startswith("codex wants to "):
+        remainder = title[len("Codex wants to ") :].strip()
+        title = "Codex wants to"
+        if remainder and not body:
+            body = remainder
+    elif not body and "\n" in title:
+        first_line, remainder = title.split("\n", 1)
+        title = first_line.strip()
+        body = remainder.strip()
+
+    return title, body
+
+
+def _icon_args(cmd: object) -> list[str]:
+    icon_path = _text(getattr(cmd, "icon_path", "")).strip()
+    if not icon_path:
+        for candidate in DEFAULT_ICON_CANDIDATES:
+            if os.path.isfile(candidate):
+                icon_path = candidate
+                break
+
+    if not icon_path:
+        return []
+    if os.path.isfile(icon_path):
+        return ["-I", icon_path]
+    return ["-i", icon_path]
+
+
 def main(cmd: object) -> bool:
     if not _looks_like_codex(cmd):
         return False
@@ -69,8 +112,7 @@ def main(cmd: object) -> bool:
     if not dunstify:
         return False
 
-    title = _text(getattr(cmd, "title", "")).strip()
-    body = _text(getattr(cmd, "body", "")).strip()
+    title, body = _normalized_content(cmd)
     if not title:
         return False
 
@@ -86,9 +128,7 @@ def main(cmd: object) -> bool:
         f"string:x-dunst-stack-tag:{_stack_tag(cmd)}",
     ]
 
-    icon_path = _text(getattr(cmd, "icon_path", "")).strip()
-    if icon_path:
-        command.extend(("-i", icon_path))
+    command.extend(_icon_args(cmd))
 
     command.append(title)
     if body:

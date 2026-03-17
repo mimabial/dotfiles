@@ -2,9 +2,9 @@
 # DO NOT EDIT MANUALLY - This file is regenerated on theme change
 
 # Hyprland Integration
-hypr_border = 4  # Border radius from Hyprland
+hypr_border = 3  # Border radius from Hyprland
 color_mode = 0     # Color mode from staterc (0=Theme, 1=Auto, 2=Dark, 3=Light)
-border_radius = '4px'
+border_radius = '3px'
 
 # Color mode names
 color_mode_names = {0: 'Theme', 1: 'Auto', 2: 'Dark', 3: 'Light'}

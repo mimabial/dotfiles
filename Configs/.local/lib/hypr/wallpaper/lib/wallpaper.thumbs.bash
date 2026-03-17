@@ -2,6 +2,56 @@
 
 # Thumbnail/cache maintenance helpers for wallpaper flows.
 
+wallpaper_prune_sources_array() {
+  local out_name="$1"
+  local -n out_ref="${out_name}"
+  local config_home="${HYPR_CONFIG_HOME}"
+  local themes_root=""
+  local src
+
+  out_ref=()
+  [[ -z "${config_home}" ]] && config_home="${XDG_CONFIG_HOME:-$HOME/.config}/hypr"
+
+  themes_root="${config_home}/themes"
+  if [[ -d "${themes_root}" ]]; then
+    out_ref+=("${themes_root}")
+  fi
+
+  for src in "${WALLPAPER_CUSTOM_PATHS[@]}"; do
+    [[ -e "${src}" ]] || continue
+    out_ref+=("${src}")
+  done
+
+  [[ ${#out_ref[@]} -gt 0 ]]
+}
+
+wallpaper_load_prune_catalog() {
+  local runtime_dir="${XDG_RUNTIME_DIR}"
+  local lock_file=""
+  local -a wall_sources=()
+
+  [[ -z "${runtime_dir}" ]] && runtime_dir="/run/user/$(id -u)"
+  lock_file="${runtime_dir}/wallpaper-cache.lock"
+
+  wallpaper_prune_sources_array wall_sources || return 1
+
+  exec 204>"${lock_file}"
+  if ! flock -n 204; then
+    flock 204
+  fi
+
+  if ! Wall_Hashmap_Cached "${wall_sources[@]}" --no-notify --skipstrays; then
+    flock -u 204 2>/dev/null
+    exec 204>&-
+    return 1
+  fi
+
+  flock -u 204 2>/dev/null
+  exec 204>&-
+
+  [[ ${#wallList[@]} -gt 0 ]]
+}
+
 Wall_Ensure_Thumbs() {
   local ext="${1}"
   [[ -z "${ext}" ]] && ext="sqre"
@@ -64,54 +114,16 @@ Wall_Precache_Thumbs() {
 
 Wall_Clean_Thumbs() {
   local thumb_dir="${WALLPAPER_THUMB_DIR}"
-  local cache_home="${HYPR_CACHE_HOME}"
-  local config_home="${HYPR_CONFIG_HOME}"
-  local runtime_dir="${XDG_RUNTIME_DIR}"
-  local themes_root=""
-  local lock_file=""
   local removed=0
   local file base hash
-  local -a wall_sources=()
   local -A valid_hashes=()
-
-  [[ -z "${runtime_dir}" ]] && runtime_dir="/run/user/$(id -u)"
-  lock_file="${runtime_dir}/wallpaper-cache.lock"
+  local cache_home="${HYPR_CACHE_HOME}"
 
   [[ -z "${cache_home}" ]] && cache_home="${XDG_CACHE_HOME:-$HOME/.cache}/hypr"
   [[ -z "${thumb_dir}" ]] && thumb_dir="${cache_home}/wallpaper/thumbs"
   [[ -d "${thumb_dir}" ]] || return 0
 
-  [[ -z "${config_home}" ]] && config_home="${XDG_CONFIG_HOME:-$HOME/.config}/hypr"
-  themes_root="${config_home}/themes"
-  if [[ -d "${themes_root}" ]]; then
-    wall_sources+=("${themes_root}")
-  fi
-
-  if [[ ${#WALLPAPER_CUSTOM_PATHS[@]} -gt 0 ]]; then
-    local src
-    for src in "${WALLPAPER_CUSTOM_PATHS[@]}"; do
-      [[ -e "${src}" ]] || continue
-      wall_sources+=("${src}")
-    done
-  fi
-  [[ ${#wall_sources[@]} -gt 0 ]] || return 0
-
-  exec 204>"${lock_file}"
-  if ! flock -n 204; then
-    flock 204
-  fi
-
-  if ! Wall_Hashmap_Cached "${wall_sources[@]}" --no-notify --skipstrays; then
-    flock -u 204 2>/dev/null
-    exec 204>&-
-    return 0
-  fi
-
-  if [[ ${#wallList[@]} -eq 0 ]]; then
-    flock -u 204 2>/dev/null
-    exec 204>&-
-    return 0
-  fi
+  wallpaper_load_prune_catalog || return 0
 
   for hash in "${wallHash[@]}"; do
     [[ -n "${hash}" ]] || continue
@@ -122,18 +134,59 @@ Wall_Clean_Thumbs() {
     base="$(basename "${file}")"
     if [[ "${base}" =~ ^\.?([0-9a-fA-F]+)\.(thmb|sqre|blur|quad)(\.png)?$ ]]; then
       hash="${BASH_REMATCH[1]}"
-      if [[ -z "${valid_hashes["${hash}"]}" ]]; then
+      if [[ -z "${valid_hashes["${hash}"]-}" ]]; then
         rm -f -- "${file}"
         removed=$((removed + 1))
       fi
     fi
   done < <(find -H "${thumb_dir}" -maxdepth 1 -type f -print0 2>/dev/null)
 
-  flock -u 204 2>/dev/null
-  exec 204>&-
-
   if [[ "${removed}" -gt 0 ]]; then
     print_log -sec "wallpaper" -stat "clean" "Removed ${removed} stale thumbs"
+  fi
+}
+
+Wall_Prune_Png_Cache() {
+  local png_cache_dir="${WALLPAPER_CACHE_DIR}/png_cache"
+  local removed=0
+  local file base hash wallpaper_path wallpaper_hash mime cached_thumb png_hash
+  local -A valid_hashes=()
+  local i
+
+  [[ -d "${png_cache_dir}" ]] || return 0
+  wallpaper_load_prune_catalog || return 0
+
+  for i in "${!wallList[@]}"; do
+    wallpaper_path="${wallList[i]}"
+    wallpaper_hash="${wallHash[i]}"
+    [[ -n "${wallpaper_hash}" ]] || continue
+    [[ -e "${wallpaper_path}" ]] || continue
+
+    mime="$(file --mime-type -b "${wallpaper_path}" 2>/dev/null || true)"
+    if [[ "${mime}" == video/* ]]; then
+      cached_thumb="${WALLPAPER_VIDEO_DIR}/${wallpaper_hash}.png"
+      [[ -f "${cached_thumb}" ]] || continue
+      png_hash="$(${HYPR_HASH_COMMAND:-sha1sum} "${cached_thumb}" | awk '{print $1}')"
+      [[ -n "${png_hash}" ]] && valid_hashes["${png_hash}"]=1
+      continue
+    fi
+
+    valid_hashes["${wallpaper_hash}"]=1
+  done
+
+  while IFS= read -r -d '' file; do
+    base="$(basename "${file}")"
+    if [[ "${base}" =~ ^([0-9a-fA-F]+)\.png$ ]]; then
+      hash="${BASH_REMATCH[1]}"
+      if [[ -z "${valid_hashes["${hash}"]-}" ]]; then
+        rm -f -- "${file}"
+        removed=$((removed + 1))
+      fi
+    fi
+  done < <(find -H "${png_cache_dir}" -maxdepth 1 -type f -print0 2>/dev/null)
+
+  if [[ "${removed}" -gt 0 ]]; then
+    print_log -sec "wallpaper" -stat "clean" "Removed ${removed} stale png_cache entries"
   fi
 }
 
@@ -238,7 +291,9 @@ Wall_Auto_Prune() {
       exit 0
     fi
 
-    if Wall_Clean_Thumbs --no-notify --skipstrays && Wall_Prune_Hashmap_Caches; then
+    if Wall_Clean_Thumbs --no-notify --skipstrays \
+      && Wall_Prune_Hashmap_Caches \
+      && Wall_Prune_Png_Cache; then
       printf '%s\n' "${now_ts}" > "${stamp_file}.tmp" && mv -f "${stamp_file}.tmp" "${stamp_file}"
     fi
   ) &

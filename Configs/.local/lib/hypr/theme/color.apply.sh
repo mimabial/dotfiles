@@ -203,6 +203,33 @@ hex_to_rgb() {
 }
 
 # ============================================================================
+# normalize_hex_color - Strip inline comments/whitespace from a hex color
+# ============================================================================
+# Arguments:
+#   $1 - Raw color value (e.g. "#2C2525 ; comment")
+# Output:
+#   Prints normalized "#RRGGBB" if recoverable, else the original trimmed value
+normalize_hex_color() {
+  local raw="${1%%;*}"
+  local stripped=""
+  raw="${raw#"${raw%%[![:space:]]*}"}"
+  raw="${raw%"${raw##*[![:space:]]}"}"
+
+  if [[ "${raw}" =~ ^#?[0-9A-Fa-f]{8}$ ]]; then
+    stripped="${raw#\#}"
+    printf '#%s' "${stripped:0:6}"
+    return 0
+  fi
+
+  if [[ "${raw}" =~ ^#?[0-9A-Fa-f]{6}$ ]]; then
+    printf '#%s' "${raw#\#}"
+    return 0
+  fi
+
+  printf '%s' "${raw}"
+}
+
+# ============================================================================
 # post_updates - Update KDE/Dolphin settings with current colors
 # ============================================================================
 # Arguments: none
@@ -248,6 +275,11 @@ post_updates() {
         [[ -n "${kv_hl}" ]] && accent="${kv_hl}" && hover="${kv_hl}"
       fi
     fi
+
+    bg=$(normalize_hex_color "${bg}")
+    fg=$(normalize_hex_color "${fg}")
+    accent=$(normalize_hex_color "${accent}")
+    hover=$(normalize_hex_color "${hover}")
 
     local bg_rgb fg_rgb accent_rgb hover_rgb
     bg_rgb=$(hex_to_rgb "${bg}")

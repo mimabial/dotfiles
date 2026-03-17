@@ -87,4 +87,12 @@ if [[ "${app_name}" == "kitty" ]]; then
   fi
 fi
 
-exec "${real_dunstify}" "${forward_args[@]}" "${positionals[@]}"
+notify_args=("${forward_args[@]}")
+if [[ -n "${summary}" ]]; then
+  notify_args+=("${summary}")
+fi
+if [[ -n "${body}" ]]; then
+  notify_args+=("${body}")
+fi
+
+exec "${real_dunstify}" "${notify_args[@]}"
