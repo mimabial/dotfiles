@@ -35,7 +35,6 @@ S|${HOME}/.config|systemd|systemd
  Desktop 
 S|${HOME}/.config|waybar|waybar
 S|${HOME}/.config|rofi|rofi
-S|${HOME}/.config|swaync|swaync
 S|${HOME}/.config|wlogout|wlogout
 
  Terminals & Shell 

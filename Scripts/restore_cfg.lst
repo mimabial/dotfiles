@@ -7,7 +7,6 @@ Y|Y|${HOME}/.config|systemd|systemd
 
 Y|Y|${HOME}/.config|waybar|waybar
 Y|Y|${HOME}/.config|rofi|rofi
-Y|Y|${HOME}/.config|swaync|swaync
 Y|Y|${HOME}/.config|wlogout|wlogout
 
 Y|Y|${HOME}/.config|kitty|kitty

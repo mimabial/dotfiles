@@ -25,10 +25,6 @@ Configs/.local/share/themes/Pywal16-Gtk/gtk-3.0/gtk.css
 Configs/.local/share/themes/Pywal16-Gtk/gtk-3.0/gtk-dark.css
 Configs/.local/share/themes/Pywal16-Gtk/gtk-4.0/gtk.css
 Configs/.local/share/themes/Pywal16-Gtk/gtk-4.0/gtk-dark.css
-Configs/.config/swaync/colors.css
-Configs/.config/swaync/config.json
-Configs/.config/swaync/style.css
-Configs/.config/swaync/theme.css
 Configs/.config/tmux/colors.conf
 Configs/.config/tmux/theme.conf
 Configs/.config/tmux/plugins/

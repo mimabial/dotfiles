@@ -27,8 +27,8 @@ from typing import Optional, Literal
 # Add hyprshell venv to path
 VENV_PATH = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "hypr/pip_env"
 if VENV_PATH.exists():
-    sys.path.insert(0, str(VENV_PATH / "lib/python3.12/site-packages"))
-    sys.path.insert(0, str(VENV_PATH / "lib/python3.11/site-packages"))
+    pyver = f"python{sys.version_info.major}.{sys.version_info.minor}"
+    sys.path.insert(0, str(VENV_PATH / "lib" / pyver / "site-packages"))
 
 try:
     from astral import LocationInfo

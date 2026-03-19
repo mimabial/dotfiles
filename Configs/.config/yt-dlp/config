@@ -2,4 +2,4 @@
 --embed-chapters
 --embed-metadata
 -o "%(title).200B.%(ext)s"
---paths /home/rifle/Music
+--paths ~/Music

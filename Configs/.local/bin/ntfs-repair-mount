@@ -2,4 +2,4 @@
 
 set -euo pipefail
 
-exec /home/rifle/.local/lib/hypr/system/ntfs-repair-mount.sh "$@"
+exec "$HOME/.local/lib/hypr/system/ntfs-repair-mount.sh" "$@"
