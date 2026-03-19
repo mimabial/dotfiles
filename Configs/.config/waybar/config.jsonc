@@ -117,27 +117,11 @@
       "transition-duration": 500,
       "transition-left-to-right": false
     },
-    "modules": ["tray", "group/web", "group/wireless", "custom/vpn"]
+    "modules": ["tray", "custom/vpn", "custom/network#speed"]
   },
   "group/forever": {
     "orientation": "inherit",
     "modules": ["group/power", "custom/powermenu"]
-  },
-  "group/web": {
-    "orientation": "inherit",
-    "drawer": {
-      "transition-duration": 500,
-      "transition-left-to-right": false
-    },
-    "modules": ["network", "custom/network#speed"]
-  },
-  "group/wireless": {
-    "orientation": "inherit",
-    "drawer": {
-      "transition-duration": 500,
-      "transition-left-to-right": false
-    },
-    "modules": ["bluetooth", "bluetooth#status"]
   },
   "group/power": {
     "orientation": "inherit",
@@ -145,6 +129,6 @@
       "transition-duration": 500,
       "transition-left-to-right": false
     },
-    "modules": ["custom/hyprmenu", "battery"]
+    "modules": ["power-profiles-daemon", "battery"]
   }
 }

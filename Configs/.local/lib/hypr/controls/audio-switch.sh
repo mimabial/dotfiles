@@ -59,7 +59,7 @@ volume_icon_state() {
 
 mapfile -t sinks < <(list_sinks_tsv)
 if (( ${#sinks[@]} == 0 )); then
-  dunstify -u critical "Audio" "No audio devices found"
+  dunstify -u critical -i "dialog-error" "Audio" "No audio devices found"
   exit 1
 fi
 
@@ -95,4 +95,4 @@ else
 fi
 
 icon_state="$(volume_icon_state "${next_vol}" "${next_muted}")"
-dunstify -i "audio-volume-${icon_state}-symbolic" "Audio Output" "${next_desc}"
+dunstify -t 3000 -i "audio-volume-${icon_state}-symbolic" "Audio Output" "${next_desc}"

@@ -12,7 +12,7 @@
 # Range (min … max):   184.0 ms … 272.1 ms    12 runs
 
 script_dir=$(dirname "$(realpath "$0")")
-gpuinfo_file="/tmp/hypr-${UID}-gpuinfo"
+gpuinfo_file="${TMPDIR:-/tmp}/hypr-${UID}-gpuinfo"
 
 # Use the AQ_DRM_DEVICES variable to set the priority of the GPUs
 AQ_DRM_DEVICES="${AQ_DRM_DEVICES:-WLR_DRM_DEVICES}"

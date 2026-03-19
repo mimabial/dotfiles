@@ -38,7 +38,7 @@ getTargetDirectory() {
 }
 
 tmp_editor_directory() {
-  echo "/tmp"
+  echo "${TMPDIR:-/tmp}"
 }
 
 #Detect if $GRIMBLAST_EDITOR env exist
@@ -167,7 +167,7 @@ notifyOpen() {
       if dbus-send --session --print-reply --dest=org.freedesktop.FileManager1 --type=method_call /org/freedesktop/FileManager1 org.freedesktop.FileManager1.ShowItems array:string:"file://$4" string:""; then
         :
       else
-        dunstify -t 3000 -a grimblast "Error displaying folder with dbus-send"
+        dunstify -t 3000 -a grimblast -i "dialog-error" "Error displaying folder with dbus-send"
         echo "Displayed: Error displaying folder with dbus-send"
       fi
     fi

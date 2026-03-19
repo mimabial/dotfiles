@@ -12,7 +12,7 @@ case "$1" in
     ;;
 esac
 
-STATE_FILE="/tmp/waybar-netspeed-$USER"
+STATE_FILE="${TMPDIR:-/tmp}/waybar-netspeed-$USER"
 INTERFACE=$(ip route | awk '/^default/ {print $5; exit}')
 
 # If no network interface is active

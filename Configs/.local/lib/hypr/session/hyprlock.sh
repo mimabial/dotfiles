@@ -411,7 +411,7 @@ fn_update_art() {
 }
 
 find_filepath() {
-  local filename="${1:-theme}"
+  local filename="${1:-default}"
   local search_name="${filename%.conf}.conf"
   local candidate extra_dir
 
@@ -500,9 +500,6 @@ EOF
 layout_test() {
   print_log -sec "hyprlock" -stat "Test" "Please swipe,press a key or click to exit."
   local hyprlock_conf_name="${*:-${1}}"
-  if [[ "${hyprlock_conf_name}" == "Theme Preference" ]]; then
-    hyprlock_conf_name="theme"
-  fi
   check_and_sanitize_process
   hyprlock_conf_path=$(find_filepath "${hyprlock_conf_name}")
   if [ -z "${hyprlock_conf_path}" ]; then
@@ -519,9 +516,6 @@ layout_test() {
 
 rofi_test_preview() {
   local hyprlock_conf_name="${*:-${1}}"
-  if [[ "${hyprlock_conf_name}" == "Theme Preference" ]]; then
-    hyprlock_conf_name="theme"
-  fi
   local unit_name="${XDG_SESSION_DESKTOP:-unknown}-lockscreen-preview.scope"
   check_and_sanitize_process "${unit_name}"
   send_ephemeral_notif "hypr-hyprlock-preview" "Hyprlock layout: ${hyprlock_conf_name}" "Please swipe, press a key or click to exit." \
@@ -531,7 +525,7 @@ rofi_test_preview() {
 }
 
 generate_conf() {
-  local path="${1:-${HYPRLOCK_USER_DIR}/theme.conf}"
+  local path="${1:-${HYPRLOCK_SHARED_DIR}/default.conf}"
   local target_file="${2:-${HYPR_CONFIG_HOME}/hyprlock.conf}"
   local hyprlock_conf="${HYPR_DATA_HOME:-${XDG_DATA_HOME}/hypr}/hyprlock.conf"
   local layout_path
@@ -671,8 +665,7 @@ fn_select() {
     exit 1
   fi
 
-  layout_items="Theme Preference
-${layout_items}"
+  layout_items="${layout_items}"
 
   selected_layout=$(awk -F/ '{print $NF}' <<<"$layout_items" \
     | rofi -dmenu -i -select "${HYPRLOCK_LAYOUT}" \
@@ -690,9 +683,6 @@ ${layout_items}"
   fi
 
   state_set "HYPRLOCK_LAYOUT" "${selected_layout}" "staterc"
-  if [ "$selected_layout" == "Theme Preference" ]; then
-    selected_layout="theme"
-  fi
   local hyprlock_conf_path
   hyprlock_conf_path=$(find_filepath "${selected_layout}")
   generate_conf "$hyprlock_conf_path"
@@ -728,7 +718,7 @@ fi
 case "$1" in
   --source)
     # Only update art if last update was >2 seconds ago
-    LOCK_FILE="/tmp/hyprlock-art.lock"
+    LOCK_FILE="${TMPDIR:-/tmp}/hyprlock-art.lock"
     if [ ! -f "$LOCK_FILE" ] || [ $(($(date +%s) - $(stat -c %Y "$LOCK_FILE" 2>/dev/null || echo 0))) -gt 2 ]; then
       touch "$LOCK_FILE"
       (fn_update_art) &

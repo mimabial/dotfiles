@@ -119,9 +119,9 @@ fn_status() {
       fi
       ;;
     *)
-      if [[ ! -f "/tmp/battery.notify.status.fallback.$battery_status-$$" ]]; then
-        echo "Status: '==>> \"${battery_status}\" <<==' Script on Fallback mode,Unknown power supply status.Please copy this line and raise an issue to the Github Repo.Also run 'ls /tmp/battery.notify' to see the list of lock files.*"
-        touch "/tmp/battery.notify.status.fallback.$battery_status-$$"
+      if [[ ! -f "${TMPDIR:-/tmp}/battery.notify.status.fallback.$battery_status-$$" ]]; then
+        echo "Status: '==>> \"${battery_status}\" <<==' Script on Fallback mode,Unknown power supply status.Please copy this line and raise an issue to the Github Repo.Also run 'ls ${TMPDIR:-/tmp}/battery.notify' to see the list of lock files.*"
+        touch "${TMPDIR:-/tmp}/battery.notify.status.fallback.$battery_status-$$"
       fi
       fn_percentage
       ;;

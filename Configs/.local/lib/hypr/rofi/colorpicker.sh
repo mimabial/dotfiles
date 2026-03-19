@@ -6,7 +6,7 @@ check() {
 
 notify() {
   check dunstify && {
-    dunstify -a "Color Picker" "$@"
+    dunstify -a "Color Picker" -t 3000 "$@"
     return
   }
   echo "$@"
@@ -56,6 +56,9 @@ killall -q hyprpicker
 
 # Capture only stdout, discard stderr (the error messages)
 color=$(hyprpicker 2>/dev/null)
+
+# Empty means user cancelled (e.g. Escape)
+[[ -z "$color" ]] && exit 0
 
 # Validate that we got an actual color (starts with #)
 if [[ ! "$color" =~ ^#[0-9a-fA-F]{6}$ ]]; then

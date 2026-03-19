@@ -14,7 +14,7 @@ class XDGPaths:
             "XDG_CONFIG_HOME", os.path.join(self.HOME, ".config")
         )
         self.xdg_runtime = os.environ.get(
-            "XDG_RUNTIME_DIR", os.path.join(self.HOME, ".local/share")
+            "XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}"
         )
         self.xdg_data = os.environ.get(
             "XDG_DATA_HOME", os.path.join(self.HOME, ".local/share")

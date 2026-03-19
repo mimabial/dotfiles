@@ -118,7 +118,7 @@ fn_wallcache() {
         || [ ! -e "${WALLPAPER_THUMB_DIR}/${x_hash}.blur" ] \
         || [ ! -e "${WALLPAPER_THUMB_DIR}/${x_hash}.quad" ]
     then
-      local temp_image="/tmp/${x_hash}.png"
+      local temp_image="${TMPDIR:-/tmp}/${x_hash}.png"
       send_ephemeral_notif "hypr-wallpaper-cache" -a "Wallpaper cache" -t 2000 "Extracting thumbnail from video wallpaper..."
       extract_thumbnail "${x_wall}" "${temp_image}"
       x_wall="${temp_image}"
@@ -157,7 +157,7 @@ fn_wallcache_force() {
   is_video=$(file --mime-type -b "${x_wall}" | grep -c '^video/')
 
   if [ "${is_video}" -eq 1 ]; then
-    local temp_image="/tmp/${x_hash}.png"
+    local temp_image="${TMPDIR:-/tmp}/${x_hash}.png"
     extract_thumbnail "${x_wall}" "${temp_image}"
     x_wall="${temp_image}"
   fi

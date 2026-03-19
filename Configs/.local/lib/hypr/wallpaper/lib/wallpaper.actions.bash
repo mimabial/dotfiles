@@ -81,8 +81,6 @@ apply_selected_wallpaper() {
 
     rm -f "${WALLPAPER_CURRENT_DIR}/wall.fit"
   fi
-
-  Wall_Auto_Prune
 }
 
 select_adjacent_wallpaper() {

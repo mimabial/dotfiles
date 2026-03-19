@@ -304,7 +304,6 @@ get_hashmap() {
   wallHash=()
   wallList=()
   unset skipStrays
-  unset filetypes
 
   # Initialize supported file extensions (safe: no eval needed)
   local -a supported_files=(
@@ -370,11 +369,7 @@ get_hashmap() {
 
     [ "${LOG_LEVEL}" == "debug" ] && print_log -g "DEBUG:" -b "wallSource path:" "${wallSource}"
 
-    hashMap=$(find_wallpapers "${wallSource}") # Enable debug mode for testing
-
-    # hashMap=$(
-    # find "${wallSource}" -type f \( -iname "*.gif" -o -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.mkv"  \) ! -path "*/logo/*" -exec "${HYPR_HASH_COMMAND}" {} + | sort -k2
-    # )
+    hashMap=$(find_wallpapers "${wallSource}")
 
     if [ -z "${hashMap}" ]; then
       no_wallpapers+=("${wallSource}")
@@ -393,12 +388,12 @@ get_hashmap() {
     print_log -warn "No compatible wallpapers found in:" "${no_wallpapers[*]}"
   fi
 
-  if [ -z "${#wallList[@]}" ] || [[ "${#wallList[@]}" -eq 0 ]]; then
+  if [[ "${#wallList[@]}" -eq 0 ]]; then
     if [[ "${skipStrays}" -eq 1 ]]; then
       return 1
     else
       echo "ERROR: No image found in any source"
-      [ -n "${no_notify}" ] && dunstify -a "Global control" "WARNING: No compatible wallpapers found in: ${no_wallpapers[*]}"
+      [ -n "${no_notify}" ] && dunstify -a "Global control" -t 5000 -i "dialog-warning" "WARNING: No compatible wallpapers found in: ${no_wallpapers[*]}"
       exit 1
     fi
   fi
@@ -432,12 +427,12 @@ get_hashmap() {
 #   done
 # shellcheck disable=SC2120
 get_themes() {
-  unset thmSortS
-  unset thmListS
-  unset thmWallS
-  unset thmSort
-  unset thmList
-  unset thmWall
+  thmSortS=()
+  thmListS=()
+  thmWallS=()
+  thmSort=()
+  thmList=()
+  thmWall=()
 
   while read -r thmDir; do
     local realWallPath
@@ -457,7 +452,6 @@ get_themes() {
     thmList+=("${theme}")
     thmWall+=("${wall}")
   done < <(paste -d '|' <(printf "%s\n" "${thmSortS[@]}") <(printf "%s\n" "${thmListS[@]}") <(printf "%s\n" "${thmWallS[@]}") | sort -n -k 1 -k 2)
-  #!  done < <(parallel --link echo "{1}\|{2}\|{3}" ::: "${thmSortS[@]}" ::: "${thmListS[@]}" ::: "${thmWallS[@]}" | sort -n -k 1 -k 2) # This is overkill and slow
   if [ "${1}" == "--verbose" ]; then
     echo "// Theme Control //"
     for indx in "${!thmList[@]}"; do
@@ -482,7 +476,7 @@ export_hypr_config() {
   #? Typically called after config changes, at shell startup, or before using config-dependent arrays.
 
   local user_conf_state="${XDG_STATE_HOME}/hypr/staterc"
-  local user_conf="${XDG_STATE_HOME}/hypr/config"
+  local user_conf="${XDG_STATE_HOME}/hypr/env-overrides"
 
   [ -f "${user_conf_state}" ] && source "${user_conf_state}"
   [ -f "${user_conf}" ] && source "${user_conf}"
@@ -1030,7 +1024,8 @@ xterm-256color
 EOF
   fi
 
-  ignore_class=$(echo "$@" | awk -F'--ignore=' '{print $2}')
+  ignore_class="${*#*--ignore=}"
+  [[ "$*" != *--ignore=* ]] && ignore_class=""
   [ -n "${ignore_class}" ] && echo "${ignore_class}" >>"${ignore_paste_file}" && print_log -y "[ignore]" "'$ignore_class'" && exit 0
   class=$(hyprctl -j activewindow | jq -r '.initialClass')
   if ! grep -q "${class}" "${ignore_paste_file}"; then
@@ -1123,7 +1118,7 @@ accepted_mime_types() {
       return 0
     else
       print_log -err "File type not supported for this wallpaper backend."
-      dunstify -u critical -a "Global control" "File type not supported for this wallpaper backend."
+      dunstify -u critical -a "Global control" -i "dialog-error" "File type not supported for this wallpaper backend."
     fi
 
   done

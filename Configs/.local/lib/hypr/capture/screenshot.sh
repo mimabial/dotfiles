@@ -77,7 +77,7 @@ if [[ "$annotation_tool" == "swappy" ]]; then
 fi
 
 if [[ "$annotation_tool" == "satty" ]]; then
-  annotation_args+=("--copy-command" "wl-copy")
+  annotation_args+=("--copy-command" "wl-copy" "--resize" "smart")
 fi
 
 # Add any additional annotation arguments
@@ -85,16 +85,32 @@ fi
 
 run_annotation() {
   if [[ -z "${annotation_tool}" ]]; then
-    dunstify -a "Screenshot" "Screenshot Error" "No annotation tool found (swappy/satty)"
+    dunstify -a "Screenshot" -t 5000 -i "dialog-error" "Screenshot Error" "No annotation tool found (swappy/satty)"
     return 1
   fi
   "${annotation_tool}" "${annotation_args[@]}"
 }
 
+# Transform-aware monitor geometry (handles portrait/rotated displays)
+JQ_MONITOR_GEO='
+  def format_geo:
+    .x as $x | .y as $y |
+    (.width / .scale | floor) as $w |
+    (.height / .scale | floor) as $h |
+    .transform as $t |
+    if $t == 1 or $t == 3 then
+      "\($x),\($y) \($h)x\($w)"
+    else
+      "\($x),\($y) \($w)x\($h)"
+    end;
+'
+
 # Get rectangles for smart selection
 get_rectangles() {
-  local active_workspace=$(hyprctl monitors -j | jq -r '.[] | select(.focused == true) | .activeWorkspace.id')
-  hyprctl monitors -j | jq -r --arg ws "$active_workspace" '.[] | select(.activeWorkspace.id == ($ws | tonumber)) | "\(.x),\(.y) \((.width / .scale) | floor)x\((.height / .scale) | floor)"'
+  local mon_data
+  mon_data=$(hyprctl monitors -j)
+  local active_workspace=$(jq -r '.[] | select(.focused == true) | .activeWorkspace.id' <<<"$mon_data")
+  jq -r --arg ws "$active_workspace" "${JQ_MONITOR_GEO} .[] | select(.activeWorkspace.id == (\$ws | tonumber)) | format_geo" <<<"$mon_data"
   hyprctl clients -j | jq -r --arg ws "$active_workspace" '.[] | select(.workspace.id == ($ws | tonumber)) | "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"'
 }
 
@@ -103,8 +119,16 @@ smart_screenshot() {
   local destination="$1"
   local RECTS=$(get_rectangles)
 
-  # Use slurp for selection with window rectangles
+  # Freeze screen during selection if hyprpicker is available
+  local freeze_pid=""
+  if command -v hyprpicker >/dev/null 2>&1; then
+    hyprpicker -r -z >/dev/null 2>&1 &
+    freeze_pid=$!
+    sleep 0.1
+  fi
+
   local SELECTION=$(echo "$RECTS" | slurp 2>/dev/null)
+  [[ -n "$freeze_pid" ]] && kill "$freeze_pid" 2>/dev/null
   [ -z "$SELECTION" ] && return 0
 
   # Smart window detection: if selection is tiny (< 20px²), expand to window/monitor
@@ -134,13 +158,13 @@ smart_screenshot() {
   # Take screenshot with grim
   if [[ "$destination" == "clipboard" ]]; then
     grim -g "$SELECTION" - | wl-copy
-    dunstify -a "Screenshot" "Copied to clipboard" -i "camera-photo"
+    dunstify -a "Screenshot" -t 3000 "Copied to clipboard" -i "camera-photo"
   elif [[ "$destination" == "save" ]]; then
     grim -g "$SELECTION" "${save_dir}/${save_file}"
   else
     grim -g "$SELECTION" "$temp_screenshot"
     if ! run_annotation; then
-      dunstify -a "Screenshot" "Screenshot Error" "Failed to open annotation tool"
+      dunstify -a "Screenshot" -t 5000 -i "dialog-error" "Screenshot Error" "Failed to open annotation tool"
       return 1
     fi
   fi
@@ -155,11 +179,11 @@ take_screenshot() {
   # execute grimblast with given args
   if "$LIB_DIR/hypr/capture/grimblast" "${extra_args[@]}" copysave "$mode" "$temp_screenshot"; then
     if ! run_annotation; then
-      dunstify -a "Screenshot" "Screenshot Error" "Failed to open annotation tool"
+      dunstify -a "Screenshot" -t 5000 -i "dialog-error" "Screenshot Error" "Failed to open annotation tool"
       return 1
     fi
   else
-    dunstify -a "Screenshot" "Screenshot Error" "Failed to take screenshot"
+    dunstify -a "Screenshot" -t 5000 -i "dialog-error" "Screenshot Error" "Failed to take screenshot"
     return 1
   fi
 }
@@ -183,14 +207,14 @@ ocr_screenshot() {
         -deskew 40% \
         "${temp_screenshot}"
     else
-      dunstify -a "Screenshot" "OCR: imagemagick is not installed, recognition accuracy is reduced" -i "dialog-warning"
+      dunstify -a "Screenshot" -t 5000 "OCR: imagemagick is not installed, recognition accuracy is reduced" -i "dialog-warning"
     fi
     tesseract_package_prefix="tesseract-data-"
     tesseract_packages=("${tesseract_languages[@]/#/$tesseract_package_prefix}")
     tesseract_packages+=("tesseract")
     for pkg in "${tesseract_packages[@]}"; do
       if ! pkg_installed "${pkg}"; then
-        dunstify -a "Screenshot" "$(echo -e "OCR: required package is not installed\n ${pkg}")" -i "dialog-error"
+        dunstify -a "Screenshot" -t 5000 "$(echo -e "OCR: required package is not installed\n ${pkg}")" -i "dialog-error"
         return 1
       fi
     done
@@ -208,10 +232,10 @@ ocr_screenshot() {
       2>/dev/null
     )
     printf "%s" "$tesseract_output" | wl-copy
-    dunstify -a "Screenshot" "$(echo -e "OCR: ${#tesseract_output} symbols recognized\n\nLanguages used ${tesseract_languages[@]/#/'\n '}")" -i "${temp_screenshot}"
+    dunstify -a "Screenshot" -t 5000 "$(echo -e "OCR: ${#tesseract_output} symbols recognized\n\nLanguages used ${tesseract_languages[@]/#/'\n '}")" -i "${temp_screenshot}"
     rm -f "${temp_screenshot}"
   else
-    dunstify -a "Screenshot" "OCR: screenshot error" -i "dialog-error"
+    dunstify -a "Screenshot" -t 5000 "OCR: screenshot error" -i "dialog-error"
     return 1
   fi
 }
@@ -232,8 +256,14 @@ case $1 in
     smart_screenshot "$2"
     ;;
   w) # window selection with frozen screen
-    # Select from visible windows/monitors
+    local freeze_pid=""
+    if command -v hyprpicker >/dev/null 2>&1; then
+      hyprpicker -r -z >/dev/null 2>&1 &
+      freeze_pid=$!
+      sleep 0.1
+    fi
     SELECTION=$(get_rectangles | slurp -r 2>/dev/null)
+    [[ -n "$freeze_pid" ]] && kill "$freeze_pid" 2>/dev/null
     if [[ -n "$SELECTION" ]]; then
       grim -g "$SELECTION" "$temp_screenshot"
       run_annotation
@@ -255,5 +285,5 @@ case $1 in
 esac
 
 if [ -f "${save_dir}/${save_file}" ]; then
-  dunstify -a "Screenshot" -i "${save_dir}/${save_file}" "saved in ${save_dir}"
+  dunstify -a "Screenshot" -t 5000 -i "${save_dir}/${save_file}" "saved in ${save_dir}"
 fi

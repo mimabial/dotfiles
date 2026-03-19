@@ -53,6 +53,7 @@ Wall_Json() {
     exit 0
   fi
 
+  wallpaper_refresh_inventory_and_prune
   Wall_Hashmap_Cached "${wallPathArray[@]}"
   if [[ "${ensure_thumbs}" -eq 1 ]]; then
     Wall_Ensure_Thumbs "sqre"

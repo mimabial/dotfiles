@@ -11,7 +11,7 @@ import json
 import os
 import subprocess
 
-FAN_INDEX_FILE = "/tmp/fanspeedinfo_index"
+FAN_INDEX_FILE = os.path.join(os.environ.get("TMPDIR", "/tmp"), "fanspeedinfo_index")
 
 
 def get_all_fans():

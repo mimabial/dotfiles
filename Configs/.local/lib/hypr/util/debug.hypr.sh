@@ -1,6 +1,6 @@
 #!/bin/bash
 
-LOG_FILE="/tmp/hypr-debug.log"
+LOG_FILE="${TMPDIR:-/tmp}/hypr-debug.log"
 
 cat > "$LOG_FILE" <<EOF
 Date: $(date)

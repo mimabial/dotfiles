@@ -133,6 +133,13 @@ wallpaper_notify_emit() {
   fi
 }
 
+wallpaper_refresh_inventory_if_needed() {
+  case "${wallpaper_setter_flag:-}" in
+    g | o | clean | link | "") return 0 ;;
+  esac
+  wallpaper_refresh_inventory_and_prune
+}
+
 main() {
   # Full cache variables are required for write/apply operations.
   if [[ -z "${wallpaper_backend}" ]] \
@@ -148,6 +155,7 @@ main() {
   fi
 
   wallpaper_set_paths
+  wallpaper_refresh_inventory_if_needed
 
   # Ensure active wallpaper link exists before applying.
   if [[ ! -e "${active_wallpaper_link}" ]]; then

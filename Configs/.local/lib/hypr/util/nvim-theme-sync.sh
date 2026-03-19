@@ -11,7 +11,7 @@ log_warn() {
   printf '%s [warn] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >> "${log_file}"
 }
 
-runtime_dir="/run/user/$(id -u)"
+runtime_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 
 shopt -s nullglob
 for socket in "${runtime_dir}"/nvim.*.0; do

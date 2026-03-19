@@ -1,6 +1,5 @@
 # Enable user units managed by dotfiles.
 enable auto-theme.service
-enable hypr-config.service
 enable hyprland-hypridle.service
 enable hyprland-idle-manager.service
 enable mpd.service

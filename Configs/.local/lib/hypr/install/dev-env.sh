@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [[ -z "$1" ]]; then
-  echo "Usage: hyprshell install/dev-env.sh <ruby|node|bun|go|laravel|symfony|php|python|elixir|phoenix|rust|java|ocaml|dotnet|clojure>" >&2
+  echo "Usage: hyprshell install/dev-env.sh <ruby|node|bun|go|laravel|symfony|php|python|elixir|phoenix|rust|java|zig|ocaml|dotnet|clojure|scala>" >&2
   exit 1
 fi
 
@@ -50,6 +50,8 @@ ruby)
   hyprshell pkg/add.sh libyaml
   mise use --global ruby@latest
   mise settings add idiomatic_version_file_enable_tools ruby
+  mise settings add ruby.compile false
+  echo "gem: --no-document" >"$HOME/.gemrc"
   mise x ruby -- gem install rails --no-document
   echo -e "\nYou can now run: rails new myproject"
   ;;
@@ -137,5 +139,12 @@ clojure)
   echo -e "Installing Clojure...\n"
   hyprshell pkg/add.sh rlwrap
   mise use --global clojure@latest
+  ;;
+scala)
+  echo -e "Installing Scala...\n"
+  mise use --global java@latest
+  mise use --global scala@latest
+  mise use --global sbt@latest
+  hyprshell pkg/add.sh scala-cli
   ;;
 esac

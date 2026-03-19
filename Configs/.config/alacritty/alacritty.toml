@@ -14,19 +14,19 @@ builtin_box_drawing = true
 size = 9
 
 [font.normal]
-family = "JetBrainsMono Nerd Font"
+family = "Miracode"
 style = "Regular"
 
 [font.bold]
-family = "JetBrainsMono Nerd Font"
+family = "Miracode"
 style = "Bold"
 
 [font.italic]
-family = "JetBrainsMono Nerd Font"
+family = "Miracode"
 style = "Italic"
 
 [font.bold_italic]
-family = "JetBrainsMono Nerd Font"
+family = "Miracode"
 style = "Bold Italic"
 
 [font.offset]

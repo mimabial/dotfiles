@@ -79,7 +79,7 @@ HYPR_CONFIG = Path(os.path.join(str(xdg_state_home()), "hypr", "config"))
 UNIT_NAME = f"{os.environ.get('XDG_SESSION_DESKTOP', 'unknown')}-bar.service"
 DUNST_SYNC_SCRIPT = os.path.join(os.path.dirname(__file__), "..", "wal", "wal.dunst.sh")
 
-WAYBAR_LOCK = Path(f"/tmp/waybar-{os.getuid()}.lock")
+WAYBAR_LOCK = Path(xdg_runtime_dir()) / f"waybar-{os.getuid()}.lock"
 
 
 class InotifyWatcher:
@@ -2074,12 +2074,11 @@ def main():
                         logger.debug(
                             "Config hash differs from layout hash, updating config"
                         )
-
-                    try:
-                        atomic_copy_file(layout_path, CONFIG_JSONC)
-                        logger.debug("Updated config.jsonc with layout from state file")
-                    except Exception as e:
-                        logger.error(f"Failed to update config.jsonc: {e}")
+                        try:
+                            atomic_copy_file(layout_path, CONFIG_JSONC)
+                            logger.debug("Updated config.jsonc with layout from state file")
+                        except Exception as e:
+                            logger.error(f"Failed to update config.jsonc: {e}")
 
             elif layout_path and not os.path.exists(layout_path):
                 logger.warning(f"Layout path in state file doesn't exist: {layout_path}")
@@ -2106,9 +2105,11 @@ def main():
                                 logger.debug(
                                     "Config hash differs from layout hash, updating config"
                                 )
-
-                        atomic_copy_file(found_layout, CONFIG_JSONC)
-                        logger.debug("Updated config.jsonc with layout by name")
+                                atomic_copy_file(found_layout, CONFIG_JSONC)
+                                logger.debug("Updated config.jsonc with layout by name")
+                        else:
+                            atomic_copy_file(found_layout, CONFIG_JSONC)
+                            logger.debug("Created config.jsonc from layout by name")
                     else:
                         logger.error(f"Could not find layout by name: {layout_name}")
                         # Fall back to first available layout

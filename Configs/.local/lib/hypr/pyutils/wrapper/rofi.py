@@ -6,7 +6,7 @@ from typing import List
 from shutil import which
 
 ROFI_CMD = "rofi"
-ROFI_OPTIONS = ["--dmenu"]
+ROFI_OPTIONS = ["-dmenu"]
 
 
 def __check_rofi_in_path() -> bool:

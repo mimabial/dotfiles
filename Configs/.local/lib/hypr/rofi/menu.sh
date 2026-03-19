@@ -29,8 +29,7 @@ back_to() {
 menu() {
   local prompt="$1"
   local options="$2"
-  local extra="$3"
-  local preselect="$4"
+  local preselect="$3"
   local options_rendered=""
   local rofi_args=()
   local line=""
@@ -79,7 +78,7 @@ menu() {
         rofi_args+=("-selected-row" "$((index - 1))")
         break
       fi
-    done <<< "${options_rendered}"
+    done <<<"${options_rendered}"
   fi
 
   printf '%s' "${options_rendered}" | rofi -dmenu -i -no-show-icons -p "$prompt" -theme "$(rofi_resolve_theme menutree)" "${rofi_args[@]}" 2>/dev/null
@@ -128,7 +127,7 @@ present_terminal() {
 }
 
 open_in_editor() {
-  dunstify "Editing config file" "$1"
+  dunstify -t 3000 -i "text-editor" "Editing config file" "$1"
   hyprshell launch/editor.sh "$1"
 }
 
@@ -167,47 +166,29 @@ aur_install_and_launch() {
 }
 
 show_learn_menu() {
-  case $(menu "Learn" "  Keybindings\n  Neovim\n󱆃  Scripting") in
+  case $(menu "Learn" "  Keybindings\n󱆃  Scripting") in
     *Keybindings*) hyprshell keybinds/keybinds_hint.sh c ;;
-    *Neovim*) show_neovim_menu ;;
     *Scripting*) show_scripting_menu ;;
     *) show_main_menu ;;
   esac
 }
 
-show_neovim_menu() {
-  case $(menu "Neovim" "󰈙  Neovim Docs\n󰞋  Built-in Help\n  Lua Guide\n󰑓  Kickstart.nvim\n󰏗  Plugin Development\n  Keymaps Cheatsheet") in
-    *"Neovim Docs"*) hyprshell launch/webapp.sh "https://neovim.io/doc/" ;;
-    *"Built-in Help"*) present_terminal "nvim +':help' +only" ;;
-    *"Lua Guide"*) hyprshell launch/webapp.sh "https://neovim.io/doc/user/lua-guide.html" ;;
-    *"Kickstart.nvim"*) hyprshell launch/webapp.sh "https://github.com/nvim-lua/kickstart.nvim" ;;
-    *"Plugin Development"*) hyprshell launch/webapp.sh "https://github.com/nanotee/nvim-lua-guide" ;;
-    *"Keymaps Cheatsheet"*) hyprshell launch/webapp.sh "https://vim.rtorr.com/" ;;
-    *) show_learn_menu ;;
-  esac
-}
-
 show_scripting_menu() {
-  case $(menu "Scripting" "󱆃  Bash\n  Python\n  hyprctl\n󰘦  jq\n󰒋  systemd\n󰙲  D-Bus\n󰉵  udev") in
+  case $(menu "Scripting" "󱆃  Bash\n  Python") in
     *Bash*) show_bash_scripting_menu ;;
     *Python*) show_python_scripting_menu ;;
-    *hyprctl*) hyprshell launch/webapp.sh "https://wiki.hyprland.org/Configuring/Using-hyprctl/" ;;
-    *jq*) hyprshell launch/webapp.sh "https://jqlang.github.io/jq/manual/" ;;
-    *systemd*) hyprshell launch/webapp.sh "https://www.freedesktop.org/software/systemd/man/latest/" ;;
-    *D-Bus*) hyprshell launch/webapp.sh "https://dbus.freedesktop.org/doc/dbus-tutorial.html" ;;
-    *udev*) hyprshell launch/webapp.sh "https://wiki.archlinux.org/title/Udev" ;;
     *) show_learn_menu ;;
   esac
 }
 
 show_bash_scripting_menu() {
-  case $(menu "Bash Scripting" "󱆃  Bash Cheatsheet\n󰄬  ShellCheck\n  POSIX Shell\n󰅍  wl-clipboard\n  grim/slurp\n  wf-recorder\n󰂚  notify-send") in
+  case $(menu "Bash Scripting" "󱆃  Bash Cheatsheet\n󰄬  ShellCheck\n  POSIX Shell\n󰅍  wl-clipboard\n  grim/slurp\n  gpu-screen-recorder\n󰂚  notify-send") in
     *"Bash Cheatsheet"*) hyprshell launch/webapp.sh "https://devhints.io/bash" ;;
     *ShellCheck*) hyprshell launch/webapp.sh "https://www.shellcheck.net/wiki/" ;;
     *"POSIX Shell"*) hyprshell launch/webapp.sh "https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html" ;;
     *wl-clipboard*) hyprshell launch/webapp.sh "https://github.com/bugaevc/wl-clipboard" ;;
     *"grim/slurp"*) hyprshell launch/webapp.sh "https://sr.ht/~emersion/grim/" ;;
-    *wf-recorder*) hyprshell launch/webapp.sh "https://github.com/ammen99/wf-recorder" ;;
+    *gpu-screen-recorder*) hyprshell launch/webapp.sh "https://github.com/ammen99/gpu-screen-recorder" ;;
     *notify-send*) hyprshell launch/webapp.sh "https://wiki.archlinux.org/title/Desktop_notifications" ;;
     *) show_scripting_menu ;;
   esac
@@ -230,16 +211,15 @@ show_python_scripting_menu() {
 }
 
 show_trigger_menu() {
-  case $(menu "Trigger" "  Capture\n  Share\n󰔎  Toggle") in
+  case $(menu "Trigger" "  Capture\n󰔎  Toggle") in
     *Capture*) show_capture_menu ;;
-    *Share*) show_share_menu ;;
     *Toggle*) show_toggle_menu ;;
     *) show_main_menu ;;
   esac
 }
 
 show_capture_menu() {
-  case $(menu "Capture" "  Screenshot\n  Screenrecord\n󰃉  Color") in
+  case $(menu "Capture" "  Screenshot\n  Screenrecord\n  Color Hex") in
     *Screenshot*) show_screenshot_menu ;;
     *Screenrecord*) show_screenrecord_menu ;;
     *Color*) hyprshell rofi/colorpicker.sh ;;
@@ -255,22 +235,21 @@ show_screenshot_menu() {
   esac
 }
 
-show_screenrecord_menu() {
-  case $(menu "Screenrecord" "  Region\n  Region + Audio\n  Display\n  Display + Audio\n") in
-    *"Region + Audio"*) hyprshell capture/screenrecord.sh --start --audio ;;
-    *"Region"*) hyprshell capture/screenrecord.sh --start ;;
-    *"Display + Audio"*) hyprshell capture/screenrecord.sh --start --output --audio ;;
-    *"Display"*) hyprshell capture/screenrecord.sh --start --output ;;
-    *) back_to show_capture_menu ;;
+show_screenrecord_audio_menu() {
+  local mode="$1"
+  case $(menu "Audio" "  No Audio\n  With Audio") in
+    *"With Audio"*) hyprshell capture/screenrecord.sh --start --"$mode" --audio ;;
+    *"No Audio"*) hyprshell capture/screenrecord.sh --start --"$mode" ;;
+    *) back_to show_screenrecord_menu ;;
   esac
 }
 
-show_share_menu() {
-  case $(menu "Share" "  Clipboard\n  File \n  Folder") in
-    *Clipboard*) terminal bash -c "hyprshell cmd/share.sh clipboard" ;;
-    *File*) terminal bash -c "hyprshell cmd/share.sh file" ;;
-    *Folder*) terminal bash -c "hyprshell cmd/share.sh folder" ;;
-    *) back_to show_trigger_menu ;;
+show_screenrecord_menu() {
+  case $(menu "Screenrecord" "  Window\n  Region\n  Display") in
+    *Window*) show_screenrecord_audio_menu window ;;
+    *Region*) show_screenrecord_audio_menu region ;;
+    *Display*) show_screenrecord_audio_menu output ;;
+    *) back_to show_capture_menu ;;
   esac
 }
 
@@ -285,13 +264,13 @@ show_toggle_menu() {
 
 show_style_menu() {
   case $(menu "Style" "󰸌  Theme\n  Wallpaper\n  Color Mode\n󰍜  Waybar Layout\n󰹑  Animations\n󰏘  Lock Layout\n󰩨  Theme Menu Style\n  Font") in
+    *"Theme Menu Style"*) hyprshell theme.select.sh -s ;;
     *Theme*) hyprshell theme/theme.select.sh ;;
     *Wallpaper*) hyprshell wallpaper/wallpaper.sh -SG ;;
     *"Color Mode"*) hyprshell wal.toggle.sh -m ;;
     *Waybar*) hyprshell waybar.py --select ;;
     *Animations*) hyprshell animations.sh --select ;;
     *"Lock Layout"*) hyprshell hyprlock.sh --select ;;
-    *"Theme Menu Style"*) hyprshell theme.select.sh -s ;;
     *Font*) show_font_menu ;;
     *) show_main_menu ;;
   esac
@@ -302,20 +281,32 @@ show_font_menu() {
   font_list="$(hyprshell fonts/font-list.sh)"
 
   local font
-  font="$(menu "Select Font" "${font_list}")"
+  font="$(menu "Select Font" "Theme Default\n${font_list}")"
   if [[ -z "$font" || "$font" == "CNCLD" ]]; then
     back_to show_style_menu
+    return
   fi
 
-  hyprshell fonts/font-set.sh "$font" >/dev/null 2>&1 &
+  if [[ "$font" == "Theme Default" ]]; then
+    local vars_file="${HYPR_DATA_HOME:-$HOME/.local/share/hypr}/variables.conf"
+    local stock="JetBrainsMono Nerd Font"
+    rm -f "${HYPR_CONFIG_HOME:-$HOME/.config/hypr}/userfonts.conf"
+    if [[ -f "$vars_file" ]]; then
+      sed -i "s|^\\\$MONOSPACE_FONT=.*|\$MONOSPACE_FONT=$stock|;s|^\\\$BAR_FONT=.*|\$BAR_FONT=$stock|;s|^\\\$MENU_FONT=.*|\$MENU_FONT=$stock|" "$vars_file"
+    fi
+    hyprctl reload >/dev/null 2>&1
+    hyprshell fonts/font-sync.sh >/dev/null 2>&1 || true
+    hyprshell service/restart-waybar.sh >/dev/null 2>&1 || true
+  else
+    hyprshell fonts/font-set.sh "$font" >/dev/null 2>&1 &
+  fi
   exit 0
 }
 
 show_setup_menu() {
-  local options="󰜟  Audio\n  Wifi\n  Bluetooth\n󱫋  Network\n  Power Profile\n󰍹  Monitors"
-  [ -f ~/.config/hypr/bindings.conf ] && options="$options\n  Keybindings"
+  local options="  Audio\n  Wifi\n  Bluetooth\n󱫋  Network\n  Power Profile\n󰍹  Monitors"
+  [ -f ~/.config/hypr/keybindings.conf ] && options="$options\n  Keybindings"
   [ -f ~/.config/hypr/input.conf ] && options="$options\n  Input"
-  options="$options\n DNS\n  Security"
 
   case $(menu "Setup" "$options") in
     *Audio*) present_terminal --app-id org.tui.Wiremix --title Wiremix wiremix ;;
@@ -330,30 +321,27 @@ show_setup_menu() {
     *Network*) present_terminal --app-id org.tui.Oryx --title Oryx sudo oryx ;;
     *Power*) show_setup_power_menu ;;
     *Monitors*) open_in_editor ~/.config/hypr/monitors.conf ;;
-    *Keybindings*) open_in_editor ~/.config/hypr/bindings.conf ;;
+    *Keybindings*) open_in_editor ~/.config/hypr/keybindings.conf ;;
     *Input*) open_in_editor ~/.config/hypr/input.conf ;;
-    *DNS*) present_terminal hyprshell setup/dns.sh ;;
-    *Security*) show_setup_security_menu ;;
     *) show_main_menu ;;
   esac
 }
 
 show_dev_tools_menu() {
-  case $(menu "Dev Tools" "󰊢  Git (LazyGit)\n  Docker (LazyDocker)\n  File Manager (Ranger)\n󰻠  CPU Monitor (Htop)\n  GPU Monitor (Nvtop)\n  Disk Usage (Dua)\n  Calculator\n  Music Player (Rmpc)") in
+  case $(menu "Dev Tools" "󰊢  Git (LazyGit)\n  Docker (LazyDocker)\n  File Manager (Ranger)\n󰻠  CPU Monitor (Htop)\n  GPU Monitor (Nvtop)\n  Disk Usage (Dua)\n  Music Player (Rmpc)") in
     *Git*) hyprshell launch/lazygit.sh ;;
     *Docker*) hyprshell launch/lazydocker.sh ;;
     *File*) present_terminal --app-id org.tui.Ranger --title Ranger ranger ;;
     *CPU*) present_terminal --app-id org.tui.Htop --title Htop htop ;;
     *GPU*) present_terminal --app-id org.tui.Nvtop --title Nvtop nvtop ;;
     *Disk*) present_terminal --app-id org.tui.Dua --title Dua dua i ;;
-    *Calculator*) hyprshell rofi/calculator.sh ;;
     *Music*) present_terminal --app-id org.tui.Rmpc --title Rmpc rmpc ;;
     *) show_main_menu ;;
   esac
 }
 
 show_setup_power_menu() {
-  profile=$(menu "Power Profile" "$(hyprshell system/powerprofiles.sh)" "" "$(powerprofilesctl get)")
+  profile=$(menu "Power Profile" "$(hyprshell system/powerprofiles.sh)" "$(powerprofilesctl get)")
 
   if [[ "$profile" == "CNCLD" || -z "$profile" ]]; then
     back_to show_setup_menu
@@ -362,24 +350,13 @@ show_setup_power_menu() {
   fi
 }
 
-show_setup_security_menu() {
-  case $(menu "Setup" "󰈷  Fingerprint\n  Fido2") in
-    *Fingerprint*) present_terminal hyprshell setup/fingerprint.sh ;;
-    *Fido2*) present_terminal hyprshell setup/fido2.sh ;;
-    *) show_setup_menu ;;
-  esac
-}
-
 show_install_menu() {
-  case $(menu "Install" "󰣇  Package\n󰣇  AUR\n  Web App\n  TUI\n  Font\n󰵮  Development\n󰍲  Windows\n  Gaming") in
+  case $(menu "Install" "󰣇  Package\n󰣇  AUR\n  Font\n󰵮  Development\n󱚤  AI\n  Gaming") in
     *Package*) terminal hyprshell pkg/install.sh ;;
     *AUR*) terminal hyprshell pkg/aur-install.sh ;;
-    *Web*) present_terminal hyprshell install/webapp.sh ;;
-    *TUI*) present_terminal hyprshell install/tui.sh ;;
     *Font*) show_install_font_menu ;;
     *Development*) show_install_development_menu ;;
     *AI*) show_install_ai_menu ;;
-    *Windows*) present_terminal "hyprshell vm/windows.sh install" ;;
     *Gaming*) show_install_gaming_menu ;;
     *) show_main_menu ;;
   esac
@@ -398,7 +375,7 @@ show_install_ai_menu() {
     *OpenAI*) install "OpenAI Codex" "openai-codex-bin" ;;
     *Gemini*) install "Gemini" "gemini-cli" ;;
     *Studio*) install "LM Studio" "lmstudio" ;;
-    *Ollama*) install "Ollama" $ollama_pkg ;;
+    *Ollama*) install "Ollama" "$ollama_pkg" ;;
     *Crush*) install "Crush" "crush-bin" ;;
     *opencode*) install "opencode" "opencode" ;;
     *) show_install_menu ;;
@@ -415,7 +392,7 @@ show_install_gaming_menu() {
 }
 
 show_install_development_menu() {
-  case $(menu "Install" "󰫏  Ruby on Rails\n  Docker DB\n  JavaScript\n  Go\n  PHP\n  Python\n  Elixir\n  Zig\n  Rust\n  Java\n  .NET\n  OCaml\n  Clojure") in
+  case $(menu "Install" "󰫏  Ruby on Rails\n  Docker DB\n  JavaScript\n  Go\n  PHP\n  Python\n  Elixir\n  Zig\n  Rust\n  Java\n  .NET\n  OCaml\n  Clojure\n  Scala") in
     *Rails*) present_terminal "hyprshell install/dev-env.sh ruby" ;;
     *Docker*) present_terminal hyprshell install/docker-dbs.sh ;;
     *JavaScript*) show_install_javascript_menu ;;
@@ -429,6 +406,7 @@ show_install_development_menu() {
     *NET*) present_terminal "hyprshell install/dev-env.sh dotnet" ;;
     *OCaml*) present_terminal "hyprshell install/dev-env.sh ocaml" ;;
     *Clojure*) present_terminal "hyprshell install/dev-env.sh clojure" ;;
+    *Scala*) present_terminal "hyprshell install/dev-env.sh scala" ;;
     *) show_install_menu ;;
   esac
 }
@@ -460,23 +438,18 @@ show_install_elixir_menu() {
 }
 
 show_install_font_menu() {
-  case $(menu "Install" "  Meslo LG Mono\n  Fira Code\n  Victor Code\n  Bistream Vera Mono" "--width 350") in
+  case $(menu "Install" "  Meslo LG Mono\n  Fira Code\n  Victor Mono\n  Bitstream Vera Mono") in
     *Meslo*) install_font "Meslo LG Mono" "ttf-meslo-nerd" "MesloLGL Nerd Font" ;;
     *Fira*) install_font "Fira Code" "ttf-firacode-nerd" "FiraCode Nerd Font" ;;
-    *Victor*) install_font "Victor Code" "ttf-victor-mono-nerd" "VictorMono Nerd Font" ;;
-    *Bistream*) install_font "Bistream Vera Code" "ttf-bitstream-vera-mono-nerd" "BitstromWera Nerd Font" ;;
+    *Victor*) install_font "Victor Mono" "ttf-victor-mono-nerd" "VictorMono Nerd Font" ;;
+    *Bitstream*) install_font "Bitstream Vera Mono" "ttf-bitstream-vera-mono-nerd" "BitstromWera Nerd Font" ;;
     *) show_install_menu ;;
   esac
 }
 
 show_remove_menu() {
-  case $(menu "Remove" "󰣇  Package\n  Web App\n  TUI\n󰍲  Windows\n󰈷  Fingerprint\n  Fido2") in
+  case $(menu "Remove" "󰣇  Package") in
     *Package*) terminal hyprshell pkg/remove.sh ;;
-    *Web*) present_terminal hyprshell install/webapp-remove.sh ;;
-    *TUI*) present_terminal hyprshell install/tui-remove.sh ;;
-    *Windows*) present_terminal "hyprshell vm/windows.sh remove" ;;
-    *Fingerprint*) present_terminal "hyprshell setup/fingerprint.sh --remove" ;;
-    *Fido2*) present_terminal "hyprshell setup/fido2.sh --remove" ;;
     *) show_main_menu ;;
   esac
 }
@@ -506,11 +479,11 @@ show_update_process_menu() {
 
 show_update_config_menu() {
   case $(menu "Restore stock config" "  Hyprland\n  Hypridle\n  Hyprlock\n󰍜  Waybar\n󰀻  Rofi") in
-    *Hyprland*) present_terminal hyprshell service/restore-hyprland.sh ;;
-    *Hypridle*) present_terminal hyprshell service/restore-hypridle.sh ;;
-    *Hyprlock*) present_terminal hyprshell service/restore-hyprlock.sh ;;
-    *Waybar*) present_terminal hyprshell service/restore-waybar.sh ;;
-    *Rofi*) present_terminal hyprshell service/restore-rofi.sh ;;
+    *Hyprland*) present_terminal hyprshell service/domain.sh restore hypr-config ;;
+    *Hypridle*) present_terminal hyprshell service/domain.sh restore hypridle ;;
+    *Hyprlock*) present_terminal hyprshell service/domain.sh restore hyprlock ;;
+    *Waybar*) present_terminal hyprshell service/domain.sh restore waybar ;;
+    *Rofi*) present_terminal hyprshell service/domain.sh restore rofi ;;
     *) show_update_menu ;;
   esac
 }
@@ -537,7 +510,7 @@ show_system_menu() {
     *Lock*) hyprshell session/hyprlock.sh ;;
     *Suspend*) systemctl suspend ;;
     *Restart*) hyprshell cmd-restart ;;
-    *Shutdown*) hyprshell util/state.sh clear re*-required && systemctl poweroff --no-wall ;;
+    *Shutdown*) hyprshell util/state.sh clear 're*-required' && systemctl poweroff --no-wall ;;
     *) back_to show_main_menu ;;
   esac
 }
@@ -567,26 +540,10 @@ show_search_all_menu() {
   add "Dev › CPU Monitor (Htop)" "present_terminal --app-id org.tui.Htop --title Htop htop"
   add "Dev › GPU Monitor (Nvtop)" "present_terminal --app-id org.tui.Nvtop --title Nvtop nvtop"
   add "Dev › Disk Usage (Dua)" "present_terminal --app-id org.tui.Dua --title Dua dua i"
-  add "Dev › Calculator" "hyprshell rofi/calculator.sh"
   add "Dev › Music Player (Rmpc)" "present_terminal --app-id org.tui.Rmpc --title Rmpc rmpc"
 
   # Learn (from show_learn_menu)
   add "Learn › Keybindings" "hyprshell keybinds/keybinds_hint.sh c"
-
-  # Learn › Neovim (from show_neovim_menu)
-  add "Learn › Neovim › Docs" "hyprshell launch/webapp.sh https://neovim.io/doc/"
-  add "Learn › Neovim › Built-in Help" "present_terminal 'nvim +\":help\" +only'"
-  add "Learn › Neovim › Lua Guide" "hyprshell launch/webapp.sh https://neovim.io/doc/user/lua-guide.html"
-  add "Learn › Neovim › Kickstart.nvim" "hyprshell launch/webapp.sh https://github.com/nvim-lua/kickstart.nvim"
-  add "Learn › Neovim › Plugin Development" "hyprshell launch/webapp.sh https://github.com/nanotee/nvim-lua-guide"
-  add "Learn › Neovim › Keymaps Cheatsheet" "hyprshell launch/webapp.sh https://vim.rtorr.com/"
-
-  # Learn › Scripting (from show_scripting_menu)
-  add "Learn › Scripting › hyprctl" "hyprshell launch/webapp.sh https://wiki.hyprland.org/Configuring/Using-hyprctl/"
-  add "Learn › Scripting › jq" "hyprshell launch/webapp.sh https://jqlang.github.io/jq/manual/"
-  add "Learn › Scripting › systemd" "hyprshell launch/webapp.sh https://www.freedesktop.org/software/systemd/man/latest/"
-  add "Learn › Scripting › D-Bus" "hyprshell launch/webapp.sh https://dbus.freedesktop.org/doc/dbus-tutorial.html"
-  add "Learn › Scripting › udev" "hyprshell launch/webapp.sh https://wiki.archlinux.org/title/Udev"
 
   # Learn › Scripting › Bash (from show_bash_scripting_menu)
   add "Learn › Scripting › Bash › Cheatsheet" "hyprshell launch/webapp.sh https://devhints.io/bash"
@@ -594,7 +551,7 @@ show_search_all_menu() {
   add "Learn › Scripting › Bash › POSIX Shell" "hyprshell launch/webapp.sh https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html"
   add "Learn › Scripting › Bash › wl-clipboard" "hyprshell launch/webapp.sh https://github.com/bugaevc/wl-clipboard"
   add "Learn › Scripting › Bash › grim/slurp" "hyprshell launch/webapp.sh https://sr.ht/~emersion/grim/"
-  add "Learn › Scripting › Bash › wf-recorder" "hyprshell launch/webapp.sh https://github.com/ammen99/wf-recorder"
+  add "Learn › Scripting › Bash › gpu-screen-recorder" "hyprshell launch/webapp.sh https://github.com/ammen99/gpu-screen-recorder"
   add "Learn › Scripting › Bash › notify-send" "hyprshell launch/webapp.sh https://wiki.archlinux.org/title/Desktop_notifications"
 
   # Learn › Scripting › Python (from show_python_scripting_menu)
@@ -614,18 +571,15 @@ show_search_all_menu() {
   add "Trigger › Screenshot › Straight to Clipboard" "hyprshell capture/screenshot.sh smart clipboard"
 
   # Trigger › Screenrecord (from show_screenrecord_menu)
-  add "Trigger › Screenrecord › Region" "hyprshell capture/screenrecord.sh --start"
-  add "Trigger › Screenrecord › Region + Audio" "hyprshell capture/screenrecord.sh --start --audio"
+  add "Trigger › Screenrecord › Window" "hyprshell capture/screenrecord.sh --start --window"
+  add "Trigger › Screenrecord › Window + Audio" "hyprshell capture/screenrecord.sh --start --window --audio"
+  add "Trigger › Screenrecord › Region" "hyprshell capture/screenrecord.sh --start --region"
+  add "Trigger › Screenrecord › Region + Audio" "hyprshell capture/screenrecord.sh --start --region --audio"
   add "Trigger › Screenrecord › Display" "hyprshell capture/screenrecord.sh --start --output"
   add "Trigger › Screenrecord › Display + Audio" "hyprshell capture/screenrecord.sh --start --output --audio"
 
   # Trigger › Capture › Color (from show_capture_menu)
   add "Trigger › Capture › Color Picker" "hyprshell rofi/colorpicker.sh"
-
-  # Trigger › Share (from show_share_menu)
-  add "Trigger › Share › Clipboard" "terminal bash -c 'hyprshell cmd/share.sh clipboard'"
-  add "Trigger › Share › File" "terminal bash -c 'hyprshell cmd/share.sh file'"
-  add "Trigger › Share › Folder" "terminal bash -c 'hyprshell cmd/share.sh folder'"
 
   # Trigger › Toggle (from show_toggle_menu)
   add "Trigger › Toggle › Nightlight" "hyprshell hyprsunset --toggle && pkill -SIGUSR2 waybar"
@@ -648,17 +602,12 @@ show_search_all_menu() {
   add "Setup › Bluetooth" "rfkill unblock bluetooth && present_terminal --app-id org.tui.Bluetui --title Bluetui bluetui"
   add "Setup › Network" "present_terminal --app-id org.tui.Oryx --title Oryx sudo oryx"
   add "Setup › Monitors" "open_in_editor ~/.config/hypr/monitors.conf"
-  add "Setup › Keybindings" "open_in_editor ~/.config/hypr/bindings.conf"
+  add "Setup › Keybindings" "open_in_editor ~/.config/hypr/keybindings.conf"
   add "Setup › Input" "open_in_editor ~/.config/hypr/input.conf"
-  add "Setup › DNS" "present_terminal hyprshell setup/dns.sh"
-
-  # Setup › Security (from show_setup_security_menu)
-  add "Setup › Security › Fingerprint" "present_terminal hyprshell setup/fingerprint.sh"
-  add "Setup › Security › Fido2" "present_terminal hyprshell setup/fido2.sh"
 
   # System (from show_system_menu)
-  add "System › Shutdown" "hyprshell util/state.sh clear re*-required && systemctl poweroff --no-wall"
-  add "System › Reboot" "hyprshell util/state.sh clear re*-required && systemctl reboot --no-wall"
+  add "System › Shutdown" "hyprshell util/state.sh clear 're*-required' && systemctl poweroff --no-wall"
+  add "System › Reboot" "hyprshell util/state.sh clear 're*-required' && systemctl reboot --no-wall"
   add "System › Lock" "hyprshell session/hyprlock.sh"
   add "System › Logout" "hyprshell util/confirm.sh --logout"
   add "System › Sleep" "hyprshell util/confirm.sh --suspend"

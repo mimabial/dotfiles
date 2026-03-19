@@ -135,6 +135,7 @@ sync_host_profile_files() {
   remove_path "${DOTFILES_DIR}/.config/hypr/monitors.conf" "root host file .config/hypr/monitors.conf"
   remove_path "${DOTFILES_DIR}/.config/hypr/nvidia.conf" "root host file .config/hypr/nvidia.conf"
   remove_path "${DOTFILES_DIR}/.config/waybar/modules/temperature.jsonc" "root host file .config/waybar/modules/temperature.jsonc"
+  remove_path "${DOTFILES_DIR}/.local/state/hypr/env-overrides" "root host file .local/state/hypr/env-overrides"
 
   if [[ -z "${host_root}" ]]; then
     return
@@ -149,6 +150,7 @@ sync_host_profile_files() {
   copy_file "$HOME/.config/hypr/monitors.conf" "${host_root}/.config/hypr/monitors.conf" "hosts/${profile}/hypr/monitors.conf"
   copy_file "$HOME/.config/hypr/nvidia.conf" "${host_root}/.config/hypr/nvidia.conf" "hosts/${profile}/hypr/nvidia.conf"
   copy_file "$HOME/.config/waybar/modules/temperature.jsonc" "${host_root}/.config/waybar/modules/temperature.jsonc" "hosts/${profile}/waybar/modules/temperature.jsonc"
+  copy_file "$HOME/.local/state/hypr/env-overrides" "${host_root}/.local/state/hypr/env-overrides" "hosts/${profile}/state/hypr/config"
 }
 
 # Create dotfiles directory structure

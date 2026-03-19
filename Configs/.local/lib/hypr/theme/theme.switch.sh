@@ -329,32 +329,20 @@ if [ ! -L "$HOME/.themes/${GTK_THEME}" ] && [ -d "${THEMES_DIR}/${GTK_THEME}" ];
   ln -snf "${THEMES_DIR}/${GTK_THEME}" "$HOME/.themes/"
 fi
 
-# // .Xresources
-if [ -f "$HOME/.Xresources" ]; then
-  sed -i -e "/^Xcursor\.theme:/c\Xcursor.theme: ${CURSOR_THEME}" \
-    -e "/^Xcursor\.size:/c\Xcursor.size: ${CURSOR_SIZE}" "$HOME/.Xresources"
-
-  # Add if they don't exist
-  grep -q "^Xcursor\.theme:" "$HOME/.Xresources" || echo "Xcursor.theme: ${CURSOR_THEME}" >>"$HOME/.Xresources"
-  grep -q "^Xcursor\.size:" "$HOME/.Xresources" || echo "Xcursor.size: 30" >>"$HOME/.Xresources"
-else
-  # Create .Xresources if it doesn't exist
-  cat >"$HOME/.Xresources" <<EOF
-Xcursor.theme: ${CURSOR_THEME}
-Xcursor.size: ${CURSOR_SIZE}
-EOF
-fi
-
-# // .Xdefaults
-
-if [ -f "$HOME/.Xdefaults" ]; then
-  sed -i -e "/^Xcursor\.theme:/c\Xcursor.theme: ${CURSOR_THEME}" \
-    -e "/^Xcursor\.size:/c\Xcursor.size: ${CURSOR_SIZE}" "$HOME/.Xdefaults"
-
-  # Add if they don't exist
-  grep -q "^Xcursor\.theme:" "$HOME/.Xdefaults" || echo "Xcursor.theme: ${CURSOR_THEME}" >>"$HOME/.Xdefaults"
-  grep -q "^Xcursor\.size:" "$HOME/.Xdefaults" || echo "Xcursor.size: 30" >>"$HOME/.Xdefaults"
-fi
+# // .Xresources / .Xdefaults
+_update_xcursor_resource() {
+  local file="$1" create="${2:-false}"
+  if [ -f "${file}" ]; then
+    sed -i -e "/^Xcursor\.theme:/c\Xcursor.theme: ${CURSOR_THEME}" \
+      -e "/^Xcursor\.size:/c\Xcursor.size: ${CURSOR_SIZE}" "${file}"
+    grep -q "^Xcursor\.theme:" "${file}" || echo "Xcursor.theme: ${CURSOR_THEME}" >>"${file}"
+    grep -q "^Xcursor\.size:" "${file}" || echo "Xcursor.size: ${CURSOR_SIZE}" >>"${file}"
+  elif [ "${create}" = true ]; then
+    printf 'Xcursor.theme: %s\nXcursor.size: %s\n' "${CURSOR_THEME}" "${CURSOR_SIZE}" >"${file}"
+  fi
+}
+_update_xcursor_resource "$HOME/.Xresources" true
+_update_xcursor_resource "$HOME/.Xdefaults"
 
 #? Workaround for gtk-4 having settings.ini!
 if [ -f "${XDG_CONFIG_HOME}/gtk-4.0/settings.ini" ]; then
@@ -400,6 +388,7 @@ if [[ "${selected_color_mode}" -eq 0 ]]; then
   theme_switch_reload_dunst_runtime
   apply_theme_wallpaper || exit 1
   theme_switch_reload_hypr_config
+  hyprshell fonts/font-sync.sh 2>/dev/null || true
   theme_switch_restart_waybar
   theme_switch_release_update_lock
 else

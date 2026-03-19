@@ -108,7 +108,8 @@ selector_menu() {
   #// apply selected theme
   if [ -n "${RofiSel}" ]; then
     #// extract selected style number ('Style 1' -> '1')
-    selectedStyle=$(echo "${RofiSel}" | awk -F '\x00' '{print $1}' | sed 's/Style //')
+    selectedStyle="${RofiSel%%$'\x00'*}"
+    selectedStyle="${selectedStyle#Style }"
 
     #// notify the user
     theme_select_notify "$(rofi_resolve_asset "theme_style_${selectedStyle}.png")" "Style ${selectedStyle} applied..."
@@ -200,8 +201,8 @@ case "$1" in
     # shellcheck disable=SC2154
     case "${ROFI_THEME_STYLE}" in
       2 | "quad") # adapt to style 2
-        elm_width=$(((20 + 12) * font_scale * 2))
-        elm_height=$(((20 + 4) * font_scale * 2))
+        elm_width=$(((16 + 12) * font_scale * 2))
+        elm_height=$(((16 + 4) * font_scale * 2))
         max_avail_x=$((mon_x_res - (8 * font_scale)))
         max_avail_y=$((mon_y_res - (16 * font_scale)))
         col_count=$((max_avail_x / elm_width))
@@ -211,7 +212,7 @@ case "$1" in
         r_override="window{width:100%;height:100%;fullscreen:true;background-color:#00000003;}
                             listview{columns:${col_count};lines:${row_count};cycle:true;}
                             element{border-radius:${elem_border}px;background-color:@background;}
-                            element-icon{size:20em;border-radius:${icon_border}px 0px 0px ${icon_border}px;}"
+                            element-icon{size:16em;border-radius:${icon_border}px 0px 0px ${icon_border}px;}"
         thmbExtn="quad"
         ROFI_THEME_STYLE="selector"
         ;;

@@ -127,14 +127,14 @@ set_output_by_description() {
 
   sink_id="$(list_sinks_tsv | awk -F'\t' -v sel="${selection}" '$2==sel { print $1; exit }')"
   if [[ -z "${sink_id}" ]]; then
-    dunstify -u critical -a "Volume control" "Audio Output" "Unable to resolve: ${selection}"
+    dunstify -u critical -a "Volume control" -i "dialog-error" "Audio Output" "Unable to resolve: ${selection}"
     return 1
   fi
 
   if wpctl set-default "${sink_id}"; then
     dunstify -t 800 -i "${icodir}/unmuted-speaker.svg" -r 8 -u low "Activated: ${selection}"
   else
-    dunstify -t 800 -r 8 -u critical "Error activating ${selection}"
+    dunstify -t 800 -r 8 -u critical -i "dialog-error" "Error activating ${selection}"
     return 1
   fi
 }
@@ -176,7 +176,7 @@ toggle_output() {
   if wpctl set-default "${next_id}"; then
     dunstify -t 800 -i "${icodir}/unmuted-speaker.svg" -r 8 -u low "Activated: ${next_desc}"
   else
-    dunstify -t 800 -r 8 -u critical "Error activating ${next_desc}"
+    dunstify -t 800 -r 8 -u critical -i "dialog-error" "Error activating ${next_desc}"
     return 1
   fi
 }
@@ -227,7 +227,7 @@ toggle_mute() {
         echo "playerctl is required for -p"
         exit 1
       }
-      volume_file="/tmp/$(basename "$0")_last_volume_${srce:-all}"
+      volume_file="${TMPDIR:-/tmp}/$(basename "$0")_last_volume_${srce:-all}"
       current_volume="$(playerctl_cmd volume | awk '{ printf "%.2f", $0 }')"
       if [[ "${current_volume}" != "0.00" ]]; then
         printf '%s\n' "${current_volume}" > "${volume_file}"

@@ -9,7 +9,7 @@ import subprocess
 
 DEFAULT_TIMEOUT_MS = 4000
 DEFAULT_URGENCY = "normal"
-DUNST_APP_NAME = "Codex"
+DUNST_APP_NAMES = {"codex": "Codex", "claude": "Claude Code"}
 DEFAULT_ICON_CANDIDATES = (
     "/usr/lib/kitty/logo/kitty.png",
     "/usr/share/icons/hicolor/256x256/apps/kitty.png",
@@ -20,7 +20,8 @@ def _text(value: object) -> str:
     return value if isinstance(value, str) else ""
 
 
-def _looks_like_codex(cmd: object) -> bool:
+def _detect_app(cmd: object) -> str | None:
+    """Return a key from DUNST_APP_NAMES if the notification matches, else None."""
     title = _text(getattr(cmd, "title", ""))
     body = _text(getattr(cmd, "body", ""))
     app = _text(getattr(cmd, "application_name", ""))
@@ -28,16 +29,23 @@ def _looks_like_codex(cmd: object) -> bool:
     type_text = "\n".join(item for item in notification_types if isinstance(item, str))
     haystack = "\n".join((title, body, app, type_text)).lower()
 
-    return (
+    if (
         "codex" in haystack
         or title.lower().startswith("approval requested:")
         or body.lower().startswith("codex wants to ")
-    )
+    ):
+        return "codex"
+    if "claude" in haystack:
+        return "claude"
+    return None
 
 
 def _timeout_ms(cmd: object) -> int:
     timeout = getattr(cmd, "timeout", -1)
     if isinstance(timeout, int) and timeout > 0:
+        # Cap at 30 seconds - larger values are likely unit errors
+        if timeout > 30000:
+            return DEFAULT_TIMEOUT_MS
         return timeout
     return DEFAULT_TIMEOUT_MS
 
@@ -58,12 +66,12 @@ def _urgency(cmd: object) -> str:
     }.get(getattr(urgency, "value", None), DEFAULT_URGENCY)
 
 
-def _stack_tag(cmd: object) -> str:
+def _stack_tag(cmd: object, app_key: str) -> str:
     title = _text(getattr(cmd, "title", "")).lower()
     body = _text(getattr(cmd, "body", "")).lower()
     if title.startswith("approval requested:") or body.startswith("codex wants to "):
         return "codex-approval"
-    return "codex"
+    return app_key
 
 
 def _normalized_content(cmd: object) -> tuple[str, str]:
@@ -105,7 +113,8 @@ def _icon_args(cmd: object) -> list[str]:
 
 
 def main(cmd: object) -> bool:
-    if not _looks_like_codex(cmd):
+    app_key = _detect_app(cmd)
+    if app_key is None:
         return False
 
     dunstify = shutil.which("dunstify")
@@ -119,13 +128,13 @@ def main(cmd: object) -> bool:
     command = [
         dunstify,
         "-a",
-        DUNST_APP_NAME,
+        DUNST_APP_NAMES[app_key],
         "-u",
         _urgency(cmd),
         "-t",
         str(_timeout_ms(cmd)),
         "-h",
-        f"string:x-dunst-stack-tag:{_stack_tag(cmd)}",
+        f"string:x-dunst-stack-tag:{_stack_tag(cmd, app_key)}",
     ]
 
     command.extend(_icon_args(cmd))

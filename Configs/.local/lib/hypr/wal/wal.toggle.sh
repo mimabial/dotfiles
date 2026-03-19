@@ -42,7 +42,7 @@ select_color_mode_with_rofi() {
   r_scale="configuration {font: \"${font_name} ${font_scale}\";}"
   hypr_border="${hypr_border:-5}"
   elem_border=$((hypr_border * 4))
-  r_override="prompt{border-radius:${hypr_border}px;} textbox-prompt-colon {border-radius:${hypr_border}px;} window{border-radius:${elem_border}px;} element{border-radius:${hypr_border}px;}"
+  r_override="prompt{border-radius:${hypr_border}px;} textbox-prompt-colon {border-radius:${hypr_border}px;} window{border-radius:${hypr_border}px;} element{border-radius:${hypr_border}px;}"
   rofi_theme_file="$(rofi_resolve_theme pywal16)"
   width_override=""
   margin_px="${ROFI_PYWAL16_MARGIN_PX:-${ROFI_PYWAL16_MARGIN:-0}}"

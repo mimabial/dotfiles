@@ -29,7 +29,7 @@ map_floor() {
 }
 
 init_query() {
-  cpu_info_file="/tmp/${UID}-processors"
+  cpu_info_file="${TMPDIR:-/tmp}/${UID}-processors"
   [[ -f "${cpu_info_file}" ]] && source "${cpu_info_file}"
 
   if [[ -z "$CPUINFO_MODEL" ]]; then

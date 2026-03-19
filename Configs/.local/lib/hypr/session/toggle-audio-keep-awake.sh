@@ -53,10 +53,10 @@ audio_enabled() {
 mkdir -p "${STATE_DIR}"
 if audio_enabled; then
   printf "%s\n" "0" > "${AUDIO_STATE_FILE}"
-  notify "Audio keep awake disabled"
+  notify -t 3000 -i "audio-speakers-symbolic" "Audio keep awake disabled"
 else
   printf "%s\n" "1" > "${AUDIO_STATE_FILE}"
-  notify "Audio keep awake enabled"
+  notify -t 3000 -i "audio-speakers-symbolic" "Audio keep awake enabled"
 fi
 
 ensure_manager_running

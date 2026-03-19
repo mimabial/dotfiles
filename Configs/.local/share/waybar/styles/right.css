@@ -243,6 +243,9 @@ menu {
 #custom-vpn {
   font-size: 18px;
   padding: 2px 2px 2px 0px;
+  margin: 2px 2px 4px;
+  background-color: alpha(@bg, 0.1);
+  border: 1px solid alpha(@border, 0.3);
 }
 
 #custom-hotspot {
@@ -428,14 +431,14 @@ menu {
 }
 
 #power-profiles-daemon {
-  margin: 1px 0px 4px;
+  margin: 1px 0px;
   background: transparent;
 }
 
 #custom-powermenu {
   font-size: 18px;
   padding-right: 4px;
-  margin: 0px 2px 2px;
+  margin-bottom: 2px;
 }
 
 #language {
@@ -446,10 +449,10 @@ menu {
   margin: 0px 0px 4px;
 }
 
-#custom-hyprmenu {
+#power-profiles-daemon {
   background-color: alpha(@bg_alt, 0.1);
   border: 1px solid alpha(@border_alt, 0.3);
-  padding: 1px 1px 1px 0px;
+  padding: 3px 0px 3px 1px;
 }
 
 /* ============================================

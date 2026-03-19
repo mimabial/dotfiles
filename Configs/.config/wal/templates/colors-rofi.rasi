@@ -1,5 +1,6 @@
 * {{
     background:          {background};
+    background-alpha:    {background}D9;
     foreground:          {foreground};
     border:              {color12};
     accent:              {color11};

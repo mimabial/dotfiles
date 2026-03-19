@@ -53,9 +53,16 @@ get_var() {
   get_var_from_file "${variables_file}" "${var_name}"
 }
 
-mono_font="$(get_var "MONOSPACE_FONT" || true)"
-bar_font="$(get_var "BAR_FONT" || true)"
-menu_font="$(get_var "MENU_FONT" || true)"
+# Theme's hypr.theme has highest priority for font overrides
+hypr_theme_dir="${hypr_config_dir}/themes/${HYPR_THEME:-}"
+theme_file="${hypr_theme_dir}/hypr.theme"
+
+mono_font="$(get_var_from_file "${theme_file}" "MONOSPACE_FONT" || true)"
+[[ -n "${mono_font}" ]] || mono_font="$(get_var "MONOSPACE_FONT" || true)"
+bar_font="$(get_var_from_file "${theme_file}" "BAR_FONT" || true)"
+[[ -n "${bar_font}" ]] || bar_font="$(get_var "BAR_FONT" || true)"
+menu_font="$(get_var_from_file "${theme_file}" "MENU_FONT" || true)"
+[[ -n "${menu_font}" ]] || menu_font="$(get_var "MENU_FONT" || true)"
 
 [[ -n "${mono_font}" ]] || mono_font="monospace"
 [[ -n "${bar_font}" ]] || bar_font="${mono_font}"

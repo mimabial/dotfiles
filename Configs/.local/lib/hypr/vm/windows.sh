@@ -12,7 +12,7 @@ check_prerequisites() {
     echo "Please enable virtualization in BIOS or run:"
     echo "  sudo modprobe kvm-intel  # for Intel CPUs"
     echo "  sudo modprobe kvm-amd    # for AMD CPUs"
-    dunstify -u critical -t 4000 "Windows VM" "KVM virtualization not available"
+    dunstify -u critical -t 4000 -i "computer" "Windows VM" "KVM virtualization not available"
     exit 1
   fi
 
@@ -272,13 +272,13 @@ launch_windows() {
     echo "Starting Windows VM..."
 
     # Send desktop notification
-    dunstify -r 42 "Windows VM" "Starting Windows VM\nThis can take 15-30 seconds" -t 0
+    dunstify -r 42 -i "computer" "Windows VM" "Starting Windows VM\nThis can take 15-30 seconds" -t 0
 
     if ! docker-compose -f "$COMPOSE_FILE" up -d 2>&1; then
       echo "❌ Failed to start Windows VM!"
       echo "   Try checking: hyprshell vm/windows.sh status"
       echo "   View logs: docker logs hypr-windows"
-      dunstify -r 42 -u critical -t 5000 "Windows VM" "Failed to start Windows VM"
+      dunstify -r 42 -u critical -t 5000 -i "computer" "Windows VM" "Failed to start Windows VM"
       exit 1
     fi
 
@@ -292,14 +292,14 @@ launch_windows() {
         echo "❌ Timeout waiting for RDP!"
         echo "   The VM might still be installing Windows."
         echo "   Check progress at: http://127.0.0.1:8006"
-        dunstify -r 42 -u critical -t 5000 "Windows VM" "Timed out waiting for RDP. The VM may still be installing."
+        dunstify -r 42 -u critical -t 5000 -i "computer" "Windows VM" "Timed out waiting for RDP. The VM may still be installing."
         exit 1
       fi
     done
 
     # Give it a moment more to fully initialize
     sleep 5
-    dunstify -r 42 -t 2000 "Windows VM" "Windows VM is ready. Opening RDP session."
+    dunstify -r 42 -t 2000 -i "computer" "Windows VM" "Windows VM is ready. Opening RDP session."
   fi
 
   # Extract credentials from compose file

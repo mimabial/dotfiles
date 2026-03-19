@@ -66,7 +66,7 @@ fn_select() {
   local hypr_border wind_border elem_border hypr_width r_override
 
   animation_items="$(list_animation_names)"
-  animation_items=$(printf 'Disable Animation\nTheme Preference\n%s\n' "${animation_items}" | sed '/^$/d')
+  animation_items=$(printf 'Disable Animation\n%s\n' "${animation_items}" | sed '/^$/d')
 
   font_scale="${ROFI_ANIMATION_SCALE}"
   [[ "${font_scale}" =~ ^[0-9]+$ ]] || font_scale=${ROFI_SCALE:-10}
@@ -84,8 +84,7 @@ fn_select() {
   hypr_width=${hypr_width:-"$(hyprctl -j getoption general:border_size | jq '.int')"}
   r_override="window{border:${hypr_width}px;border-radius:${wind_border}px;} wallbox{border-radius:${elem_border}px;} element{border-radius:${elem_border}px;}"
 
-  rofi_select="${HYPR_ANIMATION:-theme}"
-  rofi_select="${rofi_select/theme/Theme Preference}"
+  rofi_select="${HYPR_ANIMATION:-default}"
   rofi_select="${rofi_select/disable/Disable Animation}"
 
   selected_animation=$(printf '%s\n' "${animation_items}" |
@@ -101,7 +100,6 @@ fn_select() {
 
   case "${selected_animation}" in
     "Disable Animation") selected_animation="disable" ;;
-    "Theme Preference") selected_animation="theme" ;;
   esac
 
   state_set "HYPR_ANIMATION" "${selected_animation}" "staterc"
@@ -115,7 +113,7 @@ fn_update() {
   [ -f "$HYPR_STATE_HOME/config" ] && source "$HYPR_STATE_HOME/config"
   [ -f "$HYPR_STATE_HOME/staterc" ] && source "$HYPR_STATE_HOME/staterc"
 
-  current_animation=${HYPR_ANIMATION:-theme}
+  current_animation=${HYPR_ANIMATION:-default}
   animation_path="$(resolve_animation_path "${current_animation}")" || {
     send_ephemeral_notif "hypr-animation-error" -t 3000 -i "preferences-desktop-display" "Error" "Animation '${current_animation}' not found in ${animations_user_dir} or ${animations_shared_dir}"
     return 1
@@ -143,7 +141,7 @@ CONF
 }
 
 fn_reload() {
-  local animation_name="${HYPR_ANIMATION:-theme}"
+  local animation_name="${HYPR_ANIMATION:-default}"
   state_set "HYPR_ANIMATION" "${animation_name}" "staterc"
   fn_update
   send_ephemeral_notif "hypr-animation" -t 2000 -i "preferences-desktop-display" "Animation reloaded" "${animation_name}"

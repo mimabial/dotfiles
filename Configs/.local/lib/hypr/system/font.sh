@@ -55,7 +55,7 @@ download_and_extract() {
         mkdir -p "${font_dir}/hypr"
         mv "$file" "${font_dir}/hypr/$name.ttf"
         echo "[font] $name installed successfully. Please restart hyprlock to apply changes."
-        dunstify -i "preferences-desktop-font" "Font" "${name} Installed successfully"
+        dunstify -t 3000 -i "preferences-desktop-font" "Font" "${name} Installed successfully"
         return 0
         ;;
       *)
@@ -67,10 +67,10 @@ download_and_extract() {
 
     if ! cp -rn "${temp_dir}/${name}" "$font_dir"; then
       echo "[font] Failed to extract $file"
-      dunstify -i "preferences-desktop-font" "Font" "Failed to extract $file"
+      dunstify -t 5000 -i "preferences-desktop-font" "Font" "Failed to extract $file"
       return 1
     fi
-    dunstify -i "preferences-desktop-font" "Font" "${name} Installed successfully"
+    dunstify -t 3000 -i "preferences-desktop-font" "Font" "${name} Installed successfully"
   done
 
   rm -rf "$temp_dir"

@@ -25,7 +25,7 @@ from zoneinfo import ZoneInfo
 from typing import Optional, Literal
 
 # Add hyprshell venv to path
-VENV_PATH = Path.home() / ".local/state/hypr/pip_env"
+VENV_PATH = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "hypr/pip_env"
 if VENV_PATH.exists():
     sys.path.insert(0, str(VENV_PATH / "lib/python3.12/site-packages"))
     sys.path.insert(0, str(VENV_PATH / "lib/python3.11/site-packages"))
@@ -40,9 +40,14 @@ except ImportError:
 
 # === Configuration ===
 
-CONFIG_FILE = Path.home() / ".config/hypr/auto_theme.conf"
-STATE_FILE = Path.home() / ".local/state/hypr/auto_theme_state.json"
-NVIM_SETTINGS = Path.home() / ".cache/nvim/theme_settings.json"
+_xdg_config = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+_xdg_state = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
+_xdg_cache = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+_tmpdir = Path(os.environ.get("TMPDIR", "/tmp"))
+
+CONFIG_FILE = _xdg_config / "hypr/auto_theme.conf"
+STATE_FILE = _xdg_state / "hypr/auto_theme_state.json"
+NVIM_SETTINGS = _xdg_cache / "nvim/theme_settings.json"
 STATE_LOCATION_ENV_KEYS = {
     "AUTO_THEME_LATITUDE": "latitude",
     "AUTO_THEME_LONGITUDE": "longitude",
@@ -255,7 +260,7 @@ class AutoTheme:
         return self._cache_home() / "hypr" / "wallpaper" / "current" / "wall.set"
 
     def _state_config_file(self) -> Path:
-        return self._state_home() / "hypr" / "config"
+        return self._state_home() / "hypr" / "env-overrides"
 
     def _theme_update_lock_file(self) -> Path:
         runtime_dir = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp"))
@@ -640,19 +645,41 @@ class AutoTheme:
 
         return is_daytime, reason
 
+    def _is_auto_mode(self) -> bool:
+        """Check if selected_color_mode is 1 (auto/wallpaper)."""
+        staterc_values = self._read_staterc()
+        raw = staterc_values.get("selected_color_mode")
+        try:
+            return int(raw) == 1 if raw is not None else False
+        except ValueError:
+            return False
+
     def _apply_mode(self, mode: Literal["light", "dark"], reason: str):
         """Apply the theme mode to all configured targets."""
         if mode == self.state["current_mode"]:
-            if self.config["control_hyprland"]:
-                current_color_variant = self._read_color_variant_file()
-                staterc_values = self._read_staterc()
-                if current_color_variant != mode or not self._pywal_state_matches(mode, staterc_values):
-                    if self._theme_update_lock_file().exists():
-                        return  # Color pipeline already in progress; avoid duplicate color.set
-                    self._apply_hyprland(mode)
+            if self._is_auto_mode():
+                if self.config["control_nvim"]:
+                    self._reconcile_nvim(mode)
+                if self.config["control_hyprland"]:
+                    current_color_variant = self._read_color_variant_file()
+                    staterc_values = self._read_staterc()
+                    if current_color_variant != mode or not self._pywal_state_matches(mode, staterc_values):
+                        if self._theme_update_lock_file().exists():
+                            return
+                        self._apply_hyprland(mode)
             return  # No change needed
 
         print(f"[{datetime.now().strftime('%H:%M:%S')}] Switching to {mode} mode ({reason})")
+
+        # Always update state (used by Neovim AUTO_DETECT mode via state file)
+        self.state["current_mode"] = mode
+        self.state["last_change"] = datetime.now().isoformat()
+        self._save_state()
+
+        # Only apply to targets when in auto/wallpaper mode
+        if not self._is_auto_mode():
+            print(f"Auto mode inactive, skipping target updates")
+            return
 
         if self.config["control_nvim"]:
             self._apply_nvim(mode)
@@ -660,9 +687,17 @@ class AutoTheme:
         if self.config["control_hyprland"]:
             self._apply_hyprland(mode)
 
-        self.state["current_mode"] = mode
-        self.state["last_change"] = datetime.now().isoformat()
-        self._save_state()
+    def _reconcile_nvim(self, mode: Literal["light", "dark"]):
+        """Re-apply Neovim settings if they don't match the desired mode."""
+        try:
+            if NVIM_SETTINGS.exists():
+                with open(NVIM_SETTINGS) as f:
+                    settings = json.load(f)
+                if settings.get("background") == mode:
+                    return  # Already in sync
+        except Exception:
+            pass
+        self._apply_nvim(mode)
 
     def _apply_nvim(self, mode: Literal["light", "dark"]):
         """Update Neovim theme settings file.
@@ -689,7 +724,7 @@ class AutoTheme:
             print(f"Warning: Failed to update Neovim: {e}")
 
     def _apply_hyprland(self, mode: Literal["light", "dark"]):
-        """Update Hyprland/system theme."""
+        """Update Hyprland/system theme. Caller must verify auto mode is active."""
         try:
             state_home = self._state_home()
             staterc = state_home / "hypr" / "staterc"
@@ -697,17 +732,6 @@ class AutoTheme:
 
             staterc_values = self._read_staterc()
             lines = staterc.read_text().splitlines() if staterc.exists() else []
-
-            selected_color_mode = None
-            raw_selected_color_mode = staterc_values.get("selected_color_mode")
-            if raw_selected_color_mode is not None:
-                try:
-                    selected_color_mode = int(raw_selected_color_mode)
-                except ValueError:
-                    selected_color_mode = None
-            if selected_color_mode != 1:
-                print(f"Auto mode inactive (selected_color_mode={raw_selected_color_mode!r}), skipping Hyprland apply")
-                return
 
             updated = False
             for i, line in enumerate(lines):
@@ -911,7 +935,7 @@ def main():
     if args.toggle or args.refresh:
         # Find running daemon and send signal
         import glob
-        for pidfile in glob.glob("/tmp/auto_theme_*.pid"):
+        for pidfile in glob.glob(str(_tmpdir / "auto_theme_*.pid")):
             try:
                 pid = int(Path(pidfile).read_text().strip())
                 os.kill(pid, signal.SIGUSR1 if args.toggle else signal.SIGUSR2)
@@ -929,7 +953,7 @@ def main():
         daemon._apply_mode("light" if should_be_light else "dark", reason)
     else:
         # Write PID file
-        pidfile = Path(f"/tmp/auto_theme_{os.getpid()}.pid")
+        pidfile = _tmpdir / f"auto_theme_{os.getpid()}.pid"
         pidfile.write_text(str(os.getpid()))
         try:
             daemon.run()

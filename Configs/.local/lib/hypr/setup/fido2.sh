@@ -100,8 +100,8 @@ else
     print_success "\nLet's setup your device by confirming on the device now."
     print_info "Touch your FIDO2 key when it lights up...\n"
 
-    if pamu2fcfg >/tmp/fido2; then
-      sudo mv /tmp/fido2 /etc/fido2/fido2
+    if pamu2fcfg >"${TMPDIR:-/tmp}/fido2"; then
+      sudo mv "${TMPDIR:-/tmp}/fido2" /etc/fido2/fido2
       print_success "FIDO2 device registered successfully!"
     else
       print_error "\nFIDO2 registration failed. Please try again."

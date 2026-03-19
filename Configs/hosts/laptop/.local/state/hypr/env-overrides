@@ -1,0 +1,4 @@
+export ROFI_LAUNCH_SCALE=8
+export ROFI_THEME_SCALE=8
+export ROFI_PYWAL16_SCALE=8
+export ROFI_EMOJI_ARGS=("-multi-select")

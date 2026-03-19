@@ -52,7 +52,7 @@ esac
 
 fn_steam() {
 
-  dunstify -a "Game launcher" "Please wait... " -t 4000
+  dunstify -a "Game launcher" -i "applications-games" "Please wait... " -t 4000
 
   libraryThumbName="library_600x900.jpg"
   libraryHeaderName="header.jpg"
@@ -65,7 +65,7 @@ fn_steam() {
   done)
 
   if [ -z "${ManifestList}" ]; then
-    dunstify -a "Game launcher" "Cannot Fetch Steam Games!" && exit 1
+    dunstify -a "Game launcher" -t 5000 -i "applications-games" "Cannot Fetch Steam Games!" && exit 1
   fi
 
   # read installed games
@@ -102,17 +102,17 @@ fn_steam() {
     headerImage=$(find "${SteamThumb}/${launchid}/" -type f -name "*${libraryHeaderName}")
     ${steamlaunch} -applaunch "${launchid} [gamemoderun %command%]" &
     # dunstify "Game launcher" -a "Launching ${RofiSel}..." -i ${SteamThumb}/${launchid}_header.jpg -r 91190 -t 2200
-    dunstify -a "Game launcher" -i "$headerImage" "Launching ${RofiSel}..."
+    dunstify -a "Game launcher" -t 5000 -i "$headerImage" "Launching ${RofiSel}..."
   fi
 }
 
 fn_lutris() {
   [ ! -e "${icon_path}" ] && icon_path="${HOME}/.local/share/lutris/coverart"
   [ ! -e "${icon_path}" ] && icon_path="${HOME}/.cache/lutris/coverart"
-  meta_data="/tmp/hyprdots-$(id -u)-lutrisgames.json"
+  meta_data="${TMPDIR:-/tmp}/hyprdots-$(id -u)-lutrisgames.json"
 
   # Rebuild the Lutris cache on launch so newly installed games appear immediately.
-  dunstify -a "Game launcher" "Please wait... " -t 4000
+  dunstify -a "Game launcher" -i "applications-games" "Please wait... " -t 4000
 
   cat <<EOF
 "Fetching Lutris Games..."
@@ -123,7 +123,7 @@ EOF
 
   eval "${run_lutris}" -j -l 2>/dev/null | jq --arg icons "$icon_path/" --arg prefix ".jpg" '.[] |= . + {"select": (.name + "\u0000icon\u001f" + $icons + .slug + $prefix)}' >"${meta_data}"
 
-  [ ! -s "${meta_data}" ] && dunstify -a "Game launcher" "Cannot Fetch Lutris Games!" && exit 1
+  [ ! -s "${meta_data}" ] && dunstify -a "Game launcher" -t 5000 -i "applications-games" "Cannot Fetch Lutris Games!" && exit 1
   CHOICE=$(
     jq -r '.[].select' "${meta_data}" | rofi -dmenu -p Lutris \
       -theme-str "${r_override}" \
@@ -131,7 +131,7 @@ EOF
   )
   [ -z "$CHOICE" ] && exit 0
   SLUG=$(jq -r --arg choice "$CHOICE" '.[] | select(.name == $choice).slug' "${meta_data}")
-  dunstify -a "Game launcher" -i "${icon_path}/${SLUG}.jpg" "Launching ${CHOICE}..."
+  dunstify -a "Game launcher" -t 5000 -i "${icon_path}/${SLUG}.jpg" "Launching ${CHOICE}..."
   exec xdg-open "lutris:rungame/${SLUG}"
 }
 
@@ -156,7 +156,7 @@ if [ -z "${run_lutris}" ] || echo "$*" | grep -q "steam"; then
   fi
 
   if [ ! -f $SteamLib ] || [ ! -d $SteamThumb ]; then
-    dunstify -a "Game launcher" "Steam library not found!"
+    dunstify -a "Game launcher" -t 5000 -i "applications-games" "Steam library not found!"
     exit 1
   fi
   fn_steam

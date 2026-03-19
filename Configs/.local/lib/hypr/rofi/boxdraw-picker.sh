@@ -73,7 +73,7 @@ get_boxdraw_selection() {
   local selection_index=""
 
   # Create recently used category entry
-  local temp_data="/tmp/boxdraw_with_recent_$$"
+  local temp_data="${TMPDIR:-/tmp}/boxdraw_with_recent_$$"
 
   # Add recently used category if recent data exists
   if [[ -f "${recent_data}" ]] && [[ -s "${recent_data}" ]]; then
@@ -171,17 +171,17 @@ show_category_menu() {
   # Handle special categories
   if [[ "${category}" == "recent" ]]; then
     if [[ ! -f "${recent_data}" ]] || [[ ! -s "${recent_data}" ]]; then
-      dunstify "No recently used box drawing characters"
+      dunstify -t 3000 -i "preferences-desktop-font" "No recently used box drawing characters"
       return 1
     fi
     category_file="${recent_data}"
   else
-    dunstify "Category not found: ${category}"
+    dunstify -t 3000 -i "dialog-error" "Category not found: ${category}"
     return 1
   fi
 
   # Add back navigation option
-  local temp_category="/tmp/boxdraw_category_$$"
+  local temp_category="${TMPDIR:-/tmp}/boxdraw_category_$$"
   echo "◀ Back	:b:a:c:k:" >"${temp_category}"
   cat "${category_file}" >>"${temp_category}"
 

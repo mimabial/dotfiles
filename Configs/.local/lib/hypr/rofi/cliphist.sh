@@ -73,7 +73,7 @@ process_selections() {
         break
       elif [ -n "$line" ]; then
         cliphist delete <<<"${line}"
-        dunstify "Deleted" "${line}"
+        dunstify -t 3000 -i "edit-delete" "Deleted" "${line}"
       fi
     done
     exit 0
@@ -189,7 +189,7 @@ delete_items() {
 # favorite clipboard items
 view_favorites() {
   prepare_favorites_for_display || {
-    dunstify "No favorites."
+    dunstify -t 3000 -i "edit-paste" "No favorites."
     return
   }
 
@@ -212,9 +212,9 @@ view_favorites() {
       local selected_encoded_favorite="${favorites[$((index - 1))]}"
       echo "$selected_encoded_favorite" | base64 --decode | wl-copy
       paste_string "${@}"
-      dunstify "Copied to clipboard."
+      dunstify -t 3000 -i "edit-paste" "Copied to clipboard."
     else
-      dunstify "Error: Selected favorite not found."
+      dunstify -t 3000 -i "dialog-error" "Error: Selected favorite not found."
     fi
   fi
 }
@@ -244,10 +244,10 @@ add_to_favorites() {
 
     # Check if the item is already in the favorites file
     if [ -f "$favorites_file" ] && grep -Fxq "$encoded_item" "$favorites_file"; then
-      dunstify "Item is already in favorites."
+      dunstify -t 3000 -i "edit-paste" "Item is already in favorites."
     else
       echo "$encoded_item" >>"$favorites_file"
-      dunstify "Added to favorites."
+      dunstify -t 3000 -i "edit-paste" "Added to favorites."
     fi
   fi
 }
@@ -255,7 +255,7 @@ add_to_favorites() {
 # delete from favorites
 delete_from_favorites() {
   prepare_favorites_for_display || {
-    dunstify "No favorites to remove."
+    dunstify -t 3000 -i "edit-paste" "No favorites to remove."
     return
   }
 
@@ -282,9 +282,9 @@ delete_from_favorites() {
         grep -vF -x "$selected_encoded_favorite" "$favorites_file" >"${favorites_file}.tmp" \
           && mv "${favorites_file}.tmp" "$favorites_file"
       fi
-      dunstify "Item removed from favorites."
+      dunstify -t 3000 -i "edit-delete" "Item removed from favorites."
     else
-      dunstify "Error: Selected favorite not found."
+      dunstify -t 3000 -i "dialog-error" "Error: Selected favorite not found."
     fi
   fi
 }
@@ -297,13 +297,13 @@ clear_favorites() {
 
     if [ "$confirm" = "Yes" ]; then
       : >"$favorites_file"
-      dunstify "All favorites have been deleted."
+      dunstify -t 3000 -i "edit-delete" "All favorites have been deleted."
     elif [ "$confirm" = "Back" ]; then
       manage_favorites
       return
     fi
   else
-    dunstify "No favorites to delete."
+    dunstify -t 3000 -i "edit-paste" "No favorites to delete."
   fi
 }
 
@@ -341,7 +341,7 @@ clear_history() {
 
   if [ "$confirm" = "Yes" ]; then
     cliphist wipe
-    dunstify "Clipboard history cleared."
+    dunstify -t 3000 -i "edit-clear" "Clipboard history cleared."
   elif [ "$confirm" = "Back" ]; then
     main
     return

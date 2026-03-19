@@ -25,12 +25,55 @@ wallpaper_prune_sources_array() {
   [[ ${#out_ref[@]} -gt 0 ]]
 }
 
-wallpaper_load_prune_catalog() {
+wallpaper_inventory_signature_file() {
+  printf '%s\n' "$(wallpaper_cache_root)/.inventory.signature"
+}
+
+wallpaper_inventory_lock_file() {
+  local runtime_dir="${XDG_RUNTIME_DIR}"
+  [[ -z "${runtime_dir}" ]] && runtime_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+  printf '%s\n' "${runtime_dir}/wallpaper-inventory.lock"
+}
+
+wallpaper_inventory_signature() {
+  local -a wall_sources=()
+  local -a supported_files=()
+  local hash_cmd="${HYPR_HASH_COMMAND:-sha1sum}"
+  local src regex_ext
+
+  wallpaper_prune_sources_array wall_sources || return 1
+  wallpaper_supported_files_array supported_files
+
+  if ! command -v "${hash_cmd}" >/dev/null 2>&1; then
+    hash_cmd="sha1sum"
+  fi
+
+  regex_ext="$(wallpaper_extensions_regex "${supported_files[@]}")"
+
+  {
+    printf '[sources]\n'
+    for src in "${wall_sources[@]}"; do
+      [[ -e "${src}" ]] || continue
+      wallpaper_resolve_path "${src}"
+    done | LC_ALL=C sort
+
+    printf '[filetypes]\n'
+    printf '%s\n' "${supported_files[@]}" | LC_ALL=C sort
+
+    # Track actual wallpaper files instead of directory mtimes.
+    # This prevents cache invalidation when symlinks (wall.set) are updated.
+    printf '[files]\n'
+    find -H "${wall_sources[@]}" -type f -regextype posix-extended \
+      -iregex ".*\.(${regex_ext})$" ! -path "*/logo/*" -printf '%p\n' 2>/dev/null | LC_ALL=C sort
+  } | "${hash_cmd}" | awk '{print $1}'
+}
+
+wallpaper_load_inventory_catalog() {
   local runtime_dir="${XDG_RUNTIME_DIR}"
   local lock_file=""
   local -a wall_sources=()
 
-  [[ -z "${runtime_dir}" ]] && runtime_dir="/run/user/$(id -u)"
+  [[ -z "${runtime_dir}" ]] && runtime_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
   lock_file="${runtime_dir}/wallpaper-cache.lock"
 
   wallpaper_prune_sources_array wall_sources || return 1
@@ -50,6 +93,146 @@ wallpaper_load_prune_catalog() {
   exec 204>&-
 
   [[ ${#wallList[@]} -gt 0 ]]
+}
+
+wallpaper_collect_valid_thumb_hashes() {
+  local out_name="$1"
+  local -n out_ref="${out_name}"
+  local hash
+
+  out_ref=()
+  for hash in "${wallHash[@]}"; do
+    [[ -n "${hash}" ]] || continue
+    out_ref["${hash}"]=1
+  done
+}
+
+wallpaper_collect_valid_png_hashes() {
+  local out_name="$1"
+  local -n out_ref="${out_name}"
+  local wallpaper_hash cached_thumb png_hash
+  local i
+
+  out_ref=()
+  for i in "${!wallList[@]}"; do
+    wallpaper_hash="${wallHash[i]}"
+    [[ -n "${wallpaper_hash}" ]] || continue
+    cached_thumb="${WALLPAPER_VIDEO_DIR}/${wallpaper_hash}.png"
+    if [[ -f "${cached_thumb}" ]]; then
+      png_hash="$(${HYPR_HASH_COMMAND:-sha1sum} "${cached_thumb}" | awk '{print $1}')"
+      [[ -n "${png_hash}" ]] && out_ref["${png_hash}"]=1
+    else
+      out_ref["${wallpaper_hash}"]=1
+    fi
+  done
+}
+
+wallpaper_prune_thumb_cache() {
+  local hashset_name="$1"
+  local -n valid_hashes="${hashset_name}"
+  local thumb_dir="${WALLPAPER_THUMB_DIR}"
+  local cache_home="${HYPR_CACHE_HOME}"
+  local removed=0
+  local file base hash
+
+  [[ -z "${cache_home}" ]] && cache_home="${XDG_CACHE_HOME:-$HOME/.cache}/hypr"
+  [[ -z "${thumb_dir}" ]] && thumb_dir="${cache_home}/wallpaper/thumbs"
+  [[ -d "${thumb_dir}" ]] || return 0
+
+  while IFS= read -r -d '' file; do
+    base="$(basename "${file}")"
+    if [[ "${base}" =~ ^\.?([0-9a-fA-F]+)\.(thmb|sqre|blur|quad)(\.png)?$ ]]; then
+      hash="${BASH_REMATCH[1]}"
+      if [[ -z "${valid_hashes["${hash}"]-}" ]]; then
+        rm -f -- "${file}"
+        removed=$((removed + 1))
+      fi
+    fi
+  done < <(find -H "${thumb_dir}" -maxdepth 1 -type f -print0 2>/dev/null)
+
+  if [[ "${removed}" -gt 0 ]]; then
+    print_log -sec "wallpaper" -stat "clean" "Removed ${removed} stale thumbs"
+  fi
+}
+
+wallpaper_prune_png_cache() {
+  local hashset_name="$1"
+  local -n valid_hashes="${hashset_name}"
+  local png_cache_dir="${WALLPAPER_CACHE_DIR}/png_cache"
+  local removed=0
+  local file base hash
+
+  [[ -d "${png_cache_dir}" ]] || return 0
+
+  while IFS= read -r -d '' file; do
+    base="$(basename "${file}")"
+    if [[ "${base}" =~ ^([0-9a-fA-F]+)\.png$ ]]; then
+      hash="${BASH_REMATCH[1]}"
+      if [[ -z "${valid_hashes["${hash}"]-}" ]]; then
+        rm -f -- "${file}"
+        removed=$((removed + 1))
+      fi
+    fi
+  done < <(find -H "${png_cache_dir}" -maxdepth 1 -type f -print0 2>/dev/null)
+
+  if [[ "${removed}" -gt 0 ]]; then
+    print_log -sec "wallpaper" -stat "clean" "Removed ${removed} stale png_cache entries"
+  fi
+}
+
+wallpaper_prune_loaded_inventory() {
+  local -A valid_thumb_hashes=()
+  local -A valid_png_hashes=()
+
+  [[ ${#wallList[@]} -gt 0 ]] || return 0
+
+  wallpaper_collect_valid_thumb_hashes valid_thumb_hashes
+  wallpaper_collect_valid_png_hashes valid_png_hashes
+  wallpaper_prune_thumb_cache valid_thumb_hashes
+  Wall_Prune_Hashmap_Caches
+  wallpaper_prune_png_cache valid_png_hashes
+}
+
+wallpaper_refresh_inventory_and_prune() {
+  local signature_file=""
+  local lock_file=""
+  local current_signature=""
+  local saved_signature=""
+
+  [[ "${WALLPAPER_INVENTORY_REFRESHED:-0}" -eq 1 ]] && return 0
+
+  signature_file="$(wallpaper_inventory_signature_file)"
+  lock_file="$(wallpaper_inventory_lock_file)"
+  mkdir -p "$(dirname "${signature_file}")"
+
+  exec 205>"${lock_file}"
+  flock 205
+
+  current_signature="$(wallpaper_inventory_signature 2>/dev/null || true)"
+  if [[ -f "${signature_file}" ]]; then
+    saved_signature="$(<"${signature_file}")"
+  fi
+
+  if [[ -n "${current_signature}" ]] && [[ "${current_signature}" == "${saved_signature}" ]]; then
+    WALLPAPER_INVENTORY_REFRESHED=1
+    flock -u 205 2>/dev/null
+    exec 205>&-
+    return 0
+  fi
+
+  if ! wallpaper_load_inventory_catalog; then
+    flock -u 205 2>/dev/null
+    exec 205>&-
+    return 0
+  fi
+  [[ -n "${current_signature}" ]] && printf '%s\n' "${current_signature}" >"${signature_file}"
+  WALLPAPER_INVENTORY_REFRESHED=1
+
+  flock -u 205 2>/dev/null
+  exec 205>&-
+
+  # Prune stale caches in background so it doesn't block the UI
+  wallpaper_prune_loaded_inventory &
 }
 
 Wall_Ensure_Thumbs() {
@@ -113,81 +296,17 @@ Wall_Precache_Thumbs() {
 }
 
 Wall_Clean_Thumbs() {
-  local thumb_dir="${WALLPAPER_THUMB_DIR}"
-  local removed=0
-  local file base hash
   local -A valid_hashes=()
-  local cache_home="${HYPR_CACHE_HOME}"
-
-  [[ -z "${cache_home}" ]] && cache_home="${XDG_CACHE_HOME:-$HOME/.cache}/hypr"
-  [[ -z "${thumb_dir}" ]] && thumb_dir="${cache_home}/wallpaper/thumbs"
-  [[ -d "${thumb_dir}" ]] || return 0
-
-  wallpaper_load_prune_catalog || return 0
-
-  for hash in "${wallHash[@]}"; do
-    [[ -n "${hash}" ]] || continue
-    valid_hashes["${hash}"]=1
-  done
-
-  while IFS= read -r -d '' file; do
-    base="$(basename "${file}")"
-    if [[ "${base}" =~ ^\.?([0-9a-fA-F]+)\.(thmb|sqre|blur|quad)(\.png)?$ ]]; then
-      hash="${BASH_REMATCH[1]}"
-      if [[ -z "${valid_hashes["${hash}"]-}" ]]; then
-        rm -f -- "${file}"
-        removed=$((removed + 1))
-      fi
-    fi
-  done < <(find -H "${thumb_dir}" -maxdepth 1 -type f -print0 2>/dev/null)
-
-  if [[ "${removed}" -gt 0 ]]; then
-    print_log -sec "wallpaper" -stat "clean" "Removed ${removed} stale thumbs"
-  fi
+  wallpaper_load_inventory_catalog || return 0
+  wallpaper_collect_valid_thumb_hashes valid_hashes
+  wallpaper_prune_thumb_cache valid_hashes
 }
 
 Wall_Prune_Png_Cache() {
-  local png_cache_dir="${WALLPAPER_CACHE_DIR}/png_cache"
-  local removed=0
-  local file base hash wallpaper_path wallpaper_hash mime cached_thumb png_hash
   local -A valid_hashes=()
-  local i
-
-  [[ -d "${png_cache_dir}" ]] || return 0
-  wallpaper_load_prune_catalog || return 0
-
-  for i in "${!wallList[@]}"; do
-    wallpaper_path="${wallList[i]}"
-    wallpaper_hash="${wallHash[i]}"
-    [[ -n "${wallpaper_hash}" ]] || continue
-    [[ -e "${wallpaper_path}" ]] || continue
-
-    mime="$(file --mime-type -b "${wallpaper_path}" 2>/dev/null || true)"
-    if [[ "${mime}" == video/* ]]; then
-      cached_thumb="${WALLPAPER_VIDEO_DIR}/${wallpaper_hash}.png"
-      [[ -f "${cached_thumb}" ]] || continue
-      png_hash="$(${HYPR_HASH_COMMAND:-sha1sum} "${cached_thumb}" | awk '{print $1}')"
-      [[ -n "${png_hash}" ]] && valid_hashes["${png_hash}"]=1
-      continue
-    fi
-
-    valid_hashes["${wallpaper_hash}"]=1
-  done
-
-  while IFS= read -r -d '' file; do
-    base="$(basename "${file}")"
-    if [[ "${base}" =~ ^([0-9a-fA-F]+)\.png$ ]]; then
-      hash="${BASH_REMATCH[1]}"
-      if [[ -z "${valid_hashes["${hash}"]-}" ]]; then
-        rm -f -- "${file}"
-        removed=$((removed + 1))
-      fi
-    fi
-  done < <(find -H "${png_cache_dir}" -maxdepth 1 -type f -print0 2>/dev/null)
-
-  if [[ "${removed}" -gt 0 ]]; then
-    print_log -sec "wallpaper" -stat "clean" "Removed ${removed} stale png_cache entries"
-  fi
+  wallpaper_load_inventory_catalog || return 0
+  wallpaper_collect_valid_png_hashes valid_hashes
+  wallpaper_prune_png_cache valid_hashes
 }
 
 Wall_Prune_Hashmap_Caches() {
@@ -243,59 +362,4 @@ Wall_Prune_Hashmap_Caches() {
       fi
     fi
   done < <(find -H "${cache_dir}" -maxdepth 1 -type f -name "*.tsv" -print0 2>/dev/null)
-}
-
-Wall_Auto_Prune() {
-  local enabled="${WALLPAPER_AUTO_PRUNE:-1}"
-  case "${enabled,,}" in
-    1 | true | yes | on) enabled=1 ;;
-    0 | false | no | off) enabled=0 ;;
-    *) enabled=1 ;;
-  esac
-  [[ "${enabled}" -eq 1 ]] || return 0
-
-  local ttl="${WALLPAPER_AUTO_PRUNE_TTL:-86400}"
-  [[ "${ttl}" =~ ^[0-9]+$ ]] || ttl=86400
-
-  local cache_root=""
-  cache_root="$(wallpaper_cache_root)"
-  local stamp_file="${cache_root}/.auto_prune.ts"
-  mkdir -p "$(dirname "${stamp_file}")"
-
-  local now last
-  now="$(date +%s)"
-  last=0
-  if [[ -f "${stamp_file}" ]]; then
-    last="$(cat "${stamp_file}" 2>/dev/null)"
-    [[ "${last}" =~ ^[0-9]+$ ]] || last=0
-  fi
-
-  if [[ "${ttl}" -gt 0 ]] && (( now - last < ttl )); then
-    return 0
-  fi
-
-  (
-    exec 200>&- 201>&- 202>&- 203>&-
-    local lock_file="${XDG_RUNTIME_DIR:-/tmp}/wallpaper-auto-prune.lock"
-    exec 205>"${lock_file}"
-    flock -n 205 || exit 0
-
-    local now_ts last_ts
-    now_ts="$(date +%s)"
-    last_ts=0
-    if [[ -f "${stamp_file}" ]]; then
-      last_ts="$(cat "${stamp_file}" 2>/dev/null)"
-      [[ "${last_ts}" =~ ^[0-9]+$ ]] || last_ts=0
-    fi
-    if [[ "${ttl}" -gt 0 ]] && (( now_ts - last_ts < ttl )); then
-      exit 0
-    fi
-
-    if Wall_Clean_Thumbs --no-notify --skipstrays \
-      && Wall_Prune_Hashmap_Caches \
-      && Wall_Prune_Png_Cache; then
-      printf '%s\n' "${now_ts}" > "${stamp_file}.tmp" && mv -f "${stamp_file}.tmp" "${stamp_file}"
-    fi
-  ) &
-  disown
 }

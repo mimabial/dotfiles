@@ -46,11 +46,11 @@ keep_awake_enabled() {
 
 if keep_awake_enabled; then
   rm -f "${KEEP_AWAKE_STATE_FILE}"
-  notify "Keep awake disabled"
+  notify -t 3000 -i "caffeine-cup-empty" "Keep awake disabled"
 else
   mkdir -p "${STATE_DIR}"
   printf "%s\n" "1" > "${KEEP_AWAKE_STATE_FILE}"
-  notify "Keep awake enabled"
+  notify -t 3000 -i "caffeine-cup-full" "Keep awake enabled"
 fi
 
 ensure_manager_running

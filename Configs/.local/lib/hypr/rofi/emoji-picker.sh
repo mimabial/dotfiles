@@ -37,7 +37,7 @@ save_recent_entry() {
   {
     echo "${emoji_line}"
     cat "${recent_data}" 2>/dev/null
-  } | awk '!seen[$0]++' | head -50 >temp && mv temp "${recent_data}"
+  } | awk '!seen[$0]++' | head -50 >"${recent_data}.tmp" && mv "${recent_data}.tmp" "${recent_data}"
 }
 
 toggle_favorite() {
@@ -48,11 +48,11 @@ toggle_favorite() {
   if grep -Fxq "${emoji_line}" "${favorites_data}" 2>/dev/null; then
     # Remove from favorites
     grep -Fxv "${emoji_line}" "${favorites_data}" >temp && mv temp "${favorites_data}"
-    dunstify "⭐ Removed from favorites"
+    dunstify -t 3000 -i "face-smile" "⭐ Removed from favorites"
   else
     # Add to favorites
     echo "${emoji_line}" >>"${favorites_data}"
-    dunstify "⭐ Added to favorites"
+    dunstify -t 3000 -i "face-smile" "⭐ Added to favorites"
   fi
 }
 
@@ -94,8 +94,8 @@ get_emoji_selection() {
   done
 
   # Create recently used and favorites category entries
-  local temp_data="/tmp/emoji_with_raw_$$"
-  local display_data="/tmp/emoji_display_$$"
+  local temp_data="${TMPDIR:-/tmp}/emoji_with_raw_$$"
+  local display_data="${TMPDIR:-/tmp}/emoji_display_$$"
 
   # Add favorites category if favorites exist
   if [[ -f "${favorites_data}" ]] && [[ -s "${favorites_data}" ]]; then
@@ -374,23 +374,23 @@ show_category_menu() {
   # Handle special categories
   if [[ "${category}" == "recent" ]]; then
     if [[ ! -f "${recent_data}" ]] || [[ ! -s "${recent_data}" ]]; then
-      dunstify "No recently used emojis"
+      dunstify -t 3000 -i "face-smile" "No recently used emojis"
       return 1
     fi
     category_file="${recent_data}"
   elif [[ "${category}" == "favorites" ]]; then
     if [[ ! -f "${favorites_data}" ]] || [[ ! -s "${favorites_data}" ]]; then
-      dunstify "No favorite emojis yet"
+      dunstify -t 3000 -i "face-smile" "No favorite emojis yet"
       return 1
     fi
     category_file="${favorites_data}"
   elif [[ ! -f "${category_file}" ]]; then
-    dunstify "Category file not found: ${category}"
+    dunstify -t 3000 -i "dialog-error" "Category file not found: ${category}"
     return 1
   fi
 
   # Add back navigation option
-  local temp_category="/tmp/emoji_category_$$"
+  local temp_category="${TMPDIR:-/tmp}/emoji_category_$$"
   echo "◀ Back	:b:a:c:k:" >"${temp_category}"
   cat "${category_file}" >>"${temp_category}"
 

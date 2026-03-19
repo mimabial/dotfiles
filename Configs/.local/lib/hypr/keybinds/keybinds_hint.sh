@@ -44,7 +44,7 @@ output="$({
 })"
 
 if [[ -z "${output}" ]]; then
-  dunstify "Keybind Hint" "Initialization failed."
+  dunstify -t 5000 -i "dialog-error" "Keybind Hint" "Initialization failed."
   exit 0
 fi
 
@@ -67,12 +67,12 @@ entry_count=${entry_count//[[:space:]]/}
 
 kb_hint_width="${ROFI_KEYBIND_HINT_WIDTH:-}"
 if [[ ! "${kb_hint_width}" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
-  kb_hint_width="$(awk -v w="${logical_width:-1280}" -v fs="${font_scale}" 'BEGIN { v = w / (fs * 2.15); if (v < 35) v = 35; if (v > 72) v = 72; printf "%.1f", v }')"
+  kb_hint_width="$(awk -v w="${logical_width:-1280}" -v fs="${font_scale}" 'BEGIN { v = w / (fs * 3.26); if (v < 35) v = 35; if (v > 72) v = 72; printf "%.1f", v }')"
 fi
 
 kb_hint_line="${ROFI_KEYBIND_HINT_LINE:-}"
 if [[ ! "${kb_hint_line}" =~ ^[0-9]+$ ]]; then
-  kb_hint_line=$(( (${logical_height:-720}) / (font_scale * 5) ))
+  kb_hint_line=$(((${logical_height:-720}) / (font_scale * 5)))
   ((kb_hint_line < 10)) && kb_hint_line=10
   ((kb_hint_line > 26)) && kb_hint_line=26
   ((entry_count > 0 && kb_hint_line > entry_count)) && kb_hint_line=${entry_count}

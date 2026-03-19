@@ -105,7 +105,7 @@ get_glyph_selection() {
   local style_type="${glyph_style:-$ROFI_GLYPH_STYLE}"
   # Default to grid (2) if no style is set
   [[ -z "${style_type}" ]] && style_type="2"
-  local temp_data="/tmp/glyph_with_data_$$"
+  local temp_data="${TMPDIR:-/tmp}/glyph_with_data_$$"
 
   awk '!seen[$0]++' "${recent_data}" "${glyph_data}" >"${temp_data}"
 
