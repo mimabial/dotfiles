@@ -310,7 +310,7 @@ clear_favorites() {
 # manage favorites
 manage_favorites() {
   local manage_action
-  manage_action=$(echo -e "Back\nAdd to Favorites\nDelete from Favorites\nClear All Favorites" \
+  manage_action=$(echo -e "◀ Back\nAdd to Favorites\nDelete from Favorites\nClear All Favorites" \
     | run_rofi "📓 Manage Favorites")
 
   case "${manage_action}" in

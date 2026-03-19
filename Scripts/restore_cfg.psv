@@ -49,6 +49,11 @@ S|${HOME}/.config|starship.toml|starship
 S|${HOME}/.config|fastfetch|fastfetch
 S|${HOME}/.config|cava|cava
 S|${HOME}/.config|rmpc|rmpc
+S|${HOME}/.config|dunst|dunst
+S|${HOME}/.config|bat|bat
+S|${HOME}/.config|mpd|mpd
+S|${HOME}/.config|xsettingsd|xsettingsd
+S|${HOME}/.config|yt-dlp|yt-dlp
 
  Theming 
 S|${HOME}/.config|gtk-3.0|nwg-look

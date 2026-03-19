@@ -19,6 +19,11 @@ Y|Y|${HOME}/.config|starship.toml|starship
 Y|Y|${HOME}/.config|fastfetch|fastfetch
 Y|Y|${HOME}/.config|cava|cava
 Y|Y|${HOME}/.config|rmpc|rmpc
+Y|Y|${HOME}/.config|dunst|dunst
+Y|Y|${HOME}/.config|bat|bat
+Y|Y|${HOME}/.config|mpd|mpd
+Y|Y|${HOME}/.config|xsettingsd|xsettingsd
+Y|Y|${HOME}/.config|yt-dlp|yt-dlp
 
 Y|Y|${HOME}/.config|gtk-3.0|nwg-look
 Y|Y|${HOME}|.gtkrc-2.0|nwg-look

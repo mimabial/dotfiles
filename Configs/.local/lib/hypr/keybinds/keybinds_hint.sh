@@ -91,7 +91,7 @@ layout_override="window { width: ${kb_hint_width}em; height: ${kb_hint_height}em
 selected=$(printf '%s\n' "${output}" | rofi -dmenu -p " Keybinds" -i \
   -display-columns 1 \
   -display-column-separator ":::" \
-  -theme-str "entry { placeholder: \"Keybindings\"; }" \
+  -theme-str "entry { placeholder: \"  Keybindings\"; }" \
   -theme-str "${font_override}" \
   -theme-str "${icon_override}" \
   -theme-str "${r_override}" \

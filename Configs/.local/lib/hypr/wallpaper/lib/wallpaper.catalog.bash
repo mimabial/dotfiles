@@ -83,21 +83,23 @@ Wall_Hashmap_Cached() {
   local tmp_cache="${cache_file}.tmp"
   : >"${tmp_cache}"
 
-  local wall_file wall_meta wall_hash
-  while IFS= read -r -d '' wall_file; do
-    wall_meta="$(stat -c '%Y\t%s' -- "${wall_file}" 2>/dev/null)" || continue
+  local wall_file wall_mtime wall_size wall_meta wall_hash
+  while IFS=$'\t' read -r -d '' wall_mtime wall_size wall_file; do
+    wall_meta="${wall_mtime}"$'\t'"${wall_size}"
     if [[ "${cache_meta["${wall_file}"]-}" == "${wall_meta}" ]]; then
       wall_hash="${cache_hash["${wall_file}"]-}"
     else
-      wall_hash="$("${hash_cmd}" "${wall_file}" | awk '{print $1}')"
+      wall_hash="$("${hash_cmd}" "${wall_file}")"
+      wall_hash="${wall_hash%% *}"
     fi
     wallHash+=("${wall_hash}")
     wallList+=("${wall_file}")
-    printf '%s\t%s\t%s\n' "${wall_hash}" "${wall_meta}" "${wall_file}" >>"${tmp_cache}"
+    printf '%s\t%s\t%s\n' "${wall_hash}" "${wall_meta}" "${wall_file}"
   done < <(
     find -H "${wall_sources[@]}" -type f -regextype posix-extended \
-      -iregex ".*\\.(${regex_ext})$" ! -path "*/logo/*" -print0 2>/dev/null | sort -z
-  )
+      -iregex ".*\\.(${regex_ext})$" ! -path "*/logo/*" \
+      -printf '%Ts\t%s\t%p\0' 2>/dev/null | sort -z -t$'\t' -k3
+  ) >"${tmp_cache}"
 
   if [[ ${#wallList[@]} -eq 0 ]]; then
     rm -f "${tmp_cache}"

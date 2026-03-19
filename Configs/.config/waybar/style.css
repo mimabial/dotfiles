@@ -16,7 +16,7 @@
     @import "theme.css";
 
     /* Shared or user-selected base style */
-    @import "/home/rifle/.local/share/waybar/styles/right.css";
+    @import "/home/rifle/.local/share/waybar/styles/default.css";
 
     /* Users override the current style here */
     @import "user-style.css";

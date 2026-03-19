@@ -102,7 +102,6 @@ rofi_args+=(
 #// launch rofi
 rofi -show "${r_mode}" "${rofi_args[@]}" &
 disown
-echo -show "${r_mode}" "${rofi_args[@]}"
 
 # Cache fullscreen state after resolving the active launcher theme.
 

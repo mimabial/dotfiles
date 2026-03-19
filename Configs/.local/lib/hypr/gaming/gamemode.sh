@@ -21,11 +21,11 @@ decoration:rounding = 0
 decoration:active_opacity = 1
 decoration:inactive_opacity = 1
 decoration:fullscreen_opacity = 1
-layerrule = noanim,waybar
-layerrule = noanim,notifications
-layerrule = noanim,swww-daemon
-layerrule = noanim,rofi
-windowrule = opaque,class:(.*)
+layerrule = animation none, match:namespace waybar
+layerrule = animation none, match:namespace notifications
+layerrule = animation none, match:namespace swww-daemon
+layerrule = animation none, match:namespace rofi
+windowrule = opaque 1, match:class (.*)
 STATE
 }
 

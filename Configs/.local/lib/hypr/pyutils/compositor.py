@@ -69,9 +69,19 @@ class HyprctlWrapper:
 
         hypr_width = HyprctlWrapper.getoption("general:border_size")
 
+        monitors = json.loads(
+            HyprctlWrapper._execute_command(["hyprctl", "monitors", "-j"])
+        )
+        focused = next((m for m in monitors if m["focused"]), None)
+        if focused:
+            scale = focused.get("scale", 1) or 1
+            max_h = int(focused["height"] / scale * 0.9)
+        else:
+            max_h = 972
+
         font_override = f'* {{font: "{font_name} {font_scale}";}}'
         r_override = (
-            f"window{{border:{hypr_width}px;border-radius:{wind_border}px;}}"
+            f"window{{border:{hypr_width}px;border-radius:{wind_border}px;max-height:{max_h}px;}}"
             f"wallbox{{border-radius:{elem_border}px;}}"
             f"element{{border-radius:{elem_border}px;}}"
         )
@@ -125,6 +135,10 @@ class HyprctlWrapper:
         else:
             y_pos = "north"
             y_off = cur_pos[1] - off_res[1]
+
+        # Clamp offsets so rofi stays within monitor bounds
+        x_off = max(x_off, 0) if x_pos == "west" else min(x_off, 0)
+        y_off = max(y_off, 0) if y_pos == "north" else min(y_off, 0)
 
         coordinates = (
             f"window{{location:{x_pos} {y_pos};"

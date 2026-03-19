@@ -135,7 +135,7 @@ wallpaper_notify_emit() {
 
 wallpaper_refresh_inventory_if_needed() {
   case "${wallpaper_setter_flag:-}" in
-    g | o | clean | link | "") return 0 ;;
+    g | o | clean | link | s | start | select | "") return 0 ;;
   esac
   wallpaper_refresh_inventory_and_prune
 }

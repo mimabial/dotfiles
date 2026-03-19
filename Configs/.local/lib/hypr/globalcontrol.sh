@@ -303,6 +303,7 @@ print_log() {
 get_hashmap() {
   wallHash=()
   wallList=()
+  no_wallpapers=()
   unset skipStrays
 
   # Initialize supported file extensions (safe: no eval needed)

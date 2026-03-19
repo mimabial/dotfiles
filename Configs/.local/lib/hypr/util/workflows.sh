@@ -110,10 +110,10 @@ fn_select() {
   hypr_width=${hypr_width:-"$(hyprctl -j getoption general:border_size | jq '.int')"}
   r_override="window{border:${hypr_width}px;border-radius:${wind_border}px;} wallbox{border-radius:${elem_border}px;} element{border-radius:${elem_border}px;}"
 
-  selected_workflow=$(echo -e "${workflow_list}" |
-    rofi -dmenu -i -select "${HYPR_WORKFLOW:-default}" \
+  selected_workflow=$(echo -e "${workflow_list}" \
+    | rofi -dmenu -i -select "${HYPR_WORKFLOW:-default}" \
       -p "Select workflow" \
-      -theme-str "entry { placeholder: \"💼 Select workflow...\"; }" \
+      -theme-str "entry { placeholder: \" Workflow\"; }" \
       -theme-str "${font_override}" \
       -theme-str "${r_override}" \
       -theme-str "$(get_rofi_pos)" \

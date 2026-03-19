@@ -93,7 +93,7 @@ get_boxdraw_selection() {
       2 | grid)
         selection_index=$(cat "${temp_data}" | "${format_stream[@]}" | rofi -dmenu -i -format 'i' "${ROFI_BOXDRAW_ARGS[@]/-multi-select/}" -display-columns 1 \
           -theme-str "listview {columns: ${boxdraw_columns}; lines: ${boxdraw_lines};}" \
-          -theme-str "entry { placeholder: \"  Box Drawing\";} ${rofi_position} ${r_override}" \
+          -theme-str "entry { placeholder: \" 󰇟 Box Drawing\";} ${rofi_position} ${r_override}" \
           -theme-str "${font_override}" \
           -theme-str "${size_override}" \
           -theme-str "window { width: ${boxdraw_window_width}em; }" \

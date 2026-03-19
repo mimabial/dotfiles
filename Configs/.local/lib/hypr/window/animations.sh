@@ -87,10 +87,10 @@ fn_select() {
   rofi_select="${HYPR_ANIMATION:-default}"
   rofi_select="${rofi_select/disable/Disable Animation}"
 
-  selected_animation=$(printf '%s\n' "${animation_items}" |
-    rofi -dmenu -i -select "${rofi_select}" \
+  selected_animation=$(printf '%s\n' "${animation_items}" \
+    | rofi -dmenu -i -select "${rofi_select}" \
       -p "Select animation" \
-      -theme-str "entry { placeholder: \"Select animation...\"; }" \
+      -theme-str "entry { placeholder: \" 󰪏 Animation\"; }" \
       -theme-str "${font_override}" \
       -theme-str "${r_override}" \
       -theme-str "$(get_rofi_pos)" \

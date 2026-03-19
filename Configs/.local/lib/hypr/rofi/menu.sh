@@ -263,7 +263,7 @@ show_toggle_menu() {
 }
 
 show_style_menu() {
-  case $(menu "Style" "󰸌  Theme\n  Wallpaper\n  Color Mode\n󰍜  Waybar Layout\n󰹑  Animations\n󰏘  Lock Layout\n󰩨  Theme Menu Style\n  Font") in
+  case $(menu "Style" "󰸌  Theme\n  Wallpaper\n  Color Mode\n󰍜  Waybar Layout\n󰹑  Animations\n󰏘  Lock Layout\n  Workflow\n󰩨  Theme Menu Style\n  Font") in
     *"Theme Menu Style"*) hyprshell theme.select.sh -s ;;
     *Theme*) hyprshell theme/theme.select.sh ;;
     *Wallpaper*) hyprshell wallpaper/wallpaper.sh -SG ;;
@@ -271,6 +271,7 @@ show_style_menu() {
     *Waybar*) hyprshell waybar.py --select ;;
     *Animations*) hyprshell animations.sh --select ;;
     *"Lock Layout"*) hyprshell hyprlock.sh --select ;;
+    *Workflow*) hyprshell util/workflows.sh --select ;;
     *Font*) show_font_menu ;;
     *) show_main_menu ;;
   esac
@@ -383,10 +384,9 @@ show_install_ai_menu() {
 }
 
 show_install_gaming_menu() {
-  case $(menu "Install" "  Steam\n  RetroArch [AUR]\n󰍳  Minecraft") in
+  case $(menu "Install" "  Steam\n  RetroArch [AUR]") in
     *Steam*) present_terminal hyprshell gaming/install-steam.sh ;;
     *RetroArch*) aur_install_and_launch "RetroArch" "retroarch retroarch-assets libretro libretro-fbneo" "com.libretro.RetroArch.desktop" ;;
-    *Minecraft*) install_and_launch "Minecraft" "minecraft-launcher" "minecraft-launcher" ;;
     *) show_install_menu ;;
   esac
 }
@@ -594,6 +594,7 @@ show_search_all_menu() {
   add "Style › Animations" "hyprshell animations.sh --select"
   add "Style › Lock Layout" "hyprshell hyprlock.sh --select"
   add "Style › Theme Menu Style" "hyprshell theme.select.sh -s"
+  add "Style › Workflow" "hyprshell util/workflows.sh --select"
   add "Style › Font" "show_font_menu"
 
   # Setup (from show_setup_menu)

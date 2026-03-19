@@ -64,10 +64,10 @@ resolve_magick_limits() {
   magick_mem_mb="${WALLPAPER_MAGICK_MEM_MB:-}"
   [[ "${magick_mem_mb}" =~ ^[0-9]+$ ]] || magick_mem_mb=""
   if [[ -z "${magick_mem_mb}" ]]; then
-    if (( mem_avail_mb > 0 )); then
+    if ((mem_avail_mb > 0)); then
       magick_mem_mb=$((mem_avail_mb / 8))
-      (( magick_mem_mb < 256 )) && magick_mem_mb=256
-      (( magick_mem_mb > 1024 )) && magick_mem_mb=1024
+      ((magick_mem_mb < 256)) && magick_mem_mb=256
+      ((magick_mem_mb > 1024)) && magick_mem_mb=1024
     else
       magick_mem_mb=512
     fi
@@ -77,16 +77,16 @@ resolve_magick_limits() {
   [[ "${magick_map_mb}" =~ ^[0-9]+$ ]] || magick_map_mb=""
   if [[ -z "${magick_map_mb}" ]]; then
     magick_map_mb=$((magick_mem_mb * 2))
-    (( magick_map_mb < 512 )) && magick_map_mb=512
-    (( magick_map_mb > 4096 )) && magick_map_mb=4096
+    ((magick_map_mb < 512)) && magick_map_mb=512
+    ((magick_map_mb > 4096)) && magick_map_mb=4096
   fi
 
   magick_threads="${WALLPAPER_MAGICK_THREADS:-}"
   [[ "${magick_threads}" =~ ^[0-9]+$ ]] || magick_threads=""
   if [[ -z "${magick_threads}" ]]; then
-    if (( cores > 4 )); then
+    if ((cores > 4)); then
       magick_threads=4
-    elif (( cores > 0 )); then
+    elif ((cores > 0)); then
       magick_threads="${cores}"
     else
       magick_threads=1
@@ -653,7 +653,7 @@ fn_select() {
     [[ -d "${layout_dir}" ]] || continue
     while IFS= read -r -d '' layout_path; do
       layout_name="$(basename "${layout_path}" .conf)"
-      [[ "${layout_name}" == "theme" ]] && continue
+      [[ "${layout_name}" == "theme" || "${layout_name}" == "colors" ]] && continue
       [[ -n "${seen_layouts[${layout_name}]:-}" ]] && continue
       seen_layouts["${layout_name}"]=1
       layout_items+="${layout_name}"$'\n'
@@ -670,7 +670,7 @@ fn_select() {
   selected_layout=$(awk -F/ '{print $NF}' <<<"$layout_items" \
     | rofi -dmenu -i -select "${HYPRLOCK_LAYOUT}" \
       -p "Select hyprlock layout" \
-      -theme-str "entry { placeholder: \"🔒 Hyprlock Layout...\"; }" \
+      -theme-str "entry { placeholder: \"  Hyprlock Layout\"; }" \
       -theme-str "${font_override}" \
       -theme-str "${r_override}" \
       -theme-str "$(get_rofi_pos)" \

@@ -107,15 +107,14 @@ selector_menu() {
 
   #// apply selected theme
   if [ -n "${RofiSel}" ]; then
-    #// extract selected style number ('Style 1' -> '1')
-    selectedStyle="${RofiSel%%$'\x00'*}"
-    selectedStyle="${selectedStyle#Style }"
+    #// save selection in config file
+    state_set "ROFI_THEME_STYLE" "${RofiSel}" "staterc"
 
     #// notify the user
-    theme_select_notify "$(rofi_resolve_asset "theme_style_${selectedStyle}.png")" "Style ${selectedStyle} applied..."
-
-    #// save selection in config file
-    state_set "ROFI_THEME_STYLE" "${selectedStyle}" "staterc"
+    local style_icon
+    style_icon="$(rofi_resolve_asset "theme_style_${RofiSel}.png")"
+    [[ ! -f "${style_icon}" ]] && style_icon="preferences-desktop-theme"
+    theme_select_notify "${style_icon}" "Style ${RofiSel} applied..."
   fi
   exit 0
 }
@@ -192,6 +191,7 @@ case "$1" in
     # shellcheck disable=SC2154
     elem_border=$((hypr_border * 2))
     icon_border=$((elem_border - 5))
+    [[ "${icon_border}" -lt 0 ]] && icon_border=0
 
     #// generate config
 
@@ -217,18 +217,19 @@ case "$1" in
         ROFI_THEME_STYLE="selector"
         ;;
       1 | "square") # default to style 1
-        elm_width=$(((23 + 12 + 1) * font_scale * 2))
-        elm_height=$(((23 + 4) * font_scale * 2))
+        elm_width=$(((16 + 12) * font_scale * 2))
+        elm_height=$(((16 + 4) * font_scale * 2))
         max_avail_x=$((mon_x_res - (8 * font_scale)))
         max_avail_y=$((mon_y_res - (16 * font_scale)))
         col_count=$((max_avail_x / elm_width))
         row_count=$((max_avail_y / elm_height))
+        [[ "${col_count}" -lt 2 ]] && col_count=2
         [[ "${row_count}" -lt 2 ]] && row_count=2
         [[ "${row_count}" -gt 4 ]] && row_count=4
         r_override="window{width:100%;height:100%;fullscreen:true;border-radius:${hypr_border}px;}
-                            listview{columns:${col_count};lines:${row_count};cycle:true;}
+                            listview{columns:${col_count};lines:${row_count};cycle:true;spacing:6em;padding:3em;}
                             element{border-radius:${elem_border}px;padding:0.5em;}
-                            element-icon{size:23em;border-radius:${icon_border}px;}"
+                            element-icon{size:16em;border-radius:${icon_border}px;}"
         thmbExtn="sqre"
         ROFI_THEME_STYLE="selector"
         ;;

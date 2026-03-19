@@ -138,7 +138,7 @@ get_emoji_selection() {
           -no-show-icons \
           -theme-str "${iconless_theme_str}" \
           -theme-str "listview {columns: 9;}" \
-          -theme-str "entry { placeholder: \"  Emoji\";} ${rofi_position} ${r_override}" \
+          -theme-str "entry { placeholder: \" 󰞅 Emoji\";} ${rofi_position} ${r_override}" \
           -theme-str "${font_override}" \
           -theme-str "${size_override}" \
           -no-custom)
@@ -147,7 +147,7 @@ get_emoji_selection() {
         selection_index=$(cat "${display_data}" | rofi -dmenu -i -format 'i' "${emoji_args[@]}" "${rofi_base_opts[@]}" \
           -display-columns 1 -no-show-icons \
           -theme-str "${iconless_theme_str}" \
-          -theme-str "entry { placeholder: \"  Emoji\";} ${rofi_position} ${r_override}" \
+          -theme-str "entry { placeholder: \" 󰞅 Emoji\";} ${rofi_position} ${r_override}" \
           -theme-str "${font_override}" \
           -no-custom)
         ;;
@@ -155,7 +155,7 @@ get_emoji_selection() {
         selection_index=$(cat "${display_data}" | rofi -dmenu -i -format 'i' "${emoji_args[@]}" "${rofi_base_opts[@]}" \
           -display-columns 1 -no-show-icons \
           -theme-str "${iconless_theme_str}" \
-          -theme-str "entry { placeholder: \" 🔎 Emoji\";} ${rofi_position} ${r_override}" \
+          -theme-str "entry { placeholder: \" 󰞅 Emoji\";} ${rofi_position} ${r_override}" \
           -theme-str "${font_override}" \
           -no-custom)
         ;;

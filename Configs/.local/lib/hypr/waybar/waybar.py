@@ -12,12 +12,12 @@ import signal
 import struct
 import subprocess
 import sys
-import time
 import tempfile
+import time
 from pathlib import Path
 
 # Add the parent hypr lib directory to path so we can import pyutils
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
 import pyutils.compositor as HYPRLAND
 import pyutils.logger as logger
@@ -846,7 +846,9 @@ def restart_waybar():
     """Restart Waybar - skip if watcher is handling it."""
     for unit in _iter_watcher_units():
         if _is_unit_active(unit):
-            logger.debug(f"Watcher active ({unit}) - skipping restart, watcher will handle it")
+            logger.debug(
+                f"Watcher active ({unit}) - skipping restart, watcher will handle it"
+            )
             return
 
     # No watcher - do manual restart
@@ -864,7 +866,9 @@ def sync_dunst_position(mode=None):
         cmd.append(mode)
     try:
         subprocess.run(cmd, timeout=5, check=False)
-        logger.debug(f"Synced dunst position with waybar ({mode or 'write-and-reload'})")
+        logger.debug(
+            f"Synced dunst position with waybar ({mode or 'write-and-reload'})"
+        )
     except Exception as exc:
         logger.warning(f"Failed to sync dunst position: {exc}")
 
@@ -1101,6 +1105,7 @@ def layout_selector():
         "Select layout:",
         current_layout_path,
         display_func=display_func,
+        extra_flags=["-theme-str", 'entry {placeholder: "󰍜  Waybar Layout";}'],
     )
     if selected_layout:
         # Find the layout pair
@@ -1393,7 +1398,9 @@ def update_border_radius():
 
     if not border_radius:
         logger.debug("Reading border radius from theme.conf")
-        theme_conf = os.path.join(str(xdg_config_home()), "hypr", "themes", "theme.conf")
+        theme_conf = os.path.join(
+            str(xdg_config_home()), "hypr", "themes", "theme.conf"
+        )
 
         if os.path.exists(theme_conf):
             try:
@@ -1619,7 +1626,9 @@ def get_watch_interval_seconds():
             if interval > 0:
                 return interval
         except ValueError:
-            logger.warning(f"Invalid WAYBAR_WATCH_INTERVAL='{raw_interval}', using default")
+            logger.warning(
+                f"Invalid WAYBAR_WATCH_INTERVAL='{raw_interval}', using default"
+            )
     return 0.2
 
 
@@ -1835,7 +1844,9 @@ def watch_waybar():
             continue
 
         if pending_events and theme_update_meta.get("waybar_reload") == "direct":
-            logger.debug("Skipping watcher reload; theme switch committed Waybar directly")
+            logger.debug(
+                "Skipping watcher reload; theme switch committed Waybar directly"
+            )
             pending_events = []
             theme_update_meta = {}
             continue
@@ -1860,6 +1871,7 @@ def get_waybar_pid():
 
 def get_waybar_pids():
     """Get all Waybar PIDs for the current user."""
+
     def pid_is_zombie(pid):
         try:
             with open(f"/proc/{pid}/stat", "r") as file:
@@ -1875,6 +1887,7 @@ def get_waybar_pids():
             return False
         state = data[rparen + 2 :].strip().split(" ", 1)[0]
         return state == "Z"
+
     try:
         result = subprocess.run(
             ["pgrep", "-x", "waybar"], capture_output=True, text=True
@@ -2076,19 +2089,26 @@ def main():
                         )
                         try:
                             atomic_copy_file(layout_path, CONFIG_JSONC)
-                            logger.debug("Updated config.jsonc with layout from state file")
+                            logger.debug(
+                                "Updated config.jsonc with layout from state file"
+                            )
                         except Exception as e:
                             logger.error(f"Failed to update config.jsonc: {e}")
 
             elif layout_path and not os.path.exists(layout_path):
-                logger.warning(f"Layout path in state file doesn't exist: {layout_path}")
+                logger.warning(
+                    f"Layout path in state file doesn't exist: {layout_path}"
+                )
                 layout_name = get_state_value("WAYBAR_LAYOUT_NAME")
                 if layout_name:
                     logger.debug(f"Looking for layout by name: {layout_name}")
                     layouts = find_layout_files()
                     found_layout = None
                     for layout in layouts:
-                        if os.path.basename(layout).replace(".jsonc", "") == layout_name:
+                        if (
+                            os.path.basename(layout).replace(".jsonc", "")
+                            == layout_name
+                        ):
                             logger.debug(f"Found layout by name: {layout}")
                             found_layout = layout
                             break
@@ -2264,20 +2284,20 @@ def main():
     # Check if any specific update flags were set
     # Note: --hide and --kill are handled early and exit before reaching here
     specific_action_taken = (
-        args.update or
-        args.update_global_css or
-        args.update_icon_size or
-        args.update_border_radius or
-        args.generate_includes or
-        args.config or
-        args.style or
-        args.next or
-        args.prev or
-        args.set or
-        args.json or
-        args.select_layout or
-        args.select_style or
-        args.select
+        args.update
+        or args.update_global_css
+        or args.update_icon_size
+        or args.update_border_radius
+        or args.generate_includes
+        or args.config
+        or args.style
+        or args.next
+        or args.prev
+        or args.set
+        or args.json
+        or args.select_layout
+        or args.select_style
+        or args.select
     )
 
     if not specific_action_taken:
