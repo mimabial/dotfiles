@@ -57,7 +57,7 @@ setup_rofi_config() {
   font_name="$(rofi_effective_font_name "${ROFI_GLYPH_FONT:-$ROFI_FONT}")"
 
   font_override="$(rofi_font_override "${font_name}" "${font_scale}")"
-  r_override="$(rofi_standard_window_theme listview same)"
+  r_override="$(rofi_standard_window_theme wallbox same)"
 
   read -r logical_width logical_height <<<"$(rofi_focused_monitor_logical_size)"
 
@@ -99,6 +99,10 @@ setup_rofi_config() {
     -theme-str "${r_override}"
     -theme "$(rofi_resolve_theme "${ROFI_GLYPH_STYLE:-clipboard}")"
   )
+
+  local opacity_override
+  opacity_override="$(rofi_active_opacity_override)"
+  [[ -n "${opacity_override}" ]] && rofi_args+=("-theme-str" "${opacity_override}")
 }
 
 get_glyph_selection() {

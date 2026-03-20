@@ -1,0 +1,53 @@
+$HOME/.config/tmux/theme.conf|tmux source-file ~/.config/tmux/tmux.conf
+
+# Tmux theme for Blue Sky
+# Auto-generated from kitty.theme colors
+
+# ============================================================================
+# Standard 16 color palette
+# ============================================================================
+set -g @color0 "#294052"
+set -g @color1 "#CCE4FF"
+set -g @color2 "#CCE5FF"
+set -g @color3 "#CCE4FF"
+set -g @color4 "#9AC5E6"
+set -g @color5 "#9ABEE6"
+set -g @color6 "#9ABEE6"
+set -g @color7 "#CCE4FF"
+set -g @color8 "#57778F"
+set -g @color9 "#AACBF0"
+set -g @color10 "#AACCF0"
+set -g @color11 "#AACBF0"
+set -g @color12 "#9AC5E6"
+set -g @color13 "#9ABEE6"
+set -g @color14 "#9ABEE6"
+set -g @color15 "#AACBF0"
+
+# ============================================================================
+# Semantic color aliases
+# ============================================================================
+set -g @theme_bg "#122D41"
+set -g @theme_fg "#FFFFFF"
+set -g @theme_accent "#7F9FC2"
+set -g @theme_gray "#57778F"
+set -g @theme_highlight "#7F9FC2"
+set -g @theme_red "#CCE4FF"
+set -g @theme_brightred "#AACBF0"
+set -g @theme_green "#CCE5FF"
+set -g @theme_yellow "#AACCF0"
+set -g @theme_blue "#9AC5E6"
+set -g @theme_magenta "#9ABEE6"
+set -g @theme_cyan "#9ABEE6"
+
+# ============================================================================
+# Tmux color settings
+# ============================================================================
+set -g status-style "bg=#122D41,fg=#FFFFFF"
+set -g message-style "bg=#122D41,fg=#7F9FC2"
+set -g message-command-style "bg=#122D41,fg=#7F9FC2"
+set -g pane-border-style "fg=#57778F"
+set -g pane-active-border-style "fg=#7F9FC2"
+set -g window-status-style "fg=#57778F"
+set -g window-status-current-style "fg=#7F9FC2,bold"
+set -g mode-style "bg=#7F9FC2,fg=#122D41"
+set -g clock-mode-colour "#7F9FC2"

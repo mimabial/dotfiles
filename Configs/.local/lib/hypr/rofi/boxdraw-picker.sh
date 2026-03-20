@@ -9,6 +9,7 @@ else
 fi
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
+_rofi_opacity="$(rofi_active_opacity_override)"
 
 boxdraw_dir=${HYPR_CONFIG_HOME:-$HOME/.config/hypr}
 boxdraw_data="${boxdraw_dir}/boxdraw.db"
@@ -32,7 +33,7 @@ setup_rofi_config() {
   font_name="$(rofi_effective_font_name "${ROFI_BOXDRAW_FONT:-$ROFI_FONT}")"
 
   font_override="$(rofi_font_override "${font_name}" "${font_scale}")"
-  r_override="$(rofi_standard_window_theme listview same)"
+  r_override="$(rofi_standard_window_theme wallbox same)"
 
   read -r logical_width logical_height <<<"$(rofi_focused_monitor_logical_size)"
 
@@ -97,7 +98,7 @@ get_boxdraw_selection() {
           -theme-str "${font_override}" \
           -theme-str "${size_override}" \
           -theme-str "window { width: ${boxdraw_window_width}em; }" \
-          -theme "$(rofi_resolve_theme "${ROFI_BOXDRAW_STYLE:-clipboard}")" \
+          -theme "$(rofi_resolve_theme "${ROFI_BOXDRAW_STYLE:-clipboard}")" -theme-str "${_rofi_opacity}" \
           -no-custom)
         ;;
       1 | list)
@@ -105,7 +106,7 @@ get_boxdraw_selection() {
           -theme-str "entry { placeholder: \"  Box Drawing\";} ${rofi_position} ${r_override}" \
           -theme-str "${font_override}" \
           -theme-str "window { width: ${boxdraw_window_width}em; }" \
-          -theme "$(rofi_resolve_theme "${ROFI_BOXDRAW_STYLE:-clipboard}")" \
+          -theme "$(rofi_resolve_theme "${ROFI_BOXDRAW_STYLE:-clipboard}")" -theme-str "${_rofi_opacity}" \
           -no-custom)
         ;;
       *)
@@ -113,7 +114,7 @@ get_boxdraw_selection() {
           -theme-str "entry { placeholder: \" 📐 Box Drawing\";} ${rofi_position} ${r_override}" \
           -theme-str "${font_override}" \
           -theme-str "window { width: ${boxdraw_window_width}em; }" \
-          -theme "$(rofi_resolve_theme "${style_type:-${ROFI_BOXDRAW_STYLE:-clipboard}}")" \
+          -theme "$(rofi_resolve_theme "${style_type:-${ROFI_BOXDRAW_STYLE:-clipboard}}")" -theme-str "${_rofi_opacity}" \
           -no-custom)
         ;;
     esac
@@ -198,21 +199,21 @@ show_category_menu() {
         -theme-str "listview {columns: 12;}" \
         -theme-str "entry { placeholder: \"📂 ${category}\";} ${rofi_position} ${r_override}" \
         -theme-str "${font_override}" \
-        -theme "$(rofi_resolve_theme clipboard)" \
+        -theme "$(rofi_resolve_theme clipboard)" -theme-str "${_rofi_opacity}" \
         -no-custom)
       ;;
     1 | list)
       selected=$(cat "${temp_category}" | rofi -dmenu -i -display-columns 1 \
         -theme-str "entry { placeholder: \"📂 ${category}\";} ${rofi_position} ${r_override}" \
         -theme-str "${font_override}" \
-        -theme "$(rofi_resolve_theme clipboard)" \
+        -theme "$(rofi_resolve_theme clipboard)" -theme-str "${_rofi_opacity}" \
         -no-custom)
       ;;
     *)
       selected=$(cat "${temp_category}" | rofi -dmenu -i -display-columns 1 \
         -theme-str "entry { placeholder: \"📂 ${category}\";} ${rofi_position} ${r_override}" \
         -theme-str "${font_override}" \
-        -theme "$(rofi_resolve_theme "${style_type:-clipboard}")" \
+        -theme "$(rofi_resolve_theme "${style_type:-clipboard}")" -theme-str "${_rofi_opacity}" \
         -no-custom)
       ;;
   esac

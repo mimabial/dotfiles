@@ -1,0 +1,35 @@
+$HOME/.config/kitty/theme.conf|killall -SIGUSR1 kitty
+
+# Blue Sky alt: Stormglass
+# Storm/ocean-sky palette with colder, heavier contrast.
+
+foreground              #E8F2FF
+background              #122D41
+selection_foreground    #122D41
+selection_background    #E8F2FF
+cursor                  #C6DAEE
+cursor_text_color       #060605
+url_color               #69B2F0
+
+active_tab_foreground   #122D41
+active_tab_background   #8EAED0
+inactive_tab_foreground #85A6C8
+inactive_tab_background #122D41
+tab_bar_background      #16364D
+
+color0      #294052
+color1      #D98CA5
+color2      #74C7B5
+color3      #C8B97A
+color4      #5FA7E6
+color5      #A793D8
+color6      #58C0D8
+color7      #D4E5F2
+color8      #57778F
+color9      #E8A7BD
+color10     #90D6C5
+color11     #D9C98A
+color12     #7CBDF4
+color13     #BBACEC
+color14     #7AD8EA
+color15     #E8F2FF

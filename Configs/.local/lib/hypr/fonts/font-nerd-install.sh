@@ -4,8 +4,8 @@
 [[ "${HYPR_SHELL_INIT}" -ne 1 ]] && eval "$(hyprshell init)"
 
 # Get all nerd font packages
-all_fonts=$(pacman -Sl | grep -E "nerd" | awk '{print $2}' | sort -u)
-installed_fonts=$(pacman -Qq | grep -E "nerd" | sort)
+all_fonts=$(pacman -Sl | awk '{print $2}' | grep -E "^(ttf|otf)-.*nerd" | sort -u)
+installed_fonts=$(pacman -Qq | grep -E "^(ttf|otf)-.*nerd" | sort)
 
 # Combine into array with status
 fonts=()
@@ -35,22 +35,20 @@ if [[ -z "$font_size" && -f ~/.config/kitty/kitty.conf ]]; then
   font_size=$(grep -E "^font_size" ~/.config/kitty/kitty.conf | awk '{print $2}' | head -1)
 fi
 font_size=${font_size:-11}
-preview_size=$(awk "BEGIN {printf \"%.0f\", $font_size * 2.5}")
+preview_size=$(awk "BEGIN {printf \"%.0f\", $font_size * 3}")
 
 # Interactive selection with actual font preview
 current=0
 selected=()
 search_filter=""
-previous_pkg=""  # Track last rendered font to avoid redundant redraws
+previous_pkg="" # Track last rendered font to avoid redundant redraws
 
 show_preview() {
-  local pkg="${fonts[$1]%% *}" # Remove ✓ marker
-  local force_redraw="${2:-false}"  # Optional parameter to force preview regeneration
+  local pkg="${fonts[$1]%% *}"     # Remove ✓ marker
+  local force_redraw="${2:-false}" # Optional parameter to force preview regeneration
 
   clear
-  echo -e "\033[1;36m=== Nerd Font Installer ===\033[0m"
   [[ -n "$search_filter" ]] && echo -e "\033[1;33mSearch: $search_filter\033[0m"
-  echo
 
   # Show list of fonts with current highlighted
   echo -e "\033[1mAvailable Fonts:\033[0m"
@@ -91,50 +89,29 @@ show_preview() {
   if $is_installed; then
     # Try to show rendered preview in Kitty (only if font changed or forced)
     if [[ "$TERM" == "xterm-kitty" ]] && command -v magick &>/dev/null; then
-      if [[ "$pkg" != "$previous_pkg" || "$force_redraw" == "true" ]]; then
-        echo  # Add blank line before preview
-        font_file=$(pacman -Ql "$pkg" 2>/dev/null | grep -E '\.(ttf|otf)$' | head -1 | awk '{print $2}')
+      echo
+      font_file=$(pacman -Ql "$pkg" 2>/dev/null | grep -E '\.(ttf|otf)$' | head -1 | awk '{print $2}')
 
-        if [[ -f "$font_file" ]]; then
-          # Calculate preview dimensions (use cached font size)
-          local term_cols=$(tput cols 2>/dev/null || echo 80)
+      if [[ -f "$font_file" ]]; then
+        local term_cols=$(tput cols 2>/dev/null || echo 80)
+        local preview_width=$((term_cols * 14))
+        local char_height=$((preview_size * 4 / 3))
+        local preview_height=$((char_height * 3 + 12))
+        [[ $preview_width -lt 800 ]] && preview_width=800
+        local line_spacing=$((char_height + 2))
+        local temp_img=$(mktemp --suffix=.png)
 
-          # Use fixed character dimensions (avoid expensive magick queries)
-          local char_width=21
-          local char_height=27
-          local preview_width=$((term_cols * char_width / 3))
-          local preview_height=$((char_height * 3 + 6))
-
-          # Ensure minimum valid dimensions
-          [[ $preview_width -lt 100 ]] && preview_width=500
-          [[ $preview_height -lt 50 ]] && preview_height=100
-
-          # Calculate tight vertical spacing
-          local line_spacing=$((char_height + 2))
-
-          # Generate preview
-          local temp_img=$(mktemp --suffix=.png)
-
-          if magick -size ${preview_width}x${preview_height} "xc:$bg_color" \
-            -font "$font_file" -pointsize "$preview_size" -fill "$fg_color" \
-            -gravity north -annotate +0+3 "abcdefghijklmnopqrstuvwxyz" \
-            -font "$font_file" -pointsize "$preview_size" -fill "$fg_color" \
-            -gravity north -annotate +0+$((3 + line_spacing)) "ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
-            -font "$font_file" -pointsize "$preview_size" -fill "$fg_color" \
-            -gravity north -annotate +0+$((3 + line_spacing * 2)) "oO08 iIlL1 g9qCGQ ~-+=>   " \
-            "$temp_img" 2>/dev/null && [[ -s "$temp_img" ]]; then
-
-            # Use stdin to avoid file access race conditions
-            kitty +kitten icat --align center <"$temp_img" 2>/dev/null && echo
-          fi
-          rm -f "$temp_img"
-
-          previous_pkg="$pkg"  # Update cache
+        if magick -size ${preview_width}x${preview_height} "xc:$bg_color" \
+          -font "$font_file" -pointsize "$preview_size" -fill "$fg_color" \
+          -gravity north -annotate +0+3 "abcdefghijklmnopqrstuvwxyz" \
+          -font "$font_file" -pointsize "$preview_size" -fill "$fg_color" \
+          -gravity north -annotate +0+$((3 + line_spacing)) "ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
+          -font "$font_file" -pointsize "$preview_size" -fill "$fg_color" \
+          -gravity north -annotate +0+$((3 + line_spacing * 2)) "oO08 iIlL1 g9qCGQ ~-+=>   " \
+          "$temp_img" 2>/dev/null && [[ -s "$temp_img" ]]; then
+          kitty +kitten icat --align center <"$temp_img" 2>/dev/null && echo
         fi
-      else
-        # Skip preview regeneration - font hasn't changed
-        echo -e "\033[2m(Preview cached - same font)\033[0m"
-        echo
+        rm -f "$temp_img"
       fi
     fi
 
@@ -156,8 +133,49 @@ show_preview() {
   else
     echo -e "\033[2mNot installed\033[0m"
     echo
+
+    # Preview uninstalled fonts by extracting from package cache
+    if [[ "$TERM" == "xterm-kitty" ]] && command -v magick &>/dev/null; then
+      local tmp_extract="${TMPDIR:-/tmp}/font-preview-$$"
+      mkdir -p "$tmp_extract"
+      # Download package to temp without installing
+      if pacman -Swdd --noconfirm --cachedir "$tmp_extract" "$pkg" &>/dev/null; then
+        local pkg_file
+        pkg_file=$(find "$tmp_extract" -name "${pkg}-*.pkg.tar.*" 2>/dev/null | head -1)
+        if [[ -n "$pkg_file" ]]; then
+          local font_file
+          font_file=$(tar -tf "$pkg_file" 2>/dev/null | grep -E '\.(ttf|otf)$' | head -1)
+          if [[ -n "$font_file" ]]; then
+            tar -xf "$pkg_file" -C "$tmp_extract" "$font_file" 2>/dev/null
+            local extracted="${tmp_extract}/${font_file}"
+            if [[ -f "$extracted" ]]; then
+              local term_cols=$(tput cols 2>/dev/null || echo 80)
+              local preview_width=$((term_cols * 14))
+              local char_height=$((preview_size * 4 / 3))
+              local preview_height=$((char_height * 3 + 12))
+              [[ $preview_width -lt 800 ]] && preview_width=800
+              local line_spacing=$((char_height + 2))
+              local temp_img=$(mktemp --suffix=.png)
+
+              if magick -size ${preview_width}x${preview_height} "xc:$bg_color" \
+                -font "$extracted" -pointsize "$preview_size" -fill "$fg_color" \
+                -gravity north -annotate +0+3 "abcdefghijklmnopqrstuvwxyz" \
+                -font "$extracted" -pointsize "$preview_size" -fill "$fg_color" \
+                -gravity north -annotate +0+$((3 + line_spacing)) "ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
+                -font "$extracted" -pointsize "$preview_size" -fill "$fg_color" \
+                -gravity north -annotate +0+$((3 + line_spacing * 2)) "oO08 iIlL1 g9qCGQ ~-+=>   " \
+                "$temp_img" 2>/dev/null && [[ -s "$temp_img" ]]; then
+                kitty +kitten icat --align center <"$temp_img" 2>/dev/null && echo
+              fi
+              rm -f "$temp_img"
+            fi
+          fi
+        fi
+      fi
+      rm -rf "$tmp_extract"
+    fi
+
     pacman -Si "$pkg" 2>/dev/null | grep -E "^(Description|Download Size)" | sed 's/^/  /'
-    previous_pkg="$pkg"  # Update even for uninstalled fonts
   fi
 
   echo
@@ -180,12 +198,24 @@ apply_filter() {
   fi
 }
 
+# Redraw on terminal resize
+resized=false
+trap 'resized=true' WINCH
+
 # Main loop
 while true; do
+  resized=false
   show_preview $current
 
   # Read single key - use 'read' from terminal directly, not from stdin which has escape codes
-  IFS= read -rsn1 key </dev/tty
+  while true; do
+    if IFS= read -rsn1 -t 0.5 key </dev/tty; then
+      break
+    elif [[ "$resized" == true ]]; then
+      resized=false
+      show_preview $current
+    fi
+  done
 
   case "$key" in
     $'\x1b') # ESC sequence (arrow keys or ESC to clear filter)
@@ -215,7 +245,48 @@ while true; do
     $'\n' | '') # Enter - install
       [[ ${#selected[@]} -eq 0 ]] && selected+=("${fonts[$current]%% ✓}")
       selected=("${selected[@]## }") # Clean up
-      break
+      if [[ ${#selected[@]} -gt 0 ]]; then
+        clear
+        echo -e "\033[1;36mInstalling ${#selected[@]} font(s):\033[0m"
+        for font in "${selected[@]}"; do
+          echo "  - $font"
+        done
+        echo
+        read -n 1 -s -r -p "Press Enter to confirm or any other key to cancel..." </dev/tty
+        echo
+        if [[ "$REPLY" == "" ]]; then
+          echo
+          if sudo pacman -S --needed --noconfirm "${selected[@]}"; then
+            echo
+            echo "Refreshing font cache..."
+            old_tty_settings=$(stty -g)
+            stty -echo 2>/dev/null
+            read -t 0.001 -n 10000 discard </dev/tty 2>/dev/null || true
+            fc-cache -f
+            read -t 0.001 -n 10000 discard </dev/tty 2>/dev/null || true
+            stty "$old_tty_settings" 2>/dev/null
+            echo -e "\033[1;32m✓ Installed: ${selected[*]}\033[0m"
+          else
+            echo -e "\033[1;31m✗ Installation failed.\033[0m"
+          fi
+          sleep 1
+          # Refresh font list
+          all_fonts=$(pacman -Sl | awk '{print $2}' | grep -E "^(ttf|otf)-.*nerd" | sort -u)
+          all_fonts_backup=()
+          while IFS= read -r font; do
+            if pacman -Q "$font" &>/dev/null; then
+              all_fonts_backup+=("$font ✓")
+            else
+              all_fonts_backup+=("$font")
+            fi
+          done <<<"$all_fonts"
+          fonts=("${all_fonts_backup[@]}")
+          apply_filter
+          [[ $current -ge ${#fonts[@]} ]] && current=$((${#fonts[@]} - 1))
+          [[ $current -lt 0 ]] && current=0
+        fi
+        selected=()
+      fi
       ;;
     ' ') # Space - toggle selection
       # Get the package name without ✓ marker or status
@@ -261,37 +332,3 @@ while true; do
       ;;
   esac
 done
-
-clear
-
-# Install selected fonts
-if [[ ${#selected[@]} -gt 0 ]]; then
-  echo "Installing ${#selected[@]} font(s): ${selected[*]}"
-  echo
-
-  if sudo pacman -S --needed --noconfirm "${selected[@]}"; then
-    echo
-    echo "Refreshing font cache..."
-
-    # Disable echo during cache refresh to prevent escape sequences
-    old_tty_settings=$(stty -g)
-    stty -echo 2>/dev/null
-
-    # Flush input before and after
-    read -t 0.001 -n 10000 discard </dev/tty 2>/dev/null || true
-    fc-cache -f
-    read -t 0.001 -n 10000 discard </dev/tty 2>/dev/null || true
-
-    # Restore terminal settings
-    stty "$old_tty_settings" 2>/dev/null
-
-    echo "✓ Font installation complete!"
-    echo "  Installed: ${selected[*]}"
-  else
-    echo
-    echo "✗ Font installation cancelled or failed."
-    exit 1
-  fi
-else
-  echo "No fonts selected."
-fi

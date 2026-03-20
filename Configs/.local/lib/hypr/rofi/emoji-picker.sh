@@ -9,6 +9,7 @@ else
 fi
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
+_rofi_opacity="$(rofi_active_opacity_override)"
 
 emoji_dir=${HYPR_CONFIG_HOME:-$HOME/.config/hypr}
 emoji_data="${emoji_dir}/emoji.db"
@@ -63,7 +64,7 @@ setup_rofi_config() {
   font_name="$(rofi_effective_font_name "${ROFI_EMOJI_FONT:-$ROFI_FONT}")"
 
   font_override="$(rofi_font_override "${font_name}" "${font_scale}")"
-  r_override="$(rofi_standard_window_theme listview same)"
+  r_override="$(rofi_standard_window_theme wallbox same)"
 
   local emoji_window_width_em="${ROFI_EMOJI_WIDTH_EM:-36}"
   local emoji_window_height_em="${ROFI_EMOJI_HEIGHT_EM:-30}"
@@ -81,12 +82,13 @@ setup_rofi_config() {
 }
 
 get_emoji_selection() {
-  local style_type="${emoji_style:-$ROFI_EMOJI_STYLE}"
+  local style_type="${emoji_style:-${ROFI_EMOJI_STYLE:-2}}"
   local size_override=""
   local iconless_theme_str="listview { show-icons: false; } element { children: [ \"element-text\" ]; } element-icon { enabled: false; size: 0em; width: 0em; padding: 0; margin: 0; border: 0; }"
   local emoji_theme
   emoji_theme="$(rofi_resolve_theme "${ROFI_EMOJI_THEME:-clipboard}")"
   local rofi_base_opts=(-no-config -no-default-config -theme "${emoji_theme}")
+  [[ -n "${_rofi_opacity}" ]] && rofi_base_opts+=("-theme-str" "${_rofi_opacity}")
   local emoji_args=()
   for arg in "${ROFI_EMOJI_ARGS[@]}"; do
     [[ "${arg}" == "-multi-select" || "${arg}" == "--multi-select" ]] && continue
@@ -137,7 +139,7 @@ get_emoji_selection() {
         selection_index=$(cat "${display_data}" | rofi -dmenu -i -format 'i' "${emoji_args[@]}" "${rofi_base_opts[@]}" -display-columns 1 \
           -no-show-icons \
           -theme-str "${iconless_theme_str}" \
-          -theme-str "listview {columns: 9;}" \
+          -theme-str "listview {columns: 2;}" \
           -theme-str "entry { placeholder: \" 󰞅 Emoji\";} ${rofi_position} ${r_override}" \
           -theme-str "${font_override}" \
           -theme-str "${size_override}" \
@@ -226,7 +228,7 @@ show_multi_person_skin_tone_selector() {
     | rofi -dmenu -i -p "Person 1 Skin Tone" -no-show-icons \
       -theme-str "entry { placeholder: \"Choose skin tone for person 1...\";} ${rofi_position} ${r_override}" \
       -theme-str "${font_override}" \
-      -theme "$(rofi_resolve_theme clipboard)")
+      -theme "$(rofi_resolve_theme clipboard)" -theme-str "${_rofi_opacity}")
 
   [[ -z "${tone1}" ]] && return 1
 
@@ -236,7 +238,7 @@ show_multi_person_skin_tone_selector() {
     | rofi -dmenu -i -p "Person 2 Skin Tone" -no-show-icons \
       -theme-str "entry { placeholder: \"Choose skin tone for person 2...\";} ${rofi_position} ${r_override}" \
       -theme-str "${font_override}" \
-      -theme "$(rofi_resolve_theme clipboard)")
+      -theme "$(rofi_resolve_theme clipboard)" -theme-str "${_rofi_opacity}")
 
   [[ -z "${tone2}" ]] && return 1
 
@@ -292,7 +294,7 @@ show_gender_variant_selector() {
     | rofi -dmenu -i -p "Gender Variant" \
       -theme-str "entry { placeholder: \"Choose gender variant...\";} ${rofi_position} ${r_override}" \
       -theme-str "${font_override}" \
-      -theme "$(rofi_resolve_theme clipboard)")
+      -theme "$(rofi_resolve_theme clipboard)" -theme-str "${_rofi_opacity}")
 
   [[ -z "${gender_choice}" ]] && return 1
 
@@ -345,7 +347,7 @@ show_skin_tone_selector() {
     | rofi -dmenu -i -p "Select Skin Tone" \
       -theme-str "entry { placeholder: \"Choose skin tone...\";} ${rofi_position} ${r_override}" \
       -theme-str "${font_override}" \
-      -theme "$(rofi_resolve_theme clipboard)")
+      -theme "$(rofi_resolve_theme clipboard)" -theme-str "${_rofi_opacity}")
 
   # Extract just the skin tone part from selection
   if [[ "${selected_tone}" == *"🏻"* ]]; then
@@ -396,17 +398,17 @@ show_category_menu() {
 
   # Show category-specific emoji menu
   local selected
-  local style_type="${emoji_style:-$ROFI_EMOJI_STYLE}"
+  local style_type="${emoji_style:-${ROFI_EMOJI_STYLE:-2}}"
 
   case ${style_type} in
     2 | grid)
       selected=$(cat "${temp_category}" | rofi -dmenu -i -display-columns 1 \
         -display-column-separator " " -no-show-icons "${rofi_base_opts[@]}" \
         -theme-str "${iconless_theme_str}" \
-        -theme-str "listview {columns: 9;}" \
+        -theme-str "listview {columns: 2;}" \
         -theme-str "entry { placeholder: \"📂 ${category}\";} ${rofi_position} ${r_override}" \
         -theme-str "${font_override}" \
-        -theme "$(rofi_resolve_theme clipboard)" \
+        -theme "$(rofi_resolve_theme clipboard)" -theme-str "${_rofi_opacity}" \
         -no-custom)
       ;;
     1 | list)
@@ -415,7 +417,7 @@ show_category_menu() {
         -theme-str "${iconless_theme_str}" \
         -theme-str "entry { placeholder: \"📂 ${category}\";} ${rofi_position} ${r_override}" \
         -theme-str "${font_override}" \
-        -theme "$(rofi_resolve_theme clipboard)" \
+        -theme "$(rofi_resolve_theme clipboard)" -theme-str "${_rofi_opacity}" \
         -no-custom)
       ;;
     *)
@@ -424,7 +426,7 @@ show_category_menu() {
         -theme-str "${iconless_theme_str}" \
         -theme-str "entry { placeholder: \"📂 ${category}\";} ${rofi_position} ${r_override}" \
         -theme-str "${font_override}" \
-        -theme "$(rofi_resolve_theme "${style_type:-clipboard}")" \
+        -theme "$(rofi_resolve_theme "${style_type:-clipboard}")" -theme-str "${_rofi_opacity}" \
         -no-custom)
       ;;
   esac

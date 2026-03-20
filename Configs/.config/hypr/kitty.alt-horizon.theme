@@ -1,0 +1,35 @@
+$HOME/.config/kitty/theme.conf|killall -SIGUSR1 kitty
+
+# Blue Sky alt: Horizon
+# Dusk palette with sunset and twilight colors only.
+
+foreground              #FFF8F0
+background              #122D41
+selection_foreground    #122D41
+selection_background    #FFF8F0
+cursor                  #E9D9C7
+cursor_text_color       #060605
+url_color               #86B8FF
+
+active_tab_foreground   #122D41
+active_tab_background   #D9B7A2
+inactive_tab_foreground #A5BEDB
+inactive_tab_background #122D41
+tab_bar_background      #16364D
+
+color0      #294052
+color1      #F08A7A
+color2      #9BCFA4
+color3      #E8BE72
+color4      #7AA7FF
+color5      #C8A0FF
+color6      #6FD4E5
+color7      #F0E7E0
+color8      #57778F
+color9      #F7A08F
+color10     #B0DBB7
+color11     #F5CF89
+color12     #96BCFF
+color13     #D6B9FF
+color14     #8DE3EF
+color15     #FFF8F0

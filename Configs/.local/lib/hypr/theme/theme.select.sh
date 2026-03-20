@@ -46,9 +46,14 @@ selector_menu() {
   # ============================================================================
   # Layout Constants
   # ============================================================================
-  # Theme preview images are 256x256 pixels (scaled 2x for HiDPI)
-  local -r PREVIEW_IMAGE_SIZE=256
-  local -r HIDPI_SCALE=2
+  # Theme menu (-s) size controls. These are isolated from the fullscreen
+  # theme picker below so changing them only affects `theme.select.sh -s`.
+  local preview_image_size="${ROFI_THEME_MENU_PREVIEW_SIZE:-192}"
+  local hidpi_scale="${ROFI_THEME_MENU_HIDPI_SCALE:-2}"
+  local theme_menu_icon_size="${ROFI_THEME_MENU_ICON_SIZE:-20}"
+  local theme_menu_element_padding="${ROFI_THEME_MENU_ELEMENT_PADDING:-0em}"
+  local theme_menu_list_spacing="${ROFI_THEME_MENU_LIST_SPACING:-3em}"
+  local theme_menu_list_padding="${ROFI_THEME_MENU_LIST_PADDING:-1em}"
   # Maximum columns/rows to prevent overly dense layouts
   local -r MAX_COLUMNS=5
   local -r MIN_ROWS=2
@@ -58,6 +63,10 @@ selector_menu() {
   local -r VERTICAL_PADDING=16
   # Border multiplier relative to Hyprland rounding
   local -r BORDER_MULTIPLIER=5
+
+  [[ "${preview_image_size}" =~ ^[0-9]+$ ]] || preview_image_size=192
+  [[ "${hidpi_scale}" =~ ^[0-9]+$ ]] || hidpi_scale=2
+  [[ "${theme_menu_icon_size}" =~ ^[0-9]+$ ]] || theme_menu_icon_size=20
 
   #// set rofi scaling
   font_scale="${ROFI_THEME_SCALE}"
@@ -75,8 +84,8 @@ selector_menu() {
 
   elem_border=$((hypr_border * BORDER_MULTIPLIER))
   icon_border=$((elem_border - 5))
-  elm_width=$((PREVIEW_IMAGE_SIZE * HIDPI_SCALE))
-  elm_height=$((PREVIEW_IMAGE_SIZE * HIDPI_SCALE))
+  elm_width=$((preview_image_size * hidpi_scale))
+  elm_height=$((preview_image_size * hidpi_scale))
   max_avail_x=$((mon_x_res - (HORIZONTAL_PADDING * font_scale)))
   max_avail_y=$((mon_y_res - (VERTICAL_PADDING * font_scale)))
   col_count=$((max_avail_x / elm_width))
@@ -86,9 +95,9 @@ selector_menu() {
   [[ "${row_count}" -gt ${MAX_ROWS} ]] && row_count=${MAX_ROWS}
 
   r_override="window{width:100%;height:100%;fullscreen:true;}
-                listview{columns:${col_count};lines:${row_count};cycle:true;}
-                element{orientation:vertical;border-radius:${elem_border}px;}
-                element-icon{border-radius:${icon_border}px;size:30em;}
+                listview{columns:${col_count};lines:${row_count};cycle:true;spacing:${theme_menu_list_spacing};padding:${theme_menu_list_padding};}
+                element{orientation:vertical;border-radius:${elem_border}px;padding:${theme_menu_element_padding};}
+                element-icon{border-radius:${icon_border}px;size:${theme_menu_icon_size}em;}
                 element-text{enabled:false;}"
 
   #// launch rofi menu
@@ -211,7 +220,7 @@ case "$1" in
         [[ "${row_count}" -gt 4 ]] && row_count=4
         r_override="window{width:100%;height:100%;fullscreen:true;background-color:#00000003;}
                             listview{columns:${col_count};lines:${row_count};cycle:true;}
-                            element{border-radius:${elem_border}px;background-color:@background;}
+                            element{border-radius:${elem_border}px;background-color:@background-alpha;}
                             element-icon{size:16em;border-radius:${icon_border}px 0px 0px ${icon_border}px;}"
         thmbExtn="quad"
         ROFI_THEME_STYLE="selector"

@@ -201,7 +201,7 @@ Source of truth:
 | <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>U</kbd> | Next theme |
 | <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>N</kbd> | Font selector |
 | <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>R</kbd> | Theme Rofi style selector |
-| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>A</kbd> | Animation selector |
+| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>A</kbd> | Launcher style selector |
 
 ## Workspaces
 

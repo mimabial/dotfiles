@@ -5,6 +5,8 @@ if [[ "${HYPR_SHELL_INIT:-0}" -ne 1 ]]; then
 else
   export_hypr_config
 fi
+# shellcheck source=/dev/null
+source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
 
 # Set to true when going directly to a submenu, so we can exit directly
 BACK_TO_EXIT=false
@@ -69,6 +71,10 @@ menu() {
   rofi_args+=("-theme-str" "textbox-prompt-colon {border-radius: ${MENU_ELEMENT_RADIUS}px; str: \"$prompt\";}")
   rofi_args+=("-theme-str" "entry {placeholder: \"Hello ${USER^}!\";}")
   rofi_args+=("-theme-str" "element selected.normal {border-radius: ${MENU_ELEMENT_RADIUS}px;}")
+
+  local opacity_override
+  opacity_override="$(rofi_active_opacity_override)"
+  [[ -n "${opacity_override}" ]] && rofi_args+=("-theme-str" "${opacity_override}")
 
   # Handle preselection
   if [[ -n "$preselect" ]]; then
@@ -137,10 +143,6 @@ install() {
 
 install_and_launch() {
   present_terminal "echo 'Installing $1...'; sudo pacman -S --noconfirm $2 && setsid gtk-launch $3"
-}
-
-install_font() {
-  present_terminal "echo 'Installing $1...'; sudo pacman -S --noconfirm --needed $2 && sleep 2 && hyprshell fonts/font-set.sh '$3'"
 }
 
 get_aur_helper() {
@@ -263,8 +265,9 @@ show_toggle_menu() {
 }
 
 show_style_menu() {
-  case $(menu "Style" "󰸌  Theme\n  Wallpaper\n  Color Mode\n󰍜  Waybar Layout\n󰹑  Animations\n󰏘  Lock Layout\n  Workflow\n󰩨  Theme Menu Style\n  Font") in
+  case $(menu "Style" "󰸌  Theme\n  Wallpaper\n  Color Mode\n󰍜  Waybar Layout\n󰹑  Animations\n󰏘  Lock Layout\n  Workflow\n󰩨  Theme Menu Style\n󰀻  Launcher Style\n  Font") in
     *"Theme Menu Style"*) hyprshell theme.select.sh -s ;;
+    *"Launcher Style"*) hyprshell rofi/rofilaunch.sh -s ;;
     *Theme*) hyprshell theme/theme.select.sh ;;
     *Wallpaper*) hyprshell wallpaper/wallpaper.sh -SG ;;
     *"Color Mode"*) hyprshell wal.toggle.sh -m ;;
@@ -438,18 +441,13 @@ show_install_elixir_menu() {
 }
 
 show_install_font_menu() {
-  case $(menu "Install" "  Meslo LG Mono\n  Fira Code\n  Victor Mono\n  Bitstream Vera Mono") in
-    *Meslo*) install_font "Meslo LG Mono" "ttf-meslo-nerd" "MesloLGL Nerd Font" ;;
-    *Fira*) install_font "Fira Code" "ttf-firacode-nerd" "FiraCode Nerd Font" ;;
-    *Victor*) install_font "Victor Mono" "ttf-victor-mono-nerd" "VictorMono Nerd Font" ;;
-    *Bitstream*) install_font "Bitstream Vera Mono" "ttf-bitstream-vera-mono-nerd" "BitstromWera Nerd Font" ;;
-    *) show_install_menu ;;
-  esac
+  present_terminal --app-id org.tui.FontInstaller --title "Font Installer" -- hyprshell fonts/font-nerd-install.sh
 }
 
 show_remove_menu() {
-  case $(menu "Remove" "󰣇  Package") in
+  case $(menu "Remove" "󰣇  Package\n  Font") in
     *Package*) terminal hyprshell pkg/remove.sh ;;
+    *Font*) present_terminal --app-id org.tui.FontRemover --title "Font Remover" -- hyprshell fonts/font-nerd-remove.sh ;;
     *) show_main_menu ;;
   esac
 }
@@ -594,8 +592,12 @@ show_search_all_menu() {
   add "Style › Animations" "hyprshell animations.sh --select"
   add "Style › Lock Layout" "hyprshell hyprlock.sh --select"
   add "Style › Theme Menu Style" "hyprshell theme.select.sh -s"
+  add "Style › Launcher Style" "hyprshell rofi/rofilaunch.sh -s"
   add "Style › Workflow" "hyprshell util/workflows.sh --select"
   add "Style › Font" "show_font_menu"
+
+  # Apps
+  add "Apps › Game Launcher" "hyprshell gamelauncher.sh"
 
   # Setup (from show_setup_menu)
   add "Setup › Audio" "present_terminal --app-id org.tui.Wiremix --title Wiremix wiremix"
@@ -605,6 +607,10 @@ show_search_all_menu() {
   add "Setup › Monitors" "open_in_editor ~/.config/hypr/monitors.conf"
   add "Setup › Keybindings" "open_in_editor ~/.config/hypr/keybindings.conf"
   add "Setup › Input" "open_in_editor ~/.config/hypr/input.conf"
+
+  # Remove (from show_remove_menu)
+  add "Remove › Package" "terminal hyprshell pkg/remove.sh"
+  add "Remove › Font" "present_terminal --app-id org.tui.FontRemover --title 'Font Remover' -- hyprshell fonts/font-nerd-remove.sh"
 
   # System (from show_system_menu)
   add "System › Shutdown" "hyprshell util/state.sh clear 're*-required' && systemctl poweroff --no-wall"

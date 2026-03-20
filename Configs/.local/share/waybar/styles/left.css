@@ -1,4 +1,4 @@
-@import "./right.css";
+@import "./default.css";
 
 window#waybar {
   background: alpha(@bg, 0.8);

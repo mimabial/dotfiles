@@ -12,7 +12,11 @@ configuration {
 // Main //
 window {
     enabled:                     true;
-    fullscreen:                  false;
+    fullscreen:                  true;
+    width:                       100%;
+    height:                      100%;
+    x-offset:                    0px;
+    y-offset:                    0px;
     transparency:                "real";
     cursor:                      "default";
     spacing:                     0em;
@@ -106,4 +110,3 @@ element-text {
     background-color:            transparent;
     text-color:                  inherit;
 }
-

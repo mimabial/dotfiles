@@ -85,7 +85,7 @@ element {
     spacing:                     0em;
     padding:                     0em;
     cursor:                      pointer;
-    background-color:            @background;
+    background-color:            @background-alpha;
     text-color:                  @foreground;
 }
 element selected.normal {
@@ -106,4 +106,3 @@ element-text {
     background-color:            transparent;
     text-color:                  inherit;
 }
-

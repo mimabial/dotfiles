@@ -1,0 +1,35 @@
+$HOME/.config/kitty/theme.conf|killall -SIGUSR1 kitty
+
+# Blue Sky alt: Cirrus
+# Daylight/cloud palette with only sky-adjacent accents.
+
+foreground              #F5FAFF
+background              #122D41
+selection_foreground    #122D41
+selection_background    #F5FAFF
+cursor                  #D3DCE6
+cursor_text_color       #060605
+url_color               #6CB8FF
+
+active_tab_foreground   #122D41
+active_tab_background   #B8D9F6
+inactive_tab_foreground #9FC4E4
+inactive_tab_background #122D41
+tab_bar_background      #16364D
+
+color0      #294052
+color1      #F0A1AA
+color2      #9FD6B0
+color3      #F4D68A
+color4      #79BFFF
+color5      #D2B6FF
+color6      #8BE6F0
+color7      #E4F3FF
+color8      #57778F
+color9      #F6BAC1
+color10     #B7E5C4
+color11     #FCE3A6
+color12     #9DCEFF
+color13     #DFC8FF
+color14     #A8F0F6
+color15     #F5FAFF

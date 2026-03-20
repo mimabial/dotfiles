@@ -6,7 +6,7 @@
 echo "Loading installed fonts..."
 
 # Get installed nerd font packages
-installed_fonts=$(pacman -Qq | grep -E "nerd" | sort)
+installed_fonts=$(pacman -Qq | grep -E "^(ttf|otf)-.*nerd" | sort)
 
 if [[ -z "$installed_fonts" ]]; then
   echo "No Nerd Fonts installed."
@@ -39,7 +39,7 @@ if [[ -z "$font_size" && -f ~/.config/kitty/kitty.conf ]]; then
   font_size=$(grep -E "^font_size" ~/.config/kitty/kitty.conf | awk '{print $2}' | head -1)
 fi
 font_size=${font_size:-11}
-preview_size=$(awk "BEGIN {printf \"%.0f\", $font_size * 2.5}")
+preview_size=$(awk "BEGIN {printf \"%.0f\", $font_size * 3}")
 
 echo "Scanning configs for font usage..."
 
@@ -95,10 +95,8 @@ show_preview() {
   local force_redraw="${2:-false}"
 
   clear
-  echo -e "\033[1;31m=== Nerd Font Remover ===\033[0m"
   [[ -n "$search_filter" ]] && echo -e "\033[1;33mSearch: $search_filter\033[0m"
   [[ "$show_unused_only" == true ]] && echo -e "\033[1;35mFilter: Unused only\033[0m"
-  echo
 
   # Show list of fonts with current highlighted
   echo -e "\033[1mInstalled Fonts:\033[0m"
@@ -149,21 +147,19 @@ show_preview() {
 
   # Show rendered preview in Kitty (only if font changed or forced)
   if [[ "$TERM" == "xterm-kitty" ]] && command -v magick &>/dev/null; then
-    if [[ "$pkg" != "$previous_pkg" || "$force_redraw" == "true" ]]; then
+    {
       echo
       font_file=$(pacman -Ql "$pkg" 2>/dev/null | grep -E '\.(ttf|otf)$' | head -1 | awk '{print $2}')
 
       if [[ -f "$font_file" ]]; then
-        # Calculate preview dimensions
+        # Calculate preview dimensions — generate large, let kitty scale
         local term_cols=$(tput cols 2>/dev/null || echo 80)
-        local char_width=21
-        local char_height=27
-        local preview_width=$((term_cols * char_width / 3))
-        local preview_height=$((char_height * 3 + 6))
+        local preview_width=$((term_cols * 14))
+        local char_height=$((preview_size * 4 / 3))
+        local preview_height=$((char_height * 3 + 12))
 
         # Ensure minimum valid dimensions
-        [[ $preview_width -lt 100 ]] && preview_width=500
-        [[ $preview_height -lt 50 ]] && preview_height=100
+        [[ $preview_width -lt 800 ]] && preview_width=800
 
         # Calculate tight vertical spacing
         local line_spacing=$((char_height + 2))
@@ -184,12 +180,8 @@ show_preview() {
         fi
         rm -f "$temp_img"
 
-        previous_pkg="$pkg"
       fi
-    else
-      echo -e "\033[2m(Preview cached - same font)\033[0m"
-      echo
-    fi
+    }
   fi
 
   # Show font variants
@@ -283,12 +275,24 @@ apply_filter() {
   [[ ${#fonts[@]} -eq 0 ]] && fonts=("${all_fonts_backup[@]}")
 }
 
+# Redraw on terminal resize
+resized=false
+trap 'resized=true' WINCH
+
 # Main loop
 while true; do
+  resized=false
   show_preview $current
 
   # Read single key from terminal directly
-  IFS= read -rsn1 key </dev/tty
+  while true; do
+    if IFS= read -rsn1 -t 0.5 key </dev/tty; then
+      break
+    elif [[ "$resized" == true ]]; then
+      resized=false
+      show_preview $current
+    fi
+  done
 
   case "$key" in
     $'\x1b') # ESC sequence (arrow keys or ESC to clear filter)
@@ -319,7 +323,48 @@ while true; do
     $'\n' | '') # Enter - remove
       [[ ${#selected[@]} -eq 0 ]] && selected+=("${fonts[$current]}")
       selected=("${selected[@]## }")
-      break
+      if [[ ${#selected[@]} -gt 0 ]]; then
+        clear
+        echo -e "\033[1;31mRemoving ${#selected[@]} font(s):\033[0m"
+        for font in "${selected[@]}"; do
+          echo "  - $font"
+        done
+        echo
+        read -n 1 -s -r -p "Press Enter to confirm or any other key to cancel..." </dev/tty
+        echo
+        if [[ "$REPLY" == "" ]]; then
+          echo
+          if sudo pacman -Rns --noconfirm "${selected[@]}"; then
+            echo
+            echo "Refreshing font cache..."
+            old_tty_settings=$(stty -g)
+            stty -echo 2>/dev/null
+            read -t 0.001 -n 10000 discard </dev/tty 2>/dev/null || true
+            fc-cache -f
+            read -t 0.001 -n 10000 discard </dev/tty 2>/dev/null || true
+            stty "$old_tty_settings" 2>/dev/null
+            echo -e "\033[1;32m✓ Removed: ${selected[*]}\033[0m"
+          else
+            echo -e "\033[1;31m✗ Removal failed.\033[0m"
+          fi
+          sleep 1
+          # Refresh font list
+          installed_fonts=$(pacman -Qq | grep -E "^(ttf|otf)-.*nerd" | sort)
+          all_fonts_backup=()
+          while IFS= read -r font; do
+            [[ -n "$font" ]] && all_fonts_backup+=("$font")
+          done <<<"$installed_fonts"
+          apply_filter
+          [[ $current -ge ${#fonts[@]} ]] && current=$((${#fonts[@]} - 1))
+          [[ $current -lt 0 ]] && current=0
+        fi
+        selected=()
+        [[ ${#fonts[@]} -eq 0 ]] && {
+          clear
+          echo "No Nerd Fonts remaining."
+          exit 0
+        }
+      fi
       ;;
     ' ') # Space - toggle selection
       pkg="${fonts[$current]}"
@@ -391,44 +436,3 @@ while true; do
       ;;
   esac
 done
-
-clear
-
-# Remove selected fonts
-if [[ ${#selected[@]} -gt 0 ]]; then
-  echo -e "\033[1;31mRemoving ${#selected[@]} font(s):\033[0m"
-  for font in "${selected[@]}"; do
-    echo "  - $font"
-  done
-  echo
-
-  read -n 1 -s -r -p "Press Enter to confirm removal or Ctrl+C to cancel..."
-  echo
-  echo
-
-  if sudo pacman -Rns --noconfirm "${selected[@]}"; then
-    echo
-    echo "Refreshing font cache..."
-
-    # Disable echo during cache refresh to prevent escape sequences
-    old_tty_settings=$(stty -g)
-    stty -echo 2>/dev/null
-
-    # Flush input before and after
-    read -t 0.001 -n 10000 discard </dev/tty 2>/dev/null || true
-    fc-cache -f
-    read -t 0.001 -n 10000 discard </dev/tty 2>/dev/null || true
-
-    # Restore terminal settings
-    stty "$old_tty_settings" 2>/dev/null
-
-    echo "✓ Font removal complete!"
-    echo "  Removed: ${selected[*]}"
-  else
-    echo
-    echo "✗ Font removal cancelled or failed."
-    exit 1
-  fi
-else
-  echo "No fonts selected."
-fi

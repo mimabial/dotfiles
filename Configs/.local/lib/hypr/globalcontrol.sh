@@ -601,12 +601,16 @@ get_aurhlpr() {
 # State file paths (centralized definition)
 [[ -z "${STATE_DIR:-}" ]] && STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/hypr"
 readonly STATE_DIR
+export STATE_DIR
 [[ -z "${STATE_RC:-}" ]] && STATE_RC="${STATE_DIR}/staterc"
 readonly STATE_RC
+export STATE_RC
 [[ -z "${STATE_CONFIG:-}" ]] && STATE_CONFIG="${STATE_DIR}/config"
 readonly STATE_CONFIG
+export STATE_CONFIG
 [[ -z "${STATE_COLOR_VARIANT:-}" ]] && STATE_COLOR_VARIANT="${STATE_DIR}/color_variant"
 readonly STATE_COLOR_VARIANT
+export STATE_COLOR_VARIANT
 
 # Get a state variable value
 # Usage: state_get VARIABLE_NAME [default_value]

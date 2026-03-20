@@ -9,6 +9,7 @@ else
 fi
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
+_rofi_opacity="$(rofi_active_opacity_override)"
 
 # define paths and files
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}"
@@ -106,6 +107,7 @@ run_rofi() {
     -theme-str "${r_override}" \
     -theme-str "${rofi_position}" \
     -theme "${cliphist_style}" \
+    ${_rofi_opacity:+-theme-str "${_rofi_opacity}"} \
     "$@"
 }
 

@@ -23,6 +23,53 @@ rofi_font_override() {
   printf '* {font: "%s %s";}\n' "${font_name}" "${font_scale}"
 }
 
+rofi_normalize_launcher_style() {
+  local style_ref="${1:-style_1}"
+  [[ -z "${style_ref}" ]] && style_ref="style_1"
+  if [[ "${style_ref}" =~ ^[0-9]+$ ]]; then
+    printf 'style_%s\n' "${style_ref}"
+    return 0
+  fi
+  printf '%s\n' "${style_ref}"
+}
+
+rofi_normalize_gamelauncher_style() {
+  local style_ref="${1:-${ROFI_GAMELAUNCHER_STYLE:-gamelauncher_5}}"
+
+  case "${style_ref}" in
+    "" | steam_deck | 5)
+      printf 'gamelauncher_5\n'
+      ;;
+    [1-4])
+      printf 'gamelauncher_%s\n' "${style_ref}"
+      ;;
+    gamelauncher_[1-5])
+      printf '%s\n' "${style_ref}"
+      ;;
+    *)
+      printf '%s\n' "${style_ref}"
+      ;;
+  esac
+}
+
+rofi_theme_preview_asset() {
+  local theme_ref="$1"
+  local base_name="${theme_ref##*/}"
+  local asset_path=""
+
+  base_name="${base_name%.rasi}"
+  for asset_path in \
+    "$(rofi_resolve_asset "${base_name}.png" 2>/dev/null || true)" \
+    "$(rofi_resolve_asset "theme_${base_name}.png" 2>/dev/null || true)"
+  do
+    [[ -f "${asset_path}" ]] || continue
+    printf '%s\n' "${asset_path}"
+    return 0
+  done
+
+  return 1
+}
+
 rofi_default_border_radius() {
   local fallback="${1:-0}"
   local border="${hypr_border:-}"
@@ -158,6 +205,17 @@ rofi_wallpaper_width_override() {
     width_value="$(awk -v w="${width_value}" -v max="${max_width_em}" 'BEGIN { if (w > max) w = max; printf "%.2f", w }')"
   fi
   printf 'window { width: %sem; }\n' "${width_value}"
+}
+
+rofi_active_opacity_override() {
+  local opacity bg_color hex_alpha
+  opacity="$(hyprctl -j getoption decoration:active_opacity 2>/dev/null | jq -r '.float // empty' 2>/dev/null || true)"
+  [[ "${opacity}" =~ ^[0-9]+([.][0-9]+)?$ ]] || return 0
+  hex_alpha="$(awk -v o="${opacity}" 'BEGIN { v = int((o / 2) * 255 + 0.5); if (v > 255) v = 255; if (v < 0) v = 0; printf "%02X", v }')"
+  [[ "${hex_alpha}" == "FF" ]] && return 0
+  bg_color="$(grep -oP 'background:\s*\K#[0-9a-fA-F]{6}' "${HOME}/.config/rofi/colors.rasi" 2>/dev/null | head -1)"
+  [[ -n "${bg_color}" ]] || bg_color="#000000"
+  printf 'window { transparency: "real"; background-color: %s%s; }\n' "${bg_color}" "${hex_alpha}"
 }
 
 rofi_application_dir() {
