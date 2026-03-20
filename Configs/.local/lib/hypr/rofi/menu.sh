@@ -597,7 +597,6 @@ show_search_all_menu() {
   add "Style › Font" "show_font_menu"
 
   # Apps
-  add "Apps › Game Launcher" "hyprshell gamelauncher.sh"
 
   # Setup (from show_setup_menu)
   add "Setup › Audio" "present_terminal --app-id org.tui.Wiremix --title Wiremix wiremix"

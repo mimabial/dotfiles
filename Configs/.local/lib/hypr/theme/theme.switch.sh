@@ -352,25 +352,9 @@ fi
 #// wallpaper
 export -f pkg_installed
 
-[[ -d "$WALLPAPER_CURRENT_DIR" ]] && find -H "$WALLPAPER_CURRENT_DIR" -name "*.png" -exec sh -c '
-    for file; do
-        base=$(basename "$file" .png)
-        if pkg_installed "${base}"; then
-            "${LIB_DIR}/hypr/wallpaper/wallpaper.sh" --link --backend "${base}"
-        fi
-    done
-' sh {} + &
-
-wallpaper_target="${HYPR_THEME_DIR}/wall.set"
-wallpaper_path="$(
-  readlink -f -- "${wallpaper_target}" 2>/dev/null \
-    || realpath -- "${wallpaper_target}" 2>/dev/null \
-    || printf '%s' "${wallpaper_target}"
-)"
-
 apply_theme_wallpaper() {
   local -a wallpaper_args=(
-    -s "${wallpaper_path}"
+    --resume
     --global
     --notify-body "Theme: ${themeSet}"
   )
@@ -394,6 +378,17 @@ if [[ "${selected_color_mode}" -eq 0 ]]; then
 else
   apply_theme_wallpaper || exit 1
 fi
+
+# Update backend-specific wallpaper links after the primary wallpaper is set,
+# so the background processes don't race for the wallpaper lock.
+[[ -d "$WALLPAPER_CURRENT_DIR" ]] && find -H "$WALLPAPER_CURRENT_DIR" -name "*.png" -exec sh -c '
+    for file; do
+        base=$(basename "$file" .png)
+        if pkg_installed "${base}"; then
+            "${LIB_DIR}/hypr/wallpaper/wallpaper.sh" --link --backend "${base}"
+        fi
+    done
+' sh {} + &
 
 #// nvim sync (after wallpaper/colors so pywal theme reads correct colors)
 if [[ -x "${HYPR_LIB_DIR}/util/nvim-theme-sync.sh" ]]; then

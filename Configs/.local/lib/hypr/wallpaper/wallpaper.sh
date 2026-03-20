@@ -77,7 +77,7 @@ wallpaper_apply_backend() {
 
 wallpaper_action_emits_notification() {
   case "${wallpaper_setter_flag:-}" in
-    select | n | p | r | s)
+    select | n | p | r | resume | s)
       return 0
       ;;
   esac
@@ -135,7 +135,7 @@ wallpaper_notify_emit() {
 
 wallpaper_refresh_inventory_if_needed() {
   case "${wallpaper_setter_flag:-}" in
-    g | o | clean | link | s | start | select | "") return 0 ;;
+    g | o | clean | link | resume | s | start | select | "") return 0 ;;
   esac
   wallpaper_refresh_inventory_and_prune
 }
@@ -184,6 +184,23 @@ main() {
           exit 1
         fi
         get_hashmap "${wallpaper_path}"
+        apply_selected_wallpaper
+        ;;
+      resume)
+        Wall_Hash
+        current_wallpaper="$(wallpaper_resolve_path "${active_wallpaper_link}")"
+        found=false
+        for i in "${!wallList[@]}"; do
+          if [[ "${current_wallpaper}" == "${wallList[i]}" ]]; then
+            setIndex=$i
+            found=true
+            break
+          fi
+        done
+        if [[ "${found}" != true ]]; then
+          setIndex=0
+          print_log -sec "wallpaper" -warn "wall.set not in current theme, using first wallpaper"
+        fi
         apply_selected_wallpaper
         ;;
       start)
@@ -237,7 +254,7 @@ if [[ -z "${*}" ]]; then
   show_help
 fi
 
-LONGOPTS="link,global,select,json,clean-thumbs,next,previous,random,set:,start,backend:,get,output:,help,filetypes:,notify-body:"
+LONGOPTS="link,global,select,json,clean-thumbs,next,previous,random,resume,set:,start,backend:,get,output:,help,filetypes:,notify-body:"
 
 if ! PARSED=$(getopt --options GSjnprb:s:t:go:h --longoptions "${LONGOPTS}" --name "$0" -- "$@"); then
   exit 2
@@ -289,6 +306,10 @@ while true; do
       wallpaper_setter_flag=s
       wallpaper_path="${2}"
       shift 2
+      ;;
+    --resume)
+      wallpaper_setter_flag=resume
+      shift
       ;;
     --start)
       wallpaper_setter_flag=start

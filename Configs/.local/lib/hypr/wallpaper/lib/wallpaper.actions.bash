@@ -101,11 +101,8 @@ select_adjacent_wallpaper() {
   done
 
   if [[ "${found}" != true ]]; then
-    # Wallpaper not found (likely deleted) — fall back to first wallpaper of current theme
-    wallList=()
-    if wallpaper_theme_sources && Wall_List "${wallPathArray[@]}"; then
-      setIndex=0
-    fi
+    setIndex=0
+    print_log -sec "wallpaper" -warn "Current wallpaper not in theme list, resetting to first"
   fi
 
   apply_selected_wallpaper "${wallList[setIndex]}"

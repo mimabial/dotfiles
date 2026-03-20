@@ -10,7 +10,6 @@ $HOME/.config/waybar/theme.css
 @define-color border #98971a;
 @define-color border_alt #d79921;
 
-@define-color accent #fabd2f;
 @define-color accent #d79921;
 @define-color error @c1;
 @define-color hover #f2594b;

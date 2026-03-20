@@ -33,25 +33,6 @@ rofi_normalize_launcher_style() {
   printf '%s\n' "${style_ref}"
 }
 
-rofi_normalize_gamelauncher_style() {
-  local style_ref="${1:-${ROFI_GAMELAUNCHER_STYLE:-gamelauncher_5}}"
-
-  case "${style_ref}" in
-    "" | steam_deck | 5)
-      printf 'gamelauncher_5\n'
-      ;;
-    [1-4])
-      printf 'gamelauncher_%s\n' "${style_ref}"
-      ;;
-    gamelauncher_[1-5])
-      printf '%s\n' "${style_ref}"
-      ;;
-    *)
-      printf '%s\n' "${style_ref}"
-      ;;
-  esac
-}
-
 rofi_theme_preview_asset() {
   local theme_ref="$1"
   local base_name="${theme_ref##*/}"
