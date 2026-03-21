@@ -13,7 +13,7 @@ $HOME/.config/waybar/theme.css
 @define-color accent #D9C98A;
 @define-color error #376FAB;
 @define-color hover #9ac5e6;
-@define-color warning #57778f;
+@define-color warning #D9B7A2;
 
 @define-color workspace_active_bg #7CBDF4;
 @define-color workspace_active_br #C6DAEE;
@@ -28,7 +28,7 @@ $HOME/.config/waybar/theme.css
 @define-color c5 #D2B6FF;
 @define-color c6 #8BE6F0;
 @define-color c7 #CCE4FF;
-@define-color c8 #57778f;
+@define-color c8 #D3DCE6;
 @define-color c9 #B0DBB7;
 @define-color c10 #F6BAC1;
 @define-color c11 #FCE3A6;

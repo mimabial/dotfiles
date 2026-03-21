@@ -337,14 +337,14 @@ cat >>"${tmp_conf}" <<CONFIG
     foreground = "${fg_low_render}"
     frame_color = "${frame_low_render}"
     highlight = "${progress_fg}"
-    timeout = 2000
+    timeout = 2
 
 [urgency_normal]
     background = "${bg_normal_render}"
     foreground = "${fg_normal_render}"
     frame_color = "${frame_normal_render}"
     highlight = "${progress_fg}"
-    timeout = 2000
+    timeout = 2
 
 [urgency_critical]
     background = "${bg_critical_render}"
@@ -370,7 +370,7 @@ append_category_rule() {
     foreground = "${fg_category_render}"
     frame_color = "${color}"
     highlight = "${color}"
-    timeout = 2000
+    timeout = 2
 CONFIG
   done
 }

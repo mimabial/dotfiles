@@ -106,32 +106,34 @@ BEGIN {
 }
 my $json = do { local $/; <> };
 my $data = eval { $parser->decode($json) } || {};
-my @chips = ("coretemp-isa-0000","k10temp-pci-00c3","zenpower-pci-00c3");
+my @cpu_prefixes = qw(coretemp- k10temp- zenpower- cpu_thermal-);
+my $cpu_label_re = qr/^(?:Package\s+id|Tctl|Tdie|Tccd\d|CPU|Core\s+\d)/i;
 my @lines;
-for my $chip (@chips) {
-    next unless exists $data->{$chip} && ref $data->{$chip} eq "HASH";
+for my $chip (sort keys %$data) {
+    next unless ref $data->{$chip} eq "HASH";
+    my $is_cpu_chip = grep { index($chip, $_) == 0 } @cpu_prefixes;
     my $entries = $data->{$chip};
-    my @labels = keys %$entries;
     my (@packages, @others);
-    for my $label (@labels) {
-        if ($label =~ /^Package id\s+(\d+)/i) {
-            push @packages, [$1, $label];
+    for my $label (keys %$entries) {
+        next unless ref $entries->{$label} eq "HASH";
+        next if !$is_cpu_chip && $label !~ $cpu_label_re;
+        if ($label =~ /^Package\s+id\s+(\d+)/i) {
+            push @packages, [$1, $label, $entries->{$label}];
         } else {
-            push @others, $label;
+            push @others, [$label, $entries->{$label}];
         }
     }
-    @packages = map { $_->[1] } sort { $a->[0] <=> $b->[0] } @packages;
-    @others = sort @others;
-    for my $label (@packages, @others) {
-        my $obj = $entries->{$label};
+    @packages = sort { $a->[0] <=> $b->[0] } @packages;
+    @others = sort { $a->[0] cmp $b->[0] } @others;
+    for my $entry (@packages, @others) {
+        my ($label, $obj) = ref $entry->[2] ? ($entry->[1], $entry->[2]) : @$entry;
         next unless ref $obj eq "HASH";
-        my $temp;
         for my $k (keys %$obj) {
             next unless $k =~ /^temp\d+_input$/;
-            $temp = int($obj->{$k});
+            my $temp = int($obj->{$k});
+            push @lines, "$label: ${temp}°C";
             last;
         }
-        push @lines, "$label: ${temp}°C" if defined $temp;
     }
 }
 print join("\n", @lines);

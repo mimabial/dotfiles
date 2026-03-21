@@ -717,7 +717,9 @@ if [[ "${HYPR_WAL_CACHE_ENABLE}" -eq 1 ]]; then
     # the previous run also used wallpaper colors.
     if [[ "${allow_fast_path}" -eq 1 ]]; then
       print_log -sec "pywal16" -stat "cache" "current (fast-path)"
-      rm -f "${THEME_UPDATE_LOCK}"
+      if [[ "${THEME_UPDATE_LOCK_OWNED}" -eq 1 ]]; then
+        rm -f "${THEME_UPDATE_LOCK}"
+      fi
       exit 0
     fi
     wal_used_cache=1
@@ -1387,7 +1389,9 @@ wait_for_theming_jobs_when_async_disabled
 
 # Release the theme-update lock once Waybar files are settled.
 if [[ "${CACHE_ONLY}" -ne 1 ]]; then
-  rm -f "${THEME_UPDATE_LOCK}"
+  if [[ "${THEME_UPDATE_LOCK_OWNED}" -eq 1 ]]; then
+    rm -f "${THEME_UPDATE_LOCK}"
+  fi
 fi
 
 # post_updates writes KDE/kdeglobals settings.

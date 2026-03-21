@@ -84,11 +84,11 @@ theme_switch_reload_hypr_config() {
 theme_switch_restart_waybar() {
   local waybar_script="${LIB_DIR}/hypr/waybar/waybar.py"
   if [[ -x "${waybar_script}" ]]; then
-    "${waybar_script}" >/dev/null 2>&1 || true
+    "${waybar_script}" --restart-direct >/dev/null 2>&1 || true
     return 0
   fi
   if command -v hyprshell >/dev/null 2>&1; then
-    hyprshell waybar >/dev/null 2>&1 || true
+    hyprshell waybar --restart-direct >/dev/null 2>&1 || true
   fi
 }
 
