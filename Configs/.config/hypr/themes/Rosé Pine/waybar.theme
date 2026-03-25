@@ -2,23 +2,19 @@ $HOME/.config/waybar/theme.css
 
 @define-color bg #1f1d2e; /* surface */
 @define-color fg #ebbcba;
-@define-color bg_alt #26233a;
-@define-color fg_alt #ebbcba;
-@define-color bg_selected #26233a;
-@define-color fg_selected #f6c177;
+@define-color br #9ccfd8; /* overlay */
 
-@define-color border #9ccfd8; /* overlay */
-@define-color border_alt #31748f; /* iris */
+@define-color alt_bg #26233a;
+@define-color alt_fg #ebbcba;
+@define-color alt_br #31748f; /* iris */
 
-@define-color accent #31748f;
-@define-color error @c1;
-@define-color hover #eb6f92;
-@define-color warning #9ccfd8;
+@define-color act_bg #26233a;
+@define-color act_fg #9ccfd8;
+@define-color act_br #9ccfd8;
 
-@define-color workspace_active_bg #26233a;
-@define-color workspace_active_br #9ccfd8;
-@define-color workspace_active_fg #9ccfd8;
-@define-color workspace_hover_bg #191724; /* base */
+@define-color hvr_bg #191724;
+@define-color hvr_fg @fg;
+@define-color hvr_br #eb6f92;
 
 @define-color c0 #26233a;
 @define-color c1 #eb6f92; /* love */
@@ -36,3 +32,9 @@ $HOME/.config/waybar/theme.css
 @define-color c13 #c4a7e7;
 @define-color c14 #ebbcba; /* foam */
 @define-color c15 #e0def4;
+
+@define-color accent #31748f;
+@define-color info @c6;
+@define-color warning #9ccfd8;
+@define-color error @c1;
+@define-color success @c2;

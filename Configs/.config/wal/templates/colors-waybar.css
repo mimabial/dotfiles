@@ -23,33 +23,35 @@
 @define-color c15 {color15};
 
 /* Semantic colors */
-@define-color border {color4};
+@define-color border @fg;
 @define-color border_alt {color12};
 @define-color accent {color4};
-@define-color hover {color3};
+@define-color hover {color12};
 @define-color warning {color3};
-@define-color critical {color1};
+@define-color error {color1};
+@define-color success {color2};
+@define-color info {color6};
 
 /* Selected/active states */
-@define-color bg_selected {color4};
+@define-color bg_selected @accent;
 @define-color fg_selected {foreground};
-@define-color bg_alt {color8};
+@define-color alt_bg @accent;
 
 /* Extended semantic pairs */
-@define-color fg_alt @fg;
+@define-color alt_fg @fg;
 @define-color accent_bg @accent;
-@define-color accent_fg @accent;
+@define-color accent_fg @fg;
 @define-color warning_bg @warning;
-@define-color warning_fg @warning;
-@define-color error_bg @critical;
-@define-color error_fg @critical;
-@define-color info_bg @accent;
-@define-color info_fg @accent;
-@define-color success_bg @c2;
-@define-color success_fg @c2;
-@define-color neutral_bg @bg_alt;
+@define-color warning_fg @fg;
+@define-color error_bg @error;
+@define-color error_fg @fg;
+@define-color info_bg @info;
+@define-color info_fg @fg;
+@define-color success_bg @success;
+@define-color success_fg @fg;
+@define-color neutral_bg @alt_bg;
 @define-color neutral_fg @fg;
-@define-color secondary_bg @bg_alt;
+@define-color secondary_bg @alt_bg;
 @define-color secondary_fg @fg;
 @define-color highlight_bg @bg_selected;
 @define-color highlight_fg @fg_selected;
@@ -58,19 +60,24 @@
 @define-color menu_bg @bg;
 @define-color menu_fg @fg;
 @define-color menu_border @border;
-@define-color tooltip_bg @bg_alt;
+@define-color tooltip_bg @alt_bg;
 @define-color tooltip_fg @fg;
 @define-color tooltip_border @border;
-@define-color workspace_active_bg @bg_selected;
-@define-color workspace_active_fg @fg_selected;
-@define-color workspace_hover_bg @hover;
+
+@define-color act_br @hover;
+@define-color act_bg @accent;
+@define-color act_fg @fg_selected;
+@define-color hvr_bg @hvr_workspace_bg;
+@define-color hvr_fg @fg;
+@define-color hvr_br @hover;
+@define-color hvr_workspace_bg @hover;
 
 /* Named accents */
-@define-color gray @c8;
-@define-color gray_bright @c7;
-@define-color orange @c4;
-@define-color orange_bright @c12;
-@define-color purple @c5;
-@define-color purple_bright @c13;
-@define-color aqua @c6;
-@define-color aqua_bright @c14;
+@define-color gray @border;
+@define-color gray_bright @fg;
+@define-color orange @warning;
+@define-color orange_bright @warning;
+@define-color purple @accent;
+@define-color purple_bright @hover;
+@define-color aqua @info;
+@define-color aqua_bright @hover;

@@ -1,26 +1,21 @@
 $HOME/.config/waybar/theme.css
 
-/* Main colors */
 @define-color bg #1F1F28; /* sumiInk3 */
 @define-color fg #c8c8c8;
-@define-color bg_alt #2D4F67;
-@define-color fg_alt #DCD7BA;
-@define-color bg_selected #2D4F67;
-@define-color fg_selected #FFA066;
+@define-color br #6a9589; /* sumiInk4 */
 
-@define-color border #6a9589; /* sumiInk4 */
-@define-color border_alt #957fb8; /* springBlue */
+@define-color alt_bg #2D4F67;
+@define-color alt_fg #DCD7BA;
+@define-color alt_br #957fb8; /* springBlue */
 
-@define-color accent #6A9589;
-@define-color error @c1;
-@define-color hover #FF5D62; /* sumiInk4 */
-@define-color warning #938AA9; /* crystalBlue */
+@define-color act_bg #16161D;
+@define-color act_fg #FFA066;
+@define-color act_br #DCD7BA;
 
-@define-color workspace_active_bg #16161D;
-@define-color workspace_active_br #DCD7BA;
-@define-color workspace_active_fg #DCD7BA;
+@define-color hvr_bg #FF5D62;
+@define-color hvr_fg @fg;
+@define-color hvr_br #FF5D62;
 
-/* Standard color palette - base colors */
 @define-color c0 #16161D; /* roninYellow */
 @define-color c1 #C34043; /* autumnRed */
 @define-color c2 #76946A; /* autumnGreen */
@@ -29,8 +24,6 @@ $HOME/.config/waybar/theme.css
 @define-color c5 #957FB8; /* oniViolet */
 @define-color c6 #6A9589; /* waveAqua1 */
 @define-color c7 #C8C093; /* fujiGray */
-
-/* Standard color palette - bright/accent variants */
 @define-color c8 #727169;
 @define-color c9 #E82424; /* samuraiRed */
 @define-color c10 #98BB6C; /* autumnGreen */
@@ -39,3 +32,10 @@ $HOME/.config/waybar/theme.css
 @define-color c13 #938AA9; /* springViolet1 */
 @define-color c14 #7AA89F; /* waveAqua1 */
 @define-color c15 #DCD7BA; /* oldWhite */
+
+@define-color accent #6A9589;
+@define-color info @c6;
+@define-color warning #938AA9; /* crystalBlue */
+@define-color error @c1;
+@define-color success @c2;
+

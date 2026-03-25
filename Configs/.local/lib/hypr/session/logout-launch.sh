@@ -30,7 +30,11 @@ fi
 
 x_mon=$(hyprctl -j monitors | jq '.[] | select(.focused==true) | .width')
 y_mon=$(hyprctl -j monitors | jq '.[] | select(.focused==true) | .height')
-hypr_scale=$(hyprctl -j monitors | jq '.[] | select (.focused == true) | .scale' | sed 's/\.//')
+# Treat scale as fixed-point tenths so multi-decimal values like 1.25
+# stay in the same sizing range as the existing 1.0/1.5/2.0 behavior.
+hypr_scale=$(hyprctl -j monitors | jq '.[] | select(.focused == true) | (.scale * 10 | round)')
+[[ "${hypr_scale}" =~ ^[0-9]+$ ]] || hypr_scale=10
+(( hypr_scale > 0 )) || hypr_scale=10
 #// scale config layout and style
 
 case "${wlogout_style}" in
@@ -64,9 +68,9 @@ if [ -r "${wal_cache}/colors.json" ]; then
   wal_background="$(jq -r '.special.background // empty' "${wal_cache}/colors.json")"
 fi
 
-if [ -z "${wal_background}" ] && [ -r "${wal_cache}/colors.sh" ]; then
+if [ -z "${wal_background}" ] && [ -r "${wal_cache}/colors-shell.sh" ]; then
   # shellcheck disable=SC1090
-  source "${wal_cache}/colors.sh"
+  source "${wal_cache}/colors-shell.sh"
   wal_background="${background:-}"
 fi
 

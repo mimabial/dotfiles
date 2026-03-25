@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
+import fcntl
 import glob
 import json
 import os
 import sys
+from contextlib import contextmanager
 
 from waybar_shared import (
     CONFIG_JSONC,
@@ -14,9 +16,67 @@ from waybar_shared import (
     STATE_FILE,
     STYLE_DIRS,
     atomic_copy_file,
+    atomic_write_text,
     get_file_hash,
     logger,
 )
+
+STATE_LOCK_FILE = STATE_FILE.with_name(f".{STATE_FILE.name}.waybar.lock")
+
+
+@contextmanager
+def state_write_lock():
+    STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with open(STATE_LOCK_FILE, "a+") as lock_file:
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+
+
+def _load_state_lines():
+    if not STATE_FILE.exists():
+        return []
+
+    with open(STATE_FILE, "r") as file:
+        return [line.strip() for line in file if line.strip()]
+
+
+def _write_state_lines(lines):
+    if not lines:
+        atomic_write_text(STATE_FILE, "")
+        return
+    atomic_write_text(STATE_FILE, "\n".join(lines) + "\n")
+
+
+def _state_map_from_lines(lines):
+    state_map = {}
+    for line in lines:
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        state_map[key] = value
+    return state_map
+
+
+def _merge_state_lines(existing_lines, values):
+    merged_lines = []
+    seen_keys = set()
+    for line in existing_lines:
+        try:
+            current_key = line.split("=", 1)[0]
+            if current_key in values or current_key in seen_keys:
+                continue
+            merged_lines.append(line)
+            seen_keys.add(current_key)
+        except Exception:
+            merged_lines.append(line)
+
+    for key, value in values.items():
+        merged_lines.append(f"{key}={value}")
+
+    return merged_lines
 
 
 def find_layout_files():
@@ -84,38 +144,25 @@ def get_config_value(key, default=None):
 
 
 def set_state_value(key, value):
-    """Set or update a value in the state file, removing any duplicates."""
-    STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    """Set or update one value in the state file, removing duplicates atomically."""
+    return set_state_values({key: value})
 
-    if not STATE_FILE.exists():
-        with open(STATE_FILE, "w") as file:
-            file.write(f"{key}={value}\n")
+
+def set_state_values(values):
+    """Set or update multiple values in the state file in one locked atomic write."""
+    if not values:
         return True
 
-    existing_lines = []
-    seen_keys = set()
-    with open(STATE_FILE, "r") as file:
-        for line in file:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                current_key = line.split("=", 1)[0]
-                if current_key not in seen_keys and current_key != key:
-                    existing_lines.append(line)
-                    seen_keys.add(current_key)
-            except Exception:
-                existing_lines.append(line)
+    STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
 
-    existing_lines.append(f"{key}={value}")
-
-    with open(STATE_FILE, "w") as file:
-        file.write("\n".join(existing_lines) + "\n")
+    with state_write_lock():
+        existing_lines = _load_state_lines()
+        _write_state_lines(_merge_state_lines(existing_lines, values))
 
     return True
 
 
-def get_current_layout_from_config():
+def get_current_layout_from_config(persist_state=True):
     """Get the current layout from state, then recover from the generated config if needed."""
     logger.debug("Getting current layout")
 
@@ -146,8 +193,13 @@ def get_current_layout_from_config():
 
         layout = layouts[0]
         layout_name = os.path.basename(layout).replace(".jsonc", "")
-        set_state_value("WAYBAR_LAYOUT_PATH", layout)
-        set_state_value("WAYBAR_LAYOUT_NAME", layout_name)
+        if persist_state:
+            set_state_values(
+                {
+                    "WAYBAR_LAYOUT_PATH": layout,
+                    "WAYBAR_LAYOUT_NAME": layout_name,
+                }
+            )
 
         atomic_copy_file(layout, CONFIG_JSONC)
         logger.debug(f"Created config.jsonc with first layout: {layout}")
@@ -158,15 +210,25 @@ def get_current_layout_from_config():
         if get_file_hash(layout_file) == config_hash:
             logger.debug(f"Found current layout by hash: {layout_file}")
             layout_name = os.path.basename(layout_file).replace(".jsonc", "")
-            set_state_value("WAYBAR_LAYOUT_PATH", layout_file)
-            set_state_value("WAYBAR_LAYOUT_NAME", layout_name)
+            if persist_state:
+                set_state_values(
+                    {
+                        "WAYBAR_LAYOUT_PATH": layout_file,
+                        "WAYBAR_LAYOUT_NAME": layout_name,
+                    }
+                )
             return layout_file
 
     logger.debug("No current layout found by hash comparison, using first layout")
     layout = layouts[0]
     layout_name = os.path.basename(layout).replace(".jsonc", "")
-    set_state_value("WAYBAR_LAYOUT_PATH", layout)
-    set_state_value("WAYBAR_LAYOUT_NAME", layout_name)
+    if persist_state:
+        set_state_values(
+            {
+                "WAYBAR_LAYOUT_PATH": layout,
+                "WAYBAR_LAYOUT_NAME": layout_name,
+            }
+        )
     atomic_copy_file(layout, CONFIG_JSONC)
     logger.debug(f"Updated config.jsonc with layout: {layout}")
     return layout
@@ -178,60 +240,48 @@ def ensure_state_file():
 
     logger.debug(f"Ensuring state file exists at: {STATE_FILE}")
 
-    if not STATE_FILE.exists():
-        logger.debug("State file does not exist, creating it")
-        current_layout = get_current_layout_from_config()
-        layout_name = (
-            os.path.basename(current_layout).replace(".jsonc", "")
-            if current_layout
-            else ""
-        )
-        style_path = resolve_style_path(current_layout) if current_layout else ""
+    with state_write_lock():
+        lines = _load_state_lines()
+        state_map = _state_map_from_lines(lines)
 
-        with open(STATE_FILE, "w") as file:
-            if current_layout:
-                file.write(f"WAYBAR_LAYOUT_PATH={current_layout}\n")
-                file.write(f"WAYBAR_LAYOUT_NAME={layout_name}\n")
-                file.write(f"WAYBAR_STYLE_PATH={style_path}\n")
-                logger.debug(f"Created state file with layout: {current_layout}")
-            else:
-                logger.warning("No layout found to write to state file")
-        return
+        layout_path_value = state_map.get("WAYBAR_LAYOUT_PATH", "")
+        layout_name_value = state_map.get("WAYBAR_LAYOUT_NAME", "")
+        style_path_value = state_map.get("WAYBAR_STYLE_PATH", "")
 
-    with open(STATE_FILE, "r") as file:
-        lines = file.readlines()
+        layout_path_exists = bool(layout_path_value)
+        layout_name_exists = bool(layout_name_value)
+        style_path_exists = bool(style_path_value)
+        style_path_invalid = bool(style_path_value) and not os.path.exists(style_path_value)
 
-    layout_path_exists = any(line.startswith("WAYBAR_LAYOUT_PATH=") for line in lines)
-    layout_name_exists = any(line.startswith("WAYBAR_LAYOUT_NAME=") for line in lines)
-    style_path_exists = any(line.startswith("WAYBAR_STYLE_PATH=") for line in lines)
-    style_path_value = get_state_value("WAYBAR_STYLE_PATH")
-    style_path_invalid = bool(style_path_value) and not os.path.exists(style_path_value)
+        if STATE_FILE.exists() and layout_path_exists and layout_name_exists and style_path_exists and not style_path_invalid:
+            return
 
-    if (
-        not layout_path_exists
-        or not layout_name_exists
-        or not style_path_exists
-        or style_path_invalid
-    ):
-        logger.debug("State file is missing entries, updating it")
-        current_layout = get_current_layout_from_config()
-        if current_layout:
-            layout_name = os.path.basename(current_layout).replace(".jsonc", "")
-            style_path = resolve_style_path(current_layout)
+        logger.debug("State file is missing entries, initializing or updating it")
+        current_layout = get_current_layout_from_config(persist_state=False)
+        if not current_layout:
+            logger.warning("No layout found to write to state file")
+            if not STATE_FILE.exists():
+                _write_state_lines(lines)
+            return
 
-            with open(STATE_FILE, "a") as file:
-                if not layout_path_exists:
-                    file.write(f"WAYBAR_LAYOUT_PATH={current_layout}\n")
-                    logger.debug(f"Added WAYBAR_LAYOUT_PATH={current_layout}")
-                if not layout_name_exists:
-                    file.write(f"WAYBAR_LAYOUT_NAME={layout_name}\n")
-                    logger.debug(f"Added WAYBAR_LAYOUT_NAME={layout_name}")
-                if not style_path_exists:
-                    file.write(f"WAYBAR_STYLE_PATH={style_path}\n")
-                    logger.debug(f"Added WAYBAR_STYLE_PATH={style_path}")
+        layout_name = os.path.basename(current_layout).replace(".jsonc", "")
+        style_path = resolve_style_path(current_layout)
+        updates = {}
+        if not layout_path_exists:
+            updates["WAYBAR_LAYOUT_PATH"] = current_layout
+            logger.debug(f"Added WAYBAR_LAYOUT_PATH={current_layout}")
+        if not layout_name_exists:
+            updates["WAYBAR_LAYOUT_NAME"] = layout_name
+            logger.debug(f"Added WAYBAR_LAYOUT_NAME={layout_name}")
+        if not style_path_exists or style_path_invalid:
+            updates["WAYBAR_STYLE_PATH"] = style_path
             if style_path_invalid:
-                set_state_value("WAYBAR_STYLE_PATH", style_path)
                 logger.debug(f"Replaced stale WAYBAR_STYLE_PATH={style_path}")
+            else:
+                logger.debug(f"Added WAYBAR_STYLE_PATH={style_path}")
+
+        if updates or not STATE_FILE.exists():
+            _write_state_lines(_merge_state_lines(lines, updates))
 
 
 def resolve_style_path(layout_path):
@@ -341,7 +391,7 @@ def synchronize_layout_state(skip_layout_sync=False):
                         break
 
                 if found_layout:
-                    set_state_value("WAYBAR_LAYOUT_PATH", found_layout)
+                    set_state_values({"WAYBAR_LAYOUT_PATH": found_layout})
                     CONFIG_JSONC.parent.mkdir(parents=True, exist_ok=True)
 
                     if CONFIG_JSONC.exists():
@@ -360,8 +410,12 @@ def synchronize_layout_state(skip_layout_sync=False):
                     if layouts:
                         first_layout = layouts[0]
                         first_layout_name = os.path.basename(first_layout).replace(".jsonc", "")
-                        set_state_value("WAYBAR_LAYOUT_PATH", first_layout)
-                        set_state_value("WAYBAR_LAYOUT_NAME", first_layout_name)
+                        set_state_values(
+                            {
+                                "WAYBAR_LAYOUT_PATH": first_layout,
+                                "WAYBAR_LAYOUT_NAME": first_layout_name,
+                            }
+                        )
                         CONFIG_JSONC.parent.mkdir(parents=True, exist_ok=True)
                         atomic_copy_file(first_layout, CONFIG_JSONC)
                         logger.debug(f"Used first available layout: {first_layout}")

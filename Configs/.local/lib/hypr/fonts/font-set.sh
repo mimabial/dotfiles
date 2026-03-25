@@ -98,22 +98,32 @@ update_or_add_var() {
   fi
 }
 
+sed_escape_replacement() {
+  local value="$1"
+  value="${value//\\/\\\\}"
+  value="${value//&/\\&}"
+  value="${value//|/\\|}"
+  printf '%s' "${value}"
+}
+
+FONT_NAME_SED="$(sed_escape_replacement "${FONT_NAME}")"
+
 if [[ -f "$VARIABLES_FILE" ]]; then
   echo "📝 Updating Hypr variables..."
 
   # Update $MONOSPACE_FONT
   if grep -q '^\$MONOSPACE_FONT=' "$VARIABLES_FILE"; then
-    sed -i "s|^\$MONOSPACE_FONT=.*|\$MONOSPACE_FONT=$FONT_NAME|" "$VARIABLES_FILE"
+    sed -i "s|^\$MONOSPACE_FONT=.*|\$MONOSPACE_FONT=${FONT_NAME_SED}|" "$VARIABLES_FILE"
     UPDATED+=("Hypr \$MONOSPACE_FONT variable")
   fi
 
   # Also update UI fonts (Waybar/Rofi) for consistency
   if grep -q '^\$BAR_FONT=' "$VARIABLES_FILE"; then
-    sed -i "s|^\$BAR_FONT=.*|\$BAR_FONT=$FONT_NAME|" "$VARIABLES_FILE"
+    sed -i "s|^\$BAR_FONT=.*|\$BAR_FONT=${FONT_NAME_SED}|" "$VARIABLES_FILE"
     UPDATED+=("Hypr \$BAR_FONT variable")
   fi
   if grep -q '^\$MENU_FONT=' "$VARIABLES_FILE"; then
-    sed -i "s|^\$MENU_FONT=.*|\$MENU_FONT=$FONT_NAME|" "$VARIABLES_FILE"
+    sed -i "s|^\$MENU_FONT=.*|\$MENU_FONT=${FONT_NAME_SED}|" "$VARIABLES_FILE"
     UPDATED+=("Hypr \$MENU_FONT variable")
   fi
 
@@ -121,7 +131,7 @@ if [[ -f "$VARIABLES_FILE" ]]; then
   THEME_CONF="${HYPR_CONFIG_HOME:-$HOME/.config/hypr}/themes/theme.conf"
   if [[ -f "$THEME_CONF" ]]; then
     if grep -q '^\$MONOSPACE_FONT=' "$THEME_CONF"; then
-      sed -i "s|^\$MONOSPACE_FONT=.*|\$MONOSPACE_FONT=$FONT_NAME|" "$THEME_CONF"
+      sed -i "s|^\$MONOSPACE_FONT=.*|\$MONOSPACE_FONT=${FONT_NAME_SED}|" "$THEME_CONF"
       UPDATED+=("Theme config \$MONOSPACE_FONT")
     fi
   fi
@@ -147,7 +157,7 @@ hyprshell fonts/font-sync.sh \
 ALACRITTY_CONF="$HOME/.config/alacritty/alacritty.toml"
 if [[ -f "$ALACRITTY_CONF" ]]; then
   echo "📝 Updating Alacritty..."
-  sed -i "s|family = \".*\"|family = \"$FONT_NAME\"|g" "$ALACRITTY_CONF"
+  sed -i "s|family = \".*\"|family = \"${FONT_NAME_SED}\"|g" "$ALACRITTY_CONF"
   UPDATED+=("Alacritty terminal")
 fi
 
@@ -155,7 +165,7 @@ fi
 KITTY_CONF="$HOME/.config/kitty/kitty.conf"
 if [[ -f "$KITTY_CONF" ]]; then
   echo "📝 Updating Kitty..."
-  sed -i "s|^font_family .*|font_family $FONT_NAME|g" "$KITTY_CONF"
+  sed -i "s|^font_family .*|font_family ${FONT_NAME_SED}|g" "$KITTY_CONF"
 
   # Hot reload Kitty instances
   if pgrep -x kitty >/dev/null; then
@@ -163,20 +173,6 @@ if [[ -f "$KITTY_CONF" ]]; then
   fi
 
   UPDATED+=("Kitty terminal")
-fi
-
-# Ghostty (if installed)
-GHOSTTY_CONF="$HOME/.config/ghostty/config"
-if [[ -f "$GHOSTTY_CONF" ]]; then
-  echo "📝 Updating Ghostty..."
-  sed -i "s|font-family = \".*\"|font-family = \"$FONT_NAME\"|g" "$GHOSTTY_CONF"
-
-  # Hot reload Ghostty instances
-  if pgrep -x ghostty >/dev/null; then
-    pkill -SIGUSR2 ghostty 2>/dev/null && echo "   ↳ Reloaded Ghostty instances"
-  fi
-
-  UPDATED+=("Ghostty terminal")
 fi
 
 # ============================================================================
@@ -195,7 +191,7 @@ if [[ -f "$FONTCONFIG_FILE" ]]; then
       "$FONTCONFIG_FILE" 2>/dev/null && UPDATED+=("Fontconfig monospace alias")
   else
     # Fallback: sed-based XML editing (fragile but works for simple cases)
-    sed -i "/<test qual=\"any\" name=\"family\">/,/<\/edit>/ s|<string>.*</string>|<string>$FONT_NAME</string>|" "$FONTCONFIG_FILE"
+    sed -i "/<test qual=\"any\" name=\"family\">/,/<\\/edit>/ s|<string>.*</string>|<string>${FONT_NAME_SED}</string>|" "$FONTCONFIG_FILE"
     UPDATED+=("Fontconfig monospace alias (via sed)")
   fi
 fi

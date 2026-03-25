@@ -71,25 +71,34 @@ get_queries_list() {
 }
 
 write_to_top() {
-  file=$1
-  content=$2
+  local file="$1"
+  local content="$2"
+  local file_dir=""
+  local tmp_file=""
+  local tmp_recent=""
+  file_dir="$(dirname "${file}")"
+  mkdir -p "${file_dir}"
   # Only save valid keys from SITES to recent.sites
   if [[ "$file" == *"recent.sites" ]]; then
+    local key
     key="$(awk -F '|' '{print $1}' <<<"$content" | xargs)"
     if [[ -n "${SITES[$key]}" ]]; then
-      grep -vx "$key" "$file" 2>/dev/null >temp_recent || true
+      tmp_recent="$(mktemp "${file_dir}/.recent.XXXXXX")"
+      grep -vx "$key" "$file" 2>/dev/null >"${tmp_recent}" || true
       printf "%s\n" "$key" >"$file"
-      cat temp_recent >>"$file"
-      rm -f temp_recent
+      cat "${tmp_recent}" >>"$file"
+      rm -f "${tmp_recent}"
     fi
   else
     # Prepend the new line to the file
+    tmp_file="$(mktemp "${file_dir}/.websearch.XXXXXX")"
     {
       printf "%s\n" "$content"
       cat "$file" 2>/dev/null
-    } >temp && mv temp "$file"
+    } >"${tmp_file}" && mv "${tmp_file}" "$file"
     # Remove duplicates and empty lines, keeping the first occurrence (most recent)
-    awk 'NF' "$file" | awk '!seen[$0]++' >temp && mv temp "$file"
+    tmp_file="$(mktemp "${file_dir}/.websearch.XXXXXX")"
+    awk 'NF' "$file" | awk '!seen[$0]++' >"${tmp_file}" && mv "${tmp_file}" "$file"
   fi
 }
 

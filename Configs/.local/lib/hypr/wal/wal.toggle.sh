@@ -47,57 +47,7 @@ select_color_mode_with_rofi() {
   width_override=""
   margin_px="${ROFI_PYWAL16_MARGIN_PX:-${ROFI_PYWAL16_MARGIN:-0}}"
   [[ "${margin_px}" =~ ^[0-9]+$ ]] || margin_px=0
-  mon_data="$(hyprctl -j monitors 2>/dev/null || true)"
-  mon_width="$(jq -r '.[] | select(.focused==true) | .width' <<<"${mon_data}" 2>/dev/null | head -1)"
-  mon_scale="$(jq -r '.[] | select(.focused==true) | .scale' <<<"${mon_data}" 2>/dev/null | head -1)"
-  mon_width_logical=""
-  if [[ "${mon_width}" =~ ^[0-9]+$ ]]; then
-    if [[ "${mon_scale}" =~ ^[0-9]+([.][0-9]+)?$ ]] && awk "BEGIN { exit !(${mon_scale} > 0) }"; then
-      mon_width_logical="$(awk -v w="${mon_width}" -v sc="${mon_scale}" 'BEGIN { printf "%.2f", (w / sc) }')"
-    else
-      mon_width_logical="${mon_width}"
-    fi
-  fi
-  wall_cache_root="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wallpaper/current"
-  wall_image="${wall_cache_root}/wall.thmb"
-
-  if [[ -f "${wall_image}" ]] && [[ -f "${rofi_theme_file}" ]] && command -v magick >/dev/null 2>&1; then
-    read -r theme_height theme_height_unit < <(
-      awk '
-        /^[[:space:]]*window[[:space:]]*\{/ {in_window=1; next}
-        in_window && /^[[:space:]]*}/ {exit}
-        in_window && /^[[:space:]]*height[[:space:]]*:/ {
-          if (match($0, /:[[:space:]]*([0-9]+([.][0-9]+)?)([a-z%]*)/, m)) {
-            print m[1], m[3]
-          }
-          exit
-        }
-      ' "${rofi_theme_file}"
-    )
-
-    if [[ "${theme_height_unit}" == "em" || "${theme_height_unit}" == "px" ]]; then
-      read -r img_w img_h < <(magick identify -format "%w %h" "${wall_image}" 2>/dev/null || true)
-      if [[ "${img_w}" =~ ^[0-9]+$ && "${img_h}" =~ ^[0-9]+$ && "${img_h}" -gt 0 ]]; then
-        ratio="$(awk -v w="${img_w}" -v h="${img_h}" 'BEGIN { if (h <= 0) { print 0 } else { printf "%.6f", (w / h) } }')"
-        if [[ "${theme_height_unit}" == "px" ]]; then
-          width_value="$(awk -v h="${theme_height}" -v r="${ratio}" 'BEGIN { printf "%.2f", (h * r) }')"
-          if [[ -n "${mon_width_logical}" ]] && awk -v w="${mon_width_logical}" -v m="${margin_px}" 'BEGIN { exit !(w > (m * 2)) }'; then
-            max_width_px="$(awk -v w="${mon_width_logical}" -v m="${margin_px}" 'BEGIN { val = w - (m * 2); if (val < 0) val = 0; printf "%.2f", val }')"
-            width_value="$(awk -v w="${width_value}" -v max="${max_width_px}" 'BEGIN { if (w > max) w = max; printf "%.2f", w }')"
-          fi
-          width_override="window { width: ${width_value}px; }"
-        else
-          width_value="$(awk -v h="${theme_height}" -v r="${ratio}" 'BEGIN { printf "%.2f", (h * r) }')"
-          if [[ -n "${mon_width_logical}" && "${font_scale}" =~ ^[0-9]+$ && "${font_scale}" -gt 0 ]]; then
-            font_px="$(awk -v fs="${font_scale}" 'BEGIN { printf "%.3f", (fs * 96 / 72) }')"
-            max_width_em="$(awk -v w="${mon_width_logical}" -v m="${margin_px}" -v fp="${font_px}" 'BEGIN { val = (w - (m * 2)) / fp; if (val < 0) val = 0; printf "%.2f", val }')"
-            width_value="$(awk -v w="${width_value}" -v max="${max_width_em}" 'BEGIN { if (w > max) w = max; printf "%.2f", w }')"
-          fi
-          width_override="window { width: ${width_value}em; }"
-        fi
-      fi
-    fi
-  fi
+  width_override="$(rofi_wallpaper_width_override "${rofi_theme_file}" "${font_name}" "${font_scale}" "${margin_px}" 2>/dev/null || true)"
   width_override_args=()
   if [[ -n "${width_override}" ]]; then
     width_override_args=(-theme-str "${width_override}")
@@ -240,6 +190,7 @@ apply_color_mode() {
 
   if [ "${target_color_mode}" -eq 0 ]; then
     "${LIB_DIR}/hypr/theme/color.set.sh"
+    [[ -x "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" ]] && "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" >/dev/null 2>&1 &
     return 0
   fi
 

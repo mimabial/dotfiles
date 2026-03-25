@@ -340,7 +340,7 @@ de_inject_fields() {
 				debug "injector replacing '%i': '$arg' -> '$rarg'"
 				exec_usep=${exec_usep}${exec_usep:+$USEP}${rarg}
 			else
-				debug "injector removed '$rarg'"
+				debug "injector removed '$arg'"
 			fi
 			;;
 		# name field

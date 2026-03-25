@@ -158,11 +158,12 @@ esac
 
 #// wallpaper sizing (match window width to wallpaper aspect ratio)
 rofi_theme_file="${rofi_config}"
+font_name="$(rofi_effective_font_name "${ROFI_LAUNCH_FONT:-$ROFI_FONT}")"
 
 width_override=""
 margin_px="${ROFI_LAUNCH_MARGIN_PX:-${ROFI_LAUNCH_MARGIN:-0}}"
 [[ "${margin_px}" =~ ^[0-9]+$ ]] || margin_px=0
-width_override="$(rofi_wallpaper_width_override "${rofi_theme_file}" "${font_scale}" "${margin_px}")"
+width_override="$(rofi_wallpaper_width_override "${rofi_theme_file}" "${font_name}" "${font_scale}" "${margin_px}")"
 
 width_override_args=()
 if [[ -n "${width_override}" ]]; then
@@ -183,7 +184,6 @@ fi
 
 r_override="window {border: ${hypr_width}px; border-radius: ${hypr_border}px;} inputbar {border-radius: ${hypr_border}px;} listbox {border-radius: ${hypr_border}px;} element {border-radius: ${elem_border}px;} button {border-radius: ${elem_border}px;}"
 
-font_name="$(rofi_effective_font_name "${ROFI_LAUNCH_FONT:-$ROFI_FONT}")"
 font_override="$(rofi_font_override "${font_name}" "${font_scale}")"
 i_override="$(rofi_icon_theme_override)"
 

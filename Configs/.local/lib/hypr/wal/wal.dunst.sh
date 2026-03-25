@@ -44,12 +44,12 @@ if [[ "${mode}" == "reload-only" ]]; then
   exit 0
 fi
 
-if [[ ! -f "${WAL_CACHE}/colors.sh" ]]; then
+if [[ ! -f "${WAL_CACHE}/colors-shell.sh" ]]; then
   exit 0
 fi
 
 # shellcheck disable=SC1090
-source "${WAL_CACHE}/colors.sh"
+source "${WAL_CACHE}/colors-shell.sh"
 
 get_hypr_var() {
   local key="$1"
@@ -281,7 +281,7 @@ frame_category_music_render="$(with_alpha "${accent_purple}" "55")"
 frame_category_volume_render="$(with_alpha "${gray}" "55")"
 
 input_hash="$({
-  md5sum "${WAL_CACHE}/colors.sh" 2>/dev/null || true
+  md5sum "${WAL_CACHE}/colors-shell.sh" 2>/dev/null || true
   [[ -f "${DUNST_BASE_CONF}" ]] && md5sum "${DUNST_BASE_CONF}" 2>/dev/null || true
   [[ -f "${DUNST_THEME}" ]] && md5sum "${DUNST_THEME}" 2>/dev/null || true
   printf '%s\n' "${icon_theme}" "${hypr_border}" "${gaps_in}" "${border_size}" "${origin}" "${offset_x}" "${offset_y}" \

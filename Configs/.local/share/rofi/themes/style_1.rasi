@@ -38,7 +38,7 @@ window {
     padding:                     0em;
     border-color:                @border;
     background-color:            @background;
-    background-image:            url("~/.cache/hypr/wallpaper/current/wall.thmb", height);
+    background-image:            url("~/.cache/hypr/wallpaper/current/wall.set.png", height);
 }
 mainbox {
     enabled:                     true;

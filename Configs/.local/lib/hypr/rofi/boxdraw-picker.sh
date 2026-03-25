@@ -18,11 +18,15 @@ recent_data="${cache_dir}/landing/show_boxdraw.recent"
 
 save_recent_entry() {
   local boxdraw_line="$1"
+  local recent_dir=""
+  local tmp_file=""
   mkdir -p "$(dirname "${recent_data}")"
+  recent_dir="$(dirname "${recent_data}")"
+  tmp_file="$(mktemp "${recent_dir}/.boxdraw.XXXXXX")"
   {
     echo "${boxdraw_line}"
     cat "${recent_data}" 2>/dev/null
-  } | awk '!seen[$0]++' | head -50 >temp && mv temp "${recent_data}"
+  } | awk '!seen[$0]++' | head -50 >"${tmp_file}" && mv "${tmp_file}" "${recent_data}"
 }
 
 setup_rofi_config() {

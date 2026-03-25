@@ -18,7 +18,6 @@ declare -gA COLOR_LINKS=(
   ["colors--small-rmpc.ron"]="${HOME}/.config/rmpc/themes/pywal16-small.ron"
   ["colors-wal.vim"]="${HOME}/.vim/colors/pywal16.vim"
   ["colors-tridactyl.css"]="${HOME}/.config/tridactyl/themes/pywal.css"
-  ["colors-qutebrowser.py"]="${HOME}/.config/qutebrowser/pywal-colors.py"
 )
 
 select_palette_source() {
@@ -65,6 +64,57 @@ select_palette_source() {
   print_log -sec "pywal16" -stat "generate" "${PALETTE_LABEL} (${resolved_color_variant})"
 }
 
+resolve_pywal_setting() {
+  local setting="$1"
+  local variant="${2:-${resolved_color_variant:-dark}}"
+  local default_value
+  local variant_upper="${variant^^}"
+  local variant_var="PYWAL_${variant_upper}_${setting}"
+  local global_var="PYWAL_${setting}"
+  default_value="$(pywal_default_setting "${setting}" "${variant}")"
+  local resolved_value="${!variant_var:-${!global_var:-${default_value}}}"
+  printf '%s' "${resolved_value}"
+}
+
+pywal_default_setting() {
+  local setting="$1"
+  local variant="${2:-dark}"
+
+  case "${variant}:${setting}" in
+    light:BACKEND) printf '%s' "colorthief" ;;
+    light:BACKEND_FALLBACKS) printf '%s' "haishoku colorthief colorz" ;;
+    light:CONTRAST) printf '%s' "2.2" ;;
+    light:SATURATE) printf '%s' "0.6" ;;
+    light:COLS16) printf '%s' "lighten" ;;
+    dark:BACKEND) printf '%s' "colorthief" ;;
+    dark:BACKEND_FALLBACKS) printf '%s' "wal haishoku colorz" ;;
+    dark:CONTRAST) printf '%s' "3.0" ;;
+    dark:SATURATE) printf '%s' "0.4" ;;
+    dark:COLS16) printf '%s' "lighten" ;;
+    light:*) pywal_default_setting "${setting}" "dark" ;;
+    dark:*) return 1 ;;
+    *) pywal_default_setting "${setting}" "dark" ;;
+  esac
+}
+
+compute_legibility_suffix() {
+  # Build a cache-key suffix from the effective legibility settings so
+  # variant-specific pywal defaults produce distinct cache entries.
+  local variant="${1:-${resolved_color_variant:-dark}}"
+  local contrast
+  local saturate
+  local cols16
+  contrast="$(resolve_pywal_setting "CONTRAST" "${variant}")"
+  saturate="$(resolve_pywal_setting "SATURATE" "${variant}")"
+  cols16="$(resolve_pywal_setting "COLS16" "${variant}")"
+
+  local suffix=""
+  [[ -n "${contrast}" ]] && suffix+="_c${contrast}"
+  [[ -n "${saturate}" ]] && suffix+="_s${saturate}"
+  [[ -n "${cols16}" ]] && suffix+="_m${cols16}"
+  printf '%s' "${suffix}"
+}
+
 configure_wal_command() {
   if [[ "${PALETTE_SOURCE}" == "theme" ]]; then
     WAL_OPTS_BASE=("--theme" "${WAL_THEME_FILE}" "-n" "-s" "-t" "-e")
@@ -75,8 +125,20 @@ configure_wal_command() {
     WAL_OPTS_BASE=("-i" "${WALLPAPER_IMAGE}" "-n" "-s" "-t" "-e")
     [[ "${resolved_color_variant}" == "light" ]] && WAL_OPTS_BASE+=("-l")
 
-    PYWAL_BACKEND="${PYWAL_BACKEND:-wal}"
-    PYWAL_BACKEND_FALLBACKS="${PYWAL_BACKEND_FALLBACKS:-colorthief haishoku colorz}"
+    PYWAL_BACKEND="$(resolve_pywal_setting "BACKEND")"
+    PYWAL_BACKEND_FALLBACKS="$(resolve_pywal_setting "BACKEND_FALLBACKS")"
+
+    local wal_contrast
+    local wal_saturate
+    local wal_cols16
+    wal_contrast="$(resolve_pywal_setting "CONTRAST")"
+    wal_saturate="$(resolve_pywal_setting "SATURATE")"
+    wal_cols16="$(resolve_pywal_setting "COLS16")"
+
+    [[ -n "${wal_contrast}" ]] && WAL_OPTS_BASE+=("--contrast" "${wal_contrast}")
+    [[ -n "${wal_saturate}" ]] && WAL_OPTS_BASE+=("--saturate" "${wal_saturate}")
+    [[ -n "${wal_cols16}" ]] && WAL_OPTS_BASE+=("--cols16" "${wal_cols16}")
+
     WAL_OPTS=("${WAL_OPTS_BASE[@]}" "--backend" "${PYWAL_BACKEND}")
   fi
 }
@@ -119,6 +181,27 @@ run_wal_generation() {
   [[ "${HYPR_WAL_CACHE_ENABLE}" -eq 1 ]] && wal_cache_populate=1
 }
 
+canonicalize_shell_colors_file() {
+  local shell_file="${WAL_CACHE}/colors-shell.sh"
+  local legacy_file="${WAL_CACHE}/colors.sh"
+
+  if [[ ! -f "${shell_file}" && -f "${legacy_file}" ]]; then
+    mv -f "${legacy_file}" "${shell_file}"
+    return 0
+  fi
+
+  if [[ -f "${shell_file}" && -f "${legacy_file}" ]]; then
+    if ! cmp -s "${shell_file}" "${legacy_file}"; then
+      if [[ "${legacy_file}" -nt "${shell_file}" ]]; then
+        cp -f "${legacy_file}" "${shell_file}"
+      else
+        print_log -sec "pywal16" -warn "colors" "discarding stale legacy colors.sh"
+      fi
+    fi
+    rm -f "${legacy_file}"
+  fi
+}
+
 post_process_generated_color_files() {
   if [[ -f "${WAL_CACHE}/colors-hyprshade.glsl" ]]; then
     source "${WAL_CACHE}/colors-shell.sh"
@@ -156,6 +239,7 @@ post_process_generated_color_files() {
     done
     sed -i "${sed_args[@]}" "${WAL_CACHE}/colors-hyprland.conf"
   fi
+
 }
 
 link_generated_color_files() {
@@ -183,6 +267,12 @@ link_generated_color_files() {
       [[ "${LOG_LEVEL}" == "debug" ]] && print_log -sec "symlink" -warn "skip" "${cache_file} not generated"
     fi
   done
+
+  local waybar_palette_helper="${SCRIPT_DIR}/waybar_palette.py"
+  if [[ "${SKIP_WAYBAR_UPDATE}" -ne 1 ]] && [[ -f "${WAL_CACHE}/colors-waybar.css" ]] && [[ -x "${waybar_palette_helper}" ]]; then
+    python3 "${waybar_palette_helper}" "${WAL_CACHE}/colors-waybar.css" || \
+      print_log -sec "waybar" -warn "palette" "failed to refine semantic colors"
+  fi
 }
 
 queue_opposite_mode_precache() {
@@ -195,7 +285,11 @@ queue_opposite_mode_precache() {
   [[ "${resolved_color_variant}" == "light" ]] && opposite_mode="dark"
 
   if [[ -n "${opposite_mode}" ]] && [[ -n "${wall_hash:-}" ]]; then
-    local opposite_cache_key="${wall_hash}_${opposite_mode}_${PYWAL_BACKEND}${template_hash_suffix}"
+    local leg_suffix
+    local opposite_backend
+    opposite_backend="$(resolve_pywal_setting "BACKEND" "${opposite_mode}")"
+    leg_suffix="$(compute_legibility_suffix "${opposite_mode}")"
+    local opposite_cache_key="${wall_hash}_${opposite_mode}_${opposite_backend}${leg_suffix}${template_hash_suffix}"
     local opposite_cache_path="${HYPR_WAL_CACHE_DIR}/${opposite_cache_key}"
 
     if ! wal_cache_valid "${opposite_cache_path}"; then

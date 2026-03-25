@@ -1,4 +1,4 @@
-#! /bin/env bash
+#!/usr/bin/env bash
 
 # shellcheck disable=SC1091
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"

@@ -1,4 +1,46 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+validate_dns_entry() {
+  local entry="$1"
+  local address="$entry"
+  local server_name=""
+
+  if [[ "${entry}" == *"#"* ]]; then
+    address="${entry%%#*}"
+    server_name="${entry#*#}"
+    [[ -n "${server_name}" ]] || return 1
+    [[ "${server_name}" =~ ^[A-Za-z0-9.-]+$ ]] || return 1
+  fi
+
+  python3 - "${address}" <<'PY' >/dev/null 2>&1
+import ipaddress
+import sys
+
+try:
+    ipaddress.ip_address(sys.argv[1])
+except ValueError:
+    raise SystemExit(1)
+PY
+}
+
+normalize_dns_servers() {
+  local raw_servers="$1"
+  local entry
+  local -a normalized=()
+
+  [[ "${raw_servers}" != *$'\n'* ]] || return 1
+  [[ "${raw_servers}" != *$'\r'* ]] || return 1
+
+  read -r -a entries <<<"${raw_servers}"
+  [[ ${#entries[@]} -gt 0 ]] || return 1
+
+  for entry in "${entries[@]}"; do
+    validate_dns_entry "${entry}" || return 1
+    normalized+=("${entry}")
+  done
+
+  printf '%s' "${normalized[*]}"
+}
 
 if [[ -z $1 ]]; then
   dns=$(echo -e "Cloudflare\nDHCP\nCustom" | fzf --prompt="Select DNS provider > " --height=5 --reverse)
@@ -59,11 +101,14 @@ Custom)
     exit 1
   fi
 
-  sudo tee /etc/systemd/resolved.conf >/dev/null <<EOF
-[Resolve]
-DNS=$dns_servers
-FallbackDNS=9.9.9.9 149.112.112.112
-EOF
+  dns_servers="$(normalize_dns_servers "${dns_servers}")" || {
+    echo "Error: Invalid DNS server list."
+    echo "Only IP literals are accepted, optionally with #server-name."
+    exit 1
+  }
+
+  printf '[Resolve]\nDNS=%s\nFallbackDNS=9.9.9.9 149.112.112.112\n' "${dns_servers}" |
+    sudo tee /etc/systemd/resolved.conf >/dev/null
   
   # Ensure network interfaces don't override our DNS settings
   for file in /etc/systemd/network/*.network; do
@@ -85,4 +130,3 @@ EOF
 
   ;;
 esac
-

@@ -120,7 +120,7 @@ colorize_fallback_icon() {
   local source_icon="$XDG_DATA_HOME/icons/Pywal16-Icon/hypr.png"
 
   # Get pywal colors
-  local color_file="${XDG_CACHE_HOME:-$HOME/.cache}/wal/colors.sh"
+  local color_file="${XDG_CACHE_HOME:-$HOME/.cache}/wal/colors-shell.sh"
   if [ ! -f "$color_file" ]; then
     # No colors available, just copy
     cp "$source_icon" "$output_path"

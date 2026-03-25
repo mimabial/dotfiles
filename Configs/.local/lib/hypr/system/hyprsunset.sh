@@ -1,4 +1,4 @@
-#! /bin/env bash
+#!/usr/bin/env bash
 
 # shellcheck source=$HOME/.local/bin/hyprshell
 # shellcheck disable=SC1091

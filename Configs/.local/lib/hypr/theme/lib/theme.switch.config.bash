@@ -114,6 +114,32 @@ escape_regex() {
   printf '%s' "$1" | sed 's/[][\/.^$*]/\\&/g'
 }
 
+ini_group_has_key() {
+  local config_file="$1"
+  local group="$2"
+  local key="$3"
+
+  awk -F'=' -v group="${group}" -v key="${key}" '
+    BEGIN { in_group = 0; found = 0 }
+    /^[[:space:]]*\[/ {
+      line = $0
+      sub(/^[[:space:]]*\[/, "", line)
+      sub(/\][[:space:]]*$/, "", line)
+      in_group = (line == group)
+      next
+    }
+    in_group {
+      lhs = $1
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", lhs)
+      if (lhs == key) {
+        found = 1
+        exit
+      }
+    }
+    END { exit found ? 0 : 1 }
+  ' "${config_file}"
+}
+
 # Batch write INI-style config files (single sed pass per file)
 # Usage: ini_write_batch "file" "group1:key1=value1" "group2:key2=value2" ...
 ini_write_batch() {
@@ -157,10 +183,10 @@ ini_write_batch() {
     while IFS= read -r kv; do
       [[ -z "${kv}" ]] && continue
       local key="${kv%%=*}"
-      local key_esc
-      key_esc="$(escape_regex "$key")"
-      if ! grep -q "^${key_esc}=" "$config_file"; then
-        sed -i "/^\[${group_esc}\]/a ${kv}" "$config_file"
+      if ! ini_group_has_key "$config_file" "$group" "$key"; then
+        local kv_esc
+        kv_esc="$(sed_escape_append_text "${kv}")"
+        sed -i "/^\[${group_esc}\]/a ${kv_esc}" "$config_file"
       fi
     done <<<"${group_keys[$group]}"
   done

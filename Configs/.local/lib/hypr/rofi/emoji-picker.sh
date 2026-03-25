@@ -33,22 +33,30 @@ clean_emoji_file() {
 
 save_recent_entry() {
   local emoji_line="$1"
+  local recent_dir=""
+  local tmp_file=""
   emoji_line=$(printf "%s" "${emoji_line}" | sed 's/\\([\U0001F3FB-\U0001F3FF]\\)//g')
   mkdir -p "$(dirname "${recent_data}")"
+  recent_dir="$(dirname "${recent_data}")"
+  tmp_file="$(mktemp "${recent_dir}/.emoji_recent.XXXXXX")"
   {
     echo "${emoji_line}"
     cat "${recent_data}" 2>/dev/null
-  } | awk '!seen[$0]++' | head -50 >"${recent_data}.tmp" && mv "${recent_data}.tmp" "${recent_data}"
+  } | awk '!seen[$0]++' | head -50 >"${tmp_file}" && mv "${tmp_file}" "${recent_data}"
 }
 
 toggle_favorite() {
   local emoji_line="$1"
+  local favorites_dir=""
+  local tmp_file=""
   mkdir -p "$(dirname "${favorites_data}")"
+  favorites_dir="$(dirname "${favorites_data}")"
 
   # Check if already favorited
   if grep -Fxq "${emoji_line}" "${favorites_data}" 2>/dev/null; then
     # Remove from favorites
-    grep -Fxv "${emoji_line}" "${favorites_data}" >temp && mv temp "${favorites_data}"
+    tmp_file="$(mktemp "${favorites_dir}/.favorites.XXXXXX")"
+    grep -Fxv "${emoji_line}" "${favorites_data}" >"${tmp_file}" && mv "${tmp_file}" "${favorites_data}"
     dunstify -t 3000 -i "face-smile" "⭐ Removed from favorites"
   else
     # Add to favorites

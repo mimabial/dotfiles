@@ -320,7 +320,8 @@ if [[ "${HYPR_WAL_CACHE_ENABLE}" -eq 1 ]]; then
   mkdir -p "${HYPR_WAL_CACHE_DIR}" 2>/dev/null || true
   wall_hash="$(${HYPR_HASH_COMMAND:-sha1sum} "${WALLPAPER_IMAGE}" | awk '{print $1}')"
   compute_template_hash
-  wal_cache_key="${wall_hash}_${resolved_color_variant}_${PYWAL_BACKEND}${template_hash_suffix}"
+  legibility_suffix="$(compute_legibility_suffix)"
+  wal_cache_key="${wall_hash}_${resolved_color_variant}_${PYWAL_BACKEND}${legibility_suffix}${template_hash_suffix}"
   wal_cache_path="${HYPR_WAL_CACHE_DIR}/${wal_cache_key}"
   wal_cache_backend="${PYWAL_BACKEND}"
   queue_cache_cleanup "${HYPR_WAL_CACHE_DIR}" "${template_hash_suffix}"
@@ -378,7 +379,7 @@ if [[ -z "${wal_exit}" ]]; then
 fi
 
 if [[ "${HYPR_WAL_CACHE_ENABLE}" -eq 1 ]] && [[ -n "${wall_hash:-}" ]] && [[ "${wal_cache_backend:-}" != "${PYWAL_BACKEND}" ]]; then
-  wal_cache_key="${wall_hash}_${resolved_color_variant}_${PYWAL_BACKEND}${template_hash_suffix}"
+  wal_cache_key="${wall_hash}_${resolved_color_variant}_${PYWAL_BACKEND}${legibility_suffix}${template_hash_suffix}"
   wal_cache_path="${HYPR_WAL_CACHE_DIR}/${wal_cache_key}"
 fi
 
@@ -393,6 +394,8 @@ done
 }
 
 print_log -sec "pywal16" -stat "complete" "color generation"
+
+canonicalize_shell_colors_file
 
 # Generate hyprlock integer rgba colors
 if [ -f "${LIB_DIR}/hypr/wal/wal.hyprlock.sh" ]; then
@@ -419,7 +422,7 @@ fi
 
 # Source pywal16-generated colors
 set -a
-[ -f "${WAL_CACHE}/colors.sh" ] && source "${WAL_CACHE}/colors-shell.sh"
+[ -f "${WAL_CACHE}/colors-shell.sh" ] && source "${WAL_CACHE}/colors-shell.sh"
 set +a
 
 link_generated_color_files
@@ -458,8 +461,12 @@ fi
 wait_for_theming_jobs_when_async_disabled
 
 # Hyprshade color normalization (convert RGB 0-255 to 0.0-1.0 range for GLSL)
-if [ -f "${HYPR_CACHE_HOME}/colors-hyprshade.glsl" ]; then
-  sed -i 's/vec3(\([0-9]\+\), \([0-9]\+\), \([0-9]\+\))/vec3(\1\/255.0, \2\/255.0, \3\/255.0)/g' "${HYPR_CACHE_HOME}/colors-hyprshade.glsl"
+hyprshade_colors_file="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wal/colors.inc"
+if [[ -L "${hyprshade_colors_file}" ]]; then
+  hyprshade_colors_file="$(readlink -f "${hyprshade_colors_file}")"
+fi
+if [ -f "${hyprshade_colors_file}" ]; then
+  sed -i 's/vec3(\([0-9]\+\), \([0-9]\+\), \([0-9]\+\))/vec3(\1\/255.0, \2\/255.0, \3\/255.0)/g' "${hyprshade_colors_file}"
 fi
 
 # Reload live applications

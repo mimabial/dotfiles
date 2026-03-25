@@ -32,6 +32,43 @@ pkg_installed() {
   fi
 }
 
+escape_regex() {
+  printf '%s' "$1" | sed 's/[][(){}.^$?*+|\\/]/\\&/g'
+}
+
+sed_escape_append_text() {
+  local value="$1"
+  value="${value//\\/\\\\}"
+  value="${value//$'\n'/\\n}"
+  printf '%s' "${value}"
+}
+
+ini_group_has_key() {
+  local config_file="$1"
+  local group="$2"
+  local key="$3"
+
+  awk -F'=' -v group="${group}" -v key="${key}" '
+    BEGIN { in_group = 0; found = 0 }
+    /^[[:space:]]*\[/ {
+      line = $0
+      sub(/^[[:space:]]*\[/, "", line)
+      sub(/\][[:space:]]*$/, "", line)
+      in_group = (line == group)
+      next
+    }
+    in_group {
+      lhs = $1
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", lhs)
+      if (lhs == key) {
+        found = 1
+        exit
+      }
+    }
+    END { exit found ? 0 : 1 }
+  ' "${config_file}"
+}
+
 get_aur_helper() {
   if pkg_installed yay; then
     aur_helper="yay"
@@ -114,9 +151,11 @@ get_hypr_conf() {
 
 #? handle pasting
 paste_string() {
-  if ! command -v wtype >/dev/null; then exit 0; fi
+  if ! command -v wtype >/dev/null; then
+    return 0
+  fi
   if [ -t 1 ]; then return 0; fi
-  ignore_paste_file="$HYPR_STATE_HOME/ignore.paste"
+  local ignore_paste_file="$HYPR_STATE_HOME/ignore.paste"
 
   if [[ ! -e "${ignore_paste_file}" ]]; then
     cat <<EOF >"${ignore_paste_file}"
@@ -129,9 +168,14 @@ xterm-256color
 EOF
   fi
 
-  ignore_class="${*#*--ignore=}"
+  local ignore_class="${*#*--ignore=}"
   [[ "$*" != *--ignore=* ]] && ignore_class=""
-  [ -n "${ignore_class}" ] && echo "${ignore_class}" >>"${ignore_paste_file}" && print_log -y "[ignore]" "'$ignore_class'" && exit 0
+  if [ -n "${ignore_class}" ]; then
+    echo "${ignore_class}" >>"${ignore_paste_file}"
+    print_log -y "[ignore]" "'$ignore_class'"
+    return 0
+  fi
+  local class
   class=$(hyprctl -j activewindow | jq -r '.initialClass')
   if ! grep -q "${class}" "${ignore_paste_file}"; then
     hyprctl -q dispatch exec 'wtype -M ctrl V -m ctrl'
@@ -177,10 +221,14 @@ toml_write() {
   [[ -z "${key}" ]] && return 1
 
   if ! kwriteconfig6 --file "${config_file}" --group "${group}" --key "${key}" "${value}" 2>/dev/null; then
-    if ! grep -q "^\[${group}\]" "${config_file}"; then
+    local group_esc kv
+    group_esc="$(escape_regex "${group}")"
+    kv="$(sed_escape_append_text "${key}=${value}")"
+
+    if ! grep -q "^\[${group_esc}\]" "${config_file}"; then
       echo -e "\n[${group}]\n${key}=${value}" >>"${config_file}"
-    elif ! grep -q "^${key}=" "${config_file}"; then
-      sed -i "/^\[${group}\]/a ${key}=${value}" "${config_file}"
+    elif ! ini_group_has_key "${config_file}" "${group}" "${key}"; then
+      sed -i "/^\[${group_esc}\]/a ${kv}" "${config_file}"
     fi
   fi
 }

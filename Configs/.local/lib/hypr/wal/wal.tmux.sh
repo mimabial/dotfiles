@@ -6,17 +6,17 @@ WAL_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/wal"
 TMUX_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/tmux/tmux.conf"
 
 # Source pywal16 colors
-if [ ! -f "${WAL_CACHE}/colors.sh" ]; then
+if [ ! -f "${WAL_CACHE}/colors-shell.sh" ]; then
   exit 0
 fi
 
 # Change detection: skip if colors unchanged
-input_hash=$(md5sum "${WAL_CACHE}/colors.sh" 2>/dev/null | cut -d' ' -f1)
+input_hash=$(md5sum "${WAL_CACHE}/colors-shell.sh" 2>/dev/null | cut -d' ' -f1)
 if [[ -f "$hash_file" && "$(cat "$hash_file" 2>/dev/null)" == "$input_hash" ]]; then
   exit 0
 fi
 
-source "${WAL_CACHE}/colors.sh"
+source "${WAL_CACHE}/colors-shell.sh"
 
 # Map pywal colors to tmux theme variables
 # Note: Theme-specific tmux colors are handled by color.set.sh processing tmux.theme files

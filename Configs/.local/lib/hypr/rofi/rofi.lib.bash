@@ -23,6 +23,48 @@ rofi_font_override() {
   printf '* {font: "%s %s";}\n' "${font_name}" "${font_scale}"
 }
 
+rofi_font_text_height_px() {
+  local font_name="$1"
+  local font_scale="$2"
+  local font_desc=""
+
+  [[ -n "${font_name}" ]] || return 1
+  [[ "${font_scale}" =~ ^[0-9]+([.][0-9]+)?$ ]] || return 1
+  awk -v fs="${font_scale}" 'BEGIN { exit !(fs > 0) }' || return 1
+  command -v python3 >/dev/null 2>&1 || return 1
+
+  font_desc="${font_name} ${font_scale}"
+  FONT_DESC="${font_desc}" python3 - <<'PY'
+import os
+import sys
+
+try:
+    import gi
+    gi.require_version("Pango", "1.0")
+    gi.require_version("PangoCairo", "1.0")
+    from gi.repository import Pango, PangoCairo
+    import cairo
+except Exception:
+    sys.exit(1)
+
+font_desc = os.environ.get("FONT_DESC", "").strip()
+if not font_desc:
+    sys.exit(1)
+
+surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 1, 1)
+context = cairo.Context(surface)
+pango_context = PangoCairo.create_context(context)
+description = Pango.FontDescription.from_string(font_desc)
+pango_context.set_font_description(description)
+metrics = pango_context.get_metrics(description, Pango.Language.get_default())
+height = (metrics.get_ascent() + metrics.get_descent()) / Pango.SCALE
+if height <= 0:
+    sys.exit(1)
+
+print(f"{height:.2f}")
+PY
+}
+
 rofi_normalize_launcher_style() {
   local style_ref="${1:-style_1}"
   [[ -z "${style_ref}" ]] && style_ref="style_1"
@@ -212,12 +254,6 @@ rofi_build_standard_menu_args() {
   [[ -n "${opacity_override}" ]] && out_ref+=(-theme-str "${opacity_override}")
 }
 
-rofi_em_to_px() {
-  local em_value="$1"
-  local font_scale="$2"
-  awk -v em="${em_value}" -v scale="${font_scale}" 'BEGIN { printf "%d\n", (em * scale * 2) }'
-}
-
 rofi_icon_theme_override() {
   local icon_theme
   icon_theme="$(get_hypr_conf "ICON_THEME")"
@@ -328,16 +364,31 @@ rofi_theme_width_multiplier_override() {
 
 rofi_wallpaper_width_override() {
   local theme_file="$1"
-  local font_scale="$2"
-  local margin_px="$3"
+  local font_name="$2"
+  local font_scale="$3"
+  local margin_px="$4"
   local wall_image="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wallpaper/current/wall.thmb"
   local monitor_width_logical=""
-  local theme_height theme_height_unit img_w img_h ratio width_value max_width_px font_px max_width_em
+  local focused_monitor_name=""
+  local theme_name=""
+  local waybar_width_px="0"
+  local gaps_out_px="0"
+  local did_clamp=0
+  local theme_height theme_height_unit img_w img_h ratio
+  local font_px=""
+  local theme_height_px=""
+  local width_px=""
+  local max_width_px=""
+  local post_clamp_reduction_px=0
+  local width_value=""
 
   [[ -f "${wall_image}" ]] || return 0
   [[ -n "${theme_file}" ]] || return 0
   command -v magick >/dev/null 2>&1 || return 0
+  [[ "${margin_px}" =~ ^[0-9]+([.][0-9]+)?$ ]] || margin_px=0
 
+  theme_name="$(basename "${theme_file}")"
+  theme_name="${theme_name%.rasi}"
   monitor_width_logical="$(rofi_focused_monitor_logical_width_precise)"
 
   read -r theme_height theme_height_unit < <(
@@ -360,22 +411,59 @@ rofi_wallpaper_width_override() {
 
   ratio="$(awk -v w="${img_w}" -v h="${img_h}" 'BEGIN { if (h <= 0) { print 0 } else { printf "%.6f", (w / h) } }')"
 
-  if [[ "${theme_height_unit}" == "px" ]]; then
-    width_value="$(awk -v h="${theme_height}" -v r="${ratio}" 'BEGIN { printf "%.2f", (h * r) }')"
-    if [[ -n "${monitor_width_logical}" ]] && awk -v w="${monitor_width_logical}" -v m="${margin_px}" 'BEGIN { exit !(w > (m * 2)) }'; then
-      max_width_px="$(awk -v w="${monitor_width_logical}" -v m="${margin_px}" 'BEGIN { val = w - (m * 2); if (val < 0) val = 0; printf "%.2f", val }')"
-      width_value="$(awk -v w="${width_value}" -v max="${max_width_px}" 'BEGIN { if (w > max) w = max; printf "%.2f", w }')"
+  if [[ "${theme_name}" == "style_1" || "${theme_name}" == "pywal16" ]]; then
+    focused_monitor_name="$(hyprctl -j monitors 2>/dev/null | jq -r '.[] | select(.focused==true) | .name' | head -n 1)"
+    if [[ -n "${focused_monitor_name}" ]]; then
+      waybar_width_px="$(
+        hyprctl -j layers 2>/dev/null | jq -r --arg mon "${focused_monitor_name}" '
+          .[$mon].levels[]?[]? | select(.namespace=="waybar") | .w
+        ' 2>/dev/null | head -n 1
+      )"
     fi
-    printf 'window { width: %spx; }\n' "${width_value}"
+    [[ "${waybar_width_px}" =~ ^[0-9]+([.][0-9]+)?$ ]] || waybar_width_px=0
+    gaps_out_px="$(
+      hyprctl -j getoption general:gaps_out 2>/dev/null | jq -r '
+        if (.int? != null and (.int | tostring) != "") then
+          .int
+        elif (.custom? != null and .custom != "") then
+          (.custom | split(" ")[0])
+        else
+          empty
+        end
+      ' 2>/dev/null | head -n 1
+    )"
+    [[ "${gaps_out_px}" =~ ^[0-9]+([.][0-9]+)?$ ]] || gaps_out_px=0
+    post_clamp_reduction_px="$(awk -v wb="${waybar_width_px}" -v g="${gaps_out_px}" 'BEGIN { printf "%.2f", (wb + (g * 4)) }')"
+  fi
+
+  if [[ "${theme_height_unit}" == "px" ]]; then
+    theme_height_px="${theme_height}"
+  else
+    font_px="$(rofi_font_text_height_px "${font_name}" "${font_scale}" 2>/dev/null || true)"
+    [[ "${font_px}" =~ ^[0-9]+([.][0-9]+)?$ ]] || return 0
+    theme_height_px="$(awk -v h="${theme_height}" -v fp="${font_px}" 'BEGIN { printf "%.2f", (h * fp) }')"
+  fi
+
+  width_px="$(awk -v h="${theme_height_px}" -v r="${ratio}" 'BEGIN { printf "%.2f", (h * r) }')"
+
+  if [[ -n "${monitor_width_logical}" ]] && awk -v w="${monitor_width_logical}" -v m="${margin_px}" 'BEGIN { exit !(w > (m * 2)) }'; then
+    max_width_px="$(awk -v w="${monitor_width_logical}" -v m="${margin_px}" 'BEGIN { val = w - (m * 2); if (val < 0) val = 0; printf "%.2f", val }')"
+    if awk -v w="${width_px}" -v max="${max_width_px}" 'BEGIN { exit !(w > max) }'; then
+      did_clamp=1
+      width_px="$(awk -v w="${width_px}" -v max="${max_width_px}" 'BEGIN { if (w > max) w = max; printf "%.2f", w }')"
+    fi
+  fi
+
+  if [[ "${theme_name}" == "style_1" || "${theme_name}" == "pywal16" ]] && (( did_clamp )) && awk -v r="${post_clamp_reduction_px}" 'BEGIN { exit !(r > 0) }'; then
+    width_px="$(awk -v w="${width_px}" -v r="${post_clamp_reduction_px}" 'BEGIN { v = w - r; if (v < 0) v = 0; printf "%.2f", v }')"
+  fi
+
+  if [[ "${theme_height_unit}" == "px" ]]; then
+    printf 'window { width: %spx; }\n' "${width_px}"
     return 0
   fi
 
-  width_value="$(awk -v h="${theme_height}" -v r="${ratio}" 'BEGIN { printf "%.2f", (h * r) }')"
-  if [[ -n "${monitor_width_logical}" && "${font_scale}" =~ ^[0-9]+$ && "${font_scale}" -gt 0 ]]; then
-    font_px="$(awk -v fs="${font_scale}" 'BEGIN { printf "%.3f", (fs * 96 / 72) }')"
-    max_width_em="$(awk -v w="${monitor_width_logical}" -v m="${margin_px}" -v fp="${font_px}" 'BEGIN { val = (w - (m * 2)) / fp; if (val < 0) val = 0; printf "%.2f", val }')"
-    width_value="$(awk -v w="${width_value}" -v max="${max_width_em}" 'BEGIN { if (w > max) w = max; printf "%.2f", w }')"
-  fi
+  width_value="$(awk -v w="${width_px}" -v fp="${font_px}" 'BEGIN { if (fp <= 0) { print 0 } else { printf "%.2f", (w / fp) } }')"
   printf 'window { width: %sem; }\n' "${width_value}"
 }
 

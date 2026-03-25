@@ -3,7 +3,6 @@ import glob
 import json
 import os
 import re
-import shlex
 import subprocess
 import sys
 
@@ -386,7 +385,7 @@ def get_value_from_hypr_theme(variable_name):
     logger.debug(f"Found hypr.theme at {hypr_theme_path}")
 
     try:
-        cmd = ["hyq", shlex.quote(hypr_theme_path), "--query", variable_name]
+        cmd = ["hyq", hypr_theme_path, "--query", variable_name]
         logger.debug(f"Running command: {' '.join(cmd)}")
         result = subprocess.run(cmd, capture_output=True, text=True)
 
@@ -477,7 +476,13 @@ def update_border_radius():
                 except Exception as e:
                     logger.error(f"Error reading hypr.theme: {e}")
 
-    if not border_radius or int(border_radius) < 0:
+    try:
+        border_radius = int(str(border_radius).strip())
+    except (TypeError, ValueError):
+        logger.debug(f"Invalid border radius {border_radius!r}; using default")
+        border_radius = 2
+
+    if border_radius < 0:
         border_radius = 2
         logger.debug(f"Using default border radius: {border_radius}")
 

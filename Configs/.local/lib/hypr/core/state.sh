@@ -59,6 +59,36 @@ export STATE_ENV_OVERRIDES
 readonly STATE_COLOR_VARIANT
 export STATE_COLOR_VARIANT
 
+state_read_value_from_file() {
+  local state_file="$1"
+  local var_name="$2"
+
+  [[ -f "${state_file}" ]] || return 1
+
+  awk -v key="${var_name}" '
+    /^[[:space:]]*#/ { next }
+    {
+      line = $0
+      sub(/\r$/, "", line)
+      sub(/^[[:space:]]*export[[:space:]]+/, "", line)
+
+      split(line, parts, "=")
+      lhs = parts[1]
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", lhs)
+
+      if (lhs == key) {
+        sub(/^[^=]*=/, "", line)
+        value = line
+      }
+    }
+    END {
+      if (value != "") {
+        print value
+      }
+    }
+  ' "${state_file}" | sed 's/^"//;s/"$//'
+}
+
 # Get a state variable value
 # Usage: state_get VARIABLE_NAME [default_value]
 # Checks: staterc, env-overrides, then returns default
@@ -75,12 +105,12 @@ state_get() {
 
   # Check staterc first (primary state file)
   if [[ -f "${STATE_RC}" ]]; then
-    value=$(grep "^${var_name}=" "${STATE_RC}" 2>/dev/null | tail -1 | cut -d'=' -f2- | sed 's/^"//;s/"$//')
+    value="$(state_read_value_from_file "${STATE_RC}" "${var_name}")"
   fi
 
   # Fall back to env-overrides if not found
   if [[ -z "${value}" ]] && [[ -f "${STATE_ENV_OVERRIDES}" ]]; then
-    value=$(grep -E "^(export[[:space:]]+)?${var_name}=" "${STATE_ENV_OVERRIDES}" 2>/dev/null | tail -1 | sed -E 's/^export[[:space:]]+//' | cut -d'=' -f2- | sed 's/^"//;s/"$//')
+    value="$(state_read_value_from_file "${STATE_ENV_OVERRIDES}" "${var_name}")"
   fi
 
   # Return value or default

@@ -386,30 +386,3 @@ wal_cache_store_async() {
   ) &
   disown
 }
-
-# ============================================================================
-# wal_cache_key_generate - Generate cache key for wallpaper
-# ============================================================================
-# Arguments:
-#   $1 - Wallpaper path
-#   $2 - Color mode (dark/light)
-#   $3 - Pywal16 backend name
-# Output:
-#   Prints cache key to stdout
-# Example:
-#   key=$(wal_cache_key_generate "/path/to/wall.png" "dark" "wal")
-wal_cache_key_generate() {
-  local wallpaper="${1}"
-  local mode="${2}"
-  local backend="${3}"
-
-  [[ -z "${wallpaper}" ]] && return 1
-  [[ -z "${mode}" ]] && return 1
-  [[ -z "${backend}" ]] && return 1
-
-  local hash
-  hash=$(${HYPR_HASH_COMMAND:-xxh64sum} "${wallpaper}" 2>/dev/null | cut -d' ' -f1)
-  [[ -z "${hash}" ]] && return 1
-
-  echo "${hash}_${mode}_${backend}"
-}

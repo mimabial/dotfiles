@@ -34,6 +34,16 @@ cleanup_temp_screenshot() {
   fi
 }
 
+swappy_escape_config_value() {
+  local value="$1"
+  value="${value//\\/\\\\}"
+  value="${value//$'\n'/\\n}"
+  value="${value//$'\r'/\\r}"
+  value="${value//$'\t'/\\t}"
+  value="${value//;/\\;}"
+  printf '%s' "${value}"
+}
+
 # Create secure temporary file
 temp_screenshot=$(mktemp -t screenshot_XXXXXX.png)
 
@@ -59,7 +69,10 @@ mkdir -p "$save_dir"
 if [[ "$annotation_tool" == "swappy" ]]; then
   swpy_dir="${XDG_CONFIG_HOME}/swappy"
   mkdir -p "$swpy_dir"
-  echo -e "[Default]\nsave_dir=$save_dir\nsave_filename_format=$save_file" >"${swpy_dir}"/config
+  printf '[Default]\nsave_dir=%s\nsave_filename_format=%s\n' \
+    "$(swappy_escape_config_value "${save_dir}")" \
+    "$(swappy_escape_config_value "${save_file}")" \
+    >"${swpy_dir}"/config
 fi
 
 if [[ "$annotation_tool" == "satty" ]]; then

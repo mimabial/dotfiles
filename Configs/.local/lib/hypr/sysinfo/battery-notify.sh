@@ -110,10 +110,12 @@ fn_status() {
     "Full")
       if $verbose; then echo "Case:$battery_status Level: $battery_percentage"; fi
       if [[ $battery_status != "Discharging" ]]; then
+        local now
         now=$(date +%s)
-        if [[ "$prev_status" == *"harging"* ]] || ((now - lt >= $((notify * 60)))); then
+        if [[ "$prev_status" == *"harging"* ]] || ((now - last_full_notify_ts >= $((notify * 60)))); then
           dunstify -a "Power" -t 5000 -r 5 -u "CRITICAL" -i "battery-full-charging-symbolic" "Battery Full" "Please unplug your Charger"
-          prev_status=$battery_status lt=$now
+          prev_status=$battery_status
+          last_full_notify_ts=$now
           $execute_charging
         fi
       fi
@@ -228,6 +230,7 @@ main() {                                    # Main function
   get_battery_info # initiate the function
   last_notified_percentage=$battery_percentage
   prev_status=$battery_status
+  last_full_notify_ts=0
   dbus-monitor --system "type='signal',interface='org.freedesktop.DBus.Properties',path='$(upower -e | grep battery)'" 2>/dev/null | while read -r battery_status_change; do fn_status_change; done
 }
 

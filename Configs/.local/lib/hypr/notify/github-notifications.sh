@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-[ -f "$HOME/.cache/wal/colors.sh" ] && source "$HOME/.cache/wal/colors.sh"
+[ -f "$HOME/.cache/wal/colors-shell.sh" ] && source "$HOME/.cache/wal/colors-shell.sh"
 # shellcheck source=/dev/null
 source "$HOME/.local/lib/hypr/notify/github-notifications.lib.sh"
 

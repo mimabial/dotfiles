@@ -4,6 +4,14 @@
 
 [[ "${HYPR_SHELL_INIT}" -ne 1 ]] && eval "$(hyprshell init)"
 
+sed_escape_replacement() {
+    local value="$1"
+    value="${value//\\/\\\\}"
+    value="${value//&/\\&}"
+    value="${value//|/\\|}"
+    printf '%s' "${value}"
+}
+
 WAL_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/wal"
 hash_file="${XDG_RUNTIME_DIR:-/tmp}/wal-kvantum-hash"
 PYWAL_KVANTUM_DIR="${HOME}/.config/Kvantum/pywal16"
@@ -29,7 +37,7 @@ input_files=(
     "${THEME_KVANTUM_DIR}/kvantum.theme"
     "${THEME_KVANTUM_DIR}/colors.map"
 )
-input_hash=$(cat "${input_files[@]}" "${WAL_CACHE}/colors.sh" 2>/dev/null | md5sum | cut -d' ' -f1)
+input_hash=$(cat "${input_files[@]}" "${WAL_CACHE}/colors-shell.sh" 2>/dev/null | md5sum | cut -d' ' -f1)
 combined_hash="${input_hash}-${selected_color_mode}"
 
 if [[ -f "$hash_file" && "$(cat "$hash_file" 2>/dev/null)" == "$combined_hash" ]]; then
@@ -49,8 +57,8 @@ if [ -f "${THEME_KVANTUM_DIR}/kvantum.theme" ]; then
 fi
 
 # Source pywal colors
-if [ -f "${WAL_CACHE}/colors.sh" ]; then
-    source "${WAL_CACHE}/colors.sh"
+if [ -f "${WAL_CACHE}/colors-shell.sh" ]; then
+    source "${WAL_CACHE}/colors-shell.sh"
 fi
 
 # In wallpaper mode, replace colors using colors.map
@@ -68,9 +76,10 @@ if [ "${selected_color_mode}" -ne 0 ]; then
             # Get the pywal color value
             pywal_value="${!pywal_var}"
             [ -z "${pywal_value}" ] && continue
+            pywal_value="$(sed_escape_replacement "${pywal_value}")"
 
             # Add case-insensitive replacement
-            SED_ARGS+=(-e "s/${hex_color}/${pywal_value}/gi")
+            SED_ARGS+=(-e "s|${hex_color}|${pywal_value}|gi")
         done <"${COLOR_MAP}"
 
         # Apply replacements to kvconfig
@@ -85,26 +94,28 @@ if [ "${selected_color_mode}" -ne 0 ]; then
 
         # Fix selection colors for various SVG elements
         if [ -f "${PYWAL_KVANTUM_DIR}/pywal16.svg" ]; then
+            color4_svg="$(sed_escape_replacement "${color4}")"
+
             # Replace fill colors within itemview-toggled and itemview-pressed groups
-            sed -i -E '
-                /id="itemview-(toggled|pressed)/,/<\/g>|<\/(rect|path)>/ {
-                    s/fill:#[0-9a-fA-F]{6}/fill:'"${color4}"'/g
+            sed -i -E "
+                /id=\"itemview-(toggled|pressed)/,/<\\/g>|<\\/(rect|path)>/ {
+                    s|fill:#[0-9a-fA-F]{6}|fill:${color4_svg}|g
                 }
-            ' "${PYWAL_KVANTUM_DIR}/pywal16.svg"
+            " "${PYWAL_KVANTUM_DIR}/pywal16.svg"
 
             # Fix toolbar button toggled/pressed colors
-            sed -i -E '
-                /id="tbutton-(toggled|pressed)/,/<\/g>|<\/(rect|path)>/ {
-                    s/fill:#[0-9a-fA-F]{6}/fill:'"${color4}"'/g
+            sed -i -E "
+                /id=\"tbutton-(toggled|pressed)/,/<\\/g>|<\\/(rect|path)>/ {
+                    s|fill:#[0-9a-fA-F]{6}|fill:${color4_svg}|g
                 }
-            ' "${PYWAL_KVANTUM_DIR}/pywal16.svg"
+            " "${PYWAL_KVANTUM_DIR}/pywal16.svg"
 
             # Fix regular button toggled/pressed colors
-            sed -i -E '
-                /id="button-(toggled|pressed)(-|")/,/<\/g>|<\/(rect|path)>/ {
-                    s/fill:#[0-9a-fA-F]{6}/fill:'"${color4}"'/g
+            sed -i -E "
+                /id=\"button-(toggled|pressed)(-|\\\")/,/<\\/g>|<\\/(rect|path)>/ {
+                    s|fill:#[0-9a-fA-F]{6}|fill:${color4_svg}|g
                 }
-            ' "${PYWAL_KVANTUM_DIR}/pywal16.svg"
+            " "${PYWAL_KVANTUM_DIR}/pywal16.svg"
         fi
     fi
 fi
@@ -124,9 +135,13 @@ if [ -f "$kvconfig" ] && [ -n "${color4}" ]; then
     fi
 
     # Update highlight colors
-    sed -i "s/^highlight\.color=.*/highlight.color=${color4}/" "$kvconfig"
-    sed -i "s/^inactive\.highlight\.color=.*/inactive.highlight.color=${color4}/" "$kvconfig"
-    [ -n "${foreground}" ] && sed -i "s/^highlight\.text\.color=.*/highlight.text.color=${foreground}/" "$kvconfig"
+    color4_kv="$(sed_escape_replacement "${color4}")"
+    sed -i "s|^highlight\\.color=.*|highlight.color=${color4_kv}|" "$kvconfig"
+    sed -i "s|^inactive\\.highlight\\.color=.*|inactive.highlight.color=${color4_kv}|" "$kvconfig"
+    if [ -n "${foreground}" ]; then
+        foreground_kv="$(sed_escape_replacement "${foreground}")"
+        sed -i "s|^highlight\\.text\\.color=.*|highlight.text.color=${foreground_kv}|" "$kvconfig"
+    fi
 
     # Reduce menu opacity for better visibility
     if command -v kwriteconfig6 &>/dev/null; then

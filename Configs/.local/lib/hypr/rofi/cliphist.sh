@@ -281,8 +281,10 @@ delete_from_favorites() {
       if [ "$(wc -l <"$favorites_file")" -eq 1 ]; then
         : >"$favorites_file"
       else
-        grep -vF -x "$selected_encoded_favorite" "$favorites_file" >"${favorites_file}.tmp" \
-          && mv "${favorites_file}.tmp" "$favorites_file"
+        local favorites_tmp
+        favorites_tmp="$(mktemp "$(dirname "${favorites_file}")/.cliphist_favorites.XXXXXX")"
+        grep -vF -x "$selected_encoded_favorite" "$favorites_file" >"${favorites_tmp}" \
+          && mv "${favorites_tmp}" "$favorites_file"
       fi
       dunstify -t 3000 -i "edit-delete" "Item removed from favorites."
     else

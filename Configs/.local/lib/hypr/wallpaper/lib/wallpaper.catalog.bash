@@ -20,7 +20,12 @@ Wall_Hashmap_Cached() {
   done
 
   local -a supported_files=()
+  local hash_cmd="${HYPR_HASH_COMMAND:-sha1sum}"
   wallpaper_supported_files_array supported_files
+
+  if ! command -v "${hash_cmd}" >/dev/null 2>&1; then
+    hash_cmd="sha1sum"
+  fi
 
   local cache_root=""
   local cache_dir=""

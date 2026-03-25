@@ -23,7 +23,7 @@ from waybar_state import (
     list_layouts,
     resolve_rofi_theme,
     resolve_style_path,
-    set_state_value,
+    set_state_values,
 )
 
 
@@ -146,16 +146,20 @@ def commit_user_waybar_change(
 ):
     """Apply a user-requested layout/style change and let one restart path own the commit."""
     style_filepath = os.path.join(str(xdg_config_home()), "waybar", "style.css")
+    state_updates = {}
 
     if layout_path is not None:
-        set_state_value("WAYBAR_LAYOUT_PATH", layout_path)
+        state_updates["WAYBAR_LAYOUT_PATH"] = layout_path
         if layout_name is not None:
-            set_state_value("WAYBAR_LAYOUT_NAME", layout_name)
+            state_updates["WAYBAR_LAYOUT_NAME"] = layout_name
         atomic_copy_file(layout_path, CONFIG_JSONC)
 
     if style_path is not None:
-        set_state_value("WAYBAR_STYLE_PATH", style_path)
+        state_updates["WAYBAR_STYLE_PATH"] = style_path
         write_style_file(style_filepath, style_path)
+
+    if state_updates:
+        set_state_values(state_updates)
 
     refresh_waybar_assets()
     sync_dunst_position("--write-only")

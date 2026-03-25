@@ -118,15 +118,25 @@ get_rofi_pos() {
   fi
 
   readarray -t curPos < <(hyprctl cursorpos -j | jq -r '.x,.y')
-  eval "$(hyprctl -j monitors | jq -r '.[] | select(.focused==true) |
-        "monRes=(\(.width) \(.height) \(.scale) \(.x) \(.y)) offRes=(\(.reserved | join(" ")))"')"
+  local monitor_line=""
+  local mon_width mon_height mon_scale_fixed mon_x mon_y off_res_raw
+  local -a monRes=()
+  local -a offRes=()
 
-  monRes[2]="${monRes[2]//./}"
+  monitor_line="$(hyprctl -j monitors | jq -r '.[] | select(.focused==true) |
+        [(.width|tostring), (.height|tostring), ((.scale * 100 | round)|tostring), (.x|tostring), (.y|tostring), (.reserved | join(" "))] | @tsv' | head -n 1)"
+  [[ -n "${monitor_line}" ]] || return 1
+
+  IFS=$'\t' read -r mon_width mon_height mon_scale_fixed mon_x mon_y off_res_raw <<<"${monitor_line}"
+  monRes=("${mon_width}" "${mon_height}" "${mon_scale_fixed}" "${mon_x}" "${mon_y}")
+  read -r -a offRes <<<"${off_res_raw}"
+
+  [[ "${monRes[2]}" =~ ^[0-9]+$ ]] || monRes[2]=100
+  (( monRes[2] > 0 )) || monRes[2]=100
   monRes[0]=$((monRes[0] * 100 / monRes[2]))
   monRes[1]=$((monRes[1] * 100 / monRes[2]))
   curPos[0]=$((curPos[0] - monRes[3]))
   curPos[1]=$((curPos[1] - monRes[4]))
-  offRes=("${offRes// / }")
 
   # Calculate available space and determine anchor
   local edge_padding=10 # Minimum distance from screen edges

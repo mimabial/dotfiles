@@ -2,23 +2,19 @@ $HOME/.config/waybar/theme.css
 
 @define-color bg #1c1e1b;
 @define-color fg #dbf1fd;
-@define-color bg_alt #0daa0d;
-@define-color fg_alt #fff8f0;
-@define-color bg_selected #1E4E50;
-@define-color fg_selected #98971a;
+@define-color br #1E4E50;
 
-@define-color border #1E4E50;
-@define-color border_alt #282828;
+@define-color alt_bg #0daa0d;
+@define-color alt_fg #fff8f0;
+@define-color alt_br #282828;
 
-@define-color accent #69e252;
-@define-color error @c1;
-@define-color hover #d79921;
-@define-color warning #282828;
+@define-color act_bg #005C4F;
+@define-color act_fg #fff8f0;
+@define-color act_br #d79921;
 
-@define-color workspace_active_bg #005C4F;
-@define-color workspace_active_br #d79921;
-@define-color workspace_active_fg #fff8f0;
-@define-color workspace_hover_bg #5AA65F;
+@define-color hvr_bg #5AA65F;
+@define-color hvr_fg @fg;
+@define-color hvr_br #d79921;
 
 @define-color c0 #1c1e1b;
 @define-color c1 #8aff8a;
@@ -36,3 +32,9 @@ $HOME/.config/waybar/theme.css
 @define-color c13 #9AE6E6;
 @define-color c14 #9BE6E6;
 @define-color c15 #fff8f0;
+
+@define-color accent #69e252;
+@define-color info @c6;
+@define-color warning #282828;
+@define-color error @c1;
+@define-color success @c2;
