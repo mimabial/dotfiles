@@ -1,4 +1,4 @@
-$HOME/.config/tmux/theme.conf|tmux source-file ~/.config/tmux/tmux.conf
+$HOME/.config/tmux/theme.conf
 
 # Tmux theme for Bauhaus 80
 # Auto-generated from kitty.theme colors

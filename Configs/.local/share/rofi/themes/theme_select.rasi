@@ -22,12 +22,14 @@ window {
     border-color:                transparent;
     background-color:            #00000003;
 }
+
 mainbox {
     enabled:                     true;
     orientation:                 horizontal;
     children:                    [ "dummy", "frame", "dummy" ];
     background-color:            transparent;
 }
+
 frame {
     children:                    [ "inputbar", "listview" ];
     background-color:            transparent;
@@ -41,12 +43,15 @@ inputbar {
     children:                    [ "entry" ];
     background-color:            transparent;
 }
+
 prompt {
     enabled:                     false;
 }
+
 textbox-prompt-colon {
     enabled:                     false;
 }
+
 entry {
     enabled:                     true;
     padding:                     0em;
@@ -72,6 +77,7 @@ listview {
     background-color:            transparent;
     text-color:                  @foreground;
 }
+
 dummy {
     width:                       2em;
     expand:                      false;
@@ -88,10 +94,12 @@ element {
     background-color:            @background-alpha;
     text-color:                  @foreground;
 }
+
 element selected.normal {
     background-color:            @selected-background;
     text-color:                  @selected-foreground;
 }
+
 element-icon {
     cursor:                      inherit;
     size:                        10em;
@@ -99,6 +107,7 @@ element-icon {
     text-color:                  inherit;
     expand:                      false;
 }
+
 element-text {
     vertical-align:              0.5;
     horizontal-align:            0.5;

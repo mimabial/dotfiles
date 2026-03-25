@@ -6,6 +6,8 @@ if ! source "$(command -v hyprshell)"; then
   echo "[$0] :: Error: hyprshell not found."
   exit 1
 fi
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/rofi/rofi.lib.bash"
 
 shaders_user_dir="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}/shaders"
 shaders_shared_dir="${HYPR_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/hypr}/shaders"
@@ -93,8 +95,7 @@ list_shader_names() {
 
 fn_select() {
   local shader_items selected_shader
-  local font_scale font_name font_override
-  local hypr_border wind_border elem_border hypr_width r_override
+  local -a rofi_args
 
   shader_items="$(list_shader_names)"
   if resolve_shader_path neutral >/dev/null 2>&1; then
@@ -106,30 +107,17 @@ fn_select() {
     exit 1
   }
 
-  font_scale="${ROFI_SHADER_SCALE}"
-  [[ "${font_scale}" =~ ^[0-9]+$ ]] || font_scale=${ROFI_SCALE:-10}
-
-  font_name=${ROFI_SHADER_FONT:-$ROFI_FONT}
-  font_name=${font_name:-$(hyprshell fonts/font-get.sh menu 2>/dev/null || true)}
-  font_name=${font_name:-$(get_hyprConf "MENU_FONT")}
-  font_name=${font_name:-$(get_hyprConf "FONT")}
-  font_name=${font_name:-monospace}
-  font_override="* {font: \"${font_name} ${font_scale}\";}"
-
-  hypr_border=${hypr_border:-"$(hyprctl -j getoption decoration:rounding | jq '.int')"}
-  wind_border=$((hypr_border * 3 / 2))
-  elem_border=$((hypr_border == 0 ? 5 : hypr_border))
-  hypr_width=${hypr_width:-"$(hyprctl -j getoption general:border_size | jq '.int')"}
-  r_override="window{border:${hypr_width}px;border-radius:${wind_border}px;} wallbox{border-radius:${elem_border}px;} element{border-radius:${elem_border}px;}"
+  rofi_build_standard_menu_args \
+    rofi_args \
+    "Select shader" \
+    "🎨 Select shader..." \
+    "clipboard" \
+    "${ROFI_SHADER_SCALE}" \
+    "${ROFI_SHADER_FONT:-$ROFI_FONT}"
+  rofi_args+=(-select "$(normalize_shader_name "${HYPR_SHADER:-neutral}")")
 
   selected_shader=$(printf '%s\n' "${shader_items}" |
-    rofi -dmenu -i -select "$(normalize_shader_name "${HYPR_SHADER:-neutral}")" \
-      -p "Select shader" \
-      -theme-str "entry { placeholder: \"🎨 Select shader...\"; }" \
-      -theme-str "${font_override}" \
-      -theme-str "${r_override}" \
-      -theme-str "$(get_rofi_pos)" \
-      -theme "clipboard")
+    rofi "${rofi_args[@]}")
 
   [[ -n "${selected_shader}" ]] || exit 0
   selected_shader="$(normalize_shader_name "${selected_shader}")"
@@ -186,9 +174,13 @@ parse_includes_and_update() {
     return 1
   }
 
-  source_var=$(grep -iE '^\s*//\s*!source\s*=\s*.*' "${resolved_shader_path}" 2>/dev/null | head -n1 | sed -E 's/^\s*\/\/\s*!source\s*=\s*//I' | xargs)
+  source_var="$(grep -iE '^\s*//\s*!source\s*=\s*.*' "${resolved_shader_path}" 2>/dev/null | head -n1 | sed -E 's/^\s*\/\/\s*!source\s*=\s*//I' | xargs)"
   if [[ -n "${source_var}" ]]; then
-    source_var=$(eval echo "${source_var}")
+    if [[ "${source_var}" == "~/"* ]]; then
+      source_var="${HOME}/${source_var#~/}"
+    elif [[ "${source_var}" != /* ]]; then
+      source_var="$(dirname "${resolved_shader_path}")/${source_var}"
+    fi
     if [[ -f "${source_var}" ]]; then
       files+=("${source_var}")
       print_log -g "Found source include" " ${source_var}"

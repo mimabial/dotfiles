@@ -3,7 +3,7 @@
 options=("MySQL" "PostgreSQL" "Redis" "MongoDB" "MariaDB" "MSSQL")
 
 if [[ "$#" -eq 0 ]]; then
-  choices=$(printf "%s\n" "${options[@]}" | fzf --prompt="Select database > " --header="Select database (ESC to cancel)" --reverse) || main_menu
+  choices=$(printf "%s\n" "${options[@]}" | fzf --prompt="Select database > " --header="Select database (ESC to cancel)" --reverse) || exit 0
 else
   choices="$@"
 fi

@@ -15,7 +15,7 @@ elif ! declare -F state_set >/dev/null; then
 fi
 
 # Lock file to prevent concurrent mode switching
-MODE_SWITCH_LOCK="${XDG_RUNTIME_DIR:-/tmp}/mode-switch.lock"
+MODE_SWITCH_LOCK="$(hypr_lock_path mode_switch)"
 exec 203>"${MODE_SWITCH_LOCK}"
 ! flock -n 203 && {
   print_log -sec "wal.toggle" -stat "wait" "Another mode operation in progress, waiting..."
@@ -173,6 +173,26 @@ start_auto_theme_service() {
   }
 }
 
+refresh_auto_theme_service() {
+  auto_theme_systemd_available || return 1
+
+  local auto_theme_python="${HOME}/.local/state/hypr/pip_env/bin/python"
+  local auto_theme_script="${LIB_DIR}/hypr/theme/auto_theme.py"
+  local attempt=""
+
+  [[ -x "${auto_theme_python}" ]] || return 1
+  [[ -f "${auto_theme_script}" ]] || return 1
+
+  for attempt in 1 2 3 4 5 6 7 8 9 10; do
+    if "${auto_theme_python}" "${auto_theme_script}" --refresh >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 0.2
+  done
+
+  return 1
+}
+
 stop_auto_theme_service() {
   if auto_theme_systemd_available; then
     systemctl --user stop auto-theme.service 2>/dev/null || true
@@ -291,8 +311,9 @@ if [ "${target_color_mode}" -eq 1 ]; then
     exit 1
   fi
 
-  # The service performs its own initial apply on startup.
-  # Avoid a second one-shot apply here to prevent duplicate color.set runs.
+  if ! refresh_auto_theme_service; then
+    print_log -sec "wal.toggle" -warn "auto" "refresh signal failed after activation"
+  fi
 else
   # Stop auto-theme.service before writing state to avoid stale writes racing us.
   stop_auto_theme_service

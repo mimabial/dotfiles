@@ -411,7 +411,7 @@
     "custom/weather": {
         "exec": "hyprshell weather",
         "justify": "center",
-        "tooltip": false,
+        "tooltip": true,
         "format": "{0}",
         "interval": 600,
         "return-type": "json"

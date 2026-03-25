@@ -30,6 +30,9 @@ else
 fi
 trap 'rm -f "$grimblastInstanceCheck"' EXIT
 
+# shellcheck source=/dev/null
+source "${LIB_DIR:-$HOME/.local/lib}/hypr/capture/capture.select.bash"
+
 getTargetDirectory() {
   test -f "${XDG_CONFIG_HOME:-$HOME/.config}/user-dirs.dirs" &&
     . "${XDG_CONFIG_HOME:-$HOME/.config}/user-dirs.dirs"
@@ -264,21 +267,18 @@ elif [ "$SUBJECT" = "area" ]; then
   fi
 
   if [ "$FREEZE" = "yes" ] && [ "$(command -v "hyprpicker")" ] >/dev/null 2>&1; then
-    hyprpicker -r -z &
-    sleep 0.2
+    FREEZE_PID="$(capture_start_freeze 0.2)"
   fi
 
   # disable animation for layer namespace "selection" (slurp)
   # this removes the black border seen around screenshots
   hyprctl keyword layerrule "noanim,selection" >/dev/null
 
-  FULLSCREEN_WORKSPACES="$(hyprctl workspaces -j | jq -r 'map(select(.hasfullscreen) | .id)')"
-  WORKSPACES="$(hyprctl monitors -j | jq -r '[(foreach .[] as $monitor (0; if $monitor.specialWorkspace.name == "" then $monitor.activeWorkspace else $monitor.specialWorkspace end)).id]')"
-  WINDOWS="$(hyprctl clients -j | jq -r --argjson workspaces "$WORKSPACES" --argjson fullscreenWorkspaces "$FULLSCREEN_WORKSPACES" 'map((select(([.workspace.id] | inside($workspaces)) and ([.workspace.id] | inside($fullscreenWorkspaces) | not) or .fullscreen > 0)))')"
   # convert SLURP_ARGS to a bash array
   IFS=' ' read -r -a _slurp_args <<<"$SLURP_ARGS"
   # shellcheck disable=2086 # if we don't split, spaces mess up slurp
-  GEOM=$(echo "$WINDOWS" | jq -r '.[] | "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"' | slurp "${_slurp_args[@]}")
+  GEOM=$(capture_visible_workspace_rectangles | slurp "${_slurp_args[@]}")
+  capture_stop_freeze "${FREEZE_PID:-}"
 
   # Check if user exited slurp without selecting the area
   if [ -z "$GEOM" ]; then

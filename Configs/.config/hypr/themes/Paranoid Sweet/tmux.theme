@@ -1,4 +1,4 @@
-$HOME/.config/tmux/theme.conf|tmux source-file ~/.config/tmux/tmux.conf
+$HOME/.config/tmux/theme.conf
 
 # Tmux theme for Paranoid Sweet
 # Auto-generated from kitty.theme colors

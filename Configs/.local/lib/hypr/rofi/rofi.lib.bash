@@ -51,6 +51,84 @@ rofi_theme_preview_asset() {
   return 1
 }
 
+rofi_resolve_import_ref() {
+  local import_ref="$1"
+  local base_dir="$2"
+  local resolved=""
+
+  import_ref="${import_ref%\"}"
+  import_ref="${import_ref#\"}"
+  import_ref="${import_ref%\'}"
+  import_ref="${import_ref#\'}"
+
+  [[ -n "${import_ref}" ]] || return 1
+
+  if [[ "${import_ref}" == "~/"* ]]; then
+    resolved="${HOME}/${import_ref#~/}"
+  elif [[ "${import_ref}" == /* ]]; then
+    resolved="${import_ref}"
+  elif [[ "${import_ref}" == *"/"* ]]; then
+    resolved="${base_dir}/${import_ref}"
+  else
+    resolved="$(rofi_resolve_theme "${import_ref}" 2>/dev/null || true)"
+  fi
+
+  [[ -f "${resolved}" ]] || return 1
+  printf '%s\n' "${resolved}"
+}
+
+rofi_theme_effective_files() {
+  local theme_file="$1"
+  local visited_name="${2:-_rofi_theme_visited}"
+  local base_dir import_ref import_file
+
+  [[ -f "${theme_file}" ]] || return 1
+
+  # shellcheck disable=SC2178,SC2034
+  declare -n _rofi_seen="${visited_name}"
+  if [[ -n "${_rofi_seen["${theme_file}"]:-}" ]]; then
+    return 0
+  fi
+  _rofi_seen["${theme_file}"]=1
+
+  base_dir="$(dirname "${theme_file}")"
+  while IFS= read -r import_ref; do
+    import_file="$(rofi_resolve_import_ref "${import_ref}" "${base_dir}" 2>/dev/null || true)"
+    [[ -n "${import_file}" ]] || continue
+    rofi_theme_effective_files "${import_file}" "${visited_name}"
+  done < <(
+    sed -nE 's/^[[:space:]]*@(theme|import)[[:space:]]+"([^"]+)".*/\2/p; s/^[[:space:]]*@(theme|import)[[:space:]]+'\''([^'\'']+)'\''.*/\2/p' "${theme_file}"
+  )
+
+  printf '%s\n' "${theme_file}"
+}
+
+rofi_theme_is_fullscreen() {
+  local theme_ref="$1"
+  local theme_file="" file="" fullscreen_value=""
+  local -A _rofi_theme_visited=()
+
+  theme_file="$(rofi_resolve_theme "${theme_ref}" 2>/dev/null || true)"
+  [[ -f "${theme_file}" ]] || return 1
+
+  while IFS= read -r file; do
+    [[ -f "${file}" ]] || continue
+    local file_value=""
+    file_value="$(awk '
+      BEGIN { IGNORECASE = 1 }
+      /^[[:space:]]*fullscreen[[:space:]]*:/ {
+        if (match($0, /(true|false)/)) {
+          value = substr($0, RSTART, RLENGTH)
+        }
+      }
+      END { print value }
+    ' "${file}" 2>/dev/null || true)"
+    [[ -n "${file_value}" ]] && fullscreen_value="${file_value}"
+  done < <(rofi_theme_effective_files "${theme_file}" "_rofi_theme_visited")
+
+  [[ "${fullscreen_value}" == "true" ]]
+}
+
 rofi_default_border_radius() {
   local fallback="${1:-0}"
   local border="${hypr_border:-}"
@@ -98,6 +176,42 @@ rofi_standard_window_theme() {
     "${border_width}" "${window_radius}" "${container_name}" "${elem_radius}" "${elem_radius}"
 }
 
+rofi_build_standard_menu_args() {
+  local out_name="$1"
+  local prompt="$2"
+  local placeholder="$3"
+  local theme_ref="${4:-clipboard}"
+  local requested_scale="${5:-}"
+  local requested_font="${6:-}"
+  local container_name="${7:-wallbox}"
+  local elem_mode="${8:-same}"
+  local position_override="${9:-}"
+  local font_scale font_name opacity_override
+
+  # shellcheck disable=SC2178
+  local -n out_ref="${out_name}"
+  out_ref=()
+
+  font_scale="$(rofi_effective_font_scale "${requested_scale}")"
+  font_name="$(rofi_effective_font_name "${requested_font}")"
+  [[ -n "${position_override}" ]] || position_override="$(get_rofi_pos)"
+
+  out_ref+=(
+    -dmenu
+    -i
+    -p "${prompt}"
+    -theme "${theme_ref}"
+    -theme-str "$(rofi_font_override "${font_name}" "${font_scale}")"
+    -theme-str "$(rofi_standard_window_theme "${container_name}" "${elem_mode}")"
+  )
+
+  [[ -n "${placeholder}" ]] && out_ref+=(-theme-str "entry { placeholder: \"${placeholder}\"; }")
+  [[ -n "${position_override}" ]] && out_ref+=(-theme-str "${position_override}")
+
+  opacity_override="$(rofi_active_opacity_override)"
+  [[ -n "${opacity_override}" ]] && out_ref+=(-theme-str "${opacity_override}")
+}
+
 rofi_em_to_px() {
   local em_value="$1"
   local font_scale="$2"
@@ -133,6 +247,83 @@ rofi_focused_monitor_logical_width_precise() {
       printf '%s\n' "${mon_width}"
     fi
   fi
+}
+
+rofi_local_theme_file() {
+  local theme_ref="$1"
+  local candidate=""
+  local config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
+  local data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
+
+  [[ -n "${theme_ref}" ]] || return 1
+
+  if declare -F rofi_resolve_theme >/dev/null 2>&1; then
+    candidate="$(rofi_resolve_theme "${theme_ref}" 2>/dev/null || true)"
+    [[ -f "${candidate}" ]] && {
+      printf '%s\n' "${candidate}"
+      return 0
+    }
+  fi
+
+  for candidate in \
+    "${config_home}/rofi/themes/${theme_ref}.rasi" \
+    "${config_home}/rofi/themes/${theme_ref}" \
+    "${config_home}/rofi/${theme_ref}.rasi" \
+    "${config_home}/rofi/${theme_ref}" \
+    "${data_home}/rofi/themes/${theme_ref}.rasi" \
+    "${data_home}/rofi/themes/${theme_ref}" \
+    "${data_home}/rofi/${theme_ref}.rasi" \
+    "${data_home}/rofi/${theme_ref}"
+  do
+    [[ -f "${candidate}" ]] || continue
+    printf '%s\n' "${candidate}"
+    return 0
+  done
+
+  return 1
+}
+
+rofi_theme_width_multiplier_override() {
+  local theme_ref="$1"
+  local factor="$2"
+  local fallback_width="${3:-}"
+  local theme_file=""
+  local width_line=""
+  local width_value=""
+  local width_unit=""
+  local scaled_width=""
+
+  theme_file="$(rofi_local_theme_file "${theme_ref}" 2>/dev/null || true)"
+  if [[ -f "${theme_file}" ]]; then
+    width_line="$(
+      awk '
+        /^[[:space:]]*window[[:space:]]*\{/ {in_window=1; next}
+        in_window && /^[[:space:]]*}/ {exit}
+        in_window && /^[[:space:]]*width[[:space:]]*:/ {
+          line=$0
+          sub(/^[^:]*:[[:space:]]*/, "", line)
+          sub(/[[:space:]]*;.*$/, "", line)
+          gsub(/[[:space:]]*/, "", line)
+          print line
+          exit
+        }
+      ' "${theme_file}" 2>/dev/null || true
+    )"
+  fi
+
+  if [[ "${width_line}" =~ ^([0-9]+([.][0-9]+)?)([a-z%]+)$ ]]; then
+    width_value="${BASH_REMATCH[1]}"
+    width_unit="${BASH_REMATCH[3]}"
+    scaled_width="$(awk -v w="${width_value}" -v f="${factor}" 'BEGIN { printf "%.2f", (w * f) }')"
+    scaled_width="${scaled_width%0}"
+    scaled_width="${scaled_width%0}"
+    scaled_width="${scaled_width%.}"
+    printf 'window { width: %s%s; }\n' "${scaled_width}" "${width_unit}"
+    return 0
+  fi
+
+  [[ -n "${fallback_width}" ]] || return 1
+  printf 'window { width: %s; }\n' "${fallback_width}"
 }
 
 rofi_wallpaper_width_override() {

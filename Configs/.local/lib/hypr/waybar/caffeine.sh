@@ -3,27 +3,20 @@
 # Waybar module script for caffeine/keep-awake status
 # Outputs JSON for waybar custom module
 
-STATE_DIR="${XDG_STATE_HOME:-}"
-if [[ -z "${STATE_DIR}" ]]; then
-  STATE_DIR="$HOME/.local/state"
-fi
-STATE_DIR="${STATE_DIR}/hypr"
-KEEP_AWAKE_STATE_FILE="${STATE_DIR}/keep-awake.state"
-AUDIO_STATE_FILE="${STATE_DIR}/keep-awake-audio.state"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
+source "${script_dir}/../session/idle.state.sh"
 
 manual_on=0
 audio_on=0
 audio_enabled=1
 
-if [[ -f "${KEEP_AWAKE_STATE_FILE}" ]]; then
+if idle_manual_enabled; then
   manual_on=1
 fi
 
-if [[ -f "${AUDIO_STATE_FILE}" ]]; then
-  audio_value=$(<"${AUDIO_STATE_FILE}")
-  if [[ "${audio_value}" == "0" ]]; then
-    audio_enabled=0
-  fi
+if ! idle_audio_enabled; then
+  audio_enabled=0
 fi
 
 audio_playing=0

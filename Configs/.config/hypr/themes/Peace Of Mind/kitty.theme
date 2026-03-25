@@ -1,4 +1,4 @@
-$HOME/.config/kitty/theme.conf|killall -SIGUSR1 kitty
+$HOME/.config/kitty/theme.conf
 # vim:ft=kitty
 
 background #1F1F28

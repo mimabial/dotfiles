@@ -1,0 +1,360 @@
+#!/usr/bin/env python3
+import json
+import os
+import shutil
+from datetime import date, datetime, timedelta
+from pathlib import Path
+from typing import Optional
+from zoneinfo import ZoneInfo
+
+try:
+    from astral import LocationInfo
+    from astral.sun import sun
+    ASTRAL_AVAILABLE = True
+except ImportError:
+    ASTRAL_AVAILABLE = False
+    print("Warning: astral not installed, sunrise/sunset calculation disabled")
+
+_xdg_config = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+_xdg_state = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
+_xdg_cache = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+_tmpdir = Path(os.environ.get("TMPDIR", "/tmp"))
+
+CONFIG_FILE = _xdg_config / "hypr/auto_theme.conf"
+STATE_FILE = _xdg_state / "hypr/auto_theme_state.json"
+NVIM_SETTINGS = _xdg_cache / "nvim/theme_settings.json"
+TMPDIR_PATH = _tmpdir
+STATE_LOCATION_ENV_KEYS = {
+    "AUTO_THEME_LATITUDE": "latitude",
+    "AUTO_THEME_LONGITUDE": "longitude",
+    "AUTO_THEME_TIMEZONE": "timezone",
+}
+
+DEFAULT_CONFIG = {
+    "latitude": "auto",
+    "longitude": "auto",
+    "timezone": "auto",
+    "allow_auto_geolocation": False,
+    "check_interval_seconds": 60,
+    "sun_offset_minutes": 30,
+    "control_hyprland": True,
+    "control_nvim": True,
+    "manual_override_duration": 120,
+}
+
+
+def state_home() -> Path:
+    return Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
+
+
+def config_home() -> Path:
+    return Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+
+
+def cache_home() -> Path:
+    return Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+
+
+def state_config_file() -> Path:
+    return state_home() / "hypr" / "env-overrides"
+
+
+def color_state_file() -> Path:
+    return cache_home() / "hypr" / "color.gen.state"
+
+
+def wallpaper_state_file() -> Path:
+    return cache_home() / "hypr" / "wallpaper" / "current" / "wall.set"
+
+
+def resolve_hyprshell() -> Optional[str]:
+    hyprshell = shutil.which("hyprshell")
+    if hyprshell:
+        return hyprshell
+    candidate = Path.home() / ".local" / "bin" / "hyprshell"
+    if candidate.exists():
+        return str(candidate)
+    return None
+
+
+def positive_seconds(raw_value, default: float) -> float:
+    try:
+        seconds = float(raw_value)
+        if seconds > 0:
+            return seconds
+    except Exception:
+        pass
+    return float(default)
+
+
+def watchdog_interval_seconds(config: dict) -> float:
+    return positive_seconds(config.get("check_interval_seconds", 60), 60)
+
+
+def load_config(config_file: Path = CONFIG_FILE) -> dict:
+    config = DEFAULT_CONFIG.copy()
+    if config_file.exists():
+        try:
+            content = config_file.read_text().strip()
+            if content.startswith("{"):
+                user_config = json.loads(content)
+            else:
+                user_config = {}
+                for line in content.split("\n"):
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        key, value = line.split("=", 1)
+                        key = key.strip()
+                        value = value.strip()
+                        if value.lower() in ("true", "false"):
+                            value = value.lower() == "true"
+                        elif value.replace(".", "").replace("-", "").isdigit():
+                            value = float(value) if "." in value else int(value)
+                        user_config[key] = value
+            config.update(user_config)
+        except Exception as exc:
+            print(f"Warning: Failed to load config: {exc}")
+    return config
+
+
+def load_state(state_file: Path = STATE_FILE) -> dict:
+    defaults = {
+        "current_mode": "dark",
+        "last_change": None,
+        "manual_override_until": None,
+    }
+    if state_file.exists():
+        try:
+            state = json.loads(state_file.read_text())
+            if isinstance(state, dict):
+                state.pop("last_prewarm", None)
+                state.pop("last_prewarm_pid", None)
+                return {**defaults, **state}
+        except Exception:
+            pass
+    return defaults
+
+
+def save_state(state: dict, state_file: Path = STATE_FILE) -> None:
+    state_file.parent.mkdir(parents=True, exist_ok=True)
+    state_file.write_text(json.dumps(state))
+
+
+def read_staterc() -> dict:
+    staterc = state_home() / "hypr" / "staterc"
+    if not staterc.exists():
+        return {}
+    values = {}
+    for line in staterc.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        values[key.strip()] = value.strip().strip('"')
+    return values
+
+
+def read_color_variant_file() -> Optional[str]:
+    variant_file = state_home() / "hypr" / "color_variant"
+    if variant_file.exists():
+        return variant_file.read_text().strip()
+    return None
+
+
+def read_color_state() -> dict:
+    state_file = color_state_file()
+    if not state_file.exists():
+        return {}
+    data = {}
+    try:
+        for line in state_file.read_text().splitlines():
+            if "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            data[key.strip()] = value.strip()
+    except Exception:
+        return {}
+    return data
+
+
+def read_theme_from_wal_conf() -> Optional[str]:
+    wal_conf = config_home() / "hypr" / "themes" / "wal.conf"
+    if not wal_conf.exists():
+        return None
+    for line in wal_conf.read_text().splitlines():
+        line = line.strip()
+        if line.startswith("$HYPR_THEME="):
+            return line.split("=", 1)[1].strip().strip('"')
+    return None
+
+
+def resolve_wallpaper(staterc_values: dict) -> Optional[Path]:
+    cache_wall = wallpaper_state_file()
+    if cache_wall.exists():
+        return cache_wall.resolve()
+
+    theme = staterc_values.get("HYPR_THEME") or read_theme_from_wal_conf()
+    if theme:
+        theme_wall = config_home() / "hypr" / "themes" / theme / "wall.set"
+        if theme_wall.exists():
+            return theme_wall.resolve()
+    return None
+
+
+def load_state_env(config_file: Path | None = None) -> dict:
+    values = {}
+    config_file = state_config_file() if config_file is None else config_file
+    if not config_file.exists():
+        return values
+    try:
+        for raw_line in config_file.read_text().splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            if line.startswith("export "):
+                line = line[len("export ") :].lstrip()
+            key, value = line.split("=", 1)
+            values[key.strip()] = value.strip().strip('"').strip("'")
+    except Exception:
+        return {}
+    return values
+
+
+def apply_location_overrides_from_state(config: dict) -> None:
+    state_env = load_state_env()
+    for env_key, config_key in STATE_LOCATION_ENV_KEYS.items():
+        raw_value = state_env.get(env_key)
+        if raw_value is None:
+            raw_value = os.environ.get(env_key)
+        if raw_value is None:
+            continue
+        value = raw_value.strip()
+        if not value:
+            continue
+        if value.lower() == "auto":
+            config[config_key] = "auto"
+            continue
+        if config_key in ("latitude", "longitude"):
+            try:
+                config[config_key] = float(value)
+            except ValueError:
+                print(f"Warning: Invalid {env_key} value '{value}', ignoring")
+            continue
+        config[config_key] = value
+
+
+def resolve_auto_location(config: dict) -> None:
+    apply_location_overrides_from_state(config)
+    if (
+        config.get("latitude") != "auto"
+        and config.get("longitude") != "auto"
+        and config.get("timezone") != "auto"
+    ):
+        return
+
+    if not bool(config.get("allow_auto_geolocation", False)):
+        print(
+            "Warning: Auto geolocation is disabled. "
+            "Set allow_auto_geolocation=true to enable network-based location lookup."
+        )
+        if config.get("latitude") == "auto":
+            config["latitude"] = 0
+        if config.get("longitude") == "auto":
+            config["longitude"] = 0
+        if config.get("timezone") == "auto":
+            config["timezone"] = "UTC"
+        return
+
+    try:
+        import urllib.request
+
+        with urllib.request.urlopen("https://ipinfo.io/json", timeout=5) as resp:
+            data = json.loads(resp.read().decode())
+        if data.get("error"):
+            raise ValueError(f"Geolocation failed: {data.get('error')}")
+
+        loc_raw = str(data.get("loc", "")).strip()
+        lat = lon = None
+        if "," in loc_raw:
+            lat_raw, lon_raw = loc_raw.split(",", 1)
+            lat = float(lat_raw.strip())
+            lon = float(lon_raw.strip())
+
+        if config.get("latitude") == "auto":
+            if lat is None:
+                raise ValueError("Geolocation response missing latitude")
+            config["latitude"] = lat
+        if config.get("longitude") == "auto":
+            if lon is None:
+                raise ValueError("Geolocation response missing longitude")
+            config["longitude"] = lon
+        if config.get("timezone") == "auto":
+            config["timezone"] = data.get("timezone", "UTC") or "UTC"
+
+        print(f"Auto-detected location: {data.get('city', 'Unknown')}, {data.get('country', 'Unknown')}")
+        print(f"  Coordinates: {config['latitude']}, {config['longitude']}")
+        print(f"  Timezone: {config['timezone']}")
+    except Exception as exc:
+        print(f"Warning: Failed to auto-detect location: {exc}")
+        print("Using fallback location (UTC, equator)")
+        if config.get("latitude") == "auto":
+            config["latitude"] = 0
+        if config.get("longitude") == "auto":
+            config["longitude"] = 0
+        if config.get("timezone") == "auto":
+            config["timezone"] = "UTC"
+
+
+def get_sun_times(config: dict, target_date: Optional[date] = None) -> tuple[datetime, datetime]:
+    if target_date is None:
+        target_date = datetime.now().date()
+
+    if not ASTRAL_AVAILABLE:
+        base = datetime.combine(target_date, datetime.min.time())
+        sunrise = base.replace(hour=6, minute=0, second=0, microsecond=0)
+        sunset = base.replace(hour=18, minute=0, second=0, microsecond=0)
+        return sunrise, sunset
+
+    try:
+        location = LocationInfo(
+            latitude=config["latitude"],
+            longitude=config["longitude"],
+            timezone=config["timezone"],
+        )
+        tz_name = str(config.get("timezone", "UTC") or "UTC")
+        try:
+            tz = ZoneInfo(tz_name)
+        except Exception:
+            tz = ZoneInfo("UTC")
+        sun_times = sun(location.observer, date=target_date, tzinfo=tz)
+        sunrise = sun_times["sunrise"].replace(tzinfo=None)
+        sunset = sun_times["sunset"].replace(tzinfo=None)
+        offset = timedelta(minutes=config["sun_offset_minutes"])
+        sunrise += offset
+        sunset -= offset
+        return sunrise, sunset
+    except Exception as exc:
+        print(f"Warning: Failed to calculate sun times: {exc}")
+        now = datetime.combine(target_date, datetime.min.time())
+        return now.replace(hour=6, minute=30), now.replace(hour=17, minute=30)
+
+
+def next_sun_boundary(config: dict, now: datetime) -> datetime:
+    sunrise_today, sunset_today = get_sun_times(config, now.date())
+    if now < sunrise_today:
+        return sunrise_today
+    if now < sunset_today:
+        return sunset_today
+    sunrise_tomorrow, _ = get_sun_times(config, (now + timedelta(days=1)).date())
+    return sunrise_tomorrow
+
+
+def manual_override_deadline(state: dict) -> Optional[datetime]:
+    raw_until = state.get("manual_override_until")
+    if not raw_until:
+        return None
+    try:
+        return datetime.fromisoformat(raw_until)
+    except Exception:
+        state["manual_override_until"] = None
+        return None

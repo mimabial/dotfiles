@@ -2,15 +2,20 @@
 import json
 import os
 import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+
 import pyutils.logger as logger
 import pyutils.pip_env as pip_env
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+pip_env.ensure_managed_interpreter()
 
 logger = logger.get_logger()
 
-pip_env.v_import("pyamdgpuinfo") # fetches the module by name // does `pip install --update pyamdgpuinfo` under the hood
-import pyamdgpuinfo 
+try:
+    pyamdgpuinfo = pip_env.v_import("pyamdgpuinfo")
+except ImportError:
+    pyamdgpuinfo = None
 
 
 def format_frequency(frequency_hz: int) -> str:
@@ -48,6 +53,10 @@ def format_size(size: int, binary=True) -> str:
     return f"{size:.0f} {suffixes[index]}"
 
 def main():
+    if pyamdgpuinfo is None:
+        print("Unknown query failure: missing optional dependency 'pyamdgpuinfo'")
+        return
+
     # Detect the number of GPUs available
     n_devices = pyamdgpuinfo.detect_gpus()
     

@@ -35,7 +35,8 @@ To list available fonts:
   hyprshell fonts/font-list.sh
 
 To install new Nerd Fonts:
-  hyprshell fonts/font-nerd-install.sh
+  Menu > Install > Font
+  or hyprshell fonts/font-nerd-install.sh --list-installable
 
 EOF
   exit 0
@@ -54,7 +55,7 @@ if ! fc-list | grep -i "$FONT_NAME" >/dev/null 2>&1; then
   echo "Available monospace fonts:"
   hyprshell fonts/font-list.sh | head -20
   echo ""
-  echo "Install fonts with: hyprshell fonts/font-nerd-install.sh"
+  echo "Install fonts from Menu > Install > Font"
   exit 1
 fi
 

@@ -7,7 +7,7 @@ source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
 export WALLPAPER_THUMB_DIR
 
 # Lock file to prevent concurrent cache rebuilds
-WALLPAPER_CACHE_LOCK="${XDG_RUNTIME_DIR:-/tmp}/wallpaper-cache.lock"
+WALLPAPER_CACHE_LOCK="$(hypr_lock_path wallpaper_cache)"
 exec 204>"${WALLPAPER_CACHE_LOCK}"
 if ! flock -n 204; then
   flock 204

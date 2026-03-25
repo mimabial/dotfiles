@@ -1,438 +1,154 @@
 #!/usr/bin/env bash
-# Interactive Nerd Font remover
+# Non-interactive Nerd Font removal helpers.
 
-[[ "${HYPR_SHELL_INIT}" -ne 1 ]] && eval "$(hyprshell init)"
+set -euo pipefail
 
-echo "Loading installed fonts..."
+[[ "${HYPR_SHELL_INIT:-0}" -ne 1 ]] && eval "$(hyprshell init)"
+# shellcheck source=/dev/null
+source "${LIB_DIR:-$HOME/.local/lib}/hypr/core/notify.sh"
+# shellcheck source=/dev/null
+source "${LIB_DIR:-$HOME/.local/lib}/hypr/pkg/pacman.lib.bash"
 
-# Get installed nerd font packages
-installed_fonts=$(pacman -Qq | grep -E "^(ttf|otf)-.*nerd" | sort)
-
-if [[ -z "$installed_fonts" ]]; then
-  echo "No Nerd Fonts installed."
-  exit 0
-fi
-
-# Build fonts array
-fonts=()
-while IFS= read -r font; do
-  fonts+=("$font")
-done < <(echo "$installed_fonts")
-
-echo "Found ${#fonts[@]} installed Nerd Fonts"
-
-# Backup for filtering
-all_fonts_backup=("${fonts[@]}")
-
-# Get terminal colors once
-bg_color="#1a1a1a"
-fg_color="#e0e0e0"
-if [[ -f ~/.cache/wal/colors.sh ]]; then
-  source ~/.cache/wal/colors.sh
-  bg_color="${background:-$bg_color}"
-  fg_color="${foreground:-$fg_color}"
-fi
-
-# Get terminal font size once
-font_size="${MONOSPACE_FONT_SIZE:-}"
-if [[ -z "$font_size" && -f ~/.config/kitty/kitty.conf ]]; then
-  font_size=$(grep -E "^font_size" ~/.config/kitty/kitty.conf | awk '{print $2}' | head -1)
-fi
-font_size=${font_size:-11}
-preview_size=$(awk "BEGIN {printf \"%.0f\", $font_size * 3}")
-
-echo "Scanning configs for font usage..."
-
-# Get all fonts referenced in config to detect unused fonts
 used_fonts=()
-config_dir="${HYPR_CONFIG_HOME:-$HOME/.config/hypr}"
 
-# Search all config files for font references
-if [[ -d "$config_dir" ]]; then
-  # Look for font family names in all config files
-  while IFS= read -r font_ref; do
-    # Extract font name from various patterns
-    font_name=$(echo "$font_ref" | sed -E 's/.*[fF]ont[_-]?[fF]amily[[:space:]]*[:=][[:space:]]*"?([^",;]+)"?.*/\1/; s/.*[fF]ont[[:space:]]*[:=][[:space:]]*"?([^",;]+)"?.*/\1/')
-    [[ -n "$font_name" ]] && used_fonts+=("$font_name")
-  done < <(grep -rh -E '([fF]ont[_-]?[fF]amily|[fF]ont)[[:space:]]*[:=]' "$config_dir" 2>/dev/null | grep -v '^[[:space:]]*#')
+list_installed_nerd_fonts() {
+  pacman -Qq | grep -E '^(ttf|otf)-.*nerd' | sort
+}
 
-  # Also check variables
-  while IFS= read -r var; do
-    font_name=$(echo "$var" | cut -d'=' -f2 | tr -d '"' | tr -d "'")
-    [[ -n "$font_name" ]] && used_fonts+=("$font_name")
-  done < <(grep -rh '^\$MONOSPACE_FONT=' "$config_dir" 2>/dev/null)
-fi
+detect_used_fonts() {
+  used_fonts=()
+  local config_dir="${HYPR_CONFIG_HOME:-$HOME/.config/hypr}"
+  local font_ref font_line var font_name
 
-# Also check kitty config
-if [[ -f ~/.config/kitty/kitty.conf ]]; then
-  while IFS= read -r font_line; do
-    # Extract everything after 'font_family' keyword
-    font_name=$(echo "$font_line" | sed -E 's/^[[:space:]]*font_family[[:space:]]+//')
-    [[ -n "$font_name" ]] && used_fonts+=("$font_name")
-  done < <(grep -E '^[[:space:]]*font_family' ~/.config/kitty/kitty.conf)
-fi
+  if [[ -d "${config_dir}" ]]; then
+    while IFS= read -r font_ref; do
+      font_name=$(echo "$font_ref" | sed -E 's/.*[fF]ont[_-]?[fF]amily[[:space:]]*[:=][[:space:]]*"?([^",;]+)"?.*/\1/; s/.*[fF]ont[[:space:]]*[:=][[:space:]]*"?([^",;]+)"?.*/\1/')
+      [[ -n "${font_name}" ]] && used_fonts+=("${font_name}")
+    done < <(grep -rh -E '([fF]ont[_-]?[fF]amily|[fF]ont)[[:space:]]*[:=]' "${config_dir}" 2>/dev/null | grep -v '^[[:space:]]*#')
 
-# Remove duplicates (preserve spaces in font names)
-if [[ ${#used_fonts[@]} -gt 0 ]]; then
-  mapfile -t used_fonts < <(printf '%s\n' "${used_fonts[@]}" | sort -u)
-fi
+    while IFS= read -r var; do
+      font_name=$(echo "$var" | cut -d'=' -f2 | tr -d '"' | tr -d "'")
+      [[ -n "${font_name}" ]] && used_fonts+=("${font_name}")
+    done < <(grep -rh '^\$MONOSPACE_FONT=' "${config_dir}" 2>/dev/null)
+  fi
 
-if [[ ${#used_fonts[@]} -gt 0 ]]; then
-  echo "Detected ${#used_fonts[@]} font(s) in use: ${used_fonts[*]}"
-else
-  echo "No fonts detected in config (all fonts will be marked unused)"
-fi
+  if [[ -f ~/.config/kitty/kitty.conf ]]; then
+    while IFS= read -r font_line; do
+      font_name=$(echo "$font_line" | sed -E 's/^[[:space:]]*font_family[[:space:]]+//')
+      [[ -n "${font_name}" ]] && used_fonts+=("${font_name}")
+    done < <(grep -E '^[[:space:]]*font_family' ~/.config/kitty/kitty.conf)
+  fi
 
-# Interactive selection
-current=0
-selected=()
-search_filter=""
-show_unused_only=false
-previous_pkg=""
-
-show_preview() {
-  local pkg="${fonts[$1]}"
-  local force_redraw="${2:-false}"
-
-  clear
-  [[ -n "$search_filter" ]] && echo -e "\033[1;33mSearch: $search_filter\033[0m"
-  [[ "$show_unused_only" == true ]] && echo -e "\033[1;35mFilter: Unused only\033[0m"
-
-  # Show list of fonts with current highlighted
-  echo -e "\033[1mInstalled Fonts:\033[0m"
-  local start=$((current - 5))
-  local end=$((current + 5))
-  [[ $start -lt 0 ]] && start=0
-  [[ $end -ge ${#fonts[@]} ]] && end=$((${#fonts[@]} - 1))
-
-  for i in $(seq $start $end); do
-    local font_pkg="${fonts[$i]}"
-    local marker=""
-
-    # Check if selected for removal
-    [[ " ${selected[*]} " =~ " ${font_pkg} " ]] && marker="✗ "
-
-    # Highlight current
-    if [[ $i -eq $current ]]; then
-      echo -e "  \033[1;32m▶ $marker${fonts[$i]}\033[0m"
-    else
-      echo -e "    $marker${fonts[$i]}"
-    fi
-  done
-  echo
-
-  # Show font name and check if it's the current font
-  font_family=$(echo "$pkg" | sed -E 's/^(ttf-|otf-)//; s/-nerd$//' | awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1' | sed 's/-/ /g')
-
-  # Check if this font is currently in use
-  local in_use_marker=""
   if [[ ${#used_fonts[@]} -gt 0 ]]; then
-    # Extract package name from font files
-    for font_file in $(pacman -Ql "$pkg" 2>/dev/null | grep -E '\.(ttf|otf)$' | awk '{print $2}'); do
-      if [[ -f "$font_file" ]]; then
-        font_name=$(fc-query "$font_file" 2>/dev/null | grep "family:" | sed 's/.*family: "\(.*\)"(s)/\1/' | head -1)
-        # Check if font name matches any used font
-        for used_font in "${used_fonts[@]}"; do
-          if [[ "$font_name" == "$used_font" ]]; then
-            in_use_marker=" \033[1;32m[IN USE]\033[0m"
-            break 2
-          fi
-        done
-      fi
-    done
+    mapfile -t used_fonts < <(printf '%s\n' "${used_fonts[@]}" | sort -u)
   fi
+}
 
-  echo -e "\033[1;33mPreview: $font_family$in_use_marker\033[0m"
-  echo
+font_package_family_names() {
+  local pkg="$1"
+  local font_file font_name
 
-  # Show rendered preview in Kitty (only if font changed or forced)
-  if [[ "$TERM" == "xterm-kitty" ]] && command -v magick &>/dev/null; then
-    {
-      echo
-      font_file=$(pacman -Ql "$pkg" 2>/dev/null | grep -E '\.(ttf|otf)$' | head -1 | awk '{print $2}')
-
-      if [[ -f "$font_file" ]]; then
-        # Calculate preview dimensions — generate large, let kitty scale
-        local term_cols=$(tput cols 2>/dev/null || echo 80)
-        local preview_width=$((term_cols * 14))
-        local char_height=$((preview_size * 4 / 3))
-        local preview_height=$((char_height * 3 + 12))
-
-        # Ensure minimum valid dimensions
-        [[ $preview_width -lt 800 ]] && preview_width=800
-
-        # Calculate tight vertical spacing
-        local line_spacing=$((char_height + 2))
-
-        # Generate preview
-        local temp_img=$(mktemp --suffix=.png)
-
-        if magick -size ${preview_width}x${preview_height} "xc:$bg_color" \
-          -font "$font_file" -pointsize "$preview_size" -fill "$fg_color" \
-          -gravity north -annotate +0+3 "abcdefghijklmnopqrstuvwxyz" \
-          -font "$font_file" -pointsize "$preview_size" -fill "$fg_color" \
-          -gravity north -annotate +0+$((3 + line_spacing)) "ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
-          -font "$font_file" -pointsize "$preview_size" -fill "$fg_color" \
-          -gravity north -annotate +0+$((3 + line_spacing * 2)) "oO08 iIlL1 g9qCGQ ~-+=>   " \
-          "$temp_img" 2>/dev/null && [[ -s "$temp_img" ]]; then
-
-          kitty +kitten icat --align center <"$temp_img" 2>/dev/null && echo
-        fi
-        rm -f "$temp_img"
-
-      fi
-    }
-  fi
-
-  # Show font variants
-  font_count=$(pacman -Ql "$pkg" 2>/dev/null | grep -E '\.(ttf|otf)$' | wc -l)
-  echo -e "\033[1mVariants:\033[0m ($font_count files)"
-
-  pacman -Ql "$pkg" 2>/dev/null | grep -E '\.(ttf|otf)$' | head -5 | while read -r line; do
-    font_file=$(echo "$line" | awk '{print $2}')
-    if [[ -f "$font_file" ]]; then
-      style=$(fc-query "$font_file" 2>/dev/null | grep "style:" | sed 's/.*style: "\(.*\)"(s)/\1/' | head -1)
-      [[ -n "$style" ]] && echo "  • $style"
-    fi
-  done
-  [[ $font_count -gt 5 ]] && echo "  ... and $((font_count - 5)) more"
-
-  echo
-  pacman -Si "$pkg" 2>/dev/null | grep -E "^(Description|Installed Size)" | sed 's/^/  /'
-
-  echo
-  echo -e "\033[2m↑/k/↓/j: Navigate  ←/h/→/l: Jump 5  Space: Select  a: Toggle all  /: Search  u: Toggle unused  Esc: Clear  Enter: Remove  q: Quit\033[0m"
-  echo -e "\033[2m[${current}/${#fonts[@]}] | Selected: ${#selected[@]}\033[0m"
+  while IFS= read -r font_file; do
+    [[ -f "${font_file}" ]] || continue
+    font_name=$(fc-query "${font_file}" 2>/dev/null | grep 'family:' | sed 's/.*family: "\(.*\)"(s)/\1/' | head -1)
+    [[ -n "${font_name}" ]] && printf '%s\n' "${font_name}"
+  done < <(pacman -Ql "${pkg}" 2>/dev/null | grep -E '\.(ttf|otf)$' | awk '{print $2}')
 }
 
 is_font_in_use() {
   local pkg="$1"
+  local font_name used_font
+
   [[ ${#used_fonts[@]} -eq 0 ]] && return 1
 
-  for font_file in $(pacman -Ql "$pkg" 2>/dev/null | grep -E '\.(ttf|otf)$' | awk '{print $2}'); do
-    if [[ -f "$font_file" ]]; then
-      font_name=$(fc-query "$font_file" 2>/dev/null | grep "family:" | sed 's/.*family: "\(.*\)"(s)/\1/' | head -1)
-      # Check if font name matches any used font
-      for used_font in "${used_fonts[@]}"; do
-        if [[ "$font_name" == "$used_font" ]]; then
-          return 0
-        fi
-      done
-    fi
-  done
+  while IFS= read -r font_name; do
+    [[ -n "${font_name}" ]] || continue
+    for used_font in "${used_fonts[@]}"; do
+      if [[ "${font_name}" == "${used_font}" ]]; then
+        return 0
+      fi
+    done
+  done < <(font_package_family_names "${pkg}")
+
   return 1
 }
 
-apply_filter() {
-  current=0
-  filtered_fonts=()
-
-  # Start with all fonts or search results
-  local base_fonts=()
-  if [[ -z "$search_filter" ]]; then
-    base_fonts=("${all_fonts_backup[@]}")
-  else
-    for font in "${all_fonts_backup[@]}"; do
-      [[ "${font,,}" =~ "${search_filter,,}" ]] && base_fonts+=("$font")
-    done
-  fi
-
-  # Apply unused filter if enabled
-  if [[ "$show_unused_only" == true ]]; then
-    # Show loading message at bottom of screen
-    echo -ne "\033[s" # Save cursor position
-    tput cup $(($(tput lines) - 1)) 0
-    echo -ne "\033[2KScanning fonts for usage...\033[u" # Clear line, show message, restore cursor
-
-    # Save terminal settings and disable echo to prevent input display
-    local old_tty_settings=$(stty -g)
-    stty -echo 2>/dev/null
-
-    # Flush any queued input to prevent keypresses during scan
-    read -t 0.001 -n 10000 discard </dev/tty 2>/dev/null || true
-
-    for font in "${base_fonts[@]}"; do
-      if ! is_font_in_use "$font"; then
-        filtered_fonts+=("$font")
-      fi
-    done
-    fonts=("${filtered_fonts[@]}")
-
-    # Flush input again after scan completes
-    read -t 0.001 -n 10000 discard </dev/tty 2>/dev/null || true
-
-    # Restore terminal settings
-    stty "$old_tty_settings" 2>/dev/null
-
-    # Clear the loading message
-    tput cup $(($(tput lines) - 1)) 0
-    echo -ne "\033[2K"
-  else
-    fonts=("${base_fonts[@]}")
-  fi
-
-  # Fallback to all fonts if no results
-  [[ ${#fonts[@]} -eq 0 ]] && fonts=("${all_fonts_backup[@]}")
+list_unused_nerd_fonts() {
+  local pkg
+  detect_used_fonts
+  while IFS= read -r pkg; do
+    [[ -n "${pkg}" ]] || continue
+    if ! is_font_in_use "${pkg}"; then
+      printf '%s\n' "${pkg}"
+    fi
+  done < <(list_installed_nerd_fonts)
 }
 
-# Redraw on terminal resize
-resized=false
-trap 'resized=true' WINCH
+refresh_font_cache() {
+  fc-cache -f
+}
 
-# Main loop
-while true; do
-  resized=false
-  show_preview $current
+font_packages_label() {
+  local -a packages=("$@")
+  local joined=""
+  joined="$(printf '%s, ' "${packages[@]}")"
+  printf '%s\n' "${joined%, }"
+}
 
-  # Read single key from terminal directly
-  while true; do
-    if IFS= read -rsn1 -t 0.5 key </dev/tty; then
-      break
-    elif [[ "$resized" == true ]]; then
-      resized=false
-      show_preview $current
-    fi
-  done
+remove_nerd_font_packages() {
+  local -a packages=("$@")
+  local package_label=""
 
-  case "$key" in
-    $'\x1b') # ESC sequence (arrow keys or ESC to clear filter)
-      read -rsn2 -t 0.1 key </dev/tty
-      if [[ -z "$key" ]]; then
-        # Just ESC pressed - clear all filters
-        search_filter=""
-        show_unused_only=false
-        apply_filter
-      else
-        # Arrow keys
-        case "$key" in
-          '[A') [[ $current -gt 0 ]] && current=$((current - 1)) ;;                     # Up
-          '[B') [[ $current -lt $((${#fonts[@]} - 1)) ]] && current=$((current + 1)) ;; # Down
-          '[D')                                                                         # Left - jump up 5
-            new_pos=$((current - 5))
-            [[ $new_pos -lt 0 ]] && new_pos=0
-            current=$new_pos
-            ;;
-          '[C') # Right - jump down 5
-            new_pos=$((current + 5))
-            [[ $new_pos -ge ${#fonts[@]} ]] && new_pos=$((${#fonts[@]} - 1))
-            current=$new_pos
-            ;;
-        esac
-      fi
-      ;;
-    $'\n' | '') # Enter - remove
-      [[ ${#selected[@]} -eq 0 ]] && selected+=("${fonts[$current]}")
-      selected=("${selected[@]## }")
-      if [[ ${#selected[@]} -gt 0 ]]; then
-        clear
-        echo -e "\033[1;31mRemoving ${#selected[@]} font(s):\033[0m"
-        for font in "${selected[@]}"; do
-          echo "  - $font"
-        done
-        echo
-        read -n 1 -s -r -p "Press Enter to confirm or any other key to cancel..." </dev/tty
-        echo
-        if [[ "$REPLY" == "" ]]; then
-          echo
-          if sudo pacman -Rns --noconfirm "${selected[@]}"; then
-            echo
-            echo "Refreshing font cache..."
-            old_tty_settings=$(stty -g)
-            stty -echo 2>/dev/null
-            read -t 0.001 -n 10000 discard </dev/tty 2>/dev/null || true
-            fc-cache -f
-            read -t 0.001 -n 10000 discard </dev/tty 2>/dev/null || true
-            stty "$old_tty_settings" 2>/dev/null
-            echo -e "\033[1;32m✓ Removed: ${selected[*]}\033[0m"
-          else
-            echo -e "\033[1;31m✗ Removal failed.\033[0m"
-          fi
-          sleep 1
-          # Refresh font list
-          installed_fonts=$(pacman -Qq | grep -E "^(ttf|otf)-.*nerd" | sort)
-          all_fonts_backup=()
-          while IFS= read -r font; do
-            [[ -n "$font" ]] && all_fonts_backup+=("$font")
-          done <<<"$installed_fonts"
-          apply_filter
-          [[ $current -ge ${#fonts[@]} ]] && current=$((${#fonts[@]} - 1))
-          [[ $current -lt 0 ]] && current=0
-        fi
-        selected=()
-        [[ ${#fonts[@]} -eq 0 ]] && {
-          clear
-          echo "No Nerd Fonts remaining."
-          exit 0
-        }
-      fi
-      ;;
-    ' ') # Space - toggle selection
-      pkg="${fonts[$current]}"
-      pkg="${pkg## }"
+  if [[ "${#packages[@]}" -eq 0 ]]; then
+    echo "No font packages specified." >&2
+    return 1
+  fi
 
-      if [[ " ${selected[*]} " =~ " ${pkg} " ]]; then
-        # Remove from array
-        new_selected=()
-        for item in "${selected[@]}"; do
-          [[ "$item" != "$pkg" ]] && new_selected+=("$item")
-        done
-        selected=("${new_selected[@]}")
-      else
-        selected+=("$pkg")
-      fi
-      ;;
-    'a') # Toggle all visible fonts
-      # Show loading message
-      tput cup $(($(tput lines) - 1)) 0
-      echo -ne "\033[2KSelecting fonts..."
+  package_label="$(font_packages_label "${packages[@]}")"
 
-      if [[ ${#selected[@]} -eq ${#fonts[@]} ]]; then
-        # All selected - deselect all
-        selected=()
-      else
-        # Select all visible fonts
-        selected=()
-        for font in "${fonts[@]}"; do
-          selected+=("$font")
-        done
-      fi
+  if run_pacman_privileged -Rns --noconfirm -- "${packages[@]}"; then
+    echo
+    echo "Refreshing font cache..."
+    refresh_font_cache
+    send_notifs -a "Font Manager" -i "preferences-desktop-font" "Removed Nerd Font" "${package_label}"
+    echo -e "\033[1;32m✓ Removed: ${package_label}\033[0m"
+    return 0
+  fi
 
-      # Clear loading message
-      tput cup $(($(tput lines) - 1)) 0
-      echo -ne "\033[2K"
-      ;;
-    'k') [[ $current -gt 0 ]] && current=$((current - 1)) ;;
-    'j') [[ $current -lt $((${#fonts[@]} - 1)) ]] && current=$((current + 1)) ;;
-    'h') # h - jump up 5
-      new_pos=$((current - 5))
-      [[ $new_pos -lt 0 ]] && new_pos=0
-      current=$new_pos
-      ;;
-    'l') # l - jump down 5
-      new_pos=$((current + 5))
-      [[ $new_pos -ge ${#fonts[@]} ]] && new_pos=$((${#fonts[@]} - 1))
-      current=$new_pos
-      ;;
-    '/') # Search
-      echo -ne "\033[2K\rSearch: "
-      read -r search_filter
-      apply_filter
-      ;;
-    'u') # Toggle unused only filter
-      if [[ "$show_unused_only" == true ]]; then
-        show_unused_only=false
-      else
-        show_unused_only=true
-      fi
-      apply_filter
-      ;;
-    'q')
-      clear
-      echo "Cancelled."
-      exit 0
-      ;;
-    *)
-      continue
-      ;;
-  esac
-done
+  send_notifs -u critical -a "Font Manager" -i "preferences-desktop-font" "Failed to remove Nerd Font" "${package_label}"
+  echo -e "\033[1;31m✗ Removal failed.\033[0m" >&2
+  return 1
+}
+
+usage() {
+  cat <<'HELP'
+Usage: hyprshell fonts/font-nerd-remove.sh <mode> [packages...]
+
+Modes:
+  --list-installed     List installed Nerd Font packages
+  --list-unused        List installed Nerd Font packages not detected in config
+  --packages <pkg...>  Remove one or more Nerd Font packages
+HELP
+}
+
+case "${1:-}" in
+  --list-installed)
+    list_installed_nerd_fonts
+    ;;
+  --list-unused)
+    list_unused_nerd_fonts
+    ;;
+  --packages)
+    shift
+    remove_nerd_font_packages "$@"
+    ;;
+  -h|--help|help|'')
+    usage
+    ;;
+  *)
+    echo "Unknown mode: $1" >&2
+    echo >&2
+    usage >&2
+    exit 1
+    ;;
+esac

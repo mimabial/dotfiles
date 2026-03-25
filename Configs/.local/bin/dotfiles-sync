@@ -150,7 +150,7 @@ sync_host_profile_files() {
   copy_file "$HOME/.config/hypr/monitors.conf" "${host_root}/.config/hypr/monitors.conf" "hosts/${profile}/hypr/monitors.conf"
   copy_file "$HOME/.config/hypr/nvidia.conf" "${host_root}/.config/hypr/nvidia.conf" "hosts/${profile}/hypr/nvidia.conf"
   copy_file "$HOME/.config/waybar/modules/temperature.jsonc" "${host_root}/.config/waybar/modules/temperature.jsonc" "hosts/${profile}/waybar/modules/temperature.jsonc"
-  copy_file "$HOME/.local/state/hypr/env-overrides" "${host_root}/.local/state/hypr/env-overrides" "hosts/${profile}/state/hypr/config"
+  copy_file "$HOME/.local/state/hypr/env-overrides" "${host_root}/.local/state/hypr/env-overrides" "hosts/${profile}/state/hypr/env-overrides"
 }
 
 # Create dotfiles directory structure

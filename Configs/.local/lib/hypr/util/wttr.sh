@@ -4,6 +4,53 @@ CACHE_DIR="$HOME/.cache/wttr"
 WEATHER_CACHE="$CACHE_DIR/weather.cache"
 LOCATION_CACHE="$CACHE_DIR/location.cache"
 EXPIRY_TIME=3600
+STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
+STATERC_FILE="${STATE_HOME}/hypr/staterc"
+ENV_OVERRIDES_FILE="${STATE_HOME}/hypr/env-overrides"
+
+load_env_file() {
+  local filepath="$1"
+  [[ -r "${filepath}" ]] || return 0
+
+  while IFS= read -r line; do
+    [[ -n "${line//[[:space:]]/}" ]] || continue
+    [[ "${line}" == \#* ]] && continue
+    [[ "${line}" == export\ * ]] && line="${line#export }"
+    [[ "${line}" == *=* ]] || continue
+
+    local key="${line%%=*}"
+    local value="${line#*=}"
+    key="${key#"${key%%[![:space:]]*}"}"
+    key="${key%"${key##*[![:space:]]}"}"
+    value="${value#"${value%%[![:space:]]*}"}"
+    value="${value%"${value##*[![:space:]]}"}"
+    value="${value%\"}"
+    value="${value#\"}"
+    value="${value%\'}"
+    value="${value#\'}"
+    export "${key}=${value}"
+  done <"${filepath}"
+}
+
+env_flag() {
+  local value="${1:-}"
+  case "${value,,}" in
+    true|1|t|y|yes) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+resolve_theme_coordinates() {
+  local latitude="${AUTO_THEME_LATITUDE:-}"
+  local longitude="${AUTO_THEME_LONGITUDE:-}"
+
+  [[ -n "${latitude}" && -n "${longitude}" ]] || return 1
+  [[ "${latitude,,}" != "auto" && "${longitude,,}" != "auto" ]] || return 1
+  printf '%s,%s\n' "${latitude}" "${longitude}"
+}
+
+load_env_file "${STATERC_FILE}"
+load_env_file "${ENV_OVERRIDES_FILE}"
 
 # Get Nerd Font icon for weather code
 get_nerd_icon() {
@@ -58,30 +105,43 @@ is_cache_valid() {
 refresh_cache() {
   local country=""
   local city=""
+  local location=""
 
   # Priority 1: Check WEATHER_LOCATION environment variable
   if [ -n "$WEATHER_LOCATION" ]; then
     city="$WEATHER_LOCATION"
+    location="$city"
   else
-    # Priority 2: Fetch location from IP
-    local location=$(curl -fsS --max-time 5 "https://ipinfo.io/json" 2>/dev/null)
-    country=$(echo "$location" | jq -r '.country' 2>/dev/null)
-    city=$(echo "$location" | jq -r '.city' 2>/dev/null)
-
-    # Validate data
-    [ "$country" = "null" ] && country=""
-    [ "$city" = "null" ] && city=""
-
-    # Priority 3: If location fetch failed, try to read from location cache
-    if [ -z "$country" ] && [ -z "$city" ] && [ -f "$LOCATION_CACHE" ]; then
+    # Priority 2: Use explicit auto-theme coordinates from env-overrides
+    location="$(resolve_theme_coordinates 2>/dev/null || true)"
+    if [ -z "$location" ] && [ -f "$LOCATION_CACHE" ]; then
+      # Priority 3: If no explicit location is set, try cached location
       country=$(grep "^COUNTRY=" "$LOCATION_CACHE" 2>/dev/null | cut -d'=' -f2-)
       city=$(grep "^CITY=" "$LOCATION_CACHE" 2>/dev/null | cut -d'=' -f2-)
+    fi
+
+    if [ -n "$city" ]; then
+      location="$city"
+    fi
+
+    # Priority 4: Optional IP geolocation fallback
+    if [ -z "$location" ] && env_flag "${WEATHER_ALLOW_AUTO_GEOLOCATION:-false}"; then
+      local ipinfo_json
+      ipinfo_json=$(curl -fsS --max-time 5 "https://ipinfo.io/json" 2>/dev/null)
+      country=$(echo "$ipinfo_json" | jq -r '.country' 2>/dev/null)
+      city=$(echo "$ipinfo_json" | jq -r '.city' 2>/dev/null)
+      location=$(echo "$ipinfo_json" | jq -r '.loc // .city // empty' 2>/dev/null)
+
+      [ "$country" = "null" ] && country=""
+      [ "$city" = "null" ] && city=""
+      [ "$location" = "null" ] && location=""
     fi
   fi
 
   # Build location parameter for wttr.in
-  local location=""
-  if [ -n "$city" ]; then
+  if [ -n "$location" ]; then
+    :
+  elif [ -n "$city" ]; then
     location="$city"
   else
     # Final fallback to Paris if all else fails
@@ -96,6 +156,12 @@ refresh_cache() {
     code=$(echo "$weather_json" | jq -r '.current_condition[0].weatherCode' 2>/dev/null)
     desc=$(echo "$weather_json" | jq -r '.current_condition[0].weatherDesc[0].value' 2>/dev/null)
     temp=$(echo "$weather_json" | jq -r '.current_condition[0].FeelsLikeC' 2>/dev/null)
+    if [ -z "$city" ] || [ "$city" = "$location" ]; then
+      city=$(echo "$weather_json" | jq -r '.nearest_area[0].areaName[0].value // empty' 2>/dev/null)
+    fi
+    if [ -z "$country" ]; then
+      country=$(echo "$weather_json" | jq -r '.nearest_area[0].country[0].value // empty' 2>/dev/null)
+    fi
     temp="+${temp}°C"
   else
     # Fallback to simple format if jq is not available

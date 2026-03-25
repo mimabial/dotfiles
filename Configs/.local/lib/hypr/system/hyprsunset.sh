@@ -7,8 +7,6 @@ if ! source "$(command -v hyprshell)"; then
   exit 1
 fi
 
-sunsetConf="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/hyprsunset"
-
 # Default settings
 default_temp=6500
 default_gamma=100
@@ -21,13 +19,16 @@ max_gamma=100
 
 notify="${waybar_temperature_notification:-true}"
 
-# Ensure the configuration file exists, create it if not
-if [ ! -f "$sunsetConf" ]; then
-  printf "%d|%d|%d\n" "$default_temp" "$default_gamma" 1 >"$sunsetConf"
-fi
+write_sunset_state() {
+  state_set "HYPRSUNSET_TEMP" "${currentTemp}" "staterc"
+  state_set "HYPRSUNSET_GAMMA" "${currentGamma}" "staterc"
+  state_set "HYPRSUNSET_ENABLED" "${toggle_mode}" "staterc"
+}
 
-# Read current settings from the configuration file (PSV format: temp|gamma|state)
-IFS='|' read -r currentTemp currentGamma toggle_mode <"$sunsetConf"
+currentTemp="$(state_get "HYPRSUNSET_TEMP" "${default_temp}")"
+currentGamma="$(state_get "HYPRSUNSET_GAMMA" "${default_gamma}")"
+toggle_mode="$(state_get "HYPRSUNSET_ENABLED" "1")"
+
 [ -z "$currentTemp" ] && currentTemp=$default_temp
 [ -z "$currentGamma" ] && currentGamma=$default_gamma
 [ -z "$toggle_mode" ] && toggle_mode=1
@@ -299,33 +300,30 @@ case $action in
   increase)
     if [ "$color_mode" = "gamma" ]; then
       newGamma=$(clamp_gamma "$((currentGamma + gamma_step))")
-      printf "%d|%d|%d\n" "$currentTemp" "$newGamma" "$toggle_mode" >"$sunsetConf"
       currentGamma="$newGamma" # Update current value for status generation
     else
       newTemp=$(clamp_temp "$((currentTemp + temp_step))")
-      printf "%d|%d|%d\n" "$newTemp" "$currentGamma" "$toggle_mode" >"$sunsetConf"
       currentTemp="$newTemp" # Update current value for status generation
     fi
+    write_sunset_state
     ;;
   decrease)
     if [ "$color_mode" = "gamma" ]; then
       newGamma=$(clamp_gamma "$((currentGamma - gamma_step))")
-      printf "%d|%d|%d\n" "$currentTemp" "$newGamma" "$toggle_mode" >"$sunsetConf"
       currentGamma="$newGamma" # Update current value for status generation
     else
       newTemp=$(clamp_temp "$((currentTemp - temp_step))")
-      printf "%d|%d|%d\n" "$newTemp" "$currentGamma" "$toggle_mode" >"$sunsetConf"
       currentTemp="$newTemp" # Update current value for status generation
     fi
+    write_sunset_state
     ;;
   set)
     if [ "$color_mode" = "gamma" ]; then
-      printf "%d|%d|%d\n" "$currentTemp" "$newGamma" "$toggle_mode" >"$sunsetConf"
       currentGamma="$newGamma" # Update current value for status generation
     else
-      printf "%d|%d|%d\n" "$newTemp" "$currentGamma" "$toggle_mode" >"$sunsetConf"
       currentTemp="$newTemp" # Update current value for status generation
     fi
+    write_sunset_state
     ;;
   read)
     # Query current running temperature from hyprsunset
@@ -333,8 +331,7 @@ case $action in
     ;;
   toggle)
     toggle_mode=$((1 - toggle_mode))
-    # Only update the toggle state, preserve the saved temp/gamma settings
-    printf "%d|%d|%d\n" "$currentTemp" "$currentGamma" "$toggle_mode" >"$sunsetConf"
+    write_sunset_state
     ;;
 esac
 

@@ -87,6 +87,12 @@ SCRIPT_DIR="${SCRIPT_DIR:-$(dirname "$(realpath "${BASH_SOURCE[0]}")")}"
 [[ -r "${SCRIPT_DIR}/color.cache.sh" ]] && source "${SCRIPT_DIR}/color.cache.sh"
 # shellcheck source=color.apply.sh
 [[ -r "${SCRIPT_DIR}/color.apply.sh" ]] && source "${SCRIPT_DIR}/color.apply.sh"
+# shellcheck source=color.targets.sh
+[[ -r "${SCRIPT_DIR}/color.targets.sh" ]] && source "${SCRIPT_DIR}/color.targets.sh"
+# shellcheck source=color.files.sh
+[[ -r "${SCRIPT_DIR}/color.files.sh" ]] && source "${SCRIPT_DIR}/color.files.sh"
+# shellcheck source=color.pipeline.sh
+[[ -r "${SCRIPT_DIR}/color.pipeline.sh" ]] && source "${SCRIPT_DIR}/color.pipeline.sh"
 
 # Safe wrapper for hyprctl that logs errors instead of silently failing
 # Usage: safe_hyprctl "description" args...
@@ -115,15 +121,12 @@ CACHE_ONLY="${HYPR_WAL_CACHE_ONLY:-0}"
 # ============================================================================
 # SECTION 2: LOCK MANAGEMENT
 # ============================================================================
-# Lock timeout in seconds (prevents infinite waits)
-readonly LOCK_TIMEOUT_SECONDS=60
-
-LOCK_FILE="${XDG_RUNTIME_DIR:-/tmp}/color-gen.lock"
-CACHE_ONLY_LOCK_FILE="${XDG_RUNTIME_DIR:-/tmp}/color-cache-only.lock"
+LOCK_FILE="$(hypr_lock_path color_gen)"
+CACHE_ONLY_LOCK_FILE="$(hypr_lock_path color_cache_only)"
 STATE_FILE="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/color.gen.state"
-# Signal file for waybar watcher
-THEME_UPDATE_LOCK="${XDG_RUNTIME_DIR:-/tmp}/theme-update.lock"
-THEME_SWITCH_LOCK="${XDG_RUNTIME_DIR:-/tmp}/theme-switch.lock"
+THEME_UPDATE_LOCK="$(hypr_lock_path theme_update)"
+THEME_UPDATE_META="$(hypr_lock_path theme_update_meta)"
+THEME_SWITCH_LOCK="$(hypr_lock_path theme_switch)"
 CACHE_ONLY="${CACHE_ONLY:-${HYPR_WAL_CACHE_ONLY:-0}}"
 ASYNC_APPS=1
 ASYNC_POST_UPDATES=1
@@ -131,6 +134,7 @@ MODE_OVERRIDE="${HYPR_WAL_MODE_OVERRIDE:-}"
 CACHE_ONLY_ROOT=""
 HYPR_AUTO_RELOAD_PREV=""
 THEME_UPDATE_LOCK_OWNED=0
+THEME_UPDATE_LOCK_FD=""
 mkdir -p "$(dirname "$LOCK_FILE")" "$(dirname "$STATE_FILE")"
 
 if [[ "${CACHE_ONLY}" -eq 1 ]]; then
@@ -142,24 +146,22 @@ if [[ "${CACHE_ONLY}" -eq 1 ]]; then
 else
   exec 200>"${LOCK_FILE}"
   if ! flock -n 200; then
-    print_log -sec "pywal16" -stat "wait" "Another process running (timeout: ${LOCK_TIMEOUT_SECONDS}s)"
-    # Wait with timeout to prevent infinite hangs
-    if ! flock -w "${LOCK_TIMEOUT_SECONDS}" 200; then
-      print_log -sec "pywal16" -err "lock" "timeout after ${LOCK_TIMEOUT_SECONDS}s - aborting"
-      exit 1
-    fi
+    print_log -sec "pywal16" -stat "wait" "Another process running"
+    flock 200
   fi
 fi
 
 # Create theme update lock to prevent waybar from reacting to intermediate changes
 if [[ "${CACHE_ONLY}" -ne 1 ]]; then
-  if [[ ! -e "${THEME_UPDATE_LOCK}" ]]; then
-    lock_tmp="${THEME_UPDATE_LOCK}.tmp.$$"
+  if [[ "${HYPR_THEME_UPDATE_EXTERNAL_LOCK:-0}" -ne 1 ]]; then
+    exec {THEME_UPDATE_LOCK_FD}>"${THEME_UPDATE_LOCK}"
+    flock "${THEME_UPDATE_LOCK_FD}"
+    lock_tmp="${THEME_UPDATE_META}.tmp.$$"
     {
       printf 'pid=%s\n' "$$"
       printf 'started=%s\n' "$(date +%s)"
       printf 'cmd=%s\n' "${BASH_SOURCE[0]##*/}"
-    } >"${lock_tmp}" && mv -f "${lock_tmp}" "${THEME_UPDATE_LOCK}"
+    } >"${lock_tmp}" && mv -f "${lock_tmp}" "${THEME_UPDATE_META}"
     THEME_UPDATE_LOCK_OWNED=1
   fi
 fi
@@ -179,7 +181,11 @@ cleanup() {
   fi
   if [[ "${CACHE_ONLY}" -ne 1 ]]; then
     if [[ "${THEME_UPDATE_LOCK_OWNED}" -eq 1 ]]; then
-      rm -f "${THEME_UPDATE_LOCK}"
+      rm -f "${THEME_UPDATE_META}"
+      flock -u "${THEME_UPDATE_LOCK_FD}" 2>/dev/null || true
+      exec {THEME_UPDATE_LOCK_FD}>&-
+      THEME_UPDATE_LOCK_FD=""
+      THEME_UPDATE_LOCK_OWNED=0
     fi
     # Reload Hyprland config - log failure but don't block cleanup
     if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE}" ]]; then
@@ -216,7 +222,6 @@ if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE}" && "${CACHE_ONLY}" -ne 1 ]]; then
 fi
 
 # Check selected_color_mode (0=theme, 1=auto, 2=dark, 3=light)
-[ -f "$HYPR_STATE_HOME/config" ] && source "$HYPR_STATE_HOME/config"
 selected_color_mode="${selected_color_mode:-1}"
 
 # Get resolved light/dark variant from state (auto mode only)
@@ -254,84 +259,6 @@ THEME_FG=""
 THEME_CURSOR=""
 THEME_COLORS=()
 
-load_theme_palette() {
-  local theme_file="${1}"
-  [[ -r "${theme_file}" ]] || return 1
-
-  THEME_BG="$(awk '$1=="background"{print $2; exit}' "${theme_file}")"
-  THEME_FG="$(awk '$1=="foreground"{print $2; exit}' "${theme_file}")"
-  THEME_CURSOR="$(awk '$1=="cursor"{print $2; exit}' "${theme_file}")"
-
-  local i key val
-  THEME_COLORS=()
-  for i in {0..15}; do
-    key="color${i}"
-    val="$(awk -v key="${key}" '$1==key{print $2; exit}' "${theme_file}")"
-    [[ "${val}" =~ ^#[0-9A-Fa-f]{6}$ ]] || val=""
-    THEME_COLORS[$i]="${val}"
-  done
-
-  for i in {0..15}; do
-    [[ -n "${THEME_COLORS[$i]}" ]] || return 1
-  done
-
-  [[ "${THEME_BG}" =~ ^#[0-9A-Fa-f]{6}$ ]] || THEME_BG="${THEME_COLORS[0]}"
-  [[ "${THEME_FG}" =~ ^#[0-9A-Fa-f]{6}$ ]] || THEME_FG="${THEME_COLORS[15]}"
-  [[ "${THEME_CURSOR}" =~ ^#[0-9A-Fa-f]{6}$ ]] || THEME_CURSOR="${THEME_FG}"
-  return 0
-}
-
-write_wal_theme_file() {
-  local out_file="$1"
-  local tmp_file="${out_file}.tmp.$$"
-
-  mkdir -p "$(dirname "${out_file}")"
-
-  cat >"${tmp_file}" <<EOF
-{
-  "special": {
-    "background": "${THEME_BG}",
-    "foreground": "${THEME_FG}",
-    "cursor": "${THEME_CURSOR}"
-  },
-  "colors": {
-    "color0": "${THEME_COLORS[0]}",
-    "color1": "${THEME_COLORS[1]}",
-    "color2": "${THEME_COLORS[2]}",
-    "color3": "${THEME_COLORS[3]}",
-    "color4": "${THEME_COLORS[4]}",
-    "color5": "${THEME_COLORS[5]}",
-    "color6": "${THEME_COLORS[6]}",
-    "color7": "${THEME_COLORS[7]}",
-    "color8": "${THEME_COLORS[8]}",
-    "color9": "${THEME_COLORS[9]}",
-    "color10": "${THEME_COLORS[10]}",
-    "color11": "${THEME_COLORS[11]}",
-    "color12": "${THEME_COLORS[12]}",
-    "color13": "${THEME_COLORS[13]}",
-    "color14": "${THEME_COLORS[14]}",
-    "color15": "${THEME_COLORS[15]}"
-  }
-}
-EOF
-
-  mv -f "${tmp_file}" "${out_file}"
-}
-
-resolve_wallpaper_fallback() {
-  local cache_wall="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wallpaper/current/wall.set"
-  if [[ -e "${cache_wall}" ]]; then
-    readlink -f "${cache_wall}" 2>/dev/null && return 0
-  fi
-
-  local theme_wall="${HYPR_THEME_DIR}/wall.set"
-  if [[ -e "${theme_wall}" ]]; then
-    readlink -f "${theme_wall}" 2>/dev/null && return 0
-  fi
-
-  return 1
-}
-
 SKIP_WAYBAR_UPDATE="${SKIP_WAYBAR_UPDATE:-0}"
 
 # Override mode based on selected_color_mode
@@ -360,115 +287,20 @@ mkdir -p "${WAL_CACHE}"
 
 CACHE_CLEANUP_ENABLED="${HYPR_WAL_CACHE_CLEANUP:-1}"
 CACHE_ASYNC_STORE=1
-CACHE_CLEANUP_LOCK="${XDG_RUNTIME_DIR:-/tmp}/wal-cache-clean.lock"
-CACHE_STORE_LOCK="${XDG_RUNTIME_DIR:-/tmp}/wal-cache-store.lock"
-
+CACHE_CLEANUP_LOCK="$(hypr_lock_path wal_cache_clean)"
+CACHE_STORE_LOCK="$(hypr_lock_path wal_cache_store)"
 # Include user template changes in wal cache key.
 template_hash_suffix=""
-compute_template_hash() {
-  local template_dir="${XDG_CONFIG_HOME:-$HOME/.config}/wal/templates"
-  local hash_cmd="${HYPR_HASH_COMMAND:-sha1sum}"
-  local raw_hash
 
-  [[ -d "${template_dir}" ]] || return 0
-  command -v "${hash_cmd}" &>/dev/null || hash_cmd="sha1sum"
-  command -v "${hash_cmd}" &>/dev/null || return 0
-
-  raw_hash="$(
-    find "${template_dir}" -type f -print0 2>/dev/null \
-      | sort -z \
-      | xargs -0 "${hash_cmd}" 2>/dev/null \
-      | "${hash_cmd}" 2>/dev/null \
-      | awk '{print $1}'
-  )"
-  [[ -n "${raw_hash}" ]] && template_hash_suffix="_tpl${raw_hash:0:12}"
-}
-
-# Centralized color file symlink definitions
-declare -gA COLOR_LINKS=(
-  ["colors-alacritty.toml"]="${HOME}/.config/alacritty/colors.toml"
-  ["colors-kitty.conf"]="${HOME}/.config/kitty/colors.conf"
-  ["colors-rofi.rasi"]="${HOME}/.config/rofi/colors.rasi"
-  ["colors-wofi.css"]="${HOME}/.config/wofi/style.css"
-  ["colors-waybar.css"]="${HOME}/.config/waybar/colors.css"
-  ["colors-hyprland.conf"]="${HOME}/.config/hypr/themes/colors.conf"
-  ["colors-hyprshade.glsl"]="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wal/colors.inc"
-  ["colors-gtk.css"]="${HOME}/.config/gtk-3.0/colors.css"
-  ["colors-tmux.conf"]="${HOME}/.config/tmux/colors.conf"
-  ["colors-rmpc.ron"]="${HOME}/.config/rmpc/themes/pywal16.ron"
-  ["colors--big-rmpc.ron"]="${HOME}/.config/rmpc/themes/pywal16-big.ron"
-  ["colors--small-rmpc.ron"]="${HOME}/.config/rmpc/themes/pywal16-small.ron"
-  ["colors-wal.vim"]="${HOME}/.vim/colors/pywal16.vim"
-  ["colors-tridactyl.css"]="${HOME}/.config/tridactyl/themes/pywal.css"
-  ["colors-qutebrowser.py"]="${HOME}/.config/qutebrowser/pywal-colors.py"
-)
-
-# Determine palette source (theme vs wallpaper)
-PALETTE_SOURCE="wallpaper"
-PALETTE_LABEL=""
-STATE_WALLPAPER=""
-WAL_THEME_FILE=""
-
-if [[ "${selected_color_mode}" -eq 0 ]]; then
-  PALETTE_SOURCE="theme"
-fi
-
-if [[ "${PALETTE_SOURCE}" == "theme" ]]; then
-  if ! load_theme_palette "${THEME_KITTY_FILE}"; then
-    print_log -sec "theme" -warn "palette" "missing or incomplete ${THEME_KITTY_FILE}, falling back to wallpaper"
-    PALETTE_SOURCE="wallpaper"
-  else
-    WAL_THEME_FILE="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wal/theme-${HYPR_THEME// /_}.json"
-    write_wal_theme_file "${WAL_THEME_FILE}"
-    WALLPAPER_IMAGE="${WAL_THEME_FILE}"
-    STATE_WALLPAPER="theme:${HYPR_THEME}"
-    PALETTE_LABEL="theme:${HYPR_THEME}"
-  fi
-fi
-
-if [[ "${PALETTE_SOURCE}" == "wallpaper" ]]; then
-  WALLPAPER_IMAGE="${1:-${wallpaper_image:-${wal_image}}}"
-
-  if [[ -z "${WALLPAPER_IMAGE}" ]]; then
-    WALLPAPER_IMAGE="$(resolve_wallpaper_fallback)" || {
-      print_log -sec "pywal16" -err "no wallpaper"
-      exit 1
-    }
-  fi
-  [ ! -f "${WALLPAPER_IMAGE}" ] && {
-    print_log -sec "pywal16" -err "wallpaper not found"
-    exit 1
-  }
-
-  STATE_WALLPAPER="${WALLPAPER_IMAGE}"
-  PALETTE_LABEL="$(basename "${WALLPAPER_IMAGE}")"
-fi
-
-print_log -sec "pywal16" -stat "generate" "${PALETTE_LABEL} (${resolved_color_variant})"
-
-# Build wal command
-if [[ "${PALETTE_SOURCE}" == "theme" ]]; then
-  WAL_OPTS_BASE=("--theme" "${WAL_THEME_FILE}" "-n" "-s" "-t" "-e")
-  PYWAL_BACKEND="theme"
-  PYWAL_BACKEND_FALLBACKS=""
-  WAL_OPTS=("${WAL_OPTS_BASE[@]}")
-else
-  WAL_OPTS_BASE=("-i" "${WALLPAPER_IMAGE}" "-n" "-s" "-t" "-e")
-  [ "${resolved_color_variant}" == "light" ] && WAL_OPTS_BASE+=("-l")
-
-  # Use haishoku backend by default; fall back to others on failure.
-  # Override with PYWAL_BACKEND / PYWAL_BACKEND_FALLBACKS.
-  PYWAL_BACKEND="${PYWAL_BACKEND:-wal}"
-  PYWAL_BACKEND_FALLBACKS="${PYWAL_BACKEND_FALLBACKS:-colorthief haishoku colorz}"
-  WAL_OPTS=("${WAL_OPTS_BASE[@]}" "--backend" "${PYWAL_BACKEND}")
-fi
+select_palette_source "${1}" || exit 1
+configure_wal_command
 
 # Cache pywal output per wallpaper hash + mode (avoids rerunning wal on repeats)
 HYPR_WAL_CACHE_ENABLE="${HYPR_WAL_CACHE_ENABLE:-1}"
 HYPR_WAL_CACHE_DIR="${HYPR_WAL_CACHE_DIR:-${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/wal/cache}"
 WAL_CACHE_PRUNE_ENABLED="${HYPR_WAL_CACHE_PRUNE:-1}"
 WAL_CACHE_PRUNE_TTL="${HYPR_WAL_CACHE_PRUNE_TTL:-21600}"
-WAL_CACHE_PRUNE_LOCK="${XDG_RUNTIME_DIR:-/tmp}/wal-cache-prune.lock"
+WAL_CACHE_PRUNE_LOCK="$(hypr_lock_path wal_cache_prune)"
 WAL_CACHE_PRUNE_STAMP="${HYPR_WAL_CACHE_DIR}/.prune.ts"
 case "${WAL_CACHE_PRUNE_ENABLED,,}" in
   1 | true | yes | on) WAL_CACHE_PRUNE_ENABLED=1 ;;
@@ -479,202 +311,6 @@ esac
 wal_cache_key=""
 wal_cache_path=""
 wal_cache_populate=0
-
-wal_cache_swap_dir() {
-  local src_dir="${1}"
-  local dest_dir="${2}"
-
-  [[ -d "${src_dir}" ]] || return 1
-  [[ -n "${dest_dir}" ]] || return 1
-
-  local dest_parent tmp_dir backup_dir schemes_tmp post_hooks_tmp
-  dest_parent="$(dirname "${dest_dir}")"
-  mkdir -p "${dest_parent}"
-
-  tmp_dir="$(mktemp -d -p "${dest_parent}" wal.swap.XXXXXXXX)" || return 1
-  if ! cp -a --reflink=auto "${src_dir}/." "${tmp_dir}/" 2>/dev/null; then
-    cp -a "${src_dir}/." "${tmp_dir}/" 2>/dev/null || {
-      rm -rf "${tmp_dir}" 2>/dev/null || true
-      return 1
-    }
-  fi
-  rm -f "${tmp_dir}/.complete" "${tmp_dir}/.meta" 2>/dev/null || true
-
-  if [[ -e "${dest_dir}" ]] && [[ ! -d "${dest_dir}" ]]; then
-    rm -f "${dest_dir}" 2>/dev/null || true
-  fi
-
-  if [[ -d "${dest_dir}" ]]; then
-    # Preserve wal history + user hooks across cache restores.
-    schemes_tmp=""
-    post_hooks_tmp=""
-    if [[ -d "${dest_dir}/schemes" ]]; then
-      schemes_tmp="${dest_parent}/wal.schemes.$$"
-      mv "${dest_dir}/schemes" "${schemes_tmp}" 2>/dev/null || schemes_tmp=""
-    fi
-    if [[ -f "${dest_dir}/post-hooks.sh" ]]; then
-      post_hooks_tmp="${dest_parent}/wal.post-hooks.$$"
-      mv "${dest_dir}/post-hooks.sh" "${post_hooks_tmp}" 2>/dev/null || post_hooks_tmp=""
-    fi
-
-    backup_dir="${dest_dir}.bak.$$"
-    mv "${dest_dir}" "${backup_dir}" 2>/dev/null || {
-      [[ -n "${schemes_tmp}" ]] && [[ -d "${schemes_tmp}" ]] && mv "${schemes_tmp}" "${dest_dir}/schemes" 2>/dev/null || true
-      [[ -n "${post_hooks_tmp}" ]] && [[ -f "${post_hooks_tmp}" ]] && mv "${post_hooks_tmp}" "${dest_dir}/post-hooks.sh" 2>/dev/null || true
-      rm -rf "${tmp_dir}" 2>/dev/null || true
-      return 1
-    }
-    mv "${tmp_dir}" "${dest_dir}" 2>/dev/null || {
-      mv "${backup_dir}" "${dest_dir}" 2>/dev/null || true
-      [[ -n "${schemes_tmp}" ]] && [[ -d "${schemes_tmp}" ]] && mv "${schemes_tmp}" "${dest_dir}/schemes" 2>/dev/null || true
-      [[ -n "${post_hooks_tmp}" ]] && [[ -f "${post_hooks_tmp}" ]] && mv "${post_hooks_tmp}" "${dest_dir}/post-hooks.sh" 2>/dev/null || true
-      rm -rf "${tmp_dir}" 2>/dev/null || true
-      return 1
-    }
-
-    [[ -n "${schemes_tmp}" ]] && [[ -d "${schemes_tmp}" ]] && mv "${schemes_tmp}" "${dest_dir}/schemes" 2>/dev/null || true
-    [[ -n "${post_hooks_tmp}" ]] && [[ -f "${post_hooks_tmp}" ]] && mv "${post_hooks_tmp}" "${dest_dir}/post-hooks.sh" 2>/dev/null || true
-    rm -rf "${backup_dir}" 2>/dev/null || true
-  else
-    mv "${tmp_dir}" "${dest_dir}" 2>/dev/null || {
-      rm -rf "${tmp_dir}" 2>/dev/null || true
-      return 1
-    }
-  fi
-}
-
-wal_cache_valid() {
-  local dir="${1}"
-  [[ -f "${dir}/.complete" ]] || return 1
-  [[ -f "${dir}/colors.json" ]] || return 1
-  [[ -f "${dir}/colors-shell.sh" ]] || return 1
-  return 0
-}
-
-cache_cleanup_stale() {
-  local cache_dir="$1"
-  local keep_suffix="$2"
-  local dir base
-
-  [[ -d "${cache_dir}" ]] || return 0
-
-  while IFS= read -r -d '' dir; do
-    base="${dir##*/}"
-    case "${base}" in
-      *.tmp.* | *.bak.*) continue ;;
-    esac
-
-    if ! wal_cache_valid "${dir}"; then
-      rm -rf "${dir}" 2>/dev/null || true
-      continue
-    fi
-
-    if [[ -n "${keep_suffix}" ]] && [[ "${base}" != *"${keep_suffix}" ]]; then
-      rm -rf "${dir}" 2>/dev/null || true
-    fi
-  done < <(find "${cache_dir}" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
-}
-
-queue_cache_cleanup() {
-  local cache_dir="$1"
-  local keep_suffix="$2"
-
-  [[ "${CACHE_CLEANUP_ENABLED}" -eq 1 ]] || return 0
-  [[ "${CACHE_ONLY}" -ne 1 ]] || return 0
-  [[ -d "${cache_dir}" ]] || return 0
-
-  (
-    exec 200>&- 201>&- 202>&- 203>&-
-    exec 201>"${CACHE_CLEANUP_LOCK}"
-    flock -n 201 || exit 0
-    cache_cleanup_stale "${cache_dir}" "${keep_suffix}"
-  ) &
-  disown
-}
-
-queue_wal_cache_prune() {
-  [[ "${WAL_CACHE_PRUNE_ENABLED}" -eq 1 ]] || return 0
-  [[ "${CACHE_ONLY}" -ne 1 ]] || return 0
-  [[ -d "${HYPR_WAL_CACHE_DIR}" ]] || return 0
-
-  local ttl="${WAL_CACHE_PRUNE_TTL}"
-  [[ "${ttl}" =~ ^[0-9]+$ ]] || ttl=21600
-
-  local stamp="${WAL_CACHE_PRUNE_STAMP}"
-  local now last
-  now="$(date +%s)"
-  last=0
-  if [[ -f "${stamp}" ]]; then
-    last="$(cat "${stamp}" 2>/dev/null)"
-    [[ "${last}" =~ ^[0-9]+$ ]] || last=0
-  fi
-  if [[ "${ttl}" -gt 0 ]] && (( now - last < ttl )); then
-    return 0
-  fi
-
-  (
-    exec 200>&- 201>&- 202>&- 203>&-
-    exec 205>"${WAL_CACHE_PRUNE_LOCK}"
-    flock -n 205 || exit 0
-
-    local now_ts last_ts
-    now_ts="$(date +%s)"
-    last_ts=0
-    if [[ -f "${stamp}" ]]; then
-      last_ts="$(cat "${stamp}" 2>/dev/null)"
-      [[ "${last_ts}" =~ ^[0-9]+$ ]] || last_ts=0
-    fi
-    if [[ "${ttl}" -gt 0 ]] && (( now_ts - last_ts < ttl )); then
-      exit 0
-    fi
-    printf '%s\n' "${now_ts}" > "${stamp}.tmp" && mv -f "${stamp}.tmp" "${stamp}"
-
-    local theme_root="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}/themes"
-    local dir base meta wallpaper theme_name
-    while IFS= read -r -d '' dir; do
-      base="${dir##*/}"
-      case "${base}" in
-        *.tmp.* | *.bak.*) continue ;;
-      esac
-
-      if ! wal_cache_valid "${dir}"; then
-        rm -rf -- "${dir}"
-        continue
-      fi
-
-      meta="${dir}/.meta"
-      if [[ ! -f "${meta}" ]]; then
-        rm -rf -- "${dir}"
-        continue
-      fi
-
-      wallpaper="$(sed -n 's/^wallpaper=//p' "${meta}" | head -1)"
-      if [[ -z "${wallpaper}" ]]; then
-        rm -rf -- "${dir}"
-        continue
-      fi
-
-      case "${wallpaper}" in
-        theme:*)
-          theme_name="${wallpaper#theme:}"
-          if [[ -n "${theme_name}" ]] && [[ -d "${theme_root}/${theme_name}" ]]; then
-            continue
-          fi
-          rm -rf -- "${dir}"
-          continue
-          ;;
-        theme)
-          continue
-          ;;
-      esac
-
-      if [[ ! -e "${wallpaper}" ]]; then
-        rm -rf -- "${dir}"
-      fi
-    done < <(find -H "${HYPR_WAL_CACHE_DIR}" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
-  ) &
-  disown
-}
 
 wal_used_cache=0
 wal_output=""
@@ -738,40 +374,7 @@ if [[ "${HYPR_WAL_CACHE_ENABLE}" -eq 1 ]]; then
 fi
 
 if [[ -z "${wal_exit}" ]]; then
-  if [[ "${PALETTE_SOURCE}" == "theme" ]]; then
-    wal_output=$(XDG_CACHE_HOME="${WAL_XDG_CACHE_HOME}" wal "${WAL_OPTS[@]}" 2>&1)
-    wal_exit=$?
-  else
-    declare -A backend_seen=()
-    backend_list=()
-    backend_list+=("${PYWAL_BACKEND}")
-    backend_seen["${PYWAL_BACKEND}"]=1
-
-    if [[ -n "${PYWAL_BACKEND_FALLBACKS}" ]]; then
-      for backend in ${PYWAL_BACKEND_FALLBACKS//,/ }; do
-        [[ -n "${backend}" ]] || continue
-        [[ -n "${backend_seen[$backend]:-}" ]] && continue
-        backend_list+=("${backend}")
-        backend_seen["${backend}"]=1
-      done
-    fi
-
-    wal_exit=1
-    for backend in "${backend_list[@]}"; do
-      WAL_OPTS=("${WAL_OPTS_BASE[@]}" "--backend" "${backend}")
-      wal_output=$(XDG_CACHE_HOME="${WAL_XDG_CACHE_HOME}" wal "${WAL_OPTS[@]}" 2>&1)
-      wal_exit=$?
-      if [[ "${wal_exit}" -eq 0 ]]; then
-        if [[ "${backend}" != "${PYWAL_BACKEND}" ]]; then
-          print_log -sec "pywal16" -warn "backend" "fallback to ${backend}"
-        fi
-        PYWAL_BACKEND="${backend}"
-        break
-      fi
-    done
-  fi
-
-  [[ "${HYPR_WAL_CACHE_ENABLE}" -eq 1 ]] && wal_cache_populate=1
+  run_wal_generation
 fi
 
 if [[ "${HYPR_WAL_CACHE_ENABLE}" -eq 1 ]] && [[ -n "${wall_hash:-}" ]] && [[ "${wal_cache_backend:-}" != "${PYWAL_BACKEND}" ]]; then
@@ -797,160 +400,7 @@ if [ -f "${LIB_DIR}/hypr/wal/wal.hyprlock.sh" ]; then
   print_log -sec "hyprlock" -stat "generated" "integer rgba colors"
 fi
 
-# Post-process RGB-dependent templates
-# Convert hex colors to RGB for hyprshade.glsl
-if [ -f "${WAL_CACHE}/colors-hyprshade.glsl" ]; then
-  source "${WAL_CACHE}/colors-shell.sh"
-  # Build single sed command for all color replacements
-  sed_args=()
-  for i in {0..15}; do
-    var="color${i}"
-    hex="${!var#\#}"
-    r=$((16#${hex:0:2})) g=$((16#${hex:2:2})) b=$((16#${hex:4:2}))
-    sed_args+=(-e "s/COLOR${i}_RGB/${r}, ${g}, ${b}/g")
-  done
-  # Background and foreground
-  bg_hex="${background#\#}" fg_hex="${foreground#\#}"
-  sed_args+=(-e "s/BACKGROUND_RGB/$((16#${bg_hex:0:2})), $((16#${bg_hex:2:2})), $((16#${bg_hex:4:2}))/g")
-  sed_args+=(-e "s/FOREGROUND_RGB/$((16#${fg_hex:0:2})), $((16#${fg_hex:2:2})), $((16#${fg_hex:4:2}))/g")
-  sed -i "${sed_args[@]}" "${WAL_CACHE}/colors-hyprshade.glsl"
-fi
-
-# Convert hex colors to RGB for rmpc.ron
-if [ -f "${WAL_CACHE}/colors-rmpc.ron" ]; then
-  source "${WAL_CACHE}/colors-shell.sh"
-  # Build single sed for color0, color15, color4
-  hex0="${color0#\#}" hex15="${color15#\#}" hex4="${color4#\#}"
-  sed -i \
-    -e "s/COLOR0_R/$((16#${hex0:0:2}))/g" -e "s/COLOR0_G/$((16#${hex0:2:2}))/g" -e "s/COLOR0_B/$((16#${hex0:4:2}))/g" \
-    -e "s/COLOR15_R/$((16#${hex15:0:2}))/g" -e "s/COLOR15_G/$((16#${hex15:2:2}))/g" -e "s/COLOR15_B/$((16#${hex15:4:2}))/g" \
-    -e "s/COLOR4_R/$((16#${hex4:0:2}))/g" -e "s/COLOR4_G/$((16#${hex4:2:2}))/g" -e "s/COLOR4_B/$((16#${hex4:4:2}))/g" \
-    "${WAL_CACHE}/colors-rmpc.ron"
-fi
-
-# Convert hex colors to RGB for hyprland rgba variables
-if [ -f "${WAL_CACHE}/colors-hyprland.conf" ]; then
-  source "${WAL_CACHE}/colors-shell.sh"
-  sed_args=()
-  for i in 0 4 7 8 15; do
-    var="color${i}"
-    hex="${!var#\#}"
-    r=$((16#${hex:0:2})) g=$((16#${hex:2:2})) b=$((16#${hex:4:2}))
-    sed_args+=(-e "s/COLOR${i}_RGB/${r},${g},${b}/g")
-  done
-  sed -i "${sed_args[@]}" "${WAL_CACHE}/colors-hyprland.conf"
-fi
-
-# Persist wal output into the per-wallpaper cache after post-processing.
-wal_cache_store() {
-  local src_dir="${1}"
-  local dest_dir="${2}"
-
-  [[ -d "${src_dir}" ]] || return 1
-  [[ -n "${dest_dir}" ]] || return 1
-
-  local dest_parent tmp_dir backup_dir
-  dest_parent="$(dirname "${dest_dir}")"
-  mkdir -p "${dest_parent}" 2>/dev/null || true
-
-  tmp_dir="$(mktemp -d -p "${dest_parent}" "$(basename "${dest_dir}").tmp.XXXXXXXX")" || return 1
-  while IFS= read -r -d '' entry; do
-    if ! cp -a --reflink=auto "${entry}" "${tmp_dir}/" 2>/dev/null; then
-      cp -a "${entry}" "${tmp_dir}/" 2>/dev/null || {
-        rm -rf "${tmp_dir}" 2>/dev/null || true
-        return 1
-      }
-    fi
-  done < <(
-    find "${src_dir}" -mindepth 1 -maxdepth 1 \
-      ! -name "schemes" \
-      ! -name "post-hooks.sh" \
-      -print0 2>/dev/null
-  )
-
-  {
-    echo "${wal_cache_key}"
-    echo "wallpaper=${STATE_WALLPAPER:-${WALLPAPER_IMAGE}}"
-    echo "color_variant=${resolved_color_variant}"
-    echo "backend=${PYWAL_BACKEND}"
-  } >"${tmp_dir}/.meta"
-  touch "${tmp_dir}/.complete"
-
-  if [[ -d "${dest_dir}" ]]; then
-    backup_dir="${dest_dir}.bak.$$"
-    mv "${dest_dir}" "${backup_dir}" 2>/dev/null || {
-      rm -rf "${tmp_dir}" 2>/dev/null || true
-      return 1
-    }
-    mv "${tmp_dir}" "${dest_dir}" 2>/dev/null || {
-      mv "${backup_dir}" "${dest_dir}" 2>/dev/null || true
-      rm -rf "${tmp_dir}" 2>/dev/null || true
-      return 1
-    }
-    rm -rf "${backup_dir}" 2>/dev/null || true
-  else
-    mv "${tmp_dir}" "${dest_dir}" 2>/dev/null || {
-      rm -rf "${tmp_dir}" 2>/dev/null || true
-      return 1
-    }
-  fi
-
-  print_log -sec "pywal16" -stat "cache" "stored"
-}
-
-wal_cache_store_with_lock() {
-  local src_dir="$1"
-  local dest_dir="$2"
-  local cache_store_fd=""
-
-  exec {cache_store_fd}>"${CACHE_STORE_LOCK}"
-  flock "${cache_store_fd}"
-  wal_cache_store "${src_dir}" "${dest_dir}"
-  local store_exit=$?
-  flock -u "${cache_store_fd}" 2>/dev/null || true
-  exec {cache_store_fd}>&-
-  return "${store_exit}"
-}
-
-wal_cache_store_async() {
-  local src_dir="$1"
-  local dest_dir="$2"
-  local cache_key="${wal_cache_key}"
-  local state_wallpaper="${STATE_WALLPAPER:-${WALLPAPER_IMAGE}}"
-  local color_variant="${resolved_color_variant}"
-  local backend="${PYWAL_BACKEND}"
-  local hash_cmd="${HYPR_HASH_COMMAND:-sha1sum}"
-
-  (
-    exec 200>&- 201>&- 202>&- 203>&-
-    exec 202>"${CACHE_STORE_LOCK}"
-    flock -n 202 || exit 0
-    [[ -d "${src_dir}" ]] || exit 0
-    [[ -f "${src_dir}/colors.json" ]] || exit 0
-    command -v "${hash_cmd}" &>/dev/null || hash_cmd="sha1sum"
-    command -v "${hash_cmd}" &>/dev/null || hash_cmd=""
-    start_hash=""
-    end_hash=""
-
-    if [[ -n "${hash_cmd}" ]]; then
-      start_hash="$("${hash_cmd}" "${src_dir}/colors.json" 2>/dev/null | awk '{print $1}')"
-    fi
-
-    wal_cache_key="${cache_key}"
-    STATE_WALLPAPER="${state_wallpaper}"
-    resolved_color_variant="${color_variant}"
-    PYWAL_BACKEND="${backend}"
-    wal_cache_store "${src_dir}" "${dest_dir}" || exit 0
-
-    if [[ -n "${hash_cmd}" && -n "${start_hash}" ]]; then
-      end_hash="$("${hash_cmd}" "${src_dir}/colors.json" 2>/dev/null | awk '{print $1}')"
-      if [[ -n "${end_hash}" && "${start_hash}" != "${end_hash}" ]]; then
-        rm -rf "${dest_dir}" 2>/dev/null || true
-      fi
-    fi
-  ) &
-  disown
-}
+post_process_generated_color_files
 
 if [[ "${wal_cache_populate}" -eq 1 ]] && [[ "${wal_used_cache}" -eq 0 ]] && [[ -n "${wal_cache_path}" ]]; then
   if [[ "${CACHE_ONLY}" -ne 1 ]]; then
@@ -960,27 +410,7 @@ if [[ "${wal_cache_populate}" -eq 1 ]] && [[ "${wal_used_cache}" -eq 0 ]] && [[ 
   fi
 fi
 
-# Pre-cache opposite light/dark mode in background for faster mode switching
-# Only in wallpaper mode (not theme mode) and not during cache-only runs
-if [[ "${CACHE_ONLY}" -ne 1 ]] && [[ "${selected_color_mode}" -ne 0 ]] && [[ "${HYPR_WAL_CACHE_ENABLE}" -eq 1 ]]; then
-  opposite_mode=""
-  [[ "${resolved_color_variant}" == "dark" ]] && opposite_mode="light"
-  [[ "${resolved_color_variant}" == "light" ]] && opposite_mode="dark"
-
-  if [[ -n "${opposite_mode}" ]] && [[ -n "${wall_hash:-}" ]]; then
-    opposite_cache_key="${wall_hash}_${opposite_mode}_${PYWAL_BACKEND}${template_hash_suffix}"
-    opposite_cache_path="${HYPR_WAL_CACHE_DIR}/${opposite_cache_key}"
-
-    if ! wal_cache_valid "${opposite_cache_path}"; then
-      print_log -sec "pywal16" -stat "precache" "queuing ${opposite_mode} mode"
-      # Queue for execution in cleanup trap (after lock is released)
-      # Using explicit variables instead of eval for safety
-      PRECACHE_ENABLED=1
-      PRECACHE_MODE="${opposite_mode}"
-      PRECACHE_WALLPAPER="${WALLPAPER_IMAGE}"
-    fi
-  fi
-fi
+queue_opposite_mode_precache
 
 if [[ "${CACHE_ONLY}" -eq 1 ]]; then
   print_log -sec "pywal16" -stat "cache" "prepared (cache-only)"
@@ -992,108 +422,7 @@ set -a
 [ -f "${WAL_CACHE}/colors.sh" ] && source "${WAL_CACHE}/colors-shell.sh"
 set +a
 
-# Pywal16 generates all color files to ~/.cache/wal/
-# Now create symlinks to expected locations
-print_log -sec "pywal16" -stat "linking" "creating symlinks to color files"
-
-for cache_file in "${!COLOR_LINKS[@]}"; do
-  # In theme mode, Hyprland colors are derived from the theme palette (not the wallpaper).
-  # Keep pywal16's cache output available, but don't link it over the theme colors.
-  if [[ "${selected_color_mode}" -eq 0 ]] && [[ "${cache_file}" == "colors-hyprland.conf" ]]; then
-    continue
-  fi
-  if [[ "${SKIP_WAYBAR_UPDATE}" -eq 1 ]] && [[ "${cache_file}" == "colors-waybar.css" ]]; then
-    continue
-  fi
-
-  source="${WAL_CACHE}/${cache_file}"
-  target="${COLOR_LINKS[$cache_file]}"
-  if [ -f "${source}" ]; then
-    mkdir -p "$(dirname "${target}")"
-    if ln -sf "${source}" "${target}"; then
-      [[ "${LOG_LEVEL}" == "debug" ]] && print_log -sec "symlink" -stat "linked" "${cache_file}"
-    else
-      print_log -sec "symlink" -warn "failed" "could not link ${cache_file}"
-    fi
-  else
-    [[ "${LOG_LEVEL}" == "debug" ]] && print_log -sec "symlink" -warn "skip" "${cache_file} not generated"
-  fi
-done
-
-# In theme mode, ensure Hyprland `colors.conf` matches the selected theme palette.
-generate_hypr_colors_from_theme() {
-  local kitty_theme_file="${HYPR_THEME_DIR}/kitty.theme"
-  local out_file="${HOME}/.config/hypr/themes/colors.conf"
-  local tmp_file="${out_file}.tmp.$$"
-
-  [[ -n "${HYPR_THEME_DIR}" ]] || return 1
-  [[ -r "${kitty_theme_file}" ]] || {
-    print_log -sec "theme" -warn "colors" "missing kitty.theme: ${kitty_theme_file}"
-    return 1
-  }
-
-  if ! load_theme_palette "${kitty_theme_file}"; then
-    print_log -sec "theme" -warn "colors" "incomplete palette in ${kitty_theme_file}"
-    return 1
-  fi
-
-  local -a theme_colors=()
-  local i
-  for i in {0..15}; do
-    theme_colors[$i]="${THEME_COLORS[$i]}"
-  done
-
-  local theme_bg="${THEME_BG}"
-  local theme_fg="${THEME_FG}"
-
-  local active_border inactive_border_bg inactive_border_fg
-  active_border="${theme_colors[4]#\#}ff"
-  inactive_border_bg="${theme_colors[0]#\#}cc"
-  inactive_border_fg="${theme_colors[8]#\#}cc"
-
-  mkdir -p "$(dirname "${out_file}")"
-  [[ -L "${out_file}" ]] && rm -f "${out_file}"
-
-  {
-    echo "# Autogenerated theme colors (from kitty.theme)"
-    echo "# Theme: ${HYPR_THEME}"
-    echo "# Source: ${kitty_theme_file}"
-    echo
-    echo "# Standard theme colors"
-    for i in {0..15}; do
-      printf '$color%s = %s\n' "${i}" "${theme_colors[$i]}"
-    done
-    echo
-    echo "# Hyprland-friendly helpers (no leading '#')"
-    for i in {0..15}; do
-      local hex="${theme_colors[$i]#\#}"
-      printf '$color%see = %s\n' "${i}" "${hex}ee"
-    done
-    echo
-    printf '$background = %s\n' "${theme_bg}"
-    printf '$foreground = %s\n' "${theme_fg}"
-    printf '$cursor = %s\n' "${theme_fg}"
-    echo
-
-    cat <<EOF
-
-general {
-    col.active_border = rgba(${active_border}) rgba(${active_border}) 45deg
-    col.inactive_border = rgba(${inactive_border_bg}) rgba(${inactive_border_fg}) 45deg
-}
-
-group {
-    col.border_active = rgba(${active_border}) rgba(${active_border}) 45deg
-    col.border_inactive = rgba(${inactive_border_bg}) rgba(${inactive_border_fg}) 45deg
-    col.border_locked_active = rgba(${active_border}) rgba(${active_border}) 45deg
-    col.border_locked_inactive = rgba(${inactive_border_bg}) rgba(${inactive_border_fg}) 45deg
-}
-EOF
-  } >"${tmp_file}"
-
-  mv -f "${tmp_file}" "${out_file}"
-  print_log -sec "theme" -stat "colors" "wrote ${out_file}"
-}
+link_generated_color_files
 
 if [[ "${selected_color_mode}" -eq 0 ]]; then
   if ! generate_hypr_colors_from_theme; then
@@ -1136,219 +465,15 @@ fi
 # Reload live applications
 reload_live_apps
 
-# Theme symlinks are already created at lines 99-117, no need to modify them here
-
-# Process .theme files from theme directory
-process_theme_files() {
-  [ -z "${HYPR_THEME_DIR}" ] && {
-    print_log -sec "theme" -warn "skip" "HYPR_THEME_DIR not set"
-    return 0
-  }
-  [ ! -d "${HYPR_THEME_DIR}" ] && {
-    print_log -sec "theme" -warn "skip" "theme directory not found: ${HYPR_THEME_DIR}"
-    return 0
-  }
-
-  print_log -sec "theme" -stat "processing" ".theme files from ${HYPR_THEME}"
-
-  # Array to collect post-write commands
-  local -a post_commands=()
-  local -A seen_post_commands=()
-
-  should_queue_exec_cmd() {
-    local cmd="$1"
-    local first_word
-
-    [[ -z "${cmd}" ]] && return 1
-    first_word="${cmd%%[[:space:]]*}"
-
-    if [[ "${first_word}" == "${cmd}" ]] && [[ -f "${first_word}" ]] && [[ ! -x "${first_word}" ]]; then
-      print_log -sec "theme" -warn "skip" "non-executable command target: ${first_word}"
-      return 1
-    fi
-
-    if [[ "${first_word}" == /* ]] && [[ ! -e "${first_word}" ]]; then
-      print_log -sec "theme" -warn "skip" "missing command: ${first_word}"
-      return 1
-    fi
-
-    if [[ "${first_word}" == "tmux" ]]; then
-      if ! command -v tmux &>/dev/null || ! tmux list-sessions &>/dev/null; then
-        print_log -sec "theme" -warn "skip" "tmux server not running"
-        return 1
-      fi
-    fi
-
-    if [[ "${first_word}" != /* ]] && ! command -v "${first_word}" &>/dev/null; then
-      print_log -sec "theme" -warn "skip" "command not found: ${first_word}"
-      return 1
-    fi
-
-    return 0
-  }
-
-  # First pass: Write all files and collect commands
-  while IFS= read -r theme_file; do
-    [ ! -f "${theme_file}" ] && continue
-    [ "$(basename "${theme_file}")" = "hypr.theme" ] && continue
-    # Skip kvantum .theme files (handled separately in Kvantum section above)
-    [[ "${theme_file}" =~ /kvantum/.*\.theme$ ]] && continue
-
-    # Parse first line: target_path | exec_command (exec is optional)
-    local first_line
-    first_line=$(head -1 "${theme_file}")
-
-    local target_path exec_cmd
-    if [[ "${first_line}" == *"|"* ]]; then
-      target_path="${first_line%%|*}"
-      exec_cmd="${first_line#*|}"
-    else
-      target_path="${first_line}"
-      exec_cmd=""
-    fi
-    target_path="$(echo "${target_path}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-    exec_cmd="$(echo "${exec_cmd}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-
-    # Expand variables in path safely (only common shell variables, no command substitution)
-    target_path="${target_path//\$HOME/$HOME}"
-    target_path="${target_path//\$XDG_CONFIG_HOME/${XDG_CONFIG_HOME:-$HOME/.config}}"
-    target_path="${target_path//\$XDG_CACHE_HOME/${XDG_CACHE_HOME:-$HOME/.cache}}"
-    target_path="${target_path//\$XDG_DATA_HOME/${XDG_DATA_HOME:-$HOME/.local/share}}"
-    target_path="${target_path//\$USER/$USER}"
-
-    # Expand variables in command safely (only whitelisted variables)
-    if [ -n "${exec_cmd}" ]; then
-      exec_cmd="${exec_cmd//\$HOME/$HOME}"
-      exec_cmd="${exec_cmd//\$XDG_CONFIG_HOME/${XDG_CONFIG_HOME:-$HOME/.config}}"
-      exec_cmd="${exec_cmd//\$XDG_CACHE_HOME/${XDG_CACHE_HOME:-$HOME/.cache}}"
-      exec_cmd="${exec_cmd//\$XDG_DATA_HOME/${XDG_DATA_HOME:-$HOME/.local/share}}"
-      exec_cmd="${exec_cmd//\$USER/$USER}"
-      exec_cmd="${exec_cmd//\$\{HYPR_LIB_DIR\}/${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}}"
-      exec_cmd="${exec_cmd//\$HYPR_LIB_DIR/${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}}"
-      exec_cmd="${exec_cmd//\$\{LIB_DIR\}/${LIB_DIR:-$HOME/.local/lib}}"
-      exec_cmd="${exec_cmd//\$LIB_DIR/${LIB_DIR:-$HOME/.local/lib}}"
-
-      if [[ "${exec_cmd}" == '>'* ]]; then
-        print_log -sec "theme" -warn "skip" "invalid command in $(basename "${theme_file}")"
-        exec_cmd=""
-      fi
-
-    fi
-
-    [ -z "${target_path}" ] && {
-      print_log -sec "theme" -warn "skip" "no target path in $(basename "${theme_file}")"
-      continue
-    }
-
-    # Create target directory
-    mkdir -p "$(dirname "${target_path}")"
-
-    # Hash-based skip: only write if content changed
-    new_content="$(sed '1d' "${theme_file}")"
-    new_hash="$(echo "${new_content}" | md5sum | cut -d' ' -f1)"
-    old_hash=""
-    [ -f "${target_path}" ] && old_hash="$(md5sum "${target_path}" 2>/dev/null | cut -d' ' -f1)"
-
-    if [ "${new_hash}" != "${old_hash}" ]; then
-      echo "${new_content}" >"${target_path}"
-      print_log -sec "theme" -stat "wrote" "${target_path}"
-
-    else
-      [[ "${LOG_LEVEL}" == "debug" ]] && print_log -sec "theme" -stat "skip" "${target_path} (unchanged)"
-    fi
-
-    # Queue post-write commands once per theme pass, even if the file content is
-    # unchanged. Some commands depend on runtime/theme state beyond this single
-    # file's content (for example wal.dunst.sh also depends on colors and
-    # geometry), so gating execution on file hash alone is incorrect.
-    if [ -n "${exec_cmd}" ] && [ -z "${seen_post_commands[${exec_cmd}]:-}" ]; then
-      if [[ "${exec_cmd}" =~ \$|\` ]]; then
-        print_log -sec "theme" -warn "blocked" "command contains unexpanded variables or substitution in $(basename "${theme_file}"): ${exec_cmd}"
-      elif should_queue_exec_cmd "${exec_cmd}"; then
-        post_commands+=("${exec_cmd}")
-        seen_post_commands["${exec_cmd}"]=1
-      fi
-    fi
-
-  done < <(find "${HYPR_THEME_DIR}" -type f -name "*.theme" 2>/dev/null)
-
-  # Second pass: Execute all collected commands after all files are written
-  if [ ${#post_commands[@]} -gt 0 ]; then
-    print_log -sec "theme" -stat "executing" "${#post_commands[@]} post-write commands"
-    for cmd in "${post_commands[@]}"; do
-      print_log -sec "theme" -stat "exec" "${cmd}"
-      bash -c "${cmd}" &
-    done
-    # Wait for all background commands to complete before proceeding
-    wait
-    print_log -sec "theme" -stat "complete" "all post-write commands finished"
-  fi
-
-  # Note: waybar reload is handled by the watcher when THEME_UPDATE_LOCK is removed
-  # The watcher batches all file change events and reloads once at the end
-}
-
 # Only process .theme files in theme mode
 if [ "${selected_color_mode}" -eq 0 ]; then
   process_theme_files
 else
-  # In wallpaper mode, clear theme override files to prevent stale theme colors
-  # Write minimal valid content to avoid parser errors during live reload
-  print_log -sec "theme" -stat "cleanup" "clearing theme files (wallpaper mode)"
-
-  clear_theme_file() {
-    local target="$1"
-    if [[ ! -f "${target}" ]]; then
-      : >"${target}"
-      return
-    fi
-    # Avoid touching files that are already empty/whitespace-only.
-    if grep -q '[^[:space:]]' "${target}"; then
-      : >"${target}"
-    fi
-  }
-
-  clear_theme_file "${HOME}/.config/waybar/theme.css"
-  : >"${HOME}/.config/kitty/theme.conf"
-  echo "# Empty theme file" >"${HOME}/.config/alacritty/theme.toml"
-  : >"${HOME}/.config/dunst/theme.conf"
-  bash "${LIB_DIR}/hypr/wal/wal.dunst.sh" >/dev/null 2>&1 || true
-  # Rofi themes expect variables like @background/@foreground; keep a valid fallback
-  # that pulls from pywal16-generated ~/.config/rofi/colors.rasi.
-  cat >"${HOME}/.config/rofi/theme.rasi" <<'EOF'
-/* Wallpaper mode (auto/dark/light): use pywal16 colors */
-@import "~/.config/rofi/colors.rasi"
-* {
-    separatorcolor:     transparent;
-    border-color:       transparent;
-}
-EOF
-  : >"${HOME}/.config/tmux/theme.conf"
-
-  # Reload apps to apply cleared theme files
-  # Note: waybar reload is handled by the watcher when THEME_UPDATE_LOCK is removed
-  pkill -SIGUSR1 kitty 2>/dev/null
-  tmux source-file "${XDG_CONFIG_HOME:-$HOME/.config}/tmux/tmux.conf" 2>/dev/null
+  apply_wallpaper_mode_theme_fallbacks
 fi
 
 # Run non-critical theming operations in parallel for speed
 # These don't need to block the main theme application
-
-# Ensure ICON_THEME is set correctly before parallel operations
-# Safe helper: extract single variable from hyq output without eval
-_safe_hyq_get() {
-  local hyq_output="$1"
-  local var_name="$2"
-  # Extract value for __VAR_NAME="value" pattern, validate it's safe
-  local value
-  value=$(echo "${hyq_output}" | grep "^__${var_name}=" | head -1 | sed 's/^__[A-Z_]*=//' | tr -d '"')
-  # Block command substitution patterns
-  if [[ "${value}" =~ \$\(|\`|\; ]]; then
-    print_log -sec "hyq" -warn "security" "blocked unsafe value for ${var_name}"
-    return 1
-  fi
-  echo "${value}"
-}
 
 if command -v hyq &>/dev/null; then
   theme_conf="${HYPR_CONFIG_HOME}/themes/theme.conf"
@@ -1376,7 +501,7 @@ run_secondary_theming
 # Wait for parallel operations to complete (with timeout)
 wait_for_theming_jobs_when_async_disabled
 
-# Update waybar border-radius before background tasks so it stays within the theme-update lock
+# Update Waybar border radius before background tasks so it stays within the active theme update lock
   if [[ "${SKIP_WAYBAR_UPDATE}" -ne 1 ]]; then
     if [[ -x "${LIB_DIR}/hypr/waybar/waybar.py" ]]; then
       WAYBAR_BORDER_RADIUS="${hypr_border:-}" "${LIB_DIR}/hypr/waybar/waybar.py" --update-border-radius &>/dev/null
@@ -1387,10 +512,14 @@ wait_for_theming_jobs_when_async_disabled
     fi
   fi
 
-# Release the theme-update lock once Waybar files are settled.
+# Release the active theme update lock once Waybar files are settled.
 if [[ "${CACHE_ONLY}" -ne 1 ]]; then
   if [[ "${THEME_UPDATE_LOCK_OWNED}" -eq 1 ]]; then
-    rm -f "${THEME_UPDATE_LOCK}"
+    rm -f "${THEME_UPDATE_META}"
+    flock -u "${THEME_UPDATE_LOCK_FD}" 2>/dev/null || true
+    exec {THEME_UPDATE_LOCK_FD}>&-
+    THEME_UPDATE_LOCK_FD=""
+    THEME_UPDATE_LOCK_OWNED=0
   fi
 fi
 

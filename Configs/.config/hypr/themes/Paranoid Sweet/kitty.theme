@@ -1,4 +1,4 @@
-$HOME/.config/kitty/theme.conf|killall -SIGUSR1 kitty
+$HOME/.config/kitty/theme.conf
 
 # kitty theme: Sweet
 # Based on: https://github.com/EliverLara/Sweet/blob/nova/kde/konsole/Sweet.colorscheme

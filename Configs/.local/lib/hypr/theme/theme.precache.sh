@@ -16,9 +16,9 @@ elif [[ -r "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh" ]]; then
   source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
 fi
 
-THEME_SWITCH_LOCK="${XDG_RUNTIME_DIR:-/tmp}/theme-switch.lock"
-THEME_PRECACHE_LOCK="${XDG_RUNTIME_DIR:-/tmp}/theme-precache.lock"
 COLOR_SET_SCRIPT="${LIB_DIR}/hypr/theme/color.set.sh"
+THEME_SWITCH_LOCK="$(hypr_lock_path theme_switch)"
+THEME_PRECACHE_LOCK="$(hypr_lock_path theme_precache)"
 
 exec 204>"${THEME_PRECACHE_LOCK}"
 flock -n 204 || exit 0

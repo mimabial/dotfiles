@@ -12,10 +12,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 
 import pyutils.pip_env as pip_env
 
-pip_env.v_import(
-    "requests"
-)  # fetches the module by name // does `pip install --update requests` under the hood
-import requests  # noqa: E402
+pip_env.ensure_managed_interpreter()
+
+try:
+    requests = pip_env.v_import("requests")
+except ImportError:
+    requests = None
 
 # Cache for weather codes loaded from JSON
 _WEATHER_CODES_CACHE = None
@@ -120,6 +122,23 @@ def load_env_file(filepath):
                     os.environ[key] = value.strip('"')
     except Exception:
         pass  # shhh
+
+
+def env_flag(name, default=False):
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in ("true", "1", "t", "y", "yes")
+
+
+def resolve_theme_coordinates():
+    latitude = os.getenv("AUTO_THEME_LATITUDE", "").strip()
+    longitude = os.getenv("AUTO_THEME_LONGITUDE", "").strip()
+    if not latitude or not longitude:
+        return ""
+    if latitude.lower() == "auto" or longitude.lower() == "auto":
+        return ""
+    return f"{latitude},{longitude}"
 
 
 def get_weather_icon(weatherinstance):
@@ -243,7 +262,7 @@ state_home = os.environ.get("XDG_STATE_HOME") or os.path.join(
     os.environ.get("HOME"), ".local", "state"
 )
 load_env_file(os.path.join(state_home, "hypr", "staterc"))
-load_env_file(os.path.join(state_home, "hypr", "config"))
+load_env_file(os.path.join(state_home, "hypr", "env-overrides"))
 
 temp_unit = os.getenv(
     "WEATHER_TEMPERATURE_UNIT", "c"
@@ -284,21 +303,13 @@ except ValueError:
 get_location = os.getenv("WEATHER_LOCATION", "").replace(
     " ", "_"
 )  # Name of the location to get the weather from (default: '')
+allow_auto_geolocation = env_flag("WEATHER_ALLOW_AUTO_GEOLOCATION", False)
 
-# Parse the location to wttr.in format (snake_case)
+# Prefer explicit theme coordinates when WEATHER_LOCATION is unset.
 if not get_location:
-    try:
-        response = requests.get("https://ipinfo.io", timeout=3)
-        data = response.json()
-        loc = data.get("loc")  # e.g., "48.8566,2.3522"
-        city = data.get("city")
-        # prefer coordinates if available, fallback to city
-        get_location = loc or city or ""
-        get_location = get_location.replace(" ", "_")
-    except Exception:
-        get_location = ""
+    get_location = resolve_theme_coordinates().replace(" ", "_")
 
-# If location detection failed, try to read from cached location
+# If no explicit location is set, try to read from cached location
 if not get_location:
     location_cache = os.path.join(os.getenv("HOME"), ".cache/wttr/location.cache")
     if os.path.exists(location_cache):
@@ -312,6 +323,17 @@ if not get_location:
                             break
         except Exception:
             pass
+
+# Optional network geolocation fallback
+if not get_location and allow_auto_geolocation and requests is not None:
+    try:
+        response = requests.get("https://ipinfo.io", timeout=3)
+        data = response.json()
+        loc = data.get("loc")  # e.g., "48.8566,2.3522"
+        city = data.get("city")
+        get_location = (loc or city or "").replace(" ", "_")
+    except Exception:
+        get_location = ""
 
 # Final fallback to Paris if all else fails
 if not get_location:
@@ -337,6 +359,14 @@ if not args.force and is_cache_valid():
 
 # If cache is invalid, doesn't exist, or force refresh, fetch from API
 if weather is None:
+    if requests is None:
+        print(
+            "Error: Missing optional Python dependency 'requests'. "
+            "Install it explicitly with `hyprshell pip install requests`.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     URL = f"https://wttr.in/{get_location}?format=j1"
     headers = {"User-Agent": "Mozilla/5.0"}
     try:

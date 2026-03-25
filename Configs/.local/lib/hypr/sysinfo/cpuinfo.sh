@@ -139,10 +139,6 @@ for my $chip (sort keys %$data) {
 print join("\n", @lines);
 ' <<<"$sensors_json")"
 
-if [ -n "${CPUINFO_TEMPERATURE_ID}" ]; then
-  temperature=$(perl -ne 'BEGIN{$id=shift} if (/^\Q$id\E:\s*([0-9]+)/){print $1; exit}' "$CPUINFO_TEMPERATURE_ID" <<<"$cpu_temps")
-fi
-
 if [[ -z "$temperature" ]]; then
   cpu_temp_line="${cpu_temps%%$'°C'*}"
   temperature="${cpu_temp_line#*: }"

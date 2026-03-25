@@ -16,7 +16,12 @@
 selected_wall="${1:-"${WALLPAPER_CURRENT_DIR:-${HYPR_CACHE_HOME:-$HOME/.cache/hypr}/wallpaper/current}/wall.set"}"
 
 # Use flock for robust locking (releases automatically on exit/crash)
-SWWW_LOCK="${XDG_RUNTIME_DIR:-/tmp}/wallpaper-swww.lock"
+LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
+
+# shellcheck disable=SC1090
+source "${LIB_DIR}/hypr/runtime/lock_paths.sh"
+
+SWWW_LOCK="$(hypr_lock_path wallpaper_swww)"
 exec 203>"${SWWW_LOCK}"
 if ! flock -n 203; then
   echo "Another swww wallpaper operation in progress, skipping..."

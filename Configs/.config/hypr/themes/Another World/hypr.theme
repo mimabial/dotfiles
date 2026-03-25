@@ -5,7 +5,6 @@ $ICON_THEME=Vivid-Glassy-Dark-Icons
 $CURSOR_THEME=Hackneyed-Dark
 $CURSOR_SIZE=24
 $COLOR_SCHEME=prefer-dark
-$NVIM_SCHEME=nord
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 

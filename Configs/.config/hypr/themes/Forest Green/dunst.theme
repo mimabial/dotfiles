@@ -1,4 +1,4 @@
-$HOME/.config/dunst/theme.conf|hyprshell wal/wal.dunst.sh
+$HOME/.config/dunst/theme.conf
 
 @define-color fg-primary #d3c6aa;
 @define-color fg-secondary #a7c080;

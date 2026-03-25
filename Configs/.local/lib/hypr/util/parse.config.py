@@ -499,9 +499,9 @@ def parse_args():
         "--env",
         default=os.path.join(
             xdg_state_home(),
-            "hypr/config",
+            "hypr/env-overrides",
         ),
-        help="The output environment file. Default is $XDG_STATE_HOME/hypr/config",
+        help="The output environment file. Default is $XDG_STATE_HOME/hypr/env-overrides",
     )
     parser.add_argument(
         "--hypr",

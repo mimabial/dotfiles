@@ -1,4 +1,4 @@
-$HOME/.config/dunst/theme.conf|hyprshell wal/wal.dunst.sh
+$HOME/.config/dunst/theme.conf
 
 /* Foreground colors */
 @define-color fg-primary #657b83;     /* base00 - primary content */

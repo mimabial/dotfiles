@@ -7,4 +7,6 @@ google-chrome* | brave-browser* | microsoft-edge* | opera* | vivaldi* | helium-b
 *) browser="chromium.desktop" ;;
 esac
 
-exec setsid uwsm-app -- $(sed -n 's/^Exec=\([^ ]*\).*/\1/p' {~/.local,~/.nix-profile,/usr}/share/applications/$browser 2>/dev/null | head -1) --app="$1" "${@:2}"
+browser_exec="$(sed -n 's/^Exec=\([^ ]*\).*/\1/p' {~/.local,~/.nix-profile,/usr}/share/applications/"$browser" 2>/dev/null | head -1)"
+[[ -z "${browser_exec}" ]] && browser_exec="chromium"
+exec setsid uwsm-app -- "${browser_exec}" --app="$1" "${@:2}"

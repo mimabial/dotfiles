@@ -27,7 +27,24 @@ fi
 if [[ "${selected_color_mode}" -eq 1 ]]; then
   systemctl --user start --no-block auto-theme.service 2>/dev/null || {
     type print_log &>/dev/null && print_log -sec "auto-theme" -warn "startup" "failed to start auto-theme.service"
+    exit 0
   }
+
+  auto_theme_python="${HOME}/.local/state/hypr/pip_env/bin/python"
+  auto_theme_script="${LIB_DIR:-$HOME/.local/lib}/hypr/theme/auto_theme.py"
+  refreshed=0
+  if [[ -x "${auto_theme_python}" ]] && [[ -f "${auto_theme_script}" ]]; then
+    for _attempt in 1 2 3 4 5 6 7 8 9 10; do
+      if "${auto_theme_python}" "${auto_theme_script}" --refresh >/dev/null 2>&1; then
+        refreshed=1
+        break
+      fi
+      sleep 0.2
+    done
+  fi
+  if [[ "${refreshed}" -ne 1 ]]; then
+    type print_log &>/dev/null && print_log -sec "auto-theme" -warn "startup" "failed to refresh auto-theme.service"
+  fi
 else
   systemctl --user stop --no-block auto-theme.service 2>/dev/null || true
 fi

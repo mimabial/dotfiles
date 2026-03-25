@@ -121,7 +121,6 @@ UP_SPEED=$(awk -v b=$TX_BYTES_PER_SEC 'BEGIN {
     else printf "%.2f KB/s", b / 1024;
 }')
 
-IP=$(ip -4 addr show "$INTERFACE" | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
 TOOLTIP=$(printf 'Down: %s\nUp: %s' "$DOWN_SPEED" "$UP_SPEED" | jq -Rs .)
 
 echo "${JSON_TEXT::-1},\"tooltip\":$TOOLTIP}"

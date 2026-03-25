@@ -6,6 +6,8 @@ if ! source "$(command -v hyprshell)"; then
   echo "[$0] :: Error: hyprshell not found."
   exit 1
 fi
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/rofi/rofi.lib.bash"
 
 animations_user_dir="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}/animations"
 animations_shared_dir="${HYPR_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/hypr}/animations"
@@ -62,39 +64,25 @@ list_animation_names() {
 
 fn_select() {
   local animation_items rofi_select selected_animation
-  local font_scale font_name font_override
-  local hypr_border wind_border elem_border hypr_width r_override
+  local -a rofi_args
 
   animation_items="$(list_animation_names)"
   animation_items=$(printf 'Disable Animation\n%s\n' "${animation_items}" | sed '/^$/d')
 
-  font_scale="${ROFI_ANIMATION_SCALE}"
-  [[ "${font_scale}" =~ ^[0-9]+$ ]] || font_scale=${ROFI_SCALE:-10}
-
-  font_name=${ROFI_ANIMATION_FONT:-$ROFI_FONT}
-  font_name=${font_name:-$(hyprshell fonts/font-get.sh menu 2>/dev/null || true)}
-  font_name=${font_name:-$(get_hyprConf "MENU_FONT")}
-  font_name=${font_name:-$(get_hyprConf "FONT")}
-  font_name=${font_name:-monospace}
-  font_override="* {font: \"${font_name} ${font_scale}\";}"
-
-  hypr_border=${hypr_border:-"$(hyprctl -j getoption decoration:rounding | jq '.int')"}
-  wind_border=$((hypr_border * 3 / 2))
-  elem_border=$((hypr_border == 0 ? 5 : hypr_border))
-  hypr_width=${hypr_width:-"$(hyprctl -j getoption general:border_size | jq '.int')"}
-  r_override="window{border:${hypr_width}px;border-radius:${wind_border}px;} wallbox{border-radius:${elem_border}px;} element{border-radius:${elem_border}px;}"
-
   rofi_select="${HYPR_ANIMATION:-default}"
   rofi_select="${rofi_select/disable/Disable Animation}"
 
+  rofi_build_standard_menu_args \
+    rofi_args \
+    "Select animation" \
+    " 󰪏 Animation" \
+    "clipboard" \
+    "${ROFI_ANIMATION_SCALE}" \
+    "${ROFI_ANIMATION_FONT:-$ROFI_FONT}"
+  rofi_args+=(-select "${rofi_select}")
+
   selected_animation=$(printf '%s\n' "${animation_items}" \
-    | rofi -dmenu -i -select "${rofi_select}" \
-      -p "Select animation" \
-      -theme-str "entry { placeholder: \" 󰪏 Animation\"; }" \
-      -theme-str "${font_override}" \
-      -theme-str "${r_override}" \
-      -theme-str "$(get_rofi_pos)" \
-      -theme "clipboard")
+    | rofi "${rofi_args[@]}")
 
   [[ -n "${selected_animation}" ]] || exit 0
 
@@ -110,8 +98,7 @@ fn_select() {
 fn_update() {
   local current_animation animation_path compact_path
 
-  [ -f "$HYPR_STATE_HOME/config" ] && source "$HYPR_STATE_HOME/config"
-  [ -f "$HYPR_STATE_HOME/staterc" ] && source "$HYPR_STATE_HOME/staterc"
+  declare -F export_hypr_config >/dev/null && export_hypr_config
 
   current_animation=${HYPR_ANIMATION:-default}
   animation_path="$(resolve_animation_path "${current_animation}")" || {

@@ -9,24 +9,15 @@ import time
 
 def get_hyprctl_binds():
     while True:
+        result = subprocess.run(
+            ["hyprctl", "binds", "-j"], capture_output=True, text=True
+        )
+        if result.returncode != 0:
+            print("Waiting for hyprctl command to succeed...")
+            time.sleep(1)
+            continue
         try:
-            result = subprocess.run(
-                ["hyprctl", "binds", "-j"], capture_output=True, text=True, check=True
-            )
-            while result.returncode != 0:
-                print("Waiting for hyprctl command to succeed...")
-                time.sleep(1)
-                result = subprocess.run(
-                    ["hyprctl", "binds", "-j"],
-                    capture_output=True,
-                    text=True,
-                    check=True,
-                )
-            binds = json.loads(result.stdout)
-            return binds
-        except subprocess.CalledProcessError as e:
-            print(f"Error executing hyprctl: {e}")
-            return None
+            return json.loads(result.stdout)
         except json.JSONDecodeError:
             time.sleep(1)
 
@@ -111,51 +102,6 @@ def find_duplicated_binds(binds):
 
     duplicated_binds = {k: v for k, v in bind_map.items() if len(v) > 1}
     return duplicated_binds
-
-
-def tabulate_binds(binds):
-    """Tabulate binds data for printing."""
-    headers = ["mod_display", "key_display", "Dispatcher", "Arg", "Description"]
-
-    # Calculate column widths
-    col_widths = [len(header) for header in headers]
-    for bind in binds:
-        col_widths[0] = max(col_widths[0], len(bind["mod_display"]))
-        col_widths[1] = max(col_widths[1], len(bind["key_display"]))
-        col_widths[2] = max(col_widths[2], len(bind["dispatcher"]))
-        col_widths[3] = max(col_widths[3], len(bind["arg"]))
-        col_widths[4] = max(col_widths[4], len(bind["description"]))
-
-    # Create a horizontal separator
-    separator = "+" + "+".join("-" * (width + 2) for width in col_widths) + "+"
-
-    # Create the header row
-    header_row = (
-        "|"
-        + "|".join(
-            f" {header.ljust(width)} " for header, width in zip(headers, col_widths)
-        )
-        + "|"
-    )
-
-    # Create the table rows
-    rows = [separator, header_row, separator]
-    for bind in binds:
-        row = (
-            "|"
-            + "|".join(
-                f" {str(bind[key]).ljust(width)} "
-                for key, width in zip(
-                    ["mod_display", "key_display", "dispatcher", "arg", "description"],
-                    col_widths,
-                )
-            )
-            + "|"
-        )
-        rows.append(row)
-    rows.append(separator)
-
-    return "\n".join(rows)
 
 
 def generate_md(binds):

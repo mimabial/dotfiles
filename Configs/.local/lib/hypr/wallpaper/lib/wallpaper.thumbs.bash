@@ -2,6 +2,9 @@
 
 # Thumbnail/cache maintenance helpers for wallpaper flows.
 
+wallInventoryList=()
+wallInventoryHash=()
+
 wallpaper_prune_sources_array() {
   local out_name="$1"
   local -n out_ref="${out_name}"
@@ -30,9 +33,7 @@ wallpaper_inventory_signature_file() {
 }
 
 wallpaper_inventory_lock_file() {
-  local runtime_dir="${XDG_RUNTIME_DIR}"
-  [[ -z "${runtime_dir}" ]] && runtime_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
-  printf '%s\n' "${runtime_dir}/wallpaper-inventory.lock"
+  hypr_lock_path wallpaper_inventory
 }
 
 wallpaper_inventory_signature() {
@@ -69,16 +70,14 @@ wallpaper_inventory_signature() {
 }
 
 wallpaper_load_inventory_catalog() {
-  local runtime_dir="${XDG_RUNTIME_DIR}"
-  local lock_file=""
   local -a wall_sources=()
-
-  [[ -z "${runtime_dir}" ]] && runtime_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
-  lock_file="${runtime_dir}/wallpaper-cache.lock"
+  local -a saved_wall_list=("${wallList[@]}")
+  local -a saved_wall_hash=("${wallHash[@]}")
+  local saved_set_index="${setIndex:-0}"
 
   wallpaper_prune_sources_array wall_sources || return 1
 
-  exec 204>"${lock_file}"
+  exec 204>"$(hypr_lock_path wallpaper_cache)"
   if ! flock -n 204; then
     flock 204
   fi
@@ -86,13 +85,22 @@ wallpaper_load_inventory_catalog() {
   if ! Wall_Hashmap_Cached "${wall_sources[@]}" --no-notify --skipstrays; then
     flock -u 204 2>/dev/null
     exec 204>&-
+    wallList=("${saved_wall_list[@]}")
+    wallHash=("${saved_wall_hash[@]}")
+    setIndex="${saved_set_index}"
     return 1
   fi
+
+  wallInventoryList=("${wallList[@]}")
+  wallInventoryHash=("${wallHash[@]}")
+  wallList=("${saved_wall_list[@]}")
+  wallHash=("${saved_wall_hash[@]}")
+  setIndex="${saved_set_index}"
 
   flock -u 204 2>/dev/null
   exec 204>&-
 
-  [[ ${#wallList[@]} -gt 0 ]]
+  [[ ${#wallInventoryList[@]} -gt 0 ]]
 }
 
 wallpaper_collect_valid_thumb_hashes() {
@@ -101,7 +109,7 @@ wallpaper_collect_valid_thumb_hashes() {
   local hash
 
   out_ref=()
-  for hash in "${wallHash[@]}"; do
+  for hash in "${wallInventoryHash[@]}"; do
     [[ -n "${hash}" ]] || continue
     out_ref["${hash}"]=1
   done
@@ -114,8 +122,8 @@ wallpaper_collect_valid_png_hashes() {
   local i
 
   out_ref=()
-  for i in "${!wallList[@]}"; do
-    wallpaper_hash="${wallHash[i]}"
+  for i in "${!wallInventoryList[@]}"; do
+    wallpaper_hash="${wallInventoryHash[i]}"
     [[ -n "${wallpaper_hash}" ]] || continue
     cached_thumb="${WALLPAPER_VIDEO_DIR}/${wallpaper_hash}.png"
     if [[ -f "${cached_thumb}" ]]; then
@@ -184,7 +192,7 @@ wallpaper_prune_loaded_inventory() {
   local -A valid_thumb_hashes=()
   local -A valid_png_hashes=()
 
-  [[ ${#wallList[@]} -gt 0 ]] || return 0
+  [[ ${#wallInventoryList[@]} -gt 0 ]] || return 0
 
   wallpaper_collect_valid_thumb_hashes valid_thumb_hashes
   wallpaper_collect_valid_png_hashes valid_png_hashes
@@ -193,20 +201,15 @@ wallpaper_prune_loaded_inventory() {
   wallpaper_prune_png_cache valid_png_hashes
 }
 
-wallpaper_refresh_inventory_and_prune() {
+wallpaper_refresh_inventory_and_prune_locked() {
   local signature_file=""
-  local lock_file=""
   local current_signature=""
   local saved_signature=""
 
   [[ "${WALLPAPER_INVENTORY_REFRESHED:-0}" -eq 1 ]] && return 0
 
   signature_file="$(wallpaper_inventory_signature_file)"
-  lock_file="$(wallpaper_inventory_lock_file)"
   mkdir -p "$(dirname "${signature_file}")"
-
-  exec 205>"${lock_file}"
-  flock 205
 
   current_signature="$(wallpaper_inventory_signature 2>/dev/null || true)"
   if [[ -f "${signature_file}" ]]; then
@@ -215,24 +218,45 @@ wallpaper_refresh_inventory_and_prune() {
 
   if [[ -n "${current_signature}" ]] && [[ "${current_signature}" == "${saved_signature}" ]]; then
     WALLPAPER_INVENTORY_REFRESHED=1
-    flock -u 205 2>/dev/null
-    exec 205>&-
     return 0
   fi
 
   if ! wallpaper_load_inventory_catalog; then
-    flock -u 205 2>/dev/null
-    exec 205>&-
     return 0
   fi
   [[ -n "${current_signature}" ]] && printf '%s\n' "${current_signature}" >"${signature_file}"
   WALLPAPER_INVENTORY_REFRESHED=1
 
-  flock -u 205 2>/dev/null
-  exec 205>&-
-
   # Prune stale caches in background so it doesn't block the UI
   wallpaper_prune_loaded_inventory &
+}
+
+wallpaper_refresh_inventory_and_prune() {
+  local lock_file=""
+  lock_file="$(wallpaper_inventory_lock_file)"
+  mkdir -p "$(dirname "${lock_file}")"
+
+  exec 205>"${lock_file}"
+  flock 205
+  wallpaper_refresh_inventory_and_prune_locked
+  flock -u 205 2>/dev/null
+  exec 205>&-
+}
+
+wallpaper_refresh_inventory_and_prune_async() {
+  local lock_file=""
+  [[ "${WALLPAPER_INVENTORY_REFRESHED:-0}" -eq 1 ]] && return 0
+
+  lock_file="$(wallpaper_inventory_lock_file)"
+  mkdir -p "$(dirname "${lock_file}")"
+
+  (
+    exec 205>"${lock_file}"
+    flock -n 205 || exit 0
+    wallpaper_refresh_inventory_and_prune_locked
+    flock -u 205 2>/dev/null
+    exec 205>&-
+  ) &
 }
 
 Wall_Ensure_Thumbs() {

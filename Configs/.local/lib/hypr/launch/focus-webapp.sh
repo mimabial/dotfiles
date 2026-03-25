@@ -7,6 +7,5 @@ fi
 
 WINDOW_PATTERN="$1"
 shift
-LAUNCH_COMMAND="hyprshell launch/webapp.sh $*"
 
-exec hyprshell launch/focus.sh "$WINDOW_PATTERN" "$LAUNCH_COMMAND"
+exec hyprshell launch/focus.sh "$WINDOW_PATTERN" -- hyprshell launch/webapp.sh "$@"

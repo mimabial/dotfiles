@@ -2,6 +2,11 @@
 
 # Help text + JSON and rofi selection helpers.
 
+if ! declare -F rofi_effective_font_scale >/dev/null 2>&1; then
+  # shellcheck source=/dev/null
+  source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/rofi/rofi.lib.bash"
+fi
+
 show_help() {
   cat <<EOT
 Usage: $(basename "$0") --[options|flags] [parameters]
@@ -58,10 +63,28 @@ Wall_Json() {
     Wall_Ensure_Thumbs "sqre"
   fi
 
-  local wall_list_json wall_hash_json cache_home
+  local wall_list_json wall_hash_json cache_home cache_file json_cache json_tmp
+  cache_home="$(wallpaper_cache_root)"
+  cache_file="$(wallpaper_hashmap_cache_file "${wallPathArray[@]}" 2>/dev/null || true)"
+  json_cache="$(wallpaper_catalog_json_file "${wallPathArray[@]}" 2>/dev/null || true)"
+
+  if [[ -n "${json_cache}" && -f "${json_cache}" && -f "${cache_file}" ]]; then
+    local json_mtime cache_mtime
+    json_mtime="$(stat -c '%Y' -- "${json_cache}" 2>/dev/null || echo 0)"
+    cache_mtime="$(stat -c '%Y' -- "${cache_file}" 2>/dev/null || echo 0)"
+    if [[ "${json_mtime}" =~ ^[0-9]+$ && "${cache_mtime}" =~ ^[0-9]+$ ]] && ((json_mtime >= cache_mtime)); then
+      cat "${json_cache}"
+      return 0
+    fi
+  fi
+
   wall_list_json=$(printf '%s\n' "${wallList[@]}" | jq -R . | jq -s .)
   wall_hash_json=$(printf '%s\n' "${wallHash[@]}" | jq -R . | jq -s .)
-  cache_home="$(wallpaper_cache_root)"
+
+  if [[ -n "${json_cache}" ]]; then
+    mkdir -p "$(dirname "${json_cache}")"
+    json_tmp="${json_cache}.tmp"
+  fi
 
   jq -n --argjson wallList "${wall_list_json}" --argjson wallHash "${wall_hash_json}" --arg cacheHome "${cache_home}" '
         [range(0; $wallList | length) as $i |
@@ -79,19 +102,24 @@ Wall_Json() {
                 rofi_quad: "\($wallList[$i] | split("/") | last):::\($wallList[$i]):::\($cacheHome)/thumbs/\($wallHash[$i]).quad\u0000icon\u001f\($cacheHome)/thumbs/\($wallHash[$i]).quad"
             }
         ]
-    '
+    ' | {
+      if [[ -n "${json_tmp}" ]]; then
+        tee "${json_tmp}"
+      else
+        cat
+      fi
+    }
+
+  if [[ -n "${json_tmp}" && -f "${json_tmp}" ]]; then
+    mv -f "${json_tmp}" "${json_cache}"
+  fi
 }
 
 Wall_Select() {
-  font_scale="${ROFI_WALLPAPER_SCALE}"
-  [[ "${font_scale}" =~ ^[0-9]+$ ]] || font_scale=${ROFI_SCALE:-10}
+  font_scale="$(rofi_effective_font_scale "${ROFI_WALLPAPER_SCALE}")"
 
   # Set font name.
-  font_name=${ROFI_WALLPAPER_FONT:-$ROFI_FONT}
-  font_name=${font_name:-$(hyprshell fonts/font-get.sh menu 2>/dev/null || true)}
-  font_name=${font_name:-$(get_hyprConf "MENU_FONT")}
-  font_name=${font_name:-$(get_hyprConf "FONT")}
-  font_name=${font_name:-monospace}
+  font_name="$(rofi_effective_font_name "${ROFI_WALLPAPER_FONT:-$ROFI_FONT}")"
 
   # Set rofi font override.
   font_override="* {font: \"${font_name} ${font_scale}\";}"
@@ -121,7 +149,7 @@ Wall_Select() {
     element-text{padding:1em;}"
 
   # Launch rofi menu.
-  local entry wall_json_file selected_row current_hash
+  local selected_index wall_json_file selected_row current_hash
   wall_json_file="$(mktemp)"
   Wall_Json --ensure-thumbs >"${wall_json_file}"
 
@@ -136,6 +164,7 @@ Wall_Select() {
   local -a rofi_args
   rofi_args=(
     -dmenu -i
+    -format i
     -display-column-separator ":::"
     -display-columns 1
     -show-icons
@@ -144,18 +173,30 @@ Wall_Select() {
     -theme-str "listview { show-icons: true; }"
     -theme "${ROFI_WALLPAPER_STYLE:-wallpaper}"
   )
+  local opacity_override
+  opacity_override="$(rofi_active_opacity_override)"
+  [[ -n "${opacity_override}" ]] && rofi_args+=(-theme-str "${opacity_override}")
   if [[ -n "${selected_row}" ]]; then
     rofi_args+=(-selected-row "${selected_row}")
   fi
 
-  entry=$(jq -r '.[].rofi_sqre' "${wall_json_file}" | rofi "${rofi_args[@]}")
+  selected_index="$(jq -r '.[].rofi_sqre' "${wall_json_file}" | rofi "${rofi_args[@]}")"
+
+  [[ -z "${selected_index}" ]] && {
+    rm -f "${wall_json_file}"
+    exit 0
+  }
+
+  if [[ ! "${selected_index}" =~ ^[0-9]+$ ]]; then
+    rm -f "${wall_json_file}"
+    print_log -err "wallpaper" " Invalid selection index: ${selected_index}"
+    exit 1
+  fi
+
+  IFS=$'\t' read -r selected_wallpaper selected_wallpaper_path selected_thumbnail < <(
+    jq -r --argjson idx "${selected_index}" '[.[ $idx ].basename, .[ $idx ].path, .[ $idx ].sqre] | @tsv' "${wall_json_file}"
+  )
   rm -f "${wall_json_file}"
-
-  [[ -z "${entry}" ]] && exit 0
-
-  selected_thumbnail="$(awk -F ':::' '{print $3}' <<<"${entry}")"
-  selected_wallpaper_path="$(awk -F ':::' '{print $2}' <<<"${entry}")"
-  selected_wallpaper="$(awk -F ':::' '{print $1}' <<<"${entry}")"
   export selected_wallpaper selected_wallpaper_path selected_thumbnail
 
   if [[ -z "${selected_wallpaper}" ]]; then

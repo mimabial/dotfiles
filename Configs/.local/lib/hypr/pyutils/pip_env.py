@@ -12,10 +12,6 @@ sys.path.insert(0, lib_dir)
 import wrapper.libnotify as notify  # noqa: E402
 import xdg_base_dirs  # noqa: E402
 
-if lib_dir is None:
-    raise FileNotFoundError("None of the specified lib directories exist.")
-    sys.exit(1)
-
 
 def is_venv_valid(venv_path):
     """Returns whether the venv is valid or not
@@ -60,11 +56,14 @@ def is_venv_valid(venv_path):
     return True
 
 
+def hypr_venv_path():
+    """Return the managed Hypr virtual environment path."""
+    return os.path.join(xdg_base_dirs.xdg_state_home(), "hypr", "pip_env")
+
+
 def get_venv_path():
     """Set up the virtual environment path and modify sys.path."""
-    venv_path = os.path.join(xdg_base_dirs.xdg_state_home(), "hypr", "pip_env")
-    if not os.path.exists(venv_path):
-        venv_path = os.path.join(xdg_base_dirs.xdg_state_home(), "hypr", "pip_env")
+    venv_path = hypr_venv_path()
     site_packages_path = os.path.join(
         venv_path,
         "lib",
@@ -72,7 +71,44 @@ def get_venv_path():
         "site-packages",
     )
     sys.path.insert(0, site_packages_path)
+    # Managed Hypr dependencies should not be mixed with foreign site-packages.
+    # Keep stdlib paths, but drop other package roots once the managed venv is in use.
+    sys.path[:] = [
+        path
+        for path in sys.path
+        if path == site_packages_path
+        or ("site-packages" not in path and "dist-packages" not in path)
+    ]
     return venv_path
+
+
+def managed_python_executable():
+    """Return the managed venv Python interpreter if it exists."""
+    venv_path = hypr_venv_path()
+    python_executable = os.path.join(venv_path, "bin", "python")
+    if os.path.isfile(python_executable) and os.access(python_executable, os.X_OK):
+        return python_executable
+    return None
+
+
+def ensure_managed_interpreter(argv=None):
+    """Re-exec the current script under the managed Hypr venv interpreter."""
+    managed_python = managed_python_executable()
+    if managed_python is None:
+        return False
+
+    current_python = os.path.realpath(sys.executable)
+    target_python = os.path.realpath(managed_python)
+    if current_python == target_python:
+        return False
+
+    exec_argv = [managed_python]
+    if argv is None:
+        exec_argv.extend(sys.argv)
+    else:
+        exec_argv.extend(argv)
+
+    os.execv(managed_python, exec_argv)
 
 
 def create_venv(venv_path, requirements_file=None):
@@ -158,9 +194,7 @@ def rebuild_venv(venv_path=None, requirements_file=None):
     """Rebuild the virtual environment: reinstall if missing, install/upgrade requirements, and update all packages."""
     # Use XDG_STATE_HOME for venv_path if not provided
     if venv_path is None:
-        venv_path = os.path.join(xdg_base_dirs.xdg_state_home(), "hypr", "pip_env")
-        if not os.path.exists(venv_path):
-            venv_path = os.path.join(xdg_base_dirs.xdg_state_home(), "hypr", "pip_env")
+        venv_path = hypr_venv_path()
     pip_executable = os.path.join(venv_path, "bin", "pip")
     # Recreate venv if missing
     if not os.path.exists(pip_executable):
@@ -253,40 +287,18 @@ def rebuild_venv(venv_path=None, requirements_file=None):
 
 
 def v_import(module_name):
-    """Dynamically import a module, installing it if necessary."""
+    """Import a module from the managed venv without installing it."""
     venv_path = get_venv_path()
-    sys.path.insert(0, venv_path)  # Ensure sys.path is updated before import
+    sys.path.insert(0, venv_path)
     try:
         module = importlib.import_module(module_name)
         return module
-    except ImportError:
-        notify.send("PIP", f"Installing {module_name} module...")
-        install_package(venv_path, module_name)
-
-        # Reload sys.path to include the new module
-        importlib.invalidate_caches()
-        sys.path.insert(0, venv_path)
-        sys.path.insert(
-            0,
-            os.path.join(
-                venv_path,
-                "lib",
-                f"python{sys.version_info.major}.{sys.version_info.minor}",
-                "site-packages",
-            ),
-        )
-
-        try:
-            module = importlib.import_module(module_name)
-            notify.send("PIP", f"Successfully installed {module_name}.")
-            return module
-        except ImportError as e:
-            notify.send(
-                "PIP Error",
-                f"Failed to import module {module_name} after installation: {e}",
-                urgency="critical",
-            )
-            raise
+    except ImportError as exc:
+        raise ImportError(
+            f"Missing optional Python dependency '{module_name}'. "
+            f"Install it explicitly with `hyprshell pip install {module_name}` "
+            "or provision the managed Hypr venv first."
+        ) from exc
 
 
 def v_install(module_name, force_reinstall=False):

@@ -3,13 +3,9 @@
 set -euo pipefail
 
 IDLE_UNIT="hyprland-hypridle.service"
-STATE_DIR="${XDG_STATE_HOME:-}"
-if [[ -z "${STATE_DIR}" ]]; then
-  STATE_DIR="$HOME/.local/state"
-fi
-STATE_DIR="${STATE_DIR}/hypr"
-KEEP_AWAKE_STATE_FILE="${STATE_DIR}/keep-awake.state"
-AUDIO_STATE_FILE="${STATE_DIR}/keep-awake-audio.state"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
+source "${script_dir}/idle.state.sh"
 WATCHDOG_INTERVAL="${HYPR_IDLE_MANAGER_WATCHDOG:-60}"
 PLAYER_FOLLOW_RETRY="${HYPR_IDLE_MANAGER_PLAYER_RETRY:-2}"
 
@@ -27,17 +23,11 @@ systemd_user_ok() {
 }
 
 manual_active() {
-  [[ -f "${KEEP_AWAKE_STATE_FILE}" ]]
+  idle_manual_enabled
 }
 
 audio_enabled() {
-  if [[ -f "${AUDIO_STATE_FILE}" ]]; then
-    local value=""
-    value=$(<"${AUDIO_STATE_FILE}")
-    [[ "${value}" != "0" ]]
-    return
-  fi
-  return 0
+  idle_audio_enabled
 }
 
 audio_playing() {
@@ -127,7 +117,7 @@ watch_state_files() {
         -e close_write -e create -e delete -e moved_to -e moved_from -e attrib \
         --format '%f' "${STATE_DIR}" 2>/dev/null | while IFS= read -r changed_file; do
         case "${changed_file}" in
-          "$(basename "${KEEP_AWAKE_STATE_FILE}")" | "$(basename "${AUDIO_STATE_FILE}")")
+          "$(basename "${STATE_RC}")")
             kill -USR1 "$$" 2>/dev/null || true
             ;;
         esac

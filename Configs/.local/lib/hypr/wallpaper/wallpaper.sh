@@ -18,11 +18,25 @@ if declare -F export_hypr_config >/dev/null 2>&1; then
 fi
 
 # Lock file to prevent concurrent wallpaper operations.
-WALLPAPER_LOCK="${XDG_RUNTIME_DIR:-/tmp}/wallpaper-switch.lock"
+wallpaper_wait_for_lock="${WALLPAPER_WAIT_FOR_LOCK:-0}"
+if [[ "${wallpaper_wait_for_lock}" -ne 1 ]]; then
+  for wallpaper_arg in "$@"; do
+    if [[ "${wallpaper_arg}" == "--wait-lock" ]]; then
+      wallpaper_wait_for_lock=1
+      break
+    fi
+  done
+fi
+WALLPAPER_LOCK="$(hypr_lock_path wallpaper_switch)"
 exec 202>"${WALLPAPER_LOCK}"
 ! flock -n 202 && {
-  print_log -sec "wallpaper" -stat "drop" "Another wallpaper operation is already in progress"
-  exit 0
+  if [[ "${wallpaper_wait_for_lock}" -eq 1 ]]; then
+    print_log -sec "wallpaper" -stat "wait" "Another wallpaper operation is already in progress"
+    flock 202
+  else
+    print_log -sec "wallpaper" -stat "drop" "Another wallpaper operation is already in progress"
+    exit 0
+  fi
 }
 trap 'flock -u 202 2>/dev/null' EXIT
 
@@ -135,6 +149,10 @@ wallpaper_notify_emit() {
 
 wallpaper_refresh_inventory_if_needed() {
   case "${wallpaper_setter_flag:-}" in
+    n | p | r)
+      wallpaper_refresh_inventory_and_prune_async
+      return 0
+      ;;
     g | o | clean | link | resume | s | start | select | "") return 0 ;;
   esac
   wallpaper_refresh_inventory_and_prune
@@ -157,9 +175,10 @@ main() {
   wallpaper_set_paths
   wallpaper_refresh_inventory_if_needed
 
-  # Ensure active wallpaper link exists before applying.
-  if [[ ! -e "${active_wallpaper_link}" ]]; then
-    Wall_Hash
+  # Repair a broken active wallpaper link only for the plain apply path.
+  # Navigation actions handle a missing current wallpaper explicitly.
+  if [[ -z "${wallpaper_setter_flag}" ]] && [[ ! -e "${active_wallpaper_link}" ]]; then
+    Wall_Hash --repair-link
   fi
 
   if [[ -n "${wallpaper_setter_flag}" ]]; then
@@ -254,7 +273,7 @@ if [[ -z "${*}" ]]; then
   show_help
 fi
 
-LONGOPTS="link,global,select,json,clean-thumbs,next,previous,random,resume,set:,start,backend:,get,output:,help,filetypes:,notify-body:"
+LONGOPTS="link,global,select,json,clean-thumbs,next,previous,random,resume,set:,start,backend:,get,output:,help,filetypes:,notify-body:,wait-lock"
 
 if ! PARSED=$(getopt --options GSjnprb:s:t:go:h --longoptions "${LONGOPTS}" --name "$0" -- "$@"); then
   exit 2
@@ -341,6 +360,10 @@ while true; do
     --notify-body)
       wallpaper_notify_body="${2}"
       shift 2
+      ;;
+    --wait-lock)
+      wallpaper_wait_for_lock=1
+      shift
       ;;
     -h | --help)
       show_help

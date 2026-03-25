@@ -7,16 +7,8 @@ hypr_lib_dir="$(cd -- "${control_script_dir}/../.." && pwd -P)"
 globalcontrol_file="${hypr_lib_dir}/globalcontrol.sh"
 
 if [[ -r "${globalcontrol_file}" ]]; then
-  nounset_was_set=0
-  if [[ -o nounset ]]; then
-    nounset_was_set=1
-    set +u
-  fi
   # shellcheck disable=SC1090
   source "${globalcontrol_file}"
-  if [[ "${nounset_was_set}" -eq 1 ]]; then
-    set -u
-  fi
 fi
 
 require_cmd() {

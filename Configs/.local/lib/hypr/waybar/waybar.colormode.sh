@@ -12,11 +12,7 @@ fi
 
 # Read the selected color mode from staterc (primary source)
 [ -f "${XDG_STATE_HOME:-$HOME/.local/state}/hypr/staterc" ] && source "${XDG_STATE_HOME:-$HOME/.local/state}/hypr/staterc" 2>/dev/null
-
-# Fallback to config if staterc doesn't have it
-if [ -z "${selected_color_mode}" ]; then
-  [ -f "$HYPR_STATE_HOME/config" ] && source "$HYPR_STATE_HOME/config" 2>/dev/null
-fi
+[ -f "${XDG_STATE_HOME:-$HOME/.local/state}/hypr/env-overrides" ] && source "${XDG_STATE_HOME:-$HOME/.local/state}/hypr/env-overrides" 2>/dev/null
 
 # Default to Auto mode if still not set
 selected_color_mode="${selected_color_mode:-1}"

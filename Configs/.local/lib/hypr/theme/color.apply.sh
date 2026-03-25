@@ -43,63 +43,20 @@ declare -a SECONDARY_THEMING_SCRIPTS=(
 )
 
 # ============================================================================
-# wait_with_timeout - Wait for background jobs with timeout protection
-# ============================================================================
-# Arguments:
-#   $1 - Timeout in seconds (default: 30)
-#   $@ - PIDs to wait for (after first argument)
-# Returns:
-#   0 - All processes completed or were killed
-# Notes:
-#   - Kills stalled processes after timeout
-#   - Prevents infinite hangs from misbehaving scripts
-wait_with_timeout() {
-  local timeout="${1:-30}"
-  local pids=("${@:2}")
-
-  # Validate inputs
-  [[ ${#pids[@]} -eq 0 ]] && return 0
-  [[ ! "${timeout}" =~ ^[0-9]+$ ]] && timeout=30
-
-  local start_time elapsed
-  start_time=$(date +%s)
-
-  for pid in "${pids[@]}"; do
-    # Skip invalid PIDs
-    [[ ! "${pid}" =~ ^[0-9]+$ ]] && continue
-
-    # Check if process is still running
-    if kill -0 "${pid}" 2>/dev/null; then
-      elapsed=$(( $(date +%s) - start_time ))
-      local remaining=$(( timeout - elapsed ))
-      if [[ ${remaining} -le 0 ]]; then
-        type print_log &>/dev/null && print_log -sec "pywal16" -warn "timeout" "killing stalled job ${pid}"
-        kill -TERM "${pid}" 2>/dev/null
-        continue
-      fi
-      # Wait for this specific PID with remaining timeout
-      timeout "${remaining}" tail --pid="${pid}" -f /dev/null 2>/dev/null || true
-    fi
-  done
-}
-
-# ============================================================================
-# wait_for_theming_jobs_when_async_disabled - Wait for background theming jobs only in sync mode
+# wait_for_theming_jobs_when_async_disabled - Clear async PID state in sync mode
 # ============================================================================
 # Arguments: none
 # Global variables:
-#   ASYNC_APPS       - If 1, skip waiting
-#   APP_THEMING_PIDS - Array of PIDs to wait for
+#   ASYNC_APPS       - If 1, keep async jobs tracked
+#   APP_THEMING_PIDS - Array of spawned background PIDs
 # Returns:
 #   0 - Always succeeds
 # Notes:
-#   - Clears APP_THEMING_PIDS array after waiting
-#   - Uses 30s timeout to prevent hangs
+#   - When ASYNC_APPS=0, theming runs inline and there is nothing to wait for
 wait_for_theming_jobs_when_async_disabled() {
   if [[ "${ASYNC_APPS:-0}" -eq 1 ]]; then
     return 0
   fi
-  wait_with_timeout 30 "${APP_THEMING_PIDS[@]}"
   APP_THEMING_PIDS=()
 }
 
@@ -113,8 +70,8 @@ wait_for_theming_jobs_when_async_disabled() {
 # Returns:
 #   0 - Scripts spawned successfully
 # Notes:
-#   - Scripts are run in background for parallelism
-#   - Use wait_for_theming_jobs_when_async_disabled() to synchronize after calling
+#   - In async mode, scripts run in parallel and store PIDs
+#   - In sync mode, scripts run inline and return only after completion
 run_app_theming() {
   APP_THEMING_PIDS=()
 
@@ -122,19 +79,29 @@ run_app_theming() {
   for script in "${APP_THEMING_SCRIPTS[@]}"; do
     script_path="${LIB_DIR}/hypr/${script}"
     if [[ -f "${script_path}" ]]; then
-      bash "${script_path}" &
-      APP_THEMING_PIDS+=($!)
+      if [[ "${ASYNC_APPS:-0}" -eq 1 ]]; then
+        bash "${script_path}" &
+        APP_THEMING_PIDS+=($!)
+      else
+        bash "${script_path}"
+      fi
     fi
   done
 
   # Special case: pywalfox (external command, not a script)
   if command -v pywalfox &>/dev/null; then
-    {
+    if [[ "${ASYNC_APPS:-0}" -eq 1 ]]; then
+      {
+        pywalfox update &>/dev/null &&
+          type print_log &>/dev/null &&
+          print_log -sec "pywalfox" -stat "updated" "Firefox theme"
+      } &
+      APP_THEMING_PIDS+=($!)
+    else
       pywalfox update &>/dev/null &&
         type print_log &>/dev/null &&
         print_log -sec "pywalfox" -stat "updated" "Firefox theme"
-    } &
-    APP_THEMING_PIDS+=($!)
+    fi
   fi
 }
 
@@ -149,7 +116,7 @@ run_app_theming() {
 #   0 - Scripts spawned successfully
 # Notes:
 #   - These scripts may depend on ICON_THEME being set
-#   - Run after primary theming and icon theme extraction
+#   - In sync mode, they run inline after primary theming
 run_secondary_theming() {
   APP_THEMING_PIDS=()
 
@@ -157,8 +124,12 @@ run_secondary_theming() {
   for script in "${SECONDARY_THEMING_SCRIPTS[@]}"; do
     script_path="${LIB_DIR}/hypr/${script}"
     if [[ -f "${script_path}" ]]; then
-      bash "${script_path}" &
-      APP_THEMING_PIDS+=($!)
+      if [[ "${ASYNC_APPS:-0}" -eq 1 ]]; then
+        bash "${script_path}" &
+        APP_THEMING_PIDS+=($!)
+      else
+        bash "${script_path}"
+      fi
     fi
   done
 }

@@ -86,10 +86,10 @@ launcher_style_select() {
       fi
     done
   } | sort -V | rofi -dmenu -i \
-      -theme "$(rofi_resolve_theme "${ROFI_SELECT_STYLE:-theme_select}")" \
-      -theme-str "${font_override}" \
-      -theme-str "${r_override}" \
-      -select "${current_style}" )"
+    -theme "$(rofi_resolve_theme "${ROFI_SELECT_STYLE:-theme_select}")" \
+    -theme-str "${font_override}" \
+    -theme-str "${r_override}" \
+    -select "${current_style}")"
 
   [[ -z "${selected_style}" ]] && return 0
 
@@ -176,12 +176,12 @@ hypr_width="$(rofi_default_border_width 2)"
 elem_border="0"
 [[ "${base_border_radius}" -ne 0 ]] && elem_border=$((base_border_radius * 2))
 
-if [[ -f "${HYPR_STATE_HOME}/fullscreen_${r_mode}" ]]; then
+if rofi_theme_is_fullscreen "${rofi_config}"; then
   hypr_width="0"
   hypr_border="0"
 fi
 
-r_override="window {border: ${hypr_width}px; border-radius: ${hypr_border}px;} element {border-radius: ${elem_border}px;} button {border-radius: ${elem_border}px;}"
+r_override="window {border: ${hypr_width}px; border-radius: ${hypr_border}px;} inputbar {border-radius: ${hypr_border}px;} listbox {border-radius: ${hypr_border}px;} element {border-radius: ${elem_border}px;} button {border-radius: ${elem_border}px;}"
 
 font_name="$(rofi_effective_font_name "${ROFI_LAUNCH_FONT:-$ROFI_FONT}")"
 font_override="$(rofi_font_override "${font_name}" "${font_scale}")"
@@ -198,16 +198,3 @@ rofi_args+=(
 #// launch rofi
 rofi -show "${r_mode}" "${rofi_args[@]}" &
 disown
-
-# Cache fullscreen state after resolving the active launcher theme.
-
-rofi -show "${r_mode}" \
-  -show-icons \
-  -config "${rofi_config}" \
-  -theme-str "${font_override}" \
-  -theme-str "${i_override}" \
-  -theme-str "${r_override}" \
-  -theme "${rofi_config}" \
-  "${width_override_args[@]}" \
-  -dump-theme \
-  | { grep -q "fullscreen.*true" && touch "${HYPR_STATE_HOME}/fullscreen_${r_mode}"; } || rm -f "${HYPR_STATE_HOME}/fullscreen_${r_mode}"

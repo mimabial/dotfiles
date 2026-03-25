@@ -24,19 +24,11 @@ Wall_Hashmap_Cached() {
 
   local cache_root=""
   local cache_dir=""
-  local hash_cmd="${HYPR_HASH_COMMAND:-sha1sum}"
-  local cache_key=""
   local cache_file=""
   local cache_meta_file=""
   cache_root="$(wallpaper_cache_root)"
   cache_dir="${cache_root}/hashmap"
-
-  if ! command -v "${hash_cmd}" >/dev/null 2>&1; then
-    hash_cmd="sha1sum"
-  fi
-
-  cache_key="$(printf '%s\n' "${wall_sources[@]}" "${supported_files[@]}" | "${hash_cmd}" | awk '{print $1}')"
-  cache_file="${cache_dir}/${cache_key}.tsv"
+  cache_file="$(wallpaper_hashmap_cache_file "${wall_sources[@]}")"
   cache_meta_file="${cache_file}.meta"
   mkdir -p "${cache_dir}"
 
@@ -156,6 +148,8 @@ Wall_List() {
 Wall_Hash() {
   # Method to load wallpapers in hashmaps and fix broken links per theme.
   # Skip if already loaded (avoid redundant get_hashmap calls).
+  local repair_link=0
+  [[ "${1:-}" == "--repair-link" ]] && repair_link=1
   [[ ${#wallList[@]} -gt 0 ]] && return 0
 
   setIndex=0
@@ -171,7 +165,7 @@ Wall_Hash() {
 
   local resolved_set=""
   resolved_set="$(wallpaper_resolve_path "${active_wallpaper_link}")"
-  if [[ ! -e "${resolved_set}" ]]; then
+  if [[ "${repair_link}" -eq 1 ]] && [[ ! -e "${resolved_set}" ]]; then
     echo "fixing link :: ${active_wallpaper_link}"
     ln -fs "${wallList[setIndex]}" "${active_wallpaper_link}"
   fi

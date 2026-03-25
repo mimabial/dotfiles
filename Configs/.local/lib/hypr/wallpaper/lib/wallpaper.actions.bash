@@ -32,6 +32,7 @@ wallpaper_should_apply_colors_async() {
   wallpaper_action_emits_notification || return 1
   [[ "${WALLPAPER_SKIP_COLORS:-0}" -eq 0 ]] || return 1
   [[ "${selected_color_mode:-1}" -eq 0 ]] && return 1
+  return 0
 }
 
 apply_selected_wallpaper() {
@@ -58,7 +59,6 @@ apply_selected_wallpaper() {
       wallpaper_enqueue_cache_jobs -w "${wallList[setIndex]}" || true
       if [[ "${apply_colors}" -eq 1 ]]; then
         run_low_prio "${LIB_DIR}/hypr/theme/color.set.sh" "${wallList[setIndex]}" &>/dev/null
-        # Sync nvim after colors are generated
         [[ -x "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" ]] && "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" >/dev/null 2>&1
         if declare -F wallpaper_notify_emit >/dev/null 2>&1; then
           wallpaper_notify_emit "${HYPR_WALLPAPER_NOTIFY_NAME:-}" "${HYPR_WALLPAPER_NOTIFY_ICON:-}"

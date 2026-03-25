@@ -147,31 +147,3 @@ class HyprctlWrapper:
             f"y-offset:{y_off}px;}}"
         )
         return coordinates
-
-    @staticmethod
-    def is_hovered() -> bool:
-        """
-        Check if the cursor is hovered on a window.
-
-        Returns:
-            True if the cursor is hovered on a window, False otherwise.
-        """
-        data = json.loads(
-            HyprctlWrapper._execute_command(
-                ["hyprctl", "--batch", "-j", "cursorpos;activewindow"]
-            )
-        )
-
-        cursor_x = data.get("x", 0)
-        cursor_y = data.get("y", 0)
-        window_x = data.get("at", [0, 0])[0]
-        window_y = data.get("at", [0, 0])[1]
-        window_size_x = data.get("size", [0, 0])[0]
-        window_size_y = data.get("size", [0, 0])[1]
-
-        if (
-            window_x <= cursor_x <= window_x + window_size_x
-            and window_y <= cursor_y <= window_y + window_size_y
-        ):
-            return True
-        return False

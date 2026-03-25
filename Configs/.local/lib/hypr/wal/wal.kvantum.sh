@@ -8,8 +8,7 @@ WAL_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/wal"
 hashFile="${XDG_RUNTIME_DIR:-/tmp}/wal-kvantum-hash"
 PYWAL_KVANTUM_DIR="${HOME}/.config/Kvantum/pywal16"
 
-# Get required variables from environment or state
-[ -f "$HYPR_STATE_HOME/config" ] && source "$HYPR_STATE_HOME/config"
+declare -F export_hypr_config >/dev/null && export_hypr_config
 selected_color_mode="${selected_color_mode:-1}"
 
 # Determine theme directory

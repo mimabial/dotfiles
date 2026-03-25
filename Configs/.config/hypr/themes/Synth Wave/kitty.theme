@@ -1,4 +1,4 @@
-$HOME/.config/kitty/theme.conf|killall -SIGUSR1 kitty
+$HOME/.config/kitty/theme.conf
 
 # Synthwave '84-inspired Kitty Theme
 active_tab_foreground #ff7edb

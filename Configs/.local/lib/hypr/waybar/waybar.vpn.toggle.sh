@@ -1,13 +1,29 @@
 #!/usr/bin/env bash
 
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "${script_dir}/waybar.vpn.common.sh"
+
 check() {
   command -v "$1" >/dev/null 2>&1
 }
 
-# Check if Mullvad CLI is available
+waybar_vpn_load_env
+vpn_provider="$(waybar_vpn_normalize_provider "${WAYBAR_VPN_PROVIDER:-auto}")"
+
+if [[ "${vpn_provider}" == none ]]; then
+  dunstify -i "network-vpn" "VPN Toggle Disabled" "VPN toggling is disabled for this host" -u normal
+  exit 0
+fi
+
+if [[ "${vpn_provider}" != auto && "${vpn_provider}" != mullvad ]]; then
+  dunstify -i "network-vpn" "VPN Toggle Unsupported" "Current host uses ${vpn_provider}; toggle script only supports Mullvad CLI" -u normal
+  exit 0
+fi
+
 if ! check mullvad; then
-  dunstify -i "network-vpn" "VPN Error" "Mullvad VPN is not installed" -u critical
-  exit 1
+  dunstify -i "network-vpn" "VPN Toggle Unsupported" "Mullvad CLI is unavailable on this host" -u normal
+  exit 0
 fi
 
 # Get current Mullvad status

@@ -30,9 +30,7 @@ fi
 ICON_DIR="$HOME/.local/share/applications/icons"
 if [[ $ICON_REF =~ ^https?:// ]]; then
   ICON_PATH="$ICON_DIR/$APP_NAME.png"
-  if curl -sL -o "$ICON_PATH" "$ICON_REF"; then
-    ICON_PATH="$ICON_DIR/$APP_NAME.png"
-  else
+  if ! curl -sL -o "$ICON_PATH" "$ICON_REF"; then
     echo "Error: Failed to download icon."
     exit 1
   fi

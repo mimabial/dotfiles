@@ -5,6 +5,8 @@ if [[ "${HYPR_SHELL_INIT}" -ne 1 ]]; then
 else
   export_hypr_config
 fi
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/capture/capture.select.bash"
 
 USAGE() {
   cat <<"USAGE"
@@ -26,23 +28,7 @@ USAGE() {
 USAGE
 }
 
-SCREENSHOT_POST_COMMAND+=(
-)
-
-SCREENSHOT_PRE_COMMAND+=(
-)
-
-pre_cmd() {
-  for cmd in "${SCREENSHOT_PRE_COMMAND[@]}"; do
-    eval "$cmd"
-  done
-  trap 'post_cmd' EXIT
-}
-
-post_cmd() {
-  for cmd in "${SCREENSHOT_POST_COMMAND[@]}"; do
-    eval "$cmd"
-  done
+cleanup_temp_screenshot() {
   if [[ -n "${temp_screenshot:-}" && -f "${temp_screenshot}" ]]; then
     rm -f "${temp_screenshot}"
   fi
@@ -91,27 +77,8 @@ run_annotation() {
   "${annotation_tool}" "${annotation_args[@]}"
 }
 
-# Transform-aware monitor geometry (handles portrait/rotated displays)
-JQ_MONITOR_GEO='
-  def format_geo:
-    .x as $x | .y as $y |
-    (.width / .scale | floor) as $w |
-    (.height / .scale | floor) as $h |
-    .transform as $t |
-    if $t == 1 or $t == 3 then
-      "\($x),\($y) \($h)x\($w)"
-    else
-      "\($x),\($y) \($w)x\($h)"
-    end;
-'
-
-# Get rectangles for smart selection
 get_rectangles() {
-  local mon_data
-  mon_data=$(hyprctl monitors -j)
-  local active_workspace=$(jq -r '.[] | select(.focused == true) | .activeWorkspace.id' <<<"$mon_data")
-  jq -r --arg ws "$active_workspace" "${JQ_MONITOR_GEO} .[] | select(.activeWorkspace.id == (\$ws | tonumber)) | format_geo" <<<"$mon_data"
-  hyprctl clients -j | jq -r --arg ws "$active_workspace" '.[] | select(.workspace.id == ($ws | tonumber)) | "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"'
+  capture_active_workspace_rectangles
 }
 
 # Smart screenshot with frozen screen and smart detection
@@ -121,14 +88,10 @@ smart_screenshot() {
 
   # Freeze screen during selection if hyprpicker is available
   local freeze_pid=""
-  if command -v hyprpicker >/dev/null 2>&1; then
-    hyprpicker -r -z >/dev/null 2>&1 &
-    freeze_pid=$!
-    sleep 0.1
-  fi
+  freeze_pid="$(capture_start_freeze 0.1)"
 
   local SELECTION=$(echo "$RECTS" | slurp 2>/dev/null)
-  [[ -n "$freeze_pid" ]] && kill "$freeze_pid" 2>/dev/null
+  capture_stop_freeze "${freeze_pid}"
   [ -z "$SELECTION" ] && return 0
 
   # Smart window detection: if selection is tiny (< 20px²), expand to window/monitor
@@ -240,7 +203,7 @@ ocr_screenshot() {
   fi
 }
 
-pre_cmd
+trap 'cleanup_temp_screenshot' EXIT
 
 case $1 in
   p) # print all outputs
@@ -256,14 +219,10 @@ case $1 in
     smart_screenshot "$2"
     ;;
   w) # window selection with frozen screen
-    local freeze_pid=""
-    if command -v hyprpicker >/dev/null 2>&1; then
-      hyprpicker -r -z >/dev/null 2>&1 &
-      freeze_pid=$!
-      sleep 0.1
-    fi
+    freeze_pid=""
+    freeze_pid="$(capture_start_freeze 0.1)"
     SELECTION=$(get_rectangles | slurp -r 2>/dev/null)
-    [[ -n "$freeze_pid" ]] && kill "$freeze_pid" 2>/dev/null
+    capture_stop_freeze "${freeze_pid}"
     if [[ -n "$SELECTION" ]]; then
       grim -g "$SELECTION" "$temp_screenshot"
       run_annotation

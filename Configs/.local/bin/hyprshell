@@ -119,7 +119,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     validate)
       shift
       if command -v parse.config.py >/dev/null 2>&1; then
-        parse.config.py --input "$XDG_CONFIG_HOME/hypr/config.toml" --env "$XDG_STATE_HOME/hypr/config" --hypr "$XDG_STATE_HOME/hypr/hyprland.conf" "$@"
+        parse.config.py --input "$XDG_CONFIG_HOME/hypr/config.toml" --env "$XDG_STATE_HOME/hypr/env-overrides" --hypr "$XDG_STATE_HOME/hypr/hyprland.conf" --export "$@"
       else
         echo "parse.config.py not found. Please make sure it is in \$PATH."
       fi

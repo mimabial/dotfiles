@@ -5,6 +5,8 @@ set -u
 scr_dir="$(cd -- "$(dirname -- "$0")" && pwd -P)"
 # shellcheck disable=SC1091
 source "${scr_dir}/lib/control.common.bash"
+# shellcheck disable=SC1091
+source "${scr_dir}/lib/brightness.common.bash"
 
 is_notify="${BRIGHTNESS_NOTIFY:-true}"
 default_step="${BRIGHTNESS_STEPS:-5}"
@@ -25,10 +27,13 @@ Examples:
 EOF
 }
 
-require_cmd brightnessctl || {
-  echo "brightnessctl is required"
-  exit 1
-}
+if ! brightness_control_enabled; then
+  if command -v dunstify >/dev/null 2>&1; then
+    dunstify -a "Brightness control" -r 8 -t 1200 \
+      "Brightness unavailable" "$(brightness_unavailable_reason)"
+  fi
+  exit 0
+fi
 
 current_brightness() {
   brightnessctl -m | awk -F, 'NR==1 { gsub(/%/, "", $4); print $4 + 0 }'

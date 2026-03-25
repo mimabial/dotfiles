@@ -54,6 +54,33 @@ wallpaper_extensions_regex() {
   printf '%s\n' "${regex_ext}"
 }
 
+wallpaper_hashmap_cache_key() {
+  local -a wall_sources=("$@")
+  local -a supported_files=()
+  local hash_cmd="${HYPR_HASH_COMMAND:-sha1sum}"
+
+  [[ ${#wall_sources[@]} -gt 0 ]] || return 1
+  wallpaper_supported_files_array supported_files
+
+  if ! command -v "${hash_cmd}" >/dev/null 2>&1; then
+    hash_cmd="sha1sum"
+  fi
+
+  printf '%s\n' "${wall_sources[@]}" "${supported_files[@]}" | "${hash_cmd}" | awk '{print $1}'
+}
+
+wallpaper_hashmap_cache_file() {
+  local cache_key=""
+  cache_key="$(wallpaper_hashmap_cache_key "$@")" || return 1
+  printf '%s/hashmap/%s.tsv\n' "$(wallpaper_cache_root)" "${cache_key}"
+}
+
+wallpaper_catalog_json_file() {
+  local cache_key=""
+  cache_key="$(wallpaper_hashmap_cache_key "$@")" || return 1
+  printf '%s/catalog/%s.json\n' "$(wallpaper_cache_root)" "${cache_key}"
+}
+
 wallpaper_theme_sources() {
   wallPathArray=()
   [[ -d "${HYPR_THEME_DIR}" ]] || return 1

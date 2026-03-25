@@ -21,8 +21,13 @@ DUNST_THEME="${DUNST_DIR}/theme.conf"
 HASH_FILE="${XDG_RUNTIME_DIR:-/tmp}/wal-dunst-hash"
 THEME_CONF="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/theme.conf"
 WAYBAR_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/waybar/config.jsonc"
-THEME_UPDATE_LOCK="${XDG_RUNTIME_DIR:-/tmp}/theme-update.lock"
-THEME_SWITCH_LOCK="${XDG_RUNTIME_DIR:-/tmp}/theme-switch.lock"
+LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
+
+# shellcheck disable=SC1090
+source "${LIB_DIR}/hypr/runtime/lock_paths.sh"
+
+THEME_UPDATE_LOCK="$(hypr_lock_path theme_update)"
+THEME_SWITCH_LOCK="$(hypr_lock_path theme_switch)"
 
 mkdir -p "${DUNST_DIR}"
 touch "${DUNST_THEME}"

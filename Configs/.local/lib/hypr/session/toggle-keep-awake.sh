@@ -2,57 +2,16 @@
 
 set -euo pipefail
 
-STATE_DIR="${XDG_STATE_HOME:-}"
-if [[ -z "${STATE_DIR}" ]]; then
-  STATE_DIR="$HOME/.local/state"
-fi
-STATE_DIR="${STATE_DIR}/hypr"
-KEEP_AWAKE_STATE_FILE="${STATE_DIR}/keep-awake.state"
-MANAGER_UNIT="hyprland-idle-manager.service"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
+source "${script_dir}/idle.state.sh"
 
-notify() {
-  if command -v dunstify >/dev/null 2>&1; then
-    dunstify "$@"
-  fi
-}
-
-update_waybar() {
-  pkill -RTMIN+21 waybar 2>/dev/null || true
-}
-
-systemd_user_ok() {
-  systemctl --user is-active default.target >/dev/null 2>&1
-}
-
-ensure_manager_running() {
-  if systemd_user_ok && systemctl --user list-unit-files "${MANAGER_UNIT}" >/dev/null 2>&1; then
-    systemctl --user start --no-block "${MANAGER_UNIT}" >/dev/null 2>&1 || true
-  fi
-}
-
-notify_manager() {
-  if systemd_user_ok && systemctl --user is-active --quiet "${MANAGER_UNIT}" >/dev/null 2>&1; then
-    systemctl --user kill --signal=USR1 "${MANAGER_UNIT}" >/dev/null 2>&1 || true
-    return 0
-  fi
-  while IFS= read -r pid; do
-    kill -USR1 "${pid}" 2>/dev/null || true
-  done < <(pgrep -f "${HOME}/.local/lib/hypr/session/idle-manager.sh" 2>/dev/null || true)
-}
-
-keep_awake_enabled() {
-  [[ -f "${KEEP_AWAKE_STATE_FILE}" ]]
-}
-
-if keep_awake_enabled; then
-  rm -f "${KEEP_AWAKE_STATE_FILE}"
-  notify -t 3000 -i "caffeine-cup-empty" "Keep awake disabled"
-else
-  mkdir -p "${STATE_DIR}"
-  printf "%s\n" "1" > "${KEEP_AWAKE_STATE_FILE}"
-  notify -t 3000 -i "caffeine-cup-full" "Keep awake enabled"
-fi
-
-ensure_manager_running
-notify_manager
-update_waybar
+idle_toggle_state \
+  idle_manual_enabled \
+  idle_set_manual \
+  0 \
+  "caffeine-cup-empty" \
+  "Keep awake disabled" \
+  1 \
+  "caffeine-cup-full" \
+  "Keep awake enabled"

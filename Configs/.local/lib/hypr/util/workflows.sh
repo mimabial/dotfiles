@@ -6,6 +6,8 @@ if ! source "$(command -v hyprshell)"; then
   echo "[$0] :: Error: hyprshell not found."
   exit 1
 fi
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/rofi/rofi.lib.bash"
 
 workflows_user_dir="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}/workflows"
 workflows_shared_dir="${HYPR_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/hypr}/workflows"
@@ -76,9 +78,8 @@ get_workflow_description() {
 
 fn_select() {
   local default_path default_icon workflow_list workflow_path workflow_name workflow_icon
-  local font_scale font_name font_override
-  local hypr_border wind_border elem_border hypr_width r_override
   local selected_workflow
+  local -a rofi_args
 
   default_path="$(resolve_workflow_path default)" || {
     dunstify -t 3000 -i "preferences-desktop-display" "Error" "Default workflow not found in ${workflows_user_dir} or ${workflows_shared_dir}"
@@ -94,30 +95,17 @@ fn_select() {
     workflow_list="${workflow_list}\n${workflow_icon}\t ${workflow_name}"
   done < <(list_workflow_names)
 
-  font_scale="${ROFI_WORKFLOW_SCALE}"
-  [[ "${font_scale}" =~ ^[0-9]+$ ]] || font_scale=${ROFI_SCALE:-10}
-
-  font_name=${ROFI_WORKFLOW_FONT:-$ROFI_FONT}
-  font_name=${font_name:-$(hyprshell fonts/font-get.sh menu 2>/dev/null || true)}
-  font_name=${font_name:-$(get_hyprConf "MENU_FONT")}
-  font_name=${font_name:-$(get_hyprConf "FONT")}
-  font_name=${font_name:-monospace}
-  font_override="* {font: \"${font_name} ${font_scale}\";}"
-
-  hypr_border=${hypr_border:-"$(hyprctl -j getoption decoration:rounding | jq '.int')"}
-  wind_border=$((hypr_border * 3 / 2))
-  elem_border=$((hypr_border == 0 ? 5 : hypr_border))
-  hypr_width=${hypr_width:-"$(hyprctl -j getoption general:border_size | jq '.int')"}
-  r_override="window{border:${hypr_width}px;border-radius:${wind_border}px;} wallbox{border-radius:${elem_border}px;} element{border-radius:${elem_border}px;}"
+  rofi_build_standard_menu_args \
+    rofi_args \
+    "Select workflow" \
+    " Workflow" \
+    "clipboard" \
+    "${ROFI_WORKFLOW_SCALE}" \
+    "${ROFI_WORKFLOW_FONT:-$ROFI_FONT}"
+  rofi_args+=(-select "${HYPR_WORKFLOW:-default}")
 
   selected_workflow=$(echo -e "${workflow_list}" \
-    | rofi -dmenu -i -select "${HYPR_WORKFLOW:-default}" \
-      -p "Select workflow" \
-      -theme-str "entry { placeholder: \" Workflow\"; }" \
-      -theme-str "${font_override}" \
-      -theme-str "${r_override}" \
-      -theme-str "$(get_rofi_pos)" \
-      -theme "clipboard")
+    | rofi "${rofi_args[@]}")
 
   [[ -n "${selected_workflow}" ]] || exit 0
 
@@ -129,8 +117,7 @@ fn_select() {
 get_info() {
   local workflow_path
 
-  [ -f "$HYPR_STATE_HOME/config" ] && source "$HYPR_STATE_HOME/config"
-  [ -f "$HYPR_STATE_HOME/staterc" ] && source "$HYPR_STATE_HOME/staterc"
+  declare -F export_hypr_config >/dev/null && export_hypr_config
   current_workflow=${HYPR_WORKFLOW:-default}
 
   workflow_path="$(resolve_workflow_path "${current_workflow}" || true)"
