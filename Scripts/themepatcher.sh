@@ -77,7 +77,6 @@ Supported Archive Format:
     | Gtk_               | \$GTK_THEME        | \$HOME/.local/share/themes     |
     | Icon_              | \$ICON_THEME       | \$HOME/.local/share/icons      |
     | Cursor_            | \$CURSOR_THEME     | \$HOME/.local/share/icons      |
-    | Sddm_              | \$SDDM_THEME       | /usr/share/sddm/themes         |
     | Font_              | \$FONT             | \$HOME/.local/share/fonts      |
     | Document-Font_     | \$DOCUMENT_FONT    | \$HOME/.local/share/fonts      |
     | Monospace-Font_    | \$MONOSPACE_FONT   | \$HOME/.local/share/fonts      |
@@ -88,7 +87,6 @@ Supported Archive Format:
 Note:
     Target directories without enough permissions will be skipped.
         run 'sudo chmod -R 777 <target directory>'
-            example: 'sudo chmod -R 777 /usr/share/sddm/themes'
 HELP
 }
 
@@ -204,9 +202,6 @@ check_tars() {
     # Using case we can have a predictable output
     gsVal="$(
         case "${gsLow}" in
-        sddm)
-            grep "^[[:space:]]*\$SDDM[-_]THEME\s*=" "${Fav_Theme_Dir}/hypr.theme" | cut -d '=' -f2 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
-            ;;
         gtk)
             grep "^[[:space:]]*\$GTK[-_]THEME\s*=" "${Fav_Theme_Dir}/hypr.theme" | cut -d '=' -f2 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
             ;;
@@ -264,7 +259,6 @@ check_tars() {
 check_tars Gtk --mandatory
 check_tars Icon
 check_tars Cursor
-check_tars Sddm
 check_tars Font
 check_tars Document-Font
 check_tars Monospace-Font
@@ -278,7 +272,6 @@ declare -A archive_map=(
     ["Gtk"]="${HOME}/.local/share/themes"
     ["Icon"]="${HOME}/.local/share/icons"
     ["Cursor"]="${HOME}/.local/share/icons"
-    ["Sddm"]="/usr/share/sddm/themes"
     ["Font"]="${HOME}/.local/share/fonts"
     ["Document-Font"]="${HOME}/.local/share/fonts"
     ["Monospace-Font"]="${HOME}/.local/share/fonts"

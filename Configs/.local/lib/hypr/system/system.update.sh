@@ -8,7 +8,7 @@ fi
 # source variables
 # shellcheck disable=SC1091
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
-get_aurhlpr
+get_aur_helper
 export -f pkg_installed
 fpk_exup="pkg_installed flatpak && flatpak update"
 temp_file="$XDG_RUNTIME_DIR/hypr/update_info"
@@ -32,7 +32,7 @@ if [ "$1" == "up" ]; then
     command="
         fastfetch
         printf '[Official] %-10s\n[AUR]      %-10s\n[Flatpak]  %-10s\n' '$official' '$aur' '$flatpak'
-        "${aurhlpr}" -Syu
+        "${aur_helper}" -Syu
         $fpk_exup
         read -n 1 -p 'Press any key to continue...'
         "
@@ -53,7 +53,7 @@ ofc=$(echo "$ofc_list" | grep -c '^')
 [ -z "$ofc_list" ] && ofc=0
 
 # AUR updates with details
-aur_list=$(${aurhlpr} -Qua 2>/dev/null)
+aur_list=$(${aur_helper} -Qua 2>/dev/null)
 aur=$(echo "$aur_list" | grep -c '^')
 [ -z "$aur_list" ] && aur=0
 
@@ -72,7 +72,7 @@ upd=$((ofc + aur + fpk))
 
 # Build tooltip content
 build_tooltip() {
-  local title="<b>${upd} Updates</b>\n  ${ofc} Official (Pacman)\n  ${aur} AUR (${aurhlpr^^})\n  ${fpk} Universal (Flatpak)"
+  local title="<b>${upd} Updates</b>\n  ${ofc} Official (Pacman)\n  ${aur} AUR (${aur_helper^^})\n  ${fpk} Universal (Flatpak)"
   local content=""
 
   # Format official packages

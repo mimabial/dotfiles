@@ -39,7 +39,7 @@ EOT
 hyprreload() {
   print_log -sec "Hyprland" "Reloading Hyprland Environment"
   python_initialized
-  run_lib_script "wallpaper/swwwallcache.sh" -t ""
+  run_lib_script "wallpaper/sww-wallcache.sh" -t ""
   run_lib_script "theme/theme.switch.sh"
 }
 
@@ -57,6 +57,6 @@ lock_session() {
     echo "Using org.freedesktop.ScreenSaver for locking"
     loginctl lock-session
   else
-    lockscreen.sh
+    lock-screen.sh
   fi
 }

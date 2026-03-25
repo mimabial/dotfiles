@@ -34,10 +34,13 @@ from waybar_state import (
     synchronize_layout_state,
 )
 from waybar_shared import (
+    CONFIG_WAYBAR_DIR,
     CONFIG_JSONC,
+    DATA_WAYBAR_DIR,
     DUNST_SYNC_SCRIPT,
     STATE_FILE,
     WATCHED_SUFFIXES,
+    atomic_write_text,
     logger,
     source_env_file,
 )

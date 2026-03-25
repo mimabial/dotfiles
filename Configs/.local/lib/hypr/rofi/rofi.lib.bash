@@ -11,8 +11,8 @@ rofi_effective_font_name() {
   local requested_font="${1:-}"
   local font_name="${requested_font}"
   font_name=${font_name:-$(hyprshell fonts/font-get.sh menu 2>/dev/null || true)}
-  font_name=${font_name:-$(get_hyprConf "MENU_FONT")}
-  font_name=${font_name:-$(get_hyprConf "FONT")}
+  font_name=${font_name:-$(get_hypr_conf "MENU_FONT")}
+  font_name=${font_name:-$(get_hypr_conf "FONT")}
   font_name=${font_name:-monospace}
   printf '%s\n' "${font_name}"
 }
@@ -220,7 +220,7 @@ rofi_em_to_px() {
 
 rofi_icon_theme_override() {
   local icon_theme
-  icon_theme="$(get_hyprConf "ICON_THEME")"
+  icon_theme="$(get_hypr_conf "ICON_THEME")"
   printf 'configuration {icon-theme: "%s";}\n' "${icon_theme}"
 }
 

@@ -75,8 +75,8 @@ selector_menu() {
   # set font name
   font_name=${ROFI_THEME_MENU_FONT:-$ROFI_FONT}
   font_name=${font_name:-$(hyprshell fonts/font-get.sh menu 2>/dev/null || true)}
-  font_name=${font_name:-$(get_hyprConf "MENU_FONT")}
-  font_name=${font_name:-$(get_hyprConf "FONT")}
+  font_name=${font_name:-$(get_hypr_conf "MENU_FONT")}
+  font_name=${font_name:-$(get_hypr_conf "FONT")}
   font_name=${font_name:-monospace}
 
   # set rofi font override
@@ -151,7 +151,7 @@ ensure_theme_thumbs() {
     if [[ -x "${queue_script}" ]]; then
       "${queue_script}" --enqueue "${cache_args[@]}" &>/dev/null &
     else
-      "${LIB_DIR}/hypr/wallpaper/swwwallcache.sh" "${cache_args[@]}" &>/dev/null &
+      "${LIB_DIR}/hypr/wallpaper/sww-wallcache.sh" "${cache_args[@]}" &>/dev/null &
     fi
   fi
 }
@@ -190,8 +190,8 @@ case "$1" in
     # set font name
     font_name=${ROFI_THEME_FONT:-$ROFI_FONT}
     font_name=${font_name:-$(hyprshell fonts/font-get.sh menu 2>/dev/null || true)}
-    font_name=${font_name:-$(get_hyprConf "MENU_FONT")}
-    font_name=${font_name:-$(get_hyprConf "FONT")}
+    font_name=${font_name:-$(get_hypr_conf "MENU_FONT")}
+    font_name=${font_name:-$(get_hypr_conf "FONT")}
     font_name=${font_name:-monospace}
 
     # set rofi font override
@@ -205,7 +205,7 @@ case "$1" in
     #// generate config
 
     # ROFI_THEME_STYLE is loaded from staterc via export_hypr_config
-    [[ -z "${ROFI_THEME_STYLE}" ]] && ROFI_THEME_STYLE="$(get_hyprConf "ROFI_THEME_STYLE")"
+    [[ -z "${ROFI_THEME_STYLE}" ]] && ROFI_THEME_STYLE="$(get_hypr_conf "ROFI_THEME_STYLE")"
     [[ -z "${ROFI_THEME_STYLE}" ]] && ROFI_THEME_STYLE="1"
     # shellcheck disable=SC2154
     case "${ROFI_THEME_STYLE}" in

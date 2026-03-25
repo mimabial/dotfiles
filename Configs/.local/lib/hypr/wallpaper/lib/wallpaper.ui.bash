@@ -39,8 +39,8 @@ notes:
          thumbnails will be updated to reflect the new wallpaper
 
     .   --output <path> is used to copy the current wallpaper to the specified path
-            We can use this to have a copy of the wallpaper to '/var/tmp' where ly or
-            any systemwide application can access it
+            We can use this to have a copy of the wallpaper in '/var/tmp' where
+            systemwide applications can access it
 EOT
   exit 0
 }

@@ -7,9 +7,9 @@ gaps=$(hyprctl getoption general:gaps_out -j | jq -r '.custom' | awk '{print $1}
 
 if [[ "$gaps" == "0" ]]; then
   # Restore from theme or defaults
-  local_gaps_out="$(get_hyprConf "general:gaps_out")"
-  local_gaps_in="$(get_hyprConf "general:gaps_in")"
-  local_border="$(get_hyprConf "general:border_size")"
+  local_gaps_out="$(get_hypr_conf "general:gaps_out")"
+  local_gaps_in="$(get_hypr_conf "general:gaps_in")"
+  local_border="$(get_hypr_conf "general:border_size")"
   hyprctl --batch "\
     keyword general:gaps_out ${local_gaps_out:-10};\
     keyword general:gaps_in ${local_gaps_in:-5};\

@@ -65,8 +65,8 @@ menu() {
   if [[ -z "${MENU_FONT_NAME_CACHE}" ]]; then
     MENU_FONT_NAME_CACHE="${ROFI_MENU_FONT:-$ROFI_FONT}"
     MENU_FONT_NAME_CACHE=${MENU_FONT_NAME_CACHE:-$(hyprshell fonts/font-get.sh menu 2>/dev/null || true)}
-    MENU_FONT_NAME_CACHE=${MENU_FONT_NAME_CACHE:-$(get_hyprConf "MENU_FONT")}
-    MENU_FONT_NAME_CACHE=${MENU_FONT_NAME_CACHE:-$(get_hyprConf "FONT")}
+    MENU_FONT_NAME_CACHE=${MENU_FONT_NAME_CACHE:-$(get_hypr_conf "MENU_FONT")}
+    MENU_FONT_NAME_CACHE=${MENU_FONT_NAME_CACHE:-$(get_hypr_conf "FONT")}
     MENU_FONT_NAME_CACHE=${MENU_FONT_NAME_CACHE:-monospace}
   fi
 

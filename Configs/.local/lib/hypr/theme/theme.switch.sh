@@ -175,7 +175,7 @@ ini_write_batch "${XDG_CONFIG_HOME}/qt6ct/qt6ct.conf" \
 
 if [[ -z "${TERMINAL}" ]]; then
   _hypr_variables_file="$(hypr_variables_file 2>/dev/null || printf '%s\n' "${HYPR_DATA_HOME}/variables.conf")"
-  TERMINAL="$(get_hyprConf "TERMINAL" "${_hypr_variables_file}")"
+  TERMINAL="$(get_hypr_conf "TERMINAL" "${_hypr_variables_file}")"
 fi
 
 kdeglobals_entries=(

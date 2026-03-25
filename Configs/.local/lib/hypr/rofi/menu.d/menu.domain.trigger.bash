@@ -49,7 +49,7 @@ menu_run_action_trigger() {
     trigger_screenrecord_region_audio) hyprshell capture/screenrecord.sh --start --region --audio ;;
     trigger_screenrecord_display) hyprshell capture/screenrecord.sh --start --output ;;
     trigger_screenrecord_display_audio) hyprshell capture/screenrecord.sh --start --output --audio ;;
-    trigger_color_picker) hyprshell rofi/colorpicker.sh ;;
+    trigger_color_picker) hyprshell rofi/color-picker.sh ;;
     trigger_toggle_nightlight) hyprshell hyprsunset --toggle && pkill -SIGUSR2 waybar ;;
     trigger_toggle_keep_awake) hyprshell session/toggle-keep-awake.sh ;;
     trigger_toggle_waybar) hyprshell waybar/waybar.py --hide ;;

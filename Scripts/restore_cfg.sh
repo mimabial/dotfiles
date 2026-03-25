@@ -218,7 +218,7 @@ hyprland_hook() {
         return 0
     fi
 
-    if grep -Eq '^\s*\$(DOTFILES_HYPRLAND|HYPR_USER_WRAPPER|HYDE_HYPRLAND)\s*=' "${hyprland_default_config}" \
+    if grep -Eq '^\s*\$(DOTFILES_HYPRLAND|HYDE_HYPRLAND)\s*=' "${hyprland_default_config}" \
         || grep -Eq '^\s*source\s*=.*\.local/share/hypr/hyprland\.conf' "${hyprland_default_config}"; then
         return 0
     fi

@@ -36,8 +36,8 @@ select_color_mode_with_rofi() {
   [[ "${font_scale}" =~ ^[0-9]+$ ]] || font_scale=${ROFI_SCALE:-10}
   font_name=${ROFI_PYWAL16_FONT:-$ROFI_FONT}
   font_name=${font_name:-$(hyprshell fonts/font-get.sh menu 2>/dev/null || true)}
-  font_name=${font_name:-$(get_hyprConf "MENU_FONT")}
-  font_name=${font_name:-$(get_hyprConf "FONT")}
+  font_name=${font_name:-$(get_hypr_conf "MENU_FONT")}
+  font_name=${font_name:-$(get_hypr_conf "FONT")}
   font_name=${font_name:-monospace}
   r_scale="configuration {font: \"${font_name} ${font_scale}\";}"
   hypr_border="${hypr_border:-5}"

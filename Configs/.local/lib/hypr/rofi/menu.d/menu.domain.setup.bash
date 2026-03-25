@@ -10,7 +10,6 @@ menu_register_domain_setup() {
   menu_add_item setup "󰍹  Monitors" action setup_monitors
 
   [[ -f ~/.config/hypr/keybindings.conf ]] && menu_add_item setup "  Keybindings" action setup_keybindings
-  [[ -f ~/.config/hypr/input.conf ]] && menu_add_item setup "  Input" action setup_input
 }
 
 menu_run_action_setup() {
@@ -23,7 +22,6 @@ menu_run_action_setup() {
     setup_network) present_terminal --app-id org.tui.Oryx --title Oryx -- sudo oryx ;;
     setup_monitors) open_in_editor ~/.config/hypr/monitors.conf ;;
     setup_keybindings) open_in_editor ~/.config/hypr/keybindings.conf ;;
-    setup_input) open_in_editor ~/.config/hypr/input.conf ;;
     *) return 1 ;;
   esac
 

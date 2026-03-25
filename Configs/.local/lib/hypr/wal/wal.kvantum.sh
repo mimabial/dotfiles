@@ -5,7 +5,7 @@
 [[ "${HYPR_SHELL_INIT}" -ne 1 ]] && eval "$(hyprshell init)"
 
 WAL_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/wal"
-hashFile="${XDG_RUNTIME_DIR:-/tmp}/wal-kvantum-hash"
+hash_file="${XDG_RUNTIME_DIR:-/tmp}/wal-kvantum-hash"
 PYWAL_KVANTUM_DIR="${HOME}/.config/Kvantum/pywal16"
 
 declare -F export_hypr_config >/dev/null && export_hypr_config
@@ -32,7 +32,7 @@ input_files=(
 input_hash=$(cat "${input_files[@]}" "${WAL_CACHE}/colors.sh" 2>/dev/null | md5sum | cut -d' ' -f1)
 combined_hash="${input_hash}-${selected_color_mode}"
 
-if [[ -f "$hashFile" && "$(cat "$hashFile" 2>/dev/null)" == "$combined_hash" ]]; then
+if [[ -f "$hash_file" && "$(cat "$hash_file" 2>/dev/null)" == "$combined_hash" ]]; then
     exit 0  # Nothing changed
 fi
 
@@ -135,4 +135,4 @@ if [ -f "$kvconfig" ] && [ -n "${color4}" ]; then
 fi
 
 # Save hash for next run
-echo "$combined_hash" > "$hashFile"
+echo "$combined_hash" > "$hash_file"

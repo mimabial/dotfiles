@@ -65,14 +65,14 @@ list_workflow_names() {
 get_workflow_icon() {
   local workflow_path="$1"
   local workflow_icon
-  workflow_icon=$(get_hyprConf "WORKFLOW_ICON" "${workflow_path}")
+  workflow_icon=$(get_hypr_conf "WORKFLOW_ICON" "${workflow_path}")
   printf '%s\n' "${workflow_icon:0:1}"
 }
 
 get_workflow_description() {
   local workflow_path="$1"
   local description
-  description=$(get_hyprConf "WORKFLOW_DESCRIPTION" "${workflow_path}")
+  description=$(get_hypr_conf "WORKFLOW_DESCRIPTION" "${workflow_path}")
   printf '%s\n' "${description:-No description available}"
 }
 

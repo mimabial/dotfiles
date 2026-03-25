@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # wal.tmux.sh - Apply pywal16 colors to tmux with theme override support
 
-hashFile="${XDG_RUNTIME_DIR:-/tmp}/wal-tmux-hash"
+hash_file="${XDG_RUNTIME_DIR:-/tmp}/wal-tmux-hash"
 WAL_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/wal"
 TMUX_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/tmux/tmux.conf"
 
@@ -12,7 +12,7 @@ fi
 
 # Change detection: skip if colors unchanged
 input_hash=$(md5sum "${WAL_CACHE}/colors.sh" 2>/dev/null | cut -d' ' -f1)
-if [[ -f "$hashFile" && "$(cat "$hashFile" 2>/dev/null)" == "$input_hash" ]]; then
+if [[ -f "$hash_file" && "$(cat "$hash_file" 2>/dev/null)" == "$input_hash" ]]; then
   exit 0
 fi
 
@@ -114,7 +114,7 @@ set -g status-right-length 200
 EOF
 
 # Save hash for next run
-echo "$input_hash" > "$hashFile"
+echo "$input_hash" > "$hash_file"
 
 echo "[tmux] Generated tmux color configs"
 

@@ -3,7 +3,7 @@
 # Optimized: single awk pass + change detection
 
 THEMES_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/themes"
-hashFile="${XDG_RUNTIME_DIR:-/tmp}/wal-gtk-hash"
+hash_file="${XDG_RUNTIME_DIR:-/tmp}/wal-gtk-hash"
 
 # Get Hyprland border radius
 if command -v hyprctl &>/dev/null && command -v jq &>/dev/null; then
@@ -15,7 +15,7 @@ fi
 # Change detection: skip if inputs unchanged
 input_hash=$(cat "${XDG_CACHE_HOME:-$HOME/.cache}/wal/colors-gtk3.css" "${XDG_CACHE_HOME:-$HOME/.cache}/wal/colors-gtk4.css" 2>/dev/null | md5sum | cut -d' ' -f1)
 combined_hash="${input_hash}-${hypr_border}"
-if [[ -f "$hashFile" && "$(cat "$hashFile" 2>/dev/null)" == "$combined_hash" ]]; then
+if [[ -f "$hash_file" && "$(cat "$hash_file" 2>/dev/null)" == "$combined_hash" ]]; then
     exit 0  # Nothing changed
 fi
 
@@ -132,7 +132,7 @@ EOF
 fi
 
 # Save hash for next run (before notifying apps)
-echo "$combined_hash" > "$hashFile"
+echo "$combined_hash" > "$hash_file"
 
 # Notify GTK apps of theme changes
 # Method 1: Use xsettingsd to broadcast theme changes (if available)

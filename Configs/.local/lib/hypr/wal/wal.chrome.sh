@@ -13,7 +13,7 @@ CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/hypr"
 THEME_DIR="${CACHE_DIR}/${THEME_NAME}-chrome-theme"
 
 # Hex to RGB converter
-hexToRgb() {
+hex_to_rgb() {
   local hex="${1#\#}"
   printf "%d, %d, %d" "0x${hex:0:2}" "0x${hex:2:2}" "0x${hex:4:2}"
 }
@@ -28,10 +28,10 @@ if [ -f "${CACHE_DIR}/wal.set.png" ]; then
 fi
 
 # Convert colors
-background=$(hexToRgb "${color0}")
-foreground=$(hexToRgb "${color15}")
-accent=$(hexToRgb "${color4}")
-secondary=$(hexToRgb "${color8}")
+background=$(hex_to_rgb "${color0}")
+foreground=$(hex_to_rgb "${color15}")
+accent=$(hex_to_rgb "${color4}")
+secondary=$(hex_to_rgb "${color8}")
 
 # Generate manifest.json
 cat >"${THEME_DIR}/manifest.json" <<EOF

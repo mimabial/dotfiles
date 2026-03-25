@@ -17,7 +17,7 @@
 #   get_hashmap()      - Find wallpapers with hashes for caching
 #   get_themes()       - Populate theme list arrays
 #   export_hypr_config() - Load state variables from staterc/config
-#   get_hyprConf()     - Get value from theme's hypr.theme file
+#   get_hypr_conf()     - Get value from theme's hypr.theme file
 #   pkg_installed()    - Check if a package is installed
 #   state_get/set()    - Unified state management API
 
@@ -118,13 +118,13 @@ if [[ "${HYPR_SKIP_INIT:-0}" -ne 1 ]]; then
 fi
 
 if [ -n "$BASH_VERSION" ]; then
-  export -f get_hyprConf get_rofi_pos \
+  export -f get_hypr_conf get_rofi_pos \
     rofi_user_dir rofi_shared_dir \
     rofi_resolve_theme rofi_resolve_asset \
     rofi_list_theme_files rofi_list_asset_files \
     hypr_core_file hypr_variables_file hypr_compact_path \
     is_hovered toml_write \
-    find_wallpapers get_hashmap get_aurhlpr \
+    find_wallpapers get_hashmap get_aur_helper \
     set_hash \
     get_themes print_log \
     pkg_installed paste_string \

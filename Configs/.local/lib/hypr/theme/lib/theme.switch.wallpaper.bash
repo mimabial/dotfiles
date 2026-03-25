@@ -21,7 +21,7 @@ theme_thumbs_precache() {
 
   [[ -z "${lib_dir}" ]] && lib_dir="${HOME}/.local/lib"
   queue_script="${lib_dir}/hypr/wallpaper/wallcache.daemon.sh"
-  cache_script="${lib_dir}/hypr/wallpaper/swwwallcache.sh"
+  cache_script="${lib_dir}/hypr/wallpaper/sww-wallcache.sh"
   [[ -x "${queue_script}" || -x "${cache_script}" ]] || return 0
   [[ ${#cache_args[@]} -eq 0 ]] && return 0
 

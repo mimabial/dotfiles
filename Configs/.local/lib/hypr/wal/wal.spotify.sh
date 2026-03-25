@@ -2,7 +2,7 @@
 # pywal16.spotify.sh - Apply pywal16 colors to Spotify via spicetify
 
 spotify_colors="${XDG_CACHE_HOME:-$HOME/.cache}/wal/spotify.ini"
-hashFile="${XDG_RUNTIME_DIR:-/tmp}/wal-spotify-hash"
+hash_file="${XDG_RUNTIME_DIR:-/tmp}/wal-spotify-hash"
 
 # Exit if spicetify is not installed
 command -v spicetify &>/dev/null || exit 0
@@ -12,7 +12,7 @@ command -v spicetify &>/dev/null || exit 0
 
 # Change detection: skip if colors unchanged
 input_hash=$(md5sum "$spotify_colors" 2>/dev/null | cut -d' ' -f1)
-if [[ -f "$hashFile" && "$(cat "$hashFile" 2>/dev/null)" == "$input_hash" ]]; then
+if [[ -f "$hash_file" && "$(cat "$hash_file" 2>/dev/null)" == "$input_hash" ]]; then
   exit 0
 fi
 
@@ -21,5 +21,5 @@ if [ -d "$HOME/.config/spicetify/Themes/Sleek" ]; then
   cp "$spotify_colors" "$HOME/.config/spicetify/Themes/Sleek/color.ini"
   spicetify apply 2>/dev/null
   # Save hash for next run
-  echo "$input_hash" > "$hashFile"
+  echo "$input_hash" > "$hash_file"
 fi

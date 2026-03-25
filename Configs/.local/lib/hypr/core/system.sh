@@ -32,17 +32,17 @@ pkg_installed() {
   fi
 }
 
-get_aurhlpr() {
+get_aur_helper() {
   if pkg_installed yay; then
-    aurhlpr="yay"
+    aur_helper="yay"
   elif pkg_installed paru; then
     # shellcheck disable=SC2034
-    aurhlpr="paru"
+    aur_helper="paru"
   fi
 }
 
 # ============================================================================
-# get_hyprConf - Get a variable value from Hyprland theme config
+# get_hypr_conf - Get a variable value from Hyprland theme config
 # ============================================================================
 # Arguments:
 #   $1 - Variable name (without $ prefix)
@@ -56,8 +56,8 @@ get_aurhlpr() {
 #   - Tries hyq first for fast parsing, falls back to grep/awk
 #   - Checks theme file, then gsettings execs, then defaults
 # Example:
-#   gtk_theme=$(get_hyprConf "GTK_THEME")
-get_hyprConf() {
+#   gtk_theme=$(get_hypr_conf "GTK_THEME")
+get_hypr_conf() {
   local hyVar="${1}"
   local file="${2:-"$HYPR_THEME_DIR/hypr.theme"}"
   local value=""

@@ -44,7 +44,7 @@ menu_run_action_core() {
   local action_id="$1"
 
   case "${action_id}" in
-    main_apps) hyprshell rofi/rofilaunch.sh ;;
+    main_apps) hyprshell rofi/rofi-launch.sh ;;
     dev_git) hyprshell launch/lazygit.sh ;;
     dev_docker) hyprshell launch/lazydocker.sh ;;
     dev_file_manager) present_terminal --app-id org.tui.Ranger --title Ranger -- ranger ;;

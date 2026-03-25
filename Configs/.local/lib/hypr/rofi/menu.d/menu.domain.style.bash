@@ -19,7 +19,7 @@ menu_run_action_style() {
 
   case "${action_id}" in
     style_theme_menu) hyprshell theme.select.sh -s ;;
-    style_launcher) hyprshell rofi/rofilaunch.sh -s ;;
+    style_launcher) hyprshell rofi/rofi-launch.sh -s ;;
     style_theme) hyprshell theme/theme.select.sh ;;
     style_wallpaper) hyprshell wallpaper/wallpaper.sh -SG ;;
     style_color_mode) hyprshell wal.toggle.sh -m ;;

@@ -2,14 +2,14 @@
 # pywal16.discord.sh - Copy generated Discord CSS to client locations
 
 discord_css="${XDG_CACHE_HOME:-$HOME/.cache}/wal/discord.css"
-hashFile="${XDG_RUNTIME_DIR:-/tmp}/wal-discord-hash"
+hash_file="${XDG_RUNTIME_DIR:-/tmp}/wal-discord-hash"
 
 # Exit if source file doesn't exist
 [ ! -f "${discord_css}" ] && exit 0
 
 # Change detection: skip if CSS unchanged
 input_hash=$(md5sum "${discord_css}" 2>/dev/null | cut -d' ' -f1)
-if [[ -f "$hashFile" && "$(cat "$hashFile" 2>/dev/null)" == "$input_hash" ]]; then
+if [[ -f "$hash_file" && "$(cat "$hash_file" 2>/dev/null)" == "$input_hash" ]]; then
   exit 0
 fi
 
@@ -30,4 +30,4 @@ for client in "${clients[@]}"; do
 done
 
 # Save hash for next run
-echo "$input_hash" > "$hashFile"
+echo "$input_hash" > "$hash_file"

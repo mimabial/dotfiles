@@ -37,7 +37,7 @@ fi
 
 output="$({
   if [[ "${needs_regeneration}" == true ]]; then
-    keybinds.hint.py --format rofi | tee "${kb_cache}"
+    keybinds_hint.py --format rofi | tee "${kb_cache}"
   else
     cat "${kb_cache}"
   fi
