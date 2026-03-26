@@ -148,6 +148,25 @@ wallpaper_refresh_inventory_if_needed() {
   wallpaper_refresh_inventory_and_prune
 }
 
+random_wallpaper_index() {
+  local count="$1"
+  local max_random=32768
+  local accept_limit=0
+  local candidate=0
+
+  [[ "${count}" =~ ^[0-9]+$ ]] || return 1
+  ((count > 0)) || return 1
+
+  accept_limit=$((max_random - (max_random % count)))
+  while :; do
+    candidate=${RANDOM}
+    if ((candidate < accept_limit)); then
+      printf '%s\n' $((candidate % count))
+      return 0
+    fi
+  done
+}
+
 main() {
   # Full cache variables are required for write/apply operations.
   if [[ -z "${wallpaper_backend}" ]] \
@@ -184,7 +203,7 @@ main() {
         ;;
       r)
         Wall_Hash
-        setIndex=$((RANDOM % ${#wallList[@]}))
+        setIndex="$(random_wallpaper_index "${#wallList[@]}")" || exit 1
         apply_selected_wallpaper "${wallList[setIndex]}"
         ;;
       s)

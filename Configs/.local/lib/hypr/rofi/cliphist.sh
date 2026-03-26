@@ -49,7 +49,7 @@ process_selections() {
     for ((i = 0; i < total_lines; i++)); do
       local line="${lines[$i]}"
       local decoded_line
-      decoded_line="$(echo -e "$line\t" | cliphist decode)"
+      decoded_line="$(printf '%s\t' "$line" | cliphist decode)"
       if [ $i -lt $((total_lines - 1)) ]; then
         printf -v output '%s%s\n' "$output" "$decoded_line"
       else
@@ -155,10 +155,10 @@ show_history() {
 
   [ -n "${selected_item}" ] || exit 0
 
-  if echo -e "${selected_item}" | check_content; then
+  if printf '%s\n' "${selected_item}" | check_content; then
     process_selections <<<"${selected_item}" | wl-copy
     paste_string "${@}"
-    echo -e "${selected_item}\t" | cliphist delete
+    printf '%s\t' "${selected_item}" | cliphist delete
   else
     # binary content - handled by check_content
     paste_string "${@}"
@@ -229,7 +229,7 @@ add_to_favorites() {
 
   if [ -n "$item" ]; then
     local full_item
-    full_item=$(echo "$item" | cliphist decode)
+    full_item=$(printf '%s\n' "$item" | cliphist decode)
 
     local encoded_item
     encoded_item=$(echo "$full_item" | base64 -w 0)
@@ -344,6 +344,7 @@ clear_history() {
 
 # show help message
 show_help() {
+  local exit_code="${1:-0}"
   cat <<EOF
 Options:
   -c  | --copy | History            Show clipboard history and copy selected item
@@ -355,7 +356,7 @@ Options:
 
 Note: To enable autopaste, install 'wtype' package.
 EOF
-  exit 0
+  exit "${exit_code}"
 }
 
 # main function
@@ -388,9 +389,15 @@ main() {
     -w | --wipe | "Clear History")
       clear_history
       ;;
-    -h | --help | *)
-      [ -z "$main_action" ] && exit 0
+    "")
+      exit 0
+      ;;
+    -h | --help)
       show_help
+      ;;
+    *)
+      printf 'Invalid action: %s\n\n' "${main_action}" >&2
+      show_help 1
       ;;
   esac
 }

@@ -202,39 +202,92 @@ canonicalize_shell_colors_file() {
   fi
 }
 
+hex_triplet_to_rgb_components() {
+  local hex="${1#\#}"
+  local r_name="$2"
+  local g_name="$3"
+  local b_name="$4"
+  local -n r_ref="${r_name}"
+  local -n g_ref="${g_name}"
+  local -n b_ref="${b_name}"
+
+  if [[ ! "${hex}" =~ ^[0-9A-Fa-f]{6}$ ]]; then
+    r_ref=0
+    g_ref=0
+    b_ref=0
+    return 1
+  fi
+
+  r_ref=$((16#${hex:0:2}))
+  g_ref=$((16#${hex:2:2}))
+  b_ref=$((16#${hex:4:2}))
+}
+
 post_process_generated_color_files() {
+  local r=0
+  local g=0
+  local b=0
+  local var=""
+  local hex=""
+  local bg_hex=""
+  local fg_hex=""
+  local sed_args=()
+  local colors_shell="${WAL_CACHE}/colors-shell.sh"
+
+  if [[ -f "${WAL_CACHE}/colors-hyprshade.glsl" || -f "${WAL_CACHE}/colors-rmpc.ron" || -f "${WAL_CACHE}/colors-hyprland.conf" ]]; then
+    source "${colors_shell}"
+  fi
+
   if [[ -f "${WAL_CACHE}/colors-hyprshade.glsl" ]]; then
-    source "${WAL_CACHE}/colors-shell.sh"
-    sed_args=()
     for i in {0..15}; do
       var="color${i}"
-      hex="${!var#\#}"
-      r=$((16#${hex:0:2})) g=$((16#${hex:2:2})) b=$((16#${hex:4:2}))
+      if ! hex_triplet_to_rgb_components "${!var}" r g b; then
+        print_log -sec "pywal16" -warn "colors" "invalid ${var} in colors-shell.sh"
+      fi
       sed_args+=(-e "s/COLOR${i}_RGB/${r}, ${g}, ${b}/g")
     done
-    bg_hex="${background#\#}" fg_hex="${foreground#\#}"
-    sed_args+=(-e "s/BACKGROUND_RGB/$((16#${bg_hex:0:2})), $((16#${bg_hex:2:2})), $((16#${bg_hex:4:2}))/g")
-    sed_args+=(-e "s/FOREGROUND_RGB/$((16#${fg_hex:0:2})), $((16#${fg_hex:2:2})), $((16#${fg_hex:4:2}))/g")
+    if ! hex_triplet_to_rgb_components "${background}" r g b; then
+      print_log -sec "pywal16" -warn "colors" "invalid background in colors-shell.sh"
+    fi
+    sed_args+=(-e "s/BACKGROUND_RGB/${r}, ${g}, ${b}/g")
+    if ! hex_triplet_to_rgb_components "${foreground}" r g b; then
+      print_log -sec "pywal16" -warn "colors" "invalid foreground in colors-shell.sh"
+    fi
+    sed_args+=(-e "s/FOREGROUND_RGB/${r}, ${g}, ${b}/g")
     sed -i "${sed_args[@]}" "${WAL_CACHE}/colors-hyprshade.glsl"
   fi
 
   if [[ -f "${WAL_CACHE}/colors-rmpc.ron" ]]; then
-    source "${WAL_CACHE}/colors-shell.sh"
-    hex0="${color0#\#}" hex15="${color15#\#}" hex4="${color4#\#}"
+    hex0="${color0:-}"
+    hex15="${color15:-}"
+    hex4="${color4:-}"
+    if ! hex_triplet_to_rgb_components "${hex0}" r g b; then
+      print_log -sec "pywal16" -warn "colors" "invalid color0 in colors-shell.sh"
+    fi
     sed -i \
-      -e "s/COLOR0_R/$((16#${hex0:0:2}))/g" -e "s/COLOR0_G/$((16#${hex0:2:2}))/g" -e "s/COLOR0_B/$((16#${hex0:4:2}))/g" \
-      -e "s/COLOR15_R/$((16#${hex15:0:2}))/g" -e "s/COLOR15_G/$((16#${hex15:2:2}))/g" -e "s/COLOR15_B/$((16#${hex15:4:2}))/g" \
-      -e "s/COLOR4_R/$((16#${hex4:0:2}))/g" -e "s/COLOR4_G/$((16#${hex4:2:2}))/g" -e "s/COLOR4_B/$((16#${hex4:4:2}))/g" \
+      -e "s/COLOR0_R/${r}/g" -e "s/COLOR0_G/${g}/g" -e "s/COLOR0_B/${b}/g" \
+      "${WAL_CACHE}/colors-rmpc.ron"
+    if ! hex_triplet_to_rgb_components "${hex15}" r g b; then
+      print_log -sec "pywal16" -warn "colors" "invalid color15 in colors-shell.sh"
+    fi
+    sed -i \
+      -e "s/COLOR15_R/${r}/g" -e "s/COLOR15_G/${g}/g" -e "s/COLOR15_B/${b}/g" \
+      "${WAL_CACHE}/colors-rmpc.ron"
+    if ! hex_triplet_to_rgb_components "${hex4}" r g b; then
+      print_log -sec "pywal16" -warn "colors" "invalid color4 in colors-shell.sh"
+    fi
+    sed -i \
+      -e "s/COLOR4_R/${r}/g" -e "s/COLOR4_G/${g}/g" -e "s/COLOR4_B/${b}/g" \
       "${WAL_CACHE}/colors-rmpc.ron"
   fi
 
   if [[ -f "${WAL_CACHE}/colors-hyprland.conf" ]]; then
-    source "${WAL_CACHE}/colors-shell.sh"
     sed_args=()
     for i in 0 4 7 8 15; do
       var="color${i}"
-      hex="${!var#\#}"
-      r=$((16#${hex:0:2})) g=$((16#${hex:2:2})) b=$((16#${hex:4:2}))
+      if ! hex_triplet_to_rgb_components "${!var}" r g b; then
+        print_log -sec "pywal16" -warn "colors" "invalid ${var} in colors-shell.sh"
+      fi
       sed_args+=(-e "s/COLOR${i}_RGB/${r},${g},${b}/g")
     done
     sed -i "${sed_args[@]}" "${WAL_CACHE}/colors-hyprland.conf"

@@ -110,23 +110,34 @@ clear_theme_file() {
   fi
 }
 
+write_theme_stub_file() {
+  local target="$1"
+  local content="$2"
+
+  if [[ -f "${target}" ]] && [[ "$(cat "${target}")" == "${content}" ]]; then
+    return
+  fi
+
+  printf '%s' "${content}" >"${target}"
+}
+
 apply_wallpaper_mode_theme_fallbacks() {
   print_log -sec "theme" -stat "cleanup" "clearing theme files (wallpaper mode)"
 
   clear_theme_file "${HOME}/.config/waybar/theme.css"
-  : >"${HOME}/.config/kitty/theme.conf"
-  echo "# Empty theme file" >"${HOME}/.config/alacritty/theme.toml"
-  : >"${HOME}/.config/dunst/theme.conf"
+  clear_theme_file "${HOME}/.config/kitty/theme.conf"
+  write_theme_stub_file "${HOME}/.config/alacritty/theme.toml" "# Empty theme file
+"
+  clear_theme_file "${HOME}/.config/dunst/theme.conf"
   bash "${LIB_DIR}/hypr/wal/wal.dunst.sh" >/dev/null 2>&1 || true
-  cat >"${HOME}/.config/rofi/theme.rasi" <<'EOF'
-/* Wallpaper mode (auto/dark/light): use pywal16 colors */
+  write_theme_stub_file "${HOME}/.config/rofi/theme.rasi" '/* Wallpaper mode (auto/dark/light): use pywal16 colors */
 @import "~/.config/rofi/colors.rasi"
 * {
     separatorcolor:     transparent;
     border-color:       transparent;
 }
-EOF
-  : >"${HOME}/.config/tmux/theme.conf"
+'
+  clear_theme_file "${HOME}/.config/tmux/theme.conf"
 
   pkill -SIGUSR1 kitty 2>/dev/null || true
   tmux source-file "${XDG_CONFIG_HOME:-$HOME/.config}/tmux/tmux.conf" 2>/dev/null || true

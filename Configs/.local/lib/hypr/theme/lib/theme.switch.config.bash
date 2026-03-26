@@ -223,8 +223,10 @@ sanitize_hypr_theme() {
 
     # Remove each match with sed
     for line in "${matches[@]}"; do
+      local line_esc=""
       [[ -n "$line" ]] || continue
-      sed -i "\|${line}|d" "${buffer_file}"
+      line_esc="$(escape_regex "${line}")"
+      sed -i "\|${line_esc}|d" "${buffer_file}"
       local log_line="${line#"${line%%[![:space:]]*}"}"
       print_log -sec "theme" -warn "sanitize" "${log_line}"
     done

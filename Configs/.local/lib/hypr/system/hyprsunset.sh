@@ -29,11 +29,6 @@ currentTemp="$(state_get "HYPRSUNSET_TEMP" "${default_temp}")"
 currentGamma="$(state_get "HYPRSUNSET_GAMMA" "${default_gamma}")"
 toggle_mode="$(state_get "HYPRSUNSET_ENABLED" "1")"
 
-[ -z "$currentTemp" ] && currentTemp=$default_temp
-[ -z "$currentGamma" ] && currentGamma=$default_gamma
-[ -z "$toggle_mode" ] && toggle_mode=1
-
-# Notification function
 # Notification function
 send_notification() {
   local title message

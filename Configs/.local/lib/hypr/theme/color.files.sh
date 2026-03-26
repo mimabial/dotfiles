@@ -32,9 +32,12 @@ load_theme_palette() {
 
 write_wal_theme_file() {
   local out_file="$1"
-  local tmp_file="${out_file}.tmp.$$"
+  local out_dir=""
+  local tmp_file=""
 
-  mkdir -p "$(dirname "${out_file}")"
+  out_dir="$(dirname "${out_file}")"
+  mkdir -p "${out_dir}"
+  tmp_file="$(mktemp "${out_dir}/.$(basename "${out_file}").XXXXXX")" || return 1
 
   cat >"${tmp_file}" <<JSON
 {
@@ -103,7 +106,8 @@ compute_template_hash() {
 generate_hypr_colors_from_theme() {
   local kitty_theme_file="${HYPR_THEME_DIR}/kitty.theme"
   local out_file="${HOME}/.config/hypr/themes/colors.conf"
-  local tmp_file="${out_file}.tmp.$$"
+  local out_dir=""
+  local tmp_file=""
 
   [[ -n "${HYPR_THEME_DIR}" ]] || return 1
   [[ -r "${kitty_theme_file}" ]] || {
@@ -115,6 +119,10 @@ generate_hypr_colors_from_theme() {
     print_log -sec "theme" -warn "colors" "incomplete palette in ${kitty_theme_file}"
     return 1
   fi
+
+  out_dir="$(dirname "${out_file}")"
+  mkdir -p "${out_dir}"
+  tmp_file="$(mktemp "${out_dir}/.$(basename "${out_file}").XXXXXX")" || return 1
 
   local -a theme_colors=()
   local i

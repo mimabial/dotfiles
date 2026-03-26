@@ -13,9 +13,14 @@ recent_data="${cache_dir}/landing/show_glyph.recent"
 
 refresh_recent_entries() {
   local target_file="$1"
-  local cleaned
-  cleaned=$(mktemp)
-  awk -F'\t' -v OFS='\t' '
+  local target_dir=""
+  local cleaned=""
+
+  target_dir="$(dirname "${target_file}")"
+  mkdir -p "${target_dir}"
+  cleaned="$(mktemp "${target_dir}/.glyph_recent.XXXXXX")" || return 1
+
+  if ! awk -F'\t' -v OFS='\t' '
     FNR==NR { g=$1; l=$2; if (length(g)) label[g]=l; next }
     {
       g=$1; l=$2;
@@ -29,20 +34,43 @@ refresh_recent_entries() {
       key=g OFS l;
       if (!seen[key]++) print g,l;
     }
-  ' "${glyph_data}" "${target_file}" >"${cleaned}" && mv "${cleaned}" "${target_file}"
+  ' "${glyph_data}" "${target_file}" >"${cleaned}"; then
+    rm -f "${cleaned}"
+    return 1
+  fi
+
+  if ! mv "${cleaned}" "${target_file}"; then
+    rm -f "${cleaned}"
+    return 1
+  fi
 }
 
 save_recent_entry() {
   local glyph_line="$1"
-  local tmp_file
-  tmp_file=$(mktemp)
+  local recent_dir=""
+  local tmp_file=""
+
+  recent_dir="$(dirname "${recent_data}")"
+  mkdir -p "${recent_dir}"
+  tmp_file="$(mktemp "${recent_dir}/.glyph_recent.XXXXXX")" || return 1
 
   {
     printf "%s\n" "${glyph_line}"
     cat "${recent_data}" 2>/dev/null
-  } >"${tmp_file}"
-  refresh_recent_entries "${tmp_file}"
-  mv "${tmp_file}" "${recent_data}"
+  } >"${tmp_file}" || {
+    rm -f "${tmp_file}"
+    return 1
+  }
+
+  if ! refresh_recent_entries "${tmp_file}"; then
+    rm -f "${tmp_file}"
+    return 1
+  fi
+
+  if ! mv "${tmp_file}" "${recent_data}"; then
+    rm -f "${tmp_file}"
+    return 1
+  fi
 }
 
 setup_rofi_config() {
@@ -101,9 +129,15 @@ get_glyph_selection() {
   local style_type="${glyph_style:-$ROFI_GLYPH_STYLE}"
   # Default to grid (2) if no style is set
   [[ -z "${style_type}" ]] && style_type="2"
-  local temp_data="${TMPDIR:-/tmp}/glyph_with_data_$$"
+  local temp_dir="${TMPDIR:-/tmp}"
+  local temp_data=""
 
-  awk '!seen[$0]++' "${recent_data}" "${glyph_data}" >"${temp_data}"
+  temp_data="$(mktemp "${temp_dir}/glyph_with_data.XXXXXX")" || return 1
+
+  if ! awk '!seen[$0]++' "${recent_data}" "${glyph_data}" >"${temp_data}"; then
+    rm -f "${temp_data}"
+    return 1
+  fi
 
   # Build a display column (glyph + single space + label)
   local format_stream=(awk -F $'\t' 'BEGIN{OFS="\t"}{disp=$1; if($2!=""&&$2!=$1) disp=disp" "$2; print disp}')

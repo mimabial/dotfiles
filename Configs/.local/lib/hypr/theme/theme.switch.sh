@@ -128,8 +128,10 @@ fi
 show_theme_status
 
 # Apply cursor immediately so UI feedback isn't delayed by long theming tasks.
-if [[ -n "${CURSOR_THEME}" ]] && [[ -n "${CURSOR_SIZE}" ]]; then
-  hyprctl setcursor "${CURSOR_THEME}" "${CURSOR_SIZE}" >/dev/null 2>&1 &
+if [[ -n "${CURSOR_THEME}" ]] && [[ -n "${CURSOR_SIZE}" ]] && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
+  if ! hyprctl setcursor "${CURSOR_THEME}" "${CURSOR_SIZE}" >/dev/null 2>&1; then
+    print_log -sec "theme" -warn "cursor" "failed to apply ${CURSOR_THEME} (${CURSOR_SIZE})"
+  fi
 fi
 
 # Early load the icon theme so that it is available for the rest of the script
@@ -142,8 +144,25 @@ if [ -d /run/current-system/sw/share/themes ]; then
   export THEMES_DIR=/run/current-system/sw/share/themes
 fi
 
-if [ ! -d "${THEMES_DIR}/${GTK_THEME}" ] && [ -d "$HOME/.themes/${GTK_THEME}" ]; then
-  cp -rns "$HOME/.themes/${GTK_THEME}" "${THEMES_DIR}/${GTK_THEME}"
+is_safe_path_component() {
+  local value="$1"
+  [[ -n "${value}" ]] &&
+    [[ "${value}" != "." ]] &&
+    [[ "${value}" != ".." ]] &&
+    [[ "${value}" != */* ]] &&
+    [[ "${value}" != *$'\n'* ]] &&
+    [[ "${value}" != *$'\r'* ]]
+}
+
+gtk_theme_path_name=""
+if is_safe_path_component "${GTK_THEME}"; then
+  gtk_theme_path_name="${GTK_THEME}"
+else
+  print_log -sec "theme" -warn "gtk" "unsafe theme path component: ${GTK_THEME}"
+fi
+
+if [[ -n "${gtk_theme_path_name}" ]] && [ ! -d "${THEMES_DIR}/${gtk_theme_path_name}" ] && [ -d "$HOME/.themes/${gtk_theme_path_name}" ]; then
+  cp -rns "$HOME/.themes/${gtk_theme_path_name}" "${THEMES_DIR}/${gtk_theme_path_name}"
 fi
 
 # Font fallbacks (avoid empty qt5ct/qt6ct font strings)
@@ -235,8 +254,8 @@ ini_write_batch "${XDG_CONFIG_HOME}/gtk-3.0/settings.ini" \
   "Settings:gtk-font-name=${GTK3_FONT} ${GTK3_FONT_SIZE}"
 
 #// gtk4
-if [ -d "${THEMES_DIR}/${GTK_THEME}/gtk-4.0" ]; then
-  gtk4Theme="${GTK_THEME}"
+if [[ -n "${gtk_theme_path_name}" ]] && [ -d "${THEMES_DIR}/${gtk_theme_path_name}/gtk-4.0" ]; then
+  gtk4Theme="${gtk_theme_path_name}"
 else
   gtk4Theme="Pywal16-Gtk"
   print_log -sec "theme" -stat "use" "'Pywal16-Gtk' as gtk4 theme"
@@ -274,11 +293,11 @@ sed -i -e "/^Net\/ThemeName /c\Net\/ThemeName \"${GTK_THEME}\"" \
 # Ensure the active GTK theme is also available under ~/.themes for apps that
 # still look there instead of the XDG theme directory.
 
-if [ ! -L "$HOME/.themes/${GTK_THEME}" ] && [ -d "${THEMES_DIR}/${GTK_THEME}" ]; then
+if [[ -n "${gtk_theme_path_name}" ]] && [ ! -L "$HOME/.themes/${gtk_theme_path_name}" ] && [ -d "${THEMES_DIR}/${gtk_theme_path_name}" ]; then
   print_log -sec "theme" -warn "linking" "${GTK_THEME} to ~/.themes to fix GTK4 not following xdg"
   mkdir -p "$HOME/.themes"
-  rm -rf "$HOME/.themes/${GTK_THEME}"
-  ln -snf "${THEMES_DIR}/${GTK_THEME}" "$HOME/.themes/"
+  rm -rf "$HOME/.themes/${gtk_theme_path_name}"
+  ln -snf "${THEMES_DIR}/${gtk_theme_path_name}" "$HOME/.themes/"
 fi
 
 # // .Xresources / .Xdefaults

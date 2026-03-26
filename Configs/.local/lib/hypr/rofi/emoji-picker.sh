@@ -12,6 +12,7 @@ emoji_categories_dir="${emoji_dir}/emoji-categories"
 cache_dir="${HYPR_CACHE_HOME:-$HOME/.cache/hypr}"
 recent_data="${cache_dir}/landing/show_emoji.recent"
 favorites_data="${cache_dir}/landing/emoji_favorites"
+EMOJI_ICONLESS_THEME_STR='listview { show-icons: false; } element { children: [ "element-text" ]; } element-icon { enabled: false; size: 0em; width: 0em; padding: 0; margin: 0; border: 0; }'
 
 clean_emoji_file() {
   local target_file="$1"
@@ -82,14 +83,47 @@ setup_rofi_config() {
   rofi_position=$(get_rofi_pos "${emoji_window_width_px}" "${emoji_window_height_px}")
 }
 
+emoji_menu_base_opts() {
+  local theme_name="$1"
+  local -n opts_ref="$2"
+
+  opts_ref=(-no-config -no-default-config -theme "${theme_name}")
+  [[ -n "${_rofi_opacity}" ]] && opts_ref+=("-theme-str" "${_rofi_opacity}")
+}
+
+emoji_style_menu_args() {
+  local style_type="$1"
+  local -n args_ref="$2"
+
+  args_ref=()
+  case "${style_type}" in
+    2 | grid)
+      args_ref+=(-theme-str "listview {columns: 2;}")
+      ;;
+  esac
+}
+
+emoji_extract_skin_tone_modifier() {
+  local tone_value="$1"
+
+  case "${tone_value}" in
+    *"🏻"*) printf '%s' "🏻" ;;
+    *"🏼"*) printf '%s' "🏼" ;;
+    *"🏽"*) printf '%s' "🏽" ;;
+    *"🏾"*) printf '%s' "🏾" ;;
+    *"🏿"*) printf '%s' "🏿" ;;
+    *) printf '%s' "" ;;
+  esac
+}
+
 get_emoji_selection() {
   local style_type="${emoji_style:-${ROFI_EMOJI_STYLE:-2}}"
-  local size_override=""
-  local iconless_theme_str="listview { show-icons: false; } element { children: [ \"element-text\" ]; } element-icon { enabled: false; size: 0em; width: 0em; padding: 0; margin: 0; border: 0; }"
   local emoji_theme
   emoji_theme="$(rofi_resolve_theme "${ROFI_EMOJI_THEME:-clipboard}")"
-  local rofi_base_opts=(-no-config -no-default-config -theme "${emoji_theme}")
-  [[ -n "${_rofi_opacity}" ]] && rofi_base_opts+=("-theme-str" "${_rofi_opacity}")
+  local rofi_base_opts=()
+  local style_menu_args=()
+  emoji_menu_base_opts "${emoji_theme}" rofi_base_opts
+  emoji_style_menu_args "${style_type}" style_menu_args
   local emoji_args=()
   for arg in "${ROFI_EMOJI_ARGS[@]}"; do
     [[ "${arg}" == "-multi-select" || "${arg}" == "--multi-select" ]] && continue
@@ -97,8 +131,14 @@ get_emoji_selection() {
   done
 
   # Create recently used and favorites category entries
-  local temp_data="${TMPDIR:-/tmp}/emoji_with_raw_$$"
-  local display_data="${TMPDIR:-/tmp}/emoji_display_$$"
+  local temp_dir="${TMPDIR:-/tmp}"
+  local temp_data=""
+  local display_data=""
+  temp_data="$(mktemp "${temp_dir}/emoji_with_raw.XXXXXX")" || return 1
+  display_data="$(mktemp "${temp_dir}/emoji_display.XXXXXX")" || {
+    rm -f "${temp_data}"
+    return 1
+  }
 
   # Add favorites category if favorites exist
   if [[ -f "${favorites_data}" ]] && [[ -s "${favorites_data}" ]]; then
@@ -132,37 +172,15 @@ get_emoji_selection() {
   if [[ -n ${use_rofile} ]]; then
     selection_index=$(cat "${display_data}" | rofi -dmenu -i -format 'i' "${emoji_args[@]}" "${rofi_base_opts[@]}" -config "${use_rofile}" \
       -no-show-icons \
-      -theme-str "${iconless_theme_str}" \
+      -theme-str "${EMOJI_ICONLESS_THEME_STR}" \
       -no-custom)
   else
-    case ${style_type} in
-      2 | grid)
-        selection_index=$(cat "${display_data}" | rofi -dmenu -i -format 'i' "${emoji_args[@]}" "${rofi_base_opts[@]}" -display-columns 1 \
-          -no-show-icons \
-          -theme-str "${iconless_theme_str}" \
-          -theme-str "listview {columns: 2;}" \
-          -theme-str "entry { placeholder: \" 󰞅 Emoji\";} ${rofi_position} ${r_override}" \
-          -theme-str "${font_override}" \
-          -theme-str "${size_override}" \
-          -no-custom)
-        ;;
-      1 | list)
-        selection_index=$(cat "${display_data}" | rofi -dmenu -i -format 'i' "${emoji_args[@]}" "${rofi_base_opts[@]}" \
-          -display-columns 1 -no-show-icons \
-          -theme-str "${iconless_theme_str}" \
-          -theme-str "entry { placeholder: \" 󰞅 Emoji\";} ${rofi_position} ${r_override}" \
-          -theme-str "${font_override}" \
-          -no-custom)
-        ;;
-      *)
-        selection_index=$(cat "${display_data}" | rofi -dmenu -i -format 'i' "${emoji_args[@]}" "${rofi_base_opts[@]}" \
-          -display-columns 1 -no-show-icons \
-          -theme-str "${iconless_theme_str}" \
-          -theme-str "entry { placeholder: \" 󰞅 Emoji\";} ${rofi_position} ${r_override}" \
-          -theme-str "${font_override}" \
-          -no-custom)
-        ;;
-    esac
+    selection_index=$(cat "${display_data}" | rofi -dmenu -i -format 'i' "${emoji_args[@]}" "${rofi_base_opts[@]}" "${style_menu_args[@]}" \
+      -no-show-icons \
+      -theme-str "${EMOJI_ICONLESS_THEME_STR}" \
+      -theme-str "entry { placeholder: \" 󰞅 Emoji\";} ${rofi_position} ${r_override}" \
+      -theme-str "${font_override}" \
+      -no-custom)
   fi
 
   rm -f "${display_data}"
@@ -246,32 +264,11 @@ show_multi_person_skin_tone_selector() {
   # Extract skin tone modifiers
   local modifier1=""
   local modifier2=""
-
-  case "${tone1}" in
-    *"🏻"*) modifier1="🏻" ;;
-    *"🏼"*) modifier1="🏼" ;;
-    *"🏽"*) modifier1="🏽" ;;
-    *"🏾"*) modifier1="🏾" ;;
-    *"🏿"*) modifier1="🏿" ;;
-  esac
-
-  case "${tone2}" in
-    *"🏻"*) modifier2="🏻" ;;
-    *"🏼"*) modifier2="🏼" ;;
-    *"🏽"*) modifier2="🏽" ;;
-    *"🏾"*) modifier2="🏾" ;;
-    *"🏿"*) modifier2="🏿" ;;
-  esac
+  modifier1="$(emoji_extract_skin_tone_modifier "${tone1}")"
+  modifier2="$(emoji_extract_skin_tone_modifier "${tone2}")"
 
   # Combine emoji with skin tones
-  # For handshake: 🤝 + tone1 + tone2
-  # For holding hands with ZWJ: emoji + tone1 + ZWJ + tone2
-  if [[ "${base_emoji}" == "🤝" ]]; then
-    echo "${base_emoji}${modifier1}${modifier2}"
-  else
-    # For complex emojis with ZWJ, insert tones appropriately
-    echo "${base_emoji}${modifier1}${modifier2}"
-  fi
+  echo "${base_emoji}${modifier1}${modifier2}"
 
   return 0
 }
@@ -351,16 +348,10 @@ show_skin_tone_selector() {
       -theme "$(rofi_resolve_theme clipboard)" -theme-str "${_rofi_opacity}")
 
   # Extract just the skin tone part from selection
-  if [[ "${selected_tone}" == *"🏻"* ]]; then
-    echo "${base_emoji}🏻"
-  elif [[ "${selected_tone}" == *"🏼"* ]]; then
-    echo "${base_emoji}🏼"
-  elif [[ "${selected_tone}" == *"🏽"* ]]; then
-    echo "${base_emoji}🏽"
-  elif [[ "${selected_tone}" == *"🏾"* ]]; then
-    echo "${base_emoji}🏾"
-  elif [[ "${selected_tone}" == *"🏿"* ]]; then
-    echo "${base_emoji}🏿"
+  local selected_modifier=""
+  selected_modifier="$(emoji_extract_skin_tone_modifier "${selected_tone}")"
+  if [[ -n "${selected_modifier}" ]]; then
+    echo "${base_emoji}${selected_modifier}"
   elif [[ "${selected_tone}" == *"Default"* ]]; then
     echo "${base_emoji}"
   else
@@ -393,44 +384,32 @@ show_category_menu() {
   fi
 
   # Add back navigation option
-  local temp_category="${TMPDIR:-/tmp}/emoji_category_$$"
+  local temp_dir="${TMPDIR:-/tmp}"
+  local temp_category=""
+  temp_category="$(mktemp "${temp_dir}/emoji_category.XXXXXX")" || return 1
   echo "◀ Back	:b:a:c:k:" >"${temp_category}"
   cat "${category_file}" >>"${temp_category}"
 
   # Show category-specific emoji menu
   local selected
   local style_type="${emoji_style:-${ROFI_EMOJI_STYLE:-2}}"
+  local category_theme=""
+  local rofi_base_opts=()
+  local style_menu_args=()
 
-  case ${style_type} in
-    2 | grid)
-      selected=$(cat "${temp_category}" | rofi -dmenu -i -display-columns 1 \
-        -display-column-separator " " -no-show-icons "${rofi_base_opts[@]}" \
-        -theme-str "${iconless_theme_str}" \
-        -theme-str "listview {columns: 2;}" \
-        -theme-str "entry { placeholder: \"📂 ${category}\";} ${rofi_position} ${r_override}" \
-        -theme-str "${font_override}" \
-        -theme "$(rofi_resolve_theme clipboard)" -theme-str "${_rofi_opacity}" \
-        -no-custom)
-      ;;
-    1 | list)
-      selected=$(cat "${temp_category}" | rofi -dmenu -i -display-columns 1 \
-        -no-show-icons "${rofi_base_opts[@]}" \
-        -theme-str "${iconless_theme_str}" \
-        -theme-str "entry { placeholder: \"📂 ${category}\";} ${rofi_position} ${r_override}" \
-        -theme-str "${font_override}" \
-        -theme "$(rofi_resolve_theme clipboard)" -theme-str "${_rofi_opacity}" \
-        -no-custom)
-      ;;
-    *)
-      selected=$(cat "${temp_category}" | rofi -dmenu -i -display-columns 1 \
-        -no-show-icons "${rofi_base_opts[@]}" \
-        -theme-str "${iconless_theme_str}" \
-        -theme-str "entry { placeholder: \"📂 ${category}\";} ${rofi_position} ${r_override}" \
-        -theme-str "${font_override}" \
-        -theme "$(rofi_resolve_theme "${style_type:-clipboard}")" -theme-str "${_rofi_opacity}" \
-        -no-custom)
-      ;;
+  case "${style_type}" in
+    1 | list | 2 | grid) category_theme="$(rofi_resolve_theme clipboard)" ;;
+    *) category_theme="$(rofi_resolve_theme "${style_type:-clipboard}")" ;;
   esac
+  emoji_menu_base_opts "${category_theme}" rofi_base_opts
+  emoji_style_menu_args "${style_type}" style_menu_args
+
+  selected=$(cat "${temp_category}" | rofi -dmenu -i "${style_menu_args[@]}" \
+    -no-show-icons "${rofi_base_opts[@]}" \
+    -theme-str "${EMOJI_ICONLESS_THEME_STR}" \
+    -theme-str "entry { placeholder: \"📂 ${category}\";} ${rofi_position} ${r_override}" \
+    -theme-str "${font_override}" \
+    -no-custom)
 
   rm -f "${temp_category}"
   echo "${selected}"
