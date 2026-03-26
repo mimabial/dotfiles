@@ -81,13 +81,13 @@ pywal_default_setting() {
   local variant="${2:-dark}"
 
   case "${variant}:${setting}" in
-    light:BACKEND) printf '%s' "colorthief" ;;
-    light:BACKEND_FALLBACKS) printf '%s' "haishoku colorthief colorz" ;;
+    light:BACKEND) printf '%s' "haishoku" ;;
+    light:BACKEND_FALLBACKS) printf '%s' "colorthief wal" ;;
     light:CONTRAST) printf '%s' "2.2" ;;
     light:SATURATE) printf '%s' "0.6" ;;
     light:COLS16) printf '%s' "lighten" ;;
     dark:BACKEND) printf '%s' "colorthief" ;;
-    dark:BACKEND_FALLBACKS) printf '%s' "wal haishoku colorz" ;;
+    dark:BACKEND_FALLBACKS) printf '%s' "wal haishoku" ;;
     dark:CONTRAST) printf '%s' "3.0" ;;
     dark:SATURATE) printf '%s' "0.4" ;;
     dark:COLS16) printf '%s' "lighten" ;;
@@ -270,8 +270,8 @@ link_generated_color_files() {
 
   local waybar_palette_helper="${SCRIPT_DIR}/waybar_palette.py"
   if [[ "${SKIP_WAYBAR_UPDATE}" -ne 1 ]] && [[ -f "${WAL_CACHE}/colors-waybar.css" ]] && [[ -x "${waybar_palette_helper}" ]]; then
-    python3 "${waybar_palette_helper}" "${WAL_CACHE}/colors-waybar.css" || \
-      print_log -sec "waybar" -warn "palette" "failed to refine semantic colors"
+    python3 "${waybar_palette_helper}" "${WAL_CACHE}/colors-waybar.css" \
+      || print_log -sec "waybar" -warn "palette" "failed to refine semantic colors"
   fi
 }
 

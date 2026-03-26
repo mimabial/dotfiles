@@ -51,20 +51,29 @@ fi
 # shellcheck disable=SC1090
 source "${WAL_CACHE}/colors-shell.sh"
 
-get_hypr_var() {
-  local key="$1"
-  local value=""
-  if [[ -f "${HOME}/.local/share/hypr/variables.conf" ]]; then
-    value="$(grep -E '^\$'"${key}"'[[:space:]]*=' "${HOME}/.local/share/hypr/variables.conf" 2>/dev/null | tail -1 | sed 's/^[^=]*=[[:space:]]*//' | sed 's/[[:space:]]*#.*$//')"
-  fi
-  printf '%s' "${value}"
-}
-
 parse_define_color() {
   local name="$1"
   local file="$2"
   [[ -f "${file}" ]] || return 1
   awk -v key="${name}" '$1 == "@define-color" && $2 == key {gsub(/;/, "", $3); print $3; exit}' "${file}"
+}
+
+read_theme_var() {
+  local key="$1"
+  [[ -f "${THEME_CONF}" ]] || return 1
+
+  awk -v key="${key}" '
+    $0 ~ "^[[:space:]]*\\$" key "[[:space:]]*=" {
+      line = $0
+      sub("^[[:space:]]*\\$" key "[[:space:]]*=[[:space:]]*", "", line)
+      sub(/[[:space:]]*#.*/, "", line)
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", line)
+      gsub(/^'\''|'\''$/, "", line)
+      gsub(/^"|"$/, "", line)
+      print line
+      exit
+    }
+  ' "${THEME_CONF}"
 }
 
 pick_first() {
@@ -97,7 +106,7 @@ with_alpha() {
   printf '#%s' "${color}"
 }
 
-icon_theme="${ICON_THEME:-${GTK_ICON:-$(get_hypr_var ICON_THEME)}}"
+icon_theme="${ICON_THEME:-${GTK_ICON:-$(read_theme_var ICON_THEME)}}"
 icon_theme="${icon_theme:-Tela-circle-dracula}"
 
 theme_update_in_progress=0
@@ -185,35 +194,6 @@ accent_purple="$(pick_first "${color5:-}" "${color13:-}" "${accent_blue}" "#bd93
 accent_aqua="$(pick_first "${color6:-}" "${color14:-}" "${accent_blue}" "#8be9fd")"
 accent_orange="$(pick_first "${color11:-}" "${color3:-}" "${accent_red}" "#ffb86c")"
 gray="$(pick_first "${color8:-}" "${border_secondary}" "#6272a4")"
-bg_low=""
-fg_low=""
-bg_normal=""
-fg_normal=""
-bg_category=""
-fg_category=""
-frame_normal=""
-frame_low=""
-frame_critical=""
-progress_fg=""
-bg_low_render=""
-bg_normal_render=""
-bg_category_render=""
-bg_critical_render=""
-fg_low_render=""
-fg_normal_render=""
-fg_category_render=""
-fg_critical_render=""
-frame_low_render=""
-frame_normal_render=""
-frame_category_email_render=""
-frame_category_chat_render=""
-frame_category_warning_render=""
-frame_category_error_render=""
-frame_category_network_render=""
-frame_category_battery_render=""
-frame_category_update_render=""
-frame_category_music_render=""
-frame_category_volume_render=""
 
 if [[ -s "${DUNST_THEME}" ]]; then
   theme_bg_primary="$(parse_define_color bg-primary "${DUNST_THEME}" || true)"

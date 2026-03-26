@@ -60,8 +60,6 @@ get_hashmap() {
     [ -z "${wallSource}" ] && continue
     [ "${wallSource}" == "--no-notify" ] && no_notify=1 && continue
     [ "${wallSource}" == "--skipstrays" ] && skipStrays=1 && continue
-    [ "${wallSource}" == "--verbose" ] && verboseMap=1 && continue
-
     wallSource="$(realpath "${wallSource}")"
 
     [ -e "${wallSource}" ] || {
@@ -100,12 +98,6 @@ get_hashmap() {
     fi
   fi
 
-  if [[ "${verboseMap}" -eq 1 ]]; then
-    echo "// Hash Map //"
-    for indx in "${!wallHash[@]}"; do
-      echo ":: \${wallHash[${indx}]}=\"${wallHash[indx]}\" :: \${wallList[${indx}]}=\"${wallList[indx]}\""
-    done
-  fi
 }
 
 # Populate sorted theme metadata from `$HYPR_CONFIG_HOME/themes` and repair
@@ -137,12 +129,6 @@ get_themes() {
     thmList+=("${theme}")
     thmWall+=("${wall}")
   done < <(paste -d '|' <(printf "%s\n" "${thmSortS[@]}") <(printf "%s\n" "${thmListS[@]}") <(printf "%s\n" "${thmWallS[@]}") | sort -n -k 1 -k 2)
-  if [ "${1}" == "--verbose" ]; then
-    echo "// Theme Control //"
-    for indx in "${!thmList[@]}"; do
-      echo -e ":: \${thmSort[${indx}]}=\"${thmSort[indx]}\" :: \${thmList[${indx}]}=\"${thmList[indx]}\" :: \${thmWall[${indx}]}=\"${thmWall[indx]}\""
-    done
-  fi
 }
 
 # Print the configured hash for a readable image file.

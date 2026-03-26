@@ -10,8 +10,10 @@ idle_toggle_state \
   idle_manual_enabled \
   idle_set_manual \
   0 \
-  "caffeine-cup-empty" \
+  "process-stop-symbolic" \
   "Keep awake disabled" \
   1 \
-  "caffeine-cup-full" \
-  "Keep awake enabled"
+  "system-run-symbolic" \
+  "Keep awake enabled" \
+  "Idle behavior restored." \
+  "Manual idle inhibition is active."

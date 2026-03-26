@@ -7,8 +7,8 @@ Personal Arch Linux + Hyprland setup derived from [HyDE](https://github.com/HyDE
 ![Hyprland](https://img.shields.io/badge/Hyprland-Wayland-58E1FF?style=for-the-badge&logo=wayland&logoColor=black)
 ![Arch Linux](https://img.shields.io/badge/Arch-Linux-1793D1?style=for-the-badge&logo=archlinux&logoColor=white)
 ![HyDE Derived](https://img.shields.io/badge/Base-HyDE-9B7BFF?style=for-the-badge)
-![Themes](https://img.shields.io/badge/Themes-30-3CB371?style=for-the-badge)
-![Wallpapers](https://img.shields.io/badge/Wallpapers-372-FFB347?style=for-the-badge)
+![Themes](https://img.shields.io/badge/Themes-31-3CB371?style=for-the-badge)
+![Wallpapers](https://img.shields.io/badge/Wallpapers-355-FFB347?style=for-the-badge)
 
 </div>
 
@@ -34,10 +34,10 @@ It keeps the live system and the repo aligned through a `Configs/` mirror and a 
 
 What is in here:
 
-- 30 bundled theme packs under `Configs/.config/hypr/themes/`
-- 372 wallpapers tracked with those themes
-- 220+ Hypr helper scripts under `Configs/.local/lib/hypr/`
-- theme-mode and wallpaper-mode color application via `pywal16`
+- 31 bundled theme packs under `Configs/.config/hypr/themes/`
+- 355 wallpapers tracked with those themes
+- 260+ Hypr helper scripts under `Configs/.local/lib/hypr/`
+- theme-mode and wallpaper-mode color application via `pywal16` with built-in legibility tuning
 - integrated theming for Hyprland, Waybar, Rofi, Dunst, Hyprlock, Kitty, Alacritty, GTK, Qt, Kvantum, tmux and more
 - host-specific overlays in `Configs/hosts/`
 
@@ -127,14 +127,20 @@ dotfiles/
 
 Important directories inside `Configs/`:
 
-- `Configs/.config/hypr/`
-  - Hyprland entry config, themes, keybindings, monitor rules
-- `Configs/.local/lib/hypr/`
-  - the actual orchestration scripts for themes, wallpapers, Waybar, Rofi, controls, capture, media, notifications, lockscreen, etc.
-- `Configs/.local/share/hypr/`
-  - shared/generated Hypr data used by the live system
-- `Configs/hosts/`
-  - per-machine overrides layered on top of the common config
+- `Configs/.config/hypr/` — Hyprland entry config, themes, keybindings, monitor rules
+- `Configs/.local/lib/hypr/` — 260+ orchestration scripts organized by domain:
+  - `theme/` — color generation engine, pipeline, caching, variant resolution
+  - `wallpaper/` — wallpaper backends, catalog, cache management
+  - `waybar/` — status bar config generation, border-radius sync, layout management
+  - `rofi/` — launcher menus, emoji/glyph pickers, style selection
+  - `wal/` — pywal16 app integrations (GTK, Kvantum, Hyprlock, tmux, etc.)
+  - `core/` — state management, system utilities, rofi helpers
+  - `controls/` — volume, brightness hardware controls
+  - `capture/` — screenshot and screen recording tools
+  - `session/` — lock screen, logout, idle management
+  - `system/` — hyprsunset, app2unit, polkit, XDG portal
+- `Configs/.local/share/hypr/` — shared/generated Hypr data used by the live system
+- `Configs/hosts/` — per-machine overrides layered on top of the common config
 
 For VM-based testing, see:
 
@@ -189,19 +195,46 @@ Available color modes:
 | `Dark` | Force wallpaper-derived dark colors |
 | `Light` | Force wallpaper-derived light colors |
 
-The main engine is:
+The main engine is `Configs/.local/lib/hypr/theme/color.set.sh`, orchestrated through `color.pipeline.sh`.
 
-- `Configs/.local/lib/hypr/theme/color.set.sh`
+Responsibilities:
 
-That script is responsible for:
-
-- palette generation or restore from cache
-- app-specific theme outputs
-- Hyprland color files
-- Waybar / Rofi / Dunst / terminal integration
+- palette generation via `pywal16` or restore from per-wallpaper cache
+- app-specific color outputs (Hyprland, Waybar, Rofi, Dunst, Kitty, Alacritty, GTK, Qt/Kvantum, tmux, etc.)
 - state updates for the running desktop
+- file-lock-based concurrency control across theme/wallpaper/mode-switch entry points
 
-Current visible theme switching is intentionally committed as one coordinated boundary:
+### pywal16 defaults
+
+Wallpaper mode uses `colorthief` as the default backend with automatic fallback to `wal`, `haishoku`, `colorz`.
+
+Built-in legibility settings (applied automatically, differ by dark/light):
+
+| Setting | Dark | Light | pywal16 flag |
+| --- | --- | --- | --- |
+| Contrast | 3.0 | 2.2 | `--contrast` (W3C minimum ratio) |
+| Saturation | 0.4 | 0.6 | `--saturate` |
+| 16-color method | lighten | lighten | `--cols16` |
+
+All settings are overridable via environment variables in `env-overrides` or `staterc`:
+
+```bash
+# Global override (applies to both dark and light)
+PYWAL_CONTRAST=4.0
+
+# Mode-specific override (takes precedence over global)
+PYWAL_LIGHT_CONTRAST=2.5
+PYWAL_DARK_SATURATE=0.3
+
+# Override backend
+PYWAL_BACKEND=haishoku
+```
+
+Cache keys include the effective legibility settings, so changing any value correctly invalidates the cache.
+
+### Theme switching flow
+
+Visible theme switching is committed as one coordinated boundary:
 
 1. generate / restore colors
 2. write theme files
@@ -210,7 +243,7 @@ Current visible theme switching is intentionally committed as one coordinated bo
 5. reload Hyprland config
 6. restart Waybar
 
-Non-visible work stays off that critical path where possible.
+Non-visible work (opposite-mode precache, async app theming) stays off that critical path.
 
 ## Themes
 
@@ -219,6 +252,7 @@ Included theme packs:
 - Another World
 - Ayu Green
 - Bauhaus Blue
+- Blue Sky
 - Catppuccin Latte
 - Catppuccin Mocha
 - Code Garden
@@ -259,9 +293,14 @@ Major differences in the current stack include:
 
 - repo-first sync workflow through `Configs/` and `dotfiles-sync`
 - a rebuilt theme / wallpaper / state pipeline under `~/.local/lib/hypr/`
+- unified state management (`state_get` / `state_set`) with file locking to prevent race conditions
+- pywal16 legibility defaults (contrast, saturation, cols16) with per-mode tuning and env-var overrides
+- `colorthief` as default pywal16 backend (upstream uses `wal`) with automatic fallback chain
+- per-wallpaper color cache keyed by hash, variant, backend, and legibility settings
 - Dunst-based notifications instead of upstream SwayNC usage
 - host overlay support in `Configs/hosts/`
 - a narrower, more explicit visible commit path for theme switching
+- kebab-case script naming convention (e.g. `battery-notify.sh`, `lock-screen.sh`)
 - local cleanup and consolidation of old HyDE-era compatibility layers that are not used here
 
 ## Credits

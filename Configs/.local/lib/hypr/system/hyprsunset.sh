@@ -425,30 +425,6 @@ get_gamma_color() {
   done
 }
 
-# Modular functions for status generation
-get_temp_status() {
-  local current_running_temp
-  current_running_temp=$(get_running_temp)
-
-  if [ "$toggle_mode" -eq 1 ]; then
-    if [ "$current_running_temp" = "$default_temp" ]; then
-      echo "Identity"
-    else
-      echo "${current_running_temp}K"
-    fi
-  else
-    echo "Identity"
-  fi
-}
-
-get_gamma_status() {
-  printf "%d" "$currentGamma"
-}
-
-get_saved_temp_status() {
-  echo "${currentTemp}K"
-}
-
 # Generate status message with detailed information
 generate_status() {
   local text_output alt_text tooltip_text

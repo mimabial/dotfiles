@@ -56,30 +56,14 @@ print_log() {
         echo -ne "\e[36m$2\e[0m" >&2
         shift 2
         ;; # Cyan
-      -wt | +w)
-        echo -ne "\e[37m$2\e[0m" >&2
-        shift 2
-        ;; # White
-      -n | +n)
-        echo -ne "\e[96m$2\e[0m" >&2
-        shift 2
-        ;; # Neon
       -stat)
         echo -ne "\e[4;30;46m $2 \e[0m :: " >&2
         shift 2
         ;; # status
-      -crit)
-        echo -ne "\e[30;41m $2 \e[0m :: " >&2
-        shift 2
-        ;; # critical
       -warn)
         echo -ne "WARNING :: \e[30;43m $2 \e[0m :: " >&2
         shift 2
         ;; # warning
-      +)
-        echo -ne "\e[38;5;$2m$3\e[0m" >&2
-        shift 3
-        ;; # Set color manually
       -sec)
         echo -ne "\e[32m[$2] \e[0m" >&2
         shift 2
@@ -96,4 +80,3 @@ print_log() {
   done
   echo "" >&2
 }
-

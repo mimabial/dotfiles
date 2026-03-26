@@ -131,7 +131,8 @@ if [ -n "$BASH_VERSION" ]; then
     extract_thumbnail accepted_mime_types \
     notify_send_safe send_notifs \
     refresh_hypr_runtime_state export_hypr_config init_hypr_globals \
-    state_get state_set state_get_color_variant state_set_color_variant \
+    state_read_value_from_file state_get state_set \
+    state_get_color_variant state_set_color_variant \
     send_ephemeral_notif \
     hypr_lock_manifest_file hypr_lock_runtime_dir hypr_load_lock_manifest \
     hypr_lock_template hypr_lock_path

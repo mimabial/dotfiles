@@ -341,11 +341,11 @@ if not get_location:
 
 # Check if the variables are set correctly
 if temp_unit not in ("c", "f"):
-    TEMP_UNIT = "c"
+    temp_unit = "c"
 if time_format not in ("12h", "24h"):
-    TIME_FORMAT = "12h"
+    time_format = "12h"
 if windspeed_unit not in ("km/h", "mph"):
-    WINDSPEED_UINT = "km/h"
+    windspeed_unit = "km/h"
 if FORECAST_DAYS not in range(4):
     FORECAST_DAYS = 3
 
@@ -398,17 +398,13 @@ elif args.sunrise:
     # Show sunrise time
     today = weather["weather"][0]
     sunrise = get_sunrise(today)
-    sunset = get_sunset(today)
-    sunrise_h, sunrise_m, sunrise_period = split_time_parts(sunrise)
-    sunrise_suffix = f"\n{sunrise_period}" if sunrise_period else ""
+    sunrise_h, sunrise_m, _ = split_time_parts(sunrise)
     data["text"] = f"  \n{sunrise_h}:\n{sunrise_m} "
 elif args.sunset:
     # Show sunset time
     today = weather["weather"][0]
-    sunrise = get_sunrise(today)
     sunset = get_sunset(today)
-    sunset_h, sunset_m, sunset_period = split_time_parts(sunset)
-    sunset_suffix = f"\n{sunset_period}" if sunset_period else ""
+    sunset_h, sunset_m, _ = split_time_parts(sunset)
     data["text"] = f"  \n {sunset_h}\n:{sunset_m}"
 else:
     data["text"] = get_feels_like(current_weather)
