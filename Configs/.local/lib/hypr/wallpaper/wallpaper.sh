@@ -2,20 +2,10 @@
 # shellcheck disable=SC2154
 # shellcheck disable=SC1091
 
-if [[ "${HYPR_SHELL_INIT}" -ne 1 ]]; then
-  eval "$(hyprshell init)"
-elif ! declare -F print_log >/dev/null 2>&1 || ! declare -F send_ephemeral_notif >/dev/null 2>&1; then
-  if [[ -r "${LIB_DIR}/hypr/globalcontrol.sh" ]]; then
-    # shellcheck source=/dev/null
-    source "${LIB_DIR}/hypr/globalcontrol.sh"
-  fi
-fi
-
-if declare -F export_hypr_config >/dev/null 2>&1; then
-  export_hypr_config
-  # Recalculate HYPR_THEME_DIR after reloading config.
-  HYPR_THEME_DIR="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}"
-fi
+source "$(command -v hyprshell)" || exit 1
+export_hypr_config
+# Recalculate HYPR_THEME_DIR after reloading config.
+HYPR_THEME_DIR="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}"
 
 # Lock file to prevent concurrent wallpaper operations.
 wallpaper_wait_for_lock="${WALLPAPER_WAIT_FOR_LOCK:-0}"

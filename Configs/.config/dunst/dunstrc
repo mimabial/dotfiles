@@ -472,193 +472,193 @@ new_icon = skype
 [global]
     monitor = 0
     origin = top-right
-    offset = (20,20)
-    gap_size = 12
-    frame_width = 3
-    progress_bar_corner_radius = 0
-    icon_theme = "Fluent-grey-dark"
-    corner_radius = 0
-    icon_corner_radius = 0
+    offset = (16,16)
+    gap_size = 6
+    frame_width = 2
+    progress_bar_corner_radius = 4
+    icon_theme = "Tela-green-dark"
+    corner_radius = 4
+    icon_corner_radius = 4
 
 [urgency_low]
-    background = "#02151580"
-    foreground = "#C1C3C3E6"
-    frame_color = "#2F909033"
-    highlight = "#c3584a"
+    background = "#1C1E1B80"
+    foreground = "#838781E6"
+    frame_color = "#1C1E1B33"
+    highlight = "#57a5e5"
     timeout = 2
 
 [urgency_normal]
-    background = "#02151580"
-    foreground = "#C1C3C3E6"
-    frame_color = "#C3584A55"
-    highlight = "#c3584a"
+    background = "#25262380"
+    foreground = "#F1E9D2E6"
+    frame_color = "#69E25255"
+    highlight = "#57a5e5"
     timeout = 2
 
 [urgency_critical]
-    background = "#c25948"
-    foreground = "#c1c3c3"
-    frame_color = "#c25948"
-    highlight = "#c25948"
+    background = "#e75a7c"
+    foreground = "#f1e9d2"
+    frame_color = "#e75a7c"
+    highlight = "#e75a7c"
     timeout = 0
 
 [category_email_low]
     category = email
     msg_urgency = low
-    background = "#02151580"
-    foreground = "#C1C3C3E6"
-    frame_color = "#C3584A55"
-    highlight = "#C3584A55"
+    background = "#2F312C80"
+    foreground = "#F1E9D2E6"
+    frame_color = "#57A5E555"
+    highlight = "#57A5E555"
     timeout = 2
 
 [category_email_normal]
     category = email
     msg_urgency = normal
-    background = "#02151580"
-    foreground = "#C1C3C3E6"
-    frame_color = "#C3584A55"
-    highlight = "#C3584A55"
+    background = "#2F312C80"
+    foreground = "#F1E9D2E6"
+    frame_color = "#57A5E555"
+    highlight = "#57A5E555"
     timeout = 2
 
 [category_chat_low]
     category = chat
     msg_urgency = low
-    background = "#02151580"
-    foreground = "#C1C3C3E6"
-    frame_color = "#3ECAD955"
-    highlight = "#3ECAD955"
+    background = "#2F312C80"
+    foreground = "#F1E9D2E6"
+    frame_color = "#70C2BE55"
+    highlight = "#70C2BE55"
     timeout = 2
 
 [category_chat_normal]
     category = chat
     msg_urgency = normal
-    background = "#02151580"
-    foreground = "#C1C3C3E6"
-    frame_color = "#3ECAD955"
-    highlight = "#3ECAD955"
+    background = "#2F312C80"
+    foreground = "#F1E9D2E6"
+    frame_color = "#70C2BE55"
+    highlight = "#70C2BE55"
     timeout = 2
 
 [category_warning_low]
     category = warning
     msg_urgency = low
-    background = "#02151580"
-    foreground = "#C1C3C3E6"
-    frame_color = "#14859455"
-    highlight = "#14859455"
+    background = "#2F312C80"
+    foreground = "#F1E9D2E6"
+    frame_color = "#DBB65155"
+    highlight = "#DBB65155"
     timeout = 2
 
 [category_warning_normal]
     category = warning
     msg_urgency = normal
-    background = "#02151580"
-    foreground = "#C1C3C3E6"
-    frame_color = "#14859455"
-    highlight = "#14859455"
+    background = "#2F312C80"
+    foreground = "#F1E9D2E6"
+    frame_color = "#DBB65155"
+    highlight = "#DBB65155"
     timeout = 2
 
 [category_error_low]
     category = error
     msg_urgency = low
-    background = "#02151580"
-    foreground = "#C1C3C3E6"
-    frame_color = "#C2594855"
-    highlight = "#C2594855"
+    background = "#2F312C80"
+    foreground = "#F1E9D2E6"
+    frame_color = "#E75A7C55"
+    highlight = "#E75A7C55"
     timeout = 2
 
 [category_error_normal]
     category = error
     msg_urgency = normal
-    background = "#02151580"
-    foreground = "#C1C3C3E6"
-    frame_color = "#C2594855"
-    highlight = "#C2594855"
+    background = "#2F312C80"
+    foreground = "#F1E9D2E6"
+    frame_color = "#E75A7C55"
+    highlight = "#E75A7C55"
     timeout = 2
 
 [category_network_low]
     category = network
     msg_urgency = low
-    background = "#02151580"
-    foreground = "#C1C3C3E6"
-    frame_color = "#C3584A55"
-    highlight = "#C3584A55"
+    background = "#2F312C80"
+    foreground = "#F1E9D2E6"
+    frame_color = "#57A5E555"
+    highlight = "#57A5E555"
     timeout = 2
 
 [category_network_normal]
     category = network
     msg_urgency = normal
-    background = "#02151580"
-    foreground = "#C1C3C3E6"
-    frame_color = "#C3584A55"
-    highlight = "#C3584A55"
+    background = "#2F312C80"
+    foreground = "#F1E9D2E6"
+    frame_color = "#57A5E555"
+    highlight = "#57A5E555"
     timeout = 2
 
 [category_battery_low]
     category = battery
     msg_urgency = low
-    background = "#02151580"
-    foreground = "#C1C3C3E6"
-    frame_color = "#18C7DD55"
-    highlight = "#18C7DD55"
+    background = "#2F312C80"
+    foreground = "#F1E9D2E6"
+    frame_color = "#FF996655"
+    highlight = "#FF996655"
     timeout = 2
 
 [category_battery_normal]
     category = battery
     msg_urgency = normal
-    background = "#02151580"
-    foreground = "#C1C3C3E6"
-    frame_color = "#18C7DD55"
-    highlight = "#18C7DD55"
+    background = "#2F312C80"
+    foreground = "#F1E9D2E6"
+    frame_color = "#FF996655"
+    highlight = "#FF996655"
     timeout = 2
 
 [category_update_low]
     category = update
     msg_urgency = low
-    background = "#02151580"
-    foreground = "#C1C3C3E6"
-    frame_color = "#1681AF55"
-    highlight = "#1681AF55"
+    background = "#2F312C80"
+    foreground = "#F1E9D2E6"
+    frame_color = "#8FB57355"
+    highlight = "#8FB57355"
     timeout = 2
 
 [category_update_normal]
     category = update
     msg_urgency = normal
-    background = "#02151580"
-    foreground = "#C1C3C3E6"
-    frame_color = "#1681AF55"
-    highlight = "#1681AF55"
+    background = "#2F312C80"
+    foreground = "#F1E9D2E6"
+    frame_color = "#8FB57355"
+    highlight = "#8FB57355"
     timeout = 2
 
 [category_music_low]
     category = music
     msg_urgency = low
-    background = "#02151580"
-    foreground = "#C1C3C3E6"
-    frame_color = "#1399C055"
-    highlight = "#1399C055"
+    background = "#2F312C80"
+    foreground = "#F1E9D2E6"
+    frame_color = "#AAAAFF55"
+    highlight = "#AAAAFF55"
     timeout = 2
 
 [category_music_normal]
     category = music
     msg_urgency = normal
-    background = "#02151580"
-    foreground = "#C1C3C3E6"
-    frame_color = "#1399C055"
-    highlight = "#1399C055"
+    background = "#2F312C80"
+    foreground = "#F1E9D2E6"
+    frame_color = "#AAAAFF55"
+    highlight = "#AAAAFF55"
     timeout = 2
 
 [category_volume_low]
     category = volume
     msg_urgency = low
-    background = "#02151580"
-    foreground = "#C1C3C3E6"
-    frame_color = "#2F909055"
-    highlight = "#2F909055"
+    background = "#2F312C80"
+    foreground = "#F1E9D2E6"
+    frame_color = "#83878155"
+    highlight = "#83878155"
     timeout = 2
 
 [category_volume_normal]
     category = volume
     msg_urgency = normal
-    background = "#02151580"
-    foreground = "#C1C3C3E6"
-    frame_color = "#2F909055"
-    highlight = "#2F909055"
+    background = "#2F312C80"
+    foreground = "#F1E9D2E6"
+    frame_color = "#83878155"
+    highlight = "#83878155"
     timeout = 2

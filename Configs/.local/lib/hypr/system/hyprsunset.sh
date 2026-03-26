@@ -89,21 +89,29 @@ send_signal_to_process() {
   fi
 }
 
-# Keep temp in range
-clamp_temp() {
-  local temp=$1
-  [ "$temp" -lt "$min_temp" ] && temp=$min_temp
-  [ "$temp" -gt "$max_temp" ] && temp=$max_temp
-  echo "$temp"
+# Keep a numeric value inside a given range.
+clamp_range() {
+  local value="$1"
+  local min_value="$2"
+  local max_value="$3"
+
+  [ "$value" -lt "$min_value" ] && value=$min_value
+  [ "$value" -gt "$max_value" ] && value=$max_value
+  echo "$value"
 }
 
-# Keep gamma in range
-clamp_gamma() {
-  local gamma=$1
-  # Gamma is integer from 20-100
-  [ "$gamma" -lt "$min_gamma" ] && gamma=$min_gamma
-  [ "$gamma" -gt "$max_gamma" ] && gamma=$max_gamma
-  echo "$gamma"
+validate_int_range() {
+  local value="$1"
+  local min_value="$2"
+  local max_value="$3"
+  local error_message="$4"
+
+  if [[ "$value" =~ ^[0-9]+$ ]] && [ "$value" -ge "$min_value" ] && [ "$value" -le "$max_value" ]; then
+    return 0
+  fi
+
+  echo "${error_message}"
+  return 1
 }
 
 # Query current running temperature from hyprctl
@@ -228,17 +236,15 @@ if [ -n "$custom_step" ]; then
   if [ "$action" = "set" ]; then
     # For set actions, custom_step is the target value, not step size
     if [ "$color_mode" = "gamma" ]; then
-      if [[ "$custom_step" =~ ^[0-9]+$ ]] && [ "$custom_step" -ge "$min_gamma" ] && [ "$custom_step" -le "$max_gamma" ]; then
-        newGamma="$custom_step"
+      if validate_int_range "$custom_step" "$min_gamma" "$max_gamma" "Error: Gamma value must be an integer between $min_gamma and $max_gamma"; then
+        newGamma=$(clamp_range "$custom_step" "$min_gamma" "$max_gamma")
       else
-        echo "Error: Gamma value must be an integer between $min_gamma and $max_gamma"
         exit 1
       fi
     else
-      if [[ "$custom_step" =~ ^[0-9]+$ ]] && [ "$custom_step" -ge "$min_temp" ] && [ "$custom_step" -le "$max_temp" ]; then
-        newTemp="$custom_step"
+      if validate_int_range "$custom_step" "$min_temp" "$max_temp" "Error: Temperature must be an integer between $min_temp and $max_temp"; then
+        newTemp=$(clamp_range "$custom_step" "$min_temp" "$max_temp")
       else
-        echo "Error: Temperature must be an integer between $min_temp and $max_temp"
         exit 1
       fi
     fi
@@ -250,41 +256,19 @@ if [ -n "$custom_step" ]; then
       : # Do nothing, keep default temp_step and gamma_step
     else
       if [ "$color_mode" = "gamma" ]; then
-        if [ "$custom_step" -ge 1 ] && [ "$custom_step" -le 50 ]; then
+        if validate_int_range "$custom_step" 1 50 "Error: Gamma step must be between 1 and 50"; then
           gamma_step="$custom_step"
         else
-          echo "Error: Gamma step must be between 1 and 50"
           exit 1
         fi
       else
-        if [ "$custom_step" -ge 1 ] && [ "$custom_step" -le 5000 ]; then
+        if validate_int_range "$custom_step" 1 5000 "Error: Temperature step must be between 1 and 5000"; then
           temp_step="$custom_step"
         else
-          echo "Error: Temperature step must be between 1 and 5000"
           exit 1
         fi
       fi
     fi
-  fi
-fi
-
-# Validate specific temperature value
-if [ -n "$newTemp" ]; then
-  if [[ "$newTemp" =~ ^[0-9]+$ ]] && [ "$newTemp" -ge "$min_temp" ] && [ "$newTemp" -le "$max_temp" ]; then
-    newTemp=$(clamp_temp "$newTemp")
-  else
-    echo "Error: Temperature must be a number between $min_temp and $max_temp"
-    exit 1
-  fi
-fi
-
-# Validate specific gamma value
-if [ -n "$newGamma" ]; then
-  if [[ "$newGamma" =~ ^[0-9]+$ ]] && [ "$newGamma" -ge "$min_gamma" ] && [ "$newGamma" -le "$max_gamma" ]; then
-    newGamma=$(clamp_gamma "$newGamma")
-  else
-    echo "Error: Gamma must be an integer between $min_gamma and $max_gamma"
-    exit 1
   fi
 fi
 
@@ -299,20 +283,20 @@ fi
 case $action in
   increase)
     if [ "$color_mode" = "gamma" ]; then
-      newGamma=$(clamp_gamma "$((currentGamma + gamma_step))")
+      newGamma=$(clamp_range "$((currentGamma + gamma_step))" "$min_gamma" "$max_gamma")
       currentGamma="$newGamma" # Update current value for status generation
     else
-      newTemp=$(clamp_temp "$((currentTemp + temp_step))")
+      newTemp=$(clamp_range "$((currentTemp + temp_step))" "$min_temp" "$max_temp")
       currentTemp="$newTemp" # Update current value for status generation
     fi
     write_sunset_state
     ;;
   decrease)
     if [ "$color_mode" = "gamma" ]; then
-      newGamma=$(clamp_gamma "$((currentGamma - gamma_step))")
+      newGamma=$(clamp_range "$((currentGamma - gamma_step))" "$min_gamma" "$max_gamma")
       currentGamma="$newGamma" # Update current value for status generation
     else
-      newTemp=$(clamp_temp "$((currentTemp - temp_step))")
+      newTemp=$(clamp_range "$((currentTemp - temp_step))" "$min_temp" "$max_temp")
       currentTemp="$newTemp" # Update current value for status generation
     fi
     write_sunset_state
@@ -374,55 +358,50 @@ else
   fi
 fi
 
-# Function to determine color based on temperature
-get_temp_color() {
-  local temp=$1
-  declare -A temp_colors=(
-    [10000]="#8b0000" # Dark Red for very high temps (>10000K daylight)
-    [8000]="#ff6347"  # Tomato for high daylight (8000-9999K)
-    [6500]=""         # No color for standard daylight (6000-7999K)
-    [5000]="#ffa500"  # Orange for warm white (5000-5999K)
-    [4000]="#ff8c00"  # Dark Orange for very warm (4000-4999K)
-    [3000]="#ff471a"  # Orange-Red for candlelight (3000-3999K)
-    [2000]="#d22f2f"  # Light Red for very warm (2000-2999K)
-    [1000]="#ad1f2f"  # Red for extremely warm (1000-1999K)
-  )
+declare -A temp_colors=(
+  [10000]="#8b0000" # Dark Red for very high temps (>10000K daylight)
+  [8000]="#ff6347"  # Tomato for high daylight (8000-9999K)
+  [6500]=""         # No color for standard daylight (6000-7999K)
+  [5000]="#ffa500"  # Orange for warm white (5000-5999K)
+  [4000]="#ff8c00"  # Dark Orange for very warm (4000-4999K)
+  [3000]="#ff471a"  # Orange-Red for candlelight (3000-3999K)
+  [2000]="#d22f2f"  # Light Red for very warm (2000-2999K)
+  [1000]="#ad1f2f"  # Red for extremely warm (1000-1999K)
+)
 
-  for threshold in $(echo "${!temp_colors[@]}" | tr ' ' '\n' | sort -nr); do
-    if ((temp >= threshold)); then
-      color=${temp_colors[$threshold]}
-      if [[ -n $color ]]; then
-        echo "<span color='$color'><b>${temp}K</b></span>"
+declare -A gamma_colors=(
+  [90]="#00ff00" # Green for high gamma (bright)
+  [70]="#90ee90" # Light Green for medium-high gamma
+  [50]=""        # No color for normal gamma range
+  [30]="#ffa500" # Orange for low gamma
+  [20]="#ff6347" # Red for very low gamma (dim)
+)
+
+render_threshold_color() {
+  local value="$1"
+  local suffix="$2"
+  local -n colors_ref="$3"
+  local threshold color
+
+  for threshold in $(printf '%s\n' "${!colors_ref[@]}" | sort -nr); do
+    if ((value >= threshold)); then
+      color="${colors_ref[$threshold]}"
+      if [[ -n "${color}" ]]; then
+        printf "<span color='%s'><b>%s%s</b></span>" "${color}" "${value}" "${suffix}"
       else
-        echo "<b>${temp}K</b>"
+        printf "<b>%s%s</b>" "${value}" "${suffix}"
       fi
-      return
+      return 0
     fi
   done
 }
 
-# Function to determine color based on gamma value
-get_gamma_color() {
-  local gamma=$1
-  declare -A gamma_colors=(
-    [90]="#00ff00" # Green for high gamma (bright)
-    [70]="#90ee90" # Light Green for medium-high gamma
-    [50]=""        # No color for normal gamma range
-    [30]="#ffa500" # Orange for low gamma
-    [20]="#ff6347" # Red for very low gamma (dim)
-  )
+get_temp_color() {
+  render_threshold_color "$1" "K" temp_colors
+}
 
-  for threshold in $(echo "${!gamma_colors[@]}" | tr ' ' '\n' | sort -nr); do
-    if ((gamma >= threshold)); then
-      color=${gamma_colors[$threshold]}
-      if [[ -n $color ]]; then
-        echo "<span color='$color'><b>$gamma</b></span>"
-      else
-        echo "<b>$gamma</b>"
-      fi
-      return
-    fi
-  done
+get_gamma_color() {
+  render_threshold_color "$1" "" gamma_colors
 }
 
 # Generate status message with detailed information

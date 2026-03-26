@@ -2,16 +2,7 @@
 
 set -euo pipefail
 
-if [[ "${HYPR_SHELL_INIT:-0}" -ne 1 ]]; then
-  eval "$(hyprshell init)"
-elif ! declare -F state_get >/dev/null 2>&1; then
-  if [[ -r "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh" ]]; then
-    # shellcheck disable=SC1090
-    source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
-  else
-    eval "$(hyprshell init)"
-  fi
-fi
+source "$(command -v hyprshell)" || exit 1
 
 normalize_mode() {
   case "${1:-auto}" in

@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
 
-if [[ "${HYPR_SHELL_INIT}" -ne 1 ]]; then
-  eval "$(hyprshell init)"
-else
-  export_hypr_config
-fi
+source "$(command -v hyprshell)" || exit 1
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/capture/capture.select.bash"
 

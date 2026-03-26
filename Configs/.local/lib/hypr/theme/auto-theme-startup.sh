@@ -1,15 +1,6 @@
 #!/usr/bin/env bash
 
-if [[ "${HYPR_SHELL_INIT}" -ne 1 ]]; then
-  eval "$(hyprshell init)"
-elif ! declare -F state_get >/dev/null; then
-  if [[ -r "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh" ]]; then
-    # shellcheck disable=SC1090
-    source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
-  else
-    eval "$(hyprshell init)"
-  fi
-fi
+source "$(command -v hyprshell)" || exit 1
 
 selected_color_mode="$(state_get "selected_color_mode" "1")"
 [[ "${selected_color_mode}" =~ ^[0-3]$ ]] || selected_color_mode=1

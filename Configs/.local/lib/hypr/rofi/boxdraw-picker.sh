@@ -2,14 +2,9 @@
 
 pkill -u "$USER" rofi && exit 0
 
-if [[ "${HYPR_SHELL_INIT}" -ne 1 ]]; then
-  eval "$(hyprshell init)"
-else
-  export_hypr_config
-fi
+source "$(command -v hyprshell)" || exit 1
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
-_rofi_opacity="$(rofi_active_opacity_override)"
 
 boxdraw_dir=${HYPR_CONFIG_HOME:-$HOME/.config/hypr}
 boxdraw_data="${boxdraw_dir}/boxdraw.db"
@@ -33,11 +28,9 @@ setup_rofi_config() {
   local font_scale
   local font_name
   local logical_width logical_height
-  font_scale="$(rofi_effective_font_scale "${ROFI_BOXDRAW_SCALE}")"
-  font_name="$(rofi_effective_font_name "${ROFI_BOXDRAW_FONT:-$ROFI_FONT}")"
-
-  font_override="$(rofi_font_override "${font_name}" "${font_scale}")"
-  r_override="$(rofi_standard_window_theme wallbox same)"
+  rofi_prepare_standard_context \
+    font_scale font_name font_override r_override _rofi_opacity \
+    "${ROFI_BOXDRAW_SCALE}" "${ROFI_BOXDRAW_FONT:-$ROFI_FONT}" wallbox same
 
   read -r logical_width logical_height <<<"$(rofi_focused_monitor_logical_size)"
 
@@ -62,7 +55,7 @@ setup_rofi_config() {
   [[ "${boxdraw_window_width}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || boxdraw_window_width=${default_width}
   local boxdraw_window_height_em=$((boxdraw_lines * 2 + 8))
   local boxdraw_window_width_px
-  boxdraw_window_width_px="$(rofi_em_to_px "${boxdraw_window_width}" "${font_scale}")"
+  boxdraw_window_width_px="$(rofi_length_em_to_px "${boxdraw_window_width}" "${font_name}" "${font_scale}" 2>/dev/null || true)"
   [[ "${boxdraw_window_width_px}" =~ ^[0-9]+$ ]] || boxdraw_window_width_px=$((default_width * font_scale * 2))
   local boxdraw_window_height_px=$((boxdraw_window_height_em * font_scale * 2))
 

@@ -134,17 +134,7 @@ hypr_service_should_backup_tree() {
 }
 
 hypr_service_init() {
-  if [[ "${HYPR_SHELL_INIT:-0}" -ne 1 ]]; then
-    local had_nounset=0
-    if [[ "$-" == *u* ]]; then
-      had_nounset=1
-      set +u
-    fi
-    eval "$(hyprshell init)"
-    if [[ "${had_nounset}" -eq 1 ]]; then
-      set -u
-    fi
-  fi
+  source "$(command -v hyprshell)" || return 1
 }
 
 hypr_service_die() {

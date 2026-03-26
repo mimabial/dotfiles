@@ -18,11 +18,7 @@
 #   wallcache.daemon.sh --status
 #
 
-if [[ "${HYPR_SHELL_INIT}" -ne 1 ]]; then
-  eval "$(hyprshell init)"
-else
-  export_hypr_config
-fi
+source "$(command -v hyprshell)" || exit 1
 
 LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 CACHE_SCRIPT="${LIB_DIR}/hypr/wallpaper/sww-wallcache.sh"

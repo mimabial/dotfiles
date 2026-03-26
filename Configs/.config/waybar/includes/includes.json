@@ -747,7 +747,7 @@
     "custom/focusmode": {
         "justify": "center",
         "format": "\udb83\udf4f",
-        "tooltip-format": "\udb83\udf4f Toggle editing workflow",
+        "tooltip-format": "\udb83\udf4f Toggle focus workflow",
         "on-click": "hyprshell focusmode"
     },
     "custom/gpuinfo": {

@@ -19,7 +19,7 @@
 #   sanitize_hypr_theme()  - Remove exec/shadow lines from theme config
 #   write_theme_conf()     - Write active theme configuration
 
-[[ "${HYPR_SHELL_INIT}" -ne 1 ]] && eval "$(hyprshell init)"
+source "$(command -v hyprshell)" || exit 1
 
 [ -z "${HYPR_THEME}" ] && echo "ERROR: unable to detect theme" && exit 1
 get_themes

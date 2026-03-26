@@ -9,7 +9,7 @@
 # shellcheck disable=SC2154
 # shellcheck disable=SC1091
 
-[[ "${HYPR_SHELL_INIT}" -ne 1 ]] && eval "$(hyprshell init)"
+source "$(command -v hyprshell)" || exit 1
 
 # Stores default values for the theme to avoid breakages.
 [[ -f "${HYPR_CONFIG_HOME}/env-theme" ]] && source "${HYPR_CONFIG_HOME}/env-theme"

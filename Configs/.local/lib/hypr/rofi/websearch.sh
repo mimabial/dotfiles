@@ -2,14 +2,9 @@
 
 set -e
 
-if [[ "${HYPR_SHELL_INIT}" -ne 1 ]]; then
-  eval "$(hyprshell init)"
-else
-  export_hypr_config
-fi
+source "$(command -v hyprshell)" || exit 1
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
-_rofi_opacity="$(rofi_active_opacity_override)"
 
 cached_search_dir="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/landing/websearch"
 
@@ -156,12 +151,9 @@ smart_input() {
 
 # setup rofi configuration
 setup_rofi_config() {
-  local font_scale
-  local font_name
-  font_scale="$(rofi_effective_font_scale "${ROFI_WEBSEARCH_SCALE}")"
-  font_name="$(rofi_effective_font_name "${ROFI_WEBSEARCH_FONT:-$ROFI_FONT}")"
-  font_override="$(rofi_font_override "${font_name}" "${font_scale}")"
-  r_override="$(rofi_standard_window_theme wallbox min5)"
+  rofi_prepare_standard_context \
+    font_scale font_name font_override r_override _rofi_opacity \
+    "${ROFI_WEBSEARCH_SCALE}" "${ROFI_WEBSEARCH_FONT:-$ROFI_FONT}" wallbox min5
 }
 
 usage() {

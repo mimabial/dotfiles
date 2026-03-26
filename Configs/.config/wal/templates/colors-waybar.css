@@ -3,15 +3,15 @@
 /* Core colors */
 @define-color bg {background};
 @define-color fg {color7};
-@define-color br {color13};
+@define-color br {color5};
 
-@define-color alt_bg @accent;
-@define-color alt_fg {foreground};
-@define-color alt_br {color12};
+@define-color alt_bg {color6};
+@define-color alt_fg {color3};
+@define-color alt_br {color11};
 
-@define-color act_bg @accent;
-@define-color act_fg @fg_selected;
-@define-color act_br {color6};
+@define-color act_bg {color8};
+@define-color act_fg {color7};
+@define-color act_br {color13};
 
 @define-color hvr_bg {background};
 @define-color hvr_fg {foreground};
@@ -35,7 +35,7 @@
 @define-color c14 {color14};
 @define-color c15 {color15};
 
-@define-color accent {color4};
+@define-color accent {color12};
 @define-color info {color6};
 @define-color warning {color3};
 @define-color error {color1};

@@ -4,11 +4,7 @@
 
 set -euo pipefail
 
-if [[ "${HYPR_SHELL_INIT:-0}" -ne 1 ]]; then
-  eval "$(hyprshell init)"
-else
-  export_hypr_config
-fi
+source "$(command -v hyprshell)" || exit 1
 
 if ! command -v hyprshell >/dev/null 2>&1; then
   echo "❌ 'hyprshell' is required but not found."

@@ -3,7 +3,7 @@
 
 set -euo pipefail
 
-[[ "${HYPR_SHELL_INIT:-0}" -ne 1 ]] && eval "$(hyprshell init)"
+source "$(command -v hyprshell)" || exit 1
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/core/notify.sh"
 # shellcheck source=/dev/null

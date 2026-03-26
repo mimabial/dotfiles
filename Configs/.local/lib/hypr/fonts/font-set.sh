@@ -4,10 +4,7 @@
 
 set -eo pipefail
 
-# Source globalcontrol for utilities
-if [[ "${HYPR_SHELL_INIT:-0}" -ne 1 ]]; then
-  eval "$(hyprshell init)"
-fi
+source "$(command -v hyprshell)" || exit 1
 
 FONT_NAME="${1}"
 

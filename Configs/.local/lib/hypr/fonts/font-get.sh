@@ -2,9 +2,7 @@
 
 set -euo pipefail
 
-if [[ "${HYPR_SHELL_INIT:-0}" -ne 1 ]]; then
-  eval "$(hyprshell init)"
-fi
+source "$(command -v hyprshell)" || exit 1
 
 kind="${1:-}"
 

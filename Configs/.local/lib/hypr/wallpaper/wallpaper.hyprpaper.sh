@@ -10,7 +10,7 @@ if ! source "$(command -v hyprshell)"; then
   echo "[hyprshell] code :: Error: hyprshell not found."
   exit 1
 fi
-[[ "${HYPR_SHELL_INIT}" -ne 1 ]] && eval "$(hyprshell init)"
+source "$(command -v hyprshell)" || exit 1
 
 # ? Be sure the wallpaper daemon is running
 if [[ ! -f "${XDG_RUNTIME_DIR}/hypr/$HYPRLAND_INSTANCE_SIGNATURE/hyprpaper.lock" ]]; then

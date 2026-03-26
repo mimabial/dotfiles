@@ -4,7 +4,7 @@
 
 set -eo pipefail
 
-[[ "${HYPR_SHELL_INIT:-0}" -ne 1 ]] && eval "$(hyprshell init)"
+source "$(command -v hyprshell)" || exit 1
 
 [[ -f ~/.config/user-dirs.dirs ]] && source ~/.config/user-dirs.dirs
 

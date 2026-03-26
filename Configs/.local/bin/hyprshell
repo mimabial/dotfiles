@@ -54,7 +54,7 @@ hyprshell_source_lib "${LIB_DIR}/hypr/shell/lib/hyprshell.python.bash" || exit 1
 hyprshell_source_lib "${LIB_DIR}/hypr/shell/lib/hyprshell.completion.bash" || exit 1
 hyprshell_source_lib "${LIB_DIR}/hypr/shell/lib/hyprshell.commands.bash" || exit 1
 
-case "$1" in
+case "${1:-}" in
   app)
     export PATH="${HYPR_SCRIPTS_PATH}:${PATH}"
     if [[ "${HYPRPY:-0}" =~ ^[0-9]+$ ]] && [[ "${HYPRPY:-0}" -eq 1 ]]; then
@@ -82,7 +82,7 @@ if ! source "${LIB_DIR}/hypr/globalcontrol.sh"; then
 fi
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  case "$1" in
+  case "${1:-}" in
     logout)
       hyprlogout
       ;;
@@ -114,7 +114,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
       ;;
     --completions)
       shift
-      generate_completions "$1"
+      generate_completions "${1:-}"
       ;;
     validate)
       shift

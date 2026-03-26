@@ -2,17 +2,8 @@
 
 #// set variables
 
-if [[ "${HYPR_SHELL_INIT:-0}" -ne 1 ]]; then
-  eval "$(hyprshell init)"
-elif ! declare -F state_set >/dev/null; then
-  # HYPR_SHELL_INIT can be exported from non-bash shells; ensure functions exist.
-  if [[ -r "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh" ]]; then
-    # shellcheck disable=SC1090
-    source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
-  else
-    eval "$(hyprshell init)"
-  fi
-fi
+source "$(command -v hyprshell)" || exit 1
+export_hypr_config
 
 # Lock file to prevent concurrent mode switching
 MODE_SWITCH_LOCK="$(hypr_lock_path mode_switch)"
@@ -190,6 +181,9 @@ apply_color_mode() {
 
   if [ "${target_color_mode}" -eq 0 ]; then
     "${LIB_DIR}/hypr/theme/color.set.sh"
+    if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] && command -v hyprctl >/dev/null 2>&1; then
+      hyprctl reload config-only -q >/dev/null 2>&1 || true
+    fi
     [[ -x "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" ]] && "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" >/dev/null 2>&1 &
     return 0
   fi

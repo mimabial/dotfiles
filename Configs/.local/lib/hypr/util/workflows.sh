@@ -111,7 +111,6 @@ fn_select() {
 
   selected_workflow=$(awk -F'\t' '{print $2}' <<<"${selected_workflow}" | xargs)
   state_set "HYPR_WORKFLOW" "${selected_workflow}" "staterc"
-  fn_update
 }
 
 get_info() {
@@ -161,6 +160,14 @@ CONF
   send_ephemeral_notif "hypr-workflow" -t 2000 -i "preferences-desktop-display" "Workflow" "${current_icon} ${current_workflow}\n${current_description}"
 }
 
+apply_workflow_update() {
+  fn_update
+  hyprctl reload config-only -q
+  if pgrep -x waybar >/dev/null; then
+    pkill -RTMIN+7 waybar
+  fi
+}
+
 handle_waybar() {
   get_info
   echo "{\"text\": \"${current_icon}\", \"tooltip\": \"Mode: ${current_icon} ${current_workflow} \\n${current_description}\", \"class\": \"custom-workflows\"}"
@@ -181,9 +188,7 @@ while true; do
   case "$1" in
     -S | --select)
       fn_select
-      if pgrep -x waybar >/dev/null; then
-        pkill -RTMIN+7 waybar
-      fi
+      apply_workflow_update
       exit 0
       ;;
     --set)
@@ -192,10 +197,7 @@ while true; do
         exit 1
       }
       state_set "HYPR_WORKFLOW" "$2" "staterc"
-      fn_update
-      if pgrep -x waybar >/dev/null; then
-        pkill -RTMIN+7 waybar
-      fi
+      apply_workflow_update
       exit 0
       ;;
     --help | -h)

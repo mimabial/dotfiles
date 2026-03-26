@@ -2,14 +2,9 @@
 
 pkill -u "$USER" rofi && exit 0
 
-if [[ "${HYPR_SHELL_INIT}" -ne 1 ]]; then
-  eval "$(hyprshell init)"
-else
-  export_hypr_config
-fi
+source "$(command -v hyprshell)" || exit 1
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
-_rofi_opacity="$(rofi_active_opacity_override)"
 
 # define paths and files
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}"
@@ -113,15 +108,10 @@ run_rofi() {
 
 # setup rofi configuration
 setup_rofi_config() {
-  local font_scale
-  local font_name
-  font_scale="$(rofi_effective_font_scale "${ROFI_CLIPHIST_SCALE}")"
-  font_name="$(rofi_effective_font_name "${ROFI_CLIPHIST_FONT:-$ROFI_FONT}")"
-
-  font_override="$(rofi_font_override "${font_name}" "${font_scale}")"
-
+  rofi_prepare_standard_context \
+    font_scale font_name font_override r_override _rofi_opacity \
+    "${ROFI_CLIPHIST_SCALE}" "${ROFI_CLIPHIST_FONT:-$ROFI_FONT}" wallbox same
   rofi_position=$(get_rofi_pos 2>/dev/null || echo "")
-  r_override="$(rofi_standard_window_theme wallbox same)"
 }
 
 # create favorites directory if it doesn't exist

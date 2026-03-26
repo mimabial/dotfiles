@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # QT theming for pywal16
 
-[[ "${HYPR_SHELL_INIT}" -ne 1 ]] && eval "$(hyprshell init)"
+source "$(command -v hyprshell)" || exit 1
 LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 source "${LIB_DIR}/hypr/globalcontrol.sh"
 

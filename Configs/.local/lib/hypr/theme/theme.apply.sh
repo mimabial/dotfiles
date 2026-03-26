@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2154,SC1091
 
-[[ "${HYPR_SHELL_INIT}" -ne 1 ]] && eval "$(hyprshell init)"
+source "$(command -v hyprshell)" || exit 1
 
 THEME_UPDATE_LOCK="$(hypr_lock_path theme_update)"
 THEME_UPDATE_META="$(hypr_lock_path theme_update_meta)"

@@ -8,11 +8,7 @@ if pgrep -u "$USER" rofi >/dev/null 2>&1; then
   exit 0
 fi
 
-if [[ "${HYPR_SHELL_INIT}" -ne 1 ]]; then
-  eval "$(hyprshell init)"
-else
-  export_hypr_config
-fi
+source "$(command -v hyprshell)" || exit 1
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
 

@@ -83,7 +83,7 @@ pywal_default_setting() {
   case "${variant}:${setting}" in
     light:BACKEND) printf '%s' "haishoku" ;;
     light:BACKEND_FALLBACKS) printf '%s' "colorthief wal" ;;
-    light:CONTRAST) printf '%s' "2.2" ;;
+    light:CONTRAST) printf '%s' "1.0" ;;
     light:SATURATE) printf '%s' "0.6" ;;
     light:COLS16) printf '%s' "lighten" ;;
     dark:BACKEND) printf '%s' "colorthief" ;;

@@ -2,11 +2,7 @@
 
 pkill -u "$USER" rofi && exit 0
 
-if [[ "${HYPR_SHELL_INIT}" -ne 1 ]]; then
-  eval "$(hyprshell init)"
-else
-  export_hypr_config
-fi
+source "$(command -v hyprshell)" || exit 1
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
 
@@ -53,11 +49,9 @@ setup_rofi_config() {
   local font_scale
   local font_name
   local logical_width logical_height
-  font_scale="$(rofi_effective_font_scale "${ROFI_GLYPH_SCALE}")"
-  font_name="$(rofi_effective_font_name "${ROFI_GLYPH_FONT:-$ROFI_FONT}")"
-
-  font_override="$(rofi_font_override "${font_name}" "${font_scale}")"
-  r_override="$(rofi_standard_window_theme wallbox same)"
+  rofi_prepare_standard_context \
+    font_scale font_name font_override r_override _rofi_opacity \
+    "${ROFI_GLYPH_SCALE}" "${ROFI_GLYPH_FONT:-$ROFI_FONT}" wallbox same
 
   read -r logical_width logical_height <<<"$(rofi_focused_monitor_logical_size)"
 
@@ -82,7 +76,7 @@ setup_rofi_config() {
   [[ "${glyph_window_width}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || glyph_window_width=${default_width}
   local glyph_window_height_em=$((glyph_lines * 2 + 8))
   local glyph_window_width_px
-  glyph_window_width_px="$(rofi_em_to_px "${glyph_window_width}" "${font_scale}")"
+  glyph_window_width_px="$(rofi_length_em_to_px "${glyph_window_width}" "${font_name}" "${font_scale}" 2>/dev/null || true)"
   [[ "${glyph_window_width_px}" =~ ^[0-9]+$ ]] || glyph_window_width_px=$((default_width * font_scale * 2))
   local glyph_window_height_px=$((glyph_window_height_em * font_scale * 2))
 
@@ -100,9 +94,7 @@ setup_rofi_config() {
     -theme "$(rofi_resolve_theme "${ROFI_GLYPH_STYLE:-clipboard}")"
   )
 
-  local opacity_override
-  opacity_override="$(rofi_active_opacity_override)"
-  [[ -n "${opacity_override}" ]] && rofi_args+=("-theme-str" "${opacity_override}")
+  [[ -n "${_rofi_opacity:-}" ]] && rofi_args+=("-theme-str" "${_rofi_opacity}")
 }
 
 get_glyph_selection() {

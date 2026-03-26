@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Toggle window gaps between current theme values and zero
 
-[[ "${HYPR_SHELL_INIT:-0}" -ne 1 ]] && eval "$(hyprshell init)"
+source "$(command -v hyprshell)" || exit 1
 
 gaps=$(hyprctl getoption general:gaps_out -j | jq -r '.custom' | awk '{print $1}')
 

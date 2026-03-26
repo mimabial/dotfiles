@@ -7,14 +7,8 @@
 #   Precompute cache-only theme-mode pywal outputs for likely next switches
 #   without touching the live UI path.
 
-if [[ "${HYPR_SHELL_INIT}" -ne 1 ]]; then
-  eval "$(hyprshell init)"
-elif declare -F export_hypr_config >/dev/null 2>&1; then
-  export_hypr_config
-elif [[ -r "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh" ]]; then
-  # shellcheck source=/dev/null
-  source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
-fi
+source "$(command -v hyprshell)" || exit 1
+export_hypr_config
 
 COLOR_SET_SCRIPT="${LIB_DIR}/hypr/theme/color.set.sh"
 THEME_SWITCH_LOCK="$(hypr_lock_path theme_switch)"

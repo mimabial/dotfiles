@@ -23,6 +23,19 @@ rofi_font_override() {
   printf '* {font: "%s %s";}\n' "${font_name}" "${font_scale}"
 }
 
+rofi_length_em_to_px() {
+  local em_value="$1"
+  local font_name="$2"
+  local font_scale="$3"
+  local font_px=""
+
+  [[ "${em_value}" =~ ^[0-9]+([.][0-9]+)?$ ]] || return 1
+  font_px="$(rofi_font_text_height_px "${font_name}" "${font_scale}" 2>/dev/null || true)"
+  [[ "${font_px}" =~ ^[0-9]+([.][0-9]+)?$ ]] || return 1
+
+  awk -v em="${em_value}" -v fp="${font_px}" 'BEGIN { printf "%d\n", int((em * fp) + 0.5) }'
+}
+
 rofi_font_text_height_px() {
   local font_name="$1"
   local font_scale="$2"
@@ -216,6 +229,35 @@ rofi_standard_window_theme() {
 
   printf 'window{border:%spx;border-radius:%spx;}%s{border-radius:%spx;} element{border-radius:%spx;}\n' \
     "${border_width}" "${window_radius}" "${container_name}" "${elem_radius}" "${elem_radius}"
+}
+
+rofi_prepare_standard_context() {
+  local out_scale_name="$1"
+  local out_font_name="$2"
+  local out_font_override_name="$3"
+  local out_window_theme_name="$4"
+  local out_opacity_name="$5"
+  local requested_scale="${6:-}"
+  local requested_font="${7:-}"
+  local container_name="${8:-wallbox}"
+  local elem_mode="${9:-same}"
+
+  # shellcheck disable=SC2178
+  local -n out_scale_ref="${out_scale_name}"
+  # shellcheck disable=SC2178
+  local -n out_font_ref="${out_font_name}"
+  # shellcheck disable=SC2178
+  local -n out_font_override_ref="${out_font_override_name}"
+  # shellcheck disable=SC2178
+  local -n out_window_theme_ref="${out_window_theme_name}"
+  # shellcheck disable=SC2178
+  local -n out_opacity_ref="${out_opacity_name}"
+
+  out_scale_ref="$(rofi_effective_font_scale "${requested_scale}")"
+  out_font_ref="$(rofi_effective_font_name "${requested_font}")"
+  out_font_override_ref="$(rofi_font_override "${out_font_ref}" "${out_scale_ref}")"
+  out_window_theme_ref="$(rofi_standard_window_theme "${container_name}" "${elem_mode}")"
+  out_opacity_ref="$(rofi_active_opacity_override)"
 }
 
 rofi_build_standard_menu_args() {

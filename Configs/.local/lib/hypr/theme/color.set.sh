@@ -40,18 +40,8 @@
 # SECTION 1: INITIALIZATION
 # ============================================================================
 
-if [[ "${HYPR_SHELL_INIT}" -ne 1 ]]; then
-  eval "$(hyprshell init)"
-elif ! declare -F print_log >/dev/null; then
-  LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
-  if [[ -r "${LIB_DIR}/hypr/globalcontrol.sh" ]]; then
-    # shellcheck disable=SC1090
-    source "${LIB_DIR}/hypr/globalcontrol.sh"
-  fi
-fi
-if declare -F export_hypr_config >/dev/null; then
-  export_hypr_config
-fi
+source "$(command -v hyprshell)" || exit 1
+export_hypr_config
 
 apply_color_set_runtime_overrides() {
   local theme_override="${HYPR_THEME_OVERRIDE:-}"
@@ -295,6 +285,19 @@ template_hash_suffix=""
 select_palette_source "${1}" || exit 1
 configure_wal_command
 
+persist_color_state() {
+  [[ "${CACHE_ONLY}" -eq 1 ]] && return 0
+
+  local state_wallpaper="${STATE_WALLPAPER:-${WALLPAPER_IMAGE:-theme}}"
+  {
+    echo "${wal_cache_key:-${state_wallpaper}:${resolved_color_variant}}"
+    echo "wallpaper=${state_wallpaper}"
+    echo "color_variant=${resolved_color_variant}"
+    echo "selected_color_mode=${selected_color_mode}"
+    echo "backend=${PYWAL_BACKEND}"
+  } >"${STATE_FILE}"
+}
+
 # Cache pywal output per wallpaper hash + mode (avoids rerunning wal on repeats)
 HYPR_WAL_CACHE_ENABLE="${HYPR_WAL_CACHE_ENABLE:-1}"
 HYPR_WAL_CACHE_DIR="${HYPR_WAL_CACHE_DIR:-${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/wal/cache}"
@@ -354,9 +357,7 @@ if [[ "${HYPR_WAL_CACHE_ENABLE}" -eq 1 ]]; then
     # the previous run also used wallpaper colors.
     if [[ "${allow_fast_path}" -eq 1 ]]; then
       print_log -sec "pywal16" -stat "cache" "current (fast-path)"
-      if [[ "${THEME_UPDATE_LOCK_OWNED}" -eq 1 ]]; then
-        rm -f "${THEME_UPDATE_LOCK}"
-      fi
+      persist_color_state
       exit 0
     fi
     wal_used_cache=1
@@ -560,14 +561,7 @@ selected_color_mode_changed=false
 [[ -n "${previous_selected_color_mode}" && "${previous_selected_color_mode}" != "${selected_color_mode}" ]] && selected_color_mode_changed=true
 
 # State
-state_wallpaper="${STATE_WALLPAPER:-${WALLPAPER_IMAGE:-theme}}"
-{
-  echo "${wal_cache_key:-${state_wallpaper}:${resolved_color_variant}}"
-  echo "wallpaper=${state_wallpaper}"
-  echo "color_variant=${resolved_color_variant}"
-  echo "selected_color_mode=${selected_color_mode}"
-  echo "backend=${PYWAL_BACKEND}"
-} >"${STATE_FILE}"
+persist_color_state
 
 # Notify
 if [[ "${CACHE_ONLY}" -ne 1 ]] && [[ "${color_variant_changed}" == true || "${selected_color_mode_changed}" == true ]]; then

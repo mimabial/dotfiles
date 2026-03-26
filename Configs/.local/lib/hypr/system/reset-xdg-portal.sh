@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-[[ "${HYPR_SHELL_INIT}" -ne 1 ]] && eval "$(hyprshell init)"
+source "$(command -v hyprshell)" || exit 1
 
 sleep 1
 killall -e xdg-desktop-portal-hyprland

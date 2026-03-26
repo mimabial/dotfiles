@@ -41,17 +41,25 @@ declare -a SECONDARY_THEMING_SCRIPTS=(
   "theme/dconf.set.sh"
 )
 
-# ============================================================================
-# wait_for_theming_jobs_when_async_disabled - Clear async PID state in sync mode
-# ============================================================================
-# Arguments: none
-# Global variables:
-#   ASYNC_APPS       - If 1, keep async jobs tracked
-#   APP_THEMING_PIDS - Array of spawned background PIDs
-# Returns:
-#   0 - Always succeeds
-# Notes:
-#   - When ASYNC_APPS=0, theming runs inline and there is nothing to wait for
+# Run a theming script group either inline or in the background.
+run_theming_scripts() {
+  local -n scripts_ref="$1"
+  local script script_path
+
+  for script in "${scripts_ref[@]}"; do
+    script_path="${LIB_DIR}/hypr/${script}"
+    [[ ! -f "${script_path}" ]] && continue
+
+    if [[ "${ASYNC_APPS:-0}" -eq 1 ]]; then
+      bash "${script_path}" &
+      APP_THEMING_PIDS+=("$!")
+    else
+      bash "${script_path}"
+    fi
+  done
+}
+
+# Clear async PID state when theming ran inline.
 wait_for_theming_jobs_when_async_disabled() {
   if [[ "${ASYNC_APPS:-0}" -eq 1 ]]; then
     return 0
@@ -59,33 +67,10 @@ wait_for_theming_jobs_when_async_disabled() {
   APP_THEMING_PIDS=()
 }
 
-# ============================================================================
-# run_app_theming - Run primary app theming scripts in parallel
-# ============================================================================
-# Arguments: none
-# Global variables:
-#   LIB_DIR          - Path to library directory
-#   APP_THEMING_PIDS - Array to store spawned PIDs
-# Returns:
-#   0 - Scripts spawned successfully
-# Notes:
-#   - In async mode, scripts run in parallel and store PIDs
-#   - In sync mode, scripts run inline and return only after completion
+# Run primary app theming scripts.
 run_app_theming() {
   APP_THEMING_PIDS=()
-
-  local script_path
-  for script in "${APP_THEMING_SCRIPTS[@]}"; do
-    script_path="${LIB_DIR}/hypr/${script}"
-    if [[ -f "${script_path}" ]]; then
-      if [[ "${ASYNC_APPS:-0}" -eq 1 ]]; then
-        bash "${script_path}" &
-        APP_THEMING_PIDS+=($!)
-      else
-        bash "${script_path}"
-      fi
-    fi
-  done
+  run_theming_scripts APP_THEMING_SCRIPTS
 
   # Special case: pywalfox (external command, not a script)
   if command -v pywalfox &>/dev/null; then
@@ -104,44 +89,13 @@ run_app_theming() {
   fi
 }
 
-# ============================================================================
-# run_secondary_theming - Run secondary app theming scripts
-# ============================================================================
-# Arguments: none
-# Global variables:
-#   LIB_DIR          - Path to library directory
-#   APP_THEMING_PIDS - Array to store spawned PIDs (cleared first)
-# Returns:
-#   0 - Scripts spawned successfully
-# Notes:
-#   - These scripts may depend on ICON_THEME being set
-#   - In sync mode, they run inline after primary theming
+# Run secondary app theming scripts.
 run_secondary_theming() {
   APP_THEMING_PIDS=()
-
-  local script_path
-  for script in "${SECONDARY_THEMING_SCRIPTS[@]}"; do
-    script_path="${LIB_DIR}/hypr/${script}"
-    if [[ -f "${script_path}" ]]; then
-      if [[ "${ASYNC_APPS:-0}" -eq 1 ]]; then
-        bash "${script_path}" &
-        APP_THEMING_PIDS+=($!)
-      else
-        bash "${script_path}"
-      fi
-    fi
-  done
+  run_theming_scripts SECONDARY_THEMING_SCRIPTS
 }
 
-# ============================================================================
-# reload_live_apps - Send reload signals to running applications
-# ============================================================================
-# Arguments: none
-# Returns:
-#   0 - Signals sent (apps may or may not be running)
-# Notes:
-#   - Kitty: SIGUSR1 for color reload
-#   - Tmux: source-file for config reload
+# Send reload signals to running applications.
 reload_live_apps() {
   pkill -SIGUSR1 kitty 2>/dev/null || true
 
@@ -151,15 +105,7 @@ reload_live_apps() {
   fi
 }
 
-# ============================================================================
-# hex_to_rgb - Convert hex color to RGB format
-# ============================================================================
-# Arguments:
-#   $1 - Hex color (with or without # prefix)
-# Output:
-#   Prints "R,G,B" to stdout
-# Example:
-#   rgb=$(hex_to_rgb "#ff5500")  # Output: "255,85,0"
+# Convert #RRGGBB to R,G,B.
 hex_to_rgb() {
   local hex="${1#\#}"
 
@@ -199,22 +145,19 @@ normalize_hex_color() {
   printf '%s' "${raw}"
 }
 
-# ============================================================================
-# post_updates - Update KDE/Dolphin settings with current colors
-# ============================================================================
-# Arguments: none
-# Global variables:
-#   background, foreground, color4, color5 - Pywal colors
-#   selected_color_mode  - Color mode (0=theme, 1+=wallpaper)
-#   HYPR_THEME_DIR  - Path to current theme directory
-#   ICON_THEME      - Current icon theme name
-#   TERMINAL        - Terminal emulator command
-# Returns:
-#   0 - Updates applied or skipped (colors unchanged)
-# Notes:
-#   - Writes to ~/.config/kdeglobals
-#   - Uses hash-check to skip redundant writes
-#   - In theme mode, reads colors from Kvantum config
+# Batch-write TOML key/value entries encoded as section<TAB>key<TAB>value.
+kde_write_entries() {
+  local target_file="$1"
+  shift
+
+  local entry section key value
+  for entry in "$@"; do
+    IFS=$'\t' read -r section key value <<< "${entry}"
+    toml_write "${target_file}" "${section}" "${key}" "${value}"
+  done
+}
+
+# Update KDE/Dolphin settings with the current palette.
 post_updates() {
   if [ -n "${background}" ] && [ -n "${foreground}" ]; then
     local kdeglobals="${XDG_CONFIG_HOME:-$HOME/.config}/kdeglobals"
@@ -274,54 +217,60 @@ post_updates() {
     fi
 
     if [[ -f "${kde_scheme_file}" ]]; then
-      toml_write "${kde_scheme_file}" "General" "Name" "${kde_scheme_name}"
-      toml_write "${kde_scheme_file}" "General" "ColorScheme" "${kde_scheme_name}"
-      toml_write "${kdeglobals}" "UiSettings" "ColorScheme" "${kde_scheme_name}"
+      kde_write_entries "${kde_scheme_file}" \
+        $'General\tName\t'"${kde_scheme_name}" \
+        $'General\tColorScheme\t'"${kde_scheme_name}"
+      kde_write_entries "${kdeglobals}" \
+        $'UiSettings\tColorScheme\t'"${kde_scheme_name}"
     fi
 
     if [[ "${color_hash}" != "${prev_hash}" || "${scheme_missing}" -eq 1 ]]; then
       if [[ -f "${kde_scheme_file}" ]]; then
-        toml_write "${kde_scheme_file}" "Colors:View" "BackgroundNormal" "${bg_rgb}"
-        toml_write "${kde_scheme_file}" "Colors:View" "ForegroundNormal" "${fg_rgb}"
-        toml_write "${kde_scheme_file}" "Colors:View" "DecorationFocus" "${accent_rgb}"
-        toml_write "${kde_scheme_file}" "Colors:View" "DecorationHover" "${hover_rgb}"
-        toml_write "${kde_scheme_file}" "Colors:Selection" "BackgroundNormal" "${accent_rgb}"
-        toml_write "${kde_scheme_file}" "Colors:Selection" "BackgroundAlternate" "${accent_rgb}"
-        toml_write "${kde_scheme_file}" "Colors:Selection" "ForegroundNormal" "${fg_rgb}"
-        toml_write "${kde_scheme_file}" "Colors:Selection" "ForegroundActive" "${fg_rgb}"
-        toml_write "${kde_scheme_file}" "Colors:Selection" "DecorationFocus" "${accent_rgb}"
-        toml_write "${kde_scheme_file}" "Colors:Selection" "DecorationHover" "${hover_rgb}"
-        toml_write "${kde_scheme_file}" "Colors:Window" "BackgroundNormal" "${bg_rgb}"
-        toml_write "${kde_scheme_file}" "Colors:Window" "ForegroundNormal" "${fg_rgb}"
+        kde_write_entries "${kde_scheme_file}" \
+          $'Colors:View\tBackgroundNormal\t'"${bg_rgb}" \
+          $'Colors:View\tForegroundNormal\t'"${fg_rgb}" \
+          $'Colors:View\tDecorationFocus\t'"${accent_rgb}" \
+          $'Colors:View\tDecorationHover\t'"${hover_rgb}" \
+          $'Colors:Selection\tBackgroundNormal\t'"${accent_rgb}" \
+          $'Colors:Selection\tBackgroundAlternate\t'"${accent_rgb}" \
+          $'Colors:Selection\tForegroundNormal\t'"${fg_rgb}" \
+          $'Colors:Selection\tForegroundActive\t'"${fg_rgb}" \
+          $'Colors:Selection\tDecorationFocus\t'"${accent_rgb}" \
+          $'Colors:Selection\tDecorationHover\t'"${hover_rgb}" \
+          $'Colors:Window\tBackgroundNormal\t'"${bg_rgb}" \
+          $'Colors:Window\tForegroundNormal\t'"${fg_rgb}"
       fi
 
-      [[ -n "${ICON_THEME}" ]] && toml_write "${kdeglobals}" "Icons" "Theme" "${ICON_THEME}"
-      [[ -n "${TERMINAL}" ]] && toml_write "${kdeglobals}" "General" "TerminalApplication" "${TERMINAL}"
-      toml_write "${kdeglobals}" "Colors:View" "BackgroundNormal" "${bg_rgb}"
-      toml_write "${kdeglobals}" "Colors:View" "ForegroundNormal" "${fg_rgb}"
-      toml_write "${kdeglobals}" "Colors:View" "DecorationFocus" "${accent_rgb}"
-      toml_write "${kdeglobals}" "Colors:View" "DecorationHover" "${hover_rgb}"
-      toml_write "${kdeglobals}" "Colors:Button" "BackgroundNormal" "${bg_rgb}"
-      toml_write "${kdeglobals}" "Colors:Button" "BackgroundAlternate" "${bg_rgb}"
-      toml_write "${kdeglobals}" "Colors:Button" "ForegroundNormal" "${fg_rgb}"
-      toml_write "${kdeglobals}" "Colors:Button" "DecorationFocus" "${accent_rgb}"
-      toml_write "${kdeglobals}" "Colors:Button" "DecorationHover" "${hover_rgb}"
-      toml_write "${kdeglobals}" "Colors:Selection" "BackgroundNormal" "${accent_rgb}"
-      toml_write "${kdeglobals}" "Colors:Selection" "BackgroundAlternate" "${accent_rgb}"
-      toml_write "${kdeglobals}" "Colors:Selection" "ForegroundNormal" "${fg_rgb}"
-      toml_write "${kdeglobals}" "Colors:Selection" "ForegroundActive" "${fg_rgb}"
-      toml_write "${kdeglobals}" "Colors:Selection" "DecorationFocus" "${accent_rgb}"
-      toml_write "${kdeglobals}" "Colors:Selection" "DecorationHover" "${hover_rgb}"
-      toml_write "${kdeglobals}" "Colors:Window" "BackgroundNormal" "${bg_rgb}"
-      toml_write "${kdeglobals}" "Colors:Window" "ForegroundNormal" "${fg_rgb}"
-      toml_write "${kdeglobals}" "Colors:Header" "BackgroundNormal" "${bg_rgb}"
-      toml_write "${kdeglobals}" "Colors:Header" "ForegroundNormal" "${fg_rgb}"
-      toml_write "${kdeglobals}" "Colors:Header" "DecorationFocus" "${accent_rgb}"
-      toml_write "${kdeglobals}" "Colors:Header" "DecorationHover" "${hover_rgb}"
-      toml_write "${kdeglobals}" "Colors:Tooltip" "BackgroundNormal" "${bg_rgb}"
-      toml_write "${kdeglobals}" "Colors:Tooltip" "ForegroundNormal" "${fg_rgb}"
-      toml_write "${kdeglobals}" "Colors:Complementary" "BackgroundNormal" "${bg_rgb}"
-      toml_write "${kdeglobals}" "Colors:Complementary" "ForegroundNormal" "${fg_rgb}"
+      local -a kdeglobals_entries=(
+        $'Colors:View\tBackgroundNormal\t'"${bg_rgb}"
+        $'Colors:View\tForegroundNormal\t'"${fg_rgb}"
+        $'Colors:View\tDecorationFocus\t'"${accent_rgb}"
+        $'Colors:View\tDecorationHover\t'"${hover_rgb}"
+        $'Colors:Button\tBackgroundNormal\t'"${bg_rgb}"
+        $'Colors:Button\tBackgroundAlternate\t'"${bg_rgb}"
+        $'Colors:Button\tForegroundNormal\t'"${fg_rgb}"
+        $'Colors:Button\tDecorationFocus\t'"${accent_rgb}"
+        $'Colors:Button\tDecorationHover\t'"${hover_rgb}"
+        $'Colors:Selection\tBackgroundNormal\t'"${accent_rgb}"
+        $'Colors:Selection\tBackgroundAlternate\t'"${accent_rgb}"
+        $'Colors:Selection\tForegroundNormal\t'"${fg_rgb}"
+        $'Colors:Selection\tForegroundActive\t'"${fg_rgb}"
+        $'Colors:Selection\tDecorationFocus\t'"${accent_rgb}"
+        $'Colors:Selection\tDecorationHover\t'"${hover_rgb}"
+        $'Colors:Window\tBackgroundNormal\t'"${bg_rgb}"
+        $'Colors:Window\tForegroundNormal\t'"${fg_rgb}"
+        $'Colors:Header\tBackgroundNormal\t'"${bg_rgb}"
+        $'Colors:Header\tForegroundNormal\t'"${fg_rgb}"
+        $'Colors:Header\tDecorationFocus\t'"${accent_rgb}"
+        $'Colors:Header\tDecorationHover\t'"${hover_rgb}"
+        $'Colors:Tooltip\tBackgroundNormal\t'"${bg_rgb}"
+        $'Colors:Tooltip\tForegroundNormal\t'"${fg_rgb}"
+        $'Colors:Complementary\tBackgroundNormal\t'"${bg_rgb}"
+        $'Colors:Complementary\tForegroundNormal\t'"${fg_rgb}"
+      )
+      [[ -n "${ICON_THEME}" ]] && kdeglobals_entries+=($'Icons\tTheme\t'"${ICON_THEME}")
+      [[ -n "${TERMINAL}" ]] && kdeglobals_entries+=($'General\tTerminalApplication\t'"${TERMINAL}")
+      kde_write_entries "${kdeglobals}" "${kdeglobals_entries[@]}"
       echo "${color_hash}" >"${hash_file}"
     fi
   fi

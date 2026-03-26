@@ -16,11 +16,7 @@ EOF
   exit 0
 fi
 
-if [[ "${HYPR_SHELL_INIT:-0}" -ne 1 ]]; then
-  eval "$(hyprshell init)"
-else
-  export_hypr_config
-fi
+source "$(command -v hyprshell)" || exit 1
 
 export FORCE_COLOR_REGEN=1
 export HYPR_WAL_CACHE_ENABLE=0

@@ -2,7 +2,7 @@
 # wal.kvantum.sh - Kvantum theme generation with pywal colors
 # Runs in parallel with other app theming scripts
 
-[[ "${HYPR_SHELL_INIT}" -ne 1 ]] && eval "$(hyprshell init)"
+source "$(command -v hyprshell)" || exit 1
 
 sed_escape_replacement() {
     local value="$1"

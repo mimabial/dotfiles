@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-[[ "${HYPR_SHELL_INIT}" -ne 1 ]] && eval "$(hyprshell init)"
+source "$(command -v hyprshell)" || exit 1
 
 lockscreen="${LOCKSCREEN:-hyprlock}"
 

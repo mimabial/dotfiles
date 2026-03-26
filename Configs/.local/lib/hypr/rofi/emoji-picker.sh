@@ -2,14 +2,9 @@
 
 pkill -u "$USER" rofi && exit 0
 
-if [[ "${HYPR_SHELL_INIT}" -ne 1 ]]; then
-  eval "$(hyprshell init)"
-else
-  export_hypr_config
-fi
+source "$(command -v hyprshell)" || exit 1
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
-_rofi_opacity="$(rofi_active_opacity_override)"
 
 emoji_dir=${HYPR_CONFIG_HOME:-$HOME/.config/hypr}
 emoji_data="${emoji_dir}/emoji.db"
@@ -68,11 +63,9 @@ toggle_favorite() {
 setup_rofi_config() {
   local font_scale
   local font_name
-  font_scale="$(rofi_effective_font_scale "${ROFI_EMOJI_SCALE}")"
-  font_name="$(rofi_effective_font_name "${ROFI_EMOJI_FONT:-$ROFI_FONT}")"
-
-  font_override="$(rofi_font_override "${font_name}" "${font_scale}")"
-  r_override="$(rofi_standard_window_theme wallbox same)"
+  rofi_prepare_standard_context \
+    font_scale font_name font_override r_override _rofi_opacity \
+    "${ROFI_EMOJI_SCALE}" "${ROFI_EMOJI_FONT:-$ROFI_FONT}" wallbox same
 
   local emoji_window_width_em="${ROFI_EMOJI_WIDTH_EM:-36}"
   local emoji_window_height_em="${ROFI_EMOJI_HEIGHT_EM:-30}"
@@ -80,10 +73,10 @@ setup_rofi_config() {
   [[ "${emoji_window_height_em}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || emoji_window_height_em="30"
 
   local emoji_window_width_px
-  emoji_window_width_px="$(rofi_em_to_px "${emoji_window_width_em}" "${font_scale}")"
+  emoji_window_width_px="$(rofi_length_em_to_px "${emoji_window_width_em}" "${font_name}" "${font_scale}" 2>/dev/null || true)"
   [[ "${emoji_window_width_px}" =~ ^[0-9]+$ ]] || emoji_window_width_px=$((81 * font_scale))
   local emoji_window_height_px
-  emoji_window_height_px="$(rofi_em_to_px "${emoji_window_height_em}" "${font_scale}")"
+  emoji_window_height_px="$(rofi_length_em_to_px "${emoji_window_height_em}" "${font_name}" "${font_scale}" 2>/dev/null || true)"
   [[ "${emoji_window_height_px}" =~ ^[0-9]+$ ]] || emoji_window_height_px=$((60 * font_scale))
 
   rofi_position=$(get_rofi_pos "${emoji_window_width_px}" "${emoji_window_height_px}")
