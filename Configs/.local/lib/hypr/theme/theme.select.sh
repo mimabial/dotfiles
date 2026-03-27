@@ -3,6 +3,7 @@
 #// set variables
 
 source "$(command -v hyprshell)" || exit 1
+source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/rofi/rofi.lib.bash"
 
 rofiAssetDir="$(rofi_shared_dir)/assets"
 
@@ -65,15 +66,10 @@ selector_menu() {
   [[ "${theme_menu_icon_size}" =~ ^[0-9]+$ ]] || theme_menu_icon_size=20
 
   #// set rofi scaling
-  font_scale="${ROFI_THEME_SCALE}"
-  [[ "${font_scale}" =~ ^[0-9]+$ ]] || font_scale=${ROFI_SCALE:-10}
+  font_scale="$(rofi_effective_font_scale "${ROFI_THEME_SCALE}")"
 
   # set font name
-  font_name=${ROFI_THEME_MENU_FONT:-$ROFI_FONT}
-  font_name=${font_name:-$(hyprshell fonts/font-get.sh menu 2>/dev/null || true)}
-  font_name=${font_name:-$(get_hypr_conf "MENU_FONT")}
-  font_name=${font_name:-$(get_hypr_conf "FONT")}
-  font_name=${font_name:-monospace}
+  font_name="$(rofi_effective_font_name "${ROFI_THEME_MENU_FONT:-$ROFI_FONT}")"
 
   # set rofi font override
   font_override="* {font: \"${font_name} ${font_scale}\";}"
@@ -180,15 +176,10 @@ case "$1" in
 
     #// set rofi scaling
     # shellcheck disable=SC2153
-    font_scale="${ROFI_THEME_SCALE}"
-    [[ "${font_scale}" =~ ^[0-9]+$ ]] || font_scale=${ROFI_SCALE:-10}
+    font_scale="$(rofi_effective_font_scale "${ROFI_THEME_SCALE}")"
 
     # set font name
-    font_name=${ROFI_THEME_FONT:-$ROFI_FONT}
-    font_name=${font_name:-$(hyprshell fonts/font-get.sh menu 2>/dev/null || true)}
-    font_name=${font_name:-$(get_hypr_conf "MENU_FONT")}
-    font_name=${font_name:-$(get_hypr_conf "FONT")}
-    font_name=${font_name:-monospace}
+    font_name="$(rofi_effective_font_name "${ROFI_THEME_FONT:-$ROFI_FONT}")"
 
     # set rofi font override
     font_override="* {font: \"${font_name} ${font_scale}\";}"

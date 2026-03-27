@@ -23,13 +23,8 @@ selected_color_mode="${selected_color_mode:-1}"
 # Rofi selector
 select_color_mode_with_rofi() {
   pkill -u "$USER" rofi && exit 0
-  font_scale=$ROFI_PYWAL16_SCALE
-  [[ "${font_scale}" =~ ^[0-9]+$ ]] || font_scale=${ROFI_SCALE:-10}
-  font_name=${ROFI_PYWAL16_FONT:-$ROFI_FONT}
-  font_name=${font_name:-$(hyprshell fonts/font-get.sh menu 2>/dev/null || true)}
-  font_name=${font_name:-$(get_hypr_conf "MENU_FONT")}
-  font_name=${font_name:-$(get_hypr_conf "FONT")}
-  font_name=${font_name:-monospace}
+  font_scale="$(rofi_effective_font_scale "${ROFI_PYWAL16_SCALE}")"
+  font_name="$(rofi_effective_font_name "${ROFI_PYWAL16_FONT:-$ROFI_FONT}")"
   r_scale="configuration {font: \"${font_name} ${font_scale}\";}"
   hypr_border="${hypr_border:-5}"
   elem_border=$((hypr_border * 4))

@@ -58,4 +58,4 @@ case "$cmd" in
     ;;
 esac
 
-printf '%s %s\n' " $icon" "$label"
+printf '%s %s\n' " $icon"

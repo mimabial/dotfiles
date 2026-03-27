@@ -325,9 +325,8 @@ def get_waybar_value_from_sources(value_name, default_value, sources):
 
 def get_waybar_font_family():
     font_family_sources = [
-        (lambda: get_config_value("WAYBAR_FONT"), "WAYBAR_FONT config"),
-        (lambda: get_value_from_hypr_theme("$BAR_FONT"), "hypr.theme"),
-        (lambda: get_state_value("BAR_FONT"), "state file"),
+        (lambda: get_value_from_hypr_config("$BAR_FONT"), "BAR_FONT config"),
+        (lambda: get_value_from_hypr_config("$FONT"), "FONT config"),
     ]
     return get_waybar_value_from_sources("font family", "monospace", font_family_sources)
 
@@ -335,8 +334,8 @@ def get_waybar_font_family():
 def get_waybar_font_size():
     font_size_sources = [
         (lambda: get_config_value("WAYBAR_SCALE"), "WAYBAR_SCALE config"),
-        (lambda: get_state_value("BAR_FONT_SIZE"), "state file"),
-        (lambda: get_value_from_hypr_theme("$BAR_FONT_SIZE"), "hypr.theme"),
+        (lambda: get_value_from_hypr_config("$BAR_FONT_SIZE"), "BAR_FONT_SIZE config"),
+        (lambda: get_value_from_hypr_config("$FONT_SIZE"), "FONT_SIZE config"),
     ]
     return get_waybar_value_from_sources("font size", 10, font_size_sources)
 
@@ -351,61 +350,36 @@ def get_waybar_icon_size():
     return get_waybar_value_from_sources("icon size", 10, icon_sources)
 
 
-def get_value_from_hypr_theme(variable_name):
-    """Get named setting from hypr.theme file using hyq."""
-    theme_name = None
-    if STATE_FILE.exists():
+def get_value_from_hypr_config(variable_name):
+    """Read a Hypr variable from live theme metadata, then persistent font/default files."""
+    variable_key = variable_name.lstrip("$")
+    config_home = xdg_config_home()
+    candidate_files = [
+        config_home / "hypr" / "themes" / "theme.conf",
+        config_home / "hypr" / "userfonts.conf",
+        xdg_data_home() / "hypr" / "variables.conf",
+    ]
+
+    for file_path in candidate_files:
+        if not file_path.exists():
+            continue
         try:
-            with open(STATE_FILE, "r") as file:
+            with open(file_path, "r") as file:
                 for line in file:
-                    if line.startswith("HYPR_THEME="):
-                        theme_name = line.strip().split("=", 1)[1].strip('"').strip("'")
-                        logger.debug(f"Found theme name in state file: {theme_name}")
-                        break
+                    stripped = line.strip()
+                    if not stripped or stripped.startswith("#") or "=" not in stripped:
+                        continue
+                    lhs, rhs = stripped.split("=", 1)
+                    if lhs.strip() != f"${variable_key}":
+                        continue
+                    value = rhs.strip().strip('"').strip("'")
+                    logger.debug(f"Got {variable_name} from {file_path}: {value}")
+                    return value or None
         except Exception as e:
-            logger.error(f"Error reading state file: {e}")
-            return None
+            logger.error(f"Error reading {file_path}: {e}")
 
-    if not theme_name:
-        logger.debug("No theme name found in state file")
-        return None
-
-    theme_dir = os.path.join(str(xdg_config_home()), "hypr", "themes", theme_name)
-    logger.debug(f"Looking for theme directory at: {theme_dir}")
-
-    if not os.path.exists(theme_dir):
-        logger.debug(f"Theme directory not found at {theme_dir}")
-        return None
-
-    hypr_theme_path = os.path.join(theme_dir, "hypr.theme")
-    if not os.path.exists(hypr_theme_path):
-        logger.debug(f"hypr.theme not found at {hypr_theme_path}")
-        return None
-
-    logger.debug(f"Found hypr.theme at {hypr_theme_path}")
-
-    try:
-        cmd = ["hyq", hypr_theme_path, "--query", variable_name]
-        logger.debug(f"Running command: {' '.join(cmd)}")
-        result = subprocess.run(cmd, capture_output=True, text=True)
-
-        logger.debug(f"hyq command output: {result.stdout.strip()}")
-        logger.debug(f"hyq command stderr: {result.stderr.strip() if result.stderr else 'None'}")
-        logger.debug(f"hyq exit code: {result.returncode}")
-
-        if result.returncode == 0 and result.stdout:
-            output_lines = result.stdout.strip().split("\n")
-            for line in reversed(output_lines):
-                clean_line = line.strip()
-                if clean_line and not clean_line.startswith("#"):
-                    logger.debug(f"Successfully parsed {variable_name} from hyq: {clean_line}")
-                    return clean_line
-
-        logger.debug(f"No valid output from hyq for {variable_name}")
-        return None
-    except Exception as e:
-        logger.error(f"Error running hyq command: {e}")
-        return None
+    logger.debug(f"{variable_name} not found in Hypr config files")
+    return None
 
 
 def update_border_radius():

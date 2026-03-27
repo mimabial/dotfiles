@@ -11,8 +11,6 @@ rofi_effective_font_name() {
   local requested_font="${1:-}"
   local font_name="${requested_font}"
   font_name=${font_name:-$(hyprshell fonts/font-get.sh menu 2>/dev/null || true)}
-  font_name=${font_name:-$(get_hypr_conf "MENU_FONT")}
-  font_name=${font_name:-$(get_hypr_conf "FONT")}
   font_name=${font_name:-monospace}
   printf '%s\n' "${font_name}"
 }

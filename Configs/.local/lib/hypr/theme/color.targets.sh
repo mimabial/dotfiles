@@ -34,6 +34,112 @@ run_theme_post_apply_hook() {
   esac
 }
 
+active_theme_metadata_file() {
+  printf '%s\n' "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/theme.conf"
+}
+
+active_theme_metadata_value() {
+  local key="$1"
+  local metadata_file
+  metadata_file="$(active_theme_metadata_file)"
+  [[ -r "${metadata_file}" ]] || return 1
+
+  awk -F= -v key="${key}" '
+    $0 ~ "^\\$" key "[[:space:]]*=" {
+      value = substr($0, index($0, "=") + 1)
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+      gsub(/^"/, "", value)
+      gsub(/"$/, "", value)
+      print value
+      exit
+    }
+  ' "${metadata_file}"
+}
+
+rewrite_if_changed() {
+  local source_file="$1"
+  local target_file="$2"
+
+  if [[ -f "${target_file}" ]] && cmp -s "${source_file}" "${target_file}"; then
+    rm -f "${source_file}"
+    return 0
+  fi
+
+  mv -f "${source_file}" "${target_file}"
+}
+
+apply_kitty_theme_font_override() {
+  local target_file="$1"
+  local theme_font=""
+  local tmp_file
+
+  theme_font="$(active_theme_metadata_value "TERM_FONT" 2>/dev/null || true)"
+  tmp_file="$(mktemp "$(dirname "${target_file}")/.kitty-theme-font.XXXXXX")" || return 1
+
+  awk '
+    /^[[:space:]]*font_family[[:space:]]+/ { next }
+    { print }
+  ' "${target_file}" > "${tmp_file}"
+
+  if [[ -n "${theme_font}" ]]; then
+    printf '\nfont_family     %s\n' "${theme_font}" >> "${tmp_file}"
+  fi
+
+  rewrite_if_changed "${tmp_file}" "${target_file}"
+}
+
+apply_alacritty_theme_font_override() {
+  local target_file="$1"
+  local theme_font=""
+  local tmp_file
+
+  theme_font="$(active_theme_metadata_value "TERM_FONT" 2>/dev/null || true)"
+  tmp_file="$(mktemp "$(dirname "${target_file}")/.alacritty-theme-font.XXXXXX")" || return 1
+
+  awk '
+    /^\[font\.(normal|bold|italic|bold_italic)\][[:space:]]*$/ { skip = 1; next }
+    skip && /^\[/ { skip = 0 }
+    !skip { print }
+  ' "${target_file}" > "${tmp_file}"
+
+  if [[ -n "${theme_font}" ]]; then
+    cat >> "${tmp_file}" <<EOF
+
+[font.normal]
+family = "${theme_font}"
+style = "Regular"
+
+[font.bold]
+family = "${theme_font}"
+style = "Bold"
+
+[font.italic]
+family = "${theme_font}"
+style = "Italic"
+
+[font.bold_italic]
+family = "${theme_font}"
+style = "Bold Italic"
+EOF
+  fi
+
+  rewrite_if_changed "${tmp_file}" "${target_file}"
+}
+
+apply_terminal_theme_font_override() {
+  local theme_basename="$1"
+  local target_file="$2"
+
+  case "${theme_basename}" in
+    kitty.theme)
+      apply_kitty_theme_font_override "${target_file}"
+      ;;
+    alacritty.theme)
+      apply_alacritty_theme_font_override "${target_file}"
+      ;;
+  esac
+}
+
 process_theme_files() {
   [ -z "${HYPR_THEME_DIR}" ] && {
     print_log -sec "theme" -warn "skip" "HYPR_THEME_DIR not set"
@@ -88,6 +194,8 @@ process_theme_files() {
     else
       [[ "${LOG_LEVEL}" == "debug" ]] && print_log -sec "theme" -stat "skip" "${target_path} (unchanged)"
     fi
+
+    apply_terminal_theme_font_override "${theme_basename}" "${target_path}"
 
     if hook_name="$(theme_post_apply_hook_name "${theme_basename}" 2>/dev/null)"; then
       requested_hooks["${hook_name}"]=1

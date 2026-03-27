@@ -64,16 +64,11 @@ menu() {
   fi
 
   if [[ -z "${MENU_FONT_SCALE_CACHE}" ]]; then
-    MENU_FONT_SCALE_CACHE="${ROFI_MENU_SCALE:-$ROFI_SCALE}"
-    [[ "${MENU_FONT_SCALE_CACHE}" =~ ^[0-9]+$ ]] || MENU_FONT_SCALE_CACHE=${ROFI_SCALE:-10}
+    MENU_FONT_SCALE_CACHE="$(rofi_effective_font_scale "${ROFI_MENU_SCALE:-$ROFI_SCALE}")"
   fi
 
   if [[ -z "${MENU_FONT_NAME_CACHE}" ]]; then
-    MENU_FONT_NAME_CACHE="${ROFI_MENU_FONT:-$ROFI_FONT}"
-    MENU_FONT_NAME_CACHE=${MENU_FONT_NAME_CACHE:-$(hyprshell fonts/font-get.sh menu 2>/dev/null || true)}
-    MENU_FONT_NAME_CACHE=${MENU_FONT_NAME_CACHE:-$(get_hypr_conf "MENU_FONT")}
-    MENU_FONT_NAME_CACHE=${MENU_FONT_NAME_CACHE:-$(get_hypr_conf "FONT")}
-    MENU_FONT_NAME_CACHE=${MENU_FONT_NAME_CACHE:-monospace}
+    MENU_FONT_NAME_CACHE="$(rofi_effective_font_name "${ROFI_MENU_FONT:-$ROFI_FONT}")"
   fi
 
   if [[ -z "${MENU_MAX_HEIGHT}" ]]; then
