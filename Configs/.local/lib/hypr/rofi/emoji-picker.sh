@@ -21,36 +21,33 @@ clean_emoji_file() {
   tmp=$(mktemp)
   awk -F'\t' 'BEGIN{OFS="\t"}{
     e=$1; d=$2;
-    gsub(/\xf0\x9f\xb3\xbb|\xf0\x9f\xb3\xbc|\xf0\x9f\xb3\xbd|\xf0\x9f\xb3\xbe|\xf0\x9f\xb3\xbf/,"",e);
-    if (d ~ "^" e " ") sub("^" e " ","",d);
+    gsub(/🏻|🏼|🏽|🏾|🏿/,"",e);
+    gsub(/^[[:space:]]+|[[:space:]]+$/,"",e);
+    gsub(/^[[:space:]]+|[[:space:]]+$/,"",d);
+    if (e == "") next;
+    if (index(d, e " ") == 1) d=substr(d, length(e) + 2);
     if (!seen[e]++) print e,d;
   }' "${target_file}" >"${tmp}" && mv "${tmp}" "${target_file}"
 }
 
-save_recent_entry() {
-  local emoji_line="$1"
-  emoji_line=$(printf "%s" "${emoji_line}" | sed 's/\\([\U0001F3FB-\U0001F3FF]\\)//g')
-  rofi_picker_save_recent_entry "${recent_data}" "emoji_recent" "${emoji_line}" 50
+emoji_strip_skin_tones() {
+  local emoji_text="$1"
+  emoji_text="${emoji_text//🏻/}"
+  emoji_text="${emoji_text//🏼/}"
+  emoji_text="${emoji_text//🏽/}"
+  emoji_text="${emoji_text//🏾/}"
+  emoji_text="${emoji_text//🏿/}"
+  printf '%s' "${emoji_text}"
 }
 
-toggle_favorite() {
+save_recent_entry() {
   local emoji_line="$1"
-  local favorites_dir=""
-  local tmp_file=""
-  mkdir -p "$(dirname "${favorites_data}")"
-  favorites_dir="$(dirname "${favorites_data}")"
-
-  # Check if already favorited
-  if grep -Fxq "${emoji_line}" "${favorites_data}" 2>/dev/null; then
-    # Remove from favorites
-    tmp_file="$(mktemp "${favorites_dir}/.favorites.XXXXXX")"
-    grep -Fxv "${emoji_line}" "${favorites_data}" >"${tmp_file}" && mv "${tmp_file}" "${favorites_data}"
-    dunstify -t 3000 -i "face-smile" "⭐ Removed from favorites"
-  else
-    # Add to favorites
-    echo "${emoji_line}" >>"${favorites_data}"
-    dunstify -t 3000 -i "face-smile" "⭐ Added to favorites"
-  fi
+  local emoji_field=""
+  emoji_line="$(emoji_strip_skin_tones "${emoji_line}")"
+  emoji_field="${emoji_line%%$'\t'*}"
+  emoji_field="${emoji_field//[$' \t\r\n']/}"
+  [[ -n "${emoji_field}" ]] || return 0
+  rofi_picker_save_recent_entry "${recent_data}" "emoji_recent" "${emoji_line}" 50
 }
 
 setup_rofi_config() {

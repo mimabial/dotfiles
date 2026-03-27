@@ -132,10 +132,6 @@ apply_wallpaper_mode_theme_fallbacks() {
   bash "${LIB_DIR}/hypr/wal/wal.dunst.sh" >/dev/null 2>&1 || true
   write_theme_stub_file "${HOME}/.config/rofi/theme.rasi" '/* Wallpaper mode (auto/dark/light): use pywal16 colors */
 @import "~/.config/rofi/colors.rasi"
-* {
-    separatorcolor:     transparent;
-    border-color:       transparent;
-}
 '
   clear_theme_file "${HOME}/.config/tmux/theme.conf"
 

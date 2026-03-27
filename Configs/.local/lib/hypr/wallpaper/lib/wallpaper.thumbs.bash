@@ -326,13 +326,6 @@ Wall_Clean_Thumbs() {
   wallpaper_prune_thumb_cache valid_hashes
 }
 
-Wall_Prune_Png_Cache() {
-  local -A valid_hashes=()
-  wallpaper_load_inventory_catalog || return 0
-  wallpaper_collect_valid_png_hashes valid_hashes
-  wallpaper_prune_png_cache valid_hashes
-}
-
 Wall_Prune_Hashmap_Caches() {
   local cache_root=""
   cache_root="$(wallpaper_cache_root)"

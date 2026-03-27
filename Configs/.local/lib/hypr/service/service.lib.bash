@@ -234,13 +234,6 @@ hypr_service_state_template_path() {
   printf '%s/%s\n' "$(hypr_service_default_state_root)" "${rel_path}"
 }
 
-hypr_service_has_template() {
-  local rel_path="$1"
-  local template_path
-  template_path="$(hypr_service_template_path "${rel_path}")"
-  [[ -f "${template_path}" ]]
-}
-
 hypr_service_apply_file_mode() {
   local source_path="$1"
   local target_path="$2"
@@ -423,21 +416,6 @@ hypr_service_refresh_config() {
 
   source_path="$(hypr_service_template_path "${rel_path}")"
   target_path="${XDG_CONFIG_HOME:-$HOME/.config}/${rel_path}"
-  hypr_service_apply_file_mode "${source_path}" "${target_path}" "${rel_path}" overwrite changed "${show_diff}" "${quiet}"
-}
-
-hypr_service_refresh_state() {
-  local rel_path="$1"
-  local show_diff="${2:-1}"
-  local quiet="${3:-0}"
-  local source_path target_path
-
-  if ! hypr_service_is_safe_relpath "${rel_path}"; then
-    hypr_service_die "Invalid state path: ${rel_path}"
-  fi
-
-  source_path="$(hypr_service_state_template_path "${rel_path}")"
-  target_path="${XDG_STATE_HOME:-$HOME/.local/state}/${rel_path}"
   hypr_service_apply_file_mode "${source_path}" "${target_path}" "${rel_path}" overwrite changed "${show_diff}" "${quiet}"
 }
 

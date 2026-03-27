@@ -12,7 +12,5 @@ $HOME/.config/rofi/theme.rasi
     separator:           #80808080;
     urgent:              #f92672ff;
     active:              #a6e22eff;
-    separatorcolor:     #44475a; /* Monokai Pro separator */
-    border-color:       #44475a; /* Monokai Pro border */
 }
 

@@ -245,14 +245,6 @@ interactive_filter() {
     fi
 }
 
-skip_table_header() {
-    while read -r LINE; do
-        case "$LINE" in
-        --*) cat ;;
-        esac
-    done
-}
-
 xargs_self() {
     # Some older xargs implementations (busybox < 1.36) do not support `-o` option to reopen /dev/tty as stdin.
     # This is a workaround suggested by `man xargs`.

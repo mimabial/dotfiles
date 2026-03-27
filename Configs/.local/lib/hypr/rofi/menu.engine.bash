@@ -3,6 +3,7 @@
 # Set to true when going directly to a submenu, so we can exit directly
 BACK_TO_EXIT="${BACK_TO_EXIT:-false}"
 MENU_BORDER_RADIUS="${MENU_BORDER_RADIUS:-}"
+MENU_BORDER_WIDTH="${MENU_BORDER_WIDTH:-}"
 MENU_ELEMENT_RADIUS="${MENU_ELEMENT_RADIUS:-}"
 MENU_FONT_SCALE_CACHE="${MENU_FONT_SCALE_CACHE:-}"
 MENU_FONT_NAME_CACHE="${MENU_FONT_NAME_CACHE:-}"
@@ -57,6 +58,11 @@ menu() {
     MENU_ELEMENT_RADIUS=$((MENU_BORDER_RADIUS / 2))
   fi
 
+  if [[ -z "${MENU_BORDER_WIDTH}" ]]; then
+    MENU_BORDER_WIDTH="$(hyprctl -j getoption general:border_size 2>/dev/null | jq -r '.int // empty' 2>/dev/null || true)"
+    [[ "${MENU_BORDER_WIDTH}" =~ ^[0-9]+$ ]] || MENU_BORDER_WIDTH=2
+  fi
+
   if [[ -z "${MENU_FONT_SCALE_CACHE}" ]]; then
     MENU_FONT_SCALE_CACHE="${ROFI_MENU_SCALE:-$ROFI_SCALE}"
     [[ "${MENU_FONT_SCALE_CACHE}" =~ ^[0-9]+$ ]] || MENU_FONT_SCALE_CACHE=${ROFI_SCALE:-10}
@@ -89,7 +95,7 @@ menu() {
   options_rendered="$(printf '%b' "${options}")"
 
   rofi_args+=("-theme-str" "* {font: \"${MENU_FONT_NAME_CACHE} ${MENU_FONT_SCALE_CACHE}\";}")
-  rofi_args+=("-theme-str" "window {border-radius: ${MENU_BORDER_RADIUS}px; max-height: ${MENU_MAX_HEIGHT}px;}")
+  rofi_args+=("-theme-str" "window {border: ${MENU_BORDER_WIDTH}px solid; border-radius: ${MENU_BORDER_RADIUS}px; max-height: ${MENU_MAX_HEIGHT}px;}")
   rofi_args+=("-theme-str" "element {border-radius: ${MENU_BORDER_RADIUS}px;}")
   rofi_args+=("-theme-str" "textbox-prompt-colon {border-radius: ${MENU_ELEMENT_RADIUS}px; str: \"$prompt\";}")
   rofi_args+=("-theme-str" "entry {placeholder: \"Hello ${USER^}!\";}")

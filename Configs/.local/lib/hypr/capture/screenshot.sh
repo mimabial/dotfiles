@@ -30,16 +30,6 @@ cleanup_temp_screenshot() {
   fi
 }
 
-swappy_escape_config_value() {
-  local value="$1"
-  value="${value//\\/\\\\}"
-  value="${value//$'\n'/\\n}"
-  value="${value//$'\r'/\\r}"
-  value="${value//$'\t'/\\t}"
-  value="${value//;/\\;}"
-  printf '%s' "${value}"
-}
-
 # Create secure temporary file
 temp_screenshot=$(mktemp -t screenshot_XXXXXX.png)
 
@@ -47,64 +37,84 @@ if [[ -z "${XDG_PICTURES_DIR}" ]]; then
   XDG_PICTURES_DIR="$HOME/Pictures"
 fi
 
-save_dir="${2:-$XDG_PICTURES_DIR/Screenshots}"
+grimblast_script="${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/capture/grimblast.sh"
+mode="${1:-}"
+destination_arg="${2:-}"
+save_dir_arg="${2:-}"
+smart_destination=""
+
+if [[ "${mode}" == "smart" && ( "${destination_arg}" == "clipboard" || "${destination_arg}" == "save" ) ]]; then
+  smart_destination="${destination_arg}"
+  save_dir_arg="${3:-}"
+fi
+
+save_dir="${save_dir_arg:-${XDG_SCREENSHOTS_DIR:-$XDG_PICTURES_DIR/Screenshots}}"
 save_file=$(date +'%y%m%d_%Hh%Mm%Ss_screenshot.png')
-annotation_tool=${SCREENSHOT_ANNOTATION_TOOL}
-annotation_args=("-o" "${save_dir}/${save_file}" "-f" "${temp_screenshot}")
+annotation_tool="satty"
+annotation_args=(
+  "--filename" "${temp_screenshot}"
+  "--output-filename" "${save_dir}/${save_file}"
+  "--copy-command" "wl-copy"
+  "--actions-on-enter" "save-to-clipboard"
+  "--save-after-copy"
+  "--resize" "smart"
+)
 tesseract_default_language=("eng")
 tesseract_languages=("${SCREENSHOT_OCR_TESSERACT_LANGUAGES[@]:-${tesseract_default_language[@]}}")
 tesseract_languages+=("osd")
 
-if [[ -z "$annotation_tool" ]]; then
-  pkg_installed "swappy" && annotation_tool="swappy"
-  pkg_installed "satty" && annotation_tool="satty"
-fi
 mkdir -p "$save_dir"
-
-# Fixes the issue where the annotation tool doesn't save the file in the correct directory
-if [[ "$annotation_tool" == "swappy" ]]; then
-  swpy_dir="${XDG_CONFIG_HOME}/swappy"
-  mkdir -p "$swpy_dir"
-  printf '[Default]\nsave_dir=%s\nsave_filename_format=%s\n' \
-    "$(swappy_escape_config_value "${save_dir}")" \
-    "$(swappy_escape_config_value "${save_file}")" \
-    >"${swpy_dir}"/config
-fi
-
-if [[ "$annotation_tool" == "satty" ]]; then
-  annotation_args+=("--copy-command" "wl-copy" "--resize" "smart")
-fi
 
 # Add any additional annotation arguments
 [[ -n "${SCREENSHOT_ANNOTATION_ARGS[*]}" ]] && annotation_args+=("${SCREENSHOT_ANNOTATION_ARGS[@]}")
 
 run_annotation() {
-  if [[ -z "${annotation_tool}" ]]; then
-    dunstify -a "Screenshot" -t 5000 -i "dialog-error" "Screenshot Error" "No annotation tool found (swappy/satty)"
+  if ! command -v satty >/dev/null 2>&1; then
+    dunstify -a "Screenshot" -t 5000 -i "dialog-error" "Screenshot Error" "Satty is not installed"
     return 1
   fi
   "${annotation_tool}" "${annotation_args[@]}"
+}
+
+grimblast_capture() {
+  "${grimblast_script}" "$@"
+}
+
+grimblast_capture_geometry() {
+  local action="$1"
+  local selection="$2"
+  local output_file="${3:-}"
+  local args=(--geometry "${selection}" "${action}" "area")
+
+  if [[ -n "${output_file}" ]]; then
+    args+=("${output_file}")
+  fi
+
+  grimblast_capture "${args[@]}"
 }
 
 get_rectangles() {
   capture_active_workspace_rectangles
 }
 
-# Smart screenshot with frozen screen and smart detection
-smart_screenshot() {
-  local destination="$1"
-  local RECTS=$(get_rectangles)
-
-  # Freeze screen during selection if hyprpicker is available
+select_geometry_from_rectangles() {
+  local rectangles="$1"
+  shift
+  local selection=""
   local freeze_pid=""
+
   freeze_pid="$(capture_start_freeze 0.1)"
-
-  local SELECTION=$(echo "$RECTS" | slurp 2>/dev/null)
+  selection="$(printf '%s\n' "${rectangles}" | slurp "$@" 2>/dev/null)"
   capture_stop_freeze "${freeze_pid}"
-  [ -z "$SELECTION" ] && return 0
+  [[ -n "${selection}" ]] || return 1
+  printf '%s\n' "${selection}"
+}
 
-  # Smart window detection: if selection is tiny (< 20px²), expand to window/monitor
-  if [[ "$SELECTION" =~ ^([0-9]+),([0-9]+)[[:space:]]([0-9]+)x([0-9]+)$ ]]; then
+expand_tiny_selection_to_rectangle() {
+  local selection="$1"
+  local rectangles="$2"
+
+  if [[ "${selection}" =~ ^([0-9]+),([0-9]+)[[:space:]]([0-9]+)x([0-9]+)$ ]]; then
     if (( ${BASH_REMATCH[3]} * ${BASH_REMATCH[4]} < 20 )); then
       local click_x="${BASH_REMATCH[1]}"
       local click_y="${BASH_REMATCH[2]}"
@@ -117,29 +127,68 @@ smart_screenshot() {
           local rect_height="${BASH_REMATCH[4]}"
 
           if (( click_x >= rect_x && click_x < rect_x+rect_width && click_y >= rect_y && click_y < rect_y+rect_height )); then
-            SELECTION="${rect_x},${rect_y} ${rect_width}x${rect_height}"
+            selection="${rect_x},${rect_y} ${rect_width}x${rect_height}"
             break
           fi
         fi
-      done <<< "$RECTS"
+      done <<<"${rectangles}"
     fi
   fi
 
-  [ -z "$SELECTION" ] && return 0
+  printf '%s\n' "${selection}"
+}
 
-  # Take screenshot with grim
-  if [[ "$destination" == "clipboard" ]]; then
-    grim -g "$SELECTION" - | wl-copy
-    dunstify -a "Screenshot" -t 3000 "Copied to clipboard" -i "camera-photo"
-  elif [[ "$destination" == "save" ]]; then
-    grim -g "$SELECTION" "${save_dir}/${save_file}"
-  else
-    grim -g "$SELECTION" "$temp_screenshot"
-    if ! run_annotation; then
-      dunstify -a "Screenshot" -t 5000 -i "dialog-error" "Screenshot Error" "Failed to open annotation tool"
-      return 1
-    fi
-  fi
+capture_selected_geometry() {
+  local selection="$1"
+  local destination="${2:-annotate}"
+
+  case "${destination}" in
+    clipboard)
+      if ! grimblast_capture_geometry "copy" "${selection}"; then
+        dunstify -a "Screenshot" -t 5000 -i "dialog-error" "Screenshot Error" "Failed to take screenshot"
+        return 1
+      fi
+      dunstify -a "Screenshot" -t 3000 "Copied to clipboard" -i "camera-photo"
+      ;;
+    save)
+      if ! grimblast_capture_geometry "save" "${selection}" "${save_dir}/${save_file}"; then
+        dunstify -a "Screenshot" -t 5000 -i "dialog-error" "Screenshot Error" "Failed to save screenshot"
+        return 1
+      fi
+      ;;
+    *)
+      if ! grimblast_capture_geometry "save" "${selection}" "${temp_screenshot}"; then
+        dunstify -a "Screenshot" -t 5000 -i "dialog-error" "Screenshot Error" "Failed to take screenshot"
+        return 1
+      fi
+      if ! run_annotation; then
+        dunstify -a "Screenshot" -t 5000 -i "dialog-error" "Screenshot Error" "Failed to open annotation tool"
+        return 1
+      fi
+      ;;
+  esac
+}
+
+# Smart screenshot with frozen screen and smart detection
+smart_screenshot() {
+  local destination="$1"
+  local rectangles=""
+  local selection=""
+
+  rectangles="$(get_rectangles)"
+  selection="$(select_geometry_from_rectangles "${rectangles}")" || return 0
+  selection="$(expand_tiny_selection_to_rectangle "${selection}" "${rectangles}")"
+
+  capture_selected_geometry "${selection}" "${destination}"
+}
+
+window_screenshot() {
+  local rectangles=""
+  local selection=""
+
+  rectangles="$(get_rectangles)"
+  selection="$(select_geometry_from_rectangles "${rectangles}" -r)" || return 0
+  capture_selected_geometry "${selection}" "annotate"
 }
 
 # screenshot function, globbing was difficult to read and maintain
@@ -148,8 +197,7 @@ take_screenshot() {
   shift
   local extra_args=("$@")
 
-  # execute grimblast with given args
-  if "$LIB_DIR/hypr/capture/grimblast" "${extra_args[@]}" copysave "$mode" "$temp_screenshot"; then
+  if grimblast_capture "${extra_args[@]}" save "$mode" "$temp_screenshot"; then
     if ! run_annotation; then
       dunstify -a "Screenshot" -t 5000 -i "dialog-error" "Screenshot Error" "Failed to open annotation tool"
       return 1
@@ -165,8 +213,7 @@ ocr_screenshot() {
   shift
   local extra_args=("$@")
 
-  # execute grimblast with given args
-  if "$LIB_DIR/hypr/capture/grimblast" "${extra_args[@]}" copysave "$mode" "$temp_screenshot"; then
+  if grimblast_capture "${extra_args[@]}" save "$mode" "$temp_screenshot"; then
     if pkg_installed imagemagick; then
       magick "${temp_screenshot}" \
         -colorspace gray \
@@ -214,7 +261,7 @@ ocr_screenshot() {
 
 trap 'cleanup_temp_screenshot' EXIT
 
-case $1 in
+case "${mode}" in
   p) # print all outputs
     take_screenshot "screen"
     ;;
@@ -225,17 +272,10 @@ case $1 in
     take_screenshot "area" "--freeze"
     ;;
   smart) # smart selection with wayfreeze and auto window detection
-    smart_screenshot "$2"
+    smart_screenshot "${smart_destination:-$2}"
     ;;
   w) # window selection with frozen screen
-    freeze_pid=""
-    freeze_pid="$(capture_start_freeze 0.1)"
-    SELECTION=$(get_rectangles | slurp -r 2>/dev/null)
-    capture_stop_freeze "${freeze_pid}"
-    if [[ -n "$SELECTION" ]]; then
-      grim -g "$SELECTION" "$temp_screenshot"
-      run_annotation
-    fi
+    window_screenshot
     ;;
   m) # print focused monitor
     take_screenshot "output"
@@ -244,8 +284,8 @@ case $1 in
     ocr_screenshot "area" "--freeze"
     ;;
   *) # invalid option or default to smart
-    if [[ -z "$1" ]]; then
-      smart_screenshot "$2"
+    if [[ -z "${mode}" ]]; then
+      smart_screenshot "${smart_destination}"
     else
       USAGE
     fi

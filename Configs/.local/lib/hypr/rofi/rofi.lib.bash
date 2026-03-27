@@ -642,21 +642,3 @@ rofi_active_opacity_override() {
   [[ -n "${bg_color}" ]] || bg_color="#000000"
   printf 'window { transparency: "real"; background-color: %s%s; }\n' "${bg_color}" "${hex_alpha}"
 }
-
-rofi_application_dir() {
-  if [[ -d /run/current-system/sw/share/applications ]]; then
-    printf '%s\n' /run/current-system/sw/share/applications
-  else
-    printf '%s\n' /usr/share/applications
-  fi
-}
-
-rofi_quickapp_icon() {
-  local app_name="$1"
-  local app_dir="$2"
-  local desktop_file=""
-
-  desktop_file="$(grep -l -m1 "Exec=.*${app_name}" "${app_dir}"/* 2>/dev/null | head -1)"
-  [[ -n "${desktop_file}" ]] || return 0
-  awk -F '=' '/^Icon=/{print $2; exit}' "${desktop_file}"
-}

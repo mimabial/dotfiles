@@ -9,8 +9,6 @@ $HOME/.config/rofi/theme.rasi
     separator:           #80808080;
     urgent:              #ee5396ff;
     active:              #ee5396cc;
-    separatorcolor:     transparent;
-    border-color:       transparent;
     //font: "Jetbrains Mono 11";
 }
 

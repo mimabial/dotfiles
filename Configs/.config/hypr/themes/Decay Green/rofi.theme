@@ -9,6 +9,4 @@ $HOME/.config/rofi/theme.rasi
     separator:           #80808080;
     urgent:              #e05f65ff;
     active:              #78dba9ff;
-    separatorcolor:     transparent;
-    border-color:       transparent;
 }

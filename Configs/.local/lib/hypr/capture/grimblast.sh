@@ -60,6 +60,7 @@ CURSOR=
 FREEZE=
 WAIT=no
 SCALE=
+CUSTOM_GEOM=
 
 # Store positional arguments
 pos=()
@@ -100,6 +101,15 @@ while [[ $# -gt 0 ]]; do
       exit 1
     fi
     ;;
+  -g | --geometry)
+    if [[ -n "${2-}" ]]; then
+      CUSTOM_GEOM="$2"
+      shift 2
+    else
+      echo "Invalid or missing argument for --geometry" >&2
+      exit 1
+    fi
+    ;;
   --)
     shift
     pos+=("$@")
@@ -130,7 +140,7 @@ FILE_EDITOR=${3:-$(tmp_editor_directory)/$(date -Ins).png}
 
 if [ "$ACTION" != "save" ] && [ "$ACTION" != "copy" ] && [ "$ACTION" != "edit" ] && [ "$ACTION" != "copysave" ] && [ "$ACTION" != "check" ]; then
   echo "Usage:"
-  echo "  grimblast [--notify] [--openfile] [--cursor] [--freeze] [--wait N] [--scale <scale>] (copy|save|copysave|edit) [active|screen|output|area] [FILE|-]"
+  echo "  grimblast [--notify] [--openfile] [--cursor] [--freeze] [--wait N] [--scale <scale>] [--geometry \"X,Y WxH\"] (copy|save|copysave|edit) [active|screen|output|area] [FILE|-]"
   echo "  grimblast check"
   echo "  grimblast usage"
   echo ""
@@ -266,24 +276,28 @@ elif [ "$SUBJECT" = "area" ]; then
     die "Error: '--cursor' cannot be used with subject 'area'"
   fi
 
-  if [ "$FREEZE" = "yes" ] && [ "$(command -v "hyprpicker")" ] >/dev/null 2>&1; then
-    FREEZE_PID="$(capture_start_freeze 0.2)"
-  fi
+  if [ -n "$CUSTOM_GEOM" ]; then
+    GEOM="$CUSTOM_GEOM"
+  else
+    if [ "$FREEZE" = "yes" ] && [ "$(command -v "hyprpicker")" ] >/dev/null 2>&1; then
+      FREEZE_PID="$(capture_start_freeze 0.2)"
+    fi
 
-  # disable animation for layer namespace "selection" (slurp)
-  # this removes the black border seen around screenshots
-  hyprctl keyword layerrule "noanim,selection" >/dev/null
+    # disable animation for layer namespace "selection" (slurp)
+    # this removes the black border seen around screenshots
+    hyprctl keyword layerrule "noanim,selection" >/dev/null
 
-  # convert SLURP_ARGS to a bash array
-  IFS=' ' read -r -a _slurp_args <<<"$SLURP_ARGS"
-  # shellcheck disable=2086 # if we don't split, spaces mess up slurp
-  GEOM=$(capture_visible_workspace_rectangles | slurp "${_slurp_args[@]}")
-  capture_stop_freeze "${FREEZE_PID:-}"
+    # convert SLURP_ARGS to a bash array
+    IFS=' ' read -r -a _slurp_args <<<"$SLURP_ARGS"
+    # shellcheck disable=2086 # if we don't split, spaces mess up slurp
+    GEOM=$(capture_visible_workspace_rectangles | slurp "${_slurp_args[@]}")
+    capture_stop_freeze "${FREEZE_PID:-}"
 
-  # Check if user exited slurp without selecting the area
-  if [ -z "$GEOM" ]; then
-    killHyprpicker
-    exit 1
+    # Check if user exited slurp without selecting the area
+    if [ -z "$GEOM" ]; then
+      killHyprpicker
+      exit 1
+    fi
   fi
   WHAT="Area"
   wait
