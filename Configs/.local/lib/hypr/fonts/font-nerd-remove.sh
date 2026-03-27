@@ -8,12 +8,10 @@ source "$(command -v hyprshell)" || exit 1
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/core/notify.sh"
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/pkg/pacman.lib.bash"
+# shellcheck source=/dev/null
+source "${LIB_DIR:-$HOME/.local/lib}/hypr/fonts/font-nerd.common.bash"
 
 used_fonts=()
-
-list_installed_nerd_fonts() {
-  pacman -Qq | grep -E '^(ttf|otf)-.*nerd' | sort
-}
 
 detect_used_fonts() {
   used_fonts=()
@@ -82,17 +80,6 @@ list_unused_nerd_fonts() {
       printf '%s\n' "${pkg}"
     fi
   done < <(list_installed_nerd_fonts)
-}
-
-refresh_font_cache() {
-  fc-cache -f
-}
-
-font_packages_label() {
-  local -a packages=("$@")
-  local joined=""
-  joined="$(printf '%s, ' "${packages[@]}")"
-  printf '%s\n' "${joined%, }"
 }
 
 remove_nerd_font_packages() {

@@ -49,6 +49,49 @@ VERBOSE
   fi
 }
 
+parse_command_args() {
+  local command_string="$1"
+
+  python3 - "$command_string" <<'PY'
+import shlex
+import sys
+
+try:
+    args = shlex.split(sys.argv[1], posix=True)
+except ValueError as exc:
+    print(exc, file=sys.stderr)
+    raise SystemExit(1)
+
+for arg in args:
+    sys.stdout.buffer.write(arg.encode("utf-8"))
+    sys.stdout.buffer.write(b"\0")
+PY
+}
+
+run_configured_command() {
+  local command_string="$1"
+  local run_mode="${2:-sync}"
+  local -a command_args=()
+
+  [[ -n "${command_string//[[:space:]]/}" ]] || return 0
+
+  if ! mapfile -d '' -t command_args < <(parse_command_args "${command_string}"); then
+    echo "Warning: failed to parse command: ${command_string}" >&2
+    return 1
+  fi
+
+  ((${#command_args[@]} > 0)) || return 0
+
+  case "${run_mode}" in
+    background)
+      nohup "${command_args[@]}" &>/dev/null &
+      ;;
+    *)
+      "${command_args[@]}"
+      ;;
+  esac
+}
+
 fn_percentage() {
   if [[ "$battery_percentage" -ge "$unplug_charger_threshold" ]] && [[ "$battery_status" != "Discharging" ]] && [[ "$battery_status" != "Full" ]] && (((battery_percentage - last_notified_percentage) >= interval)); then
     steps=$(printf "%03d" $(((battery_percentage + 5) / 10 * 10)))
@@ -75,7 +118,7 @@ fn_percentage() {
 
 fn_action() {                          #handles the $execute_critical command #? This is special as it will try to execute always
   count=$((timer > mnt ? timer : mnt)) # reset count
-  nohup "$execute_critical" &>/dev/null &
+  run_configured_command "${execute_critical}" background
 }
 
 fn_status() {
@@ -91,7 +134,7 @@ fn_status() {
         urgency=$([[ $battery_percentage -le "$battery_low_threshold" ]] && echo "CRITICAL" || echo "NORMAL")
         steps=$(printf "%1d" $(((battery_percentage + 5) / 10 * 10)))
         dunstify -a "Power" -t 3000 -r 5 -u "${urgency:-normal}" -i "battery-level-${steps:-10}-symbolic" "Charger Plug Out" "Battery is at $battery_percentage%."
-        $execute_discharging
+        run_configured_command "${execute_discharging}"
       fi
       fn_percentage
       ;;
@@ -103,7 +146,7 @@ fn_status() {
         urgency=$([[ "$battery_percentage" -ge $unplug_charger_threshold ]] && echo "CRITICAL" || echo "NORMAL")
         steps=$(printf "%03d" $(((battery_percentage + 5) / 10 * 10)))
         dunstify -a "Power" -t 3000 -r 5 -u "${urgency:-normal}" -i "battery-${steps:-100}-charging" "Charger Plug In" "Battery is at $battery_percentage%."
-        $execute_charging
+        run_configured_command "${execute_charging}"
       fi
       fn_percentage
       ;;
@@ -116,7 +159,7 @@ fn_status() {
           dunstify -a "Power" -t 5000 -r 5 -u "CRITICAL" -i "battery-full-charging-symbolic" "Battery Full" "Please unplug your Charger"
           prev_status=$battery_status
           last_full_notify_ts=$now
-          $execute_charging
+          run_configured_command "${execute_charging}"
         fi
       fi
       ;;
@@ -191,11 +234,11 @@ fn_status_change() { # Handle when status changes
     fn_percentage
 
     if [[ "$battery_percentage" -le "$battery_low_threshold" ]] && ! $executed_low; then
-      $execute_low
+      run_configured_command "${execute_low}"
       executed_low=true executed_unplug=false
     fi
     if [[ "$battery_percentage" -ge "$unplug_charger_threshold" ]] && ! $executed_unplug; then
-      $execute_unplug
+      run_configured_command "${execute_unplug}"
       executed_unplug=true executed_low=false
     fi
     if ! $dock; then fn_status; fi

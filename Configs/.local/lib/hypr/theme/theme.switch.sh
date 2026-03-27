@@ -146,12 +146,12 @@ fi
 
 is_safe_path_component() {
   local value="$1"
-  [[ -n "${value}" ]] &&
-    [[ "${value}" != "." ]] &&
-    [[ "${value}" != ".." ]] &&
-    [[ "${value}" != */* ]] &&
-    [[ "${value}" != *$'\n'* ]] &&
-    [[ "${value}" != *$'\r'* ]]
+  [[ -n "${value}" ]] \
+    && [[ "${value}" != "." ]] \
+    && [[ "${value}" != ".." ]] \
+    && [[ "${value}" != */* ]] \
+    && [[ "${value}" != *$'\n'* ]] \
+    && [[ "${value}" != *$'\r'* ]]
 }
 
 gtk_theme_path_name=""
@@ -166,7 +166,7 @@ if [[ -n "${gtk_theme_path_name}" ]] && [ ! -d "${THEMES_DIR}/${gtk_theme_path_n
 fi
 
 # Font fallbacks (avoid empty qt5ct/qt6ct font strings)
-[[ -z "${FONT}" ]] && FONT="Canterell"
+[[ -z "${FONT}" ]] && FONT="Cantarell"
 [[ -z "${MONOSPACE_FONT}" ]] && MONOSPACE_FONT="CaskaydiaCove Nerd Font Mono"
 
 #// qt5ct + qt6ct (batched)

@@ -128,6 +128,7 @@ if [ -n "$BASH_VERSION" ]; then
     set_hash \
     get_themes print_log \
     pkg_installed paste_string \
+    sed_escape_replacement \
     extract_thumbnail accepted_mime_types \
     notify_send_safe send_notifs \
     refresh_hypr_runtime_state export_hypr_config init_hypr_globals \

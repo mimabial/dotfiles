@@ -2,22 +2,8 @@
 
 set -e
 
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
-
-print_success() {
-  echo -e "${GREEN}$1${NC}"
-}
-
-print_error() {
-  echo -e "${RED}$1${NC}"
-}
-
-print_info() {
-  echo -e "${YELLOW}$1${NC}"
-}
+# shellcheck source=/dev/null
+source "${LIB_DIR:-$HOME/.local/lib}/hypr/setup/auth.common.bash"
 
 check_fingerprint_hardware() {
   if ! lsusb | grep -Eiq 'fingerprint|synaptics|goodix|elan|validity|FPC'; then
@@ -28,41 +14,15 @@ check_fingerprint_hardware() {
 }
 
 setup_pam_config() {
-  # Configure sudo
-  if ! grep -q pam_fprintd.so /etc/pam.d/sudo; then
-    print_info "Configuring sudo for fingerprint authentication..."
-    sudo sed -i '1i auth    sufficient pam_fprintd.so' /etc/pam.d/sudo
-  fi
-
-  # Configure polkit
-  if [ -f /etc/pam.d/polkit-1 ] && ! grep -q 'pam_fprintd.so' /etc/pam.d/polkit-1; then
-    print_info "Configuring polkit for fingerprint authentication..."
-    sudo sed -i '1i auth      sufficient pam_fprintd.so' /etc/pam.d/polkit-1
-  elif [ ! -f /etc/pam.d/polkit-1 ]; then
-    print_info "Creating polkit configuration with fingerprint authentication..."
-    sudo tee /etc/pam.d/polkit-1 >/dev/null <<'EOF'
-auth      sufficient pam_fprintd.so
-auth      required pam_unix.so
-
-account   required pam_unix.so
-password  required pam_unix.so
-session   required pam_unix.so
-EOF
-  fi
+  setup_pam_module \
+    "fingerprint" \
+    "pam_fprintd.so" \
+    "auth    sufficient pam_fprintd.so" \
+    "auth      sufficient pam_fprintd.so"
 }
 
 remove_pam_config() {
-  # Remove from sudo
-  if grep -q pam_fprintd.so /etc/pam.d/sudo; then
-    print_info "Removing fingerprint authentication from sudo..."
-    sudo sed -i '/pam_fprintd\.so/d' /etc/pam.d/sudo
-  fi
-
-  # Remove from polkit
-  if [ -f /etc/pam.d/polkit-1 ] && grep -Fq 'pam_fprintd.so' /etc/pam.d/polkit-1; then
-    print_info "Removing fingerprint authentication from polkit..."
-    sudo sed -i '/pam_fprintd\.so/d' /etc/pam.d/polkit-1
-  fi
+  remove_pam_module "fingerprint" "pam_fprintd.so" 'pam_fprintd\.so'
 }
 
 if [[ "--remove" == "$1" ]]; then

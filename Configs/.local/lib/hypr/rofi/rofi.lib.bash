@@ -23,6 +23,129 @@ rofi_font_override() {
   printf '* {font: "%s %s";}\n' "${font_name}" "${font_scale}"
 }
 
+rofi_picker_parse_style_args() {
+  local out_style_name="$1"
+  local out_rasi_name="$2"
+  local fallback_style="$3"
+  local usage_text="$4"
+  shift 4
+
+  # shellcheck disable=SC2178
+  local -n out_style_ref="${out_style_name}"
+  # shellcheck disable=SC2178
+  local -n out_rasi_ref="${out_rasi_name}"
+
+  while (($# > 0)); do
+    case "$1" in
+      --style|-s)
+        if (($# > 1)); then
+          out_style_ref="$2"
+          shift 2
+        else
+          print_log +y "[warn] " "--style needs argument"
+          out_style_ref="${fallback_style}"
+          shift
+        fi
+        ;;
+      --rasi)
+        [[ -n "${2:-}" ]] || {
+          print_log +r "[error] " +y "--rasi requires a file.rasi config file"
+          exit 1
+        }
+        out_rasi_ref="$2"
+        shift 2
+        ;;
+      -*)
+        printf '%s\n' "${usage_text}"
+        exit 0
+        ;;
+      *)
+        shift
+        ;;
+    esac
+  done
+}
+
+rofi_picker_ensure_data_file() {
+  local target_file="$1"
+  local target_dir=""
+
+  target_dir="$(dirname "${target_file}")"
+  mkdir -p "${target_dir}" || return 1
+  [[ -f "${target_file}" ]] || : >"${target_file}"
+}
+
+rofi_picker_save_recent_entry() {
+  local recent_file="$1"
+  local tmp_prefix="$2"
+  local recent_line="$3"
+  local max_entries="${4:-50}"
+  local postprocess_fn="${5:-}"
+  local recent_dir=""
+  local tmp_file=""
+
+  recent_dir="$(dirname "${recent_file}")"
+  mkdir -p "${recent_dir}" || return 1
+  tmp_file="$(mktemp "${recent_dir}/.${tmp_prefix}.XXXXXX")" || return 1
+
+  {
+    printf '%s\n' "${recent_line}"
+    cat "${recent_file}" 2>/dev/null
+  } >"${tmp_file}" || {
+    rm -f "${tmp_file}"
+    return 1
+  }
+
+  if [[ -n "${postprocess_fn}" ]]; then
+    if ! "${postprocess_fn}" "${tmp_file}"; then
+      rm -f "${tmp_file}"
+      return 1
+    fi
+  else
+    local filtered_tmp=""
+    filtered_tmp="$(mktemp "${recent_dir}/.${tmp_prefix}.dedup.XXXXXX")" || {
+      rm -f "${tmp_file}"
+      return 1
+    }
+    if ! awk '!seen[$0]++' "${tmp_file}" | head -n "${max_entries}" >"${filtered_tmp}"; then
+      rm -f "${tmp_file}" "${filtered_tmp}"
+      return 1
+    fi
+    if ! mv "${filtered_tmp}" "${tmp_file}"; then
+      rm -f "${tmp_file}" "${filtered_tmp}"
+      return 1
+    fi
+  fi
+
+  if ! mv "${tmp_file}" "${recent_file}"; then
+    rm -f "${tmp_file}"
+    return 1
+  fi
+}
+
+rofi_picker_compute_window_position() {
+  local out_position_name="$1"
+  local font_name="$2"
+  local font_scale="$3"
+  local width_em="$4"
+  local height_em="$5"
+  local fallback_width_px="$6"
+  local fallback_height_px="$7"
+  local width_px=""
+  local height_px=""
+
+  # shellcheck disable=SC2178
+  local -n out_position_ref="${out_position_name}"
+
+  width_px="$(rofi_length_em_to_px "${width_em}" "${font_name}" "${font_scale}" 2>/dev/null || true)"
+  [[ "${width_px}" =~ ^[0-9]+$ ]] || width_px="${fallback_width_px}"
+
+  height_px="$(rofi_length_em_to_px "${height_em}" "${font_name}" "${font_scale}" 2>/dev/null || true)"
+  [[ "${height_px}" =~ ^[0-9]+$ ]] || height_px="${fallback_height_px}"
+
+  out_position_ref="$(get_rofi_pos "${width_px}" "${height_px}")"
+}
+
 rofi_length_em_to_px() {
   local em_value="$1"
   local font_name="$2"

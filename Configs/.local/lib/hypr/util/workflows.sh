@@ -47,6 +47,12 @@ resolve_workflow_path() {
   return 1
 }
 
+workflow_exists() {
+  local name="${1:-}"
+  [[ -n "${name}" ]] || return 1
+  resolve_workflow_path "${name}" >/dev/null 2>&1
+}
+
 list_workflow_names() {
   local dir path name
   local -A seen=()
@@ -196,6 +202,10 @@ while true; do
         echo "Error: --set requires a workflow name"
         exit 1
       }
+      if ! workflow_exists "$2"; then
+        echo "Error: unknown workflow '$2'" >&2
+        exit 1
+      fi
       state_set "HYPR_WORKFLOW" "$2" "staterc"
       apply_workflow_update
       exit 0

@@ -56,8 +56,8 @@ fn_background() {
   local wp bg bg_tmp mime cached_thumb is_video wp_hash png_cache
   wp="$(realpath "${WALLPAPER}" 2>/dev/null)" || return 1
   bg="${WALLPAPER_CURRENT_DIR}/wall.set.png"
-  bg_tmp="${WALLPAPER_CURRENT_DIR}/.wall.set.tmp.${$}.png"
   mkdir -p "${WALLPAPER_CURRENT_DIR}"
+  bg_tmp="$(mktemp "${WALLPAPER_CURRENT_DIR}/.wall.set.tmp.XXXXXX.png")" || return 1
 
   mime="$(file --mime-type -b "${wp}" 2>/dev/null || true)"
   is_video=$(grep -c '^video/' <<<"${mime}")
@@ -84,14 +84,23 @@ fn_background() {
   # Convert synchronously to ensure hyprlock has a complete image (hyprlock expects PNG)
   mkdir -p "${WALLPAPER_CACHE_DIR}/png_cache"
   if [[ "${mime}" == "image/png" ]]; then
-    cp -f "${wp}" "${bg_tmp}"
+    cp -f "${wp}" "${bg_tmp}" || {
+      rm -f "${bg_tmp}"
+      return 1
+    }
   else
-    magick "${MAGICK_LIMITS[@]}" "${wp}[0]" "png:${bg_tmp}"
+    magick "${MAGICK_LIMITS[@]}" "${wp}[0]" "png:${bg_tmp}" || {
+      rm -f "${bg_tmp}"
+      return 1
+    }
   fi
 
   # Cache the converted PNG
-  cp -f "${bg_tmp}" "${png_cache}"
-  mv -f "${bg_tmp}" "${bg}"
+  cp -f "${bg_tmp}" "${png_cache}" 2>/dev/null || true
+  mv -f "${bg_tmp}" "${bg}" || {
+    rm -f "${bg_tmp}"
+    return 1
+  }
 }
 
 # Convert .face.icon to PNG if needed
@@ -140,12 +149,21 @@ colorize_fallback_icon() {
 
 ensure_transparent_png() {
   local output_path="$1"
+  local output_dir=""
+  local tmp_path=""
   [ -z "${output_path}" ] && return 1
   [ -f "${output_path}" ] && return 0
-  mkdir -p "$(dirname "${output_path}")"
-  local tmp_path="${output_path}.tmp.$$"
-  magick "${MAGICK_LIMITS[@]}" -size 1x1 xc:none "png:${tmp_path}" 2>/dev/null || return 1
-  mv -f "${tmp_path}" "${output_path}"
+  output_dir="$(dirname "${output_path}")"
+  mkdir -p "${output_dir}"
+  tmp_path="$(mktemp "${output_dir}/.$(basename "${output_path}").XXXXXX")" || return 1
+  magick "${MAGICK_LIMITS[@]}" -size 1x1 xc:none "png:${tmp_path}" 2>/dev/null || {
+    rm -f "${tmp_path}"
+    return 1
+  }
+  mv -f "${tmp_path}" "${output_path}" || {
+    rm -f "${tmp_path}"
+    return 1
+  }
 }
 
 set_mpris_blurred_empty() {

@@ -231,20 +231,27 @@ wal_cache_swap_dir() {
     schemes_tmp=""
     post_hooks_tmp=""
     if [[ -d "${dest_dir}/schemes" ]]; then
-      schemes_tmp="${dest_parent}/wal.schemes.$$"
+      schemes_tmp="$(mktemp -d -p "${dest_parent}" wal.schemes.XXXXXXXX)" || schemes_tmp=""
       mv "${dest_dir}/schemes" "${schemes_tmp}" 2>/dev/null || schemes_tmp=""
     fi
     if [[ -f "${dest_dir}/post-hooks.sh" ]]; then
-      post_hooks_tmp="${dest_parent}/wal.post-hooks.$$"
+      post_hooks_tmp="$(mktemp -p "${dest_parent}" wal.post-hooks.XXXXXXXX)" || post_hooks_tmp=""
       mv "${dest_dir}/post-hooks.sh" "${post_hooks_tmp}" 2>/dev/null || post_hooks_tmp=""
     fi
 
     # Atomic swap with backup
-    backup_dir="${dest_dir}.bak.$$"
+    backup_dir="$(mktemp -d -p "${dest_parent}" "$(basename "${dest_dir}").bak.XXXXXXXX")" || {
+      [[ -n "${schemes_tmp}" ]] && [[ -d "${schemes_tmp}" ]] && mv "${schemes_tmp}" "${dest_dir}/schemes" 2>/dev/null || true
+      [[ -n "${post_hooks_tmp}" ]] && [[ -f "${post_hooks_tmp}" ]] && mv "${post_hooks_tmp}" "${dest_dir}/post-hooks.sh" 2>/dev/null || true
+      rm -rf "${tmp_dir}" 2>/dev/null || true
+      return 1
+    }
+    rm -rf "${backup_dir}" 2>/dev/null || true
     mv "${dest_dir}" "${backup_dir}" 2>/dev/null || {
       [[ -n "${schemes_tmp}" ]] && [[ -d "${schemes_tmp}" ]] && mv "${schemes_tmp}" "${dest_dir}/schemes" 2>/dev/null || true
       [[ -n "${post_hooks_tmp}" ]] && [[ -f "${post_hooks_tmp}" ]] && mv "${post_hooks_tmp}" "${dest_dir}/post-hooks.sh" 2>/dev/null || true
       rm -rf "${tmp_dir}" 2>/dev/null || true
+      rm -rf "${backup_dir}" 2>/dev/null || true
       return 1
     }
     mv "${tmp_dir}" "${dest_dir}" 2>/dev/null || {
@@ -327,9 +334,14 @@ wal_cache_store() {
 
   # Atomic move to final location
   if [[ -d "${dest_dir}" ]]; then
-    backup_dir="${dest_dir}.bak.$$"
+    backup_dir="$(mktemp -d -p "${dest_parent}" "$(basename "${dest_dir}").bak.XXXXXXXX")" || {
+      rm -rf "${tmp_dir}" 2>/dev/null || true
+      return 1
+    }
+    rm -rf "${backup_dir}" 2>/dev/null || true
     mv "${dest_dir}" "${backup_dir}" 2>/dev/null || {
       rm -rf "${tmp_dir}" 2>/dev/null || true
+      rm -rf "${backup_dir}" 2>/dev/null || true
       return 1
     }
     mv "${tmp_dir}" "${dest_dir}" 2>/dev/null || {

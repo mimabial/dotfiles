@@ -95,14 +95,6 @@ update_or_add_var() {
   fi
 }
 
-sed_escape_replacement() {
-  local value="$1"
-  value="${value//\\/\\\\}"
-  value="${value//&/\\&}"
-  value="${value//|/\\|}"
-  printf '%s' "${value}"
-}
-
 FONT_NAME_SED="$(sed_escape_replacement "${FONT_NAME}")"
 
 if [[ -f "$VARIABLES_FILE" ]]; then

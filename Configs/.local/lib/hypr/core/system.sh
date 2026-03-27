@@ -43,6 +43,14 @@ sed_escape_append_text() {
   printf '%s' "${value}"
 }
 
+sed_escape_replacement() {
+  local value="$1"
+  value="${value//\\/\\\\}"
+  value="${value//&/\\&}"
+  value="${value//|/\\|}"
+  printf '%s' "${value}"
+}
+
 ini_group_has_key() {
   local config_file="$1"
   local group="$2"

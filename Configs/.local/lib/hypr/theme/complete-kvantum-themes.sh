@@ -4,9 +4,15 @@
 
 set -euo pipefail
 
+source "$(command -v hyprshell)" || exit 1
+
 THEMES_DIR="${HOME}/.config/hypr/themes"
 COMPLETE_TEMPLATE="Tokyo Night"  # Use Tokyo Night as the complete template
 MIN_ELEMENTS=1000  # Themes with fewer elements are considered incomplete
+
+sed_escape_pattern() {
+    printf '%s' "$1" | sed 's/[.[\*^$()+?{|\\]/\\&/g; s/\//\\\//g'
+}
 
 echo "Scanning for incomplete Kvantum themes..."
 echo ""
@@ -51,7 +57,9 @@ for theme_dir in "${THEMES_DIR}"/*/; do
             theme_color="${theme_colors[$key]:-}"
 
             if [ -n "${theme_color}" ]; then
-                SED_ARGS+=(-e "s/${template_color}/${theme_color}/gi")
+                template_color_pat="$(sed_escape_pattern "${template_color}")"
+                theme_color_rep="$(sed_escape_replacement "${theme_color}")"
+                SED_ARGS+=(-e "s|${template_color_pat}|${theme_color_rep}|gi")
             fi
         done
 
@@ -77,17 +85,29 @@ for theme_dir in "${THEMES_DIR}"/*/; do
                     "#7aa2f7"|"#2ac3de"|"#73daca"|"#b4f9f8"|"#cba6f7")
                         # Template accent colors -> theme highlight
                         target_color="${theme_colors[highlight.color]:-}"
-                        [ -n "${target_color}" ] && SED_ARGS+=(-e "s/${template_svg_color}/${target_color}/gi")
+                        if [ -n "${target_color}" ]; then
+                            template_svg_color_pat="$(sed_escape_pattern "${template_svg_color}")"
+                            target_color_rep="$(sed_escape_replacement "${target_color}")"
+                            SED_ARGS+=(-e "s|${template_svg_color_pat}|${target_color_rep}|gi")
+                        fi
                         ;;
                     "#c0caf5")
                         # Light foreground -> theme button text
                         target_color="${theme_colors[button.text.color]:-}"
-                        [ -n "${target_color}" ] && SED_ARGS+=(-e "s/${template_svg_color}/${target_color}/gi")
+                        if [ -n "${target_color}" ]; then
+                            template_svg_color_pat="$(sed_escape_pattern "${template_svg_color}")"
+                            target_color_rep="$(sed_escape_replacement "${target_color}")"
+                            SED_ARGS+=(-e "s|${template_svg_color_pat}|${target_color_rep}|gi")
+                        fi
                         ;;
                     "#1a1b26"|"#24283b")
                         # Deep background -> theme window
                         target_color="${theme_colors[window.color]:-}"
-                        [ -n "${target_color}" ] && SED_ARGS+=(-e "s/${template_svg_color}/${target_color}/gi")
+                        if [ -n "${target_color}" ]; then
+                            template_svg_color_pat="$(sed_escape_pattern "${template_svg_color}")"
+                            target_color_rep="$(sed_escape_replacement "${target_color}")"
+                            SED_ARGS+=(-e "s|${template_svg_color_pat}|${target_color_rep}|gi")
+                        fi
                         ;;
                 esac
             fi

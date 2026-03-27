@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
+import fcntl
 import json
 import os
 import shutil
+import sys
+import tempfile
+import time
+from contextlib import contextmanager
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Optional
@@ -67,6 +72,24 @@ def wallpaper_state_file() -> Path:
     return cache_home() / "hypr" / "wallpaper" / "current" / "wall.set"
 
 
+def runtime_lock_dir() -> Path:
+    return Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "hypr"
+
+
+def state_data_file(target_file: str) -> Path:
+    if target_file == "staterc":
+        return state_home() / "hypr" / "staterc"
+    if target_file == "env-overrides":
+        return state_home() / "hypr" / "env-overrides"
+    if target_file == "color_variant":
+        return state_home() / "hypr" / "color_variant"
+    raise ValueError(f"Unsupported state target '{target_file}'")
+
+
+def state_lock_file(target_file: str) -> Path:
+    return runtime_lock_dir() / f"state-{target_file}.lock"
+
+
 def resolve_hyprshell() -> Optional[str]:
     hyprshell = shutil.which("hyprshell")
     if hyprshell:
@@ -130,14 +153,84 @@ def load_state(state_file: Path = STATE_FILE) -> dict:
                 state.pop("last_prewarm", None)
                 state.pop("last_prewarm_pid", None)
                 return {**defaults, **state}
-        except Exception:
-            pass
+        except Exception as exc:
+            print(f"Warning: Failed to load state from {state_file}: {exc}", file=sys.stderr)
     return defaults
 
 
-def save_state(state: dict, state_file: Path = STATE_FILE) -> None:
+def atomic_write_text(path: Path, content: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        mode="w",
+        encoding="utf-8",
+        dir=path.parent,
+        prefix=f".{path.name}.",
+        delete=False,
+    ) as tmp:
+        tmp.write(content)
+        tmp_path = Path(tmp.name)
+    os.replace(tmp_path, path)
+
+
+@contextmanager
+def held_state_lock(target_file: str, timeout: float = 5.0):
+    lock_file = state_lock_file(target_file)
+    lock_file.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(lock_file, os.O_RDWR | os.O_CREAT, 0o644)
+    deadline = time.monotonic() + timeout
+    try:
+        while True:
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if time.monotonic() >= deadline:
+                    raise TimeoutError(f"Timed out waiting for state lock {lock_file}")
+                time.sleep(0.05)
+        yield
+    finally:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_UN)
+        finally:
+            os.close(fd)
+
+
+def set_state_value(var_name: str, var_value: str, target_file: str = "staterc") -> None:
+    state_file = state_data_file(target_file)
+
+    if target_file == "color_variant":
+        if not var_value:
+            raise ValueError("color_variant value required")
+        with held_state_lock(target_file):
+            atomic_write_text(state_file, f"{var_value}\n")
+        return
+
+    if not var_name:
+        raise ValueError("state variable name required")
+
+    value_prefix = "export " if target_file == "env-overrides" else ""
     state_file.parent.mkdir(parents=True, exist_ok=True)
-    state_file.write_text(json.dumps(state))
+
+    with held_state_lock(target_file):
+        existing_lines = state_file.read_text().splitlines() if state_file.exists() else []
+        updated_lines = []
+        for line in existing_lines:
+            stripped = line.strip()
+            if not stripped:
+                updated_lines.append(line)
+                continue
+            normalized = stripped
+            if normalized.startswith("export "):
+                normalized = normalized[len("export ") :].lstrip()
+            if normalized.startswith(f"{var_name}="):
+                continue
+            updated_lines.append(line)
+        updated_lines.append(f'{value_prefix}{var_name}="{var_value}"')
+        atomic_write_text(state_file, "\n".join(updated_lines) + "\n")
+
+
+def save_state(state: dict, state_file: Path = STATE_FILE) -> None:
+    atomic_write_text(state_file, json.dumps(state))
 
 
 def read_staterc() -> dict:

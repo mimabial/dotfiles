@@ -13,15 +13,7 @@ recent_data="${cache_dir}/landing/show_boxdraw.recent"
 
 save_recent_entry() {
   local boxdraw_line="$1"
-  local recent_dir=""
-  local tmp_file=""
-  mkdir -p "$(dirname "${recent_data}")"
-  recent_dir="$(dirname "${recent_data}")"
-  tmp_file="$(mktemp "${recent_dir}/.boxdraw.XXXXXX")"
-  {
-    echo "${boxdraw_line}"
-    cat "${recent_data}" 2>/dev/null
-  } | awk '!seen[$0]++' | head -50 >"${tmp_file}" && mv "${tmp_file}" "${recent_data}"
+  rofi_picker_save_recent_entry "${recent_data}" "boxdraw_recent" "${boxdraw_line}" 50
 }
 
 setup_rofi_config() {
@@ -54,12 +46,10 @@ setup_rofi_config() {
   boxdraw_window_width="${ROFI_BOXDRAW_WIDTH_EM:-${default_width}}"
   [[ "${boxdraw_window_width}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || boxdraw_window_width=${default_width}
   local boxdraw_window_height_em=$((boxdraw_lines * 2 + 8))
-  local boxdraw_window_width_px
-  boxdraw_window_width_px="$(rofi_length_em_to_px "${boxdraw_window_width}" "${font_name}" "${font_scale}" 2>/dev/null || true)"
-  [[ "${boxdraw_window_width_px}" =~ ^[0-9]+$ ]] || boxdraw_window_width_px=$((default_width * font_scale * 2))
-  local boxdraw_window_height_px=$((boxdraw_window_height_em * font_scale * 2))
-
-  rofi_position=$(get_rofi_pos "${boxdraw_window_width_px}" "${boxdraw_window_height_px}")
+  rofi_picker_compute_window_position \
+    rofi_position "${font_name}" "${font_scale}" \
+    "${boxdraw_window_width}" "${boxdraw_window_height_em}" \
+    $((default_width * font_scale * 2)) $((boxdraw_window_height_em * font_scale * 2))
 }
 
 get_boxdraw_selection() {
@@ -69,19 +59,27 @@ get_boxdraw_selection() {
   local size_override=""
   local format_stream=(awk -F $'\t' 'BEGIN{OFS="\t"}{disp=$1; if($2!=""&&$2!=$1) disp=disp" "$2; print disp}')
   local selection_index=""
+  local temp_data=""
+  local temp_dir="${TMPDIR:-/tmp}"
 
   # Create recently used category entry
-  local temp_data="${TMPDIR:-/tmp}/boxdraw_with_recent_$$"
+  temp_data="$(mktemp "${temp_dir}/boxdraw_with_recent.XXXXXX")" || return 1
 
   # Add recently used category if recent data exists
   if [[ -f "${recent_data}" ]] && [[ -s "${recent_data}" ]]; then
     local recent_count=$(wc -l <"${recent_data}" 2>/dev/null || echo 0)
     if [ "$recent_count" -gt 0 ]; then
-      echo "🕒 Recently Used (${recent_count} characters)	:cat:recent:" >"${temp_data}"
+      echo "🕒 Recently Used (${recent_count} characters)	:cat:recent:" >"${temp_data}" || {
+        rm -f "${temp_data}"
+        return 1
+      }
     fi
   fi
 
-  cat "${boxdraw_data}" >>"${temp_data}"
+  cat "${boxdraw_data}" >>"${temp_data}" || {
+    rm -f "${temp_data}"
+    return 1
+  }
 
   if [[ -n ${use_rofile} ]]; then
     selection_index=$(cat "${temp_data}" | "${format_stream[@]}" | rofi -dmenu -i -format 'i' "${ROFI_BOXDRAW_ARGS[@]}" -config "${use_rofile}" \
@@ -129,42 +127,26 @@ get_boxdraw_selection() {
 }
 
 parse_arguments() {
-  while (($# > 0)); do
-    case $1 in
-      --style | -s)
-        if (($# > 1)); then
-          boxdraw_style="$2"
-          shift
-        else
-          print_log +y "[warn] " "--style needs argument"
-          boxdraw_style="clipboard"
-          shift
-        fi
-        ;;
-      --rasi)
-        [[ -z ${2} ]] && print_log +r "[error] " +y "--rasi requires an file.rasi config file" && exit 1
-        use_rofile=${2}
-        shift
-        ;;
-      -*)
-        cat <<HELP
+  local usage_text
+  usage_text="$(cat <<'HELP'
 Usage:
 --style [1 | 2]         Change Box Drawing style
                         Add 'boxdraw_style=[1|2]' variable in config
                             1 = list
                             2 = grid (default)
 HELP
-
-        exit 0
-        ;;
-    esac
-    shift
-  done
+)"
+  rofi_picker_parse_style_args boxdraw_style use_rofile "clipboard" "${usage_text}" "$@"
 }
 
 # Show category sub-menu
 show_category_menu() {
   local category="$1"
+  local category_file=""
+  local selected=""
+  local style_type="${boxdraw_style:-$ROFI_BOXDRAW_STYLE}"
+  local theme_name="clipboard"
+  local -a category_rofi_args=()
 
   # Handle special categories
   if [[ "${category}" == "recent" ]]; then
@@ -179,41 +161,42 @@ show_category_menu() {
   fi
 
   # Add back navigation option
-  local temp_category="${TMPDIR:-/tmp}/boxdraw_category_$$"
-  echo "◀ Back	:b:a:c:k:" >"${temp_category}"
-  cat "${category_file}" >>"${temp_category}"
+  local temp_dir="${TMPDIR:-/tmp}"
+  local temp_category=""
+  temp_category="$(mktemp "${temp_dir}/boxdraw_category.XXXXXX")" || return 1
+  echo "◀ Back	:b:a:c:k:" >"${temp_category}" || {
+    rm -f "${temp_category}"
+    return 1
+  }
+  cat "${category_file}" >>"${temp_category}" || {
+    rm -f "${temp_category}"
+    return 1
+  }
 
   # Show category-specific menu
-  local selected
-  local style_type="${boxdraw_style:-$ROFI_BOXDRAW_STYLE}"
   # Default to grid (2) if no style is set
   [[ -z "${style_type}" ]] && style_type="2"
 
   case ${style_type} in
     2 | grid)
-      selected=$(cat "${temp_category}" | rofi -dmenu -i -display-columns 1 \
-        -display-column-separator " " \
-        -theme-str "listview {columns: 12;}" \
-        -theme-str "entry { placeholder: \"📂 ${category}\";} ${rofi_position} ${r_override}" \
-        -theme-str "${font_override}" \
-        -theme "$(rofi_resolve_theme clipboard)" -theme-str "${_rofi_opacity}" \
-        -no-custom)
+      category_rofi_args+=(
+        -display-column-separator " "
+        -theme-str "listview {columns: 12;}"
+      )
       ;;
     1 | list)
-      selected=$(cat "${temp_category}" | rofi -dmenu -i -display-columns 1 \
-        -theme-str "entry { placeholder: \"📂 ${category}\";} ${rofi_position} ${r_override}" \
-        -theme-str "${font_override}" \
-        -theme "$(rofi_resolve_theme clipboard)" -theme-str "${_rofi_opacity}" \
-        -no-custom)
       ;;
     *)
-      selected=$(cat "${temp_category}" | rofi -dmenu -i -display-columns 1 \
-        -theme-str "entry { placeholder: \"📂 ${category}\";} ${rofi_position} ${r_override}" \
-        -theme-str "${font_override}" \
-        -theme "$(rofi_resolve_theme "${style_type:-clipboard}")" -theme-str "${_rofi_opacity}" \
-        -no-custom)
+      theme_name="${style_type:-clipboard}"
       ;;
   esac
+
+  selected=$(cat "${temp_category}" | rofi -dmenu -i -display-columns 1 \
+    "${category_rofi_args[@]}" \
+    -theme-str "entry { placeholder: \"📂 ${category}\";} ${rofi_position} ${r_override}" \
+    -theme-str "${font_override}" \
+    -theme "$(rofi_resolve_theme "${theme_name}")" -theme-str "${_rofi_opacity}" \
+    -no-custom)
 
   rm -f "${temp_category}"
   echo "${selected}"
@@ -222,10 +205,7 @@ show_category_menu() {
 main() {
   parse_arguments "$@"
 
-  if [[ ! -f "${recent_data}" ]]; then
-    mkdir -p "$(dirname "${recent_data}")"
-    touch "${recent_data}"
-  fi
+  rofi_picker_ensure_data_file "${recent_data}"
 
   setup_rofi_config
 

@@ -109,37 +109,6 @@ _apply_hypr_variables() {
   NOTIFICATION_FONT=${__NOTIFICATION_FONT:-$NOTIFICATION_FONT}
 }
 
-# Escape special regex characters for sed/grep
-escape_regex() {
-  printf '%s' "$1" | sed 's/[][\/.^$*]/\\&/g'
-}
-
-ini_group_has_key() {
-  local config_file="$1"
-  local group="$2"
-  local key="$3"
-
-  awk -F'=' -v group="${group}" -v key="${key}" '
-    BEGIN { in_group = 0; found = 0 }
-    /^[[:space:]]*\[/ {
-      line = $0
-      sub(/^[[:space:]]*\[/, "", line)
-      sub(/\][[:space:]]*$/, "", line)
-      in_group = (line == group)
-      next
-    }
-    in_group {
-      lhs = $1
-      gsub(/^[[:space:]]+|[[:space:]]+$/, "", lhs)
-      if (lhs == key) {
-        found = 1
-        exit
-      }
-    }
-    END { exit found ? 0 : 1 }
-  ' "${config_file}"
-}
-
 # Batch write INI-style config files (single sed pass per file)
 # Usage: ini_write_batch "file" "group1:key1=value1" "group2:key2=value2" ...
 ini_write_batch() {

@@ -29,16 +29,8 @@ clean_emoji_file() {
 
 save_recent_entry() {
   local emoji_line="$1"
-  local recent_dir=""
-  local tmp_file=""
   emoji_line=$(printf "%s" "${emoji_line}" | sed 's/\\([\U0001F3FB-\U0001F3FF]\\)//g')
-  mkdir -p "$(dirname "${recent_data}")"
-  recent_dir="$(dirname "${recent_data}")"
-  tmp_file="$(mktemp "${recent_dir}/.emoji_recent.XXXXXX")"
-  {
-    echo "${emoji_line}"
-    cat "${recent_data}" 2>/dev/null
-  } | awk '!seen[$0]++' | head -50 >"${tmp_file}" && mv "${tmp_file}" "${recent_data}"
+  rofi_picker_save_recent_entry "${recent_data}" "emoji_recent" "${emoji_line}" 50
 }
 
 toggle_favorite() {
@@ -73,14 +65,10 @@ setup_rofi_config() {
   [[ "${emoji_window_width_em}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || emoji_window_width_em="40.5"
   [[ "${emoji_window_height_em}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || emoji_window_height_em="30"
 
-  local emoji_window_width_px
-  emoji_window_width_px="$(rofi_length_em_to_px "${emoji_window_width_em}" "${font_name}" "${font_scale}" 2>/dev/null || true)"
-  [[ "${emoji_window_width_px}" =~ ^[0-9]+$ ]] || emoji_window_width_px=$((81 * font_scale))
-  local emoji_window_height_px
-  emoji_window_height_px="$(rofi_length_em_to_px "${emoji_window_height_em}" "${font_name}" "${font_scale}" 2>/dev/null || true)"
-  [[ "${emoji_window_height_px}" =~ ^[0-9]+$ ]] || emoji_window_height_px=$((60 * font_scale))
-
-  rofi_position=$(get_rofi_pos "${emoji_window_width_px}" "${emoji_window_height_px}")
+  rofi_picker_compute_window_position \
+    rofi_position "${font_name}" "${font_scale}" \
+    "${emoji_window_width_em}" "${emoji_window_height_em}" \
+    $((81 * font_scale)) $((60 * font_scale))
 }
 
 emoji_menu_base_opts() {
@@ -197,37 +185,16 @@ get_emoji_selection() {
 }
 
 parse_arguments() {
-  while (($# > 0)); do
-    case $1 in
-      --style | -s)
-        if (($# > 1)); then
-          emoji_style="$2"
-          shift
-        else
-          print_log +y "[warn] " "--style needs argument"
-          emoji_style="clipboard"
-          shift
-        fi
-        ;;
-      --rasi)
-        [[ -z ${2} ]] && print_log +r "[error] " +y "--rasi requires an file.rasi config file" && exit 1
-        use_rofile=${2}
-        shift
-        ;;
-      -*)
-        cat <<HELP
+  local usage_text
+  usage_text="$(cat <<'HELP'
 Usage:
 --style [1 | 2]         Change Emoji style
                         Add 'emoji_style=[1|2]' variable in ~/.config/hypr/config.toml'
                             1 = list
                             2 = grid
 HELP
-
-        exit 0
-        ;;
-    esac
-    shift
-  done
+)"
+  rofi_picker_parse_style_args emoji_style use_rofile "clipboard" "${usage_text}" "$@"
 }
 
 # Check if emoji is multi-person and show dual skin tone selector

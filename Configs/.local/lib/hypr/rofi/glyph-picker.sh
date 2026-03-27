@@ -47,30 +47,7 @@ refresh_recent_entries() {
 
 save_recent_entry() {
   local glyph_line="$1"
-  local recent_dir=""
-  local tmp_file=""
-
-  recent_dir="$(dirname "${recent_data}")"
-  mkdir -p "${recent_dir}"
-  tmp_file="$(mktemp "${recent_dir}/.glyph_recent.XXXXXX")" || return 1
-
-  {
-    printf "%s\n" "${glyph_line}"
-    cat "${recent_data}" 2>/dev/null
-  } >"${tmp_file}" || {
-    rm -f "${tmp_file}"
-    return 1
-  }
-
-  if ! refresh_recent_entries "${tmp_file}"; then
-    rm -f "${tmp_file}"
-    return 1
-  fi
-
-  if ! mv "${tmp_file}" "${recent_data}"; then
-    rm -f "${tmp_file}"
-    return 1
-  fi
+  rofi_picker_save_recent_entry "${recent_data}" "glyph_recent" "${glyph_line}" 50 refresh_recent_entries
 }
 
 setup_rofi_config() {
@@ -103,12 +80,10 @@ setup_rofi_config() {
   glyph_window_width="${ROFI_GLYPH_WIDTH_EM:-${default_width}}"
   [[ "${glyph_window_width}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || glyph_window_width=${default_width}
   local glyph_window_height_em=$((glyph_lines * 2 + 8))
-  local glyph_window_width_px
-  glyph_window_width_px="$(rofi_length_em_to_px "${glyph_window_width}" "${font_name}" "${font_scale}" 2>/dev/null || true)"
-  [[ "${glyph_window_width_px}" =~ ^[0-9]+$ ]] || glyph_window_width_px=$((default_width * font_scale * 2))
-  local glyph_window_height_px=$((glyph_window_height_em * font_scale * 2))
-
-  rofi_position=$(get_rofi_pos "${glyph_window_width_px}" "${glyph_window_height_px}")
+  rofi_picker_compute_window_position \
+    rofi_position "${font_name}" "${font_scale}" \
+    "${glyph_window_width}" "${glyph_window_height_em}" \
+    $((default_width * font_scale * 2)) $((glyph_window_height_em * font_scale * 2))
 
   rofi_args+=(
     "${ROFI_GLYPH_ARGS[@]}"
@@ -180,45 +155,21 @@ get_glyph_selection() {
 }
 
 parse_arguments() {
-  while (($# > 0)); do
-    case $1 in
-      --style | -s)
-        if (($# > 1)); then
-          glyph_style="$2"
-          shift
-        else
-          print_log +y "[warn] " "--style needs argument"
-          glyph_style="2"
-          shift
-        fi
-        ;;
-      --rasi)
-        [[ -z ${2} ]] && print_log +r "[error] " +y "--rasi requires a file.rasi config file" && exit 1
-        use_rofile=${2}
-        shift
-        ;;
-      -*)
-        cat <<HELP
+  local usage_text
+  usage_text="$(cat <<'HELP'
 Usage:
 --style [1 | 2]         Change Glyph picker style
                         Add 'glyph_style=[1|2]' variable in config
                             1 = list
                             2 = grid (default)
 HELP
-
-        exit 0
-        ;;
-    esac
-    shift
-  done
+)"
+  rofi_picker_parse_style_args glyph_style use_rofile "2" "${usage_text}" "$@"
 }
 
 main() {
   parse_arguments "$@"
-  if [[ ! -f "${recent_data}" ]]; then
-    mkdir -p "$(dirname "${recent_data}")"
-    touch "${recent_data}"
-  fi
+  rofi_picker_ensure_data_file "${recent_data}"
   refresh_recent_entries "${recent_data}"
 
   setup_rofi_config

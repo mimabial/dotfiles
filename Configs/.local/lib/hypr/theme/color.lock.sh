@@ -44,12 +44,15 @@ color_lock_acquire_theme_update() {
 
   exec {THEME_UPDATE_LOCK_FD}>"${THEME_UPDATE_LOCK}"
   flock "${THEME_UPDATE_LOCK_FD}"
-  lock_tmp="${THEME_UPDATE_META}.tmp.$$"
+  lock_tmp="$(mktemp "$(dirname "${THEME_UPDATE_META}")/.$(basename "${THEME_UPDATE_META}").XXXXXX")" || return 1
   {
     printf 'pid=%s\n' "$$"
     printf 'started=%s\n' "$(date +%s)"
     printf 'cmd=%s\n' "${BASH_SOURCE[0]##*/}"
-  } >"${lock_tmp}" && mv -f "${lock_tmp}" "${THEME_UPDATE_META}"
+  } >"${lock_tmp}" && mv -f "${lock_tmp}" "${THEME_UPDATE_META}" || {
+    rm -f "${lock_tmp}" 2>/dev/null || true
+    return 1
+  }
   THEME_UPDATE_LOCK_OWNED=1
 }
 

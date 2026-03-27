@@ -4,14 +4,6 @@
 
 source "$(command -v hyprshell)" || exit 1
 
-sed_escape_replacement() {
-    local value="$1"
-    value="${value//\\/\\\\}"
-    value="${value//&/\\&}"
-    value="${value//|/\\|}"
-    printf '%s' "${value}"
-}
-
 WAL_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/wal"
 hash_file="${XDG_RUNTIME_DIR:-/tmp}/wal-kvantum-hash"
 PYWAL_KVANTUM_DIR="${HOME}/.config/Kvantum/pywal16"

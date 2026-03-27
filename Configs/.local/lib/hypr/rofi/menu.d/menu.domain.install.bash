@@ -1,11 +1,33 @@
 #!/usr/bin/env bash
 
 install() {
-  present_terminal "echo 'Installing $1...'; sudo pacman -S --noconfirm $2"
+  local name="$1"
+  local package_list="$2"
+  local -a packages=()
+  read -r -a packages <<<"${package_list}"
+  present_terminal -- bash -lc '
+    name="$1"
+    shift
+    printf "Installing %s...\n" "$name"
+    exec sudo pacman -S --noconfirm "$@"
+  ' _ "${name}" "${packages[@]}"
 }
 
 install_and_launch() {
-  present_terminal "echo 'Installing $1...'; sudo pacman -S --noconfirm $2 && setsid gtk-launch $3"
+  local name="$1"
+  local package_list="$2"
+  local desktop_id="$3"
+  local -a packages=()
+  read -r -a packages <<<"${package_list}"
+  present_terminal -- bash -lc '
+    name="$1"
+    desktop_id="$2"
+    shift 2
+    printf "Installing %s...\n" "$name"
+    if sudo pacman -S --noconfirm "$@"; then
+      setsid gtk-launch "$desktop_id"
+    fi
+  ' _ "${name}" "${desktop_id}" "${packages[@]}"
 }
 
 get_aur_helper() {
@@ -21,17 +43,41 @@ get_aur_helper() {
 aur_install() {
   local aur_helper=""
   aur_helper="$(get_aur_helper)"
-  present_terminal "echo 'Installing $1 from AUR...'; $aur_helper -S --noconfirm $2"
+  local name="$1"
+  local package_list="$2"
+  local -a packages=()
+  read -r -a packages <<<"${package_list}"
+  present_terminal -- bash -lc '
+    name="$1"
+    aur_helper="$2"
+    shift 2
+    printf "Installing %s from AUR...\n" "$name"
+    exec "$aur_helper" -S --noconfirm "$@"
+  ' _ "${name}" "${aur_helper}" "${packages[@]}"
 }
 
 aur_install_and_launch() {
   local aur_helper=""
   aur_helper="$(get_aur_helper)"
-  present_terminal "echo 'Installing $1 from AUR...'; $aur_helper -S --noconfirm $2 && setsid gtk-launch $3"
+  local name="$1"
+  local package_list="$2"
+  local desktop_id="$3"
+  local -a packages=()
+  read -r -a packages <<<"${package_list}"
+  present_terminal -- bash -lc '
+    name="$1"
+    aur_helper="$2"
+    desktop_id="$3"
+    shift 3
+    printf "Installing %s from AUR...\n" "$name"
+    if "$aur_helper" -S --noconfirm "$@"; then
+      setsid gtk-launch "$desktop_id"
+    fi
+  ' _ "${name}" "${aur_helper}" "${desktop_id}" "${packages[@]}"
 }
 
 run_dev_env_install() {
-  present_terminal "hyprshell install/dev-env.sh $1"
+  present_terminal -- hyprshell install/dev-env.sh "$1"
 }
 
 menu_register_domain_install() {

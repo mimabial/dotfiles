@@ -38,6 +38,7 @@ from auto_theme_support import (
     resolve_hyprshell,
     resolve_wallpaper,
     save_state,
+    set_state_value,
     state_config_file,
     state_home,
     watchdog_interval_seconds,
@@ -225,26 +226,9 @@ class AutoThemeDaemon:
 
     def _apply_hyprland(self, mode: Literal["light", "dark"]):
         try:
-            staterc = state_home() / "hypr" / "staterc"
-            staterc.parent.mkdir(parents=True, exist_ok=True)
             staterc_values = read_staterc()
-            lines = staterc.read_text().splitlines() if staterc.exists() else []
-
-            updated = False
-            for index, line in enumerate(lines):
-                if line.startswith("BACKGROUND_MODE="):
-                    lines[index] = f'BACKGROUND_MODE="{mode}"'
-                    updated = True
-                    break
-            if not updated:
-                lines.append(f'BACKGROUND_MODE="{mode}"')
-            staterc.write_text("\n".join(lines) + "\n")
-
-            color_variant_file = state_home() / "hypr" / "color_variant"
-            color_variant_file.parent.mkdir(parents=True, exist_ok=True)
-            current_color_variant = color_variant_file.read_text().strip() if color_variant_file.exists() else ""
-            if current_color_variant != mode:
-                color_variant_file.write_text(f"{mode}\n")
+            set_state_value("BACKGROUND_MODE", mode, "staterc")
+            set_state_value("", mode, "color_variant")
 
             wallpaper = resolve_wallpaper(staterc_values)
             if not wallpaper or not wallpaper.exists():
