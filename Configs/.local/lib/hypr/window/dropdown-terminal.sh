@@ -7,5 +7,5 @@ if hyprctl clients -j | jq -e '.[] | select(.class=="dropdown-terminal")' >/dev/
 else
     # Terminal doesn't exist, spawn it on the special workspace directly
     # The window rule will place it there automatically and it will be focused
-    kitty --class dropdown-terminal
+    kitty --class dropdown-terminal --working-directory "$(hyprshell terminal-cwd.sh)"
 fi

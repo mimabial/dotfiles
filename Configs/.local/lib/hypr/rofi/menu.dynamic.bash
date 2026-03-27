@@ -233,7 +233,9 @@ show_search_all_menu() {
 
   menu_collect_search_entries main search_labels search_actions
   options="$(printf '%s\n' "${search_labels[@]}")"
-  width_override="$(rofi_theme_width_multiplier_override menutree 2 590px 2>/dev/null || true)"
+  width_override="$(
+    rofi_theme_width_multiplier_override menutree "${ROFI_MENU_SEARCH_WIDTH_MULTIPLIER:-2.2}" 650px 2>/dev/null || true
+  )"
   selection="$(menu "Search All" "${options}" "" "${width_override}")"
 
   if [[ -z "${selection}" || "${selection}" == "CNCLD" ]]; then

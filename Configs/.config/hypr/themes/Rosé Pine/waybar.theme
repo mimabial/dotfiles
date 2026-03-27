@@ -2,11 +2,11 @@ $HOME/.config/waybar/theme.css
 
 @define-color bg #1f1d2e; /* surface */
 @define-color fg #ebbcba;
-@define-color br #9ccfd8; /* overlay */
+@define-color br #31748f; /* iris */
 
 @define-color alt_bg #26233a;
 @define-color alt_fg #ebbcba;
-@define-color alt_br #31748f; /* iris */
+@define-color alt_br #c4a7e7; /* overlay */
 
 @define-color act_bg #26233a;
 @define-color act_fg #9ccfd8;

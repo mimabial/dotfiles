@@ -1,0 +1,15 @@
+#!/usr/bin/env zsh
+set -euo pipefail
+
+plugins_dir="${XDG_DATA_HOME:-$HOME/.local/share}/tmux/plugins"
+
+refresh_plugin() {
+  local plugin_script="$1"
+  [[ -x "$plugin_script" ]] || return 0
+  "$plugin_script" >/dev/null 2>&1
+}
+
+refresh_plugin "$plugins_dir/tmux-battery/battery.tmux"
+refresh_plugin "$plugins_dir/tmux-pomodoro-plus/pomodoro.tmux"
+refresh_plugin "$plugins_dir/tmux-cpu/cpu.tmux"
+refresh_plugin "$plugins_dir/tmux-mode-indicator/mode_indicator.tmux"

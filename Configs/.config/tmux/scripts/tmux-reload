@@ -1,0 +1,8 @@
+#!/usr/bin/env zsh
+set -euo pipefail
+
+config_root="${XDG_CONFIG_HOME:-$HOME/.config}/tmux"
+
+tmux source-file "$config_root/tmux.conf"
+"$config_root/scripts/tmux-refresh-status-plugins" >/dev/null 2>&1 || true
+tmux refresh-client -S

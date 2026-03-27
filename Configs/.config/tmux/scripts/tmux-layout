@@ -1,0 +1,53 @@
+#!/usr/bin/env zsh
+set -euo pipefail
+
+layouts_dir="${XDG_CONFIG_HOME:-$HOME/.config}/tmux/layouts"
+
+list_layouts() {
+  local file
+  for file in "$layouts_dir"/*.zsh; do
+    [[ -e "$file" ]] || return 0
+    [[ "$(basename "$file")" == _* ]] && continue
+    basename "${file%.zsh}"
+  done
+}
+
+run_layout() {
+  local layout script
+
+  layout="$1"
+  script="$layouts_dir/$layout.zsh"
+  [[ -x "$script" ]] || {
+    print -u2 "Unknown tmux layout: $layout"
+    return 1
+  }
+  exec "$script"
+}
+
+select_layout() {
+  command -v fzf >/dev/null 2>&1 || {
+    print -u2 "fzf is required for --select."
+    return 1
+  }
+
+  local selected
+  selected="$(list_layouts | fzf --layout=reverse --prompt='tmux layout > ' --border --height=100%)" || return 1
+  [[ -n "$selected" ]] || return 1
+  run_layout "$selected"
+}
+
+case "${1:-}" in
+  --list)
+    list_layouts
+    ;;
+  --select)
+    select_layout
+    ;;
+  '')
+    print -u2 "Usage: tmux-layout [--list|--select|layout-name]"
+    exit 1
+    ;;
+  *)
+    run_layout "$1"
+    ;;
+esac

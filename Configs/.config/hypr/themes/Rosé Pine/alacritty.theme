@@ -1,4 +1,4 @@
-$HOME/.cache/theme/colors-alacritty.toml
+$HOME/.config/alacritty/theme.toml
 
 [colors.primary]
 foreground = "#e0def4"
@@ -31,4 +31,3 @@ blue = "#9ccfd8"
 magenta = "#c4a7e7"
 cyan = "#ebbcba"
 white = "#e0def4"
-
