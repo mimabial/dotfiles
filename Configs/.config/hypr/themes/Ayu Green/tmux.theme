@@ -3,9 +3,7 @@ $HOME/.config/tmux/theme.conf
 # Tmux theme for Ayu Mirage
 # Auto-generated from kitty.theme colors
 
-# ============================================================================
 # Standard 16 color palette
-# ============================================================================
 set -g @color0 "#191e2a"
 set -g @color1 "#ed8274"
 set -g @color2 "#a6cc70"
@@ -23,9 +21,7 @@ set -g @color13 "#d4bfff"
 set -g @color14 "#95e6cb"
 set -g @color15 "#ffffff"
 
-# ============================================================================
 # Semantic color aliases
-# ============================================================================
 set -g @theme_bg "#1F2430"
 set -g @theme_fg "#FFFFFF"
 set -g @theme_accent "#6dcbfa"
@@ -39,10 +35,8 @@ set -g @theme_blue "#6dcbfa"
 set -g @theme_magenta "#cfbafa"
 set -g @theme_cyan "#90e1c6"
 
-# ============================================================================
 # Tmux color settings
-# ============================================================================
-set -g status-style "bg=#1F2430,fg=#FFFFFF"
+set -g status-style "bg=default,fg=#FFFFFF"
 set -g message-style "bg=#1F2430,fg=#6dcbfa"
 set -g message-command-style "bg=#1F2430,fg=#6dcbfa"
 set -g pane-border-style "fg=#686868"

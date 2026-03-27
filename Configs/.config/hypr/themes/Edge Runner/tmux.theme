@@ -3,9 +3,7 @@ $HOME/.config/tmux/theme.conf
 # Tmux theme for Edge Runner
 # Auto-generated from kitty.theme colors
 
-# ============================================================================
 # Standard 16 color palette
-# ============================================================================
 set -g @color0 "#1F2229"
 set -g @color1 "#D62246"
 set -g @color2 "#4DBD4F"
@@ -23,9 +21,7 @@ set -g @color13 "#564873"
 set -g @color14 "#37EBF3"
 set -g @color15 "#FFFFFF"
 
-# ============================================================================
 # Semantic color aliases
-# ============================================================================
 set -g @theme_bg "#000000"
 set -g @theme_fg "#FDF500"
 set -g @theme_accent "#F29C6B"
@@ -39,10 +35,8 @@ set -g @theme_blue "#F29C6B"
 set -g @theme_magenta "#A56DF2"
 set -g @theme_cyan "#2CF6B3"
 
-# ============================================================================
 # Tmux color settings
-# ============================================================================
-set -g status-style "bg=#000000,fg=#FDF500"
+set -g status-style "bg=default,fg=#FDF500"
 set -g message-style "bg=#000000,fg=#F29C6B"
 set -g message-command-style "bg=#000000,fg=#F29C6B"
 set -g pane-border-style "fg=#1B1C22"

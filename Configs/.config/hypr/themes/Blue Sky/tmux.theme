@@ -3,9 +3,7 @@ $HOME/.config/tmux/theme.conf
 # Tmux theme for Blue Sky
 # Auto-generated from kitty.theme colors
 
-# ============================================================================
 # Standard 16 color palette
-# ============================================================================
 set -g @color0 "#294052"
 set -g @color1 "#CCE4FF"
 set -g @color2 "#CCE5FF"
@@ -23,9 +21,7 @@ set -g @color13 "#9ABEE6"
 set -g @color14 "#9ABEE6"
 set -g @color15 "#AACBF0"
 
-# ============================================================================
 # Semantic color aliases
-# ============================================================================
 set -g @theme_bg "#122D41"
 set -g @theme_fg "#FFFFFF"
 set -g @theme_accent "#7F9FC2"
@@ -39,10 +35,8 @@ set -g @theme_blue "#9AC5E6"
 set -g @theme_magenta "#9ABEE6"
 set -g @theme_cyan "#9ABEE6"
 
-# ============================================================================
 # Tmux color settings
-# ============================================================================
-set -g status-style "bg=#122D41,fg=#FFFFFF"
+set -g status-style "bg=default,fg=#FFFFFF"
 set -g message-style "bg=#122D41,fg=#7F9FC2"
 set -g message-command-style "bg=#122D41,fg=#7F9FC2"
 set -g pane-border-style "fg=#57778F"

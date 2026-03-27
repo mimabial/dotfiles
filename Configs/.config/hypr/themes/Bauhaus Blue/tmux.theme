@@ -3,9 +3,7 @@ $HOME/.config/tmux/theme.conf
 # Tmux theme for Bauhaus 80
 # Auto-generated from kitty.theme colors
 
-# ============================================================================
 # Standard 16 color palette
-# ============================================================================
 set -g @color0 "#666666"
 set -g @color1 "#D0021B"
 set -g @color2 "#00A651"
@@ -23,9 +21,7 @@ set -g @color13 "#E1261C"
 set -g @color14 "#0066CC"
 set -g @color15 "#A4A4A4"
 
-# ============================================================================
 # Semantic color aliases
-# ============================================================================
 set -g @theme_bg "#fdf6e3"
 set -g @theme_fg "#000000"
 set -g @theme_accent "#005CAB"
@@ -39,10 +35,8 @@ set -g @theme_blue "#005CAB"
 set -g @theme_magenta "#D0021B"
 set -g @theme_cyan "#005CAB"
 
-# ============================================================================
 # Tmux color settings
-# ============================================================================
-set -g status-style "bg=#fdf6e3,fg=#000000"
+set -g status-style "bg=default,fg=#000000"
 set -g message-style "bg=#fdf6e3,fg=#005CAB"
 set -g message-command-style "bg=#fdf6e3,fg=#005CAB"
 set -g pane-border-style "fg=#839496"

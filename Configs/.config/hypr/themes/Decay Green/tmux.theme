@@ -3,9 +3,7 @@ $HOME/.config/tmux/theme.conf
 # Tmux theme for Decay Green
 # Auto-generated from kitty.theme colors
 
-# ============================================================================
 # Standard 16 color palette
-# ============================================================================
 set -g @color0 "#151720"
 set -g @color1 "#dd6777"
 set -g @color2 "#86aaec"
@@ -23,9 +21,7 @@ set -g @color13 "#c79bf0"
 set -g @color14 "#98d3ee"
 set -g @color15 "#d0d3d8"
 
-# ============================================================================
 # Semantic color aliases
-# ============================================================================
 set -g @theme_bg "#0d0f18"
 set -g @theme_fg "#a5b6cf"
 set -g @theme_accent "#90ceaa"
@@ -39,10 +35,8 @@ set -g @theme_blue "#90ceaa"
 set -g @theme_magenta "#c296eb"
 set -g @theme_cyan "#93cee9"
 
-# ============================================================================
 # Tmux color settings
-# ============================================================================
-set -g status-style "bg=#0d0f18,fg=#a5b6cf"
+set -g status-style "bg=default,fg=#a5b6cf"
 set -g message-style "bg=#0d0f18,fg=#90ceaa"
 set -g message-command-style "bg=#0d0f18,fg=#90ceaa"
 set -g pane-border-style "fg=#1c1e27"

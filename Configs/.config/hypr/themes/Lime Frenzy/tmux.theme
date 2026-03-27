@@ -3,9 +3,7 @@ $HOME/.config/tmux/theme.conf
 # Tmux theme for Lime Frenzy
 # Auto-generated from kitty.theme colors
 
-# ============================================================================
 # Standard 16 color palette
-# ============================================================================
 set -g @color0 "#1c1e1b"
 set -g @color1 "#8aff8a"
 set -g @color2 "#fcff31"
@@ -23,9 +21,7 @@ set -g @color13 "#9AE6E6"
 set -g @color14 "#9BE6E6"
 set -g @color15 "#fff8f0"
 
-# ============================================================================
 # Semantic color aliases
-# ============================================================================
 set -g @theme_bg "#252623"
 set -g @theme_fg "#ece1c0"
 set -g @theme_accent "#12b812"
@@ -39,10 +35,8 @@ set -g @theme_blue "#12b812"
 set -g @theme_magenta "#9AE6E6"
 set -g @theme_cyan "#9BE6E6"
 
-# ============================================================================
 # Tmux color settings
-# ============================================================================
-set -g status-style "bg=#252623,fg=#ece1c0"
+set -g status-style "bg=default,fg=#ece1c0"
 set -g message-style "bg=#252623,fg=#12b812"
 set -g message-command-style "bg=#252623,fg=#12b812"
 set -g pane-border-style "fg=#5b5e5a"

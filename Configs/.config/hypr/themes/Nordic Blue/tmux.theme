@@ -3,9 +3,7 @@ $HOME/.config/tmux/theme.conf
 # Tmux theme for Nordic Blue
 # Auto-generated from kitty.theme colors
 
-# ============================================================================
 # Standard 16 color palette
-# ============================================================================
 set -g @color0 "#3B4252"
 set -g @color1 "#BF616A"
 set -g @color2 "#A3BE8C"
@@ -23,9 +21,7 @@ set -g @color13 "#B48EAD"
 set -g @color14 "#8FBCBB"
 set -g @color15 "#ECEFF4"
 
-# ============================================================================
 # Semantic color aliases
-# ============================================================================
 set -g @theme_bg "#2E3440"
 set -g @theme_fg "#D8DEE9"
 set -g @theme_accent "#81A1C1"
@@ -39,10 +35,8 @@ set -g @theme_blue "#81A1C1"
 set -g @theme_magenta "#B48EAD"
 set -g @theme_cyan "#88C0D0"
 
-# ============================================================================
 # Tmux color settings
-# ============================================================================
-set -g status-style "bg=#2E3440,fg=#D8DEE9"
+set -g status-style "bg=default,fg=#D8DEE9"
 set -g message-style "bg=#2E3440,fg=#81A1C1"
 set -g message-command-style "bg=#2E3440,fg=#81A1C1"
 set -g pane-border-style "fg=#4C566A"

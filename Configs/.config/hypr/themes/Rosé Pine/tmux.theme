@@ -3,9 +3,7 @@ $HOME/.config/tmux/theme.conf
 # Tmux theme for Rosé Pine
 # Auto-generated from kitty.theme colors
 
-# ============================================================================
 # Standard 16 color palette
-# ============================================================================
 set -g @color0 "#26233a"
 set -g @color1 "#eb6f92"
 set -g @color2 "#31748f"
@@ -23,9 +21,7 @@ set -g @color13 "#c4a7e7"
 set -g @color14 "#ebbcba"
 set -g @color15 "#e0def4"
 
-# ============================================================================
 # Semantic color aliases
-# ============================================================================
 set -g @theme_bg "#191724"
 set -g @theme_fg "#e0def4"
 set -g @theme_accent "#9ccfd8"
@@ -39,10 +35,8 @@ set -g @theme_blue "#9ccfd8"
 set -g @theme_magenta "#c4a7e7"
 set -g @theme_cyan "#ebbcba"
 
-# ============================================================================
 # Tmux color settings
-# ============================================================================
-set -g status-style "bg=#191724,fg=#e0def4"
+set -g status-style "bg=default,fg=#e0def4"
 set -g message-style "bg=#191724,fg=#9ccfd8"
 set -g message-command-style "bg=#191724,fg=#9ccfd8"
 set -g pane-border-style "fg=#6e6a86"

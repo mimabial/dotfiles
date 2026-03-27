@@ -3,9 +3,7 @@ $HOME/.config/tmux/theme.conf
 # Tmux theme for Red Stone
 # Auto-generated from kitty.theme colors
 
-# ============================================================================
 # Standard 16 color palette
-# ============================================================================
 set -g @color0 "#1a1815"
 set -g @color1 "#c15959"
 set -g @color2 "#d4896b"
@@ -23,9 +21,7 @@ set -g @color13 "#c98b82"
 set -g @color14 "#93b4b2"
 set -g @color15 "#dfd2c4"
 
-# ============================================================================
 # Semantic color aliases
-# ============================================================================
 set -g @theme_bg "#121212"
 set -g @theme_fg "#c9b9a8"
 set -g @theme_accent "#7293a8"
@@ -39,10 +35,8 @@ set -g @theme_blue "#7293a8"
 set -g @theme_magenta "#b5746b"
 set -g @theme_cyan "#7fa09e"
 
-# ============================================================================
 # Tmux color settings
-# ============================================================================
-set -g status-style "bg=#121212,fg=#c9b9a8"
+set -g status-style "bg=default,fg=#c9b9a8"
 set -g message-style "bg=#121212,fg=#7293a8"
 set -g message-command-style "bg=#121212,fg=#7293a8"
 set -g pane-border-style "fg=#4a4541"

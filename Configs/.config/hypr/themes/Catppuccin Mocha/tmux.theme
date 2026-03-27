@@ -3,9 +3,7 @@ $HOME/.config/tmux/theme.conf
 # Tmux theme for Catppuccin Mocha
 # Auto-generated from kitty.theme colors
 
-# ============================================================================
 # Standard 16 color palette
-# ============================================================================
 set -g @color0 "#43465A"
 set -g @color1 "#F38BA8"
 set -g @color2 "#A6E3A1"
@@ -23,9 +21,7 @@ set -g @color13 "#F5C2E7"
 set -g @color14 "#94E2D5"
 set -g @color15 "#A1A8C9"
 
-# ============================================================================
 # Semantic color aliases
-# ============================================================================
 set -g @theme_bg "#1E1E2E"
 set -g @theme_fg "#CDD6F4"
 set -g @theme_accent "#87B0F9"
@@ -39,10 +35,8 @@ set -g @theme_blue "#87B0F9"
 set -g @theme_magenta "#F5C2E7"
 set -g @theme_cyan "#94E2D5"
 
-# ============================================================================
 # Tmux color settings
-# ============================================================================
-set -g status-style "bg=#1E1E2E,fg=#CDD6F4"
+set -g status-style "bg=default,fg=#CDD6F4"
 set -g message-style "bg=#1E1E2E,fg=#87B0F9"
 set -g message-command-style "bg=#1E1E2E,fg=#87B0F9"
 set -g pane-border-style "fg=#43465A"

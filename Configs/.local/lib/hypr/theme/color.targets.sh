@@ -46,6 +46,10 @@ process_theme_files() {
 
   print_log -sec "theme" -stat "processing" ".theme files from ${HYPR_THEME}"
 
+  if [[ -f "${HYPR_THEME_DIR}/tmux.theme" ]]; then
+    clear_theme_file "${HOME}/.config/tmux/colors.conf"
+  fi
+
   local -A requested_hooks=()
   local theme_file first_line theme_basename target_path hook_name
   local new_content new_hash old_hash

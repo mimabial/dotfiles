@@ -3,9 +3,7 @@ $HOME/.config/tmux/theme.conf
 # Tmux theme for Grukai
 # Auto-generated from kitty.theme colors
 
-# ============================================================================
 # Standard 16 color palette
-# ============================================================================
 set -g @color0 "#525229"
 set -g @color1 "#FFE4CC"
 set -g @color2 "#FFE1CC"
@@ -23,9 +21,7 @@ set -g @color13 "#E6B99A"
 set -g @color14 "#E6B99A"
 set -g @color15 "#F0CBAA"
 
-# ============================================================================
 # Semantic color aliases
-# ============================================================================
 set -g @theme_bg "#131311"
 set -g @theme_fg "#FFFFFF"
 set -g @theme_accent "#E6E69A"
@@ -39,10 +35,8 @@ set -g @theme_blue "#E6E69A"
 set -g @theme_magenta "#E6B99A"
 set -g @theme_cyan "#E6B99A"
 
-# ============================================================================
 # Tmux color settings
-# ============================================================================
-set -g status-style "bg=#131311,fg=#FFFFFF"
+set -g status-style "bg=default,fg=#FFFFFF"
 set -g message-style "bg=#131311,fg=#E6E69A"
 set -g message-command-style "bg=#131311,fg=#E6E69A"
 set -g pane-border-style "fg=#8F8F57"

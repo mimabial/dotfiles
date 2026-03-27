@@ -68,12 +68,7 @@
       "transition-duration": 500,
       "transition-left-to-right": true
     },
-    "modules": [
-      "custom/weather",
-      "custom/weather#minmax",
-      "custom/weather#sunrise",
-      "custom/weather#sunset"
-    ]
+    "modules": ["custom/weather", "custom/weather#minmax"]
   },
   "group/mark": {
     "orientation": "inherit",

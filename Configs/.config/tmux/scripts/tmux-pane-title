@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cmd="${1:-}"
+
+case "$cmd" in
+  nvim | vim | vi | view)
+    icon=""
+    label="nvim"
+    ;;
+  zsh | bash | fish | sh)
+    icon=""
+    label="$cmd"
+    ;;
+  ssh | mosh)
+    icon="󰣀"
+    label="$cmd"
+    ;;
+  lazygit | git)
+    icon="󰊢"
+    label="$cmd"
+    ;;
+  ranger | yazi | lf)
+    icon=""
+    label="$cmd"
+    ;;
+  htop | btop | top)
+    icon="󰓅"
+    label="$cmd"
+    ;;
+  python | python3 | ipython)
+    icon=""
+    label="$cmd"
+    ;;
+  node | nodejs | npm | pnpm | yarn | bun)
+    icon=""
+    label="$cmd"
+    ;;
+  cargo | rustc)
+    icon=""
+    label="$cmd"
+    ;;
+  docker | docker-compose | podman)
+    icon=""
+    label="$cmd"
+    ;;
+  tmux)
+    icon=""
+    label="$cmd"
+    ;;
+  "")
+    icon=""
+    label="shell"
+    ;;
+  *)
+    icon=""
+    label="$cmd"
+    ;;
+esac
+
+printf '%s %s\n' " $icon" "$label"

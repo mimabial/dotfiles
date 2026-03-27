@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+notes_dir="${XDG_STATE_HOME:-$HOME/.local/state}/tmux/notes"
+note_file="${notes_dir}/quick-note.md"
+editor="${VISUAL:-${EDITOR:-nvim}}"
+
+mkdir -p "$notes_dir"
+touch "$note_file"
+exec "$editor" "$note_file"

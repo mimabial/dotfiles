@@ -3,9 +3,7 @@ $HOME/.config/tmux/theme.conf
 # Tmux theme for Forest Green
 # Auto-generated from kitty.theme colors
 
-# ============================================================================
 # Standard 16 color palette
-# ============================================================================
 set -g @color0 "#3c474d"
 set -g @color1 "#e68183"
 set -g @color2 "#a7c080"
@@ -23,9 +21,7 @@ set -g @color13 "#d39bb6"
 set -g @color14 "#87c095"
 set -g @color15 "#868d80"
 
-# ============================================================================
 # Semantic color aliases
-# ============================================================================
 set -g @theme_bg "#323d43"
 set -g @theme_fg "#d8caac"
 set -g @theme_accent "#83b6af"
@@ -39,10 +35,8 @@ set -g @theme_blue "#83b6af"
 set -g @theme_magenta "#d39bb6"
 set -g @theme_cyan "#87c095"
 
-# ============================================================================
 # Tmux color settings
-# ============================================================================
-set -g status-style "bg=#323d43,fg=#d8caac"
+set -g status-style "bg=default,fg=#d8caac"
 set -g message-style "bg=#323d43,fg=#83b6af"
 set -g message-command-style "bg=#323d43,fg=#83b6af"
 set -g pane-border-style "fg=#868d80"

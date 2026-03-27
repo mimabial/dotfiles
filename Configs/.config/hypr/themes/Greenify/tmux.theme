@@ -3,9 +3,7 @@ $HOME/.config/tmux/theme.conf
 # Tmux theme for Green Lush
 # Auto-generated from kitty.theme colors
 
-# ============================================================================
 # Standard 16 color palette
-# ============================================================================
 set -g @color0 "#295252"
 set -g @color1 "#CCFFCC"
 set -g @color2 "#11b811"
@@ -23,9 +21,7 @@ set -g @color13 "#9AE6E6"
 set -g @color14 "#9BE6E6"
 set -g @color15 "#AAF0AA"
 
-# ============================================================================
 # Semantic color aliases
-# ============================================================================
 set -g @theme_bg "#0A1010"
 set -g @theme_fg "#FFFFFF"
 set -g @theme_accent "#12b812"
@@ -39,10 +35,8 @@ set -g @theme_blue "#12b812"
 set -g @theme_magenta "#9AE6E6"
 set -g @theme_cyan "#9BE6E6"
 
-# ============================================================================
 # Tmux color settings
-# ============================================================================
-set -g status-style "bg=#0A1010,fg=#FFFFFF"
+set -g status-style "bg=default,fg=#FFFFFF"
 set -g message-style "bg=#0A1010,fg=#12b812"
 set -g message-command-style "bg=#0A1010,fg=#12b812"
 set -g pane-border-style "fg=#578F8F"

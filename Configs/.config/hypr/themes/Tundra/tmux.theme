@@ -3,9 +3,7 @@ $HOME/.config/tmux/theme.conf
 # Tmux theme for Tundra
 # Auto-generated from kitty.theme colors
 
-# ============================================================================
 # Standard 16 color palette
-# ============================================================================
 set -g @color0 "#293a52"
 set -g @color1 "#ffddcc"
 set -g @color2 "#dfccff"
@@ -23,9 +21,7 @@ set -g @color13 "#b69ae6"
 set -g @color14 "#e69aad"
 set -g @color15 "#f0c1aa"
 
-# ============================================================================
 # Semantic color aliases
-# ============================================================================
 set -g @theme_bg "#132b4b"
 set -g @theme_fg "#ffffff"
 set -g @theme_accent "#9abae6"
@@ -39,10 +35,8 @@ set -g @theme_blue "#9abae6"
 set -g @theme_magenta "#b69ae6"
 set -g @theme_cyan "#e69aad"
 
-# ============================================================================
 # Tmux color settings
-# ============================================================================
-set -g status-style "bg=#132b4b,fg=#ffffff"
+set -g status-style "bg=default,fg=#ffffff"
 set -g message-style "bg=#132b4b,fg=#9abae6"
 set -g message-command-style "bg=#132b4b,fg=#9abae6"
 set -g pane-border-style "fg=#576f8f"

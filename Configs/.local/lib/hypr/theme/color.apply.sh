@@ -32,7 +32,6 @@ declare -a APP_THEMING_PIDS=()
 declare -a APP_THEMING_SCRIPTS=(
   "wal/wal.kvantum.sh"
   "wal/wal.gtk.sh"
-  "wal/wal.tmux.sh"
 )
 
 declare -a SECONDARY_THEMING_SCRIPTS=(

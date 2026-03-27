@@ -3,9 +3,7 @@ $HOME/.config/tmux/theme.conf
 # Tmux theme for Another World
 # Auto-generated from kitty.theme colors
 
-# ============================================================================
 # Standard 16 color palette
-# ============================================================================
 set -g @color0 "#03063c"
 set -g @color1 "#40E0D0"
 set -g @color2 "#abf157"
@@ -23,9 +21,7 @@ set -g @color13 "#fda4cc"
 set -g @color14 "#a4bc86"
 set -g @color15 "#f6ffec"
 
-# ============================================================================
 # Semantic color aliases
-# ============================================================================
 set -g @theme_bg "#2E3440"
 set -g @theme_fg "#eceffd"
 set -g @theme_accent "#78C6EB"
@@ -39,10 +35,8 @@ set -g @theme_blue "#78C6EB"
 set -g @theme_magenta "#DE3163"
 set -g @theme_cyan "#78C6EB"
 
-# ============================================================================
 # Tmux color settings
-# ============================================================================
-set -g status-style "bg=#2E3440,fg=#eceffd"
+set -g status-style "bg=default,fg=#eceffd"
 set -g message-style "bg=#2E3440,fg=#78C6EB"
 set -g message-command-style "bg=#2E3440,fg=#78C6EB"
 set -g pane-border-style "fg=#6c5a30"
