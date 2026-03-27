@@ -38,22 +38,35 @@ active_theme_metadata_file() {
   printf '%s\n' "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/theme.conf"
 }
 
-active_theme_metadata_value() {
+hypr_layered_value() {
   local key="$1"
-  local metadata_file
-  metadata_file="$(active_theme_metadata_file)"
-  [[ -r "${metadata_file}" ]] || return 1
+  local config_file value=""
 
-  awk -F= -v key="${key}" '
-    $0 ~ "^\\$" key "[[:space:]]*=" {
-      value = substr($0, index($0, "=") + 1)
-      gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
-      gsub(/^"/, "", value)
-      gsub(/"$/, "", value)
-      print value
-      exit
+  for config_file in \
+    "$(active_theme_metadata_file)" \
+    "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/userfonts.conf" \
+    "${XDG_DATA_HOME:-$HOME/.local/share}/hypr/variables.conf"
+  do
+    [[ -r "${config_file}" ]] || continue
+    value="$(
+      awk -F= -v key="${key}" '
+        $0 ~ "^\\$" key "[[:space:]]*=" {
+          value = substr($0, index($0, "=") + 1)
+          gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+          gsub(/^"/, "", value)
+          gsub(/"$/, "", value)
+          print value
+          exit
+        }
+      ' "${config_file}"
+    )"
+    [[ -n "${value}" ]] && {
+      printf '%s\n' "${value}"
+      return 0
     }
-  ' "${metadata_file}"
+  done
+
+  return 1
 }
 
 rewrite_if_changed() {
@@ -73,7 +86,7 @@ apply_kitty_theme_font_override() {
   local theme_font=""
   local tmp_file
 
-  theme_font="$(active_theme_metadata_value "TERM_FONT" 2>/dev/null || true)"
+  theme_font="$(hypr_layered_value "TERMINAL_FONT" 2>/dev/null || true)"
   tmp_file="$(mktemp "$(dirname "${target_file}")/.kitty-theme-font.XXXXXX")" || return 1
 
   awk '
@@ -93,7 +106,7 @@ apply_alacritty_theme_font_override() {
   local theme_font=""
   local tmp_file
 
-  theme_font="$(active_theme_metadata_value "TERM_FONT" 2>/dev/null || true)"
+  theme_font="$(hypr_layered_value "TERMINAL_FONT" 2>/dev/null || true)"
   tmp_file="$(mktemp "$(dirname "${target_file}")/.alacritty-theme-font.XXXXXX")" || return 1
 
   awk '

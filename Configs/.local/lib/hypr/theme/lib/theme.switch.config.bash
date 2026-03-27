@@ -49,19 +49,23 @@ load_hypr_variables() {
       -Q "\$CURSOR_THEME[string]" \
       -Q "\$CURSOR_SIZE" \
       -Q "\$FONT[string]" \
-      -Q "\$TERM_FONT[string]" \
+      -Q "\$TERMINAL_FONT[string]" \
       -Q "\$FONT_SIZE" \
       -Q "\$FONT_STYLE[string]" \
       -Q "\$DOCUMENT_FONT[string]" \
       -Q "\$DOCUMENT_FONT_SIZE" \
       -Q "\$MONOSPACE_FONT[string]" \
-      -Q "\$MONOSPACE_FONT_SIZE"
+      -Q "\$MONOSPACE_FONT_SIZE" \
+      -Q "\$BAR_FONT[string]" \
+      -Q "\$MENU_FONT[string]" \
+      -Q "\$NOTIFICATION_FONT[string]" \
+      -Q "\$GROUPBAR_FONT[string]"
   )"
 
   # SECURITY: Validate hyq output before sourcing (safe: only allow expected variable patterns)
   # Expected format: __VARIABLE_NAME="value" or __VARIABLE_NAME=number
   local validated_output=""
-  local allowed_vars="^__(GTK_THEME|ICON_THEME|CURSOR_THEME|CURSOR_SIZE|FONT|TERM_FONT|FONT_SIZE|FONT_STYLE|DOCUMENT_FONT|DOCUMENT_FONT_SIZE|MONOSPACE_FONT|MONOSPACE_FONT_SIZE|BAR_FONT|MENU_FONT|NOTIFICATION_FONT|TERMINAL)="
+  local allowed_vars="^__(GTK_THEME|ICON_THEME|CURSOR_THEME|CURSOR_SIZE|FONT|TERMINAL_FONT|FONT_SIZE|FONT_STYLE|DOCUMENT_FONT|DOCUMENT_FONT_SIZE|MONOSPACE_FONT|MONOSPACE_FONT_SIZE|BAR_FONT|MENU_FONT|NOTIFICATION_FONT|GROUPBAR_FONT|TERMINAL)="
   while IFS= read -r line; do
     # Skip empty lines
     [[ -z "${line}" ]] && continue
@@ -99,7 +103,7 @@ _apply_hypr_variables() {
   CURSOR_SIZE=${__CURSOR_SIZE:-$CURSOR_SIZE}
   TERMINAL=${__TERMINAL:-$TERMINAL}
   FONT=${__FONT:-$FONT}
-  TERM_FONT=${__TERM_FONT:-$TERM_FONT}
+  TERMINAL_FONT=${__TERMINAL_FONT:-$TERMINAL_FONT}
   FONT_STYLE=${__FONT_STYLE:-''} # using hyprland this should be empty by default
   FONT_SIZE=${__FONT_SIZE:-$FONT_SIZE}
   DOCUMENT_FONT=${__DOCUMENT_FONT:-$DOCUMENT_FONT}
@@ -109,6 +113,7 @@ _apply_hypr_variables() {
   BAR_FONT=${__BAR_FONT:-$BAR_FONT}
   MENU_FONT=${__MENU_FONT:-$MENU_FONT}
   NOTIFICATION_FONT=${__NOTIFICATION_FONT:-$NOTIFICATION_FONT}
+  GROUPBAR_FONT=${__GROUPBAR_FONT:-$GROUPBAR_FONT}
 }
 
 # Batch write INI-style config files (single sed pass per file)

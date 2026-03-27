@@ -54,6 +54,7 @@ Monospace font size: ${MONOSPACE_FONT_SIZE}
 Bar font: ${BAR_FONT}
 Menu font: ${MENU_FONT}
 Notification font: ${NOTIFICATION_FONT}
+Groupbar font: ${GROUPBAR_FONT}
 
 EOF
 }

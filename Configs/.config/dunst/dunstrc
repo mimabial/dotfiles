@@ -479,6 +479,7 @@ new_icon = skype
     icon_theme = "Tela-red-dark"
     corner_radius = 3
     icon_corner_radius = 3
+    font = Mononoki Nerd Font Mono 10
 
 [urgency_low]
     background = "#181B2380"

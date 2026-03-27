@@ -76,6 +76,37 @@ read_theme_var() {
   ' "${THEME_CONF}"
 }
 
+read_hypr_var() {
+  local key="$1"
+  local file=""
+  local value=""
+
+  for file in \
+    "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/theme.conf" \
+    "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/userfonts.conf" \
+    "${XDG_DATA_HOME:-$HOME/.local/share}/hypr/variables.conf"; do
+    [[ -f "${file}" ]] || continue
+    value="$(awk -v key="${key}" '
+      $0 ~ "^[[:space:]]*\\$" key "[[:space:]]*=" {
+        line = $0
+        sub("^[[:space:]]*\\$" key "[[:space:]]*=[[:space:]]*", "", line)
+        sub(/[[:space:]]*#.*/, "", line)
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", line)
+        gsub(/^'\''|'\''$/, "", line)
+        gsub(/^"|"$/, "", line)
+        print line
+        exit
+      }
+    ' "${file}")"
+    if [[ -n "${value}" ]]; then
+      printf '%s\n' "${value}"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
 pick_first() {
   local value
   for value in "$@"; do
@@ -108,6 +139,12 @@ with_alpha() {
 
 icon_theme="${ICON_THEME:-${GTK_ICON:-$(read_theme_var ICON_THEME)}}"
 icon_theme="${icon_theme:-Tela-circle-dracula}"
+notification_font="$(pick_first "${NOTIFICATION_FONT:-}" "$(read_hypr_var NOTIFICATION_FONT || true)" "$(read_hypr_var FONT || true)")"
+notification_font_size="$(pick_first "${FONT_SIZE:-}" "$(read_hypr_var FONT_SIZE || true)" "10")"
+dunst_font_line=""
+if [[ -n "${notification_font}" ]]; then
+  dunst_font_line="    font = ${notification_font} ${notification_font_size}"
+fi
 
 theme_update_in_progress=0
 [[ -e "${THEME_UPDATE_LOCK}" ]] && theme_update_in_progress=1
@@ -265,6 +302,7 @@ input_hash="$({
   [[ -f "${DUNST_BASE_CONF}" ]] && md5sum "${DUNST_BASE_CONF}" 2>/dev/null || true
   [[ -f "${DUNST_THEME}" ]] && md5sum "${DUNST_THEME}" 2>/dev/null || true
   printf '%s\n' "${icon_theme}" "${hypr_border}" "${gaps_in}" "${border_size}" "${origin}" "${offset_x}" "${offset_y}" \
+    "${notification_font}" "${notification_font_size}" \
     "${gap_size}" \
     "${bg_low_render}" "${fg_low_render}" "${bg_normal_render}" "${fg_normal_render}" \
     "${bg_category_render}" "${fg_category_render}" "${bg_critical_render}" "${fg_critical_render}" \
@@ -316,6 +354,7 @@ cat >>"${tmp_conf}" <<CONFIG
     icon_theme = "${icon_theme}"
     corner_radius = ${hypr_border}
     icon_corner_radius = ${hypr_border}
+${dunst_font_line}
 
 [urgency_low]
     background = "${bg_low_render}"

@@ -14,7 +14,7 @@ Usage: hyprshell fonts/font-set.sh <font-name>
 
 Sets monospace font system-wide across:
   • Environment variables (\$MONOSPACE_FONT)
-  • Theme terminal override (\$TERM_FONT)
+  • Theme terminal override (\$TERMINAL_FONT)
   • Kitty terminal
   • Alacritty terminal
   • Ghostty terminal (if installed)
@@ -116,9 +116,9 @@ if [[ -f "$VARIABLES_FILE" ]]; then
     sed -i "s|^\$MENU_FONT=.*|\$MENU_FONT=${FONT_NAME_SED}|" "$VARIABLES_FILE"
     UPDATED+=("Hypr \$MENU_FONT variable")
   fi
-  if grep -q '^\$TERM_FONT=' "$VARIABLES_FILE"; then
-    sed -i "s|^\$TERM_FONT=.*|\$TERM_FONT=${FONT_NAME_SED}|" "$VARIABLES_FILE"
-    UPDATED+=("Hypr \$TERM_FONT variable")
+  if grep -q '^\$TERMINAL_FONT=' "$VARIABLES_FILE"; then
+    sed -i "s|^\$TERMINAL_FONT=.*|\$TERMINAL_FONT=${FONT_NAME_SED}|" "$VARIABLES_FILE"
+    UPDATED+=("Hypr \$TERMINAL_FONT variable")
   fi
 
   # Also update theme.conf if it exists (for current session)
@@ -128,9 +128,9 @@ if [[ -f "$VARIABLES_FILE" ]]; then
       sed -i "s|^\$MONOSPACE_FONT=.*|\$MONOSPACE_FONT=${FONT_NAME_SED}|" "$THEME_CONF"
       UPDATED+=("Theme config \$MONOSPACE_FONT")
     fi
-    if grep -q '^\$TERM_FONT=' "$THEME_CONF"; then
-      sed -i "s|^\$TERM_FONT=.*|\$TERM_FONT=${FONT_NAME_SED}|" "$THEME_CONF"
-      UPDATED+=("Theme config \$TERM_FONT")
+    if grep -q '^\$TERMINAL_FONT=' "$THEME_CONF"; then
+      sed -i "s|^\$TERMINAL_FONT=.*|\$TERMINAL_FONT=${FONT_NAME_SED}|" "$THEME_CONF"
+      UPDATED+=("Theme config \$TERMINAL_FONT")
     fi
   fi
 fi
@@ -140,7 +140,7 @@ echo "📝 Updating persistent font overrides..."
 update_or_add_var "$USER_FONTS_FILE" "MONOSPACE_FONT" "$FONT_NAME"
 update_or_add_var "$USER_FONTS_FILE" "BAR_FONT" "$FONT_NAME"
 update_or_add_var "$USER_FONTS_FILE" "MENU_FONT" "$FONT_NAME"
-update_or_add_var "$USER_FONTS_FILE" "TERM_FONT" "$FONT_NAME"
+update_or_add_var "$USER_FONTS_FILE" "TERMINAL_FONT" "$FONT_NAME"
 UPDATED+=("Hypr user font overrides")
 
 # Keep UI consumers in sync (Waybar/Rofi)
@@ -242,7 +242,7 @@ fi
 
 echo ""
 echo "Note: Waybar and many Rofi themes use the UI font variables."
-echo "      This script updates \$BAR_FONT, \$MENU_FONT, and \$TERM_FONT to match the selected font."
+echo "      This script updates \$BAR_FONT, \$MENU_FONT, and \$TERMINAL_FONT to match the selected font."
 
 # Notify user
 if command -v dunstify >/dev/null 2>&1; then
