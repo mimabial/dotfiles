@@ -1,6 +1,13 @@
 #!/bin/bash
 
 LOG_FILE="${TMPDIR:-/tmp}/hypr-debug.log"
+redacted_log=""
+
+cleanup_redacted_log() {
+  local exit_code="${1:-$?}"
+  [[ -n "${redacted_log}" ]] && rm -f "${redacted_log}" 2>/dev/null || true
+  return "${exit_code}"
+}
 
 redact_debug_log() {
   local src_file="$1"
@@ -67,7 +74,7 @@ case "$ACTION" in
       exit 1
     fi
     redacted_log="$(mktemp "${TMPDIR:-/tmp}/hypr-debug-redacted.XXXXXX.log")"
-    trap 'rm -f "${redacted_log}"' EXIT
+    trap 'cleanup_redacted_log "$?"' EXIT
     redact_debug_log "${LOG_FILE}" "${redacted_log}"
     echo "Uploading redacted debug log to 0x0.st..."
     URL=$(curl --fail --silent --show-error -F "file=@${redacted_log}" -Fexpires=24 https://0x0.st)

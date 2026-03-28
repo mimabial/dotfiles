@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2154,SC1091
+# shellcheck disable=SC2154
 
+# shellcheck source=/dev/null
 source "$(command -v hyprshell)" || exit 1
+# shellcheck source=/dev/null
 [[ -f "${HYPR_CONFIG_HOME}/env-theme" ]] && source "${HYPR_CONFIG_HOME}/env-theme"
 
 safe_hyq_source() {

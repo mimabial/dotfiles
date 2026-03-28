@@ -3,9 +3,9 @@
 set -u
 
 scr_dir="$(cd -- "$(dirname -- "$0")" && pwd -P)"
-# shellcheck disable=SC1091
+# shellcheck source=/dev/null
 source "${scr_dir}/lib/control.common.bash"
-# shellcheck disable=SC1091
+# shellcheck source=/dev/null
 source "${scr_dir}/lib/brightness.common.bash"
 
 is_notify="${BRIGHTNESS_NOTIFY:-true}"

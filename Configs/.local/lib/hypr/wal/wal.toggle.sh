@@ -37,7 +37,13 @@ acquire_mode_switch_lock() {
     print_log -sec "wal.toggle" -stat "wait" "Another mode operation in progress, waiting..."
     flock 203
   }
-  trap 'flock -u 203 2>/dev/null' EXIT
+  trap 'wal_toggle_release_lock "$?"' EXIT
+}
+
+wal_toggle_release_lock() {
+  local exit_code="${1:-$?}"
+  flock -u 203 2>/dev/null || true
+  return "${exit_code}"
 }
 
 # Rofi selector
@@ -50,8 +56,7 @@ select_color_mode_with_rofi() {
   font_scale="$(rofi_effective_font_scale "${ROFI_PYWAL16_SCALE}")"
   font_name="$(rofi_effective_font_name "${ROFI_PYWAL16_FONT:-$ROFI_FONT}")"
   r_scale="$(rofi_font_override "${font_name}" "${font_scale}")"
-  hypr_border="$(rofi_default_border_radius 5)"
-  hypr_width="$(rofi_default_border_width 2)"
+  IFS=$'\t' read -r hypr_border hypr_width < <(rofi_default_border_metrics 5 2)
   elem_border=$((hypr_border * 4))
   r_override="window {border:${hypr_width}px;border-radius:${hypr_border}px;} prompt {border-radius:${hypr_border}px;} textbox-prompt-colon {border-radius:${hypr_border}px;} element {border-radius:${hypr_border}px;}"
   rofi_theme_file="$(rofi_resolve_theme pywal16)"

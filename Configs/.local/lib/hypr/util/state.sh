@@ -1,7 +1,11 @@
 #!/bin/bash
 
-STATE_DIR="$HOME/.local/state/hypr"
-mkdir -p "$STATE_DIR"
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
+source "${script_dir}/../core/state.sh"
+
+STATE_DIR_PATH="$(state_dir)"
+mkdir -p "${STATE_DIR_PATH}"
 
 COMMAND="$1"
 STATE_NAME="$2"
@@ -17,6 +21,6 @@ if [[ -z "$STATE_NAME" ]]; then
 fi
 
 case "$COMMAND" in
-  set) touch "$STATE_DIR/$STATE_NAME" ;;
-  clear) find "$STATE_DIR" -maxdepth 1 -type f -name "$STATE_NAME" -delete ;;
+  set) touch "${STATE_DIR_PATH}/${STATE_NAME}" ;;
+  clear) find "${STATE_DIR_PATH}" -maxdepth 1 -type f -name "$STATE_NAME" -delete ;;
 esac

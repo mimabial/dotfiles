@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck disable=SC1091
+# shellcheck source=/dev/null
 source "${script_dir}/waybar.vpn.common.sh"
 
 check() {

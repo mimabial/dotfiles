@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2154,SC1091
+# shellcheck disable=SC2154
 
+# shellcheck source=/dev/null
 source "$(command -v hyprshell)" || exit 1
 export_hypr_config
 
@@ -69,7 +70,7 @@ init_color_pipeline() {
   color_lock_init
   color_lock_acquire_run_lock
   color_lock_acquire_theme_update
-  trap color_lock_cleanup EXIT
+  trap 'color_lock_cleanup "$?"' EXIT
   color_lock_enable_hypr_autoreload_guard
 
   color_plan_resolve_theme_context

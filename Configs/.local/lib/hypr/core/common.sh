@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC1091,SC1090
 
 hypr_core_file() {
   local rel_path="$1"
@@ -83,6 +82,29 @@ hypr_config_value_from_layers() {
   done < <(hypr_config_layer_files)
 
   return 1
+}
+
+hypr_border_metrics() {
+  command -v hyprctl >/dev/null 2>&1 || return 1
+  command -v jq >/dev/null 2>&1 || return 1
+
+  hyprctl --batch -j "getoption decoration:rounding;getoption general:border_size" 2>/dev/null |
+    jq -r '[.[0].int // empty, .[1].int // empty] | @tsv' 2>/dev/null
+}
+
+hypr_resolved_border_metrics() {
+  local border="${hypr_border:-}"
+  local width="${hypr_width:-}"
+  local metrics=""
+
+  if [[ ! "${border}" =~ ^[0-9]+$ || ! "${width}" =~ ^[0-9]+$ ]]; then
+    metrics="$(hypr_border_metrics || true)"
+    if [[ -n "${metrics}" ]]; then
+      IFS=$'\t' read -r border width <<< "${metrics}"
+    fi
+  fi
+
+  printf '%s\t%s\n' "${border}" "${width}"
 }
 
 hypr_compact_path() {

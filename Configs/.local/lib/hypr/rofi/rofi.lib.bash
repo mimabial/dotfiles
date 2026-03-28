@@ -29,6 +29,19 @@ rofi_effective_font_name() {
   printf '%s\n' "${font_name}"
 }
 
+rofi_default_border_metrics() {
+  local fallback_border="${1:-0}"
+  local fallback_width="${2:-0}"
+  local border=""
+  local width=""
+
+  IFS=$'\t' read -r border width < <(hypr_resolved_border_metrics)
+  [[ "${border}" =~ ^[0-9]+$ ]] || border="${fallback_border}"
+  [[ "${width}" =~ ^[0-9]+$ ]] || width="${fallback_width}"
+
+  printf '%s\t%s\n' "${border}" "${width}"
+}
+
 rofi_font_override() {
   local font_name="$1"
   local font_scale="$2"
@@ -321,20 +334,16 @@ rofi_theme_is_fullscreen() {
 
 rofi_default_border_radius() {
   local fallback="${1:-0}"
-  local border="${hypr_border:-}"
-  if [[ ! "${border}" =~ ^[0-9]+$ ]]; then
-    border="$(hyprctl -j getoption decoration:rounding 2>/dev/null | jq -r '.int // empty' 2>/dev/null || true)"
-  fi
+  local border=""
+  IFS=$'\t' read -r border _ < <(rofi_default_border_metrics "${fallback}" 0)
   [[ "${border}" =~ ^[0-9]+$ ]] || border="${fallback}"
   printf '%s\n' "${border}"
 }
 
 rofi_default_border_width() {
   local fallback="${1:-0}"
-  local width="${hypr_width:-}"
-  if [[ ! "${width}" =~ ^[0-9]+$ ]]; then
-    width="$(hyprctl -j getoption general:border_size 2>/dev/null | jq -r '.int // empty' 2>/dev/null || true)"
-  fi
+  local width=""
+  IFS=$'\t' read -r _ width < <(rofi_default_border_metrics 0 "${fallback}")
   [[ "${width}" =~ ^[0-9]+$ ]] || width="${fallback}"
   printf '%s\n' "${width}"
 }
@@ -344,8 +353,7 @@ rofi_standard_window_theme() {
   local elem_mode="${2:-same}"
   local border_radius border_width window_radius elem_radius
 
-  border_radius="$(rofi_default_border_radius)"
-  border_width="$(rofi_default_border_width)"
+  IFS=$'\t' read -r border_radius border_width < <(rofi_default_border_metrics 0 0)
   window_radius=$((border_radius * 3 / 2))
 
   case "${elem_mode}" in

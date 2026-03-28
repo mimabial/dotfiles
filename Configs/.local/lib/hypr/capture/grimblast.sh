@@ -28,7 +28,12 @@ if [ -e "$grimblastInstanceCheck" ]; then
 else
   touch "$grimblastInstanceCheck"
 fi
-trap 'rm -f "$grimblastInstanceCheck"' EXIT
+grimblast_release_lockfile() {
+  local exit_code="${1:-$?}"
+  rm -f "${grimblastInstanceCheck}" 2>/dev/null || true
+  return "${exit_code}"
+}
+trap 'grimblast_release_lockfile "$?"' EXIT
 
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/capture/capture.select.bash"

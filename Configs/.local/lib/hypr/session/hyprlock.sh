@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# shellcheck source=$HOME/.local/bin/hyprshell
-# shellcheck disable=SC1091
+# shellcheck source=/dev/null
 if ! source "$(command -v hyprshell)"; then
   echo "Error: hyprshell not found."
   exit 1

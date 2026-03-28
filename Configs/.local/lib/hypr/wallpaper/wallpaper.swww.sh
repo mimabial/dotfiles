@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC1091
 # Wallpaper backend adapter for the swww/awww-style runtime wallpaper daemon.
 
 selected_wall="${1:-"${WALLPAPER_CURRENT_DIR:-${HYPR_CACHE_HOME:-$HOME/.cache/hypr}/wallpaper/current}/wall.set"}"
@@ -16,7 +15,12 @@ if ! flock -n 203; then
   echo "Another swww wallpaper operation in progress, skipping..."
   exit 0
 fi
-trap 'flock -u 203 2>/dev/null' EXIT
+wallpaper_swww_release_lock() {
+  local exit_code="${1:-$?}"
+  flock -u 203 2>/dev/null || true
+  return "${exit_code}"
+}
+trap 'wallpaper_swww_release_lock "$?"' EXIT
 
 # shellcheck disable=SC1091
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"

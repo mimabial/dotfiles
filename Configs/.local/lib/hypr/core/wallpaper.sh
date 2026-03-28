@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC1091,SC1090
 
 find_wallpapers() {
   local wallSource="$1"
@@ -124,7 +123,13 @@ get_hashmap() {
       return 1
     else
       echo "ERROR: No image found in any source"
-      [ -n "${no_notify}" ] && dunstify -a "Global control" -t 5000 -i "dialog-warning" "WARNING: No compatible wallpapers found in: ${no_wallpapers[*]}"
+      if [[ "${no_notify}" -eq 0 ]]; then
+        notify_send_safe \
+          -a "Global control" \
+          -t 5000 \
+          -i "dialog-warning" \
+          "WARNING: No compatible wallpapers found in: ${no_wallpapers[*]}" || true
+      fi
       exit 1
     fi
   fi
@@ -135,31 +140,49 @@ get_hashmap() {
 # broken `wall.set` links when a theme still has valid wallpapers.
 # shellcheck disable=SC2120
 get_themes() {
-  thmSortS=()
-  thmListS=()
-  thmWallS=()
   thmSort=()
   thmList=()
   thmWall=()
+  local -a theme_dirs=()
+  local -a theme_rows=()
+  local thmDir=""
+  local realWallPath=""
+  local sort_value=""
+  local row=""
+  local sort=""
+  local theme=""
+  local wall=""
 
-  while read -r thmDir; do
-    local realWallPath
+  mapfile -t theme_dirs < <(find -H "${HYPR_CONFIG_HOME}/themes" -mindepth 1 -maxdepth 1 -type d)
+
+  for thmDir in "${theme_dirs[@]}"; do
     realWallPath="$(readlink "${thmDir}/wall.set")"
     if [ ! -e "${realWallPath}" ]; then
       get_hashmap --skipstrays "${thmDir}" || continue
       echo "fixing link :: ${thmDir}/wall.set"
       ln -fs "${wallList[0]}" "${thmDir}/wall.set"
+      realWallPath="${wallList[0]}"
     fi
-    [ -f "${thmDir}/.sort" ] && thmSortS+=("$(head -1 "${thmDir}/.sort")") || thmSortS+=("0")
-    thmWallS+=("${realWallPath}")
-    thmListS+=("${thmDir##*/}") # Use this instead of basename
-  done < <(find -H "${HYPR_CONFIG_HOME}/themes" -mindepth 1 -maxdepth 1 -type d)
 
-  while IFS='|' read -r sort theme wall; do
+    if [[ -f "${thmDir}/.sort" ]]; then
+      sort_value="$(head -1 "${thmDir}/.sort")"
+    else
+      sort_value="0"
+    fi
+
+    theme_rows+=("${sort_value}"$'\t'"${thmDir##*/}"$'\t'"${realWallPath}")
+  done
+
+  ((${#theme_rows[@]} > 0)) || return 0
+
+  mapfile -t theme_rows < <(printf '%s\n' "${theme_rows[@]}" | sort -n -t $'\t' -k1,1 -k2,2)
+
+  for row in "${theme_rows[@]}"; do
+    IFS=$'\t' read -r sort theme wall <<< "${row}"
     thmSort+=("${sort}")
     thmList+=("${theme}")
     thmWall+=("${wall}")
-  done < <(paste -d '|' <(printf "%s\n" "${thmSortS[@]}") <(printf "%s\n" "${thmListS[@]}") <(printf "%s\n" "${thmWallS[@]}") | sort -n -k 1 -k 2)
+  done
 }
 
 # Print the configured hash for a readable image file.
@@ -209,6 +232,10 @@ accepted_mime_types() {
   done
 
   print_log -err "File type not supported for this wallpaper backend."
-  dunstify -u critical -a "Global control" -i "dialog-error" "File type not supported for this wallpaper backend."
+  notify_send_safe \
+    -u critical \
+    -a "Global control" \
+    -i "dialog-error" \
+    "File type not supported for this wallpaper backend." || true
   return 1
 }

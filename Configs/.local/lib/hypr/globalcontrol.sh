@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC1091
-# shellcheck disable=SC1090
 #
 # globalcontrol.sh - Core utilities for Hypr shell scripts
 #
@@ -48,6 +46,7 @@ export WALLPAPER_VIDEO_DIR="${WALLPAPER_CURRENT_DIR}/thumbnails"
 export HYPR_HASH_COMMAND="xxh64sum"
 
 if [[ -r "${HYPR_LIB_DIR}/runtime/lock_paths.sh" ]]; then
+  # shellcheck source=/dev/null
   source "${HYPR_LIB_DIR}/runtime/lock_paths.sh"
 fi
 
@@ -65,6 +64,7 @@ hypr_source_core_module() {
     printf 'ERROR: missing core module %s\n' "${module_path}" >&2
     return 1
   }
+  # shellcheck source=/dev/null
   source "${module_path}"
 }
 
@@ -102,8 +102,11 @@ init_hypr_globals() {
 
   # Hyprland-specific settings (only if running under Hyprland)
   if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
-    hypr_border="$(hyprctl -j getoption decoration:rounding 2>/dev/null | jq '.int' 2>/dev/null)"
-    hypr_width="$(hyprctl -j getoption general:border_size 2>/dev/null | jq '.int' 2>/dev/null)"
+    local border_metrics=""
+    border_metrics="$(hypr_border_metrics || true)"
+    if [[ -n "${border_metrics}" ]]; then
+      IFS=$'\t' read -r hypr_border hypr_width <<< "${border_metrics}"
+    fi
   fi
   export hypr_border=${hypr_border:-${HYPR_BORDER_RADIUS:-2}}
   export hypr_width=${hypr_width:-${HYPR_BORDER_WIDTH:-2}}
@@ -122,8 +125,8 @@ if [ -n "$BASH_VERSION" ]; then
     rofi_user_dir rofi_shared_dir \
     rofi_resolve_theme rofi_resolve_asset \
     rofi_list_theme_files rofi_list_asset_files \
-    hypr_core_file hypr_variables_file hypr_config_layer_files hypr_config_value_from_layers hypr_compact_path \
-    is_hovered toml_write \
+    hypr_core_file hypr_variables_file hypr_config_layer_files hypr_config_value_from_layers hypr_border_metrics hypr_resolved_border_metrics hypr_compact_path \
+    is_hovered ini_write \
     find_wallpapers get_hashmap get_aur_helper \
     set_hash \
     get_themes print_log \
@@ -132,6 +135,7 @@ if [ -n "$BASH_VERSION" ]; then
     extract_thumbnail accepted_mime_types \
     notify_send_safe \
     refresh_hypr_runtime_state export_hypr_config init_hypr_globals \
+    state_dir state_rc_file state_env_overrides_file state_color_variant_file \
     state_read_value_from_file state_get state_set \
     state_get_color_variant state_set_color_variant \
     send_ephemeral_notif \

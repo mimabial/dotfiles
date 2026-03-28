@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# shellcheck disable=SC1091
+# shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
 export WALLPAPER_THUMB_DIR
 
@@ -15,7 +15,13 @@ setup_cache_lock() {
   if ! flock -n 204; then
     flock 204
   fi
-  trap 'flock -u 204 2>/dev/null' EXIT
+  trap 'wallcache_release_lock "$?"' EXIT
+}
+
+wallcache_release_lock() {
+  local exit_code="${1:-$?}"
+  flock -u 204 2>/dev/null || true
+  return "${exit_code}"
 }
 
 prepare_cache_dirs() {

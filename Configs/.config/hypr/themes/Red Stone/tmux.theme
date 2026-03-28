@@ -23,6 +23,7 @@ set -g @color15 "#dfd2c4"
 
 # Semantic color aliases
 set -g @theme_bg "#121212"
+set -g @theme_black "#1a1815"
 set -g @theme_fg "#c9b9a8"
 set -g @theme_accent "#7293a8"
 set -g @theme_gray "#4a4541"

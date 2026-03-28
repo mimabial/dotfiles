@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC1091,SC1090
 
 export_hypr_config() {
   # Reload runtime state into the current shell.
   # Use this after state changes, in a fresh shell, or when array variables
   # need to be populated locally (bash does not export arrays).
 
-  local user_conf_state="${XDG_STATE_HOME}/hypr/staterc"
-  local user_conf="${XDG_STATE_HOME}/hypr/env-overrides"
+  local user_conf_state=""
+  local user_conf=""
+  user_conf_state="$(state_rc_file)"
+  user_conf="$(state_env_overrides_file)"
 
   [ -f "${user_conf_state}" ] && source "${user_conf_state}"
   [ -f "${user_conf}" ] && source "${user_conf}"
@@ -45,19 +46,22 @@ refresh_hypr_runtime_state() {
 #   state_set_color_variant - Write the resolved dark/light variant
 # ============================================================================
 
-# State file paths (centralized definition)
-[[ -z "${STATE_DIR:-}" ]] && STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/hypr"
-readonly STATE_DIR
-export STATE_DIR
-[[ -z "${STATE_RC:-}" ]] && STATE_RC="${STATE_DIR}/staterc"
-readonly STATE_RC
-export STATE_RC
-[[ -z "${STATE_ENV_OVERRIDES:-}" ]] && STATE_ENV_OVERRIDES="${STATE_DIR}/env-overrides"
-readonly STATE_ENV_OVERRIDES
-export STATE_ENV_OVERRIDES
-[[ -z "${STATE_COLOR_VARIANT:-}" ]] && STATE_COLOR_VARIANT="${STATE_DIR}/color_variant"
-readonly STATE_COLOR_VARIANT
-export STATE_COLOR_VARIANT
+# State path resolution
+state_dir() {
+  printf '%s\n' "${STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}"
+}
+
+state_rc_file() {
+  printf '%s\n' "${STATE_RC:-$(state_dir)/staterc}"
+}
+
+state_env_overrides_file() {
+  printf '%s\n' "${STATE_ENV_OVERRIDES:-$(state_dir)/env-overrides}"
+}
+
+state_color_variant_file() {
+  printf '%s\n' "${STATE_COLOR_VARIANT:-$(state_dir)/color_variant}"
+}
 
 state_read_value_from_file() {
   local state_file="$1"
@@ -78,12 +82,8 @@ state_read_value_from_file() {
 
       if (lhs == key) {
         sub(/^[^=]*=/, "", line)
-        value = line
-      }
-    }
-    END {
-      if (value != "") {
-        print value
+        print line
+        exit
       }
     }
   ' "${state_file}" | sed 's/^"//;s/"$//'
@@ -96,6 +96,8 @@ state_get() {
   local var_name="$1"
   local default_value="${2:-}"
   local value=""
+  local state_rc=""
+  local env_overrides_file=""
 
   # Validate input
   if [[ -z "${var_name}" ]]; then
@@ -103,14 +105,17 @@ state_get() {
     return 1
   fi
 
+  state_rc="$(state_rc_file)"
+  env_overrides_file="$(state_env_overrides_file)"
+
   # Check staterc first (primary state file)
-  if [[ -f "${STATE_RC}" ]]; then
-    value="$(state_read_value_from_file "${STATE_RC}" "${var_name}")"
+  if [[ -f "${state_rc}" ]]; then
+    value="$(state_read_value_from_file "${state_rc}" "${var_name}")"
   fi
 
   # Fall back to env-overrides if not found
-  if [[ -z "${value}" ]] && [[ -f "${STATE_ENV_OVERRIDES}" ]]; then
-    value="$(state_read_value_from_file "${STATE_ENV_OVERRIDES}" "${var_name}")"
+  if [[ -z "${value}" ]] && [[ -f "${env_overrides_file}" ]]; then
+    value="$(state_read_value_from_file "${env_overrides_file}" "${var_name}")"
   fi
 
   # Return value or default
@@ -119,10 +124,10 @@ state_get() {
 
 state_target_file() {
   case "${1:-staterc}" in
-    staterc) printf '%s\n' "${STATE_RC}" ;;
-    env-overrides) printf '%s\n' "${STATE_ENV_OVERRIDES}" ;;
-    color_variant) printf '%s\n' "${STATE_COLOR_VARIANT}" ;;
-    *) printf '%s\n' "${STATE_RC}" ;;
+    staterc) state_rc_file ;;
+    env-overrides) state_env_overrides_file ;;
+    color_variant) state_color_variant_file ;;
+    *) state_rc_file ;;
   esac
 }
 
@@ -232,8 +237,11 @@ state_set() {
 # Get the current resolved dark/light variant
 # Returns: dark, light, or empty
 state_get_color_variant() {
-  if [[ -f "${STATE_COLOR_VARIANT}" ]]; then
-    cat "${STATE_COLOR_VARIANT}" 2>/dev/null
+  local color_variant_file=""
+  color_variant_file="$(state_color_variant_file)"
+
+  if [[ -f "${color_variant_file}" ]]; then
+    cat "${color_variant_file}" 2>/dev/null
   else
     echo "dark" # Default
   fi

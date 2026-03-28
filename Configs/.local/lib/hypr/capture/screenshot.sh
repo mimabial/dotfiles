@@ -25,9 +25,11 @@ USAGE
 }
 
 cleanup_temp_screenshot() {
+  local exit_code="${1:-$?}"
   if [[ -n "${temp_screenshot:-}" && -f "${temp_screenshot}" ]]; then
-    rm -f "${temp_screenshot}"
+    rm -f "${temp_screenshot}" || true
   fi
+  return "${exit_code}"
 }
 
 # Create secure temporary file
@@ -259,7 +261,7 @@ ocr_screenshot() {
   fi
 }
 
-trap 'cleanup_temp_screenshot' EXIT
+trap 'cleanup_temp_screenshot "$?"' EXIT
 
 case "${mode}" in
   p) # print all outputs

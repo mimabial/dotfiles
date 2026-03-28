@@ -56,17 +56,16 @@ menu() {
   local selection=""
   local line=""
   local index=0
+  local menu_border_metrics=""
 
-  if [[ -z "${MENU_BORDER_RADIUS}" ]]; then
-    MENU_BORDER_RADIUS="$(hyprctl -j getoption decoration:rounding 2>/dev/null | jq -r '.int // empty' 2>/dev/null || true)"
+  if [[ -z "${MENU_BORDER_RADIUS}" || -z "${MENU_BORDER_WIDTH}" ]]; then
+    menu_border_metrics="$(rofi_default_border_metrics 2 2)"
+    IFS=$'\t' read -r MENU_BORDER_RADIUS MENU_BORDER_WIDTH <<< "${menu_border_metrics}"
     [[ "${MENU_BORDER_RADIUS}" =~ ^[0-9]+$ ]] || MENU_BORDER_RADIUS=2
-    MENU_ELEMENT_RADIUS=$((MENU_BORDER_RADIUS / 2))
-  fi
-
-  if [[ -z "${MENU_BORDER_WIDTH}" ]]; then
-    MENU_BORDER_WIDTH="$(hyprctl -j getoption general:border_size 2>/dev/null | jq -r '.int // empty' 2>/dev/null || true)"
     [[ "${MENU_BORDER_WIDTH}" =~ ^[0-9]+$ ]] || MENU_BORDER_WIDTH=2
   fi
+  [[ "${MENU_BORDER_RADIUS}" =~ ^[0-9]+$ ]] || MENU_BORDER_RADIUS=2
+  MENU_ELEMENT_RADIUS=$((MENU_BORDER_RADIUS / 2))
 
   if [[ -z "${MENU_FONT_SCALE_CACHE}" ]]; then
     MENU_FONT_SCALE_CACHE="$(rofi_effective_font_scale "${ROFI_MENU_SCALE:-$ROFI_SCALE}")"

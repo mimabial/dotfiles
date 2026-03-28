@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# shellcheck disable=SC1091
+# shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
 
 show_help() {

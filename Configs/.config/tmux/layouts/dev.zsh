@@ -34,7 +34,7 @@ if [[ "$pane_count" == "1" ]]; then
     integer top_width right_width
     tmux split-window -v -p 15 -t "$pane_id" -c "$cwd" >/dev/null
     top_width="$(tmux display-message -p -t "$pane_id" '#{pane_width}')"
-    ((right_width = top_width * 33 / 100))
+    ((right_width = top_width * 40 / 100))
     ((right_width < 1)) && right_width=1
     right_pane="$(tmux split-window -h -l "$right_width" -t "$pane_id" -c "$cwd" -P -F '#{pane_id}')"
     [[ "$agentless" == "1" ]] || tmux send-keys -t "$right_pane" "$agent_cmd" C-m

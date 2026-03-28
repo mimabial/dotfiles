@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2154,SC1091
+# shellcheck disable=SC2154
 
+# shellcheck source=/dev/null
 source "$(command -v hyprshell)" || exit 1
 
 THEME_UPDATE_LOCK="$(hypr_lock_path theme_update)"
@@ -42,12 +43,14 @@ theme_apply_create_update_lock() {
 }
 
 theme_apply_release_update_lock() {
-  [[ "${theme_apply_lock_owned}" -eq 1 ]] || return 0
+  local exit_code="${1:-$?}"
+  [[ "${theme_apply_lock_owned}" -eq 1 ]] || return "${exit_code}"
   rm -f "${THEME_UPDATE_META}"
   flock -u "${theme_apply_lock_fd}" 2>/dev/null || true
   exec {theme_apply_lock_fd}>&-
   theme_apply_lock_fd=""
   theme_apply_lock_owned=0
+  return "${exit_code}"
 }
 
 theme_apply_reload_dunst_runtime() {
@@ -86,7 +89,7 @@ theme_apply_wallpaper() {
   fi
 }
 
-trap theme_apply_release_update_lock EXIT
+trap 'theme_apply_release_update_lock "$?"' EXIT
 
 quiet=false
 while (($#)); do

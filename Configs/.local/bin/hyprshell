@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC1091
 
 # hyprshell entrypoint: environment bootstrap + command dispatch.
 
@@ -76,6 +75,7 @@ case "${1:-}" in
     ;;
 esac
 
+# shellcheck source=/dev/null
 if ! source "${LIB_DIR}/hypr/globalcontrol.sh"; then
   echo "Error: Could not load config, broken installation?"
   exit 1

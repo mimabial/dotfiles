@@ -182,7 +182,7 @@ run_daemon() {
   printf '%s\n' "$$" >"${QUEUE_PID_FILE}"
   trap 'DAEMON_WOKE=1; [[ -n "${DAEMON_SLEEP_PID}" ]] && kill "${DAEMON_SLEEP_PID}" 2>/dev/null || true' USR1
   trap 'exit 0' INT TERM
-  trap '[[ -n "${DAEMON_SLEEP_PID}" ]] && kill "${DAEMON_SLEEP_PID}" 2>/dev/null || true; rm -f "${QUEUE_PID_FILE}"; flock -u 206 2>/dev/null' EXIT
+  trap 'wallcache_daemon_cleanup "$?"' EXIT
 
   local idle_since now remaining
   idle_since="$(date +%s)"
@@ -241,6 +241,14 @@ run_daemon() {
 
     (( DAEMON_WOKE == 1 )) && continue
   done
+}
+
+wallcache_daemon_cleanup() {
+  local exit_code="${1:-$?}"
+  [[ -n "${DAEMON_SLEEP_PID}" ]] && kill "${DAEMON_SLEEP_PID}" 2>/dev/null || true
+  rm -f "${QUEUE_PID_FILE}" 2>/dev/null || true
+  flock -u 206 2>/dev/null || true
+  return "${exit_code}"
 }
 
 show_help() {

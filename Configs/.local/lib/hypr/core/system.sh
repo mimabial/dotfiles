@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC1091,SC1090
 
 # ============================================================================
 # pkg_installed - Check if a package is installed
@@ -26,45 +25,12 @@ escape_regex() {
   printf '%s' "$1" | sed 's/[][(){}.^$?*+|\\/]/\\&/g'
 }
 
-sed_escape_append_text() {
-  local value="$1"
-  value="${value//\\/\\\\}"
-  value="${value//$'\n'/\\n}"
-  printf '%s' "${value}"
-}
-
 sed_escape_replacement() {
   local value="$1"
   value="${value//\\/\\\\}"
   value="${value//&/\\&}"
   value="${value//|/\\|}"
   printf '%s' "${value}"
-}
-
-ini_group_has_key() {
-  local config_file="$1"
-  local group="$2"
-  local key="$3"
-
-  awk -F'=' -v group="${group}" -v key="${key}" '
-    BEGIN { in_group = 0; found = 0 }
-    /^[[:space:]]*\[/ {
-      line = $0
-      sub(/^[[:space:]]*\[/, "", line)
-      sub(/\][[:space:]]*$/, "", line)
-      in_group = (line == group)
-      next
-    }
-    in_group {
-      lhs = $1
-      gsub(/^[[:space:]]+|[[:space:]]+$/, "", lhs)
-      if (lhs == key) {
-        found = 1
-        exit
-      }
-    }
-    END { exit found ? 0 : 1 }
-  ' "${config_file}"
 }
 
 get_aur_helper() {
@@ -176,8 +142,8 @@ EOF
     return 0
   fi
   local class
-  class=$(hyprctl -j activewindow | jq -r '.initialClass')
-  if ! grep -q "${class}" "${ignore_paste_file}"; then
+  class=$(hyprctl -j activewindow | jq -r '.initialClass // empty')
+  if [[ -z "${class}" ]] || ! grep -Fqx -- "${class}" "${ignore_paste_file}"; then
     if command -v wtype >/dev/null; then
       hyprctl -q dispatch exec 'wtype -M ctrl V -m ctrl'
     elif command -v hyprctl >/dev/null; then
@@ -219,7 +185,7 @@ is_hovered() {
 }
 
 # ============================================================================
-# toml_write - Write a key=value pair to a TOML/INI config file
+# ini_write - Write a key=value pair to an INI/KConfig file
 # ============================================================================
 # Arguments:
 #   $1 - Config file path
@@ -227,13 +193,14 @@ is_hovered() {
 #   $3 - Key name
 #   $4 - Value to write
 # Returns:
-#   0 - Always succeeds
+#   0 - Value written or updated
+#   1 - Invalid input or write failure
 # Notes:
-#   - Uses kwriteconfig6 if available, falls back to sed
+#   - Uses kwriteconfig6 if available, falls back to a bounded awk rewrite
 #   - Creates group section if it doesn't exist
 # Example:
-#   toml_write "$HOME/.config/kdeglobals" "Icons" "Theme" "Papirus"
-toml_write() {
+#   ini_write "$HOME/.config/kdeglobals" "Icons" "Theme" "Papirus"
+ini_write() {
   local config_file="${1}"
   local group="${2}"
   local key="${3}"
@@ -244,15 +211,79 @@ toml_write() {
   [[ -z "${group}" ]] && return 1
   [[ -z "${key}" ]] && return 1
 
-  if ! kwriteconfig6 --file "${config_file}" --group "${group}" --key "${key}" "${value}" 2>/dev/null; then
-    local group_esc kv
-    group_esc="$(escape_regex "${group}")"
-    kv="$(sed_escape_append_text "${key}=${value}")"
-
-    if ! grep -q "^\[${group_esc}\]" "${config_file}"; then
-      echo -e "\n[${group}]\n${key}=${value}" >>"${config_file}"
-    elif ! ini_group_has_key "${config_file}" "${group}" "${key}"; then
-      sed -i "/^\[${group_esc}\]/a ${kv}" "${config_file}"
-    fi
+  if [[ ! -f "${config_file}" ]]; then
+    mkdir -p "$(dirname "${config_file}")" || return 1
+    : >"${config_file}" || return 1
   fi
+
+  if command -v kwriteconfig6 >/dev/null 2>&1 &&
+    kwriteconfig6 --file "${config_file}" --group "${group}" --key "${key}" "${value}" 2>/dev/null; then
+    return 0
+  fi
+
+  local tmp_file=""
+  tmp_file="$(mktemp "$(dirname "${config_file}")/.ini-write.XXXXXX")" || return 1
+
+  awk -v group="${group}" -v key="${key}" -v value="${value}" '
+    BEGIN {
+      in_group = 0
+      group_found = 0
+      key_written = 0
+    }
+    /^[[:space:]]*\[/ {
+      if (in_group && !key_written) {
+        print key "=" value
+        key_written = 1
+      }
+
+      section = $0
+      sub(/^[[:space:]]*\[/, "", section)
+      sub(/\][[:space:]]*$/, "", section)
+      in_group = (section == group)
+      if (in_group) {
+        group_found = 1
+      }
+
+      print
+      next
+    }
+    {
+      if (in_group) {
+        split($0, parts, "=")
+        lhs = parts[1]
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", lhs)
+        if (lhs == key) {
+          if (!key_written) {
+            print key "=" value
+            key_written = 1
+          }
+          next
+        }
+      }
+
+      print
+    }
+    END {
+      if (in_group && !key_written) {
+        print key "=" value
+        key_written = 1
+      }
+
+      if (!group_found) {
+        if (NR > 0) {
+          print ""
+        }
+        print "[" group "]"
+        print key "=" value
+      }
+    }
+  ' "${config_file}" >"${tmp_file}" || {
+    rm -f "${tmp_file}"
+    return 1
+  }
+
+  mv -f "${tmp_file}" "${config_file}" || {
+    rm -f "${tmp_file}"
+    return 1
+  }
 }

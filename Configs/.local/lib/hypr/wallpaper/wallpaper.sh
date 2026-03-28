@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2154
-# shellcheck disable=SC1091
 
+# shellcheck source=/dev/null
 source "$(command -v hyprshell)" || exit 1
 export_hypr_config
 # Recalculate HYPR_THEME_DIR after reloading config.
@@ -21,7 +21,12 @@ exec 202>"${WALLPAPER_LOCK}"
     exit 0
   fi
 }
-trap 'flock -u 202 2>/dev/null' EXIT
+wallpaper_release_lock() {
+  local exit_code="${1:-$?}"
+  flock -u 202 2>/dev/null || true
+  return "${exit_code}"
+}
+trap 'wallpaper_release_lock "$?"' EXIT
 
 wallpaper_source_lib() {
   local lib_file="$1"

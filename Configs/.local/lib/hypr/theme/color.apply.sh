@@ -16,7 +16,7 @@
 # DEPENDENCIES:
 #   - LIB_DIR must be set (path to ~/.local/lib)
 #   - print_log function from globalcontrol.sh
-#   - toml_write function from globalcontrol.sh (for post_updates)
+#   - ini_write function from globalcontrol.sh (for post_updates)
 #
 # GLOBAL VARIABLES:
 #   ASYNC_OPTIONAL_UPDATES - If 1, optional external updates may run async
@@ -131,7 +131,7 @@ kde_write_entries() {
   local entry section key value
   for entry in "$@"; do
     IFS=$'\t' read -r section key value <<< "${entry}"
-    toml_write "${target_file}" "${section}" "${key}" "${value}"
+    ini_write "${target_file}" "${section}" "${key}" "${value}"
   done
 }
 

@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2312
-# shellcheck disable=SC1090
 
 # Benchmark Tool: hyperfine
 # NVIDIA: gpuinfo.sh
@@ -55,6 +54,7 @@ if [[ ! -f "${gpuinfo_file}" ]]; then
   query
   echo -e "Initialized Variable:\n$(cat "${gpuinfo_file}")\n\nReboot or '$0 --reset' to RESET Variables"
 fi
+# shellcheck source=/dev/null
 source "${gpuinfo_file}"
 
 case "$1" in

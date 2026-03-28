@@ -204,24 +204,25 @@ build_runtime_overrides() {
   local font_scale="$1"
   local font_name="$2"
   local base_border_radius=""
-  local hypr_border=""
+  local window_radius=0
   local hypr_width=""
   local elem_border=0
   local font_override=""
   local icon_override=""
   local window_override=""
 
-  base_border_radius="$(rofi_default_border_radius 10)"
-  hypr_border="${base_border_radius}"
-  hypr_width="$(rofi_default_border_width 2)"
+  IFS=$'\t' read -r base_border_radius hypr_width < <(rofi_default_border_metrics 10 2)
+  window_radius="${base_border_radius}"
+  [[ "${base_border_radius}" -ne 0 ]] && window_radius=$((base_border_radius * 3 / 2))
   [[ "${base_border_radius}" -ne 0 ]] && elem_border=$((base_border_radius * 2))
 
   if rofi_theme_is_fullscreen "${rofi_config}"; then
     hypr_width="0"
-    hypr_border="0"
+    window_radius="0"
+    base_border_radius="0"
   fi
 
-  window_override="window {border: ${hypr_width}px; border-radius: ${hypr_border}px;} inputbar {border-radius: ${hypr_border}px;} listbox {border-radius: ${hypr_border}px;} element {border-radius: ${elem_border}px;} button {border-radius: ${elem_border}px;}"
+  window_override="window {border: ${hypr_width}px; border-radius: ${window_radius}px;} inputbar {border-radius: ${base_border_radius}px;} listbox {border-radius: ${base_border_radius}px;} element {border-radius: ${elem_border}px;} button {border-radius: ${elem_border}px;}"
   font_override="$(rofi_font_override "${font_name}" "${font_scale}")"
   icon_override="$(rofi_icon_theme_override)"
 

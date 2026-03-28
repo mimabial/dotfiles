@@ -4,13 +4,17 @@ set -euo pipefail
 inhib_pid=""
 
 cleanup() {
+  local exit_code="${1:-$?}"
   if [[ -n "${inhib_pid}" ]]; then
     kill "${inhib_pid}" >/dev/null 2>&1 || true
     wait "${inhib_pid}" >/dev/null 2>&1 || true
     inhib_pid=""
   fi
+  return "${exit_code}"
 }
-trap cleanup EXIT INT TERM
+trap 'cleanup "$?"' EXIT
+trap 'cleanup 130; exit 130' INT
+trap 'cleanup 143; exit 143' TERM
 
 is_audio_playing() {
   if command -v pw-dump >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then

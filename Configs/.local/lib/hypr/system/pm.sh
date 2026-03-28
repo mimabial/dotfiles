@@ -1,7 +1,6 @@
 #!/usr/bin/env sh
 
 # NOTE: We are using this script via ` hyprshell pm <command> <package> `
-# shellcheck disable=SC2064
 
 set -eu
 
@@ -158,10 +157,15 @@ search() {
         pm_list "$1" | pm_format "$1" | interactive_filter
     else
         FILTER_FILE=$(mktemp)
-        trap "rm -f -- '$FILTER_FILE'" EXIT
+        trap 'cleanup_filter_file "$?"' EXIT
         compile_stdin_filter >"$FILTER_FILE"
         pm_list "$1" | grep -Ef "$FILTER_FILE" | pm_format "$1" | interactive_filter
     fi
+}
+
+cleanup_filter_file() {
+    rm -f -- "${FILTER_FILE-}" >/dev/null 2>&1 || true
+    return "${1:-0}"
 }
 
 show_pm() {
@@ -416,10 +420,15 @@ aur_helpers_contain() {
 aur_helpers_install() {
     sudo pacman -S --needed git base-devel
     AUR_DIR=$(mktemp -d)
-    trap "rm -rf -- '$AUR_DIR'" EXIT
+    trap 'cleanup_aur_dir "$?"' EXIT
     git clone "https://aur.archlinux.org/$1.git" "$AUR_DIR"
     cd "$AUR_DIR"
     makepkg -si
+}
+
+cleanup_aur_dir() {
+    rm -rf -- "${AUR_DIR-}" >/dev/null 2>&1 || true
+    return "${1:-0}"
 }
 
 aur_helpers_info() {

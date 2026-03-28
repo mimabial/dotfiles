@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC1091
 
 _idle_state_helper_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 

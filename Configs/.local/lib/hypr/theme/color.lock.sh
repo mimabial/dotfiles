@@ -92,6 +92,7 @@ color_lock_spawn_precache() {
 }
 
 color_lock_cleanup() {
+  local exit_code="${1:-$?}"
   if [[ -n "${CACHE_ONLY_ROOT}" ]]; then
     rm -rf "${CACHE_ONLY_ROOT}" 2>/dev/null || true
   fi
@@ -112,4 +113,5 @@ color_lock_cleanup() {
   fi
 
   color_lock_spawn_precache
+  return "${exit_code}"
 }

@@ -2,7 +2,7 @@
 
 [[ -f /etc/arch-release ]] || exit 0
 
-# shellcheck disable=SC1091
+# shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
 if aur_helper="$(get_aur_helper)"; then
   :
@@ -11,6 +11,28 @@ else
 fi
 runtime_dir="${XDG_RUNTIME_DIR:-/tmp}/hypr"
 temp_file="${runtime_dir}/update_info"
+temp_db=""
+
+system_update_refresh_waybar() {
+  local exit_code="${1:-$?}"
+  pkill -RTMIN+20 waybar >/dev/null 2>&1 || true
+  return "${exit_code}"
+}
+
+system_update_cleanup_temp_db() {
+  local exit_code="${1:-$?}"
+  if [[ -n "${temp_db}" ]]; then
+    rm -rf "${temp_db}" 2>/dev/null || true
+    temp_db=""
+  fi
+  return "${exit_code}"
+}
+
+system_update_handle_signal() {
+  local signal_exit_code="$1"
+  system_update_cleanup_temp_db "${signal_exit_code}"
+  exit "${signal_exit_code}"
+}
 
 normalize_count() {
   [[ "${1:-0}" =~ ^[0-9]+$ ]] && printf '%s\n' "${1:-0}" || printf '0\n'
@@ -56,7 +78,7 @@ require_update_info() {
 }
 
 run_updates() {
-  trap 'pkill -RTMIN+20 waybar' EXIT
+  trap 'system_update_refresh_waybar "$?"' EXIT
   require_update_info || return 1
   read_update_info || return 1
   command -v fastfetch >/dev/null 2>&1 && fastfetch
@@ -76,7 +98,9 @@ if [[ "${1:-}" == "--run-upgrade" ]]; then
 fi
 
 temp_db=$(mktemp -d "${XDG_RUNTIME_DIR:-"/tmp"}/checkupdates_db_XXXXXX")
-trap '[ -n "$temp_db" ] && rm -rf "$temp_db" 2>/dev/null' EXIT INT TERM
+trap 'system_update_cleanup_temp_db "$?"' EXIT
+trap 'system_update_handle_signal 130' INT
+trap 'system_update_handle_signal 143' TERM
 
 ofc_list=$(CHECKUPDATES_DB="$temp_db" checkupdates 2>/dev/null)
 ofc=$(count_updates "$ofc_list")

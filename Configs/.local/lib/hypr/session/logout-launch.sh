@@ -9,7 +9,7 @@ fi
 
 #// set file variables
 
-# shellcheck disable=SC1091
+# shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
 [ -n "${1}" ] && wlogout_style="${1}"
 wlogout_style=${wlogout_style:-$WLOGOUT_STYLE}

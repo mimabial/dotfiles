@@ -108,15 +108,19 @@ reconcile_mode() {
 
 watch_state_files() {
   command -v inotifywait >/dev/null 2>&1 || return 0
-  mkdir -p "${STATE_DIR}"
+  local state_dir_path=""
+  local state_rc_path=""
+  state_dir_path="$(state_dir)"
+  state_rc_path="$(state_rc_file)"
+  mkdir -p "${state_dir_path}"
   (
     set +e
     while :; do
       inotifywait -m -q \
         -e close_write -e create -e delete -e moved_to -e moved_from -e attrib \
-        --format '%f' "${STATE_DIR}" 2>/dev/null | while IFS= read -r changed_file; do
+        --format '%f' "${state_dir_path}" 2>/dev/null | while IFS= read -r changed_file; do
         case "${changed_file}" in
-          "$(basename "${STATE_RC}")")
+          "$(basename "${state_rc_path}")")
             kill -USR1 "$$" 2>/dev/null || true
             ;;
         esac
@@ -142,6 +146,7 @@ watch_player_events() {
 }
 
 cleanup() {
+  local exit_code="${1:-$?}"
   if [[ -n "${WAKE_SLEEP_PID}" ]]; then
     kill "${WAKE_SLEEP_PID}" 2>/dev/null || true
   fi
@@ -149,13 +154,14 @@ cleanup() {
     kill "${WATCHER_PIDS[@]}" 2>/dev/null || true
     wait "${WATCHER_PIDS[@]}" 2>/dev/null || true
   fi
+  return "${exit_code}"
 }
 
 trap '[[ -n "${WAKE_SLEEP_PID}" ]] && kill "${WAKE_SLEEP_PID}" 2>/dev/null || true' USR1
 trap 'exit 0' INT TERM
-trap cleanup EXIT
+trap 'cleanup "$?"' EXIT
 
-mkdir -p "${STATE_DIR}"
+mkdir -p "$(state_dir)"
 watch_state_files
 watch_player_events
 

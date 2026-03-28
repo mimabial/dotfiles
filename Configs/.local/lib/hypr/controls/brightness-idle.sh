@@ -3,7 +3,7 @@
 set -euo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
-# shellcheck disable=SC1091
+# shellcheck source=/dev/null
 source "${script_dir}/lib/brightness.common.bash"
 
 action="${1:-}"

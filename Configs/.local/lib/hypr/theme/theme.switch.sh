@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2154
-# shellcheck disable=SC1091
 #
 # theme.switch.sh - Theme switching orchestrator
 #
@@ -19,6 +18,7 @@
 #   sanitize_hypr_theme()  - Remove exec/shadow lines from theme config
 #   write_theme_conf()     - Write active theme configuration
 
+# shellcheck source=/dev/null
 source "$(command -v hyprshell)" || exit 1
 
 [ -z "${HYPR_THEME}" ] && echo "ERROR: unable to detect theme" && exit 1
@@ -63,14 +63,15 @@ disable_hypr_autoreload() {
 }
 
 cleanup_theme_switch() {
-  local exit_code=$?
+  local exit_code="${1:-$?}"
   theme_notify_finish "${exit_code}"
   if [[ "${hypr_autoreload_set}" -eq 1 ]] && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE}" ]] && command -v hyprctl >/dev/null 2>&1; then
     hyprctl keyword misc:disable_autoreload "${hypr_autoreload_prev}" -q
   fi
-  flock -u 201 2>/dev/null
+  flock -u 201 2>/dev/null || true
+  return "${exit_code}"
 }
-trap 'cleanup_theme_switch' EXIT
+trap 'cleanup_theme_switch "$?"' EXIT
 
 quiet=false
 parse_theme_switch_args() {
@@ -97,6 +98,7 @@ set_active_theme() {
   state_set "HYPR_THEME" "${themeSet}" "staterc"
   print_log -sec "theme" -stat "apply" "${themeSet}"
   declare -F export_hypr_config >/dev/null 2>&1 && export_hypr_config
+  # shellcheck source=/dev/null
   [[ -f "${HYPR_CONFIG_HOME}/env-theme" ]] && source "${HYPR_CONFIG_HOME}/env-theme"
 }
 

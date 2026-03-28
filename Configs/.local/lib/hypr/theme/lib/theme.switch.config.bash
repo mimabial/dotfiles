@@ -150,55 +150,19 @@ load_hypr_variables() {
   apply_hypr_variable_file "${cache_file}"
 }
 
-# Batch write INI-style config files (single sed pass per file)
+# Batch write INI-style config files
 # Usage: ini_write_batch "file" "group1:key1=value1" "group2:key2=value2" ...
 ini_write_batch() {
   local config_file="$1"
   shift
-  local sed_args=()
-  declare -A group_keys
-
-  # Ensure file exists
-  [ ! -f "$config_file" ] && mkdir -p "$(dirname "$config_file")" && touch "$config_file"
+  local entry group rest key value
 
   for entry in "$@"; do
-    local group="${entry%%:*}"
-    local rest="${entry#*:}"
-    local key="${rest%%=*}"
-    local value="${rest#*=}"
-    local group_esc key_esc value_esc
-    group_esc="$(escape_regex "$group")"
-    key_esc="$(escape_regex "$key")"
-    value_esc="$(printf '%s' "$value" | sed 's/[&\\/]/\\&/g')"
-
-    # Build sed expression to update existing key or mark for addition
-    sed_args+=(-e "/^\[${group_esc}\]/,/^\[/ { s/^${key_esc}=.*/${key}=${value_esc}/ }")
-
-    # Track group/key pairs for adding missing ones
-    group_keys["${group}"]+="${key}=${value}"$'\n'
-  done
-
-  # Apply existing key updates
-  if [ ${#sed_args[@]} -gt 0 ]; then
-    sed -i "${sed_args[@]}" "$config_file"
-  fi
-
-  # Add missing groups and keys
-  for group in "${!group_keys[@]}"; do
-    local group_esc
-    group_esc="$(escape_regex "$group")"
-    if ! grep -q "^\[${group_esc}\]" "$config_file"; then
-      echo -e "\n[${group}]" >>"$config_file"
-    fi
-    while IFS= read -r kv; do
-      [[ -z "${kv}" ]] && continue
-      local key="${kv%%=*}"
-      if ! ini_group_has_key "$config_file" "$group" "$key"; then
-        local kv_esc
-        kv_esc="$(sed_escape_append_text "${kv}")"
-        sed -i "/^\[${group_esc}\]/a ${kv_esc}" "$config_file"
-      fi
-    done <<<"${group_keys[$group]}"
+    group="${entry%%:*}"
+    rest="${entry#*:}"
+    key="${rest%%=*}"
+    value="${rest#*=}"
+    ini_write "${config_file}" "${group}" "${key}" "${value}" || return 1
   done
 }
 

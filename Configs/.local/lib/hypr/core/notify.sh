@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC1091,SC1090
 
 #? avoid notification calls stalling the script
 notify_send_safe() {

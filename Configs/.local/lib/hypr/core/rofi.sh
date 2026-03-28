@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC1091,SC1090
 
 rofi_user_dir() {
   printf '%s\n' "${XDG_CONFIG_HOME:-$HOME/.config}/rofi"

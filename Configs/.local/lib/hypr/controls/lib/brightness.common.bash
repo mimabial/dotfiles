@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 brightness_helper_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
-# shellcheck disable=SC1091
+# shellcheck source=/dev/null
 source "${brightness_helper_dir}/control.common.bash"
 
 normalize_brightness_mode() {
