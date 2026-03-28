@@ -158,7 +158,10 @@ def main(argv=None):
     if args.style:
         update_style(args.style)
     if args.next or args.prev or args.set:
-        handle_layout_navigation('--next' if args.next else '--prev' if args.prev else '--set')
+        handle_layout_navigation(
+            '--next' if args.next else '--prev' if args.prev else '--set',
+            argv,
+        )
     if args.json:
         print(list_layouts_json_text())
         return 0

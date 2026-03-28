@@ -528,7 +528,7 @@ def update_config(config_path):
     logger.debug(f"Successfully copied config from '{config_path}' to '{config_jsonc}'")
 
 
-def update_style(style_path):
+def update_style(style_path=None):
     style_filepath = os.path.join(str(xdg_config_home()), "waybar", "style.css")
     user_style_filepath = os.path.join(str(xdg_config_home()), "waybar", "user-style.css")
     theme_style_filepath = os.path.join(str(xdg_config_home()), "waybar", "theme.css")

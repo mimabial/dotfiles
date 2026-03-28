@@ -14,7 +14,7 @@ check jq || {
   cat <<EOF
   { "class": "error", "text": "󰩠", "tooltip": "Error: jq is not installed" }
 EOF
-  exit
+  exit 0
 }
 
 token=""

@@ -22,8 +22,6 @@ img_preview() {
   fi
 }
 
-eval "$(declare -F | sed -e 's/-f /-fx /')"
-
 if [ -n "${MESSAGE}" ]; then
   printf "%b\n" "${MESSAGE}"
 fi

@@ -273,8 +273,26 @@ delete_from_favorites() {
       else
         local favorites_tmp
         favorites_tmp="$(mktemp "$(dirname "${favorites_file}")/.cliphist_favorites.XXXXXX")"
-        grep -vF -x "$selected_encoded_favorite" "$favorites_file" >"${favorites_tmp}" \
-          && mv "${favorites_tmp}" "$favorites_file"
+        if grep -vF -x "$selected_encoded_favorite" "$favorites_file" >"${favorites_tmp}"; then
+          mv "${favorites_tmp}" "$favorites_file" || {
+            rm -f "${favorites_tmp}"
+            dunstify -t 3000 -i "dialog-error" "Error: Failed to update favorites."
+            return
+          }
+        else
+          local grep_status=$?
+          if [ "${grep_status}" -eq 1 ]; then
+            mv "${favorites_tmp}" "$favorites_file" || {
+              rm -f "${favorites_tmp}"
+              dunstify -t 3000 -i "dialog-error" "Error: Failed to update favorites."
+              return
+            }
+          else
+            rm -f "${favorites_tmp}"
+            dunstify -t 3000 -i "dialog-error" "Error: Failed to filter favorites."
+            return
+          fi
+        fi
       fi
       dunstify -t 3000 -i "edit-delete" "Item removed from favorites."
     else

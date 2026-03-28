@@ -26,14 +26,12 @@ configuration {
 window {
     enabled:                     true;
     fullscreen:                  false;
-    width:                       58em;
+    width:                       49em;
     height:                      33em;
     transparency:                "real";
     cursor:                      "default";
     spacing:                     0em;
     padding:                     0em;
-    border:                      0.15em;
-    border-radius:               0em;
     border-color:                @border;
     background-color:            @background;
     background-image:            url("~/.cache/hypr/wallpaper/current/wall.set.png",height);

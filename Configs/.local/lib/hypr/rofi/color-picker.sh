@@ -54,11 +54,20 @@ check hyprpicker || {
 
 killall -q hyprpicker
 
-# Capture only stdout, discard stderr (the error messages)
-color=$(hyprpicker 2>/dev/null)
+picker_stderr="$(mktemp "${TMPDIR:-/tmp}/hyprpicker-stderr.XXXXXX")" || exit 1
+color="$(hyprpicker 2>"${picker_stderr}")"
+picker_status=$?
+picker_error="$(<"${picker_stderr}")"
+rm -f "${picker_stderr}"
 
-# Empty means user cancelled (e.g. Escape)
-[[ -z "$color" ]] && exit 0
+# Empty output is only silent when the picker was canceled.
+if [[ -z "$color" ]]; then
+  if [[ "${picker_status}" -eq 0 ]] || [[ "${picker_error}" =~ [Cc]ancel|[Ee]scape ]]; then
+    exit 0
+  fi
+  notify "Failed to pick color${picker_error:+: ${picker_error}}"
+  exit 1
+fi
 
 # Validate that we got an actual color (starts with #)
 if [[ ! "$color" =~ ^#[0-9a-fA-F]{6}$ ]]; then

@@ -36,10 +36,12 @@ find_wallpapers() {
 }
 
 get_hashmap() {
+  local no_notify=0
+  local skipStrays=0
+
   wallHash=()
   wallList=()
   no_wallpapers=()
-  unset skipStrays
 
   # Initialize supported file extensions (safe: no eval needed)
   local -a supported_files=(

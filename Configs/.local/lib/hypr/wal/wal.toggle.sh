@@ -3,7 +3,32 @@
 #// set variables
 
 source "$(command -v hyprshell)" || exit 1
+source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
 export_hypr_config
+
+color_mode_labels=("Theme" "Auto" "Dark" "Light")
+
+# Read current mode from staterc
+[ -f "${XDG_STATE_HOME:-$HOME/.local/state}/hypr/staterc" ] && source "${XDG_STATE_HOME:-$HOME/.local/state}/hypr/staterc"
+selected_color_mode="${selected_color_mode:-1}"
+
+rofi_color_mode_script_mode() {
+  case "${ROFI_RETV:-0}" in
+    0)
+      printf '\0prompt\x1fColor Mode\n'
+      printf '\0no-custom\x1ftrue\n'
+      printf '%s\n' "${color_mode_labels[@]}"
+      ;;
+    1)
+      [[ -n "${ROFI_COLOR_MODE_OUT:-}" ]] && printf '%s\n' "$1" >"${ROFI_COLOR_MODE_OUT}"
+      ;;
+  esac
+}
+
+if [[ "${1:-}" == "--rofi-script-mode" ]]; then
+  rofi_color_mode_script_mode "${2:-}"
+  exit 0
+fi
 
 # Lock file to prevent concurrent mode switching
 MODE_SWITCH_LOCK="$(hypr_lock_path mode_switch)"
@@ -14,21 +39,20 @@ exec 203>"${MODE_SWITCH_LOCK}"
 }
 trap 'flock -u 203 2>/dev/null' EXIT
 
-color_mode_labels=("Theme" "Auto" "Dark" "Light")
-
-# Read current mode from staterc
-[ -f "${XDG_STATE_HOME:-$HOME/.local/state}/hypr/staterc" ] && source "${XDG_STATE_HOME:-$HOME/.local/state}/hypr/staterc"
-selected_color_mode="${selected_color_mode:-1}"
-
 # Rofi selector
 select_color_mode_with_rofi() {
+  local selection_file=""
+  local script_path=""
+  local rofi_mode_name="color-mode"
+
   pkill -u "$USER" rofi && exit 0
   font_scale="$(rofi_effective_font_scale "${ROFI_PYWAL16_SCALE}")"
   font_name="$(rofi_effective_font_name "${ROFI_PYWAL16_FONT:-$ROFI_FONT}")"
-  r_scale="configuration {font: \"${font_name} ${font_scale}\";}"
-  hypr_border="${hypr_border:-5}"
+  r_scale="$(rofi_font_override "${font_name}" "${font_scale}")"
+  hypr_border="$(rofi_default_border_radius 5)"
+  hypr_width="$(rofi_default_border_width 2)"
   elem_border=$((hypr_border * 4))
-  r_override="prompt{border-radius:${hypr_border}px;} textbox-prompt-colon {border-radius:${hypr_border}px;} window{border-radius:${hypr_border}px;} element{border-radius:${hypr_border}px;}"
+  r_override="window {border:${hypr_width}px;border-radius:${hypr_border}px;} prompt {border-radius:${hypr_border}px;} textbox-prompt-colon {border-radius:${hypr_border}px;} element {border-radius:${hypr_border}px;}"
   rofi_theme_file="$(rofi_resolve_theme pywal16)"
   width_override=""
   margin_px="${ROFI_PYWAL16_MARGIN_PX:-${ROFI_PYWAL16_MARGIN:-0}}"
@@ -39,14 +63,26 @@ select_color_mode_with_rofi() {
     width_override_args=(-theme-str "${width_override}")
   fi
 
-  selected_color_mode_label=$(printf '%s\n' "${color_mode_labels[@]}" | rofi -dmenu \
-    -theme-str "${r_scale}" \
-    -theme-str "${r_override}" \
-    "${width_override_args[@]}" \
-    -theme-str 'textbox-prompt-colon {str: "";}' \
-    -p "Color Mode" \
-    -theme "${rofi_theme_file}" \
-    -select "${color_mode_labels[${selected_color_mode}]}")
+  selection_file="$(mktemp "${TMPDIR:-/tmp}/rofi-color-mode.XXXXXX")" || exit 1
+  script_path="$(readlink -f "${BASH_SOURCE[0]}")"
+
+  selected_color_mode_label="$(
+    ROFI_COLOR_MODE_OUT="${selection_file}" rofi \
+      -show "${rofi_mode_name}" \
+      -modi "${rofi_mode_name}:${script_path} --rofi-script-mode" \
+      -theme-str "${r_scale}" \
+      -theme-str "${r_override}" \
+      "${width_override_args[@]}" \
+      -theme-str 'textbox-prompt-colon {str: "";}' \
+      -theme "${rofi_theme_file}" \
+      -selected-row "${selected_color_mode}"
+  )"
+
+  if [[ -z "${selected_color_mode_label}" && -s "${selection_file}" ]]; then
+    selected_color_mode_label="$(<"${selection_file}")"
+  fi
+  rm -f "${selection_file}"
+
   if [[ -n "${selected_color_mode_label}" ]]; then
     # Find index of selected mode
     for i in "${!color_mode_labels[@]}"; do

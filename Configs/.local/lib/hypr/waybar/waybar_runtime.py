@@ -76,7 +76,7 @@ class InotifyWatcher:
             if self.fd < 0:
                 raise OSError("inotify_init failed")
             self.watches = {}
-        except:
+        except (AttributeError, OSError):
             self.fd = None
 
     def add_watch(self, path, mask):
@@ -376,9 +376,9 @@ def theme_update_lock_active(lock_path):
 
 def smart_reload_waybar(changed_files):
     """Reload waybar based on what changed."""
-    # Only restart Waybar when its structure changes.
-    # CSS updates (including theme.css) should not force a full restart, because
-    # restarts reset module runtime state (e.g. idle_inhibitor activation).
+    # Track whether a structural file changed for logging/diagnostics.
+    # In practice we always do a full restart here, because SIGUSR2-based reloads
+    # have proven unreliable and can leave defunct child processes behind.
     structural_files = {"config.jsonc", "includes.json"}
 
     needs_restart = any(Path(f).name in structural_files for f in changed_files)
@@ -394,10 +394,10 @@ def smart_reload_waybar(changed_files):
         )
     else:
         logger.debug(
-            f"CSS files changed: {[Path(f).name for f in changed_files]}, full restart"
+            f"Non-structural Waybar files changed: {[Path(f).name for f in changed_files]}, full restart"
         )
 
-    # Avoid SIGUSR2 reload: Waybar spawns defunct child processes on reload.
+    # Avoid SIGUSR2 reload: Waybar can spawn defunct child processes on reload.
     with waybar_operation_lock():
         _stop_waybar_unlocked()
         _start_waybar_unlocked()

@@ -208,7 +208,7 @@ def set_layout(layout):
 
 def handle_layout_navigation(option, argv=None):
     """Handle --next, --prev, and --set options."""
-    argv = sys.argv if argv is None else argv
+    argv = list(sys.argv[1:] if argv is None else argv)
     layouts_data = list_layouts()
     layout_list = [layout["layout"] for layout in layouts_data["layouts"]]
     current_layout = get_state_value("WAYBAR_LAYOUT_PATH")
@@ -232,10 +232,22 @@ def handle_layout_navigation(option, argv=None):
         prev_index = (current_index - 1 + len(layout_list)) % len(layout_list)
         set_layout(layout_list[prev_index])
     elif option == "--set":
-        if len(argv) < 3:
+        if len(argv) >= 2 and argv[0] == "--set":
+            set_layout(argv[1])
+            return
+        if len(argv) >= 3 and argv[1] == "--set":
+            set_layout(argv[2])
+            return
+        if len(argv) >= 2 and argv[0] in {"-s", "--set"}:
+            set_layout(argv[1])
+            return
+        if len(argv) >= 3 and argv[1] in {"-s", "--set"}:
+            set_layout(argv[2])
+            return
+        if len(argv) < 2:
             logger.error("Usage: --set <layout>")
             return
-        set_layout(argv[2])
+        logger.error(f"Could not resolve layout from arguments: {argv}")
 
 
 def style_selector():
@@ -284,7 +296,7 @@ def layout_selector():
             notification_body=f"Layout changed to {display_func(selected_layout, os.path.dirname(selected_layout))}",
             replace_id=9,
         )
-    return None
+    return selected_layout
 
 
 def select_layout_and_style():

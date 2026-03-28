@@ -1,5 +1,16 @@
 #!/bin/bash
 
+desktop_exec_escape() {
+  local value="$1"
+
+  value=${value//\\/\\\\}
+  value=${value//\"/\\\"}
+  value=${value//\$/\\\$}
+  value=${value//\`/\\\`}
+
+  printf '%s\n' "$value"
+}
+
 if [ "$#" -ne 4 ]; then
   echo -e "\e[32mLet's create a TUI shortcut you can start with the app launcher.\n\e[0m"
   read -p "Name> " APP_NAME
@@ -42,12 +53,14 @@ else
   APP_CLASS="TUI.tile"
 fi
 
+APP_EXEC_DESKTOP=$(desktop_exec_escape "$APP_EXEC")
+
 cat >"$DESKTOP_FILE" <<EOF
 [Desktop Entry]
 Version=1.0
 Name=$APP_NAME
 Comment=$APP_NAME
-Exec=\$TERMINAL_TUI --class=$APP_CLASS -e $APP_EXEC
+Exec=tui-terminal-exec --class=$APP_CLASS -e bash -lc "$APP_EXEC_DESKTOP"
 Terminal=false
 Type=Application
 Icon=$ICON_PATH

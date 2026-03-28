@@ -2,6 +2,17 @@
 
 # Toggle to pop-out a tile to stay fixed on a display basis.
 
+normalize_uint() {
+  local value="${1:-}"
+  local default_value="${2:-0}"
+
+  if [[ "$value" =~ ^[0-9]+$ ]]; then
+    printf '%s\n' "$value"
+  else
+    printf '%s\n' "$default_value"
+  fi
+}
+
 active=$(hyprctl activewindow -j)
 pinned=$(echo "$active" | jq .pinned)
 addr=$(echo "$active" | jq -r ".address")
@@ -18,12 +29,11 @@ if [ "$pinned" = "true" ]; then
 else
   # Get monitor resolution (already in logical pixels, accounts for scale)
   monitor_info=$(hyprctl -j monitors | jq -r '.[] | select(.focused==true)')
-  monitor_width=$(echo "$monitor_info" | jq -r '.width')
-  monitor_height=$(echo "$monitor_info" | jq -r '.height')
+  monitor_width=$(normalize_uint "$(echo "$monitor_info" | jq -r '.width')" 0)
+  monitor_height=$(normalize_uint "$(echo "$monitor_info" | jq -r '.height')" 0)
 
   # Get gaps to account for them
-  gaps_out=$(hyprctl -j getoption general:gaps_out | jq -r '.int')
-  gaps_in=$(hyprctl -j getoption general:gaps_in | jq -r '.int')
+  gaps_out=$(normalize_uint "$(hyprctl -j getoption general:gaps_out | jq -r '.int')" 0)
 
   # Account for waybar (check if it exists and get its dimensions)
   waybar_width=0
@@ -32,8 +42,8 @@ else
     waybar_info=$(hyprctl layers | grep -A1 "namespace: waybar" | grep "xywh:" | head -1)
     if [[ -n "$waybar_info" ]]; then
       # Extract width and height from "xywh: x y w h"
-      waybar_width=$(echo "$waybar_info" | awk '{print $4}')
-      waybar_height=$(echo "$waybar_info" | awk '{print $5}' | tr -d ',')
+      waybar_width=$(normalize_uint "$(echo "$waybar_info" | awk '{print $4}')" 0)
+      waybar_height=$(normalize_uint "$(echo "$waybar_info" | awk '{print $5}' | tr -d ',')" 0)
     fi
   fi
 

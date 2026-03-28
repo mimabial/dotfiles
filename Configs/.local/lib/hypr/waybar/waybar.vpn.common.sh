@@ -20,10 +20,13 @@ waybar_vpn_load_env_file() {
     key="${key%"${key##*[![:space:]]}"}"
     value="${value#"${value%%[![:space:]]*}"}"
     value="${value%"${value##*[![:space:]]}"}"
-    value="${value%\"}"
-    value="${value#\"}"
-    value="${value%\'}"
-    value="${value#\'}"
+    if [[ "${value}" == \"*\" && "${value}" == *\" ]]; then
+      value="${value#\"}"
+      value="${value%\"}"
+    elif [[ "${value}" == \'*\' && "${value}" == *\' ]]; then
+      value="${value#\'}"
+      value="${value%\'}"
+    fi
     export "${key}=${value}"
   done <"${filepath}"
 }

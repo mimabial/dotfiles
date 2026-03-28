@@ -116,14 +116,25 @@ launch_monitor() {
   printf '%s:::%s:::%s\n' "${pid}" "${pgid}" "${sysMon}" >"${pidFile}"
 }
 
-case $1 in
+case "${1:-}" in
   -h | --help)
     show_help
     exit 0
     ;;
   -e | --execute)
     shift
+    [[ -n "${1:-}" ]] || {
+      echo "Missing argument for --execute" >&2
+      exit 1
+    }
     SYSMONITOR_EXECUTE=$1
+    ;;
+  --execute=*)
+    SYSMONITOR_EXECUTE="${1#--execute=}"
+    [[ -n "${SYSMONITOR_EXECUTE}" ]] || {
+      echo "Missing argument for --execute" >&2
+      exit 1
+    }
     ;;
   -* )
     echo "Unknown option: $1" >&2

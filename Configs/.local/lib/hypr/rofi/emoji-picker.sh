@@ -125,23 +125,30 @@ get_emoji_selection() {
     return 1
   }
 
-  # Add favorites category if favorites exist
-  if [[ -f "${favorites_data}" ]] && [[ -s "${favorites_data}" ]]; then
-    local fav_count=$(wc -l <"${favorites_data}" 2>/dev/null || echo 0)
-    if [ "$fav_count" -gt 0 ]; then
-      echo "⭐ Favorites (${fav_count} emojis)	:cat:favorites:" >"${temp_data}"
+  {
+    # Add favorites category if favorites exist
+    if [[ -f "${favorites_data}" ]] && [[ -s "${favorites_data}" ]]; then
+      local fav_count
+      fav_count=$(wc -l <"${favorites_data}" 2>/dev/null || echo 0)
+      if [ "$fav_count" -gt 0 ]; then
+        printf '%s\n' "⭐ Favorites (${fav_count} emojis)	:cat:favorites:"
+      fi
     fi
-  fi
 
-  # Add recently used category if recent data exists
-  if [[ -f "${recent_data}" ]] && [[ -s "${recent_data}" ]]; then
-    local recent_count=$(wc -l <"${recent_data}" 2>/dev/null || echo 0)
-    if [ "$recent_count" -gt 0 ]; then
-      echo "🕒 Recently Used (${recent_count} emojis)	:cat:recent:" >>"${temp_data}"
+    # Add recently used category if recent data exists
+    if [[ -f "${recent_data}" ]] && [[ -s "${recent_data}" ]]; then
+      local recent_count
+      recent_count=$(wc -l <"${recent_data}" 2>/dev/null || echo 0)
+      if [ "$recent_count" -gt 0 ]; then
+        printf '%s\n' "🕒 Recently Used (${recent_count} emojis)	:cat:recent:"
+      fi
     fi
-  fi
 
-  cat "${emoji_data}" >>"${temp_data}"
+    cat "${emoji_data}"
+  } >"${temp_data}" || {
+    rm -f "${temp_data}" "${display_data}"
+    return 1
+  }
 
   # Build display strings (emoji + label if present and not a category marker), strip variation selectors for display
   awk -F'\t' '{
@@ -151,7 +158,10 @@ get_emoji_selection() {
     } else {
       print e;
     }
-  }' "${temp_data}" >"${display_data}"
+  }' "${temp_data}" >"${display_data}" || {
+    rm -f "${temp_data}" "${display_data}"
+    return 1
+  }
 
   local selection_index=""
   if [[ -n ${use_rofile} ]]; then

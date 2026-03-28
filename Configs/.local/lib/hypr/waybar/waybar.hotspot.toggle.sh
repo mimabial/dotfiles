@@ -28,6 +28,7 @@ if [ -n "$active_hotspot" ]; then
   fi
 else
   # No active hotspot - try to start one
+  active_wifi=""
 
   # Check if WiFi is connected to a network
   wifi_device=$(nmcli -t -f DEVICE,TYPE,STATE device status 2>/dev/null | grep ':wifi:connected' | cut -d: -f1 | head -n1)

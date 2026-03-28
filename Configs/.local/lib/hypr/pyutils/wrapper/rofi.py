@@ -53,11 +53,14 @@ def rofi_dmenu(choices: List[str], rofi_options: List[str] = []) -> str:
     command = [ROFI_CMD] + ROFI_OPTIONS + rofi_options
     choices_bytes = "\n".join(choices).encode()
     try:
-        command_result = run(command, input=choices_bytes, check=True, stdout=PIPE)
+        command_result = run(
+            command, input=choices_bytes, check=True, stdout=PIPE, stderr=PIPE
+        )
         result = command_result.stdout.decode().strip()
         return result
     except CalledProcessError as e:
         if e.returncode == 1:  # User cancel rofi
             return ""
         else:
-            raise AttributeError(str(e.stderr))
+            stderr = e.stderr.decode().strip() if e.stderr else str(e)
+            raise AttributeError(stderr)

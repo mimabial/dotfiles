@@ -1,10 +1,49 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+resolve_real_notify_send() {
+  local self_path self_dir entry filtered_path="" candidate
+  self_path="$(readlink -f -- "$0" 2>/dev/null || printf '%s\n' "$0")"
+  self_dir="$(dirname -- "$self_path")"
+
+  IFS=':' read -r -a path_entries <<< "${PATH:-}"
+  for entry in "${path_entries[@]}"; do
+    [[ -n "${entry}" ]] || continue
+    [[ "${entry}" == "${self_dir}" ]] && continue
+    if [[ -n "${filtered_path}" ]]; then
+      filtered_path+=":${entry}"
+    else
+      filtered_path="${entry}"
+    fi
+  done
+
+  candidate="$(PATH="${filtered_path}" command -v notify-send || true)"
+  if [[ -n "${candidate}" ]]; then
+    printf '%s\n' "${candidate}"
+    return 0
+  fi
+
+  if command -v whereis >/dev/null 2>&1; then
+    while IFS= read -r candidate; do
+      [[ -n "${candidate}" ]] || continue
+      [[ "${candidate}" == "${self_path}" ]] && continue
+      [[ -x "${candidate}" ]] || continue
+      printf '%s\n' "${candidate}"
+      return 0
+    done < <(whereis -b notify-send | awk '{for (i = 2; i <= NF; ++i) print $i}')
+  fi
+
+  return 1
+}
+
 real_dunstify="$(command -v dunstify || true)"
-real_notify_send="/usr/sbin/notify-send"
+real_notify_send="$(resolve_real_notify_send)"
 
 if [[ -z "${real_dunstify}" ]]; then
+  [[ -n "${real_notify_send}" ]] || {
+    printf 'notify-send: unable to resolve real notify-send in PATH\n' >&2
+    exit 1
+  }
   exec "${real_notify_send}" "$@"
 fi
 

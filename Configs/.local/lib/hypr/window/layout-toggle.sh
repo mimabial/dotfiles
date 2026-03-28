@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
 # Toggle workspace layout between dwindle and scrolling
 
-ACTIVE_WORKSPACE=$(hyprctl activeworkspace -j | jq -r '.id')
-CURRENT_LAYOUT=$(hyprctl activeworkspace -j | jq -r '.tiledLayout')
+read -r ACTIVE_WORKSPACE CURRENT_LAYOUT < <(
+  hyprctl activeworkspace -j | jq -r '[.id, .tiledLayout] | @tsv'
+)
+
+[[ "${ACTIVE_WORKSPACE}" =~ ^-?[0-9]+$ ]] || {
+  dunstify -a "Hyprland" -t 3000 -i "dialog-error" "Failed to resolve active workspace"
+  exit 1
+}
 
 case "$CURRENT_LAYOUT" in
   dwindle) NEW_LAYOUT=scrolling ;;

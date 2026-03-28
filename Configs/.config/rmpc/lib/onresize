@@ -77,8 +77,9 @@ if [[ "$TARGET_THEME" != "$CURRENT_THEME" ]]; then
     # Build new config with Python for reliability
     TABS_PATH="$TABS_FILE" python3 <<'PYEOF'
 import os
+from pathlib import Path
 
-config_path = "/home/rifle/.config/rmpc/config.ron"
+config_path = str(Path.home() / ".config" / "rmpc" / "config.ron")
 tabs_path = os.environ['TABS_PATH']
 
 # Read config lines

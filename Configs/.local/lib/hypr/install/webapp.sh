@@ -39,7 +39,7 @@ else
 fi
 
 # Use custom exec if provided, otherwise default behavior
-if [[ -n $CUSTOM_EXEC ]]; then
+if [[ -n "$CUSTOM_EXEC" ]]; then
   EXEC_COMMAND="$CUSTOM_EXEC"
 else
   EXEC_COMMAND="hyprshell launch/webapp.sh $APP_URL"
@@ -61,7 +61,7 @@ StartupNotify=true
 EOF
 
 # Add mime types if provided
-if [[ -n $MIME_TYPES ]]; then
+if [[ -n "$MIME_TYPES" ]]; then
   echo "MimeType=$MIME_TYPES" >>"$DESKTOP_FILE"
 fi
 

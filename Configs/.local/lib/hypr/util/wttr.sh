@@ -153,16 +153,22 @@ refresh_cache() {
 
   # Extract weather data using jq
   if command -v jq >/dev/null 2>&1 && [ -n "$weather_json" ]; then
-    code=$(echo "$weather_json" | jq -r '.current_condition[0].weatherCode' 2>/dev/null)
-    desc=$(echo "$weather_json" | jq -r '.current_condition[0].weatherDesc[0].value' 2>/dev/null)
-    temp=$(echo "$weather_json" | jq -r '.current_condition[0].FeelsLikeC' 2>/dev/null)
+    code=$(echo "$weather_json" | jq -r '.current_condition[0].weatherCode // empty' 2>/dev/null)
+    desc=$(echo "$weather_json" | jq -r '.current_condition[0].weatherDesc[0].value // empty' 2>/dev/null)
+    temp=$(echo "$weather_json" | jq -r '.current_condition[0].FeelsLikeC // empty' 2>/dev/null)
     if [ -z "$city" ] || [ "$city" = "$location" ]; then
       city=$(echo "$weather_json" | jq -r '.nearest_area[0].areaName[0].value // empty' 2>/dev/null)
     fi
     if [ -z "$country" ]; then
       country=$(echo "$weather_json" | jq -r '.nearest_area[0].country[0].value // empty' 2>/dev/null)
     fi
-    temp="+${temp}°C"
+    if [ -n "$temp" ]; then
+      if [[ "$temp" == -* || "$temp" == +* ]]; then
+        temp="${temp}°C"
+      else
+        temp="+${temp}°C"
+      fi
+    fi
   else
     # Fallback to simple format if jq is not available
     local weather=$(curl -fsS --max-time 5 "https://wttr.in/${location}?format=%c|%C|%f" 2>/dev/null)

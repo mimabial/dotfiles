@@ -15,7 +15,6 @@ PLAYER_FOLLOW_RETRY="${HYPR_IDLE_MANAGER_PLAYER_RETRY:-2}"
 (( PLAYER_FOLLOW_RETRY < 1 )) && PLAYER_FOLLOW_RETRY=2
 
 WAKE_SLEEP_PID=""
-WAKE_SIGNALLED=0
 declare -a WATCHER_PIDS=()
 
 systemd_user_ok() {
@@ -152,7 +151,7 @@ cleanup() {
   fi
 }
 
-trap 'WAKE_SIGNALLED=1; [[ -n "${WAKE_SLEEP_PID}" ]] && kill "${WAKE_SLEEP_PID}" 2>/dev/null || true' USR1
+trap '[[ -n "${WAKE_SLEEP_PID}" ]] && kill "${WAKE_SLEEP_PID}" 2>/dev/null || true' USR1
 trap 'exit 0' INT TERM
 trap cleanup EXIT
 
@@ -162,12 +161,8 @@ watch_player_events
 
 reconcile_mode
 while :; do
-  WAKE_SIGNALLED=0
   sleep "${WATCHDOG_INTERVAL}" &
   WAKE_SLEEP_PID="$!"
-  if (( WAKE_SIGNALLED == 1 )); then
-    kill "${WAKE_SLEEP_PID}" 2>/dev/null || true
-  fi
   wait "${WAKE_SLEEP_PID}" 2>/dev/null || true
   WAKE_SLEEP_PID=""
   reconcile_mode
