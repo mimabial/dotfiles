@@ -11,17 +11,34 @@ wallpaper_catalog_parse_args() {
   local -n sources_ref="${sources_name}"
   local -n skip_ref="${skip_name}"
   local -n notify_ref="${notify_name}"
-  local arg=""
 
   sources_ref=()
   skip_ref=0
   notify_ref=0
 
-  for arg in "$@"; do
-    case "${arg}" in
-      --skipstrays) skip_ref=1 ;;
-      --no-notify) notify_ref=1 ;;
-      *) sources_ref+=("${arg}") ;;
+  while (($# > 0)); do
+    case "$1" in
+      --skipstrays)
+        skip_ref=1
+        shift
+        ;;
+      --no-notify)
+        notify_ref=1
+        shift
+        ;;
+      --)
+        shift
+        sources_ref=("$@")
+        break
+        ;;
+      -*)
+        print_log -err "ERROR:" -b "unknown wallpaper catalog option:" "$1"
+        return 1
+        ;;
+      *)
+        sources_ref=("$@")
+        break
+        ;;
     esac
   done
 }
@@ -116,7 +133,7 @@ Wall_Hashmap_Cached() {
   local -a wall_sources=()
   local skip_strays=0
   local no_notify=0
-  wallpaper_catalog_parse_args wall_sources skip_strays no_notify "$@"
+  wallpaper_catalog_parse_args wall_sources skip_strays no_notify "$@" || return 1
 
   local -a supported_files=()
   local hash_cmd=""
@@ -138,9 +155,10 @@ Wall_Hashmap_Cached() {
     return 0
   fi
 
-  local -a get_hashmap_args=("${wall_sources[@]}")
+  local -a get_hashmap_args=()
   [[ "${no_notify}" -eq 1 ]] && get_hashmap_args+=(--no-notify)
   [[ "${skip_strays}" -eq 1 ]] && get_hashmap_args+=(--skipstrays)
+  get_hashmap_args+=("${wall_sources[@]}")
 
   wallpaper_catalog_write_meta "${cache_meta_file}" wall_sources supported_files
 

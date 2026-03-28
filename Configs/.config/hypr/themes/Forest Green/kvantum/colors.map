@@ -2,17 +2,19 @@
 # Format: #hexcolor=pywal_variable
 # Theme: Forest Green
 
-# Primary backgrounds
-#293136=background
+# Core colors derived from kvconfig.theme [GeneralColors]
 #333c43=color0
-#3a464c=color0
-#3B4252=color0
-#434f55=color0
-#48584e=color0
-#4c566a=color0
-#5d6b66=color8
-#7fbbb3=color6
-#9da9a0=color7
+#3B4252=color8
 #d3c6aa=foreground
-#d699b6=color9
-#e67e80=color9
+#5d6b66=color8
+#7fbbb3=color4
+#48584e=color7
+#d699b6=color5
+
+# Additional SVG/template colors preserved from the existing map
+#293136=background
+#3A464C=color0
+#434F55=color0
+#4C566A=color0
+#9DA9A0=color7
+#E67E80=color9

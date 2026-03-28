@@ -2,44 +2,43 @@
 # Format: #hexcolor=pywal_variable
 # Theme: Edge Runner
 
-# Backgrounds
+# Core colors derived from kvconfig.theme [GeneralColors]
 #000000=background
+#FADA16=color8
+#FFA6C2=color4
+#ffffff=foreground
+#5032AC=color8
+#1F5322=foreground
+#333333=foreground
+#A56DF2=color6
+#564873=color5
 
-# Dark surfaces / text
-#1a1a1a=color0
-#1e1e1e=color0
-#1f1f1f=color0
-#1f5322=color2
+# Additional SVG/template colors preserved from the existing map
+#1A1A1A=color0
+#1E1E1E=color0
+#1F1F1F=color0
+#1F5322=color2
 #212121=color0
-#26272a=color0
-#333333=color0
+#26272A=color0
 #343031=color0
 #525252=color0
-#5a5a5a=color0
-#5a616e=color0
-
-# Midtones
-#5032ac=color5
+#5A5A5A=color0
+#5A616E=color0
+#5032AC=color5
 #646464=color8
 #666666=color8
 #787878=color8
-
-# Light neutrals
 #989898=color7
-#acb1bc=color7
-#b6b6b6=foreground
-#c1c1c1=foreground
-#cccccc=foreground
-#d1d1d1=foreground
-#dfdfdf=foreground
-#f2f2f2=foreground
-#ffffff=foreground
-
-# Accents
-#fada16=color3
-#4285f4=color4
-#f04a50=color1
-#a56df2=color5
-#b74aff=color5
-#ffa6c2=color5
-#564873=color5
+#ACB1BC=color7
+#B6B6B6=foreground
+#C1C1C1=foreground
+#CCCCCC=foreground
+#D1D1D1=foreground
+#DFDFDF=foreground
+#F2F2F2=foreground
+#FADA16=color3
+#4285F4=color4
+#F04A50=color1
+#A56DF2=color5
+#B74AFF=color5
+#FFA6C2=color5

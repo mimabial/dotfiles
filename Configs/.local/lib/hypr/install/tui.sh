@@ -48,9 +48,11 @@ else
 fi
 
 if [[ $WINDOW_STYLE == "float" ]]; then
-  APP_CLASS="TUI.float"
+  APP_CLASS="org.tui.Terminal"
+  EXEC_PREFIX="tui-terminal-exec --hypr-profile tui --app-id=$APP_CLASS -- "
 else
   APP_CLASS="TUI.tile"
+  EXEC_PREFIX="tui-terminal-exec --app-id=$APP_CLASS -- "
 fi
 
 APP_EXEC_DESKTOP=$(desktop_exec_escape "$APP_EXEC")
@@ -60,11 +62,12 @@ cat >"$DESKTOP_FILE" <<EOF
 Version=1.0
 Name=$APP_NAME
 Comment=$APP_NAME
-Exec=tui-terminal-exec --class=$APP_CLASS -e bash -lc "$APP_EXEC_DESKTOP"
+Exec=${EXEC_PREFIX}bash -lc "$APP_EXEC_DESKTOP"
 Terminal=false
 Type=Application
 Icon=$ICON_PATH
 StartupNotify=true
+X-Hypr-Tui=true
 EOF
 
 chmod +x "$DESKTOP_FILE"

@@ -2,45 +2,43 @@
 # Format: #hexcolor=pywal_variable
 # Theme: Gruvbox Retro
 
-# Background / surfaces
-#000000=background
+# Core colors derived from kvconfig.theme [GeneralColors]
 #232323=background
-#141414=color0
-#141b1e=color0
-#192023=color0
+#282828=color0
+#2e2e2e=color8
+#504945=color7
+#3f3f3f=color7
 #1d2021=color0
 #202324=color0
-#212c31=color0
-#222d32=color0
-#252f35=color0
-#282828=color0
-#2e2e2e=color0
+#458588=color4
+#ebdbb2=foreground
+#a89984=color8
+#fbf1c7=foreground
+#b8bb26=color6
+#98971a=color5
+
+# Additional SVG/template colors preserved from the existing map
+#000000=background
+#141414=color0
+#141B1E=color0
+#192023=color0
+#212C31=color0
+#222D32=color0
+#252F35=color0
 #304048=color0
 #353535=color0
-#3c3836=color0
-#3f3f3f=color0
-#504945=color8
-#565b5e=color8
-#5c616c=color8
-#7b7b7b=color8
-#a89984=color8
-#acb1bc=color7
-
-# Text
-#cfd8dc=foreground
-#d1d1d1=foreground
-#d5c4a1=foreground
-#e4e5e8=foreground
-#ebdbb2=foreground
-#fbf1c7=foreground
-#fbfbfc=foreground
-#ffffff=foreground
-
-# Accents
-#00bcd4=color6
-#458588=color4
-#82b3a8=color6
-#98971a=color2
-#b74aff=color5
-#b8bb26=color2
-#cc241d=color1
+#3C3836=color0
+#565B5E=color8
+#5C616C=color8
+#7B7B7B=color8
+#ACB1BC=color7
+#CFD8DC=foreground
+#D1D1D1=foreground
+#D5C4A1=foreground
+#E4E5E8=foreground
+#FBFBFC=foreground
+#FFFFFF=foreground
+#00BCD4=color6
+#82B3A8=color6
+#B74AFF=color5
+#CC241D=color1

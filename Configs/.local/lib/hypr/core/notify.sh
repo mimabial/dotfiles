@@ -31,10 +31,6 @@ notify_send_safe() {
   return 0
 }
 
-send_notifs() {
-  notify_send_safe "$@"
-}
-
 send_ephemeral_notif() {
   local sync_tag="$1"
   shift

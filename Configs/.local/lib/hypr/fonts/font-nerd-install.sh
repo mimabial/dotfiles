@@ -34,12 +34,12 @@ install_nerd_font_packages() {
     echo
     echo "Refreshing font cache..."
     refresh_font_cache
-    send_notifs -a "Font Manager" -i "preferences-desktop-font" "Installed Nerd Font" "${package_label}"
+    notify_send_safe -a "Font Manager" -i "preferences-desktop-font" "Installed Nerd Font" "${package_label}"
     echo -e "\033[1;32m✓ Installed: ${package_label}\033[0m"
     return 0
   fi
 
-  send_notifs -u critical -a "Font Manager" -i "preferences-desktop-font" "Failed to install Nerd Font" "${package_label}"
+  notify_send_safe -u critical -a "Font Manager" -i "preferences-desktop-font" "Failed to install Nerd Font" "${package_label}"
   echo -e "\033[1;31m✗ Installation failed.\033[0m" >&2
   return 1
 }

@@ -2,39 +2,39 @@
 # Format: #hexcolor=pywal_variable
 # Theme: Grukai
 
-# Backgrounds / surfaces
-#000000=background
+# Core colors derived from kvconfig.theme [GeneralColors]
 #131311=background
-#141414=color0
-#31363b=color0
 #525229=color0
-#6b6b3a=color0
+#6B6B3A=color8
+#7D7D4B=color7
+#F0CBAA=color4
+#FFFFFF=foreground
+#8F8F57=color8
+#F0C7AA=color5
 
-# Midtones
-#7d7d4b=color8
-#7f7f7f=color8
-#8f8f57=color8
-
-# Light neutrals
+# Additional SVG/template colors preserved from the existing map
+#000000=background
+#141414=color0
+#31363B=color0
+#6B6B3A=color0
+#7D7D4B=color8
+#7F7F7F=color8
+#8F8F57=color8
 #919191=color7
 #999999=color7
-#a6a6a6=color7
-#b4b4b4=color7
-#b6b6b6=color7
-#bebebe=color7
-#bfbfbf=color7
-#ffe4cc=color7
-#ffffcc=color7
-
-# Light / text
-#d2d2d2=foreground
-#d6d6d6=foreground
-#dcdcdc=foreground
-#eaeaea=foreground
-#ffffff=foreground
-
-# Accents
-#a38265=color4
-#e6bd9a=color5
-#f0c7aa=color10
-#f0cbaa=color9
+#A6A6A6=color7
+#B4B4B4=color7
+#B6B6B6=color7
+#BEBEBE=color7
+#BFBFBF=color7
+#FFE4CC=color7
+#FFFFCC=color7
+#D2D2D2=foreground
+#D6D6D6=foreground
+#DCDCDC=foreground
+#EAEAEA=foreground
+#FFFFFF=foreground
+#A38265=color4
+#E6BD9A=color5
+#F0C7AA=color10
+#F0CBAA=color9

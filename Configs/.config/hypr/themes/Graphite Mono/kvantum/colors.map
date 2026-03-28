@@ -2,48 +2,46 @@
 # Format: #hexcolor=pywal_variable
 # Theme: Graphite Mono
 
-# Background / surfaces
-#000000=background
+# Core colors derived from kvconfig.theme [GeneralColors]
 #2c2c2c=background
-#1a1a1a=color0
-#1e1e1e=color0
-#1f1f1f=color0
-#212121=color0
-#26272a=color0
-#282828=color0
 #2e2e2e=color0
+#4d4d4d=color8
+#535353=color7
+#474747=color7
+#282828=color0
 #323232=color0
-#333333=color0
-#343031=color0
-#3c3c3c=color0
-#4d4d4d=color0
+#e0e0e0=color4
+#dfdfdf=foreground
+#696969=color8
+#efefef=foreground
+#333333=foreground
+#0057AE=color6
+#E040FB=color5
 
-# Mid neutrals
-#474747=color8
+# Additional SVG/template colors preserved from the existing map
+#000000=background
+#1A1A1A=color0
+#1E1E1E=color0
+#1F1F1F=color0
+#212121=color0
+#26272A=color0
+#343031=color0
+#3C3C3C=color0
 #525252=color8
-#535353=color8
-#5a5a5a=color8
-#5a616e=color8
+#5A5A5A=color8
+#5A616E=color8
 #646464=color8
 #666666=color8
-#696969=color8
 #787878=color8
 #989898=color7
-#acb1bc=color7
-
-# Text
-#b6b6b6=foreground
-#c1c1c1=foreground
-#cccccc=foreground
-#dfdfdf=foreground
-#efefef=foreground
-#f2f2f2=foreground
-#ffffff=foreground
-
-# Accents
-#0057ae=color4
-#4285f4=color4
-#b74aff=color5
-#e040fb=color5
-#e0e0e0=color7
-#f04a50=color1
+#ACB1BC=color7
+#B6B6B6=foreground
+#C1C1C1=foreground
+#CCCCCC=foreground
+#F2F2F2=foreground
+#FFFFFF=foreground
+#0057AE=color4
+#4285F4=color4
+#B74AFF=color5
+#E040FB=color5
+#F04A50=color1

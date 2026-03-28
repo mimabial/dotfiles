@@ -120,7 +120,7 @@ queue_theme() {
     return 1
   fi
 
-  if ! get_hashmap "${theme_dir}" --no-notify --skipstrays; then
+  if ! get_hashmap --no-notify --skipstrays "${theme_dir}"; then
     return 0
   fi
 
@@ -333,7 +333,7 @@ case "${mode}" in
           if [[ ! -d "${theme_dir}" ]] && [[ -d "$(dirname "${HYPR_THEME_DIR}")/${theme}" ]]; then
             theme_dir="$(dirname "${HYPR_THEME_DIR}")/${theme}"
           fi
-          if [[ -d "${theme_dir}" ]] && get_hashmap "${theme_dir}" --no-notify --skipstrays; then
+          if [[ -d "${theme_dir}" ]] && get_hashmap --no-notify --skipstrays "${theme_dir}"; then
             for wall in "${wallList[@]}"; do
               fallback_args+=(-w "${wall}")
             done

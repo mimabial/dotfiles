@@ -38,6 +38,11 @@ find_wallpapers() {
 get_hashmap() {
   local no_notify=0
   local skipStrays=0
+  local -a wall_sources=()
+  local wallSource=""
+  local hashMap=""
+  local hash=""
+  local image=""
 
   wallHash=()
   wallList=()
@@ -55,13 +60,37 @@ get_hashmap() {
     supported_files=("${WALLPAPER_OVERRIDE_FILETYPES[@]}")
   fi
 
-  for wallSource in "$@"; do
+  while (($# > 0)); do
+    case "$1" in
+      --no-notify)
+        no_notify=1
+        shift
+        ;;
+      --skipstrays)
+        skipStrays=1
+        shift
+        ;;
+      --)
+        shift
+        wall_sources=("$@")
+        break
+        ;;
+      -*)
+        print_log -err "ERROR:" -b "unknown get_hashmap option:" "$1"
+        return 1
+        ;;
+      *)
+        wall_sources=("$@")
+        break
+        ;;
+    esac
+  done
+
+  for wallSource in "${wall_sources[@]}"; do
 
     [ "${LOG_LEVEL}" == "debug" ] && print_log -g "DEBUG:" -b "wallpaper source path:" "${wallSource}"
 
     [ -z "${wallSource}" ] && continue
-    [ "${wallSource}" == "--no-notify" ] && no_notify=1 && continue
-    [ "${wallSource}" == "--skipstrays" ] && skipStrays=1 && continue
     wallSource="$(realpath "${wallSource}")"
 
     [ -e "${wallSource}" ] || {
@@ -117,7 +146,7 @@ get_themes() {
     local realWallPath
     realWallPath="$(readlink "${thmDir}/wall.set")"
     if [ ! -e "${realWallPath}" ]; then
-      get_hashmap "${thmDir}" --skipstrays || continue
+      get_hashmap --skipstrays "${thmDir}" || continue
       echo "fixing link :: ${thmDir}/wall.set"
       ln -fs "${wallList[0]}" "${thmDir}/wall.set"
     fi

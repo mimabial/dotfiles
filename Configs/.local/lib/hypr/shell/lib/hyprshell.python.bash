@@ -33,7 +33,7 @@ run_pypr() {
     local pypr_conf="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/pyprland.toml"
 
     if [[ ! -f "${pypr_conf}" ]]; then
-      send_notifs "Missing pyprland.toml" "Please create ${pypr_conf} to configure PyPR."
+      notify_send_safe "Missing pyprland.toml" "Please create ${pypr_conf} to configure PyPR."
       exit 1
     fi
 

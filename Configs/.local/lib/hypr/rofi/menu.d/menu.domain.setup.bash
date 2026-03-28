@@ -16,10 +16,10 @@ menu_run_action_setup() {
   local action_id="$1"
 
   case "${action_id}" in
-    setup_audio) present_terminal --app-id org.tui.Wiremix --title Wiremix -- wiremix ;;
+    setup_audio) present_terminal --hypr-profile tui --app-id org.tui.Wiremix --title Wiremix -- wiremix ;;
     setup_wifi) rfkill unblock wifi && hyprshell launch/wifi.sh ;;
-    setup_bluetooth) rfkill unblock bluetooth && present_terminal --app-id org.tui.Bluetui --title Bluetui -- bluetui ;;
-    setup_network) present_terminal --app-id org.tui.Oryx --title Oryx -- sudo oryx ;;
+    setup_bluetooth) rfkill unblock bluetooth && present_terminal --hypr-profile tui --app-id org.tui.Bluetui --title Bluetui -- bluetui ;;
+    setup_network) present_terminal --hypr-profile tui --app-id org.tui.Oryx --title Oryx -- sudo oryx ;;
     setup_monitors) open_in_editor ~/.config/hypr/monitors.conf ;;
     setup_keybindings) open_in_editor ~/.config/hypr/keybindings.conf ;;
     *) return 1 ;;

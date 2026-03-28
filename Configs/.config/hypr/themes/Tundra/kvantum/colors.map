@@ -2,37 +2,41 @@
 # Format: #hexcolor=pywal_variable
 # Theme: Tundra
 
-# Background / surfaces
-#000000=background
-#132b4b=background
-#141414=background
-#293a52=color0
-#31363b=color0
-#3a4f6b=color0
+# Core colors derived from kvconfig.theme [GeneralColors]
+#132B4B=background
+#293A52=color0
+#3A4F6B=color8
+#4B607D=color7
+#D4B0C1=color4
+#FFFFFF=foreground
+#576F8F=color8
+#C4AAF0=color5
 
-# Mid neutrals
-#4b607d=color8
-#576f8f=color8
-#7f7f7f=color8
+# Additional SVG/template colors preserved from the existing map
+#000000=background
+#132B4B=background
+#141414=background
+#293A52=color0
+#31363B=color0
+#3A4F6B=color0
+#4B607D=color8
+#576F8F=color8
+#7F7F7F=color8
 #919191=color8
 #999999=color8
-
-# Text
-#a6a6a6=color15
-#b4b4b4=color15
-#b6b6b6=color15
-#bebebe=color15
-#bfbfbf=color15
-#d2d2d2=color7
-#d6d6d6=color7
-#dcdcdc=color7
-#eaeaea=foreground
-#ffffff=foreground
-
-# Accents
-#c4aaf0=color10
-#cce2ff=color2
-#d4b0c1=color11
-#e6b29a=color9
-#f0c1aa=color9
-#ffddcc=color1
+#A6A6A6=color15
+#B4B4B4=color15
+#B6B6B6=color15
+#BEBEBE=color15
+#BFBFBF=color15
+#D2D2D2=color7
+#D6D6D6=color7
+#DCDCDC=color7
+#EAEAEA=foreground
+#FFFFFF=foreground
+#C4AAF0=color10
+#CCE2FF=color2
+#D4B0C1=color11
+#E6B29A=color9
+#F0C1AA=color9
+#FFDDCC=color1

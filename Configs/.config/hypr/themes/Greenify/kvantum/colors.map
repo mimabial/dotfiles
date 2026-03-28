@@ -2,34 +2,32 @@
 # Format: #hexcolor=pywal_variable
 # Theme: Greenify
 
-# Background / surfaces
-#000000=background
+# Core colors derived from kvconfig.theme [GeneralColors]
 #0E120F=background
-#141414=color0
-#31363b=color0
 #295233=color0
 #3A6B46=color8
-#4B7D57=color8
+#4B7D57=color7
+#AAF0E7=color4
+#FFFFFF=foreground
 #578F65=color8
-#7f7f7f=color8
+#AAF0DC=color5
+
+# Additional SVG/template colors preserved from the existing map
+#000000=background
+#141414=color0
+#31363B=color0
+#7F7F7F=color8
 #919191=color7
 #999999=color7
-#a6a6a6=color7
-
-# Text
-#FFFFFF=foreground
-#b4b4b4=foreground
-#b6b6b6=foreground
-#bebebe=foreground
-#bfbfbf=foreground
-#d2d2d2=foreground
-#d6d6d6=foreground
-#dcdcdc=foreground
-#eaeaea=foreground
-
-# Accents
-#AAF0E7=color6
+#A6A6A6=color7
+#B4B4B4=foreground
+#B6B6B6=foreground
+#BEBEBE=foreground
+#BFBFBF=foreground
+#D2D2D2=foreground
+#D6D6D6=foreground
+#DCDCDC=foreground
+#EAEAEA=foreground
 #9AE6DC=color6
 #CCFFF9=color6
-#AAF0DC=color6
 #CCFFD9=color2

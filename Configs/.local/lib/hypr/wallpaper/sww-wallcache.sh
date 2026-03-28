@@ -147,9 +147,9 @@ write_main_thumb() {
   local source_image="$2"
   local -a magick_args=("$@")
   magick_args=("${magick_args[@]:2}")
-  local tmp_thmb="${WALLPAPER_THUMB_DIR}/.${x_hash}.thmb"
+  local tmp_thmb="${WALLPAPER_THUMB_DIR}/.${x_hash}.thmb.png"
 
-  magick "${magick_args[@]}" "${source_image}"[0] -strip -resize 1000 -gravity center -extent 1000 -quality 90 "${tmp_thmb}" &&
+  magick "${magick_args[@]}" "${source_image}"[0] -strip -resize 1000 -gravity center -extent 1000 -quality 90 "png:${tmp_thmb}" &&
     mv -f "${tmp_thmb}" "${WALLPAPER_THUMB_DIR}/${x_hash}.thmb" || rm -f "${tmp_thmb}"
 }
 
@@ -168,9 +168,9 @@ write_blur_thumb() {
   local source_image="$2"
   local -a magick_args=("$@")
   magick_args=("${magick_args[@]:2}")
-  local tmp_blur="${WALLPAPER_THUMB_DIR}/.${x_hash}.blur"
+  local tmp_blur="${WALLPAPER_THUMB_DIR}/.${x_hash}.blur.png"
 
-  magick "${magick_args[@]}" "${source_image}"[0] -strip -scale 10% -blur 0x3 -resize 100% "${tmp_blur}" &&
+  magick "${magick_args[@]}" "${source_image}"[0] -strip -scale 10% -blur 0x3 -resize 100% "png:${tmp_blur}" &&
     mv -f "${tmp_blur}" "${WALLPAPER_THUMB_DIR}/${x_hash}.blur" || rm -f "${tmp_blur}"
 }
 
@@ -244,6 +244,7 @@ build_wallcache() {
   fi
 
   [[ -n "${temp_image}" ]] && rm -f "${temp_image}"
+  return 0
 }
 
 fn_wallcache() {
@@ -272,6 +273,20 @@ link_rofi_themes() {
   shopt -u nullglob
   ((${#theme_files[@]} > 0)) || return 0
   ln -snf "${theme_files[@]}" "${dst_dir}/"
+}
+
+run_single_cache_job() {
+  local worker_mode="${1:-}"
+  local wall_hash="${2:-}"
+  local wall_path="${3:-}"
+
+  [[ -n "${wall_hash}" && -n "${wall_path}" ]] || return 1
+
+  case "${worker_mode}" in
+    _force) build_wallcache "${wall_hash}" "${wall_path}" 1 ;;
+    "") build_wallcache "${wall_hash}" "${wall_path}" 0 ;;
+    *) return 1 ;;
+  esac
 }
 
 parse_options() {
@@ -322,7 +337,7 @@ load_explicit_wallpapers() {
 load_catalog_wallpapers() {
   wallPathArray=("${cacheIn}")
   wallPathArray+=("${WALLPAPER_CUSTOM_PATHS[@]}")
-  get_hashmap "${wallPathArray[@]}" --no-notify
+  get_hashmap --no-notify "${wallPathArray[@]}"
 }
 
 load_wallpaper_targets() {
@@ -340,11 +355,35 @@ log_cache_limits() {
 }
 
 run_cache_jobs() {
+  local script_path=""
   [[ ${#wallList[@]} -eq 0 ]] && exit 0
-  parallel --bar --link --jobs "${WALLPAPER_CACHE_JOBS}" "fn_wallcache${mode}" ::: "${wallHash[@]}" ::: "${wallList[@]}"
+  script_path="$(realpath "${BASH_SOURCE[0]}")" || exit 1
+  parallel --bar --link --jobs "${WALLPAPER_CACHE_JOBS}" \
+    "${script_path}" --build"${mode}" {1} {2} ::: "${wallHash[@]}" ::: "${wallList[@]}"
+}
+
+dispatch_internal_job() {
+  local mode_arg="${1:-}"
+  shift || true
+  case "${mode_arg}" in
+    --build)
+      run_single_cache_job "" "$@"
+      ;;
+    --build_force)
+      run_single_cache_job "_force" "$@"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
 }
 
 main() {
+  if [[ "${1:-}" == --build* ]]; then
+    dispatch_internal_job "$@"
+    return $?
+  fi
+
   setup_cache_lock
   prepare_cache_dirs
   parse_options "$@"
@@ -360,5 +399,4 @@ main() {
   run_cache_jobs
 }
 
-export -f fn_wallcache fn_wallcache_force extract_thumbnail
 main "$@"

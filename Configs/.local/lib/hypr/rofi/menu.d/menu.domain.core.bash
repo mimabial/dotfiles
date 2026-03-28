@@ -47,11 +47,11 @@ menu_run_action_core() {
     main_apps) hyprshell rofi/rofi-launch.sh ;;
     dev_git) hyprshell launch/lazygit.sh ;;
     dev_docker) hyprshell launch/lazydocker.sh ;;
-    dev_file_manager) present_terminal --app-id org.tui.Ranger --title Ranger -- ranger ;;
-    dev_cpu_monitor) present_terminal --app-id org.tui.Htop --title Htop -- htop ;;
-    dev_gpu_monitor) present_terminal --app-id org.tui.Nvtop --title Nvtop -- nvtop ;;
-    dev_disk_usage) present_terminal --app-id org.tui.Dua --title Dua -- dua i ;;
-    dev_music_player) present_terminal --app-id org.tui.Rmpc --title Rmpc -- rmpc ;;
+    dev_file_manager) present_terminal --hypr-profile tui --app-id org.tui.Ranger --title Ranger -- ranger ;;
+    dev_cpu_monitor) present_terminal --hypr-profile tui --app-id org.tui.Htop --title Htop -- htop ;;
+    dev_gpu_monitor) present_terminal --hypr-profile tui --app-id org.tui.Nvtop --title Nvtop -- nvtop ;;
+    dev_disk_usage) present_terminal --hypr-profile tui --app-id org.tui.Dua --title Dua -- dua i ;;
+    dev_music_player) present_terminal --hypr-profile tui --app-id org.tui.Rmpc --title Rmpc -- rmpc ;;
     learn_keybindings) hyprshell keybinds/keybinds_hint.sh c ;;
     learn_bash_cheatsheet) hyprshell launch/webapp.sh "https://devhints.io/bash" ;;
     learn_bash_shellcheck) hyprshell launch/webapp.sh "https://www.shellcheck.net/wiki/" ;;

@@ -3,7 +3,6 @@ import glob
 import json
 import os
 import re
-import subprocess
 import sys
 
 from pyutils.xdg_base_dirs import xdg_config_home, xdg_data_home
@@ -14,13 +13,13 @@ from waybar_shared import (
     DATA_WAYBAR_DIR,
     INCLUDES_DIRS,
     MODULE_DIRS,
-    STATE_FILE,
     atomic_copy_file,
     atomic_write_json,
     atomic_write_text,
     ensure_directory_exists,
     logger,
 )
+from pyutils.compositor import HyprctlWrapper
 from waybar_state import (
     get_config_value,
     get_current_layout_from_config,
@@ -412,46 +411,12 @@ def update_border_radius():
         logger.debug(f"hypr_border env: {border_radius}")
 
     if not border_radius:
-        logger.debug("Reading border radius from theme.conf")
-        theme_conf = os.path.join(str(xdg_config_home()), "hypr", "themes", "theme.conf")
-        if os.path.exists(theme_conf):
-            try:
-                with open(theme_conf, "r") as f:
-                    for line in f:
-                        if "rounding" in line and "=" in line:
-                            border_radius = line.split("=")[1].strip().split()[0]
-                            logger.debug(f"Got border radius from theme.conf: {border_radius}")
-                            break
-            except Exception as e:
-                logger.error(f"Error reading theme.conf: {e}")
-
-    if not border_radius:
-        logger.debug("Trying fallback to hypr.theme")
-        theme_name = None
-        if os.path.exists(STATE_FILE):
-            try:
-                with open(STATE_FILE, "r") as file:
-                    for line in file:
-                        if line.startswith("HYPR_THEME="):
-                            theme_name = line.strip().split("=", 1)[1].strip('"').strip("'")
-                            logger.debug(f"Found theme name: {theme_name}")
-                            break
-            except Exception as e:
-                logger.error(f"Error reading state file: {e}")
-
-        if theme_name:
-            theme_dir = os.path.join(str(xdg_config_home()), "hypr", "themes", theme_name)
-            hypr_theme_path = os.path.join(theme_dir, "hypr.theme")
-            if os.path.exists(hypr_theme_path):
-                try:
-                    with open(hypr_theme_path, "r") as f:
-                        for line in f:
-                            if "rounding" in line and "=" in line:
-                                border_radius = line.split("=")[1].strip().split()[0]
-                                logger.debug(f"Got border radius from hypr.theme: {border_radius}")
-                                break
-                except Exception as e:
-                    logger.error(f"Error reading hypr.theme: {e}")
+        logger.debug("Reading border radius from Hyprland")
+        try:
+            border_radius = HyprctlWrapper.getoption("decoration:rounding")
+            logger.debug(f"Got border radius from Hyprland: {border_radius}")
+        except (EnvironmentError, RuntimeError, ValueError) as e:
+            logger.warning(f"Failed to read border radius from Hyprland: {e}")
 
     try:
         border_radius = int(str(border_radius).strip())

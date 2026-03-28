@@ -1,12 +1,12 @@
 $HOME/.config/rofi/theme.rasi
 * {
-    background:          #122D41B3;
+    background:          #294052B3;
     foreground:          #CCE9FFE6;
     border:              #7F9FC2E6;
-    accent:              #376FABE6;
-    selected-background: #AACBF0CC;
-    selected-foreground: #D3DCE6FF;
+    accent:              #8BE6F0E6;
+    selected-background: #CCE4FFCC;
+    selected-foreground: #FFF8F0FF;
     separator:           #7F9FC240;
-    urgent:              #D3DCE6FF;
+    urgent:              #F6BAC1FF;
     active:              #9AC5E6FF;
 }

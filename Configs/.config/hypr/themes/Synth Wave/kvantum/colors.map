@@ -2,47 +2,44 @@
 # Format: #hexcolor=pywal_variable
 # Theme: Synth Wave
 
-# Background / surfaces
-#000000=background
-#1a1a1a=color0
-#1e1e1e=color0
-#1f1f1f=color0
-#212121=color0
-#241b2f=color0
+# Core colors derived from kvconfig.theme [GeneralColors]
 #262335=background
-#26272a=background
+#241b2f=color0
+#880088=color8
+#fe4450=color7
+#495495=color7
+#D18616=color0
+#72f1b8=color4
+#ffffff=foreground
+#696969=color8
+#efefef=foreground
+#03edf9=color6
+
+# Additional SVG/template colors preserved from the existing map
+#000000=background
+#1A1A1A=color0
+#1E1E1E=color0
+#1F1F1F=color0
+#212121=color0
+#26272A=background
 #333333=background
 #343031=background
-
-# Mid neutrals
-#495495=color8
 #525252=color8
-#5a5a5a=color8
-#5a616e=color8
+#5A5A5A=color8
+#5A616E=color8
 #646464=color8
 #666666=color8
-#696969=color8
 #787878=color8
 #989898=color8
-
-# Text
-#acb1bc=foreground
-#b6b6b6=foreground
-#c1c1c1=foreground
-#cccccc=foreground
-#d1d1d1=foreground
-#dfdfdf=foreground
-#efefef=foreground
-#ffffff=foreground
-
-# Accents
-#03edf9=color4
-#4285f4=color4
-#72f1b8=color2
-#880088=color1
-#b74aff=color3
-#d18616=color5
-#f04a50=color1
-#f97e72=color1
-#fe4450=color1
-#ff7edb=color3
+#ACB1BC=foreground
+#B6B6B6=foreground
+#C1C1C1=foreground
+#CCCCCC=foreground
+#D1D1D1=foreground
+#DFDFDF=foreground
+#4285F4=color4
+#B74AFF=color3
+#D18616=color5
+#F04A50=color1
+#F97E72=color1
+#FF7EDB=color3

@@ -165,7 +165,7 @@ show_install_font_menu() {
         show_install_font_menu
         return 0
       }
-      present_terminal --app-id org.font.Install --title "Install ${selection}" -- hyprshell fonts/font-nerd-install.sh --packages "${package}"
+      present_terminal --hypr-profile dialog --app-id org.font.Install --title "Install ${selection}" -- hyprshell fonts/font-nerd-install.sh --packages "${package}"
       ;;
   esac
 }
@@ -218,7 +218,7 @@ show_remove_font_menu() {
         show_remove_font_menu
         return 0
       }
-      present_terminal --app-id org.font.Remove --title "Remove ${selection}" -- hyprshell fonts/font-nerd-remove.sh --packages "${package}"
+      present_terminal --hypr-profile dialog --app-id org.font.Remove --title "Remove ${selection}" -- hyprshell fonts/font-nerd-remove.sh --packages "${package}"
       ;;
   esac
 }

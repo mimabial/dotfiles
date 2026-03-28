@@ -1,9 +1,226 @@
 #!/bin/bash
-# Wrapper for TUI applications
-# Launch TUI apps with $TERMINAL_TUI.
 
-# Resolve TERMINAL_TUI from the environment, defaulting to kitty.
 TERMINAL_TUI="${TERMINAL_TUI:-kitty}"
+hypr_profile=""
+hypr_width=""
+hypr_height=""
+app_id=""
+title=""
+cmd=()
+terminal_launch=()
 
-# Execute the terminal with all arguments passed through
-exec "${TERMINAL_TUI}" "$@"
+usage() {
+  printf 'Usage: %s [--hypr-profile NAME] [--hypr-size WIDTH HEIGHT] [--app-id ID] [--title TITLE] -- <command> [args...]\n' "$(basename "$0")" >&2
+}
+
+parse_args() {
+  while [[ "$#" -gt 0 ]]; do
+    case "$1" in
+      --hypr-profile)
+        [[ "$#" -ge 2 ]] || {
+          usage
+          exit 2
+        }
+        hypr_profile="$2"
+        shift 2
+        ;;
+      --hypr-size)
+        [[ "$#" -ge 3 ]] || {
+          usage
+          exit 2
+        }
+        hypr_width="$2"
+        hypr_height="$3"
+        shift 3
+        ;;
+      --app-id)
+        [[ "$#" -ge 2 ]] || {
+          usage
+          exit 2
+        }
+        app_id="$2"
+        shift 2
+        ;;
+      --title)
+        [[ "$#" -ge 2 ]] || {
+          usage
+          exit 2
+        }
+        title="$2"
+        shift 2
+        ;;
+      --)
+        shift
+        cmd=("$@")
+        break
+        ;;
+      *)
+        cmd+=("$1")
+        shift
+        ;;
+    esac
+  done
+
+  [[ "${#cmd[@]}" -gt 0 ]] || {
+    usage
+    exit 2
+  }
+}
+
+apply_geometry_profile() {
+  case "${hypr_profile}" in
+    "")
+      return 0
+      ;;
+    tui)
+      hypr_width="50%"
+      hypr_height="70%"
+      ;;
+    dialog)
+      hypr_width="80%"
+      hypr_height="80%"
+      ;;
+    *)
+      printf 'Unknown hypr profile: %s\n' "${hypr_profile}" >&2
+      return 1
+      ;;
+  esac
+}
+
+validate_exec_command() {
+  if [[ "${cmd[0]}" == */* ]]; then
+    [[ -x "${cmd[0]}" ]] && return 0
+  elif command -v "${cmd[0]}" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  printf 'Command not found: %s\n' "${cmd[0]}" >&2
+  return 127
+}
+
+build_terminal_command() {
+  local terminal_name="${TERMINAL_TUI##*/}"
+
+  terminal_launch=("${TERMINAL_TUI}")
+
+  case "${terminal_name}" in
+    kitty)
+      [[ -n "${app_id}" ]] && terminal_launch+=("--app-id=${app_id}")
+      [[ -n "${title}" ]] && terminal_launch+=("--title=${title}")
+      terminal_launch+=("${cmd[@]}")
+      ;;
+    alacritty)
+      [[ -n "${app_id}" ]] && terminal_launch+=(--class "${app_id}")
+      [[ -n "${title}" ]] && terminal_launch+=(--title "${title}")
+      terminal_launch+=(-e "${cmd[@]}")
+      ;;
+    *)
+      if [[ -n "${app_id}" || -n "${title}" ]]; then
+        printf 'WARN: terminal backend %s does not support app-id/title metadata\n' "${terminal_name}" >&2
+      fi
+      terminal_launch+=("${cmd[@]}")
+      ;;
+  esac
+}
+
+wait_for_client_json() {
+  local pid="$1"
+  local client_json=""
+
+  while kill -0 "$pid" 2>/dev/null; do
+    client_json="$(
+      hyprctl clients -j 2>/dev/null \
+        | jq -c --argjson pid "$pid" '.[] | select(.pid == $pid)' \
+        | head -n1
+    )"
+    [[ -n "${client_json}" ]] && {
+      printf '%s\n' "${client_json}"
+      return 0
+    }
+    sleep 0.05
+  done
+
+  return 1
+}
+
+monitor_logical_size() {
+  local monitor_id="$1"
+  local monitor_json=""
+
+  monitor_json="$(
+    hyprctl monitors -j 2>/dev/null \
+      | jq -c --argjson id "$monitor_id" '.[] | select(.id == $id)' \
+      | head -n1
+  )"
+  [[ -n "${monitor_json}" ]] || return 1
+
+  jq -r '[.width, .height, .scale] | @tsv' <<<"${monitor_json}" \
+    | awk -F '\t' '{ printf "%d\t%d\n", $1 / $3, $2 / $3 }'
+}
+
+resolve_dimension() {
+  local spec="$1"
+  local base="$2"
+  local percent=""
+
+  case "$spec" in
+    *%)
+      percent="${spec%%%}"
+      [[ "${percent}" =~ ^[0-9]+$ ]] || return 1
+      printf '%s\n' $((base * percent / 100))
+      ;;
+    *)
+      [[ "${spec}" =~ ^[0-9]+$ ]] || return 1
+      printf '%s\n' "${spec}"
+      ;;
+  esac
+}
+
+apply_hypr_geometry() {
+  local pid="$1"
+  local client_json=""
+  local addr=""
+  local floating=""
+  local monitor_id=""
+  local logical_width=""
+  local logical_height=""
+  local target_width=""
+  local target_height=""
+
+  client_json="$(wait_for_client_json "$pid")" || return 1
+  IFS=$'\t' read -r addr floating monitor_id <<<"$(jq -r '[.address, .floating, .monitor] | @tsv' <<<"${client_json}")"
+  IFS=$'\t' read -r logical_width logical_height <<<"$(monitor_logical_size "$monitor_id")" || return 1
+
+  target_width="$(resolve_dimension "${hypr_width}" "${logical_width}")" || return 1
+  target_height="$(resolve_dimension "${hypr_height}" "${logical_height}")" || return 1
+
+  if [[ "${floating}" != "true" ]]; then
+    hyprctl dispatch togglefloating "address:${addr}" >/dev/null 2>&1 || return 1
+  fi
+
+  hyprctl -q --batch \
+    "dispatch resizeactive exact ${target_width} ${target_height} address:${addr}; dispatch centerwindow address:${addr}" \
+    >/dev/null 2>&1 || return 1
+}
+
+terminate_child() {
+  kill -TERM "${terminal_pid}" 2>/dev/null || true
+}
+
+parse_args "$@"
+apply_geometry_profile || exit 2
+validate_exec_command || exit $?
+build_terminal_command
+
+"${terminal_launch[@]}" &
+terminal_pid=$!
+
+trap terminate_child INT TERM HUP
+
+if [[ -n "${hypr_width}" && -n "${hypr_height}" ]] \
+  && command -v hyprctl >/dev/null 2>&1 \
+  && command -v jq >/dev/null 2>&1; then
+  apply_hypr_geometry "${terminal_pid}" || true
+fi
+
+wait "${terminal_pid}"

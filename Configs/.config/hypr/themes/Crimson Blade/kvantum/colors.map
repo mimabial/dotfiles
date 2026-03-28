@@ -2,45 +2,41 @@
 # Format: #hexcolor=pywal_variable
 # Theme: Crimson Blade
 
-# Background / surfaces
+# Core colors derived from kvconfig.theme [GeneralColors]
+#0a1124=background
+#282d43=color8
+#e6dcbe=color7
+#c50ed2=color4
+#666a73=color8
+#5294e2=color6
+#7cb7ff=color5
+
+# Additional SVG/template colors preserved from the existing map
 #000000=background
 #001419=background
-#0a1124=background
-#0c0b15=background
+#0C0B15=background
 #111111=background
 #151926=background
-#1e1e20=background
-#22252e=background
+#1E1E20=background
+#22252E=background
 #232325=background
-#26272a=background
-#28282a=background
-#282d43=color0
+#26272A=background
+#28282A=background
 #323234=background
 #343031=background
-
-# Mid neutrals
-#48484a=color8
+#48484A=color8
 #525254=color8
 #565658=color8
 #606062=color8
 #646466=color8
 #666666=color8
-#666a73=color8
 #727274=color8
-#7a7a7c=color8
-#88888a=color8
+#7A7A7C=color8
+#88888A=color8
 #989898=color8
-
-# Text
-#aaaaac=color7
-#c8c8ca=color7
-#d2d2d4=color7
-
-# Accents
+#AAAAAC=color7
+#C8C8CA=color7
+#D2D2D4=color7
 #333399=color4
-#5294e2=color4
-#7cb7ff=color12
-#c50ed2=color9
-#e6dcbe=color11
-#ed004b=color1
-#ff00cc=color9
+#ED004B=color1
+#FF00CC=color9

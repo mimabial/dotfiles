@@ -6,7 +6,7 @@ DESKTOP_DIR="$HOME/.local/share/applications/"
 if [ "$#" -eq 0 ]; then
   # Find all TUIs
   while IFS= read -r -d '' file; do
-    if grep -Eq '^Exec=(\$TERMINAL_TUI|tui-terminal-exec)\b.*-e' "$file"; then
+    if grep -Eq '^X-Hypr-Tui=true$' "$file" || grep -Eq '^Exec=(\$TERMINAL_TUI|tui-terminal-exec)\b' "$file"; then
       TUIS+=("$(basename "${file%.desktop}")")
     fi
   done < <(find "$DESKTOP_DIR" -name '*.desktop' -print0)

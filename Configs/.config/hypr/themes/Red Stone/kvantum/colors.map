@@ -2,25 +2,30 @@
 # Format: #hexcolor=pywal_variable
 # Theme: Red Stone
 
-# Background / surfaces
-#000000=background
-#0a0101=background
+# Core colors derived from kvconfig.theme [GeneralColors]
+#0A0101=background
 #522929=color0
-#6b3a3a=color0
-#7d4b4b=color8
-#8f5757=color8
+#6B3A3A=color8
+#7D4B4B=color7
+#F0ABAA=color4
+#FFFFFF=foreground
+#8F5757=color8
+#F0AAAA=color5
 
-# Text
-#cfc9c2=foreground
-#d1d1d1=foreground
-#d2d2d2=foreground
-#d6d6d6=foreground
-#dcdcdc=foreground
-#eaeaea=foreground
-#ffffff=foreground
-
-# Accents
-#e69a9a=color9
-#f0aaaa=color9
-#f0abaa=color9
-#ffcccc=color9
+# Additional SVG/template colors preserved from the existing map
+#000000=background
+#0A0101=background
+#6B3A3A=color0
+#7D4B4B=color8
+#8F5757=color8
+#CFC9C2=foreground
+#D1D1D1=foreground
+#D2D2D2=foreground
+#D6D6D6=foreground
+#DCDCDC=foreground
+#EAEAEA=foreground
+#FFFFFF=foreground
+#E69A9A=color9
+#F0AAAA=color9
+#F0ABAA=color9
+#FFCCCC=color9

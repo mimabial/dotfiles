@@ -130,7 +130,7 @@ if [ -n "$BASH_VERSION" ]; then
     pkg_installed paste_string \
     sed_escape_replacement \
     extract_thumbnail accepted_mime_types \
-    notify_send_safe send_notifs \
+    notify_send_safe \
     refresh_hypr_runtime_state export_hypr_config init_hypr_globals \
     state_read_value_from_file state_get state_set \
     state_get_color_variant state_set_color_variant \

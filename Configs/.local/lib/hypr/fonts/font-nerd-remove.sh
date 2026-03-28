@@ -97,12 +97,12 @@ remove_nerd_font_packages() {
     echo
     echo "Refreshing font cache..."
     refresh_font_cache
-    send_notifs -a "Font Manager" -i "preferences-desktop-font" "Removed Nerd Font" "${package_label}"
+    notify_send_safe -a "Font Manager" -i "preferences-desktop-font" "Removed Nerd Font" "${package_label}"
     echo -e "\033[1;32m✓ Removed: ${package_label}\033[0m"
     return 0
   fi
 
-  send_notifs -u critical -a "Font Manager" -i "preferences-desktop-font" "Failed to remove Nerd Font" "${package_label}"
+  notify_send_safe -u critical -a "Font Manager" -i "preferences-desktop-font" "Failed to remove Nerd Font" "${package_label}"
   echo -e "\033[1;31m✗ Removal failed.\033[0m" >&2
   return 1
 }

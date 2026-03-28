@@ -4,7 +4,7 @@ $HOME/.config/tmux/theme.conf
 # Auto-generated from kitty.theme colors
 
 # Standard 16 color palette
-set -g @color0 "#294052"
+set -g @color0 "#3a566b"
 set -g @color1 "#CCE4FF"
 set -g @color2 "#CCE5FF"
 set -g @color3 "#CCE4FF"
@@ -22,18 +22,13 @@ set -g @color14 "#9ABEE6"
 set -g @color15 "#AACBF0"
 
 # Semantic color aliases
-set -g @theme_bg "#122D41"
+set -g @theme_bg "#294052"
 set -g @theme_fg "#FFFFFF"
 set -g @theme_accent "#7F9FC2"
 set -g @theme_gray "#57778F"
-set -g @theme_highlight "#7F9FC2"
 set -g @theme_red "#CCE4FF"
-set -g @theme_brightred "#AACBF0"
 set -g @theme_green "#CCE5FF"
 set -g @theme_yellow "#AACCF0"
-set -g @theme_blue "#9AC5E6"
-set -g @theme_magenta "#9ABEE6"
-set -g @theme_cyan "#9ABEE6"
 
 # Tmux color settings
 set -g status-style "bg=default,fg=#FFFFFF"

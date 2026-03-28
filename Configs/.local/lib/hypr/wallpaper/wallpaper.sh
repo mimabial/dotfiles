@@ -94,7 +94,7 @@ wallpaper_notify_send() {
     -r "${replace_id}"
   )
 
-  send_notifs "${args[@]}" "$@"
+  notify_send_safe "${args[@]}" "$@"
 }
 
 wallpaper_notify_result() {

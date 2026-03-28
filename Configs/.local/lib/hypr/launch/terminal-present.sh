@@ -2,6 +2,7 @@
 
 app_id="org.tui.Terminal"
 title="Terminal"
+hypr_profile=""
 cmd=()
 
 presented_command_name() {
@@ -38,6 +39,10 @@ while [[ "$#" -gt 0 ]]; do
       title="$2"
       shift 2
       ;;
+    --hypr-profile)
+      hypr_profile="$2"
+      shift 2
+      ;;
     --)
       shift
       cmd=("$@")
@@ -51,12 +56,16 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 if [[ "${#cmd[@]}" -eq 0 ]]; then
-  echo "Usage: $(basename "$0") [--app-id ID] [--title TITLE] -- <command>"
+  echo "Usage: $(basename "$0") [--app-id ID] [--title TITLE] [--hypr-profile PROFILE] -- <command>"
   exit 1
 fi
 
+launch_args=()
+[[ -n "${hypr_profile}" ]] && launch_args+=(--hypr-profile "${hypr_profile}")
+launch_args+=(--app-id "${app_id}" --title "${title}" --)
+
 if command_needs_hold_prompt "${cmd[@]}"; then
-  exec setsid uwsm-app -- tui-terminal-exec --app-id="$app_id" --title="$title" -e bash -c '
+  exec setsid uwsm-app -- tui-terminal-exec "${launch_args[@]}" bash -c '
     "$@"
     status=$?
     echo
@@ -65,5 +74,5 @@ if command_needs_hold_prompt "${cmd[@]}"; then
     exit "$status"
   ' bash "${cmd[@]}"
 else
-  exec setsid uwsm-app -- tui-terminal-exec --app-id="$app_id" --title="$title" -e "${cmd[@]}"
+  exec setsid uwsm-app -- tui-terminal-exec "${launch_args[@]}" "${cmd[@]}"
 fi

@@ -67,7 +67,7 @@ run_updates() {
 
 if [[ "${1:-}" == "up" ]]; then
   require_update_info || exit 1
-  exec hyprshell launch/terminal-present.sh --app-id "org.tui.SystemUpdate" --title "System Update" -- hyprshell system/system.update.sh --run-upgrade
+  exec hyprshell launch/terminal-present.sh --hypr-profile dialog --app-id "org.tui.SystemUpdate" --title "System Update" -- hyprshell system/system.update.sh --run-upgrade
 fi
 
 if [[ "${1:-}" == "--run-upgrade" ]]; then

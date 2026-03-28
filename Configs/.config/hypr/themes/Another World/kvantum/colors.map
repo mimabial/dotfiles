@@ -2,44 +2,40 @@
 # Format: #hexcolor=pywal_variable
 # Theme: Another World
 
-# Background / surfaces
-#000000=background
+# Core colors derived from kvconfig.theme [GeneralColors]
 #2e3440=background
+#4c566a=color8
+#eceff4=color7
+#5e81ac=color4
+#d8dee9=color8
+#81a1c1=color6
+#8fbcbb=color5
+
+# Additional SVG/template colors preserved from the existing map
+#000000=background
 #001419=color0
 #111111=color0
 #151926=color0
-#1e1e20=color0
-#22252e=color0
+#1E1E20=color0
+#22252E=color0
 #232325=color0
-#26272a=color0
-#28282a=color0
+#26272A=color0
+#28282A=color0
 #323234=color0
 #343031=color0
-#48484a=color0
-#4c566a=color0
+#48484A=color0
 #525254=color0
 #565658=color0
 #606062=color0
-
-# Mid neutrals
 #646466=color8
 #666666=color8
 #727274=color8
-#7a7a7c=color8
-#88888a=color8
+#7A7A7C=color8
+#88888A=color8
 #989898=color7
-#aaaaac=color7
-
-# Text
-#c8c8ca=foreground
-#d2d2d4=foreground
-#d8dee9=foreground
-#eceff4=foreground
-
-# Accents
+#AAAAAC=color7
+#C8C8CA=foreground
+#D2D2D4=foreground
 #333399=color4
-#5e81ac=color4
-#81a1c1=color4
-#8fbcbb=color6
-#bf616a=color1
-#ff00cc=color5
+#BF616A=color1
+#FF00CC=color5

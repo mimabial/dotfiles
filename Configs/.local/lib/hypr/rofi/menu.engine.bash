@@ -17,7 +17,7 @@ declare -gA HYPR_MENU_PARENTS=()
 declare -ga HYPR_MENU_ACTION_HANDLERS=()
 
 menu_spawn_entry() {
-  setsid -f hyprshell rofi/menu.sh "$@" >/dev/null 2>&1
+  setsid -f hyprshell rofi/menutree.sh "$@" >/dev/null 2>&1
 }
 
 back_to() {
@@ -144,7 +144,9 @@ terminal() {
 present_terminal() {
   local app_id=""
   local title=""
+  local hypr_profile=""
   local cmd=()
+  local launch_args=()
 
   while [[ "$#" -gt 0 ]]; do
     case "$1" in
@@ -154,6 +156,10 @@ present_terminal() {
         ;;
       --title)
         title="$2"
+        shift 2
+        ;;
+      --hypr-profile)
+        hypr_profile="$2"
         shift 2
         ;;
       --)
@@ -172,8 +178,10 @@ present_terminal() {
     return 0
   fi
 
-  if [[ -n "$app_id" || -n "$title" ]]; then
-    hyprshell launch/terminal-present.sh --app-id "${app_id:-org.tui.Terminal}" --title "${title:-Terminal}" -- "${cmd[@]}"
+  if [[ -n "$app_id" || -n "$title" || -n "$hypr_profile" ]]; then
+    [[ -n "${hypr_profile}" ]] && launch_args+=(--hypr-profile "${hypr_profile}")
+    launch_args+=(--app-id "${app_id:-org.tui.Terminal}" --title "${title:-Terminal}" -- "${cmd[@]}")
+    hyprshell launch/terminal-present.sh "${launch_args[@]}"
   else
     hyprshell launch/terminal-present.sh -- "${cmd[@]}"
   fi
