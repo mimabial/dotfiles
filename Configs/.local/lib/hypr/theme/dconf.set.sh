@@ -1,52 +1,26 @@
 #!/usr/bin/env bash
-#
-# dconf.set.sh - Apply GNOME/GTK settings via dconf
-#
-# OVERVIEW:
-#   Reads theme settings from Hyprland config and applies them to
-#   dconf (GNOME settings database) for GTK applications.
-
-# shellcheck disable=SC2154
-# shellcheck disable=SC1091
+# shellcheck disable=SC2154,SC1091
 
 source "$(command -v hyprshell)" || exit 1
-
-# Stores default values for the theme to avoid breakages.
 [[ -f "${HYPR_CONFIG_HOME}/env-theme" ]] && source "${HYPR_CONFIG_HOME}/env-theme"
 
-# ============================================================================
-# safe_hyq_source - Safely parse hyq output without eval
-# ============================================================================
-# Arguments:
-#   $1 - hyq output string
-# Notes:
-#   - Only allows whitelisted variable names
-#   - Rejects lines containing command substitution or other dangers
-#   - Sets __VARNAME variables that caller can use
 safe_hyq_source() {
   local hyq_output="$1"
-  local allowed_vars="^__(GTK_THEME|ICON_THEME|COLOR_SCHEME|CURSOR_THEME|CURSOR_SIZE|TERMINAL|FONT|FONT_SIZE|DOCUMENT_FONT|DOCUMENT_FONT_SIZE|MONOSPACE_FONT|MONOSPACE_FONT_SIZE|BUTTON_LAYOUT|FONT_ANTIALIASING|FONT_HINTING)="
+  local allowed_vars='^__(GTK_THEME|ICON_THEME|COLOR_SCHEME|CURSOR_THEME|CURSOR_SIZE|TERMINAL|FONT|FONT_SIZE|DOCUMENT_FONT|DOCUMENT_FONT_SIZE|MONOSPACE_FONT|MONOSPACE_FONT_SIZE|BUTTON_LAYOUT|FONT_ANTIALIASING|FONT_HINTING)='
   local validated_output=""
+  local line=""
 
   while IFS= read -r line; do
-    [[ -z "${line}" ]] && continue
-    # Only process lines matching allowed variable pattern
-    if [[ "${line}" =~ ${allowed_vars} ]]; then
-      # Reject lines with command substitution or semicolons
-      if [[ ! "${line}" =~ \$\(|\`|\; ]]; then
-        validated_output+="${line}"$'\n'
-      fi
-    fi
-  done <<< "${hyq_output}"
+    [[ -n "${line}" ]] || continue
+    [[ "${line}" =~ ${allowed_vars} ]] || continue
+    [[ ! "${line}" =~ \$\(|\`|\; ]] || continue
+    validated_output+="${line}"$'\n'
+  done <<<"${hyq_output}"
 
-  # Source validated output
-  if [[ -n "${validated_output}" ]]; then
-    source <(echo "${validated_output}")
-  fi
+  [[ -n "${validated_output}" ]] && source <(printf '%s' "${validated_output}")
 }
 
 dconf_populate() {
-  # Build the dconf content
   cat <<EOF
 [org/gnome/desktop/interface]
 icon-theme='$ICON_THEME'
@@ -68,40 +42,37 @@ button-layout='$BUTTON_LAYOUT'
 EOF
 }
 
-COLOR_SCHEME="prefer-${resolved_color_variant}"
-
-# Only use Pywal16-Gtk in wallpaper mode (selected_color_mode != 0)
-# In theme mode (selected_color_mode == 0), use the theme's GTK_THEME
-if [[ "${selected_color_mode:-1}" -ne 0 ]]; then
-  GTK_THEME="Pywal16-Gtk"
-else
-  GTK_THEME=""  # Will be populated from theme.conf via hyq below
-fi
-
-# Populate variables from hyprland config if exists
-if [[ -r "${HYPRLAND_CONFIG}" ]] &&
-  command -v "hyq" &>/dev/null; then
-
-  # In theme mode, prefer theme.conf for GTK/icon/cursor values
-  # (avoid config.toml defaults overriding theme packs)
-  if [[ "${selected_color_mode:-1}" -eq 0 ]]; then
-    theme_conf="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/theme.conf"
-    if [[ -r "${theme_conf}" ]]; then
-      theme_hyq_output=$(
-        hyq "${theme_conf}" --export env --allow-missing \
-          -Q '$GTK_THEME[string]' \
-          -Q '$ICON_THEME[string]' \
-          -Q '$CURSOR_THEME[string]' \
-          -Q '$CURSOR_SIZE'
-      )
-      safe_hyq_source "${theme_hyq_output}"
-      GTK_THEME=${__GTK_THEME:-$GTK_THEME}
-      ICON_THEME=${__ICON_THEME:-$ICON_THEME}
-      CURSOR_THEME=${__CURSOR_THEME:-$CURSOR_THEME}
-      CURSOR_SIZE=${__CURSOR_SIZE:-$CURSOR_SIZE}
-    fi
+set_default_color_scheme() {
+  COLOR_SCHEME="prefer-${resolved_color_variant}"
+  if [[ "${selected_color_mode:-1}" -ne 0 ]]; then
+    GTK_THEME="Pywal16-Gtk"
+  else
+    GTK_THEME=""
   fi
+}
 
+load_theme_mode_gtk_values() {
+  local theme_conf="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/theme.conf"
+  local theme_hyq_output=""
+
+  [[ "${selected_color_mode:-1}" -eq 0 ]] || return 0
+  [[ -r "${theme_conf}" ]] || return 0
+
+  theme_hyq_output="$(
+    hyq "${theme_conf}" --export env --allow-missing \
+      -Q '$GTK_THEME[string]' \
+      -Q '$ICON_THEME[string]' \
+      -Q '$CURSOR_THEME[string]' \
+      -Q '$CURSOR_SIZE'
+  )"
+  safe_hyq_source "${theme_hyq_output}"
+  GTK_THEME=${__GTK_THEME:-$GTK_THEME}
+  ICON_THEME=${__ICON_THEME:-$ICON_THEME}
+  CURSOR_THEME=${__CURSOR_THEME:-$CURSOR_THEME}
+  CURSOR_SIZE=${__CURSOR_SIZE:-$CURSOR_SIZE}
+}
+
+build_hyq_args() {
   hyq_args=(
     "${HYPRLAND_CONFIG}"
     --source
@@ -119,7 +90,6 @@ if [[ -r "${HYPRLAND_CONFIG}" ]] &&
     -Q '$FONT_HINTING[string]'
   )
 
-  # Only pull GTK/icon/cursor from full config in wallpaper mode.
   if [[ "${selected_color_mode:-1}" -ne 0 ]]; then
     hyq_args+=(
       -Q '$GTK_THEME[string]'
@@ -128,9 +98,19 @@ if [[ -r "${HYPRLAND_CONFIG}" ]] &&
       -Q '$CURSOR_SIZE'
     )
   fi
+}
 
-  query_output=$(hyq "${hyq_args[@]}")
+load_config_values() {
+  local query_output=""
+
+  [[ -r "${HYPRLAND_CONFIG}" ]] || return 0
+  command -v hyq >/dev/null 2>&1 || return 0
+
+  load_theme_mode_gtk_values
+  build_hyq_args
+  query_output="$(hyq "${hyq_args[@]}")"
   safe_hyq_source "${query_output}"
+
   GTK_THEME=${__GTK_THEME:-$GTK_THEME}
   COLOR_SCHEME=${__COLOR_SCHEME:-$COLOR_SCHEME}
   ICON_THEME=${__ICON_THEME:-$ICON_THEME}
@@ -146,53 +126,65 @@ if [[ -r "${HYPRLAND_CONFIG}" ]] &&
   BUTTON_LAYOUT=${__BUTTON_LAYOUT:-$BUTTON_LAYOUT}
   FONT_ANTIALIASING=${__FONT_ANTIALIASING:-$FONT_ANTIALIASING}
   FONT_HINTING=${__FONT_HINTING:-$FONT_HINTING}
-fi
+}
 
-# Check if we need inverted colors
-if [[ "${revert_colors:-0}" -eq 1 ]] ||
-  [[ "${selected_color_mode:-0}" -eq 2 && "${resolved_color_variant:-}" == "light" ]] ||
-  [[ "${selected_color_mode:-0}" -eq 3 && "${resolved_color_variant:-}" == "dark" ]]; then
-  if [[ "${resolved_color_variant}" == "dark" ]]; then
-    COLOR_SCHEME="prefer-light"
-  else
-    COLOR_SCHEME="prefer-dark"
+apply_color_scheme_inversion_if_needed() {
+  if [[ "${revert_colors:-0}" -eq 1 ]] \
+    || [[ "${selected_color_mode:-0}" -eq 2 && "${resolved_color_variant:-}" == "light" ]] \
+    || [[ "${selected_color_mode:-0}" -eq 3 && "${resolved_color_variant:-}" == "dark" ]]; then
+    if [[ "${resolved_color_variant}" == "dark" ]]; then
+      COLOR_SCHEME="prefer-light"
+    else
+      COLOR_SCHEME="prefer-dark"
+    fi
   fi
-fi
+}
 
-DCONF_FILE="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/dconf"
-mkdir -p "$(dirname "${DCONF_FILE}")"
+write_dconf_content() {
+  local dconf_file="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/dconf"
+  local new_content=""
+  local new_hash=""
+  local old_hash=""
 
-# Generate new dconf content
-new_content="$(dconf_populate)"
+  mkdir -p "$(dirname "${dconf_file}")"
+  new_content="$(dconf_populate)"
+  new_hash="$(printf '%s' "${new_content}" | md5sum | cut -d' ' -f1)"
+  [[ -f "${dconf_file}" ]] && old_hash="$(md5sum "${dconf_file}" 2>/dev/null | cut -d' ' -f1)"
 
-# Hash-based skip: only update if content changed
-old_hash=""
-new_hash="$(echo "${new_content}" | md5sum | cut -d' ' -f1)"
-[ -f "${DCONF_FILE}" ] && old_hash="$(md5sum "${DCONF_FILE}" 2>/dev/null | cut -d' ' -f1)"
-
-if [ "${new_hash}" != "${old_hash}" ]; then
-  echo "${new_content}" > "${DCONF_FILE}"
-  # Single dconf load is all that's needed
-  if dconf load -f / < "${DCONF_FILE}" >/dev/null 2>&1; then
-    print_log -sec "dconf" -stat "loaded" "${DCONF_FILE}"
+  if [[ "${new_hash}" == "${old_hash}" ]]; then
+    print_log -sec "dconf" -stat "skip" "unchanged"
   else
-    print_log -sec "dconf" -warn "failed" "${DCONF_FILE}"
+    printf '%s\n' "${new_content}" > "${dconf_file}"
+    if dconf load -f / < "${dconf_file}" >/dev/null 2>&1; then
+      print_log -sec "dconf" -stat "loaded" "${dconf_file}"
+    else
+      print_log -sec "dconf" -warn "failed" "${dconf_file}"
+    fi
   fi
-else
-  print_log -sec "dconf" -stat "skip" "unchanged"
-fi
+}
 
-# Set cursor (run in background, non-blocking)
-if [[ -n "${CURSOR_THEME}" ]] && [[ -n "${CURSOR_SIZE}" ]]; then
+set_cursor_async() {
+  [[ -n "${CURSOR_THEME}" && -n "${CURSOR_SIZE}" ]] || return 0
   hyprctl setcursor "${CURSOR_THEME}" "${CURSOR_SIZE}" &>/dev/null &
-fi
+}
 
-print_log -sec "dconf" -stat "Loaded dconf settings" "::"
-print_log -y "#-----------------------------------------------#"
-dconf_populate
-print_log -y "#-----------------------------------------------#"
+log_dconf_result() {
+  print_log -sec "dconf" -stat "Loaded dconf settings" "::"
+  print_log -y "#-----------------------------------------------#"
+  dconf_populate
+  print_log -y "#-----------------------------------------------#"
+}
 
-# Finalize the env variables
-export GTK_THEME ICON_THEME COLOR_SCHEME CURSOR_THEME CURSOR_SIZE TERMINAL \
-  FONT FONT_SIZE DOCUMENT_FONT DOCUMENT_FONT_SIZE MONOSPACE_FONT MONOSPACE_FONT_SIZE \
-  BAR_FONT MENU_FONT NOTIFICATION_FONT BUTTON_LAYOUT
+export_dconf_variables() {
+  export GTK_THEME ICON_THEME COLOR_SCHEME CURSOR_THEME CURSOR_SIZE TERMINAL \
+    FONT FONT_SIZE DOCUMENT_FONT DOCUMENT_FONT_SIZE MONOSPACE_FONT MONOSPACE_FONT_SIZE \
+    BAR_FONT MENU_FONT NOTIFICATION_FONT BUTTON_LAYOUT
+}
+
+set_default_color_scheme
+load_config_values
+apply_color_scheme_inversion_if_needed
+write_dconf_content
+set_cursor_async
+log_dconf_result
+export_dconf_variables

@@ -11,21 +11,20 @@ theme_apply_waybar_reload_mode="direct"
 theme_apply_lock_fd=""
 theme_apply_lock_owned=0
 
-theme_apply_waybar_watcher_active() {
+detect_theme_apply_waybar_reload_mode() {
   local fd
   exec {fd}>"${WAYBAR_WATCH_LOCK}" || return 1
   if flock -n "${fd}"; then
     flock -u "${fd}" 2>/dev/null || true
     exec {fd}>&-
-    return 1
+    theme_apply_waybar_reload_mode="direct"
+    return 0
   fi
   exec {fd}>&-
-  return 0
+  theme_apply_waybar_reload_mode="watcher"
 }
 
-if theme_apply_waybar_watcher_active; then
-  theme_apply_waybar_reload_mode="watcher"
-fi
+detect_theme_apply_waybar_reload_mode || true
 
 theme_apply_create_update_lock() {
   local lock_tmp
@@ -52,17 +51,14 @@ theme_apply_release_update_lock() {
 }
 
 theme_apply_reload_dunst_runtime() {
-  if [[ -x "${LIB_DIR}/hypr/wal/wal.dunst.sh" ]]; then
-    "${LIB_DIR}/hypr/wal/wal.dunst.sh" --reload-only >/dev/null 2>&1 || true
-  fi
+  [[ -x "${LIB_DIR}/hypr/wal/wal.dunst.sh" ]] || return 0
+  "${LIB_DIR}/hypr/wal/wal.dunst.sh" --reload-only >/dev/null 2>&1 || true
 }
 
 theme_apply_reload_hypr_config() {
-  if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE}" ]] && command -v hyprctl >/dev/null 2>&1; then
-    if ! hyprctl reload config-only >/dev/null 2>&1; then
-      print_log -sec "theme.apply" -warn "hyprctl" "config reload failed"
-    fi
-  fi
+  [[ -n "${HYPRLAND_INSTANCE_SIGNATURE}" ]] || return 0
+  command -v hyprctl >/dev/null 2>&1 || return 0
+  hyprctl reload config-only >/dev/null 2>&1 || print_log -sec "theme.apply" -warn "hyprctl" "config reload failed"
 }
 
 theme_apply_restart_waybar() {
@@ -70,9 +66,7 @@ theme_apply_restart_waybar() {
   [[ "${theme_apply_waybar_reload_mode}" == "direct" ]] || return 0
   if [[ -x "${waybar_script}" ]]; then
     "${waybar_script}" --restart-direct >/dev/null 2>&1 || true
-    return 0
-  fi
-  if command -v hyprshell >/dev/null 2>&1; then
+  elif command -v hyprshell >/dev/null 2>&1; then
     hyprshell waybar --restart-direct >/dev/null 2>&1 || true
   fi
 }
@@ -92,10 +86,7 @@ theme_apply_wallpaper() {
   fi
 }
 
-cleanup_theme_apply() {
-  theme_apply_release_update_lock
-}
-trap cleanup_theme_apply EXIT
+trap theme_apply_release_update_lock EXIT
 
 quiet=false
 while (($#)); do

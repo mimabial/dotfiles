@@ -117,6 +117,92 @@ state_get() {
   echo "${value:-${default_value}}"
 }
 
+state_target_file() {
+  case "${1:-staterc}" in
+    staterc) printf '%s\n' "${STATE_RC}" ;;
+    env-overrides) printf '%s\n' "${STATE_ENV_OVERRIDES}" ;;
+    color_variant) printf '%s\n' "${STATE_COLOR_VARIANT}" ;;
+    *) printf '%s\n' "${STATE_RC}" ;;
+  esac
+}
+
+state_acquire_lock() {
+  local target_file="$1"
+  local fd_name="$2"
+  local -n fd_ref="${fd_name}"
+  local lock_timeout="${STATE_LOCK_TIMEOUT:-5}"
+  local lock_dir="${XDG_RUNTIME_DIR:-/tmp}/hypr"
+  local lock_file="${lock_dir}/state-${target_file}.lock"
+
+  mkdir -p "${lock_dir}" || return 1
+  if ! exec {fd_ref}>"${lock_file}"; then
+    print_log -sec "state" -err "state_set" "failed to open lock ${lock_file}"
+    return 1
+  fi
+
+  if ! flock -w "${lock_timeout}" "${fd_ref}"; then
+    print_log -sec "state" -warn "state_set" "lock busy (${lock_file})"
+    exec {fd_ref}>&-
+    fd_ref=""
+    return 1
+  fi
+}
+
+state_release_lock() {
+  local fd_name="$1"
+  local -n fd_ref="${fd_name}"
+
+  [[ -n "${fd_ref:-}" ]] || return 0
+  flock -u "${fd_ref}" 2>/dev/null || true
+  exec {fd_ref}>&-
+  fd_ref=""
+}
+
+state_write_color_variant_file() {
+  local state_file="$1"
+  local var_value="$2"
+  local tmp_file="${state_file}.tmp"
+
+  if [[ -z "${var_value}" ]]; then
+    print_log -sec "state" -err "state_set" "color variant value required"
+    return 1
+  fi
+
+  printf '%s\n' "${var_value}" >"${tmp_file}" && mv -f "${tmp_file}" "${state_file}"
+}
+
+state_write_key_value_file() {
+  local state_file="$1"
+  local target_file="$2"
+  local var_name="$3"
+  local var_value="$4"
+  local tmp_file="${state_file}.tmp.$$"
+  local var_escaped=""
+  local value_prefix=""
+
+  [[ -n "${var_name}" ]] || {
+    print_log -sec "state" -err "state_set" "variable name required"
+    return 1
+  }
+
+  touch "${state_file}"
+  var_escaped="$(printf "%s" "${var_name}" | sed 's/[][\\.^$*+?()|{}]/\\&/g')"
+  [[ "${target_file}" == "env-overrides" ]] && value_prefix="export "
+
+  {
+    grep -Ev "^(export[[:space:]]+)?${var_escaped}=" "${state_file}" 2>/dev/null || true
+    printf '%s%s="%s"\n' "${value_prefix}" "${var_name}" "${var_value}"
+  } >"${tmp_file}"
+
+  if mv -f "${tmp_file}" "${state_file}"; then
+    return 0
+  fi
+
+  rm -f "${tmp_file}" 2>/dev/null
+  print_log -sec "state" -err "state_set" "failed to write ${var_name}"
+  return 1
+}
+
 # Set a state variable (atomic write to prevent race conditions)
 # Usage: state_set VARIABLE_NAME value [file]
 # file: "staterc" (default), "env-overrides", or "color_variant"
@@ -124,87 +210,23 @@ state_set() {
   local var_name="$1"
   local var_value="$2"
   local target_file="${3:-staterc}"
-  local state_file
+  local state_file=""
+  local lock_fd=""
+  local rc=0
 
-  # Determine target file
-  case "${target_file}" in
-    staterc) state_file="${STATE_RC}" ;;
-    env-overrides) state_file="${STATE_ENV_OVERRIDES}" ;;
-    color_variant) state_file="${STATE_COLOR_VARIANT}" ;;
-    *) state_file="${STATE_RC}" ;;
-  esac
+  state_file="$(state_target_file "${target_file}")"
+  mkdir -p "$(dirname "${state_file}")" || return 1
+  state_acquire_lock "${target_file}" lock_fd || return 1
 
-  # Ensure directory exists
-  mkdir -p "$(dirname "${state_file}")"
-
-  # Lock state updates to avoid concurrent writers clobbering each other.
-  local lock_dir="${XDG_RUNTIME_DIR:-/tmp}/hypr"
-  local lock_file="${lock_dir}/state-${target_file}.lock"
-  local lock_timeout="${STATE_LOCK_TIMEOUT:-5}"
-  local lock_fd
-
-  mkdir -p "${lock_dir}"
-  if ! exec {lock_fd}>"${lock_file}"; then
-    print_log -sec "state" -err "state_set" "failed to open lock ${lock_file}"
-    return 1
-  fi
-  if ! flock -w "${lock_timeout}" "${lock_fd}"; then
-    print_log -sec "state" -warn "state_set" "lock busy (${lock_file})"
-    exec {lock_fd}>&-
-    return 1
-  fi
-
-  # Special case for the color-variant file (single value, no key)
   if [[ "${target_file}" == "color_variant" ]]; then
-    if [[ -z "${var_value}" ]]; then
-      print_log -sec "state" -err "state_set" "color variant value required"
-      flock -u "${lock_fd}" 2>/dev/null || true
-      exec {lock_fd}>&-
-      return 1
-    fi
-    printf "%s\n" "${var_value}" >"${state_file}.tmp" && mv -f "${state_file}.tmp" "${state_file}"
-    local rc=$?
-    flock -u "${lock_fd}" 2>/dev/null || true
-    exec {lock_fd}>&-
+    state_write_color_variant_file "${state_file}" "${var_value}" || rc=$?
+    state_release_lock lock_fd
     return "${rc}"
   fi
 
-  # Validate input
-  if [[ -z "${var_name}" ]]; then
-    print_log -sec "state" -err "state_set" "variable name required"
-    flock -u "${lock_fd}" 2>/dev/null || true
-    exec {lock_fd}>&-
-    return 1
-  fi
-
-  # Atomic update using temp file
-  local tmp_file="${state_file}.tmp.$$"
-  touch "${state_file}"
-  local var_escaped
-  var_escaped="$(printf "%s" "${var_name}" | sed 's/[][\\.^$*+?()|{}]/\\&/g')"
-  local value_prefix=""
-  if [[ "${target_file}" == "env-overrides" ]]; then
-    value_prefix="export "
-  fi
-
-  # Remove old value and add new one atomically
-  {
-    grep -Ev "^(export[[:space:]]+)?${var_escaped}=" "${state_file}" 2>/dev/null || true
-    echo "${value_prefix}${var_name}=\"${var_value}\""
-  } >"${tmp_file}"
-
-  # Atomic move
-  if mv -f "${tmp_file}" "${state_file}"; then
-    flock -u "${lock_fd}" 2>/dev/null || true
-    exec {lock_fd}>&-
-    return 0
-  else
-    rm -f "${tmp_file}" 2>/dev/null
-    print_log -sec "state" -err "state_set" "failed to write ${var_name}"
-    flock -u "${lock_fd}" 2>/dev/null || true
-    exec {lock_fd}>&-
-    return 1
-  fi
+  state_write_key_value_file "${state_file}" "${target_file}" "${var_name}" "${var_value}" || rc=$?
+  state_release_lock lock_fd
+  return "${rc}"
 }
 
 # Get the current resolved dark/light variant

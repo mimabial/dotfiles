@@ -2,17 +2,6 @@
 set -euo pipefail
 
 mode="write-and-reload"
-case "${1:-}" in
-  --write-only)
-    mode="write-only"
-    shift
-    ;;
-  --reload-only)
-    mode="reload-only"
-    shift
-    ;;
-esac
-
 WAL_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/wal"
 DUNST_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/dunst"
 DUNST_BASE_CONF="${DUNST_DIR}/dunst.conf"
@@ -25,31 +14,28 @@ LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 
 # shellcheck disable=SC1090
 source "${LIB_DIR}/hypr/runtime/lock_paths.sh"
+# shellcheck disable=SC1090
+source "${LIB_DIR}/hypr/core/common.sh"
 
 THEME_UPDATE_LOCK="$(hypr_lock_path theme_update)"
 THEME_SWITCH_LOCK="$(hypr_lock_path theme_switch)"
 
-mkdir -p "${DUNST_DIR}"
-touch "${DUNST_THEME}"
+parse_mode() {
+  case "${1:-}" in
+    --write-only)
+      mode="write-only"
+      ;;
+    --reload-only)
+      mode="reload-only"
+      ;;
+  esac
+}
 
 reload_dunst_runtime() {
   if pgrep -x dunst >/dev/null 2>&1; then
     dunstctl reload >/dev/null 2>&1 || pkill -HUP dunst 2>/dev/null || true
   fi
 }
-
-if [[ "${mode}" == "reload-only" ]]; then
-  reload_dunst_runtime
-  echo "[dunst] Reloaded dunstrc"
-  exit 0
-fi
-
-if [[ ! -f "${WAL_CACHE}/colors-shell.sh" ]]; then
-  exit 0
-fi
-
-# shellcheck disable=SC1090
-source "${WAL_CACHE}/colors-shell.sh"
 
 parse_define_color() {
   local name="$1"
@@ -74,37 +60,6 @@ read_theme_var() {
       exit
     }
   ' "${THEME_CONF}"
-}
-
-read_hypr_var() {
-  local key="$1"
-  local file=""
-  local value=""
-
-  for file in \
-    "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/theme.conf" \
-    "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/userfonts.conf" \
-    "${XDG_DATA_HOME:-$HOME/.local/share}/hypr/variables.conf"; do
-    [[ -f "${file}" ]] || continue
-    value="$(awk -v key="${key}" '
-      $0 ~ "^[[:space:]]*\\$" key "[[:space:]]*=" {
-        line = $0
-        sub("^[[:space:]]*\\$" key "[[:space:]]*=[[:space:]]*", "", line)
-        sub(/[[:space:]]*#.*/, "", line)
-        gsub(/^[[:space:]]+|[[:space:]]+$/, "", line)
-        gsub(/^'\''|'\''$/, "", line)
-        gsub(/^"|"$/, "", line)
-        print line
-        exit
-      }
-    ' "${file}")"
-    if [[ -n "${value}" ]]; then
-      printf '%s\n' "${value}"
-      return 0
-    fi
-  done
-
-  return 1
 }
 
 pick_first() {
@@ -137,18 +92,6 @@ with_alpha() {
   printf '#%s' "${color}"
 }
 
-icon_theme="${ICON_THEME:-${GTK_ICON:-$(read_theme_var ICON_THEME)}}"
-icon_theme="${icon_theme:-Tela-circle-dracula}"
-notification_font="$(pick_first "${NOTIFICATION_FONT:-}" "$(read_hypr_var NOTIFICATION_FONT || true)" "$(read_hypr_var FONT || true)")"
-notification_font_size="$(pick_first "${FONT_SIZE:-}" "$(read_hypr_var FONT_SIZE || true)" "10")"
-dunst_font_line=""
-if [[ -n "${notification_font}" ]]; then
-  dunst_font_line="    font = ${notification_font} ${notification_font_size}"
-fi
-
-theme_update_in_progress=0
-[[ -e "${THEME_UPDATE_LOCK}" ]] && theme_update_in_progress=1
-
 read_theme_conf_metric() {
   local key="$1"
   [[ -f "${THEME_CONF}" ]] || return 1
@@ -178,61 +121,89 @@ resolve_hypr_metric() {
   printf '%s' "${value:-${default_value}}"
 }
 
-hypr_border="$(resolve_hypr_metric 'rounding' 'decoration:rounding' '5')"
+resolve_notification_font() {
+  local layered_font_size=""
+  local notification_font_size_candidate=""
 
-gaps_in="$(resolve_hypr_metric 'gaps_in' 'general:gaps_in' '5')"
-gap_size="$((gaps_in * 2))"
+  icon_theme="${ICON_THEME:-${GTK_ICON:-$(read_theme_var ICON_THEME)}}"
+  icon_theme="${icon_theme:-Tela-circle-dracula}"
+  notification_font="$(pick_first "${NOTIFICATION_FONT:-}" "$(hypr_config_value_from_layers "NOTIFICATION_FONT" || true)" "$(hypr_config_value_from_layers "FONT" || true)")"
+  layered_font_size="$(hypr_config_value_from_layers "FONT_SIZE" || true)"
+  if [[ -n "${FONT_SIZE:-}" ]]; then
+    if [[ "${FONT_SIZE}" =~ ^[0-9]+$ ]]; then
+      notification_font_size_candidate="${FONT_SIZE}"
+    else
+      printf 'WARN: invalid FONT_SIZE env override: %s\n' "${FONT_SIZE}" >&2
+    fi
+  fi
+  if [[ -z "${notification_font_size_candidate}" && -n "${layered_font_size}" ]]; then
+    if [[ "${layered_font_size}" =~ ^[0-9]+$ ]]; then
+      notification_font_size_candidate="${layered_font_size}"
+    else
+      printf 'WARN: invalid FONT_SIZE layered value: %s\n' "${layered_font_size}" >&2
+    fi
+  fi
+  notification_font_size="${notification_font_size_candidate:-10}"
+  dunst_font_line=""
+  if [[ -n "${notification_font}" ]]; then
+    dunst_font_line="    font = ${notification_font} ${notification_font_size}"
+  fi
+}
 
-gaps_out="$(resolve_hypr_metric 'gaps_out' 'general:gaps_out' '6')"
+resolve_layout_metrics() {
+  theme_update_in_progress=0
+  [[ -e "${THEME_UPDATE_LOCK}" ]] && theme_update_in_progress=1
 
-border_size="$(resolve_hypr_metric 'border_size' 'general:border_size' '2')"
+  hypr_border="$(resolve_hypr_metric 'rounding' 'decoration:rounding' '5')"
+  gaps_in="$(resolve_hypr_metric 'gaps_in' 'general:gaps_in' '5')"
+  gap_size="$((gaps_in * 2))"
+  gaps_out="$(resolve_hypr_metric 'gaps_out' 'general:gaps_out' '6')"
+  border_size="$(resolve_hypr_metric 'border_size' 'general:border_size' '2')"
 
-waybar_position="right"
-if [[ -r "${WAYBAR_CONFIG}" ]]; then
-  waybar_position="$(grep '"position"' "${WAYBAR_CONFIG}" | head -1 | sed 's/.*"position"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')"
-fi
-waybar_position="${waybar_position:-right}"
+  waybar_position="right"
+  if [[ -r "${WAYBAR_CONFIG}" ]]; then
+    waybar_position="$(grep '"position"' "${WAYBAR_CONFIG}" | head -1 | sed 's/.*"position"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')"
+  fi
+  waybar_position="${waybar_position:-right}"
 
-origin="top-right"
-offset_x="$((gaps_out * 2))"
-offset_y="$((gaps_out * 2))"
-case "${waybar_position}" in
-  left)
-    origin="top-left"
-    ;;
-  bottom)
-    origin="bottom-right"
-    ;;
-  top)
-    origin="top-right"
-    ;;
-  right)
-    origin="top-right"
-    ;;
-  *)
-    origin="top-right"
-    ;;
-esac
+  origin="top-right"
+  offset_x="$((gaps_out * 2))"
+  offset_y="$((gaps_out * 2))"
+  case "${waybar_position}" in
+    left) origin="top-left" ;;
+    bottom) origin="bottom-right" ;;
+    top|right|*) origin="top-right" ;;
+  esac
+}
 
-bg_primary="$(pick_first "${background:-}" "${color0:-}" "#1e1e2e")"
-bg_secondary="${bg_primary}"
-bg_tertiary="${bg_primary}"
-fg_primary="$(pick_first "${foreground:-}" "${color15:-}" "#f8f8f2")"
-fg_secondary="${fg_primary}"
-bg_critical="$(pick_first "${color1:-}" "${bg_primary}" "#ff5555")"
-fg_critical="${fg_primary}"
-border_primary="$(pick_first "${color4:-}" "${color12:-}" "#6272a4")"
-border_secondary="$(pick_first "${color8:-}" "${border_primary}" "#44475a")"
-accent_red="$(pick_first "${color1:-}" "${color9:-}" "#ff5555")"
-accent_green="$(pick_first "${color2:-}" "${color10:-}" "${border_primary}" "#50fa7b")"
-accent_yellow="$(pick_first "${color3:-}" "${color11:-}" "${border_primary}" "#f1fa8c")"
-accent_blue="$(pick_first "${color4:-}" "${color12:-}" "${border_primary}" "#8be9fd")"
-accent_purple="$(pick_first "${color5:-}" "${color13:-}" "${accent_blue}" "#bd93f9")"
-accent_aqua="$(pick_first "${color6:-}" "${color14:-}" "${accent_blue}" "#8be9fd")"
-accent_orange="$(pick_first "${color11:-}" "${color3:-}" "${accent_red}" "#ffb86c")"
-gray="$(pick_first "${color8:-}" "${border_secondary}" "#6272a4")"
+load_base_palette() {
+  bg_primary="$(pick_first "${background:-}" "${color0:-}" "#1e1e2e")"
+  bg_secondary="${bg_primary}"
+  bg_tertiary="${bg_primary}"
+  fg_primary="$(pick_first "${foreground:-}" "${color15:-}" "#f8f8f2")"
+  fg_secondary="${fg_primary}"
+  bg_critical="$(pick_first "${color1:-}" "${bg_primary}" "#ff5555")"
+  fg_critical="${fg_primary}"
+  border_primary="$(pick_first "${color4:-}" "${color12:-}" "#6272a4")"
+  border_secondary="$(pick_first "${color8:-}" "${border_primary}" "#44475a")"
+  accent_red="$(pick_first "${color1:-}" "${color9:-}" "#ff5555")"
+  accent_green="$(pick_first "${color2:-}" "${color10:-}" "${border_primary}" "#50fa7b")"
+  accent_yellow="$(pick_first "${color3:-}" "${color11:-}" "${border_primary}" "#f1fa8c")"
+  accent_blue="$(pick_first "${color4:-}" "${color12:-}" "${border_primary}" "#8be9fd")"
+  accent_purple="$(pick_first "${color5:-}" "${color13:-}" "${accent_blue}" "#bd93f9")"
+  accent_aqua="$(pick_first "${color6:-}" "${color14:-}" "${accent_blue}" "#8be9fd")"
+  accent_orange="$(pick_first "${color11:-}" "${color3:-}" "${accent_red}" "#ffb86c")"
+  gray="$(pick_first "${color8:-}" "${border_secondary}" "#6272a4")"
+}
 
-if [[ -s "${DUNST_THEME}" ]]; then
+apply_theme_palette_overrides() {
+  [[ -s "${DUNST_THEME}" ]] || return 0
+
+  local theme_bg_primary theme_bg_secondary theme_bg_tertiary
+  local theme_fg_primary theme_fg_secondary theme_border_primary theme_border_secondary
+  local theme_accent_blue theme_accent_red theme_accent_green theme_accent_yellow
+  local theme_accent_purple theme_accent_aqua theme_accent_orange theme_gray
+
   theme_bg_primary="$(parse_define_color bg-primary "${DUNST_THEME}" || true)"
   theme_bg_secondary="$(parse_define_color bg-secondary "${DUNST_THEME}" || true)"
   theme_bg_tertiary="$(parse_define_color bg-tertiary "${DUNST_THEME}" || true)"
@@ -264,59 +235,67 @@ if [[ -s "${DUNST_THEME}" ]]; then
   [[ -n "${theme_accent_aqua}" ]] && accent_aqua="${theme_accent_aqua}"
   [[ -n "${theme_accent_orange}" ]] && accent_orange="${theme_accent_orange}"
   [[ -n "${theme_gray}" ]] && gray="${theme_gray}"
-fi
+}
 
-bg_low="${bg_secondary}"
-fg_low="${fg_secondary}"
-bg_normal="${bg_primary}"
-fg_normal="${fg_primary}"
-bg_category="${bg_tertiary}"
-fg_category="${fg_primary}"
-frame_low="${border_secondary}"
-frame_normal="${border_primary}"
-frame_critical="${accent_red}"
-progress_fg="${accent_blue}"
+render_palette() {
+  bg_low="${bg_secondary}"
+  fg_low="${fg_secondary}"
+  bg_normal="${bg_primary}"
+  fg_normal="${fg_primary}"
+  bg_category="${bg_tertiary}"
+  fg_category="${fg_primary}"
+  frame_low="${border_secondary}"
+  frame_normal="${border_primary}"
+  frame_critical="${accent_red}"
+  progress_fg="${accent_blue}"
 
-bg_low_render="$(with_alpha "${bg_low}" "80")"
-bg_normal_render="$(with_alpha "${bg_normal}" "80")"
-bg_category_render="$(with_alpha "${bg_category}" "80")"
-bg_critical_render="${bg_critical}"
-fg_low_render="$(with_alpha "${fg_low}" "E6")"
-fg_normal_render="$(with_alpha "${fg_normal}" "E6")"
-fg_category_render="$(with_alpha "${fg_category}" "E6")"
-fg_critical_render="${fg_critical}"
-frame_low_render="$(with_alpha "${frame_low}" "33")"
-frame_normal_render="$(with_alpha "${frame_normal}" "55")"
-frame_category_email_render="$(with_alpha "${accent_blue}" "55")"
-frame_category_chat_render="$(with_alpha "${accent_aqua}" "55")"
-frame_category_warning_render="$(with_alpha "${accent_yellow}" "55")"
-frame_category_error_render="$(with_alpha "${accent_red}" "55")"
-frame_category_network_render="$(with_alpha "${accent_blue}" "55")"
-frame_category_battery_render="$(with_alpha "${accent_orange}" "55")"
-frame_category_update_render="$(with_alpha "${accent_green}" "55")"
-frame_category_music_render="$(with_alpha "${accent_purple}" "55")"
-frame_category_volume_render="$(with_alpha "${gray}" "55")"
+  bg_low_render="$(with_alpha "${bg_low}" "80")"
+  bg_normal_render="$(with_alpha "${bg_normal}" "80")"
+  bg_category_render="$(with_alpha "${bg_category}" "80")"
+  bg_critical_render="${bg_critical}"
+  fg_low_render="$(with_alpha "${fg_low}" "E6")"
+  fg_normal_render="$(with_alpha "${fg_normal}" "E6")"
+  fg_category_render="$(with_alpha "${fg_category}" "E6")"
+  fg_critical_render="${fg_critical}"
+  frame_low_render="$(with_alpha "${frame_low}" "33")"
+  frame_normal_render="$(with_alpha "${frame_normal}" "55")"
+  frame_category_email_render="$(with_alpha "${accent_blue}" "55")"
+  frame_category_chat_render="$(with_alpha "${accent_aqua}" "55")"
+  frame_category_warning_render="$(with_alpha "${accent_yellow}" "55")"
+  frame_category_error_render="$(with_alpha "${accent_red}" "55")"
+  frame_category_network_render="$(with_alpha "${accent_blue}" "55")"
+  frame_category_battery_render="$(with_alpha "${accent_orange}" "55")"
+  frame_category_update_render="$(with_alpha "${accent_green}" "55")"
+  frame_category_music_render="$(with_alpha "${accent_purple}" "55")"
+  frame_category_volume_render="$(with_alpha "${gray}" "55")"
+}
 
-input_hash="$({
-  md5sum "${WAL_CACHE}/colors-shell.sh" 2>/dev/null || true
-  [[ -f "${DUNST_BASE_CONF}" ]] && md5sum "${DUNST_BASE_CONF}" 2>/dev/null || true
-  [[ -f "${DUNST_THEME}" ]] && md5sum "${DUNST_THEME}" 2>/dev/null || true
-  printf '%s\n' "${icon_theme}" "${hypr_border}" "${gaps_in}" "${border_size}" "${origin}" "${offset_x}" "${offset_y}" \
-    "${notification_font}" "${notification_font_size}" \
-    "${gap_size}" \
-    "${bg_low_render}" "${fg_low_render}" "${bg_normal_render}" "${fg_normal_render}" \
-    "${bg_category_render}" "${fg_category_render}" "${bg_critical_render}" "${fg_critical_render}" \
-    "${frame_low_render}" "${frame_normal_render}" "${frame_critical}" "${progress_fg}" \
-    "${frame_category_email_render}" "${frame_category_chat_render}" "${frame_category_warning_render}" \
-    "${frame_category_error_render}" "${frame_category_network_render}" "${frame_category_battery_render}" \
-    "${frame_category_update_render}" "${frame_category_music_render}" "${frame_category_volume_render}"
-} | md5sum | awk '{print $1}')"
+build_input_hash() {
+  {
+    md5sum "${WAL_CACHE}/colors-shell.sh" 2>/dev/null || true
+    [[ -f "${DUNST_BASE_CONF}" ]] && md5sum "${DUNST_BASE_CONF}" 2>/dev/null || true
+    [[ -f "${DUNST_THEME}" ]] && md5sum "${DUNST_THEME}" 2>/dev/null || true
+    printf '%s\n' "${icon_theme}" "${hypr_border}" "${gaps_in}" "${border_size}" "${origin}" "${offset_x}" "${offset_y}" \
+      "${notification_font}" "${notification_font_size}" "${gap_size}" \
+      "${bg_low_render}" "${fg_low_render}" "${bg_normal_render}" "${fg_normal_render}" \
+      "${bg_category_render}" "${fg_category_render}" "${bg_critical_render}" "${fg_critical_render}" \
+      "${frame_low_render}" "${frame_normal_render}" "${frame_critical}" "${progress_fg}" \
+      "${frame_category_email_render}" "${frame_category_chat_render}" "${frame_category_warning_render}" \
+      "${frame_category_error_render}" "${frame_category_network_render}" "${frame_category_battery_render}" \
+      "${frame_category_update_render}" "${frame_category_music_render}" "${frame_category_volume_render}"
+  } | md5sum | awk '{print $1}'
+}
 
-if [[ -f "${HASH_FILE}" ]] && [[ "$(cat "${HASH_FILE}" 2>/dev/null)" == "${input_hash}" ]]; then
-  exit 0
-fi
+hash_is_current() {
+  local input_hash="$1"
+  [[ -f "${HASH_FILE}" ]] && [[ "$(cat "${HASH_FILE}" 2>/dev/null)" == "${input_hash}" ]]
+}
 
-if [[ ! -f "${DUNST_BASE_CONF}" ]]; then
+ensure_base_conf() {
+  if [[ -f "${DUNST_BASE_CONF}" ]]; then
+    return 0
+  fi
+
   if [[ -f "${DUNST_CONF}" ]]; then
     cp "${DUNST_CONF}" "${DUNST_BASE_CONF}"
   elif [[ -f /etc/dunst/dunstrc ]]; then
@@ -327,21 +306,22 @@ if [[ ! -f "${DUNST_BASE_CONF}" ]]; then
     monitor = 0
 BASE
   fi
-fi
+}
 
-tmp_conf="$(mktemp "${DUNST_DIR}/.dunstrc.XXXXXX")"
-trap 'rm -f "${tmp_conf}"' EXIT
-
-cat >"${tmp_conf}" <<CONFIG
+begin_tmp_conf() {
+  tmp_conf="$(mktemp "${DUNST_DIR}/.dunstrc.XXXXXX")"
+  trap 'rm -f "${tmp_conf}"' EXIT
+  cat >"${tmp_conf}" <<CONFIG
 # WARNING: This file is auto-generated by '${0}'.
 # DO NOT edit manually.
 # Edit '${DUNST_BASE_CONF}' to change the base configuration.
 
 CONFIG
+  cat "${DUNST_BASE_CONF}" >>"${tmp_conf}"
+}
 
-cat "${DUNST_BASE_CONF}" >>"${tmp_conf}"
-
-cat >>"${tmp_conf}" <<CONFIG
+append_dynamic_global_section() {
+  cat >>"${tmp_conf}" <<CONFIG
 
 # Dynamic overrides generated from wal/theme state.
 [global]
@@ -355,6 +335,11 @@ cat >>"${tmp_conf}" <<CONFIG
     corner_radius = ${hypr_border}
     icon_corner_radius = ${hypr_border}
 ${dunst_font_line}
+CONFIG
+}
+
+append_urgency_sections() {
+  cat >>"${tmp_conf}" <<CONFIG
 
 [urgency_low]
     background = "${bg_low_render}"
@@ -377,6 +362,7 @@ ${dunst_font_line}
     highlight = "${frame_critical}"
     timeout = 0
 CONFIG
+}
 
 append_category_rule() {
   local section="$1"
@@ -399,25 +385,67 @@ CONFIG
   done
 }
 
-append_category_rule "email" "email" "${frame_category_email_render}"
-append_category_rule "chat" "chat" "${frame_category_chat_render}"
-append_category_rule "warning" "warning" "${frame_category_warning_render}"
-append_category_rule "error" "error" "${frame_category_error_render}"
-append_category_rule "network" "network" "${frame_category_network_render}"
-append_category_rule "battery" "battery" "${frame_category_battery_render}"
-append_category_rule "update" "update" "${frame_category_update_render}"
-append_category_rule "music" "music" "${frame_category_music_render}"
-append_category_rule "volume" "volume" "${frame_category_volume_render}"
+append_category_sections() {
+  append_category_rule "email" "email" "${frame_category_email_render}"
+  append_category_rule "chat" "chat" "${frame_category_chat_render}"
+  append_category_rule "warning" "warning" "${frame_category_warning_render}"
+  append_category_rule "error" "error" "${frame_category_error_render}"
+  append_category_rule "network" "network" "${frame_category_network_render}"
+  append_category_rule "battery" "battery" "${frame_category_battery_render}"
+  append_category_rule "update" "update" "${frame_category_update_render}"
+  append_category_rule "music" "music" "${frame_category_music_render}"
+  append_category_rule "volume" "volume" "${frame_category_volume_render}"
+}
 
-mv "${tmp_conf}" "${DUNST_CONF}"
-trap - EXIT
+write_dunstrc() {
+  begin_tmp_conf
+  append_dynamic_global_section
+  append_urgency_sections
+  append_category_sections
+  mv "${tmp_conf}" "${DUNST_CONF}"
+  trap - EXIT
+}
 
-echo "${input_hash}" >"${HASH_FILE}"
+finalize_generation() {
+  local input_hash="$1"
+  echo "${input_hash}" >"${HASH_FILE}"
 
-if [[ "${mode}" == "write-only" ]] || [[ -e "${THEME_SWITCH_LOCK}" ]]; then
-  echo "[dunst] Generated dunstrc"
-  exit 0
-fi
+  if [[ "${mode}" == "write-only" ]] || [[ -e "${THEME_SWITCH_LOCK}" ]]; then
+    echo "[dunst] Generated dunstrc"
+    return 0
+  fi
 
-reload_dunst_runtime
-echo "[dunst] Generated and reloaded dunstrc"
+  reload_dunst_runtime
+  echo "[dunst] Generated and reloaded dunstrc"
+}
+
+main() {
+  parse_mode "${1:-}"
+  mkdir -p "${DUNST_DIR}"
+  touch "${DUNST_THEME}"
+
+  if [[ "${mode}" == "reload-only" ]]; then
+    reload_dunst_runtime
+    echo "[dunst] Reloaded dunstrc"
+    exit 0
+  fi
+
+  [[ -f "${WAL_CACHE}/colors-shell.sh" ]] || exit 0
+  # shellcheck disable=SC1090
+  source "${WAL_CACHE}/colors-shell.sh"
+
+  resolve_notification_font
+  resolve_layout_metrics
+  load_base_palette
+  apply_theme_palette_overrides
+  render_palette
+
+  input_hash="$(build_input_hash)"
+  hash_is_current "${input_hash}" && exit 0
+
+  ensure_base_conf
+  write_dunstrc
+  finalize_generation "${input_hash}"
+}
+
+main "${1:-}"

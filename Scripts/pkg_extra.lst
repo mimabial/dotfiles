@@ -8,9 +8,7 @@ wf-recorder                                          # Screen recorder for wlroo
 bat|zsh                                                  # enhanced version of cat
 
 # --------------------------------------------------- // Essential
-dunst                                                  # notification daemon
 fd                                                     # fast find alternative
-openbsd-netcat                                         # networking utility
 rsync                                                  # file sync
 stow                                                   # symlink farm manager
 yt-dlp                                                 # media downloader
@@ -29,7 +27,6 @@ elisa                                                  # KDE music player
 mpv                                                    # media player
 
 # --------------------------------------------------- // Unclassified (explicit)
-alacritty
 aurutils
 base
 base-devel
@@ -46,7 +43,6 @@ exfatprogs
 flatpak
 git
 glib2-devel
-gpu-screen-recorder
 gum
 hplip
 htop
@@ -56,8 +52,6 @@ intel-gpu-tools
 intel-media-driver
 intel-ucode
 iwd
-lazydocker
-lazygit
 less
 libpulse
 libqalculate
@@ -73,8 +67,6 @@ lsof
 lvm2
 mesa-utils
 meson
-mpd
-mpd-mpris
 mullvad-vpn-bin
 neovim
 nodejs
@@ -94,12 +86,10 @@ python-pywal16
 python-pywalfox
 qalculate-gtk
 ranger
-rmpc
 scdoc
 skanlite
 smartmontools
 sof-firmware
-tmux
 ttf-cascadia-code-nerd
 ttf-jetbrains-mono-nerd
 vulkan-intel
@@ -109,7 +99,6 @@ wiremix
 xdg-utils
 xorg-server
 xorg-xinit
-xsettingsd
 yay-bin
 yay-bin-debug
 zathura

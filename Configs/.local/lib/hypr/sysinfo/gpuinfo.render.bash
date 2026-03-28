@@ -171,8 +171,112 @@ get_temp_color() {
   done
 }
 
-generate_json() {
+resolve_bucket_icon() {
+  local value="$1"
+  local prev="$2"
+  local high="$3"
+  local mid="$4"
+  local low="$5"
+  local hyst="$6"
+  local state_key="$7"
+  local fallback_map="$8"
+  shift 8
+  local -a icons=("$@")
+  local bucket=""
+  local icon=""
 
+  bucket=$(hysteresis_bucket "${value}" "${prev}" "${high}" "${mid}" "${low}" "${hyst}")
+  if [[ -n "${bucket}" ]]; then
+    icon="${icons[${bucket}]}"
+    update_state_var "${state_key}" "${bucket}"
+    printf '%s\n' "${icon}"
+    return 0
+  fi
+
+  icon="$(map_floor "${fallback_map}" "${value}")"
+  if [[ "${state_key}" == "GPUINFO_TEMP_BUCKET" ]]; then
+    printf '%s\n' "${icon:0:1}"
+    return 0
+  fi
+
+  printf '%s\n' "${icon}"
+}
+
+vendor_thermo_icon() {
+  if [[ "${GPUINFO_NVIDIA_ENABLE}" -eq 1 ]]; then
+    printf '%s\n' '󰾲'
+  elif [[ "${GPUINFO_AMD_ENABLE}" -eq 1 ]]; then
+    printf '%s\n' '󰾲'
+  elif [[ "${GPUINFO_INTEL_ENABLE}" -eq 1 ]]; then
+    printf '%s\n' '󰢮'
+  else
+    printf '%s\n' '󰍺'
+  fi
+}
+
+render_thermo_icon() {
+  local temp_color="$1"
+  local thermo_alt=""
+
+  thermo_alt="$(vendor_thermo_icon)"
+  if [[ -n "${temp_color}" ]]; then
+    printf "<span size='14pt' color='%s'>%s</span>\n" "${temp_color}" "${thermo_alt}"
+    return 0
+  fi
+
+  printf "<span size='14pt'>%s</span>\n" "${thermo_alt}"
+}
+
+append_tooltip_line() {
+  local line="$1"
+  [[ -n "${line}" && "${line}" =~ [a-zA-Z0-9] ]] || return 0
+  tooltip+=$'\n'"${line}"
+}
+
+build_tooltip() {
+  local thermo="$1"
+  local speed="$2"
+  local line=""
+
+  tooltip="$primary_gpu
+$thermo Temperature: ${temperature}°C"
+
+  if [[ -n "${utilization}" ]]; then
+    append_tooltip_line "$speed Utilization: ${utilization}%"
+  fi
+  if [[ -n "${core_clock}" ]]; then
+    append_tooltip_line " Clock Speed: ${core_clock} MHz"
+  elif [[ -n "${current_clock_speed}" ]] && [[ -n "${max_clock_speed}" ]]; then
+    append_tooltip_line " Clock Speed: ${current_clock_speed}/${max_clock_speed} MHz"
+  fi
+  if [[ -n "${power_usage}" ]]; then
+    line="󱪉 Power Usage: ${power_usage} W"
+    if [[ -n "${power_limit}" && "${power_limit}" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+      line="󱪉 Power Usage: ${power_usage}/${power_limit} W"
+    fi
+    append_tooltip_line "${line}"
+  fi
+  if [[ -n "${power_discharge}" ]] && [[ "${power_discharge}" != "0" ]]; then
+    append_tooltip_line " Power Discharge: ${power_discharge} W"
+  fi
+  if [[ -n "${fan_speed}" ]]; then
+    append_tooltip_line " Fan Speed: ${fan_speed} RPM"
+  fi
+  if [[ -n "${gpu_error}" ]]; then
+    append_tooltip_line "NVIDIA-SMI: ${gpu_error}"
+  fi
+}
+
+format_utilization_text() {
+  if [[ -n "${utilization}" && "${utilization}" != "N/A" ]]; then
+    printf '%02d󱉸\n' "${utilization%%.*}"
+    return 0
+  fi
+
+  printf '%s󱉸\n' "${utilization}"
+}
+
+generate_json() {
   local util_high=90 util_mid=60 util_low=30
   local temp_high=85 temp_mid=65 temp_low=45
   local util_hyst="${GPUINFO_UTIL_HYSTERESIS:-5}"
@@ -181,90 +285,20 @@ generate_json() {
   temp_lv="85:, 65:, 45:, "
   util_lv="90:, 60:󰓅, 30:󰾅, 󰾆"
 
-  local util_bucket temp_bucket speed thermo temp_color
+  local speed thermo temp_color icon_text tooltip formatted_util
   local util_icons=("󰾆" "󰾅" "󰓅" "")
   local temp_icons=("" "" "" "")
 
-  util_bucket=$(hysteresis_bucket "${utilization}" "${GPUINFO_UTIL_BUCKET}" "${util_high}" "${util_mid}" "${util_low}" "${util_hyst}")
-  temp_bucket=$(hysteresis_bucket "${temperature}" "${GPUINFO_TEMP_BUCKET}" "${temp_high}" "${temp_mid}" "${temp_low}" "${temp_hyst}")
-
-  if [[ -n "${util_bucket}" ]]; then
-    speed="${util_icons[${util_bucket}]}"
-    update_state_var "GPUINFO_UTIL_BUCKET" "${util_bucket}"
-  else
-    speed="$(map_floor "$util_lv" "$utilization")"
-  fi
-
-  if [[ -n "${temp_bucket}" ]]; then
-    thermo="${temp_icons[${temp_bucket}]}"
-    update_state_var "GPUINFO_TEMP_BUCKET" "${temp_bucket}"
-  else
-    local temp_pair
-    temp_pair="$(map_floor "$temp_lv" "${temperature}")"
-    thermo="${temp_pair:0:1}"
-  fi
-
+  speed="$(resolve_bucket_icon "${utilization}" "${GPUINFO_UTIL_BUCKET}" "${util_high}" "${util_mid}" "${util_low}" "${util_hyst}" "GPUINFO_UTIL_BUCKET" "${util_lv}" "${util_icons[@]}")"
+  thermo="$(resolve_bucket_icon "${temperature}" "${GPUINFO_TEMP_BUCKET}" "${temp_high}" "${temp_mid}" "${temp_low}" "${temp_hyst}" "GPUINFO_TEMP_BUCKET" "${temp_lv}" "${temp_icons[@]}")"
   temp_color=$(get_temp_color "${temperature}")
-
-  # Set vendor-specific icon for thermo_alt
-  if [[ "${GPUINFO_NVIDIA_ENABLE}" -eq 1 ]]; then
-    thermo_alt=󰾲 # NVIDIA icon (current default)
-    # Alternative NVIDIA-specific options: 󰢮 󱤓 󰒓
-  elif [[ "${GPUINFO_AMD_ENABLE}" -eq 1 ]]; then
-    thermo_alt=󰾲 # AMD icon
-    # Alternative AMD options: 󰜡
-  elif [[ "${GPUINFO_INTEL_ENABLE}" -eq 1 ]]; then
-    thermo_alt=󰢮 # Intel icon
-    # Alternative Intel options: 󰟀
-  else
-    thermo_alt=󰍺 # Default/fallback icon
-  fi
-
-  if [[ -n "$temp_color" ]]; then
-    icon_text="<span size='14pt' color='$temp_color'>$thermo_alt</span>"
-  else
-    icon_text="<span size='14pt'>$thermo_alt</span>"
-  fi
-
-  # Build tooltip with ordered lines
-  tooltip="$primary_gpu
-$thermo Temperature: ${temperature}°C"
-
-  local tooltip_lines=()
-  if [[ -n "${utilization}" ]]; then tooltip_lines+=("$speed Utilization: ${utilization}%"); fi
-  if [[ -n "${core_clock}" ]]; then
-    tooltip_lines+=(" Clock Speed: ${core_clock} MHz")
-  elif [[ -n "${current_clock_speed}" ]] && [[ -n "${max_clock_speed}" ]]; then
-    tooltip_lines+=(" Clock Speed: ${current_clock_speed}/${max_clock_speed} MHz")
-  fi
-  if [[ -n "${power_usage}" ]]; then
-    if [[ -n "${power_limit}" && "${power_limit}" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
-      tooltip_lines+=("󱪉 Power Usage: ${power_usage}/${power_limit} W")
-    else
-      tooltip_lines+=("󱪉 Power Usage: ${power_usage} W")
-    fi
-  fi
-  if [[ -n "${power_discharge}" ]] && [[ "${power_discharge}" != "0" ]]; then tooltip_lines+=(" Power Discharge: ${power_discharge} W"); fi
-  if [[ -n "${fan_speed}" ]]; then tooltip_lines+=(" Fan Speed: ${fan_speed} RPM"); fi
-  if [[ -n "${gpu_error}" ]]; then tooltip_lines+=("NVIDIA-SMI: ${gpu_error}"); fi
-
-  for line in "${tooltip_lines[@]}"; do
-    if [[ -n "${line}" && "${line}" =~ [a-zA-Z0-9] ]]; then
-      tooltip+=$'\n'"${line}"
-    fi
-  done
-
-  # Format utilization with two digits (pad with leading zero if needed)
-  local formatted_util
-  if [[ -n "${utilization}" && "${utilization}" != "N/A" ]]; then
-    formatted_util=$(printf "%02d" "${utilization%%.*}")
-  else
-    formatted_util="${utilization}"
-  fi
+  icon_text="$(render_thermo_icon "${temp_color}")"
+  build_tooltip "${thermo}" "${speed}"
+  formatted_util="$(format_utilization_text)"
 
   jq -n -c \
     --arg icon "$icon_text" \
-    --arg util "${formatted_util}󱉸" \
+    --arg util "${formatted_util}" \
     --arg tooltip "$tooltip" \
     '{text: ($icon + "\r" + $util), tooltip: $tooltip}'
 }

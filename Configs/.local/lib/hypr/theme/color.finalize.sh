@@ -63,10 +63,6 @@ color_finalize_primary_theming() {
   fi
 
   run_app_theming
-  if [[ "${ASYNC_APPS}" -eq 1 ]]; then
-    print_log -sec "pywal16" -stat "async" "app theming running in background (${#APP_THEMING_PIDS[@]} jobs)"
-  fi
-  wait_for_theming_jobs_when_async_disabled
 
   color_finalize_normalize_hyprshade_colors
   reload_live_apps
@@ -113,7 +109,6 @@ color_finalize_update_waybar_border_radius() {
 color_finalize_secondary_theming() {
   [[ -f "${LIB_DIR}/hypr/wal/wal.hypr.sh" ]] && source "${LIB_DIR}/hypr/wal/wal.hypr.sh"
   run_secondary_theming
-  wait_for_theming_jobs_when_async_disabled
   color_finalize_update_waybar_border_radius
   color_lock_release_theme_update
 

@@ -4,10 +4,10 @@ $HOME/.config/rofi/theme.rasi
     background:            #2f3330;
     foreground:            #d8dee9;
     border:                #a6a6a680;
-    accent:                #7fbbb3;
-    selected-background:   #48484e80;
+    active:                #83b6af;
+    accent:                #859289;
     selected-foreground:   #eceff4;
     separator:             #80808080;
     urgent:                #e67e80;
-    active:                #5d6b66;
+    selected-background:   #5d6b66;
 }

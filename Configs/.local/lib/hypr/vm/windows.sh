@@ -1,11 +1,20 @@
 #!/bin/bash
+
 COMPOSE_FILE="$HOME/.config/windows/docker-compose.yml"
+WINDOWS_DATA_DIR="$HOME/.windows"
+WINDOWS_SHARE_DIR="$HOME/Windows"
+WINDOWS_APP_DIR="$HOME/.local/share/applications"
+WINDOWS_ICON_DIR="$WINDOWS_APP_DIR/icons"
+WINDOWS_DESKTOP_FILE="$WINDOWS_APP_DIR/windows-vm.desktop"
+WINDOWS_CONTAINER_NAME="hypr-windows"
+WINDOWS_WEB_UI_URL="http://127.0.0.1:8006"
+WINDOWS_RDP_HOST="127.0.0.1:3389"
 
 check_prerequisites() {
-  local DISK_SIZE_GB=${1:-64}
-  local REQUIRED_SPACE=$((DISK_SIZE_GB + 10))  # Add 10GB for Windows ISO and overhead
+  local disk_size_gb=${1:-64}
+  local required_space=$((disk_size_gb + 10))
+  local available_space
 
-  # Check for KVM support
   if [ ! -e /dev/kvm ]; then
     echo "❌ KVM virtualization not available!"
     echo ""
@@ -16,124 +25,137 @@ check_prerequisites() {
     exit 1
   fi
 
-  # Check disk space
-  AVAILABLE_SPACE=$(df "$HOME" | awk 'NR==2 {print int($4/1024/1024)}')
-  if [ "$AVAILABLE_SPACE" -lt "$REQUIRED_SPACE" ]; then
+  available_space=$(available_home_space_gb)
+  if [ "$available_space" -lt "$required_space" ]; then
     echo "❌ Insufficient disk space!"
-    echo "   Available: ${AVAILABLE_SPACE}GB"
-    echo "   Required: ${REQUIRED_SPACE}GB (${DISK_SIZE_GB}GB disk + 10GB for Windows image)"
+    echo "   Available: ${available_space}GB"
+    echo "   Required: ${required_space}GB (${disk_size_gb}GB disk + 10GB for Windows image)"
     exit 1
   fi
 }
 
-install_windows() {
-  # Set up trap to handle Ctrl+C
-  trap "echo ''; echo 'Installation cancelled by user'; exit 1" INT
+available_home_space_gb() {
+  df "$HOME" | awk 'NR==2 {print int($4/1024/1024)}'
+}
 
-  check_prerequisites
+ensure_windows_directories() {
+  mkdir -p "$WINDOWS_DATA_DIR" "$HOME/.config/windows" "$WINDOWS_ICON_DIR"
+}
 
-  hyprshell pkg/add.sh freerdp openbsd-netcat gum
+copy_windows_icon() {
+  local source_icon="$HOME/.local/share/icons/windows.png"
+  local target_icon="$WINDOWS_ICON_DIR/windows.png"
 
-  mkdir -p "$HOME/.windows"
-  mkdir -p "$HOME/.config/windows"
-  mkdir -p "$HOME/.local/share/applications/icons"
+  [ -f "$source_icon" ] || return 0
+  cp "$source_icon" "$target_icon"
+}
 
-  # Install Windows VM icon and desktop file
-  # Optional icon (skip if not present)
-  if [ -f "$HOME/.local/share/icons/windows.png" ]; then
-    cp "$HOME/.local/share/icons/windows.png" "$HOME/.local/share/applications/icons/windows.png"
-  fi
-
-  cat << EOF | tee "$HOME/.local/share/applications/windows-vm.desktop" > /dev/null
+write_windows_desktop_entry() {
+  cat > "$WINDOWS_DESKTOP_FILE" <<EOF2
 [Desktop Entry]
 Name=Windows
 Comment=Start Windows VM via Docker and connect with RDP
 Exec=uwsm app -- hyprshell vm/windows.sh launch
-Icon=$HOME/.local/share/applications/icons/windows.png
+Icon=$WINDOWS_ICON_DIR/windows.png
 Terminal=false
 Type=Application
 Categories=System;Virtualization;
-EOF
+EOF2
+}
 
-  # Get system resources
+install_desktop_assets() {
+  copy_windows_icon
+  write_windows_desktop_entry
+}
+
+load_system_resources() {
   TOTAL_RAM=$(free -h | awk 'NR==2 {print $2}')
   TOTAL_RAM_GB=$(awk 'NR==1 {printf "%d", $2/1024/1024}' /proc/meminfo)
   TOTAL_CORES=$(nproc)
+}
 
+show_system_resources() {
   echo ""
   echo "System Resources Detected:"
   echo "  Total RAM: $TOTAL_RAM"
   echo "  Total CPU Cores: $TOTAL_CORES"
   echo ""
+}
 
+build_ram_options() {
+  local size
   RAM_OPTIONS=""
   for size in 2 4 8 16 32 64; do
-    if [ $size -le $TOTAL_RAM_GB ]; then
+    if [ "$size" -le "$TOTAL_RAM_GB" ]; then
       RAM_OPTIONS="$RAM_OPTIONS ${size}G"
     fi
   done
+}
 
-  SELECTED_RAM=$(echo $RAM_OPTIONS | tr ' ' '\n' | fzf --prompt="Select RAM > " --header="How much RAM for Windows VM?" --reverse --select-1 --query="4G")
+prompt_fzf_choice() {
+  local options="$1"
+  local prompt="$2"
+  local header="$3"
+  local query="$4"
 
-  # Check if user cancelled
-  if [ -z "$SELECTED_RAM" ]; then
-    echo "Installation cancelled by user"
-    exit 1
-  fi
+  echo "$options" | tr ' ' '\n' | fzf --prompt="$prompt" --header="$header" --reverse --select-1 --query="$query"
+}
 
+prompt_ram_selection() {
+  build_ram_options
+  SELECTED_RAM=$(prompt_fzf_choice "$RAM_OPTIONS" "Select RAM > " "How much RAM for Windows VM?" "4G")
+  [ -n "$SELECTED_RAM" ] || cancel_install
+}
+
+cancel_install() {
+  echo "Installation cancelled by user"
+  exit 1
+}
+
+prompt_cpu_selection() {
   read -p "Number of CPU cores (1-$TOTAL_CORES) [default: 2]: " SELECTED_CORES
   SELECTED_CORES=${SELECTED_CORES:-2}
-
-  # Check if user cancelled (Ctrl+C)
-  if [ -z "$SELECTED_CORES" ]; then
-    echo "Installation cancelled by user"
-    exit 1
-  fi
 
   if ! [[ "$SELECTED_CORES" =~ ^[0-9]+$ ]] || [ "$SELECTED_CORES" -lt 1 ] || [ "$SELECTED_CORES" -gt "$TOTAL_CORES" ]; then
     echo "Invalid input. Using default: 2 cores"
     SELECTED_CORES=2
   fi
+}
 
-  AVAILABLE_SPACE=$(df "$HOME" | awk 'NR==2 {print int($4/1024/1024)}')
-  MAX_DISK_GB=$((AVAILABLE_SPACE - 10))  # Leave 10GB for Windows image
+build_disk_options() {
+  local size
+  local available_space
 
-  # Check if we have enough space for minimum
-  if [ $MAX_DISK_GB -lt 32 ]; then
+  available_space=$(available_home_space_gb)
+  MAX_DISK_GB=$((available_space - 10))
+  if [ "$MAX_DISK_GB" -lt 32 ]; then
     echo "❌ Insufficient disk space for Windows VM!"
-    echo "   Available: ${AVAILABLE_SPACE}GB"
+    echo "   Available: ${available_space}GB"
     echo "   Minimum required: 42GB (32GB disk + 10GB for Windows image)"
     exit 1
   fi
 
   DISK_OPTIONS=""
   for size in 32 64 128 256 512; do
-    if [ $size -le $MAX_DISK_GB ]; then
+    if [ "$size" -le "$MAX_DISK_GB" ]; then
       DISK_OPTIONS="$DISK_OPTIONS ${size}G"
     fi
   done
 
-  # Default to 64G if available, otherwise 32G
   DEFAULT_DISK="64G"
-  if ! echo "$DISK_OPTIONS" | grep -q "64G"; then
-    DEFAULT_DISK="32G"
-  fi
+  echo "$DISK_OPTIONS" | grep -q "64G" || DEFAULT_DISK="32G"
+}
 
-  SELECTED_DISK=$(echo $DISK_OPTIONS | tr ' ' '\n' | fzf --prompt="Select Disk Size > " --header="Disk space for Windows VM (64GB+ recommended)" --reverse --select-1 --query="$DEFAULT_DISK")
+prompt_disk_selection() {
+  build_disk_options
+  SELECTED_DISK=$(prompt_fzf_choice "$DISK_OPTIONS" "Select Disk Size > " "Disk space for Windows VM (64GB+ recommended)" "$DEFAULT_DISK")
+  [ -n "$SELECTED_DISK" ] || cancel_install
 
-  # Check if user cancelled
-  if [ -z "$SELECTED_DISK" ]; then
-    echo "Installation cancelled by user"
-    exit 1
-  fi
-
-  # Extract just the number for prerequisite check
-  DISK_SIZE_NUM=$(echo "$SELECTED_DISK" | sed 's/G//')
-
-  # Re-check prerequisites with selected disk size
+  DISK_SIZE_NUM=${SELECTED_DISK%G}
   check_prerequisites "$DISK_SIZE_NUM"
+}
 
-  # Prompt for username and password
+prompt_windows_credentials() {
   read -p "Windows username [default: docker]: " USERNAME
   USERNAME=${USERNAME:-docker}
 
@@ -145,8 +167,9 @@ EOF
   else
     PASSWORD_DISPLAY="(user-defined)"
   fi
+}
 
-  # Display configuration summary
+show_install_summary() {
   echo ""
   echo "╔════════════════════════════════════╗"
   echo "║   Windows VM Configuration         ║"
@@ -159,24 +182,22 @@ EOF
   echo "║  Password:  $PASSWORD_DISPLAY            ║"
   echo "║                                    ║"
   echo "╚════════════════════════════════════╝"
+}
 
-  # Ask for confirmation
+confirm_installation() {
   echo ""
   read -p "Proceed with this configuration? (y/N): " -n 1 -r
   echo
-  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    echo "Installation cancelled by user"
-    exit 1
-  fi
+  [[ $REPLY =~ ^[Yy]$ ]] || cancel_install
+}
 
-  mkdir -p $HOME/Windows
-
-  # Create docker-compose.yml in user config directory
-  cat << EOF | tee "$COMPOSE_FILE" > /dev/null
+write_compose_file() {
+  mkdir -p "$WINDOWS_SHARE_DIR"
+  cat > "$COMPOSE_FILE" <<EOF2
 services:
   windows:
     image: dockurr/windows
-    container_name: hypr-windows
+    container_name: $WINDOWS_CONTAINER_NAME
     environment:
       VERSION: "11"
       RAM_SIZE: "$SELECTED_RAM"
@@ -194,22 +215,31 @@ services:
       - 3389:3389/tcp
       - 3389:3389/udp
     volumes:
-      - $HOME/.windows:/storage
-      - $HOME/Windows:/shared
+      - $WINDOWS_DATA_DIR:/storage
+      - $WINDOWS_SHARE_DIR:/shared
     restart: always
     stop_grace_period: 2m
-EOF
+EOF2
+}
 
+docker_compose_up() {
+  docker-compose -f "$COMPOSE_FILE" up -d
+}
+
+docker_compose_down() {
+  docker-compose -f "$COMPOSE_FILE" down
+}
+
+start_windows_installation() {
   echo ""
   echo "Starting Windows VM installation..."
   echo "This will download a Windows 11 image (may take 10-15 minutes)."
   echo ""
-  echo "Monitor installation progress at: http://127.0.0.1:8006"
+  echo "Monitor installation progress at: $WINDOWS_WEB_UI_URL"
   echo ""
-
-  # Start docker-compose with user's config
   echo "Starting Windows VM with docker-compose..."
-  if ! docker-compose -f "$COMPOSE_FILE" up -d 2>&1; then
+
+  if ! docker_compose_up 2>&1; then
     echo "❌ Failed to start Windows VM!"
     echo "   Common issues:"
     echo "   - Docker daemon not running: sudo systemctl start docker"
@@ -217,173 +247,235 @@ EOF
     echo "   - Permission issues: make sure you're in the docker group"
     exit 1
   fi
+}
 
+show_install_completion() {
   echo ""
   echo "Windows VM is starting up!"
   echo ""
   echo "Opening browser to monitor installation..."
-
-  # Open browser to monitor installation
-  sleep 3
-  xdg-open "http://127.0.0.1:8006"
-
+  xdg-open "$WINDOWS_WEB_UI_URL"
   echo ""
   echo "Installation is running in the background."
-  echo "You can monitor progress at: http://127.0.0.1:8006"
+  echo "You can monitor progress at: $WINDOWS_WEB_UI_URL"
   echo ""
   echo "Once finished, launch 'Windows' via Super + Space"
   echo ""
   echo "To stop the VM: hyprshell vm/windows.sh stop"
-  echo "To change resources: ~/.config/windows/docker-compose.yml"
+  echo "To change resources: $COMPOSE_FILE"
   echo ""
+}
+
+install_windows() {
+  trap 'echo ""; echo "Installation cancelled by user"; exit 1' INT
+
+  check_prerequisites
+  hyprshell pkg/add.sh freerdp openbsd-netcat gum
+  ensure_windows_directories
+  install_desktop_assets
+  load_system_resources
+  show_system_resources
+  prompt_ram_selection
+  prompt_cpu_selection
+  prompt_disk_selection
+  prompt_windows_credentials
+  show_install_summary
+  confirm_installation
+  write_compose_file
+  start_windows_installation
+  show_install_completion
 }
 
 remove_windows() {
   echo "Removing Windows VM..."
-
-  docker-compose -f "$COMPOSE_FILE" down 2>/dev/null || true
-
+  docker_compose_down 2>/dev/null || true
   docker rmi dockurr/windows 2>/dev/null || echo "Image already removed or not found"
-
-  rm "$HOME/.local/share/applications/windows-vm.desktop"
-  rm -rf "$HOME/.config/windows"
-  rm -rf "$HOME/.windows"
-
+  rm -f "$WINDOWS_DESKTOP_FILE"
+  rm -rf "$HOME/.config/windows" "$WINDOWS_DATA_DIR"
   echo ""
   echo "Windows VM removal completed!"
 }
 
-launch_windows() {
+parse_launch_mode() {
   KEEP_ALIVE=false
-  if [ "$1" = "--keep-alive" ] || [ "$1" = "-k" ]; then
+  if [ "${1:-}" = "--keep-alive" ] || [ "${1:-}" = "-k" ]; then
     KEEP_ALIVE=true
   fi
+}
 
-  # Check if config exists
+require_vm_config() {
   if [ ! -f "$COMPOSE_FILE" ]; then
     echo "Windows VM not configured. Please run: hyprshell vm/windows.sh install"
     exit 1
   fi
+}
 
-  # Check if container is already running
-  CONTAINER_STATUS=$(docker inspect --format='{{.State.Status}}' hypr-windows 2>/dev/null)
+windows_container_status() {
+  docker inspect --format='{{.State.Status}}' "$WINDOWS_CONTAINER_NAME" 2>/dev/null
+}
 
-  if [ "$CONTAINER_STATUS" != "running" ]; then
-    echo "Starting Windows VM..."
+notify_vm_starting() {
+  dunstify -r 42 -i "computer" "Windows VM" "Starting Windows VM\nThis can take 15-30 seconds" -t 0
+}
 
-    # Send desktop notification
-    dunstify -r 42 -i "computer" "Windows VM" "Starting Windows VM\nThis can take 15-30 seconds" -t 0
+notify_vm_start_failed() {
+  dunstify -r 42 -u critical -t 5000 -i "computer" "Windows VM" "Failed to start Windows VM"
+}
 
-    if ! docker-compose -f "$COMPOSE_FILE" up -d 2>&1; then
-      echo "❌ Failed to start Windows VM!"
-      echo "   Try checking: hyprshell vm/windows.sh status"
-      echo "   View logs: docker logs hypr-windows"
-      dunstify -r 42 -u critical -t 5000 -i "computer" "Windows VM" "Failed to start Windows VM"
-      exit 1
+notify_vm_ready() {
+  dunstify -r 42 -t 2000 -i "computer" "Windows VM" "Windows VM is ready. Opening RDP session."
+}
+
+wait_for_rdp_ready() {
+  local wait_count=0
+  local ready_streak=0
+
+  echo "Waiting for Windows VM to be ready..."
+  while (( ready_streak < 2 )); do
+    if nc -z 127.0.0.1 3389 2>/dev/null; then
+      ready_streak=$((ready_streak + 1))
+      continue
     fi
 
-    # Wait for RDP to be ready
-    echo "Waiting for Windows VM to be ready..."
-    WAIT_COUNT=0
-    while ! nc -z 127.0.0.1 3389 2>/dev/null; do
-      sleep 2
-      WAIT_COUNT=$((WAIT_COUNT + 1))
-      if [ $WAIT_COUNT -gt 60 ]; then  # 2 minutes timeout
-        echo "❌ Timeout waiting for RDP!"
-        echo "   The VM might still be installing Windows."
-        echo "   Check progress at: http://127.0.0.1:8006"
-        dunstify -r 42 -u critical -t 5000 -i "computer" "Windows VM" "Timed out waiting for RDP. The VM may still be installing."
-        exit 1
-      fi
-    done
+    ready_streak=0
+    sleep 2
+    wait_count=$((wait_count + 1))
+    if [ "$wait_count" -gt 60 ]; then
+      echo "❌ Timeout waiting for RDP!"
+      echo "   The VM might still be installing Windows."
+      echo "   Check progress at: $WINDOWS_WEB_UI_URL"
+      dunstify -r 42 -u critical -t 5000 -i "computer" "Windows VM" "Timed out waiting for RDP. The VM may still be installing."
+      exit 1
+    fi
+  done
+}
 
-    # Give it a moment more to fully initialize
-    sleep 5
-    dunstify -r 42 -t 2000 -i "computer" "Windows VM" "Windows VM is ready. Opening RDP session."
+ensure_windows_vm_running() {
+  local container_status
+
+  container_status=$(windows_container_status)
+  if [ "$container_status" = "running" ]; then
+    return 0
   fi
 
-  # Extract credentials from compose file
+  echo "Starting Windows VM..."
+  notify_vm_starting
+  if ! docker_compose_up 2>&1; then
+    echo "❌ Failed to start Windows VM!"
+    echo "   Try checking: hyprshell vm/windows.sh status"
+    echo "   View logs: docker logs $WINDOWS_CONTAINER_NAME"
+    notify_vm_start_failed
+    exit 1
+  fi
+
+  wait_for_rdp_ready
+  notify_vm_ready
+}
+
+load_windows_credentials() {
   WIN_USER=$(grep "USERNAME:" "$COMPOSE_FILE" | sed 's/.*USERNAME: "\(.*\)"/\1/')
   WIN_PASS=$(grep "PASSWORD:" "$COMPOSE_FILE" | sed 's/.*PASSWORD: "\(.*\)"/\1/')
+  WIN_USER=${WIN_USER:-docker}
+  WIN_PASS=${WIN_PASS:-admin}
+}
 
-  # Use defaults if not found
-  [ -z "$WIN_USER" ] && WIN_USER="docker"
-  [ -z "$WIN_PASS" ] && WIN_PASS="admin"
-
-  # Build the connection info
+rdp_lifecycle_message() {
   if [ "$KEEP_ALIVE" = true ]; then
-    LIFECYCLE="VM will keep running after RDP closes
-To stop: hyprshell vm/windows.sh stop"
-  else
-    LIFECYCLE="VM will auto-stop when RDP closes"
+    printf '%s\n%s' 'VM will keep running after RDP closes' 'To stop: hyprshell vm/windows.sh stop'
+    return 0
   fi
 
+  printf '%s' 'VM will auto-stop when RDP closes'
+}
+
+print_connection_banner() {
   echo ""
   echo "════════════════════════════════════"
   echo "    Connecting to Windows VM"
   echo ""
-  echo "    $LIFECYCLE"
+  echo "    $(rdp_lifecycle_message)"
   echo "════════════════════════════════════"
   echo ""
+}
 
-  # Detect display scale from Hyprland
-  HYPR_SCALE=$(hyprctl monitors -j | jq -r '.[0].scale')
-  SCALE_PERCENT=$(echo "$HYPR_SCALE" | awk '{print int($1 * 100)}')
+rdp_scale_flag() {
+  local hypr_scale scale_percent
 
-  RDP_SCALE=""
-  if [ "$SCALE_PERCENT" -ge 170 ]; then
-    RDP_SCALE="/scale:180"
-  elif [ "$SCALE_PERCENT" -ge 130 ]; then
-    RDP_SCALE="/scale:140"
-  fi
-  # If scale is less than 130%, don't set any scale (use default 100)
+  hypr_scale=$(hyprctl monitors -j | jq -r '.[0].scale')
+  scale_percent=$(echo "$hypr_scale" | awk '{print int($1 * 100)}')
 
-  # Connect with RDP in fullscreen (auto-detects resolution)
-  xfreerdp3 /u:"$WIN_USER" /p:"$WIN_PASS" /v:127.0.0.1:3389 -grab-keyboard /sound /microphone /cert:ignore /title:"Windows VM" /dynamic-resolution /gfx:AVC444 /floatbar:sticky:off,default:visible,show:fullscreen $RDP_SCALE
-
-  # After RDP closes, stop the container unless --keep-alive was specified
-  if [ "$KEEP_ALIVE" = false ]; then
-    echo ""
-    echo "RDP session closed. Stopping Windows VM..."
-    docker-compose -f "$COMPOSE_FILE" down
-    echo "Windows VM stopped."
-  else
-    echo ""
-    echo "RDP session closed. Windows VM is still running."
-    echo "To stop it: hyprshell vm/windows.sh stop"
+  if [ "$scale_percent" -ge 170 ]; then
+    echo "/scale:180"
+  elif [ "$scale_percent" -ge 130 ]; then
+    echo "/scale:140"
   fi
 }
 
-stop_windows() {
-  if [ ! -f "$COMPOSE_FILE" ]; then
-    echo "Windows VM not configured."
-    exit 1
+launch_rdp_session() {
+  local scale_flag
+  scale_flag=$(rdp_scale_flag)
+
+  xfreerdp3 \
+    /u:"$WIN_USER" \
+    /p:"$WIN_PASS" \
+    /v:"$WINDOWS_RDP_HOST" \
+    -grab-keyboard \
+    /sound \
+    /microphone \
+    /cert:ignore \
+    /title:"Windows VM" \
+    /dynamic-resolution \
+    /gfx:AVC444 \
+    /floatbar:sticky:off,default:visible,show:fullscreen \
+    $scale_flag
+}
+
+handle_rdp_exit() {
+  echo ""
+  if [ "$KEEP_ALIVE" = true ]; then
+    echo "RDP session closed. Windows VM is still running."
+    echo "To stop it: hyprshell vm/windows.sh stop"
+    return 0
   fi
 
+  echo "RDP session closed. Stopping Windows VM..."
+  docker_compose_down
+  echo "Windows VM stopped."
+}
+
+launch_windows() {
+  parse_launch_mode "$1"
+  require_vm_config
+  ensure_windows_vm_running
+  load_windows_credentials
+  print_connection_banner
+  launch_rdp_session
+  handle_rdp_exit
+}
+
+stop_windows() {
+  require_vm_config
   echo "Stopping Windows VM..."
-  docker-compose -f "$COMPOSE_FILE" down
+  docker_compose_down
   echo "Windows VM stopped."
 }
 
 status_windows() {
-  if [ ! -f "$COMPOSE_FILE" ]; then
-    echo "Windows VM not configured."
-    echo "To set up: hyprshell vm/windows.sh install"
-    exit 1
-  fi
+  local container_status
 
-  CONTAINER_STATUS=$(docker inspect --format='{{.State.Status}}' hypr-windows 2>/dev/null)
+  require_vm_config
+  container_status=$(windows_container_status)
 
-  if [ -z "$CONTAINER_STATUS" ]; then
+  if [ -z "$container_status" ]; then
     echo "Windows VM container not found."
     echo "To start: hyprshell vm/windows.sh launch"
-  elif [ "$CONTAINER_STATUS" = "running" ]; then
+  elif [ "$container_status" = "running" ]; then
     echo "╔════════════════════════════════════╗"
     echo "║  Windows VM Status: RUNNING        ║"
     echo "╠════════════════════════════════════╣"
     echo "║                                    ║"
     echo "║  Web interface:                    ║"
-    echo "║    http://127.0.0.1:8006           ║"
+    echo "║    $WINDOWS_WEB_UI_URL           ║"
     echo "║                                    ║"
     echo "║  RDP available: port 3389          ║"
     echo "║                                    ║"
@@ -395,7 +487,7 @@ status_windows() {
     echo "║                                    ║"
     echo "╚════════════════════════════════════╝"
   else
-    echo "Windows VM is stopped (status: $CONTAINER_STATUS)"
+    echo "Windows VM is stopped (status: $container_status)"
     echo "To start: hyprshell vm/windows.sh launch"
   fi
 }
@@ -420,7 +512,6 @@ show_usage() {
   echo "  hyprshell vm/windows.sh stop              # Shut down the VM"
 }
 
-# Main command dispatcher
 case "$1" in
   install)
     install_windows

@@ -8,7 +8,7 @@ color_lock_init() {
   THEME_UPDATE_META="$(hypr_lock_path theme_update_meta)"
   THEME_SWITCH_LOCK="$(hypr_lock_path theme_switch)"
   CACHE_ONLY="${CACHE_ONLY:-${HYPR_WAL_CACHE_ONLY:-0}}"
-  ASYNC_APPS=1
+  ASYNC_OPTIONAL_UPDATES=1
   ASYNC_POST_UPDATES=1
   MODE_OVERRIDE="${HYPR_WAL_MODE_OVERRIDE:-}"
   CACHE_ONLY_ROOT=""

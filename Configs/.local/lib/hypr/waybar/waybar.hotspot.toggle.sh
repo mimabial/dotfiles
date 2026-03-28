@@ -45,8 +45,6 @@ else
       dunstify -i "network-wireless" "Hotspot Error" "Failed to disconnect from WiFi" -u critical
       exit 1
     fi
-
-    sleep 1
   fi
 
   # Find saved hotspot connections

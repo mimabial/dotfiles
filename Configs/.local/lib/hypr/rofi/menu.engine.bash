@@ -49,6 +49,11 @@ menu() {
   local width_override="${4:-}"
   local options_rendered=""
   local rofi_args=()
+  local rofi_stderr_file=""
+  local rofi_stderr_target="/dev/stderr"
+  local rofi_error=""
+  local rofi_exit=0
+  local selection=""
   local line=""
   local index=0
 
@@ -111,7 +116,25 @@ menu() {
     done <<<"${options_rendered}"
   fi
 
-  printf '%s' "${options_rendered}" | rofi -dmenu -i -no-show-icons -p "$prompt" -theme "$(rofi_resolve_theme menutree)" "${rofi_args[@]}" 2>/dev/null
+  rofi_stderr_file="$(mktemp "${XDG_RUNTIME_DIR:-/tmp}/rofi-menu.XXXXXX" 2>/dev/null || true)"
+  [[ -n "${rofi_stderr_file}" ]] && rofi_stderr_target="${rofi_stderr_file}"
+
+  selection="$(
+    printf '%s' "${options_rendered}" | rofi -dmenu -i -no-show-icons -p "$prompt" -theme "$(rofi_resolve_theme menutree)" "${rofi_args[@]}" 2>"${rofi_stderr_target}"
+  )"
+  rofi_exit=$?
+
+  if [[ -n "${rofi_stderr_file}" && -s "${rofi_stderr_file}" ]]; then
+    rofi_error="$(<"${rofi_stderr_file}")"
+  fi
+  [[ -n "${rofi_stderr_file}" ]] && rm -f "${rofi_stderr_file}"
+
+  if ((rofi_exit != 0)) && [[ -n "${rofi_error}" ]]; then
+    printf 'WARN: rofi menu failed: %s\n' "${rofi_error}" >&2
+  fi
+
+  printf '%s' "${selection}"
+  return "${rofi_exit}"
 }
 
 terminal() {

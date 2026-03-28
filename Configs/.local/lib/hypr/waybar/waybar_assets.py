@@ -24,7 +24,6 @@ from waybar_shared import (
 from waybar_state import (
     get_config_value,
     get_current_layout_from_config,
-    get_state_value,
     resolve_style_path,
 )
 
@@ -299,6 +298,9 @@ def get_waybar_value_from_sources(value_name, default_value, sources):
         if not raw_value:
             return None
         sanitized_value = raw_value.strip().strip('"').strip("'")
+        if not sanitized_value:
+            logger.warning(f"Invalid empty {value_name} from {source_name}")
+            return None
         logger.debug(f"Got {value_name} from {source_name}: {sanitized_value}")
         return sanitized_value
 
@@ -310,7 +312,7 @@ def get_waybar_value_from_sources(value_name, default_value, sources):
             logger.debug(f"Got {value_name} from {source_name}: {int_value}")
             return int_value
         except ValueError:
-            logger.debug(f"Invalid {value_name} from {source_name}: {raw_value}")
+            logger.warning(f"Invalid {value_name} from {source_name}: {raw_value}")
             return None
 
     for get_source_func, source_name in sources:
@@ -344,8 +346,6 @@ def get_waybar_icon_size():
     icon_sources = [
         (lambda: get_config_value("WAYBAR_ICON_SIZE"), "WAYBAR_ICON_SIZE config"),
         (lambda: get_config_value("WAYBAR_SCALE"), "WAYBAR_SCALE config"),
-        (lambda: get_state_value("BAR_ICON_SIZE"), "state file"),
-        (lambda: get_value_from_hypr_theme("$BAR_ICON_SIZE"), "hypr.theme"),
     ]
     return get_waybar_value_from_sources("icon size", 10, icon_sources)
 
@@ -373,6 +373,9 @@ def get_value_from_hypr_config(variable_name):
                     if lhs.strip() != f"${variable_key}":
                         continue
                     value = rhs.strip().strip('"').strip("'")
+                    if not value:
+                        logger.warning(f"Invalid empty {variable_name} in {file_path}")
+                        return None
                     logger.debug(f"Got {variable_name} from {file_path}: {value}")
                     return value or None
         except Exception as e:
@@ -453,10 +456,11 @@ def update_border_radius():
     try:
         border_radius = int(str(border_radius).strip())
     except (TypeError, ValueError):
-        logger.debug(f"Invalid border radius {border_radius!r}; using default")
+        logger.warning(f"Invalid border radius {border_radius!r}; using default")
         border_radius = 2
 
     if border_radius < 0:
+        logger.warning(f"Invalid negative border radius {border_radius!r}; using default")
         border_radius = 2
         logger.debug(f"Using default border radius: {border_radius}")
 

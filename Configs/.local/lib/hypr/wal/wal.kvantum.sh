@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # wal.kvantum.sh - Kvantum theme generation with pywal colors
-# Runs in parallel with other app theming scripts
 
 source "$(command -v hyprshell)" || exit 1
 
@@ -11,135 +10,139 @@ PYWAL_KVANTUM_DIR="${HOME}/.config/Kvantum/pywal16"
 declare -F export_hypr_config >/dev/null && export_hypr_config
 selected_color_mode="${selected_color_mode:-1}"
 
-# Determine theme directory
-if [ -z "${HYPR_THEME_DIR}" ] && [ -n "${HYPR_THEME}" ]; then
+resolve_theme_kvantum_dir() {
+  if [[ -z "${HYPR_THEME_DIR}" && -n "${HYPR_THEME}" ]]; then
     HYPR_THEME_DIR="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}"
-fi
+  fi
+  THEME_KVANTUM_DIR="${HYPR_THEME_DIR}/kvantum"
+}
 
-THEME_KVANTUM_DIR="${HYPR_THEME_DIR}/kvantum"
-
-# Exit early if no kvantum theme exists
-if [ ! -d "${THEME_KVANTUM_DIR}" ]; then
-    exit 0
-fi
-
-# Change detection: hash inputs (theme kvantum files + pywal colors + mode)
-input_files=(
+theme_inputs_changed() {
+  local input_files=(
     "${THEME_KVANTUM_DIR}/kvconfig.theme"
     "${THEME_KVANTUM_DIR}/kvantum.theme"
     "${THEME_KVANTUM_DIR}/colors.map"
-)
-input_hash=$(cat "${input_files[@]}" "${WAL_CACHE}/colors-shell.sh" 2>/dev/null | md5sum | cut -d' ' -f1)
-combined_hash="${input_hash}-${selected_color_mode}"
+  )
+  local input_hash=""
+  local combined_hash=""
 
-if [[ -f "$hash_file" && "$(cat "$hash_file" 2>/dev/null)" == "$combined_hash" ]]; then
-    exit 0  # Nothing changed
-fi
+  input_hash=$(cat "${input_files[@]}" "${WAL_CACHE}/colors-shell.sh" 2>/dev/null | md5sum | cut -d' ' -f1)
+  combined_hash="${input_hash}-${selected_color_mode}"
+  [[ ! -f "$hash_file" || "$(cat "$hash_file" 2>/dev/null)" != "$combined_hash" ]]
+}
 
-mkdir -p "${PYWAL_KVANTUM_DIR}"
+copy_theme_files() {
+  mkdir -p "${PYWAL_KVANTUM_DIR}"
+  [[ -f "${THEME_KVANTUM_DIR}/kvconfig.theme" ]] && cp -f "${THEME_KVANTUM_DIR}/kvconfig.theme" "${PYWAL_KVANTUM_DIR}/pywal16.kvconfig"
+  [[ -f "${THEME_KVANTUM_DIR}/kvantum.theme" ]] && cp -f "${THEME_KVANTUM_DIR}/kvantum.theme" "${PYWAL_KVANTUM_DIR}/pywal16.svg"
+}
 
-# Copy theme's kvconfig
-if [ -f "${THEME_KVANTUM_DIR}/kvconfig.theme" ]; then
-    cp -f "${THEME_KVANTUM_DIR}/kvconfig.theme" "${PYWAL_KVANTUM_DIR}/pywal16.kvconfig"
-fi
+load_wal_colors() {
+  [[ -f "${WAL_CACHE}/colors-shell.sh" ]] && source "${WAL_CACHE}/colors-shell.sh"
+}
 
-# Copy theme's SVG
-if [ -f "${THEME_KVANTUM_DIR}/kvantum.theme" ]; then
-    cp -f "${THEME_KVANTUM_DIR}/kvantum.theme" "${PYWAL_KVANTUM_DIR}/pywal16.svg"
-fi
+build_color_map_replacements() {
+  local color_map="${THEME_KVANTUM_DIR}/colors.map"
+  local hex_color=""
+  local pywal_var=""
+  local pywal_value=""
 
-# Source pywal colors
-if [ -f "${WAL_CACHE}/colors-shell.sh" ]; then
-    source "${WAL_CACHE}/colors-shell.sh"
-fi
+  SED_ARGS=()
+  [[ -f "${color_map}" ]] || return 0
 
-# In wallpaper mode, replace colors using colors.map
-if [ "${selected_color_mode}" -ne 0 ]; then
-    COLOR_MAP="${THEME_KVANTUM_DIR}/colors.map"
+  while IFS='=' read -r hex_color pywal_var || [[ -n "${hex_color}" ]]; do
+    [[ "${hex_color}" =~ ^#.*$ && ! "${hex_color}" =~ ^#[0-9A-Fa-f]{6}$ ]] && continue
+    [[ -n "${hex_color}" && -n "${pywal_var}" ]] || continue
 
-    if [ -f "${COLOR_MAP}" ]; then
-        # Build sed command from colors.map
-        SED_ARGS=()
-        while IFS='=' read -r hex_color pywal_var || [ -n "${hex_color}" ]; do
-            # Skip comments and empty lines
-            [[ "${hex_color}" =~ ^#.*$ && ! "${hex_color}" =~ ^#[0-9A-Fa-f]{6}$ ]] && continue
-            [[ -z "${hex_color}" ]] && continue
+    pywal_value="${!pywal_var}"
+    [[ -n "${pywal_value}" ]] || continue
+    pywal_value="$(sed_escape_replacement "${pywal_value}")"
+    SED_ARGS+=(-e "s|${hex_color}|${pywal_value}|gi")
+  done <"${color_map}"
+}
 
-            # Get the pywal color value
-            pywal_value="${!pywal_var}"
-            [ -z "${pywal_value}" ] && continue
-            pywal_value="$(sed_escape_replacement "${pywal_value}")"
+apply_color_map_replacements() {
+  [[ "${selected_color_mode}" -ne 0 ]] || return 0
+  [[ ${#SED_ARGS[@]} -gt 0 ]] || return 0
 
-            # Add case-insensitive replacement
-            SED_ARGS+=(-e "s|${hex_color}|${pywal_value}|gi")
-        done <"${COLOR_MAP}"
+  [[ -f "${PYWAL_KVANTUM_DIR}/pywal16.kvconfig" ]] && sed -i "${SED_ARGS[@]}" "${PYWAL_KVANTUM_DIR}/pywal16.kvconfig"
+  [[ -f "${PYWAL_KVANTUM_DIR}/pywal16.svg" ]] && sed -i "${SED_ARGS[@]}" "${PYWAL_KVANTUM_DIR}/pywal16.svg"
+}
 
-        # Apply replacements to kvconfig
-        if [ -f "${PYWAL_KVANTUM_DIR}/pywal16.kvconfig" ] && [ ${#SED_ARGS[@]} -gt 0 ]; then
-            sed -i "${SED_ARGS[@]}" "${PYWAL_KVANTUM_DIR}/pywal16.kvconfig"
-        fi
+fix_svg_selection_colors() {
+  local svg="${PYWAL_KVANTUM_DIR}/pywal16.svg"
+  local color4_svg=""
 
-        # Apply replacements to SVG
-        if [ -f "${PYWAL_KVANTUM_DIR}/pywal16.svg" ] && [ ${#SED_ARGS[@]} -gt 0 ]; then
-            sed -i "${SED_ARGS[@]}" "${PYWAL_KVANTUM_DIR}/pywal16.svg"
-        fi
+  [[ -f "${svg}" && -n "${color4}" ]] || return 0
+  color4_svg="$(sed_escape_replacement "${color4}")"
 
-        # Fix selection colors for various SVG elements
-        if [ -f "${PYWAL_KVANTUM_DIR}/pywal16.svg" ]; then
-            color4_svg="$(sed_escape_replacement "${color4}")"
+  sed -i -E "
+    /id=\"itemview-(toggled|pressed)/,/<\\/g>|<\\/(rect|path)>/ {
+      s|fill:#[0-9a-fA-F]{6}|fill:${color4_svg}|g
+    }
+    /id=\"tbutton-(toggled|pressed)/,/<\\/g>|<\\/(rect|path)>/ {
+      s|fill:#[0-9a-fA-F]{6}|fill:${color4_svg}|g
+    }
+    /id=\"button-(toggled|pressed)(-|\\\")/,/<\\/g>|<\\/(rect|path)>/ {
+      s|fill:#[0-9a-fA-F]{6}|fill:${color4_svg}|g
+    }
+  " "${svg}"
+}
 
-            # Replace fill colors within itemview-toggled and itemview-pressed groups
-            sed -i -E "
-                /id=\"itemview-(toggled|pressed)/,/<\\/g>|<\\/(rect|path)>/ {
-                    s|fill:#[0-9a-fA-F]{6}|fill:${color4_svg}|g
-                }
-            " "${PYWAL_KVANTUM_DIR}/pywal16.svg"
+load_theme_mode_highlight_colors() {
+  local theme_kvconfig="${THEME_KVANTUM_DIR}/kvconfig.theme"
+  local kv_highlight=""
+  local kv_text=""
 
-            # Fix toolbar button toggled/pressed colors
-            sed -i -E "
-                /id=\"tbutton-(toggled|pressed)/,/<\\/g>|<\\/(rect|path)>/ {
-                    s|fill:#[0-9a-fA-F]{6}|fill:${color4_svg}|g
-                }
-            " "${PYWAL_KVANTUM_DIR}/pywal16.svg"
+  [[ "${selected_color_mode}" -eq 0 && -f "${theme_kvconfig}" ]] || return 0
+  kv_highlight=$(grep '^highlight\.color=' "${theme_kvconfig}" | cut -d= -f2)
+  kv_text=$(grep '^text\.color=' "${theme_kvconfig}" | cut -d= -f2)
+  [[ -n "${kv_highlight}" ]] && color4="${kv_highlight}"
+  [[ -n "${kv_text}" ]] && foreground="${kv_text}"
+}
 
-            # Fix regular button toggled/pressed colors
-            sed -i -E "
-                /id=\"button-(toggled|pressed)(-|\\\")/,/<\\/g>|<\\/(rect|path)>/ {
-                    s|fill:#[0-9a-fA-F]{6}|fill:${color4_svg}|g
-                }
-            " "${PYWAL_KVANTUM_DIR}/pywal16.svg"
-        fi
-    fi
-fi
+update_highlight_colors() {
+  local kvconfig="${PYWAL_KVANTUM_DIR}/pywal16.kvconfig"
+  local color4_kv=""
+  local foreground_kv=""
 
-# Update highlight colors in kvconfig
-kvconfig="${PYWAL_KVANTUM_DIR}/pywal16.kvconfig"
-if [ -f "$kvconfig" ] && [ -n "${color4}" ]; then
-    # In theme mode, extract colors from the theme's kvconfig
-    if [ "${selected_color_mode}" -eq 0 ]; then
-        THEME_KVCONFIG="${THEME_KVANTUM_DIR}/kvconfig.theme"
-        if [ -f "$THEME_KVCONFIG" ]; then
-            kv_highlight=$(grep '^highlight\.color=' "$THEME_KVCONFIG" | cut -d= -f2)
-            kv_text=$(grep '^text\.color=' "$THEME_KVCONFIG" | cut -d= -f2)
-            [ -n "$kv_highlight" ] && color4="$kv_highlight"
-            [ -n "$kv_text" ] && foreground="$kv_text"
-        fi
-    fi
+  [[ -f "${kvconfig}" && -n "${color4}" ]] || return 0
+  load_theme_mode_highlight_colors
 
-    # Update highlight colors
-    color4_kv="$(sed_escape_replacement "${color4}")"
-    sed -i "s|^highlight\\.color=.*|highlight.color=${color4_kv}|" "$kvconfig"
-    sed -i "s|^inactive\\.highlight\\.color=.*|inactive.highlight.color=${color4_kv}|" "$kvconfig"
-    if [ -n "${foreground}" ]; then
-        foreground_kv="$(sed_escape_replacement "${foreground}")"
-        sed -i "s|^highlight\\.text\\.color=.*|highlight.text.color=${foreground_kv}|" "$kvconfig"
-    fi
+  color4_kv="$(sed_escape_replacement "${color4}")"
+  sed -i "s|^highlight\\.color=.*|highlight.color=${color4_kv}|" "${kvconfig}"
+  sed -i "s|^inactive\\.highlight\\.color=.*|inactive.highlight.color=${color4_kv}|" "${kvconfig}"
 
-    # Reduce menu opacity for better visibility
-    if command -v kwriteconfig6 &>/dev/null; then
-        kwriteconfig6 --file "$kvconfig" --group '%General' --key 'reduce_menu_opacity' 0 2>/dev/null
-    fi
-fi
+  if [[ -n "${foreground}" ]]; then
+    foreground_kv="$(sed_escape_replacement "${foreground}")"
+    sed -i "s|^highlight\\.text\\.color=.*|highlight.text.color=${foreground_kv}|" "${kvconfig}"
+  fi
 
-# Save hash for next run
-echo "$combined_hash" > "$hash_file"
+  if command -v kwriteconfig6 >/dev/null 2>&1; then
+    kwriteconfig6 --file "${kvconfig}" --group '%General' --key 'reduce_menu_opacity' 0 2>/dev/null
+  fi
+}
+
+store_current_hash() {
+  local input_files=(
+    "${THEME_KVANTUM_DIR}/kvconfig.theme"
+    "${THEME_KVANTUM_DIR}/kvantum.theme"
+    "${THEME_KVANTUM_DIR}/colors.map"
+  )
+  local input_hash=""
+
+  input_hash=$(cat "${input_files[@]}" "${WAL_CACHE}/colors-shell.sh" 2>/dev/null | md5sum | cut -d' ' -f1)
+  echo "${input_hash}-${selected_color_mode}" > "$hash_file"
+}
+
+resolve_theme_kvantum_dir
+[[ -d "${THEME_KVANTUM_DIR}" ]] || exit 0
+theme_inputs_changed || exit 0
+
+copy_theme_files
+load_wal_colors
+build_color_map_replacements
+apply_color_map_replacements
+fix_svg_selection_colors
+update_highlight_colors
+store_current_hash

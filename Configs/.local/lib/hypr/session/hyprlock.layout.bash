@@ -96,7 +96,6 @@ layout_test() {
     print_log -sec "hyprlock" -stat "Error" "Layout ${hyprlock_conf_name} not found."
     exit 1
   fi
-  sleep 2
   local temp_path="${XDG_RUNTIME_DIR}/hyprlock-test.conf"
   generate_conf "${hyprlock_conf_path}" "${temp_path}"
   append_label_to_file "${temp_path}"

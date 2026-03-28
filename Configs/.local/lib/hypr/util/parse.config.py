@@ -33,8 +33,9 @@ def _read_float(value, default):
         parsed = float(value)
         if parsed > 0:
             return parsed
-    except Exception:
-        pass
+    except (TypeError, ValueError):
+        if value not in (None, ""):
+            logger.warning("Invalid float value %r; using default %r", value, default)
     return float(default)
 
 
@@ -43,8 +44,9 @@ def _read_int(value, default):
         parsed = int(value)
         if parsed >= 0:
             return parsed
-    except Exception:
-        pass
+    except (TypeError, ValueError):
+        if value not in (None, ""):
+            logger.warning("Invalid int value %r; using default %r", value, default)
     return int(default)
 
 
@@ -79,8 +81,9 @@ class InotifyFileWatcher:
     def start(self):
         try:
             os.makedirs(self.target_dir, exist_ok=True)
-        except Exception:
-            pass
+        except OSError as e:
+            logger.warning("Failed to create watcher directory %s: %s", self.target_dir, e)
+            return False
 
         try:
             self.libc = ctypes.CDLL("libc.so.6", use_errno=True)
@@ -107,11 +110,12 @@ class InotifyFileWatcher:
             if self.wd < 0:
                 try:
                     os.close(self.fd)
-                except Exception:
-                    pass
+                except OSError as e:
+                    logger.debug("Failed to close inotify fd after add_watch error: %s", e)
                 self.fd = None
                 return False
-        except Exception:
+        except (AttributeError, OSError) as e:
+            logger.warning("Failed to initialize inotify watcher for %s: %s", self.target_file, e)
             self.fd = None
             return False
 
@@ -149,8 +153,8 @@ class InotifyFileWatcher:
                     continue
                 try:
                     self.on_change()
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning("Watcher callback failed for %s: %s", self.target_file, e)
 
     def stop(self):
         self.stop_event.set()
@@ -158,12 +162,12 @@ class InotifyFileWatcher:
             if self.libc is not None and self.wd is not None and self.wd >= 0:
                 try:
                     self.libc.inotify_rm_watch(self.fd, self.wd)
-                except Exception:
-                    pass
+                except OSError as e:
+                    logger.debug("Failed to remove inotify watch for %s: %s", self.target_file, e)
             try:
                 os.close(self.fd)
-            except Exception:
-                pass
+            except OSError as e:
+                logger.debug("Failed to close inotify fd for %s: %s", self.target_file, e)
             self.fd = None
         if self.thread is not None:
             self.thread.join(timeout=1.0)
@@ -407,7 +411,8 @@ def _get_mtime_ns(path):
         return os.stat(path).st_mtime_ns
     except FileNotFoundError:
         return None
-    except Exception:
+    except OSError as e:
+        logger.warning("Failed to stat %s: %s", path, e)
         return None
 
 

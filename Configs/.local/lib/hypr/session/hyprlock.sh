@@ -7,161 +7,173 @@ if ! source "$(command -v hyprshell)"; then
   exit 1
 fi
 
-if [[ -z "${XDG_CONFIG_HOME:-}" ]]; then
-  export XDG_CONFIG_HOME="$HOME/.config"
-fi
-if [[ -z "${XDG_CACHE_HOME:-}" ]]; then
-  export XDG_CACHE_HOME="$HOME/.cache"
-fi
-if [[ -z "${XDG_DATA_HOME:-}" ]]; then
-  export XDG_DATA_HOME="$HOME/.local/share"
-fi
+ensure_xdg_dirs() {
+  [[ -n "${XDG_CONFIG_HOME:-}" ]] || export XDG_CONFIG_HOME="$HOME/.config"
+  [[ -n "${XDG_CACHE_HOME:-}" ]] || export XDG_CACHE_HOME="$HOME/.cache"
+  [[ -n "${XDG_DATA_HOME:-}" ]] || export XDG_DATA_HOME="$HOME/.local/share"
+}
 
-HYPR_CACHE_HOME="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME}/hypr}"
-HYPR_LIB_DIR=${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}
-WALLPAPER_CACHE_DIR="${WALLPAPER_CACHE_DIR:-${HYPR_CACHE_HOME}/wallpaper}"
-WALLPAPER_CURRENT_DIR="${WALLPAPER_CURRENT_DIR:-${WALLPAPER_CACHE_DIR}/current}"
-WALLPAPER_VIDEO_DIR="${WALLPAPER_VIDEO_DIR:-${WALLPAPER_CURRENT_DIR}/thumbnails}"
-WALLPAPER="${WALLPAPER_CURRENT_DIR}/wall.set"
-HYPRLOCK_SCOPE_NAME="${XDG_SESSION_DESKTOP:-unknown}-lockscreen.scope"
-HYPRLOCK_USER_DIR="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME}/hypr}/hyprlock"
-HYPRLOCK_SHARED_DIR="${HYPR_DATA_HOME:-${XDG_DATA_HOME}/hypr}/hyprlock"
-# shellcheck source=/dev/null
-source "${HYPR_LIB_DIR}/rofi/rofi.lib.bash"
+setup_hyprlock_paths() {
+  HYPR_CACHE_HOME="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME}/hypr}"
+  HYPR_LIB_DIR="${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}"
+  WALLPAPER_CACHE_DIR="${WALLPAPER_CACHE_DIR:-${HYPR_CACHE_HOME}/wallpaper}"
+  WALLPAPER_CURRENT_DIR="${WALLPAPER_CURRENT_DIR:-${WALLPAPER_CACHE_DIR}/current}"
+  WALLPAPER_VIDEO_DIR="${WALLPAPER_VIDEO_DIR:-${WALLPAPER_CURRENT_DIR}/thumbnails}"
+  WALLPAPER="${WALLPAPER_CURRENT_DIR}/wall.set"
+  HYPRLOCK_SCOPE_NAME="${XDG_SESSION_DESKTOP:-unknown}-lockscreen.scope"
+  HYPRLOCK_USER_DIR="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME}/hypr}/hyprlock"
+  HYPRLOCK_SHARED_DIR="${HYPR_DATA_HOME:-${XDG_DATA_HOME}/hypr}/hyprlock"
+}
 
-USAGE() {
+usage() {
   cat <<EOF
-    Usage: $(basename "${0}") --[arg]
+Usage: $(basename "${0}") --[arg]
 
-    arguments:
-      --background -b    - Converts and ensures background to be a png
-      --title            - Returns MPRIS song title
-      --artist           - Returns MPRIS artist name
-      --source           - Returns MPRIS player icon
-      --status           - Returns MPRIS play/pause status icon
-      --length           - Returns MPRIS song length (MM:SS)
-      --profile          - Generates the profile picture
-      --art              - Prints the path to the mpris art
-      --select      -S   - Selects the hyprlock layout
-      --help       -h    - Displays this help message
+arguments:
+  --background -b    - Converts and ensures background to be a png
+  --title            - Returns MPRIS song title
+  --artist           - Returns MPRIS artist name
+  --source           - Returns MPRIS player icon
+  --status           - Returns MPRIS play/pause status icon
+  --length           - Returns MPRIS song length (MM:SS)
+  --profile          - Generates the profile picture
+  --art              - Prints the path to the mpris art
+  --select      -S   - Selects the hyprlock layout
+  --help       -h    - Displays this help message
 EOF
 }
 
-# Apply ImageMagick limits to avoid OOM during large conversions.
-MAGICK_LIMITS=()
-# shellcheck source=/dev/null
-source "${HYPR_LIB_DIR}/session/hyprlock.assets.bash"
-# shellcheck source=/dev/null
-source "${HYPR_LIB_DIR}/session/hyprlock.media.bash"
-# shellcheck source=/dev/null
-source "${HYPR_LIB_DIR}/session/hyprlock.layout.bash"
-resolve_magick_limits
-if [ -z "${*}" ]; then
+source_hyprlock_modules() {
+  # shellcheck source=/dev/null
+  source "${HYPR_LIB_DIR}/rofi/rofi.lib.bash"
+  MAGICK_LIMITS=()
+  # shellcheck source=/dev/null
+  source "${HYPR_LIB_DIR}/session/hyprlock.assets.bash"
+  # shellcheck source=/dev/null
+  source "${HYPR_LIB_DIR}/session/hyprlock.media.bash"
+  # shellcheck source=/dev/null
+  source "${HYPR_LIB_DIR}/session/hyprlock.layout.bash"
+  resolve_magick_limits
+}
+
+ensure_background_png() {
   if [[ ! -f "${WALLPAPER_CURRENT_DIR}/wall.set.png" ]] || ! file -b "${WALLPAPER_CURRENT_DIR}/wall.set.png" 2>/dev/null | grep -q '^PNG'; then
     fn_background || true
   fi
+}
 
-  # Ensure MPRIS fallback wallpaper exists before launching hyprlock
-  THUMB="${HYPR_CACHE_HOME}/landing/mpris"
-  set_mpris_blurred_empty "${THUMB}.blurred.png"
-  # Auto-update profile if .face.icon changed
+refresh_mpris_fallbacks() {
+  local thumb="${HYPR_CACHE_HOME}/landing/mpris"
+  set_mpris_blurred_empty "${thumb}.blurred.png"
+}
+
+lock_bitwarden_if_running() {
+  pgrep -x "bitwarden" >/dev/null || return 0
+  bitwarden-desktop --lock &
+}
+
+run_default_lock() {
+  ensure_background_png
+  refresh_mpris_fallbacks
   fn_profile
   check_and_sanitize_process
-
-  # Lock Bitwarden if running
-  if pgrep -x "bitwarden" >/dev/null; then
-    bitwarden-desktop --lock &
-  fi
-
+  lock_bitwarden_if_running
   app2unit.sh -u "${HYPRLOCK_SCOPE_NAME}" -t scope -- hyprlock
-  exit 0
-fi
+}
 
-# Update MPRIS thumbnail in background for all MPRIS-related calls
-case "$1" in
-  --source)
-    # Only update art if last update was >2 seconds ago
-    LOCK_FILE="${TMPDIR:-/tmp}/hyprlock-art.lock"
-    if [ ! -f "$LOCK_FILE" ] || [ $(($(date +%s) - $(stat -c %Y "$LOCK_FILE" 2>/dev/null || echo 0))) -gt 2 ]; then
-      touch "$LOCK_FILE"
-      (fn_update_art) &
-    fi
-    ;;
-esac
+update_art_cache_if_needed() {
+  local lock_file="${TMPDIR:-/tmp}/hyprlock-art.lock"
+  local age=0
 
-# Define long options
-LONGOPTS="select,background,profile,title,artist,source,status,length,update-art,art,help,test:,test-preview:"
+  [[ "${1:-}" == "--source" ]] || return 0
+  age=$(($(date +%s) - $(stat -c %Y "$lock_file" 2>/dev/null || echo 0)))
+  if [[ ! -f "$lock_file" || "$age" -gt 2 ]]; then
+    touch "$lock_file"
+    fn_update_art &
+  fi
+}
 
-# Parse options
-PARSED=$(getopt --options Shb --longoptions $LONGOPTS --name "$0" -- "$@")
-if [ $? -ne 0 ]; then
-  exit 2
-fi
-
-# Apply parsed options
-eval set -- "$PARSED"
-
-while true; do
+handle_hyprlock_action() {
   case "$1" in
     --test)
-      layout_test "${2}"
-      exit 0
+      layout_test "$2"
       ;;
     --test-preview)
-      rofi_test_preview "${2}"
-      exit 0
+      rofi_test_preview "$2"
       ;;
-    select | -S | --select)
+    select|-S|--select)
       fn_select
-      exit 0
       ;;
-    background | --background | -b)
+    background|--background|-b)
       fn_background
-      exit 0
       ;;
-    profile | --profile)
+    profile|--profile)
       fn_profile
-      exit 0
       ;;
     --title)
       fn_title
-      exit 0
       ;;
     --artist)
       fn_artist
-      exit 0
       ;;
     --source)
       fn_source
-      exit 0
       ;;
     --status)
       fn_status
-      exit 0
       ;;
     --length)
       fn_length
-      exit 0
       ;;
     --update-art)
       fn_update_art
-      exit 0
       ;;
-    art | --art)
+    art|--art)
       fn_art
-      exit 0
       ;;
-    help | --help | -h)
-      USAGE
-      exit 0
-      ;;
-    --)
-      shift
-      break
-      ;;
-    *)
-      break
+    help|--help|-h)
+      usage
       ;;
   esac
-  shift
-done
+}
+
+parse_and_dispatch_args() {
+  local longopts="select,background,profile,title,artist,source,status,length,update-art,art,help,test:,test-preview:"
+  local parsed=""
+
+  parsed=$(getopt --options Shb --longoptions "$longopts" --name "$0" -- "$@") || exit 2
+  eval set -- "$parsed"
+
+  while true; do
+    case "$1" in
+      --test|--test-preview)
+        handle_hyprlock_action "$1" "$2"
+        exit 0
+        ;;
+      select|-S|--select|background|--background|-b|profile|--profile|--title|--artist|--source|--status|--length|--update-art|art|--art|help|--help|-h)
+        handle_hyprlock_action "$1"
+        exit 0
+        ;;
+      --)
+        shift
+        break
+        ;;
+      *)
+        break
+        ;;
+    esac
+    shift
+  done
+}
+
+ensure_xdg_dirs
+setup_hyprlock_paths
+source_hyprlock_modules
+
+if [[ $# -eq 0 ]]; then
+  run_default_lock
+  exit 0
+fi
+
+update_art_cache_if_needed "${1:-}"
+parse_and_dispatch_args "$@"

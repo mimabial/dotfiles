@@ -22,61 +22,13 @@ This script launches the system monitor application.
 HELP
 }
 
-stop_process_tree() {
-  local pid="$1"
-  local pgid="$2"
-  local cmd="$3"
-  local stopped=false
-
-  if [[ "${pgid}" =~ ^[0-9]+$ ]] && kill -0 -- "-${pgid}" 2>/dev/null; then
-    kill -TERM -- "-${pgid}" 2>/dev/null || true
-    for _ in {1..10}; do
-      kill -0 -- "-${pgid}" 2>/dev/null || break
-      sleep 0.1
-    done
-    if kill -0 -- "-${pgid}" 2>/dev/null; then
-      kill -KILL -- "-${pgid}" 2>/dev/null || true
-    fi
-    stopped=true
-  elif [[ "${pid}" =~ ^[0-9]+$ ]] && kill -0 "${pid}" 2>/dev/null; then
-    kill -TERM "${pid}" 2>/dev/null || true
-    for _ in {1..10}; do
-      kill -0 "${pid}" 2>/dev/null || break
-      sleep 0.1
-    done
-    if kill -0 "${pid}" 2>/dev/null; then
-      kill -KILL "${pid}" 2>/dev/null || true
-    fi
-    stopped=true
-  fi
-
-  if pkg_installed flatpak && [[ -n "${cmd}" ]]; then
-    flatpak kill "${cmd}" 2>/dev/null || true
-  fi
-
-  [[ "${stopped}" == true ]]
-}
-
 toggle_existing_monitor() {
-  local pid=""
-  local pgid=""
-  local cmd=""
+  local address=""
 
-  [[ -f "${pidFile}" ]] || return 1
+  address="$(hyprctl -j clients 2>/dev/null | jq -r '.[] | select(.class == "sysmonitor") | .address' | head -n1)"
+  [[ -n "${address}" ]] || return 1
 
-  while IFS= read -r line; do
-    pid=$(awk -F ':::' '{print $1}' <<<"${line}")
-    pgid=$(awk -F ':::' '{print $2}' <<<"${line}")
-    cmd=$(awk -F ':::' '{print $3}' <<<"${line}")
-
-    if stop_process_tree "${pid}" "${pgid}" "${cmd}"; then
-      rm -f "${pidFile}"
-      return 0
-    fi
-  done <"${pidFile}"
-
-  rm -f "${pidFile}"
-  return 1
+  hyprctl dispatch closewindow "address:${address}" >/dev/null 2>&1
 }
 
 select_monitor_command() {
@@ -102,18 +54,9 @@ select_monitor_command() {
 launch_monitor() {
   local sysMon="$1"
   local term="${SYSMONITOR_TERMINAL:-${TERMINAL:-kitty}}"
-  local pid=""
-  local pgid=""
 
   setsid "${term}" --class=sysmonitor -e "${sysMon}" >/dev/null 2>&1 &
-  pid=$!
   disown
-
-  sleep 0.1
-  pgid="$(ps -o pgid= -p "${pid}" 2>/dev/null | tr -d ' ')"
-  [[ "${pgid}" =~ ^[0-9]+$ ]] || pgid="${pid}"
-
-  printf '%s:::%s:::%s\n' "${pid}" "${pgid}" "${sysMon}" >"${pidFile}"
 }
 
 case "${1:-}" in
@@ -141,9 +84,6 @@ case "${1:-}" in
     exit 1
     ;;
 esac
-
-pidFile="${XDG_RUNTIME_DIR:-/tmp}/sysmon-launch.pid"
-mkdir -p "$(dirname "${pidFile}")"
 
 toggle_existing_monitor && exit 0
 

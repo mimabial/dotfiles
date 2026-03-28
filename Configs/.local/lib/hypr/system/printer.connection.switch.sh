@@ -13,6 +13,22 @@ fi
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/system/printer.common.bash"
 
+action="toggle"
+printer_name=""
+usb_uri=""
+network_uri=""
+target_printer=""
+current_uri=""
+current_mode=""
+hint=""
+safe_printer=""
+state_dir=""
+state_file=""
+stored_usb_uri=""
+stored_network_uri=""
+target_mode=""
+target_uri=""
+
 usage() {
   cat <<'EOF'
 Usage: printer.connection.switch.sh [toggle|usb|network|status] [options]
@@ -48,9 +64,7 @@ get_printer_uri() {
 detect_mode() {
   local uri="${1:-}"
   case "$uri" in
-    *"/usb/"*|usb://*|hp:/usb/*|hpfax:/usb/*)
-      printf 'usb\n'
-      ;;
+    *"/usb/"*|usb://*|hp:/usb/*|hpfax:/usb/*) printf 'usb\n' ;;
     *"/net/"*|hp:/net/*|hpfax:/net/*|ipp://*|ipps://*|socket://*|lpd://*)
       printf 'network\n'
       ;;
@@ -67,15 +81,9 @@ detect_mode() {
 normalize_print_uri() {
   local uri="${1:-}"
   case "$uri" in
-    hpfax:/net/*)
-      printf 'hp:/net/%s\n' "${uri#hpfax:/net/}"
-      ;;
-    hpfax:/usb/*)
-      printf 'hp:/usb/%s\n' "${uri#hpfax:/usb/}"
-      ;;
-    *)
-      printf '%s\n' "$uri"
-      ;;
+    hpfax:/net/*) printf 'hp:/net/%s\n' "${uri#hpfax:/net/}" ;;
+    hpfax:/usb/*) printf 'hp:/usb/%s\n' "${uri#hpfax:/usb/}" ;;
+    *) printf '%s\n' "$uri" ;;
   esac
 }
 
@@ -92,32 +100,24 @@ find_queue_uri() {
   local hint="${3:-}"
   local preferred=""
   local fallback=""
+  local normalized_uri=""
 
   while IFS='|' read -r queue uri; do
     [[ -z "$uri" ]] && continue
     [[ "$queue" == "$skip_printer" ]] && continue
 
     normalized_uri="$(normalize_print_uri "$uri")"
-
-    if [[ "$(detect_mode "$normalized_uri")" != "$target_transport" ]]; then
-      continue
-    fi
+    [[ "$(detect_mode "$normalized_uri")" == "$target_transport" ]] || continue
 
     if [[ -n "$hint" && "$normalized_uri" == *"$hint"* ]]; then
       preferred="$normalized_uri"
       break
     fi
 
-    if [[ -z "$fallback" ]]; then
-      fallback="$normalized_uri"
-    fi
+    [[ -z "$fallback" ]] && fallback="$normalized_uri"
   done < <(lpstat -v 2>/dev/null | sed -n 's/^device for \([^:]*\): \(.*\)$/\1|\2/p')
 
-  if [[ -n "$preferred" ]]; then
-    printf '%s\n' "$preferred"
-  else
-    printf '%s\n' "$fallback"
-  fi
+  printf '%s\n' "${preferred:-$fallback}"
 }
 
 find_usb_uri_from_lpinfo() {
@@ -133,129 +133,126 @@ find_usb_uri_from_lpinfo() {
       break
     fi
 
-    if [[ -z "$fallback" ]]; then
-      fallback="$uri"
-    fi
+    [[ -z "$fallback" ]] && fallback="$uri"
   done < <(lpinfo -v 2>/dev/null | sed -n 's/^[^[:space:]]\+[[:space:]]\+//p')
 
-  if [[ -n "$preferred" ]]; then
-    printf '%s\n' "$preferred"
-  else
-    printf '%s\n' "$fallback"
+  printf '%s\n' "${preferred:-$fallback}"
+}
+
+parse_args() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      toggle|usb|network|status)
+        action="$1"
+        shift
+        ;;
+      -p|--printer)
+        [[ $# -lt 2 ]] && { echo "Error: --printer requires a value." >&2; exit 1; }
+        printer_name="$2"
+        shift 2
+        ;;
+      --usb-uri)
+        [[ $# -lt 2 ]] && { echo "Error: --usb-uri requires a value." >&2; exit 1; }
+        usb_uri="$2"
+        shift 2
+        ;;
+      --network-uri)
+        [[ $# -lt 2 ]] && { echo "Error: --network-uri requires a value." >&2; exit 1; }
+        network_uri="$2"
+        shift 2
+        ;;
+      -h|--help)
+        usage
+        exit 0
+        ;;
+      *)
+        if [[ -z "$printer_name" ]]; then
+          printer_name="$1"
+          shift
+        else
+          echo "Error: unexpected argument '$1'." >&2
+          usage >&2
+          exit 1
+        fi
+        ;;
+    esac
+  done
+}
+
+require_printer_tools() {
+  require_cmd lpstat
+  require_cmd lpadmin
+  require_cmd cupsenable
+  require_cmd cupsaccept
+}
+
+resolve_hint() {
+  hint="${current_uri%%\?*}"
+  hint="${hint##*/}"
+  if [[ -z "$hint" || "$hint" == "print" ]]; then
+    hint="$target_printer"
   fi
 }
 
-action="toggle"
-printer_name=""
-usb_uri=""
-network_uri=""
+load_state_paths() {
+  safe_printer="$(printf '%s' "$target_printer" | sed 's/[^A-Za-z0-9_.-]/_/g')"
+  state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/hypr"
+  state_file="${state_dir}/printer.connection.${safe_printer}.state"
+}
 
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    toggle|usb|network|status)
-      action="$1"
-      shift
-      ;;
-    -p|--printer)
-      [[ $# -lt 2 ]] && { echo "Error: --printer requires a value." >&2; exit 1; }
-      printer_name="$2"
-      shift 2
-      ;;
-    --usb-uri)
-      [[ $# -lt 2 ]] && { echo "Error: --usb-uri requires a value." >&2; exit 1; }
-      usb_uri="$2"
-      shift 2
-      ;;
-    --network-uri)
-      [[ $# -lt 2 ]] && { echo "Error: --network-uri requires a value." >&2; exit 1; }
-      network_uri="$2"
-      shift 2
-      ;;
-    -h|--help)
-      usage
-      exit 0
-      ;;
-    *)
-      if [[ -z "$printer_name" ]]; then
-        printer_name="$1"
-        shift
-      else
-        echo "Error: unexpected argument '$1'." >&2
-        usage >&2
-        exit 1
-      fi
-      ;;
-  esac
-done
+load_stored_uris() {
+  stored_usb_uri="$(read_state_uri "$state_file" "usb")"
+  stored_network_uri="$(read_state_uri "$state_file" "network")"
+  stored_usb_uri="$(normalize_print_uri "$stored_usb_uri")"
+  stored_network_uri="$(normalize_print_uri "$stored_network_uri")"
+}
 
-require_cmd lpstat
-require_cmd lpadmin
-require_cmd cupsenable
-require_cmd cupsaccept
+seed_current_uris() {
+  if [[ "$current_mode" == "usb" && -z "$usb_uri" ]]; then
+    usb_uri="$(normalize_print_uri "$current_uri")"
+  fi
+  if [[ "$current_mode" == "network" && -z "$network_uri" ]]; then
+    network_uri="$(normalize_print_uri "$current_uri")"
+  fi
+}
 
-target_printer="$(resolve_printer "$printer_name")"
-current_uri="$(get_printer_uri "$target_printer")"
-current_mode="$(detect_mode "$current_uri")"
+apply_stored_uris() {
+  [[ -z "$usb_uri" && -n "$stored_usb_uri" ]] && usb_uri="$stored_usb_uri"
+  [[ -z "$network_uri" && -n "$stored_network_uri" ]] && network_uri="$stored_network_uri"
+}
 
-hint="${current_uri%%\?*}"
-hint="${hint##*/}"
-if [[ -z "$hint" || "$hint" == "print" ]]; then
-  hint="$target_printer"
-fi
+discover_candidate_uris() {
+  [[ -z "$usb_uri" ]] && usb_uri="$(find_queue_uri "usb" "$target_printer" "$hint")"
+  [[ -z "$network_uri" ]] && network_uri="$(find_queue_uri "network" "$target_printer" "$hint")"
+  [[ -z "$usb_uri" ]] && usb_uri="$(find_usb_uri_from_lpinfo "$hint")"
+  usb_uri="$(normalize_print_uri "$usb_uri")"
+  network_uri="$(normalize_print_uri "$network_uri")"
+}
 
-safe_printer="$(printf '%s' "$target_printer" | sed 's/[^A-Za-z0-9_.-]/_/g')"
-state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/hypr"
-state_file="${state_dir}/printer.connection.${safe_printer}.state"
-stored_usb_uri="$(read_state_uri "$state_file" "usb")"
-stored_network_uri="$(read_state_uri "$state_file" "network")"
-stored_usb_uri="$(normalize_print_uri "$stored_usb_uri")"
-stored_network_uri="$(normalize_print_uri "$stored_network_uri")"
+load_printer_context() {
+  target_printer="$(resolve_printer "$printer_name")"
+  current_uri="$(get_printer_uri "$target_printer")"
+  current_mode="$(detect_mode "$current_uri")"
+  resolve_hint
+  load_state_paths
+  load_stored_uris
+  seed_current_uris
+  apply_stored_uris
+  discover_candidate_uris
+}
 
-if [[ "$current_mode" == "usb" && -z "$usb_uri" ]]; then
-  usb_uri="$(normalize_print_uri "$current_uri")"
-fi
-if [[ "$current_mode" == "network" && -z "$network_uri" ]]; then
-  network_uri="$(normalize_print_uri "$current_uri")"
-fi
-
-if [[ -z "$usb_uri" && -n "$stored_usb_uri" ]]; then
-  usb_uri="$stored_usb_uri"
-fi
-if [[ -z "$network_uri" && -n "$stored_network_uri" ]]; then
-  network_uri="$stored_network_uri"
-fi
-
-if [[ -z "$usb_uri" ]]; then
-  usb_uri="$(find_queue_uri "usb" "$target_printer" "$hint")"
-fi
-if [[ -z "$network_uri" ]]; then
-  network_uri="$(find_queue_uri "network" "$target_printer" "$hint")"
-fi
-if [[ -z "$usb_uri" ]]; then
-  usb_uri="$(find_usb_uri_from_lpinfo "$hint")"
-fi
-
-usb_uri="$(normalize_print_uri "$usb_uri")"
-network_uri="$(normalize_print_uri "$network_uri")"
-
-if [[ "$action" == "status" ]]; then
+print_status() {
   echo "Printer: $target_printer"
   echo "Current mode: $current_mode"
   echo "Current URI: ${current_uri:-<none>}"
   echo "Known USB URI: ${usb_uri:-<unknown>}"
   echo "Known network URI: ${network_uri:-<unknown>}"
-  exit 0
-fi
+}
 
-target_mode="$action"
-if [[ "$action" == "toggle" ]]; then
+resolve_toggle_target_mode() {
   case "$current_mode" in
-    usb)
-      target_mode="network"
-      ;;
-    network)
-      target_mode="usb"
-      ;;
+    usb) target_mode="network" ;;
+    network) target_mode="usb" ;;
     *)
       if [[ -n "$usb_uri" && -z "$network_uri" ]]; then
         target_mode="usb"
@@ -272,55 +269,95 @@ if [[ "$action" == "toggle" ]]; then
       fi
       ;;
   esac
-fi
+}
 
-target_uri=""
-if [[ "$target_mode" == "usb" ]]; then
-  target_uri="$usb_uri"
-else
-  target_uri="$network_uri"
-fi
+resolve_target_mode() {
+  target_mode="$action"
+  [[ "$action" == "toggle" ]] && resolve_toggle_target_mode
+}
 
-if [[ -z "$target_uri" ]]; then
+resolve_target_uri() {
+  if [[ "$target_mode" == "usb" ]]; then
+    target_uri="$usb_uri"
+  else
+    target_uri="$network_uri"
+  fi
+
+  if [[ -n "$target_uri" ]]; then
+    return 0
+  fi
+
   echo "Error: no ${target_mode} URI available for printer '$target_printer'." >&2
   echo "Hint: run with --${target_mode}-uri '<uri>'." >&2
   exit 1
-fi
+}
 
-echo "Printer: $target_printer"
-echo "Current URI: ${current_uri:-<none>}"
-echo "Switching to ${target_mode} URI: $target_uri"
+apply_target_uri() {
+  echo "Printer: $target_printer"
+  echo "Current URI: ${current_uri:-<none>}"
+  echo "Switching to ${target_mode} URI: $target_uri"
 
-if [[ "$current_uri" != "$target_uri" ]]; then
-  lpadmin -p "$target_printer" -v "$target_uri"
-fi
-
-cupsaccept "$target_printer"
-cupsenable "$target_printer"
-
-if [[ "$target_mode" == "network" ]] && command -v ping >/dev/null 2>&1; then
-  target_host="$(extract_host_from_uri "$target_uri")"
-  if [[ -n "$target_host" ]]; then
-    if ping -c 1 -W 2 "$target_host" >/dev/null 2>&1; then
-      echo "Network endpoint reachable: $target_host"
-    else
-      echo "Warning: network endpoint appears unreachable: $target_host" >&2
-    fi
+  if [[ "$current_uri" != "$target_uri" ]]; then
+    lpadmin -p "$target_printer" -v "$target_uri"
   fi
-fi
 
-if [[ "$target_mode" == "usb" ]]; then
-  usb_uri="$target_uri"
-elif [[ "$target_mode" == "network" ]]; then
-  network_uri="$target_uri"
-fi
+  cupsaccept "$target_printer"
+  cupsenable "$target_printer"
+}
 
-mkdir -p "$state_dir"
-{
-  printf 'usb=%s\n' "$usb_uri"
-  printf 'network=%s\n' "$network_uri"
-} > "$state_file"
+check_network_endpoint() {
+  local target_host=""
 
-echo "Queue status:"
-lpstat -v "$target_printer"
-lpstat -p "$target_printer" -l
+  [[ "$target_mode" == "network" ]] || return 0
+  command -v ping >/dev/null 2>&1 || return 0
+
+  target_host="$(extract_host_from_uri "$target_uri")"
+  [[ -n "$target_host" ]] || return 0
+
+  if ping -c 1 -W 2 "$target_host" >/dev/null 2>&1; then
+    echo "Network endpoint reachable: $target_host"
+    return 0
+  fi
+
+  echo "Warning: network endpoint appears unreachable: $target_host" >&2
+}
+
+persist_state() {
+  if [[ "$target_mode" == "usb" ]]; then
+    usb_uri="$target_uri"
+  elif [[ "$target_mode" == "network" ]]; then
+    network_uri="$target_uri"
+  fi
+
+  mkdir -p "$state_dir"
+  {
+    printf 'usb=%s\n' "$usb_uri"
+    printf 'network=%s\n' "$network_uri"
+  } > "$state_file"
+}
+
+print_queue_status() {
+  echo "Queue status:"
+  lpstat -v "$target_printer"
+  lpstat -p "$target_printer" -l
+}
+
+main() {
+  parse_args "$@"
+  require_printer_tools
+  load_printer_context
+
+  if [[ "$action" == "status" ]]; then
+    print_status
+    exit 0
+  fi
+
+  resolve_target_mode
+  resolve_target_uri
+  apply_target_uri
+  check_network_endpoint
+  persist_state
+  print_queue_status
+}
+
+main "$@"

@@ -13,6 +13,10 @@ cache_dir="${HYPR_CACHE_HOME:-$HOME/.cache/hypr}"
 recent_data="${cache_dir}/landing/show_emoji.recent"
 favorites_data="${cache_dir}/landing/emoji_favorites"
 EMOJI_ICONLESS_THEME_STR='listview { show-icons: false; } element { children: [ "element-text" ]; } element-icon { enabled: false; size: 0em; width: 0em; padding: 0; margin: 0; border: 0; }'
+EMOJI_MULTI_PERSON="🤝👫👬👭🧑‍🤝‍🧑💑👩‍❤️‍👨👨‍❤️‍👨👩‍❤️‍👩🧑‍❤️‍🧑💏👩‍❤️‍💋‍👨👨‍❤️‍💋‍👨👩‍❤️‍💋‍👩🧑‍❤️‍💋‍🧑"
+EMOJI_GENDER_VARIANTS="🧑👱🙍🙎🙅🙆💁🙋🧏🙇🤦🤷👮🕵️💂🥷👷🤴👸👳👲🧕🤵👰🦸🦹🧙🧚🧛🧜🧝🧞💆💇🚶🧍🧎🏃🕺💃🧖🧗🤸🏌️🏄🚣🏊⛹️🏋️🚴🚵🤽🤾🤹🧘🧑‍🎓🧑‍🏫🧑‍⚕️🧑‍🌾🧑‍🍳🧑‍🔧🧑‍🏭🧑‍💼🧑‍🔬🧑‍💻🧑‍🎤🧑‍🎨🧑‍✈️🧑‍🚀🧑‍🚒🧑‍🦯🧑‍🦼🧑‍🦽"
+EMOJI_SKIN_TONE_SUPPORTED="👋🤚🖐️✋🖖🫱🫲🫳🫴🫷🫸👌🤌🤏✌️🤞🫰🤟🤘🤙👈👉👆🫵👇☝️👍👎✊👊🤛🤜👏🙌🫶👐🤲🙏✍️💅🤳💪🦵🦶👂🦻👃🫦🧒👦👧🧑👱👨👩🧔👴👵🙍🙎🙅🙆💁🙋🧏🙇🤦🤷👮🕵️💂🥷👷🫅🤴👸👳👲🧕🤵👰🤰🫄🫃🤱👼🎅🤶🧑‍🎄🦸🦹🧙🧚🧛🧜🧝🧞🧟💆💇🚶🧍🧎🏃💃🕺🕴️👯🧖🧗🤺🏇⛷️🏂🏌️🏄🚣🏊⛹️🏋️🚴🚵🤸🤼🤽🤾🤹🛀🛌🧘"
+EMOJI_SKIN_TONE_MENU=$'Default\n🏿 Dark\n🏾 Medium-Dark\n🏽 Medium\n🏼 Medium-Light\n🏻 Light'
 
 clean_emoji_file() {
   local target_file="$1"
@@ -88,6 +92,16 @@ emoji_style_menu_args() {
   esac
 }
 
+emoji_clipboard_dmenu() {
+  local prompt="$1"
+  local placeholder="$2"
+
+  rofi -dmenu -i -p "${prompt}" -no-show-icons \
+    -theme-str "entry { placeholder: \"${placeholder}\";} ${rofi_position} ${r_override}" \
+    -theme-str "${font_override}" \
+    -theme "$(rofi_resolve_theme clipboard)" -theme-str "${_rofi_opacity}"
+}
+
 emoji_extract_skin_tone_modifier() {
   local tone_value="$1"
 
@@ -101,32 +115,32 @@ emoji_extract_skin_tone_modifier() {
   esac
 }
 
-get_emoji_selection() {
-  local style_type="${emoji_style:-${ROFI_EMOJI_STYLE:-2}}"
-  local emoji_theme
-  emoji_theme="$(rofi_resolve_theme "${ROFI_EMOJI_THEME:-clipboard}")"
-  local rofi_base_opts=()
-  local style_menu_args=()
-  emoji_menu_base_opts "${emoji_theme}" rofi_base_opts
-  emoji_style_menu_args "${style_type}" style_menu_args
-  local emoji_args=()
+emoji_filtered_rofi_args() {
+  local -n out_args_ref="$1"
+  out_args_ref=()
   for arg in "${ROFI_EMOJI_ARGS[@]}"; do
     [[ "${arg}" == "-multi-select" || "${arg}" == "--multi-select" ]] && continue
-    emoji_args+=("${arg}")
+    out_args_ref+=("${arg}")
   done
+}
 
-  # Create recently used and favorites category entries
-  local temp_dir="${TMPDIR:-/tmp}"
-  local temp_data=""
-  local display_data=""
-  temp_data="$(mktemp "${temp_dir}/emoji_with_raw.XXXXXX")" || return 1
-  display_data="$(mktemp "${temp_dir}/emoji_display.XXXXXX")" || {
-    rm -f "${temp_data}"
-    return 1
-  }
+emoji_selection_menu_args() {
+  local style_type="$1"
+  local -n rofi_base_opts_ref="$2"
+  local -n style_menu_args_ref="$3"
+  local -n emoji_args_ref="$4"
+  local emoji_theme=""
+
+  emoji_theme="$(rofi_resolve_theme "${ROFI_EMOJI_THEME:-clipboard}")"
+  emoji_menu_base_opts "${emoji_theme}" rofi_base_opts_ref
+  emoji_style_menu_args "${style_type}" style_menu_args_ref
+  emoji_filtered_rofi_args emoji_args_ref
+}
+
+emoji_write_selection_source() {
+  local target_file="$1"
 
   {
-    # Add favorites category if favorites exist
     if [[ -f "${favorites_data}" ]] && [[ -s "${favorites_data}" ]]; then
       local fav_count
       fav_count=$(wc -l <"${favorites_data}" 2>/dev/null || echo 0)
@@ -135,7 +149,6 @@ get_emoji_selection() {
       fi
     fi
 
-    # Add recently used category if recent data exists
     if [[ -f "${recent_data}" ]] && [[ -s "${recent_data}" ]]; then
       local recent_count
       recent_count=$(wc -l <"${recent_data}" 2>/dev/null || echo 0)
@@ -145,12 +158,13 @@ get_emoji_selection() {
     fi
 
     cat "${emoji_data}"
-  } >"${temp_data}" || {
-    rm -f "${temp_data}" "${display_data}"
-    return 1
-  }
+  } >"${target_file}"
+}
 
-  # Build display strings (emoji + label if present and not a category marker), strip variation selectors for display
+emoji_write_display_rows() {
+  local source_file="$1"
+  local target_file="$2"
+
   awk -F'\t' '{
     e=$1; l=$2;
     if (l != "" && l !~ /^:cat:/) {
@@ -158,36 +172,131 @@ get_emoji_selection() {
     } else {
       print e;
     }
-  }' "${temp_data}" >"${display_data}" || {
-    rm -f "${temp_data}" "${display_data}"
+  }' "${source_file}" >"${target_file}"
+}
+
+emoji_prepare_selection_workspace() {
+  local -n work_dir_ref="$1"
+  local -n raw_file_ref="$2"
+  local -n display_file_ref="$3"
+
+  work_dir_ref="$(mktemp -d "${TMPDIR:-/tmp}/emoji_select.XXXXXX")" || return 1
+  raw_file_ref="${work_dir_ref}/raw"
+  display_file_ref="${work_dir_ref}/display"
+
+  emoji_write_selection_source "${raw_file_ref}" || return 1
+  emoji_write_display_rows "${raw_file_ref}" "${display_file_ref}" || return 1
+}
+
+emoji_selection_raw_line() {
+  local raw_file="$1"
+  local selection_index="$2"
+
+  awk -v idx=$((selection_index + 1)) 'NR==idx{print;exit}' "${raw_file}"
+}
+
+emoji_rofi_selection_index() {
+  local display_file="$1"
+  shift
+
+  if [[ -n ${use_rofile} ]]; then
+    cat "${display_file}" | rofi -dmenu -i -format 'i' "$@" -config "${use_rofile}" \
+      -no-show-icons \
+      -theme-str "${EMOJI_ICONLESS_THEME_STR}" \
+      -no-custom
+    return 0
+  fi
+
+  cat "${display_file}" | rofi -dmenu -i -format 'i' "$@" \
+    -no-show-icons \
+    -theme-str "${EMOJI_ICONLESS_THEME_STR}" \
+    -theme-str "entry { placeholder: \" 󰞅 Emoji\";} ${rofi_position} ${r_override}" \
+    -theme-str "${font_override}" \
+    -no-custom
+}
+
+emoji_category_source_file() {
+  local category="$1"
+  local category_file="${emoji_categories_dir}/${category}.db"
+
+  case "${category}" in
+    recent)
+      if [[ ! -f "${recent_data}" ]] || [[ ! -s "${recent_data}" ]]; then
+        dunstify -t 3000 -i "face-smile" "No recently used emojis"
+        return 1
+      fi
+      ;;
+    favorites)
+      if [[ ! -f "${favorites_data}" ]] || [[ ! -s "${favorites_data}" ]]; then
+        dunstify -t 3000 -i "face-smile" "No favorite emojis yet"
+        return 1
+      fi
+      category_file="${favorites_data}"
+      ;;
+    *)
+      if [[ ! -f "${category_file}" ]]; then
+        dunstify -t 3000 -i "dialog-error" "Category file not found: ${category}"
+        return 1
+      fi
+      ;;
+  esac
+
+  [[ "${category}" == "recent" ]] && category_file="${recent_data}"
+  printf '%s\n' "${category_file}"
+}
+
+emoji_category_menu_args() {
+  local style_type="$1"
+  local -n rofi_base_opts_ref="$2"
+  local -n style_menu_args_ref="$3"
+  local category_theme=""
+
+  case "${style_type}" in
+    1 | list | 2 | grid) category_theme="$(rofi_resolve_theme clipboard)" ;;
+    *) category_theme="$(rofi_resolve_theme "${style_type:-clipboard}")" ;;
+  esac
+  emoji_menu_base_opts "${category_theme}" rofi_base_opts_ref
+  emoji_style_menu_args "${style_type}" style_menu_args_ref
+}
+
+emoji_prepare_category_menu() {
+  local category_file="$1"
+  local -n work_dir_ref="$2"
+  local -n menu_file_ref="$3"
+
+  work_dir_ref="$(mktemp -d "${TMPDIR:-/tmp}/emoji_category.XXXXXX")" || return 1
+  menu_file_ref="${work_dir_ref}/menu"
+  {
+    printf '%s\n' "◀ Back	:b:a:c:k:"
+    cat "${category_file}"
+  } >"${menu_file_ref}"
+}
+
+get_emoji_selection() {
+  local style_type="${emoji_style:-${ROFI_EMOJI_STYLE:-2}}"
+  local rofi_base_opts=()
+  local style_menu_args=()
+  local emoji_args=()
+  emoji_selection_menu_args "${style_type}" rofi_base_opts style_menu_args emoji_args
+
+  local work_dir=""
+  local temp_data=""
+  local display_data=""
+  emoji_prepare_selection_workspace work_dir temp_data display_data || {
+    rm -rf "${work_dir}"
     return 1
   }
 
   local selection_index=""
-  if [[ -n ${use_rofile} ]]; then
-    selection_index=$(cat "${display_data}" | rofi -dmenu -i -format 'i' "${emoji_args[@]}" "${rofi_base_opts[@]}" -config "${use_rofile}" \
-      -no-show-icons \
-      -theme-str "${EMOJI_ICONLESS_THEME_STR}" \
-      -no-custom)
-  else
-    selection_index=$(cat "${display_data}" | rofi -dmenu -i -format 'i' "${emoji_args[@]}" "${rofi_base_opts[@]}" "${style_menu_args[@]}" \
-      -no-show-icons \
-      -theme-str "${EMOJI_ICONLESS_THEME_STR}" \
-      -theme-str "entry { placeholder: \" 󰞅 Emoji\";} ${rofi_position} ${r_override}" \
-      -theme-str "${font_override}" \
-      -no-custom)
-  fi
-
-  rm -f "${display_data}"
+  selection_index="$(emoji_rofi_selection_index "${display_data}" "${emoji_args[@]}" "${rofi_base_opts[@]}" "${style_menu_args[@]}")"
 
   [[ -z "${selection_index}" ]] && {
-    rm -f "${temp_data}"
+    rm -rf "${work_dir}"
     return
   }
-  # rofi returns 0-based index; fetch raw line (keeps category markers)
   local raw_line
-  raw_line=$(awk -v idx=$((selection_index + 1)) 'NR==idx{print;exit}' "${temp_data}")
-  rm -f "${temp_data}"
+  raw_line="$(emoji_selection_raw_line "${temp_data}" "${selection_index}")"
+  rm -rf "${work_dir}"
   printf "%s" "${raw_line}"
 }
 
@@ -207,31 +316,21 @@ HELP
 # Check if emoji is multi-person and show dual skin tone selector
 show_multi_person_skin_tone_selector() {
   local base_emoji="$1"
-
-  # Multi-person emojis that support dual skin tones
-  local multi_person="🤝👫👬👭🧑‍🤝‍🧑💑👩‍❤️‍👨👨‍❤️‍👨👩‍❤️‍👩🧑‍❤️‍🧑💏👩‍❤️‍💋‍👨👨‍❤️‍💋‍👨👩‍❤️‍💋‍👩🧑‍❤️‍💋‍🧑"
-
-  if [[ ! "${multi_person}" =~ ${base_emoji} ]]; then
+  if [[ ! "${EMOJI_MULTI_PERSON}" =~ ${base_emoji} ]]; then
     return 1 # Not multi-person
   fi
 
   # Select Person 1 skin tone
   local tone1
   tone1=$(echo -e "🏾 Medium-Dark\n🏻 Light\n🏼 Medium-Light\n🏽 Medium\n🏿 Dark\nDefault" \
-    | rofi -dmenu -i -p "Person 1 Skin Tone" -no-show-icons \
-      -theme-str "entry { placeholder: \"Choose skin tone for person 1...\";} ${rofi_position} ${r_override}" \
-      -theme-str "${font_override}" \
-      -theme "$(rofi_resolve_theme clipboard)" -theme-str "${_rofi_opacity}")
+    | emoji_clipboard_dmenu "Person 1 Skin Tone" "Choose skin tone for person 1...")
 
   [[ -z "${tone1}" ]] && return 1
 
   # Select Person 2 skin tone
   local tone2
   tone2=$(echo -e "🏾 Medium-Dark\n🏻 Light\n🏼 Medium-Light\n🏽 Medium\n🏿 Dark\nDefault" \
-    | rofi -dmenu -i -p "Person 2 Skin Tone" -no-show-icons \
-      -theme-str "entry { placeholder: \"Choose skin tone for person 2...\";} ${rofi_position} ${r_override}" \
-      -theme-str "${font_override}" \
-      -theme "$(rofi_resolve_theme clipboard)" -theme-str "${_rofi_opacity}")
+    | emoji_clipboard_dmenu "Person 2 Skin Tone" "Choose skin tone for person 2...")
 
   [[ -z "${tone2}" ]] && return 1
 
@@ -250,23 +349,14 @@ show_multi_person_skin_tone_selector() {
 # Check if emoji has gender variants and show selector
 show_gender_variant_selector() {
   local base_emoji="$1"
-
-  # Emojis that have gender variants (person → man/woman)
-  # These use ZWJ sequences: base + ZWJ + ♂️/♀️
-  local gender_variants="🧑👱🙍🙎🙅🙆💁🙋🧏🙇🤦🤷👮🕵️💂🥷👷🤴👸👳👲🧕🤵👰🦸🦹🧙🧚🧛🧜🧝🧞💆💇🚶🧍🧎🏃🕺💃🧖🧗🤸🏌️🏄🚣🏊⛹️🏋️🚴🚵🤽🤾🤹🧘🧑‍🎓🧑‍🏫🧑‍⚕️🧑‍🌾🧑‍🍳🧑‍🔧🧑‍🏭🧑‍💼🧑‍🔬🧑‍💻🧑‍🎤🧑‍🎨🧑‍✈️🧑‍🚀🧑‍🚒🧑‍🦯🧑‍🦼🧑‍🦽"
-
-  # Check if this emoji has gender variants
-  if [[ ! "${gender_variants}" =~ ${base_emoji} ]]; then
+  if [[ ! "${EMOJI_GENDER_VARIANTS}" =~ ${base_emoji} ]]; then
     return 1 # No gender variants
   fi
 
   # Show gender selector
   local gender_choice
   gender_choice=$(echo -e "🧑 Person (neutral)\n👨 Man\n👩 Woman" \
-    | rofi -dmenu -i -p "Gender Variant" \
-      -theme-str "entry { placeholder: \"Choose gender variant...\";} ${rofi_position} ${r_override}" \
-      -theme-str "${font_override}" \
-      -theme "$(rofi_resolve_theme clipboard)" -theme-str "${_rofi_opacity}")
+    | emoji_clipboard_dmenu "Gender Variant" "Choose gender variant...")
 
   [[ -z "${gender_choice}" ]] && return 1
 
@@ -288,95 +378,74 @@ show_gender_variant_selector() {
   return 0
 }
 
-# Check if emoji supports skin tones and show selection menu
-show_skin_tone_selector() {
+emoji_supports_skin_tone() {
+  [[ "${EMOJI_SKIN_TONE_SUPPORTED}" =~ $1 ]]
+}
+
+emoji_pick_skin_tone() {
   local base_emoji="$1"
-  local base_description="$2"
 
-  # First check if it has gender variants
-  local gendered_emoji
-  if gendered_emoji=$(show_gender_variant_selector "${base_emoji}"); then
-    base_emoji="${gendered_emoji}"
-  fi
+  printf '%s\n' "${EMOJI_SKIN_TONE_MENU}" \
+    | sed "s/^/${base_emoji} /" \
+    | emoji_clipboard_dmenu "Select Skin Tone" "Choose skin tone..."
+}
 
-  # Then check if it's multi-person
-  if show_multi_person_skin_tone_selector "${base_emoji}"; then
-    return 0
-  fi
-
-  # List of emojis that support skin tones (hands, people, body parts)
-  local skin_tone_supported="👋🤚🖐️✋🖖🫱🫲🫳🫴🫷🫸👌🤌🤏✌️🤞🫰🤟🤘🤙👈👉👆🫵👇☝️👍👎✊👊🤛🤜👏🙌🫶👐🤲🙏✍️💅🤳💪🦵🦶👂🦻👃🫦🧒👦👧🧑👱👨👩🧔👴👵🙍🙎🙅🙆💁🙋🧏🙇🤦🤷👮🕵️💂🥷👷🫅🤴👸👳👲🧕🤵👰🤰🫄🫃🤱👼🎅🤶🧑‍🎄🦸🦹🧙🧚🧛🧜🧝🧞🧟💆💇🚶🧍🧎🏃💃🕺🕴️👯🧖🧗🤺🏇⛷️🏂🏌️🏄🚣🏊⛹️🏋️🚴🚵🤸🤼🤽🤾🤹🛀🛌🧘"
-
-  # Check if emoji supports skin tones
-  if [[ ! "${skin_tone_supported}" =~ ${base_emoji} ]]; then
-    echo "${base_emoji}"
-    return
-  fi
-
-  # Show skin tone selection menu with actual rendered emojis
-  local selected_tone
-  selected_tone=$(printf "${base_emoji} Default\n${base_emoji}🏿 Dark\n${base_emoji}🏾 Medium-Dark\n${base_emoji}🏽 Medium\n${base_emoji}🏼 Medium-Light\n${base_emoji}🏻 Light" \
-    | rofi -dmenu -i -p "Select Skin Tone" \
-      -theme-str "entry { placeholder: \"Choose skin tone...\";} ${rofi_position} ${r_override}" \
-      -theme-str "${font_override}" \
-      -theme "$(rofi_resolve_theme clipboard)" -theme-str "${_rofi_opacity}")
-
-  # Extract just the skin tone part from selection
+emoji_finalize_skin_tone() {
+  local base_emoji="$1"
+  local selected_tone="$2"
   local selected_modifier=""
+
   selected_modifier="$(emoji_extract_skin_tone_modifier "${selected_tone}")"
   if [[ -n "${selected_modifier}" ]]; then
     echo "${base_emoji}${selected_modifier}"
   elif [[ "${selected_tone}" == *"Default"* ]]; then
     echo "${base_emoji}"
   else
-    # User cancelled, use medium-dark as default
     echo "${base_emoji}🏾"
   fi
+}
+
+# Check if emoji supports skin tones and show selection menu
+show_skin_tone_selector() {
+  local base_emoji="$1"
+  local selected_tone=""
+
+  local gendered_emoji
+  if gendered_emoji=$(show_gender_variant_selector "${base_emoji}"); then
+    base_emoji="${gendered_emoji}"
+  fi
+
+  if show_multi_person_skin_tone_selector "${base_emoji}"; then
+    return 0
+  fi
+
+  if ! emoji_supports_skin_tone "${base_emoji}"; then
+    echo "${base_emoji}"
+    return
+  fi
+
+  selected_tone="$(emoji_pick_skin_tone "${base_emoji}")"
+  emoji_finalize_skin_tone "${base_emoji}" "${selected_tone}"
 }
 
 # Show category sub-menu
 show_category_menu() {
   local category="$1"
-  local category_file="${emoji_categories_dir}/${category}.db"
+  local category_file=""
+  category_file="$(emoji_category_source_file "${category}")" || return 1
 
-  # Handle special categories
-  if [[ "${category}" == "recent" ]]; then
-    if [[ ! -f "${recent_data}" ]] || [[ ! -s "${recent_data}" ]]; then
-      dunstify -t 3000 -i "face-smile" "No recently used emojis"
-      return 1
-    fi
-    category_file="${recent_data}"
-  elif [[ "${category}" == "favorites" ]]; then
-    if [[ ! -f "${favorites_data}" ]] || [[ ! -s "${favorites_data}" ]]; then
-      dunstify -t 3000 -i "face-smile" "No favorite emojis yet"
-      return 1
-    fi
-    category_file="${favorites_data}"
-  elif [[ ! -f "${category_file}" ]]; then
-    dunstify -t 3000 -i "dialog-error" "Category file not found: ${category}"
-    return 1
-  fi
-
-  # Add back navigation option
-  local temp_dir="${TMPDIR:-/tmp}"
+  local work_dir=""
   local temp_category=""
-  temp_category="$(mktemp "${temp_dir}/emoji_category.XXXXXX")" || return 1
-  echo "◀ Back	:b:a:c:k:" >"${temp_category}"
-  cat "${category_file}" >>"${temp_category}"
+  emoji_prepare_category_menu "${category_file}" work_dir temp_category || {
+    rm -rf "${work_dir}"
+    return 1
+  }
 
-  # Show category-specific emoji menu
   local selected
   local style_type="${emoji_style:-${ROFI_EMOJI_STYLE:-2}}"
-  local category_theme=""
   local rofi_base_opts=()
   local style_menu_args=()
-
-  case "${style_type}" in
-    1 | list | 2 | grid) category_theme="$(rofi_resolve_theme clipboard)" ;;
-    *) category_theme="$(rofi_resolve_theme "${style_type:-clipboard}")" ;;
-  esac
-  emoji_menu_base_opts "${category_theme}" rofi_base_opts
-  emoji_style_menu_args "${style_type}" style_menu_args
+  emoji_category_menu_args "${style_type}" rofi_base_opts style_menu_args
 
   selected=$(cat "${temp_category}" | rofi -dmenu -i "${style_menu_args[@]}" \
     -no-show-icons "${rofi_base_opts[@]}" \
@@ -385,75 +454,81 @@ show_category_menu() {
     -theme-str "${font_override}" \
     -no-custom)
 
-  rm -f "${temp_category}"
+  rm -rf "${work_dir}"
   echo "${selected}"
 }
 
-main() {
-  parse_arguments "$@"
-
+ensure_emoji_runtime_files() {
   if [[ ! -f "${recent_data}" ]]; then
     mkdir -p "$(dirname "${recent_data}")"
     touch "${recent_data}"
   fi
   clean_emoji_file "${recent_data}"
   clean_emoji_file "${favorites_data}"
+}
 
-  setup_rofi_config
+emoji_selection_category() {
+  [[ "$1" =~ :cat:([a-z]+):$ ]] || return 1
+  printf '%s\n' "${BASH_REMATCH[1]}"
+}
 
-  data_emoji=$(get_emoji_selection)
-
-  # Empty selection (Esc) on main menu exits; on category, go back
-  if [[ -z "${data_emoji}" ]]; then
-    exit 0
+emoji_normalize_selection_record() {
+  if [[ "$1" == *$'\t'* ]]; then
+    printf '%s\n' "$1"
+    return 0
   fi
 
-  # Check for a category marker at the end of the selection payload.
-  if [[ "${data_emoji}" =~ :cat:([a-z]+):$ ]]; then
-    local category="${BASH_REMATCH[1]}"
-    data_emoji=$(show_category_menu "${category}")
-    # Esc in category: go back to main menu
-    [[ -z "${data_emoji}" ]] && {
-      main "$@"
-      exit 0
-    }
+  local emoji_token desc_token
+  emoji_token="${1%% *}"
+  desc_token="${1#${emoji_token}}"
+  desc_token="${desc_token# }"
+  printf '%s\t%s\n' "${emoji_token}" "${desc_token}"
+}
 
-    # Handle back navigation from category menu
-    if [[ "${data_emoji}" =~ :b:a:c:k:$ ]]; then
-      main "$@"
-      exit 0
-    fi
-  fi
+emoji_pick_record() {
+  local selection=""
+  local category=""
 
-  # Normalize selections without tab (category files are space-separated)
-  if [[ "${data_emoji}" != *$'\t'* ]]; then
-    local emoji_token desc_token
-    emoji_token="${data_emoji%% *}"
-    desc_token="${data_emoji#${emoji_token}}"
-    desc_token="${desc_token# }"
-    data_emoji="${emoji_token}"$'\t'"${desc_token}"
-  fi
+  selection="$(get_emoji_selection)"
+  while [[ -n "${selection}" ]]; do
+    category="$(emoji_selection_category "${selection}" 2>/dev/null || true)"
+    [[ -n "${category}" ]] || break
 
+    selection="$(show_category_menu "${category}")"
+    [[ -n "${selection}" ]] || return 1
+    [[ "${selection}" =~ :b:a:c:k:$ ]] && selection="$(get_emoji_selection)"
+  done
+
+  [[ -n "${selection}" ]] || return 1
+  emoji_normalize_selection_record "${selection}"
+}
+
+emoji_apply_selection() {
+  local selection_record="$1"
   local selected_emoji_char=""
   local selected_desc=""
-  selected_emoji_char=$(printf "%s" "${data_emoji}" | cut -d$'\t' -f1 | xargs)
-  selected_desc=$(printf "%s" "${data_emoji}" | cut -d$'\t' -f2- | xargs)
+  local final_emoji=""
 
-  if [[ -n "${selected_emoji_char}" ]]; then
-    # Check if emoji supports skin tones and show selector
-    local final_emoji
-    final_emoji=$(show_skin_tone_selector "${selected_emoji_char}" "${selected_desc}")
+  selected_emoji_char=$(printf "%s" "${selection_record}" | cut -d$'\t' -f1 | xargs)
+  selected_desc=$(printf "%s" "${selection_record}" | cut -d$'\t' -f2- | xargs)
+  [[ -n "${selected_emoji_char}" ]] || return 0
 
-    [[ -z "${final_emoji}" ]] && exit 0
+  final_emoji=$(show_skin_tone_selector "${selected_emoji_char}" "${selected_desc}")
+  [[ -n "${final_emoji}" ]] || return 0
 
-    wl-copy "${final_emoji}"
-    save_recent_entry "${final_emoji}"$'\t'"${selected_desc}"
+  wl-copy "${final_emoji}"
+  save_recent_entry "${final_emoji}"$'\t'"${selected_desc}"
+  [[ "${EMOJI_AUTO_PASTE:-1}" == "0" ]] || paste_string "${@}"
+}
 
-    # Only paste if EMOJI_AUTO_PASTE is not set to 0
-    if [[ "${EMOJI_AUTO_PASTE:-1}" != "0" ]]; then
-      paste_string "${@}"
-    fi
-  fi
+main() {
+  local data_emoji=""
+
+  parse_arguments "$@"
+  ensure_emoji_runtime_files
+  setup_rofi_config
+  data_emoji="$(emoji_pick_record)" || exit 0
+  emoji_apply_selection "${data_emoji}" "${@}"
 }
 
 main "$@"

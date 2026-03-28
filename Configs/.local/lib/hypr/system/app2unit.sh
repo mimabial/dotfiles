@@ -250,332 +250,421 @@ replace() {
 # shellcheck source=/dev/null
 . "$HOME/.local/lib/hypr/system/app2unit.resolve.sh"
 
-########################
+pack_args_usep() {
+	PACKED_ARGS=''
+	for packed_arg in "$@"; do
+		PACKED_ARGS=${PACKED_ARGS}${PACKED_ARGS:+$USEP}${packed_arg}
+	done
+}
 
-debug "initial args:" "$(printf '  >%s<\n' "$@")"
-
-EXEC_NAME=''
-EXEC_PATH=''
-EXEC_RSEP_USEP=''
-ENTRY_PATH=''
-ENTRY_ID=''
-ENTRY_TYPE=''
-ENTRY_URL=''
-ENTRY_COMMENT=''
-ENTRY_NAME=''
-ENTRY_ICON=''
-ENTRY_WORKDIR=''
-UNIT_DESCRIPTION=''
-UNIT_ID=''
-UNIT_APP_SUBSTRING=''
-
-SILENT=''
-TEST_MODE=false
-
-# vars for expander, tokenizer, injector output
-EXPANDED_STR=''
-EXEC_USEP=''
-REPLACED_STR=''
-
-UNIT_TYPE=${APP2UNIT_TYPE:-scope}
-case "$UNIT_TYPE" in
-service | scope) true ;;
-*)
-	error "Unsupported unit type '$UNIT_TYPE'!"
+usage_error() {
+	error "$@" "$(usage)"
 	exit 1
-	;;
-esac
+}
 
-# deal with unit slice choices and default
-UNIT_SLICE_ID=''
-UNIT_SLICE_CHOICES=${APP2UNIT_SLICES:-"a=app.slice b=background.slice s=session.slice"}
-for choice in $UNIT_SLICE_CHOICES; do
-	debug "evaluating slice choice '$choice'"
-	slice_abbr=
-	slice_id=
-	case "$choice" in
-	*[!a-zA-Z0-9=._-]* | *=*=* | *[!a-z]*=* | *=[!a-zA-Z0-9._-]* | *[!.][!s][!l][!i][!c][!e])
-		error "Invalid slice choice '$choice', ignoring."
-		continue
-		;;
-	[a-z]*=[a-zA-Z0-9_.-]*.slice)
-		IFS='=' read -r slice_abbr slice_id <<-EOF
-			$choice
+resolve_slice_choice() {
+	for resolve_choice in $UNIT_SLICE_CHOICES; do
+		IFS='=' read -r resolve_abbr resolve_id <<-EOF
+			$resolve_choice
 		EOF
-		;;
-	*)
-		error "Invalid slice choice '$choice', ignoring."
-		continue
+		case "$resolve_abbr" in
+		"$1")
+			printf '%s\n' "$resolve_id"
+			return 0
+			;;
+		esac
+	done
+	return 1
+}
+
+set_slice_option() {
+	case "$1" in
+	.slice | '') usage_error "Empty slice id '$1'" ;;
+	*[!a-zA-Z0-9_.-]*) usage_error "Invalid slice id '$1'" ;;
+	*.slice)
+		UNIT_SLICE_ID=$1
+		return 0
 		;;
 	esac
-	if [ -z "$UNIT_SLICE_ID" ]; then
-		UNIT_SLICE_CHOICES=
-		UNIT_SLICE_ID="${slice_id}"
-		debug "reset default slice as '${slice_id}'"
+
+	if slice_id=$(resolve_slice_choice "$1"); then
+		UNIT_SLICE_ID=$slice_id
+		return 0
 	fi
-	debug "adding choice ${slice_abbr}=${slice_id}"
-	UNIT_SLICE_CHOICES=${UNIT_SLICE_CHOICES}${UNIT_SLICE_CHOICES:+ }${slice_abbr}=${slice_id}
-done
-if [ -z "$UNIT_SLICE_ID" ]; then
-	UNIT_SLICE_ID=app.slice
-	debug "falling back to default slice 'app.slice'"
-fi
 
-PART_OF_GST=true
-if [ -z "${APP2UNIT_PART_OF_GST:-}" ]; then
-	PART_OF_GST=true
-else
-	if check_bool "$APP2UNIT_PART_OF_GST"; then
-		PART_OF_GST=true
-	else
-		PART_OF_GST=false
+	usage_error "'$1' does not point to a slice choice!" "Choices: $UNIT_SLICE_CHOICES"
+}
+
+set_unit_type_option() {
+	case "$1" in
+	scope | service) UNIT_TYPE=$1 ;;
+	*) usage_error "Expected unit type scope|service for -t, got '$1'!" ;;
+	esac
+}
+
+set_app_name_option() {
+	if [ -z "$1" ]; then
+		usage_error "Expected app name for -a!"
+	elif [ -n "$UNIT_ID" ]; then
+		usage_error "Conflicting options: -a, -u!"
 	fi
-fi
+	UNIT_APP_SUBSTRING=$1
+}
 
-TERMINAL=false
-OPENER_MODE=false
+set_unit_id_option() {
+	if [ -z "$1" ]; then
+		usage_error "Expected Unit ID for -u!"
+	elif [ -n "$UNIT_APP_SUBSTRING" ]; then
+		usage_error "Conflicting options: -u, -a!"
+	fi
+	UNIT_ID=$1
+}
 
-capture_terminal_args=false
-case "$SELF_NAME" in
-*-open | *-open-scope | *-open-service)
-	OPENER_MODE=true
-	case "$SELF_NAME" in
-	*-scope) UNIT_TYPE=scope ;;
-	*-service) UNIT_TYPE=service ;;
+set_unit_description_option() {
+	[ -n "$1" ] || usage_error "Expected unit description for -d!"
+	UNIT_DESCRIPTION=$1
+}
+
+set_silent_option() {
+	case "$1" in
+	out | err | both) SILENT=$1 ;;
+	*) usage_error "Expected silent mode out|err|both for -S, got '$1'!" ;;
 	esac
-	;;
-*-term | *-terminal | *-term-scope | *-terminal-scope | *-term-service | *-terminal-service)
-	TERMINAL=true
-	capture_terminal_args=true
-	case "$SELF_NAME" in
-	*-scope) UNIT_TYPE=scope ;;
-	*-service) UNIT_TYPE=service ;;
-	esac
-	;;
-esac
+}
 
-# will be set where needed
-RANDOM_STRING=
+store_terminal_passthrough_option() {
+	TERMINAL_ARGS_USEP=${TERMINAL_ARGS_USEP}${TERMINAL_ARGS_USEP:+$USEP}${1}
+}
 
-LCODE=${LANGUAGE:-"$LANG"}
-LCODE=${LCODE%_*}
-LCODE=${LCODE:-NOLCODE}
+set_part_of_gst_option() {
+	case "$part_of_gst_set" in
+	true) usage_error "$1 conflicts with $2" ;;
+	esac
+	PART_OF_GST=$3
+	part_of_gst_set=true
+}
 
-# expand short args
-first=true
-found_delim=false
-for arg in "$@"; do
-	case "$first" in
-	true)
-		set --
-		first=false
-		;;
-	esac
-	case "$found_delim" in
-	true)
-		set -- "$@" "$arg"
-		continue
-		;;
-	esac
-	case "$arg" in
-	--)
-		found_delim=true
-		set -- "$@" "$arg"
-		;;
-	-[a-zA-Z][a-zA-Z]*)
-		arg=${arg#-}
-		while [ -n "$arg" ]; do
-			cut=${arg#?}
-			char=${arg%"$cut"}
-			set -- "$@" "-$char"
-			arg=$cut
-		done
-		;;
-	*) set -- "$@" "$arg" ;;
-	esac
-done
+resolve_default_terminal_target() {
+	if path_and_cmd=$(
+		IFS=$USEP
+		# shellcheck disable=SC2086
+		set -- $TERMINAL_ARGS_USEP
+		IFS=$OIFS
+		unset DISPLAY WAYLAND_DISPLAY
+		"$TERMINAL_HANDLER" --print-path --print-cmd='\037' "$@"
+	) && case "$path_and_cmd" in '/'*".desktop$N"* | '/'*'.desktop:'*"$N"*) true ;; *) false ;; esac then
+		MAIN_ARG=${path_and_cmd%%"$N"*}
+		EXEC_RSEP_USEP=${path_and_cmd#*"$N"}
+		# shellcheck disable=SC2086
+		debug "replaced MAIN_ARG with '$MAIN_ARG'" "populated EXEC_RSEP_USEP with:" "$(
+			IFS=$USEP
+			printf '  > %s\n' $EXEC_RSEP_USEP
+		)"
+		return 0
+	fi
 
-part_of_gst_set=false
-# parse args
-TERMINAL_ARGS_USEP=
-while [ "$#" -gt "0" ]; do
+	{
+		echo "Could not determine default terminal entry via '$TERMINAL_HANDLER --print-path --print-cmd=\037'!"
+		echo "Falling back to injecting '$TERMINAL_HANDLER' as the main argument."
+	} >&2
+	MAIN_ARG="$TERMINAL_HANDLER"
+}
+
+parse_cli_immediate_option() {
 	case "$1" in
 	-h | --help)
 		help
 		exit 0
 		;;
+	esac
+
+	return 1
+}
+
+parse_cli_value_option() {
+	case "$1" in
 	-s)
 		debug "arg '$1' '${2:-}'"
-		case "${2:-}" in
-		.slice | '')
-			error "Empty slice id '${2:-}'" "$(usage)"
-			exit 1
-			;;
-		*[!a-zA-Z0-9_.-]*)
-			error "Invalid slice id '$2'" "$(usage)"
-			exit 1
-			;;
-		*.slice)
-			UNIT_SLICE_ID=$2
-			shift 2
-			continue
-			;;
-		*)
-			for choice in $UNIT_SLICE_CHOICES; do
-				IFS='=' read -r slice_abbr slice_id <<-EOF
-					$choice
-				EOF
-				case "$slice_abbr" in
-				"$2")
-					UNIT_SLICE_ID=$slice_id
-					shift 2
-					continue 2
-					;;
-				esac
-			done
-			error "'$2' does not point to a slice choice!" "Choices: $UNIT_SLICE_CHOICES" "$(usage)"
-			exit 1
-			;;
-		esac
-		error "Failed to parse '-s' argument" "$(usage)"
-		exit 1
+		set_slice_option "${2:-}"
+		CLI_SHIFT=2
 		;;
 	-t)
 		debug "arg '$1' '${2:-}'"
-		case "${2:-}" in
-		scope | service) UNIT_TYPE=$2 ;;
-		*)
-			error "Expected unit type scope|service for -t, got '${2:-}'!" "$(usage)"
-			exit 1
-			;;
-		esac
-		shift 2
+		set_unit_type_option "${2:-}"
+		CLI_SHIFT=2
 		;;
 	-a)
 		debug "arg '$1' '${2:-}'"
-		if [ -z "${2:-}" ]; then
-			error "Expected app name for -a!" "$(usage)"
-			exit 1
-		elif [ -n "$UNIT_ID" ]; then
-			error "Conflicting options: -a, -u!" "$(usage)"
-			exit 1
-		else
-			UNIT_APP_SUBSTRING=$2
-		fi
-		shift 2
+		set_app_name_option "${2:-}"
+		CLI_SHIFT=2
 		;;
 	-u)
 		debug "arg '$1' '${2:-}'"
-		if [ -z "${2:-}" ]; then
-			error "Expected Unit ID for -u!" "$(usage)"
-			exit 1
-		elif [ -n "$UNIT_APP_SUBSTRING" ]; then
-			error "Conflicting options: -u, -a!" "$(usage)"
-			exit 1
-		else
-			UNIT_ID=$2
-		fi
-		shift 2
+		set_unit_id_option "${2:-}"
+		CLI_SHIFT=2
 		;;
 	-d)
 		debug "arg '$1' '${2:-}'"
-		if [ -z "${2:-}" ]; then
-			error "Expected unit description for -d!" "$(usage)"
-			exit 1
-		else
-			UNIT_DESCRIPTION="$2"
-		fi
-		shift 2
-		;;
-	-c)
-		case "$part_of_gst_set" in
-		true)
-			error "-c conflicts with -C" "$(usage)"
-			exit 1
-			;;
-		esac
-		debug "arg '$1'"
-		PART_OF_GST=false
-		part_of_gst_set=true
-		shift
-		;;
-	-C)
-		case "$part_of_gst_set" in
-		true)
-			error "-C conflicts with -c" "$(usage)"
-			exit 1
-			;;
-		esac
-		debug "arg '$1'"
-		PART_OF_GST=true
-		part_of_gst_set=true
-		shift
+		set_unit_description_option "${2:-}"
+		CLI_SHIFT=2
 		;;
 	-S)
 		debug "arg '$1' '${2:-}'"
-		case "${2:-}" in
-		out | err | both) SILENT=$2 ;;
-		*)
-			error "Expected silent mode out|err|both for -S, got '${2:-}'!" "$(usage)"
-			exit 1
-			;;
-		esac
-		shift 2
+		set_silent_option "${2:-}"
+		CLI_SHIFT=2
+		;;
+	*) return 1 ;;
+	esac
+
+	return 0
+}
+
+parse_cli_flag_option() {
+	case "$1" in
+	-c)
+		debug "arg '$1'"
+		set_part_of_gst_option "-c" "-C" false
+		CLI_SHIFT=1
+		;;
+	-C)
+		debug "arg '$1'"
+		set_part_of_gst_option "-C" "-c" true
+		CLI_SHIFT=1
 		;;
 	-T)
 		TERMINAL=true
 		capture_terminal_args=true
 		debug "arg '$1'"
 		check_terminal_handler
-		shift
+		CLI_SHIFT=1
 		;;
 	-O | --open)
 		OPENER_MODE=true
 		debug "arg '$1'"
-		shift
+		CLI_SHIFT=1
 		;;
-		--test)
-			TEST_MODE=true
+	--test)
+		TEST_MODE=true
 		debug "arg '$1'"
-		shift
+		CLI_SHIFT=1
 		;;
 	--)
 		debug "arg '$1', breaking"
-		shift
-		break
+		CLI_SHIFT=-1
 		;;
-	-*)
-		case "$capture_terminal_args" in
-		false)
-			error "Unknown option '$1'!" "$(usage)"
-			exit 1
-			;;
-		true)
-			debug "storing unknown opt '$1' for terminal"
-			TERMINAL_ARGS_USEP=${TERMINAL_ARGS_USEP}${TERMINAL_ARGS_USEP:+$USEP}${1}
-			shift
-			;;
-		esac
-		;;
-	*)
-		debug "arg '$1', breaking"
-		break
+	*) return 1 ;;
+	esac
+
+	return 0
+}
+
+parse_cli_passthrough_option() {
+	case "$capture_terminal_args" in
+	false) usage_error "Unknown option '$1'!" ;;
+	true)
+		debug "storing unknown opt '$1' for terminal"
+		store_terminal_passthrough_option "$1"
+		CLI_SHIFT=1
 		;;
 	esac
-done
+}
 
-if [ "$#" -eq "0" ] && [ "$TERMINAL" = "false" ]; then
-	error "Arguments expected" "$(usage)"
-	exit 1
-fi
+parse_cli_option() {
+	CLI_SHIFT=0
+	parse_cli_immediate_option "$1" && return 0
+	parse_cli_value_option "$1" "${2:-}" && return 0
+	parse_cli_flag_option "$1" && return 0
 
-if [ "$OPENER_MODE" = "true" ]; then
+	case "$1" in
+	-*) parse_cli_passthrough_option "$1" ;;
+	*)
+		debug "arg '$1', breaking"
+		return 1
+		;;
+	esac
+	return 0
+}
+
+initialize_state() {
+	debug "initial args:" "$(printf '  >%s<\n' "$@")"
+
+	EXEC_NAME=''
+	EXEC_PATH=''
+	EXEC_RSEP_USEP=''
+	ENTRY_PATH=''
+	ENTRY_ID=''
+	ENTRY_TYPE=''
+	ENTRY_URL=''
+	ENTRY_COMMENT=''
+	ENTRY_NAME=''
+	ENTRY_ICON=''
+	ENTRY_WORKDIR=''
+	UNIT_DESCRIPTION=''
+	UNIT_ID=''
+	UNIT_APP_SUBSTRING=''
+	SILENT=''
+	TEST_MODE=false
+	EXPANDED_STR=''
+	EXEC_USEP=''
+	REPLACED_STR=''
+	TERMINAL_ARGS_USEP=''
+	MAIN_ARG=''
+	PARSED_ARGS_USEP=''
+	RESOLVED_ARGS_USEP=''
+
+	UNIT_TYPE=${APP2UNIT_TYPE:-scope}
+	case "$UNIT_TYPE" in
+	service | scope) true ;;
+	*)
+		error "Unsupported unit type '$UNIT_TYPE'!"
+		exit 1
+		;;
+	esac
+
+	UNIT_SLICE_ID=''
+	UNIT_SLICE_CHOICES=${APP2UNIT_SLICES:-"a=app.slice b=background.slice s=session.slice"}
+	PART_OF_GST=true
+	TERMINAL=false
+	OPENER_MODE=false
+	capture_terminal_args=false
+	RANDOM_STRING=
+	LCODE=${LANGUAGE:-"$LANG"}
+	LCODE=${LCODE%_*}
+	LCODE=${LCODE:-NOLCODE}
+}
+
+configure_unit_slice_choices() {
+	for choice in $UNIT_SLICE_CHOICES; do
+		debug "evaluating slice choice '$choice'"
+		slice_abbr=
+		slice_id=
+		case "$choice" in
+		*[!a-zA-Z0-9=._-]* | *=*=* | *[!a-z]*=* | *=[!a-zA-Z0-9._-]* | *[!.][!s][!l][!i][!c][!e])
+			error "Invalid slice choice '$choice', ignoring."
+			continue
+			;;
+		[a-z]*=[a-zA-Z0-9_.-]*.slice)
+			IFS='=' read -r slice_abbr slice_id <<-EOF
+				$choice
+			EOF
+			;;
+		*)
+			error "Invalid slice choice '$choice', ignoring."
+			continue
+			;;
+		esac
+		if [ -z "$UNIT_SLICE_ID" ]; then
+			UNIT_SLICE_CHOICES=
+			UNIT_SLICE_ID="${slice_id}"
+			debug "reset default slice as '${slice_id}'"
+		fi
+		debug "adding choice ${slice_abbr}=${slice_id}"
+		UNIT_SLICE_CHOICES=${UNIT_SLICE_CHOICES}${UNIT_SLICE_CHOICES:+ }${slice_abbr}=${slice_id}
+	done
+	if [ -z "$UNIT_SLICE_ID" ]; then
+		UNIT_SLICE_ID=app.slice
+		debug "falling back to default slice 'app.slice'"
+	fi
+}
+
+configure_part_of_gst() {
+	if [ -z "${APP2UNIT_PART_OF_GST:-}" ]; then
+		PART_OF_GST=true
+	elif check_bool "$APP2UNIT_PART_OF_GST"; then
+		PART_OF_GST=true
+	else
+		PART_OF_GST=false
+	fi
+}
+
+configure_invocation_mode() {
+	case "$SELF_NAME" in
+	*-open | *-open-scope | *-open-service)
+		OPENER_MODE=true
+		case "$SELF_NAME" in
+		*-scope) UNIT_TYPE=scope ;;
+		*-service) UNIT_TYPE=service ;;
+		esac
+		;;
+	*-term | *-terminal | *-term-scope | *-terminal-scope | *-term-service | *-terminal-service)
+		TERMINAL=true
+		capture_terminal_args=true
+		case "$SELF_NAME" in
+		*-scope) UNIT_TYPE=scope ;;
+		*-service) UNIT_TYPE=service ;;
+		esac
+		;;
+	esac
+}
+
+expand_short_args() {
+	first=true
+	found_delim=false
+	for arg in "$@"; do
+		case "$first" in
+		true)
+			set --
+			first=false
+			;;
+		esac
+		case "$found_delim" in
+		true)
+			set -- "$@" "$arg"
+			continue
+			;;
+		esac
+		case "$arg" in
+		--)
+			found_delim=true
+			set -- "$@" "$arg"
+			;;
+		-[a-zA-Z][a-zA-Z]*)
+			arg=${arg#-}
+			while [ -n "$arg" ]; do
+				cut=${arg#?}
+				char=${arg%"$cut"}
+				set -- "$@" "-$char"
+				arg=$cut
+			done
+			;;
+		*) set -- "$@" "$arg" ;;
+		esac
+	done
+	pack_args_usep "$@"
+	EXPANDED_ARGS_USEP=$PACKED_ARGS
+}
+
+parse_cli_options() {
+	IFS=$USEP
+	# shellcheck disable=SC2086
+	set -- $1
+	IFS=$OIFS
+
+	part_of_gst_set=false
+	while [ "$#" -gt "0" ]; do
+		parse_cli_option "$@" || break
+		case "$CLI_SHIFT" in
+		-1)
+			shift
+			break
+			;;
+		*)
+			shift "$CLI_SHIFT"
+			;;
+		esac
+	done
+
+	pack_args_usep "$@"
+	PARSED_ARGS_USEP=$PACKED_ARGS
+}
+
+resolve_open_mode_main_target() {
 	if [ "$#" = "0" ]; then
 		error "File(s) or URL(s) expected for open mode."
 		exit 1
 	fi
+
 	MAIN_ARG=
-	# determine if file or URL, get associations for MAIN_ARG
 	for arg in "$@"; do
 		mime=$(get_mime "$arg")
 		assoc=$(get_assoc "$mime")
@@ -584,54 +673,82 @@ if [ "$OPENER_MODE" = "true" ]; then
 			MAIN_ARG=$assoc
 		elif [ "$MAIN_ARG" = "$assoc" ]; then
 			debug "arg '$arg' has the same association"
-			true
 		else
 			error "Can not open multiple files/URLs with different associations"
 			exit 1
 		fi
 	done
-elif [ "$#" -eq "0" ] && [ "$TERMINAL" = "true" ]; then
-	# special case for launching just terminal
+}
 
-	# get entry path and cmdline from terminal handler
-	if path_and_cmd=$(
-		IFS=$USEP
-		# shellcheck disable=SC2086
-		set -- $TERMINAL_ARGS_USEP
-		IFS=$OIFS
-		# prevent old xdg-terminal-exec from running anything
-		unset DISPLAY WAYLAND_DISPLAY
-		"$TERMINAL_HANDLER" --print-path --print-cmd='\037' "$@"
-	) && case "$path_and_cmd" in '/'*".desktop$N"* | '/'*'.desktop:'*"$N"*) true ;; *) false ;; esac then
-		# entry path and action before newline
-		MAIN_ARG=${path_and_cmd%%"$N"*}
-		# cmd after newline, fill exec array right away
-		EXEC_RSEP_USEP=${path_and_cmd#*"$N"}
-		# shellcheck disable=SC2086
-		debug "initial args:" "$(printf '  >%s<\n' "$@")"
-		# shellcheck disable=SC2086
-		debug "replaced MAIN_ARG with '$MAIN_ARG'" "populated EXEC_RSEP_USEP with:" "$(
-			IFS=$USEP
-			printf '  > %s\n' $EXEC_RSEP_USEP
-		)"
-	else
-		# issue a warning
-		{
-			# shellcheck disable=SC2028
-			echo "Could not determine default terminal entry via '$TERMINAL_HANDLER --print-path --print-cmd=\037'!"
-			echo "Falling back to injecting '$TERMINAL_HANDLER' as the main argument."
-		} >&2
-		MAIN_ARG="$TERMINAL_HANDLER"
-	fi
+resolve_terminal_mode_main_target() {
+	resolve_default_terminal_target
 	TERMINAL=false
-else
+}
+
+resolve_direct_main_target() {
 	MAIN_ARG=$1
 	shift
-fi
-parse_main_arg "$MAIN_ARG"
+	pack_args_usep "$@"
+	RESOLVED_ARGS_USEP=$PACKED_ARGS
+}
 
-if [ -n "$ENTRY_PATH" ]; then
-	# reverse-deduce and correct Entry ID against applications dirs
+resolve_main_target() {
+	IFS=$USEP
+	# shellcheck disable=SC2086
+	set -- $1
+	IFS=$OIFS
+
+	if [ "$#" -eq "0" ] && [ "$TERMINAL" = "false" ]; then
+		usage_error "Arguments expected"
+	fi
+
+	if [ "$OPENER_MODE" = "true" ]; then
+		resolve_open_mode_main_target "$@"
+	elif [ "$#" -eq "0" ] && [ "$TERMINAL" = "true" ]; then
+		resolve_terminal_mode_main_target
+	else
+		resolve_direct_main_target "$@"
+		parse_main_arg "$MAIN_ARG"
+		return 0
+	fi
+
+	pack_args_usep "$@"
+	RESOLVED_ARGS_USEP=$PACKED_ARGS
+	parse_main_arg "$MAIN_ARG"
+}
+
+resolve_entry_context() {
+	IFS=$USEP
+	# shellcheck disable=SC2086
+	set -- $1
+	IFS=$OIFS
+	pack_args_usep "$@"
+	ENTRY_CONTEXT_ARGS_USEP=$PACKED_ARGS
+
+	resolve_entry_path_id
+	resolve_entry_path_from_id
+	read_entry_context_path
+	resolve_link_entry_context
+
+	gen_unit_id
+	RESOLVED_ARGS_USEP=$ENTRY_CONTEXT_ARGS_USEP
+}
+
+inject_terminal_handler_args() {
+	if [ "$TERMINAL" = "true" ]; then
+		debug "injected $TERMINAL_HANDLER"
+		IFS=$USEP
+		# shellcheck disable=SC2086
+		set -- "$TERMINAL_HANDLER" $TERMINAL_ARGS_USEP "$@"
+		IFS=$OIFS
+	fi
+	pack_args_usep "$@"
+	RUN_ARGS_USEP=$PACKED_ARGS
+}
+
+resolve_entry_path_id() {
+	[ -n "$ENTRY_PATH" ] || return 0
+
 	make_paths
 	IFS=':'
 	for dir in $APPLICATIONS_DIRS; do
@@ -651,100 +768,104 @@ if [ -n "$ENTRY_PATH" ]; then
 			break
 		fi
 	done
-elif [ -n "$ENTRY_ID" ]; then
+}
+
+resolve_entry_path_from_id() {
+	[ -n "$ENTRY_PATH" ] && return 0
+	[ -n "$ENTRY_ID" ] || return 0
+
 	make_paths
 	ENTRY_PATH=$(find_entry "$ENTRY_ID")
-fi
+}
 
-# read and parse entry, fill ENTRY_* vars and EXEC_RSEP_USEP
-if [ -n "$ENTRY_PATH" ]; then
+read_entry_context_path() {
+	[ -n "$ENTRY_PATH" ] || return 0
 	read_entry_path "$ENTRY_PATH" "$ENTRY_ACTION"
-fi
+}
 
-# handle Link type URL
-if [ -n "$ENTRY_URL" ]; then
+resolve_link_entry_context() {
+	[ -n "$ENTRY_URL" ] || return 0
+
 	debug "re-parsing for Link entry URL: $ENTRY_URL"
 	mime=$(get_mime "$ENTRY_URL")
 	assoc=$(get_assoc "$mime")
-	# replace initial vars and arg
 	ENTRY_ID=$assoc
-	set -- "$ENTRY_URL"
+	pack_args_usep "$ENTRY_URL"
+	ENTRY_CONTEXT_ARGS_USEP=$PACKED_ARGS
 	ENTRY_URL=
-	# re-parse new entry
 	ENTRY_PATH=$(find_entry "$ENTRY_ID")
 	read_entry_path "$ENTRY_PATH"
-fi
+}
 
-# generate Unit ID as UNIT_ID
-gen_unit_id
+run_entry_command() {
+	IFS=$USEP
+	# shellcheck disable=SC2086
+	set -- $2
+	IFS=$OIFS
+	inject_terminal_handler_args "$@"
+	IFS=$USEP
+	# shellcheck disable=SC2086
+	set -- $RUN_ARGS_USEP
+	IFS=$OIFS
+	debug "entry $1" "$(printf '  >%s<\n' "$@")"
+	systemd_run "$@"
+}
 
-# compose and execute arguments
-if [ -n "$ENTRY_ID" ]; then
+execute_entry_iterations() {
+	IFS=$RSEP
+	first=true
+	for cmd in $EXEC_RSEP_USEP; do
+		if [ "$first" = "false" ]; then
+			randomize_unit_id
+		fi
+		run_entry_command iteration "$cmd" &
+		first=false
+	done
+	wait
+}
+
+execute_entry_target() {
+	IFS=$USEP
+	# shellcheck disable=SC2086
+	set -- $1
+	IFS=$OIFS
 
 	de_inject_fields "$@"
-
-	# deal with potential multiple iterations
 	case "$EXEC_RSEP_USEP" in
-	*"$RSEP"*)
-		IFS=$RSEP
-		first=true
-		for cmd in $EXEC_RSEP_USEP; do
-			IFS=$USEP
-			# shellcheck disable=SC2086
-			set -- $cmd
-			IFS=$OIFS
-			case "$TERMINAL" in
-			true)
-				# inject terminal handler
-				debug "injected $TERMINAL_HANDLER"
-				IFS=$USEP
-				# shellcheck disable=SC2086
-				set -- "$TERMINAL_HANDLER" $TERMINAL_ARGS_USEP "$@"
-				IFS=$OIFS
-				;;
-			esac
-			debug "entry iteration" "$(printf '  >%s<\n' "$@")"
-			if [ "$first" = "false" ]; then
-				randomize_unit_id
-			fi
-			systemd_run "$@" &
-			first=false
-		done
-		wait
-		exit
-		;;
-	*)
-		IFS=$USEP
-		# shellcheck disable=SC2086
-		set -- $EXEC_RSEP_USEP
-		IFS=$OIFS
-		case "$TERMINAL" in
-		true)
-			# inject terminal handler
-			debug "injected $TERMINAL_HANDLER"
-			IFS=$USEP
-			# shellcheck disable=SC2086
-			set -- "$TERMINAL_HANDLER" $TERMINAL_ARGS_USEP "$@"
-			IFS=$OIFS
-			;;
-		esac
-		debug "entry single" "$(printf '  >%s<\n' "$@")"
-		systemd_run "$@"
-		;;
+	*"$RSEP"*) execute_entry_iterations ;;
+	*) run_entry_command single "$EXEC_RSEP_USEP" ;;
 	esac
-else
-	set -- "${EXEC_PATH:-$EXEC_NAME}" "$@"
+}
+
+execute_direct_target() {
+	IFS=$USEP
+	# shellcheck disable=SC2086
+	set -- $1
 	IFS=$OIFS
-	case "$TERMINAL" in
-	true)
-		# inject terminal handler
-		debug "injected $TERMINAL_HANDLER"
-		IFS=$USEP
-		# shellcheck disable=SC2086
-		set -- "$TERMINAL_HANDLER" $TERMINAL_ARGS_USEP "$@"
-		IFS=$OIFS
-		;;
-	esac
+	set -- "${EXEC_PATH:-$EXEC_NAME}" "$@"
+	inject_terminal_handler_args "$@"
+	IFS=$USEP
+	# shellcheck disable=SC2086
+	set -- $RUN_ARGS_USEP
+	IFS=$OIFS
 	debug "command" "$(printf '  >%s<\n' "$@")"
 	systemd_run "$@"
-fi
+}
+
+main() {
+	initialize_state "$@"
+	configure_unit_slice_choices
+	configure_part_of_gst
+	configure_invocation_mode
+	expand_short_args "$@"
+	parse_cli_options "$EXPANDED_ARGS_USEP"
+	resolve_main_target "$PARSED_ARGS_USEP"
+	resolve_entry_context "$RESOLVED_ARGS_USEP"
+	if [ -n "$ENTRY_ID" ]; then
+		execute_entry_target "$RESOLVED_ARGS_USEP"
+	else
+		execute_direct_target "$RESOLVED_ARGS_USEP"
+	fi
+}
+
+main "$@"

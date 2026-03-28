@@ -4,19 +4,7 @@
 # For future backends, this can be used as a base, just
 # change the hyprctl commands for the desired backend's commands
 
-# shellcheck source=$HOME/.local/bin/hyprshell
-# shellcheck disable=SC1091
-if ! source "$(command -v hyprshell)"; then
-  echo "[hyprshell] code :: Error: hyprshell not found."
-  exit 1
-fi
 source "$(command -v hyprshell)" || exit 1
-
-# ? Be sure the wallpaper daemon is running
-if [[ ! -f "${XDG_RUNTIME_DIR}/hypr/$HYPRLAND_INSTANCE_SIGNATURE/hyprpaper.lock" ]]; then
-  systemctl --user start hyprpaper.service || setsid hyprpaper &
-  sleep 1
-fi
 
 selected_wall="${1:-${WALLPAPER_CURRENT_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wallpaper/current}/wall.set}"
 [ -z "${selected_wall}" ] && echo "No input wallpaper" && exit 1
@@ -34,4 +22,18 @@ fi
 
 # ? Setting wallpaper using hyprctl IPC!
 # https://wiki.hypr.land/Hypr-Ecosystem/hyprpaper/#the-reload-keyword
-hyprctl hyprpaper reload ",${selected_wall}"
+if ! hyprctl hyprpaper reload ",${selected_wall}" >/dev/null 2>&1; then
+  if ! systemctl --user start hyprpaper.service >/dev/null 2>&1; then
+    command -v hyprpaper >/dev/null 2>&1 || {
+      print_log -sec "hyprpaper" -err "hyprpaper backend is unavailable"
+      exit 1
+    }
+    setsid hyprpaper >/dev/null 2>&1 &
+    disown
+  fi
+
+  hyprctl hyprpaper reload ",${selected_wall}" >/dev/null 2>&1 || {
+    print_log -sec "hyprpaper" -err "failed to apply wallpaper"
+    exit 1
+  }
+fi

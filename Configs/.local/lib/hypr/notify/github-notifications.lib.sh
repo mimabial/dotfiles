@@ -259,6 +259,82 @@ refresh_repo_cache() {
   return 0
 }
 
+github_alert_count_file() {
+  jq -r 'if type == "array" then length else 0 end' "$1" 2>/dev/null
+}
+
+github_note_repo_alert_count() {
+  local count_var="$1"
+  local details_var="$2"
+  local repo_name="$3"
+  local alert_count="$4"
+
+  printf -v "${count_var}" '%s' "$(( ${!count_var} + alert_count ))"
+  printf -v "${details_var}" '%s' "${!details_var}"$'\n'"    ${repo_name}: ${alert_count}"
+}
+
+github_note_repo_alert_error() {
+  local failures_var="$1"
+  local first_error_var="$2"
+  local label="$3"
+  local repo="$4"
+  local body_file="$5"
+  local headers_file="$6"
+  local http_code="$7"
+  local fallback="$8"
+  local message context
+
+  printf -v "${failures_var}" '%s' "$(( ${!failures_var} + 1 ))"
+  if [ -n "${!first_error_var}" ]; then
+    return 0
+  fi
+
+  message="$(api_message "$body_file" "$fallback")"
+  context="$(api_context "$headers_file")"
+  printf -v "${first_error_var}" '%s' "${label} endpoint (${repo}): ${message} (HTTP ${http_code})"
+  if [ -n "$context" ]; then
+    printf -v "${first_error_var}" '%s' "${!first_error_var}"$'\n'"${context}"
+  fi
+}
+
+collect_repo_alert_type() {
+  local repo="$1"
+  local repo_name="$2"
+  local endpoint="$3"
+  local label="$4"
+  local count_var="$5"
+  local details_var="$6"
+  local failures_var="$7"
+  local first_error_var="$8"
+  local fallback="$9"
+  local body_file headers_file http_code alert_count message
+
+  body_file="$(mktemp)"
+  headers_file="$(mktemp)"
+  http_code="$(github_get_code "$ALERTS_TOKEN" "$GITHUB_API/repos/$repo/$endpoint?state=open&per_page=100" "$body_file" "$headers_file")"
+
+  case "$http_code" in
+    200)
+      alert_count="$(github_alert_count_file "$body_file")"
+      if [ -n "$alert_count" ] && [[ "$alert_count" =~ ^[0-9]+$ ]] && [ "$alert_count" -gt 0 ]; then
+        github_note_repo_alert_count "$count_var" "$details_var" "$repo_name" "$alert_count"
+      fi
+      ;;
+    404 | 410) ;;
+    403)
+      message="$(api_message "$body_file" "Forbidden")"
+      if ! is_nonfatal_alert_unavailable "$message"; then
+        github_note_repo_alert_error "$failures_var" "$first_error_var" "$label" "$repo" "$body_file" "$headers_file" "$http_code" "$fallback"
+      fi
+      ;;
+    *)
+      github_note_repo_alert_error "$failures_var" "$first_error_var" "$label" "$repo" "$body_file" "$headers_file" "$http_code" "$fallback"
+      ;;
+  esac
+
+  rm -f "$body_file" "$headers_file"
+}
+
 ensure_github_notification_deps() {
   if ! check curl || ! check jq; then
     print_fatal_error "Missing curl or jq"
@@ -338,9 +414,6 @@ collect_github_inbox_state() {
 
 collect_github_security_repo_alerts() {
   local repo repo_name
-  local dep_body dep_headers dep_code dep_count dep_msg dep_context
-  local code_body code_headers code_http code_count code_msg code_context
-  local secret_body secret_headers secret_http secret_count secret_msg secret_context
 
   dep_failed_requests=0
   code_failed_requests=0
@@ -352,177 +425,83 @@ collect_github_security_repo_alerts() {
   while IFS= read -r repo; do
     [ -z "$repo" ] && continue
     repo_name="${repo#*/}"
-
-    dep_body="$(mktemp)"
-    dep_headers="$(mktemp)"
-    dep_code="$(github_get_code "$ALERTS_TOKEN" "$GITHUB_API/repos/$repo/dependabot/alerts?state=open&per_page=100" "$dep_body" "$dep_headers")"
-    case "$dep_code" in
-      200)
-        dep_count="$(jq -r 'if type == "array" then length else 0 end' "$dep_body" 2>/dev/null)"
-        if [ -n "$dep_count" ] && [[ "$dep_count" =~ ^[0-9]+$ ]] && [ "$dep_count" -gt 0 ]; then
-          dependabot_count=$((dependabot_count + dep_count))
-          dependabot_details+=$'\n'"    ${repo_name}: ${dep_count}"
-        fi
-        ;;
-      404 | 410) ;;
-      403)
-        dep_msg="$(api_message "$dep_body" "Forbidden")"
-        if ! is_nonfatal_alert_unavailable "$dep_msg"; then
-          dep_failed_requests=$((dep_failed_requests + 1))
-          if [ -z "$dep_first_error" ]; then
-            dep_context="$(api_context "$dep_headers")"
-            dep_first_error="dependabot endpoint (${repo}): ${dep_msg} (HTTP ${dep_code})"
-            if [ -n "$dep_context" ]; then
-              dep_first_error+=$'\n'"${dep_context}"
-            fi
-          fi
-        fi
-        ;;
-      *)
-        dep_failed_requests=$((dep_failed_requests + 1))
-        if [ -z "$dep_first_error" ]; then
-          dep_msg="$(api_message "$dep_body" "Failed to fetch dependabot alerts")"
-          dep_context="$(api_context "$dep_headers")"
-          dep_first_error="dependabot endpoint (${repo}): ${dep_msg} (HTTP ${dep_code})"
-          if [ -n "$dep_context" ]; then
-            dep_first_error+=$'\n'"${dep_context}"
-          fi
-        fi
-        ;;
-    esac
-    rm -f "$dep_body" "$dep_headers"
-
-    code_body="$(mktemp)"
-    code_headers="$(mktemp)"
-    code_http="$(github_get_code "$ALERTS_TOKEN" "$GITHUB_API/repos/$repo/code-scanning/alerts?state=open&per_page=100" "$code_body" "$code_headers")"
-    case "$code_http" in
-      200)
-        code_count="$(jq -r 'if type == "array" then length else 0 end' "$code_body" 2>/dev/null)"
-        if [ -n "$code_count" ] && [[ "$code_count" =~ ^[0-9]+$ ]] && [ "$code_count" -gt 0 ]; then
-          code_scanning_count=$((code_scanning_count + code_count))
-          code_scanning_details+=$'\n'"    ${repo_name}: ${code_count}"
-        fi
-        ;;
-      404 | 410) ;;
-      403)
-        code_msg="$(api_message "$code_body" "Forbidden")"
-        if ! is_nonfatal_alert_unavailable "$code_msg"; then
-          code_failed_requests=$((code_failed_requests + 1))
-          if [ -z "$code_first_error" ]; then
-            code_context="$(api_context "$code_headers")"
-            code_first_error="code-scanning endpoint (${repo}): ${code_msg} (HTTP ${code_http})"
-            if [ -n "$code_context" ]; then
-              code_first_error+=$'\n'"${code_context}"
-            fi
-          fi
-        fi
-        ;;
-      *)
-        code_failed_requests=$((code_failed_requests + 1))
-        if [ -z "$code_first_error" ]; then
-          code_msg="$(api_message "$code_body" "Failed to fetch code-scanning alerts")"
-          code_context="$(api_context "$code_headers")"
-          code_first_error="code-scanning endpoint (${repo}): ${code_msg} (HTTP ${code_http})"
-          if [ -n "$code_context" ]; then
-            code_first_error+=$'\n'"${code_context}"
-          fi
-        fi
-        ;;
-    esac
-    rm -f "$code_body" "$code_headers"
-
-    secret_body="$(mktemp)"
-    secret_headers="$(mktemp)"
-    secret_http="$(github_get_code "$ALERTS_TOKEN" "$GITHUB_API/repos/$repo/secret-scanning/alerts?state=open&per_page=100" "$secret_body" "$secret_headers")"
-    case "$secret_http" in
-      200)
-        secret_count="$(jq -r 'if type == "array" then length else 0 end' "$secret_body" 2>/dev/null)"
-        if [ -n "$secret_count" ] && [[ "$secret_count" =~ ^[0-9]+$ ]] && [ "$secret_count" -gt 0 ]; then
-          secret_scanning_count=$((secret_scanning_count + secret_count))
-          secret_scanning_details+=$'\n'"    ${repo_name}: ${secret_count}"
-        fi
-        ;;
-      404 | 410) ;;
-      403)
-        secret_msg="$(api_message "$secret_body" "Forbidden")"
-        if ! is_nonfatal_alert_unavailable "$secret_msg"; then
-          secret_failed_requests=$((secret_failed_requests + 1))
-          if [ -z "$secret_first_error" ]; then
-            secret_context="$(api_context "$secret_headers")"
-            secret_first_error="secret-scanning endpoint (${repo}): ${secret_msg} (HTTP ${secret_http})"
-            if [ -n "$secret_context" ]; then
-              secret_first_error+=$'\n'"${secret_context}"
-            fi
-          fi
-        fi
-        ;;
-      *)
-        secret_failed_requests=$((secret_failed_requests + 1))
-        if [ -z "$secret_first_error" ]; then
-          secret_msg="$(api_message "$secret_body" "Failed to fetch secret-scanning alerts")"
-          secret_context="$(api_context "$secret_headers")"
-          secret_first_error="secret-scanning endpoint (${repo}): ${secret_msg} (HTTP ${secret_http})"
-          if [ -n "$secret_context" ]; then
-            secret_first_error+=$'\n'"${secret_context}"
-          fi
-        fi
-        ;;
-    esac
-    rm -f "$secret_body" "$secret_headers"
+    collect_repo_alert_type "$repo" "$repo_name" "dependabot/alerts" "dependabot" dependabot_count dependabot_details dep_failed_requests dep_first_error "Failed to fetch dependabot alerts"
+    collect_repo_alert_type "$repo" "$repo_name" "code-scanning/alerts" "code-scanning" code_scanning_count code_scanning_details code_failed_requests code_first_error "Failed to fetch code-scanning alerts"
+    collect_repo_alert_type "$repo" "$repo_name" "secret-scanning/alerts" "secret-scanning" secret_scanning_count secret_scanning_details secret_failed_requests secret_first_error "Failed to fetch secret-scanning alerts"
   done <"$REPOS_CACHE"
 }
 
-collect_github_security_state() {
-  local cache_is_stale=0
+security_repo_cache_is_stale() {
+  [ ! -s "$REPOS_CACHE" ] || [ -n "$(find "$REPOS_CACHE" -mmin +1440 2>/dev/null)" ]
+}
 
-  if [ ! -s "$REPOS_CACHE" ] || [ -n "$(find "$REPOS_CACHE" -mmin +1440 2>/dev/null)" ]; then
-    cache_is_stale=1
-  fi
+refresh_security_repo_cache_if_needed() {
+  security_repo_cache_is_stale || return 0
 
-  if [ "$cache_is_stale" -eq 1 ]; then
-    if ! refresh_repo_cache; then
-      if [ -s "$REPOS_CACHE" ]; then
-        security_note="Repo refresh failed; using cached list."
-        security_note+=$'\n'"${REPO_REFRESH_ERROR}"
-      else
-        security_available=0
-        security_issue="repos endpoint: ${REPO_REFRESH_ERROR}"
-      fi
-    fi
-  fi
-
-  if security_cache_is_fresh && load_security_cache; then
-    security_from_cache=1
-    if [ -n "$security_issue" ]; then
-      security_note="${security_note:+$security_note$'\n'}Using cached security summary."
-      security_note+=$'\n'"${security_issue}"
-      security_issue=""
-    fi
+  if refresh_repo_cache; then
     return 0
   fi
 
+  if [ -s "$REPOS_CACHE" ]; then
+    security_note="Repo refresh failed; using cached list."
+    security_note+=$'\n'"${REPO_REFRESH_ERROR}"
+  else
+    security_available=0
+    security_issue="repos endpoint: ${REPO_REFRESH_ERROR}"
+  fi
+}
+
+load_cached_security_summary_if_fresh() {
+  security_cache_is_fresh || return 1
+  load_security_cache || return 1
+
+  security_from_cache=1
+  if [ -n "$security_issue" ]; then
+    security_note="${security_note:+$security_note$'\n'}Using cached security summary."
+    security_note+=$'\n'"${security_issue}"
+    security_issue=""
+  fi
+}
+
+collect_live_security_summary() {
   if [ "$security_available" -eq 1 ] && [ -s "$REPOS_CACHE" ]; then
     collect_github_security_repo_alerts
-  elif [ "$security_available" -eq 1 ] && [ ! -s "$REPOS_CACHE" ]; then
+    return 0
+  fi
+
+  if [ "$security_available" -eq 1 ]; then
     security_available=0
     security_issue="repos endpoint: No accessible repositories found for this token/repo selection."
   fi
+}
 
-  if [ "$security_from_cache" -ne 1 ]; then
-    security_count=$((dependabot_count + code_scanning_count + secret_scanning_count))
-
-    if [ "${dep_failed_requests:-0}" -gt 0 ] || [ "${code_failed_requests:-0}" -gt 0 ] || [ "${secret_failed_requests:-0}" -gt 0 ]; then
-      security_note="${security_note:+$security_note$'\n'}Some security endpoint requests failed:"
-      [ "${dep_failed_requests:-0}" -gt 0 ] && security_note+=$'\n'"  dependabot: ${dep_failed_requests} repo request(s)"
-      [ "${code_failed_requests:-0}" -gt 0 ] && security_note+=$'\n'"  code-scanning: ${code_failed_requests} repo request(s)"
-      [ "${secret_failed_requests:-0}" -gt 0 ] && security_note+=$'\n'"  secret-scanning: ${secret_failed_requests} repo request(s)"
-      [ -n "${dep_first_error:-}" ] && security_note+=$'\n'"${dep_first_error}"
-      [ -n "${code_first_error:-}" ] && security_note+=$'\n'"${code_first_error}"
-      [ -n "${secret_first_error:-}" ] && security_note+=$'\n'"${secret_first_error}"
-    fi
-
-    [ "$security_available" -eq 1 ] && save_security_cache >/dev/null 2>&1 || true
+append_security_failure_notes() {
+  if [ "${dep_failed_requests:-0}" -le 0 ] && [ "${code_failed_requests:-0}" -le 0 ] && [ "${secret_failed_requests:-0}" -le 0 ]; then
+    return 0
   fi
+
+  security_note="${security_note:+$security_note$'\n'}Some security endpoint requests failed:"
+  [ "${dep_failed_requests:-0}" -gt 0 ] && security_note+=$'\n'"  dependabot: ${dep_failed_requests} repo request(s)"
+  [ "${code_failed_requests:-0}" -gt 0 ] && security_note+=$'\n'"  code-scanning: ${code_failed_requests} repo request(s)"
+  [ "${secret_failed_requests:-0}" -gt 0 ] && security_note+=$'\n'"  secret-scanning: ${secret_failed_requests} repo request(s)"
+  [ -n "${dep_first_error:-}" ] && security_note+=$'\n'"${dep_first_error}"
+  [ -n "${code_first_error:-}" ] && security_note+=$'\n'"${code_first_error}"
+  [ -n "${secret_first_error:-}" ] && security_note+=$'\n'"${secret_first_error}"
+}
+
+finalize_live_security_summary() {
+  security_count=$((dependabot_count + code_scanning_count + secret_scanning_count))
+  append_security_failure_notes
+  [ "$security_available" -eq 1 ] && save_security_cache >/dev/null 2>&1 || true
+}
+
+collect_github_security_state() {
+  refresh_security_repo_cache_if_needed
+  if load_cached_security_summary_if_fresh; then
+    return 0
+  fi
+  collect_live_security_summary
+  [ "$security_from_cache" -eq 1 ] || finalize_live_security_summary
 }
 
 build_github_notifications_tooltip() {

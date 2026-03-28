@@ -35,52 +35,70 @@ wallpaper_should_apply_colors_async() {
   return 0
 }
 
+wallpaper_link_selected() {
+  local wallpaper_path="${wallList[setIndex]}"
+  ln -fs "${wallpaper_path}" "${active_wallpaper_link}"
+  ln -fs "${wallpaper_path}" "${current_wallpaper_link}"
+  wallpaper_prepare_notification_payload
+}
+
+wallpaper_refresh_hyprlock_background() {
+  command -v hyprlock.sh &>/dev/null || return 0
+  run_low_prio hyprlock.sh --background 202>&- &
+}
+
+wallpaper_run_color_refresh() {
+  HYPR_COLOR_MODE_OVERRIDE="${selected_color_mode}" \
+    run_low_prio "${LIB_DIR}/hypr/theme/color.set.sh" "${wallList[setIndex]}" &>/dev/null
+  [[ -x "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" ]] && "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" >/dev/null 2>&1
+  if declare -F wallpaper_notify_emit >/dev/null 2>&1; then
+    wallpaper_notify_emit "${HYPR_WALLPAPER_NOTIFY_NAME:-}" "${HYPR_WALLPAPER_NOTIFY_ICON:-}"
+  fi
+}
+
+wallpaper_background_post_apply() {
+  local apply_colors="$1"
+
+  {
+    wallpaper_enqueue_cache_jobs -w "${wallList[setIndex]}" || true
+    [[ "${apply_colors}" -eq 1 ]] && wallpaper_run_color_refresh
+  } 202>&- &
+}
+
+wallpaper_ensure_hash() {
+  [[ -n "${wallList[setIndex]:-}" ]] || return 1
+  [[ -n "${wallHash[setIndex]:-}" ]] || wallHash[setIndex]="$(set_hash "${wallList[setIndex]}")"
+  [[ -n "${wallHash[setIndex]:-}" ]]
+}
+
+wallpaper_refresh_thumbnail_links() {
+  if ! wallpaper_ensure_hash; then
+    print_log -warn "wallpaper" "missing hash for ${wallList[setIndex]:-unknown}"
+    return 1
+  fi
+
+  ln -fs "${WALLPAPER_THUMB_DIR}/${wallHash[setIndex]}.sqre" "${current_square_thumbnail_link}"
+  ln -fs "${WALLPAPER_THUMB_DIR}/${wallHash[setIndex]}.thmb" "${current_thumbnail_link}"
+  ln -fs "${WALLPAPER_THUMB_DIR}/${wallHash[setIndex]}.blur" "${current_blur_thumbnail_link}"
+  ln -fs "${WALLPAPER_THUMB_DIR}/${wallHash[setIndex]}.quad" "${current_quad_thumbnail_link}"
+  rm -f "${WALLPAPER_CURRENT_DIR}/wall.fit"
+}
+
 apply_selected_wallpaper() {
   local apply_colors=0
   wallpaper_should_apply_colors_async && apply_colors=1
 
-  # Experimental, set to 1 if stable
   if [[ "${WALLPAPER_RELOAD_ALL:-1}" -eq 1 ]] && [[ ${wallpaper_setter_flag} != "link" ]]; then
     print_log -sec "wallpaper" "Reloading themes and wallpapers"
   fi
 
-  ln -fs "${wallList[setIndex]}" "${active_wallpaper_link}"
-  ln -fs "${wallList[setIndex]}" "${current_wallpaper_link}"
-  wallpaper_prepare_notification_payload
+  wallpaper_link_selected
+  wallpaper_refresh_hyprlock_background
+  [[ "${set_as_global}" == "true" ]] || return 0
 
-  # Update hyprlock background
-  if command -v hyprlock.sh &>/dev/null; then
-    run_low_prio hyprlock.sh --background 202>&- &
-  fi
-
-  if [[ "${set_as_global}" == "true" ]]; then
-    print_log -sec "wallpaper" "Setting Wallpaper as global"
-    {
-      wallpaper_enqueue_cache_jobs -w "${wallList[setIndex]}" || true
-      if [[ "${apply_colors}" -eq 1 ]]; then
-        run_low_prio "${LIB_DIR}/hypr/theme/color.set.sh" "${wallList[setIndex]}" &>/dev/null
-        [[ -x "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" ]] && "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" >/dev/null 2>&1
-        if declare -F wallpaper_notify_emit >/dev/null 2>&1; then
-          wallpaper_notify_emit "${HYPR_WALLPAPER_NOTIFY_NAME:-}" "${HYPR_WALLPAPER_NOTIFY_ICON:-}"
-        fi
-      fi
-    } 202>&- &
-
-    if [[ -n "${wallList[setIndex]:-}" ]] && [[ -z "${wallHash[setIndex]:-}" ]]; then
-      wallHash[setIndex]="$(set_hash "${wallList[setIndex]}")"
-    fi
-
-    if [[ -n "${wallHash[setIndex]:-}" ]]; then
-      ln -fs "${WALLPAPER_THUMB_DIR}/${wallHash[setIndex]}.sqre" "${current_square_thumbnail_link}"
-      ln -fs "${WALLPAPER_THUMB_DIR}/${wallHash[setIndex]}.thmb" "${current_thumbnail_link}"
-      ln -fs "${WALLPAPER_THUMB_DIR}/${wallHash[setIndex]}.blur" "${current_blur_thumbnail_link}"
-      ln -fs "${WALLPAPER_THUMB_DIR}/${wallHash[setIndex]}.quad" "${current_quad_thumbnail_link}"
-    else
-      print_log -warn "wallpaper" "missing hash for ${wallList[setIndex]:-unknown}"
-    fi
-
-    rm -f "${WALLPAPER_CURRENT_DIR}/wall.fit"
-  fi
+  print_log -sec "wallpaper" "Setting Wallpaper as global"
+  wallpaper_background_post_apply "${apply_colors}"
+  wallpaper_refresh_thumbnail_links
 }
 
 select_adjacent_wallpaper() {

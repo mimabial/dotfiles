@@ -9,14 +9,7 @@ HYPR_THEME_DIR="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}"
 
 # Lock file to prevent concurrent wallpaper operations.
 wallpaper_wait_for_lock="${WALLPAPER_WAIT_FOR_LOCK:-0}"
-if [[ "${wallpaper_wait_for_lock}" -ne 1 ]]; then
-  for wallpaper_arg in "$@"; do
-    if [[ "${wallpaper_arg}" == "--wait-lock" ]]; then
-      wallpaper_wait_for_lock=1
-      break
-    fi
-  done
-fi
+[[ "${wallpaper_wait_for_lock}" -ne 1 ]] && [[ " $* " == *" --wait-lock "* ]] && wallpaper_wait_for_lock=1
 WALLPAPER_LOCK="$(hypr_lock_path wallpaper_switch)"
 exec 202>"${WALLPAPER_LOCK}"
 ! flock -n 202 && {
@@ -40,11 +33,14 @@ wallpaper_source_lib() {
   source "${lib_file}"
 }
 
-wallpaper_source_lib "${LIB_DIR}/hypr/wallpaper/lib/wallpaper.common.bash" || exit 1
-wallpaper_source_lib "${LIB_DIR}/hypr/wallpaper/lib/wallpaper.catalog.bash" || exit 1
-wallpaper_source_lib "${LIB_DIR}/hypr/wallpaper/lib/wallpaper.thumbs.bash" || exit 1
-wallpaper_source_lib "${LIB_DIR}/hypr/wallpaper/lib/wallpaper.actions.bash" || exit 1
-wallpaper_source_lib "${LIB_DIR}/hypr/wallpaper/lib/wallpaper.ui.bash" || exit 1
+for wallpaper_lib in \
+  wallpaper.common.bash \
+  wallpaper.catalog.bash \
+  wallpaper.thumbs.bash \
+  wallpaper.actions.bash \
+  wallpaper.ui.bash; do
+  wallpaper_source_lib "${LIB_DIR}/hypr/wallpaper/lib/${wallpaper_lib}" || exit 1
+done
 
 wallpaper_set_paths() {
   if [[ "${set_as_global}" == "true" ]]; then
@@ -65,7 +61,8 @@ wallpaper_set_paths() {
 }
 
 wallpaper_apply_backend() {
-  if [[ -f "${LIB_DIR}/hypr/wallpaper/wallpaper.${wallpaper_backend}.sh" ]] && [[ -n "${wallpaper_backend}" ]]; then
+  [[ -n "${wallpaper_backend}" ]] || return 0
+  if [[ -f "${LIB_DIR}/hypr/wallpaper/wallpaper.${wallpaper_backend}.sh" ]]; then
     print_log -sec "wallpaper" "Using backend: ${wallpaper_backend}"
     "${LIB_DIR}/hypr/wallpaper/wallpaper.${wallpaper_backend}.sh" "${active_wallpaper_link}"
     return
@@ -81,11 +78,9 @@ wallpaper_apply_backend() {
 
 wallpaper_action_emits_notification() {
   case "${wallpaper_setter_flag:-}" in
-    select | n | p | r | resume | s)
-      return 0
-      ;;
+    select | n | p | r | resume | s) return 0 ;;
+    *) return 1 ;;
   esac
-  return 1
 }
 
 wallpaper_notify_send() {
@@ -119,33 +114,24 @@ wallpaper_notify_emit() {
   local notify_icon="${2:-${HYPR_WALLPAPER_NOTIFY_ICON:-${selected_thumbnail:-}}}"
   local notify_body="${3:-${wallpaper_notify_body:-}}"
   local -a notify_args=()
+  local notify_title="${notify_name}"
 
   [[ -n "${notify_icon}" ]] && notify_args+=(-i "${notify_icon}")
+  [[ "${set_as_global}" == "true" ]] || notify_title="${notify_name} set for ${wallpaper_backend}"
 
-  if [[ "${set_as_global}" == "true" ]]; then
-    if [[ -n "${notify_body}" ]]; then
-      wallpaper_notify_send 2000 "${notify_args[@]}" "${notify_name}" "${notify_body}"
-    else
-      wallpaper_notify_send 2000 "${notify_args[@]}" "${notify_name}"
-    fi
+  if [[ -n "${notify_body}" ]]; then
+    wallpaper_notify_send 2000 "${notify_args[@]}" "${notify_title}" "${notify_body}"
   else
-    if [[ -n "${notify_body}" ]]; then
-      wallpaper_notify_send 2000 "${notify_args[@]}" "${notify_name} set for ${wallpaper_backend}" "${notify_body}"
-    else
-      wallpaper_notify_send 2000 "${notify_args[@]}" "${notify_name} set for ${wallpaper_backend}"
-    fi
+    wallpaper_notify_send 2000 "${notify_args[@]}" "${notify_title}"
   fi
 }
 
 wallpaper_refresh_inventory_if_needed() {
   case "${wallpaper_setter_flag:-}" in
-    n | p | r)
-      wallpaper_refresh_inventory_and_prune_async
-      return 0
-      ;;
+    n | p | r) wallpaper_refresh_inventory_and_prune_async ;;
     g | o | clean | link | resume | s | start | select | "") return 0 ;;
+    *) wallpaper_refresh_inventory_and_prune ;;
   esac
-  wallpaper_refresh_inventory_and_prune
 }
 
 random_wallpaper_index() {
@@ -167,8 +153,7 @@ random_wallpaper_index() {
   done
 }
 
-main() {
-  # Full cache variables are required for write/apply operations.
+require_wallpaper_backend() {
   if [[ -z "${wallpaper_backend}" ]] \
     && [[ "${wallpaper_setter_flag}" != "o" ]] \
     && [[ "${wallpaper_setter_flag}" != "g" ]] \
@@ -180,98 +165,265 @@ main() {
     print_log -sec "wallpaper" " See available commands: '--help | -h'"
     exit 1
   fi
+}
 
-  wallpaper_set_paths
-  wallpaper_refresh_inventory_if_needed
-
-  # Repair a broken active wallpaper link only for the plain apply path.
-  # Navigation actions handle a missing current wallpaper explicitly.
+repair_active_wallpaper_link_if_needed() {
   if [[ -z "${wallpaper_setter_flag}" ]] && [[ ! -e "${active_wallpaper_link}" ]]; then
     Wall_Hash --repair-link
   fi
+}
 
-  if [[ -n "${wallpaper_setter_flag}" ]]; then
-    export WALLPAPER_SET_FLAG="${wallpaper_setter_flag}"
-    case "${wallpaper_setter_flag}" in
-      n)
-        Wall_Hash
-        select_adjacent_wallpaper n
-        ;;
-      p)
-        Wall_Hash
-        select_adjacent_wallpaper p
-        ;;
-      r)
-        Wall_Hash
-        setIndex="$(random_wallpaper_index "${#wallList[@]}")" || exit 1
-        apply_selected_wallpaper "${wallList[setIndex]}"
-        ;;
-      s)
-        if [[ -z "${wallpaper_path}" ]] || [[ ! -f "${wallpaper_path}" ]]; then
-          print_log -err "wallpaper" "Wallpaper not found: ${wallpaper_path}"
-          exit 1
-        fi
-        get_hashmap "${wallpaper_path}"
-        apply_selected_wallpaper
-        ;;
-      resume)
-        Wall_Hash
-        current_wallpaper="$(wallpaper_resolve_path "${active_wallpaper_link}")"
-        found=false
-        for i in "${!wallList[@]}"; do
-          if [[ "${current_wallpaper}" == "${wallList[i]}" ]]; then
-            setIndex=$i
-            found=true
-            break
-          fi
-        done
-        if [[ "${found}" != true ]]; then
-          setIndex=0
-          print_log -sec "wallpaper" -warn "wall.set not in current theme, using first wallpaper"
-        fi
-        apply_selected_wallpaper
-        ;;
-      start)
-        if [[ ! -e "${active_wallpaper_link}" ]]; then
-          print_log -err "wallpaper" "No current wallpaper found: ${active_wallpaper_link}"
-          exit 1
-        fi
-        export WALLPAPER_RELOAD_ALL=0 PYWAL_STARTUP=1
-        current_wallpaper="$(realpath "${active_wallpaper_link}")"
-        get_hashmap "${current_wallpaper}"
-        apply_selected_wallpaper
-        ;;
-      g)
-        if [[ ! -e "${active_wallpaper_link}" ]]; then
-          print_log -err "wallpaper" "Wallpaper not found: ${active_wallpaper_link}"
-          exit 1
-        fi
-        realpath "${active_wallpaper_link}"
-        exit 0
-        ;;
-      o)
-        if [[ -n "${wallpaper_output}" ]]; then
-          print_log -sec "wallpaper" "Current wallpaper copied to: ${wallpaper_output}"
-          cp -f "${active_wallpaper_link}" "${wallpaper_output}"
-        fi
-        ;;
-      clean)
-        Wall_Clean_Thumbs
-        exit 0
-        ;;
-      select)
-        Wall_Select
-        get_hashmap "${selected_wallpaper_path}"
-        apply_selected_wallpaper
-        ;;
-      link)
-        Wall_Hash
-        apply_selected_wallpaper
-        exit 0
-        ;;
-    esac
+wallpaper_action_next() {
+  Wall_Hash
+  select_adjacent_wallpaper n
+}
+
+wallpaper_action_previous() {
+  Wall_Hash
+  select_adjacent_wallpaper p
+}
+
+wallpaper_action_random() {
+  Wall_Hash
+  setIndex="$(random_wallpaper_index "${#wallList[@]}")" || exit 1
+  apply_selected_wallpaper "${wallList[setIndex]}"
+}
+
+wallpaper_action_set_file() {
+  if [[ -z "${wallpaper_path}" ]] || [[ ! -f "${wallpaper_path}" ]]; then
+    print_log -err "wallpaper" "Wallpaper not found: ${wallpaper_path}"
+    exit 1
+  fi
+  get_hashmap "${wallpaper_path}"
+  apply_selected_wallpaper
+}
+
+wallpaper_action_resume() {
+  local current_wallpaper=""
+  local found=false
+  local i=""
+
+  Wall_Hash
+  current_wallpaper="$(wallpaper_resolve_path "${active_wallpaper_link}")"
+  for i in "${!wallList[@]}"; do
+    if [[ "${current_wallpaper}" == "${wallList[i]}" ]]; then
+      setIndex=$i
+      found=true
+      break
+    fi
+  done
+
+  if [[ "${found}" != true ]]; then
+    setIndex=0
+    print_log -sec "wallpaper" -warn "wall.set not in current theme, using first wallpaper"
   fi
 
+  apply_selected_wallpaper
+}
+
+wallpaper_action_start() {
+  local current_wallpaper=""
+
+  if [[ ! -e "${active_wallpaper_link}" ]]; then
+    print_log -err "wallpaper" "No current wallpaper found: ${active_wallpaper_link}"
+    exit 1
+  fi
+
+  export WALLPAPER_RELOAD_ALL=0 PYWAL_STARTUP=1
+  current_wallpaper="$(realpath "${active_wallpaper_link}")"
+  get_hashmap "${current_wallpaper}"
+  apply_selected_wallpaper
+}
+
+wallpaper_action_get() {
+  if [[ ! -e "${active_wallpaper_link}" ]]; then
+    print_log -err "wallpaper" "Wallpaper not found: ${active_wallpaper_link}"
+    exit 1
+  fi
+  realpath "${active_wallpaper_link}"
+  exit 0
+}
+
+wallpaper_action_output() {
+  [[ -n "${wallpaper_output}" ]] || return 0
+  print_log -sec "wallpaper" "Current wallpaper copied to: ${wallpaper_output}"
+  cp -f "${active_wallpaper_link}" "${wallpaper_output}"
+}
+
+wallpaper_action_select() {
+  Wall_Select
+  get_hashmap "${selected_wallpaper_path}"
+  apply_selected_wallpaper
+}
+
+wallpaper_action_link() {
+  Wall_Hash
+  apply_selected_wallpaper
+  exit 0
+}
+
+handle_wallpaper_action() {
+  [[ -n "${wallpaper_setter_flag}" ]] || return 0
+
+  export WALLPAPER_SET_FLAG="${wallpaper_setter_flag}"
+  case "${wallpaper_setter_flag}" in
+    n) wallpaper_action_next ;;
+    p) wallpaper_action_previous ;;
+    r) wallpaper_action_random ;;
+    s) wallpaper_action_set_file ;;
+    resume) wallpaper_action_resume ;;
+    start) wallpaper_action_start ;;
+    g) wallpaper_action_get ;;
+    o) wallpaper_action_output ;;
+    clean) Wall_Clean_Thumbs; exit 0 ;;
+    select) wallpaper_action_select ;;
+    link) wallpaper_action_link ;;
+  esac
+}
+
+set_wallpaper_filetypes_override() {
+  IFS=':' read -r -a WALLPAPER_OVERRIDE_FILETYPES <<<"$1"
+  if [[ "${LOG_LEVEL}" == "debug" ]]; then
+    for i in "${WALLPAPER_OVERRIDE_FILETYPES[@]}"; do
+      print_log -g "DEBUG:" -b "filetype overrides : " "'${i}'"
+    done
+  fi
+  export WALLPAPER_OVERRIDE_FILETYPES
+}
+
+wallpaper_set_action_flag() {
+  wallpaper_setter_flag="$1"
+  WALLPAPER_SHIFT=1
+}
+
+wallpaper_parse_immediate_option() {
+  case "$1" in
+    -j | --json)
+      Wall_Json
+      exit 0
+      ;;
+    -h | --help)
+      show_help
+      WALLPAPER_SHIFT=1
+      return 0
+      ;;
+  esac
+
+  return 1
+}
+
+wallpaper_parse_action_flag_option() {
+  case "$1" in
+    --clean-thumbs) wallpaper_set_action_flag clean ;;
+    --link) wallpaper_set_action_flag link ;;
+    -S | --select) wallpaper_set_action_flag select ;;
+    -n | --next) wallpaper_set_action_flag n ;;
+    -p | --previous) wallpaper_set_action_flag p ;;
+    -r | --random) wallpaper_set_action_flag r ;;
+    --resume) wallpaper_set_action_flag resume ;;
+    --start) wallpaper_set_action_flag start ;;
+    -g | --get) wallpaper_set_action_flag g ;;
+    *) return 1 ;;
+  esac
+
+  return 0
+}
+
+wallpaper_parse_control_flag_option() {
+  case "$1" in
+    -G | --global)
+      set_as_global=true
+      WALLPAPER_SHIFT=1
+      ;;
+    --wait-lock)
+      wallpaper_wait_for_lock=1
+      WALLPAPER_SHIFT=1
+      ;;
+    --)
+      WALLPAPER_SHIFT=-1
+      ;;
+    *) return 1 ;;
+  esac
+
+  return 0
+}
+
+wallpaper_parse_value_option() {
+  case "$1" in
+    -s | --set)
+      wallpaper_setter_flag=s
+      wallpaper_path="${2}"
+      WALLPAPER_SHIFT=2
+      ;;
+    -b | --backend)
+      wallpaper_backend="${2:-$WALLPAPER_BACKEND}"
+      WALLPAPER_SHIFT=2
+      ;;
+    -o | --output)
+      wallpaper_setter_flag=o
+      wallpaper_output="${2}"
+      WALLPAPER_SHIFT=2
+      ;;
+    -t | --filetypes)
+      set_wallpaper_filetypes_override "$2"
+      WALLPAPER_SHIFT=2
+      ;;
+    --notify-body)
+      wallpaper_notify_body="${2}"
+      WALLPAPER_SHIFT=2
+      ;;
+    *) return 1 ;;
+  esac
+
+  return 0
+}
+
+parse_wallpaper_option() {
+  WALLPAPER_SHIFT=0
+  wallpaper_parse_immediate_option "$1" && return 0
+  wallpaper_parse_action_flag_option "$1" && return 0
+  wallpaper_parse_control_flag_option "$1" && return 0
+  wallpaper_parse_value_option "$1" "${2:-}" && return 0
+
+  echo "Invalid option: $1"
+  echo "Try '$(basename "$0") --help' for more information."
+  exit 1
+}
+
+parse_wallpaper_args() {
+  local parsed=""
+
+  LONGOPTS="link,global,select,json,clean-thumbs,next,previous,random,resume,set:,start,backend:,get,output:,help,filetypes:,notify-body:,wait-lock"
+  parsed="$(getopt --options GSjnprb:s:t:go:h --longoptions "${LONGOPTS}" --name "$0" -- "$@")" || exit 2
+
+  WALLPAPER_OVERRIDE_FILETYPES=()
+  wallpaper_backend="${WALLPAPER_BACKEND:-swww}"
+  wallpaper_setter_flag=""
+  set_as_global="${set_as_global:-false}"
+  wallpaper_notify_body=""
+
+  eval set -- "${parsed}"
+  while true; do
+    parse_wallpaper_option "$@"
+    case "${WALLPAPER_SHIFT}" in
+      -1)
+        shift
+        break
+        ;;
+      *)
+        shift "${WALLPAPER_SHIFT}"
+        ;;
+    esac
+  done
+}
+
+main() {
+  require_wallpaper_backend
+
+  wallpaper_set_paths
+  wallpaper_refresh_inventory_if_needed
+  repair_active_wallpaper_link_if_needed
+  handle_wallpaper_action
   wallpaper_apply_backend
   Wall_Precache_Thumbs
   wallpaper_notify_result
@@ -282,111 +434,5 @@ if [[ -z "${*}" ]]; then
   show_help
 fi
 
-LONGOPTS="link,global,select,json,clean-thumbs,next,previous,random,resume,set:,start,backend:,get,output:,help,filetypes:,notify-body:,wait-lock"
-
-if ! PARSED=$(getopt --options GSjnprb:s:t:go:h --longoptions "${LONGOPTS}" --name "$0" -- "$@"); then
-  exit 2
-fi
-
-WALLPAPER_OVERRIDE_FILETYPES=()
-wallpaper_backend="${WALLPAPER_BACKEND:-swww}"
-wallpaper_setter_flag=""
-set_as_global="${set_as_global:-false}"
-wallpaper_notify_body=""
-
-# Apply parsed options.
-eval set -- "${PARSED}"
-while true; do
-  case "$1" in
-    -G | --global)
-      set_as_global=true
-      shift
-      ;;
-    --clean-thumbs)
-      wallpaper_setter_flag=clean
-      shift
-      ;;
-    --link)
-      wallpaper_setter_flag="link"
-      shift
-      ;;
-    -j | --json)
-      Wall_Json
-      exit 0
-      ;;
-    -S | --select)
-      wallpaper_setter_flag=select
-      shift
-      ;;
-    -n | --next)
-      wallpaper_setter_flag=n
-      shift
-      ;;
-    -p | --previous)
-      wallpaper_setter_flag=p
-      shift
-      ;;
-    -r | --random)
-      wallpaper_setter_flag=r
-      shift
-      ;;
-    -s | --set)
-      wallpaper_setter_flag=s
-      wallpaper_path="${2}"
-      shift 2
-      ;;
-    --resume)
-      wallpaper_setter_flag=resume
-      shift
-      ;;
-    --start)
-      wallpaper_setter_flag=start
-      shift
-      ;;
-    -g | --get)
-      wallpaper_setter_flag=g
-      shift
-      ;;
-    -b | --backend)
-      wallpaper_backend="${2:-$WALLPAPER_BACKEND}"
-      shift 2
-      ;;
-    -o | --output)
-      wallpaper_setter_flag=o
-      wallpaper_output="${2}"
-      shift 2
-      ;;
-    -t | --filetypes)
-      IFS=':' read -r -a WALLPAPER_OVERRIDE_FILETYPES <<<"$2"
-      if [[ "${LOG_LEVEL}" == "debug" ]]; then
-        for i in "${WALLPAPER_OVERRIDE_FILETYPES[@]}"; do
-          print_log -g "DEBUG:" -b "filetype overrides : " "'${i}'"
-        done
-      fi
-      export WALLPAPER_OVERRIDE_FILETYPES
-      shift 2
-      ;;
-    --notify-body)
-      wallpaper_notify_body="${2}"
-      shift 2
-      ;;
-    --wait-lock)
-      wallpaper_wait_for_lock=1
-      shift
-      ;;
-    -h | --help)
-      show_help
-      ;;
-    --)
-      shift
-      break
-      ;;
-    *)
-      echo "Invalid option: $1"
-      echo "Try '$(basename "$0") --help' for more information."
-      exit 1
-      ;;
-  esac
-done
-
+parse_wallpaper_args "$@"
 main

@@ -103,7 +103,7 @@ main() {
     si) search installed ;;
     sa) search all ;;
     f | fetch) fetch ;;
-    w | which) which ;;
+    w | which) show_pm ;;
     pq | query) is_installed "$@" ;;
     fq | file-query) file_query "$@" ;;
     *) die_wrong_usage "invalid <command> argument '$COMMAND'" ;;
@@ -164,7 +164,7 @@ search() {
     fi
 }
 
-which() {
+show_pm() {
     echo "$PM"
 }
 
@@ -172,22 +172,14 @@ is_installed() {
     if [ $# -eq 0 ]; then
         die_wrong_usage "expected <pkg> argument"
     fi
-    if command -v "${PM}_is_installed" >/dev/null 2>&1; then
-        "${PM}_is_installed" "$1"
-    else
-        die "is-installed command is not supported for package manager '$PM'"
-    fi
+    pm_is_installed "$1"
 }
 
 file_query() {
     if [ $# -eq 0 ]; then
         die_wrong_usage "expected <file> argument"
     fi
-    if command -v "${PM}_file_query" >/dev/null 2>&1; then
-        "${PM}_file_query" "$1"
-    else
-        die "file-query command is not supported for package manager '$PM'"
-    fi
+    pm_file_query "$1"
 }
 
 # =============================================================================
@@ -274,32 +266,106 @@ pm_detect() {
 }
 
 pm_install() {
-    "${PM}_install" "$@"
+    case "$PM" in
+    pacman) pacman_install "$@" ;;
+    paru | yay) "$PM" -S --needed "$@" ;;
+    flatpak) flatpak install -y "$@" ;;
+    *) die "install is not supported for package manager '$PM'" ;;
+    esac
 }
 
 pm_remove() {
-    "${PM}_remove" "$@"
+    case "$PM" in
+    pacman | paru | yay) "$PM" -Rsc "$@" ;;
+    flatpak) flatpak uninstall -y "$@" ;;
+    *) die "remove is not supported for package manager '$PM'" ;;
+    esac
 }
 
 pm_upgrade() {
-    "${PM}_upgrade"
+    case "$PM" in
+    pacman | paru | yay) "$PM" -Su ;;
+    flatpak) flatpak update -y ;;
+    *) die "upgrade is not supported for package manager '$PM'" ;;
+    esac
 }
 
 pm_fetch() {
-    "${PM}_fetch"
+    case "$PM" in
+    pacman | paru | yay) "$PM" -Sy ;;
+    flatpak) flatpak update --appstream ;;
+    *) die "fetch is not supported for package manager '$PM'" ;;
+    esac
     current_date >"$PM_CACHE_DIR/last-fetch"
 }
 
 pm_info() {
-    "${PM}_info" "$1"
+    case "$PM" in
+    pacman) pacman_info "$1" ;;
+    paru | yay) "$PM" -Si --color="$PM_COLOR" "$1" ;;
+    flatpak) flatpak info "$1" ;;
+    *) die "info is not supported for package manager '$PM'" ;;
+    esac
 }
 
 pm_list() {
-    "${PM}_list_$1"
+    case "${PM}:$1" in
+    pacman:all) pacman_list_all ;;
+    yay:all) yay_list_all ;;
+    paru:all) paru -Sl --color=never | awk '{ print $2 " " $1 " " $3 " " $4 }' ;;
+    pacman:installed | paru:installed | yay:installed) "$PM" -Q --color=never ;;
+    flatpak:all) flatpak remote-ls --columns=name,application,version ;;
+    flatpak:installed) flatpak list --columns=name,application,version ;;
+    *) die "list '$1' is not supported for package manager '$PM'" ;;
+    esac
 }
 
 pm_format() {
-    "${PM}_format_$1"
+    case "${PM}:$1" in
+    flatpak:all | flatpak:installed)
+        awk "{ print $FMT_NAME \$1 $FMT_GROUP \$2 $FMT_VERSION \$3 $FMT_RESET }"
+        ;;
+    *:all)
+        awk "{ print $FMT_NAME \$1 $FMT_GROUP \$2 $FMT_VERSION \$3 $FMT_STATUS \$4 $FMT_RESET }"
+        ;;
+    *:installed)
+        awk "{ print $FMT_NAME \$1 $FMT_VERSION \$2 $FMT_RESET }"
+        ;;
+    *)
+        die "format '$1' is not supported for package manager '$PM'"
+        ;;
+    esac
+}
+
+pm_query_status() {
+    if [ "$1" = 0 ]; then
+        echo "Installed"
+        return 0
+    fi
+    echo "Not installed"
+    return 1
+}
+
+pm_is_installed() {
+    case "$PM" in
+    pacman | paru | yay)
+        if "$PM" -Q "$1" >/dev/null 2>&1; then
+            pm_query_status 0
+        else
+            pm_query_status 1
+        fi
+        ;;
+    flatpak)
+        if flatpak list --columns=application | grep -qx -- "$1"; then
+            pm_query_status 0
+        else
+            pm_query_status 1
+        fi
+        ;;
+    *)
+        die "query is not supported for package manager '$PM'"
+        ;;
+    esac
 }
 
 # =============================================================================
@@ -319,18 +385,6 @@ pacman_install() {
     sudo pacman -S --needed "$@"
 }
 
-pacman_remove() {
-    sudo pacman -Rsc "$@"
-}
-
-pacman_upgrade() {
-    sudo pacman -Su
-}
-
-pacman_fetch() {
-    sudo pacman -Sy
-}
-
 pacman_info() {
     if aur_helpers_contain "$1"; then
         aur_helpers_info "$1"
@@ -342,26 +396,6 @@ pacman_info() {
 pacman_list_all() {
     pacman -Sl --color=never | awk '{ print $2 " " $1 " " $3 " " $4 }'
     aur_helpers_list
-}
-
-pacman_list_installed() {
-    pacman -Q --color=never
-}
-
-pacman_format_all() {
-    awk "{ print $FMT_NAME \$1 $FMT_GROUP \$2 $FMT_VERSION \$3 $FMT_STATUS \$4 $FMT_RESET }"
-}
-
-pacman_format_installed() {
-    awk "{ print $FMT_NAME \$1 $FMT_VERSION \$2 $FMT_RESET }"
-}
-
-pacman_is_installed() {
-    pacman -Q "$1" >/dev/null 2>&1 && echo "Installed" || { echo "Not installed" && return 1; }
-}
-
-pacman_file_query() {
-    pacman -F "$1"
 }
 
 # =============================================================================
@@ -403,73 +437,9 @@ aur_helpers_list() {
 # Paru
 # =============================================================================
 
-paru_install() {
-    paru -S --needed "$@"
-}
-
-paru_remove() {
-    paru -Rsc "$@"
-}
-
-paru_upgrade() {
-    paru -Su
-}
-
-paru_fetch() {
-    paru -Sy
-}
-
-paru_info() {
-    paru -Si --color="$PM_COLOR" "$1"
-}
-
-paru_list_all() {
-    paru -Sl --color=never | awk '{ print $2 " " $1 " " $3 " " $4 }'
-}
-
-paru_list_installed() {
-    paru -Q --color=never
-}
-
-paru_format_all() {
-    awk "{ print $FMT_NAME \$1 $FMT_GROUP \$2 $FMT_VERSION \$3 $FMT_STATUS \$4 $FMT_RESET }"
-}
-
-paru_format_installed() {
-    awk "{ print $FMT_NAME \$1 $FMT_VERSION \$2 $FMT_RESET }"
-}
-
-paru_is_installed() {
-    paru -Q "$1" >/dev/null 2>&1 && echo "Installed" || { echo "Not installed" && return 1; }
-}
-
-paru_file_query() {
-    paru -F -- "$1"
-}
-
 # =============================================================================
 # Yay
 # =============================================================================
-
-yay_install() {
-    yay -S --needed "$@"
-}
-
-yay_remove() {
-    yay -Rsc "$@"
-}
-
-yay_upgrade() {
-    yay -Su
-}
-
-yay_fetch() {
-    yay -Sy
-}
-
-yay_info() {
-    yay -Si --color="$PM_COLOR" "$1"
-}
 
 yay_list_all() {
     # We want non-AUR results first and pacman is also much faster than yay here.
@@ -479,73 +449,17 @@ yay_list_all() {
     } | awk '{ print $2 " " $1 " " $3 " " $4 }'
 }
 
-yay_list_installed() {
-    yay -Q --color=never
-}
-
-yay_format_all() {
-    awk "{ print $FMT_NAME \$1 $FMT_GROUP \$2 $FMT_VERSION \$3 $FMT_STATUS \$4 $FMT_RESET }"
-}
-
-yay_format_installed() {
-    awk "{ print $FMT_NAME \$1 $FMT_VERSION \$2 $FMT_RESET }"
-}
-
-yay_is_installed() {
-    yay -Q "$1" >/dev/null 2>&1 && echo "Installed" || { echo "Not installed" && return 1; }
-}
-
-yay_file_query() {
-    yay -F -- "$1"
-}
-
-# =============================================================================
-# Flatpak
-# =============================================================================
-
-flatpak_install() {
-    flatpak install -y "$@"
-}
-
-flatpak_remove() {
-    flatpak uninstall -y "$@"
-}
-
-flatpak_fetch() {
-    flatpak update --appstream
-}
-
-flatpak_upgrade() {
-    flatpak update -y
-}
-
-flatpak_info() {
-    flatpak info "$1"
-}
-
-flatpak_list_all() {
-    flatpak remote-ls --columns=name,application,version
-}
-
-flatpak_list_installed() {
-    flatpak list --columns=name,application,version
-}
-
-flatpak_format_all() {
-    awk "{ print $FMT_NAME \$1 $FMT_GROUP \$2 $FMT_VERSION \$3 $FMT_RESET }"
-}
-
-flatpak_format_installed() {
-    awk "{ print $FMT_NAME \$1 $FMT_GROUP \$2 $FMT_VERSION \$3 $FMT_RESET }"
-}
-
-flatpak_is_installed() {
-    flatpak list --columns=application | grep -q "^$1$" && echo "Installed" || { echo "Not installed" && return 1; }
-}
-
-flatpak_file_query() {
-    echo "file-query is not supported for Flatpak" >&2
-    exit 1
+pm_file_query() {
+    case "$PM" in
+    pacman | paru | yay) "$PM" -F -- "$1" ;;
+    flatpak)
+        echo "file-query is not supported for Flatpak" >&2
+        return 1
+        ;;
+    *)
+        die "file-query is not supported for package manager '$PM'"
+        ;;
+    esac
 }
 
 # =============================================================================

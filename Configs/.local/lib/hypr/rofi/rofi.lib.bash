@@ -3,14 +3,28 @@
 rofi_effective_font_scale() {
   local requested_scale="${1:-}"
   local scale="${requested_scale}"
-  [[ "${scale}" =~ ^[0-9]+$ ]] || scale="${ROFI_SCALE:-10}"
+  if [[ -n "${scale}" && ! "${scale}" =~ ^[0-9]+$ ]]; then
+    printf 'WARN: invalid explicit rofi font scale: %s\n' "${scale}" >&2
+    scale=""
+  fi
+  if [[ -z "${scale}" ]]; then
+    scale="${ROFI_SCALE:-}"
+    if [[ -n "${scale}" && ! "${scale}" =~ ^[0-9]+$ ]]; then
+      printf 'WARN: invalid ROFI_SCALE: %s\n' "${scale}" >&2
+      scale=""
+    fi
+  fi
+  [[ -n "${scale}" ]] || scale="10"
   printf '%s\n' "${scale}"
 }
 
 rofi_effective_font_name() {
   local requested_font="${1:-}"
   local font_name="${requested_font}"
-  font_name=${font_name:-$(hyprshell fonts/font-get.sh menu 2>/dev/null || true)}
+  if [[ -z "${font_name}" ]]; then
+    font_name="$(hypr_config_value_from_layers "MENU_FONT" || true)"
+    [[ -n "${font_name}" ]] || font_name="$(hypr_config_value_from_layers "FONT" || true)"
+  fi
   font_name=${font_name:-monospace}
   printf '%s\n' "${font_name}"
 }
@@ -424,9 +438,16 @@ rofi_icon_theme_override() {
 }
 
 rofi_focused_monitor_logical_size() {
-  local mon_size mon_width mon_height mon_scale logical_width logical_height
-  mon_size="$(hyprctl -j monitors 2>/dev/null | jq -r '.[] | select(.focused==true) | if (.transform % 2 == 0) then "\(.width) \(.height) \(.scale)" else "\(.height) \(.width) \(.scale)" end' | head -n 1)"
-  read -r mon_width mon_height mon_scale <<<"${mon_size:-1920 1080 1}"
+  local monitor_line=""
+  local mon_width mon_height mon_scale logical_width logical_height
+
+  monitor_line="$(rofi_focused_monitor_record 2>/dev/null || true)"
+  if [[ -z "${monitor_line}" ]]; then
+    printf '1920 1080\n'
+    return 0
+  fi
+
+  IFS=$'\t' read -r mon_width mon_height mon_scale _ <<<"${monitor_line}"
   [[ "${mon_scale}" =~ ^[0-9]+([.][0-9]+)?$ ]] || mon_scale=1
   logical_width="$(awk -v w="${mon_width}" -v s="${mon_scale}" 'BEGIN { if (s + 0 <= 0) s = 1; v = int(w / s); if (v < 1) v = 1; print v }')"
   logical_height="$(awk -v h="${mon_height}" -v s="${mon_scale}" 'BEGIN { if (s + 0 <= 0) s = 1; v = int(h / s); if (v < 1) v = 1; print v }')"
@@ -434,10 +455,12 @@ rofi_focused_monitor_logical_size() {
 }
 
 rofi_focused_monitor_logical_width_precise() {
-  local mon_data mon_width mon_scale
-  mon_data="$(hyprctl -j monitors 2>/dev/null || true)"
-  mon_width="$(jq -r '.[] | select(.focused==true) | .width' <<<"${mon_data}" 2>/dev/null | head -1)"
-  mon_scale="$(jq -r '.[] | select(.focused==true) | .scale' <<<"${mon_data}" 2>/dev/null | head -1)"
+  local monitor_line=""
+  local mon_width mon_scale
+
+  monitor_line="$(rofi_focused_monitor_record 2>/dev/null || true)"
+  [[ -n "${monitor_line}" ]] || return 0
+  IFS=$'\t' read -r mon_width _ mon_scale _ <<<"${monitor_line}"
 
   if [[ "${mon_width}" =~ ^[0-9]+$ ]]; then
     if [[ "${mon_scale}" =~ ^[0-9]+([.][0-9]+)?$ ]] && awk "BEGIN { exit !(${mon_scale} > 0) }"; then
@@ -446,40 +469,6 @@ rofi_focused_monitor_logical_width_precise() {
       printf '%s\n' "${mon_width}"
     fi
   fi
-}
-
-rofi_local_theme_file() {
-  local theme_ref="$1"
-  local candidate=""
-  local config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
-  local data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
-
-  [[ -n "${theme_ref}" ]] || return 1
-
-  if declare -F rofi_resolve_theme >/dev/null 2>&1; then
-    candidate="$(rofi_resolve_theme "${theme_ref}" 2>/dev/null || true)"
-    [[ -f "${candidate}" ]] && {
-      printf '%s\n' "${candidate}"
-      return 0
-    }
-  fi
-
-  for candidate in \
-    "${config_home}/rofi/themes/${theme_ref}.rasi" \
-    "${config_home}/rofi/themes/${theme_ref}" \
-    "${config_home}/rofi/${theme_ref}.rasi" \
-    "${config_home}/rofi/${theme_ref}" \
-    "${data_home}/rofi/themes/${theme_ref}.rasi" \
-    "${data_home}/rofi/themes/${theme_ref}" \
-    "${data_home}/rofi/${theme_ref}.rasi" \
-    "${data_home}/rofi/${theme_ref}"
-  do
-    [[ -f "${candidate}" ]] || continue
-    printf '%s\n' "${candidate}"
-    return 0
-  done
-
-  return 1
 }
 
 rofi_theme_width_multiplier_override() {
@@ -492,7 +481,7 @@ rofi_theme_width_multiplier_override() {
   local width_unit=""
   local scaled_width=""
 
-  theme_file="$(rofi_local_theme_file "${theme_ref}" 2>/dev/null || true)"
+  theme_file="$(rofi_resolve_theme "${theme_ref}" 2>/dev/null || true)"
   if [[ -f "${theme_file}" ]]; then
     width_line="$(
       awk '
@@ -525,67 +514,95 @@ rofi_theme_width_multiplier_override() {
   printf 'window { width: %s; }\n' "${fallback_width}"
 }
 
-rofi_wallpaper_width_override() {
+rofi_theme_window_height_spec() {
+  awk '
+    /^[[:space:]]*window[[:space:]]*\{/ { in_window = 1; next }
+    in_window && /^[[:space:]]*}/ { exit }
+    in_window && /^[[:space:]]*height[[:space:]]*:/ {
+      if (match($0, /:[[:space:]]*([0-9]+([.][0-9]+)?)([a-z%]*)/, m)) {
+        print m[1], m[3]
+      }
+      exit
+    }
+  ' "$1"
+}
+
+rofi_theme_window_height_px() {
   local theme_file="$1"
   local font_name="$2"
   local font_scale="$3"
-  local margin_px="$4"
-  local wall_image="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wallpaper/current/wall.thmb"
-  local monitor_width_logical=""
+  local theme_height=""
+  local theme_height_unit=""
+  local font_px=""
+  local height_px=""
+
+  read -r theme_height theme_height_unit < <(rofi_theme_window_height_spec "${theme_file}")
+  case "${theme_height_unit}" in
+    px)
+      printf '%s\t%s\t\n' "${theme_height}" "${theme_height_unit}"
+      return 0
+      ;;
+    em)
+      font_px="$(rofi_font_text_height_px "${font_name}" "${font_scale}" 2>/dev/null || true)"
+      [[ "${font_px}" =~ ^[0-9]+([.][0-9]+)?$ ]] || return 1
+      height_px="$(awk -v h="${theme_height}" -v fp="${font_px}" 'BEGIN { printf "%.2f", (h * fp) }')"
+      printf '%s\t%s\t%s\n' "${height_px}" "${theme_height_unit}" "${font_px}"
+      return 0
+      ;;
+  esac
+
+  return 1
+}
+
+rofi_wallpaper_ratio() {
+  local wall_image="$1"
+  local img_w=""
+  local img_h=""
+
+  command -v magick >/dev/null 2>&1 || return 1
+  read -r img_w img_h < <(magick identify -format "%w %h" "${wall_image}" 2>/dev/null || true)
+  [[ "${img_w}" =~ ^[0-9]+$ && "${img_h}" =~ ^[0-9]+$ && "${img_h}" -gt 0 ]] || return 1
+
+  awk -v w="${img_w}" -v h="${img_h}" 'BEGIN { printf "%.6f", (w / h) }'
+}
+
+rofi_wallpaper_post_clamp_reduction_px() {
+  local theme_name="$1"
+  local monitors_json=""
+  local layers_json=""
+  local gaps_json=""
   local focused_monitor_name=""
-  local theme_name=""
   local waybar_width_px="0"
   local gaps_out_px="0"
-  local did_clamp=0
-  local theme_height theme_height_unit img_w img_h ratio
-  local font_px=""
-  local theme_height_px=""
-  local width_px=""
-  local max_width_px=""
-  local post_clamp_reduction_px=0
-  local width_value=""
 
-  [[ -f "${wall_image}" ]] || return 0
-  [[ -n "${theme_file}" ]] || return 0
-  command -v magick >/dev/null 2>&1 || return 0
-  [[ "${margin_px}" =~ ^[0-9]+([.][0-9]+)?$ ]] || margin_px=0
+  case "${theme_name}" in
+    style_1 | pywal16) ;;
+    *)
+      printf '0\n'
+      return 0
+      ;;
+  esac
 
-  theme_name="$(basename "${theme_file}")"
-  theme_name="${theme_name%.rasi}"
-  monitor_width_logical="$(rofi_focused_monitor_logical_width_precise)"
-
-  read -r theme_height theme_height_unit < <(
-    awk '
-      /^[[:space:]]*window[[:space:]]*\{/ {in_window=1; next}
-      in_window && /^[[:space:]]*}/ {exit}
-      in_window && /^[[:space:]]*height[[:space:]]*:/ {
-        if (match($0, /:[[:space:]]*([0-9]+([.][0-9]+)?)([a-z%]*)/, m)) {
-          print m[1], m[3]
-        }
-        exit
-      }
-    ' "${theme_file}"
-  )
-
-  [[ "${theme_height_unit}" == "em" || "${theme_height_unit}" == "px" ]] || return 0
-
-  read -r img_w img_h < <(magick identify -format "%w %h" "${wall_image}" 2>/dev/null || true)
-  [[ "${img_w}" =~ ^[0-9]+$ && "${img_h}" =~ ^[0-9]+$ && "${img_h}" -gt 0 ]] || return 0
-
-  ratio="$(awk -v w="${img_w}" -v h="${img_h}" 'BEGIN { if (h <= 0) { print 0 } else { printf "%.6f", (w / h) } }')"
-
-  if [[ "${theme_name}" == "style_1" || "${theme_name}" == "pywal16" ]]; then
-    focused_monitor_name="$(hyprctl -j monitors 2>/dev/null | jq -r '.[] | select(.focused==true) | .name' | head -n 1)"
-    if [[ -n "${focused_monitor_name}" ]]; then
+  monitors_json="$(hyprctl -j monitors 2>/dev/null || true)"
+  if [[ "${monitors_json}" == \[* || "${monitors_json}" == \{* ]]; then
+    focused_monitor_name="$(printf '%s\n' "${monitors_json}" | jq -r '.[] | select(.focused==true) | .name' 2>/dev/null | head -n 1)"
+  fi
+  if [[ -n "${focused_monitor_name}" ]]; then
+    layers_json="$(hyprctl -j layers 2>/dev/null || true)"
+    if [[ "${layers_json}" == \{* ]]; then
       waybar_width_px="$(
-        hyprctl -j layers 2>/dev/null | jq -r --arg mon "${focused_monitor_name}" '
+        printf '%s\n' "${layers_json}" | jq -r --arg mon "${focused_monitor_name}" '
           .[$mon].levels[]?[]? | select(.namespace=="waybar") | .w
         ' 2>/dev/null | head -n 1
       )"
     fi
-    [[ "${waybar_width_px}" =~ ^[0-9]+([.][0-9]+)?$ ]] || waybar_width_px=0
+  fi
+  [[ "${waybar_width_px}" =~ ^[0-9]+([.][0-9]+)?$ ]] || waybar_width_px=0
+
+  gaps_json="$(hyprctl -j getoption general:gaps_out 2>/dev/null || true)"
+  if [[ "${gaps_json}" == \{* ]]; then
     gaps_out_px="$(
-      hyprctl -j getoption general:gaps_out 2>/dev/null | jq -r '
+      printf '%s\n' "${gaps_json}" | jq -r '
         if (.int? != null and (.int | tostring) != "") then
           .int
         elif (.custom? != null and .custom != "") then
@@ -595,17 +612,42 @@ rofi_wallpaper_width_override() {
         end
       ' 2>/dev/null | head -n 1
     )"
-    [[ "${gaps_out_px}" =~ ^[0-9]+([.][0-9]+)?$ ]] || gaps_out_px=0
-    post_clamp_reduction_px="$(awk -v wb="${waybar_width_px}" -v g="${gaps_out_px}" 'BEGIN { printf "%.2f", (wb + (g * 4)) }')"
   fi
+  [[ "${gaps_out_px}" =~ ^[0-9]+([.][0-9]+)?$ ]] || gaps_out_px=0
 
-  if [[ "${theme_height_unit}" == "px" ]]; then
-    theme_height_px="${theme_height}"
-  else
-    font_px="$(rofi_font_text_height_px "${font_name}" "${font_scale}" 2>/dev/null || true)"
-    [[ "${font_px}" =~ ^[0-9]+([.][0-9]+)?$ ]] || return 0
-    theme_height_px="$(awk -v h="${theme_height}" -v fp="${font_px}" 'BEGIN { printf "%.2f", (h * fp) }')"
-  fi
+  awk -v wb="${waybar_width_px}" -v g="${gaps_out_px}" 'BEGIN { printf "%.2f", (wb + (g * 4)) }'
+}
+
+rofi_wallpaper_width_override() {
+  local theme_file="$1"
+  local font_name="$2"
+  local font_scale="$3"
+  local margin_px="$4"
+  local wall_image="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wallpaper/current/wall.thmb"
+  local monitor_width_logical=""
+  local theme_name=""
+  local did_clamp=0
+  local theme_height_px=""
+  local theme_height_unit=""
+  local font_px=""
+  local ratio=""
+  local width_px=""
+  local max_width_px=""
+  local post_clamp_reduction_px="0"
+  local width_value=""
+
+  [[ -f "${wall_image}" ]] || return 0
+  [[ -n "${theme_file}" ]] || return 0
+  [[ "${margin_px}" =~ ^[0-9]+([.][0-9]+)?$ ]] || margin_px=0
+
+  theme_name="$(basename "${theme_file}")"
+  theme_name="${theme_name%.rasi}"
+  monitor_width_logical="$(rofi_focused_monitor_logical_width_precise)"
+  read -r theme_height_px theme_height_unit font_px < <(rofi_theme_window_height_px "${theme_file}" "${font_name}" "${font_scale}" 2>/dev/null || true)
+  [[ -n "${theme_height_px}" && -n "${theme_height_unit}" ]] || return 0
+  ratio="$(rofi_wallpaper_ratio "${wall_image}" 2>/dev/null || true)"
+  [[ -n "${ratio}" ]] || return 0
+  post_clamp_reduction_px="$(rofi_wallpaper_post_clamp_reduction_px "${theme_name}")"
 
   width_px="$(awk -v h="${theme_height_px}" -v r="${ratio}" 'BEGIN { printf "%.2f", (h * r) }')"
 

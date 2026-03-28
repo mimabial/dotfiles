@@ -30,14 +30,15 @@ if [[ "${1:-}" == "--rofi-script-mode" ]]; then
   exit 0
 fi
 
-# Lock file to prevent concurrent mode switching
-MODE_SWITCH_LOCK="$(hypr_lock_path mode_switch)"
-exec 203>"${MODE_SWITCH_LOCK}"
-! flock -n 203 && {
-  print_log -sec "wal.toggle" -stat "wait" "Another mode operation in progress, waiting..."
-  flock 203
+acquire_mode_switch_lock() {
+  MODE_SWITCH_LOCK="$(hypr_lock_path mode_switch)"
+  exec 203>"${MODE_SWITCH_LOCK}"
+  ! flock -n 203 && {
+    print_log -sec "wal.toggle" -stat "wait" "Another mode operation in progress, waiting..."
+    flock 203
+  }
+  trap 'flock -u 203 2>/dev/null' EXIT
 }
-trap 'flock -u 203 2>/dev/null' EXIT
 
 # Rofi selector
 select_color_mode_with_rofi() {
@@ -189,9 +190,10 @@ resolve_wallpaper() {
 apply_color_mode() {
   local wallpaper
   local state_file="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/color.gen.state"
+  local -a color_set_cmd=("${LIB_DIR}/hypr/theme/color.set.sh")
 
   if [ "${target_color_mode}" -eq 0 ]; then
-    "${LIB_DIR}/hypr/theme/color.set.sh"
+    HYPR_COLOR_MODE_OVERRIDE="${target_color_mode}" "${color_set_cmd[@]}"
     if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] && command -v hyprctl >/dev/null 2>&1; then
       hyprctl reload config-only -q >/dev/null 2>&1 || true
     fi
@@ -219,64 +221,84 @@ apply_color_mode() {
     fi
   fi
 
-  "${LIB_DIR}/hypr/theme/color.set.sh" "${wallpaper}"
+  HYPR_COLOR_MODE_OVERRIDE="${target_color_mode}" "${color_set_cmd[@]}" "${wallpaper}"
 
   # Sync nvim after colors are generated
   [[ -x "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" ]] && "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" >/dev/null 2>&1 &
 }
 
-#// apply pywal16 mode
+parse_target_mode() {
+  case "${1:-}" in
+    m|-m|--menu) select_color_mode_with_rofi ;;
+    n|-n|--next) cycle_color_mode n ;;
+    p|-p|--prev) cycle_color_mode p ;;
+    -s|--set) set_mode_from_arg "${2:-}" ;;
+    --set=*) set_mode_from_arg "${1#--set=}" ;;
+    *) cycle_color_mode n ;;
+  esac
 
-case "${1}" in
-  m | -m | --menu) select_color_mode_with_rofi ;;
-  n | -n | --next) cycle_color_mode n ;;
-  p | -p | --prev) cycle_color_mode p ;;
-  -s | --set) set_mode_from_arg "${2}" ;;
-  --set=*) set_mode_from_arg "${1#--set=}" ;;
-  *) cycle_color_mode n ;;
-esac
-
-[[ "${target_color_mode}" -lt 0 ]] && target_color_mode=$((${#color_mode_labels[@]} - 1))
-
-if [ -z "${target_color_mode}" ]; then
-  echo "Error: target_color_mode not set"
-  exit 1
-fi
-
-previous_color_mode="${selected_color_mode}"
-if [[ ! "${previous_color_mode}" =~ ^[0-3]$ ]]; then
-  previous_color_mode=1
-fi
-
-# Auto mode uses auto-theme.service
-if [ "${target_color_mode}" -eq 1 ]; then
-  state_set "selected_color_mode" "${target_color_mode}" "staterc"
-
-  if ! start_auto_theme_service; then
-    print_log -sec "wal.toggle" -warn "auto" "activation failed, reverting mode"
-    target_color_mode="${previous_color_mode}"
-    state_set "selected_color_mode" "${target_color_mode}" "staterc"
-    if [ "${target_color_mode}" -ne 1 ]; then
-      stop_auto_theme_service
-      if ! apply_color_mode; then
-        print_log -sec "wal.toggle" -warn "wallpaper" "no current wallpaper, falling back to theme switch"
-        "${LIB_DIR}/hypr/theme/theme.switch.sh"
-      fi
-    fi
-    pkill -RTMIN+8 waybar >/dev/null 2>&1 || true
+  [[ "${target_color_mode}" -lt 0 ]] && target_color_mode=$((${#color_mode_labels[@]} - 1))
+  if [ -z "${target_color_mode:-}" ]; then
+    echo "Error: target_color_mode not set"
     exit 1
   fi
+}
 
-else
-  # Stop auto-theme.service before writing state to avoid stale writes racing us.
+load_previous_color_mode() {
+  previous_color_mode="${selected_color_mode}"
+  if [[ ! "${previous_color_mode}" =~ ^[0-3]$ ]]; then
+    previous_color_mode=1
+  fi
+}
+
+fallback_theme_switch() {
+  print_log -sec "wal.toggle" -warn "wallpaper" "no current wallpaper, falling back to theme switch"
+  "${LIB_DIR}/hypr/theme/theme.switch.sh"
+}
+
+notify_waybar_color_mode() {
+  pkill -RTMIN+8 waybar >/dev/null 2>&1 || true
+}
+
+revert_failed_auto_mode() {
+  print_log -sec "wal.toggle" -warn "auto" "activation failed, reverting mode"
+  target_color_mode="${previous_color_mode}"
+  state_set "selected_color_mode" "${target_color_mode}" "staterc"
+  if [ "${target_color_mode}" -ne 1 ]; then
+    stop_auto_theme_service
+    if ! apply_color_mode; then
+      fallback_theme_switch
+    fi
+  fi
+  notify_waybar_color_mode
+  exit 1
+}
+
+apply_auto_mode() {
+  state_set "selected_color_mode" "${target_color_mode}" "staterc"
+  start_auto_theme_service || revert_failed_auto_mode
+}
+
+apply_manual_mode() {
   stop_auto_theme_service
   state_set "selected_color_mode" "${target_color_mode}" "staterc"
-
-  # Stop auto-theme.service when switching away from Auto mode
   if ! apply_color_mode; then
-    print_log -sec "wal.toggle" -warn "wallpaper" "no current wallpaper, falling back to theme switch"
-    "${LIB_DIR}/hypr/theme/theme.switch.sh"
+    fallback_theme_switch
   fi
-fi
+}
 
-pkill -RTMIN+8 waybar >/dev/null 2>&1 || true # Update waybar colormode indicator
+main() {
+  acquire_mode_switch_lock
+  parse_target_mode "$@"
+  load_previous_color_mode
+
+  if [ "${target_color_mode}" -eq 1 ]; then
+    apply_auto_mode
+  else
+    apply_manual_mode
+  fi
+
+  notify_waybar_color_mode
+}
+
+main "$@"

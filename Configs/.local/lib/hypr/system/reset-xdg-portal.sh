@@ -2,19 +2,13 @@
 
 source "$(command -v hyprshell)" || exit 1
 
-sleep 1
-killall -e xdg-desktop-portal-hyprland
-killall -e xdg-desktop-portal
-sleep 1
-
-# Use different directory on NixOS
 if [ -d /run/current-system/sw/libexec ]; then
-    libDir=/run/current-system/sw/libexec
+  libDir=/run/current-system/sw/libexec
 else
-    libDir=/usr/lib
+  libDir=/usr/lib
 fi
 
-# We will run it safely as a service!
-app2unit.sh -t service $libDir/xdg-desktop-portal-hyprland
-sleep 1
-app2unit.sh -t service $libDir/xdg-desktop-portal &
+systemctl --user restart xdg-desktop-portal-hyprland.service >/dev/null 2>&1 \
+  || app2unit.sh -t service "${libDir}/xdg-desktop-portal-hyprland" >/dev/null 2>&1
+systemctl --user restart xdg-desktop-portal.service >/dev/null 2>&1 \
+  || app2unit.sh -t service "${libDir}/xdg-desktop-portal" >/dev/null 2>&1 &

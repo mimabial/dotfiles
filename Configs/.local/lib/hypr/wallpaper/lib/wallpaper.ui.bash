@@ -115,53 +115,55 @@ Wall_Json() {
   fi
 }
 
-Wall_Select() {
-  font_scale="$(rofi_effective_font_scale "${ROFI_WALLPAPER_SCALE}")"
+wallpaper_select_monitor_width() {
+  local mon_data=""
+  local mon_x_res=""
+  local mon_scale=""
 
-  # Set font name.
-  font_name="$(rofi_effective_font_name "${ROFI_WALLPAPER_FONT:-$ROFI_FONT}")"
-
-  # Set rofi font override.
-  font_override="* {font: \"${font_name} ${font_scale}\";}"
-
-  # shellcheck disable=SC2154
-  elem_border=$((hypr_border * 3))
-
-  # Scale for monitor.
   mon_data=$(hyprctl -j monitors)
   mon_x_res=$(jq '.[] | select(.focused==true) | if (.transform % 2 == 0) then .width else .height end' <<<"${mon_data}")
   mon_scale=$(jq '.[] | select(.focused==true) | .scale' <<<"${mon_data}" | sed "s/\.//")
 
   mon_x_res=${mon_x_res:-1920}
   mon_scale=${mon_scale:-1}
-  mon_x_res=$((mon_x_res * 100 / mon_scale))
+  echo $((mon_x_res * 100 / mon_scale))
+}
 
-  # Generate config.
+wallpaper_select_theme_override() {
+  local font_scale="$1"
+  local mon_x_res=""
+  local elem_border=0
+  local elm_width=0
+  local max_avail=0
+  local col_count=0
+
+  elem_border=$((hypr_border * 3))
+  mon_x_res="$(wallpaper_select_monitor_width)"
   elm_width=$(((28 + 8 + 5) * font_scale))
   max_avail=$((mon_x_res - (4 * font_scale)))
   col_count=$((max_avail / elm_width))
 
-  r_override="window{width:100%;height:100%;fullscreen:true;}
-    listview{columns:${col_count};spacing:5em;}
-    element{border-radius:${elem_border}px;
-    orientation:vertical;margin-bottom:1em;}
-    element-icon{size:27em;border-radius:0em;}
-    element-text{padding:1em;}"
+  cat <<EOF
+window{width:100%;height:100%;fullscreen:true;}
+listview{columns:${col_count};spacing:5em;}
+element{border-radius:${elem_border}px;orientation:vertical;margin-bottom:1em;}
+element-icon{size:27em;border-radius:0em;}
+element-text{padding:1em;}
+EOF
+}
 
-  # Launch rofi menu.
-  local selected_index wall_json_file selected_row current_hash
-  wall_json_file="$(mktemp)"
-  Wall_Json --ensure-thumbs >"${wall_json_file}"
+wallpaper_select_rofi_args() {
+  local font_scale="$1"
+  local font_name="$2"
+  local selected_row="$3"
+  local font_override=""
+  local r_override=""
+  local opacity_override=""
 
-  selected_row=""
-  if [[ -e "${active_wallpaper_link}" ]]; then
-    current_hash="$(set_hash "${active_wallpaper_link}")"
-    if [[ -n "${current_hash}" ]]; then
-      selected_row="$(jq -r --arg hash "${current_hash}" '[.[].hash] | index($hash) // empty' "${wall_json_file}")"
-    fi
-  fi
+  font_override="* {font: \"${font_name} ${font_scale}\";}"
+  r_override="$(wallpaper_select_theme_override "${font_scale}")"
+  opacity_override="$(rofi_active_opacity_override)"
 
-  local -a rofi_args
   rofi_args=(
     -dmenu -i
     -format i
@@ -173,12 +175,35 @@ Wall_Select() {
     -theme-str "listview { show-icons: true; }"
     -theme "${ROFI_WALLPAPER_STYLE:-wallpaper}"
   )
-  local opacity_override
-  opacity_override="$(rofi_active_opacity_override)"
   [[ -n "${opacity_override}" ]] && rofi_args+=(-theme-str "${opacity_override}")
-  if [[ -n "${selected_row}" ]]; then
-    rofi_args+=(-selected-row "${selected_row}")
-  fi
+  [[ -n "${selected_row}" ]] && rofi_args+=(-selected-row "${selected_row}")
+}
+
+wallpaper_selected_row() {
+  local wall_json_file="$1"
+  local current_hash=""
+
+  [[ -e "${active_wallpaper_link}" ]] || return 0
+  current_hash="$(set_hash "${active_wallpaper_link}")"
+  [[ -n "${current_hash}" ]] || return 0
+  jq -r --arg hash "${current_hash}" '[.[].hash] | index($hash) // empty' "${wall_json_file}"
+}
+
+wallpaper_selected_fields() {
+  local wall_json_file="$1"
+  local selected_index="$2"
+  jq -r --argjson idx "${selected_index}" '[.[ $idx ].basename, .[ $idx ].path, .[ $idx ].sqre] | @tsv' "${wall_json_file}"
+}
+
+Wall_Select() {
+  local font_scale="" font_name="" selected_index="" wall_json_file="" selected_row=""
+  wall_json_file="$(mktemp)"
+  font_scale="$(rofi_effective_font_scale "${ROFI_WALLPAPER_SCALE}")"
+  font_name="$(rofi_effective_font_name "${ROFI_WALLPAPER_FONT:-$ROFI_FONT}")"
+  Wall_Json --ensure-thumbs >"${wall_json_file}"
+  selected_row="$(wallpaper_selected_row "${wall_json_file}")"
+  local -a rofi_args
+  wallpaper_select_rofi_args "${font_scale}" "${font_name}" "${selected_row}"
 
   selected_index="$(jq -r '.[].rofi_sqre' "${wall_json_file}" | rofi "${rofi_args[@]}")"
 
@@ -193,9 +218,7 @@ Wall_Select() {
     exit 1
   fi
 
-  IFS=$'\t' read -r selected_wallpaper selected_wallpaper_path selected_thumbnail < <(
-    jq -r --argjson idx "${selected_index}" '[.[ $idx ].basename, .[ $idx ].path, .[ $idx ].sqre] | @tsv' "${wall_json_file}"
-  )
+  IFS=$'\t' read -r selected_wallpaper selected_wallpaper_path selected_thumbnail < <(wallpaper_selected_fields "${wall_json_file}" "${selected_index}")
   rm -f "${wall_json_file}"
   export selected_wallpaper selected_wallpaper_path selected_thumbnail
 

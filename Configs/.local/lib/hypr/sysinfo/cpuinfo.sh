@@ -1,55 +1,76 @@
 #!/bin/bash
 
-#  Benchmark 1: cpuinfo.sh
-#   Time (mean ± σ):     159.4 ms ±  26.1 ms    [User: 38.6 ms, System: 62.2 ms]
-#   Range (min … max):    99.8 ms … 182.7 ms    17 runs
-
 cpuinfo_file="${XDG_RUNTIME_DIR:-/tmp}/hypr-$UID-processors"
 
 map_floor() {
-  IFS=', ' read -r -a pairs <<<"$1"
+  local mapping="$1"
+  local input="$2"
+  local def_val=""
+  local pair=""
+  local key=""
+  local value=""
+  local num="${input%%.*}"
+
+  IFS=', ' read -r -a pairs <<<"${mapping}"
   if [[ ${pairs[-1]} != *":"* ]]; then
     def_val="${pairs[-1]}"
     unset 'pairs[${#pairs[@]}-1]'
   fi
+
   for pair in "${pairs[@]}"; do
-    IFS=':' read -r key value <<<"$pair"
-    num="${2%%.*}"
+    IFS=':' read -r key value <<<"${pair}"
     if [[ "$num" =~ ^-?[0-9]+$ && "$key" =~ ^-?[0-9]+$ ]]; then
-      if ((num > key)); then
-        echo "$value"
-        return
-      fi
+      (( num > key )) && printf '%s\n' "${value}" && return
     elif [[ -n "$num" && -n "$key" && "$num" > "$key" ]]; then
-      echo "$value"
-      return
+      printf '%s\n' "${value}" && return
     fi
   done
-  [ -n "$def_val" ] && echo $def_val || echo " "
+
+  [[ -n "${def_val}" ]] && printf '%s\n' "${def_val}" || printf ' \n'
+}
+
+load_cpu_cache() {
+  cpu_info_file="${TMPDIR:-/tmp}/${UID}-processors"
+  [[ -f "${cpu_info_file}" ]] && source "${cpu_info_file}"
+}
+
+cache_cpu_value() {
+  local key="$1"
+  local value="$2"
+  echo "${key}=\"${value}\"" >>"${cpu_info_file}"
+}
+
+initialize_cpu_metadata() {
+  [[ -n "${CPUINFO_MODEL}" ]] || {
+    CPUINFO_MODEL=$(lscpu | awk -F': ' '/Model name/ {gsub(/^ *| *$| CPU.*/,"",$2); print $2}')
+    cache_cpu_value "CPUINFO_MODEL" "${CPUINFO_MODEL}"
+  }
+
+  [[ -n "${CPUINFO_MAX_FREQ}" ]] || {
+    CPUINFO_MAX_FREQ=$(lscpu | awk '/CPU max MHz/ { sub(/\..*/,"",$4); print $4}')
+    cache_cpu_value "CPUINFO_MAX_FREQ" "${CPUINFO_MAX_FREQ}"
+  }
+}
+
+initialize_cpu_stats() {
+  local stat_file
+  stat_file=$(head -1 /proc/stat)
+
+  [[ -n "${CPUINFO_PREV_STAT}" ]] || {
+    CPUINFO_PREV_STAT=$(awk '{print $2+$3+$4+$6+$7+$8 }' <<<"${stat_file}")
+    cache_cpu_value "CPUINFO_PREV_STAT" "${CPUINFO_PREV_STAT}"
+  }
+
+  [[ -n "${CPUINFO_PREV_IDLE}" ]] || {
+    CPUINFO_PREV_IDLE=$(awk '{print $5 }' <<<"${stat_file}")
+    cache_cpu_value "CPUINFO_PREV_IDLE" "${CPUINFO_PREV_IDLE}"
+  }
 }
 
 init_query() {
-  cpu_info_file="${TMPDIR:-/tmp}/${UID}-processors"
-  [[ -f "${cpu_info_file}" ]] && source "${cpu_info_file}"
-
-  if [[ -z "$CPUINFO_MODEL" ]]; then
-    CPUINFO_MODEL=$(lscpu | awk -F': ' '/Model name/ {gsub(/^ *| *$| CPU.*/,"",$2); print $2}')
-    echo "CPUINFO_MODEL=\"$CPUINFO_MODEL\"" >>"${cpu_info_file}"
-  fi
-  if [[ -z "$CPUINFO_MAX_FREQ" ]]; then
-    CPUINFO_MAX_FREQ=$(lscpu | awk '/CPU max MHz/ { sub(/\..*/,"",$4); print $4}')
-    echo "CPUINFO_MAX_FREQ=\"$CPUINFO_MAX_FREQ\"" >>"${cpu_info_file}"
-  fi
-
-  statFile=$(head -1 /proc/stat)
-  if [[ -z "$CPUINFO_PREV_STAT" ]]; then
-    CPUINFO_PREV_STAT=$(awk '{print $2+$3+$4+$6+$7+$8 }' <<<"$statFile")
-    echo "CPUINFO_PREV_STAT=\"$CPUINFO_PREV_STAT\"" >>"${cpu_info_file}"
-  fi
-  if [[ -z "$CPUINFO_PREV_IDLE" ]]; then
-    CPUINFO_PREV_IDLE=$(awk '{print $5 }' <<<"$statFile")
-    echo "CPUINFO_PREV_IDLE=\"$CPUINFO_PREV_IDLE\"" >>"${cpu_info_file}"
-  fi
+  load_cpu_cache
+  initialize_cpu_metadata
+  initialize_cpu_stats
 }
 
 get_temp_color() {
@@ -60,6 +81,8 @@ get_temp_color() {
     [40]="#add8e6" [35]="#87ceeb" [30]="#4682b4" [25]="#4169e1"
     [20]="#0000ff" [0]="#00008b"
   )
+  local threshold=""
+
   for threshold in $(echo "${!temp_colors[@]}" | tr ' ' '\n' | sort -nr); do
     if ((temp >= threshold)); then
       echo "${temp_colors[$threshold]}"
@@ -68,34 +91,44 @@ get_temp_color() {
   done
 }
 
-get_utilization() {
-  local statFile currStat currIdle diffStat diffIdle
-  statFile=$(head -1 /proc/stat)
-  currStat=$(awk '{print $2+$3+$4+$6+$7+$8 }' <<<"$statFile")
-  currIdle=$(awk '{print $5 }' <<<"$statFile")
-  diffStat=$((currStat - CPUINFO_PREV_STAT))
-  diffIdle=$((currIdle - CPUINFO_PREV_IDLE))
+update_cpu_stats_cache() {
+  local curr_stat="$1"
+  local curr_idle="$2"
 
-  CPUINFO_PREV_STAT=$currStat
-  CPUINFO_PREV_IDLE=$currIdle
+  CPUINFO_PREV_STAT=$curr_stat
+  CPUINFO_PREV_IDLE=$curr_idle
 
-  sed -i -e "/^CPUINFO_PREV_STAT=/c\CPUINFO_PREV_STAT=\"$currStat\"" -e "/^CPUINFO_PREV_IDLE=/c\CPUINFO_PREV_IDLE=\"$currIdle\"" "$cpuinfo_file" || {
-    echo "CPUINFO_PREV_STAT=\"$currStat\"" >>"$cpuinfo_file"
-    echo "CPUINFO_PREV_IDLE=\"$currIdle\"" >>"$cpuinfo_file"
-  }
-
-  awk -v stat="$diffStat" -v idle="$diffIdle" 'BEGIN {printf "%.0f", (stat/(stat+idle))*100}'
+  sed -i \
+    -e "/^CPUINFO_PREV_STAT=/c\CPUINFO_PREV_STAT=\"$curr_stat\"" \
+    -e "/^CPUINFO_PREV_IDLE=/c\CPUINFO_PREV_IDLE=\"$curr_idle\"" \
+    "$cpuinfo_file" || {
+      echo "CPUINFO_PREV_STAT=\"$curr_stat\"" >>"$cpuinfo_file"
+      echo "CPUINFO_PREV_IDLE=\"$curr_idle\"" >>"$cpuinfo_file"
+    }
 }
 
-# shellcheck disable=SC1090
-source "${cpuinfo_file}"
-init_query
+get_utilization() {
+  local stat_file=""
+  local curr_stat=0
+  local curr_idle=0
+  local diff_stat=0
+  local diff_idle=0
 
-temp_lv="85:, 65:,, 45:, "
-util_lv="90:, 60:󰓅, 30:󰾅, 󰾆"
+  stat_file=$(head -1 /proc/stat)
+  curr_stat=$(awk '{print $2+$3+$4+$6+$7+$8 }' <<<"${stat_file}")
+  curr_idle=$(awk '{print $5 }' <<<"${stat_file}")
+  diff_stat=$((curr_stat - CPUINFO_PREV_STAT))
+  diff_idle=$((curr_idle - CPUINFO_PREV_IDLE))
 
-sensors_json=$(sensors -j 2>/dev/null)
-cpu_temps="$(perl -e '
+  update_cpu_stats_cache "${curr_stat}" "${curr_idle}"
+  awk -v stat="${diff_stat}" -v idle="${diff_idle}" 'BEGIN {printf "%.0f", (stat/(stat+idle))*100}'
+}
+
+read_cpu_temperatures() {
+  local sensors_json=""
+
+  sensors_json=$(sensors -j 2>/dev/null)
+  perl -e '
 use strict;
 use warnings;
 my $parser;
@@ -137,45 +170,89 @@ for my $chip (sort keys %$data) {
     }
 }
 print join("\n", @lines);
-' <<<"$sensors_json")"
+' <<<"${sensors_json}"
+}
 
-if [[ -z "$temperature" ]]; then
-  cpu_temp_line="${cpu_temps%%$'°C'*}"
-  temperature="${cpu_temp_line#*: }"
-fi
+resolve_temperature_value() {
+  local cpu_temps="$1"
+  if [[ -n "${temperature}" ]]; then
+    printf '%s\n' "${temperature}"
+    return
+  fi
 
-if [[ -n "$cpu_temps" ]]; then
-  cpu_temps_indented=$'\t'"${cpu_temps//$'\n'/$'\n\t'}"
-elif [[ -n "$temperature" ]]; then
-  cpu_temps_indented=$'\t'"${temperature}°C"
-else
-  cpu_temps_indented=$'\t'"N/A"
-fi
+  local cpu_temp_line="${cpu_temps%%$'°C'*}"
+  printf '%s\n' "${cpu_temp_line#*: }"
+}
 
-utilization=$(get_utilization)
-frequency=$(perl -ne 'BEGIN { $sum = 0; $count = 0 } if (/cpu MHz\s+:\s+([\d.]+)/) { $sum += $1; $count++ } END { if ($count > 0) { printf "%.0f\n", $sum / $count } else { print "NaN\n" } }' /proc/cpuinfo)
+format_cpu_temperatures() {
+  local cpu_temps="$1"
+  local temperature="$2"
 
+  if [[ -n "${cpu_temps}" ]]; then
+    printf '\t%s\n' "${cpu_temps//$'\n'/$'\n\t'}"
+  elif [[ -n "${temperature}" ]]; then
+    printf '\t%s°C\n' "${temperature}"
+  else
+    printf '\tN/A\n'
+  fi
+}
+
+read_cpu_frequency() {
+  perl -ne 'BEGIN { $sum = 0; $count = 0 } if (/cpu MHz\s+:\s+([\d.]+)/) { $sum += $1; $count++ } END { if ($count > 0) { printf "%.0f\n", $sum / $count } else { print "NaN\n" } }' /proc/cpuinfo
+}
+
+build_cpu_tooltip() {
+  local model="$1"
+  local thermo="$2"
+  local temps="$3"
+  local utilization="$4"
+  local frequency="$5"
+
+  local tooltip="${model}"$'\n'"${thermo} Temperature:"$'\n'"${temps}"
+  tooltip+=$'\n'"${speed} Utilization: ${utilization}%"
+  tooltip+=$'\n'" Clock Speed: ${frequency}/${CPUINFO_MAX_FREQ} MHz"
+  printf '%s\n' "${tooltip}"
+}
+
+build_cpu_icon() {
+  local temperature="$1"
+  local color=""
+
+  color=$(get_temp_color "${temperature}")
+  if [[ -n "${color}" ]]; then
+    printf "<span size='14pt' color='%s'>󰻠</span>\n" "${color}"
+  else
+    printf "<span size='14pt'>󰻠</span>\n"
+  fi
+}
+
+emit_cpu_json() {
+  local icon="$1"
+  local utilization="$2"
+  local tooltip="$3"
+  local formatted_util=""
+
+  formatted_util=$(printf "%02d" "${utilization}")
+  jq -n -c \
+    --arg icon "${icon}" \
+    --arg util "${formatted_util}󱉸" \
+    --arg tooltip "${tooltip}" \
+    '{text: ($icon + "\r" + $util), tooltip: $tooltip}'
+}
+
+init_query
+
+temp_lv="85:, 65:,, 45:, "
+util_lv="90:, 60:󰓅, 30:󰾅, 󰾆"
+cpu_temps="$(read_cpu_temperatures)"
+temperature="$(resolve_temperature_value "${cpu_temps}")"
+cpu_temps_indented="$(format_cpu_temperatures "${cpu_temps}" "${temperature}")"
+utilization="$(get_utilization)"
+frequency="$(read_cpu_frequency)"
 icons="$(map_floor "$util_lv" "$utilization")$(map_floor "$temp_lv" "$temperature")"
 speed="${icons:0:1}"
 thermo="${icons:1:1}"
-thermo_alt=󰻠 # better looking icon
-# Build tooltip with newlines
-tooltip="$CPUINFO_MODEL"$'\n'"$thermo Temperature:"$'\n'"$cpu_temps_indented"
-tooltip+=$'\n'"$speed Utilization: $utilization%"
-tooltip+=$'\n'" Clock Speed: $frequency/$CPUINFO_MAX_FREQ MHz"
+tooltip="$(build_cpu_tooltip "${CPUINFO_MODEL}" "${thermo}" "${cpu_temps_indented}" "${utilization}" "${frequency}")"
+icon_text="$(build_cpu_icon "${temperature}")"
 
-color=$(get_temp_color "${temperature}")
-if [[ -n "$color" ]]; then
-  icon_text="<span size='14pt' color='$color'>$thermo_alt</span>"
-else
-  icon_text="<span size='14pt'>$thermo_alt</span>"
-fi
-
-# Format utilization with two digits for text display only
-formatted_util=$(printf "%02d" "$utilization")
-
-jq -n -c \
-  --arg icon "$icon_text" \
-  --arg util "${formatted_util}󱉸" \
-  --arg tooltip "$tooltip" \
-  '{text: ($icon + "\r" + $util), tooltip: $tooltip}'
+emit_cpu_json "${icon_text}" "${utilization}" "${tooltip}"

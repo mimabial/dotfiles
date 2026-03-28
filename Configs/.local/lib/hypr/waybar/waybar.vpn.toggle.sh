@@ -51,15 +51,19 @@ else
   exit_code=$?
 
   if [ $exit_code -eq 0 ]; then
-    # Wait a moment for connection to establish
-    sleep 2
-
-    # Get connection details
-    status=$(mullvad status 2>/dev/null)
-    relay=$(echo "$status" | grep "Relay:" | awk '{print $2}')
-    location=$(echo "$status" | grep "Visible location:" | sed 's/.*Visible location: *//; s/\. IPv4:.*//')
-
-    dunstify -t 5000 -i "network-vpn" "VPN Connected" "Connected to Mullvad VPN\n\nRelay: $relay\nLocation: $location" -u normal
+    status="$(mullvad status 2>&1)"
+    status_exit=$?
+    if [ $status_exit -ne 0 ]; then
+      dunstify -i "network-vpn" "VPN Error" "Mullvad accepted the connection request, but status verification failed\n\n$status" -u critical
+      exit 1
+    fi
+    if echo "$status" | grep -q "^Connected"; then
+      relay=$(echo "$status" | grep "Relay:" | awk '{print $2}')
+      location=$(echo "$status" | grep "Visible location:" | sed 's/.*Visible location: *//; s/\. IPv4:.*//')
+      dunstify -t 5000 -i "network-vpn" "VPN Connected" "Connected to Mullvad VPN\n\nRelay: $relay\nLocation: $location" -u normal
+    else
+      dunstify -t 5000 -i "network-vpn" "VPN Connecting" "Mullvad accepted the connection request" -u normal
+    fi
   else
     dunstify -i "network-vpn" "VPN Error" "Failed to connect to Mullvad VPN\n\n$error_msg" -u critical
   fi

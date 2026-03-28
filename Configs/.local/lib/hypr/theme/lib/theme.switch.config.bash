@@ -2,118 +2,152 @@
 
 # Shared config/state helpers for theme.switch.sh.
 
-load_hypr_variables() {
-  local hypr_file="${1}"
-  local hypr_file_normalized="${hypr_file}"
-  local tmp_file=""
+hypr_variable_cache_dir() {
+  printf '%s\n' "${XDG_CACHE_HOME:-$HOME/.cache}/hypr/hyq/cache"
+}
 
-  # Check if hyq is available
+hypr_variable_cache_file() {
+  local hypr_file="$1"
+  local file_hash=""
+  local file_mtime=""
+
+  file_hash="$(printf '%s' "${hypr_file}" | md5sum | cut -d' ' -f1)"
+  file_mtime="$(stat -c %Y "${hypr_file}" 2>/dev/null || echo "0")"
+  printf '%s/%s-%s.cache\n' "$(hypr_variable_cache_dir)" "${file_hash}" "${file_mtime}"
+}
+
+hypr_variable_query() {
+  local hypr_file="$1"
+
+  hyq "${hypr_file}" \
+    --export env \
+    --allow-missing \
+    -Q "\$GTK_THEME[string]" \
+    -Q "\$ICON_THEME[string]" \
+    -Q "\$CURSOR_THEME[string]" \
+    -Q "\$CURSOR_SIZE" \
+    -Q "\$FONT[string]" \
+    -Q "\$TERMINAL_FONT[string]" \
+    -Q "\$FONT_SIZE" \
+    -Q "\$FONT_STYLE[string]" \
+    -Q "\$DOCUMENT_FONT[string]" \
+    -Q "\$DOCUMENT_FONT_SIZE" \
+    -Q "\$MONOSPACE_FONT[string]" \
+    -Q "\$MONOSPACE_FONT_SIZE" \
+    -Q "\$BAR_FONT[string]" \
+    -Q "\$MENU_FONT[string]" \
+    -Q "\$NOTIFICATION_FONT[string]" \
+    -Q "\$GROUPBAR_FONT[string]"
+}
+
+hypr_variable_validate() {
+  local line=""
+  local allowed_vars='^__(GTK_THEME|ICON_THEME|CURSOR_THEME|CURSOR_SIZE|FONT|TERMINAL_FONT|FONT_SIZE|FONT_STYLE|DOCUMENT_FONT|DOCUMENT_FONT_SIZE|MONOSPACE_FONT|MONOSPACE_FONT_SIZE|BAR_FONT|MENU_FONT|NOTIFICATION_FONT|GROUPBAR_FONT|TERMINAL)='
+
+  while IFS= read -r line; do
+    [[ -n "${line}" ]] || continue
+    if [[ ! "${line}" =~ ${allowed_vars} ]]; then
+      print_log -sec "theme" -warn "security" "blocked unexpected variable: ${line}"
+      continue
+    fi
+    if [[ "${line}" =~ \$\(|\`|\; ]]; then
+      print_log -sec "theme" -warn "security" "blocked unsafe pattern in: ${line}"
+      continue
+    fi
+    printf '%s\n' "${line}"
+  done
+}
+
+hypr_variable_unquote() {
+  local value="$1"
+
+  if [[ "${value}" == \"*\" && "${value}" == *\" ]]; then
+    value="${value:1:-1}"
+  elif [[ "${value}" == \'*\' && "${value}" == *\' ]]; then
+    value="${value:1:-1}"
+  fi
+
+  printf '%s\n' "${value}"
+}
+
+apply_hypr_variable_line() {
+  local line="$1"
+  local key=""
+  local value=""
+
+  [[ "${line}" =~ ^__([A-Z_]+)=(.*)$ ]] || return 0
+  key="${BASH_REMATCH[1]}"
+  value="$(hypr_variable_unquote "${BASH_REMATCH[2]}")"
+
+  case "${key}" in
+    GTK_THEME) GTK_THEME="${value:-$GTK_THEME}" ;;
+    ICON_THEME) ICON_THEME="${value:-$ICON_THEME}" ;;
+    CURSOR_THEME) CURSOR_THEME="${value:-$CURSOR_THEME}" ;;
+    CURSOR_SIZE) CURSOR_SIZE="${value:-$CURSOR_SIZE}" ;;
+    TERMINAL) TERMINAL="${value:-$TERMINAL}" ;;
+    FONT) FONT="${value:-$FONT}" ;;
+    TERMINAL_FONT) TERMINAL_FONT="${value:-$TERMINAL_FONT}" ;;
+    FONT_STYLE) FONT_STYLE="${value}" ;;
+    FONT_SIZE) FONT_SIZE="${value:-$FONT_SIZE}" ;;
+    DOCUMENT_FONT) DOCUMENT_FONT="${value:-$DOCUMENT_FONT}" ;;
+    DOCUMENT_FONT_SIZE) DOCUMENT_FONT_SIZE="${value:-$DOCUMENT_FONT_SIZE}" ;;
+    MONOSPACE_FONT) MONOSPACE_FONT="${value:-$MONOSPACE_FONT}" ;;
+    MONOSPACE_FONT_SIZE) MONOSPACE_FONT_SIZE="${value:-$MONOSPACE_FONT_SIZE}" ;;
+    BAR_FONT) BAR_FONT="${value:-$BAR_FONT}" ;;
+    MENU_FONT) MENU_FONT="${value:-$MENU_FONT}" ;;
+    NOTIFICATION_FONT) NOTIFICATION_FONT="${value:-$NOTIFICATION_FONT}" ;;
+    GROUPBAR_FONT) GROUPBAR_FONT="${value:-$GROUPBAR_FONT}" ;;
+  esac
+}
+
+apply_hypr_variable_file() {
+  local input_file="$1"
+  local line=""
+
+  while IFS= read -r line; do
+    apply_hypr_variable_line "${line}"
+  done <"${input_file}"
+}
+
+trim_hypr_variable_cache() {
+  local cache_dir="$1"
+
+  find "${cache_dir}" -name "*.cache" -type f -printf '%T@ %p\n' 2>/dev/null \
+    | sort -rn | tail -n +21 | cut -d' ' -f2- | xargs -r rm -f
+}
+
+load_hypr_variables() {
+  local hypr_file="$1"
+  local cache_dir=""
+  local cache_file=""
+
   if ! command -v hyq &>/dev/null; then
     print_log -sec "theme" -warn "hyq not found" "theme variables won't be loaded from ${hypr_file}"
     return 1
   fi
 
-  # Check if file exists
   if [[ ! -r "${hypr_file}" ]]; then
     print_log -sec "theme" -warn "file not readable" "${hypr_file}"
     return 1
   fi
 
-  # Cache setup: use file path hash + mtime as cache key
-  local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/hyq/cache"
-  local file_hash file_mtime cache_key cache_file
-  file_hash=$(echo -n "${hypr_file}" | md5sum | cut -d' ' -f1)
-  file_mtime=$(stat -c %Y "${hypr_file}" 2>/dev/null || echo "0")
-  cache_key="${file_hash}-${file_mtime}"
-  cache_file="${cache_dir}/${cache_key}.cache"
+  cache_dir="$(hypr_variable_cache_dir)"
+  cache_file="$(hypr_variable_cache_file "${hypr_file}")"
 
-  # Check cache hit - cache files are pre-validated
-  if [[ -f "${cache_file}" ]]; then
-    # shellcheck disable=SC1090
-    source "${cache_file}"
-    _apply_hypr_variables
-    return 0
+  if [[ ! -f "${cache_file}" ]]; then
+    mkdir -p "${cache_dir}" || return 1
+    if ! hypr_variable_query "${hypr_file}" | hypr_variable_validate >"${cache_file}.tmp"; then
+      rm -f "${cache_file}.tmp"
+      return 1
+    fi
+    mv "${cache_file}.tmp" "${cache_file}" || {
+      rm -f "${cache_file}.tmp"
+      return 1
+    }
+    trim_hypr_variable_cache "${cache_dir}"
   fi
 
-  # Cache miss - run hyq
-  mkdir -p "${cache_dir}"
-
-  #? Load theme specific variables and cache the result
-  local hyq_output
-  hyq_output="$(
-    hyq "${hypr_file}" \
-      --export env \
-      --allow-missing \
-      -Q "\$GTK_THEME[string]" \
-      -Q "\$ICON_THEME[string]" \
-      -Q "\$CURSOR_THEME[string]" \
-      -Q "\$CURSOR_SIZE" \
-      -Q "\$FONT[string]" \
-      -Q "\$TERMINAL_FONT[string]" \
-      -Q "\$FONT_SIZE" \
-      -Q "\$FONT_STYLE[string]" \
-      -Q "\$DOCUMENT_FONT[string]" \
-      -Q "\$DOCUMENT_FONT_SIZE" \
-      -Q "\$MONOSPACE_FONT[string]" \
-      -Q "\$MONOSPACE_FONT_SIZE" \
-      -Q "\$BAR_FONT[string]" \
-      -Q "\$MENU_FONT[string]" \
-      -Q "\$NOTIFICATION_FONT[string]" \
-      -Q "\$GROUPBAR_FONT[string]"
-  )"
-
-  # SECURITY: Validate hyq output before sourcing (safe: only allow expected variable patterns)
-  # Expected format: __VARIABLE_NAME="value" or __VARIABLE_NAME=number
-  local validated_output=""
-  local allowed_vars="^__(GTK_THEME|ICON_THEME|CURSOR_THEME|CURSOR_SIZE|FONT|TERMINAL_FONT|FONT_SIZE|FONT_STYLE|DOCUMENT_FONT|DOCUMENT_FONT_SIZE|MONOSPACE_FONT|MONOSPACE_FONT_SIZE|BAR_FONT|MENU_FONT|NOTIFICATION_FONT|GROUPBAR_FONT|TERMINAL)="
-  while IFS= read -r line; do
-    # Skip empty lines
-    [[ -z "${line}" ]] && continue
-    # Validate line matches expected pattern: __VAR_NAME="value" or __VAR_NAME=number
-    if [[ "${line}" =~ ${allowed_vars} ]]; then
-      # Additional check: ensure no command substitution or dangerous characters
-      if [[ ! "${line}" =~ \$\(|\`|\; ]]; then
-        validated_output+="${line}"$'\n'
-      else
-        print_log -sec "theme" -warn "security" "blocked unsafe pattern in: ${line}"
-      fi
-    else
-      print_log -sec "theme" -warn "security" "blocked unexpected variable: ${line}"
-    fi
-  done <<<"${hyq_output}"
-
-  # Save validated output to cache (atomic write)
-  echo "${validated_output}" >"${cache_file}.tmp" && mv "${cache_file}.tmp" "${cache_file}"
-
-  # Clean old cache entries (keep last 20)
-  find "${cache_dir}" -name "*.cache" -type f -printf '%T@ %p\n' 2>/dev/null \
-    | sort -rn | tail -n +21 | cut -d' ' -f2- | xargs -r rm -f
-
-  # Source validated output (safe: contains only validated variable assignments)
-  # shellcheck disable=SC1090
-  source <(echo "${validated_output}")
-  _apply_hypr_variables
-}
-
-# Helper to apply loaded variables (avoids duplication)
-_apply_hypr_variables() {
-  GTK_THEME=${__GTK_THEME:-$GTK_THEME}
-  ICON_THEME=${__ICON_THEME:-$ICON_THEME}
-  CURSOR_THEME=${__CURSOR_THEME:-$CURSOR_THEME}
-  CURSOR_SIZE=${__CURSOR_SIZE:-$CURSOR_SIZE}
-  TERMINAL=${__TERMINAL:-$TERMINAL}
-  FONT=${__FONT:-$FONT}
-  TERMINAL_FONT=${__TERMINAL_FONT:-$TERMINAL_FONT}
-  FONT_STYLE=${__FONT_STYLE:-''} # using hyprland this should be empty by default
-  FONT_SIZE=${__FONT_SIZE:-$FONT_SIZE}
-  DOCUMENT_FONT=${__DOCUMENT_FONT:-$DOCUMENT_FONT}
-  DOCUMENT_FONT_SIZE=${__DOCUMENT_FONT_SIZE:-$DOCUMENT_FONT_SIZE}
-  MONOSPACE_FONT=${__MONOSPACE_FONT:-$MONOSPACE_FONT}
-  MONOSPACE_FONT_SIZE=${__MONOSPACE_FONT_SIZE:-$MONOSPACE_FONT_SIZE}
-  BAR_FONT=${__BAR_FONT:-$BAR_FONT}
-  MENU_FONT=${__MENU_FONT:-$MENU_FONT}
-  NOTIFICATION_FONT=${__NOTIFICATION_FONT:-$NOTIFICATION_FONT}
-  GROUPBAR_FONT=${__GROUPBAR_FONT:-$GROUPBAR_FONT}
+  apply_hypr_variable_file "${cache_file}"
 }
 
 # Batch write INI-style config files (single sed pass per file)
@@ -169,14 +203,14 @@ ini_write_batch() {
 }
 
 sanitize_hypr_theme() {
-  input_file="${1}"
-  output_file="${2}"
-  buffer_file="$(mktemp)"
-
-  sed '1d' "${input_file}" >"${buffer_file}"
-  # Define an array of patterns to remove
-  # Supports regex patterns
-  dirty_regex=(
+  local input_file="${1}"
+  local output_file="${2}"
+  local buffer_file=""
+  local pattern=""
+  local line=""
+  local line_esc=""
+  local log_line=""
+  local -a dirty_regex=(
     "^ *exec"
     "^ *decoration[^:]*: *drop_shadow"
     "^ *drop_shadow"
@@ -188,26 +222,25 @@ sanitize_hypr_theme() {
   )
 
   dirty_regex+=("${HYPR_CONFIG_SANITIZE[@]}")
+  buffer_file="$(mktemp)" || return 1
+  trap 'rm -f "${buffer_file}"' RETURN
 
-  # Loop through each pattern and remove matching lines
+  sed '1d' "${input_file}" >"${buffer_file}" || return 1
+
   for pattern in "${dirty_regex[@]}"; do
-    # Read matching lines into array (avoids subshell)
     local -a matches=()
     while IFS= read -r line; do
       matches+=("$line")
     done < <(grep -E "${pattern}" "${buffer_file}" 2>/dev/null)
 
-    # Remove each match with sed
     for line in "${matches[@]}"; do
-      local line_esc=""
       [[ -n "$line" ]] || continue
       line_esc="$(escape_regex "${line}")"
       sed -i "\|${line_esc}|d" "${buffer_file}"
-      local log_line="${line#"${line%%[![:space:]]*}"}"
+      log_line="${line#"${line%%[![:space:]]*}"}"
       print_log -sec "theme" -warn "sanitize" "${log_line}"
     done
   done
-  cat "${buffer_file}" >"${output_file}"
-  rm -f "${buffer_file}"
 
+  cat "${buffer_file}" >"${output_file}"
 }

@@ -1,71 +1,12 @@
 #!/usr/bin/env bash
 # Unified font manager for Hyprland
-# Sets monospace font across terminals, waybar, and environment variables
 
 set -eo pipefail
 
 source "$(command -v hyprshell)" || exit 1
 
-FONT_NAME="${1}"
-
-usage() {
-  cat <<EOF
-Usage: hyprshell fonts/font-set.sh <font-name>
-
-Sets monospace font system-wide across:
-  • Environment variables (\$MONOSPACE_FONT)
-  • Theme terminal override (\$TERMINAL_FONT)
-  • Kitty terminal
-  • Alacritty terminal
-  • Ghostty terminal (if installed)
-  • Fontconfig (system-wide monospace)
-  • SwayOSD style
-  • Waybar (triggers regeneration)
-
-The font name must be a valid monospace font installed on your system.
-
-Examples:
-  hyprshell fonts/font-set.sh "Miracode"
-  hyprshell fonts/font-set.sh "0xProto Nerd Font Mono"
-  hyprshell fonts/font-set.sh "CaskaydiaCove Nerd Font Mono"
-
-To list available fonts:
-  hyprshell fonts/font-list.sh
-
-To install new Nerd Fonts:
-  Menu > Install > Font
-  or hyprshell fonts/font-nerd-install.sh --list-installable
-
-EOF
-  exit 0
-}
-
-# Show usage if no args or help requested
-[[ -z "$FONT_NAME" || "$FONT_NAME" == "-h" || "$FONT_NAME" == "--help" ]] && usage
-
-# Skip if user cancelled (for use with font pickers)
-[[ "$FONT_NAME" == "CNCLD" ]] && exit 0
-
-# Validate font exists
-if ! fc-list | grep -i "$FONT_NAME" >/dev/null 2>&1; then
-  echo "❌ Font '$FONT_NAME' not found in system."
-  echo ""
-  echo "Available monospace fonts:"
-  hyprshell fonts/font-list.sh | head -20
-  echo ""
-  echo "Install fonts from Menu > Install > Font"
-  exit 1
-fi
-
-echo "Setting font to: $FONT_NAME"
-echo ""
-
-# Track what was updated
+FONT_NAME="${1:-}"
 UPDATED=()
-
-# ============================================================================
-# 1. UPDATE HYPR VARIABLES
-# ============================================================================
 
 HYPR_SHARED_DIR="${HYPR_DATA_HOME:-$HOME/.local/share/hypr}"
 if [[ -f "${HYPR_SHARED_DIR}/variables.conf" ]]; then
@@ -73,21 +14,44 @@ if [[ -f "${HYPR_SHARED_DIR}/variables.conf" ]]; then
 else
   VARIABLES_FILE="${HYPR_CONFIG_HOME:-$HOME/.config/hypr}/variables.conf"
 fi
+
 USER_FONTS_FILE="${HYPR_CONFIG_HOME:-$HOME/.config/hypr}/userfonts.conf"
+THEME_CONF="${HYPR_CONFIG_HOME:-$HOME/.config/hypr}/themes/theme.conf"
+ALACRITTY_CONF="$HOME/.config/alacritty/alacritty.toml"
+KITTY_CONF="$HOME/.config/kitty/kitty.conf"
+FONTCONFIG_FILE="$HOME/.config/fontconfig/fonts.conf"
+
+usage() {
+  cat <<EOF
+Usage: hyprshell fonts/font-set.sh <font-name>
+
+Sets monospace font across:
+  • Hypr font variables and persistent overrides
+  • Kitty and Alacritty
+  • Fontconfig monospace alias
+  • Waybar and Rofi consumers
+
+Examples:
+  hyprshell fonts/font-set.sh "Miracode"
+  hyprshell fonts/font-set.sh "0xProto Nerd Font Mono"
+  hyprshell fonts/font-set.sh "CaskaydiaCove Nerd Font Mono"
+EOF
+  exit 0
+}
 
 update_or_add_var() {
   local file_path="$1"
   local var_name="$2"
   local var_value="$3"
-
-  mkdir -p "$(dirname "$file_path")"
-  touch "$file_path"
-
   local key_regex="^[[:space:]]*[$]${var_name}="
   local replacement='$'"${var_name}=${var_value}"
   local replacement_escaped="${replacement//\\/\\\\}"
+
   replacement_escaped="${replacement_escaped//&/\\&}"
   replacement_escaped="${replacement_escaped//|/\\|}"
+
+  mkdir -p "$(dirname "$file_path")"
+  touch "$file_path"
 
   if grep -q "${key_regex}" "$file_path"; then
     sed -i "s|${key_regex}.*|${replacement_escaped}|" "$file_path"
@@ -96,158 +60,151 @@ update_or_add_var() {
   fi
 }
 
-FONT_NAME_SED="$(sed_escape_replacement "${FONT_NAME}")"
+append_updated() {
+  UPDATED+=("$1")
+}
 
-if [[ -f "$VARIABLES_FILE" ]]; then
-  echo "📝 Updating Hypr variables..."
+require_font_name() {
+  [[ -n "$FONT_NAME" && "$FONT_NAME" != "-h" && "$FONT_NAME" != "--help" ]] || usage
+  [[ "$FONT_NAME" == "CNCLD" ]] && exit 0
+}
 
-  # Update $MONOSPACE_FONT
-  if grep -q '^\$MONOSPACE_FONT=' "$VARIABLES_FILE"; then
-    sed -i "s|^\$MONOSPACE_FONT=.*|\$MONOSPACE_FONT=${FONT_NAME_SED}|" "$VARIABLES_FILE"
-    UPDATED+=("Hypr \$MONOSPACE_FONT variable")
+require_installed_font() {
+  if fc-list | grep -i "$FONT_NAME" >/dev/null 2>&1; then
+    return 0
   fi
 
-  # Also update UI fonts (Waybar/Rofi) for consistency
-  if grep -q '^\$BAR_FONT=' "$VARIABLES_FILE"; then
-    sed -i "s|^\$BAR_FONT=.*|\$BAR_FONT=${FONT_NAME_SED}|" "$VARIABLES_FILE"
-    UPDATED+=("Hypr \$BAR_FONT variable")
-  fi
-  if grep -q '^\$MENU_FONT=' "$VARIABLES_FILE"; then
-    sed -i "s|^\$MENU_FONT=.*|\$MENU_FONT=${FONT_NAME_SED}|" "$VARIABLES_FILE"
-    UPDATED+=("Hypr \$MENU_FONT variable")
-  fi
-  if grep -q '^\$TERMINAL_FONT=' "$VARIABLES_FILE"; then
-    sed -i "s|^\$TERMINAL_FONT=.*|\$TERMINAL_FONT=${FONT_NAME_SED}|" "$VARIABLES_FILE"
-    UPDATED+=("Hypr \$TERMINAL_FONT variable")
-  fi
+  echo "Font '$FONT_NAME' not found in system."
+  echo
+  echo "Available monospace fonts:"
+  hyprshell fonts/font-list.sh | head -20
+  echo
+  echo "Install fonts from Menu > Install > Font"
+  exit 1
+}
 
-  # Also update theme.conf if it exists (for current session)
-  THEME_CONF="${HYPR_CONFIG_HOME:-$HOME/.config/hypr}/themes/theme.conf"
-  if [[ -f "$THEME_CONF" ]]; then
-    if grep -q '^\$MONOSPACE_FONT=' "$THEME_CONF"; then
-      sed -i "s|^\$MONOSPACE_FONT=.*|\$MONOSPACE_FONT=${FONT_NAME_SED}|" "$THEME_CONF"
-      UPDATED+=("Theme config \$MONOSPACE_FONT")
-    fi
-    if grep -q '^\$TERMINAL_FONT=' "$THEME_CONF"; then
-      sed -i "s|^\$TERMINAL_FONT=.*|\$TERMINAL_FONT=${FONT_NAME_SED}|" "$THEME_CONF"
-      UPDATED+=("Theme config \$TERMINAL_FONT")
-    fi
-  fi
-fi
+update_hypr_var_if_present() {
+  local file_path="$1"
+  local var_name="$2"
+  local label="$3"
 
-# Persistent overrides (survive theme/wallpaper changes)
-echo "📝 Updating persistent font overrides..."
-update_or_add_var "$USER_FONTS_FILE" "MONOSPACE_FONT" "$FONT_NAME"
-update_or_add_var "$USER_FONTS_FILE" "BAR_FONT" "$FONT_NAME"
-update_or_add_var "$USER_FONTS_FILE" "MENU_FONT" "$FONT_NAME"
-update_or_add_var "$USER_FONTS_FILE" "TERMINAL_FONT" "$FONT_NAME"
-UPDATED+=("Hypr user font overrides")
+  [[ -f "$file_path" ]] || return 0
+  grep -q "^\$${var_name}=" "$file_path" || return 0
 
-# Keep UI consumers in sync (Waybar/Rofi)
-hyprshell fonts/font-sync.sh \
-  --bar-to "$FONT_NAME" \
-  --rofi-to "$FONT_NAME" >/dev/null 2>&1 || true
+  sed -i "s|^\$${var_name}=.*|\$${var_name}=${FONT_NAME_SED}|" "$file_path"
+  append_updated "$label"
+}
 
-# ============================================================================
-# 2. UPDATE TERMINAL EMULATORS
-# ============================================================================
+update_hypr_variables() {
+  echo "Updating Hypr font variables..."
 
-# Alacritty
-ALACRITTY_CONF="$HOME/.config/alacritty/alacritty.toml"
-if [[ -f "$ALACRITTY_CONF" ]]; then
-  echo "📝 Updating Alacritty..."
+  update_hypr_var_if_present "$VARIABLES_FILE" "MONOSPACE_FONT" 'Hypr $MONOSPACE_FONT variable'
+  update_hypr_var_if_present "$VARIABLES_FILE" "BAR_FONT" 'Hypr $BAR_FONT variable'
+  update_hypr_var_if_present "$VARIABLES_FILE" "MENU_FONT" 'Hypr $MENU_FONT variable'
+  update_hypr_var_if_present "$VARIABLES_FILE" "TERMINAL_FONT" 'Hypr $TERMINAL_FONT variable'
+  update_hypr_var_if_present "$THEME_CONF" "MONOSPACE_FONT" 'Theme config $MONOSPACE_FONT'
+  update_hypr_var_if_present "$THEME_CONF" "TERMINAL_FONT" 'Theme config $TERMINAL_FONT'
+
+  echo "Updating persistent font overrides..."
+  update_or_add_var "$USER_FONTS_FILE" "MONOSPACE_FONT" "$FONT_NAME"
+  update_or_add_var "$USER_FONTS_FILE" "BAR_FONT" "$FONT_NAME"
+  update_or_add_var "$USER_FONTS_FILE" "MENU_FONT" "$FONT_NAME"
+  update_or_add_var "$USER_FONTS_FILE" "TERMINAL_FONT" "$FONT_NAME"
+  append_updated "Hypr user font overrides"
+
+  hyprshell fonts/font-sync.sh --bar-to "$FONT_NAME" --rofi-to "$FONT_NAME" >/dev/null 2>&1 || true
+}
+
+update_alacritty() {
+  [[ -f "$ALACRITTY_CONF" ]] || return 0
+  echo "Updating Alacritty..."
   sed -i "s|family = \".*\"|family = \"${FONT_NAME_SED}\"|g" "$ALACRITTY_CONF"
-  UPDATED+=("Alacritty terminal")
-fi
+  append_updated "Alacritty terminal"
+}
 
-# Kitty
-KITTY_CONF="$HOME/.config/kitty/kitty.conf"
-if [[ -f "$KITTY_CONF" ]]; then
-  echo "📝 Updating Kitty..."
+reload_kitty_instances() {
+  pgrep -x kitty >/dev/null || return 0
+  pkill -USR1 kitty 2>/dev/null && echo "  Reloaded Kitty instances"
+}
+
+update_kitty() {
+  [[ -f "$KITTY_CONF" ]] || return 0
+  echo "Updating Kitty..."
   sed -i "s|^font_family .*|font_family ${FONT_NAME_SED}|g" "$KITTY_CONF"
+  reload_kitty_instances
+  append_updated "Kitty terminal"
+}
 
-  # Hot reload Kitty instances
-  if pgrep -x kitty >/dev/null; then
-    pkill -USR1 kitty 2>/dev/null && echo "   ↳ Reloaded Kitty instances"
-  fi
+update_terminals() {
+  update_alacritty
+  update_kitty
+}
 
-  UPDATED+=("Kitty terminal")
-fi
+update_fontconfig() {
+  [[ -f "$FONTCONFIG_FILE" ]] || return 0
 
-# ============================================================================
-# 3. UPDATE FONTCONFIG (SYSTEM-WIDE MONOSPACE)
-# ============================================================================
-
-FONTCONFIG_FILE="$HOME/.config/fontconfig/fonts.conf"
-if [[ -f "$FONTCONFIG_FILE" ]]; then
-  echo "📝 Updating Fontconfig..."
-
-  # Use xmlstarlet if available, otherwise sed
+  echo "Updating Fontconfig..."
   if command -v xmlstarlet >/dev/null 2>&1; then
     xmlstarlet ed -L \
       -u '//match[@target="pattern"][test/string="monospace"]/edit[@name="family"]/string' \
       -v "$FONT_NAME" \
-      "$FONTCONFIG_FILE" 2>/dev/null && UPDATED+=("Fontconfig monospace alias")
-  else
-    # Fallback: sed-based XML editing (fragile but works for simple cases)
-    sed -i "/<test qual=\"any\" name=\"family\">/,/<\\/edit>/ s|<string>.*</string>|<string>${FONT_NAME_SED}</string>|" "$FONTCONFIG_FILE"
-    UPDATED+=("Fontconfig monospace alias (via sed)")
+      "$FONTCONFIG_FILE" 2>/dev/null && append_updated "Fontconfig monospace alias"
+    return 0
   fi
-fi
 
-# ============================================================================
-# 4. REGENERATE WAYBAR (reads from $BAR_FONT, not $MONOSPACE_FONT)
-# ============================================================================
+  sed -i "/<test qual=\"any\" name=\"family\">/,/<\\/edit>/ s|<string>.*</string>|<string>${FONT_NAME_SED}</string>|" "$FONTCONFIG_FILE"
+  append_updated "Fontconfig monospace alias (via sed)"
+}
 
-# NOTE: Waybar uses $BAR_FONT from variables.conf, not $MONOSPACE_FONT
-# So we don't change waybar directly, but we reload it to pick up any
-# theme changes and ensure includes/global.css is current
+reload_ui_consumers() {
+  echo "Reloading Waybar..."
+  hyprshell service/restart-waybar.sh >/dev/null 2>&1 || true
+  append_updated "Waybar (reload)"
 
-echo "📝 Reloading Waybar..."
-hyprshell service/restart-waybar.sh >/dev/null 2>&1 || true
-UPDATED+=("Waybar (reload)")
-
-# ============================================================================
-# 5. OPTIONAL: RELOAD ROFI (if running)
-# ============================================================================
-
-if pgrep -x rofi >/dev/null 2>&1; then
+  pgrep -x rofi >/dev/null || return 0
   pkill -x rofi >/dev/null 2>&1 || true
-  UPDATED+=("Rofi launcher")
-fi
+  append_updated "Rofi launcher"
+}
 
-# ============================================================================
-# 6. REFRESH FONT CACHE
-# ============================================================================
+refresh_font_cache() {
+  echo "Refreshing font cache..."
+  fc-cache -fq 2>/dev/null && echo "  Font cache updated"
+}
 
-echo "📝 Refreshing font cache..."
-fc-cache -fq 2>/dev/null && echo "   ↳ Font cache updated"
+show_summary() {
+  echo
+  echo "Font set to: $FONT_NAME"
+  echo
 
-# ============================================================================
-# SUMMARY
-# ============================================================================
+  if [[ ${#UPDATED[@]} -eq 0 ]]; then
+    echo "No configurations were updated."
+  else
+    echo "Updated configurations:"
+    printf '  • %s\n' "${UPDATED[@]}"
+  fi
 
-echo ""
-echo "✅ Font set to: $FONT_NAME"
-echo ""
+  echo
+  echo 'Note: this updates $BAR_FONT, $MENU_FONT, and $TERMINAL_FONT to match the selected font.'
+}
 
-if [[ ${#UPDATED[@]} -gt 0 ]]; then
-  echo "Updated configurations:"
-  for item in "${UPDATED[@]}"; do
-    echo "  • $item"
-  done
-else
-  echo "⚠️  No configurations were updated (files may not exist)"
-fi
-
-echo ""
-echo "Note: Waybar and many Rofi themes use the UI font variables."
-echo "      This script updates \$BAR_FONT, \$MENU_FONT, and \$TERMINAL_FONT to match the selected font."
-
-# Notify user
-if command -v dunstify >/dev/null 2>&1; then
+notify_user() {
+  command -v dunstify >/dev/null 2>&1 || return 0
   dunstify -a "Font Manager" -i "preferences-desktop-font" \
     "Font Changed" "Monospace font set to $FONT_NAME" -t 3000
-fi
+}
 
-exit 0
+require_font_name
+require_installed_font
+
+FONT_NAME_SED="$(sed_escape_replacement "${FONT_NAME}")"
+
+echo "Setting font to: $FONT_NAME"
+echo
+
+update_hypr_variables
+update_terminals
+update_fontconfig
+reload_ui_consumers
+refresh_font_cache
+show_summary
+notify_user

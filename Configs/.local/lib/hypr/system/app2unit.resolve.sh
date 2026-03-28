@@ -1,58 +1,51 @@
 #!/usr/bin/env sh
 # Main-argument and association resolution helpers for app2unit.
-parse_main_arg() {
-	# fills some of global variables depending on main arg $1
-	MAIN_ARG=$1
-
+reset_main_arg_state() {
 	ENTRY_ID=''
 	ENTRY_ACTION=''
 	ENTRY_PATH=''
 	EXEC_NAME=''
 	EXEC_PATH=''
+}
 
-	case "$MAIN_ARG" in
-	'')
-		error "Empty main argument"
-		return 1
-		;;
+parse_desktop_entry_ref() {
+	case "$1" in
 	*.desktop:*)
 		IFS=':' read -r ENTRY_ID ENTRY_ACTION <<-EOA
-			$MAIN_ARG
+			$1
 		EOA
 		;;
 	*.desktop)
-		ENTRY_ID=$MAIN_ARG
+		ENTRY_ID=$1
 		ENTRY_ACTION=''
 		;;
 	esac
-	debug "ENTRY_ID: $ENTRY_ID" "ENTRY_ACTION: $ENTRY_ACTION"
+}
 
-	if [ -n "$ENTRY_ID" ]; then
-		case "$ENTRY_ID" in
-		*/*)
-			# this is a path
-			ENTRY_PATH=$ENTRY_ID
-			ENTRY_ID=${ENTRY_ID##*/}
-			if [ ! -f "$ENTRY_PATH" ]; then
-				error "File not found: '$ENTRY_PATH'"
-				return 1
-			fi
-			return
-			;;
-		esac
-
-		if ! validate_entry_id "$ENTRY_ID"; then
-			error "Invalid Entry ID '$ENTRY_ID'!"
-			return 1
-		fi
-		if ! validate_action_id "$ENTRY_ACTION"; then
-			error "Invalid Entry Action ID '$ENTRY_ACTION'!"
+resolve_desktop_entry_ref() {
+	case "$ENTRY_ID" in
+	*/*)
+		ENTRY_PATH=$ENTRY_ID
+		ENTRY_ID=${ENTRY_ID##*/}
+		if [ ! -f "$ENTRY_PATH" ]; then
+			error "File not found: '$ENTRY_PATH'"
 			return 1
 		fi
 		return 0
-	fi
+		;;
+	esac
 
-	# what's left is executable
+	if ! validate_entry_id "$ENTRY_ID"; then
+		error "Invalid Entry ID '$ENTRY_ID'!"
+		return 1
+	fi
+	if ! validate_action_id "$ENTRY_ACTION"; then
+		error "Invalid Entry Action ID '$ENTRY_ACTION'!"
+		return 1
+	fi
+}
+
+resolve_executable_ref() {
 	case "$MAIN_ARG" in
 	*/*)
 		EXEC_PATH=$MAIN_ARG
@@ -66,7 +59,7 @@ parse_main_arg() {
 			error "File is not executable: '$EXEC_PATH'"
 			return 1
 		fi
-		return
+		return 0
 		;;
 	esac
 
@@ -76,6 +69,28 @@ parse_main_arg() {
 		error "Executable not found: '$EXEC_NAME'"
 		return 1
 	fi
+}
+
+parse_main_arg() {
+	# fills some of global variables depending on main arg $1
+	MAIN_ARG=$1
+	reset_main_arg_state
+
+	case "$MAIN_ARG" in
+	'')
+		error "Empty main argument"
+		return 1
+		;;
+	esac
+	parse_desktop_entry_ref "$MAIN_ARG"
+	debug "ENTRY_ID: $ENTRY_ID" "ENTRY_ACTION: $ENTRY_ACTION"
+
+	if [ -n "$ENTRY_ID" ]; then
+		resolve_desktop_entry_ref
+		return $?
+	fi
+
+	resolve_executable_ref
 }
 
 check_terminal_handler() {

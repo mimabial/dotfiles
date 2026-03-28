@@ -1,12 +1,26 @@
 #!/bin/bash
 
-browser=$(xdg-settings get default-web-browser)
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/system/desktop-entry.exec.bash"
 
-case $browser in
-google-chrome* | brave-browser* | microsoft-edge* | opera* | vivaldi* | helium-browser*) ;;
-*) browser="chromium.desktop" ;;
+browser="$(xdg-settings get default-web-browser)"
+
+case "$browser" in
+  google-chrome* | brave-browser* | microsoft-edge* | opera* | vivaldi* | helium-browser*) ;;
+  *)
+    browser="chromium.desktop"
+    ;;
 esac
 
-browser_exec="$(sed -n 's/^Exec=\([^ ]*\).*/\1/p' {~/.local,~/.nix-profile,/usr}/share/applications/"$browser" 2>/dev/null | head -1)"
-[[ -z "${browser_exec}" ]] && browser_exec="chromium"
-exec setsid uwsm-app -- "${browser_exec}" --app="$1" "${@:2}"
+[[ -n "${1:-}" ]] || {
+  echo "Usage: $(basename "$0") <url> [args...]"
+  exit 1
+}
+
+desktop_entry_exec_resolve "$browser" || exit 1
+
+if [[ -n "${DESKTOP_ENTRY_WORKDIR}" ]]; then
+  cd "${DESKTOP_ENTRY_WORKDIR}" || exit 1
+fi
+
+exec setsid uwsm-app -- "${DESKTOP_ENTRY_ARGV[@]}" "--app=$1" "${@:2}"

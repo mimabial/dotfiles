@@ -16,20 +16,10 @@
 pkg_installed() {
   local pkgIn="${1}"
 
-  # Validate input
-  if [[ -z "${pkgIn}" ]]; then
-    return 1
-  fi
-
-  if command -v "${pkgIn}" &>/dev/null; then
-    return 0
-  elif command -v "flatpak" &>/dev/null && flatpak info "${pkgIn}" &>/dev/null; then
-    return 0
-  elif hyprshell pm.sh pq "${pkgIn}" &>/dev/null; then
-    return 0
-  else
-    return 1
-  fi
+  [[ -n "${pkgIn}" ]] || return 1
+  command -v "${pkgIn}" &>/dev/null && return 0
+  command -v flatpak &>/dev/null && flatpak info "${pkgIn}" &>/dev/null && return 0
+  hyprshell pm.sh pq "${pkgIn}" &>/dev/null
 }
 
 escape_regex() {
@@ -78,12 +68,17 @@ ini_group_has_key() {
 }
 
 get_aur_helper() {
-  if pkg_installed yay; then
-    aur_helper="yay"
-  elif pkg_installed paru; then
-    # shellcheck disable=SC2034
-    aur_helper="paru"
+  local helper=""
+
+  if command -v yay >/dev/null 2>&1; then
+    helper="yay"
+  elif command -v paru >/dev/null 2>&1; then
+    helper="paru"
   fi
+
+  aur_helper="${helper}"
+  [[ -n "${helper}" ]] || return 1
+  printf '%s\n' "${helper}"
 }
 
 # ============================================================================
@@ -159,9 +154,6 @@ get_hypr_conf() {
 
 #? handle pasting
 paste_string() {
-  if ! command -v wtype >/dev/null; then
-    return 0
-  fi
   if [ -t 1 ]; then return 0; fi
   local ignore_paste_file="$HYPR_STATE_HOME/ignore.paste"
 
@@ -186,7 +178,11 @@ EOF
   local class
   class=$(hyprctl -j activewindow | jq -r '.initialClass')
   if ! grep -q "${class}" "${ignore_paste_file}"; then
-    hyprctl -q dispatch exec 'wtype -M ctrl V -m ctrl'
+    if command -v wtype >/dev/null; then
+      hyprctl -q dispatch exec 'wtype -M ctrl V -m ctrl'
+    elif command -v hyprctl >/dev/null; then
+      hyprctl -q dispatch sendshortcut CTRL,V,activewindow
+    fi
   fi
 }
 

@@ -36,13 +36,16 @@ get_aur_helper() {
   elif command -v paru &>/dev/null; then
     echo "paru"
   else
-    echo "yay"
+    return 1
   fi
 }
 
 aur_install() {
   local aur_helper=""
-  aur_helper="$(get_aur_helper)"
+  if ! aur_helper="$(get_aur_helper)"; then
+    dunstify -i "dialog-error" "AUR Helper Missing" "Install yay or paru to use AUR installs from the menu" -u critical
+    return 1
+  fi
   local name="$1"
   local package_list="$2"
   local -a packages=()
@@ -58,7 +61,10 @@ aur_install() {
 
 aur_install_and_launch() {
   local aur_helper=""
-  aur_helper="$(get_aur_helper)"
+  if ! aur_helper="$(get_aur_helper)"; then
+    dunstify -i "dialog-error" "AUR Helper Missing" "Install yay or paru to use AUR installs from the menu" -u critical
+    return 1
+  fi
   local name="$1"
   local package_list="$2"
   local desktop_id="$3"

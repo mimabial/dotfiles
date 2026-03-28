@@ -3,15 +3,32 @@
 
 #? avoid notification calls stalling the script
 notify_send_safe() {
+  local output=""
+  local rc=0
+
   if ! command -v dunstify >/dev/null 2>&1; then
-    return 0
+    printf 'WARN: dunstify is unavailable; notification skipped\n' >&2
+    return 1
   fi
 
   if command -v timeout >/dev/null 2>&1; then
-    timeout 2 dunstify "$@" >/dev/null 2>&1 || true
+    output="$(timeout 2 dunstify "$@" 2>&1 >/dev/null)"
+    rc=$?
   else
-    dunstify "$@" >/dev/null 2>&1 || true
+    output="$(dunstify "$@" 2>&1 >/dev/null)"
+    rc=$?
   fi
+
+  if ((rc != 0)); then
+    if [[ -n "${output}" ]]; then
+      printf 'WARN: dunstify failed (%d): %s\n' "${rc}" "${output}" >&2
+    else
+      printf 'WARN: dunstify failed (%d)\n' "${rc}" >&2
+    fi
+    return "${rc}"
+  fi
+
+  return 0
 }
 
 send_notifs() {

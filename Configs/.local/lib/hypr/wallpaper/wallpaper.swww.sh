@@ -1,17 +1,6 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC1091
-# Separated wallpaper script for swww backend
-# We will handle swww specific configurations here
-# add overrides in [wallpaper.swww] in ~/.config/hypr/config.toml
-
-# * Contributor Notes,
-# this is a separate implementation of swww wallpaper setter
-# If you want to add another backend add it as `wallpaper.<backend>.sh`
-# This script only accepts one argument,
-#   the path to the wallpaper or a symlink
-# This script should handle unsupported files.
-#   In this case we used the method `extract_thumbnail`
-#   to generate a png from a video file as swww do not support video
+# Wallpaper backend adapter for the swww/awww-style runtime wallpaper daemon.
 
 selected_wall="${1:-"${WALLPAPER_CURRENT_DIR:-${HYPR_CACHE_HOME:-$HOME/.cache/hypr}/wallpaper/current}/wall.set"}"
 
@@ -32,9 +21,68 @@ trap 'flock -u 203 2>/dev/null' EXIT
 # shellcheck disable=SC1091
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
 
+wait_for_wallpaper_daemon() {
+  local attempt=0
+  local max_attempts=40
+
+  while (( attempt < max_attempts )); do
+    if "${wallpaper_client_cmd}" query >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 0.05
+    ((attempt++))
+  done
+  return 1
+}
+
+cleanup_stale_wallpaper_socket() {
+  local socket_path=""
+
+  [[ "${wallpaper_daemon_cmd}" == "awww-daemon" ]] || return 0
+  [[ -n "${WAYLAND_DISPLAY:-}" ]] || return 0
+  pgrep -x "${wallpaper_daemon_cmd}" >/dev/null 2>&1 && return 0
+
+  socket_path="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/${WAYLAND_DISPLAY}-awww-daemon.sock"
+  [[ -S "${socket_path}" ]] || return 0
+  rm -f -- "${socket_path}"
+}
+
+resolve_wallpaper_backend() {
+  if command -v awww >/dev/null 2>&1 && command -v awww-daemon >/dev/null 2>&1; then
+    wallpaper_client_cmd="awww"
+    wallpaper_daemon_cmd="awww-daemon"
+    wallpaper_backend_log="awww"
+    wallpaper_daemon_args=(--format argb)
+    mkdir -p "${XDG_CACHE_HOME:-$HOME/.cache}/awww"
+    return 0
+  fi
+
+  if command -v swww >/dev/null 2>&1 && command -v swww-daemon >/dev/null 2>&1; then
+    wallpaper_client_cmd="swww"
+    wallpaper_daemon_cmd="swww-daemon"
+    wallpaper_backend_log="swww"
+    wallpaper_daemon_args=(--format xrgb)
+    return 0
+  fi
+
+  print_log -sec "wallpaper" -err "backend missing (expected awww or swww)"
+  return 1
+}
+
+ensure_wallpaper_daemon() {
+  "${wallpaper_client_cmd}" query >/dev/null 2>&1 && return 0
+  cleanup_stale_wallpaper_socket
+  "${wallpaper_daemon_cmd}" "${wallpaper_daemon_args[@]}" 200>&- 201>&- 202>&- 203>&- &
+  disown
+  wait_for_wallpaper_daemon && return 0
+  print_log -sec "${wallpaper_backend_log}" -err "daemon did not become ready"
+  return 1
+}
+
+resolve_wallpaper_backend || exit 1
+
 #// set defaults
 wallpaper_transition_type="${wallpaper_transition_type:-${WALLPAPER_SWWW_TRANSITION_DEFAULT:-fade}}"
-[[ -z "${wallpaper_transition_type}" ]] && wallpaper_transition_type="fade"
 
 # Handle transition
 case "${WALLPAPER_SET_FLAG}" in
@@ -50,15 +98,9 @@ esac
 [[ -z "${selected_wall}" ]] && echo "No input wallpaper" && exit 1
 selected_wall="$(readlink -f "${selected_wall}")"
 
-if ! swww query &>/dev/null; then
-  # Close lock file descriptors before starting daemon to prevent inheritance
-  swww-daemon --format xrgb 200>&- 201>&- 202>&- 203>&- &
-  disown
-  swww query && swww restore
-fi
+ensure_wallpaper_daemon || exit 1
 
-is_video=$(file --mime-type -b "${selected_wall}" | grep -c '^video/')
-if [[ "${is_video}" -eq 1 ]]; then
+if file --mime-type -b "${selected_wall}" | grep -q '^video/'; then
   print_log -sec "wallpaper" -stat "converting video" "$selected_wall"
   mkdir -p "${WALLPAPER_VIDEO_DIR}"
   cached_thumb="${WALLPAPER_VIDEO_DIR}/$(${HYPR_HASH_COMMAND:-sha1sum} "${selected_wall}" | cut -d' ' -f1).png"
@@ -74,15 +116,15 @@ print_log -sec "wallpaper" -stat "apply" "$selected_wall"
 # Resolve the wallpaper path
 resolved_wall="$(readlink -f "$selected_wall")"
 if [ -z "${resolved_wall}" ] || [ ! -f "${resolved_wall}" ]; then
-  print_log -sec "swww" -err "wallpaper not found: ${selected_wall} -> ${resolved_wall}"
+  print_log -sec "${wallpaper_backend_log}" -err "wallpaper not found: ${selected_wall} -> ${resolved_wall}"
   exit 1
 fi
 
 # Get cursor position (fallback to center if unavailable)
 cursor_pos="$(hyprctl cursorpos 2>/dev/null | grep -E '^[0-9]' || echo "0,0")"
 
-# Build swww command
-swww_cmd=(swww img "${resolved_wall}"
+# Build backend command
+wallpaper_cmd=("${wallpaper_client_cmd}" img "${resolved_wall}"
   --transition-bezier .43,1.19,1,.4
   --transition-type "${wallpaper_transition_type}"
   --transition-duration "${wallTransDuration}"
@@ -92,8 +134,7 @@ swww_cmd=(swww img "${resolved_wall}"
 
 # Don't run in background during startup to ensure GIF animation loads properly
 if [[ "${WALLPAPER_SET_FLAG}" == "start" ]]; then
-  "${swww_cmd[@]}"
+  "${wallpaper_cmd[@]}"
 else
-  # Run in background but log any errors
-  ( "${swww_cmd[@]}" || print_log -sec "swww" -err "failed to set wallpaper" ) &
+  ( "${wallpaper_cmd[@]}" || print_log -sec "${wallpaper_backend_log}" -err "failed to set wallpaper" ) &
 fi

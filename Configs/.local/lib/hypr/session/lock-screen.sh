@@ -3,6 +3,7 @@
 source "$(command -v hyprshell)" || exit 1
 
 lockscreen="${LOCKSCREEN:-hyprlock}"
+lockscreen_wrapper=""
 
 case ${1} in
   --get)
@@ -16,9 +17,10 @@ esac
 #? This fix the zombie process issue when hyprlock is unlocked but still running.
 unit_id=(-u "lockscreen.scope")
 
-if command -v "${lockscreen}.sh" &>/dev/null; then
-  printf "Executing ${lockscreen} wrapper script : %s\n" "${lockscreen}.sh"
-  app2unit.sh "${unit_id[@]}" -- "${lockscreen}.sh" "${@}"
+lockscreen_wrapper="$(command -v "${lockscreen}.sh" 2>/dev/null || true)"
+if [[ -n "${lockscreen_wrapper}" ]]; then
+  printf "Executing ${lockscreen} wrapper script : %s\n" "${lockscreen_wrapper}"
+  app2unit.sh "${unit_id[@]}" -- "${lockscreen_wrapper}" "${@}"
 else
   printf "Executing raw command: %s\n" "${lockscreen}"
   app2unit.sh "${unit_id[@]}" -- "${lockscreen}" "${@}"

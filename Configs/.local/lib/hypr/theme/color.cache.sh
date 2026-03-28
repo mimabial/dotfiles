@@ -1,31 +1,89 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2154
-#
-# color.cache.sh - Wallpaper color cache management
-#
-# OVERVIEW:
-#   Manages the per-wallpaper color cache for pywal16. Caching allows instant
-#   theme switching when returning to previously-used wallpapers.
-#
-# USAGE:
-#   source color.cache.sh
-#   wal_cache_valid "$cache_path" && echo "Cache hit"
-#   wal_cache_swap_dir "$src" "$dest"
-#   wal_cache_store "$wal_output" "$cache_path"
-#
-# DEPENDENCIES:
-#   - HYPR_WAL_CACHE_DIR must be set (defaults provided)
-#   - print_log function from globalcontrol.sh
-#
-# CACHE STRUCTURE:
-#   $HYPR_WAL_CACHE_DIR/<wallpaper_hash>_<mode>_<backend>/
-#     ├── colors.json        # Main color data
-#     ├── colors-shell.sh    # Shell-sourceable colors
-#     ├── .meta              # Cache metadata (key, wallpaper, mode, backend)
-#     └── .complete          # Marker indicating valid cache
 
 # Default cache directory
 HYPR_WAL_CACHE_DIR="${HYPR_WAL_CACHE_DIR:-${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/wal/cache}"
+
+remove_dir_quietly() {
+  rm -rf "${1}" 2>/dev/null || true
+}
+
+copy_entry_with_fallback() {
+  local src="$1"
+  local dest="$2"
+
+  cp -a --reflink=auto "${src}" "${dest}/" 2>/dev/null || cp -a "${src}" "${dest}/" 2>/dev/null
+}
+
+copy_cache_tree() {
+  local src_dir="$1"
+  local dest_dir="$2"
+
+  if cp -a --reflink=auto "${src_dir}/." "${dest_dir}/" 2>/dev/null; then
+    return 0
+  fi
+
+  cp -a "${src_dir}/." "${dest_dir}/" 2>/dev/null
+}
+
+create_backup_dir() {
+  local parent_dir="$1"
+  local dest_dir="$2"
+  local backup_dir=""
+
+  backup_dir="$(mktemp -d -p "${parent_dir}" "$(basename "${dest_dir}").bak.XXXXXXXX")" || return 1
+  remove_dir_quietly "${backup_dir}"
+  printf '%s\n' "${backup_dir}"
+}
+
+replace_dir_atomically() {
+  local dest_dir="$1"
+  local tmp_dir="$2"
+  local backup_dir="$3"
+
+  mv "${dest_dir}" "${backup_dir}" 2>/dev/null || return 1
+  mv "${tmp_dir}" "${dest_dir}" 2>/dev/null || {
+    mv "${backup_dir}" "${dest_dir}" 2>/dev/null || true
+    return 1
+  }
+
+  remove_dir_quietly "${backup_dir}"
+}
+
+preserve_wal_state() {
+  local dest_dir="$1"
+  local dest_parent="$2"
+
+  schemes_tmp=""
+  post_hooks_tmp=""
+  if [[ -d "${dest_dir}/schemes" ]]; then
+    schemes_tmp="$(mktemp -d -p "${dest_parent}" wal.schemes.XXXXXXXX)" || schemes_tmp=""
+    mv "${dest_dir}/schemes" "${schemes_tmp}" 2>/dev/null || schemes_tmp=""
+  fi
+  if [[ -f "${dest_dir}/post-hooks.sh" ]]; then
+    post_hooks_tmp="$(mktemp -p "${dest_parent}" wal.post-hooks.XXXXXXXX)" || post_hooks_tmp=""
+    mv "${dest_dir}/post-hooks.sh" "${post_hooks_tmp}" 2>/dev/null || post_hooks_tmp=""
+  fi
+}
+
+restore_wal_state() {
+  local dest_dir="$1"
+
+  [[ -n "${schemes_tmp:-}" ]] && [[ -d "${schemes_tmp}" ]] && mv "${schemes_tmp}" "${dest_dir}/schemes" 2>/dev/null || true
+  [[ -n "${post_hooks_tmp:-}" ]] && [[ -f "${post_hooks_tmp}" ]] && mv "${post_hooks_tmp}" "${dest_dir}/post-hooks.sh" 2>/dev/null || true
+}
+
+write_cache_meta() {
+  local tmp_dir="$1"
+
+  {
+    echo "${wal_cache_key}"
+    echo "wallpaper=${STATE_WALLPAPER:-${WALLPAPER_IMAGE}}"
+    echo "color_variant=${resolved_color_variant}"
+    echo "backend=${PYWAL_BACKEND}"
+  } >"${tmp_dir}/.meta"
+  touch "${tmp_dir}/.complete"
+}
 
 cache_cleanup_stale() {
   local cache_dir="$1"
@@ -157,18 +215,6 @@ queue_wal_cache_prune() {
   disown
 }
 
-# ============================================================================
-# wal_cache_valid - Check if a cache directory contains valid color data
-# ============================================================================
-# Arguments:
-#   $1 - Path to cache directory to validate
-# Returns:
-#   0 - Cache is valid and complete
-#   1 - Cache is missing, incomplete, or corrupted
-# Example:
-#   if wal_cache_valid "$cache_path"; then
-#     echo "Using cached colors"
-#   fi
 wal_cache_valid() {
   local dir="${1}"
 
@@ -184,115 +230,7 @@ wal_cache_valid() {
   return 0
 }
 
-# ============================================================================
-# wal_cache_swap_dir - Atomically swap cache directory contents
-# ============================================================================
-# Arguments:
-#   $1 - Source directory (cached colors to restore)
-#   $2 - Destination directory (active wal cache, e.g., ~/.cache/wal)
-# Returns:
-#   0 - Swap successful
-#   1 - Swap failed (destination unchanged)
-# Notes:
-#   - Preserves schemes/ directory and post-hooks.sh from destination
-#   - Uses atomic rename for crash safety
-#   - Removes .complete and .meta markers from restored cache
 wal_cache_swap_dir() {
-  local src_dir="${1}"
-  local dest_dir="${2}"
-
-  # Validate inputs
-  [[ -z "${src_dir}" ]] && return 1
-  [[ -z "${dest_dir}" ]] && return 1
-  [[ -d "${src_dir}" ]] || return 1
-
-  local dest_parent tmp_dir backup_dir schemes_tmp post_hooks_tmp
-  dest_parent="$(dirname "${dest_dir}")"
-  mkdir -p "${dest_parent}"
-
-  # Create temporary copy
-  tmp_dir="$(mktemp -d -p "${dest_parent}" wal.swap.XXXXXXXX)" || return 1
-  if ! cp -a --reflink=auto "${src_dir}/." "${tmp_dir}/" 2>/dev/null; then
-    cp -a "${src_dir}/." "${tmp_dir}/" 2>/dev/null || {
-      rm -rf "${tmp_dir}" 2>/dev/null || true
-      return 1
-    }
-  fi
-  # Remove cache markers from restored content
-  rm -f "${tmp_dir}/.complete" "${tmp_dir}/.meta" 2>/dev/null || true
-
-  # Handle non-directory at destination
-  if [[ -e "${dest_dir}" ]] && [[ ! -d "${dest_dir}" ]]; then
-    rm -f "${dest_dir}" 2>/dev/null || true
-  fi
-
-  if [[ -d "${dest_dir}" ]]; then
-    # Preserve wal history + user hooks across cache restores
-    schemes_tmp=""
-    post_hooks_tmp=""
-    if [[ -d "${dest_dir}/schemes" ]]; then
-      schemes_tmp="$(mktemp -d -p "${dest_parent}" wal.schemes.XXXXXXXX)" || schemes_tmp=""
-      mv "${dest_dir}/schemes" "${schemes_tmp}" 2>/dev/null || schemes_tmp=""
-    fi
-    if [[ -f "${dest_dir}/post-hooks.sh" ]]; then
-      post_hooks_tmp="$(mktemp -p "${dest_parent}" wal.post-hooks.XXXXXXXX)" || post_hooks_tmp=""
-      mv "${dest_dir}/post-hooks.sh" "${post_hooks_tmp}" 2>/dev/null || post_hooks_tmp=""
-    fi
-
-    # Atomic swap with backup
-    backup_dir="$(mktemp -d -p "${dest_parent}" "$(basename "${dest_dir}").bak.XXXXXXXX")" || {
-      [[ -n "${schemes_tmp}" ]] && [[ -d "${schemes_tmp}" ]] && mv "${schemes_tmp}" "${dest_dir}/schemes" 2>/dev/null || true
-      [[ -n "${post_hooks_tmp}" ]] && [[ -f "${post_hooks_tmp}" ]] && mv "${post_hooks_tmp}" "${dest_dir}/post-hooks.sh" 2>/dev/null || true
-      rm -rf "${tmp_dir}" 2>/dev/null || true
-      return 1
-    }
-    rm -rf "${backup_dir}" 2>/dev/null || true
-    mv "${dest_dir}" "${backup_dir}" 2>/dev/null || {
-      [[ -n "${schemes_tmp}" ]] && [[ -d "${schemes_tmp}" ]] && mv "${schemes_tmp}" "${dest_dir}/schemes" 2>/dev/null || true
-      [[ -n "${post_hooks_tmp}" ]] && [[ -f "${post_hooks_tmp}" ]] && mv "${post_hooks_tmp}" "${dest_dir}/post-hooks.sh" 2>/dev/null || true
-      rm -rf "${tmp_dir}" 2>/dev/null || true
-      rm -rf "${backup_dir}" 2>/dev/null || true
-      return 1
-    }
-    mv "${tmp_dir}" "${dest_dir}" 2>/dev/null || {
-      mv "${backup_dir}" "${dest_dir}" 2>/dev/null || true
-      [[ -n "${schemes_tmp}" ]] && [[ -d "${schemes_tmp}" ]] && mv "${schemes_tmp}" "${dest_dir}/schemes" 2>/dev/null || true
-      [[ -n "${post_hooks_tmp}" ]] && [[ -f "${post_hooks_tmp}" ]] && mv "${post_hooks_tmp}" "${dest_dir}/post-hooks.sh" 2>/dev/null || true
-      rm -rf "${tmp_dir}" 2>/dev/null || true
-      return 1
-    }
-
-    # Restore preserved content and cleanup
-    [[ -n "${schemes_tmp}" ]] && [[ -d "${schemes_tmp}" ]] && mv "${schemes_tmp}" "${dest_dir}/schemes" 2>/dev/null || true
-    [[ -n "${post_hooks_tmp}" ]] && [[ -f "${post_hooks_tmp}" ]] && mv "${post_hooks_tmp}" "${dest_dir}/post-hooks.sh" 2>/dev/null || true
-    rm -rf "${backup_dir}" 2>/dev/null || true
-  else
-    mv "${tmp_dir}" "${dest_dir}" 2>/dev/null || {
-      rm -rf "${tmp_dir}" 2>/dev/null || true
-      return 1
-    }
-  fi
-}
-
-# ============================================================================
-# wal_cache_store - Persist pywal16 output to per-wallpaper cache
-# ============================================================================
-# Arguments:
-#   $1 - Source directory (pywal16 output, e.g., ~/.cache/wal)
-#   $2 - Destination cache path
-# Global variables used:
-#   wal_cache_key   - Cache key (wallpaper_hash_mode_backend)
-#   WALLPAPER_IMAGE - Path to current wallpaper
-#   resolved_color_variant       - Current resolved dark/light variant
-#   PYWAL_BACKEND   - Pywal16 backend used
-# Returns:
-#   0 - Store successful
-#   1 - Store failed
-# Notes:
-#   - Excludes schemes/ and post-hooks.sh from cache
-#   - Writes .meta file with cache metadata
-#   - Writes .complete marker on success
-wal_cache_store() {
   local src_dir="${1}"
   local dest_dir="${2}"
 
@@ -303,19 +241,60 @@ wal_cache_store() {
 
   local dest_parent tmp_dir backup_dir
   dest_parent="$(dirname "${dest_dir}")"
+  mkdir -p "${dest_parent}"
+
+  tmp_dir="$(mktemp -d -p "${dest_parent}" wal.swap.XXXXXXXX)" || return 1
+  copy_cache_tree "${src_dir}" "${tmp_dir}" || {
+    remove_dir_quietly "${tmp_dir}"
+    return 1
+  }
+  rm -f "${tmp_dir}/.complete" "${tmp_dir}/.meta" 2>/dev/null || true
+
+  if [[ -e "${dest_dir}" ]] && [[ ! -d "${dest_dir}" ]]; then
+    rm -f "${dest_dir}" 2>/dev/null || true
+  fi
+
+  if [[ -d "${dest_dir}" ]]; then
+    preserve_wal_state "${dest_dir}" "${dest_parent}"
+    backup_dir="$(create_backup_dir "${dest_parent}" "${dest_dir}")" || {
+      restore_wal_state "${dest_dir}"
+      remove_dir_quietly "${tmp_dir}"
+      return 1
+    }
+    replace_dir_atomically "${dest_dir}" "${tmp_dir}" "${backup_dir}" || {
+      restore_wal_state "${dest_dir}"
+      remove_dir_quietly "${tmp_dir}"
+      return 1
+    }
+    restore_wal_state "${dest_dir}"
+  else
+    mv "${tmp_dir}" "${dest_dir}" 2>/dev/null || {
+      remove_dir_quietly "${tmp_dir}"
+      return 1
+    }
+  fi
+}
+
+wal_cache_store() {
+  local src_dir="${1}"
+  local dest_dir="${2}"
+
+  # Validate inputs
+  [[ -z "${src_dir}" ]] && return 1
+  [[ -z "${dest_dir}" ]] && return 1
+  [[ -d "${src_dir}" ]] || return 1
+
+  local dest_parent tmp_dir backup_dir entry
+  dest_parent="$(dirname "${dest_dir}")"
   mkdir -p "${dest_parent}" 2>/dev/null || true
 
-  # Create temporary directory for atomic write
   tmp_dir="$(mktemp -d -p "${dest_parent}" "$(basename "${dest_dir}").tmp.XXXXXXXX")" || return 1
 
-  # Copy files (excluding schemes and post-hooks)
   while IFS= read -r -d '' entry; do
-    if ! cp -a --reflink=auto "${entry}" "${tmp_dir}/" 2>/dev/null; then
-      cp -a "${entry}" "${tmp_dir}/" 2>/dev/null || {
-        rm -rf "${tmp_dir}" 2>/dev/null || true
-        return 1
-      }
-    fi
+    copy_entry_with_fallback "${entry}" "${tmp_dir}" || {
+      remove_dir_quietly "${tmp_dir}"
+      return 1
+    }
   done < <(
     find "${src_dir}" -mindepth 1 -maxdepth 1 \
       ! -name "schemes" \
@@ -323,41 +302,24 @@ wal_cache_store() {
       -print0 2>/dev/null
   )
 
-  # Write metadata
-  {
-    echo "${wal_cache_key}"
-    echo "wallpaper=${STATE_WALLPAPER:-${WALLPAPER_IMAGE}}"
-    echo "color_variant=${resolved_color_variant}"
-    echo "backend=${PYWAL_BACKEND}"
-  } >"${tmp_dir}/.meta"
-  touch "${tmp_dir}/.complete"
+  write_cache_meta "${tmp_dir}"
 
-  # Atomic move to final location
   if [[ -d "${dest_dir}" ]]; then
-    backup_dir="$(mktemp -d -p "${dest_parent}" "$(basename "${dest_dir}").bak.XXXXXXXX")" || {
-      rm -rf "${tmp_dir}" 2>/dev/null || true
+    backup_dir="$(create_backup_dir "${dest_parent}" "${dest_dir}")" || {
+      remove_dir_quietly "${tmp_dir}"
       return 1
     }
-    rm -rf "${backup_dir}" 2>/dev/null || true
-    mv "${dest_dir}" "${backup_dir}" 2>/dev/null || {
-      rm -rf "${tmp_dir}" 2>/dev/null || true
-      rm -rf "${backup_dir}" 2>/dev/null || true
+    replace_dir_atomically "${dest_dir}" "${tmp_dir}" "${backup_dir}" || {
+      remove_dir_quietly "${tmp_dir}"
       return 1
     }
-    mv "${tmp_dir}" "${dest_dir}" 2>/dev/null || {
-      mv "${backup_dir}" "${dest_dir}" 2>/dev/null || true
-      rm -rf "${tmp_dir}" 2>/dev/null || true
-      return 1
-    }
-    rm -rf "${backup_dir}" 2>/dev/null || true
   else
     mv "${tmp_dir}" "${dest_dir}" 2>/dev/null || {
-      rm -rf "${tmp_dir}" 2>/dev/null || true
+      remove_dir_quietly "${tmp_dir}"
       return 1
     }
   fi
 
-  # Log success if print_log is available
   type print_log &>/dev/null && print_log -sec "pywal16" -stat "cache" "stored"
 }
 

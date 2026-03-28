@@ -1,12 +1,32 @@
 #!/bin/bash
 
-default_browser=$(xdg-settings get default-web-browser)
-browser_exec=$(sed -n 's/^Exec=\([^ ]*\).*/\1/p' {~/.local,~/.nix-profile,/usr}/share/applications/$default_browser 2>/dev/null | head -1)
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/system/desktop-entry.exec.bash"
 
-if [[ $browser_exec =~ (firefox|zen|librewolf) ]]; then
-  private_flag="--private-window"
-else
-  private_flag="--incognito"
+default_browser="$(xdg-settings get default-web-browser)"
+launch_args=()
+
+desktop_entry_exec_resolve "$default_browser" || exit 1
+
+case "${DESKTOP_ENTRY_EXECUTABLE}" in
+  firefox | zen | librewolf)
+    private_flag="--private-window"
+    ;;
+  *)
+    private_flag="--incognito"
+    ;;
+esac
+
+for arg in "$@"; do
+  if [[ "$arg" == "--private" ]]; then
+    launch_args+=("$private_flag")
+  else
+    launch_args+=("$arg")
+  fi
+done
+
+if [[ -n "${DESKTOP_ENTRY_WORKDIR}" ]]; then
+  cd "${DESKTOP_ENTRY_WORKDIR}" || exit 1
 fi
 
-exec setsid uwsm-app -- "$browser_exec" "${@/--private/$private_flag}"
+exec setsid uwsm-app -- "${DESKTOP_ENTRY_ARGV[@]}" "${launch_args[@]}"
