@@ -53,8 +53,22 @@ resolve_theme_coordinates() {
   local latitude="${AUTO_THEME_LATITUDE:-}"
   local longitude="${AUTO_THEME_LONGITUDE:-}"
 
-  [[ -n "${latitude}" && -n "${longitude}" ]] || return 1
-  [[ "${latitude,,}" != "auto" && "${longitude,,}" != "auto" ]] || return 1
+  [[ -n "${latitude}" || -n "${longitude}" ]] || return 1
+  if [[ -z "${latitude}" || -z "${longitude}" ]]; then
+    printf 'Error: AUTO_THEME_LATITUDE and AUTO_THEME_LONGITUDE must both be set\n' >&2
+    return 2
+  fi
+  if [[ "${latitude,,}" == "auto" || "${longitude,,}" == "auto" ]]; then
+    if [[ "${latitude,,}" == "auto" && "${longitude,,}" == "auto" ]]; then
+      return 1
+    fi
+    printf 'Error: AUTO_THEME_LATITUDE and AUTO_THEME_LONGITUDE must both be explicit coordinates\n' >&2
+    return 2
+  fi
+  if [[ ! "${latitude}" =~ ^-?[0-9]+([.][0-9]+)?$ || ! "${longitude}" =~ ^-?[0-9]+([.][0-9]+)?$ ]]; then
+    printf 'Error: invalid theme coordinates: %s,%s\n' "${latitude}" "${longitude}" >&2
+    return 2
+  fi
   printf '%s,%s\n' "${latitude}" "${longitude}"
 }
 
@@ -112,13 +126,22 @@ read_location_cache() {
 }
 
 resolve_weather_location() {
+  local rc=0
+
   if [ -n "${WEATHER_LOCATION:-}" ]; then
     city="$WEATHER_LOCATION"
     location="$city"
     return 0
   fi
 
-  location="$(resolve_theme_coordinates 2>/dev/null || true)"
+  if location="$(resolve_theme_coordinates)"; then
+    return 0
+  fi
+  rc=$?
+  if [ "${rc}" -gt 1 ]; then
+    return "${rc}"
+  fi
+
   if [ -z "$location" ]; then
     read_location_cache
     [ -n "$city" ] && location="$city"

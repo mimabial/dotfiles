@@ -27,8 +27,7 @@ configuration {
 
 // Main //
 window {
-    height:                      30em;
-    width:                       58em;
+    height:                      33em;
     transparency:                "real";
     fullscreen:                  false;
     enabled:                     true;
@@ -38,6 +37,7 @@ window {
     border-color:                @border;
     background-color:            transparent;
 }
+
 mainbox {
     enabled:                     true;
     spacing:                     0em;

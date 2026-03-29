@@ -66,6 +66,7 @@ render_basic_info() {
 
 check_mullvad() {
   local mullvad_status=""
+  local mullvad_status_line=""
   local relay=""
   local location=""
   local ipv4=""
@@ -82,22 +83,34 @@ check_mullvad() {
     return 0
   fi
 
-  if grep -q "Connected" <<<"${mullvad_status}"; then
-    relay="$(grep "Relay:" <<<"${mullvad_status}" | awk '{print $2}')"
-    location="$(grep "Visible location:" <<<"${mullvad_status}" | sed 's/.*Visible location: *//; s/\. IPv4:.*//')"
-    ipv4="$(grep "IPv4:" <<<"${mullvad_status}" | awk '{print $NF}')"
+  mullvad_status_line="$(awk 'NR == 1 { sub(/^[[:space:]]+/, "", $0); print tolower($0); exit }' <<<"${mullvad_status}")"
+
+  if [[ "${mullvad_status_line}" == connected* ]]; then
+    relay="$(awk -F': *' '/^[[:space:]]*Relay:/ { print $2; exit }' <<<"${mullvad_status}")"
+    location="$(sed -nE 's/^[[:space:]]*Visible location:[[:space:]]*(.+)\. IPv4:.*/\1/p' <<<"${mullvad_status}" | head -n1)"
+    ipv4="$(awk '
+      /^[[:space:]]*Visible location:/ {
+        for (i = 1; i <= NF; i++) {
+          if ($i == "IPv4:") {
+            print $(i + 1)
+            exit
+          }
+        }
+      }
+      /^[[:space:]]*IPv4:/ { print $2; exit }
+    ' <<<"${mullvad_status}")"
     vpn_state="connected"
     vpn_info="<b>Mullvad VPN</b>\nRelay: ${relay}\nLocation: ${location}\nIP: ${ipv4}"
     return 0
   fi
 
-  if grep -qi "disconnected\|not connected" <<<"${mullvad_status}"; then
+  if [[ "${mullvad_status_line}" == disconnected* || "${mullvad_status_line}" == not\ connected* ]]; then
     vpn_state="disconnected"
     vpn_info="<b>Mullvad VPN</b>\nStatus: Disconnected"
-  elif grep -qi "connecting" <<<"${mullvad_status}"; then
+  elif [[ "${mullvad_status_line}" == connecting* ]]; then
     vpn_state="connecting"
     vpn_info="<b>Mullvad VPN</b>\nStatus: Connecting..."
-  elif grep -qi "blocked\|error" <<<"${mullvad_status}"; then
+  elif [[ "${mullvad_status_line}" == blocked* || "${mullvad_status_line}" == error* ]]; then
     vpn_state="error"
     vpn_info="<b>Mullvad VPN Error</b>\n${mullvad_status}"
   else

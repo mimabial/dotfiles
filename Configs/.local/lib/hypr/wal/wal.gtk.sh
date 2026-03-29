@@ -128,9 +128,7 @@ notify_xsettingsd() {
   pgrep -x xsettingsd >/dev/null || return 0
 
   if [[ -f "$conf" ]]; then
-    sed -i 's/^Net\/ThemeName "Pywal16-Gtk"$/Net\/ThemeName "Adwaita"/' "$conf"
-    pkill -HUP xsettingsd 2>/dev/null
-    sed -i 's/^Net\/ThemeName "Adwaita"$/Net\/ThemeName "Pywal16-Gtk"/' "$conf"
+    sed -i 's/^Net\/ThemeName ".*"$/Net\/ThemeName "Pywal16-Gtk"/' "$conf"
   fi
 
   pkill -HUP xsettingsd 2>/dev/null
@@ -141,7 +139,6 @@ notify_gtk_settings() {
 
   for gtk_config in "${GTK_CONFIG_DIR}/gtk-3.0/settings.ini" "${GTK_CONFIG_DIR}/gtk-4.0/settings.ini"; do
     [[ -f "$gtk_config" ]] || continue
-    sed -i 's/^gtk-theme-name=.*/gtk-theme-name=Adwaita/' "$gtk_config"
     sed -i 's/^gtk-theme-name=.*/gtk-theme-name=Pywal16-Gtk/' "$gtk_config"
   done
 }

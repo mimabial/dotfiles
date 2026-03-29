@@ -205,7 +205,7 @@ process_theme_files() {
       echo "${new_content}" >"${target_path}"
       print_log -sec "theme" -stat "wrote" "${target_path}"
     else
-      [[ "${LOG_LEVEL}" == "debug" ]] && print_log -sec "theme" -stat "skip" "${target_path} (unchanged)"
+      [[ "${LOG_LEVEL:-}" == "debug" ]] && print_log -sec "theme" -stat "skip" "${target_path} (unchanged)"
     fi
 
     apply_terminal_theme_font_override "${theme_basename}" "${target_path}"

@@ -289,7 +289,11 @@ collect_installed_font_packages() {
 
   while IFS= read -r pkg; do
     [[ -n "$pkg" ]] && candidates+=("$pkg")
-  done < <(pacman -Qq | grep -Ei 'font|ttf|otf|nerd' | sort)
+  done < <(
+    pacman -Qq \
+      | awk 'BEGIN { IGNORECASE = 1 } /(^|[-_])(font|fonts|ttf|otf|nerd)([-_]|$)/' \
+      | sort
+  )
 
   for pkg in "${candidates[@]}"; do
     if package_font_files "$pkg" | grep -q .; then

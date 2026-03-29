@@ -200,6 +200,38 @@ load_state_paths() {
   state_file="${state_dir}/printer.connection.${safe_printer}.state"
 }
 
+acquire_state_lock() {
+  local fd_name="$1"
+  local -n fd_ref="${fd_name}"
+  local lock_file=""
+  local lock_timeout="${PRINTER_STATE_LOCK_TIMEOUT:-5}"
+
+  mkdir -p "$state_dir"
+  lock_file="${state_file}.lock"
+
+  if ! exec {fd_ref}>"${lock_file}"; then
+    echo "Error: failed to open printer state lock '${lock_file}'." >&2
+    return 1
+  fi
+
+  if ! flock -w "${lock_timeout}" "${fd_ref}"; then
+    echo "Error: printer state lock busy for '${target_printer}'." >&2
+    exec {fd_ref}>&-
+    fd_ref=""
+    return 1
+  fi
+}
+
+release_state_lock() {
+  local fd_name="$1"
+  local -n fd_ref="${fd_name}"
+
+  [[ -n "${fd_ref:-}" ]] || return 0
+  flock -u "${fd_ref}" 2>/dev/null || true
+  exec {fd_ref}>&-
+  fd_ref=""
+}
+
 load_stored_uris() {
   stored_usb_uri="$(read_state_uri "$state_file" "usb")"
   stored_network_uri="$(read_state_uri "$state_file" "network")"
@@ -231,10 +263,13 @@ discover_candidate_uris() {
 
 load_printer_context() {
   target_printer="$(resolve_printer "$printer_name")"
+  load_state_paths
+}
+
+load_locked_printer_context() {
   current_uri="$(get_printer_uri "$target_printer")"
   current_mode="$(detect_mode "$current_uri")"
   resolve_hint
-  load_state_paths
   load_stored_uris
   seed_current_uris
   apply_stored_uris
@@ -273,7 +308,9 @@ resolve_toggle_target_mode() {
 
 resolve_target_mode() {
   target_mode="$action"
-  [[ "$action" == "toggle" ]] && resolve_toggle_target_mode
+  if [[ "$action" == "toggle" ]]; then
+    resolve_toggle_target_mode
+  fi
 }
 
 resolve_target_uri() {
@@ -323,6 +360,8 @@ check_network_endpoint() {
 }
 
 persist_state() {
+  local tmp_file=""
+
   if [[ "$target_mode" == "usb" ]]; then
     usb_uri="$target_uri"
   elif [[ "$target_mode" == "network" ]]; then
@@ -330,10 +369,19 @@ persist_state() {
   fi
 
   mkdir -p "$state_dir"
+  tmp_file="${state_file}.tmp.$$"
   {
     printf 'usb=%s\n' "$usb_uri"
     printf 'network=%s\n' "$network_uri"
-  } > "$state_file"
+  } > "$tmp_file"
+
+  if mv -f "$tmp_file" "$state_file"; then
+    return 0
+  fi
+
+  rm -f "$tmp_file" 2>/dev/null || true
+  echo "Error: failed to persist printer state for '$target_printer'." >&2
+  return 1
 }
 
 print_queue_status() {
@@ -342,10 +390,13 @@ print_queue_status() {
   lpstat -p "$target_printer" -l
 }
 
-main() {
-  parse_args "$@"
-  require_printer_tools
-  load_printer_context
+run_with_state_lock() (
+  local state_lock_fd=""
+
+  acquire_state_lock state_lock_fd || exit 1
+  trap 'release_state_lock state_lock_fd' EXIT
+
+  load_locked_printer_context
 
   if [[ "$action" == "status" ]]; then
     print_status
@@ -358,6 +409,13 @@ main() {
   check_network_endpoint
   persist_state
   print_queue_status
+)
+
+main() {
+  parse_args "$@"
+  require_printer_tools
+  load_printer_context
+  run_with_state_lock
 }
 
 main "$@"

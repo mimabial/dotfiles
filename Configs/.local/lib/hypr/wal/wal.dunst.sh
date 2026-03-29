@@ -41,7 +41,54 @@ parse_define_color() {
   local name="$1"
   local file="$2"
   [[ -f "${file}" ]] || return 1
-  awk -v key="${name}" '$1 == "@define-color" && $2 == key {gsub(/;/, "", $3); print $3; exit}' "${file}"
+  awk -v key="${name}" '
+    BEGIN {
+      found = 0
+    }
+    $1 == "@define-color" && $2 == key {
+      found = 1
+      gsub(/;/, "", $3)
+      if ($3 ~ /^#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$/) {
+        print $3
+        exit 0
+      }
+      exit 2
+    }
+    END {
+      if (!found) {
+        exit 1
+      }
+    }
+  ' "${file}"
+}
+
+apply_theme_color_override() {
+  local name="$1"
+  local target="$2"
+  local mirror_target="${3:-}"
+  local value=""
+  local rc=0
+
+  if value="$(parse_define_color "${name}" "${DUNST_THEME}")"; then
+    printf -v "${target}" '%s' "${value}"
+    [[ -n "${mirror_target}" ]] && printf -v "${mirror_target}" '%s' "${value}"
+    return 0
+  else
+    rc=$?
+  fi
+
+  case "${rc}" in
+    1)
+      return 1
+      ;;
+    2)
+      printf 'ERROR: invalid @define-color %s in %s\n' "${name}" "${DUNST_THEME}" >&2
+      return 2
+      ;;
+    *)
+      return "${rc}"
+      ;;
+  esac
 }
 
 read_theme_var() {
@@ -172,7 +219,7 @@ resolve_layout_metrics() {
   case "${waybar_position}" in
     left) origin="top-left" ;;
     bottom) origin="bottom-right" ;;
-    top|right|*) origin="top-right" ;;
+    top | right | *) origin="top-right" ;;
   esac
 }
 
@@ -199,42 +246,34 @@ load_base_palette() {
 apply_theme_palette_overrides() {
   [[ -s "${DUNST_THEME}" ]] || return 0
 
-  local theme_bg_primary theme_bg_secondary theme_bg_tertiary
-  local theme_fg_primary theme_fg_secondary theme_border_primary theme_border_secondary
-  local theme_accent_blue theme_accent_red theme_accent_green theme_accent_yellow
-  local theme_accent_purple theme_accent_aqua theme_accent_orange theme_gray
+  local name="" target="" mirror_target="" rc=0
 
-  theme_bg_primary="$(parse_define_color bg-primary "${DUNST_THEME}" || true)"
-  theme_bg_secondary="$(parse_define_color bg-secondary "${DUNST_THEME}" || true)"
-  theme_bg_tertiary="$(parse_define_color bg-tertiary "${DUNST_THEME}" || true)"
-  theme_fg_primary="$(parse_define_color fg-primary "${DUNST_THEME}" || true)"
-  theme_fg_secondary="$(parse_define_color fg-secondary "${DUNST_THEME}" || true)"
-  theme_border_primary="$(parse_define_color border-primary "${DUNST_THEME}" || true)"
-  theme_border_secondary="$(parse_define_color border-secondary "${DUNST_THEME}" || true)"
-  theme_accent_blue="$(parse_define_color accent-blue "${DUNST_THEME}" || true)"
-  theme_accent_red="$(parse_define_color accent-red "${DUNST_THEME}" || true)"
-  theme_accent_green="$(parse_define_color accent-green "${DUNST_THEME}" || true)"
-  theme_accent_yellow="$(parse_define_color accent-yellow "${DUNST_THEME}" || true)"
-  theme_accent_purple="$(parse_define_color accent-purple "${DUNST_THEME}" || true)"
-  theme_accent_aqua="$(parse_define_color accent-aqua "${DUNST_THEME}" || true)"
-  theme_accent_orange="$(parse_define_color accent-orange "${DUNST_THEME}" || true)"
-  theme_gray="$(parse_define_color gray "${DUNST_THEME}" || true)"
-
-  [[ -n "${theme_bg_primary}" ]] && bg_primary="${theme_bg_primary}"
-  [[ -n "${theme_bg_secondary}" ]] && bg_secondary="${theme_bg_secondary}"
-  [[ -n "${theme_bg_tertiary}" ]] && bg_tertiary="${theme_bg_tertiary}"
-  [[ -n "${theme_fg_primary}" ]] && fg_primary="${theme_fg_primary}" && fg_critical="${theme_fg_primary}"
-  [[ -n "${theme_fg_secondary}" ]] && fg_secondary="${theme_fg_secondary}"
-  [[ -n "${theme_border_primary}" ]] && border_primary="${theme_border_primary}"
-  [[ -n "${theme_border_secondary}" ]] && border_secondary="${theme_border_secondary}"
-  [[ -n "${theme_accent_blue}" ]] && accent_blue="${theme_accent_blue}"
-  [[ -n "${theme_accent_red}" ]] && accent_red="${theme_accent_red}" && bg_critical="${theme_accent_red}"
-  [[ -n "${theme_accent_green}" ]] && accent_green="${theme_accent_green}"
-  [[ -n "${theme_accent_yellow}" ]] && accent_yellow="${theme_accent_yellow}"
-  [[ -n "${theme_accent_purple}" ]] && accent_purple="${theme_accent_purple}"
-  [[ -n "${theme_accent_aqua}" ]] && accent_aqua="${theme_accent_aqua}"
-  [[ -n "${theme_accent_orange}" ]] && accent_orange="${theme_accent_orange}"
-  [[ -n "${theme_gray}" ]] && gray="${theme_gray}"
+  while IFS=':' read -r name target mirror_target; do
+    [[ -n "${name}" ]] || continue
+    if apply_theme_color_override "${name}" "${target}" "${mirror_target}"; then
+      continue
+    else
+      rc=$?
+    fi
+    [[ "${rc}" -eq 1 ]] && continue
+    return "${rc}"
+  done <<'EOF'
+bg-primary:bg_primary:
+bg-secondary:bg_secondary:
+bg-tertiary:bg_tertiary:
+fg-primary:fg_primary:fg_critical
+fg-secondary:fg_secondary:
+border-primary:border_primary:
+border-secondary:border_secondary:
+accent-blue:accent_blue:
+accent-red:accent_red:bg_critical
+accent-green:accent_green:
+accent-yellow:accent_yellow:
+accent-purple:accent_purple:
+accent-aqua:accent_aqua:
+accent-orange:accent_orange:
+gray:gray:
+EOF
 }
 
 render_palette() {
@@ -252,7 +291,7 @@ render_palette() {
   bg_low_render="$(with_alpha "${bg_low}" "80")"
   bg_normal_render="$(with_alpha "${bg_normal}" "80")"
   bg_category_render="$(with_alpha "${bg_category}" "80")"
-  bg_critical_render="${bg_critical}"
+  bg_critical_render="$(with_alpha "${bg_critical}" "80")"
   fg_low_render="$(with_alpha "${fg_low}" "E6")"
   fg_normal_render="$(with_alpha "${fg_normal}" "E6")"
   fg_category_render="$(with_alpha "${fg_category}" "E6")"

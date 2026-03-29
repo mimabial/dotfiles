@@ -36,7 +36,9 @@ if [ $mullvad_exit -ne 0 ]; then
 fi
 
 # Check if connected
-if echo "$mullvad_status" | grep -q "Connected"; then
+mullvad_status_line="$(awk 'NR == 1 { sub(/^[[:space:]]+/, "", $0); print tolower($0); exit }' <<<"$mullvad_status")"
+
+if [[ "${mullvad_status_line}" == connected* ]]; then
   # Disconnect
   if mullvad disconnect 2>/dev/null; then
     dunstify -t 5000 -i "network-vpn" "VPN Disconnected" "Mullvad VPN has been disconnected" -u normal
@@ -57,9 +59,10 @@ else
       dunstify -i "network-vpn" "VPN Error" "Mullvad accepted the connection request, but status verification failed\n\n$status" -u critical
       exit 1
     fi
-    if echo "$status" | grep -q "^Connected"; then
-      relay=$(echo "$status" | grep "Relay:" | awk '{print $2}')
-      location=$(echo "$status" | grep "Visible location:" | sed 's/.*Visible location: *//; s/\. IPv4:.*//')
+    status_line="$(awk 'NR == 1 { sub(/^[[:space:]]+/, "", $0); print tolower($0); exit }' <<<"$status")"
+    if [[ "${status_line}" == connected* ]]; then
+      relay="$(awk -F': *' '/^[[:space:]]*Relay:/ { print $2; exit }' <<<"$status")"
+      location="$(sed -nE 's/^[[:space:]]*Visible location:[[:space:]]*(.+)\. IPv4:.*/\1/p' <<<"$status" | head -n1)"
       dunstify -t 5000 -i "network-vpn" "VPN Connected" "Connected to Mullvad VPN\n\nRelay: $relay\nLocation: $location" -u normal
     else
       dunstify -t 5000 -i "network-vpn" "VPN Connecting" "Mullvad accepted the connection request" -u normal

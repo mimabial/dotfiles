@@ -136,7 +136,10 @@ if [ -n "$BASH_VERSION" ]; then
     notify_send_safe \
     refresh_hypr_runtime_state export_hypr_config init_hypr_globals \
     state_dir state_rc_file state_env_overrides_file state_color_variant_file \
-    state_read_value_from_file state_get state_set \
+    state_read_value_from_file state_target_file \
+    state_acquire_lock state_release_lock \
+    state_write_color_variant_file state_write_key_value_file \
+    state_get state_set \
     state_get_color_variant state_set_color_variant \
     send_ephemeral_notif \
     hypr_lock_manifest_file hypr_lock_runtime_dir hypr_load_lock_manifest \

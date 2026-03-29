@@ -22,7 +22,9 @@ EOF2
 
 require_font_name() {
   [[ -n "${FONT_NAME}" && "${FONT_NAME}" != '-h' && "${FONT_NAME}" != '--help' ]] || usage
-  [[ "${FONT_NAME}" == 'CNCLD' ]] && exit 0
+  if [[ "${FONT_NAME}" == 'CNCLD' ]]; then
+    exit 0
+  fi
 }
 
 require_installed_font() {

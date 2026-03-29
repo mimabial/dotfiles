@@ -9,14 +9,8 @@ action = "Copy"
 
 [[keyboard.bindings]]
 key = "L"
-mods = "Control"
+mods = "Control|Shift"
 action = "ClearLogNotice"
-
-[[keyboard.bindings]]
-key = "L"
-mods = "Control"
-mode = "~Vi"
-chars = "\f"
 
 [[keyboard.bindings]]
 key = "PageUp"

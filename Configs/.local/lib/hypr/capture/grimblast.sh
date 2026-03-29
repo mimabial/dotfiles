@@ -22,15 +22,13 @@
 cache_home="${XDG_CACHE_HOME:-$HOME/.cache}"
 runtime_dir="${XDG_RUNTIME_DIR:-$cache_home}"
 mkdir -p "${runtime_dir}"
-grimblastInstanceCheck="${runtime_dir}/grimblast.lock"
-if [ -e "$grimblastInstanceCheck" ]; then
+grimblast_lock_dir="${runtime_dir}/grimblast.lock"
+if ! mkdir "${grimblast_lock_dir}" 2>/dev/null; then
   exit 2
-else
-  touch "$grimblastInstanceCheck"
 fi
 grimblast_release_lockfile() {
   local exit_code="${1:-$?}"
-  rm -f "${grimblastInstanceCheck}" 2>/dev/null || true
+  rmdir "${grimblast_lock_dir}" 2>/dev/null || true
   return "${exit_code}"
 }
 trap 'grimblast_release_lockfile "$?"' EXIT

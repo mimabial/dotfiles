@@ -248,7 +248,7 @@ fn_status_change() { # Handle when status changes
 # resume_processes() { for pid in $pids ; do  if [ "$pid" -ne "$current_pid" ] ; then kill -CONT $pid ; dunstify -a "Battery Notify" -t 2000 -r 9889 -u "CRITICAL" "Debugging ENDED, Resuming Regular Process" ; fi ; done }
 
 main() {                                    # Main function
-  rm -fr "$XDG_RUNTIME_DIR/battery.notify"* # Cleaning the lock file
+  trap 'find "${TMPDIR:-/tmp}" -maxdepth 1 -type f -name "battery.notify.status.fallback.*-$$" -delete 2>/dev/null || true' EXIT
   battery_full_threshold=${BATTERY_NOTIFY_THRESHOLD_FULL:-100}
   battery_critical_threshold=${BATTERY_NOTIFY_THRESHOLD_CRITICAL:-5}
   unplug_charger_threshold=${BATTERY_NOTIFY_THRESHOLD_UNPLUG:-80}

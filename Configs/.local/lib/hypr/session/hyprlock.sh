@@ -82,14 +82,33 @@ run_default_lock() {
 
 update_art_cache_if_needed() {
   local lock_file="${TMPDIR:-/tmp}/hyprlock-art.lock"
-  local age=0
+  local stamp_file="${lock_file}.stamp"
+  local lock_fd=""
+  local now=0
+  local last_spawn=0
 
   [[ "${1:-}" == "--source" ]] || return 0
-  age=$(($(date +%s) - $(stat -c %Y "$lock_file" 2>/dev/null || echo 0)))
-  if [[ ! -f "$lock_file" || "$age" -gt 2 ]]; then
-    touch "$lock_file"
-    fn_update_art &
+
+  if ! exec {lock_fd}>"${lock_file}"; then
+    return 0
   fi
+  if ! flock -x "${lock_fd}"; then
+    exec {lock_fd}>&-
+    return 0
+  fi
+
+  now="$(date +%s)"
+  if [[ -r "${stamp_file}" ]]; then
+    read -r last_spawn <"${stamp_file}" || last_spawn=0
+  fi
+
+  if (( now - last_spawn > 2 )); then
+    printf '%s\n' "${now}" >"${stamp_file}"
+    "${BASH_SOURCE[0]}" --update-art >/dev/null 2>&1 &
+  fi
+
+  flock -u "${lock_fd}" 2>/dev/null || true
+  exec {lock_fd}>&-
 }
 
 handle_hyprlock_action() {

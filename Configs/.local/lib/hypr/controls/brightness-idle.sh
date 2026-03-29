@@ -12,10 +12,11 @@ brightness_idle_enabled || exit 0
 
 case "${action}" in
   dim)
-    brightnessctl -s >/dev/null 2>&1 && brightnessctl s 1% >/dev/null 2>&1 || true
+    brightnessctl -s >/dev/null
+    brightnessctl s 1% >/dev/null
     ;;
   restore)
-    brightnessctl -r >/dev/null 2>&1 || true
+    brightnessctl -r >/dev/null
     ;;
   *)
     exit 2

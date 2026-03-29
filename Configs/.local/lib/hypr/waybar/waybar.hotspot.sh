@@ -8,6 +8,7 @@ hotspot_active=false
 hotspot_info=""
 hotspot_ssid=""
 clients=""
+lease_clients=()
 
 # Check NetworkManager hotspot connections
 if check nmcli; then
@@ -31,9 +32,20 @@ if check nmcli; then
 
     # Try to get connected clients from dnsmasq/dhcp leases
     if [ -f /var/lib/misc/dnsmasq.leases ]; then
-      client_count=$(grep -c "$device" /var/lib/misc/dnsmasq.leases 2>/dev/null || echo "0")
+      mapfile -t lease_clients < <(
+        awk -v dev="$device" '{
+          for (i = 1; i <= NF; i++) {
+            if ($i == dev) {
+              print $4 " (" $2 ")"
+              break
+            }
+          }
+        }' /var/lib/misc/dnsmasq.leases 2>/dev/null
+      )
+
+      client_count="${#lease_clients[@]}"
       if [ "$client_count" -gt 0 ]; then
-        clients=$(awk -v dev="$device" '$0 ~ dev {print $4 " (" $2 ")"}' /var/lib/misc/dnsmasq.leases | sed -z 's/\n/\\n  /g')
+        clients="$(printf '%s\n' "${lease_clients[@]}" | sed -z 's/\n/\\n  /g')"
         clients="\\nClients ($client_count):\\n  $clients"
       fi
     fi
