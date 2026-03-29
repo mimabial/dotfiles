@@ -91,6 +91,18 @@ rofi_picker_parse_style_args() {
   done
 }
 
+rofi_picker_rasi_args() {
+  local out_name="$1"
+  local rasi_file="$2"
+  local position_override="${3:-}"
+
+  # shellcheck disable=SC2178
+  local -n out_ref="${out_name}"
+
+  out_ref=(-config "${rasi_file}")
+  [[ -n "${position_override}" ]] && out_ref+=(-theme-str "${position_override}")
+}
+
 rofi_picker_ensure_data_file() {
   local target_file="$1"
   local target_dir=""
@@ -148,19 +160,22 @@ rofi_picker_save_recent_entry() {
   fi
 }
 
-rofi_picker_compute_window_position() {
+rofi_picker_compute_window_geometry() {
   local out_position_name="$1"
-  local font_name="$2"
-  local font_scale="$3"
-  local width_em="$4"
-  local height_em="$5"
-  local fallback_width_px="$6"
-  local fallback_height_px="$7"
+  local out_theme_name="$2"
+  local font_name="$3"
+  local font_scale="$4"
+  local width_em="$5"
+  local height_em="$6"
+  local fallback_width_px="$7"
+  local fallback_height_px="$8"
   local width_px=""
   local height_px=""
 
   # shellcheck disable=SC2178
   local -n out_position_ref="${out_position_name}"
+  # shellcheck disable=SC2178
+  local -n out_theme_ref="${out_theme_name}"
 
   width_px="$(rofi_length_em_to_px "${width_em}" "${font_name}" "${font_scale}" 2>/dev/null || true)"
   [[ "${width_px}" =~ ^[0-9]+$ ]] || width_px="${fallback_width_px}"
@@ -169,6 +184,7 @@ rofi_picker_compute_window_position() {
   [[ "${height_px}" =~ ^[0-9]+$ ]] || height_px="${fallback_height_px}"
 
   out_position_ref="$(get_rofi_pos "${width_px}" "${height_px}")"
+  out_theme_ref="window { width: ${width_px}px; height: ${height_px}px; }"
 }
 
 rofi_length_em_to_px() {

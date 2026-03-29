@@ -63,6 +63,9 @@ typeset -ga _FZF_SYMLINK_EXCLUDE_FD=()
 typeset -g _FZF_SYMLINK_EXCLUDE_FIND=""
 typeset -g _FZF_SEARCH_ROOT=""
 typeset -g _FZF_SEARCH_QUERY=""
+typeset -gr _FZF_DEFAULT_PROMPT=' '
+typeset -gr _FZF_SEARCH_PROMPT='Search: '
+typeset -gr _FZF_SCROLLBAR=' ▌'
 
 _fzf_term_columns() {
     local cols="${FZF_LAYOUT_COLUMNS:-$COLUMNS}"
@@ -295,7 +298,8 @@ _fuzzy_edit_search_file_content_dynamic() {
                 --preview "$preview_cmd" \
                 --expect=ctrl-o \
                 --query "$initial_query" \
-                --prompt "Search: " \
+                --prompt "$_FZF_SEARCH_PROMPT" \
+                --scrollbar "$_FZF_SCROLLBAR" \
                 --bind "start:reload(if [[ -n {q} ]]; then rg --hidden --follow --line-number --column --color=always --smart-case --max-count=30 $rg_globs $rg_symlink_globs {q} 2>/dev/null; fi || true)" \
                 --bind "change:reload(sleep 0.1; if [[ -n {q} ]]; then rg --hidden --follow --line-number --column --color=always --smart-case --max-count=30 $rg_globs $rg_symlink_globs {q} 2>/dev/null || true; fi)" \
                 --header "Dynamic Search | Enter: Edit | Ctrl-O: View"
@@ -315,7 +319,8 @@ _fuzzy_edit_search_file_content_dynamic() {
                 --preview "$preview_cmd" \
                 --expect=ctrl-o \
                 --query "$initial_query" \
-                --prompt "Search: " \
+                --prompt "$_FZF_SEARCH_PROMPT" \
+                --scrollbar "$_FZF_SCROLLBAR" \
                 --bind "start:reload(if [[ -n {q} ]]; then find -L . -type f $grep_excludes $find_symlink_excludes -exec grep -Hn --color=always {q} {} + 2>/dev/null | head -500; fi || true)" \
                 --bind "change:reload(sleep 0.1; if [[ -n {q} ]]; then find -L . -type f $grep_excludes $find_symlink_excludes -exec grep -Hn --color=always {q} {} + 2>/dev/null | head -1000 || true; fi)" \
                 --header "Dynamic Search | Enter: Edit | Ctrl-O: View"
@@ -364,6 +369,9 @@ _fuzzy_change_directory() {
     local fzf_options=('--preview=ls -Ap {}')
     fzf_options+=(--preview-window "$fzf_preview_window")
     fzf_options+=(--height "$fzf_height" --layout=reverse --cycle -i)
+    fzf_options+=(--prompt "$_FZF_DEFAULT_PROMPT")
+    fzf_options+=(--scrollbar "$_FZF_SCROLLBAR")
+    fzf_options+=(--header "Enter: Change directory")
     local max_depth=7
     _refresh_symlink_excludes "$search_root"
     local find_symlink_excludes="$_FZF_SYMLINK_EXCLUDE_FIND"
@@ -486,6 +494,8 @@ _fuzzy_edit_search_file_content() {
         --delimiter=:
         --preview "$preview_cmd"
         --expect=ctrl-o
+        --prompt "$_FZF_SEARCH_PROMPT"
+        --scrollbar "$_FZF_SCROLLBAR"
         --header "Enter: Edit file at line | Ctrl-O: View file"
     )
     local fzf_output
@@ -538,13 +548,16 @@ _fuzzy_edit_search_file() {
     local fzf_mode="$(_fzf_layout_mode)"
     local fzf_height="$(_fzf_height_for "$fzf_mode" file)"
     local fzf_preview_window="$(_fzf_preview_window_for "$fzf_mode" file)"
-    
+ 
     fzf_options+=(
         --height "$fzf_height"
         --layout=reverse 
         --preview "$preview_cmd"
         --preview-window "$fzf_preview_window"
         --cycle
+        --prompt "$_FZF_DEFAULT_PROMPT"
+        --scrollbar "$_FZF_SCROLLBAR"
+        --header "Enter: Edit file"
     )
     local max_depth=5
 
@@ -607,15 +620,18 @@ _fuzzy_search_cmd_history() {
   else
     fzf_query="--query=${(qqq)LBUFFER}"
   fi
+  local history_prompt="${(qqq)_FZF_DEFAULT_PROMPT}"
+  local history_scrollbar="${(qqq)_FZF_SCROLLBAR}"
+  local history_fzf_opts="-n2..,.. --scheme=history --bind=ctrl-r:toggle-sort --wrap-sign '\t↳ ' --highlight-line --prompt=${history_prompt} --scrollbar=${history_scrollbar} --header 'Enter: Use command | Ctrl-R: Toggle sort' ${FZF_CTRL_R_OPTS-} $fzf_query +m"
 
   if zmodload -F zsh/parameter p:{commands,history} 2>/dev/null && (( ${+commands[perl]} )); then
     selected="$(printf '%s\t%s\000' "${(kv)history[@]}" |
       perl -0 -ne 'if (!$seen{(/^\s*[0-9]+\**\t(.*)/s, $1)}++) { s/\n/\n\t/g; print; }' |
-      FZF_DEFAULT_OPTS=$(__fzf_defaults "" "-n2..,.. --scheme=history --bind=ctrl-r:toggle-sort --wrap-sign '\t↳ ' --highlight-line ${FZF_CTRL_R_OPTS-} $fzf_query +m --read0") \
+      FZF_DEFAULT_OPTS=$(__fzf_defaults "" "$history_fzf_opts --read0") \
       FZF_DEFAULT_OPTS_FILE='' $(__fzfcmd))"
   else
     selected="$(fc -rl 1 | __fzf_exec_awk '{ cmd=$0; sub(/^[ \t]*[0-9]+\**[ \t]+/, "", cmd); if (!seen[cmd]++) print $0 }' |
-      FZF_DEFAULT_OPTS=$(__fzf_defaults "" "-n2..,.. --scheme=history --bind=ctrl-r:toggle-sort --wrap-sign '\t↳ ' --highlight-line ${FZF_CTRL_R_OPTS-} $fzf_query +m") \
+      FZF_DEFAULT_OPTS=$(__fzf_defaults "" "$history_fzf_opts") \
       FZF_DEFAULT_OPTS_FILE='' $(__fzfcmd))"
   fi
   local ret=$?

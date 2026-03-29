@@ -25,7 +25,11 @@ HELP
 toggle_existing_monitor() {
   local address=""
 
-  address="$(hyprctl -j clients 2>/dev/null | jq -r '.[] | select(.class == "sysmonitor") | .address' | head -n1)"
+  address="$(
+    hyprctl -j clients 2>/dev/null \
+      | jq -r '.[] | select(.class == "org.tui.Sysmonitor") | .address' \
+      | head -n1
+  )"
   [[ -n "${address}" ]] || return 1
 
   hyprctl dispatch closewindow "address:${address}" >/dev/null 2>&1
@@ -53,10 +57,13 @@ select_monitor_command() {
 
 launch_monitor() {
   local sysMon="$1"
-  local term="${SYSMONITOR_TERMINAL:-${TERMINAL:-kitty}}"
+  local term="${SYSMONITOR_TERMINAL:-${TERMINAL_TUI:-${TERMINAL:-kitty}}}"
 
-  setsid "${term}" --class=sysmonitor -e "${sysMon}" >/dev/null 2>&1 &
-  disown
+  TERMINAL_TUI="${term}" \
+    exec "${LIB_DIR:-$HOME/.local/lib}/hypr/launch/tui.sh" \
+      --app-id org.tui.Sysmonitor \
+      --title "System Monitor" \
+      -- "${sysMon}"
 }
 
 case "${1:-}" in

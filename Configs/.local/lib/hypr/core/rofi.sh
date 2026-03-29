@@ -114,21 +114,70 @@ rofi_list_asset_files() {
   rofi_list_files asset "${1:-*}"
 }
 
-rofi_focused_monitor_record() {
-  hyprctl -j monitors 2>/dev/null | jq -r '
-    .[] | select(.focused==true) |
-    [
-      (if (.transform % 2 == 0) then .width else .height end),
-      (if (.transform % 2 == 0) then .height else .width end),
+rofi_cursor_raw_position() {
+  local x_name="$1"
+  local y_name="$2"
+  local -n x_ref="${x_name}"
+  local -n y_ref="${y_name}"
+  local -a cursor_pos=(0 0)
+
+  readarray -t cursor_pos < <(hyprctl cursorpos -j 2>/dev/null | jq -r '.x,.y' 2>/dev/null)
+  [[ "${cursor_pos[0]:-}" =~ ^-?[0-9]+$ ]] || cursor_pos[0]=0
+  [[ "${cursor_pos[1]:-}" =~ ^-?[0-9]+$ ]] || cursor_pos[1]=0
+
+  x_ref="${cursor_pos[0]}"
+  y_ref="${cursor_pos[1]}"
+}
+
+rofi_monitor_record() {
+  local mode="${1:-focused}"
+  local cursor_x=0
+  local cursor_y=0
+  local -a jq_args=(--arg mode "${mode}" --argjson cx 0 --argjson cy 0)
+
+  if [[ "${mode}" == "cursor" ]]; then
+    rofi_cursor_raw_position cursor_x cursor_y
+    jq_args=(--arg mode "${mode}" --argjson cx "${cursor_x}" --argjson cy "${cursor_y}")
+  fi
+
+  hyprctl -j monitors 2>/dev/null | jq -r "${jq_args[@]}" '
+    def monitor_width: if (.transform % 2 == 0) then .width else .height end;
+    def monitor_height: if (.transform % 2 == 0) then .height else .width end;
+    def record: [
+      monitor_width,
+      monitor_height,
       (.scale // 1),
-      .x,
-      .y,
-      .reserved[0],
-      .reserved[1],
-      .reserved[2],
-      .reserved[3]
-    ] | @tsv
+      (.x // 0),
+      (.y // 0),
+      (.reserved[0] // 0),
+      (.reserved[1] // 0),
+      (.reserved[2] // 0),
+      (.reserved[3] // 0)
+    ] | @tsv;
+
+    if $mode == "cursor" then
+      (
+        .[] | select(
+          ($cx >= .x) and
+          ($cx < (.x + monitor_width)) and
+          ($cy >= .y) and
+          ($cy < (.y + monitor_height))
+        )
+      ),
+      (.[] | select(.focused==true))
+      | record
+    else
+      .[] | select(.focused==true) | record
+    end
   ' 2>/dev/null | head -n 1
+}
+
+rofi_focused_monitor_record() {
+  rofi_monitor_record focused
+}
+
+rofi_cursor_monitor_record() {
+  rofi_monitor_record cursor
 }
 
 rofi_default_window_size() {
@@ -144,125 +193,112 @@ rofi_default_window_size() {
   fi
 }
 
+rofi_cursor_monitor_geometry() {
+  local width_name="$1"
+  local height_name="$2"
+  local scale_name="$3"
+  local x_name="$4"
+  local y_name="$5"
+  local reserve_name="$6"
+  local monitor_line=""
+  local parsed_width="" parsed_height="" parsed_scale="" parsed_x="" parsed_y="" off_left="" off_top="" off_right="" off_bottom=""
+  local -n width_ref="${width_name}"
+  local -n height_ref="${height_name}"
+  local -n scale_ref="${scale_name}"
+  local -n x_ref="${x_name}"
+  local -n y_ref="${y_name}"
+  local -n reserve_ref="${reserve_name}"
+
+  monitor_line="$(rofi_cursor_monitor_record)"
+  [[ -n "${monitor_line}" ]] || return 1
+
+  IFS=$'\t' read -r parsed_width parsed_height parsed_scale parsed_x parsed_y off_left off_top off_right off_bottom <<<"${monitor_line}"
+  [[ "${parsed_scale}" =~ ^[0-9]+([.][0-9]+)?$ ]] || parsed_scale=1
+
+  width_ref="$(awk -v w="${parsed_width}" -v s="${parsed_scale}" 'BEGIN { if (s <= 0) s = 1; v = int(w / s); if (v < 1) v = 1; print v }')"
+  height_ref="$(awk -v h="${parsed_height}" -v s="${parsed_scale}" 'BEGIN { if (s <= 0) s = 1; v = int(h / s); if (v < 1) v = 1; print v }')"
+  scale_ref="${parsed_scale}"
+  x_ref="${parsed_x}"
+  y_ref="${parsed_y}"
+  reserve_ref=("${off_left}" "${off_top}" "${off_right}" "${off_bottom}")
+}
+
 rofi_cursor_local_position() {
   local x_name="$1"
   local y_name="$2"
   local mon_x="$3"
   local mon_y="$4"
+  local mon_scale="$5"
   local -n x_ref="${x_name}"
   local -n y_ref="${y_name}"
-  local -a cursor_pos=(0 0)
+  local raw_cursor_x=0
+  local raw_cursor_y=0
 
-  readarray -t cursor_pos < <(hyprctl cursorpos -j 2>/dev/null | jq -r '.x,.y' 2>/dev/null)
-  [[ "${cursor_pos[0]:-}" =~ ^-?[0-9]+$ ]] || cursor_pos[0]=0
-  [[ "${cursor_pos[1]:-}" =~ ^-?[0-9]+$ ]] || cursor_pos[1]=0
-
-  x_ref=$((cursor_pos[0] - mon_x))
-  y_ref=$((cursor_pos[1] - mon_y))
+  rofi_cursor_raw_position raw_cursor_x raw_cursor_y
+  x_ref="$(awk -v c="${raw_cursor_x}" -v m="${mon_x}" -v s="${mon_scale}" 'BEGIN { if (s <= 0) s = 1; print int((c - m) / s) }')"
+  y_ref="$(awk -v c="${raw_cursor_y}" -v m="${mon_y}" -v s="${mon_scale}" 'BEGIN { if (s <= 0) s = 1; print int((c - m) / s) }')"
 }
 
-rofi_monitor_logical_geometry() {
-  local width_name="$1"
-  local height_name="$2"
-  local x_name="$3"
-  local y_name="$4"
-  local reserve_name="$5"
-  local monitor_line=""
-  local mon_width="" mon_height="" mon_scale="" mon_x="" mon_y="" off_left="" off_top="" off_right="" off_bottom=""
-  local -n width_ref="${width_name}"
-  local -n height_ref="${height_name}"
-  local -n x_ref="${x_name}"
-  local -n y_ref="${y_name}"
-  local -n reserve_ref="${reserve_name}"
+rofi_edge_padding_px() {
+  local gaps_out=5
+  local border_width=2
 
-  monitor_line="$(rofi_focused_monitor_record)"
-  [[ -n "${monitor_line}" ]] || return 1
+  gaps_out="$(hypr_resolved_gaps_out 2>/dev/null || true)"
+  [[ "${gaps_out}" =~ ^[0-9]+$ ]] || gaps_out=5
 
-  IFS=$'\t' read -r mon_width mon_height mon_scale mon_x mon_y off_left off_top off_right off_bottom <<<"${monitor_line}"
-  [[ "${mon_scale}" =~ ^[0-9]+([.][0-9]+)?$ ]] || mon_scale=1
+  IFS=$'\t' read -r _ border_width <<< "$(hypr_resolved_border_metrics 2>/dev/null || true)"
+  [[ "${border_width}" =~ ^[0-9]+$ ]] || border_width=2
 
-  width_ref="$(awk -v w="${mon_width}" -v s="${mon_scale}" 'BEGIN { if (s <= 0) s = 1; v = int(w / s); if (v < 1) v = 1; print v }')"
-  height_ref="$(awk -v h="${mon_height}" -v s="${mon_scale}" 'BEGIN { if (s <= 0) s = 1; v = int(h / s); if (v < 1) v = 1; print v }')"
-  x_ref="${mon_x}"
-  y_ref="${mon_y}"
-  reserve_ref=("${off_left}" "${off_top}" "${off_right}" "${off_bottom}")
-}
-
-rofi_axis_position() {
-  local cursor_pos="$1"
-  local span="$2"
-  local reserve_start="$3"
-  local reserve_end="$4"
-  local window_size="$5"
-  local positive_dir="$6"
-  local negative_dir="$7"
-  local pos_name="$8"
-  local off_name="$9"
-  local -n pos_ref="${pos_name}"
-  local -n off_ref="${off_name}"
-  local edge_padding=10
-  local available_positive=$((span - cursor_pos - reserve_end))
-  local available_negative=$((cursor_pos - reserve_start))
-  local usable_span=$((span - reserve_start - reserve_end))
-  local max_safe_positive=0
-  local abs_offset=0
-
-  (( usable_span < edge_padding * 2 )) && usable_span=$((edge_padding * 2))
-  max_safe_positive=$((usable_span - window_size - edge_padding))
-  (( max_safe_positive < edge_padding )) && max_safe_positive="${edge_padding}"
-
-  if (( window_size > 0 )); then
-    if (( available_positive >= window_size )); then
-      pos_ref="${positive_dir}"
-      off_ref="$((cursor_pos - reserve_start))"
-      (( off_ref < edge_padding )) && off_ref="${edge_padding}"
-      (( off_ref > max_safe_positive )) && off_ref="${max_safe_positive}"
-      return 0
-    fi
-
-    if (( available_negative >= window_size )); then
-      pos_ref="${negative_dir}"
-      abs_offset=$((span - cursor_pos - reserve_end))
-      (( abs_offset < edge_padding )) && abs_offset="${edge_padding}"
-      (( abs_offset > max_safe_positive )) && abs_offset="${max_safe_positive}"
-      off_ref="-$abs_offset"
-      return 0
-    fi
-
-    if (( available_positive >= available_negative )); then
-      pos_ref="${positive_dir}"
-      off_ref="${edge_padding}"
-    else
-      pos_ref="${negative_dir}"
-      off_ref="-$edge_padding"
-    fi
-    return 0
-  fi
-
-  if (( cursor_pos >= span / 2 )); then
-    pos_ref="${negative_dir}"
-    off_ref="-$((span - cursor_pos - reserve_end))"
-  else
-    pos_ref="${positive_dir}"
-    off_ref="$((cursor_pos - reserve_start))"
-  fi
+  printf '%s\n' "$((gaps_out * 2 + border_width))"
 }
 
 # launcher spawn location (wofi/rofi)
 get_rofi_pos() {
   local window_width="${1:-0}"
   local window_height="${2:-0}"
-  local mon_width=0 mon_height=0 mon_x=0 mon_y=0
+  local mon_width=0 mon_height=0 mon_scale=1 mon_x=0 mon_y=0
   local cursor_x=0 cursor_y=0
   local -a mon_reserved=(0 0 0 0)
-  local x_pos="" x_off="" y_pos="" y_off=""
+  local edge_padding=0
+  local cursor_padding=8
+  local usable_width=0 usable_height=0
+  local visible_cursor_x=0 visible_cursor_y=0
+  local min_x=0 max_x=0 min_y=0 max_y=0
+  local desired_x=0 desired_y=0
+  local x_off=0 y_off=0
 
   rofi_default_window_size window_width window_height
-  rofi_monitor_logical_geometry mon_width mon_height mon_x mon_y mon_reserved || return 1
-  rofi_cursor_local_position cursor_x cursor_y "${mon_x}" "${mon_y}"
-  rofi_axis_position "${cursor_x}" "${mon_width}" "${mon_reserved[0]}" "${mon_reserved[2]}" "${window_width}" west east x_pos x_off
-  rofi_axis_position "${cursor_y}" "${mon_height}" "${mon_reserved[1]}" "${mon_reserved[3]}" "${window_height}" north south y_pos y_off
+  rofi_cursor_monitor_geometry mon_width mon_height mon_scale mon_x mon_y mon_reserved || return 1
+  rofi_cursor_local_position cursor_x cursor_y "${mon_x}" "${mon_y}" "${mon_scale}"
+  edge_padding="$(rofi_edge_padding_px 2>/dev/null || true)"
+  [[ "${edge_padding}" =~ ^[0-9]+$ ]] || edge_padding=12
+
+  usable_width=$((mon_width - mon_reserved[0] - mon_reserved[2]))
+  usable_height=$((mon_height - mon_reserved[1] - mon_reserved[3]))
+  ((usable_width < 1)) && usable_width=1
+  ((usable_height < 1)) && usable_height=1
+
+  visible_cursor_x=$((cursor_x - mon_reserved[0]))
+  visible_cursor_y=$((cursor_y - mon_reserved[1]))
+
+  min_x="${edge_padding}"
+  min_y="${edge_padding}"
+  max_x=$((usable_width - window_width - edge_padding))
+  max_y=$((usable_height - window_height - edge_padding))
+
+  ((max_x < min_x)) && max_x="${min_x}"
+  ((max_y < min_y)) && max_y="${min_y}"
+
+  desired_x=$((visible_cursor_x + cursor_padding))
+  desired_y=$((visible_cursor_y + cursor_padding))
+
+  x_off="${desired_x}"
+  y_off="${desired_y}"
+  ((x_off < min_x)) && x_off="${min_x}"
+  ((x_off > max_x)) && x_off="${max_x}"
+  ((y_off < min_y)) && y_off="${min_y}"
+  ((y_off > max_y)) && y_off="${max_y}"
 
   printf 'window{location:%s %s;anchor:%s %s;x-offset:%spx;y-offset:%spx;}\n' \
-    "${x_pos}" "${y_pos}" "${x_pos}" "${y_pos}" "${x_off}" "${y_off}"
+    west north west north "${x_off}" "${y_off}"
 }

@@ -80,8 +80,9 @@ setup_rofi_config() {
   glyph_window_width="${ROFI_GLYPH_WIDTH_EM:-${default_width}}"
   [[ "${glyph_window_width}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || glyph_window_width=${default_width}
   local glyph_window_height_em=$((glyph_lines * 2 + 8))
-  rofi_picker_compute_window_position \
-    rofi_position "${font_name}" "${font_scale}" \
+  rofi_picker_compute_window_geometry \
+    rofi_position glyph_window_theme \
+    "${font_name}" "${font_scale}" \
     "${glyph_window_width}" "${glyph_window_height_em}" \
     $((default_width * font_scale * 2)) $((glyph_window_height_em * font_scale * 2))
 
@@ -92,7 +93,7 @@ setup_rofi_config() {
     -no-custom
     -theme-str "entry { placeholder: \"   Glyph\";} ${rofi_position}"
     -theme-str "${font_override}"
-    -theme-str "window { width: ${glyph_window_width}em; }"
+    -theme-str "${glyph_window_theme}"
     -theme-str "${r_override}"
     -theme "$(rofi_resolve_theme "${ROFI_GLYPH_STYLE:-clipboard}")"
   )
@@ -118,9 +119,10 @@ get_glyph_selection() {
   local format_stream=(awk -F $'\t' 'BEGIN{OFS="\t"}{disp=$1; if($2!=""&&$2!=$1) disp=disp" "$2; print disp}')
 
   local selection_index=""
+  local -a rofi_config_args=()
   if [[ -n ${use_rofile} ]]; then
-    selection_index=$(cat "${temp_data}" | "${format_stream[@]}" | rofi -dmenu -i -format 'i' "${ROFI_GLYPH_ARGS[@]}" -config "${use_rofile}" \
-      -no-custom)
+    rofi_picker_rasi_args rofi_config_args "${use_rofile}" "${rofi_position}"
+    selection_index=$(cat "${temp_data}" | "${format_stream[@]}" | rofi -dmenu -i -format 'i' "${ROFI_GLYPH_ARGS[@]}" "${rofi_config_args[@]}" -no-custom)
   else
     case ${style_type} in
       2 | grid)

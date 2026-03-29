@@ -74,7 +74,7 @@ apply_geometry_profile() {
       ;;
     tui)
       hypr_width="50%"
-      hypr_height="70%"
+      hypr_height="80%"
       ;;
     dialog)
       hypr_width="80%"

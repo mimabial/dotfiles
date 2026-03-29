@@ -107,6 +107,20 @@ hypr_resolved_border_metrics() {
   printf '%s\t%s\n' "${border}" "${width}"
 }
 
+hypr_resolved_gaps_out() {
+  local gaps_out="${hypr_gaps_out:-}"
+
+  if [[ ! "${gaps_out}" =~ ^[0-9]+$ ]] && command -v hyprctl >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
+    gaps_out="$(
+      hyprctl -j getoption general:gaps_out 2>/dev/null |
+        jq -r '.int // empty' 2>/dev/null
+    )"
+  fi
+
+  [[ "${gaps_out}" =~ ^[0-9]+$ ]] || gaps_out=5
+  printf '%s\n' "${gaps_out}"
+}
+
 hypr_compact_path() {
   local path="$1"
 

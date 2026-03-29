@@ -66,8 +66,9 @@ setup_rofi_config() {
   [[ "${emoji_window_width_em}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || emoji_window_width_em="40.5"
   [[ "${emoji_window_height_em}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || emoji_window_height_em="30"
 
-  rofi_picker_compute_window_position \
-    rofi_position "${font_name}" "${font_scale}" \
+  rofi_picker_compute_window_geometry \
+    rofi_position emoji_window_theme \
+    "${font_name}" "${font_scale}" \
     "${emoji_window_width_em}" "${emoji_window_height_em}" \
     $((81 * font_scale)) $((60 * font_scale))
 }
@@ -77,6 +78,7 @@ emoji_menu_base_opts() {
   local -n opts_ref="$2"
 
   opts_ref=(-no-config -no-default-config -theme "${theme_name}")
+  [[ -n "${emoji_window_theme:-}" ]] && opts_ref+=("-theme-str" "${emoji_window_theme}")
   [[ -n "${_rofi_opacity}" ]] && opts_ref+=("-theme-str" "${_rofi_opacity}")
 }
 
@@ -99,6 +101,7 @@ emoji_clipboard_dmenu() {
   rofi -dmenu -i -p "${prompt}" -no-show-icons \
     -theme-str "entry { placeholder: \"${placeholder}\";} ${rofi_position} ${r_override}" \
     -theme-str "${font_override}" \
+    -theme-str "${emoji_window_theme}" \
     -theme "$(rofi_resolve_theme clipboard)" -theme-str "${_rofi_opacity}"
 }
 
@@ -197,11 +200,14 @@ emoji_selection_raw_line() {
 
 emoji_rofi_selection_index() {
   local display_file="$1"
+  local -a rofi_config_args=()
   shift
 
   if [[ -n ${use_rofile} ]]; then
-    cat "${display_file}" | rofi -dmenu -i -format 'i' "$@" -config "${use_rofile}" \
+    rofi_picker_rasi_args rofi_config_args "${use_rofile}" "${rofi_position}"
+    cat "${display_file}" | rofi -dmenu -i -format 'i' "$@" "${rofi_config_args[@]}" \
       -no-show-icons \
+      -theme-str "${emoji_window_theme}" \
       -theme-str "${EMOJI_ICONLESS_THEME_STR}" \
       -no-custom
     return 0
@@ -212,6 +218,7 @@ emoji_rofi_selection_index() {
     -theme-str "${EMOJI_ICONLESS_THEME_STR}" \
     -theme-str "entry { placeholder: \" 󰞅 Emoji\";} ${rofi_position} ${r_override}" \
     -theme-str "${font_override}" \
+    -theme-str "${emoji_window_theme}" \
     -no-custom
 }
 

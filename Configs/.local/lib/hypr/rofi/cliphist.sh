@@ -95,23 +95,38 @@ check_content() {
 run_rofi() {
   local placeholder="$1"
   shift
+  local -a rofi_args=(
+    -dmenu
+    -theme-str "entry { placeholder: \"${placeholder}\";}"
+    -theme-str "${font_override}"
+    -theme-str "${r_override}"
+    -theme-str "${rofi_position}"
+    -theme "${cliphist_style}"
+  )
 
-  rofi -dmenu \
-    -theme-str "entry { placeholder: \"${placeholder}\";}" \
-    -theme-str "${font_override}" \
-    -theme-str "${r_override}" \
-    -theme-str "${rofi_position}" \
-    -theme "${cliphist_style}" \
-    ${_rofi_opacity:+-theme-str "${_rofi_opacity}"} \
-    "$@"
+  [[ -n "${cliphist_window_theme:-}" ]] && rofi_args+=(-theme-str "${cliphist_window_theme}")
+  [[ -n "${_rofi_opacity:-}" ]] && rofi_args+=(-theme-str "${_rofi_opacity}")
+
+  rofi "${rofi_args[@]}" "$@"
 }
 
 # setup rofi configuration
 setup_rofi_config() {
+  local cliphist_window_width_em="${ROFI_CLIPHIST_WIDTH_EM:-36}"
+  local cliphist_window_height_em="${ROFI_CLIPHIST_HEIGHT_EM:-29}"
+
   rofi_prepare_standard_context \
     font_scale font_name font_override r_override _rofi_opacity \
     "${ROFI_CLIPHIST_SCALE}" "${ROFI_CLIPHIST_FONT:-$ROFI_FONT}" wallbox same
-  rofi_position=$(get_rofi_pos 2>/dev/null || echo "")
+
+  [[ "${cliphist_window_width_em}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || cliphist_window_width_em="36"
+  [[ "${cliphist_window_height_em}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || cliphist_window_height_em="29"
+
+  rofi_picker_compute_window_geometry \
+    rofi_position cliphist_window_theme \
+    "${font_name}" "${font_scale}" \
+    "${cliphist_window_width_em}" "${cliphist_window_height_em}" \
+    $((cliphist_window_width_em * font_scale * 2)) $((cliphist_window_height_em * font_scale * 2))
 }
 
 # create favorites directory if it doesn't exist

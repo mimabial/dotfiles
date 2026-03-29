@@ -17,19 +17,11 @@ agentless="${TMUX_LAYOUT_AGENTLESS:-0}"
 tmux rename-window -t "$pane_id" "$window_name"
 if [[ "$pane_count" == "1" ]]; then
   if [[ -n "$second_agent_cmd" ]]; then
-    integer right_width
-    top_right_pane=""
-    bottom_right_pane=""
+    right_pane=""
+    right_pane="$(tmux split-window -h -p 50 -t "$pane_id" -c "$cwd" -P -F '#{pane_id}')"
 
-    right_width="$(tmux display-message -p -t "$pane_id" '#{pane_width}')"
-    ((right_width = right_width * 51 / 100))
-    ((right_width < 1)) && right_width=1
-
-    top_right_pane="$(tmux split-window -h -l "$right_width" -t "$pane_id" -c "$cwd" -P -F '#{pane_id}')"
-    bottom_right_pane="$(tmux split-window -v -t "$top_right_pane" -c "$cwd" -P -F '#{pane_id}')"
-
-    [[ "$agentless" == "1" ]] || tmux send-keys -t "$top_right_pane" "$agent_cmd" C-m
-    [[ "$agentless" == "1" ]] || tmux send-keys -t "$bottom_right_pane" "$second_agent_cmd" C-m
+    [[ "$agentless" == "1" ]] || tmux send-keys -t "$pane_id" "$agent_cmd" C-m
+    [[ "$agentless" == "1" ]] || tmux send-keys -t "$right_pane" "$second_agent_cmd" C-m
   else
     integer top_width right_width
     tmux split-window -v -p 15 -t "$pane_id" -c "$cwd" >/dev/null
@@ -40,7 +32,9 @@ if [[ "$pane_count" == "1" ]]; then
     [[ "$agentless" == "1" ]] || tmux send-keys -t "$right_pane" "$agent_cmd" C-m
   fi
 
-  [[ -n "$editor_cmd" ]] && tmux send-keys -t "$pane_id" "$editor_cmd" C-m
+  if [[ -z "$second_agent_cmd" ]] && [[ -n "$editor_cmd" ]]; then
+    tmux send-keys -t "$pane_id" "$editor_cmd" C-m
+  fi
 fi
 tmux select-pane -t "$pane_id"
 tmux display-message "Applied dev layout to ${window_name}"

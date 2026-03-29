@@ -46,8 +46,9 @@ setup_rofi_config() {
   boxdraw_window_width="${ROFI_BOXDRAW_WIDTH_EM:-${default_width}}"
   [[ "${boxdraw_window_width}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || boxdraw_window_width=${default_width}
   local boxdraw_window_height_em=$((boxdraw_lines * 2 + 8))
-  rofi_picker_compute_window_position \
-    rofi_position "${font_name}" "${font_scale}" \
+  rofi_picker_compute_window_geometry \
+    rofi_position boxdraw_window_theme \
+    "${font_name}" "${font_scale}" \
     "${boxdraw_window_width}" "${boxdraw_window_height_em}" \
     $((default_width * font_scale * 2)) $((boxdraw_window_height_em * font_scale * 2))
 }
@@ -59,6 +60,7 @@ get_boxdraw_selection() {
   local size_override=""
   local format_stream=(awk -F $'\t' 'BEGIN{OFS="\t"}{disp=$1; if($2!=""&&$2!=$1) disp=disp" "$2; print disp}')
   local selection_index=""
+  local -a rofi_config_args=()
   local temp_data=""
   local temp_dir="${TMPDIR:-/tmp}"
 
@@ -82,8 +84,8 @@ get_boxdraw_selection() {
   }
 
   if [[ -n ${use_rofile} ]]; then
-    selection_index=$(cat "${temp_data}" | "${format_stream[@]}" | rofi -dmenu -i -format 'i' "${ROFI_BOXDRAW_ARGS[@]}" -config "${use_rofile}" \
-      -no-custom)
+    rofi_picker_rasi_args rofi_config_args "${use_rofile}" "${rofi_position}"
+    selection_index=$(cat "${temp_data}" | "${format_stream[@]}" | rofi -dmenu -i -format 'i' "${ROFI_BOXDRAW_ARGS[@]}" "${rofi_config_args[@]}" -theme-str "${boxdraw_window_theme}" -no-custom)
   else
     case ${style_type} in
       2 | grid)
@@ -92,7 +94,7 @@ get_boxdraw_selection() {
           -theme-str "entry { placeholder: \" 󰇟 Box Drawing\";} ${rofi_position} ${r_override}" \
           -theme-str "${font_override}" \
           -theme-str "${size_override}" \
-          -theme-str "window { width: ${boxdraw_window_width}em; }" \
+          -theme-str "${boxdraw_window_theme}" \
           -theme "$(rofi_resolve_theme "${ROFI_BOXDRAW_STYLE:-clipboard}")" -theme-str "${_rofi_opacity}" \
           -no-custom)
         ;;
@@ -100,7 +102,7 @@ get_boxdraw_selection() {
         selection_index=$(cat "${temp_data}" | "${format_stream[@]}" | rofi -dmenu -i -format 'i' "${ROFI_BOXDRAW_ARGS[@]}" \
           -theme-str "entry { placeholder: \"  Box Drawing\";} ${rofi_position} ${r_override}" \
           -theme-str "${font_override}" \
-          -theme-str "window { width: ${boxdraw_window_width}em; }" \
+          -theme-str "${boxdraw_window_theme}" \
           -theme "$(rofi_resolve_theme "${ROFI_BOXDRAW_STYLE:-clipboard}")" -theme-str "${_rofi_opacity}" \
           -no-custom)
         ;;
@@ -108,7 +110,7 @@ get_boxdraw_selection() {
         selection_index=$(cat "${temp_data}" | "${format_stream[@]}" | rofi -dmenu -i -format 'i' "${ROFI_BOXDRAW_ARGS[@]}" \
           -theme-str "entry { placeholder: \" 📐 Box Drawing\";} ${rofi_position} ${r_override}" \
           -theme-str "${font_override}" \
-          -theme-str "window { width: ${boxdraw_window_width}em; }" \
+          -theme-str "${boxdraw_window_theme}" \
           -theme "$(rofi_resolve_theme "${style_type:-${ROFI_BOXDRAW_STYLE:-clipboard}}")" -theme-str "${_rofi_opacity}" \
           -no-custom)
         ;;

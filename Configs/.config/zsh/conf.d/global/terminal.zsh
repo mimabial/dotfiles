@@ -67,6 +67,13 @@ function _init_zinit() {
 }
 
 function _defer_zinit_after_prompt_before_input() {
+    if [[ -n ${_ZSH_DEFERRED_INIT_DONE-} ]]; then
+        zle -D zle-line-init 2>/dev/null
+        return 0
+    fi
+
+    typeset -g _ZSH_DEFERRED_INIT_DONE=1
+    zle -D zle-line-init 2>/dev/null
 
     _init_zinit
     #! Never load time consuming functions here
@@ -86,6 +93,7 @@ function _defer_zinit_after_prompt_before_input() {
     if [[ -z ${ZSHRC_LOADED-} ]]; then
         chmod +r "$ZDOTDIR/.zshrc" # Make sure .zshrc is readable
         [[ -r "$ZDOTDIR/.zshrc" ]] && source "$ZDOTDIR/.zshrc"
+        typeset -g ZSHRC_LOADED=1
     fi
 }
 
