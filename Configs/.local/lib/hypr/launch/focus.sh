@@ -1,28 +1,47 @@
 #!/bin/bash
 
-if (($# == 0)); then
-  echo "Usage: hyprshell launch/focus.sh [window-pattern] [-- launch-command [args...]]"
-  exit 1
-fi
+set -euo pipefail
 
-WINDOW_PATTERN="$1"
-shift
+SCRIPT_DIR="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/window.common.bash"
 
-LAUNCH_COMMAND=()
-if [[ "${1:-}" == "--" ]]; then
+usage() {
+  echo "Usage: hyprshell launch/focus.sh <window-pattern> -- <command> [args...]"
+}
+
+main() {
+  local window_pattern=""
+  local address=""
+  local launch_cmd=()
+
+  if [[ "$#" -lt 3 ]]; then
+    usage >&2
+    return 1
+  fi
+
+  window_pattern="$1"
   shift
-  LAUNCH_COMMAND=("$@")
-elif (($# > 0)); then
-  echo "Error: launch/focus.sh now requires '--' before the launch command." >&2
-  exit 1
-else
-  LAUNCH_COMMAND=("uwsm-app" "--" "${WINDOW_PATTERN}")
-fi
 
-WINDOW_ADDRESS=$(hyprctl clients -j | jq -r --arg p "$WINDOW_PATTERN" '.[]|select((.class|test("\\b" + $p + "\\b";"i")) or (.title|test("\\b" + $p + "\\b";"i")))|.address' | head -n1)
+  if [[ "$1" != "--" ]]; then
+    usage >&2
+    return 1
+  fi
+  shift
 
-if [[ -n $WINDOW_ADDRESS ]]; then
-  hyprctl dispatch focuswindow "address:$WINDOW_ADDRESS"
-else
-  exec setsid "${LAUNCH_COMMAND[@]}"
-fi
+  launch_cmd=("$@")
+  [[ -n "${window_pattern}" && "${#launch_cmd[@]}" -gt 0 ]] || {
+    usage >&2
+    return 1
+  }
+
+  address="$(launch_resolve_window_address "${window_pattern}")"
+  if [[ -n "${address}" ]]; then
+    hyprctl dispatch focuswindow "address:${address}" >/dev/null 2>&1
+    return $?
+  fi
+
+  exec "${launch_cmd[@]}"
+}
+
+main "$@"

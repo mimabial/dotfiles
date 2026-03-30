@@ -240,16 +240,7 @@ rofi_cursor_local_position() {
 }
 
 rofi_edge_padding_px() {
-  local gaps_out=5
-  local border_width=2
-
-  gaps_out="$(hypr_resolved_gaps_out 2>/dev/null || true)"
-  [[ "${gaps_out}" =~ ^[0-9]+$ ]] || gaps_out=5
-
-  IFS=$'\t' read -r _ border_width <<< "$(hypr_resolved_border_metrics 2>/dev/null || true)"
-  [[ "${border_width}" =~ ^[0-9]+$ ]] || border_width=2
-
-  printf '%s\n' "$((gaps_out * 2 + border_width))"
+  hypr_window_edge_padding_px
 }
 
 # launcher spawn location (wofi/rofi)

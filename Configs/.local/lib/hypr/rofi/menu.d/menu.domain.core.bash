@@ -4,7 +4,6 @@ menu_register_domain_core() {
   menu_define dev_tools "Dev Tools"
   menu_add_item dev_tools "󰊢  Git (LazyGit)" action dev_git
   menu_add_item dev_tools "  Docker (LazyDocker)" action dev_docker
-  menu_add_item dev_tools "  File Manager (Ranger)" action dev_file_manager
   menu_add_item dev_tools "󰻠  CPU Monitor (Htop)" action dev_cpu_monitor
   menu_add_item dev_tools "  GPU Monitor (Nvtop)" action dev_gpu_monitor
   menu_add_item dev_tools "  Disk Usage (Dua)" action dev_disk_usage
@@ -47,7 +46,6 @@ menu_run_action_core() {
     main_apps) hyprshell rofi/rofi-launch.sh ;;
     dev_git) hyprshell launch/lazygit.sh ;;
     dev_docker) hyprshell launch/lazydocker.sh ;;
-    dev_file_manager) present_terminal --hypr-profile tui --app-id org.tui.Ranger --title Ranger -- ranger ;;
     dev_cpu_monitor) present_terminal --hypr-profile tui --app-id org.tui.Htop --title Htop -- htop ;;
     dev_gpu_monitor) present_terminal --hypr-profile tui --app-id org.tui.Nvtop --title Nvtop -- nvtop ;;
     dev_disk_usage) present_terminal --hypr-profile tui --app-id org.tui.Dua --title Dua -- dua i ;;

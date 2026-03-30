@@ -1,7 +1,0 @@
-{
-  "custom/ranger": {
-    "format": "",
-    "on-click": "hyprshell launch/tui.sh ranger",
-    "tooltip-format": "Ranger File Manager (SUPER+SHIFT+F)"
-  }
-}

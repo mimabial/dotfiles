@@ -103,12 +103,12 @@ Wall_Json() {
             }
         ]
     ' | {
-      if [[ -n "${json_tmp}" ]]; then
-        tee "${json_tmp}"
-      else
-        cat
-      fi
-    }
+    if [[ -n "${json_tmp}" ]]; then
+      tee "${json_tmp}"
+    else
+      cat
+    fi
+  }
 
   if [[ -n "${json_tmp}" && -f "${json_tmp}" ]]; then
     mv -f "${json_tmp}" "${json_cache}"
@@ -137,7 +137,7 @@ wallpaper_select_theme_override() {
   local max_avail=0
   local col_count=0
 
-  elem_border=$((hypr_border * 3))
+  elem_border=$((hypr_border * 2))
   mon_x_res="$(wallpaper_select_monitor_width)"
   elm_width=$(((28 + 8 + 5) * font_scale))
   max_avail=$((mon_x_res - (4 * font_scale)))
@@ -145,9 +145,9 @@ wallpaper_select_theme_override() {
 
   cat <<EOF
 window{width:100%;height:100%;fullscreen:true;}
-listview{columns:${col_count};spacing:5em;}
+listview{columns:${col_count};spacing:3.5em;}
 element{border-radius:${elem_border}px;orientation:vertical;margin-bottom:1em;}
-element-icon{size:27em;border-radius:0em;}
+element-icon{size:32em;border-radius:0em;}
 element-text{padding:1em;}
 EOF
 }

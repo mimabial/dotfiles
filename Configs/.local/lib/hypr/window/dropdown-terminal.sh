@@ -1,11 +1,139 @@
 #!/usr/bin/env bash
 
-# Check if dropdown terminal exists
-if hyprctl clients -j | jq -e '.[] | select(.class=="dropdown-terminal")' >/dev/null 2>&1; then
-    # Terminal exists, toggle the special workspace
-    hyprctl dispatch togglespecialworkspace dropdown
-else
-    # Terminal doesn't exist, spawn it on the special workspace directly
-    # The window rule will place it there automatically and it will be focused
-    kitty --class dropdown-terminal --working-directory "$(hyprshell terminal-cwd.sh)"
-fi
+dropdown_workspace_name() {
+  printf '%s\n' "special:dropdown"
+}
+
+dropdown_size_specs() {
+  printf '%s\t%s\n' "50%" "70%"
+}
+
+dropdown_client_json() {
+  hyprctl clients -j 2>/dev/null \
+    | jq -c '.[] | select(.class=="dropdown-terminal")' \
+    | head -n1
+}
+
+focused_workspace_name() {
+  hyprctl activeworkspace -j 2>/dev/null \
+    | jq -r '.name // empty'
+}
+
+focused_monitor_logical_size() {
+  hyprctl -j monitors 2>/dev/null \
+    | jq -r '
+        (map(select(.focused == true))[0] // .[0]) as $monitor
+        | [$monitor.width, $monitor.height, $monitor.scale]
+        | @tsv
+      ' \
+    | awk -F '\t' '{ printf "%d\t%d\n", $1 / $3, $2 / $3 }'
+}
+
+resolve_dimension() {
+  local spec="$1"
+  local base="$2"
+  local percent=""
+
+  case "${spec}" in
+    *%)
+      percent="${spec%%%}"
+      [[ "${percent}" =~ ^[0-9]+$ ]] || return 1
+      printf '%s\n' $((base * percent / 100))
+      ;;
+    *)
+      [[ "${spec}" =~ ^[0-9]+$ ]] || return 1
+      printf '%s\n' "${spec}"
+      ;;
+  esac
+}
+
+dropdown_target_size() {
+  local logical_width=""
+  local logical_height=""
+  local width_spec=""
+  local height_spec=""
+  local target_width=""
+  local target_height=""
+
+  IFS=$'\t' read -r width_spec height_spec <<<"$(dropdown_size_specs)" || return 1
+  IFS=$'\t' read -r logical_width logical_height <<<"$(focused_monitor_logical_size)" || return 1
+  target_width="$(resolve_dimension "${width_spec}" "${logical_width}")" || return 1
+  target_height="$(resolve_dimension "${height_spec}" "${logical_height}")" || return 1
+  printf '%s\t%s\n' "${target_width}" "${target_height}"
+}
+
+show_dropdown_window() {
+  local client_json="$1"
+  local addr=""
+  local target_width=""
+  local target_height=""
+  local workspace_name=""
+
+  addr="$(jq -r '.address // empty' <<<"${client_json}")"
+  [[ -n "${addr}" ]] || return 1
+  workspace_name="$(focused_workspace_name)"
+  [[ -n "${workspace_name}" ]] || return 1
+  IFS=$'\t' read -r target_width target_height <<<"$(dropdown_target_size)" || return 1
+
+  hyprctl -q --batch \
+    "dispatch movetoworkspacesilent ${workspace_name},address:${addr}; \
+ dispatch resizeactive exact ${target_width} ${target_height} address:${addr}; \
+ dispatch centerwindow address:${addr}; \
+ dispatch focuswindow address:${addr}" \
+    >/dev/null 2>&1 || return 1
+}
+
+hide_dropdown_window() {
+  local client_json="$1"
+  local addr=""
+
+  addr="$(jq -r '.address // empty' <<<"${client_json}")"
+  [[ -n "${addr}" ]] || return 1
+
+  hyprctl dispatch movetoworkspacesilent "$(dropdown_workspace_name),address:${addr}" \
+    >/dev/null 2>&1 || return 1
+}
+
+spawn_dropdown_window() {
+  local cwd=""
+  local width_spec=""
+  local height_spec=""
+
+  IFS=$'\t' read -r width_spec height_spec <<<"$(dropdown_size_specs)" || return 1
+  cwd="$(hyprshell terminal-cwd.sh)"
+  setsid uwsm-app -- tui-terminal-exec \
+    --hypr-size "${width_spec}" "${height_spec}" \
+    --app-id dropdown-terminal \
+    --title "Dropdown Terminal" \
+    -- bash -lc 'cd "$1" && exec "${SHELL:-/bin/bash}" -l' bash "${cwd}" \
+    >/dev/null 2>&1 &
+}
+
+main() {
+  local client_json=""
+  local workspace_name=""
+  local current_workspace=""
+
+  client_json="$(dropdown_client_json)"
+  if [[ -z "${client_json}" ]]; then
+    spawn_dropdown_window
+    return 0
+  fi
+
+  workspace_name="$(jq -r '.workspace.name // empty' <<<"${client_json}")"
+  current_workspace="$(focused_workspace_name)"
+
+  if [[ "${workspace_name}" == "$(dropdown_workspace_name)" ]]; then
+    show_dropdown_window "${client_json}"
+    return 0
+  fi
+
+  if [[ -n "${current_workspace}" && "${workspace_name}" == "${current_workspace}" ]]; then
+    hide_dropdown_window "${client_json}"
+    return 0
+  fi
+
+  show_dropdown_window "${client_json}"
+}
+
+main "$@"

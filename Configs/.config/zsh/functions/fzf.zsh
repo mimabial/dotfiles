@@ -111,7 +111,7 @@ _fzf_preview_window_for() {
         dynamic:wide|content:wide) print -r -- "right,60%,border-sharp" ;;
         dynamic:narrow|content:narrow) print -r -- "down,52%,border-top" ;;
         file:wide|dir:wide) print -r -- "right,60%,border-sharp" ;;
-        file:narrow|dir:narrow) print -r -- "down,42%,border-top" ;;
+        file:narrow|dir:narrow) print -r -- "down,52%,border-top" ;;
         *) print -r -- "right,60%,border-sharp" ;;
     esac
 }
@@ -552,6 +552,7 @@ _fuzzy_edit_search_file() {
     fzf_options+=(
         --height "$fzf_height"
         --layout=reverse 
+        --ansi
         --preview "$preview_cmd"
         --preview-window "$fzf_preview_window"
         --cycle

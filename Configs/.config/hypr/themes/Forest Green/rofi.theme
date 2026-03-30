@@ -2,6 +2,7 @@ $HOME/.config/rofi/theme.rasi
 * {
 
     background:            #2f3330;
+    background-alpha:    #2f333059;
     foreground:            #d8dee9;
     border:                #a6a6a680;
     active:                #83b6af;

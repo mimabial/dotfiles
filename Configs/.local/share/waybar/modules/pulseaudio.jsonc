@@ -3,10 +3,10 @@
     "format": "{icon}",
     "format-bluetooth": "{icon}",
     "format-muted": "󰝟",
-    "on-click": "hyprshell volumecontrol -o m",
+    "on-click": "hyprshell volume-control -o m",
     "on-click-right": "pavucontrol -t 3",
-    "on-scroll-up": "hyprshell volumecontrol -o i",
-    "on-scroll-down": "hyprshell volumecontrol -o d",
+    "on-scroll-up": "hyprshell volume-control -o i",
+    "on-scroll-down": "hyprshell volume-control -o d",
     "smooth-scrolling-threshold": 1,
     "tooltip-format": "{volume}% {icon} | {desc}",
     "format-icons": {

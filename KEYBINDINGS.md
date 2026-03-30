@@ -123,7 +123,6 @@ Source of truth:
 | --- | --- |
 | <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>G</kbd> | LazyGit |
 | <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>D</kbd> | LazyDocker |
-| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>F</kbd> | Ranger |
 | <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>B</kbd> | Bottom |
 | <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>M</kbd> | RMPC |
 | <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>R</kbd> | Reload Hyprland config |

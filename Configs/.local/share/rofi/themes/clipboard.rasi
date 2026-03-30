@@ -45,7 +45,7 @@ wallframe {
     spacing:                     0em;
     padding:                     0em;
     expand:                      false;
-    background-color:            @background;
+    background-color:            @background-alpha;
     background-image:            url("~/.cache/hypr/wallpaper/current/wall.quad", width);
 }
 
@@ -55,7 +55,7 @@ inputbar {
     enabled:                     true;
     padding:                     0em;
     children:                    [ "entry" ];
-    background-color:            @background;
+    background-color:            @background-alpha;
     expand:                      true;
 }
 entry {

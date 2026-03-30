@@ -31,7 +31,6 @@
         "$XDG_DATA_HOME/waybar/modules/custom-mediaplayer.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-network#speed.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-powermenu.jsonc",
-        "$XDG_DATA_HOME/waybar/modules/custom-ranger.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-rmpc.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-screenrecord.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-screenshot.jsonc",
@@ -350,10 +349,10 @@
         "format": "{icon}",
         "format-bluetooth": "{icon}",
         "format-muted": "\udb81\udf5f",
-        "on-click": "hyprshell volumecontrol -o m",
+        "on-click": "hyprshell volume-control -o m",
         "on-click-right": "pavucontrol -t 3",
-        "on-scroll-up": "hyprshell volumecontrol -o i",
-        "on-scroll-down": "hyprshell volumecontrol -o d",
+        "on-scroll-up": "hyprshell volume-control -o i",
+        "on-scroll-down": "hyprshell volume-control -o d",
         "smooth-scrolling-threshold": 1,
         "tooltip-format": "{volume}% {icon} | {desc}",
         "format-icons": {
@@ -571,10 +570,10 @@
         "format": "{format_source}",
         "format-source": "\uec1c",
         "format-source-muted": "\uec12",
-        "on-click": "hyprshell volumecontrol -i m",
+        "on-click": "hyprshell volume-control -i m",
         "on-click-right": "pavucontrol -t 4",
-        "on-scroll-up": "hyprshell volumecontrol -i i",
-        "on-scroll-down": "hyprshell volumecontrol -i d",
+        "on-scroll-up": "hyprshell volume-control -i i",
+        "on-scroll-down": "hyprshell volume-control -i d",
         "tooltip-format": "{volume}% {format_source} | {desc}",
         "scroll-step": 5
     },
@@ -630,7 +629,7 @@
     "custom/devmenu": {
         "format": "",
         "on-click": "hyprshell rofi/menu.sh dev",
-        "tooltip-format": "Dev Tools Menu\n\u2022 LazyGit\n\u2022 LazyDocker\n\u2022 Ranger\n\u2022 Bottom\n\u2022 Rmpc"
+        "tooltip-format": "Dev Tools Menu\n\u2022 LazyGit\n\u2022 LazyDocker\n\u2022 Bottom\n\u2022 Rmpc"
     },
     "backlight/slider": {
         "justify": "center",
@@ -962,11 +961,6 @@
         "format": "",
         "on-click": "hyprshell launch/tui.sh rmpc",
         "tooltip-format": "Music Player (Rmpc)\nSUPER+SHIFT+M"
-    },
-    "custom/ranger": {
-        "format": "",
-        "on-click": "hyprshell launch/tui.sh ranger",
-        "tooltip-format": "Ranger File Manager (SUPER+SHIFT+F)"
     },
     "bluetooth": {
         "justify": "center",

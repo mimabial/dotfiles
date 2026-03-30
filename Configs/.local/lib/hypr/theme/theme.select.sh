@@ -7,11 +7,9 @@ theme_select_notify() {
   local icon_path="$1"
   shift
 
-  command -v dunstify >/dev/null 2>&1 || return 0
-
   local -a args=(-a "Theme select" -t 2000 -r 92)
   [[ -n "${icon_path}" ]] && args+=(-i "${icon_path}")
-  dunstify "${args[@]}" "$@"
+  notify_send_safe "${args[@]}" "$@" || true
 }
 
 help_message() {
@@ -28,6 +26,61 @@ HELP
   exit 0
 }
 
+theme_selector_monitor_metrics() {
+  local hypr_border=2
+  local mon_x_res=1920
+  local mon_y_res=1080
+
+  hypr_border="$(rofi_default_border_radius 2)"
+  read -r mon_x_res mon_y_res < <(rofi_focused_monitor_logical_size)
+  mon_x_res=${mon_x_res:-1920}
+  mon_y_res=${mon_y_res:-1080}
+
+  printf '%s\t%s\t%s\n' "${hypr_border}" "${mon_x_res}" "${mon_y_res}"
+}
+
+theme_selector_grid_counts() {
+  local font_scale="$1"
+  local elm_width="$2"
+  local elm_height="$3"
+  local horizontal_padding="$4"
+  local vertical_padding="$5"
+  local min_columns="${6:-}"
+  local max_columns="${7:-}"
+  local min_rows="${8:-}"
+  local max_rows="${9:-}"
+  local mon_x_res=1920
+  local mon_y_res=1080
+  local max_avail_x=0
+  local max_avail_y=0
+  local col_count=0
+  local row_count=0
+
+  read -r _ mon_x_res mon_y_res < <(theme_selector_monitor_metrics)
+  max_avail_x=$((mon_x_res - (horizontal_padding * font_scale)))
+  max_avail_y=$((mon_y_res - (vertical_padding * font_scale)))
+  col_count=$((max_avail_x / elm_width))
+  row_count=$((max_avail_y / elm_height))
+
+  if [[ -n "${min_columns}" ]] && ((col_count < min_columns)); then
+    col_count="${min_columns}"
+  fi
+
+  if [[ -n "${max_columns}" ]] && ((col_count > max_columns)); then
+    col_count="${max_columns}"
+  fi
+
+  if [[ -n "${min_rows}" ]] && ((row_count < min_rows)); then
+    row_count="${min_rows}"
+  fi
+
+  if [[ -n "${max_rows}" ]] && ((row_count > max_rows)); then
+    row_count="${max_rows}"
+  fi
+
+  printf '%s\t%s\n' "${col_count}" "${row_count}"
+}
+
 build_style_menu_override() {
   local font_scale="$1"
   local preview_image_size="${ROFI_THEME_MENU_PREVIEW_SIZE:-192}"
@@ -40,8 +93,6 @@ build_style_menu_override() {
   local min_rows=2
   local max_rows=4
   local hypr_border=2
-  local mon_x_res=1920
-  local mon_y_res=1080
   local horizontal_padding=8
   local vertical_padding=16
   local border_multiplier=5
@@ -49,30 +100,30 @@ build_style_menu_override() {
   local icon_border=0
   local elm_width=0
   local elm_height=0
-  local max_avail_x=0
-  local max_avail_y=0
   local col_count=0
   local row_count=0
 
   [[ "${preview_image_size}" =~ ^[0-9]+$ ]] || preview_image_size=192
   [[ "${hidpi_scale}" =~ ^[0-9]+$ ]] || hidpi_scale=2
   [[ "${theme_menu_icon_size}" =~ ^[0-9]+$ ]] || theme_menu_icon_size=20
-  hypr_border="$(rofi_default_border_radius 2)"
-  read -r mon_x_res mon_y_res < <(rofi_focused_monitor_logical_size)
-  mon_x_res=${mon_x_res:-1920}
-  mon_y_res=${mon_y_res:-1080}
+  read -r hypr_border _ _ < <(theme_selector_monitor_metrics)
 
   elem_border=$((hypr_border * border_multiplier))
   icon_border=$((elem_border - 5))
   elm_width=$((preview_image_size * hidpi_scale))
   elm_height=$((preview_image_size * hidpi_scale))
-  max_avail_x=$((mon_x_res - (horizontal_padding * font_scale)))
-  max_avail_y=$((mon_y_res - (vertical_padding * font_scale)))
-  col_count=$((max_avail_x / elm_width))
-  row_count=$((max_avail_y / elm_height))
-  (( col_count > max_columns )) && col_count=max_columns
-  (( row_count < min_rows )) && row_count=min_rows
-  (( row_count > max_rows )) && row_count=max_rows
+  read -r col_count row_count < <(
+    theme_selector_grid_counts \
+      "${font_scale}" \
+      "${elm_width}" \
+      "${elm_height}" \
+      "${horizontal_padding}" \
+      "${vertical_padding}" \
+      "" \
+      "${max_columns}" \
+      "${min_rows}" \
+      "${max_rows}"
+  )
 
   cat <<EOF
 window{width:100%;height:100%;fullscreen:true;}
@@ -87,8 +138,8 @@ list_style_menu_entries() {
   rofi_list_asset_files 'theme_style_*' \
     | awk -F '[_.]' '{print $((NF - 1))}' \
     | while read -r style_num; do
-        printf '%s\x00icon\x1f%s\n' "${style_num}" "$(rofi_resolve_asset "theme_style_${style_num}.png")"
-      done | sort -n
+      printf '%s\x00icon\x1f%s\n' "${style_num}" "$(rofi_resolve_asset "theme_style_${style_num}.png")"
+    done | sort -n
 }
 
 show_style_selector() {
@@ -154,46 +205,36 @@ resolve_theme_selector_style() {
   local font_scale="$1"
   local theme_style="${ROFI_THEME_STYLE:-$(get_hypr_conf "ROFI_THEME_STYLE")}"
   local hypr_border=2
-  local mon_x_res=1920
-  local mon_y_res=1080
   local elem_border=$((hypr_border * 2))
-  local icon_border=$((elem_border - 5))
+  local icon_border=$((elem_border - 4))
   local elm_width=0
   local elm_height=0
-  local max_avail_x=0
-  local max_avail_y=0
   local col_count=0
   local row_count=0
 
-  (( icon_border < 0 )) && icon_border=0
+  ((icon_border < 0)) && icon_border=0
   [[ -n "${theme_style}" ]] || theme_style=1
-  hypr_border="$(rofi_default_border_radius 2)"
-  read -r mon_x_res mon_y_res < <(rofi_focused_monitor_logical_size)
-  mon_x_res=${mon_x_res:-1920}
-  mon_y_res=${mon_y_res:-1080}
+  read -r hypr_border _ _ < <(theme_selector_monitor_metrics)
   elem_border=$((hypr_border * 2))
-  icon_border=$((elem_border - 5))
-  (( icon_border < 0 )) && icon_border=0
+  icon_border=$((elem_border - 4))
+  ((icon_border < 0)) && icon_border=0
 
   elm_width=$(((16 + 12) * font_scale * 2))
   elm_height=$(((16 + 4) * font_scale * 2))
-  max_avail_x=$((mon_x_res - (8 * font_scale)))
-  max_avail_y=$((mon_y_res - (16 * font_scale)))
-  col_count=$((max_avail_x / elm_width))
-  row_count=$((max_avail_y / elm_height))
 
   case "${theme_style}" in
-    2|quad)
-      (( row_count < 2 )) && row_count=2
-      (( row_count > 4 )) && row_count=4
+    2 | quad)
+      read -r col_count row_count < <(
+        theme_selector_grid_counts "${font_scale}" "${elm_width}" "${elm_height}" 8 16 "" "" 2 4
+      )
       printf 'quad\nselector\nwindow{width:100%%;height:100%%;fullscreen:true;background-color:#00000003;}\nlistview{columns:%d;lines:%d;cycle:true;}\nelement{border-radius:%dpx;background-color:@background-alpha;}\nelement-icon{size:16em;border-radius:%dpx 0px 0px %dpx;}\n' \
         "${col_count}" "${row_count}" "${elem_border}" "${icon_border}" "${icon_border}"
       ;;
     *)
-      (( col_count < 2 )) && col_count=2
-      (( row_count < 2 )) && row_count=2
-      (( row_count > 4 )) && row_count=4
-      printf 'sqre\nselector\nwindow{width:100%%;height:100%%;fullscreen:true;border-radius:%dpx;}\nlistview{columns:%d;lines:%d;cycle:true;spacing:6em;padding:3em;}\nelement{border-radius:%dpx;padding:0.5em;}\nelement-icon{size:16em;border-radius:%dpx;}\n' \
+      read -r col_count row_count < <(
+        theme_selector_grid_counts "${font_scale}" "${elm_width}" "${elm_height}" 8 16 2 "" 2 4
+      )
+      printf 'sqre\nselector\nwindow{width:100%%;height:100%%;fullscreen:true;border-radius:%dpx;}\nlistview{columns:%d;lines:%d;cycle:true;spacing:2.5em;padding:1.5em;}\nelement{border-radius:%dpx;padding:0.5em;}\nelement-icon{size:15.5em;border-radius:%dpx;}\n' \
         "${hypr_border}" "${col_count}" "${row_count}" "${elem_border}" "${icon_border}"
       ;;
   esac
@@ -203,7 +244,7 @@ theme_menu_entries() {
   local ext="$1"
   local i=0
 
-  while (( i < ${#thmList[@]} )); do
+  while ((i < ${#thmList[@]})); do
     printf '%s\x00icon\x1f%s/%s.%s\n' \
       "${thmList[$i]}" \
       "${WALLPAPER_THUMB_DIR}" \
@@ -246,7 +287,7 @@ show_theme_selector() {
 }
 
 case "${1:-}" in
-  -m|-s|--select-menu)
+  -m | -s | --select-menu)
     show_style_selector
     ;;
   -*)

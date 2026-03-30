@@ -121,6 +121,42 @@ hypr_resolved_gaps_out() {
   printf '%s\n' "${gaps_out}"
 }
 
+hypr_focused_monitor_geometry() {
+  command -v hyprctl >/dev/null 2>&1 || return 1
+  command -v jq >/dev/null 2>&1 || return 1
+
+  hyprctl -j monitors \
+    | jq -r '
+        (map(select(.focused == true))[0] // .[0]) as $monitor
+        | [
+            ($monitor.x // 0),
+            ($monitor.y // 0),
+            ($monitor.width // 0),
+            ($monitor.height // 0),
+            ($monitor.scale // 1),
+            ($monitor.reserved[0] // 0),
+            ($monitor.reserved[1] // 0),
+            ($monitor.reserved[2] // 0),
+            ($monitor.reserved[3] // 0)
+          ]
+        | @tsv
+      ' \
+    | awk -F '\t' '{ scale = ($5 > 0 ? $5 : 1); printf "%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n", $1 / scale, $2 / scale, $3 / scale, $4 / scale, $6, $7, $8, $9 }'
+}
+
+hypr_window_edge_padding_px() {
+  local gaps_out=5
+  local border_width=2
+
+  gaps_out="$(hypr_resolved_gaps_out 2>/dev/null || true)"
+  [[ "${gaps_out}" =~ ^[0-9]+$ ]] || gaps_out=5
+
+  IFS=$'\t' read -r _ border_width <<<"$(hypr_resolved_border_metrics 2>/dev/null || true)"
+  [[ "${border_width}" =~ ^[0-9]+$ ]] || border_width=2
+
+  printf '%s\n' "$((gaps_out * 2 + border_width))"
+}
+
 hypr_compact_path() {
   local path="$1"
 

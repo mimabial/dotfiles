@@ -7,12 +7,8 @@ import signal
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
 from pyutils.xdg_base_dirs import xdg_runtime_dir, xdg_state_home
-from waybar_actions import (
-    handle_layout_navigation,
-    layout_selector,
-    select_layout_and_style,
-    style_selector,
-)
+from waybar_apply import handle_layout_navigation
+from waybar_selector import layout_selector, select_layout_and_style, style_selector
 from waybar_assets import generate_includes
 from waybar_runtime import (
     STATE_FILE,

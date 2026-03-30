@@ -20,7 +20,7 @@ presented_command_name() {
 
 command_needs_hold_prompt() {
   case "$(presented_command_name "$@" || true)" in
-    ranger | nvim | vim | htop | btop | bottom | nano | less | more | rmpc | nvtop | dua | wiremix | bluetui | oryx)
+    nvim | vim | htop | btop | bottom | nano | less | more | rmpc | nvtop | dua | wiremix | bluetui | oryx)
       return 1
       ;;
     *)

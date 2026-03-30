@@ -62,7 +62,7 @@ rofi_picker_parse_style_args() {
 
   while (($# > 0)); do
     case "$1" in
-      --style|-s)
+      --style | -s)
         if (($# > 1)); then
           out_style_ref="$2"
           shift 2
@@ -260,8 +260,7 @@ rofi_theme_preview_asset() {
   base_name="${base_name%.rasi}"
   for asset_path in \
     "$(rofi_resolve_asset "${base_name}.png" 2>/dev/null || true)" \
-    "$(rofi_resolve_asset "theme_${base_name}.png" 2>/dev/null || true)"
-  do
+    "$(rofi_resolve_asset "theme_${base_name}.png" 2>/dev/null || true)"; do
     [[ -f "${asset_path}" ]] || continue
     printf '%s\n' "${asset_path}"
     return 0
@@ -683,7 +682,7 @@ rofi_wallpaper_width_override() {
     fi
   fi
 
-  if [[ "${theme_name}" == "style_1" || "${theme_name}" == "pywal16" ]] && (( did_clamp )) && awk -v r="${post_clamp_reduction_px}" 'BEGIN { exit !(r > 0) }'; then
+  if [[ "${theme_name}" == "style_1" || "${theme_name}" == "pywal16" ]] && ((did_clamp)) && awk -v r="${post_clamp_reduction_px}" 'BEGIN { exit !(r > 0) }'; then
     width_px="$(awk -v w="${width_px}" -v r="${post_clamp_reduction_px}" 'BEGIN { v = w - r; if (v < 0) v = 0; printf "%.2f", v }')"
   fi
 

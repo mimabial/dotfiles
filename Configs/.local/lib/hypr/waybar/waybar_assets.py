@@ -213,48 +213,75 @@ def write_style_file(style_filepath, source_filepath):
     logger.debug(f"Successfully wrote style to '{style_filepath}'")
 
 
-def update_icon_size():
-    includes_file = os.path.join(str(xdg_config_home()), "waybar", "includes", "includes.json")
+def layered_module_files():
+    """Return the effective layered Waybar module files, last override wins."""
+    modules = {}
+    for directory in reversed(MODULE_DIRS):
+        if not os.path.isdir(directory):
+            logger.debug(f"Directory '{directory}' does not exist, skipping...")
+            continue
+        for pattern in ("*.json", "*.jsonc"):
+            for path in glob.glob(os.path.join(directory, pattern)):
+                relative_path = os.path.relpath(path, start=directory)
+                modules[relative_path] = path
+    return modules
 
-    ensure_directory_exists(includes_file)
 
-    if os.path.exists(includes_file):
-        try:
-            with open(includes_file, "r") as file:
-                existing_data = json.load(file)
-        except (json.JSONDecodeError, FileNotFoundError):
-            existing_data = {"include": []}
-    else:
-        existing_data = {"include": []}
+def normalize_include_path(path):
+    config_root = str(xdg_config_home())
+    data_root = str(xdg_data_home())
+    if path.startswith(config_root + os.sep):
+        return path.replace(config_root, "$XDG_CONFIG_HOME", 1)
+    if path.startswith(data_root + os.sep):
+        return path.replace(data_root, "$XDG_DATA_HOME", 1)
+    return path
 
-    includes_data = {"include": existing_data.get("include", [])}
-    if "position" in existing_data:
-        includes_data["position"] = existing_data["position"]
 
+def build_generated_includes_data():
+    """Build the full generated includes.json payload from current module files."""
+    includes_data = {}
     icon_size = get_waybar_icon_size()
+    modules = layered_module_files()
     updated_entries = {}
 
-    for directory in reversed(MODULE_DIRS):
-        for pattern in ("*.json", "*.jsonc"):
-            for json_file in glob.glob(os.path.join(directory, pattern)):
-                data = parse_json_file(json_file)
+    for json_file in modules.values():
+        data = parse_json_file(json_file)
 
-                for key, value in data.items():
-                    if isinstance(value, dict):
-                        icon_size_multiplier = value.get("icon-size-multiplier", 1)
-                        final_icon_size = int(icon_size * icon_size_multiplier)
-                        data[key] = modify_json_key(value, "icon-size", final_icon_size)
-                        data[key] = modify_json_key(value, "tooltip-icon-size", final_icon_size)
-                        data[key] = modify_json_key(value, "size", final_icon_size)
+        for key, value in data.items():
+            if isinstance(value, dict):
+                icon_size_multiplier = value.get("icon-size-multiplier", 1)
+                final_icon_size = int(icon_size * icon_size_multiplier)
+                data[key] = modify_json_key(value, "icon-size", final_icon_size)
+                data[key] = modify_json_key(value, "tooltip-icon-size", final_icon_size)
+                data[key] = modify_json_key(value, "size", final_icon_size)
 
-                data = rewrite_module_paths(data)
-                updated_entries.update(data)
+        data = rewrite_module_paths(data)
+        updated_entries.update(data)
 
+    includes_data["include"] = [normalize_include_path(modules[key]) for key in sorted(modules)]
+    position = get_config_value("WAYBAR_POSITION")
+    if position:
+        position = position.strip().strip('"').strip("'")
+    else:
+        position = "top"
+    includes_data["position"] = position
     includes_data.update(updated_entries)
+    return includes_data
+
+
+def write_generated_includes():
+    """Write a fully generated includes.json from the current module set."""
+    includes_file = os.path.join(str(xdg_config_home()), "waybar", "includes", "includes.json")
+    ensure_directory_exists(includes_file)
+    includes_data = build_generated_includes_data()
     atomic_write_json(includes_file, includes_data)
     logger.debug(
-        f"Successfully updated icon sizes and appended to '{includes_file}' with {len(updated_entries)} entries."
+        f"Successfully wrote generated includes to '{includes_file}' with {len(includes_data.get('include', []))} includes."
     )
+
+
+def update_icon_size():
+    write_generated_includes()
 
 
 def update_global_css():
@@ -447,48 +474,7 @@ def update_border_radius():
 
 
 def generate_includes():
-    includes_file = os.path.join(str(xdg_config_home()), "waybar", "includes", "includes.json")
-    ensure_directory_exists(includes_file)
-
-    if os.path.exists(includes_file):
-        with open(includes_file, "r") as file:
-            includes_data = json.load(file)
-    else:
-        includes_data = {"include": []}
-
-    includes = {}
-    for directory in reversed(MODULE_DIRS):
-        if not os.path.isdir(directory):
-            logger.debug(f"Directory '{directory}' does not exist, skipping...")
-            continue
-        for pattern in ("*.json", "*.jsonc"):
-            for path in glob.glob(os.path.join(directory, pattern)):
-                relative_path = os.path.relpath(path, start=directory)
-                includes[relative_path] = path
-
-    config_root = str(xdg_config_home())
-    data_root = str(xdg_data_home())
-
-    def normalize_include_path(path):
-        if path.startswith(config_root + os.sep):
-            return path.replace(config_root, "$XDG_CONFIG_HOME", 1)
-        if path.startswith(data_root + os.sep):
-            return path.replace(data_root, "$XDG_DATA_HOME", 1)
-        return path
-
-    includes_data["include"] = [normalize_include_path(includes[key]) for key in sorted(includes)]
-
-    position = get_config_value("WAYBAR_POSITION")
-    if position:
-        position = position.strip().strip('"').strip("'")
-    else:
-        position = "top"
-    includes_data["position"] = position
-
-    atomic_write_json(includes_file, includes_data)
-    logger.debug(
-        f"Successfully updated '{includes_file}' with {len(includes_data['include'])} entries and position '{position}'."
-    )
+    write_generated_includes()
 
 
 def update_config(config_path):

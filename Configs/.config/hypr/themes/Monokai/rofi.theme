@@ -1,6 +1,7 @@
 $HOME/.config/rofi/theme.rasi
 * {
     background:            #2d2a2e; /* Monokai Pro background */
+    background-alpha:    #2d2a2e59;
     foreground:            #f8f8f2; /* Monokai Pro foreground (text) */
     border:            #fc9867; /* Monokai Pro bright accent */
     accent:            #ffd866; /* Monokai Pro secondary accent */
