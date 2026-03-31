@@ -5,6 +5,7 @@ BACK_TO_EXIT="${BACK_TO_EXIT:-false}"
 MENU_BORDER_RADIUS="${MENU_BORDER_RADIUS:-}"
 MENU_BORDER_WIDTH="${MENU_BORDER_WIDTH:-}"
 MENU_ELEMENT_RADIUS="${MENU_ELEMENT_RADIUS:-}"
+MENU_WINDOW_THEME_CACHE="${MENU_WINDOW_THEME_CACHE:-}"
 MENU_FONT_SCALE_CACHE="${MENU_FONT_SCALE_CACHE:-}"
 MENU_FONT_NAME_CACHE="${MENU_FONT_NAME_CACHE:-}"
 MENU_MAX_HEIGHT="${MENU_MAX_HEIGHT:-}"
@@ -65,7 +66,11 @@ menu() {
     [[ "${MENU_BORDER_WIDTH}" =~ ^[0-9]+$ ]] || MENU_BORDER_WIDTH=2
   fi
   [[ "${MENU_BORDER_RADIUS}" =~ ^[0-9]+$ ]] || MENU_BORDER_RADIUS=2
-  MENU_ELEMENT_RADIUS=$((MENU_BORDER_RADIUS / 2))
+  MENU_ELEMENT_RADIUS="${MENU_BORDER_RADIUS}"
+
+  if [[ -z "${MENU_WINDOW_THEME_CACHE}" ]]; then
+    MENU_WINDOW_THEME_CACHE="$(rofi_standard_window_theme "listview" "same")"
+  fi
 
   if [[ -z "${MENU_FONT_SCALE_CACHE}" ]]; then
     MENU_FONT_SCALE_CACHE="$(rofi_effective_font_scale "${ROFI_MENU_SCALE:-$ROFI_SCALE}")"
@@ -94,8 +99,8 @@ menu() {
   options_rendered="$(printf '%b' "${options}")"
 
   rofi_args+=("-theme-str" "* {font: \"${MENU_FONT_NAME_CACHE} ${MENU_FONT_SCALE_CACHE}\";}")
-  rofi_args+=("-theme-str" "window {border: ${MENU_BORDER_WIDTH}px solid; border-radius: ${MENU_BORDER_RADIUS}px; max-height: ${MENU_MAX_HEIGHT}px;}")
-  rofi_args+=("-theme-str" "element {border-radius: ${MENU_BORDER_RADIUS}px;}")
+  rofi_args+=("-theme-str" "${MENU_WINDOW_THEME_CACHE}")
+  rofi_args+=("-theme-str" "window { max-height: ${MENU_MAX_HEIGHT}px; }")
   rofi_args+=("-theme-str" "textbox-prompt-colon {border-radius: ${MENU_ELEMENT_RADIUS}px; str: \"$prompt\";}")
   rofi_args+=("-theme-str" "entry {placeholder: \"Hello ${USER^}!\";}")
   rofi_args+=("-theme-str" "element selected.normal {border-radius: ${MENU_ELEMENT_RADIUS}px;}")

@@ -12,6 +12,7 @@ typeset -ga _FZF_EXCLUDE_DIRS=(
     'BraveSoftware'
     'History'
     'HyDE'
+    'Pictures'
     'Signal'
     'Trash'
     'build'

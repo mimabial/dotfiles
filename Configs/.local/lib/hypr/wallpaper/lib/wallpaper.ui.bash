@@ -144,11 +144,8 @@ wallpaper_select_theme_override() {
   col_count=$((max_avail / elm_width))
 
   cat <<EOF
-window{width:100%;height:100%;fullscreen:true;}
-listview{columns:${col_count};spacing:3.5em;}
-element{border-radius:${elem_border}px;orientation:vertical;margin-bottom:1em;}
-element-icon{size:32em;border-radius:0em;}
-element-text{padding:1em;}
+listview{columns:${col_count};}
+element{border-radius:${elem_border}px;}
 EOF
 }
 
