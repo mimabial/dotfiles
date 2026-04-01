@@ -16,15 +16,15 @@ agentless="${TMUX_LAYOUT_AGENTLESS:-0}"
 
 tmux rename-window -t "$pane_id" "$window_name"
 if [[ "$pane_count" == "1" ]]; then
+  tmux split-window -v -p 15 -t "$pane_id" -c "$cwd" >/dev/null
+
   if [[ -n "$second_agent_cmd" ]]; then
-    right_pane=""
     right_pane="$(tmux split-window -h -p 50 -t "$pane_id" -c "$cwd" -P -F '#{pane_id}')"
 
     [[ "$agentless" == "1" ]] || tmux send-keys -t "$pane_id" "$agent_cmd" C-m
     [[ "$agentless" == "1" ]] || tmux send-keys -t "$right_pane" "$second_agent_cmd" C-m
   else
     integer top_width right_width
-    tmux split-window -v -p 15 -t "$pane_id" -c "$cwd" >/dev/null
     top_width="$(tmux display-message -p -t "$pane_id" '#{pane_width}')"
     ((right_width = top_width * 40 / 100))
     ((right_width < 1)) && right_width=1

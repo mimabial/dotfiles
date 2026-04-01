@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-
-set -euo pipefail
-
-exec "$HOME/.local/lib/hypr/system/ntfs-repair-mount.sh" "$@"

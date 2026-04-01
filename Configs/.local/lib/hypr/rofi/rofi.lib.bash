@@ -594,12 +594,14 @@ rofi_wallpaper_post_clamp_reduction_px() {
   local monitors_json=""
   local layers_json=""
   local gaps_json=""
+  local border_json=""
   local focused_monitor_name=""
   local waybar_width_px="0"
   local gaps_out_px="0"
+  local border_size_px="0"
 
   case "${theme_name}" in
-    style_1 | pywal16) ;;
+    style_1 | style_11 | pywal16) ;;
     *)
       printf '0\n'
       return 0
@@ -638,7 +640,13 @@ rofi_wallpaper_post_clamp_reduction_px() {
   fi
   [[ "${gaps_out_px}" =~ ^[0-9]+([.][0-9]+)?$ ]] || gaps_out_px=0
 
-  awk -v wb="${waybar_width_px}" -v g="${gaps_out_px}" 'BEGIN { printf "%.2f", (wb + (g * 4)) }'
+  border_json="$(hyprctl -j getoption general:border_size 2>/dev/null || true)"
+  if [[ "${border_json}" == \{* ]]; then
+    border_size_px="$(printf '%s\n' "${border_json}" | jq -r '.int // empty' 2>/dev/null | head -n 1)"
+  fi
+  [[ "${border_size_px}" =~ ^[0-9]+([.][0-9]+)?$ ]] || border_size_px=0
+
+  awk -v wb="${waybar_width_px}" -v g="${gaps_out_px}" -v b="${border_size_px}" 'BEGIN { printf "%.2f", (wb + (g * 4) + (b * 2)) }'
 }
 
 rofi_wallpaper_width_override() {
@@ -674,6 +682,11 @@ rofi_wallpaper_width_override() {
 
   width_px="$(awk -v h="${theme_height_px}" -v r="${ratio}" 'BEGIN { printf "%.2f", (h * r) }')"
 
+  # Floor: style_11 listview is on the right, so narrow wallpapers need at least 16:9
+  if [[ "${theme_name}" == "style_11" ]]; then
+    width_px="$(awk -v w="${width_px}" -v h="${theme_height_px}" 'BEGIN { min = h * 16 / 9; if (w < min) w = min; printf "%.2f", w }')"
+  fi
+
   if [[ -n "${monitor_width_logical}" ]] && awk -v w="${monitor_width_logical}" -v m="${margin_px}" 'BEGIN { exit !(w > (m * 2)) }'; then
     max_width_px="$(awk -v w="${monitor_width_logical}" -v m="${margin_px}" 'BEGIN { val = w - (m * 2); if (val < 0) val = 0; printf "%.2f", val }')"
     if awk -v w="${width_px}" -v max="${max_width_px}" 'BEGIN { exit !(w > max) }'; then
@@ -682,17 +695,22 @@ rofi_wallpaper_width_override() {
     fi
   fi
 
-  if [[ "${theme_name}" == "style_1" || "${theme_name}" == "pywal16" ]] && ((did_clamp)) && awk -v r="${post_clamp_reduction_px}" 'BEGIN { exit !(r > 0) }'; then
+  if [[ "${theme_name}" == "style_1" || "${theme_name}" == "style_11" || "${theme_name}" == "pywal16" ]] && ((did_clamp)) && awk -v r="${post_clamp_reduction_px}" 'BEGIN { exit !(r > 0) }'; then
     width_px="$(awk -v w="${width_px}" -v r="${post_clamp_reduction_px}" 'BEGIN { v = w - r; if (v < 0) v = 0; printf "%.2f", v }')"
   fi
 
+  local listbox_override=""
+  if [[ "${theme_name}" == "style_1" || "${theme_name}" == "pywal16" ]] && awk -v r="${ratio}" 'BEGIN { exit !(r < 1.5) }'; then
+    listbox_override=" listbox { width: 50%; } mainbox { children: [ \"listbox\", \"inputbox\" ]; }"
+  fi
+
   if [[ "${theme_height_unit}" == "px" ]]; then
-    printf 'window { width: %spx; }\n' "${width_px}"
+    printf 'window { width: %spx; }%s\n' "${width_px}" "${listbox_override}"
     return 0
   fi
 
   width_value="$(awk -v w="${width_px}" -v fp="${font_px}" 'BEGIN { if (fp <= 0) { print 0 } else { printf "%.2f", (w / fp) } }')"
-  printf 'window { width: %sem; }\n' "${width_value}"
+  printf 'window { width: %sem; }%s\n' "${width_value}" "${listbox_override}"
 }
 
 rofi_active_opacity_override() {

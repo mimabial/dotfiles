@@ -31,6 +31,7 @@ declare -a APP_THEMING_SCRIPTS=(
 declare -a SECONDARY_THEMING_SCRIPTS=(
   "wal/wal.chrome.sh"
   "wal/wal.qt.sh"
+  "wal/wal.gimp.sh"
   "theme/dconf.set.sh"
 )
 

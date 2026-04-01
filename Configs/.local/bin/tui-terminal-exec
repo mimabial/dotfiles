@@ -77,7 +77,7 @@ apply_geometry_profile() {
       hypr_height="80%"
       ;;
     dialog)
-      hypr_width="80%"
+      hypr_width="50%"
       hypr_height="80%"
       ;;
     *)
@@ -123,84 +123,28 @@ build_terminal_command() {
   esac
 }
 
-wait_for_client_json() {
-  local pid="$1"
-  local client_json=""
+inject_window_rules() {
+  [[ -n "${app_id}" ]] || return 1
+  command -v hyprctl >/dev/null 2>&1 || return 1
 
-  while kill -0 "$pid" 2>/dev/null; do
-    client_json="$(
-      hyprctl clients -j 2>/dev/null \
-        | jq -c --argjson pid "$pid" '.[] | select(.pid == $pid)' \
-        | head -n1
-    )"
-    [[ -n "${client_json}" ]] && {
-      printf '%s\n' "${client_json}"
-      return 0
-    }
-    sleep 0.05
-  done
-
-  return 1
-}
-
-monitor_logical_size() {
-  local monitor_id="$1"
-  local monitor_json=""
-
-  monitor_json="$(
-    hyprctl monitors -j 2>/dev/null \
-      | jq -c --argjson id "$monitor_id" '.[] | select(.id == $id)' \
-      | head -n1
-  )"
-  [[ -n "${monitor_json}" ]] || return 1
-
-  jq -r '[.width, .height, .scale] | @tsv' <<<"${monitor_json}" \
-    | awk -F '\t' '{ printf "%d\t%d\n", $1 / $3, $2 / $3 }'
-}
-
-resolve_dimension() {
-  local spec="$1"
-  local base="$2"
-  local percent=""
-
-  case "$spec" in
-    *%)
-      percent="${spec%%%}"
-      [[ "${percent}" =~ ^[0-9]+$ ]] || return 1
-      printf '%s\n' $((base * percent / 100))
-      ;;
-    *)
-      [[ "${spec}" =~ ^[0-9]+$ ]] || return 1
-      printf '%s\n' "${spec}"
-      ;;
-  esac
-}
-
-apply_hypr_geometry() {
-  local pid="$1"
-  local client_json=""
-  local addr=""
-  local floating=""
-  local monitor_id=""
-  local logical_width=""
-  local logical_height=""
-  local target_width=""
-  local target_height=""
-
-  client_json="$(wait_for_client_json "$pid")" || return 1
-  IFS=$'\t' read -r addr floating monitor_id <<<"$(jq -r '[.address, .floating, .monitor] | @tsv' <<<"${client_json}")"
-  IFS=$'\t' read -r logical_width logical_height <<<"$(monitor_logical_size "$monitor_id")" || return 1
-
-  target_width="$(resolve_dimension "${hypr_width}" "${logical_width}")" || return 1
-  target_height="$(resolve_dimension "${hypr_height}" "${logical_height}")" || return 1
-
-  if [[ "${floating}" != "true" ]]; then
-    hyprctl dispatch togglefloating "address:${addr}" >/dev/null 2>&1 || return 1
-  fi
-
+  local match="match:class ^(${app_id//./\\.})$"
   hyprctl -q --batch \
-    "dispatch resizeactive exact ${target_width} ${target_height} address:${addr}; dispatch centerwindow address:${addr}" \
-    >/dev/null 2>&1 || return 1
+    "keyword windowrule float 1, ${match}; \
+keyword windowrule size ${hypr_width} ${hypr_height}, ${match}; \
+keyword windowrule center 1, ${match}" \
+    >/dev/null 2>&1
+}
+
+remove_window_rules() {
+  [[ -n "${app_id}" ]] || return 0
+  command -v hyprctl >/dev/null 2>&1 || return 0
+
+  local match="match:class ^(${app_id//./\\.})$"
+  hyprctl -q --batch \
+    "keyword windowruleremove float 1, ${match}; \
+keyword windowruleremove size ${hypr_width} ${hypr_height}, ${match}; \
+keyword windowruleremove center 1, ${match}" \
+    >/dev/null 2>&1 || true
 }
 
 terminate_child() {
@@ -212,15 +156,17 @@ apply_geometry_profile || exit 2
 validate_exec_command || exit $?
 build_terminal_command
 
+if [[ -n "${hypr_width}" && -n "${hypr_height}" ]]; then
+  inject_window_rules || true
+fi
+
 "${terminal_launch[@]}" &
 terminal_pid=$!
 
 trap terminate_child INT TERM HUP
 
-if [[ -n "${hypr_width}" && -n "${hypr_height}" ]] \
-  && command -v hyprctl >/dev/null 2>&1 \
-  && command -v jq >/dev/null 2>&1; then
-  apply_hypr_geometry "${terminal_pid}" || true
+if [[ -n "${hypr_width}" && -n "${hypr_height}" ]]; then
+  remove_window_rules
 fi
 
 wait "${terminal_pid}"

@@ -235,7 +235,7 @@ resolve_theme_selector_style() {
         theme_selector_grid_counts "${font_scale}" "${elm_width}" "${elm_height}" 8 16 2 "" 2 4
       )
       printf 'sqre\nselector\nwindow{width:100%%;height:100%%;fullscreen:true;border-radius:%dpx;}\nlistview{columns:%d;lines:%d;cycle:true;spacing:2.5em;padding:1.5em;}\nelement{border-radius:%dpx;padding:0.5em;}\nelement-icon{size:15.5em;border-radius:%dpx;}\n' \
-        "${hypr_border}" "${col_count}" "${row_count}" "${elem_border}" "${icon_border}"
+        "${hypr_border}" "${col_count}" "${row_count}" "${elem_border}" "${elem_border}"
       ;;
   esac
 }

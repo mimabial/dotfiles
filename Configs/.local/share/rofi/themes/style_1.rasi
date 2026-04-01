@@ -44,10 +44,10 @@ mainbox {
     spacing:                     0em;
     padding:                     0em;
     orientation:                 horizontal;
-    children:                    [ "listbox", "dummy", "dummywall" ];
+    children:                    [ "listbox", "dummy", "inputbox" ];
     background-color:            transparent;
 }
-dummywall {
+inputbox {
     spacing:                     0em;
     padding:                     0em;
     expand:                      true;
