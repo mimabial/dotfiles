@@ -114,11 +114,8 @@ notify_mute() {
   is_true "${is_notify}" || return 0
   [[ "${device}" == "source" ]] && icon_suffix="microphone"
 
-  if [[ "${muted}" == "true" ]]; then
-    dunstify -a "Volume control" -r 8 -t 800 -i "${icodir}/muted-${icon_suffix}.svg" "muted" "${nsink}"
-  else
-    dunstify -a "Volume control" -r 8 -t 800 -i "${icodir}/unmuted-${icon_suffix}.svg" "unmuted" "${nsink}"
-  fi
+  local prefix=$([[ "${muted}" == "true" ]] && echo "muted" || echo "unmuted")
+  dunstify -a "Volume control" -r 8 -t 800 -i "${icodir}/${prefix}-${icon_suffix}.svg" "${prefix}" "${nsink}"
 }
 
 set_output_by_description() {
@@ -200,10 +197,6 @@ change_volume() {
       notify_vol "${vol}"
       ;;
     player)
-      require_cmd playerctl || {
-        echo "playerctl is required for -p"
-        exit 1
-      }
       playerctl_cmd volume "$(awk -v s="${step}" 'BEGIN { print s / 100 }')${delta}"
       vol="$(playerctl_cmd volume | awk '{ printf "%.0f\n", $0 * 100 }')"
       notify_vol "${vol}"
@@ -223,10 +216,6 @@ toggle_mute() {
       ;;
     player)
       local volume_file current_volume
-      require_cmd playerctl || {
-        echo "playerctl is required for -p"
-        exit 1
-      }
       volume_file="${TMPDIR:-/tmp}/$(basename "$0")_last_volume_${srce:-all}"
       current_volume="$(playerctl_cmd volume | awk '{ printf "%.2f", $0 }')"
       if [[ "${current_volume}" != "0.00" ]]; then
@@ -261,6 +250,7 @@ while getopts "iop:stq" opt; do
       device="player"
       srce="${OPTARG}"
       nsink="${srce:-all players}"
+      require_cmd playerctl || { echo "playerctl is required for -p"; exit 1; }
       ;;
     s)
       require_cmd rofi || {

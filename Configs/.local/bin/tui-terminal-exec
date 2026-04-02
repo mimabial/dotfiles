@@ -72,11 +72,7 @@ apply_geometry_profile() {
     "")
       return 0
       ;;
-    tui)
-      hypr_width="50%"
-      hypr_height="80%"
-      ;;
-    dialog)
+    tui | dialog)
       hypr_width="50%"
       hypr_height="80%"
       ;;
@@ -85,6 +81,24 @@ apply_geometry_profile() {
       return 1
       ;;
   esac
+}
+
+resolve_percentages() {
+  [[ "${hypr_width}" == *% || "${hypr_height}" == *% ]] || return 0
+
+  local monitor_json mon_w mon_h
+  monitor_json=$(hyprctl monitors -j 2>/dev/null) || return 1
+  mon_w=$(jq -r '.[] | select(.focused) | (.width / .scale | floor)' <<< "${monitor_json}") || return 1
+  mon_h=$(jq -r '.[] | select(.focused) | (.height / .scale | floor)' <<< "${monitor_json}") || return 1
+
+  [[ -n "${mon_w}" && -n "${mon_h}" ]] || return 1
+
+  if [[ "${hypr_width}" == *% ]]; then
+    hypr_width=$(( ${hypr_width%\%} * mon_w / 100 ))
+  fi
+  if [[ "${hypr_height}" == *% ]]; then
+    hypr_height=$(( ${hypr_height%\%} * mon_h / 100 ))
+  fi
 }
 
 validate_exec_command() {
@@ -153,6 +167,7 @@ terminate_child() {
 
 parse_args "$@"
 apply_geometry_profile || exit 2
+resolve_percentages || true
 validate_exec_command || exit $?
 build_terminal_command
 
@@ -164,9 +179,8 @@ fi
 terminal_pid=$!
 
 trap terminate_child INT TERM HUP
+wait "${terminal_pid}"
 
 if [[ -n "${hypr_width}" && -n "${hypr_height}" ]]; then
   remove_window_rules
 fi
-
-wait "${terminal_pid}"

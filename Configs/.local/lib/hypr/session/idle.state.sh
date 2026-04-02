@@ -79,21 +79,18 @@ idle_toggle_state() {
   local manager_unit="${11:-hyprland-idle-manager.service}"
   local manager_script="${12:-${HOME}/.local/lib/hypr/session/idle-manager.sh}"
 
+  local icon summary body
   if "${enabled_fn}"; then
     "${setter_fn}" "${disabled_value}"
-    if [[ -n "${disabled_body}" ]]; then
-      idle_notify -t 3000 -i "${disabled_icon}" "${disabled_summary}" "${disabled_body}"
-    else
-      idle_notify -t 3000 -i "${disabled_icon}" "${disabled_summary}"
-    fi
+    icon="${disabled_icon}" summary="${disabled_summary}" body="${disabled_body}"
   else
     "${setter_fn}" "${enabled_value}"
-    if [[ -n "${enabled_body}" ]]; then
-      idle_notify -t 3000 -i "${enabled_icon}" "${enabled_summary}" "${enabled_body}"
-    else
-      idle_notify -t 3000 -i "${enabled_icon}" "${enabled_summary}"
-    fi
+    icon="${enabled_icon}" summary="${enabled_summary}" body="${enabled_body}"
   fi
+
+  local notify_args=(-t 3000 -i "${icon}" "${summary}")
+  [[ -n "${body}" ]] && notify_args+=("${body}")
+  idle_notify "${notify_args[@]}"
 
   idle_ensure_manager_running "${manager_unit}"
   idle_notify_manager "${manager_unit}" "${manager_script}"

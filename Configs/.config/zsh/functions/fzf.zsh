@@ -267,7 +267,7 @@ _check_dependencies() {
     fi
 }
 
-_fuzzy_edit_search_file_content_dynamic() {
+_fuzzy_edit_search_content() {
     _check_dependencies || return 1
 
     _parse_fzf_scope_args "$@" || return 1
@@ -427,112 +427,6 @@ _fuzzy_change_directory() {
     fi
 }
 
-_fuzzy_edit_search_file_content() {
-    # [f]uzzy [e]dit  [s]earch [f]ile [c]ontent
-    _check_dependencies || return 1
-
-    _parse_fzf_scope_args "$@" || return 1
-    local search_root="$_FZF_SEARCH_ROOT"
-    local search_term="$_FZF_SEARCH_QUERY"
-    local fzf_options=()
-    local search_cmd
-    local preview_cmd
-    local rg_globs="$(_get_rg_globs)"
-    local grep_excludes="$(_get_grep_excludes)"
-    _refresh_symlink_excludes "$search_root"
-    local rg_symlink_globs="$_FZF_SYMLINK_EXCLUDE_RG"
-    local find_symlink_excludes="$_FZF_SYMLINK_EXCLUDE_FIND"
-    local fzf_mode="$(_fzf_layout_mode)"
-    local fzf_height="$(_fzf_height_for "$fzf_mode" content)"
-    local fzf_preview_window="$(_fzf_preview_window_for "$fzf_mode" content)"
-    
-    # Check if ripgrep is available (faster and better than grep)
-    if command -v "rg" &>/dev/null; then
-        if [[ -n "$search_term" ]]; then
-            search_cmd="rg --line-number --column --color=always --smart-case --hidden --follow --max-count=50 $rg_globs $rg_symlink_globs '$search_term' 2>/dev/null"
-        else
-            # Show all files with line numbers
-            if command -v "fd" &>/dev/null; then
-                local fd_excludes=""
-                for dir in "${_FZF_EXCLUDE_DIRS[@]}"; do
-                    fd_excludes+=" --exclude '$dir'"
-                done
-                for file in "${_FZF_EXCLUDE_FILES[@]}"; do
-                    fd_excludes+=" --exclude '$file'"
-                done
-                for rel in "${_FZF_SYMLINK_EXCLUDE_PATHS[@]}"; do
-                    fd_excludes+=" --exclude '$rel'"
-                done
-                search_cmd="fd --type f --hidden --follow --color=never $fd_excludes . | head -1000 | sed 's/$/:1:/'"
-            else
-                search_cmd="rg --files --hidden --follow $rg_globs $rg_symlink_globs . | head -1000 | sed 's/$/:1:/'"
-            fi
-            fzf_options+=("--query=" "--print-query")
-        fi
-        
-        # Preview command for ripgrep results
-        preview_cmd='f=$(echo {} | cut -d: -f1); f=${f%\^@}; line=$(echo {} | cut -d: -f2); if command -v "bat" &>/dev/null; then bat --color=always --style=numbers --highlight-line=$line --line-range=$((line > 5 ? line - 5 : 1)): "$f"; else cat -n "$f" | awk -v line=$line "NR>=line-5 && NR<=line+20 {if(NR==line) print \" -> \" \$0; else print \$0}"; fi'
-    else
-        # Fallback to grep with consistent exclusion patterns
-        if [[ -n "$search_term" ]]; then
-            search_cmd="find -L . -type f $grep_excludes $find_symlink_excludes -exec grep -Hn --color=always '$search_term' {} + 2>/dev/null | head -2500"
-        else
-            # Show files instead of grepping all content
-            search_cmd="find -L . -type f $grep_excludes $find_symlink_excludes 2>/dev/null | head -1000 | xargs -I {} echo '{}:1:'"
-            fzf_options+=("--query=" "--print-query")
-        fi
-        
-        # Preview command for grep results  
-        preview_cmd='f=$(echo {} | cut -d: -f1); f=${f%\^@}; line=$(echo {} | cut -d: -f2); if command -v "bat" &>/dev/null; then bat --color=always --style=numbers --highlight-line=$line --line-range=$((line > 5 ? line - 5 : 1)): "$f"; else cat -n "$f" | awk -v line=$line "NR>=line-5 && NR<=line+20 {if(NR==line) print \" -> \" \$0; else print \$0}"; fi'
-    fi
-    
-    fzf_options+=(
-        --height "$fzf_height"
-        --layout=reverse 
-        --preview-window "$fzf_preview_window"
-        --cycle
-        --ansi
-        --delimiter=:
-        --preview "$preview_cmd"
-        --expect=ctrl-o
-        --prompt "$_FZF_SEARCH_PROMPT"
-        --scrollbar "$_FZF_SCROLLBAR"
-        --header "Enter: Edit file at line | Ctrl-O: View file"
-    )
-    local fzf_output
-    fzf_output=$(
-        cd "$search_root" || exit 1
-        fzf "${fzf_options[@]}" --bind "start:reload($search_cmd || true)"
-    )
-    if [[ -n "$fzf_output" ]]; then
-        local -a _fzf_lines
-        _fzf_lines=("${(f)fzf_output}")
-        local _fzf_key="${_fzf_lines[1]}"
-        local _fzf_sel="${_fzf_lines[-1]}"
-        local f="${_fzf_sel%%:*}"
-        f="${f%\^@}"
-        [[ "$f" != /* ]] && f="${search_root%/}/${f#./}"
-        local line="${_fzf_sel#*:}"
-        line="${line%%:*}"
-        if [[ -z "$line" || "$line" != <-> ]]; then
-            line=1
-        fi
-        if [[ "$_fzf_key" == "ctrl-o" ]]; then
-            if command -v "bat" &>/dev/null; then
-                bat --paging=always "$f"
-            else
-                less "$f"
-            fi
-        else
-            if command -v "$EDITOR" &>/dev/null; then
-                "$EDITOR" +"$line" "$f"
-            else
-                nvim +"$line" "$f"
-            fi
-        fi
-    fi
-}
-
 _fuzzy_edit_search_file() {
     _check_dependencies || return 1
 
@@ -660,8 +554,7 @@ zle -N _fuzzy_search_cmd_history
 bindkey '^Xr' _fuzzy_search_cmd_history
 
 unalias ff fs fS fj fh fd 2>/dev/null
-alias fs='_fuzzy_edit_search_file_content' \
-      fS='_fuzzy_edit_search_file_content_dynamic' \
+alias fs='_fuzzy_edit_search_content' \
       fj='_fuzzy_change_directory' \
       ff='_fuzzy_edit_search_file' \
       fh='_fuzzy_search_cmd_history'

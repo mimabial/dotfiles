@@ -10,8 +10,6 @@ USAGE() {
 	Usage: $(basename "$0") [option] [destination]
 	Options:
 		p       Print all outputs
-		s       Select area or window to screenshot
-		sf      Select area or window with frozen screen (grimblast)
 		smart   Smart selection (auto-detects windows, prevents tiny screenshots)
 		m       Screenshot focused monitor
 		w       Window selection (choose from visible windows)
@@ -35,9 +33,7 @@ cleanup_temp_screenshot() {
 # Create secure temporary file
 temp_screenshot=$(mktemp -t screenshot_XXXXXX.png)
 
-if [[ -z "${XDG_PICTURES_DIR}" ]]; then
-  XDG_PICTURES_DIR="$HOME/Pictures"
-fi
+XDG_PICTURES_DIR="${XDG_PICTURES_DIR:-$HOME/Pictures}"
 
 grimblast_script="${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/capture/grimblast.sh"
 mode="${1:-}"
@@ -266,12 +262,6 @@ trap 'cleanup_temp_screenshot "$?"' EXIT
 case "${mode}" in
   p) # print all outputs
     take_screenshot "screen"
-    ;;
-  s) # drag to manually snip an area / click on a window to print it
-    take_screenshot "area"
-    ;;
-  sf) # frozen screen, drag to manually snip an area / click on a window to print it
-    take_screenshot "area" "--freeze"
     ;;
   smart) # smart selection with wayfreeze and auto window detection
     smart_screenshot "${smart_destination:-$2}"
