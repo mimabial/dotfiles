@@ -1,6 +1,8 @@
 #!/usr/bin/env zsh
 set -euo pipefail
 
+source "${XDG_CONFIG_HOME:-$HOME/.config}/tmux/layouts/_window_helpers.zsh"
+
 _tmux_layout_require_context() {
   _tmux_layout_target_pane >/dev/null || {
     print -u2 "This layout must be launched from inside tmux."
@@ -53,17 +55,11 @@ _tmux_layout_rightmost_pane() {
     | awk '{print $1}'
 }
 
-_tmux_layout_has_window() {
-  local session="$1" name="$2"
-  tmux list-windows -t "${session}:" -F '#{window_name}' | grep -Fxq "$name"
-}
-
 _tmux_layout_ensure_window() {
   local session="$1" name="$2" cwd="$3" cmd="${4:-}"
   local session_target="${session}:"
   _tmux_layout_has_window "$session" "$name" && return 0
 
-  tmux new-window -d -t "$session_target" -n "$name" -c "$cwd"
-  [[ -n "$cmd" ]] && tmux send-keys -t "$session:$name" "$cmd" C-m
+  _tmux_layout_spawn_window "$session_target" "$name" "$cwd" "$cmd" >/dev/null
   return 0
 }

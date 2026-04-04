@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if (($#)); then
+  text="$*"
+else
+  IFS= read -r text || text=""
+fi
+
+text=${text//0/⁰}
+text=${text//1/¹}
+text=${text//2/²}
+text=${text//3/³}
+text=${text//4/⁴}
+text=${text//5/⁵}
+text=${text//6/⁶}
+text=${text//7/⁷}
+text=${text//8/⁸}
+text=${text//9/⁹}
+
+printf '%s\n' "$text"

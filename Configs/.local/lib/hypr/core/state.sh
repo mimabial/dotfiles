@@ -69,24 +69,13 @@ state_read_value_from_file() {
 
   [[ -f "${state_file}" ]] || return 1
 
-  awk -v key="${var_name}" '
-    /^[[:space:]]*#/ { next }
-    {
-      line = $0
-      sub(/\r$/, "", line)
-      sub(/^[[:space:]]*export[[:space:]]+/, "", line)
-
-      split(line, parts, "=")
-      lhs = parts[1]
-      gsub(/^[[:space:]]+|[[:space:]]+$/, "", lhs)
-
-      if (lhs == key) {
-        sub(/^[^=]*=/, "", line)
-        print line
-        exit
-      }
-    }
-  ' "${state_file}" | sed 's/^"//;s/"$//'
+  bash -c '
+    state_file="$1"
+    var_name="$2"
+    source "${state_file}" >/dev/null 2>&1 || exit 1
+    declare -p "${var_name}" >/dev/null 2>&1 || exit 1
+    printf "%s" "${!var_name}"
+  ' _ "${state_file}" "${var_name}"
 }
 
 # Get a state variable value
@@ -176,6 +165,21 @@ state_write_color_variant_file() {
   printf '%s\n' "${var_value}" >"${tmp_file}" && mv -f "${tmp_file}" "${state_file}"
 }
 
+state_quote_value() {
+  local value="${1-}"
+
+  if [[ "${value}" == *$'\n'* || "${value}" == *$'\r'* ]]; then
+    print_log -sec "state" -err "state_set" "state values must be single-line"
+    return 1
+  fi
+
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  value="${value//\$/\\$}"
+  value="${value//\`/\\\`}"
+  printf '"%s"' "${value}"
+}
+
 state_write_key_value_file() {
   local state_file="$1"
   local target_file="$2"
@@ -184,6 +188,7 @@ state_write_key_value_file() {
   local tmp_file="${state_file}.tmp.$$"
   local var_escaped=""
   local value_prefix=""
+  local quoted_value=""
 
   [[ -n "${var_name}" ]] || {
     print_log -sec "state" -err "state_set" "variable name required"
@@ -193,10 +198,11 @@ state_write_key_value_file() {
   touch "${state_file}"
   var_escaped="$(printf "%s" "${var_name}" | sed 's/[][\\.^$*+?()|{}]/\\&/g')"
   [[ "${target_file}" == "env-overrides" ]] && value_prefix="export "
+  quoted_value="$(state_quote_value "${var_value}")" || return 1
 
   {
     grep -Ev "^(export[[:space:]]+)?${var_escaped}=" "${state_file}" 2>/dev/null || true
-    printf '%s%s="%s"\n' "${value_prefix}" "${var_name}" "${var_value}"
+    printf '%s%s=%s\n' "${value_prefix}" "${var_name}" "${quoted_value}"
   } >"${tmp_file}"
 
   if mv -f "${tmp_file}" "${state_file}"; then

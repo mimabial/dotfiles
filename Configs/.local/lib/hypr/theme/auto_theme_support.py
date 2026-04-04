@@ -12,6 +12,10 @@ from pathlib import Path
 from typing import Optional
 from zoneinfo import ZoneInfo
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from pyutils.shell_env import load_shell_assignments, shell_quote_value
+
 try:
     from astral import LocationInfo
     from astral.sun import sun
@@ -209,6 +213,7 @@ def set_state_value(var_name: str, var_value: str, target_file: str = "staterc")
         raise ValueError("state variable name required")
 
     value_prefix = "export " if target_file == "env-overrides" else ""
+    quoted_value = shell_quote_value(str(var_value))
     state_file.parent.mkdir(parents=True, exist_ok=True)
 
     with held_state_lock(target_file):
@@ -225,7 +230,7 @@ def set_state_value(var_name: str, var_value: str, target_file: str = "staterc")
             if normalized.startswith(f"{var_name}="):
                 continue
             updated_lines.append(line)
-        updated_lines.append(f'{value_prefix}{var_name}="{var_value}"')
+        updated_lines.append(f"{value_prefix}{var_name}={quoted_value}")
         atomic_write_text(state_file, "\n".join(updated_lines) + "\n")
 
 
@@ -237,14 +242,10 @@ def read_staterc() -> dict:
     staterc = state_home() / "hypr" / "staterc"
     if not staterc.exists():
         return {}
-    values = {}
-    for line in staterc.read_text().splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, value = line.split("=", 1)
-        values[key.strip()] = value.strip().strip('"')
-    return values
+    try:
+        return load_shell_assignments(staterc)
+    except Exception:
+        return {}
 
 
 def read_color_variant_file() -> Optional[str]:
@@ -295,22 +296,13 @@ def resolve_wallpaper(staterc_values: dict) -> Optional[Path]:
 
 
 def load_state_env(config_file: Path | None = None) -> dict:
-    values = {}
     config_file = state_config_file() if config_file is None else config_file
     if not config_file.exists():
-        return values
+        return {}
     try:
-        for raw_line in config_file.read_text().splitlines():
-            line = raw_line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            if line.startswith("export "):
-                line = line[len("export ") :].lstrip()
-            key, value = line.split("=", 1)
-            values[key.strip()] = value.strip().strip('"').strip("'")
+        return load_shell_assignments(config_file)
     except Exception:
         return {}
-    return values
 
 
 def apply_location_overrides_from_state(config: dict) -> None:

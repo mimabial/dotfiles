@@ -6,9 +6,12 @@ import signal
 import sys
 import time
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+
 gi.require_version("Playerctl", "2.0")
 
 from gi.repository import GLib, Playerctl
+from pyutils.shell_env import load_shell_assignments
 from mediaplayer_browser import (
     get_ytdlp_timeout_seconds,
     set_ytdlp_timeout_seconds,
@@ -38,13 +41,8 @@ UI_CONFIG = None
 
 def load_env_file(filepath: str) -> None:
     try:
-        with open(filepath, encoding="utf-8") as f:
-            for line in f:
-                if line.strip() and not line.startswith("#"):
-                    if line.startswith("export "):
-                        line = line[len("export ") :]
-                    key, value = line.strip().split("=", 1)
-                    os.environ[key] = value.strip('"')
+        for key, value in load_shell_assignments(filepath).items():
+            os.environ[key] = value
     except FileNotFoundError:
         return
     except OSError as e:

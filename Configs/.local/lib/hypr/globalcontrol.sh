@@ -108,8 +108,10 @@ init_hypr_globals() {
       IFS=$'\t' read -r hypr_border hypr_width <<< "${border_metrics}"
     fi
   fi
-  export hypr_border=${hypr_border:-${HYPR_BORDER_RADIUS:-2}}
-  export hypr_width=${hypr_width:-${HYPR_BORDER_WIDTH:-2}}
+  export HYPR_RUNTIME_BORDER_RADIUS=${hypr_border:-${HYPR_BORDER_RADIUS:-2}}
+  export HYPR_RUNTIME_BORDER_WIDTH=${hypr_width:-${HYPR_BORDER_WIDTH:-2}}
+  export hypr_border="${HYPR_RUNTIME_BORDER_RADIUS}"
+  export hypr_width="${HYPR_RUNTIME_BORDER_WIDTH}"
 
   # Mark as initialized
   HYPR_GLOBAL_INIT=1
@@ -126,7 +128,7 @@ if [ -n "$BASH_VERSION" ]; then
     rofi_user_dir rofi_shared_dir \
     rofi_resolve_theme rofi_resolve_asset \
     rofi_list_theme_files rofi_list_asset_files \
-    hypr_core_file hypr_variables_file hypr_config_layer_files hypr_config_value_from_layers hypr_border_metrics hypr_resolved_border_metrics hypr_resolved_gaps_out hypr_focused_monitor_geometry hypr_window_edge_padding_px hypr_compact_path \
+    hypr_core_file hypr_variables_file hypr_config_layer_files hypr_config_value_from_layers hypr_border_metrics hypr_cached_border_metrics hypr_resolved_border_metrics hypr_resolved_gaps_out hypr_focused_monitor_geometry hypr_window_edge_padding_px hypr_compact_path \
     is_hovered ini_write \
     find_wallpapers get_hashmap get_aur_helper \
     set_hash \

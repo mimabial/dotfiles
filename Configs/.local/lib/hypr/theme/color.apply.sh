@@ -246,12 +246,21 @@ write_kdeglobals_palette() {
 }
 
 reload_hypr_shaders() {
+  local reload_output=""
+
   [[ -n "${HYPRLAND_INSTANCE_SIGNATURE}" ]] || return 0
-  if ! hyprshell shaders --reload 2>&1 | grep -q "error"; then
-    [[ "${LOG_LEVEL}" == "debug" ]] && print_log -sec "hyprshell" -stat "reload" "shaders"
-  else
+  if ! reload_output="$(hyprshell shaders --reload 2>&1)"; then
     print_log -sec "hyprshell" -warn "reload" "shader reload failed"
+    return 1
   fi
+
+  if grep -qi "error" <<<"${reload_output}"; then
+    print_log -sec "hyprshell" -warn "reload" "shader reload reported errors"
+    return 1
+  fi
+
+  [[ "${LOG_LEVEL}" == "debug" ]] && print_log -sec "hyprshell" -stat "reload" "shaders"
+  return 0
 }
 
 post_updates() {

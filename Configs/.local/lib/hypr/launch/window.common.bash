@@ -13,11 +13,17 @@ launch_source_core_common() {
   source "${core_common}"
 }
 
+launch_regex_escape() {
+  printf '%s\n' "$1" | sed 's/[][\\.^$*+?(){}|]/\\&/g'
+}
+
 launch_resolve_window_address() {
   local window_pattern="$1"
+  local escaped_pattern=""
+  escaped_pattern="$(launch_regex_escape "${window_pattern}")"
 
   hyprctl clients -j \
-    | jq -r --arg p "$window_pattern" '.[] | select((.class | test("\\b" + $p + "\\b"; "i")) or (.title | test("\\b" + $p + "\\b"; "i"))) | .address' \
+    | jq -r --arg p "$escaped_pattern" '.[] | select((.class | test("\\b" + $p + "\\b"; "i")) or (.title | test("\\b" + $p + "\\b"; "i"))) | .address' \
     | head -n1
 }
 

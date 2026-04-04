@@ -131,6 +131,21 @@ read_recording_state() {
   [[ -n "${RECORDING_PATH}" ]] || return 1
 }
 
+clear_recording_state_if_matches() {
+  local pid="$1"
+  local filename="$2"
+  local expected_state=""
+  local current_state=""
+
+  [[ -n "${pid}" && -n "${filename}" ]] || return 0
+  [[ -f "${RECORDING_FILE}" ]] || return 0
+
+  expected_state="${pid}:::${filename}"
+  current_state="$(<"$RECORDING_FILE")"
+  [[ "${current_state}" == "${expected_state}" ]] || return 0
+  rm -f "$RECORDING_FILE"
+}
+
 # --- Resolution ---
 
 default_resolution() {
@@ -357,7 +372,7 @@ stop_recording() {
   (
     wait_for_recording_stop "$RECORDING_STOP_PID"
     finalize_recording_stop "$RECORDING_STOP_PID" "$RECORDING_STOP_PATH"
-    rm -f "$RECORDING_FILE"
+    clear_recording_state_if_matches "$RECORDING_STOP_PID" "$RECORDING_STOP_PATH"
   ) &
 }
 

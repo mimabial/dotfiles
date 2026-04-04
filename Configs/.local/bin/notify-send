@@ -48,6 +48,7 @@ if [[ -z "${real_dunstify}" ]]; then
 fi
 
 has_timeout=0
+has_icon=0
 app_name=""
 summary=""
 body=""
@@ -65,6 +66,7 @@ while (($#)); do
       case "$opt" in
         -t|--expire-time) has_timeout=1 ;;
         -a|--app-name) app_name="${val}" ;;
+        -i|--icon|-n|--app-icon) has_icon=1 ;;
       esac
       shift
       (($#)) && shift
@@ -74,6 +76,7 @@ while (($#)); do
       case "$1" in
         --expire-time=*|--timeout=*) has_timeout=1 ;;
         --app-name=*) app_name="${1#*=}" ;;
+        --icon=*|--app-icon=*) has_icon=1 ;;
       esac
       shift
       ;;
@@ -117,12 +120,19 @@ fi
 
 summary_lc="$(printf '%s' "${summary}" | tr '[:upper:]' '[:lower:]')"
 body_lc="$(printf '%s' "${body}" | tr '[:upper:]' '[:lower:]')"
+codex_icon="${HOME}/.local/share/icons/Tela-circle-dracula/scalable/apps/chatgpt.svg"
 
 if [[ "${app_name}" == "kitty" ]]; then
   if [[ "${summary_lc}" == approval\ requested:* || "${body_lc}" == codex\ wants\ to* ]]; then
     forward_args+=("--hint=string:x-dunst-stack-tag:codex-approval")
   elif [[ "${summary_lc}" == *codex* || "${body_lc}" == *codex* ]]; then
     forward_args+=("--hint=string:x-dunst-stack-tag:codex")
+  fi
+fi
+
+if (( ! has_icon )) && [[ -f "${codex_icon}" ]]; then
+  if [[ "${app_name}" == "Codex" || "${summary_lc}" == *"[codex]"* || "${summary_lc}" == *codex* || "${body_lc}" == *codex* ]]; then
+    forward_args+=("--icon=${codex_icon}")
   fi
 fi
 

@@ -56,5 +56,5 @@ capture_visible_workspace_rectangles() {
   hyprctl clients -j | jq -r \
     --argjson workspaces "${workspaces}" \
     --argjson fullscreenWorkspaces "${fullscreen_workspaces}" \
-    'map((select(([.workspace.id] | inside($workspaces)) and ([.workspace.id] | inside($fullscreenWorkspaces) | not) or .fullscreen > 0))) | .[] | "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"'
+    'map(select(([.workspace.id] | inside($workspaces)) and (([.workspace.id] | inside($fullscreenWorkspaces) | not) or .fullscreen > 0))) | .[] | "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"'
 }

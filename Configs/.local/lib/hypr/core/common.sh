@@ -89,14 +89,22 @@ hypr_border_metrics() {
   command -v jq >/dev/null 2>&1 || return 1
 
   hyprctl --batch -j "getoption decoration:rounding;getoption general:border_size" 2>/dev/null |
-    jq -r '[.[0].int // empty, .[1].int // empty] | @tsv' 2>/dev/null
+    jq -s -r '[.[0].int // empty, .[1].int // empty] | @tsv' 2>/dev/null
+}
+
+hypr_cached_border_metrics() {
+  local border="${HYPR_RUNTIME_BORDER_RADIUS:-${HYPR_BORDER_RADIUS:-}}"
+  local width="${HYPR_RUNTIME_BORDER_WIDTH:-${HYPR_BORDER_WIDTH:-}}"
+
+  printf '%s\t%s\n' "${border}" "${width}"
 }
 
 hypr_resolved_border_metrics() {
-  local border="${hypr_border:-}"
-  local width="${hypr_width:-}"
+  local border=""
+  local width=""
   local metrics=""
 
+  IFS=$'\t' read -r border width < <(hypr_cached_border_metrics)
   if [[ ! "${border}" =~ ^[0-9]+$ || ! "${width}" =~ ^[0-9]+$ ]]; then
     metrics="$(hypr_border_metrics || true)"
     if [[ -n "${metrics}" ]]; then

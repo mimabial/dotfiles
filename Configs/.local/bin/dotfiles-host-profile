@@ -9,6 +9,7 @@ HOST_TARGETS=(
   ".config/hypr/monitors.conf"
   ".config/hypr/nvidia.conf"
   ".config/waybar/modules/temperature.jsonc"
+  ".local/state/hypr/env-overrides"
 )
 
 usage() {
@@ -32,6 +33,10 @@ die() {
 
 require_rsync() {
   command -v rsync >/dev/null 2>&1 || die "rsync is required"
+}
+
+path_exists() {
+  [[ -e "$1" || -L "$1" ]]
 }
 
 validate_profile() {
@@ -76,10 +81,7 @@ apply_profile() {
   local dry_run="$2"
   local host_dir=""
   local rel=""
-  local src=""
-  local dest=""
-  local output=""
-  local found=0
+  local applied=0
 
   if [[ -z "${profile}" ]]; then
     profile="$(current_profile || true)"
@@ -97,11 +99,23 @@ apply_profile() {
   $dry_run && echo '(DRY RUN - no changes will be made)'
 
   for rel in "${HOST_TARGETS[@]}"; do
-    src="${host_dir}/${rel}"
-    [[ -e "${src}" || -L "${src}" ]] || continue
-    found=1
-    dest="${HOME}/${rel}"
+    if apply_target "${host_dir}" "${rel}" "${dry_run}"; then
+      applied=1
+    fi
+  done
 
+  (( applied == 1 )) || printf 'No managed host files defined for %s\n' "${profile}"
+}
+
+apply_target() {
+  local host_dir="$1"
+  local rel="$2"
+  local dry_run="$3"
+  local src="${host_dir}/${rel}"
+  local dest="${HOME}/${rel}"
+  local output=""
+
+  if path_exists "${src}"; then
     if $dry_run; then
       if ! output=$(rsync -a --mkpath --dry-run --itemize-changes "${src}" "${dest}" 2>&1); then
         die "Preview failed for ${rel}: ${output}"
@@ -117,9 +131,19 @@ apply_profile() {
     else
       printf 'Unchanged: %s\n' "${rel}"
     fi
-  done
+    return 0
+  fi
 
-  (( found == 1 )) || die "No managed host files found in ${host_dir}"
+  path_exists "${dest}" || return 1
+
+  if $dry_run; then
+    printf 'Changes for %s:\n*deleting   %s\n' "${rel}" "${rel}"
+  else
+    rm -rf -- "${dest}"
+    printf 'Removed: %s\n' "${rel}"
+  fi
+
+  return 0
 }
 
 command_name="${1:-show}"

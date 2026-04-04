@@ -11,6 +11,7 @@ from datetime import datetime
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
 import pyutils.pip_env as pip_env
+from pyutils.shell_env import load_shell_assignments
 
 pip_env.ensure_managed_interpreter()
 
@@ -113,13 +114,8 @@ args = parser.parse_args()
 ### Functions ###
 def load_env_file(filepath):
     try:
-        with open(filepath, encoding="utf-8") as f:
-            for line in f:
-                if line.strip() and not line.startswith("#"):
-                    if line.startswith("export "):
-                        line = line[len("export ") :]
-                    key, value = line.strip().split("=", 1)
-                    os.environ[key] = value.strip('"')
+        for key, value in load_shell_assignments(filepath).items():
+            os.environ[key] = value
     except Exception:
         pass  # shhh
 

@@ -4,6 +4,27 @@ check() {
   command -v "$1" >/dev/null 2>&1
 }
 
+json_escape() {
+  local value="${1-}"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  value="${value//$'\n'/\\n}"
+  value="${value//$'\r'/\\r}"
+  value="${value//$'\t'/\\t}"
+  printf '%s' "${value}"
+}
+
+emit_hotspot_json() {
+  local state_class="$1"
+  local icon_text="$2"
+  local tooltip_text="$3"
+
+  printf '{"class":"%s","text":"%s","tooltip":"%s"}\n' \
+    "$(json_escape "${state_class}")" \
+    "$(json_escape "${icon_text}")" \
+    "$(json_escape "${tooltip_text}")"
+}
+
 hotspot_active=false
 hotspot_info=""
 hotspot_ssid=""
@@ -65,11 +86,7 @@ fi
 
 # Output
 if [ "$hotspot_active" = true ]; then
-  cat <<EOF
-  { "class": "connected", "text": "󱜠", "tooltip": "$hotspot_info" }
-EOF
+  emit_hotspot_json "connected" "󱜠" "$hotspot_info"
 else
-  cat <<EOF
-  { "class": "disconnected", "text": "󱜡", "tooltip": "Hotspot is not running" }
-EOF
+  emit_hotspot_json "disconnected" "󱜡" "Hotspot is not running"
 fi

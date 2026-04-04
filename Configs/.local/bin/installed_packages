@@ -1,12 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+output_file="${HOME}/installed_packages.txt"
+
 {
-  echo "# Pacman packages"
-  pacman -Qq
-  echo -e "\n# AUR packages"
-  if command -v yay &>/dev/null; then
+  printf '# Pacman packages\n'
+  if command -v pacman >/dev/null 2>&1; then
+    pacman -Qq
+  fi
+
+  printf '\n# AUR packages\n'
+  if command -v yay >/dev/null 2>&1; then
     yay -Qmq
-  elif command -v paru &>/dev/null; then
+  elif command -v paru >/dev/null 2>&1; then
     paru -Qmq
   fi
-  echo -e "\n# Flatpak packages"
-  flatpak list --app --columns=application
-} >~/installed_packages.txt
+
+  printf '\n# Flatpak packages\n'
+  if command -v flatpak >/dev/null 2>&1; then
+    flatpak list --app --columns=application
+  fi
+} >"${output_file}"

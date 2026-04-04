@@ -8,27 +8,8 @@ waybar_vpn_load_env_file() {
   local filepath="$1"
   [[ -r "${filepath}" ]] || return 0
 
-  while IFS= read -r line; do
-    [[ -n "${line//[[:space:]]/}" ]] || continue
-    [[ "${line}" == \#* ]] && continue
-    [[ "${line}" == export\ * ]] && line="${line#export }"
-    [[ "${line}" == *=* ]] || continue
-
-    local key="${line%%=*}"
-    local value="${line#*=}"
-    key="${key#"${key%%[![:space:]]*}"}"
-    key="${key%"${key##*[![:space:]]}"}"
-    value="${value#"${value%%[![:space:]]*}"}"
-    value="${value%"${value##*[![:space:]]}"}"
-    if [[ "${value}" == \"*\" && "${value}" == *\" ]]; then
-      value="${value#\"}"
-      value="${value%\"}"
-    elif [[ "${value}" == \'*\' && "${value}" == *\' ]]; then
-      value="${value#\'}"
-      value="${value%\'}"
-    fi
-    export "${key}=${value}"
-  done <"${filepath}"
+  # shellcheck source=/dev/null
+  source "${filepath}"
 }
 
 waybar_vpn_load_env() {

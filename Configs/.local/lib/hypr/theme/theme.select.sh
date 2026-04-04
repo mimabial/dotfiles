@@ -26,17 +26,47 @@ HELP
   exit 0
 }
 
+THEME_SELECTOR_MENU_RADIUS_MULTIPLIER=5
+THEME_SELECTOR_MENU_ICON_OFFSET=5
+THEME_SELECTOR_PREVIEW_RADIUS_MULTIPLIER=2
+THEME_SELECTOR_PREVIEW_ICON_OFFSET=4
+
 theme_selector_monitor_metrics() {
-  local hypr_border=2
+  local theme_border_radius=""
   local mon_x_res=1920
   local mon_y_res=1080
 
-  hypr_border="$(rofi_default_border_radius 2)"
+  theme_border_radius="$(rofi_default_border_radius 2)"
   read -r mon_x_res mon_y_res < <(rofi_focused_monitor_logical_size)
   mon_x_res=${mon_x_res:-1920}
   mon_y_res=${mon_y_res:-1080}
 
-  printf '%s\t%s\t%s\n' "${hypr_border}" "${mon_x_res}" "${mon_y_res}"
+  printf '%s\t%s\t%s\n' "${theme_border_radius}" "${mon_x_res}" "${mon_y_res}"
+}
+
+theme_selector_border_radius() {
+  local theme_border_radius=""
+
+  IFS=$'\t' read -r theme_border_radius _ _ < <(theme_selector_monitor_metrics)
+  printf '%s\n' "${theme_border_radius}"
+}
+
+theme_selector_scaled_radii() {
+  local base_radius="${1:-0}"
+  local element_multiplier="${2:-0}"
+  local icon_offset="${3:-0}"
+  local element_radius=0
+  local icon_radius=0
+
+  [[ "${base_radius}" =~ ^[0-9]+$ ]] || base_radius=0
+  [[ "${element_multiplier}" =~ ^[0-9]+$ ]] || element_multiplier=0
+  [[ "${icon_offset}" =~ ^[0-9]+$ ]] || icon_offset=0
+
+  element_radius=$((base_radius * element_multiplier))
+  icon_radius=$((element_radius - icon_offset))
+  ((icon_radius < 0)) && icon_radius=0
+
+  printf '%s\t%s\n' "${element_radius}" "${icon_radius}"
 }
 
 theme_selector_grid_counts() {
@@ -92,10 +122,9 @@ build_style_menu_override() {
   local max_columns=5
   local min_rows=2
   local max_rows=4
-  local hypr_border=2
+  local theme_border_radius=0
   local horizontal_padding=8
   local vertical_padding=16
-  local border_multiplier=5
   local elem_border=0
   local icon_border=0
   local elm_width=0
@@ -106,10 +135,14 @@ build_style_menu_override() {
   [[ "${preview_image_size}" =~ ^[0-9]+$ ]] || preview_image_size=192
   [[ "${hidpi_scale}" =~ ^[0-9]+$ ]] || hidpi_scale=2
   [[ "${theme_menu_icon_size}" =~ ^[0-9]+$ ]] || theme_menu_icon_size=20
-  read -r hypr_border _ _ < <(theme_selector_monitor_metrics)
+  theme_border_radius="$(theme_selector_border_radius)"
 
-  elem_border=$((hypr_border * border_multiplier))
-  icon_border=$((elem_border - 5))
+  IFS=$'\t' read -r elem_border icon_border < <(
+    theme_selector_scaled_radii \
+      "${theme_border_radius}" \
+      "${THEME_SELECTOR_MENU_RADIUS_MULTIPLIER}" \
+      "${THEME_SELECTOR_MENU_ICON_OFFSET}"
+  )
   elm_width=$((preview_image_size * hidpi_scale))
   elm_height=$((preview_image_size * hidpi_scale))
   read -r col_count row_count < <(
@@ -204,20 +237,22 @@ ensure_theme_thumbs() {
 resolve_theme_selector_style() {
   local font_scale="$1"
   local theme_style="${ROFI_THEME_STYLE:-$(get_hypr_conf "ROFI_THEME_STYLE")}"
-  local hypr_border=2
-  local elem_border=$((hypr_border * 2))
-  local icon_border=$((elem_border - 4))
+  local theme_border_radius=0
+  local elem_border=0
+  local icon_border=0
   local elm_width=0
   local elm_height=0
   local col_count=0
   local row_count=0
 
-  ((icon_border < 0)) && icon_border=0
   [[ -n "${theme_style}" ]] || theme_style=1
-  read -r hypr_border _ _ < <(theme_selector_monitor_metrics)
-  elem_border=$((hypr_border * 2))
-  icon_border=$((elem_border - 4))
-  ((icon_border < 0)) && icon_border=0
+  theme_border_radius="$(theme_selector_border_radius)"
+  IFS=$'\t' read -r elem_border icon_border < <(
+    theme_selector_scaled_radii \
+      "${theme_border_radius}" \
+      "${THEME_SELECTOR_PREVIEW_RADIUS_MULTIPLIER}" \
+      "${THEME_SELECTOR_PREVIEW_ICON_OFFSET}"
+  )
 
   elm_width=$(((16 + 12) * font_scale * 2))
   elm_height=$(((16 + 4) * font_scale * 2))
@@ -235,7 +270,7 @@ resolve_theme_selector_style() {
         theme_selector_grid_counts "${font_scale}" "${elm_width}" "${elm_height}" 8 16 2 "" 2 4
       )
       printf 'sqre\nselector\nwindow{width:100%%;height:100%%;fullscreen:true;border-radius:%dpx;}\nlistview{columns:%d;lines:%d;cycle:true;spacing:2.5em;padding:1.5em;}\nelement{border-radius:%dpx;padding:0.5em;}\nelement-icon{size:15.5em;border-radius:%dpx;}\n' \
-        "${hypr_border}" "${col_count}" "${row_count}" "${elem_border}" "${elem_border}"
+        "${theme_border_radius}" "${col_count}" "${row_count}" "${elem_border}" "${elem_border}"
       ;;
   esac
 }

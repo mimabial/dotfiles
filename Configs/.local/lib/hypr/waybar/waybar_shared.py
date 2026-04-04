@@ -10,6 +10,7 @@ from pathlib import Path
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
 import pyutils.logger as logger_mod
+from pyutils.shell_env import load_shell_assignments
 from pyutils.xdg_base_dirs import xdg_config_home, xdg_data_home, xdg_state_home
 
 logger = logger_mod.get_logger()
@@ -55,16 +56,11 @@ WATCHED_SUFFIXES = {".css", ".json", ".jsonc"}
 
 
 def source_env_file(filepath):
-    if os.path.exists(filepath):
-        with open(filepath) as file:
-            for line in file:
-                line = line.strip()
-                if not line or line.startswith("#") or "=" not in line:
-                    continue
-                if line.startswith("export "):
-                    line = line[len("export ") :]
-                key, value = line.split("=", 1)
-                os.environ[key] = value.strip().strip("'\"")
+    try:
+        for key, value in load_shell_assignments(filepath).items():
+            os.environ[key] = value
+    except FileNotFoundError:
+        return
 
 
 def get_file_hash(filepath):

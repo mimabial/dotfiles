@@ -116,17 +116,11 @@ Wall_Json() {
 }
 
 wallpaper_select_monitor_width() {
-  local mon_data=""
   local mon_x_res=""
-  local mon_scale=""
 
-  mon_data=$(hyprctl -j monitors)
-  mon_x_res=$(jq '.[] | select(.focused==true) | if (.transform % 2 == 0) then .width else .height end' <<<"${mon_data}")
-  mon_scale=$(jq '.[] | select(.focused==true) | .scale' <<<"${mon_data}" | sed "s/\.//")
-
-  mon_x_res=${mon_x_res:-1920}
-  mon_scale=${mon_scale:-1}
-  echo $((mon_x_res * 100 / mon_scale))
+  read -r mon_x_res _ < <(rofi_focused_monitor_logical_size)
+  [[ "${mon_x_res}" =~ ^[0-9]+$ ]] || mon_x_res=1920
+  printf '%s\n' "${mon_x_res}"
 }
 
 wallpaper_select_theme_override() {

@@ -1,0 +1,193 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+MODE="full"
+OUTPUT="plain"
+
+show_help() {
+  cat <<'EOF'
+Usage: tmux-wifi-signal [--short] [--tmux]
+
+  -s, --short  Compact output for status bars
+  -t, --tmux   Emit tmux-formatted status text
+  -h, --help   Show this help
+EOF
+}
+
+split_nmcli_record() {
+  local input="$1"
+  local out_name="$2"
+  local current=""
+  local char=""
+  local escaped=0
+  local index=0
+
+  # shellcheck disable=SC2178
+  local -n out_ref="${out_name}"
+  out_ref=()
+
+  for ((index = 0; index < ${#input}; index++)); do
+    char="${input:index:1}"
+    if ((escaped)); then
+      current+="${char}"
+      escaped=0
+      continue
+    fi
+    if [[ "${char}" == '\' ]]; then
+      escaped=1
+      continue
+    fi
+    if [[ "${char}" == ':' ]]; then
+      out_ref+=("${current}")
+      current=""
+      continue
+    fi
+    current+="${char}"
+  done
+
+  out_ref+=("${current}")
+}
+
+wifi_radio_state() {
+  nmcli radio wifi 2>/dev/null | awk 'NR == 1 { print tolower($0) }'
+}
+
+wifi_active_record() {
+  nmcli -t -e yes -f active,ssid,signal,rate dev wifi 2>/dev/null | awk '/^yes:/{ print; exit }'
+}
+
+wifi_signal_bars() {
+  local signal="${1:-0}"
+  local display=""
+
+  if ((signal >= 80)); then
+    display="▁ ▃ ▅ ▇"
+  elif ((signal >= 60)); then
+    display="▁ ▃ ▅  "
+  elif ((signal >= 40)); then
+    display="▁ ▃    "
+  elif ((signal >= 20)); then
+    display="▁      "
+  else
+    display="·"
+  fi
+
+  printf '%s\n' "${display}"
+}
+
+wifi_signal_icon() {
+  local signal="${1:-0}"
+
+  if ((signal >= 80)); then
+    printf '󰤨\n'
+  elif ((signal >= 60)); then
+    printf '󰤥\n'
+  elif ((signal >= 40)); then
+    printf '󰤢\n'
+  elif ((signal >= 20)); then
+    printf '󰤟\n'
+  else
+    printf '󰤯\n'
+  fi
+}
+
+emit_plain() {
+  local state="$1"
+  local ssid="$2"
+  local signal="$3"
+  local rate="$4"
+  local bars=""
+
+  case "${state}" in
+    off) printf '(WiFi off)\n' ;;
+    disconnected) printf '(WiFi disconnected)\n' ;;
+    unavailable) printf '(WiFi unavailable)\n' ;;
+    connected)
+      bars="$(wifi_signal_bars "${signal}")"
+      if [[ "${MODE}" == "short" ]]; then
+        printf '%s\n' "${bars}"
+      else
+        [[ -n "${ssid}" ]] || ssid="<hidden>"
+        printf '%s %s %s\n' "${ssid}" "${rate}" "${bars}"
+      fi
+      ;;
+  esac
+}
+
+emit_tmux() {
+  local state="$1"
+  local signal="$2"
+  local bars=""
+  local icon=""
+
+  case "${state}" in
+    unavailable) printf '' ;;
+    off)
+      printf '#[fg=#{@theme_gray}] #[fg=#{@theme_gray}] off#[fg=#{@theme_gray}]  #[default]\n'
+      ;;
+    disconnected)
+      printf '#[fg=#{@theme_gray}] #[fg=#{@theme_gray}] down#[fg=#{@theme_gray}]  #[default]\n'
+      ;;
+    connected)
+      icon="$(wifi_signal_icon "${signal}")"
+      if [[ "${MODE}" == "short" ]]; then
+        printf '#[fg=#{@theme_accent}]%s #[italics]#[fg=#{@theme_gray}]%s%%#[fg=#{@theme_gray}]  #[default]\n' "${icon}" "${signal}"
+      else
+        bars="$(wifi_signal_bars "${signal}")"
+        printf '#[fg=#{@theme_accent}]%s #[fg=#{@theme_fg}]%s%% %s#[fg=#{@theme_gray}]  #[default]\n' "${icon}" "${signal}" "${bars}"
+      fi
+      ;;
+  esac
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -s | --short) MODE="short" ;;
+    -t | --tmux) OUTPUT="tmux" ;;
+    -h | --help)
+      show_help
+      exit 0
+      ;;
+    *)
+      printf 'Unknown option: %s\n' "$1" >&2
+      exit 1
+      ;;
+  esac
+  shift
+done
+
+if ! command -v nmcli >/dev/null 2>&1; then
+  if [[ "${OUTPUT}" == "tmux" ]]; then
+    emit_tmux unavailable ""
+  else
+    emit_plain unavailable "" "" ""
+  fi
+  exit 0
+fi
+
+radio_state="$(wifi_radio_state)"
+wifi_record="$(wifi_active_record || true)"
+
+if [[ "${radio_state}" != "enabled" ]]; then
+  state="off"
+elif [[ -z "${wifi_record}" ]]; then
+  state="disconnected"
+else
+  state="connected"
+  fields=()
+  split_nmcli_record "${wifi_record}" fields
+  ssid="${fields[1]:-}"
+  signal="${fields[2]:-0}"
+  rate="${fields[3]:-}"
+  [[ "${signal}" =~ ^[0-9]+$ ]] || signal=0
+fi
+
+ssid="${ssid:-}"
+signal="${signal:-0}"
+rate="${rate:-}"
+
+if [[ "${OUTPUT}" == "tmux" ]]; then
+  emit_tmux "${state}" "${signal}" "${rate}"
+else
+  emit_plain "${state}" "${ssid}" "${signal}" "${rate}"
+fi

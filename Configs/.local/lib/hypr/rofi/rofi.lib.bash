@@ -667,7 +667,6 @@ rofi_wallpaper_width_override() {
   local post_clamp_reduction_px="0"
   local width_value=""
 
-  [[ -f "${wall_image}" ]] || return 0
   [[ -n "${theme_file}" ]] || return 0
   [[ "${margin_px}" =~ ^[0-9]+([.][0-9]+)?$ ]] || margin_px=0
 
@@ -676,16 +675,18 @@ rofi_wallpaper_width_override() {
   monitor_width_logical="$(rofi_focused_monitor_logical_width_precise)"
   read -r theme_height_px theme_height_unit font_px < <(rofi_theme_window_height_px "${theme_file}" "${font_name}" "${font_scale}" 2>/dev/null || true)
   [[ -n "${theme_height_px}" && -n "${theme_height_unit}" ]] || return 0
-  ratio="$(rofi_wallpaper_ratio "${wall_image}" 2>/dev/null || true)"
-  [[ -n "${ratio}" ]] || return 0
+
+  if [[ "${theme_name}" == "style_11" ]]; then
+    ratio="1.777778"
+  else
+    [[ -f "${wall_image}" ]] || return 0
+    ratio="$(rofi_wallpaper_ratio "${wall_image}" 2>/dev/null || true)"
+    [[ -n "${ratio}" ]] || return 0
+  fi
+
   post_clamp_reduction_px="$(rofi_wallpaper_post_clamp_reduction_px "${theme_name}")"
 
   width_px="$(awk -v h="${theme_height_px}" -v r="${ratio}" 'BEGIN { printf "%.2f", (h * r) }')"
-
-  # Floor: style_11 listview is on the right, so narrow wallpapers need at least 16:9
-  if [[ "${theme_name}" == "style_11" ]]; then
-    width_px="$(awk -v w="${width_px}" -v h="${theme_height_px}" 'BEGIN { min = h * 16 / 9; if (w < min) w = min; printf "%.2f", w }')"
-  fi
 
   if [[ -n "${monitor_width_logical}" ]] && awk -v w="${monitor_width_logical}" -v m="${margin_px}" 'BEGIN { exit !(w > (m * 2)) }'; then
     max_width_px="$(awk -v w="${monitor_width_logical}" -v m="${margin_px}" 'BEGIN { val = w - (m * 2); if (val < 0) val = 0; printf "%.2f", val }')"

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 TERMINAL_TUI="${TERMINAL_TUI:-kitty}"
 hypr_profile=""
@@ -87,11 +87,24 @@ resolve_percentages() {
   [[ "${hypr_width}" == *% || "${hypr_height}" == *% ]] || return 0
 
   local monitor_json mon_w mon_h
+
+  command -v hyprctl >/dev/null 2>&1 || {
+    printf 'Cannot resolve percentage geometry without hyprctl\n' >&2
+    return 1
+  }
+  command -v jq >/dev/null 2>&1 || {
+    printf 'Cannot resolve percentage geometry without jq\n' >&2
+    return 1
+  }
+
   monitor_json=$(hyprctl monitors -j 2>/dev/null) || return 1
   mon_w=$(jq -r '.[] | select(.focused) | (.width / .scale | floor)' <<< "${monitor_json}") || return 1
   mon_h=$(jq -r '.[] | select(.focused) | (.height / .scale | floor)' <<< "${monitor_json}") || return 1
 
-  [[ -n "${mon_w}" && -n "${mon_h}" ]] || return 1
+  [[ "${mon_w}" =~ ^[0-9]+$ && "${mon_h}" =~ ^[0-9]+$ ]] || {
+    printf 'Cannot determine focused monitor size for percentage geometry\n' >&2
+    return 1
+  }
 
   if [[ "${hypr_width}" == *% ]]; then
     hypr_width=$(( ${hypr_width%\%} * mon_w / 100 ))
@@ -167,7 +180,7 @@ terminate_child() {
 
 parse_args "$@"
 apply_geometry_profile || exit 2
-resolve_percentages || true
+resolve_percentages || exit 2
 validate_exec_command || exit $?
 build_terminal_command
 

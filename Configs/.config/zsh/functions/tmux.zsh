@@ -1,4 +1,4 @@
-tmux() {
+tmux_f() {
   if [[ "$TERM" == "alacritty" ]] || [[ -n "$ALACRITTY_SOCKET" ]]; then
     command tmux "$@"
   else

@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+pane_tty="${1:-}"
+fallback="${2:-}"
+
+trim_label() {
+  local value="${1:-}"
+  local max_len="${2:-18}"
+
+  if ((${#value} <= max_len)); then
+    printf '%s\n' "${value}"
+  else
+    printf '%s\n' "${value:0:max_len}"
+  fi
+}
+
+default_label() {
+  local value="${fallback:-shell}"
+  value="${value##*/}"
+  [[ -n "${value}" ]] || value="shell"
+  printf '%s\n' "${value}"
+}
+
+read_foreground_field() {
+  local field="$1"
+
+  [[ -n "${pane_tty}" ]] || return 1
+  ps -t "${pane_tty}" -o stat=,"${field}" 2>/dev/null | awk '
+    /^[^TXZ ]*\+/ {
+      $1 = ""
+      sub(/^[[:space:]]+/, "", $0)
+      print
+      found = 1
+      exit
+    }
+    END { exit(found ? 0 : 1) }
+  '
+}
+
+cmd_line="$(read_foreground_field args= || true)"
+proc_name="$(read_foreground_field comm= || true)"
+
+if [[ -z "${cmd_line}" && -n "${pane_tty}" ]]; then
+  cmd_line="$(ps -t "${pane_tty}" -o args= 2>/dev/null | tail -n 1 || true)"
+fi
+
+if [[ -z "${proc_name}" && -n "${pane_tty}" ]]; then
+  proc_name="$(ps -t "${pane_tty}" -o comm= 2>/dev/null | tail -n 1 || true)"
+fi
+
+proc_name="${proc_name##*/}"
+cmd_line="${cmd_line:-}"
+
+if [[ -z "${cmd_line}" && -z "${proc_name}" ]]; then
+  default_label
+  exit 0
+fi
+
+if [[ "${cmd_line}" =~ (^|[[:space:]/])(codex|claude|anthropic|aider)([[:space:]]|$) ]]; then
+  printf '%s\n' "${BASH_REMATCH[2]}"
+  exit 0
+fi
+
+if [[ "${cmd_line}" =~ (^|[[:space:]])(g?(view|n?vim?x?)(diff)?)([[:space:]]|$) ]]; then
+  printf 'nvim\n'
+  exit 0
+fi
+
+if [[ "${proc_name}" == "node" ]] && [[ "${cmd_line}" =~ node([[:space:]]+[^[:space:]-][^[:space:]]*) ]]; then
+  script_path="${BASH_REMATCH[1]}"
+  script_path="${script_path#"${script_path%%[![:space:]]*}"}"
+  script_name="$(basename "${script_path}" .js 2>/dev/null || printf '%s' "${script_path}")"
+  case "${script_name}" in
+    npm | npx | yarn | pnpm | bun) printf '%s\n' "${script_name}" ;;
+    *) trim_label "${script_name}" ;;
+  esac
+  exit 0
+fi
+
+if [[ "${proc_name}" =~ ^python ]] || [[ "${proc_name}" == "uv" ]]; then
+  if [[ "${cmd_line}" =~ python[^[:space:]]*[[:space:]]+-m[[:space:]]+([^[:space:]]+) ]]; then
+    trim_label "${BASH_REMATCH[1]}"
+    exit 0
+  fi
+  if [[ "${cmd_line}" =~ (^|[[:space:]])([^[:space:]]+\.py)([[:space:]]|$) ]]; then
+    script_name="$(basename "${BASH_REMATCH[2]}" .py 2>/dev/null || printf '%s' "${BASH_REMATCH[2]}")"
+    trim_label "${script_name}"
+    exit 0
+  fi
+  printf 'python\n'
+  exit 0
+fi
+
+if [[ "${proc_name}" =~ ^(bash|zsh|sh|fish)$ ]] && [[ "${cmd_line}" =~ ${proc_name}[[:space:]]+([^[:space:]-][^[:space:]]*) ]]; then
+  script_name="$(basename "${BASH_REMATCH[1]}" 2>/dev/null || printf '%s' "${BASH_REMATCH[1]}")"
+  script_name="${script_name%.sh}"
+  script_name="${script_name%.bash}"
+  script_name="${script_name%.zsh}"
+  if [[ ! "${script_name}" =~ ^(\.|config|rc|profile)$ && -n "${script_name}" ]]; then
+    trim_label "${script_name}"
+    exit 0
+  fi
+fi
+
+if [[ "${proc_name}" =~ ^(ssh|mosh)$ ]] && [[ "${cmd_line}" =~ ${proc_name}[[:space:]]+([^[:space:]]+@)?([^[:space:]]+) ]]; then
+  printf '%s:%s\n' "${proc_name}" "$(trim_label "${BASH_REMATCH[2]}" 14)"
+  exit 0
+fi
+
+if [[ "${cmd_line}" =~ /nix/store/[^/]+/bin/([^[:space:]]+) ]]; then
+  trim_label "${BASH_REMATCH[1]}"
+  exit 0
+fi
+
+trim_label "${proc_name:-${fallback:-shell}}"

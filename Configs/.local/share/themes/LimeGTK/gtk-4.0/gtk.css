@@ -4712,7 +4712,7 @@ windowcontrols button.minimize:not(.suggested-action):not(.destructive-action) {
 }
 
 windowcontrols button.minimize:active:not(.suggested-action):not(.destructive-action) {
-  background-color: #flcf8a;
+  background-color: #f1cf8a;
 }
 
 windowcontrols button.maximize:not(.suggested-action):not(.destructive-action) {
@@ -4728,7 +4728,7 @@ windowcontrols button.close:not(.suggested-action):not(.destructive-action) {
 }
 
 windowcontrols button.close:active:not(.suggested-action):not(.destructive-action) {
-  background-color: #ce26c7c;
+  background-color: #ce26c7;
 }
 
 windowcontrols {

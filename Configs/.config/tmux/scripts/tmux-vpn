@@ -1,0 +1,227 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+MODE="full"
+
+show_help() {
+  cat <<'EOF'
+Usage: tmux-vpn [--short]
+
+  -s, --short  Compact tmux output (icon + provider)
+  -h, --help   Show this help
+EOF
+}
+
+hypr_vpn_common="${HOME}/.local/lib/hypr/waybar/waybar.vpn.common.sh"
+if [[ -r "${hypr_vpn_common}" ]]; then
+  # shellcheck source=/dev/null
+  source "${hypr_vpn_common}"
+  waybar_vpn_load_env
+  vpn_provider="$(waybar_vpn_normalize_provider "${WAYBAR_VPN_PROVIDER:-auto}")"
+else
+  vpn_provider="${WAYBAR_VPN_PROVIDER:-auto}"
+fi
+
+wireguard_globs=(wg* mullvad*)
+openvpn_ifaces=(tun0)
+status_state="none"
+status_label=""
+status_provider=""
+status_ip=""
+has_vpn_client=false
+
+command_available() {
+  command -v "$1" >/dev/null 2>&1
+}
+
+first_iface_ipv4() {
+  local iface_name="$1"
+  ip -4 -o addr show dev "${iface_name}" 2>/dev/null | awk 'NR == 1 { sub(/\/.*/, "", $4); print $4 }'
+}
+
+emit_segment() {
+  local icon_color="$1"
+  local icon_text="$2"
+  local label_color="$3"
+  local label_text="$4"
+  local ip_text="${5:-}"
+  local trailing_sep="${6:-1}"
+
+  printf '#[fg=%s]%s#[fg=%s] %s' "${icon_color}" "${icon_text}" "${label_color}" "${label_text}"
+  if [[ -n "${ip_text}" ]]; then
+    printf '#[fg=#{@theme_accent}] %s' "${ip_text}"
+  fi
+  if [[ "${trailing_sep}" == "1" ]]; then
+    printf '#[fg=#{@theme_gray}]  #[default]'
+  else
+    printf '#[default]'
+  fi
+}
+
+set_mullvad_state() {
+  local mullvad_status=""
+  local mullvad_status_line=""
+  local relay=""
+  local ipv4=""
+
+  [[ "${vpn_provider}" == auto || "${vpn_provider}" == mullvad ]] || return 1
+  command_available mullvad || return 1
+
+  has_vpn_client=true
+  mullvad_status="$(mullvad status 2>/dev/null || true)"
+  [[ -n "${mullvad_status}" ]] || {
+    status_state="error"
+    status_label="mullvad"
+    status_provider="mullvad"
+    return 0
+  }
+
+  mullvad_status_line="$(awk 'NR == 1 { sub(/^[[:space:]]+/, "", $0); print tolower($0); exit }' <<<"${mullvad_status}")"
+  if [[ "${mullvad_status_line}" == connected* ]]; then
+    relay="$(awk -F': *' '/^[[:space:]]*Relay:/ { print $2; exit }' <<<"${mullvad_status}")"
+    ipv4="$(awk '
+      /^[[:space:]]*Visible location:/ {
+        for (i = 1; i <= NF; i++) {
+          if ($i == "IPv4:") {
+            print $(i + 1)
+            exit
+          }
+        }
+      }
+      /^[[:space:]]*IPv4:/ { print $2; exit }
+    ' <<<"${mullvad_status}")"
+    status_state="connected"
+    status_label="mullvad"
+    status_provider="mullvad"
+    [[ -n "${relay}" ]] && status_label="${relay}"
+    status_ip="${ipv4}"
+    return 0
+  fi
+
+  if [[ "${mullvad_status_line}" == connecting* ]]; then
+    status_state="connecting"
+    status_label="mullvad"
+    status_provider="mullvad"
+  elif [[ "${mullvad_status_line}" == disconnected* || "${mullvad_status_line}" == not\ connected* ]]; then
+    status_state="disconnected"
+    status_label="off"
+    status_provider="mullvad"
+  else
+    status_state="error"
+    status_label="mullvad"
+    status_provider="mullvad"
+  fi
+}
+
+set_wireguard_state() {
+  local iface_glob=""
+  local iface_path=""
+  local iface_name=""
+
+  [[ "${status_state}" == none ]] || return 0
+  [[ "${vpn_provider}" == auto || "${vpn_provider}" == wireguard ]] || return 0
+
+  shopt -s nullglob
+  for iface_glob in "${wireguard_globs[@]}"; do
+    for iface_path in /proc/sys/net/ipv4/conf/${iface_glob}; do
+      [[ -d "${iface_path}" ]] || continue
+      iface_name="$(basename "${iface_path}")"
+      has_vpn_client=true
+      status_state="connected"
+      status_label="wireguard"
+      status_provider="wireguard"
+      status_ip="$(first_iface_ipv4 "${iface_name}")"
+      shopt -u nullglob
+      return 0
+    done
+  done
+  shopt -u nullglob
+
+  if [[ "${vpn_provider}" == wireguard ]]; then
+    has_vpn_client=true
+    status_state="disconnected"
+    status_label="off"
+    status_provider="wireguard"
+  fi
+}
+
+set_openvpn_state() {
+  local iface_name=""
+
+  [[ "${status_state}" == none ]] || return 0
+  [[ "${vpn_provider}" == auto || "${vpn_provider}" == openvpn ]] || return 0
+
+  for iface_name in "${openvpn_ifaces[@]}"; do
+    [[ -d "/proc/sys/net/ipv4/conf/${iface_name}" ]] || continue
+    has_vpn_client=true
+    status_state="connected"
+    status_label="openvpn"
+    status_provider="openvpn"
+    status_ip="$(first_iface_ipv4 "${iface_name}")"
+    return 0
+  done
+
+  if [[ "${vpn_provider}" == openvpn ]]; then
+    has_vpn_client=true
+    status_state="disconnected"
+    status_label="off"
+    status_provider="openvpn"
+  fi
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -s | --short) MODE="short" ;;
+    -h | --help)
+      show_help
+      exit 0
+      ;;
+    *)
+      printf 'Unknown option: %s\n' "$1" >&2
+      exit 1
+      ;;
+  esac
+  shift
+done
+
+case "${vpn_provider}" in
+  none)
+    exit 0
+    ;;
+  wireguard | openvpn)
+    has_vpn_client=true
+    ;;
+esac
+
+set_mullvad_state || true
+set_wireguard_state
+set_openvpn_state
+
+case "${status_state}" in
+  connected)
+    if [[ "${MODE}" == "short" ]]; then
+      emit_segment '#{@theme_green}' '󰒃' '#{@theme_yellow},italics' "${status_provider:-${status_label}}" "" 1
+    else
+      emit_segment '#{@theme_green}' '󰒃' '#{@theme_yellow}' "${status_label}" "${status_ip}"
+    fi
+    ;;
+  connecting)
+    if [[ "${MODE}" == "short" ]]; then
+      emit_segment '#{@theme_accent}' '󱆣' '#{@theme_accent},italics' "${status_provider:-${status_label}}" "" 1
+    else
+      emit_segment '#{@theme_accent}' '󱆣' '#{@theme_accent}' "${status_label}"
+    fi
+    ;;
+  disconnected)
+    if [[ "${has_vpn_client}" == true ]]; then
+      emit_segment '#{@theme_gray}' '󰦞' '#{@theme_gray}' "${status_label}"
+    fi
+    ;;
+  error)
+    if [[ "${MODE}" == "short" ]]; then
+      emit_segment '#{@theme_red}' '󰻍' '#{@theme_red},italics' "${status_provider:-${status_label:-err}}"
+    else
+      emit_segment '#{@theme_red}' '󰻍' '#{@theme_red}' "${status_label:-err}"
+    fi
+    ;;
+esac

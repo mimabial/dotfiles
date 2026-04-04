@@ -20,7 +20,7 @@ logger = logging.getLogger("hyq")
 class HyprlangParser:
     """Parser for Hyprland configuration files"""
 
-    def __init__(self, follow_source: bool = False, config_dir: str = None):
+    def __init__(self, follow_source: bool = False, config_dir: Optional[str] = None):
         self.variables: Dict[str, str] = {}
         self.config: Dict[str, Any] = {}
         self.follow_source = follow_source
@@ -138,15 +138,29 @@ class HyprlangParser:
             current = current[key]
 
         final_key = keys[-1]
-        if (
-            final_key in current
-            and isinstance(current[final_key], dict)
-            and "_value" not in current[final_key]
-        ):
-            # Key exists as a section, store value specially
-            current[final_key]["_value"] = value
-        else:
+        if final_key not in current:
             current[final_key] = value
+            return
+
+        if isinstance(current[final_key], dict):
+            # Preserve repeated directives even when a section and value share a key.
+            existing_value = current[final_key].get("_value")
+            if existing_value is None:
+                current[final_key]["_value"] = value
+            else:
+                current[final_key]["_value"] = self.merge_repeated_values(
+                    existing_value, value
+                )
+            return
+
+        current[final_key] = self.merge_repeated_values(current[final_key], value)
+
+    @staticmethod
+    def merge_repeated_values(existing: Any, new_value: Any) -> List[Any]:
+        """Accumulate repeated directives like bind= and windowrule=."""
+        if isinstance(existing, list):
+            return [*existing, new_value]
+        return [existing, new_value]
 
     def get_nested_value(self, keys: List[str]) -> Optional[Any]:
         """Get a value from nested dictionary"""
@@ -331,8 +345,8 @@ class SchemaLoader:
         return None
 
 
-def infer_type(value: Any) -> str:
-    """Infer type name from value"""
+def infer_scalar_type(value: Any) -> str:
+    """Infer type name from a scalar value"""
     if value is None:
         return "NULL"
     elif isinstance(value, bool):
@@ -350,9 +364,39 @@ def infer_type(value: Any) -> str:
         return "CUSTOM"
 
 
+def infer_type(value: Any) -> str:
+    """Infer type name from a scalar value or repeated directive list"""
+    if isinstance(value, list):
+        item_types = {infer_scalar_type(item) for item in value}
+        item_types.discard("NULL")
+        if not item_types:
+            return "NULL"
+        if len(item_types) == 1:
+            return item_types.pop()
+        return "CUSTOM"
+    return infer_scalar_type(value)
+
+
 def normalize_type(type_str: str) -> str:
     """Normalize type string for comparison"""
     return type_str.upper().replace("_", "").replace("-", "")
+
+
+def stringify_value(value: Any) -> str:
+    """Convert a query result into plain-text output"""
+    if isinstance(value, list):
+        return "\n".join(stringify_value(item) for item in value)
+    return str(value)
+
+
+def escape_env_value(value: str) -> str:
+    """Escape a string for the simple KEY="value" env export format"""
+    value = value.replace("\\", "\\\\")
+    value = value.replace('"', '\\"')
+    value = value.replace("$", "\\$")
+    value = value.replace("`", "\\`")
+    value = value.replace("\n", "\\n")
+    return value
 
 
 def matches_regex(value: str, pattern: str) -> bool:
@@ -362,6 +406,18 @@ def matches_regex(value: str, pattern: str) -> bool:
     except re.error:
         logger.error(f"Invalid regex pattern: {pattern}")
         return False
+
+
+def filter_value(value: Any, predicate) -> Optional[Any]:
+    """Filter a scalar or repeated directive list with a predicate"""
+    if isinstance(value, list):
+        filtered = [item for item in value if predicate(item)]
+        if not filtered:
+            return None
+        if len(filtered) == 1:
+            return filtered[0]
+        return filtered
+    return value if predicate(value) else None
 
 
 def parse_query_input(query_str: str) -> Tuple[str, Optional[str], Optional[str]]:
@@ -399,28 +455,27 @@ def process_query(
 
     # Determine result
     if value is None:
-        if allow_missing:
-            return {"key": query, "value": "", "type": "NULL", "flags": []}
-        else:
-            return {"key": query, "value": "", "type": "NULL", "flags": []}
-
-    # Convert value to string
-    value_str = str(value)
-    value_type = infer_type(value)
+        return {"key": query, "value": "", "type": "NULL", "flags": []}
 
     # Type filtering
     if expected_type:
-        actual_type_norm = normalize_type(value_type)
         expected_type_norm = normalize_type(expected_type)
-
-        if actual_type_norm != expected_type_norm:
+        value = filter_value(
+            value,
+            lambda item: normalize_type(infer_type(item)) == expected_type_norm,
+        )
+        if value is None:
             return {"key": query, "value": "", "type": "NULL", "flags": []}
 
     # Regex filtering
-    if expected_regex and not matches_regex(value_str, expected_regex):
-        return {"key": query, "value": "", "type": "NULL", "flags": []}
+    if expected_regex:
+        value = filter_value(
+            value, lambda item: matches_regex(stringify_value(item), expected_regex)
+        )
+        if value is None:
+            return {"key": query, "value": "", "type": "NULL", "flags": []}
 
-    return {"key": query, "value": value_str, "type": value_type, "flags": []}
+    return {"key": query, "value": value, "type": infer_type(value), "flags": []}
 
 
 def export_json(results: List[Dict[str, Any]]):
@@ -457,12 +512,15 @@ def export_env(results: List[Dict[str, Any]], queries: List[str]):
         is_dynamic = queries[i].startswith("$")
         prefix = "__" if is_dynamic else "_"
 
-        print(f'{prefix}{env_key}="{result["value"]}"')
+        env_value = escape_env_value(stringify_value(result["value"]))
+        print(f'{prefix}{env_key}="{env_value}"')
 
 
 def export_plain(results: List[Dict[str, Any]], delimiter: str):
     """Export results as plain text with delimiter"""
-    values = [r["value"] if r["type"] != "NULL" else "" for r in results]
+    values = [
+        stringify_value(r["value"]) if r["type"] != "NULL" else "" for r in results
+    ]
     print(delimiter.join(values))
 
 
@@ -544,7 +602,7 @@ def main():
 
     # Return error code if any query returned NULL
     null_count = sum(1 for r in results if r["type"] == "NULL")
-    return 1 if null_count > 0 else 0
+    return 1 if null_count > 0 and not args.allow_missing else 0
 
 
 if __name__ == "__main__":

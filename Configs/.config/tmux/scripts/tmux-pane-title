@@ -2,8 +2,20 @@
 set -euo pipefail
 
 cmd="${1:-}"
+tty="${2:-}"
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+process_name_script="${script_dir}/tmux-process-name"
+
+if [[ -x "${process_name_script}" ]]; then
+  resolved_cmd="$("${process_name_script}" "${tty}" "${cmd}" 2>/dev/null || true)"
+  [[ -n "${resolved_cmd}" ]] && cmd="${resolved_cmd}"
+fi
 
 case "$cmd" in
+  codex | claude | anthropic | aider)
+    icon="󰚩"
+    label="$cmd"
+    ;;
   nvim | vim | vi | view)
     icon=""
     label="nvim"
@@ -11,6 +23,10 @@ case "$cmd" in
   zsh | bash | fish | sh)
     icon=""
     label="$cmd"
+    ;;
+  ssh:* | mosh:*)
+    icon="󰣀"
+    label="${cmd#*:}"
     ;;
   ssh | mosh)
     icon="󰣀"
@@ -28,11 +44,11 @@ case "$cmd" in
     icon="󰓅"
     label="$cmd"
     ;;
-  python | python3 | ipython)
+  pytest | python | python3 | ipython)
     icon=""
     label="$cmd"
     ;;
-  node | nodejs | npm | pnpm | yarn | bun)
+  node | nodejs | npm | pnpm | yarn | bun | vite | next | deno | astro | tsx)
     icon=""
     label="$cmd"
     ;;

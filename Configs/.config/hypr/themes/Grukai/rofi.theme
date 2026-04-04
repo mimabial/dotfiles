@@ -3,7 +3,7 @@ $HOME/.config/rofi/theme.rasi
     background:            #131311B3;
     background-alpha:    #13131159;
     foreground:            #FFFFCCE6;
-    border:                #362920E6;
+    border:                #5E4533E6;
     accent:                #525229E6;
     selected-background:   #F0CBAA80;
     selected-foreground:   #523C29E6;
