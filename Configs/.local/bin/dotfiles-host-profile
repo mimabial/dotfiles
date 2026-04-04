@@ -7,7 +7,7 @@ STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/hypr"
 STATE_FILE="${STATE_DIR}/host-profile"
 HOST_TARGETS=(
   ".config/hypr/monitors.conf"
-  ".config/hypr/nvidia.conf"
+  ".config/hypr/gpu.conf"
   ".config/waybar/modules/temperature.jsonc"
   ".local/state/hypr/env-overrides"
 )
@@ -107,6 +107,15 @@ apply_profile() {
   (( applied == 1 )) || printf 'No managed host files defined for %s\n' "${profile}"
 }
 
+ensure_empty_target() {
+  local dest="$1"
+  mkdir -p "$(dirname "${dest}")"
+  if [[ -d "${dest}" && ! -L "${dest}" ]]; then
+    rm -rf -- "${dest}"
+  fi
+  : >"${dest}"
+}
+
 apply_target() {
   local host_dir="$1"
   local rel="$2"
@@ -130,6 +139,20 @@ apply_target() {
       printf 'Changes for %s:\n%s\n' "${rel}" "${output}"
     else
       printf 'Unchanged: %s\n' "${rel}"
+    fi
+    return 0
+  fi
+
+  if [[ "${rel}" == ".config/hypr/gpu.conf" ]]; then
+    if $dry_run; then
+      if [[ -f "${dest}" && ! -s "${dest}" ]]; then
+        printf 'Unchanged: %s\n' "${rel}"
+      else
+        printf 'Changes for %s:\n>f+++++++++ %s\n' "${rel}" "${rel}"
+      fi
+    else
+      ensure_empty_target "${dest}"
+      printf 'Ensured empty fallback: %s\n' "${rel}"
     fi
     return 0
   fi

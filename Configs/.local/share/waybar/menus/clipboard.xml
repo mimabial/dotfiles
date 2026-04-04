@@ -12,6 +12,21 @@
             </object>
         </child>
         <child>
+            <object class="GtkMenuItem" id="image-history">
+                <property name="label">󰋩  Image History</property>
+            </object>
+        </child>
+        <child>
+            <object class="GtkMenuItem" id="ocr-latest-image">
+                <property name="label">󱉶  OCR Latest Image</property>
+            </object>
+        </child>
+        <child>
+            <object class="GtkMenuItem" id="qr-latest-image">
+                <property name="label">󰐎  QR Latest Image</property>
+            </object>
+        </child>
+        <child>
             <object class="GtkMenuItem" id="delete-history">
                 <property name="label">󰆴  Delete History</property>
             </object>

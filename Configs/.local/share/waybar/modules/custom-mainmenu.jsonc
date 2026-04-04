@@ -1,7 +1,7 @@
 {
   "custom/mainmenu": {
     "format": "",
-    "on-click": "hyprshell rofi/menu.sh",
+    "on-click": "hyprshell menutree.sh",
     "tooltip-format": "Main Menu\n• Appearance\n• Applications\n• Dev Tools\n• Install\n• Settings"
   }
 }

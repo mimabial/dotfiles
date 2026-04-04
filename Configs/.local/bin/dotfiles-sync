@@ -10,7 +10,7 @@ LIST_ONLY=false
 HOST_PROFILE_STATE_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/host-profile"
 HOST_TARGETS=(
   ".config/hypr/monitors.conf"
-  ".config/hypr/nvidia.conf"
+  ".config/hypr/gpu.conf"
   ".config/waybar/modules/temperature.jsonc"
   ".local/state/hypr/env-overrides"
 )
@@ -345,17 +345,36 @@ fi
 # Hyprland ecosystem
 copy_config "$HOME/.config/hypr" "$DOTFILES_DIR/.config/hypr" "hypr" \
   "monitors.conf" \
-  "nvidia.conf" \
+  "gpu.conf" \
+  "themes/colors.conf" \
+  "themes/theme.conf" \
+  "themes/wal.conf" \
+  "hyprlock/colors.conf" \
   "shaders/.compiled.cache.glsl"
 copy_config "$HOME/.config/waybar" "$DOTFILES_DIR/.config/waybar" "waybar" \
-  "modules/temperature.jsonc"
-copy_config "$HOME/.config/rofi" "$DOTFILES_DIR/.config/rofi" "rofi"
-copy_config "$HOME/.config/dunst" "$DOTFILES_DIR/.config/dunst" "dunst"
+  "modules/temperature.jsonc" \
+  "colors.css" \
+  "theme.generated.css" \
+  "includes/border-radius.css" \
+  "includes/font.css" \
+  "includes/global.css" \
+  "includes/includes.json"
+copy_config "$HOME/.config/rofi" "$DOTFILES_DIR/.config/rofi" "rofi" \
+  "colors.rasi" \
+  "theme.generated.rasi"
+copy_config "$HOME/.config/dunst" "$DOTFILES_DIR/.config/dunst" "dunst" \
+  "dunstrc" \
+  "theme.conf" \
+  "theme.generated.conf"
 copy_config "$HOME/.config/wlogout" "$DOTFILES_DIR/.config/wlogout" "wlogout"
 
 # Terminals
-copy_config "$HOME/.config/kitty" "$DOTFILES_DIR/.config/kitty" "kitty"
-copy_config "$HOME/.config/alacritty" "$DOTFILES_DIR/.config/alacritty" "alacritty"
+copy_config "$HOME/.config/kitty" "$DOTFILES_DIR/.config/kitty" "kitty" \
+  "colors.conf" \
+  "theme.generated.conf"
+copy_config "$HOME/.config/alacritty" "$DOTFILES_DIR/.config/alacritty" "alacritty" \
+  "colors.toml" \
+  "theme.generated.toml"
 
 # Shell
 copy_config "$HOME/.config/zsh" "$DOTFILES_DIR/.config/zsh" "zsh" \
@@ -366,18 +385,24 @@ copy_file "$HOME/.zshenv" "$DOTFILES_DIR/.zshenv" ".zshenv"
 # Theming
 copy_config "$HOME/.config/wal" "$DOTFILES_DIR/.config/wal" "wal"
 copy_config "$HOME/.config/Kvantum" "$DOTFILES_DIR/.config/Kvantum" "Kvantum"
-copy_config "$HOME/.config/gtk-3.0" "$DOTFILES_DIR/.config/gtk-3.0" "gtk-3.0"
+copy_config "$HOME/.config/gtk-3.0" "$DOTFILES_DIR/.config/gtk-3.0" "gtk-3.0" \
+  "colors.css"
 
 # Other apps
-copy_config "$HOME/.config/qt5ct" "$DOTFILES_DIR/.config/qt5ct" "qt5ct"
-copy_config "$HOME/.config/qt6ct" "$DOTFILES_DIR/.config/qt6ct" "qt6ct"
+copy_config "$HOME/.config/qt5ct" "$DOTFILES_DIR/.config/qt5ct" "qt5ct" \
+  "colors.conf"
+copy_config "$HOME/.config/qt6ct" "$DOTFILES_DIR/.config/qt6ct" "qt6ct" \
+  "colors.conf"
 copy_config "$HOME/.config/qutebrowser" "$DOTFILES_DIR/.config/qutebrowser" "qutebrowser"
 copy_config "$HOME/.config/nwg-look" "$DOTFILES_DIR/.config/nwg-look" "nwg-look"
 copy_config "$HOME/.config/menus" "$DOTFILES_DIR/.config/menus" "menus"
 copy_config "$HOME/.config/vim" "$DOTFILES_DIR/.config/vim" "vim" \
   ".netrwhist"
 copy_config "$HOME/.config/xsettingsd" "$DOTFILES_DIR/.config/xsettingsd" "xsettingsd"
-copy_config "$HOME/.config/rmpc" "$DOTFILES_DIR/.config/rmpc" "rmpc"
+copy_config "$HOME/.config/rmpc" "$DOTFILES_DIR/.config/rmpc" "rmpc" \
+  "themes/pywal16.ron" \
+  "themes/pywal16-big.ron" \
+  "themes/pywal16-small.ron"
 copy_config "$HOME/.config/systemd" "$DOTFILES_DIR/.config/systemd" "systemd"
 copy_config "$HOME/.config/uwsm" "$DOTFILES_DIR/.config/uwsm" "uwsm"
 copy_file "$HOME/.config/xdg-terminals.list" "$DOTFILES_DIR/.config/xdg-terminals.list" "xdg-terminals.list"
@@ -388,7 +413,10 @@ copy_file "$HOME/.config/satty/config.toml" "$DOTFILES_DIR/.config/satty/config.
 copy_file "$HOME/.config/mpd/mpd.conf" "$DOTFILES_DIR/.config/mpd/mpd.conf" "mpd/mpd.conf"
 copy_file "$HOME/.config/yt-dlp/config" "$DOTFILES_DIR/.config/yt-dlp/config" "yt-dlp/config"
 copy_file "$HOME/.config/bat/config" "$DOTFILES_DIR/.config/bat/config" "bat/config"
-copy_config "$HOME/.config/tmux" "$DOTFILES_DIR/.config/tmux" "tmux" "plugins/"
+copy_config "$HOME/.config/tmux" "$DOTFILES_DIR/.config/tmux" "tmux" \
+  "plugins/" \
+  "colors.conf" \
+  "theme.generated.conf"
 copy_config "$HOME/.config/starship.toml" "$DOTFILES_DIR/.config/starship.toml" "starship"
 copy_config "$HOME/.config/fastfetch" "$DOTFILES_DIR/.config/fastfetch" "fastfetch"
 copy_config "$HOME/.config/cava" "$DOTFILES_DIR/.config/cava" "cava"

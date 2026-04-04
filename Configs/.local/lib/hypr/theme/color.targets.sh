@@ -81,6 +81,21 @@ rewrite_if_changed() {
   mv -f "${source_file}" "${target_file}"
 }
 
+resolve_theme_target_path() {
+  local theme_basename="$1"
+  local target_path="$2"
+
+  case "${theme_basename}" in
+    rofi.theme) printf '%s\n' "${HOME}/.config/rofi/theme.generated.rasi" ;;
+    waybar.theme) printf '%s\n' "${HOME}/.config/waybar/theme.generated.css" ;;
+    kitty.theme) printf '%s\n' "${HOME}/.config/kitty/theme.generated.conf" ;;
+    alacritty.theme) printf '%s\n' "${HOME}/.config/alacritty/theme.generated.toml" ;;
+    tmux.theme) printf '%s\n' "${HOME}/.config/tmux/theme.generated.conf" ;;
+    dunst.theme) printf '%s\n' "${HOME}/.config/dunst/theme.generated.conf" ;;
+    *) printf '%s\n' "${target_path}" ;;
+  esac
+}
+
 apply_kitty_theme_font_override() {
   local target_file="$1"
   local theme_font=""
@@ -189,6 +204,8 @@ process_theme_files() {
     target_path="${target_path//\$XDG_DATA_HOME/${XDG_DATA_HOME:-$HOME/.local/share}}"
     target_path="${target_path//\$USER/$USER}"
 
+    target_path="$(resolve_theme_target_path "${theme_basename}" "${target_path}")"
+
     [ -z "${target_path}" ] && {
       print_log -sec "theme" -warn "skip" "no target path in $(basename "${theme_file}")"
       continue
@@ -249,16 +266,14 @@ write_theme_stub_file() {
 apply_wallpaper_mode_theme_fallbacks() {
   print_log -sec "theme" -stat "cleanup" "clearing theme files (wallpaper mode)"
 
-  clear_theme_file "${HOME}/.config/waybar/theme.css"
-  clear_theme_file "${HOME}/.config/kitty/theme.conf"
-  write_theme_stub_file "${HOME}/.config/alacritty/theme.toml" "# Empty theme file
+  clear_theme_file "${HOME}/.config/waybar/theme.generated.css"
+  clear_theme_file "${HOME}/.config/kitty/theme.generated.conf"
+  write_theme_stub_file "${HOME}/.config/alacritty/theme.generated.toml" "# Empty theme file
 "
-  clear_theme_file "${HOME}/.config/dunst/theme.conf"
+  clear_theme_file "${HOME}/.config/dunst/theme.generated.conf"
   bash "${LIB_DIR}/hypr/wal/wal.dunst.sh" >/dev/null 2>&1 || true
-  write_theme_stub_file "${HOME}/.config/rofi/theme.rasi" '/* Wallpaper mode (auto/dark/light): use pywal16 colors */
-@import "~/.config/rofi/colors.rasi"
-'
-  clear_theme_file "${HOME}/.config/tmux/theme.conf"
+  clear_theme_file "${HOME}/.config/rofi/theme.generated.rasi"
+  clear_theme_file "${HOME}/.config/tmux/theme.generated.conf"
 
   pkill -SIGUSR1 kitty 2>/dev/null || true
   tmux source-file "${XDG_CONFIG_HOME:-$HOME/.config}/tmux/tmux.conf" 2>/dev/null || true

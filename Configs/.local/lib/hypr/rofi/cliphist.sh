@@ -5,6 +5,7 @@ pkill -u "$USER" rofi && exit 0
 source "$(command -v hyprshell)" || exit 1
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 # define paths and files
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}"
@@ -13,6 +14,20 @@ favorites_file="${cache_dir}/landing/cliphist_favorites"
 cliphist_style="${ROFI_CLIPHIST_STYLE:-clipboard}"
 cliphist_style="$(rofi_resolve_theme "${cliphist_style}")"
 del_mode=false
+
+latest_image_history_entry() {
+  local line=""
+
+  while IFS= read -r line; do
+    [[ "${line}" =~ ^[0-9]+[[:space:]]+\<meta[[:space:]]http-equiv= ]] && continue
+    if [[ "${line}" =~ ^[0-9]+[[:space:]]+(\[\[[[:space:]])?binary.*(jpg|jpeg|png|bmp) ]]; then
+      printf '%s\n' "${line}"
+      return 0
+    fi
+  done < <(cliphist list)
+
+  return 1
+}
 
 # process clipboard selections for multi-select mode
 process_selections() {
@@ -166,7 +181,7 @@ show_history() {
     echo -e ":f:a:v:\t📌 Favorites"
     echo -e ":o:p:t:\t⚙️ Options"
     cliphist list
-  ) | run_rofi " 📜 History..." -i -display-columns 2 -selected-row 2)
+  ) | run_rofi " 📜 History" -i -display-columns 2 -selected-row 2)
 
   [ -n "${selected_item}" ] || exit 0
 
@@ -176,6 +191,40 @@ show_history() {
     printf '%s\t' "${selected_item}" | cliphist delete
   else
     # binary content - handled by check_content
+    paste_string "${@}"
+    exit 0
+  fi
+}
+
+show_image_history() {
+  local selected_item=""
+  local image_rows=""
+
+  if ! image_rows="$(python3 "${script_dir}/cliphist.image.py")" || [[ -z "${image_rows}" ]]; then
+    dunstify -t 3000 -i "dialog-information" "No images in clipboard history."
+    return
+  fi
+
+  selected_item="$(
+    printf '%s\n' "${image_rows}" \
+      | run_rofi " 🏞️ Image History..." \
+        -display-columns 2 \
+        -show-icons \
+        -eh 3 \
+        -theme-str 'listview { lines: 4; columns: 2; }' \
+        -theme-str 'element { enabled: true; orientation: vertical; spacing: 0%; padding: 0%; cursor: pointer; background-color: transparent; text-color: @main-fg; horizontal-align: 0.5; }' \
+        -theme-str 'element-text { enabled: false; }' \
+        -theme-str 'element-icon { size: 8%; spacing: 0%; padding: 0%; cursor: inherit; background-color: transparent; }' \
+        -theme-str 'element selected.normal { background-color: @select-bg; text-color: @select-fg; }'
+  )"
+
+  [[ -n "${selected_item}" ]] || exit 0
+
+  if printf '%s\n' "${selected_item}" | check_content; then
+    process_selections <<<"${selected_item}" | wl-copy
+    paste_string "${@}"
+    printf '%s\t' "${selected_item}" | cliphist delete
+  else
     paste_string "${@}"
     exit 0
   fi
@@ -375,6 +424,130 @@ clear_history() {
   fi
 }
 
+ocr_latest_image() {
+  local runtime_dir="${XDG_RUNTIME_DIR:-/tmp}/hypr"
+  local image_line=""
+  local image_path=""
+  local tesseract_output=""
+  local tesseract_package_prefix="tesseract-data-"
+  local tesseract_languages_prepared=""
+  local tesseract_languages_body="Languages used"
+  local pkg=""
+  local language=""
+  local -a tesseract_default_language=("eng")
+  local -a tesseract_languages=("${SCREENSHOT_OCR_TESSERACT_LANGUAGES[@]:-${tesseract_default_language[@]}}")
+  local -a tesseract_packages=()
+
+  image_line="$(latest_image_history_entry)" || {
+    dunstify -t 3000 -i "dialog-error" "OCR Error" "No images in clipboard history."
+    return 1
+  }
+
+  tesseract_packages=("${tesseract_languages[@]/#/${tesseract_package_prefix}}")
+  tesseract_packages+=("tesseract" "tesseract-data-osd")
+  for pkg in "${tesseract_packages[@]}"; do
+    if ! pkg_installed "${pkg}"; then
+      dunstify -t 5000 -i "dialog-error" "OCR Error" "Required package is not installed: ${pkg}"
+      return 1
+    fi
+  done
+
+  mkdir -p "${runtime_dir}"
+  image_path="$(mktemp "${runtime_dir}/cliphist-ocr.XXXXXX.png")" || {
+    dunstify -t 3000 -i "dialog-error" "OCR Error" "Failed to create a temporary image path."
+    return 1
+  }
+
+  if ! cliphist decode <<<"${image_line}" >"${image_path}"; then
+    rm -f "${image_path}"
+    dunstify -t 3000 -i "dialog-error" "OCR Error" "Failed to decode the latest clipboard image."
+    return 1
+  fi
+
+  if pkg_installed imagemagick; then
+    magick "${image_path}" \
+      -colorspace gray \
+      -contrast-stretch 0 \
+      -level 15%,85% \
+      -resize 400% \
+      -sharpen 0x1 \
+      -auto-threshold triangle \
+      -morphology close diamond:1 \
+      -deskew 40% \
+      "${image_path}"
+  fi
+
+  tesseract_languages+=("osd")
+  tesseract_languages_prepared=$(
+    IFS=+
+    printf '%s' "${tesseract_languages[*]}"
+  )
+  for language in "${tesseract_languages[@]}"; do
+    tesseract_languages_body+=$'\n '"${language}"
+  done
+
+  tesseract_output="$(
+    tesseract \
+      --psm 6 \
+      --oem 3 \
+      -l "${tesseract_languages_prepared}" \
+      "${image_path}" \
+      stdout \
+      2>/dev/null
+  )"
+  printf '%s' "${tesseract_output}" | wl-copy
+  dunstify -t 5000 -i "${image_path}" "OCR" "${#tesseract_output} symbols recognized\n${tesseract_languages_body}"
+  rm -f "${image_path}"
+}
+
+qr_latest_image() {
+  local runtime_dir="${XDG_RUNTIME_DIR:-/tmp}/hypr"
+  local image_line=""
+  local image_path=""
+  local qr_output=""
+
+  image_line="$(latest_image_history_entry)" || {
+    dunstify -t 3000 -i "dialog-error" "QR Error" "No images in clipboard history."
+    return 1
+  }
+
+  if ! command -v zbarimg >/dev/null 2>&1; then
+    dunstify -t 5000 -i "dialog-error" "QR Error" "zbarimg is not installed."
+    return 1
+  fi
+
+  mkdir -p "${runtime_dir}"
+  image_path="$(mktemp "${runtime_dir}/cliphist-qr.XXXXXX.png")" || {
+    dunstify -t 3000 -i "dialog-error" "QR Error" "Failed to create a temporary image path."
+    return 1
+  }
+
+  if ! cliphist decode <<<"${image_line}" >"${image_path}"; then
+    rm -f "${image_path}"
+    dunstify -t 3000 -i "dialog-error" "QR Error" "Failed to decode the latest clipboard image."
+    return 1
+  fi
+
+  qr_output="$(
+    zbarimg \
+      --quiet \
+      --oneshot \
+      --raw \
+      "${image_path}" \
+      2>/dev/null
+  )"
+
+  if [[ -z "${qr_output}" ]]; then
+    rm -f "${image_path}"
+    dunstify -t 3000 -i "dialog-error" "QR Error" "No QR code recognized."
+    return 1
+  fi
+
+  printf '%s' "${qr_output}" | wl-copy
+  dunstify -t 5000 -i "${image_path}" "QR" "Successfully recognized and copied to clipboard."
+  rm -f "${image_path}"
+}
+
 # show help message
 show_help() {
   local exit_code="${1:-0}"
@@ -382,8 +555,11 @@ show_help() {
 Options:
   -c  | --copy | History            Show clipboard history and copy selected item
   -d  | --delete | Delete           Delete selected item from clipboard history
+  -i  | --image-history             Show clipboard image history
   -f  | --favorites| View Favorites              View favorite clipboard items
   -mf | -manage-fav | Manage Favorites  Manage favorite clipboard items
+  -sc | --scan-image                OCR the latest clipboard image and copy text
+  -qr | --scan-qr                   Decode the latest clipboard QR image and copy text
   -w  | --wipe | Clear History      Clear clipboard history
   -h  | --help | Help               Display this help message
 
@@ -399,7 +575,7 @@ main() {
   local main_action
   # show main menu if no arguments are passed
   if [ $# -eq 0 ]; then
-    main_action=$(echo -e "History\nDelete\nView Favorites\nManage Favorites\nClear History" \
+    main_action=$(echo -e "History\nImage History\nOCR Latest Image\nQR Latest Image\nDelete\nView Favorites\nManage Favorites\nClear History" \
       | run_rofi "🔎 Choose action")
   else
     main_action="$1"
@@ -409,6 +585,15 @@ main() {
   case "${main_action}" in
     -c | --copy | "History")
       show_history "$@"
+      ;;
+    -i | --image-history | "Image History")
+      show_image_history "$@"
+      ;;
+    -sc | --scan-image | "OCR Latest Image")
+      ocr_latest_image
+      ;;
+    -qr | --scan-qr | "QR Latest Image")
+      qr_latest_image
       ;;
     -d | --delete | "Delete")
       delete_items

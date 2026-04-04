@@ -1,6 +1,6 @@
 {
     "label": "lock",
-    "action": "lockscreen.sh",
+    "action": "hyprshell lock-screen.sh",
     "text": "Lock",
     "keybind": "l"
 }

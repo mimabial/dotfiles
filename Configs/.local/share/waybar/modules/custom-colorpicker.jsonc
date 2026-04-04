@@ -4,8 +4,8 @@
     "format": "{}",
     "return-type": "json",
     "interval": "once",
-    "exec": "hyprshell colorpicker -j",
-    "on-click": "sleep 1 && hyprshell colorpicker",
+    "exec": "hyprshell color-picker.sh -j",
+    "on-click": "sleep 1 && hyprshell color-picker.sh",
     "signal": 1
   }
 }

@@ -341,7 +341,11 @@ print_prompt -g "\n[exec] " "restore_cfg.sh \"${Theme_Dir}/restore_cfg.lst\" \"$
 "${scrDir}/restore_cfg.sh" "${Theme_Dir}/restore_cfg.lst" "${Theme_Dir}/Configs" "${Fav_Theme}" &>/dev/null
 if [ "${3}" != "--skipcaching" ]; then
     "$HOME/.local/lib/hypr/swwwallcache.sh" -t "${Fav_Theme}"
-    "$HOME/.local/lib/hypr/theme.switch.sh"
+    if command -v hyprshell >/dev/null 2>&1; then
+        hyprshell theme.switch.sh
+    else
+        "$HOME/.local/lib/hypr/theme/theme.switch.sh"
+    fi
 fi
 
 print_prompt -y "\nNote: Warnings are not errors. Review the output to check if it concerns you."

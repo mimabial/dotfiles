@@ -35,20 +35,21 @@ y_mon=$(hyprctl -j monitors | jq '.[] | select(.focused==true) | .height')
 hypr_scale=$(hyprctl -j monitors | jq '.[] | select(.focused == true) | (.scale * 10 | round)')
 [[ "${hypr_scale}" =~ ^[0-9]+$ ]] || hypr_scale=10
 (( hypr_scale > 0 )) || hypr_scale=10
+scale_divisor=$((hypr_scale * 10))
 #// scale config layout and style
 
 case "${wlogout_style}" in
   1)
     wl_columns=6
-    export mgn=$((y_mon * 28 / hypr_scale))
-    export hvr=$((y_mon * 23 / hypr_scale))
+    export mgn=$((y_mon * 28 / scale_divisor))
+    export hvr=$((y_mon * 23 / scale_divisor))
     ;;
   2)
     wl_columns=2
-    export x_mgn=$((x_mon * 35 / hypr_scale))
-    export y_mgn=$((y_mon * 25 / hypr_scale))
-    export x_hvr=$((x_mon * 32 / hypr_scale))
-    export y_hvr=$((y_mon * 20 / hypr_scale))
+    export x_mgn=$((x_mon * 35 / scale_divisor))
+    export y_mgn=$((y_mon * 25 / scale_divisor))
+    export x_hvr=$((x_mon * 32 / scale_divisor))
+    export y_hvr=$((y_mon * 20 / scale_divisor))
     ;;
 esac
 

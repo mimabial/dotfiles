@@ -1,13 +1,14 @@
 {
-  "pulseaudio#microphone": {
-    "format": "{format_source}",
-    "format-source": "",
-    "format-source-muted": "",
+  "custom/microphone": {
+    "format": "{}",
+    "exec": "hyprshell waybar.mic.sh",
+    "return-type": "json",
     "on-click": "hyprshell volume-control -i m",
     "on-click-right": "pavucontrol -t 4",
     "on-scroll-up": "hyprshell volume-control -i i",
     "on-scroll-down": "hyprshell volume-control -i d",
-    "tooltip-format": "{volume}% {format_source} | {desc}",
-    "scroll-step": 5
+    "tooltip": true,
+    "interval": 5,
+    "signal": 18
   }
 }

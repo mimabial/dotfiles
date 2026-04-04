@@ -112,10 +112,13 @@ generate_conf() {
   local path="${1:-${HYPRLOCK_SHARED_DIR}/default.conf}"
   local target_file="${2:-${HYPR_CONFIG_HOME}/hyprlock.conf}"
   local hyprlock_conf="${HYPR_DATA_HOME:-${XDG_DATA_HOME}/hypr}/hyprlock.conf"
+  local colors_conf="${HYPR_CONFIG_HOME}/hyprlock/colors.conf"
   local layout_path
+  local colors_path
   local source_conf
 
   layout_path="$(hypr_compact_path "${path}")"
+  colors_path="$(hypr_compact_path "${colors_conf}")"
   source_conf="$(hypr_compact_path "${hyprlock_conf}")"
 
   cat <<CONF >"${target_file}"
@@ -125,6 +128,7 @@ generate_conf() {
 $(hyprlock_managed_conf_comments)
 
 \$LAYOUT_PATH=${layout_path}
+source = ${colors_path}
 source = ${source_conf}
 CONF
 }

@@ -2,6 +2,6 @@
   "hyprland/language": {
     "justify": "center",
     "format": "{short}",
-    "on-click": "hyprshell keyboardswitch"
+    "on-click": "hyprshell keyboard-switch.sh"
   }
 }

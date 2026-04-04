@@ -1,6 +1,6 @@
 {
     "label": "lock",
-    "action": "lockscreen.sh",
+    "action": "hyprshell lock-screen.sh",
     "text": "Lock",
     "keybind": "l"
 }
@@ -14,7 +14,7 @@
 
 {
     "label": "suspend",
-    "action": "lockscreen.sh & disown && systemctl suspend",
+    "action": "hyprshell lock-screen.sh & systemctl suspend",
     "text": "Suspend",
     "keybind": "u"
 }

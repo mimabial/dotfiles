@@ -21,7 +21,7 @@
       "waybar-style-select": "hyprshell waybar --select-style",
       "waybar-layout-next": "hyprshell waybar --update --next",
       "waybar-layout-previous": "hyprshell waybar --update --prev",
-      "lockscreen-select": "hyprshell lockscreen --select",
+      "lockscreen-select": "hyprshell hyprlock.sh --select",
       "workflows-select": "hyprshell workflows --select;pkill -RTMIN+19 waybar",
       "shaders-select": "hyprshell shaders --select;pkill -RTMIN+19 waybar",
       "keybinds-hint": "hyprshell keybinds_hint",

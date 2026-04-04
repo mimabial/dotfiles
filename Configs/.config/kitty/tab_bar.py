@@ -82,7 +82,7 @@ except ImportError:
 ICON = " 󱚠 TERM "
 RIGHT_MARGIN = 1
 
-THEME_CONFIG_PATH = Path.home() / ".config" / "kitty" / "theme.conf"
+THEME_CONFIG_PATH = Path.home() / ".config" / "kitty" / "theme.generated.conf"
 COLORS_CONFIG_PATH = Path.home() / ".config" / "kitty" / "colors.conf"
 
 # Track file modification time
@@ -104,11 +104,11 @@ FALLBACK_COLORS = {
 
 
 def load_theme_colors():
-    """Load colors from kitty theme.conf file with fallback to colors.conf and defaults."""
+    """Load colors from kitty's generated theme file with fallback to colors.conf and defaults."""
     colors = FALLBACK_COLORS.copy()
     theme_colors = {}
 
-    # Try loading from theme.conf first
+    # Try loading from the generated theme file first
     if THEME_CONFIG_PATH.exists() and THEME_CONFIG_PATH.stat().st_size > 0:
         try:
             with open(THEME_CONFIG_PATH, "r") as f:
@@ -121,7 +121,7 @@ def load_theme_colors():
         except (OSError, ValueError):
             pass
 
-    # Fallback to colors.conf if theme.conf is empty or missing colors
+    # Fallback to colors.conf if the generated theme file is empty or missing colors
     if not theme_colors and COLORS_CONFIG_PATH.exists():
         try:
             with open(COLORS_CONFIG_PATH, "r") as f:
@@ -183,7 +183,7 @@ active_tab_bg = as_rgb(hex_to_rgb_int(_colors["active_tab_bg"]))  # type: ignore
 
 
 def refresh_colors():
-    """Refresh colors from kitty theme or pywal16 colors if the source files changed."""
+    """Refresh colors from kitty's generated theme or pywal16 colors if the source files changed."""
     global \
         icon_fg, \
         icon_bg, \

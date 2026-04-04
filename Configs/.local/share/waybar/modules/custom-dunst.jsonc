@@ -11,14 +11,6 @@
     "on-click": "dunstctl set-paused toggle",
     "on-click-right": "sh -c 'dunstctl history-clear; dunstctl close-all'",
     "escape": true,
-    "menu": "on-click-middle",
-    "menu-file": "$XDG_DATA_HOME/waybar/menus/dunst.xml",
-    "menu-actions": {
-      "show": "dunstctl history-pop",
-      "toggle-dnd": "dunstctl set-paused toggle",
-      "clear": "sh -c 'dunstctl history-clear; dunstctl close-all'",
-      "close-all": "dunstctl close-all"
-    },
     "format-icons": {
       "notification": "\udb80\udf6a",
       "dnd-notification": "\udb84\udd75",

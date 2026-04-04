@@ -246,8 +246,8 @@ prepare_action_values() {
   }
 
   case "${options_ref[action]}" in
-    set) resolve_set_action options_ref state_ref ;;
-    increase|decrease) resolve_step_action options_ref ;;
+    set) resolve_set_action "${!options_ref}" "${!state_ref}" ;;
+    increase|decrease) resolve_step_action "${!options_ref}" ;;
   esac
 }
 
@@ -257,10 +257,10 @@ apply_action_to_state() {
 
   case "${options_ref[action]}" in
     increase)
-      apply_signed_step options_ref state_ref 1
+      apply_signed_step "${!options_ref}" "${!state_ref}" 1
       ;;
     decrease)
-      apply_signed_step options_ref state_ref -1
+      apply_signed_step "${!options_ref}" "${!state_ref}" -1
       ;;
     set)
       if [ "${options_ref[color_mode]}" = "gamma" ]; then
@@ -277,7 +277,7 @@ apply_action_to_state() {
       ;;
   esac
 
-  write_sunset_state state_ref
+  write_sunset_state "${!state_ref}"
 }
 
 notification_title() {
@@ -286,11 +286,7 @@ notification_title() {
 
   case "${options_ref[action]}" in
     toggle)
-      if [ "${state_ref[enabled]}" -eq 1 ]; then
-        printf '%s' 'Hyprsunset: ON'
-      else
-        printf '%s' 'Hyprsunset: OFF'
-      fi
+      printf '%s' 'Hyprsunset'
       ;;
     *)
       if [ -n "${state_ref[new_temp]}" ]; then
@@ -308,8 +304,10 @@ notification_message() {
 
   case "${options_ref[action]}" in
     toggle)
-      if [ "${state_ref[enabled]}" -eq 0 ]; then
-        printf '%s' ''
+      if [ "${state_ref[enabled]}" -eq 1 ]; then
+        printf '%s' 'ON'
+      else
+        printf '%s' 'OFF'
       fi
       ;;
     *)
@@ -325,20 +323,23 @@ notification_message() {
 send_notification() {
   local -n options_ref="$1"
   local -n state_ref="$2"
-  local title message
+  local title message icon_name
   local -a notify_args
 
-  title="$(notification_title options_ref state_ref)"
-  message="$(notification_message options_ref state_ref)"
+  title="$(notification_title "${!options_ref}" "${!state_ref}")"
+  message="$(notification_message "${!options_ref}" "${!state_ref}")"
   [ -n "${title}" ] || return 0
 
-  notify_args=(-a "hyprsunset" -r 19 -t 800 -i redshift)
-  if [ -n "${message}" ]; then
-    notify_args+=("${message}")
+  if [ "${state_ref[enabled]}" -eq 1 ]; then
+    icon_name="redshift-status-on"
+  else
+    icon_name="redshift-status-off"
   fi
-  notify_args+=("${title}")
 
-  dunstify "${notify_args[@]}"
+  notify_args=(-a "hyprsunset" -r 19 -t 800 -i "${icon_name}" "${title}")
+  [ -n "${message}" ] && notify_args+=("${message}")
+
+  notify_send_safe "${notify_args[@]}"
 }
 
 parse_signal_target() {
@@ -438,15 +439,15 @@ sync_runtime_state() {
   local -n options_ref="$1"
   local -n state_ref="$2"
 
-  runtime_sync_needed options_ref state_ref || return 0
+  runtime_sync_needed "${!options_ref}" "${!state_ref}" || return 0
   ensure_hyprsunset_process
 
   if [ "${options_ref[action]}" = "read" ]; then
-    sync_runtime_for_read state_ref
+    sync_runtime_for_read "${!state_ref}"
     return 0
   fi
 
-  sync_runtime_for_write options_ref state_ref
+  sync_runtime_for_write "${!options_ref}" "${!state_ref}"
 }
 
 render_threshold_color() {

@@ -9,6 +9,9 @@
     "menu-actions": {
       "favorites": "hyprshell cliphist --favorites",
       "history": "hyprshell cliphist --copy",
+      "image-history": "hyprshell cliphist --image-history",
+      "ocr-latest-image": "hyprshell cliphist --scan-image",
+      "qr-latest-image": "hyprshell cliphist --scan-qr",
       "delete-history": "hyprshell cliphist --delete",
       "manage-favorites": "hyprshell cliphist 'Manage Favorites'",
       "clear-history": "hyprshell cliphist --wipe",

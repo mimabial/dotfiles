@@ -232,11 +232,8 @@ resolve_named_color_rgb() {
   local r_name="$3"
   local g_name="$4"
   local b_name="$5"
-  local -n r_ref="${r_name}"
-  local -n g_ref="${g_name}"
-  local -n b_ref="${b_name}"
 
-  if ! hex_triplet_to_rgb_components "${hex_value}" r_ref g_ref b_ref; then
+  if ! hex_triplet_to_rgb_components "${hex_value}" "${r_name}" "${g_name}" "${b_name}"; then
     print_log -sec "pywal16" -warn "colors" "invalid ${color_name} in colors-shell.sh"
   fi
 }

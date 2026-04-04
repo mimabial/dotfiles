@@ -12,8 +12,8 @@
       "",
       ""
     ],
-    "on-scroll-down": "hyprshell brightnesscontrol.sh d",
-    "on-scroll-up": "hyprshell brightnesscontrol.sh i",
+    "on-scroll-down": "hyprshell brightness-control.sh d",
+    "on-scroll-up": "hyprshell brightness-control.sh i",
     "smooth-scrolling-threshold": 1,
     "tooltip": false,
     "tooltip-format": "Brightness: {percent}% "
@@ -32,8 +32,8 @@
       "",
       ""
     ],
-    "on-scroll-down": "hyprshell brightnesscontrol.sh d",
-    "on-scroll-up": "hyprshell brightnesscontrol.sh i",
+    "on-scroll-down": "hyprshell brightness-control.sh d",
+    "on-scroll-up": "hyprshell brightness-control.sh i",
     "smooth-scrolling-threshold": 1,
     "tooltip": true,
     "tooltip-format": "Backlight level: {icon} {percent}%\nUsing: intel_backlight"

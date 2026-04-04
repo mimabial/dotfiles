@@ -48,7 +48,7 @@ require_commands() {
   done
 }
 
-require_commands wpctl pw-dump jq dunstify
+require_commands wpctl pw-dump jq dunstify pactl
 
 get_default_sink() {
   wpctl inspect @DEFAULT_AUDIO_SINK@ 2>/dev/null |
@@ -57,9 +57,19 @@ get_default_sink() {
 }
 
 get_default_source() {
-  wpctl inspect @DEFAULT_AUDIO_SOURCE@ 2>/dev/null |
-    grep -oP 'node.description = "\K[^"]+' |
-    head -1
+  get_default_source_target
+}
+
+get_default_source_target() {
+  local default_source=""
+
+  default_source="$(pactl info 2>/dev/null | sed -n 's/^Default Source: //p' | head -1)"
+  if [[ -n "${default_source}" && "${default_source}" != *.monitor ]]; then
+    printf '%s\n' "${default_source}"
+    return 0
+  fi
+
+  pactl list short sources 2>/dev/null | awk '$2 !~ /\.monitor$/ {print $2; exit}'
 }
 
 get_default_sink_id() {
@@ -88,6 +98,20 @@ target_volume_pct() {
 target_is_muted() {
   local tgt="$1"
   wpctl get-volume "${tgt}" 2>/dev/null | grep -q "MUTED"
+}
+
+source_volume_pct() {
+  local tgt="$1"
+  pactl get-source-volume "${tgt}" 2>/dev/null | grep -o '[0-9]\+%' | head -1 | tr -d '%'
+}
+
+source_is_muted() {
+  local tgt="$1"
+  [[ "$(pactl get-source-mute "${tgt}" 2>/dev/null | awk '{print $2}')" == "yes" ]]
+}
+
+refresh_waybar_mic() {
+  pkill -RTMIN+18 waybar >/dev/null 2>&1 || true
 }
 
 notify_vol() {
@@ -182,7 +206,7 @@ change_volume() {
   [[ "${action}" == "i" ]] && delta="+"
 
   case "${device}" in
-    sink|source)
+    sink)
       if is_true "${is_volume_boost}"; then
         boost_limit_decimal="$(awk -v limit="${VOLUME_BOOST_LIMIT:-150}" 'BEGIN { print limit / 100 }')"
         wpctl set-volume -l "${boost_limit_decimal}" "${target}" "${step}%${delta}"
@@ -191,6 +215,13 @@ change_volume() {
       fi
       vol="$(target_volume_pct "${target}")"
       notify_vol "${vol}"
+      ;;
+    source)
+      [[ -n "${target}" ]] || return 0
+      pactl set-source-volume "${target}" "${delta}${step}%"
+      vol="$(source_volume_pct "${target}")"
+      notify_vol "${vol}"
+      refresh_waybar_mic
       ;;
     player)
       playerctl_cmd volume "$(awk -v s="${step}" 'BEGIN { print s / 100 }')${delta}"
@@ -203,12 +234,21 @@ change_volume() {
 toggle_mute() {
   local muted="false"
   case "${device}" in
-    sink|source)
+    sink)
       wpctl set-mute "${target}" toggle
       if target_is_muted "${target}"; then
         muted="true"
       fi
       notify_mute "${muted}"
+      ;;
+    source)
+      [[ -n "${target}" ]] || return 0
+      pactl set-source-mute "${target}" toggle
+      if source_is_muted "${target}"; then
+        muted="true"
+      fi
+      notify_mute "${muted}"
+      refresh_waybar_mic
       ;;
     player)
       local volume_file current_volume
@@ -234,8 +274,8 @@ while getopts "iop:stq" opt; do
   case "${opt}" in
     i)
       device="source"
-      target="@DEFAULT_AUDIO_SOURCE@"
-      nsink="$(get_default_source)"
+      target="$(get_default_source_target || true)"
+      nsink="${target:-No microphone}"
       ;;
     o)
       device="sink"

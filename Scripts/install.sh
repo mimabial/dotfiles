@@ -246,8 +246,13 @@ EOF
   if [ "${flg_DryRun}" -ne 1 ]; then
     export PATH="$HOME/.local/lib/hypr:$HOME/.local/bin:${PATH}"
     "$HOME/.local/lib/hypr/swwwallcache.sh" -t ""
-    "$HOME/.local/lib/hypr/theme.switch.sh" -q || true
-    "$HOME/.local/lib/hypr/waybar.py" --update || true
+    if command -v hyprshell >/dev/null 2>&1; then
+      hyprshell theme.switch.sh -q || true
+      hyprshell waybar.py --update || true
+    else
+      "$HOME/.local/lib/hypr/theme/theme.switch.sh" -q || true
+      "$HOME/.local/lib/hypr/waybar/waybar.py" --update || true
+    fi
     echo "[install] reload :: Hyprland"
   fi
 

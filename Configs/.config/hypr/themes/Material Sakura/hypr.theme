@@ -53,5 +53,3 @@ decoration {
         xray = false
     }
 }
-
-layerrule = unset,waybar

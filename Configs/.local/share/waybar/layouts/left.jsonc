@@ -93,7 +93,7 @@
       "transition-duration": 500,
       "transition-left-to-right": false
     },
-    "modules": ["pulseaudio", "pulseaudio#microphone", "pulseaudio/slider"]
+    "modules": ["pulseaudio", "custom/microphone", "pulseaudio/slider"]
   },
   "group/eyecare": {
     "orientation": "inherit",
@@ -101,7 +101,7 @@
       "transition-duration": 500,
       "transition-left-to-right": false
     },
-    "modules": ["backlight", "custom/hyprsunset", "backlight/slider"]
+    "modules": ["backlight#intel_backlight", "custom/hyprsunset", "backlight/slider"]
   },
   "group/notification": {
     "orientation": "inherit",
