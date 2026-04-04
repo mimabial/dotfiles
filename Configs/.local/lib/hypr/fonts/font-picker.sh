@@ -6,15 +6,18 @@ set -euo pipefail
 
 source "$(command -v hyprshell)" || exit 1
 
-if ! command -v hyprshell >/dev/null 2>&1; then
-  echo "❌ 'hyprshell' is required but not found."
-  exit 1
-fi
+require_command() {
+  local command_name="$1"
+  local message="$2"
 
-if ! command -v rofi >/dev/null 2>&1; then
-  echo "❌ 'rofi' is required but not installed."
-  exit 1
-fi
+  if ! command -v "${command_name}" >/dev/null 2>&1; then
+    echo "❌ ${message}"
+    exit 1
+  fi
+}
+
+require_command hyprshell "'hyprshell' is required but not found."
+require_command rofi "'rofi' is required but not installed."
 
 if [[ ! -x "${HOME}/.local/lib/hypr/fonts/font-set.sh" ]] || [[ ! -x "${HOME}/.local/lib/hypr/fonts/font-list.sh" ]]; then
   echo "❌ 'fonts/font-set.sh' and 'fonts/font-list.sh' are required but not found."

@@ -15,10 +15,6 @@ has_vpn_client=false
 wireguard_globs=(wg* mullvad*)
 openvpn_ifaces=(tun0)
 
-check() {
-  command -v "$1" >/dev/null 2>&1
-}
-
 emit_state() {
   local class="$1"
   local text="$2"
@@ -31,7 +27,7 @@ EOF
 }
 
 require_jq() {
-  check jq || emit_state "error" "󰩠" "Error: jq is not installed"
+  waybar_have_command jq || emit_state "error" "󰩠" "Error: jq is not installed"
 }
 
 load_ipinfo_token() {
@@ -72,22 +68,20 @@ check_mullvad() {
   local ipv4=""
 
   [[ "${vpn_provider}" == auto || "${vpn_provider}" == mullvad ]] || return 1
-  check mullvad || return 1
+  waybar_have_command mullvad || return 1
 
   has_vpn_client=true
-  mullvad_status="$(mullvad status 2>&1)"
-
-  if [[ $? -ne 0 ]]; then
+  if ! mullvad_status="$(waybar_mullvad_status)"; then
     vpn_state="error"
     vpn_info="<b>Mullvad VPN Error</b>\nFailed to get status\n${mullvad_status}"
     return 0
   fi
 
-  mullvad_status_line="$(awk 'NR == 1 { sub(/^[[:space:]]+/, "", $0); print tolower($0); exit }' <<<"${mullvad_status}")"
+  mullvad_status_line="$(waybar_mullvad_status_line "${mullvad_status}")"
 
   if [[ "${mullvad_status_line}" == connected* ]]; then
-    relay="$(awk -F': *' '/^[[:space:]]*Relay:/ { print $2; exit }' <<<"${mullvad_status}")"
-    location="$(sed -nE 's/^[[:space:]]*Visible location:[[:space:]]*(.+)\. IPv4:.*/\1/p' <<<"${mullvad_status}" | head -n1)"
+    relay="$(waybar_mullvad_relay "${mullvad_status}")"
+    location="$(waybar_mullvad_location "${mullvad_status}")"
     ipv4="$(awk '
       /^[[:space:]]*Visible location:/ {
         for (i = 1; i <= NF; i++) {
@@ -142,7 +136,7 @@ check_wireguard() {
       [[ -d "$iface" ]] || continue
       has_vpn_client=true
       vpn_state="connected"
-      if [[ "${allow_auto_geolocation}" == true ]] && check curl; then
+      if [[ "${allow_auto_geolocation}" == true ]] && waybar_have_command curl; then
         gip_data="$(fetch_ipinfo)"
       fi
       if [[ -n "$gip_data" ]]; then
@@ -168,7 +162,7 @@ check_openvpn() {
     [[ -d "/proc/sys/net/ipv4/conf/${iface_name}" ]] || continue
     has_vpn_client=true
     vpn_state="connected"
-    if [[ "${allow_auto_geolocation}" == true ]] && check curl; then
+    if [[ "${allow_auto_geolocation}" == true ]] && waybar_have_command curl; then
       gip_data="$(fetch_ipinfo)"
     fi
     if [[ -n "$gip_data" ]]; then

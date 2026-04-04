@@ -70,6 +70,24 @@ stop_hypridle() {
 
 last_mode=""
 
+apply_mode_transition() {
+  case "$1" in
+    inhibit) stop_hypridle ;;
+    idle) start_hypridle ;;
+  esac
+}
+
+enforce_mode_state() {
+  case "$1" in
+    inhibit)
+      hypridle_active && stop_hypridle
+      ;;
+    idle)
+      hypridle_active || start_hypridle
+      ;;
+  esac
+}
+
 reconcile_mode() {
   manual_on=0
   audio_on=0
@@ -87,22 +105,10 @@ reconcile_mode() {
   fi
 
   if [[ "${desired_mode}" != "${last_mode}" ]]; then
-    if [[ "${desired_mode}" == "inhibit" ]]; then
-      stop_hypridle
-    else
-      start_hypridle
-    fi
+    apply_mode_transition "${desired_mode}"
     last_mode="${desired_mode}"
   else
-    if [[ "${desired_mode}" == "inhibit" ]]; then
-      if hypridle_active; then
-        stop_hypridle
-      fi
-    else
-      if ! hypridle_active; then
-        start_hypridle
-      fi
-    fi
+    enforce_mode_state "${desired_mode}"
   fi
 }
 

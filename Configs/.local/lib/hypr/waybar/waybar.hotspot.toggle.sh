@@ -1,32 +1,8 @@
 #!/usr/bin/env bash
 
-check() {
-  command -v "$1" >/dev/null 2>&1
-}
-
-notify_hotspot() {
-  local title="$1"
-  local message="$2"
-  local urgency="${3:-normal}"
-  local timeout="${4:-5000}"
-
-  dunstify -t "${timeout}" -i "network-wireless" "${title}" "${message}" -u "${urgency}"
-}
-
-connection_mode() {
-  nmcli -t -f 802-11-wireless.mode connection show "$1" 2>/dev/null | cut -d: -f2
-}
-
-active_hotspot_connection() {
-  local name="" type="" device=""
-
-  while IFS=: read -r name type device; do
-    [[ "${type}" == wifi ]] || continue
-    [[ "$(connection_mode "${name}")" == ap ]] || continue
-    printf '%s\n' "${name}"
-    return 0
-  done < <(nmcli -t -f NAME,TYPE,DEVICE connection show --active 2>/dev/null)
-}
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
+source "${script_dir}/waybar.hotspot.common.sh"
 
 connected_wifi_connection() {
   local wifi_device=""
@@ -45,7 +21,7 @@ saved_hotspot_connection() {
   local name=""
 
   while IFS= read -r name; do
-    [[ "$(connection_mode "${name}")" == ap ]] || continue
+    [[ "$(waybar_hotspot_connection_mode "${name}")" == ap ]] || continue
     printf '%s\n' "${name}"
     return 0
   done < <(nmcli -t -f NAME connection show 2>/dev/null)
@@ -60,9 +36,9 @@ disable_active_hotspot() {
   local hotspot_name="$1"
 
   if nmcli connection down "${hotspot_name}" 2>/dev/null; then
-    notify_hotspot "Hotspot Disabled" "Disconnected from: ${hotspot_name}"
+    waybar_hotspot_notify "Hotspot Disabled" "Disconnected from: ${hotspot_name}"
   else
-    notify_hotspot "Hotspot Error" "Failed to disconnect: ${hotspot_name}" critical
+    waybar_hotspot_notify "Hotspot Error" "Failed to disconnect: ${hotspot_name}" critical
   fi
 }
 
@@ -71,12 +47,12 @@ disconnect_wifi_for_hotspot() {
 
   [[ -n "${active_wifi}" ]] || return 0
 
-  notify_hotspot \
+  waybar_hotspot_notify \
     "Hotspot" \
     "You're connected to: ${active_wifi}\n\nDisconnecting WiFi to enable hotspot..."
 
   if ! nmcli connection down "${active_wifi}" 2>/dev/null; then
-    notify_hotspot "Hotspot Error" "Failed to disconnect from WiFi" critical
+    waybar_hotspot_notify "Hotspot Error" "Failed to disconnect from WiFi" critical
     return 1
   fi
 }
@@ -87,11 +63,11 @@ activate_saved_hotspot() {
   local error_msg=""
 
   if error_msg="$(nmcli connection up "${hotspot_name}" 2>&1)"; then
-    notify_hotspot "Hotspot Enabled" "Connected to: ${hotspot_name}"
+    waybar_hotspot_notify "Hotspot Enabled" "Connected to: ${hotspot_name}"
     return 0
   fi
 
-  notify_hotspot "Hotspot Error" "Failed to start: ${hotspot_name}\n\n${error_msg}" critical
+  waybar_hotspot_notify "Hotspot Error" "Failed to start: ${hotspot_name}\n\n${error_msg}" critical
   restore_wifi_connection "${restore_wifi}"
   return 1
 }
@@ -110,13 +86,13 @@ notify_created_hotspot() {
   local hotspot_password="$2"
 
   if [[ -n "${hotspot_password}" ]]; then
-    notify_hotspot \
+    waybar_hotspot_notify \
       "Hotspot Created" \
       "SSID: ${hotspot_name}\nPassword: ${hotspot_password}\n\nUse nm-connection-editor to customize"
     return 0
   fi
 
-  notify_hotspot \
+  waybar_hotspot_notify \
     "Hotspot Created" \
     "SSID: ${hotspot_name}\nPassword saved in NetworkManager\n\nUse nm-connection-editor to customize"
 }
@@ -127,10 +103,10 @@ create_default_hotspot() {
   local error_msg=""
   local hotspot_password=""
 
-  notify_hotspot "Creating Hotspot" "Setting up: ${hotspot_name}"
+  waybar_hotspot_notify "Creating Hotspot" "Setting up: ${hotspot_name}"
 
   if ! error_msg="$(nmcli device wifi hotspot con-name "${hotspot_name}" ssid "${hotspot_name}" 2>&1)"; then
-    notify_hotspot "Hotspot Error" "Failed to create hotspot\n\n${error_msg}\n\nTry using nm-connection-editor" critical
+    waybar_hotspot_notify "Hotspot Error" "Failed to create hotspot\n\n${error_msg}\n\nTry using nm-connection-editor" critical
     restore_wifi_connection "${restore_wifi}"
     return 1
   fi
@@ -145,12 +121,13 @@ main() {
   local saved_hotspot=""
   local hotspot_name=""
 
-  if ! check nmcli; then
-    notify_hotspot "Hotspot Error" "NetworkManager (nmcli) is not installed" critical
+  if ! waybar_hotspot_have_command nmcli; then
+    waybar_hotspot_notify "Hotspot Error" "NetworkManager (nmcli) is not installed" critical
     return 1
   fi
 
-  active_hotspot="$(active_hotspot_connection)"
+  active_hotspot="$(waybar_hotspot_active_connection)"
+  active_hotspot="${active_hotspot%%|*}"
   if [[ -n "${active_hotspot}" ]]; then
     disable_active_hotspot "${active_hotspot}"
     return 0

@@ -15,20 +15,6 @@ MAX_TEMP=10000
 MIN_GAMMA=20
 MAX_GAMMA=100
 
-notify="${waybar_temperature_notification:-true}"
-action=""
-color_mode="temp"
-custom_step=""
-newTemp=""
-newGamma=""
-signal_proc=""
-temp_step="${DEFAULT_TEMP_STEP}"
-gamma_step="${DEFAULT_GAMMA_STEP}"
-
-currentTemp=""
-currentGamma=""
-toggle_mode=""
-
 declare -A temp_colors=(
   [10000]="#8b0000"
   [8000]="#ff6347"
@@ -49,15 +35,19 @@ declare -A gamma_colors=(
 )
 
 load_state() {
-  currentTemp="$(state_get "HYPRSUNSET_TEMP" "${DEFAULT_TEMP}")"
-  currentGamma="$(state_get "HYPRSUNSET_GAMMA" "${DEFAULT_GAMMA}")"
-  toggle_mode="$(state_get "HYPRSUNSET_ENABLED" "1")"
+  local -n state_ref="$1"
+
+  state_ref[temp]="$(state_get "HYPRSUNSET_TEMP" "${DEFAULT_TEMP}")"
+  state_ref[gamma]="$(state_get "HYPRSUNSET_GAMMA" "${DEFAULT_GAMMA}")"
+  state_ref[enabled]="$(state_get "HYPRSUNSET_ENABLED" "1")"
 }
 
 write_sunset_state() {
-  state_set "HYPRSUNSET_TEMP" "${currentTemp}" "staterc"
-  state_set "HYPRSUNSET_GAMMA" "${currentGamma}" "staterc"
-  state_set "HYPRSUNSET_ENABLED" "${toggle_mode}" "staterc"
+  local -n state_ref="$1"
+
+  state_set "HYPRSUNSET_TEMP" "${state_ref[temp]}" "staterc"
+  state_set "HYPRSUNSET_GAMMA" "${state_ref[gamma]}" "staterc"
+  state_set "HYPRSUNSET_ENABLED" "${state_ref[enabled]}" "staterc"
 }
 
 clamp_range() {
@@ -117,178 +107,195 @@ EOF
 }
 
 require_args() {
-  if [ "$#" -eq 0 ]; then
-    echo "No arguments provided"
-    show_help
-    exit 1
-  fi
+  [ "$#" -gt 0 ] && return 0
+  echo "No arguments provided" >&2
+  show_help >&2
+  return 1
 }
 
 parse_args() {
-  local longopts="cm:,increase:,decrease:,set:,read,toggle,quiet,sigproc:,help"
-  local shortopts="i:d:s:rtqP:h"
+  local -n options_ref="$1"
+  shift
+  local longopts="cm:,increase::,decrease::,set:,read,toggle,quiet,sigproc:,help"
+  local shortopts="i::d::s:rtqP:h"
   local parsed=""
 
-  parsed=$(getopt --options "${shortopts}" --longoptions "${longopts}" --name "$0" -- "$@") || exit 2
+  parsed=$(getopt --options "${shortopts}" --longoptions "${longopts}" --name "$0" -- "$@") || return 2
   eval set -- "${parsed}"
 
   while true; do
     case "$1" in
       --cm)
-        color_mode="$2"
+        options_ref[color_mode]="$2"
         shift 2
         ;;
       -i|--increase)
-        action="increase"
-        custom_step="$2"
+        options_ref[action]="increase"
+        options_ref[custom_step]="$2"
         shift 2
         ;;
       -d|--decrease)
-        action="decrease"
-        custom_step="$2"
+        options_ref[action]="decrease"
+        options_ref[custom_step]="$2"
         shift 2
         ;;
       -s|--set)
-        action="set"
-        custom_step="$2"
+        options_ref[action]="set"
+        options_ref[custom_step]="$2"
         shift 2
         ;;
       -r|--read)
-        action="read"
+        options_ref[action]="read"
         shift
         ;;
       -t|--toggle)
-        action="toggle"
+        options_ref[action]="toggle"
         shift
         ;;
       -q|--quiet)
-        notify=false
+        options_ref[notify]=false
         shift
         ;;
       -P|--sigproc)
-        signal_proc="$2"
+        options_ref[signal_proc]="$2"
         shift 2
         ;;
       -h|--help)
-        show_help
-        exit 0
+        options_ref[help]=true
+        shift
         ;;
       --)
         shift
         return 0
         ;;
       *)
-        echo "Invalid option: $1"
-        show_help
-        exit 1
+        echo "Invalid option: $1" >&2
+        return 1
         ;;
     esac
   done
 }
 
+apply_signed_step() {
+  local -n options_ref="$1"
+  local -n state_ref="$2"
+  local direction="$3"
+
+  if [ "${options_ref[color_mode]}" = "gamma" ]; then
+    state_ref[new_gamma]="$(clamp_range "$((state_ref[gamma] + (direction * options_ref[gamma_step])))" "${MIN_GAMMA}" "${MAX_GAMMA}")"
+    state_ref[gamma]="${state_ref[new_gamma]}"
+    return 0
+  fi
+
+  state_ref[new_temp]="$(clamp_range "$((state_ref[temp] + (direction * options_ref[temp_step])))" "${MIN_TEMP}" "${MAX_TEMP}")"
+  state_ref[temp]="${state_ref[new_temp]}"
+}
+
 validate_color_mode() {
-  case "${color_mode}" in
+  case "$1" in
     temp|gamma) return 0 ;;
     *)
       echo "Error: Color mode must be 'temp' or 'gamma'"
-      exit 1
+      return 1
       ;;
   esac
 }
 
 resolve_set_action() {
-  if [ "${color_mode}" = "gamma" ]; then
-    validate_int_range "${custom_step}" "${MIN_GAMMA}" "${MAX_GAMMA}" \
-      "Error: Gamma value must be an integer between ${MIN_GAMMA} and ${MAX_GAMMA}" || exit 1
-    newGamma="$(clamp_range "${custom_step}" "${MIN_GAMMA}" "${MAX_GAMMA}")"
+  local -n options_ref="$1"
+  local -n state_ref="$2"
+
+  if [ "${options_ref[color_mode]}" = "gamma" ]; then
+    validate_int_range "${options_ref[custom_step]}" "${MIN_GAMMA}" "${MAX_GAMMA}" \
+      "Error: Gamma value must be an integer between ${MIN_GAMMA} and ${MAX_GAMMA}" || return 1
+    state_ref[new_gamma]="$(clamp_range "${options_ref[custom_step]}" "${MIN_GAMMA}" "${MAX_GAMMA}")"
     return 0
   fi
 
-  validate_int_range "${custom_step}" "${MIN_TEMP}" "${MAX_TEMP}" \
-    "Error: Temperature must be an integer between ${MIN_TEMP} and ${MAX_TEMP}" || exit 1
-  newTemp="$(clamp_range "${custom_step}" "${MIN_TEMP}" "${MAX_TEMP}")"
+  validate_int_range "${options_ref[custom_step]}" "${MIN_TEMP}" "${MAX_TEMP}" \
+    "Error: Temperature must be an integer between ${MIN_TEMP} and ${MAX_TEMP}" || return 1
+  state_ref[new_temp]="$(clamp_range "${options_ref[custom_step]}" "${MIN_TEMP}" "${MAX_TEMP}")"
 }
 
 resolve_step_action() {
-  if [ -z "${custom_step}" ] || ! [[ "${custom_step}" =~ ^[0-9]+$ ]]; then
+  local -n options_ref="$1"
+
+  if [ -z "${options_ref[custom_step]}" ] || ! [[ "${options_ref[custom_step]}" =~ ^[0-9]+$ ]]; then
     return 0
   fi
 
-  if [ "${color_mode}" = "gamma" ]; then
-    validate_int_range "${custom_step}" 1 50 "Error: Gamma step must be between 1 and 50" || exit 1
-    gamma_step="${custom_step}"
+  if [ "${options_ref[color_mode]}" = "gamma" ]; then
+    validate_int_range "${options_ref[custom_step]}" 1 50 "Error: Gamma step must be between 1 and 50" || return 1
+    options_ref[gamma_step]="${options_ref[custom_step]}"
     return 0
   fi
 
-  validate_int_range "${custom_step}" 1 5000 "Error: Temperature step must be between 1 and 5000" || exit 1
-  temp_step="${custom_step}"
+  validate_int_range "${options_ref[custom_step]}" 1 5000 "Error: Temperature step must be between 1 and 5000" || return 1
+  options_ref[temp_step]="${options_ref[custom_step]}"
 }
 
 prepare_action_values() {
-  validate_color_mode
-  [ -n "${action}" ] || {
-    echo "Error: No action specified"
-    show_help
-    exit 1
+  local -n options_ref="$1"
+  local -n state_ref="$2"
+
+  validate_color_mode "${options_ref[color_mode]}" || return 1
+  [ -n "${options_ref[action]}" ] || {
+    echo "Error: No action specified" >&2
+    show_help >&2
+    return 1
   }
 
-  case "${action}" in
-    set) resolve_set_action ;;
-    increase|decrease) resolve_step_action ;;
+  case "${options_ref[action]}" in
+    set) resolve_set_action options_ref state_ref ;;
+    increase|decrease) resolve_step_action options_ref ;;
   esac
 }
 
 apply_action_to_state() {
-  case "${action}" in
+  local -n options_ref="$1"
+  local -n state_ref="$2"
+
+  case "${options_ref[action]}" in
     increase)
-      if [ "${color_mode}" = "gamma" ]; then
-        newGamma="$(clamp_range "$((currentGamma + gamma_step))" "${MIN_GAMMA}" "${MAX_GAMMA}")"
-        currentGamma="${newGamma}"
-      else
-        newTemp="$(clamp_range "$((currentTemp + temp_step))" "${MIN_TEMP}" "${MAX_TEMP}")"
-        currentTemp="${newTemp}"
-      fi
-      write_sunset_state
+      apply_signed_step options_ref state_ref 1
       ;;
     decrease)
-      if [ "${color_mode}" = "gamma" ]; then
-        newGamma="$(clamp_range "$((currentGamma - gamma_step))" "${MIN_GAMMA}" "${MAX_GAMMA}")"
-        currentGamma="${newGamma}"
-      else
-        newTemp="$(clamp_range "$((currentTemp - temp_step))" "${MIN_TEMP}" "${MAX_TEMP}")"
-        currentTemp="${newTemp}"
-      fi
-      write_sunset_state
+      apply_signed_step options_ref state_ref -1
       ;;
     set)
-      if [ "${color_mode}" = "gamma" ]; then
-        currentGamma="${newGamma}"
+      if [ "${options_ref[color_mode]}" = "gamma" ]; then
+        state_ref[gamma]="${state_ref[new_gamma]}"
       else
-        currentTemp="${newTemp}"
+        state_ref[temp]="${state_ref[new_temp]}"
       fi
-      write_sunset_state
       ;;
     toggle)
-      toggle_mode=$((1 - toggle_mode))
-      write_sunset_state
+      state_ref[enabled]=$((1 - state_ref[enabled]))
       ;;
-    read) ;;
+    read)
+      return 0
+      ;;
   esac
+
+  write_sunset_state state_ref
 }
 
 notification_title() {
-  case "${action}" in
+  local -n options_ref="$1"
+  local -n state_ref="$2"
+
+  case "${options_ref[action]}" in
     toggle)
-      if [ "${toggle_mode}" -eq 1 ]; then
+      if [ "${state_ref[enabled]}" -eq 1 ]; then
         printf '%s' 'Hyprsunset: ON'
       else
         printf '%s' 'Hyprsunset: OFF'
       fi
       ;;
     *)
-      if [ -n "${newTemp}" ]; then
+      if [ -n "${state_ref[new_temp]}" ]; then
         printf '%s' 'Mode: Temperature'
-      elif [ -n "${newGamma}" ]; then
+      elif [ -n "${state_ref[new_gamma]}" ]; then
         printf '%s' 'Mode: Gamma'
       fi
       ;;
@@ -296,60 +303,70 @@ notification_title() {
 }
 
 notification_message() {
-  case "${action}" in
+  local -n options_ref="$1"
+  local -n state_ref="$2"
+
+  case "${options_ref[action]}" in
     toggle)
-      if [ "${toggle_mode}" -eq 0 ]; then
+      if [ "${state_ref[enabled]}" -eq 0 ]; then
         printf '%s' ''
       fi
       ;;
     *)
-      if [ -n "${newTemp}" ]; then
-        printf '%sK' "${newTemp}"
-      elif [ -n "${newGamma}" ]; then
-        printf '%s' "${newGamma}"
+      if [ -n "${state_ref[new_temp]}" ]; then
+        printf '%sK' "${state_ref[new_temp]}"
+      elif [ -n "${state_ref[new_gamma]}" ]; then
+        printf '%s' "${state_ref[new_gamma]}"
       fi
       ;;
   esac
 }
 
 send_notification() {
+  local -n options_ref="$1"
+  local -n state_ref="$2"
   local title message
+  local -a notify_args
 
-  title="$(notification_title)"
-  message="$(notification_message)"
+  title="$(notification_title options_ref state_ref)"
+  message="$(notification_message options_ref state_ref)"
   [ -n "${title}" ] || return 0
 
+  notify_args=(-a "hyprsunset" -r 19 -t 800 -i redshift)
   if [ -n "${message}" ]; then
-    dunstify -a "hyprsunset" -r 19 -t 800 -i redshift "${message}" "${title}"
-    return 0
+    notify_args+=("${message}")
   fi
+  notify_args+=("${title}")
 
-  dunstify -a "hyprsunset" -r 19 -t 800 -i redshift "${title}"
+  dunstify "${notify_args[@]}"
 }
 
 parse_signal_target() {
   local raw="$1"
+  local -n process_ref="$2"
+  local -n signal_ref="$3"
 
   case "${raw}" in
-    *,*) IFS=',' read -r process signal <<<"${raw}" ;;
-    *:*) IFS=':' read -r process signal <<<"${raw}" ;;
+    *,*) IFS=',' read -r process_ref signal_ref <<<"${raw}" ;;
+    *:*) IFS=':' read -r process_ref signal_ref <<<"${raw}" ;;
     *)
       echo "Error: Invalid sigproc format. Use PROCESS,SIGNAL or PROCESS:SIGNAL"
       return 1
       ;;
   esac
 
-  if ! [[ "${signal}" =~ ^[0-9]+$ ]]; then
+  if ! [[ "${signal_ref}" =~ ^[0-9]+$ ]]; then
     echo "Error: Signal must be a number"
     return 1
   fi
 }
 
 send_signal_to_process() {
+  local signal_proc="$1"
   local process="" signal=""
 
   [ -n "${signal_proc}" ] || return 0
-  parse_signal_target "${signal_proc}" || return 1
+  parse_signal_target "${signal_proc}" process signal || return 1
 
   if pgrep -x "${process}" >/dev/null; then
     pkill -RTMIN+"${signal}" "${process}" 2>/dev/null || echo "Warning: Failed to send signal ${signal} to ${process}"
@@ -375,51 +392,61 @@ ensure_hyprsunset_process() {
 }
 
 runtime_sync_needed() {
-  [ "${action}" != "read" ] || [ "${toggle_mode}" -eq 1 ]
+  local -n options_ref="$1"
+  local -n state_ref="$2"
+
+  [ "${options_ref[action]}" != "read" ] || [ "${state_ref[enabled]}" -eq 1 ]
 }
 
 sync_runtime_for_read() {
+  local -n state_ref="$1"
   local current_running_temp=""
 
-  [ "${toggle_mode}" -eq 1 ] || return 0
+  [ "${state_ref[enabled]}" -eq 1 ] || return 0
   current_running_temp="$(hyprctl hyprsunset temperature)"
-  if [ "${current_running_temp}" != "${currentTemp}" ]; then
-    hyprctl --quiet hyprsunset temperature "${currentTemp}"
+  if [ "${current_running_temp}" != "${state_ref[temp]}" ]; then
+    hyprctl --quiet hyprsunset temperature "${state_ref[temp]}"
   fi
 }
 
 sync_runtime_for_write() {
-  if [ "${toggle_mode}" -eq 0 ]; then
+  local -n options_ref="$1"
+  local -n state_ref="$2"
+
+  if [ "${state_ref[enabled]}" -eq 0 ]; then
     hyprctl --quiet hyprsunset identity
     hyprctl --quiet hyprsunset gamma "${DEFAULT_GAMMA}"
     return 0
   fi
 
-  if [ "${color_mode}" = "gamma" ] && [ -n "${newGamma}" ]; then
-    hyprctl --quiet hyprsunset temperature "${currentTemp}"
-    hyprctl --quiet hyprsunset gamma "${newGamma}"
+  if [ "${options_ref[color_mode]}" = "gamma" ] && [ -n "${state_ref[new_gamma]}" ]; then
+    hyprctl --quiet hyprsunset temperature "${state_ref[temp]}"
+    hyprctl --quiet hyprsunset gamma "${state_ref[new_gamma]}"
     return 0
   fi
 
-  if [ -n "${newTemp}" ]; then
-    hyprctl --quiet hyprsunset temperature "${newTemp}"
+  if [ -n "${state_ref[new_temp]}" ]; then
+    hyprctl --quiet hyprsunset temperature "${state_ref[new_temp]}"
     return 0
   fi
 
-  hyprctl --quiet hyprsunset temperature "${currentTemp}"
-  hyprctl --quiet hyprsunset gamma "${currentGamma}"
+  hyprctl --quiet hyprsunset temperature "${state_ref[temp]}"
+  hyprctl --quiet hyprsunset gamma "${state_ref[gamma]}"
 }
 
 sync_runtime_state() {
-  runtime_sync_needed || return 0
+  local -n options_ref="$1"
+  local -n state_ref="$2"
+
+  runtime_sync_needed options_ref state_ref || return 0
   ensure_hyprsunset_process
 
-  if [ "${action}" = "read" ]; then
-    sync_runtime_for_read
+  if [ "${options_ref[action]}" = "read" ]; then
+    sync_runtime_for_read state_ref
     return 0
   fi
 
-  sync_runtime_for_write
+  sync_runtime_for_write options_ref state_ref
 }
 
 render_threshold_color() {
@@ -450,16 +477,17 @@ get_gamma_color() {
 }
 
 generate_status() {
+  local -n state_ref="$1"
   local text_output alt_text tooltip_text
   local current_running_temp temp_colored gamma_colored
   local saved_temp_colored saved_gamma_colored
 
   current_running_temp="$(get_running_temp)"
-  if [ "${toggle_mode}" -eq 1 ]; then
+  if [ "${state_ref[enabled]}" -eq 1 ]; then
     text_output="󱩌"
     alt_text="active"
     temp_colored="$(get_temp_color "${current_running_temp}")"
-    gamma_colored="$(get_gamma_color "${currentGamma}")"
+    gamma_colored="$(get_gamma_color "${state_ref[gamma]}")"
     tooltip_text="󰈈 <b>Hyprsunset Active</b>\n"
     tooltip_text+="󰔄 Temperature: ${temp_colored}\n"
     tooltip_text+="󰍉 Gamma: ${gamma_colored}\n"
@@ -467,8 +495,8 @@ generate_status() {
   else
     text_output="󱩍"
     alt_text="inactive"
-    saved_temp_colored="$(get_temp_color "${currentTemp}")"
-    saved_gamma_colored="$(get_gamma_color "${currentGamma}")"
+    saved_temp_colored="$(get_temp_color "${state_ref[temp]}")"
+    saved_gamma_colored="$(get_gamma_color "${state_ref[gamma]}")"
     tooltip_text="<b> Hyprsunset: Inactive</b>\n"
     tooltip_text+="󰔄 Temperature: ${saved_temp_colored}\n"
     tooltip_text+="󰍉 Gamma: ${saved_gamma_colored}\n"
@@ -481,15 +509,38 @@ JSON
 }
 
 main() {
-  require_args "$@"
-  load_state
-  parse_args "$@"
-  prepare_action_values
-  apply_action_to_state
-  [ "${notify}" = true ] && send_notification
-  send_signal_to_process
-  sync_runtime_state
-  generate_status
+  local -A options=(
+    [notify]="${waybar_temperature_notification:-true}"
+    [action]=""
+    [color_mode]="temp"
+    [custom_step]=""
+    [signal_proc]=""
+    [temp_step]="${DEFAULT_TEMP_STEP}"
+    [gamma_step]="${DEFAULT_GAMMA_STEP}"
+    [help]=false
+  )
+  local -A state=(
+    [temp]=""
+    [gamma]=""
+    [enabled]=""
+    [new_temp]=""
+    [new_gamma]=""
+  )
+
+  require_args "$@" || return 1
+  parse_args options "$@" || return $?
+  if [ "${options[help]}" = true ]; then
+    show_help
+    return 0
+  fi
+
+  load_state state
+  prepare_action_values options state || return 1
+  apply_action_to_state options state
+  [ "${options[notify]}" = true ] && send_notification options state
+  send_signal_to_process "${options[signal_proc]}"
+  sync_runtime_state options state
+  generate_status state
 }
 
 main "$@"

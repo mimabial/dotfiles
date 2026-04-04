@@ -4,34 +4,34 @@ find_wallpapers() {
   local wallSource="$1"
   shift
   local -a supported_files=("$@")
+  local -a find_args=()
+  local ext=""
 
-  if [ -z "${wallSource}" ]; then
+  if [[ -z "${wallSource}" ]]; then
     print_log -err "ERROR: wallSource is empty"
     return 1
   fi
 
-  # Build find arguments safely using arrays (no eval needed)
-  local -a find_args=(-H "${wallSource}" -type f \()
-  local first_ext=true
-  local ext
+  if ((${#supported_files[@]} == 0)); then
+    print_log -err "ERROR: no supported wallpaper extensions configured"
+    return 1
+  fi
 
-  for ext in "${supported_files[@]}"; do
-    if [[ "${first_ext}" == true ]]; then
-      find_args+=(-iname "*.${ext}")
-      first_ext=false
-    else
-      find_args+=(-o -iname "*.${ext}")
-    fi
+  # Build find arguments safely using arrays (no eval needed).
+  find_args=(-H "${wallSource}" -type f \( -iname "*.${supported_files[0]}")
+
+  for ext in "${supported_files[@]:1}"; do
+    find_args+=(-o -iname "*.${ext}")
   done
   find_args+=(\) ! -path "*/logo/*" -exec "${HYPR_HASH_COMMAND}" {} +)
 
-  [ "${LOG_LEVEL}" == "debug" ] && print_log -g "DEBUG:" -b "Running find with args:" "${find_args[*]}"
+  [[ "${LOG_LEVEL}" == "debug" ]] && print_log -g "DEBUG:" -b "Running find with args:" "${find_args[*]}"
 
   local tmpfile error_output
   tmpfile=$(mktemp)
   find "${find_args[@]}" 2>"$tmpfile" | sort -k2
   error_output=$(<"$tmpfile") && rm -f "$tmpfile"
-  [ -n "${error_output}" ] && print_log -err "ERROR:" -b "found an error: " -r "${error_output}" -y " skipping..."
+  [[ -n "${error_output}" ]] && print_log -err "ERROR:" -b "found an error: " -r "${error_output}" -y " skipping..."
 }
 
 get_hashmap() {

@@ -34,6 +34,14 @@ hypr_config_layer_files() {
     "${variables_file}"
 }
 
+hypr_trim_whitespace() {
+  local value="$1"
+
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+  printf '%s' "${value}"
+}
+
 hypr_config_value_from_layers() {
   local variable_key="${1#\$}"
   local file_path=""
@@ -58,13 +66,11 @@ hypr_config_value_from_layers() {
 
       lhs="${raw_line%%=*}"
       rhs="${raw_line#*=}"
-      lhs="${lhs#"${lhs%%[![:space:]]*}"}"
-      lhs="${lhs%"${lhs##*[![:space:]]}"}"
+      lhs="$(hypr_trim_whitespace "${lhs}")"
       [[ "${lhs}" == "\$${variable_key}" ]] || continue
 
       rhs="${rhs%%#*}"
-      rhs="${rhs#"${rhs%%[![:space:]]*}"}"
-      rhs="${rhs%"${rhs##*[![:space:]]}"}"
+      rhs="$(hypr_trim_whitespace "${rhs}")"
       rhs="${rhs%\'}"
       rhs="${rhs#\'}"
       rhs="${rhs%\"}"
@@ -167,25 +173,15 @@ hypr_window_edge_padding_px() {
 
 hypr_compact_path() {
   local path="$1"
+  local var_name=""
+  local base_path=""
 
-  case "${path}" in
-    "${XDG_CONFIG_HOME}"/*)
-      printf '$XDG_CONFIG_HOME%s\n' "${path#${XDG_CONFIG_HOME}}"
-      ;;
-    "${XDG_DATA_HOME}"/*)
-      printf '$XDG_DATA_HOME%s\n' "${path#${XDG_DATA_HOME}}"
-      ;;
-    "${XDG_STATE_HOME}"/*)
-      printf '$XDG_STATE_HOME%s\n' "${path#${XDG_STATE_HOME}}"
-      ;;
-    "${XDG_CACHE_HOME}"/*)
-      printf '$XDG_CACHE_HOME%s\n' "${path#${XDG_CACHE_HOME}}"
-      ;;
-    "${HOME}"/*)
-      printf '$HOME%s\n' "${path#${HOME}}"
-      ;;
-    *)
-      printf '%s\n' "${path}"
-      ;;
-  esac
+  for var_name in XDG_CONFIG_HOME XDG_DATA_HOME XDG_STATE_HOME XDG_CACHE_HOME HOME; do
+    base_path="${!var_name:-}"
+    [[ -n "${base_path}" && "${path}" == "${base_path}"/* ]] || continue
+    printf '$%s%s\n' "${var_name}" "${path#${base_path}}"
+    return 0
+  done
+
+  printf '%s\n' "${path}"
 }

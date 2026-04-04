@@ -9,6 +9,40 @@ download_and_extract() {
   local name="${1}"
   local url="${2}"
   local temp_dir="${landing_dir}/${name}"
+  local domain=""
+
+  extract_archive_file() {
+    local archive_file="$1"
+    local extract_dir="$2"
+    local required_cmd=""
+
+    case "${archive_file}" in
+      *.tar.gz)
+        required_cmd="tar"
+        ;;
+      *.zip)
+        required_cmd="unzip"
+        ;;
+      *.tar.xz)
+        required_cmd="tar"
+        ;;
+      *)
+        echo "[font] Unsupported file format: ${archive_file}"
+        return 1
+        ;;
+    esac
+
+    if ! command -v "${required_cmd}" >/dev/null; then
+      echo "[font] ${required_cmd} is not installed"
+      return 1
+    fi
+
+    case "${archive_file}" in
+      *.tar.gz) tar -xzf "${archive_file}" -C "${extract_dir}" ;;
+      *.zip) unzip -q "${archive_file}" -d "${extract_dir}" ;;
+      *.tar.xz) tar -xJf "${archive_file}" -C "${extract_dir}" ;;
+    esac
+  }
 
   # Extract domain name using parameter expansion
   domain=${url#*://}   # Remove everything up to '://'
@@ -27,27 +61,8 @@ download_and_extract() {
   fi
   find "$temp_dir" -type f | while read -r file; do
     case "$file" in
-      *.tar.gz)
-        if command -v tar >/dev/null; then
-          tar -xzf "$file" -C "${temp_dir}/${name}"
-        else
-          echo "[font] tar is not installed"
-          return 1
-        fi
-        ;;
-      *.zip)
-        if command -v unzip >/dev/null; then
-          unzip -q "$file" -d "${temp_dir}/${name}"
-        else
-          echo "[font] unzip is not installed"
-          return 1
-        fi
-        ;;
-      *.tar.xz)
-        if command -v tar >/dev/null; then
-          tar -xJf "$file" -C "${temp_dir}/${name}"
-        else
-          echo "tar is not installed"
+      *.tar.gz | *.zip | *.tar.xz)
+        if ! extract_archive_file "$file" "${temp_dir}/${name}"; then
           return 1
         fi
         ;;

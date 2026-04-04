@@ -50,13 +50,22 @@ if [[ -r "${HYPR_LIB_DIR}/runtime/lock_paths.sh" ]]; then
   source "${HYPR_LIB_DIR}/runtime/lock_paths.sh"
 fi
 
+hypr_ensure_global_arrays() {
+  local array_name=""
+
+  for array_name in "$@"; do
+    declare -p "${array_name}" >/dev/null 2>&1 || eval "declare -ag ${array_name}=()"
+  done
+}
+
 # Wallpaper helpers expect these arrays to exist, even when empty.
-declare -p WALLPAPER_FILETYPES >/dev/null 2>&1 || declare -ag WALLPAPER_FILETYPES=()
-declare -p WALLPAPER_OVERRIDE_FILETYPES >/dev/null 2>&1 || declare -ag WALLPAPER_OVERRIDE_FILETYPES=()
-declare -p WALLPAPER_CUSTOM_PATHS >/dev/null 2>&1 || declare -ag WALLPAPER_CUSTOM_PATHS=()
-declare -p wallHash >/dev/null 2>&1 || declare -ag wallHash=()
-declare -p wallList >/dev/null 2>&1 || declare -ag wallList=()
-declare -p wallPathArray >/dev/null 2>&1 || declare -ag wallPathArray=()
+hypr_ensure_global_arrays \
+  WALLPAPER_FILETYPES \
+  WALLPAPER_OVERRIDE_FILETYPES \
+  WALLPAPER_CUSTOM_PATHS \
+  wallHash \
+  wallList \
+  wallPathArray
 
 hypr_source_core_module() {
   local module_path="${HYPR_LIB_DIR}/core/$1"
@@ -68,12 +77,21 @@ hypr_source_core_module() {
   source "${module_path}"
 }
 
-hypr_source_core_module "common.sh" || { return 1 2>/dev/null || exit 1; }
-hypr_source_core_module "rofi.sh" || { return 1 2>/dev/null || exit 1; }
-hypr_source_core_module "notify.sh" || { return 1 2>/dev/null || exit 1; }
-hypr_source_core_module "wallpaper.sh" || { return 1 2>/dev/null || exit 1; }
-hypr_source_core_module "state.sh" || { return 1 2>/dev/null || exit 1; }
-hypr_source_core_module "system.sh" || { return 1 2>/dev/null || exit 1; }
+hypr_source_required_core_modules() {
+  local module_name=""
+
+  for module_name in "$@"; do
+    hypr_source_core_module "${module_name}" || { return 1 2>/dev/null || exit 1; }
+  done
+}
+
+hypr_source_required_core_modules \
+  "common.sh" \
+  "rofi.sh" \
+  "notify.sh" \
+  "wallpaper.sh" \
+  "state.sh" \
+  "system.sh"
 
 # ============================================================================
 # GLOBAL INITIALIZATION
@@ -128,7 +146,7 @@ if [ -n "$BASH_VERSION" ]; then
     rofi_user_dir rofi_shared_dir \
     rofi_resolve_theme rofi_resolve_asset \
     rofi_list_theme_files rofi_list_asset_files \
-    hypr_core_file hypr_variables_file hypr_config_layer_files hypr_config_value_from_layers hypr_border_metrics hypr_cached_border_metrics hypr_resolved_border_metrics hypr_resolved_gaps_out hypr_focused_monitor_geometry hypr_window_edge_padding_px hypr_compact_path \
+    hypr_core_file hypr_variables_file hypr_config_layer_files hypr_trim_whitespace hypr_config_value_from_layers hypr_border_metrics hypr_cached_border_metrics hypr_resolved_border_metrics hypr_resolved_gaps_out hypr_focused_monitor_geometry hypr_window_edge_padding_px hypr_compact_path \
     is_hovered ini_write \
     find_wallpapers get_hashmap get_aur_helper \
     set_hash \

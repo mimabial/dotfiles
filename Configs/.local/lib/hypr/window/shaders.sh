@@ -7,6 +7,8 @@ if ! source "$(command -v hyprshell)"; then
 fi
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/rofi/rofi.lib.bash"
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/window/stateful-choice.common.bash"
 
 shaders_user_dir="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}/shaders"
 shaders_shared_dir="${HYPR_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/hypr}/shaders"
@@ -43,23 +45,7 @@ resolve_shader_path() {
   local name
   name="$(normalize_shader_name "${1:-neutral}")"
   name="${name%.frag}"
-
-  if [[ "${name}" == */* ]] && [[ -f "${name}" ]]; then
-    printf '%s\n' "${name}"
-    return 0
-  fi
-
-  local candidate
-  for candidate in \
-    "${shaders_user_dir}/${name}.frag" \
-    "${shaders_shared_dir}/${name}.frag"; do
-    if [[ -f "${candidate}" ]]; then
-      printf '%s\n' "${candidate}"
-      return 0
-    fi
-  done
-
-  return 1
+  hypr_stateful_choice_resolve_path "${name}" "frag" "${shaders_user_dir}" "${shaders_shared_dir}"
 }
 
 resolve_shader_inc_path() {
@@ -77,24 +63,12 @@ resolve_shader_inc_path() {
 }
 
 list_shader_names() {
-  local dir path name
-  local -A seen=()
-
-  for dir in "${shaders_user_dir}" "${shaders_shared_dir}"; do
-    [[ -d "${dir}" ]] || continue
-    while IFS= read -r -d '' path; do
-      name="$(basename "${path}" .frag)"
-      [[ "${name}" == "neutral" ]] && continue
-      [[ -n "${seen[${name}]:-}" ]] && continue
-      seen["${name}"]=1
-      printf '%s\n' "${name}"
-    done < <(find -L "${dir}" -maxdepth 1 -type f -name '*.frag' -print0 | sort -z)
-  done
+  hypr_stateful_choice_list_names "frag" "${shaders_user_dir}" "${shaders_shared_dir}" "neutral"
 }
 
 fn_select() {
-  local shader_items selected_shader
-  local -a rofi_args
+  local shader_items=""
+  local selected_shader=""
 
   shader_items="$(list_shader_names)"
   if resolve_shader_path neutral >/dev/null 2>&1; then
@@ -106,32 +80,26 @@ fn_select() {
     exit 1
   }
 
-  rofi_build_standard_menu_args \
-    rofi_args \
+  hypr_stateful_choice_select \
     "Select shader" \
     "🎨 Select shader..." \
     "clipboard" \
     "${ROFI_SHADER_SCALE}" \
-    "${ROFI_SHADER_FONT:-$ROFI_FONT}"
-  rofi_args+=(-select "$(normalize_shader_name "${HYPR_SHADER:-neutral}")")
-
-  selected_shader=$(printf '%s\n' "${shader_items}" |
-    rofi "${rofi_args[@]}")
+    "${ROFI_SHADER_FONT:-$ROFI_FONT}" \
+    "$(normalize_shader_name "${HYPR_SHADER:-neutral}")" \
+    "${shader_items}" \
+    selected_shader
 
   [[ -n "${selected_shader}" ]] || exit 0
   selected_shader="$(normalize_shader_name "${selected_shader}")"
 
-  state_set "HYPR_SHADER" "${selected_shader}" "staterc"
-  fn_update "${selected_shader}"
-  send_ephemeral_notif "hypr-shader" -t 2000 -i "preferences-desktop-display" "Shader selected" "${selected_shader}"
+  hypr_stateful_choice_apply "HYPR_SHADER" "${selected_shader}" "hypr-shader" "Shader selected" fn_update
 }
 
 fn_reload() {
   local shader_name
   shader_name="$(normalize_shader_name "${HYPR_SHADER:-neutral}")"
-  state_set "HYPR_SHADER" "${shader_name}" "staterc"
-  fn_update "${shader_name}"
-  send_ephemeral_notif "hypr-shader" -t 2000 -i "preferences-desktop-display" "Shader reloaded" "${shader_name}"
+  hypr_stateful_choice_apply "HYPR_SHADER" "${shader_name}" "hypr-shader" "Shader reloaded" fn_update
 }
 
 concat_shader_files() {

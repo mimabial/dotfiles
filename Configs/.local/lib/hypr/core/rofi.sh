@@ -131,6 +131,7 @@ rofi_cursor_raw_position() {
 
 rofi_monitor_record() {
   local mode="${1:-focused}"
+  local monitors_json=""
   local cursor_x=0
   local cursor_y=0
   local -a jq_args=(--arg mode "${mode}" --argjson cx 0 --argjson cy 0)
@@ -140,7 +141,13 @@ rofi_monitor_record() {
     jq_args=(--arg mode "${mode}" --argjson cx "${cursor_x}" --argjson cy "${cursor_y}")
   fi
 
-  hyprctl -j monitors 2>/dev/null | jq -r "${jq_args[@]}" '
+  if declare -F rofi_monitors_json >/dev/null 2>&1; then
+    monitors_json="$(rofi_monitors_json)"
+  else
+    monitors_json="$(hyprctl -j monitors 2>/dev/null || true)"
+  fi
+
+  printf '%s\n' "${monitors_json}" | jq -r "${jq_args[@]}" '
     def monitor_width: if (.transform % 2 == 0) then .width else .height end;
     def monitor_height: if (.transform % 2 == 0) then .height else .width end;
     def record: [
@@ -193,6 +200,46 @@ rofi_default_window_size() {
   fi
 }
 
+rofi_scale_milli() {
+  local scale="${1:-1}"
+  local whole="0"
+  local fraction="000"
+
+  if [[ "${scale}" =~ ^([0-9]+)([.][0-9]+)?$ ]]; then
+    whole="${BASH_REMATCH[1]}"
+    if [[ -n "${BASH_REMATCH[2]:-}" ]]; then
+      fraction="${BASH_REMATCH[2]#.}"
+      fraction="${fraction}000"
+      fraction="${fraction:0:3}"
+    fi
+  fi
+
+  if [[ "${whole}${fraction}" =~ ^0+$ ]]; then
+    printf '1000\n'
+    return 0
+  fi
+
+  printf '%s\n' "$((10#${whole} * 1000 + 10#${fraction}))"
+}
+
+rofi_scaled_divide() {
+  local value="${1:-0}"
+  local scale="${2:-1}"
+  local min_value="${3:-}"
+  local scale_milli=""
+  local result=0
+
+  [[ "${value}" =~ ^-?[0-9]+$ ]] || value=0
+  scale_milli="$(rofi_scale_milli "${scale}")"
+  result=$((value * 1000 / scale_milli))
+
+  if [[ -n "${min_value}" ]] && [[ "${result}" -lt "${min_value}" ]]; then
+    result="${min_value}"
+  fi
+
+  printf '%s\n' "${result}"
+}
+
 rofi_cursor_monitor_geometry() {
   local width_name="$1"
   local height_name="$2"
@@ -215,8 +262,8 @@ rofi_cursor_monitor_geometry() {
   IFS=$'\t' read -r parsed_width parsed_height parsed_scale parsed_x parsed_y off_left off_top off_right off_bottom <<<"${monitor_line}"
   [[ "${parsed_scale}" =~ ^[0-9]+([.][0-9]+)?$ ]] || parsed_scale=1
 
-  width_ref="$(awk -v w="${parsed_width}" -v s="${parsed_scale}" 'BEGIN { if (s <= 0) s = 1; v = int(w / s); if (v < 1) v = 1; print v }')"
-  height_ref="$(awk -v h="${parsed_height}" -v s="${parsed_scale}" 'BEGIN { if (s <= 0) s = 1; v = int(h / s); if (v < 1) v = 1; print v }')"
+  width_ref="$(rofi_scaled_divide "${parsed_width}" "${parsed_scale}" 1)"
+  height_ref="$(rofi_scaled_divide "${parsed_height}" "${parsed_scale}" 1)"
   scale_ref="${parsed_scale}"
   x_ref="${parsed_x}"
   y_ref="${parsed_y}"
@@ -235,8 +282,8 @@ rofi_cursor_local_position() {
   local raw_cursor_y=0
 
   rofi_cursor_raw_position raw_cursor_x raw_cursor_y
-  x_ref="$(awk -v c="${raw_cursor_x}" -v m="${mon_x}" -v s="${mon_scale}" 'BEGIN { if (s <= 0) s = 1; print int((c - m) / s) }')"
-  y_ref="$(awk -v c="${raw_cursor_y}" -v m="${mon_y}" -v s="${mon_scale}" 'BEGIN { if (s <= 0) s = 1; print int((c - m) / s) }')"
+  x_ref="$(rofi_scaled_divide "$((raw_cursor_x - mon_x))" "${mon_scale}")"
+  y_ref="$(rofi_scaled_divide "$((raw_cursor_y - mon_y))" "${mon_scale}")"
 }
 
 rofi_edge_padding_px() {

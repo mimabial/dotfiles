@@ -94,19 +94,17 @@ read_state_uri() {
   sed -n "s/^${key}=//p" "$file" | head -n 1
 }
 
-find_queue_uri() {
+pick_transport_uri() {
   local target_transport="$1"
-  local skip_printer="$2"
   local hint="${3:-}"
   local preferred=""
   local fallback=""
   local normalized_uri=""
+  local uri=""
 
-  while IFS='|' read -r queue uri; do
-    [[ -z "$uri" ]] && continue
-    [[ "$queue" == "$skip_printer" ]] && continue
-
-    normalized_uri="$(normalize_print_uri "$uri")"
+  while IFS= read -r uri; do
+    [[ -n "$uri" ]] || continue
+    normalized_uri="$(normalize_print_uri "${uri}")"
     [[ "$(detect_mode "$normalized_uri")" == "$target_transport" ]] || continue
 
     if [[ -n "$hint" && "$normalized_uri" == *"$hint"* ]]; then
@@ -115,28 +113,31 @@ find_queue_uri() {
     fi
 
     [[ -z "$fallback" ]] && fallback="$normalized_uri"
-  done < <(lpstat -v 2>/dev/null | sed -n 's/^device for \([^:]*\): \(.*\)$/\1|\2/p')
+  done
 
   printf '%s\n' "${preferred:-$fallback}"
 }
 
+find_queue_uri() {
+  local target_transport="$1"
+  local skip_printer="$2"
+  local hint="${3:-}"
+
+  lpstat -v 2>/dev/null \
+    | sed -n 's/^device for \([^:]*\): \(.*\)$/\1|\2/p' \
+    | while IFS='|' read -r queue uri; do
+      [[ "$queue" == "$skip_printer" ]] && continue
+      printf '%s\n' "${uri}"
+    done \
+    | pick_transport_uri "${target_transport}" "${hint}"
+}
+
 find_usb_uri_from_lpinfo() {
   local hint="${1:-}"
-  local preferred=""
-  local fallback=""
 
-  while IFS= read -r uri; do
-    [[ "$(detect_mode "$uri")" == "usb" ]] || continue
-
-    if [[ -n "$hint" && "$uri" == *"$hint"* ]]; then
-      preferred="$uri"
-      break
-    fi
-
-    [[ -z "$fallback" ]] && fallback="$uri"
-  done < <(lpinfo -v 2>/dev/null | sed -n 's/^[^[:space:]]\+[[:space:]]\+//p')
-
-  printf '%s\n' "${preferred:-$fallback}"
+  lpinfo -v 2>/dev/null \
+    | sed -n 's/^[^[:space:]]\+[[:space:]]\+//p' \
+    | pick_transport_uri "usb" "${hint}"
 }
 
 parse_args() {

@@ -6,16 +6,9 @@ sync_script="$HOME/.local/lib/hypr/util/nvim-theme-sync.sh"
 last_mtime=0
 
 while true; do
-  if [ -f "$theme_file" ]; then
-    current_mtime=$(stat -c %Y "$theme_file" 2>/dev/null || echo 0)
-
-    if [ "$current_mtime" != "$last_mtime" ] && [ "$last_mtime" != "0" ]; then
-      # File changed, sync to nvim
-      "$sync_script" &
-    fi
-
-    last_mtime=$current_mtime
-  fi
-
+  [[ -f "${theme_file}" ]] || { sleep 0.5; continue; }
+  current_mtime="$(stat -c %Y "${theme_file}" 2>/dev/null || echo 0)"
+  [[ "${last_mtime}" == "0" || "${current_mtime}" == "${last_mtime}" ]] || "${sync_script}" &
+  last_mtime="${current_mtime}"
   sleep 0.5
 done

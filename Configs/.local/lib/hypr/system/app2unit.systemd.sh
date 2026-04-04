@@ -96,18 +96,18 @@ systemd_effective_unit_description() {
 }
 
 systemd_default_stderr_target() {
-	dso=''
-	dse=''
-	while IFS='=' read -r key value; do
-		case "$key" in
-		DefaultStandardOutput) dso=$value ;;
-		DefaultStandardError) dse=$value ;;
+	systemd_default_output=''
+	systemd_default_error=''
+	while IFS='=' read -r systemd_show_key systemd_show_value; do
+		case "$systemd_show_key" in
+		DefaultStandardOutput) systemd_default_output=$systemd_show_value ;;
+		DefaultStandardError) systemd_default_error=$systemd_show_value ;;
 		esac
 	done <<-EOF
-		$(systemctl --user show --property DefaultStandardOutput --property DefaultStandardError)
+			$(systemctl --user show --property DefaultStandardOutput --property DefaultStandardError)
 	EOF
-	case "$dse" in
-	inherit) printf '%s\n' "$dso" ;;
+	case "$systemd_default_error" in
+	inherit) printf '%s\n' "$systemd_default_output" ;;
 	esac
 }
 
@@ -115,30 +115,28 @@ systemd_apply_service_silence() {
 	case "$SILENT" in
 	out)
 		set -- --property=StandardOutput=null "$@"
-		dse_target=$(systemd_default_stderr_target)
-		case "$dse_target" in
+		systemd_stderr_target=$(systemd_default_stderr_target)
+		case "$systemd_stderr_target" in
 		'') ;;
-		*) set -- --property=StandardError="$dse_target" "$@" ;;
+		*) set -- --property=StandardError="$systemd_stderr_target" "$@" ;;
 		esac
 		;;
 	err) set -- --property=StandardError=null "$@" ;;
 	both) set -- --property=StandardOutput=null --property=StandardError=null "$@" ;;
 	esac
-	pack_args_usep "$@"
-	SYSTEMD_RUN_ARGS_USEP=$PACKED_ARGS
+	SYSTEMD_RUN_ARGS_USEP=$(pack_args_usep "$@")
 }
 
 systemd_apply_unit_type_args() {
 	case "$UNIT_TYPE" in
 	scope)
-		pack_args_usep --scope "$@"
+		SYSTEMD_RUN_ARGS_USEP=$(pack_args_usep --scope "$@")
 		;;
 	service)
 		systemd_apply_service_silence --property=Type=exec --property=ExitType=cgroup "$@"
 		return 0
 		;;
 	esac
-	SYSTEMD_RUN_ARGS_USEP=$PACKED_ARGS
 }
 
 systemd_maybe_print_test_command() {
@@ -146,9 +144,10 @@ systemd_maybe_print_test_command() {
 	true)
 		printf '%s\n' 'Command and arguments:'
 		printf '  >%s<\n' systemd-run --user "$@"
-		exit 0
+		return 0
 		;;
 	esac
+	return 1
 }
 
 systemd_apply_scope_output_silence() {
@@ -196,7 +195,9 @@ systemd_run() {
 
 	debug "systemd run" "$(printf '  >%s<\n' systemd-run "$@")"
 
-	systemd_maybe_print_test_command "$@"
+	if systemd_maybe_print_test_command "$@"; then
+		return 0
+	fi
 
 	systemd_apply_scope_output_silence
 

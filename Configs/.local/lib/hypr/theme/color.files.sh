@@ -5,33 +5,57 @@
 
 load_theme_palette() {
   local theme_file="${1}"
+  local bg_name="$2" fg_name="$3" cursor_name="$4" colors_name="$5"
+  local -n bg_ref="$bg_name" fg_ref="$fg_name" cursor_ref="$cursor_name" colors_ref="$colors_name"
+  local key="" val="" line="" i
+  local -A seen=()
   [[ -r "${theme_file}" ]] || return 1
 
-  THEME_BG="$(awk '$1=="background"{print $2; exit}' "${theme_file}")"
-  THEME_FG="$(awk '$1=="foreground"{print $2; exit}' "${theme_file}")"
-  THEME_CURSOR="$(awk '$1=="cursor"{print $2; exit}' "${theme_file}")"
+  bg_ref=""
+  fg_ref=""
+  cursor_ref=""
+  colors_ref=()
 
-  local i key val
-  THEME_COLORS=()
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    read -r key val _ <<< "${line}"
+    [[ -n "${key}" && -n "${val}" ]] || continue
+    [[ -v "seen[${key}]" ]] && continue
+
+    case "${key}" in
+      background)
+        bg_ref="${val}"
+        seen["${key}"]=1
+        ;;
+      foreground)
+        fg_ref="${val}"
+        seen["${key}"]=1
+        ;;
+      cursor)
+        cursor_ref="${val}"
+        seen["${key}"]=1
+        ;;
+      color[0-9] | color1[0-5])
+        [[ "${val}" =~ ^#[0-9A-Fa-f]{6}$ ]] || val=""
+        colors_ref[${key#color}]="${val}"
+        seen["${key}"]=1
+        ;;
+    esac
+  done < "${theme_file}"
+
   for i in {0..15}; do
-    key="color${i}"
-    val="$(awk -v key="${key}" '$1==key{print $2; exit}' "${theme_file}")"
-    [[ "${val}" =~ ^#[0-9A-Fa-f]{6}$ ]] || val=""
-    THEME_COLORS[$i]="${val}"
+    [[ -n "${colors_ref[$i]}" ]] || return 1
   done
 
-  for i in {0..15}; do
-    [[ -n "${THEME_COLORS[$i]}" ]] || return 1
-  done
-
-  [[ "${THEME_BG}" =~ ^#[0-9A-Fa-f]{6}$ ]] || THEME_BG="${THEME_COLORS[0]}"
-  [[ "${THEME_FG}" =~ ^#[0-9A-Fa-f]{6}$ ]] || THEME_FG="${THEME_COLORS[15]}"
-  [[ "${THEME_CURSOR}" =~ ^#[0-9A-Fa-f]{6}$ ]] || THEME_CURSOR="${THEME_FG}"
+  [[ "${bg_ref}" =~ ^#[0-9A-Fa-f]{6}$ ]] || bg_ref="${colors_ref[0]}"
+  [[ "${fg_ref}" =~ ^#[0-9A-Fa-f]{6}$ ]] || fg_ref="${colors_ref[15]}"
+  [[ "${cursor_ref}" =~ ^#[0-9A-Fa-f]{6}$ ]] || cursor_ref="${fg_ref}"
   return 0
 }
 
 write_wal_theme_file() {
   local out_file="$1"
+  local theme_bg="$2" theme_fg="$3" theme_cursor="$4" theme_colors_name="$5"
+  local -n theme_colors_ref="$theme_colors_name"
   local out_dir=""
   local tmp_file=""
 
@@ -42,27 +66,27 @@ write_wal_theme_file() {
   cat >"${tmp_file}" <<JSON
 {
   "special": {
-    "background": "${THEME_BG}",
-    "foreground": "${THEME_FG}",
-    "cursor": "${THEME_CURSOR}"
+    "background": "${theme_bg}",
+    "foreground": "${theme_fg}",
+    "cursor": "${theme_cursor}"
   },
   "colors": {
-    "color0": "${THEME_COLORS[0]}",
-    "color1": "${THEME_COLORS[1]}",
-    "color2": "${THEME_COLORS[2]}",
-    "color3": "${THEME_COLORS[3]}",
-    "color4": "${THEME_COLORS[4]}",
-    "color5": "${THEME_COLORS[5]}",
-    "color6": "${THEME_COLORS[6]}",
-    "color7": "${THEME_COLORS[7]}",
-    "color8": "${THEME_COLORS[8]}",
-    "color9": "${THEME_COLORS[9]}",
-    "color10": "${THEME_COLORS[10]}",
-    "color11": "${THEME_COLORS[11]}",
-    "color12": "${THEME_COLORS[12]}",
-    "color13": "${THEME_COLORS[13]}",
-    "color14": "${THEME_COLORS[14]}",
-    "color15": "${THEME_COLORS[15]}"
+    "color0": "${theme_colors_ref[0]}",
+    "color1": "${theme_colors_ref[1]}",
+    "color2": "${theme_colors_ref[2]}",
+    "color3": "${theme_colors_ref[3]}",
+    "color4": "${theme_colors_ref[4]}",
+    "color5": "${theme_colors_ref[5]}",
+    "color6": "${theme_colors_ref[6]}",
+    "color7": "${theme_colors_ref[7]}",
+    "color8": "${theme_colors_ref[8]}",
+    "color9": "${theme_colors_ref[9]}",
+    "color10": "${theme_colors_ref[10]}",
+    "color11": "${theme_colors_ref[11]}",
+    "color12": "${theme_colors_ref[12]}",
+    "color13": "${theme_colors_ref[13]}",
+    "color14": "${theme_colors_ref[14]}",
+    "color15": "${theme_colors_ref[15]}"
   }
 }
 JSON
@@ -108,6 +132,8 @@ generate_hypr_colors_from_theme() {
   local out_file="${HOME}/.config/hypr/themes/colors.conf"
   local out_dir=""
   local tmp_file=""
+  local theme_bg="" theme_fg="" theme_cursor=""
+  local -a theme_colors=()
 
   [[ -n "${HYPR_THEME_DIR}" ]] || return 1
   [[ -r "${kitty_theme_file}" ]] || {
@@ -115,7 +141,7 @@ generate_hypr_colors_from_theme() {
     return 1
   }
 
-  if ! load_theme_palette "${kitty_theme_file}"; then
+  if ! load_theme_palette "${kitty_theme_file}" theme_bg theme_fg theme_cursor theme_colors; then
     print_log -sec "theme" -warn "colors" "incomplete palette in ${kitty_theme_file}"
     return 1
   fi
@@ -123,15 +149,7 @@ generate_hypr_colors_from_theme() {
   out_dir="$(dirname "${out_file}")"
   mkdir -p "${out_dir}"
   tmp_file="$(mktemp "${out_dir}/.$(basename "${out_file}").XXXXXX")" || return 1
-
-  local -a theme_colors=()
   local i
-  for i in {0..15}; do
-    theme_colors[$i]="${THEME_COLORS[$i]}"
-  done
-
-  local theme_bg="${THEME_BG}"
-  local theme_fg="${THEME_FG}"
   local active_border inactive_border_bg inactive_border_fg
   local display_theme_source="${kitty_theme_file}"
   active_border="${theme_colors[4]#\#}ff"

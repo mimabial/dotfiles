@@ -1,77 +1,32 @@
-# 00-gpu.sh - GPU detection
-# This env script will detect the presence of various GPUs on the system
-# and set environment variables accordingly.
-# This is OVERRIDABLE by the user, so it can be customized as needed.
-# create you own file that is alphabetically after this one
+# GPU detection for UWSM env.
 
-# Usage:
-#
-# The 'key' variable is a 4-digit string representing GPU presence:
-#   1st digit: AMD GPU present (1) or not (0)
-#   2nd digit: Intel GPU present (1) or not (0)
-#   3rd digit: Nouveau GPU present (1) or not (0)
-#   4th digit: NVIDIA GPU present (1) or not (0)
-#
-# Example:
-#   key="0101" means AMD=0, Intel=1, Nouveau=0, NVIDIA=1 (hybrid Intel-NVIDIA setup)
-#   key="1000" means AMD=1, Intel=0, Nouveau=0, NVIDIA=0 (AMD only)
-#   key="0010" means AMD=0, Intel=0, Nouveau=1, NVIDIA=0 (Nouveau only)
-#
+gpu_lines=
+if command -v lspci >/dev/null 2>&1; then
+  gpu_lines="$(lspci -nn 2>/dev/null | grep -E '(VGA|3D)' || true)"
+fi
 
-cmd_exists() {
-  command -v "$1" >/dev/null 2>&1
-}
+NVIDIA=0
+if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi >/dev/null 2>&1 || lsmod | grep -q 'nvidia'; then
+  NVIDIA=1
+fi
 
-detect_nvidia() {
-  # Check if nvidia-smi exists and works (proper drivers installed)
-  if cmd_exists nvidia-smi && nvidia-smi >/dev/null 2>&1; then
-    echo 1
-  # Alternative check: nvidia kernel module loaded
-  elif lsmod | grep -q 'nvidia'; then
-    echo 1
-  else
-    echo 0
-  fi
-}
+AMD=0
+case "${gpu_lines}" in
+  *1002*) AMD=1 ;;
+esac
 
-detect_amd() {
-  if cmd_exists lspci && lspci -nn | grep -E "(VGA|3D)" | grep -iq "1002" 2>&1; then
-    echo 1
-  else
-    echo 0
-  fi
-}
+INTEL=0
+case "${gpu_lines}" in
+  *8086*) INTEL=1 ;;
+esac
 
-detect_intel() {
-  if cmd_exists lspci && lspci -nn | grep -E "(VGA|3D)" | grep -iq "8086"; then
-    echo 1
-  else
-    echo 0
-  fi
-}
+NOUVEAU=0
+lsmod | grep -q 'nouveau' && NOUVEAU=1
 
-detect_nouveau() {
-  if lsmod | grep -q 'nouveau'; then
-    echo 1
-  else
-    echo 0
-  fi
-}
-
-detect_nvidia_vaapi() {
-  # Check if libva-nvidia-driver is installed by looking for the VA-API driver
-  if [ -f "/usr/lib/dri/nvidia_drv_video.so" ] || [ -f "/usr/lib64/dri/nvidia_drv_video.so" ]; then
-    echo 1
-  else
-    echo 0
-  fi
-}
-
-NVIDIA=$(detect_nvidia)
-AMD=$(detect_amd)
-INTEL=$(detect_intel)
-NOUVEAU=$(detect_nouveau)
-NVIDIA_VAAPI=$(detect_nvidia_vaapi)
+NVIDIA_VAAPI=0
+if [ -f "/usr/lib/dri/nvidia_drv_video.so" ] || [ -f "/usr/lib64/dri/nvidia_drv_video.so" ]; then
+  NVIDIA_VAAPI=1
+fi
 
 key="${AMD}${INTEL}${NOUVEAU}${NVIDIA}"
 

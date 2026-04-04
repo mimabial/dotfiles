@@ -11,9 +11,40 @@ source "$(command -v hyprshell)" || exit 1
 OUTPUT_DIR="${HYPR_SCREENRECORD_DIR:-${XDG_VIDEOS_DIR:-$HOME/Videos}/Recordings}"
 RECORDING_FILE="${TMPDIR:-/tmp}/hypr-screenrecord-filename"
 
+screenrecord_notify() {
+  local summary="$1"
+  local body="${2:-}"
+  local icon="${3:-media-record}"
+  local urgency="${4:-normal}"
+  local timeout="${5:-3000}"
+  local stack_tag="${6:-}"
+  local args=(-a "Screen Recorder" -i "$icon" -u "$urgency" -t "$timeout")
+
+  [[ -n "$stack_tag" ]] && args+=(-h "string:x-dunst-stack-tag:${stack_tag}")
+
+  if [[ -n "$body" ]]; then
+    dunstify "${args[@]}" "$summary" "$body"
+  else
+    dunstify "${args[@]}" "$summary"
+  fi
+}
+
+screenrecord_action_notify() {
+  local summary="$1"
+  local body="$2"
+  local icon="$3"
+  local timeout="${4:-10000}"
+
+  dunstify -a "Screen Recorder" -i "$icon" -t "$timeout" "$summary" "$body" -A "default,open"
+}
+
+screenrecord_refresh_waybar() {
+  pkill -RTMIN+8 waybar
+}
+
 if [[ ! -d "$OUTPUT_DIR" ]]; then
   mkdir -p "$OUTPUT_DIR" 2>/dev/null || {
-    dunstify -a "Screen Recorder" -i "media-record" "Directory error" "Cannot create $OUTPUT_DIR" -u critical
+    screenrecord_notify "Directory error" "Cannot create $OUTPUT_DIR" "media-record" "critical" "5000"
     exit 1
   }
 fi
@@ -61,7 +92,7 @@ screenrecord_webcam_device() {
 
   device=$(v4l2-ctl --list-devices 2>/dev/null | grep -m1 "^[[:space:]]*/dev/video" | tr -d '\t')
   if [[ -z "$device" ]]; then
-    dunstify -a "Screen Recorder" -i "camera-web" "No webcam devices found" -u critical -t 3000
+    screenrecord_notify "No webcam devices found" "" "camera-web" "critical"
     return 1
   fi
 
@@ -120,15 +151,19 @@ write_recording_state() {
 }
 
 read_recording_state() {
+  local -n recording_pid_ref="$1"
+  local -n recording_path_ref="$2"
   local state=""
 
+  recording_pid_ref=""
+  recording_path_ref=""
   [[ -f "$RECORDING_FILE" ]] || return 1
   state="$(<"$RECORDING_FILE")"
   [[ "$state" == *':::'* ]] || return 1
-  RECORDING_PID="${state%%:::*}"
-  RECORDING_PATH="${state#*:::}"
-  [[ "${RECORDING_PID}" =~ ^[0-9]+$ ]] || return 1
-  [[ -n "${RECORDING_PATH}" ]] || return 1
+  recording_pid_ref="${state%%:::*}"
+  recording_path_ref="${state#*:::}"
+  [[ "${recording_pid_ref}" =~ ^[0-9]+$ ]] || return 1
+  [[ -n "${recording_path_ref}" ]] || return 1
 }
 
 clear_recording_state_if_matches() {
@@ -203,8 +238,8 @@ select_window() {
 
 ensure_screen_recorder_available() {
   if ! pkg_installed gpu-screen-recorder; then
-    dunstify -a "Screen Recorder" -i "media-record" "gpu-screen-recorder not found" "Install it first" -u critical
-    exit 1
+    screenrecord_notify "gpu-screen-recorder not found" "Install it first" "media-record" "critical" "5000"
+    return 1
   fi
 }
 
@@ -223,8 +258,21 @@ screenrecord_audio_args() {
 
 screenrecord_base_args() {
   local -n rec_args_ref="$1"
-  local resolution="${RESOLUTION:-$(default_resolution)}"
-  rec_args_ref=(-w portal -k auto -s "$resolution" -f 60 -fm cfr -fallback-cpu-encoding yes)
+  local resolution="$2"
+  screenrecord_target_args rec_args_ref "portal" "$resolution"
+}
+
+screenrecord_target_args() {
+  local -n rec_args_ref="$1"
+  local target="$2"
+  local resolution="$3"
+  shift 3
+
+  rec_args_ref=(-w "$target" "$@" -k auto -s "$resolution" -f 60 -fm cfr -fallback-cpu-encoding yes)
+}
+
+screenrecord_selection_cancelled_notify() {
+  screenrecord_notify "$1 selection cancelled"
 }
 
 screenrecord_formatted_region() {
@@ -254,11 +302,11 @@ screenrecord_window_args() {
   local win_formatted=""
 
   win_geom=$(select_window) || {
-    dunstify -a "Screen Recorder" -t 3000 -i "media-record" "Window selection cancelled"
+    screenrecord_selection_cancelled_notify "Window"
     return 1
   }
   win_formatted=$(screenrecord_formatted_region <<<"$win_geom")
-  rec_args_ref=(-w region -region "$win_formatted" -k auto -s "$resolution" -f 60 -fm cfr -fallback-cpu-encoding yes)
+  screenrecord_target_args rec_args_ref "region" "$resolution" -region "$win_formatted"
 }
 
 screenrecord_region_args() {
@@ -268,11 +316,11 @@ screenrecord_region_args() {
   local region_formatted=""
 
   region=$(slurp 2>/dev/null) || {
-    dunstify -a "Screen Recorder" -t 3000 -i "media-record" "Region selection cancelled"
+    screenrecord_selection_cancelled_notify "Region"
     return 1
   }
   region_formatted=$(screenrecord_formatted_region <<<"$region")
-  rec_args_ref=(-w region -region "$region_formatted" -k auto -s "$resolution" -f 60 -fm cfr -fallback-cpu-encoding yes)
+  screenrecord_target_args rec_args_ref "region" "$resolution" -region "$region_formatted"
 }
 
 screenrecord_output_args() {
@@ -282,14 +330,14 @@ screenrecord_output_args() {
 
   output=$(hyprctl -j monitors | jq -r '.[] | select(.focused==true) | .name')
   [[ -n "$output" ]] || return 0
-  rec_args_ref=(-w "$output" -k auto -s "$resolution" -f 60 -fm cfr -fallback-cpu-encoding yes)
+  screenrecord_target_args rec_args_ref "$output" "$resolution"
 }
 
 screenrecord_capture_args() {
   local -n rec_args_ref="$1"
   local resolution="$2"
 
-  screenrecord_base_args rec_args_ref
+  screenrecord_base_args rec_args_ref "$resolution"
   if [[ "$USE_WINDOW" == true ]]; then
     screenrecord_window_args rec_args_ref "$resolution"
   elif [[ "$USE_REGION" == true ]]; then
@@ -301,9 +349,9 @@ screenrecord_capture_args() {
 
 notify_recording_started() {
   if [[ "$USE_WINDOW" == true || "$USE_REGION" == true || "$USE_OUTPUT" == true ]]; then
-    dunstify -a "Screen Recorder" -t 3000 -i "media-record" "Recording started" -h "string:x-dunst-stack-tag:screenrec"
+    screenrecord_notify "Recording started" "" "media-record" "normal" "3000" "screenrec"
   else
-    dunstify -a "Screen Recorder" -t 3000 -i "media-record" "Choose what to record" -h "string:x-dunst-stack-tag:screenrec"
+    screenrecord_notify "Choose what to record" "" "media-record" "normal" "3000" "screenrec"
   fi
 }
 
@@ -313,7 +361,7 @@ start_recording() {
   local resolution="${RESOLUTION:-$(default_resolution)}"
   local -a rec_args=()
 
-  ensure_screen_recorder_available
+  ensure_screen_recorder_available || return 1
   screenrecord_audio_args audio_args
   screenrecord_maybe_force_display_gpu
   screenrecord_capture_args rec_args "$resolution" || return 1
@@ -323,17 +371,30 @@ start_recording() {
   kill -0 "$pid" 2>/dev/null || return 1
 
   write_recording_state "$pid" "$filename"
-  pkill -RTMIN+8 waybar
+  screenrecord_refresh_waybar
   notify_recording_started
 }
 
+screenrecord_start_flow() {
+  [[ "$WEBCAM" == true ]] && start_webcam_overlay
+  start_recording || {
+    cleanup_webcam
+    return 1
+  }
+}
+
 signal_recording_stop() {
-  RECORDING_STOP_PID=""
-  RECORDING_STOP_PATH=""
-  if read_recording_state; then
-    RECORDING_STOP_PID="$RECORDING_PID"
-    RECORDING_STOP_PATH="$RECORDING_PATH"
-    kill -SIGINT "$RECORDING_STOP_PID" 2>/dev/null || true
+  local -n stop_pid_ref="$1"
+  local -n stop_path_ref="$2"
+  local recording_pid=""
+  local recording_path=""
+
+  stop_pid_ref=""
+  stop_path_ref=""
+  if read_recording_state recording_pid recording_path; then
+    stop_pid_ref="$recording_pid"
+    stop_path_ref="$recording_path"
+    kill -SIGINT "$stop_pid_ref" 2>/dev/null || true
     return 0
   fi
 
@@ -356,7 +417,7 @@ finalize_recording_stop() {
 
   if [[ -n "$pid" && "$pid" =~ ^[0-9]+$ ]] && kill -0 "$pid" 2>/dev/null; then
     kill -KILL "$pid" 2>/dev/null || true
-    dunstify -a "Screen Recorder" -i "media-record" "Recording error" "Process had to be force-killed. Video may be corrupted." -u critical -t 5000
+    screenrecord_notify "Recording error" "Process had to be force-killed. Video may be corrupted." "media-record" "critical" "5000"
   elif [[ -n "$filename" && -f "$filename" ]]; then
     trim_first_frame "$filename"
     notify_recording_saved "$filename"
@@ -364,15 +425,18 @@ finalize_recording_stop() {
 }
 
 stop_recording() {
-  signal_recording_stop
+  local stop_pid=""
+  local stop_path=""
 
-  pkill -RTMIN+8 waybar
+  signal_recording_stop stop_pid stop_path
+
+  screenrecord_refresh_waybar
   cleanup_webcam
 
   (
-    wait_for_recording_stop "$RECORDING_STOP_PID"
-    finalize_recording_stop "$RECORDING_STOP_PID" "$RECORDING_STOP_PATH"
-    clear_recording_state_if_matches "$RECORDING_STOP_PID" "$RECORDING_STOP_PATH"
+    wait_for_recording_stop "$stop_pid"
+    finalize_recording_stop "$stop_pid" "$stop_path"
+    clear_recording_state_if_matches "$stop_pid" "$stop_path"
   ) &
 }
 
@@ -394,18 +458,29 @@ notify_recording_saved() {
 
   ffmpeg -y -i "$filename" -ss 00:00:00.1 -vframes 1 -q:v 2 "$preview" -loglevel quiet 2>/dev/null
 
-  action=$(dunstify -a "Screen Recorder" "Recording saved" "Click to open" -t 10000 -I "${preview:-$filename}" -A "default,open")
+  action=$(screenrecord_action_notify "Recording saved" "Click to open" "${preview:-$filename}")
   [[ "$action" == "default" ]] && mpv "$filename"
   rm -f "$preview"
 }
 
 is_recording_active() {
-  if read_recording_state; then
-    kill -0 "$RECORDING_PID" >/dev/null 2>&1 && return 0
+  local recording_pid=""
+  local recording_path=""
+
+  if read_recording_state recording_pid recording_path; then
+    kill -0 "$recording_pid" >/dev/null 2>&1 && return 0
     rm -f "$RECORDING_FILE"
   fi
 
   pgrep -f "^gpu-screen-recorder" >/dev/null 2>&1
+}
+
+screenrecord_toggle_flow() {
+  if is_recording_active; then
+    stop_recording
+  else
+    screenrecord_start_flow
+  fi
 }
 
 show_status() {
@@ -449,17 +524,13 @@ done
 
 case "${ACTION:-}" in
   start)
-    [[ "$WEBCAM" == true ]] && start_webcam_overlay
-    start_recording || cleanup_webcam
+    screenrecord_start_flow
     ;;
   toggle)
     if pgrep -x slurp >/dev/null 2>&1; then
       pkill -x slurp 2>/dev/null
-    elif is_recording_active; then
-      stop_recording
     else
-      [[ "$WEBCAM" == true ]] && start_webcam_overlay
-      start_recording || cleanup_webcam
+      screenrecord_toggle_flow
     fi
     ;;
   quit)
@@ -469,11 +540,6 @@ case "${ACTION:-}" in
     show_status
     ;;
   "")
-    if is_recording_active; then
-      stop_recording
-    else
-      [[ "$WEBCAM" == true ]] && start_webcam_overlay
-      start_recording || cleanup_webcam
-    fi
+    screenrecord_toggle_flow
     ;;
 esac

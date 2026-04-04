@@ -39,56 +39,56 @@ send_ephemeral_notif() {
   notify_send_safe "${args[@]}" "$@"
 }
 
+print_log_color_code() {
+  case "$1" in
+    -r | +r) printf '%s\n' "31" ;;
+    -g | +g) printf '%s\n' "32" ;;
+    -y | +y) printf '%s\n' "33" ;;
+    -b | +b) printf '%s\n' "34" ;;
+    -m | +m) printf '%s\n' "35" ;;
+    -c | +c) printf '%s\n' "36" ;;
+    *) return 1 ;;
+  esac
+}
+
+print_log_emit_ansi() {
+  local code="$1"
+  local text="$2"
+  printf '\e[%sm%s\e[0m' "${code}" "${text}" >&2
+}
+
 print_log() {
-  # [ -t 1 ] && return 0 # Skip if not in the terminal
+  local color_code=""
+
   while (("$#")); do
-    # [ "${colored}" == "true" ]
+    if color_code="$(print_log_color_code "$1" 2>/dev/null)"; then
+      print_log_emit_ansi "${color_code}" "${2-}"
+      shift 2
+      continue
+    fi
+
     case "$1" in
-      -r | +r)
-        echo -ne "\e[31m$2\e[0m" >&2
-        shift 2
-        ;; # Red
-      -g | +g)
-        echo -ne "\e[32m$2\e[0m" >&2
-        shift 2
-        ;; # Green
-      -y | +y)
-        echo -ne "\e[33m$2\e[0m" >&2
-        shift 2
-        ;; # Yellow
-      -b | +b)
-        echo -ne "\e[34m$2\e[0m" >&2
-        shift 2
-        ;; # Blue
-      -m | +m)
-        echo -ne "\e[35m$2\e[0m" >&2
-        shift 2
-        ;; # Magentass
-      -c | +c)
-        echo -ne "\e[36m$2\e[0m" >&2
-        shift 2
-        ;; # Cyan
       -stat)
-        echo -ne "\e[4;30;46m $2 \e[0m :: " >&2
+        printf '\e[4;30;46m %s \e[0m :: ' "${2-}" >&2
         shift 2
-        ;; # status
+        ;;
       -warn)
-        echo -ne "WARNING :: \e[30;43m $2 \e[0m :: " >&2
+        printf 'WARNING :: \e[30;43m %s \e[0m :: ' "${2-}" >&2
         shift 2
-        ;; # warning
+        ;;
       -sec)
-        echo -ne "\e[32m[$2] \e[0m" >&2
+        printf '\e[32m[%s] \e[0m' "${2-}" >&2
         shift 2
-        ;; # section use for logs
+        ;;
       -err)
-        echo -ne "ERROR :: \e[4;31m$2 \e[0m" >&2
+        printf 'ERROR :: \e[4;31m%s \e[0m' "${2-}" >&2
         shift 2
-        ;; #error
+        ;;
       *)
-        echo -ne "$1" >&2
+        printf '%s' "$1" >&2
         shift
         ;;
     esac
   done
-  echo "" >&2
+  printf '\n' >&2
 }

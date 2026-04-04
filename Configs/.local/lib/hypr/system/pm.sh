@@ -269,29 +269,47 @@ pm_detect() {
     fi
 }
 
-pm_install() {
-    case "$PM" in
-    pacman) pacman_install "$@" ;;
-    paru | yay) "$PM" -S --needed "$@" ;;
-    flatpak) flatpak install -y "$@" ;;
-    *) die "install is not supported for package manager '$PM'" ;;
+pm_dispatch() {
+    local action="$1"
+    local list_scope=""
+    shift
+
+    if [[ "${action}" == list ]]; then
+        list_scope="${1:-}"
+        shift
+    fi
+
+    case "${action}:${PM}:${list_scope}" in
+        install:pacman:*) pacman_install "$@" ;;
+        install:paru:*|install:yay:*) "$PM" -S --needed "$@" ;;
+        install:flatpak:*) flatpak install -y "$@" ;;
+        remove:pacman:*|remove:paru:*|remove:yay:*) "$PM" -Rsc "$@" ;;
+        remove:flatpak:*) flatpak uninstall -y "$@" ;;
+        upgrade:pacman:*|upgrade:paru:*|upgrade:yay:*) "$PM" -Su ;;
+        upgrade:flatpak:*) flatpak update -y ;;
+        info:pacman:*) pacman_info "$1" ;;
+        info:paru:*|info:yay:*) "$PM" -Si --color="$PM_COLOR" "$1" ;;
+        info:flatpak:*) flatpak info "$1" ;;
+        list:pacman:all) pacman_list_all ;;
+        list:yay:all) yay_list_all ;;
+        list:paru:all) paru -Sl --color=never | awk '{ print $2 " " $1 " " $3 " " $4 }' ;;
+        list:pacman:installed|list:paru:installed|list:yay:installed) "$PM" -Q --color=never ;;
+        list:flatpak:all) flatpak remote-ls --columns=name,application,version ;;
+        list:flatpak:installed) flatpak list --columns=name,application,version ;;
+        *) return 1 ;;
     esac
+}
+
+pm_install() {
+    pm_dispatch install "$@" || die "install is not supported for package manager '$PM'"
 }
 
 pm_remove() {
-    case "$PM" in
-    pacman | paru | yay) "$PM" -Rsc "$@" ;;
-    flatpak) flatpak uninstall -y "$@" ;;
-    *) die "remove is not supported for package manager '$PM'" ;;
-    esac
+    pm_dispatch remove "$@" || die "remove is not supported for package manager '$PM'"
 }
 
 pm_upgrade() {
-    case "$PM" in
-    pacman | paru | yay) "$PM" -Su ;;
-    flatpak) flatpak update -y ;;
-    *) die "upgrade is not supported for package manager '$PM'" ;;
-    esac
+    pm_dispatch upgrade || die "upgrade is not supported for package manager '$PM'"
 }
 
 pm_fetch() {
@@ -304,24 +322,11 @@ pm_fetch() {
 }
 
 pm_info() {
-    case "$PM" in
-    pacman) pacman_info "$1" ;;
-    paru | yay) "$PM" -Si --color="$PM_COLOR" "$1" ;;
-    flatpak) flatpak info "$1" ;;
-    *) die "info is not supported for package manager '$PM'" ;;
-    esac
+    pm_dispatch info "$1" || die "info is not supported for package manager '$PM'"
 }
 
 pm_list() {
-    case "${PM}:$1" in
-    pacman:all) pacman_list_all ;;
-    yay:all) yay_list_all ;;
-    paru:all) paru -Sl --color=never | awk '{ print $2 " " $1 " " $3 " " $4 }' ;;
-    pacman:installed | paru:installed | yay:installed) "$PM" -Q --color=never ;;
-    flatpak:all) flatpak remote-ls --columns=name,application,version ;;
-    flatpak:installed) flatpak list --columns=name,application,version ;;
-    *) die "list '$1' is not supported for package manager '$PM'" ;;
-    esac
+    pm_dispatch list "$1" || die "list '$1' is not supported for package manager '$PM'"
 }
 
 pm_format() {

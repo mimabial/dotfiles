@@ -219,30 +219,6 @@ else
 	debug() { :; }
 fi
 
-replace() {
-	# takes $1, replaces $2 with $3
-	# does it in large chunks
-	# writes result to global REPLACED_STR to avoid $() newline issues
-
-	# right part of string
-	r_remainder=${1}
-	REPLACED_STR=
-	while [ -n "$r_remainder" ]; do
-		# left part before first encounter of $2
-		r_left=${r_remainder%%"$2"*}
-		# append
-		REPLACED_STR=${REPLACED_STR}$r_left
-		case "$r_left" in
-		# nothing left to cut
-		"$r_remainder") break ;;
-		esac
-		# append replace substring
-		REPLACED_STR=${REPLACED_STR}$3
-		# cut remainder
-		r_remainder=${r_remainder#*"$2"}
-	done
-}
-
 # shellcheck source=/dev/null
 . "$HOME/.local/lib/hypr/system/app2unit.desktop.sh"
 # shellcheck source=/dev/null
@@ -251,9 +227,12 @@ replace() {
 . "$HOME/.local/lib/hypr/system/app2unit.resolve.sh"
 
 pack_args_usep() {
-	PACKED_ARGS=''
-	for packed_arg in "$@"; do
-		PACKED_ARGS=${PACKED_ARGS}${PACKED_ARGS:+$USEP}${packed_arg}
+	[ "$#" -gt "0" ] || return 0
+
+	printf '%s' "$1"
+	shift
+	for app2unit_packed_arg in "$@"; do
+		printf '%s%s' "$USEP" "$app2unit_packed_arg"
 	done
 }
 
@@ -263,13 +242,13 @@ usage_error() {
 }
 
 resolve_slice_choice() {
-	for resolve_choice in $UNIT_SLICE_CHOICES; do
-		IFS='=' read -r resolve_abbr resolve_id <<-EOF
-			$resolve_choice
+	for cli_resolve_choice in $UNIT_SLICE_CHOICES; do
+		IFS='=' read -r cli_resolve_abbr cli_resolve_id <<-EOF
+			$cli_resolve_choice
 		EOF
-		case "$resolve_abbr" in
+		case "$cli_resolve_abbr" in
 		"$1")
-			printf '%s\n' "$resolve_id"
+			printf '%s\n' "$cli_resolve_id"
 			return 0
 			;;
 		esac
@@ -277,84 +256,69 @@ resolve_slice_choice() {
 	return 1
 }
 
-set_slice_option() {
-	case "$1" in
-	.slice | '') usage_error "Empty slice id '$1'" ;;
-	*[!a-zA-Z0-9_.-]*) usage_error "Invalid slice id '$1'" ;;
+resolve_required_option_value() {
+	[ -n "$2" ] || usage_error "Expected $3 for $1!"
+	printf '%s' "$2"
+}
+
+resolve_allowed_option_value() {
+	app2unit_option_value=$(resolve_required_option_value "$1" "$2" "$3")
+	shift 3
+	for app2unit_allowed_value in "$@"; do
+		case "$app2unit_option_value" in
+		"$app2unit_allowed_value")
+			printf '%s' "$app2unit_option_value"
+			return 0
+			;;
+		esac
+	done
+	usage_error "Expected $3 for $1, got '$app2unit_option_value'!"
+}
+
+resolve_exclusive_option_value() {
+	app2unit_option_value=$(resolve_required_option_value "$1" "$2" "$3")
+	[ -z "$5" ] || usage_error "Conflicting options: $1, $4!"
+	printf '%s' "$app2unit_option_value"
+}
+
+resolve_slice_option_value() {
+	app2unit_slice_value=$2
+	case "$app2unit_slice_value" in
+	.slice | '') usage_error "Empty slice id '$app2unit_slice_value'" ;;
+	*[!a-zA-Z0-9_.-]*) usage_error "Invalid slice id '$app2unit_slice_value'" ;;
 	*.slice)
-		UNIT_SLICE_ID=$1
+		printf '%s' "$app2unit_slice_value"
 		return 0
 		;;
 	esac
 
-	if slice_id=$(resolve_slice_choice "$1"); then
-		UNIT_SLICE_ID=$slice_id
+	if app2unit_resolved_slice_id=$(resolve_slice_choice "$app2unit_slice_value"); then
+		printf '%s' "$app2unit_resolved_slice_id"
 		return 0
 	fi
 
-	usage_error "'$1' does not point to a slice choice!" "Choices: $UNIT_SLICE_CHOICES"
+	usage_error "'$app2unit_slice_value' does not point to a slice choice!" "Choices: $UNIT_SLICE_CHOICES"
 }
 
-set_unit_type_option() {
-	case "$1" in
-	scope | service) UNIT_TYPE=$1 ;;
-	*) usage_error "Expected unit type scope|service for -t, got '$1'!" ;;
-	esac
-}
-
-set_app_name_option() {
-	if [ -z "$1" ]; then
-		usage_error "Expected app name for -a!"
-	elif [ -n "$UNIT_ID" ]; then
-		usage_error "Conflicting options: -a, -u!"
-	fi
-	UNIT_APP_SUBSTRING=$1
-}
-
-set_unit_id_option() {
-	if [ -z "$1" ]; then
-		usage_error "Expected Unit ID for -u!"
-	elif [ -n "$UNIT_APP_SUBSTRING" ]; then
-		usage_error "Conflicting options: -u, -a!"
-	fi
-	UNIT_ID=$1
-}
-
-set_unit_description_option() {
-	[ -n "$1" ] || usage_error "Expected unit description for -d!"
-	UNIT_DESCRIPTION=$1
-}
-
-set_silent_option() {
-	case "$1" in
-	out | err | both) SILENT=$1 ;;
-	*) usage_error "Expected silent mode out|err|both for -S, got '$1'!" ;;
-	esac
-}
-
-store_terminal_passthrough_option() {
-	TERMINAL_ARGS_USEP=${TERMINAL_ARGS_USEP}${TERMINAL_ARGS_USEP:+$USEP}${1}
-}
-
-set_part_of_gst_option() {
-	case "$part_of_gst_set" in
+apply_part_of_gst_flag() {
+	case "$PART_OF_GST_SET" in
 	true) usage_error "$1 conflicts with $2" ;;
 	esac
 	PART_OF_GST=$3
-	part_of_gst_set=true
+	PART_OF_GST_SET=true
 }
 
 resolve_default_terminal_target() {
-	if path_and_cmd=$(
+	if app2unit_terminal_target=$(
 		IFS=$USEP
 		# shellcheck disable=SC2086
 		set -- $TERMINAL_ARGS_USEP
 		IFS=$OIFS
 		unset DISPLAY WAYLAND_DISPLAY
 		"$TERMINAL_HANDLER" --print-path --print-cmd='\037' "$@"
-	) && case "$path_and_cmd" in '/'*".desktop$N"* | '/'*'.desktop:'*"$N"*) true ;; *) false ;; esac then
-		MAIN_ARG=${path_and_cmd%%"$N"*}
-		EXEC_RSEP_USEP=${path_and_cmd#*"$N"}
+	) && case "$app2unit_terminal_target" in '/'*".desktop$N"* | '/'*'.desktop:'*"$N"*) true ;; *) false ;; esac then
+		MAIN_ARG=${app2unit_terminal_target%%"$N"*}
+		EXEC_RSEP_USEP=${app2unit_terminal_target#*"$N"}
 		# shellcheck disable=SC2086
 		debug "replaced MAIN_ARG with '$MAIN_ARG'" "populated EXEC_RSEP_USEP with:" "$(
 			IFS=$USEP
@@ -370,70 +334,56 @@ resolve_default_terminal_target() {
 	MAIN_ARG="$TERMINAL_HANDLER"
 }
 
-parse_cli_immediate_option() {
+parse_cli_option() {
+	CLI_SHIFT=0
 	case "$1" in
 	-h | --help)
 		help
 		exit 0
 		;;
-	esac
-
-	return 1
-}
-
-parse_cli_value_option() {
-	case "$1" in
 	-s)
 		debug "arg '$1' '${2:-}'"
-		set_slice_option "${2:-}"
+		UNIT_SLICE_ID=$(resolve_slice_option_value "$1" "${2:-}")
 		CLI_SHIFT=2
 		;;
 	-t)
 		debug "arg '$1' '${2:-}'"
-		set_unit_type_option "${2:-}"
+		UNIT_TYPE=$(resolve_allowed_option_value "$1" "${2:-}" "unit type scope|service" scope service)
 		CLI_SHIFT=2
 		;;
 	-a)
 		debug "arg '$1' '${2:-}'"
-		set_app_name_option "${2:-}"
+		UNIT_APP_SUBSTRING=$(resolve_exclusive_option_value "$1" "${2:-}" "app name" "-u" "$UNIT_ID")
 		CLI_SHIFT=2
 		;;
 	-u)
 		debug "arg '$1' '${2:-}'"
-		set_unit_id_option "${2:-}"
+		UNIT_ID=$(resolve_exclusive_option_value "$1" "${2:-}" "Unit ID" "-a" "$UNIT_APP_SUBSTRING")
 		CLI_SHIFT=2
 		;;
 	-d)
 		debug "arg '$1' '${2:-}'"
-		set_unit_description_option "${2:-}"
+		UNIT_DESCRIPTION=$(resolve_required_option_value "$1" "${2:-}" "unit description")
 		CLI_SHIFT=2
 		;;
 	-S)
 		debug "arg '$1' '${2:-}'"
-		set_silent_option "${2:-}"
+		SILENT=$(resolve_allowed_option_value "$1" "${2:-}" "silent mode out|err|both" out err both)
 		CLI_SHIFT=2
 		;;
-	*) return 1 ;;
-	esac
-
-	return 0
-}
-
-parse_cli_flag_option() {
-	case "$1" in
 	-c)
 		debug "arg '$1'"
-		set_part_of_gst_option "-c" "-C" false
+		apply_part_of_gst_flag "-c" "-C" false
 		CLI_SHIFT=1
 		;;
 	-C)
 		debug "arg '$1'"
-		set_part_of_gst_option "-C" "-c" true
+		apply_part_of_gst_flag "-C" "-c" true
 		CLI_SHIFT=1
 		;;
 	-T)
 		TERMINAL=true
-		capture_terminal_args=true
+		CAPTURE_TERMINAL_ARGS=true
 		debug "arg '$1'"
 		check_terminal_handler
 		CLI_SHIFT=1
@@ -452,31 +402,16 @@ parse_cli_flag_option() {
 		debug "arg '$1', breaking"
 		CLI_SHIFT=-1
 		;;
-	*) return 1 ;;
-	esac
-
-	return 0
-}
-
-parse_cli_passthrough_option() {
-	case "$capture_terminal_args" in
-	false) usage_error "Unknown option '$1'!" ;;
-	true)
-		debug "storing unknown opt '$1' for terminal"
-		store_terminal_passthrough_option "$1"
-		CLI_SHIFT=1
+	-*)
+		case "$CAPTURE_TERMINAL_ARGS" in
+		false) usage_error "Unknown option '$1'!" ;;
+		true)
+			debug "storing unknown opt '$1' for terminal"
+			TERMINAL_ARGS_USEP=${TERMINAL_ARGS_USEP}${TERMINAL_ARGS_USEP:+$USEP}${1}
+			CLI_SHIFT=1
+			;;
+		esac
 		;;
-	esac
-}
-
-parse_cli_option() {
-	CLI_SHIFT=0
-	parse_cli_immediate_option "$1" && return 0
-	parse_cli_value_option "$1" "${2:-}" && return 0
-	parse_cli_flag_option "$1" && return 0
-
-	case "$1" in
-	-*) parse_cli_passthrough_option "$1" ;;
 	*)
 		debug "arg '$1', breaking"
 		return 1
@@ -506,7 +441,6 @@ initialize_state() {
 	TEST_MODE=false
 	EXPANDED_STR=''
 	EXEC_USEP=''
-	REPLACED_STR=''
 	TERMINAL_ARGS_USEP=''
 	MAIN_ARG=''
 	PARSED_ARGS_USEP=''
@@ -515,10 +449,10 @@ initialize_state() {
 	UNIT_TYPE=${APP2UNIT_TYPE:-scope}
 	case "$UNIT_TYPE" in
 	service | scope) true ;;
-	*)
-		error "Unsupported unit type '$UNIT_TYPE'!"
-		exit 1
-		;;
+		*)
+			error "Unsupported unit type '$UNIT_TYPE'!"
+			return 1
+			;;
 	esac
 
 	UNIT_SLICE_ID=''
@@ -526,7 +460,7 @@ initialize_state() {
 	PART_OF_GST=true
 	TERMINAL=false
 	OPENER_MODE=false
-	capture_terminal_args=false
+	CAPTURE_TERMINAL_ARGS=false
 	RANDOM_STRING=
 	LCODE=${LANGUAGE:-"$LANG"}
 	LCODE=${LCODE%_*}
@@ -534,32 +468,32 @@ initialize_state() {
 }
 
 configure_unit_slice_choices() {
-	for choice in $UNIT_SLICE_CHOICES; do
-		debug "evaluating slice choice '$choice'"
-		slice_abbr=
-		slice_id=
-		case "$choice" in
+	for CLI_SLICE_CHOICE in $UNIT_SLICE_CHOICES; do
+		debug "evaluating slice choice '$CLI_SLICE_CHOICE'"
+		CLI_SLICE_ABBR=
+		CLI_SLICE_ID=
+		case "$CLI_SLICE_CHOICE" in
 		*[!a-zA-Z0-9=._-]* | *=*=* | *[!a-z]*=* | *=[!a-zA-Z0-9._-]* | *[!.][!s][!l][!i][!c][!e])
-			error "Invalid slice choice '$choice', ignoring."
+			error "Invalid slice choice '$CLI_SLICE_CHOICE', ignoring."
 			continue
 			;;
 		[a-z]*=[a-zA-Z0-9_.-]*.slice)
-			IFS='=' read -r slice_abbr slice_id <<-EOF
-				$choice
+			IFS='=' read -r CLI_SLICE_ABBR CLI_SLICE_ID <<-EOF
+				$CLI_SLICE_CHOICE
 			EOF
 			;;
 		*)
-			error "Invalid slice choice '$choice', ignoring."
+			error "Invalid slice choice '$CLI_SLICE_CHOICE', ignoring."
 			continue
 			;;
 		esac
 		if [ -z "$UNIT_SLICE_ID" ]; then
 			UNIT_SLICE_CHOICES=
-			UNIT_SLICE_ID="${slice_id}"
-			debug "reset default slice as '${slice_id}'"
+			UNIT_SLICE_ID="${CLI_SLICE_ID}"
+			debug "reset default slice as '${CLI_SLICE_ID}'"
 		fi
-		debug "adding choice ${slice_abbr}=${slice_id}"
-		UNIT_SLICE_CHOICES=${UNIT_SLICE_CHOICES}${UNIT_SLICE_CHOICES:+ }${slice_abbr}=${slice_id}
+		debug "adding choice ${CLI_SLICE_ABBR}=${CLI_SLICE_ID}"
+		UNIT_SLICE_CHOICES=${UNIT_SLICE_CHOICES}${UNIT_SLICE_CHOICES:+ }${CLI_SLICE_ABBR}=${CLI_SLICE_ID}
 	done
 	if [ -z "$UNIT_SLICE_ID" ]; then
 		UNIT_SLICE_ID=app.slice
@@ -586,12 +520,12 @@ configure_invocation_mode() {
 		*-service) UNIT_TYPE=service ;;
 		esac
 		;;
-	*-term | *-terminal | *-term-scope | *-terminal-scope | *-term-service | *-terminal-service)
-		TERMINAL=true
-		capture_terminal_args=true
-		case "$SELF_NAME" in
-		*-scope) UNIT_TYPE=scope ;;
-		*-service) UNIT_TYPE=service ;;
+		*-term | *-terminal | *-term-scope | *-terminal-scope | *-term-service | *-terminal-service)
+			TERMINAL=true
+			CAPTURE_TERMINAL_ARGS=true
+			case "$SELF_NAME" in
+			*-scope) UNIT_TYPE=scope ;;
+			*-service) UNIT_TYPE=service ;;
 		esac
 		;;
 	esac
@@ -630,8 +564,7 @@ expand_short_args() {
 		*) set -- "$@" "$arg" ;;
 		esac
 	done
-	pack_args_usep "$@"
-	EXPANDED_ARGS_USEP=$PACKED_ARGS
+	EXPANDED_ARGS_USEP=$(pack_args_usep "$@")
 }
 
 parse_cli_options() {
@@ -640,7 +573,7 @@ parse_cli_options() {
 	set -- $1
 	IFS=$OIFS
 
-	part_of_gst_set=false
+	PART_OF_GST_SET=false
 	while [ "$#" -gt "0" ]; do
 		parse_cli_option "$@" || break
 		case "$CLI_SHIFT" in
@@ -654,28 +587,27 @@ parse_cli_options() {
 		esac
 	done
 
-	pack_args_usep "$@"
-	PARSED_ARGS_USEP=$PACKED_ARGS
+	PARSED_ARGS_USEP=$(pack_args_usep "$@")
 }
 
 resolve_open_mode_main_target() {
 	if [ "$#" = "0" ]; then
 		error "File(s) or URL(s) expected for open mode."
-		exit 1
+		return 1
 	fi
 
 	MAIN_ARG=
-	for arg in "$@"; do
-		mime=$(get_mime "$arg")
-		assoc=$(get_assoc "$mime")
+	for app2unit_open_arg in "$@"; do
+		app2unit_open_mime=$(get_mime "$app2unit_open_arg")
+		app2unit_open_assoc=$(get_assoc "$app2unit_open_mime")
 		if [ -z "$MAIN_ARG" ]; then
-			debug "setting MAIN_ARG from association for '$arg': '$assoc'"
-			MAIN_ARG=$assoc
-		elif [ "$MAIN_ARG" = "$assoc" ]; then
-			debug "arg '$arg' has the same association"
+			debug "setting MAIN_ARG from association for '$app2unit_open_arg': '$app2unit_open_assoc'"
+			MAIN_ARG=$app2unit_open_assoc
+		elif [ "$MAIN_ARG" = "$app2unit_open_assoc" ]; then
+			debug "arg '$app2unit_open_arg' has the same association"
 		else
 			error "Can not open multiple files/URLs with different associations"
-			exit 1
+			return 1
 		fi
 	done
 }
@@ -688,8 +620,7 @@ resolve_terminal_mode_main_target() {
 resolve_direct_main_target() {
 	MAIN_ARG=$1
 	shift
-	pack_args_usep "$@"
-	RESOLVED_ARGS_USEP=$PACKED_ARGS
+	RESOLVED_ARGS_USEP=$(pack_args_usep "$@")
 }
 
 resolve_main_target() {
@@ -712,8 +643,7 @@ resolve_main_target() {
 		return 0
 	fi
 
-	pack_args_usep "$@"
-	RESOLVED_ARGS_USEP=$PACKED_ARGS
+	RESOLVED_ARGS_USEP=$(pack_args_usep "$@")
 	parse_main_arg "$MAIN_ARG"
 }
 
@@ -722,8 +652,7 @@ resolve_entry_context() {
 	# shellcheck disable=SC2086
 	set -- $1
 	IFS=$OIFS
-	pack_args_usep "$@"
-	ENTRY_CONTEXT_ARGS_USEP=$PACKED_ARGS
+	ENTRY_CONTEXT_ARGS_USEP=$(pack_args_usep "$@")
 
 	resolve_entry_path_id
 	resolve_entry_path_from_id
@@ -742,8 +671,7 @@ inject_terminal_handler_args() {
 		set -- "$TERMINAL_HANDLER" $TERMINAL_ARGS_USEP "$@"
 		IFS=$OIFS
 	fi
-	pack_args_usep "$@"
-	RUN_ARGS_USEP=$PACKED_ARGS
+	RUN_ARGS_USEP=$(pack_args_usep "$@")
 }
 
 resolve_entry_path_id() {
@@ -756,8 +684,8 @@ resolve_entry_path_id() {
 			ENTRY_ID_PRE=${ENTRY_PATH#"$dir"}
 			case "$ENTRY_ID_PRE" in
 			*/*)
-				replace "$ENTRY_ID_PRE" "/" "-"
-				ENTRY_ID_PRE=$REPLACED_STR
+				de_replace_str "$ENTRY_ID_PRE" "/" "-"
+				ENTRY_ID_PRE=$DE_REPLACED_STR
 				;;
 			esac
 			if validate_entry_id "$ENTRY_ID_PRE"; then
@@ -787,11 +715,10 @@ resolve_link_entry_context() {
 	[ -n "$ENTRY_URL" ] || return 0
 
 	debug "re-parsing for Link entry URL: $ENTRY_URL"
-	mime=$(get_mime "$ENTRY_URL")
-	assoc=$(get_assoc "$mime")
-	ENTRY_ID=$assoc
-	pack_args_usep "$ENTRY_URL"
-	ENTRY_CONTEXT_ARGS_USEP=$PACKED_ARGS
+	app2unit_link_mime=$(get_mime "$ENTRY_URL")
+	app2unit_link_assoc=$(get_assoc "$app2unit_link_mime")
+	ENTRY_ID=$app2unit_link_assoc
+	ENTRY_CONTEXT_ARGS_USEP=$(pack_args_usep "$ENTRY_URL")
 	ENTRY_URL=
 	ENTRY_PATH=$(find_entry "$ENTRY_ID")
 	read_entry_path "$ENTRY_PATH"
@@ -818,10 +745,15 @@ execute_entry_iterations() {
 		if [ "$first" = "false" ]; then
 			randomize_unit_id
 		fi
-		run_entry_command iteration "$cmd" &
+		case "$TEST_MODE" in
+		true) run_entry_command iteration "$cmd" ;;
+		*) run_entry_command iteration "$cmd" & ;;
+		esac
 		first=false
 	done
-	wait
+	case "$TEST_MODE" in
+	false) wait ;;
+	esac
 }
 
 execute_entry_target() {

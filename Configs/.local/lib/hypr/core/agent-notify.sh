@@ -449,52 +449,103 @@ Environment:
 EOF
 }
 
-agent_notify_send_command() {
-  local title="" message="" urgency="normal" source_name=""
-  local no_source=0 question_flag="${1:-0}" question_id="" context="" summary="" stack_tag=""
+agent_notify_parse_value_option() {
+  local option="$1" next_value="${2-}" argc="$3" short_opt="$4" long_opt="$5"
+  local target_name="$6" consumed_name="$7" handled_name="$8"
+  local -n target_ref="$target_name" consumed_ref="$consumed_name" handled_ref="$handled_name"
 
-  if [[ "$1" == "0" || "$1" == "1" ]]; then
-    shift
-  fi
+  handled_ref=1
+  case "$option" in
+    "$short_opt" | "$long_opt")
+      if (( argc < 2 )); then
+        printf 'agent-notify: missing value for %s\n' "$option" >&2
+        return 1
+      fi
+      target_ref="$next_value"
+      consumed_ref=2
+      ;;
+    "${long_opt}"=*)
+      target_ref="${option#*=}"
+      consumed_ref=1
+      ;;
+    *)
+      handled_ref=0
+      consumed_ref=0
+      ;;
+  esac
+}
+
+agent_notify_parse_common_option() {
+  local option="$1" next_value="${2-}" argc="$3"
+  local title_name="$4" message_name="$5" source_name="$6" consumed_name="$7" handled_name="$8" help_name="$9"
+  local -n consumed_ref="$consumed_name" handled_ref="$handled_name" help_ref="$help_name"
+
+  help_ref=0
+
+  agent_notify_parse_value_option "$option" "$next_value" "$argc" -t --title "$title_name" "$consumed_name" "$handled_name" || return 1
+  (( handled_ref )) && return 0
+
+  agent_notify_parse_value_option "$option" "$next_value" "$argc" -m --message "$message_name" "$consumed_name" "$handled_name" || return 1
+  (( handled_ref )) && return 0
+
+  agent_notify_parse_value_option "$option" "$next_value" "$argc" -s --source "$source_name" "$consumed_name" "$handled_name" || return 1
+  (( handled_ref )) && return 0
+
+  case "$option" in
+    -h | --help)
+      handled_ref=1
+      help_ref=1
+      consumed_ref=1
+      ;;
+    *)
+      handled_ref=0
+      consumed_ref=0
+      ;;
+  esac
+}
+
+agent_notify_send_command() {
+  local mode="${1:-send}"
+  local title="" message="" urgency="normal" source_name=""
+  local no_source=0 question_flag=0 question_id="" context="" summary="" stack_tag=""
+  local consumed=0 handled=0 show_help=0
+
+  case "$mode" in
+    send)
+      question_flag=0
+      ;;
+    ask)
+      question_flag=1
+      ;;
+    *)
+      printf 'agent-notify: unsupported send mode: %s\n' "$mode" >&2
+      return 1
+      ;;
+  esac
+  shift
 
   while (($#)); do
+    consumed=0
+    handled=0
+    show_help=0
+    agent_notify_parse_common_option "$1" "${2-}" "$#" title message source_name consumed handled show_help || return 1
+    if (( handled )); then
+      if (( show_help )); then
+        agent_notify_show_help
+        return 0
+      fi
+      shift "$consumed"
+      continue
+    fi
+
+    handled=0
+    agent_notify_parse_value_option "$1" "${2-}" "$#" -u --urgency urgency consumed handled || return 1
+    if (( handled )); then
+      shift "$consumed"
+      continue
+    fi
+
     case "$1" in
-      -t | --title)
-        [[ $# -ge 2 ]] || { printf 'agent-notify: missing value for %s\n' "$1" >&2; return 1; }
-        title="$2"
-        shift 2
-        ;;
-      --title=*)
-        title="${1#*=}"
-        shift
-        ;;
-      -m | --message)
-        [[ $# -ge 2 ]] || { printf 'agent-notify: missing value for %s\n' "$1" >&2; return 1; }
-        message="$2"
-        shift 2
-        ;;
-      --message=*)
-        message="${1#*=}"
-        shift
-        ;;
-      -u | --urgency)
-        [[ $# -ge 2 ]] || { printf 'agent-notify: missing value for %s\n' "$1" >&2; return 1; }
-        urgency="$2"
-        shift 2
-        ;;
-      --urgency=*)
-        urgency="${1#*=}"
-        shift
-        ;;
-      -s | --source)
-        [[ $# -ge 2 ]] || { printf 'agent-notify: missing value for %s\n' "$1" >&2; return 1; }
-        source_name="$2"
-        shift 2
-        ;;
-      --source=*)
-        source_name="${1#*=}"
-        shift
-        ;;
       -S | --no-source)
         no_source=1
         shift
@@ -502,10 +553,6 @@ agent_notify_send_command() {
       -q | --question)
         question_flag=1
         shift
-        ;;
-      -h | --help)
-        agent_notify_show_help
-        return 0
         ;;
       *)
         printf 'agent-notify: unknown option: %s\n' "$1" >&2
@@ -547,54 +594,31 @@ agent_notify_send_command() {
 
 agent_notify_answer_command() {
   local id="" title="" message="" source_name="" matched_id=""
+  local consumed=0 handled=0 show_help=0
 
   while (($#)); do
-    case "$1" in
-      -i | --id)
-        [[ $# -ge 2 ]] || { printf 'agent-notify: missing value for %s\n' "$1" >&2; return 1; }
-        id="$2"
-        shift 2
-        ;;
-      --id=*)
-        id="${1#*=}"
-        shift
-        ;;
-      -t | --title)
-        [[ $# -ge 2 ]] || { printf 'agent-notify: missing value for %s\n' "$1" >&2; return 1; }
-        title="$2"
-        shift 2
-        ;;
-      --title=*)
-        title="${1#*=}"
-        shift
-        ;;
-      -m | --message)
-        [[ $# -ge 2 ]] || { printf 'agent-notify: missing value for %s\n' "$1" >&2; return 1; }
-        message="$2"
-        shift 2
-        ;;
-      --message=*)
-        message="${1#*=}"
-        shift
-        ;;
-      -s | --source)
-        [[ $# -ge 2 ]] || { printf 'agent-notify: missing value for %s\n' "$1" >&2; return 1; }
-        source_name="$2"
-        shift 2
-        ;;
-      --source=*)
-        source_name="${1#*=}"
-        shift
-        ;;
-      -h | --help)
+    consumed=0
+    handled=0
+    show_help=0
+    agent_notify_parse_common_option "$1" "${2-}" "$#" title message source_name consumed handled show_help || return 1
+    if (( handled )); then
+      if (( show_help )); then
         agent_notify_show_help
         return 0
-        ;;
-      *)
-        printf 'agent-notify: unknown option: %s\n' "$1" >&2
-        return 1
-        ;;
-    esac
+      fi
+      shift "$consumed"
+      continue
+    fi
+
+    handled=0
+    agent_notify_parse_value_option "$1" "${2-}" "$#" -i --id id consumed handled || return 1
+    if (( handled )); then
+      shift "$consumed"
+      continue
+    fi
+
+    printf 'agent-notify: unknown option: %s\n' "$1" >&2
+    return 1
   done
 
   if [[ -z "$id" && ( -z "$title" || -z "$message" ) ]]; then
@@ -624,11 +648,11 @@ agent_notify_main() {
   case "$command_name" in
     send)
       shift
-      agent_notify_send_command 0 "$@"
+      agent_notify_send_command send "$@"
       ;;
     ask)
       shift
-      agent_notify_send_command 1 "$@"
+      agent_notify_send_command ask "$@"
       ;;
     answer)
       shift

@@ -7,6 +7,8 @@ if ! source "$(command -v hyprshell)"; then
 fi
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/rofi/rofi.lib.bash"
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/window/stateful-choice.common.bash"
 
 animations_user_dir="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}/animations"
 animations_shared_dir="${HYPR_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/hypr}/animations"
@@ -26,44 +28,17 @@ HELP
 resolve_animation_path() {
   local name="${1:-theme}"
   name="${name%.conf}"
-
-  if [[ "${name}" == */* ]] && [[ -f "${name}" ]]; then
-    printf '%s\n' "${name}"
-    return 0
-  fi
-
-  local candidate
-  for candidate in \
-    "${animations_user_dir}/${name}.conf" \
-    "${animations_shared_dir}/${name}.conf"; do
-    if [[ -f "${candidate}" ]]; then
-      printf '%s\n' "${candidate}"
-      return 0
-    fi
-  done
-
-  return 1
+  hypr_stateful_choice_resolve_path "${name}" "conf" "${animations_user_dir}" "${animations_shared_dir}"
 }
 
 list_animation_names() {
-  local dir path name
-  local -A seen=()
-
-  for dir in "${animations_user_dir}" "${animations_shared_dir}"; do
-    [[ -d "${dir}" ]] || continue
-    while IFS= read -r -d '' path; do
-      name="$(basename "${path}" .conf)"
-      [[ "${name}" == "disable" || "${name}" == "theme" ]] && continue
-      [[ -n "${seen[${name}]:-}" ]] && continue
-      seen["${name}"]=1
-      printf '%s\n' "${name}"
-    done < <(find -L "${dir}" -maxdepth 1 -type f -name '*.conf' -print0 | sort -z)
-  done
+  hypr_stateful_choice_list_names "conf" "${animations_user_dir}" "${animations_shared_dir}" "disable" "theme"
 }
 
 fn_select() {
-  local animation_items rofi_select selected_animation
-  local -a rofi_args
+  local animation_items=""
+  local rofi_select=""
+  local selected_animation=""
 
   animation_items="$(list_animation_names)"
   animation_items=$(printf 'Disable Animation\n%s\n' "${animation_items}" | sed '/^$/d')
@@ -71,17 +46,15 @@ fn_select() {
   rofi_select="${HYPR_ANIMATION:-default}"
   rofi_select="${rofi_select/disable/Disable Animation}"
 
-  rofi_build_standard_menu_args \
-    rofi_args \
+  hypr_stateful_choice_select \
     "Select animation" \
     " 󰪏 Animation" \
     "clipboard" \
     "${ROFI_ANIMATION_SCALE}" \
-    "${ROFI_ANIMATION_FONT:-$ROFI_FONT}"
-  rofi_args+=(-select "${rofi_select}")
-
-  selected_animation=$(printf '%s\n' "${animation_items}" \
-    | rofi "${rofi_args[@]}")
+    "${ROFI_ANIMATION_FONT:-$ROFI_FONT}" \
+    "${rofi_select}" \
+    "${animation_items}" \
+    selected_animation
 
   [[ -n "${selected_animation}" ]] || exit 0
 
@@ -89,9 +62,7 @@ fn_select() {
     "Disable Animation") selected_animation="disable" ;;
   esac
 
-  state_set "HYPR_ANIMATION" "${selected_animation}" "staterc"
-  fn_update
-  send_ephemeral_notif "hypr-animation" -t 2000 -i "preferences-desktop-display" "Animation selected" "${selected_animation}"
+  hypr_stateful_choice_apply "HYPR_ANIMATION" "${selected_animation}" "hypr-animation" "Animation selected" fn_update
 }
 
 fn_update() {
@@ -128,9 +99,7 @@ CONF
 
 fn_reload() {
   local animation_name="${HYPR_ANIMATION:-default}"
-  state_set "HYPR_ANIMATION" "${animation_name}" "staterc"
-  fn_update
-  send_ephemeral_notif "hypr-animation" -t 2000 -i "preferences-desktop-display" "Animation reloaded" "${animation_name}"
+  hypr_stateful_choice_apply "HYPR_ANIMATION" "${animation_name}" "hypr-animation" "Animation reloaded" fn_update
 }
 
 if [[ -z "${*}" ]]; then

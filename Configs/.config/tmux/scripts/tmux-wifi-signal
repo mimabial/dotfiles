@@ -131,7 +131,7 @@ emit_tmux() {
     connected)
       icon="$(wifi_signal_icon "${signal}")"
       if [[ "${MODE}" == "short" ]]; then
-        printf '#[fg=#{@theme_accent}]%s #[italics]#[fg=#{@theme_gray}]%s%%#[fg=#{@theme_gray}]  #[default]\n' "${icon}" "${signal}"
+        printf '#[fg=#{@theme_gray}]%s %s%%  #[default]\n' "${icon}" "${signal}"
       else
         bars="$(wifi_signal_bars "${signal}")"
         printf '#[fg=#{@theme_accent}]%s #[fg=#{@theme_fg}]%s%% %s#[fg=#{@theme_gray}]  #[default]\n' "${icon}" "${signal}" "${bars}"

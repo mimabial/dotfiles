@@ -37,22 +37,18 @@ EOF
   exit 1
 }
 
-require_cmd wpctl || {
-  echo "wpctl is required"
-  exit 1
+require_commands() {
+  local cmd_name=""
+
+  for cmd_name in "$@"; do
+    require_cmd "${cmd_name}" || {
+      echo "${cmd_name} is required"
+      exit 1
+    }
+  done
 }
-require_cmd pw-dump || {
-  echo "pw-dump is required"
-  exit 1
-}
-require_cmd jq || {
-  echo "jq is required"
-  exit 1
-}
-require_cmd dunstify || {
-  echo "dunstify is required"
-  exit 1
-}
+
+require_commands wpctl pw-dump jq dunstify
 
 get_default_sink() {
   wpctl inspect @DEFAULT_AUDIO_SINK@ 2>/dev/null |

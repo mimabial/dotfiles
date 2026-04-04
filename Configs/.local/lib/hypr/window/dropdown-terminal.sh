@@ -1,5 +1,14 @@
 #!/usr/bin/env bash
 
+dropdown_source_window_common() {
+  local common_file="${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/launch/window.common.bash"
+
+  declare -F launch_resolve_dimension >/dev/null 2>&1 && return 0
+  [[ -r "${common_file}" ]] || return 1
+  # shellcheck source=/dev/null
+  source "${common_file}"
+}
+
 dropdown_workspace_name() {
   printf '%s\n' "special:dropdown"
 }
@@ -29,24 +38,6 @@ focused_monitor_logical_size() {
     | awk -F '\t' '{ printf "%d\t%d\n", $1 / $3, $2 / $3 }'
 }
 
-resolve_dimension() {
-  local spec="$1"
-  local base="$2"
-  local percent=""
-
-  case "${spec}" in
-    *%)
-      percent="${spec%%%}"
-      [[ "${percent}" =~ ^[0-9]+$ ]] || return 1
-      printf '%s\n' $((base * percent / 100))
-      ;;
-    *)
-      [[ "${spec}" =~ ^[0-9]+$ ]] || return 1
-      printf '%s\n' "${spec}"
-      ;;
-  esac
-}
-
 dropdown_target_size() {
   local logical_width=""
   local logical_height=""
@@ -57,8 +48,9 @@ dropdown_target_size() {
 
   IFS=$'\t' read -r width_spec height_spec <<<"$(dropdown_size_specs)" || return 1
   IFS=$'\t' read -r logical_width logical_height <<<"$(focused_monitor_logical_size)" || return 1
-  target_width="$(resolve_dimension "${width_spec}" "${logical_width}")" || return 1
-  target_height="$(resolve_dimension "${height_spec}" "${logical_height}")" || return 1
+  dropdown_source_window_common || return 1
+  target_width="$(launch_resolve_dimension "${width_spec}" "${logical_width}")" || return 1
+  target_height="$(launch_resolve_dimension "${height_spec}" "${logical_height}")" || return 1
   printf '%s\t%s\n' "${target_width}" "${target_height}"
 }
 

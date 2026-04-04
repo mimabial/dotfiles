@@ -67,11 +67,28 @@ mkdir -p "$save_dir"
 [[ -n "${SCREENSHOT_ANNOTATION_ARGS[*]}" ]] && annotation_args+=("${SCREENSHOT_ANNOTATION_ARGS[@]}")
 
 run_annotation() {
-  if ! command -v satty >/dev/null 2>&1; then
-    dunstify -a "Screenshot" -t 5000 -i "dialog-error" "Screenshot Error" "Satty is not installed"
+  if ! command -v "${annotation_tool}" >/dev/null 2>&1; then
+    screenshot_error_notify "${annotation_tool} is not installed"
     return 1
   fi
   "${annotation_tool}" "${annotation_args[@]}"
+}
+
+screenshot_notify() {
+  local timeout="$1"
+  local icon="$2"
+  local summary="$3"
+  local body="${4:-}"
+
+  if [[ -n "${body}" ]]; then
+    dunstify -a "Screenshot" -t "${timeout}" -i "${icon}" "${summary}" "${body}"
+  else
+    dunstify -a "Screenshot" -t "${timeout}" -i "${icon}" "${summary}"
+  fi
+}
+
+screenshot_error_notify() {
+  screenshot_notify 5000 "dialog-error" "Screenshot Error" "$1"
 }
 
 grimblast_capture() {
@@ -89,6 +106,18 @@ grimblast_capture_geometry() {
   fi
 
   grimblast_capture "${args[@]}"
+}
+
+capture_then_annotate() {
+  "$@" || {
+    screenshot_error_notify "Failed to take screenshot"
+    return 1
+  }
+
+  run_annotation || {
+    screenshot_error_notify "Failed to open annotation tool"
+    return 1
+  }
 }
 
 get_rectangles() {
@@ -111,6 +140,7 @@ select_geometry_from_rectangles() {
 expand_tiny_selection_to_rectangle() {
   local selection="$1"
   local rectangles="$2"
+  local rect=""
 
   if [[ "${selection}" =~ ^([0-9]+),([0-9]+)[[:space:]]([0-9]+)x([0-9]+)$ ]]; then
     if (( ${BASH_REMATCH[3]} * ${BASH_REMATCH[4]} < 20 )); then
@@ -143,26 +173,19 @@ capture_selected_geometry() {
   case "${destination}" in
     clipboard)
       if ! grimblast_capture_geometry "copy" "${selection}"; then
-        dunstify -a "Screenshot" -t 5000 -i "dialog-error" "Screenshot Error" "Failed to take screenshot"
+        screenshot_error_notify "Failed to take screenshot"
         return 1
       fi
-      dunstify -a "Screenshot" -t 3000 "Copied to clipboard" -i "camera-photo"
+      screenshot_notify 3000 "camera-photo" "Copied to clipboard"
       ;;
     save)
       if ! grimblast_capture_geometry "save" "${selection}" "${save_dir}/${save_file}"; then
-        dunstify -a "Screenshot" -t 5000 -i "dialog-error" "Screenshot Error" "Failed to save screenshot"
+        screenshot_error_notify "Failed to save screenshot"
         return 1
       fi
       ;;
     *)
-      if ! grimblast_capture_geometry "save" "${selection}" "${temp_screenshot}"; then
-        dunstify -a "Screenshot" -t 5000 -i "dialog-error" "Screenshot Error" "Failed to take screenshot"
-        return 1
-      fi
-      if ! run_annotation; then
-        dunstify -a "Screenshot" -t 5000 -i "dialog-error" "Screenshot Error" "Failed to open annotation tool"
-        return 1
-      fi
+      capture_then_annotate grimblast_capture_geometry "save" "${selection}" "${temp_screenshot}"
       ;;
   esac
 }
@@ -191,25 +214,24 @@ window_screenshot() {
 
 # screenshot function, globbing was difficult to read and maintain
 take_screenshot() {
-  local mode=$1
+  local mode="$1"
   shift
   local extra_args=("$@")
 
-  if grimblast_capture "${extra_args[@]}" save "$mode" "$temp_screenshot"; then
-    if ! run_annotation; then
-      dunstify -a "Screenshot" -t 5000 -i "dialog-error" "Screenshot Error" "Failed to open annotation tool"
-      return 1
-    fi
-  else
-    dunstify -a "Screenshot" -t 5000 -i "dialog-error" "Screenshot Error" "Failed to take screenshot"
-    return 1
-  fi
+  capture_then_annotate grimblast_capture "${extra_args[@]}" save "$mode" "$temp_screenshot"
 }
 
 ocr_screenshot() {
-  local mode=$1
+  local mode="$1"
   shift
   local extra_args=("$@")
+  local pkg=""
+  local tesseract_language=""
+  local tesseract_languages_body="Languages used"
+  local tesseract_package_prefix="tesseract-data-"
+  local -a tesseract_packages=()
+  local tesseract_languages_prepared=""
+  local tesseract_output=""
 
   if grimblast_capture "${extra_args[@]}" save "$mode" "$temp_screenshot"; then
     if pkg_installed imagemagick; then
@@ -224,21 +246,23 @@ ocr_screenshot() {
         -deskew 40% \
         "${temp_screenshot}"
     else
-      dunstify -a "Screenshot" -t 5000 "OCR: imagemagick is not installed, recognition accuracy is reduced" -i "dialog-warning"
+      screenshot_notify 5000 "dialog-warning" "OCR: imagemagick is not installed, recognition accuracy is reduced"
     fi
-    tesseract_package_prefix="tesseract-data-"
     tesseract_packages=("${tesseract_languages[@]/#/$tesseract_package_prefix}")
     tesseract_packages+=("tesseract")
     for pkg in "${tesseract_packages[@]}"; do
       if ! pkg_installed "${pkg}"; then
-        dunstify -a "Screenshot" -t 5000 "$(echo -e "OCR: required package is not installed\n ${pkg}")" -i "dialog-error"
+        screenshot_notify 5000 "dialog-error" "OCR: required package is not installed" " ${pkg}"
         return 1
       fi
     done
     tesseract_languages_prepared=$(
       IFS=+
-      echo "${tesseract_languages[*]}"
+      printf '%s' "${tesseract_languages[*]}"
     )
+    for tesseract_language in "${tesseract_languages[@]}"; do
+      tesseract_languages_body+=$'\n '"${tesseract_language}"
+    done
     tesseract_output=$(
       tesseract \
         --psm 6 \
@@ -249,10 +273,10 @@ ocr_screenshot() {
       2>/dev/null
     )
     printf "%s" "$tesseract_output" | wl-copy
-    dunstify -a "Screenshot" -t 5000 "$(echo -e "OCR: ${#tesseract_output} symbols recognized\n\nLanguages used ${tesseract_languages[@]/#/'\n '}")" -i "${temp_screenshot}"
+    screenshot_notify 5000 "${temp_screenshot}" "OCR: ${#tesseract_output} symbols recognized" "${tesseract_languages_body}"
     rm -f "${temp_screenshot}"
   else
-    dunstify -a "Screenshot" -t 5000 "OCR: screenshot error" -i "dialog-error"
+    screenshot_notify 5000 "dialog-error" "OCR: screenshot error"
     return 1
   fi
 }
@@ -285,5 +309,5 @@ case "${mode}" in
 esac
 
 if [ -f "${save_dir}/${save_file}" ]; then
-  dunstify -a "Screenshot" -t 5000 -i "${save_dir}/${save_file}" "saved in ${save_dir}"
+  screenshot_notify 5000 "${save_dir}/${save_file}" "saved in ${save_dir}"
 fi

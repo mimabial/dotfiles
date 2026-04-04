@@ -56,6 +56,28 @@ body=""
 forward_args=()
 positionals=()
 
+notify_send_record_option() {
+  local opt="$1"
+  local val="$2"
+
+  case "${opt}" in
+    -t|--expire-time) has_timeout=1 ;;
+    -a|--app-name) app_name="${val}" ;;
+    -i|--icon|-n|--app-icon) has_icon=1 ;;
+  esac
+}
+
+notify_send_record_inline_option() {
+  local opt="${1%%=*}"
+  local val="${1#*=}"
+
+  case "${opt}" in
+    --expire-time) has_timeout=1 ;;
+    --app-name) app_name="${val}" ;;
+    --icon|--app-icon) has_icon=1 ;;
+  esac
+}
+
 while (($#)); do
   case "$1" in
     -u|-t|-a|-i|-n|-c|-h|-r|-A|--urgency|--expire-time|--app-name|--icon|--app-icon|--category|--hint|--replace-id|--action|--id-fd|--selected-action-fd|--activation-token-fd)
@@ -63,21 +85,13 @@ while (($#)); do
       val="${2-}"
       forward_args+=("$opt")
       [[ -n "${val}" ]] && forward_args+=("$val")
-      case "$opt" in
-        -t|--expire-time) has_timeout=1 ;;
-        -a|--app-name) app_name="${val}" ;;
-        -i|--icon|-n|--app-icon) has_icon=1 ;;
-      esac
+      notify_send_record_option "${opt}" "${val}"
       shift
       (($#)) && shift
       ;;
     --urgency=*|--expire-time=*|--app-name=*|--icon=*|--app-icon=*|--category=*|--hint=*|--replace-id=*|--action=*|--id-fd=*|--selected-action-fd=*|--activation-token-fd=*)
       forward_args+=("$1")
-      case "$1" in
-        --expire-time=*|--timeout=*) has_timeout=1 ;;
-        --app-name=*) app_name="${1#*=}" ;;
-        --icon=*|--app-icon=*) has_icon=1 ;;
-      esac
+      notify_send_record_inline_option "$1"
       shift
       ;;
     -p|--print-id|-w|--wait|-v|--version|-?|-help|--help)
@@ -122,18 +136,20 @@ summary_lc="$(printf '%s' "${summary}" | tr '[:upper:]' '[:lower:]')"
 body_lc="$(printf '%s' "${body}" | tr '[:upper:]' '[:lower:]')"
 codex_icon="${HOME}/.local/share/icons/Tela-circle-dracula/scalable/apps/chatgpt.svg"
 
+notify_send_is_codex_notice() {
+  [[ "${app_name}" == "Codex" || "${summary_lc}" == *"[codex]"* || "${summary_lc}" == *codex* || "${body_lc}" == *codex* ]]
+}
+
 if [[ "${app_name}" == "kitty" ]]; then
   if [[ "${summary_lc}" == approval\ requested:* || "${body_lc}" == codex\ wants\ to* ]]; then
     forward_args+=("--hint=string:x-dunst-stack-tag:codex-approval")
-  elif [[ "${summary_lc}" == *codex* || "${body_lc}" == *codex* ]]; then
+  elif notify_send_is_codex_notice; then
     forward_args+=("--hint=string:x-dunst-stack-tag:codex")
   fi
 fi
 
-if (( ! has_icon )) && [[ -f "${codex_icon}" ]]; then
-  if [[ "${app_name}" == "Codex" || "${summary_lc}" == *"[codex]"* || "${summary_lc}" == *codex* || "${body_lc}" == *codex* ]]; then
-    forward_args+=("--icon=${codex_icon}")
-  fi
+if (( ! has_icon )) && [[ -f "${codex_icon}" ]] && notify_send_is_codex_notice; then
+  forward_args+=("--icon=${codex_icon}")
 fi
 
 notify_args=("${forward_args[@]}")

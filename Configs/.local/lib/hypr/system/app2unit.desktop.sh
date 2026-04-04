@@ -24,10 +24,10 @@ find_entry_candidates() {
 
 	set -- "$@" -type f
 
-	or_arg=''
+	de_find_or_arg=''
 	for directory in $APPLICATIONS_DIRS; do
-		set -- "$@" ${or_arg} '(' -path "$directory"'./[a-zA-Z0-9_]*.desktop' ! -path "$directory"'./*[^a-zA-Z0-9_./-]*' ')'
-		or_arg='-o'
+		set -- "$@" ${de_find_or_arg} '(' -path "$directory"'./[a-zA-Z0-9_]*.desktop' ! -path "$directory"'./*[^a-zA-Z0-9_./-]*' ')'
+		de_find_or_arg='-o'
 	done
 
 	IFS=$OIFS
@@ -38,8 +38,8 @@ find_entry_id_from_path() {
 	case "$1" in
 	'' | */./) return 1 ;;
 	*/./*/*)
-		replace "${1#*/./}" "/" "-"
-		printf '%s' "$REPLACED_STR"
+		de_replace_str "${1#*/./}" "/" "-"
+		printf '%s' "$DE_REPLACED_STR"
 		;;
 	*/./*)
 		printf '%s' "${1#*/./}"
@@ -51,8 +51,8 @@ find_entry() {
 	ENTRY_ID=$1
 	IFS=$OIFS
 	while read -r entry_path <&3; do
-		entry_id=$(find_entry_id_from_path "$entry_path") || continue
-		case "$entry_id" in
+		de_found_entry_id=$(find_entry_id_from_path "$entry_path") || continue
+		case "$de_found_entry_id" in
 		"$ENTRY_ID")
 			printf '%s' "$entry_path"
 			return 0
@@ -66,6 +66,28 @@ find_entry() {
 	return 1
 }
 alias find_entry='IFS= find_entry'
+
+de_replace_str() {
+	DE_REPLACED_STR=
+	de_replace_remainder=$1
+	de_replace_needle=$2
+	de_replace_replacement=$3
+
+	[ -n "$de_replace_needle" ] || {
+		DE_REPLACED_STR=$de_replace_remainder
+		return 0
+	}
+
+	while [ -n "$de_replace_remainder" ]; do
+		de_replace_left=${de_replace_remainder%%"$de_replace_needle"*}
+		DE_REPLACED_STR=${DE_REPLACED_STR}${de_replace_left}
+		case "$de_replace_left" in
+		"$de_replace_remainder") break ;;
+		esac
+		DE_REPLACED_STR=${DE_REPLACED_STR}${de_replace_replacement}
+		de_replace_remainder=${de_replace_remainder#*"$de_replace_needle"}
+	done
+}
 
 de_expand_escape_sequence() {
 	case "$exp_remainder" in
@@ -264,119 +286,113 @@ de_tokenize_exec() {
 	)"
 }
 
-de_inject_append_args() {
-	for carg in "$@"; do
-		debug "injector extending with '$carg'"
-		de_exec_append_arg "$carg"
+de_inject_apply_args() {
+	de_inject_mode=$1
+	de_inject_encoded=$2
+	de_inject_template=$3
+	de_inject_field=$4
+	shift 4
+	for de_inject_arg in "$@"; do
+		case "$de_inject_encoded" in
+		true) de_inject_arg=$(urlencode "$de_inject_arg") ;;
+		esac
+		case "$de_inject_mode" in
+		append)
+			debug "injector extending with '$de_inject_arg'"
+			de_exec_append_arg "$de_inject_arg"
+			;;
+		expand)
+			de_exec_append_iter_replaced_arg "$de_inject_template" "$de_inject_field" "$de_inject_arg"
+			;;
+		esac
 	done
+	case "$de_inject_mode" in
+	append) ;;
+	expand) de_exec_append_iter_placeholder ;;
+	esac
 }
 
-de_inject_append_encoded_args() {
-	for carg in "$@"; do
-		carg=$(urlencode "$carg")
-		debug "injector extending with '$carg'"
-		de_exec_append_arg "$carg"
-	done
-}
-
-de_inject_expand_args() {
-	template=$1
-	field=$2
-	shift 2
-	for carg in "$@"; do
-		de_exec_expand_single_field "$template" "$field" "$carg"
-	done
-	de_exec_append_iter_placeholder
-}
-
-de_inject_expand_encoded_args() {
-	template=$1
-	field=$2
-	shift 2
-	for carg in "$@"; do
-		carg=$(urlencode "$carg")
-		de_exec_expand_single_field "$template" "$field" "$carg"
-	done
-	de_exec_append_iter_placeholder
+de_inject_optional_replaced_field() {
+	if [ -n "$3" ]; then
+		de_exec_append_replaced_arg "$1" "$2" "$3"
+	else
+		debug "injector removed '$1'"
+	fi
 }
 
 de_inject_file_field() {
-	case "$fu_found" in
+	case "$DE_INJECT_FILE_FIELD_SEEN" in
 	true)
 		error "${ENTRY_ID}: Encountered more than one %[fFuU] field!"
 		return 1
 		;;
 	esac
-	fu_found=true
+	DE_INJECT_FILE_FIELD_SEEN=true
 
 	if [ "$#" -eq "1" ]; then
 		debug "injector removed '$1'"
 		return 0
 	fi
 
-	arg=$1
+	de_inject_exec_field=$1
 	shift
-	case "$arg" in
+	case "$de_inject_exec_field" in
 	*[!%]'%F'* | *'%F'?* | *[!%]'%U'* | *'%U'?*)
-		error "${ENTRY_ID}: Encountered non-standalone field '$arg'"
+		error "${ENTRY_ID}: Encountered non-standalone field '$de_inject_exec_field'"
 		return 1
 		;;
 	*[!%]'%f'* | '%f'*)
-		de_inject_expand_args "$arg" "%f" "$@"
+		de_inject_apply_args expand false "$de_inject_exec_field" "%f" "$@"
 		;;
 	'%F')
-		de_inject_append_args "$@"
+		de_inject_apply_args append false '' '' "$@"
 		;;
 	*[!%]'%u'* | '%u'*)
-		de_inject_expand_encoded_args "$arg" "%u" "$@"
+		de_inject_apply_args expand true "$de_inject_exec_field" "%u" "$@"
 		;;
 	'%U')
-		de_inject_append_encoded_args "$@"
+		de_inject_apply_args append true '' '' "$@"
 		;;
 	*)
-		error "${ENTRY_ID}: not implemented '$arg'"
+		error "${ENTRY_ID}: not implemented '$de_inject_exec_field'"
 		return 1
 		;;
 	esac
 }
 
 de_inject_icon_field() {
-	if [ -n "$ENTRY_ICON" ]; then
-		de_exec_append_replaced_arg "$1" "%i" "$ENTRY_ICON"
-	else
-		debug "injector removed '$1'"
-	fi
+	de_inject_optional_replaced_field "$1" "%i" "$ENTRY_ICON"
 }
 
 de_inject_fields() {
 	# Operates on argument array and $EXEC_RSEP_USEP from entry
 	# modifies $EXEC_RSEP_USEP according to args/fields
 	# no arguments, erase fields from $EXEC_RSEP_USEP
-	exec_usep=''
-	fu_found=false
-	exec_iter_usep=''
+	DE_EXEC_USEP_TMP=''
+	DE_INJECT_FILE_FIELD_SEEN=false
+	DE_EXEC_ITER_USEP_TMP=''
 	IFS=$USEP
-	for arg in $EXEC_RSEP_USEP; do
-		case "$arg" in
+	for de_inject_arg in $EXEC_RSEP_USEP; do
+		case "$de_inject_arg" in
 		*[!%]'%'[fFuU]* | '%'[fFuU]*)
-			de_inject_file_field "$arg" "$@" || return 1
+			de_inject_file_field "$de_inject_arg" "$@" || return 1
 			;;
 		*[!%]'%i'* | '%i'*)
-			de_inject_icon_field "$arg"
+			de_inject_icon_field "$de_inject_arg"
 			;;
 		*[!%]'%c'* | '%c'*)
-			de_exec_append_replaced_arg "$arg" "%c" "$ENTRY_NAME"
+			de_exec_append_replaced_arg "$de_inject_arg" "%c" "$ENTRY_NAME"
 			;;
 		*[!%]%%* | %%*)
-			de_exec_append_replaced_arg "$arg" "%%" "%"
+			de_exec_append_replaced_arg "$de_inject_arg" "%%" "%"
 			;;
 		*%?* | *[!%]%)
-			error "${ENTRY_ID}: unknown % field in argument '${arg}'"
+			error "${ENTRY_ID}: unknown % field in argument '${de_inject_arg}'"
 			return 1
 			;;
 		*)
-			debug "injector keeped: '$arg'"
-			de_exec_append_arg "$arg"
+			debug "injector keeped: '$de_inject_arg'"
+			de_exec_append_arg "$de_inject_arg"
 			;;
 		esac
 	done
@@ -385,28 +401,27 @@ de_inject_fields() {
 }
 
 de_exec_append_arg() {
-	exec_usep=${exec_usep}${exec_usep:+$USEP}${1}
+	DE_EXEC_USEP_TMP=${DE_EXEC_USEP_TMP}${DE_EXEC_USEP_TMP:+$USEP}${1}
+}
+
+de_exec_resolve_replaced_arg() {
+	de_replace_str "$1" "$2" "$3"
+	debug "injector replacing '$2': '$1' -> '$DE_REPLACED_STR'"
 }
 
 de_exec_append_replaced_arg() {
-	replace "$1" "$2" "$3"
-	rarg=$REPLACED_STR
-	debug "injector replacing '$2': '$1' -> '$rarg'"
-	de_exec_append_arg "$rarg"
+	de_exec_resolve_replaced_arg "$@"
+	de_exec_append_arg "$DE_REPLACED_STR"
 }
 
 de_exec_append_iter_arg() {
 	debug "injector adding '$1' iteration as '$2'"
-	exec_iter_usep=${exec_iter_usep}${exec_iter_usep:+$USEP}${2}
+	DE_EXEC_ITER_USEP_TMP=${DE_EXEC_ITER_USEP_TMP}${DE_EXEC_ITER_USEP_TMP:+$USEP}${2}
 }
 
-de_exec_expand_single_field() {
-	local template="$1"
-	local field="$2"
-	local value="$3"
-
-	replace "$template" "$field" "$value"
-	de_exec_append_iter_arg "$template" "$REPLACED_STR"
+de_exec_append_iter_replaced_arg() {
+	de_exec_resolve_replaced_arg "$@"
+	de_exec_append_iter_arg "$1" "$DE_REPLACED_STR"
 }
 
 de_exec_append_iter_placeholder() {
@@ -414,15 +429,15 @@ de_exec_append_iter_placeholder() {
 }
 
 de_exec_finalize_iterations() {
-	if [ -n "$exec_iter_usep" ]; then
+	if [ -n "$DE_EXEC_ITER_USEP_TMP" ]; then
 		EXEC_RSEP_USEP=''
-		for arg in $exec_iter_usep; do
-			replace "$exec_usep" "%%__ITER__%%" "$arg"
-			cmd=$REPLACED_STR
-			EXEC_RSEP_USEP=${EXEC_RSEP_USEP}${EXEC_RSEP_USEP:+$RSEP}${cmd}
+		for de_exec_iter_arg in $DE_EXEC_ITER_USEP_TMP; do
+			de_replace_str "$DE_EXEC_USEP_TMP" "%%__ITER__%%" "$de_exec_iter_arg"
+			de_exec_cmd=$DE_REPLACED_STR
+			EXEC_RSEP_USEP=${EXEC_RSEP_USEP}${EXEC_RSEP_USEP:+$RSEP}${de_exec_cmd}
 		done
 	else
-		EXEC_RSEP_USEP=$exec_usep
+		EXEC_RSEP_USEP=$DE_EXEC_USEP_TMP
 	fi
 }
 
@@ -447,10 +462,10 @@ de_parse_actions_key() {
 	[ -z "$1" ] && return 0
 	debug "checking for '$1' in Actions '$2'"
 	IFS=';'
-	for check_action in $2; do
-		case "$check_action" in
+	for de_check_action in $2; do
+		case "$de_check_action" in
 		"$1")
-			action_listed=true
+			DE_ACTION_LISTED=true
 			return 0
 			;;
 		esac
@@ -467,7 +482,7 @@ de_parse_exec_key() {
 		;;
 	esac
 	case "$2" in
-	true) action_exec=true ;;
+	true) DE_ACTION_EXEC=true ;;
 	esac
 	debug "read Exec '$3'"
 	[ -z "$EXEC_RSEP_USEP" ] || {
@@ -596,27 +611,20 @@ de_parse_icon_key() {
 
 parse_entry_key() {
 	# set global vars or fail entry
-	key=$1
-	value=$2
-	action=$3
-	read_exec=$4
-	in_main=$5
-	in_action=$6
+	de_validate_action_key_context "$1" "$6" || return 1
 
-	de_validate_action_key_context "$key" "$in_action" || return 1
-
-	case "$key" in
-	Type) de_parse_type_key "$value" ;;
-	Actions) de_parse_actions_key "$action" "$value" ;;
-	TryExec) de_parse_tryexec_key "$value" ;;
-	Hidden) de_parse_hidden_key "$value" ;;
-	Exec) de_parse_exec_key "$read_exec" "$in_action" "$value" ;;
-	URL) de_parse_url_key "$value" ;;
-	"Name[${LCODE}]" | Name) de_parse_name_key "$key" "$value" "$in_main" "$in_action" ;;
-	"GenericName[${LCODE}]" | GenericName) de_parse_generic_name_key "$key" "$value" ;;
-	Icon) de_parse_icon_key "$value" "$in_main" "$in_action" ;;
-	Path) de_parse_path_key "$value" ;;
-	Terminal) de_parse_terminal_key "$value" ;;
+	case "$1" in
+	Type) de_parse_type_key "$2" ;;
+	Actions) de_parse_actions_key "$3" "$2" ;;
+	TryExec) de_parse_tryexec_key "$2" ;;
+	Hidden) de_parse_hidden_key "$2" ;;
+	Exec) de_parse_exec_key "$4" "$6" "$2" ;;
+	URL) de_parse_url_key "$2" ;;
+	"Name[${LCODE}]" | Name) de_parse_name_key "$1" "$2" "$5" "$6" ;;
+	"GenericName[${LCODE}]" | GenericName) de_parse_generic_name_key "$1" "$2" ;;
+	Icon) de_parse_icon_key "$2" "$5" "$6" ;;
+	Path) de_parse_path_key "$2" ;;
+	Terminal) de_parse_terminal_key "$2" ;;
 	esac
 	# By default unrecognised keys, empty lines and comments get ignored
 }
@@ -625,35 +633,35 @@ alias parse_entry_key='IFS= parse_entry_key'
 
 de_enter_main_section() {
 	debug "entered section: [Desktop Entry]"
-	in_main=true
-	if [ -z "$entry_action" ]; then
-		read_exec=true
-		break_on_next_section=true
+	DE_IN_MAIN=true
+	if [ -z "$DE_ENTRY_ACTION" ]; then
+		DE_READ_EXEC=true
+		DE_BREAK_ON_NEXT_SECTION=true
 	fi
 }
 
 de_parse_key_line() {
-	IFS='=' read -r key value <<-EOL
+	IFS='=' read -r de_parse_key de_parse_value <<-EOL
 		$1
 	EOL
-	{ read -r key && read -r value; } <<-EOL
-		$key
-		$value
+	{ read -r de_parse_key && read -r de_parse_value; } <<-EOL
+		$de_parse_key
+		$de_parse_value
 	EOL
-	parse_entry_key "$key" "$value" "$entry_action" "$read_exec" "$in_main" "$in_action"
+	parse_entry_key "$de_parse_key" "$de_parse_value" "$DE_ENTRY_ACTION" "$DE_READ_EXEC" "$DE_IN_MAIN" "$DE_IN_ACTION"
 }
 
 de_enter_action_section() {
-	debug "entered section: [Desktop Action ${entry_action}]"
-	in_main=false
-	break_on_next_section=true
-	case "$action_listed" in
+	debug "entered section: [Desktop Action ${DE_ENTRY_ACTION}]"
+	DE_IN_MAIN=false
+	DE_BREAK_ON_NEXT_SECTION=true
+	case "$DE_ACTION_LISTED" in
 	true)
-		read_exec=true
-		in_action=true
+		DE_READ_EXEC=true
+		DE_IN_ACTION=true
 		;;
 	*)
-		error "${ENTRY_ID}: Action '$entry_action' is not listed in Actions key!"
+		error "${ENTRY_ID}: Action '$DE_ENTRY_ACTION' is not listed in Actions key!"
 		return 1
 		;;
 	esac
@@ -661,26 +669,26 @@ de_enter_action_section() {
 
 de_leave_section() {
 	debug "entered section: $1"
-	[ "$break_on_next_section" = "true" ] && return 1
-	in_main=false
-	in_action=false
-	read_exec=false
+	[ "$DE_BREAK_ON_NEXT_SECTION" = "true" ] && return 1
+	DE_IN_MAIN=false
+	DE_IN_ACTION=false
+	DE_READ_EXEC=false
 	return 0
 }
 
 de_validate_requested_action() {
-	[ -n "$entry_action" ] || return 0
+	[ -n "$DE_ENTRY_ACTION" ] || return 0
 
-	case "$action_listed" in
+	case "$DE_ACTION_LISTED" in
 	true) true ;;
 	*)
-		error "${ENTRY_ID}: Action '$entry_action' is not listed in Actions key or does not exist!"
+		error "${ENTRY_ID}: Action '$DE_ENTRY_ACTION' is not listed in Actions key or does not exist!"
 		return 1
 		;;
 	esac
 
-	if [ "$action_exec" != "true" ] || [ -z "${ENTRY_LNAME_ACTION:-$ENTRY_NAME_ACTION}" ]; then
-		error "${ENTRY_ID}: Action '$entry_action' is incomplete"
+	if [ "$DE_ACTION_EXEC" != "true" ] || [ -z "${ENTRY_LNAME_ACTION:-$ENTRY_NAME_ACTION}" ]; then
+		error "${ENTRY_ID}: Action '$DE_ENTRY_ACTION' is incomplete"
 		return 1
 	fi
 }
@@ -701,26 +709,26 @@ de_validate_entry_payload() {
 
 read_entry_path() {
 	# Read entry from given path
-	entry_path="$1"
-	entry_action="${2-}"
-	read_exec=false
-	action_listed=false
-	in_main=false
-	in_action=false
-	action_exec=false
-	break_on_next_section=false
+	DE_ENTRY_PATH=$1
+	DE_ENTRY_ACTION=${2-}
+	DE_READ_EXEC=false
+	DE_ACTION_LISTED=false
+	DE_IN_MAIN=false
+	DE_IN_ACTION=false
+	DE_ACTION_EXEC=false
+	DE_BREAK_ON_NEXT_SECTION=false
 	# shellcheck disable=SC2016
-	debug "reading desktop entry '$entry_path'${entry_action:+ action '$entry_action'}"
+	debug "reading desktop entry '$DE_ENTRY_PATH'${DE_ENTRY_ACTION:+ action '$DE_ENTRY_ACTION'}"
 	# Let `read` trim leading/trailing whitespace from the line
 	while read -r line; do
 		case $line in
 		'[Desktop Entry]'*) de_enter_main_section ;;
 		[a-zA-Z0-9-]*=*) de_parse_key_line "$line" || return 1 ;;
-		"[Desktop Action ${entry_action}]"*) de_enter_action_section || return 1 ;;
+		"[Desktop Action ${DE_ENTRY_ACTION}]"*) de_enter_action_section || return 1 ;;
 		'['*) de_leave_section "$line" || break ;;
 		esac
 		# By default empty lines and comments get ignored
-	done <"$entry_path"
+	done <"$DE_ENTRY_PATH"
 
 	de_validate_requested_action || return 1
 	de_validate_entry_payload
@@ -767,35 +775,35 @@ validate_action_id() {
 }
 
 urlencode() {
-	string=$1
-	case "$string" in
+	de_urlencode_string=$1
+	case "$de_urlencode_string" in
 	# assuming already url
 	*[a-zA-Z0-9_-]://*)
-		echo "$string"
+		echo "$de_urlencode_string"
 		return
 		;;
 	# assuming absolute path
 	/*) true ;;
 	# assuming relative path
-	*) string=$(pwd)/$string ;;
+	*) de_urlencode_string=$(pwd)/$de_urlencode_string ;;
 	esac
 
 	printf '%s' 'file://'
 
-	case "$string" in
+	case "$de_urlencode_string" in
 	# if contains extra chars, encode
 	*[!._~0-9A-Za-z/-]*)
-		while [ -n "$string" ]; do
-			right=${string#?}
-			char=${string%"$right"}
-			debug "urlencode string $string" "urlencode right $right" "urlencode char $char"
-			case $char in
-			[._~0-9A-Za-z/-]) printf '%s' "$char" ;;
-			*) printf '%%%02x' "'$char" ;;
+		while [ -n "$de_urlencode_string" ]; do
+			de_urlencode_right=${de_urlencode_string#?}
+			de_urlencode_char=${de_urlencode_string%"$de_urlencode_right"}
+			debug "urlencode string $de_urlencode_string" "urlencode right $de_urlencode_right" "urlencode char $de_urlencode_char"
+			case $de_urlencode_char in
+			[._~0-9A-Za-z/-]) printf '%s' "$de_urlencode_char" ;;
+			*) printf '%%%02x' "'$de_urlencode_char" ;;
 			esac
-			string=$right
+			de_urlencode_string=$de_urlencode_right
 		done
 		;;
-	*) printf '%s' "$string" ;;
+	*) printf '%s' "$de_urlencode_string" ;;
 	esac
 }

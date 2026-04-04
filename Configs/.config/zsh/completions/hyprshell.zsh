@@ -25,7 +25,7 @@ _hypr_shell() {
         # Second argument: only for specific commands
         case $words[2] in
             --completions)
-                compadd "bash" "zsh" "fish"
+                compadd "bash" "zsh"
                 return 0
                 ;;
             *)

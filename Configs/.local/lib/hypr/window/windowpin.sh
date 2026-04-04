@@ -29,6 +29,18 @@ resolve_active_window() {
   hyprctl activewindow -j
 }
 
+read_normalized_monitor_geometry() {
+  local monitor_info="$1"
+  local -n geometry_ref="$2"
+  local -a default_values=(1 1 0 0 0 0)
+  local index=0
+
+  IFS=$'\t' read -r _ _ geometry_ref[0] geometry_ref[1] geometry_ref[2] geometry_ref[3] geometry_ref[4] geometry_ref[5] <<<"${monitor_info}"
+  for index in "${!geometry_ref[@]}"; do
+    geometry_ref["${index}"]="$(normalize_uint "${geometry_ref[${index}]}" "${default_values[${index}]}")"
+  done
+}
+
 unpin_window() {
   local addr="$1"
 
@@ -41,12 +53,7 @@ unpin_window() {
 pin_window() {
   local addr="$1"
   local monitor_info=""
-  local monitor_width_raw=""
-  local monitor_height_raw=""
-  local reserved_left_raw=""
-  local reserved_top_raw=""
-  local reserved_right_raw=""
-  local reserved_bottom_raw=""
+  local -a monitor_geometry=()
   local monitor_width=1
   local monitor_height=1
   local reserved_left=0
@@ -60,13 +67,13 @@ pin_window() {
   local pip_height=1
 
   monitor_info="$(hypr_focused_monitor_geometry)" || return 1
-  IFS=$'\t' read -r _ _ monitor_width_raw monitor_height_raw reserved_left_raw reserved_top_raw reserved_right_raw reserved_bottom_raw <<<"${monitor_info}"
-  monitor_width="$(normalize_uint "${monitor_width_raw}" 1)"
-  monitor_height="$(normalize_uint "${monitor_height_raw}" 1)"
-  reserved_left="$(normalize_uint "${reserved_left_raw}" 0)"
-  reserved_top="$(normalize_uint "${reserved_top_raw}" 0)"
-  reserved_right="$(normalize_uint "${reserved_right_raw}" 0)"
-  reserved_bottom="$(normalize_uint "${reserved_bottom_raw}" 0)"
+  read_normalized_monitor_geometry "${monitor_info}" monitor_geometry
+  monitor_width="${monitor_geometry[0]}"
+  monitor_height="${monitor_geometry[1]}"
+  reserved_left="${monitor_geometry[2]}"
+  reserved_top="${monitor_geometry[3]}"
+  reserved_right="${monitor_geometry[4]}"
+  reserved_bottom="${monitor_geometry[5]}"
 
   edge_padding="$(hypr_window_edge_padding_px)"
   edge_padding="$(normalize_uint "${edge_padding}" 12)"

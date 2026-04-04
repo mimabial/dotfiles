@@ -51,8 +51,8 @@ menu_run_action_system() {
     update_firmware) present_terminal hyprshell system/firmware.sh ;;
     update_timezone) present_terminal hyprshell system/timezone.sh ;;
     update_time) present_terminal hyprshell system/time.sh ;;
-    update_process_hypridle) hyprshell service/restart-hypridle.sh ;;
-    update_process_hyprsunset) hyprshell service/restart-hyprsunset.sh ;;
+    update_process_hypridle) hyprshell service/restart.sh hypridle ;;
+    update_process_hyprsunset) hyprshell service/restart.sh hyprsunset ;;
     update_process_waybar) hyprshell service/restart-waybar.sh ;;
     update_process_rofi) pkill -x rofi >/dev/null 2>&1 || true ;;
     update_config_hyprland) present_terminal hyprshell service/domain.sh restore hypr-config ;;
@@ -60,9 +60,9 @@ menu_run_action_system() {
     update_config_hyprlock) present_terminal hyprshell service/domain.sh restore hyprlock ;;
     update_config_waybar) present_terminal hyprshell service/domain.sh restore waybar ;;
     update_config_rofi) present_terminal hyprshell service/domain.sh restore rofi ;;
-    update_hardware_audio) present_terminal hyprshell service/restart-pipewire.sh ;;
-    update_hardware_wifi) present_terminal hyprshell service/restart-wifi.sh ;;
-    update_hardware_bluetooth) present_terminal hyprshell service/restart-bluetooth.sh ;;
+    update_hardware_audio) present_terminal hyprshell service/restart.sh pipewire ;;
+    update_hardware_wifi) present_terminal hyprshell service/restart.sh wifi ;;
+    update_hardware_bluetooth) present_terminal hyprshell service/restart.sh bluetooth ;;
     update_password_drive) present_terminal hyprshell drive-set-password.sh ;;
     update_password_user) present_terminal passwd ;;
     system_lock) hyprshell session/hyprlock.sh ;;

@@ -8,6 +8,12 @@ DOTFILES_DIR="${DOTFILES_DIR:-$HOME/dotfiles/Configs}"
 DRY_RUN=false
 LIST_ONLY=false
 HOST_PROFILE_STATE_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/host-profile"
+HOST_TARGETS=(
+  ".config/hypr/monitors.conf"
+  ".config/hypr/nvidia.conf"
+  ".config/waybar/modules/temperature.jsonc"
+  ".local/state/hypr/env-overrides"
+)
 
 usage() {
   cat <<USAGE
@@ -71,6 +77,37 @@ emit_apply_result() {
   fi
 }
 
+run_rsync_transfer() {
+  local name="$1"
+  local log_failures="${2:-true}"
+  shift 2
+  local output=""
+  local -a rsync_args=("$@")
+
+  if $DRY_RUN; then
+    rsync_args+=(--dry-run --itemize-changes)
+    if ! output=$(rsync "${rsync_args[@]}" 2>&1); then
+      if [[ "${log_failures}" == true ]]; then
+        log_error "Preview failed for $name"
+        printf '%s\n' "$output" >&2
+      fi
+      return 1
+    fi
+    emit_preview_result "$name" "$output"
+    return 0
+  fi
+
+  rsync_args+=(--itemize-changes)
+  if ! output=$(rsync "${rsync_args[@]}" 2>&1); then
+    if [[ "${log_failures}" == true ]]; then
+      log_error "Sync failed for $name"
+      printf '%s\n' "$output" >&2
+    fi
+    return 1
+  fi
+  emit_apply_result "$name" "$output"
+}
+
 require_rsync() {
   if ! command -v rsync &>/dev/null; then
     log_error "rsync is required (cp fallback removed). Install rsync and rerun."
@@ -125,6 +162,7 @@ remove_path() {
 sync_host_profile_files() {
   local profile=""
   local host_root=""
+  local target=""
 
   if profile="$(get_host_profile)"; then
     host_root="${DOTFILES_DIR}/hosts/${profile}"
@@ -132,10 +170,9 @@ sync_host_profile_files() {
     log_warn "No host profile selected; managed host-specific files will not be saved. Use dotfiles-host-profile set <profile>."
   fi
 
-  remove_path "${DOTFILES_DIR}/.config/hypr/monitors.conf" "root host file .config/hypr/monitors.conf"
-  remove_path "${DOTFILES_DIR}/.config/hypr/nvidia.conf" "root host file .config/hypr/nvidia.conf"
-  remove_path "${DOTFILES_DIR}/.config/waybar/modules/temperature.jsonc" "root host file .config/waybar/modules/temperature.jsonc"
-  remove_path "${DOTFILES_DIR}/.local/state/hypr/env-overrides" "root host file .local/state/hypr/env-overrides"
+  for target in "${HOST_TARGETS[@]}"; do
+    remove_path "${DOTFILES_DIR}/${target}" "root host file ${target}"
+  done
 
   if [[ -z "${host_root}" ]]; then
     return
@@ -147,10 +184,9 @@ sync_host_profile_files() {
     log_info "Syncing host profile '${profile}'..."
   fi
 
-  copy_file "$HOME/.config/hypr/monitors.conf" "${host_root}/.config/hypr/monitors.conf" "hosts/${profile}/hypr/monitors.conf"
-  copy_file "$HOME/.config/hypr/nvidia.conf" "${host_root}/.config/hypr/nvidia.conf" "hosts/${profile}/hypr/nvidia.conf"
-  copy_file "$HOME/.config/waybar/modules/temperature.jsonc" "${host_root}/.config/waybar/modules/temperature.jsonc" "hosts/${profile}/waybar/modules/temperature.jsonc"
-  copy_file "$HOME/.local/state/hypr/env-overrides" "${host_root}/.local/state/hypr/env-overrides" "hosts/${profile}/state/hypr/env-overrides"
+  for target in "${HOST_TARGETS[@]}"; do
+    copy_file "${HOME}/${target}" "${host_root}/${target}" "hosts/${profile}/${target}"
+  done
 }
 
 # Create dotfiles directory structure
@@ -223,24 +259,7 @@ copy_config() {
     rsync_args+=(--exclude="$exclude_pattern")
   done
 
-  if $DRY_RUN; then
-    rsync_args+=(--dry-run --itemize-changes)
-    if ! output=$(rsync "${rsync_args[@]}" "$src"/ "$dest"/ 2>&1); then
-      log_error "Preview failed for $name"
-      printf '%s\n' "$output" >&2
-      return 1
-    fi
-    emit_preview_result "$name" "$output"
-    return
-  fi
-
-  rsync_args+=(--itemize-changes)
-  if ! output=$(rsync "${rsync_args[@]}" "$src"/ "$dest"/ 2>&1); then
-    log_error "Sync failed for $name"
-    printf '%s\n' "$output" >&2
-    return 1
-  fi
-  emit_apply_result "$name" "$output"
+  run_rsync_transfer "$name" true "${rsync_args[@]}" "$src"/ "$dest"/
 }
 
 # Copy a single file
@@ -278,35 +297,16 @@ copy_file() {
     rm -rf -- "$dest"
   fi
 
-  if $DRY_RUN; then
-    rsync_args+=(--dry-run --itemize-changes)
-    if output=$(rsync "${rsync_args[@]}" "$src" "$dest" 2>&1); then
-      emit_preview_result "$name" "$output"
-      return
-    fi
-
-    if [[ ! -d "$(dirname "$dest")" && "$(basename "$src")" == "$(basename "$dest")" ]]; then
-      if ! output=$(rsync "${rsync_args[@]}" "$src" "$(dirname "$dest")"/ 2>&1); then
-        log_error "Preview failed for $name"
-        printf '%s\n' "$output" >&2
-        return 1
-      fi
-      emit_preview_result "$name" "$output"
-      return
-    fi
-
-    log_error "Preview failed for $name"
-    printf '%s\n' "$output" >&2
-    return 1
+  if run_rsync_transfer "$name" false "${rsync_args[@]}" "$src" "$dest"; then
+    return 0
   fi
 
-  rsync_args+=(--itemize-changes)
-  if ! output=$(rsync "${rsync_args[@]}" "$src" "$dest" 2>&1); then
-    log_error "Sync failed for $name"
-    printf '%s\n' "$output" >&2
-    return 1
+  if [[ ! -d "$(dirname "$dest")" && "$(basename "$src")" == "$(basename "$dest")" ]]; then
+    run_rsync_transfer "$name" true "${rsync_args[@]}" "$src" "$(dirname "$dest")"/
+    return
   fi
-  emit_apply_result "$name" "$output"
+
+  return 1
 }
 
 echo "========================================="

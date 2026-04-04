@@ -51,22 +51,6 @@ run_theming_scripts() {
 # Run primary app theming scripts.
 run_app_theming() {
   run_theming_scripts APP_THEMING_SCRIPTS
-
-  # Special case: pywalfox (external command, not a script)
-  if command -v pywalfox &>/dev/null; then
-    if [[ "${ASYNC_OPTIONAL_UPDATES:-0}" -eq 1 ]]; then
-      {
-        pywalfox update &>/dev/null &&
-          type print_log &>/dev/null &&
-          print_log -sec "pywalfox" -stat "updated" "Firefox theme"
-      } &
-      print_log -sec "pywal16" -stat "async" "optional update running in background (pywalfox)"
-    else
-      pywalfox update &>/dev/null &&
-        type print_log &>/dev/null &&
-        print_log -sec "pywalfox" -stat "updated" "Firefox theme"
-    fi
-  fi
 }
 
 # Run secondary app theming scripts.

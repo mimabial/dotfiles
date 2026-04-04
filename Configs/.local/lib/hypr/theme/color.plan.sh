@@ -44,10 +44,6 @@ color_plan_resolve_theme_context() {
   fi
 
   THEME_KITTY_FILE="${HYPR_THEME_DIR}/kitty.theme"
-  THEME_BG=""
-  THEME_FG=""
-  THEME_CURSOR=""
-  THEME_COLORS=()
 }
 
 color_plan_prepare_wal_cache_root() {

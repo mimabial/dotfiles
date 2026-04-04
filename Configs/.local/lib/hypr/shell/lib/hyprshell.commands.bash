@@ -2,6 +2,17 @@
 
 # Core command helpers for hyprshell.
 
+hyprshell_builtin_commands() {
+  printf '%s\n' \
+    "--help" "help" "-h" \
+    "-r" "reload" \
+    "--version" "version" "-v" \
+    "--release-notes" "release-notes" \
+    "--list-script" "--list-script-path" \
+    "--completions" \
+    "validate" "pyinit" "init" "lock-session" "logout" "pip" "pypr" "app"
+}
+
 initialized() {
   cat <<EOT
 HYPR_SHELL_INIT=1
@@ -23,7 +34,7 @@ Commands:
   --help, help, -h              : Display this help message
   -r, reload                    : Reload Hyprland Environment
   release-notes                 : Show release notes
-  completions [bash|zsh|fish]   : Generate shell completions
+  completions [bash|zsh]        : Generate shell completions
   validate [args]               : Validate Hyprland configuration
   pyinit                        : Initialize python virtual environment
   version                       : Show version information

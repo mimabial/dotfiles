@@ -22,14 +22,7 @@ menu_spawn_entry() {
 }
 
 back_to() {
-  local target="${1:-main}"
-
-  if [[ "${BACK_TO_EXIT}" == "true" ]]; then
-    exit 0
-  fi
-
-  menu_show_menu "${target}"
-  exit 0
+  menu_exit_or_show "${1:-main}"
 }
 
 menu_exit_or_show() {

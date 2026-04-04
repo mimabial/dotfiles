@@ -47,6 +47,27 @@ get_aur_helper() {
   printf '%s\n' "${helper}"
 }
 
+get_hypr_conf_from_file() {
+  local file="$1"
+  local key="$2"
+
+  [[ -r "${file}" ]] || return 1
+
+  awk -F'=' -v key="${key}" '
+    /^[[:space:]]*#/ { next }
+    {
+      lhs = $1
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", lhs)
+      if (lhs == key) {
+        sub(/^[^=]*=/, "", $0)
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0)
+        print $0
+        exit
+      }
+    }
+  ' "${file}"
+}
+
 # ============================================================================
 # get_hypr_conf - Get a variable value from Hyprland theme config
 # ============================================================================
@@ -82,19 +103,7 @@ get_hypr_conf() {
     [ -n "${value}" ] && printf '%s\n' "${value}" && return 0
   fi
 
-  value="$(awk -F'=' -v key="\$${hyVar}" '
-    /^[[:space:]]*#/ { next }
-    {
-      lhs = $1
-      gsub(/^[[:space:]]+|[[:space:]]+$/, "", lhs)
-      if (lhs == key) {
-        sub(/^[^=]*=/, "", $0)
-        gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0)
-        print $0
-        exit
-      }
-    }
-  ' "${file}")"
+  value="$(get_hypr_conf_from_file "${file}" "\$${hyVar}")"
   if [[ -n "${value}" ]] && [[ "${value}" != \$* ]]; then
     printf '%s\n' "${value}"
     return 0
@@ -102,19 +111,7 @@ get_hypr_conf() {
 
   defaults_file="$(hypr_variables_file)"
   if [[ -f "${defaults_file}" ]]; then
-    awk -F'=' -v key="\$default.${hyVar}" '
-      /^[[:space:]]*#/ { next }
-      {
-        lhs = $1
-        gsub(/^[[:space:]]+|[[:space:]]+$/, "", lhs)
-        if (lhs == key) {
-          sub(/^[^=]*=/, "", $0)
-          gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0)
-          print $0
-          exit
-        }
-      }
-    ' "${defaults_file}"
+    get_hypr_conf_from_file "${defaults_file}" "\$default.${hyVar}"
   fi
 }
 

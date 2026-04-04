@@ -3,4 +3,4 @@ Description=Clean stale zcompdump temp files
 
 [Service]
 Type=oneshot
-ExecStart=%h/.local/bin/zsh-clean-zcompdump
+ExecStart=%h/.local/lib/zsh/clean-zcompdump.sh

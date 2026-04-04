@@ -38,43 +38,52 @@ need_cmd blkid
 
 default_uuid="F474B7AA74B76DCC"
 
+resolve_device_candidate() {
+  local candidate_type="$1"
+  local candidate_value="$2"
+
+  case "${candidate_type}" in
+    uuid) blkid -U "${candidate_value}" 2>/dev/null || true ;;
+    label) blkid -L "${candidate_value}" 2>/dev/null || true ;;
+  esac
+}
+
 resolve_device() {
   local input="${1:-}"
   local resolved=""
+  local candidate=""
+  local lookup_type=""
+  local lookup_value=""
+  local -a lookups=()
 
   if [[ -z "${input}" ]]; then
-    resolved="$(blkid -U "${default_uuid}" 2>/dev/null || true)"
-    if [[ -z "${resolved}" ]]; then
-      resolved="$(blkid -L "VIRAL_OS" 2>/dev/null || true)"
-    fi
+    lookups=("uuid:${default_uuid}" "label:VIRAL_OS")
+  elif [[ "${input}" == /dev/* ]]; then
+    echo "${input}"
+    return 0
+  elif [[ "${input}" == UUID=* ]]; then
+    lookups=("uuid:${input#UUID=}")
+  elif [[ "${input}" == LABEL=* ]]; then
+    lookups=("label:${input#LABEL=}")
+  elif [[ "${input}" == *-* ]]; then
+    lookups=("uuid:${input}" "label:${input}")
+  else
+    lookups=("label:${input}")
+  fi
+
+  for candidate in "${lookups[@]}"; do
+    lookup_type="${candidate%%:*}"
+    lookup_value="${candidate#*:}"
+    resolved="$(resolve_device_candidate "${lookup_type}" "${lookup_value}")"
+    [[ -n "${resolved}" ]] && break
+  done
+
+  if [[ -z "${input}" ]]; then
     echo "${resolved}"
     return 0
   fi
 
-  if [[ "${input}" == /dev/* ]]; then
-    echo "${input}"
-    return 0
-  fi
-
-  if [[ "${input}" == UUID=* ]]; then
-    echo "$(blkid -U "${input#UUID=}" 2>/dev/null || true)"
-    return 0
-  fi
-
-  if [[ "${input}" == LABEL=* ]]; then
-    echo "$(blkid -L "${input#LABEL=}" 2>/dev/null || true)"
-    return 0
-  fi
-
-  if [[ "${input}" == *-* ]]; then
-    resolved="$(blkid -U "${input}" 2>/dev/null || true)"
-    if [[ -n "${resolved}" ]]; then
-      echo "${resolved}"
-      return 0
-    fi
-  fi
-
-  echo "$(blkid -L "${input}" 2>/dev/null || true)"
+  echo "${resolved}"
 }
 
 device="$(resolve_device "${1:-}")"

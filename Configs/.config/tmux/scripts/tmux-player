@@ -2,5 +2,5 @@
 
 status="$(playerctl status 2>/dev/null)"
 if [[ "$status" == "Playing" || "$status" == "Paused" ]]; then
-  playerctl metadata --format '#[fg=#{@theme_gray}] 󰽯 #[default,italics]{{title}}#[fg=#{@theme_gray}]  ' 2>/dev/null
+  playerctl metadata --format '#[default]#[fg=#{@theme_gray}] 󰽯 #[default,italics]{{title}}#[fg=#{@theme_gray}]  #[default]' 2>/dev/null
 fi

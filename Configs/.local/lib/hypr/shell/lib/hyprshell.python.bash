@@ -24,6 +24,29 @@ run_pip() {
   pip "$@"
 }
 
+hyprshell_socket_send() {
+  local socket_path="$1"
+  local message_string="$2"
+  local socket_client=""
+
+  for socket_client in nc socat ncat; do
+    command -v "${socket_client}" >/dev/null 2>&1 || continue
+    case "${socket_client}" in
+      nc)
+        printf '%s' "${message_string}" | nc -N -U "${socket_path}" 2>/dev/null
+        ;;
+      socat)
+        printf '%s' "${message_string}" | socat - UNIX-CONNECT:"${socket_path}" 2>/dev/null
+        ;;
+      ncat)
+        printf '%s' "${message_string}" | ncat -U "${socket_path}" 2>/dev/null
+        ;;
+    esac && return 0
+  done
+
+  return 1
+}
+
 run_pypr() {
   python_activate
   shift
@@ -42,14 +65,10 @@ run_pypr() {
     local message_string="${message_args[*]}"
 
     if [[ -S "${socket_path}" ]] && pgrep -u "${USER}" pypr >/dev/null 2>&1; then
-      if ! printf "%s" "${message_string}" | nc -N -U "${socket_path}" 2>/dev/null; then
-        if ! printf "%s" "${message_string}" | socat - UNIX-CONNECT:"${socket_path}" 2>/dev/null; then
-          if ! printf "%s" "${message_string}" | ncat -U "${socket_path}" 2>/dev/null; then
-            if ! pypr "${message_args[@]}"; then
-              print_log -sec "pypr" "Error communicating with socket: ${socket_path}"
-              exit 1
-            fi
-          fi
+      if ! hyprshell_socket_send "${socket_path}" "${message_string}"; then
+        if ! pypr "${message_args[@]}"; then
+          print_log -sec "pypr" "Error communicating with socket: ${socket_path}"
+          exit 1
         fi
       fi
     else

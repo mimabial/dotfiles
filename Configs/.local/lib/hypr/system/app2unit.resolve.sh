@@ -97,38 +97,38 @@ check_terminal_handler() {
 	# checks terminal handler availability
 	if ! command -v "$TERMINAL_HANDLER" >/dev/null; then
 		error "Terminal launch requested but '$TERMINAL_HANDLER' is unavailable!"
-		exit 1
+		return 1
 	fi
 }
 
 get_mime() {
 	# prints mime type of file or url
-	mime=
+	app2unit_resolve_mime=
 	case "$1" in
 	[a-zA-Z]*:*)
-		IFS=':' read -r scheme _rest <<-EOF
+		IFS=':' read -r app2unit_resolve_scheme _rest <<-EOF
 			$1
 		EOF
-		debug "potential scheme '$scheme'"
-		case "$scheme" in
+		debug "potential scheme '$app2unit_resolve_scheme'"
+		case "$app2unit_resolve_scheme" in
 		*[!a-zA-Z0-9+.-]*)
-			debug "not a valid scheme '$scheme', assuming file"
-			mime=$(xdg-mime query filetype "$1")
+			debug "not a valid scheme '$app2unit_resolve_scheme', assuming file"
+			app2unit_resolve_mime=$(xdg-mime query filetype "$1")
 			;;
-		*) mime=x-scheme-handler/$scheme ;;
+		*) app2unit_resolve_mime=x-scheme-handler/$app2unit_resolve_scheme ;;
 		esac
 		;;
-	*) mime=$(xdg-mime query filetype "$1") ;;
+	*) app2unit_resolve_mime=$(xdg-mime query filetype "$1") ;;
 	esac
 
-	case "$mime" in
+	case "$app2unit_resolve_mime" in
 	'' | 'x-scheme-handler/')
 		error "Could not query mime type for '$1'"
 		return 1
 		;;
 	*)
-		debug "got mime '$mime' for '$1'"
-		echo "$mime"
+		debug "got mime '$app2unit_resolve_mime' for '$1'"
+		printf '%s\n' "$app2unit_resolve_mime"
 		return 0
 		;;
 	esac
@@ -136,11 +136,11 @@ get_mime() {
 
 get_assoc() {
 	# prints file association for mime type
-	assoc=$(xdg-mime query default "$1")
-	case "$assoc" in
+	app2unit_resolve_assoc=$(xdg-mime query default "$1")
+	case "$app2unit_resolve_assoc" in
 	?*.desktop)
-		debug "got association '$assoc' for mime '$1'"
-		echo "$assoc"
+		debug "got association '$app2unit_resolve_assoc' for mime '$1'"
+		printf '%s\n' "$app2unit_resolve_assoc"
 		return 0
 		;;
 	*)

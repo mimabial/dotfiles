@@ -103,22 +103,26 @@ main() {
   local mime_type
   mime_type=$(find_mime_type "$input")
 
-  [ -z "$mime_type" ] && {
-    echo -e "Error: No matching MIME type found for $input\n"
-    app2unit.sh "${fallbackCmd}" || exit 1
-  }
+  if [[ -z "${mime_type}" ]]; then
+    printf 'Error: No matching MIME type found for %s\n\n' "${input}" >&2
+    [[ -n "${fallbackCmd}" ]] && exec app2unit.sh "${fallbackCmd}"
+    exit 1
+  fi
 
   local default_app
   default_app=$(xdg-mime query default "$mime_type")
-  [ -z "$default_app" ] && {
-    echo -e "Error: No default application found for $mime_type\n"
-    app2unit.sh "${fallbackCmd}" || exit 1
-  }
+  if [[ -z "${default_app}" ]]; then
+    printf 'Error: No default application found for %s\n\n' "${mime_type}" >&2
+    [[ -n "${fallbackCmd}" ]] && exec app2unit.sh "${fallbackCmd}"
+    exit 1
+  fi
 
   if [ "${std_only}" = true ]; then
     echo "${default_app}"
   else
-    app2unit.sh "${default_app}" || app2unit.sh "${fallbackCmd}"
+    if ! app2unit.sh "${default_app}"; then
+      [[ -n "${fallbackCmd}" ]] && app2unit.sh "${fallbackCmd}"
+    fi
   fi
 }
 main "$@"

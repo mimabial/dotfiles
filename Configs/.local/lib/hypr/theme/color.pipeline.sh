@@ -21,6 +21,9 @@ declare -gA COLOR_LINKS=(
 )
 
 select_palette_source() {
+  local theme_bg="" theme_fg="" theme_cursor=""
+  local -a theme_colors=()
+
   PALETTE_SOURCE="wallpaper"
   PALETTE_LABEL=""
   STATE_WALLPAPER=""
@@ -31,12 +34,12 @@ select_palette_source() {
   fi
 
   if [[ "${PALETTE_SOURCE}" == "theme" ]]; then
-    if ! load_theme_palette "${THEME_KITTY_FILE}"; then
+    if ! load_theme_palette "${THEME_KITTY_FILE}" theme_bg theme_fg theme_cursor theme_colors; then
       print_log -sec "theme" -warn "palette" "missing or incomplete ${THEME_KITTY_FILE}, falling back to wallpaper"
       PALETTE_SOURCE="wallpaper"
     else
       WAL_THEME_FILE="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wal/theme-${HYPR_THEME// /_}.json"
-      write_wal_theme_file "${WAL_THEME_FILE}"
+      write_wal_theme_file "${WAL_THEME_FILE}" "${theme_bg}" "${theme_fg}" "${theme_cursor}" theme_colors
       WALLPAPER_IMAGE="${WAL_THEME_FILE}"
       STATE_WALLPAPER="theme:${HYPR_THEME}"
       PALETTE_LABEL="theme:${HYPR_THEME}"
@@ -223,71 +226,104 @@ hex_triplet_to_rgb_components() {
   b_ref=$((16#${hex:4:2}))
 }
 
-rewrite_hyprshade_colors() {
+resolve_named_color_rgb() {
+  local color_name="$1"
+  local hex_value="$2"
+  local r_name="$3"
+  local g_name="$4"
+  local b_name="$5"
+  local -n r_ref="${r_name}"
+  local -n g_ref="${g_name}"
+  local -n b_ref="${b_name}"
+
+  if ! hex_triplet_to_rgb_components "${hex_value}" r_ref g_ref b_ref; then
+    print_log -sec "pywal16" -warn "colors" "invalid ${color_name} in colors-shell.sh"
+  fi
+}
+
+append_rgb_placeholder_rewrites() {
+  local args_name="$1"
+  local placeholder="$2"
+  local rewrite_mode="$3"
+  local separator="$4"
+  local r="$5"
+  local g="$6"
+  local b="$7"
+  local -n args_ref="${args_name}"
+
+  case "${rewrite_mode}" in
+    triplet)
+      args_ref+=(-e "s/${placeholder}/${r}${separator}${g}${separator}${b}/g")
+      ;;
+    components)
+      args_ref+=(
+        -e "s/${placeholder}_R/${r}/g"
+        -e "s/${placeholder}_G/${g}/g"
+        -e "s/${placeholder}_B/${b}/g"
+      )
+      ;;
+  esac
+}
+
+rewrite_rgb_placeholders() {
+  local target_file="$1"
+  local rewrite_mode="$2"
+  local separator="$3"
+  shift 3
+
+  local entry=""
+  local placeholder=""
+  local color_name=""
+  local hex_value=""
   local r=0
   local g=0
   local b=0
-  local var=""
-  local sed_args=()
+  local -a sed_args=()
 
-  [[ -f "${WAL_CACHE}/colors-hyprshade.glsl" ]] || return 0
-  for i in {0..15}; do
-    var="color${i}"
-    if ! hex_triplet_to_rgb_components "${!var}" r g b; then
-      print_log -sec "pywal16" -warn "colors" "invalid ${var} in colors-shell.sh"
-    fi
-    sed_args+=(-e "s/COLOR${i}_RGB/${r}, ${g}, ${b}/g")
+  [[ -f "${target_file}" ]] || return 0
+
+  for entry in "$@"; do
+    IFS=: read -r placeholder color_name <<<"${entry}"
+    hex_value="${!color_name:-}"
+    resolve_named_color_rgb "${color_name}" "${hex_value}" r g b
+    append_rgb_placeholder_rewrites sed_args "${placeholder}" "${rewrite_mode}" "${separator}" "${r}" "${g}" "${b}"
   done
-  if ! hex_triplet_to_rgb_components "${background}" r g b; then
-    print_log -sec "pywal16" -warn "colors" "invalid background in colors-shell.sh"
-  fi
-  sed_args+=(-e "s/BACKGROUND_RGB/${r}, ${g}, ${b}/g")
-  if ! hex_triplet_to_rgb_components "${foreground}" r g b; then
-    print_log -sec "pywal16" -warn "colors" "invalid foreground in colors-shell.sh"
-  fi
-  sed_args+=(-e "s/FOREGROUND_RGB/${r}, ${g}, ${b}/g")
-  sed -i "${sed_args[@]}" "${WAL_CACHE}/colors-hyprshade.glsl"
+
+  sed -i "${sed_args[@]}" "${target_file}"
+}
+
+rewrite_hyprshade_colors() {
+  local i=0
+  local -a entries=()
+
+  for i in {0..15}; do
+    entries+=("COLOR${i}_RGB:color${i}")
+  done
+  entries+=("BACKGROUND_RGB:background" "FOREGROUND_RGB:foreground")
+
+  rewrite_rgb_placeholders "${WAL_CACHE}/colors-hyprshade.glsl" triplet ", " "${entries[@]}"
 }
 
 rewrite_rmpc_colors() {
-  local r=0
-  local g=0
-  local b=0
-  local hex0="${color0:-}"
-  local hex15="${color15:-}"
-  local hex4="${color4:-}"
-
-  [[ -f "${WAL_CACHE}/colors-rmpc.ron" ]] || return 0
-  if ! hex_triplet_to_rgb_components "${hex0}" r g b; then
-    print_log -sec "pywal16" -warn "colors" "invalid color0 in colors-shell.sh"
-  fi
-  sed -i -e "s/COLOR0_R/${r}/g" -e "s/COLOR0_G/${g}/g" -e "s/COLOR0_B/${b}/g" "${WAL_CACHE}/colors-rmpc.ron"
-  if ! hex_triplet_to_rgb_components "${hex15}" r g b; then
-    print_log -sec "pywal16" -warn "colors" "invalid color15 in colors-shell.sh"
-  fi
-  sed -i -e "s/COLOR15_R/${r}/g" -e "s/COLOR15_G/${g}/g" -e "s/COLOR15_B/${b}/g" "${WAL_CACHE}/colors-rmpc.ron"
-  if ! hex_triplet_to_rgb_components "${hex4}" r g b; then
-    print_log -sec "pywal16" -warn "colors" "invalid color4 in colors-shell.sh"
-  fi
-  sed -i -e "s/COLOR4_R/${r}/g" -e "s/COLOR4_G/${g}/g" -e "s/COLOR4_B/${b}/g" "${WAL_CACHE}/colors-rmpc.ron"
+  rewrite_rgb_placeholders \
+    "${WAL_CACHE}/colors-rmpc.ron" \
+    components \
+    "" \
+    "COLOR0:color0" \
+    "COLOR15:color15" \
+    "COLOR4:color4"
 }
 
 rewrite_hyprland_colors() {
-  local r=0
-  local g=0
-  local b=0
-  local var=""
-  local sed_args=()
-
-  [[ -f "${WAL_CACHE}/colors-hyprland.conf" ]] || return 0
-  for i in 0 4 7 8 15; do
-    var="color${i}"
-    if ! hex_triplet_to_rgb_components "${!var}" r g b; then
-      print_log -sec "pywal16" -warn "colors" "invalid ${var} in colors-shell.sh"
-    fi
-    sed_args+=(-e "s/COLOR${i}_RGB/${r},${g},${b}/g")
-  done
-  sed -i "${sed_args[@]}" "${WAL_CACHE}/colors-hyprland.conf"
+  rewrite_rgb_placeholders \
+    "${WAL_CACHE}/colors-hyprland.conf" \
+    triplet \
+    "," \
+    "COLOR0_RGB:color0" \
+    "COLOR4_RGB:color4" \
+    "COLOR7_RGB:color7" \
+    "COLOR8_RGB:color8" \
+    "COLOR15_RGB:color15"
 }
 
 post_process_generated_color_files() {

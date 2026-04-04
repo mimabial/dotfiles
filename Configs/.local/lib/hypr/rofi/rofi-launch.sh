@@ -152,12 +152,14 @@ configure_mode() {
   local action="${1:-}"
   rofi_args=(-show-icons)
 
+  configure_drun_mode() {
+    r_mode="drun"
+    rofi_config="$(resolve_rofi_launcher_theme "${ROFI_LAUNCH_DRUN_STYLE:-${ROFI_LAUNCH_STYLE:-style_1}}")"
+    rofi_args+=("${ROFI_LAUNCH_DRUN_ARGS[@]:-}" "-run-command" "app2unit.sh -- {cmd}")
+  }
+
   case "${action}" in
-    d|--drun|"")
-      r_mode="drun"
-      rofi_config="$(resolve_rofi_launcher_theme "${ROFI_LAUNCH_DRUN_STYLE:-${ROFI_LAUNCH_STYLE:-style_1}}")"
-      rofi_args+=("${ROFI_LAUNCH_DRUN_ARGS[@]:-}" "-run-command" "app2unit.sh -- {cmd}")
-      ;;
+    d|--drun|"") configure_drun_mode ;;
     w|--window)
       r_mode="window"
       rofi_config="$(resolve_rofi_launcher_theme "${ROFI_LAUNCH_WINDOW_STYLE:-${ROFI_LAUNCH_STYLE:-style_1}}")"
@@ -180,11 +182,7 @@ configure_mode() {
     h|--help)
       show_help
       ;;
-    *)
-      r_mode="drun"
-      rofi_config="$(resolve_rofi_launcher_theme "${ROFI_LAUNCH_DRUN_STYLE:-${ROFI_LAUNCH_STYLE:-style_1}}")"
-      rofi_args+=("${ROFI_LAUNCH_DRUN_ARGS[@]:-}" "-run-command" "app2unit.sh -- {cmd}")
-      ;;
+    *) configure_drun_mode ;;
   esac
 }
 

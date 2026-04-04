@@ -1,0 +1,324 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/preview"
+mkdir -p "${CACHE_DIR}"
+
+usage() {
+  cat <<'EOF'
+Usage:
+  preview FILE[:LINE[:COLUMN]]
+  preview --process PID
+EOF
+}
+
+die() {
+  printf '%s\n' "$*" >&2
+  exit 1
+}
+
+have() {
+  command -v "$1" >/dev/null 2>&1
+}
+
+expand_path() {
+  local value="${1:-}"
+  if [[ "${value}" == "~/"* ]]; then
+    printf '%s\n' "${HOME}/${value#~/}"
+  else
+    printf '%s\n' "${value}"
+  fi
+}
+
+preview_dimensions() {
+  local cols="${FZF_PREVIEW_COLUMNS:-}"
+  local lines="${FZF_PREVIEW_LINES:-}"
+  local tty_size=""
+  local tty_path=""
+
+  if [[ -z "${cols}" || -z "${lines}" ]]; then
+    tty_path="$(tty 2>/dev/null || true)"
+  fi
+
+  if [[ -z "${cols}" || -z "${lines}" ]] && [[ "${tty_path}" == /dev/* ]]; then
+    tty_size="$(stty size < "${tty_path}" 2>/dev/null || true)"
+    if [[ -n "${tty_size}" ]]; then
+      lines="${lines:-${tty_size%% *}}"
+      cols="${cols:-${tty_size##* }}"
+    fi
+  fi
+
+  cols="${cols:-80}"
+  lines="${lines:-40}"
+
+  if [[ -z "${KITTY_WINDOW_ID:-}" && -n "${FZF_PREVIEW_TOP:-}" && -n "${FZF_PREVIEW_LINES:-}" ]]; then
+    local tty_lines="${tty_size%% *}"
+    if [[ -n "${tty_lines}" ]] && (( FZF_PREVIEW_TOP + FZF_PREVIEW_LINES >= tty_lines && lines > 1 )); then
+      lines=$((lines - 1))
+    fi
+  fi
+
+  printf '%sx%s\n' "${cols}" "${lines}"
+}
+
+shell_text_preview() {
+  local path="$1"
+  local line="$2"
+  if (( line > 0 )); then
+    awk -v focus="${line}" '
+      NR >= focus - 20 && NR <= focus + 80 {
+        prefix = (NR == focus ? "> " : "  ")
+        printf "%s%6d  %s\n", prefix, NR, $0
+      }
+    ' -- "${path}"
+  else
+    sed -n '1,220p' -- "${path}"
+  fi
+}
+
+preview_text() {
+  local path="$1"
+  local line="$2"
+
+  case "${path}" in
+    *.json|*.jsonl|*.ndjson)
+      if have jq && jq -C . "${path}" 2>/dev/null; then
+        return 0
+      fi
+      ;;
+  esac
+
+  if have bat; then
+    local -a bat_args
+    bat_args=(
+      --color=always
+      --paging=never
+      --style="${BAT_STYLE:-numbers}"
+    )
+
+    case "${path}" in
+      *.md|*.markdown) bat_args+=(--language=markdown) ;;
+      *.json|*.jsonl|*.ndjson) bat_args+=(--language=json) ;;
+      *.htm|*.html) bat_args+=(--language=html) ;;
+      *.yaml|*.yml) bat_args+=(--language=yaml) ;;
+      *.toml) bat_args+=(--language=toml) ;;
+      *.sh|*.bash|*.zsh) bat_args+=(--language=bash) ;;
+    esac
+
+    if (( line > 0 )); then
+      bat_args+=(--highlight-line "${line}")
+    fi
+
+    bat "${bat_args[@]}" -- "${path}"
+    return 0
+  fi
+
+  shell_text_preview "${path}" "${line}"
+}
+
+preview_directory() {
+  local path="$1"
+  if command -v eza >/dev/null 2>&1; then
+    eza -ahF --color=always --group-directories-first --icons=always "${path}"
+  else
+    ls -Apl --group-directories-first --color=always "${path}"
+  fi
+}
+
+preview_symlink() {
+  local path="$1"
+  local target=""
+  target="$(readlink -- "${path}" 2>/dev/null || true)"
+  printf 'symlink -> %s\n' "${target}"
+}
+
+preview_process() {
+  local pid="${1:-}"
+  [[ -n "${pid}" ]] || die "missing PID"
+
+  ps -ww -p "${pid}" -o pid=,ppid=,user=,%cpu=,%mem=,vsz=,rss=,tty=,stat=,lstart=,time=,args= 2>/dev/null ||
+    die "process not found: ${pid}"
+
+  if command -v lsof >/dev/null 2>&1; then
+    printf '\n'
+    lsof -p "${pid}" 2>/dev/null | sed -n '1,25p' || true
+  fi
+}
+
+preview_image() {
+  local path="$1"
+  local dim=""
+
+  dim="$(preview_dimensions)"
+
+  if have kitty && [[ -n "${KITTY_WINDOW_ID:-}" || "${TERM:-}" == "xterm-kitty" || -n "${GHOSTTY_RESOURCES_DIR:-}" ]]; then
+    kitty icat --clear --transfer-mode=memory --stdin=no --place="${dim}@0x0" "${path}" \
+      | sed '$d' \
+      | sed $'$s/$/\e[m/'
+    return 0
+  fi
+
+  if have chafa; then
+    chafa -s "${dim}" -- "${path}"
+    printf '\n'
+    return 0
+  fi
+
+  file --brief --dereference -- "${path}"
+}
+
+preview_pdf() {
+  local path="$1"
+  local cache_base=""
+
+  cache_base="${CACHE_DIR}/$(printf '%s' "${path}" | sha256sum | awk '{print $1}')"
+  if [[ ! -f "${cache_base}.png" || "${path}" -nt "${cache_base}.png" ]]; then
+    pdftoppm -png -f 1 -singlefile "${path}" "${cache_base}" >/dev/null 2>&1 || return 1
+  fi
+
+  preview_image "${cache_base}.png"
+}
+
+preview_archive() {
+  local path="$1"
+
+  case "${path}" in
+    *.zip|*.jar|*.war|*.ear|*.oxt)
+      unzip -l "${path}"
+      ;;
+    *.iso)
+      iso-info --no-header -l -i "${path}"
+      ;;
+    *)
+      if have bsdtar; then
+        bsdtar -tf "${path}"
+      else
+        tar -tf "${path}"
+      fi
+      ;;
+  esac
+}
+
+preview_binary() {
+  local path="$1"
+  if have readelf; then
+    readelf --wide --demangle=auto --all -- "${path}"
+  else
+    file --brief --dereference -- "${path}"
+  fi
+}
+
+preview_certificate() {
+  local path="$1"
+  if have openssl; then
+    openssl x509 -text -noout -in "${path}"
+  else
+    file --brief --dereference -- "${path}"
+  fi
+}
+
+resolved_target=""
+resolved_line=0
+
+resolve_target() {
+  local raw expanded base_path
+
+  raw="${1:-}"
+  expanded="$(expand_path "${raw}")"
+  resolved_target="${expanded}"
+  resolved_line=0
+
+  if [[ -e "${expanded}" || -L "${expanded}" ]]; then
+    return 0
+  fi
+
+  if [[ "${expanded}" =~ ^(.+):([0-9]+)(:([0-9]+))?$ ]]; then
+    base_path="${BASH_REMATCH[1]}"
+    if [[ -e "${base_path}" || -L "${base_path}" ]]; then
+      resolved_target="${base_path}"
+      resolved_line="${BASH_REMATCH[2]}"
+      return 0
+    fi
+  fi
+
+  return 1
+}
+
+main() {
+  local input mime=""
+
+  case "${1:-}" in
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --process)
+      shift
+      preview_process "${1:-}"
+      exit 0
+      ;;
+    "")
+      usage >&2
+      exit 1
+      ;;
+  esac
+
+  input="${1}"
+  resolve_target "${input}" || die "path not found: ${input}"
+
+  if [[ -d "${resolved_target}" ]]; then
+    preview_directory "${resolved_target}"
+    exit 0
+  fi
+
+  if [[ -L "${resolved_target}" && ! -e "${resolved_target}" ]]; then
+    preview_symlink "${resolved_target}"
+    exit 0
+  fi
+
+  mime="$(file --brief --dereference --mime-type -- "${resolved_target}" 2>/dev/null || true)"
+
+  case "${resolved_target}" in
+    *.zip|*.jar|*.war|*.ear|*.oxt|*.tar|*.tar.gz|*.tgz|*.tar.bz2|*.tbz2|*.tar.xz|*.txz|*.iso)
+      preview_archive "${resolved_target}"
+      exit 0
+      ;;
+    *.crt|*.cer|*.pem)
+      preview_certificate "${resolved_target}"
+      exit 0
+      ;;
+  esac
+
+  case "${mime}" in
+    inode/symlink)
+      preview_symlink "${resolved_target}"
+      ;;
+    text/*|application/json|application/xml|application/x-shellscript|application/yaml|application/x-yaml)
+      preview_text "${resolved_target}" "${resolved_line}"
+      ;;
+    image/*)
+      preview_image "${resolved_target}"
+      ;;
+    application/pdf)
+      preview_pdf "${resolved_target}" || file --brief --dereference -- "${resolved_target}"
+      ;;
+    application/x-executable|application/x-pie-executable|application/x-sharedlib|application/x-object)
+      preview_binary "${resolved_target}"
+      ;;
+    application/x-x509-ca-cert|application/pkix-cert)
+      preview_certificate "${resolved_target}"
+      ;;
+    audio/*|video/*)
+      file --brief --dereference -- "${resolved_target}"
+      ;;
+    *)
+      if grep -Iq . "${resolved_target}" 2>/dev/null; then
+        preview_text "${resolved_target}" "${resolved_line}"
+      else
+        file --brief --dereference -- "${resolved_target}"
+      fi
+      ;;
+  esac
+}
+
+main "$@"

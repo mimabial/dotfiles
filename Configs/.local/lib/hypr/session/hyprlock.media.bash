@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Shared hyprlock MPRIS/media helpers.
+
 mpris_icon() {
   local player=${1:-default}
   declare -A player_dict=(
@@ -11,6 +12,7 @@ mpris_icon() {
     ["opera"]=""
     ["brave"]=""
   )
+  local key=""
 
   for key in "${!player_dict[@]}"; do
     if [[ ${player} == "$key"* ]]; then
@@ -18,140 +20,169 @@ mpris_icon() {
       return
     fi
   done
-  echo "" # Default icon if no match is found
+  echo ""
+}
+
+mpris_default_player() {
+  playerctl --list-all 2>/dev/null | head -n1
+}
+
+mpris_player_status() {
+  playerctl -p "${1}" status 2>/dev/null
+}
+
+mpris_player_active() {
+  case "${1:-}" in
+    Playing | Paused) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+mpris_active_player_value() {
+  local player="$1"
+  local format="$2"
+  local player_status=""
+
+  player_status="$(mpris_player_status "${player}")"
+  mpris_player_active "${player_status}" || return 1
+  playerctl -p "${player}" metadata --format "${format}" 2>/dev/null
+}
+
+os_pretty_name() {
+  awk -F'=' '/^PRETTY_NAME=/ {gsub(/"/,"",$2); print $2; exit}' /etc/os-release
 }
 
 mpris_thumb() {
   local player=${1:-""}
-  THUMB="${HYPR_CACHE_HOME}/landing/mpris"
+  local thumb="${HYPR_CACHE_HOME}/landing/mpris"
+  local art_url=""
+  local video_url=""
+  local video_id=""
+  local size=""
+  local monitor_info=""
+  local width=""
+  local height=""
 
-  artUrl=$(playerctl -p "${player}" metadata --format '{{mpris:artUrl}}' 2>/dev/null)
-  if [ -z "$artUrl" ]; then
-    videoUrl=$(playerctl -p "${player}" metadata --format '{{xesam:url}}' 2>/dev/null)
-    if [[ "$videoUrl" =~ youtube\.com/watch\?v=([^&]+) ]] || [[ "$videoUrl" =~ youtu\.be/([^?]+) ]]; then
-      videoId="${BASH_REMATCH[1]}"
-      # Try maxresdefault first (1920x1080), fallback to hqdefault (480x360)
-      artUrl="https://img.youtube.com/vi/${videoId}/maxresdefault.jpg"
-      echo "YouTube thumbnail extracted: $artUrl" >"${THUMB}.log"
+  art_url=$(playerctl -p "${player}" metadata --format '{{mpris:artUrl}}' 2>/dev/null)
+  if [[ -z "${art_url}" ]]; then
+    video_url=$(playerctl -p "${player}" metadata --format '{{xesam:url}}' 2>/dev/null)
+    if [[ "${video_url}" =~ youtube\.com/watch\?v=([^&]+) ]] || [[ "${video_url}" =~ youtu\.be/([^?]+) ]]; then
+      video_id="${BASH_REMATCH[1]}"
+      art_url="https://img.youtube.com/vi/${video_id}/maxresdefault.jpg"
+      echo "YouTube thumbnail extracted: ${art_url}" >"${thumb}.log"
     fi
   fi
-  # Check if already cached
-  [ "${artUrl}" == "$(cat "${THUMB}".lnk 2>/dev/null)" ] && [ -f "${THUMB}".png ] && return 0
-  # Save new URL
-  echo "${artUrl}" >"${THUMB}".lnk
-  # Download and process
-  if curl -Lso "${THUMB}".art "$artUrl" 2>/dev/null; then
-    # Check if it's valid (YouTube returns 120x90 placeholder for invalid maxresdefault)
-    size=$(identify -format "%w" "${THUMB}".art 2>/dev/null)
-    if [ "$size" -lt 200 ] 2>/dev/null && [[ "$artUrl" =~ youtube ]]; then
-      # Try hqdefault instead for YouTube
-      artUrl="${artUrl/maxresdefault/hqdefault}"
-      curl -Lso "${THUMB}".art "$artUrl" 2>/dev/null
+
+  [[ "${art_url}" == "$(cat "${thumb}.lnk" 2>/dev/null)" && -f "${thumb}.png" ]] && return 0
+
+  echo "${art_url}" >"${thumb}.lnk"
+  if curl -Lso "${thumb}.art" "${art_url}" 2>/dev/null; then
+    size=$(identify -format "%w" "${thumb}.art" 2>/dev/null)
+    if [[ "${size:-0}" -lt 200 && "${art_url}" =~ youtube ]]; then
+      art_url="${art_url/maxresdefault/hqdefault}"
+      curl -Lso "${thumb}.art" "${art_url}" 2>/dev/null
     fi
-    # Create regular thumbnail
-    magick "${MAGICK_LIMITS[@]}" "${THUMB}.art" -quality 50 "${THUMB}.png" 2>/dev/null || return 1
-    # Create blurred version - use physical monitor resolution (hyprlock handles scaling with fractional_scaling=1)
-    local monitor_info=$(hyprctl monitors -j | jq -r '.[0] | "\(.width)x\(.height)"')
-    local width=$(echo "$monitor_info" | cut -d'x' -f1)
-    local height=$(echo "$monitor_info" | cut -d'x' -f2)
-    magick "${MAGICK_LIMITS[@]}" "${THUMB}.art" -blur 20x3 -resize ${width}x^ -gravity center -extent ${width}x${height}\! "${THUMB}.blurred.png" 2>/dev/null
+
+    magick "${MAGICK_LIMITS[@]}" "${thumb}.art" -quality 50 "${thumb}.png" 2>/dev/null || return 1
+
+    monitor_info=$(hyprctl monitors -j | jq -r '.[0] | "\(.width)x\(.height)"')
+    IFS=x read -r width height <<<"${monitor_info}"
+    magick "${MAGICK_LIMITS[@]}" "${thumb}.art" -blur 20x3 -resize "${width}x^" -gravity center -extent "${width}x${height}!" "${thumb}.blurred.png" 2>/dev/null
 
     reload_hyprlock
   fi
 }
 
-# Function to convert microseconds to minutes and seconds
 convert_length() {
   local length=$1
   local seconds=$((length / 1000000))
   local minutes=$((seconds / 60))
   local remaining_seconds=$((seconds % 60))
-  printf "%d:%02d\n" $minutes $remaining_seconds
+  printf "%d:%02d\n" "${minutes}" "${remaining_seconds}"
+}
+
+truncate_with_ellipsis() {
+  local value="$1"
+  local max_length="${2:-40}"
+
+  if ((${#value} > max_length)); then
+    printf '%s...\n' "${value:0:max_length}"
+  else
+    printf '%s\n' "${value}"
+  fi
 }
 
 fn_title() {
-  local player=${1:-$(playerctl --list-all 2>/dev/null | head -n 1)}
-  local player_status=""
+  local player=${1:-$(mpris_default_player)}
   local title=""
-  player_status="$(playerctl -p "${player}" status 2>/dev/null)"
 
-  if [[ "${player_status}" == "Playing" ]] || [[ "${player_status}" == "Paused" ]]; then
-    title="$(playerctl -p "${player}" metadata --format "{{xesam:title}}" 2>/dev/null)"
-    # Truncate to 40 characters (adjust as needed)
-    echo "${title:0:40}$([ ${#title} -gt 40 ] && echo '...')"
+  title="$(mpris_active_player_value "${player}" "{{xesam:title}}" || true)"
+  if [[ -n "${title}" ]]; then
+    truncate_with_ellipsis "${title}"
   else
     echo "${USER^}"
   fi
 }
 
 fn_artist() {
-  local player=${1:-$(playerctl --list-all 2>/dev/null | head -n 1)}
-  player_status="$(playerctl -p "${player}" status 2>/dev/null)"
+  local player=${1:-$(mpris_default_player)}
 
-  if [[ "${player_status}" == "Playing" ]] || [[ "${player_status}" == "Paused" ]]; then
-    playerctl -p "${player}" metadata --format "{{xesam:artist}}" 2>/dev/null
-  else
-    awk -F'=' '/^PRETTY_NAME=/ {gsub(/"/,"",$2); print $2; exit}' /etc/os-release
+  if ! mpris_active_player_value "${player}" "{{xesam:artist}}"; then
+    os_pretty_name
   fi
 }
 
 fn_source() {
-  local player=${1:-$(playerctl --list-all 2>/dev/null | head -n 1)}
-  player_status="$(playerctl -p "${player}" status 2>/dev/null)"
+  local player=${1:-$(mpris_default_player)}
+  local player_status=""
 
-  if [[ "${player_status}" == "Playing" ]] || [[ "${player_status}" == "Paused" ]]; then
+  player_status="$(mpris_player_status "${player}")"
+  if mpris_player_active "${player_status}"; then
     mpris_icon "${player}"
   fi
 }
 
 fn_status() {
-  local player=${1:-$(playerctl --list-all 2>/dev/null | head -n 1)}
-  player_status="$(playerctl -p "${player}" status 2>/dev/null)"
+  local player=${1:-$(mpris_default_player)}
+  local player_status=""
 
+  player_status="$(mpris_player_status "${player}")"
   case "${player_status}" in
-    Playing)
-      echo "▶" # or echo "Playing"
-      ;;
-    Paused)
-      echo "⏸" # or echo "Paused"
-      ;;
-    *)
-      echo "" # or echo "Stopped"
-      ;;
+    Playing) echo "▶" ;;
+    Paused) echo "⏸" ;;
+    *) echo "" ;;
   esac
 }
 
 fn_length() {
-  local player=${1:-$(playerctl --list-all 2>/dev/null | head -n 1)}
-  player_status="$(playerctl -p "${player}" status 2>/dev/null)"
+  local player=${1:-$(mpris_default_player)}
+  local length=""
 
-  if [[ "${player_status}" == "Playing" ]] || [[ "${player_status}" == "Paused" ]]; then
-    length=$(playerctl -p "${player}" metadata --format "{{mpris:length}}" 2>/dev/null)
-    if [ -n "$length" ]; then
-      convert_length "$length"
-    fi
+  length="$(mpris_active_player_value "${player}" "{{mpris:length}}" || true)"
+  if [[ -n "${length}" ]]; then
+    convert_length "${length}"
   fi
 }
 
 fn_mpris() {
-  # Combined MPRIS formatter used by the lockscreen text widgets.
-  local player=${1:-$(playerctl --list-all 2>/dev/null | head -n 1)}
-  THUMB="${HYPR_CACHE_HOME}/landing/mpris"
-  player_status="$(playerctl -p "${player}" status 2>/dev/null)"
+  local player=${1:-$(mpris_default_player)}
+  local thumb="${HYPR_CACHE_HOME}/landing/mpris"
+  local player_status=""
+  local temp_colored="${HYPR_CACHE_HOME}/landing/hypr-colored.tmp.png"
 
+  player_status="$(mpris_player_status "${player}")"
   if [[ "${player_status}" == "Playing" ]]; then
     playerctl -p "${player}" metadata --format "{{xesam:title}} $(mpris_icon "${player}")  {{xesam:artist}}" 2>/dev/null
     mpris_thumb "${player}" &
-  else
-    # Colorize fallback icon (cache in temp location to compare)
-    local temp_colored="${HYPR_CACHE_HOME}/landing/hypr-colored.tmp.png"
-    colorize_fallback_icon "$temp_colored"
-    if ! cmp -s "$temp_colored" "${THUMB}.png"; then
-      mv "$temp_colored" "${THUMB}.png"
-      reload_hyprlock
-    fi
-    set_mpris_blurred_empty "${THUMB}.blurred.png"
+    return 0
   fi
+
+  colorize_fallback_icon "${temp_colored}"
+  if ! cmp -s "${temp_colored}" "${thumb}.png"; then
+    mv "${temp_colored}" "${thumb}.png"
+    reload_hyprlock
+  fi
+  set_mpris_blurred_empty "${thumb}.blurred.png"
 }
 
 fn_art() {
@@ -159,25 +190,26 @@ fn_art() {
 }
 
 fn_update_art() {
-  # Ensures album art is fetched and cached
-  local player=${1:-$(playerctl --list-all 2>/dev/null | head -n 1)}
-  THUMB="${HYPR_CACHE_HOME}/landing/mpris"
-  player_status="$(playerctl -p "${player}" status 2>/dev/null)"
+  local player=${1:-$(mpris_default_player)}
+  local thumb="${HYPR_CACHE_HOME}/landing/mpris"
+  local player_status=""
+  local temp_colored="${HYPR_CACHE_HOME}/landing/hypr-colored.tmp.png"
 
-  if [[ "${player_status}" == "Playing" ]] || [[ "${player_status}" == "Paused" ]]; then
+  player_status="$(mpris_player_status "${player}")"
+  if mpris_player_active "${player_status}"; then
     mpris_thumb "${player}"
-  else
-    rm -f "${THUMB}".lnk "${THUMB}".art 2>/dev/null
-    local temp_colored="${HYPR_CACHE_HOME}/landing/hypr-colored.tmp.png"
-    colorize_fallback_icon "${temp_colored}"
-    if [ -f "${temp_colored}" ]; then
-      if ! cmp -s "${temp_colored}" "${THUMB}.png"; then
-        mv "${temp_colored}" "${THUMB}.png"
-        reload_hyprlock
-      else
-        rm -f "${temp_colored}"
-      fi
-    fi
-    set_mpris_blurred_empty "${THUMB}.blurred.png"
+    return 0
   fi
+
+  rm -f "${thumb}.lnk" "${thumb}.art" 2>/dev/null
+  colorize_fallback_icon "${temp_colored}"
+  if [[ -f "${temp_colored}" ]]; then
+    if ! cmp -s "${temp_colored}" "${thumb}.png"; then
+      mv "${temp_colored}" "${thumb}.png"
+      reload_hyprlock
+    else
+      rm -f "${temp_colored}"
+    fi
+  fi
+  set_mpris_blurred_empty "${thumb}.blurred.png"
 }
