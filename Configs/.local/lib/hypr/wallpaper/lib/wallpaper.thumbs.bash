@@ -71,9 +71,8 @@ wallpaper_inventory_signature() {
 
 wallpaper_load_inventory_catalog() {
   local -a wall_sources=()
-  local -a saved_wall_list=("${wallList[@]}")
-  local -a saved_wall_hash=("${wallHash[@]}")
-  local saved_set_index="${setIndex:-0}"
+  local -a inventory_list=()
+  local -a inventory_hash=()
 
   wallpaper_prune_sources_array wall_sources || return 1
 
@@ -82,20 +81,14 @@ wallpaper_load_inventory_catalog() {
     flock 204
   fi
 
-  if ! Wall_Hashmap_Cached "${wall_sources[@]}" --no-notify --skipstrays; then
+  if ! Wall_Hashmap_Cached_into inventory_hash inventory_list "${wall_sources[@]}"; then
     flock -u 204 2>/dev/null
     exec 204>&-
-    wallList=("${saved_wall_list[@]}")
-    wallHash=("${saved_wall_hash[@]}")
-    setIndex="${saved_set_index}"
     return 1
   fi
 
-  wallInventoryList=("${wallList[@]}")
-  wallInventoryHash=("${wallHash[@]}")
-  wallList=("${saved_wall_list[@]}")
-  wallHash=("${saved_wall_hash[@]}")
-  setIndex="${saved_set_index}"
+  wallInventoryList=("${inventory_list[@]}")
+  wallInventoryHash=("${inventory_hash[@]}")
 
   flock -u 204 2>/dev/null
   exec 204>&-

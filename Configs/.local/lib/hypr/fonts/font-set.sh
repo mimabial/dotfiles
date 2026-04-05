@@ -5,7 +5,7 @@ set -euo pipefail
 source "$(command -v hyprshell)" || exit 1
 
 FONT_NAME="${1:-}"
-USER_FONTS_FILE="${HYPR_CONFIG_HOME:-$HOME/.config/hypr}/userfonts.conf"
+USER_FONTS_FILE="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}/userfonts.conf"
 
 usage() {
   cat <<EOF2

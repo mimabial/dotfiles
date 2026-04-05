@@ -6,10 +6,10 @@ source "$(command -v hyprshell)" || exit 1
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
 
-emoji_dir=${HYPR_CONFIG_HOME:-$HOME/.config/hypr}
+emoji_dir=${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}
 emoji_data="${emoji_dir}/emoji.db"
 emoji_categories_dir="${emoji_dir}/emoji-categories"
-cache_dir="${HYPR_CACHE_HOME:-$HOME/.cache/hypr}"
+cache_dir="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}"
 recent_data="${cache_dir}/landing/show_emoji.recent"
 favorites_data="${cache_dir}/landing/emoji_favorites"
 EMOJI_ICONLESS_THEME_STR='listview { show-icons: false; } element { children: [ "element-text" ]; } element-icon { enabled: false; size: 0em; width: 0em; padding: 0; margin: 0; border: 0; }'

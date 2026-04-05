@@ -30,16 +30,6 @@ install_and_launch() {
   ' _ "${name}" "${desktop_id}" "${packages[@]}"
 }
 
-get_aur_helper() {
-  if command -v yay &>/dev/null; then
-    echo "yay"
-  elif command -v paru &>/dev/null; then
-    echo "paru"
-  else
-    return 1
-  fi
-}
-
 aur_install() {
   local aur_helper=""
   if ! aur_helper="$(get_aur_helper)"; then

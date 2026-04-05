@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 
-NOTIF_TOKEN_FILE="$HOME/.config/github/notifications.token"
-ALERTS_TOKEN_FILE="$HOME/.config/github/alerts.token"
-REPOS_CACHE="$HOME/.cache/github/repos.list"
-SECURITY_CACHE="$HOME/.cache/github/security-summary.json"
+XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
+NOTIF_TOKEN_FILE="${XDG_CONFIG_HOME}/github/notifications.token"
+ALERTS_TOKEN_FILE="${XDG_CONFIG_HOME}/github/alerts.token"
+REPOS_CACHE="${XDG_CACHE_HOME}/github/repos.list"
+SECURITY_CACHE="${XDG_CACHE_HOME}/github/security-summary.json"
 GITHUB_API="https://api.github.com"
 
 check() {

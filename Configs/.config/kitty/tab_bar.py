@@ -20,62 +20,19 @@ try:
     )
     from kitty.utils import color_as_int
 except ImportError:
-    # Dummy types for LSP when not running in kitty
-    from typing import TYPE_CHECKING
-
-    if TYPE_CHECKING:
-        # Provide dummy classes for type checking
-        class Screen:  # type: ignore
-            """Dummy Screen class for type checking."""
-
-            cursor: Any
-            columns: int
-            x: int
-
-            def draw(self, text: Any) -> None: ...  # Accept any string-like type
-
-        class DrawData:  # type: ignore
-            """Dummy DrawData class."""
-
-            leading_spaces: int
-            trailing_spaces: int
-            sep: str
-            inactive_bg: Any
-
-        class ExtraData:  # type: ignore
-            """Dummy ExtraData class."""
-
-            pass
-
-        class Formatter:  # type: ignore
-            """Dummy Formatter class."""
-
-            reset: str
-
-        class TabBarData:  # type: ignore
-            """Dummy TabBarData class."""
-
-            is_active: bool
-            title: str
-            layout_name: str
-    else:
-        # At runtime, use Any
-        Screen = Any  # type: ignore
-        DrawData = Any  # type: ignore
-        ExtraData = Any  # type: ignore
-        Formatter = Any  # type: ignore
-        TabBarData = Any  # type: ignore
+    Screen = Any  # type: ignore
+    DrawData = Any  # type: ignore
+    ExtraData = Any  # type: ignore
+    Formatter = Any  # type: ignore
+    TabBarData = Any  # type: ignore
 
     def as_rgb(x: int) -> int:  # type: ignore
-        """Dummy function for LSP."""
         return x
 
     def draw_attributed_string(*args: Any) -> None:  # type: ignore
-        """Dummy function for LSP."""
         pass
 
     def color_as_int(x: Any) -> int:  # type: ignore
-        """Dummy function for LSP."""
         return 0
 
 

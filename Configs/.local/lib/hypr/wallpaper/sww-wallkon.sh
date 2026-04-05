@@ -5,7 +5,7 @@
 script_dir=$(dirname "$(realpath "$0")")
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
 scrName="$(basename "$0")"
-kmenuPath="$HOME/.local/share/kio/servicemenus"
+kmenuPath="${XDG_DATA_HOME:-$HOME/.local/share}/kio/servicemenus"
 kmenuDesk="${kmenuPath}/hyprwallpaper.desktop"
 tgtPath="$(dirname "${HYPR_THEME_DIR}")"
 get_themes
@@ -45,10 +45,12 @@ done
 #// Regenerate desktop
 
 if [ ! -z "${setTheme}" ] && [ ! -z "${setWall}" ]; then
+  theme_hashes=()
+  theme_walls=()
 
   inwallHash="$(set_hash "${setWall}")"
-  get_hashmap "${tgtPath}/${setTheme}"
-  if [[ "${wallHash[@]}" == *"${inwallHash}"* ]]; then
+  get_hashmap_into theme_hashes theme_walls "${tgtPath}/${setTheme}"
+  if [[ "${theme_hashes[*]}" == *"${inwallHash}"* ]]; then
     send_ephemeral_notif "hypr-wallpaper-kon-error" -a "Swww wallpaper" -i "${WALLPAPER_THUMB_DIR}/${inwallHash}.sqre" -t 3000 "Error" "Hash matched in ${setTheme}"
     exit 0
   fi

@@ -66,16 +66,64 @@ state_color_variant_file() {
 state_read_value_from_file() {
   local state_file="$1"
   local var_name="$2"
+  local line=""
+  local stripped=""
+  local raw_value=""
+  local found=0
 
   [[ -f "${state_file}" ]] || return 1
+  [[ "${var_name}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || return 1
 
-  bash -c '
-    state_file="$1"
-    var_name="$2"
-    source "${state_file}" >/dev/null 2>&1 || exit 1
-    declare -p "${var_name}" >/dev/null 2>&1 || exit 1
-    printf "%s" "${!var_name}"
-  ' _ "${state_file}" "${var_name}"
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    stripped="${line#"${line%%[![:space:]]*}"}"
+    [[ -n "${stripped}" ]] || continue
+    [[ "${stripped}" == \#* ]] && continue
+
+    case "${stripped}" in
+      "export ${var_name}="*)
+        raw_value="${stripped#export ${var_name}=}"
+        found=1
+        ;;
+      "${var_name}="*)
+        raw_value="${stripped#${var_name}=}"
+        found=1
+        ;;
+      *)
+        continue
+        ;;
+    esac
+    break
+  done < "${state_file}"
+
+  (( found )) || return 1
+
+  if [[ "${raw_value}" == \(* ]]; then
+    bash -c '
+      state_file="$1"
+      var_name="$2"
+      source "${state_file}" >/dev/null 2>&1 || exit 1
+      declare -p "${var_name}" >/dev/null 2>&1 || exit 1
+      printf "%s" "${!var_name}"
+    ' _ "${state_file}" "${var_name}"
+    return
+  fi
+
+  if [[ ${#raw_value} -ge 2 && "${raw_value:0:1}" == '"' && "${raw_value:${#raw_value}-1:1}" == '"' ]]; then
+    raw_value="${raw_value:1:${#raw_value}-2}"
+    raw_value="${raw_value//\\\\/\\}"
+    raw_value="${raw_value//\\\"/\"}"
+    raw_value="${raw_value//\\\$/\$}"
+    raw_value="${raw_value//\\\`/\`}"
+    printf '%s' "${raw_value}"
+    return
+  fi
+
+  if [[ ${#raw_value} -ge 2 && "${raw_value:0:1}" == "'" && "${raw_value:${#raw_value}-1:1}" == "'" ]]; then
+    printf '%s' "${raw_value:1:${#raw_value}-2}"
+    return
+  fi
+
+  printf '%s' "${raw_value}"
 }
 
 # Get a state variable value
@@ -87,10 +135,11 @@ state_get() {
   local value=""
   local state_rc=""
   local env_overrides_file=""
+  local found=0
 
   # Validate input
   if [[ -z "${var_name}" ]]; then
-    echo "${default_value}"
+    printf '%s\n' "${default_value}"
     return 1
   fi
 
@@ -98,17 +147,20 @@ state_get() {
   env_overrides_file="$(state_env_overrides_file)"
 
   # Check staterc first (primary state file)
-  if [[ -f "${state_rc}" ]]; then
-    value="$(state_read_value_from_file "${state_rc}" "${var_name}")"
+  if [[ -f "${state_rc}" ]] && value="$(state_read_value_from_file "${state_rc}" "${var_name}")"; then
+    found=1
   fi
 
   # Fall back to env-overrides if not found
-  if [[ -z "${value}" ]] && [[ -f "${env_overrides_file}" ]]; then
-    value="$(state_read_value_from_file "${env_overrides_file}" "${var_name}")"
+  if [[ "${found}" -eq 0 ]] && [[ -f "${env_overrides_file}" ]] && value="$(state_read_value_from_file "${env_overrides_file}" "${var_name}")"; then
+    found=1
   fi
 
-  # Return value or default
-  echo "${value:-${default_value}}"
+  if [[ "${found}" -eq 1 ]]; then
+    printf '%s\n' "${value}"
+  else
+    printf '%s\n' "${default_value}"
+  fi
 }
 
 state_target_file() {

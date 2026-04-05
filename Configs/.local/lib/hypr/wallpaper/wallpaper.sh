@@ -28,23 +28,19 @@ wallpaper_release_lock() {
 }
 trap 'wallpaper_release_lock "$?"' EXIT
 
-wallpaper_source_lib() {
-  local lib_file="$1"
-  if [[ ! -r "${lib_file}" ]]; then
-    print_log -sec "wallpaper" -err "source" "missing ${lib_file}"
-    return 1
-  fi
-  # shellcheck source=/dev/null
-  source "${lib_file}"
-}
-
 for wallpaper_lib in \
   wallpaper.common.bash \
   wallpaper.catalog.bash \
   wallpaper.thumbs.bash \
   wallpaper.actions.bash \
   wallpaper.ui.bash; do
-  wallpaper_source_lib "${LIB_DIR}/hypr/wallpaper/lib/${wallpaper_lib}" || exit 1
+  wallpaper_lib="${LIB_DIR}/hypr/wallpaper/lib/${wallpaper_lib}"
+  if [[ ! -r "${wallpaper_lib}" ]]; then
+    print_log -sec "wallpaper" -err "source" "missing ${wallpaper_lib}"
+    exit 1
+  fi
+  # shellcheck source=/dev/null
+  source "${wallpaper_lib}" || exit 1
 done
 
 wallpaper_set_paths() {
@@ -199,7 +195,7 @@ wallpaper_action_set_file() {
     print_log -err "wallpaper" "Wallpaper not found: ${wallpaper_path}"
     exit 1
   fi
-  get_hashmap "${wallpaper_path}"
+  get_hashmap "${wallpaper_path}" || exit 1
   apply_selected_wallpaper
 }
 
@@ -236,7 +232,7 @@ wallpaper_action_start() {
 
   export WALLPAPER_RELOAD_ALL=0 PYWAL_STARTUP=1
   current_wallpaper="$(realpath "${active_wallpaper_link}")"
-  get_hashmap "${current_wallpaper}"
+  get_hashmap "${current_wallpaper}" || exit 1
   apply_selected_wallpaper
 }
 
@@ -257,7 +253,7 @@ wallpaper_action_output() {
 
 wallpaper_action_select() {
   Wall_Select
-  get_hashmap "${selected_wallpaper_path}"
+  get_hashmap "${selected_wallpaper_path}" || exit 1
   apply_selected_wallpaper
 }
 

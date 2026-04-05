@@ -114,32 +114,8 @@ rofi_list_asset_files() {
   rofi_list_files asset "${1:-*}"
 }
 
-rofi_cursor_raw_position() {
-  local x_name="$1"
-  local y_name="$2"
-  local -n x_ref="${x_name}"
-  local -n y_ref="${y_name}"
-  local -a cursor_pos=(0 0)
-
-  readarray -t cursor_pos < <(hyprctl cursorpos -j 2>/dev/null | jq -r '.x,.y' 2>/dev/null)
-  [[ "${cursor_pos[0]:-}" =~ ^-?[0-9]+$ ]] || cursor_pos[0]=0
-  [[ "${cursor_pos[1]:-}" =~ ^-?[0-9]+$ ]] || cursor_pos[1]=0
-
-  x_ref="${cursor_pos[0]}"
-  y_ref="${cursor_pos[1]}"
-}
-
-rofi_monitor_record() {
-  local mode="${1:-focused}"
+rofi_focused_monitor_record() {
   local monitors_json=""
-  local cursor_x=0
-  local cursor_y=0
-  local -a jq_args=(--arg mode "${mode}" --argjson cx 0 --argjson cy 0)
-
-  if [[ "${mode}" == "cursor" ]]; then
-    rofi_cursor_raw_position cursor_x cursor_y
-    jq_args=(--arg mode "${mode}" --argjson cx "${cursor_x}" --argjson cy "${cursor_y}")
-  fi
 
   if declare -F rofi_monitors_json >/dev/null 2>&1; then
     monitors_json="$(rofi_monitors_json)"
@@ -147,7 +123,7 @@ rofi_monitor_record() {
     monitors_json="$(hyprctl -j monitors 2>/dev/null || true)"
   fi
 
-  printf '%s\n' "${monitors_json}" | jq -r "${jq_args[@]}" '
+  printf '%s\n' "${monitors_json}" | jq -r '
     def monitor_width: if (.transform % 2 == 0) then .width else .height end;
     def monitor_height: if (.transform % 2 == 0) then .height else .width end;
     def record: [
@@ -162,29 +138,8 @@ rofi_monitor_record() {
       (.reserved[3] // 0)
     ] | @tsv;
 
-    if $mode == "cursor" then
-      (
-        .[] | select(
-          ($cx >= .x) and
-          ($cx < (.x + monitor_width)) and
-          ($cy >= .y) and
-          ($cy < (.y + monitor_height))
-        )
-      ),
-      (.[] | select(.focused==true))
-      | record
-    else
-      .[] | select(.focused==true) | record
-    end
+    .[] | select(.focused==true) | record
   ' 2>/dev/null | head -n 1
-}
-
-rofi_focused_monitor_record() {
-  rofi_monitor_record focused
-}
-
-rofi_cursor_monitor_record() {
-  rofi_monitor_record cursor
 }
 
 rofi_default_window_size() {
@@ -201,25 +156,15 @@ rofi_default_window_size() {
 }
 
 rofi_scale_milli() {
-  local scale="${1:-1}"
-  local whole="0"
-  local fraction="000"
-
-  if [[ "${scale}" =~ ^([0-9]+)([.][0-9]+)?$ ]]; then
-    whole="${BASH_REMATCH[1]}"
-    if [[ -n "${BASH_REMATCH[2]:-}" ]]; then
-      fraction="${BASH_REMATCH[2]#.}"
-      fraction="${fraction}000"
-      fraction="${fraction:0:3}"
-    fi
-  fi
-
-  if [[ "${whole}${fraction}" =~ ^0+$ ]]; then
-    printf '1000\n'
-    return 0
-  fi
-
-  printf '%s\n' "$((10#${whole} * 1000 + 10#${fraction}))"
+  awk -v s="${1:-1}" '
+    BEGIN {
+      if (s ~ /^[0-9]+([.][0-9]+)?$/ && (s + 0) > 0) {
+        printf "%d\n", (s + 0) * 1000
+      } else {
+        print 1000
+      }
+    }
+  '
 }
 
 rofi_scaled_divide() {
@@ -240,60 +185,15 @@ rofi_scaled_divide() {
   printf '%s\n' "${result}"
 }
 
-rofi_cursor_monitor_geometry() {
-  local width_name="$1"
-  local height_name="$2"
-  local scale_name="$3"
-  local x_name="$4"
-  local y_name="$5"
-  local reserve_name="$6"
-  local monitor_line=""
-  local parsed_width="" parsed_height="" parsed_scale="" parsed_x="" parsed_y="" off_left="" off_top="" off_right="" off_bottom=""
-  local -n width_ref="${width_name}"
-  local -n height_ref="${height_name}"
-  local -n scale_ref="${scale_name}"
-  local -n x_ref="${x_name}"
-  local -n y_ref="${y_name}"
-  local -n reserve_ref="${reserve_name}"
-
-  monitor_line="$(rofi_cursor_monitor_record)"
-  [[ -n "${monitor_line}" ]] || return 1
-
-  IFS=$'\t' read -r parsed_width parsed_height parsed_scale parsed_x parsed_y off_left off_top off_right off_bottom <<<"${monitor_line}"
-  [[ "${parsed_scale}" =~ ^[0-9]+([.][0-9]+)?$ ]] || parsed_scale=1
-
-  width_ref="$(rofi_scaled_divide "${parsed_width}" "${parsed_scale}" 1)"
-  height_ref="$(rofi_scaled_divide "${parsed_height}" "${parsed_scale}" 1)"
-  scale_ref="${parsed_scale}"
-  x_ref="${parsed_x}"
-  y_ref="${parsed_y}"
-  reserve_ref=("${off_left}" "${off_top}" "${off_right}" "${off_bottom}")
-}
-
-rofi_cursor_local_position() {
-  local x_name="$1"
-  local y_name="$2"
-  local mon_x="$3"
-  local mon_y="$4"
-  local mon_scale="$5"
-  local -n x_ref="${x_name}"
-  local -n y_ref="${y_name}"
-  local raw_cursor_x=0
-  local raw_cursor_y=0
-
-  rofi_cursor_raw_position raw_cursor_x raw_cursor_y
-  x_ref="$(rofi_scaled_divide "$((raw_cursor_x - mon_x))" "${mon_scale}")"
-  y_ref="$(rofi_scaled_divide "$((raw_cursor_y - mon_y))" "${mon_scale}")"
-}
-
-rofi_edge_padding_px() {
-  hypr_window_edge_padding_px
-}
-
 # launcher spawn location (wofi/rofi)
 get_rofi_pos() {
   local window_width="${1:-0}"
   local window_height="${2:-0}"
+  local monitors_json=""
+  local monitor_line=""
+  local raw_cursor_x=0 raw_cursor_y=0
+  local parsed_width=0 parsed_height=0 parsed_scale=1 parsed_x=0 parsed_y=0
+  local off_left=0 off_top=0 off_right=0 off_bottom=0
   local mon_width=0 mon_height=0 mon_scale=1 mon_x=0 mon_y=0
   local cursor_x=0 cursor_y=0
   local -a mon_reserved=(0 0 0 0)
@@ -306,9 +206,61 @@ get_rofi_pos() {
   local x_off=0 y_off=0
 
   rofi_default_window_size window_width window_height
-  rofi_cursor_monitor_geometry mon_width mon_height mon_scale mon_x mon_y mon_reserved || return 1
-  rofi_cursor_local_position cursor_x cursor_y "${mon_x}" "${mon_y}" "${mon_scale}"
-  edge_padding="$(rofi_edge_padding_px 2>/dev/null || true)"
+  if declare -F rofi_monitors_json >/dev/null 2>&1; then
+    monitors_json="$(rofi_monitors_json)"
+  else
+    monitors_json="$(hyprctl -j monitors 2>/dev/null || true)"
+  fi
+  [[ -n "${monitors_json}" ]] || return 1
+
+  IFS=$'\t' read -r raw_cursor_x raw_cursor_y < <(
+    hyprctl cursorpos -j 2>/dev/null |
+      jq -r '[(.x // 0 | floor), (.y // 0 | floor)] | @tsv' 2>/dev/null
+  )
+  [[ "${raw_cursor_x}" =~ ^-?[0-9]+$ ]] || raw_cursor_x=0
+  [[ "${raw_cursor_y}" =~ ^-?[0-9]+$ ]] || raw_cursor_y=0
+
+  monitor_line="$(
+    printf '%s\n' "${monitors_json}" | jq -r --argjson cx "${raw_cursor_x}" --argjson cy "${raw_cursor_y}" '
+      def monitor_width: if (.transform % 2 == 0) then .width else .height end;
+      def monitor_height: if (.transform % 2 == 0) then .height else .width end;
+      def record: [
+        monitor_width,
+        monitor_height,
+        (.scale // 1),
+        (.x // 0),
+        (.y // 0),
+        (.reserved[0] // 0),
+        (.reserved[1] // 0),
+        (.reserved[2] // 0),
+        (.reserved[3] // 0)
+      ] | @tsv;
+
+      (
+        .[] | select(
+          ($cx >= .x) and
+          ($cx < (.x + monitor_width)) and
+          ($cy >= .y) and
+          ($cy < (.y + monitor_height))
+        )
+      ),
+      (.[] | select(.focused == true))
+      | record
+    ' 2>/dev/null | head -n 1
+  )"
+  [[ -n "${monitor_line}" ]] || return 1
+
+  IFS=$'\t' read -r parsed_width parsed_height parsed_scale parsed_x parsed_y off_left off_top off_right off_bottom <<<"${monitor_line}"
+  [[ "${parsed_scale}" =~ ^[0-9]+([.][0-9]+)?$ ]] || parsed_scale=1
+  mon_width="$(rofi_scaled_divide "${parsed_width}" "${parsed_scale}" 1)"
+  mon_height="$(rofi_scaled_divide "${parsed_height}" "${parsed_scale}" 1)"
+  mon_scale="${parsed_scale}"
+  mon_x="${parsed_x}"
+  mon_y="${parsed_y}"
+  mon_reserved=("${off_left}" "${off_top}" "${off_right}" "${off_bottom}")
+  cursor_x="$(rofi_scaled_divide "$((raw_cursor_x - mon_x))" "${mon_scale}")"
+  cursor_y="$(rofi_scaled_divide "$((raw_cursor_y - mon_y))" "${mon_scale}")"
+  edge_padding="$(hypr_window_edge_padding_px 2>/dev/null || true)"
   [[ "${edge_padding}" =~ ^[0-9]+$ ]] || edge_padding=12
 
   usable_width=$((mon_width - mon_reserved[0] - mon_reserved[2]))

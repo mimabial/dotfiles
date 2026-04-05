@@ -22,8 +22,8 @@ exec = hyprctl setcursor $CURSOR_THEME $CURSOR_SIZE
 
 
 general {
-    gaps_in = 8
-    gaps_out = 14
+    gaps_in = 6
+    gaps_out = 12
     border_size = 3
     col.active_border = rgba(376FABff)
     col.inactive_border = rgba(293C52cc)
@@ -39,10 +39,10 @@ group {
 }
 
 decoration {
-    rounding = 4
+    rounding = 6
 
     active_opacity = 0.95
-    inactive_opacity = 0.90
+    inactive_opacity = 0.9
 
     blur {
         enabled = yes

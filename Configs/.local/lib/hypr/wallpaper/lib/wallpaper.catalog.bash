@@ -2,47 +2,6 @@
 
 # Build wallpaper lists/hashes with lightweight caching.
 
-wallpaper_catalog_parse_args() {
-  local sources_name="$1"
-  local skip_name="$2"
-  local notify_name="$3"
-  shift 3
-
-  local -n sources_ref="${sources_name}"
-  local -n skip_ref="${skip_name}"
-  local -n notify_ref="${notify_name}"
-
-  sources_ref=()
-  skip_ref=0
-  notify_ref=0
-
-  while (($# > 0)); do
-    case "$1" in
-      --skipstrays)
-        skip_ref=1
-        shift
-        ;;
-      --no-notify)
-        notify_ref=1
-        shift
-        ;;
-      --)
-        shift
-        sources_ref=("$@")
-        break
-        ;;
-      -*)
-        print_log -err "ERROR:" -b "unknown wallpaper catalog option:" "$1"
-        return 1
-        ;;
-      *)
-        sources_ref=("$@")
-        break
-        ;;
-    esac
-  done
-}
-
 wallpaper_catalog_hash_command() {
   local hash_cmd="${HYPR_HASH_COMMAND:-sha1sum}"
   if ! command -v "${hash_cmd}" >/dev/null 2>&1; then
@@ -115,25 +74,29 @@ wallpaper_catalog_hash_for_file() {
 
 wallpaper_catalog_write_runtime_cache() {
   local cache_file="$1"
+  local hash_name="$2"
+  local list_name="$3"
+  local -n hash_ref="${hash_name}"
+  local -n list_ref="${list_name}"
   local tmp_cache="${cache_file}.tmp"
   local i="" wall_meta=""
 
   : >"${tmp_cache}"
-  for i in "${!wallList[@]}"; do
-    wall_meta="$(stat -c '%Y\t%s' -- "${wallList[i]}" 2>/dev/null)" || continue
-    printf '%s\t%s\t%s\n' "${wallHash[i]}" "${wall_meta}" "${wallList[i]}" >>"${tmp_cache}"
+  for i in "${!list_ref[@]}"; do
+    wall_meta="$(stat -c '%Y\t%s' -- "${list_ref[i]}" 2>/dev/null)" || continue
+    printf '%s\t%s\t%s\n' "${hash_ref[i]}" "${wall_meta}" "${list_ref[i]}" >>"${tmp_cache}"
   done
   mv -f "${tmp_cache}" "${cache_file}"
 }
 
-Wall_Hashmap_Cached() {
-  wallHash=()
-  wallList=()
-
-  local -a wall_sources=()
-  local skip_strays=0
-  local no_notify=0
-  wallpaper_catalog_parse_args wall_sources skip_strays no_notify "$@" || return 1
+Wall_Hashmap_Cached_into() {
+  local hash_name="$1"
+  local list_name="$2"
+  shift 2
+  local -n hash_ref="${hash_name}"
+  local -n list_ref="${list_name}"
+  local -a wall_sources=("$@")
+  [[ ${#wall_sources[@]} -gt 0 ]] || return 1
 
   local -a supported_files=()
   local hash_cmd=""
@@ -149,16 +112,6 @@ Wall_Hashmap_Cached() {
   cache_file="$(wallpaper_hashmap_cache_file "${wall_sources[@]}")"
   cache_meta_file="${cache_file}.meta"
   mkdir -p "${cache_dir}"
-
-  if [[ ${#wall_sources[@]} -eq 0 ]]; then
-    get_hashmap "${wall_sources[@]}"
-    return 0
-  fi
-
-  local -a get_hashmap_args=()
-  [[ "${no_notify}" -eq 1 ]] && get_hashmap_args+=(--no-notify)
-  [[ "${skip_strays}" -eq 1 ]] && get_hashmap_args+=(--skipstrays)
-  get_hashmap_args+=("${wall_sources[@]}")
 
   wallpaper_catalog_write_meta "${cache_meta_file}" wall_sources supported_files
 
@@ -176,8 +129,8 @@ Wall_Hashmap_Cached() {
   while IFS=$'\t' read -r -d '' wall_mtime wall_size wall_file; do
     wall_meta="${wall_mtime}"$'\t'"${wall_size}"
     wall_hash="$(wallpaper_catalog_hash_for_file "${wall_file}" "${wall_meta}" "${hash_cmd}" cache_hash cache_meta)"
-    wallHash+=("${wall_hash}")
-    wallList+=("${wall_file}")
+    hash_ref+=("${wall_hash}")
+    list_ref+=("${wall_file}")
     printf '%s\t%s\t%s\n' "${wall_hash}" "${wall_meta}" "${wall_file}"
   done < <(
     find -H "${wall_sources[@]}" -type f -regextype posix-extended \
@@ -185,22 +138,26 @@ Wall_Hashmap_Cached() {
       -printf '%Ts\t%s\t%p\0' 2>/dev/null | sort -z -t$'\t' -k3
   ) >"${tmp_cache}"
 
-  if [[ ${#wallList[@]} -eq 0 ]]; then
+  if [[ ${#list_ref[@]} -eq 0 ]]; then
     rm -f "${tmp_cache}"
-    get_hashmap "${get_hashmap_args[@]}"
-    if [[ ${#wallList[@]} -gt 0 ]]; then
-      wallpaper_catalog_write_runtime_cache "${cache_file}"
-    fi
+    get_hashmap_into "${hash_name}" "${list_name}" "${wall_sources[@]}" || return 1
+    wallpaper_catalog_write_runtime_cache "${cache_file}" "${hash_name}" "${list_name}"
     return 0
   fi
 
   mv -f "${tmp_cache}" "${cache_file}"
 }
 
-Wall_List() {
+Wall_Hashmap_Cached() {
   wallHash=()
   wallList=()
+  Wall_Hashmap_Cached_into wallHash wallList "$@"
+}
 
+Wall_List_into() {
+  local list_name="$1"
+  shift
+  local -n list_ref="${list_name}"
   local -a wall_sources=("$@")
   local -a supported_files=()
   wallpaper_supported_files_array supported_files
@@ -221,13 +178,19 @@ Wall_List() {
 
   local wall_file
   while IFS= read -r -d '' wall_file; do
-    wallList+=("${wall_file}")
+    list_ref+=("${wall_file}")
   done < <(
     find -H "${find_sources[@]}" -type f -regextype posix-extended \
       -iregex ".*\\.(${regex_ext})$" ! -path "*/logo/*" -print0 2>/dev/null | sort -z
   )
 
-  [[ ${#wallList[@]} -gt 0 ]]
+  [[ ${#list_ref[@]} -gt 0 ]]
+}
+
+Wall_List() {
+  wallHash=()
+  wallList=()
+  Wall_List_into wallList "$@"
 }
 
 Wall_Hash() {

@@ -33,8 +33,9 @@ if [[ -z "$APP_NAME" || -z "$APP_EXEC" || -z "$ICON_URL" ]]; then
   exit 1
 fi
 
-ICON_DIR="$HOME/.local/share/applications/icons"
-DESKTOP_FILE="$HOME/.local/share/applications/$APP_NAME.desktop"
+XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+ICON_DIR="${XDG_DATA_HOME}/applications/icons"
+DESKTOP_FILE="${XDG_DATA_HOME}/applications/$APP_NAME.desktop"
 
 if [[ ! "$ICON_URL" =~ ^https?:// ]] && [ -f "$ICON_URL" ]; then
   ICON_PATH="$ICON_URL"

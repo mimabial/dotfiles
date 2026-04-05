@@ -1,7 +1,8 @@
 #!/bin/bash
 
-ICON_DIR="$HOME/.local/share/applications/icons"
-DESKTOP_DIR="$HOME/.local/share/applications/"
+XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+ICON_DIR="${XDG_DATA_HOME}/applications/icons"
+DESKTOP_DIR="${XDG_DATA_HOME}/applications/"
 
 if [ "$#" -eq 0 ]; then
   # Find all TUIs

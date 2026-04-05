@@ -13,30 +13,25 @@ resolve_executable_path() {
   command -v "${candidate}" 2>/dev/null || printf '%s\n' "${candidate}"
 }
 
-hyprshell_source_lib() {
-  local lib_file="$1"
-  if [[ ! -r "${lib_file}" ]]; then
-    echo "Error: missing lib ${lib_file}" >&2
-    return 1
-  fi
-  # shellcheck source=/dev/null
-  source "${lib_file}"
-}
-
 if [[ -z "${BASH_SOURCE[0]}" ]]; then
   EXECUTABLE="${0}"
 else
   EXECUTABLE="${BASH_SOURCE[0]}"
 fi
 
-export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
-export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
-export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
-export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
-export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
-
 BIN_DIR="$(dirname "$(resolve_executable_path)")"
 LIB_DIR="$(realpath "${BIN_DIR}/../lib")"
+xdg_lib="${LIB_DIR}/hypr/core/xdg.sh"
+
+[[ -r "${xdg_lib}" ]] || {
+  printf 'Error: missing lib %s\n' "${xdg_lib}" >&2
+  exit 1
+}
+
+# shellcheck source=/dev/null
+source "${xdg_lib}" || exit 1
+hypr_init_xdg_env
+unset xdg_lib
 
 HYPR_LIB_PATH="${LIB_DIR}/hypr"
 for subdir in "${HYPR_LIB_PATH}"/*/; do
@@ -48,10 +43,18 @@ HYPR_SCRIPTS_PATH="${HYPR_SCRIPTS_PATH:-${XDG_CONFIG_HOME}/hypr/scripts:${LIB_DI
 
 export BIN_DIR LIB_DIR PATH HYPR_SCRIPTS_PATH
 
-hyprshell_source_lib "${LIB_DIR}/hypr/shell/lib/hyprshell.runner.bash" || exit 1
-hyprshell_source_lib "${LIB_DIR}/hypr/shell/lib/hyprshell.python.bash" || exit 1
-hyprshell_source_lib "${LIB_DIR}/hypr/shell/lib/hyprshell.completion.bash" || exit 1
-hyprshell_source_lib "${LIB_DIR}/hypr/shell/lib/hyprshell.commands.bash" || exit 1
+for hyprshell_lib in \
+  "${LIB_DIR}/hypr/shell/lib/hyprshell.runner.bash" \
+  "${LIB_DIR}/hypr/shell/lib/hyprshell.python.bash" \
+  "${LIB_DIR}/hypr/shell/lib/hyprshell.completion.bash" \
+  "${LIB_DIR}/hypr/shell/lib/hyprshell.commands.bash"; do
+  if [[ ! -r "${hyprshell_lib}" ]]; then
+    echo "Error: missing lib ${hyprshell_lib}" >&2
+    exit 1
+  fi
+  # shellcheck source=/dev/null
+  source "${hyprshell_lib}" || exit 1
+done
 
 case "${1:-}" in
   app)
@@ -127,11 +130,6 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
       ;;
     pyinit)
       python_initialized
-      ;;
-    "")
-      for func in $(compgen -A function); do
-        export -f "${func?}"
-      done
       ;;
     *)
       run_command "$@"

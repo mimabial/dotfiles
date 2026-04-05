@@ -41,7 +41,7 @@ window {
 mainbox {
     enabled:                     true;
     spacing:                     0em;
-    padding:                     0.8em;
+    padding:                     0.7em;
     orientation:                 horizontal;
     children:                    [ "inputbar" , "listbox" ];
     background-color:            #00000003;
@@ -76,7 +76,7 @@ listbox {
 listview {
     enabled:                     true;
     spacing:                     0em;
-    padding:                     1em 2em 1em;
+    padding:                     1em 2em;
     columns:                     1;
     lines:                       8;
     cycle:                       true;

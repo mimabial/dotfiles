@@ -1,33 +1,31 @@
-import os
 from pathlib import Path
 
 from pyutils.xdg_base_dirs import xdg_runtime_dir
 
-LOCK_NAMES_FILE = Path(__file__).resolve().parent.parent / "runtime" / "lock_names.conf"
-_LOCK_NAMES: dict[str, str] | None = None
-
-
-def load_lock_names() -> dict[str, str]:
-    global _LOCK_NAMES
-    if _LOCK_NAMES is not None:
-        return _LOCK_NAMES
-
-    lock_names: dict[str, str] = {}
-    with LOCK_NAMES_FILE.open("r", encoding="utf-8") as file:
-        for raw_line in file:
-            line = raw_line.strip()
-            if not line or line.startswith("#"):
-                continue
-            key, value = line.split("=", 1)
-            lock_names[key.strip()] = value.strip()
-
-    _LOCK_NAMES = lock_names
-    return lock_names
+LOCK_NAMES = {
+    "color_gen": "color-gen.lock",
+    "color_cache_only": "color-cache-only.lock",
+    "theme_update": "theme-update.lock",
+    "theme_update_meta": "theme-update.meta",
+    "theme_switch": "theme-switch.lock",
+    "theme_precache": "theme-precache.lock",
+    "waybar": "waybar.lock",
+    "waybar_op": "waybar-op.lock",
+    "waybar_watch": "waybar-watch.lock",
+    "waybar_watch_meta": "waybar-watch.meta",
+    "wallpaper_cache": "wallpaper-cache.lock",
+    "wallpaper_inventory": "wallpaper-inventory.lock",
+    "wallpaper_switch": "wallpaper-switch.lock",
+    "wallpaper_swww": "wallpaper-swww.lock",
+    "mode_switch": "mode-switch.lock",
+    "wal_cache_clean": "wal-cache-clean.lock",
+    "wal_cache_store": "wal-cache-store.lock",
+    "wal_cache_prune": "wal-cache-prune.lock",
+}
 
 
 def runtime_lock_name(name: str) -> str:
-    template = load_lock_names()[name]
-    return template.replace("{uid}", str(os.getuid()))
+    return LOCK_NAMES[name]
 
 
 def runtime_lock_path(name: str) -> Path:

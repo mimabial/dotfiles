@@ -117,8 +117,8 @@ show_font_menu() {
   fi
 
   if [[ "${font}" == "Theme Default" ]]; then
-    vars_file="${HYPR_DATA_HOME:-$HOME/.local/share/hypr}/variables.conf"
-    rm -f "${HYPR_CONFIG_HOME:-$HOME/.config/hypr}/userfonts.conf"
+    vars_file="${HYPR_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/hypr}/variables.conf"
+    rm -f "${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}/userfonts.conf"
     if [[ -f "${vars_file}" ]]; then
       sed -i "s|^\\\$MONOSPACE_FONT=.*|\$MONOSPACE_FONT=${stock}|;s|^\\\$BAR_FONT=.*|\$BAR_FONT=${stock}|;s|^\\\$MENU_FONT=.*|\$MENU_FONT=${stock}|" "${vars_file}"
     fi

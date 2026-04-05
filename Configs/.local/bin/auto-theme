@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # Auto-theme control script
 
-DAEMON_SCRIPT="$HOME/.local/lib/hypr/theme/auto_theme.py"
-PYTHON="$HOME/.local/state/hypr/pip_env/bin/python"
+XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
+DAEMON_SCRIPT="${LIB_DIR:-$HOME/.local/lib}/hypr/theme/auto_theme.py"
+PYTHON="${XDG_STATE_HOME}/hypr/pip_env/bin/python"
 AUTO_THEME_SERVICE="auto-theme.service"
 
 usage() {
@@ -58,7 +60,7 @@ case "$1" in
         "${PYTHON}" "${DAEMON_SCRIPT}" --once
         ;;
     config)
-        "${EDITOR:-nvim}" "$HOME/.config/hypr/auto_theme.conf"
+        "${EDITOR:-nvim}" "${XDG_CONFIG_HOME}/hypr/auto_theme.conf"
         ;;
     *)
         usage

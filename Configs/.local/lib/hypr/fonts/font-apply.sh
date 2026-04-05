@@ -15,9 +15,10 @@ MONOSPACE_FONT=""
 BAR_FONT=""
 MENU_FONT=""
 TERMINAL_FONT=""
-ALACRITTY_CONF="$HOME/.config/alacritty/alacritty.toml"
-KITTY_CONF="$HOME/.config/kitty/kitty.conf"
-FONTCONFIG_FILE="$HOME/.config/fontconfig/fonts.conf"
+XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+ALACRITTY_CONF="${XDG_CONFIG_HOME}/alacritty/alacritty.toml"
+KITTY_CONF="${XDG_CONFIG_HOME}/kitty/kitty.conf"
+FONTCONFIG_FILE="${XDG_CONFIG_HOME}/fontconfig/fonts.conf"
 
 append_updated() {
   UPDATED+=("$1")

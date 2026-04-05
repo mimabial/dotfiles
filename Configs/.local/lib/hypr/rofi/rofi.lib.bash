@@ -32,10 +32,16 @@ rofi_effective_font_name() {
 rofi_default_border_metrics() {
   local fallback_border="${1:-0}"
   local fallback_width="${2:-0}"
-  local border=""
-  local width=""
+  local border="${hypr_border:-${HYPR_RUNTIME_BORDER_RADIUS:-${HYPR_BORDER_RADIUS:-}}}"
+  local width="${hypr_width:-${HYPR_RUNTIME_BORDER_WIDTH:-${HYPR_BORDER_WIDTH:-}}}"
+  local metrics=""
 
-  IFS=$'\t' read -r border width < <(hypr_resolved_border_metrics)
+  if [[ ! "${border}" =~ ^[0-9]+$ || ! "${width}" =~ ^[0-9]+$ ]]; then
+    metrics="$(hypr_border_metrics 2>/dev/null || true)"
+    if [[ -n "${metrics}" ]]; then
+      IFS=$'\t' read -r border width <<<"${metrics}"
+    fi
+  fi
   [[ "${border}" =~ ^[0-9]+$ ]] || border="${fallback_border}"
   [[ "${width}" =~ ^[0-9]+$ ]] || width="${fallback_width}"
 

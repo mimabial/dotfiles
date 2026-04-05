@@ -117,35 +117,38 @@ get_hypr_conf() {
 
 #? handle pasting
 paste_string() {
+  local class=""
+  local arg=""
+  local ignored_class=""
+  local -a ignored_classes=(
+    kitty
+    org.kde.konsole
+    terminator
+    XTerm
+    Alacritty
+    xterm-256color
+  )
+
   if [ -t 1 ]; then return 0; fi
-  local ignore_paste_file="$HYPR_STATE_HOME/ignore.paste"
 
-  if [[ ! -e "${ignore_paste_file}" ]]; then
-    cat <<EOF >"${ignore_paste_file}"
-kitty
-org.kde.konsole
-terminator
-XTerm
-Alacritty
-xterm-256color
-EOF
-  fi
+  for arg in "$@"; do
+    case "${arg}" in
+      --ignore=*)
+        ignored_class="${arg#--ignore=}"
+        [[ -n "${ignored_class}" ]] && ignored_classes+=("${ignored_class}")
+        ;;
+    esac
+  done
 
-  local ignore_class="${*#*--ignore=}"
-  [[ "$*" != *--ignore=* ]] && ignore_class=""
-  if [ -n "${ignore_class}" ]; then
-    echo "${ignore_class}" >>"${ignore_paste_file}"
-    print_log -y "[ignore]" "'$ignore_class'"
-    return 0
-  fi
-  local class
   class=$(hyprctl -j activewindow | jq -r '.initialClass // empty')
-  if [[ -z "${class}" ]] || ! grep -Fqx -- "${class}" "${ignore_paste_file}"; then
-    if command -v wtype >/dev/null; then
-      hyprctl -q dispatch exec 'wtype -M ctrl V -m ctrl'
-    elif command -v hyprctl >/dev/null; then
-      hyprctl -q dispatch sendshortcut CTRL,V,activewindow
-    fi
+  for ignored_class in "${ignored_classes[@]}"; do
+    [[ "${class}" == "${ignored_class}" ]] && return 0
+  done
+
+  if command -v wtype >/dev/null; then
+    hyprctl -q dispatch exec 'wtype -M ctrl V -m ctrl'
+  elif command -v hyprctl >/dev/null; then
+    hyprctl -q dispatch sendshortcut CTRL,V,activewindow
   fi
 }
 
@@ -196,7 +199,7 @@ is_hovered() {
 #   - Uses kwriteconfig6 if available, falls back to a bounded awk rewrite
 #   - Creates group section if it doesn't exist
 # Example:
-#   ini_write "$HOME/.config/kdeglobals" "Icons" "Theme" "Papirus"
+#   ini_write "${XDG_CONFIG_HOME:-$HOME/.config}/kdeglobals" "Icons" "Theme" "Papirus"
 ini_write() {
   local config_file="${1}"
   local group="${2}"

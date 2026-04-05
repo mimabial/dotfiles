@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Wallpaper backend adapter for the swww/awww-style runtime wallpaper daemon.
 
-selected_wall="${1:-"${WALLPAPER_CURRENT_DIR:-${HYPR_CACHE_HOME:-$HOME/.cache/hypr}/wallpaper/current}/wall.set"}"
+selected_wall="${1:-"${WALLPAPER_CURRENT_DIR:-${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/wallpaper/current}/wall.set"}"
 
 # Use flock for robust locking (releases automatically on exit/crash)
 LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"

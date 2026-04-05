@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-if [[ "${HYPR_SHELL_INIT:-0}" -ne 1 ]]; then
+if ! declare -F hypr_config_value_from_layers >/dev/null 2>&1; then
   source "$(command -v hyprshell)" || exit 1
 fi
 

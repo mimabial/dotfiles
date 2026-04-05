@@ -66,6 +66,17 @@ reload_live_apps() {
   if command -v tmux &>/dev/null && tmux list-sessions &>/dev/null; then
     tmux source-file "${tmux_config}" 2>/dev/null || true
   fi
+
+  local rmpc_config="${XDG_CONFIG_HOME:-$HOME/.config}/rmpc/config.ron"
+  local rmpc_theme_name=""
+  local rmpc_theme_path=""
+  if command -v rmpc &>/dev/null && pgrep -x rmpc >/dev/null 2>&1 && [[ -f "${rmpc_config}" ]]; then
+    rmpc_theme_name="$(grep -oP 'theme:\s*Some\("\K[^"]+' "${rmpc_config}" 2>/dev/null | head -1)"
+    if [[ -n "${rmpc_theme_name}" ]]; then
+      rmpc_theme_path="${XDG_CONFIG_HOME:-$HOME/.config}/rmpc/themes/${rmpc_theme_name}.ron"
+      [[ -f "${rmpc_theme_path}" ]] && rmpc remote set theme "${rmpc_theme_path}" >/dev/null 2>&1 || true
+    fi
+  fi
 }
 
 # Convert #RRGGBB to R,G,B.

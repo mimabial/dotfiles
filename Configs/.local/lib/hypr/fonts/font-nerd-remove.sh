@@ -15,7 +15,8 @@ used_fonts=()
 
 detect_used_fonts() {
   used_fonts=()
-  local config_dir="${HYPR_CONFIG_HOME:-$HOME/.config/hypr}"
+  local config_dir="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}"
+  local kitty_conf="${XDG_CONFIG_HOME:-$HOME/.config}/kitty/kitty.conf"
   local font_ref font_line var font_name
 
   if [[ -d "${config_dir}" ]]; then
@@ -30,11 +31,11 @@ detect_used_fonts() {
     done < <(grep -rh '^\$MONOSPACE_FONT=' "${config_dir}" 2>/dev/null)
   fi
 
-  if [[ -f ~/.config/kitty/kitty.conf ]]; then
+  if [[ -f "${kitty_conf}" ]]; then
     while IFS= read -r font_line; do
       font_name=$(echo "$font_line" | sed -E 's/^[[:space:]]*font_family[[:space:]]+//')
       [[ -n "${font_name}" ]] && used_fonts+=("${font_name}")
-    done < <(grep -E '^[[:space:]]*font_family' ~/.config/kitty/kitty.conf)
+    done < <(grep -E '^[[:space:]]*font_family' "${kitty_conf}")
   fi
 
   if [[ ${#used_fonts[@]} -gt 0 ]]; then

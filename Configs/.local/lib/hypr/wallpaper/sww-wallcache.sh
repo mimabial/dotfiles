@@ -343,7 +343,7 @@ load_explicit_wallpapers() {
 load_catalog_wallpapers() {
   wallPathArray=("${cacheIn}")
   wallPathArray+=("${WALLPAPER_CUSTOM_PATHS[@]}")
-  get_hashmap --no-notify "${wallPathArray[@]}"
+  get_hashmap "${wallPathArray[@]}"
 }
 
 load_wallpaper_targets() {

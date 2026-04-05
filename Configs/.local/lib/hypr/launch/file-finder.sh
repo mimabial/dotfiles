@@ -8,6 +8,6 @@ FILE_FINDER_ROOT="${search_root}" \
     --app-id org.tui.FileFinder \
     --title "File Finder" \
     -- zsh -lc '
-      source "$HOME/.config/zsh/functions/fzf.zsh"
+      source "${XDG_CONFIG_HOME:-$HOME/.config}/zsh/functions/fzf.zsh"
       _fuzzy_edit_search_file --root "${FILE_FINDER_ROOT:-$HOME}"
     '

@@ -1,43 +1,30 @@
 #!/usr/bin/env bash
 
-hypr_lock_manifest_file() {
-  local lib_root="${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}"
-  printf '%s\n' "${lib_root}/runtime/lock_names.conf"
-}
-
-hypr_lock_runtime_dir() {
-  printf '%s\n' "${XDG_RUNTIME_DIR:-/tmp}"
-}
-
-hypr_load_lock_manifest() {
-  local manifest="${1:-$(hypr_lock_manifest_file)}"
-  [[ -r "${manifest}" ]]
-}
-
-hypr_lock_template() {
-  local key="$1"
-  local manifest="${2:-$(hypr_lock_manifest_file)}"
-  local template=""
-
-  hypr_load_lock_manifest "${manifest}" || return 1
-  template="$(awk -F= -v key="${key}" '
-    $0 !~ /^[[:space:]]*#/ && $1 == key {
-      print $2
-      exit
-    }
-  ' "${manifest}")"
-  [[ -n "${template}" ]] || return 1
-  printf '%s\n' "${template}"
-}
+declare -grA HYPR_LOCK_NAMES=(
+  [color_gen]="color-gen.lock"
+  [color_cache_only]="color-cache-only.lock"
+  [theme_update]="theme-update.lock"
+  [theme_update_meta]="theme-update.meta"
+  [theme_switch]="theme-switch.lock"
+  [theme_precache]="theme-precache.lock"
+  [waybar]="waybar.lock"
+  [waybar_op]="waybar-op.lock"
+  [waybar_watch]="waybar-watch.lock"
+  [waybar_watch_meta]="waybar-watch.meta"
+  [wallpaper_cache]="wallpaper-cache.lock"
+  [wallpaper_inventory]="wallpaper-inventory.lock"
+  [wallpaper_switch]="wallpaper-switch.lock"
+  [wallpaper_swww]="wallpaper-swww.lock"
+  [mode_switch]="mode-switch.lock"
+  [wal_cache_clean]="wal-cache-clean.lock"
+  [wal_cache_store]="wal-cache-store.lock"
+  [wal_cache_prune]="wal-cache-prune.lock"
+)
 
 hypr_lock_path() {
   local key="$1"
-  local template runtime_dir uid rendered
+  local lock_name="${HYPR_LOCK_NAMES[${key}]:-}"
 
-  template="$(hypr_lock_template "${key}")" || return 1
-  runtime_dir="$(hypr_lock_runtime_dir)"
-  uid="${UID:-$(id -u)}"
-  rendered="${template//\{uid\}/${uid}}"
-
-  printf '%s\n' "${runtime_dir}/${rendered}"
+  [[ -n "${lock_name}" ]] || return 1
+  printf '%s/%s\n' "${XDG_RUNTIME_DIR:-/tmp}" "${lock_name}"
 }

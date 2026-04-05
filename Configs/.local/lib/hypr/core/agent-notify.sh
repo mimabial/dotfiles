@@ -1,11 +1,16 @@
 #!/usr/bin/env bash
 
+agent_notify_xdg_lib="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)/xdg.sh"
+[[ -r "${agent_notify_xdg_lib}" ]] || {
+  printf 'agent-notify: missing xdg library: %s\n' "${agent_notify_xdg_lib}" >&2
+  exit 1
+}
+# shellcheck source=/dev/null
+source "${agent_notify_xdg_lib}" || exit 1
+unset agent_notify_xdg_lib
+
 agent_notify_init_env() {
-  export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
-  export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
-  export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
-  export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
-  export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+  hypr_init_xdg_env
 }
 
 agent_notify_state_dir() {
@@ -28,6 +33,47 @@ agent_notify_ensure_state_dir() {
 
   mkdir -p -- "$state_dir"
   [[ -e "$pending_file" ]] || printf '[]\n' > "$pending_file"
+}
+
+agent_notify_resolve_codex_icon() {
+  local icon_theme="${ICON_THEME:-${GTK_ICON:-}}"
+  local icon_root="" theme_name="" icon_dir="" ext="" icon_path=""
+  local -a icon_roots=("${XDG_DATA_HOME}/icons" /usr/local/share/icons /usr/share/icons)
+  local -a icon_dirs=(scalable/apps 128x128/apps 64x64/apps 48x48/apps 32x32/apps 24x24/apps 22x22/apps 16x16/apps)
+  local -a theme_names=()
+
+  if [[ -z "${icon_theme}" ]] && command -v gsettings >/dev/null 2>&1; then
+    icon_theme="$(gsettings get org.gnome.desktop.interface icon-theme 2>/dev/null | tr -d "'" || true)"
+  fi
+
+  [[ -n "${icon_theme}" ]] && theme_names+=("${icon_theme}")
+  theme_names+=(hicolor)
+
+  for icon_root in "${icon_roots[@]}"; do
+    [[ -d "${icon_root}" ]] || continue
+    for theme_name in "${theme_names[@]}"; do
+      for icon_dir in "${icon_dirs[@]}"; do
+        for ext in svg png xpm; do
+          icon_path="${icon_root}/${theme_name}/${icon_dir}/chatgpt.${ext}"
+          if [[ -f "${icon_path}" ]]; then
+            printf '%s\n' "${icon_path}"
+            return 0
+          fi
+        done
+      done
+    done
+  done
+
+  for icon_root in "${icon_roots[@]}"; do
+    [[ -d "${icon_root}" ]] || continue
+    icon_path="$(find "${icon_root}" -path '*/apps/chatgpt.*' -print -quit 2>/dev/null)" || true
+    if [[ -n "${icon_path}" ]]; then
+      printf '%s\n' "${icon_path}"
+      return 0
+    fi
+  done
+
+  return 1
 }
 
 agent_notify_require_tool() {
@@ -179,9 +225,13 @@ agent_notify_desktop_expire_time() {
 
 agent_notify_icon() {
   local title="$1" source_name="$2" question_flag="$3" urgency="$4"
-  local codex_icon="${HOME}/.local/share/icons/Tela-circle-dracula/scalable/apps/chatgpt.svg"
+  local codex_icon=""
 
-  if agent_notify_is_codex_notification "$title" "$source_name" && [[ -f "$codex_icon" ]]; then
+  if agent_notify_is_codex_notification "$title" "$source_name"; then
+    codex_icon="$(agent_notify_resolve_codex_icon || true)"
+  fi
+
+  if [[ -n "${codex_icon}" ]]; then
     printf '%s\n' "$codex_icon"
     return 0
   fi
@@ -210,28 +260,6 @@ agent_notify_summary() {
   fi
 }
 
-agent_notify_resolve_notifier() {
-  local preferred_notifier
-
-  preferred_notifier="${HOME}/.local/bin/notify-send"
-  if [[ -x "$preferred_notifier" ]]; then
-    printf '%s\n' "$preferred_notifier"
-    return 0
-  fi
-
-  if command -v notify-send >/dev/null 2>&1; then
-    command -v notify-send
-    return 0
-  fi
-
-  if command -v dunstify >/dev/null 2>&1; then
-    command -v dunstify
-    return 0
-  fi
-
-  return 1
-}
-
 agent_notify_is_codex_summary() {
   [[ "$1" =~ ^\[[Cc]odex\]([[:space:]]|$) ]]
 }
@@ -258,16 +286,20 @@ agent_notify_desktop_app_name() {
 
 agent_notify_send_desktop() {
   local title="$1" message="$2" urgency="$3" source_name="$4" question_flag="$5" stack_tag="${6:-}"
-  local notifier desktop_urgency expire_time icon app_name
+  local notify_lib="" desktop_urgency expire_time icon app_name
   local -a notify_args
-  local output="" rc=0
 
   [[ "${AGENT_NOTIFY_DISABLE_DESKTOP:-0}" == "1" ]] && return 0
 
-  notifier="$(agent_notify_resolve_notifier)" || {
-    printf 'agent-notify: unable to locate notify-send or dunstify\n' >&2
-    return 1
-  }
+  if ! declare -F notify_send_safe >/dev/null 2>&1; then
+    notify_lib="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)/notify.sh"
+    [[ -r "${notify_lib}" ]] || {
+      printf 'agent-notify: missing notification library: %s\n' "${notify_lib}" >&2
+      return 1
+    }
+    # shellcheck source=/dev/null
+    source "${notify_lib}" || return 1
+  fi
 
   desktop_urgency="$(agent_notify_desktop_urgency "$urgency")" || return 1
   expire_time="$(agent_notify_desktop_expire_time "$urgency")" || return 1
@@ -293,30 +325,7 @@ agent_notify_send_desktop() {
 
   [[ -n "$stack_tag" ]] && notify_args+=(--hint="string:x-dunst-stack-tag:${stack_tag}")
 
-  if command -v timeout >/dev/null 2>&1; then
-    if output="$(timeout 2 "$notifier" "${notify_args[@]}" "$title" "$message" 2>&1 >/dev/null)"; then
-      rc=0
-    else
-      rc=$?
-    fi
-  else
-    if output="$("$notifier" "${notify_args[@]}" "$title" "$message" 2>&1 >/dev/null)"; then
-      rc=0
-    else
-      rc=$?
-    fi
-  fi
-
-  if (( rc != 0 )); then
-    if [[ -n "$output" ]]; then
-      printf 'agent-notify: desktop notification failed (%d): %s\n' "$rc" "$output" >&2
-    else
-      printf 'agent-notify: desktop notification failed (%d)\n' "$rc" >&2
-    fi
-    return "$rc"
-  fi
-
-  return 0
+  notify_send_safe "${notify_args[@]}" "$title" "$message"
 }
 
 agent_notify_record_question_locked() {
@@ -449,66 +458,10 @@ Environment:
 EOF
 }
 
-agent_notify_parse_value_option() {
-  local option="$1" next_value="${2-}" argc="$3" short_opt="$4" long_opt="$5"
-  local target_name="$6" consumed_name="$7" handled_name="$8"
-  local -n target_ref="$target_name" consumed_ref="$consumed_name" handled_ref="$handled_name"
-
-  handled_ref=1
-  case "$option" in
-    "$short_opt" | "$long_opt")
-      if (( argc < 2 )); then
-        printf 'agent-notify: missing value for %s\n' "$option" >&2
-        return 1
-      fi
-      target_ref="$next_value"
-      consumed_ref=2
-      ;;
-    "${long_opt}"=*)
-      target_ref="${option#*=}"
-      consumed_ref=1
-      ;;
-    *)
-      handled_ref=0
-      consumed_ref=0
-      ;;
-  esac
-}
-
-agent_notify_parse_common_option() {
-  local option="$1" next_value="${2-}" argc="$3"
-  local title_name="$4" message_name="$5" source_name="$6" consumed_name="$7" handled_name="$8" help_name="$9"
-  local -n consumed_ref="$consumed_name" handled_ref="$handled_name" help_ref="$help_name"
-
-  help_ref=0
-
-  agent_notify_parse_value_option "$option" "$next_value" "$argc" -t --title "$title_name" "$consumed_name" "$handled_name" || return 1
-  (( handled_ref )) && return 0
-
-  agent_notify_parse_value_option "$option" "$next_value" "$argc" -m --message "$message_name" "$consumed_name" "$handled_name" || return 1
-  (( handled_ref )) && return 0
-
-  agent_notify_parse_value_option "$option" "$next_value" "$argc" -s --source "$source_name" "$consumed_name" "$handled_name" || return 1
-  (( handled_ref )) && return 0
-
-  case "$option" in
-    -h | --help)
-      handled_ref=1
-      help_ref=1
-      consumed_ref=1
-      ;;
-    *)
-      handled_ref=0
-      consumed_ref=0
-      ;;
-  esac
-}
-
 agent_notify_send_command() {
   local mode="${1:-send}"
   local title="" message="" urgency="normal" source_name=""
   local no_source=0 question_flag=0 question_id="" context="" summary="" stack_tag=""
-  local consumed=0 handled=0 show_help=0
 
   case "$mode" in
     send)
@@ -525,27 +478,55 @@ agent_notify_send_command() {
   shift
 
   while (($#)); do
-    consumed=0
-    handled=0
-    show_help=0
-    agent_notify_parse_common_option "$1" "${2-}" "$#" title message source_name consumed handled show_help || return 1
-    if (( handled )); then
-      if (( show_help )); then
-        agent_notify_show_help
-        return 0
-      fi
-      shift "$consumed"
-      continue
-    fi
-
-    handled=0
-    agent_notify_parse_value_option "$1" "${2-}" "$#" -u --urgency urgency consumed handled || return 1
-    if (( handled )); then
-      shift "$consumed"
-      continue
-    fi
-
     case "$1" in
+      -t | --title)
+        if (($# < 2)); then
+          printf 'agent-notify: missing value for %s\n' "$1" >&2
+          return 1
+        fi
+        title="$2"
+        shift 2
+        ;;
+      --title=*)
+        title="${1#*=}"
+        shift
+        ;;
+      -m | --message)
+        if (($# < 2)); then
+          printf 'agent-notify: missing value for %s\n' "$1" >&2
+          return 1
+        fi
+        message="$2"
+        shift 2
+        ;;
+      --message=*)
+        message="${1#*=}"
+        shift
+        ;;
+      -s | --source)
+        if (($# < 2)); then
+          printf 'agent-notify: missing value for %s\n' "$1" >&2
+          return 1
+        fi
+        source_name="$2"
+        shift 2
+        ;;
+      --source=*)
+        source_name="${1#*=}"
+        shift
+        ;;
+      -u | --urgency)
+        if (($# < 2)); then
+          printf 'agent-notify: missing value for %s\n' "$1" >&2
+          return 1
+        fi
+        urgency="$2"
+        shift 2
+        ;;
+      --urgency=*)
+        urgency="${1#*=}"
+        shift
+        ;;
       -S | --no-source)
         no_source=1
         shift
@@ -553,6 +534,10 @@ agent_notify_send_command() {
       -q | --question)
         question_flag=1
         shift
+        ;;
+      -h | --help)
+        agent_notify_show_help
+        return 0
         ;;
       *)
         printf 'agent-notify: unknown option: %s\n' "$1" >&2
@@ -594,31 +579,66 @@ agent_notify_send_command() {
 
 agent_notify_answer_command() {
   local id="" title="" message="" source_name="" matched_id=""
-  local consumed=0 handled=0 show_help=0
 
   while (($#)); do
-    consumed=0
-    handled=0
-    show_help=0
-    agent_notify_parse_common_option "$1" "${2-}" "$#" title message source_name consumed handled show_help || return 1
-    if (( handled )); then
-      if (( show_help )); then
+    case "$1" in
+      -i | --id)
+        if (($# < 2)); then
+          printf 'agent-notify: missing value for %s\n' "$1" >&2
+          return 1
+        fi
+        id="$2"
+        shift 2
+        ;;
+      --id=*)
+        id="${1#*=}"
+        shift
+        ;;
+      -t | --title)
+        if (($# < 2)); then
+          printf 'agent-notify: missing value for %s\n' "$1" >&2
+          return 1
+        fi
+        title="$2"
+        shift 2
+        ;;
+      --title=*)
+        title="${1#*=}"
+        shift
+        ;;
+      -m | --message)
+        if (($# < 2)); then
+          printf 'agent-notify: missing value for %s\n' "$1" >&2
+          return 1
+        fi
+        message="$2"
+        shift 2
+        ;;
+      --message=*)
+        message="${1#*=}"
+        shift
+        ;;
+      -s | --source)
+        if (($# < 2)); then
+          printf 'agent-notify: missing value for %s\n' "$1" >&2
+          return 1
+        fi
+        source_name="$2"
+        shift 2
+        ;;
+      --source=*)
+        source_name="${1#*=}"
+        shift
+        ;;
+      -h | --help)
         agent_notify_show_help
         return 0
-      fi
-      shift "$consumed"
-      continue
-    fi
-
-    handled=0
-    agent_notify_parse_value_option "$1" "${2-}" "$#" -i --id id consumed handled || return 1
-    if (( handled )); then
-      shift "$consumed"
-      continue
-    fi
-
-    printf 'agent-notify: unknown option: %s\n' "$1" >&2
-    return 1
+        ;;
+      *)
+        printf 'agent-notify: unknown option: %s\n' "$1" >&2
+        return 1
+        ;;
+    esac
   done
 
   if [[ -z "$id" && ( -z "$title" || -z "$message" ) ]]; then

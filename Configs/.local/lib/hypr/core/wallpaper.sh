@@ -34,18 +34,22 @@ find_wallpapers() {
   [[ -n "${error_output}" ]] && print_log -err "ERROR:" -b "found an error: " -r "${error_output}" -y " skipping..."
 }
 
-get_hashmap() {
-  local no_notify=0
-  local skipStrays=0
-  local -a wall_sources=()
+get_hashmap_into() {
+  local hash_name="$1"
+  local list_name="$2"
+  shift 2
+  local -n hash_ref="${hash_name}"
+  local -n list_ref="${list_name}"
+  local -a wall_sources=("$@")
+  local -a missing_sources=()
   local wallSource=""
   local hashMap=""
   local hash=""
   local image=""
 
-  wallHash=()
-  wallList=()
-  no_wallpapers=()
+  hash_ref=()
+  list_ref=()
+  ((${#wall_sources[@]} > 0)) || return 1
 
   # Initialize supported file extensions (safe: no eval needed)
   local -a supported_files=(
@@ -59,81 +63,42 @@ get_hashmap() {
     supported_files=("${WALLPAPER_OVERRIDE_FILETYPES[@]}")
   fi
 
-  while (($# > 0)); do
-    case "$1" in
-      --no-notify)
-        no_notify=1
-        shift
-        ;;
-      --skipstrays)
-        skipStrays=1
-        shift
-        ;;
-      --)
-        shift
-        wall_sources=("$@")
-        break
-        ;;
-      -*)
-        print_log -err "ERROR:" -b "unknown get_hashmap option:" "$1"
-        return 1
-        ;;
-      *)
-        wall_sources=("$@")
-        break
-        ;;
-    esac
-  done
-
   for wallSource in "${wall_sources[@]}"; do
 
-    [ "${LOG_LEVEL}" == "debug" ] && print_log -g "DEBUG:" -b "wallpaper source path:" "${wallSource}"
+    [[ "${LOG_LEVEL}" == "debug" ]] && print_log -g "DEBUG:" -b "wallpaper source path:" "${wallSource}"
 
-    [ -z "${wallSource}" ] && continue
+    [[ -z "${wallSource}" ]] && continue
     wallSource="$(realpath "${wallSource}")"
 
-    [ -e "${wallSource}" ] || {
+    [[ -e "${wallSource}" ]] || {
       print_log -err "ERROR:" -b "wallpaper source does not exist:" "${wallSource}" -y " skipping..."
       continue
     }
 
-    [ "${LOG_LEVEL}" == "debug" ] && print_log -g "DEBUG:" -b "wallSource path:" "${wallSource}"
+    [[ "${LOG_LEVEL}" == "debug" ]] && print_log -g "DEBUG:" -b "wallSource path:" "${wallSource}"
 
     hashMap=$(find_wallpapers "${wallSource}" "${supported_files[@]}")
 
-    if [ -z "${hashMap}" ]; then
-      no_wallpapers+=("${wallSource}")
-      print_log -warn "No compatible wallpapers found in: " "${wallSource}"
+    if [[ -z "${hashMap}" ]]; then
+      missing_sources+=("${wallSource}")
       continue
     fi
 
     while read -r hash image; do
-      wallHash+=("${hash}")
-      wallList+=("${image}")
+      hash_ref+=("${hash}")
+      list_ref+=("${image}")
     done <<<"${hashMap}"
   done
 
-  # Notify the list of directories without compatible wallpapers
-  if [ "${#no_wallpapers[@]}" -gt 0 ]; then
-    print_log -warn "No compatible wallpapers found in:" "${no_wallpapers[*]}"
+  if ((${#missing_sources[@]} > 0)); then
+    print_log -warn "No compatible wallpapers found in:" "${missing_sources[*]}"
   fi
 
-  if [[ "${#wallList[@]}" -eq 0 ]]; then
-    if [[ "${skipStrays}" -eq 1 ]]; then
-      return 1
-    else
-      echo "ERROR: No image found in any source"
-      if [[ "${no_notify}" -eq 0 ]]; then
-        notify_send_safe \
-          -a "Global control" \
-          -t 5000 \
-          -i "dialog-warning" \
-          "WARNING: No compatible wallpapers found in: ${no_wallpapers[*]}" || true
-      fi
-      exit 1
-    fi
-  fi
+  ((${#list_ref[@]} > 0))
+}
 
+get_hashmap() {
+  get_hashmap_into wallHash wallList "$@"
 }
 
 # Populate sorted theme metadata from `$HYPR_CONFIG_HOME/themes` and repair
@@ -158,10 +123,12 @@ get_themes() {
   for thmDir in "${theme_dirs[@]}"; do
     realWallPath="$(readlink "${thmDir}/wall.set")"
     if [ ! -e "${realWallPath}" ]; then
-      get_hashmap --skipstrays "${thmDir}" || continue
+      local -a theme_wall_hash=()
+      local -a theme_wall_list=()
+      get_hashmap_into theme_wall_hash theme_wall_list "${thmDir}" || continue
       echo "fixing link :: ${thmDir}/wall.set"
-      ln -fs "${wallList[0]}" "${thmDir}/wall.set"
-      realWallPath="${wallList[0]}"
+      ln -fs "${theme_wall_list[0]}" "${thmDir}/wall.set"
+      realWallPath="${theme_wall_list[0]}"
     fi
 
     if [[ -f "${thmDir}/.sort" ]]; then
@@ -207,35 +174,4 @@ extract_thumbnail() {
   x_wall=$(realpath "${x_wall}")
   local temp_image="${2}"
   ffmpeg -y -i "${x_wall}" -vf "thumbnail,scale=1000:-1" -frames:v 1 -update 1 "${temp_image}" &>/dev/null
-}
-
-# Function to check if the file is supported by the wallpaper backend
-accepted_mime_types() {
-  local file actual_mime mime_type
-  local -a mime_types_array=()
-
-  if (( $# < 2 )); then
-    return 1
-  fi
-
-  file="${*: -1}"
-  if [[ "$(declare -p "$1" 2>/dev/null || true)" == declare\ -a* ]]; then
-    local -n mime_types_ref="$1"
-    mime_types_array=("${mime_types_ref[@]}")
-  else
-    mime_types_array=("${@:1:$#-1}")
-  fi
-
-  actual_mime="$(file --mime-type -b "${file}" 2>/dev/null || true)"
-  for mime_type in "${mime_types_array[@]}"; do
-    [[ "${actual_mime}" == "${mime_type}"* ]] && return 0
-  done
-
-  print_log -err "File type not supported for this wallpaper backend."
-  notify_send_safe \
-    -u critical \
-    -a "Global control" \
-    -i "dialog-error" \
-    "File type not supported for this wallpaper backend." || true
-  return 1
 }

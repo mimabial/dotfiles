@@ -1,163 +1,32 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-resolve_real_notify_send() {
-  local self_path self_dir entry filtered_path="" candidate
+resolve_other_executable() {
+  local command_name="$1"
+  local self_path candidate resolved_candidate
+
   self_path="$(readlink -f -- "$0" 2>/dev/null || printf '%s\n' "$0")"
-  self_dir="$(dirname -- "$self_path")"
-
-  IFS=':' read -r -a path_entries <<< "${PATH:-}"
-  for entry in "${path_entries[@]}"; do
-    [[ -n "${entry}" ]] || continue
-    [[ "${entry}" == "${self_dir}" ]] && continue
-    if [[ -n "${filtered_path}" ]]; then
-      filtered_path+=":${entry}"
-    else
-      filtered_path="${entry}"
-    fi
-  done
-
-  candidate="$(PATH="${filtered_path}" command -v notify-send || true)"
-  if [[ -n "${candidate}" ]]; then
-    printf '%s\n' "${candidate}"
+  while IFS= read -r candidate; do
+    [[ -n "${candidate}" ]] || continue
+    resolved_candidate="$(readlink -f -- "${candidate}" 2>/dev/null || printf '%s\n' "${candidate}")"
+    [[ "${resolved_candidate}" == "${self_path}" ]] && continue
+    [[ -x "${resolved_candidate}" ]] || continue
+    printf '%s\n' "${resolved_candidate}"
     return 0
-  fi
-
-  if command -v whereis >/dev/null 2>&1; then
-    while IFS= read -r candidate; do
-      [[ -n "${candidate}" ]] || continue
-      [[ "${candidate}" == "${self_path}" ]] && continue
-      [[ -x "${candidate}" ]] || continue
-      printf '%s\n' "${candidate}"
-      return 0
-    done < <(whereis -b notify-send | awk '{for (i = 2; i <= NF; ++i) print $i}')
-  fi
+  done < <(type -aP "${command_name}" 2>/dev/null || true)
 
   return 1
 }
 
-real_dunstify="$(command -v dunstify || true)"
-real_notify_send="$(resolve_real_notify_send)"
-
-if [[ -z "${real_dunstify}" ]]; then
-  [[ -n "${real_notify_send}" ]] || {
-    printf 'notify-send: unable to resolve real notify-send in PATH\n' >&2
-    exit 1
-  }
-  exec "${real_notify_send}" "$@"
+real_dunstify="$(resolve_other_executable dunstify || true)"
+if [[ -n "${real_dunstify}" ]]; then
+  exec "${real_dunstify}" "$@"
 fi
 
-has_timeout=0
-has_icon=0
-app_name=""
-summary=""
-body=""
-
-forward_args=()
-positionals=()
-
-notify_send_record_option() {
-  local opt="$1"
-  local val="$2"
-
-  case "${opt}" in
-    -t|--expire-time) has_timeout=1 ;;
-    -a|--app-name) app_name="${val}" ;;
-    -i|--icon|-n|--app-icon) has_icon=1 ;;
-  esac
+real_notify_send="$(resolve_other_executable notify-send || true)"
+[[ -n "${real_notify_send}" ]] || {
+  printf 'notify-send: unable to resolve real notify-send or dunstify\n' >&2
+  exit 1
 }
 
-notify_send_record_inline_option() {
-  local opt="${1%%=*}"
-  local val="${1#*=}"
-
-  case "${opt}" in
-    --expire-time) has_timeout=1 ;;
-    --app-name) app_name="${val}" ;;
-    --icon|--app-icon) has_icon=1 ;;
-  esac
-}
-
-while (($#)); do
-  case "$1" in
-    -u|-t|-a|-i|-n|-c|-h|-r|-A|--urgency|--expire-time|--app-name|--icon|--app-icon|--category|--hint|--replace-id|--action|--id-fd|--selected-action-fd|--activation-token-fd)
-      opt="$1"
-      val="${2-}"
-      forward_args+=("$opt")
-      [[ -n "${val}" ]] && forward_args+=("$val")
-      notify_send_record_option "${opt}" "${val}"
-      shift
-      (($#)) && shift
-      ;;
-    --urgency=*|--expire-time=*|--app-name=*|--icon=*|--app-icon=*|--category=*|--hint=*|--replace-id=*|--action=*|--id-fd=*|--selected-action-fd=*|--activation-token-fd=*)
-      forward_args+=("$1")
-      notify_send_record_inline_option "$1"
-      shift
-      ;;
-    -p|--print-id|-w|--wait|-v|--version|-?|-help|--help)
-      forward_args+=("$1")
-      shift
-      ;;
-    -e|--transient)
-      # The current dunstify build on this machine advertises transient but does
-      # not parse it correctly. Ignore the flag and rely on explicit timeout.
-      shift
-      ;;
-    --)
-      shift
-      while (($#)); do
-        positionals+=("$1")
-        shift
-      done
-      ;;
-    -*)
-      forward_args+=("$1")
-      shift
-      ;;
-    *)
-      positionals+=("$1")
-      shift
-      ;;
-  esac
-done
-
-if ((${#positionals[@]} > 0)); then
-  summary="${positionals[0]}"
-fi
-if ((${#positionals[@]} > 1)); then
-  body="${positionals[*]:1}"
-fi
-
-if (( ! has_timeout )); then
-  forward_args+=(--expire-time=2000)
-fi
-
-summary_lc="$(printf '%s' "${summary}" | tr '[:upper:]' '[:lower:]')"
-body_lc="$(printf '%s' "${body}" | tr '[:upper:]' '[:lower:]')"
-codex_icon="${HOME}/.local/share/icons/Tela-circle-dracula/scalable/apps/chatgpt.svg"
-
-notify_send_is_codex_notice() {
-  [[ "${app_name}" == "Codex" || "${summary_lc}" == *"[codex]"* || "${summary_lc}" == *codex* || "${body_lc}" == *codex* ]]
-}
-
-if [[ "${app_name}" == "kitty" ]]; then
-  if [[ "${summary_lc}" == approval\ requested:* || "${body_lc}" == codex\ wants\ to* ]]; then
-    forward_args+=("--hint=string:x-dunst-stack-tag:codex-approval")
-  elif notify_send_is_codex_notice; then
-    forward_args+=("--hint=string:x-dunst-stack-tag:codex")
-  fi
-fi
-
-if (( ! has_icon )) && [[ -f "${codex_icon}" ]] && notify_send_is_codex_notice; then
-  forward_args+=("--icon=${codex_icon}")
-fi
-
-notify_args=("${forward_args[@]}")
-if [[ -n "${summary}" ]]; then
-  notify_args+=("${summary}")
-fi
-if [[ -n "${body}" ]]; then
-  notify_args+=("${body}")
-fi
-
-exec "${real_dunstify}" "${notify_args[@]}"
+exec "${real_notify_send}" "$@"

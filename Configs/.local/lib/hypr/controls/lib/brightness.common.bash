@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 
-brightness_helper_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 # shellcheck source=/dev/null
-source "${brightness_helper_dir}/control.common.bash"
+source "${LIB_DIR}/hypr/controls/lib/control.common.bash"
 
 normalize_brightness_mode() {
   case "${1:-auto}" in

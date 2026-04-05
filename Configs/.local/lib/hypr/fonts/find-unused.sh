@@ -4,21 +4,21 @@ set -euo pipefail
 
 FONT_EXT_REGEX='\.(ttf|otf|ttc|otb|pfa|pfb|woff2?)$'
 SEARCH_ROOTS=(
-  "$HOME/.config/hypr"
-  "$HOME/.config/rofi"
-  "$HOME/.config/waybar"
-  "$HOME/.local/share/rofi"
-  "$HOME/.local/share/waybar"
-  "$HOME/.config/dunst"
-  "$HOME/.config/wlogout"
-  "$HOME/.config/kitty"
-  "$HOME/.config/alacritty"
-  "$HOME/.config/qutebrowser"
-  "$HOME/.config/qt5ct"
-  "$HOME/.config/qt6ct"
-  "$HOME/.config/wal"
-  "$HOME/.config/satty"
-  "$HOME/.local/lib/hypr"
+  "${XDG_CONFIG_HOME:-$HOME/.config}/hypr"
+  "${XDG_CONFIG_HOME:-$HOME/.config}/rofi"
+  "${XDG_CONFIG_HOME:-$HOME/.config}/waybar"
+  "${XDG_DATA_HOME:-$HOME/.local/share}/rofi"
+  "${XDG_DATA_HOME:-$HOME/.local/share}/waybar"
+  "${XDG_CONFIG_HOME:-$HOME/.config}/dunst"
+  "${XDG_CONFIG_HOME:-$HOME/.config}/wlogout"
+  "${XDG_CONFIG_HOME:-$HOME/.config}/kitty"
+  "${XDG_CONFIG_HOME:-$HOME/.config}/alacritty"
+  "${XDG_CONFIG_HOME:-$HOME/.config}/qutebrowser"
+  "${XDG_CONFIG_HOME:-$HOME/.config}/qt5ct"
+  "${XDG_CONFIG_HOME:-$HOME/.config}/qt6ct"
+  "${XDG_CONFIG_HOME:-$HOME/.config}/wal"
+  "${XDG_CONFIG_HOME:-$HOME/.config}/satty"
+  "${LIB_DIR:-$HOME/.local/lib}/hypr"
 )
 SEARCH_GLOBS=(
   '!**/.git/**'

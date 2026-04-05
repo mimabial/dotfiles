@@ -12,7 +12,7 @@ notify() {
   echo "$@"
 }
 
-loc="$HOME/.cache/colorpicker"
+loc="${XDG_CACHE_HOME:-$HOME/.cache}/colorpicker"
 [ -d "$loc" ] || mkdir -p "$loc"
 [ -f "$loc/colors" ] || touch "$loc/colors"
 

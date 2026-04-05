@@ -2,9 +2,10 @@
 
 set -u
 
-scr_dir="$(cd -- "$(dirname -- "$0")" && pwd -P)"
 # shellcheck source=/dev/null
-source "${scr_dir}/lib/control.common.bash"
+source "$(command -v hyprshell)" || exit 1
+# shellcheck source=/dev/null
+source "${LIB_DIR}/hypr/controls/lib/control.common.bash"
 
 is_notify="${VOLUME_NOTIFY:-true}"
 is_volume_boost="${VOLUME_BOOST:-false}"

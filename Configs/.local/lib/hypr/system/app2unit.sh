@@ -7,6 +7,7 @@ RSEP=$(printf '%b' '\036')
 USEP=$(printf '%b' '\037')
 TERMINAL_HANDLER=xdg-terminal-exec
 SELF_NAME=${0##*/}
+APP2UNIT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
 
 # Treat non-zero exit status from simple commands as an error
 # Treat unset variables as errors when performing parameter expansion
@@ -220,11 +221,362 @@ else
 fi
 
 # shellcheck source=/dev/null
-. "$HOME/.local/lib/hypr/system/app2unit.desktop.sh"
-# shellcheck source=/dev/null
-. "$HOME/.local/lib/hypr/system/app2unit.systemd.sh"
-# shellcheck source=/dev/null
-. "$HOME/.local/lib/hypr/system/app2unit.resolve.sh"
+. "${APP2UNIT_DIR}/app2unit.desktop.sh"
+
+reset_main_arg_state() {
+	ENTRY_ID=''
+	ENTRY_ACTION=''
+	ENTRY_PATH=''
+	EXEC_NAME=''
+	EXEC_PATH=''
+}
+
+parse_desktop_entry_ref() {
+	case "$1" in
+	*.desktop:*)
+		IFS=':' read -r ENTRY_ID ENTRY_ACTION <<-EOA
+			$1
+		EOA
+		;;
+	*.desktop)
+		ENTRY_ID=$1
+		ENTRY_ACTION=''
+		;;
+	esac
+}
+
+resolve_desktop_entry_ref() {
+	case "$ENTRY_ID" in
+	*/*)
+		ENTRY_PATH=$ENTRY_ID
+		ENTRY_ID=${ENTRY_ID##*/}
+		if [ ! -f "$ENTRY_PATH" ]; then
+			error "File not found: '$ENTRY_PATH'"
+			return 1
+		fi
+		return 0
+		;;
+	esac
+
+	if ! validate_entry_id "$ENTRY_ID"; then
+		error "Invalid Entry ID '$ENTRY_ID'!"
+		return 1
+	fi
+	if ! validate_action_id "$ENTRY_ACTION"; then
+		error "Invalid Entry Action ID '$ENTRY_ACTION'!"
+		return 1
+	fi
+}
+
+resolve_executable_ref() {
+	case "$MAIN_ARG" in
+	*/*)
+		EXEC_PATH=$MAIN_ARG
+		EXEC_NAME=${EXEC_PATH##*/}
+		debug "EXEC_PATH: $EXEC_PATH" "EXEC_NAME: $EXEC_NAME"
+		if [ ! -f "$EXEC_PATH" ]; then
+			error "File not found: '$EXEC_PATH'"
+			return 1
+		fi
+		if [ ! -x "$EXEC_PATH" ]; then
+			error "File is not executable: '$EXEC_PATH'"
+			return 1
+		fi
+		return 0
+		;;
+	esac
+
+	EXEC_NAME=$MAIN_ARG
+	debug "EXEC_NAME: $EXEC_NAME"
+	if ! type "$EXEC_NAME" >/dev/null 2>&1; then
+		error "Executable not found: '$EXEC_NAME'"
+		return 1
+	fi
+}
+
+parse_main_arg() {
+	# fills some of global variables depending on main arg $1
+	MAIN_ARG=$1
+	reset_main_arg_state
+
+	case "$MAIN_ARG" in
+	'')
+		error "Empty main argument"
+		return 1
+		;;
+	esac
+	parse_desktop_entry_ref "$MAIN_ARG"
+	debug "ENTRY_ID: $ENTRY_ID" "ENTRY_ACTION: $ENTRY_ACTION"
+
+	if [ -n "$ENTRY_ID" ]; then
+		resolve_desktop_entry_ref
+		return $?
+	fi
+
+	resolve_executable_ref
+}
+
+check_terminal_handler() {
+	# checks terminal handler availability
+	if ! command -v "$TERMINAL_HANDLER" >/dev/null; then
+		error "Terminal launch requested but '$TERMINAL_HANDLER' is unavailable!"
+		return 1
+	fi
+}
+
+get_mime() {
+	# prints mime type of file or url
+	app2unit_resolve_mime=
+	case "$1" in
+	[a-zA-Z]*:*)
+		IFS=':' read -r app2unit_resolve_scheme _rest <<-EOF
+			$1
+		EOF
+		debug "potential scheme '$app2unit_resolve_scheme'"
+		case "$app2unit_resolve_scheme" in
+		*[!a-zA-Z0-9+.-]*)
+			debug "not a valid scheme '$app2unit_resolve_scheme', assuming file"
+			app2unit_resolve_mime=$(xdg-mime query filetype "$1")
+			;;
+		*) app2unit_resolve_mime=x-scheme-handler/$app2unit_resolve_scheme ;;
+		esac
+		;;
+	*) app2unit_resolve_mime=$(xdg-mime query filetype "$1") ;;
+	esac
+
+	case "$app2unit_resolve_mime" in
+	'' | 'x-scheme-handler/')
+		error "Could not query mime type for '$1'"
+		return 1
+		;;
+	*)
+		debug "got mime '$app2unit_resolve_mime' for '$1'"
+		printf '%s\n' "$app2unit_resolve_mime"
+		return 0
+		;;
+	esac
+}
+
+get_assoc() {
+	# prints file association for mime type
+	app2unit_resolve_assoc=$(xdg-mime query default "$1")
+	case "$app2unit_resolve_assoc" in
+	?*.desktop)
+		debug "got association '$app2unit_resolve_assoc' for mime '$1'"
+		printf '%s\n' "$app2unit_resolve_assoc"
+		return 0
+		;;
+	*)
+		error "Could not query association for mime '$1'"
+		return 1
+		;;
+	esac
+}
+
+gen_unit_id() {
+	# generate Unit ID based on Entry ID or exec name if UNIT_ID is not already set
+	# sets UNIT_ID
+
+	if [ -z "$UNIT_ID" ]; then
+		if [ -z "$UNIT_APP_SUBSTRING" ] && [ -n "${ENTRY_ID}" ]; then
+			UNIT_APP_SUBSTRING=${ENTRY_ID%.desktop}
+		elif [ -z "$UNIT_APP_SUBSTRING" ]; then
+			UNIT_APP_SUBSTRING=${EXEC_NAME}
+		fi
+		if [ -n "${XDG_SESSION_DESKTOP:-}" ]; then
+			UNIT_DESKTOP_SUBSTRING=${XDG_SESSION_DESKTOP}
+		elif [ -n "${XDG_CURRENT_DESKTOP:-}" ]; then
+			UNIT_DESKTOP_SUBSTRING=${XDG_CURRENT_DESKTOP%%:*}
+		else
+			UNIT_DESKTOP_SUBSTRING=NoDesktop
+		fi
+		# escape substrings if needed
+		case "${UNIT_DESKTOP_SUBSTRING}${UNIT_APP_SUBSTRING}" in
+		*[!a-zA-Z:_.]*)
+			# prepend a character to shield potential . from being first
+			read -r UNIT_DESKTOP_SUBSTRING UNIT_APP_SUBSTRING <<-EOL
+				$(systemd-escape "A$UNIT_DESKTOP_SUBSTRING" "A$UNIT_APP_SUBSTRING")
+			EOL
+			# remove character
+			UNIT_DESKTOP_SUBSTRING=${UNIT_DESKTOP_SUBSTRING#A}
+			UNIT_APP_SUBSTRING=${UNIT_APP_SUBSTRING#A}
+			;;
+		esac
+
+		RANDOM_STRING=$(random_string)
+		case "$UNIT_TYPE" in
+		service)
+			UNIT_ID="app-${UNIT_DESKTOP_SUBSTRING}-${UNIT_APP_SUBSTRING}@${RANDOM_STRING}.service"
+			;;
+		scope)
+			UNIT_ID="app-${UNIT_DESKTOP_SUBSTRING}-${UNIT_APP_SUBSTRING}-${RANDOM_STRING}.scope"
+			;;
+		*)
+			error "Unsupported unit type '$UNIT_TYPE'!"
+			return 1
+			;;
+		esac
+	else
+		case "$UNIT_ID" in
+		*?".$UNIT_TYPE") true ;;
+		*)
+			error "Unit ID '$UNIT_ID' is not of type '$UNIT_TYPE'"
+			return 1
+			;;
+		esac
+	fi
+	if [ "${#UNIT_ID}" -gt "254" ]; then
+		error "Unit ID too long (${#UNIT_ID})!: $UNIT_ID"
+		return 1
+	fi
+	case "$UNIT_ID" in
+	.service | .scope | '')
+		error "Unit ID is empty!"
+		return 1
+		;;
+	*.service | *.scope) true ;;
+	*)
+		error "Invalid Unit ID '$UNIT_ID'!"
+		return 1
+		;;
+	esac
+}
+
+randomize_unit_id() {
+	# updates random string in existing UNIT_ID
+
+	if [ -z "$RANDOM_STRING" ]; then
+		debug "refusing to randomize unit ID"
+		return 0
+	fi
+	NEW_RANDOM_STRING=$(random_string)
+	debug "new random string: $NEW_RANDOM_STRING"
+	UNIT_ID=${UNIT_ID%"${RANDOM_STRING}.${UNIT_TYPE}"}${NEW_RANDOM_STRING}.${UNIT_TYPE}
+	#"
+	RANDOM_STRING=${NEW_RANDOM_STRING}
+}
+
+systemd_effective_unit_description() {
+	if [ -n "$UNIT_DESCRIPTION" ]; then
+		printf '%s\n' "$UNIT_DESCRIPTION"
+	elif [ -n "${ENTRY_LNAME:-$ENTRY_NAME}" ] && [ -n "${ENTRY_LCOMMENT:-$ENTRY_COMMENT}" ]; then
+		printf '%s - %s\n' "${ENTRY_LNAME:-$ENTRY_NAME}" "${ENTRY_LCOMMENT:-$ENTRY_COMMENT}"
+	elif [ -n "${ENTRY_LNAME:-$ENTRY_NAME}" ]; then
+		printf '%s\n' "${ENTRY_LNAME:-$ENTRY_NAME}"
+	elif [ -n "$EXEC_NAME" ]; then
+		printf '%s\n' "$EXEC_NAME"
+	fi
+}
+
+systemd_default_stderr_target() {
+	systemd_default_output=''
+	systemd_default_error=''
+	while IFS='=' read -r systemd_show_key systemd_show_value; do
+		case "$systemd_show_key" in
+		DefaultStandardOutput) systemd_default_output=$systemd_show_value ;;
+		DefaultStandardError) systemd_default_error=$systemd_show_value ;;
+		esac
+	done <<-EOF
+			$(systemctl --user show --property DefaultStandardOutput --property DefaultStandardError)
+	EOF
+	case "$systemd_default_error" in
+	inherit) printf '%s\n' "$systemd_default_output" ;;
+	esac
+}
+
+systemd_apply_service_silence() {
+	case "$SILENT" in
+	out)
+		set -- --property=StandardOutput=null "$@"
+		systemd_stderr_target=$(systemd_default_stderr_target)
+		case "$systemd_stderr_target" in
+		'') ;;
+		*) set -- --property=StandardError="$systemd_stderr_target" "$@" ;;
+		esac
+		;;
+	err) set -- --property=StandardError=null "$@" ;;
+	both) set -- --property=StandardOutput=null --property=StandardError=null "$@" ;;
+	esac
+	SYSTEMD_RUN_ARGS_USEP=$(pack_args_usep "$@")
+}
+
+systemd_apply_unit_type_args() {
+	case "$UNIT_TYPE" in
+	scope)
+		SYSTEMD_RUN_ARGS_USEP=$(pack_args_usep --scope "$@")
+		;;
+	service)
+		systemd_apply_service_silence --property=Type=exec --property=ExitType=cgroup "$@"
+		return 0
+		;;
+	esac
+}
+
+systemd_maybe_print_test_command() {
+	case "$TEST_MODE" in
+	true)
+		printf '%s\n' 'Command and arguments:'
+		printf '  >%s<\n' systemd-run --user "$@"
+		return 0
+		;;
+	esac
+	return 1
+}
+
+systemd_apply_scope_output_silence() {
+	case "${UNIT_TYPE}_${SILENT}" in
+	scope_out) exec >/dev/null ;;
+	scope_err) exec 2>/dev/null ;;
+	scope_both) exec >/dev/null 2>&1 ;;
+	esac
+}
+
+systemd_run() {
+	# wrapper for systemd-run
+	# prepend common args
+	UNIT_SLICE_ID=${UNIT_SLICE_ID:-app-graphical.slice}
+	UNIT_DESCRIPTION="${UNIT_DESCRIPTION:-$(systemd_effective_unit_description)}"
+
+	set -- \
+		--slice="$UNIT_SLICE_ID" \
+		--unit="$UNIT_ID" \
+		--description="$UNIT_DESCRIPTION" \
+		--quiet \
+		--collect \
+		-- "$@"
+
+	if [ "$PART_OF_GST" = "true" ]; then
+		# prepend graphical session dependency/ordering args
+		set -- \
+			--property=After=graphical-session.target \
+			--property=PartOf=graphical-session.target \
+			"$@"
+	fi
+
+	if [ -n "$ENTRY_WORKDIR" ]; then
+		# prepend requested Path or samedir
+		set -- "--working-directory=${ENTRY_WORKDIR}" "$@"
+	else
+		set -- --same-dir "$@"
+	fi
+
+	systemd_apply_unit_type_args "$@"
+	IFS=$USEP
+	# shellcheck disable=SC2086
+	set -- $SYSTEMD_RUN_ARGS_USEP
+	IFS=$OIFS
+
+	debug "systemd run" "$(printf '  >%s<\n' systemd-run "$@")"
+
+	if systemd_maybe_print_test_command "$@"; then
+		return 0
+	fi
+
+	systemd_apply_scope_output_silence
+
+	# exec
+	exec systemd-run --user "$@"
+}
 
 pack_args_usep() {
 	[ "$#" -gt "0" ] || return 0

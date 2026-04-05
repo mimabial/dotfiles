@@ -31,8 +31,9 @@ require_jq() {
 }
 
 load_ipinfo_token() {
-  [[ -f "$HOME/.config/ipinfo.token" ]] || return 0
-  token="$(tr -d '[:space:]' < "$HOME/.config/ipinfo.token")"
+  local token_file="${XDG_CONFIG_HOME:-$HOME/.config}/ipinfo.token"
+  [[ -f "${token_file}" ]] || return 0
+  token="$(tr -d '[:space:]' < "${token_file}")"
 }
 
 enable_geolocation_if_allowed() {

@@ -98,29 +98,6 @@ hypr_border_metrics() {
     jq -s -r '[.[0].int // empty, .[1].int // empty] | @tsv' 2>/dev/null
 }
 
-hypr_cached_border_metrics() {
-  local border="${HYPR_RUNTIME_BORDER_RADIUS:-${HYPR_BORDER_RADIUS:-}}"
-  local width="${HYPR_RUNTIME_BORDER_WIDTH:-${HYPR_BORDER_WIDTH:-}}"
-
-  printf '%s\t%s\n' "${border}" "${width}"
-}
-
-hypr_resolved_border_metrics() {
-  local border=""
-  local width=""
-  local metrics=""
-
-  IFS=$'\t' read -r border width < <(hypr_cached_border_metrics)
-  if [[ ! "${border}" =~ ^[0-9]+$ || ! "${width}" =~ ^[0-9]+$ ]]; then
-    metrics="$(hypr_border_metrics || true)"
-    if [[ -n "${metrics}" ]]; then
-      IFS=$'\t' read -r border width <<< "${metrics}"
-    fi
-  fi
-
-  printf '%s\t%s\n' "${border}" "${width}"
-}
-
 hypr_resolved_gaps_out() {
   local gaps_out="${hypr_gaps_out:-}"
 
@@ -161,11 +138,18 @@ hypr_focused_monitor_geometry() {
 hypr_window_edge_padding_px() {
   local gaps_out=5
   local border_width=2
+  local metrics=""
 
   gaps_out="$(hypr_resolved_gaps_out 2>/dev/null || true)"
   [[ "${gaps_out}" =~ ^[0-9]+$ ]] || gaps_out=5
 
-  IFS=$'\t' read -r _ border_width <<<"$(hypr_resolved_border_metrics 2>/dev/null || true)"
+  border_width="${hypr_width:-${HYPR_RUNTIME_BORDER_WIDTH:-${HYPR_BORDER_WIDTH:-}}}"
+  if [[ ! "${border_width}" =~ ^[0-9]+$ ]]; then
+    metrics="$(hypr_border_metrics 2>/dev/null || true)"
+    if [[ -n "${metrics}" ]]; then
+      IFS=$'\t' read -r _ border_width <<< "${metrics}"
+    fi
+  fi
   [[ "${border_width}" =~ ^[0-9]+$ ]] || border_width=2
 
   printf '%s\n' "$((gaps_out * 2 + border_width))"

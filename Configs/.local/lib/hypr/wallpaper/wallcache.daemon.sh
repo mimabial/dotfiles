@@ -109,6 +109,8 @@ queue_wallpaper() {
 queue_theme() {
   local theme="${1}"
   local theme_dir=""
+  local -a theme_hashes=()
+  local -a theme_walls=()
   local wall
 
   [[ -n "${theme}" ]] || return 1
@@ -120,11 +122,11 @@ queue_theme() {
     return 1
   fi
 
-  if ! get_hashmap --no-notify --skipstrays "${theme_dir}"; then
+  if ! get_hashmap_into theme_hashes theme_walls "${theme_dir}"; then
     return 0
   fi
 
-  for wall in "${wallList[@]}"; do
+  for wall in "${theme_walls[@]}"; do
     queue_wallpaper "${wall}"
   done
 }
@@ -341,7 +343,7 @@ case "${mode}" in
           if [[ ! -d "${theme_dir}" ]] && [[ -d "$(dirname "${HYPR_THEME_DIR}")/${theme}" ]]; then
             theme_dir="$(dirname "${HYPR_THEME_DIR}")/${theme}"
           fi
-          if [[ -d "${theme_dir}" ]] && get_hashmap --no-notify --skipstrays "${theme_dir}"; then
+          if [[ -d "${theme_dir}" ]] && get_hashmap "${theme_dir}"; then
             for wall in "${wallList[@]}"; do
               fallback_args+=(-w "${wall}")
             done

@@ -15,7 +15,7 @@ run_low_prio() {
 
 wallpaper_cache_root() {
   local cache_root="${WALLPAPER_CACHE_DIR}"
-  [[ -z "${cache_root}" ]] && cache_root="${HYPR_CACHE_HOME:-$HOME/.cache/hypr}/wallpaper"
+  [[ -z "${cache_root}" ]] && cache_root="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/wallpaper"
   printf '%s\n' "${cache_root}"
 }
 

@@ -19,12 +19,15 @@
 #   pkg_installed()    - Check if a package is installed
 #   state_get/set()    - Unified state management API
 
-# xdg resolution
-export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
-export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
-export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
-export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
-export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+_hypr_xdg_lib="${LIB_DIR:-$HOME/.local/lib}/hypr/core/xdg.sh"
+[[ -r "${_hypr_xdg_lib}" ]] || {
+  printf 'ERROR: missing core module %s\n' "${_hypr_xdg_lib}" >&2
+  return 1 2>/dev/null || exit 1
+}
+# shellcheck source=/dev/null
+source "${_hypr_xdg_lib}" || { return 1 2>/dev/null || exit 1; }
+hypr_init_xdg_env
+unset _hypr_xdg_lib
 
 # hypr envs
 export HYPR_CONFIG_HOME="${XDG_CONFIG_HOME}/hypr"
@@ -54,7 +57,11 @@ hypr_ensure_global_arrays() {
   local array_name=""
 
   for array_name in "$@"; do
-    declare -p "${array_name}" >/dev/null 2>&1 || eval "declare -ag ${array_name}=()"
+    [[ "${array_name}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || {
+      printf 'ERROR: invalid array name %s\n' "${array_name}" >&2
+      return 1
+    }
+    declare -p "${array_name}" >/dev/null 2>&1 || declare -ga "${array_name}=()"
   done
 }
 
@@ -138,31 +145,4 @@ init_hypr_globals() {
 # Auto-initialize unless explicitly skipped
 if [[ "${HYPR_SKIP_INIT:-0}" -ne 1 ]]; then
   init_hypr_globals
-fi
-
-if [ -n "$BASH_VERSION" ]; then
-  export -f get_hypr_conf get_rofi_pos \
-    rofi_edge_padding_px \
-    rofi_user_dir rofi_shared_dir \
-    rofi_resolve_theme rofi_resolve_asset \
-    rofi_list_theme_files rofi_list_asset_files \
-    hypr_core_file hypr_variables_file hypr_config_layer_files hypr_trim_whitespace hypr_config_value_from_layers hypr_border_metrics hypr_cached_border_metrics hypr_resolved_border_metrics hypr_resolved_gaps_out hypr_focused_monitor_geometry hypr_window_edge_padding_px hypr_compact_path \
-    is_hovered ini_write \
-    find_wallpapers get_hashmap get_aur_helper \
-    set_hash \
-    get_themes print_log \
-    pkg_installed paste_string \
-    sed_escape_replacement \
-    extract_thumbnail accepted_mime_types \
-    notify_send_safe \
-    refresh_hypr_runtime_state export_hypr_config init_hypr_globals \
-    state_dir state_rc_file state_env_overrides_file state_color_variant_file \
-    state_read_value_from_file state_target_file \
-    state_acquire_lock state_release_lock \
-    state_write_color_variant_file state_write_key_value_file \
-    state_get state_set \
-    state_get_color_variant state_set_color_variant \
-    send_ephemeral_notif \
-    hypr_lock_manifest_file hypr_lock_runtime_dir hypr_load_lock_manifest \
-    hypr_lock_template hypr_lock_path
 fi

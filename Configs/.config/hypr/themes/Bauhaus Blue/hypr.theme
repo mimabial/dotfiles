@@ -21,7 +21,7 @@ general {
 
 group {
   col.border_active = rgba(003DA5ff)
-  col.border_inactive = rgba(4A4A4Affcc)
+  col.border_inactive = rgba(4A4A4Acc)
   col.border_locked_active = rgba(228B22ff)
   col.border_locked_inactive = rgba(4A4A4Acc)
 }

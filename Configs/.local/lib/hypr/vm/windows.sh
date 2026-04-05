@@ -1,9 +1,11 @@
 #!/bin/bash
 
-COMPOSE_FILE="$HOME/.config/windows/docker-compose.yml"
+XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+COMPOSE_FILE="${XDG_CONFIG_HOME}/windows/docker-compose.yml"
 WINDOWS_DATA_DIR="$HOME/.windows"
 WINDOWS_SHARE_DIR="$HOME/Windows"
-WINDOWS_APP_DIR="$HOME/.local/share/applications"
+WINDOWS_APP_DIR="${XDG_DATA_HOME}/applications"
 WINDOWS_ICON_DIR="$WINDOWS_APP_DIR/icons"
 WINDOWS_DESKTOP_FILE="$WINDOWS_APP_DIR/windows-vm.desktop"
 WINDOWS_CONTAINER_NAME="hypr-windows"
@@ -39,11 +41,11 @@ available_home_space_gb() {
 }
 
 ensure_windows_directories() {
-  mkdir -p "$WINDOWS_DATA_DIR" "$HOME/.config/windows" "$WINDOWS_ICON_DIR"
+  mkdir -p "$WINDOWS_DATA_DIR" "${XDG_CONFIG_HOME}/windows" "$WINDOWS_ICON_DIR"
 }
 
 copy_windows_icon() {
-  local source_icon="$HOME/.local/share/icons/windows.png"
+  local source_icon="${XDG_DATA_HOME}/icons/windows.png"
   local target_icon="$WINDOWS_ICON_DIR/windows.png"
 
   [ -f "$source_icon" ] || return 0
@@ -291,7 +293,7 @@ remove_windows() {
   docker_compose_down 2>/dev/null || true
   docker rmi dockurr/windows 2>/dev/null || echo "Image already removed or not found"
   rm -f "$WINDOWS_DESKTOP_FILE"
-  rm -rf "$HOME/.config/windows" "$WINDOWS_DATA_DIR"
+  rm -rf "${XDG_CONFIG_HOME}/windows" "$WINDOWS_DATA_DIR"
   echo ""
   echo "Windows VM removal completed!"
 }

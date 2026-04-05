@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CACHE_DIR="$HOME/.cache/wttr"
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/wttr"
 WEATHER_CACHE="$CACHE_DIR/weather.cache"
 LOCATION_CACHE="$CACHE_DIR/location.cache"
 EXPIRY_TIME=3600

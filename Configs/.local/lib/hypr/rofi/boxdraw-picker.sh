@@ -6,9 +6,9 @@ source "$(command -v hyprshell)" || exit 1
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
 
-boxdraw_dir=${HYPR_CONFIG_HOME:-$HOME/.config/hypr}
+boxdraw_dir=${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}
 boxdraw_data="${boxdraw_dir}/boxdraw.db"
-cache_dir="${HYPR_CACHE_HOME:-$HOME/.cache/hypr}"
+cache_dir="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}"
 recent_data="${cache_dir}/landing/show_boxdraw.recent"
 
 save_recent_entry() {

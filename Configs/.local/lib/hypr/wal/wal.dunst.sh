@@ -171,9 +171,14 @@ resolve_hypr_metric() {
 resolve_notification_font() {
   local layered_font_size=""
   local notification_font_size_candidate=""
+  local gsettings_icon_theme=""
 
   icon_theme="${ICON_THEME:-${GTK_ICON:-$(read_theme_var ICON_THEME)}}"
-  icon_theme="${icon_theme:-Tela-circle-dracula}"
+  if [[ -z "${icon_theme}" ]] && command -v gsettings >/dev/null 2>&1; then
+    gsettings_icon_theme="$(gsettings get org.gnome.desktop.interface icon-theme 2>/dev/null | tr -d "'" || true)"
+    icon_theme="${gsettings_icon_theme}"
+  fi
+  icon_theme="${icon_theme:-hicolor}"
   notification_font="$(pick_first "${NOTIFICATION_FONT:-}" "$(hypr_config_value_from_layers "NOTIFICATION_FONT" || true)" "$(hypr_config_value_from_layers "FONT" || true)")"
   layered_font_size="$(hypr_config_value_from_layers "FONT_SIZE" || true)"
   if [[ -n "${FONT_SIZE:-}" ]]; then
@@ -214,8 +219,8 @@ resolve_layout_metrics() {
   waybar_position="${waybar_position:-right}"
 
   origin="top-right"
-  offset_x="$((gaps_out * 2))"
-  offset_y="$((gaps_out * 2))"
+  offset_x="$((gaps_out * 2 + hypr_border))"
+  offset_y="$((gaps_out * 2 + hypr_border))"
   case "${waybar_position}" in
     left) origin="top-left" ;;
     bottom) origin="bottom-right" ;;
@@ -377,7 +382,7 @@ append_dynamic_global_section() {
     frame_width = ${border_size}
     progress_bar_corner_radius = ${hypr_border}
     icon_theme = "${icon_theme}"
-    corner_radius = ${hypr_border}
+    corner_radius = $((hypr_border * 2))
     icon_corner_radius = ${hypr_border}
 ${dunst_font_line}
 CONFIG

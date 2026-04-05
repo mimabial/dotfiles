@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-[ -f "$HOME/.cache/wal/colors-shell.sh" ] && source "$HOME/.cache/wal/colors-shell.sh"
+[ -f "${XDG_CACHE_HOME:-$HOME/.cache}/wal/colors-shell.sh" ] && source "${XDG_CACHE_HOME:-$HOME/.cache}/wal/colors-shell.sh"
 # shellcheck source=/dev/null
-source "$HOME/.local/lib/hypr/notify/github-notifications.lib.sh"
+source "${LIB_DIR:-$HOME/.local/lib}/hypr/notify/github-notifications.lib.sh"
 
 ensure_github_notification_deps
 load_github_notification_tokens

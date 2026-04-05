@@ -17,8 +17,9 @@ if [[ -f "$hash_file" && "$(cat "$hash_file" 2>/dev/null)" == "$input_hash" ]]; 
 fi
 
 # Copy to Sleek theme directory and apply
-if [ -d "$HOME/.config/spicetify/Themes/Sleek" ]; then
-  cp "$spotify_colors" "$HOME/.config/spicetify/Themes/Sleek/color.ini"
+spicetify_theme_dir="${XDG_CONFIG_HOME:-$HOME/.config}/spicetify/Themes/Sleek"
+if [ -d "$spicetify_theme_dir" ]; then
+  cp "$spotify_colors" "${spicetify_theme_dir}/color.ini"
   spicetify apply 2>/dev/null
   # Save hash for next run
   echo "$input_hash" > "$hash_file"

@@ -5,12 +5,7 @@ set -euo pipefail
 DOTFILES_DIR="${DOTFILES_DIR:-$HOME/dotfiles/Configs}"
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/hypr"
 STATE_FILE="${STATE_DIR}/host-profile"
-HOST_TARGETS=(
-  ".config/hypr/monitors.conf"
-  ".config/hypr/gpu.conf"
-  ".config/waybar/modules/temperature.jsonc"
-  ".local/state/hypr/env-overrides"
-)
+SYNC_MANIFEST_FILE="${DOTFILES_SYNC_MANIFEST:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr/dotfiles-sync.conf}"
 
 usage() {
   cat <<USAGE
@@ -33,6 +28,10 @@ die() {
 
 require_rsync() {
   command -v rsync >/dev/null 2>&1 || die "rsync is required"
+}
+
+require_sync_manifest() {
+  [[ -r "${SYNC_MANIFEST_FILE}" ]] || die "Sync manifest not found: ${SYNC_MANIFEST_FILE}"
 }
 
 path_exists() {
@@ -82,6 +81,10 @@ apply_profile() {
   local host_dir=""
   local rel=""
   local applied=0
+  local kind=""
+  local excludes=""
+  local extra=""
+  local -a host_targets=()
 
   if [[ -z "${profile}" ]]; then
     profile="$(current_profile || true)"
@@ -93,12 +96,22 @@ apply_profile() {
   [[ -d "${host_dir}" ]] || die "Host profile directory does not exist: ${host_dir}"
 
   require_rsync
+  require_sync_manifest
+
+  while IFS='|' read -r kind rel excludes extra; do
+    [[ -n "${kind}${rel}${excludes}${extra}" ]] || continue
+    [[ "${kind}" == \#* ]] && continue
+    [[ -z "${extra}" ]] || die "Invalid manifest entry: ${kind}|${rel}|${excludes}|${extra}"
+    [[ "${kind}" == "host" ]] || continue
+    [[ -n "${rel}" ]] || die "Invalid host manifest entry: ${kind}|${rel}|${excludes}"
+    host_targets+=("${rel}")
+  done < "${SYNC_MANIFEST_FILE}"
 
   printf 'Applying host profile: %s\n' "${profile}"
   printf 'Source: %s\n' "${host_dir}"
   $dry_run && echo '(DRY RUN - no changes will be made)'
 
-  for rel in "${HOST_TARGETS[@]}"; do
+  for rel in "${host_targets[@]}"; do
     if apply_target "${host_dir}" "${rel}" "${dry_run}"; then
       applied=1
     fi

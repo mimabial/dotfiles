@@ -13,13 +13,13 @@
 
 function _load_functions() {
     # Load all custom function files // Directories are ignored
-    for file in "${ZDOTDIR:-$HOME/.config/zsh}/functions/"*.zsh; do
+    for file in "${ZDOTDIR:-${XDG_CONFIG_HOME:-$HOME/.config}/zsh}/functions/"*.zsh; do
         [ -r "$file" ] && source "$file"
     done
 }
 
 function _load_completions() {
-    for file in "${ZDOTDIR:-$HOME/.config/zsh}/completions/"*.zsh; do
+    for file in "${ZDOTDIR:-${XDG_CONFIG_HOME:-$HOME/.config}/zsh}/completions/"*.zsh; do
         [ -r "$file" ] && source "$file"
     done
 }

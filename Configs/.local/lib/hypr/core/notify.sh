@@ -2,27 +2,32 @@
 
 #? avoid notification calls stalling the script
 notify_send_safe() {
+  local notifier=""
   local output=""
   local rc=0
 
-  if ! command -v dunstify >/dev/null 2>&1; then
-    printf 'WARN: dunstify is unavailable; notification skipped\n' >&2
+  if command -v notify-send >/dev/null 2>&1; then
+    notifier="$(command -v notify-send)"
+  elif command -v dunstify >/dev/null 2>&1; then
+    notifier="$(command -v dunstify)"
+  else
+    printf 'WARN: notification command unavailable; notification skipped\n' >&2
     return 1
   fi
 
   if command -v timeout >/dev/null 2>&1; then
-    output="$(timeout 2 dunstify "$@" 2>&1 >/dev/null)"
+    output="$(timeout 2 "${notifier}" "$@" 2>&1 >/dev/null)"
     rc=$?
   else
-    output="$(dunstify "$@" 2>&1 >/dev/null)"
+    output="$("${notifier}" "$@" 2>&1 >/dev/null)"
     rc=$?
   fi
 
   if ((rc != 0)); then
     if [[ -n "${output}" ]]; then
-      printf 'WARN: dunstify failed (%d): %s\n' "${rc}" "${output}" >&2
+      printf 'WARN: notification failed (%d): %s\n' "${rc}" "${output}" >&2
     else
-      printf 'WARN: dunstify failed (%d)\n' "${rc}" >&2
+      printf 'WARN: notification failed (%d)\n' "${rc}" >&2
     fi
     return "${rc}"
   fi

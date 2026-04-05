@@ -2,9 +2,10 @@
 
 set -euo pipefail
 
-script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 # shellcheck source=/dev/null
-source "${script_dir}/lib/brightness.common.bash"
+source "$(command -v hyprshell)" || exit 1
+# shellcheck source=/dev/null
+source "${LIB_DIR}/hypr/controls/lib/brightness.common.bash"
 
 action="${1:-}"
 runtime_dir="${XDG_RUNTIME_DIR:-/tmp}/hypr"

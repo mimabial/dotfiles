@@ -2,6 +2,7 @@
 
 set -euo pipefail
 
-scr_dir="$(cd -- "$(dirname -- "$0")" && pwd -P)"
+# shellcheck source=/dev/null
+source "$(command -v hyprshell)" || exit 1
 
-exec "${scr_dir}/volume-control.sh" -t
+exec "${LIB_DIR}/hypr/controls/volume-control.sh" -t

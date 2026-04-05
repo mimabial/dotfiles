@@ -8,12 +8,7 @@ DOTFILES_DIR="${DOTFILES_DIR:-$HOME/dotfiles/Configs}"
 DRY_RUN=false
 LIST_ONLY=false
 HOST_PROFILE_STATE_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/host-profile"
-HOST_TARGETS=(
-  ".config/hypr/monitors.conf"
-  ".config/hypr/gpu.conf"
-  ".config/waybar/modules/temperature.jsonc"
-  ".local/state/hypr/env-overrides"
-)
+SYNC_MANIFEST_FILE="${DOTFILES_SYNC_MANIFEST:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr/dotfiles-sync.conf}"
 
 usage() {
   cat <<USAGE
@@ -115,6 +110,13 @@ require_rsync() {
   fi
 }
 
+require_sync_manifest() {
+  if [[ ! -r "${SYNC_MANIFEST_FILE}" ]]; then
+    log_error "Sync manifest not found: ${SYNC_MANIFEST_FILE}"
+    exit 1
+  fi
+}
+
 host_profile_is_valid() {
   local profile="${1:-}"
   [[ -n "${profile}" && "${profile}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]
@@ -162,7 +164,11 @@ remove_path() {
 sync_host_profile_files() {
   local profile=""
   local host_root=""
-  local target=""
+  local kind=""
+  local rel_path=""
+  local excludes=""
+  local extra=""
+  local -a host_paths=()
 
   if profile="$(get_host_profile)"; then
     host_root="${DOTFILES_DIR}/hosts/${profile}"
@@ -170,8 +176,23 @@ sync_host_profile_files() {
     log_warn "No host profile selected; managed host-specific files will not be saved. Use dotfiles-host-profile set <profile>."
   fi
 
-  for target in "${HOST_TARGETS[@]}"; do
-    remove_path "${DOTFILES_DIR}/${target}" "root host file ${target}"
+  while IFS='|' read -r kind rel_path excludes extra; do
+    [[ -n "${kind}${rel_path}${excludes}${extra}" ]] || continue
+    [[ "${kind}" == \#* ]] && continue
+    [[ -z "${extra}" ]] || {
+      log_error "Invalid manifest entry: ${kind}|${rel_path}|${excludes}|${extra}"
+      exit 1
+    }
+    [[ "${kind}" == "host" ]] || continue
+    [[ -n "${rel_path}" ]] || {
+      log_error "Invalid host manifest entry: ${kind}|${rel_path}|${excludes}"
+      exit 1
+    }
+    host_paths+=("${rel_path}")
+  done < "${SYNC_MANIFEST_FILE}"
+
+  for rel_path in "${host_paths[@]}"; do
+    remove_path "${DOTFILES_DIR}/${rel_path}" "root host file ${rel_path}"
   done
 
   if [[ -z "${host_root}" ]]; then
@@ -184,8 +205,8 @@ sync_host_profile_files() {
     log_info "Syncing host profile '${profile}'..."
   fi
 
-  for target in "${HOST_TARGETS[@]}"; do
-    copy_file "${HOME}/${target}" "${host_root}/${target}" "hosts/${profile}/${target}"
+  for rel_path in "${host_paths[@]}"; do
+    copy_path file "${HOME}/${rel_path}" "${host_root}/${rel_path}" "hosts/${profile}/${rel_path}"
   done
 }
 
@@ -210,69 +231,53 @@ create_dirs() {
   done
 }
 
-# Copy a config directory
-copy_config() {
-  local src="$1"
-  local dest="$2"
-  local name="$3"
-  shift 3
+copy_path() {
+  local kind="$1"
+  local src="$2"
+  local dest="$3"
+  local name="$4"
+  shift 4
   local extra_excludes=("$@")
-  local rsync_args=()
-  local output=""
   local exclude_pattern=""
   local exclude_preview=""
+  local -a rsync_args=(-a --mkpath)
 
   if $LIST_ONLY; then
-    if ((${#extra_excludes[@]})); then
+    if [[ "${kind}" == "dir" ]] && ((${#extra_excludes[@]})); then
       exclude_preview="$(printf '%s, ' "${extra_excludes[@]}")"
       exclude_preview="${exclude_preview%, }"
       echo "PLAN DIR    $src -> $dest (exclude: $exclude_preview)"
     else
-      echo "PLAN DIR    $src -> $dest"
+      printf 'PLAN %-6s %s -> %s\n' "${kind^^}" "$src" "$dest"
     fi
     return
   fi
 
-  if [[ ! -e "$src" ]]; then
-    log_warn "Skipping $name (not found: $src)"
-    return
-  fi
+  if [[ "${kind}" == "dir" ]]; then
+    if [[ ! -e "$src" ]]; then
+      log_warn "Skipping $name (not found: $src)"
+      return
+    fi
 
-  if [[ ! -d "$src" ]]; then
-    copy_file "$src" "$dest" "$name"
-    return
-  fi
+    if [[ -d "$src" ]]; then
+      rsync_args+=(
+        --delete
+        --delete-excluded
+        --exclude='.git'
+        --exclude='__pycache__'
+        --exclude='*.pyc'
+        --exclude='node_modules'
+        --exclude='.cache'
+        --exclude='lazy-lock.json'
+      )
+      for exclude_pattern in "${extra_excludes[@]}"; do
+        rsync_args+=(--exclude="$exclude_pattern")
+      done
+      run_rsync_transfer "$name" true "${rsync_args[@]}" "$src"/ "$dest"/
+      return
+    fi
 
-  rsync_args=(
-    -a
-    --mkpath
-    --delete
-    --delete-excluded
-    --exclude='.git'
-    --exclude='__pycache__'
-    --exclude='*.pyc'
-    --exclude='node_modules'
-    --exclude='.cache'
-    --exclude='lazy-lock.json'
-  )
-  for exclude_pattern in "${extra_excludes[@]}"; do
-    rsync_args+=(--exclude="$exclude_pattern")
-  done
-
-  run_rsync_transfer "$name" true "${rsync_args[@]}" "$src"/ "$dest"/
-}
-
-# Copy a single file
-copy_file() {
-  local src="$1"
-  local dest="$2"
-  local name="$3"
-  local rsync_args=(-a --mkpath)
-  local output=""
-
-  if $LIST_ONLY; then
-    echo "PLAN FILE   $src -> $dest"
-    return
+    kind="file"
   fi
 
   if [[ ! -e "$src" && ! -L "$src" ]]; then
@@ -309,6 +314,57 @@ copy_file() {
   return 1
 }
 
+sync_manifest_mappings() {
+  local section="${1:-all}"
+  local kind=""
+  local rel_path=""
+  local excludes=""
+  local extra=""
+  local -a extra_excludes=()
+
+  while IFS='|' read -r kind rel_path excludes extra; do
+    [[ -n "${kind}${rel_path}${excludes}${extra}" ]] || continue
+    [[ "${kind}" == \#* ]] && continue
+    [[ -z "${extra}" ]] || {
+      log_error "Invalid manifest entry: ${kind}|${rel_path}|${excludes}|${extra}"
+      exit 1
+    }
+    [[ -n "${rel_path}" ]] || {
+      log_error "Invalid manifest entry: ${kind}|${rel_path}|${excludes}"
+      exit 1
+    }
+
+    case "${section}" in
+      config)
+        [[ "${rel_path}" == .local/* ]] && continue
+        ;;
+      local)
+        [[ "${rel_path}" == .local/* ]] || continue
+        ;;
+    esac
+
+    extra_excludes=()
+    if [[ -n "${excludes}" ]]; then
+      IFS=',' read -r -a extra_excludes <<< "${excludes}"
+    fi
+
+    case "${kind}" in
+      dir)
+        copy_path dir "${HOME}/${rel_path}" "${DOTFILES_DIR}/${rel_path}" "${rel_path}" "${extra_excludes[@]}"
+        ;;
+      file)
+        copy_path file "${HOME}/${rel_path}" "${DOTFILES_DIR}/${rel_path}" "${rel_path}"
+        ;;
+      host)
+        ;;
+      *)
+        log_error "Unknown manifest kind: ${kind}"
+        exit 1
+        ;;
+    esac
+  done < "${SYNC_MANIFEST_FILE}"
+}
+
 echo "========================================="
 echo "  Dotfiles Sync"
 echo "========================================="
@@ -325,6 +381,7 @@ echo
 if ! $LIST_ONLY; then
   require_rsync
 fi
+require_sync_manifest
 
 # Create directory structure
 if $LIST_ONLY; then
@@ -342,84 +399,7 @@ else
   log_info "Syncing ~/.config..."
 fi
 
-# Hyprland ecosystem
-copy_config "$HOME/.config/hypr" "$DOTFILES_DIR/.config/hypr" "hypr" \
-  "monitors.conf" \
-  "gpu.conf" \
-  "themes/colors.conf" \
-  "themes/theme.conf" \
-  "themes/wal.conf" \
-  "hyprlock/colors.conf" \
-  "shaders/.compiled.cache.glsl"
-copy_config "$HOME/.config/waybar" "$DOTFILES_DIR/.config/waybar" "waybar" \
-  "modules/temperature.jsonc" \
-  "colors.css" \
-  "theme.generated.css" \
-  "includes/border-radius.css" \
-  "includes/font.css" \
-  "includes/global.css" \
-  "includes/includes.json"
-copy_config "$HOME/.config/rofi" "$DOTFILES_DIR/.config/rofi" "rofi" \
-  "colors.rasi" \
-  "theme.generated.rasi"
-copy_config "$HOME/.config/dunst" "$DOTFILES_DIR/.config/dunst" "dunst" \
-  "dunstrc" \
-  "theme.conf" \
-  "theme.generated.conf"
-copy_config "$HOME/.config/wlogout" "$DOTFILES_DIR/.config/wlogout" "wlogout"
-
-# Terminals
-copy_config "$HOME/.config/kitty" "$DOTFILES_DIR/.config/kitty" "kitty" \
-  "colors.conf" \
-  "theme.generated.conf"
-copy_config "$HOME/.config/alacritty" "$DOTFILES_DIR/.config/alacritty" "alacritty" \
-  "colors.toml" \
-  "theme.generated.toml"
-
-# Shell
-copy_config "$HOME/.config/zsh" "$DOTFILES_DIR/.config/zsh" "zsh" \
-  ".zcompdump" \
-  ".zsh_history"
-copy_file "$HOME/.zshenv" "$DOTFILES_DIR/.zshenv" ".zshenv"
-
-# Theming
-copy_config "$HOME/.config/wal" "$DOTFILES_DIR/.config/wal" "wal"
-copy_config "$HOME/.config/Kvantum" "$DOTFILES_DIR/.config/Kvantum" "Kvantum"
-copy_config "$HOME/.config/gtk-3.0" "$DOTFILES_DIR/.config/gtk-3.0" "gtk-3.0" \
-  "colors.css"
-
-# Other apps
-copy_config "$HOME/.config/qt5ct" "$DOTFILES_DIR/.config/qt5ct" "qt5ct" \
-  "colors.conf"
-copy_config "$HOME/.config/qt6ct" "$DOTFILES_DIR/.config/qt6ct" "qt6ct" \
-  "colors.conf"
-copy_config "$HOME/.config/qutebrowser" "$DOTFILES_DIR/.config/qutebrowser" "qutebrowser"
-copy_config "$HOME/.config/nwg-look" "$DOTFILES_DIR/.config/nwg-look" "nwg-look"
-copy_config "$HOME/.config/menus" "$DOTFILES_DIR/.config/menus" "menus"
-copy_config "$HOME/.config/vim" "$DOTFILES_DIR/.config/vim" "vim" \
-  ".netrwhist"
-copy_config "$HOME/.config/xsettingsd" "$DOTFILES_DIR/.config/xsettingsd" "xsettingsd"
-copy_config "$HOME/.config/rmpc" "$DOTFILES_DIR/.config/rmpc" "rmpc" \
-  "themes/pywal16.ron" \
-  "themes/pywal16-big.ron" \
-  "themes/pywal16-small.ron"
-copy_config "$HOME/.config/systemd" "$DOTFILES_DIR/.config/systemd" "systemd"
-copy_config "$HOME/.config/uwsm" "$DOTFILES_DIR/.config/uwsm" "uwsm"
-copy_file "$HOME/.config/xdg-terminals.list" "$DOTFILES_DIR/.config/xdg-terminals.list" "xdg-terminals.list"
-copy_file "$HOME/.config/kdeglobals" "$DOTFILES_DIR/.config/kdeglobals" "kdeglobals"
-copy_file "$HOME/.config/baloofilerc" "$DOTFILES_DIR/.config/baloofilerc" "baloofilerc"
-copy_file "$HOME/.config/dolphinrc" "$DOTFILES_DIR/.config/dolphinrc" "dolphinrc"
-copy_file "$HOME/.config/satty/config.toml" "$DOTFILES_DIR/.config/satty/config.toml" "satty/config.toml"
-copy_file "$HOME/.config/mpd/mpd.conf" "$DOTFILES_DIR/.config/mpd/mpd.conf" "mpd/mpd.conf"
-copy_file "$HOME/.config/yt-dlp/config" "$DOTFILES_DIR/.config/yt-dlp/config" "yt-dlp/config"
-copy_file "$HOME/.config/bat/config" "$DOTFILES_DIR/.config/bat/config" "bat/config"
-copy_config "$HOME/.config/tmux" "$DOTFILES_DIR/.config/tmux" "tmux" \
-  "plugins/" \
-  "colors.conf" \
-  "theme.generated.conf"
-copy_config "$HOME/.config/starship.toml" "$DOTFILES_DIR/.config/starship.toml" "starship"
-copy_config "$HOME/.config/fastfetch" "$DOTFILES_DIR/.config/fastfetch" "fastfetch"
-copy_config "$HOME/.config/cava" "$DOTFILES_DIR/.config/cava" "cava"
+sync_manifest_mappings config
 sync_host_profile_files
 
 echo
@@ -431,24 +411,7 @@ else
   log_info "Syncing ~/.local..."
 fi
 
-# Scripts library
-copy_config "$HOME/.local/lib/hypr" "$DOTFILES_DIR/.local/lib/hypr" "lib/hypr scripts"
-
-# Share files (explicit allowlist)
-copy_config "$HOME/.local/share/fonts" "$DOTFILES_DIR/.local/share/fonts" "share/fonts"
-copy_config "$HOME/.local/share/hypr" "$DOTFILES_DIR/.local/share/hypr" "share/hypr"
-copy_config "$HOME/.local/share/waybar" "$DOTFILES_DIR/.local/share/waybar" "share/waybar"
-copy_config "$HOME/.local/share/rofi" "$DOTFILES_DIR/.local/share/rofi" "share/rofi"
-copy_config "$HOME/.local/share/icons" "$DOTFILES_DIR/.local/share/icons" "share/icons"
-copy_config "$HOME/.local/share/themes" "$DOTFILES_DIR/.local/share/themes" "share/themes"
-
-# Sync ~/.local/bin as a real mirror, excluding the claude launcher symlink
-if $LIST_ONLY; then
-  log_info "Planning ~/.local/bin mappings (excluding claude)..."
-else
-  log_info "Syncing ~/.local/bin (excluding claude)..."
-fi
-copy_config "$HOME/.local/bin" "$DOTFILES_DIR/.local/bin" "bin" "claude"
+sync_manifest_mappings local
 
 echo
 echo "========================================="

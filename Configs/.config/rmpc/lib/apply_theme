@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+
+set -uo pipefail
+
+config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
+config_path="${RMPC_CONFIG_PATH:-${config_home}/rmpc/config.ron}"
+target_theme="${1:-}"
+target_theme_path="${2:-${config_home}/rmpc/themes/${target_theme}.ron}"
+backup_path="${config_path}.bak"
+tabs_file=""
+restore_config=0
+
+cleanup() {
+  rm -f "${tabs_file}" 2>/dev/null || true
+  if ((restore_config)) && [[ -f "${backup_path}" ]]; then
+    mv -f "${backup_path}" "${config_path}"
+  fi
+}
+
+trap cleanup EXIT
+
+[[ -n "${target_theme}" ]] || exit 2
+[[ -f "${config_path}" ]] || exit 1
+[[ -f "${target_theme_path}" ]] || exit 1
+command -v python3 >/dev/null 2>&1 || exit 1
+
+current_theme="$(grep -oP 'theme:\s*Some\("\K[^"]+' "${config_path}" 2>/dev/null || true)"
+[[ "${current_theme}" == "${target_theme}" ]] && exit 0
+
+tabs_file="$(mktemp)" || exit 1
+awk '
+  /^    tabs:[[:space:]]*\[/ { in_tabs=1 }
+  in_tabs { print }
+  in_tabs && /^    \],?[[:space:]]*$/ { exit }
+' "${target_theme_path}" >"${tabs_file}"
+[[ -s "${tabs_file}" ]] || exit 1
+
+cp "${config_path}" "${backup_path}" || exit 1
+restore_config=1
+sed -i "s/theme: Some(\"[^\"]*\")/theme: Some(\"${target_theme}\")/" "${config_path}" || exit 1
+
+if ! TABS_PATH="${tabs_file}" RMPC_CONFIG_PATH="${config_path}" python3 <<'PYEOF'
+import os
+
+config_path = os.environ["RMPC_CONFIG_PATH"]
+tabs_path = os.environ["TABS_PATH"]
+
+with open(config_path, "r") as f:
+    lines = f.readlines()
+
+with open(tabs_path, "r") as f:
+    tabs_content = f.read()
+
+new_lines = []
+in_tabs = False
+tabs_indent_level = None
+
+for line in lines:
+    if "    tabs:" in line and "[" in line:
+        in_tabs = True
+        tabs_indent_level = len(line) - len(line.lstrip())
+        continue
+
+    if in_tabs:
+        indent = len(line) - len(line.lstrip())
+        stripped = line.strip()
+        if indent == tabs_indent_level and stripped in ("],", "]"):
+            in_tabs = False
+            continue
+
+    if not in_tabs:
+        new_lines.append(line)
+
+for i in range(len(new_lines) - 1, -1, -1):
+    if new_lines[i].strip() == ")":
+        while i > 0 and new_lines[i - 1].strip() == "":
+            i -= 1
+            new_lines.pop(i)
+        new_lines.insert(i, "\n")
+        new_lines.insert(i, tabs_content + "\n")
+        new_lines.insert(i, "\n")
+        break
+
+with open(config_path, "w") as f:
+    f.writelines(new_lines)
+PYEOF
+then
+  exit 1
+fi
+
+restore_config=0
+rm -f "${backup_path}"

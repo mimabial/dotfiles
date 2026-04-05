@@ -61,7 +61,7 @@ if [[ "${selected_color_mode}" -gt 0 ]]; then
 \$COLOR_SCHEME = $(resolve_wallpaper_color_scheme)
 
 WAL
-  cat "$HOME/.cache/wal/colors-hyprland.conf" >>"${HYPR_CONFIG_HOME}/themes/wal.conf" 2>/dev/null || true
+  cat "${XDG_CACHE_HOME:-$HOME/.cache}/wal/colors-hyprland.conf" >>"${HYPR_CONFIG_HOME}/themes/wal.conf" 2>/dev/null || true
 else
   # Theme mode: only set $HYPR_THEME; colors and metadata come from theme.conf
   cat <<WAL >"${HYPR_CONFIG_HOME}/themes/wal.conf"

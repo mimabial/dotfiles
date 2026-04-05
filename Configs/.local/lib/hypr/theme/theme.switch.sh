@@ -37,19 +37,17 @@ exec 201>"${THEME_SWITCH_LOCK}"
   exit 0
 }
 
-theme_switch_source_lib() {
-  local lib_file="$1"
-  if [[ ! -r "${lib_file}" ]]; then
-    print_log -sec "theme" -err "source" "missing ${lib_file}"
-    return 1
+for theme_switch_lib in \
+  "${LIB_DIR}/hypr/theme/lib/theme.switch.config.bash" \
+  "${LIB_DIR}/hypr/theme/lib/theme.switch.ui.bash" \
+  "${LIB_DIR}/hypr/theme/lib/theme.switch.wallpaper.bash"; do
+  if [[ ! -r "${theme_switch_lib}" ]]; then
+    print_log -sec "theme" -err "source" "missing ${theme_switch_lib}"
+    exit 1
   fi
   # shellcheck source=/dev/null
-  source "${lib_file}"
-}
-
-theme_switch_source_lib "${LIB_DIR}/hypr/theme/lib/theme.switch.config.bash" || exit 1
-theme_switch_source_lib "${LIB_DIR}/hypr/theme/lib/theme.switch.ui.bash" || exit 1
-theme_switch_source_lib "${LIB_DIR}/hypr/theme/lib/theme.switch.wallpaper.bash" || exit 1
+  source "${theme_switch_lib}" || exit 1
+done
 
 disable_hypr_autoreload() {
   [[ -n "${HYPRLAND_INSTANCE_SIGNATURE}" ]] || return 0
@@ -268,7 +266,7 @@ configure_gtk() {
       --filesystem="${THEMES_DIR}" \
       --filesystem="$HOME/.themes" \
       --filesystem="$HOME/.icons" \
-      --filesystem="$HOME/.local/share/icons" \
+      --filesystem="${XDG_DATA_HOME:-$HOME/.local/share}/icons" \
       --env=GTK_THEME="${gtk4Theme}" \
       --env=ICON_THEME="${ICON_THEME}"
     flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo &

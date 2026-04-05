@@ -2,11 +2,10 @@
 
 set -u
 
-scr_dir="$(cd -- "$(dirname -- "$0")" && pwd -P)"
 # shellcheck source=/dev/null
-source "${scr_dir}/lib/control.common.bash"
+source "$(command -v hyprshell)" || exit 1
 # shellcheck source=/dev/null
-source "${scr_dir}/lib/brightness.common.bash"
+source "${LIB_DIR}/hypr/controls/lib/brightness.common.bash"
 
 is_notify="${BRIGHTNESS_NOTIFY:-true}"
 default_step="${BRIGHTNESS_STEPS:-5}"
