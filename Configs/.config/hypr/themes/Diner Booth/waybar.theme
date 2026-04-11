@@ -1,0 +1,40 @@
+$HOME/.config/waybar/theme.css
+
+@define-color bg #EEE2D0; /* warmer diner cream */
+@define-color fg #3C5478; /* RAL 5007 Brilliant Blue */
+@define-color br #D8CCB8; /* warm stone border */
+
+@define-color alt_bg #EEE2D0;
+@define-color alt_fg #376B8C; /* RAL 5007 Brilliant Blue */
+@define-color alt_br #F7B500; /* RAL 1023 Traffic Yellow */
+
+@define-color act_bg #EEE2D0;
+@define-color act_fg #F4EEE3;
+@define-color act_br #F7B500;
+
+@define-color hvr_bg #E5D8C6;
+@define-color hvr_fg @fg;
+@define-color hvr_br #CC2C24;
+
+@define-color c0 #3C5478;
+@define-color c1 #376B8C;
+@define-color c2 #6F9A84;
+@define-color c3 #C49800;
+@define-color c4 #CC2C24;
+@define-color c5 #B06F78;
+@define-color c6 #6F9996;
+@define-color c7 #D8CCB8;
+@define-color c8 #6B7B8C;
+@define-color c9 #4A88B0;
+@define-color c10 #87B29C;
+@define-color c11 #F7B500;
+@define-color c12 #E04038;
+@define-color c13 #CC8A92;
+@define-color c14 #87B1AE;
+@define-color c15 #F4EEE3;
+
+@define-color accent #CC2C24;
+@define-color info @c6;
+@define-color warning #E08C00; /* warm orange */
+@define-color error @c1;
+@define-color success @c2;

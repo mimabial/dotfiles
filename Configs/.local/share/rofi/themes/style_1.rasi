@@ -28,7 +28,7 @@ configuration {
 
 // Main //
 window {
-    height:                      33em;
+    height:                      30em;
     transparency:                "real";
     fullscreen:                  false;
     enabled:                     true;
@@ -61,8 +61,8 @@ inputbox {
 mode-switcher{
     orientation:                 vertical;
     enabled:                     true;
-    width:                       3.8em;
-    padding:                     9.2em 0.5em 9.2em 0.5em;
+    width:                       4.7em;
+    padding:                     8em 1em;
     spacing:                     1.2em;
     background-color:            transparent;
 }
@@ -104,7 +104,7 @@ listview {
     spacing:                     0em;
     padding:                     0em 2em;
     columns:                     1;
-    lines:                       8;
+    lines:                       7;
     cycle:                       true;
     dynamic:                     true;
     scrollbar:                   false;

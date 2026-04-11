@@ -193,6 +193,7 @@ write_kde_scheme_identity() {
 write_kde_scheme_palette() {
   [[ -f "${kde_scheme_file}" ]] || return 0
   kde_write_entries "${kde_scheme_file}" \
+    $'Colors:View\tBackgroundAlternate\t'"${bg_rgb}" \
     $'Colors:View\tBackgroundNormal\t'"${bg_rgb}" \
     $'Colors:View\tForegroundNormal\t'"${fg_rgb}" \
     $'Colors:View\tDecorationFocus\t'"${accent_rgb}" \
@@ -209,6 +210,7 @@ write_kde_scheme_palette() {
 
 write_kdeglobals_palette() {
   local -a kdeglobals_entries=(
+    $'Colors:View\tBackgroundAlternate\t'"${bg_rgb}"
     $'Colors:View\tBackgroundNormal\t'"${bg_rgb}"
     $'Colors:View\tForegroundNormal\t'"${fg_rgb}"
     $'Colors:View\tDecorationFocus\t'"${accent_rgb}"

@@ -67,8 +67,8 @@ menu_run_action_system() {
     update_password_user) present_terminal passwd ;;
     system_lock) hyprshell session/hyprlock.sh ;;
     system_suspend) systemctl suspend ;;
-    system_restart) hyprshell cmd-restart ;;
-    system_shutdown) hyprshell util/state.sh clear 're*-required' && systemctl poweroff --no-wall ;;
+    system_restart) hyprshell reboot.sh ;;
+    system_shutdown) hyprshell shutdown.sh ;;
     *) return 1 ;;
   esac
 

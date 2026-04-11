@@ -883,7 +883,6 @@ rofi_wallpaper_width_override() {
   local theme_file="$1"
   local font_name="$2"
   local font_scale="$3"
-  local margin_px="$4"
   local wall_image="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wallpaper/current/wall.thmb"
   local monitor_width_logical=""
   local theme_name=""
@@ -897,14 +896,17 @@ rofi_wallpaper_width_override() {
   local font_px_milli=0
   local ratio_million=0
   local width_milli=0
-  local margin_milli=0
+  local gaps_out_px="0"
+  local border_radius_px="0"
+  local gaps_out_milli=0
+  local border_radius_milli=0
+  local clamp_inset_milli=0
   local max_width_milli=0
   local monitor_width_milli=0
   local post_clamp_reduction_milli=0
   local width_value_milli=0
 
   [[ -n "${theme_file}" ]] || return 0
-  margin_milli="$(rofi_decimal_milli_or_zero "${margin_px}")"
 
   theme_name="$(basename "${theme_file}")"
   theme_name="${theme_name%.rasi}"
@@ -934,10 +936,30 @@ rofi_wallpaper_width_override() {
     width_milli=$((((theme_height_milli * ratio_million) - 500000) / 1000000))
   fi
 
+  local gaps_json=""
+  gaps_json="$(rofi_option_json general:gaps_out)"
+  if [[ "${gaps_json}" == \{* ]]; then
+    gaps_out_px="$(
+      printf '%s\n' "${gaps_json}" | jq -r '
+        if (.int? != null and (.int | tostring) != "") then
+          .int
+        elif (.custom? != null and .custom != "") then
+          (.custom | split(" ")[0])
+        else
+          empty
+        end
+      ' 2>/dev/null | head -n 1
+    )"
+  fi
+  border_radius_px="$(rofi_default_border_radius 0)"
+  gaps_out_milli="$(rofi_decimal_milli_or_zero "${gaps_out_px}")"
+  border_radius_milli="$(rofi_decimal_milli_or_zero "${border_radius_px}")"
+  clamp_inset_milli=$(((gaps_out_milli + border_radius_milli) * 2))
+
   if [[ -n "${monitor_width_logical}" ]]; then
     monitor_width_milli="$(rofi_decimal_milli_or_zero "${monitor_width_logical}")"
-    if ((monitor_width_milli > (margin_milli * 2))); then
-      max_width_milli=$((monitor_width_milli - (margin_milli * 2)))
+    if ((monitor_width_milli > clamp_inset_milli)); then
+      max_width_milli=$((monitor_width_milli - clamp_inset_milli))
       if ((width_milli > max_width_milli)); then
         did_clamp=1
         width_milli="${max_width_milli}"

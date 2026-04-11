@@ -1,0 +1,57 @@
+$HOME/.config/kitty/theme.conf
+
+# GMK Diner Light colorscheme for kitty
+# RAL 1023 yellow, RAL 3028 red, RAL 5007/5000 blue
+
+cursor                  #3C5478
+cursor_text_color       background
+
+visual_bell_color       #6F9A84
+bell_border_color       #6F9A84
+
+active_border_color     #F7B500
+inactive_border_color   #D8CCB8
+
+active_tab_foreground   #CC2C24
+active_tab_background   #E5D8C6
+inactive_tab_foreground #6B7B8C
+inactive_tab_background #EEE2D0
+tab_bar_background      #D8CCB8
+
+foreground              #3C5478
+background              #EEE2D0
+selection_foreground    #F4EEE3
+selection_background    #F7B500
+url_color               #CC2C24
+
+# black
+color0   #3C5478
+color8   #6B7B8C
+
+# red — RAL 3028 Pure Red
+color1   #CC2C24
+color9   #E04038
+
+# green
+color2   #6F9A84
+color10  #87B29C
+
+# yellow — RAL 1023 Traffic Yellow (darkened for text readability)
+color3   #C49800
+color11  #F7B500
+
+# blue — RAL 5007 Brilliant Blue
+color4  #376B8C
+color12 #4A88B0
+
+# rose
+color5   #B06F78
+color13  #CC8A92
+
+# aqua
+color6   #6F9996
+color14  #87B1AE
+
+# white
+color7   #D8CCB8
+color15  #F4EEE3

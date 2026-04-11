@@ -1,0 +1,43 @@
+$HOME/.config/tmux/theme.conf
+
+# Tmux theme for GMK Diner Light
+# RAL 1023 yellow, RAL 3028 red, RAL 5007/5000 blue
+
+# Standard 16 color palette
+set -g @color0 "#3C5478"
+set -g @color1 "#CC2C24"
+set -g @color2 "#6F9A84"
+set -g @color3 "#C49800"
+set -g @color4 "#376B8C"
+set -g @color5 "#B06F78"
+set -g @color6 "#6F9996"
+set -g @color7 "#D8CCB8"
+set -g @color8 "#6B7B8C"
+set -g @color9 "#E04038"
+set -g @color10 "#87B29C"
+set -g @color11 "#F7B500"
+set -g @color12 "#4A88B0"
+set -g @color13 "#CC8A92"
+set -g @color14 "#87B1AE"
+set -g @color15 "#F4EEE3"
+
+# Semantic color aliases
+set -g @theme_bg "#EEE2D0"
+set -g @theme_black "#F7B500"
+set -g @theme_fg "#3C5478"
+set -g @theme_accent "#CC2C24"
+set -g @theme_gray "#6B7B8C"
+set -g @theme_red "#CC2C24"
+set -g @theme_green "#6F9A84"
+set -g @theme_yellow "#F7B500"
+
+# Tmux color settings
+set -g status-style "bg=default,fg=#3C5478"
+set -g message-style "bg=#EEE2D0,fg=#F7B500"
+set -g message-command-style "bg=#EEE2D0,fg=#F7B500"
+set -g pane-border-style "fg=#D8CCB8"
+set -g pane-active-border-style "fg=#F7B500"
+set -g window-status-style "fg=#6B7B8C"
+set -g window-status-current-style "fg=#F7B500,bold"
+set -g mode-style "bg=#F7B500,fg=#F4EEE3"
+set -g clock-mode-colour "#F7B500"

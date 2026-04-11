@@ -182,7 +182,6 @@ sanitize_hypr_theme() {
     "^ *decoration[^:]*: *col.shadow* *="
     "^ *shadow_"
     "^ *col.shadow*"
-    "^ *shadow:"
   )
 
   dirty_regex+=("${HYPR_CONFIG_SANITIZE[@]}")

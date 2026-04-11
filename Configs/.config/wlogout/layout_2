@@ -14,14 +14,14 @@
 
 {
     "label": "shutdown",
-    "action": "systemctl poweroff",
+    "action": "hyprshell shutdown.sh",
     "text": "Shutdown",
     "keybind": "s"
 }
 
 {
     "label": "reboot",
-    "action": "systemctl reboot",
+    "action": "hyprshell reboot.sh",
     "text": "Reboot",
     "keybind": "r"
 }

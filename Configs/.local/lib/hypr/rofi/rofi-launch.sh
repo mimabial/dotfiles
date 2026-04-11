@@ -190,11 +190,9 @@ width_override_args() {
   local rofi_theme_file="$1"
   local font_name="$2"
   local font_scale="$3"
-  local margin_px="${ROFI_LAUNCH_MARGIN_PX:-${ROFI_LAUNCH_MARGIN:-0}}"
   local width_override=""
 
-  [[ "${margin_px}" =~ ^[0-9]+$ ]] || margin_px=0
-  width_override="$(rofi_wallpaper_width_override "${rofi_theme_file}" "${font_name}" "${font_scale}" "${margin_px}")"
+  width_override="$(rofi_wallpaper_width_override "${rofi_theme_file}" "${font_name}" "${font_scale}")"
   [[ -n "${width_override}" ]] && printf '%s\0%s\n' "-theme-str" "${width_override}"
 }
 

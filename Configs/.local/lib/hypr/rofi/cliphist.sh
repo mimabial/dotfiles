@@ -14,6 +14,70 @@ favorites_file="${cache_dir}/landing/cliphist_favorites"
 cliphist_style="${ROFI_CLIPHIST_STYLE:-clipboard}"
 cliphist_style="$(rofi_resolve_theme "${cliphist_style}")"
 del_mode=false
+action_delete="__action__:delete"
+action_wipe="__action__:wipe"
+action_copy="__action__:copy"
+action_favorites="__action__:favorites"
+action_options="__action__:options"
+action_back="__action__:back"
+action_image_history="__action__:image-history"
+action_scan_image="__action__:scan-image"
+action_scan_qr="__action__:scan-qr"
+
+cliphist_action_id() {
+  printf '%s\n' "${1%%$'\t'*}"
+}
+
+cliphist_dispatch_action() {
+  case "$1" in
+    "${action_copy}")
+      "${0}" --copy
+      ;;
+    "${action_delete}")
+      "${0}" --delete
+      ;;
+    "${action_wipe}")
+      "${0}" --wipe
+      ;;
+    "${action_favorites}")
+      "${0}" --favorites
+      ;;
+    "${action_options}")
+      "${0}"
+      ;;
+    "${action_back}")
+      main
+      ;;
+    "${action_image_history}")
+      "${0}" --image-history
+      ;;
+    "${action_scan_image}")
+      "${0}" --scan-image
+      ;;
+    "${action_scan_qr}")
+      "${0}" --scan-qr
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+
+  return 0
+}
+
+cliphist_action_from_exit_code() {
+  case "$1" in
+    10) printf '%s\n' "${action_copy}" ;;
+    11) printf '%s\n' "${action_delete}" ;;
+    12) printf '%s\n' "${action_favorites}" ;;
+    13) printf '%s\n' "${action_wipe}" ;;
+    14) printf '%s\n' "${action_options}" ;;
+    15) printf '%s\n' "${action_image_history}" ;;
+    16) printf '%s\n' "${action_scan_image}" ;;
+    17) printf '%s\n' "${action_scan_qr}" ;;
+    *) return 1 ;;
+  esac
+}
 
 latest_image_history_entry() {
   local line=""
@@ -31,30 +95,17 @@ latest_image_history_entry() {
 
 # process clipboard selections for multi-select mode
 process_selections() {
+  local first_action=""
+
   if [ true != "${del_mode}" ]; then
     # Read the entire input into an array
     mapfile -t lines #! Not POSIX compliant
     # Get the total number of lines
     total_lines=${#lines[@]}
+    first_action="$(cliphist_action_id "${lines[0]:-}")"
 
     # handle special commands
-    if [[ "${lines[0]}" = ":d:e:l:e:t:e:"* ]]; then
-      "${0}" --delete
-      return
-    elif [[ "${lines[0]}" = ":w:i:p:e:"* ]]; then
-      "${0}" --wipe
-      return
-    elif [[ "${lines[0]}" = ":b:a:r:"* ]] || [[ "${lines[0]}" = *":c:o:p:y:"* ]]; then
-      "${0}" --copy
-      return
-    elif [[ "${lines[0]}" = ":f:a:v:"* ]]; then
-      "${0}" --favorites
-      return
-    elif [[ "${lines[0]}" = ":o:p:t:"* ]]; then
-      "${0}"
-      return
-    elif [[ "${lines[0]}" = ":b:a:c:k:"* ]]; then
-      main
+    if cliphist_dispatch_action "${first_action}"; then
       return
     fi
 
@@ -75,17 +126,23 @@ process_selections() {
   else
     # handle delete mode
     while IFS= read -r line; do
-      if [[ "${line}" = ":w:i:p:e:"* ]]; then
-        "${0}" --wipe
-        break
-      elif [[ "${line}" = ":b:a:c:k:"* ]]; then
-        del_mode=false
-        main
-        break
-      elif [ -n "$line" ]; then
-        cliphist delete <<<"${line}"
-        dunstify -t 3000 -i "edit-delete" "Deleted" "${line}"
-      fi
+      case "$(cliphist_action_id "${line}")" in
+        "${action_wipe}")
+          cliphist_dispatch_action "${action_wipe}"
+          break
+          ;;
+        "${action_back}")
+          del_mode=false
+          cliphist_dispatch_action "${action_back}"
+          break
+          ;;
+        "")
+          ;;
+        *)
+          cliphist delete <<<"${line}"
+          dunstify -t 3000 -i "edit-delete" "Deleted" "${line}"
+          ;;
+      esac
     done
     exit 0
   fi
@@ -121,8 +178,31 @@ run_rofi() {
 
   [[ -n "${cliphist_window_theme:-}" ]] && rofi_args+=(-theme-str "${cliphist_window_theme}")
   [[ -n "${_rofi_opacity:-}" ]] && rofi_args+=(-theme-str "${_rofi_opacity}")
+  rofi_args+=(
+    -kb-custom-1 "Alt+c"
+    -kb-custom-2 "Alt+d"
+    -kb-custom-3 "Alt+n"
+    -kb-custom-4 "Alt+w"
+    -kb-custom-5 "Alt+o"
+    -kb-custom-6 "Alt+v"
+    -kb-custom-7 "Alt+s"
+    -kb-custom-8 "Alt+q"
+  )
 
-  rofi "${rofi_args[@]}" "$@"
+  local rofi_output=""
+  rofi_output="$(rofi "${rofi_args[@]}" "$@")"
+  local rofi_status=$?
+
+  if ((rofi_status == 0)); then
+    printf '%s' "${rofi_output}"
+    return 0
+  fi
+
+  if cliphist_action_from_exit_code "${rofi_status}"; then
+    return 0
+  fi
+
+  return "${rofi_status}"
 }
 
 # setup rofi configuration
@@ -178,8 +258,8 @@ prepare_favorites_for_display() {
 show_history() {
   local selected_item
   selected_item=$( (
-    echo -e ":f:a:v:\t📌 Favorites"
-    echo -e ":o:p:t:\t⚙️ Options"
+    printf '%s\t%s\n' "${action_favorites}" "📌 Favorites"
+    printf '%s\t%s\n' "${action_options}" "⚙️ Options"
     cliphist list
   ) | run_rofi " 📜 History" -i -display-columns 2 -selected-row 2)
 
@@ -219,6 +299,9 @@ show_image_history() {
   )"
 
   [[ -n "${selected_item}" ]] || exit 0
+  if cliphist_dispatch_action "$(cliphist_action_id "${selected_item}")"; then
+    return
+  fi
 
   if printf '%s\n' "${selected_item}" | check_content; then
     process_selections <<<"${selected_item}" | wl-copy
@@ -235,10 +318,13 @@ delete_items() {
   export del_mode=true
   local selected_items
   selected_items=$( (
-    echo -e ":b:a:c:k:\tBack"
+    printf '%s\t%s\n' "${action_back}" "Back"
     cliphist list
   ) | run_rofi " 🗑️ Delete" -i -display-columns 2 -selected-row 1)
 
+  if cliphist_dispatch_action "$(cliphist_action_id "${selected_items}")"; then
+    return
+  fi
   [ -n "${selected_items}" ] && echo "${selected_items}" | process_selections
 }
 
@@ -251,6 +337,9 @@ view_favorites() {
 
   local selected_favorite
   selected_favorite=$(printf "Back\n%s\n" "${decoded_lines[@]}" | run_rofi "📌 View Favorites")
+  if cliphist_dispatch_action "$(cliphist_action_id "${selected_favorite}")"; then
+    return
+  fi
 
   # Handle back navigation
   if [ "$selected_favorite" = "Back" ]; then
@@ -281,12 +370,15 @@ add_to_favorites() {
 
   local item
   item=$( (
-    echo -e ":b:a:c:k:\tBack"
+    printf '%s\t%s\n' "${action_back}" "Back"
     cliphist list
   ) | run_rofi "➕ Add to Favorites..." -i -display-columns 2 -selected-row 1)
+  if cliphist_dispatch_action "$(cliphist_action_id "${item}")"; then
+    return
+  fi
 
   # Handle back navigation
-  if [[ "${item}" = ":b:a:c:k:"* ]]; then
+  if [[ "$(cliphist_action_id "${item}")" == "${action_back}" ]]; then
     manage_favorites
     return
   fi
@@ -317,6 +409,9 @@ delete_from_favorites() {
 
   local selected_favorite
   selected_favorite=$(printf "Back\n%s\n" "${decoded_lines[@]}" | run_rofi "➖ Remove from Favorites...")
+  if cliphist_dispatch_action "$(cliphist_action_id "${selected_favorite}")"; then
+    return
+  fi
 
   # Handle back navigation
   if [ "$selected_favorite" = "Back" ]; then
@@ -370,6 +465,9 @@ clear_favorites() {
   if [ -f "$favorites_file" ] && [ -s "$favorites_file" ]; then
     local confirm
     confirm=$(echo -e "Back\nYes\nNo" | run_rofi "☢️ Clear All Favorites?")
+    if cliphist_dispatch_action "$(cliphist_action_id "${confirm}")"; then
+      return
+    fi
 
     if [ "$confirm" = "Yes" ]; then
       : >"$favorites_file"
@@ -388,6 +486,9 @@ manage_favorites() {
   local manage_action
   manage_action=$(echo -e "◀ Back\nAdd to Favorites\nDelete from Favorites\nClear All Favorites" \
     | run_rofi "📓 Manage Favorites")
+  if cliphist_dispatch_action "$(cliphist_action_id "${manage_action}")"; then
+    return
+  fi
 
   case "${manage_action}" in
     "◀ Back")
@@ -414,6 +515,9 @@ manage_favorites() {
 clear_history() {
   local confirm
   confirm=$(echo -e "Back\nYes\nNo" | run_rofi "☢️ Clear Clipboard History?")
+  if cliphist_dispatch_action "$(cliphist_action_id "${confirm}")"; then
+    return
+  fi
 
   if [ "$confirm" = "Yes" ]; then
     cliphist wipe

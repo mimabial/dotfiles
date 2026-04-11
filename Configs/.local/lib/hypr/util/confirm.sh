@@ -24,12 +24,12 @@ case "${action}" in
   --reboot)
     prompt="Reboot"
     label="Reboot the system?"
-    cmd=(systemctl reboot --no-wall)
+    cmd=(hyprshell reboot.sh)
     ;;
   --shutdown)
     prompt="Shutdown"
     label="Power off the system?"
-    cmd=(systemctl poweroff --no-wall)
+    cmd=(hyprshell shutdown.sh)
     ;;
   *)
     echo "Usage: $(basename "$0") [--logout|--suspend|--reboot|--shutdown]" >&2

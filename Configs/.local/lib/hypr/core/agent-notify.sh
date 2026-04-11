@@ -458,6 +458,26 @@ Environment:
 EOF
 }
 
+agent_notify_read_option_value() {
+  local value_ref="$1"
+  local token="$2"
+  local remaining_args="$3"
+
+  REPLY=1
+  if [[ "$token" == --*=* ]]; then
+    printf -v "$value_ref" '%s' "${token#*=}"
+    return 0
+  fi
+
+  if (( remaining_args < 2 )); then
+    printf 'agent-notify: missing value for %s\n' "$token" >&2
+    return 1
+  fi
+
+  printf -v "$value_ref" '%s' "$4"
+  REPLY=2
+}
+
 agent_notify_send_command() {
   local mode="${1:-send}"
   local title="" message="" urgency="normal" source_name=""
@@ -479,53 +499,21 @@ agent_notify_send_command() {
 
   while (($#)); do
     case "$1" in
-      -t | --title)
-        if (($# < 2)); then
-          printf 'agent-notify: missing value for %s\n' "$1" >&2
-          return 1
-        fi
-        title="$2"
-        shift 2
+      -t | --title | --title=*)
+        agent_notify_read_option_value title "$1" "$#" "${2-}" || return 1
+        shift "$REPLY"
         ;;
-      --title=*)
-        title="${1#*=}"
-        shift
+      -m | --message | --message=*)
+        agent_notify_read_option_value message "$1" "$#" "${2-}" || return 1
+        shift "$REPLY"
         ;;
-      -m | --message)
-        if (($# < 2)); then
-          printf 'agent-notify: missing value for %s\n' "$1" >&2
-          return 1
-        fi
-        message="$2"
-        shift 2
+      -s | --source | --source=*)
+        agent_notify_read_option_value source_name "$1" "$#" "${2-}" || return 1
+        shift "$REPLY"
         ;;
-      --message=*)
-        message="${1#*=}"
-        shift
-        ;;
-      -s | --source)
-        if (($# < 2)); then
-          printf 'agent-notify: missing value for %s\n' "$1" >&2
-          return 1
-        fi
-        source_name="$2"
-        shift 2
-        ;;
-      --source=*)
-        source_name="${1#*=}"
-        shift
-        ;;
-      -u | --urgency)
-        if (($# < 2)); then
-          printf 'agent-notify: missing value for %s\n' "$1" >&2
-          return 1
-        fi
-        urgency="$2"
-        shift 2
-        ;;
-      --urgency=*)
-        urgency="${1#*=}"
-        shift
+      -u | --urgency | --urgency=*)
+        agent_notify_read_option_value urgency "$1" "$#" "${2-}" || return 1
+        shift "$REPLY"
         ;;
       -S | --no-source)
         no_source=1
@@ -582,53 +570,21 @@ agent_notify_answer_command() {
 
   while (($#)); do
     case "$1" in
-      -i | --id)
-        if (($# < 2)); then
-          printf 'agent-notify: missing value for %s\n' "$1" >&2
-          return 1
-        fi
-        id="$2"
-        shift 2
+      -i | --id | --id=*)
+        agent_notify_read_option_value id "$1" "$#" "${2-}" || return 1
+        shift "$REPLY"
         ;;
-      --id=*)
-        id="${1#*=}"
-        shift
+      -t | --title | --title=*)
+        agent_notify_read_option_value title "$1" "$#" "${2-}" || return 1
+        shift "$REPLY"
         ;;
-      -t | --title)
-        if (($# < 2)); then
-          printf 'agent-notify: missing value for %s\n' "$1" >&2
-          return 1
-        fi
-        title="$2"
-        shift 2
+      -m | --message | --message=*)
+        agent_notify_read_option_value message "$1" "$#" "${2-}" || return 1
+        shift "$REPLY"
         ;;
-      --title=*)
-        title="${1#*=}"
-        shift
-        ;;
-      -m | --message)
-        if (($# < 2)); then
-          printf 'agent-notify: missing value for %s\n' "$1" >&2
-          return 1
-        fi
-        message="$2"
-        shift 2
-        ;;
-      --message=*)
-        message="${1#*=}"
-        shift
-        ;;
-      -s | --source)
-        if (($# < 2)); then
-          printf 'agent-notify: missing value for %s\n' "$1" >&2
-          return 1
-        fi
-        source_name="$2"
-        shift 2
-        ;;
-      --source=*)
-        source_name="${1#*=}"
-        shift
+      -s | --source | --source=*)
+        agent_notify_read_option_value source_name "$1" "$#" "${2-}" || return 1
+        shift "$REPLY"
         ;;
       -h | --help)
         agent_notify_show_help
