@@ -1,0 +1,54 @@
+$HOME/.config/kitty/theme.conf
+
+# The basic colors
+foreground #3D3632
+background #F5F0EB
+selection_foreground #3D3632
+selection_background #AD8A3E
+
+cursor #AD8A3E
+cursor_text_color #3D3632
+
+url_color #4A7196
+
+active_border_color #AD8A3E
+inactive_border_color #C5BAB0
+bell_border_color #B5503C
+
+active_tab_background #AD8A3E
+active_tab_foreground #4A7196
+inactive_tab_background #EDE6DF
+inactive_tab_foreground #C5BAB0
+tab_bar_background #F5F0EB
+
+# black
+color0 #3D3632
+color8 #6B6360
+
+# red
+color1 #B5503C
+color9 #B5503C
+
+# green
+color2  #5B8755
+color10 #5B8755
+
+# yellow
+color3  #AD8A3E
+color11 #AD8A3E
+
+# blue
+color4  #4A7196
+color12 #4A7196
+
+# magenta
+color5  #8B6079
+color13 #8B6079
+
+# cyan
+color6  #4D8A80
+color14 #4D8A80
+
+# white
+color7 #C5BAB0
+color15 #D8D0C8

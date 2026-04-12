@@ -237,7 +237,7 @@ def _draw_left_status(
     if tab.is_active:  # type: ignore
         screen.cursor.fg = active_tab_fg
         screen.cursor.bg = 0
-        # screen.cursor.italic = True
+        screen.cursor.italic = True
     else:
         screen.cursor.fg = inactive_tab_fg
         screen.cursor.bg = 0
@@ -310,9 +310,8 @@ def _draw_right_status(screen: Screen, is_last: bool) -> int:
         screen.draw(" " * draw_spaces)
 
     screen.cursor.fg = 0
-    screen.cursor.italic = True
     for color, status in cells:
-        screen.cursor.fg = color  # as_rgb(color_as_int(color))
+        screen.cursor.fg = color
         screen.draw(status)
     screen.cursor.bg = 0
 

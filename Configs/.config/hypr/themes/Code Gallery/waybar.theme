@@ -1,0 +1,40 @@
+$HOME/.config/waybar/theme.css
+
+@define-color bg #F5F0EB;
+@define-color fg #6B6360;
+@define-color br #C5BAB0;
+
+@define-color alt_bg #EDE6DF;
+@define-color alt_fg #3D3632;
+@define-color alt_br #AD8A3E;
+
+@define-color act_bg #D8D0C8;
+@define-color act_fg #3D3632;
+@define-color act_br #5A84A8;
+
+@define-color hvr_bg #EDE6DF;
+@define-color hvr_fg #3D3632;
+@define-color hvr_br #8B6079;
+
+@define-color c0 #3D3632;
+@define-color c1 #B5503C;
+@define-color c2 #5B8755;
+@define-color c3 #AD8A3E;
+@define-color c4 #4A7196;
+@define-color c5 #8B6079;
+@define-color c6 #4D8A80;
+@define-color c7 #C5BAB0;
+@define-color c8 #6B6360;
+@define-color c9 #B5503C;
+@define-color c10 #5B8755;
+@define-color c11 #AD8A3E;
+@define-color c12 #4A7196;
+@define-color c13 #8B6079;
+@define-color c14 #4D8A80;
+@define-color c15 #D8D0C8;
+
+@define-color accent #AD8A3E;
+@define-color info @c6;
+@define-color warning #AD8A3E;
+@define-color error @c1;
+@define-color success @c2;

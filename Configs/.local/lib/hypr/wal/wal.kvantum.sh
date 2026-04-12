@@ -25,9 +25,28 @@ theme_inputs_changed() {
   )
   local input_hash=""
   local combined_hash=""
+  local kvconfig_output="${PYWAL_KVANTUM_DIR}/pywal16.kvconfig"
+  local svg_output="${PYWAL_KVANTUM_DIR}/pywal16.svg"
+  local input_file=""
 
   input_hash=$(cat "${input_files[@]}" "${WAL_CACHE}/colors-shell.sh" 2>/dev/null | md5sum | cut -d' ' -f1)
   combined_hash="${input_hash}-${selected_color_mode}"
+
+  [[ ! -f "${kvconfig_output}" ]] && return 0
+  if [[ -f "${THEME_KVANTUM_DIR}/kvantum.theme" && ! -f "${svg_output}" ]]; then
+    return 0
+  fi
+
+  for input_file in "${THEME_KVANTUM_DIR}/kvconfig.theme" "${THEME_KVANTUM_DIR}/colors.map" "${WAL_CACHE}/colors-shell.sh"; do
+    [[ -f "${input_file}" && "${input_file}" -nt "${kvconfig_output}" ]] && return 0
+  done
+
+  if [[ -f "${THEME_KVANTUM_DIR}/kvantum.theme" && -f "${svg_output}" ]]; then
+    for input_file in "${THEME_KVANTUM_DIR}/kvantum.theme" "${THEME_KVANTUM_DIR}/colors.map" "${WAL_CACHE}/colors-shell.sh"; do
+      [[ -f "${input_file}" && "${input_file}" -nt "${svg_output}" ]] && return 0
+    done
+  fi
+
   [[ ! -f "$hash_file" || "$(cat "$hash_file" 2>/dev/null)" != "$combined_hash" ]]
 }
 

@@ -1,0 +1,32 @@
+# Color mapping for pywal replacement
+# Format: #hexcolor=pywal_variable
+# Theme: Gallery Wall
+
+# Core colors derived from kvconfig.theme [GeneralColors]
+#F5F0EB=background
+#EDE6DF=color0
+#D8D0C8=color8
+#C5BAB0=color7
+#AD8A3E=color4
+#3D3632=foreground
+#9B9490=color8
+#4A7196=color5
+
+# Additional SVG/template colors preserved from the existing map
+#000000=background
+#141414=color0
+#31363B=color0
+#7F7F7F=color8
+#919191=color7
+#999999=color7
+#A6A6A6=color7
+#B4B4B4=foreground
+#B6B6B6=foreground
+#BEBEBE=foreground
+#BFBFBF=foreground
+#D2D2D2=foreground
+#D6D6D6=foreground
+#DCDCDC=foreground
+#EAEAEA=foreground
+#AD8A3E=color5
+#B5503C=color1

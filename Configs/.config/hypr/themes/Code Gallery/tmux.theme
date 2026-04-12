@@ -1,0 +1,40 @@
+$HOME/.config/tmux/theme.conf
+
+# Standard 16 color palette
+set -g @color0 "#3D3632"
+set -g @color1 "#B5503C"
+set -g @color2 "#5B8755"
+set -g @color3 "#AD8A3E"
+set -g @color4 "#4A7196"
+set -g @color5 "#8B6079"
+set -g @color6 "#4D8A80"
+set -g @color7 "#C5BAB0"
+set -g @color8 "#6B6360"
+set -g @color9 "#B5503C"
+set -g @color10 "#5B8755"
+set -g @color11 "#AD8A3E"
+set -g @color12 "#4A7196"
+set -g @color13 "#8B6079"
+set -g @color14 "#4D8A80"
+set -g @color15 "#D8D0C8"
+
+# Semantic color aliases
+set -g @theme_bg "#F5F0EB"
+set -g @theme_black "#D8D0C8"
+set -g @theme_fg "#3D3632"
+set -g @theme_accent "#4A7196"
+set -g @theme_gray "#6B6360"
+set -g @theme_red "#B5503C"
+set -g @theme_green "#5B8755"
+set -g @theme_yellow "#AD8A3E"
+
+# Tmux color settings
+set -g status-style "bg=default,fg=#3D3632"
+set -g message-style "bg=#F5F0EB,fg=#AD8A3E"
+set -g message-command-style "bg=#F5F0EB,fg=#AD8A3E"
+set -g pane-border-style "fg=#C5BAB0"
+set -g pane-active-border-style "fg=#4D8A80"
+set -g window-status-style "fg=#6B6360"
+set -g window-status-current-style "fg=#AD8A3E,bold"
+set -g mode-style "bg=#AD8A3E,fg=#F5F0EB"
+set -g clock-mode-colour "#AD8A3E"

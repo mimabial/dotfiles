@@ -193,6 +193,11 @@ write_kde_scheme_identity() {
 write_kde_scheme_palette() {
   [[ -f "${kde_scheme_file}" ]] || return 0
   kde_write_entries "${kde_scheme_file}" \
+    $'Colors:Button\tBackgroundNormal\t'"${bg_rgb}" \
+    $'Colors:Button\tBackgroundAlternate\t'"${bg_rgb}" \
+    $'Colors:Button\tForegroundNormal\t'"${fg_rgb}" \
+    $'Colors:Button\tDecorationFocus\t'"${accent_rgb}" \
+    $'Colors:Button\tDecorationHover\t'"${hover_rgb}" \
     $'Colors:View\tBackgroundAlternate\t'"${bg_rgb}" \
     $'Colors:View\tBackgroundNormal\t'"${bg_rgb}" \
     $'Colors:View\tForegroundNormal\t'"${fg_rgb}" \
@@ -204,8 +209,20 @@ write_kde_scheme_palette() {
     $'Colors:Selection\tForegroundActive\t'"${fg_rgb}" \
     $'Colors:Selection\tDecorationFocus\t'"${accent_rgb}" \
     $'Colors:Selection\tDecorationHover\t'"${hover_rgb}" \
+    $'Colors:Window\tBackgroundAlternate\t'"${bg_rgb}" \
     $'Colors:Window\tBackgroundNormal\t'"${bg_rgb}" \
-    $'Colors:Window\tForegroundNormal\t'"${fg_rgb}"
+    $'Colors:Window\tForegroundNormal\t'"${fg_rgb}" \
+    $'Colors:Header\tBackgroundAlternate\t'"${bg_rgb}" \
+    $'Colors:Header\tBackgroundNormal\t'"${bg_rgb}" \
+    $'Colors:Header\tForegroundNormal\t'"${fg_rgb}" \
+    $'Colors:Header\tDecorationFocus\t'"${accent_rgb}" \
+    $'Colors:Header\tDecorationHover\t'"${hover_rgb}" \
+    $'Colors:Tooltip\tBackgroundAlternate\t'"${bg_rgb}" \
+    $'Colors:Tooltip\tBackgroundNormal\t'"${bg_rgb}" \
+    $'Colors:Tooltip\tForegroundNormal\t'"${fg_rgb}" \
+    $'Colors:Complementary\tBackgroundAlternate\t'"${bg_rgb}" \
+    $'Colors:Complementary\tBackgroundNormal\t'"${bg_rgb}" \
+    $'Colors:Complementary\tForegroundNormal\t'"${fg_rgb}"
 }
 
 write_kdeglobals_palette() {
