@@ -58,6 +58,11 @@ theme_apply_reload_dunst_runtime() {
   "${LIB_DIR}/hypr/wal/wal.dunst.sh" --reload-only >/dev/null 2>&1 || true
 }
 
+theme_apply_refresh_kvantum() {
+  [[ -x "${LIB_DIR}/hypr/wal/wal.kvantum.sh" ]] || return 0
+  "${LIB_DIR}/hypr/wal/wal.kvantum.sh" >/dev/null 2>&1 || print_log -sec "theme.apply" -warn "kvantum" "refresh failed"
+}
+
 theme_apply_reload_hypr_config() {
   [[ -n "${HYPRLAND_INSTANCE_SIGNATURE}" ]] || return 0
   command -v hyprctl >/dev/null 2>&1 || return 0
@@ -105,6 +110,7 @@ done
 
 theme_apply_create_update_lock
 HYPR_THEME_UPDATE_EXTERNAL_LOCK=1 "${LIB_DIR}/hypr/theme/color.set.sh" || exit 1
+theme_apply_refresh_kvantum
 theme_apply_reload_dunst_runtime
 theme_apply_wallpaper "${quiet}" || exit 1
 theme_apply_reload_hypr_config

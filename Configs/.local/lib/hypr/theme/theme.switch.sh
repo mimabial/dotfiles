@@ -92,7 +92,17 @@ parse_theme_switch_args() {
 }
 
 set_active_theme() {
-  [[ " ${thmList[*]} " =~ " ${themeSet} " ]] || themeSet="${HYPR_THEME}"
+  local theme_exists=0
+  local theme_name=""
+
+  for theme_name in "${thmList[@]}"; do
+    if [[ "${theme_name}" == "${themeSet}" ]]; then
+      theme_exists=1
+      break
+    fi
+  done
+
+  [[ "${theme_exists}" -eq 1 ]] || themeSet="${HYPR_THEME}"
   state_set "HYPR_THEME" "${themeSet}" "staterc"
   print_log -sec "theme" -stat "apply" "${themeSet}"
   declare -F export_hypr_config >/dev/null 2>&1 && export_hypr_config

@@ -1,16 +1,16 @@
 $HOME/.config/waybar/theme.css
 
 @define-color bg #F5F0EB;
-@define-color fg #6B6360;
+@define-color fg #AD8A3E;
 @define-color br #C5BAB0;
 
 @define-color alt_bg #EDE6DF;
 @define-color alt_fg #3D3632;
 @define-color alt_br #AD8A3E;
 
-@define-color act_bg #D8D0C8;
+@define-color act_bg #C5BAB0;
 @define-color act_fg #3D3632;
-@define-color act_br #5A84A8;
+@define-color act_br #EDE6DF;
 
 @define-color hvr_bg #EDE6DF;
 @define-color hvr_fg #3D3632;
@@ -33,7 +33,7 @@ $HOME/.config/waybar/theme.css
 @define-color c14 #4D8A80;
 @define-color c15 #D8D0C8;
 
-@define-color accent #AD8A3E;
+@define-color accent #4A7196;
 @define-color info @c6;
 @define-color warning #AD8A3E;
 @define-color error @c1;

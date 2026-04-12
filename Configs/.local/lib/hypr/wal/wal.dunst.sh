@@ -382,7 +382,7 @@ append_dynamic_global_section() {
     frame_width = ${border_size}
     progress_bar_corner_radius = ${hypr_border}
     icon_theme = "${icon_theme}"
-    corner_radius = $((hypr_border * 2))
+    corner_radius = $((hypr_border * 3 / 2))
     icon_corner_radius = ${hypr_border}
 ${dunst_font_line}
 CONFIG
