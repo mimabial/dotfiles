@@ -227,6 +227,7 @@ fix_svg_selection_colors() {
   local svg="${PYWAL_KVANTUM_DIR}/pywal16.svg"
   local color4_svg=""
 
+  load_theme_mode_highlight_colors
   [[ -f "${svg}" && -n "${color4}" ]] || return 0
   color4_svg="$(sed_escape_replacement "${color4}")"
 
@@ -243,12 +244,106 @@ fix_svg_selection_colors() {
   " "${svg}"
 }
 
+extract_svg_block() {
+  local svg_file="$1"
+  local block_id="$2"
+
+  [[ -f "${svg_file}" ]] || return 1
+  awk -v block_id="${block_id}" '
+    index($0, "id=\"" block_id "\"") {
+      capture=1
+      is_group=($0 ~ /<g([[:space:]>]|$)/)
+    }
+    capture { print }
+    capture && is_group && $0 ~ /<\/g>[[:space:]]*$/ { exit }
+    capture && !is_group && $0 ~ /\/>[[:space:]]*$/ { exit }
+  ' "${svg_file}"
+}
+
+replace_svg_block() {
+  local target_svg="$1"
+  local block_id="$2"
+  local replacement_block="$3"
+  local tmp_svg=""
+
+  [[ -f "${target_svg}" && -n "${replacement_block}" ]] || return 1
+  tmp_svg="$(mktemp "${target_svg}.tmp.XXXXXX")" || return 1
+
+  BLOCK_ID="${block_id}" BLOCK_CONTENT="${replacement_block}" awk '
+    BEGIN {
+      block_id = ENVIRON["BLOCK_ID"]
+      replacement = ENVIRON["BLOCK_CONTENT"]
+      replaced = 0
+      skipping = 0
+      is_group = 0
+    }
+
+    {
+      if (!replaced && index($0, "id=\"" block_id "\"")) {
+        is_group = ($0 ~ /<g([[:space:]>]|$)/)
+        printf "%s\n", replacement
+        replaced = 1
+        if ((is_group && $0 !~ /<\/g>[[:space:]]*$/) || (!is_group && $0 !~ /\/>[[:space:]]*$/)) {
+          skipping = 1
+        }
+        next
+      }
+
+      if (skipping) {
+        if ((is_group && $0 ~ /<\/g>[[:space:]]*$/) || (!is_group && $0 ~ /\/>[[:space:]]*$/)) {
+          skipping = 0
+        }
+        next
+      }
+
+      print
+    }
+
+    END {
+      if (!replaced) {
+        exit 1
+      }
+    }
+  ' "${target_svg}" > "${tmp_svg}" || {
+    rm -f "${tmp_svg}"
+    return 1
+  }
+
+  mv -f "${tmp_svg}" "${target_svg}"
+}
+
+restore_svg_menu_colors() {
+  local svg="${PYWAL_KVANTUM_DIR}/pywal16.svg"
+  local source_svg=""
+  local block_id=""
+  local replacement_block=""
+  local -a menu_blocks=(
+    menu-normal
+    menu-normal-topleft
+    menu-normal-top
+    menu-normal-left
+    menu-normal-topright
+    menu-normal-right
+    menu-normal-bottomleft
+    menu-normal-bottom
+    menu-normal-bottomright
+  )
+
+  source_svg="$(resolve_kvantum_svg_source)"
+  [[ -f "${svg}" && -n "${source_svg}" && -f "${source_svg}" ]] || return 0
+
+  for block_id in "${menu_blocks[@]}"; do
+    replacement_block="$(extract_svg_block "${source_svg}" "${block_id}")" || continue
+    replace_svg_block "${svg}" "${block_id}" "${replacement_block}" || return 1
+  done
+}
+
 load_theme_mode_highlight_colors() {
   local theme_kvconfig="${THEME_KVANTUM_DIR}/kvconfig.theme"
   local kv_highlight=""
   local kv_text=""
 
-  [[ "${selected_color_mode}" -eq 0 && -f "${theme_kvconfig}" ]] || return 0
+  [[ -f "${theme_kvconfig}" ]] || return 0
   kv_highlight=$(grep '^highlight\.color=' "${theme_kvconfig}" | cut -d= -f2)
   kv_text=$(grep '^text\.color=' "${theme_kvconfig}" | cut -d= -f2)
   kv_highlight="$(normalize_kvantum_color "${kv_highlight}")"
@@ -307,5 +402,6 @@ apply_color_map_replacements
 build_template_svg_replacements
 apply_template_svg_replacements
 fix_svg_selection_colors
+restore_svg_menu_colors
 update_highlight_colors
 store_current_hash

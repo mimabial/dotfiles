@@ -1,0 +1,20 @@
+[Unit]
+Description=tmux default session (detached)
+Documentation=man:tmux(1)
+
+[Service]
+Type=forking
+Environment=DISPLAY=:0
+Environment=XDG_CONFIG_HOME=/home/rifle/.config
+Environment=XDG_DATA_HOME=/home/rifle/.local/share
+Environment=XDG_STATE_HOME=/home/rifle/.local/state
+ExecStart=/usr/sbin/tmux new-session -d
+
+ExecStop=/home/rifle/.local/share/tmux/plugins/tmux-resurrect/scripts/save.sh
+ExecStop=/usr/sbin/tmux kill-server
+KillMode=control-group
+
+RestartSec=2
+
+[Install]
+WantedBy=default.target

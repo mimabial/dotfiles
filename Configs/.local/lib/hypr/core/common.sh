@@ -91,11 +91,46 @@ hypr_config_value_from_layers() {
 }
 
 hypr_border_metrics() {
-  command -v hyprctl >/dev/null 2>&1 || return 1
-  command -v jq >/dev/null 2>&1 || return 1
+  local border=""
+  local width=""
 
-  hyprctl --batch -j "getoption decoration:rounding;getoption general:border_size" 2>/dev/null |
-    jq -s -r '[.[0].int // empty, .[1].int // empty] | @tsv' 2>/dev/null
+  hypr_border_metrics_into border width || return 1
+  printf '%s\t%s\n' "${border}" "${width}"
+}
+
+hypr_border_metrics_into() {
+  local border_name="${1:-}"
+  local width_name="${2:-}"
+  local metrics_file="${XDG_RUNTIME_DIR:-/tmp}/hypr-border-metrics.$$.$RANDOM"
+  local line=""
+  local -a ints=()
+
+  [[ -n "${border_name}" && -n "${width_name}" ]] || return 1
+  command -v hyprctl >/dev/null 2>&1 || return 1
+  [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] || return 1
+
+  local -n border_ref="${border_name}"
+  local -n width_ref="${width_name}"
+
+  border_ref=""
+  width_ref=""
+
+  if ! hyprctl --batch "getoption decoration:rounding;getoption general:border_size" >"${metrics_file}" 2>/dev/null; then
+    rm -f -- "${metrics_file}"
+    return 1
+  fi
+
+  while IFS= read -r line; do
+    [[ "${line}" =~ ^int:\ ([0-9]+)$ ]] || continue
+    ints+=("${BASH_REMATCH[1]}")
+    (( ${#ints[@]} >= 2 )) && break
+  done < "${metrics_file}"
+
+  rm -f -- "${metrics_file}"
+  (( ${#ints[@]} >= 2 )) || return 1
+
+  border_ref="${ints[0]}"
+  width_ref="${ints[1]}"
 }
 
 hypr_resolved_gaps_out() {
@@ -137,18 +172,15 @@ hypr_focused_monitor_geometry() {
 
 hypr_window_edge_padding_px() {
   local gaps_out=5
+  local ignored_border=""
   local border_width=2
-  local metrics=""
 
   gaps_out="$(hypr_resolved_gaps_out 2>/dev/null || true)"
   [[ "${gaps_out}" =~ ^[0-9]+$ ]] || gaps_out=5
 
   border_width="${hypr_width:-${HYPR_RUNTIME_BORDER_WIDTH:-${HYPR_BORDER_WIDTH:-}}}"
   if [[ ! "${border_width}" =~ ^[0-9]+$ ]]; then
-    metrics="$(hypr_border_metrics 2>/dev/null || true)"
-    if [[ -n "${metrics}" ]]; then
-      IFS=$'\t' read -r _ border_width <<< "${metrics}"
-    fi
+    hypr_border_metrics_into ignored_border border_width 2>/dev/null || true
   fi
   [[ "${border_width}" =~ ^[0-9]+$ ]] || border_width=2
 

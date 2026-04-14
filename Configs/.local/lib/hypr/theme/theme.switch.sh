@@ -114,7 +114,8 @@ load_active_theme_variables() {
   [[ -r "${HYPRLAND_CONFIG}" ]] || return 0
   [[ -r "${HYPR_THEME_DIR}/hypr.theme" ]] && sanitize_hypr_theme "${HYPR_THEME_DIR}/hypr.theme" "${XDG_CONFIG_HOME}/hypr/themes/theme.conf"
   load_hypr_variables "${HYPR_THEME_DIR}/hypr.theme"
-  load_hypr_variables "${XDG_STATE_HOME:-$HOME/.local/state}/hypr/hyprland.conf"
+  local _state_conf="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/hyprland.conf"
+  [[ -r "${_state_conf}" ]] && load_hypr_variables "${_state_conf}"
 }
 
 apply_cursor_and_icon_theme() {
@@ -145,15 +146,17 @@ is_safe_path_component() {
 }
 
 gtk_theme_path_name=""
-if is_safe_path_component "${GTK_THEME}"; then
-  gtk_theme_path_name="${GTK_THEME}"
-else
-  print_log -sec "theme" -warn "gtk" "unsafe theme path component: ${GTK_THEME}"
-fi
+resolve_gtk_theme_path() {
+  if is_safe_path_component "${GTK_THEME}"; then
+    gtk_theme_path_name="${GTK_THEME}"
+  elif [[ -n "${GTK_THEME}" ]]; then
+    print_log -sec "theme" -warn "gtk" "unsafe theme path component: ${GTK_THEME}"
+  fi
 
-if [[ -n "${gtk_theme_path_name}" ]] && [ ! -d "${THEMES_DIR}/${gtk_theme_path_name}" ] && [ -d "$HOME/.themes/${gtk_theme_path_name}" ]; then
-  cp -rns "$HOME/.themes/${gtk_theme_path_name}" "${THEMES_DIR}/${gtk_theme_path_name}"
-fi
+  if [[ -n "${gtk_theme_path_name}" ]] && [ ! -d "${THEMES_DIR}/${gtk_theme_path_name}" ] && [ -d "$HOME/.themes/${gtk_theme_path_name}" ]; then
+    cp -rns "$HOME/.themes/${gtk_theme_path_name}" "${THEMES_DIR}/${gtk_theme_path_name}"
+  fi
+}
 
 # Font fallbacks (avoid empty qt5ct/qt6ct font strings)
 [[ -z "${FONT}" ]] && FONT="Cantarell"
@@ -305,15 +308,14 @@ configure_xcursor_resources() {
 
 apply_theme_wallpaper() {
   local -a wallpaper_args=(
-    --wait-lock
     --resume
     --global
     --notify-body "Theme: ${themeSet}"
   )
   if [ "$quiet" = true ]; then
-    "${LIB_DIR}/hypr/wallpaper/wallpaper.sh" "${wallpaper_args[@]}" >/dev/null 2>&1
+    WALLPAPER_SYNC_APPLY=1 "${LIB_DIR}/hypr/wallpaper.sh" "${wallpaper_args[@]}" >/dev/null 2>&1
   else
-    "${LIB_DIR}/hypr/wallpaper/wallpaper.sh" "${wallpaper_args[@]}"
+    WALLPAPER_SYNC_APPLY=1 "${LIB_DIR}/hypr/wallpaper.sh" "${wallpaper_args[@]}"
   fi
 }
 
@@ -338,7 +340,7 @@ sync_backend_wallpaper_links() {
   while IFS= read -r -d '' file; do
     base="$(basename "${file}" .png)"
     pkg_installed "${base}" || continue
-    "${LIB_DIR}/hypr/wallpaper/wallpaper.sh" --link --backend "${base}" >/dev/null 2>&1 || true
+    "${LIB_DIR}/hypr/wallpaper.sh" --link --backend "${base}" >/dev/null 2>&1 || true
   done < <(find -H "${WALLPAPER_CURRENT_DIR}" -maxdepth 1 -type l -name "*.png" -print0)
 }
 
@@ -353,6 +355,7 @@ main() {
   parse_theme_switch_args "$@"
   set_active_theme
   load_active_theme_variables
+  resolve_gtk_theme_path
   show_theme_status
   apply_cursor_and_icon_theme
   configure_qt

@@ -82,15 +82,14 @@ theme_apply_restart_waybar() {
 theme_apply_wallpaper() {
   local quiet="${1:-false}"
   local -a wallpaper_args=(
-    --wait-lock
     --resume
     --global
     --notify-body "Theme: ${HYPR_THEME}"
   )
   if [[ "${quiet}" == "true" ]]; then
-    "${LIB_DIR}/hypr/wallpaper/wallpaper.sh" "${wallpaper_args[@]}" >/dev/null 2>&1
+    WALLPAPER_SYNC_APPLY=1 "${LIB_DIR}/hypr/wallpaper.sh" "${wallpaper_args[@]}" >/dev/null 2>&1
   else
-    "${LIB_DIR}/hypr/wallpaper/wallpaper.sh" "${wallpaper_args[@]}"
+    WALLPAPER_SYNC_APPLY=1 "${LIB_DIR}/hypr/wallpaper.sh" "${wallpaper_args[@]}"
   fi
 }
 

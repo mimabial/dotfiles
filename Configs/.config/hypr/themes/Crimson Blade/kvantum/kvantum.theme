@@ -6420,14 +6420,14 @@
   <path
      id="menu-normal"
      d="M 77.999999,336 H 88 v 10 H 77.999999 Z"
-     style="opacity:0.6;fill:#0a1124;" />
+     style="opacity:0.9;fill:#0a1124;" />
   <g
      id="menu-normal-left"
      transform="matrix(2.6666666,0,0,0.20833333,-248.02666,189.38542)"
      style="opacity:1;fill:#0a1124;fill-opacity:1;stroke-width:1.34164">
     <path
        d="m 116.26,703.75 h 6 v 48 h -6 z"
-       style="opacity:0.6;fill:#0a1124;"
+       style="opacity:0.9;fill:#0a1124;"
        id="path59170" />
   </g>
   <g
@@ -6437,7 +6437,7 @@
     <path
        id="path3597"
        d="m 122.26,698.75 c -3.3229,10e-4 -5.9977,2.6768 -5.9977,6 h 6 z"
-       style="opacity:0.6;fill:#0a1124;" />
+       style="opacity:0.9;fill:#0a1124;" />
   </g>
   <use
      id="menu-normal-top"
@@ -6533,7 +6533,7 @@
      transform="matrix(0.2,0,0,1,13.45,-559.4478)"
      id="menu-shadow-top">
     <g
-       style="opacity:0.6;fill:#0a1124;"
+       style="opacity:0.9;fill:#0a1124;"
        transform="matrix(1,0,0,1.5238096,-127.25,495.44779)"
        id="top">
       <path
@@ -6569,7 +6569,7 @@
       <path
          d="m 14.5,37.44 a 16,16 0 0 0 -15.9999999,16 H 14.5 Z"
          id="path4714-2"
-         style="opacity:0.6;fill:#0a1124;" />
+         style="opacity:0.9;fill:#0a1124;" />
     </g>
   </g>
   <g
@@ -6583,7 +6583,7 @@
       <path
          d="m 247,259 v 50 l -10.5,10e-6 v -50 z"
          id="path4396"
-         style="opacity:0.6;fill:#0a1124;" />
+         style="opacity:0.9;fill:#0a1124;" />
     </g>
     <g
        transform="matrix(1,0,0,-1,-167.2498,1190.5)"
@@ -6610,7 +6610,7 @@
       <path
          d="m 183,259 v 50 l 10.5,10e-6 v -50 z"
          id="path4418"
-         style="opacity:0.6;fill:#0a1124;" />
+         style="opacity:0.9;fill:#0a1124;" />
     </g>
     <g
        transform="rotate(180,173.38,595.23)"
@@ -6637,7 +6637,7 @@
       <path
          d="m 190,252.09144 h 50 v 10.5 h -50 z"
          id="path4382-9"
-         style="opacity:0.6;fill:#0a1124;" />
+         style="opacity:0.9;fill:#0a1124;" />
     </g>
     <g
        transform="rotate(90,-139.85,509.6)"

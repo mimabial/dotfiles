@@ -117,9 +117,20 @@ agent_notify_load_pending_json_locked() {
 agent_notify_save_pending_json_locked() {
   local pending_json="$1"
   local pending_file
+  local pending_tmp=""
 
   pending_file="$(agent_notify_pending_file)"
-  printf '%s\n' "$pending_json" > "$pending_file"
+  pending_tmp="$(mktemp "${pending_file}.tmp.XXXXXX")" || return 1
+
+  if ! printf '%s\n' "$pending_json" > "$pending_tmp"; then
+    rm -f -- "$pending_tmp"
+    return 1
+  fi
+
+  if ! mv -f -- "$pending_tmp" "$pending_file"; then
+    rm -f -- "$pending_tmp"
+    return 1
+  fi
 }
 
 agent_notify_now_epoch() {

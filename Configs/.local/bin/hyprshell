@@ -84,55 +84,57 @@ if ! source "${LIB_DIR}/hypr/globalcontrol.sh"; then
   exit 1
 fi
 
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  case "${1:-}" in
-    logout)
-      hyprlogout
-      ;;
-    pypr)
-      run_pypr "$@"
-      exit 0
-      ;;
-    pip)
-      run_pip "$@"
-      exit 0
-      ;;
-    -r | reload)
-      hyprreload
-      ;;
-    --release-notes | release-notes)
-      get_release_notes
-      ;;
-    --version | version | -v)
-      get_version
-      ;;
-    --help | help | -h)
-      USAGE
-      ;;
-    --list-script)
-      list_script
-      ;;
-    --list-script-path)
-      list_script_path
-      ;;
-    --completions)
-      shift
-      generate_completions "${1:-}"
-      ;;
-    validate)
-      shift
-      if command -v parse.config.py >/dev/null 2>&1; then
-        parse.config.py --input "$XDG_CONFIG_HOME/hypr/config.toml" --env "$XDG_STATE_HOME/hypr/env-overrides" --hypr "$XDG_STATE_HOME/hypr/hyprland.conf" --export "$@"
-      else
-        echo "parse.config.py not found. Please make sure it is in \$PATH."
-      fi
-      exit 0
-      ;;
-    pyinit)
-      python_initialized
-      ;;
-    *)
-      run_command "$@"
-      ;;
-  esac
+if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+  return 0
 fi
+
+case "${1:-}" in
+  logout)
+    hyprlogout
+    ;;
+  pypr)
+    run_pypr "$@"
+    exit 0
+    ;;
+  pip)
+    run_pip "$@"
+    exit 0
+    ;;
+  -r | reload)
+    hyprreload
+    ;;
+  --release-notes | release-notes)
+    get_release_notes
+    ;;
+  --version | version | -v)
+    get_version
+    ;;
+  --help | help | -h)
+    USAGE
+    ;;
+  --list-script)
+    list_script
+    ;;
+  --list-script-path)
+    list_script_path
+    ;;
+  --completions)
+    shift
+    generate_completions "${1:-}"
+    ;;
+  validate)
+    shift
+    if command -v parse.config.py >/dev/null 2>&1; then
+      parse.config.py --input "$XDG_CONFIG_HOME/hypr/config.toml" --env "$XDG_STATE_HOME/hypr/env-overrides" --hypr "$XDG_STATE_HOME/hypr/hyprland.conf" --export "$@"
+    else
+      echo "parse.config.py not found. Please make sure it is in \$PATH."
+    fi
+    exit 0
+    ;;
+  pyinit)
+    python_initialized
+    ;;
+  *)
+    run_command "$@"
+    ;;
+esac

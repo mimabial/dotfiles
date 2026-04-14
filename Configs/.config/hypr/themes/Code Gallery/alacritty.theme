@@ -2,7 +2,7 @@ $HOME/.config/alacritty/theme.toml
 
 [colors.primary]
 foreground = "#3D3632"
-background = "#F5F0EB"
+background = "#EEE2D0"
 
 [colors.cursor]
 text = "#3D3632"
@@ -10,7 +10,7 @@ cursor = "#AD8A3E"
 
 [colors.selection]
 text = "#3D3632"
-background = "#D8CFC5"
+background = "#D8C8B6"
 
 [colors.normal]
 black = "#3D3632"
@@ -20,7 +20,7 @@ yellow = "#AD8A3E"
 blue = "#4A7196"
 magenta = "#8B6079"
 cyan = "#4D8A80"
-white = "#C5BAB0"
+white = "#C4B19E"
 
 [colors.bright]
 black = "#6B6360"
@@ -30,4 +30,4 @@ yellow = "#BF9B50"
 blue = "#5A84A8"
 magenta = "#9D7089"
 cyan = "#5E9C92"
-white = "#D8D0C8"
+white = "#D8C8B6"

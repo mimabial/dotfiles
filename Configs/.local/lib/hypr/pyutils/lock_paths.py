@@ -16,7 +16,7 @@ LOCK_NAMES = {
     "wallpaper_cache": "wallpaper-cache.lock",
     "wallpaper_inventory": "wallpaper-inventory.lock",
     "wallpaper_switch": "wallpaper-switch.lock",
-    "wallpaper_swww": "wallpaper-swww.lock",
+    "wallpaper_awww": "wallpaper-awww.lock",
     "mode_switch": "mode-switch.lock",
     "wal_cache_clean": "wal-cache-clean.lock",
     "wal_cache_store": "wal-cache-store.lock",

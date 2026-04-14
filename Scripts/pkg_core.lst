@@ -50,6 +50,7 @@ pacman-contrib                                         # for system update check
 parallel                                               # for parallel processing
 jq                                                     # for json processing
 openbsd-netcat                                         # unix sockets / nc used by helpers
+inetutils                                              # classic network utilities, including hostname
 imagemagick                                            # for image processing
 ffmpeg                                                 # capture preview / wallpaper thumbnails
 v4l-utils                                              # webcam controls for screen recording

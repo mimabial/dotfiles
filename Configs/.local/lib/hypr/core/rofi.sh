@@ -156,15 +156,26 @@ rofi_default_window_size() {
 }
 
 rofi_scale_milli() {
-  awk -v s="${1:-1}" '
-    BEGIN {
-      if (s ~ /^[0-9]+([.][0-9]+)?$/ && (s + 0) > 0) {
-        printf "%d\n", (s + 0) * 1000
-      } else {
-        print 1000
-      }
-    }
-  '
+  local scale="${1:-1}"
+  local whole_part=""
+  local fraction_part=""
+
+  if [[ "${scale}" =~ ^([0-9]+)([.]([0-9]+))?$ ]]; then
+    whole_part="${BASH_REMATCH[1]}"
+    fraction_part="${BASH_REMATCH[3]:-}"
+    fraction_part="${fraction_part:0:3}"
+
+    while ((${#fraction_part} < 3)); do
+      fraction_part="${fraction_part}0"
+    done
+
+    if [[ "${whole_part}" != "0" || "${fraction_part}" != "000" ]]; then
+      printf '%s\n' $((10#${whole_part} * 1000 + 10#${fraction_part:-000}))
+      return 0
+    fi
+  fi
+
+  printf '1000\n'
 }
 
 rofi_scaled_divide() {

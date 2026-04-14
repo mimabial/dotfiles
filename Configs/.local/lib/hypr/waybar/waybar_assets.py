@@ -434,8 +434,8 @@ def update_border_radius():
     logger.debug(f"WAYBAR_BORDER_RADIUS env: {border_radius}")
 
     if not border_radius:
-        border_radius = os.getenv("hypr_border")
-        logger.debug(f"hypr_border env: {border_radius}")
+        border_radius = os.getenv("HYPR_RUNTIME_BORDER_RADIUS")
+        logger.debug(f"HYPR_RUNTIME_BORDER_RADIUS env: {border_radius}")
 
     if not border_radius:
         logger.debug("Reading border radius from Hyprland")

@@ -3,10 +3,10 @@
 # Theme: Gallery Wall
 
 # Core colors derived from kvconfig.theme [GeneralColors]
-#F5F0EB=background
-#EDE6DF=color0
-#D8D0C8=color8
-#C5BAB0=color7
+#EEE2D0=background
+#E5D8C6=color0
+#D8C8B6=color8
+#C4B19E=color7
 #AD8A3E=color4
 #3D3632=foreground
 #9B9490=color8

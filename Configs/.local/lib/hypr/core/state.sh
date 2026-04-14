@@ -17,24 +17,49 @@ export_hypr_config() {
 
 refresh_hypr_runtime_state() {
   # Keep derived theme/runtime paths in sync after reloading state.
-  case "${selected_color_mode}" in
+  case "${selected_color_mode:-}" in
     0 | 1 | 2 | 3) ;;
     *) selected_color_mode=0 ;;
   esac
 
-  if [ -z "${HYPR_THEME}" ] || [ ! -d "${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}" ]; then
+  if [ -z "${HYPR_THEME:-}" ] || [ ! -d "${HYPR_CONFIG_HOME}/themes/${HYPR_THEME:-}" ]; then
     get_themes
     HYPR_THEME="${thmList[0]}"
   fi
 
   HYPR_THEME_DIR="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}"
-  export HYPR_THEME HYPR_THEME_DIR selected_color_mode
+  refresh_hypr_instance_signature
+  export HYPR_THEME HYPR_THEME_DIR selected_color_mode HYPRLAND_INSTANCE_SIGNATURE
+}
+
+refresh_hypr_instance_signature() {
+  local runtime_dir="${HYPR_RUNTIME_DIR:-${XDG_RUNTIME_DIR:-}/hypr}"
+  local candidate=""
+  local candidate_count=0
+  local candidate_path=""
+
+  [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] && return 0
+  [[ -n "${runtime_dir}" && -d "${runtime_dir}" ]] || return 0
+
+  while IFS= read -r -d '' candidate_path; do
+    [[ -S "${candidate_path}/.socket.sock" ]] || continue
+    candidate="${candidate_path##*/}"
+    candidate_count=$((candidate_count + 1))
+    HYPRLAND_INSTANCE_SIGNATURE="${candidate}"
+    [[ "${candidate_count}" -gt 1 ]] && break
+  done < <(
+    find "${runtime_dir}" -mindepth 1 -maxdepth 1 -type d ! -name wallcache -print0 2>/dev/null
+  )
+
+  if [[ "${candidate_count}" -ne 1 ]]; then
+    unset HYPRLAND_INSTANCE_SIGNATURE
+  fi
 }
 
 # ============================================================================
 # UNIFIED STATE MANAGEMENT
 # ============================================================================
-# All state is stored in key=value format in these files:
+# All state is stored as scalar key=value entries in these files:
 #   - staterc:        User/runtime state (HYPR_THEME, selected_color_mode, etc.)
 #   - env-overrides:  Exported environment overrides
 #   - color_variant:  Current resolved dark/light variant
@@ -92,20 +117,15 @@ state_read_value_from_file() {
         continue
         ;;
     esac
-    break
   done < "${state_file}"
 
   (( found )) || return 1
 
   if [[ "${raw_value}" == \(* ]]; then
-    bash -c '
-      state_file="$1"
-      var_name="$2"
-      source "${state_file}" >/dev/null 2>&1 || exit 1
-      declare -p "${var_name}" >/dev/null 2>&1 || exit 1
-      printf "%s" "${!var_name}"
-    ' _ "${state_file}" "${var_name}"
-    return
+    if declare -F print_log >/dev/null 2>&1; then
+      print_log -sec "state" -warn "state_get" "array syntax is unsupported for ${var_name}"
+    fi
+    return 1
   fi
 
   if [[ ${#raw_value} -ge 2 && "${raw_value:0:1}" == '"' && "${raw_value:${#raw_value}-1:1}" == '"' ]]; then
@@ -172,13 +192,26 @@ state_target_file() {
   esac
 }
 
+state_lock_name() {
+  local lock_target="$1"
+  local lock_label="${lock_target//[^A-Za-z0-9._-]/_}"
+  local lock_checksum=""
+
+  lock_checksum="$(printf '%s' "${lock_target}" | cksum | awk '{print $1}')" || return 1
+  printf 'state-%s-%s.lock\n' "${lock_label:-state}" "${lock_checksum}"
+}
+
 state_acquire_lock() {
-  local target_file="$1"
+  local lock_target="$1"
   local fd_name="$2"
   local -n fd_ref="${fd_name}"
   local lock_timeout="${STATE_LOCK_TIMEOUT:-5}"
   local lock_dir="${XDG_RUNTIME_DIR:-/tmp}/hypr"
-  local lock_file="${lock_dir}/state-${target_file}.lock"
+  local lock_name=""
+  local lock_file=""
+
+  lock_name="$(state_lock_name "${lock_target}")" || return 1
+  lock_file="${lock_dir}/${lock_name}"
 
   mkdir -p "${lock_dir}" || return 1
   if ! exec {fd_ref}>"${lock_file}"; then
@@ -237,7 +270,7 @@ state_write_key_value_file() {
   local target_file="$2"
   local var_name="$3"
   local var_value="$4"
-  local tmp_file="${state_file}.tmp.$$"
+  local tmp_file=""
   local var_escaped=""
   local value_prefix=""
   local quoted_value=""
@@ -247,10 +280,17 @@ state_write_key_value_file() {
     return 1
   }
 
-  touch "${state_file}"
+  touch "${state_file}" || {
+    print_log -sec "state" -err "state_set" "failed to access ${state_file}"
+    return 1
+  }
   var_escaped="$(printf "%s" "${var_name}" | sed 's/[][\\.^$*+?()|{}]/\\&/g')"
   [[ "${target_file}" == "env-overrides" ]] && value_prefix="export "
   quoted_value="$(state_quote_value "${var_value}")" || return 1
+  tmp_file="$(mktemp "${state_file}.tmp.XXXXXX")" || {
+    print_log -sec "state" -err "state_set" "failed to allocate temp file for ${var_name}"
+    return 1
+  }
 
   {
     grep -Ev "^(export[[:space:]]+)?${var_escaped}=" "${state_file}" 2>/dev/null || true
@@ -279,7 +319,7 @@ state_set() {
 
   state_file="$(state_target_file "${target_file}")"
   mkdir -p "$(dirname "${state_file}")" || return 1
-  state_acquire_lock "${target_file}" lock_fd || return 1
+  state_acquire_lock "${state_file}" lock_fd || return 1
 
   if [[ "${target_file}" == "color_variant" ]]; then
     state_write_color_variant_file "${state_file}" "${var_value}" || rc=$?

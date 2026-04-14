@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+[[ -n "${HYPR_LOCK_NAMES[color_gen]+set}" ]] 2>/dev/null && return 0
 declare -grA HYPR_LOCK_NAMES=(
   [color_gen]="color-gen.lock"
   [color_cache_only]="color-cache-only.lock"
@@ -14,7 +15,7 @@ declare -grA HYPR_LOCK_NAMES=(
   [wallpaper_cache]="wallpaper-cache.lock"
   [wallpaper_inventory]="wallpaper-inventory.lock"
   [wallpaper_switch]="wallpaper-switch.lock"
-  [wallpaper_swww]="wallpaper-swww.lock"
+  [wallpaper_awww]="wallpaper-awww.lock"
   [mode_switch]="mode-switch.lock"
   [wal_cache_clean]="wal-cache-clean.lock"
   [wal_cache_store]="wal-cache-store.lock"

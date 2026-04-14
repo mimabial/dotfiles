@@ -50,7 +50,7 @@ EOT
 hyprreload() {
   print_log -sec "Hyprland" "Reloading Hyprland Environment"
   python_initialized
-  run_lib_script "wallpaper/sww-wallcache.sh" -t ""
+  run_lib_script "wallpaper/awww-wallcache.sh" -t ""
   run_lib_script "theme/theme.switch.sh"
 }
 

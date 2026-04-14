@@ -2,8 +2,51 @@
 
 set -euo pipefail
 
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+lib_root="$(realpath "${script_dir}/../..")"
+xdg_lib="${lib_root}/hypr/core/xdg.sh"
+notify_lib="${lib_root}/hypr/core/notify.sh"
+state_lib="${lib_root}/hypr/core/state.sh"
+
+[[ -r "${xdg_lib}" ]] || {
+  printf 'missing xdg bootstrap: %s\n' "${xdg_lib}" >&2
+  exit 1
+}
+[[ -r "${notify_lib}" ]] || {
+  printf 'missing notify helpers: %s\n' "${notify_lib}" >&2
+  exit 1
+}
+[[ -r "${state_lib}" ]] || {
+  printf 'missing state helpers: %s\n' "${state_lib}" >&2
+  exit 1
+}
+
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
+source "${xdg_lib}" || exit 1
+hypr_init_xdg_env
+export ICONS_DIR="${ICONS_DIR:-${XDG_DATA_HOME}/icons}"
+
+# shellcheck source=/dev/null
+source "${notify_lib}" || exit 1
+# shellcheck source=/dev/null
+source "${state_lib}" || exit 1
+
+require_commands() {
+  local cmd_name=""
+
+  for cmd_name in "$@"; do
+    command -v "${cmd_name}" >/dev/null 2>&1 || {
+      print_log -err "${cmd_name} is required for keyboard layout switching"
+      return 1
+    }
+  done
+}
+
+ensure_hypr_instance_signature() {
+  [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] && return 0
+  refresh_hypr_instance_signature
+  [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]
+}
 
 keyboard_devices_json() {
   hyprctl -j devices | jq -c '
@@ -63,6 +106,12 @@ main() {
   local reference_name=""
   local target_keymap=""
   local keyboard_name=""
+
+  require_commands hyprctl jq
+  ensure_hypr_instance_signature || {
+    print_log -err "HYPRLAND_INSTANCE_SIGNATURE is not set"
+    return 1
+  }
 
   keyboards_json="$(keyboard_devices_json)"
   [[ "$(jq 'length' <<<"${keyboards_json}")" -gt 0 ]] || {

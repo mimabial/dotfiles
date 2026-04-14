@@ -104,7 +104,7 @@ export BtnCol
 
 #// eval hypr border radius
 
-hypr_border="${hypr_border:-10}"
+hypr_border="${HYPR_RUNTIME_BORDER_RADIUS:-${HYPR_BORDER_RADIUS:-10}}"
 export active_rad=$((hypr_border * 5))
 export button_rad=$((hypr_border * 8))
 

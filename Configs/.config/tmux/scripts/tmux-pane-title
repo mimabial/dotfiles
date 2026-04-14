@@ -1,10 +1,48 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+plain_output=0
+
+if [[ "${1:-}" == "--plain" ]]; then
+  plain_output=1
+  shift
+fi
+
 cmd="${1:-}"
 tty="${2:-}"
+pane_title="${3:-}"
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 process_name_script="${script_dir}/tmux-process-name"
+
+trim_whitespace() {
+  local value="${1:-}"
+
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+  printf '%s\n' "${value}"
+}
+
+trim_label() {
+  local value="${1:-}"
+  local max_len="${2:-18}"
+
+  if ((${#value} <= max_len)); then
+    printf '%s\n' "${value}"
+  else
+    printf '%s\n' "${value:0:max_len}"
+  fi
+}
+
+print_label() {
+  local icon="${1:-}"
+  local label="${2:-shell}"
+
+  if ((plain_output)); then
+    printf '%s\n' "${label}"
+  else
+    printf '%s %s\n' " ${icon}" "${label} "
+  fi
+}
 
 if [[ -x "${process_name_script}" ]]; then
   resolved_cmd="$("${process_name_script}" "${tty}" "${cmd}" 2>/dev/null || true)"
@@ -14,7 +52,9 @@ fi
 case "$cmd" in
   codex | claude | anthropic | aider)
     icon="󰚩"
-    label="$cmd"
+    label="$(trim_whitespace "${pane_title}")"
+    [[ -n "${label}" ]] || label="$cmd"
+    label="$(trim_label "${label}" 24)"
     ;;
   nvim | vim | vi | view)
     icon=""
@@ -74,4 +114,4 @@ case "$cmd" in
     ;;
 esac
 
-printf '%s %s\n' " $icon" "$label "
+print_label "${icon}" "${label}"

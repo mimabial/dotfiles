@@ -1,0 +1,21 @@
+$HOME/.config/dunst/theme.conf
+
+@define-color fg-primary #5c6a72;
+@define-color fg-secondary #708089;
+
+@define-color bg-primary #fdf6e3;
+@define-color bg-secondary #f4f0d9;
+@define-color bg-tertiary #efebd4;
+
+@define-color accent-red #f85552;
+@define-color accent-green #8da101;
+@define-color accent-yellow #dfa000;
+@define-color accent-blue #3a94c5;
+@define-color accent-purple #df69ba;
+@define-color accent-aqua #35a77c;
+@define-color accent-orange #f57d26;
+
+@define-color border-primary #35a77c;
+@define-color border-secondary #3a94c5;
+
+@define-color gray #a6b0a0;

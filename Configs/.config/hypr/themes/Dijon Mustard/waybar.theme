@@ -23,7 +23,7 @@ $HOME/.config/waybar/theme.css
 @define-color c4 #CC2C24;
 @define-color c5 #B06F78;
 @define-color c6 #6F9996;
-@define-color c7 #D8CCB8;
+@define-color c7 #C8BCA8;
 @define-color c8 #6B7B8C;
 @define-color c9 #4A88B0;
 @define-color c10 #87B29C;

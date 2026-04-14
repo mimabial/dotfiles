@@ -73,14 +73,14 @@ menu_blur_radius=6
 tooltip_blur_radius=6
 
 [GeneralColors]
-window.color=#F5F0EB
-base.color=#EDE6DF
-alt.base.color=#EDE6DF
-button.color=#D8D0C8
-light.color=#C5BAB0
-mid.light.color=#C5BAB0
-dark.color=#EDE6DF
-mid.color=#EDE6DF
+window.color=#EEE2D0
+base.color=#E5D8C6
+alt.base.color=#E5D8C6
+button.color=#D8C8B6
+light.color=#C4B19E
+mid.light.color=#C4B19E
+dark.color=#E5D8C6
+mid.color=#E5D8C6
 highlight.color=#AD8A3E
 inactive.highlight.color=#AD8A3E
 text.color=#3D3632
@@ -88,7 +88,7 @@ window.text.color=#3D3632
 button.text.color=#3D3632
 disabled.text.color=#9B9490
 tooltip.text.color=#3D3632
-highlight.text.color=#F5F0EB
+highlight.text.color=#F3ECE2
 link.color=#4A7196
 link.visited.color=#8B6079
 
@@ -99,7 +99,7 @@ interior.element=itemview
 frame=true
 interior=true
 text.iconspacing=3
-text.toggle.color=#F5F0EB
+text.toggle.color=#F3ECE2
 
 [RadioButton]
 inherits=PanelButtonCommand
@@ -128,8 +128,8 @@ interior.element=button
 frame.element=button
 text.normal.color=#3D3632
 text.focus.color=#3D3632
-text.press.color=#F5F0EB
-text.toggle.color=#F5F0EB
+text.press.color=#F3ECE2
+text.toggle.color=#F3ECE2
 
 [PanelButtonTool]
 inherits=PanelButtonCommand
@@ -313,8 +313,8 @@ interior.element=tbutton
 indicator.element=arrow
 text.normal.color=#3D3632
 text.focus.color=#3D3632
-text.press.color=#F5F0EB
-text.toggle.color=#F5F0EB
+text.press.color=#F3ECE2
+text.toggle.color=#F3ECE2
 text.bold=false
 
 [Scrollbar]
@@ -358,8 +358,8 @@ frame.right=2
 text.margin=0
 text.normal.color=#3D3632
 text.focus.color=#3D3632
-text.press.color=#F5F0EB
-text.toggle.color=#F5F0EB
+text.press.color=#F3ECE2
+text.toggle.color=#F3ECE2
 text.bold=false
 frame.expansion=18
 
@@ -370,8 +370,8 @@ inherits=PanelButtonCommand
 frame.element=menu
 interior.element=menu
 inherits=PanelButtonCommand
-text.press.color=#F5F0EB
-text.toggle.color=#F5F0EB
+text.press.color=#F3ECE2
+text.toggle.color=#F3ECE2
 text.bold=false
 frame.top=3
 frame.bottom=3

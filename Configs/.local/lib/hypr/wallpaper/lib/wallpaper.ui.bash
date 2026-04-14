@@ -25,8 +25,9 @@ options:
     -h, --help                Display this help message
 
 flags:
-    -b, --backend <backend>   Set wallpaper backend to use (swww, hyprpaper, etc.)
+    -b, --backend <backend>   Set wallpaper backend to use (awww, hyprpaper, etc.)
     -G, --global              Set wallpaper as global
+        --wait-lock           Wait for the current wallpaper operation to finish
         --clean-thumbs        Remove cached thumbs with no matching wallpapers
 
 
@@ -37,6 +38,9 @@ notes:
 
     .   --global flag is used to set the wallpaper as global, this means all
          thumbnails will be updated to reflect the new wallpaper
+
+    .   Interactive actions like next/previous/random/select wait for in-flight
+        wallpaper operations by default
 
     .   --output <path> is used to copy the current wallpaper to the specified path
             We can use this to have a copy of the wallpaper in '/var/tmp' where
@@ -126,12 +130,15 @@ wallpaper_select_monitor_width() {
 wallpaper_select_theme_override() {
   local font_scale="$1"
   local mon_x_res=""
+  local border_radius=0
   local elem_border=0
   local elm_width=0
   local max_avail=0
   local col_count=0
 
-  elem_border=$((hypr_border * 2))
+  border_radius="${HYPR_RUNTIME_BORDER_RADIUS:-${HYPR_BORDER_RADIUS:-0}}"
+  [[ "${border_radius}" =~ ^[0-9]+$ ]] || border_radius=0
+  elem_border=$((border_radius * 2))
   mon_x_res="$(wallpaper_select_monitor_width)"
   elm_width=$(((28 + 8 + 5) * font_scale))
   max_avail=$((mon_x_res - (4 * font_scale)))

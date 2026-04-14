@@ -2,8 +2,19 @@
 
 set -u
 
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+lib_root="$(realpath "${script_dir}/../..")"
+xdg_lib="${lib_root}/hypr/core/xdg.sh"
+
+[[ -r "${xdg_lib}" ]] || {
+  printf 'missing xdg bootstrap: %s\n' "${xdg_lib}" >&2
+  exit 1
+}
+
 # shellcheck source=/dev/null
-source "$(command -v hyprshell)" || exit 1
+source "${xdg_lib}" || exit 1
+hypr_init_xdg_env
+export LIB_DIR="${lib_root}"
 # shellcheck source=/dev/null
 source "${LIB_DIR}/hypr/controls/lib/control.common.bash"
 

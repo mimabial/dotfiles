@@ -230,7 +230,7 @@ ensure_theme_thumbs() {
   if [[ -x "${queue_script}" ]]; then
     "${queue_script}" --enqueue "${cache_args[@]}" &>/dev/null &
   else
-    "${LIB_DIR}/hypr/wallpaper/sww-wallcache.sh" "${cache_args[@]}" &>/dev/null &
+    "${LIB_DIR}/hypr/wallpaper/awww-wallcache.sh" "${cache_args[@]}" &>/dev/null &
   fi
 }
 
