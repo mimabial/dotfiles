@@ -3,7 +3,9 @@
 set -euo pipefail
 
 if ! declare -F hypr_config_value_from_layers >/dev/null 2>&1; then
-  source "$(command -v hyprshell)" || exit 1
+  LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
+  # shellcheck source=/dev/null
+  source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
 fi
 
 kind="${1:-}"

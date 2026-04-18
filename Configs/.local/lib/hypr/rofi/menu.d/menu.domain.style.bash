@@ -21,8 +21,8 @@ menu_run_action_style() {
     style_theme_menu) hyprshell theme.select.sh -s ;;
     style_launcher) hyprshell rofi/rofi-launch.sh -s ;;
     style_theme) hyprshell theme/theme.select.sh ;;
-    style_wallpaper) hyprshell wallpaper -SG ;;
-    style_color_mode) hyprshell wal.toggle.sh -m ;;
+    style_wallpaper) hyprshell wallpaper select --global ;;
+    style_color_mode) hyprshell color-mode.sh -m ;;
     style_waybar) hyprshell waybar.py --select ;;
     style_animations) hyprshell animations.sh --select ;;
     style_lock_layout) hyprshell hyprlock.sh --select ;;

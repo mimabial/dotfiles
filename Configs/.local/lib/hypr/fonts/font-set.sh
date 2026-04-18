@@ -2,7 +2,11 @@
 
 set -euo pipefail
 
-source "$(command -v hyprshell)" || exit 1
+LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
+
+# shellcheck source=/dev/null
+source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
+hypr_runtime_require system || exit 1
 
 FONT_NAME="${1:-}"
 USER_FONTS_FILE="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}/userfonts.conf"
@@ -12,6 +16,8 @@ usage() {
 Usage: hyprshell fonts/font-set.sh <font-name>
 
 Sets the shared font override layer for:
+  • General UI font
+  • Document font
   • Monospace font
   • Bar font
   • Menu font
@@ -58,6 +64,8 @@ write_font_override() {
 }
 
 persist_font_selection() {
+  write_font_override 'FONT' "${FONT_NAME}" "${USER_FONTS_FILE}"
+  write_font_override 'DOCUMENT_FONT' "${FONT_NAME}" "${USER_FONTS_FILE}"
   write_font_override 'MONOSPACE_FONT' "${FONT_NAME}" "${USER_FONTS_FILE}"
   write_font_override 'BAR_FONT' "${FONT_NAME}" "${USER_FONTS_FILE}"
   write_font_override 'MENU_FONT' "${FONT_NAME}" "${USER_FONTS_FILE}"

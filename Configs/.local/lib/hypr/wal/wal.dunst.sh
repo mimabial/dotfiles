@@ -11,6 +11,8 @@ HASH_FILE="${XDG_RUNTIME_DIR:-/tmp}/wal-dunst-hash"
 THEME_CONF="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/theme.conf"
 WAYBAR_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/waybar/config.jsonc"
 LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
+WAL_DUNST_PARSE_COLOR_MISSING=1
+WAL_DUNST_PARSE_COLOR_INVALID=2
 
 # shellcheck disable=SC1090
 source "${LIB_DIR}/hypr/runtime/lock_paths.sh"
@@ -40,8 +42,15 @@ reload_dunst_runtime() {
 parse_define_color() {
   local name="$1"
   local file="$2"
-  [[ -f "${file}" ]] || return 1
-  awk -v key="${name}" '
+  # Return contract:
+  # 0: printed a valid color
+  # 1: file/key missing, so the caller may fall back
+  # 2: key found but the color value is invalid and should be surfaced
+  [[ -f "${file}" ]] || return "${WAL_DUNST_PARSE_COLOR_MISSING}"
+  awk \
+    -v key="${name}" \
+    -v exit_missing="${WAL_DUNST_PARSE_COLOR_MISSING}" \
+    -v exit_invalid="${WAL_DUNST_PARSE_COLOR_INVALID}" '
     BEGIN {
       found = 0
     }
@@ -52,11 +61,11 @@ parse_define_color() {
         print $3
         exit 0
       }
-      exit 2
+      exit exit_invalid
     }
     END {
       if (!found) {
-        exit 1
+        exit exit_missing
       }
     }
   ' "${file}"
@@ -78,12 +87,12 @@ apply_theme_color_override() {
   fi
 
   case "${rc}" in
-    1)
-      return 1
+    "${WAL_DUNST_PARSE_COLOR_MISSING}")
+      return "${WAL_DUNST_PARSE_COLOR_MISSING}"
       ;;
-    2)
+    "${WAL_DUNST_PARSE_COLOR_INVALID}")
       printf 'ERROR: invalid @define-color %s in %s\n' "${name}" "${DUNST_THEME}" >&2
-      return 2
+      return "${WAL_DUNST_PARSE_COLOR_INVALID}"
       ;;
     *)
       return "${rc}"

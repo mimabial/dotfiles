@@ -8,7 +8,7 @@ $HOME/.config/waybar/theme.css
 @define-color alt_fg #c4c1c1;
 @define-color alt_br #d32d38;
 
-@define-color act_bg #d32d38;
+@define-color act_bg #1e0f0f;
 @define-color act_fg #130808;
 @define-color act_br #d32d38;
 
@@ -17,23 +17,23 @@ $HOME/.config/waybar/theme.css
 @define-color hvr_br #c74b8a;
 
 @define-color c0 #1e0f0f;
-@define-color c1 #d32d38;
+@define-color c4 #d32d38;
 @define-color c2 #90b486;
 @define-color c3 #d4a030;
-@define-color c4 #8b6aad;
+@define-color c1 #8b6aad;
 @define-color c5 #c74b8a;
 @define-color c6 #5ba8a0;
 @define-color c7 #968c8c;
 @define-color c8 #6b5757;
-@define-color c9 #e04550;
+@define-color c12 #e04550;
 @define-color c10 #a4c89a;
 @define-color c11 #e2b44a;
-@define-color c12 #a482c4;
+@define-color c9 #a482c4;
 @define-color c13 #d968a0;
 @define-color c14 #74bfb7;
 @define-color c15 #c4c1c1;
 
-@define-color accent #d32d38;
+@define-color accent #d4a030;
 @define-color info @c6;
 @define-color warning @c3;
 @define-color error @c1;

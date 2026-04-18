@@ -4,9 +4,13 @@
 
 set -euo pipefail
 
-source "$(command -v hyprshell)" || exit 1
+LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 
-THEMES_DIR="${HOME}/.config/hypr/themes"
+# shellcheck source=/dev/null
+source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
+hypr_runtime_require system || exit 1
+
+THEMES_DIR="${HYPR_CONFIG_HOME}/themes"
 COMPLETE_TEMPLATE="Tokyo Night"
 MIN_ELEMENTS=1000
 
@@ -119,6 +123,7 @@ render_svg_from_color_map() {
 complete_kvantum_theme() {
     local theme_dir="$1"
     local theme_name=""
+    local kvantum_dir=""
     local kvantum_svg=""
     local kvconfig_file=""
     local template_kvconfig=""
@@ -126,24 +131,31 @@ complete_kvantum_theme() {
     local backup_file=""
     local element_count=0
     local new_element_count=0
+    local theme_state=""
     declare -A template_colors
     declare -A theme_colors
     declare -A svg_color_map
 
     theme_name="$(basename "${theme_dir}")"
-    kvantum_svg="${theme_dir}/kvantum/kvantum.theme"
-    kvconfig_file="${theme_dir}/kvantum/kvconfig.theme"
+    kvantum_dir="${theme_dir}/kvantum"
+    kvantum_svg="${kvantum_dir}/kvantum.theme"
+    kvconfig_file="${kvantum_dir}/kvconfig.theme"
 
-    [[ -f "${kvantum_svg}" ]] || return 0
+    [[ -d "${kvantum_dir}" ]] || return 0
     [[ -f "${kvconfig_file}" ]] || return 0
 
-    element_count="$(kvantum_element_count "${kvantum_svg}")"
-    if ((element_count >= MIN_ELEMENTS)); then
-        echo "[${theme_name}] Already complete (${element_count} elements)"
-        return 0
+    if [[ -f "${kvantum_svg}" ]]; then
+        element_count="$(kvantum_element_count "${kvantum_svg}")"
+        if ((element_count >= MIN_ELEMENTS)); then
+            echo "[${theme_name}] Already complete (${element_count} elements)"
+            return 0
+        fi
+        theme_state="Incomplete"
+    else
+        theme_state="Missing"
     fi
 
-    echo "[${theme_name}] Incomplete (${element_count} elements)"
+    echo "[${theme_name}] ${theme_state} (${element_count} elements)"
 
     template_kvconfig="${THEMES_DIR}/${COMPLETE_TEMPLATE}/kvantum/kvconfig.theme"
     template_svg="${THEMES_DIR}/${COMPLETE_TEMPLATE}/kvantum/kvantum.theme"
@@ -156,7 +168,8 @@ complete_kvantum_theme() {
     ((${#svg_color_map[@]} > 0)) || return 0
 
     backup_file="${kvantum_svg}.incomplete-backup"
-    if [[ ! -f "${backup_file}" ]]; then
+    mkdir -p "${kvantum_dir}"
+    if [[ -f "${kvantum_svg}" && ! -f "${backup_file}" ]]; then
         cp "${kvantum_svg}" "${backup_file}"
         echo "  • Backed up original to kvantum.theme.incomplete-backup"
     fi
@@ -168,13 +181,43 @@ complete_kvantum_theme() {
     echo ""
 }
 
+resolve_theme_dir() {
+    local raw_target="$1"
+
+    if [[ -d "${raw_target}" ]]; then
+        printf '%s\n' "${raw_target%/}"
+        return 0
+    fi
+
+    if [[ -d "${THEMES_DIR}/${raw_target}" ]]; then
+        printf '%s\n' "${THEMES_DIR}/${raw_target}"
+        return 0
+    fi
+
+    printf 'WARN: theme not found: %s\n' "${raw_target}" >&2
+    return 1
+}
+
 main() {
     local theme_dir=""
+    local target=""
+    local -a theme_dirs=()
 
     echo "Scanning for incomplete Kvantum themes..."
     echo ""
 
-    for theme_dir in "${THEMES_DIR}"/*/; do
+    if (($# > 0)); then
+        for target in "$@"; do
+            theme_dir="$(resolve_theme_dir "${target}")" || continue
+            theme_dirs+=("${theme_dir}")
+        done
+    else
+        for theme_dir in "${THEMES_DIR}"/*/; do
+            theme_dirs+=("${theme_dir%/}")
+        done
+    fi
+
+    for theme_dir in "${theme_dirs[@]}"; do
         complete_kvantum_theme "${theme_dir}"
     done
 

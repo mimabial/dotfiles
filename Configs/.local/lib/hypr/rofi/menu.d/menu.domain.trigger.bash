@@ -55,7 +55,7 @@ trigger_spawn_detached() {
     pkill -x rofi >/dev/null 2>&1 || true
     trigger_wait_for_rofi_layers_gone
     exec "$@"
-  ) >/dev/null 2>&1 < /dev/null &
+  ) >/dev/null 2>&1 </dev/null &
 }
 
 menu_register_domain_trigger() {
@@ -67,14 +67,12 @@ menu_register_domain_trigger() {
   menu_define trigger_capture "Capture"
   menu_add_item trigger_capture "  Screenshot" submenu trigger_screenshot
   menu_add_item trigger_capture "  Screenrecord" submenu trigger_screenrecord
-  menu_add_item trigger_capture "  Color Hex" action trigger_color_picker
+  menu_add_item trigger_capture "  Color Picker" action trigger_color_picker
 
   menu_define trigger_screenshot "Screenshot"
   menu_add_item trigger_screenshot "  Smart with Editing" action trigger_screenshot_edit
   menu_add_item trigger_screenshot "  Smart to Clipboard" action trigger_screenshot_clipboard
   menu_add_item trigger_screenshot "  Smart Save" action trigger_screenshot_save
-  menu_add_item trigger_screenshot "󰹑  Area" action trigger_screenshot_area
-  menu_add_item trigger_screenshot "󰹑  Frozen Area" action trigger_screenshot_area_freeze
   menu_add_item trigger_screenshot "󱂬  Window" action trigger_screenshot_window
   menu_add_item trigger_screenshot "󰍹  Focused Monitor" action trigger_screenshot_monitor
   menu_add_item trigger_screenshot "󰹑  All Outputs" action trigger_screenshot_all
@@ -115,8 +113,6 @@ menu_run_action_trigger() {
     trigger_screenshot_edit) trigger_spawn_detached hyprshell capture/screenshot.sh smart ;;
     trigger_screenshot_clipboard) trigger_spawn_detached hyprshell capture/screenshot.sh smart clipboard ;;
     trigger_screenshot_save) trigger_spawn_detached hyprshell capture/screenshot.sh smart save ;;
-    trigger_screenshot_area) trigger_spawn_detached hyprshell capture/screenshot.sh s ;;
-    trigger_screenshot_area_freeze) trigger_spawn_detached hyprshell capture/screenshot.sh sf ;;
     trigger_screenshot_window) trigger_spawn_detached hyprshell capture/screenshot.sh w ;;
     trigger_screenshot_monitor) trigger_spawn_detached hyprshell capture/screenshot.sh m ;;
     trigger_screenshot_all) trigger_spawn_detached hyprshell capture/screenshot.sh p ;;

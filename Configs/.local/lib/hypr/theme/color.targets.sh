@@ -43,8 +43,8 @@ hypr_layered_value() {
   local config_file value=""
 
   for config_file in \
-    "$(active_theme_metadata_file)" \
     "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/userfonts.conf" \
+    "$(active_theme_metadata_file)" \
     "${XDG_DATA_HOME:-$HOME/.local/share}/hypr/variables.conf"
   do
     [[ -r "${config_file}" ]] || continue

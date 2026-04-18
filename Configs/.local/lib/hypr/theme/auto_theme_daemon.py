@@ -244,7 +244,7 @@ class AutoThemeDaemon:
             env_path = env.get("PATH", "")
             env["PATH"] = f"{Path.home() / '.local' / 'bin'}:{env_path}"
             result = subprocess.run(
-                [hyprshell, "color.set", str(wallpaper)],
+                [hyprshell, "color-sync", str(wallpaper)],
                 env=env,
                 capture_output=True,
                 text=True,

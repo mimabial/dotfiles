@@ -186,23 +186,11 @@ run_wal_generation() {
 
 canonicalize_shell_colors_file() {
   local shell_file="${WAL_CACHE}/colors-shell.sh"
-  local legacy_file="${WAL_CACHE}/colors.sh"
 
-  if [[ ! -f "${shell_file}" && -f "${legacy_file}" ]]; then
-    mv -f "${legacy_file}" "${shell_file}"
-    return 0
-  fi
-
-  if [[ -f "${shell_file}" && -f "${legacy_file}" ]]; then
-    if ! cmp -s "${shell_file}" "${legacy_file}"; then
-      if [[ "${legacy_file}" -nt "${shell_file}" ]]; then
-        cp -f "${legacy_file}" "${shell_file}"
-      else
-        print_log -sec "pywal16" -warn "colors" "discarding stale legacy colors.sh"
-      fi
-    fi
-    rm -f "${legacy_file}"
-  fi
+  [[ -f "${shell_file}" ]] || {
+    print_log -sec "pywal16" -warn "colors" "missing colors-shell.sh"
+    return 1
+  }
 }
 
 hex_triplet_to_rgb_components() {

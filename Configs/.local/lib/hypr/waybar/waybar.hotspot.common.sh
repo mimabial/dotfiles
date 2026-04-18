@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 
+# shellcheck source=/dev/null
+source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/waybar.notify.common.sh"
+
 waybar_hotspot_have_command() {
-  command -v "$1" >/dev/null 2>&1
+  waybar_common_have_command "$1"
 }
 
 waybar_hotspot_notify() {
@@ -10,7 +13,7 @@ waybar_hotspot_notify() {
   local urgency="${3:-normal}"
   local timeout="${4:-5000}"
 
-  dunstify -t "${timeout}" -i "network-wireless" "${title}" "${message}" -u "${urgency}"
+  waybar_common_notify "network-wireless" "${title}" "${message}" "${urgency}" "${timeout}"
 }
 
 waybar_hotspot_connection_mode() {

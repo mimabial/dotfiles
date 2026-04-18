@@ -2,15 +2,20 @@
 
 set -euo pipefail
 
-if [[ "${HYPR_SHELL_INIT:-0}" -ne 1 ]]; then
-  source "$(command -v hyprshell)" || exit 1
-fi
+LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
+
+# shellcheck source=/dev/null
+source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
+hypr_runtime_require state system || exit 1
+hypr_runtime_load_state || exit 1
 
 # shellcheck source=/dev/null
 source "${LIB_DIR}/hypr/theme/color.targets.sh"
 
 FONT_NAME="${1:-}"
 UPDATED=()
+GENERAL_FONT=""
+DOCUMENT_FONT=""
 MONOSPACE_FONT=""
 BAR_FONT=""
 MENU_FONT=""
@@ -28,14 +33,17 @@ resolve_font_targets() {
   local general_font=""
 
   general_font="$(hypr_config_value_from_layers 'FONT' 2>/dev/null || true)"
+  DOCUMENT_FONT="$(hypr_config_value_from_layers 'DOCUMENT_FONT' 2>/dev/null || true)"
   MONOSPACE_FONT="$(hypr_config_value_from_layers 'MONOSPACE_FONT' 2>/dev/null || true)"
   BAR_FONT="$(hypr_config_value_from_layers 'BAR_FONT' 2>/dev/null || true)"
   MENU_FONT="$(hypr_config_value_from_layers 'MENU_FONT' 2>/dev/null || true)"
   TERMINAL_FONT="$(hypr_config_value_from_layers 'TERMINAL_FONT' 2>/dev/null || true)"
 
+  GENERAL_FONT="${general_font:-${FONT_NAME:-sans-serif}}"
+  DOCUMENT_FONT="${DOCUMENT_FONT:-${GENERAL_FONT}}"
   MONOSPACE_FONT="${MONOSPACE_FONT:-${FONT_NAME:-monospace}}"
-  BAR_FONT="${BAR_FONT:-${general_font:-${MONOSPACE_FONT}}}"
-  MENU_FONT="${MENU_FONT:-${general_font:-${MONOSPACE_FONT}}}"
+  BAR_FONT="${BAR_FONT:-${GENERAL_FONT:-${MONOSPACE_FONT}}}"
+  MENU_FONT="${MENU_FONT:-${GENERAL_FONT:-${MONOSPACE_FONT}}}"
   TERMINAL_FONT="${TERMINAL_FONT:-${MONOSPACE_FONT}}"
 }
 
@@ -94,12 +102,26 @@ sync_ui_fonts() {
   hyprshell fonts/font-sync.sh --bar-to "${BAR_FONT}" --rofi-to "${MENU_FONT}" >/dev/null 2>&1 || true
   append_updated 'Waybar and Rofi fonts'
 
-  hyprshell service/restart-waybar.sh >/dev/null 2>&1 || true
+  hyprshell waybar.py --restart-direct >/dev/null 2>&1 || true
   append_updated 'Waybar reload'
 
   pgrep -x rofi >/dev/null 2>&1 || return 0
   pkill -x rofi >/dev/null 2>&1 || true
   append_updated 'Rofi launcher'
+}
+
+sync_desktop_ui_fonts() {
+  local desktop_sync_script="${LIB_DIR}/hypr/theme/desktop.sync.sh"
+
+  if [[ -x "${desktop_sync_script}" ]]; then
+    THEME_DESKTOP_SYNC_LOG_DCONF=0 "${desktop_sync_script}" --full --quiet >/dev/null 2>&1 || true
+    append_updated 'Desktop UI fonts'
+  fi
+
+  if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] && command -v hyprctl >/dev/null 2>&1; then
+    hyprctl reload config-only >/dev/null 2>&1 || true
+    append_updated 'Hyprland font reload'
+  fi
 }
 
 refresh_font_cache() {
@@ -108,7 +130,8 @@ refresh_font_cache() {
 }
 
 show_summary() {
-  printf 'Font set to: %s\n\n' "${MONOSPACE_FONT}"
+  printf 'UI font set to: %s\n' "${GENERAL_FONT}"
+  printf 'Monospace font set to: %s\n\n' "${MONOSPACE_FONT}"
   if [[ ${#UPDATED[@]} -eq 0 ]]; then
     printf 'No consumer configs were updated.\n'
     return 0
@@ -121,7 +144,7 @@ show_summary() {
 notify_user() {
   command -v dunstify >/dev/null 2>&1 || return 0
   dunstify -a 'Font Manager' -i 'preferences-desktop-font' \
-    'Font Changed' "Monospace font set to ${MONOSPACE_FONT}" -t 3000
+    'Font Changed' "UI: ${GENERAL_FONT}\nMono: ${MONOSPACE_FONT}" -t 3000
 }
 
 resolve_font_targets
@@ -129,6 +152,7 @@ apply_terminal_fonts
 apply_theme_terminal_overlays
 apply_fontconfig_alias
 sync_ui_fonts
+sync_desktop_ui_fonts
 refresh_font_cache
 show_summary
 notify_user

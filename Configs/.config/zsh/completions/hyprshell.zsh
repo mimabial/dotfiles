@@ -1,42 +1,35 @@
 #compdef hyprshell
 
-_hypr_shell() {
+_hyprshell() {
     local cur prev words
     cur="${words[CURRENT]}"
     prev="${words[CURRENT-1]}"
-    
-    local built_in_commands hypr_scripts
-    built_in_commands=("--help" "help" "-h" "-r" "reload" "--version" "version" "-v" "--release-notes" "release-notes" "--list-script" "--list-script-path" "--completions")
-    
-    # Get dynamic completions
+
+    local built_in_commands hyprscripts
+    built_in_commands=("--help" "help" "-h" "-r" "reload" "--version" "version" "-v" "--release-notes" "release-notes" "--list-script" "--list-script-path" "--completions" "validate" "pyinit" "init" "lock-session" "logout" "pip" "pypr" "app" )
+
     if (( $+commands[hyprshell] )); then
         local scripts_raw
         scripts_raw=(${(f)"$(hyprshell --list-script 2>/dev/null)"})
-        hypr_scripts=(${scripts_raw[@]%.*})  # Remove extensions
-        
+        hyprscripts=(${scripts_raw[@]%.*})
     fi
-    
-    # Only complete for first two arguments max
+
     if [[ $CURRENT -eq 2 ]]; then
-        # First argument: all commands
-        local all_commands=($built_in_commands $hypr_scripts)
-        compadd -a all_commands
+        local all_commands=($built_in_commands $hyprscripts)
+        compadd -M 'r:|/=* r:|=*' -a all_commands
     elif [[ $CURRENT -eq 3 ]]; then
-        # Second argument: only for specific commands
         case $words[2] in
             --completions)
                 compadd "bash" "zsh"
                 return 0
                 ;;
             *)
-                # No completion for other commands
                 return 0
                 ;;
         esac
     else
-        # No completion for 3rd argument and beyond
         return 0
     fi
 }
 
-compdef _hypr_shell hyprshell
+compdef _hyprshell hyprshell

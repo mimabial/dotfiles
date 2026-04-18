@@ -21,19 +21,18 @@ fi
 
 BIN_DIR="$(dirname "$(resolve_executable_path)")"
 LIB_DIR="$(realpath "${BIN_DIR}/../lib")"
-xdg_lib="${LIB_DIR}/hypr/core/xdg.sh"
+runtime_init="${LIB_DIR}/hypr/runtime/init.bash"
 
-[[ -r "${xdg_lib}" ]] || {
-  printf 'Error: missing lib %s\n' "${xdg_lib}" >&2
+[[ -r "${runtime_init}" ]] || {
+  printf 'Error: missing lib %s\n' "${runtime_init}" >&2
   exit 1
 }
 
 # shellcheck source=/dev/null
-source "${xdg_lib}" || exit 1
-hypr_init_xdg_env
-unset xdg_lib
+source "${runtime_init}" || exit 1
+unset runtime_init
 
-HYPR_LIB_PATH="${LIB_DIR}/hypr"
+HYPR_LIB_PATH="${HYPR_LIB_DIR}"
 for subdir in "${HYPR_LIB_PATH}"/*/; do
   [[ -d "${subdir}" ]] && HYPR_LIB_PATH="${HYPR_LIB_PATH}:${subdir}"
 done
@@ -56,6 +55,15 @@ for hyprshell_lib in \
   source "${hyprshell_lib}" || exit 1
 done
 
+if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+  # shellcheck source=/dev/null
+  if ! source "${LIB_DIR}/hypr/globalcontrol.sh"; then
+    echo "Error: Could not load config, broken installation?"
+    return 1
+  fi
+  return 0
+fi
+
 case "${1:-}" in
   app)
     export PATH="${HYPR_SCRIPTS_PATH}:${PATH}"
@@ -77,16 +85,6 @@ case "${1:-}" in
     export HYPR_SHELL_INIT=1
     ;;
 esac
-
-# shellcheck source=/dev/null
-if ! source "${LIB_DIR}/hypr/globalcontrol.sh"; then
-  echo "Error: Could not load config, broken installation?"
-  exit 1
-fi
-
-if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
-  return 0
-fi
 
 case "${1:-}" in
   logout)

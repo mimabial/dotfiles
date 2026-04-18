@@ -9,86 +9,105 @@ fi
 
 show_help() {
   cat <<EOT
-Usage: $(basename "$0") --[options|flags] [parameters]
-options:
-    -j, --json                List wallpapers in JSON format to STDOUT
-    -S, --select              Select wallpaper using rofi
-    -n, --next                Set next wallpaper
-    -p, --previous            Set previous wallpaper
-    -r, --random              Set random wallpaper
-    -s, --set <file>          Set specified wallpaper
-        --start               Start/apply current wallpaper to backend
-    -g, --get                 Get current wallpaper of specified backend
-    -o, --output <file>       Copy current wallpaper to specified file
-        --link                Resolved the linked wallpaper according to the theme
-    -t  --filetypes <types>   Specify file types to override (colon-separated ':')
-    -h, --help                Display this help message
+Usage: $(basename "$0") <command> [options]
 
-flags:
+Commands:
+    json                      List wallpapers in JSON format
+    select                    Select wallpaper using rofi
+    next                      Set next wallpaper
+    previous | prev           Set previous wallpaper
+    random                    Set random wallpaper
+    set <file>                Set a specific wallpaper
+    start                     Apply the current wallpaper to the backend
+    resume                    Reapply the current theme wallpaper
+    get                       Print current wallpaper path
+    output <file>             Copy current wallpaper to a file
+    link                      Rebuild derived backend links from wall.set
+    clean                     Remove cached thumbnails with no matching wallpapers
+
+Options:
     -b, --backend <backend>   Set wallpaper backend to use (awww, hyprpaper, etc.)
     -G, --global              Set wallpaper as global
         --wait-lock           Wait for the current wallpaper operation to finish
-        --clean-thumbs        Remove cached thumbs with no matching wallpapers
+    -t, --filetypes <types>   Override file types (colon-separated ':')
+        --notify-body <text>  Override notification body
+    -h, --help                Display this help message
 
+Notes:
+    .   --backend <backend> is also used to cache wallpapers/background images.
+        Example: '--backend hyprlock' writes
+        ~/.cache/hypr/wallpaper/current/hyprlock.png
 
-notes:
-    .   --backend <backend> is also use to cache wallpapers/background images e.g. hyprlock
-           when '--backend hyprlock' is used, the wallpaper will be cached in
-           ~/.cache/hypr/wallpaper/current/hyprlock.png
-
-    .   --global flag is used to set the wallpaper as global, this means all
-         thumbnails will be updated to reflect the new wallpaper
+    .   --global updates the theme wallpaper links and thumbnail cache.
 
     .   Interactive actions like next/previous/random/select wait for in-flight
-        wallpaper operations by default
+        wallpaper operations by default.
 
-    .   --output <path> is used to copy the current wallpaper to the specified path
-            We can use this to have a copy of the wallpaper in '/var/tmp' where
-            systemwide applications can access it
 EOT
   exit 0
 }
 
-Wall_Json() {
-  local ensure_thumbs=0
-  if [[ "${1}" == "--ensure-thumbs" ]]; then
-    ensure_thumbs=1
-    shift
-  fi
-
+wallpaper_catalog_prepare_runtime() {
+  local ensure_thumbs="${1:-0}"
   setIndex=0
   if ! wallpaper_theme_sources; then
     echo "ERROR: \"${HYPR_THEME_DIR}\" does not exist"
-    exit 0
+    return 2
   fi
 
-  Wall_Hashmap_Cached "${wallPathArray[@]}"
-  if [[ "${ensure_thumbs}" -eq 1 ]]; then
-    Wall_Ensure_Thumbs "sqre"
+  Wall_Hashmap_Cached "${wallPathArray[@]}" || return 1
+  [[ "${ensure_thumbs}" -eq 1 ]] && Wall_Ensure_Thumbs "sqre"
+}
+
+wallpaper_catalog_cache_paths() {
+  local out_cache_home_name="$1"
+  local out_cache_file_name="$2"
+  local out_json_cache_name="$3"
+  local resolved_cache_home=""
+  local resolved_cache_file=""
+  local resolved_json_cache=""
+
+  resolved_cache_home="$(wallpaper_cache_root)"
+  resolved_cache_file="$(wallpaper_hashmap_cache_file "${wallPathArray[@]}" 2>/dev/null || true)"
+  resolved_json_cache="$(wallpaper_catalog_json_file "${wallPathArray[@]}" 2>/dev/null || true)"
+
+  # shellcheck disable=SC2178
+  local -n out_cache_home_ref="${out_cache_home_name}"
+  # shellcheck disable=SC2178
+  local -n out_cache_file_ref="${out_cache_file_name}"
+  # shellcheck disable=SC2178
+  local -n out_json_cache_ref="${out_json_cache_name}"
+
+  out_cache_home_ref="${resolved_cache_home}"
+  out_cache_file_ref="${resolved_cache_file}"
+  out_json_cache_ref="${resolved_json_cache}"
+}
+
+wallpaper_catalog_print_cached_json_if_current() {
+  local json_cache="$1"
+  local cache_file="$2"
+  local json_mtime=""
+  local cache_mtime=""
+
+  [[ -n "${json_cache}" && -f "${json_cache}" && -f "${cache_file}" ]] || return 1
+
+  json_mtime="$(stat -c '%Y' -- "${json_cache}" 2>/dev/null || echo 0)"
+  cache_mtime="$(stat -c '%Y' -- "${cache_file}" 2>/dev/null || echo 0)"
+  if [[ "${json_mtime}" =~ ^[0-9]+$ && "${cache_mtime}" =~ ^[0-9]+$ ]] && ((json_mtime >= cache_mtime)); then
+    cat "${json_cache}"
+    return 0
   fi
 
-  local wall_list_json wall_hash_json cache_home cache_file json_cache json_tmp
-  cache_home="$(wallpaper_cache_root)"
-  cache_file="$(wallpaper_hashmap_cache_file "${wallPathArray[@]}" 2>/dev/null || true)"
-  json_cache="$(wallpaper_catalog_json_file "${wallPathArray[@]}" 2>/dev/null || true)"
+  return 1
+}
 
-  if [[ -n "${json_cache}" && -f "${json_cache}" && -f "${cache_file}" ]]; then
-    local json_mtime cache_mtime
-    json_mtime="$(stat -c '%Y' -- "${json_cache}" 2>/dev/null || echo 0)"
-    cache_mtime="$(stat -c '%Y' -- "${cache_file}" 2>/dev/null || echo 0)"
-    if [[ "${json_mtime}" =~ ^[0-9]+$ && "${cache_mtime}" =~ ^[0-9]+$ ]] && ((json_mtime >= cache_mtime)); then
-      cat "${json_cache}"
-      return 0
-    fi
-  fi
+wallpaper_catalog_build_json() {
+  local cache_home="$1"
+  local wall_list_json=""
+  local wall_hash_json=""
 
   wall_list_json=$(printf '%s\n' "${wallList[@]}" | jq -R . | jq -s .)
   wall_hash_json=$(printf '%s\n' "${wallHash[@]}" | jq -R . | jq -s .)
-
-  if [[ -n "${json_cache}" ]]; then
-    mkdir -p "$(dirname "${json_cache}")"
-    json_tmp="${json_cache}.tmp"
-  fi
 
   jq -n --argjson wallList "${wall_list_json}" --argjson wallHash "${wall_hash_json}" --arg cacheHome "${cache_home}" '
         [range(0; $wallList | length) as $i |
@@ -106,7 +125,20 @@ Wall_Json() {
                 rofi_quad: "\($wallList[$i] | split("/") | last):::\($wallList[$i]):::\($cacheHome)/thumbs/\($wallHash[$i]).quad\u0000icon\u001f\($cacheHome)/thumbs/\($wallHash[$i]).quad"
             }
         ]
-    ' | {
+    '
+}
+
+wallpaper_catalog_emit_and_cache_json() {
+  local cache_home="$1"
+  local json_cache="$2"
+  local json_tmp=""
+
+  if [[ -n "${json_cache}" ]]; then
+    mkdir -p "$(dirname "${json_cache}")"
+    json_tmp="${json_cache}.tmp"
+  fi
+
+  wallpaper_catalog_build_json "${cache_home}" | {
     if [[ -n "${json_tmp}" ]]; then
       tee "${json_tmp}"
     else
@@ -117,6 +149,27 @@ Wall_Json() {
   if [[ -n "${json_tmp}" && -f "${json_tmp}" ]]; then
     mv -f "${json_tmp}" "${json_cache}"
   fi
+}
+
+Wall_Json() {
+  local ensure_thumbs=0
+  local cache_home=""
+  local cache_file=""
+  local json_cache=""
+
+  if [[ "${1:-}" == "--ensure-thumbs" ]]; then
+    ensure_thumbs=1
+    shift
+  fi
+
+  if ! wallpaper_catalog_prepare_runtime "${ensure_thumbs}"; then
+    [[ "$?" -eq 2 ]] && exit 0
+    exit 1
+  fi
+  wallpaper_catalog_cache_paths cache_home cache_file json_cache
+
+  wallpaper_catalog_print_cached_json_if_current "${json_cache}" "${cache_file}" && return 0
+  wallpaper_catalog_emit_and_cache_json "${cache_home}" "${json_cache}"
 }
 
 wallpaper_select_monitor_width() {

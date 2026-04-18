@@ -105,8 +105,6 @@ nerd_font_menu_build() {
 show_font_menu() {
   local font_list=""
   local font=""
-  local vars_file=""
-  local stock="JetBrainsMono Nerd Font"
 
   font_list="$(hyprshell fonts/font-list.sh)"
   font="$(menu "Select Font" "Theme Default\n${font_list}")"
@@ -117,14 +115,8 @@ show_font_menu() {
   fi
 
   if [[ "${font}" == "Theme Default" ]]; then
-    vars_file="${HYPR_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/hypr}/variables.conf"
-    rm -f "${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}/userfonts.conf"
-    if [[ -f "${vars_file}" ]]; then
-      sed -i "s|^\\\$MONOSPACE_FONT=.*|\$MONOSPACE_FONT=${stock}|;s|^\\\$BAR_FONT=.*|\$BAR_FONT=${stock}|;s|^\\\$MENU_FONT=.*|\$MENU_FONT=${stock}|" "${vars_file}"
-    fi
-    hyprctl reload >/dev/null 2>&1
-    hyprshell fonts/font-sync.sh >/dev/null 2>&1 || true
-    hyprshell service/restart-waybar.sh >/dev/null 2>&1 || true
+    : > "${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}/userfonts.conf"
+    hyprshell fonts/font-apply.sh >/dev/null 2>&1 &
   else
     hyprshell fonts/font-set.sh "${font}" >/dev/null 2>&1 &
   fi

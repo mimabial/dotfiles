@@ -48,20 +48,22 @@ wallpaper_refresh_hyprlock_background() {
 }
 
 wallpaper_run_color_refresh() {
+  local wallpaper_path="${1:-}"
+
+  [[ -n "${wallpaper_path}" ]] || return 1
+
   HYPR_COLOR_MODE_OVERRIDE="${selected_color_mode}" \
-    run_low_prio "${LIB_DIR}/hypr/theme/color.set.sh" "${wallList[setIndex]}" &>/dev/null
+    run_low_prio "${LIB_DIR}/hypr/theme/color-sync.sh" "${wallpaper_path}" &>/dev/null
   [[ -x "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" ]] && "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" >/dev/null 2>&1
-  if declare -F wallpaper_notify_emit >/dev/null 2>&1; then
-    wallpaper_notify_emit "${HYPR_WALLPAPER_NOTIFY_NAME:-}" "${HYPR_WALLPAPER_NOTIFY_ICON:-}"
-  fi
 }
 
 wallpaper_background_post_apply() {
   local apply_colors="$1"
+  local wallpaper_path="$2"
 
   {
-    wallpaper_enqueue_cache_jobs -w "${wallList[setIndex]}" || true
-    [[ "${apply_colors}" -eq 1 ]] && wallpaper_run_color_refresh
+    wallpaper_enqueue_cache_jobs -w "${wallpaper_path}" || true
+    [[ "${apply_colors}" -eq 1 ]] && wallpaper_run_color_refresh "${wallpaper_path}"
   } 202>&- &
 }
 
@@ -86,6 +88,7 @@ wallpaper_refresh_thumbnail_links() {
 
 apply_selected_wallpaper() {
   local apply_colors=0
+  local wallpaper_path=""
   wallpaper_should_apply_colors_async && apply_colors=1
 
   if [[ "${WALLPAPER_RELOAD_ALL:-1}" -eq 1 ]] && [[ ${wallpaper_setter_flag} != "link" ]]; then
@@ -93,11 +96,12 @@ apply_selected_wallpaper() {
   fi
 
   wallpaper_link_selected
+  wallpaper_path="${wallList[setIndex]}"
   wallpaper_refresh_hyprlock_background
   [[ "${set_as_global}" == "true" ]] || return 0
 
   print_log -sec "wallpaper" "Setting Wallpaper as global"
-  wallpaper_background_post_apply "${apply_colors}"
+  wallpaper_background_post_apply "${apply_colors}" "${wallpaper_path}"
   wallpaper_refresh_thumbnail_links
 }
 

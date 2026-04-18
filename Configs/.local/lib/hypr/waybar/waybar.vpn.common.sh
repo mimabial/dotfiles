@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# shellcheck source=/dev/null
+source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/waybar.notify.common.sh"
+
 STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 STATERC_FILE="${STATE_HOME}/hypr/staterc"
 ENV_OVERRIDES_FILE="${STATE_HOME}/hypr/env-overrides"
@@ -18,7 +21,7 @@ waybar_vpn_load_env() {
 }
 
 waybar_have_command() {
-  command -v "$1" >/dev/null 2>&1
+  waybar_common_have_command "$1"
 }
 
 waybar_notify() {
@@ -28,7 +31,7 @@ waybar_notify() {
   local urgency="${4:-normal}"
   local timeout="${5:-5000}"
 
-  dunstify -t "${timeout}" -i "${icon}" "${title}" "${message}" -u "${urgency}"
+  waybar_common_notify "${icon}" "${title}" "${message}" "${urgency}" "${timeout}"
 }
 
 waybar_vpn_env_flag() {

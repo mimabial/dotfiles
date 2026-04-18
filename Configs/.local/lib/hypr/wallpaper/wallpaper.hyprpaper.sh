@@ -4,7 +4,11 @@
 # For future backends, this can be used as a base, just
 # change the hyprctl commands for the desired backend's commands
 
-source "$(command -v hyprshell)" || exit 1
+LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
+
+# shellcheck source=/dev/null
+source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
+hypr_runtime_require wallpaper_catalog || exit 1
 
 selected_wall="${1:-${WALLPAPER_CURRENT_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wallpaper/current}/wall.set}"
 [ -z "${selected_wall}" ] && echo "No input wallpaper" && exit 1

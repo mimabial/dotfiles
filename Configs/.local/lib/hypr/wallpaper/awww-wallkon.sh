@@ -3,7 +3,12 @@
 #// Set variables
 
 script_dir=$(dirname "$(realpath "$0")")
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
+LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
+
+# shellcheck source=/dev/null
+source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
+hypr_runtime_require state wallpaper_catalog || exit 1
+hypr_runtime_load_state || exit 1
 scrPath="$(realpath "$0")"
 kmenuPath="${XDG_DATA_HOME:-$HOME/.local/share}/kio/servicemenus"
 kmenuDesk="${kmenuPath}/hyprwallpaper.desktop"

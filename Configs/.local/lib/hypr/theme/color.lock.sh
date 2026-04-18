@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
+# Requires bash 4+ for dynamic exec {fd}> lock descriptors.
 
 color_lock_init() {
+  # This FD tracks the main color-generation lock for the current process so
+  # cleanup can temporarily release it before spawning a cache-only prewarm.
+  COLOR_RUN_LOCK_FD=""
   LOCK_FILE="$(hypr_lock_path color_gen)"
   CACHE_ONLY_LOCK_FILE="$(hypr_lock_path color_cache_only)"
   STATE_FILE="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/color.gen.state"
@@ -14,6 +18,8 @@ color_lock_init() {
   CACHE_ONLY_ROOT=""
   HYPR_AUTO_RELOAD_PREV=""
   THEME_UPDATE_LOCK_OWNED=0
+  # The theme-update lock is allocated only when this process owns the external
+  # theme-update section, so keep its descriptor dynamic as well.
   THEME_UPDATE_LOCK_FD=""
 
   mkdir -p "$(dirname "${LOCK_FILE}")" "$(dirname "${STATE_FILE}")"
@@ -21,19 +27,27 @@ color_lock_init() {
 
 color_lock_acquire_run_lock() {
   if [[ "${CACHE_ONLY}" -eq 1 ]]; then
-    exec 200>"${CACHE_ONLY_LOCK_FILE}"
-    if ! flock -n 200; then
+    exec {COLOR_RUN_LOCK_FD}>"${CACHE_ONLY_LOCK_FILE}"
+    if ! flock -n "${COLOR_RUN_LOCK_FD}"; then
       print_log -sec "pywal16" -stat "skip" "cache-only: another prewarm process running"
       exit 0
     fi
     return 0
   fi
 
-  exec 200>"${LOCK_FILE}"
-  if ! flock -n 200; then
+  exec {COLOR_RUN_LOCK_FD}>"${LOCK_FILE}"
+  if ! flock -n "${COLOR_RUN_LOCK_FD}"; then
     print_log -sec "pywal16" -stat "wait" "Another process running"
-    flock 200
+    flock "${COLOR_RUN_LOCK_FD}"
   fi
+}
+
+color_lock_release_run_lock() {
+  [[ -n "${COLOR_RUN_LOCK_FD}" ]] || return 0
+
+  flock -u "${COLOR_RUN_LOCK_FD}" 2>/dev/null || true
+  exec {COLOR_RUN_LOCK_FD}>&-
+  COLOR_RUN_LOCK_FD=""
 }
 
 color_lock_acquire_theme_update() {
@@ -45,14 +59,14 @@ color_lock_acquire_theme_update() {
   exec {THEME_UPDATE_LOCK_FD}>"${THEME_UPDATE_LOCK}"
   flock "${THEME_UPDATE_LOCK_FD}"
   lock_tmp="$(mktemp "$(dirname "${THEME_UPDATE_META}")/.$(basename "${THEME_UPDATE_META}").XXXXXX")" || return 1
-  {
+  if ! {
     printf 'pid=%s\n' "$$"
     printf 'started=%s\n' "$(date +%s)"
     printf 'cmd=%s\n' "${BASH_SOURCE[0]##*/}"
-  } >"${lock_tmp}" && mv -f "${lock_tmp}" "${THEME_UPDATE_META}" || {
+  } >"${lock_tmp}" || ! mv -f "${lock_tmp}" "${THEME_UPDATE_META}"; then
     rm -f "${lock_tmp}" 2>/dev/null || true
     return 1
-  }
+  fi
   THEME_UPDATE_LOCK_OWNED=1
 }
 
@@ -81,12 +95,13 @@ color_lock_spawn_precache() {
   [[ -n "${PRECACHE_WALLPAPER}" ]] || return 0
   [[ "${PRECACHE_MODE}" =~ ^(dark|light)$ ]] || return 0
   [[ -f "${PRECACHE_WALLPAPER}" ]] || return 0
+  [[ -n "${COLOR_RUN_LOCK_FD}" ]] || return 0
 
-  flock -u 200
+  color_lock_release_run_lock
   (
     export HYPR_WAL_CACHE_ONLY=1
     export HYPR_WAL_MODE_OVERRIDE="${PRECACHE_MODE}"
-    bash "${LIB_DIR}/hypr/theme/color.set.sh" "${PRECACHE_WALLPAPER}" &>/dev/null
+    bash "${LIB_DIR}/hypr/theme/color-sync.sh" "${PRECACHE_WALLPAPER}" &>/dev/null
   ) &
   disown
 }
@@ -113,5 +128,6 @@ color_lock_cleanup() {
   fi
 
   color_lock_spawn_precache
+  color_lock_release_run_lock
   return "${exit_code}"
 }

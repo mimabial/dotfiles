@@ -15,6 +15,7 @@ shaders_shared_dir="${HYPR_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/hypr}
 shaders_state_file="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/shaders.conf"
 shaders_cache_dir="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/shaders"
 compiled_shader_file="${shaders_cache_dir}/compiled.cache.glsl"
+quiet_notifications=0
 
 show_help() {
   cat <<HELP
@@ -23,6 +24,7 @@ Usage: $0 [OPTIONS]
 Options:
     --select | -S       Select a shader from the available options
     --reload | -r       Reload the current shader
+    --quiet  | -q       Suppress success notifications
     --help   | -h       Show this help message
 HELP
 }
@@ -66,6 +68,21 @@ list_shader_names() {
   hypr_stateful_choice_list_names "frag" "${shaders_user_dir}" "${shaders_shared_dir}" "neutral"
 }
 
+apply_shader_state() {
+  local state_key="$1"
+  local value="$2"
+  local notify_tag="$3"
+  local notify_title="$4"
+  local update_fn="$5"
+
+  state_set "${state_key}" "${value}" "staterc"
+  "${update_fn}" "${value}"
+
+  if [[ "${quiet_notifications}" -ne 1 ]]; then
+    send_ephemeral_notif "${notify_tag}" -t 2000 -i "preferences-desktop-display" "${notify_title}" "${value}"
+  fi
+}
+
 fn_select() {
   local shader_items=""
   local selected_shader=""
@@ -93,13 +110,13 @@ fn_select() {
   [[ -n "${selected_shader}" ]] || exit 0
   selected_shader="$(normalize_shader_name "${selected_shader}")"
 
-  hypr_stateful_choice_apply "HYPR_SHADER" "${selected_shader}" "hypr-shader" "Shader selected" fn_update
+  apply_shader_state "HYPR_SHADER" "${selected_shader}" "hypr-shader" "Shader selected" fn_update
 }
 
 fn_reload() {
   local shader_name
   shader_name="$(normalize_shader_name "${HYPR_SHADER:-neutral}")"
-  hypr_stateful_choice_apply "HYPR_SHADER" "${shader_name}" "hypr-shader" "Shader reloaded" fn_update
+  apply_shader_state "HYPR_SHADER" "${shader_name}" "hypr-shader" "Shader reloaded" fn_update
 }
 
 concat_shader_files() {
@@ -196,20 +213,23 @@ if [[ -z "${*}" ]]; then
   exit 1
 fi
 
-LONG_OPTS="select,help,reload"
-SHORT_OPTS="Shr"
+LONG_OPTS="select,help,reload,quiet"
+SHORT_OPTS="Shrq"
 PARSED=$(getopt --options "${SHORT_OPTS}" --longoptions "${LONG_OPTS}" --name "$0" -- "$@") || exit 2
 eval set -- "${PARSED}"
+
+action=""
 
 while true; do
   case "$1" in
     -S | --select)
-      fn_select
-      exit 0
+      action="select"
       ;;
     -r | --reload)
-      fn_reload
-      exit 0
+      action="reload"
+      ;;
+    -q | --quiet)
+      quiet_notifications=1
       ;;
     --help | -h)
       show_help
@@ -225,4 +245,19 @@ while true; do
       exit 1
       ;;
   esac
+  shift
 done
+
+case "${action}" in
+  select)
+    fn_select
+    ;;
+  reload)
+    fn_reload
+    ;;
+  *)
+    echo "No action provided"
+    show_help
+    exit 1
+    ;;
+esac

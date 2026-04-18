@@ -1,14 +1,11 @@
 #!/usr/bin/env bash
 
-pkill -u "$USER" rofi && exit 0
-
-source "$(command -v hyprshell)" || exit 1
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
+source "${HOME}/.local/lib/hypr/rofi/picker.common.bash"
+rofi_picker_bootstrap || exit 1
 
-boxdraw_dir=${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}
+rofi_picker_hypr_dir_vars boxdraw_dir cache_dir
 boxdraw_data="${boxdraw_dir}/boxdraw.db"
-cache_dir="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}"
 recent_data="${cache_dir}/landing/show_boxdraw.recent"
 
 save_recent_entry() {
@@ -68,14 +65,13 @@ get_boxdraw_selection() {
   temp_data="$(mktemp "${temp_dir}/boxdraw_with_recent.XXXXXX")" || return 1
 
   # Add recently used category if recent data exists
-  if [[ -f "${recent_data}" ]] && [[ -s "${recent_data}" ]]; then
-    local recent_count=$(wc -l <"${recent_data}" 2>/dev/null || echo 0)
-    if [ "$recent_count" -gt 0 ]; then
-      echo "🕒 Recently Used (${recent_count} characters)	:cat:recent:" >"${temp_data}" || {
-        rm -f "${temp_data}"
-        return 1
-      }
-    fi
+  if rofi_picker_recent_category_entry "${recent_data}" "🕒" "Recently Used" "characters" >"${temp_data}"; then
+    :
+  else
+    : >"${temp_data}" || {
+      rm -f "${temp_data}"
+      return 1
+    }
   fi
 
   cat "${boxdraw_data}" >>"${temp_data}" || {
@@ -207,7 +203,7 @@ show_category_menu() {
 main() {
   parse_arguments "$@"
 
-  rofi_picker_ensure_data_file "${recent_data}"
+  rofi_picker_prepare_data_file "${recent_data}"
 
   setup_rofi_config
 

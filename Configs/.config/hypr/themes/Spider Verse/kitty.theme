@@ -15,8 +15,8 @@ active_border_color #d32d38
 inactive_border_color #462f4a
 bell_border_color #d4a030
 
-active_tab_background #d32d38
-active_tab_foreground #130808
+active_tab_foreground #d32d38
+active_tab_background #130808
 inactive_tab_background #1e0f0f
 inactive_tab_foreground #6b5757
 tab_bar_background #1e0f0f

@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 
-source "$(command -v hyprshell)" || exit 1
+LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
+
+# shellcheck source=/dev/null
+source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
+hypr_runtime_require state system rofi wallpaper_catalog || exit 1
+hypr_runtime_load_state || exit 1
 source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/rofi/rofi.lib.bash"
 
 theme_select_notify() {

@@ -10,6 +10,7 @@ source "$(command -v hyprshell)" || exit 1
 
 OUTPUT_DIR="${HYPR_SCREENRECORD_DIR:-${XDG_VIDEOS_DIR:-$HOME/Videos}/Recordings}"
 RECORDING_FILE="${TMPDIR:-/tmp}/hypr-screenrecord-filename"
+SCREENRECORD_LOG_FILE="${TMPDIR:-/tmp}/hypr-screenrecord.log"
 
 screenrecord_notify() {
   local summary="$1"
@@ -257,18 +258,19 @@ screenrecord_audio_args() {
 }
 
 screenrecord_base_args() {
-  local -n rec_args_ref="$1"
+  local out_args_name="$1"
   local resolution="$2"
-  screenrecord_target_args rec_args_ref "portal" "$resolution"
+  screenrecord_target_args "${out_args_name}" "portal" "$resolution"
 }
 
 screenrecord_target_args() {
-  local -n rec_args_ref="$1"
+  local out_args_name="$1"
   local target="$2"
   local resolution="$3"
   shift 3
+  local -n out_args_ref="${out_args_name}"
 
-  rec_args_ref=(-w "$target" "$@" -k auto -s "$resolution" -f 60 -fm cfr -fallback-cpu-encoding yes)
+  out_args_ref=(-w "$target" "$@" -k auto -s "$resolution" -f 60 -fm cfr -fallback-cpu-encoding yes)
 }
 
 screenrecord_selection_cancelled_notify() {
@@ -296,7 +298,7 @@ screenrecord_maybe_force_display_gpu() {
 }
 
 screenrecord_window_args() {
-  local -n rec_args_ref="$1"
+  local out_args_name="$1"
   local resolution="$2"
   local win_geom=""
   local win_formatted=""
@@ -306,11 +308,11 @@ screenrecord_window_args() {
     return 1
   }
   win_formatted=$(screenrecord_formatted_region <<<"$win_geom")
-  screenrecord_target_args rec_args_ref "region" "$resolution" -region "$win_formatted"
+  screenrecord_target_args "${out_args_name}" "region" "$resolution" -region "$win_formatted"
 }
 
 screenrecord_region_args() {
-  local -n rec_args_ref="$1"
+  local out_args_name="$1"
   local resolution="$2"
   local region=""
   local region_formatted=""
@@ -320,30 +322,30 @@ screenrecord_region_args() {
     return 1
   }
   region_formatted=$(screenrecord_formatted_region <<<"$region")
-  screenrecord_target_args rec_args_ref "region" "$resolution" -region "$region_formatted"
+  screenrecord_target_args "${out_args_name}" "region" "$resolution" -region "$region_formatted"
 }
 
 screenrecord_output_args() {
-  local -n rec_args_ref="$1"
+  local out_args_name="$1"
   local resolution="$2"
   local output=""
 
   output=$(hyprctl -j monitors | jq -r '.[] | select(.focused==true) | .name')
   [[ -n "$output" ]] || return 0
-  screenrecord_target_args rec_args_ref "$output" "$resolution"
+  screenrecord_target_args "${out_args_name}" "$output" "$resolution"
 }
 
 screenrecord_capture_args() {
-  local -n rec_args_ref="$1"
+  local out_args_name="$1"
   local resolution="$2"
 
-  screenrecord_base_args rec_args_ref "$resolution"
+  screenrecord_base_args "${out_args_name}" "$resolution"
   if [[ "$USE_WINDOW" == true ]]; then
-    screenrecord_window_args rec_args_ref "$resolution"
+    screenrecord_window_args "${out_args_name}" "$resolution"
   elif [[ "$USE_REGION" == true ]]; then
-    screenrecord_region_args rec_args_ref "$resolution"
+    screenrecord_region_args "${out_args_name}" "$resolution"
   elif [[ "$USE_OUTPUT" == true ]]; then
-    screenrecord_output_args rec_args_ref "$resolution"
+    screenrecord_output_args "${out_args_name}" "$resolution"
   fi
 }
 
@@ -366,9 +368,13 @@ start_recording() {
   screenrecord_maybe_force_display_gpu
   screenrecord_capture_args rec_args "$resolution" || return 1
 
-  gpu-screen-recorder "${rec_args[@]}" -o "$filename" "${audio_args[@]}" &
+  : >"${SCREENRECORD_LOG_FILE}" || return 1
+
+  setsid gpu-screen-recorder "${rec_args[@]}" -o "$filename" "${audio_args[@]}" \
+    >>"${SCREENRECORD_LOG_FILE}" 2>&1 </dev/null &
   local pid=$!
   kill -0 "$pid" 2>/dev/null || return 1
+  disown "$pid" 2>/dev/null || true
 
   write_recording_state "$pid" "$filename"
   screenrecord_refresh_waybar

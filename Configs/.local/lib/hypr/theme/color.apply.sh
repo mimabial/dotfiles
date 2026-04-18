@@ -6,12 +6,12 @@
 # OVERVIEW:
 #   Orchestrates the application of pywal16-generated colors to various
 #   applications (GTK, Qt, terminals, waybar, etc.). File-generating theming
-#   scripts run inline so color.set.sh only returns after outputs exist.
+#   scripts run inline so color-sync.sh only returns after outputs exist.
 #
 # USAGE:
 #   source color.apply.sh
-#   run_app_theming
-#   run_secondary_theming
+#   write_primary_app_theme_outputs
+#   write_secondary_app_theme_outputs
 #
 # DEPENDENCIES:
 #   - LIB_DIR must be set (path to ~/.local/lib)
@@ -21,7 +21,7 @@
 # GLOBAL VARIABLES:
 #   ASYNC_OPTIONAL_UPDATES - If 1, optional external updates may run async
 
-# Primary and secondary theming scripts are defined here so color.set.sh does
+# Primary and secondary theming scripts are defined here so color-sync.sh does
 # not need to shadow the same orchestration logic.
 declare -a APP_THEMING_SCRIPTS=(
   "wal/wal.kvantum.sh"
@@ -32,12 +32,11 @@ declare -a SECONDARY_THEMING_SCRIPTS=(
   "wal/wal.chrome.sh"
   "wal/wal.qt.sh"
   "wal/wal.gimp.sh"
-  "theme/dconf.set.sh"
 )
 
-# Run theming scripts inline. These scripts materialize config/state files and
-# must complete before the theme apply path returns.
-run_theming_scripts() {
+# Run theming scripts inline. These scripts write config/state files and must
+# complete before the theme apply path returns.
+write_theme_outputs_from_scripts() {
   local -n scripts_ref="$1"
   local script script_path
 
@@ -48,18 +47,21 @@ run_theming_scripts() {
   done
 }
 
-# Run primary app theming scripts.
-run_app_theming() {
-  run_theming_scripts APP_THEMING_SCRIPTS
+# Write primary app theme files and derived state.
+write_primary_app_theme_outputs() {
+  write_theme_outputs_from_scripts APP_THEMING_SCRIPTS
 }
 
-# Run secondary app theming scripts.
-run_secondary_theming() {
-  run_theming_scripts SECONDARY_THEMING_SCRIPTS
+# Write secondary app theme files and derived state.
+write_secondary_app_theme_outputs() {
+  write_theme_outputs_from_scripts SECONDARY_THEMING_SCRIPTS
+  local desktop_sync_script="${LIB_DIR}/hypr/theme/desktop.sync.sh"
+  [[ -x "${desktop_sync_script}" ]] || return 0
+  bash "${desktop_sync_script}" --runtime-only
 }
 
-# Send reload signals to running applications.
-reload_live_apps() {
+# Signal or live-reload running applications so they pick up fresh theme files.
+signal_and_reload_live_apps() {
   pkill -SIGUSR1 kitty 2>/dev/null || true
 
   local tmux_config="${XDG_CONFIG_HOME:-$HOME/.config}/tmux/tmux.conf"
@@ -263,7 +265,7 @@ reload_hypr_shaders() {
   local reload_output=""
 
   [[ -n "${HYPRLAND_INSTANCE_SIGNATURE}" ]] || return 0
-  if ! reload_output="$(hyprshell shaders --reload 2>&1)"; then
+  if ! reload_output="$(hyprshell shaders --reload --quiet 2>&1)"; then
     print_log -sec "hyprshell" -warn "reload" "shader reload failed"
     return 1
   fi

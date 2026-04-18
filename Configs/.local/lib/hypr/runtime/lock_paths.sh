@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
-[[ -n "${HYPR_LOCK_NAMES[color_gen]+set}" ]] 2>/dev/null && return 0
+if declare -p HYPR_LOCK_NAMES >/dev/null 2>&1; then
+  return 0 2>/dev/null || exit 0
+fi
 declare -grA HYPR_LOCK_NAMES=(
   [color_gen]="color-gen.lock"
   [color_cache_only]="color-cache-only.lock"

@@ -59,41 +59,96 @@ print_log_color_code() {
 print_log_emit_ansi() {
   local code="$1"
   local text="$2"
-  printf '\e[%sm%s\e[0m' "${code}" "${text}" >&2
+  if print_log_supports_ansi; then
+    printf '\e[%sm%s\e[0m' "${code}" "${text}" >&2
+  else
+    printf '%s' "${text}" >&2
+  fi
 }
 
-print_log() {
+print_log_supports_ansi() {
+  [[ -t 2 ]] || return 1
+  [[ "${TERM:-}" != "dumb" ]] || return 1
+  [[ -z "${NO_COLOR:-}" ]] || return 1
+}
+
+print_log_emit_tag() {
+  local token="$1"
+  local text="$2"
+
+  if print_log_supports_ansi; then
+    case "${token}" in
+      -stat)
+        printf '\e[4;30;46m %s \e[0m :: ' "${text}" >&2
+        ;;
+      -warn)
+        printf 'WARNING :: \e[30;43m %s \e[0m :: ' "${text}" >&2
+        ;;
+      -sec)
+        printf '\e[32m[%s] \e[0m' "${text}" >&2
+        ;;
+      -err)
+        printf 'ERROR :: \e[4;31m%s \e[0m' "${text}" >&2
+        ;;
+      *)
+        return 1
+        ;;
+    esac
+    return 0
+  fi
+
+  case "${token}" in
+    -stat)
+      printf ' %s :: ' "${text}" >&2
+      ;;
+    -warn)
+      printf 'WARNING :: %s :: ' "${text}" >&2
+      ;;
+    -sec)
+      printf '[%s] ' "${text}" >&2
+      ;;
+    -err)
+      printf 'ERROR :: %s ' "${text}" >&2
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+print_log_emit_segment() {
+  local token="$1"
+  local text="$2"
   local color_code=""
 
+  if color_code="$(print_log_color_code "${token}" 2>/dev/null)"; then
+    print_log_emit_ansi "${color_code}" "${text}"
+    return 0
+  fi
+
+  print_log_emit_tag "${token}" "${text}"
+}
+
+# print_log writes a single stderr line assembled from a stream of segments.
+# Supported two-argument styled segments:
+#   -sec TEXT   section prefix, rendered as [TEXT]
+#   -stat TEXT  status tag, rendered as "TEXT ::"
+#   -warn TEXT  warning tag, rendered as "WARNING :: TEXT ::"
+#   -err TEXT   error tag, rendered as "ERROR :: TEXT"
+#   -r/-g/-y/-b/-m/-c TEXT or +r/+g/+y/+b/+m/+c TEXT
+#               color TEXT with the matching ANSI color
+# Any other argument is emitted literally as-is. Styled segments consume the
+# following argument, so the common call shape is:
+#   print_log -sec "theme" -stat "apply" "Nordic"
+print_log() {
   while (("$#")); do
-    if color_code="$(print_log_color_code "$1" 2>/dev/null)"; then
-      print_log_emit_ansi "${color_code}" "${2-}"
+    if print_log_emit_segment "$1" "${2-}"; then
       shift 2
       continue
     fi
 
-    case "$1" in
-      -stat)
-        printf '\e[4;30;46m %s \e[0m :: ' "${2-}" >&2
-        shift 2
-        ;;
-      -warn)
-        printf 'WARNING :: \e[30;43m %s \e[0m :: ' "${2-}" >&2
-        shift 2
-        ;;
-      -sec)
-        printf '\e[32m[%s] \e[0m' "${2-}" >&2
-        shift 2
-        ;;
-      -err)
-        printf 'ERROR :: \e[4;31m%s \e[0m' "${2-}" >&2
-        shift 2
-        ;;
-      *)
-        printf '%s' "$1" >&2
-        shift
-        ;;
-    esac
+    printf '%s' "$1" >&2
+    shift
   done
   printf '\n' >&2
 }

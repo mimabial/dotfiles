@@ -2,7 +2,10 @@
 
 set -euo pipefail
 
-source "$(command -v hyprshell)" || exit 1
+LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
+
+# shellcheck source=/dev/null
+source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
 
 menu_from=""
 menu_to=""

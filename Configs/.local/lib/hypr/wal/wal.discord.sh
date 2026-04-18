@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # pywal16.discord.sh - Copy generated Discord CSS to client locations
 
+LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
+# shellcheck source=/dev/null
+source "${LIB_DIR}/hypr/core/hash-cache.sh" || exit 1
+
 discord_css="${XDG_CACHE_HOME:-$HOME/.cache}/wal/discord.css"
 hash_file="${XDG_RUNTIME_DIR:-/tmp}/wal-discord-hash"
 
@@ -8,8 +12,8 @@ hash_file="${XDG_RUNTIME_DIR:-/tmp}/wal-discord-hash"
 [ ! -f "${discord_css}" ] && exit 0
 
 # Change detection: skip if CSS unchanged
-input_hash=$(md5sum "${discord_css}" 2>/dev/null | cut -d' ' -f1)
-if [[ -f "$hash_file" && "$(cat "$hash_file" 2>/dev/null)" == "$input_hash" ]]; then
+input_hash="$(hypr_hash_cache_digest_files "${discord_css}")"
+if hypr_hash_cache_is_current "${hash_file}" "${input_hash}"; then
   exit 0
 fi
 
@@ -30,4 +34,4 @@ for client in "${clients[@]}"; do
 done
 
 # Save hash for next run
-echo "$input_hash" > "$hash_file"
+hypr_hash_cache_store "${hash_file}" "${input_hash}"

@@ -11,6 +11,8 @@ USAGE() {
 	Options:
 		p       Print all outputs
 		smart   Smart selection (auto-detects windows, prevents tiny screenshots)
+		area    Manual area selection
+		area-freeze  Manual area selection with frozen screen
 		m       Screenshot focused monitor
 		w       Window selection (choose from visible windows)
 		sc      Use tesseract to scan image, then add to clipboard
@@ -190,6 +192,14 @@ capture_selected_geometry() {
   esac
 }
 
+manual_area_screenshot() {
+  local freeze_selection="${1:-0}"
+  local -a grimblast_args=()
+
+  [[ "${freeze_selection}" -eq 1 ]] && grimblast_args+=(--freeze)
+  capture_then_annotate grimblast_capture "${grimblast_args[@]}" save area "${temp_screenshot}"
+}
+
 # Smart screenshot with frozen screen and smart detection
 smart_screenshot() {
   local destination="$1"
@@ -289,6 +299,12 @@ case "${mode}" in
     ;;
   smart) # smart selection with wayfreeze and auto window detection
     smart_screenshot "${smart_destination:-$2}"
+    ;;
+  area) # manual area selection
+    manual_area_screenshot 0
+    ;;
+  area-freeze) # manual area selection with frozen screen
+    manual_area_screenshot 1
     ;;
   w) # window selection with frozen screen
     window_screenshot

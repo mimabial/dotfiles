@@ -110,7 +110,7 @@ _hyprshell() {
 
     if [[ \$CURRENT -eq 2 ]]; then
         local all_commands=(\$built_in_commands \$hyprscripts)
-        compadd -a all_commands
+        compadd -M 'r:|/=* r:|=*' -a all_commands
     elif [[ \$CURRENT -eq 3 ]]; then
         case \$words[2] in
             --completions)

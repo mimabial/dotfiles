@@ -1,14 +1,11 @@
 #!/usr/bin/env bash
 
-pkill -u "$USER" rofi && exit 0
-
-source "$(command -v hyprshell)" || exit 1
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
+source "${HOME}/.local/lib/hypr/rofi/picker.common.bash"
+rofi_picker_bootstrap || exit 1
 
-glyph_dir=${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}
+rofi_picker_hypr_dir_vars glyph_dir cache_dir
 glyph_data="${glyph_dir}/glyph.db"
-cache_dir="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}"
 recent_data="${cache_dir}/landing/show_glyph.recent"
 
 refresh_recent_entries() {
@@ -110,7 +107,7 @@ get_glyph_selection() {
 
   temp_data="$(mktemp "${temp_dir}/glyph_with_data.XXXXXX")" || return 1
 
-  if ! awk '!seen[$0]++' "${recent_data}" "${glyph_data}" >"${temp_data}"; then
+  if ! rofi_picker_build_recent_first_file "${temp_data}" "${recent_data}" "${glyph_data}"; then
     rm -f "${temp_data}"
     return 1
   fi
@@ -171,8 +168,7 @@ HELP
 
 main() {
   parse_arguments "$@"
-  rofi_picker_ensure_data_file "${recent_data}"
-  refresh_recent_entries "${recent_data}"
+  rofi_picker_prepare_data_file "${recent_data}" refresh_recent_entries
 
   setup_rofi_config
 

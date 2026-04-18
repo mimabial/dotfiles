@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # pywal16.gtk.sh - Create Pywal16-Gtk theme with dynamic border-radius
 
+LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
+# shellcheck source=/dev/null
+source "${LIB_DIR}/hypr/core/hash-cache.sh" || exit 1
+
 THEMES_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/themes"
 GTK_THEME_DIR="${THEMES_DIR}/Pywal16-Gtk"
 GTK_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/wal"
@@ -20,12 +24,12 @@ get_hypr_border() {
 }
 
 input_hash() {
-  cat "$gtk3_source" "$gtk4_source" 2>/dev/null | md5sum | cut -d' ' -f1
+  hypr_hash_cache_digest_files "${gtk3_source}" "${gtk4_source}"
 }
 
 theme_inputs_changed() {
   local combined_hash="$1"
-  [[ ! -f "$HASH_FILE" || "$(cat "$HASH_FILE" 2>/dev/null)" != "$combined_hash" ]]
+  ! hypr_hash_cache_is_current "${HASH_FILE}" "${combined_hash}"
 }
 
 scale_radius() {
@@ -156,6 +160,6 @@ combined_hash="$(input_hash)-${hypr_border}"
 theme_inputs_changed "$combined_hash" || exit 0
 
 write_theme
-echo "$combined_hash" >"$HASH_FILE"
+hypr_hash_cache_store "${HASH_FILE}" "${combined_hash}"
 notify_xsettingsd
 notify_gtk_settings

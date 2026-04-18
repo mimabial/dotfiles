@@ -53,7 +53,7 @@ menu_run_action_system() {
     update_time) present_terminal hyprshell system/time.sh ;;
     update_process_hypridle) hyprshell service/restart.sh hypridle ;;
     update_process_hyprsunset) hyprshell service/restart.sh hyprsunset ;;
-    update_process_waybar) hyprshell service/restart-waybar.sh ;;
+    update_process_waybar) hyprshell waybar.py --restart-direct ;;
     update_process_rofi) pkill -x rofi >/dev/null 2>&1 || true ;;
     update_config_hyprland) present_terminal hyprshell service/domain.sh restore hypr-config ;;
     update_config_hypridle) present_terminal hyprshell service/domain.sh restore hypridle ;;
@@ -67,8 +67,8 @@ menu_run_action_system() {
     update_password_user) present_terminal passwd ;;
     system_lock) hyprshell session/hyprlock.sh ;;
     system_suspend) systemctl suspend ;;
-    system_restart) hyprshell reboot.sh ;;
-    system_shutdown) hyprshell shutdown.sh ;;
+    system_restart) hyprshell cmd/powerctl.sh reboot ;;
+    system_shutdown) hyprshell cmd/powerctl.sh shutdown ;;
     *) return 1 ;;
   esac
 

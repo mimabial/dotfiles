@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 
+LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
+
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
+source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
+hypr_runtime_require state wallpaper_catalog || exit 1
+hypr_runtime_load_state || exit 1
 export WALLPAPER_THUMB_DIR
 
 cacheIn=""

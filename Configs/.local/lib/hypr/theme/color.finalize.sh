@@ -62,10 +62,10 @@ color_finalize_primary_theming() {
     export hypr_border
   fi
 
-  run_app_theming
+  write_primary_app_theme_outputs
 
   color_finalize_normalize_hyprshade_colors
-  reload_live_apps
+  signal_and_reload_live_apps
 
   if [[ "${selected_color_mode}" -eq 0 ]]; then
     process_theme_files
@@ -108,7 +108,7 @@ color_finalize_update_waybar_border_radius() {
 
 color_finalize_secondary_theming() {
   [[ -f "${LIB_DIR}/hypr/wal/wal.hypr.sh" ]] && source "${LIB_DIR}/hypr/wal/wal.hypr.sh"
-  run_secondary_theming
+  write_secondary_app_theme_outputs
   color_finalize_update_waybar_border_radius
   color_lock_release_theme_update
 

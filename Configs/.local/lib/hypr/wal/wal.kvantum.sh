@@ -2,6 +2,8 @@
 # wal.kvantum.sh - Kvantum theme generation with pywal colors
 
 source "$(command -v hyprshell)" || exit 1
+# shellcheck source=/dev/null
+source "${LIB_DIR}/hypr/core/hash-cache.sh" || exit 1
 
 WAL_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/wal"
 hash_file="${XDG_RUNTIME_DIR:-/tmp}/wal-kvantum-hash"
@@ -55,7 +57,6 @@ theme_inputs_changed() {
     "${THEME_KVANTUM_DIR}/colors.map"
     "${template_kvconfig}"
   )
-  local input_hash=""
   local combined_hash=""
   local kvconfig_output="${PYWAL_KVANTUM_DIR}/pywal16.kvconfig"
   local svg_output="${PYWAL_KVANTUM_DIR}/pywal16.svg"
@@ -64,8 +65,7 @@ theme_inputs_changed() {
   svg_source="$(resolve_kvantum_svg_source)"
   [[ -n "${svg_source}" ]] && input_files+=("${svg_source}")
 
-  input_hash=$(cat "${input_files[@]}" "${WAL_CACHE}/colors-shell.sh" 2>/dev/null | md5sum | cut -d' ' -f1)
-  combined_hash="${input_hash}-${selected_color_mode}"
+  combined_hash="$(build_theme_input_hash "${input_files[@]}")-${selected_color_mode}"
 
   [[ ! -f "${kvconfig_output}" ]] && return 0
   if [[ -n "${svg_source}" && ! -f "${svg_output}" ]]; then
@@ -82,7 +82,7 @@ theme_inputs_changed() {
     done
   fi
 
-  [[ ! -f "$hash_file" || "$(cat "$hash_file" 2>/dev/null)" != "$combined_hash" ]]
+  ! hypr_hash_cache_is_current "${hash_file}" "${combined_hash}"
 }
 
 copy_theme_files() {
@@ -342,20 +342,25 @@ load_theme_mode_highlight_colors() {
   local theme_kvconfig="${THEME_KVANTUM_DIR}/kvconfig.theme"
   local kv_highlight=""
   local kv_text=""
+  local kv_highlight_text=""
 
   [[ -f "${theme_kvconfig}" ]] || return 0
+  highlight_foreground=""
   kv_highlight=$(grep '^highlight\.color=' "${theme_kvconfig}" | cut -d= -f2)
   kv_text=$(grep '^text\.color=' "${theme_kvconfig}" | cut -d= -f2)
+  kv_highlight_text=$(grep '^highlight\.text\.color=' "${theme_kvconfig}" | cut -d= -f2)
   kv_highlight="$(normalize_kvantum_color "${kv_highlight}")"
   kv_text="$(normalize_kvantum_color "${kv_text}")"
+  kv_highlight_text="$(normalize_kvantum_color "${kv_highlight_text}")"
   [[ -n "${kv_highlight}" ]] && color4="${kv_highlight}"
   [[ -n "${kv_text}" ]] && foreground="${kv_text}"
+  [[ -n "${kv_highlight_text}" ]] && highlight_foreground="${kv_highlight_text}"
 }
 
 update_highlight_colors() {
   local kvconfig="${PYWAL_KVANTUM_DIR}/pywal16.kvconfig"
   local color4_kv=""
-  local foreground_kv=""
+  local highlight_foreground_kv=""
 
   [[ -f "${kvconfig}" && -n "${color4}" ]] || return 0
   load_theme_mode_highlight_colors
@@ -364,9 +369,12 @@ update_highlight_colors() {
   sed -i "s|^highlight\\.color=.*|highlight.color=${color4_kv}|" "${kvconfig}"
   sed -i "s|^inactive\\.highlight\\.color=.*|inactive.highlight.color=${color4_kv}|" "${kvconfig}"
 
-  if [[ -n "${foreground}" ]]; then
-    foreground_kv="$(sed_escape_replacement "${foreground}")"
-    sed -i "s|^highlight\\.text\\.color=.*|highlight.text.color=${foreground_kv}|" "${kvconfig}"
+  if [[ -n "${highlight_foreground:-}" ]]; then
+    highlight_foreground_kv="$(sed_escape_replacement "${highlight_foreground}")"
+    sed -i "s|^highlight\\.text\\.color=.*|highlight.text.color=${highlight_foreground_kv}|" "${kvconfig}"
+  elif [[ -n "${foreground:-}" ]]; then
+    highlight_foreground_kv="$(sed_escape_replacement "${foreground}")"
+    sed -i "s|^highlight\\.text\\.color=.*|highlight.text.color=${highlight_foreground_kv}|" "${kvconfig}"
   fi
 
   if command -v kwriteconfig6 >/dev/null 2>&1; then
@@ -382,13 +390,16 @@ store_current_hash() {
     "${THEME_KVANTUM_DIR}/colors.map"
     "${template_kvconfig}"
   )
-  local input_hash=""
-
   svg_source="$(resolve_kvantum_svg_source)"
   [[ -n "${svg_source}" ]] && input_files+=("${svg_source}")
 
-  input_hash=$(cat "${input_files[@]}" "${WAL_CACHE}/colors-shell.sh" 2>/dev/null | md5sum | cut -d' ' -f1)
-  echo "${input_hash}-${selected_color_mode}" > "$hash_file"
+  hypr_hash_cache_store "${hash_file}" "$(build_theme_input_hash "${input_files[@]}")-${selected_color_mode}"
+}
+
+build_theme_input_hash() {
+  local input_files=("$@")
+
+  hypr_hash_cache_digest_files "${input_files[@]}" "${WAL_CACHE}/colors-shell.sh"
 }
 
 resolve_theme_kvantum_dir

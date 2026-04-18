@@ -159,22 +159,6 @@ hypr_service_die() {
   exit 1
 }
 
-hypr_service_usage_refresh_config() {
-  cat <<'USAGE'
-Usage: hyprshell service/refresh-config.sh [options] <relative-path-under-config>
-
-Options:
-  -n, --dry-run          preview without changing files
-  -q, --quiet            suppress per-entry status lines
-  --diff                 show unified diffs for changed files
-  --no-diff              skip file diffs
-  --backup-label <name>  override backup folder suffix
-
-Example:
-  hyprshell service/refresh-config.sh hypr/hyprlock.conf
-USAGE
-}
-
 hypr_service_parse_refresh_args() {
   hypr_service_cli_show_diff=0
   hypr_service_cli_quiet=0

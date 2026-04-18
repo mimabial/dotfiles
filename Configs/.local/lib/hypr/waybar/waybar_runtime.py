@@ -683,11 +683,15 @@ def _start_waybar_unlocked():
             )
         return
 
-    # Ensure required include files exist before Waybar loads CSS.
-    try:
-        update_border_radius()
-    except Exception as e:
-        logger.debug(f"Failed to update border-radius.css before start: {e}")
+    # Avoid rewriting watched CSS on every start, or the watcher can trigger
+    # a second restart from Waybar's own bootstrap path. The normal theme/apply
+    # paths already refresh this file; only bootstrap it when it's missing.
+    border_radius_css = CONFIG_WAYBAR_DIR / "includes" / "border-radius.css"
+    if not border_radius_css.exists():
+        try:
+            update_border_radius()
+        except Exception as e:
+            logger.debug(f"Failed to bootstrap border-radius.css before start: {e}")
 
     def _waybar_preexec():
         # Ensure Waybar auto-reaps child module execs to prevent zombies.

@@ -26,27 +26,27 @@ waybar_wallpaper_map_args() {
   case "${action}" in
     next)
       shift
-      wallpaper_args=(-n "$@")
+      wallpaper_args=(next "$@")
       ;;
     previous | prev)
       shift
-      wallpaper_args=(-p "$@")
+      wallpaper_args=(previous "$@")
       ;;
     random)
       shift
-      wallpaper_args=(-r "$@")
+      wallpaper_args=(random "$@")
       ;;
     select)
       shift
-      wallpaper_args=(--select "$@")
+      wallpaper_args=(select "$@")
       ;;
     resume)
       shift
-      wallpaper_args=(--resume "$@")
+      wallpaper_args=(resume "$@")
       ;;
     start)
       shift
-      wallpaper_args=(--start "$@")
+      wallpaper_args=(start "$@")
       ;;
     -h | --help | help)
       waybar_wallpaper_usage

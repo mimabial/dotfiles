@@ -29,8 +29,8 @@ hypr_config_layer_files() {
   [[ -f "${variables_file}" ]] || variables_file="${config_home}/variables.conf"
 
   printf '%s\n' \
-    "${config_home}/themes/theme.conf" \
     "${config_home}/userfonts.conf" \
+    "${config_home}/themes/theme.conf" \
     "${variables_file}"
 }
 

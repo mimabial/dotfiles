@@ -1,15 +1,12 @@
 #!/usr/bin/env bash
 
-pkill -u "$USER" rofi && exit 0
-
-source "$(command -v hyprshell)" || exit 1
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
+source "${HOME}/.local/lib/hypr/rofi/picker.common.bash"
+rofi_picker_bootstrap || exit 1
 
-emoji_dir=${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}
+rofi_picker_hypr_dir_vars emoji_dir cache_dir
 emoji_data="${emoji_dir}/emoji.db"
 emoji_categories_dir="${emoji_dir}/emoji-categories"
-cache_dir="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}"
 recent_data="${cache_dir}/landing/show_emoji.recent"
 favorites_data="${cache_dir}/landing/emoji_favorites"
 EMOJI_ICONLESS_THEME_STR='listview { show-icons: false; } element { children: [ "element-text" ]; } element-icon { enabled: false; size: 0em; width: 0em; padding: 0; margin: 0; border: 0; }'
@@ -152,13 +149,7 @@ emoji_write_selection_source() {
       fi
     fi
 
-    if [[ -f "${recent_data}" ]] && [[ -s "${recent_data}" ]]; then
-      local recent_count
-      recent_count=$(wc -l <"${recent_data}" 2>/dev/null || echo 0)
-      if [ "$recent_count" -gt 0 ]; then
-        printf '%s\n' "🕒 Recently Used (${recent_count} emojis)	:cat:recent:"
-      fi
-    fi
+    rofi_picker_recent_category_entry "${recent_data}" "🕒" "Recently Used" "emojis" || true
 
     cat "${emoji_data}"
   } >"${target_file}"
@@ -466,12 +457,8 @@ show_category_menu() {
 }
 
 ensure_emoji_runtime_files() {
-  if [[ ! -f "${recent_data}" ]]; then
-    mkdir -p "$(dirname "${recent_data}")"
-    touch "${recent_data}"
-  fi
-  clean_emoji_file "${recent_data}"
-  clean_emoji_file "${favorites_data}"
+  rofi_picker_prepare_data_file "${recent_data}" clean_emoji_file
+  rofi_picker_prepare_data_file "${favorites_data}" clean_emoji_file
 }
 
 emoji_selection_category() {

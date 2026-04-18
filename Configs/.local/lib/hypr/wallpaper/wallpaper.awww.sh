@@ -27,8 +27,9 @@ wallpaper_awww_release_lock() {
 }
 trap 'wallpaper_awww_release_lock "$?"' EXIT
 
-# shellcheck disable=SC1091
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
+# shellcheck source=/dev/null
+source "${LIB_DIR:-$HOME/.local/lib}/hypr/runtime/init.bash" || exit 1
+hypr_runtime_require wallpaper_catalog || exit 1
 
 wait_for_wallpaper_daemon() {
   local attempt=0
@@ -136,9 +137,12 @@ wallpaper_cmd=("${wallpaper_client_cmd}" img "${resolved_wall}"
   --invert-y
   --transition-pos "${cursor_pos}")
 
-# Run synchronously when startup or theme application needs the wallpaper
-# settled before the rest of the desktop finishes updating.
-if [[ "${WALLPAPER_SET_FLAG}" == "start" || "${WALLPAPER_SYNC_APPLY:-0}" == "1" ]]; then
+# Run synchronously whenever the caller is using wait-lock semantics.
+# That keeps backend submits ordered with the global wallpaper lock, so
+# rapid next/previous actions cannot let an older background submit land last.
+if [[ "${WALLPAPER_SET_FLAG}" == "start" \
+  || "${WALLPAPER_SYNC_APPLY:-0}" == "1" \
+  || "${WALLPAPER_WAIT_FOR_LOCK:-0}" == "1" ]]; then
   "${wallpaper_cmd[@]}"
 else
   ( "${wallpaper_cmd[@]}" || print_log -sec "${wallpaper_backend_log}" -err "failed to set wallpaper" ) &

@@ -1,14 +1,24 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2154
 
+LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
+
 # shellcheck source=/dev/null
-source "$(command -v hyprshell)" || exit 1
-export_hypr_config
-# Recalculate HYPR_THEME_DIR after reloading config.
-HYPR_THEME_DIR="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}"
+source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
+hypr_runtime_require state wallpaper_catalog || exit 1
+hypr_runtime_load_state || exit 1
+
+declare -ga wallHash=()
+declare -ga wallList=()
+declare -ga wallPathArray=()
 
 wallpaper_wait_for_lock="${WALLPAPER_WAIT_FOR_LOCK:-0}"
 wallpaper_lock_acquired=0
+wallpaper_action_wait_by_default=0
+wallpaper_action_requires_lock=0
+wallpaper_action_requires_backend=1
+wallpaper_action_notify=0
+wallpaper_inventory_refresh_mode="none"
 
 wallpaper_release_lock() {
   local exit_code="${1:-$?}"
@@ -34,18 +44,57 @@ for wallpaper_lib in \
   source "${wallpaper_lib}" || exit 1
 done
 
-wallpaper_action_defaults_to_wait() {
+wallpaper_resolve_action_profile() {
+  wallpaper_action_wait_by_default=0
+  wallpaper_action_requires_lock=0
+  wallpaper_action_requires_backend=1
+  wallpaper_action_notify=0
+  wallpaper_inventory_refresh_mode="none"
+
   case "${wallpaper_setter_flag:-}" in
-    link | n | p | r | resume | s | select | start) return 0 ;;
-    *) return 1 ;;
+    n | p | r)
+      wallpaper_action_wait_by_default=1
+      wallpaper_action_requires_lock=1
+      wallpaper_action_notify=1
+      wallpaper_inventory_refresh_mode="async"
+      ;;
+    s | resume)
+      wallpaper_action_wait_by_default=1
+      wallpaper_action_requires_lock=1
+      wallpaper_action_notify=1
+      ;;
+    select)
+      wallpaper_action_wait_by_default=1
+      wallpaper_action_requires_lock=1
+      wallpaper_action_requires_backend=0
+      wallpaper_action_notify=1
+      ;;
+    start)
+      wallpaper_action_wait_by_default=1
+      wallpaper_action_requires_lock=1
+      wallpaper_action_requires_backend=0
+      ;;
+    link)
+      wallpaper_action_wait_by_default=1
+      wallpaper_action_requires_lock=1
+      ;;
+    g | o | clean)
+      wallpaper_action_requires_backend=0
+      ;;
+    "")
+      ;;
+    *)
+      wallpaper_inventory_refresh_mode="sync"
+      ;;
   esac
 }
 
+wallpaper_action_defaults_to_wait() {
+  [[ "${wallpaper_action_wait_by_default}" -eq 1 ]]
+}
+
 wallpaper_action_needs_lock() {
-  case "${wallpaper_setter_flag:-}" in
-    link | n | p | r | resume | s | select | start) return 0 ;;
-    *) return 1 ;;
-  esac
+  [[ "${wallpaper_action_requires_lock}" -eq 1 ]]
 }
 
 wallpaper_finalize_lock_policy() {
@@ -111,10 +160,7 @@ wallpaper_apply_backend() {
 }
 
 wallpaper_action_emits_notification() {
-  case "${wallpaper_setter_flag:-}" in
-    select | n | p | r | resume | s) return 0 ;;
-    *) return 1 ;;
-  esac
+  [[ "${wallpaper_action_notify}" -eq 1 ]]
 }
 
 wallpaper_notify_send() {
@@ -128,7 +174,8 @@ wallpaper_notify_send() {
     -r "${replace_id}"
   )
 
-  notify_send_safe "${args[@]}" "$@"
+  notify_send_safe "${args[@]}" "$@" || true
+  return 0
 }
 
 wallpaper_notify_result() {
@@ -139,7 +186,6 @@ wallpaper_notify_result() {
     return
   fi
 
-  wallpaper_should_apply_colors_async && return 0
   wallpaper_notify_emit
 }
 
@@ -161,10 +207,10 @@ wallpaper_notify_emit() {
 }
 
 wallpaper_refresh_inventory_if_needed() {
-  case "${wallpaper_setter_flag:-}" in
-    n | p | r) wallpaper_refresh_inventory_and_prune_async ;;
-    g | o | clean | link | resume | s | start | select | "") return 0 ;;
-    *) wallpaper_refresh_inventory_and_prune ;;
+  case "${wallpaper_inventory_refresh_mode}" in
+    async) wallpaper_refresh_inventory_and_prune_async ;;
+    sync) wallpaper_refresh_inventory_and_prune ;;
+    *) return 0 ;;
   esac
 }
 
@@ -188,12 +234,7 @@ random_wallpaper_index() {
 }
 
 require_wallpaper_backend() {
-  if [[ -z "${wallpaper_backend}" ]] \
-    && [[ "${wallpaper_setter_flag}" != "o" ]] \
-    && [[ "${wallpaper_setter_flag}" != "g" ]] \
-    && [[ "${wallpaper_setter_flag}" != "select" ]] \
-    && [[ "${wallpaper_setter_flag}" != "start" ]] \
-    && [[ "${wallpaper_setter_flag}" != "clean" ]]; then
+  if [[ -z "${wallpaper_backend}" ]] && [[ "${wallpaper_action_requires_backend}" -eq 1 ]]; then
     print_log -sec "wallpaper" -err "No backend specified"
     print_log -sec "wallpaper" " Please specify a backend, try '--backend awww'"
     print_log -sec "wallpaper" " See available commands: '--help | -h'"
@@ -330,19 +371,10 @@ wallpaper_set_action_flag() {
   WALLPAPER_SHIFT=1
 }
 
-wallpaper_parse_immediate_option() {
-  case "$1" in
-    -j | --json)
-      Wall_Json
-      exit 0
-      ;;
-    -h | --help)
-      show_help
-      WALLPAPER_SHIFT=1
-      return 0
-      ;;
-  esac
-
+wallpaper_parse_common_option() {
+  WALLPAPER_SHIFT=0
+  wallpaper_parse_control_flag_option "$1" && return 0
+  wallpaper_parse_value_option "$1" "${2:-}" && return 0
   return 1
 }
 
@@ -412,23 +444,85 @@ wallpaper_parse_value_option() {
   return 0
 }
 
-parse_wallpaper_option() {
-  WALLPAPER_SHIFT=0
-  wallpaper_parse_immediate_option "$1" && return 0
-  wallpaper_parse_action_flag_option "$1" && return 0
-  wallpaper_parse_control_flag_option "$1" && return 0
-  wallpaper_parse_value_option "$1" "${2:-}" && return 0
+wallpaper_modern_command_token() {
+  local command_name="${1:-}"
 
-  echo "Invalid option: $1"
-  echo "Try '$(basename "$0") --help' for more information."
-  exit 1
+  WALLPAPER_SHIFT=0
+  case "${command_name}" in
+    help | --help | -h)
+      show_help
+      ;;
+    next)
+      wallpaper_setter_flag="n"
+      WALLPAPER_SHIFT=1
+      ;;
+    previous | prev)
+      wallpaper_setter_flag="p"
+      WALLPAPER_SHIFT=1
+      ;;
+    random)
+      wallpaper_setter_flag="r"
+      WALLPAPER_SHIFT=1
+      ;;
+    select)
+      wallpaper_setter_flag="select"
+      WALLPAPER_SHIFT=1
+      ;;
+    resume)
+      wallpaper_setter_flag="resume"
+      WALLPAPER_SHIFT=1
+      ;;
+    start)
+      wallpaper_setter_flag="start"
+      WALLPAPER_SHIFT=1
+      ;;
+    get)
+      wallpaper_setter_flag="g"
+      WALLPAPER_SHIFT=1
+      ;;
+    -h | --help)
+      show_help
+      ;;
+    link)
+      wallpaper_setter_flag="link"
+      WALLPAPER_SHIFT=1
+      ;;
+    clean)
+      wallpaper_setter_flag="clean"
+      WALLPAPER_SHIFT=1
+      ;;
+    json)
+      Wall_Json
+      exit 0
+      ;;
+    set)
+      [[ -n "${2:-}" ]] || {
+        echo "Error: set requires a file path." >&2
+        exit 1
+      }
+      wallpaper_setter_flag="s"
+      wallpaper_path="${2}"
+      WALLPAPER_SHIFT=2
+      ;;
+    output)
+      [[ -n "${2:-}" ]] || {
+        echo "Error: output requires a file path." >&2
+        exit 1
+      }
+      wallpaper_setter_flag="o"
+      wallpaper_output="${2}"
+      WALLPAPER_SHIFT=2
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+
+  return 0
 }
 
-parse_wallpaper_args() {
-  local parsed=""
-
-  LONGOPTS="link,global,select,json,clean-thumbs,next,previous,random,resume,set:,start,backend:,get,output:,help,filetypes:,notify-body:,wait-lock"
-  parsed="$(getopt --options GSjnprb:s:t:go:h --longoptions "${LONGOPTS}" --name "$0" -- "$@")" || exit 2
+parse_wallpaper_args_modern() {
+  local command_seen=0
 
   WALLPAPER_OVERRIDE_FILETYPES=()
   wallpaper_backend="${WALLPAPER_BACKEND:-awww}"
@@ -436,19 +530,41 @@ parse_wallpaper_args() {
   set_as_global="${set_as_global:-false}"
   wallpaper_notify_body=""
 
-  eval set -- "${parsed}"
-  while true; do
-    parse_wallpaper_option "$@"
-    case "${WALLPAPER_SHIFT}" in
-      -1)
-        shift
-        break
-        ;;
-      *)
-        shift "${WALLPAPER_SHIFT}"
-        ;;
-    esac
+  while (($#)); do
+    if (( command_seen == 0 )) && wallpaper_parse_common_option "$1" "${2:-}"; then
+      shift "${WALLPAPER_SHIFT}"
+      continue
+    fi
+
+    if (( command_seen == 0 )) && wallpaper_modern_command_token "$1" "${2:-}"; then
+      command_seen=1
+      shift "${WALLPAPER_SHIFT}"
+      continue
+    fi
+
+    if (( command_seen == 1 )) && wallpaper_parse_common_option "$1" "${2:-}"; then
+      shift "${WALLPAPER_SHIFT}"
+      continue
+    fi
+
+    if [[ "$1" == -* ]]; then
+      echo "Legacy wallpaper flags are no longer supported: $1" >&2
+      echo "Use subcommands like 'wallpaper next --global' or 'wallpaper select --global'." >&2
+      exit 1
+    fi
+
+    echo "Invalid wallpaper argument: $1" >&2
+    echo "Try '$(basename "$0") --help' for more information." >&2
+    exit 1
   done
+
+  if (( command_seen == 0 )); then
+    show_help
+  fi
+}
+
+parse_wallpaper_args() {
+  parse_wallpaper_args_modern "$@"
 }
 
 main() {
@@ -470,5 +586,6 @@ if [[ -z "${*}" ]]; then
 fi
 
 parse_wallpaper_args "$@"
+wallpaper_resolve_action_profile
 wallpaper_finalize_lock_policy
 main
