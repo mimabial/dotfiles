@@ -2,11 +2,16 @@
 
 set -euo pipefail
 
-if ! declare -F hypr_config_value_from_layers >/dev/null 2>&1; then
-  LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
-  # shellcheck source=/dev/null
-  source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
+LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
+font_sync_lib="${LIB_DIR}/hypr/fonts/font.sync.lib.bash"
+
+if [[ ! -r "${font_sync_lib}" ]]; then
+  printf 'ERROR: missing %s\n' "${font_sync_lib}" >&2
+  exit 1
 fi
+
+# shellcheck source=/dev/null
+source "${font_sync_lib}" || exit 1
 
 kind="${1:-}"
 
@@ -23,22 +28,8 @@ EOF
 
 [[ -z "${kind}" || "${kind}" == "-h" || "${kind}" == "--help" ]] && usage && exit 0
 
-general_font="$(hypr_config_value_from_layers "FONT" || true)"
-mono_font="$(hypr_config_value_from_layers "MONOSPACE_FONT" || true)"
-bar_font="$(hypr_config_value_from_layers "BAR_FONT" || true)"
-menu_font="$(hypr_config_value_from_layers "MENU_FONT" || true)"
-
-mono_font="${mono_font:-monospace}"
-bar_font="${bar_font:-${general_font:-monospace}}"
-menu_font="${menu_font:-${general_font:-monospace}}"
-
-case "${kind}" in
-  mono) echo "${mono_font}" ;;
-  bar) echo "${bar_font}" ;;
-  menu) echo "${menu_font}" ;;
-  *)
-    echo "Unknown kind: ${kind}" >&2
-    usage >&2
-    exit 2
-    ;;
-esac
+if ! font_sync_resolve_font_value "${kind}"; then
+  echo "Unknown kind: ${kind}" >&2
+  usage >&2
+  exit 2
+fi

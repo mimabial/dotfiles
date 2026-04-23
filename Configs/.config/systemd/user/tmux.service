@@ -10,7 +10,7 @@ Environment=XDG_DATA_HOME=/home/rifle/.local/share
 Environment=XDG_STATE_HOME=/home/rifle/.local/state
 ExecStart=/usr/sbin/tmux new-session -d
 
-ExecStop=/home/rifle/.local/share/tmux/plugins/tmux-resurrect/scripts/save.sh
+ExecStop=/home/rifle/.config/tmux/scripts/tmux-resurrect-save-safe quiet
 ExecStop=/usr/sbin/tmux kill-server
 KillMode=control-group
 

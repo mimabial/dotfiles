@@ -3,7 +3,7 @@
 set -u
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
-lib_root="$(realpath "${script_dir}/../..")"
+lib_root="$(cd -- "${script_dir}/../.." && pwd -P)"
 xdg_lib="${lib_root}/hypr/core/xdg.sh"
 
 [[ -r "${xdg_lib}" ]] || {
@@ -15,6 +15,8 @@ xdg_lib="${lib_root}/hypr/core/xdg.sh"
 source "${xdg_lib}" || exit 1
 hypr_init_xdg_env
 export LIB_DIR="${lib_root}"
+# shellcheck source=/dev/null
+source "${LIB_DIR}/hypr/core/common.sh"
 # shellcheck source=/dev/null
 source "${LIB_DIR}/hypr/controls/lib/control.common.bash"
 
@@ -123,7 +125,7 @@ source_is_muted() {
 }
 
 refresh_waybar_mic() {
-  pkill -RTMIN+18 waybar >/dev/null 2>&1 || true
+  hypr_user_pkill -RTMIN+18 -x waybar >/dev/null 2>&1 || true
 }
 
 notify_vol() {
@@ -146,7 +148,8 @@ notify_mute() {
   is_true "${is_notify}" || return 0
   [[ "${device}" == "source" ]] && icon_suffix="microphone"
 
-  local prefix=$([[ "${muted}" == "true" ]] && echo "muted" || echo "unmuted")
+  local prefix=""
+  prefix=$([[ "${muted}" == "true" ]] && echo "muted" || echo "unmuted")
   dunstify -a "Volume control" -r 8 -t 800 -i "${icodir}/${prefix}-${icon_suffix}.svg" "${prefix}" "${nsink}"
 }
 

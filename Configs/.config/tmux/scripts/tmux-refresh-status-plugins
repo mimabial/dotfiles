@@ -2,6 +2,8 @@
 set -euo pipefail
 
 plugins_dir="${XDG_DATA_HOME:-$HOME/.local/share}/tmux/plugins"
+safe_save_script="$HOME/.config/tmux/scripts/tmux-resurrect-save-safe"
+safe_restore_script="$HOME/.config/tmux/scripts/tmux-resurrect-restore-safe"
 
 refresh_plugin() {
   local plugin_script="$1"
@@ -9,7 +11,15 @@ refresh_plugin() {
   "$plugin_script" >/dev/null 2>&1
 }
 
+set_tmux_option() {
+  local option_name="$1"
+  local option_value="$2"
+  tmux set-option -gq "$option_name" "$option_value" >/dev/null 2>&1 || true
+}
+
 refresh_plugin "$plugins_dir/tmux-battery/battery.tmux"
 refresh_plugin "$plugins_dir/tmux-pomodoro-plus/pomodoro.tmux"
 refresh_plugin "$plugins_dir/tmux-cpu/cpu.tmux"
 refresh_plugin "$plugins_dir/tmux-mode-indicator/mode_indicator.tmux"
+set_tmux_option "@resurrect-save-script-path" "$safe_save_script"
+set_tmux_option "@resurrect-restore-script-path" "$safe_restore_script"

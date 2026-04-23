@@ -1,0 +1,34 @@
+# Color mapping for pywal replacement
+# Format: #hexcolor=pywal_variable
+# Theme: Vanta Black
+
+# Core colors derived from kvconfig.theme [GeneralColors]
+#0D0D0D=background
+#8D8D8D=color7
+#FFFFFF=color4
+#CECECE=color4
+#9B9B9B=color8
+
+# Additional SVG/template colors preserved from the existing map
+#000000=background
+#010101=background
+#141414=background
+#1A1A1A=background
+#2B2B2B=background
+#31363b=background
+#3D3D3D=color4
+#636363=color5
+#7f7f7f=color5
+#919191=color1
+#999999=color5
+#a6a6a6=color1
+#b4b4b4=color2
+#b6b6b6=color2
+#b8b8b8=color2
+#bebebe=color3
+#bfbfbf=color3
+#d2d2d2=color7
+#D6D6D6=color7
+#dcdcdc=color7
+#eaeaea=color7
+#FCFCFC=color15

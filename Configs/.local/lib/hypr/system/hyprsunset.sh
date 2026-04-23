@@ -14,6 +14,7 @@ MIN_TEMP=3000
 MAX_TEMP=10000
 MIN_GAMMA=20
 MAX_GAMMA=100
+HYPRSUNSET_USER_ID="$(id -u)"
 
 declare -A temp_colors=(
   [10000]="#8b0000"
@@ -40,6 +41,41 @@ load_state() {
   state_ref[temp]="$(state_get "HYPRSUNSET_TEMP" "${DEFAULT_TEMP}")"
   state_ref[gamma]="$(state_get "HYPRSUNSET_GAMMA" "${DEFAULT_GAMMA}")"
   state_ref[enabled]="$(state_get "HYPRSUNSET_ENABLED" "1")"
+}
+
+hyprsunset_matching_pids() {
+  pgrep -u "${HYPRSUNSET_USER_ID}" -x "$1" 2>/dev/null || true
+}
+
+hyprsunset_process_running() {
+  local process="$1"
+  local pid=""
+
+  while IFS= read -r pid; do
+    [[ "${pid}" =~ ^[0-9]+$ ]] || continue
+    return 0
+  done < <(hyprsunset_matching_pids "${process}")
+
+  return 1
+}
+
+hyprsunset_signal_process() {
+  local process="$1"
+  local signal="$2"
+  local pid=""
+  local sent=0
+  local failed=0
+
+  while IFS= read -r pid; do
+    [[ "${pid}" =~ ^[0-9]+$ ]] || continue
+    sent=1
+    if ! kill -s "RTMIN+${signal}" "${pid}" 2>/dev/null; then
+      failed=1
+    fi
+  done < <(hyprsunset_matching_pids "${process}")
+
+  [[ "${sent}" -eq 1 ]] || return 1
+  [[ "${failed}" -eq 0 ]]
 }
 
 write_sunset_state() {
@@ -74,10 +110,6 @@ validate_int_range() {
   return 1
 }
 
-get_running_temp() {
-  hyprctl hyprsunset temperature 2>/dev/null || echo "${DEFAULT_TEMP}"
-}
-
 show_help() {
   cat <<EOF
 Usage: $(basename "$0") [OPTIONS]
@@ -104,13 +136,6 @@ Examples:
     $(basename "$0") -t --quiet             # Toggle mode quietly
     $(basename "$0") --sigproc waybar,19    # Send SIGUSR1 to waybar
 EOF
-}
-
-require_args() {
-  [ "$#" -gt 0 ] && return 0
-  echo "No arguments provided" >&2
-  show_help >&2
-  return 1
 }
 
 parse_args() {
@@ -280,54 +305,31 @@ apply_action_to_state() {
   write_sunset_state "${!state_ref}"
 }
 
-notification_title() {
-  local -n options_ref="$1"
-  local -n state_ref="$2"
-
-  case "${options_ref[action]}" in
-    toggle)
-      printf '%s' 'Hyprsunset'
-      ;;
-    *)
-      if [ -n "${state_ref[new_temp]}" ]; then
-        printf '%s' 'Mode: Temperature'
-      elif [ -n "${state_ref[new_gamma]}" ]; then
-        printf '%s' 'Mode: Gamma'
-      fi
-      ;;
-  esac
-}
-
-notification_message() {
-  local -n options_ref="$1"
-  local -n state_ref="$2"
-
-  case "${options_ref[action]}" in
-    toggle)
-      if [ "${state_ref[enabled]}" -eq 1 ]; then
-        printf '%s' 'ON'
-      else
-        printf '%s' 'OFF'
-      fi
-      ;;
-    *)
-      if [ -n "${state_ref[new_temp]}" ]; then
-        printf '%sK' "${state_ref[new_temp]}"
-      elif [ -n "${state_ref[new_gamma]}" ]; then
-        printf '%s' "${state_ref[new_gamma]}"
-      fi
-      ;;
-  esac
-}
-
 send_notification() {
   local -n options_ref="$1"
   local -n state_ref="$2"
-  local title message icon_name
+  local title="" message="" icon_name
   local -a notify_args
 
-  title="$(notification_title "${!options_ref}" "${!state_ref}")"
-  message="$(notification_message "${!options_ref}" "${!state_ref}")"
+  case "${options_ref[action]}" in
+    toggle)
+      title="Hyprsunset"
+      if [ "${state_ref[enabled]}" -eq 1 ]; then
+        message="ON"
+      else
+        message="OFF"
+      fi
+      ;;
+    *)
+      if [ -n "${state_ref[new_temp]}" ]; then
+        title="Mode: Temperature"
+        message="${state_ref[new_temp]}K"
+      elif [ -n "${state_ref[new_gamma]}" ]; then
+        title="Mode: Gamma"
+        message="${state_ref[new_gamma]}"
+      fi
+      ;;
+  esac
   [ -n "${title}" ] || return 0
 
   if [ "${state_ref[enabled]}" -eq 1 ]; then
@@ -369,8 +371,8 @@ send_signal_to_process() {
   [ -n "${signal_proc}" ] || return 0
   parse_signal_target "${signal_proc}" process signal || return 1
 
-  if pgrep -x "${process}" >/dev/null; then
-    pkill -RTMIN+"${signal}" "${process}" 2>/dev/null || echo "Warning: Failed to send signal ${signal} to ${process}"
+  if hyprsunset_process_running "${process}"; then
+    hyprsunset_signal_process "${process}" "${signal}" || echo "Warning: Failed to send signal ${signal} to ${process}"
     return 0
   fi
 
@@ -384,19 +386,12 @@ remove_stale_socket() {
 }
 
 ensure_hyprsunset_process() {
-  if pgrep -x "hyprsunset" >/dev/null; then
+  if hyprsunset_process_running "hyprsunset"; then
     return 0
   fi
 
   remove_stale_socket
   hyprctl --quiet dispatch exec -- hyprsunset
-}
-
-runtime_sync_needed() {
-  local -n options_ref="$1"
-  local -n state_ref="$2"
-
-  [ "${options_ref[action]}" != "read" ] || [ "${state_ref[enabled]}" -eq 1 ]
 }
 
 sync_runtime_for_read() {
@@ -439,7 +434,9 @@ sync_runtime_state() {
   local -n options_ref="$1"
   local -n state_ref="$2"
 
-  runtime_sync_needed "${!options_ref}" "${!state_ref}" || return 0
+  if [ "${options_ref[action]}" = "read" ] && [ "${state_ref[enabled]}" -ne 1 ]; then
+    return 0
+  fi
   ensure_hyprsunset_process
 
   if [ "${options_ref[action]}" = "read" ]; then
@@ -483,7 +480,7 @@ generate_status() {
   local current_running_temp temp_colored gamma_colored
   local saved_temp_colored saved_gamma_colored
 
-  current_running_temp="$(get_running_temp)"
+  current_running_temp="$(hyprctl hyprsunset temperature 2>/dev/null || echo "${DEFAULT_TEMP}")"
   if [ "${state_ref[enabled]}" -eq 1 ]; then
     text_output="󱩌"
     alt_text="active"
@@ -528,7 +525,11 @@ main() {
     [new_gamma]=""
   )
 
-  require_args "$@" || return 1
+  if [ "$#" -le 0 ]; then
+    echo "No arguments provided" >&2
+    show_help >&2
+    return 1
+  fi
   parse_args options "$@" || return $?
   if [ "${options[help]}" = true ]; then
     show_help

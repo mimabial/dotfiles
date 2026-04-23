@@ -11,11 +11,11 @@ $HOME/.config/dunst/theme.conf
 @define-color accent-green #98bb6c;
 @define-color accent-yellow #e6c384;
 @define-color accent-blue #7fb4ca;
-@define-color accent-purple #938aa9;
+@define-color accent-purple #957fb8;
 @define-color accent-aqua #7aa89f;
-@define-color accent-orange #ffa066;
+@define-color accent-orange #c0a36e;
 
-@define-color border-primary #dcd7ba;
-@define-color border-secondary #6a9589;
+@define-color border-primary #957fb8;
+@define-color border-secondary #223249;
 
-@define-color gray #54546d;
+@define-color gray #727169;

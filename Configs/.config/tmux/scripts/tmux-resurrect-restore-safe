@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+PLUGIN_RESTORE_SCRIPT="${TMUX_RESURRECT_PLUGIN_RESTORE_SCRIPT:-${HOME}/.local/share/tmux/plugins/tmux-resurrect/scripts/restore.sh}"
+
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/tmux-resurrect-safe.common.bash"
+
+if [[ ! -x "${PLUGIN_RESTORE_SCRIPT}" ]]; then
+  printf 'tmux-resurrect-restore-safe: missing plugin restore script: %s\n' "${PLUGIN_RESTORE_SCRIPT}" >&2
+  exit 1
+fi
+
+current_target="$(tmux_resurrect_current_target 2>/dev/null || true)"
+if [[ -n "${current_target}" ]] && ! tmux_resurrect_is_valid_snapshot "${current_target}"; then
+  current_target=""
+fi
+
+if [[ -z "${current_target}" ]]; then
+  current_target="$(tmux_resurrect_repoint_last_to_latest_valid 2>/dev/null || true)"
+fi
+
+if [[ -z "${current_target}" ]]; then
+  printf 'tmux-resurrect-restore-safe: no valid resurrect snapshot available; skipping restore\n' >&2
+  exit 0
+fi
+
+exec "${PLUGIN_RESTORE_SCRIPT}" "$@"

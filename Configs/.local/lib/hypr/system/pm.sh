@@ -102,9 +102,14 @@ main() {
     si) search installed ;;
     sa) search all ;;
     f | fetch) fetch ;;
-    w | which) show_pm ;;
+    w | which) echo "$PM" ;;
     pq | query) is_installed "$@" ;;
-    fq | file-query) file_query "$@" ;;
+    fq | file-query)
+        if [ $# -eq 0 ]; then
+            die_wrong_usage "expected <file> argument"
+        fi
+        pm_file_query "$1"
+        ;;
     *) die_wrong_usage "invalid <command> argument '$COMMAND'" ;;
     esac
 }
@@ -120,7 +125,7 @@ install() {
     if [ $# -eq 0 ]; then
         search all | PM=$PM PM_COLOR=$PM_COLOR xargs_self install
     else
-        pm_install "$@"
+        pm_dispatch install "$@" || die "install is not supported for package manager '$PM'"
     fi
 }
 
@@ -128,13 +133,13 @@ remove() {
     if [ $# -eq 0 ]; then
         search installed | PM=$PM PM_COLOR=$PM_COLOR xargs_self remove
     else
-        pm_remove "$@"
+        pm_dispatch remove "$@" || die "remove is not supported for package manager '$PM'"
     fi
 }
 
 upgrade() {
     pm_fetch
-    pm_upgrade
+    pm_dispatch upgrade || die "upgrade is not supported for package manager '$PM'"
 }
 
 fetch() {
@@ -142,7 +147,7 @@ fetch() {
 }
 
 info() {
-    pm_info "$1"
+    pm_dispatch info "$1" || die "info is not supported for package manager '$PM'"
 }
 
 list() {
@@ -157,19 +162,12 @@ search() {
         pm_list "$1" | pm_format "$1" | interactive_filter
     else
         FILTER_FILE=$(mktemp)
-        trap 'cleanup_filter_file "$?"' EXIT
-        compile_stdin_filter >"$FILTER_FILE"
+        trap 'rm -f -- "${FILTER_FILE-}" >/dev/null 2>&1 || true' EXIT
+        sed -E 's/#.*//;s/^[[:space:]]+//;s/[[:space:]]+$//' |
+            { grep . || die "empty stdin filter"; } |
+            awk '{ print "^" $1 "($|\\s)" }' >"$FILTER_FILE"
         pm_list "$1" | grep -Ef "$FILTER_FILE" | pm_format "$1" | interactive_filter
     fi
-}
-
-cleanup_filter_file() {
-    rm -f -- "${FILTER_FILE-}" >/dev/null 2>&1 || true
-    return "${1:-0}"
-}
-
-show_pm() {
-    echo "$PM"
 }
 
 is_installed() {
@@ -177,13 +175,6 @@ is_installed() {
         die_wrong_usage "expected <pkg> argument"
     fi
     pm_is_installed "$1"
-}
-
-file_query() {
-    if [ $# -eq 0 ]; then
-        die_wrong_usage "expected <file> argument"
-    fi
-    pm_file_query "$1"
 }
 
 # =============================================================================
@@ -213,16 +204,6 @@ check_source() {
     elif [ "$1" != installed ] && [ "$1" != all ]; then
         die_wrong_usage "invalid <source> argument '$1'"
     fi
-}
-
-compile_stdin_filter() {
-    # 1. Remove comments '#...'
-    # 2. Trim lines
-    # 3. Remove empty lines
-    # 4. Insert matching context ("start of line" ... "end of line" or "whitespace")
-    sed -E 's/#.*//;s/^\s+//;s/\s+$//' |
-        { grep . || die "empty stdin filter"; } |
-        awk '{ print "^" $1 "($|\\s)" }'
 }
 
 interactive_filter() {
@@ -270,11 +251,11 @@ pm_detect() {
 }
 
 pm_dispatch() {
-    local action="$1"
-    local list_scope=""
+    action="$1"
+    list_scope=""
     shift
 
-    if [[ "${action}" == list ]]; then
+    if [ "${action}" = "list" ]; then
         list_scope="${1:-}"
         shift
     fi
@@ -300,18 +281,6 @@ pm_dispatch() {
     esac
 }
 
-pm_install() {
-    pm_dispatch install "$@" || die "install is not supported for package manager '$PM'"
-}
-
-pm_remove() {
-    pm_dispatch remove "$@" || die "remove is not supported for package manager '$PM'"
-}
-
-pm_upgrade() {
-    pm_dispatch upgrade || die "upgrade is not supported for package manager '$PM'"
-}
-
 pm_fetch() {
     case "$PM" in
     pacman | paru | yay) "$PM" -Sy ;;
@@ -319,10 +288,6 @@ pm_fetch() {
     *) die "fetch is not supported for package manager '$PM'" ;;
     esac
     current_date >"$PM_CACHE_DIR/last-fetch"
-}
-
-pm_info() {
-    pm_dispatch info "$1" || die "info is not supported for package manager '$PM'"
 }
 
 pm_list() {

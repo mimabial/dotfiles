@@ -12,12 +12,6 @@
 #   theme.switch.sh -n                # Switch to next theme
 #   theme.switch.sh -p                # Switch to previous theme
 #
-# KEY FUNCTIONS:
-#   select_adjacent_theme() - Navigate to next/previous theme
-#   load_hypr_variables()  - Extract variables from theme's hypr.theme
-#   sanitize_hypr_theme()  - Remove exec/shadow lines from theme config
-#   write_theme_conf()     - Write active theme configuration
-
 LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 
 # shellcheck source=/dev/null
@@ -28,9 +22,11 @@ hypr_runtime_load_state || exit 1
 [ -z "${HYPR_THEME}" ] && echo "ERROR: unable to detect theme" && exit 1
 get_themes
 
-HYPRLAND_CONFIG="${HYPRLAND_CONFIG:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr/hyprland.conf}"
-hypr_autoreload_prev=""
-hypr_autoreload_set=0
+theme_switch_previous_theme="${HYPR_THEME:-}"
+theme_switch_state_updated=0
+theme_switch_metadata_file=""
+THEME_SWITCH_NOTIFY_ID="${THEME_SWITCH_NOTIFY_ID:-94}"
+THEME_SWITCH_NOTIFY_STACK_TAG="${THEME_SWITCH_NOTIFY_STACK_TAG:-theme-switch}"
 
 # Lock file to prevent concurrent theme switching
 THEME_SWITCH_LOCK="$(hypr_lock_path theme_switch)"
@@ -41,34 +37,127 @@ exec 201>"${THEME_SWITCH_LOCK}"
   exit 0
 }
 
-for theme_switch_lib in \
-  "${LIB_DIR}/hypr/theme/lib/theme.switch.config.bash" \
-  "${LIB_DIR}/hypr/theme/lib/theme.switch.ui.bash"; do
-  if [[ ! -r "${theme_switch_lib}" ]]; then
-    print_log -sec "theme" -err "source" "missing ${theme_switch_lib}"
-    exit 1
+sanitize_hypr_theme() {
+  local input_file="$1"
+  local output_file="$2"
+  local buffer_file=""
+  local pattern=""
+  local line=""
+  local line_esc=""
+  local log_line=""
+  local -a dirty_regex=(
+    "^ *exec"
+    "^ *decoration[^:]*: *drop_shadow"
+    "^ *drop_shadow"
+    "^ *decoration[^:]*: *shadow *="
+    "^ *decoration[^:]*: *col.shadow* *="
+    "^ *shadow_"
+    "^ *col.shadow*"
+  )
+
+  dirty_regex+=("${HYPR_CONFIG_SANITIZE[@]}")
+  buffer_file="$(mktemp)" || return 1
+  trap 'rm -f "${buffer_file}"' RETURN
+
+  sed '1d' "${input_file}" >"${buffer_file}" || return 1
+
+  for pattern in "${dirty_regex[@]}"; do
+    local -a matches=()
+    while IFS= read -r line; do
+      matches+=("$line")
+    done < <(grep -E "${pattern}" "${buffer_file}" 2>/dev/null)
+
+    for line in "${matches[@]}"; do
+      [[ -n "${line}" ]] || continue
+      line_esc="$(escape_regex "${line}")"
+      sed -i "\|${line_esc}|d" "${buffer_file}"
+      log_line="${line#"${line%%[![:space:]]*}"}"
+      print_log -sec "theme" -warn "sanitize" "${log_line}"
+    done
+  done
+
+  cat "${buffer_file}" >"${output_file}"
+}
+
+select_adjacent_theme() {
+  local direction="$1"
+  local found=false
+  local i=""
+
+  if [[ ! "${direction}" =~ ^[np]$ ]]; then
+    print_log -sec "theme" -err "select_adjacent_theme" "invalid direction '${direction}' (expected 'n' or 'p')"
+    return 1
   fi
-  # shellcheck source=/dev/null
-  source "${theme_switch_lib}" || exit 1
-done
 
-disable_hypr_autoreload() {
-  [[ -n "${HYPRLAND_INSTANCE_SIGNATURE}" ]] || return 0
-  command -v hyprctl >/dev/null 2>&1 || return 0
+  for i in "${!thmList[@]}"; do
+    if [[ "${thmList[i]}" == "${HYPR_THEME}" ]]; then
+      found=true
+      if [[ "${direction}" == "n" ]]; then
+        setIndex=$(((i + 1) % ${#thmList[@]}))
+      else
+        setIndex=$((i - 1))
+        [[ ${setIndex} -lt 0 ]] && setIndex=$((${#thmList[@]} - 1))
+      fi
+      themeSet="${thmList[setIndex]}"
+      break
+    fi
+  done
 
-  hypr_autoreload_prev="$(hyprctl getoption misc:disable_autoreload 2>/dev/null | awk -F': ' '/int/ {print $2; exit}')"
-  [[ -n "${hypr_autoreload_prev}" ]] || return 0
+  if [[ "${found}" != true ]]; then
+    print_log -sec "theme" -warn "select_adjacent_theme" "current theme '${HYPR_THEME}' not found in theme list"
+    setIndex=0
+    themeSet="${thmList[0]}"
+  fi
+}
 
-  hyprctl keyword misc:disable_autoreload 1 -q
-  hypr_autoreload_set=1
+theme_notify_finish() {
+  local exit_code="$1"
+  local theme_name="${themeSet:-${HYPR_THEME}}"
+  [[ -z "${exit_code}" ]] && exit_code=0
+
+  if [[ "${exit_code}" -eq 0 ]]; then
+    theme_notify_send "Theme applied" "${theme_name}" 2000 normal
+  else
+    theme_notify_send "Theme switch interrupted" "${theme_name}" 2500 critical
+  fi
+}
+
+theme_notify_send() {
+  local summary="$1"
+  local body="$2"
+  local timeout_ms="${3:-2000}"
+  local urgency="${4:-normal}"
+  local icon_path="preferences-desktop-theme"
+  local -a args=(
+    -a "Theme switch"
+    -u "${urgency}"
+    -t "${timeout_ms}"
+  )
+  [[ -f "${HOME}/.face.icon" ]] && icon_path="${HOME}/.face.icon"
+  args+=(-i "${icon_path}")
+
+  if command -v dunstify >/dev/null 2>&1; then
+    dunstify \
+      "${args[@]}" \
+      -r "${THEME_SWITCH_NOTIFY_ID}" \
+      --stack-tag "${THEME_SWITCH_NOTIFY_STACK_TAG}" \
+      "${summary}" "${body}" >/dev/null 2>&1 || true
+    return 0
+  fi
+
+  notify_send_safe \
+    "${args[@]}" \
+    -h "string:x-canonical-private-synchronous:${THEME_SWITCH_NOTIFY_STACK_TAG}" \
+    "${summary}" "${body}" >/dev/null 2>&1 || true
 }
 
 cleanup_theme_switch() {
   local exit_code="${1:-$?}"
-  theme_notify_finish "${exit_code}"
-  if [[ "${hypr_autoreload_set}" -eq 1 ]] && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE}" ]] && command -v hyprctl >/dev/null 2>&1; then
-    hyprctl keyword misc:disable_autoreload "${hypr_autoreload_prev}" -q
+  if [[ "${exit_code}" -ne 0 ]] && [[ "${theme_switch_state_updated}" -eq 1 ]] && [[ -n "${theme_switch_previous_theme}" ]]; then
+    state_set "HYPR_THEME" "${theme_switch_previous_theme}" "staterc" || true
   fi
+  [[ -n "${theme_switch_metadata_file}" && -e "${theme_switch_metadata_file}" ]] && rm -f -- "${theme_switch_metadata_file}"
+  theme_notify_finish "${exit_code}"
   flock -u 201 2>/dev/null || true
   return "${exit_code}"
 }
@@ -107,43 +196,28 @@ set_active_theme() {
 
   [[ "${theme_exists}" -eq 1 ]] || themeSet="${HYPR_THEME}"
   state_set "HYPR_THEME" "${themeSet}" "staterc"
+  theme_switch_state_updated=1
+  HYPR_THEME="${themeSet}"
+  HYPR_THEME_DIR="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}"
+  export HYPR_THEME HYPR_THEME_DIR
   print_log -sec "theme" -stat "apply" "${themeSet}"
-  declare -F export_hypr_config >/dev/null 2>&1 && export_hypr_config
-  # shellcheck source=/dev/null
-  [[ -f "${HYPR_CONFIG_HOME}/env-theme" ]] && source "${HYPR_CONFIG_HOME}/env-theme"
 }
 
-load_active_theme_variables() {
-  [[ -r "${HYPRLAND_CONFIG}" ]] || return 0
-  [[ -r "${HYPR_THEME_DIR}/hypr.theme" ]] && sanitize_hypr_theme "${HYPR_THEME_DIR}/hypr.theme" "${XDG_CONFIG_HOME}/hypr/themes/theme.conf"
-  load_hypr_variables "${HYPR_THEME_DIR}/hypr.theme"
-  local _state_conf="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/hyprland.conf"
-  [[ -r "${_state_conf}" ]] && load_hypr_variables "${_state_conf}"
-  [[ -n "${GTK_THEME}" ]] || GTK_THEME="$(hypr_config_value_from_layers "GTK_THEME" 2>/dev/null || true)"
-  [[ -n "${ICON_THEME}" ]] || ICON_THEME="$(hypr_config_value_from_layers "ICON_THEME" 2>/dev/null || true)"
-  [[ -n "${CURSOR_THEME}" ]] || CURSOR_THEME="$(hypr_config_value_from_layers "CURSOR_THEME" 2>/dev/null || true)"
-  [[ -n "${CURSOR_SIZE}" ]] || CURSOR_SIZE="$(hypr_config_value_from_layers "CURSOR_SIZE" 2>/dev/null || true)"
-  [[ -n "${TERMINAL}" ]] || TERMINAL="$(hypr_config_value_from_layers "TERMINAL" 2>/dev/null || true)"
-  [[ -n "${FONT}" ]] || FONT="$(hypr_config_value_from_layers "FONT" 2>/dev/null || true)"
-  [[ -n "${FONT_STYLE}" ]] || FONT_STYLE="$(hypr_config_value_from_layers "FONT_STYLE" 2>/dev/null || true)"
-  [[ -n "${FONT_SIZE}" ]] || FONT_SIZE="$(hypr_config_value_from_layers "FONT_SIZE" 2>/dev/null || true)"
-  [[ -n "${DOCUMENT_FONT}" ]] || DOCUMENT_FONT="$(hypr_config_value_from_layers "DOCUMENT_FONT" 2>/dev/null || true)"
-  [[ -n "${DOCUMENT_FONT_SIZE}" ]] || DOCUMENT_FONT_SIZE="$(hypr_config_value_from_layers "DOCUMENT_FONT_SIZE" 2>/dev/null || true)"
-  [[ -n "${MONOSPACE_FONT}" ]] || MONOSPACE_FONT="$(hypr_config_value_from_layers "MONOSPACE_FONT" 2>/dev/null || true)"
-  [[ -n "${MONOSPACE_FONT_SIZE}" ]] || MONOSPACE_FONT_SIZE="$(hypr_config_value_from_layers "MONOSPACE_FONT_SIZE" 2>/dev/null || true)"
+prepare_active_theme_config() {
+  [[ -r "${HYPR_THEME_DIR}/hypr.theme" ]] || return 0
+  mkdir -p "${XDG_CACHE_HOME:-$HOME/.cache}/hypr" || return 1
+  theme_switch_metadata_file="$(mktemp "${XDG_CACHE_HOME:-$HOME/.cache}/hypr/theme.conf.XXXXXX")" || return 1
+  sanitize_hypr_theme "${HYPR_THEME_DIR}/hypr.theme" "${theme_switch_metadata_file}"
 }
 
 main() {
-  disable_hypr_autoreload
+  local -a theme_apply_cmd=("${LIB_DIR}/hypr/theme/theme.apply.sh")
+
   parse_theme_switch_args "$@"
   set_active_theme
-  load_active_theme_variables
-  [[ "${quiet}" == "true" ]] || show_theme_status
-  if [[ "${quiet}" == "true" ]]; then
-    "${LIB_DIR}/hypr/theme/theme.apply.sh" --quiet || exit 1
-  else
-    "${LIB_DIR}/hypr/theme/theme.apply.sh" || exit 1
-  fi
+  prepare_active_theme_config || exit 1
+  [[ "${quiet}" == "true" ]] && theme_apply_cmd+=(--quiet)
+  HYPR_THEME_METADATA_FILE="${theme_switch_metadata_file}" "${theme_apply_cmd[@]}" || exit 1
 }
 
 main "$@"

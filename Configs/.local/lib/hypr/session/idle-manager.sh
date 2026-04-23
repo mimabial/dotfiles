@@ -38,7 +38,7 @@ hypridle_active() {
   if systemd_user_ok && systemctl --user is-active --quiet "${IDLE_UNIT}" >/dev/null 2>&1; then
     return 0
   fi
-  pgrep -x hypridle >/dev/null 2>&1
+  hypr_user_pgrep -x hypridle >/dev/null 2>&1
 }
 
 start_hypridle() {
@@ -47,7 +47,7 @@ start_hypridle() {
     return 0
   fi
 
-  if pgrep -x hypridle >/dev/null 2>&1; then
+  if hypr_user_pgrep -x hypridle >/dev/null 2>&1; then
     return 0
   fi
 
@@ -65,7 +65,7 @@ stop_hypridle() {
     systemctl --user stop "${IDLE_UNIT}" >/dev/null 2>&1 || true
     return 0
   fi
-  pkill -x hypridle >/dev/null 2>&1 || true
+  hypr_user_pkill -x hypridle >/dev/null 2>&1 || true
 }
 
 last_mode=""

@@ -1,4 +1,4 @@
-* {{
+* {
     background:          {background};
     background-alpha:    {color8}59;
     foreground:          {foreground};
@@ -9,4 +9,4 @@
     separator:           {color8};
     urgent:              {color1};
     active:              {color2};
-}}
+}

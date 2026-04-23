@@ -2,15 +2,30 @@
 # Generate Chrome theme from pywal16 colors
 # Based on https://github.com/metafates/ChromiumPywal
 
-# Source pywal16 colors
-if ! source "${HOME}/.cache/wal/colors-shell.sh" 2>/dev/null; then
-  echo "[chrome] Error: pywal16 colors not found"
-  exit 1
-fi
+set -euo pipefail
 
+LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
+# shellcheck source=/dev/null
+source "${LIB_DIR}/hypr/core/hash-cache.sh" || exit 1
+
+WAL_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/wal"
+WAL_COLORS_FILE="${WAL_CACHE}/colors-shell.sh"
+WALLPAPER_CACHE_FILE="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wal.set.png"
 THEME_NAME="Pywal16"
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/hypr"
 THEME_DIR="${CACHE_DIR}/${THEME_NAME}-chrome-theme"
+THEME_IMAGE_DIR="${THEME_DIR}/images"
+THEME_IMAGE_FILE="${THEME_IMAGE_DIR}/theme_ntp_background_norepeat.png"
+MANIFEST_FILE="${THEME_DIR}/manifest.json"
+STATE_FILE="${THEME_DIR}/.hypr-theme-state"
+HASH_FILE="$(hypr_hash_cache_file "wal-chrome.hash")" || exit 1
+
+# Source pywal16 colors
+# shellcheck source=/dev/null
+source "${WAL_COLORS_FILE}" 2>/dev/null || {
+  echo "[chrome] Error: pywal16 colors not found"
+  exit 1
+}
 
 # Hex to RGB converter
 hex_to_rgb() {
@@ -18,13 +33,65 @@ hex_to_rgb() {
   printf "%d, %d, %d" "0x${hex:0:2}" "0x${hex:2:2}" "0x${hex:4:2}"
 }
 
+chrome_wallpaper_present() {
+  [[ -f "${WALLPAPER_CACHE_FILE}" ]]
+}
+
+chrome_expected_hash() {
+  if chrome_wallpaper_present; then
+    hypr_hash_cache_digest_files "${WAL_COLORS_FILE}" "${WALLPAPER_CACHE_FILE}"
+  else
+    hypr_hash_cache_digest_files "${WAL_COLORS_FILE}"
+  fi
+}
+
+chrome_outputs_current() {
+  local expected_hash="$1"
+  local wallpaper_present=0
+  local -a outputs=("${MANIFEST_FILE}")
+  local -a metadata=()
+
+  if chrome_wallpaper_present; then
+    wallpaper_present=1
+    outputs+=("${THEME_IMAGE_FILE}")
+  fi
+
+  metadata+=("wallpaper_present=${wallpaper_present}")
+
+  hypr_hash_cache_outputs_current \
+    "${HASH_FILE}" "${expected_hash}" "${STATE_FILE}" \
+    --outputs "${outputs[@]}" \
+    --metadata "${metadata[@]}" || return 1
+
+  if [[ "${wallpaper_present}" -eq 0 && -e "${THEME_IMAGE_FILE}" ]]; then
+    return 1
+  fi
+}
+
+chrome_record_outputs() {
+  local expected_hash="$1"
+  local wallpaper_present="$2"
+
+  hypr_hash_cache_store "${HASH_FILE}" "${expected_hash}"
+  hypr_hash_cache_metadata_store "${STATE_FILE}" \
+    "wallpaper_present=${wallpaper_present}" \
+    "input_hash=${expected_hash}"
+}
+
+expected_hash="$(chrome_expected_hash)"
+if chrome_outputs_current "${expected_hash}"; then
+  exit 0
+fi
+
 # Clean and recreate theme directory
 rm -rf "${THEME_DIR}"
-mkdir -p "${THEME_DIR}/images"
+mkdir -p "${THEME_IMAGE_DIR}"
 
 # Copy wallpaper if available
-if [ -f "${CACHE_DIR}/wal.set.png" ]; then
-  cp "${CACHE_DIR}/wal.set.png" "${THEME_DIR}/images/theme_ntp_background_norepeat.png" 2>/dev/null
+wallpaper_present=0
+if chrome_wallpaper_present; then
+  cp "${WALLPAPER_CACHE_FILE}" "${THEME_IMAGE_FILE}" 2>/dev/null
+  wallpaper_present=1
 fi
 
 # Convert colors
@@ -34,7 +101,7 @@ accent=$(hex_to_rgb "${color4}")
 secondary=$(hex_to_rgb "${color8}")
 
 # Generate manifest.json
-cat >"${THEME_DIR}/manifest.json" <<EOF
+cat >"${MANIFEST_FILE}" <<EOF
 {
   "manifest_version": 3,
   "version": "1.0",
@@ -62,5 +129,7 @@ cat >"${THEME_DIR}/manifest.json" <<EOF
   }
 }
 EOF
+
+chrome_record_outputs "${expected_hash}" "${wallpaper_present}"
 
 echo "[chrome] Theme generated at ${THEME_DIR}"

@@ -3,6 +3,7 @@ import ctypes
 import os
 import select
 import struct
+import sys
 import threading
 from pathlib import Path
 
@@ -138,8 +139,11 @@ class InotifyPathWatcher:
 
                 try:
                     self.on_change(changed_path)
-                except Exception:
-                    pass
+                except Exception as exc:
+                    print(
+                        f"Warning: auto-theme watcher callback failed for {changed_path}: {exc}",
+                        file=sys.stderr,
+                    )
 
     def stop(self):
         self._stop_event.set()

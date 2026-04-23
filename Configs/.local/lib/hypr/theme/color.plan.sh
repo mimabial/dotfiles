@@ -162,6 +162,15 @@ color_plan_prepare_cache_strategy() {
   local previous_mode=""
   local allow_fast_path=0
 
+  if [[ "${selected_color_mode}" -eq 0 ]]; then
+    wal_cache_key=""
+    wal_cache_path=""
+    wal_cache_backend=""
+    wal_cache_populate=0
+    wal_used_cache=0
+    return 0
+  fi
+
   [[ "${HYPR_WAL_CACHE_ENABLE}" -eq 1 ]] || return 0
 
   if ! mkdir -p "${HYPR_WAL_CACHE_DIR}" 2>/dev/null; then
@@ -176,8 +185,7 @@ color_plan_prepare_cache_strategy() {
   wal_cache_path="${HYPR_WAL_CACHE_DIR}/${wal_cache_key}"
   wal_cache_backend="${PYWAL_BACKEND}"
 
-  queue_cache_cleanup "${HYPR_WAL_CACHE_DIR}" "${template_hash_suffix}"
-  queue_wal_cache_prune
+  cache_cleanup_stale "${HYPR_WAL_CACHE_DIR}" "${template_hash_suffix}" >/dev/null 2>&1 &
   color_state_read_cache_metadata prev_key previous_mode
 
   if [[ "${FORCE_COLOR_REGEN:-0}" -ne 1 ]] && [[ "${selected_color_mode}" -ne 0 ]]; then
@@ -198,7 +206,7 @@ color_plan_prepare_cache_strategy() {
 
   if wal_cache_valid "${wal_cache_path}"; then
     print_log -sec "pywal16" -stat "cache" "hit"
-    if wal_cache_swap_dir "${wal_cache_path}" "${WAL_CACHE}"; then
+    if wal_cache_restore "${wal_cache_path}" "${WAL_CACHE}"; then
       wal_used_cache=1
       wal_exit=0
     else

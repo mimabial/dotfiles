@@ -30,6 +30,8 @@ hotspot_info=""
 hotspot_ssid=""
 clients=""
 lease_clients=()
+device=""
+ip_addr=""
 
 # Check NetworkManager hotspot connections
 if waybar_hotspot_have_command nmcli; then
@@ -39,41 +41,42 @@ if waybar_hotspot_have_command nmcli; then
     hotspot_active=true
     hotspot_ssid="${active_hotspot%%|*}"
     device="${active_hotspot#*|}"
-
-    # Get connection details
-    ip_addr=$(ip -4 addr show "$device" 2>/dev/null | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
-
-    # Try to get connected clients from dnsmasq/dhcp leases
-    if [[ -f /var/lib/misc/dnsmasq.leases ]]; then
-      mapfile -t lease_clients < <(
-        awk -v dev="$device" '{
-          for (i = 1; i <= NF; i++) {
-            if ($i == dev) {
-              print $4 " (" $2 ")"
-              break
-            }
-          }
-        }' /var/lib/misc/dnsmasq.leases 2>/dev/null
-      )
-
-      client_count="${#lease_clients[@]}"
-      if [[ "$client_count" -gt 0 ]]; then
-        clients="$(printf '%s\n' "${lease_clients[@]}" | sed -z 's/\n/\\n  /g')"
-        clients="\\nClients ($client_count):\\n  $clients"
-      fi
-    fi
-
-    hotspot_info="<b>Hotspot Active</b>\\nSSID: $hotspot_ssid\\nDevice: $device\\nIP: ${ip_addr:-N/A}$clients"
   fi
 fi
 
-# Fallback: check for an ap0 interface created by alternate hotspot tools.
-if [[ "$hotspot_active" == false ]]; then
-  if [[ -d /proc/sys/net/ipv4/conf/ap0 ]]; then
+if [[ "$hotspot_active" != true ]]; then
+  active_ap_device="$(waybar_hotspot_active_ap_device)"
+
+  if [[ -n "$active_ap_device" ]]; then
     hotspot_active=true
-    ip_addr=$(ip -4 addr show ap0 2>/dev/null | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
-    hotspot_info="<b>Hotspot Active</b>\\nInterface: ap0\\nIP: ${ip_addr:-N/A}\\n\\n<i>Legacy hotspot detected</i>"
+    device="${active_ap_device%%|*}"
+    hotspot_ssid="${active_ap_device#*|}"
   fi
+fi
+
+if [[ "$hotspot_active" == true ]]; then
+  ip_addr="$(waybar_hotspot_device_ipv4 "$device")"
+
+  if [[ -f /var/lib/misc/dnsmasq.leases ]]; then
+    mapfile -t lease_clients < <(
+      awk -v dev="$device" '{
+        for (i = 1; i <= NF; i++) {
+          if ($i == dev) {
+            print $4 " (" $2 ")"
+            break
+          }
+        }
+      }' /var/lib/misc/dnsmasq.leases 2>/dev/null
+    )
+
+    client_count="${#lease_clients[@]}"
+    if [[ "$client_count" -gt 0 ]]; then
+      clients="$(printf '%s\n' "${lease_clients[@]}" | sed -z 's/\n/\\n  /g')"
+      clients="\\nClients ($client_count):\\n  $clients"
+    fi
+  fi
+
+  hotspot_info="<b>Hotspot Active</b>\\nSSID: $hotspot_ssid\\nDevice: $device\\nIP: ${ip_addr:-N/A}$clients"
 fi
 
 # Output

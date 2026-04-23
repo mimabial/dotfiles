@@ -33,32 +33,11 @@ USAGE
 
 mode=""
 declare -a forwarded_args=()
-
-while (($#)); do
-  case "$1" in
-    --mode)
-      shift
-      [[ "$#" -gt 0 ]] || hypr_service_die "Missing value for --mode"
-      mode="$1"
-      ;;
-    -h | --help | help)
-      usage
-      exit 0
-      ;;
-    *)
-      forwarded_args+=("$1")
-      ;;
-  esac
-  shift
-done
-
-case "${mode}" in
-  refresh | restore) ;;
-  *)
-    usage
-    exit 1
-    ;;
-esac
+hypr_service_parse_mode_cli usage mode forwarded_args "$@"
+hypr_service_validate_mode "${mode}" || {
+  usage
+  exit 1
+}
 
 hypr_service_parse_refresh_args "${forwarded_args[@]}"
 [[ "${#hypr_service_cli_args[@]}" -gt 0 ]] || {

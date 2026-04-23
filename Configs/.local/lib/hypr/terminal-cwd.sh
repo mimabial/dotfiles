@@ -38,8 +38,8 @@ fi
 shell_pid="$(pgrep -P "${terminal_pid}" | tail -n1)"
 
 if [[ -n "${shell_pid}" ]]; then
-  cwd="$(readlink -f "/proc/${shell_pid}/cwd" 2>/dev/null || true)"
-  shell_path="$(readlink -f "/proc/${shell_pid}/exe" 2>/dev/null || true)"
+  cwd="$(cd -P "/proc/${shell_pid}/cwd" 2>/dev/null && pwd -P || true)"
+  shell_path="$(readlink "/proc/${shell_pid}/exe" 2>/dev/null || true)"
 
   if [[ -d "${cwd}" ]] && grep -qs "${shell_path}" /etc/shells; then
     printf '%s\n' "${cwd}"

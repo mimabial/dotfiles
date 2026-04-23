@@ -6,8 +6,21 @@ if [ -z "${*}" ]; then
   exit
 fi
 
-# shellcheck source=/dev/null
-[ -f "$HYPR_STATE_HOME/staterc" ] && source "$HYPR_STATE_HOME/staterc"
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+lib_root="$(cd -- "${script_dir}/.." && pwd -P)"
+xdg_lib="${lib_root}/core/xdg.sh"
+state_lib="${lib_root}/core/state.sh"
+
+if [[ -r "${xdg_lib}" ]]; then
+  # shellcheck source=/dev/null
+  source "${xdg_lib}"
+  hypr_init_xdg_env
+fi
+if [[ -r "${state_lib}" ]]; then
+  # shellcheck source=/dev/null
+  source "${state_lib}"
+  HYPR_THEME="$(state_get "HYPR_THEME" "${HYPR_THEME:-}")"
+fi
 # shellcheck disable=SC1091
 [ -f "/etc/os-release" ] && source "/etc/os-release"
 
@@ -44,7 +57,7 @@ expand_home_tokens() {
 compact_home_path() {
   local path="${1:-}"
   if [[ "${path}" == "${HOME}"* ]]; then
-    printf '$HOME%s\n' "${path#"${HOME}"}"
+    printf '%s%s\n' "\$HOME" "${path#"${HOME}"}"
     return 0
   fi
 

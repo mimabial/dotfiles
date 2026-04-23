@@ -27,6 +27,7 @@ resolve_localsend_command() {
 
 run_localsend() {
   local cmd=("${LOCALSEND_CMD[@]}")
+  local -a systemd_run_args=(systemd-run --user --quiet --collect)
 
   if ((LOCALSEND_FILE_FORWARDING)); then
     cmd+=("$@" "@@")
@@ -34,7 +35,11 @@ run_localsend() {
     cmd+=("$@")
   fi
 
-  systemd-run --user --quiet --collect "${cmd[@]}"
+  if [[ -n "${TEMP_FILE:-}" ]]; then
+    systemd_run_args+=(--wait)
+  fi
+
+  "${systemd_run_args[@]}" "${cmd[@]}"
 }
 
 pick_paths() {
@@ -60,6 +65,14 @@ shift
 declare -a FILES=()
 declare -a LOCALSEND_CMD=()
 LOCALSEND_FILE_FORWARDING=0
+TEMP_FILE=""
+
+cleanup_temp_file() {
+  [[ -n "${TEMP_FILE}" ]] || return 0
+  rm -f -- "${TEMP_FILE}"
+}
+
+trap cleanup_temp_file EXIT
 
 case "${MODE}" in
   clipboard)

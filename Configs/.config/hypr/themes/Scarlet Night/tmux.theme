@@ -1,0 +1,40 @@
+$HOME/.config/tmux/theme.conf
+
+# Tmux theme for Scarlet Night
+# Auto-generated from kitty.theme colors
+
+set -g @color0 "#1A1A1A"
+set -g @color1 "#DD0000"
+set -g @color2 "#FF9999"
+set -g @color3 "#FF6666"
+set -g @color4 "#FF0000"
+set -g @color5 "#FF4444"
+set -g @color6 "#FF5555"
+set -g @color7 "#32CD32"
+set -g @color8 "#4A4A4A"
+set -g @color9 "#DD0000"
+set -g @color10 "#FF9999"
+set -g @color11 "#FF6666"
+set -g @color12 "#FF0000"
+set -g @color13 "#FF4444"
+set -g @color14 "#FF5555"
+set -g @color15 "#32CD32"
+
+set -g @theme_bg "#0A0A0A"
+set -g @theme_black "#1A1A1A"
+set -g @theme_fg "#FFFFFF"
+set -g @theme_accent "#FF0000"
+set -g @theme_gray "#4A4A4A"
+set -g @theme_red "#DD0000"
+set -g @theme_green "#FF9999"
+set -g @theme_yellow "#FF6666"
+
+set -g status-style "bg=default,fg=#FFFFFF"
+set -g message-style "bg=#0A0A0A,fg=#FF0000"
+set -g message-command-style "bg=#0A0A0A,fg=#FF0000"
+set -g pane-border-style "fg=#4A4A4A"
+set -g pane-active-border-style "fg=#FF0000"
+set -g window-status-style "fg=#4A4A4A"
+set -g window-status-current-style "fg=#FF0000,bold"
+set -g mode-style "bg=#FF0000,fg=#0A0A0A"
+set -g clock-mode-colour "#FF0000"

@@ -6,7 +6,7 @@ LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 source "${LIB_DIR}/hypr/core/hash-cache.sh" || exit 1
 
 discord_css="${XDG_CACHE_HOME:-$HOME/.cache}/wal/discord.css"
-hash_file="${XDG_RUNTIME_DIR:-/tmp}/wal-discord-hash"
+hash_file="$(hypr_hash_cache_runtime_file "wal-discord-hash")" || exit 1
 
 # Exit if source file doesn't exist
 [ ! -f "${discord_css}" ] && exit 0

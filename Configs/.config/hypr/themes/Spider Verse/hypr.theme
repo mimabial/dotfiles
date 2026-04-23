@@ -11,14 +11,14 @@ general {
     gaps_in = 5
     gaps_out = 8
     border_size = 2
-    col.active_border = rgba(d32d38ff) rgba(c74b8aff) 45deg
+    col.active_border = rgba(c74b8aff)
     col.inactive_border = rgba(462f4acc)
     layout = dwindle
     resize_on_border = true
 }
 
 group {
-    col.border_active = rgba(d32d38ff) rgba(c74b8aff) 45deg
+    col.border_active = rgba(c74b8aff)
     col.border_inactive = rgba(462f4acc)
     col.border_locked_active = rgba(d32d38ff)
     col.border_locked_inactive = rgba(462f4acc)

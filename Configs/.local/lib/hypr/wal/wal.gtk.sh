@@ -8,7 +8,7 @@ source "${LIB_DIR}/hypr/core/hash-cache.sh" || exit 1
 THEMES_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/themes"
 GTK_THEME_DIR="${THEMES_DIR}/Pywal16-Gtk"
 GTK_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/wal"
-HASH_FILE="${XDG_RUNTIME_DIR:-/tmp}/wal-gtk-hash"
+HASH_FILE="$(hypr_hash_cache_runtime_file "wal-gtk-hash")" || exit 1
 GTK_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}"
 
 gtk3_source="${GTK_CACHE_DIR}/colors-gtk3.css"
@@ -129,13 +129,13 @@ notify_xsettingsd() {
   local conf="${GTK_CONFIG_DIR}/xsettingsd/xsettingsd.conf"
 
   command -v xsettingsd >/dev/null 2>&1 || return 0
-  pgrep -x xsettingsd >/dev/null || return 0
+  hypr_user_pgrep -x xsettingsd >/dev/null || return 0
 
   if [[ -f "$conf" ]]; then
     sed -i 's/^Net\/ThemeName ".*"$/Net\/ThemeName "Pywal16-Gtk"/' "$conf"
   fi
 
-  pkill -HUP xsettingsd 2>/dev/null
+  hypr_user_pkill -HUP -x xsettingsd 2>/dev/null
 }
 
 notify_gtk_settings() {

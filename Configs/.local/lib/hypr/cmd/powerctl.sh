@@ -17,6 +17,6 @@ case "${action}" in
     ;;
 esac
 
-hyprshell state clear 're*-required'
+hyprshell util/state.sh clear 're*-required'
 hyprshell close-all.sh
 exec systemctl "${systemctl_action}" --no-wall

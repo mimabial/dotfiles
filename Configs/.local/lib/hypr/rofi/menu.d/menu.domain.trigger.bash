@@ -52,7 +52,7 @@ trigger_wait_for_rofi_layers_gone() {
 
 trigger_spawn_detached() {
   (
-    pkill -x rofi >/dev/null 2>&1 || true
+    pkill -u "${UID:-$(id -u)}" -x rofi >/dev/null 2>&1 || true
     trigger_wait_for_rofi_layers_gone
     exec "$@"
   ) >/dev/null 2>&1 </dev/null &
@@ -127,7 +127,7 @@ menu_run_action_trigger() {
     trigger_share_file) trigger_spawn_detached uwsm-app -- tui-terminal-exec --hypr-profile dialog --app-id org.tui.Share --title Share -- hyprshell cmd/share.sh file ;;
     trigger_share_folder) trigger_spawn_detached uwsm-app -- tui-terminal-exec --hypr-profile dialog --app-id org.tui.Share --title Share -- hyprshell cmd/share.sh folder ;;
     trigger_color_picker) hyprshell rofi/color-picker.sh ;;
-    trigger_toggle_nightlight) hyprshell hyprsunset --toggle && pkill -SIGUSR2 waybar ;;
+    trigger_toggle_nightlight) hyprshell hyprsunset --toggle && pkill -u "${UID:-$(id -u)}" -SIGUSR2 -x waybar ;;
     trigger_toggle_keep_awake) hyprshell session/toggle-keep-awake.sh ;;
     trigger_toggle_waybar) hyprshell waybar/waybar.py --hide ;;
     *) return 1 ;;

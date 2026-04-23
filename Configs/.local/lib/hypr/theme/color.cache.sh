@@ -236,112 +236,6 @@ cache_cleanup_stale() {
   done < <(find "${cache_dir}" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
 }
 
-queue_cache_cleanup() {
-  local cache_dir="$1"
-  local keep_suffix="$2"
-  local cache_cleanup_lock=""
-
-  [[ "${CACHE_CLEANUP_ENABLED}" -eq 1 ]] || return 0
-  [[ "${CACHE_ONLY}" -ne 1 ]] || return 0
-  [[ -d "${cache_dir}" ]] || return 0
-  cache_cleanup_lock="$(hypr_lock_path wal_cache_clean)"
-
-  (
-    exec 200>&- 201>&- 202>&- 203>&-
-    exec 201>"${cache_cleanup_lock}"
-    flock -n 201 || exit 0
-    cache_cleanup_stale "${cache_dir}" "${keep_suffix}"
-  ) &
-  disown
-}
-
-queue_wal_cache_prune() {
-  local wal_cache_prune_lock=""
-
-  [[ "${WAL_CACHE_PRUNE_ENABLED}" -eq 1 ]] || return 0
-  [[ "${CACHE_ONLY}" -ne 1 ]] || return 0
-  [[ -d "${HYPR_WAL_CACHE_DIR}" ]] || return 0
-  wal_cache_prune_lock="$(hypr_lock_path wal_cache_prune)"
-
-  local ttl="${WAL_CACHE_PRUNE_TTL}"
-  [[ "${ttl}" =~ ^[0-9]+$ ]] || ttl=21600
-
-  local stamp="${WAL_CACHE_PRUNE_STAMP}"
-  local now last
-  now="$(date +%s)"
-  last=0
-  if [[ -f "${stamp}" ]]; then
-    last="$(cat "${stamp}" 2>/dev/null)"
-    [[ "${last}" =~ ^[0-9]+$ ]] || last=0
-  fi
-  if [[ "${ttl}" -gt 0 ]] && (( now - last < ttl )); then
-    return 0
-  fi
-
-  (
-    exec 200>&- 201>&- 202>&- 203>&-
-    exec 205>"${wal_cache_prune_lock}"
-    flock -n 205 || exit 0
-
-    local now_ts last_ts
-    now_ts="$(date +%s)"
-    last_ts=0
-    if [[ -f "${stamp}" ]]; then
-      last_ts="$(cat "${stamp}" 2>/dev/null)"
-      [[ "${last_ts}" =~ ^[0-9]+$ ]] || last_ts=0
-    fi
-    if [[ "${ttl}" -gt 0 ]] && (( now_ts - last_ts < ttl )); then
-      exit 0
-    fi
-    printf '%s\n' "${now_ts}" > "${stamp}.tmp" && mv -f "${stamp}.tmp" "${stamp}"
-
-    local theme_root="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}/themes"
-    local dir base meta wallpaper theme_name
-    while IFS= read -r -d '' dir; do
-      base="${dir##*/}"
-      case "${base}" in
-        *.tmp.* | *.bak.*) continue ;;
-      esac
-
-      if ! wal_cache_valid "${dir}"; then
-        wal_cache_remove_paths_warn "failed to prune invalid wal cache entry" "${dir}"
-        continue
-      fi
-
-      meta="${dir}/.meta"
-      if [[ ! -f "${meta}" ]]; then
-        wal_cache_remove_paths_warn "failed to prune wal cache entry missing metadata" "${dir}"
-        continue
-      fi
-
-      wallpaper="$(sed -n 's/^wallpaper=//p' "${meta}" | head -1)"
-      if [[ -z "${wallpaper}" ]]; then
-        wal_cache_remove_paths_warn "failed to prune wal cache entry missing wallpaper" "${dir}"
-        continue
-      fi
-
-      case "${wallpaper}" in
-        theme:*)
-          theme_name="${wallpaper#theme:}"
-          if [[ -n "${theme_name}" ]] && [[ -d "${theme_root}/${theme_name}" ]]; then
-            continue
-          fi
-          wal_cache_remove_paths_warn "failed to prune wal cache entry for missing theme" "${dir}"
-          continue
-          ;;
-        theme)
-          continue
-          ;;
-      esac
-
-      if [[ ! -e "${wallpaper}" ]]; then
-        wal_cache_remove_paths_warn "failed to prune wal cache entry for missing wallpaper" "${dir}"
-      fi
-    done < <(find -H "${HYPR_WAL_CACHE_DIR}" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
-  ) &
-  disown
-}
-
 wal_cache_valid() {
   local dir="${1}"
 
@@ -357,57 +251,46 @@ wal_cache_valid() {
   return 0
 }
 
-wal_cache_swap_dir() {
+wal_cache_restore() {
   local src_dir="${1}"
   local dest_dir="${2}"
 
-  # Validate inputs
-  [[ -z "${src_dir}" ]] && return 1
-  [[ -z "${dest_dir}" ]] && return 1
-  [[ -d "${src_dir}" ]] || return 1
+  [[ -n "${src_dir}" ]] || return 1
+  [[ -n "${dest_dir}" ]] || return 1
+  wal_cache_valid "${src_dir}" || return 1
 
-  local dest_parent tmp_dir backup_dir
+  local dest_parent tmp_dir backup_dir=""
   dest_parent="$(dirname "${dest_dir}")"
-  mkdir -p "${dest_parent}"
+  wal_cache_run_logged err "failed to create wal cache parent dir" "${dest_parent}" mkdir -p -- "${dest_parent}" || return 1
 
-  wal_cache_make_temp_dir tmp_dir "${dest_parent}" "wal.swap.XXXXXXXX" \
-    "failed to create wal cache swap dir" "${dest_dir}" || return 1
+  wal_cache_make_temp_dir tmp_dir "${dest_parent}" "$(basename "${dest_dir}").tmp.XXXXXXXX" \
+    "failed to create wal cache restore staging dir" "${dest_dir}" || return 1
   copy_cache_tree "${src_dir}" "${tmp_dir}" || {
-    wal_cache_remove_paths_warn "failed to clean wal cache swap dir after copy failure" "${tmp_dir}"
+    wal_cache_remove_paths_warn "failed to clean wal cache restore staging dir after copy failure" "${tmp_dir}"
     return 1
   }
-  wal_cache_remove_paths_strict "failed to strip cache markers from wal cache swap dir" \
-    "${tmp_dir}/.complete" "${tmp_dir}/.meta" || {
-    wal_cache_remove_paths_warn "failed to clean wal cache swap dir after marker cleanup failure" "${tmp_dir}"
-    return 1
-  }
-
-  if [[ -e "${dest_dir}" ]] && [[ ! -d "${dest_dir}" ]]; then
-    wal_cache_remove_paths_strict "failed to remove non-directory wal cache target" "${dest_dir}" || {
-      wal_cache_remove_paths_warn "failed to clean wal cache swap dir after target cleanup failure" "${tmp_dir}"
-      return 1
-    }
-  fi
 
   if [[ -d "${dest_dir}" ]]; then
     preserve_wal_state "${dest_dir}" "${dest_parent}"
     backup_dir="$(create_backup_dir "${dest_parent}" "${dest_dir}")" || {
+      wal_cache_remove_paths_warn "failed to clean wal cache restore staging dir after backup allocation failure" "${tmp_dir}"
       restore_wal_state "${dest_dir}"
-      wal_cache_remove_paths_warn "failed to clean wal cache swap dir after backup allocation failure" "${tmp_dir}"
       return 1
     }
     replace_dir_atomically "${dest_dir}" "${tmp_dir}" "${backup_dir}" || {
+      wal_cache_remove_paths_warn "failed to clean wal cache restore staging dir after replace failure" "${tmp_dir}"
       restore_wal_state "${dest_dir}"
-      wal_cache_remove_paths_warn "failed to clean wal cache swap dir after replace failure" "${tmp_dir}"
       return 1
     }
     restore_wal_state "${dest_dir}"
   else
-    wal_cache_move_path_strict "failed to install wal cache swap dir" "${tmp_dir}" "${dest_dir}" || {
-      wal_cache_remove_paths_warn "failed to clean wal cache swap dir after install failure" "${tmp_dir}"
+    wal_cache_move_path_strict "failed to install wal cache restore staging dir" "${tmp_dir}" "${dest_dir}" || {
+      wal_cache_remove_paths_warn "failed to clean wal cache restore staging dir after install failure" "${tmp_dir}"
       return 1
     }
   fi
+
+  type print_log &>/dev/null && print_log -sec "pywal16" -stat "cache" "restored"
 }
 
 wal_cache_store() {
@@ -457,42 +340,4 @@ wal_cache_store() {
   fi
 
   type print_log &>/dev/null && print_log -sec "pywal16" -stat "cache" "stored"
-}
-
-wal_cache_store_with_lock() {
-  local src_dir="$1"
-  local dest_dir="$2"
-  local cache_store_fd=""
-  local cache_store_lock=""
-
-  cache_store_lock="$(hypr_lock_path wal_cache_store)"
-  exec {cache_store_fd}>"${cache_store_lock}"
-  flock "${cache_store_fd}"
-  wal_cache_store "${src_dir}" "${dest_dir}"
-  local store_exit=$?
-  flock -u "${cache_store_fd}" 2>/dev/null || true
-  exec {cache_store_fd}>&-
-  return "${store_exit}"
-}
-
-wal_cache_store_async() {
-  local src_dir="$1"
-  local dest_dir="$2"
-  local cache_key="${wal_cache_key}"
-  local state_wallpaper="${STATE_WALLPAPER:-${WALLPAPER_IMAGE}}"
-  local color_variant="${resolved_color_variant}"
-  local backend="${PYWAL_BACKEND}"
-
-  (
-    exec 200>&- 201>&- 202>&- 203>&-
-    [[ -d "${src_dir}" ]] || exit 0
-    [[ -f "${src_dir}/colors.json" ]] || exit 0
-
-    wal_cache_key="${cache_key}"
-    STATE_WALLPAPER="${state_wallpaper}"
-    resolved_color_variant="${color_variant}"
-    PYWAL_BACKEND="${backend}"
-    wal_cache_store_with_lock "${src_dir}" "${dest_dir}" || exit 0
-  ) &
-  disown
 }

@@ -35,7 +35,7 @@ run_theme_post_apply_hook() {
 }
 
 active_theme_metadata_file() {
-  printf '%s\n' "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/theme.conf"
+  printf '%s\n' "${HYPR_THEME_METADATA_FILE:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/theme.conf}"
 }
 
 hypr_layered_value() {
@@ -72,13 +72,19 @@ hypr_layered_value() {
 rewrite_if_changed() {
   local source_file="$1"
   local target_file="$2"
+  local changed_var="${3:-}"
+  local changed=0
 
   if [[ -f "${target_file}" ]] && cmp -s "${source_file}" "${target_file}"; then
     rm -f "${source_file}"
-    return 0
+  else
+    mv -f "${source_file}" "${target_file}"
+    changed=1
   fi
 
-  mv -f "${source_file}" "${target_file}"
+  if [[ -n "${changed_var}" ]]; then
+    printf -v "${changed_var}" '%s' "${changed}"
+  fi
 }
 
 resolve_theme_target_path() {
@@ -98,8 +104,10 @@ resolve_theme_target_path() {
 
 apply_kitty_theme_font_override() {
   local target_file="$1"
+  local changed_var="${2:-}"
   local theme_font=""
   local tmp_file
+  local changed=0
 
   theme_font="$(hypr_layered_value "TERMINAL_FONT" 2>/dev/null || true)"
   tmp_file="$(mktemp "$(dirname "${target_file}")/.kitty-theme-font.XXXXXX")" || return 1
@@ -113,13 +121,18 @@ apply_kitty_theme_font_override() {
     printf '\nfont_family     %s\n' "${theme_font}" >> "${tmp_file}"
   fi
 
-  rewrite_if_changed "${tmp_file}" "${target_file}"
+  rewrite_if_changed "${tmp_file}" "${target_file}" changed || return 1
+  if [[ -n "${changed_var}" ]]; then
+    printf -v "${changed_var}" '%s' "${changed}"
+  fi
 }
 
 apply_alacritty_theme_font_override() {
   local target_file="$1"
+  local changed_var="${2:-}"
   local theme_font=""
   local tmp_file
+  local changed=0
 
   theme_font="$(hypr_layered_value "TERMINAL_FONT" 2>/dev/null || true)"
   tmp_file="$(mktemp "$(dirname "${target_file}")/.alacritty-theme-font.XXXXXX")" || return 1
@@ -151,19 +164,23 @@ style = "Bold Italic"
 EOF
   fi
 
-  rewrite_if_changed "${tmp_file}" "${target_file}"
+  rewrite_if_changed "${tmp_file}" "${target_file}" changed || return 1
+  if [[ -n "${changed_var}" ]]; then
+    printf -v "${changed_var}" '%s' "${changed}"
+  fi
 }
 
 apply_terminal_theme_font_override() {
   local theme_basename="$1"
   local target_file="$2"
+  local changed_var="${3:-}"
 
   case "${theme_basename}" in
     kitty.theme)
-      apply_kitty_theme_font_override "${target_file}"
+      apply_kitty_theme_font_override "${target_file}" "${changed_var}"
       ;;
     alacritty.theme)
-      apply_alacritty_theme_font_override "${target_file}"
+      apply_alacritty_theme_font_override "${target_file}" "${changed_var}"
       ;;
   esac
 }
@@ -187,6 +204,9 @@ process_theme_files() {
   local -A requested_hooks=()
   local theme_file first_line theme_basename target_path hook_name
   local new_content new_hash old_hash
+  local target_content_changed=0
+  local target_font_changed=0
+  local target_changed=0
 
   while IFS= read -r theme_file; do
     [ ! -f "${theme_file}" ] && continue
@@ -212,6 +232,9 @@ process_theme_files() {
     }
 
     mkdir -p "$(dirname "${target_path}")"
+    target_content_changed=0
+    target_font_changed=0
+    target_changed=0
 
     new_content="$(sed '1d' "${theme_file}")"
     new_hash="$(echo "${new_content}" | md5sum | cut -d' ' -f1)"
@@ -221,13 +244,18 @@ process_theme_files() {
     if [ "${new_hash}" != "${old_hash}" ]; then
       echo "${new_content}" >"${target_path}"
       print_log -sec "theme" -stat "wrote" "${target_path}"
+      target_content_changed=1
     else
       [[ "${LOG_LEVEL:-}" == "debug" ]] && print_log -sec "theme" -stat "skip" "${target_path} (unchanged)"
     fi
 
-    apply_terminal_theme_font_override "${theme_basename}" "${target_path}"
+    apply_terminal_theme_font_override "${theme_basename}" "${target_path}" target_font_changed
 
-    if hook_name="$(theme_post_apply_hook_name "${theme_basename}" 2>/dev/null)"; then
+    if (( target_content_changed || target_font_changed )); then
+      target_changed=1
+    fi
+
+    if (( target_changed )) && hook_name="$(theme_post_apply_hook_name "${theme_basename}" 2>/dev/null)"; then
       requested_hooks["${hook_name}"]=1
     fi
 

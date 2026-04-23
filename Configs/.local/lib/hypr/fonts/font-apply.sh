@@ -56,8 +56,8 @@ apply_alacritty_font() {
 }
 
 reload_kitty_instances() {
-  pgrep -x kitty >/dev/null 2>&1 || return 0
-  pkill -USR1 kitty 2>/dev/null || true
+  hypr_user_pgrep -x kitty >/dev/null 2>&1 || return 0
+  hypr_user_pkill -USR1 -x kitty 2>/dev/null || true
 }
 
 apply_kitty_font() {
@@ -105,8 +105,8 @@ sync_ui_fonts() {
   hyprshell waybar.py --restart-direct >/dev/null 2>&1 || true
   append_updated 'Waybar reload'
 
-  pgrep -x rofi >/dev/null 2>&1 || return 0
-  pkill -x rofi >/dev/null 2>&1 || true
+  hypr_user_pgrep -x rofi >/dev/null 2>&1 || return 0
+  hypr_user_pkill -x rofi >/dev/null 2>&1 || true
   append_updated 'Rofi launcher'
 }
 

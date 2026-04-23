@@ -11,9 +11,9 @@
 #c50ed2=color4
 #654ea3=color4
 #C3C7D1=foreground
-#dadadc=foreground
 #646464=color6
 #7f8c8d=color5
+#dadadc=foreground
 
 # Additional SVG/template colors preserved from the existing map
 #000000=background

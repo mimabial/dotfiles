@@ -1,0 +1,17 @@
+
+[general]
+bars = 0
+bar_width = 3
+bar_spacing = 1
+
+[color]
+gradient = 1
+
+gradient_color_1 = '#8D8D8D'
+gradient_color_2 = '#9B9B9B'
+gradient_color_3 = '#A4A4A4'
+gradient_color_4 = '#B0B0B0'
+gradient_color_5 = '#B6B6B6'
+gradient_color_6 = '#CECECE'
+gradient_color_7 = '#ECECEC'
+gradient_color_8 = '#FFFFFF'

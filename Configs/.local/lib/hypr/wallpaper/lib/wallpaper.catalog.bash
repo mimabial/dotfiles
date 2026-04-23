@@ -202,8 +202,8 @@ Wall_Hash() {
 
   setIndex=0
   if ! wallpaper_theme_sources; then
-    echo "ERROR: \"${HYPR_THEME_DIR}\" does not exist"
-    exit 0
+    print_log -err "wallpaper" "\"${HYPR_THEME_DIR}\" does not exist"
+    exit 1
   fi
 
   if ! Wall_List "${wallPathArray[@]}"; then

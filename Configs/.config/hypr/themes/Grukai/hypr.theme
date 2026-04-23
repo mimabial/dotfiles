@@ -27,7 +27,7 @@ group {
     col.border_active = rgba(B3BBA3ff)
     col.border_inactive = rgba(232425cc)
     col.border_locked_active = rgba(FFFFFFff) rgba(0D0D0Dff) 45deg
-    col.border_locked_inactive = rgba(FFFFFFcc) rgba(FFFFFFcc) 45deg
+    col.border_locked_inactive = rgba(FFFFFFcc)
 }
 
 decoration {

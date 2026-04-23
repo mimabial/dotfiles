@@ -3,7 +3,7 @@
 set -euo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
-lib_root="$(realpath "${script_dir}/../..")"
+lib_root="$(cd -- "${script_dir}/../.." && pwd -P)"
 xdg_lib="${lib_root}/hypr/core/xdg.sh"
 notify_lib="${lib_root}/hypr/core/notify.sh"
 state_lib="${lib_root}/hypr/core/state.sh"
@@ -40,6 +40,17 @@ require_commands() {
       return 1
     }
   done
+}
+
+usage() {
+  cat <<'EOF'
+Usage: hyprshell keyboard-switch.sh [--sync-current] [--quiet]
+
+Options:
+  --sync-current   Align all keyboards and keybindings.conf to the current active layout
+  --quiet          Suppress the layout notification
+  -h, --help       Show this help
+EOF
 }
 
 layout_keybindings_variant_for_keymap() {
@@ -112,6 +123,13 @@ reference_keyboard_name() {
   printf '%s\n' "${name}"
 }
 
+current_reference_keymap() {
+  local keyboards_json="$1"
+  local reference_name="$2"
+
+  keyboard_active_keymap_from_json "${keyboards_json}" "${reference_name}"
+}
+
 sync_keyboard_to_keymap() {
   local keyboard_name="$1"
   local target_keymap="$2"
@@ -135,10 +153,33 @@ sync_keyboard_to_keymap() {
 }
 
 main() {
+  local sync_current_only=0
+  local notify_enabled=1
   local keyboards_json=""
   local reference_name=""
   local target_keymap=""
   local keyboard_name=""
+
+  while (($#)); do
+    case "$1" in
+      --sync-current)
+        sync_current_only=1
+        ;;
+      --quiet)
+        notify_enabled=0
+        ;;
+      -h|--help)
+        usage
+        return 0
+        ;;
+      *)
+        printf 'Unknown option: %s\n' "$1" >&2
+        usage >&2
+        return 1
+        ;;
+    esac
+    shift
+  done
 
   require_commands hyprctl jq
   ensure_hypr_instance_signature || {
@@ -154,9 +195,13 @@ main() {
 
   reference_name="$(reference_keyboard_name "${keyboards_json}")" || return 1
 
-  hyprctl switchxkblayout "${reference_name}" next >/dev/null 2>&1 || return 1
-  keyboards_json="$(keyboard_devices_json)"
-  target_keymap="$(keyboard_active_keymap_from_json "${keyboards_json}" "${reference_name}")"
+  if [[ "${sync_current_only}" -eq 1 ]]; then
+    target_keymap="$(current_reference_keymap "${keyboards_json}" "${reference_name}")"
+  else
+    hyprctl switchxkblayout "${reference_name}" next >/dev/null 2>&1 || return 1
+    keyboards_json="$(keyboard_devices_json)"
+    target_keymap="$(keyboard_active_keymap_from_json "${keyboards_json}" "${reference_name}")"
+  fi
   [[ -n "${target_keymap}" ]] || return 1
 
   while IFS= read -r keyboard_name; do
@@ -167,12 +212,14 @@ main() {
 
   sync_layout_keybindings "${target_keymap}" || return 1
 
-  notify_send_safe \
-    -a "Keyboard switch" \
-    -r 91190 \
-    -t 800 \
-    -i "${ICONS_DIR}/Pywal16-Icon/keyboard.svg" \
-    "${target_keymap}" || true
+  if [[ "${notify_enabled}" -eq 1 ]]; then
+    notify_send_safe \
+      -a "Keyboard switch" \
+      -r 91190 \
+      -t 800 \
+      -i "${ICONS_DIR}/Pywal16-Icon/keyboard.svg" \
+      "${target_keymap}" || true
+  fi
 }
 
 main "$@"

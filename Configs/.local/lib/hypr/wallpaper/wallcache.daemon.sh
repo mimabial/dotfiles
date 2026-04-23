@@ -76,6 +76,50 @@ thumb_is_ready() {
     && [[ -e "${WALLPAPER_THUMB_DIR}/${hash}.quad" ]]
 }
 
+wallcache_requeue_job_file() {
+  local source_job="$1"
+  local job_name=""
+  local target_job=""
+  local wall_path=""
+  local wall_hash=""
+
+  [[ -f "${source_job}" ]] || return 0
+  job_name="$(basename "${source_job}")"
+  target_job="${QUEUE_PENDING_DIR}/${job_name}"
+  wall_hash="${job_name%.job}"
+  wall_path="$(head -n1 "${source_job}" 2>/dev/null)"
+
+  if [[ -n "${wall_hash}" ]] && thumb_is_ready "${wall_hash}"; then
+    rm -f -- "${source_job}"
+    return 0
+  fi
+  if [[ -z "${wall_path}" ]] || [[ ! -f "${wall_path}" ]]; then
+    rm -f -- "${source_job}"
+    return 1
+  fi
+  if [[ -e "${target_job}" ]]; then
+    rm -f -- "${source_job}"
+    return 0
+  fi
+
+  mv -f -- "${source_job}" "${target_job}"
+}
+
+wallcache_recover_running_jobs() {
+  local job_file=""
+  local recovered=0
+
+  while IFS= read -r -d '' job_file; do
+    if wallcache_requeue_job_file "${job_file}"; then
+      recovered=$((recovered + 1))
+    fi
+  done < <(find -H "${QUEUE_RUNNING_DIR}" -maxdepth 1 -type f -name "*.job" -print0 2>/dev/null)
+
+  if (( recovered > 0 )); then
+    print_log -sec "wallcache" -warn "recover" "requeued ${recovered} interrupted jobs"
+  fi
+}
+
 queue_wallpaper() {
   local wall="${1}"
   local resolved hash job_name job_pending job_running tmp_job
@@ -189,6 +233,7 @@ run_daemon() {
   trap 'DAEMON_WOKE=1; [[ -n "${DAEMON_SLEEP_PID}" ]] && kill "${DAEMON_SLEEP_PID}" 2>/dev/null || true' USR1
   trap 'exit 0' INT TERM
   trap 'wallcache_daemon_cleanup "$?"' EXIT
+  wallcache_recover_running_jobs
 
   local idle_since now remaining
   idle_since="$(date +%s)"
@@ -225,8 +270,14 @@ run_daemon() {
 
     if (( ${#cache_args[@]} > 0 )); then
       idle_since="$(date +%s)"
-      "${CACHE_SCRIPT}" "${cache_args[@]}" &>/dev/null || true
-      rm -f -- "${running_files[@]}" 2>/dev/null || true
+      if "${CACHE_SCRIPT}" "${cache_args[@]}" &>/dev/null; then
+        rm -f -- "${running_files[@]}" 2>/dev/null || true
+      else
+        print_log -sec "wallcache" -warn "batch" "cache generation failed; requeueing ${#running_files[@]} jobs"
+        for running_file in "${running_files[@]}"; do
+          wallcache_requeue_job_file "${running_file}" || true
+        done
+      fi
       continue
     fi
 
@@ -252,6 +303,7 @@ run_daemon() {
 wallcache_daemon_cleanup() {
   local exit_code="${1:-$?}"
   [[ -n "${DAEMON_SLEEP_PID}" ]] && kill "${DAEMON_SLEEP_PID}" 2>/dev/null || true
+  wallcache_recover_running_jobs
   rm -f "${QUEUE_PID_FILE}" 2>/dev/null || true
   flock -u 206 2>/dev/null || true
   return "${exit_code}"

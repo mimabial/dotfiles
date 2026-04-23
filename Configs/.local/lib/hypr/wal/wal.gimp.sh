@@ -12,7 +12,10 @@
 set -euo pipefail
 
 WAL_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/wal"
-HASH_FILE="${XDG_RUNTIME_DIR:-/tmp}/wal-gimp-hash"
+LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
+# shellcheck source=/dev/null
+source "${LIB_DIR}/hypr/core/hash-cache.sh" || exit 1
+HASH_FILE="$(hypr_hash_cache_runtime_file "wal-gimp-hash")" || exit 1
 
 # Find the most recent GIMP 3.x config directory
 find_gimp_config_dir() {

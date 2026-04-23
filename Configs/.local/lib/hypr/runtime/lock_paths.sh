@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 
+_hypr_lock_paths_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+if ! declare -F hypr_runtime_root_dir >/dev/null 2>&1; then
+  # shellcheck source=/dev/null
+  source "${_hypr_lock_paths_dir}/../core/common.sh" || return 1 2>/dev/null || exit 1
+fi
+unset _hypr_lock_paths_dir
+
 if declare -p HYPR_LOCK_NAMES >/dev/null 2>&1; then
   return 0 2>/dev/null || exit 0
 fi
@@ -27,7 +34,9 @@ declare -grA HYPR_LOCK_NAMES=(
 hypr_lock_path() {
   local key="$1"
   local lock_name="${HYPR_LOCK_NAMES[${key}]:-}"
+  local runtime_root=""
 
   [[ -n "${lock_name}" ]] || return 1
-  printf '%s/%s\n' "${XDG_RUNTIME_DIR:-/tmp}" "${lock_name}"
+  runtime_root="$(hypr_runtime_root_dir)" || return 1
+  printf '%s/%s\n' "${runtime_root}" "${lock_name}"
 }

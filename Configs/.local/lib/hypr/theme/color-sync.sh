@@ -12,9 +12,6 @@ hypr_runtime_load_state || exit 1
 
 SCRIPT_DIR="${SCRIPT_DIR:-$(dirname "$(realpath "${BASH_SOURCE[0]}")")}"
 CACHE_ONLY="${HYPR_WAL_CACHE_ONLY:-0}"
-PRECACHE_ENABLED=0
-PRECACHE_MODE=""
-PRECACHE_WALLPAPER=""
 color_sync_wallpaper_arg=""
 
 color_sync_usage() {
@@ -153,44 +150,42 @@ debug_wal_output() {
   done <<<"${wal_output}"
 }
 
-run_color_generation() {
+prepare_color_generation_context() {
   select_palette_source "${1:-}" || return 1
   configure_wal_command
   color_plan_prepare_cache_strategy
-
-  if [[ -z "${wal_exit}" ]]; then
-    run_wal_generation
-  fi
-
-  color_plan_refresh_cache_key_for_backend_change
-  debug_wal_output
-
-  if [[ "${wal_exit}" -ne 0 ]]; then
-    print_log -sec "pywal16" -err "failed"
-    echo "${wal_output}" >&2
-    return 1
-  fi
 }
 
 finalize_generated_colors() {
-  color_finalize_generated_outputs
+  color_finalize_generated_outputs || return 1
 
   if [[ "${CACHE_ONLY}" -eq 1 ]]; then
     print_log -sec "pywal16" -stat "cache" "prepared (cache-only)"
     exit 0
   fi
 
-  color_finalize_load_generated_colors
-  color_finalize_primary_theming
-  color_finalize_export_icon_theme
-  color_finalize_secondary_theming
+  color_finalize_load_generated_colors || return 1
+  color_finalize_primary_theming || return 1
+  color_finalize_export_icon_theme || return 1
+  color_finalize_secondary_theming || return 1
   color_finalize_terminal_output
-  color_finalize_commit_state_and_notify
+  color_finalize_commit_state_and_notify || return 1
 }
 
 color_sync_parse_args "$@"
 apply_color_sync_runtime_overrides || exit 1
 source_color_modules || exit 1
 init_color_pipeline
-run_color_generation "${color_sync_wallpaper_arg}" || exit 1
-finalize_generated_colors
+prepare_color_generation_context "${color_sync_wallpaper_arg}" || exit 1
+if [[ -z "${wal_exit}" ]]; then
+  run_wal_generation
+fi
+color_plan_refresh_cache_key_for_backend_change
+debug_wal_output
+
+if [[ "${wal_exit}" -ne 0 ]]; then
+  print_log -sec "pywal16" -err "failed"
+  echo "${wal_output}" >&2
+  exit 1
+fi
+finalize_generated_colors || exit 1

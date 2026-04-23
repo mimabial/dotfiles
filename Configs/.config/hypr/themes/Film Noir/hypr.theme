@@ -1,0 +1,58 @@
+$HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
+
+$GTK_THEME = Vanta-Black
+$ICON_THEME = Tela-circle-black
+$COLOR_SCHEME = prefer-dark
+
+$CURSOR_THEME = Simp1e-Breeze
+$CURSOR_SIZE = 29
+
+general {
+    gaps_in = 5
+    gaps_out = 10
+    border_size = 3
+    col.active_border = rgba(8d8d8dff)
+    col.inactive_border = rgba(8d8d8d66)
+    layout = dwindle
+    resize_on_border = true
+}
+
+group {
+    col.border_active = rgba(8d8d8dff)
+    col.border_inactive = rgba(8d8d8d66)
+    col.border_locked_active = rgba(ffffffff)
+    col.border_locked_inactive = rgba(8d8d8d66)
+
+    groupbar {
+      col.active = rgba(ffffffff)
+      col.inactive = rgba(8d8d8dcc)
+      font_family = JetBrainsMono NFM
+      font_size = 10
+      text_color = rgba(0d0d0dff)
+    }
+}
+
+decoration {
+    rounding = 0
+
+    active_opacity = 0.95
+    inactive_opacity = 0.95
+
+    blur {
+        enabled = yes
+        size = 5
+        passes = 4
+        ignore_opacity = true
+        new_optimizations = true
+        xray = false
+        noise = 0.0
+        popups = true
+    }
+
+    dim_inactive = false
+    dim_strength = 0.05
+
+    shadow {
+        enabled = false
+    }
+}

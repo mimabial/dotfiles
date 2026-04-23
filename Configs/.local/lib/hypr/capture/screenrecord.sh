@@ -9,8 +9,19 @@ source "$(command -v hyprshell)" || exit 1
 [[ -f ~/.config/user-dirs.dirs ]] && source ~/.config/user-dirs.dirs
 
 OUTPUT_DIR="${HYPR_SCREENRECORD_DIR:-${XDG_VIDEOS_DIR:-$HOME/Videos}/Recordings}"
-RECORDING_FILE="${TMPDIR:-/tmp}/hypr-screenrecord-filename"
-SCREENRECORD_LOG_FILE="${TMPDIR:-/tmp}/hypr-screenrecord.log"
+SCREENRECORD_USER_ID="$(id -u)"
+SCREENRECORD_RUNTIME_DIR="${HYPR_RUNTIME_DIR:-}"
+if [[ -z "${SCREENRECORD_RUNTIME_DIR}" ]]; then
+  if [[ -n "${XDG_RUNTIME_DIR:-}" ]]; then
+    SCREENRECORD_RUNTIME_DIR="${XDG_RUNTIME_DIR}/hypr"
+  else
+    SCREENRECORD_RUNTIME_DIR="${TMPDIR:-/tmp}/hypr-${SCREENRECORD_USER_ID}"
+  fi
+fi
+SCREENRECORD_SESSION_NAME="${HYPRLAND_INSTANCE_SIGNATURE:-default}"
+SCREENRECORD_SESSION_NAME="${SCREENRECORD_SESSION_NAME//[^A-Za-z0-9._-]/_}"
+RECORDING_FILE="${SCREENRECORD_RUNTIME_DIR}/screenrecord-${SCREENRECORD_SESSION_NAME}.state"
+SCREENRECORD_LOG_FILE="${SCREENRECORD_RUNTIME_DIR}/screenrecord-${SCREENRECORD_SESSION_NAME}.log"
 
 screenrecord_notify() {
   local summary="$1"
@@ -39,9 +50,42 @@ screenrecord_action_notify() {
   dunstify -a "Screen Recorder" -i "$icon" -t "$timeout" "$summary" "$body" -A "default,open"
 }
 
-screenrecord_refresh_waybar() {
-  pkill -RTMIN+8 waybar
+screenrecord_matching_pids() {
+  pgrep -u "${SCREENRECORD_USER_ID}" "$@" 2>/dev/null || true
 }
+
+screenrecord_signal_matching() {
+  local signal_name="$1"
+  shift
+  local pid=""
+
+  while IFS= read -r pid; do
+    [[ "${pid}" =~ ^[0-9]+$ ]] || continue
+    kill "-${signal_name}" "${pid}" 2>/dev/null || true
+  done < <(screenrecord_matching_pids "$@")
+}
+
+screenrecord_has_matching_process() {
+  local pid=""
+
+  while IFS= read -r pid; do
+    [[ "${pid}" =~ ^[0-9]+$ ]] || continue
+    return 0
+  done < <(screenrecord_matching_pids "$@")
+
+  return 1
+}
+
+screenrecord_refresh_waybar() {
+  screenrecord_signal_matching RTMIN+8 -x waybar
+}
+
+if [[ ! -d "${SCREENRECORD_RUNTIME_DIR}" ]]; then
+  mkdir -p "${SCREENRECORD_RUNTIME_DIR}" 2>/dev/null || {
+    screenrecord_notify "Directory error" "Cannot create ${SCREENRECORD_RUNTIME_DIR}" "media-record" "critical" "5000"
+    exit 1
+  }
+fi
 
 if [[ ! -d "$OUTPUT_DIR" ]]; then
   mkdir -p "$OUTPUT_DIR" 2>/dev/null || {
@@ -144,7 +188,7 @@ start_webcam_overlay() {
 }
 
 cleanup_webcam() {
-  pkill -f "WebcamOverlay" 2>/dev/null || true
+  screenrecord_signal_matching TERM -f "WebcamOverlay"
 }
 
 write_recording_state() {
@@ -257,12 +301,6 @@ screenrecord_audio_args() {
   [[ -n "$audio_devices" ]] && audio_args_ref=(-a "$audio_devices" -ac aac)
 }
 
-screenrecord_base_args() {
-  local out_args_name="$1"
-  local resolution="$2"
-  screenrecord_target_args "${out_args_name}" "portal" "$resolution"
-}
-
 screenrecord_target_args() {
   local out_args_name="$1"
   local target="$2"
@@ -271,10 +309,6 @@ screenrecord_target_args() {
   local -n out_args_ref="${out_args_name}"
 
   out_args_ref=(-w "$target" "$@" -k auto -s "$resolution" -f 60 -fm cfr -fallback-cpu-encoding yes)
-}
-
-screenrecord_selection_cancelled_notify() {
-  screenrecord_notify "$1 selection cancelled"
 }
 
 screenrecord_formatted_region() {
@@ -304,7 +338,7 @@ screenrecord_window_args() {
   local win_formatted=""
 
   win_geom=$(select_window) || {
-    screenrecord_selection_cancelled_notify "Window"
+    screenrecord_notify "Window selection cancelled"
     return 1
   }
   win_formatted=$(screenrecord_formatted_region <<<"$win_geom")
@@ -318,7 +352,7 @@ screenrecord_region_args() {
   local region_formatted=""
 
   region=$(slurp 2>/dev/null) || {
-    screenrecord_selection_cancelled_notify "Region"
+    screenrecord_notify "Region selection cancelled"
     return 1
   }
   region_formatted=$(screenrecord_formatted_region <<<"$region")
@@ -339,21 +373,13 @@ screenrecord_capture_args() {
   local out_args_name="$1"
   local resolution="$2"
 
-  screenrecord_base_args "${out_args_name}" "$resolution"
+  screenrecord_target_args "${out_args_name}" "portal" "$resolution"
   if [[ "$USE_WINDOW" == true ]]; then
     screenrecord_window_args "${out_args_name}" "$resolution"
   elif [[ "$USE_REGION" == true ]]; then
     screenrecord_region_args "${out_args_name}" "$resolution"
   elif [[ "$USE_OUTPUT" == true ]]; then
     screenrecord_output_args "${out_args_name}" "$resolution"
-  fi
-}
-
-notify_recording_started() {
-  if [[ "$USE_WINDOW" == true || "$USE_REGION" == true || "$USE_OUTPUT" == true ]]; then
-    screenrecord_notify "Recording started" "" "media-record" "normal" "3000" "screenrec"
-  else
-    screenrecord_notify "Choose what to record" "" "media-record" "normal" "3000" "screenrec"
   fi
 }
 
@@ -378,7 +404,11 @@ start_recording() {
 
   write_recording_state "$pid" "$filename"
   screenrecord_refresh_waybar
-  notify_recording_started
+  if [[ "$USE_WINDOW" == true || "$USE_REGION" == true || "$USE_OUTPUT" == true ]]; then
+    screenrecord_notify "Recording started" "" "media-record" "normal" "3000" "screenrec"
+  else
+    screenrecord_notify "Choose what to record" "" "media-record" "normal" "3000" "screenrec"
+  fi
 }
 
 screenrecord_start_flow() {
@@ -404,7 +434,7 @@ signal_recording_stop() {
     return 0
   fi
 
-  pkill -SIGINT -f "^gpu-screen-recorder"
+  screenrecord_signal_matching SIGINT -f "^gpu-screen-recorder($| )"
 }
 
 wait_for_recording_stop() {
@@ -478,7 +508,7 @@ is_recording_active() {
     rm -f "$RECORDING_FILE"
   fi
 
-  pgrep -f "^gpu-screen-recorder" >/dev/null 2>&1
+  screenrecord_has_matching_process -f "^gpu-screen-recorder($| )"
 }
 
 screenrecord_toggle_flow() {
@@ -533,8 +563,8 @@ case "${ACTION:-}" in
     screenrecord_start_flow
     ;;
   toggle)
-    if pgrep -x slurp >/dev/null 2>&1; then
-      pkill -x slurp 2>/dev/null
+    if screenrecord_has_matching_process -x slurp; then
+      screenrecord_signal_matching TERM -x slurp
     else
       screenrecord_toggle_flow
     fi

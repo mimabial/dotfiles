@@ -1,0 +1,15 @@
+# Color mapping for pywal replacement
+# Format: #hexcolor=pywal_variable
+# Theme: Dijon Mustard
+
+# Core colors derived from kvconfig.theme [GeneralColors]
+#EEE2D0=background
+#E5D8C6=color8
+#EDE1CF=color7
+#D8CCB8=color0
+#E1D4C1=color0
+#F7B500=color4
+#376B8C=foreground
+#6F9A84=color6
+#B06F78=color5
+#F4EEE3=foreground

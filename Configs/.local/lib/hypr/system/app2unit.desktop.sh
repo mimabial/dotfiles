@@ -12,46 +12,37 @@ make_paths() {
 }
 alias make_paths='IFS= make_paths'
 
-find_entry_candidates() {
+find_entry() {
+	ENTRY_ID=$1
+	IFS=$OIFS
 	set --
-	OIFS=$IFS
-	IFS=':'
-
 	IFS=':'
 	for directory in $APPLICATIONS_DIRS; do
 		set -- "$@" "$directory".
 	done
 
 	set -- "$@" -type f
-
 	de_find_or_arg=''
 	for directory in $APPLICATIONS_DIRS; do
 		set -- "$@" ${de_find_or_arg} '(' -path "$directory"'./[a-zA-Z0-9_]*.desktop' ! -path "$directory"'./*[^a-zA-Z0-9_./-]*' ')'
 		de_find_or_arg='-o'
 	done
-
 	IFS=$OIFS
-	find -L "$@" 2>/dev/null
-}
 
-find_entry_id_from_path() {
-	case "$1" in
-	'' | */./) return 1 ;;
-	*/./*/*)
-		de_replace_str "${1#*/./}" "/" "-"
-		printf '%s' "$DE_REPLACED_STR"
-		;;
-	*/./*)
-		printf '%s' "${1#*/./}"
-		;;
-	esac
-}
-
-find_entry() {
-	ENTRY_ID=$1
-	IFS=$OIFS
 	while read -r entry_path <&3; do
-		de_found_entry_id=$(find_entry_id_from_path "$entry_path") || continue
+		case "$entry_path" in
+		'' | */./) continue ;;
+		*/./*/*)
+			de_replace_str "${entry_path#*/./}" "/" "-"
+			de_found_entry_id=$DE_REPLACED_STR
+			;;
+		*/./*)
+			de_found_entry_id=${entry_path#*/./}
+			;;
+		*)
+			continue
+			;;
+		esac
 		case "$de_found_entry_id" in
 		"$ENTRY_ID")
 			printf '%s' "$entry_path"
@@ -59,7 +50,7 @@ find_entry() {
 			;;
 		esac
 	done 3<<-EOP
-		$(find_entry_candidates)
+		$(find -L "$@" 2>/dev/null)
 	EOP
 
 	error "Could not find entry '$ENTRY_ID'!"
@@ -360,10 +351,6 @@ de_inject_file_field() {
 	esac
 }
 
-de_inject_icon_field() {
-	de_inject_optional_replaced_field "$1" "%i" "$ENTRY_ICON"
-}
-
 de_inject_fields() {
 	# Operates on argument array and $EXEC_RSEP_USEP from entry
 	# modifies $EXEC_RSEP_USEP according to args/fields
@@ -378,7 +365,7 @@ de_inject_fields() {
 			de_inject_file_field "$de_inject_arg" "$@" || return 1
 			;;
 		*[!%]'%i'* | '%i'*)
-			de_inject_icon_field "$de_inject_arg"
+			de_inject_optional_replaced_field "$de_inject_arg" "%i" "$ENTRY_ICON"
 			;;
 		*[!%]'%c'* | '%c'*)
 			de_exec_append_replaced_arg "$de_inject_arg" "%c" "$ENTRY_NAME"
@@ -631,51 +618,6 @@ parse_entry_key() {
 # Mask IFS within function to allow temporary changes
 alias parse_entry_key='IFS= parse_entry_key'
 
-de_enter_main_section() {
-	debug "entered section: [Desktop Entry]"
-	DE_IN_MAIN=true
-	if [ -z "$DE_ENTRY_ACTION" ]; then
-		DE_READ_EXEC=true
-		DE_BREAK_ON_NEXT_SECTION=true
-	fi
-}
-
-de_parse_key_line() {
-	IFS='=' read -r de_parse_key de_parse_value <<-EOL
-		$1
-	EOL
-	{ read -r de_parse_key && read -r de_parse_value; } <<-EOL
-		$de_parse_key
-		$de_parse_value
-	EOL
-	parse_entry_key "$de_parse_key" "$de_parse_value" "$DE_ENTRY_ACTION" "$DE_READ_EXEC" "$DE_IN_MAIN" "$DE_IN_ACTION"
-}
-
-de_enter_action_section() {
-	debug "entered section: [Desktop Action ${DE_ENTRY_ACTION}]"
-	DE_IN_MAIN=false
-	DE_BREAK_ON_NEXT_SECTION=true
-	case "$DE_ACTION_LISTED" in
-	true)
-		DE_READ_EXEC=true
-		DE_IN_ACTION=true
-		;;
-	*)
-		error "${ENTRY_ID}: Action '$DE_ENTRY_ACTION' is not listed in Actions key!"
-		return 1
-		;;
-	esac
-}
-
-de_leave_section() {
-	debug "entered section: $1"
-	[ "$DE_BREAK_ON_NEXT_SECTION" = "true" ] && return 1
-	DE_IN_MAIN=false
-	DE_IN_ACTION=false
-	DE_READ_EXEC=false
-	return 0
-}
-
 de_validate_requested_action() {
 	[ -n "$DE_ENTRY_ACTION" ] || return 0
 
@@ -722,10 +664,46 @@ read_entry_path() {
 	# Let `read` trim leading/trailing whitespace from the line
 	while read -r line; do
 		case $line in
-		'[Desktop Entry]'*) de_enter_main_section ;;
-		[a-zA-Z0-9-]*=*) de_parse_key_line "$line" || return 1 ;;
-		"[Desktop Action ${DE_ENTRY_ACTION}]"*) de_enter_action_section || return 1 ;;
-		'['*) de_leave_section "$line" || break ;;
+		'[Desktop Entry]'*)
+			debug "entered section: [Desktop Entry]"
+			DE_IN_MAIN=true
+			if [ -z "$DE_ENTRY_ACTION" ]; then
+				DE_READ_EXEC=true
+				DE_BREAK_ON_NEXT_SECTION=true
+			fi
+			;;
+		[a-zA-Z0-9-]*=*)
+			IFS='=' read -r de_parse_key de_parse_value <<-EOL
+				$line
+			EOL
+			{ read -r de_parse_key && read -r de_parse_value; } <<-EOL
+				$de_parse_key
+				$de_parse_value
+			EOL
+			parse_entry_key "$de_parse_key" "$de_parse_value" "$DE_ENTRY_ACTION" "$DE_READ_EXEC" "$DE_IN_MAIN" "$DE_IN_ACTION" || return 1
+			;;
+		"[Desktop Action ${DE_ENTRY_ACTION}]"*)
+			debug "entered section: [Desktop Action ${DE_ENTRY_ACTION}]"
+			DE_IN_MAIN=false
+			DE_BREAK_ON_NEXT_SECTION=true
+			case "$DE_ACTION_LISTED" in
+			true)
+				DE_READ_EXEC=true
+				DE_IN_ACTION=true
+				;;
+			*)
+				error "${ENTRY_ID}: Action '$DE_ENTRY_ACTION' is not listed in Actions key!"
+				return 1
+				;;
+			esac
+			;;
+		'['*)
+			debug "entered section: $line"
+			[ "$DE_BREAK_ON_NEXT_SECTION" = "true" ] && break
+			DE_IN_MAIN=false
+			DE_IN_ACTION=false
+			DE_READ_EXEC=false
+			;;
 		esac
 		# By default empty lines and comments get ignored
 	done <"$DE_ENTRY_PATH"

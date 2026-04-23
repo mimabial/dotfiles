@@ -1,5 +1,25 @@
 #!/usr/bin/env bash
 
+color_finalize_resolve_path() {
+  local input_path="$1"
+  local resolved_path=""
+
+  if command -v realpath >/dev/null 2>&1; then
+    realpath "${input_path}" 2>/dev/null && return 0
+  fi
+  if command -v readlink >/dev/null 2>&1; then
+    resolved_path="$(readlink -- "${input_path}" 2>/dev/null || readlink "${input_path}" 2>/dev/null || true)"
+    if [[ -n "${resolved_path}" ]]; then
+      case "${resolved_path}" in
+        /*) printf '%s\n' "${resolved_path}" ;;
+        *) printf '%s/%s\n' "$(cd "$(dirname "${input_path}")" && pwd -P)" "${resolved_path}" ;;
+      esac
+      return 0
+    fi
+  fi
+  printf '%s\n' "${input_path}"
+}
+
 color_finalize_generated_outputs() {
   print_log -sec "pywal16" -stat "complete" "color generation"
   canonicalize_shell_colors_file
@@ -12,22 +32,13 @@ color_finalize_generated_outputs() {
   post_process_generated_color_files
 
   if [[ "${wal_cache_populate}" -eq 1 ]] && [[ "${wal_used_cache}" -eq 0 ]] && [[ -n "${wal_cache_path}" ]]; then
-    if [[ "${CACHE_ONLY}" -ne 1 ]]; then
-      wal_cache_store_async "${WAL_CACHE}" "${wal_cache_path}"
-    else
-      wal_cache_store_with_lock "${WAL_CACHE}" "${wal_cache_path}" || print_log -sec "pywal16" -warn "cache" "store failed"
-    fi
+    wal_cache_store "${WAL_CACHE}" "${wal_cache_path}" || print_log -sec "pywal16" -warn "cache" "store failed"
   fi
 
-  queue_opposite_mode_precache
 }
 
 color_finalize_load_generated_colors() {
-  set -a
-  # shellcheck source=/dev/null
-  source "${WAL_CACHE}/colors-shell.sh"
-  set +a
-
+  color_finalize_source_generated_colors || return 1
   link_generated_color_files
 
   if [[ "${selected_color_mode}" -eq 0 ]]; then
@@ -40,11 +51,18 @@ color_finalize_load_generated_colors() {
   print_log -sec "pywal16" -stat "complete" "color files ready"
 }
 
+color_finalize_source_generated_colors() {
+  set -a
+  # shellcheck source=/dev/null
+  source "${WAL_CACHE}/colors-shell.sh" || return 1
+  set +a
+}
+
 color_finalize_normalize_hyprshade_colors() {
   local hyprshade_colors_file="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wal/colors.inc"
 
   if [[ -L "${hyprshade_colors_file}" ]]; then
-    hyprshade_colors_file="$(readlink -f "${hyprshade_colors_file}")"
+    hyprshade_colors_file="$(color_finalize_resolve_path "${hyprshade_colors_file}")"
   fi
 
   if [[ -f "${hyprshade_colors_file}" ]]; then
@@ -53,7 +71,7 @@ color_finalize_normalize_hyprshade_colors() {
 }
 
 color_finalize_primary_theming() {
-  local theme_conf="${HYPR_CONFIG_HOME}/themes/theme.conf"
+  local theme_conf="${HYPR_THEME_METADATA_FILE:-${HYPR_CONFIG_HOME}/themes/theme.conf}"
 
   print_log -sec "pywal16" -stat "deploy" "applying themes to applications"
 
@@ -62,10 +80,10 @@ color_finalize_primary_theming() {
     export hypr_border
   fi
 
-  write_primary_app_theme_outputs
+  write_primary_app_theme_outputs || return 1
 
   color_finalize_normalize_hyprshade_colors
-  signal_and_reload_live_apps
+  signal_and_reload_live_apps kitty tmux rmpc
 
   if [[ "${selected_color_mode}" -eq 0 ]]; then
     process_theme_files
@@ -75,7 +93,7 @@ color_finalize_primary_theming() {
 }
 
 color_finalize_export_icon_theme() {
-  local theme_conf="${HYPR_CONFIG_HOME}/themes/theme.conf"
+  local theme_conf="${HYPR_THEME_METADATA_FILE:-${HYPR_CONFIG_HOME}/themes/theme.conf}"
   local hyq_out=""
   local hyq_icon=""
 
@@ -108,7 +126,7 @@ color_finalize_update_waybar_border_radius() {
 
 color_finalize_secondary_theming() {
   [[ -f "${LIB_DIR}/hypr/wal/wal.hypr.sh" ]] && source "${LIB_DIR}/hypr/wal/wal.hypr.sh"
-  write_secondary_app_theme_outputs
+  write_secondary_app_theme_outputs || return 1
   color_finalize_update_waybar_border_radius
   color_lock_release_theme_update
 

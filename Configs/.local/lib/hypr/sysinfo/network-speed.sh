@@ -12,12 +12,26 @@ case "$1" in
     ;;
 esac
 
-STATE_FILE="${TMPDIR:-/tmp}/waybar-netspeed-$USER"
+network_speed_state_dir() {
+  local runtime_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+  local fallback_dir="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/runtime"
+
+  if mkdir -p "${runtime_dir}/hypr" 2>/dev/null; then
+    printf '%s\n' "${runtime_dir}/hypr"
+    return 0
+  fi
+
+  mkdir -p "${fallback_dir}" || return 1
+  printf '%s\n' "${fallback_dir}"
+}
+
+STATE_DIR="$(network_speed_state_dir)" || exit 1
+STATE_FILE="${STATE_DIR}/waybar-netspeed-${UID:-$(id -u)}"
 INTERFACE=$(ip route | awk '/^default/ {print $5; exit}')
 
 # If no network interface is active
 if [ -z "$INTERFACE" ]; then
-  echo '{"text":"00\n00\nKB\n/s","tooltip":"Not Connected"}'
+  printf '%s\n' '{"text":"00\n00\nKB\n/s","tooltip":"Not Connected"}'
   exit 0
 fi
 
@@ -33,12 +47,12 @@ if [ -f "$STATE_FILE" ]; then
     RX_BYTES_PER_SEC=0
     TX_BYTES_PER_SEC=0
   else
-    TIME_DIFF=$(awk -v now=$TIME_NOW -v prev=$TIME_PREV 'BEGIN {print (now - prev) / 1e9}')
-    RX_BYTES_PER_SEC=$(awk -v now=$RX_NOW -v prev=$RX_PREV -v dt=$TIME_DIFF 'BEGIN {
+    TIME_DIFF=$(awk -v now="$TIME_NOW" -v prev="$TIME_PREV" 'BEGIN {print (now - prev) / 1e9}')
+    RX_BYTES_PER_SEC=$(awk -v now="$RX_NOW" -v prev="$RX_PREV" -v dt="$TIME_DIFF" 'BEGIN {
             if (dt > 0) printf "%.0f", (now - prev) / dt;
             else print 0;
         }')
-    TX_BYTES_PER_SEC=$(awk -v now=$TX_NOW -v prev=$TX_PREV -v dt=$TIME_DIFF 'BEGIN {
+    TX_BYTES_PER_SEC=$(awk -v now="$TX_NOW" -v prev="$TX_PREV" -v dt="$TIME_DIFF" 'BEGIN {
             if (dt > 0) printf "%.0f", (now - prev) / dt;
             else print 0;
         }')
@@ -53,7 +67,7 @@ echo "$INTERFACE $RX_NOW $TX_NOW $TIME_NOW" >"$STATE_FILE"
 # Format speed display based on mode
 if [ "$MODE" = "both" ]; then
   # Format both download and upload with empty line between
-  JSON_TEXT=$(awk -v down=$RX_BYTES_PER_SEC -v up=$TX_BYTES_PER_SEC 'BEGIN {
+  JSON_TEXT=$(awk -v down="$RX_BYTES_PER_SEC" -v up="$TX_BYTES_PER_SEC" 'BEGIN {
         # Download speed
         down_unit = "K";
         down_speed = down / 1024;
@@ -80,7 +94,7 @@ if [ "$MODE" = "both" ]; then
 elif [ "$MODE" = "download" ]; then
   DISPLAY_BYTES=$RX_BYTES_PER_SEC
 
-  JSON_TEXT=$(awk -v b=$DISPLAY_BYTES 'BEGIN {
+  JSON_TEXT=$(awk -v b="$DISPLAY_BYTES" 'BEGIN {
         unit = "KB\\n/s";
         speed = b / 1024;
         if (b >= 1048576) { unit = "MB\\n/s"; speed = b / 1048576; }
@@ -95,7 +109,7 @@ elif [ "$MODE" = "download" ]; then
 else # upload mode
   DISPLAY_BYTES=$TX_BYTES_PER_SEC
 
-  JSON_TEXT=$(awk -v b=$DISPLAY_BYTES 'BEGIN {
+  JSON_TEXT=$(awk -v b="$DISPLAY_BYTES" 'BEGIN {
         unit = "KB\\n/s";
         speed = b / 1024;
         if (b >= 1048576) { unit = "MB\\n/s"; speed = b / 1048576; }
@@ -109,13 +123,13 @@ else # upload mode
 fi
 
 # Format both speeds for tooltip
-DOWN_SPEED=$(awk -v b=$RX_BYTES_PER_SEC 'BEGIN {
+DOWN_SPEED=$(awk -v b="$RX_BYTES_PER_SEC" 'BEGIN {
     if (b >= 1073741824) printf "%.2f GB/s", b / 1073741824;
     else if (b >= 1048576) printf "%.2f MB/s", b / 1048576;
     else printf "%.2f KB/s", b / 1024;
 }')
 
-UP_SPEED=$(awk -v b=$TX_BYTES_PER_SEC 'BEGIN {
+UP_SPEED=$(awk -v b="$TX_BYTES_PER_SEC" 'BEGIN {
     if (b >= 1073741824) printf "%.2f GB/s", b / 1073741824;
     else if (b >= 1048576) printf "%.2f MB/s", b / 1048576;
     else printf "%.2f KB/s", b / 1024;

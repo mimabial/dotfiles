@@ -54,7 +54,7 @@ menu_run_action_system() {
     update_process_hypridle) hyprshell service/restart.sh hypridle ;;
     update_process_hyprsunset) hyprshell service/restart.sh hyprsunset ;;
     update_process_waybar) hyprshell waybar.py --restart-direct ;;
-    update_process_rofi) pkill -x rofi >/dev/null 2>&1 || true ;;
+    update_process_rofi) pkill -u "${UID:-$(id -u)}" -x rofi >/dev/null 2>&1 || true ;;
     update_config_hyprland) present_terminal hyprshell service/domain.sh restore hypr-config ;;
     update_config_hypridle) present_terminal hyprshell service/domain.sh restore hypridle ;;
     update_config_hyprlock) present_terminal hyprshell service/domain.sh restore hyprlock ;;

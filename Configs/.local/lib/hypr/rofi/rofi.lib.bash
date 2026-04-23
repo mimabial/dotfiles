@@ -73,27 +73,6 @@ rofi_decimal_milli_or_zero() {
   printf '%s\n' "${milli}"
 }
 
-rofi_decimal_million() {
-  local value="${1:-0}"
-  local sign=""
-  local whole="0"
-  local fraction="000000"
-  local million=0
-
-  [[ "${value}" =~ ^(-?)([0-9]+)([.][0-9]+)?$ ]] || return 1
-  sign="${BASH_REMATCH[1]}"
-  whole="${BASH_REMATCH[2]}"
-  if [[ -n "${BASH_REMATCH[3]:-}" ]]; then
-    fraction="${BASH_REMATCH[3]#.}"
-    fraction="${fraction}000000"
-    fraction="${fraction:0:6}"
-  fi
-
-  million=$((10#${whole} * 1000000 + 10#${fraction}))
-  [[ -n "${sign}" ]] && million=$((-million))
-  printf '%s\n' "${million}"
-}
-
 rofi_positive_decimal() {
   local milli=0
 
@@ -159,31 +138,6 @@ rofi_milli_to_fixed2() {
   printf '%s%s.%02d\n' "${sign}" "${whole}" "${fraction}"
 }
 
-rofi_trim_decimal() {
-  local value="${1:-}"
-  while [[ "${value}" == *.*0 ]]; do
-    value="${value%0}"
-  done
-  value="${value%.}"
-  printf '%s\n' "${value}"
-}
-
-rofi_divide_int_fixed6() {
-  local dividend="${1:-0}"
-  local divisor="${2:-0}"
-  local quotient=0
-  local whole=0
-  local fraction=0
-
-  [[ "${dividend}" =~ ^[0-9]+$ ]] || return 1
-  [[ "${divisor}" =~ ^[1-9][0-9]*$ ]] || return 1
-
-  quotient=$((((dividend * 1000000) + (divisor / 2)) / divisor))
-  whole=$((quotient / 1000000))
-  fraction=$((quotient % 1000000))
-  printf '%s.%06d\n' "${whole}" "${fraction}"
-}
-
 rofi_monitors_json() {
   if [[ -z "${ROFI_MONITORS_JSON_CACHE_READY:-}" ]]; then
     declare -g ROFI_MONITORS_JSON_CACHE_READY=1
@@ -192,16 +146,6 @@ rofi_monitors_json() {
   fi
 
   printf '%s\n' "${ROFI_MONITORS_JSON_CACHE}"
-}
-
-rofi_layers_json() {
-  if [[ -z "${ROFI_LAYERS_JSON_CACHE_READY:-}" ]]; then
-    declare -g ROFI_LAYERS_JSON_CACHE_READY=1
-    declare -g ROFI_LAYERS_JSON_CACHE
-    ROFI_LAYERS_JSON_CACHE="$(hyprctl -j layers 2>/dev/null || true)"
-  fi
-
-  printf '%s\n' "${ROFI_LAYERS_JSON_CACHE}"
 }
 
 rofi_option_json() {
@@ -214,19 +158,6 @@ rofi_option_json() {
   fi
 
   printf '%s\n' "${ROFI_OPTION_JSON_CACHE["${option}"]}"
-}
-
-rofi_focused_monitor_name() {
-  if [[ -z "${ROFI_FOCUSED_MONITOR_NAME_CACHE_READY:-}" ]]; then
-    declare -g ROFI_FOCUSED_MONITOR_NAME_CACHE_READY=1
-    declare -g ROFI_FOCUSED_MONITOR_NAME_CACHE
-    ROFI_FOCUSED_MONITOR_NAME_CACHE="$(
-      rofi_monitors_json | jq -r '.[] | select(.focused==true) | .name' 2>/dev/null | head -n 1
-    )"
-  fi
-
-  [[ -n "${ROFI_FOCUSED_MONITOR_NAME_CACHE}" ]] || return 1
-  printf '%s\n' "${ROFI_FOCUSED_MONITOR_NAME_CACHE}"
 }
 
 rofi_font_override() {
@@ -486,7 +417,7 @@ rofi_resolve_import_ref() {
 
   [[ -n "${import_ref}" ]] || return 1
 
-  if [[ "${import_ref}" == "~/"* ]]; then
+  if [[ "${import_ref}" == ~/* ]]; then
     resolved="${HOME}/${import_ref#~/}"
   elif [[ "${import_ref}" == /* ]]; then
     resolved="${import_ref}"
@@ -558,14 +489,6 @@ rofi_default_border_radius() {
   IFS=$'\t' read -r border _ < <(rofi_default_border_metrics "${fallback}" 0)
   [[ "${border}" =~ ^[0-9]+$ ]] || border="${fallback}"
   printf '%s\n' "${border}"
-}
-
-rofi_default_border_width() {
-  local fallback="${1:-0}"
-  local width=""
-  IFS=$'\t' read -r _ width < <(rofi_default_border_metrics 0 "${fallback}")
-  [[ "${width}" =~ ^[0-9]+$ ]] || width="${fallback}"
-  printf '%s\n' "${width}"
 }
 
 rofi_standard_window_theme() {
@@ -684,30 +607,6 @@ rofi_focused_monitor_logical_size() {
   printf '%s %s\n' "${logical_width}" "${logical_height}"
 }
 
-rofi_focused_monitor_logical_width_precise() {
-  local monitor_line=""
-  local mon_width mon_scale
-  local mon_width_milli=0
-  local mon_scale_milli=0
-  local logical_width_milli=0
-
-  monitor_line="$(rofi_focused_monitor_record 2>/dev/null || true)"
-  [[ -n "${monitor_line}" ]] || return 0
-  IFS=$'\t' read -r mon_width _ mon_scale _ <<<"${monitor_line}"
-
-  if [[ "${mon_width}" =~ ^[0-9]+$ ]]; then
-    rofi_positive_decimal "${mon_scale}" || {
-      printf '%s\n' "${mon_width}"
-      return 0
-    }
-
-    mon_width_milli=$((mon_width * 1000))
-    mon_scale_milli="$(rofi_decimal_milli "${mon_scale}")" || return 1
-    logical_width_milli="$(rofi_divide_milli "${mon_width_milli}" "${mon_scale_milli}")" || return 1
-    rofi_milli_to_fixed2 "${logical_width_milli}"
-  fi
-}
-
 rofi_theme_width_multiplier_override() {
   local theme_ref="$1"
   local factor="$2"
@@ -740,33 +639,22 @@ rofi_theme_width_multiplier_override() {
     width_value="${BASH_REMATCH[1]}"
     width_unit="${BASH_REMATCH[3]}"
     scaled_width="$(
-      rofi_trim_decimal "$(
-        rofi_milli_to_fixed2 "$(
-          rofi_mul_milli \
-            "$(rofi_decimal_milli "${width_value}")" \
-            "$(rofi_decimal_milli "${factor}")"
-        )"
+      rofi_milli_to_fixed2 "$(
+        rofi_mul_milli \
+          "$(rofi_decimal_milli "${width_value}")" \
+          "$(rofi_decimal_milli "${factor}")"
       )"
     )" || return 1
+    while [[ "${scaled_width}" == *.*0 ]]; do
+      scaled_width="${scaled_width%0}"
+    done
+    scaled_width="${scaled_width%.}"
     printf 'window { width: %s%s; }\n' "${scaled_width}" "${width_unit}"
     return 0
   fi
 
   [[ -n "${fallback_width}" ]] || return 1
   printf 'window { width: %s; }\n' "${fallback_width}"
-}
-
-rofi_theme_window_height_spec() {
-  awk '
-    /^[[:space:]]*window[[:space:]]*\{/ { in_window = 1; next }
-    in_window && /^[[:space:]]*}/ { exit }
-    in_window && /^[[:space:]]*height[[:space:]]*:/ {
-      if (match($0, /:[[:space:]]*([0-9]+([.][0-9]+)?)([a-z%]*)/, m)) {
-        print m[1], m[3]
-      }
-      exit
-    }
-  ' "$1"
 }
 
 rofi_theme_window_height_px() {
@@ -778,7 +666,18 @@ rofi_theme_window_height_px() {
   local font_px=""
   local height_px=""
 
-  read -r theme_height theme_height_unit < <(rofi_theme_window_height_spec "${theme_file}")
+  read -r theme_height theme_height_unit < <(
+    awk '
+      /^[[:space:]]*window[[:space:]]*\{/ { in_window = 1; next }
+      in_window && /^[[:space:]]*}/ { exit }
+      in_window && /^[[:space:]]*height[[:space:]]*:/ {
+        if (match($0, /:[[:space:]]*([0-9]+([.][0-9]+)?)([a-z%]*)/, m)) {
+          print m[1], m[3]
+        }
+        exit
+      }
+    ' "${theme_file}"
+  )
   case "${theme_height_unit}" in
     px)
       printf '%s\t%s\t\n' "${theme_height}" "${theme_height_unit}"
@@ -802,18 +701,6 @@ rofi_theme_window_height_px() {
   return 1
 }
 
-rofi_wallpaper_ratio() {
-  local wall_image="$1"
-  local img_w=""
-  local img_h=""
-
-  command -v magick >/dev/null 2>&1 || return 1
-  read -r img_w img_h < <(magick identify -format "%w %h" "${wall_image}" 2>/dev/null || true)
-  [[ "${img_w}" =~ ^[0-9]+$ && "${img_h}" =~ ^[0-9]+$ && "${img_h}" -gt 0 ]] || return 1
-
-  rofi_divide_int_fixed6 "${img_w}" "${img_h}"
-}
-
 rofi_wallpaper_post_clamp_reduction_px() {
   local theme_name="$1"
   local layers_json=""
@@ -834,9 +721,21 @@ rofi_wallpaper_post_clamp_reduction_px() {
       ;;
   esac
 
-  focused_monitor_name="$(rofi_focused_monitor_name 2>/dev/null || true)"
+  if [[ -z "${ROFI_FOCUSED_MONITOR_NAME_CACHE_READY:-}" ]]; then
+    declare -g ROFI_FOCUSED_MONITOR_NAME_CACHE_READY=1
+    declare -g ROFI_FOCUSED_MONITOR_NAME_CACHE
+    ROFI_FOCUSED_MONITOR_NAME_CACHE="$(
+      rofi_monitors_json | jq -r '.[] | select(.focused==true) | .name' 2>/dev/null | head -n 1
+    )"
+  fi
+  focused_monitor_name="${ROFI_FOCUSED_MONITOR_NAME_CACHE}"
   if [[ -n "${focused_monitor_name}" ]]; then
-    layers_json="$(rofi_layers_json)"
+    if [[ -z "${ROFI_LAYERS_JSON_CACHE_READY:-}" ]]; then
+      declare -g ROFI_LAYERS_JSON_CACHE_READY=1
+      declare -g ROFI_LAYERS_JSON_CACHE
+      ROFI_LAYERS_JSON_CACHE="$(hyprctl -j layers 2>/dev/null || true)"
+    fi
+    layers_json="${ROFI_LAYERS_JSON_CACHE}"
     if [[ "${layers_json}" == \{* ]]; then
       waybar_width_px="$(
         printf '%s\n' "${layers_json}" | jq -r --arg mon "${focused_monitor_name}" '
@@ -881,12 +780,12 @@ rofi_wallpaper_width_override() {
   local font_scale="$3"
   local wall_image="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wallpaper/current/wall.thmb"
   local monitor_width_logical=""
+  local monitor_line=""
   local theme_name=""
   local did_clamp=0
   local theme_height_px=""
   local theme_height_unit=""
   local font_px=""
-  local ratio=""
   local post_clamp_reduction_px="0"
   local theme_height_milli=0
   local font_px_milli=0
@@ -899,27 +798,46 @@ rofi_wallpaper_width_override() {
   local clamp_inset_milli=0
   local max_width_milli=0
   local monitor_width_milli=0
+  local mon_width=""
+  local mon_scale=""
+  local mon_scale_milli=0
+  local logical_width_milli=0
   local post_clamp_reduction_milli=0
   local width_value_milli=0
+  local img_w=""
+  local img_h=""
 
   [[ -n "${theme_file}" ]] || return 0
 
   theme_name="$(basename "${theme_file}")"
   theme_name="${theme_name%.rasi}"
-  monitor_width_logical="$(rofi_focused_monitor_logical_width_precise)"
+  monitor_line="$(rofi_focused_monitor_record 2>/dev/null || true)"
+  if [[ -n "${monitor_line}" ]]; then
+    IFS=$'\t' read -r mon_width _ mon_scale _ <<<"${monitor_line}"
+    if [[ "${mon_width}" =~ ^[0-9]+$ ]]; then
+      if rofi_positive_decimal "${mon_scale}"; then
+        mon_scale_milli="$(rofi_decimal_milli "${mon_scale}")" || return 1
+        logical_width_milli="$(rofi_divide_milli "$((mon_width * 1000))" "${mon_scale_milli}")" || return 1
+        monitor_width_logical="$(rofi_milli_to_fixed2 "${logical_width_milli}")"
+      else
+        monitor_width_logical="${mon_width}"
+      fi
+    fi
+  fi
   read -r theme_height_px theme_height_unit font_px < <(rofi_theme_window_height_px "${theme_file}" "${font_name}" "${font_scale}" 2>/dev/null || true)
   [[ -n "${theme_height_px}" && -n "${theme_height_unit}" ]] || return 0
 
   if [[ "${theme_name}" == "style_11" ]]; then
-    ratio="1.777778"
+    ratio_million=1777778
   else
     [[ -f "${wall_image}" ]] || return 0
-    ratio="$(rofi_wallpaper_ratio "${wall_image}" 2>/dev/null || true)"
-    [[ -n "${ratio}" ]] || return 0
+    command -v magick >/dev/null 2>&1 || return 0
+    read -r img_w img_h < <(magick identify -format "%w %h" "${wall_image}" 2>/dev/null || true)
+    [[ "${img_w}" =~ ^[0-9]+$ && "${img_h}" =~ ^[1-9][0-9]*$ ]] || return 0
+    ratio_million=$((((img_w * 1000000) + (img_h / 2)) / img_h))
   fi
 
   theme_height_milli="$(rofi_decimal_milli "${theme_height_px}" 2>/dev/null || true)"
-  ratio_million="$(rofi_decimal_million "${ratio}" 2>/dev/null || true)"
   [[ "${theme_height_milli}" =~ ^-?[0-9]+$ ]] || return 0
   [[ "${ratio_million}" =~ ^-?[0-9]+$ ]] || return 0
 

@@ -6,13 +6,15 @@ source "$(command -v hyprshell)" || exit 1
 source "${LIB_DIR}/hypr/core/hash-cache.sh" || exit 1
 
 WAL_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/wal"
-hash_file="${XDG_RUNTIME_DIR:-/tmp}/wal-kvantum-hash"
+hash_file="$(hypr_hash_cache_file "wal-kvantum.hash")" || exit 1
 PYWAL_KVANTUM_DIR="${HOME}/.config/Kvantum/pywal16"
+KVANTUM_OUTPUT_STATE_FILE="${PYWAL_KVANTUM_DIR}/.hypr-theme-state"
 KVANTUM_TEMPLATE_DIR="${HYPR_CONFIG_HOME}/themes/Tokyo Night/kvantum"
 
 declare -F export_hypr_config >/dev/null && export_hypr_config
 selected_color_mode="${selected_color_mode:-1}"
 declare -a SVG_TEMPLATE_SED_ARGS=()
+kvantum_expected_hash=""
 
 normalize_kvantum_color() {
   local raw="${1%%;*}"
@@ -49,7 +51,7 @@ resolve_theme_kvantum_dir() {
   THEME_KVANTUM_DIR="${HYPR_THEME_DIR}/kvantum"
 }
 
-theme_inputs_changed() {
+kvantum_build_expected_hash() {
   local template_kvconfig="${KVANTUM_TEMPLATE_DIR}/kvconfig.theme"
   local svg_source=""
   local input_files=(
@@ -57,32 +59,45 @@ theme_inputs_changed() {
     "${THEME_KVANTUM_DIR}/colors.map"
     "${template_kvconfig}"
   )
-  local combined_hash=""
-  local kvconfig_output="${PYWAL_KVANTUM_DIR}/pywal16.kvconfig"
-  local svg_output="${PYWAL_KVANTUM_DIR}/pywal16.svg"
-  local input_file=""
 
   svg_source="$(resolve_kvantum_svg_source)"
   [[ -n "${svg_source}" ]] && input_files+=("${svg_source}")
 
-  combined_hash="$(build_theme_input_hash "${input_files[@]}")-${selected_color_mode}"
+  printf '%s-%s\n' "$(build_theme_input_hash "${input_files[@]}")" "${selected_color_mode}"
+}
 
-  [[ ! -f "${kvconfig_output}" ]] && return 0
-  if [[ -n "${svg_source}" && ! -f "${svg_output}" ]]; then
-    return 0
+kvantum_outputs_need_refresh() {
+  local svg_source=""
+  local kvconfig_output="${PYWAL_KVANTUM_DIR}/pywal16.kvconfig"
+  local svg_output="${PYWAL_KVANTUM_DIR}/pywal16.svg"
+  local template_kvconfig="${KVANTUM_TEMPLATE_DIR}/kvconfig.theme"
+  local -a outputs=("${kvconfig_output}")
+  local -a inputs=(
+    "${THEME_KVANTUM_DIR}/kvconfig.theme"
+    "${THEME_KVANTUM_DIR}/colors.map"
+    "${template_kvconfig}"
+    "${WAL_CACHE}/colors-shell.sh"
+  )
+  local -a metadata=()
+
+  svg_source="$(resolve_kvantum_svg_source)"
+  kvantum_expected_hash="$(kvantum_build_expected_hash)"
+  metadata=(
+    "theme=${HYPR_THEME}"
+    "mode=${selected_color_mode}"
+    "input_hash=${kvantum_expected_hash}"
+  )
+
+  if [[ -n "${svg_source}" ]]; then
+    outputs+=("${svg_output}")
+    inputs+=("${svg_source}")
   fi
 
-  for input_file in "${THEME_KVANTUM_DIR}/kvconfig.theme" "${THEME_KVANTUM_DIR}/colors.map" "${template_kvconfig}" "${WAL_CACHE}/colors-shell.sh"; do
-    [[ -f "${input_file}" && "${input_file}" -nt "${kvconfig_output}" ]] && return 0
-  done
-
-  if [[ -n "${svg_source}" && -f "${svg_output}" ]]; then
-    for input_file in "${svg_source}" "${THEME_KVANTUM_DIR}/colors.map" "${template_kvconfig}" "${WAL_CACHE}/colors-shell.sh"; do
-      [[ -f "${input_file}" && "${input_file}" -nt "${svg_output}" ]] && return 0
-    done
-  fi
-
-  ! hypr_hash_cache_is_current "${hash_file}" "${combined_hash}"
+  ! hypr_hash_cache_outputs_current \
+    "${hash_file}" "${kvantum_expected_hash}" "${KVANTUM_OUTPUT_STATE_FILE}" \
+    "${outputs[@]}" \
+    --inputs "${inputs[@]}" \
+    --metadata "${metadata[@]}"
 }
 
 copy_theme_files() {
@@ -152,6 +167,27 @@ load_kvconfig_colors() {
     [[ "${normalized}" =~ ^#[0-9A-Fa-f]{6}$ ]] || continue
     map_ref["${key}"]="${normalized}"
   done < "${kvconfig_file}"
+}
+
+kvconfig_general_color_value() {
+  local kvconfig_file="$1"
+  local key="$2"
+
+  [[ -f "${kvconfig_file}" ]] || return 1
+
+  awk -F= -v wanted="${key}" '
+    /^\[GeneralColors\]$/ { in_general=1; next }
+    /^\[/ {
+      if (in_general) {
+        exit
+      }
+      next
+    }
+    in_general && $1 == wanted {
+      print $2
+      exit
+    }
+  ' "${kvconfig_file}"
 }
 
 resolve_template_svg_fallback_color() {
@@ -346,9 +382,9 @@ load_theme_mode_highlight_colors() {
 
   [[ -f "${theme_kvconfig}" ]] || return 0
   highlight_foreground=""
-  kv_highlight=$(grep '^highlight\.color=' "${theme_kvconfig}" | cut -d= -f2)
-  kv_text=$(grep '^text\.color=' "${theme_kvconfig}" | cut -d= -f2)
-  kv_highlight_text=$(grep '^highlight\.text\.color=' "${theme_kvconfig}" | cut -d= -f2)
+  kv_highlight="$(kvconfig_general_color_value "${theme_kvconfig}" 'highlight.color')"
+  kv_text="$(kvconfig_general_color_value "${theme_kvconfig}" 'text.color')"
+  kv_highlight_text="$(kvconfig_general_color_value "${theme_kvconfig}" 'highlight.text.color')"
   kv_highlight="$(normalize_kvantum_color "${kv_highlight}")"
   kv_text="$(normalize_kvantum_color "${kv_text}")"
   kv_highlight_text="$(normalize_kvantum_color "${kv_highlight_text}")"
@@ -382,18 +418,14 @@ update_highlight_colors() {
   fi
 }
 
-store_current_hash() {
-  local template_kvconfig="${KVANTUM_TEMPLATE_DIR}/kvconfig.theme"
-  local svg_source=""
-  local input_files=(
-    "${THEME_KVANTUM_DIR}/kvconfig.theme"
-    "${THEME_KVANTUM_DIR}/colors.map"
-    "${template_kvconfig}"
-  )
-  svg_source="$(resolve_kvantum_svg_source)"
-  [[ -n "${svg_source}" ]] && input_files+=("${svg_source}")
-
-  hypr_hash_cache_store "${hash_file}" "$(build_theme_input_hash "${input_files[@]}")-${selected_color_mode}"
+record_kvantum_outputs() {
+  [[ -n "${kvantum_expected_hash}" ]] || kvantum_expected_hash="$(kvantum_build_expected_hash)"
+  hypr_hash_cache_store "${hash_file}" "${kvantum_expected_hash}"
+  hypr_hash_cache_metadata_store \
+    "${KVANTUM_OUTPUT_STATE_FILE}" \
+    "theme=${HYPR_THEME}" \
+    "mode=${selected_color_mode}" \
+    "input_hash=${kvantum_expected_hash}"
 }
 
 build_theme_input_hash() {
@@ -404,7 +436,7 @@ build_theme_input_hash() {
 
 resolve_theme_kvantum_dir
 [[ -d "${THEME_KVANTUM_DIR}" ]] || exit 0
-theme_inputs_changed || exit 0
+kvantum_outputs_need_refresh || exit 0
 
 copy_theme_files
 load_wal_colors
@@ -415,4 +447,4 @@ apply_template_svg_replacements
 fix_svg_selection_colors
 restore_svg_menu_colors
 update_highlight_colors
-store_current_hash
+record_kvantum_outputs

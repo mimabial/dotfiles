@@ -8,9 +8,9 @@ $HOME/.config/waybar/theme.css
 @define-color alt_fg #3D3632;
 @define-color alt_br #AD8A3E;
 
-@define-color act_bg #D8C8B6;
+@define-color act_br #D8C8B6;
 @define-color act_fg #3D3632;
-@define-color act_br #AD8A3E;
+@define-color act_bg #AD8A3E;
 
 @define-color hvr_bg #E5D8C6;
 @define-color hvr_fg #3D3632;

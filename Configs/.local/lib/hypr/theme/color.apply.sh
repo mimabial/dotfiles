@@ -23,12 +23,12 @@
 
 # Primary and secondary theming scripts are defined here so color-sync.sh does
 # not need to shadow the same orchestration logic.
-declare -a APP_THEMING_SCRIPTS=(
+declare -ga APP_THEMING_SCRIPTS=(
   "wal/wal.kvantum.sh"
   "wal/wal.gtk.sh"
 )
 
-declare -a SECONDARY_THEMING_SCRIPTS=(
+declare -ga SECONDARY_THEMING_SCRIPTS=(
   "wal/wal.chrome.sh"
   "wal/wal.qt.sh"
   "wal/wal.gimp.sh"
@@ -39,12 +39,18 @@ declare -a SECONDARY_THEMING_SCRIPTS=(
 write_theme_outputs_from_scripts() {
   local -n scripts_ref="$1"
   local script script_path
+  local rc=0
 
   for script in "${scripts_ref[@]}"; do
     script_path="${LIB_DIR}/hypr/${script}"
     [[ ! -f "${script_path}" ]] && continue
-    bash "${script_path}"
+    if ! bash "${script_path}"; then
+      print_log -sec "theme" -err "apply" "failed ${script}"
+      rc=1
+    fi
   done
+
+  return "${rc}"
 }
 
 # Write primary app theme files and derived state.
@@ -52,33 +58,67 @@ write_primary_app_theme_outputs() {
   write_theme_outputs_from_scripts APP_THEMING_SCRIPTS
 }
 
-# Write secondary app theme files and derived state.
-write_secondary_app_theme_outputs() {
-  write_theme_outputs_from_scripts SECONDARY_THEMING_SCRIPTS
+runtime_desktop_sync_is_external() {
+  [[ "${HYPR_THEME_RUNTIME_SYNC_EXTERNAL:-0}" -eq 1 ]]
+}
+
+run_runtime_desktop_sync() {
   local desktop_sync_script="${LIB_DIR}/hypr/theme/desktop.sync.sh"
   [[ -x "${desktop_sync_script}" ]] || return 0
   bash "${desktop_sync_script}" --runtime-only
 }
 
+# Write secondary app theme files and derived state.
+write_secondary_app_theme_outputs() {
+  write_theme_outputs_from_scripts SECONDARY_THEMING_SCRIPTS
+  runtime_desktop_sync_is_external || run_runtime_desktop_sync
+}
+
 # Signal or live-reload running applications so they pick up fresh theme files.
-signal_and_reload_live_apps() {
-  pkill -SIGUSR1 kitty 2>/dev/null || true
-
-  local tmux_config="${XDG_CONFIG_HOME:-$HOME/.config}/tmux/tmux.conf"
-  if command -v tmux &>/dev/null && tmux list-sessions &>/dev/null; then
-    tmux source-file "${tmux_config}" 2>/dev/null || true
-  fi
-
-  local rmpc_config="${XDG_CONFIG_HOME:-$HOME/.config}/rmpc/config.ron"
+reload_live_theme_client() {
+  local client="$1"
+  local tmux_config=""
+  local rmpc_config=""
   local rmpc_theme_name=""
   local rmpc_theme_path=""
-  if command -v rmpc &>/dev/null && pgrep -x rmpc >/dev/null 2>&1 && [[ -f "${rmpc_config}" ]]; then
-    rmpc_theme_name="$(grep -oP 'theme:\s*Some\("\K[^"]+' "${rmpc_config}" 2>/dev/null | head -1)"
-    if [[ -n "${rmpc_theme_name}" ]]; then
+
+  case "${client}" in
+    kitty)
+      pgrep -x kitty >/dev/null 2>&1 || return 0
+      pkill -SIGUSR1 kitty 2>/dev/null || true
+      ;;
+    tmux)
+      tmux_config="${XDG_CONFIG_HOME:-$HOME/.config}/tmux/tmux.conf"
+      if command -v tmux &>/dev/null && tmux list-sessions &>/dev/null; then
+        tmux source-file "${tmux_config}" 2>/dev/null || true
+      fi
+      ;;
+    rmpc)
+      rmpc_config="${XDG_CONFIG_HOME:-$HOME/.config}/rmpc/config.ron"
+      if ! command -v rmpc &>/dev/null || ! pgrep -x rmpc >/dev/null 2>&1 || [[ ! -f "${rmpc_config}" ]]; then
+        return 0
+      fi
+
+      rmpc_theme_name="$(grep -oP 'theme:\s*Some\("\K[^"]+' "${rmpc_config}" 2>/dev/null | head -1)"
+      case "${rmpc_theme_name}" in
+        pywal16 | pywal16-small | pywal16-big) ;;
+        *) return 0 ;;
+      esac
+
       rmpc_theme_path="${XDG_CONFIG_HOME:-$HOME/.config}/rmpc/themes/${rmpc_theme_name}.ron"
       [[ -f "${rmpc_theme_path}" ]] && rmpc remote set theme "${rmpc_theme_path}" >/dev/null 2>&1 || true
-    fi
-  fi
+      ;;
+  esac
+}
+
+signal_and_reload_live_apps() {
+  local -a clients=("$@")
+  local client=""
+  [[ ${#clients[@]} -gt 0 ]] || clients=(kitty tmux rmpc)
+
+  for client in "${clients[@]}"; do
+    reload_live_theme_client "${client}"
+  done
 }
 
 # Convert #RRGGBB to R,G,B.

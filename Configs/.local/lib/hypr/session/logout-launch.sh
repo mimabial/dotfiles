@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
 
+# shellcheck source=/dev/null
+source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
+
 #// Check if wlogout is already running
 
-if pgrep -x "wlogout" >/dev/null; then
-  pkill -x "wlogout"
+if hypr_user_pgrep -x "wlogout" >/dev/null; then
+  hypr_user_pkill -x "wlogout"
   exit 0
 fi
 
 #// set file variables
 
-# shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
 [ -n "${1}" ] && wlogout_style="${1}"
 wlogout_style=${wlogout_style:-$WLOGOUT_STYLE}
 wl_layout="${XDG_CONFIG_HOME:-$HOME/.config}/wlogout/layout_${wlogout_style}"

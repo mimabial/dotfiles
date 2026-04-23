@@ -58,7 +58,10 @@ resolve_theme_coordinates() {
 
 get_nerd_icon() {
   local code="$1"
-  local json_file="$(dirname "$(readlink -f "$0")")/weather_codes.json"
+  local script_dir=""
+  local json_file=""
+  script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+  json_file="${script_dir}/weather_codes.json"
 
   if [ -f "$json_file" ] && command -v jq >/dev/null 2>&1; then
     jq -r ".[\"$code\"] // .default" "$json_file" 2>/dev/null

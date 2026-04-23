@@ -25,32 +25,11 @@ USAGE
 
 mode=""
 declare -a forwarded_args=()
-
-while (($#)); do
-  case "$1" in
-    --mode)
-      shift
-      [[ "$#" -gt 0 ]] || hypr_service_die "Missing value for --mode"
-      mode="$1"
-      ;;
-    -h | --help | help)
-      usage
-      exit 0
-      ;;
-    *)
-      forwarded_args+=("$1")
-      ;;
-  esac
-  shift
-done
-
-case "${mode}" in
-  refresh | restore) ;;
-  *)
-    usage
-    exit 1
-    ;;
-esac
+hypr_service_parse_mode_cli usage mode forwarded_args "$@"
+hypr_service_validate_mode "${mode}" || {
+  usage
+  exit 1
+}
 
 hypr_service_parse_refresh_args "${forwarded_args[@]}"
 [[ "${#hypr_service_cli_args[@]}" -eq 1 ]] || {
@@ -73,9 +52,9 @@ case "${mode}" in
     hypr_service_refresh_config "${rel_path}" "${hypr_service_cli_show_diff}" "${hypr_service_cli_quiet}"
     ;;
   restore)
-    source_path="$(hypr_service_template_path "${rel_path}")"
+    source_path="$(hypr_service_layer_source_path config "${rel_path}")"
     target_path="${XDG_CONFIG_HOME:-$HOME/.config}/${rel_path}"
-    hypr_service_apply_file_mode "${source_path}" "${target_path}" "${rel_path}" overwrite always "${hypr_service_cli_show_diff}" "${hypr_service_cli_quiet}"
+    hypr_service_apply_file "${source_path}" "${target_path}" "${rel_path}" overwrite always "${hypr_service_cli_show_diff}" "${hypr_service_cli_quiet}"
     ;;
 esac
 

@@ -130,7 +130,7 @@ wallpaper_collect_valid_png_hashes() {
 
 wallpaper_prune_thumb_cache() {
   local hashset_name="$1"
-  local -n valid_hashes="${hashset_name}"
+  local -n valid_hashes_ref="${hashset_name}"
   local thumb_dir="${WALLPAPER_THUMB_DIR}"
   local cache_home="${HYPR_CACHE_HOME}"
   local removed=0
@@ -144,7 +144,7 @@ wallpaper_prune_thumb_cache() {
     base="$(basename "${file}")"
     if [[ "${base}" =~ ^\.?([0-9a-fA-F]+)\.(thmb|sqre|blur|quad)(\.png)?$ ]]; then
       hash="${BASH_REMATCH[1]}"
-      if [[ -z "${valid_hashes["${hash}"]-}" ]]; then
+      if [[ -z "${valid_hashes_ref["${hash}"]-}" ]]; then
         rm -f -- "${file}"
         removed=$((removed + 1))
       fi
@@ -158,7 +158,7 @@ wallpaper_prune_thumb_cache() {
 
 wallpaper_prune_png_cache() {
   local hashset_name="$1"
-  local -n valid_hashes="${hashset_name}"
+  local -n valid_hashes_ref="${hashset_name}"
   local png_cache_dir="${WALLPAPER_CACHE_DIR}/png_cache"
   local removed=0
   local file base hash
@@ -169,7 +169,7 @@ wallpaper_prune_png_cache() {
     base="$(basename "${file}")"
     if [[ "${base}" =~ ^([0-9a-fA-F]+)\.png$ ]]; then
       hash="${BASH_REMATCH[1]}"
-      if [[ -z "${valid_hashes["${hash}"]-}" ]]; then
+      if [[ -z "${valid_hashes_ref["${hash}"]-}" ]]; then
         rm -f -- "${file}"
         removed=$((removed + 1))
       fi
@@ -210,7 +210,12 @@ wallpaper_refresh_inventory_and_prune_locked() {
   fi
 
   if [[ -n "${current_signature}" ]] && [[ "${current_signature}" == "${saved_signature}" ]]; then
+    wallpaper_load_inventory_catalog || {
+      WALLPAPER_INVENTORY_REFRESHED=1
+      return 0
+    }
     WALLPAPER_INVENTORY_REFRESHED=1
+    wallpaper_prune_loaded_inventory &
     return 0
   fi
 
@@ -313,10 +318,10 @@ Wall_Precache_Thumbs() {
 }
 
 Wall_Clean_Thumbs() {
-  local -A valid_hashes=()
+  local -A valid_thumb_hashes=()
   wallpaper_load_inventory_catalog || return 0
-  wallpaper_collect_valid_thumb_hashes valid_hashes
-  wallpaper_prune_thumb_cache valid_hashes
+  wallpaper_collect_valid_thumb_hashes valid_thumb_hashes
+  wallpaper_prune_thumb_cache valid_thumb_hashes
 }
 
 Wall_Prune_Hashmap_Caches() {

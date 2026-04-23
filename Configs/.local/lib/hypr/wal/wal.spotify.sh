@@ -6,7 +6,7 @@ LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 source "${LIB_DIR}/hypr/core/hash-cache.sh" || exit 1
 
 spotify_colors="${XDG_CACHE_HOME:-$HOME/.cache}/wal/spotify.ini"
-hash_file="${XDG_RUNTIME_DIR:-/tmp}/wal-spotify-hash"
+hash_file="$(hypr_hash_cache_runtime_file "wal-spotify-hash")" || exit 1
 
 # Exit if spicetify is not installed
 command -v spicetify &>/dev/null || exit 0

@@ -145,7 +145,7 @@ expand_tiny_selection_to_rectangle() {
   local rect=""
 
   if [[ "${selection}" =~ ^([0-9]+),([0-9]+)[[:space:]]([0-9]+)x([0-9]+)$ ]]; then
-    if (( ${BASH_REMATCH[3]} * ${BASH_REMATCH[4]} < 20 )); then
+    if (( BASH_REMATCH[3] * BASH_REMATCH[4] < 20 )); then
       local click_x="${BASH_REMATCH[1]}"
       local click_y="${BASH_REMATCH[2]}"
 
@@ -263,6 +263,7 @@ ocr_screenshot() {
     for pkg in "${tesseract_packages[@]}"; do
       if ! pkg_installed "${pkg}"; then
         screenshot_notify 5000 "dialog-error" "OCR: required package is not installed" " ${pkg}"
+        rm -f "${temp_screenshot}"
         return 1
       fi
     done
@@ -273,15 +274,19 @@ ocr_screenshot() {
     for tesseract_language in "${tesseract_languages[@]}"; do
       tesseract_languages_body+=$'\n '"${tesseract_language}"
     done
-    tesseract_output=$(
+    if ! tesseract_output=$(
       tesseract \
         --psm 6 \
         --oem 3 \
         -l "${tesseract_languages_prepared}" \
         "${temp_screenshot}" \
-        stdout
-      2>/dev/null
-    )
+        stdout \
+        2>/dev/null
+    ); then
+      screenshot_notify 5000 "dialog-error" "OCR: text recognition failed"
+      rm -f "${temp_screenshot}"
+      return 1
+    fi
     printf "%s" "$tesseract_output" | wl-copy
     screenshot_notify 5000 "${temp_screenshot}" "OCR: ${#tesseract_output} symbols recognized" "${tesseract_languages_body}"
     rm -f "${temp_screenshot}"

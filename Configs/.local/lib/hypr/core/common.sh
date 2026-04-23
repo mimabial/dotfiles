@@ -1,5 +1,56 @@
 #!/usr/bin/env bash
 
+hypr_user_uid() {
+  printf '%s\n' "${UID:-$(id -u)}"
+}
+
+hypr_user_pgrep() {
+  local user_uid=""
+
+  user_uid="$(hypr_user_uid)" || return 1
+  pgrep -u "${user_uid}" "$@"
+}
+
+hypr_user_pkill() {
+  local user_uid=""
+
+  user_uid="$(hypr_user_uid)" || return 1
+  pkill -u "${user_uid}" "$@"
+}
+
+hypr_runtime_root_dir() {
+  local user_uid=""
+  local runtime_dir=""
+  local fallback_dir=""
+
+  user_uid="$(hypr_user_uid)" || return 1
+  runtime_dir="${XDG_RUNTIME_DIR:-/run/user/${user_uid}}"
+  if [[ -n "${runtime_dir}" ]] && mkdir -p "${runtime_dir}" 2>/dev/null; then
+    printf '%s\n' "${runtime_dir}"
+    return 0
+  fi
+
+  fallback_dir="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/runtime"
+  mkdir -p "${fallback_dir}" || return 1
+  printf '%s\n' "${fallback_dir}"
+}
+
+hypr_runtime_subdir() {
+  local subdir="${1:-}"
+  local runtime_root=""
+  local target_dir=""
+
+  runtime_root="$(hypr_runtime_root_dir)" || return 1
+  if [[ -z "${subdir}" ]]; then
+    printf '%s\n' "${runtime_root}"
+    return 0
+  fi
+
+  target_dir="${runtime_root}/${subdir#/}"
+  mkdir -p "${target_dir}" || return 1
+  printf '%s\n' "${target_dir}"
+}
+
 hypr_core_file() {
   local rel_path="$1"
   local config_home="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}"
@@ -101,7 +152,8 @@ hypr_border_metrics() {
 hypr_border_metrics_into() {
   local border_name="${1:-}"
   local width_name="${2:-}"
-  local metrics_file="${XDG_RUNTIME_DIR:-/tmp}/hypr-border-metrics.$$.$RANDOM"
+  local metrics_dir=""
+  local metrics_file=""
   local line=""
   local -a ints=()
 
@@ -114,6 +166,8 @@ hypr_border_metrics_into() {
 
   border_ref=""
   width_ref=""
+  metrics_dir="$(hypr_runtime_subdir hypr)" || return 1
+  metrics_file="${metrics_dir}/hypr-border-metrics.$$.$RANDOM"
 
   if ! hyprctl --batch "getoption decoration:rounding;getoption general:border_size" >"${metrics_file}" 2>/dev/null; then
     rm -f -- "${metrics_file}"
@@ -195,7 +249,7 @@ hypr_compact_path() {
   for var_name in XDG_CONFIG_HOME XDG_DATA_HOME XDG_STATE_HOME XDG_CACHE_HOME HOME; do
     base_path="${!var_name:-}"
     [[ -n "${base_path}" && "${path}" == "${base_path}"/* ]] || continue
-    printf '$%s%s\n' "${var_name}" "${path#${base_path}}"
+    printf '$%s%s\n' "${var_name}" "${path#"${base_path}"}"
     return 0
   done
 

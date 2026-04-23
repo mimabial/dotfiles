@@ -67,7 +67,7 @@ refresh_mpris_fallbacks() {
 }
 
 lock_bitwarden_if_running() {
-  pgrep -x "bitwarden" >/dev/null || return 0
+  hypr_user_pgrep -x "bitwarden" >/dev/null || return 0
   bitwarden-desktop --lock &
 }
 
@@ -81,13 +81,17 @@ run_default_lock() {
 }
 
 update_art_cache_if_needed() {
-  local lock_file="${TMPDIR:-/tmp}/hyprlock-art.lock"
-  local stamp_file="${lock_file}.stamp"
+  local runtime_dir=""
+  local lock_file=""
+  local stamp_file=""
   local lock_fd=""
   local now=0
   local last_spawn=0
 
   [[ "${1:-}" == "--source" ]] || return 0
+  runtime_dir="$(hypr_runtime_subdir hypr)" || return 0
+  lock_file="${runtime_dir}/hyprlock-art.lock"
+  stamp_file="${lock_file}.stamp"
 
   if ! exec {lock_fd}>"${lock_file}"; then
     return 0

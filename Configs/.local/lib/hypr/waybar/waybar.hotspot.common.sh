@@ -30,3 +30,42 @@ waybar_hotspot_active_connection() {
     return 0
   done < <(nmcli -t -f NAME,TYPE,DEVICE connection show --active 2>/dev/null)
 }
+
+waybar_hotspot_device_ipv4() {
+  ip -4 addr show "$1" 2>/dev/null | awk '/inet / {sub(/\/.*/, "", $2); print $2; exit}'
+}
+
+waybar_hotspot_active_ap_device() {
+  local line="" device="" mode="" ssid=""
+
+  waybar_hotspot_have_command iwconfig || return 1
+
+  while IFS= read -r line; do
+    if [[ "${line}" =~ ^([^[:space:]]+)[[:space:]] ]]; then
+      device="${BASH_REMATCH[1]}"
+      mode=""
+      ssid=""
+    fi
+
+    [[ -n "${device}" ]] || continue
+
+    if [[ "${line}" == *"no wireless extensions."* ]]; then
+      device=""
+      continue
+    fi
+
+    if [[ "${line}" =~ Mode:([^[:space:]]+) ]]; then
+      mode="${BASH_REMATCH[1]}"
+    fi
+
+    if [[ "${line}" =~ ESSID:\"([^\"]*)\" ]]; then
+      ssid="${BASH_REMATCH[1]}"
+    fi
+
+    if [[ "${mode}" == "Master" || "${mode}" == "AP" ]]; then
+      [[ -n "${ssid}" && "${ssid}" != "off/any" ]] || ssid="N/A"
+      printf '%s|%s\n' "${device}" "${ssid}"
+      return 0
+    fi
+  done < <(iwconfig 2>/dev/null)
+}

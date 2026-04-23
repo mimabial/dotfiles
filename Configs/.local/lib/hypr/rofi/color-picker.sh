@@ -52,7 +52,7 @@ check hyprpicker || {
   exit
 }
 
-killall -q hyprpicker
+pkill -u "${UID:-$(id -u)}" -x hyprpicker >/dev/null 2>&1 || true
 
 picker_stderr="$(mktemp "${TMPDIR:-/tmp}/hyprpicker-stderr.XXXXXX")" || exit 1
 color="$(hyprpicker 2>"${picker_stderr}")"
@@ -83,4 +83,4 @@ prevColors=$(head -n $((limit - 1)) "$loc/colors")
 echo "$color" >"$loc/colors"
 echo "$prevColors" >>"$loc/colors"
 sed -i '/^$/d' "$loc/colors"
-pkill -RTMIN+1 waybar
+pkill -u "${UID:-$(id -u)}" -RTMIN+1 -x waybar

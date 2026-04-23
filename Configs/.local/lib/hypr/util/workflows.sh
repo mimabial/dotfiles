@@ -7,6 +7,8 @@ if ! source "$(command -v hyprshell)"; then
 fi
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/rofi/rofi.lib.bash"
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/window/stateful-choice.common.bash"
 
 workflows_user_dir="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}/workflows"
 workflows_shared_dir="${HYPR_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/hypr}/workflows"
@@ -27,23 +29,7 @@ HELP
 resolve_workflow_path() {
   local name="${1:-default}"
   name="${name%.conf}"
-
-  if [[ "${name}" == */* ]] && [[ -f "${name}" ]]; then
-    printf '%s\n' "${name}"
-    return 0
-  fi
-
-  local candidate
-  for candidate in \
-    "${workflows_user_dir}/${name}.conf" \
-    "${workflows_shared_dir}/${name}.conf"; do
-    if [[ -f "${candidate}" ]]; then
-      printf '%s\n' "${candidate}"
-      return 0
-    fi
-  done
-
-  return 1
+  hypr_stateful_choice_resolve_path "${name}" "conf" "${workflows_user_dir}" "${workflows_shared_dir}"
 }
 
 workflow_exists() {
@@ -53,18 +39,7 @@ workflow_exists() {
 }
 
 list_workflow_names() {
-  local dir path name
-  local -A seen=()
-
-  for dir in "${workflows_user_dir}" "${workflows_shared_dir}"; do
-    [[ -d "${dir}" ]] || continue
-    while IFS= read -r -d '' path; do
-      name="$(basename "${path}" .conf | xargs)"
-      [[ -n "${seen[${name}]:-}" ]] && continue
-      seen["${name}"]=1
-      printf '%s\n' "${name}"
-    done < <(find -L "${dir}" -maxdepth 1 -type f -name '*.conf' -print0 | sort -z)
-  done
+  hypr_stateful_choice_list_names "conf" "${workflows_user_dir}" "${workflows_shared_dir}"
 }
 
 get_workflow_icon() {
@@ -168,14 +143,15 @@ CONF
 apply_workflow_update() {
   fn_update
   hyprctl reload config-only -q
-  if pgrep -x waybar >/dev/null; then
-    pkill -RTMIN+7 waybar
+  if hypr_user_pgrep -x waybar >/dev/null; then
+    hypr_user_pkill -RTMIN+7 -x waybar
   fi
 }
 
 handle_waybar() {
   get_info
-  echo "{\"text\": \"${current_icon}\", \"tooltip\": \"Mode: ${current_icon} ${current_workflow} \\n${current_description}\", \"class\": \"custom-workflows\"}"
+  printf '{"text": "%s", "tooltip": "Mode: %s %s \\n%s", "class": "custom-workflows"}\n' \
+    "${current_icon}" "${current_icon}" "${current_workflow}" "${current_description}"
 }
 
 if [[ -z "${*}" ]]; then

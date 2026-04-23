@@ -10,6 +10,8 @@ download_and_extract() {
   local url="${2}"
   local temp_dir="${landing_dir}/${name}"
   local domain=""
+  local file=""
+  local install_status=0
 
   extract_archive_file() {
     local archive_file="$1"
@@ -44,6 +46,34 @@ download_and_extract() {
     esac
   }
 
+  install_downloaded_file() {
+    local downloaded_file="$1"
+
+    case "${downloaded_file}" in
+      *.tar.gz | *.zip | *.tar.xz)
+        extract_archive_file "${downloaded_file}" "${temp_dir}/${name}" || return 1
+        if ! cp -rn "${temp_dir}/${name}" "${font_dir}"; then
+          echo "[font] Failed to extract ${downloaded_file}"
+          dunstify -t 5000 -i "preferences-desktop-font" "Font" "Failed to extract ${downloaded_file}"
+          return 1
+        fi
+        dunstify -t 3000 -i "preferences-desktop-font" "Font" "${name} Installed successfully"
+        return 0
+        ;;
+      *.ttf | *.otf)
+        mkdir -p "${font_dir}/hypr"
+        mv "${downloaded_file}" "${font_dir}/hypr/${name}.ttf"
+        echo "[font] ${name} installed successfully. Please restart hyprlock to apply changes."
+        dunstify -t 3000 -i "preferences-desktop-font" "Font" "${name} Installed successfully"
+        return 2
+        ;;
+      *)
+        echo "[font] Unsupported file format: ${downloaded_file}"
+        return 1
+        ;;
+    esac
+  }
+
   # Extract domain name using parameter expansion
   domain=${url#*://}   # Remove everything up to '://'
   domain=${domain%%/*} # Remove everything after the first '/'
@@ -59,34 +89,18 @@ download_and_extract() {
   else
     return 1
   fi
-  find "$temp_dir" -type f | while read -r file; do
-    case "$file" in
-      *.tar.gz | *.zip | *.tar.xz)
-        if ! extract_archive_file "$file" "${temp_dir}/${name}"; then
-          return 1
-        fi
-        ;;
-      *.ttf | *.otf)
-        mkdir -p "${font_dir}/hypr"
-        mv "$file" "${font_dir}/hypr/$name.ttf"
-        echo "[font] $name installed successfully. Please restart hyprlock to apply changes."
-        dunstify -t 3000 -i "preferences-desktop-font" "Font" "${name} Installed successfully"
-        return 0
-        ;;
-      *)
-        echo "[font] Unsupported file format: $file"
-        rm -f "$temp_dir"
-        return 1
-        ;;
-    esac
 
-    if ! cp -rn "${temp_dir}/${name}" "$font_dir"; then
-      echo "[font] Failed to extract $file"
-      dunstify -t 5000 -i "preferences-desktop-font" "Font" "Failed to extract $file"
+  while IFS= read -r file; do
+    install_downloaded_file "${file}"
+    install_status=$?
+    if [[ "${install_status}" -eq 2 ]]; then
+      break
+    fi
+    if [[ "${install_status}" -ne 0 ]]; then
+      rm -rf "${temp_dir}"
       return 1
     fi
-    dunstify -t 3000 -i "preferences-desktop-font" "Font" "${name} Installed successfully"
-  done
+  done < <(find "${temp_dir}" -type f)
 
   rm -rf "$temp_dir"
   echo "[font] $name installed successfully. Please restart hyprlock to apply changes."
@@ -95,6 +109,9 @@ download_and_extract() {
 
 resolve() {
   local layout_path="${1}"
+  local name=""
+  local url=""
+
   layout_path="$(printf "%s" "${layout_path}")"
   layout_path="$(realpath "${layout_path}")"
   if [[ ! -f "${layout_path}" ]]; then
@@ -102,14 +119,14 @@ resolve() {
     return 1
   fi
   # shellcheck disable=SC2016
-  grep -Eo '^\s*\$resolve\.font\s*=\s*[^|]+\s*\|\s*[^ ]+' "${layout_path}" | while IFS='=' read -r _ font; do
+  while IFS='=' read -r _ font; do
     name=$(echo "$font" | awk -F'|' '{print $1}' | xargs)
     url=$(echo "$font" | awk -F'|' '{print $2}' | xargs)
     if ! fc-list | grep -q "${name}"; then
-      download_and_extract "$name" "$url"
-      fc-cache -f "${font_dir}/${name}"
+      download_and_extract "$name" "$url" || return 1
+      fc-cache -f "${font_dir}/${name}" || return 1
     fi
-  done
+  done < <(grep -Eo '^\s*\$resolve\.font\s*=\s*[^|]+\s*\|\s*[^ ]+' "${layout_path}")
 }
 
 "${@}"

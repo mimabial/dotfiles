@@ -1,10 +1,9 @@
 $HOME/.config/tmux/theme.conf
 
-# Tmux theme for Abyssal Wave
+# Tmux theme for Peace Of Mind
 # Auto-generated from kitty.theme colors
 
-# Standard 16 color palette
-set -g @color0 "#16161D"
+set -g @color0 "#1F1F28"
 set -g @color1 "#C34043"
 set -g @color2 "#76946A"
 set -g @color3 "#C0A36E"
@@ -21,24 +20,21 @@ set -g @color13 "#938AA9"
 set -g @color14 "#7AA89F"
 set -g @color15 "#DCD7BA"
 
-# Semantic color aliases
 set -g @theme_bg "#1F1F28"
-set -g @theme_black "#16161D"
+set -g @theme_black "#1F1F28"
 set -g @theme_fg "#DCD7BA"
-set -g @theme_accent "#7E9CD8"
+set -g @theme_accent "#957FB8"
 set -g @theme_gray "#727169"
 set -g @theme_red "#C34043"
 set -g @theme_green "#76946A"
 set -g @theme_yellow "#C0A36E"
 
-# Tmux color settings
 set -g status-style "bg=default,fg=#DCD7BA"
-set -g message-style "bg=#1F1F28,fg=#7E9CD8"
-set -g message-command-style "bg=#1F1F28,fg=#7E9CD8"
+set -g message-style "bg=#1F1F28,fg=#957FB8"
+set -g message-command-style "bg=#1F1F28,fg=#957FB8"
 set -g pane-border-style "fg=#727169"
-set -g pane-active-border-style "fg=#7E9CD8"
+set -g pane-active-border-style "fg=#7FB4CA"
 set -g window-status-style "fg=#727169"
-set -g window-status-current-style "fg=#7E9CD8,bold"
+set -g window-status-current-style "fg=#957FB8,bold"
 set -g mode-style "bg=#7E9CD8,fg=#1F1F28"
-set -g clock-mode-colour "#7E9CD8"
-
+set -g clock-mode-colour "#957FB8"

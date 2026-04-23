@@ -7,7 +7,7 @@ RSEP=$(printf '%b' '\036')
 USEP=$(printf '%b' '\037')
 TERMINAL_HANDLER=xdg-terminal-exec
 SELF_NAME=${0##*/}
-APP2UNIT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
+APP2UNIT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)
 
 # Treat non-zero exit status from simple commands as an error
 # Treat unset variables as errors when performing parameter expansion
@@ -183,15 +183,6 @@ error() {
 	# if dunstify is installed and stderr is not a terminal, also send notification
 	if [ ! -t 2 ] && command -v dunstify >/dev/null; then
 		dunstify -u critical -i error -a "${SELF_NAME}" "Error" "$1"
-	fi
-}
-
-message() {
-	# Print messages to stdout, send notification (only first arg) if stdout is not interactive
-	printf '%s\n' "$@"
-	# if dunstify is installed and stdout is not a terminal, also send notification
-	if [ ! -t 1 ] && command -v dunstify >/dev/null; then
-		dunstify -u normal -i info -a "${SELF_NAME}" "Info" "$1"
 	fi
 }
 
@@ -456,39 +447,24 @@ randomize_unit_id() {
 	RANDOM_STRING=${NEW_RANDOM_STRING}
 }
 
-systemd_effective_unit_description() {
-	if [ -n "$UNIT_DESCRIPTION" ]; then
-		printf '%s\n' "$UNIT_DESCRIPTION"
-	elif [ -n "${ENTRY_LNAME:-$ENTRY_NAME}" ] && [ -n "${ENTRY_LCOMMENT:-$ENTRY_COMMENT}" ]; then
-		printf '%s - %s\n' "${ENTRY_LNAME:-$ENTRY_NAME}" "${ENTRY_LCOMMENT:-$ENTRY_COMMENT}"
-	elif [ -n "${ENTRY_LNAME:-$ENTRY_NAME}" ]; then
-		printf '%s\n' "${ENTRY_LNAME:-$ENTRY_NAME}"
-	elif [ -n "$EXEC_NAME" ]; then
-		printf '%s\n' "$EXEC_NAME"
-	fi
-}
-
-systemd_default_stderr_target() {
-	systemd_default_output=''
-	systemd_default_error=''
-	while IFS='=' read -r systemd_show_key systemd_show_value; do
-		case "$systemd_show_key" in
-		DefaultStandardOutput) systemd_default_output=$systemd_show_value ;;
-		DefaultStandardError) systemd_default_error=$systemd_show_value ;;
-		esac
-	done <<-EOF
-			$(systemctl --user show --property DefaultStandardOutput --property DefaultStandardError)
-	EOF
-	case "$systemd_default_error" in
-	inherit) printf '%s\n' "$systemd_default_output" ;;
-	esac
-}
-
 systemd_apply_service_silence() {
 	case "$SILENT" in
 	out)
 		set -- --property=StandardOutput=null "$@"
-		systemd_stderr_target=$(systemd_default_stderr_target)
+		systemd_default_output=''
+		systemd_default_error=''
+		while IFS='=' read -r systemd_show_key systemd_show_value; do
+			case "$systemd_show_key" in
+			DefaultStandardOutput) systemd_default_output=$systemd_show_value ;;
+			DefaultStandardError) systemd_default_error=$systemd_show_value ;;
+			esac
+		done <<-EOF
+			$(systemctl --user show --property DefaultStandardOutput --property DefaultStandardError)
+		EOF
+		case "$systemd_default_error" in
+		inherit) systemd_stderr_target=$systemd_default_output ;;
+		*) systemd_stderr_target='' ;;
+		esac
 		case "$systemd_stderr_target" in
 		'') ;;
 		*) set -- --property=StandardError="$systemd_stderr_target" "$@" ;;
@@ -512,30 +488,19 @@ systemd_apply_unit_type_args() {
 	esac
 }
 
-systemd_maybe_print_test_command() {
-	case "$TEST_MODE" in
-	true)
-		printf '%s\n' 'Command and arguments:'
-		printf '  >%s<\n' systemd-run --user "$@"
-		return 0
-		;;
-	esac
-	return 1
-}
-
-systemd_apply_scope_output_silence() {
-	case "${UNIT_TYPE}_${SILENT}" in
-	scope_out) exec >/dev/null ;;
-	scope_err) exec 2>/dev/null ;;
-	scope_both) exec >/dev/null 2>&1 ;;
-	esac
-}
-
 systemd_run() {
 	# wrapper for systemd-run
 	# prepend common args
 	UNIT_SLICE_ID=${UNIT_SLICE_ID:-app-graphical.slice}
-	UNIT_DESCRIPTION="${UNIT_DESCRIPTION:-$(systemd_effective_unit_description)}"
+	if [ -z "$UNIT_DESCRIPTION" ]; then
+		if [ -n "${ENTRY_LNAME:-$ENTRY_NAME}" ] && [ -n "${ENTRY_LCOMMENT:-$ENTRY_COMMENT}" ]; then
+			UNIT_DESCRIPTION="${ENTRY_LNAME:-$ENTRY_NAME} - ${ENTRY_LCOMMENT:-$ENTRY_COMMENT}"
+		elif [ -n "${ENTRY_LNAME:-$ENTRY_NAME}" ]; then
+			UNIT_DESCRIPTION="${ENTRY_LNAME:-$ENTRY_NAME}"
+		elif [ -n "$EXEC_NAME" ]; then
+			UNIT_DESCRIPTION="$EXEC_NAME"
+		fi
+	fi
 
 	set -- \
 		--slice="$UNIT_SLICE_ID" \
@@ -568,11 +533,19 @@ systemd_run() {
 
 	debug "systemd run" "$(printf '  >%s<\n' systemd-run "$@")"
 
-	if systemd_maybe_print_test_command "$@"; then
+	case "$TEST_MODE" in
+	true)
+		printf '%s\n' 'Command and arguments:'
+		printf '  >%s<\n' systemd-run --user "$@"
 		return 0
-	fi
+		;;
+	esac
 
-	systemd_apply_scope_output_silence
+	case "${UNIT_TYPE}_${SILENT}" in
+	scope_out) exec >/dev/null ;;
+	scope_err) exec 2>/dev/null ;;
+	scope_both) exec >/dev/null 2>&1 ;;
+	esac
 
 	# exec
 	exec systemd-run --user "$@"
@@ -591,21 +564,6 @@ pack_args_usep() {
 usage_error() {
 	error "$@" "$(usage)"
 	exit 1
-}
-
-resolve_slice_choice() {
-	for cli_resolve_choice in $UNIT_SLICE_CHOICES; do
-		IFS='=' read -r cli_resolve_abbr cli_resolve_id <<-EOF
-			$cli_resolve_choice
-		EOF
-		case "$cli_resolve_abbr" in
-		"$1")
-			printf '%s\n' "$cli_resolve_id"
-			return 0
-			;;
-		esac
-	done
-	return 1
 }
 
 resolve_required_option_value() {
@@ -635,19 +593,31 @@ resolve_exclusive_option_value() {
 
 resolve_slice_option_value() {
 	app2unit_slice_value=$2
+	app2unit_resolved_slice_id=
 	case "$app2unit_slice_value" in
 	.slice | '') usage_error "Empty slice id '$app2unit_slice_value'" ;;
 	*[!a-zA-Z0-9_.-]*) usage_error "Invalid slice id '$app2unit_slice_value'" ;;
 	*.slice)
 		printf '%s' "$app2unit_slice_value"
-		return 0
-		;;
+			return 0
+			;;
 	esac
 
-	if app2unit_resolved_slice_id=$(resolve_slice_choice "$app2unit_slice_value"); then
+	for cli_resolve_choice in $UNIT_SLICE_CHOICES; do
+		IFS='=' read -r cli_resolve_abbr cli_resolve_id <<-EOF
+			$cli_resolve_choice
+		EOF
+		case "$cli_resolve_abbr" in
+		"$app2unit_slice_value")
+			app2unit_resolved_slice_id=$cli_resolve_id
+			break
+			;;
+		esac
+	done
+	[ -z "$app2unit_resolved_slice_id" ] || {
 		printf '%s' "$app2unit_resolved_slice_id"
 		return 0
-	fi
+	}
 
 	usage_error "'$app2unit_slice_value' does not point to a slice choice!" "Choices: $UNIT_SLICE_CHOICES"
 }
@@ -680,8 +650,8 @@ resolve_default_terminal_target() {
 	fi
 
 	{
-		echo "Could not determine default terminal entry via '$TERMINAL_HANDLER --print-path --print-cmd=\037'!"
-		echo "Falling back to injecting '$TERMINAL_HANDLER' as the main argument."
+		printf '%s\n' "Could not determine default terminal entry via '$TERMINAL_HANDLER --print-path --print-cmd=\\037'!"
+		printf '%s\n' "Falling back to injecting '$TERMINAL_HANDLER' as the main argument."
 	} >&2
 	MAIN_ARG="$TERMINAL_HANDLER"
 }
@@ -853,36 +823,6 @@ configure_unit_slice_choices() {
 	fi
 }
 
-configure_part_of_gst() {
-	if [ -z "${APP2UNIT_PART_OF_GST:-}" ]; then
-		PART_OF_GST=true
-	elif check_bool "$APP2UNIT_PART_OF_GST"; then
-		PART_OF_GST=true
-	else
-		PART_OF_GST=false
-	fi
-}
-
-configure_invocation_mode() {
-	case "$SELF_NAME" in
-	*-open | *-open-scope | *-open-service)
-		OPENER_MODE=true
-		case "$SELF_NAME" in
-		*-scope) UNIT_TYPE=scope ;;
-		*-service) UNIT_TYPE=service ;;
-		esac
-		;;
-		*-term | *-terminal | *-term-scope | *-terminal-scope | *-term-service | *-terminal-service)
-			TERMINAL=true
-			CAPTURE_TERMINAL_ARGS=true
-			case "$SELF_NAME" in
-			*-scope) UNIT_TYPE=scope ;;
-			*-service) UNIT_TYPE=service ;;
-		esac
-		;;
-	esac
-}
-
 expand_short_args() {
 	first=true
 	found_delim=false
@@ -964,17 +904,6 @@ resolve_open_mode_main_target() {
 	done
 }
 
-resolve_terminal_mode_main_target() {
-	resolve_default_terminal_target
-	TERMINAL=false
-}
-
-resolve_direct_main_target() {
-	MAIN_ARG=$1
-	shift
-	RESOLVED_ARGS_USEP=$(pack_args_usep "$@")
-}
-
 resolve_main_target() {
 	IFS=$USEP
 	# shellcheck disable=SC2086
@@ -988,9 +917,12 @@ resolve_main_target() {
 	if [ "$OPENER_MODE" = "true" ]; then
 		resolve_open_mode_main_target "$@"
 	elif [ "$#" -eq "0" ] && [ "$TERMINAL" = "true" ]; then
-		resolve_terminal_mode_main_target
+		resolve_default_terminal_target
+		TERMINAL=false
 	else
-		resolve_direct_main_target "$@"
+		MAIN_ARG=$1
+		shift
+		RESOLVED_ARGS_USEP=$(pack_args_usep "$@")
 		parse_main_arg "$MAIN_ARG"
 		return 0
 	fi
@@ -1007,8 +939,11 @@ resolve_entry_context() {
 	ENTRY_CONTEXT_ARGS_USEP=$(pack_args_usep "$@")
 
 	resolve_entry_path_id
-	resolve_entry_path_from_id
-	read_entry_context_path
+	if [ -z "$ENTRY_PATH" ] && [ -n "$ENTRY_ID" ]; then
+		make_paths
+		ENTRY_PATH=$(find_entry "$ENTRY_ID")
+	fi
+	[ -n "$ENTRY_PATH" ] && read_entry_path "$ENTRY_PATH" "$ENTRY_ACTION"
 	resolve_link_entry_context
 
 	gen_unit_id
@@ -1048,19 +983,6 @@ resolve_entry_path_id() {
 			break
 		fi
 	done
-}
-
-resolve_entry_path_from_id() {
-	[ -n "$ENTRY_PATH" ] && return 0
-	[ -n "$ENTRY_ID" ] || return 0
-
-	make_paths
-	ENTRY_PATH=$(find_entry "$ENTRY_ID")
-}
-
-read_entry_context_path() {
-	[ -n "$ENTRY_PATH" ] || return 0
-	read_entry_path "$ENTRY_PATH" "$ENTRY_ACTION"
 }
 
 resolve_link_entry_context() {
@@ -1139,8 +1061,28 @@ execute_direct_target() {
 main() {
 	initialize_state "$@"
 	configure_unit_slice_choices
-	configure_part_of_gst
-	configure_invocation_mode
+	if [ -z "${APP2UNIT_PART_OF_GST:-}" ] || check_bool "$APP2UNIT_PART_OF_GST"; then
+		PART_OF_GST=true
+	else
+		PART_OF_GST=false
+	fi
+	case "$SELF_NAME" in
+	*-open | *-open-scope | *-open-service)
+		OPENER_MODE=true
+		case "$SELF_NAME" in
+		*-scope) UNIT_TYPE=scope ;;
+		*-service) UNIT_TYPE=service ;;
+		esac
+		;;
+	*-term | *-terminal | *-term-scope | *-terminal-scope | *-term-service | *-terminal-service)
+		TERMINAL=true
+		CAPTURE_TERMINAL_ARGS=true
+		case "$SELF_NAME" in
+		*-scope) UNIT_TYPE=scope ;;
+		*-service) UNIT_TYPE=service ;;
+		esac
+		;;
+	esac
 	expand_short_args "$@"
 	parse_cli_options "$EXPANDED_ARGS_USEP"
 	resolve_main_target "$PARSED_ARGS_USEP"

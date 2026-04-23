@@ -12,7 +12,7 @@ hypr_runtime_require wallpaper_catalog || exit 1
 
 selected_wall="${1:-${WALLPAPER_CURRENT_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wallpaper/current}/wall.set}"
 [ -z "${selected_wall}" ] && echo "No input wallpaper" && exit 1
-selected_wall="$(readlink -f "${selected_wall}")"
+selected_wall="$(wallpaper_resolve_path "${selected_wall}")"
 
 #? hyprlock do not support videos, so we need to convert them to images
 is_video=$(file --mime-type -b "${selected_wall}" | grep -c '^video/')

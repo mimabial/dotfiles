@@ -7,35 +7,26 @@ DUNST_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/dunst"
 DUNST_BASE_CONF="${DUNST_DIR}/dunst.conf"
 DUNST_CONF="${DUNST_DIR}/dunstrc"
 DUNST_THEME="${DUNST_DIR}/theme.generated.conf"
-HASH_FILE="${XDG_RUNTIME_DIR:-/tmp}/wal-dunst-hash"
-THEME_CONF="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/theme.conf"
+THEME_CONF="${HYPR_THEME_METADATA_FILE:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/theme.conf}"
 WAYBAR_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/waybar/config.jsonc"
 LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 WAL_DUNST_PARSE_COLOR_MISSING=1
 WAL_DUNST_PARSE_COLOR_INVALID=2
 
 # shellcheck disable=SC1090
+source "${LIB_DIR}/hypr/core/hash-cache.sh" || exit 1
+# shellcheck disable=SC1090
 source "${LIB_DIR}/hypr/runtime/lock_paths.sh"
 # shellcheck disable=SC1090
 source "${LIB_DIR}/hypr/core/common.sh"
 
+HASH_FILE="$(hypr_hash_cache_runtime_file "wal-dunst-hash")" || exit 1
 THEME_UPDATE_LOCK="$(hypr_lock_path theme_update)"
 THEME_SWITCH_LOCK="$(hypr_lock_path theme_switch)"
 
-parse_mode() {
-  case "${1:-}" in
-    --write-only)
-      mode="write-only"
-      ;;
-    --reload-only)
-      mode="reload-only"
-      ;;
-  esac
-}
-
 reload_dunst_runtime() {
-  if pgrep -x dunst >/dev/null 2>&1; then
-    dunstctl reload >/dev/null 2>&1 || pkill -HUP dunst 2>/dev/null || true
+  if hypr_user_pgrep -x dunst >/dev/null 2>&1; then
+    dunstctl reload >/dev/null 2>&1 || hypr_user_pkill -HUP -x dunst 2>/dev/null || true
   fi
 }
 
@@ -212,6 +203,8 @@ resolve_notification_font() {
 }
 
 resolve_layout_metrics() {
+  local edge_padding=0
+
   theme_update_in_progress=0
   [[ -e "${THEME_UPDATE_LOCK}" ]] && theme_update_in_progress=1
 
@@ -220,6 +213,7 @@ resolve_layout_metrics() {
   gap_size="$((gaps_in * 2))"
   gaps_out="$(resolve_hypr_metric 'gaps_out' 'general:gaps_out' '6')"
   border_size="$(resolve_hypr_metric 'border_size' 'general:border_size' '2')"
+  edge_padding="$((gaps_out * 2 + border_size))"
 
   waybar_position="right"
   if [[ -r "${WAYBAR_CONFIG}" ]]; then
@@ -228,12 +222,21 @@ resolve_layout_metrics() {
   waybar_position="${waybar_position:-right}"
 
   origin="top-right"
-  offset_x="$((gaps_out * 2 + hypr_border))"
-  offset_y="$((gaps_out * 2 + hypr_border))"
+  offset_x="${edge_padding}"
+  offset_y="${edge_padding}"
   case "${waybar_position}" in
-    left) origin="top-left" ;;
-    bottom) origin="bottom-right" ;;
-    top | right | *) origin="top-right" ;;
+    left)
+      origin="top-left"
+      ;;
+    bottom)
+      origin="bottom-right"
+      ;;
+    top)
+      origin="top-right"
+      ;;
+    right | *)
+      origin="top-right"
+      ;;
   esac
 }
 
@@ -337,11 +340,6 @@ build_input_hash() {
       "${frame_category_error_render}" "${frame_category_network_render}" "${frame_category_battery_render}" \
       "${frame_category_update_render}" "${frame_category_music_render}" "${frame_category_volume_render}"
   } | md5sum | awk '{print $1}'
-}
-
-hash_is_current() {
-  local input_hash="$1"
-  [[ -f "${HASH_FILE}" ]] && [[ "$(cat "${HASH_FILE}" 2>/dev/null)" == "${input_hash}" ]]
 }
 
 ensure_base_conf() {
@@ -465,21 +463,11 @@ write_dunstrc() {
   trap - EXIT
 }
 
-finalize_generation() {
-  local input_hash="$1"
-  echo "${input_hash}" >"${HASH_FILE}"
-
-  if [[ "${mode}" == "write-only" ]] || [[ -e "${THEME_SWITCH_LOCK}" ]]; then
-    echo "[dunst] Generated dunstrc"
-    return 0
-  fi
-
-  reload_dunst_runtime
-  echo "[dunst] Generated and reloaded dunstrc"
-}
-
 main() {
-  parse_mode "${1:-}"
+  case "${1:-}" in
+    --write-only) mode="write-only" ;;
+    --reload-only) mode="reload-only" ;;
+  esac
   mkdir -p "${DUNST_DIR}"
   touch "${DUNST_THEME}"
 
@@ -500,11 +488,19 @@ main() {
   render_palette
 
   input_hash="$(build_input_hash)"
-  hash_is_current "${input_hash}" && exit 0
+  [[ -f "${HASH_FILE}" ]] && [[ "$(cat "${HASH_FILE}" 2>/dev/null)" == "${input_hash}" ]] && exit 0
 
   ensure_base_conf
   write_dunstrc
-  finalize_generation "${input_hash}"
+  echo "${input_hash}" >"${HASH_FILE}"
+
+  if [[ "${mode}" == "write-only" ]]; then
+    echo "[dunst] Generated dunstrc"
+    return 0
+  fi
+
+  reload_dunst_runtime
+  echo "[dunst] Generated and reloaded dunstrc"
 }
 
 main "${1:-}"

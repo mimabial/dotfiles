@@ -22,6 +22,7 @@ import os
 import argparse
 import time
 import sys
+from pathlib import Path
 
 DEVICE_GLYPHS = {
     "iwlwifi": "",
@@ -63,19 +64,47 @@ def format_columns(data, max_entries_per_column=15):
 
 
 PAGE_SIZE = 5
-PAGE_FILE = os.path.join(os.environ.get("TMPDIR", "/tmp"), "sensorinfo_page")
+
+
+def resolve_state_dir() -> Path:
+    runtime_dir = os.environ.get("XDG_RUNTIME_DIR")
+    if runtime_dir and os.path.isabs(runtime_dir):
+        candidate = Path(runtime_dir) / "hypr"
+        try:
+            candidate.mkdir(parents=True, exist_ok=True)
+            return candidate
+        except OSError:
+            pass
+
+    candidate = Path(f"/run/user/{os.getuid()}") / "hypr"
+    try:
+        candidate.mkdir(parents=True, exist_ok=True)
+        return candidate
+    except OSError:
+        pass
+
+    fallback = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local" / "state"))) / "hypr" / "runtime"
+    fallback.mkdir(parents=True, exist_ok=True)
+    return fallback
+
+
+STATE_DIR = resolve_state_dir()
+PAGE_FILE = STATE_DIR / "sensorinfo_page"
+SENSORINFO_FILE = STATE_DIR / "sensorinfo"
 
 
 def get_current_page(total_pages):
-    if os.path.exists(PAGE_FILE):
-        with open(PAGE_FILE, "r", encoding="utf-8") as f:
+    if total_pages <= 0:
+        return 0
+    if PAGE_FILE.exists():
+        with PAGE_FILE.open("r", encoding="utf-8") as f:
             page = int(f.read().strip())
             return page % total_pages
     return 0
 
 
 def save_current_page(page):
-    with open(PAGE_FILE, "w", encoding="utf-8") as f:
+    with PAGE_FILE.open("w", encoding="utf-8") as f:
         f.write(str(page))
 
 
@@ -162,6 +191,11 @@ def get_sensor_data(result_sensors, page=0):
 
     devices = list(device_data.keys())
     total_pages = (len(devices) + PAGE_SIZE - 1) // PAGE_SIZE
+    if total_pages <= 0:
+        save_current_page(0)
+        tooltip = "No sensors detected"
+        SENSORINFO_FILE.write_text(tooltip, encoding="utf-8")
+        return {"text": text, "tooltip": tooltip}
     page = max(0, min(page, total_pages - 1))
     save_current_page(page)
 
@@ -212,10 +246,16 @@ def get_sensor_data(result_sensors, page=0):
 
     tooltip = "\n".join(tooltip_parts)
 
-    with open(os.path.join(os.environ.get("TMPDIR", "/tmp"), "sensorinfo"), "w", encoding="utf-8") as f:
-        f.write(tooltip)
+    SENSORINFO_FILE.write_text(tooltip, encoding="utf-8")
 
     return {"text": text, "tooltip": tooltip}
+
+
+def signal_waybar() -> None:
+    subprocess.run(
+        ["pkill", "-u", str(os.getuid()), "-RTMIN+19", "-x", "waybar"],
+        check=False,
+    )
 
 
 def main():
@@ -259,12 +299,12 @@ def main():
         total_pages = (len(devices) + PAGE_SIZE - 1) // PAGE_SIZE
 
         page = get_current_page(total_pages)
-        if args.next:
+        if total_pages > 0 and args.next:
             page = (page + 1) % total_pages
-            subprocess.run(["pkill", "-RTMIN+19", "waybar"], check=False)
-        elif args.prev:
+            signal_waybar()
+        elif total_pages > 0 and args.prev:
             page = (page - 1 + total_pages) % total_pages
-            subprocess.run(["pkill", "-RTMIN+19", "waybar"], check=False)
+            signal_waybar()
         save_current_page(page)
         sensor_info = get_sensor_data(result_sensors, page)
         print(json.dumps(sensor_info, separators=(",", ":")))

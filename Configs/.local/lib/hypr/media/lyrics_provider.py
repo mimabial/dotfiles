@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import sys
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from typing import List, Optional, Tuple
 
 from lyrics_provider_common import (

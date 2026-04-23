@@ -6,7 +6,29 @@ import subprocess
 from pathlib import Path
 
 
-TMP_DIR = Path(os.getenv("XDG_RUNTIME_DIR", "/tmp")) / "hypr" / "cliphist"
+def cliphist_cache_dir() -> Path:
+    runtime_dir = os.getenv("XDG_RUNTIME_DIR")
+    if runtime_dir and os.path.isabs(runtime_dir):
+        candidate = Path(runtime_dir) / "hypr" / "cliphist"
+        try:
+            candidate.mkdir(parents=True, exist_ok=True)
+            return candidate
+        except OSError:
+            pass
+
+    candidate = Path(f"/run/user/{os.getuid()}") / "hypr" / "cliphist"
+    try:
+        candidate.mkdir(parents=True, exist_ok=True)
+        return candidate
+    except OSError:
+        pass
+
+    fallback = Path(os.getenv("XDG_CACHE_HOME", str(Path.home() / ".cache"))) / "hypr" / "cliphist"
+    fallback.mkdir(parents=True, exist_ok=True)
+    return fallback
+
+
+TMP_DIR = cliphist_cache_dir()
 IMAGE_ENTRY_RE = re.compile(r"^([0-9]+)\s(?:\[\[\s)?binary.*\b(jpg|jpeg|png|bmp)\b", re.IGNORECASE)
 HTML_META_RE = re.compile(r"^[0-9]+\s<meta http-equiv=")
 
@@ -39,7 +61,6 @@ def iter_image_entries():
 
 
 def main() -> None:
-    TMP_DIR.mkdir(parents=True, exist_ok=True)
     for line, entry_id, extension in iter_image_entries():
         image_path = decode_and_cache_image(entry_id, extension)
         print(f"{line}\0icon\x1f{image_path}")

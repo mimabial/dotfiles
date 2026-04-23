@@ -6,7 +6,7 @@ $COLOR_SCHEME = prefer-light
 $CURSOR_THEME = Capitaine-Cursors-White
 $CURSOR_SIZE = 28
 $NVIM_SCHEME = everforest
-$NVIM_VARIANT =
+$NVIM_VARIANT = hard
 $NVIM_BACKGROUND = light
 $NVIM_TRANSPARENCY = false
 

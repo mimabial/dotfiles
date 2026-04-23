@@ -3,7 +3,7 @@
 # Theme: Red Stone
 
 # Core colors derived from kvconfig.theme [GeneralColors]
-#0A0101=background
+#121212=background
 #522929=color0
 #6B3A3A=color8
 #7D4B4B=color7
@@ -13,19 +13,24 @@
 #F0AAAA=color5
 
 # Additional SVG/template colors preserved from the existing map
-#000000=background
 #0A0101=background
-#6B3A3A=color0
-#7D4B4B=color8
-#8F5757=color8
-#CFC9C2=foreground
-#D1D1D1=foreground
-#D2D2D2=foreground
-#D6D6D6=foreground
-#DCDCDC=foreground
-#EAEAEA=foreground
-#FFFFFF=foreground
-#E69A9A=color9
-#F0AAAA=color9
-#F0ABAA=color9
-#FFCCCC=color9
+#270202=color0
+#4E0405=color1
+#FFCCCC=color7
+#FFCCCD=color7
+#F0AAAB=color11
+#E69A9A=color12
+#E69A9B=color14
+#000000=background
+#1A1A1A=color0
+#2A2A2A=color0
+#333333=color8
+#4A4A4A=color8
+#666666=color8
+#727274=color8
+#88888A=color7
+#AAAAAC=color7
+#C8C8CA=foreground
+#D2D2D4=foreground
+#FF0000=color1
+#FF00CC=color5

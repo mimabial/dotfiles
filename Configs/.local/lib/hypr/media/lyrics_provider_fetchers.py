@@ -165,11 +165,6 @@ def _payload_to_plain_lines(payload: object) -> List[str]:
     return []
 
 
-def _extract_yt_song_title(song_info: dict, fallback: str) -> str:
-    title = str(song_info.get("title") or song_info.get("name") or "").strip()
-    return title or fallback
-
-
 def _extract_yt_song_artist(song_info: dict, fallback: str) -> str:
     artists: List[str] = []
     raw_artists = song_info.get("artists")
@@ -195,17 +190,6 @@ def _extract_yt_song_artist(song_info: dict, fallback: str) -> str:
     if artists:
         return ", ".join(artists)
     return fallback
-
-
-def _extract_yt_album_name(song_info: dict) -> str:
-    album = song_info.get("album")
-    if isinstance(album, dict):
-        return str(album.get("name") or "").strip()
-    if isinstance(album, str):
-        return album.strip()
-    return str(song_info.get("albumName") or "").strip()
-
-
 def fetch_lyrics_youtube(artist: str, title: str) -> Optional[ProviderResult]:
     if not HAS_YTMUSIC:
         print("  [ytmusic] Skipped (ytmusicapi not installed)", file=sys.stderr)
@@ -225,9 +209,15 @@ def fetch_lyrics_youtube(artist: str, title: str) -> Optional[ProviderResult]:
             return None
 
         song_info = search_results[0]
-        matched_title = _extract_yt_song_title(song_info, title)
+        matched_title = str(song_info.get("title") or song_info.get("name") or "").strip() or title
         matched_artist = _extract_yt_song_artist(song_info, artist)
-        matched_album = _extract_yt_album_name(song_info)
+        album = song_info.get("album")
+        if isinstance(album, dict):
+            matched_album = str(album.get("name") or "").strip()
+        elif isinstance(album, str):
+            matched_album = album.strip()
+        else:
+            matched_album = str(song_info.get("albumName") or "").strip()
         video_id = song_info.get("videoId")
         if not video_id:
             print("  [ytmusic] No videoId found", file=sys.stderr)
@@ -526,14 +516,6 @@ def get_genius_client():
     except Exception as e:
         print(f"  [genius] Client init failed: {e}", file=sys.stderr)
         return None
-
-
-def _cleanup_genius_lyrics(text: str) -> str:
-    cleaned = text.strip()
-    cleaned = re.sub(r"\n?\d*Embed\s*$", "", cleaned, flags=re.IGNORECASE)
-    return cleaned.strip()
-
-
 def fetch_lyrics_genius(artist: str, title: str) -> Optional[ProviderResult]:
     if not HAS_GENIUS:
         print("  [genius] Skipped (lyricsgenius not installed)", file=sys.stderr)
@@ -551,7 +533,8 @@ def fetch_lyrics_genius(artist: str, title: str) -> Optional[ProviderResult]:
             print("  [genius] No lyrics found", file=sys.stderr)
             return None
 
-        lyrics_text = _cleanup_genius_lyrics(str(song.lyrics))
+        lyrics_text = str(song.lyrics).strip()
+        lyrics_text = re.sub(r"\n?\d*Embed\s*$", "", lyrics_text, flags=re.IGNORECASE).strip()
         if not lyrics_text:
             print("  [genius] Empty lyrics payload", file=sys.stderr)
             return None
@@ -625,14 +608,6 @@ def _slugify_lyricsfreek(value: str) -> str:
     slug = _normalize_text(value).replace(" ", "-")
     slug = re.sub(r"-+", "-", slug).strip("-")
     return slug
-
-
-def _strip_html_tags(text: str) -> str:
-    text = re.sub(r"(?is)<br\s*/?>", "\n", text)
-    text = re.sub(r"(?is)<[^>]+>", "", text)
-    return unescape(text)
-
-
 def fetch_lyrics_lyricsfreek(artist: str, title: str) -> Optional[ProviderResult]:
     try:
         print(f"  [lyricsfreek] Searching for: {artist} - {title}", file=sys.stderr)
@@ -662,7 +637,9 @@ def fetch_lyrics_lyricsfreek(artist: str, title: str) -> Optional[ProviderResult
             print("  [lyricsfreek] No lyrics block found", file=sys.stderr)
             return None
 
-        lyrics_text = _strip_html_tags(lyrics_match.group(1))
+        lyrics_text = re.sub(r"(?is)<br\s*/?>", "\n", lyrics_match.group(1))
+        lyrics_text = re.sub(r"(?is)<[^>]+>", "", lyrics_text)
+        lyrics_text = unescape(lyrics_text)
         lyrics_text = re.sub(
             r"\n*Submit Corrections.*",
             "",

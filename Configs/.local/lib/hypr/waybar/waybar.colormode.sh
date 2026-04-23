@@ -1,21 +1,12 @@
 #!/usr/bin/env bash
 # Waybar color mode indicator
 
-# Initialize hyprshell environment
-if [[ "${HYPR_SHELL_INIT:-0}" -ne 1 ]]; then
-  if ! eval "$(hyprshell init 2>/dev/null)"; then
-    # Fallback if hyprshell init fails
-    export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
-    export HYPR_STATE_HOME="${XDG_STATE_HOME}/hypr"
-  fi
-fi
+# shellcheck source=/dev/null
+source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/waybar.state.common.sh"
+waybar_state_init
 
-# Read the selected color mode from staterc (primary source)
-[ -f "${XDG_STATE_HOME:-$HOME/.local/state}/hypr/staterc" ] && source "${XDG_STATE_HOME:-$HOME/.local/state}/hypr/staterc" 2>/dev/null
-[ -f "${XDG_STATE_HOME:-$HOME/.local/state}/hypr/env-overrides" ] && source "${XDG_STATE_HOME:-$HOME/.local/state}/hypr/env-overrides" 2>/dev/null
-
-# Default to Auto mode if still not set
-selected_color_mode="${selected_color_mode:-1}"
+# Read the selected color mode from state files without sourcing them.
+selected_color_mode="$(waybar_state_value "selected_color_mode" "1")"
 
 # Mode definitions
 color_mode_labels=("Theme" "Auto" "Dark" "Light")

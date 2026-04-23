@@ -57,6 +57,12 @@ WAYBAR_WATCH_LOCK = runtime_lock_path("waybar_watch")
 WAYBAR_WATCH_META = runtime_lock_path("waybar_watch_meta")
 THEME_UPDATE_LOCK = runtime_lock_path("theme_update")
 THEME_UPDATE_META = runtime_lock_path("theme_update_meta")
+THEME_ONLY_CSS_PATHS = {
+    CONFIG_WAYBAR_DIR / "colors.css",
+    CONFIG_WAYBAR_DIR / "theme.generated.css",
+    CONFIG_WAYBAR_DIR / "includes" / "border-radius.css",
+    CONFIG_WAYBAR_DIR / "includes" / "font.css",
+}
 
 
 
@@ -108,13 +114,8 @@ class InotifyWatcher:
 
 
 def signal_handler(sig, frame):
-    kill_waybar()
-    sys.exit(0)
-
-
-def kill_waybar():
-    """Kill waybar (wrapper for stop_waybar)."""
     stop_waybar()
+    sys.exit(0)
 
 
 @contextlib.contextmanager
@@ -151,14 +152,6 @@ def is_runtime_lock_held(lock_path):
             return True
         fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
     return False
-
-
-def run_waybar():
-    """Run Waybar if not already running."""
-    if not is_waybar_running_for_current_user():
-        start_waybar()
-    else:
-        logger.debug("Waybar already running")
 
 
 def is_waybar_running_for_current_user():
@@ -265,7 +258,7 @@ def sync_dunst_position_after_waybar_restart():
 
 def kill_waybar_and_watcher():
     """Kill all Waybar instances and watcher scripts for the current user."""
-    kill_waybar()
+    stop_waybar()
     logger.debug("Killed Waybar processes for current user.")
 
     try:
@@ -370,12 +363,30 @@ def read_runtime_meta(lock_path):
     return meta
 
 
-def theme_update_lock_active(lock_path):
-    return is_runtime_lock_held(lock_path)
+def is_theme_only_css_change(changed_files):
+    """Return True when every change is a theme-generated CSS file Waybar hot-reloads."""
+    if not changed_files:
+        return False
+
+    for changed_file in changed_files:
+        path = Path(changed_file)
+        if path.suffix.lower() != ".css":
+            return False
+        if path not in THEME_ONLY_CSS_PATHS:
+            return False
+
+    return True
 
 
 def smart_reload_waybar(changed_files):
     """Reload waybar based on what changed."""
+    if is_theme_only_css_change(changed_files):
+        logger.debug(
+            "Ignoring theme-only CSS changes already covered by Waybar style hot reload: "
+            f"{[Path(f).name for f in changed_files]}"
+        )
+        return
+
     # Track whether a structural file changed for logging/diagnostics.
     # In practice we always do a full restart here, because SIGUSR2-based reloads
     # have proven unreliable and can leave defunct child processes behind.
@@ -453,7 +464,7 @@ def watch_waybar():
         hidden_state_file = Path(xdg_runtime_dir()) / "waybar-hidden"
 
         while True:
-            lock_exists = theme_update_lock_active(THEME_UPDATE_LOCK)
+            lock_exists = is_runtime_lock_held(THEME_UPDATE_LOCK)
             if (
                 not lock_exists
                 and not is_waybar_operation_locked()
@@ -485,7 +496,7 @@ def watch_waybar():
                 pending_events.extend(events)
 
             # Detect end of theme update
-            lock_exists = theme_update_lock_active(THEME_UPDATE_LOCK)
+            lock_exists = is_runtime_lock_held(THEME_UPDATE_LOCK)
             if not lock_exists and theme_update_in_progress:
                 theme_update_in_progress = False
 
@@ -645,7 +656,10 @@ def get_waybar_pids():
 
     try:
         result = subprocess.run(
-            ["pgrep", "-x", "waybar"], capture_output=True, text=True
+            ["pgrep", "-u", str(os.getuid()), "-x", "waybar"],
+            capture_output=True,
+            text=True,
+            check=False,
         )
         if result.returncode == 0 and result.stdout.strip():
             pids = []

@@ -2,22 +2,15 @@
 
 # shellcheck source=/dev/null
 source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/waybar.notify.common.sh"
+# shellcheck source=/dev/null
+source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/waybar.state.common.sh"
 
-STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
-STATERC_FILE="${STATE_HOME}/hypr/staterc"
-ENV_OVERRIDES_FILE="${STATE_HOME}/hypr/env-overrides"
-
-waybar_vpn_load_env_file() {
-  local filepath="$1"
-  [[ -r "${filepath}" ]] || return 0
-
-  # shellcheck source=/dev/null
-  source "${filepath}"
-}
+waybar_state_init
 
 waybar_vpn_load_env() {
-  waybar_vpn_load_env_file "${STATERC_FILE}"
-  waybar_vpn_load_env_file "${ENV_OVERRIDES_FILE}"
+  WAYBAR_VPN_PROVIDER="$(waybar_state_value "WAYBAR_VPN_PROVIDER" "${WAYBAR_VPN_PROVIDER:-}")"
+  WAYBAR_VPN_ALLOW_AUTO_GEOLOCATION="$(waybar_state_value "WAYBAR_VPN_ALLOW_AUTO_GEOLOCATION" "${WAYBAR_VPN_ALLOW_AUTO_GEOLOCATION:-}")"
+  export WAYBAR_VPN_PROVIDER WAYBAR_VPN_ALLOW_AUTO_GEOLOCATION
 }
 
 waybar_have_command() {

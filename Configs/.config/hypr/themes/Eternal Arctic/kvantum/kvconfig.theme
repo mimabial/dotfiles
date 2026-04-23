@@ -58,7 +58,7 @@ tooltip_delay=-1
 tree_branch_line=true
 dark_titlebar=true
 opaque=QMPlay2,kaffeine,kmplayer,subtitlecomposer,kdenlive,vlc,avidemux,avidemux2_qt4,avidemux3_qt4,avidemux3_qt5,kamoso,QtCreator,VirtualBox,trojita,dragon,digikam
-reduce_window_opacity=18
+reduce_window_opacity=0
 scrollable_menu=false
 submenu_delay=250
 no_inactiveness=false
@@ -71,8 +71,8 @@ intensity=1.00
 saturation=1.00
 
 [GeneralColors]
-window.color=#434c5e
-base.color=#3b4252
+window.color=#2e3440
+base.color=#2e3440
 alt.base.color=#2E353D78
 button.color=#3c4454
 light.color=#2e3440

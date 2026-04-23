@@ -1,7 +1,7 @@
 [%General]
 author=prasanth rangan
-comment=pywal16
-spread_menuitems=false
+comment=wallbash
+spread_menuitems=true
 left_tabs=true
 mirror_doc_tabs=true
 scroll_width=8
@@ -65,7 +65,7 @@ hide_combo_checkboxes=false
 intensity=1.00
 no_inactiveness=false
 reduce_menu_opacity=0
-reduce_window_opacity=10
+reduce_window_opacity=0
 saturation=1.00
 shadowless_popup=true
 transient_groove=false
@@ -73,7 +73,7 @@ menu_blur_radius=6
 tooltip_blur_radius=6
 
 [GeneralColors]
-window.color=#0A0101
+window.color=#121212
 base.color=#522929
 alt.base.color=#522929
 button.color=#6B3A3A

@@ -6,6 +6,10 @@ if ! declare -F state_get >/dev/null 2>&1 || ! declare -F state_set >/dev/null 2
   # shellcheck source=/dev/null
   source "${_idle_state_helper_dir}/../core/state.sh"
 fi
+if ! declare -F hypr_user_pgrep >/dev/null 2>&1 || ! declare -F hypr_user_pkill >/dev/null 2>&1; then
+  # shellcheck source=/dev/null
+  source "${_idle_state_helper_dir}/../core/common.sh"
+fi
 
 if ! declare -F print_log >/dev/null 2>&1; then
   print_log() { :; }
@@ -36,7 +40,7 @@ idle_notify() {
 }
 
 idle_update_waybar() {
-  pkill -RTMIN+21 waybar 2>/dev/null || true
+  hypr_user_pkill -RTMIN+21 -x waybar 2>/dev/null || true
 }
 
 idle_systemd_user_ok() {
@@ -62,7 +66,7 @@ idle_notify_manager() {
 
   while IFS= read -r pid; do
     kill -USR1 "${pid}" 2>/dev/null || true
-  done < <(pgrep -f "${manager_script}" 2>/dev/null || true)
+  done < <(hypr_user_pgrep -f "${manager_script}" 2>/dev/null || true)
 }
 
 idle_toggle_state() {

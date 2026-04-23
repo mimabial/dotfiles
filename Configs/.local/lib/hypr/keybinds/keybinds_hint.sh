@@ -1,19 +1,20 @@
 #!/usr/bin/env bash
 
-if pgrep -x rofi >/dev/null 2>&1; then
-  pkill -x rofi
-  exit 0
-fi
-
 source "$(command -v hyprshell)" || exit 1
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
+
+if hypr_user_pgrep -x rofi >/dev/null 2>&1; then
+  hypr_user_pkill -x rofi
+  exit 0
+fi
 
 keyconfDir="${XDG_CONFIG_HOME:-$HOME/.config}/hypr"
 kb_hint_conf=("$keyconfDir/hyprland.conf" "$keyconfDir/keybindings.conf" "$keyconfDir/userprefs.conf")
 kb_hint_conf+=("${ROFI_KEYBIND_HINT_CONFIG[@]}")
 
-kb_cache="${XDG_RUNTIME_DIR}/hypr/keybinds_hint.rofi"
+kb_cache_dir="$(hypr_runtime_subdir hypr)" || exit 1
+kb_cache="${kb_cache_dir}/keybinds_hint.rofi"
 
 needs_regeneration=false
 if [[ -f "${kb_cache}" ]]; then

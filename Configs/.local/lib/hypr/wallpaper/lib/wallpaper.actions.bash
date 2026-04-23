@@ -29,7 +29,6 @@ wallpaper_prepare_notification_payload() {
 
 wallpaper_should_apply_colors_async() {
   [[ "${set_as_global}" == "true" ]] || return 1
-  wallpaper_action_emits_notification || return 1
   [[ "${WALLPAPER_SKIP_COLORS:-0}" -eq 0 ]] || return 1
   [[ "${selected_color_mode:-1}" -eq 0 ]] && return 1
   return 0
@@ -83,7 +82,6 @@ wallpaper_refresh_thumbnail_links() {
   ln -fs "${WALLPAPER_THUMB_DIR}/${wallHash[setIndex]}.thmb" "${current_thumbnail_link}"
   ln -fs "${WALLPAPER_THUMB_DIR}/${wallHash[setIndex]}.blur" "${current_blur_thumbnail_link}"
   ln -fs "${WALLPAPER_THUMB_DIR}/${wallHash[setIndex]}.quad" "${current_quad_thumbnail_link}"
-  rm -f "${WALLPAPER_CURRENT_DIR}/wall.fit"
 }
 
 apply_selected_wallpaper() {

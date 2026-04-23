@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+PLUGIN_SAVE_SCRIPT="${TMUX_RESURRECT_PLUGIN_SAVE_SCRIPT:-${HOME}/.local/share/tmux/plugins/tmux-resurrect/scripts/save.sh}"
+
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/tmux-resurrect-safe.common.bash"
+
+last_file="$(tmux_resurrect_last_file)"
+previous_target="$(tmux_resurrect_current_target 2>/dev/null || true)"
+if [[ -n "${previous_target}" ]] && ! tmux_resurrect_is_valid_snapshot "${previous_target}"; then
+  previous_target=""
+fi
+
+if ! tmux_server_available; then
+  [[ -n "${previous_target}" ]] || tmux_resurrect_repoint_last_to_latest_valid >/dev/null 2>&1 || true
+  exit 0
+fi
+
+if [[ ! -x "${PLUGIN_SAVE_SCRIPT}" ]]; then
+  printf 'tmux-resurrect-save-safe: missing plugin save script: %s\n' "${PLUGIN_SAVE_SCRIPT}" >&2
+  exit 1
+fi
+
+"${PLUGIN_SAVE_SCRIPT}" "$@" >/dev/null 2>&1 || true
+
+current_target="$(tmux_resurrect_current_target 2>/dev/null || true)"
+if [[ -n "${current_target}" ]] && tmux_resurrect_is_valid_snapshot "${current_target}"; then
+  exit 0
+fi
+
+if [[ -n "${current_target}" ]] && [[ "${current_target}" != "${previous_target}" ]]; then
+  rm -f -- "${current_target}"
+fi
+
+if [[ -n "${previous_target}" ]]; then
+  ln -fs "$(basename "${previous_target}")" "${last_file}"
+else
+  tmux_resurrect_repoint_last_to_latest_valid >/dev/null 2>&1 || rm -f -- "${last_file}"
+fi
+
+printf 'tmux-resurrect-save-safe: ignored invalid save snapshot and preserved previous restore point\n' >&2
+exit 0

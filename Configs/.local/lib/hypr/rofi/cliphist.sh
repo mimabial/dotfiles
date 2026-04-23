@@ -65,20 +65,6 @@ cliphist_dispatch_action() {
   return 0
 }
 
-cliphist_action_from_exit_code() {
-  case "$1" in
-    10) printf '%s\n' "${action_copy}" ;;
-    11) printf '%s\n' "${action_delete}" ;;
-    12) printf '%s\n' "${action_favorites}" ;;
-    13) printf '%s\n' "${action_wipe}" ;;
-    14) printf '%s\n' "${action_options}" ;;
-    15) printf '%s\n' "${action_image_history}" ;;
-    16) printf '%s\n' "${action_scan_image}" ;;
-    17) printf '%s\n' "${action_scan_qr}" ;;
-    *) return 1 ;;
-  esac
-}
-
 latest_image_history_entry() {
   local line=""
 
@@ -198,11 +184,19 @@ run_rofi() {
     return 0
   fi
 
-  if cliphist_action_from_exit_code "${rofi_status}"; then
-    return 0
-  fi
+  case "${rofi_status}" in
+    10) printf '%s' "${action_copy}" ;;
+    11) printf '%s' "${action_delete}" ;;
+    12) printf '%s' "${action_favorites}" ;;
+    13) printf '%s' "${action_wipe}" ;;
+    14) printf '%s' "${action_options}" ;;
+    15) printf '%s' "${action_image_history}" ;;
+    16) printf '%s' "${action_scan_image}" ;;
+    17) printf '%s' "${action_scan_qr}" ;;
+    *) return "${rofi_status}" ;;
+  esac
 
-  return "${rofi_status}"
+  return 0
 }
 
 # setup rofi configuration
@@ -222,13 +216,6 @@ setup_rofi_config() {
     "${font_name}" "${font_scale}" \
     "${cliphist_window_width_em}" "${cliphist_window_height_em}" \
     $((cliphist_window_width_em * font_scale * 2)) $((cliphist_window_height_em * font_scale * 2))
-}
-
-# create favorites directory if it doesn't exist
-ensure_favorites_dir() {
-  local dir
-  dir=$(dirname "$favorites_file")
-  [ -d "$dir" ] || mkdir -p "$dir"
 }
 
 # process favorites file into an array of decoded lines for rofi
@@ -366,7 +353,7 @@ view_favorites() {
 
 # add item to favorites
 add_to_favorites() {
-  ensure_favorites_dir
+  mkdir -p "$(dirname "$favorites_file")"
 
   local item
   item=$( (

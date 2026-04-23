@@ -123,34 +123,22 @@ github_get_code() {
     "$url"
 }
 
-get_security_cache_ttl_seconds() {
+security_cache_is_fresh() {
   local raw="${GITHUB_SECURITY_CACHE_TTL_MINUTES:-240}"
-
-  [[ "$raw" =~ ^[0-9]+$ ]] || raw=240
-  printf '%s' $((raw * 60))
-}
-
-cache_is_fresh() {
-  local cache_file="$1"
-  local ttl_seconds="$2"
+  local ttl_seconds=""
   local now mtime
 
+  [[ "$raw" =~ ^[0-9]+$ ]] || raw=240
+  ttl_seconds=$((raw * 60))
   [ "$ttl_seconds" -gt 0 ] || return 1
-  [ -s "$cache_file" ] || return 1
+  [ -s "$SECURITY_CACHE" ] || return 1
 
-  mtime="$(stat -c %Y "$cache_file" 2>/dev/null || echo 0)"
+  mtime="$(stat -c %Y "$SECURITY_CACHE" 2>/dev/null || echo 0)"
   [[ "$mtime" =~ ^[0-9]+$ ]] || return 1
 
   now="$(date +%s)"
   [[ "$now" =~ ^[0-9]+$ ]] || return 1
-  [ $((now - mtime)) -le "$ttl_seconds" ]
-}
-
-security_cache_is_fresh() {
-  local ttl_seconds
-
-  ttl_seconds="$(get_security_cache_ttl_seconds)"
-  cache_is_fresh "$SECURITY_CACHE" "$ttl_seconds" || return 1
+  [ $((now - mtime)) -le "$ttl_seconds" ] || return 1
 
   if [ -e "$REPOS_CACHE" ] && [ "$REPOS_CACHE" -nt "$SECURITY_CACHE" ]; then
     return 1
@@ -261,20 +249,6 @@ refresh_repo_cache() {
   return 0
 }
 
-github_alert_count_file() {
-  jq -r 'if type == "array" then length else 0 end' "$1" 2>/dev/null
-}
-
-github_note_repo_alert_count() {
-  local count_var="$1"
-  local details_var="$2"
-  local repo_name="$3"
-  local alert_count="$4"
-
-  printf -v "${count_var}" '%s' "$(( ${!count_var} + alert_count ))"
-  printf -v "${details_var}" '%s' "${!details_var}"$'\n'"    ${repo_name}: ${alert_count}"
-}
-
 github_note_repo_alert_error() {
   local failures_var="$1"
   local first_error_var="$2"
@@ -317,9 +291,10 @@ collect_repo_alert_type() {
 
   case "$http_code" in
     200)
-      alert_count="$(github_alert_count_file "$body_file")"
+      alert_count="$(jq -r 'if type == "array" then length else 0 end' "$body_file" 2>/dev/null)"
       if [ -n "$alert_count" ] && [[ "$alert_count" =~ ^[0-9]+$ ]] && [ "$alert_count" -gt 0 ]; then
-        github_note_repo_alert_count "$count_var" "$details_var" "$repo_name" "$alert_count"
+        printf -v "${count_var}" '%s' "$(( ${!count_var} + alert_count ))"
+        printf -v "${details_var}" '%s' "${!details_var}"$'\n'"    ${repo_name}: ${alert_count}"
       fi
       ;;
     404 | 410) ;;

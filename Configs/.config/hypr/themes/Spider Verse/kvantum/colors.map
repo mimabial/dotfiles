@@ -10,9 +10,10 @@
 #D32D38=color4
 #C4C1C1=foreground
 #6B5757=color8
-#8B6AAD=color5
+#8B6AAD=color6
+#C74B8A=color5
 
-# Additional SVG/template colors
+# Additional SVG/template colors preserved from the existing map
 #000000=background
 #141414=color0
 #31363B=color0

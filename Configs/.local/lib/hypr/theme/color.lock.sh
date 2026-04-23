@@ -2,8 +2,6 @@
 # Requires bash 4+ for dynamic exec {fd}> lock descriptors.
 
 color_lock_init() {
-  # This FD tracks the main color-generation lock for the current process so
-  # cleanup can temporarily release it before spawning a cache-only prewarm.
   COLOR_RUN_LOCK_FD=""
   LOCK_FILE="$(hypr_lock_path color_gen)"
   CACHE_ONLY_LOCK_FILE="$(hypr_lock_path color_cache_only)"
@@ -89,23 +87,6 @@ color_lock_enable_hypr_autoreload_guard() {
   [[ -n "${HYPR_AUTO_RELOAD_PREV}" ]] && hyprctl keyword misc:disable_autoreload 1 -q
 }
 
-color_lock_spawn_precache() {
-  [[ "${PRECACHE_ENABLED}" -eq 1 ]] || return 0
-  [[ -n "${PRECACHE_MODE}" ]] || return 0
-  [[ -n "${PRECACHE_WALLPAPER}" ]] || return 0
-  [[ "${PRECACHE_MODE}" =~ ^(dark|light)$ ]] || return 0
-  [[ -f "${PRECACHE_WALLPAPER}" ]] || return 0
-  [[ -n "${COLOR_RUN_LOCK_FD}" ]] || return 0
-
-  color_lock_release_run_lock
-  (
-    export HYPR_WAL_CACHE_ONLY=1
-    export HYPR_WAL_MODE_OVERRIDE="${PRECACHE_MODE}"
-    bash "${LIB_DIR}/hypr/theme/color-sync.sh" "${PRECACHE_WALLPAPER}" &>/dev/null
-  ) &
-  disown
-}
-
 color_lock_cleanup() {
   local exit_code="${1:-$?}"
   if [[ -n "${CACHE_ONLY_ROOT}" ]]; then
@@ -127,7 +108,6 @@ color_lock_cleanup() {
     fi
   fi
 
-  color_lock_spawn_precache
   color_lock_release_run_lock
   return "${exit_code}"
 }

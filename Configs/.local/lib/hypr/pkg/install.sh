@@ -1,21 +1,14 @@
 #!/bin/bash
 
-fzf_args=(
-  --multi
-  --preview 'pacman -Sii {1}'
-  --preview-label='alt-p: toggle description, alt-j/k: scroll, tab: multi-select'
-  --preview-label-pos='bottom'
-  --preview-window 'down:65%:wrap'
-  --bind 'alt-p:toggle-preview'
-  --bind 'alt-d:preview-half-page-down,alt-u:preview-half-page-up'
-  --bind 'alt-k:preview-up,alt-j:preview-down'
-  --color 'pointer:green,marker:green'
-)
+# shellcheck source=/dev/null
+source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/pacman.lib.bash"
 
+declare -a fzf_args=()
+pacman_build_fzf_args fzf_args 'pacman -Sii {1}' green
 pkg_names=$(pacman -Slq | fzf "${fzf_args[@]}")
 
 if [[ -n "$pkg_names" ]]; then
-  # Convert newline-separated selections to space-separated for yay
-  echo "$pkg_names" | tr '\n' ' ' | xargs sudo pacman -S --noconfirm
+  mapfile -t selected_packages <<<"${pkg_names}"
+  run_pacman_privileged -S --noconfirm "${selected_packages[@]}"
   hyprshell util/show-done.sh
 fi

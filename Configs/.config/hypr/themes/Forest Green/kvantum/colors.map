@@ -5,10 +5,10 @@
 # Core colors derived from kvconfig.theme [GeneralColors]
 #333c43=color0
 #3B4252=color8
-#d3c6aa=foreground
-#5d6b66=color8
-#7fbbb3=color4
 #48584e=color7
+#d3c6aa=foreground
+#7fbbb3=color4
+#5d6b66=color8
 #d699b6=color5
 
 # Additional SVG/template colors preserved from the existing map

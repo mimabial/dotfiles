@@ -115,7 +115,7 @@ cancel_install() {
 }
 
 prompt_cpu_selection() {
-  read -p "Number of CPU cores (1-$TOTAL_CORES) [default: 2]: " SELECTED_CORES
+  read -r -p "Number of CPU cores (1-$TOTAL_CORES) [default: 2]: " SELECTED_CORES
   SELECTED_CORES=${SELECTED_CORES:-2}
 
   if ! [[ "$SELECTED_CORES" =~ ^[0-9]+$ ]] || [ "$SELECTED_CORES" -lt 1 ] || [ "$SELECTED_CORES" -gt "$TOTAL_CORES" ]; then
@@ -158,10 +158,10 @@ prompt_disk_selection() {
 }
 
 prompt_windows_credentials() {
-  read -p "Windows username [default: docker]: " USERNAME
+  read -r -p "Windows username [default: docker]: " USERNAME
   USERNAME=${USERNAME:-docker}
 
-  read -sp "Windows password [default: admin]: " PASSWORD
+  read -r -s -p "Windows password [default: admin]: " PASSWORD
   echo
   if [ -z "$PASSWORD" ]; then
     PASSWORD="admin"
@@ -188,7 +188,7 @@ show_install_summary() {
 
 confirm_installation() {
   echo ""
-  read -p "Proceed with this configuration? (y/N): " -n 1 -r
+  read -r -n 1 -p "Proceed with this configuration? (y/N): " REPLY
   echo
   [[ $REPLY =~ ^[Yy]$ ]] || cancel_install
 }
@@ -416,20 +416,22 @@ rdp_scale_flag() {
 launch_rdp_session() {
   local scale_flag
   scale_flag=$(rdp_scale_flag)
+  local -a rdp_args=(
+    /u:"$WIN_USER"
+    /p:"$WIN_PASS"
+    /v:"$WINDOWS_RDP_HOST"
+    "-grab-keyboard"
+    "/sound"
+    "/microphone"
+    "/cert:ignore"
+    /title:"Windows VM"
+    "/dynamic-resolution"
+    "/gfx:AVC444"
+    "/floatbar:sticky:off,default:visible,show:fullscreen"
+  )
+  [[ -n "$scale_flag" ]] && rdp_args+=("$scale_flag")
 
-  xfreerdp3 \
-    /u:"$WIN_USER" \
-    /p:"$WIN_PASS" \
-    /v:"$WINDOWS_RDP_HOST" \
-    -grab-keyboard \
-    /sound \
-    /microphone \
-    /cert:ignore \
-    /title:"Windows VM" \
-    /dynamic-resolution \
-    /gfx:AVC444 \
-    /floatbar:sticky:off,default:visible,show:fullscreen \
-    $scale_flag
+  xfreerdp3 "${rdp_args[@]}"
 }
 
 handle_rdp_exit() {

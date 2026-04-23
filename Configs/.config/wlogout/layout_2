@@ -14,14 +14,14 @@
 
 {
     "label": "shutdown",
-    "action": "hyprshell shutdown.sh",
+    "action": "hyprshell cmd/powerctl.sh shutdown",
     "text": "Shutdown",
     "keybind": "s"
 }
 
 {
     "label": "reboot",
-    "action": "hyprshell reboot.sh",
+    "action": "hyprshell cmd/powerctl.sh reboot",
     "text": "Reboot",
     "keybind": "r"
 }

@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 
+_hypr_state_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+if ! declare -F hypr_runtime_subdir >/dev/null 2>&1; then
+  # shellcheck source=/dev/null
+  source "${_hypr_state_dir}/common.sh" || return 1 2>/dev/null || exit 1
+fi
+unset _hypr_state_dir
+
 export_hypr_config() {
   # Reload runtime state into the current shell.
   # Use this after state changes, in a fresh shell, or when array variables
@@ -106,11 +113,11 @@ state_read_value_from_file() {
 
     case "${stripped}" in
       "export ${var_name}="*)
-        raw_value="${stripped#export ${var_name}=}"
+        raw_value="${stripped#"export ${var_name}="}"
         found=1
         ;;
       "${var_name}="*)
-        raw_value="${stripped#${var_name}=}"
+        raw_value="${stripped#"${var_name}="}"
         found=1
         ;;
       *)
@@ -206,14 +213,14 @@ state_acquire_lock() {
   local fd_name="$2"
   local -n fd_ref="${fd_name}"
   local lock_timeout="${STATE_LOCK_TIMEOUT:-5}"
-  local lock_dir="${XDG_RUNTIME_DIR:-/tmp}/hypr"
+  local lock_dir=""
   local lock_name=""
   local lock_file=""
 
   lock_name="$(state_lock_name "${lock_target}")" || return 1
+  lock_dir="$(hypr_runtime_subdir hypr)" || return 1
   lock_file="${lock_dir}/${lock_name}"
 
-  mkdir -p "${lock_dir}" || return 1
   if ! exec {fd_ref}>"${lock_file}"; then
     print_log -sec "state" -err "state_set" "failed to open lock ${lock_file}"
     return 1

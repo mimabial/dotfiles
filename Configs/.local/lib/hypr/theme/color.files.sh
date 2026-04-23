@@ -3,6 +3,19 @@
 #
 # color.files.sh - Palette loading and file materialization helpers
 
+color_replace_if_changed() {
+  local target_file="$1"
+  local tmp_file="$2"
+
+  if [[ -f "${target_file}" ]] && cmp -s "${tmp_file}" "${target_file}"; then
+    rm -f "${tmp_file}"
+    return 1
+  fi
+
+  mv -f "${tmp_file}" "${target_file}"
+  return 0
+}
+
 load_theme_palette() {
   local theme_file="${1}"
   local bg_name="$2" fg_name="$3" cursor_name="$4" colors_name="$5"
@@ -52,46 +65,120 @@ load_theme_palette() {
   return 0
 }
 
-write_wal_theme_file() {
+write_theme_mode_colors_json() {
   local out_file="$1"
-  local theme_bg="$2" theme_fg="$3" theme_cursor="$4" theme_colors_name="$5"
+  local theme_bg="$2"
+  local theme_fg="$3"
+  local theme_cursor="$4"
+  local theme_colors_name="$5"
   local -n theme_colors_ref="$theme_colors_name"
   local out_dir=""
   local tmp_file=""
 
   out_dir="$(dirname "${out_file}")"
-  mkdir -p "${out_dir}"
+  mkdir -p "${out_dir}" || return 1
   tmp_file="$(mktemp "${out_dir}/.$(basename "${out_file}").XXXXXX")" || return 1
 
-  cat >"${tmp_file}" <<JSON
-{
-  "special": {
-    "background": "${theme_bg}",
-    "foreground": "${theme_fg}",
-    "cursor": "${theme_cursor}"
-  },
-  "colors": {
-    "color0": "${theme_colors_ref[0]}",
-    "color1": "${theme_colors_ref[1]}",
-    "color2": "${theme_colors_ref[2]}",
-    "color3": "${theme_colors_ref[3]}",
-    "color4": "${theme_colors_ref[4]}",
-    "color5": "${theme_colors_ref[5]}",
-    "color6": "${theme_colors_ref[6]}",
-    "color7": "${theme_colors_ref[7]}",
-    "color8": "${theme_colors_ref[8]}",
-    "color9": "${theme_colors_ref[9]}",
-    "color10": "${theme_colors_ref[10]}",
-    "color11": "${theme_colors_ref[11]}",
-    "color12": "${theme_colors_ref[12]}",
-    "color13": "${theme_colors_ref[13]}",
-    "color14": "${theme_colors_ref[14]}",
-    "color15": "${theme_colors_ref[15]}"
-  }
-}
-JSON
+  python3 - "${tmp_file}" "${theme_bg}" "${theme_fg}" "${theme_cursor}" "${theme_colors_ref[@]}" <<'PYEOF'
+import json
+import sys
+from pathlib import Path
 
-  mv -f "${tmp_file}" "${out_file}"
+target = Path(sys.argv[1])
+background, foreground, cursor = sys.argv[2:5]
+colors = sys.argv[5:21]
+
+payload = {
+    "checksum": "None",
+    "wallpaper": "None",
+    "alpha": "100",
+    "special": {
+        "background": background,
+        "foreground": foreground,
+        "cursor": cursor,
+    },
+    "colors": {f"color{i}": colors[i] for i in range(16)},
+}
+
+target.write_text(json.dumps(payload, indent=4) + "\n")
+PYEOF
+
+  color_replace_if_changed "${out_file}" "${tmp_file}" || return 0
+}
+
+render_theme_palette_template() {
+  local template_file="$1"
+  local out_file="$2"
+  local colors_json="$3"
+  local out_dir=""
+  local tmp_file=""
+
+  [[ -r "${template_file}" ]] || return 1
+  [[ -r "${colors_json}" ]] || return 1
+  out_dir="$(dirname "${out_file}")"
+  mkdir -p "${out_dir}" || return 1
+  tmp_file="$(mktemp "${out_dir}/.$(basename "${out_file}").XXXXXX")" || return 1
+
+  python3 - "${template_file}" "${tmp_file}" "${colors_json}" <<'PYEOF'
+import json
+import re
+import sys
+from pathlib import Path
+
+template_path = Path(sys.argv[1])
+target_path = Path(sys.argv[2])
+colors_json = Path(sys.argv[3])
+payload = json.loads(colors_json.read_text())
+
+mapping = {}
+for key, value in payload.get("special", {}).items():
+    mapping[key] = value
+    mapping[f"{key}.strip"] = value.lstrip("#")
+
+for key, value in payload.get("colors", {}).items():
+    mapping[key] = value
+    mapping[f"{key}.strip"] = value.lstrip("#")
+
+text = template_path.read_text()
+rendered = re.sub(r"\{([A-Za-z0-9_.-]+)\}", lambda match: mapping.get(match.group(1), match.group(0)), text)
+target_path.write_text(rendered)
+PYEOF
+
+  color_replace_if_changed "${out_file}" "${tmp_file}" || return 0
+}
+
+render_theme_mode_wal_templates() {
+  local colors_json="$1"
+  local template_dir="${XDG_CONFIG_HOME:-$HOME/.config}/wal/templates"
+  local template_file=""
+  local template_name=""
+
+  [[ -d "${template_dir}" ]] || return 0
+
+  while IFS= read -r -d '' template_file; do
+    template_name="$(basename "${template_file}")"
+    render_theme_palette_template \
+      "${template_file}" \
+      "${WAL_CACHE}/${template_name}" \
+      "${colors_json}" || return 1
+  done < <(find "${template_dir}" -maxdepth 1 -type f -print0 | LC_ALL=C sort -z)
+}
+
+render_theme_mode_wal_cache() {
+  local theme_bg=""
+  local theme_fg=""
+  local theme_cursor=""
+  local -a theme_colors=()
+
+  if ! load_theme_palette "${THEME_KITTY_FILE}" theme_bg theme_fg theme_cursor theme_colors; then
+    print_log -sec "theme" -warn "palette" "incomplete palette in ${THEME_KITTY_FILE}"
+    return 1
+  fi
+
+  write_theme_mode_colors_json "${WAL_CACHE}/colors.json" "${theme_bg}" "${theme_fg}" "${theme_cursor}" theme_colors || return 1
+  render_theme_mode_wal_templates "${WAL_CACHE}/colors.json" || return 1
+  [[ -f "${WAL_CACHE}/colors-shell.sh" ]] || return 1
+  [[ -f "${WAL_CACHE}/colors.json" ]] || return 1
 }
 
 resolve_wallpaper_fallback() {

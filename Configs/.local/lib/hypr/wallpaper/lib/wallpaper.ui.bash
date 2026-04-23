@@ -20,6 +20,7 @@ Commands:
     set <file>                Set a specific wallpaper
     start                     Apply the current wallpaper to the backend
     resume                    Reapply the current theme wallpaper
+    notify                    Show a notification for the current wallpaper
     get                       Print current wallpaper path
     output <file>             Copy current wallpaper to a file
     link                      Rebuild derived backend links from wall.set
@@ -29,6 +30,7 @@ Options:
     -b, --backend <backend>   Set wallpaper backend to use (awww, hyprpaper, etc.)
     -G, --global              Set wallpaper as global
         --wait-lock           Wait for the current wallpaper operation to finish
+        --no-notify           Suppress wallpaper notifications for this run
     -t, --filetypes <types>   Override file types (colon-separated ':')
         --notify-body <text>  Override notification body
     -h, --help                Display this help message

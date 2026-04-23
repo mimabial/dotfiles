@@ -9,9 +9,9 @@
 #ffffff=foreground
 #5032AC=color8
 #1F5322=foreground
-#333333=foreground
 #A56DF2=color6
 #564873=color5
+#333333=foreground
 
 # Additional SVG/template colors preserved from the existing map
 #1A1A1A=color0

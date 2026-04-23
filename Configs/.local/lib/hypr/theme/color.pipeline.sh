@@ -27,7 +27,6 @@ select_palette_source() {
   PALETTE_SOURCE="wallpaper"
   PALETTE_LABEL=""
   STATE_WALLPAPER=""
-  WAL_THEME_FILE=""
 
   if [[ "${selected_color_mode}" -eq 0 ]]; then
     PALETTE_SOURCE="theme"
@@ -38,9 +37,6 @@ select_palette_source() {
       print_log -sec "theme" -warn "palette" "missing or incomplete ${THEME_KITTY_FILE}, falling back to wallpaper"
       PALETTE_SOURCE="wallpaper"
     else
-      WAL_THEME_FILE="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wal/theme-${HYPR_THEME// /_}.json"
-      write_wal_theme_file "${WAL_THEME_FILE}" "${theme_bg}" "${theme_fg}" "${theme_cursor}" theme_colors
-      WALLPAPER_IMAGE="${WAL_THEME_FILE}"
       STATE_WALLPAPER="theme:${HYPR_THEME}"
       PALETTE_LABEL="theme:${HYPR_THEME}"
     fi
@@ -84,13 +80,13 @@ pywal_default_setting() {
   local variant="${2:-dark}"
 
   case "${variant}:${setting}" in
-    light:BACKEND) printf '%s' "haishoku" ;;
-    light:BACKEND_FALLBACKS) printf '%s' "colorthief wal" ;;
+    light:BACKEND) printf '%s' "colorthief" ;;
+    light:BACKEND_FALLBACKS) printf '%s' "wal" ;;
     light:CONTRAST) printf '%s' "1.0" ;;
     light:SATURATE) printf '%s' "0.6" ;;
     light:COLS16) printf '%s' "lighten" ;;
     dark:BACKEND) printf '%s' "colorthief" ;;
-    dark:BACKEND_FALLBACKS) printf '%s' "wal haishoku" ;;
+    dark:BACKEND_FALLBACKS) printf '%s' "wal" ;;
     dark:CONTRAST) printf '%s' "3.0" ;;
     dark:SATURATE) printf '%s' "0.4" ;;
     dark:COLS16) printf '%s' "lighten" ;;
@@ -120,10 +116,9 @@ compute_legibility_suffix() {
 
 configure_wal_command() {
   if [[ "${PALETTE_SOURCE}" == "theme" ]]; then
-    WAL_OPTS_BASE=("--theme" "${WAL_THEME_FILE}" "-n" "-s" "-t" "-e")
     PYWAL_BACKEND="theme"
     PYWAL_BACKEND_FALLBACKS=""
-    WAL_OPTS=("${WAL_OPTS_BASE[@]}")
+    WAL_OPTS=()
   else
     WAL_OPTS_BASE=("-i" "${WALLPAPER_IMAGE}" "-n" "-s" "-t" "-e")
     [[ "${resolved_color_variant}" == "light" ]] && WAL_OPTS_BASE+=("-l")
@@ -148,8 +143,13 @@ configure_wal_command() {
 
 run_wal_generation() {
   if [[ "${PALETTE_SOURCE}" == "theme" ]]; then
-    wal_output=$(XDG_CACHE_HOME="${WAL_XDG_CACHE_HOME}" wal "${WAL_OPTS[@]}" 2>&1)
-    wal_exit=$?
+    if render_theme_mode_wal_cache; then
+      wal_output="rendered theme palette"
+      wal_exit=0
+    else
+      wal_output="failed to render theme palette"
+      wal_exit=1
+    fi
   else
     local backend
     declare -A backend_seen=()
@@ -181,7 +181,9 @@ run_wal_generation() {
     done
   fi
 
-  [[ "${HYPR_WAL_CACHE_ENABLE}" -eq 1 ]] && wal_cache_populate=1
+  if [[ "${HYPR_WAL_CACHE_ENABLE}" -eq 1 ]] && [[ -n "${wal_cache_path:-}" ]]; then
+    wal_cache_populate=1
+  fi
 }
 
 canonicalize_shell_colors_file() {
@@ -353,31 +355,5 @@ link_generated_color_files() {
   if [[ "${SKIP_WAYBAR_UPDATE}" -ne 1 ]] && [[ -f "${WAL_CACHE}/colors-waybar.css" ]] && [[ -x "${waybar_palette_helper}" ]]; then
     python3 "${waybar_palette_helper}" "${WAL_CACHE}/colors-waybar.css" \
       || print_log -sec "waybar" -warn "palette" "failed to refine semantic colors"
-  fi
-}
-
-queue_opposite_mode_precache() {
-  if [[ "${CACHE_ONLY}" -eq 1 ]] || [[ "${selected_color_mode}" -eq 0 ]] || [[ "${HYPR_WAL_CACHE_ENABLE}" -ne 1 ]]; then
-    return 0
-  fi
-
-  local opposite_mode=""
-  [[ "${resolved_color_variant}" == "dark" ]] && opposite_mode="light"
-  [[ "${resolved_color_variant}" == "light" ]] && opposite_mode="dark"
-
-  if [[ -n "${opposite_mode}" ]] && [[ -n "${wall_hash:-}" ]]; then
-    local leg_suffix
-    local opposite_backend
-    opposite_backend="$(resolve_pywal_setting "BACKEND" "${opposite_mode}")"
-    leg_suffix="$(compute_legibility_suffix "${opposite_mode}")"
-    local opposite_cache_key="${wall_hash}_${opposite_mode}_${opposite_backend}${leg_suffix}${template_hash_suffix}"
-    local opposite_cache_path="${HYPR_WAL_CACHE_DIR}/${opposite_cache_key}"
-
-    if ! wal_cache_valid "${opposite_cache_path}"; then
-      print_log -sec "pywal16" -stat "precache" "queuing ${opposite_mode} mode"
-      PRECACHE_ENABLED=1
-      PRECACHE_MODE="${opposite_mode}"
-      PRECACHE_WALLPAPER="${WALLPAPER_IMAGE}"
-    fi
   fi
 }

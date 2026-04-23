@@ -46,7 +46,7 @@ reload_hyprlock() {
   if systemctl --user is-active "${unit_name}" >/dev/null 2>&1; then
     systemctl --user kill -s USR2 "${unit_name}" >/dev/null 2>&1
   else
-    pkill -USR2 hyprlock >/dev/null 2>&1
+    hypr_user_pkill -USR2 -x hyprlock >/dev/null 2>&1
   fi
 }
 
@@ -91,7 +91,10 @@ layout_test() {
     print_log -sec "hyprlock" -stat "Error" "Layout ${hyprlock_conf_name} not found."
     exit 1
   fi
-  local temp_path="${XDG_RUNTIME_DIR}/hyprlock-test.conf"
+  local runtime_dir=""
+  local temp_path=""
+  runtime_dir="$(hypr_runtime_subdir hypr)" || exit 1
+  temp_path="${runtime_dir}/hyprlock-test.conf"
   generate_conf "${hyprlock_conf_path}" "${temp_path}"
   append_label_to_file "${temp_path}"
   app2unit.sh -S both -u "${HYPRLOCK_SCOPE_NAME}" -t scope -- hyprlock --no-fade-in --immediate-render --grace 99999999 -c "${temp_path}"

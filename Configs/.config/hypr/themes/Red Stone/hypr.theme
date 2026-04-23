@@ -9,13 +9,14 @@ $NVIM_SCHEME = ashen
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
+
 exec = gsettings set org.gnome.desktop.interface icon-theme '$ICON_THEME'
 exec = gsettings set org.gnome.desktop.interface gtk-theme '$GTK_THEME'
 exec = gsettings set org.gnome.desktop.interface color-scheme '$COLOR_SCHEME'
 
 general {
-    gaps_in = 2
-    gaps_out = 4
+    gaps_in = 3
+    gaps_out = 8
     border_size = 2
     col.active_border = rgba(B41211ff)
     col.inactive_border = rgba(3d3935ff)
@@ -25,7 +26,7 @@ general {
 
 group {
     col.border_active = rgba(B41211ff)
-    col.border_inactive = rgba(3d3935cc)
+    col.border_inactive = rgba(3d3935cc) 
     col.border_locked_active = rgba(FFFFFFff)
     col.border_locked_inactive = rgba(FFFFFFcc)
 }
@@ -48,4 +49,3 @@ decoration {
 
 layerrule = blur on, match:namespace waybar
 layerrule = ignore_alpha 0, match:namespace waybar
-

@@ -73,12 +73,12 @@ saturation=1.00
 shadowless_popup=false
 
 [GeneralColors]
-window.color=#eee8d5
-base.color=#eee8d5
+window.color=#fdf6e3
+base.color=#fdf6e3
 alt.base.color=#fdf6e3
 button.color=#fdf6e3
-light.color=#eee8d5
-mid.light.color=#fdf6e3
+light.color=#fdf6e3
+mid.light.color=#eee8d5
 dark.color=#93a1a1
 mid.color=#93a1a180
 highlight.color=#268bd2
@@ -88,7 +88,7 @@ window.text.color=#657b83
 button.text.color=#657b83
 disabled.text.color=#657b8380
 tooltip.text.color=#657b83
-highlight.text.color=#eee8d5
+highlight.text.color=#fdf6e3
 link.color=#268bd2
 link.visited.color=#d33682
 progress.indicator.text.color=#657b83
