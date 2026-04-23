@@ -49,6 +49,77 @@ log_success() { echo -e "${GREEN}[OK]${NC} $1"; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
+path_is_within_root() {
+  local path="$1"
+  local root="$2"
+
+  [[ "${path}" == "${root}" || "${path}" == "${root}/"* ]]
+}
+
+relative_path_from() {
+  local base_dir="$1"
+  local target_path="$2"
+
+  realpath -m --relative-to="${base_dir}" "${target_path}"
+}
+
+normalize_synced_symlink() {
+  local src_root="$1"
+  local dest_root="$2"
+  local dest_link="$3"
+  local link_target=""
+  local mapped_target=""
+  local relative_target=""
+
+  [[ -L "${dest_link}" ]] || return 0
+  link_target="$(readlink -- "${dest_link}")" || return 1
+  [[ "${link_target}" == /* ]] || return 0
+  path_is_within_root "${link_target}" "${src_root}" || return 0
+
+  mapped_target="${dest_root}${link_target#"${src_root}"}"
+  relative_target="$(relative_path_from "$(dirname -- "${dest_link}")" "${mapped_target}")"
+  ln -snf -- "${relative_target}" "${dest_link}"
+}
+
+normalize_synced_internal_symlinks() {
+  local src_root="$1"
+  local dest_root="$2"
+  local path=""
+
+  if [[ -L "${dest_root}" ]]; then
+    normalize_synced_symlink "${src_root}" "${dest_root}" "${dest_root}"
+    return
+  fi
+
+  [[ -d "${dest_root}" ]] || return 0
+
+  while IFS= read -r -d '' path; do
+    normalize_synced_symlink "${src_root}" "${dest_root}" "${path}"
+  done < <(find "${dest_root}" -type l -print0)
+
+  return 0
+}
+
+normalize_changed_symlinks_from_rsync_output() {
+  local src_root="$1"
+  local dest_root="$2"
+  local rsync_output="$3"
+  local line=""
+  local rel_path=""
+
+  [[ -d "${dest_root}" ]] || return 0
+
+  while IFS= read -r line; do
+    [[ "${line}" == *" -> "* ]] || continue
+    [[ "${line}" =~ ^.[L] ]] || continue
+    rel_path="${line#* }"
+    rel_path="${rel_path%% -> *}"
+    normalize_synced_symlink "${src_root}" "${dest_root}" "${dest_root%/}/${rel_path}"
+  done <<< "${rsync_output}"
+
+  return 0
+}
+
 emit_preview_result() {
   local name="$1"
   local output="$2"
@@ -75,7 +146,8 @@ emit_apply_result() {
 run_rsync_transfer() {
   local name="$1"
   local log_failures="${2:-true}"
-  shift 2
+  local output_var="${3:-}"
+  shift 3
   local output=""
   local -a rsync_args=("$@")
 
@@ -100,7 +172,12 @@ run_rsync_transfer() {
     fi
     return 1
   fi
-  emit_apply_result "$name" "$output"
+
+  if [[ -n "${output_var}" ]]; then
+    printf -v "${output_var}" '%s' "$output"
+  else
+    emit_apply_result "$name" "$output"
+  fi
 }
 
 require_rsync() {
@@ -141,7 +218,7 @@ get_host_profile() {
 remove_path() {
   local dest="$1"
   local name="$2"
-  local rel_dest="${dest#${DOTFILES_DIR}/}"
+  local rel_dest="${dest#"${DOTFILES_DIR}"/}"
 
   if $LIST_ONLY; then
     echo "PLAN ABSENT ${dest}"
@@ -191,13 +268,13 @@ sync_host_profile_files() {
     host_paths+=("${rel_path}")
   done < "${SYNC_MANIFEST_FILE}"
 
-  for rel_path in "${host_paths[@]}"; do
-    remove_path "${DOTFILES_DIR}/${rel_path}" "root host file ${rel_path}"
-  done
-
   if [[ -z "${host_root}" ]]; then
     return
   fi
+
+  for rel_path in "${host_paths[@]}"; do
+    remove_path "${DOTFILES_DIR}/${rel_path}" "root host file ${rel_path}"
+  done
 
   if $LIST_ONLY; then
     log_info "Planning host profile mappings (${profile})..."
@@ -240,6 +317,7 @@ copy_path() {
   local extra_excludes=("$@")
   local exclude_pattern=""
   local exclude_preview=""
+  local transfer_output=""
   local -a rsync_args=(-a --mkpath)
 
   if $LIST_ONLY; then
@@ -273,7 +351,9 @@ copy_path() {
       for exclude_pattern in "${extra_excludes[@]}"; do
         rsync_args+=(--exclude="$exclude_pattern")
       done
-      run_rsync_transfer "$name" true "${rsync_args[@]}" "$src"/ "$dest"/
+      run_rsync_transfer "$name" true transfer_output "${rsync_args[@]}" "$src"/ "$dest"/
+      normalize_changed_symlinks_from_rsync_output "$src" "$dest" "$transfer_output"
+      emit_apply_result "$name" "$transfer_output"
       return
     fi
 
@@ -302,12 +382,16 @@ copy_path() {
     rm -rf -- "$dest"
   fi
 
-  if run_rsync_transfer "$name" false "${rsync_args[@]}" "$src" "$dest"; then
+  if run_rsync_transfer "$name" false transfer_output "${rsync_args[@]}" "$src" "$dest"; then
+    normalize_synced_internal_symlinks "$src" "$dest"
+    emit_apply_result "$name" "$transfer_output"
     return 0
   fi
 
   if [[ ! -d "$(dirname "$dest")" && "$(basename "$src")" == "$(basename "$dest")" ]]; then
-    run_rsync_transfer "$name" true "${rsync_args[@]}" "$src" "$(dirname "$dest")"/
+    run_rsync_transfer "$name" true transfer_output "${rsync_args[@]}" "$src" "$(dirname "$dest")"/
+    normalize_synced_internal_symlinks "$src" "$(dirname "$dest")/$(basename "$src")"
+    emit_apply_result "$name" "$transfer_output"
     return
   fi
 
