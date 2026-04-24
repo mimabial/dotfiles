@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Sync configuration files to dotfiles directory
-# Usage: dotfiles-sync [--dry-run|--list]
+# Usage: dotfiles-sync [--dry-run|--list] [--manifest <file>]
 
 set -euo pipefail
 
@@ -8,7 +8,10 @@ DOTFILES_DIR="${DOTFILES_DIR:-$HOME/dotfiles/Configs}"
 DRY_RUN=false
 LIST_ONLY=false
 HOST_PROFILE_STATE_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/host-profile"
-SYNC_MANIFEST_FILE="${DOTFILES_SYNC_MANIFEST:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr/dotfiles-sync.conf}"
+DEFAULT_SYNC_MANIFEST_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/dotfiles-sync.conf"
+SYNC_MANIFEST_SOURCE="${DOTFILES_SYNC_MANIFEST:-${DEFAULT_SYNC_MANIFEST_FILE}}"
+SYNC_MANIFEST_FILE=""
+SYNC_MANIFEST_TEMP_FILE=""
 
 usage() {
   cat <<USAGE
@@ -16,6 +19,7 @@ Usage: $(basename "$0") [options]
 Options:
   --dry-run   Preview actual sync changes without writing
   --list      List configured sync mappings only
+  --manifest  Use a specific manifest file
   -h, --help  Show this help
 USAGE
 }
@@ -24,6 +28,15 @@ while [[ $# -gt 0 ]]; do
   case "${1}" in
     --dry-run) DRY_RUN=true ;;
     --list) LIST_ONLY=true ;;
+    --manifest)
+      [[ $# -ge 2 ]] || {
+        echo "--manifest requires a file path" >&2
+        usage >&2
+        exit 1
+      }
+      SYNC_MANIFEST_SOURCE="${2}"
+      shift
+      ;;
     -h | --help)
       usage
       exit 0
@@ -48,6 +61,13 @@ log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
 log_success() { echo -e "${GREEN}[OK]${NC} $1"; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+
+cleanup_temp_manifest() {
+  [[ -n "${SYNC_MANIFEST_TEMP_FILE}" ]] || return 0
+  rm -f -- "${SYNC_MANIFEST_TEMP_FILE}"
+}
+
+trap cleanup_temp_manifest EXIT
 
 path_is_within_root() {
   local path="$1"
@@ -188,10 +208,23 @@ require_rsync() {
 }
 
 require_sync_manifest() {
-  if [[ ! -r "${SYNC_MANIFEST_FILE}" ]]; then
-    log_error "Sync manifest not found: ${SYNC_MANIFEST_FILE}"
-    exit 1
+  if [[ -r "${SYNC_MANIFEST_SOURCE}" ]]; then
+    SYNC_MANIFEST_FILE="${SYNC_MANIFEST_SOURCE}"
+    return 0
   fi
+
+  if [[ "${SYNC_MANIFEST_SOURCE}" == *$'\n'* || "${SYNC_MANIFEST_SOURCE}" =~ ^[[:space:]]*(#|dir\||file\||host\|) ]]; then
+    SYNC_MANIFEST_TEMP_FILE="$(mktemp "${TMPDIR:-/tmp}/dotfiles-sync.manifest.XXXXXX")" || {
+      log_error "Failed to create temporary manifest"
+      exit 1
+    }
+    printf '%s\n' "${SYNC_MANIFEST_SOURCE}" > "${SYNC_MANIFEST_TEMP_FILE}"
+    SYNC_MANIFEST_FILE="${SYNC_MANIFEST_TEMP_FILE}"
+    return 0
+  fi
+
+  log_error "Sync manifest not found: ${SYNC_MANIFEST_SOURCE}"
+  exit 1
 }
 
 host_profile_is_valid() {

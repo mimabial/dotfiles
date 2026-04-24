@@ -1,0 +1,37 @@
+# Color mapping for pywal replacement
+# Format: #hexcolor=pywal_variable
+# Theme: Frosted Glass
+
+# Core colors derived from kvconfig.theme [GeneralColors]
+#F5F5F5=background
+#FFFFFF=color0
+#F8F8F8=color8
+#F2F2F2=color7
+#F0F0F0=color7
+#C8C8C8=color8
+#333333=color4
+#444444=foreground
+#0057AE=color4
+#E040FB=color5
+
+# Additional SVG/template colors preserved from the existing theme
+#012339=color0
+#1E4C84=color4
+#2770C0=color12
+#4285F4=color12
+#A44185=color5
+#B74AFF=color5
+#F04A50=color1
+#343031=color0
+#26272A=color0
+#212121=color0
+#1E1E1E=color0
+#5A5A5A=color8
+#5A616E=color8
+#666666=color8
+#989898=color8
+#ACB1BC=color7
+#B6B6B6=color7
+#C1C1C1=foreground
+#D1D1D1=foreground
+#DFDFDF=foreground

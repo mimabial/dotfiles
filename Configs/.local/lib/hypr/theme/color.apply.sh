@@ -183,36 +183,43 @@ kde_theme_palette() {
   fg="${foreground}"
   accent="${color4}"
   hover="${color5}"
+  selection_fg="${foreground}"
+  inactive_selection_fg=""
 
   if [ "${selected_color_mode}" -eq 0 ]; then
     local theme_kvconfig="${HYPR_THEME_DIR}/kvantum/kvconfig.theme"
     if [ -f "${theme_kvconfig}" ]; then
-      local kv_colors kv_bg kv_fg kv_hl
+      local kv_bg="" kv_fg="" kv_hl="" kv_hl_fg=""
       kv_colors=$(awk -F= '
         /^window\.color=/ {bg=$2}
         /^text\.color=/   {fg=$2}
         /^highlight\.color=/ {hl=$2}
-        END {print bg"|"fg"|"hl}
+        /^highlight\.text\.color=/ {hlfg=$2}
+        END {print bg"|"fg"|"hl"|"hlfg}
       ' "${theme_kvconfig}")
-      kv_bg="${kv_colors%%|*}"
-      kv_colors="${kv_colors#*|}"
-      kv_fg="${kv_colors%%|*}"
-      kv_hl="${kv_colors#*|}"
+      IFS='|' read -r kv_bg kv_fg kv_hl kv_hl_fg <<< "${kv_colors}"
       [[ -n "${kv_bg}" ]] && bg="${kv_bg}"
       [[ -n "${kv_fg}" ]] && fg="${kv_fg}"
       [[ -n "${kv_hl}" ]] && accent="${kv_hl}" && hover="${kv_hl}"
+      [[ -n "${kv_hl_fg}" ]] && selection_fg="${kv_hl_fg}"
     fi
   fi
+
+  [[ -n "${inactive_selection_fg}" ]] || inactive_selection_fg="${selection_fg}"
 
   bg=$(normalize_hex_color "${bg}")
   fg=$(normalize_hex_color "${fg}")
   accent=$(normalize_hex_color "${accent}")
   hover=$(normalize_hex_color "${hover}")
+  selection_fg=$(normalize_hex_color "${selection_fg}")
+  inactive_selection_fg=$(normalize_hex_color "${inactive_selection_fg}")
 
   bg_rgb=$(hex_to_rgb "${bg}")
   fg_rgb=$(hex_to_rgb "${fg}")
   accent_rgb=$(hex_to_rgb "${accent}")
   hover_rgb=$(hex_to_rgb "${hover}")
+  selection_fg_rgb=$(hex_to_rgb "${selection_fg}")
+  inactive_selection_fg_rgb=$(hex_to_rgb "${inactive_selection_fg}")
 }
 
 ensure_kde_scheme_file() {
@@ -252,8 +259,9 @@ write_kde_scheme_palette() {
     $'Colors:View\tDecorationHover\t'"${hover_rgb}" \
     $'Colors:Selection\tBackgroundNormal\t'"${accent_rgb}" \
     $'Colors:Selection\tBackgroundAlternate\t'"${accent_rgb}" \
-    $'Colors:Selection\tForegroundNormal\t'"${fg_rgb}" \
-    $'Colors:Selection\tForegroundActive\t'"${fg_rgb}" \
+    $'Colors:Selection\tForegroundNormal\t'"${selection_fg_rgb}" \
+    $'Colors:Selection\tForegroundActive\t'"${selection_fg_rgb}" \
+    $'Colors:Selection\tForegroundInactive\t'"${inactive_selection_fg_rgb}" \
     $'Colors:Selection\tDecorationFocus\t'"${accent_rgb}" \
     $'Colors:Selection\tDecorationHover\t'"${hover_rgb}" \
     $'Colors:Window\tBackgroundAlternate\t'"${bg_rgb}" \
@@ -286,8 +294,9 @@ write_kdeglobals_palette() {
     $'Colors:Button\tDecorationHover\t'"${hover_rgb}"
     $'Colors:Selection\tBackgroundNormal\t'"${accent_rgb}"
     $'Colors:Selection\tBackgroundAlternate\t'"${accent_rgb}"
-    $'Colors:Selection\tForegroundNormal\t'"${fg_rgb}"
-    $'Colors:Selection\tForegroundActive\t'"${fg_rgb}"
+    $'Colors:Selection\tForegroundNormal\t'"${selection_fg_rgb}"
+    $'Colors:Selection\tForegroundActive\t'"${selection_fg_rgb}"
+    $'Colors:Selection\tForegroundInactive\t'"${inactive_selection_fg_rgb}"
     $'Colors:Selection\tDecorationFocus\t'"${accent_rgb}"
     $'Colors:Selection\tDecorationHover\t'"${hover_rgb}"
     $'Colors:Window\tBackgroundNormal\t'"${bg_rgb}"
@@ -336,7 +345,7 @@ post_updates() {
     hash_file="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/kdeglobals.hash"
     prev_hash=""
     scheme_missing=0
-    color_hash="${bg_rgb}|${fg_rgb}|${accent_rgb}|${ICON_THEME:-}|${kde_scheme_name}"
+    color_hash="${bg_rgb}|${fg_rgb}|${accent_rgb}|${selection_fg_rgb}|${inactive_selection_fg_rgb}|${ICON_THEME:-}|${kde_scheme_name}"
     [[ -f "${hash_file}" ]] && prev_hash=$(cat "${hash_file}" 2>/dev/null)
     [[ ! -f "${kde_scheme_file}" ]] && scheme_missing=1
 

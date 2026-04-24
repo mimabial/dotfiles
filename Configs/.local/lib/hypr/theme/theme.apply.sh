@@ -121,6 +121,22 @@ theme_apply_restart_waybar_direct() {
   return 1
 }
 
+theme_apply_write_dunst_runtime() {
+  local dunst_script="${LIB_DIR}/hypr/wal/wal.dunst.sh"
+
+  if [[ -x "${dunst_script}" ]]; then
+    "${dunst_script}" --write-only >/dev/null 2>&1
+    return $?
+  fi
+
+  if command -v hyprshell >/dev/null 2>&1; then
+    hyprshell wal/wal.dunst.sh --write-only >/dev/null 2>&1
+    return $?
+  fi
+
+  return 1
+}
+
 theme_apply_reload_dunst_runtime() {
   local dunst_script="${LIB_DIR}/hypr/wal/wal.dunst.sh"
 
@@ -140,6 +156,8 @@ theme_apply_reload_dunst_runtime() {
 theme_apply_reload_waybar_and_dunst() {
   theme_apply_restart_waybar_direct \
     || print_log -sec "theme.apply" -warn "waybar" "direct restart failed"
+  theme_apply_write_dunst_runtime \
+    || print_log -sec "theme.apply" -warn "dunst" "write failed"
   theme_apply_reload_dunst_runtime \
     || print_log -sec "theme.apply" -warn "dunst" "reload failed"
 }

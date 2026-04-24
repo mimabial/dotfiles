@@ -1,38 +1,41 @@
 [Colors:Button]
-BackgroundAlternate=19,43,75
-BackgroundNormal=19,43,75
-DecorationFocus=212,176,193
-DecorationHover=212,176,193
-ForegroundNormal=255,255,255
+BackgroundAlternate=255,255,255
+BackgroundNormal=255,255,255
+DecorationFocus=51,51,51
+DecorationHover=51,51,51
+ForegroundNormal=68,68,68
 
 [Colors:Complementary]
-BackgroundNormal=19,43,75
-ForegroundNormal=255,255,255
+BackgroundNormal=255,255,255
+ForegroundNormal=68,68,68
 
 [Colors:Header]
-BackgroundNormal=19,43,75
-DecorationFocus=212,176,193
-DecorationHover=212,176,193
-ForegroundNormal=255,255,255
+BackgroundNormal=255,255,255
+DecorationFocus=51,51,51
+DecorationHover=51,51,51
+ForegroundNormal=68,68,68
 
 [Colors:Selection]
-BackgroundAlternate=212,176,193
-BackgroundNormal=212,176,193
-DecorationFocus=212,176,193
-DecorationHover=212,176,193
-ForegroundActive=255,255,255
-ForegroundNormal=255,255,255
+BackgroundAlternate=51,51,51
+BackgroundNormal=51,51,51
+DecorationFocus=51,51,51
+DecorationHover=51,51,51
+ForegroundActive=0,0,0
+ForegroundInactive=0,0,0
+ForegroundNormal=0,0,0
 
 [Colors:Tooltip]
-BackgroundNormal=19,43,75
-ForegroundNormal=255,255,255
+BackgroundNormal=255,255,255
+ForegroundNormal=68,68,68
 
 [Colors:View]
-BackgroundAlternate=19,43,75
-BackgroundNormal=19,43,75
-DecorationFocus=212,176,193
-DecorationHover=212,176,193
-ForegroundNormal=255,255,255
+BackgroundAlternate=255,255,255
+BackgroundNormal=255,255,255
+DecorationFocus=51,51,51
+DecorationHover=51,51,51
+ForegroundActive=255,128,224
+ForegroundInactive=160,160,160
+ForegroundNormal=68,68,68
 Test1=50,50,50
 Test10=50,50,50
 Test11=50,50,50
@@ -47,8 +50,8 @@ Test8=50,50,50
 Test9=50,50,50
 
 [Colors:Window]
-BackgroundNormal=19,43,75
-ForegroundNormal=255,255,255
+BackgroundNormal=255,255,255
+ForegroundNormal=68,68,68
 
 [General]
 ColorScheme=colors
@@ -56,7 +59,7 @@ TerminalApplication=kitty
 TerminalService=kitty.desktop
 
 [Icons]
-Theme=Mojave-CT-Night
+Theme=Tela-circle-grey-light
 
 [KDE]
 ShowDeleteCommand=false

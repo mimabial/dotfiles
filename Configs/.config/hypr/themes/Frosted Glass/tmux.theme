@@ -1,0 +1,43 @@
+$HOME/.config/tmux/theme.conf
+
+# Tmux theme for Frosted Glass
+# Auto-generated from kitty.theme colors
+
+# Standard 16 color palette
+set -g @color0 "#000000"
+set -g @color1 "#f72729"
+set -g @color2 "#32895c"
+set -g @color3 "#f96f1c"
+set -g @color4 "#125ccf"
+set -g @color5 "#9f00bc"
+set -g @color6 "#32c2c0"
+set -g @color7 "#b2b2b2"
+set -g @color8 "#545753"
+set -g @color9 "#fb0416"
+set -g @color10 "#2cc631"
+set -g @color11 "#fcd627"
+set -g @color12 "#156ffe"
+set -g @color13 "#e800b0"
+set -g @color14 "#39d5ce"
+set -g @color15 "#ededec"
+
+# Semantic color aliases
+set -g @theme_bg "#ffffff"
+set -g @theme_black "#000000"
+set -g @theme_fg "#262626"
+set -g @theme_accent "#125ccf"
+set -g @theme_gray "#545753"
+set -g @theme_red "#f72729"
+set -g @theme_green "#32895c"
+set -g @theme_yellow "#f96f1c"
+
+# Tmux color settings
+set -g status-style "bg=default,fg=#262626"
+set -g message-style "bg=#ffffff,fg=#125ccf"
+set -g message-command-style "bg=#ffffff,fg=#125ccf"
+set -g pane-border-style "fg=#545753"
+set -g pane-active-border-style "fg=#2770C0"
+set -g window-status-style "fg=#545753"
+set -g window-status-current-style "fg=#125ccf,bold"
+set -g mode-style "bg=#125ccf,fg=#ffffff"
+set -g clock-mode-colour "#125ccf"

@@ -25,13 +25,13 @@ run_theme_post_apply_hook() {
     dunst)
       if [[ -x "${LIB_DIR}/hypr/wal/wal.dunst.sh" ]]; then
         if (( defer_live_reload )); then
-          "${LIB_DIR}/hypr/wal/wal.dunst.sh" --write-only >/dev/null 2>&1 || true
+          :
         else
           "${LIB_DIR}/hypr/wal/wal.dunst.sh" >/dev/null 2>&1 || true
         fi
       elif command -v hyprshell &>/dev/null; then
         if (( defer_live_reload )); then
-          hyprshell wal/wal.dunst.sh --write-only >/dev/null 2>&1 || true
+          :
         else
           hyprshell wal/wal.dunst.sh >/dev/null 2>&1 || true
         fi
