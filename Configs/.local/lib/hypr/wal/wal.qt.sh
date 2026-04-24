@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# wal.qt.sh - Generate qt5ct/qt6ct palettes for the active theme mode.
+# wal.qt.sh - Generate qt5ct/qt6ct palettes for the active color mode.
 
+# shellcheck disable=SC1090
 source "$(command -v hyprshell)" || exit 1
 
 WAL_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/wal"
@@ -78,107 +79,90 @@ qt_write_file_if_changed() {
 qt_ensure_scheme_symlink() {
   local link_path="$1"
   local target_path="$2"
-  local link_dir=""
 
-  link_dir="$(dirname "${link_path}")"
-  mkdir -p "${link_dir}" || return 1
+  mkdir -p "$(dirname "${link_path}")" || return 1
   ln -sfn "${target_path}" "${link_path}"
 }
 
-load_qt_kvconfig_colors() {
-  local kvconfig_file="$1"
-  local map_name="$2"
-  local line=""
-  local key=""
-  local value=""
-  local normalized=""
-  local -n map_ref="${map_name}"
-
-  map_ref=()
-  [[ -f "${kvconfig_file}" ]] || return 1
-
-  while IFS= read -r line || [[ -n "${line}" ]]; do
-    [[ "${line}" == *=* ]] || continue
-    key="${line%%=*}"
-    value="${line#*=}"
-    case "${key}" in
-      *.color)
-        normalized="$(normalize_qt_color "${value}")"
-        [[ "${normalized}" =~ ^#[0-9A-Fa-f]{6}$ ]] || continue
-        map_ref["${key}"]="${normalized}"
-        ;;
-    esac
-  done < "${kvconfig_file}"
-}
-
-build_theme_mode_qt_palette() {
-  local kvconfig_file="${PYWAL_KVANTUM_DIR}/pywal16.kvconfig"
-  local window=""
-  local base=""
-  local alternate_base=""
-  local button=""
-  local light=""
-  local midlight=""
-  local dark=""
-  local mid=""
-  local window_text=""
-  local text=""
-  local button_text=""
-  local highlight=""
-  local inactive_highlight=""
-  local highlight_text=""
-  local tooltip_text=""
-  local disabled_text=""
-  local link=""
-  local link_visited=""
-  local placeholder=""
-  declare -A theme_colors
-
-  load_qt_kvconfig_colors "${kvconfig_file}" theme_colors || return 1
-
-  window="${theme_colors[window.color]:-${background:-#ffffff}}"
-  base="${theme_colors[base.color]:-${window}}"
-  alternate_base="${theme_colors[alt.base.color]:-${base}}"
-  button="${theme_colors[button.color]:-${window}}"
-  light="${theme_colors[light.color]:-${button}}"
-  midlight="${theme_colors[mid.light.color]:-${light}}"
-  dark="${theme_colors[dark.color]:-${button}}"
-  mid="${theme_colors[mid.color]:-${button}}"
-  window_text="${theme_colors[window.text.color]:-${theme_colors[text.color]:-${foreground:-#000000}}}"
-  text="${theme_colors[text.color]:-${window_text}}"
-  button_text="${theme_colors[button.text.color]:-${window_text}}"
-  highlight="${theme_colors[highlight.color]:-${theme_colors[inactive.highlight.color]:-${color6:-${color4:-#888888}}}}"
-  inactive_highlight="${theme_colors[inactive.highlight.color]:-${highlight}}"
-  highlight_text="${theme_colors[highlight.text.color]:-${window}}"
-  tooltip_text="${theme_colors[tooltip.text.color]:-${text}}"
-  disabled_text="${theme_colors[disabled.text.color]:-${window_text}}"
-  link="${theme_colors[link.color]:-${highlight}}"
-  link_visited="${link}"
-  placeholder="$(qt_color_with_alpha "${disabled_text}")"
-
-  qt_active_colors="$(qt_join_palette_values \
-    "${window_text}" "${button}" "${light}" "${midlight}" "${dark}" "${mid}" \
-    "${text}" "${highlight_text}" "${button_text}" "${base}" "${window}" "${dark}" \
-    "${highlight}" "${highlight_text}" "${link}" "${link_visited}" "${alternate_base}" \
-    "${window}" "${window}" "${tooltip_text}" "${placeholder}")"
-
-  qt_disabled_colors="$(qt_join_palette_values \
-    "${disabled_text}" "${button}" "${light}" "${midlight}" "${dark}" "${mid}" \
-    "${disabled_text}" "${highlight_text}" "${disabled_text}" "${base}" "${window}" "${dark}" \
-    "${inactive_highlight}" "${highlight_text}" "${link}" "${link_visited}" "${alternate_base}" \
-    "${window}" "${window}" "${tooltip_text}" "${placeholder}")"
-
-  qt_inactive_colors="$(qt_join_palette_values \
-    "${window_text}" "${button}" "${light}" "${midlight}" "${dark}" "${mid}" \
-    "${text}" "${highlight_text}" "${button_text}" "${base}" "${window}" "${dark}" \
-    "${inactive_highlight}" "${highlight_text}" "${link}" "${link_visited}" "${alternate_base}" \
-    "${window}" "${window}" "${tooltip_text}" "${placeholder}")"
-}
-
-build_wallpaper_mode_qt_palette() {
+qt_load_wal_colors() {
   [[ -f "${WAL_CACHE}/colors-shell.sh" ]] || return 1
   # shellcheck source=/dev/null
   source "${WAL_CACHE}/colors-shell.sh" || return 1
+}
+
+qt_load_theme_palette_roles() {
+  local kvconfig_file="${PYWAL_KVANTUM_DIR}/pywal16.kvconfig"
+  local section=""
+  local line=""
+  local key=""
+  local value=""
+  declare -A theme_colors=()
+
+  [[ -f "${kvconfig_file}" ]] || return 1
+
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    case "${line}" in
+      \[*\])
+        section=""
+        [[ "${line}" == "[GeneralColors]" ]] && section="general"
+        continue
+        ;;
+    esac
+
+    [[ "${section}" == "general" && "${line}" == *=* ]] || continue
+    key="${line%%=*}"
+    value="$(normalize_qt_color "${line#*=}")"
+    [[ "${value}" =~ ^#[0-9A-Fa-f]{6}$ ]] || continue
+    theme_colors["${key}"]="${value}"
+  done < "${kvconfig_file}"
+
+  qt_window="${theme_colors[window.color]:-${background:-#ffffff}}"
+  qt_base="${theme_colors[base.color]:-${qt_window}}"
+  qt_alternate_base="${theme_colors[alt.base.color]:-${qt_base}}"
+  qt_button="${theme_colors[button.color]:-${qt_window}}"
+  qt_light="${theme_colors[light.color]:-${qt_button}}"
+  qt_midlight="${theme_colors[mid.light.color]:-${qt_light}}"
+  qt_dark="${theme_colors[dark.color]:-${qt_button}}"
+  qt_mid="${theme_colors[mid.color]:-${qt_button}}"
+  qt_window_text="${theme_colors[window.text.color]:-${theme_colors[text.color]:-${foreground:-#000000}}}"
+  qt_text="${theme_colors[text.color]:-${qt_window_text}}"
+  qt_button_text="${theme_colors[button.text.color]:-${qt_window_text}}"
+  qt_highlight="${theme_colors[highlight.color]:-${theme_colors[inactive.highlight.color]:-${color6:-${color4:-#888888}}}}"
+  qt_inactive_highlight="${theme_colors[inactive.highlight.color]:-${qt_highlight}}"
+  qt_highlight_text="${theme_colors[highlight.text.color]:-${qt_window}}"
+  qt_tooltip_text="${theme_colors[tooltip.text.color]:-${qt_text}}"
+  qt_disabled_text="${theme_colors[disabled.text.color]:-${qt_window_text}}"
+  qt_link="${theme_colors[link.color]:-${qt_highlight}}"
+  qt_link_visited="${theme_colors[link.visited.color]:-${qt_link}}"
+  qt_placeholder="$(qt_color_with_alpha "${qt_disabled_text}")"
+}
+
+build_theme_mode_qt_palette() {
+  qt_load_wal_colors || true
+  qt_load_theme_palette_roles || return 1
+
+  qt_active_colors="$(qt_join_palette_values \
+    "${qt_window_text}" "${qt_button}" "${qt_light}" "${qt_midlight}" "${qt_dark}" "${qt_mid}" \
+    "${qt_text}" "${qt_highlight_text}" "${qt_button_text}" "${qt_base}" "${qt_window}" "${qt_dark}" \
+    "${qt_highlight}" "${qt_highlight_text}" "${qt_link}" "${qt_link_visited}" "${qt_alternate_base}" \
+    "${qt_window}" "${qt_window}" "${qt_tooltip_text}" "${qt_placeholder}")"
+
+  qt_disabled_colors="$(qt_join_palette_values \
+    "${qt_disabled_text}" "${qt_button}" "${qt_light}" "${qt_midlight}" "${qt_dark}" "${qt_mid}" \
+    "${qt_disabled_text}" "${qt_highlight_text}" "${qt_disabled_text}" "${qt_base}" "${qt_window}" "${qt_dark}" \
+    "${qt_inactive_highlight}" "${qt_highlight_text}" "${qt_link}" "${qt_link_visited}" "${qt_alternate_base}" \
+    "${qt_window}" "${qt_window}" "${qt_tooltip_text}" "${qt_placeholder}")"
+
+  qt_inactive_colors="$(qt_join_palette_values \
+    "${qt_window_text}" "${qt_button}" "${qt_light}" "${qt_midlight}" "${qt_dark}" "${qt_mid}" \
+    "${qt_text}" "${qt_highlight_text}" "${qt_button_text}" "${qt_base}" "${qt_window}" "${qt_dark}" \
+    "${qt_inactive_highlight}" "${qt_highlight_text}" "${qt_link}" "${qt_link_visited}" "${qt_alternate_base}" \
+    "${qt_window}" "${qt_window}" "${qt_tooltip_text}" "${qt_placeholder}")"
+}
+
+# shellcheck disable=SC2154
+build_wallpaper_mode_qt_palette() {
+  qt_load_wal_colors || return 1
 
   qt_active_colors="$(qt_join_palette_values \
     "${foreground}" "${color8}" "${color7}" "${color7}" "${color0}" "${color8}" \
@@ -208,15 +192,19 @@ inactive_colors=${qt_inactive_colors}
 EOF
 }
 
-if [[ "${selected_color_mode}" -eq 0 ]] && ! build_theme_mode_qt_palette; then
-  build_wallpaper_mode_qt_palette || exit 1
-elif [[ "${selected_color_mode}" -ne 0 ]]; then
-  build_wallpaper_mode_qt_palette || exit 1
-fi
+main() {
+  if [[ "${selected_color_mode}" -eq 0 ]]; then
+    build_theme_mode_qt_palette || build_wallpaper_mode_qt_palette || exit 1
+  else
+    build_wallpaper_mode_qt_palette || exit 1
+  fi
 
-qt_scheme_content="$(render_qt_palette_scheme)"
+  qt_scheme_content="$(render_qt_palette_scheme)"
 
-qt_write_file_if_changed "${QT5_CACHE_SCHEME}" "${qt_scheme_content}" || exit 1
-qt_write_file_if_changed "${QT6_CACHE_SCHEME}" "${qt_scheme_content}" || exit 1
-qt_ensure_scheme_symlink "${QT5_CONFIG_SCHEME}" "${QT5_CACHE_SCHEME}" || exit 1
-qt_ensure_scheme_symlink "${QT6_CONFIG_SCHEME}" "${QT6_CACHE_SCHEME}" || exit 1
+  qt_write_file_if_changed "${QT5_CACHE_SCHEME}" "${qt_scheme_content}" || exit 1
+  qt_write_file_if_changed "${QT6_CACHE_SCHEME}" "${qt_scheme_content}" || exit 1
+  qt_ensure_scheme_symlink "${QT5_CONFIG_SCHEME}" "${QT5_CACHE_SCHEME}" || exit 1
+  qt_ensure_scheme_symlink "${QT6_CONFIG_SCHEME}" "${QT6_CACHE_SCHEME}" || exit 1
+}
+
+main

@@ -62,6 +62,10 @@ runtime_desktop_sync_is_external() {
   [[ "${HYPR_THEME_RUNTIME_SYNC_EXTERNAL:-0}" -eq 1 ]]
 }
 
+live_theme_reload_is_deferred() {
+  [[ "${HYPR_THEME_BATCH_RELOADS:-0}" -eq 1 ]]
+}
+
 run_runtime_desktop_sync() {
   local desktop_sync_script="${LIB_DIR}/hypr/theme/desktop.sync.sh"
   [[ -x "${desktop_sync_script}" ]] || return 0
@@ -114,6 +118,7 @@ reload_live_theme_client() {
 signal_and_reload_live_apps() {
   local -a clients=("$@")
   local client=""
+  live_theme_reload_is_deferred && return 0
   [[ ${#clients[@]} -gt 0 ]] || clients=(kitty tmux rmpc)
 
   for client in "${clients[@]}"; do

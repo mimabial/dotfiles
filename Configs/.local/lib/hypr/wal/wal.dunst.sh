@@ -10,19 +10,16 @@ DUNST_THEME="${DUNST_DIR}/theme.generated.conf"
 THEME_CONF="${HYPR_THEME_METADATA_FILE:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/theme.conf}"
 WAYBAR_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/waybar/config.jsonc"
 LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
-WAL_DUNST_PARSE_COLOR_MISSING=1
-WAL_DUNST_PARSE_COLOR_INVALID=2
 
-# shellcheck disable=SC1090
+# shellcheck disable=SC1091
 source "${LIB_DIR}/hypr/core/hash-cache.sh" || exit 1
-# shellcheck disable=SC1090
+# shellcheck disable=SC1091
 source "${LIB_DIR}/hypr/runtime/lock_paths.sh"
-# shellcheck disable=SC1090
+# shellcheck disable=SC1091
 source "${LIB_DIR}/hypr/core/common.sh"
 
 HASH_FILE="$(hypr_hash_cache_runtime_file "wal-dunst-hash")" || exit 1
 THEME_UPDATE_LOCK="$(hypr_lock_path theme_update)"
-THEME_SWITCH_LOCK="$(hypr_lock_path theme_switch)"
 
 reload_dunst_runtime() {
   if hypr_user_pgrep -x dunst >/dev/null 2>&1; then
@@ -30,65 +27,39 @@ reload_dunst_runtime() {
   fi
 }
 
-parse_define_color() {
-  local name="$1"
-  local file="$2"
-  # Return contract:
-  # 0: printed a valid color
-  # 1: file/key missing, so the caller may fall back
-  # 2: key found but the color value is invalid and should be surfaced
-  [[ -f "${file}" ]] || return "${WAL_DUNST_PARSE_COLOR_MISSING}"
-  awk \
-    -v key="${name}" \
-    -v exit_missing="${WAL_DUNST_PARSE_COLOR_MISSING}" \
-    -v exit_invalid="${WAL_DUNST_PARSE_COLOR_INVALID}" '
-    BEGIN {
-      found = 0
-    }
-    $1 == "@define-color" && $2 == key {
-      found = 1
-      gsub(/;/, "", $3)
-      if ($3 ~ /^#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$/) {
-        print $3
-        exit 0
-      }
-      exit exit_invalid
-    }
-    END {
-      if (!found) {
-        exit exit_missing
-      }
-    }
-  ' "${file}"
+load_theme_palette_overrides() {
+  local line=""
+  local entry=""
+  local name=""
+  local value=""
+
+  declare -gA dunst_theme_palette=()
+  [[ -s "${DUNST_THEME}" ]] || return 0
+
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    [[ "${line}" =~ ^[[:space:]]*@define-color[[:space:]]+ ]] || continue
+
+    entry="${line#*@define-color}"
+    entry="${entry#"${entry%%[![:space:]]*}"}"
+    name="${entry%%[[:space:]]*}"
+    value="${entry#"${name}"}"
+    value="${value%%;*}"
+    value="${value#"${value%%[![:space:]]*}"}"
+    value="${value%"${value##*[![:space:]]}"}"
+
+    if [[ ! "${value}" =~ ^#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$ ]]; then
+      printf 'ERROR: invalid @define-color %s in %s\n' "${name}" "${DUNST_THEME}" >&2
+      return 1
+    fi
+
+    dunst_theme_palette["${name}"]="${value}"
+  done < "${DUNST_THEME}"
 }
 
-apply_theme_color_override() {
-  local name="$1"
-  local target="$2"
-  local mirror_target="${3:-}"
-  local value=""
-  local rc=0
-
-  if value="$(parse_define_color "${name}" "${DUNST_THEME}")"; then
-    printf -v "${target}" '%s' "${value}"
-    [[ -n "${mirror_target}" ]] && printf -v "${mirror_target}" '%s' "${value}"
-    return 0
-  else
-    rc=$?
-  fi
-
-  case "${rc}" in
-    "${WAL_DUNST_PARSE_COLOR_MISSING}")
-      return "${WAL_DUNST_PARSE_COLOR_MISSING}"
-      ;;
-    "${WAL_DUNST_PARSE_COLOR_INVALID}")
-      printf 'ERROR: invalid @define-color %s in %s\n' "${name}" "${DUNST_THEME}" >&2
-      return "${WAL_DUNST_PARSE_COLOR_INVALID}"
-      ;;
-    *)
-      return "${rc}"
-      ;;
-  esac
+theme_palette_value() {
+  local key="$1"
+  local fallback="$2"
+  printf '%s' "${dunst_theme_palette[${key}]:-${fallback}}"
 }
 
 read_theme_var() {
@@ -142,7 +113,12 @@ with_alpha() {
 read_theme_conf_metric() {
   local key="$1"
   [[ -f "${THEME_CONF}" ]] || return 1
-  grep -E "${key}[[:space:]]*=" "${THEME_CONF}" | head -1 | awk '{print $NF}'
+  awk -v key="${key}" '
+    $0 ~ "^[[:space:]]*" key "[[:space:]]*=" {
+      print $NF
+      exit
+    }
+  ' "${THEME_CONF}"
 }
 
 read_hypr_metric() {
@@ -208,7 +184,7 @@ resolve_layout_metrics() {
   theme_update_in_progress=0
   [[ -e "${THEME_UPDATE_LOCK}" ]] && theme_update_in_progress=1
 
-  hypr_border="$(resolve_hypr_metric 'rounding' 'decoration:rounding' '5')"
+  rounding="$(resolve_hypr_metric 'rounding' 'decoration:rounding' '5')"
   gaps_in="$(resolve_hypr_metric 'gaps_in' 'general:gaps_in' '5')"
   gap_size="$((gaps_in * 2))"
   gaps_out="$(resolve_hypr_metric 'gaps_out' 'general:gaps_out' '6')"
@@ -261,36 +237,24 @@ load_base_palette() {
 }
 
 apply_theme_palette_overrides() {
-  [[ -s "${DUNST_THEME}" ]] || return 0
+  bg_primary="$(theme_palette_value "bg-primary" "${bg_primary}")"
+  bg_secondary="$(theme_palette_value "bg-secondary" "${bg_secondary}")"
+  bg_tertiary="$(theme_palette_value "bg-tertiary" "${bg_tertiary}")"
+  fg_primary="$(theme_palette_value "fg-primary" "${fg_primary}")"
+  fg_secondary="$(theme_palette_value "fg-secondary" "${fg_secondary}")"
+  border_primary="$(theme_palette_value "border-primary" "${border_primary}")"
+  border_secondary="$(theme_palette_value "border-secondary" "${border_secondary}")"
+  accent_blue="$(theme_palette_value "accent-blue" "${accent_blue}")"
+  accent_red="$(theme_palette_value "accent-red" "${accent_red}")"
+  accent_green="$(theme_palette_value "accent-green" "${accent_green}")"
+  accent_yellow="$(theme_palette_value "accent-yellow" "${accent_yellow}")"
+  accent_purple="$(theme_palette_value "accent-purple" "${accent_purple}")"
+  accent_aqua="$(theme_palette_value "accent-aqua" "${accent_aqua}")"
+  accent_orange="$(theme_palette_value "accent-orange" "${accent_orange}")"
+  gray="$(theme_palette_value "gray" "${gray}")"
 
-  local name="" target="" mirror_target="" rc=0
-
-  while IFS=':' read -r name target mirror_target; do
-    [[ -n "${name}" ]] || continue
-    if apply_theme_color_override "${name}" "${target}" "${mirror_target}"; then
-      continue
-    else
-      rc=$?
-    fi
-    [[ "${rc}" -eq 1 ]] && continue
-    return "${rc}"
-  done <<'EOF'
-bg-primary:bg_primary:
-bg-secondary:bg_secondary:
-bg-tertiary:bg_tertiary:
-fg-primary:fg_primary:fg_critical
-fg-secondary:fg_secondary:
-border-primary:border_primary:
-border-secondary:border_secondary:
-accent-blue:accent_blue:
-accent-red:accent_red:bg_critical
-accent-green:accent_green:
-accent-yellow:accent_yellow:
-accent-purple:accent_purple:
-accent-aqua:accent_aqua:
-accent-orange:accent_orange:
-gray:gray:
-EOF
+  bg_critical="${accent_red}"
+  fg_critical="${fg_primary}"
 }
 
 render_palette() {
@@ -327,19 +291,24 @@ render_palette() {
 }
 
 build_input_hash() {
-  {
-    md5sum "${WAL_CACHE}/colors-shell.sh" 2>/dev/null || true
-    [[ -f "${DUNST_BASE_CONF}" ]] && md5sum "${DUNST_BASE_CONF}" 2>/dev/null || true
-    [[ -f "${DUNST_THEME}" ]] && md5sum "${DUNST_THEME}" 2>/dev/null || true
-    printf '%s\n' "${icon_theme}" "${hypr_border}" "${gaps_in}" "${border_size}" "${origin}" "${offset_x}" "${offset_y}" \
-      "${notification_font}" "${notification_font_size}" "${gap_size}" \
-      "${bg_low_render}" "${fg_low_render}" "${bg_normal_render}" "${fg_normal_render}" \
-      "${bg_category_render}" "${fg_category_render}" "${bg_critical_render}" "${fg_critical_render}" \
-      "${frame_low_render}" "${frame_normal_render}" "${frame_critical}" "${progress_fg}" \
-      "${frame_category_email_render}" "${frame_category_chat_render}" "${frame_category_warning_render}" \
-      "${frame_category_error_render}" "${frame_category_network_render}" "${frame_category_battery_render}" \
-      "${frame_category_update_render}" "${frame_category_music_render}" "${frame_category_volume_render}"
-  } | md5sum | awk '{print $1}'
+  local file=""
+  local -a inputs=()
+
+  for file in "${WAL_CACHE}/colors-shell.sh" "${DUNST_BASE_CONF}" "${DUNST_THEME}"; do
+    [[ -f "${file}" ]] || continue
+    inputs+=("$(hypr_hash_cache_digest_files "${file}")")
+  done
+
+  hypr_hash_cache_digest_strings \
+    "${inputs[@]}" \
+    "${icon_theme}" "${rounding}" "${gaps_in}" "${border_size}" "${origin}" "${offset_x}" "${offset_y}" \
+    "${notification_font}" "${notification_font_size}" "${gap_size}" \
+    "${bg_low_render}" "${fg_low_render}" "${bg_normal_render}" "${fg_normal_render}" \
+    "${bg_category_render}" "${fg_category_render}" "${bg_critical_render}" "${fg_critical_render}" \
+    "${frame_low_render}" "${frame_normal_render}" "${frame_critical}" "${progress_fg}" \
+    "${frame_category_email_render}" "${frame_category_chat_render}" "${frame_category_warning_render}" \
+    "${frame_category_error_render}" "${frame_category_network_render}" "${frame_category_battery_render}" \
+    "${frame_category_update_render}" "${frame_category_music_render}" "${frame_category_volume_render}"
 }
 
 ensure_base_conf() {
@@ -387,10 +356,10 @@ append_dynamic_global_section() {
     offset = (${offset_x},${offset_y})
     gap_size = ${gap_size}
     frame_width = ${border_size}
-    progress_bar_corner_radius = ${hypr_border}
+    progress_bar_corner_radius = ${rounding}
     icon_theme = "${icon_theme}"
-    corner_radius = $((hypr_border * 3 / 2))
-    icon_corner_radius = ${hypr_border}
+    corner_radius = $((rounding * 3 / 2))
+    icon_corner_radius = ${rounding}
 ${dunst_font_line}
 CONFIG
 }
@@ -478,21 +447,22 @@ main() {
   fi
 
   [[ -f "${WAL_CACHE}/colors-shell.sh" ]] || exit 0
-  # shellcheck disable=SC1090
+  # shellcheck disable=SC1091
   source "${WAL_CACHE}/colors-shell.sh"
 
   resolve_notification_font
   resolve_layout_metrics
   load_base_palette
+  load_theme_palette_overrides
   apply_theme_palette_overrides
   render_palette
 
   input_hash="$(build_input_hash)"
-  [[ -f "${HASH_FILE}" ]] && [[ "$(cat "${HASH_FILE}" 2>/dev/null)" == "${input_hash}" ]] && exit 0
+  hypr_hash_cache_is_current "${HASH_FILE}" "${input_hash}" && exit 0
 
   ensure_base_conf
   write_dunstrc
-  echo "${input_hash}" >"${HASH_FILE}"
+  hypr_hash_cache_store "${HASH_FILE}" "${input_hash}"
 
   if [[ "${mode}" == "write-only" ]]; then
     echo "[dunst] Generated dunstrc"

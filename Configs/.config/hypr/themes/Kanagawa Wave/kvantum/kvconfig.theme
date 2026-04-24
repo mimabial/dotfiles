@@ -85,15 +85,15 @@ dark.color=#16161D
 mid.color=#16161D
 highlight.color=#C8C093
 inactive.highlight.color=#C8C093
-text.color=#DCD7BA 	
-window.text.color=#DCD7BA 	
+text.color=#DCD7BA
+window.text.color=#DCD7BA
 button.text.color=#C8C093
-disabled.text.color=#727169 	
+disabled.text.color=#727169
 tooltip.text.color=#DCD7BA
-highlight.text.color=#1F1F28 	
+highlight.text.color=#DCD7BA
 link.color=#2D4F67
 link.visited.color=#223249
-progress.indicator.text.color=#DCD7BA 	
+progress.indicator.text.color=#DCD7BA
 
 [Hacks]
 transparent_ktitle_label=true

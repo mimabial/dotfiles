@@ -1,37 +1,37 @@
 [Colors:Button]
-BackgroundAlternate=0,0,0
-BackgroundNormal=0,0,0
-DecorationFocus=170,240,170
-DecorationHover=170,240,170
+BackgroundAlternate=19,43,75
+BackgroundNormal=19,43,75
+DecorationFocus=212,176,193
+DecorationHover=212,176,193
 ForegroundNormal=255,255,255
 
 [Colors:Complementary]
-BackgroundNormal=0,0,0
+BackgroundNormal=19,43,75
 ForegroundNormal=255,255,255
 
 [Colors:Header]
-BackgroundNormal=0,0,0
-DecorationFocus=170,240,170
-DecorationHover=170,240,170
+BackgroundNormal=19,43,75
+DecorationFocus=212,176,193
+DecorationHover=212,176,193
 ForegroundNormal=255,255,255
 
 [Colors:Selection]
-BackgroundAlternate=170,240,170
-BackgroundNormal=170,240,170
-DecorationFocus=170,240,170
-DecorationHover=170,240,170
+BackgroundAlternate=212,176,193
+BackgroundNormal=212,176,193
+DecorationFocus=212,176,193
+DecorationHover=212,176,193
 ForegroundActive=255,255,255
 ForegroundNormal=255,255,255
 
 [Colors:Tooltip]
-BackgroundNormal=0,0,0
+BackgroundNormal=19,43,75
 ForegroundNormal=255,255,255
 
 [Colors:View]
-BackgroundAlternate=0,0,0
-BackgroundNormal=0,0,0
-DecorationFocus=170,240,170
-DecorationHover=170,240,170
+BackgroundAlternate=19,43,75
+BackgroundNormal=19,43,75
+DecorationFocus=212,176,193
+DecorationHover=212,176,193
 ForegroundNormal=255,255,255
 Test1=50,50,50
 Test10=50,50,50
@@ -47,7 +47,7 @@ Test8=50,50,50
 Test9=50,50,50
 
 [Colors:Window]
-BackgroundNormal=0,0,0
+BackgroundNormal=19,43,75
 ForegroundNormal=255,255,255
 
 [General]
@@ -56,7 +56,7 @@ TerminalApplication=kitty
 TerminalService=kitty.desktop
 
 [Icons]
-Theme=Newaita-reborn-manjaro-dark
+Theme=Mojave-CT-Night
 
 [KDE]
 ShowDeleteCommand=false

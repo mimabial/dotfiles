@@ -247,14 +247,11 @@ apply_color_mode() {
   local wallpaper
   local state_file="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/color.gen.state"
   local -a color_sync_cmd=("${LIB_DIR}/hypr/theme/color-sync.sh")
+  local -a theme_apply_cmd=("${LIB_DIR}/hypr/theme/theme.apply.sh" "--quiet")
 
   if [ "${target_color_mode}" -eq 0 ]; then
-    HYPR_COLOR_MODE_OVERRIDE="${target_color_mode}" "${color_sync_cmd[@]}"
-    if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] && command -v hyprctl >/dev/null 2>&1; then
-      hyprctl reload config-only -q >/dev/null 2>&1 || true
-    fi
-    [[ -x "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" ]] && "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" >/dev/null 2>&1 &
-    return 0
+    "${theme_apply_cmd[@]}"
+    return $?
   fi
 
   wallpaper="$(resolve_wallpaper)" || return 1
@@ -278,6 +275,15 @@ apply_color_mode() {
   fi
 
   HYPR_COLOR_MODE_OVERRIDE="${target_color_mode}" "${color_sync_cmd[@]}" "${wallpaper}"
+
+  local waybar_script="${LIB_DIR}/hypr/waybar/waybar.py"
+  if [[ -x "${waybar_script}" ]]; then
+    "${waybar_script}" --restart-direct >/dev/null 2>&1 \
+      || print_log -sec "color-mode" -warn "waybar" "direct restart failed"
+  elif command -v hyprshell >/dev/null 2>&1; then
+    hyprshell waybar --restart-direct >/dev/null 2>&1 \
+      || print_log -sec "color-mode" -warn "waybar" "direct restart failed"
+  fi
 
   # Sync nvim after colors are generated
   [[ -x "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" ]] && "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" >/dev/null 2>&1 &

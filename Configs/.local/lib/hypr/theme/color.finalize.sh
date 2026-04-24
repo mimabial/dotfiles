@@ -145,7 +145,9 @@ color_finalize_commit_state_and_notify() {
   color_state_detect_transition_flags
   color_state_persist
 
-  if [[ "${CACHE_ONLY}" -ne 1 ]] && [[ "${color_variant_changed}" == true || "${selected_color_mode_changed}" == true ]]; then
+  if [[ "${CACHE_ONLY}" -ne 1 ]] \
+    && [[ "${HYPR_THEME_BATCH_RELOADS:-0}" -ne 1 ]] \
+    && [[ "${color_variant_changed}" == true || "${selected_color_mode_changed}" == true ]]; then
     command -v dunstify &>/dev/null \
       && dunstify "Theme Updated" "${resolved_color_variant} mode" -i preferences-desktop-theme -t 2000
   fi

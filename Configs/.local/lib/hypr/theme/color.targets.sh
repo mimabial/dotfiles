@@ -14,20 +14,31 @@ theme_post_apply_hook_name() {
 
 run_theme_post_apply_hook() {
   local hook_name="$1"
+  local defer_live_reload=0
+
+  [[ "${HYPR_THEME_BATCH_RELOADS:-0}" -eq 1 ]] && defer_live_reload=1
 
   case "${hook_name}" in
     kitty)
-      pkill -SIGUSR1 kitty >/dev/null 2>&1 || true
+      (( defer_live_reload )) || pkill -SIGUSR1 kitty >/dev/null 2>&1 || true
       ;;
     dunst)
       if [[ -x "${LIB_DIR}/hypr/wal/wal.dunst.sh" ]]; then
-        "${LIB_DIR}/hypr/wal/wal.dunst.sh" >/dev/null 2>&1 || true
+        if (( defer_live_reload )); then
+          "${LIB_DIR}/hypr/wal/wal.dunst.sh" --write-only >/dev/null 2>&1 || true
+        else
+          "${LIB_DIR}/hypr/wal/wal.dunst.sh" >/dev/null 2>&1 || true
+        fi
       elif command -v hyprshell &>/dev/null; then
-        hyprshell wal/wal.dunst.sh >/dev/null 2>&1 || true
+        if (( defer_live_reload )); then
+          hyprshell wal/wal.dunst.sh --write-only >/dev/null 2>&1 || true
+        else
+          hyprshell wal/wal.dunst.sh >/dev/null 2>&1 || true
+        fi
       fi
       ;;
     tmux)
-      if command -v tmux &>/dev/null && tmux list-sessions &>/dev/null; then
+      if (( ! defer_live_reload )) && command -v tmux &>/dev/null && tmux list-sessions &>/dev/null; then
         tmux source-file "${XDG_CONFIG_HOME:-$HOME/.config}/tmux/tmux.conf" >/dev/null 2>&1 || true
       fi
       ;;
@@ -204,6 +215,7 @@ process_theme_files() {
   local -A requested_hooks=()
   local theme_file first_line theme_basename target_path hook_name
   local new_content new_hash old_hash
+  local tmp_target=""
   local target_content_changed=0
   local target_font_changed=0
   local target_changed=0
@@ -242,9 +254,10 @@ process_theme_files() {
     [ -f "${target_path}" ] && old_hash="$(md5sum "${target_path}" 2>/dev/null | cut -d' ' -f1)"
 
     if [ "${new_hash}" != "${old_hash}" ]; then
-      echo "${new_content}" >"${target_path}"
+      tmp_target="$(mktemp "$(dirname "${target_path}")/.theme-target.XXXXXX")" || continue
+      printf '%s\n' "${new_content}" >"${tmp_target}"
+      rewrite_if_changed "${tmp_target}" "${target_path}" target_content_changed
       print_log -sec "theme" -stat "wrote" "${target_path}"
-      target_content_changed=1
     else
       [[ "${LOG_LEVEL:-}" == "debug" ]] && print_log -sec "theme" -stat "skip" "${target_path} (unchanged)"
     fi
@@ -283,15 +296,23 @@ clear_theme_file() {
 write_theme_stub_file() {
   local target="$1"
   local content="$2"
+  local tmp_file=""
 
   if [[ -f "${target}" ]] && [[ "$(cat "${target}")" == "${content}" ]]; then
     return
   fi
 
-  printf '%s' "${content}" >"${target}"
+  mkdir -p "$(dirname "${target}")" || return 1
+  tmp_file="$(mktemp "$(dirname "${target}")/.theme-stub.XXXXXX")" || return 1
+  printf '%s' "${content}" >"${tmp_file}"
+  rewrite_if_changed "${tmp_file}" "${target}"
 }
 
 apply_wallpaper_mode_theme_fallbacks() {
+  local defer_live_reload=0
+
+  [[ "${HYPR_THEME_BATCH_RELOADS:-0}" -eq 1 ]] && defer_live_reload=1
+
   print_log -sec "theme" -stat "cleanup" "clearing theme files (wallpaper mode)"
 
   clear_theme_file "${HOME}/.config/waybar/theme.generated.css"
@@ -299,10 +320,16 @@ apply_wallpaper_mode_theme_fallbacks() {
   write_theme_stub_file "${HOME}/.config/alacritty/theme.generated.toml" "# Empty theme file
 "
   clear_theme_file "${HOME}/.config/dunst/theme.generated.conf"
-  bash "${LIB_DIR}/hypr/wal/wal.dunst.sh" >/dev/null 2>&1 || true
+  if (( defer_live_reload )); then
+    bash "${LIB_DIR}/hypr/wal/wal.dunst.sh" --write-only >/dev/null 2>&1 || true
+  else
+    bash "${LIB_DIR}/hypr/wal/wal.dunst.sh" >/dev/null 2>&1 || true
+  fi
   clear_theme_file "${HOME}/.config/rofi/theme.generated.rasi"
   clear_theme_file "${HOME}/.config/tmux/theme.generated.conf"
 
-  pkill -SIGUSR1 kitty 2>/dev/null || true
-  tmux source-file "${XDG_CONFIG_HOME:-$HOME/.config}/tmux/tmux.conf" 2>/dev/null || true
+  if (( ! defer_live_reload )); then
+    pkill -SIGUSR1 kitty 2>/dev/null || true
+    tmux source-file "${XDG_CONFIG_HOME:-$HOME/.config}/tmux/tmux.conf" 2>/dev/null || true
+  fi
 }
