@@ -3,18 +3,20 @@ import os
 import sys
 
 from pyutils.xdg_base_dirs import xdg_config_home
-from waybar_assets import refresh_waybar_assets, write_style_file
-from waybar_runtime import (
-    restart_waybar,
+from waybar_assets import (
+    refresh_waybar_assets,
+    write_style_file,
+)
+from waybar_dunst import (
     sync_dunst_position,
     sync_dunst_position_after_waybar_restart,
 )
-from waybar_shared import CONFIG_JSONC, atomic_copy_file, logger
+from waybar_layouts import list_layouts, resolve_style_path
+from waybar_runtime import restart_waybar
+from waybar_shared import install_layout_as_active_config, logger
 from waybar_state import (
     get_current_layout_from_config,
     get_state_value,
-    list_layouts,
-    resolve_style_path,
     set_state_values,
 )
 
@@ -39,7 +41,7 @@ def commit_user_waybar_change(
         state_updates["WAYBAR_LAYOUT_PATH"] = layout_path
         if layout_name is not None:
             state_updates["WAYBAR_LAYOUT_NAME"] = layout_name
-        atomic_copy_file(layout_path, CONFIG_JSONC)
+        install_layout_as_active_config(layout_path)
 
     if style_path is not None:
         state_updates["WAYBAR_STYLE_PATH"] = style_path

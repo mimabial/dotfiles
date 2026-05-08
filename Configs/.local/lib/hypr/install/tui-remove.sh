@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+set -euo pipefail
 
 XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 ICON_DIR="${XDG_DATA_HOME}/applications/icons"

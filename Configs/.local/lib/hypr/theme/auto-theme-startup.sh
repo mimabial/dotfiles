@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 source "$(command -v hyprshell)" || exit 1
 
 selected_color_mode="$(state_get "selected_color_mode" "1")"

@@ -335,6 +335,9 @@ text.margin.right=4
 min_width=+0.3font
 min_height=+0.3font
 frame.expansion=2.7font
+text.focus.color=#eceff4
+text.press.color=#eceff4
+text.toggle.color=#eceff4
 
 [Splitter]
 indicator.size=48

@@ -19,11 +19,11 @@ setup_rofi_config() {
   local logical_width logical_height
   rofi_prepare_standard_context \
     font_scale font_name font_override r_override _rofi_opacity \
-    "${ROFI_BOXDRAW_SCALE}" "${ROFI_BOXDRAW_FONT:-$ROFI_FONT}" wallbox same
+    "${ROFI_BOXDRAW_SCALE:-}" "${ROFI_BOXDRAW_FONT:-${ROFI_FONT:-}}" wallbox same
 
   read -r logical_width logical_height <<<"$(rofi_focused_monitor_logical_size)"
 
-  boxdraw_columns="${ROFI_BOXDRAW_COLUMNS}"
+  boxdraw_columns="${ROFI_BOXDRAW_COLUMNS:-}"
   if [[ -z "${boxdraw_columns}" || ! "${boxdraw_columns}" =~ ^[0-9]+$ ]]; then
     local calc_cols=$((logical_width / (font_scale * 40)))
     ((calc_cols < 2)) && calc_cols=2
@@ -31,7 +31,7 @@ setup_rofi_config() {
     boxdraw_columns=${calc_cols}
   fi
 
-  boxdraw_lines="${ROFI_BOXDRAW_LINES}"
+  boxdraw_lines="${ROFI_BOXDRAW_LINES:-}"
   if [[ -z "${boxdraw_lines}" || ! "${boxdraw_lines}" =~ ^[0-9]+$ ]]; then
     local calc_lines=$((logical_height / (font_scale * 8)))
     ((calc_lines < 6)) && calc_lines=6
@@ -51,10 +51,11 @@ setup_rofi_config() {
 }
 
 get_boxdraw_selection() {
-  local style_type="${boxdraw_style:-$ROFI_BOXDRAW_STYLE}"
+  local style_type="${boxdraw_style:-${ROFI_BOXDRAW_STYLE:-}}"
   # Default to grid (2) if no style is set
   [[ -z "${style_type}" ]] && style_type="2"
   local size_override=""
+  # shellcheck disable=SC2016 # Awk program is literal.
   local format_stream=(awk -F $'\t' 'BEGIN{OFS="\t"}{disp=$1; if($2!=""&&$2!=$1) disp=disp" "$2; print disp}')
   local selection_index=""
   local -a rofi_config_args=()
@@ -79,13 +80,13 @@ get_boxdraw_selection() {
     return 1
   }
 
-  if [[ -n ${use_rofile} ]]; then
+  if [[ -n "${use_rofile}" ]]; then
     rofi_picker_rasi_args rofi_config_args "${use_rofile}" "${rofi_position}"
-    selection_index=$(cat "${temp_data}" | "${format_stream[@]}" | rofi -dmenu -i -format 'i' "${ROFI_BOXDRAW_ARGS[@]}" "${rofi_config_args[@]}" -theme-str "${boxdraw_window_theme}" -no-custom)
+    selection_index=$("${format_stream[@]}" <"${temp_data}" | rofi -dmenu -i -format 'i' "${ROFI_BOXDRAW_ARGS[@]}" "${rofi_config_args[@]}" -theme-str "${boxdraw_window_theme}" -no-custom)
   else
     case ${style_type} in
       2 | grid)
-        selection_index=$(cat "${temp_data}" | "${format_stream[@]}" | rofi -dmenu -i -format 'i' "${ROFI_BOXDRAW_ARGS[@]/-multi-select/}" -display-columns 1 \
+        selection_index=$("${format_stream[@]}" <"${temp_data}" | rofi -dmenu -i -format 'i' "${ROFI_BOXDRAW_ARGS[@]/-multi-select/}" -display-columns 1 \
           -theme-str "listview {columns: ${boxdraw_columns}; lines: ${boxdraw_lines};}" \
           -theme-str "entry { placeholder: \" 󰇟 Box Drawing\";} ${rofi_position} ${r_override}" \
           -theme-str "${font_override}" \
@@ -95,7 +96,7 @@ get_boxdraw_selection() {
           -no-custom)
         ;;
       1 | list)
-        selection_index=$(cat "${temp_data}" | "${format_stream[@]}" | rofi -dmenu -i -format 'i' "${ROFI_BOXDRAW_ARGS[@]}" \
+        selection_index=$("${format_stream[@]}" <"${temp_data}" | rofi -dmenu -i -format 'i' "${ROFI_BOXDRAW_ARGS[@]}" \
           -theme-str "entry { placeholder: \"  Box Drawing\";} ${rofi_position} ${r_override}" \
           -theme-str "${font_override}" \
           -theme-str "${boxdraw_window_theme}" \
@@ -103,7 +104,7 @@ get_boxdraw_selection() {
           -no-custom)
         ;;
       *)
-        selection_index=$(cat "${temp_data}" | "${format_stream[@]}" | rofi -dmenu -i -format 'i' "${ROFI_BOXDRAW_ARGS[@]}" \
+        selection_index=$("${format_stream[@]}" <"${temp_data}" | rofi -dmenu -i -format 'i' "${ROFI_BOXDRAW_ARGS[@]}" \
           -theme-str "entry { placeholder: \" 📐 Box Drawing\";} ${rofi_position} ${r_override}" \
           -theme-str "${font_override}" \
           -theme-str "${boxdraw_window_theme}" \
@@ -189,12 +190,12 @@ show_category_menu() {
       ;;
   esac
 
-  selected=$(cat "${temp_category}" | rofi -dmenu -i -display-columns 1 \
+  selected=$(rofi -dmenu -i -display-columns 1 \
     "${category_rofi_args[@]}" \
     -theme-str "entry { placeholder: \"📂 ${category}\";} ${rofi_position} ${r_override}" \
     -theme-str "${font_override}" \
     -theme "$(rofi_resolve_theme "${theme_name}")" -theme-str "${_rofi_opacity}" \
-    -no-custom)
+    -no-custom <"${temp_category}")
 
   rm -f "${temp_category}"
   echo "${selected}"

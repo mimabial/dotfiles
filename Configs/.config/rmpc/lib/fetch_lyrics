@@ -468,37 +468,15 @@ run_track_fetcher() {
 fetch_candidate_track() {
   candidate_artist="$1"
   candidate_title="$2"
-  mode="${3:-any}"
-  call_timeout="${4:-}"
+  call_timeout="${3:-}"
 
   if [ -n "${EXPECTED_DURATION:-}" ]; then
-    if [ "$mode" = "synced" ]; then
-      run_track_fetcher "$call_timeout" \
-        --artist "$candidate_artist" \
-        --title "$candidate_title" \
-        --album "$ALBUM" \
-        --lrc-file "$LRC_FILE" \
-        --expected-duration "$EXPECTED_DURATION" \
-        --require-synced
-      return $?
-    fi
-
     run_track_fetcher "$call_timeout" \
       --artist "$candidate_artist" \
       --title "$candidate_title" \
       --album "$ALBUM" \
       --lrc-file "$LRC_FILE" \
       --expected-duration "$EXPECTED_DURATION"
-    return $?
-  fi
-
-  if [ "$mode" = "synced" ]; then
-    run_track_fetcher "$call_timeout" \
-      --artist "$candidate_artist" \
-      --title "$candidate_title" \
-      --album "$ALBUM" \
-      --lrc-file "$LRC_FILE" \
-      --require-synced
     return $?
   fi
 
@@ -509,26 +487,24 @@ fetch_candidate_track() {
     --lrc-file "$LRC_FILE"
 }
 
-run_lookup_phase() {
-  phase_mode="$1"
-  phase_deadline_epoch="$2"
+run_lookup() {
+  lookup_deadline_epoch="$1"
 
   while IFS= read -r candidate_title; do
     [ -n "$candidate_title" ] || continue
     while IFS= read -r candidate_artist; do
       [ -n "$candidate_artist" ] || continue
 
-      remaining_sec="$(remaining_lookup_budget "$phase_deadline_epoch")"
+      remaining_sec="$(remaining_lookup_budget "$lookup_deadline_epoch")"
       if [ "$remaining_sec" -le 0 ]; then
         return 124
       fi
 
       TRY_RC=0
-      fetch_candidate_track "$candidate_artist" "$candidate_title" "$phase_mode" "$remaining_sec" || TRY_RC=$?
+      fetch_candidate_track "$candidate_artist" "$candidate_title" "$remaining_sec" || TRY_RC=$?
       if [ "$TRY_RC" -eq 0 ]; then
         LOOKUP_ARTIST="$candidate_artist"
         LOOKUP_TITLE="$candidate_title"
-        FOUND=1
         return 0
       fi
       if [ "$TRY_RC" -ge 2 ]; then
@@ -581,31 +557,18 @@ if [ ! -s "$LRC_FILE" ]; then
   MULTI_RC=0
   LOOKUP_ARTIST=""
   LOOKUP_TITLE=""
-  FOUND=0
-  LOOKUP_TIMED_OUT=0
   LOOKUP_MAX_TOTAL_SEC="$(positive_int_or_default "${LYRICS_MAX_TOTAL_SEC:-20}" 20)"
   LOOKUP_DEADLINE_EPOCH=$(( $(date +%s) + LOOKUP_MAX_TOTAL_SEC ))
 
-  PHASE_RC=0
-  run_lookup_phase "synced" "$LOOKUP_DEADLINE_EPOCH" || PHASE_RC=$?
-  if [ "$PHASE_RC" -eq 124 ]; then
-    LOOKUP_TIMED_OUT=1
-  fi
+  LOOKUP_RC=0
+  run_lookup "$LOOKUP_DEADLINE_EPOCH" || LOOKUP_RC=$?
 
-  if [ "$FOUND" -ne 1 ] && [ "$PHASE_RC" -ne 124 ]; then
-    PHASE_RC=0
-    run_lookup_phase "any" "$LOOKUP_DEADLINE_EPOCH" || PHASE_RC=$?
-    if [ "$PHASE_RC" -eq 124 ]; then
-      LOOKUP_TIMED_OUT=1
-    fi
-  fi
-
-  if [ "$FOUND" -ne 1 ]; then
+  if [ "$LOOKUP_RC" -ne 0 ]; then
     DISPLAY_ARTIST="$(first_lookup_artist "$LOOKUP_ARTISTS")"
     DISPLAY_TITLE="$(first_lookup_title "$LOOKUP_TITLES")"
     [ -n "$DISPLAY_ARTIST" ] || DISPLAY_ARTIST="${ARTIST:-Unknown Artist}"
     [ -n "$DISPLAY_TITLE" ] || DISPLAY_TITLE="${TITLE:-Unknown Title}"
-    if [ "$LOOKUP_TIMED_OUT" -eq 1 ]; then
+    if [ "$LOOKUP_RC" -eq 124 ]; then
       rmpc remote --pid "$PID" status "Lyrics lookup timed out for $DISPLAY_ARTIST - $DISPLAY_TITLE (see $LYRICS_DEBUG_LOG)" --level error
     elif [ "$MULTI_RC" -ge 2 ]; then
       rmpc remote --pid "$PID" status "Multi-source lyrics lookup failed for $DISPLAY_ARTIST - $DISPLAY_TITLE (see $LYRICS_DEBUG_LOG)" --level error

@@ -1,6 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Debug script for MPRIS metadata
+
+set -euo pipefail
 
 echo "=== MPRIS Debug ==="
 echo ""

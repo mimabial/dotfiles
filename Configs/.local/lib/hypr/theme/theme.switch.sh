@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2154
+#
+# Subsystem inputs (populated by core/wallpaper.catalog.sh:get_themes):
+#   thmList
+: "${thmList-}"
 #
 # theme.switch.sh - Theme switching orchestrator
 #
@@ -12,6 +15,8 @@
 #   theme.switch.sh -n                # Switch to next theme
 #   theme.switch.sh -p                # Switch to previous theme
 #
+set -euo pipefail
+
 LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 
 # shellcheck source=/dev/null
@@ -57,9 +62,11 @@ sanitize_hypr_theme() {
 
   dirty_regex+=("${HYPR_CONFIG_SANITIZE[@]}")
   buffer_file="$(mktemp)" || return 1
-  trap 'rm -f "${buffer_file}"' RETURN
 
-  sed '1d' "${input_file}" >"${buffer_file}" || return 1
+  if ! sed '1d' "${input_file}" >"${buffer_file}"; then
+    rm -f -- "${buffer_file}"
+    return 1
+  fi
 
   for pattern in "${dirty_regex[@]}"; do
     local -a matches=()
@@ -70,13 +77,20 @@ sanitize_hypr_theme() {
     for line in "${matches[@]}"; do
       [[ -n "${line}" ]] || continue
       line_esc="$(escape_regex "${line}")"
-      sed -i "\|${line_esc}|d" "${buffer_file}"
+      if ! sed -i "\|${line_esc}|d" "${buffer_file}"; then
+        rm -f -- "${buffer_file}"
+        return 1
+      fi
       log_line="${line#"${line%%[![:space:]]*}"}"
       print_log -sec "theme" -warn "sanitize" "${log_line}"
     done
   done
 
-  cat "${buffer_file}" >"${output_file}"
+  if ! cat "${buffer_file}" >"${output_file}"; then
+    rm -f -- "${buffer_file}"
+    return 1
+  fi
+  rm -f -- "${buffer_file}"
 }
 
 select_adjacent_theme() {
@@ -115,9 +129,7 @@ theme_notify_finish() {
   local theme_name="${themeSet:-${HYPR_THEME}}"
   [[ -z "${exit_code}" ]] && exit_code=0
 
-  if [[ "${exit_code}" -eq 0 ]]; then
-    theme_notify_send "Theme applied" "${theme_name}" 2000 normal
-  else
+  if [[ "${exit_code}" -ne 0 ]]; then
     theme_notify_send "Theme switch interrupted" "${theme_name}" 2500 critical
   fi
 }
@@ -164,22 +176,62 @@ cleanup_theme_switch() {
 trap 'cleanup_theme_switch "$?"' EXIT
 
 quiet=false
+theme_switch_cache_args=()
+
+theme_switch_usage() {
+  cat <<EOF
+Usage: $(basename "${0}") [options]
+
+Options:
+  -n, --next              Set next theme
+  -p, --previous          Set previous theme
+  -s, --set THEME         Set theme by name
+  -q, --quiet             Suppress nonessential output
+      --regen             Regenerate colors and refresh cache
+      --force-regenerate  Alias for --regen
+      --no-cache          Bypass cache reads and writes
+EOF
+}
+
 parse_theme_switch_args() {
-  while getopts "qnps:" option; do
-    case $option in
-      n) select_adjacent_theme n ;;
-      p) select_adjacent_theme p ;;
-      s) themeSet="$OPTARG" ;;
-      q) quiet=true ;;
+  while (($#)); do
+    case "$1" in
+      -n | --next)
+        select_adjacent_theme n
+        ;;
+      -p | --previous | --prev)
+        select_adjacent_theme p
+        ;;
+      -s | --set)
+        shift
+        if [[ -z "${1:-}" ]]; then
+          theme_switch_usage >&2
+          exit 1
+        fi
+        themeSet="$1"
+        ;;
+      -s?*)
+        themeSet="${1#-s}"
+        ;;
+      -q | --quiet)
+        quiet=true
+        ;;
+      --regen | --force-regenerate)
+        theme_switch_cache_args+=(--force-regenerate)
+        ;;
+      --no-cache)
+        theme_switch_cache_args+=(--no-cache)
+        ;;
+      -h | --help)
+        theme_switch_usage
+        exit 0
+        ;;
       *)
-        echo "... invalid option ..."
-        echo "$(basename "${0}") -[option]"
-        echo "n : set next theme"
-        echo "p : set previous theme"
-        echo "s : set input theme"
+        theme_switch_usage >&2
         exit 1
         ;;
     esac
+    shift
   done
 }
 
@@ -217,6 +269,7 @@ main() {
   set_active_theme
   prepare_active_theme_config || exit 1
   [[ "${quiet}" == "true" ]] && theme_apply_cmd+=(--quiet)
+  theme_apply_cmd+=("${theme_switch_cache_args[@]}")
   HYPR_THEME_METADATA_FILE="${theme_switch_metadata_file}" "${theme_apply_cmd[@]}" || exit 1
 }
 

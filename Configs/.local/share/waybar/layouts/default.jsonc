@@ -4,7 +4,7 @@
   "output": ["*"],
   "exclusive": true,
   "passthrough": false,
-  "reload_style_on_change": false,
+  "reload_style_on_change": true,
   "ipc": true,
   "include": [
     "$XDG_CONFIG_HOME/waybar/modules/*json*",
@@ -117,7 +117,7 @@
       "transition-duration": 500,
       "transition-left-to-right": false
     },
-    "modules": ["tray", "custom/vpn", "custom/network#speed"]
+    "modules": ["tray", "custom/vpn"]
   },
   "group/forever": {
     "orientation": "inherit",

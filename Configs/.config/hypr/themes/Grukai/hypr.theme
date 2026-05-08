@@ -5,8 +5,8 @@ $ICON_THEME=buuf-nestort
 $COLOR_SCHEME=prefer-dark
 $NVIM_BACKGROUND=dark
 $NVIM_TRANSPARENCY=false
-$CURSOR_THEME=buuf-cursor-original
-$CURSOR_SIZE=28
+$CURSOR_THEME=Hackneyed-Dark
+$CURSOR_SIZE=24
 $FONT=Inter
 
 

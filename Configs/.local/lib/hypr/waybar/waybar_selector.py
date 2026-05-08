@@ -8,12 +8,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 import pyutils.compositor as HYPRLAND
 from pyutils.wrapper.rofi import rofi_dmenu
 from waybar_apply import commit_user_waybar_change, resolve_layout_entry
+from waybar_layouts import resolve_rofi_theme, resolve_style_path
 from waybar_shared import LAYOUT_DIRS, STYLE_DIRS, logger
-from waybar_state import (
-    get_state_value,
-    resolve_rofi_theme,
-    resolve_style_path,
-)
+from waybar_state import get_state_value
 
 
 def _discover_layered_files(directories, extension, recursive):

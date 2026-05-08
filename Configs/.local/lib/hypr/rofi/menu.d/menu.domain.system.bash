@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 
 menu_register_domain_system() {
   menu_define remove "Remove"
@@ -47,7 +48,7 @@ menu_run_action_system() {
   local action_id="$1"
 
   case "${action_id}" in
-    remove_package) terminal hyprshell pkg/remove.sh ;;
+    remove_package) terminal hyprshell pm --noconfirm remove ;;
     update_firmware) present_terminal hyprshell system/firmware.sh ;;
     update_timezone) present_terminal hyprshell system/timezone.sh ;;
     update_time) present_terminal hyprshell system/time.sh ;;
@@ -63,7 +64,7 @@ menu_run_action_system() {
     update_hardware_audio) present_terminal hyprshell service/restart.sh pipewire ;;
     update_hardware_wifi) present_terminal hyprshell service/restart.sh wifi ;;
     update_hardware_bluetooth) present_terminal hyprshell service/restart.sh bluetooth ;;
-    update_password_drive) present_terminal hyprshell drive-set-password.sh ;;
+    update_password_drive) present_terminal hyprshell system/drive-password.sh ;;
     update_password_user) present_terminal passwd ;;
     system_lock) hyprshell session/hyprlock.sh ;;
     system_suspend) systemctl suspend ;;

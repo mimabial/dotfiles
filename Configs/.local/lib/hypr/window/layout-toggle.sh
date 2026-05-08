@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Toggle workspace layout between dwindle and scrolling
 
+set -euo pipefail
+
 read -r ACTIVE_WORKSPACE CURRENT_LAYOUT < <(
   hyprctl activeworkspace -j | jq -r '[.id, .tiledLayout] | @tsv'
 )

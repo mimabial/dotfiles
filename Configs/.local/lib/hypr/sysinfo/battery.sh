@@ -2,6 +2,8 @@
 # A simple script to display a battery icon
 
 # Function to display usage information
+set -euo pipefail
+
 usage() {
     cat <<USAGE
 Usage: battery.sh [OPTIONS]

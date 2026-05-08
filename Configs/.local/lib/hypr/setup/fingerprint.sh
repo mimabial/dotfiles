@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-set -e
+set -euo pipefail
 
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/setup/auth.common.bash"
@@ -25,7 +25,7 @@ remove_pam_config() {
   remove_pam_module "fingerprint" "pam_fprintd.so" 'pam_fprintd\.so'
 }
 
-if [[ "--remove" == "$1" ]]; then
+if [[ "--remove" == "${1:-}" ]]; then
   print_success "Removing fingerprint scanner from authentication.\n"
 
   # Remove PAM configuration
@@ -33,7 +33,7 @@ if [[ "--remove" == "$1" ]]; then
 
   # Uninstall packages
   print_info "Removing fingerprint packages..."
-  sudo pacman -Rns --noconfirm fprintd
+  hyprshell pm --noconfirm remove fprintd
 
   print_success "Fingerprint authentication has been completely removed."
 else
@@ -41,7 +41,7 @@ else
 
   # Install required packages
   print_info "Installing required packages..."
-  sudo pacman -S --noconfirm --needed fprintd usbutils
+  hyprshell pm add fprintd usbutils
 
   if ! check_fingerprint_hardware; then
     exit 1

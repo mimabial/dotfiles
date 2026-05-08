@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 
 # Shared desktop-theme sync helpers.
 #
@@ -14,7 +15,7 @@ if ! declare -F hypr_hash_cache_runtime_file >/dev/null 2>&1; then
   source "${LIB_DIR:-$HOME/.local/lib}/hypr/core/hash-cache.sh" || return 1 2>/dev/null || exit 1
 fi
 
-theme_desktop_static_state_version=1
+theme_desktop_static_state_version=3
 
 theme_desktop_ini_write_batch() {
   local config_file="$1"
@@ -34,20 +35,75 @@ theme_desktop_ini_write_batch() {
   done
 }
 
-theme_desktop_safe_hyq_source() {
+theme_desktop_write_generated_file() {
+  local target_file="$1"
+  local target_dir=""
+  local tmp_file=""
+
+  target_dir="$(dirname "${target_file}")"
+  mkdir -p "${target_dir}" || return 1
+  tmp_file="$(mktemp "${target_dir}/.$(basename "${target_file}").XXXXXX")" || return 1
+  cat >"${tmp_file}" || {
+    rm -f -- "${tmp_file}"
+    return 1
+  }
+
+  if [[ -f "${target_file}" ]] && cmp -s "${tmp_file}" "${target_file}"; then
+    rm -f -- "${tmp_file}"
+    return 0
+  fi
+
+  mv -f -- "${tmp_file}" "${target_file}"
+}
+
+theme_desktop_hyq_value() {
+  local raw_value="${1-}"
+
+  if [[ ${#raw_value} -ge 2 && "${raw_value:0:1}" == '"' && "${raw_value:${#raw_value}-1:1}" == '"' ]]; then
+    raw_value="${raw_value:1:${#raw_value}-2}"
+    raw_value="${raw_value//\\\"/\"}"
+    raw_value="${raw_value//\\\$/\$}"
+    raw_value="${raw_value//\\\`/\`}"
+    raw_value="${raw_value//\\\\/\\}"
+    printf '%s' "${raw_value}"
+    return 0
+  fi
+
+  if [[ ${#raw_value} -ge 2 && "${raw_value:0:1}" == "'" && "${raw_value:${#raw_value}-1:1}" == "'" ]]; then
+    printf '%s' "${raw_value:1:${#raw_value}-2}"
+    return 0
+  fi
+
+  printf '%s' "${raw_value}"
+}
+
+theme_desktop_load_hyq_env() {
   local hyq_output="$1"
-  local allowed_vars='^__(GTK_THEME|ICON_THEME|COLOR_SCHEME|CURSOR_THEME|CURSOR_SIZE|TERMINAL|FONT|FONT_SIZE|FONT_STYLE|DOCUMENT_FONT|DOCUMENT_FONT_SIZE|MONOSPACE_FONT|MONOSPACE_FONT_SIZE|BUTTON_LAYOUT|FONT_ANTIALIASING|FONT_HINTING|KDE_COLOR_SCHEME)='
-  local validated_output=""
+  local var_name=""
+  local raw_value=""
+  local value=""
   local line=""
 
   while IFS= read -r line; do
     [[ -n "${line}" ]] || continue
-    [[ "${line}" =~ ${allowed_vars} ]] || continue
-    [[ ! "${line}" =~ \$\(|\`|\; ]] || continue
-    validated_output+="${line}"$'\n'
-  done <<<"${hyq_output}"
+    [[ "${line}" =~ ^(__[A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]] || continue
+    var_name="${BASH_REMATCH[1]}"
+    raw_value="${BASH_REMATCH[2]}"
 
-  [[ -n "${validated_output}" ]] && source <(printf '%s' "${validated_output}")
+    case "${var_name}" in
+      __GTK_THEME | __ICON_THEME | __COLOR_SCHEME | __CURSOR_THEME | __CURSOR_SIZE | \
+      __TERMINAL | __FONT | __FONT_SIZE | __FONT_STYLE | __DOCUMENT_FONT | \
+      __DOCUMENT_FONT_SIZE | __MONOSPACE_FONT | __MONOSPACE_FONT_SIZE | \
+      __BUTTON_LAYOUT | __FONT_ANTIALIASING | __FONT_HINTING | __KDE_COLOR_SCHEME)
+        ;;
+      *)
+        continue
+        ;;
+    esac
+
+    value="$(theme_desktop_hyq_value "${raw_value}")"
+    printf -v "${var_name}" '%s' "${value}"
+  done <<<"${hyq_output}"
 }
 
 theme_desktop_load_config_values() {
@@ -58,6 +114,7 @@ theme_desktop_load_config_values() {
     "${HYPRLAND_CONFIG}"
     --source
     --export env
+    --allow-missing
     -Q '$COLOR_SCHEME[string]'
     -Q '$TERMINAL[string]'
     -Q '$FONT[string]'
@@ -73,10 +130,16 @@ theme_desktop_load_config_values() {
     -Q '$KDE_COLOR_SCHEME[string]'
   )
 
+  unset __GTK_THEME __ICON_THEME __COLOR_SCHEME __CURSOR_THEME __CURSOR_SIZE \
+    __TERMINAL __FONT __FONT_SIZE __FONT_STYLE __DOCUMENT_FONT \
+    __DOCUMENT_FONT_SIZE __MONOSPACE_FONT __MONOSPACE_FONT_SIZE \
+    __BUTTON_LAYOUT __FONT_ANTIALIASING __FONT_HINTING __KDE_COLOR_SCHEME
+
   [[ -r "${HYPRLAND_CONFIG}" ]] || return 0
   command -v hyq >/dev/null 2>&1 || return 0
 
   if [[ "${selected_color_mode:-1}" -eq 0 ]] && [[ -r "${theme_conf}" ]]; then
+    # Manual color mode uses theme.conf for GTK/icon/cursor instead of env overrides.
     theme_hyq_output="$(
       hyq "${theme_conf}" --export env --allow-missing \
         -Q '$GTK_THEME[string]' \
@@ -84,11 +147,11 @@ theme_desktop_load_config_values() {
         -Q '$CURSOR_THEME[string]' \
         -Q '$CURSOR_SIZE'
     )"
-    theme_desktop_safe_hyq_source "${theme_hyq_output}"
-    GTK_THEME="${__GTK_THEME:-$GTK_THEME}"
-    ICON_THEME="${__ICON_THEME:-$ICON_THEME}"
-    CURSOR_THEME="${__CURSOR_THEME:-$CURSOR_THEME}"
-    CURSOR_SIZE="${__CURSOR_SIZE:-$CURSOR_SIZE}"
+    theme_desktop_load_hyq_env "${theme_hyq_output}"
+    GTK_THEME="${__GTK_THEME:-${GTK_THEME:-}}"
+    ICON_THEME="${__ICON_THEME:-${ICON_THEME:-}}"
+    CURSOR_THEME="${__CURSOR_THEME:-${CURSOR_THEME:-}}"
+    CURSOR_SIZE="${__CURSOR_SIZE:-${CURSOR_SIZE:-}}"
   else
     hyq_args+=(
       -Q '$GTK_THEME[string]'
@@ -99,25 +162,25 @@ theme_desktop_load_config_values() {
   fi
 
   query_output="$(hyq "${hyq_args[@]}")"
-  theme_desktop_safe_hyq_source "${query_output}"
+  theme_desktop_load_hyq_env "${query_output}"
 
-  GTK_THEME="${__GTK_THEME:-$GTK_THEME}"
-  COLOR_SCHEME="${__COLOR_SCHEME:-$COLOR_SCHEME}"
-  ICON_THEME="${__ICON_THEME:-$ICON_THEME}"
-  CURSOR_THEME="${__CURSOR_THEME:-$CURSOR_THEME}"
-  CURSOR_SIZE="${__CURSOR_SIZE:-$CURSOR_SIZE}"
-  TERMINAL="${__TERMINAL:-$TERMINAL}"
-  FONT="${__FONT:-$FONT}"
-  FONT_SIZE="${__FONT_SIZE:-$FONT_SIZE}"
-  FONT_STYLE="${__FONT_STYLE:-$FONT_STYLE}"
-  DOCUMENT_FONT="${__DOCUMENT_FONT:-$DOCUMENT_FONT}"
-  DOCUMENT_FONT_SIZE="${__DOCUMENT_FONT_SIZE:-$DOCUMENT_FONT_SIZE}"
-  MONOSPACE_FONT="${__MONOSPACE_FONT:-$MONOSPACE_FONT}"
-  MONOSPACE_FONT_SIZE="${__MONOSPACE_FONT_SIZE:-$MONOSPACE_FONT_SIZE}"
-  BUTTON_LAYOUT="${__BUTTON_LAYOUT:-$BUTTON_LAYOUT}"
-  FONT_ANTIALIASING="${__FONT_ANTIALIASING:-$FONT_ANTIALIASING}"
-  FONT_HINTING="${__FONT_HINTING:-$FONT_HINTING}"
-  KDE_COLOR_SCHEME="${__KDE_COLOR_SCHEME:-$KDE_COLOR_SCHEME}"
+  GTK_THEME="${__GTK_THEME:-${GTK_THEME:-}}"
+  COLOR_SCHEME="${__COLOR_SCHEME:-${COLOR_SCHEME:-}}"
+  ICON_THEME="${__ICON_THEME:-${ICON_THEME:-}}"
+  CURSOR_THEME="${__CURSOR_THEME:-${CURSOR_THEME:-}}"
+  CURSOR_SIZE="${__CURSOR_SIZE:-${CURSOR_SIZE:-}}"
+  TERMINAL="${__TERMINAL:-${TERMINAL:-}}"
+  FONT="${__FONT:-${FONT:-}}"
+  FONT_SIZE="${__FONT_SIZE:-${FONT_SIZE:-}}"
+  FONT_STYLE="${__FONT_STYLE:-${FONT_STYLE:-}}"
+  DOCUMENT_FONT="${__DOCUMENT_FONT:-${DOCUMENT_FONT:-}}"
+  DOCUMENT_FONT_SIZE="${__DOCUMENT_FONT_SIZE:-${DOCUMENT_FONT_SIZE:-}}"
+  MONOSPACE_FONT="${__MONOSPACE_FONT:-${MONOSPACE_FONT:-}}"
+  MONOSPACE_FONT_SIZE="${__MONOSPACE_FONT_SIZE:-${MONOSPACE_FONT_SIZE:-}}"
+  BUTTON_LAYOUT="${__BUTTON_LAYOUT:-${BUTTON_LAYOUT:-}}"
+  FONT_ANTIALIASING="${__FONT_ANTIALIASING:-${FONT_ANTIALIASING:-}}"
+  FONT_HINTING="${__FONT_HINTING:-${FONT_HINTING:-}}"
+  KDE_COLOR_SCHEME="${__KDE_COLOR_SCHEME:-${KDE_COLOR_SCHEME:-}}"
 }
 
 theme_desktop_resolve_values() {
@@ -402,18 +465,25 @@ theme_desktop_configure_gtk() {
   gtk3_font_size="${GTK3_FONT_SIZE:-${FONT_SIZE}}"
 
   mkdir -p "${XDG_CONFIG_HOME}/gtk-3.0" "${XDG_CONFIG_HOME}/xsettingsd"
-  touch "${gtkrc_file}" "${xsettingsd_file}"
-
-  sed -i \
-    -e "/^gtk-theme-name=/c\\gtk-theme-name=\"${GTK_THEME}\"" \
-    -e "/^include /c\\include \"$HOME/.gtkrc-2.0.mime\"" \
-    -e "/^gtk-cursor-theme-name=/c\\gtk-cursor-theme-name=\"${CURSOR_THEME}\"" \
-    -e "/^gtk-icon-theme-name=/c\\gtk-icon-theme-name=\"${ICON_THEME}\"" \
-    "${gtkrc_file}"
-  grep -q '^gtk-theme-name=' "${gtkrc_file}" || echo "gtk-theme-name=\"${GTK_THEME}\"" >>"${gtkrc_file}"
-  grep -q '^include ' "${gtkrc_file}" || echo "include \"$HOME/.gtkrc-2.0.mime\"" >>"${gtkrc_file}"
-  grep -q '^gtk-cursor-theme-name=' "${gtkrc_file}" || echo "gtk-cursor-theme-name=\"${CURSOR_THEME}\"" >>"${gtkrc_file}"
-  grep -q '^gtk-icon-theme-name=' "${gtkrc_file}" || echo "gtk-icon-theme-name=\"${ICON_THEME}\"" >>"${gtkrc_file}"
+  theme_desktop_write_generated_file "${gtkrc_file}" <<EOF
+# Generated by hypr theme desktop sync.
+include "${HOME}/.gtkrc-2.0.mime"
+gtk-theme-name="${GTK_THEME}"
+gtk-icon-theme-name="${ICON_THEME}"
+gtk-font-name="${gtk3_font} ${gtk3_font_size}"
+gtk-cursor-theme-name="${CURSOR_THEME}"
+gtk-cursor-theme-size=${CURSOR_SIZE}
+gtk-toolbar-style=GTK_TOOLBAR_ICONS
+gtk-toolbar-icon-size=GTK_ICON_SIZE_LARGE_TOOLBAR
+gtk-button-images=1
+gtk-menu-images=1
+gtk-enable-event-sounds=1
+gtk-enable-input-feedback-sounds=0
+gtk-xft-antialias=1
+gtk-xft-hinting=1
+gtk-xft-hintstyle="hintfull"
+gtk-xft-rgba="rgb"
+EOF
 
   theme_desktop_ini_write_batch "${XDG_CONFIG_HOME}/gtk-3.0/settings.ini" \
     "Settings:gtk-theme-name=${GTK_THEME}" \
@@ -446,16 +516,20 @@ theme_desktop_configure_gtk() {
     flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo >/dev/null 2>&1 &
   fi
 
-  sed -i \
-    -e "/^Net\\/ThemeName /c\\Net\\/ThemeName \"${GTK_THEME}\"" \
-    -e "/^Net\\/IconThemeName /c\\Net\\/IconThemeName \"${ICON_THEME}\"" \
-    -e "/^Gtk\\/CursorThemeName /c\\Gtk\\/CursorThemeName \"${CURSOR_THEME}\"" \
-    -e "/^Gtk\\/CursorThemeSize /c\\Gtk\\/CursorThemeSize ${CURSOR_SIZE}" \
-    "${xsettingsd_file}"
-  grep -q '^Net/ThemeName ' "${xsettingsd_file}" || echo "Net/ThemeName \"${GTK_THEME}\"" >>"${xsettingsd_file}"
-  grep -q '^Net/IconThemeName ' "${xsettingsd_file}" || echo "Net/IconThemeName \"${ICON_THEME}\"" >>"${xsettingsd_file}"
-  grep -q '^Gtk/CursorThemeName ' "${xsettingsd_file}" || echo "Gtk/CursorThemeName \"${CURSOR_THEME}\"" >>"${xsettingsd_file}"
-  grep -q '^Gtk/CursorThemeSize ' "${xsettingsd_file}" || echo "Gtk/CursorThemeSize ${CURSOR_SIZE}" >>"${xsettingsd_file}"
+  theme_desktop_write_generated_file "${xsettingsd_file}" <<EOF
+# Generated by hypr theme desktop sync.
+Net/ThemeName "${GTK_THEME}"
+Net/IconThemeName "${ICON_THEME}"
+Gtk/CursorThemeName "${CURSOR_THEME}"
+Gtk/CursorThemeSize ${CURSOR_SIZE}
+Gtk/FontName "${gtk3_font} ${gtk3_font_size}"
+Net/EnableEventSounds 1
+Net/EnableInputFeedbackSounds 0
+Xft/Antialias 1
+Xft/Hinting 1
+Xft/HintStyle "hintfull"
+Xft/RGBA "rgb"
+EOF
 
   if [[ -n "${theme_desktop_gtk_theme_path_name}" ]] \
     && [[ -d "${THEMES_DIR}/${theme_desktop_gtk_theme_path_name}" ]]; then
@@ -526,6 +600,7 @@ theme_desktop_write_dconf_content() {
   else
     rm -f "${dconf_tmp}"
     print_log -sec "dconf" -warn "failed" "${dconf_file}"
+    return 1
   fi
 }
 

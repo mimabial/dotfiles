@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 
 hypr_init_xdg_env() {
   export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"

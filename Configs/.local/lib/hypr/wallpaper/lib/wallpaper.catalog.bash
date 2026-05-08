@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 
 # Build wallpaper lists/hashes with lightweight caching.
 

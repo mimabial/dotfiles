@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+set -euo pipefail
 
 timezone=$(timedatectl list-timezones | fzf --prompt="Set timezone > " --height=20 --reverse) || exit 1
 sudo timedatectl set-timezone "$timezone"

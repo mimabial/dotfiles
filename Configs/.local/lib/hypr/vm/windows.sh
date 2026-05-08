@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+set -euo pipefail
 
 XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
@@ -272,7 +274,7 @@ install_windows() {
   trap 'echo ""; echo "Installation cancelled by user"; exit 1' INT
 
   check_prerequisites
-  hyprshell pkg/add.sh freerdp openbsd-netcat gum
+  hyprshell pm add freerdp openbsd-netcat gum
   ensure_windows_directories
   install_desktop_assets
   load_system_resources

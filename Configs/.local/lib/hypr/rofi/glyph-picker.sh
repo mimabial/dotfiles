@@ -53,11 +53,11 @@ setup_rofi_config() {
   local logical_width logical_height
   rofi_prepare_standard_context \
     font_scale font_name font_override r_override _rofi_opacity \
-    "${ROFI_GLYPH_SCALE}" "${ROFI_GLYPH_FONT:-$ROFI_FONT}" wallbox same
+    "${ROFI_GLYPH_SCALE:-}" "${ROFI_GLYPH_FONT:-${ROFI_FONT:-}}" wallbox same
 
   read -r logical_width logical_height <<<"$(rofi_focused_monitor_logical_size)"
 
-  glyph_columns="${ROFI_GLYPH_COLUMNS}"
+  glyph_columns="${ROFI_GLYPH_COLUMNS:-}"
   if [[ -z "${glyph_columns}" || ! "${glyph_columns}" =~ ^[0-9]+$ ]]; then
     local calc_cols=$((logical_width / (font_scale * 26)))
     ((calc_cols < 5)) && calc_cols=4
@@ -65,7 +65,7 @@ setup_rofi_config() {
     glyph_columns=${calc_cols}
   fi
 
-  glyph_lines="${ROFI_GLYPH_LINES}"
+  glyph_lines="${ROFI_GLYPH_LINES:-}"
   if [[ -z "${glyph_lines}" || ! "${glyph_lines}" =~ ^[0-9]+$ ]]; then
     local calc_lines=$((logical_height / (font_scale * 8)))
     ((calc_lines < 6)) && calc_lines=6
@@ -99,7 +99,7 @@ setup_rofi_config() {
 }
 
 get_glyph_selection() {
-  local style_type="${glyph_style:-$ROFI_GLYPH_STYLE}"
+  local style_type="${glyph_style:-${ROFI_GLYPH_STYLE:-}}"
   # Default to grid (2) if no style is set
   [[ -z "${style_type}" ]] && style_type="2"
   local temp_dir="${TMPDIR:-/tmp}"
@@ -113,28 +113,29 @@ get_glyph_selection() {
   fi
 
   # Build a display column (glyph + single space + label)
+  # shellcheck disable=SC2016 # Awk program is literal.
   local format_stream=(awk -F $'\t' 'BEGIN{OFS="\t"}{disp=$1; if($2!=""&&$2!=$1) disp=disp" "$2; print disp}')
 
   local selection_index=""
   local -a rofi_config_args=()
-  if [[ -n ${use_rofile} ]]; then
+  if [[ -n "${use_rofile}" ]]; then
     rofi_picker_rasi_args rofi_config_args "${use_rofile}" "${rofi_position}"
-    selection_index=$(cat "${temp_data}" | "${format_stream[@]}" | rofi -dmenu -i -format 'i' "${ROFI_GLYPH_ARGS[@]}" "${rofi_config_args[@]}" -no-custom)
+    selection_index=$("${format_stream[@]}" <"${temp_data}" | rofi -dmenu -i -format 'i' "${ROFI_GLYPH_ARGS[@]}" "${rofi_config_args[@]}" -no-custom)
   else
     case ${style_type} in
       2 | grid)
-        selection_index=$(cat "${temp_data}" | "${format_stream[@]}" | rofi -dmenu -format 'i' "${rofi_args[@]/-multi-select/}" -display-columns 1 \
+        selection_index=$("${format_stream[@]}" <"${temp_data}" | rofi -dmenu -format 'i' "${rofi_args[@]/-multi-select/}" -display-columns 1 \
           -theme-str "listview {columns: ${glyph_columns}; lines: ${glyph_lines};}" \
           -no-custom)
         ;;
       1 | list)
-        selection_index=$(cat "${temp_data}" | "${format_stream[@]}" | rofi -dmenu -format 'i' "${rofi_args[@]}" \
+        selection_index=$("${format_stream[@]}" <"${temp_data}" | rofi -dmenu -format 'i' "${rofi_args[@]}" \
           -theme-str "listview {lines: ${glyph_lines};}" \
           -no-custom)
         ;;
       *)
         # Default to grid mode for better visual layout
-        selection_index=$(cat "${temp_data}" | "${format_stream[@]}" | rofi -dmenu -format 'i' "${rofi_args[@]/-multi-select/}" -display-columns 1 \
+        selection_index=$("${format_stream[@]}" <"${temp_data}" | rofi -dmenu -format 'i' "${rofi_args[@]/-multi-select/}" -display-columns 1 \
           -theme-str "listview {columns: ${glyph_columns}; lines: ${glyph_lines};}" \
           -no-custom)
         ;;
@@ -167,6 +168,9 @@ HELP
 }
 
 main() {
+  local sel_glyph=""
+  local sel_label=""
+
   parse_arguments "$@"
   rofi_picker_prepare_data_file "${recent_data}" refresh_recent_entries
 
@@ -175,8 +179,6 @@ main() {
   data_glyph=$(get_glyph_selection)
 
   [[ -z "${data_glyph}" ]] && exit 0
-  local sel_glyph=""
-  local sel_label=""
   sel_glyph=$(printf "%s" "${data_glyph}" | cut -d$'\t' -f1 | xargs)
   sel_label=$(printf "%s" "${data_glyph}" | cut -d$'\t' -f2 | xargs)
 

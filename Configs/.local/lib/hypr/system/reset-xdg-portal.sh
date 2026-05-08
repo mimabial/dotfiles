@@ -22,8 +22,9 @@ restart_portal_service() {
     return 0
   fi
 
-  if command -v app2unit.sh >/dev/null 2>&1; then
-    app2unit.sh -t service "${lib_dir}/${exec_name}" >/dev/null 2>&1 || true
+  local app2unit="${HYPR_LIB_DIR}/system/app2unit.sh"
+  if [[ -x "${app2unit}" ]]; then
+    "${app2unit}" -t service "${lib_dir}/${exec_name}" >/dev/null 2>&1 || true
   fi
 }
 

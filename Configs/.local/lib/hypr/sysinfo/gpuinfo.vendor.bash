@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 # Vendor-specific GPU probe helpers.
 
 preferred_gpu_vendor() {
@@ -185,7 +186,7 @@ read_sensors_temperature_fallback() {
 
   [[ -z "${temperature}" ]] || return 0
   sensors_data=$(sensors 2>/dev/null)
-  temperature=$(echo "${sensors_data}" | grep -m 1 -E "(edge|Package id|GPU)" | awk -F ':' '{print int($2)}' 2>/dev/null)
+  temperature=$(awk -F ':' '/(edge|Package id|GPU)/ {print int($2); exit}' <<<"${sensors_data}" 2>/dev/null)
 }
 
 read_battery_discharge() {
@@ -219,6 +220,9 @@ ensure_utilization_fallback() {
 normalize_metric_output() {
   [[ "${temperature}" == "N/A" ]] && temperature=""
   [[ "${utilization}" == "N/A" ]] && utilization=""
+  # Tests that don't fire return 1; under set -e the whole call chain
+  # (general_query → intel_GPU → main) treats that as failure.
+  return 0
 }
 
 select_card_path() {
@@ -288,10 +292,14 @@ amd_GPU() {
   primary_gpu="AMD ${GPUINFO_AMD_GPU}"
   amd_output=$(python3 "${script_dir}/amdgpu.py")
   if [[ ! ${amd_output} == *"No AMD GPUs detected."* ]] && [[ ! ${amd_output} == *"Unknown query failure"* ]]; then
-    temperature=$(echo "${amd_output}" | jq -r '.["GPU Temperature"]' | sed 's/°C//')
-    utilization=$(echo "${amd_output}" | jq -r '.["GPU Load"]' | sed 's/%//')
-    core_clock=$(echo "${amd_output}" | jq -r '.["GPU Core Clock"]' | sed 's/ GHz//;s/ MHz//')
-    power_usage=$(echo "${amd_output}" | jq -r '.["GPU Power Usage"]' | sed 's/ Watts//')
+    read -r temperature utilization core_clock power_usage < <(
+      jq -r '[
+        (.["GPU Temperature"] // "" | gsub("°C"; "")),
+        (.["GPU Load"] // "" | gsub("%"; "")),
+        (.["GPU Core Clock"] // "" | gsub(" GHz| MHz"; "")),
+        (.["GPU Power Usage"] // "" | gsub(" Watts"; ""))
+      ] | @tsv' <<<"${amd_output}"
+    )
   else
     general_query
   fi

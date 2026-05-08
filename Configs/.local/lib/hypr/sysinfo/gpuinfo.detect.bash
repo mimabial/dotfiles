@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 # GPU detection and state-toggle helpers.
 detect() { # Auto detect Gpu used by Hyprland(declared using env = AQ_DRM_DEVICES) Sophisticated?
   card=$(echo "${AQ_DRM_DEVICES}" | cut -d':' -f1 | cut -d'/' -f4)
@@ -36,7 +37,12 @@ query() {
       if [[ "${GPUINFO_NVIDIA_GPU}" == *"NVIDIA-SMI has failed"* ]] || [[ "${GPUINFO_NVIDIA_GPU}" == *"Failed to initialize NVML"* ]]; then #? Second Layer for dGPU
         echo "GPUINFO_NVIDIA_ENABLE=0 # NVIDIA-SMI has failed" >>"${gpuinfo_file}"
       else
-        NVIDIA_ADDR=$(lspci | grep -Ei "VGA|3D" | grep -i "${GPUINFO_NVIDIA_GPU/NVIDIA /}" | cut -d' ' -f1)
+        # `|| true` rescues set -euo pipefail: lspci formatting can differ
+        # from the nvidia-smi name (e.g. "Max-Q Design" suffix), in which
+        # case the inner grep returns 1 and the whole substitution would
+        # otherwise kill the script. Empty NVIDIA_ADDR is acceptable —
+        # downstream code falls back to lspci-only detection.
+        NVIDIA_ADDR=$(lspci | grep -Ei "VGA|3D" | grep -i "${GPUINFO_NVIDIA_GPU/NVIDIA /}" | cut -d' ' -f1 || true)
         {
           echo "NVIDIA_ADDR=\"${NVIDIA_ADDR}\""
           echo "GPUINFO_NVIDIA_GPU=\"${GPUINFO_NVIDIA_GPU/NVIDIA /}\""
@@ -66,7 +72,8 @@ query() {
 
   if lspci -nn | grep -E "(VGA|3D)" | grep -iq "1002"; then
     GPUINFO_AMD_GPU="$(lspci -nn | grep -Ei "VGA|3D" | grep -m 1 "1002" | awk -F'Advanced Micro Devices, Inc. ' '{gsub(/ *\[[^\]]*\]/,""); gsub(/ *\([^)]*\)/,""); print $2}')"
-    AMD_ADDR=$(lspci | grep -Ei "VGA|3D" | grep -i "${GPUINFO_AMD_GPU}" | cut -d' ' -f1)
+    # `|| true` rescues set -euo pipefail; same trap as the NVIDIA path above.
+    AMD_ADDR=$(lspci | grep -Ei "VGA|3D" | grep -i "${GPUINFO_AMD_GPU}" | cut -d' ' -f1 || true)
     {
       echo "AMD_ADDR=\"${AMD_ADDR}\""
       echo "GPUINFO_AMD_ENABLE=1" # Check for Amd GPU
@@ -76,7 +83,8 @@ query() {
 
   if lspci -nn | grep -E "(VGA|3D)" | grep -iq "8086"; then
     GPUINFO_INTEL_GPU="$(lspci -nn | grep -Ei "VGA|3D" | grep -m 1 "8086" | awk -F'Intel Corporation ' '{gsub(/ *\[[^\]]*\]/,""); gsub(/ *\([^)]*\)/,""); print $2}')"
-    INTEL_ADDR=$(lspci | grep -Ei "VGA|3D" | grep -i "${GPUINFO_INTEL_GPU}" | cut -d' ' -f1)
+    # `|| true` rescues set -euo pipefail; same trap as the NVIDIA path above.
+    INTEL_ADDR=$(lspci | grep -Ei "VGA|3D" | grep -i "${GPUINFO_INTEL_GPU}" | cut -d' ' -f1 || true)
     {
       echo "INTEL_ADDR=\"${INTEL_ADDR}\""
       echo "GPUINFO_INTEL_ENABLE=1" # Check for Intel GPU
@@ -91,7 +99,8 @@ query() {
 }
 
 toggle() {
-  if [[ -n "$1" ]]; then
+  # ${1:-} keeps the no-arg cycle path (--toggle) safe under set -u.
+  if [[ -n "${1:-}" ]]; then
     NEXT_PRIORITY="GPUINFO_${1^^}_ENABLE"
     if ! grep -q "${NEXT_PRIORITY}=1" "${gpuinfo_file}"; then
       echo Error: "${NEXT_PRIORITY}" not found in "${gpuinfo_file}"
@@ -111,7 +120,10 @@ toggle() {
     fi
     mapfile -t anchor < <(grep "_ENABLE=1" "${gpuinfo_file}" | cut -d '=' -f 1)
     GPUINFO_PRIORITY=$(grep "GPUINFO_PRIORITY=" "${gpuinfo_file}" | cut -d'=' -f 2) # Get the current GPUINFO_PRIORITY from the file
-    # Find the index of the current GPUINFO_PRIORITY in the anchor array
+    # Find the index of the current GPUINFO_PRIORITY in the anchor array.
+    # Default to 0 so a stale priority that no longer matches any enabled
+    # GPU still rotates instead of crashing under set -u.
+    local current_index=0
     for index in "${!anchor[@]}"; do
       if [[ "${anchor[${index}]}" = "${GPUINFO_PRIORITY}" ]]; then
         current_index=${index}

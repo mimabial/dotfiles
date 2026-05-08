@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2154
+# Sourced module; strict mode is owned by the entrypoint.
 #
-# color.targets.sh - Materialize theme target files and fallback theme outputs
+# color.targets.sh - Materialize theme target files and wallpaper-mode cleanup
 
 theme_post_apply_hook_name() {
   case "$1" in
@@ -28,12 +28,6 @@ run_theme_post_apply_hook() {
           :
         else
           "${LIB_DIR}/hypr/wal/wal.dunst.sh" >/dev/null 2>&1 || true
-        fi
-      elif command -v hyprshell &>/dev/null; then
-        if (( defer_live_reload )); then
-          :
-        else
-          hyprshell wal/wal.dunst.sh >/dev/null 2>&1 || true
         fi
       fi
       ;;
@@ -89,13 +83,28 @@ rewrite_if_changed() {
   if [[ -f "${target_file}" ]] && cmp -s "${source_file}" "${target_file}"; then
     rm -f "${source_file}"
   else
-    mv -f "${source_file}" "${target_file}"
+    if declare -F theme_phase_d_promote_file >/dev/null 2>&1; then
+      theme_phase_d_promote_file "${source_file}" "${target_file}" || return 1
+    else
+      mv -f "${source_file}" "${target_file}"
+    fi
     changed=1
   fi
 
   if [[ -n "${changed_var}" ]]; then
     printf -v "${changed_var}" '%s' "${changed}"
   fi
+}
+
+theme_target_filter_allows() {
+  local theme_basename="$1"
+  local filter="${HYPR_THEME_FILE_BASENAMES:-}"
+
+  [[ -n "${filter}" ]] || return 0
+  case " ${filter} " in
+    *" ${theme_basename} "*) return 0 ;;
+    *) return 1 ;;
+  esac
 }
 
 resolve_theme_target_path() {
@@ -227,6 +236,7 @@ process_theme_files() {
 
     first_line=$(head -1 "${theme_file}")
     theme_basename="$(basename "${theme_file}")"
+    theme_target_filter_allows "${theme_basename}" || continue
     target_path="${first_line%%|*}"
     target_path="$(echo "${target_path}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
 
@@ -308,7 +318,7 @@ write_theme_stub_file() {
   rewrite_if_changed "${tmp_file}" "${target}"
 }
 
-apply_wallpaper_mode_theme_fallbacks() {
+clear_theme_mode_outputs_for_wallpaper_mode() {
   local defer_live_reload=0
 
   [[ "${HYPR_THEME_BATCH_RELOADS:-0}" -eq 1 ]] && defer_live_reload=1

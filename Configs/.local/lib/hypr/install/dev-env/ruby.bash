@@ -11,7 +11,7 @@ dev_env_configure_gem_defaults() {
 
 dev_env_install_ruby() {
   printf 'Installing Ruby on Rails...\n\n'
-  hyprshell pkg/add.sh libyaml
+  hyprshell pm add libyaml
   dev_env_install_with_mise "Ruby" ruby@latest
   dev_env_configure_ruby_tooling
   dev_env_configure_gem_defaults

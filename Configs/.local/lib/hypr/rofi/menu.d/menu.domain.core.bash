@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 
 menu_register_domain_core() {
   menu_define dev_tools "Dev Tools"
@@ -44,13 +45,13 @@ menu_run_action_core() {
 
   case "${action_id}" in
     main_apps) hyprshell rofi/rofi-launch.sh ;;
-    dev_git) hyprshell launch/lazygit.sh ;;
-    dev_docker) hyprshell launch/lazydocker.sh ;;
+    dev_git) present_terminal --hypr-profile tui --app-id org.tui.LazyGit --title LazyGit -- lazygit ;;
+    dev_docker) present_terminal --hypr-profile tui --app-id org.tui.LazyDocker --title LazyDocker -- lazydocker ;;
     dev_cpu_monitor) present_terminal --hypr-profile tui --app-id org.tui.Htop --title Htop -- htop ;;
     dev_gpu_monitor) present_terminal --hypr-profile tui --app-id org.tui.Nvtop --title Nvtop -- nvtop ;;
     dev_disk_usage) present_terminal --hypr-profile tui --app-id org.tui.Dua --title Dua -- dua i ;;
     dev_music_player) present_terminal --hypr-profile tui --app-id org.tui.Rmpc --title Rmpc -- rmpc ;;
-    learn_keybindings) hyprshell keybinds/keybinds_hint.sh c ;;
+    learn_keybindings) hyprshell keybinds/keybinds_hint.sh ;;
     learn_bash_cheatsheet) hyprshell launch/webapp.sh "https://devhints.io/bash" ;;
     learn_bash_shellcheck) hyprshell launch/webapp.sh "https://www.shellcheck.net/wiki/" ;;
     learn_bash_posix) hyprshell launch/webapp.sh "https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html" ;;

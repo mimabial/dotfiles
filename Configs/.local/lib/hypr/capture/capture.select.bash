@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 
 # Shared selection helpers for screenshot tooling.
 
@@ -36,25 +37,39 @@ EOF
 }
 
 capture_active_workspace_rectangles() {
-  local mon_data active_workspace geometry_filter
+  local geometry_filter
   geometry_filter="$(capture_monitor_geometry_jq)"
-  mon_data="$(hyprctl monitors -j)"
-  active_workspace="$(jq -r '.[] | select(.focused == true) | .activeWorkspace.id' <<<"${mon_data}")"
 
-  jq -r --arg ws "${active_workspace}" "${geometry_filter} .[] | select(.activeWorkspace.id == (\$ws | tonumber)) | format_geo" <<<"${mon_data}"
-  hyprctl clients -j | jq -r --arg ws "${active_workspace}" '.[] | select(.workspace.id == ($ws | tonumber)) | "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"'
+  hyprctl --batch -j "monitors;clients" \
+    | jq -sr "${geometry_filter}
+        .[0] as \$monitors
+        | (.[1] // []) as \$clients
+        | (\$monitors[] | select(.focused == true) | .activeWorkspace.id) as \$active_workspace
+        | (\$monitors[] | select(.activeWorkspace.id == \$active_workspace) | format_geo),
+          (\$clients[] | select(.workspace.id == \$active_workspace) | \"\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])\")
+      "
 }
 
 capture_visible_workspace_rectangles() {
-  local mon_data workspaces fullscreen_workspaces geometry_filter
+  local geometry_filter
   geometry_filter="$(capture_monitor_geometry_jq)"
-  mon_data="$(hyprctl monitors -j)"
-  fullscreen_workspaces="$(hyprctl workspaces -j | jq -r 'map(select(.hasfullscreen) | .id)')"
-  workspaces="$(jq -r '[(foreach .[] as $monitor (0; if $monitor.specialWorkspace.name == "" then $monitor.activeWorkspace else $monitor.specialWorkspace end)).id]' <<<"${mon_data}")"
 
-  jq -r "${geometry_filter} .[] | format_geo" <<<"${mon_data}"
-  hyprctl clients -j | jq -r \
-    --argjson workspaces "${workspaces}" \
-    --argjson fullscreenWorkspaces "${fullscreen_workspaces}" \
-    'map(select(([.workspace.id] | inside($workspaces)) and (([.workspace.id] | inside($fullscreenWorkspaces) | not) or .fullscreen > 0))) | .[] | "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"'
+  hyprctl --batch -j "monitors;workspaces;clients" \
+    | jq -sr "${geometry_filter}
+        .[0] as \$monitors
+        | (.[1] // []) as \$workspace_data
+        | (.[2] // []) as \$clients
+        | (\$workspace_data | map(select(.hasfullscreen) | .id)) as \$fullscreen_workspaces
+        | (\$monitors | map((if .specialWorkspace.name == \"\" then .activeWorkspace else .specialWorkspace end).id)) as \$workspaces
+        | (\$monitors[] | format_geo),
+          (
+            \$clients
+            | map(select(
+                ([.workspace.id] | inside(\$workspaces))
+                and (([.workspace.id] | inside(\$fullscreen_workspaces) | not) or .fullscreen > 0)
+              ))
+            | .[]
+            | \"\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])\"
+          )
+      "
 }

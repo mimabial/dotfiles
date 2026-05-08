@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 # Terminal color preview for pywal16
+#
+# Subsystem inputs (sourced from ~/.cache/wal/colors-shell.sh below):
+#   background, foreground, cursor, color0..color15
+: "${background-}" "${foreground-}" "${cursor-}"
 
-# Source pywal16 colors
+set -euo pipefail
+
+# shellcheck source=/dev/null
 if ! source "${HOME}/.cache/wal/colors-shell.sh" 2>/dev/null; then
   echo "Error: pywal16 colors not found"
   exit 1

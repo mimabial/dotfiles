@@ -41,6 +41,13 @@ USAGE
 
 # --- Parse action and domain before handing rest to CLI parser ---
 
+case "${1:-}" in
+  -h|--help|help)
+    usage
+    exit 0
+    ;;
+esac
+
 [[ "$#" -ge 2 ]] || { usage; exit 1; }
 
 action="$1"; shift
@@ -59,6 +66,12 @@ case "${domain}" in
 esac
 
 # --- Standard CLI parsing ---
+
+declare -a hypr_service_cli_args=()
+hypr_service_cli_show_diff=0
+hypr_service_cli_quiet=0
+hypr_service_cli_dry_run=0
+hypr_service_cli_backup_label=""
 
 hypr_service_parse_refresh_args "$@"
 [[ "${#hypr_service_cli_args[@]}" -eq 0 ]] || hypr_service_die "domain.sh does not take extra positional arguments."

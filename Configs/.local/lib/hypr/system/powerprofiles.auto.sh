@@ -40,16 +40,11 @@ resolve_target_profiles() {
   local out_battery_name="$2"
   local -a profiles=()
 
-  # shellcheck disable=SC2178
-  local -n out_ac_ref="${out_ac_name}"
-  # shellcheck disable=SC2178
-  local -n out_battery_ref="${out_battery_name}"
-
   mapfile -t profiles < <(list_power_profiles)
   [[ "${#profiles[@]}" -gt 0 ]] || return 1
 
-  out_ac_ref="$(pick_profile_by_preference profiles performance balanced power-saver)"
-  out_battery_ref="$(pick_profile_by_preference profiles balanced power-saver performance)"
+  printf -v "${out_ac_name}" '%s' "$(pick_profile_by_preference profiles performance balanced power-saver)"
+  printf -v "${out_battery_name}" '%s' "$(pick_profile_by_preference profiles balanced power-saver performance)"
 }
 
 has_battery_device() {

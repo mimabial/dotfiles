@@ -7,7 +7,7 @@ $CURSOR_THEME = Colloid-Dracula-cursors-dark
 $CURSOR_SIZE = 30
 $NVIM_SCHEME = dracula
 $NVIM_BACKGROUND = dark
-$NVIM_TRANSPARENCY = false
+$NVIM_TRANSPARENCY = true
 
 exec = gsettings set org.gnome.desktop.interface icon-theme '$ICON_THEME'
 exec = gsettings set org.gnome.desktop.interface gtk-theme '$GTK_THEME'

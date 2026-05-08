@@ -1,8 +1,23 @@
 #!/usr/bin/env bash
 # wal.qt.sh - Generate qt5ct/qt6ct palettes for the active color mode.
+#
+# Subsystem inputs (sourced from ${WAL_CACHE}/colors-shell.sh by qt_load_wal_colors):
+#   background, foreground, color0..color15
+: "${background-}" "${foreground-}" \
+  "${color0-}" "${color1-}" "${color2-}" "${color3-}" \
+  "${color4-}" "${color5-}" "${color6-}" "${color7-}" \
+  "${color8-}" "${color9-}" "${color10-}" "${color11-}" \
+  "${color12-}" "${color13-}" "${color14-}" "${color15-}"
 
-# shellcheck disable=SC1090
+set -euo pipefail
+
+# shellcheck source=/dev/null
 source "$(command -v hyprshell)" || exit 1
+if [[ -r "${LIB_DIR}/hypr/theme/phase-d.sh" ]]; then
+  # shellcheck source=/dev/null
+  source "${LIB_DIR}/hypr/theme/phase-d.sh" || exit 1
+  theme_phase_d_init "${HYPR_THEME_PHASE_D_LOCK_KEY:-theme_phase_d_qt}"
+fi
 
 WAL_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/wal"
 PYWAL_KVANTUM_DIR="${HOME}/.config/Kvantum/pywal16"
@@ -73,7 +88,11 @@ qt_write_file_if_changed() {
     return 0
   fi
 
-  mv -f "${tmp_file}" "${target_file}"
+  if declare -F theme_phase_d_promote_file >/dev/null 2>&1; then
+    theme_phase_d_promote_file "${tmp_file}" "${target_file}"
+  else
+    mv -f "${tmp_file}" "${target_file}"
+  fi
 }
 
 qt_ensure_scheme_symlink() {
@@ -81,7 +100,11 @@ qt_ensure_scheme_symlink() {
   local target_path="$2"
 
   mkdir -p "$(dirname "${link_path}")" || return 1
-  ln -sfn "${target_path}" "${link_path}"
+  if declare -F theme_phase_d_promote_symlink >/dev/null 2>&1; then
+    theme_phase_d_promote_symlink "${target_path}" "${link_path}"
+  else
+    ln -sfn "${target_path}" "${link_path}"
+  fi
 }
 
 qt_load_wal_colors() {
@@ -96,6 +119,26 @@ qt_load_theme_palette_roles() {
   local line=""
   local key=""
   local value=""
+  local -a required_keys=(
+    window.color
+    base.color
+    alt.base.color
+    button.color
+    light.color
+    mid.light.color
+    dark.color
+    mid.color
+    window.text.color
+    text.color
+    button.text.color
+    highlight.color
+    inactive.highlight.color
+    highlight.text.color
+    tooltip.text.color
+    disabled.text.color
+    link.color
+    link.visited.color
+  )
   declare -A theme_colors=()
 
   [[ -f "${kvconfig_file}" ]] || return 1
@@ -116,29 +159,35 @@ qt_load_theme_palette_roles() {
     theme_colors["${key}"]="${value}"
   done < "${kvconfig_file}"
 
-  qt_window="${theme_colors[window.color]:-${background:-#ffffff}}"
-  qt_base="${theme_colors[base.color]:-${qt_window}}"
-  qt_alternate_base="${theme_colors[alt.base.color]:-${qt_base}}"
-  qt_button="${theme_colors[button.color]:-${qt_window}}"
-  qt_light="${theme_colors[light.color]:-${qt_button}}"
-  qt_midlight="${theme_colors[mid.light.color]:-${qt_light}}"
-  qt_dark="${theme_colors[dark.color]:-${qt_button}}"
-  qt_mid="${theme_colors[mid.color]:-${qt_button}}"
-  qt_window_text="${theme_colors[window.text.color]:-${theme_colors[text.color]:-${foreground:-#000000}}}"
-  qt_text="${theme_colors[text.color]:-${qt_window_text}}"
-  qt_button_text="${theme_colors[button.text.color]:-${qt_window_text}}"
-  qt_highlight="${theme_colors[highlight.color]:-${theme_colors[inactive.highlight.color]:-${color6:-${color4:-#888888}}}}"
-  qt_inactive_highlight="${theme_colors[inactive.highlight.color]:-${qt_highlight}}"
-  qt_highlight_text="${theme_colors[highlight.text.color]:-${qt_window}}"
-  qt_tooltip_text="${theme_colors[tooltip.text.color]:-${qt_text}}"
-  qt_disabled_text="${theme_colors[disabled.text.color]:-${qt_window_text}}"
-  qt_link="${theme_colors[link.color]:-${qt_highlight}}"
-  qt_link_visited="${theme_colors[link.visited.color]:-${qt_link}}"
+  for key in "${required_keys[@]}"; do
+    if [[ -z "${theme_colors[${key}]:-}" ]]; then
+      print_log -sec "qt" -err "palette" "missing ${key} in ${kvconfig_file}"
+      return 1
+    fi
+  done
+
+  qt_window="${theme_colors[window.color]}"
+  qt_base="${theme_colors[base.color]}"
+  qt_alternate_base="${theme_colors[alt.base.color]}"
+  qt_button="${theme_colors[button.color]}"
+  qt_light="${theme_colors[light.color]}"
+  qt_midlight="${theme_colors[mid.light.color]}"
+  qt_dark="${theme_colors[dark.color]}"
+  qt_mid="${theme_colors[mid.color]}"
+  qt_window_text="${theme_colors[window.text.color]}"
+  qt_text="${theme_colors[text.color]}"
+  qt_button_text="${theme_colors[button.text.color]}"
+  qt_highlight="${theme_colors[highlight.color]}"
+  qt_inactive_highlight="${theme_colors[inactive.highlight.color]}"
+  qt_highlight_text="${theme_colors[highlight.text.color]}"
+  qt_tooltip_text="${theme_colors[tooltip.text.color]}"
+  qt_disabled_text="${theme_colors[disabled.text.color]}"
+  qt_link="${theme_colors[link.color]}"
+  qt_link_visited="${theme_colors[link.visited.color]}"
   qt_placeholder="$(qt_color_with_alpha "${qt_disabled_text}")"
 }
 
 build_theme_mode_qt_palette() {
-  qt_load_wal_colors || true
   qt_load_theme_palette_roles || return 1
 
   qt_active_colors="$(qt_join_palette_values \
@@ -160,7 +209,6 @@ build_theme_mode_qt_palette() {
     "${qt_window}" "${qt_window}" "${qt_tooltip_text}" "${qt_placeholder}")"
 }
 
-# shellcheck disable=SC2154
 build_wallpaper_mode_qt_palette() {
   qt_load_wal_colors || return 1
 
@@ -193,8 +241,12 @@ EOF
 }
 
 main() {
+  if declare -F theme_phase_d_current_generation >/dev/null 2>&1; then
+    theme_phase_d_current_generation || exit 0
+  fi
+
   if [[ "${selected_color_mode}" -eq 0 ]]; then
-    build_theme_mode_qt_palette || build_wallpaper_mode_qt_palette || exit 1
+    build_theme_mode_qt_palette || exit 1
   else
     build_wallpaper_mode_qt_palette || exit 1
   fi

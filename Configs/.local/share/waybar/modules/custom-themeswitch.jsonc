@@ -4,8 +4,8 @@
     "format": "\udb81\udfe1",
     "rotate": 0,
     "tooltip-format": "\udb81\udfe1 Switch theme",
-    "on-click": "setsid -f hyprshell theme.switch.sh -n",
-    "on-click-right": "setsid -f hyprshell theme.switch.sh -p",
+    "on-click": "setsid -f hyprshell theme.switch.sh -n --quiet >/dev/null 2>&1",
+    "on-click-right": "setsid -f hyprshell theme.switch.sh -p --quiet >/dev/null 2>&1",
     "on-click-middle": "sleep 0.1 && hyprshell theme.select",
     "interval": 86400,
     "tooltip": true

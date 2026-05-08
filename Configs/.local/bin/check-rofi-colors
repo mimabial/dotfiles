@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-
-exec "$HOME/.local/lib/hypr/rofi/color-check.sh" "$@"

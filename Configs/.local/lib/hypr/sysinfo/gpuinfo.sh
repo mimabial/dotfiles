@@ -10,6 +10,8 @@
 #   Time (mean ± σ):     246.9 ms ±  22.5 ms    [User: 112.4 ms, System: 87.5 ms]
 # Range (min … max):   184.0 ms … 272.1 ms    12 runs
 
+set -euo pipefail
+
 script_dir=$(dirname "$(realpath "$0")")
 gpuinfo_file="${TMPDIR:-/tmp}/hypr-${UID}-gpuinfo"
 
@@ -40,8 +42,11 @@ if [[ " $* " =~ " --emoji " ]]; then
   exit 0
 fi
 
+# Namespace the state file by the second positional arg so multi-GPU contexts
+# (e.g. `gpuinfo --use NVIDIA`) get their own cache. ${2:-} keeps no-arg
+# polling invocations safe under set -u — they fall through to the base file.
 if [[ ! " $* " =~ " --startup " ]]; then
-  gpuinfo_file="${gpuinfo_file}$2"
+  gpuinfo_file="${gpuinfo_file}${2:-}"
 fi
 # shellcheck source=/dev/null
 source "${script_dir}/gpuinfo.detect.bash"
@@ -50,14 +55,17 @@ source "${script_dir}/gpuinfo.render.bash"
 # shellcheck source=/dev/null
 source "${script_dir}/gpuinfo.vendor.bash"
 
-if [[ ! -f "${gpuinfo_file}" ]]; then
+# Re-query when the state file is missing OR when it lost its GPU detection
+# entries (e.g. truncated by a previous run that crashed mid-write, or hand
+# edited). Without this, a stale file containing only persistent flags like
+# GPUINFO_TEMP_BUCKET leaves the script stuck reporting primary_gpu="Not found".
+if [[ ! -f "${gpuinfo_file}" ]] || ! grep -q "_ENABLE=1" "${gpuinfo_file}"; then
   query
-  echo -e "Initialized Variable:\n$(cat "${gpuinfo_file}")\n\nReboot or '$0 --reset' to RESET Variables"
 fi
 # shellcheck source=/dev/null
 source "${gpuinfo_file}"
 
-case "$1" in
+case "${1:-}" in
   "--toggle" | "-t")
     toggle
     echo -e "Sensor: ${NEXT_PRIORITY} GPU" | sed 's/_ENABLE//g'

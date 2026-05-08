@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 
 # Shared font-sync helpers.
 #
@@ -24,19 +25,27 @@ font_sync_resolve_font_value() {
 
   font_sync_ensure_runtime || return 1
 
-  general_font="$(hypr_config_value_from_layers "FONT" 2>/dev/null || true)"
-  mono_font="$(hypr_config_value_from_layers "MONOSPACE_FONT" 2>/dev/null || true)"
-  bar_font="$(hypr_config_value_from_layers "BAR_FONT" 2>/dev/null || true)"
-  menu_font="$(hypr_config_value_from_layers "MENU_FONT" 2>/dev/null || true)"
-
-  mono_font="${mono_font:-monospace}"
-  bar_font="${bar_font:-${general_font:-monospace}}"
-  menu_font="${menu_font:-${general_font:-monospace}}"
-
   case "${kind}" in
-    mono) printf '%s\n' "${mono_font}" ;;
-    bar) printf '%s\n' "${bar_font}" ;;
-    menu) printf '%s\n' "${menu_font}" ;;
+    mono)
+      mono_font="$(hypr_config_value_from_layers "MONOSPACE_FONT" 2>/dev/null || true)"
+      printf '%s\n' "${mono_font:-monospace}"
+      ;;
+    bar)
+      bar_font="$(hypr_config_value_from_layers "BAR_FONT" 2>/dev/null || true)"
+      if [[ -z "${bar_font}" ]]; then
+        general_font="$(hypr_config_value_from_layers "FONT" 2>/dev/null || true)"
+        bar_font="${general_font:-monospace}"
+      fi
+      printf '%s\n' "${bar_font}"
+      ;;
+    menu)
+      menu_font="$(hypr_config_value_from_layers "MENU_FONT" 2>/dev/null || true)"
+      if [[ -z "${menu_font}" ]]; then
+        general_font="$(hypr_config_value_from_layers "FONT" 2>/dev/null || true)"
+        menu_font="${general_font:-monospace}"
+      fi
+      printf '%s\n' "${menu_font}"
+      ;;
     *) return 1 ;;
   esac
 }

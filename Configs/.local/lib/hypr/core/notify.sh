@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 
 #? avoid notification calls stalling the script
 notify_send_safe() {

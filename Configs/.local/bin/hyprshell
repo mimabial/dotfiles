@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
-
-# hyprshell entrypoint: environment bootstrap + command dispatch.
+#
+# hyprshell — Bootstrap the Hypr shell environment and dispatch commands.
+#
+# Usage: hyprshell <command> [args...]
+# Depends on: hypr runtime init and shell libraries
+#
+# Sourceable bootstrap; strict mode is owned by the caller or dispatched script.
 
 resolve_executable_path() {
   local candidate="${EXECUTABLE:-hyprshell}"
@@ -32,15 +37,36 @@ runtime_init="${LIB_DIR}/hypr/runtime/init.bash"
 source "${runtime_init}" || exit 1
 unset runtime_init
 
-HYPR_LIB_PATH="${HYPR_LIB_DIR}"
-for subdir in "${HYPR_LIB_PATH}"/*/; do
-  [[ -d "${subdir}" ]] && HYPR_LIB_PATH="${HYPR_LIB_PATH}:${subdir}"
-done
+hyprshell_prepend_path() {
+  local entry=""
+  local prefix=""
 
-PATH="${XDG_CONFIG_HOME}/hypr/scripts:${BIN_DIR}:${HYPR_LIB_PATH}:${PATH}"
+  for entry in "$@"; do
+    [[ -n "${entry}" ]] || continue
+    case ":${PATH}:" in
+      *":${entry}:"*) continue ;;
+    esac
+    prefix="${prefix:+${prefix}:}${entry}"
+  done
+
+  PATH="${prefix:+${prefix}:}${PATH}"
+}
+
+hyprshell_prepend_path "${XDG_CONFIG_HOME}/hypr/scripts" "${BIN_DIR}" "${HYPR_LIB_DIR}"
 HYPR_SCRIPTS_PATH="${HYPR_SCRIPTS_PATH:-${XDG_CONFIG_HOME}/hypr/scripts:${LIB_DIR}/hypr}:${XDG_DATA_HOME}/waybar/scripts:${XDG_CONFIG_HOME}/waybar/scripts"
 
 export BIN_DIR LIB_DIR PATH HYPR_SCRIPTS_PATH
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" && "${1:-}" == "app" ]]; then
+  export PATH="${HYPR_SCRIPTS_PATH}:${PATH}"
+  if [[ "${HYPRPY:-0}" =~ ^[0-9]+$ && "${HYPRPY:-0}" -eq 1 ]]; then
+    # shellcheck source=/dev/null
+    source "${LIB_DIR}/hypr/shell/lib/hyprshell.python.bash" || exit 1
+    python_activate
+  fi
+  shift
+  exec "${HYPR_LIB_DIR}/system/app2unit.sh" "$@"
+fi
 
 for hyprshell_lib in \
   "${LIB_DIR}/hypr/shell/lib/hyprshell.runner.bash" \
@@ -65,14 +91,6 @@ if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
 fi
 
 case "${1:-}" in
-  app)
-    export PATH="${HYPR_SCRIPTS_PATH}:${PATH}"
-    if [[ "${HYPRPY:-0}" =~ ^[0-9]+$ ]] && [[ "${HYPRPY:-0}" -eq 1 ]]; then
-      python_activate
-    fi
-    shift
-    exec app2unit.sh "$@"
-    ;;
   init | --init)
     initialized
     exit 0
@@ -110,7 +128,7 @@ case "${1:-}" in
   --help | help | -h)
     USAGE
     ;;
-  --list-script)
+  list | --list-script)
     list_script
     ;;
   --list-script-path)

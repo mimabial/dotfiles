@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -eu
+set -euo pipefail
 
 clients_json="$(hyprctl clients -j)"
 addrs_text="$(

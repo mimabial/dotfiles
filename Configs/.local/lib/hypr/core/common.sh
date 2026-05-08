@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 
 hypr_user_uid() {
   printf '%s\n' "${UID:-$(id -u)}"
@@ -85,6 +86,10 @@ hypr_config_layer_files() {
     "${variables_file}"
 }
 
+declare -gA HYPR_CONFIG_LAYER_CACHE=()
+declare -g HYPR_CONFIG_LAYER_CACHE_KEY=""
+declare -g HYPR_CONFIG_LAYER_CACHE_READY=0
+
 hypr_trim_whitespace() {
   local value="$1"
 
@@ -93,16 +98,32 @@ hypr_trim_whitespace() {
   printf '%s' "${value}"
 }
 
-hypr_config_value_from_layers() {
-  local variable_key="${1#\$}"
+hypr_config_file_signature() {
+  local file_path=""
+
+  while IFS= read -r file_path; do
+    if [[ -e "${file_path}" || -L "${file_path}" ]]; then
+      stat -Lc '%n:%y:%s:%i' -- "${file_path}" 2>/dev/null || printf '%s:unreadable\n' "${file_path}"
+    else
+      printf '%s:missing\n' "${file_path}"
+    fi
+  done < <(hypr_config_layer_files)
+}
+
+hypr_config_layer_cache_load() {
+  local cache_key=""
   local file_path=""
   local raw_line=""
   local lhs=""
   local rhs=""
-  local value=""
+  local variable_key=""
 
-  [[ -n "${variable_key}" ]] || return 1
+  cache_key="$(hypr_config_file_signature)"
+  if [[ "${HYPR_CONFIG_LAYER_CACHE_READY:-0}" -eq 1 && "${HYPR_CONFIG_LAYER_CACHE_KEY:-}" == "${cache_key}" ]]; then
+    return 0
+  fi
 
+  HYPR_CONFIG_LAYER_CACHE=()
   while IFS= read -r file_path; do
     [[ -f "${file_path}" ]] || continue
     if [[ ! -r "${file_path}" ]]; then
@@ -118,7 +139,9 @@ hypr_config_value_from_layers() {
       lhs="${raw_line%%=*}"
       rhs="${raw_line#*=}"
       lhs="$(hypr_trim_whitespace "${lhs}")"
-      [[ "${lhs}" == "\$${variable_key}" ]] || continue
+      [[ "${lhs}" == \$* ]] || continue
+      variable_key="${lhs#\$}"
+      [[ -n "${variable_key}" ]] || continue
 
       rhs="${rhs%%#*}"
       rhs="$(hypr_trim_whitespace "${rhs}")"
@@ -128,17 +151,27 @@ hypr_config_value_from_layers() {
       rhs="${rhs#\"}"
 
       if [[ -z "${rhs}" ]]; then
-        printf 'WARN: invalid empty $%s in %s\n' "${variable_key}" "${file_path}" >&2
-        break
+        continue
       fi
 
-      value="${rhs}"
-      printf '%s\n' "${value}"
-      return 0
+      [[ -v "HYPR_CONFIG_LAYER_CACHE[${variable_key}]" ]] && continue
+      HYPR_CONFIG_LAYER_CACHE["${variable_key}"]="${rhs}"
     done < "${file_path}"
   done < <(hypr_config_layer_files)
 
-  return 1
+  HYPR_CONFIG_LAYER_CACHE_KEY="${cache_key}"
+  HYPR_CONFIG_LAYER_CACHE_READY=1
+}
+
+hypr_config_value_from_layers() {
+  local variable_key="${1#\$}"
+
+  [[ -n "${variable_key}" ]] || return 1
+  hypr_config_layer_cache_load || return 1
+  [[ -v "HYPR_CONFIG_LAYER_CACHE[${variable_key}]" ]] || return 1
+  printf '%s\n' "${HYPR_CONFIG_LAYER_CACHE[${variable_key}]}"
+
+  return 0
 }
 
 hypr_border_metrics() {

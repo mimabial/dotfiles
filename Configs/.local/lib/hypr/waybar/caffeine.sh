@@ -3,6 +3,8 @@
 # Waybar module script for caffeine/keep-awake status
 # Outputs JSON for waybar custom module
 
+set -euo pipefail
+
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=/dev/null
 source "${script_dir}/../session/idle.state.sh"

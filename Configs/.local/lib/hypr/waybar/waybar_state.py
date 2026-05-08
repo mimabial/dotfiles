@@ -1,23 +1,17 @@
 #!/usr/bin/env python3
 import fcntl
-import glob
-import json
 import os
-import sys
 from contextlib import contextmanager
 
+from waybar_layouts import find_layout_files
 from waybar_shared import (
     CONFIG_JSONC,
-    CONFIG_ROFI_DIR,
-    DATA_ROFI_DIR,
     HYPR_ENV_OVERRIDES,
-    LAYOUT_DIRS,
-    LAYOUT_IGNORE,
     STATE_FILE,
-    STYLE_DIRS,
-    atomic_copy_file,
     atomic_write_text,
+    get_active_config_layout_hash,
     get_file_hash,
+    install_layout_as_active_config,
     logger,
 )
 
@@ -79,47 +73,16 @@ def _merge_state_lines(existing_lines, values):
     return merged_lines
 
 
-def find_layout_files():
-    """Recursively find all layout files in the specified directories."""
-    layouts = {}
-    for layout_dir in reversed(LAYOUT_DIRS):
-        if not os.path.isdir(layout_dir):
-            continue
-        for root, _, files in os.walk(layout_dir):
-            for file in files:
-                if file.endswith(".jsonc") and file not in LAYOUT_IGNORE:
-                    path = os.path.join(root, file)
-                    relative_path = os.path.relpath(path, start=layout_dir)
-                    layouts[relative_path] = path
-    return [layouts[key] for key in sorted(layouts)]
-
-
-def resolve_rofi_theme(theme_name):
-    """Resolve a rofi theme file from user overrides first, then shared stock."""
-    if not theme_name:
-        return theme_name
-
-    if os.path.isfile(theme_name):
-        return theme_name
-
-    candidates = [
-        CONFIG_ROFI_DIR / "themes" / f"{theme_name}.rasi",
-        CONFIG_ROFI_DIR / "themes" / theme_name,
-        CONFIG_ROFI_DIR / f"{theme_name}.rasi",
-        CONFIG_ROFI_DIR / theme_name,
-        DATA_ROFI_DIR / "themes" / f"{theme_name}.rasi",
-        DATA_ROFI_DIR / "themes" / theme_name,
-        DATA_ROFI_DIR / f"{theme_name}.rasi",
-        DATA_ROFI_DIR / theme_name,
-    ]
-    for candidate in candidates:
-        if candidate.is_file():
-            return str(candidate)
-    return theme_name
-
-
 def get_state_value(key, default=None):
-    """Get a value from the state file."""
+    """Get a value from the staterc.
+
+    Sibling readers — they MUST agree on the file format described in
+    waybar/STATE.md:
+      - waybar.state.common.sh:waybar_state_value (Bash, used by indicator
+        scripts; tolerates quotes and `export`)
+      - waybar_watch.read_runtime_meta (Python, used for lock-meta files;
+        strict KEY=value, no quoting)
+    """
     if not STATE_FILE.exists():
         return default
 
@@ -201,11 +164,11 @@ def get_current_layout_from_config(persist_state=True):
                 }
             )
 
-        atomic_copy_file(layout, CONFIG_JSONC)
+        install_layout_as_active_config(layout)
         logger.debug(f"Created config.jsonc with first layout: {layout}")
         return layout
 
-    config_hash = get_file_hash(CONFIG_JSONC)
+    config_hash = get_active_config_layout_hash()
     for layout_file in layouts:
         if get_file_hash(layout_file) == config_hash:
             logger.debug(f"Found current layout by hash: {layout_file}")
@@ -229,7 +192,7 @@ def get_current_layout_from_config(persist_state=True):
                 "WAYBAR_LAYOUT_NAME": layout_name,
             }
         )
-    atomic_copy_file(layout, CONFIG_JSONC)
+    install_layout_as_active_config(layout)
     logger.debug(f"Updated config.jsonc with layout: {layout}")
     return layout
 
@@ -284,71 +247,6 @@ def ensure_state_file():
             _write_state_lines(_merge_state_lines(lines, updates))
 
 
-def resolve_style_path(layout_path):
-    """Resolve the style path based on the layout path."""
-    name = os.path.basename(layout_path).replace(".jsonc", "")
-    dir_name = os.path.basename(os.path.dirname(layout_path))
-
-    for style_dir in STYLE_DIRS:
-        style_path = glob.glob(os.path.join(style_dir, f"{name}*.css"))
-        if style_path:
-            logger.debug(f"Resolved style path: {style_path[0]}")
-            return style_path[0]
-
-        basename_without_hash = name.split("#")[0]
-        style_path = glob.glob(os.path.join(style_dir, f"{basename_without_hash}*.css"))
-        if style_path:
-            logger.debug(f"Resolved style path with #: {style_path[0]}")
-            return style_path[0]
-
-        if dir_name:
-            style_path = glob.glob(os.path.join(style_dir, f"{dir_name}*.css"))
-            if style_path:
-                logger.debug(f"Resolved style path from directory name: {style_path[0]}")
-                return style_path[0]
-
-    for style_dir in STYLE_DIRS:
-        default_path = os.path.join(style_dir, "defaults.css")
-        if os.path.exists(default_path):
-            logger.debug(f"Using default style: {default_path}")
-            return default_path
-
-    logger.warning("No default style found in any style directory")
-    return os.path.join(STYLE_DIRS[0], "defaults.css")
-
-
-def list_layouts():
-    """List all layouts with their matching styles."""
-    layouts = find_layout_files()
-    layout_style_pairs = []
-
-    for layout in layouts:
-        if "/backup/" in layout or "\\backup\\" in layout:
-            continue
-        for layout_dir in LAYOUT_DIRS:
-            if layout.startswith(layout_dir):
-                relative_path = os.path.relpath(layout, start=layout_dir)
-                name = relative_path.replace(".jsonc", "")
-                style_path = resolve_style_path(layout)
-                layout_style_pairs.append(
-                    {"layout": layout, "name": name, "style": style_path}
-                )
-                break
-
-    return {"layouts": layout_style_pairs}
-
-
-def list_layouts_json():
-    """List all layouts in JSON format with their matching styles."""
-    layouts_json = json.dumps(list_layouts(), indent=4)
-    print(layouts_json)
-    sys.exit(0)
-
-
-def list_layouts_json_text():
-    return json.dumps(list_layouts(), indent=4)
-
-
 def synchronize_layout_state(skip_layout_sync=False):
     if skip_layout_sync:
         logger.debug("Skipping layout sync for CSS-only action")
@@ -364,15 +262,15 @@ def synchronize_layout_state(skip_layout_sync=False):
             if not CONFIG_JSONC.exists():
                 logger.debug("Config file missing, creating from layout path")
                 CONFIG_JSONC.parent.mkdir(parents=True, exist_ok=True)
-                atomic_copy_file(layout_path, CONFIG_JSONC)
+                install_layout_as_active_config(layout_path)
                 logger.debug("Created config.jsonc from state file layout")
             else:
-                config_hash = get_file_hash(CONFIG_JSONC)
+                config_hash = get_active_config_layout_hash()
                 layout_hash = get_file_hash(layout_path)
                 if config_hash != layout_hash:
                     logger.debug("Config hash differs from layout hash, updating config")
                     try:
-                        atomic_copy_file(layout_path, CONFIG_JSONC)
+                        install_layout_as_active_config(layout_path)
                         logger.debug("Updated config.jsonc with layout from state file")
                     except Exception as exc:
                         logger.error(f"Failed to update config.jsonc: {exc}")
@@ -395,14 +293,14 @@ def synchronize_layout_state(skip_layout_sync=False):
                     CONFIG_JSONC.parent.mkdir(parents=True, exist_ok=True)
 
                     if CONFIG_JSONC.exists():
-                        config_hash = get_file_hash(CONFIG_JSONC)
+                        config_hash = get_active_config_layout_hash()
                         layout_hash = get_file_hash(found_layout)
                         if config_hash != layout_hash:
                             logger.debug("Config hash differs from layout hash, updating config")
-                            atomic_copy_file(found_layout, CONFIG_JSONC)
+                            install_layout_as_active_config(found_layout)
                             logger.debug("Updated config.jsonc with layout by name")
                     else:
-                        atomic_copy_file(found_layout, CONFIG_JSONC)
+                        install_layout_as_active_config(found_layout)
                         logger.debug("Created config.jsonc from layout by name")
                 else:
                     logger.error(f"Could not find layout by name: {layout_name}")
@@ -417,14 +315,14 @@ def synchronize_layout_state(skip_layout_sync=False):
                             }
                         )
                         CONFIG_JSONC.parent.mkdir(parents=True, exist_ok=True)
-                        atomic_copy_file(first_layout, CONFIG_JSONC)
+                        install_layout_as_active_config(first_layout)
                         logger.debug(f"Used first available layout: {first_layout}")
         else:
             logger.debug("No valid layout path in state file, determining current layout")
             current_layout = get_current_layout_from_config()
             if current_layout:
                 CONFIG_JSONC.parent.mkdir(parents=True, exist_ok=True)
-                atomic_copy_file(current_layout, CONFIG_JSONC)
+                install_layout_as_active_config(current_layout)
                 logger.debug(f"Created config.jsonc from determined layout: {current_layout}")
     else:
         logger.debug("State file not found, creating it")

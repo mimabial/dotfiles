@@ -1,8 +1,10 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Parse options: -d/--download, -u/--upload, or both (default)
+set -euo pipefail
+
 MODE="both"
-case "$1" in
+case "${1:-}" in
   -u | --upload) MODE="upload" ;;
   -d | --download) MODE="download" ;;
   "") MODE="both" ;;

@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 if [ -z "${*}" ]; then
   clear
   exec fastfetch --logo-type kitty

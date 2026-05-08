@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+set -euo pipefail
 
 usage() {
   echo "Usage: hyprshell cmd/share.sh [clipboard|file|folder] [paths...]" >&2

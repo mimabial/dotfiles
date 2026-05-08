@@ -1,41 +1,39 @@
 [Colors:Button]
-BackgroundAlternate=255,255,255
-BackgroundNormal=255,255,255
-DecorationFocus=51,51,51
-DecorationHover=51,51,51
-ForegroundNormal=68,68,68
+BackgroundAlternate=13,13,13
+BackgroundNormal=13,13,13
+DecorationFocus=141,141,141
+DecorationHover=141,141,141
+ForegroundNormal=255,255,255
 
 [Colors:Complementary]
-BackgroundNormal=255,255,255
-ForegroundNormal=68,68,68
+BackgroundNormal=13,13,13
+ForegroundNormal=255,255,255
 
 [Colors:Header]
-BackgroundNormal=255,255,255
-DecorationFocus=51,51,51
-DecorationHover=51,51,51
-ForegroundNormal=68,68,68
+BackgroundNormal=13,13,13
+DecorationFocus=141,141,141
+DecorationHover=141,141,141
+ForegroundNormal=255,255,255
 
 [Colors:Selection]
-BackgroundAlternate=51,51,51
-BackgroundNormal=51,51,51
-DecorationFocus=51,51,51
-DecorationHover=51,51,51
-ForegroundActive=0,0,0
-ForegroundInactive=0,0,0
-ForegroundNormal=0,0,0
+BackgroundAlternate=141,141,141
+BackgroundNormal=141,141,141
+DecorationFocus=141,141,141
+DecorationHover=141,141,141
+ForegroundActive=255,255,255
+ForegroundInactive=255,255,255
+ForegroundNormal=255,255,255
 
 [Colors:Tooltip]
-BackgroundNormal=255,255,255
-ForegroundNormal=68,68,68
+BackgroundNormal=13,13,13
+ForegroundNormal=255,255,255
 
 [Colors:View]
-BackgroundAlternate=255,255,255
-BackgroundNormal=255,255,255
-DecorationFocus=51,51,51
-DecorationHover=51,51,51
-ForegroundActive=255,128,224
-ForegroundInactive=160,160,160
-ForegroundNormal=68,68,68
+BackgroundAlternate=13,13,13
+BackgroundNormal=13,13,13
+DecorationFocus=141,141,141
+DecorationHover=141,141,141
+ForegroundNormal=255,255,255
 Test1=50,50,50
 Test10=50,50,50
 Test11=50,50,50
@@ -50,8 +48,8 @@ Test8=50,50,50
 Test9=50,50,50
 
 [Colors:Window]
-BackgroundNormal=255,255,255
-ForegroundNormal=68,68,68
+BackgroundNormal=13,13,13
+ForegroundNormal=255,255,255
 
 [General]
 ColorScheme=colors
@@ -59,7 +57,7 @@ TerminalApplication=kitty
 TerminalService=kitty.desktop
 
 [Icons]
-Theme=Tela-circle-grey-light
+Theme=Tela-red-dark
 
 [KDE]
 ShowDeleteCommand=false

@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+#
+# Subsystem inputs (populated by core/wallpaper.catalog.sh:get_themes):
+#   thmList, thmWall
+: "${thmList-}" "${thmWall-}"
 
 LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 
@@ -195,6 +199,11 @@ show_style_selector() {
 
   selection="$(
     list_style_menu_entries | rofi -dmenu -i \
+      -sync \
+      -no-custom \
+      -hover-select \
+      -me-select-entry "" \
+      -me-accept-entry MousePrimary \
       -theme "$(rofi_resolve_theme "${ROFI_THEME_MENU_STYLE:-theme_select}")" \
       -theme-str "${font_override}" \
       -theme-str "${layout_override}" \
@@ -235,7 +244,7 @@ ensure_theme_thumbs() {
   if [[ -x "${queue_script}" ]]; then
     "${queue_script}" --enqueue "${cache_args[@]}" &>/dev/null &
   else
-    "${LIB_DIR}/hypr/wallpaper/awww-wallcache.sh" "${cache_args[@]}" &>/dev/null &
+    "${LIB_DIR}/hypr/wallpaper/wallpaper.cache.sh" "${cache_args[@]}" &>/dev/null &
   fi
 }
 
@@ -302,6 +311,7 @@ show_theme_selector() {
   local rofi_theme_name=""
   local layout_override=""
   local selection=""
+  local -a selector_data=()
 
   font_scale="$(rofi_effective_font_scale "${ROFI_THEME_SCALE}")"
   font_name="$(rofi_effective_font_name "${ROFI_THEME_FONT:-$ROFI_FONT}")"
@@ -316,6 +326,11 @@ show_theme_selector() {
 
   selection="$(
     theme_menu_entries "${thmb_extn}" | rofi -dmenu -i \
+      -sync \
+      -no-custom \
+      -hover-select \
+      -me-select-entry "" \
+      -me-accept-entry MousePrimary \
       -theme "$(rofi_resolve_theme "${rofi_theme_name}")" \
       -theme-str "${font_override}" \
       -theme-str "${layout_override}" \

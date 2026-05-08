@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+#
+# tui-terminal-exec — Launch a command in a TUI terminal with optional Hyprland metadata.
+#
+# Usage: tui-terminal-exec [--hypr-profile NAME] [--hypr-size WIDTH HEIGHT] [--app-id ID] [--title TITLE] -- <command> [args...]
+# Depends on: terminal emulator, hyprctl, jq
+#
+set -euo pipefail
 
 TERMINAL_TUI="${TERMINAL_TUI:-kitty}"
 hypr_profile=""
@@ -176,22 +183,30 @@ terminate_child() {
   kill -TERM "${terminal_pid}" 2>/dev/null || true
 }
 
-parse_args "$@"
-apply_geometry_profile || exit 2
-resolve_percentages || exit 2
-validate_exec_command || exit $?
-build_terminal_command
+main() {
+  local exit_code=0
 
-if [[ -n "${hypr_width}" && -n "${hypr_height}" ]]; then
-  inject_window_rules || true
-fi
+  parse_args "$@"
+  apply_geometry_profile || return 2
+  resolve_percentages || return 2
+  validate_exec_command || return $?
+  build_terminal_command
 
-"${terminal_launch[@]}" &
-terminal_pid=$!
+  if [[ -n "${hypr_width}" && -n "${hypr_height}" ]]; then
+    inject_window_rules || true
+  fi
 
-trap terminate_child INT TERM HUP
-wait "${terminal_pid}"
+  "${terminal_launch[@]}" &
+  terminal_pid=$!
 
-if [[ -n "${hypr_width}" && -n "${hypr_height}" ]]; then
-  remove_window_rules
-fi
+  trap terminate_child INT TERM HUP
+  wait "${terminal_pid}" || exit_code=$?
+
+  if [[ -n "${hypr_width}" && -n "${hypr_height}" ]]; then
+    remove_window_rules
+  fi
+
+  return "${exit_code}"
+}
+
+main "$@"

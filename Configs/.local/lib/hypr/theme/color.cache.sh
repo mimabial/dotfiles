@@ -1,5 +1,14 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2154
+# Sourced module; strict mode is owned by the entrypoint.
+#
+# color.cache.sh - Helpers for the wal cache directory: read/write/move cache
+# entries, prune by LRU, and atomically swap the active wal cache. Functions
+# are namespaced wal_cache_* because the cache is the wal palette, not the
+# generic theme cache.
+#
+# Subsystem inputs (set by color-sync.sh entrypoint via color.plan.sh):
+#   resolved_color_variant, selected_color_mode, wal_cache_key
+: "${resolved_color_variant-}" "${selected_color_mode-}" "${wal_cache_key-}"
 
 # Default cache directory
 HYPR_WAL_CACHE_DIR="${HYPR_WAL_CACHE_DIR:-${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/wal/cache}"
@@ -100,9 +109,7 @@ wal_cache_make_temp_dir() {
     return 1
   fi
 
-  # shellcheck disable=SC2178
-  local -n out_ref="${out_name}"
-  out_ref="${output}"
+  printf -v "${out_name}" '%s' "${output}"
 }
 
 copy_entry_with_fallback() {
@@ -202,14 +209,85 @@ restore_wal_state() {
 
 write_cache_meta() {
   local tmp_dir="$1"
+  local now=""
+
+  now="$(date +%s)"
 
   {
     echo "${wal_cache_key}"
+    echo "mode=${selected_color_mode}"
     echo "wallpaper=${STATE_WALLPAPER:-${WALLPAPER_IMAGE}}"
     echo "color_variant=${resolved_color_variant}"
     echo "backend=${PYWAL_BACKEND}"
+    echo "pipeline_input_hash=${PIPELINE_INPUT_HASH:-}"
+    echo "created=${now}"
+    echo "accessed=${now}"
   } >"${tmp_dir}/.meta"
+  printf '%s\n' "${now}" >"${tmp_dir}/.accessed"
   touch "${tmp_dir}/.complete"
+}
+
+wal_cache_touch_access() {
+  local dir="$1"
+  local now=""
+
+  [[ -d "${dir}" ]] || return 0
+  now="$(date +%s)"
+  printf '%s\n' "${now}" >"${dir}/.accessed" 2>/dev/null || true
+  touch "${dir}" 2>/dev/null || true
+}
+
+wal_cache_entry_count() {
+  local cache_dir="$1"
+
+  find "${cache_dir}" -mindepth 1 -maxdepth 1 -type d \
+    ! -name "*.tmp.*" \
+    ! -name "*.bak.*" \
+    -print 2>/dev/null | wc -l
+}
+
+wal_cache_total_bytes() {
+  local cache_dir="$1"
+
+  du -sb "${cache_dir}" 2>/dev/null | awk '{print $1}'
+}
+
+wal_cache_oldest_entry() {
+  local cache_dir="$1"
+
+  find "${cache_dir}" -mindepth 1 -maxdepth 1 -type d \
+    ! -name "*.tmp.*" \
+    ! -name "*.bak.*" \
+    -printf '%T@ %p\n' 2>/dev/null \
+    | LC_ALL=C sort -n \
+    | awk 'NR == 1 {sub(/^[^ ]+ /, ""); print; exit}'
+}
+
+wal_cache_prune_lru() {
+  local cache_dir="$1"
+  local max_entries="${HYPR_WAL_CACHE_MAX_ENTRIES:-64}"
+  local max_bytes="${HYPR_WAL_CACHE_MAX_BYTES:-33554432}"
+  local entry_count=0
+  local total_bytes=0
+  local oldest=""
+
+  [[ -d "${cache_dir}" ]] || return 0
+  [[ "${max_entries}" =~ ^[0-9]+$ ]] || max_entries=64
+  [[ "${max_bytes}" =~ ^[0-9]+$ ]] || max_bytes=33554432
+
+  while :; do
+    entry_count="$(wal_cache_entry_count "${cache_dir}")"
+    total_bytes="$(wal_cache_total_bytes "${cache_dir}")"
+    [[ -n "${total_bytes}" ]] || total_bytes=0
+
+    if (( (max_entries == 0 || entry_count <= max_entries) && (max_bytes == 0 || total_bytes <= max_bytes) )); then
+      break
+    fi
+
+    oldest="$(wal_cache_oldest_entry "${cache_dir}")"
+    [[ -n "${oldest}" ]] || break
+    wal_cache_remove_paths_warn "failed to prune old wal cache entry" "${oldest}" || break
+  done
 }
 
 cache_cleanup_stale() {
@@ -290,6 +368,7 @@ wal_cache_restore() {
     }
   fi
 
+  wal_cache_touch_access "${src_dir}"
   type print_log &>/dev/null && print_log -sec "pywal16" -stat "cache" "restored"
 }
 
@@ -339,5 +418,7 @@ wal_cache_store() {
     }
   fi
 
+  wal_cache_touch_access "${dest_dir}"
+  wal_cache_prune_lru "${dest_parent}" >/dev/null 2>&1 || true
   type print_log &>/dev/null && print_log -sec "pywal16" -stat "cache" "stored"
 }

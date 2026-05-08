@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 
 # Script discovery and execution helpers for hyprshell.
 
@@ -38,7 +39,9 @@ list_script() {
   local rel_path=""
   while IFS= read -r rel_path; do
     [[ -n "${rel_path}" ]] || continue
-    printf '%s\n' "${rel_path%.sh}" | sed 's/\.py$//'
+    rel_path="${rel_path%.sh}"
+    rel_path="${rel_path%.py}"
+    printf '%s\n' "${rel_path}"
   done < <(
     for dir in "${SCRIPT_DIRS[@]}"; do
       find -L "${dir}" -maxdepth 2 -type f \( -name "*.sh" -o -name "*.py" \) -printf '%P\n' 2>/dev/null
@@ -47,7 +50,9 @@ list_script() {
 }
 
 list_script_path() {
-  find -L "${LIB_DIR}/hypr" -type f \( -name "*.sh" -o -name "*.py" \) -print
+  find -L "${LIB_DIR}/hypr" \
+    -path '*/__pycache__' -prune -o \
+    -type f \( -name "*.sh" -o -name "*.py" \) -print
 }
 
 resolve_script_target() {
@@ -177,11 +182,6 @@ run_command() {
   echo "Command not found: ${command_name}"
   echo "Available commands:"
   list_script
-
-  for dir in "${SCRIPT_DIRS[@]}"; do
-    echo "Scripts in ${dir}:"
-    find -L "${dir}" -maxdepth 2 -type f \( -name "*.sh" -o -name "*.py" -o -executable \) -exec basename {} \; 2>/dev/null | sort -u
-  done
 
   return 1
 }

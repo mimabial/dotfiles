@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 
 # shellcheck source=/dev/null
 source "${LIB_DIR}/hypr/controls/lib/control.common.bash"

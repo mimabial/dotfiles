@@ -1,27 +1,37 @@
 #!/usr/bin/env bash
+#
+# lock-screen.sh — Lock the screen via $LOCKSCREEN under a systemd scope unit.
+#
+# Usage:
+#   lock-screen.sh [lockscreen-args...]
+#   lock-screen.sh --get          # Print configured lockscreen command
+#
+# Depends on: app2unit.sh, ${LOCKSCREEN:-hyprlock}
+#
 
-source "$(command -v hyprshell)" || exit 1
+LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
+# shellcheck source=/dev/null
+source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
 
 lockscreen="${LOCKSCREEN:-hyprlock}"
-lockscreen_wrapper=""
 
-case ${1} in
+case "${1:-}" in
   --get)
-    echo "${lockscreen}"
+    printf '%s\n' "${lockscreen}"
     exit 0
     ;;
 esac
 
-#? To cleanly exit hyprlock we should use a systemd scope unit.
-#? This allows us to manage the lockscreen process more effectively.
-#? This fix the zombie process issue when hyprlock is unlocked but still running.
-unit_id=(-u "lockscreen.scope")
+#? Run the lockscreen under a systemd scope unit so an unlocked-but-still-running
+#? hyprlock process doesn't survive as a zombie.
+scope_unit=(-u "lockscreen.scope")
 
-lockscreen_wrapper="$(command -v "${lockscreen}.sh" 2>/dev/null || true)"
-if [[ -n "${lockscreen_wrapper}" ]]; then
-  printf "Executing ${lockscreen} wrapper script : %s\n" "${lockscreen_wrapper}"
-  app2unit.sh "${unit_id[@]}" -- "${lockscreen_wrapper}" "${@}"
+app2unit="${HYPR_LIB_DIR}/system/app2unit.sh"
+wrapper="$(command -v "${lockscreen}.sh" 2>/dev/null || true)"
+if [[ -n "${wrapper}" ]]; then
+  printf 'Executing %s wrapper: %s\n' "${lockscreen}" "${wrapper}"
+  exec "${app2unit}" "${scope_unit[@]}" -- "${wrapper}" "$@"
 else
-  printf "Executing raw command: %s\n" "${lockscreen}"
-  app2unit.sh "${unit_id[@]}" -- "${lockscreen}" "${@}"
+  printf 'Executing %s\n' "${lockscreen}"
+  exec "${app2unit}" "${scope_unit[@]}" -- "${lockscreen}" "$@"
 fi

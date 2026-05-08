@@ -1,4 +1,12 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
+#
+# color.state.sh - Read and write ~/.cache/hypr/color.gen.state, the cache-key
+# and variant marker that lets color-sync.sh take its fast-path skip.
+#
+# Subsystem inputs (set by color-sync.sh entrypoint via color.plan.sh):
+#   selected_color_mode
+: "${selected_color_mode-}"
 
 color_state_persist() {
   [[ "${CACHE_ONLY}" -eq 1 ]] && return 0
@@ -22,12 +30,10 @@ color_state_read_cache_metadata() {
   local key_name="$1"
   local mode_name="$2"
   local state_file="${3:-${STATE_FILE}}"
-  local -n key_ref="${key_name}"
-  local -n mode_ref="${mode_name}"
   local state_line=""
 
-  key_ref=""
-  mode_ref=""
+  printf -v "${key_name}" '%s' ""
+  printf -v "${mode_name}" '%s' ""
   [[ -r "${state_file}" ]] || return 0
 
   state_line="$(awk -F= '
@@ -36,20 +42,18 @@ color_state_read_cache_metadata() {
     END {print key "|" mode}
   ' "${state_file}" 2>/dev/null || true)"
 
-  key_ref="${state_line%%|*}"
-  mode_ref="${state_line#*|}"
+  printf -v "${key_name}" '%s' "${state_line%%|*}"
+  printf -v "${mode_name}" '%s' "${state_line#*|}"
 }
 
 color_state_read_transition_metadata() {
   local variant_name="$1"
   local mode_name="$2"
   local state_file="${3:-${STATE_FILE}}"
-  local -n variant_ref="${variant_name}"
-  local -n mode_ref="${mode_name}"
   local state_line=""
 
-  variant_ref=""
-  mode_ref=""
+  printf -v "${variant_name}" '%s' ""
+  printf -v "${mode_name}" '%s' ""
   [[ -r "${state_file}" ]] || return 0
 
   state_line="$(awk -F= '
@@ -58,8 +62,8 @@ color_state_read_transition_metadata() {
     END {print variant "|" mode}
   ' "${state_file}" 2>/dev/null || true)"
 
-  variant_ref="${state_line%%|*}"
-  mode_ref="${state_line#*|}"
+  printf -v "${variant_name}" '%s' "${state_line%%|*}"
+  printf -v "${mode_name}" '%s' "${state_line#*|}"
 }
 
 color_state_detect_transition_flags() {

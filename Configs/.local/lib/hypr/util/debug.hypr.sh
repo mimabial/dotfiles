@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+set -euo pipefail
 
 LOG_FILE="${TMPDIR:-/tmp}/hypr-debug.log"
 redacted_log=""

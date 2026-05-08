@@ -119,11 +119,6 @@ function _load_deferred_plugin_system() {
     # add-zsh-hook precmd load_omz_deferred # Loads when shell is ready to accept commands
     # add-zsh-hook preexec load_omz_deferred # Loads before the first command executes
 
-    # TODO: add handlers in pm.sh
-    # for these aliases please manually add the following lines to your .zshrc file.(Using paru as the aur helper)
-    # pc='paru -Sc' # remove all cached packages
-    # po='paru -Qtdq | ${PM_COMMAND[@]} -Rns -' # remove orphaned packages
-
     # zsh-autosuggestions won't work on first prompt when deferred
     if typeset -f _zsh_autosuggest_start >/dev/null; then
         _zsh_autosuggest_start

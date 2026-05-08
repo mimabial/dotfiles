@@ -8,6 +8,10 @@
 #
 # GIMP must be restarted (or Edit > Preferences > Theme > reload) to pick up
 # the new colors. There is no runtime reload signal.
+#
+# Subsystem inputs (sourced from ${WAL_CACHE}/colors-shell.sh below):
+#   background, foreground
+: "${background-}" "${foreground-}"
 
 set -euo pipefail
 
@@ -15,6 +19,11 @@ WAL_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/wal"
 LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 # shellcheck source=/dev/null
 source "${LIB_DIR}/hypr/core/hash-cache.sh" || exit 1
+if [[ -r "${LIB_DIR}/hypr/theme/phase-d.sh" ]]; then
+  # shellcheck source=/dev/null
+  source "${LIB_DIR}/hypr/theme/phase-d.sh" || exit 1
+  theme_phase_d_init "${HYPR_THEME_PHASE_D_LOCK_KEY:-theme_phase_d_gimp}"
+fi
 HASH_FILE="$(hypr_hash_cache_runtime_file "wal-gimp-hash")" || exit 1
 
 # Find the most recent GIMP 3.x config directory
@@ -103,7 +112,7 @@ luminance() {
 # --- Main ---
 
 [[ -f "${WAL_CACHE}/colors-shell.sh" ]] || exit 0
-# shellcheck disable=SC1090
+# shellcheck source=/dev/null
 source "${WAL_CACHE}/colors-shell.sh"
 
 # Detect dark vs light based on background luminance.
@@ -165,6 +174,10 @@ if [[ -f "${HASH_FILE}" && "$(cat "${HASH_FILE}" 2>/dev/null)" == "${input_hash}
   exit 0
 fi
 
+if declare -F theme_phase_d_current_generation >/dev/null 2>&1; then
+  theme_phase_d_current_generation || exit 0
+fi
+
 # Write gimp.css with @define-color overrides.
 tmp_css="$(mktemp "${GIMP_DIR}/.gimp.css.XXXXXX")"
 trap 'rm -f "${tmp_css}" 2>/dev/null' EXIT
@@ -193,8 +206,14 @@ cat > "${tmp_css}" <<CSS
 @define-color ruler-color            ${ruler};
 CSS
 
-mv "${tmp_css}" "${GIMP_CSS}"
-trap - EXIT
-
-echo "${input_hash}" > "${HASH_FILE}"
+if declare -F theme_phase_d_promote_file >/dev/null 2>&1; then
+  theme_phase_d_promote_file "${tmp_css}" "${GIMP_CSS}" || exit 1
+  tmp_css=""
+  trap - EXIT
+  theme_phase_d_run_locked_if_current hypr_hash_cache_store "${HASH_FILE}" "${input_hash}" || exit 1
+else
+  mv "${tmp_css}" "${GIMP_CSS}"
+  trap - EXIT
+  echo "${input_hash}" > "${HASH_FILE}"
+fi
 echo "[gimp] Generated gimp.css"

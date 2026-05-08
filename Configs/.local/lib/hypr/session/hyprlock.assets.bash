@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 # Shared hyprlock asset/image helpers.
 resolve_magick_limits() {
   local cores mem_avail_kb mem_avail_mb
@@ -60,7 +61,9 @@ fn_background() {
   bg_tmp="$(mktemp "${WALLPAPER_CURRENT_DIR}/.wall.set.tmp.XXXXXX.png")" || return 1
 
   mime="$(file --mime-type -b "${wp}" 2>/dev/null || true)"
-  is_video=$(grep -c '^video/' <<<"${mime}")
+  # `|| true`: grep -c returns 1 when no matches, which under set -e+pipefail
+  # would otherwise kill the script. We want is_video=0 in that case.
+  is_video=$(grep -c '^video/' <<<"${mime}" || true)
   if [ "${is_video}" -eq 1 ]; then
     print_log -sec "wallpaper" -stat "converting video" "${wp}"
     mkdir -p "${WALLPAPER_VIDEO_DIR}"
@@ -78,6 +81,7 @@ fn_background() {
   if [[ -f "${png_cache}" ]]; then
     # Use cached PNG
     cp -f "${png_cache}" "${bg}"
+    rm -f "${bg_tmp}"
     return 0
   fi
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 
 _hypr_state_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 if ! declare -F hypr_runtime_subdir >/dev/null 2>&1; then
@@ -20,6 +21,7 @@ export_hypr_config() {
   [ -f "${user_conf_state}" ] && source "${user_conf_state}"
   [ -f "${user_conf}" ] && source "${user_conf}"
   refresh_hypr_runtime_state
+  return $?
 }
 
 refresh_hypr_runtime_state() {
@@ -29,9 +31,22 @@ refresh_hypr_runtime_state() {
     *) selected_color_mode=0 ;;
   esac
 
-  if [ -z "${HYPR_THEME:-}" ] || [ ! -d "${HYPR_CONFIG_HOME}/themes/${HYPR_THEME:-}" ]; then
-    get_themes
-    HYPR_THEME="${thmList[0]}"
+  if [[ -z "${HYPR_THEME:-}" ]]; then
+    if declare -F print_log >/dev/null 2>&1; then
+      print_log -sec "theme" -err "state" "HYPR_THEME is not set"
+    else
+      printf 'ERROR: HYPR_THEME is not set\n' >&2
+    fi
+    return 1
+  fi
+
+  if [[ ! -d "${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}" ]]; then
+    if declare -F print_log >/dev/null 2>&1; then
+      print_log -sec "theme" -err "state" "theme not found: ${HYPR_THEME}"
+    else
+      printf 'ERROR: theme not found: %s\n' "${HYPR_THEME}" >&2
+    fi
+    return 1
   fi
 
   HYPR_THEME_DIR="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}"
@@ -71,12 +86,20 @@ refresh_hypr_instance_signature() {
 #   - env-overrides:  Exported environment overrides
 #   - color_variant:  Current resolved dark/light variant
 #
+# Readers are lock-free. Writes use tmp+mv under flock, so readers see either
+# the previous complete file or the next complete file; concurrent writers may
+# still make a single read observe old values until the in-process cache refreshes.
+#
 # Use these functions for consistent state access across all scripts:
 #   state_get  - Read a state variable
 #   state_set  - Write a state variable (atomic)
 #   state_get_color_variant - Read the resolved dark/light variant
 #   state_set_color_variant - Write the resolved dark/light variant
 # ============================================================================
+
+declare -gA HYPR_STATE_CACHE_VALUES=()
+declare -g HYPR_STATE_CACHE_SIGNATURE=""
+declare -g HYPR_STATE_CACHE_READY=0
 
 # State path resolution
 state_dir() {
@@ -95,62 +118,103 @@ state_color_variant_file() {
   printf '%s\n' "${STATE_COLOR_VARIANT:-$(state_dir)/color_variant}"
 }
 
-state_read_value_from_file() {
-  local state_file="$1"
-  local var_name="$2"
-  local line=""
-  local stripped=""
-  local raw_value=""
-  local found=0
-
-  [[ -f "${state_file}" ]] || return 1
-  [[ "${var_name}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || return 1
-
-  while IFS= read -r line || [[ -n "${line}" ]]; do
-    stripped="${line#"${line%%[![:space:]]*}"}"
-    [[ -n "${stripped}" ]] || continue
-    [[ "${stripped}" == \#* ]] && continue
-
-    case "${stripped}" in
-      "export ${var_name}="*)
-        raw_value="${stripped#"export ${var_name}="}"
-        found=1
-        ;;
-      "${var_name}="*)
-        raw_value="${stripped#"${var_name}="}"
-        found=1
-        ;;
-      *)
-        continue
-        ;;
-    esac
-  done < "${state_file}"
-
-  (( found )) || return 1
+state_decode_raw_value() {
+  local raw_value="${1-}"
 
   if [[ "${raw_value}" == \(* ]]; then
     if declare -F print_log >/dev/null 2>&1; then
-      print_log -sec "state" -warn "state_get" "array syntax is unsupported for ${var_name}"
+      print_log -sec "state" -warn "state_get" "array syntax is unsupported"
     fi
     return 1
   fi
 
   if [[ ${#raw_value} -ge 2 && "${raw_value:0:1}" == '"' && "${raw_value:${#raw_value}-1:1}" == '"' ]]; then
     raw_value="${raw_value:1:${#raw_value}-2}"
-    raw_value="${raw_value//\\\\/\\}"
     raw_value="${raw_value//\\\"/\"}"
     raw_value="${raw_value//\\\$/\$}"
     raw_value="${raw_value//\\\`/\`}"
+    raw_value="${raw_value//\\\\/\\}"
     printf '%s' "${raw_value}"
-    return
+    return 0
   fi
 
   if [[ ${#raw_value} -ge 2 && "${raw_value:0:1}" == "'" && "${raw_value:${#raw_value}-1:1}" == "'" ]]; then
     printf '%s' "${raw_value:1:${#raw_value}-2}"
-    return
+    return 0
   fi
 
   printf '%s' "${raw_value}"
+}
+
+state_file_signature() {
+  local state_file="$1"
+
+  if [[ -e "${state_file}" || -L "${state_file}" ]]; then
+    stat -Lc '%n:%y:%s:%i' -- "${state_file}" 2>/dev/null || printf '%s:unreadable\n' "${state_file}"
+  else
+    printf '%s:missing\n' "${state_file}"
+  fi
+}
+
+state_parse_cache_file() {
+  local state_file="$1"
+  local line=""
+  local stripped=""
+  local raw_name=""
+  local raw_value=""
+  local value=""
+
+  [[ -f "${state_file}" ]] || return 0
+
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    stripped="${line#"${line%%[![:space:]]*}"}"
+    [[ -n "${stripped}" ]] || continue
+    [[ "${stripped}" == \#* ]] && continue
+
+    if [[ "${stripped}" =~ ^export[[:space:]]+([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
+      raw_name="${BASH_REMATCH[1]}"
+      raw_value="${BASH_REMATCH[2]}"
+    elif [[ "${stripped}" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
+      raw_name="${BASH_REMATCH[1]}"
+      raw_value="${BASH_REMATCH[2]}"
+    else
+      continue
+    fi
+
+    [[ "${raw_name}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || continue
+    [[ -v "HYPR_STATE_CACHE_VALUES[${raw_name}]" ]] && continue
+    value="$(state_decode_raw_value "${raw_value}")" || continue
+    HYPR_STATE_CACHE_VALUES["${raw_name}"]="${value}"
+  done < "${state_file}"
+}
+
+state_cache_load() {
+  local state_rc=""
+  local env_overrides_file=""
+  local signature=""
+
+  state_rc="$(state_rc_file)"
+  env_overrides_file="$(state_env_overrides_file)"
+  signature="$(
+    state_file_signature "${state_rc}"
+    state_file_signature "${env_overrides_file}"
+  )"
+
+  if [[ "${HYPR_STATE_CACHE_READY:-0}" -eq 1 && "${HYPR_STATE_CACHE_SIGNATURE:-}" == "${signature}" ]]; then
+    return 0
+  fi
+
+  HYPR_STATE_CACHE_VALUES=()
+  state_parse_cache_file "${state_rc}"
+  state_parse_cache_file "${env_overrides_file}"
+  HYPR_STATE_CACHE_SIGNATURE="${signature}"
+  HYPR_STATE_CACHE_READY=1
+}
+
+state_cache_invalidate() {
+  HYPR_STATE_CACHE_VALUES=()
+  HYPR_STATE_CACHE_SIGNATURE=""
+  HYPR_STATE_CACHE_READY=0
 }
 
 # Get a state variable value
@@ -159,32 +223,15 @@ state_read_value_from_file() {
 state_get() {
   local var_name="$1"
   local default_value="${2:-}"
-  local value=""
-  local state_rc=""
-  local env_overrides_file=""
-  local found=0
 
   # Validate input
-  if [[ -z "${var_name}" ]]; then
+  if [[ -z "${var_name}" || ! "${var_name}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
     printf '%s\n' "${default_value}"
     return 1
   fi
 
-  state_rc="$(state_rc_file)"
-  env_overrides_file="$(state_env_overrides_file)"
-
-  # Check staterc first (primary state file)
-  if [[ -f "${state_rc}" ]] && value="$(state_read_value_from_file "${state_rc}" "${var_name}")"; then
-    found=1
-  fi
-
-  # Fall back to env-overrides if not found
-  if [[ "${found}" -eq 0 ]] && [[ -f "${env_overrides_file}" ]] && value="$(state_read_value_from_file "${env_overrides_file}" "${var_name}")"; then
-    found=1
-  fi
-
-  if [[ "${found}" -eq 1 ]]; then
-    printf '%s\n' "${value}"
+  if state_cache_load && [[ -v "HYPR_STATE_CACHE_VALUES[${var_name}]" ]]; then
+    printf '%s\n' "${HYPR_STATE_CACHE_VALUES[${var_name}]}"
   else
     printf '%s\n' "${default_value}"
   fi
@@ -330,11 +377,13 @@ state_set() {
 
   if [[ "${target_file}" == "color_variant" ]]; then
     state_write_color_variant_file "${state_file}" "${var_value}" || rc=$?
+    [[ "${rc}" -eq 0 ]] && state_cache_invalidate
     state_release_lock lock_fd
     return "${rc}"
   fi
 
   state_write_key_value_file "${state_file}" "${target_file}" "${var_name}" "${var_value}" || rc=$?
+  [[ "${rc}" -eq 0 ]] && state_cache_invalidate
   state_release_lock lock_fd
   return "${rc}"
 }

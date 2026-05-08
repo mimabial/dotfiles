@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 
 # Shared helper functions for wallpaper modules.
 
@@ -105,7 +106,7 @@ wallpaper_queue_script() {
 wallpaper_cache_script() {
   local lib_dir="${LIB_DIR}"
   [[ -z "${lib_dir}" ]] && lib_dir="${HOME}/.local/lib"
-  printf '%s\n' "${lib_dir}/hypr/wallpaper/awww-wallcache.sh"
+  printf '%s\n' "${lib_dir}/hypr/wallpaper/wallpaper.cache.sh"
 }
 
 wallpaper_enqueue_cache_jobs() {

@@ -20,8 +20,8 @@ inactive_tab_background #0A0A0A
 # Deep black for the background tones
 # Dark gray for muted elements
 
-color0      #1A1A1A      
-color8      #4A4A4A      
+color0      #1A1A1A
+color8      #4A4A4A
 
 # Typing color - bright red
 color1      #DD0000
@@ -34,8 +34,9 @@ color10     #FF9999
 color3      #FF6666
 color11     #FF6666
 
-color4      #FF0000
-color12     #FF0000
+# Blue accent for ANSI blue slots against hot red/deep black
+color7      #1E90FF
+color15     #1E90FF
 
 color5      #FF4444
 color13     #FF4444
@@ -43,5 +44,5 @@ color13     #FF4444
 color6      #FF5555
 color14     #FF5555
 
-color7      #32CD32
-color15     #32CD32
+color4      #FF0000
+color12     #FF0000

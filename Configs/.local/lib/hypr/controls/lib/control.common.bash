@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 
 # Shared helpers for control scripts (volume/brightness/network/audio switch).
 

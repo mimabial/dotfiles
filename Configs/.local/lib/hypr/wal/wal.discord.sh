@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # pywal16.discord.sh - Copy generated Discord CSS to client locations
 
+set -euo pipefail
+
 LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 # shellcheck source=/dev/null
 source "${LIB_DIR}/hypr/core/hash-cache.sh" || exit 1

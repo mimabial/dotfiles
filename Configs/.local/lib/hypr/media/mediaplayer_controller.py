@@ -18,6 +18,7 @@ from mediaplayer_browser import (
     title_looks_live,
     youtube_position_is_untrusted,
 )
+from mediaplayer_actions import clear_active_player_state, write_active_player_state
 from mediaplayer_policy import (
     build_track_identity_key,
     read_player_metadata,
@@ -73,6 +74,7 @@ def write_output(current_player):
 
     # --- Detect missing or invalid player ---
     if not current_player:
+        clear_active_player_state()
         output = {
             "text": UI_CONFIG.standby_text if UI_CONFIG else " MPlayer",
             "class": "custom-nothing-playing",
@@ -93,6 +95,11 @@ def write_output(current_player):
             return
 
     p_name = current_player.props.player_name
+    try:
+        action_player_name = current_player.props.player_instance or p_name
+    except Exception:
+        action_player_name = p_name
+    write_active_player_state(action_player_name)
 
     # --- Position ---
     try:

@@ -51,7 +51,7 @@ shell_join() {
 
 expand_path() {
   local value="${1:-}"
-  if [[ "${value}" == "~/"* ]]; then
+  if [[ "${value}" == \~/* ]]; then
     printf '%s\n' "${HOME}/${value#~/}"
   else
     printf '%s\n' "${value}"
@@ -324,11 +324,8 @@ create_preview_target() {
 }
 
 main() {
-  local type="${1:-auto}"
+  local type="auto"
   local runner=""
-
-  [[ -n "${TMUX:-}" ]] || die "preview-ai must run inside tmux"
-  [[ -x "${PREVIEW_BIN}" ]] || die "missing preview script: ${PREVIEW_BIN}"
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -358,6 +355,8 @@ main() {
     esac
   done
 
+  [[ -n "${TMUX:-}" ]] || die "preview-ai must run inside tmux"
+  [[ -x "${PREVIEW_BIN}" ]] || die "missing preview script: ${PREVIEW_BIN}"
   [[ $# -gt 0 ]] || die "missing content"
 
   CALLER_PANE="${TMUX_PANE:-$(tmux display-message -p '#{pane_id}')}"

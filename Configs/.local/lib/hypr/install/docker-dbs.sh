@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+set -euo pipefail
 
 options=("MySQL" "PostgreSQL" "Redis" "MongoDB" "MariaDB" "MSSQL")
 

@@ -1,32 +1,32 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#
+# browser.sh — Launch the default web browser; passes --private through as the browser-specific private-mode flag.
+#
+# Usage: browser.sh [--private] [browser-args...]
+#
+# Depends on: xdg-settings, setsid, uwsm-app, ${HYPR_LIB_DIR}/system/desktop-entry.exec.bash
+#
 
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/system/desktop-entry.exec.bash"
 
 default_browser="$(xdg-settings get default-web-browser)"
-launch_args=()
-
-desktop_entry_exec_resolve "$default_browser" || exit 1
+desktop_entry_exec_resolve "${default_browser}" || exit 1
 
 case "${DESKTOP_ENTRY_EXECUTABLE}" in
-  firefox | zen | librewolf)
-    private_flag="--private-window"
-    ;;
-  *)
-    private_flag="--incognito"
-    ;;
+  firefox | librewolf) private_flag="--private-window" ;;
+  *)                   private_flag="--incognito"      ;;
 esac
 
+launch_args=()
 for arg in "$@"; do
-  if [[ "$arg" == "--private" ]]; then
-    launch_args+=("$private_flag")
+  if [[ "${arg}" == "--private" ]]; then
+    launch_args+=("${private_flag}")
   else
-    launch_args+=("$arg")
+    launch_args+=("${arg}")
   fi
 done
 
-if [[ -n "${DESKTOP_ENTRY_WORKDIR}" ]]; then
-  cd "${DESKTOP_ENTRY_WORKDIR}" || exit 1
-fi
+[[ -z "${DESKTOP_ENTRY_WORKDIR}" ]] || cd "${DESKTOP_ENTRY_WORKDIR}" || exit 1
 
 exec setsid uwsm-app -- "${DESKTOP_ENTRY_ARGV[@]}" "${launch_args[@]}"

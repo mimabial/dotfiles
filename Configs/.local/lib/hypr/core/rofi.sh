@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 
 rofi_user_dir() {
   printf '%s\n' "${XDG_CONFIG_HOME:-$HOME/.config}/rofi"

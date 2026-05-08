@@ -12,6 +12,8 @@ DEFAULT_SYNC_MANIFEST_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/dotfiles-sync
 SYNC_MANIFEST_SOURCE="${DOTFILES_SYNC_MANIFEST:-${DEFAULT_SYNC_MANIFEST_FILE}}"
 SYNC_MANIFEST_FILE=""
 SYNC_MANIFEST_TEMP_FILE=""
+ACTIVE_HOST_PROFILE=""
+declare -a SYNC_MANIFEST_RECORDS=()
 
 usage() {
   cat <<USAGE
@@ -57,10 +59,10 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
-log_success() { echo -e "${GREEN}[OK]${NC} $1"; }
-log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+log_info() { printf '%b[INFO]%b %s\n' "${BLUE}" "${NC}" "$1"; }
+log_success() { printf '%b[OK]%b %s\n' "${GREEN}" "${NC}" "$1"; }
+log_warn() { printf '%b[WARN]%b %s\n' "${YELLOW}" "${NC}" "$1"; }
+log_error() { printf '%b[ERROR]%b %s\n' "${RED}" "${NC}" "$1"; }
 
 cleanup_temp_manifest() {
   [[ -n "${SYNC_MANIFEST_TEMP_FILE}" ]] || return 0
@@ -227,6 +229,37 @@ require_sync_manifest() {
   exit 1
 }
 
+load_sync_manifest() {
+  local kind=""
+  local rel_path=""
+  local excludes=""
+  local extra=""
+
+  SYNC_MANIFEST_RECORDS=()
+  while IFS='|' read -r kind rel_path excludes extra; do
+    [[ -n "${kind}${rel_path}${excludes}${extra}" ]] || continue
+    [[ "${kind}" == \#* ]] && continue
+    [[ -z "${extra}" ]] || {
+      log_error "Invalid manifest entry: ${kind}|${rel_path}|${excludes}|${extra}"
+      exit 1
+    }
+    [[ -n "${rel_path}" ]] || {
+      log_error "Invalid manifest entry: ${kind}|${rel_path}|${excludes}"
+      exit 1
+    }
+
+    case "${kind}" in
+      dir | file | host)
+        SYNC_MANIFEST_RECORDS+=("${kind}|${rel_path}|${excludes}")
+        ;;
+      *)
+        log_error "Unknown manifest kind: ${kind}"
+        exit 1
+        ;;
+    esac
+  done < "${SYNC_MANIFEST_FILE}"
+}
+
 host_profile_is_valid() {
   local profile="${1:-}"
   [[ -n "${profile}" && "${profile}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]
@@ -272,34 +305,25 @@ remove_path() {
 }
 
 sync_host_profile_files() {
-  local profile=""
+  local profile="${ACTIVE_HOST_PROFILE}"
   local host_root=""
   local kind=""
   local rel_path=""
   local excludes=""
-  local extra=""
+  local record=""
   local -a host_paths=()
 
-  if profile="$(get_host_profile)"; then
+  if [[ -n "${profile}" ]]; then
     host_root="${DOTFILES_DIR}/hosts/${profile}"
   else
     log_warn "No host profile selected; managed host-specific files will not be saved. Use dotfiles-host-profile set <profile>."
   fi
 
-  while IFS='|' read -r kind rel_path excludes extra; do
-    [[ -n "${kind}${rel_path}${excludes}${extra}" ]] || continue
-    [[ "${kind}" == \#* ]] && continue
-    [[ -z "${extra}" ]] || {
-      log_error "Invalid manifest entry: ${kind}|${rel_path}|${excludes}|${extra}"
-      exit 1
-    }
+  for record in "${SYNC_MANIFEST_RECORDS[@]}"; do
+    IFS='|' read -r kind rel_path excludes <<< "${record}"
     [[ "${kind}" == "host" ]] || continue
-    [[ -n "${rel_path}" ]] || {
-      log_error "Invalid host manifest entry: ${kind}|${rel_path}|${excludes}"
-      exit 1
-    }
     host_paths+=("${rel_path}")
-  done < "${SYNC_MANIFEST_FILE}"
+  done
 
   if [[ -z "${host_root}" ]]; then
     return
@@ -421,13 +445,6 @@ copy_path() {
     return 0
   fi
 
-  if [[ ! -d "$(dirname "$dest")" && "$(basename "$src")" == "$(basename "$dest")" ]]; then
-    run_rsync_transfer "$name" true transfer_output "${rsync_args[@]}" "$src" "$(dirname "$dest")"/
-    normalize_synced_internal_symlinks "$src" "$(dirname "$dest")/$(basename "$src")"
-    emit_apply_result "$name" "$transfer_output"
-    return
-  fi
-
   return 1
 }
 
@@ -436,21 +453,11 @@ sync_manifest_mappings() {
   local kind=""
   local rel_path=""
   local excludes=""
-  local extra=""
+  local record=""
   local -a extra_excludes=()
 
-  while IFS='|' read -r kind rel_path excludes extra; do
-    [[ -n "${kind}${rel_path}${excludes}${extra}" ]] || continue
-    [[ "${kind}" == \#* ]] && continue
-    [[ -z "${extra}" ]] || {
-      log_error "Invalid manifest entry: ${kind}|${rel_path}|${excludes}|${extra}"
-      exit 1
-    }
-    [[ -n "${rel_path}" ]] || {
-      log_error "Invalid manifest entry: ${kind}|${rel_path}|${excludes}"
-      exit 1
-    }
-
+  for record in "${SYNC_MANIFEST_RECORDS[@]}"; do
+    IFS='|' read -r kind rel_path excludes <<< "${record}"
     case "${section}" in
       config)
         [[ "${rel_path}" == .local/* ]] && continue
@@ -474,21 +481,18 @@ sync_manifest_mappings() {
         ;;
       host)
         ;;
-      *)
-        log_error "Unknown manifest kind: ${kind}"
-        exit 1
-        ;;
     esac
-  done < "${SYNC_MANIFEST_FILE}"
+  done
 }
 
 echo "========================================="
 echo "  Dotfiles Sync"
 echo "========================================="
 echo "Target: $DOTFILES_DIR"
-if profile="$(get_host_profile 2>/dev/null)"; then
-  echo "Host profile: ${profile}"
+if ACTIVE_HOST_PROFILE="$(get_host_profile)"; then
+  echo "Host profile: ${ACTIVE_HOST_PROFILE}"
 else
+  ACTIVE_HOST_PROFILE=""
   echo "Host profile: (not set)"
 fi
 $DRY_RUN && echo "(DRY RUN - no changes will be made)"
@@ -499,6 +503,7 @@ if ! $LIST_ONLY; then
   require_rsync
 fi
 require_sync_manifest
+load_sync_manifest
 
 # Create directory structure
 if $LIST_ONLY; then

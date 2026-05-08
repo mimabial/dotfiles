@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 # GPU render and bucket helpers.
 map_floor() {
   IFS=', ' read -r -a pairs <<<"$1"
@@ -163,7 +164,7 @@ get_temp_color() {
     [0]="#00008b"  # Dark Blue for below 20
   )
 
-  for threshold in $(echo "${!temp_colors[@]}" | tr ' ' '\n' | sort -nr); do
+  for threshold in $(printf '%s\n' "${!temp_colors[@]}" | sort -nr); do
     if ((temp >= threshold)); then
       echo "${temp_colors[$threshold]}"
       return
@@ -241,39 +242,53 @@ build_tooltip() {
   tooltip="$primary_gpu
 $thermo Temperature: ${temperature}°C"
 
-  if [[ -n "${utilization}" ]]; then
+  # ${VAR:-} fallbacks for optional metrics — each is populated by only some
+  # of the GPU paths (general_query / nvidia_GPU / amd_GPU / intel_GPU), so a
+  # bare ${VAR} crashes under set -u when the active path didn't set it.
+  if [[ -n "${utilization:-}" ]]; then
     append_tooltip_line "$speed Utilization: ${utilization}%"
   fi
-  if [[ -n "${core_clock}" ]]; then
+  if [[ -n "${core_clock:-}" ]]; then
     append_tooltip_line " Clock Speed: ${core_clock} MHz"
-  elif [[ -n "${current_clock_speed}" ]] && [[ -n "${max_clock_speed}" ]]; then
+  elif [[ -n "${current_clock_speed:-}" ]] && [[ -n "${max_clock_speed:-}" ]]; then
     append_tooltip_line " Clock Speed: ${current_clock_speed}/${max_clock_speed} MHz"
   fi
-  if [[ -n "${power_usage}" ]]; then
+  if [[ -n "${power_usage:-}" ]]; then
     line="󱪉 Power Usage: ${power_usage} W"
-    if [[ -n "${power_limit}" && "${power_limit}" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+    if [[ -n "${power_limit:-}" && "${power_limit}" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
       line="󱪉 Power Usage: ${power_usage}/${power_limit} W"
     fi
     append_tooltip_line "${line}"
   fi
-  if [[ -n "${power_discharge}" ]] && [[ "${power_discharge}" != "0" ]]; then
+  # ${VAR:-} for optional metrics: power_discharge is set only on battery,
+  # fan_speed only by AMD/sensors paths, gpu_error only by nvidia-smi failure.
+  # Without the fallback they crash under set -u on the other paths.
+  if [[ -n "${power_discharge:-}" ]] && [[ "${power_discharge}" != "0" ]]; then
     append_tooltip_line " Power Discharge: ${power_discharge} W"
   fi
-  if [[ -n "${fan_speed}" ]]; then
+  if [[ -n "${fan_speed:-}" ]]; then
     append_tooltip_line " Fan Speed: ${fan_speed} RPM"
   fi
-  if [[ -n "${gpu_error}" ]]; then
+  if [[ -n "${gpu_error:-}" ]]; then
     append_tooltip_line "NVIDIA-SMI: ${gpu_error}"
   fi
 }
 
 format_utilization_text() {
   if [[ -n "${utilization}" && "${utilization}" != "N/A" ]]; then
-    printf '%02d󱉸\n' "${utilization%%.*}"
+    # Cap module text at 99 so a 3-digit reading doesn't break the bar's
+    # fixed-width slot. The tooltip (build_tooltip) still shows the raw
+    # value, so 100% is visible there.
+    local util_int="${utilization%%.*}"
+    [[ "${util_int}" =~ ^[0-9]+$ ]] && (( util_int > 99 )) && util_int=99
+    printf '%02d󱉸\n' "${util_int}"
     return 0
   fi
 
-  printf '%s󱉸\n' "${utilization}"
+  # No reading available (e.g. nvidia-smi failed and there's no sysfs util
+  # counter for this GPU). Print "--" so the module stays visually
+  # populated and the user can see they're on a backend without data.
+  printf -- '--󱉸\n'
 }
 
 generate_json() {
@@ -289,8 +304,10 @@ generate_json() {
   local util_icons=("󰾆" "󰾅" "󰓅" "")
   local temp_icons=("" "" "" "")
 
-  speed="$(resolve_bucket_icon "${utilization}" "${GPUINFO_UTIL_BUCKET}" "${util_high}" "${util_mid}" "${util_low}" "${util_hyst}" "GPUINFO_UTIL_BUCKET" "${util_lv}" "${util_icons[@]}")"
-  thermo="$(resolve_bucket_icon "${temperature}" "${GPUINFO_TEMP_BUCKET}" "${temp_high}" "${temp_mid}" "${temp_low}" "${temp_hyst}" "GPUINFO_TEMP_BUCKET" "${temp_lv}" "${temp_icons[@]}")"
+  # Bucket vars are persisted in gpuinfo_file across runs but unset on first
+  # invocation; ${VAR:-} keeps that path safe under set -u.
+  speed="$(resolve_bucket_icon "${utilization}" "${GPUINFO_UTIL_BUCKET:-}" "${util_high}" "${util_mid}" "${util_low}" "${util_hyst}" "GPUINFO_UTIL_BUCKET" "${util_lv}" "${util_icons[@]}")"
+  thermo="$(resolve_bucket_icon "${temperature}" "${GPUINFO_TEMP_BUCKET:-}" "${temp_high}" "${temp_mid}" "${temp_low}" "${temp_hyst}" "GPUINFO_TEMP_BUCKET" "${temp_lv}" "${temp_icons[@]}")"
   temp_color=$(get_temp_color "${temperature}")
   icon_text="$(render_thermo_icon "${temp_color}")"
   build_tooltip "${thermo}" "${speed}"

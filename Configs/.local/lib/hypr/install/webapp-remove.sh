@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+set -euo pipefail
 
 DESKTOP_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 LAUNCHER_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/hypr/webapps"

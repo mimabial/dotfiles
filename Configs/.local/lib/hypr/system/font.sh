@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Script to resolve fonts
 
+set -euo pipefail
+
 font_dir="${XDG_DATA_HOME:-$HOME/.local/share}/fonts"
 landing_dir="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/landing/fonts"
 mkdir -p "$font_dir" "$landing_dir"

@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 
 # shellcheck source=/dev/null

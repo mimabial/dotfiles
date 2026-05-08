@@ -1,10 +1,18 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
+set -euo pipefail
+
+# Use the same runtime-init pattern as the other entrypoints. Sourcing
+# hyprshell from $(command -v hyprshell) only works when the script is
+# invoked through the hyprshell wrapper (or the user's PATH happens to
+# include ~/.local/bin); the theme.apply phase-D envelope runs under
+# systemd-run --user with neither, so this script needs to bootstrap
+# directly via runtime/init.bash like wallpaper.sh and theme.switch.sh do.
+LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 # shellcheck source=/dev/null
-if ! source "$(command -v hyprshell)"; then
-  echo "Error: hyprshell not found."
-  exit 1
-fi
+source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
+hypr_runtime_require state system notify wallpaper_catalog || exit 1
+hypr_runtime_load_state || exit 1
 
 ensure_xdg_dirs() {
   [[ -n "${XDG_CONFIG_HOME:-}" ]] || export XDG_CONFIG_HOME="$HOME/.config"
@@ -38,6 +46,7 @@ arguments:
   --profile          - Generates the profile picture
   --art              - Prints the path to the mpris art
   --select      -S   - Selects the hyprlock layout
+  --repair           - Repairs the managed hyprlock.conf wrapper
   --help       -h    - Displays this help message
 EOF
 }
@@ -72,12 +81,13 @@ lock_bitwarden_if_running() {
 }
 
 run_default_lock() {
+  ensure_hyprlock_conf
   ensure_background_png
   refresh_mpris_fallbacks
   fn_profile
   check_and_sanitize_process
   lock_bitwarden_if_running
-  app2unit.sh -u "${HYPRLOCK_SCOPE_NAME}" -t scope -- hyprlock
+  "${HYPR_LIB_DIR}/system/app2unit.sh" -u "${HYPRLOCK_SCOPE_NAME}" -t scope -- hyprlock
 }
 
 update_art_cache_if_needed() {
@@ -126,6 +136,9 @@ handle_hyprlock_action() {
     select|-S|--select)
       fn_select
       ;;
+    repair|--repair)
+      ensure_hyprlock_conf
+      ;;
     background|--background|-b)
       fn_background
       ;;
@@ -160,7 +173,7 @@ handle_hyprlock_action() {
 }
 
 parse_and_dispatch_args() {
-  local longopts="select,background,profile,title,artist,source,status,length,update-art,art,help,test:,test-preview:"
+  local longopts="select,repair,background,profile,title,artist,source,status,length,update-art,art,help,test:,test-preview:"
   local parsed=""
 
   parsed=$(getopt --options Shb --longoptions "$longopts" --name "$0" -- "$@") || exit 2
@@ -172,7 +185,7 @@ parse_and_dispatch_args() {
         handle_hyprlock_action "$1" "$2"
         exit 0
         ;;
-      select|-S|--select|background|--background|-b|profile|--profile|--title|--artist|--source|--status|--length|--update-art|art|--art|help|--help|-h)
+      select|-S|--select|repair|--repair|background|--background|-b|profile|--profile|--title|--artist|--source|--status|--length|--update-art|art|--art|help|--help|-h)
         handle_hyprlock_action "$1"
         exit 0
         ;;

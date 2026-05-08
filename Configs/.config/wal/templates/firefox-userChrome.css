@@ -3,51 +3,96 @@
 /* Enable in about:config: toolkit.legacyUserProfileCustomizations.stylesheets = true */
 
 :root {{
-  /* Primary toolbar colors - explicit opaque backgrounds */
-  --toolbar-bgcolor: {color0} !important;
-  --toolbar-color: {color15} !important;
-  --toolbar-non-lwt-bgcolor: {color0} !important;
-  --toolbar-non-lwt-textcolor: {color15} !important;
+  /* Tell Firefox's internal UI which scheme to use; without this, system color
+   * keywords (ButtonText, MenuText, Field) and LightDark() resolve to dark-mode
+   * values on light themes and the toolbar/popup button labels go white. */
+  color-scheme: {firefox.color_scheme} !important;
+
+  /* Wal palette with Firefox-style role separation. */
+  --hypr-firefox-bg: {background};
+  --hypr-firefox-fg: {foreground};
+  --hypr-firefox-surface: {color0};
+  --hypr-firefox-surface-hover: {color8};
+  --hypr-firefox-accent: {color4};
+
+  --hypr-firefox-toolbar-bg: {firefox.toolbar_bg};
+  --hypr-firefox-toolbar-fg: {firefox.toolbar_fg};
+  --hypr-firefox-field-bg: {firefox.field_bg};
+  --hypr-firefox-field-fg: {firefox.field_fg};
+  --hypr-firefox-field-border: {firefox.field_border};
+  --hypr-firefox-field-focus-bg: {firefox.field_focus_bg};
+  --hypr-firefox-tab-bg: {firefox.tab_bg};
+  --hypr-firefox-tab-fg: {firefox.tab_fg};
+  --hypr-firefox-tab-hover-bg: {firefox.tab_hover_bg};
+  --hypr-firefox-tab-outline: {firefox.tab_outline};
+  --hypr-firefox-panel-bg: {firefox.panel_bg};
+  --hypr-firefox-panel-fg: {firefox.panel_fg};
+  --hypr-firefox-panel-border: {firefox.panel_border};
+  --hypr-firefox-highlight-bg: {firefox.highlight_bg};
+  --hypr-firefox-highlight-fg: {firefox.highlight_fg};
+  --hypr-firefox-sidebar-bg: {firefox.sidebar_bg};
+  --hypr-firefox-sidebar-fg: {firefox.sidebar_fg};
+  --hypr-firefox-button-hover: {firefox.button_hover};
+  --hypr-firefox-button-active: {firefox.button_active};
+  --hypr-firefox-outline: {firefox.outline};
+
+  /* Primary toolbar colors */
+  --toolbar-bgcolor: var(--hypr-firefox-toolbar-bg) !important;
+  --toolbar-color: var(--hypr-firefox-toolbar-fg) !important;
+  --toolbar-non-lwt-bgcolor: var(--hypr-firefox-toolbar-bg) !important;
+  --toolbar-non-lwt-textcolor: var(--hypr-firefox-toolbar-fg) !important;
+  --toolbarbutton-hover-background: var(--hypr-firefox-button-hover) !important;
+  --toolbarbutton-active-background: var(--hypr-firefox-button-active) !important;
+  /* Firefox uses --toolbarbutton-icon-color for both icon and label color via
+   * currentColor; without this override it falls through to LightDark() and
+   * picks the dark-mode default on light themes. */
+  --toolbarbutton-icon-color: var(--hypr-firefox-toolbar-fg) !important;
 
   /* URL/Search bar */
-  --toolbar-field-background-color: {color8} !important;
-  --toolbar-field-color: {color15} !important;
-  --toolbar-field-border-color: {color8} !important;
-  --toolbar-field-focus-background-color: {color0} !important;
-  --toolbar-field-focus-color: {color15} !important;
-  --toolbar-field-focus-border-color: {color4} !important;
-  --lwt-toolbar-field-background-color: {color8} !important;
-  --lwt-toolbar-field-focus: {color0} !important;
+  --toolbar-field-background-color: var(--hypr-firefox-field-bg) !important;
+  --toolbar-field-color: var(--hypr-firefox-field-fg) !important;
+  --toolbar-field-border-color: var(--hypr-firefox-field-border) !important;
+  --toolbar-field-focus-background-color: var(--hypr-firefox-field-focus-bg) !important;
+  --toolbar-field-focus-color: var(--hypr-firefox-field-fg) !important;
+  --toolbar-field-focus-border-color: var(--hypr-firefox-outline) !important;
+  --lwt-toolbar-field-background-color: var(--hypr-firefox-field-bg) !important;
+  --lwt-toolbar-field-focus: var(--hypr-firefox-field-focus-bg) !important;
 
   /* Tabs */
-  --tab-selected-bgcolor: {color8} !important;
-  --tab-selected-textcolor: {color15} !important;
-  --tab-loading-fill: {color4} !important;
-  --lwt-tab-text: {color15} !important;
+  --tab-selected-bgcolor: var(--hypr-firefox-tab-bg) !important;
+  --tab-selected-textcolor: var(--hypr-firefox-tab-fg) !important;
+  --tab-loading-fill: var(--hypr-firefox-outline) !important;
+  --tab-hover-background-color: var(--hypr-firefox-tab-hover-bg) !important;
+  --lwt-tab-text: var(--hypr-firefox-toolbar-fg) !important;
 
   /* LWT (Lightweight Theme) colors */
-  --lwt-accent-color: {color0} !important;
-  --lwt-text-color: {color15} !important;
-  --lwt-selected-tab-background-color: {color8} !important;
-  --lwt-toolbar-field-border-color: {color8} !important;
+  --lwt-accent-color: var(--hypr-firefox-toolbar-bg) !important;
+  --lwt-text-color: var(--hypr-firefox-toolbar-fg) !important;
+  --lwt-selected-tab-background-color: var(--hypr-firefox-tab-bg) !important;
+  --lwt-toolbar-field-border-color: var(--hypr-firefox-field-border) !important;
 
   /* Panels and popups */
-  --arrowpanel-background: {color0} !important;
-  --arrowpanel-color: {color15} !important;
-  --arrowpanel-border-color: {color8} !important;
-  --panel-background: {color0} !important;
-  --panel-border-color: {color8} !important;
+  --arrowpanel-background: var(--hypr-firefox-panel-bg) !important;
+  --arrowpanel-color: var(--hypr-firefox-panel-fg) !important;
+  --arrowpanel-border-color: var(--hypr-firefox-panel-border) !important;
+  --panel-background: var(--hypr-firefox-panel-bg) !important;
+  --panel-border-color: var(--hypr-firefox-panel-border) !important;
+  --button-background-color-hover: var(--hypr-firefox-button-hover) !important;
+  --button-background-color-active: var(--hypr-firefox-button-active) !important;
 
   /* Autocomplete/URL suggestions */
-  --autocomplete-popup-background: {color0} !important;
-  --autocomplete-popup-color: {color15} !important;
-  --autocomplete-popup-highlight-background: {color4} !important;
-  --autocomplete-popup-highlight-color: {color0} !important;
+  --autocomplete-popup-background: var(--hypr-firefox-panel-bg) !important;
+  --autocomplete-popup-color: var(--hypr-firefox-panel-fg) !important;
+  --autocomplete-popup-highlight-background: var(--hypr-firefox-highlight-bg) !important;
+  --autocomplete-popup-highlight-color: var(--hypr-firefox-highlight-fg) !important;
 
   /* Sidebar */
-  --sidebar-background-color: {color0} !important;
-  --sidebar-text-color: {color15} !important;
-  --sidebar-border-color: {color8} !important;
+  --sidebar-background-color: var(--hypr-firefox-sidebar-bg) !important;
+  --sidebar-text-color: var(--hypr-firefox-sidebar-fg) !important;
+  --sidebar-border-color: var(--hypr-firefox-panel-border) !important;
+
+  --arrowpanel-border-radius: 8px !important;
+  --panel-border-radius: 8px !important;
 
   /* Override transparency */
   --lwt-additional-images: none !important;
@@ -57,118 +102,210 @@
 
 /* Force opaque toolbar background */
 #navigator-toolbox {{
-  background: {color0} !important;
+  background: var(--hypr-firefox-toolbar-bg) !important;
+  color: var(--hypr-firefox-toolbar-fg) !important;
 }}
 
 #nav-bar {{
-  background: {color0} !important;
+  background: var(--hypr-firefox-toolbar-bg) !important;
+  color: var(--hypr-firefox-toolbar-fg) !important;
   box-shadow: none !important;
 }}
 
 #PersonalToolbar {{
-  background: {color0} !important;
+  background: var(--hypr-firefox-toolbar-bg) !important;
 }}
 
 /* Tab bar background */
 #titlebar {{
-  background: {color0} !important;
+  background: var(--hypr-firefox-toolbar-bg) !important;
 }}
 
 #TabsToolbar {{
-  background: {color0} !important;
+  background: var(--hypr-firefox-toolbar-bg) !important;
 }}
 
 .toolbar-items {{
-  background: {color0} !important;
+  background: var(--hypr-firefox-toolbar-bg) !important;
 }}
 
 /* Tabs */
 .tabbrowser-tab[selected] .tab-background {{
-  background: {color8} !important;
+  background: var(--hypr-firefox-tab-bg) !important;
+  box-shadow: 0 0 0 1px var(--hypr-firefox-tab-outline) inset !important;
+  outline: none !important;
+}}
+
+.tabbrowser-tab[selected] .tab-label {{
+  color: var(--hypr-firefox-tab-fg) !important;
 }}
 
 .tabbrowser-tab:not([selected]) .tab-background {{
-  background: {color0} !important;
+  background: var(--hypr-firefox-toolbar-bg) !important;
 }}
 
 .tabbrowser-tab:hover:not([selected]) .tab-background {{
-  background: {color8} !important;
-  opacity: 0.6;
+  background: var(--hypr-firefox-tab-hover-bg) !important;
 }}
 
-/* URL bar */
+/* URL bar.
+ * The outer #urlbar / #searchbar stays transparent on purpose: Firefox paints
+ * the rounded field via the inner #urlbar-background element. Painting a bg
+ * or border on the outer element produces a rectangle that bleeds past the
+ * inner rounded corners. */
 #urlbar, #searchbar {{
-  background-color: {color8} !important;
-  color: {color15} !important;
-  border-color: {color8} !important;
+  background-color: transparent !important;
+  color: var(--hypr-firefox-field-fg) !important;
+}}
+
+#urlbar-background,
+.urlbar-background {{
+  background-color: var(--hypr-firefox-field-bg) !important;
+  border-color: var(--hypr-firefox-field-border) !important;
 }}
 
 #urlbar[focused], #searchbar[focused] {{
-  background-color: {color0} !important;
-  border-color: {color4} !important;
+  background-color: transparent !important;
+  color: var(--toolbar-field-focus-color, var(--hypr-firefox-field-fg)) !important;
 }}
 
-/* Dropdown menus */
-menupopup, panel {{
-  background-color: {color0} !important;
-  color: {color15} !important;
-  border-color: {color8} !important;
+#urlbar[focused] > #urlbar-background,
+#urlbar[open] > #urlbar-background {{
+  background-color: var(--hypr-firefox-field-focus-bg) !important;
+  border-color: var(--hypr-firefox-outline) !important;
+}}
+
+#urlbar[open][breakout][breakout-extend] {{
+  background: transparent !important;
+  border-radius: 10px !important;
+  overflow: hidden !important;
+}}
+
+#urlbar[open][breakout][breakout-extend] > #urlbar-background,
+#urlbar[open][breakout][breakout-extend] > .urlbar-background {{
+  background-color: var(--hypr-firefox-panel-bg) !important;
+  border: 1px solid var(--hypr-firefox-panel-border) !important;
+  border-radius: 10px !important;
+  clip-path: inset(0 round 10px) !important;
+}}
+
+#urlbar[open] > .urlbarView {{
+  background: transparent !important;
+  border-radius: 0 0 10px 10px !important;
+  overflow: hidden !important;
+}}
+
+#urlbar[open] > .urlbarView > .urlbarView-body-outer,
+#urlbar[open] > .urlbarView > .urlbarView-body-outer > .urlbarView-body-inner,
+#urlbar[open] .urlbarView-results {{
+  background: transparent !important;
+}}
+
+#urlbar[open] .urlbarView-row {{
+  color: var(--hypr-firefox-panel-fg) !important;
+}}
+
+#urlbar[open] .urlbarView-row[row-selectable]:not([selected]):hover {{
+  background-color: var(--hypr-firefox-button-hover) !important;
+}}
+
+#urlbar[open] .urlbarView-row[selected] {{
+  background-color: var(--hypr-firefox-highlight-bg) !important;
+  color: var(--hypr-firefox-highlight-fg) !important;
+}}
+
+/* Dropdown menus.
+ * Firefox popups are separate nested XUL surfaces. Keep the outer popup
+ * transparent and paint the clipped content box, otherwise square background
+ * corners bleed past the rounded border.
+ */
+menupopup,
+panel {{
+  appearance: none !important;
+  -moz-appearance: none !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  color: var(--hypr-firefox-panel-fg) !important;
+  overflow: hidden !important;
+}}
+
+menupopup::part(content),
+panel::part(content),
+menupopup::part(arrowscrollbox),
+.menupopup-arrowscrollbox,
+.panel-arrowcontent {{
+  appearance: none !important;
+  -moz-appearance: none !important;
+  background-color: var(--hypr-firefox-panel-bg) !important;
+  color: var(--hypr-firefox-panel-fg) !important;
+  border: 1px solid var(--hypr-firefox-panel-border) !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  clip-path: inset(0 round 8px) !important;
 }}
 
 menuitem:hover, menu:hover {{
-  background-color: {color4} !important;
-  color: {color0} !important;
+  background-color: var(--hypr-firefox-highlight-bg) !important;
+  color: var(--hypr-firefox-highlight-fg) !important;
 }}
 
 /* Sidebar */
 #sidebar-box {{
-  background-color: {color0} !important;
-  color: {color15} !important;
+  background-color: var(--hypr-firefox-sidebar-bg) !important;
+  color: var(--hypr-firefox-sidebar-fg) !important;
 }}
 
 /* Context menus - right click menus */
 #contentAreaContextMenu,
-#context-navigation,
-.menupopup-arrowscrollbox {{
-  background-color: {color0} !important;
-  color: {color15} !important;
+#context-navigation {{
+  background: transparent !important;
+  color: var(--hypr-firefox-panel-fg) !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
 }}
 
 #contentAreaContextMenu menuitem,
 #contentAreaContextMenu menu {{
-  color: {color15} !important;
+  color: var(--hypr-firefox-panel-fg) !important;
 }}
 
 #contentAreaContextMenu menuitem:hover,
 #contentAreaContextMenu menu:hover {{
-  background-color: {color4} !important;
-  color: {color0} !important;
+  background-color: var(--hypr-firefox-highlight-bg) !important;
+  color: var(--hypr-firefox-highlight-fg) !important;
 }}
 
 menuseparator {{
-  border-color: {color8} !important;
+  border-color: var(--hypr-firefox-panel-border) !important;
+}}
+
+menu,
+menuitem {{
+  border-radius: 4px !important;
+  margin-inline: 3px !important;
 }}
 
 /* Selection colors in browser UI */
 ::selection {{
-  background-color: {color4} !important;
-  color: {color0} !important;
+  background-color: var(--hypr-firefox-accent) !important;
+  color: var(--hypr-firefox-bg) !important;
 }}
 
 ::-moz-selection {{
-  background-color: {color4} !important;
-  color: {color0} !important;
+  background-color: var(--hypr-firefox-accent) !important;
+  color: var(--hypr-firefox-bg) !important;
 }}
 
 /* Scrollbars */
 scrollbar {{
-  background-color: {color0} !important;
+  background-color: var(--hypr-firefox-bg) !important;
 }}
 
 thumb {{
-  background-color: {color8} !important;
+  background-color: var(--hypr-firefox-surface) !important;
 }}
 
 thumb:hover {{
-  background-color: {color7} !important;
+  background-color: var(--hypr-firefox-surface-hover) !important;
 }}

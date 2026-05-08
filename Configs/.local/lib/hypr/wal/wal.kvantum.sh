@@ -6,11 +6,19 @@
 #   - wallpaper mode: copy the same assets, then apply the theme-owned
 #     color substitutions from colors.map
 #
-# No structural SVG repair, no template fallback, no highlight overrides.
+# No structural SVG repair, no template fallback, no theme policy overrides.
 
+set -euo pipefail
+
+# shellcheck source=/dev/null
 source "$(command -v hyprshell)" || exit 1
 # shellcheck source=/dev/null
 source "${LIB_DIR}/hypr/core/hash-cache.sh" || exit 1
+if [[ -r "${LIB_DIR}/hypr/theme/phase-d.sh" ]]; then
+  # shellcheck source=/dev/null
+  source "${LIB_DIR}/hypr/theme/phase-d.sh" || exit 1
+  theme_phase_d_init "${HYPR_THEME_PHASE_D_LOCK_KEY:-theme_phase_d_qt}"
+fi
 
 WAL_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/wal"
 hash_file="$(hypr_hash_cache_file "wal-kvantum.hash")" || exit 1
@@ -21,6 +29,16 @@ declare -F export_hypr_config >/dev/null && export_hypr_config
 selected_color_mode="${selected_color_mode:-1}"
 declare -ga SED_ARGS=()
 kvantum_expected_hash=""
+kvantum_tmp_dir=""
+kvantum_tmp_kvconfig=""
+kvantum_tmp_svg=""
+
+cleanup_kvantum_tmp() {
+  [[ -n "${kvantum_tmp_dir}" ]] || return 0
+  [[ -d "${kvantum_tmp_dir}" ]] || return 0
+  rm -rf -- "${kvantum_tmp_dir}" || true
+}
+trap cleanup_kvantum_tmp EXIT
 
 resolve_theme_kvantum_dir() {
   if [[ -n "${HYPR_THEME}" ]]; then
@@ -81,11 +99,14 @@ kvantum_outputs_need_refresh() {
 }
 
 copy_theme_files() {
-  mkdir -p "${PYWAL_KVANTUM_DIR}"
+  mkdir -p "${PYWAL_KVANTUM_DIR}" || return 1
+  kvantum_tmp_dir="$(mktemp -d "${PYWAL_KVANTUM_DIR}/.kvantum.XXXXXX")" || return 1
+  kvantum_tmp_kvconfig="${kvantum_tmp_dir}/pywal16.kvconfig"
+  kvantum_tmp_svg="${kvantum_tmp_dir}/pywal16.svg"
 
   sed -E '/^[[:space:]]*#/! s/[[:space:]]*;.*$//' \
-    "$(kvantum_theme_kvconfig)" > "${PYWAL_KVANTUM_DIR}/pywal16.kvconfig"
-  cp -f "$(kvantum_theme_svg)" "${PYWAL_KVANTUM_DIR}/pywal16.svg"
+    "$(kvantum_theme_kvconfig)" > "${kvantum_tmp_kvconfig}" || return 1
+  cp -f "$(kvantum_theme_svg)" "${kvantum_tmp_svg}" || return 1
 }
 
 load_wal_colors() {
@@ -116,8 +137,8 @@ build_color_map_replacements() {
 apply_color_map_replacements() {
   [[ ${#SED_ARGS[@]} -gt 0 ]] || return 0
 
-  sed -i "${SED_ARGS[@]}" "${PYWAL_KVANTUM_DIR}/pywal16.kvconfig"
-  sed -i "${SED_ARGS[@]}" "${PYWAL_KVANTUM_DIR}/pywal16.svg"
+  sed -i "${SED_ARGS[@]}" "${kvantum_tmp_kvconfig}"
+  sed -i "${SED_ARGS[@]}" "${kvantum_tmp_svg}"
 }
 
 record_kvantum_outputs() {
@@ -130,6 +151,47 @@ record_kvantum_outputs() {
     "input_hash=${kvantum_expected_hash}"
 }
 
+install_kvantum_outputs() {
+  local rc=0
+  local target_kvconfig="${PYWAL_KVANTUM_DIR}/pywal16.kvconfig"
+  local target_svg="${PYWAL_KVANTUM_DIR}/pywal16.svg"
+
+  [[ -n "${kvantum_tmp_dir}" && -d "${kvantum_tmp_dir}" ]] || return 1
+
+  if declare -F theme_phase_d_acquire_lock >/dev/null 2>&1; then
+    theme_phase_d_acquire_lock || return 1
+    if ! theme_phase_d_current_generation; then
+      rm -rf -- "${kvantum_tmp_dir}"
+      theme_phase_d_release_lock
+      return 0
+    fi
+  fi
+
+  if [[ ! -f "${target_kvconfig}" ]] || ! cmp -s "${kvantum_tmp_kvconfig}" "${target_kvconfig}"; then
+    mv -f -- "${kvantum_tmp_kvconfig}" "${target_kvconfig}" || rc=$?
+  else
+    rm -f -- "${kvantum_tmp_kvconfig}" || rc=$?
+  fi
+
+  if [[ "${rc}" -eq 0 ]]; then
+    if [[ ! -f "${target_svg}" ]] || ! cmp -s "${kvantum_tmp_svg}" "${target_svg}"; then
+      mv -f -- "${kvantum_tmp_svg}" "${target_svg}" || rc=$?
+    else
+      rm -f -- "${kvantum_tmp_svg}" || rc=$?
+    fi
+  fi
+
+  if [[ "${rc}" -eq 0 ]]; then
+    record_kvantum_outputs || rc=$?
+  fi
+
+  rm -rf -- "${kvantum_tmp_dir}" 2>/dev/null || true
+  if declare -F theme_phase_d_release_lock >/dev/null 2>&1; then
+    theme_phase_d_release_lock
+  fi
+  return "${rc}"
+}
+
 resolve_theme_kvantum_dir
 
 if [[ ! -f "$(kvantum_theme_kvconfig)" || ! -f "$(kvantum_theme_svg)" ]]; then
@@ -137,9 +199,13 @@ if [[ ! -f "$(kvantum_theme_kvconfig)" || ! -f "$(kvantum_theme_svg)" ]]; then
   exit 1
 fi
 
+if declare -F theme_phase_d_current_generation >/dev/null 2>&1; then
+  theme_phase_d_current_generation || exit 0
+fi
+
 kvantum_outputs_need_refresh || exit 0
-copy_theme_files
+copy_theme_files || exit 1
 load_wal_colors
-build_color_map_replacements
-apply_color_map_replacements
-record_kvantum_outputs
+build_color_map_replacements || exit 1
+apply_color_map_replacements || exit 1
+install_kvantum_outputs || exit 1

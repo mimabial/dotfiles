@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 
 XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
@@ -464,6 +465,7 @@ append_security_failure_notes() {
   [ -n "${dep_first_error:-}" ] && security_note+=$'\n'"${dep_first_error}"
   [ -n "${code_first_error:-}" ] && security_note+=$'\n'"${code_first_error}"
   [ -n "${secret_first_error:-}" ] && security_note+=$'\n'"${secret_first_error}"
+  return 0
 }
 
 finalize_live_security_summary() {

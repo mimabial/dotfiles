@@ -1,5 +1,7 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Convert pywal colors (0-1.0 range) to hyprlock format (0-255 integers)
+
+set -euo pipefail
 
 PYWAL_COLORS="${XDG_CACHE_HOME:-$HOME/.cache}/wal/colors.json"
 HYPRLOCK_COLORS="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprlock/colors.conf"
@@ -51,13 +53,18 @@ for key in ['background', 'foreground', 'cursor']:
         print(f"${key} = rgb({r}, {g}, {b})")
         print()
 
-print("# RGBA versions with alpha channel (40% opacity)")
+print("# RGBA versions with alpha channel (40% opacity = 0x66)")
+print("# Hex format: hyprlang's rgba(R,G,B,A) comma form treats all 4 as")
+print("# integers, so rgba(R,G,B,0.4) silently truncates the alpha to 0.")
+print("# rgba(RRGGBBAA) hex is the unambiguous format.")
+
+ALPHA_HEX = "66"  # 0x66 = 102 ≈ 0.4 * 255
 
 # Alpha versions
 for i in range(16):
     key = f"color{i}"
     r, g, b = hex_to_rgb(colors['colors'][key])
-    print(f"$color{i}_alpha = rgba({r}, {g}, {b}, 0.4)")
+    print(f"$color{i}_alpha = rgba({r:02x}{g:02x}{b:02x}{ALPHA_HEX})")
 
 print()
 
@@ -65,7 +72,7 @@ print()
 for key in ['background', 'foreground']:
     if key in colors['special']:
         r, g, b = hex_to_rgb(colors['special'][key])
-        print(f"${key}_alpha = rgba({r}, {g}, {b}, 0.4)")
+        print(f"${key}_alpha = rgba({r:02x}{g:02x}{b:02x}{ALPHA_HEX})")
 
 PYTHON_EOF
 

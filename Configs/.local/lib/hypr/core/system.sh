@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 
 # ============================================================================
 # pkg_installed - Check if a package is installed
@@ -18,7 +19,7 @@ pkg_installed() {
   [[ -n "${pkgIn}" ]] || return 1
   command -v "${pkgIn}" &>/dev/null && return 0
   command -v flatpak &>/dev/null && flatpak info "${pkgIn}" &>/dev/null && return 0
-  hyprshell pm.sh pq "${pkgIn}" &>/dev/null
+  hyprshell pm query "${pkgIn}" &>/dev/null
 }
 
 escape_regex() {
@@ -42,7 +43,6 @@ get_aur_helper() {
     helper="paru"
   fi
 
-  aur_helper="${helper}"
   [[ -n "${helper}" ]] || return 1
   printf '%s\n' "${helper}"
 }
@@ -154,13 +154,13 @@ paste_string() {
 
 #? Checks if the cursor is hovered on a window
 is_hovered() {
-  local data=""
   local -a hovered_values=()
   local cursor_x=0 cursor_y=0 window_x=0 window_y=0 window_size_x=0 window_size_y=0
 
-  data=$(hyprctl --batch -j "cursorpos;activewindow" | jq -s '.[0] * .[1]') || return 1
   readarray -t hovered_values < <(
-    printf '%s\n' "${data}" | jq -r '
+    hyprctl --batch -j "cursorpos;activewindow" | jq -sr '
+      .[0] * .[1]
+      |
       (.x // 0),
       (.y // 0),
       (.at[0] // 0),

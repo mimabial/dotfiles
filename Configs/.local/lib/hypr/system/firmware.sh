@@ -5,7 +5,7 @@ set -euo pipefail
 echo -e "\e[32mUpdate Firmware\e[0m"
 
 if ! command -v fwupdmgr >/dev/null 2>&1; then
-  sudo pacman -S --noconfirm --needed fwupd
+  hyprshell pm add fwupd
 fi
 
 fwupdmgr refresh

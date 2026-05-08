@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+#
+# screenshot.sh — Capture screenshots and OCR from the Hyprland session.
+#
+# Usage: screenshot.sh [mode] [destination]
+# Depends on: hyprshell, grimblast, satty, slurp, grim, wl-copy
+#
+set -euo pipefail
 
 source "$(command -v hyprshell)" || exit 1
 # shellcheck source=/dev/null

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 
 # Python environment and pypr/pip helpers for hyprshell.
 
@@ -77,7 +78,7 @@ run_pypr() {
       pgrep -u "${USER}" pypr >/dev/null && print_log -y "Killing existing pypr process"
       rm -f "${socket_path}"
 
-      exec app2unit.sh -t service pypr
+      exec "${HYPR_LIB_DIR}/system/app2unit.sh" -t service pypr
     fi
   else
     pip install --no-input pyprland==2.4.7

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 
 install() {
   local name="$1"
@@ -9,7 +10,7 @@ install() {
     name="$1"
     shift
     printf "Installing %s...\n" "$name"
-    exec sudo pacman -S --noconfirm "$@"
+    exec hyprshell pm add "$@"
   ' _ "${name}" "${packages[@]}"
 }
 
@@ -24,15 +25,14 @@ install_and_launch() {
     desktop_id="$2"
     shift 2
     printf "Installing %s...\n" "$name"
-    if sudo pacman -S --noconfirm "$@"; then
+    if hyprshell pm add "$@"; then
       setsid gtk-launch "$desktop_id"
     fi
   ' _ "${name}" "${desktop_id}" "${packages[@]}"
 }
 
 aur_install() {
-  local aur_helper=""
-  if ! aur_helper="$(get_aur_helper)"; then
+  if ! get_aur_helper >/dev/null; then
     dunstify -i "dialog-error" "AUR Helper Missing" "Install yay or paru to use AUR installs from the menu" -u critical
     return 1
   fi
@@ -42,16 +42,14 @@ aur_install() {
   read -r -a packages <<<"${package_list}"
   present_terminal -- bash -lc '
     name="$1"
-    aur_helper="$2"
-    shift 2
+    shift
     printf "Installing %s from AUR...\n" "$name"
-    exec "$aur_helper" -S --noconfirm "$@"
-  ' _ "${name}" "${aur_helper}" "${packages[@]}"
+    exec hyprshell pm aur-add "$@"
+  ' _ "${name}" "${packages[@]}"
 }
 
 aur_install_and_launch() {
-  local aur_helper=""
-  if ! aur_helper="$(get_aur_helper)"; then
+  if ! get_aur_helper >/dev/null; then
     dunstify -i "dialog-error" "AUR Helper Missing" "Install yay or paru to use AUR installs from the menu" -u critical
     return 1
   fi
@@ -62,14 +60,13 @@ aur_install_and_launch() {
   read -r -a packages <<<"${package_list}"
   present_terminal -- bash -lc '
     name="$1"
-    aur_helper="$2"
-    desktop_id="$3"
-    shift 3
+    desktop_id="$2"
+    shift 2
     printf "Installing %s from AUR...\n" "$name"
-    if "$aur_helper" -S --noconfirm "$@"; then
+    if hyprshell pm aur-add "$@"; then
       setsid gtk-launch "$desktop_id"
     fi
-  ' _ "${name}" "${aur_helper}" "${desktop_id}" "${packages[@]}"
+  ' _ "${name}" "${desktop_id}" "${packages[@]}"
 }
 
 run_dev_env_install() {
@@ -135,8 +132,8 @@ menu_run_action_install() {
   local ollama_pkg=""
 
   case "${action_id}" in
-    install_package) terminal hyprshell pkg/install.sh ;;
-    install_aur) terminal hyprshell pkg/aur-install.sh ;;
+    install_package) terminal hyprshell pm install-repo ;;
+    install_aur) terminal hyprshell pm install-aur ;;
     install_ai_claude) install "Claude Code" "claude-code" ;;
     install_ai_cursor) install "Cursor CLI" "cursor-cli" ;;
     install_ai_gemini) install "Gemini" "gemini-cli" ;;

@@ -1,4 +1,12 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
+#
+# State reader for indicator scripts that need to be cheap (Python startup
+# costs ~80 ms, too slow for waybar modules with interval=1).
+#
+# Sibling readers — see waybar/STATE.md for the canonical format:
+#   - waybar_state.get_state_value         (Python, staterc, mgmt path)
+#   - waybar_watch.read_runtime_meta       (Python, lock-meta files)
 
 waybar_state_init() {
   if [[ "${HYPR_SHELL_INIT:-0}" -ne 1 ]]; then

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 
 # Thumbnail/cache maintenance helpers for wallpaper flows.
 
@@ -288,6 +289,7 @@ Wall_Ensure_Thumbs() {
 Wall_Precache_Thumbs() {
   local theme_name="${HYPR_THEME}"
 
+  [[ "${WALLPAPER_SKIP_PRECACHE:-0}" -eq 1 ]] && return 0
   [[ "${set_as_global}" == "true" ]] || return 0
   case "${wallpaper_setter_flag}" in
     "" | g | o | link) return 0 ;;

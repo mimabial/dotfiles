@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
+#
+# color.plan.sh - Resolve theme/wallpaper/variant context for a color-sync run
+# and compute the cache key. Owns the contract between selected_color_mode,
+# resolved_color_variant, and the wal cache fast-path.
 
 # Color-mode state contract:
 #   selected_color_mode: persistent requested policy shared across the wal/theme
@@ -15,23 +20,6 @@
 #     current execution and does not rewrite selected_color_mode.
 # Resolution order:
 #   MODE_OVERRIDE > fixed mode (2/3) > persisted auto variant (mode 1) > dark
-
-color_plan_read_wal_theme_name() {
-  local wal_conf="$1"
-  [[ -f "${wal_conf}" ]] || return 1
-
-  awk -F= '/^\$HYPR_THEME=/{print substr($0, index($0, "=") + 1); exit}' "${wal_conf}"
-}
-
-color_plan_first_theme_name() {
-  local themes_dir="$1"
-  local first_theme_dir=""
-
-  [[ -d "${themes_dir}" ]] || return 1
-  first_theme_dir="$(find "${themes_dir}" -mindepth 1 -maxdepth 1 -type d -print | LC_ALL=C sort | head -n 1)"
-  [[ -n "${first_theme_dir}" ]] || return 1
-  basename "${first_theme_dir}"
-}
 
 color_plan_init_mode_state() {
   selected_color_mode="${selected_color_mode:-1}"
@@ -81,44 +69,39 @@ color_plan_resolve_theme_context() {
   color_plan_init_mode_state
   color_plan_load_auto_variant_state
 
-  if [[ -z "${HYPR_THEME}" ]]; then
-    local wal_conf="${HYPR_CONFIG_HOME}/themes/wal.conf"
-    if [[ -f "${wal_conf}" ]]; then
-      HYPR_THEME="$(color_plan_read_wal_theme_name "${wal_conf}" || true)"
-    fi
-
-    if [[ -z "${HYPR_THEME}" ]] && [[ -d "${HYPR_CONFIG_HOME}/themes" ]]; then
-      HYPR_THEME="$(color_plan_first_theme_name "${HYPR_CONFIG_HOME}/themes" || true)"
-    fi
+  if [[ -z "${HYPR_THEME:-}" ]]; then
+    print_log -sec "theme" -err "state" "HYPR_THEME is not set"
+    return 1
   fi
 
-  if [[ -z "${HYPR_THEME}" ]]; then
-    print_log -sec "theme" -err "detect" "unable to resolve active theme"
-    exit 1
+  HYPR_THEME_DIR="${HYPR_THEME_DIR:-${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}}"
+  if [[ ! -d "${HYPR_THEME_DIR}" ]]; then
+    print_log -sec "theme" -err "state" "theme not found: ${HYPR_THEME}"
+    return 1
   fi
-
-  if [[ -n "${HYPR_THEME}" && -z "${HYPR_THEME_DIR}" ]]; then
-    export HYPR_THEME="${HYPR_THEME}"
-    export HYPR_THEME_DIR="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}"
-    print_log -sec "theme" -stat "detected" "${HYPR_THEME}"
-  fi
+  export HYPR_THEME HYPR_THEME_DIR
 
   color_plan_apply_variant_overrides
-  THEME_KITTY_FILE="${HYPR_THEME_DIR}/kitty.theme"
+  return 0
 }
 
 color_plan_prepare_wal_cache_root() {
   WAL_XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
 
   if [[ "${CACHE_ONLY}" -eq 1 ]]; then
-    local cache_only_root_base="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}"
+    local cache_only_root_base=""
+    if [[ -n "${XDG_RUNTIME_DIR:-}" ]] && [[ -d "${XDG_RUNTIME_DIR}" ]]; then
+      cache_only_root_base="${XDG_RUNTIME_DIR}/hypr"
+    else
+      cache_only_root_base="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}"
+    fi
     mkdir -p "${cache_only_root_base}" || {
       print_log -sec "pywal16" -err "cache" "failed to create ${cache_only_root_base}"
-      exit 1
+      return 1
     }
     CACHE_ONLY_ROOT="$(mktemp -d -p "${cache_only_root_base}" "wal-cache-only.XXXXXXXX")" || {
       print_log -sec "pywal16" -err "cache" "temp dir failed"
-      exit 1
+      return 1
     }
     WAL_XDG_CACHE_HOME="${CACHE_ONLY_ROOT}"
   fi
@@ -126,20 +109,18 @@ color_plan_prepare_wal_cache_root() {
   WAL_CACHE="${WAL_XDG_CACHE_HOME}/wal"
   mkdir -p "${WAL_CACHE}" || {
     print_log -sec "pywal16" -err "cache" "failed to create ${WAL_CACHE}"
-    exit 1
+    return 1
   }
+  return 0
 }
 
 color_plan_init_cache_controls() {
-  CACHE_CLEANUP_ENABLED="${HYPR_WAL_CACHE_CLEANUP:-1}"
-  CACHE_ASYNC_STORE=1
   template_hash_suffix=""
 
   HYPR_WAL_CACHE_ENABLE="${HYPR_WAL_CACHE_ENABLE:-1}"
   HYPR_WAL_CACHE_DIR="${HYPR_WAL_CACHE_DIR:-${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/wal/cache}"
   WAL_CACHE_PRUNE_ENABLED="${HYPR_WAL_CACHE_PRUNE:-1}"
   WAL_CACHE_PRUNE_TTL="${HYPR_WAL_CACHE_PRUNE_TTL:-21600}"
-  WAL_CACHE_PRUNE_STAMP="${HYPR_WAL_CACHE_DIR}/.prune.ts"
 
   case "${WAL_CACHE_PRUNE_ENABLED,,}" in
     1 | true | yes | on) WAL_CACHE_PRUNE_ENABLED=1 ;;
@@ -153,6 +134,7 @@ color_plan_init_cache_controls() {
   wal_cache_path=""
   wal_cache_populate=0
   wal_used_cache=0
+  color_plan_fast_path_current=0
   wal_output=""
   wal_exit=""
 }
@@ -161,15 +143,7 @@ color_plan_prepare_cache_strategy() {
   local prev_key=""
   local previous_mode=""
   local allow_fast_path=0
-
-  if [[ "${selected_color_mode}" -eq 0 ]]; then
-    wal_cache_key=""
-    wal_cache_path=""
-    wal_cache_backend=""
-    wal_cache_populate=0
-    wal_used_cache=0
-    return 0
-  fi
+  local theme_input_hash=""
 
   [[ "${HYPR_WAL_CACHE_ENABLE}" -eq 1 ]] || return 0
 
@@ -178,25 +152,45 @@ color_plan_prepare_cache_strategy() {
     HYPR_WAL_CACHE_ENABLE=0
     return 0
   fi
-  wall_hash="$(${HYPR_HASH_COMMAND:-sha1sum} "${WALLPAPER_IMAGE}" | awk '{print $1}')"
+
   compute_template_hash
-  legibility_suffix="$(compute_legibility_suffix)"
-  wal_cache_key="${wall_hash}_${resolved_color_variant}_${PYWAL_BACKEND}${legibility_suffix}${template_hash_suffix}"
+
+  if [[ "${PALETTE_SOURCE}" == "theme" ]]; then
+    theme_input_hash="$(compute_theme_mode_input_hash)" || {
+      print_log -sec "pywal16" -warn "cache" "theme input hash failed; disabling cache"
+      HYPR_WAL_CACHE_ENABLE=0
+      return 0
+    }
+    wal_cache_key="theme_${theme_input_hash}_${resolved_color_variant}_${PYWAL_BACKEND}${template_hash_suffix}"
+  else
+    wall_hash="$(${HYPR_HASH_COMMAND:-sha1sum} "${WALLPAPER_IMAGE}" | awk '{print $1}')"
+    legibility_suffix="$(compute_legibility_suffix)"
+    wal_cache_key="${wall_hash}_${resolved_color_variant}_${PYWAL_BACKEND}${legibility_suffix}${template_hash_suffix}"
+  fi
+
   wal_cache_path="${HYPR_WAL_CACHE_DIR}/${wal_cache_key}"
   wal_cache_backend="${PYWAL_BACKEND}"
 
   cache_cleanup_stale "${HYPR_WAL_CACHE_DIR}" "${template_hash_suffix}" >/dev/null 2>&1 &
   color_state_read_cache_metadata prev_key previous_mode
 
+  if [[ "${FORCE_COLOR_REGEN:-0}" -eq 1 ]]; then
+    print_log -sec "pywal16" -stat "cache" "bypass (--regen)"
+    return 0
+  fi
+
   if [[ "${FORCE_COLOR_REGEN:-0}" -ne 1 ]] && [[ "${selected_color_mode}" -ne 0 ]]; then
     [[ "${previous_mode}" =~ ^[0-9]+$ ]] && [[ "${previous_mode}" -ne 0 ]] && allow_fast_path=1
+  elif [[ "${FORCE_COLOR_REGEN:-0}" -ne 1 ]] && [[ "${selected_color_mode}" -eq 0 ]]; then
+    [[ "${previous_mode}" =~ ^[0-9]+$ ]] && [[ "${previous_mode}" -eq 0 ]] && allow_fast_path=1
   fi
 
   if [[ "${prev_key}" == "${wal_cache_key}" ]]; then
     if [[ "${allow_fast_path}" -eq 1 ]]; then
       print_log -sec "pywal16" -stat "cache" "current (fast-path)"
       color_state_persist
-      exit 0
+      color_plan_fast_path_current=1
+      return 0
     fi
     wal_used_cache=1
     wal_exit=0

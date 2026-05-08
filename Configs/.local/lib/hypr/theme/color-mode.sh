@@ -7,9 +7,10 @@
 #   - interactive menu / next / previous / explicit mode selection
 #   - selected_color_mode state updates
 #   - auto-theme daemon start/stop coordination
-#   - wallpaper-backed color sync fallback behavior
 
 #// set variables
+
+set -euo pipefail
 
 # shellcheck source=/dev/null
 source "$(command -v hyprshell)" || exit 1
@@ -37,13 +38,6 @@ color_mode_resolve_existing_path() {
 
   resolved_dir="$(cd "$(dirname "${path}")" && pwd -P)" || return 1
   printf '%s/%s\n' "${resolved_dir}" "$(basename "${path}")"
-}
-
-color_mode_read_wal_theme_name() {
-  local wal_conf="$1"
-  [[ -r "${wal_conf}" ]] || return 1
-
-  awk -F= '/^\$HYPR_THEME=/{print substr($0, index($0, "=") + 1); exit}' "${wal_conf}"
 }
 
 color_mode_load_selected_color_mode() {
@@ -103,6 +97,18 @@ select_color_mode_with_rofi() {
   local selection_file=""
   local script_path=""
   local rofi_mode_name="color-mode"
+  local font_scale=""
+  local font_name=""
+  local r_scale=""
+  local r_override=""
+  local hypr_border=""
+  local hypr_width=""
+  local rofi_theme_file=""
+  local width_override=""
+  local margin_px=""
+  local selected_color_mode_label=""
+  local -a width_override_args=()
+  local i=""
 
   pkill -u "$USER" rofi && exit 0
   font_scale="$(rofi_effective_font_scale "${ROFI_PYWAL16_SCALE}")"
@@ -111,11 +117,9 @@ select_color_mode_with_rofi() {
   IFS=$'\t' read -r hypr_border hypr_width < <(rofi_default_border_metrics 5 2)
   r_override="window {border:${hypr_width}px;border-radius:${hypr_border}px;} prompt {border-radius:${hypr_border}px;} textbox-prompt-colon {border-radius:${hypr_border}px;} element {border-radius:${hypr_border}px;}"
   rofi_theme_file="$(rofi_resolve_theme pywal16)"
-  width_override=""
   margin_px="${ROFI_PYWAL16_MARGIN_PX:-${ROFI_PYWAL16_MARGIN:-0}}"
   [[ "${margin_px}" =~ ^[0-9]+$ ]] || margin_px=0
   width_override="$(rofi_wallpaper_width_override "${rofi_theme_file}" "${font_name}" "${font_scale}" "${margin_px}" 2>/dev/null || true)"
-  width_override_args=()
   if [[ -n "${width_override}" ]]; then
     width_override_args=(-theme-str "${width_override}")
   fi
@@ -141,7 +145,6 @@ select_color_mode_with_rofi() {
   rm -f "${selection_file}"
 
   if [[ -n "${selected_color_mode_label}" ]]; then
-    # Find index of selected mode
     for i in "${!color_mode_labels[@]}"; do
       [[ "${color_mode_labels[i]}" == "${selected_color_mode_label}" ]] && target_color_mode="$i" && break
     done
@@ -153,6 +156,7 @@ select_color_mode_with_rofi() {
 #// switch mode
 
 cycle_color_mode() {
+  local i=""
   for i in "${!color_mode_labels[@]}"; do
     if [ "${selected_color_mode}" == "${i}" ]; then
       if [ "${1}" == "n" ]; then
@@ -224,19 +228,19 @@ resolve_wallpaper() {
   if [[ -z "${theme}" ]] && declare -F state_get >/dev/null 2>&1; then
     theme="$(state_get "HYPR_THEME" "")"
   fi
-  if [ -z "${theme}" ] && [ -r "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/wal.conf" ]; then
-    theme="$(color_mode_read_wal_theme_name "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/wal.conf" || true)"
+
+  if [[ -z "${theme}" ]]; then
+    print_log -sec "color-mode" -err "wallpaper" "HYPR_THEME is not set"
+    return 1
   fi
 
-  if [ -n "${theme}" ]; then
-    local theme_wall="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/${theme}/wall.set"
-    if [ -e "${theme_wall}" ]; then
-      resolved_path="$(color_mode_resolve_existing_path "${theme_wall}" || true)"
-      # Verify resolved path exists
-      if [ -f "${resolved_path}" ]; then
-        echo "${resolved_path}"
-        return 0
-      fi
+  local theme_wall="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/${theme}/wall.set"
+  if [ -e "${theme_wall}" ]; then
+    resolved_path="$(color_mode_resolve_existing_path "${theme_wall}" || true)"
+    # Verify resolved path exists
+    if [ -f "${resolved_path}" ]; then
+      echo "${resolved_path}"
+      return 0
     fi
   fi
 
@@ -276,13 +280,12 @@ apply_color_mode() {
 
   HYPR_COLOR_MODE_OVERRIDE="${target_color_mode}" "${color_sync_cmd[@]}" "${wallpaper}"
 
-  local waybar_script="${LIB_DIR}/hypr/waybar/waybar.py"
-  if [[ -x "${waybar_script}" ]]; then
-    "${waybar_script}" --restart-direct >/dev/null 2>&1 \
-      || print_log -sec "color-mode" -warn "waybar" "direct restart failed"
-  elif command -v hyprshell >/dev/null 2>&1; then
-    hyprshell waybar --restart-direct >/dev/null 2>&1 \
-      || print_log -sec "color-mode" -warn "waybar" "direct restart failed"
+  if ! hypr_user_pgrep -x waybar >/dev/null 2>&1; then
+    local waybar_script="${LIB_DIR}/hypr/waybar/waybar.py"
+    if [[ -x "${waybar_script}" ]]; then
+      "${waybar_script}" --restart-direct >/dev/null 2>&1 \
+        || print_log -sec "color-mode" -warn "waybar" "start failed"
+    fi
   fi
 
   # Sync nvim after colors are generated
@@ -313,11 +316,6 @@ load_previous_color_mode() {
   fi
 }
 
-fallback_theme_switch() {
-  print_log -sec "color-mode" -warn "wallpaper" "no current wallpaper, falling back to theme switch"
-  "${LIB_DIR}/hypr/theme/theme.switch.sh"
-}
-
 notify_waybar_color_mode() {
   pkill -RTMIN+8 waybar >/dev/null 2>&1 || true
 }
@@ -328,9 +326,7 @@ revert_failed_auto_mode() {
   state_set "selected_color_mode" "${target_color_mode}" "staterc"
   if [ "${target_color_mode}" -ne 1 ]; then
     stop_auto_theme_service
-    if ! apply_color_mode; then
-      fallback_theme_switch
-    fi
+    apply_color_mode || exit 1
   fi
   notify_waybar_color_mode
   exit 1
@@ -341,11 +337,13 @@ apply_auto_mode() {
   start_auto_theme_service || revert_failed_auto_mode
 }
 
-apply_manual_mode_or_fallback_theme_switch() {
+apply_manual_mode() {
   stop_auto_theme_service
   state_set "selected_color_mode" "${target_color_mode}" "staterc"
   if ! apply_color_mode; then
-    fallback_theme_switch
+    state_set "selected_color_mode" "${previous_color_mode}" "staterc"
+    notify_waybar_color_mode
+    exit 1
   fi
 }
 
@@ -357,7 +355,7 @@ main() {
   if [ "${target_color_mode}" -eq 1 ]; then
     apply_auto_mode
   else
-    apply_manual_mode_or_fallback_theme_switch
+    apply_manual_mode
   fi
 
   notify_waybar_color_mode

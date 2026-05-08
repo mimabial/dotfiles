@@ -203,10 +203,12 @@ run_rofi() {
 setup_rofi_config() {
   local cliphist_window_width_em="${ROFI_CLIPHIST_WIDTH_EM:-36}"
   local cliphist_window_height_em="${ROFI_CLIPHIST_HEIGHT_EM:-29}"
+  local font_scale=""
+  local font_name=""
 
   rofi_prepare_standard_context \
     font_scale font_name font_override r_override _rofi_opacity \
-    "${ROFI_CLIPHIST_SCALE}" "${ROFI_CLIPHIST_FONT:-$ROFI_FONT}" wallbox same
+    "${ROFI_CLIPHIST_SCALE:-}" "${ROFI_CLIPHIST_FONT:-${ROFI_FONT:-}}" wallbox same
 
   [[ "${cliphist_window_width_em}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || cliphist_window_width_em="36"
   [[ "${cliphist_window_height_em}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || cliphist_window_height_em="29"

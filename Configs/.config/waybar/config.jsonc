@@ -1,10 +1,16 @@
+// GENERATED FILE — DO NOT EDIT.
+// This file is overwritten on every layout switch and theme apply.
+// Edit a file in $XDG_CONFIG_HOME/waybar/layouts/ instead, then run
+// `hyprshell waybar.py --update --set <layout>` to install it as the
+// active config. See waybar/STATE.md for the layout pipeline.
+//
 {
   "layer": "top",
   "position": "right",
   "output": ["*"],
   "exclusive": true,
   "passthrough": false,
-  "reload_style_on_change": false,
+  "reload_style_on_change": true,
   "ipc": true,
   "include": [
     "$XDG_CONFIG_HOME/waybar/modules/*json*",
@@ -117,7 +123,7 @@
       "transition-duration": 500,
       "transition-left-to-right": false
     },
-    "modules": ["tray", "custom/vpn", "custom/network#speed"]
+    "modules": ["tray", "custom/vpn"]
   },
   "group/forever": {
     "orientation": "inherit",

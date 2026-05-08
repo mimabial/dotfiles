@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 active_window_json="$(hyprctl -j activewindow 2>/dev/null)" || exit 1
-active_class="$(jq -r '.class // empty' <<<"${active_window_json}")"
-active_address="$(jq -r '.address // empty' <<<"${active_window_json}")"
+read -r active_class active_address < <(
+  jq -r '[.class // "", .address // ""] | @tsv' <<<"${active_window_json}"
+)
 
 if [[ -z "${active_class}" ]]; then
   exit 0

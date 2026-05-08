@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2154
+# Sourced module; strict mode is owned by the entrypoint.
+#
+# Subsystem inputs:
+#   selected_color_mode      - set by color-sync.sh via color.plan.sh
+#   background, foreground   - pywal palette, sourced by color.finalize.sh
+#   color4, color5           - pywal palette accent slots
+: "${selected_color_mode-}" "${background-}" "${foreground-}" "${color4-}" "${color5-}"
 #
 # color.apply.sh - Apply generated colors to applications
 #
@@ -17,34 +23,34 @@
 #   - LIB_DIR must be set (path to ~/.local/lib)
 #   - print_log function from globalcontrol.sh
 #   - ini_write function from globalcontrol.sh (for post_updates)
-#
-# GLOBAL VARIABLES:
-#   ASYNC_OPTIONAL_UPDATES - If 1, optional external updates may run async
 
 # Primary and secondary theming scripts are defined here so color-sync.sh does
 # not need to shadow the same orchestration logic.
 declare -ga APP_THEMING_SCRIPTS=(
   "wal/wal.kvantum.sh"
-  "wal/wal.gtk.sh"
 )
 
-declare -ga SECONDARY_THEMING_SCRIPTS=(
-  "wal/wal.chrome.sh"
-  "wal/wal.qt.sh"
-  "wal/wal.gimp.sh"
-)
+declare -ga SECONDARY_THEMING_SCRIPTS=()
 
 # Run theming scripts inline. These scripts write config/state files and must
-# complete before the theme apply path returns.
+# complete before the theme apply path returns. Pass the script paths as
+# positional args so the array is expanded at the call site.
 write_theme_outputs_from_scripts() {
-  local -n scripts_ref="$1"
   local script script_path
+  local start_ms="" end_ms="" script_rc=0
   local rc=0
 
-  for script in "${scripts_ref[@]}"; do
+  for script in "$@"; do
     script_path="${LIB_DIR}/hypr/${script}"
     [[ ! -f "${script_path}" ]] && continue
-    if ! bash "${script_path}"; then
+    start_ms="$(date +%s%3N)"
+    bash "${script_path}"
+    script_rc=$?
+    end_ms="$(date +%s%3N)"
+    if [[ "${HYPR_THEME_TIMING:-0}" == "1" || "${LOG_LEVEL:-}" == "debug" ]]; then
+      print_log -sec "color-sync" -stat "timing" "script:${script}: $((end_ms - start_ms))ms rc=${script_rc}"
+    fi
+    if [[ "${script_rc}" -ne 0 ]]; then
       print_log -sec "theme" -err "apply" "failed ${script}"
       rc=1
     fi
@@ -55,7 +61,11 @@ write_theme_outputs_from_scripts() {
 
 # Write primary app theme files and derived state.
 write_primary_app_theme_outputs() {
-  write_theme_outputs_from_scripts APP_THEMING_SCRIPTS
+  if [[ "${HYPR_THEME_DEFER_QT_OUTPUTS:-0}" -eq 1 ]]; then
+    return 0
+  fi
+
+  write_theme_outputs_from_scripts "${APP_THEMING_SCRIPTS[@]}"
 }
 
 runtime_desktop_sync_is_external() {
@@ -74,7 +84,7 @@ run_runtime_desktop_sync() {
 
 # Write secondary app theme files and derived state.
 write_secondary_app_theme_outputs() {
-  write_theme_outputs_from_scripts SECONDARY_THEMING_SCRIPTS
+  write_theme_outputs_from_scripts "${SECONDARY_THEMING_SCRIPTS[@]}"
   runtime_desktop_sync_is_external || run_runtime_desktop_sync
 }
 
@@ -88,8 +98,7 @@ reload_live_theme_client() {
 
   case "${client}" in
     kitty)
-      pgrep -x kitty >/dev/null 2>&1 || return 0
-      pkill -SIGUSR1 kitty 2>/dev/null || true
+      pkill -SIGUSR1 -x kitty 2>/dev/null || true
       ;;
     tmux)
       tmux_config="${XDG_CONFIG_HOME:-$HOME/.config}/tmux/tmux.conf"
@@ -246,17 +255,17 @@ write_kde_scheme_identity() {
 
 write_kde_scheme_palette() {
   [[ -f "${kde_scheme_file}" ]] || return 0
-  kde_write_entries "${kde_scheme_file}" \
-    $'Colors:Button\tBackgroundNormal\t'"${bg_rgb}" \
-    $'Colors:Button\tBackgroundAlternate\t'"${bg_rgb}" \
-    $'Colors:Button\tForegroundNormal\t'"${fg_rgb}" \
-    $'Colors:Button\tDecorationFocus\t'"${accent_rgb}" \
-    $'Colors:Button\tDecorationHover\t'"${hover_rgb}" \
-    $'Colors:View\tBackgroundAlternate\t'"${bg_rgb}" \
-    $'Colors:View\tBackgroundNormal\t'"${bg_rgb}" \
-    $'Colors:View\tForegroundNormal\t'"${fg_rgb}" \
-    $'Colors:View\tDecorationFocus\t'"${accent_rgb}" \
-    $'Colors:View\tDecorationHover\t'"${hover_rgb}" \
+	kde_write_entries "${kde_scheme_file}" \
+	  $'Colors:Button\tBackgroundNormal\t'"${bg_rgb}" \
+	  $'Colors:Button\tBackgroundAlternate\t'"${bg_rgb}" \
+	  $'Colors:Button\tForegroundNormal\t'"${fg_rgb}" \
+	  $'Colors:Button\tDecorationFocus\t'"${accent_rgb}" \
+	  $'Colors:Button\tDecorationHover\t'"${hover_rgb}" \
+	  $'Colors:View\tBackgroundAlternate\t'"${bg_rgb}" \
+	  $'Colors:View\tBackgroundNormal\t'"${bg_rgb}" \
+	  $'Colors:View\tForegroundNormal\t'"${fg_rgb}" \
+	  $'Colors:View\tDecorationFocus\t'"${accent_rgb}" \
+	  $'Colors:View\tDecorationHover\t'"${hover_rgb}" \
     $'Colors:Selection\tBackgroundNormal\t'"${accent_rgb}" \
     $'Colors:Selection\tBackgroundAlternate\t'"${accent_rgb}" \
     $'Colors:Selection\tForegroundNormal\t'"${selection_fg_rgb}" \
@@ -264,34 +273,34 @@ write_kde_scheme_palette() {
     $'Colors:Selection\tForegroundInactive\t'"${inactive_selection_fg_rgb}" \
     $'Colors:Selection\tDecorationFocus\t'"${accent_rgb}" \
     $'Colors:Selection\tDecorationHover\t'"${hover_rgb}" \
-    $'Colors:Window\tBackgroundAlternate\t'"${bg_rgb}" \
-    $'Colors:Window\tBackgroundNormal\t'"${bg_rgb}" \
-    $'Colors:Window\tForegroundNormal\t'"${fg_rgb}" \
-    $'Colors:Header\tBackgroundAlternate\t'"${bg_rgb}" \
-    $'Colors:Header\tBackgroundNormal\t'"${bg_rgb}" \
-    $'Colors:Header\tForegroundNormal\t'"${fg_rgb}" \
-    $'Colors:Header\tDecorationFocus\t'"${accent_rgb}" \
-    $'Colors:Header\tDecorationHover\t'"${hover_rgb}" \
-    $'Colors:Tooltip\tBackgroundAlternate\t'"${bg_rgb}" \
-    $'Colors:Tooltip\tBackgroundNormal\t'"${bg_rgb}" \
-    $'Colors:Tooltip\tForegroundNormal\t'"${fg_rgb}" \
-    $'Colors:Complementary\tBackgroundAlternate\t'"${bg_rgb}" \
-    $'Colors:Complementary\tBackgroundNormal\t'"${bg_rgb}" \
-    $'Colors:Complementary\tForegroundNormal\t'"${fg_rgb}"
+	  $'Colors:Window\tBackgroundAlternate\t'"${bg_rgb}" \
+	  $'Colors:Window\tBackgroundNormal\t'"${bg_rgb}" \
+	  $'Colors:Window\tForegroundNormal\t'"${fg_rgb}" \
+	  $'Colors:Header\tBackgroundAlternate\t'"${bg_rgb}" \
+	  $'Colors:Header\tBackgroundNormal\t'"${bg_rgb}" \
+	  $'Colors:Header\tForegroundNormal\t'"${fg_rgb}" \
+	  $'Colors:Header\tDecorationFocus\t'"${accent_rgb}" \
+	  $'Colors:Header\tDecorationHover\t'"${hover_rgb}" \
+	  $'Colors:Tooltip\tBackgroundAlternate\t'"${bg_rgb}" \
+	  $'Colors:Tooltip\tBackgroundNormal\t'"${bg_rgb}" \
+	  $'Colors:Tooltip\tForegroundNormal\t'"${fg_rgb}" \
+	  $'Colors:Complementary\tBackgroundAlternate\t'"${bg_rgb}" \
+	  $'Colors:Complementary\tBackgroundNormal\t'"${bg_rgb}" \
+	  $'Colors:Complementary\tForegroundNormal\t'"${fg_rgb}"
 }
 
 write_kdeglobals_palette() {
   local -a kdeglobals_entries=(
-    $'Colors:View\tBackgroundAlternate\t'"${bg_rgb}"
-    $'Colors:View\tBackgroundNormal\t'"${bg_rgb}"
-    $'Colors:View\tForegroundNormal\t'"${fg_rgb}"
-    $'Colors:View\tDecorationFocus\t'"${accent_rgb}"
-    $'Colors:View\tDecorationHover\t'"${hover_rgb}"
-    $'Colors:Button\tBackgroundNormal\t'"${bg_rgb}"
-    $'Colors:Button\tBackgroundAlternate\t'"${bg_rgb}"
-    $'Colors:Button\tForegroundNormal\t'"${fg_rgb}"
-    $'Colors:Button\tDecorationFocus\t'"${accent_rgb}"
-    $'Colors:Button\tDecorationHover\t'"${hover_rgb}"
+	  $'Colors:View\tBackgroundAlternate\t'"${bg_rgb}"
+	  $'Colors:View\tBackgroundNormal\t'"${bg_rgb}"
+	  $'Colors:View\tForegroundNormal\t'"${fg_rgb}"
+	  $'Colors:View\tDecorationFocus\t'"${accent_rgb}"
+	  $'Colors:View\tDecorationHover\t'"${hover_rgb}"
+	  $'Colors:Button\tBackgroundNormal\t'"${bg_rgb}"
+	  $'Colors:Button\tBackgroundAlternate\t'"${bg_rgb}"
+	  $'Colors:Button\tForegroundNormal\t'"${fg_rgb}"
+	  $'Colors:Button\tDecorationFocus\t'"${accent_rgb}"
+	  $'Colors:Button\tDecorationHover\t'"${hover_rgb}"
     $'Colors:Selection\tBackgroundNormal\t'"${accent_rgb}"
     $'Colors:Selection\tBackgroundAlternate\t'"${accent_rgb}"
     $'Colors:Selection\tForegroundNormal\t'"${selection_fg_rgb}"
@@ -299,17 +308,17 @@ write_kdeglobals_palette() {
     $'Colors:Selection\tForegroundInactive\t'"${inactive_selection_fg_rgb}"
     $'Colors:Selection\tDecorationFocus\t'"${accent_rgb}"
     $'Colors:Selection\tDecorationHover\t'"${hover_rgb}"
-    $'Colors:Window\tBackgroundNormal\t'"${bg_rgb}"
-    $'Colors:Window\tForegroundNormal\t'"${fg_rgb}"
-    $'Colors:Header\tBackgroundNormal\t'"${bg_rgb}"
-    $'Colors:Header\tForegroundNormal\t'"${fg_rgb}"
-    $'Colors:Header\tDecorationFocus\t'"${accent_rgb}"
-    $'Colors:Header\tDecorationHover\t'"${hover_rgb}"
-    $'Colors:Tooltip\tBackgroundNormal\t'"${bg_rgb}"
-    $'Colors:Tooltip\tForegroundNormal\t'"${fg_rgb}"
-    $'Colors:Complementary\tBackgroundNormal\t'"${bg_rgb}"
-    $'Colors:Complementary\tForegroundNormal\t'"${fg_rgb}"
-  )
+	  $'Colors:Window\tBackgroundNormal\t'"${bg_rgb}"
+	  $'Colors:Window\tForegroundNormal\t'"${fg_rgb}"
+	  $'Colors:Header\tBackgroundNormal\t'"${bg_rgb}"
+	  $'Colors:Header\tForegroundNormal\t'"${fg_rgb}"
+	  $'Colors:Header\tDecorationFocus\t'"${accent_rgb}"
+	  $'Colors:Header\tDecorationHover\t'"${hover_rgb}"
+	  $'Colors:Tooltip\tBackgroundNormal\t'"${bg_rgb}"
+	  $'Colors:Tooltip\tForegroundNormal\t'"${fg_rgb}"
+	  $'Colors:Complementary\tBackgroundNormal\t'"${bg_rgb}"
+	  $'Colors:Complementary\tForegroundNormal\t'"${fg_rgb}"
+	)
   [[ -n "${ICON_THEME}" ]] && kdeglobals_entries+=($'Icons\tTheme\t'"${ICON_THEME}")
   [[ -n "${TERMINAL}" ]] && kdeglobals_entries+=($'General\tTerminalApplication\t'"${TERMINAL}")
   kde_write_entries "${kdeglobals}" "${kdeglobals_entries[@]}"
@@ -329,7 +338,7 @@ reload_hypr_shaders() {
     return 1
   fi
 
-  [[ "${LOG_LEVEL}" == "debug" ]] && print_log -sec "hyprshell" -stat "reload" "shaders"
+  [[ "${LOG_LEVEL:-}" == "debug" ]] && print_log -sec "hyprshell" -stat "reload" "shaders"
   return 0
 }
 

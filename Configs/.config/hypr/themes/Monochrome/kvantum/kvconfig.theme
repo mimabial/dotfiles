@@ -88,7 +88,7 @@ window.text.color=#FFFFFF
 button.text.color=#FFFFFF
 disabled.text.color=#9B9B9B
 tooltip.text.color=#FFFFFF
-highlight.text.color=#0D0D0D
+highlight.text.color=#FFFFFF
 link.color=#8D8D8D
 link.visited.color=#9B9B9B
 
@@ -99,7 +99,9 @@ interior.element=itemview
 frame=true
 interior=true
 text.iconspacing=3
-text.toggle.color=#0D0D0D 
+text.press.color=#FFFFFF
+text.toggle.color=#FFFFFF
+text.focus.color=#FFFFFF
 
 [RadioButton]
 inherits=PanelButtonCommand
@@ -133,6 +135,12 @@ text.toggle.color=#0D0D0D
 
 [PanelButtonTool]
 inherits=PanelButtonCommand
+interior.element=tbutton
+frame.element=tbutton
+text.normal.color=#FFFFFF
+text.focus.color=#FFFFFF
+text.press.color=#FFFFFF
+text.toggle.color=#FFFFFF
 
 [DockTitle]
 inherits=PanelButtonCommand
@@ -313,8 +321,8 @@ interior.element=tbutton
 indicator.element=arrow
 text.normal.color=#FFFFFF
 text.focus.color=#FFFFFF
-text.press.color=#0D0D0D
-text.toggle.color=#0D0D0D
+text.press.color=#FFFFFF
+text.toggle.color=#FFFFFF
 text.bold=false
 
 [Scrollbar]

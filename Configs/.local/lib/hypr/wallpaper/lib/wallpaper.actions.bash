@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 
 # Apply/set wallpaper links and trigger cache/color pipelines.
 
@@ -42,8 +43,16 @@ wallpaper_link_selected() {
 }
 
 wallpaper_refresh_hyprlock_background() {
-  command -v hyprlock.sh &>/dev/null || return 0
-  run_low_prio hyprlock.sh --background 202>&- &
+  [[ "${WALLPAPER_SKIP_HYPRLOCK_BACKGROUND:-0}" -eq 1 ]] && return 0
+  # Absolute path: this function is called from wallpaper.sh's resume path,
+  # which runs inside the theme.apply phase-D systemd-run --user envelope.
+  # That envelope does NOT inherit the hyprshell-extended PATH, so a bare
+  # `hyprlock.sh` would silently fail there. The symlink (wall.set) has
+  # already been updated by wallpaper_link_selected above, so backgrounding
+  # the refresh is safe — the subprocess resolves the correct path.
+  local hyprlock_script="${LIB_DIR}/hypr/session/hyprlock.sh"
+  [[ -x "${hyprlock_script}" ]] || return 0
+  run_low_prio "${hyprlock_script}" --background 202>&- &
 }
 
 wallpaper_run_color_refresh() {
@@ -59,6 +68,8 @@ wallpaper_run_color_refresh() {
 wallpaper_background_post_apply() {
   local apply_colors="$1"
   local wallpaper_path="$2"
+
+  [[ "${WALLPAPER_SKIP_POST_APPLY:-0}" -eq 1 ]] && return 0
 
   {
     wallpaper_enqueue_cache_jobs -w "${wallpaper_path}" || true

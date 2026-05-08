@@ -1,29 +1,26 @@
 #!/usr/bin/env python3
 import glob
-import json
 import os
-import re
 import sys
 
+from pyutils.compositor import HyprctlWrapper
 from pyutils.xdg_base_dirs import xdg_config_home, xdg_data_home
-
+from waybar_jsonc import modify_json_key, parse_json_file
+from waybar_layouts import layered_module_files, resolve_style_path
 from waybar_shared import (
     CONFIG_JSONC,
     CONFIG_WAYBAR_DIR,
     DATA_WAYBAR_DIR,
     INCLUDES_DIRS,
-    MODULE_DIRS,
-    atomic_copy_file,
     atomic_write_json,
     atomic_write_text,
     ensure_directory_exists,
+    install_layout_as_active_config,
     logger,
 )
-from pyutils.compositor import HyprctlWrapper
 from waybar_state import (
     get_config_value,
     get_current_layout_from_config,
-    resolve_style_path,
 )
 
 
@@ -58,132 +55,6 @@ def rewrite_module_paths(data):
     return data
 
 
-def normalize_jsonc(content):
-    """Convert JSONC content to strict JSON by removing comments and trailing commas."""
-    no_comments = []
-    in_string = False
-    escaped = False
-    in_line_comment = False
-    in_block_comment = False
-    i = 0
-    length = len(content)
-
-    while i < length:
-        char = content[i]
-        next_char = content[i + 1] if i + 1 < length else ""
-
-        if in_line_comment:
-            if char == "\n":
-                in_line_comment = False
-                no_comments.append(char)
-            i += 1
-            continue
-
-        if in_block_comment:
-            if char == "*" and next_char == "/":
-                in_block_comment = False
-                i += 2
-                continue
-            if char == "\n":
-                no_comments.append(char)
-            i += 1
-            continue
-
-        if in_string:
-            no_comments.append(char)
-            if escaped:
-                escaped = False
-            elif char == "\\":
-                escaped = True
-            elif char == '"':
-                in_string = False
-            i += 1
-            continue
-
-        if char == '"':
-            in_string = True
-            no_comments.append(char)
-            i += 1
-            continue
-
-        if char == "/" and next_char == "/":
-            in_line_comment = True
-            i += 2
-            continue
-
-        if char == "/" and next_char == "*":
-            in_block_comment = True
-            i += 2
-            continue
-
-        no_comments.append(char)
-        i += 1
-
-    cleaned = "".join(no_comments)
-
-    result = []
-    in_string = False
-    escaped = False
-    i = 0
-    length = len(cleaned)
-
-    while i < length:
-        char = cleaned[i]
-        if in_string:
-            result.append(char)
-            if escaped:
-                escaped = False
-            elif char == "\\":
-                escaped = True
-            elif char == '"':
-                in_string = False
-            i += 1
-            continue
-
-        if char == '"':
-            in_string = True
-            result.append(char)
-            i += 1
-            continue
-
-        if char == ",":
-            j = i + 1
-            while j < length and cleaned[j].isspace():
-                j += 1
-            if j < length and cleaned[j] in "}]":
-                i += 1
-                continue
-
-        result.append(char)
-        i += 1
-
-    return "".join(result)
-
-
-def parse_json_file(filepath):
-    """Parse a JSON file and return the data."""
-    with open(filepath, "r", encoding="utf-8") as file:
-        content = file.read()
-    if os.fspath(filepath).endswith(".jsonc"):
-        content = normalize_jsonc(content)
-    return json.loads(content)
-
-
-def modify_json_key(data, key, value):
-    """Recursively modify the specified key with the given value in the JSON data."""
-    if isinstance(data, dict):
-        for k, v in data.items():
-            if k == key:
-                data[k] = value
-            elif isinstance(v, dict):
-                modify_json_key(v, key, value)
-            elif isinstance(v, list):
-                for item in v:
-                    if isinstance(item, dict):
-                        modify_json_key(item, key, value)
-    return data
-
-
 def write_style_file(style_filepath, source_filepath):
     """Override the style file with the given source style."""
     config_root = os.path.join(str(xdg_config_home()), "waybar")
@@ -195,7 +66,6 @@ def write_style_file(style_filepath, source_filepath):
     /* Modify/add style in ~/.config/waybar/styles/ */
     @import "includes/global.css";
     @import "includes/font.css";
-    @import "includes/border-radius.css";
 
     /* Colors configuration is generated through pywal16 in the `colors.css` file */
     @import "colors.css";
@@ -206,25 +76,14 @@ def write_style_file(style_filepath, source_filepath):
     /* Shared or user-selected base style */
     @import "{style_import}";
 
+    /* Runtime geometry overrides */
+    @import "includes/border-radius.css";
+
     /* Users override the current style here */
     @import "user-style.css";
     """
     atomic_write_text(style_filepath, style_css)
     logger.debug(f"Successfully wrote style to '{style_filepath}'")
-
-
-def layered_module_files():
-    """Return the effective layered Waybar module files, last override wins."""
-    modules = {}
-    for directory in reversed(MODULE_DIRS):
-        if not os.path.isdir(directory):
-            logger.debug(f"Directory '{directory}' does not exist, skipping...")
-            continue
-        for pattern in ("*.json", "*.jsonc"):
-            for path in glob.glob(os.path.join(directory, pattern)):
-                relative_path = os.path.relpath(path, start=directory)
-                modules[relative_path] = path
-    return modules
 
 
 def normalize_include_path(path):
@@ -258,7 +117,9 @@ def build_generated_includes_data():
         data = rewrite_module_paths(data)
         updated_entries.update(data)
 
-    includes_data["include"] = [normalize_include_path(modules[key]) for key in sorted(modules)]
+    includes_data["include"] = [
+        normalize_include_path(modules[key]) for key in sorted(modules)
+    ]
     position = get_config_value("WAYBAR_POSITION")
     if position:
         position = position.strip().strip('"').strip("'")
@@ -271,7 +132,9 @@ def build_generated_includes_data():
 
 def write_generated_includes():
     """Write a fully generated includes.json from the current module set."""
-    includes_file = os.path.join(str(xdg_config_home()), "waybar", "includes", "includes.json")
+    includes_file = os.path.join(
+        str(xdg_config_home()), "waybar", "includes", "includes.json"
+    )
     ensure_directory_exists(includes_file)
     includes_data = build_generated_includes_data()
     atomic_write_json(includes_file, includes_data)
@@ -286,7 +149,9 @@ def update_icon_size():
 
 def update_global_css():
     """Generate dynamic global.css with font family and size based on theme and state file."""
-    global_css_path = os.path.join(str(xdg_config_home()), "waybar", "includes", "global.css")
+    global_css_path = os.path.join(
+        str(xdg_config_home()), "waybar", "includes", "global.css"
+    )
     logger.debug(f"Updating global CSS in {global_css_path}")
 
     ensure_directory_exists(global_css_path)
@@ -356,7 +221,9 @@ def get_waybar_font_family():
         (lambda: get_value_from_hypr_config("$BAR_FONT"), "BAR_FONT config"),
         (lambda: get_value_from_hypr_config("$FONT"), "FONT config"),
     ]
-    return get_waybar_value_from_sources("font family", "monospace", font_family_sources)
+    return get_waybar_value_from_sources(
+        "font family", "monospace", font_family_sources
+    )
 
 
 def get_waybar_font_size():
@@ -411,24 +278,72 @@ def get_value_from_hypr_config(variable_name):
     return None
 
 
+def get_hypr_theme_rounding():
+    theme_conf = xdg_config_home() / "hypr" / "themes" / "theme.conf"
+    if not theme_conf.exists():
+        return None
+
+    try:
+        with open(theme_conf, "r") as file:
+            for line in file:
+                stripped = line.strip()
+                if not stripped or stripped.startswith("#") or "=" not in stripped:
+                    continue
+                lhs, rhs = stripped.split("=", 1)
+                if lhs.strip() != "rounding":
+                    continue
+                value = rhs.strip().split()[0].strip('"').strip("'")
+                logger.debug(f"Got rounding from {theme_conf}: {value}")
+                return value or None
+    except Exception as e:
+        logger.error(f"Error reading {theme_conf}: {e}")
+
+    return None
+
+
+def render_border_radius_css(border_radius):
+    return f"""/*
+This is an autogenerated file.
+Do not edit this file directly.
+
+This is modified to dynamically
+change the border-radius so Waybar
+follows the active Hyprland theme.
+*/
+
+* {{
+  border-radius: {border_radius}pt;
+}}
+
+window#waybar {{
+  border-radius: 0pt;
+}}
+
+window#waybar *,
+menu,
+menu *,
+menuitem,
+tooltip,
+tooltip *,
+popover,
+popover * {{
+  border-radius: {border_radius}pt;
+}}
+
+window#waybar #custom-mediaplayer {{
+  border-radius: 0pt;
+}}
+"""
+
+
 def update_border_radius():
-    css_filepath = os.path.join(str(xdg_config_home()), "waybar", "includes", "border-radius.css")
+    css_filepath = os.path.join(
+        str(xdg_config_home()), "waybar", "includes", "border-radius.css"
+    )
     logger.debug(f"Updating border radius in {css_filepath}")
 
     ensure_directory_exists(css_filepath)
     logger.debug("Directory for border-radius.css ensured")
-
-    if not os.path.exists(css_filepath):
-        for includes_dir in INCLUDES_DIRS:
-            template_path = os.path.join(includes_dir, "border-radius.css")
-            if os.path.exists(template_path):
-                logger.debug(f"Found template at {template_path}, copying to {css_filepath}")
-                atomic_copy_file(template_path, css_filepath)
-                break
-        else:
-            default_template = "/*\nThis file is autogenerated.\n*/\n\n* {\n  border-radius: 0pt;\n}\n"
-            atomic_write_text(css_filepath, default_template)
-            logger.debug("Wrote default border-radius.css template")
 
     border_radius = os.getenv("WAYBAR_BORDER_RADIUS")
     logger.debug(f"WAYBAR_BORDER_RADIUS env: {border_radius}")
@@ -436,6 +351,10 @@ def update_border_radius():
     if not border_radius:
         border_radius = os.getenv("HYPR_RUNTIME_BORDER_RADIUS")
         logger.debug(f"HYPR_RUNTIME_BORDER_RADIUS env: {border_radius}")
+
+    if not border_radius:
+        border_radius = get_hypr_theme_rounding()
+        logger.debug(f"Theme metadata border radius: {border_radius}")
 
     if not border_radius:
         logger.debug("Reading border radius from Hyprland")
@@ -452,18 +371,22 @@ def update_border_radius():
         border_radius = 2
 
     if border_radius < 0:
-        logger.warning(f"Invalid negative border radius {border_radius!r}; using default")
+        logger.warning(
+            f"Invalid negative border radius {border_radius!r}; using default"
+        )
         border_radius = 2
         logger.debug(f"Using default border radius: {border_radius}")
 
     logger.debug(f"Final border radius value: {border_radius}")
 
-    with open(css_filepath, "r") as file:
-        content = file.read()
-    logger.debug(f"Read {len(content)} bytes from {css_filepath}")
+    content = ""
+    if os.path.exists(css_filepath):
+        with open(css_filepath, "r") as file:
+            content = file.read()
+        logger.debug(f"Read {len(content)} bytes from {css_filepath}")
 
-    updated_content = re.sub(r"\d+pt", f"{border_radius}pt", content)
-    logger.debug("Applied border radius value to CSS content")
+    updated_content = render_border_radius_css(border_radius)
+    logger.debug("Rendered border radius CSS content")
 
     if updated_content == content:
         logger.debug("Border radius unchanged; skipping write")
@@ -478,14 +401,15 @@ def generate_includes():
 
 
 def update_config(config_path):
-    config_jsonc = os.path.join(str(xdg_config_home()), "waybar", "config.jsonc")
-    atomic_copy_file(config_path, config_jsonc)
-    logger.debug(f"Successfully copied config from '{config_path}' to '{config_jsonc}'")
+    install_layout_as_active_config(config_path)
+    logger.debug(f"Successfully installed layout from '{config_path}' to '{CONFIG_JSONC}'")
 
 
 def update_style(style_path=None):
     style_filepath = os.path.join(str(xdg_config_home()), "waybar", "style.css")
-    user_style_filepath = os.path.join(str(xdg_config_home()), "waybar", "user-style.css")
+    user_style_filepath = os.path.join(
+        str(xdg_config_home()), "waybar", "user-style.css"
+    )
     theme_style_filepath = os.path.join(str(xdg_config_home()), "waybar", "theme.css")
 
     ensure_directory_exists(user_style_filepath)
@@ -495,7 +419,9 @@ def update_style(style_path=None):
         logger.debug(f"Created '{user_style_filepath}'")
 
     if not os.path.exists(theme_style_filepath):
-        logger.error(f"Missing '{theme_style_filepath}', Please run 'hyprshell reload' to generate it.")
+        logger.error(
+            f"Missing '{theme_style_filepath}', Please run 'hyprshell reload' to generate it."
+        )
 
     if not style_path:
         current_layout = get_current_layout_from_config()

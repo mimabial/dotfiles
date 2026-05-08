@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Waybar color mode indicator
 
+set -euo pipefail
+
 # shellcheck source=/dev/null
 source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/waybar.state.common.sh"
 waybar_state_init

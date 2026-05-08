@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 
 rofi_picker_bootstrap() {
   pkill -u "$USER" rofi && exit 0
@@ -18,13 +19,8 @@ rofi_picker_hypr_dir_vars() {
   local config_dir="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}"
   local cache_dir="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}"
 
-  # shellcheck disable=SC2178
-  local -n config_ref="${out_config_name}"
-  # shellcheck disable=SC2178
-  local -n cache_ref="${out_cache_name}"
-
-  config_ref="${config_dir}"
-  cache_ref="${cache_dir}"
+  printf -v "${out_config_name}" '%s' "${config_dir}"
+  printf -v "${out_cache_name}" '%s' "${cache_dir}"
 }
 
 rofi_picker_prepare_data_file() {

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Toggle single-window square aspect ratio
 
+set -euo pipefail
+
 CURRENT_VALUE=$(hyprctl getoption "layout:single_window_aspect_ratio" 2>/dev/null | head -1)
 
 if [[ "$CURRENT_VALUE" == *"[1, 1]"* ]]; then

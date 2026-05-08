@@ -1,6 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Select a drive from a list with info that includes space and brand
+
+set -euo pipefail
 
 declare -a drives=()
 if (($# == 0)); then

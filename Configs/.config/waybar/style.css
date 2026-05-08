@@ -4,7 +4,6 @@
     /* Modify/add style in ~/.config/waybar/styles/ */
     @import "includes/global.css";
     @import "includes/font.css";
-    @import "includes/border-radius.css";
 
     /* Colors configuration is generated through pywal16 in the `colors.css` file */
     @import "colors.css";
@@ -14,6 +13,9 @@
 
     /* Shared or user-selected base style */
     @import "../../.local/share/waybar/styles/default.css";
+
+    /* Runtime geometry overrides */
+    @import "includes/border-radius.css";
 
     /* Users override the current style here */
     @import "user-style.css";

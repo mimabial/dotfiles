@@ -507,88 +507,97 @@
  </g>
  <rect id="tbutton-normal" style="opacity:0.00100002;fill:#0D0D0D" width="46.239" height="43.077" x="15" y="634.92"/>
  <g id="tbutton-toggled-topleft" transform="matrix(0.44036669,0,0,1.2307681,555.40993,-324.52584)">
-  <path style="fill:#FFFFFF" transform="matrix(2.2708348,0,0,0.81250075,-1261.2442,263.65393)" d="m 242,629.99023 a 5,5.0000001 0 0 0 -5,5 h 1.5 3.5 v -3.5 z"/>
+  <path style="fill:#2B2B2D" transform="matrix(2.2708348,0,0,0.81250075,-1261.2442,263.65393)" d="m 242,629.99023 a 5,5.0000001 0 0 0 -5,5 h 1.5 3.5 v -3.5 z"/>
  </g>
  <g id="tbutton-toggled-bottomleft" transform="matrix(0.44036669,0,0,1.2307681,562.12006,-316.37576)">
-  <path style="fill:#FFFFFF" transform="matrix(2.2708348,0,0,0.81250075,-1276.4818,257.03199)" d="m 237,678.0293 a 5.0000005,5.0000001 0 0 0 5,5 v -1.46289 -3.5 -0.0371 z"/>
+  <path style="fill:#2B2B2D" transform="matrix(2.2708348,0,0,0.81250075,-1276.4818,257.03199)" d="m 237,678.0293 a 5.0000005,5.0000001 0 0 0 5,5 v -1.46289 -3.5 -0.0371 z"/>
  </g>
  <g id="tbutton-toggled-left" transform="matrix(0.44036669,0,0,2.0512769,558.97914,-984.73264)">
-  <path style="fill:#FFFFFF" transform="matrix(2.2708348,0,0,0.48750122,-1269.3493,480.04423)" d="m 237,634.98438 v 43.07617 h 1.5 v 0.01 h 3.5 v -0.01 -43.06836 -0.008 z"/>
+  <path style="fill:#2B2B2D" transform="matrix(2.2708348,0,0,0.48750122,-1269.3493,480.04423)" d="m 237,634.98438 v 43.07617 h 1.5 v 0.01 h 3.5 v -0.01 -43.06836 -0.008 z"/>
  </g>
  <g id="tbutton-toggled-top" transform="matrix(0.84070003,0,0,1.2307681,847.14198,-324.56423)">
-  <path style="fill:#FFFFFF" transform="matrix(1.1894849,0,0,0.81250075,-1007.6626,263.68512)" d="m 241.99805,629.94922 v 1.50195 3.5 h 46.23828 v -3.5 -1.50195 z"/>
+  <path style="fill:#2B2B2D" transform="matrix(1.1894849,0,0,0.81250075,-1007.6626,263.68512)" d="m 241.99805,629.94922 v 1.50195 3.5 h 46.23828 v -3.5 -1.50195 z"/>
  </g>
  <g id="tbutton-toggled-bottom" transform="matrix(0.84070003,0,0,1.2307681,847.14198,-319.64117)">
-  <path style="fill:#FFFFFF" transform="matrix(1.1894849,0,0,0.81250075,-1007.6626,259.68513)" d="m 241.99805,678.02344 v 3.5 1.50195 h 46.23828 v -1.50195 -3.5 z"/>
+  <path style="fill:#2B2B2D" transform="matrix(1.1894849,0,0,0.81250075,-1007.6626,259.68513)" d="m 241.99805,678.02344 v 3.5 1.50195 h 46.23828 v -1.50195 -3.5 z"/>
  </g>
  <g id="tbutton-toggled-topright" transform="matrix(2.3414816,0,0,5,1844.8721,-3262.9974)">
-  <path style="fill:#FFFFFF" transform="matrix(0.42708002,0,0,0.2,-787.90801,652.59368)" d="m 288.23828,629.95117 v 1.5 3.5 h 3.5 1.5 a 5,5 0 0 0 -5,-5 z"/>
+  <path style="fill:#2B2B2D" transform="matrix(0.42708002,0,0,0.2,-787.90801,652.59368)" d="m 288.23828,629.95117 v 1.5 3.5 h 3.5 1.5 a 5,5 0 0 0 -5,-5 z"/>
  </g>
  <g id="tbutton-toggled-bottomright" transform="matrix(0.44036669,0,0,1.273756,580.99744,-354.48642)">
-  <path style="fill:#FFFFFF" transform="matrix(2.2708348,0,0,0.78507972,-1319.3492,278.27734)" d="m 288.23828,678.0293 v 3.5 1.5 a 5,5 0 0 0 5,-5 h -1.5 z"/>
+  <path style="fill:#2B2B2D" transform="matrix(2.2708348,0,0,0.78507972,-1319.3492,278.27734)" d="m 288.23828,678.0293 v 3.5 1.5 a 5,5 0 0 0 5,-5 h -1.5 z"/>
  </g>
  <g id="tbutton-toggled-right" transform="matrix(0.30924086,0,0,2.0512769,494.3238,-984.73264)">
-  <path style="fill:#FFFFFF" transform="matrix(3.2337253,0,0,0.48750122,-1598.5074,480.04423)" d="m 288.24023,634.94336 v 0.0117 h -0.002 v 43.07617 h 3.5 v -0.0117 h 1.50195 v -43.07617 z"/>
+  <path style="fill:#2B2B2D" transform="matrix(3.2337253,0,0,0.48750122,-1598.5074,480.04423)" d="m 288.24023,634.94336 v 0.0117 h -0.002 v 43.07617 h 3.5 v -0.0117 h 1.50195 v -43.07617 z"/>
  </g>
- <rect id="tbutton-toggled" style="fill:#FFFFFF" width="46.238" height="43.077" x="242" y="634.92"/>
- <rect id="tbutton-focused" style="fill:#8D8D8D" width="46.239" height="43.077" x="95" y="634.92"/>
- <rect id="tbutton-pressed" style="fill:#FFFFFF" width="46.239" height="43.077" x="168" y="634.92"/>
+ <rect id="tbutton-toggled" style="fill:#2B2B2D" width="46.238" height="43.077" x="242" y="634.92"/>
+ <rect id="tbutton-focused" style="fill:#333335" width="46.239" height="43.077" x="95" y="634.92"/>
+ <rect id="tbutton-pressed" style="fill:#2B2B2D" width="46.239" height="43.077" x="168" y="634.92"/>
  <g id="tbutton-focused-top" transform="matrix(0.84070004,0,0,1.2307681,700.14203,-324.56417)">
   <rect style="opacity:0.3" width="55" height="4.063" x="-719.81" y="775.52"/>
-  <rect style="fill:#8D8D8D" width="55" height="2.844" x="-719.81" y="776.74"/>
+  <rect style="fill:#333335" width="55" height="2.844" x="-719.81" y="776.74"/>
  </g>
  <g id="tbutton-focused-topright" transform="translate(0,-0.0289917)">
   <path style="opacity:0.3" d="m 146.23858,634.95205 a 5,5 0 0 0 -5,-5 v 5 z"/>
-  <path style="fill:#8D8D8D" d="m 144.73858,634.95205 a 3.5000001,3.5 0 0 0 -3.5,-3.5 v 3.5 z"/>
+  <path style="fill:#333335" d="m 144.73858,634.95205 a 3.5000001,3.5 0 0 0 -3.5,-3.5 v 3.5 z"/>
  </g>
  <g id="tbutton-focused-topleft" transform="matrix(0.44036669,0,0,1.2307681,408.40995,-324.56424)">
   <path style="opacity:0.3" transform="scale(-1)" d="m 723.0562,-779.58405 a 11.354174,4.0625038 0 0 1 -11.35417,4.06251 v -4.06251 z"/>
-  <path style="fill:#8D8D8D" transform="scale(-1)" d="m 719.64995,-779.58405 a 7.9479218,2.8437526 0 0 1 -7.94792,2.84376 v -2.84376 z"/>
+  <path style="fill:#333335" transform="scale(-1)" d="m 719.64995,-779.58405 a 7.9479218,2.8437526 0 0 1 -7.94792,2.84376 v -2.84376 z"/>
  </g>
  <g id="tbutton-focused-left" transform="matrix(0.44036669,0,0,2.0512769,411.97915,-984.77094)">
   <rect style="opacity:0.3" width="11.354" height="21" x="-731.16" y="789.6"/>
-  <rect style="fill:#8D8D8D" width="7.948" height="21" x="-727.75" y="789.6"/>
+  <rect style="fill:#333335" width="7.948" height="21" x="-727.75" y="789.6"/>
  </g>
  <g id="tbutton-focused-bottomleft" transform="matrix(0.44036669,0,0,1.2307681,415.12006,-316.37576)">
   <path style="opacity:0.3" transform="rotate(90)" d="m 811.99335,726.93976 a 4.0625038,11.354175 0 0 1 -4.0625,11.35417 v -11.35417 z"/>
-  <path style="fill:#8D8D8D" transform="rotate(90)" d="m 810.7746,726.93964 a 2.8437526,7.9479218 0 0 1 -2.84375,7.94792 v -7.94792 z"/>
+  <path style="fill:#333335" transform="rotate(90)" d="m 810.7746,726.93964 a 2.8437526,7.9479218 0 0 1 -2.84375,7.94792 v -7.94792 z"/>
  </g>
  <g id="tbutton-focused-bottom" transform="matrix(0.84070004,0,0,1.2307681,700.14203,-319.64116)">
   <rect style="opacity:0.3" width="55" height="4.063" x="-719.81" y="810.58"/>
-  <rect style="fill:#8D8D8D" width="55" height="2.844" x="-719.81" y="810.58"/>
+  <rect style="fill:#333335" width="55" height="2.844" x="-719.81" y="810.58"/>
  </g>
  <g id="tbutton-focused-bottomright" transform="matrix(0.44036669,0,0,1.273756,433.9975,-354.48639)">
   <path style="opacity:0.3" d="m -653.45302,810.58392 a 11.354174,3.9253986 0 0 1 -11.35417,3.9254 v -3.9254 z"/>
-  <path style="fill:#8D8D8D" d="m -656.85921,810.58392 a 7.9479218,2.7477789 0 0 1 -7.94792,2.74778 v -2.74778 z"/>
+  <path style="fill:#333335" d="m -656.85921,810.58392 a 7.9479218,2.7477789 0 0 1 -7.94792,2.74778 v -2.74778 z"/>
  </g>
  <g id="tbutton-focused-right" transform="matrix(0.30924086,0,0,2.0512769,347.32386,-984.73244)">
   <rect style="opacity:0.3" width="16.169" height="21" x="-666.42" y="789.58"/>
-  <rect style="fill:#8D8D8D" width="11.318" height="21" x="-666.42" y="789.58"/>
+  <rect style="fill:#333335" width="11.318" height="21" x="-666.42" y="789.58"/>
  </g>
  <g id="tbutton-pressed-topleft" transform="matrix(0.44036669,0,0,1.2307681,481.40997,-324.52587)">
-  <path style="fill:#FFFFFF" transform="matrix(2.2708348,0,0,0.81250075,-1093.2025,263.65396)" d="m 168,629.99023 a 5,5.0000001 0 0 0 -5,5 h 1.5 3.5 v -3.5 z"/>
+  <path style="fill:#2B2B2D" transform="matrix(2.2708348,0,0,0.81250075,-1093.2025,263.65396)" d="m 168,629.99023 a 5,5.0000001 0 0 0 -5,5 h 1.5 3.5 v -3.5 z"/>
  </g>
  <g id="tbutton-pressed-top" transform="matrix(0.84070004,0,0,1.2307681,773.14197,-324.56417)">
-  <path style="fill:#FFFFFF" transform="matrix(1.1894849,0,0,0.81250075,-919.6407,263.68508)" d="m 167.99805,629.94922 v 1.50195 3.5 h 46.23828 v -3.5 -1.50195 z"/>
+  <path style="fill:#2B2B2D" transform="matrix(1.1894849,0,0,0.81250075,-919.6407,263.68508)" d="m 167.99805,629.94922 v 1.50195 3.5 h 46.23828 v -3.5 -1.50195 z"/>
  </g>
  <g id="tbutton-pressed-topright" transform="matrix(2.3414816,0,0,5,1770.872,-3262.9973)">
-  <path style="fill:#FFFFFF" transform="matrix(0.42708002,0,0,0.2,-756.30404,652.59366)" d="m 214.23828,629.95117 v 1.5 3.5 h 3.5 1.5 a 5,5 0 0 0 -5,-5 z"/>
+  <path style="fill:#2B2B2D" transform="matrix(0.42708002,0,0,0.2,-756.30404,652.59366)" d="m 214.23828,629.95117 v 1.5 3.5 h 3.5 1.5 a 5,5 0 0 0 -5,-5 z"/>
  </g>
  <g id="tbutton-pressed-left" transform="matrix(0.44036669,0,0,2.0512769,484.97914,-984.77104)">
-  <path style="fill:#FFFFFF" transform="matrix(2.2708348,0,0,0.48750122,-1101.3075,480.06295)" d="m 163,634.94531 v 43.07813 H 164.50195 168 168.002 V 634.94531 H 168 164.50195 Z"/>
+  <path style="fill:#2B2B2D" transform="matrix(2.2708348,0,0,0.48750122,-1101.3075,480.06295)" d="m 163,634.94531 v 43.07813 H 164.50195 168 168.002 V 634.94531 H 168 164.50195 Z"/>
  </g>
  <g id="tbutton-pressed-right" transform="matrix(0.30924086,0,0,2.0512769,420.32385,-984.73244)">
-  <path style="fill:#FFFFFF" transform="matrix(3.2337253,0,0,0.48750122,-1359.2119,480.04414)" d="m 214.24023,634.94336 v 43.07812 h 3.5 1.5 v -43.07812 h -1.5 z"/>
+  <path style="fill:#2B2B2D" transform="matrix(3.2337253,0,0,0.48750122,-1359.2119,480.04414)" d="m 214.24023,634.94336 v 43.07812 h 3.5 1.5 v -43.07812 h -1.5 z"/>
  </g>
  <g id="tbutton-pressed-bottomright" transform="matrix(0.44036669,0,0,1.273756,506.99751,-354.48638)">
-  <path style="fill:#FFFFFF" transform="matrix(2.2708348,0,0,0.78507972,-1151.3076,278.27731)" d="m 214.23828,678.0293 v 3.5 1.5 a 5,5 0 0 0 5,-5 h -1.5 z"/>
+  <path style="fill:#2B2B2D" transform="matrix(2.2708348,0,0,0.78507972,-1151.3076,278.27731)" d="m 214.23828,678.0293 v 3.5 1.5 a 5,5 0 0 0 5,-5 h -1.5 z"/>
  </g>
  <g id="tbutton-pressed-bottom" transform="matrix(0.84070004,0,0,1.2307681,773.14207,-319.64117)">
-  <path style="fill:#FFFFFF" transform="matrix(1.1894849,0,0,0.81250075,-919.64082,259.68513)" d="m 167.99805,678.02344 v 3.5 1.50195 h 46.23828 v -1.50195 -3.5 z"/>
+  <path style="fill:#2B2B2D" transform="matrix(1.1894849,0,0,0.81250075,-919.64082,259.68513)" d="m 167.99805,678.02344 v 3.5 1.50195 h 46.23828 v -1.50195 -3.5 z"/>
  </g>
  <g id="tbutton-pressed-bottomleft" transform="matrix(0.44036669,0,0,1.2307681,488.12006,-316.37577)">
-  <path style="fill:#FFFFFF" transform="matrix(2.2708348,0,0,0.81250075,-1108.44,257.03199)" d="m 163,678.0293 a 5.0000005,5.0000001 0 0 0 5,5 v -1.5 -3.5 h -3.5 z"/>
+  <path style="fill:#2B2B2D" transform="matrix(2.2708348,0,0,0.81250075,-1108.44,257.03199)" d="m 163,678.0293 a 5.0000005,5.0000001 0 0 0 5,5 v -1.5 -3.5 h -3.5 z"/>
  </g>
+ <use width="100%" height="100%" xlink:href="#tbutton-pressed-right" id="tbutton-toggled-inactive-right" transform="translate(120)"/>
+ <use width="100%" height="100%" xlink:href="#tbutton-pressed-bottom" id="tbutton-toggled-inactive-bottom" transform="translate(120)"/>
+ <use width="100%" height="100%" xlink:href="#tbutton-pressed" id="tbutton-toggled-inactive" transform="translate(120)"/>
+ <use width="100%" height="100%" xlink:href="#tbutton-pressed-bottomright" id="tbutton-toggled-inactive-bottomright" transform="translate(120)"/>
+ <use width="100%" height="100%" xlink:href="#tbutton-pressed-top" id="tbutton-toggled-inactive-top" transform="translate(120)"/>
+ <use width="100%" height="100%" xlink:href="#tbutton-pressed-topright" id="tbutton-toggled-inactive-topright" transform="translate(120)"/>
+ <use width="100%" height="100%" xlink:href="#tbutton-pressed-left" id="tbutton-toggled-inactive-left" transform="translate(120)"/>
+ <use width="100%" height="100%" xlink:href="#tbutton-pressed-bottomleft" id="tbutton-toggled-inactive-bottomleft" transform="translate(120)"/>
+ <use width="100%" height="100%" xlink:href="#tbutton-pressed-topleft" id="tbutton-toggled-inactive-topleft" transform="translate(120)"/>
  <g id="common-normal-top" transform="translate(49,-0.0289917)">
   <path style="fill:#0D0D0D" transform="scale(1,-1)" d="m 610.00043,-369.02874 h 40 v 1.00005 h -40 z"/>
  </g>

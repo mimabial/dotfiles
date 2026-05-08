@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 validate_dns_entry() {
   local entry="$1"
   local address="$entry"

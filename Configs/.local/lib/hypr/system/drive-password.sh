@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+set -euo pipefail
 
 encrypted_drives=$(blkid -t TYPE=crypto_LUKS -o device)
 

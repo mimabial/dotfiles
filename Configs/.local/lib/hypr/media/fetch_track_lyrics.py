@@ -10,7 +10,6 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
-import re
 import sys
 from pathlib import Path
 
@@ -20,25 +19,6 @@ if str(SCRIPT_DIR) not in sys.path:
 
 from lyrics_io import save_lrc  # noqa: E402
 from lyrics_provider import fetch_lyrics  # noqa: E402
-
-
-TIMESTAMP_RE = re.compile(r"^\[(\d{2}):(\d{2})(?:\.(\d{1,3}))?\]")
-
-
-def is_synced_lrc(lyrics: str) -> bool:
-    has_non_zero_timestamp = False
-    for raw_line in lyrics.splitlines():
-        line = raw_line.strip()
-        match = TIMESTAMP_RE.match(line)
-        if not match:
-            continue
-        minutes = int(match.group(1))
-        seconds = int(match.group(2))
-        fraction = int((match.group(3) or "0").ljust(3, "0")[:3])
-        if minutes != 0 or seconds != 0 or fraction != 0:
-            has_non_zero_timestamp = True
-            break
-    return has_non_zero_timestamp
 
 
 def main() -> int:
@@ -55,11 +35,6 @@ def main() -> int:
         default=None,
         help="Expected track duration in seconds",
     )
-    parser.add_argument(
-        "--require-synced",
-        action="store_true",
-        help="Return code 3 if only plain lyrics are available",
-    )
     args = parser.parse_args()
 
     try:
@@ -71,9 +46,6 @@ def main() -> int:
         )
         if not lyrics:
             return 1
-
-        if args.require_synced and not is_synced_lrc(lyrics):
-            return 3
 
         save_lrc(args.lrc_file, lyrics, args.artist, args.title, args.album)
         return 0

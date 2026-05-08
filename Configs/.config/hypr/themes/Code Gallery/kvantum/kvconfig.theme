@@ -100,6 +100,8 @@ frame=true
 interior=true
 text.iconspacing=3
 text.toggle.color=#F3ECE2
+text.focus.color=#F3ECE2
+text.press.color=#F3ECE2
 
 [RadioButton]
 inherits=PanelButtonCommand

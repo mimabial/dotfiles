@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+set -euo pipefail
 
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/wttr"
 WEATHER_CACHE="$CACHE_DIR/weather.cache"
@@ -150,11 +152,12 @@ resolve_weather_location() {
 
 load_geolocated_location() {
   local ipinfo_json=""
+  local IFS=$'\t'
 
   ipinfo_json=$(curl -fsS --max-time 5 "https://ipinfo.io/json" 2>/dev/null)
-  country=$(echo "$ipinfo_json" | jq -r '.country' 2>/dev/null)
-  city=$(echo "$ipinfo_json" | jq -r '.city' 2>/dev/null)
-  location=$(echo "$ipinfo_json" | jq -r '.loc // .city // empty' 2>/dev/null)
+  read -r country city location < <(
+    jq -r '[(.country // ""), (.city // ""), (.loc // .city // "")] | @tsv' <<<"$ipinfo_json" 2>/dev/null
+  )
 
   [ "$country" = "null" ] && country=""
   [ "$city" = "null" ] && city=""
@@ -177,15 +180,23 @@ format_temperature() {
 
 parse_json_weather() {
   local weather_json="$1"
+  local parsed_city="" parsed_country=""
+  local IFS=$'\t'
 
-  code=$(echo "$weather_json" | jq -r '.current_condition[0].weatherCode // empty' 2>/dev/null)
-  desc=$(echo "$weather_json" | jq -r '.current_condition[0].weatherDesc[0].value // empty' 2>/dev/null)
-  temp=$(echo "$weather_json" | jq -r '.current_condition[0].FeelsLikeC // empty' 2>/dev/null)
+  read -r code desc temp parsed_city parsed_country < <(
+    jq -r '[
+      (.current_condition[0].weatherCode // ""),
+      (.current_condition[0].weatherDesc[0].value // ""),
+      (.current_condition[0].FeelsLikeC // ""),
+      (.nearest_area[0].areaName[0].value // ""),
+      (.nearest_area[0].country[0].value // "")
+    ] | @tsv' <<<"$weather_json" 2>/dev/null
+  )
   if [ -z "$city" ] || [ "$city" = "$location" ]; then
-    city=$(echo "$weather_json" | jq -r '.nearest_area[0].areaName[0].value // empty' 2>/dev/null)
+    city="${parsed_city}"
   fi
   if [ -z "$country" ]; then
-    country=$(echo "$weather_json" | jq -r '.nearest_area[0].country[0].value // empty' 2>/dev/null)
+    country="${parsed_country}"
   fi
   format_temperature
 }

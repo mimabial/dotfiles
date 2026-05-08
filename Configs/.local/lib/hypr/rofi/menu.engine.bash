@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 
 # Set to true when going directly to a submenu, so we can exit directly
 BACK_TO_EXIT="${BACK_TO_EXIT:-false}"
@@ -135,7 +136,7 @@ menu() {
 }
 
 terminal() {
-  xdg-terminal-exec --app-id=org.tui.HyprShell "$@"
+  present_terminal --app-id org.tui.HyprShell --title HyprShell -- "$@"
 }
 
 present_terminal() {
@@ -248,15 +249,12 @@ menu_lookup_selection() {
   local label=""
   local item_kind=""
   local item_target=""
-  local item_searchable=""
+  local _item_searchable=""
 
-  local -n out_kind_ref="${out_kind_name}"
-  local -n out_target_ref="${out_target_name}"
-
-  while IFS=$'\t' read -r label item_kind item_target item_searchable; do
+  while IFS=$'\t' read -r label item_kind item_target _item_searchable; do
     [[ "${label}" == "${selection}" ]] || continue
-    out_kind_ref="${item_kind}"
-    out_target_ref="${item_target}"
+    printf -v "${out_kind_name}" '%s' "${item_kind}"
+    printf -v "${out_target_name}" '%s' "${item_target}"
     return 0
   done <<<"${HYPR_MENU_ITEMS["${menu_id}"]:-}"
 
@@ -348,6 +346,7 @@ menu_collect_search_entries() {
         ;;
       action)
         out_labels_ref+=("${path}")
+        # shellcheck disable=SC2034 # Nameref output assigned for the caller.
         out_actions_ref["${path}"]="${target}"
         ;;
     esac

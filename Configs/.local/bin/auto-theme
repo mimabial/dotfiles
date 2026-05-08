@@ -1,14 +1,38 @@
 #!/usr/bin/env bash
-# Auto-theme control script
+#
+# auto-theme — Control the Hyprland auto-theme daemon.
+#
+# Usage: auto-theme <command>
+# Depends on: systemctl, python auto_theme.py
+#
+set -euo pipefail
 
 XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 DAEMON_SCRIPT="${LIB_DIR:-$HOME/.local/lib}/hypr/theme/auto_theme.py"
-PYTHON="${XDG_STATE_HOME}/hypr/pip_env/bin/python"
 AUTO_THEME_SERVICE="auto-theme.service"
 
+resolve_auto_theme_python() {
+  local venv_python="${XDG_STATE_HOME}/hypr/pip_env/bin/python"
+
+  if [[ -x "${venv_python}" ]]; then
+    printf '%s\n' "${venv_python}"
+    return 0
+  fi
+
+  if command -v python3 >/dev/null 2>&1; then
+    command -v python3
+    return 0
+  fi
+
+  printf 'auto-theme: no Python found. Run `hyprshell pyinit` to bootstrap %s.\n' "${venv_python}" >&2
+  return 1
+}
+
+PYTHON="$(resolve_auto_theme_python)"
+
 usage() {
-    cat <<'EOF'
+  cat <<'EOF'
 Auto-theme control script
 
 Usage: auto-theme <command>
@@ -27,42 +51,62 @@ Commands:
 EOF
 }
 
-case "$1" in
-    start) printf '%s\n' "Starting auto-theme daemon..."; systemctl --user start "${AUTO_THEME_SERVICE}" ;;
-    stop) printf '%s\n' "Stopping auto-theme daemon..."; systemctl --user stop "${AUTO_THEME_SERVICE}" ;;
-    restart) printf '%s\n' "Restarting auto-theme daemon..."; systemctl --user restart "${AUTO_THEME_SERVICE}" ;;
-    enable) printf '%s\n' "Enabling auto-theme daemon..."; systemctl --user enable "${AUTO_THEME_SERVICE}" ;;
-    disable) printf '%s\n' "Disabling auto-theme daemon..."; systemctl --user disable "${AUTO_THEME_SERVICE}" ;;
+main() {
+  case "${1:-}" in
+    start)
+      printf '%s\n' "Starting auto-theme daemon..."
+      systemctl --user start "${AUTO_THEME_SERVICE}"
+      ;;
+    stop)
+      printf '%s\n' "Stopping auto-theme daemon..."
+      systemctl --user stop "${AUTO_THEME_SERVICE}"
+      ;;
+    restart)
+      printf '%s\n' "Restarting auto-theme daemon..."
+      systemctl --user restart "${AUTO_THEME_SERVICE}"
+      ;;
+    enable)
+      printf '%s\n' "Enabling auto-theme daemon..."
+      systemctl --user enable "${AUTO_THEME_SERVICE}"
+      ;;
+    disable)
+      printf '%s\n' "Disabling auto-theme daemon..."
+      systemctl --user disable "${AUTO_THEME_SERVICE}"
+      ;;
     status)
-        systemctl --user status "${AUTO_THEME_SERVICE}" --no-pager
-        echo ""
-        "${PYTHON}" "${DAEMON_SCRIPT}" --status
-        ;;
+      systemctl --user status "${AUTO_THEME_SERVICE}" --no-pager || true
+      echo ""
+      "${PYTHON}" "${DAEMON_SCRIPT}" --status
+      ;;
     toggle)
-        if systemctl --user is-active "${AUTO_THEME_SERVICE}" &>/dev/null; then
-            systemctl --user kill -s USR1 "${AUTO_THEME_SERVICE}"
-            printf '%s\n' "Toggle signal sent to daemon"
-        else
-            printf '%s\n' "Daemon not running, applying toggle once..."
-            "${PYTHON}" "${DAEMON_SCRIPT}" --toggle
-        fi
-        ;;
+      if systemctl --user is-active "${AUTO_THEME_SERVICE}" &>/dev/null; then
+        systemctl --user kill -s USR1 "${AUTO_THEME_SERVICE}"
+        printf '%s\n' "Toggle signal sent to daemon"
+      else
+        printf '%s\n' "Daemon not running, applying toggle once..."
+        "${PYTHON}" "${DAEMON_SCRIPT}" --toggle
+      fi
+      ;;
     refresh)
-        if systemctl --user is-active "${AUTO_THEME_SERVICE}" &>/dev/null; then
-            systemctl --user kill -s USR2 "${AUTO_THEME_SERVICE}"
-            printf '%s\n' "Refresh signal sent to daemon"
-        else
-            printf '%s\n' "Daemon not running, applying refresh once..."
-            "${PYTHON}" "${DAEMON_SCRIPT}" --once
-        fi
-        ;;
-    once)
+      if systemctl --user is-active "${AUTO_THEME_SERVICE}" &>/dev/null; then
+        systemctl --user kill -s USR2 "${AUTO_THEME_SERVICE}"
+        printf '%s\n' "Refresh signal sent to daemon"
+      else
+        printf '%s\n' "Daemon not running, applying refresh once..."
         "${PYTHON}" "${DAEMON_SCRIPT}" --once
-        ;;
+      fi
+      ;;
+    once)
+      "${PYTHON}" "${DAEMON_SCRIPT}" --once
+      ;;
     config)
-        "${EDITOR:-nvim}" "${XDG_CONFIG_HOME}/hypr/auto_theme.conf"
-        ;;
+      "${EDITOR:-nvim}" "${XDG_CONFIG_HOME}/hypr/auto_theme.conf"
+      ;;
     *)
-        usage
-        ;;
-esac
+      usage >&2
+      return 2
+      ;;
+  esac
+}
+
+main "$@"

@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 
 launch_source_core_common() {
   local core_common="${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh"
@@ -19,12 +20,53 @@ launch_regex_escape() {
 
 launch_resolve_window_address() {
   local window_pattern="$1"
+  local selector_kind="any"
   local escaped_pattern=""
+
+  case "${window_pattern}" in
+    class:*)
+      selector_kind="class"
+      window_pattern="${window_pattern#class:}"
+      ;;
+    title:*)
+      selector_kind="title"
+      window_pattern="${window_pattern#title:}"
+      ;;
+  esac
+
   escaped_pattern="$(launch_regex_escape "${window_pattern}")"
 
   hyprctl clients -j \
-    | jq -r --arg p "$escaped_pattern" '.[] | select((.class | test("\\b" + $p + "\\b"; "i")) or (.title | test("\\b" + $p + "\\b"; "i"))) | .address' \
-    | head -n1
+    | jq -r --arg p "${window_pattern}" --arg re "${escaped_pattern}" --arg kind "${selector_kind}" '
+        def word_match($value; $re):
+          (($value // "") | test("\\b" + $re + "\\b"; "i"));
+        def exact_class($p):
+          ((.class // "" | ascii_downcase) == ($p | ascii_downcase))
+          or ((.initialClass // "" | ascii_downcase) == ($p | ascii_downcase));
+        def class_match($re):
+          word_match(.class; $re) or word_match(.initialClass; $re);
+        def title_match($re):
+          word_match(.title; $re) or word_match(.initialTitle; $re);
+
+        [
+          .[]
+          | if $kind == "class" then
+              select(exact_class($p) or class_match($re)) | . + {_rank: 0}
+            elif $kind == "title" then
+              select(title_match($re)) | . + {_rank: 0}
+            elif exact_class($p) then
+              . + {_rank: 0}
+            elif class_match($re) then
+              . + {_rank: 1}
+            elif title_match($re) then
+              . + {_rank: 2}
+            else
+              empty
+            end
+        ]
+        | sort_by(._rank)
+        | .[0].address // empty
+      '
 }
 
 launch_read_window_info() {
@@ -70,16 +112,40 @@ launch_focused_workspace_name() {
   hyprctl activeworkspace -j | jq -r '.name // empty'
 }
 
+launch_active_workspace_occupancy() {
+  local exclude_address="${1:-}"
+
+  hyprctl --batch -j "activeworkspace;clients" \
+    | jq -sr --arg exclude "${exclude_address}" '
+        .[0].name as $workspace_name
+        | [
+            $workspace_name,
+            (
+              (.[1] // [])
+              | any(.[]; .workspace.name == $workspace_name and .address != $exclude)
+            )
+          ]
+        | @tsv
+      '
+}
+
 launch_prepare_target_workspace() {
   local use_empty_workspace="$1"
   local exclude_address="${2:-}"
   local active_workspace=""
+  local has_other_window="false"
 
-  active_workspace="$(launch_focused_workspace_name)"
-  [[ -n "${active_workspace}" ]] || return 1
+  if [[ "${use_empty_workspace}" -eq 1 ]]; then
+    IFS=$'\t' read -r active_workspace has_other_window \
+      < <(launch_active_workspace_occupancy "${exclude_address}") || return 1
+    [[ -n "${active_workspace}" ]] || return 1
 
-  if [[ "${use_empty_workspace}" -eq 1 ]] && launch_workspace_has_other_window "${active_workspace}" "${exclude_address}"; then
-    hyprctl dispatch workspace empty >/dev/null 2>&1 || return 1
+    if [[ "${has_other_window}" == "true" ]]; then
+      hyprctl dispatch workspace empty >/dev/null 2>&1 || return 1
+      active_workspace="$(launch_focused_workspace_name)"
+      [[ -n "${active_workspace}" ]] || return 1
+    fi
+  else
     active_workspace="$(launch_focused_workspace_name)"
     [[ -n "${active_workspace}" ]] || return 1
   fi
@@ -132,8 +198,10 @@ launch_window_edge_padding_px() {
 
 launch_wait_for_window_address() {
   local window_pattern="$1"
-  local attempts=100
+  local attempts="${2:-${HYPR_LAUNCH_WAIT_ATTEMPTS:-400}}"
   local address=""
+
+  [[ "${attempts}" =~ ^[0-9]+$ ]] || attempts=400
 
   while ((attempts > 0)); do
     address="$(launch_resolve_window_address "$window_pattern")"

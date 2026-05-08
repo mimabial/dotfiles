@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 
 rofi_effective_font_scale() {
   local requested_scale="${1:-}"
@@ -173,20 +174,15 @@ rofi_picker_parse_style_args() {
   local usage_text="$4"
   shift 4
 
-  # shellcheck disable=SC2178
-  local -n out_style_ref="${out_style_name}"
-  # shellcheck disable=SC2178
-  local -n out_rasi_ref="${out_rasi_name}"
-
   while (($# > 0)); do
     case "$1" in
       --style | -s)
         if (($# > 1)); then
-          out_style_ref="$2"
+          printf -v "${out_style_name}" '%s' "$2"
           shift 2
         else
           print_log +y "[warn] " "--style needs argument"
-          out_style_ref="${fallback_style}"
+          printf -v "${out_style_name}" '%s' "${fallback_style}"
           shift
         fi
         ;;
@@ -195,7 +191,7 @@ rofi_picker_parse_style_args() {
           print_log +r "[error] " +y "--rasi requires a file.rasi config file"
           exit 1
         }
-        out_rasi_ref="$2"
+        printf -v "${out_rasi_name}" '%s' "$2"
         shift 2
         ;;
       -*)
@@ -214,7 +210,6 @@ rofi_picker_rasi_args() {
   local rasi_file="$2"
   local position_override="${3:-}"
 
-  # shellcheck disable=SC2178
   local -n out_ref="${out_name}"
 
   out_ref=(-config "${rasi_file}")
@@ -290,19 +285,14 @@ rofi_picker_compute_window_geometry() {
   local width_px=""
   local height_px=""
 
-  # shellcheck disable=SC2178
-  local -n out_position_ref="${out_position_name}"
-  # shellcheck disable=SC2178
-  local -n out_theme_ref="${out_theme_name}"
-
   width_px="$(rofi_length_em_to_px "${width_em}" "${font_name}" "${font_scale}" 2>/dev/null || true)"
   [[ "${width_px}" =~ ^[0-9]+$ ]] || width_px="${fallback_width_px}"
 
   height_px="$(rofi_length_em_to_px "${height_em}" "${font_name}" "${font_scale}" 2>/dev/null || true)"
   [[ "${height_px}" =~ ^[0-9]+$ ]] || height_px="${fallback_height_px}"
 
-  out_position_ref="$(get_rofi_pos "${width_px}" "${height_px}")"
-  out_theme_ref="window { width: ${width_px}px; height: ${height_px}px; }"
+  printf -v "${out_position_name}" '%s' "$(get_rofi_pos "${width_px}" "${height_px}")"
+  printf -v "${out_theme_name}" '%s' "window { width: ${width_px}px; height: ${height_px}px; }"
 }
 
 rofi_length_em_to_px() {
@@ -438,7 +428,6 @@ rofi_theme_effective_files() {
 
   [[ -f "${theme_file}" ]] || return 1
 
-  # shellcheck disable=SC2178,SC2034
   declare -n _rofi_seen="${visited_name}"
   if [[ -n "${_rofi_seen["${theme_file}"]:-}" ]]; then
     return 0
@@ -527,23 +516,23 @@ rofi_prepare_standard_context() {
   local requested_font="${7:-}"
   local container_name="${8:-wallbox}"
   local elem_mode="${9:-same}"
+  local effective_scale=""
+  local effective_font=""
+  local font_override=""
+  local window_theme=""
+  local opacity_override=""
 
-  # shellcheck disable=SC2178
-  local -n out_scale_ref="${out_scale_name}"
-  # shellcheck disable=SC2178
-  local -n out_font_ref="${out_font_name}"
-  # shellcheck disable=SC2178
-  local -n out_font_override_ref="${out_font_override_name}"
-  # shellcheck disable=SC2178
-  local -n out_window_theme_ref="${out_window_theme_name}"
-  # shellcheck disable=SC2178
-  local -n out_opacity_ref="${out_opacity_name}"
+  effective_scale="$(rofi_effective_font_scale "${requested_scale}")"
+  effective_font="$(rofi_effective_font_name "${requested_font}")"
+  font_override="$(rofi_font_override "${effective_font}" "${effective_scale}")"
+  window_theme="$(rofi_standard_window_theme "${container_name}" "${elem_mode}")"
+  opacity_override="$(rofi_active_opacity_override)"
 
-  out_scale_ref="$(rofi_effective_font_scale "${requested_scale}")"
-  out_font_ref="$(rofi_effective_font_name "${requested_font}")"
-  out_font_override_ref="$(rofi_font_override "${out_font_ref}" "${out_scale_ref}")"
-  out_window_theme_ref="$(rofi_standard_window_theme "${container_name}" "${elem_mode}")"
-  out_opacity_ref="$(rofi_active_opacity_override)"
+  printf -v "${out_scale_name}" '%s' "${effective_scale}"
+  printf -v "${out_font_name}" '%s' "${effective_font}"
+  printf -v "${out_font_override_name}" '%s' "${font_override}"
+  printf -v "${out_window_theme_name}" '%s' "${window_theme}"
+  printf -v "${out_opacity_name}" '%s' "${opacity_override}"
 }
 
 rofi_build_standard_menu_args() {
@@ -558,15 +547,14 @@ rofi_build_standard_menu_args() {
   local position_override="${9:-}"
   local font_scale font_name opacity_override
 
-  # shellcheck disable=SC2178
-  local -n out_ref="${out_name}"
-  out_ref=()
+  local -n rofi_menu_args_ref="${out_name}"
+  rofi_menu_args_ref=()
 
   font_scale="$(rofi_effective_font_scale "${requested_scale}")"
   font_name="$(rofi_effective_font_name "${requested_font}")"
   [[ -n "${position_override}" ]] || position_override="$(get_rofi_pos)"
 
-  out_ref+=(
+  rofi_menu_args_ref+=(
     -dmenu
     -i
     -p "${prompt}"
@@ -575,11 +563,11 @@ rofi_build_standard_menu_args() {
     -theme-str "$(rofi_standard_window_theme "${container_name}" "${elem_mode}")"
   )
 
-  [[ -n "${placeholder}" ]] && out_ref+=(-theme-str "entry { placeholder: \"${placeholder}\"; }")
-  [[ -n "${position_override}" ]] && out_ref+=(-theme-str "${position_override}")
+  [[ -n "${placeholder}" ]] && rofi_menu_args_ref+=(-theme-str "entry { placeholder: \"${placeholder}\"; }")
+  [[ -n "${position_override}" ]] && rofi_menu_args_ref+=(-theme-str "${position_override}")
 
   opacity_override="$(rofi_active_opacity_override)"
-  [[ -n "${opacity_override}" ]] && out_ref+=(-theme-str "${opacity_override}")
+  [[ -n "${opacity_override}" ]] && rofi_menu_args_ref+=(-theme-str "${opacity_override}")
 }
 
 rofi_icon_theme_override() {

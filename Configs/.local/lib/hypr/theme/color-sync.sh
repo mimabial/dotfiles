@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2154
 #
 # color-sync.sh - Entry point for the live color generation/apply pipeline.
+#
+# Subsystem inputs (set by sourced color.pipeline.sh during run_wal_generation):
+#   wal_output
+: "${wal_output-}"
+
+set -euo pipefail
 
 LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 
@@ -14,16 +19,50 @@ SCRIPT_DIR="${SCRIPT_DIR:-$(dirname "$(realpath "${BASH_SOURCE[0]}")")}"
 CACHE_ONLY="${HYPR_WAL_CACHE_ONLY:-0}"
 color_sync_wallpaper_arg=""
 
+color_sync_timing_enabled() {
+  [[ "${HYPR_THEME_TIMING:-0}" == "1" || "${LOG_LEVEL:-}" == "debug" ]]
+}
+
+color_sync_now_ms() {
+  date +%s%3N
+}
+
+color_sync_log_timing() {
+  local name="$1"
+  local duration_ms="$2"
+  local rc="${3:-0}"
+
+  color_sync_timing_enabled || return 0
+  print_log -sec "color-sync" -stat "timing" "${name}: ${duration_ms}ms rc=${rc}"
+}
+
+color_sync_timed_call() {
+  local name="$1"
+  shift
+
+  local start_ms=""
+  local end_ms=""
+  local rc=0
+
+  start_ms="$(color_sync_now_ms)"
+  "$@"
+  rc=$?
+  end_ms="$(color_sync_now_ms)"
+  color_sync_log_timing "${name}" "$((end_ms - start_ms))" "${rc}"
+  return "${rc}"
+}
+
 color_sync_usage() {
   cat <<'EOF'
-Usage: hyprshell theme/color-sync.sh [--refresh|--force-regenerate] [--no-cache] [wallpaper]
+Usage: hyprshell theme/color-sync.sh [--refresh|--regen|--force-regenerate] [--no-cache] [wallpaper]
 
 Regenerate colors and apply themed outputs.
 
 Options:
   --refresh            Force regeneration and disable cache for this run
-  --force-regenerate   Bypass the fast-path/current-cache shortcut
-  --no-cache           Disable cache use for this run
+  --regen              Bypass cache reads and write a fresh cache entry
+  --force-regenerate   Alias for --regen
+  --no-cache           Disable cache reads and writes for this run
   -h, --help           Show this help
 EOF
 }
@@ -39,7 +78,7 @@ color_sync_parse_args() {
         FORCE_COLOR_REGEN=1
         HYPR_WAL_CACHE_ENABLE=0
         ;;
-      --force-regenerate)
+      --regen|--force-regenerate)
         FORCE_COLOR_REGEN=1
         ;;
       --no-cache)
@@ -138,49 +177,51 @@ init_color_pipeline() {
   trap 'color_lock_cleanup "$?"' EXIT
   color_lock_enable_hypr_autoreload_guard
 
-  color_plan_resolve_theme_context
-  color_plan_prepare_wal_cache_root
+  color_plan_resolve_theme_context || return 1
+  color_plan_prepare_wal_cache_root || return 1
   color_plan_init_cache_controls
 }
 
 debug_wal_output() {
-  [[ "${LOG_LEVEL}" == "debug" ]] || return 0
+  [[ "${LOG_LEVEL:-}" == "debug" ]] || return 0
   while read -r line; do
     print_log -sec "pywal16" -stat "debug" "${line}"
   done <<<"${wal_output}"
 }
 
 prepare_color_generation_context() {
-  select_palette_source "${1:-}" || return 1
-  configure_wal_command
-  color_plan_prepare_cache_strategy
+  color_sync_timed_call "prepare:select_palette_source" select_palette_source "${1:-}" || return 1
+  color_sync_timed_call "prepare:configure_wal_command" configure_wal_command
+  color_sync_timed_call "prepare:cache_strategy" color_plan_prepare_cache_strategy
 }
 
 finalize_generated_colors() {
-  color_finalize_generated_outputs || return 1
+  color_sync_timed_call "finalize:generated_outputs" color_finalize_generated_outputs || return 1
 
   if [[ "${CACHE_ONLY}" -eq 1 ]]; then
     print_log -sec "pywal16" -stat "cache" "prepared (cache-only)"
     exit 0
   fi
 
-  color_finalize_load_generated_colors || return 1
-  color_finalize_primary_theming || return 1
-  color_finalize_export_icon_theme || return 1
-  color_finalize_secondary_theming || return 1
-  color_finalize_terminal_output
-  color_finalize_commit_state_and_notify || return 1
+  color_sync_timed_call "finalize:load_generated_colors" color_finalize_load_generated_colors || return 1
+  color_sync_timed_call "finalize:primary_theming" color_finalize_primary_theming || return 1
+  color_sync_timed_call "finalize:secondary_theming" color_finalize_secondary_theming || return 1
+  color_sync_timed_call "finalize:terminal_output" color_finalize_terminal_output
+  color_sync_timed_call "finalize:state_notify" color_finalize_commit_state_and_notify || return 1
 }
 
 color_sync_parse_args "$@"
 apply_color_sync_runtime_overrides || exit 1
 source_color_modules || exit 1
-init_color_pipeline
-prepare_color_generation_context "${color_sync_wallpaper_arg}" || exit 1
-if [[ -z "${wal_exit}" ]]; then
-  run_wal_generation
+init_color_pipeline || exit 1
+color_sync_timed_call "prepare_generation_context" prepare_color_generation_context "${color_sync_wallpaper_arg}" || exit 1
+if [[ "${color_plan_fast_path_current:-0}" -eq 1 ]]; then
+  exit 0
 fi
-color_plan_refresh_cache_key_for_backend_change
+if [[ -z "${wal_exit}" ]]; then
+  color_sync_timed_call "wal_generation" run_wal_generation
+fi
+color_sync_timed_call "refresh_cache_key" color_plan_refresh_cache_key_for_backend_change
 debug_wal_output
 
 if [[ "${wal_exit}" -ne 0 ]]; then
@@ -188,4 +229,4 @@ if [[ "${wal_exit}" -ne 0 ]]; then
   echo "${wal_output}" >&2
   exit 1
 fi
-finalize_generated_colors || exit 1
+color_sync_timed_call "finalize" finalize_generated_colors || exit 1

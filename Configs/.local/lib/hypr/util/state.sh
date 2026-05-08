@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+set -euo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=/dev/null
@@ -7,8 +9,8 @@ source "${script_dir}/../core/state.sh"
 STATE_DIR_PATH="$(state_dir)"
 mkdir -p "${STATE_DIR_PATH}"
 
-COMMAND="$1"
-STATE_NAME="$2"
+COMMAND="${1:-}"
+STATE_NAME="${2:-}"
 
 if [[ -z "$COMMAND" ]]; then
   echo "Usage: hyprshell util/state.sh <set|clear> <state-name-or-pattern>"

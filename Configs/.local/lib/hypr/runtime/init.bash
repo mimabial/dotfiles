@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 
 __hypr_runtime_force="${HYPR_RUNTIME_FORCE_REINIT:-0}"
 __hypr_runtime_guard_pid="${HYPR_RUNTIME_GUARD_PID:-}"

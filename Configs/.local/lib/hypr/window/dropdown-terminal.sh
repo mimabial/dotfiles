@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 dropdown_source_window_common() {
   local common_file="${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/launch/window.common.bash"
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 
 hypr_stateful_choice_resolve_path() {
   local name="$1"

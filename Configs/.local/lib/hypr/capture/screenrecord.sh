@@ -2,7 +2,7 @@
 # Screen recording with gpu-screen-recorder
 # Supports desktop/mic audio, webcam overlay, auto 4K cap, preview thumbnails
 
-set -eo pipefail
+set -euo pipefail
 
 source "$(command -v hyprshell)" || exit 1
 
@@ -22,6 +22,7 @@ SCREENRECORD_SESSION_NAME="${HYPRLAND_INSTANCE_SIGNATURE:-default}"
 SCREENRECORD_SESSION_NAME="${SCREENRECORD_SESSION_NAME//[^A-Za-z0-9._-]/_}"
 RECORDING_FILE="${SCREENRECORD_RUNTIME_DIR}/screenrecord-${SCREENRECORD_SESSION_NAME}.state"
 SCREENRECORD_LOG_FILE="${SCREENRECORD_RUNTIME_DIR}/screenrecord-${SCREENRECORD_SESSION_NAME}.log"
+SCREENRECORD_MONITORS_JSON=""
 
 screenrecord_notify() {
   local summary="$1"
@@ -78,6 +79,21 @@ screenrecord_has_matching_process() {
 
 screenrecord_refresh_waybar() {
   screenrecord_signal_matching RTMIN+8 -x waybar
+}
+
+screenrecord_monitors_json() {
+  if [[ -z "${SCREENRECORD_MONITORS_JSON}" ]]; then
+    SCREENRECORD_MONITORS_JSON="$(hyprctl monitors -j 2>/dev/null || printf '[]')"
+  fi
+
+  printf '%s\n' "${SCREENRECORD_MONITORS_JSON}"
+}
+
+screenrecord_focused_monitor_value() {
+  local jq_filter="$1"
+
+  screenrecord_monitors_json \
+    | jq -r "first(.[] | select(.focused == true) | ${jq_filter}) // empty"
 }
 
 if [[ ! -d "${SCREENRECORD_RUNTIME_DIR}" ]]; then
@@ -146,7 +162,8 @@ screenrecord_webcam_device() {
 
 screenrecord_webcam_target_width() {
   local scale
-  scale=$(hyprctl monitors -j | jq -r '.[] | select(.focused == true) | .scale')
+  scale="$(screenrecord_focused_monitor_value '.scale')"
+  [[ "${scale}" =~ ^[0-9]+([.][0-9]+)?$ ]] || scale=1
   awk "BEGIN {printf \"%.0f\", 360 * $scale}"
 }
 
@@ -230,7 +247,9 @@ clear_recording_state_if_matches() {
 
 default_resolution() {
   local width height
-  read -r width height < <(hyprctl monitors -j | jq -r '.[] | select(.focused == true) | "\(.width) \(.height)"')
+  read -r width height < <(screenrecord_focused_monitor_value '"\(.width) \(.height)"')
+  width="${width:-0}"
+  height="${height:-0}"
   if ((width > 3840 || height > 2160)); then
     echo "3840x2160"
   else
@@ -241,8 +260,13 @@ default_resolution() {
 # --- Window selection ---
 
 workspace_windows() {
-  hyprctl -j clients | jq -r --argjson ws "$(hyprctl -j activeworkspace | jq '.id')" \
-    '.[] | select(.workspace.id == $ws and .mapped and (.hidden | not)) | "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"'
+  hyprctl --batch -j "activeworkspace;clients" \
+    | jq -sr '
+        .[0].id as $ws
+        | (.[1] // [])[]
+        | select(.workspace.id == $ws and .mapped and (.hidden | not))
+        | "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"
+      '
 }
 
 select_window() {
@@ -251,7 +275,7 @@ select_window() {
   trap 'rm -f "$result_file"' RETURN
 
   while true; do
-    echo "$(workspace_windows)" | slurp 2>/dev/null >"$result_file" &
+    workspace_windows | slurp 2>/dev/null >"$result_file" &
     local slurp_pid=$!
 
     # Watch Hyprland socket for workspace changes, kill slurp to restart
@@ -298,6 +322,7 @@ screenrecord_audio_args() {
     [[ -n "$audio_devices" ]] && audio_devices+="|"
     audio_devices+="default_input"
   fi
+  # shellcheck disable=SC2034 # nameref output assigned for caller.
   [[ -n "$audio_devices" ]] && audio_args_ref=(-a "$audio_devices" -ac aac)
 }
 
@@ -308,6 +333,7 @@ screenrecord_target_args() {
   shift 3
   local -n out_args_ref="${out_args_name}"
 
+  # shellcheck disable=SC2034 # nameref output assigned for caller.
   out_args_ref=(-w "$target" "$@" -k auto -s "$resolution" -f 60 -fm cfr -fallback-cpu-encoding yes)
 }
 
@@ -320,7 +346,7 @@ screenrecord_maybe_force_display_gpu() {
   [[ -z "$(gpu-screen-recorder --list-monitors 2>/dev/null)" ]] || return 0
 
   local output_name card mesa_vendor
-  output_name=$(hyprctl -j monitors | jq -r '.[] | select(.focused==true) | .name')
+  output_name="$(screenrecord_focused_monitor_value '.name')"
   for card in /dev/dri/card*; do
     [[ -e "$card" ]] || continue
     if gpu-screen-recorder --list-capture-options "$card" 2>/dev/null | grep -q "$output_name"; then
@@ -364,7 +390,7 @@ screenrecord_output_args() {
   local resolution="$2"
   local output=""
 
-  output=$(hyprctl -j monitors | jq -r '.[] | select(.focused==true) | .name')
+  output="$(screenrecord_focused_monitor_value '.name')"
   [[ -n "$output" ]] || return 0
   screenrecord_target_args "${out_args_name}" "$output" "$resolution"
 }
@@ -384,11 +410,12 @@ screenrecord_capture_args() {
 }
 
 start_recording() {
-  local filename="$OUTPUT_DIR/screenrecord-$(date +'%Y-%m-%d_%H-%M-%S').mp4"
+  local filename=""
   local audio_args=()
   local resolution="${RESOLUTION:-$(default_resolution)}"
   local -a rec_args=()
 
+  filename="$OUTPUT_DIR/screenrecord-$(date +'%Y-%m-%d_%H-%M-%S').mp4"
   ensure_screen_recorder_available || return 1
   screenrecord_audio_args audio_args
   screenrecord_maybe_force_display_gpu
@@ -429,6 +456,7 @@ signal_recording_stop() {
   stop_path_ref=""
   if read_recording_state recording_pid recording_path; then
     stop_pid_ref="$recording_pid"
+    # shellcheck disable=SC2034 # nameref output assigned for caller.
     stop_path_ref="$recording_path"
     kill -SIGINT "$stop_pid_ref" 2>/dev/null || true
     return 0

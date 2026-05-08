@@ -8,8 +8,8 @@ $NVIM_VARIANT = glow
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
-$CURSOR_THEME = Simp1e-Breeze
-$CURSOR_SIZE = 29
+$CURSOR_THEME=Hackneyed
+$CURSOR_SIZE=24
 
 # Theme variables above are the primary inputs used by theme.switch.sh.
 

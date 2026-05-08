@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
 
@@ -29,11 +31,15 @@ fi
 
 #// detect monitor res
 
-x_mon=$(hyprctl -j monitors | jq '.[] | select(.focused==true) | .width')
-y_mon=$(hyprctl -j monitors | jq '.[] | select(.focused==true) | .height')
 # Treat scale as fixed-point tenths so multi-decimal values like 1.25
 # stay in the same sizing range as the existing 1.0/1.5/2.0 behavior.
-hypr_scale=$(hyprctl -j monitors | jq '.[] | select(.focused == true) | (.scale * 10 | round)')
+read -r x_mon y_mon hypr_scale < <(
+  hyprctl -j monitors \
+    | jq -r 'first(.[] | select(.focused == true) | "\(.width) \(.height) \((.scale * 10 | round))") // empty'
+)
+x_mon="${x_mon:-1920}"
+y_mon="${y_mon:-1080}"
+hypr_scale="${hypr_scale:-10}"
 [[ "${hypr_scale}" =~ ^[0-9]+$ ]] || hypr_scale=10
 (( hypr_scale > 0 )) || hypr_scale=10
 scale_divisor=$((hypr_scale * 10))

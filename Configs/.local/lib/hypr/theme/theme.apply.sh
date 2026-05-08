@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2154
+#
+# Subsystem inputs:
+#   thmWall              - populated by core/wallpaper.catalog.sh:get_themes
+#   selected_color_mode  - loaded by hypr_runtime_load_state from staterc
+: "${thmWall-}" "${selected_color_mode-}"
+
+set -euo pipefail
 
 LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 
@@ -11,6 +17,7 @@ hypr_runtime_load_state || exit 1
 theme_apply_desktop_sync_lib="${LIB_DIR}/hypr/theme/lib/theme.desktop.sync.bash"
 theme_apply_font_sync_lib="${LIB_DIR}/hypr/fonts/font.sync.lib.bash"
 theme_apply_color_apply_lib="${LIB_DIR}/hypr/theme/color.apply.sh"
+theme_apply_phase_d_lib="${LIB_DIR}/hypr/theme/lib/theme.apply.phase_d.bash"
 
 if [[ ! -r "${theme_apply_desktop_sync_lib}" ]]; then
   print_log -sec "theme.apply" -err "source" "missing ${theme_apply_desktop_sync_lib}"
@@ -33,12 +40,75 @@ fi
 # shellcheck source=/dev/null
 source "${theme_apply_color_apply_lib}" || exit 1
 
+if [[ ! -r "${theme_apply_phase_d_lib}" ]]; then
+  print_log -sec "theme.apply" -err "source" "missing ${theme_apply_phase_d_lib}"
+  exit 1
+fi
+# shellcheck source=/dev/null
+source "${theme_apply_phase_d_lib}" || exit 1
+
 THEME_UPDATE_LOCK="$(hypr_lock_path theme_update)"
 THEME_UPDATE_META="$(hypr_lock_path theme_update_meta)"
 
 theme_apply_lock_fd=""
 theme_apply_lock_owned=0
 theme_apply_desktop_state_prepared=0
+theme_apply_job_log_dir=""
+theme_apply_job_failed=0
+theme_apply_preserve_job_logs=0
+theme_apply_quiet=false
+theme_apply_generation=""
+theme_apply_started_ms=""
+declare -ga theme_apply_job_names=()
+declare -ga theme_apply_job_pids=()
+declare -ga theme_apply_job_required=()
+declare -ga theme_apply_color_sync_args=()
+
+theme_apply_timing_enabled() {
+  [[ "${HYPR_THEME_TIMING:-0}" == "1" || "${LOG_LEVEL:-}" == "debug" ]]
+}
+
+theme_apply_now_ms() {
+  date +%s%3N
+}
+
+theme_apply_log_timing() {
+  local name="$1"
+  local duration_ms="$2"
+  local rc="${3:-0}"
+
+  theme_apply_timing_enabled || return 0
+  print_log -sec "theme.apply" -stat "timing" "${name}: ${duration_ms}ms rc=${rc}"
+}
+
+theme_apply_timed_call() {
+  local name="$1"
+  shift
+
+  local start_ms=""
+  local end_ms=""
+  local rc=0
+
+  start_ms="$(theme_apply_now_ms)"
+  "$@"
+  rc=$?
+  end_ms="$(theme_apply_now_ms)"
+  theme_apply_log_timing "${name}" "$((end_ms - start_ms))" "${rc}"
+  return "${rc}"
+}
+
+theme_apply_elapsed_label() {
+  local now_ms=""
+  local elapsed_ms=0
+  local centiseconds=0
+
+  [[ "${theme_apply_started_ms:-}" =~ ^[0-9]+$ ]] || return 1
+  now_ms="$(theme_apply_now_ms)"
+  elapsed_ms=$((now_ms - theme_apply_started_ms))
+  [[ "${elapsed_ms}" -ge 0 ]] || elapsed_ms=0
+  centiseconds=$(((elapsed_ms + 5) / 10))
+  printf '%d.%02ds' "$((centiseconds / 100))" "$((centiseconds % 100))"
+}
 
 theme_apply_acquire_update_lock() {
   local lock_tmp=""
@@ -50,7 +120,7 @@ theme_apply_acquire_update_lock() {
     printf 'pid=%s\n' "$$"
     printf 'started=%s\n' "$(date +%s)"
     printf 'cmd=%s\n' "${BASH_SOURCE[0]##*/}"
-    printf 'waybar_reload=direct\n'
+    printf 'waybar_reload=css-hot\n'
   } >"${lock_tmp}" && mv -f "${lock_tmp}" "${THEME_UPDATE_META}"
   theme_apply_lock_owned=1
 }
@@ -63,6 +133,20 @@ theme_apply_release_update_lock() {
   exec {theme_apply_lock_fd}>&-
   theme_apply_lock_fd=""
   theme_apply_lock_owned=0
+  return "${exit_code}"
+}
+
+theme_apply_cleanup() {
+  local exit_code="${1:-$?}"
+
+  theme_apply_release_update_lock "${exit_code}"
+  if [[ -n "${theme_apply_job_log_dir}" && -d "${theme_apply_job_log_dir}" ]]; then
+    if [[ "${exit_code}" -eq 0 && "${theme_apply_job_failed}" -eq 0 && "${theme_apply_preserve_job_logs}" -eq 0 ]]; then
+      rm -rf -- "${theme_apply_job_log_dir}"
+    else
+      print_log -sec "theme.apply" -warn "job-logs" "kept ${theme_apply_job_log_dir}"
+    fi
+  fi
   return "${exit_code}"
 }
 
@@ -92,6 +176,8 @@ theme_apply_commit_theme_metadata() {
 theme_apply_sync_runtime_desktop_state() {
   local quiet="${1:-false}"
 
+  theme_apply_prepare_desktop_state || return 1
+
   if [[ "${quiet}" == "true" ]]; then
     if (
       THEME_DESKTOP_SYNC_LOG_DCONF=0 theme_desktop_apply_runtime_resolved && theme_desktop_set_cursor_async
@@ -108,83 +194,172 @@ theme_apply_sync_runtime_desktop_state() {
 theme_apply_restart_waybar_direct() {
   local waybar_script="${LIB_DIR}/hypr/waybar/waybar.py"
 
-  if [[ -x "${waybar_script}" ]]; then
-    "${waybar_script}" --restart-direct >/dev/null 2>&1
-    return $?
-  fi
-
-  if command -v hyprshell >/dev/null 2>&1; then
-    hyprshell waybar --restart-direct >/dev/null 2>&1
-    return $?
-  fi
-
-  return 1
+  [[ -x "${waybar_script}" ]] || return 1
+  "${waybar_script}" --restart-direct
 }
 
 theme_apply_write_dunst_runtime() {
   local dunst_script="${LIB_DIR}/hypr/wal/wal.dunst.sh"
 
-  if [[ -x "${dunst_script}" ]]; then
-    "${dunst_script}" --write-only >/dev/null 2>&1
-    return $?
-  fi
-
-  if command -v hyprshell >/dev/null 2>&1; then
-    hyprshell wal/wal.dunst.sh --write-only >/dev/null 2>&1
-    return $?
-  fi
-
-  return 1
+  [[ -x "${dunst_script}" ]] || return 1
+  "${dunst_script}" --write-only
 }
 
 theme_apply_reload_dunst_runtime() {
   local dunst_script="${LIB_DIR}/hypr/wal/wal.dunst.sh"
 
-  if [[ -x "${dunst_script}" ]]; then
-    "${dunst_script}" --reload-only >/dev/null 2>&1
-    return $?
-  fi
-
-  if command -v hyprshell >/dev/null 2>&1; then
-    hyprshell wal/wal.dunst.sh --reload-only >/dev/null 2>&1
-    return $?
-  fi
-
-  return 1
+  [[ -x "${dunst_script}" ]] || return 1
+  "${dunst_script}" --reload-only
 }
 
-theme_apply_reload_waybar_and_dunst() {
-  theme_apply_restart_waybar_direct \
-    || print_log -sec "theme.apply" -warn "waybar" "direct restart failed"
-  theme_apply_write_dunst_runtime \
-    || print_log -sec "theme.apply" -warn "dunst" "write failed"
-  theme_apply_reload_dunst_runtime \
-    || print_log -sec "theme.apply" -warn "dunst" "reload failed"
+theme_apply_prepare_job_log_dir() {
+  [[ -n "${theme_apply_job_log_dir}" && -d "${theme_apply_job_log_dir}" ]] && return 0
+
+  mkdir -p "${XDG_CACHE_HOME:-$HOME/.cache}/hypr" || return 1
+  theme_apply_job_log_dir="$(mktemp -d "${XDG_CACHE_HOME:-$HOME/.cache}/hypr/theme.apply.jobs.XXXXXX")"
 }
 
-theme_apply_reload_terminal_clients() {
-  signal_and_reload_live_apps kitty tmux rmpc
+theme_apply_reset_jobs() {
+  theme_apply_job_names=()
+  theme_apply_job_pids=()
+  theme_apply_job_required=()
 }
 
-theme_apply_wallpaper() {
-  local quiet="${1:-false}"
-  local skip_colors="${2:-0}"
-  local -a wallpaper_args=(
-    resume
-    --global
-    --no-notify
-    --notify-body "Theme: ${HYPR_THEME}"
-  )
-  local -a wallpaper_env=(
-    "WALLPAPER_SYNC_APPLY=1"
-    "WALLPAPER_SKIP_COLORS=${skip_colors}"
-  )
+theme_apply_next_generation() {
+  local current_generation=""
+  local next_generation=1
 
-  if [[ "${quiet}" == "true" ]]; then
-    env "${wallpaper_env[@]}" "${LIB_DIR}/hypr/wallpaper.sh" "${wallpaper_args[@]}" >/dev/null 2>&1
-  else
-    env "${wallpaper_env[@]}" "${LIB_DIR}/hypr/wallpaper.sh" "${wallpaper_args[@]}"
-  fi
+  current_generation="$(state_get "theme_apply_generation" "0" 2>/dev/null || printf '0')"
+  [[ "${current_generation}" =~ ^[0-9]+$ ]] || current_generation=0
+  next_generation=$((current_generation + 1))
+  state_set "theme_apply_generation" "${next_generation}" "staterc" || return 1
+  theme_apply_generation="${next_generation}"
+  export HYPR_THEME_APPLY_GENERATION="${theme_apply_generation}"
+  theme_apply_cancel_previous_phase_d_jobs
+}
+
+theme_apply_generation_is_current() {
+  local current_generation=""
+
+  [[ -n "${theme_apply_generation}" ]] || return 0
+  current_generation="$(state_get "theme_apply_generation" "0" 2>/dev/null || printf '0')"
+  [[ "${current_generation}" == "${theme_apply_generation}" ]]
+}
+
+theme_apply_start_job() {
+  local job_log_dir="$1"
+  local name="$2"
+  local required="$3"
+  local fn="$4"
+  shift 4
+
+  local log_file=""
+  local status_file=""
+
+  [[ -n "${job_log_dir}" && -d "${job_log_dir}" ]] || return 1
+  log_file="${job_log_dir}/${name}.log"
+  status_file="${job_log_dir}/${name}.status"
+
+  (
+    local start_ms=""
+    local end_ms=""
+    local rc=0
+
+    start_ms="$(theme_apply_now_ms)"
+    "${fn}" "$@"
+    rc=$?
+    end_ms="$(theme_apply_now_ms)"
+    {
+      printf 'rc=%s\n' "${rc}"
+      printf 'duration_ms=%s\n' "$((end_ms - start_ms))"
+    } >"${status_file}"
+    exit "${rc}"
+  ) >"${log_file}" 2>&1 &
+
+  theme_apply_job_names+=("${name}")
+  theme_apply_job_required+=("${required}")
+  theme_apply_job_pids+=("$!")
+}
+
+theme_apply_start_detached_job() {
+  local name="$1"
+  local fn="$2"
+  shift 2
+
+  (
+    trap '' HUP
+    local start_ms=""
+    local end_ms=""
+    local rc=0
+
+    start_ms="$(theme_apply_now_ms)"
+    "${fn}" "$@"
+    rc=$?
+    end_ms="$(theme_apply_now_ms)"
+    theme_apply_log_timing "job:${name}" "$((end_ms - start_ms))" "${rc}"
+    exit 0
+  ) >/dev/null 2>&1 &
+
+  disown "$!" 2>/dev/null || true
+}
+
+theme_apply_log_job_failure() {
+  local name="$1"
+  local log_file="$2"
+  local line=""
+  local logged=0
+
+  [[ -s "${log_file}" ]] || return 0
+  while IFS= read -r line; do
+    [[ -n "${line}" ]] || continue
+    print_log -sec "theme.apply" -warn "${name}" "${line}"
+    logged=$((logged + 1))
+    [[ "${logged}" -ge 6 ]] && break
+  done <"${log_file}"
+}
+
+theme_apply_wait_jobs() {
+  local job_log_dir="$1"
+  local i=""
+  local name=""
+  local pid=""
+  local required=""
+  local rc=0
+  local status_file=""
+  local log_file=""
+  local duration_ms="0"
+  local failed=0
+
+  for i in "${!theme_apply_job_pids[@]}"; do
+    name="${theme_apply_job_names[$i]}"
+    pid="${theme_apply_job_pids[$i]}"
+    required="${theme_apply_job_required[$i]}"
+    status_file="${job_log_dir}/${name}.status"
+    log_file="${job_log_dir}/${name}.log"
+
+    wait "${pid}"
+    rc=$?
+
+    if [[ -f "${status_file}" ]]; then
+      duration_ms="$(awk -F= '$1 == "duration_ms" {print $2; exit}' "${status_file}")"
+      [[ -n "${duration_ms}" ]] || duration_ms="0"
+    fi
+    theme_apply_log_timing "job:${name}" "${duration_ms}" "${rc}"
+
+    if [[ "${rc}" -ne 0 ]]; then
+      theme_apply_job_failed=1
+      print_log -sec "theme.apply" -warn "${name}" "job failed (${rc})"
+      theme_apply_log_job_failure "${name}" "${log_file}"
+      [[ "${required}" == "required" ]] && failed=1
+    fi
+  done
+
+  theme_apply_reset_jobs
+  return "${failed}"
+}
+
+theme_apply_job_kitty() {
+  reload_live_theme_client kitty
 }
 
 theme_apply_resolve_current_wallpaper() {
@@ -203,85 +378,140 @@ theme_apply_resolve_current_wallpaper() {
     }
 }
 
-theme_apply_sync_nvim_theme() {
-  if [[ -x "${HYPR_LIB_DIR}/util/nvim-theme-sync.sh" ]]; then
-    "${HYPR_LIB_DIR}/util/nvim-theme-sync.sh" >/dev/null 2>&1 || true
-  fi
-}
-
-theme_apply_enqueue_wallpaper_thumbs() {
-  local -a cache_args=()
-  local wall=""
-  local queue_script=""
-  local cache_script=""
-
-  if [[ ${#thmWall[@]} -eq 0 ]]; then
-    get_themes
-  fi
-
-  for wall in "${thmWall[@]}"; do
-    [[ -n "${wall}" ]] || continue
-    [[ -r "${wall}" ]] || continue
-    cache_args+=(-w "${wall}")
-  done
-
-  queue_script="${LIB_DIR}/hypr/wallpaper/wallcache.daemon.sh"
-  cache_script="${LIB_DIR}/hypr/wallpaper/awww-wallcache.sh"
-  [[ -x "${queue_script}" || -x "${cache_script}" ]] || return 0
-  [[ ${#cache_args[@]} -eq 0 ]] && return 0
-
-  if [[ -x "${queue_script}" ]]; then
-    "${queue_script}" --enqueue "${cache_args[@]}" &>/dev/null &
-  else
-    "${cache_script}" "${cache_args[@]}" &>/dev/null &
-  fi
-}
-
-theme_apply_sync_backend_wallpaper_links() {
-  local file=""
-  local base=""
-
-  [[ -d "${WALLPAPER_CURRENT_DIR}" ]] || return 0
-
-  while IFS= read -r -d '' file; do
-    base="$(basename "${file}" .png)"
-    pkg_installed "${base}" || continue
-    "${LIB_DIR}/hypr/wallpaper.sh" link --backend "${base}" >/dev/null 2>&1 || true
-  done < <(find -H "${WALLPAPER_CURRENT_DIR}" -maxdepth 1 -type l -name "*.png" -print0)
-}
-
 theme_apply_prepare_common_state() {
   theme_apply_acquire_update_lock || return 1
-  theme_apply_prepare_desktop_state >/dev/null 2>&1 || true
 }
 
-theme_apply_finish() {
-  local quiet="${1:-false}"
+theme_apply_update_waybar_border_radius() {
+  local finalize_lib="${LIB_DIR}/hypr/theme/color.finalize.sh"
 
-  theme_apply_sync_nvim_theme
-  theme_apply_sync_backend_wallpaper_links
-  theme_apply_enqueue_wallpaper_thumbs
+  if ! declare -F color_finalize_update_waybar_border_radius >/dev/null; then
+    [[ -r "${finalize_lib}" ]] || return 1
+    # shellcheck source=/dev/null
+    source "${finalize_lib}" || return 1
+  fi
 
-  if [[ "${quiet}" == "true" ]]; then
-    "${LIB_DIR}/hypr/wallpaper.sh" notify --global --notify-body "Theme: ${HYPR_THEME}" >/dev/null 2>&1 || true
+  color_finalize_update_waybar_border_radius
+}
+
+theme_apply_display_wallpaper() {
+  local -a wallpaper_env=(
+    WALLPAPER_SKIP_COLORS=1
+    WALLPAPER_SKIP_HYPRLOCK_BACKGROUND=1
+    WALLPAPER_SKIP_POST_APPLY=1
+    WALLPAPER_SKIP_PRECACHE=1
+  )
+
+  env "${wallpaper_env[@]}" \
+    "${LIB_DIR}/hypr/wallpaper.sh" display --global --no-notify
+}
+
+theme_apply_notify_wallpaper_detached() {
+  local notify_body="Theme: ${HYPR_THEME}"
+  local elapsed_label=""
+
+  if elapsed_label="$(theme_apply_elapsed_label 2>/dev/null)"; then
+    notify_body+=$'\n'"Time: ${elapsed_label}"
+  fi
+
+  local -a notify_cmd=(
+    "${LIB_DIR}/hypr/wallpaper.sh"
+    notify
+    --global
+    --notify-body
+    "${notify_body}"
+  )
+
+  if command -v setsid >/dev/null 2>&1; then
+    setsid "${notify_cmd[@]}" >/dev/null 2>&1 &
   else
-    "${LIB_DIR}/hypr/wallpaper.sh" notify --global --notify-body "Theme: ${HYPR_THEME}" || true
+    nohup "${notify_cmd[@]}" >/dev/null 2>&1 &
+  fi
+  disown "$!" 2>/dev/null || true
+}
+
+theme_apply_run_color_sync() {
+  local wallpaper_path="$1"
+  local -a color_sync_env=(
+    HYPR_THEME_BATCH_RELOADS=1
+    "HYPR_THEME_FILE_BASENAMES=waybar.theme dunst.theme kitty.theme"
+    HYPR_THEME_DEFER_QT_OUTPUTS=1
+    HYPR_THEME_DEFER_SECONDARY_UPDATES=1
+    HYPR_THEME_UPDATE_EXTERNAL_LOCK=1
+    HYPR_THEME_RUNTIME_SYNC_EXTERNAL=1
+  )
+
+  if [[ -n "${wallpaper_path}" ]]; then
+    env "${color_sync_env[@]}" \
+      "${LIB_DIR}/hypr/theme/color-sync.sh" "${theme_apply_color_sync_args[@]}" "${wallpaper_path}"
+  else
+    env "${color_sync_env[@]}" \
+      "${LIB_DIR}/hypr/theme/color-sync.sh" "${theme_apply_color_sync_args[@]}"
   fi
 }
 
-trap 'theme_apply_release_update_lock "$?"' EXIT
+theme_apply_job_hypr_reload() {
+  [[ -n "${HYPRLAND_INSTANCE_SIGNATURE}" ]] || return 0
+  command -v hyprctl >/dev/null 2>&1 || return 0
+  hyprctl reload config-only
+}
+
+theme_apply_job_waybar() {
+  font_sync_apply_waybar_bar_font_include || {
+    print_log -sec "theme.apply" -warn "font" "font sync failed"
+    return 1
+  }
+
+  hypr_user_pgrep -x waybar >/dev/null 2>&1 && return 0
+
+  theme_apply_restart_waybar_direct || {
+    print_log -sec "theme.apply" -warn "waybar" "start failed"
+    return 1
+  }
+}
+
+theme_apply_job_dunst() {
+  theme_apply_write_dunst_runtime || {
+    print_log -sec "theme.apply" -warn "dunst" "write failed"
+    return 1
+  }
+
+  theme_apply_reload_dunst_runtime || {
+    print_log -sec "theme.apply" -warn "dunst" "reload failed"
+    return 1
+  }
+
+  theme_apply_notify_wallpaper_detached || true
+}
+
+theme_apply_job_firefox() {
+  theme_apply_run_phase_d_script theme_phase_d_firefox "wal/wal.firefox.sh"
+}
+
+trap 'theme_apply_cleanup "$?"' EXIT
+
+if [[ "${1:-}" == "--theme-envelope" ]]; then
+  shift
+  theme_apply_run_envelope_cli "$@"
+  exit $?
+fi
 
 quiet=false
 while (($#)); do
   case "$1" in
     --quiet) quiet=true ;;
+    --regen | --force-regenerate) theme_apply_color_sync_args+=(--force-regenerate) ;;
+    --no-cache) theme_apply_color_sync_args+=(--no-cache) ;;
     *)
-      echo "Usage: $(basename "$0") [--quiet]" >&2
+      echo "Usage: $(basename "$0") [--quiet] [--regen|--force-regenerate] [--no-cache]" >&2
       exit 1
       ;;
   esac
   shift
 done
+theme_apply_quiet="${quiet}"
+export theme_apply_quiet
+theme_apply_started_ms="$(theme_apply_now_ms)"
 
 wallpaper_path=""
 if [[ "${selected_color_mode}" -eq 0 ]]; then
@@ -290,44 +520,19 @@ else
   wallpaper_path="$(theme_apply_resolve_current_wallpaper)" || exit 1
 fi
 
-theme_apply_prepare_common_state || exit 1
+theme_apply_timed_call "generation" theme_apply_next_generation || exit 1
+theme_apply_timed_call "prepare_common_state" theme_apply_prepare_common_state || exit 1
+theme_apply_timed_call "color_sync" theme_apply_run_color_sync "${wallpaper_path}" || exit 1
+theme_apply_timed_call "metadata_commit" theme_apply_commit_theme_metadata || exit 1
+theme_apply_timed_call "wallpaper_display" theme_apply_display_wallpaper || true
+theme_apply_timed_call "waybar_border_radius" theme_apply_update_waybar_border_radius || true
+theme_apply_timed_call "envelope_launch" theme_apply_start_envelope || true
 
-if [[ -n "${wallpaper_path}" ]]; then
-  env \
-    HYPR_THEME_BATCH_RELOADS=1 \
-    HYPR_THEME_UPDATE_EXTERNAL_LOCK=1 \
-    HYPR_THEME_RUNTIME_SYNC_EXTERNAL=1 \
-    "${LIB_DIR}/hypr/theme/color-sync.sh" "${wallpaper_path}" || exit 1
-else
-  env \
-    HYPR_THEME_BATCH_RELOADS=1 \
-    HYPR_THEME_UPDATE_EXTERNAL_LOCK=1 \
-    HYPR_THEME_RUNTIME_SYNC_EXTERNAL=1 \
-    "${LIB_DIR}/hypr/theme/color-sync.sh" || exit 1
-fi
-
-if ! { theme_apply_prepare_desktop_state && theme_desktop_apply_static_resolved_if_needed; } >/dev/null 2>&1; then
-  print_log -sec "theme.apply" -warn "desktop" "static sync failed"
-fi
-
-theme_apply_commit_theme_metadata || exit 1
-
-if ! font_sync_apply_waybar_bar_font_include >/dev/null 2>&1; then
-  print_log -sec "theme.apply" -warn "font" "font sync failed"
-fi
-
-if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE}" ]] && command -v hyprctl >/dev/null 2>&1; then
-  hyprctl reload config-only >/dev/null 2>&1 || print_log -sec "theme.apply" -warn "hyprctl" "config reload failed"
-fi
-
-theme_apply_reload_waybar_and_dunst
-
-theme_apply_wallpaper "${quiet}" 1 || exit 1
-
-theme_apply_reload_terminal_clients
-
-if ! theme_apply_sync_runtime_desktop_state "${quiet}"; then
-  print_log -sec "theme.apply" -warn "desktop" "runtime sync failed"
-fi
-
-theme_apply_finish "${quiet}" || exit 1
+theme_apply_prepare_job_log_dir || exit 1
+theme_apply_reset_jobs
+theme_apply_start_job "${theme_apply_job_log_dir}" "hypr_reload" required theme_apply_job_hypr_reload || exit 1
+theme_apply_start_job "${theme_apply_job_log_dir}" "waybar" required theme_apply_job_waybar || exit 1
+theme_apply_start_job "${theme_apply_job_log_dir}" "kitty" required theme_apply_job_kitty || exit 1
+theme_apply_start_detached_job "dunst" theme_apply_job_dunst || true
+theme_apply_start_detached_job "firefox" theme_apply_job_firefox || true
+theme_apply_wait_jobs "${theme_apply_job_log_dir}" || exit 1

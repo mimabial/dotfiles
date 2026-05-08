@@ -1,6 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Drive, like /dev/nvme0, to display information about
+set -euo pipefail
+
 if (($# == 0)); then
   echo "Usage: hyprshell drive-info [/dev/drive]"
   exit 1

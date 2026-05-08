@@ -99,7 +99,9 @@ interior.element=itemview
 frame=true
 interior=true
 text.iconspacing=3
-text.toggle.color=#E6E9EF 
+text.toggle.color=#E6E9EF
+text.focus.color=#E6E9EF
+text.press.color=#E6E9EF
 
 [RadioButton]
 inherits=PanelButtonCommand

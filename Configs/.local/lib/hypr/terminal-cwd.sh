@@ -4,9 +4,13 @@
 # Prefers Kitty's reported cwd for the focused Kitty window, then falls back
 # to the active terminal's child shell cwd, then finally $HOME.
 
+set -euo pipefail
+
 active_window_json="$(hyprctl activewindow -j 2>/dev/null || true)"
-active_class="$(printf '%s' "${active_window_json}" | jq -r '.class // empty' 2>/dev/null || true)"
-terminal_pid="$(printf '%s' "${active_window_json}" | jq -r '.pid // empty' 2>/dev/null || true)"
+read -r active_class terminal_pid < <(
+  printf '%s' "${active_window_json}" \
+    | jq -r '[.class // "", (.pid // "")] | @tsv' 2>/dev/null || true
+)
 shell_pid=""
 cwd=""
 shell_path=""

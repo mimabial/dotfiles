@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 
 # Help text + JSON and rofi selection helpers.
 
@@ -20,6 +21,7 @@ Commands:
     set <file>                Set a specific wallpaper
     start                     Apply the current wallpaper to the backend
     resume                    Reapply the current theme wallpaper
+    display                   Display current wall.set without maintenance
     notify                    Show a notification for the current wallpaper
     get                       Print current wallpaper path
     output <file>             Copy current wallpaper to a file
@@ -58,7 +60,11 @@ wallpaper_catalog_prepare_runtime() {
   fi
 
   Wall_Hashmap_Cached "${wallPathArray[@]}" || return 1
+  # The trailing && is opportunistic; without an explicit return the function
+  # would propagate the test's exit code (1) when ensure_thumbs=0, which is
+  # the normal path.
   [[ "${ensure_thumbs}" -eq 1 ]] && Wall_Ensure_Thumbs "sqre"
+  return 0
 }
 
 wallpaper_catalog_cache_paths() {
@@ -73,16 +79,9 @@ wallpaper_catalog_cache_paths() {
   resolved_cache_file="$(wallpaper_hashmap_cache_file "${wallPathArray[@]}" 2>/dev/null || true)"
   resolved_json_cache="$(wallpaper_catalog_json_file "${wallPathArray[@]}" 2>/dev/null || true)"
 
-  # shellcheck disable=SC2178
-  local -n out_cache_home_ref="${out_cache_home_name}"
-  # shellcheck disable=SC2178
-  local -n out_cache_file_ref="${out_cache_file_name}"
-  # shellcheck disable=SC2178
-  local -n out_json_cache_ref="${out_json_cache_name}"
-
-  out_cache_home_ref="${resolved_cache_home}"
-  out_cache_file_ref="${resolved_cache_file}"
-  out_json_cache_ref="${resolved_json_cache}"
+  printf -v "${out_cache_home_name}" '%s' "${resolved_cache_home}"
+  printf -v "${out_cache_file_name}" '%s' "${resolved_cache_file}"
+  printf -v "${out_json_cache_name}" '%s' "${resolved_json_cache}"
 }
 
 wallpaper_catalog_print_cached_json_if_current() {
@@ -158,15 +157,17 @@ Wall_Json() {
   local cache_home=""
   local cache_file=""
   local json_cache=""
+  local prepare_status=0
 
   if [[ "${1:-}" == "--ensure-thumbs" ]]; then
     ensure_thumbs=1
     shift
   fi
 
-  if ! wallpaper_catalog_prepare_runtime "${ensure_thumbs}"; then
-    [[ "$?" -eq 2 ]] && exit 0
-    exit 1
+  wallpaper_catalog_prepare_runtime "${ensure_thumbs}" || prepare_status=$?
+  if ((prepare_status != 0)); then
+    [[ "${prepare_status}" -eq 2 ]] && exit 0
+    exit "${prepare_status}"
   fi
   wallpaper_catalog_cache_paths cache_home cache_file json_cache
 
@@ -219,10 +220,15 @@ wallpaper_select_rofi_args() {
 
   rofi_args=(
     -dmenu -i
-    -format i
+    -sync
+    -no-custom
+    -show-icons
     -display-column-separator ":::"
     -display-columns 1
-    -show-icons
+    -kb-accept-entry "Control+j,Control+m,Return,KP_Enter"
+    -kb-row-select ""
+    -me-select-entry ""
+    -me-accept-entry MousePrimary
     -theme-str "${font_override}"
     -theme-str "${r_override}"
     -theme-str "listview { show-icons: true; }"
@@ -244,12 +250,26 @@ wallpaper_selected_row() {
 
 wallpaper_selected_fields() {
   local wall_json_file="$1"
-  local selected_index="$2"
-  jq -r --argjson idx "${selected_index}" '[.[ $idx ].basename, .[ $idx ].path, .[ $idx ].sqre] | @tsv' "${wall_json_file}"
+  local selected_row="$2"
+  local selected_path=""
+
+  selected_path="$(awk -F ':::' '{print $2}' <<<"${selected_row}")"
+  [[ -n "${selected_path}" ]] || return 1
+
+  jq -r --arg path "${selected_path}" \
+    '.[] | select(.path == $path) | [.basename, .path, .sqre] | @tsv' \
+    "${wall_json_file}" \
+    | head -n1
+}
+
+wallpaper_rofi_entries() {
+  local wall_json_file="$1"
+
+  jq -r '.[] | "\(.basename):::\(.path):::\(.sqre)\u0000icon\u001f\(.sqre)"' "${wall_json_file}"
 }
 
 Wall_Select() {
-  local font_scale="" font_name="" selected_index="" wall_json_file="" selected_row=""
+  local font_scale="" font_name="" selected_entry="" wall_json_file="" selected_row="" rofi_status=0
   wall_json_file="$(mktemp)"
   font_scale="$(rofi_effective_font_scale "${ROFI_WALLPAPER_SCALE}")"
   font_name="$(rofi_effective_font_name "${ROFI_WALLPAPER_FONT:-$ROFI_FONT}")"
@@ -258,24 +278,29 @@ Wall_Select() {
   local -a rofi_args
   wallpaper_select_rofi_args "${font_scale}" "${font_name}" "${selected_row}"
 
-  selected_index="$(jq -r '.[].rofi_sqre' "${wall_json_file}" | rofi "${rofi_args[@]}")"
+  selected_entry="$(wallpaper_rofi_entries "${wall_json_file}" | rofi "${rofi_args[@]}")" || rofi_status=$?
 
-  [[ -z "${selected_index}" ]] && {
+  if ((rofi_status != 0)) && [[ -z "${selected_entry}" ]]; then
+    rm -f "${wall_json_file}"
+    exit 0
+  fi
+
+  [[ -z "${selected_entry}" ]] && {
     rm -f "${wall_json_file}"
     exit 0
   }
 
-  if [[ ! "${selected_index}" =~ ^[0-9]+$ ]]; then
+  if [[ "${selected_entry}" != *":::"* ]]; then
     rm -f "${wall_json_file}"
-    print_log -err "wallpaper" " Invalid selection index: ${selected_index}"
+    print_log -err "wallpaper" " Invalid wallpaper selection: ${selected_entry}"
     exit 1
   fi
 
-  IFS=$'\t' read -r selected_wallpaper selected_wallpaper_path selected_thumbnail < <(wallpaper_selected_fields "${wall_json_file}" "${selected_index}")
+  IFS=$'\t' read -r selected_wallpaper selected_wallpaper_path selected_thumbnail < <(wallpaper_selected_fields "${wall_json_file}" "${selected_entry}")
   rm -f "${wall_json_file}"
   export selected_wallpaper selected_wallpaper_path selected_thumbnail
 
-  if [[ -z "${selected_wallpaper}" ]]; then
+  if [[ -z "${selected_wallpaper}" || -z "${selected_wallpaper_path}" ]]; then
     print_log -err "wallpaper" " No wallpaper selected"
     exit 0
   fi

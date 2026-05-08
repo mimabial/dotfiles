@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
 dock=${BATTERY_NOTIFY_DOCK:-false}
@@ -274,7 +276,10 @@ main() {                                    # Main function
   last_notified_percentage=$battery_percentage
   prev_status=$battery_status
   last_full_notify_ts=0
-  dbus-monitor --system "type='signal',interface='org.freedesktop.DBus.Properties',path='$(upower -e | grep battery)'" 2>/dev/null | while read -r battery_status_change; do fn_status_change; done
+  local battery_path=""
+  battery_path="$(upower -e | grep battery || true)"
+  [[ -n "${battery_path}" ]] || return 0
+  dbus-monitor --system "type='signal',interface='org.freedesktop.DBus.Properties',path='${battery_path}'" 2>/dev/null | while read -r battery_status_change; do fn_status_change; done
 }
 
 verbose=false

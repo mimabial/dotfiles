@@ -34,7 +34,7 @@ fi
 
 output="$({
   if [[ "${needs_regeneration}" == true ]]; then
-    keybinds_hint.py --format rofi | tee "${kb_cache}"
+    python3 "${LIB_DIR}/hypr/keybinds/lib/keybinds_hint.py" --format rofi | tee "${kb_cache}"
   else
     cat "${kb_cache}"
   fi
@@ -80,8 +80,10 @@ if [[ ! "${kb_hint_height}" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
   kb_hint_height="$(awk -v lines="${kb_hint_line}" 'BEGIN { v = (lines * 1.9) + 7; if (v < 24) v = 24; if (v > 48) v = 48; printf "%.1f", v }')"
 fi
 
-kb_hint_width_px="$(rofi_em_to_px "${kb_hint_width}" "${font_scale}")"
-kb_hint_height_px="$(rofi_em_to_px "${kb_hint_height}" "${font_scale}")"
+kb_hint_width_px="$(rofi_length_em_to_px "${kb_hint_width}" "${font_name}" "${font_scale}" 2>/dev/null || true)"
+kb_hint_height_px="$(rofi_length_em_to_px "${kb_hint_height}" "${font_name}" "${font_scale}" 2>/dev/null || true)"
+[[ "${kb_hint_width_px}" =~ ^[0-9]+$ ]] || kb_hint_width_px=800
+[[ "${kb_hint_height_px}" =~ ^[0-9]+$ ]] || kb_hint_height_px=420
 rofi_position="$(get_rofi_pos "${kb_hint_width_px}" "${kb_hint_height_px}")"
 layout_override="window { width: ${kb_hint_width}em; height: ${kb_hint_height}em; } listview { lines: ${kb_hint_line}; } ${rofi_position}"
 

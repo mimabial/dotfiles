@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2154
+# Sourced module; strict mode is owned by the entrypoint.
+#
+# Subsystem inputs (set by color-sync.sh entrypoint via color.plan.sh):
+#   resolved_color_variant, selected_color_mode
+: "${resolved_color_variant-}" "${selected_color_mode-}"
 #
 # color.pipeline.sh - Palette selection, wal execution, and output deployment
 
@@ -23,6 +27,7 @@ declare -gA COLOR_LINKS=(
 select_palette_source() {
   local theme_bg="" theme_fg="" theme_cursor=""
   local -a theme_colors=()
+  local kitty_theme_file="${HYPR_THEME_DIR}/kitty.theme"
 
   PALETTE_SOURCE="wallpaper"
   PALETTE_LABEL=""
@@ -33,9 +38,9 @@ select_palette_source() {
   fi
 
   if [[ "${PALETTE_SOURCE}" == "theme" ]]; then
-    if ! load_theme_palette "${THEME_KITTY_FILE}" theme_bg theme_fg theme_cursor theme_colors; then
-      print_log -sec "theme" -warn "palette" "missing or incomplete ${THEME_KITTY_FILE}, falling back to wallpaper"
-      PALETTE_SOURCE="wallpaper"
+    if ! load_theme_palette "${kitty_theme_file}" theme_bg theme_fg theme_cursor theme_colors; then
+      print_log -sec "theme" -err "palette" "missing or incomplete ${kitty_theme_file}"
+      return 1
     else
       STATE_WALLPAPER="theme:${HYPR_THEME}"
       PALETTE_LABEL="theme:${HYPR_THEME}"
@@ -46,7 +51,7 @@ select_palette_source() {
     WALLPAPER_IMAGE="${1:-${wallpaper_image:-${wal_image}}}"
 
     if [[ -z "${WALLPAPER_IMAGE}" ]]; then
-      WALLPAPER_IMAGE="$(resolve_wallpaper_fallback)" || {
+      WALLPAPER_IMAGE="$(resolve_current_wallpaper)" || {
         print_log -sec "pywal16" -err "no wallpaper"
         return 1
       }
@@ -81,12 +86,10 @@ pywal_default_setting() {
 
   case "${variant}:${setting}" in
     light:BACKEND) printf '%s' "colorthief" ;;
-    light:BACKEND_FALLBACKS) printf '%s' "wal" ;;
     light:CONTRAST) printf '%s' "1.0" ;;
     light:SATURATE) printf '%s' "0.6" ;;
     light:COLS16) printf '%s' "lighten" ;;
     dark:BACKEND) printf '%s' "colorthief" ;;
-    dark:BACKEND_FALLBACKS) printf '%s' "wal" ;;
     dark:CONTRAST) printf '%s' "3.0" ;;
     dark:SATURATE) printf '%s' "0.4" ;;
     dark:COLS16) printf '%s' "lighten" ;;
@@ -117,14 +120,12 @@ compute_legibility_suffix() {
 configure_wal_command() {
   if [[ "${PALETTE_SOURCE}" == "theme" ]]; then
     PYWAL_BACKEND="theme"
-    PYWAL_BACKEND_FALLBACKS=""
     WAL_OPTS=()
   else
     WAL_OPTS_BASE=("-i" "${WALLPAPER_IMAGE}" "-n" "-s" "-t" "-e")
     [[ "${resolved_color_variant}" == "light" ]] && WAL_OPTS_BASE+=("-l")
 
     PYWAL_BACKEND="$(resolve_pywal_setting "BACKEND")"
-    PYWAL_BACKEND_FALLBACKS="$(resolve_pywal_setting "BACKEND_FALLBACKS")"
 
     local wal_contrast
     local wal_saturate
@@ -151,34 +152,11 @@ run_wal_generation() {
       wal_exit=1
     fi
   else
-    local backend
-    declare -A backend_seen=()
-    backend_list=()
-    backend_list+=("${PYWAL_BACKEND}")
-    backend_seen["${PYWAL_BACKEND}"]=1
-
-    if [[ -n "${PYWAL_BACKEND_FALLBACKS}" ]]; then
-      for backend in ${PYWAL_BACKEND_FALLBACKS//,/ }; do
-        [[ -n "${backend}" ]] || continue
-        [[ -n "${backend_seen[$backend]:-}" ]] && continue
-        backend_list+=("${backend}")
-        backend_seen["${backend}"]=1
-      done
-    fi
-
-    wal_exit=1
-    for backend in "${backend_list[@]}"; do
-      WAL_OPTS=("${WAL_OPTS_BASE[@]}" "--backend" "${backend}")
-      wal_output=$(XDG_CACHE_HOME="${WAL_XDG_CACHE_HOME}" wal "${WAL_OPTS[@]}" 2>&1)
-      wal_exit=$?
-      if [[ "${wal_exit}" -eq 0 ]]; then
-        if [[ "${backend}" != "${PYWAL_BACKEND}" ]]; then
-          print_log -sec "pywal16" -warn "backend" "fallback to ${backend}"
-        fi
-        PYWAL_BACKEND="${backend}"
-        break
-      fi
-    done
+    WAL_OPTS=("${WAL_OPTS_BASE[@]}" "--backend" "${PYWAL_BACKEND}")
+    set +e
+    wal_output=$(XDG_CACHE_HOME="${WAL_XDG_CACHE_HOME}" wal "${WAL_OPTS[@]}" 2>&1)
+    wal_exit=$?
+    set -e
   fi
 
   if [[ "${HYPR_WAL_CACHE_ENABLE}" -eq 1 ]] && [[ -n "${wal_cache_path:-}" ]]; then
@@ -200,20 +178,17 @@ hex_triplet_to_rgb_components() {
   local r_name="$2"
   local g_name="$3"
   local b_name="$4"
-  local -n r_ref="${r_name}"
-  local -n g_ref="${g_name}"
-  local -n b_ref="${b_name}"
 
   if [[ ! "${hex}" =~ ^[0-9A-Fa-f]{6}$ ]]; then
-    r_ref=0
-    g_ref=0
-    b_ref=0
+    printf -v "${r_name}" '%d' 0
+    printf -v "${g_name}" '%d' 0
+    printf -v "${b_name}" '%d' 0
     return 1
   fi
 
-  r_ref=$((16#${hex:0:2}))
-  g_ref=$((16#${hex:2:2}))
-  b_ref=$((16#${hex:4:2}))
+  printf -v "${r_name}" '%d' "$((16#${hex:0:2}))"
+  printf -v "${g_name}" '%d' "$((16#${hex:2:2}))"
+  printf -v "${b_name}" '%d' "$((16#${hex:4:2}))"
 }
 
 resolve_named_color_rgb() {
@@ -342,12 +317,12 @@ link_generated_color_files() {
     if [[ -f "${source}" ]]; then
       mkdir -p "$(dirname "${target}")"
       if ln -sf "${source}" "${target}"; then
-        [[ "${LOG_LEVEL}" == "debug" ]] && print_log -sec "symlink" -stat "linked" "${cache_file}"
+        [[ "${LOG_LEVEL:-}" == "debug" ]] && print_log -sec "symlink" -stat "linked" "${cache_file}"
       else
         print_log -sec "symlink" -warn "failed" "could not link ${cache_file}"
       fi
     else
-      [[ "${LOG_LEVEL}" == "debug" ]] && print_log -sec "symlink" -warn "skip" "${cache_file} not generated"
+      [[ "${LOG_LEVEL:-}" == "debug" ]] && print_log -sec "symlink" -warn "skip" "${cache_file} not generated"
     fi
   done
 

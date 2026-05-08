@@ -6,7 +6,7 @@
 #
 # Goals:
 #   - Deduplicate queued jobs by wallpaper content hash
-#   - Batch queued jobs into one awww-wallcache invocation
+#   - Batch queued jobs into one wallpaper.cache.sh invocation
 #   - Keep one daemon process per user session
 #   - Wake on enqueue notification (event-driven idle wait)
 #
@@ -18,6 +18,8 @@
 #   wallcache.daemon.sh --status
 #
 
+set -euo pipefail
+
 LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 
 # shellcheck source=/dev/null
@@ -25,7 +27,7 @@ source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
 hypr_runtime_require state wallpaper_catalog || exit 1
 hypr_runtime_load_state || exit 1
 
-CACHE_SCRIPT="${LIB_DIR}/hypr/wallpaper/awww-wallcache.sh"
+CACHE_SCRIPT="${LIB_DIR}/hypr/wallpaper/wallpaper.cache.sh"
 
 QUEUE_ROOT="${XDG_RUNTIME_DIR:-/tmp}/hypr/wallcache"
 QUEUE_PENDING_DIR="${QUEUE_ROOT}/pending"

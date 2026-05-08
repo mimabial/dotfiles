@@ -40,7 +40,6 @@ menuitem:hover {
   background-color: alpha(@c2, 0.6);
 }
 tooltip {
-  border-radius: 6px;
   border: 2px solid alpha(@act_bg, 0.6);
   background: alpha(@bg, 0.9);
 }
@@ -282,7 +281,6 @@ menu {
 
 #bluetooth.discoverable,
 #bluetooth.discovering {
-  border-radius: 8px;
   animation-name: blink-active;
   animation-duration: 1s;
   animation-timing-function: linear;
@@ -404,7 +402,6 @@ menu {
    ============================================ */
 
 #battery {
-  border-radius: 8px;
   padding: 4px 0px;
   margin: 4px 2px 4px 2px;
 }

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 # Shared hyprlock layout/runtime helpers.
 find_filepath() {
   local filename="${1:-default}"
@@ -50,6 +51,143 @@ reload_hyprlock() {
   fi
 }
 
+hyprlock_trim() {
+  local value="${1:-}"
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+  printf '%s\n' "${value}"
+}
+
+hyprlock_expand_path() {
+  local path="${1:-}"
+  local var_name=""
+  local base_path=""
+  local bare_ref=""
+  local braced_ref=""
+
+  [[ -n "${path}" ]] || return 1
+
+  case "${path}" in
+    "~") printf '%s\n' "${HOME}" ; return 0 ;;
+    "~/"*) printf '%s\n' "${HOME}/${path#"~/"}" ; return 0 ;;
+  esac
+
+  for var_name in HYPR_CONFIG_HOME HYPR_DATA_HOME XDG_CONFIG_HOME XDG_DATA_HOME XDG_STATE_HOME XDG_CACHE_HOME HOME; do
+    base_path="${!var_name:-}"
+    [[ -n "${base_path}" ]] || continue
+
+    bare_ref="\$${var_name}"
+    braced_ref="\${${var_name}}"
+
+    if [[ "${path}" == "${bare_ref}" ]]; then
+      printf '%s\n' "${base_path}"
+      return 0
+    fi
+    if [[ "${path}" == "${bare_ref}/"* ]]; then
+      printf '%s/%s\n' "${base_path}" "${path#"${bare_ref}/"}"
+      return 0
+    fi
+    if [[ "${path}" == "${braced_ref}" ]]; then
+      printf '%s\n' "${base_path}"
+      return 0
+    fi
+    if [[ "${path}" == "${braced_ref}/"* ]]; then
+      printf '%s/%s\n' "${base_path}" "${path#"${braced_ref}/"}"
+      return 0
+    fi
+  done
+
+  printf '%s\n' "${path}"
+}
+
+hyprlock_read_layout_path() {
+  local target_file="${1:-${HYPR_CONFIG_HOME}/hyprlock.conf}"
+  local line=""
+  local value=""
+
+  [[ -r "${target_file}" ]] || return 1
+
+  while IFS= read -r line; do
+    [[ "${line}" =~ ^[[:space:]]*\$LAYOUT_PATH[[:space:]]*= ]] || continue
+    value="${line#*=}"
+    value="${value%%#*}"
+    value="$(hyprlock_trim "${value}")"
+    hyprlock_expand_path "${value}"
+    return 0
+  done <"${target_file}"
+
+  return 1
+}
+
+hyprlock_conf_sources_path() {
+  local target_file="${1}"
+  local expected_path="${2}"
+  local line=""
+  local value=""
+  local expanded_value=""
+
+  [[ -r "${target_file}" && -n "${expected_path}" ]] || return 1
+
+  while IFS= read -r line; do
+    value="$(hyprlock_trim "${line%%#*}")"
+    [[ "${value}" =~ ^source[[:space:]]*= ]] || continue
+    value="${value#*=}"
+    value="$(hyprlock_trim "${value}")"
+    expanded_value="$(hyprlock_expand_path "${value}")"
+    [[ "${expanded_value}" == "${expected_path}" ]] && return 0
+  done <"${target_file}"
+
+  return 1
+}
+
+hyprlock_managed_conf_is_current() {
+  local target_file="${1:-${HYPR_CONFIG_HOME}/hyprlock.conf}"
+  local hyprlock_conf="${HYPR_DATA_HOME:-${XDG_DATA_HOME}/hypr}/hyprlock.conf"
+  local colors_conf="${HYPR_CONFIG_HOME}/hyprlock/colors.conf"
+  local layout_path=""
+
+  [[ -r "${target_file}" ]] || return 1
+  hyprlock_conf_sources_path "${target_file}" "${colors_conf}" || return 1
+  hyprlock_conf_sources_path "${target_file}" "${hyprlock_conf}" || return 1
+
+  layout_path="$(hyprlock_read_layout_path "${target_file}" 2>/dev/null || true)"
+  [[ -n "${layout_path}" && -f "${layout_path}" ]] || return 1
+
+  return 0
+}
+
+hyprlock_resolve_active_layout() {
+  local target_file="${1:-${HYPR_CONFIG_HOME}/hyprlock.conf}"
+  local layout_path=""
+  local layout_name=""
+
+  layout_path="$(hyprlock_read_layout_path "${target_file}" 2>/dev/null || true)"
+  if [[ -n "${layout_path}" && -f "${layout_path}" ]]; then
+    printf '%s\n' "${layout_path}"
+    return 0
+  fi
+
+  if declare -F state_get >/dev/null 2>&1; then
+    layout_name="$(state_get "HYPRLOCK_LAYOUT" "${HYPRLOCK_LAYOUT:-default}" 2>/dev/null || true)"
+  fi
+  layout_name="${layout_name:-${HYPRLOCK_LAYOUT:-default}}"
+
+  find_filepath "${layout_name}" || find_filepath "default"
+}
+
+ensure_hyprlock_conf() {
+  local target_file="${1:-${HYPR_CONFIG_HOME}/hyprlock.conf}"
+  local layout_path=""
+
+  if hyprlock_managed_conf_is_current "${target_file}"; then
+    return 0
+  fi
+
+  layout_path="$(hyprlock_resolve_active_layout "${target_file}")" || return 1
+  generate_conf "${layout_path}" "${target_file}"
+  print_log -sec "hyprlock" -stat "repaired" "$(hypr_compact_path "${target_file}")"
+}
+
 append_label_to_file() {
   local file="${1}"
   local valign=""
@@ -97,7 +235,7 @@ layout_test() {
   temp_path="${runtime_dir}/hyprlock-test.conf"
   generate_conf "${hyprlock_conf_path}" "${temp_path}"
   append_label_to_file "${temp_path}"
-  app2unit.sh -S both -u "${HYPRLOCK_SCOPE_NAME}" -t scope -- hyprlock --no-fade-in --immediate-render --grace 99999999 -c "${temp_path}"
+  "${HYPR_LIB_DIR}/system/app2unit.sh" -S both -u "${HYPRLOCK_SCOPE_NAME}" -t scope -- hyprlock --no-fade-in --immediate-render --grace 99999999 -c "${temp_path}"
   rm -f "${temp_path}"
 }
 
@@ -108,7 +246,7 @@ rofi_test_preview() {
   send_ephemeral_notif "hypr-hyprlock-preview" "Hyprlock layout: ${hyprlock_conf_name}" "Please swipe, press a key or click to exit." \
     -i "system-lock-screen" -t 3000 \
     -r 9
-  app2unit.sh -S both -u "${unit_name}" -t scope -- hyprlock.sh --test "${hyprlock_conf_name}"
+  "${HYPR_LIB_DIR}/system/app2unit.sh" -S both -u "${unit_name}" -t scope -- hyprlock.sh --test "${hyprlock_conf_name}"
 }
 
 generate_conf() {

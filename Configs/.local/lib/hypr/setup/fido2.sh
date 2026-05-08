@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-set -e
+set -euo pipefail
 
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/setup/auth.common.bash"
@@ -26,7 +26,7 @@ remove_pam_config() {
   remove_pam_module "FIDO2" "pam_u2f.so" 'pam_u2f\.so'
 }
 
-if [[ "--remove" == "$1" ]]; then
+if [[ "--remove" == "${1:-}" ]]; then
   print_success "Removing FIDO2 device from authentication.\n"
 
   # Remove PAM configuration
@@ -40,7 +40,7 @@ if [[ "--remove" == "$1" ]]; then
 
   # Uninstall packages
   print_info "Removing FIDO2 packages..."
-  sudo pacman -Rns --noconfirm libfido2 pam-u2f
+  hyprshell pm --noconfirm remove libfido2 pam-u2f
 
   print_success "FIDO2 authentication has been completely removed."
 else
@@ -48,7 +48,7 @@ else
 
   # Install required packages
   print_info "Installing required packages..."
-  sudo pacman -S --noconfirm --needed libfido2 pam-u2f
+  hyprshell pm add libfido2 pam-u2f
 
   if ! check_fido2_hardware; then
     exit 1

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 
 menu_register_domain_setup() {
   menu_define setup "Setup"
@@ -17,7 +18,7 @@ menu_run_action_setup() {
 
   case "${action_id}" in
     setup_audio) present_terminal --hypr-profile tui --app-id org.tui.Wiremix --title Wiremix -- wiremix ;;
-    setup_wifi) rfkill unblock wifi && hyprshell launch/wifi.sh ;;
+    setup_wifi) rfkill unblock wifi && present_terminal --hypr-profile tui --app-id org.tui.Impala --title Impala -- impala ;;
     setup_bluetooth) rfkill unblock bluetooth && present_terminal --hypr-profile tui --app-id org.tui.Bluetui --title Bluetui -- bluetui ;;
     setup_network) present_terminal --hypr-profile tui --app-id org.tui.Oryx --title Oryx -- sudo oryx ;;
     setup_monitors) open_in_editor ~/.config/hypr/monitors.conf ;;

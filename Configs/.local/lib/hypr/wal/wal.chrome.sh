@@ -1,12 +1,21 @@
 #!/usr/bin/env bash
 # Generate Chrome theme from pywal16 colors
 # Based on https://github.com/metafates/ChromiumPywal
+#
+# Subsystem inputs (sourced from ${WAL_COLORS_FILE} below):
+#   color0, color4, color8, color15
+: "${color0-}" "${color4-}" "${color8-}" "${color15-}"
 
 set -euo pipefail
 
 LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 # shellcheck source=/dev/null
 source "${LIB_DIR}/hypr/core/hash-cache.sh" || exit 1
+if [[ -r "${LIB_DIR}/hypr/theme/phase-d.sh" ]]; then
+  # shellcheck source=/dev/null
+  source "${LIB_DIR}/hypr/theme/phase-d.sh" || exit 1
+  theme_phase_d_init "${HYPR_THEME_PHASE_D_LOCK_KEY:-theme_phase_d_chrome}"
+fi
 
 WAL_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/wal"
 WAL_COLORS_FILE="${WAL_CACHE}/colors-shell.sh"
@@ -19,6 +28,7 @@ THEME_IMAGE_FILE="${THEME_IMAGE_DIR}/theme_ntp_background_norepeat.png"
 MANIFEST_FILE="${THEME_DIR}/manifest.json"
 STATE_FILE="${THEME_DIR}/.hypr-theme-state"
 HASH_FILE="$(hypr_hash_cache_file "wal-chrome.hash")" || exit 1
+STAGING_DIR=""
 
 # Source pywal16 colors
 # shellcheck source=/dev/null
@@ -84,7 +94,11 @@ if chrome_outputs_current "${expected_hash}"; then
 fi
 
 # Clean and recreate theme directory
-rm -rf "${THEME_DIR}"
+STAGING_DIR="$(mktemp -d "${CACHE_DIR}/${THEME_NAME}-chrome-theme.tmp.XXXXXXXX")" || exit 1
+trap '[[ -n "${STAGING_DIR}" && -d "${STAGING_DIR}" ]] && rm -rf -- "${STAGING_DIR}"' EXIT
+THEME_IMAGE_DIR="${STAGING_DIR}/images"
+THEME_IMAGE_FILE="${THEME_IMAGE_DIR}/theme_ntp_background_norepeat.png"
+MANIFEST_FILE="${STAGING_DIR}/manifest.json"
 mkdir -p "${THEME_IMAGE_DIR}"
 
 # Copy wallpaper if available
@@ -130,6 +144,15 @@ cat >"${MANIFEST_FILE}" <<EOF
 }
 EOF
 
-chrome_record_outputs "${expected_hash}" "${wallpaper_present}"
+if declare -F theme_phase_d_promote_dir >/dev/null 2>&1; then
+  theme_phase_d_promote_dir "${STAGING_DIR}" "${THEME_DIR}" || exit 1
+  STAGING_DIR=""
+  theme_phase_d_run_locked_if_current chrome_record_outputs "${expected_hash}" "${wallpaper_present}" || exit 1
+else
+  rm -rf "${THEME_DIR}"
+  mv -f "${STAGING_DIR}" "${THEME_DIR}"
+  STAGING_DIR=""
+  chrome_record_outputs "${expected_hash}" "${wallpaper_present}"
+fi
 
 echo "[chrome] Theme generated at ${THEME_DIR}"

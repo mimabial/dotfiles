@@ -11,15 +11,12 @@ THEME_CONF="${HYPR_THEME_METADATA_FILE:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr/t
 WAYBAR_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/waybar/config.jsonc"
 LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 
-# shellcheck disable=SC1091
+# shellcheck source=/dev/null
 source "${LIB_DIR}/hypr/core/hash-cache.sh" || exit 1
-# shellcheck disable=SC1091
-source "${LIB_DIR}/hypr/runtime/lock_paths.sh"
-# shellcheck disable=SC1091
+# shellcheck source=/dev/null
 source "${LIB_DIR}/hypr/core/common.sh"
 
 HASH_FILE="$(hypr_hash_cache_runtime_file "wal-dunst-hash")" || exit 1
-THEME_UPDATE_LOCK="$(hypr_lock_path theme_update)"
 
 reload_dunst_runtime() {
   if hypr_user_pgrep -x dunst >/dev/null 2>&1; then
@@ -53,7 +50,7 @@ load_theme_palette_overrides() {
     fi
 
     dunst_theme_palette["${name}"]="${value}"
-  done < "${DUNST_THEME}"
+  done <"${DUNST_THEME}"
 }
 
 theme_palette_value() {
@@ -133,13 +130,8 @@ resolve_hypr_metric() {
   local default_value="$3"
   local value=""
 
-  if [[ "${theme_update_in_progress}" -eq 1 ]]; then
-    value="$(read_theme_conf_metric "${theme_key}" || true)"
-    [[ -z "${value}" ]] && value="$(read_hypr_metric "${hypr_option}" || true)"
-  else
-    value="$(read_hypr_metric "${hypr_option}" || true)"
-    [[ -z "${value}" ]] && value="$(read_theme_conf_metric "${theme_key}" || true)"
-  fi
+  value="$(read_theme_conf_metric "${theme_key}" || true)"
+  [[ -z "${value}" ]] && value="$(read_hypr_metric "${hypr_option}" || true)"
 
   printf '%s' "${value:-${default_value}}"
 }
@@ -180,9 +172,6 @@ resolve_notification_font() {
 
 resolve_layout_metrics() {
   local edge_padding=0
-
-  theme_update_in_progress=0
-  [[ -e "${THEME_UPDATE_LOCK}" ]] && theme_update_in_progress=1
 
   rounding="$(resolve_hypr_metric 'rounding' 'decoration:rounding' '5')"
   gaps_in="$(resolve_hypr_metric 'gaps_in' 'general:gaps_in' '5')"
@@ -294,7 +283,7 @@ build_input_hash() {
   local file=""
   local -a inputs=()
 
-  for file in "${WAL_CACHE}/colors-shell.sh" "${DUNST_BASE_CONF}" "${DUNST_THEME}"; do
+  for file in "${BASH_SOURCE[0]}" "${WAL_CACHE}/colors-shell.sh" "${DUNST_BASE_CONF}" "${DUNST_THEME}"; do
     [[ -f "${file}" ]] || continue
     inputs+=("$(hypr_hash_cache_digest_files "${file}")")
   done
@@ -447,7 +436,7 @@ main() {
   fi
 
   [[ -f "${WAL_CACHE}/colors-shell.sh" ]] || exit 0
-  # shellcheck disable=SC1091
+  # shellcheck source=/dev/null
   source "${WAL_CACHE}/colors-shell.sh"
 
   resolve_notification_font

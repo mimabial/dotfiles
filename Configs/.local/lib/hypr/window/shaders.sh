@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 # shellcheck source=/dev/null
 if ! source "$(command -v hyprshell)"; then
   echo "[$0] :: Error: hyprshell not found."

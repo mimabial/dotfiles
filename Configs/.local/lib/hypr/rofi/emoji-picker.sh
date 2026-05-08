@@ -4,6 +4,13 @@
 source "${HOME}/.local/lib/hypr/rofi/picker.common.bash"
 rofi_picker_bootstrap || exit 1
 
+emoji_dir=""
+cache_dir=""
+font_override=""
+r_override=""
+rofi_position=""
+emoji_window_theme=""
+_rofi_opacity=""
 rofi_picker_hypr_dir_vars emoji_dir cache_dir
 emoji_data="${emoji_dir}/emoji.db"
 emoji_categories_dir="${emoji_dir}/emoji-categories"
@@ -56,7 +63,7 @@ setup_rofi_config() {
   local font_name
   rofi_prepare_standard_context \
     font_scale font_name font_override r_override _rofi_opacity \
-    "${ROFI_EMOJI_SCALE}" "${ROFI_EMOJI_FONT:-$ROFI_FONT}" wallbox same
+    "${ROFI_EMOJI_SCALE:-}" "${ROFI_EMOJI_FONT:-${ROFI_FONT:-}}" wallbox same
 
   local emoji_window_width_em="${ROFI_EMOJI_WIDTH_EM:-36}"
   local emoji_window_height_em="${ROFI_EMOJI_HEIGHT_EM:-30}"
@@ -76,7 +83,7 @@ emoji_menu_base_opts() {
 
   opts_ref=(-no-config -no-default-config -theme "${theme_name}")
   [[ -n "${emoji_window_theme:-}" ]] && opts_ref+=("-theme-str" "${emoji_window_theme}")
-  [[ -n "${_rofi_opacity}" ]] && opts_ref+=("-theme-str" "${_rofi_opacity}")
+  [[ -n "${_rofi_opacity:-}" ]] && opts_ref+=("-theme-str" "${_rofi_opacity}")
 }
 
 emoji_style_menu_args() {
@@ -117,6 +124,7 @@ emoji_extract_skin_tone_modifier() {
 
 emoji_filtered_rofi_args() {
   local -n out_args_ref="$1"
+  # shellcheck disable=SC2034 # Nameref output assigned for the caller.
   out_args_ref=()
   for arg in "${ROFI_EMOJI_ARGS[@]}"; do
     [[ "${arg}" == "-multi-select" || "${arg}" == "--multi-select" ]] && continue
@@ -126,15 +134,15 @@ emoji_filtered_rofi_args() {
 
 emoji_selection_menu_args() {
   local style_type="$1"
-  local -n rofi_base_opts_ref="$2"
-  local -n style_menu_args_ref="$3"
-  local -n emoji_args_ref="$4"
+  local rofi_base_opts_name="$2"
+  local style_menu_args_name="$3"
+  local emoji_args_name="$4"
   local emoji_theme=""
 
   emoji_theme="$(rofi_resolve_theme "${ROFI_EMOJI_THEME:-clipboard}")"
-  emoji_menu_base_opts "${emoji_theme}" rofi_base_opts_ref
-  emoji_style_menu_args "${style_type}" style_menu_args_ref
-  emoji_filtered_rofi_args emoji_args_ref
+  emoji_menu_base_opts "${emoji_theme}" "${rofi_base_opts_name}"
+  emoji_style_menu_args "${style_type}" "${style_menu_args_name}"
+  emoji_filtered_rofi_args "${emoji_args_name}"
 }
 
 emoji_write_selection_source() {
@@ -196,20 +204,21 @@ emoji_rofi_selection_index() {
 
   if [[ -n ${use_rofile} ]]; then
     rofi_picker_rasi_args rofi_config_args "${use_rofile}" "${rofi_position}"
-    cat "${display_file}" | rofi -dmenu -i -format 'i' "$@" "${rofi_config_args[@]}" \
+    rofi -dmenu -i -format 'i' "$@" "${rofi_config_args[@]}" \
       -no-show-icons \
       -theme-str "${emoji_window_theme}" \
       -theme-str "${EMOJI_ICONLESS_THEME_STR}" \
-      -no-custom
+      -no-custom <"${display_file}"
     return 0
   fi
 
-  cat "${display_file}" | rofi -dmenu -i -format 'i' "$@" \
+  rofi -dmenu -i -format 'i' "$@" \
     -no-show-icons \
     -theme-str "${EMOJI_ICONLESS_THEME_STR}" \
     -theme-str "entry { placeholder: \" 󰞅 Emoji\";} ${rofi_position} ${r_override}" \
     -theme-str "${font_override}" \
     -theme-str "${emoji_window_theme}" \
+    <"${display_file}"
     -no-custom
 }
 
@@ -245,29 +254,33 @@ emoji_category_source_file() {
 
 emoji_category_menu_args() {
   local style_type="$1"
-  local -n rofi_base_opts_ref="$2"
-  local -n style_menu_args_ref="$3"
+  local rofi_base_opts_name="$2"
+  local style_menu_args_name="$3"
   local category_theme=""
 
   case "${style_type}" in
     1 | list | 2 | grid) category_theme="$(rofi_resolve_theme clipboard)" ;;
     *) category_theme="$(rofi_resolve_theme "${style_type:-clipboard}")" ;;
   esac
-  emoji_menu_base_opts "${category_theme}" rofi_base_opts_ref
-  emoji_style_menu_args "${style_type}" style_menu_args_ref
+  emoji_menu_base_opts "${category_theme}" "${rofi_base_opts_name}"
+  emoji_style_menu_args "${style_type}" "${style_menu_args_name}"
 }
 
 emoji_prepare_category_menu() {
   local category_file="$1"
-  local -n work_dir_ref="$2"
-  local -n menu_file_ref="$3"
+  local work_dir_name="$2"
+  local menu_file_name="$3"
+  local work_dir=""
+  local menu_file=""
 
-  work_dir_ref="$(mktemp -d "${TMPDIR:-/tmp}/emoji_category.XXXXXX")" || return 1
-  menu_file_ref="${work_dir_ref}/menu"
+  work_dir="$(mktemp -d "${TMPDIR:-/tmp}/emoji_category.XXXXXX")" || return 1
+  menu_file="${work_dir}/menu"
+  printf -v "${work_dir_name}" '%s' "${work_dir}"
+  printf -v "${menu_file_name}" '%s' "${menu_file}"
   {
     printf '%s\n' "◀ Back	:b:a:c:k:"
     cat "${category_file}"
-  } >"${menu_file_ref}"
+  } >"${menu_file}"
 }
 
 get_emoji_selection() {
@@ -445,12 +458,12 @@ show_category_menu() {
   local style_menu_args=()
   emoji_category_menu_args "${style_type}" rofi_base_opts style_menu_args
 
-  selected=$(cat "${temp_category}" | rofi -dmenu -i "${style_menu_args[@]}" \
+  selected=$(rofi -dmenu -i "${style_menu_args[@]}" \
     -no-show-icons "${rofi_base_opts[@]}" \
     -theme-str "${EMOJI_ICONLESS_THEME_STR}" \
     -theme-str "entry { placeholder: \"📂 ${category}\";} ${rofi_position} ${r_override}" \
     -theme-str "${font_override}" \
-    -no-custom)
+    -no-custom <"${temp_category}")
 
   rm -rf "${work_dir}"
   echo "${selected}"
@@ -474,7 +487,7 @@ emoji_normalize_selection_record() {
 
   local emoji_token desc_token
   emoji_token="${1%% *}"
-  desc_token="${1#${emoji_token}}"
+  desc_token="${1#"${emoji_token}"}"
   desc_token="${desc_token# }"
   printf '%s\t%s\n' "${emoji_token}" "${desc_token}"
 }

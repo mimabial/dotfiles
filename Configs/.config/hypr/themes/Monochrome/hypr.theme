@@ -4,8 +4,8 @@ $GTK_THEME = Vanta-Black
 $ICON_THEME = Tela-circle-black-dark
 $COLOR_SCHEME = prefer-dark
 
-$CURSOR_THEME = Simp1e-Breeze
-$CURSOR_SIZE = 29
+$CURSOR_THEME=Hackneyed
+$CURSOR_SIZE=24
 
 general {
     gaps_in = 5

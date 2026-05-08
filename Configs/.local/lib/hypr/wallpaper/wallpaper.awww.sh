@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Wallpaper backend adapter for the awww runtime wallpaper daemon.
 
+set -euo pipefail
+
 selected_wall="${1:-"${WALLPAPER_CURRENT_DIR:-${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/wallpaper/current}/wall.set"}"
 
 # Use flock for robust locking (releases automatically on exit/crash)
@@ -86,19 +88,10 @@ ensure_wallpaper_daemon() {
 
 resolve_wallpaper_backend || exit 1
 
-#// set defaults
-wallpaper_transition_type="${wallpaper_transition_type:-${WALLPAPER_AWWW_TRANSITION_DEFAULT:-fade}}"
-
-# Handle transition
-case "${WALLPAPER_SET_FLAG}" in
-  p)
-    wallpaper_transition_type="${WALLPAPER_AWWW_TRANSITION_PREV:-$wallpaper_transition_type}"
-    ;;
-  n)
-    wallpaper_transition_type="${WALLPAPER_AWWW_TRANSITION_NEXT:-$wallpaper_transition_type}"
-    ;;
-
-esac
+wallpaper_transition_type="${AWWW_TRANSITION:-fade}"
+wallpaper_transition_duration="${AWWW_TRANSITION_DURATION:-0.25}"
+wallpaper_transition_fps="${AWWW_TRANSITION_FPS:-60}"
+wallpaper_transition_bezier="${AWWW_TRANSITION_BEZIER:-.43,1.19,1,.4}"
 
 [[ -z "${selected_wall}" ]] && echo "No input wallpaper" && exit 1
 selected_wall="$(readlink -f "${selected_wall}")"
@@ -112,9 +105,6 @@ if file --mime-type -b "${selected_wall}" | grep -q '^video/'; then
   extract_thumbnail "${selected_wall}" "${cached_thumb}"
   selected_wall="${cached_thumb}"
 fi
-[[ -z "${wallFramerate}" ]] && wallFramerate=60
-[[ -z "${wallTransDuration}" ]] && wallTransDuration=0.6
-
 # Apply wallpaper through the awww backend.
 print_log -sec "wallpaper" -stat "apply" "$selected_wall"
 
@@ -130,17 +120,17 @@ cursor_pos="$(hyprctl cursorpos 2>/dev/null | grep -E '^[0-9]' || echo "0,0")"
 
 # Build backend command
 wallpaper_cmd=("${wallpaper_client_cmd}" img "${resolved_wall}"
-  --transition-bezier .43,1.19,1,.4
+  --transition-bezier "${wallpaper_transition_bezier}"
   --transition-type "${wallpaper_transition_type}"
-  --transition-duration "${wallTransDuration}"
-  --transition-fps "${wallFramerate}"
+  --transition-duration "${wallpaper_transition_duration}"
+  --transition-fps "${wallpaper_transition_fps}"
   --invert-y
   --transition-pos "${cursor_pos}")
 
 # Run synchronously whenever the caller is using wait-lock semantics.
 # That keeps backend submits ordered with the global wallpaper lock, so
 # rapid next/previous actions cannot let an older background submit land last.
-if [[ "${WALLPAPER_SET_FLAG}" == "start" \
+if [[ "${WALLPAPER_SET_FLAG:-}" == "start" \
   || "${WALLPAPER_SYNC_APPLY:-0}" == "1" \
   || "${WALLPAPER_WAIT_FOR_LOCK:-0}" == "1" ]]; then
   "${wallpaper_cmd[@]}"

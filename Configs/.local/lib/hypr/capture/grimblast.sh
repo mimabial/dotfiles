@@ -18,6 +18,8 @@
 ## hyprctl equivalents.
 ## https://github.com/swaywm/sway/blob/master/contrib/grimshot
 
+set -euo pipefail
+
 # Check whether another instance is running
 cache_home="${XDG_CACHE_HOME:-$HOME/.cache}"
 runtime_dir="${XDG_RUNTIME_DIR:-$cache_home}"
@@ -274,9 +276,12 @@ if [[ "$ACTION" == "check" ]]; then
   exit
 elif [[ "$SUBJECT" == "active" ]]; then
   wait_delay
-  FOCUSED=$(hyprctl activewindow -j)
-  GEOM=$(echo "$FOCUSED" | jq -r '"\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"')
-  APP_ID=$(echo "$FOCUSED" | jq -r '.class')
+  mapfile -t FOCUSED_FIELDS < <(
+    hyprctl activewindow -j \
+      | jq -r '"\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])", (.class // "Window")'
+  )
+  GEOM="${FOCUSED_FIELDS[0]:-}"
+  APP_ID="${FOCUSED_FIELDS[1]:-Window}"
   WHAT="$APP_ID window"
 elif [[ "$SUBJECT" == "screen" ]]; then
   wait_delay

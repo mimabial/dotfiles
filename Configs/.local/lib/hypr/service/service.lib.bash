@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 
 # Shared helpers for hypr service scripts.
 
@@ -81,8 +82,11 @@ hypr_service_maybe_report_backup_root() {
 
 hypr_service_report() {
   local quiet="$1"
+  local format="$2"
   shift
-  [[ "${quiet}" -eq 1 ]] || printf -- "$@"
+  shift
+  # shellcheck disable=SC2059 # Callers pass constant format strings plus data args.
+  [[ "${quiet}" -eq 1 ]] || printf -- "${format}" "$@"
 }
 
 hypr_service_report_diff() {
@@ -105,6 +109,7 @@ hypr_service_die() {
   exit 1
 }
 
+# shellcheck disable=SC2034 # Parser outputs are read by service entrypoints.
 hypr_service_parse_refresh_args() {
   hypr_service_cli_show_diff=0
   hypr_service_cli_quiet=0
@@ -153,6 +158,7 @@ hypr_service_parse_refresh_args() {
   done
 }
 
+# shellcheck disable=SC2034 # Nameref outputs are assigned for service entrypoints.
 hypr_service_parse_mode_cli() {
   local usage_fn="$1"
   local mode_name="$2"
@@ -258,13 +264,10 @@ hypr_service_apply_file() {
   local source_path="$1"
   local target_path="$2"
   local rel_path="$3"
-  local backup_policy="$4"
-  local show_diff="${5:-1}"
-  local quiet="${6:-0}"
   local mode="$4"
-  backup_policy="${5}"
-  show_diff="${6:-1}"
-  quiet="${7:-0}"
+  local backup_policy="$5"
+  local show_diff="${6:-1}"
+  local quiet="${7:-0}"
   local target_exists=0
   local backup_path=""
   [[ "${mode}" == "trash" ]] || [[ -f "${source_path}" ]] || hypr_service_die "No template found for ${rel_path}: ${source_path}"

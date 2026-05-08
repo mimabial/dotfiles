@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Background service to watch theme.conf and sync to nvim instances
 
+set -euo pipefail
+
 theme_file="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/theme.conf"
 sync_script="$HOME/.local/lib/hypr/util/nvim-theme-sync.sh"
 last_mtime=0

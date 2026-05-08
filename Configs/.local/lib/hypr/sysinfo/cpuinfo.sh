@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+set -euo pipefail
 
 cpuinfo_file="${XDG_RUNTIME_DIR:-/tmp}/hypr-$UID-processors"
 
@@ -30,23 +32,28 @@ map_floor() {
 }
 
 load_cpu_cache() {
-  cpu_info_file="${TMPDIR:-/tmp}/${UID}-processors"
-  [[ -f "${cpu_info_file}" ]] && source "${cpu_info_file}"
+  # Same file path declared at the top of the script — read AND write must
+  # agree, otherwise cached values never survive a poll.
+  [[ -f "${cpuinfo_file}" ]] && source "${cpuinfo_file}"
+  return 0
 }
 
 cache_cpu_value() {
   local key="$1"
   local value="$2"
-  echo "${key}=\"${value}\"" >>"${cpu_info_file}"
+  echo "${key}=\"${value}\"" >>"${cpuinfo_file}"
 }
 
+# ${VAR:-} fallbacks below: on first run nothing has populated the cache, so
+# the bare ${VAR} would crash under set -u. The `-n` test then sees empty and
+# falls through to compute + cache.
 initialize_cpu_metadata() {
-  [[ -n "${CPUINFO_MODEL}" ]] || {
+  [[ -n "${CPUINFO_MODEL:-}" ]] || {
     CPUINFO_MODEL=$(lscpu | awk -F': ' '/Model name/ {gsub(/^ *| *$| CPU.*/,"",$2); print $2}')
     cache_cpu_value "CPUINFO_MODEL" "${CPUINFO_MODEL}"
   }
 
-  [[ -n "${CPUINFO_MAX_FREQ}" ]] || {
+  [[ -n "${CPUINFO_MAX_FREQ:-}" ]] || {
     CPUINFO_MAX_FREQ=$(lscpu | awk '/CPU max MHz/ { sub(/\..*/,"",$4); print $4}')
     cache_cpu_value "CPUINFO_MAX_FREQ" "${CPUINFO_MAX_FREQ}"
   }
@@ -56,12 +63,12 @@ initialize_cpu_stats() {
   local stat_file
   stat_file=$(head -1 /proc/stat)
 
-  [[ -n "${CPUINFO_PREV_STAT}" ]] || {
+  [[ -n "${CPUINFO_PREV_STAT:-}" ]] || {
     CPUINFO_PREV_STAT=$(awk '{print $2+$3+$4+$6+$7+$8 }' <<<"${stat_file}")
     cache_cpu_value "CPUINFO_PREV_STAT" "${CPUINFO_PREV_STAT}"
   }
 
-  [[ -n "${CPUINFO_PREV_IDLE}" ]] || {
+  [[ -n "${CPUINFO_PREV_IDLE:-}" ]] || {
     CPUINFO_PREV_IDLE=$(awk '{print $5 }' <<<"${stat_file}")
     cache_cpu_value "CPUINFO_PREV_IDLE" "${CPUINFO_PREV_IDLE}"
   }
@@ -83,7 +90,7 @@ get_temp_color() {
   )
   local threshold=""
 
-  for threshold in $(echo "${!temp_colors[@]}" | tr ' ' '\n' | sort -nr); do
+  for threshold in $(printf '%s\n' "${!temp_colors[@]}" | sort -nr); do
     if ((temp >= threshold)); then
       echo "${temp_colors[$threshold]}"
       return
@@ -175,7 +182,9 @@ print join("\n", @lines);
 
 resolve_temperature_value() {
   local cpu_temps="$1"
-  if [[ -n "${temperature}" ]]; then
+  # ${temperature:-} — a caller may set this from elsewhere, but on the
+  # standard polling path it isn't pre-populated.
+  if [[ -n "${temperature:-}" ]]; then
     printf '%s\n' "${temperature}"
     return
   fi
@@ -232,7 +241,12 @@ emit_cpu_json() {
   local tooltip="$3"
   local formatted_util=""
 
-  formatted_util=$(printf "%02d" "${utilization}")
+  # Cap module text at 99 so a 3-digit reading doesn't break the bar's
+  # fixed-width slot. The tooltip is built upstream with the raw value, so
+  # 100% is visible there.
+  local util_int="${utilization%%.*}"
+  [[ "${util_int}" =~ ^[0-9]+$ ]] && (( util_int > 99 )) && util_int=99
+  formatted_util=$(printf "%02d" "${util_int}")
   jq -n -c \
     --arg icon "${icon}" \
     --arg util "${formatted_util}󱉸" \

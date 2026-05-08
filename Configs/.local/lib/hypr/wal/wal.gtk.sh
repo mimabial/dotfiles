@@ -1,9 +1,16 @@
 #!/usr/bin/env bash
 # pywal16.gtk.sh - Create Pywal16-Gtk theme with dynamic border-radius
 
+set -euo pipefail
+
 LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 # shellcheck source=/dev/null
 source "${LIB_DIR}/hypr/core/hash-cache.sh" || exit 1
+if [[ -r "${LIB_DIR}/hypr/theme/phase-d.sh" ]]; then
+  # shellcheck source=/dev/null
+  source "${LIB_DIR}/hypr/theme/phase-d.sh" || exit 1
+  theme_phase_d_init "${HYPR_THEME_PHASE_D_LOCK_KEY:-theme_phase_d_gtk}"
+fi
 
 THEMES_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/themes"
 GTK_THEME_DIR="${THEMES_DIR}/Pywal16-Gtk"
@@ -85,9 +92,11 @@ write_scaled_css() {
   local source_file="$1"
   local output_dir="$2"
   local tmp_file="${output_dir}/gtk.css.tmp"
+  local tmp_output=""
 
   [[ -f "$source_file" ]] || return 0
   mkdir -p "$output_dir"
+  tmp_output="$(mktemp "${output_dir}/.gtk.css.XXXXXX")" || return 1
 
   {
     echo "/* Hyprland border radius: ${hypr_border}px */"
@@ -95,21 +104,42 @@ write_scaled_css() {
     cat "$source_file"
   } >"$tmp_file"
 
-  scale_radius "$tmp_file" "${output_dir}/gtk.css"
+  scale_radius "$tmp_file" "${tmp_output}"
   rm -f "$tmp_file"
-  ln -sf gtk.css "${output_dir}/gtk-dark.css"
+  if declare -F theme_phase_d_promote_file >/dev/null 2>&1; then
+    theme_phase_d_promote_file "${tmp_output}" "${output_dir}/gtk.css" || return 1
+    theme_phase_d_promote_symlink "gtk.css" "${output_dir}/gtk-dark.css" || return 1
+  else
+    mv -f "${tmp_output}" "${output_dir}/gtk.css"
+    ln -sf gtk.css "${output_dir}/gtk-dark.css"
+  fi
 }
 
 write_gtk2_theme() {
+  local tmp_file=""
+
   [[ -f "$gtk2_source" ]] || return 0
   mkdir -p "${GTK_THEME_DIR}/gtk-2.0"
-  cp "$gtk2_source" "${GTK_THEME_DIR}/gtk-2.0/gtkrc"
+  tmp_file="$(mktemp "${GTK_THEME_DIR}/gtk-2.0/.gtkrc.XXXXXX")" || return 1
+  cp "$gtk2_source" "${tmp_file}" || {
+    rm -f "${tmp_file}"
+    return 1
+  }
+  if declare -F theme_phase_d_promote_file >/dev/null 2>&1; then
+    theme_phase_d_promote_file "${tmp_file}" "${GTK_THEME_DIR}/gtk-2.0/gtkrc"
+  else
+    mv -f "${tmp_file}" "${GTK_THEME_DIR}/gtk-2.0/gtkrc"
+  fi
 }
 
 ensure_index_theme() {
+  local tmp_file=""
+
   [[ -f "${GTK_THEME_DIR}/index.theme" ]] && return 0
 
-  cat >"${GTK_THEME_DIR}/index.theme" <<EOF
+  mkdir -p "${GTK_THEME_DIR}" || return 1
+  tmp_file="$(mktemp "${GTK_THEME_DIR}/.index.theme.XXXXXX")" || return 1
+  cat >"${tmp_file}" <<EOF
 [Desktop Entry]
 Type=X-GNOME-Metatheme
 Name=Pywal16-Gtk
@@ -123,6 +153,12 @@ IconTheme=Adwaita
 CursorTheme=Adwaita
 ButtonLayout=close,minimize,maximize:menu
 EOF
+
+  if declare -F theme_phase_d_promote_file >/dev/null 2>&1; then
+    theme_phase_d_promote_file "${tmp_file}" "${GTK_THEME_DIR}/index.theme"
+  else
+    mv -f "${tmp_file}" "${GTK_THEME_DIR}/index.theme"
+  fi
 }
 
 notify_xsettingsd() {
@@ -130,6 +166,9 @@ notify_xsettingsd() {
 
   command -v xsettingsd >/dev/null 2>&1 || return 0
   hypr_user_pgrep -x xsettingsd >/dev/null || return 0
+  if declare -F theme_phase_d_current_generation >/dev/null 2>&1; then
+    theme_phase_d_current_generation || return 0
+  fi
 
   if [[ -f "$conf" ]]; then
     sed -i 's/^Net\/ThemeName ".*"$/Net\/ThemeName "Pywal16-Gtk"/' "$conf"
@@ -140,6 +179,10 @@ notify_xsettingsd() {
 
 notify_gtk_settings() {
   local gtk_config=""
+
+  if declare -F theme_phase_d_current_generation >/dev/null 2>&1; then
+    theme_phase_d_current_generation || return 0
+  fi
 
   for gtk_config in "${GTK_CONFIG_DIR}/gtk-3.0/settings.ini" "${GTK_CONFIG_DIR}/gtk-4.0/settings.ini"; do
     [[ -f "$gtk_config" ]] || continue
@@ -159,7 +202,15 @@ hypr_border="$(get_hypr_border)"
 combined_hash="$(input_hash)-${hypr_border}"
 theme_inputs_changed "$combined_hash" || exit 0
 
+if declare -F theme_phase_d_current_generation >/dev/null 2>&1; then
+  theme_phase_d_current_generation || exit 0
+fi
+
 write_theme
-hypr_hash_cache_store "${HASH_FILE}" "${combined_hash}"
+if declare -F theme_phase_d_run_locked_if_current >/dev/null 2>&1; then
+  theme_phase_d_run_locked_if_current hypr_hash_cache_store "${HASH_FILE}" "${combined_hash}"
+else
+  hypr_hash_cache_store "${HASH_FILE}" "${combined_hash}"
+fi
 notify_xsettingsd
 notify_gtk_settings

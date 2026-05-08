@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 # Requires bash 4+ for dynamic exec {fd}> lock descriptors.
+#
+# color.lock.sh - Acquire/release the color-gen and theme-update locks and
+# wire the EXIT trap so a failing color-sync.sh always releases what it took.
 
 color_lock_init() {
   COLOR_RUN_LOCK_FD=""
@@ -10,7 +14,6 @@ color_lock_init() {
   THEME_UPDATE_META="$(hypr_lock_path theme_update_meta)"
   THEME_SWITCH_LOCK="$(hypr_lock_path theme_switch)"
   CACHE_ONLY="${CACHE_ONLY:-${HYPR_WAL_CACHE_ONLY:-0}}"
-  ASYNC_OPTIONAL_UPDATES=1
   ASYNC_POST_UPDATES=1
   MODE_OVERRIDE="${HYPR_WAL_MODE_OVERRIDE:-}"
   CACHE_ONLY_ROOT=""

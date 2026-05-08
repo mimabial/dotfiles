@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 
 _idle_state_helper_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 

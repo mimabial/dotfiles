@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Sync theme changes to all running Neovim instances
 
+set -euo pipefail
+
 theme_file="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/theme.conf"
 
 log_dir="${XDG_CACHE_HOME:-$HOME/.cache}/hypr"

@@ -34,7 +34,7 @@ print_usage() {
 
 usage_error() {
   print_usage >&2
-  exit 1
+  exit 2
 }
 
 runtime="${1:-}"

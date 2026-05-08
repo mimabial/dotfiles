@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-
-exec "$HOME/.local/lib/hypr/fonts/find-unused.sh" "$@"

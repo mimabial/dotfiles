@@ -3,11 +3,10 @@
 
 set -euo pipefail
 
+# shellcheck source=/home/rifle/.local/bin/hyprshell
 source "$(command -v hyprshell)" || exit 1
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/core/notify.sh"
-# shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/pkg/pacman.lib.bash"
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/fonts/font-nerd.common.bash"
 
@@ -30,7 +29,7 @@ install_nerd_font_packages() {
 
   package_label="$(font_packages_label "${packages[@]}")"
 
-  if run_pacman_privileged -S --needed --noconfirm -- "${packages[@]}"; then
+  if hyprshell pm add "${packages[@]}"; then
     echo
     echo "Refreshing font cache..."
     refresh_font_cache
@@ -73,6 +72,6 @@ case "${1:-}" in
     echo "Unknown mode: $1" >&2
     echo >&2
     usage >&2
-    exit 1
+    exit 2
     ;;
 esac

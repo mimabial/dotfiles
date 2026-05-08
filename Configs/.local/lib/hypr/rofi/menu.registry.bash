@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 
 HYPR_MENU_REGISTERED="${HYPR_MENU_REGISTERED:-0}"
 

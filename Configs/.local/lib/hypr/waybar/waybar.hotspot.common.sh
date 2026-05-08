@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 
 # shellcheck source=/dev/null
 source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/waybar.notify.common.sh"

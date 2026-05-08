@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 
 nerd_font_display_name_from_package() {
   local pkg="$1"
@@ -29,7 +30,7 @@ nerd_font_populate_metadata_labels() {
   local description=""
   local label=""
 
-  local -n out_map_ref="${out_map_name}"
+  local -n metadata_label_map_ref="${out_map_name}"
 
   [[ "${#packages[@]}" -gt 0 ]] || return 0
 
@@ -37,7 +38,8 @@ nerd_font_populate_metadata_labels() {
     [[ -n "${pkg}" ]] || continue
     label="$(nerd_font_metadata_display_name "${description}" || true)"
     [[ -n "${label}" ]] || continue
-    out_map_ref["${pkg}"]="${label}"
+    # shellcheck disable=SC2034 # Nameref output assigned for the caller.
+    metadata_label_map_ref["${pkg}"]="${label}"
   done < <(
     pacman -Si -- "${packages[@]}" 2>/dev/null |
       awk '
@@ -66,10 +68,10 @@ nerd_font_menu_build() {
   local -A seen_labels=()
   local -A metadata_labels=()
 
-  local -n out_labels_ref="${out_labels_name}"
-  local -n out_map_ref="${out_map_name}"
-  out_labels_ref=()
-  out_map_ref=()
+  local -n font_menu_labels_ref="${out_labels_name}"
+  local -n font_menu_package_map_ref="${out_map_name}"
+  font_menu_labels_ref=()
+  font_menu_package_map_ref=()
 
   case "${mode}" in
     installable)
@@ -97,8 +99,9 @@ nerd_font_menu_build() {
       label="${label} [${pkg}]"
     fi
     seen_labels["${label}"]=1
-    out_labels_ref+=("${label}")
-    out_map_ref["${label}"]="${pkg}"
+    font_menu_labels_ref+=("${label}")
+    # shellcheck disable=SC2034 # Associative-array output assigned for the caller.
+    font_menu_package_map_ref["${label}"]="${pkg}"
   done <<<"${package_list}"
 }
 

@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=/dev/null
 source "${script_dir}/waybar.vpn.common.sh"
@@ -37,7 +39,9 @@ load_ipinfo_token() {
 }
 
 enable_geolocation_if_allowed() {
-  waybar_vpn_env_flag "${WAYBAR_VPN_ALLOW_AUTO_GEOLOCATION:-false}" && allow_auto_geolocation=true
+  if waybar_vpn_env_flag "${WAYBAR_VPN_ALLOW_AUTO_GEOLOCATION:-false}"; then
+    allow_auto_geolocation=true
+  fi
 }
 
 fetch_ipinfo() {
@@ -68,8 +72,8 @@ check_mullvad() {
   local location=""
   local ipv4=""
 
-  [[ "${vpn_provider}" == auto || "${vpn_provider}" == mullvad ]] || return 1
-  waybar_have_command mullvad || return 1
+  [[ "${vpn_provider}" == auto || "${vpn_provider}" == mullvad ]] || return 0
+  waybar_have_command mullvad || return 0
 
   has_vpn_client=true
   if ! mullvad_status="$(waybar_mullvad_status)"; then

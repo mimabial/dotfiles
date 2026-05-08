@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Sourced module; strict mode is owned by the entrypoint.
 
 # Core command helpers for hyprshell.
 
@@ -8,7 +9,7 @@ hyprshell_builtin_commands() {
     "-r" "reload" \
     "--version" "version" "-v" \
     "--release-notes" "release-notes" \
-    "--list-script" "--list-script-path" \
+    "list" "--list-script" "--list-script-path" \
     "--completions" \
     "validate" "pyinit" "init" "lock-session" "logout" "pip" "pypr" "app"
 }
@@ -39,6 +40,7 @@ Commands:
   pyinit                        : Initialize python virtual environment
   version                       : Show version information
   init                          : Source initialization script
+  list                          : List script entrypoints
 
 Available commands:
 
@@ -50,7 +52,7 @@ EOT
 hyprreload() {
   print_log -sec "Hyprland" "Reloading Hyprland Environment"
   python_initialized
-  run_lib_script "wallpaper/awww-wallcache.sh" -t ""
+  run_lib_script "wallpaper/wallpaper.cache.sh" -t ""
   run_lib_script "theme/theme.switch.sh"
 }
 

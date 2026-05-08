@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-toggle_running_rofi() {
-  pkill -u "$USER" -x rofi >/dev/null 2>&1 && exit 0
-}
+ROFI_SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
+source "${ROFI_SCRIPT_DIR}/close.bash" || exit 1
 
 ensure_rofi_runtime() {
   local lib_root="${LIB_DIR:-}"
@@ -18,15 +18,18 @@ ensure_rofi_runtime() {
   source "${lib_root}/hypr/globalcontrol.sh" || return 1
 }
 
-toggle_running_rofi
-
 ensure_rofi_runtime || exit 1
+rofi_close_running
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
 
 resolve_rofi_launcher_theme() {
   local style_ref="${1:-${ROFI_LAUNCH_STYLE:-style_1}}"
   rofi_resolve_theme "$(rofi_normalize_launcher_style "${style_ref}")"
+}
+
+launcher_run_command() {
+  printf '%s\n' "${ROFI_SCRIPT_DIR}/run-after-close.sh -- hyprshell app -- {cmd}"
 }
 
 show_help() {
@@ -136,6 +139,11 @@ launcher_style_select() {
 
   selected_style="$(
     list_launcher_styles | rofi -dmenu -i \
+      -sync \
+      -no-custom \
+      -hover-select \
+      -me-select-entry "" \
+      -me-accept-entry MousePrimary \
       -theme "$(rofi_resolve_theme "${ROFI_SELECT_STYLE:-theme_select}")" \
       -theme-str "${font_override}" \
       -theme-str "${r_override}" \
@@ -155,7 +163,7 @@ configure_mode() {
   configure_drun_mode() {
     r_mode="drun"
     rofi_config="$(resolve_rofi_launcher_theme "${ROFI_LAUNCH_DRUN_STYLE:-${ROFI_LAUNCH_STYLE:-style_1}}")"
-    rofi_args+=("${ROFI_LAUNCH_DRUN_ARGS[@]:-}" "-run-command" "app2unit.sh -- {cmd}")
+    rofi_args+=("${ROFI_LAUNCH_DRUN_ARGS[@]:-}" "-run-command" "$(launcher_run_command)")
   }
 
   case "${action}" in
@@ -173,7 +181,7 @@ configure_mode() {
     r|--run)
       r_mode="run"
       rofi_config="$(resolve_rofi_launcher_theme "${ROFI_LAUNCH_RUN_STYLE:-${ROFI_LAUNCH_STYLE:-style_1}}")"
-      rofi_args+=("-run-command" "app2unit.sh -- {cmd}" "${ROFI_LAUNCH_RUN_ARGS[@]:-}")
+      rofi_args+=("-run-command" "$(launcher_run_command)" "${ROFI_LAUNCH_RUN_ARGS[@]:-}")
       ;;
     s|-s|--select-style)
       launcher_style_select

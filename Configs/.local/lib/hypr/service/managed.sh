@@ -33,6 +33,11 @@ USAGE
 
 mode=""
 declare -a forwarded_args=()
+declare -a hypr_service_cli_args=()
+hypr_service_cli_show_diff=0
+hypr_service_cli_quiet=0
+hypr_service_cli_backup_label=""
+
 hypr_service_parse_mode_cli usage mode forwarded_args "$@"
 hypr_service_validate_mode "${mode}" || {
   usage

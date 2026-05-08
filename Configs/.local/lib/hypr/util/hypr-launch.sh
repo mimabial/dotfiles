@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 source "$(command -v hyprshell)" || exit 1
 
 # Declare an associative array for special cases
@@ -103,9 +105,10 @@ main() {
   local mime_type
   mime_type=$(find_mime_type "$input")
 
+  local app2unit="${HYPR_LIB_DIR}/system/app2unit.sh"
   if [[ -z "${mime_type}" ]]; then
     printf 'Error: No matching MIME type found for %s\n\n' "${input}" >&2
-    [[ -n "${fallbackCmd}" ]] && exec app2unit.sh "${fallbackCmd}"
+    [[ -n "${fallbackCmd}" ]] && exec "${app2unit}" "${fallbackCmd}"
     exit 1
   fi
 
@@ -113,15 +116,15 @@ main() {
   default_app=$(xdg-mime query default "$mime_type")
   if [[ -z "${default_app}" ]]; then
     printf 'Error: No default application found for %s\n\n' "${mime_type}" >&2
-    [[ -n "${fallbackCmd}" ]] && exec app2unit.sh "${fallbackCmd}"
+    [[ -n "${fallbackCmd}" ]] && exec "${app2unit}" "${fallbackCmd}"
     exit 1
   fi
 
   if [ "${std_only}" = true ]; then
     echo "${default_app}"
   else
-    if ! app2unit.sh "${default_app}"; then
-      [[ -n "${fallbackCmd}" ]] && app2unit.sh "${fallbackCmd}"
+    if ! "${app2unit}" "${default_app}"; then
+      [[ -n "${fallbackCmd}" ]] && "${app2unit}" "${fallbackCmd}"
     fi
   fi
 }

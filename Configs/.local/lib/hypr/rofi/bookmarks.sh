@@ -15,7 +15,7 @@ setup_rofi_config
 browser_name=$(basename "$(xdg-settings get default-web-browser)" .desktop)
 browser_name=${BROWSER:-${browser_name}}
 
-selection=$(python "$LIB_DIR/hypr/rofi/bookmarks.py" --list | rofi -dmenu -i \
+selection=$(python3 "$LIB_DIR/hypr/rofi/lib/bookmarks.py" --list | rofi -dmenu -i \
   -theme-str "entry { placeholder: \" 🌐 Launch: ${browser_name} \";}" \
   -config "$(rofi_resolve_theme "${ROFI_BOOKMARK_STYLE:-clipboard}")" \
   -theme-str "${r_override}" \
@@ -23,4 +23,4 @@ selection=$(python "$LIB_DIR/hypr/rofi/bookmarks.py" --list | rofi -dmenu -i \
   -theme-str "window {width: 50%;}" \
   ${_rofi_opacity:+-theme-str "${_rofi_opacity}"})
 
-[ -n "$selection" ] && python "$LIB_DIR/hypr/rofi/bookmarks.py" "$selection"
+[ -n "$selection" ] && python3 "$LIB_DIR/hypr/rofi/lib/bookmarks.py" "$selection"
