@@ -3,7 +3,9 @@
 set -euo pipefail
 
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
+source "${LIB_DIR:-$HOME/.local/lib}/hypr/runtime/init.bash" || exit 1
+hypr_runtime_require state || exit 1
+hypr_runtime_load_state || exit 1
 dock=${BATTERY_NOTIFY_DOCK:-false}
 
 # Notification icons follow the standard battery icon naming scheme.

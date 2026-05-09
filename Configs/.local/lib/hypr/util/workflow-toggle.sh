@@ -3,7 +3,9 @@
 set -euo pipefail
 
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
+source "${LIB_DIR:-$HOME/.local/lib}/hypr/runtime/init.bash" || exit 1
+hypr_runtime_require state system || exit 1
+hypr_runtime_load_state || exit 1
 
 focusmode_state_file="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/focusmode.conf"
 gamemode_state_file="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/gamemode.conf"

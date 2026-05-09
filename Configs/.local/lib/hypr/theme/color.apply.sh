@@ -21,8 +21,8 @@
 #
 # DEPENDENCIES:
 #   - LIB_DIR must be set (path to ~/.local/lib)
-#   - print_log function from globalcontrol.sh
-#   - ini_write function from globalcontrol.sh (for post_updates)
+#   - print_log function from core/notify.sh
+#   - ini_write function from core/system.sh (for post_updates)
 
 # Primary and secondary theming scripts are defined here so color-sync.sh does
 # not need to shadow the same orchestration logic.

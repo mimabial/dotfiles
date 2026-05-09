@@ -15,7 +15,8 @@ ensure_rofi_runtime() {
   fi
 
   # shellcheck source=/dev/null
-  source "${lib_root}/hypr/globalcontrol.sh" || return 1
+  source "${lib_root}/hypr/runtime/init.bash" || return 1
+  hypr_runtime_bootstrap || return 1
 }
 
 ensure_rofi_runtime || exit 1

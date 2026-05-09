@@ -82,8 +82,7 @@ for hyprshell_lib in \
 done
 
 if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
-  # shellcheck source=/dev/null
-  if ! source "${LIB_DIR}/hypr/globalcontrol.sh"; then
+  if ! hypr_runtime_bootstrap; then
     echo "Error: Could not load config, broken installation?"
     return 1
   fi

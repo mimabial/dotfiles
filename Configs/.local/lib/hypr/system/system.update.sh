@@ -5,7 +5,8 @@ set -euo pipefail
 [[ -f /etc/arch-release ]] || exit 0
 
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
+source "${LIB_DIR:-$HOME/.local/lib}/hypr/runtime/init.bash"
+hypr_runtime_require system || exit 1
 if aur_helper="$(get_aur_helper)"; then
   :
 else

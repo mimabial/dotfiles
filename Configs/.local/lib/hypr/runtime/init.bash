@@ -49,6 +49,9 @@ export HYPR_HASH_COMMAND="${HYPR_HASH_COMMAND:-xxh64sum}"
 declare -p WALLPAPER_FILETYPES >/dev/null 2>&1 || declare -ga WALLPAPER_FILETYPES=()
 declare -p WALLPAPER_OVERRIDE_FILETYPES >/dev/null 2>&1 || declare -ga WALLPAPER_OVERRIDE_FILETYPES=()
 declare -p WALLPAPER_CUSTOM_PATHS >/dev/null 2>&1 || declare -ga WALLPAPER_CUSTOM_PATHS=()
+declare -p wallHash >/dev/null 2>&1 || declare -ga wallHash=()
+declare -p wallList >/dev/null 2>&1 || declare -ga wallList=()
+declare -p wallPathArray >/dev/null 2>&1 || declare -ga wallPathArray=()
 
 for _hypr_runtime_core in \
   "${HYPR_LIB_DIR}/core/notify.sh" \
@@ -99,7 +102,25 @@ hypr_runtime_require() {
 
 hypr_runtime_load_state() {
   hypr_runtime_require state wallpaper_catalog || return 1
-  export_hypr_config
+  export_hypr_config || return 1
+  hypr_runtime_refresh_border_metrics
+}
+
+hypr_runtime_refresh_border_metrics() {
+  local runtime_border_radius=""
+  local runtime_border_width=""
+
+  if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
+    hypr_border_metrics_into runtime_border_radius runtime_border_width 2>/dev/null || true
+  fi
+
+  export HYPR_RUNTIME_BORDER_RADIUS="${runtime_border_radius:-${HYPR_BORDER_RADIUS:-2}}"
+  export HYPR_RUNTIME_BORDER_WIDTH="${runtime_border_width:-${HYPR_BORDER_WIDTH:-2}}"
+}
+
+hypr_runtime_bootstrap() {
+  hypr_runtime_require state system rofi wallpaper_catalog || return 1
+  hypr_runtime_load_state
 }
 
 unset __hypr_runtime_dir __hypr_runtime_root

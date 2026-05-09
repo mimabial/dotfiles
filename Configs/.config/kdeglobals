@@ -57,7 +57,7 @@ TerminalApplication=kitty
 TerminalService=kitty.desktop
 
 [Icons]
-Theme=Tela-red-dark
+Theme=Tela-circle-black-dark
 
 [KDE]
 ShowDeleteCommand=false

@@ -20,12 +20,15 @@ HYPR_SHELL_INIT=1
 BIN_DIR="${BIN_DIR}"
 LIB_DIR="${LIB_DIR}"
 PATH=${PATH}
-HYPR_SCRIPTS_PATH=${HYPR_SCRIPTS_PATH}
-export BIN_DIR LIB_DIR PATH HYPR_SCRIPTS_PATH HYPR_SHELL_INIT
+  HYPR_SCRIPTS_PATH=${HYPR_SCRIPTS_PATH}
+  export BIN_DIR LIB_DIR PATH HYPR_SCRIPTS_PATH HYPR_SHELL_INIT
 EOT
 
-  # Remove shebang hints to avoid conflicts with eval.
-  command cat "${LIB_DIR}/hypr/globalcontrol.sh" | sed '1{/^#!/d;}'
+  cat <<'EOT'
+# shellcheck source=/dev/null
+source "${LIB_DIR}/hypr/runtime/init.bash" || return 1 2>/dev/null || exit 1
+hypr_runtime_bootstrap || return 1 2>/dev/null || exit 1
+EOT
 }
 
 USAGE() {

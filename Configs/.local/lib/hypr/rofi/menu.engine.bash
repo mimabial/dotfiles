@@ -18,10 +18,6 @@ declare -gA HYPR_MENU_ITEMS=()
 declare -gA HYPR_MENU_PARENTS=()
 declare -ga HYPR_MENU_ACTION_HANDLERS=()
 
-menu_spawn_entry() {
-  setsid -f hyprshell rofi/menutree.sh "$@" >/dev/null 2>&1
-}
-
 back_to() {
   menu_exit_or_show "${1:-main}"
 }

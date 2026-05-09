@@ -174,14 +174,6 @@ hypr_config_value_from_layers() {
   return 0
 }
 
-hypr_border_metrics() {
-  local border=""
-  local width=""
-
-  hypr_border_metrics_into border width || return 1
-  printf '%s\t%s\n' "${border}" "${width}"
-}
-
 hypr_border_metrics_into() {
   local border_name="${1:-}"
   local width_name="${2:-}"

@@ -8,19 +8,6 @@ if ! declare -F hypr_hash_cache_digest_files >/dev/null 2>&1; then
   source "${LIB_DIR:-$HOME/.local/lib}/hypr/core/hash-cache.sh" || return 1 2>/dev/null || exit 1
 fi
 
-color_replace_if_changed() {
-  local target_file="$1"
-  local tmp_file="$2"
-
-  if [[ -f "${target_file}" ]] && cmp -s "${tmp_file}" "${target_file}"; then
-    rm -f "${tmp_file}"
-    return 1
-  fi
-
-  mv -f "${tmp_file}" "${target_file}"
-  return 0
-}
-
 load_theme_palette() {
   local theme_file="${1}"
   local bg_name="$2" fg_name="$3" cursor_name="$4" colors_name="$5"

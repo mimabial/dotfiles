@@ -1,6 +1,6 @@
 $HOME/.config/waybar/theme.css
 
-@define-color bg #262335;
+@define-color bg #2a2139;
 @define-color fg #ff7edb;
 @define-color br #65baff;
 

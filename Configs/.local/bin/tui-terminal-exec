@@ -13,11 +13,15 @@ hypr_width=""
 hypr_height=""
 app_id=""
 title=""
+print_path=0
+print_cmd=0
+print_cmd_sep=$'\037'
 cmd=()
+terminal_args=()
 terminal_launch=()
 
 usage() {
-  printf 'Usage: %s [--hypr-profile NAME] [--hypr-size WIDTH HEIGHT] [--app-id ID] [--title TITLE] -- <command> [args...]\n' "$(basename "$0")" >&2
+  printf 'Usage: %s [--hypr-profile NAME] [--hypr-size WIDTH HEIGHT] [--app-id ID] [--title TITLE] [--] [command [args...]]\n' "$(basename "$0")" >&2
 }
 
 require_option_args() {
@@ -33,10 +37,30 @@ require_option_args() {
 parse_args() {
   while [[ "$#" -gt 0 ]]; do
     case "$1" in
+      --hypr-profile=*)
+        hypr_profile="${1#--hypr-profile=}"
+        shift
+        ;;
       --hypr-profile)
         require_option_args "$1" 2 "$@"
         hypr_profile="$2"
         shift 2
+        ;;
+      --hypr-size=*)
+        hypr_width="${1#--hypr-size=}"
+        if [[ "${hypr_width}" != *,* ]]; then
+          printf 'Expected --hypr-size=WIDTH,HEIGHT\n' >&2
+          usage
+          exit 2
+        fi
+        hypr_height="${hypr_width#*,}"
+        hypr_width="${hypr_width%%,*}"
+        [[ -n "${hypr_width}" && -n "${hypr_height}" ]] || {
+          printf 'Expected --hypr-size=WIDTH,HEIGHT\n' >&2
+          usage
+          exit 2
+        }
+        shift
         ;;
       --hypr-size)
         require_option_args "$1" 3 "$@"
@@ -44,32 +68,56 @@ parse_args() {
         hypr_height="$3"
         shift 3
         ;;
+      --app-id=*)
+        app_id="${1#--app-id=}"
+        shift
+        ;;
       --app-id)
         require_option_args "$1" 2 "$@"
         app_id="$2"
         shift 2
+        ;;
+      --title=*)
+        title="${1#--title=}"
+        shift
         ;;
       --title)
         require_option_args "$1" 2 "$@"
         title="$2"
         shift 2
         ;;
+      --print-path)
+        print_path=1
+        shift
+        ;;
+      --print-cmd)
+        print_cmd=1
+        shift
+        ;;
+      --print-cmd=*)
+        print_cmd=1
+        print_cmd_sep="$(printf '%b' "${1#--print-cmd=}")"
+        shift
+        ;;
+      -h | --help)
+        usage
+        exit 0
+        ;;
       --)
         shift
         cmd=("$@")
         break
         ;;
-      *)
-        cmd+=("$1")
+      -*)
+        terminal_args+=("$1")
         shift
+        ;;
+      *)
+        cmd=("$@")
+        break
         ;;
     esac
   done
-
-  [[ "${#cmd[@]}" -gt 0 ]] || {
-    usage
-    exit 2
-  }
 }
 
 apply_geometry_profile() {
@@ -120,6 +168,8 @@ resolve_percentages() {
 }
 
 validate_exec_command() {
+  ((${#cmd[@]} > 0)) || return 0
+
   if [[ "${cmd[0]}" == */* ]]; then
     [[ -x "${cmd[0]}" ]] && return 0
   elif command -v "${cmd[0]}" >/dev/null 2>&1; then
@@ -133,7 +183,7 @@ validate_exec_command() {
 build_terminal_command() {
   local terminal_name="${TERMINAL_TUI##*/}"
 
-  terminal_launch=("${TERMINAL_TUI}")
+  terminal_launch=("${TERMINAL_TUI}" "${terminal_args[@]}")
 
   case "${terminal_name}" in
     kitty)
@@ -144,7 +194,7 @@ build_terminal_command() {
     alacritty)
       [[ -n "${app_id}" ]] && terminal_launch+=(--class "${app_id}")
       [[ -n "${title}" ]] && terminal_launch+=(--title "${title}")
-      terminal_launch+=(-e "${cmd[@]}")
+      ((${#cmd[@]} > 0)) && terminal_launch+=(-e "${cmd[@]}")
       ;;
     *)
       if [[ -n "${app_id}" || -n "${title}" ]]; then
@@ -153,6 +203,50 @@ build_terminal_command() {
       terminal_launch+=("${cmd[@]}")
       ;;
   esac
+}
+
+terminal_desktop_path() {
+  local terminal_name="${TERMINAL_TUI##*/}"
+  local candidate=""
+  local -a app_dirs=(
+    "${XDG_DATA_HOME:-$HOME/.local/share}/applications"
+    "/usr/local/share/applications"
+    "/usr/share/applications"
+  )
+
+  for candidate in \
+    "${terminal_name}.desktop" \
+    "org.${terminal_name}.${terminal_name}.desktop" \
+    "org.${terminal_name}.desktop"; do
+    local app_dir=""
+    for app_dir in "${app_dirs[@]}"; do
+      [[ -f "${app_dir}/${candidate}" ]] || continue
+      printf '%s\n' "${app_dir}/${candidate}"
+      return 0
+    done
+  done
+
+  return 1
+}
+
+print_terminal_target() {
+  local desktop_path=""
+  local joined_cmd=""
+
+  build_terminal_command
+
+  if [[ "${print_path}" -eq 1 ]]; then
+    desktop_path="$(terminal_desktop_path)" || return 1
+    printf '%s' "${desktop_path}"
+  fi
+
+  if [[ "${print_cmd}" -eq 1 ]]; then
+    ((${print_path} == 1)) && printf '\n'
+    if ((${#terminal_launch[@]} > 0)); then
+      printf -v joined_cmd "%s${print_cmd_sep}" "${terminal_launch[@]}"
+      printf '%s' "${joined_cmd%"${print_cmd_sep}"}"
+    fi
+  fi
 }
 
 inject_window_rules() {
@@ -189,6 +283,12 @@ main() {
   parse_args "$@"
   apply_geometry_profile || return 2
   resolve_percentages || return 2
+
+  if [[ "${print_path}" -eq 1 || "${print_cmd}" -eq 1 ]]; then
+    print_terminal_target
+    return $?
+  fi
+
   validate_exec_command || return $?
   build_terminal_command
 

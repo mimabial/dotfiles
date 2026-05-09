@@ -152,38 +152,6 @@ paste_string() {
   fi
 }
 
-#? Checks if the cursor is hovered on a window
-is_hovered() {
-  local -a hovered_values=()
-  local cursor_x=0 cursor_y=0 window_x=0 window_y=0 window_size_x=0 window_size_y=0
-
-  readarray -t hovered_values < <(
-    hyprctl --batch -j "cursorpos;activewindow" | jq -sr '
-      .[0] * .[1]
-      |
-      (.x // 0),
-      (.y // 0),
-      (.at[0] // 0),
-      (.at[1] // 0),
-      (.size[0] // 0),
-      (.size[1] // 0)
-    '
-  )
-  ((${#hovered_values[@]} == 6)) || return 1
-
-  cursor_x="${hovered_values[0]}"
-  cursor_y="${hovered_values[1]}"
-  window_x="${hovered_values[2]}"
-  window_y="${hovered_values[3]}"
-  window_size_x="${hovered_values[4]}"
-  window_size_y="${hovered_values[5]}"
-  # Check if the cursor is hovered in the active window
-  if ((cursor_x >= window_x && cursor_x <= window_x + window_size_x && cursor_y >= window_y && cursor_y <= window_y + window_size_y)); then
-    return 0
-  fi
-  return 1
-}
-
 # ============================================================================
 # ini_write - Write a key=value pair to an INI/KConfig file
 # ============================================================================

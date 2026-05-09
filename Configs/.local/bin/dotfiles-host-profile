@@ -2,6 +2,9 @@
 
 set -euo pipefail
 
+# shellcheck source=/dev/null
+source "${HOME}/.local/bin/.common.bash"
+
 DOTFILES_DIR="${DOTFILES_DIR:-$HOME/dotfiles/Configs}"
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/hypr"
 STATE_FILE="${STATE_DIR}/host-profile"
@@ -19,11 +22,6 @@ Commands:
   apply --dry-run     Preview host profile changes without writing
   help                Show this help
 USAGE
-}
-
-die() {
-  printf '%s\n' "$*" >&2
-  exit 1
 }
 
 require_rsync() {

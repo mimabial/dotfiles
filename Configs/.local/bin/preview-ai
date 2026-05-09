@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# shellcheck source=/dev/null
+source "${HOME}/.local/bin/.common.bash"
+
 PREVIEW_TITLE="${PREVIEW_AI_TITLE:-ai-preview}"
 SPLIT_PERCENT="${PREVIEW_AI_SPLIT_PERCENT:-45}"
 POPUP_WIDTH="${PREVIEW_AI_POPUP_WIDTH:-80%}"
@@ -29,15 +32,6 @@ Types:
 EOF
 }
 
-die() {
-  printf '%s\n' "$*" >&2
-  exit 1
-}
-
-have() {
-  command -v "$1" >/dev/null 2>&1
-}
-
 shell_join() {
   local out=""
   local arg
@@ -47,15 +41,6 @@ shell_join() {
   done
 
   printf '%s\n' "${out% }"
-}
-
-expand_path() {
-  local value="${1:-}"
-  if [[ "${value}" == \~/* ]]; then
-    printf '%s\n' "${HOME}/${value#~/}"
-  else
-    printf '%s\n' "${value}"
-  fi
 }
 
 current_window_target() {

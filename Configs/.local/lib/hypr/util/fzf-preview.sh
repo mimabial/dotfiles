@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/globalcontrol.sh"
+source "${LIB_DIR:-$HOME/.local/lib}/hypr/runtime/init.bash" || exit 1
 
 PREVIEW=${1}
 MESSAGE=${2}

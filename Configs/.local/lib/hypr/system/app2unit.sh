@@ -5,7 +5,7 @@ N='
 OIFS=$IFS
 RSEP=$(printf '%b' '\036')
 USEP=$(printf '%b' '\037')
-TERMINAL_HANDLER=xdg-terminal-exec
+TERMINAL_HANDLER=tui-terminal-exec
 SELF_NAME=${0##*/}
 APP2UNIT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)
 
