@@ -26,7 +26,7 @@ find_wallpapers() {
   done
   find_args+=(\) ! -path "*/logo/*" -exec "${HYPR_HASH_COMMAND}" {} +)
 
-  [[ "${LOG_LEVEL}" == "debug" ]] && print_log -g "DEBUG:" -b "Running find with args:" "${find_args[*]}"
+  [[ "${LOG_LEVEL:-}" == "debug" ]] && print_log -g "DEBUG:" -b "Running find with args:" "${find_args[*]}"
 
   local tmpfile error_output
   tmpfile=$(mktemp)
@@ -66,7 +66,7 @@ get_hashmap_into() {
 
   for wallSource in "${wall_sources[@]}"; do
 
-    [[ "${LOG_LEVEL}" == "debug" ]] && print_log -g "DEBUG:" -b "wallpaper source path:" "${wallSource}"
+    [[ "${LOG_LEVEL:-}" == "debug" ]] && print_log -g "DEBUG:" -b "wallpaper source path:" "${wallSource}"
 
     [[ -z "${wallSource}" ]] && continue
     wallSource="$(realpath "${wallSource}")"
@@ -76,7 +76,7 @@ get_hashmap_into() {
       continue
     }
 
-    [[ "${LOG_LEVEL}" == "debug" ]] && print_log -g "DEBUG:" -b "wallSource path:" "${wallSource}"
+    [[ "${LOG_LEVEL:-}" == "debug" ]] && print_log -g "DEBUG:" -b "wallSource path:" "${wallSource}"
 
     hashMap=$(find_wallpapers "${wallSource}" "${supported_files[@]}")
 

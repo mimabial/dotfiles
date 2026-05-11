@@ -73,7 +73,7 @@ tesseract_languages+=("osd")
 mkdir -p "$save_dir"
 
 # Add any additional annotation arguments
-[[ -n "${SCREENSHOT_ANNOTATION_ARGS[*]}" ]] && annotation_args+=("${SCREENSHOT_ANNOTATION_ARGS[@]}")
+[[ -n "${SCREENSHOT_ANNOTATION_ARGS[*]:-}" ]] && annotation_args+=("${SCREENSHOT_ANNOTATION_ARGS[@]}")
 
 run_annotation() {
   if ! command -v "${annotation_tool}" >/dev/null 2>&1; then

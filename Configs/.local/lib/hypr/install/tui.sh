@@ -15,13 +15,13 @@ desktop_exec_escape() {
 
 if [ "$#" -ne 4 ]; then
   echo -e "\e[32mLet's create a TUI shortcut you can start with the app launcher.\n\e[0m"
-  read -p "Name> " APP_NAME
+  read -r -p "Name> " APP_NAME
   [[ -z "$APP_NAME" ]] && exit 0
-  read -p "Launch Command> " APP_EXEC
+  read -r -p "Launch Command> " APP_EXEC
   [[ -z "$APP_EXEC" ]] && exit 0
   WINDOW_STYLE=$(echo -e "float\ntile" | fzf --prompt="Window style > " --height=3 --reverse)
   [[ -z "$WINDOW_STYLE" ]] && exit 0
-  read -p "Icon URL> " ICON_URL
+  read -r -p "Icon URL> " ICON_URL
   [[ -z "$ICON_URL" ]] && exit 0
 else
   APP_NAME="$1"

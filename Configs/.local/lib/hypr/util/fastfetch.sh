@@ -32,7 +32,7 @@ FASTFETCH_CONFIG_FILE="${FASTFETCH_CONFIG_HOME}/config.jsonc"
 FASTFETCH_LOGO_DIR="${FASTFETCH_CONFIG_HOME}/logo"
 HYPR_CACHE_HOME="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}"
 WALLPAPER_CURRENT_DIR="${WALLPAPER_CURRENT_DIR:-${HYPR_CACHE_HOME}/wallpaper/current}"
-distro_logo=${iconDir}/Pywal16-Icon/distro/$LOGO
+distro_logo=${iconDir}/Pywal16-Icon/distro/${LOGO:-}
 image_dirs=()
 
 USAGE() {

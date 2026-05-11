@@ -82,8 +82,8 @@ fn_select() {
     "Select workflow" \
     " Workflow" \
     "clipboard" \
-    "${ROFI_WORKFLOW_SCALE}" \
-    "${ROFI_WORKFLOW_FONT:-$ROFI_FONT}"
+    "${ROFI_WORKFLOW_SCALE:-}" \
+    "${ROFI_WORKFLOW_FONT:-${ROFI_FONT:-}}"
   rofi_args+=(-select "${HYPR_WORKFLOW:-default}")
 
   selected_workflow=$(echo -e "${workflow_list}" \

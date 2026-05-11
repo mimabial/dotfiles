@@ -21,7 +21,7 @@ map_floor() {
       return
     fi
   done
-  [ -n "$def_val" ] && echo $def_val || echo " "
+  [ -n "$def_val" ] && echo "$def_val" || echo " "
 }
 
 # Keep icon levels stable near thresholds.

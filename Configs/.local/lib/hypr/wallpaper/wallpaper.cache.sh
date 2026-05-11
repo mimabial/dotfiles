@@ -161,8 +161,8 @@ write_main_thumb() {
   magick_args=("${magick_args[@]:2}")
   local tmp_thmb="${WALLPAPER_THUMB_DIR}/.${x_hash}.thmb.png"
 
-  magick "${magick_args[@]}" "${source_image}"[0] -strip -resize 1000 -gravity center -extent 1000 -quality 90 "png:${tmp_thmb}" &&
-    mv -f "${tmp_thmb}" "${WALLPAPER_THUMB_DIR}/${x_hash}.thmb" || rm -f "${tmp_thmb}"
+  { magick "${magick_args[@]}" "${source_image}"[0] -strip -resize 1000 -gravity center -extent 1000 -quality 90 "png:${tmp_thmb}" &&
+    mv -f "${tmp_thmb}" "${WALLPAPER_THUMB_DIR}/${x_hash}.thmb"; } || rm -f "${tmp_thmb}"
 }
 
 write_square_thumb() {
@@ -182,8 +182,8 @@ write_blur_thumb() {
   magick_args=("${magick_args[@]:2}")
   local tmp_blur="${WALLPAPER_THUMB_DIR}/.${x_hash}.blur.png"
 
-  magick "${magick_args[@]}" "${source_image}"[0] -strip -scale 10% -blur 0x3 -resize 100% "png:${tmp_blur}" &&
-    mv -f "${tmp_blur}" "${WALLPAPER_THUMB_DIR}/${x_hash}.blur" || rm -f "${tmp_blur}"
+  { magick "${magick_args[@]}" "${source_image}"[0] -strip -scale 10% -blur 0x3 -resize 100% "png:${tmp_blur}" &&
+    mv -f "${tmp_blur}" "${WALLPAPER_THUMB_DIR}/${x_hash}.blur"; } || rm -f "${tmp_blur}"
 }
 
 write_quad_thumb() {
@@ -371,7 +371,7 @@ run_cache_jobs() {
   [[ ${#wallList[@]} -eq 0 ]] && exit 0
   script_path="$(realpath "${BASH_SOURCE[0]}")" || exit 1
   parallel --bar --link --jobs "${WALLPAPER_CACHE_JOBS}" \
-    "${script_path}" --build"${mode}" {1} {2} ::: "${wallHash[@]}" ::: "${wallList[@]}"
+    "${script_path}" --build"${mode}" '{1}' '{2}' ::: "${wallHash[@]}" ::: "${wallList[@]}"
 }
 
 dispatch_internal_job() {

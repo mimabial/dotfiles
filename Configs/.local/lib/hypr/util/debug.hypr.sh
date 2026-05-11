@@ -59,7 +59,7 @@ $(journalctl -b -p 4..1)
 =========================================
 INSTALLED PACKAGES
 =========================================
-$({ expac -S '%n %v (%r)' $(pacman -Qqe) 2>/dev/null; comm -13 <(pacman -Sql | sort) <(pacman -Qqe | sort) | xargs -r expac -Q '%n %v (AUR)'; } | sort)
+$({ pacman -Qqe | xargs -r expac -S '%n %v (%r)' 2>/dev/null; comm -13 <(pacman -Sql | sort) <(pacman -Qqe | sort) | xargs -r expac -Q '%n %v (AUR)'; } | sort)
 EOF
 
 OPTIONS=("View log" "Save in current directory")

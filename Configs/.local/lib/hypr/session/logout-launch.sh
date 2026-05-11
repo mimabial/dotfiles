@@ -16,8 +16,8 @@ fi
 
 #// set file variables
 
-[ -n "${1}" ] && wlogout_style="${1}"
-wlogout_style=${wlogout_style:-$WLOGOUT_STYLE}
+[ -n "${1:-}" ] && wlogout_style="${1}"
+wlogout_style=${wlogout_style:-${WLOGOUT_STYLE:-}}
 wl_layout="${XDG_CONFIG_HOME:-$HOME/.config}/wlogout/layout_${wlogout_style}"
 wl_template="${XDG_CONFIG_HOME:-$HOME/.config}/wlogout/style_${wlogout_style}.css"
 echo "wlogout_style: ${wlogout_style}"

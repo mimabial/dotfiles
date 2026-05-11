@@ -52,8 +52,8 @@ fn_select() {
     "Select animation" \
     " 󰪏 Animation" \
     "clipboard" \
-    "${ROFI_ANIMATION_SCALE}" \
-    "${ROFI_ANIMATION_FONT:-$ROFI_FONT}" \
+    "${ROFI_ANIMATION_SCALE:-}" \
+    "${ROFI_ANIMATION_FONT:-${ROFI_FONT:-}}" \
     "${rofi_select}" \
     "${animation_items}" \
     selected_animation

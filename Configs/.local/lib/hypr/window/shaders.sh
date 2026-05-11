@@ -103,8 +103,8 @@ fn_select() {
     "Select shader" \
     "🎨 Select shader..." \
     "clipboard" \
-    "${ROFI_SHADER_SCALE}" \
-    "${ROFI_SHADER_FONT:-$ROFI_FONT}" \
+    "${ROFI_SHADER_SCALE:-}" \
+    "${ROFI_SHADER_FONT:-${ROFI_FONT:-}}" \
     "$(normalize_shader_name "${HYPR_SHADER:-neutral}")" \
     "${shader_items}" \
     selected_shader
@@ -162,8 +162,9 @@ parse_includes_and_update() {
 
   source_var="$(grep -iE '^\s*//\s*!source\s*=\s*.*' "${resolved_shader_path}" 2>/dev/null | head -n1 | sed -E 's/^\s*\/\/\s*!source\s*=\s*//I' | xargs)"
   if [[ -n "${source_var}" ]]; then
+    # shellcheck disable=SC2088  # tilde here is a literal match prefix, not expansion
     if [[ "${source_var}" == "~/"* ]]; then
-      source_var="${HOME}/${source_var#~/}"
+      source_var="${HOME}/${source_var#"~/"}"
     elif [[ "${source_var}" != /* ]]; then
       source_var="$(dirname "${resolved_shader_path}")/${source_var}"
     fi

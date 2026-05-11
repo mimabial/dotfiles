@@ -309,7 +309,7 @@ elif [[ "$SUBJECT" == "area" ]]; then
     hyprctl keyword layerrule "noanim,selection" >/dev/null
 
     # convert SLURP_ARGS to a bash array
-    IFS=' ' read -r -a _slurp_args <<<"$SLURP_ARGS"
+    IFS=' ' read -r -a _slurp_args <<<"${SLURP_ARGS:-}"
     # shellcheck disable=2086 # if we don't split, spaces mess up slurp
     GEOM=$(capture_visible_workspace_rectangles | slurp "${_slurp_args[@]}")
     capture_stop_freeze "${FREEZE_PID:-}"

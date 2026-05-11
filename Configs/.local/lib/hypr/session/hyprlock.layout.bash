@@ -67,6 +67,7 @@ hyprlock_expand_path() {
 
   [[ -n "${path}" ]] || return 1
 
+  # shellcheck disable=SC2088  # tilde here is a literal match prefix, not expansion
   case "${path}" in
     "~") printf '%s\n' "${HOME}" ; return 0 ;;
     "~/"*) printf '%s\n' "${HOME}/${path#"~/"}" ; return 0 ;;
@@ -304,8 +305,8 @@ fn_select() {
     "Select hyprlock layout" \
     "  Hyprlock Layout" \
     "${ROFI_HYPRLOCK_STYLE:-clipboard}" \
-    "${ROFI_HYPRLOCK_SCALE}" \
-    "${ROFI_HYPRLOCK_FONT:-$ROFI_FONT}"
+    "${ROFI_HYPRLOCK_SCALE:-}" \
+    "${ROFI_HYPRLOCK_FONT:-${ROFI_FONT:-}}"
   rofi_args+=(
     -select "${HYPRLOCK_LAYOUT}"
     -on-selection-changed "hyprshell hyprlock.sh --test-preview  \"{entry}\""

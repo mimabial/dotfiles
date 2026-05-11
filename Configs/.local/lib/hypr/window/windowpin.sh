@@ -37,7 +37,7 @@ read_normalized_monitor_geometry() {
   local -a default_values=(1 1 0 0 0 0)
   local index=0
 
-  IFS=$'\t' read -r _ _ geometry_ref[0] geometry_ref[1] geometry_ref[2] geometry_ref[3] geometry_ref[4] geometry_ref[5] <<<"${monitor_info}"
+  IFS=$'\t' read -r _ _ "geometry_ref[0]" "geometry_ref[1]" "geometry_ref[2]" "geometry_ref[3]" "geometry_ref[4]" "geometry_ref[5]" <<<"${monitor_info}"
   for index in "${!geometry_ref[@]}"; do
     geometry_ref["${index}"]="$(normalize_uint "${geometry_ref[${index}]}" "${default_values[${index}]}")"
   done

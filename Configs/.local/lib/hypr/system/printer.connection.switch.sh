@@ -66,8 +66,8 @@ get_printer_uri() {
 detect_mode() {
   local uri="${1:-}"
   case "$uri" in
-    *"/usb/"*|usb://*|hp:/usb/*|hpfax:/usb/*) printf 'usb\n' ;;
-    *"/net/"*|hp:/net/*|hpfax:/net/*|ipp://*|ipps://*|socket://*|lpd://*)
+    usb://*|hp:/usb/*|hpfax:/usb/*) printf 'usb\n' ;;
+    hp:/net/*|hpfax:/net/*|ipp://*|ipps://*|socket://*|lpd://*)
       printf 'network\n'
       ;;
     *)

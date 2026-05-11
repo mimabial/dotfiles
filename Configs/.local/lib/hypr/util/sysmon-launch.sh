@@ -43,8 +43,8 @@ select_monitor_command() {
   local -a pkgChk=("htop" "btop" "top")
   local sysMon=""
 
-  pkgChk+=("${SYSMONITOR_COMMANDS[@]}")
-  if [[ -n "${SYSMONITOR_EXECUTE}" ]]; then
+  [[ -n "${SYSMONITOR_COMMANDS+set}" ]] && pkgChk+=("${SYSMONITOR_COMMANDS[@]}")
+  if [[ -n "${SYSMONITOR_EXECUTE:-}" ]]; then
     pkgChk=("${SYSMONITOR_EXECUTE}" "${pkgChk[@]}")
   fi
 

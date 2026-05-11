@@ -111,8 +111,8 @@ select_color_mode_with_rofi() {
   local i=""
 
   pkill -u "$USER" rofi && exit 0
-  font_scale="$(rofi_effective_font_scale "${ROFI_PYWAL16_SCALE}")"
-  font_name="$(rofi_effective_font_name "${ROFI_PYWAL16_FONT:-$ROFI_FONT}")"
+  font_scale="$(rofi_effective_font_scale "${ROFI_PYWAL16_SCALE:-}")"
+  font_name="$(rofi_effective_font_name "${ROFI_PYWAL16_FONT:-${ROFI_FONT:-}}")"
   r_scale="$(rofi_font_override "${font_name}" "${font_scale}")"
   IFS=$'\t' read -r hypr_border hypr_width < <(rofi_default_border_metrics 5 2)
   r_override="window {border:${hypr_width}px;border-radius:${hypr_border}px;} prompt {border-radius:${hypr_border}px;} textbox-prompt-colon {border-radius:${hypr_border}px;} element {border-radius:${hypr_border}px;}"

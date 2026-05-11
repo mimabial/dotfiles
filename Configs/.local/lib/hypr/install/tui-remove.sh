@@ -15,8 +15,7 @@ if [ "$#" -eq 0 ]; then
   done < <(find "$DESKTOP_DIR" -name '*.desktop' -print0)
 
   if ((${#TUIS[@]})); then
-    IFS=$'\n' SORTED_TUIS=($(sort <<<"${TUIS[*]}"))
-    unset IFS
+    mapfile -t SORTED_TUIS < <(printf '%s\n' "${TUIS[@]}" | sort)
     APP_NAMES_STRING=$(printf '%s\n' "${SORTED_TUIS[@]}" | fzf --multi --prompt="Select TUIs to remove (TAB to select) > " --header="Select one or more TUIs" --reverse)
     # Convert newline-separated string to array
     APP_NAMES=()

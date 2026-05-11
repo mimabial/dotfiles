@@ -60,7 +60,7 @@ sanitize_hypr_theme() {
     "^ *col.shadow*"
   )
 
-  dirty_regex+=("${HYPR_CONFIG_SANITIZE[@]}")
+  [[ -n "${HYPR_CONFIG_SANITIZE+set}" ]] && dirty_regex+=("${HYPR_CONFIG_SANITIZE[@]}")
   buffer_file="$(mktemp)" || return 1
 
   if ! sed '1d' "${input_file}" >"${buffer_file}"; then

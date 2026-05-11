@@ -5,13 +5,14 @@ set -euo pipefail
 options=("MySQL" "PostgreSQL" "Redis" "MongoDB" "MariaDB" "MSSQL")
 
 if [[ "$#" -eq 0 ]]; then
-  choices=$(printf "%s\n" "${options[@]}" | fzf --prompt="Select database > " --header="Select database (ESC to cancel)" --reverse) || exit 0
+  mapfile -t choices < <(printf "%s\n" "${options[@]}" | fzf --prompt="Select database > " --header="Select database (ESC to cancel)" --reverse)
+  [[ "${#choices[@]}" -gt 0 ]] || exit 0
 else
-  choices="$@"
+  choices=("$@")
 fi
 
-if [[ -n "$choices" ]]; then
-  for db in $choices; do
+if [[ "${#choices[@]}" -gt 0 ]]; then
+  for db in "${choices[@]}"; do
     case $db in
     MySQL) sudo docker run -d --restart unless-stopped -p "127.0.0.1:3306:3306" --name=mysql8 -e MYSQL_ROOT_PASSWORD= -e MYSQL_ALLOW_EMPTY_PASSWORD=true mysql:8.4 ;;
     PostgreSQL) sudo docker run -d --restart unless-stopped -p "127.0.0.1:5432:5432" --name=postgres17 -e POSTGRES_HOST_AUTH_METHOD=trust postgres:17 ;;
