@@ -205,57 +205,14 @@ width_override_args() {
   [[ -n "${width_override}" ]] && printf '%s\0%s\n' "-theme-str" "${width_override}"
 }
 
-launcher_container_radius_override() {
-  local theme_file="$1"
-  local base_border_radius="$2"
-  local theme_name=""
-
-  theme_name="$(basename "${theme_file}")"
-  theme_name="${theme_name%.rasi}"
-
-  case "${theme_name}" in
-    style_11)
-      printf 'inputbar {border-radius: %spx 0px 0px %spx;} listbox {border-radius: 0px %spx %spx 0px;}' \
-        "${base_border_radius}" "${base_border_radius}" "${base_border_radius}" "${base_border_radius}"
-      ;;
-    *)
-      printf 'inputbar {border-radius: %spx;} listbox {border-radius: %spx;}' \
-        "${base_border_radius}" "${base_border_radius}"
-      ;;
-  esac
-}
-
 build_runtime_overrides() {
   local font_scale="$1"
   local font_name="$2"
-  local base_border_radius=""
-  local theme_name=""
-  local window_radius=0
-  local hypr_width=""
-  local elem_border=0
-  local element_radius=0
   local font_override=""
   local icon_override=""
-  local container_override=""
   local window_override=""
 
-  IFS=$'\t' read -r base_border_radius hypr_width < <(rofi_default_border_metrics 10 2)
-  theme_name="$(basename "${rofi_config}")"
-  theme_name="${theme_name%.rasi}"
-  window_radius="${base_border_radius}"
-  [[ "${base_border_radius}" -ne 0 ]] && window_radius=$((base_border_radius * 3 / 2))
-  [[ "${base_border_radius}" -ne 0 ]] && elem_border=$((base_border_radius * 2))
-  element_radius="${elem_border}"
-
-  if rofi_theme_is_fullscreen "${rofi_config}"; then
-    hypr_width="0"
-    window_radius="0"
-    base_border_radius="0"
-  fi
-
-  [[ "${theme_name}" == "style_11" ]] && element_radius="${window_radius}"
-  container_override="$(launcher_container_radius_override "${rofi_config}" "${base_border_radius}")"
-  window_override="window {border: ${hypr_width}px; border-radius: ${window_radius}px;} ${container_override} element {border-radius: ${element_radius}px;} button {border-radius: ${elem_border}px;}"
+  window_override="$(rofi_window_override "${rofi_config}")"
   font_override="$(rofi_font_override "${font_name}" "${font_scale}")"
   icon_override="$(rofi_icon_theme_override)"
 

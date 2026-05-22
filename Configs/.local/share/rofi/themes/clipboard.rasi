@@ -9,7 +9,6 @@ configuration {
     show-icons:                 false;
 }
 
-@import "~/.config/rofi/colors.rasi"
 @import "~/.config/rofi/theme.rasi"
 
 // Main //

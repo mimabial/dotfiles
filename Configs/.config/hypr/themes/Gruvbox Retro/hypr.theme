@@ -1,6 +1,4 @@
 $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
-
-$GTK_THEME = Gruvbox-Retro
 $ICON_THEME = Gruvbox-Plus-Dark
 $CURSOR_THEME=McMojave-cursors
 $CURSOR_SIZE=28
@@ -11,10 +9,6 @@ $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
 # Theme variables above are the primary inputs used by theme.switch.sh.
-
-exec = gsettings set org.gnome.desktop.interface icon-theme $ICON_THEME
-exec = gsettings set org.gnome.desktop.interface gtk-theme $GTK_THEME
-exec = gsettings set org.gnome.desktop.interface color-scheme $COLOR_SCHEME
 exec = gsettings set org.gnome.desktop.interface cursor-theme $CURSOR_THEME
 exec = gsettings set org.gnome.desktop.interface cursor-size $CURSOR_SIZE
 exec = hyprctl setcursor $CURSOR_THEME $CURSOR_SIZE

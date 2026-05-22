@@ -199,17 +199,13 @@ theme_apply_restart_waybar_direct() {
 }
 
 theme_apply_write_dunst_runtime() {
-  local dunst_script="${LIB_DIR}/hypr/wal/wal.dunst.sh"
-
-  [[ -x "${dunst_script}" ]] || return 1
-  "${dunst_script}" --write-only
+  local r="${LIB_DIR}/hypr/render/dunst.py"
+  [[ -x "${r}" ]] || return 1
+  "${r}"
 }
 
 theme_apply_reload_dunst_runtime() {
-  local dunst_script="${LIB_DIR}/hypr/wal/wal.dunst.sh"
-
-  [[ -x "${dunst_script}" ]] || return 1
-  "${dunst_script}" --reload-only
+  return 0
 }
 
 theme_apply_prepare_job_log_dir() {
@@ -432,22 +428,44 @@ theme_apply_notify_wallpaper_detached() {
 
 theme_apply_run_color_sync() {
   local wallpaper_path="$1"
-  local -a color_sync_env=(
-    HYPR_THEME_BATCH_RELOADS=1
-    "HYPR_THEME_FILE_BASENAMES=waybar.theme dunst.theme kitty.theme"
-    HYPR_THEME_DEFER_QT_OUTPUTS=1
-    HYPR_THEME_DEFER_SECONDARY_UPDATES=1
-    HYPR_THEME_UPDATE_EXTERNAL_LOCK=1
-    HYPR_THEME_RUNTIME_SYNC_EXTERNAL=1
-  )
+  local hypr_theme_cmd=""
+  local variant=""
+  local arg=""
+  local -a hypr_theme_args=()
 
-  if [[ -n "${wallpaper_path}" ]]; then
-    env "${color_sync_env[@]}" \
-      "${LIB_DIR}/hypr/theme/color-sync.sh" "${theme_apply_color_sync_args[@]}" "${wallpaper_path}"
-  else
-    env "${color_sync_env[@]}" \
-      "${LIB_DIR}/hypr/theme/color-sync.sh" "${theme_apply_color_sync_args[@]}"
+  hypr_theme_cmd="$(command -v hypr-theme 2>/dev/null || true)"
+  [[ -n "${hypr_theme_cmd}" ]] || hypr_theme_cmd="${HOME}/.local/bin/hypr-theme"
+  if [[ ! -x "${hypr_theme_cmd}" ]]; then
+    print_log -sec "theme.apply" -err "hypr-theme" "command not found"
+    return 1
   fi
+
+  for arg in "${theme_apply_color_sync_args[@]}"; do
+    case "${arg}" in
+      --regen | --force-regenerate) hypr_theme_args+=(--regen) ;;
+      --no-cache) hypr_theme_args+=(--no-cache) ;;
+    esac
+  done
+
+  if [[ "${selected_color_mode}" -eq 0 ]]; then
+    "${hypr_theme_cmd}" apply "${hypr_theme_args[@]}" "${HYPR_THEME}"
+    return $?
+  fi
+
+  case "${selected_color_mode}" in
+    2) variant="dark" ;;
+    3) variant="light" ;;
+    *)
+      variant="$(state_get_color_variant 2>/dev/null || true)"
+      [[ "${variant}" =~ ^(dark|light)$ ]] || variant="${BACKGROUND_MODE:-}"
+      [[ "${variant}" =~ ^(dark|light)$ ]] || variant="dark"
+      ;;
+  esac
+
+  state_set "BACKGROUND_MODE" "${variant}" "staterc"
+  state_set_color_variant "${variant}"
+
+  "${hypr_theme_cmd}" wallpaper "${hypr_theme_args[@]}" --variant "${variant}" "${wallpaper_path}"
 }
 
 theme_apply_job_hypr_reload() {
@@ -484,10 +502,6 @@ theme_apply_job_dunst() {
   theme_apply_notify_wallpaper_detached || true
 }
 
-theme_apply_job_firefox() {
-  theme_apply_run_phase_d_script theme_phase_d_firefox "wal/wal.firefox.sh"
-}
-
 trap 'theme_apply_cleanup "$?"' EXIT
 
 if [[ "${1:-}" == "--theme-envelope" ]]; then
@@ -500,8 +514,14 @@ quiet=false
 while (($#)); do
   case "$1" in
     --quiet) quiet=true ;;
-    --regen | --force-regenerate) theme_apply_color_sync_args+=(--force-regenerate) ;;
-    --no-cache) theme_apply_color_sync_args+=(--no-cache) ;;
+    --regen | --force-regenerate)
+      theme_apply_color_sync_args+=(--force-regenerate)
+      export FORCE_COLOR_REGEN=1
+      ;;
+    --no-cache)
+      theme_apply_color_sync_args+=(--no-cache)
+      export HYPR_WAL_CACHE_ENABLE=0
+      ;;
     *)
       echo "Usage: $(basename "$0") [--quiet] [--regen|--force-regenerate] [--no-cache]" >&2
       exit 1
@@ -534,5 +554,4 @@ theme_apply_start_job "${theme_apply_job_log_dir}" "hypr_reload" required theme_
 theme_apply_start_job "${theme_apply_job_log_dir}" "waybar" required theme_apply_job_waybar || exit 1
 theme_apply_start_job "${theme_apply_job_log_dir}" "kitty" required theme_apply_job_kitty || exit 1
 theme_apply_start_detached_job "dunst" theme_apply_job_dunst || true
-theme_apply_start_detached_job "firefox" theme_apply_job_firefox || true
 theme_apply_wait_jobs "${theme_apply_job_log_dir}" || exit 1

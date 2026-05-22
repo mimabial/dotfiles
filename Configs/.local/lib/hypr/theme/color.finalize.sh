@@ -37,11 +37,6 @@ color_finalize_generated_outputs() {
   print_log -sec "pywal16" -stat "complete" "color generation"
   canonicalize_shell_colors_file
 
-  if [[ -f "${LIB_DIR}/hypr/wal/wal.hyprlock.sh" ]]; then
-    bash "${LIB_DIR}/hypr/wal/wal.hyprlock.sh"
-    print_log -sec "hyprlock" -stat "generated" "integer rgba colors"
-  fi
-
   post_process_generated_color_files
 
   if [[ "${wal_cache_populate}" -eq 1 ]] && [[ "${wal_used_cache}" -eq 0 ]] && [[ -n "${wal_cache_path}" ]]; then
@@ -53,10 +48,6 @@ color_finalize_generated_outputs() {
 color_finalize_load_generated_colors() {
   color_finalize_source_generated_colors || return 1
   link_generated_color_files
-
-  if [[ "${selected_color_mode}" -eq 0 ]]; then
-    generate_hypr_colors_from_theme || return 1
-  fi
 
   print_log -sec "pywal16" -stat "complete" "color files ready"
 }
@@ -110,8 +101,6 @@ color_finalize_primary_theming() {
 
   if [[ "${selected_color_mode}" -eq 0 ]]; then
     process_theme_files
-  else
-    clear_theme_mode_outputs_for_wallpaper_mode
   fi
 }
 
@@ -148,7 +137,6 @@ color_finalize_update_waybar_border_radius() {
 }
 
 color_finalize_secondary_theming() {
-  [[ -f "${LIB_DIR}/hypr/wal/wal.hypr.sh" ]] && source "${LIB_DIR}/hypr/wal/wal.hypr.sh"
   write_secondary_app_theme_outputs || return 1
   if [[ "${HYPR_THEME_DEFER_SECONDARY_UPDATES:-0}" -eq 1 ]]; then
     color_lock_release_theme_update
@@ -164,10 +152,25 @@ color_finalize_secondary_theming() {
   fi
 }
 
+color_finalize_render_pipeline() {
+  [[ "${selected_color_mode}" -eq 1 ]] || return 0
+  command -v hypr-theme >/dev/null 2>&1 || return 0
+
+  local variant="${resolved_color_variant:-dark}"
+  [[ "${variant}" =~ ^(dark|light)$ ]] || variant="dark"
+
+  python3 "${LIB_DIR}/hypr/render/_palette.py" --from-wal-cache --variant "${variant}" \
+    >/dev/null 2>&1 || {
+      print_log -sec "render" -warn "palette" "from-wal-cache failed"
+      return 0
+    }
+  HYPR_COLOR_VARIANT="${variant}" hypr-theme refresh >/dev/null 2>&1 \
+    || print_log -sec "render" -warn "refresh" "pipeline failed"
+}
+
 color_finalize_terminal_output() {
   [[ -t 1 ]] || return 0
-  [[ -f "${LIB_DIR}/hypr/wal/wal.print.colors.sh" ]] || return 0
-  bash "${LIB_DIR}/hypr/wal/wal.print.colors.sh"
+  [[ -f "${LIB_DIR}/hypr/util/print-colors.sh" ]] && bash "${LIB_DIR}/hypr/util/print-colors.sh" || true
 }
 
 color_finalize_commit_state_and_notify() {

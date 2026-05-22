@@ -15,6 +15,7 @@ active_tab_background   #0A0A0A
 
 inactive_tab_foreground #4A4A4A
 inactive_tab_background #0A0A0A
+tab_bar_background      #0A0A0A
 
 
 # Deep black for the background tones

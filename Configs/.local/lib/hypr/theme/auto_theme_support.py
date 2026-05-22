@@ -72,6 +72,10 @@ def color_state_file() -> Path:
     return cache_home() / "hypr" / "color.gen.state"
 
 
+def active_palette_file() -> Path:
+    return state_home() / "hypr" / "active-palette.json"
+
+
 def wallpaper_state_file() -> Path:
     return cache_home() / "hypr" / "wallpaper" / "current" / "wall.set"
 
@@ -269,6 +273,17 @@ def read_color_state() -> dict:
     except Exception:
         return {}
     return data
+
+
+def read_active_palette() -> dict:
+    palette_file = active_palette_file()
+    if not palette_file.exists():
+        return {}
+    try:
+        data = json.loads(palette_file.read_text())
+    except Exception:
+        return {}
+    return data if isinstance(data, dict) else {}
 
 
 def read_theme_from_wal_conf() -> Optional[str]:

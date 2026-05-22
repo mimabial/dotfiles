@@ -1,14 +1,8 @@
 $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
-
-$GTK_THEME=Gtk_Tundra
 $ICON_THEME=Mojave-CT-Night
 $COLOR_SCHEME=prefer-dark
 $CURSOR_THEME=McMojave-cursors
 $CURSOR_SIZE=28
-
-exec = gsettings set org.gnome.desktop.interface icon-theme '$ICON_THEME'
-exec = gsettings set org.gnome.desktop.interface gtk-theme '$GTK_THEME'
-exec = gsettings set org.gnome.desktop.interface color-scheme '$COLOR_SCHEME'
 
 exec = gsettings set org.gnome.desktop.interface cursor-theme '$CURSOR_THEME'
 exec = gsettings set org.gnome.desktop.interface cursor-size $CURSOR_SIZE
@@ -39,7 +33,6 @@ decoration {
 
     shadow {
     enabled = true
-    ignore_window = true
     render_power = 5
     color = 0x80ffffff
     range = 10

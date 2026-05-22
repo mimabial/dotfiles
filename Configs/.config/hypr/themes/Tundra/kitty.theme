@@ -7,7 +7,9 @@ cursor                  #F0AABC
 cursor_text_color       #0A0B0B
 
 active_tab_foreground    #B68A95
+active_tab_background    #132B4B
 inactive_tab_foreground   #576F8F
+inactive_tab_background   #293A52
 tab_bar_background   #132B4B
 
 # black

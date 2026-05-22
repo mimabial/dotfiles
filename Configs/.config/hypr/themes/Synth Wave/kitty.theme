@@ -2,7 +2,9 @@ $HOME/.config/kitty/theme.conf
 
 # Synthwave '84-inspired Kitty Theme
 active_tab_foreground #ff7edb
+active_tab_background #2a2139
 inactive_tab_foreground #3c3f58
+inactive_tab_background #1a1b27
 tab_bar_background #1a1b27
 
 # The basic colors

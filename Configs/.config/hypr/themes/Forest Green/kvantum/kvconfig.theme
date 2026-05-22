@@ -230,10 +230,10 @@ frame=true
 interior=false
 frame.element=common
 interior.element=common
-frame.top=1
-frame.bottom=1
-frame.left=1
-frame.right=1
+frame.top=0
+frame.bottom=0
+frame.left=0
+frame.right=0
 
 [LineEdit]
 inherits=PanelButtonCommand

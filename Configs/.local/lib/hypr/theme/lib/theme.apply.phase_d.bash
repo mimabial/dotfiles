@@ -144,6 +144,12 @@ theme_apply_start_envelope() {
   fi
 
   unit_name="hyprshell-theme-${theme_apply_generation}.service"
+  local -a envelope_env=()
+  # systemd-run --user starts with a clean env; forward the regen/cache flags
+  # the user passed to theme.switch.sh so the envelope sees them and
+  # apply_static_resolved_if_needed can honor --regen/--no-cache.
+  [[ -n "${FORCE_COLOR_REGEN:-}" ]] && envelope_env+=(-E "FORCE_COLOR_REGEN=${FORCE_COLOR_REGEN}")
+  [[ -n "${HYPR_WAL_CACHE_ENABLE:-}" ]] && envelope_env+=(-E "HYPR_WAL_CACHE_ENABLE=${HYPR_WAL_CACHE_ENABLE}")
   if systemd-run --user --quiet --no-block --collect \
       --slice="${HYPR_THEME_PHASE_D_SLICE:-background.slice}" \
       --unit="${unit_name}" \
@@ -152,6 +158,7 @@ theme_apply_start_envelope() {
       -p "IOWeight=${HYPR_THEME_PHASE_D_IO_WEIGHT:-20}" \
       -p "StandardOutput=append:${log_file}" \
       -p "StandardError=append:${log_file}" \
+      "${envelope_env[@]}" \
       "${envelope_cmd[@]}"; then
     printf '%s\n' "${unit_name}" >"${unit_file}" 2>/dev/null || true
     return 0
@@ -277,10 +284,6 @@ theme_apply_phase_d_run_jobs() {
 
   [[ -n "${job_log_dir}" && -d "${job_log_dir}" ]] || return 1
   theme_apply_reset_jobs
-  theme_apply_start_job "${job_log_dir}" "gtk" best_effort theme_apply_job_gtk || true
-  theme_apply_start_job "${job_log_dir}" "qt" best_effort theme_apply_job_qt || true
-  theme_apply_start_job "${job_log_dir}" "chrome" best_effort theme_apply_job_chrome || true
-  theme_apply_start_job "${job_log_dir}" "gimp" best_effort theme_apply_job_gimp || true
   theme_apply_start_job "${job_log_dir}" "theme_files" best_effort theme_apply_job_theme_files || true
   theme_apply_start_job "${job_log_dir}" "secondary_updates" best_effort theme_apply_job_secondary_updates || true
   theme_apply_start_job "${job_log_dir}" "static_desktop" best_effort theme_apply_job_static_desktop || true
@@ -410,24 +413,6 @@ theme_apply_job_static_desktop() {
     print_log -sec "theme.apply" -warn "desktop" "static sync failed"
     return 1
   }
-}
-
-theme_apply_job_gtk() {
-  [[ "${selected_color_mode:-1}" -ne 0 ]] || return 0
-  theme_apply_run_phase_d_script theme_phase_d_gtk "wal/wal.gtk.sh"
-}
-
-theme_apply_job_qt() {
-  theme_apply_run_phase_d_script theme_phase_d_qt "wal/wal.kvantum.sh" || return 1
-  theme_apply_run_phase_d_script theme_phase_d_qt "wal/wal.qt.sh"
-}
-
-theme_apply_job_chrome() {
-  theme_apply_run_phase_d_script theme_phase_d_chrome "wal/wal.chrome.sh"
-}
-
-theme_apply_job_gimp() {
-  theme_apply_run_phase_d_script theme_phase_d_gimp "wal/wal.gimp.sh"
 }
 
 theme_apply_job_theme_files() {

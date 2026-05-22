@@ -12,7 +12,7 @@ configuration {
     modes:                        "drun";
     show-icons:                  true;
     drun-display-format:         "{name}";
-    font:                        "JetBrainsMono Nerd Font 9";
+    font:                        "JetBrainsMono Nerd Font 10";
 }
 
 @import "~/.config/rofi/theme.rasi"
@@ -23,7 +23,7 @@ window {
     enabled:                     true;
     fullscreen:                  false;
     width:                       40em;
-    height:                      32.8em;
+    height:                      30em;
     transparency:                "real";
     cursor:                      "default";
     spacing:                     0em;

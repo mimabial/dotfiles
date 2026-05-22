@@ -247,6 +247,16 @@ load_sync_manifest() {
       log_error "Invalid manifest entry: ${kind}|${rel_path}|${excludes}"
       exit 1
     }
+    case "${rel_path}" in
+      /* | *$'\n'* | *$'\r'*)
+        log_error "Manifest path must be relative and single-line: ${rel_path}"
+        exit 1
+        ;;
+      ..|../*|*/../*|*/..)
+        log_error "Manifest path must not contain '..' segments: ${rel_path}"
+        exit 1
+        ;;
+    esac
 
     case "${kind}" in
       dir | file | host)

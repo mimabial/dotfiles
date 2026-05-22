@@ -63,6 +63,9 @@ hypr_hash_cache_is_current() {
   local expected_hash="$2"
   local current_hash=""
 
+  # Honor --regen: callers that exported FORCE_COLOR_REGEN=1 want a forced
+  # re-run, so report cache stale even if the hash matches.
+  [[ "${FORCE_COLOR_REGEN:-0}" -eq 1 ]] && return 1
   [[ -f "${hash_file}" ]] || return 1
   current_hash="$(cat "${hash_file}" 2>/dev/null || true)"
   [[ "${current_hash}" == "${expected_hash}" ]]
@@ -72,6 +75,9 @@ hypr_hash_cache_store() {
   local hash_file="$1"
   local value="$2"
 
+  # Honor --no-cache: callers that exported HYPR_WAL_CACHE_ENABLE=0 want no
+  # cache writes (so the next plain run still recomputes).
+  [[ "${HYPR_WAL_CACHE_ENABLE:-1}" -eq 0 ]] && return 0
   mkdir -p "$(dirname "${hash_file}")"
   printf '%s\n' "${value}" > "${hash_file}"
 }
@@ -142,6 +148,10 @@ hypr_hash_cache_outputs_current() {
   local expected_hash="$2"
   local state_file="$3"
   shift 3
+
+  # Mirror is_current's --regen honor so the mtime path below doesn't
+  # silently keep stale outputs after a forced re-run.
+  [[ "${FORCE_COLOR_REGEN:-0}" -eq 1 ]] && return 1
 
   local section="outputs"
   local item=""

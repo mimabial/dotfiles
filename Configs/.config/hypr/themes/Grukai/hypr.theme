@@ -1,6 +1,4 @@
 $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
-
-$GTK_THEME=Grukai
 $ICON_THEME=buuf-nestort
 $COLOR_SCHEME=prefer-dark
 $NVIM_BACKGROUND=dark
@@ -52,7 +50,6 @@ decoration {
 
     shadow {
         enabled = true
-        ignore_window = false
         offset = 4 4
         range = 9
         render_power = 1

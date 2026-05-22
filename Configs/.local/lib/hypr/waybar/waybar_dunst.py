@@ -3,38 +3,28 @@
 
 When Waybar's position changes, Dunst's notification origin/offset must move
 so notifications don't appear underneath the bar. The actual Dunst write is
-done by `wal/wal.dunst.sh` (which reads Waybar's config.jsonc); this module
+done by `render/dunst.py` (which reads Waybar's config.jsonc); this module
 shells out to it after Waybar restarts.
-
-This is a cross-subsystem coupling: Waybar reaches into wal/dunst territory.
-The reverse coupling (wal.dunst.sh reading Waybar's config) lives there.
-Documented here so a maintainer adjusting either side knows where the
-other half lives.
 """
 import json
 import os
 import subprocess
+import sys
 import time
 
 from waybar_shared import CONFIG_JSONC, DUNST_SYNC_SCRIPT, logger
 
 
 def sync_dunst_position(mode=None):
-    """Invoke wal.dunst.sh to update Dunst's origin/offset based on the
-    current Waybar position. `mode` is forwarded as the script's argv[1]
-    (typically "--write-only" or "--reload-only"); None lets the script
-    pick its default ("write-and-reload")."""
+    """Invoke render/dunst.py to update Dunst's origin/offset based on the
+    current Waybar position. `mode` is accepted for backwards compatibility
+    but ignored (render/dunst.py always writes and reloads)."""
     if not os.path.exists(DUNST_SYNC_SCRIPT):
         return
 
-    cmd = [DUNST_SYNC_SCRIPT]
-    if mode:
-        cmd.append(mode)
     try:
-        subprocess.run(cmd, timeout=5, check=False)
-        logger.debug(
-            f"Synced dunst position with waybar ({mode or 'write-and-reload'})"
-        )
+        subprocess.run([sys.executable, DUNST_SYNC_SCRIPT], timeout=5, check=False)
+        logger.debug("Synced dunst position with waybar")
     except Exception as exc:
         logger.warning(f"Failed to sync dunst position: {exc}")
 

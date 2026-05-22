@@ -14,8 +14,6 @@ SEARCH_ROOTS=(
   "${XDG_CONFIG_HOME:-$HOME/.config}/kitty"
   "${XDG_CONFIG_HOME:-$HOME/.config}/alacritty"
   "${XDG_CONFIG_HOME:-$HOME/.config}/qutebrowser"
-  "${XDG_CONFIG_HOME:-$HOME/.config}/qt5ct"
-  "${XDG_CONFIG_HOME:-$HOME/.config}/qt6ct"
   "${XDG_CONFIG_HOME:-$HOME/.config}/wal"
   "${XDG_CONFIG_HOME:-$HOME/.config}/satty"
   "${LIB_DIR:-$HOME/.local/lib}/hypr"

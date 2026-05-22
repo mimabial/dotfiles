@@ -1,5 +1,5 @@
 [general]
-import = ["./colors.toml", "./theme.generated.toml", "./keybindings.toml"]
+import = ["./colors.toml", "./keybindings.toml"]
 live_config_reload = true
 working_directory = "None"
 

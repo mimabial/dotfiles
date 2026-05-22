@@ -8,6 +8,12 @@ cursor                  #d8caac
 selection_foreground    #d8caac
 selection_background    #505a60
 
+active_tab_foreground   #83b6af
+active_tab_background   #323d43
+inactive_tab_foreground #868d80
+inactive_tab_background #3c474d
+tab_bar_background      #323d43
+
 color0                  #3c474d  
 color8                  #868d80  
 

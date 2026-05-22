@@ -4,6 +4,7 @@ import fcntl
 import json
 import os
 import signal
+import shutil
 import subprocess
 import sys
 import threading
@@ -23,24 +24,22 @@ from auto_theme_support import (
     NVIM_SETTINGS,
     STATE_FILE,
     TMPDIR_PATH,
-    color_state_file,
-    config_home,
+    active_palette_file,
     get_sun_times,
     load_config,
     load_state,
     manual_override_deadline,
     next_sun_boundary,
-    read_color_state,
+    read_active_palette,
     read_color_variant_file,
     read_staterc,
-    read_theme_from_wal_conf,
     resolve_auto_location,
-    resolve_hyprshell,
     resolve_wallpaper,
     save_state,
     set_state_value,
     state_config_file,
     state_home,
+    wallpaper_state_file,
     watchdog_interval_seconds,
 )
 from auto_theme_watch import InotifyPathWatcher
@@ -67,8 +66,8 @@ class AutoThemeDaemon:
         signal.signal(signal.SIGUSR1, self._handle_toggle)
         signal.signal(signal.SIGUSR2, self._handle_refresh)
 
-    def _color_state_file(self) -> Path:
-        return color_state_file()
+    def _active_palette_file(self) -> Path:
+        return active_palette_file()
 
     def _state_config_file(self) -> Path:
         return state_config_file()
@@ -96,7 +95,8 @@ class AutoThemeDaemon:
             self._state_config_file(),
             state_home() / "hypr" / "staterc",
             state_home() / "hypr" / "color_variant",
-            self._color_state_file(),
+            wallpaper_state_file(),
+            self._active_palette_file(),
         ]
 
     def _on_watched_file_changed(self, changed_path: Path):
@@ -138,21 +138,16 @@ class AutoThemeDaemon:
         self.config = load_config()
         resolve_auto_location(self.config)
 
-    def _pywal_state_matches(self, mode: Literal["light", "dark"], staterc_values: dict) -> bool:
-        state = read_color_state()
-        if not state:
+    def _active_palette_matches(self, mode: Literal["light", "dark"], staterc_values: dict) -> bool:
+        palette = read_active_palette()
+        if not palette:
             return False
-        selected_color_mode_raw = state.get("selected_color_mode")
-        try:
-            selected_color_mode = int(selected_color_mode_raw) if selected_color_mode_raw is not None else None
-        except ValueError:
-            selected_color_mode = None
-        if selected_color_mode != 1:
+        if palette.get("mode") != "wallpaper":
             return False
-        if state.get("color_variant") != mode:
+        if palette.get("background") != mode:
             return False
         wallpaper = resolve_wallpaper(staterc_values)
-        if wallpaper and state.get("wallpaper") and str(wallpaper) != state.get("wallpaper"):
+        if wallpaper and palette.get("source") != f"wallpaper:{wallpaper.resolve()}":
             return False
         return True
 
@@ -185,7 +180,7 @@ class AutoThemeDaemon:
                 if self.config["control_hyprland"]:
                     current_color_variant = read_color_variant_file()
                     staterc_values = read_staterc()
-                    if current_color_variant != mode or not self._pywal_state_matches(mode, staterc_values):
+                    if current_color_variant != mode or not self._active_palette_matches(mode, staterc_values):
                         if self._theme_update_locked():
                             return
                         self._apply_hyprland(mode)
@@ -235,23 +230,29 @@ class AutoThemeDaemon:
                 print("Warning: Could not resolve current wallpaper for pywal update")
                 return
 
-            hyprshell = resolve_hyprshell()
-            if not hyprshell:
-                print("Warning: hyprshell not found, cannot apply pywal colors")
+            hypr_theme = shutil.which("hypr-theme")
+            if not hypr_theme:
+                candidate = Path.home() / ".local" / "bin" / "hypr-theme"
+                if candidate.exists():
+                    hypr_theme = str(candidate)
+            if not hypr_theme:
+                print("Warning: hypr-theme not found, cannot apply colors")
                 return
 
             env = os.environ.copy()
             env_path = env.get("PATH", "")
             env["PATH"] = f"{Path.home() / '.local' / 'bin'}:{env_path}"
+            if staterc_values.get("HYPR_THEME"):
+                env["HYPR_THEME"] = staterc_values["HYPR_THEME"]
             result = subprocess.run(
-                [hyprshell, "color-sync", str(wallpaper)],
+                [hypr_theme, "wallpaper", "--variant", mode, str(wallpaper)],
                 env=env,
                 capture_output=True,
                 text=True,
             )
             if result.returncode != 0:
                 detail = (result.stderr or result.stdout or "").strip()
-                print(f"Warning: Failed to apply pywal colors: {detail or 'unknown error'}")
+                print(f"Warning: Failed to apply hypr-theme colors: {detail or 'unknown error'}")
         except Exception as exc:
             print(f"Warning: Failed to update Hyprland: {exc}")
 

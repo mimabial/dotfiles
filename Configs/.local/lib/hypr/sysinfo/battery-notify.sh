@@ -251,20 +251,21 @@ fn_status_change() { # Handle when status changes
 
 # resume_processes() { for pid in $pids ; do  if [ "$pid" -ne "$current_pid" ] ; then kill -CONT $pid ; dunstify -a "Battery Notify" -t 2000 -r 9889 -u "CRITICAL" "Debugging ENDED, Resuming Regular Process" ; fi ; done }
 
-main() {                                    # Main function
+battery_full_threshold=${BATTERY_NOTIFY_THRESHOLD_FULL:-100}
+battery_critical_threshold=${BATTERY_NOTIFY_THRESHOLD_CRITICAL:-5}
+unplug_charger_threshold=${BATTERY_NOTIFY_THRESHOLD_UNPLUG:-80}
+battery_low_threshold=${BATTERY_NOTIFY_THRESHOLD_LOW:-20}
+timer=${BATTERY_NOTIFY_TIMER:-120}
+notify=${BATTERY_NOTIFY_NOTIFY:-1140}
+interval=${BATTERY_NOTIFY_INTERVAL:-5}
+execute_critical=${BATTERY_NOTIFY_EXECUTE_CRITICAL:-"systemctl suspend"}
+execute_low=${BATTERY_NOTIFY_EXECUTE_LOW:-}
+execute_unplug=${BATTERY_NOTIFY_EXECUTE_UNPLUG:-}
+execute_charging=${BATTERY_NOTIFY_EXECUTE_CHARGING:-}
+execute_discharging=${BATTERY_NOTIFY_EXECUTE_DISCHARGING:-}
+
+main() {
   trap 'find "${TMPDIR:-/tmp}" -maxdepth 1 -type f -name "battery.notify.status.fallback.*-$$" -delete 2>/dev/null || true' EXIT
-  battery_full_threshold=${BATTERY_NOTIFY_THRESHOLD_FULL:-100}
-  battery_critical_threshold=${BATTERY_NOTIFY_THRESHOLD_CRITICAL:-5}
-  unplug_charger_threshold=${BATTERY_NOTIFY_THRESHOLD_UNPLUG:-80}
-  battery_low_threshold=${BATTERY_NOTIFY_THRESHOLD_LOW:-20}
-  timer=${BATTERY_NOTIFY_TIMER:-120}
-  notify=${BATTERY_NOTIFY_NOTIFY:-1140}
-  interval=${BATTERY_NOTIFY_INTERVAL:-5}
-  execute_critical=${BATTERY_NOTIFY_EXECUTE_CRITICAL:-"systemctl suspend"}
-  execute_low=${BATTERY_NOTIFY_EXECUTE_LOW:-}
-  execute_unplug=${BATTERY_NOTIFY_EXECUTE_UNPLUG:-}
-  execute_charging=${BATTERY_NOTIFY_EXECUTE_CHARGING:-}
-  execute_discharging=${BATTERY_NOTIFY_EXECUTE_DISCHARGING:-}
 
   config_info
   if $verbose; then
@@ -285,7 +286,7 @@ main() {                                    # Main function
 }
 
 verbose=false
-case "$1" in
+case "${1:-}" in
   -i | --info)
     config_info
     exit 0

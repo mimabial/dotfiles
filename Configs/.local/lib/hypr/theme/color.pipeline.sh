@@ -8,15 +8,9 @@
 # color.pipeline.sh - Palette selection, wal execution, and output deployment
 
 declare -gA COLOR_LINKS=(
-  ["colors-alacritty.toml"]="${HOME}/.config/alacritty/colors.toml"
-  ["colors-kitty.conf"]="${HOME}/.config/kitty/colors.conf"
-  ["colors-rofi.rasi"]="${HOME}/.config/rofi/colors.rasi"
   ["colors-wofi.css"]="${HOME}/.config/wofi/style.css"
-  ["colors-waybar.css"]="${HOME}/.config/waybar/colors.css"
-  ["colors-hyprland.conf"]="${HOME}/.config/hypr/themes/colors.conf"
   ["colors-hyprshade.glsl"]="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wal/colors.inc"
   ["colors-gtk.css"]="${HOME}/.config/gtk-3.0/colors.css"
-  ["colors-tmux.conf"]="${HOME}/.config/tmux/colors.conf"
   ["colors-rmpc.ron"]="${HOME}/.config/rmpc/themes/pywal16.ron"
   ["colors--big-rmpc.ron"]="${HOME}/.config/rmpc/themes/pywal16-big.ron"
   ["colors--small-rmpc.ron"]="${HOME}/.config/rmpc/themes/pywal16-small.ron"

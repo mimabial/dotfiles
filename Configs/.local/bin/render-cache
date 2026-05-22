@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# render-cache <hit?|store> <key> [<hash>]
+#   hit?   exit 0 if stored hash for <key> equals <hash>, 1 otherwise
+#   store  record <hash> as the current value for <key>
+# Env:
+#   HYPR_FORCE_REGEN=1  hit? always returns 1 (forces re-render)
+#   HYPR_NO_CACHE=1     store is a no-op (next run also re-renders)
+
+set -euo pipefail
+
+cache_dir="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/render-hashes"
+mkdir -p "${cache_dir}"
+
+cmd="${1:-}"
+key="${2:-}"
+hash="${3:-}"
+
+case "${cmd}" in
+  hit?|hit)
+    [[ -n "${key}" ]] || { echo "render-cache hit?: missing <key>" >&2; exit 2; }
+    [[ "${HYPR_FORCE_REGEN:-0}" -eq 1 ]] && exit 1
+    [[ -n "${hash}" ]] || exit 1
+    [[ -f "${cache_dir}/${key}" ]] || exit 1
+    stored="$(cat "${cache_dir}/${key}" 2>/dev/null || true)"
+    [[ "${stored}" == "${hash}" ]]
+    ;;
+  store)
+    [[ -n "${key}" && -n "${hash}" ]] || { echo "render-cache store: missing <key> or <hash>" >&2; exit 2; }
+    [[ "${HYPR_NO_CACHE:-0}" -eq 1 ]] && exit 0
+    tmp="$(mktemp "${cache_dir}/.${key}.XXXXXX")"
+    printf '%s\n' "${hash}" > "${tmp}"
+    mv -f "${tmp}" "${cache_dir}/${key}"
+    ;;
+  clear)
+    [[ -n "${key}" ]] || { echo "render-cache clear: missing <key>" >&2; exit 2; }
+    rm -f "${cache_dir}/${key}"
+    ;;
+  *)
+    cat >&2 <<EOF
+usage: render-cache <hit?|store|clear> <key> [<hash>]
+  hit?  <key> <hash>   exit 0 if cache valid
+  store <key> <hash>   record hash
+  clear <key>          delete cached hash
+EOF
+    exit 2
+    ;;
+esac

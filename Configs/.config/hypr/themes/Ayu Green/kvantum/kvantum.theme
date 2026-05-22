@@ -7048,11 +7048,11 @@
      id="lineedit-normal-left"
      transform="matrix(0.8,0,0,0.98461538,105,26.99843)">
     <path
-       style="fill:#13131e;fill-rule:evenodd;fill-opacity:1.0"
+       style="fill:#000000;fill-rule:evenodd;fill-opacity:1.0"
        d="M 28.75,81.2514 V 48.7516 h -7.5 v 32.5 z"
        id="path2217" />
     <path
-       style="fill:#13131e;fill-opacity:1.0"
+       style="fill:#000000;fill-opacity:1.0"
        d="m 21.25,48.7516 v 32.5 h 2.5 v -32.5 z"
        id="path2219" />
   </g>
@@ -7060,27 +7060,27 @@
      id="lineedit-normal-topleft"
      transform="matrix(0.8,0,0,0.8,105,35.99872)">
     <path
-       style="fill:#13131e;fill-rule:evenodd;fill-opacity:1.0"
+       style="fill:#000000;fill-rule:evenodd;fill-opacity:1.0"
        d="m 28.75,41.2516 c -4.125,-5.1e-5 -7.50003,3.37497 -7.5,7.5 h 7.5 z"
        id="path2222" />
     <path
-       style="fill:#13131e;fill-opacity:1.0"
+       style="fill:#000000;fill-opacity:1.0"
        d="m 28.75,41.2516 c -4.125,-5.1e-5 -7.50003,3.37497 -7.5,7.5 h 2.5 c 0,-3.125 1.875,-5 5,-5 z"
        id="path2224" />
   </g>
   <path
      id="lineedit-normal"
-     style="fill:#13131e;fill-rule:evenodd;fill-opacity:1.0"
+     style="fill:#000000;fill-rule:evenodd;fill-opacity:1.0"
      d="M 128,75.000002 V 107 h 32 V 75.000002 Z" />
   <g
      id="lineedit-normal-top"
      transform="matrix(0,0.8,-0.98461538,0,208.00158,52)">
     <path
-       style="fill:#13131e;fill-rule:evenodd;fill-opacity:1.0"
+       style="fill:#000000;fill-rule:evenodd;fill-opacity:1.0"
        d="M 28.75,81.2514 V 48.7516 h -7.5 v 32.5 z"
        id="path2228" />
     <path
-       style="fill:#13131e;fill-opacity:1.0"
+       style="fill:#000000;fill-opacity:1.0"
        d="m 21.25,48.7516 v 32.5 h 2.5 v -32.5 z"
        id="path2230" />
   </g>
@@ -7088,11 +7088,11 @@
      id="lineedit-normal-topright"
      transform="matrix(-0.8,0,0,0.8,183,35.99872)">
     <path
-       style="fill:#13131e;fill-rule:evenodd;fill-opacity:1.0"
+       style="fill:#000000;fill-rule:evenodd;fill-opacity:1.0"
        d="m 28.75,41.2516 c -4.125,-5.1e-5 -7.50003,3.37497 -7.5,7.5 h 7.5 z"
        id="path2233" />
     <path
-       style="fill:#13131e;fill-opacity:1.0"
+       style="fill:#000000;fill-opacity:1.0"
        d="m 28.75,41.2516 c -4.125,-5.1e-5 -7.50003,3.37497 -7.5,7.5 h 2.5 c 0,-3.125 1.875,-5 5,-5 z"
        id="path2235" />
   </g>
@@ -7100,11 +7100,11 @@
      id="lineedit-normal-bottom"
      transform="matrix(0,-0.8,-0.98461538,0,208.00138,130)">
     <path
-       style="fill:#13131e;fill-rule:evenodd;fill-opacity:1.0"
+       style="fill:#000000;fill-rule:evenodd;fill-opacity:1.0"
        d="M 28.75,81.2514 V 48.7516 h -7.5 v 32.5 z"
        id="path2238" />
     <path
-       style="fill:#13131e;fill-opacity:1.0"
+       style="fill:#000000;fill-opacity:1.0"
        d="m 21.25,48.7516 v 32.5 h 2.5 v -32.5 z"
        id="path2240" />
   </g>
@@ -7112,11 +7112,11 @@
      id="lineedit-normal-right"
      transform="matrix(-0.8,0,0,0.98461538,183,26.998425)">
     <path
-       style="fill:#13131e;fill-rule:evenodd;fill-opacity:1.0"
+       style="fill:#000000;fill-rule:evenodd;fill-opacity:1.0"
        d="M 28.75,81.2514 V 48.7516 h -7.5 v 32.5 z"
        id="path2243" />
     <path
-       style="fill:#13131e;fill-opacity:1.0"
+       style="fill:#000000;fill-opacity:1.0"
        d="m 21.25,48.7516 v 32.5 h 2.5 v -32.5 z"
        id="path2245" />
   </g>
@@ -7124,11 +7124,11 @@
      id="lineedit-normal-bottomleft"
      transform="matrix(0.8,0,0,-0.8,104.9998,146.00128)">
     <path
-       style="fill:#13131e;fill-rule:evenodd;fill-opacity:1.0"
+       style="fill:#000000;fill-rule:evenodd;fill-opacity:1.0"
        d="m 28.75,41.2516 c -4.125,-5.1e-5 -7.50003,3.37497 -7.5,7.5 h 7.5 z"
        id="path2248" />
     <path
-       style="fill:#13131e;fill-opacity:1.0"
+       style="fill:#000000;fill-opacity:1.0"
        d="m 28.75,41.2516 c -4.125,-5.1e-5 -7.50003,3.37497 -7.5,7.5 h 2.5 c 0,-3.125 1.875,-5 5,-5 z"
        id="path2250" />
   </g>
@@ -7136,11 +7136,11 @@
      id="lineedit-normal-bottomright"
      transform="matrix(-0.8,0,0,-0.8,182.9998,146.00128)">
     <path
-       style="fill:#13131e;fill-rule:evenodd;fill-opacity:1.0"
+       style="fill:#000000;fill-rule:evenodd;fill-opacity:1.0"
        d="m 28.75,41.2516 c -4.125,-5.1e-5 -7.50003,3.37497 -7.5,7.5 h 7.5 z"
        id="path2253" />
     <path
-       style="fill:#13131e;fill-opacity:1.0"
+       style="fill:#000000;fill-opacity:1.0"
        d="m 28.75,41.2516 c -4.125,-5.1e-5 -7.50003,3.37497 -7.5,7.5 h 2.5 c 0,-3.125 1.875,-5 5,-5 z"
        id="path2255" />
   </g>

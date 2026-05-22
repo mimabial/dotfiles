@@ -2,17 +2,12 @@ $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
 
 $CURSOR_THEME = Capitaine-Cursors
 $CURSOR_SIZE=24
-$GTK_THEME = One-Dark
 $ICON_THEME = One-Dark
 $COLOR_SCHEME = prefer-dark
 $NVIM_SCHEME = onedark
 $NVIM_VARIANT = dark
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
-
-exec = gsettings set org.gnome.desktop.interface icon-theme 'One-Dark'
-exec = gsettings set org.gnome.desktop.interface gtk-theme 'One-Dark'
-exec = gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
 
 exec = hyprctl setcursor onedark-cursor 25
 exec = gsettings set org.gnome.desktop.interface cursor-theme 'onedark-cursor'
@@ -39,7 +34,6 @@ decoration {
     rounding = 2
     drop_shadow = true
     shadow_scale = 1
-    shadow_ignore_window = true
     shadow_offset = 0 0
     shadow_range = 5
     shadow_render_power = 1

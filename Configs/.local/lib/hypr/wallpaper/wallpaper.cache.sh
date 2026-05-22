@@ -259,14 +259,6 @@ build_wallcache() {
   return 0
 }
 
-fn_wallcache() {
-  build_wallcache "$1" "$2" 0
-}
-
-fn_wallcache_force() {
-  build_wallcache "$1" "$2" 1
-}
-
 link_rofi_themes() {
   local xdg_data_home="" src_dir="" dst_dir=""
   local -a theme_files=()

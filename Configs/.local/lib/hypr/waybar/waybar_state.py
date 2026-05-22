@@ -3,7 +3,7 @@ import fcntl
 import os
 from contextlib import contextmanager
 
-from waybar_layouts import find_layout_files
+from waybar_layouts import find_layout_files, resolve_style_path
 from waybar_shared import (
     CONFIG_JSONC,
     HYPR_ENV_OVERRIDES,

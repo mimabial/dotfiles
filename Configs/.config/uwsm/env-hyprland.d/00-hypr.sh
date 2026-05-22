@@ -1,12 +1,10 @@
 #!/usr/bin/env sh
 
-# # Qt Variables  - https://wiki.hyprland.org/Configuring/Environment-variables/#qt-variables
-QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-wayland;xcb}"                               # Qt: Use wayland if available, fall back to x11 if not.
-QT_AUTO_SCREEN_SCALE_FACTOR="${QT_AUTO_SCREEN_SCALE_FACTOR:-1}"                 # Enables automatic scaling, based on the monitor’s pixel density
-QT_WAYLAND_DISABLE_WINDOWDECORATION="${QT_WAYLAND_DISABLE_WINDOWDECORATION:-1}" # Disables window decorations on Qt applications
-QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-qt6ct}"                           # Tells Qt based applications to pick your theme from qt5ct, use with Kvantum.
-# Keep Qt Quick Controls style unset by default; forcing org.kde.desktop can
-# cause first-launch light fallback in Kirigami apps outside full Plasma.
+# Qt follows Omarchy's model: use Wayland with X11 fallback and let Kvantum
+# provide the widget style. Do not route through qt5ct/qt6ct.
+unset QT_QPA_PLATFORMTHEME
+QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-wayland;xcb}"
+QT_STYLE_OVERRIDE="${QT_STYLE_OVERRIDE:-kvantum}"
 
 # # Hyprland Environment Variables
 MOZ_ENABLE_WAYLAND="${MOZ_ENABLE_WAYLAND:-1}"                        # Enable Wayland for Firefox
@@ -18,8 +16,8 @@ ELECTRON_OZONE_PLATFORM_HINT="${ELECTRON_OZONE_PLATFORM_HINT:-auto}" # Set Elect
 HYPRLAND_NO_SD_NOTIFY=1 # If systemd, disables the sd_notify calls.
 HYPRLAND_NO_SD_VARS=1   # Disables management of variables in systemd and dbus activation environments.
 
-export ELECTRON_OZONE_PLATFORM_HINT GDK_SCALE MOZ_ENABLE_WAYLAND QT_QPA_PLATFORMTHEME \
-  QT_WAYLAND_DISABLE_WINDOWDECORATION QT_QPA_PLATFORM QT_AUTO_SCREEN_SCALE_FACTOR \
+export ELECTRON_OZONE_PLATFORM_HINT GDK_SCALE MOZ_ENABLE_WAYLAND \
+  QT_QPA_PLATFORM QT_STYLE_OVERRIDE \
   HYPRLAND_NO_SD_NOTIFY HYPRLAND_NO_SD_VARS
 
 # TODO Set this if some toolkit are not working properly. // To set create a 'toolkit.sh' file in the 'env-hyprland.d' folder. and add the following line to it:

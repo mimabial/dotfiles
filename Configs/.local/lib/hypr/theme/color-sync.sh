@@ -75,14 +75,14 @@ color_sync_parse_args() {
         exit 0
         ;;
       --refresh)
-        FORCE_COLOR_REGEN=1
-        HYPR_WAL_CACHE_ENABLE=0
+        export FORCE_COLOR_REGEN=1
+        export HYPR_WAL_CACHE_ENABLE=0
         ;;
       --regen|--force-regenerate)
-        FORCE_COLOR_REGEN=1
+        export FORCE_COLOR_REGEN=1
         ;;
       --no-cache)
-        HYPR_WAL_CACHE_ENABLE=0
+        export HYPR_WAL_CACHE_ENABLE=0
         ;;
       --)
         shift
@@ -206,6 +206,7 @@ finalize_generated_colors() {
   color_sync_timed_call "finalize:load_generated_colors" color_finalize_load_generated_colors || return 1
   color_sync_timed_call "finalize:primary_theming" color_finalize_primary_theming || return 1
   color_sync_timed_call "finalize:secondary_theming" color_finalize_secondary_theming || return 1
+  color_sync_timed_call "finalize:render_pipeline" color_finalize_render_pipeline
   color_sync_timed_call "finalize:terminal_output" color_finalize_terminal_output
   color_sync_timed_call "finalize:state_notify" color_finalize_commit_state_and_notify || return 1
 }

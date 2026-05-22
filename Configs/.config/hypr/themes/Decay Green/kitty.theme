@@ -2,7 +2,9 @@ $HOME/.config/kitty/theme.conf
 
 # Tab bar colors
 active_tab_foreground #90ceaa
+active_tab_background #0d0f18
 inactive_tab_foreground #a5b6cf
+inactive_tab_background #0d0f18
 tab_bar_background #0d0f18
 # Special
 background #0d0f18
@@ -47,5 +49,4 @@ cursor_text_color #a5b6cf
 # Selection highlight
 selection_foreground #1c1e27
 selection_background #a5b6cf
-
 

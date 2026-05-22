@@ -7,8 +7,7 @@
 # theme.switch.sh - Theme switching orchestrator
 #
 # OVERVIEW:
-#   Switches themes, updating all configuration files and
-#   triggering color regeneration via color-sync.sh.
+#   Switches themes and updates live desktop configuration.
 #
 # USAGE:
 #   theme.switch.sh -s "Theme Name"   # Switch to specific theme
@@ -58,6 +57,7 @@ sanitize_hypr_theme() {
     "^ *decoration[^:]*: *col.shadow* *="
     "^ *shadow_"
     "^ *col.shadow*"
+    "^ *col\.(active_border|inactive_border|border_(active|inactive|locked_active|locked_inactive))"
   )
 
   [[ -n "${HYPR_CONFIG_SANITIZE+set}" ]] && dirty_regex+=("${HYPR_CONFIG_SANITIZE[@]}")
@@ -77,7 +77,7 @@ sanitize_hypr_theme() {
     for line in "${matches[@]}"; do
       [[ -n "${line}" ]] || continue
       line_esc="$(escape_regex "${line}")"
-      if ! sed -i "\|${line_esc}|d" "${buffer_file}"; then
+      if ! sed -i -E "\|${line_esc}|d" "${buffer_file}"; then
         rm -f -- "${buffer_file}"
         return 1
       fi

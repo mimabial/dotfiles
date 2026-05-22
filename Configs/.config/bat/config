@@ -1,3 +1,8 @@
 # Use terminal colors for bat
 --theme="base16"
 --style="numbers,changes,header"
+
+# Hyprland theme packs ship key/value .theme files (kitty-config style).
+--map-syntax="*.theme:Properties"
+--map-syntax="**/hypr/*.conf:Properties"
+--map-syntax="**/hypr/**/*.conf:Properties"

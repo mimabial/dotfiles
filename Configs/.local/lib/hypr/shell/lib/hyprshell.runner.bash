@@ -32,6 +32,19 @@ collect_script_dirs() {
   done
 }
 
+is_internal_script() {
+  local rel_path="$1"
+  case "${rel_path}" in
+    core/* | runtime/* | pyutils/* | shell/lib/* | shell/*) return 0 ;;
+    *.lib.sh | *.lib.bash | *.lib.py) return 0 ;;
+    *.common.sh | *.common.bash | *.common.py) return 0 ;;
+    *_lib.sh | *_lib.bash | *_lib.py) return 0 ;;
+    *_common.sh | *_common.bash | *_common.py) return 0 ;;
+    *__init__.py) return 0 ;;
+  esac
+  return 1
+}
+
 list_script() {
   collect_script_dirs
 
@@ -39,6 +52,7 @@ list_script() {
   local rel_path=""
   while IFS= read -r rel_path; do
     [[ -n "${rel_path}" ]] || continue
+    is_internal_script "${rel_path}" && continue
     rel_path="${rel_path%.sh}"
     rel_path="${rel_path%.py}"
     printf '%s\n' "${rel_path}"

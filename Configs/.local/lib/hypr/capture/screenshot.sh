@@ -12,7 +12,7 @@ source "$(command -v hyprshell)" || exit 1
 source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/capture/capture.select.bash"
 
 USAGE() {
-  cat <<"USAGE"
+  cat <<USAGE
 
 	Usage: $(basename "$0") [option] [destination]
 	Options:
@@ -22,7 +22,13 @@ USAGE() {
 		area-freeze  Manual area selection with frozen screen
 		m       Screenshot focused monitor
 		w       Window selection (choose from visible windows)
-		sc      Use tesseract to scan image, then add to clipboard
+		ocr     Extract text from selected area and copy it to clipboard
+		text    Alias for ocr
+		sc      Legacy alias for ocr area clipboard
+
+	OCR:
+		ocr [area|smart|window|monitor|screen] [clipboard|save|both|stdout]
+		SCREENSHOT_OCR_LANGS="eng+fra" selects OCR languages.
 
 	Destinations (optional for smart mode):
 		clipboard    Copy to clipboard only (no annotation)
@@ -35,6 +41,9 @@ cleanup_temp_screenshot() {
   local exit_code="${1:-$?}"
   if [[ -n "${temp_screenshot:-}" && -f "${temp_screenshot}" ]]; then
     rm -f "${temp_screenshot}" || true
+  fi
+  if [[ -n "${temp_ocr_image:-}" && -f "${temp_ocr_image}" ]]; then
+    rm -f "${temp_ocr_image}" || true
   fi
   return "${exit_code}"
 }
@@ -50,13 +59,24 @@ destination_arg="${2:-}"
 save_dir_arg="${2:-}"
 smart_destination=""
 
-if [[ "${mode}" == "smart" && ( "${destination_arg}" == "clipboard" || "${destination_arg}" == "save" ) ]]; then
-  smart_destination="${destination_arg}"
-  save_dir_arg="${3:-}"
-fi
+case "${mode}" in
+  smart)
+    if [[ "${destination_arg}" == "clipboard" || "${destination_arg}" == "save" ]]; then
+      smart_destination="${destination_arg}"
+      save_dir_arg="${3:-}"
+    fi
+    ;;
+  ocr | text)
+    save_dir_arg="${4:-}"
+    ;;
+  ocr-* | text-* | sc)
+    save_dir_arg="${3:-}"
+    ;;
+esac
 
 save_dir="${save_dir_arg:-${XDG_SCREENSHOTS_DIR:-$XDG_PICTURES_DIR/Screenshots}}"
 save_file=$(date +'%y%m%d_%Hh%Mm%Ss_screenshot.png')
+save_text_file=$(date +'%y%m%d_%Hh%Mm%Ss_ocr.txt')
 annotation_tool="satty"
 annotation_args=(
   "--filename" "${temp_screenshot}"
@@ -66,9 +86,6 @@ annotation_args=(
   "--save-after-copy"
   "--resize" "smart"
 )
-tesseract_default_language=("eng")
-tesseract_languages=("${SCREENSHOT_OCR_TESSERACT_LANGUAGES[@]:-${tesseract_default_language[@]}}")
-tesseract_languages+=("osd")
 
 mkdir -p "$save_dir"
 
@@ -239,68 +256,214 @@ take_screenshot() {
 }
 
 ocr_screenshot() {
-  local mode="$1"
-  shift
-  local extra_args=("$@")
-  local pkg=""
-  local tesseract_language=""
-  local tesseract_languages_body="Languages used"
-  local tesseract_package_prefix="tesseract-data-"
-  local -a tesseract_packages=()
+  local subject="${1:-area}"
+  local destination="${2:-clipboard}"
+  local ocr_image="${temp_screenshot}"
+  local text_file="${save_dir}/${save_text_file}"
   local tesseract_languages_prepared=""
+  local tesseract_languages_body="Languages used"
   local tesseract_output=""
+  local language=""
+  local -a tesseract_languages=()
 
-  if grimblast_capture "${extra_args[@]}" save "$mode" "$temp_screenshot"; then
-    if pkg_installed imagemagick; then
-      magick "${temp_screenshot}" \
-        -colorspace gray \
-        -contrast-stretch 0 \
-        -level 15%,85% \
-        -resize 400% \
-        -sharpen 0x1 \
-        -auto-threshold triangle \
-        -morphology close diamond:1 \
-        -deskew 40% \
-        "${temp_screenshot}"
-    else
-      screenshot_notify 5000 "dialog-warning" "OCR: imagemagick is not installed, recognition accuracy is reduced"
-    fi
-    tesseract_packages=("${tesseract_languages[@]/#/$tesseract_package_prefix}")
-    tesseract_packages+=("tesseract")
-    for pkg in "${tesseract_packages[@]}"; do
-      if ! pkg_installed "${pkg}"; then
-        screenshot_notify 5000 "dialog-error" "OCR: required package is not installed" " ${pkg}"
-        rm -f "${temp_screenshot}"
-        return 1
-      fi
-    done
-    tesseract_languages_prepared=$(
-      IFS=+
-      printf '%s' "${tesseract_languages[*]}"
-    )
-    for tesseract_language in "${tesseract_languages[@]}"; do
-      tesseract_languages_body+=$'\n '"${tesseract_language}"
-    done
-    if ! tesseract_output=$(
-      tesseract \
-        --psm 6 \
-        --oem 3 \
-        -l "${tesseract_languages_prepared}" \
-        "${temp_screenshot}" \
-        stdout \
-        2>/dev/null
-    ); then
-      screenshot_notify 5000 "dialog-error" "OCR: text recognition failed"
-      rm -f "${temp_screenshot}"
-      return 1
-    fi
-    printf "%s" "$tesseract_output" | wl-copy
-    screenshot_notify 5000 "${temp_screenshot}" "OCR: ${#tesseract_output} symbols recognized" "${tesseract_languages_body}"
-    rm -f "${temp_screenshot}"
-  else
+  ocr_capture_subject "${subject}" || {
     screenshot_notify 5000 "dialog-error" "OCR: screenshot error"
     return 1
+  }
+
+  ocr_prepare_languages tesseract_languages || return 1
+  tesseract_languages_prepared="$(
+    IFS=+
+    printf '%s' "${tesseract_languages[*]}"
+  )"
+  for language in "${tesseract_languages[@]}"; do
+    tesseract_languages_body+=$'\n '"${language}"
+  done
+
+  ocr_image="$(ocr_preprocess_image "${temp_screenshot}")"
+
+  if ! tesseract_output=$(
+    tesseract \
+      "${ocr_image}" \
+      stdout \
+      --oem "${SCREENSHOT_OCR_OEM:-1}" \
+      --psm "${SCREENSHOT_OCR_PSM:-6}" \
+      --dpi "${SCREENSHOT_OCR_DPI:-300}" \
+      -l "${tesseract_languages_prepared}" \
+      -c preserve_interword_spaces=1 \
+      2>/dev/null
+  ); then
+    screenshot_notify 5000 "dialog-error" "OCR: text recognition failed"
+    return 1
   fi
+
+  if [[ -z "${tesseract_output//[[:space:]]/}" ]]; then
+    screenshot_notify 5000 "${temp_screenshot}" "OCR: no text found" "${tesseract_languages_body}"
+    return 1
+  fi
+
+  ocr_emit_text "${destination}" "${tesseract_output}" "${text_file}" || return 1
+  ocr_notify_success "${destination}" "${text_file}" "${#tesseract_output}" "${tesseract_languages_body}"
+}
+
+ocr_capture_subject() {
+  local subject="$1"
+  local rectangles=""
+  local selection=""
+
+  case "${subject}" in
+    area | region | selection)
+      grimblast_capture --freeze save area "${temp_screenshot}"
+      ;;
+    smart)
+      rectangles="$(get_rectangles)"
+      selection="$(select_geometry_from_rectangles "${rectangles}")" || return 1
+      selection="$(expand_tiny_selection_to_rectangle "${selection}" "${rectangles}")"
+      grimblast_capture_geometry "save" "${selection}" "${temp_screenshot}"
+      ;;
+    window | w)
+      rectangles="$(get_rectangles)"
+      selection="$(select_geometry_from_rectangles "${rectangles}" -r)" || return 1
+      grimblast_capture_geometry "save" "${selection}" "${temp_screenshot}"
+      ;;
+    monitor | output | m)
+      grimblast_capture save output "${temp_screenshot}"
+      ;;
+    screen | fullscreen | p)
+      grimblast_capture save screen "${temp_screenshot}"
+      ;;
+    *)
+      screenshot_error_notify "OCR: invalid subject '${subject}'"
+      return 1
+      ;;
+  esac
+}
+
+ocr_configured_languages() {
+  local raw=""
+  local -a languages=()
+
+  if declare -p SCREENSHOT_OCR_TESSERACT_LANGUAGES >/dev/null 2>&1; then
+    eval 'languages=("${SCREENSHOT_OCR_TESSERACT_LANGUAGES[@]}")'
+  else
+    raw="${SCREENSHOT_OCR_LANGS:-${OMARCHY_OCR_LANGS:-eng}}"
+    raw="${raw//+/ }"
+    raw="${raw//,/ }"
+    # shellcheck disable=SC2206
+    languages=(${raw})
+  fi
+
+  printf '%s\n' "${languages[@]}" | awk 'NF && !seen[$0]++'
+}
+
+ocr_prepare_languages() {
+  local -n out_languages="$1"
+  local language=""
+  local installed=""
+  local missing=""
+
+  if ! command -v tesseract >/dev/null 2>&1; then
+    screenshot_notify 5000 "dialog-error" "OCR: tesseract is not installed"
+    return 1
+  fi
+
+  installed="$(tesseract --list-langs 2>/dev/null | tail -n +2)"
+  mapfile -t out_languages < <(ocr_configured_languages)
+  [[ "${#out_languages[@]}" -gt 0 ]] || out_languages=("eng")
+
+  for language in "${out_languages[@]}"; do
+    if ! grep -Fxq "${language}" <<<"${installed}"; then
+      missing+="${missing:+, }${language}"
+    fi
+  done
+
+  if [[ -n "${missing}" ]]; then
+    screenshot_notify 7000 "dialog-error" "OCR: missing tesseract language data" "Missing: ${missing}"$'\n'"Installed: ${installed//$'\n'/, }"
+    return 1
+  fi
+}
+
+ocr_preprocess_image() {
+  local input="$1"
+
+  if [[ "${SCREENSHOT_OCR_PREPROCESS:-1}" != "1" ]]; then
+    printf '%s\n' "${input}"
+    return 0
+  fi
+
+  if ! command -v magick >/dev/null 2>&1; then
+    screenshot_notify 5000 "dialog-warning" "OCR: imagemagick is not installed, recognition accuracy is reduced"
+    printf '%s\n' "${input}"
+    return 0
+  fi
+
+  temp_ocr_image="$(mktemp -t screenshot_ocr_XXXXXX.png)"
+  if magick "${input}" \
+    -colorspace gray \
+    -contrast-stretch 0 \
+    -resize 300% \
+    -sharpen 0x1 \
+    -deskew 40% \
+    "${temp_ocr_image}"; then
+    printf '%s\n' "${temp_ocr_image}"
+  else
+    rm -f "${temp_ocr_image}"
+    temp_ocr_image=""
+    screenshot_notify 5000 "dialog-warning" "OCR: image preprocessing failed, using original screenshot"
+    printf '%s\n' "${input}"
+  fi
+}
+
+ocr_emit_text() {
+  local destination="$1"
+  local text="$2"
+  local text_file="$3"
+
+  case "${destination}" in
+    "" | clipboard | copy)
+      printf '%s' "${text}" | wl-copy
+      ;;
+    save | file)
+      printf '%s\n' "${text}" >"${text_file}"
+      ;;
+    both | copy-save | save-copy)
+      printf '%s' "${text}" | wl-copy
+      printf '%s\n' "${text}" >"${text_file}"
+      ;;
+    stdout | print)
+      printf '%s\n' "${text}"
+      ;;
+    *)
+      screenshot_error_notify "OCR: invalid destination '${destination}'"
+      return 1
+      ;;
+  esac
+}
+
+ocr_notify_success() {
+  local destination="$1"
+  local text_file="$2"
+  local symbol_count="$3"
+  local language_body="$4"
+  local summary="OCR: ${symbol_count} symbols recognized"
+  local body="${language_body}"
+
+  case "${destination}" in
+    "" | clipboard | copy)
+      body="Copied to clipboard"$'\n'"${body}"
+      ;;
+    save | file)
+      body="Saved to ${text_file}"$'\n'"${body}"
+      ;;
+    both | copy-save | save-copy)
+      body="Copied to clipboard"$'\n'"Saved to ${text_file}"$'\n'"${body}"
+      ;;
+    stdout | print)
+      return 0
+      ;;
+  esac
+
+  screenshot_notify 5000 "${temp_screenshot}" "${summary}" "${body}"
 }
 
 trap 'cleanup_temp_screenshot "$?"' EXIT
@@ -324,8 +487,23 @@ case "${mode}" in
   m) # print focused monitor
     take_screenshot "output"
     ;;
-  sc) #? 󱉶 Use 'tesseract' to scan image then add to clipboard
-    ocr_screenshot "area" "--freeze"
+  ocr | text) #? 󱉶 Extract text from a screenshot
+    ocr_screenshot "${2:-area}" "${3:-clipboard}"
+    ;;
+  ocr-area | text-area | sc) #? 󱉶 Extract text from selected area
+    ocr_screenshot "area" "${2:-clipboard}"
+    ;;
+  ocr-smart | text-smart)
+    ocr_screenshot "smart" "${2:-clipboard}"
+    ;;
+  ocr-window | text-window)
+    ocr_screenshot "window" "${2:-clipboard}"
+    ;;
+  ocr-monitor | text-monitor)
+    ocr_screenshot "monitor" "${2:-clipboard}"
+    ;;
+  ocr-screen | text-screen)
+    ocr_screenshot "screen" "${2:-clipboard}"
     ;;
   *) # invalid option or default to smart
     if [[ -z "${mode}" ]]; then

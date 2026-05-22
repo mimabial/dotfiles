@@ -35,6 +35,45 @@ wallpaper_should_apply_colors_async() {
   return 0
 }
 
+wallpaper_resolve_hypr_theme_cmd() {
+  local hypr_theme_cmd=""
+
+  hypr_theme_cmd="$(command -v hypr-theme 2>/dev/null || true)"
+  if [[ -n "${hypr_theme_cmd}" ]]; then
+    printf '%s\n' "${hypr_theme_cmd}"
+    return 0
+  fi
+
+  if [[ -x "${HOME}/.local/bin/hypr-theme" ]]; then
+    printf '%s\n' "${HOME}/.local/bin/hypr-theme"
+    return 0
+  fi
+
+  return 1
+}
+
+wallpaper_resolve_color_variant() {
+  local variant=""
+
+  case "${selected_color_mode:-1}" in
+    2)
+      printf 'dark\n'
+      return 0
+      ;;
+    3)
+      printf 'light\n'
+      return 0
+      ;;
+  esac
+
+  if declare -F state_get_color_variant >/dev/null 2>&1; then
+    variant="$(state_get_color_variant 2>/dev/null || true)"
+  fi
+  [[ "${variant}" =~ ^(dark|light)$ ]] || variant="${BACKGROUND_MODE:-}"
+  [[ "${variant}" =~ ^(dark|light)$ ]] || variant="dark"
+  printf '%s\n' "${variant}"
+}
+
 wallpaper_link_selected() {
   local wallpaper_path="${wallList[setIndex]}"
   ln -fs "${wallpaper_path}" "${active_wallpaper_link}"
@@ -57,12 +96,27 @@ wallpaper_refresh_hyprlock_background() {
 
 wallpaper_run_color_refresh() {
   local wallpaper_path="${1:-}"
+  local hypr_theme_cmd=""
+  local theme_name="${HYPR_THEME:-}"
+  local variant=""
 
   [[ -n "${wallpaper_path}" ]] || return 1
 
-  HYPR_COLOR_MODE_OVERRIDE="${selected_color_mode}" \
-    run_low_prio "${LIB_DIR}/hypr/theme/color-sync.sh" "${wallpaper_path}" &>/dev/null
-  [[ -x "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" ]] && "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" >/dev/null 2>&1
+  hypr_theme_cmd="$(wallpaper_resolve_hypr_theme_cmd)" || return 1
+  variant="$(wallpaper_resolve_color_variant)"
+
+  if declare -F state_set >/dev/null 2>&1; then
+    state_set "BACKGROUND_MODE" "${variant}" "staterc" || true
+  fi
+  if declare -F state_set_color_variant >/dev/null 2>&1; then
+    state_set_color_variant "${variant}" || true
+  fi
+
+  if [[ -z "${theme_name}" ]] && declare -F state_get >/dev/null 2>&1; then
+    theme_name="$(state_get "HYPR_THEME" "" 2>/dev/null || true)"
+  fi
+
+  HYPR_THEME="${theme_name}" run_low_prio "${hypr_theme_cmd}" wallpaper --variant "${variant}" "${wallpaper_path}" &>/dev/null
 }
 
 wallpaper_background_post_apply() {

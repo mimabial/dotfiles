@@ -1,0 +1,65 @@
+$HOME/.config/alacritty/theme.toml
+
+# Alacritty semantic color scheme
+
+[colors.primary]
+background = '#121b1c'
+foreground = '#e6e7d6'
+
+[colors.cursor]
+text = '#121b1c'
+cursor = '#e6e7d6'
+
+[colors.vi_mode_cursor]
+text = '#121b1c'
+cursor = '#e6e7d6'
+
+[colors.search.matches]
+foreground = '#121b1c'
+background = '#e6e7d6'
+
+[colors.search.focused_match]
+foreground = "CellBackground"
+background = "CellForeground"
+
+[colors.line_indicator]
+foreground = "None"
+background = "None"
+
+[colors.footer_bar]
+foreground = '#60605c'
+background = '#e6e7d6'
+
+[colors.selection]
+text = "CellBackground"
+background = "CellForeground"
+
+[colors.normal]
+black = '#121b1c'
+red = '#df3647'
+green = '#3f8f5f'
+yellow = '#b4723f'
+blue = '#447497'
+magenta = '#d53971'
+cyan = '#34768b'
+white = '#96938a'
+
+[colors.bright]
+black = '#60605c'
+red = '#ef1e28'
+green = '#6fbf86'
+yellow = '#ed6816'
+blue = '#82acc3'
+magenta = '#dc4a68'
+cyan = '#94b8be'
+white = '#e6e7d6'
+
+[colors.dim]
+black = '#424240'
+red = '#a6140f'
+green = '#2f6f4a'
+yellow = '#7f4c26'
+blue = '#2b3d5f'
+magenta = '#972129'
+cyan = '#1b4d5f'
+white = '#96938a'

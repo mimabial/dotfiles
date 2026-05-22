@@ -1,8 +1,0 @@
-{
-  "custom/display": {
-    "justify": "center",
-    "format": "\udb84\udd04",
-    "tooltip-format": "\udb84\udd04  Display settings",
-    "on-click": "nwg-displays"
-  }
-}

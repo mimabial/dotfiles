@@ -8,15 +8,81 @@ if ! declare -F hypr_hash_cache_digest_files >/dev/null 2>&1; then
   source "${LIB_DIR:-$HOME/.local/lib}/hypr/core/hash-cache.sh" || return 1 2>/dev/null || exit 1
 fi
 
+palette_conf_get() {
+  local palette_file="$1"
+  local want_section="$2"
+  local want_key="$3"
+
+  awk -F= -v want_section="${want_section}" -v want_key="${want_key}" '
+    function trim(value) {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+      return value
+    }
+    /^[[:space:]]*($|[;#])/ { next }
+    /^[[:space:]]*\[[^]]+\][[:space:]]*$/ {
+      section = trim($0)
+      gsub(/^\[/, "", section)
+      gsub(/\]$/, "", section)
+      next
+    }
+    section == want_section {
+      key = trim($1)
+      if (key != want_key) {
+        next
+      }
+      value = substr($0, index($0, "=") + 1)
+      print trim(value)
+      exit
+    }
+  ' "${palette_file}"
+}
+
+load_palette_conf() {
+  local palette_file="${1}"
+  local bg_name="$2" fg_name="$3" cursor_name="$4" colors_name="$5"
+  local -n colors_ref="$colors_name"
+  local bg="" fg="" cursor="" val="" i
+
+  [[ -r "${palette_file}" ]] || return 1
+  colors_ref=()
+
+  bg="$(palette_conf_get "${palette_file}" "terminal" "background")"
+  [[ -n "${bg}" ]] || bg="$(palette_conf_get "${palette_file}" "base" "background")"
+  fg="$(palette_conf_get "${palette_file}" "terminal" "foreground")"
+  [[ -n "${fg}" ]] || fg="$(palette_conf_get "${palette_file}" "base" "foreground")"
+  cursor="$(palette_conf_get "${palette_file}" "terminal" "cursor")"
+  [[ -n "${cursor}" ]] || cursor="${fg}"
+
+  for i in {0..15}; do
+    val="$(palette_conf_get "${palette_file}" "terminal" "color${i}")"
+    [[ "${val}" =~ ^#[0-9A-Fa-f]{6}$ ]] || return 1
+    colors_ref[$i]="${val}"
+  done
+
+  [[ "${bg}" =~ ^#[0-9A-Fa-f]{6}$ ]] || bg="${colors_ref[0]}"
+  [[ "${fg}" =~ ^#[0-9A-Fa-f]{6}$ ]] || fg="${colors_ref[15]}"
+  [[ "${cursor}" =~ ^#[0-9A-Fa-f]{6}$ ]] || cursor="${fg}"
+  printf -v "${bg_name}" '%s' "${bg}"
+  printf -v "${fg_name}" '%s' "${fg}"
+  printf -v "${cursor_name}" '%s' "${cursor}"
+}
+
 load_theme_palette() {
   local theme_file="${1}"
   local bg_name="$2" fg_name="$3" cursor_name="$4" colors_name="$5"
+  local palette_file="${theme_file%/*}/palette.conf"
   # colors is an array output, so it stays a nameref. The three scalars use
   # local working variables and write to caller via printf -v at the end.
   local -n colors_ref="$colors_name"
   local bg="" fg="" cursor=""
   local key="" val="" line="" i
   local -A seen=()
+
+  if [[ -r "${palette_file}" ]]; then
+    load_palette_conf "${palette_file}" "${bg_name}" "${fg_name}" "${cursor_name}" "${colors_name}"
+    return $?
+  fi
+
   [[ -r "${theme_file}" ]] || return 1
 
   colors_ref=()
@@ -189,14 +255,6 @@ color_pipeline_tracked_generator_files() {
     "${SCRIPT_DIR}/color.pipeline.sh"
     "${SCRIPT_DIR}/color.finalize.sh"
     "${SCRIPT_DIR}/waybar_palette.py"
-    "${LIB_DIR}/hypr/wal/wal.hyprlock.sh"
-    "${LIB_DIR}/hypr/wal/wal.hypr.sh"
-    "${LIB_DIR}/hypr/wal/wal.dunst.sh"
-    "${LIB_DIR}/hypr/wal/wal.kvantum.sh"
-    "${LIB_DIR}/hypr/wal/wal.gtk.sh"
-    "${LIB_DIR}/hypr/wal/wal.chrome.sh"
-    "${LIB_DIR}/hypr/wal/wal.qt.sh"
-    "${LIB_DIR}/hypr/wal/wal.gimp.sh"
   )
 
   for script in "${APP_THEMING_SCRIPTS[@]:-}" "${SECONDARY_THEMING_SCRIPTS[@]:-}"; do

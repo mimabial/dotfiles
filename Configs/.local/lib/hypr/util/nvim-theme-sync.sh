@@ -51,5 +51,5 @@ for socket in "${runtime_dir}"/nvim.*.0; do
 
   # Send command to reload theme and force UI redraw.
   # The redraw! ensures UI updates even when Neovim is unfocused.
-  nvim --server "${socket}" --remote-send '<Cmd>lua require("lib.theme_manager").apply_system_theme(require("lib.theme_manager").load_themes())<CR><Cmd>redraw!<CR>' 2>/dev/null &
+  nvim --server "${socket}" --remote-send '<Cmd>lua package.loaded["lib.theme_manager"]=nil; package.loaded["plugins.themes.definitions.pywal"]=nil; local manager=require("lib.theme_manager"); manager.apply_system_theme(manager.load_themes())<CR><Cmd>redraw!<CR>' 2>/dev/null &
 done

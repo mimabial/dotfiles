@@ -1,15 +1,1 @@
 /* User custom styles */
-
-#custom-microphone {
-  background-color: alpha(@bg, 0.1);
-  border: 1px solid alpha(@br, 0.3);
-  padding: 3px 0;
-  margin-bottom: 2px;
-}
-
-#custom-microphone.muted,
-#custom-microphone.absent {
-  background-color: alpha(@bg, 0.3);
-  border: 1px solid alpha(@br, 0.3);
-  padding-right: 0;
-}

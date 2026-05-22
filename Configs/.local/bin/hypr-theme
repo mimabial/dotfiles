@@ -1,0 +1,128 @@
+#!/usr/bin/env bash
+# hypr-theme: orchestrator for the new render/ pipeline.
+#
+# Usage:
+#   hypr-theme apply <pack-name>      # theme mode
+#   hypr-theme wallpaper <path>       # wallpaper mode
+#   hypr-theme refresh                # re-run renderers on the current palette
+#
+# Flags:
+#   --regen      force re-render even if input hash matches
+#   --no-cache   don't write cache after rendering (next run also re-renders)
+#   --variant dark|light
+
+set -euo pipefail
+
+LIB_DIR="${HOME}/.local/lib/hypr/render"
+PALETTE="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/active-palette.json"
+
+usage() {
+  sed -n '3,12p' "$0" >&2
+  exit 2
+}
+
+cmd="${1:-}"
+[[ -n "${cmd}" ]] || usage
+shift || true
+
+# Parse flags interleaved with positional args.
+positional=()
+variant="${HYPR_COLOR_VARIANT:-dark}"
+while (($#)); do
+  case "$1" in
+    --regen)    export HYPR_FORCE_REGEN=1 ;;
+    --no-cache) export HYPR_NO_CACHE=1 ;;
+    --variant)
+      shift
+      [[ "${1:-}" =~ ^(dark|light)$ ]] || { echo "hypr-theme: --variant requires dark|light" >&2; exit 2; }
+      variant="$1"
+      ;;
+    --variant=dark|--variant=light)
+      variant="${1#--variant=}"
+      ;;
+    --help|-h)  usage ;;
+    --)         shift; positional+=("$@"); break ;;
+    -*)         echo "hypr-theme: unknown flag: $1" >&2; exit 2 ;;
+    *)          positional+=("$1") ;;
+  esac
+  shift
+done
+
+resolve_palette() {
+  local subcmd="$1"; shift
+  case "${subcmd}" in
+    apply)
+      [[ ${#positional[@]} -ge 1 ]] || { echo "hypr-theme apply: pack name required" >&2; exit 2; }
+      python3 "${LIB_DIR}/_palette.py" --theme "${positional[0]}" --out "${PALETTE}"
+      ;;
+    wallpaper)
+      [[ ${#positional[@]} -ge 1 ]] || { echo "hypr-theme wallpaper: image path required" >&2; exit 2; }
+      python3 "${LIB_DIR}/_palette.py" --wallpaper "${positional[0]}" --variant "${variant}" --out "${PALETTE}"
+      ;;
+    refresh)
+      [[ -f "${PALETTE}" ]] || { echo "hypr-theme refresh: no palette at ${PALETTE}" >&2; exit 1; }
+      ;;
+  esac
+}
+
+run_renderers() {
+  local -a renderers=()
+  while IFS= read -r r; do renderers+=("$r"); done < <(
+    find "${LIB_DIR}" -maxdepth 1 -type f -executable \
+      \( -name '*.sh' -o -name '*.py' \) \
+      ! -name '_*' \
+      | sort
+  )
+  [[ ${#renderers[@]} -gt 0 ]] || { echo "hypr-theme: no renderers in ${LIB_DIR}" >&2; return 0; }
+
+  local -a pids=() names=()
+  local -i failed=0
+  for r in "${renderers[@]}"; do
+    local name; name="$(basename "$r" | sed 's/\.[^.]*$//')"
+    "$r" "${PALETTE}" &
+    pids+=($!)
+    names+=("$name")
+  done
+  local i
+  for i in "${!pids[@]}"; do
+    if ! wait "${pids[$i]}"; then
+      echo "hypr-theme: ${names[$i]} failed" >&2
+      ((failed++))
+    fi
+  done
+  return "${failed}"
+}
+
+reload_clients() {
+  local background=""
+  background="$(jq -r '.background // empty' "${PALETTE}" 2>/dev/null || true)"
+
+  if [[ "${background}" =~ ^(dark|light)$ ]] && command -v gsettings >/dev/null 2>&1; then
+    gsettings set org.gnome.desktop.interface color-scheme "prefer-${background}" >/dev/null 2>&1 || true
+  fi
+
+  pkill -SIGUSR1 -x kitty 2>/dev/null || true
+
+  if command -v tmux >/dev/null 2>&1 && tmux list-sessions >/dev/null 2>&1; then
+    tmux source-file "${XDG_CONFIG_HOME:-$HOME/.config}/tmux/tmux.conf" 2>/dev/null || true
+  fi
+
+  if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] && command -v hyprctl >/dev/null 2>&1; then
+    hyprctl reload config-only >/dev/null 2>&1 || true
+  fi
+
+  if [[ -x "$HOME/.local/lib/hypr/util/nvim-theme-sync.sh" ]]; then
+    "$HOME/.local/lib/hypr/util/nvim-theme-sync.sh" >/dev/null 2>&1 || true
+  fi
+}
+
+case "${cmd}" in
+  apply|wallpaper|refresh)
+    resolve_palette "${cmd}"
+    run_renderers
+    reload_clients
+    ;;
+  *)
+    usage
+    ;;
+esac

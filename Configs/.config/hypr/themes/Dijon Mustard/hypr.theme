@@ -1,16 +1,10 @@
 $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
-
-$GTK_THEME = Adwaita
 $ICON_THEME = Tela-red
 $CURSOR_THEME = phinger-cursors-dark
 $CURSOR_SIZE = 25
 $COLOR_SCHEME = prefer-light
 
 # Theme variables above are the primary inputs used by theme.switch.sh.
-
-exec = gsettings set org.gnome.desktop.interface icon-theme $ICON_THEME
-exec = gsettings set org.gnome.desktop.interface gtk-theme $GTK_THEME
-exec = gsettings set org.gnome.desktop.interface color-scheme $COLOR_SCHEME
 exec = gsettings set org.gnome.desktop.interface cursor-theme $CURSOR_THEME
 exec = gsettings set org.gnome.desktop.interface cursor-size $CURSOR_SIZE
 exec = hyprctl setcursor $CURSOR_THEME $CURSOR_SIZE

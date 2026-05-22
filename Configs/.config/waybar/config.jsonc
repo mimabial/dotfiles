@@ -34,7 +34,7 @@
     "group/screen",
     "group/notification",
     "group/connection",
-    "group/forever"
+    "group/power"
   ],
   "group/tui": {
     "orientation": "inherit",
@@ -66,7 +66,7 @@
       "transition-duration": 500,
       "transition-left-to-right": true
     },
-    "modules": ["custom/dmark", "custom/gpuinfo", "custom/cpuinfo", "memory", "disk"]
+    "modules": ["custom/dmark", "custom/gpuinfo", "custom/cpuinfo", "memory"]
   },
   "group/forecast": {
     "orientation": "inherit",
@@ -123,13 +123,37 @@
       "transition-duration": 500,
       "transition-left-to-right": false
     },
-    "modules": ["tray", "custom/vpn"]
+    "modules": ["tray", "group/networkmanagement"]
   },
-  "group/forever": {
+  "group/bluetooth": {
     "orientation": "inherit",
-    "modules": ["group/power", "custom/powermenu"]
+    "drawer": {
+      "transition-duration": 500,
+      "transition-left-to-right": false
+    },
+    "modules": ["bluetooth", "bluetooth#status"]
+  },
+  "group/wifi": {
+    "orientation": "inherit",
+    "drawer": {
+      "transition-duration": 500,
+      "transition-left-to-right": false
+    },
+    "modules": ["custom/wifimenu", "custom/network#speed"]
+  },
+  "group/networkmanagement": {
+    "orientation": "inherit",
+    "drawer": {
+      "transition-duration": 500,
+      "transition-left-to-right": false
+    },
+    "modules": ["custom/vpn", "custom/hotspot"]
   },
   "group/power": {
+    "orientation": "inherit",
+    "modules": ["group/powerconsumption", "custom/powermenu"]
+  },
+  "group/powerconsumption": {
     "orientation": "inherit",
     "drawer": {
       "transition-duration": 500,

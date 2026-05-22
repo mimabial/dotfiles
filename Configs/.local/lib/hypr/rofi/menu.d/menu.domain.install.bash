@@ -14,23 +14,6 @@ install() {
   ' _ "${name}" "${packages[@]}"
 }
 
-install_and_launch() {
-  local name="$1"
-  local package_list="$2"
-  local desktop_id="$3"
-  local -a packages=()
-  read -r -a packages <<<"${package_list}"
-  present_terminal -- bash -lc '
-    name="$1"
-    desktop_id="$2"
-    shift 2
-    printf "Installing %s...\n" "$name"
-    if hyprshell pm add "$@"; then
-      setsid gtk-launch "$desktop_id"
-    fi
-  ' _ "${name}" "${desktop_id}" "${packages[@]}"
-}
-
 aur_install() {
   if ! get_aur_helper >/dev/null; then
     dunstify -i "dialog-error" "AUR Helper Missing" "Install yay or paru to use AUR installs from the menu" -u critical

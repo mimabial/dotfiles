@@ -53,6 +53,16 @@ hyprshell_prepend_path() {
 }
 
 hyprshell_prepend_path "${XDG_CONFIG_HOME}/hypr/scripts" "${BIN_DIR}" "${HYPR_LIB_DIR}"
+
+for hyprshell_subdir in "${HYPR_LIB_DIR}"/*/; do
+  [[ -d "${hyprshell_subdir}" ]] || continue
+  case "${hyprshell_subdir%/}" in
+    */core|*/runtime|*/pyutils|*/shell|*/__pycache__) continue ;;
+  esac
+  hyprshell_prepend_path "${hyprshell_subdir%/}"
+done
+unset hyprshell_subdir
+
 HYPR_SCRIPTS_PATH="${HYPR_SCRIPTS_PATH:-${XDG_CONFIG_HOME}/hypr/scripts:${LIB_DIR}/hypr}:${XDG_DATA_HOME}/waybar/scripts:${XDG_CONFIG_HOME}/waybar/scripts"
 
 export BIN_DIR LIB_DIR PATH HYPR_SCRIPTS_PATH

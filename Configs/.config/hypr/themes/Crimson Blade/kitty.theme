@@ -1,13 +1,15 @@
 $HOME/.config/kitty/theme.conf
 
 active_tab_foreground   #e9114f
+active_tab_background   #0C0B16
 inactive_tab_foreground #6c5a30
+inactive_tab_background #03063c
 tab_bar_background      #03063c
 
 background            #0C0B16 
 foreground            #eceffd 
 cursor                #fdcd5e
-selection_background  none
+selection_background  #e9114f
 color0                #03063c
 color8                #6c5a30
 color1                #c60049
@@ -24,4 +26,4 @@ color6                #968662
 color14               #a4bc86
 color7                #eceffc
 color15               #f6ffec
-selection_foreground  none
+selection_foreground  #0C0B16

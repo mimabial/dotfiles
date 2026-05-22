@@ -1,0 +1,48 @@
+$HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
+$ICON_THEME = Fluent-green-dark
+$COLOR_SCHEME = prefer-dark
+$NVIM_BACKGROUND = dark
+$NVIM_TRANSPARENCY = false
+
+$CURSOR_THEME=phinger-cursors-light
+$CURSOR_SIZE=25
+
+# Theme variables above are the primary inputs used by theme.switch.sh.
+
+general {
+    gaps_in = 6
+    gaps_out = 10
+    border_size = 2
+    col.active_border = rgba(447497ff)
+    col.inactive_border = rgba(121b1ccc)
+    layout = dwindle
+    resize_on_border = true
+}
+
+group {
+    col.border_active = rgba(df3647ff)
+    col.border_inactive = rgba(121b1ccc)
+    col.border_locked_active = rgba(ef1e28ff)
+    col.border_locked_inactive = rgba(121b1ccc)
+}
+
+decoration {
+    rounding = 3
+
+    shadow {
+        enabled = true
+        range = 10
+        render_power = 6
+        color = 0xaa82acc3
+        color_inactive = 0x6660605c
+    }
+
+    blur {
+        enabled = yes
+        size = 6
+        passes = 3
+        new_optimizations = on
+        ignore_opacity = on
+        xray = false
+    }
+}

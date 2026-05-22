@@ -153,21 +153,6 @@ launch_prepare_target_workspace() {
   printf '%s\n' "${active_workspace}"
 }
 
-launch_workspace_has_other_window() {
-  local workspace_name="$1"
-  local exclude_address="${2:-}"
-
-  [[ -n "${workspace_name}" ]] || return 1
-
-  hyprctl clients -j \
-    | jq -e --arg ws "${workspace_name}" --arg exclude "${exclude_address}" '
-        .[]
-        | select(.workspace.name == $ws)
-        | select(.address != $exclude)
-      ' \
-    >/dev/null 2>&1
-}
-
 launch_focused_monitor_geometry() {
   launch_source_core_common || return 1
   hypr_focused_monitor_geometry

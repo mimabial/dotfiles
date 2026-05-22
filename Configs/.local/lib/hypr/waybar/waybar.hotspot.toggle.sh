@@ -119,6 +119,7 @@ create_default_hotspot() {
 
 main() {
   local active_hotspot=""
+  local active_ap_device=""
   local active_wifi=""
   local saved_hotspot=""
   local hotspot_name=""
@@ -129,6 +130,12 @@ main() {
   fi
 
   active_hotspot="$(waybar_hotspot_active_connection)"
+  if [[ -z "${active_hotspot}" ]]; then
+    active_ap_device="$(waybar_hotspot_active_ap_device || true)"
+    if [[ -n "${active_ap_device}" ]]; then
+      active_hotspot="$(waybar_hotspot_active_connection_for_device "${active_ap_device%%|*}" || true)"
+    fi
+  fi
   active_hotspot="${active_hotspot%%|*}"
   if [[ -n "${active_hotspot}" ]]; then
     disable_active_hotspot "${active_hotspot}"

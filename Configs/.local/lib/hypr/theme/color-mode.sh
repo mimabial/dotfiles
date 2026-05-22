@@ -101,8 +101,6 @@ select_color_mode_with_rofi() {
   local font_name=""
   local r_scale=""
   local r_override=""
-  local hypr_border=""
-  local hypr_width=""
   local rofi_theme_file=""
   local width_override=""
   local margin_px=""
@@ -111,12 +109,16 @@ select_color_mode_with_rofi() {
   local i=""
 
   pkill -u "$USER" rofi && exit 0
-  font_scale="$(rofi_effective_font_scale "${ROFI_PYWAL16_SCALE:-}")"
-  font_name="$(rofi_effective_font_name "${ROFI_PYWAL16_FONT:-${ROFI_FONT:-}}")"
+  font_scale="$(rofi_effective_font_scale "${ROFI_LAUNCH_SCALE:-${ROFI_PYWAL16_SCALE:-}}")"
+  font_name="$(rofi_effective_font_name "${ROFI_LAUNCH_FONT:-${ROFI_PYWAL16_FONT:-${ROFI_FONT:-}}}")"
   r_scale="$(rofi_font_override "${font_name}" "${font_scale}")"
-  IFS=$'\t' read -r hypr_border hypr_width < <(rofi_default_border_metrics 5 2)
-  r_override="window {border:${hypr_width}px;border-radius:${hypr_border}px;} prompt {border-radius:${hypr_border}px;} textbox-prompt-colon {border-radius:${hypr_border}px;} element {border-radius:${hypr_border}px;}"
-  rofi_theme_file="$(rofi_resolve_theme pywal16)"
+  local launch_style suffix
+  launch_style="$(state_get "ROFI_LAUNCH_STYLE" "style_11")"
+  suffix="${launch_style#style_}"
+  [[ "${suffix}" =~ ^[0-9]+$ ]] || suffix=11
+  rofi_theme_file="$(rofi_resolve_theme "color_mode_${suffix}" 2>/dev/null || true)"
+  [[ -f "${rofi_theme_file}" ]] || rofi_theme_file="$(rofi_resolve_theme color_mode_11)"
+  r_override="$(rofi_window_override "${rofi_theme_file}")"
   margin_px="${ROFI_PYWAL16_MARGIN_PX:-${ROFI_PYWAL16_MARGIN:-0}}"
   [[ "${margin_px}" =~ ^[0-9]+$ ]] || margin_px=0
   width_override="$(rofi_wallpaper_width_override "${rofi_theme_file}" "${font_name}" "${font_scale}" "${margin_px}" 2>/dev/null || true)"
@@ -206,6 +208,11 @@ start_auto_theme_service() {
   }
 }
 
+refresh_auto_theme_service() {
+  auto_theme_systemd_available || return 0
+  systemctl --user kill -s USR2 auto-theme.service 2>/dev/null || true
+}
+
 stop_auto_theme_service() {
   if auto_theme_systemd_available; then
     systemctl --user stop auto-theme.service 2>/dev/null || true
@@ -249,36 +256,36 @@ resolve_wallpaper() {
 
 apply_color_mode() {
   local wallpaper
-  local state_file="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/color.gen.state"
-  local -a color_sync_cmd=("${LIB_DIR}/hypr/theme/color-sync.sh")
-  local -a theme_apply_cmd=("${LIB_DIR}/hypr/theme/theme.apply.sh" "--quiet")
+  local target_mode="dark"
+  local hypr_theme_cmd=""
+
+  hypr_theme_cmd="$(command -v hypr-theme || true)"
+  [[ -n "${hypr_theme_cmd}" ]] || {
+    print_log -sec "color-mode" -err "hypr-theme" "command not found"
+    return 1
+  }
 
   if [ "${target_color_mode}" -eq 0 ]; then
-    "${theme_apply_cmd[@]}"
+    "${hypr_theme_cmd}" apply "${HYPR_THEME}"
     return $?
   fi
 
   wallpaper="$(resolve_wallpaper)" || return 1
 
-  if [ "${target_color_mode}" -eq 2 ] || [ "${target_color_mode}" -eq 3 ]; then
-    local target_mode="dark"
-    [ "${target_color_mode}" -eq 3 ] && target_mode="light"
+  case "${target_color_mode}" in
+    2) target_mode="dark" ;;
+    3) target_mode="light" ;;
+    *)
+      target_mode="$(state_get_color_variant 2>/dev/null || true)"
+      [[ "${target_mode}" =~ ^(dark|light)$ ]] || target_mode="${BACKGROUND_MODE:-}"
+      [[ "${target_mode}" =~ ^(dark|light)$ ]] || target_mode="dark"
+      ;;
+  esac
 
-    if [ -r "${state_file}" ]; then
-      local state_wall state_color_variant state_selected_color_mode
-      state_wall="$(awk -F= '/^wallpaper=/{print $2; exit}' "${state_file}")"
-      state_color_variant="$(awk -F= '/^color_variant=/{print $2; exit}' "${state_file}")"
-      state_selected_color_mode="$(awk -F= '/^selected_color_mode=/{print $2; exit}' "${state_file}")"
-      if [ "${state_wall}" == "${wallpaper}" ] && [ "${state_color_variant}" == "${target_mode}" ]; then
-        if [ -n "${state_selected_color_mode}" ] && [ "${state_selected_color_mode}" != "0" ]; then
-          print_log -sec "color-mode" -stat "skip" "colors already ${target_mode}"
-          return 0
-        fi
-      fi
-    fi
-  fi
+  state_set "BACKGROUND_MODE" "${target_mode}" "staterc"
+  state_set_color_variant "${target_mode}"
 
-  HYPR_COLOR_MODE_OVERRIDE="${target_color_mode}" "${color_sync_cmd[@]}" "${wallpaper}"
+  "${hypr_theme_cmd}" wallpaper --variant "${target_mode}" "${wallpaper}"
 
   if ! hypr_user_pgrep -x waybar >/dev/null 2>&1; then
     local waybar_script="${LIB_DIR}/hypr/waybar/waybar.py"
@@ -288,16 +295,14 @@ apply_color_mode() {
     fi
   fi
 
-  # Sync nvim after colors are generated
-  [[ -x "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" ]] && "${LIB_DIR}/hypr/util/nvim-theme-sync.sh" >/dev/null 2>&1 &
 }
 
 parse_target_mode() {
   case "${1:-}" in
-    m|-m|--menu) select_color_mode_with_rofi ;;
-    n|-n|--next) cycle_color_mode n ;;
-    p|-p|--prev) cycle_color_mode p ;;
-    -s|--set) set_mode_from_arg "${2:-}" ;;
+    m | -m | --menu) select_color_mode_with_rofi ;;
+    n | -n | --next) cycle_color_mode n ;;
+    p | -p | --prev) cycle_color_mode p ;;
+    -s | --set) set_mode_from_arg "${2:-}" ;;
     --set=*) set_mode_from_arg "${1#--set=}" ;;
     *) cycle_color_mode n ;;
   esac
@@ -335,6 +340,7 @@ revert_failed_auto_mode() {
 apply_auto_mode() {
   state_set "selected_color_mode" "${target_color_mode}" "staterc"
   start_auto_theme_service || revert_failed_auto_mode
+  refresh_auto_theme_service
 }
 
 apply_manual_mode() {

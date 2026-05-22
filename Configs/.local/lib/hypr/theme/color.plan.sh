@@ -51,6 +51,25 @@ color_plan_load_auto_variant_state() {
   esac
 }
 
+color_plan_load_theme_variant_state() {
+  local palette_file="${HYPR_THEME_DIR}/palette.conf"
+  local theme_variant=""
+
+  [[ "${selected_color_mode}" == "0" ]] || return 0
+  [[ -z "${MODE_OVERRIDE}" ]] || return 0
+  [[ -r "${palette_file}" ]] || return 0
+  declare -F palette_conf_get >/dev/null 2>&1 || return 0
+
+  theme_variant="$(palette_conf_get "${palette_file}" "meta" "variant")"
+  case "${theme_variant}" in
+    dark | light) resolved_color_variant="${theme_variant}" ;;
+    "") ;;
+    *)
+      print_log -sec "pywal16" -warn "mode" "invalid theme palette variant: ${theme_variant}"
+      ;;
+  esac
+}
+
 color_plan_apply_variant_overrides() {
   case "${selected_color_mode}" in
     2) resolved_color_variant="dark" ;;
@@ -81,6 +100,7 @@ color_plan_resolve_theme_context() {
   fi
   export HYPR_THEME HYPR_THEME_DIR
 
+  color_plan_load_theme_variant_state
   color_plan_apply_variant_overrides
   return 0
 }

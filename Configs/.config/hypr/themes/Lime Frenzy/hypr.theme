@@ -1,6 +1,4 @@
 $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
-
-$GTK_THEME = LimeGTK
 $ICON_THEME = Tela-green-dark
 $COLOR_SCHEME = prefer-dark
 $NVIM_SCHEME = bamboo
@@ -10,10 +8,6 @@ $NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME=Hackneyed
 $CURSOR_SIZE=24
-
-exec = gsettings set org.gnome.desktop.interface icon-theme '$ICON_THEME'
-exec = gsettings set org.gnome.desktop.interface gtk-theme '$GTK_THEME'
-exec = gsettings set org.gnome.desktop.interface color-scheme '$COLOR_SCHEME'
 exec = hyprctl setcursor $CURSOR_THEME $CURSOR_SIZE
 
 general {

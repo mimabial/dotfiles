@@ -2,7 +2,6 @@ $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
 
 $CURSOR_THEME = Capitaine-Cursors-White
 $CURSOR_SIZE=24
-$GTK_THEME = Rose-Pine
 $ICON_THEME = Tela-pink-dark
 $COLOR_SCHEME = prefer-dark
 $NVIM_SCHEME = rose-pine
@@ -11,10 +10,6 @@ $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
 # Theme variables above are the primary inputs used by theme.switch.sh.
-
-exec = gsettings set org.gnome.desktop.interface icon-theme $ICON_THEME
-exec = gsettings set org.gnome.desktop.interface gtk-theme $GTK_THEME
-exec = gsettings set org.gnome.desktop.interface color-scheme $COLOR_SCHEME
 
 general {
     gaps_in = 4

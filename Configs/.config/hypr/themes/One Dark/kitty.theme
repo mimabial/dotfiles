@@ -9,7 +9,7 @@ selection_foreground    #282c34
 selection_background    #979eab
 
 # Cursor
-cursor                     none
+cursor                     #c678dd
 cursor_blink_interval      -1
 cursor_stop_blinking_after 15.0
 

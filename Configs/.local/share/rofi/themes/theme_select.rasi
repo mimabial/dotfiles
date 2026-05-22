@@ -6,7 +6,6 @@ configuration {
     font:                        "JetBrainsMono Nerd Font 10";
 }
 
-@import "~/.config/rofi/colors.rasi"
 @import "~/.config/rofi/theme.rasi"
 
 // Main //

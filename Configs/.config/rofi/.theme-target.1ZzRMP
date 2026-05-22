@@ -1,0 +1,11 @@
+* {
+    background:            #0A0A0A;    /* Deep black background */
+    foreground:            #FFFFFF;    /* True Ferrari red text color */
+    border:            #1E90FF;    /* Dark black border color */
+    accent:            #FF9999;    /* Ferrari red accent color */
+    selected-background:          #1A1A1A;    /* Dark black selection background */
+    selected-foreground:          #FF0000;    /* True Ferrari red selection text color */
+    separatorcolor:     transparent;
+    urgent:              #32CD32;
+    active:              #1E90FF;
+}

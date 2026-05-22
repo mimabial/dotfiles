@@ -11,7 +11,7 @@ $HOME/.config/waybar/theme.css
 @define-color fg_selected #89b4fa; /* Rosewater */
 
 @define-color act_bg #11111b;
-@define-color act_fg #313244;
+@define-color act_fg #a6adc8;
 @define-color act_br #CBA6F7;
 
 @define-color hvr_bg #313244;

@@ -1,6 +1,4 @@
 $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
-
-$GTK_THEME = Catppuccin-Latte
 $ICON_THEME = Tela-purple-light
 $COLOR_SCHEME = prefer-light
 $CURSOR_THEME = Layan-white-cursors
@@ -12,10 +10,6 @@ $NVIM_TRANSPARENCY = false
 
 
 # Theme variables above are the primary inputs used by theme.switch.sh.
-
-exec = gsettings set org.gnome.desktop.interface icon-theme $ICON_THEME
-exec = gsettings set org.gnome.desktop.interface gtk-theme $GTK_THEME
-exec = gsettings set org.gnome.desktop.interface color-scheme $COLOR_SCHEME
 
 general {
     gaps_in = 5

@@ -3,6 +3,6 @@
     "justify": "center",
     "format": "󰽏",
     "tooltip-format": "󰽏 Toggle focus workflow",
-    "on-click": "hyprshell focusmode",
+    "on-click": "hyprshell util/workflow-toggle.sh focus",
   },
 }

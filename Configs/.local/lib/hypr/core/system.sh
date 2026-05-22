@@ -81,9 +81,9 @@ get_hypr_conf_from_file() {
 #   1 - Variable not found or invalid input
 # Notes:
 #   - Tries hyq first for fast parsing, falls back to grep/awk
-#   - Checks theme file, then gsettings execs, then defaults
+#   - Checks theme file, then defaults
 # Example:
-#   gtk_theme=$(get_hypr_conf "GTK_THEME")
+#   icon_theme=$(get_hypr_conf "ICON_THEME")
 get_hypr_conf() {
   local hyVar="${1}"
   local file="${2:-"$HYPR_THEME_DIR/hypr.theme"}"

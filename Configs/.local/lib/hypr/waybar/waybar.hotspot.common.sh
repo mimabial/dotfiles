@@ -18,14 +18,36 @@ waybar_hotspot_notify() {
 }
 
 waybar_hotspot_connection_mode() {
-  nmcli -t -f 802-11-wireless.mode connection show "$1" 2>/dev/null | cut -d: -f2
+  nmcli -g 802-11-wireless.mode connection show "$1" 2>/dev/null | awk 'NF { print; exit }'
+}
+
+waybar_hotspot_is_wifi_connection_type() {
+  case "${1:-}" in
+    wifi | 802-11-wireless) return 0 ;;
+    *) return 1 ;;
+  esac
 }
 
 waybar_hotspot_active_connection() {
   local name="" type="" device=""
 
   while IFS=: read -r name type device; do
-    [[ "${type}" == wifi ]] || continue
+    waybar_hotspot_is_wifi_connection_type "${type}" || continue
+    [[ "$(waybar_hotspot_connection_mode "${name}")" == ap ]] || continue
+    printf '%s|%s\n' "${name}" "${device}"
+    return 0
+  done < <(nmcli -t -f NAME,TYPE,DEVICE connection show --active 2>/dev/null)
+}
+
+waybar_hotspot_active_connection_for_device() {
+  local target_device="$1"
+  local name="" type="" device=""
+
+  [[ -n "${target_device}" ]] || return 1
+
+  while IFS=: read -r name type device; do
+    [[ "${device}" == "${target_device}" ]] || continue
+    waybar_hotspot_is_wifi_connection_type "${type}" || continue
     [[ "$(waybar_hotspot_connection_mode "${name}")" == ap ]] || continue
     printf '%s|%s\n' "${name}" "${device}"
     return 0

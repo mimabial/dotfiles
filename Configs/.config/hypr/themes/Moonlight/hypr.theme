@@ -1,6 +1,4 @@
 $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
-
-$GTK_THEME=Eternal-Arctic
 $ICON_THEME=Tela-nord-dark
 $COLOR_SCHEME=prefer-dark
 $CURSOR_THEME=Sunity-cursors
@@ -8,10 +6,6 @@ $CURSOR_SIZE=24
 $NVIM_SCHEME = nord
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
-
-exec = gsettings set org.gnome.desktop.interface icon-theme '$ICON_THEME'
-exec = gsettings set org.gnome.desktop.interface gtk-theme '$GTK_THEME'
-exec = gsettings set org.gnome.desktop.interface color-scheme '$COLOR_SCHEME'
 exec = hyprctl setcursor $CURSOR_THEME $CURSOR_SIZE
 
 general {

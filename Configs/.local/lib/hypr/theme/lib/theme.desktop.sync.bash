@@ -4,7 +4,7 @@
 # Shared desktop-theme sync helpers.
 #
 # This library is the single owner for desktop-facing theme writes:
-#   - GTK, Qt, KDE, cursor resource files
+#   - GTK, cursor resource files
 #   - GNOME dconf theme state
 #   - portal restarts after GTK/dconf changes
 #
@@ -14,8 +14,6 @@ if ! declare -F hypr_hash_cache_runtime_file >/dev/null 2>&1; then
   # shellcheck source=/dev/null
   source "${LIB_DIR:-$HOME/.local/lib}/hypr/core/hash-cache.sh" || return 1 2>/dev/null || exit 1
 fi
-
-theme_desktop_static_state_version=3
 
 theme_desktop_ini_write_batch() {
   local config_file="$1"
@@ -91,10 +89,10 @@ theme_desktop_load_hyq_env() {
     raw_value="${BASH_REMATCH[2]}"
 
     case "${var_name}" in
-      __GTK_THEME | __ICON_THEME | __COLOR_SCHEME | __CURSOR_THEME | __CURSOR_SIZE | \
+      __ICON_THEME | __COLOR_SCHEME | __CURSOR_THEME | __CURSOR_SIZE | \
       __TERMINAL | __FONT | __FONT_SIZE | __FONT_STYLE | __DOCUMENT_FONT | \
       __DOCUMENT_FONT_SIZE | __MONOSPACE_FONT | __MONOSPACE_FONT_SIZE | \
-      __BUTTON_LAYOUT | __FONT_ANTIALIASING | __FONT_HINTING | __KDE_COLOR_SCHEME)
+      __BUTTON_LAYOUT | __FONT_ANTIALIASING | __FONT_HINTING)
         ;;
       *)
         continue
@@ -127,34 +125,30 @@ theme_desktop_load_config_values() {
     -Q '$BUTTON_LAYOUT[string]'
     -Q '$FONT_ANTIALIASING[string]'
     -Q '$FONT_HINTING[string]'
-    -Q '$KDE_COLOR_SCHEME[string]'
   )
 
-  unset __GTK_THEME __ICON_THEME __COLOR_SCHEME __CURSOR_THEME __CURSOR_SIZE \
+  unset __ICON_THEME __COLOR_SCHEME __CURSOR_THEME __CURSOR_SIZE \
     __TERMINAL __FONT __FONT_SIZE __FONT_STYLE __DOCUMENT_FONT \
     __DOCUMENT_FONT_SIZE __MONOSPACE_FONT __MONOSPACE_FONT_SIZE \
-    __BUTTON_LAYOUT __FONT_ANTIALIASING __FONT_HINTING __KDE_COLOR_SCHEME
+    __BUTTON_LAYOUT __FONT_ANTIALIASING __FONT_HINTING
 
   [[ -r "${HYPRLAND_CONFIG}" ]] || return 0
   command -v hyq >/dev/null 2>&1 || return 0
 
   if [[ "${selected_color_mode:-1}" -eq 0 ]] && [[ -r "${theme_conf}" ]]; then
-    # Manual color mode uses theme.conf for GTK/icon/cursor instead of env overrides.
+    # Manual color mode uses theme.conf for icon/cursor instead of env overrides.
     theme_hyq_output="$(
       hyq "${theme_conf}" --export env --allow-missing \
-        -Q '$GTK_THEME[string]' \
         -Q '$ICON_THEME[string]' \
         -Q '$CURSOR_THEME[string]' \
         -Q '$CURSOR_SIZE'
     )"
     theme_desktop_load_hyq_env "${theme_hyq_output}"
-    GTK_THEME="${__GTK_THEME:-${GTK_THEME:-}}"
     ICON_THEME="${__ICON_THEME:-${ICON_THEME:-}}"
     CURSOR_THEME="${__CURSOR_THEME:-${CURSOR_THEME:-}}"
     CURSOR_SIZE="${__CURSOR_SIZE:-${CURSOR_SIZE:-}}"
   else
     hyq_args+=(
-      -Q '$GTK_THEME[string]'
       -Q '$ICON_THEME[string]'
       -Q '$CURSOR_THEME[string]'
       -Q '$CURSOR_SIZE'
@@ -164,7 +158,6 @@ theme_desktop_load_config_values() {
   query_output="$(hyq "${hyq_args[@]}")"
   theme_desktop_load_hyq_env "${query_output}"
 
-  GTK_THEME="${__GTK_THEME:-${GTK_THEME:-}}"
   COLOR_SCHEME="${__COLOR_SCHEME:-${COLOR_SCHEME:-}}"
   ICON_THEME="${__ICON_THEME:-${ICON_THEME:-}}"
   CURSOR_THEME="${__CURSOR_THEME:-${CURSOR_THEME:-}}"
@@ -180,7 +173,6 @@ theme_desktop_load_config_values() {
   BUTTON_LAYOUT="${__BUTTON_LAYOUT:-${BUTTON_LAYOUT:-}}"
   FONT_ANTIALIASING="${__FONT_ANTIALIASING:-${FONT_ANTIALIASING:-}}"
   FONT_HINTING="${__FONT_HINTING:-${FONT_HINTING:-}}"
-  KDE_COLOR_SCHEME="${__KDE_COLOR_SCHEME:-${KDE_COLOR_SCHEME:-}}"
 }
 
 theme_desktop_resolve_values() {
@@ -189,7 +181,6 @@ theme_desktop_resolve_values() {
   local layer_var=""
   local layer_value=""
   local -a layered_vars=(
-    GTK_THEME
     ICON_THEME
     CURSOR_THEME
     CURSOR_SIZE
@@ -204,7 +195,6 @@ theme_desktop_resolve_values() {
     BUTTON_LAYOUT
     FONT_ANTIALIASING
     FONT_HINTING
-    KDE_COLOR_SCHEME
   )
 
   if [[ -d /run/current-system/sw/share/themes ]]; then
@@ -225,10 +215,6 @@ theme_desktop_resolve_values() {
   esac
 
   COLOR_SCHEME="prefer-${resolved_color_variant}"
-  if [[ "${selected_color_mode}" -ne 0 ]]; then
-    GTK_THEME="Pywal16-Gtk"
-  fi
-
   FONT="${FONT:-Cantarell}"
   FONT_SIZE="${FONT_SIZE:-10}"
   DOCUMENT_FONT="${DOCUMENT_FONT:-Cantarell}"
@@ -237,8 +223,6 @@ theme_desktop_resolve_values() {
   MONOSPACE_FONT_SIZE="${MONOSPACE_FONT_SIZE:-9}"
   FONT_ANTIALIASING="${FONT_ANTIALIASING:-rgba}"
   FONT_HINTING="${FONT_HINTING:-}"
-  KDE_COLOR_SCHEME="${KDE_COLOR_SCHEME:-colors}"
-
   theme_desktop_load_config_values
 
   for layer_var in "${layered_vars[@]}"; do
@@ -257,35 +241,63 @@ theme_desktop_resolve_values() {
     fi
   fi
 
-  export GTK_THEME ICON_THEME COLOR_SCHEME CURSOR_THEME CURSOR_SIZE TERMINAL \
+  local resolved_gtk="Adwaita"
+  local pack_dir="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME:-}"
+  local pywal_gtk_dir="${XDG_DATA_HOME:-$HOME/.local/share}/themes/Pywal16-Gtk"
+  if [[ -n "${HYPR_THEME:-}" && (-d "${pack_dir}/gtk-3.0" || -d "${pack_dir}/gtk-4.0") ]]; then
+    resolved_gtk="${HYPR_THEME// /-}"
+    mkdir -p "${HOME}/.themes"
+    ln -snf "${pack_dir}" "${HOME}/.themes/${resolved_gtk}" || true
+  elif [[ -f "${pywal_gtk_dir}/gtk-3.0/gtk.css" || -f "${pywal_gtk_dir}/gtk-4.0/gtk.css" ]]; then
+    resolved_gtk="Pywal16-Gtk"
+  fi
+
+  if [[ "${COLOR_SCHEME}" == "prefer-light" ]]; then
+    RESOLVED_GTK_THEME="${resolved_gtk}"
+    RESOLVED_KVANTUM_THEME="KvGnome"
+    RESOLVED_KDE_COLOR_SCHEME="KvGnome"
+  else
+    RESOLVED_GTK_THEME="${resolved_gtk}"
+    RESOLVED_KVANTUM_THEME="KvGnomeDark"
+    RESOLVED_KDE_COLOR_SCHEME="KvGnomeDark"
+  fi
+
+  RESOLVED_KDE_WIDGET_STYLE="kvantum"
+  # In theme mode, prefer the generated pywal16 Kvantum theme when the
+  # active pack ships kvconfig.theme and kvantum.theme.
+  # This keeps Qt widgets on the active palette instead of the hardcoded
+  # KvGnome[Dark] fallback.
+  RESOLVED_KVANTUM_THEME_IS_PACK=0
+  if [[ "${selected_color_mode:-0}" -eq 0 ]] && theme_desktop_pack_has_kvantum_theme; then
+    RESOLVED_KVANTUM_THEME="$(theme_desktop_kvantum_output_theme_name)"
+    RESOLVED_KVANTUM_THEME_IS_PACK=1
+  fi
+
+  # Prefer the pywal-driven KDE color scheme whenever wal.qtct.sh has
+  # emitted Pywal.colors — this is what makes Dolphin's selection and
+  # other KColorScheme-driven widgets follow the active palette in both
+  # theme and wallpaper modes. Force widgetStyle=Fusion when we don't
+  # have a per-theme Kvantum (otherwise Kvantum's hardcoded KvGnome[Dark]
+  # palette paints over QPalette). When a pack-backed Kvantum theme is
+  # deployed, keep widgetStyle=kvantum so widget art stays theme-coherent;
+  # KColorScheme-driven bits still honor Pywal in parallel.
+  # Delete ${XDG_DATA_HOME}/color-schemes/Pywal.colors to fall back to
+  # the theme-pack-supplied KDE scheme.
+  if [[ -f "${XDG_DATA_HOME:-$HOME/.local/share}/color-schemes/Pywal.colors" ]]; then
+    RESOLVED_KDE_COLOR_SCHEME="Pywal"
+    if [[ "${selected_color_mode:-0}" -ne 0 ]]; then
+      RESOLVED_KVANTUM_THEME="$(theme_desktop_kvantum_output_theme_name)"
+    fi
+    if [[ "${RESOLVED_KVANTUM_THEME_IS_PACK:-0}" -ne 1 \
+      && "${RESOLVED_KVANTUM_THEME}" != "$(theme_desktop_kvantum_output_theme_name)" ]]; then
+      RESOLVED_KDE_WIDGET_STYLE="Fusion"
+    fi
+  fi
+
+  export ICON_THEME COLOR_SCHEME CURSOR_THEME CURSOR_SIZE TERMINAL \
     FONT FONT_SIZE FONT_STYLE DOCUMENT_FONT DOCUMENT_FONT_SIZE MONOSPACE_FONT \
-    MONOSPACE_FONT_SIZE BUTTON_LAYOUT FONT_ANTIALIASING FONT_HINTING KDE_COLOR_SCHEME
-}
-
-theme_desktop_is_safe_path_component() {
-  local value="$1"
-  [[ -n "${value}" ]] \
-    && [[ "${value}" != "." ]] \
-    && [[ "${value}" != ".." ]] \
-    && [[ "${value}" != */* ]] \
-    && [[ "${value}" != *$'\n'* ]] \
-    && [[ "${value}" != *$'\r'* ]]
-}
-
-theme_desktop_resolve_gtk_theme_path() {
-  theme_desktop_gtk_theme_path_name=""
-
-  if theme_desktop_is_safe_path_component "${GTK_THEME}"; then
-    theme_desktop_gtk_theme_path_name="${GTK_THEME}"
-  elif [[ -n "${GTK_THEME}" ]]; then
-    print_log -sec "theme" -warn "gtk" "unsafe theme path component: ${GTK_THEME}"
-  fi
-
-  if [[ -n "${theme_desktop_gtk_theme_path_name}" ]] \
-    && [[ ! -d "${THEMES_DIR}/${theme_desktop_gtk_theme_path_name}" ]] \
-    && [[ -d "${HOME}/.themes/${theme_desktop_gtk_theme_path_name}" ]]; then
-    cp -rns "${HOME}/.themes/${theme_desktop_gtk_theme_path_name}" "${THEMES_DIR}/${theme_desktop_gtk_theme_path_name}"
-  fi
+    MONOSPACE_FONT_SIZE BUTTON_LAYOUT FONT_ANTIALIASING FONT_HINTING \
+    RESOLVED_KVANTUM_THEME RESOLVED_KDE_COLOR_SCHEME RESOLVED_KDE_WIDGET_STYLE
 }
 
 theme_desktop_update_xcursor_resource() {
@@ -304,20 +316,6 @@ theme_desktop_update_xcursor_resource() {
   fi
 }
 
-theme_desktop_find_kde_color_scheme_file() {
-  local scheme_dir=""
-
-  KDE_COLOR_SCHEME="${KDE_COLOR_SCHEME:-colors}"
-  for scheme_dir in "${XDG_DATA_HOME:-$HOME/.local/share}/color-schemes" "/usr/share/color-schemes"; do
-    if [[ -f "${scheme_dir}/${KDE_COLOR_SCHEME}.colors" ]]; then
-      printf '%s\n' "${scheme_dir}/${KDE_COLOR_SCHEME}.colors"
-      return 0
-    fi
-  done
-
-  return 1
-}
-
 theme_desktop_apply_cursor_theme() {
   if [[ -n "${CURSOR_THEME}" ]] && [[ -n "${CURSOR_SIZE}" ]] && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
     if ! hyprctl setcursor "${CURSOR_THEME}" "${CURSOR_SIZE}" >/dev/null 2>&1; then
@@ -332,147 +330,246 @@ theme_desktop_set_cursor_async() {
   hyprctl setcursor "${CURSOR_THEME}" "${CURSOR_SIZE}" >/dev/null 2>&1 &
 }
 
-theme_desktop_configure_qt() {
-  local qt_font_style=""
-
-  QT5_FONT="${QT5_FONT:-${FONT}}"
-  QT5_FONT_SIZE="${QT5_FONT_SIZE:-${FONT_SIZE}}"
-  QT5_MONOSPACE_FONT="${QT5_MONOSPACE_FONT:-${MONOSPACE_FONT}}"
-  QT5_MONOSPACE_FONT_SIZE="${QT5_MONOSPACE_FONT_SIZE:-${MONOSPACE_FONT_SIZE:-9}}"
-  QT6_FONT="${QT6_FONT:-${FONT}}"
-  QT6_FONT_SIZE="${QT6_FONT_SIZE:-${FONT_SIZE}}"
-  QT6_MONOSPACE_FONT="${QT6_MONOSPACE_FONT:-${MONOSPACE_FONT}}"
-  QT6_MONOSPACE_FONT_SIZE="${QT6_MONOSPACE_FONT_SIZE:-${MONOSPACE_FONT_SIZE:-9}}"
-  qt_font_style="${QT_FONT_STYLE:-${FONT_STYLE:-Normal}}"
-
-  theme_desktop_ini_write_batch "${XDG_CONFIG_HOME}/qt5ct/qt5ct.conf" \
-    "Appearance:icon_theme=${ICON_THEME}" \
-    "Fonts:general=\"${QT5_FONT},${QT5_FONT_SIZE},-1,5,50,0,0,0,0,0,${qt_font_style}\"" \
-    "Fonts:fixed=\"${QT5_MONOSPACE_FONT},${QT5_MONOSPACE_FONT_SIZE},-1,5,50,0,0,0,0,0\""
-
-  theme_desktop_ini_write_batch "${XDG_CONFIG_HOME}/qt6ct/qt6ct.conf" \
-    "Appearance:icon_theme=${ICON_THEME}" \
-    "Fonts:general=\"${QT6_FONT},${QT6_FONT_SIZE},-1,5,400,0,0,0,0,0,0,0,0,0,0,1,${qt_font_style}\"" \
-    "Fonts:fixed=\"${QT6_MONOSPACE_FONT},${QT6_MONOSPACE_FONT_SIZE:-9},-1,5,400,0,0,0,0,0,0,0,0,0,0,1\""
+theme_desktop_pack_has_kvantum_theme() {
+  local pack_dir="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME:-}"
+  [[ -n "${HYPR_THEME:-}" ]] || return 1
+  [[ -f "${pack_dir}/kvantum/kvconfig.theme" ]] || return 1
+  [[ -f "${pack_dir}/kvantum/kvantum.theme" ]] || return 1
 }
 
-theme_desktop_configure_kde() {
-  local -a kdeglobals_entries=()
-  local kde_color_scheme_file=""
-  local variables_file=""
+theme_desktop_kvantum_pack_theme_name() {
+  local safe_name="${HYPR_THEME:-hypr-theme}"
 
-  if [[ -z "${TERMINAL}" ]]; then
-    variables_file="$(hypr_variables_file 2>/dev/null || printf '%s\n' "${HYPR_DATA_HOME}/variables.conf")"
-    TERMINAL="$(get_hypr_conf "TERMINAL" "${variables_file}" 2>/dev/null || true)"
-  fi
+  safe_name="${safe_name//[[:space:]]/_}"
+  safe_name="${safe_name//\#/_}"
+  safe_name="${safe_name//\//_}"
+  while [[ "${safe_name}" == *"__"* ]]; do
+    safe_name="${safe_name//__/_}"
+  done
+  safe_name="${safe_name##_}"
+  safe_name="${safe_name%%_}"
+  printf '%s' "${safe_name:-hypr-theme}"
+}
 
-  kdeglobals_entries=(
-    "Icons:Theme=${ICON_THEME}"
-    "KDE:widgetStyle=kvantum"
+theme_desktop_kvantum_output_theme_name() {
+  printf '%s' "pywal16"
+}
+
+theme_desktop_kvantum_svg_source_path() {
+  local pack_dir="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME:-}"
+
+  [[ -n "${HYPR_THEME:-}" && -f "${pack_dir}/kvantum/kvantum.theme" ]] || return 1
+  printf '%s\n' "${pack_dir}/kvantum/kvantum.theme"
+}
+
+theme_desktop_kvantum_pack_source_hash() {
+  local pack_dir="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME:-}"
+  local completion="${LIB_DIR}/hypr/theme/complete-kvantum-themes.sh"
+  local kvantum_svg_source=""
+  local -a input_files=()
+
+  theme_desktop_pack_has_kvantum_theme || {
+    printf ''
+    return 0
+  }
+
+  kvantum_svg_source="$(theme_desktop_kvantum_svg_source_path)" || return 1
+
+  input_files+=(
+    "${kvantum_svg_source}"
+    "${pack_dir}/kvantum/kvconfig.theme"
   )
 
-  kde_color_scheme_file="$(theme_desktop_find_kde_color_scheme_file 2>/dev/null || true)"
+  [[ -f "${pack_dir}/kvantum/colors.map" ]] && input_files+=("${pack_dir}/kvantum/colors.map")
+  [[ -f "${completion}" ]] && input_files+=("${completion}")
 
-  if [[ -n "${kde_color_scheme_file}" ]]; then
-    kdeglobals_entries+=("UiSettings:ColorScheme=${KDE_COLOR_SCHEME}")
-  else
-    if command -v kwriteconfig6 >/dev/null 2>&1; then
-      kwriteconfig6 --file "${XDG_CONFIG_HOME}/kdeglobals" --group "UiSettings" --key "ColorScheme" --delete >/dev/null 2>&1 || true
-    fi
-    print_log -sec "theme" -warn "kdeglobals" "ColorScheme '${KDE_COLOR_SCHEME}' not found; leaving UiSettings unset"
-  fi
-
-  if [[ -n "${TERMINAL}" ]]; then
-    kdeglobals_entries+=("General:TerminalApplication=${TERMINAL}")
-  else
-    print_log -sec "theme" -warn "terminal" "TerminalApplication is empty; leaving kdeglobals value unchanged"
-  fi
-
-  theme_desktop_ini_write_batch "${XDG_CONFIG_HOME}/kdeglobals" "${kdeglobals_entries[@]}"
+  hypr_hash_cache_digest_files "${input_files[@]}"
 }
 
-theme_desktop_sync_gtk4_runtime_dir() {
-  local source_dir="$1"
-  local target_dir="${XDG_CONFIG_HOME}/gtk-4.0"
-  local source_entry=""
-  local target_entry=""
-  local entry_name=""
-  local desired_target=""
-  local current_target=""
-  local -A desired_entries=()
+theme_desktop_apply_kvantum_color_map() {
+  local colors_map="$1"
+  shift
 
-  if [[ -L "${target_dir}" ]]; then
-    rm -f -- "${target_dir}" || return 1
+  local colors_shell="${XDG_CACHE_HOME:-$HOME/.cache}/wal/colors-shell.sh"
+  local hex_color=""
+  local pywal_var=""
+  local pywal_value=""
+  local -a sed_args=()
+
+  [[ -f "${colors_map}" && -f "${colors_shell}" ]] || return 0
+  # shellcheck source=/dev/null
+  source "${colors_shell}" || return 1
+
+  while IFS='=' read -r hex_color pywal_var || [[ -n "${hex_color}" ]]; do
+    [[ "${hex_color}" =~ ^#.*$ && ! "${hex_color}" =~ ^#[0-9A-Fa-f]{6}$ ]] && continue
+    [[ -n "${hex_color}" && -n "${pywal_var}" ]] || continue
+
+    pywal_value="${!pywal_var-}"
+    [[ -n "${pywal_value}" ]] || continue
+    pywal_value="$(sed_escape_replacement "${pywal_value}")"
+    sed_args+=(-e "s|${hex_color}|${pywal_value}|gi")
+  done <"${colors_map}"
+
+  ((${#sed_args[@]} > 0)) || return 0
+  sed -i "${sed_args[@]}" "$@"
+}
+
+# Deploy the active theme pack's Kvantum SVG plus config into
+# fixed-name Kvantum layout: ${XDG_CONFIG_HOME}/Kvantum/pywal16/pywal16.{svg,kvconfig}.
+# Source files in the pack use `.theme` extensions; Kvantum needs them
+# renamed at install time. No-op if the pack ships no kvantum subtree.
+#
+# Pipeline:
+#   1. Run completion (idempotent) for the active theme.
+#   2. Copy SVG and kvconfig from the active theme into Kvantum's install dir.
+#   3. In wallpaper/pywal recolor modes, rewrite the installed files using
+#      colors.map → live pywal palette. In theme mode, leave the theme's
+#      Kvantum files intact.
+theme_desktop_install_pack_kvantum_theme() {
+  theme_desktop_pack_has_kvantum_theme || return 0
+
+  local pack_dir="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}"
+  local kvantum_theme=""
+  local dest_dir=""
+  local completion="${LIB_DIR}/hypr/theme/complete-kvantum-themes.sh"
+  local colors_map="${pack_dir}/kvantum/colors.map"
+  local kvantum_svg_source=""
+
+  kvantum_theme="$(theme_desktop_kvantum_output_theme_name)"
+  dest_dir="${XDG_CONFIG_HOME}/Kvantum/${kvantum_theme}"
+  kvantum_svg_source="$(theme_desktop_kvantum_svg_source_path)" || return 1
+
+  if [[ -f "${completion}" ]]; then
+    bash "${completion}" "${HYPR_THEME}" >/dev/null 2>&1 || true
   fi
-  mkdir -p "${target_dir}" || return 1
-  [[ -d "${source_dir}" ]] || return 1
 
-  while IFS= read -r -d '' source_entry; do
-    entry_name="$(basename "${source_entry}")"
-    [[ "${entry_name}" == "settings.ini" ]] && continue
-    desired_entries["${entry_name}"]="${source_entry}"
-  done < <(find -H "${source_dir}" -mindepth 1 -maxdepth 1 -print0 2>/dev/null)
+  mkdir -p "${dest_dir}" || return 1
+  cp -f "${kvantum_svg_source}" "${dest_dir}/${kvantum_theme}.svg" || return 1
+  cp -f "${pack_dir}/kvantum/kvconfig.theme" "${dest_dir}/${kvantum_theme}.kvconfig" || return 1
 
-  while IFS= read -r -d '' target_entry; do
-    entry_name="$(basename "${target_entry}")"
-    desired_target="${desired_entries["${entry_name}"]-}"
-    if [[ -L "${target_entry}" ]]; then
-      current_target="$(readlink -- "${target_entry}" 2>/dev/null || readlink "${target_entry}" 2>/dev/null || true)"
-      if [[ -z "${desired_target}" ]] || [[ "${current_target}" != "${desired_target}" ]]; then
-        rm -f -- "${target_entry}" || return 1
+  if [[ "${selected_color_mode:-0}" -ne 0 ]]; then
+    theme_desktop_apply_kvantum_color_map \
+      "${colors_map}" \
+      "${dest_dir}/${kvantum_theme}.svg" \
+      "${dest_dir}/${kvantum_theme}.kvconfig" || return 1
+  fi
+}
+
+theme_desktop_configure_qt_kde_bridge() {
+  theme_desktop_write_generated_file "${XDG_CONFIG_HOME}/Kvantum/kvantum.kvconfig" <<EOF
+[General]
+theme=${RESOLVED_KVANTUM_THEME}
+EOF
+
+  theme_desktop_ini_write_batch "${XDG_CONFIG_HOME}/kdeglobals" \
+    "General:ColorScheme=${RESOLVED_KDE_COLOR_SCHEME}" \
+    "Icons:Theme=${ICON_THEME}" \
+    "KDE:widgetStyle=${RESOLVED_KDE_WIDGET_STYLE:-kvantum}" \
+    "UiSettings:ColorScheme=${RESOLVED_KDE_COLOR_SCHEME}"
+
+  theme_desktop_ini_write_batch "${XDG_CONFIG_HOME}/kdedefaults/kdeglobals" \
+    "General:ColorScheme=${RESOLVED_KDE_COLOR_SCHEME}" \
+    "Icons:Theme=${ICON_THEME}" \
+    "KDE:widgetStyle=${RESOLVED_KDE_WIDGET_STYLE:-kvantum}"
+}
+
+theme_desktop_write_gtk4_settings() {
+  local prefer_dark="$1"
+  local gtk3_font="$2"
+  local gtk3_font_size="$3"
+  mkdir -p "${XDG_CONFIG_HOME}/gtk-4.0"
+  theme_desktop_ini_write_batch "${XDG_CONFIG_HOME}/gtk-4.0/settings.ini" \
+    "Settings:gtk-theme-name=${RESOLVED_GTK_THEME}" \
+    "Settings:gtk-icon-theme-name=${ICON_THEME}" \
+    "Settings:gtk-cursor-theme-name=${CURSOR_THEME}" \
+    "Settings:gtk-cursor-theme-size=${CURSOR_SIZE}" \
+    "Settings:gtk-font-name=${gtk3_font} ${gtk3_font_size}" \
+    "Settings:gtk-application-prefer-dark-theme=${prefer_dark}"
+}
+
+theme_desktop_write_gtk3_css() {
+  local gtk3_css="${XDG_CONFIG_HOME}/gtk-3.0/gtk.css"
+
+  theme_desktop_write_generated_file "${gtk3_css}" <<'EOF'
+/* Generated by hypr theme desktop sync.
+ * Loaded after the active GTK theme. Do not set palette colors here; the
+ * selected GTK theme owns application surfaces and selection colors.
+ */
+.background.csd {
+  border-radius: 0px;
+}
+EOF
+}
+
+# libadwaita ignores gtk-theme-name; its only override hook is the user's
+# ~/.config/gtk-4.0/gtk.css. Import the resolved theme's GTK4 CSS so palette
+# variables (@theme_bg_color, @theme_fg_color, …) reach libadwaita widgets.
+theme_desktop_write_gtk4_css() {
+  local gtk4_css="${XDG_CONFIG_HOME}/gtk-4.0/gtk.css"
+  local theme_gtk4_css=""
+
+  case "${RESOLVED_GTK_THEME}" in
+    Pywal16-Gtk)
+      theme_gtk4_css="${XDG_DATA_HOME:-$HOME/.local/share}/themes/Pywal16-Gtk/gtk-4.0/gtk.css"
+      ;;
+    Adwaita|"")
+      :
+      ;;
+    *)
+      if [[ -f "${HOME}/.themes/${RESOLVED_GTK_THEME}/gtk-4.0/gtk.css" ]]; then
+        theme_gtk4_css="${HOME}/.themes/${RESOLVED_GTK_THEME}/gtk-4.0/gtk.css"
+      elif [[ -f "${XDG_DATA_HOME:-$HOME/.local/share}/themes/${RESOLVED_GTK_THEME}/gtk-4.0/gtk.css" ]]; then
+        theme_gtk4_css="${XDG_DATA_HOME:-$HOME/.local/share}/themes/${RESOLVED_GTK_THEME}/gtk-4.0/gtk.css"
       fi
-      continue
-    fi
-    if [[ -n "${desired_target}" ]]; then
-      print_log -sec "theme" -warn "gtk4" "keeping user-managed ${target_entry}"
-      unset 'desired_entries[$entry_name]'
-    fi
-  done < <(find -H "${target_dir}" -mindepth 1 -maxdepth 1 -print0 2>/dev/null)
+      ;;
+  esac
 
-  for entry_name in "${!desired_entries[@]}"; do
-    target_entry="${target_dir}/${entry_name}"
-    [[ -e "${target_entry}" ]] && continue
-    ln -snf "${desired_entries["${entry_name}"]}" "${target_entry}" || return 1
-  done
+  mkdir -p "${XDG_CONFIG_HOME}/gtk-4.0"
+  if [[ -n "${theme_gtk4_css}" && -f "${theme_gtk4_css}" ]]; then
+    theme_desktop_write_generated_file "${gtk4_css}" <<EOF
+/* Generated by hypr theme desktop sync.
+ * libadwaita ignores gtk-theme-name; this @import is the only override hook.
+ */
+@import url("file://${theme_gtk4_css}");
+
+.background.csd {
+  border-radius: 0px;
 }
-
-theme_desktop_ensure_user_theme_symlink() {
-  local theme_name="$1"
-  local source_dir="$2"
-  local user_theme_dir="${HOME}/.themes/${theme_name}"
-
-  [[ -n "${theme_name}" ]] || return 0
-  [[ -d "${source_dir}" ]] || return 0
-  mkdir -p "${HOME}/.themes" || return 1
-
-  if [[ -e "${user_theme_dir}" ]] && [[ ! -L "${user_theme_dir}" ]]; then
-    print_log -sec "theme" -warn "linking" "keeping existing user theme directory ${user_theme_dir}"
-    return 0
+EOF
+  else
+    theme_desktop_write_generated_file "${gtk4_css}" <<'EOF'
+/* Generated by hypr theme desktop sync.
+ * No active GTK4 theme to import. libadwaita uses its built-in style.
+ */
+.background.csd {
+  border-radius: 0px;
+}
+EOF
   fi
-
-  ln -snf "${source_dir}" "${user_theme_dir}"
 }
 
 theme_desktop_configure_gtk() {
   local gtk3_font=""
   local gtk3_font_size=""
-  local gtk4_theme=""
-  local gtk4_source_dir=""
   local gtkrc_file="${HOME}/.gtkrc-2.0"
   local xsettingsd_file="${XDG_CONFIG_HOME}/xsettingsd/xsettingsd.conf"
+  local prefer_dark=0
 
   gtk3_font="${GTK3_FONT:-${FONT}}"
   gtk3_font_size="${GTK3_FONT_SIZE:-${FONT_SIZE}}"
+  [[ "${COLOR_SCHEME}" == "prefer-dark" ]] && prefer_dark=1
 
   mkdir -p "${XDG_CONFIG_HOME}/gtk-3.0" "${XDG_CONFIG_HOME}/xsettingsd"
+  theme_desktop_write_gtk3_css || return 1
   theme_desktop_write_generated_file "${gtkrc_file}" <<EOF
 # Generated by hypr theme desktop sync.
 include "${HOME}/.gtkrc-2.0.mime"
-gtk-theme-name="${GTK_THEME}"
+gtk-theme-name="${RESOLVED_GTK_THEME}"
 gtk-icon-theme-name="${ICON_THEME}"
 gtk-font-name="${gtk3_font} ${gtk3_font_size}"
 gtk-cursor-theme-name="${CURSOR_THEME}"
 gtk-cursor-theme-size=${CURSOR_SIZE}
+gtk-application-prefer-dark-theme=${prefer_dark}
 gtk-toolbar-style=GTK_TOOLBAR_ICONS
 gtk-toolbar-icon-size=GTK_ICON_SIZE_LARGE_TOOLBAR
 gtk-button-images=1
@@ -486,43 +583,34 @@ gtk-xft-rgba="rgb"
 EOF
 
   theme_desktop_ini_write_batch "${XDG_CONFIG_HOME}/gtk-3.0/settings.ini" \
-    "Settings:gtk-theme-name=${GTK_THEME}" \
+    "Settings:gtk-theme-name=${RESOLVED_GTK_THEME}" \
     "Settings:gtk-icon-theme-name=${ICON_THEME}" \
     "Settings:gtk-cursor-theme-name=${CURSOR_THEME}" \
     "Settings:gtk-cursor-theme-size=${CURSOR_SIZE}" \
-    "Settings:gtk-font-name=${gtk3_font} ${gtk3_font_size}"
+    "Settings:gtk-font-name=${gtk3_font} ${gtk3_font_size}" \
+    "Settings:gtk-application-prefer-dark-theme=${prefer_dark}"
 
-  if [[ -n "${theme_desktop_gtk_theme_path_name}" ]] && [[ -d "${THEMES_DIR}/${theme_desktop_gtk_theme_path_name}/gtk-4.0" ]]; then
-    gtk4_theme="${theme_desktop_gtk_theme_path_name}"
-  else
-    gtk4_theme="Pywal16-Gtk"
-    print_log -sec "theme" -stat "use" "'Pywal16-Gtk' as gtk4 theme"
-  fi
-
-  gtk4_source_dir="${THEMES_DIR}/${gtk4_theme}/gtk-4.0"
-  if ! theme_desktop_sync_gtk4_runtime_dir "${gtk4_source_dir}"; then
-    print_log -sec "theme" -warn "gtk4" "theme directory '${THEMES_DIR}/${gtk4_theme}/gtk-4.0' does not exist"
-  fi
+  theme_desktop_write_gtk4_settings "${prefer_dark}" "${gtk3_font}" "${gtk3_font_size}" || return 1
+  theme_desktop_write_gtk4_css || return 1
 
   if pkg_installed flatpak; then
     flatpak \
       --user override \
-      --filesystem="${THEMES_DIR}" \
-      --filesystem="${HOME}/.themes" \
       --filesystem="${HOME}/.icons" \
       --filesystem="${XDG_DATA_HOME:-$HOME/.local/share}/icons" \
-      --env=GTK_THEME="${gtk4_theme}" \
+      --env=GTK_THEME="${RESOLVED_GTK_THEME}" \
       --env=ICON_THEME="${ICON_THEME}"
     flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo >/dev/null 2>&1 &
   fi
 
   theme_desktop_write_generated_file "${xsettingsd_file}" <<EOF
 # Generated by hypr theme desktop sync.
-Net/ThemeName "${GTK_THEME}"
+Net/ThemeName "${RESOLVED_GTK_THEME}"
 Net/IconThemeName "${ICON_THEME}"
 Gtk/CursorThemeName "${CURSOR_THEME}"
 Gtk/CursorThemeSize ${CURSOR_SIZE}
 Gtk/FontName "${gtk3_font} ${gtk3_font_size}"
+Gtk/ApplicationPreferDarkTheme ${prefer_dark}
 Net/EnableEventSounds 1
 Net/EnableInputFeedbackSounds 0
 Xft/Antialias 1
@@ -530,16 +618,6 @@ Xft/Hinting 1
 Xft/HintStyle "hintfull"
 Xft/RGBA "rgb"
 EOF
-
-  if [[ -n "${theme_desktop_gtk_theme_path_name}" ]] \
-    && [[ -d "${THEMES_DIR}/${theme_desktop_gtk_theme_path_name}" ]]; then
-    print_log -sec "theme" -warn "linking" "${GTK_THEME} to ~/.themes to fix GTK4 not following xdg"
-    theme_desktop_ensure_user_theme_symlink \
-      "${theme_desktop_gtk_theme_path_name}" \
-      "${THEMES_DIR}/${theme_desktop_gtk_theme_path_name}"
-  fi
-
-  [[ -f "${XDG_CONFIG_HOME}/gtk-4.0/settings.ini" ]] && rm -f -- "${XDG_CONFIG_HOME}/gtk-4.0/settings.ini"
 }
 
 theme_desktop_configure_xcursor_resources() {
@@ -551,7 +629,7 @@ theme_desktop_dconf_payload() {
   cat <<EOF
 [org/gnome/desktop/interface]
 icon-theme='${ICON_THEME}'
-gtk-theme='${GTK_THEME}'
+gtk-theme='${RESOLVED_GTK_THEME}'
 color-scheme='${COLOR_SCHEME}'
 cursor-theme='${CURSOR_THEME}'
 cursor-size=${CURSOR_SIZE}
@@ -560,6 +638,13 @@ document-font-name='${DOCUMENT_FONT} ${DOCUMENT_FONT_SIZE}'
 monospace-font-name='${MONOSPACE_FONT} ${MONOSPACE_FONT_SIZE}'
 font-antialiasing='${FONT_ANTIALIASING}'
 font-hinting='${FONT_HINTING}'
+
+[org/cinnamon/desktop/interface]
+icon-theme='${ICON_THEME}'
+gtk-theme='${RESOLVED_GTK_THEME}'
+cursor-theme='${CURSOR_THEME}'
+cursor-size=${CURSOR_SIZE}
+font-name='${FONT} ${FONT_SIZE}'
 
 [org/gnome/desktop/default-applications/terminal]
 exec='$(command -v "${TERMINAL}")'
@@ -619,27 +704,28 @@ theme_desktop_restart_portal_backends_if_needed() {
 
 theme_desktop_prepare_state() {
   theme_desktop_resolve_values
-  theme_desktop_resolve_gtk_theme_path
 }
 
 theme_desktop_static_state_hash() {
-  local gtk4_theme=""
-  local gtk4_source_dir=""
   local flatpak_installed=0
-  local kde_color_scheme_file=""
+  local kvantum_pack_hash=""
+  local pipeline_hash=""
+  local pywal_colors="${XDG_CACHE_HOME:-$HOME/.cache}/wal/colors.json"
+  local pywal_hash=""
+  local -a pipeline_files=(
+    "${BASH_SOURCE[0]}"
+  )
 
-  if [[ -n "${theme_desktop_gtk_theme_path_name}" ]] && [[ -d "${THEMES_DIR}/${theme_desktop_gtk_theme_path_name}/gtk-4.0" ]]; then
-    gtk4_theme="${theme_desktop_gtk_theme_path_name}"
-  else
-    gtk4_theme="Pywal16-Gtk"
-  fi
-  gtk4_source_dir="${THEMES_DIR}/${gtk4_theme}/gtk-4.0"
-  kde_color_scheme_file="$(theme_desktop_find_kde_color_scheme_file 2>/dev/null || true)"
   pkg_installed flatpak && flatpak_installed=1
+  pipeline_hash="$(hypr_hash_cache_digest_files "${pipeline_files[@]}")"
+  [[ -f "${pywal_colors}" ]] && pywal_hash="$(hypr_hash_cache_digest_files "${pywal_colors}")"
+  if [[ "${RESOLVED_KVANTUM_THEME_IS_PACK:-0}" -eq 1 ]]; then
+    kvantum_pack_hash="$(theme_desktop_kvantum_pack_source_hash)"
+  fi
 
   hypr_hash_cache_digest_strings \
-    "version=${theme_desktop_static_state_version}" \
-    "gtk_theme=${GTK_THEME}" \
+    "pipeline_hash=${pipeline_hash}" \
+    "gtk_theme=${RESOLVED_GTK_THEME}" \
     "icon_theme=${ICON_THEME}" \
     "cursor_theme=${CURSOR_THEME}" \
     "cursor_size=${CURSOR_SIZE}" \
@@ -654,35 +740,42 @@ theme_desktop_static_state_hash() {
     "button_layout=${BUTTON_LAYOUT}" \
     "font_antialiasing=${FONT_ANTIALIASING}" \
     "font_hinting=${FONT_HINTING}" \
-    "kde_color_scheme=${KDE_COLOR_SCHEME}" \
-    "kde_color_scheme_file=${kde_color_scheme_file}" \
-    "themes_dir=${THEMES_DIR}" \
-    "gtk_theme_path_name=${theme_desktop_gtk_theme_path_name}" \
-    "gtk4_theme=${gtk4_theme}" \
-    "gtk4_source_dir=${gtk4_source_dir}" \
+    "kvantum_theme=${RESOLVED_KVANTUM_THEME}" \
+    "kvantum_pack_hash=${kvantum_pack_hash}" \
+    "kde_color_scheme=${RESOLVED_KDE_COLOR_SCHEME}" \
+    "kde_widget_style=${RESOLVED_KDE_WIDGET_STYLE:-kvantum}" \
+    "pywal_colors=${pywal_hash}" \
     "flatpak_installed=${flatpak_installed}"
 }
 
 theme_desktop_static_targets_ready() {
-  local gtk4_runtime_dir="${XDG_CONFIG_HOME}/gtk-4.0"
   local required_target=""
+  local kvantum_pack_theme=""
   local -a required_targets=(
-    "${XDG_CONFIG_HOME}/qt5ct/qt5ct.conf"
-    "${XDG_CONFIG_HOME}/qt6ct/qt6ct.conf"
+    "${XDG_CONFIG_HOME}/Kvantum/kvantum.kvconfig"
     "${XDG_CONFIG_HOME}/kdeglobals"
+    "${XDG_CONFIG_HOME}/kdedefaults/kdeglobals"
     "${XDG_DATA_HOME}/icons/default/index.theme"
     "${HOME}/.icons/default/index.theme"
     "${HOME}/.gtkrc-2.0"
+    "${XDG_CONFIG_HOME}/gtk-3.0/gtk.css"
     "${XDG_CONFIG_HOME}/gtk-3.0/settings.ini"
+    "${XDG_CONFIG_HOME}/gtk-4.0/settings.ini"
     "${XDG_CONFIG_HOME}/xsettingsd/xsettingsd.conf"
     "${HOME}/.Xresources"
   )
 
+  if [[ "${RESOLVED_KVANTUM_THEME_IS_PACK:-0}" -eq 1 ]] && theme_desktop_pack_has_kvantum_theme; then
+    kvantum_pack_theme="$(theme_desktop_kvantum_output_theme_name)"
+    required_targets+=(
+      "${XDG_CONFIG_HOME}/Kvantum/${kvantum_pack_theme}/${kvantum_pack_theme}.svg"
+      "${XDG_CONFIG_HOME}/Kvantum/${kvantum_pack_theme}/${kvantum_pack_theme}.kvconfig"
+    )
+  fi
+
   for required_target in "${required_targets[@]}"; do
     [[ -e "${required_target}" ]] || return 1
   done
-
-  [[ -d "${gtk4_runtime_dir}" ]] || return 1
 }
 
 theme_desktop_apply_runtime_resolved() {
@@ -697,8 +790,8 @@ theme_desktop_apply_runtime_resolved() {
 }
 
 theme_desktop_apply_static_resolved() {
-  theme_desktop_configure_qt
-  theme_desktop_configure_kde
+  theme_desktop_install_pack_kvantum_theme
+  theme_desktop_configure_qt_kde_bridge
   theme_desktop_ini_write_batch "${XDG_DATA_HOME}/icons/default/index.theme" "Icon Theme:Inherits=${CURSOR_THEME}"
   theme_desktop_ini_write_batch "${HOME}/.icons/default/index.theme" "Icon Theme:Inherits=${CURSOR_THEME}"
   theme_desktop_configure_gtk
@@ -712,6 +805,8 @@ theme_desktop_apply_static_resolved_if_needed() {
   hash_file="$(hypr_hash_cache_runtime_file "theme-desktop-static.hash")" || return 1
   static_hash="$(theme_desktop_static_state_hash)" || return 1
 
+  # hypr_hash_cache_is_current honors FORCE_COLOR_REGEN; store honors
+  # HYPR_WAL_CACHE_ENABLE — no per-callsite flag checks needed.
   if theme_desktop_static_targets_ready \
     && hypr_hash_cache_is_current "${hash_file}" "${static_hash}"; then
     print_log -sec "theme" -stat "skip" "static desktop sync unchanged"

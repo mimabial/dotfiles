@@ -1,7 +1,5 @@
 [%General]
-author=elkrien based on Arc Dark style
-comment=Catppuccin-Macchiato-Mauve
-spread_menuitems=true
+spread_menuitems=false
 left_tabs=true
 mirror_doc_tabs=true
 scroll_width=8

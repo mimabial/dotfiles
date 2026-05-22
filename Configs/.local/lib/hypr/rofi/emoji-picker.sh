@@ -218,8 +218,7 @@ emoji_rofi_selection_index() {
     -theme-str "entry { placeholder: \" 󰞅 Emoji\";} ${rofi_position} ${r_override}" \
     -theme-str "${font_override}" \
     -theme-str "${emoji_window_theme}" \
-    <"${display_file}"
-    -no-custom
+    -no-custom <"${display_file}"
 }
 
 emoji_category_source_file() {
@@ -331,24 +330,28 @@ show_multi_person_skin_tone_selector() {
     return 1 # Not multi-person
   fi
 
-  # Select Person 1 skin tone
+  # Person 1 menu: preview as <base><modifier> so each row shows the colored
+  # base emoji rather than a bare tone square.
   local tone1
-  tone1=$(echo -e "🏾 Medium-Dark\n🏻 Light\n🏼 Medium-Light\n🏽 Medium\n🏿 Dark\nDefault" \
+  tone1=$(printf '%s\n' "${base_emoji}🏾 Medium-Dark" "${base_emoji}🏻 Light" \
+      "${base_emoji}🏼 Medium-Light" "${base_emoji}🏽 Medium" \
+      "${base_emoji}🏿 Dark" "${base_emoji} Default" \
     | emoji_clipboard_dmenu "Person 1 Skin Tone" "Choose skin tone for person 1...")
 
   [[ -z "${tone1}" ]] && return 1
+  local modifier1=""
+  modifier1="$(emoji_extract_skin_tone_modifier "${tone1}")"
 
-  # Select Person 2 skin tone
+  # Person 2 menu: preview composed with person 1's pick so the row shows the
+  # final two-tone emoji that will be produced.
   local tone2
-  tone2=$(echo -e "🏾 Medium-Dark\n🏻 Light\n🏼 Medium-Light\n🏽 Medium\n🏿 Dark\nDefault" \
+  tone2=$(printf '%s\n' "${base_emoji}${modifier1}🏾 Medium-Dark" "${base_emoji}${modifier1}🏻 Light" \
+      "${base_emoji}${modifier1}🏼 Medium-Light" "${base_emoji}${modifier1}🏽 Medium" \
+      "${base_emoji}${modifier1}🏿 Dark" "${base_emoji}${modifier1} Default" \
     | emoji_clipboard_dmenu "Person 2 Skin Tone" "Choose skin tone for person 2...")
 
   [[ -z "${tone2}" ]] && return 1
-
-  # Extract skin tone modifiers
-  local modifier1=""
   local modifier2=""
-  modifier1="$(emoji_extract_skin_tone_modifier "${tone1}")"
   modifier2="$(emoji_extract_skin_tone_modifier "${tone2}")"
 
   # Combine emoji with skin tones
@@ -396,8 +399,14 @@ emoji_supports_skin_tone() {
 emoji_pick_skin_tone() {
   local base_emoji="$1"
 
+  # Compose each menu entry as <base><modifier> <label> so Unicode skin-tone
+  # composition produces the actual colored emoji in the preview, rather than
+  # showing the base, a space, and a bare tone square.
   printf '%s\n' "${EMOJI_SKIN_TONE_MENU}" \
-    | sed "s/^/${base_emoji} /" \
+    | awk -v base="${base_emoji}" '
+        /^Default$/ { print base " " $0; next }
+        { print base $0 }
+      ' \
     | emoji_clipboard_dmenu "Select Skin Tone" "Choose skin tone..."
 }
 

@@ -40,16 +40,19 @@ refresh_hypr_runtime_state() {
     return 1
   fi
 
-  if [[ ! -d "${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}" ]]; then
-    if declare -F print_log >/dev/null 2>&1; then
-      print_log -sec "theme" -err "state" "theme not found: ${HYPR_THEME}"
-    else
-      printf 'ERROR: theme not found: %s\n' "${HYPR_THEME}" >&2
-    fi
-    return 1
-  fi
-
   HYPR_THEME_DIR="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}"
+  if [[ ! -d "${HYPR_THEME_DIR}" ]]; then
+    # The saved theme references a directory that no longer exists (renamed,
+    # moved, or deleted). Warn but keep going: the theme menu and recovery
+    # paths must still run so the user can pick a new theme. Consumers that
+    # require a valid theme dir (color.plan.sh, theme.switch.sh) do their own
+    # check and surface their own error.
+    if declare -F print_log >/dev/null 2>&1; then
+      print_log -sec "theme" -warn "state" "theme dir missing: ${HYPR_THEME}"
+    else
+      printf 'WARN: theme dir missing: %s\n' "${HYPR_THEME}" >&2
+    fi
+  fi
   refresh_hypr_instance_signature
   export HYPR_THEME HYPR_THEME_DIR selected_color_mode HYPRLAND_INSTANCE_SIGNATURE
 }
@@ -183,6 +186,10 @@ state_parse_cache_file() {
 
     [[ "${raw_name}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || continue
     [[ -v "HYPR_STATE_CACHE_VALUES[${raw_name}]" ]] && continue
+    # Arrays are valid shell state for sourced environments, but this scalar
+    # cache cannot represent them. Skip without warning so unrelated array
+    # entries do not make every state_get call noisy.
+    [[ "${raw_value}" == \(* ]] && continue
     value="$(state_decode_raw_value "${raw_value}")" || continue
     HYPR_STATE_CACHE_VALUES["${raw_name}"]="${value}"
   done < "${state_file}"

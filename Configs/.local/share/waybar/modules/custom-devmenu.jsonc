@@ -1,7 +1,0 @@
-{
-  "custom/devmenu": {
-    "format": "",
-    "on-click": "hyprshell menutree.sh --menu-id dev_tools",
-    "tooltip-format": "Dev Tools Menu\n• LazyGit\n• LazyDocker\n• Bottom\n• Rmpc"
-  }
-}

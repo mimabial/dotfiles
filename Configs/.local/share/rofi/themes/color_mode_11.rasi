@@ -1,0 +1,140 @@
+/**
+ * Pywal16 Mode Selector Theme
+ *
+ * Simple rofi theme for pywal16 color mode selection
+ * Uses pywal16-generated colors
+ **/
+
+/*****----- Global Properties -----*****/
+@import "~/.config/rofi/theme.rasi"
+
+configuration {
+    modes:                        "drun";
+    show-icons:                  true;
+    drun-display-format:         "{name}";
+    window-format:               "{w}{t}";
+    font:                        "JetBrainsMono Nerd Font 10";
+    icon-theme:                  "Tela-circle-dracula";
+}
+
+/*****----- Main Window -----*****/
+window {
+    height:                      30em;
+    transparency:                "real";
+    fullscreen:                  false;
+    enabled:                     true;
+    cursor:                      "default";
+    spacing:                     0em;
+    padding:                     0em;
+    border-color:                @border;
+    background-color:            transparent;
+}
+
+/*****----- Main Box -----*****/
+mainbox {
+    enabled:                     true;
+    spacing:                     0em;
+    padding:                     0.7em;
+    orientation:                 horizontal;
+    background-color:            #0000000D;
+    children:                    [ "inputbox", "listbox" ];
+}
+
+/*****----- Inputbar -----*****/
+inputbar {
+    enabled:                     true;
+    spacing:                     1em;
+    background-color:            transparent;
+    text-color:                  @foreground;
+    children:                    [ "dummy", "textbox-prompt-colon", "prompt", "dummy"];
+}
+
+textbox-prompt-colon {
+    enabled:                     true;
+    expand:                      false;
+    str:                         "";
+    padding:                     10px 15px 10px 13px;
+    border-radius:               0px;
+    background-color:            @urgent;
+    text-color:                  @background;
+}
+
+prompt {
+    enabled:                     true;
+    padding:                     10px;
+    border-radius:               0px;
+    background-color:            @active;
+    text-color:                  @background;
+}
+
+/*****----- Listview -----*****/
+inputbox {
+    enabled:                     true;
+    width:                       31.5em;
+    spacing:                     0em;
+    padding:                     0em;
+    expand:                      false;
+    background-color:            #0000001A;
+    background-image:            url("~/.cache/hypr/wallpaper/current/wall.quad", width);
+    border-radius:               1em 0em 0em 1em;
+    children:                    [ "dummy", "inputbar", "dummy" ];
+}
+
+listbox {
+    spacing:                     0em;
+    padding:                     0em;
+    children:                    [ "dummy" , "listview" , "dummy" ];
+    background-color:            #0000001A;
+    border-radius:               0em 1em 1em 0em;
+}
+
+listview {
+    enabled:                     true;
+    spacing:                     0em;
+    padding:                     1em 2em;
+    columns:                     1;
+    lines:                       4;
+    cycle:                       true;
+    dynamic:                     true;
+    scrollbar:                   false;
+    layout:                      vertical;
+    reverse:                     false;
+    expand:                      false;
+    fixed-height:                true;
+    fixed-columns:               true;
+    cursor:                      "default";
+    background-color:            transparent;
+    text-color:                  @foreground;
+}
+
+/*****----- Elements -----*****/
+element {
+    enabled:                     true;
+    spacing:                     1em;
+    padding:                     0.9em;
+    cursor:                      pointer;
+    background-color:            transparent;
+    text-color:                  @foreground;
+}
+
+element selected.normal {
+    background-color:            @selected-background;
+    text-color:                  @selected-foreground;
+}
+
+element-icon {
+    enabled:                     false;
+}
+
+element-text {
+    vertical-align:              0.5;
+    horizontal-align:            0.1;
+    cursor:                      inherit;
+    background-color:            transparent;
+    text-color:                  inherit;
+}
+
+/*****----- Dummy -----*****/
+dummy {
+    background-color:            transparent;
+}

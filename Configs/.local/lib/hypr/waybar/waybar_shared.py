@@ -70,7 +70,7 @@ INCLUDES_DIRS = [
 CONFIG_JSONC = CONFIG_WAYBAR_DIR / "config.jsonc"
 STATE_FILE = Path(os.path.join(str(xdg_state_home()), "hypr", "staterc"))
 HYPR_ENV_OVERRIDES = Path(os.path.join(str(xdg_state_home()), "hypr", "env-overrides"))
-DUNST_SYNC_SCRIPT = os.path.join(os.path.dirname(__file__), "..", "wal", "wal.dunst.sh")
+DUNST_SYNC_SCRIPT = os.path.join(os.path.dirname(__file__), "..", "render", "dunst.py")
 WATCHED_SUFFIXES = {".css", ".json", ".jsonc"}
 
 

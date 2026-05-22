@@ -11,7 +11,9 @@ cursor_text_color        #e0def4
 url_color                #c4a7e7
 
 active_tab_foreground    #ebbcba
+active_tab_background    #26233a
 inactive_tab_foreground  #6e6a86
+inactive_tab_background  #191724
 tab_bar_background       #26233a
 
 active_border_color      #31748f

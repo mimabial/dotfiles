@@ -15,14 +15,12 @@ hyprshell_builtin_commands() {
 }
 
 initialized() {
-  cat <<EOT
-HYPR_SHELL_INIT=1
-BIN_DIR="${BIN_DIR}"
-LIB_DIR="${LIB_DIR}"
-PATH=${PATH}
-  HYPR_SCRIPTS_PATH=${HYPR_SCRIPTS_PATH}
-  export BIN_DIR LIB_DIR PATH HYPR_SCRIPTS_PATH HYPR_SHELL_INIT
-EOT
+  printf 'HYPR_SHELL_INIT=1\n'
+  printf 'BIN_DIR=%q\n' "${BIN_DIR}"
+  printf 'LIB_DIR=%q\n' "${LIB_DIR}"
+  printf 'PATH=%q\n' "${PATH}"
+  printf 'HYPR_SCRIPTS_PATH=%q\n' "${HYPR_SCRIPTS_PATH:-}"
+  printf 'export BIN_DIR LIB_DIR PATH HYPR_SCRIPTS_PATH HYPR_SHELL_INIT\n'
 
   cat <<'EOT'
 # shellcheck source=/dev/null

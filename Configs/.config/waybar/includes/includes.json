@@ -13,8 +13,6 @@
         "$XDG_DATA_HOME/waybar/modules/custom-colormode.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-colorpicker.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-cpuinfo.jsonc",
-        "$XDG_DATA_HOME/waybar/modules/custom-devmenu.jsonc",
-        "$XDG_DATA_HOME/waybar/modules/custom-display.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-dmark.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-dunst.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-fanspeedinfo.jsonc",
@@ -25,13 +23,11 @@
         "$XDG_DATA_HOME/waybar/modules/custom-hyprmenu.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-hyprsunset.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-keybindhint.jsonc",
-        "$XDG_DATA_HOME/waybar/modules/custom-lazygit.jsonc",
-        "$XDG_DATA_HOME/waybar/modules/custom-mainmenu.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-mark.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-mediaplayer.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-microphone.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-network#speed.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-powermenu.jsonc",
-        "$XDG_DATA_HOME/waybar/modules/custom-rmpc.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-screenrecord.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-screenshot.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-terminal.jsonc",
@@ -58,7 +54,6 @@
         "$XDG_DATA_HOME/waybar/modules/network.jsonc",
         "$XDG_DATA_HOME/waybar/modules/power-profiles-daemon.jsonc",
         "$XDG_DATA_HOME/waybar/modules/privacy.jsonc",
-        "$XDG_DATA_HOME/waybar/modules/pulseaudio-microphone.jsonc",
         "$XDG_DATA_HOME/waybar/modules/pulseaudio-slider.jsonc",
         "$XDG_DATA_HOME/waybar/modules/pulseaudio.jsonc",
         "$XDG_CONFIG_HOME/waybar/modules/temperature.jsonc",
@@ -152,11 +147,6 @@
         "interval": 86400,
         "tooltip": true
     },
-    "custom/lazygit": {
-        "format": "\udb80\udea2",
-        "on-click": "hyprshell launch/lazygit.sh",
-        "tooltip-format": "LazyGit (SUPER+SHIFT+G)"
-    },
     "custom/weather#sunset": {
         "exec": "hyprshell weather -S",
         "justify": "right",
@@ -164,6 +154,18 @@
         "format": "{0}",
         "interval": 3600,
         "return-type": "json"
+    },
+    "custom/microphone": {
+        "format": "{}",
+        "exec": "hyprshell waybar.mic.sh",
+        "return-type": "json",
+        "on-click": "hyprshell volume-control -i m",
+        "on-click-right": "pavucontrol -t 4",
+        "on-scroll-up": "hyprshell volume-control -i i",
+        "on-scroll-down": "hyprshell volume-control -i d",
+        "tooltip": true,
+        "interval": 5,
+        "signal": 18
     },
     "power-profiles-daemon": {
         "justify": "center",
@@ -525,11 +527,6 @@
         "tooltip": true,
         "signal": 20
     },
-    "custom/mainmenu": {
-        "format": "",
-        "on-click": "hyprshell menutree.sh",
-        "tooltip-format": "Main Menu\n\u2022 Appearance\n\u2022 Applications\n\u2022 Dev Tools\n\u2022 Install\n\u2022 Settings"
-    },
     "custom/themeswitch": {
         "justify": "center",
         "format": "\udb81\udfe1",
@@ -545,18 +542,6 @@
         "format": "\udb81\udda9",
         "on-click": "hyprshell launch/wifi.sh",
         "tooltip-format": "WiFi Manager (Impala)"
-    },
-    "custom/microphone": {
-        "format": "{}",
-        "exec": "hyprshell waybar.mic.sh",
-        "return-type": "json",
-        "on-click": "hyprshell volume-control -i m",
-        "on-click-right": "pavucontrol -t 4",
-        "on-scroll-up": "hyprshell volume-control -i i",
-        "on-scroll-down": "hyprshell volume-control -i d",
-        "tooltip": true,
-        "interval": 5,
-        "signal": 18
     },
     "custom/weather#sunrise": {
         "exec": "hyprshell weather -s",
@@ -600,17 +585,6 @@
             "firefoxdeveloperedition": "firefox-developer-edition",
             "jetbrains-datagrip": "DataGrip"
         }
-    },
-    "custom/display": {
-        "justify": "center",
-        "format": "\udb84\udd04",
-        "tooltip-format": "\udb84\udd04  Display settings",
-        "on-click": "nwg-displays"
-    },
-    "custom/devmenu": {
-        "format": "",
-        "on-click": "hyprshell menutree.sh --menu-id dev_tools",
-        "tooltip-format": "Dev Tools Menu\n\u2022 LazyGit\n\u2022 LazyDocker\n\u2022 Bottom\n\u2022 Rmpc"
     },
     "backlight/slider": {
         "justify": "center",
@@ -728,7 +702,7 @@
         "justify": "center",
         "format": "\udb83\udf4f",
         "tooltip-format": "\udb83\udf4f Toggle focus workflow",
-        "on-click": "hyprshell focusmode"
+        "on-click": "hyprshell util/workflow-toggle.sh focus"
     },
     "custom/gpuinfo": {
         "justify": "right",
@@ -940,11 +914,6 @@
         "on-scroll-up": "hyprctl dispatch workspace -1",
         "on-scroll-down": "hyprctl dispatch workspace +1",
         "persistent-workspaces": {}
-    },
-    "custom/rmpc": {
-        "format": "",
-        "on-click": "hyprshell launch/tui.sh rmpc",
-        "tooltip-format": "Music Player (Rmpc)\nSUPER+SHIFT+M"
     },
     "bluetooth": {
         "justify": "center",

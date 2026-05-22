@@ -165,27 +165,6 @@ fn_length() {
   fi
 }
 
-fn_mpris() {
-  local player=${1:-$(mpris_default_player)}
-  local thumb="${HYPR_CACHE_HOME}/landing/mpris"
-  local player_status=""
-  local temp_colored="${HYPR_CACHE_HOME}/landing/hypr-colored.tmp.png"
-
-  player_status="$(mpris_player_status "${player}")"
-  if [[ "${player_status}" == "Playing" ]]; then
-    playerctl -p "${player}" metadata --format "{{xesam:title}} $(mpris_icon "${player}")  {{xesam:artist}}" 2>/dev/null
-    mpris_thumb "${player}" &
-    return 0
-  fi
-
-  colorize_fallback_icon "${temp_colored}"
-  if ! cmp -s "${temp_colored}" "${thumb}.png"; then
-    mv "${temp_colored}" "${thumb}.png"
-    reload_hyprlock
-  fi
-  set_mpris_blurred_empty "${thumb}.blurred.png"
-}
-
 fn_art() {
   echo "${HYPR_CACHE_HOME}/landing/mpris.art"
 }

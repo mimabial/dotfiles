@@ -1,0 +1,14 @@
+[Unit]
+Description=Hyprland monitor toggle recovery watcher
+After=graphical-session.target
+PartOf=graphical-session.target
+ConditionEnvironment=WAYLAND_DISPLAY
+
+[Service]
+Type=simple
+ExecStart=%h/.local/lib/hypr/system/monitor-watch.sh
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target

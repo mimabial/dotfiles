@@ -1,20 +1,14 @@
 $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
-
-$GTK_THEME = Frosted-Glass
 $ICON_THEME = Tela-circle-grey-light
 $COLOR_SCHEME = prefer-light
 $CURSOR_THEME = GoogleDot-Blue
 
-exec = gsettings set org.gnome.desktop.interface icon-theme $ICON_THEME
-exec = gsettings set org.gnome.desktop.interface gtk-theme $GTK_THEME
-exec = gsettings set org.gnome.desktop.interface color-scheme $COLOR_SCHEME
-
 general {
-    gaps_in = 4
+    gaps_in = 5
     gaps_out = 10
     border_size = 2
-    col.active_border = rgba(7ed6ffff)
-    col.inactive_border = rgba(ededeccc)
+    col.active_border = rgba(7ed6ff80)
+    col.inactive_border = rgba(b2b2b254)
     layout = dwindle
     resize_on_border = true
 }
@@ -33,11 +27,11 @@ decoration {
 
     shadow {
         enabled = yes
-        ignore_window = true
         offset = 0 0
-        range = 14
-        render_power = 1
-        color = 0x80ffffff
+        range = 10
+        render_power = 5
+        color = 0x1affffff
+        color_inactive = 0x0dffffff
     }
 
     blur {

@@ -145,9 +145,13 @@ menu {
   padding: 4px 0px;
   color: @act_fg;
   background: alpha(@act_bg, 0.5);
-  border: 1.5px solid @act_br;
+  border: 1.6 solid @act_br;
   margin: 2px 0px;
   animation: ws_active 20s ease-in-out 1;
+}
+
+#workspaces button.active label {
+  color: @act_fg;
 }
 
 #workspaces button.urgent {
@@ -222,6 +226,10 @@ menu {
    NETWORK
    ============================================ */
 
+#custom-wifimenu {
+  padding: 2px 4px 0px 0px;
+}
+
 #custom-network.speed {
   font-size: 13px;
   padding: 0px 0px 0px 3px;
@@ -239,16 +247,19 @@ menu {
   padding-right: 6px;
 }
 
+#networkmanagement {
+  margin: 2px 2px 4px;
+  border: 1px solid alpha(@alt_br, 0.3);
+}
+
 #custom-vpn {
   font-size: 18px;
   padding: 2px 2px 2px 0px;
-  margin: 2px 2px 4px;
-  background-color: alpha(@bg, 0.1);
-  border: 1px solid alpha(@br, 0.3);
 }
 
 #custom-hotspot {
-  padding-right: 5px;
+  font-size: 17px;
+  padding: 2px 4px 0px 0px;
 }
 
 #custom-vpn.connected {
@@ -272,7 +283,7 @@ menu {
    ============================================ */
 
 #bluetooth.connected {
-  padding-right: 2px;
+  padding: 0px 2px 2px 0px;
 }
 
 #bluetooth.status {
@@ -312,14 +323,15 @@ menu {
   padding-right: 2px;
 }
 
-#pulseaudio.microphone {
+#custom-microphone {
   background-color: alpha(@bg, 0.1);
   border: 1px solid alpha(@br, 0.3);
   padding: 3px 0px;
   margin-bottom: 2px;
 }
 
-#pulseaudio.microphone.source-muted {
+#custom-microphone.muted,
+#custom-microphone.absent {
   background-color: alpha(@bg, 0.3);
   border: 1px solid alpha(@br, 0.3);
   padding-right: 0px;
@@ -422,7 +434,7 @@ menu {
   animation-direction: alternate;
 }
 
-#power {
+#powerconsumption {
   margin: 2px 2px 2px 2px;
   background: transparent;
 }
@@ -467,19 +479,14 @@ menu {
   font-size: 15px;
   padding: 2px 2px 0px 0px;
   margin: 2px 2px 4px 2px;
-  border: none;
 }
 
 #custom-github.notifications {
-  background-color: alpha(@bg, 0.2);
-  padding: 2px 6px 2px 0px;
+  padding: 2px 6px 0px 0px;
   margin: 1px;
 }
 
-#custom-github.notifications.error {
-  color: @warning;
-}
-
+#custom-github.notifications.error,
 #custom-github.notifications.degraded {
   color: @warning;
 }
@@ -603,10 +610,6 @@ menu {
 }
 
 #custom-colorpicker {
-  font-size: 10px;
-  background-color: alpha(@bg, 0.3);
-  border: solid 1px alpha(@fg, 0.5);
-  padding: 3px 0px;
   margin: 0px 0px 4px;
 }
 
@@ -615,14 +618,13 @@ menu {
 }
 
 #custom-screenshot {
-  padding-right: 4px;
-  background-color: alpha(@bg, 0.2);
-  margin: 1px 0px 2px;
+  padding: 2px 4px 0px 0px;
 }
 
 #custom-screenrecord {
   color: @c1;
   font-size: 20px;
+  padding: 0px 0px 2px 0px;
 }
 
 #custom-screenrecord.recording {
@@ -663,8 +665,7 @@ menu {
   animation-direction: alternate;
 }
 
-#forever,
-#together {
+#power {
   margin: 2px 2px 4px 2px;
   background: alpha(@alt_bg, 0.1);
   border: 1px solid alpha(@alt_br, 0.3);

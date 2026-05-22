@@ -195,6 +195,37 @@ emit_vpn_state() {
   esac
 }
 
+# Each waybar poll is a fresh process, so compare the just-computed vpn_state
+# to the previously-emitted one (persisted in XDG_RUNTIME_DIR, volatile per
+# session) and notify on transitions. Set WAYBAR_VPN_AUTO_RECONNECT=1 to also
+# fire `mullvad connect` when a drop is detected.
+check_health_transition() {
+  local state_file="${XDG_RUNTIME_DIR:-/tmp}/hypr-waybar-vpn-last"
+  local prev_state=""
+
+  [[ -f "${state_file}" ]] && prev_state="$(<"${state_file}")"
+  printf '%s\n' "${vpn_state}" > "${state_file}" 2>/dev/null || true
+
+  case "${prev_state}:${vpn_state}" in
+    connected:disconnected | connected:error | connected:none)
+      waybar_notify "network-vpn-disconnected-symbolic" \
+        "VPN dropped" \
+        "Was connected, now ${vpn_state}" \
+        critical 8000
+      if waybar_vpn_env_flag "${WAYBAR_VPN_AUTO_RECONNECT:-false}" \
+        && waybar_have_command mullvad; then
+        mullvad connect >/dev/null 2>&1 || true
+      fi
+      ;;
+    disconnected:connected | error:connected | none:connected)
+      waybar_notify "network-vpn-symbolic" \
+        "VPN reconnected" \
+        "${vpn_info}" \
+        normal 3000
+      ;;
+  esac
+}
+
 case "${vpn_provider}" in
   wireguard|openvpn) has_vpn_client=true ;;
 esac
@@ -206,4 +237,5 @@ check_mullvad
 handle_missing_mullvad_provider
 check_wireguard
 check_openvpn
+check_health_transition
 emit_vpn_state
