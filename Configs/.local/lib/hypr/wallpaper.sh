@@ -4,19 +4,19 @@
 #
 # Subsystem inputs/outputs (caller-scope globals shared with sourced libs):
 #   wallList[], wallHash[], wallPathArray[], setIndex
-#       Wallpaper inventory built by wallpaper.catalog.bash:Wall_Hash and
+#       Wallpaper inventory built by lib/catalog.bash:Wall_Hash and
 #       Wall_Hashmap_Cached. wallList is the file paths, wallHash is the
 #       parallel content-hash array, setIndex is the current selection.
 #   wallpaper_setter_flag, wallpaper_path, wallpaper_backend,
 #   wallpaper_output, wallpaper_notify_body, wallpaper_notifications_disabled
-#       Set by lib/wallpaper.parse.bash from CLI args.
+#       Set by lib/parse.bash from CLI args.
 #   set_as_global
 #       --global flag; controls whether updates affect theme-wide links and
 #       thumbnails or only the per-backend link.
 #   active_wallpaper_link, current_wallpaper_link, current_*_thumbnail_link
 #       Built by wallpaper_set_paths from set_as_global and wallpaper_backend.
 #   selected_wallpaper, selected_wallpaper_path, selected_thumbnail
-#       Output of the rofi selector (lib/wallpaper.ui.bash:Wall_Select).
+#       Output of the rofi selector (lib/ui.bash:Wall_Select).
 #   wallpaper_action_*, wallpaper_inventory_refresh_mode
 #       Action policy flags resolved by wallpaper_resolve_action_profile.
 #
@@ -40,7 +40,7 @@ LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 
 # shellcheck source=/dev/null
 source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
-hypr_runtime_require state wallpaper_catalog || exit 1
+hypr_runtime_require state rofi wallpaper_catalog || exit 1
 hypr_runtime_load_state || exit 1
 
 declare -ga wallHash=()
@@ -59,13 +59,13 @@ wallpaper_release_lock() {
 trap 'wallpaper_release_lock "$?"' EXIT
 
 for wallpaper_lib in \
-  wallpaper.common.bash \
-  wallpaper.catalog.bash \
-  wallpaper.thumbs.bash \
-  wallpaper.actions.bash \
-  wallpaper.ui.bash \
-  wallpaper.parse.bash \
-  wallpaper.dispatch.bash; do
+  common.bash \
+  catalog.bash \
+  thumbs.bash \
+  actions.bash \
+  ui.bash \
+  parse.bash \
+  dispatch.bash; do
   wallpaper_lib="${LIB_DIR}/hypr/wallpaper/lib/${wallpaper_lib}"
   if [[ ! -r "${wallpaper_lib}" ]]; then
     print_log -sec "wallpaper" -err "source" "missing ${wallpaper_lib}"

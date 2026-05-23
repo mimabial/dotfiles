@@ -9,7 +9,7 @@ source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
 hypr_runtime_require state system || exit 1
 hypr_runtime_load_state || exit 1
 
-desktop_sync_lib="${LIB_DIR}/hypr/theme/lib/theme.desktop.sync.bash"
+desktop_sync_lib="${LIB_DIR}/hypr/theme/lib/desktop.sync.bash"
 if [[ ! -r "${desktop_sync_lib}" ]]; then
   print_log -sec "theme" -err "source" "missing ${desktop_sync_lib}"
   exit 1

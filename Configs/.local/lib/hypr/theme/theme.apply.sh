@@ -14,10 +14,10 @@ source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
 hypr_runtime_require state system wallpaper_catalog || exit 1
 hypr_runtime_load_state || exit 1
 
-theme_apply_desktop_sync_lib="${LIB_DIR}/hypr/theme/lib/theme.desktop.sync.bash"
+theme_apply_desktop_sync_lib="${LIB_DIR}/hypr/theme/lib/desktop.sync.bash"
 theme_apply_font_sync_lib="${LIB_DIR}/hypr/fonts/font.sync.lib.bash"
 theme_apply_color_apply_lib="${LIB_DIR}/hypr/theme/color.apply.sh"
-theme_apply_phase_d_lib="${LIB_DIR}/hypr/theme/lib/theme.apply.phase_d.bash"
+theme_apply_phase_d_lib="${LIB_DIR}/hypr/theme/lib/apply.phase_d.bash"
 
 if [[ ! -r "${theme_apply_desktop_sync_lib}" ]]; then
   print_log -sec "theme.apply" -err "source" "missing ${theme_apply_desktop_sync_lib}"

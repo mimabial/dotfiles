@@ -64,6 +64,7 @@ typeset -ga _FZF_SYMLINK_EXCLUDE_FD=()
 typeset -g _FZF_SYMLINK_EXCLUDE_FIND=""
 typeset -g _FZF_SEARCH_ROOT=""
 typeset -g _FZF_SEARCH_QUERY=""
+typeset -g _FZF_SEARCH_DEPTH=""
 typeset -gr _FZF_DEFAULT_PROMPT=' '
 typeset -gr _FZF_SEARCH_PROMPT='Search: '
 typeset -gr _FZF_SCROLLBAR=' ▌'
@@ -163,11 +164,12 @@ _refresh_symlink_excludes() {
 
 _parse_fzf_scope_args() {
     local root="$PWD"
+    local depth=""
     local -a query_parts=()
 
     while (($#)); do
         case "$1" in
-            --home)
+            --home|-H)
                 root="$HOME"
                 ;;
             --cwd|--here)
@@ -180,6 +182,18 @@ _parse_fzf_scope_args() {
                     return 1
                 fi
                 root="$1"
+                ;;
+            --depth|-d)
+                shift
+                if (($# == 0)); then
+                    echo "ERROR: --depth requires a positive integer"
+                    return 1
+                fi
+                if [[ "$1" != <-> || "$1" -lt 1 ]]; then
+                    echo "ERROR: --depth requires a positive integer (got: $1)"
+                    return 1
+                fi
+                depth="$1"
                 ;;
             --)
                 shift
@@ -201,6 +215,7 @@ _parse_fzf_scope_args() {
 
     _FZF_SEARCH_ROOT="$root"
     _FZF_SEARCH_QUERY="${(j: :)query_parts}"
+    _FZF_SEARCH_DEPTH="$depth"
 }
 
 # Generate find exclusion arguments: returns "-name .git -prune -o -name node_modules -prune -o ..."
@@ -374,6 +389,7 @@ _fuzzy_change_directory() {
     fzf_options+=(--scrollbar "$_FZF_SCROLLBAR")
     fzf_options+=(--header "Enter: Change directory")
     local max_depth=7
+    [[ -n "$_FZF_SEARCH_DEPTH" ]] && max_depth="$_FZF_SEARCH_DEPTH"
     _refresh_symlink_excludes "$search_root"
     local find_symlink_excludes="$_FZF_SYMLINK_EXCLUDE_FIND"
     local -a fd_symlink_excludes=("${_FZF_SYMLINK_EXCLUDE_FD[@]}")
@@ -456,6 +472,7 @@ _fuzzy_edit_search_file() {
         --header "Enter: Edit file"
     )
     local max_depth=5
+    [[ -n "$_FZF_SEARCH_DEPTH" ]] && max_depth="$_FZF_SEARCH_DEPTH"
 
     if [[ -n "$initial_query" ]]; then
         fzf_options+=("--query=$initial_query")

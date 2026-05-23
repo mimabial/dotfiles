@@ -9,7 +9,7 @@ if ! source "$(command -v hyprshell)"; then
 fi
 
 # shellcheck source=/dev/null
-source "${LIB_DIR}/hypr/wallpaper/lib/wallpaper.common.bash"
+source "${LIB_DIR}/hypr/wallpaper/lib/common.bash"
 
 show_help() {
   cat <<'HELP'

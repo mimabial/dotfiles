@@ -10,8 +10,8 @@ $HOME/.config/waybar/theme.css
 
 @define-color bg_selected #b4637a;
 
-@define-color act_bg #f2e9e1;
-@define-color act_fg #faf4ed;
+@define-color act_bg #d7827e;
+@define-color act_fg #ffffff;
 @define-color act_br #ffffff;
 
 @define-color hvr_bg #56949f;

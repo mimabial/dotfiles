@@ -5,7 +5,7 @@ source "$(command -v hyprshell)" || exit 1
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/system/monitor.common.bash"
 
-scales=(1 1.25 1.5 1.75 2 3 4)
+scales=(1 1.25 1.5 1.67 2 3 4)
 reverse=0
 [[ "${1:-}" == "--reverse" || "${1:-}" == "reverse" ]] && reverse=1
 
