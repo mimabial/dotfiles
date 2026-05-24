@@ -144,6 +144,7 @@ partitionmanager                                      # partition manager window
 skanlite                                              # scanner window rules
 localsend-bin                                         # local file sharing helper
 yt-dlp                                                # media/YouTube metadata helper
+wttrbar                                               # waybar weather widget
 
 # --------------------------------------------------- // TUI Utilities
 bluetui                                               # bluetooth TUI launcher

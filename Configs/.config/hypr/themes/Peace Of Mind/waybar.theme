@@ -9,7 +9,7 @@ $HOME/.config/waybar/theme.css
 @define-color alt_br #957fb8; /* springBlue */
 
 @define-color act_bg #16161D;
-@define-color act_fg #FFA066;
+@define-color act_fg #DCD7BA;
 @define-color act_br #DCD7BA;
 
 @define-color hvr_bg #FF5D62;

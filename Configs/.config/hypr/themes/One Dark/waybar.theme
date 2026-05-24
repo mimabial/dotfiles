@@ -9,7 +9,7 @@ $HOME/.config/waybar/theme.css
 @define-color alt_br #61afef; /* blue */
 
 @define-color act_bg #1e222a;
-@define-color act_fg #282c34; /* bg */
+@define-color act_fg #abb2bf; /* bg */
 @define-color act_br #98c379;
 
 @define-color hvr_bg #282c34;
