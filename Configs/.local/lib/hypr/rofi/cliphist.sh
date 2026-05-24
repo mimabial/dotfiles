@@ -7,7 +7,6 @@ source "$(command -v hyprshell)" || exit 1
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
-# define paths and files
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}"
 favorites_file="${cache_dir}/landing/cliphist_favorites"
 [ -f "$HOME/.cliphist_favorites" ] && favorites_file="$HOME/.cliphist_favorites"
@@ -79,25 +78,19 @@ latest_image_history_entry() {
   return 1
 }
 
-# process clipboard selections for multi-select mode
 process_selections() {
   local first_action=""
 
   if [ true != "${del_mode}" ]; then
-    # Read the entire input into an array
     mapfile -t lines #! Not POSIX compliant
-    # Get the total number of lines
     total_lines=${#lines[@]}
     first_action="$(cliphist_action_id "${lines[0]:-}")"
 
-    # handle special commands
     if cliphist_dispatch_action "${first_action}"; then
       return
     fi
 
-    # process regular clipboard items
     local output=""
-    # Iterate over each line in the array
     for ((i = 0; i < total_lines; i++)); do
       local line="${lines[$i]}"
       local decoded_line
@@ -110,7 +103,6 @@ process_selections() {
     done
     echo -n "$output"
   else
-    # handle delete mode
     while IFS= read -r line; do
       case "$(cliphist_action_id "${line}")" in
         "${action_wipe}")
@@ -134,7 +126,6 @@ process_selections() {
   fi
 }
 
-# check if content is binary and handle accordingly
 check_content() {
   local line
   read -r line
@@ -149,7 +140,6 @@ check_content() {
   fi
 }
 
-# execute rofi with common parameters
 run_rofi() {
   local placeholder="$1"
   shift
@@ -199,7 +189,6 @@ run_rofi() {
   return 0
 }
 
-# setup rofi configuration
 setup_rofi_config() {
   local cliphist_window_width_em="${ROFI_CLIPHIST_WIDTH_EM:-36}"
   local cliphist_window_height_em="${ROFI_CLIPHIST_HEIGHT_EM:-29}"
@@ -220,21 +209,17 @@ setup_rofi_config() {
     $((cliphist_window_width_em * font_scale * 2)) $((cliphist_window_height_em * font_scale * 2))
 }
 
-# process favorites file into an array of decoded lines for rofi
 prepare_favorites_for_display() {
   if [ ! -f "$favorites_file" ] || [ ! -s "$favorites_file" ]; then
     return 1
   fi
 
-  # read each Base64 encoded favorite as a separate line
   mapfile -t favorites <"$favorites_file"
 
-  # prepare list of representations for rofi
   decoded_lines=()
   for favorite in "${favorites[@]}"; do
     local decoded_favorite
     decoded_favorite=$(echo "$favorite" | base64 --decode)
-    # replace newlines with spaces for rofi display
     local single_line_favorite
     single_line_favorite=$(echo "$decoded_favorite" | tr '\n' ' ')
     decoded_lines+=("$single_line_favorite")
@@ -243,7 +228,6 @@ prepare_favorites_for_display() {
   return 0
 }
 
-# display clipboard history and copy selected item
 show_history() {
   local selected_item
   selected_item=$( (
@@ -259,7 +243,6 @@ show_history() {
     paste_string "${@}"
     printf '%s\t' "${selected_item}" | cliphist delete
   else
-    # binary content - handled by check_content
     paste_string "${@}"
     exit 0
   fi
@@ -302,7 +285,6 @@ show_image_history() {
   fi
 }
 
-# delete items from clipboard history
 delete_items() {
   export del_mode=true
   local selected_items
@@ -317,7 +299,6 @@ delete_items() {
   [ -n "${selected_items}" ] && echo "${selected_items}" | process_selections
 }
 
-# favorite clipboard items
 view_favorites() {
   prepare_favorites_for_display || {
     dunstify -t 3000 -i "edit-paste" "No favorites."
@@ -330,18 +311,15 @@ view_favorites() {
     return
   fi
 
-  # Handle back navigation
   if [ "$selected_favorite" = "Back" ]; then
     main
     return
   fi
 
   if [ -n "$selected_favorite" ]; then
-    # Find the index of the selected favorite
     local index
     index=$(printf "%s\n" "${decoded_lines[@]}" | grep -nxF "$selected_favorite" | cut -d: -f1)
 
-    # Use the index to get the Base64 encoded favorite
     if [ -n "$index" ]; then
       local selected_encoded_favorite="${favorites[$((index - 1))]}"
       echo "$selected_encoded_favorite" | base64 --decode | wl-copy
@@ -353,7 +331,6 @@ view_favorites() {
   fi
 }
 
-# add item to favorites
 add_to_favorites() {
   mkdir -p "$(dirname "$favorites_file")"
 
@@ -366,7 +343,6 @@ add_to_favorites() {
     return
   fi
 
-  # Handle back navigation
   if [[ "$(cliphist_action_id "${item}")" == "${action_back}" ]]; then
     manage_favorites
     return
@@ -379,7 +355,6 @@ add_to_favorites() {
     local encoded_item
     encoded_item=$(echo "$full_item" | base64 -w 0)
 
-    # Check if the item is already in the favorites file
     if [ -f "$favorites_file" ] && grep -Fxq "$encoded_item" "$favorites_file"; then
       dunstify -t 3000 -i "edit-paste" "Item is already in favorites."
     else
@@ -389,7 +364,6 @@ add_to_favorites() {
   fi
 }
 
-# delete from favorites
 delete_from_favorites() {
   prepare_favorites_for_display || {
     dunstify -t 3000 -i "edit-paste" "No favorites to remove."
@@ -402,7 +376,6 @@ delete_from_favorites() {
     return
   fi
 
-  # Handle back navigation
   if [ "$selected_favorite" = "Back" ]; then
     manage_favorites
     return
@@ -415,7 +388,6 @@ delete_from_favorites() {
     if [ -n "$index" ]; then
       local selected_encoded_favorite="${favorites[$((index - 1))]}"
 
-      # Handle case where only one item is present
       if [ "$(wc -l <"$favorites_file")" -eq 1 ]; then
         : >"$favorites_file"
       else
@@ -449,7 +421,6 @@ delete_from_favorites() {
   fi
 }
 
-# clear all favorites
 clear_favorites() {
   if [ -f "$favorites_file" ] && [ -s "$favorites_file" ]; then
     local confirm
@@ -470,7 +441,6 @@ clear_favorites() {
   fi
 }
 
-# manage favorites
 manage_favorites() {
   local manage_action
   manage_action=$(echo -e "◀ Back\nAdd to Favorites\nDelete from Favorites\nClear All Favorites" \
@@ -500,7 +470,6 @@ manage_favorites() {
   esac
 }
 
-# clear clipboard history
 clear_history() {
   local confirm
   confirm=$(echo -e "Back\nYes\nNo" | run_rofi "☢️ Clear Clipboard History?")
@@ -641,7 +610,6 @@ qr_latest_image() {
   rm -f "${image_path}"
 }
 
-# show help message
 show_help() {
   local exit_code="${1:-0}"
   cat <<EOF
@@ -661,12 +629,10 @@ EOF
   exit "${exit_code}"
 }
 
-# main function
 main() {
   setup_rofi_config
 
   local main_action
-  # show main menu if no arguments are passed
   if [ $# -eq 0 ]; then
     main_action=$(echo -e "History\nImage History\nOCR Latest Image\nQR Latest Image\nDelete\nView Favorites\nManage Favorites\nClear History" \
       | run_rofi "🔎 Choose action")
@@ -674,7 +640,6 @@ main() {
     main_action="$1"
   fi
 
-  # process user selection
   case "${main_action}" in
     -c | --copy | "History")
       show_history "$@"
@@ -713,5 +678,4 @@ main() {
   esac
 }
 
-# run main function
 main "$@"

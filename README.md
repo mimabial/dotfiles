@@ -94,12 +94,17 @@ Common entrypoints:
 # Full flow, but skip NVIDIA-specific actions
 ./install.sh -irsn
 
+# Install with a custom package list
+./install.sh pkg_user.lst
+
 # Enable Limine handling
 BOOTLOADER=limine ./install.sh
 
 # Dry-run install/restore/service flow
 ./install.sh -irst
 ```
+
+You can pass a custom `.lst` file as a positional argument to install additional packages alongside the core set.
 
 Supported `Scripts/install.sh` flags:
 
@@ -151,55 +156,53 @@ See [KEYBINDINGS.md](KEYBINDINGS.md) for keybindings.
 
 ## Themes
 
-Theme packs live under:
+Theme packs live under `Configs/.config/hypr/themes/`.
 
-- `Configs/.config/hypr/themes/`
+| Theme | Description |
+| --- | --- |
+| Another World | Step beyond the horizon, where reality fades and imagination reigns supreme |
+| Ayu Green | Dark theme based on Ayu Mirage with green tones |
+| Bauhaus Blue | Light Solarized-inspired theme with bold blue accents |
+| Blue Sky | A serene theme inspired by bright cloudy skies |
+| Catppuccin Latte | Catppuccin pastel light theme |
+| Catppuccin Mocha | Catppuccin warm dark theme |
+| Chilling Winters | Soft rose-tinted light theme |
+| City Lights | Dark theme with muted natural tones |
+| Code Garden | A sleek and transparent, color-agnostic theme |
+| Crimson Blade | Sharp elegance, cutting through darkness with bold hues |
+| Decay Green | Dark theme with soft green accents |
+| Dijon Mustard | Warm cream light theme inspired by GMK Diner keycaps |
+| Edge Runner | Cyberpunk yellow-on-black theme |
+| Forest Green | Everforest dark variant with earthy greens |
+| Forest Light | Everforest light variant |
+| Frosted Glass | Icy blue translucent theme |
+| Graphite Retro | Grayscale monochrome theme |
+| Greenify | Dark green based theme |
+| Grukai | Where retro warmth meets modern edge |
+| Gruvbox Retro | Retro warm dark Gruvbox palette |
+| Kanagawa Wave | Dark theme inspired by the Kanagawa color scheme |
+| Lime Frenzy | Lime's rhythm splits the night, where chaos crafts the vibe |
+| Material Sakura | Soft pink Material Design-inspired light theme |
+| Monochrome | Pure black and white theme |
+| Monokai | Monokai editor color scheme |
+| Moonlight | Gentle, soft moonlight lingers on my face... |
+| Nordic Blue | Nordic pastel blue-grey theme |
+| One Dark | One Dark editor theme port |
+| Oxo Carbon | IBM Carbon Design dark theme |
+| Paranoid Sweet | Dark purple based theme |
+| Peace Of Mind | Finally, some peace of mind... |
+| Pixel Dream | Pixel art inspired theme |
+| Red Stone | Hot red based theme |
+| Rosé Pine | Warm muted dark theme |
+| Scarlet Night | Hot-Red + Deep-Black |
+| Solarized Dark | Solarized Dark color scheme |
+| Spider Verse | Dark red-tinted comic book inspired theme |
+| Synth Wave | Neon retrowave inspired theme |
+| Tokyo Night | Blue-purple dark theme |
+| Tundra | A soothing, pastel tundra theme |
+| Versailles | Warm cream and brown classical light theme |
 
-Current bundled theme directories:
-
-- Another World
-- Ayu Green
-- Bauhaus Blue
-- Blue Sky
-- Catppuccin Latte
-- Catppuccin Mocha
-- Chilling Winters
-- City Lights
-- Code Garden
-- Crimson Blade
-- Decay Green
-- Dijon Mustard
-- Edge Runner
-- Forest Green
-- Forest Light
-- Frosted Glass
-- Graphite Retro
-- Greenify
-- Grukai
-- Gruvbox Retro
-- Kanagawa Wave
-- Lime Frenzy
-- Material Sakura
-- Monochrome
-- Monokai
-- Moonlight
-- Nordic Blue
-- One Dark
-- Oxo Carbon
-- Paranoid Sweet
-- Peace Of Mind
-- Pixel Dream
-- Red Stone
-- Rosé Pine
-- Scarlet Night
-- Solarized Dark
-- Spider Verse
-- Synth Wave
-- Tokyo Night
-- Tundra
-- Versailles
-
-The desktop also rebuilds generated theme outputs for apps such as Hyprland, Waybar, Rofi, Dunst, Kitty, Alacritty, tmux, GTK, Qt/Kvantum, Hyprlock, and `rmpc`.
+The desktop rebuilds generated theme outputs for Hyprland, Waybar, Rofi, Dunst, Kitty, Alacritty, tmux, GTK, Qt/Kvantum, Hyprlock, and `rmpc`.
 
 ## Notes
 
@@ -211,3 +214,6 @@ The desktop also rebuilds generated theme outputs for apps such as Hyprland, Way
 - [HyDE](https://github.com/HyDE-Project/HyDE) for the original base and installer model
 - [Hyprland](https://hyprland.org/) for the compositor
 - [pywal16](https://github.com/eylles/pywal16) for wallpaper-derived palette generation
+- [app2unit](https://github.com/Vladimir-csp/app2unit) for launching desktop entries as systemd user units (bundled)
+- [xdg-terminal-exec](https://github.com/Vladimir-csp/xdg-terminal-exec) for XDG default terminal execution (config at `~/.config/xdg-terminals.list`)
+- [grimblast](https://github.com/hyprwm/contrib) for Hyprland screenshot support (bundled)

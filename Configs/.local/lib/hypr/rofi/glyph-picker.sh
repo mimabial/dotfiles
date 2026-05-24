@@ -100,7 +100,6 @@ setup_rofi_config() {
 
 get_glyph_selection() {
   local style_type="${glyph_style:-${ROFI_GLYPH_STYLE:-}}"
-  # Default to grid (2) if no style is set
   [[ -z "${style_type}" ]] && style_type="2"
   local temp_dir="${TMPDIR:-/tmp}"
   local temp_data=""
@@ -112,7 +111,6 @@ get_glyph_selection() {
     return 1
   fi
 
-  # Build a display column (glyph + single space + label)
   # shellcheck disable=SC2016 # Awk program is literal.
   local format_stream=(awk -F $'\t' 'BEGIN{OFS="\t"}{disp=$1; if($2!=""&&$2!=$1) disp=disp" "$2; print disp}')
 
@@ -134,7 +132,6 @@ get_glyph_selection() {
           -no-custom)
         ;;
       *)
-        # Default to grid mode for better visual layout
         selection_index=$("${format_stream[@]}" <"${temp_data}" | rofi -dmenu -format 'i' "${rofi_args[@]/-multi-select/}" -display-columns 1 \
           -theme-str "listview {columns: ${glyph_columns}; lines: ${glyph_lines};}" \
           -no-custom)

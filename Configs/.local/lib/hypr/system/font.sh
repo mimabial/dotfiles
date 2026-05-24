@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# Script to resolve fonts
-
 set -euo pipefail
 
 font_dir="${XDG_DATA_HOME:-$HOME/.local/share}/fonts"
@@ -76,10 +74,8 @@ download_and_extract() {
     esac
   }
 
-  # Extract domain name using parameter expansion
   domain=${url#*://}   # Remove everything up to '://'
   domain=${domain%%/*} # Remove everything after the first '/'
-  # Ping the extracted domain
   if ! ping -c 1 "$domain" &>/dev/null; then
     echo "[font] Ping to $domain failed"
     exit 1

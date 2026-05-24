@@ -323,7 +323,6 @@ HELP
   rofi_picker_parse_style_args emoji_style use_rofile "clipboard" "${usage_text}" "$@"
 }
 
-# Check if emoji is multi-person and show dual skin tone selector
 show_multi_person_skin_tone_selector() {
   local base_emoji="$1"
   if [[ ! "${EMOJI_MULTI_PERSON}" =~ ${base_emoji} ]]; then
@@ -354,27 +353,23 @@ show_multi_person_skin_tone_selector() {
   local modifier2=""
   modifier2="$(emoji_extract_skin_tone_modifier "${tone2}")"
 
-  # Combine emoji with skin tones
   echo "${base_emoji}${modifier1}${modifier2}"
 
   return 0
 }
 
-# Check if emoji has gender variants and show selector
 show_gender_variant_selector() {
   local base_emoji="$1"
   if [[ ! "${EMOJI_GENDER_VARIANTS}" =~ ${base_emoji} ]]; then
     return 1 # No gender variants
   fi
 
-  # Show gender selector
   local gender_choice
   gender_choice=$(echo -e "🧑 Person (neutral)\n👨 Man\n👩 Woman" \
     | emoji_clipboard_dmenu "Gender Variant" "Choose gender variant...")
 
   [[ -z "${gender_choice}" ]] && return 1
 
-  # Return the gendered emoji
   # Most emojis default to neutral (🧑), can add ♂️ or ♀️ via ZWJ
   case "${gender_choice}" in
     *"👨"*)
@@ -384,7 +379,6 @@ show_gender_variant_selector() {
       echo "${base_emoji}‍♀️"
       ;;
     *)
-      # Neutral/Person
       echo "${base_emoji}"
       ;;
   esac
@@ -425,7 +419,6 @@ emoji_finalize_skin_tone() {
   fi
 }
 
-# Check if emoji supports skin tones and show selection menu
 show_skin_tone_selector() {
   local base_emoji="$1"
   local selected_tone=""
@@ -448,7 +441,6 @@ show_skin_tone_selector() {
   emoji_finalize_skin_tone "${base_emoji}" "${selected_tone}"
 }
 
-# Show category sub-menu
 show_category_menu() {
   local category="$1"
   local category_file=""

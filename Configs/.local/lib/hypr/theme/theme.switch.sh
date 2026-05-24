@@ -4,12 +4,9 @@
 #   thmList
 : "${thmList-}"
 #
-# theme.switch.sh - Theme switching orchestrator
+# theme.switch.sh — Theme switching orchestrator.
 #
-# OVERVIEW:
-#   Switches themes and updates live desktop configuration.
-#
-# USAGE:
+# Usage:
 #   theme.switch.sh -s "Theme Name"   # Switch to specific theme
 #   theme.switch.sh -n                # Switch to next theme
 #   theme.switch.sh -p                # Switch to previous theme
@@ -32,7 +29,6 @@ theme_switch_metadata_file=""
 THEME_SWITCH_NOTIFY_ID="${THEME_SWITCH_NOTIFY_ID:-94}"
 THEME_SWITCH_NOTIFY_STACK_TAG="${THEME_SWITCH_NOTIFY_STACK_TAG:-theme-switch}"
 
-# Lock file to prevent concurrent theme switching
 THEME_SWITCH_LOCK="$(hypr_lock_path theme_switch)"
 
 exec 201>"${THEME_SWITCH_LOCK}"

@@ -35,7 +35,6 @@ lease_clients=()
 device=""
 ip_addr=""
 
-# Check NetworkManager hotspot connections
 if waybar_hotspot_have_command nmcli; then
   active_hotspot="$(waybar_hotspot_active_connection)"
 
@@ -81,7 +80,6 @@ if [[ "$hotspot_active" == true ]]; then
   hotspot_info="<b>Hotspot Active</b>\\nSSID: $hotspot_ssid\\nDevice: $device\\nIP: ${ip_addr:-N/A}$clients"
 fi
 
-# Output
 if [[ "$hotspot_active" == true ]]; then
   emit_hotspot_json "connected" "󱜠" "$hotspot_info"
 else

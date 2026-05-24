@@ -29,18 +29,15 @@ if ! mullvad_status="$(waybar_mullvad_status)"; then
   exit 1
 fi
 
-# Check if connected
 mullvad_status_line="$(waybar_mullvad_status_line "$mullvad_status")"
 
 if [[ "${mullvad_status_line}" == connected* ]]; then
-  # Disconnect
   if mullvad disconnect 2>/dev/null; then
     waybar_notify "network-vpn" "VPN Disconnected" "Mullvad VPN has been disconnected"
   else
     waybar_notify "network-vpn" "VPN Error" "Failed to disconnect from Mullvad VPN" critical
   fi
 else
-  # Connect
   waybar_notify "network-vpn" "VPN Connecting" "Connecting to Mullvad VPN..."
 
   if ! error_msg="$(mullvad connect 2>&1)"; then

@@ -52,7 +52,6 @@ setup_rofi_config() {
 
 get_boxdraw_selection() {
   local style_type="${boxdraw_style:-${ROFI_BOXDRAW_STYLE:-}}"
-  # Default to grid (2) if no style is set
   [[ -z "${style_type}" ]] && style_type="2"
   local size_override=""
   # shellcheck disable=SC2016 # Awk program is literal.
@@ -62,10 +61,8 @@ get_boxdraw_selection() {
   local temp_data=""
   local temp_dir="${TMPDIR:-/tmp}"
 
-  # Create recently used category entry
   temp_data="$(mktemp "${temp_dir}/boxdraw_with_recent.XXXXXX")" || return 1
 
-  # Add recently used category if recent data exists
   if rofi_picker_recent_category_entry "${recent_data}" "🕒" "Recently Used" "characters" >"${temp_data}"; then
     :
   else
@@ -138,7 +135,6 @@ HELP
   rofi_picker_parse_style_args boxdraw_style use_rofile "clipboard" "${usage_text}" "$@"
 }
 
-# Show category sub-menu
 show_category_menu() {
   local category="$1"
   local category_file=""
@@ -147,7 +143,6 @@ show_category_menu() {
   local theme_name="clipboard"
   local -a category_rofi_args=()
 
-  # Handle special categories
   if [[ "${category}" == "recent" ]]; then
     if [[ ! -f "${recent_data}" ]] || [[ ! -s "${recent_data}" ]]; then
       dunstify -t 3000 -i "preferences-desktop-font" "No recently used box drawing characters"
@@ -159,7 +154,6 @@ show_category_menu() {
     return 1
   fi
 
-  # Add back navigation option
   local temp_dir="${TMPDIR:-/tmp}"
   local temp_category=""
   temp_category="$(mktemp "${temp_dir}/boxdraw_category.XXXXXX")" || return 1
@@ -172,8 +166,6 @@ show_category_menu() {
     return 1
   }
 
-  # Show category-specific menu
-  # Default to grid (2) if no style is set
   [[ -z "${style_type}" ]] && style_type="2"
 
   case ${style_type} in

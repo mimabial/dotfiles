@@ -227,13 +227,12 @@ get_battery_info() { # Read battery state directly from sysfs to avoid desktop-s
 
 fn_status_change() { # Handle when status changes
   get_battery_info
-  # Add these two lines at the beginning of the function
   local executed_low=false
   local executed_unplug=false
 
   if [ "$battery_status" != "$last_battery_status" ] || [ "$battery_percentage" != "$last_battery_percentage" ]; then
     last_battery_status=$battery_status
-    last_battery_percentage=$battery_percentage # Check if battery status or percentage has changed
+    last_battery_percentage=$battery_percentage
     fn_verbose
     fn_percentage
 

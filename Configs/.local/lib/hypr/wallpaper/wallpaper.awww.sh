@@ -105,20 +105,16 @@ if file --mime-type -b "${selected_wall}" | grep -q '^video/'; then
   extract_thumbnail "${selected_wall}" "${cached_thumb}"
   selected_wall="${cached_thumb}"
 fi
-# Apply wallpaper through the awww backend.
 print_log -sec "wallpaper" -stat "apply" "$selected_wall"
 
-# Resolve the wallpaper path
 resolved_wall="$(readlink -f "$selected_wall")"
 if [ -z "${resolved_wall}" ] || [ ! -f "${resolved_wall}" ]; then
   print_log -sec "${wallpaper_backend_log}" -err "wallpaper not found: ${selected_wall} -> ${resolved_wall}"
   exit 1
 fi
 
-# Get cursor position (fallback to center if unavailable)
 cursor_pos="$(hyprctl cursorpos 2>/dev/null | grep -E '^[0-9]' || echo "0,0")"
 
-# Build backend command
 wallpaper_cmd=("${wallpaper_client_cmd}" img "${resolved_wall}"
   --transition-bezier "${wallpaper_transition_bezier}"
   --transition-type "${wallpaper_transition_type}"

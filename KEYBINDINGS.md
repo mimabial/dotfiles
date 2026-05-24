@@ -257,3 +257,20 @@ Source of truth:
 | Keys | Action |
 | --- | --- |
 | <kbd>SUPER</kbd> + <kbd>ALT</kbd> + <kbd>1</kbd> to <kbd>SUPER</kbd> + <kbd>ALT</kbd> + <kbd>0</kbd> | Move focused window silently to workspaces 1 to 10 |
+
+## Custom Keybindings
+
+To add your own keybindings, edit:
+
+```
+~/.config/hypr/keybindings.conf
+```
+
+Use `bindd` for documented binds (shown in the keybindings hint) or `bind` for undocumented ones. Group descriptions use the `$d=[Group|Subgroup]` metadata prefix.
+
+If rebinding an existing key, `unbind` it first to avoid conflicts:
+
+```
+unbind = SUPER, F
+bind = SUPER, F, exec, nautilus
+```

@@ -39,8 +39,6 @@ Options:
 USAGE
 }
 
-# --- Parse action and domain before handing rest to CLI parser ---
-
 case "${1:-}" in
   -h|--help|help)
     usage
@@ -65,8 +63,6 @@ case "${domain}" in
   *) hypr_service_die "Unknown domain: ${domain}" ;;
 esac
 
-# --- Standard CLI parsing ---
-
 declare -a hypr_service_cli_args=()
 hypr_service_cli_show_diff=0
 hypr_service_cli_quiet=0
@@ -83,14 +79,10 @@ fi
 hypr_service_init
 hypr_service_apply_cli_env
 
-# --- Run refresh or restore ---
-
 case "${action}" in
   refresh) hypr_service_refresh_manifest_domains "${hypr_service_cli_show_diff}" "${hypr_service_cli_quiet}" "${domain}" ;;
   restore) hypr_service_restore_manifest_domains "${hypr_service_cli_show_diff}" "${hypr_service_cli_quiet}" "${domain}" ;;
 esac
-
-# --- Post-actions per domain ---
 
 case "${domain}" in
   hypr-config|hypr-state)

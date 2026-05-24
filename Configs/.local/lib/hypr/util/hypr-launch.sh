@@ -4,10 +4,8 @@ set -euo pipefail
 
 source "$(command -v hyprshell)" || exit 1
 
-# Declare an associative array for special cases
 declare -A dict
 
-# Add entries to the associative array
 dict["file-manager"]="inode/directory"
 dict["text-editor"]="text/plain"
 dict["web-browser"]="text/html"
@@ -43,7 +41,6 @@ find_mime_type() {
   local input=$1
   local mime_type
 
-  # Check if input is a special case
   [[ -v dict[$input] ]] && echo "${dict[$input]}" && return
 
   # Use awk for faster processing
@@ -63,7 +60,6 @@ find_mime_type() {
 }
 
 main() {
-  # Check if no arguments are provided
   [ $# -eq 0 ] && {
     show_usage
     exit 1

@@ -327,7 +327,6 @@ def _start_waybar_unlocked():
             preexec_fn=_waybar_preexec,
         )
 
-        # Write lock file immediately
         WAYBAR_LOCK.write_text(str(proc.pid))
         logger.debug(f"Started waybar (PID {proc.pid})")
 
@@ -363,7 +362,6 @@ def _stop_waybar_unlocked():
             WAYBAR_LOCK.unlink(missing_ok=True)
             return
 
-        # Force kill if still alive
         if remaining_pids:
             logger.warning("Waybar didn't stop, sending SIGKILL")
             for pid in remaining_pids:

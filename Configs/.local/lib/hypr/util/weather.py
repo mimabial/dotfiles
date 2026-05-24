@@ -335,7 +335,6 @@ if not get_location and allow_auto_geolocation and requests is not None:
 if not get_location:
     get_location = "Paris"
 
-# Check if the variables are set correctly
 if temp_unit not in ("c", "f"):
     temp_unit = "c"
 if time_format not in ("12h", "24h"):
@@ -345,15 +344,12 @@ if windspeed_unit not in ("km/h", "mph"):
 if FORECAST_DAYS not in range(4):
     FORECAST_DAYS = 3
 
-### Main Logic ###
 data = {}
 weather = None
 
-# Try to load from cache first (unless force flag is set)
 if not args.force and is_cache_valid():
     weather = load_cache()
 
-# If cache is invalid, doesn't exist, or force refresh, fetch from API
 if weather is None:
     if requests is None:
         print(
@@ -368,7 +364,6 @@ if weather is None:
     try:
         response = requests.get(URL, timeout=10, headers=headers)
         weather = response.json()
-        # Save to cache for future use
         save_cache(weather)
     except (requests.RequestException, json.decoder.JSONDecodeError) as e:
         print(f"Error: Failed to get weather data: {e}", file=sys.stderr)
@@ -376,11 +371,7 @@ if weather is None:
 
 current_weather = weather["current_condition"][0]
 
-# Get the data to display
-# waybar text
-
 if args.minmax:
-    # Show min/max temp for today
     today = weather["weather"][0]
     max_rain_chance = min(
         max(int(hour.get("chanceofrain", 0)) for hour in today["hourly"]), 99
@@ -391,13 +382,11 @@ if args.minmax:
         f"{max_temp}\n{min_temp}\n{max_rain_chance:2d}󱢋\n{get_wind_speed(current_weather).split('K')[0]}"
     )
 elif args.sunrise:
-    # Show sunrise time
     today = weather["weather"][0]
     sunrise = get_sunrise(today)
     sunrise_h, sunrise_m, _ = split_time_parts(sunrise)
     data["text"] = f"  \n{sunrise_h}:\n{sunrise_m} "
 elif args.sunset:
-    # Show sunset time
     today = weather["weather"][0]
     sunset = get_sunset(today)
     sunset_h, sunset_m, _ = split_time_parts(sunset)

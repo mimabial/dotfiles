@@ -52,7 +52,6 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
-# Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -354,7 +353,6 @@ sync_host_profile_files() {
   done
 }
 
-# Create dotfiles directory structure
 create_dirs() {
   local dirs=(
     "$DOTFILES_DIR/.config"
@@ -515,7 +513,6 @@ fi
 require_sync_manifest
 load_sync_manifest
 
-# Create directory structure
 if $LIST_ONLY; then
   log_info "Planning directory structure..."
 else
@@ -524,7 +521,6 @@ fi
 create_dirs
 echo
 
-# ~/.config directories
 if $LIST_ONLY; then
   log_info "Planning ~/.config mappings..."
 else
@@ -536,7 +532,6 @@ sync_host_profile_files
 
 echo
 
-# ~/.local directories
 if $LIST_ONLY; then
   log_info "Planning ~/.local mappings..."
 else
