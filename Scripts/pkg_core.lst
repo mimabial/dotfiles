@@ -1,98 +1,180 @@
 # --------------------------------------------------- // System
-uwsm                                                   # A standalone Wayland session manager
+uwsm                                                   # standalone Wayland session manager
 pipewire                                               # audio/video server
-pipewire-alsa                                          # pipewire alsa client
-pipewire-jack                                          # pipewire jack client
-pipewire-pulse                                         # pipewire pulseaudio client
-gst-plugin-pipewire                                    # pipewire gstreamer client
-wireplumber                                            # pipewire session manager
-pavucontrol                                            # pulseaudio volume control
-pamixer                                                # pulseaudio cli mixer
-networkmanager                                         # network manager
-network-manager-applet                                 # network manager system tray utility
-bluez                                                  # bluetooth protocol stack
-bluez-utils                                            # bluetooth utility cli
-blueman                                                # bluetooth manager gui
-brightnessctl                                          # screen brightness control
-playerctl                                              # media controls
-udiskie                                                # manage removable media
+pipewire-alsa                                          # PipeWire ALSA client
+pipewire-jack                                         # PipeWire JACK client
+pipewire-pulse                                        # PipeWire PulseAudio client
+gst-plugin-pipewire                                   # PipeWire GStreamer client
+wireplumber                                           # PipeWire session manager
+libpulse                                              # pactl and PulseAudio client tools
+pavucontrol                                           # PulseAudio volume control
+pamixer                                               # PulseAudio CLI mixer
+networkmanager                                        # network manager
+network-manager-applet                                # NetworkManager tray utility
+nm-connection-editor                                  # network editor used by Waybar
+networkmanager-dmenu                                  # rofi network menu launcher
+bluez                                                 # bluetooth protocol stack
+bluez-utils                                           # bluetooth CLI utilities
+blueman                                               # bluetooth GUI manager
+brightnessctl                                         # screen brightness control
+playerctl                                             # media controls
+upower                                                # battery and power-state queries
+power-profiles-daemon                                 # power profile switching
+udiskie                                               # removable media manager
+cups                                                  # printer management commands
+ntfs-3g                                               # ntfsfix and NTFS mount support
+exfatprogs                                            # exFAT filesystem tools
+mullvad-vpn-daemon-bin                                # Mullvad CLI used by VPN/printer helpers
 
 # --------------------------------------------------- // Display Manager
-ly                                                     # display manager
+ly                                                    # display manager
 
 # --------------------------------------------------- // Bootloader
-limine                                                 # bootloader
+limine                                                # bootloader
 
 # --------------------------------------------------- // Window Manager
-hyprland                                               # wlroots-based wayland compositor
-rofi                                                   # application launcher
-waybar                                                 # system bar
-swww                                                   # wallpaper
-dunst                                                  # notification daemon
-hyprlock                                               # lock screen
-wlogout                                                # logout menu
-grim                                                   # screenshot tool
-hyprpicker                                             # color picker
-slurp                                                  # region select for screenshot/screenshare
-satty                                                  # Modern Screenshot Annotation
-cliphist                                               # clipboard manager
-wl-clip-persist                                        # Keep Wayland clipboard even after programs close (avoids crashes)
-wl-clipboard                                           # Wayland clipboard utilities used by pickers/capture
-hyprsunset                                             # blue light filter
-gpu-screen-recorder                                    # screen recorder backend
+hyprland                                              # wlroots-based Wayland compositor
+rofi                                                  # application launcher
+waybar                                                # system bar
+awww                                                  # wallpaper daemon/backend
+dunst                                                 # notification daemon
+hyprlock                                              # lock screen
+wlogout                                               # logout menu
+grim                                                  # screenshot tool
+hyprpicker                                            # color picker
+slurp                                                 # region select for screenshot/screenshare
+satty                                                 # screenshot annotation
+cliphist                                              # clipboard manager
+wl-clip-persist                                       # keep Wayland clipboard after programs close
+wl-clipboard                                          # Wayland clipboard utilities
+hyprsunset                                            # blue light filter
+gpu-screen-recorder                                   # screen recorder backend
 
 # --------------------------------------------------- // Dependencies
-polkit-gnome                                           # authentication agent
-xdg-desktop-portal-hyprland                            # xdg desktop portal for hyprland
-xdg-desktop-portal-gtk                                 # file picker and dbus  integration
-xdg-user-dirs                                          # Manage user directories like ~/Desktop and ~/Music
-pacman-contrib                                         # for system update check
-parallel                                               # for parallel processing
-jq                                                     # for json processing
-openbsd-netcat                                         # unix sockets / nc used by helpers
-inetutils                                              # classic network utilities, including hostname
-imagemagick                                            # for image processing
-ffmpeg                                                 # capture preview / wallpaper thumbnails
-v4l-utils                                              # webcam controls for screen recording
-qt5-imageformats                                       # for dolphin image thumbnails
-ffmpegthumbs                                           # for dolphin video thumbnails
-kde-cli-tools                                          # for dolphin file type defaults
-libnotify                                              # for notifications
-noto-fonts-emoji                                       # emoji font
+hyprpolkitagent                                       # Hyprland-native authentication agent
+xdg-desktop-portal-hyprland                           # xdg desktop portal for Hyprland
+xdg-desktop-portal-gtk                                # file picker and GTK portal
+xdg-user-dirs                                         # user directory management
+xdg-utils                                             # xdg-open, xdg-mime, xdg-settings
+git                                                   # dotfiles, shell plugins, and helper scripts
+rsync                                                 # dotfiles and service sync helpers
+pacman-contrib                                        # system update check
+parallel                                              # parallel processing
+jq                                                    # JSON processing
+openbsd-netcat                                        # nc socket helpers
+inetutils                                             # classic network utilities
+iputils                                               # ping and network diagnostics
+pciutils                                              # lspci GPU/session detection
+curl                                                  # weather, notifications, installers, metadata
+imagemagick                                           # image processing
+ffmpeg                                                # capture preview, ffprobe, thumbnails
+v4l-utils                                             # webcam controls for screen recording
+qt5-imageformats                                      # Dolphin image thumbnails
+ffmpegthumbs                                          # Dolphin video thumbnails
+kde-cli-tools                                         # Dolphin file type defaults
+libnotify                                             # notifications
+python                                                # Python runtime for Hypr helpers
+python-pip                                            # managed Hypr Python virtualenv bootstrap
+python-gobject                                        # GI bindings for media/player helpers
+python-requests                                       # lyrics/weather/network Python helpers
+python-astral                                         # sunrise/sunset auto-theme scheduling
+python-jsonschema                                     # Hypr config schema validation
+ripgrep                                               # shell, fzf, and font search helpers
+fd                                                    # shell and fzf file search helpers
+bat                                                   # shell, fzf, and preview helpers
+zoxide                                                # shell directory jumper
+fontconfig                                            # font discovery and cleanup helpers
+lsof                                                  # process/file inspection helpers
+psmisc                                                # fuser for NTFS repair flow
+socat                                                 # Hyprland monitor/socket watcher
+inotify-tools                                         # idle/theme watcher helpers
+wtype                                                 # Wayland autopaste
+xmlstarlet                                            # XML font updates
+fwupd                                                 # firmware update helper
+chafa                                                 # terminal image previews
+jp2a                                                  # terminal image preview fallback
+zbar                                                  # clipboard QR scanning
+qrencode                                              # Wi-Fi QR generation
+tesseract                                             # screenshot and clipboard OCR
+tesseract-data-eng                                    # English OCR language data
+tesseract-data-osd                                    # OCR orientation/script detection data
+noto-fonts                                            # default UI text font family
+noto-fonts-emoji                                      # emoji font
+cantarell-fonts                                       # GTK/default UI font
+ttf-jetbrains-mono-nerd                               # terminal/bar monospace font
+ttf-mononoki-nerd                                     # notification/font theme support
 
 # --------------------------------------------------- // Theming
-nwg-look                                               # gtk configuration tool
-qt5ct                                                  # qt5 configuration tool
-qt6ct                                                  # qt6 configuration tool
-kvantum                                                # svg based qt6 theme engine
-kvantum-qt5                                            # svg based qt5 theme engine
-qt5-wayland                                            # wayland support in qt5
-qt6-wayland                                            # wayland support in qt6
-xsettingsd                                             # broadcasts GTK theme changes
+nwg-look                                              # GTK configuration tool
+qt5ct                                                 # Qt5 configuration tool
+qt6ct                                                 # Qt6 configuration tool
+kvantum                                               # SVG based Qt6 theme engine
+kvantum-qt5                                           # SVG based Qt5 theme engine
+qt5-wayland                                           # Wayland support in Qt5
+qt6-wayland                                           # Wayland support in Qt6
+xsettingsd                                            # broadcasts GTK theme changes
+python-pywal16                                        # pywal16 color extraction/generation
+python-colorthief                                     # pywal16 wallpaper palette backend
 
 # --------------------------------------------------- // Applications
-firefox                                                # browser
-kitty                                                  # terminal
-alacritty                                              # secondary terminal
-tmux                                                   # terminal multiplexer
-lazygit                                                # git TUI
-lazydocker                                             # docker TUI
-dolphin                                                # kde file manager
-ark                                                    # kde file archiver
-unzip                                                  # extracting zip files
-vim                                                    # terminal text editor
-nwg-displays                                           # monitor management utility
-fzf                                                    # Command-line fuzzy finder
+firefox                                               # browser
+chromium                                              # Chromium-family webapp fallback
+kitty                                                 # terminal
+alacritty                                             # secondary terminal
+tmux                                                  # terminal multiplexer
+lazygit                                               # git TUI
+lazydocker                                            # docker TUI
+dolphin                                               # KDE file manager
+ark                                                   # KDE file archiver
+unzip                                                 # extracting zip files
+vim                                                   # terminal text editor
+neovim                                                # configured editor
+nwg-displays                                          # monitor management utility
+fzf                                                   # command-line fuzzy finder
+mpv                                                   # recording/media playback helper
+loupe                                                 # image viewer
+haruna                                                # video player
+zathura                                               # document viewer
+gimp                                                  # image editor and screenshot editor
+bitwarden                                             # password manager keybind/session lock integration
+signal-desktop                                        # messaging keybind
+qalculate-gtk                                         # calculator launcher
+libreoffice-fresh                                     # office suite taskbar/window support
+partitionmanager                                      # partition manager window rules
+skanlite                                              # scanner window rules
+localsend-bin                                         # local file sharing helper
+yt-dlp                                                # media/YouTube metadata helper
+
+# --------------------------------------------------- // TUI Utilities
+bluetui                                               # bluetooth TUI launcher
+wiremix                                               # audio TUI launcher
+impala                                                # Wi-Fi TUI launcher
+oryx                                                  # network TUI launcher
+htop                                                  # system monitor launcher
+nvtop                                                 # GPU monitor launcher
+dua-cli                                               # disk usage TUI launcher
 
 # --------------------------------------------------- // Media
-mpd                                                    # music player daemon
-mpd-mpris                                              # expose MPD over MPRIS
-rmpc                                                   # MPD TUI client
+mpd                                                   # music player daemon
+mpd-mpris                                             # expose MPD over MPRIS
+rmpc                                                  # MPD TUI client
+python-ytmusicapi                                     # optional YouTube Music lyrics provider
+python-lyricsgenius                                   # optional Genius lyrics provider
 
 # --------------------------------------------------- // Shell
-starship|zsh                                           # customizable shell prompt written in Rust
-starship|fish                                          # customizable shell prompt
-fastfetch                                              # system information fetch tool
+zsh                                                   # configured shell
+starship|zsh                                          # customizable shell prompt written in Rust
+fastfetch                                             # system information fetch tool
+
+# --------------------------------------------------- // Gaming
+gamemode                                              # GameMode runtime and status tools
+lib32-gamemode                                        # 32-bit GameMode support for Steam/Proton
+mangohud                                              # MangoHud overlay
+lib32-mangohud                                        # 32-bit MangoHud support for Steam/Proton
+lutris                                                # Lutris launcher integration
+steam                                                 # Steam launcher/catalog integration
+ttf-liberation                                        # Steam font dependency
+lib32-fontconfig                                      # Steam/Proton font discovery
 
 # --------------------------------------------------- // HyDE
-hypridle                                               # idle daemon
+hypridle                                              # idle daemon

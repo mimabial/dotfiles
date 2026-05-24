@@ -16,7 +16,7 @@ This repository stores the mirrored config under `Configs/` and the restore/inst
 
 - `Configs/` — mirrored config files and assets
 - `Configs/hosts/` — host-specific overlays
-- `Scripts/` — install, restore, migration, and helper scripts
+- `Scripts/` — install, restore, and helper scripts
 - `KEYBINDINGS.md` — keybinding reference
 
 This is not a generic “copy these files anywhere” repo. The scripts assume an Arch or Arch-like system and a Hyprland-based desktop.
@@ -188,7 +188,6 @@ The desktop also rebuilds generated theme outputs for apps such as Hyprland, Way
 
 - The install scripts are intended for Arch Linux or close Arch-based systems.
 - Generated theme files are rebuilt by the restore/theme pipeline; not every generated file should be treated as authored source.
-- VM/testing helpers live under `Scripts/hydevm/`.
 
 ## Credits
 
