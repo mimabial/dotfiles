@@ -1,0 +1,8 @@
+{
+  "custom/gamemode": {
+    "justify": "center",
+    "format": "",
+    "tooltip-format": " Toggle gaming workflow",
+    "on-click": "hyprshell util/workflow-toggle.sh gaming"
+  }
+}

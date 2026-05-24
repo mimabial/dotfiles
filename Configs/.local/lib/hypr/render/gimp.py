@@ -7,8 +7,10 @@ import json
 import os
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _common import atomic_write, cache_hit, cache_store
 
 PALETTE = Path(sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] else
                os.environ.get("HYPR_STATE_HOME",
@@ -17,10 +19,7 @@ OUT_DIR = Path(os.environ.get("HYPR_CACHE_HOME",
                               os.path.expanduser("~/.cache/hypr"))) / "render" / "gimp"
 OUT_FILE = OUT_DIR / "gimp.css"
 
-def cache_hit(h):
-    return subprocess.run(["render-cache", "hit?", "gimp", h]).returncode == 0
-def cache_store(h):
-    subprocess.run(["render-cache", "store", "gimp", h])
+APP = "gimp"
 
 def hex_rgb(c):
     c = c.lstrip("#")
@@ -74,7 +73,7 @@ def main():
         if candidates:
             gimp_dir = candidates[-1]
 
-    if cache_hit(h) and OUT_FILE.exists():
+    if cache_hit(APP, h) and OUT_FILE.exists():
         return
 
     is_dark = luminance(bg) < 128
@@ -119,17 +118,9 @@ def main():
 @define-color ruler-color            {ruler};
 """
 
-    fd, tmp = tempfile.mkstemp(dir=str(OUT_DIR), prefix=".gimp.css.")
-    try:
-        with os.fdopen(fd, "w") as f:
-            f.write(css)
-        os.replace(tmp, OUT_FILE)
-    finally:
-        if Path(tmp).exists():
-            try: Path(tmp).unlink()
-            except FileNotFoundError: pass
+    atomic_write(OUT_FILE, css)
 
-    cache_store(h)
+    cache_store(APP, h)
 
 if __name__ == "__main__":
     main()

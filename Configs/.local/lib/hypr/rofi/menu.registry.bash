@@ -10,6 +10,7 @@ menu_register_all() {
   menu_add_item main "󱡴  Search All" action search_all 0
   menu_add_item main "  Tools" submenu dev_tools
   menu_add_item main "󰀻  Apps" action main_apps 0
+  menu_add_item main "  Gaming" submenu gaming
   menu_add_item main "  Learn" submenu learn
   menu_add_item main "󱊨  Trigger" submenu trigger
   menu_add_item main "󰢵  Style" submenu style
@@ -20,6 +21,7 @@ menu_register_all() {
   menu_add_item main "  System" submenu system
 
   menu_register_domain_core
+  menu_register_domain_gaming
   menu_register_domain_trigger
   menu_register_domain_style
   menu_register_domain_setup
@@ -49,6 +51,7 @@ menu_open_argument() {
         *search*) show_search_all_menu ;;
         *tools*) menu_show_menu dev_tools ;;
         *apps*) menu_run_action main_apps ;;
+        *gaming* | *game*) menu_show_menu gaming ;;
         *learn*) menu_show_menu learn ;;
         *trigger*) menu_show_menu trigger ;;
         *style*) menu_show_menu style ;;

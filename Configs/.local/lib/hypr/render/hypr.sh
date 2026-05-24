@@ -4,7 +4,7 @@ PALETTE_ARG="${1:-}"
 . "$(dirname "$0")/_lib.sh"
 # Pack hypr.theme is the pack manifest (sourced elsewhere as hyprland config), not
 # a colors override; do not full-replace from it. Always derive.
-render_init hypr colors.conf nonexistent.theme
+render_init hypr colors.conf hypr.theme
 
 hash="$(render_input_hash)"
 render_should_skip "${hash}" && exit 0

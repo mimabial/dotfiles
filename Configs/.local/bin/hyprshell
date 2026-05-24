@@ -54,15 +54,6 @@ hyprshell_prepend_path() {
 
 hyprshell_prepend_path "${XDG_CONFIG_HOME}/hypr/scripts" "${BIN_DIR}" "${HYPR_LIB_DIR}"
 
-for hyprshell_subdir in "${HYPR_LIB_DIR}"/*/; do
-  [[ -d "${hyprshell_subdir}" ]] || continue
-  case "${hyprshell_subdir%/}" in
-    */core|*/runtime|*/pyutils|*/shell|*/__pycache__) continue ;;
-  esac
-  hyprshell_prepend_path "${hyprshell_subdir%/}"
-done
-unset hyprshell_subdir
-
 HYPR_SCRIPTS_PATH="${HYPR_SCRIPTS_PATH:-${XDG_CONFIG_HOME}/hypr/scripts:${LIB_DIR}/hypr}:${XDG_DATA_HOME}/waybar/scripts:${XDG_CONFIG_HOME}/waybar/scripts"
 
 export BIN_DIR LIB_DIR PATH HYPR_SCRIPTS_PATH
@@ -149,10 +140,11 @@ case "${1:-}" in
     ;;
   validate)
     shift
-    if command -v parse.config.py >/dev/null 2>&1; then
-      parse.config.py --input "$XDG_CONFIG_HOME/hypr/config.toml" --env "$XDG_STATE_HOME/hypr/env-overrides" --hypr "$XDG_STATE_HOME/hypr/hyprland.conf" --export "$@"
+    parse_config="${HYPR_LIB_DIR}/util/parse.config.py"
+    if [[ -x "${parse_config}" ]]; then
+      "${parse_config}" --input "$XDG_CONFIG_HOME/hypr/config.toml" --env "$XDG_STATE_HOME/hypr/env-overrides" --hypr "$XDG_STATE_HOME/hypr/hyprland.conf" --export "$@"
     else
-      echo "parse.config.py not found. Please make sure it is in \$PATH."
+      echo "parse.config.py not found at ${parse_config}"
     fi
     exit 0
     ;;

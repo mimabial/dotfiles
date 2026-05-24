@@ -5,13 +5,83 @@
 # update waybar border-radius, export icon theme, and persist the
 # state-and-notify hand-off after color generation succeeds.
 #
-# Subsystem inputs (set by color-sync.sh entrypoint via color.plan.sh / color.state.sh):
+# Subsystem inputs (caller-scope globals consumed by these functions):
 #   resolved_color_variant, selected_color_mode
 #   color_variant_changed, selected_color_mode_changed
 #   wal_cache_populate, wal_used_cache
 : "${resolved_color_variant-}" "${selected_color_mode-}" \
   "${color_variant_changed-}" "${selected_color_mode_changed-}" \
   "${wal_cache_populate-}" "${wal_used_cache-}"
+
+# Inlined from color.state.sh (deleted with the old pipeline).
+color_state_persist() {
+  [[ "${CACHE_ONLY:-0}" -eq 1 ]] && return 0
+
+  local state_wallpaper="${STATE_WALLPAPER:-${WALLPAPER_IMAGE:-theme}}"
+  local state_dir tmp_file
+  state_dir="$(dirname "${STATE_FILE}")"
+  tmp_file="${STATE_FILE}.tmp.$$"
+
+  mkdir -p "${state_dir}" || return 1
+  {
+    echo "${wal_cache_key:-${state_wallpaper}:${resolved_color_variant}}"
+    echo "wallpaper=${state_wallpaper}"
+    echo "color_variant=${resolved_color_variant}"
+    echo "selected_color_mode=${selected_color_mode}"
+    echo "backend=${PYWAL_BACKEND}"
+  } >"${tmp_file}" && mv -f "${tmp_file}" "${STATE_FILE}"
+}
+
+color_state_read_transition_metadata() {
+  local variant_name="$1"
+  local mode_name="$2"
+  local state_file="${3:-${STATE_FILE}}"
+  local state_line=""
+
+  printf -v "${variant_name}" '%s' ""
+  printf -v "${mode_name}" '%s' ""
+  [[ -r "${state_file}" ]] || return 0
+
+  state_line="$(awk -F= '
+    /^color_variant=/ {variant=$2}
+    /^selected_color_mode=/ {mode=$2}
+    END {print variant "|" mode}
+  ' "${state_file}" 2>/dev/null || true)"
+
+  printf -v "${variant_name}" '%s' "${state_line%%|*}"
+  printf -v "${mode_name}" '%s' "${state_line#*|}"
+}
+
+color_state_detect_transition_flags() {
+  previous_color_variant=""
+  previous_selected_color_mode=""
+  color_variant_changed=false
+  selected_color_mode_changed=false
+
+  color_state_read_transition_metadata previous_color_variant previous_selected_color_mode
+  [[ -n "${previous_color_variant}" && "${previous_color_variant}" != "${resolved_color_variant}" ]] && color_variant_changed=true
+  [[ -n "${previous_selected_color_mode}" && "${previous_selected_color_mode}" != "${selected_color_mode}" ]] && selected_color_mode_changed=true
+}
+
+# Inlined from color.files.sh (deleted with the old pipeline).
+_safe_hyq_get() {
+  local hyq_output="$1"
+  local var_name="$2"
+  local value
+  value="$(
+    awk -F= -v key="__${var_name}" '$1 == key {
+      value = substr($0, index($0, "=") + 1)
+      gsub(/"/, "", value)
+      print value
+      exit
+    }' <<<"${hyq_output}"
+  )"
+  if [[ "${value}" =~ \$\(|\`|\; ]]; then
+    print_log -sec "hyq" -warn "security" "blocked unsafe value for ${var_name}"
+    return 1
+  fi
+  echo "${value}"
+}
 
 color_finalize_resolve_path() {
   local input_path="$1"

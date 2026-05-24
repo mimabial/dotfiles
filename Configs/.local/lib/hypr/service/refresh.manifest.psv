@@ -23,4 +23,3 @@ waybar|config|file|preserve|never|waybar/style.css
 
 # Rofi split
 rofi|config|file|preserve|never|rofi/config.rasi
-rofi|config|file|preserve|never|rofi/theme.rasi

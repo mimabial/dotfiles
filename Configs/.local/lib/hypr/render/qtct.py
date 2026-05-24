@@ -13,6 +13,9 @@ import sys
 import tempfile
 from pathlib import Path
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _common import atomic_write, cache_hit, cache_store
+
 PALETTE = Path(sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] else
                os.environ.get("HYPR_STATE_HOME",
                               os.path.expanduser("~/.local/state/hypr")) + "/active-palette.json")
@@ -24,13 +27,6 @@ THEMES_DIR = Path(os.environ.get("HYPR_CONFIG_HOME",
 
 def run(cmd, **kw):
     return subprocess.run(cmd, check=False, **kw)
-
-def cache_hit(app, h):
-    r = run(["render-cache", "hit?", app, h])
-    return r.returncode == 0
-
-def cache_store(app, h):
-    run(["render-cache", "store", app, h])
 
 def main():
     if not PALETTE.is_file():

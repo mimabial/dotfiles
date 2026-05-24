@@ -16,7 +16,4 @@
 
     /* Runtime geometry overrides */
     @import "includes/border-radius.css";
-
-    /* Users override the current style here */
-    @import "user-style.css";
     

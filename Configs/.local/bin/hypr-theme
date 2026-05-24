@@ -48,12 +48,32 @@ while (($#)); do
   shift
 done
 
+write_hypr_theme_state() {
+  # Update HYPR_THEME in staterc so other consumers (waybar widgets, shell vars,
+  # theme.switch.sh re-runs, etc.) see the same theme that the palette belongs to.
+  local theme="$1"
+  local state_file="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/staterc"
+
+  [[ -n "${theme}" ]] || return 0
+  mkdir -p "$(dirname "${state_file}")" || return 1
+  touch "${state_file}" || return 1
+  (
+    flock 9 || exit 1
+    if grep -q "^HYPR_THEME=" "${state_file}"; then
+      sed -i "s|^HYPR_THEME=.*|HYPR_THEME=\"${theme}\"|" "${state_file}"
+    else
+      printf 'HYPR_THEME="%s"\n' "${theme}" >>"${state_file}"
+    fi
+  ) 9>>"${state_file}"
+}
+
 resolve_palette() {
   local subcmd="$1"; shift
   case "${subcmd}" in
     apply)
       [[ ${#positional[@]} -ge 1 ]] || { echo "hypr-theme apply: pack name required" >&2; exit 2; }
       python3 "${LIB_DIR}/_palette.py" --theme "${positional[0]}" --out "${PALETTE}"
+      write_hypr_theme_state "${positional[0]}"
       ;;
     wallpaper)
       [[ ${#positional[@]} -ge 1 ]] || { echo "hypr-theme wallpaper: image path required" >&2; exit 2; }

@@ -11,8 +11,10 @@ import os
 import re
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _common import atomic_write, cache_hit, cache_store
 
 PALETTE = Path(sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] else
                os.environ.get("HYPR_STATE_HOME",
@@ -24,11 +26,7 @@ OUT_FILE = OUT_DIR / "userChrome.css"
 MARKER_START = "/* BEGIN HYPR WAL FIREFOX USERCHROME */"
 MARKER_END = "/* END HYPR WAL FIREFOX USERCHROME */"
 PREF = "toolkit.legacyUserProfileCustomizations.stylesheets"
-
-def cache_hit(h):
-    return subprocess.run(["render-cache", "hit?", "firefox", h]).returncode == 0
-def cache_store(h):
-    subprocess.run(["render-cache", "store", "firefox", h])
+APP = "firefox"
 
 def parse_hex(v):
     v = v.lstrip("#")
@@ -143,18 +141,6 @@ def list_profiles():
         for p in FIREFOX_ROOT.glob("*.default*"):
             if p.is_dir(): yield p
 
-def atomic_write(path: Path, content: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=f".{path.name}.")
-    try:
-        with os.fdopen(fd, "w") as f:
-            f.write(content)
-        os.replace(tmp, path)
-    finally:
-        if Path(tmp).exists():
-            try: Path(tmp).unlink()
-            except FileNotFoundError: pass
-
 def inject_marker(profile: Path, snippet: str):
     chrome_dir = profile / "chrome"
     chrome_dir.mkdir(parents=True, exist_ok=True)
@@ -213,7 +199,7 @@ def main():
     for p in profiles: hasher.update(str(p).encode())
     h = hasher.hexdigest()[:16]
 
-    if cache_hit(h) and OUT_FILE.exists() and all(
+    if cache_hit(APP, h) and OUT_FILE.exists() and all(
             (p / "chrome" / "userChrome.css").exists() for p in profiles):
         return
 
@@ -223,7 +209,7 @@ def main():
         inject_marker(p, rendered)
         ensure_pref(p)
 
-    cache_store(h)
+    cache_store(APP, h)
 
 if __name__ == "__main__":
     main()

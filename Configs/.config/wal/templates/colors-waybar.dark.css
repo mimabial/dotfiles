@@ -10,7 +10,7 @@
 @define-color alt_br {color11};
 
 @define-color act_bg {color0};
-@define-color act_fg {background};
+@define-color act_fg {foreground};
 @define-color act_br {color12};
 
 @define-color hvr_bg {background};

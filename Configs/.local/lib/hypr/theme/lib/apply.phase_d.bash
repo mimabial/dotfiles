@@ -21,8 +21,8 @@
 #
 # Subprocess re-entry: theme.apply.sh re-execs itself with --theme-envelope
 # inside the systemd unit. That subprocess sources this file and dispatches
-# theme_apply_run_envelope_cli, which bootstraps color.files.sh +
-# color.finalize.sh and runs the phase-D job pool.
+# theme_apply_run_envelope_cli, which bootstraps color.finalize.sh and runs
+# the phase-D job pool.
 #
 # Subsystem inputs (set by theme.apply.sh entrypoint):
 #   theme_apply_generation, theme_apply_phase_d_log_dir, theme_apply_quiet,
@@ -260,7 +260,6 @@ theme_apply_phase_d_bootstrap() {
   local module=""
   local module_path=""
   local -a modules=(
-    color.files.sh
     color.finalize.sh
   )
 
@@ -284,7 +283,6 @@ theme_apply_phase_d_run_jobs() {
 
   [[ -n "${job_log_dir}" && -d "${job_log_dir}" ]] || return 1
   theme_apply_reset_jobs
-  theme_apply_start_job "${job_log_dir}" "theme_files" best_effort theme_apply_job_theme_files || true
   theme_apply_start_job "${job_log_dir}" "secondary_updates" best_effort theme_apply_job_secondary_updates || true
   theme_apply_start_job "${job_log_dir}" "static_desktop" best_effort theme_apply_job_static_desktop || true
   theme_apply_start_job "${job_log_dir}" "tmux" best_effort theme_apply_job_tmux || true
@@ -413,23 +411,6 @@ theme_apply_job_static_desktop() {
     print_log -sec "theme.apply" -warn "desktop" "static sync failed"
     return 1
   }
-}
-
-theme_apply_job_theme_files() {
-  local targets_lib="${LIB_DIR}/hypr/theme/color.targets.sh"
-
-  theme_apply_generation_is_current || return 0
-  [[ -r "${targets_lib}" ]] || return 0
-  if [[ -r "${LIB_DIR}/hypr/theme/phase-d.sh" ]]; then
-    # shellcheck source=/dev/null
-    source "${LIB_DIR}/hypr/theme/phase-d.sh" || return 1
-    theme_phase_d_init theme_phase_d_theme_files
-  fi
-  # shellcheck source=/dev/null
-  source "${targets_lib}" || return 1
-  HYPR_THEME_BATCH_RELOADS=1 \
-    HYPR_THEME_FILE_BASENAMES="alacritty.theme tmux.theme rofi.theme" \
-    process_theme_files
 }
 
 theme_apply_job_secondary_updates() {

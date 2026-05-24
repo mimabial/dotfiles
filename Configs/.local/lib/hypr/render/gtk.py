@@ -10,8 +10,10 @@ import os
 import re
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _common import atomic_write, cache_hit, cache_store
 
 PALETTE = Path(sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] else
                os.environ.get("HYPR_STATE_HOME",
@@ -19,13 +21,10 @@ PALETTE = Path(sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] else
 TEMPLATES = Path(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config"))) / "wal" / "templates"
 OUT_DIR = Path(os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))) / "themes" / "Pywal16-Gtk"
 
+APP = "gtk"
+
 BORDER_RADIUS_FULL = re.compile(r"border-radius:\s*([0-9]+)px")
 BORDER_RADIUS_QUAD = re.compile(r"border-radius:\s*([0-9]+)px\s+([0-9]+)px\s+([0-9]+)px\s+([0-9]+)px")
-
-def cache_hit(h):
-    return subprocess.run(["render-cache", "hit?", "gtk", h]).returncode == 0
-def cache_store(h):
-    subprocess.run(["render-cache", "store", "gtk", h])
 
 class _KeepMissing(dict):
     def __missing__(self, key):
@@ -61,18 +60,6 @@ def hypr_border_radius() -> int:
     except Exception:
         return 8
 
-def atomic_write(path: Path, content: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=f".{path.name}.")
-    try:
-        with os.fdopen(fd, "w") as f:
-            f.write(content)
-        os.replace(tmp, path)
-    finally:
-        if Path(tmp).exists():
-            try: Path(tmp).unlink()
-            except FileNotFoundError: pass
-
 def main():
     if not PALETTE.is_file():
         sys.exit(f"render/gtk: missing {PALETTE}")
@@ -95,7 +82,7 @@ def main():
     hasher.update(Path(__file__).read_bytes())
     h = hasher.hexdigest()[:16]
 
-    if cache_hit(h) and (OUT_DIR / "gtk-3.0" / "gtk.css").exists() and (OUT_DIR / "gtk-4.0" / "gtk.css").exists():
+    if cache_hit(APP, h) and (OUT_DIR / "gtk-3.0" / "gtk.css").exists() and (OUT_DIR / "gtk-4.0" / "gtk.css").exists():
         return
 
     for template_name, out_subdir in (("colors-gtk3.css", "gtk-3.0"), ("colors-gtk4.css", "gtk-4.0")):
@@ -133,7 +120,7 @@ CursorTheme=Adwaita
 ButtonLayout=close,minimize,maximize:menu
 """)
 
-    cache_store(h)
+    cache_store(APP, h)
 
     # Best-effort: poke xsettingsd if present
     try:

@@ -13,6 +13,9 @@ import sys
 import tempfile
 from pathlib import Path
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _common import atomic_write, cache_hit, cache_store
+
 PALETTE = Path(sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] else
                os.environ.get("HYPR_STATE_HOME",
                               os.path.expanduser("~/.local/state/hypr")) + "/active-palette.json")
@@ -21,10 +24,7 @@ THEMES_DIR = Path(os.environ.get("HYPR_CONFIG_HOME", os.path.expanduser("~/.conf
 INSTALLER = Path.home() / ".local/lib/hypr/theme/lib/install_kvantum_theme.py"
 PYWAL_JSON = Path(os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache"))) / "wal" / "colors.json"
 
-def cache_hit(h):
-    return subprocess.run(["render-cache", "hit?", "kvantum", h]).returncode == 0
-def cache_store(h):
-    subprocess.run(["render-cache", "store", "kvantum", h])
+APP = "kvantum"
 
 def safe_kvantum_name(pack):
     name = re.sub(r"[\s#/]+", "_", pack).strip("_")
@@ -70,7 +70,7 @@ def main():
 
     outputs_ready = all(p.exists() for p in
                         (pywal16_kvconfig, pywal16_svg, pack_dest_kvconfig, pack_dest_svg))
-    if cache_hit(h) and outputs_ready:
+    if cache_hit(APP, h) and outputs_ready:
         return
 
     # --- Stage 1: pywal16 generic theme ---
@@ -131,7 +131,7 @@ def main():
             print(f"render/kvantum: installer failed: {e}", file=sys.stderr)
             sys.exit(1)
 
-    cache_store(h)
+    cache_store(APP, h)
 
 if __name__ == "__main__":
     main()

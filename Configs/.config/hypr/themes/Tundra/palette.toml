@@ -1,0 +1,22 @@
+background = "#132B4B"
+foreground = "#FFFFFF"
+cursor = "#F0AABC"
+
+colors = [
+  "#293A52",
+  "#FFDDCC",
+  "#DFCCFF",
+  "#FFCCD9",
+  "#9ABAE6",
+  "#B69AE6",
+  "#E69AAD",
+  "#FFDDCC",
+  "#576F8F",
+  "#F0C1AA",
+  "#C4AAF0",
+  "#F0AABC",
+  "#9ABAE6",
+  "#B69AE6",
+  "#E69AAD",
+  "#F0C1AA",
+]

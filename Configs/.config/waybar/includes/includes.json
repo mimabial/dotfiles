@@ -17,6 +17,7 @@
         "$XDG_DATA_HOME/waybar/modules/custom-dunst.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-fanspeedinfo.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-focusmode.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-gamemode.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-github#notifications.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-gpuinfo.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-hotspot.jsonc",
@@ -43,6 +44,7 @@
         "$XDG_DATA_HOME/waybar/modules/custom-wifimenu.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-workflows.jsonc",
         "$XDG_DATA_HOME/waybar/modules/disk.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/gamemode.jsonc",
         "$XDG_DATA_HOME/waybar/modules/hyprland-language.jsonc",
         "$XDG_DATA_HOME/waybar/modules/hyprland-submap.jsonc",
         "$XDG_DATA_HOME/waybar/modules/hyprland-window.jsonc",
@@ -402,6 +404,18 @@
         "spacing": 10,
         "tooltip": "false"
     },
+    "gamemode": {
+        "format": "{glyph}",
+        "format-alt": "{glyph} {count}",
+        "glyph": "\uf7b3",
+        "hide-not-running": true,
+        "use-icon": true,
+        "icon-name": "input-gaming-symbolic",
+        "icon-spacing": 4,
+        "icon-size": 10,
+        "tooltip": true,
+        "tooltip-format": "Games running with GameMode: {count}"
+    },
     "custom/powermenu": {
         "justify": "center",
         "format": "\udb82\ude1a",
@@ -585,6 +599,12 @@
             "firefoxdeveloperedition": "firefox-developer-edition",
             "jetbrains-datagrip": "DataGrip"
         }
+    },
+    "custom/gamemode": {
+        "justify": "center",
+        "format": "\uec17",
+        "tooltip-format": "\uec17 Toggle gaming workflow",
+        "on-click": "hyprshell util/workflow-toggle.sh gaming"
     },
     "backlight/slider": {
         "justify": "center",

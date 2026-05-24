@@ -1,0 +1,92 @@
+/**
+ * Game launcher: Steam Deck style.
+ * Adapted from HyDE's steam_deck.rasi for this config's rofi color roles.
+ */
+
+configuration {
+    modi:                        "drun";
+    show-icons:                  true;
+    drun-display-format:         "{name}";
+    font:                        "JetBrainsMono Nerd Font 8";
+    kb-row-up:                   "k,Up";
+    kb-row-down:                 "j,Down";
+    kb-move-char-forward:        "l,Right";
+    kb-move-char-back:           "h,Left";
+    kb-cancel:                   "q,Escape";
+}
+
+@theme "~/.config/rofi/colors.rasi"
+
+window {
+    enabled:                     true;
+    fullscreen:                  false;
+    transparency:                "real";
+    cursor:                      "default";
+    background-color:            transparent;
+}
+
+mainbox {
+    enabled:                     true;
+    children:                    [ "listview" ];
+    background-color:            transparent;
+    orientation:                 horizontal;
+}
+
+listview {
+    enabled:                     true;
+    show-icons:                  true;
+    columns:                     3;
+    lines:                       2;
+    flow:                        horizontal;
+    spacing:                     1.2em;
+    padding:                     3em 4em 2em 4em;
+    cycle:                       true;
+    dynamic:                     true;
+    fixed-height:                true;
+    fixed-columns:               true;
+    scrollbar:                   false;
+    reverse:                     false;
+    background-color:            @background-alpha;
+    text-color:                  @foreground;
+    border-radius:               0.4em;
+}
+
+element {
+    enabled:                     true;
+    children:                    [ "element-icon", "element-text" ];
+    orientation:                 vertical;
+    spacing:                     0em;
+    padding:                     0.3em;
+    border-radius:               0.4em;
+    cursor:                      pointer;
+    background-color:            transparent;
+    text-color:                  @foreground;
+}
+
+element selected.normal {
+    background-color:            @selected-background;
+    text-color:                  @selected-foreground;
+}
+
+element-icon {
+    enabled:                     true;
+    size:                        10em;
+    width:                       10em;
+    padding:                     0;
+    margin:                      0;
+    border:                      0;
+    cursor:                      inherit;
+    background-color:            transparent;
+    text-color:                  inherit;
+}
+
+element-text {
+    vertical-align:              0.5;
+    horizontal-align:            0.5;
+    expand:                      false;
+    spacing:                     0em;
+    padding:                     0.4em 0em 0em 0em;
+    cursor:                      inherit;
+    background-color:            transparent;
+    text-color:                  inherit;
+}

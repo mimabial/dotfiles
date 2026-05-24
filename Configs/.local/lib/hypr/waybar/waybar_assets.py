@@ -78,9 +78,6 @@ def write_style_file(style_filepath, source_filepath):
 
     /* Runtime geometry overrides */
     @import "includes/border-radius.css";
-
-    /* Users override the current style here */
-    @import "user-style.css";
     """
     atomic_write_text(style_filepath, style_css)
     logger.debug(f"Successfully wrote style to '{style_filepath}'")
@@ -407,16 +404,7 @@ def update_config(config_path):
 
 def update_style(style_path=None):
     style_filepath = os.path.join(str(xdg_config_home()), "waybar", "style.css")
-    user_style_filepath = os.path.join(
-        str(xdg_config_home()), "waybar", "user-style.css"
-    )
     theme_style_filepath = os.path.join(str(xdg_config_home()), "waybar", "theme.css")
-
-    ensure_directory_exists(user_style_filepath)
-
-    if not os.path.exists(user_style_filepath):
-        atomic_write_text(user_style_filepath, "/* User custom styles */\n")
-        logger.debug(f"Created '{user_style_filepath}'")
 
     if not os.path.exists(theme_style_filepath):
         logger.error(

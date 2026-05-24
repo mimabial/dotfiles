@@ -81,6 +81,8 @@
       "custom/keybindhint",
       "custom/colormode",
       "custom/focusmode",
+      "custom/gamemode",
+      "gamemode",
       "custom/cliphist",
       "custom/caffeine",
       "custom/wallchange",

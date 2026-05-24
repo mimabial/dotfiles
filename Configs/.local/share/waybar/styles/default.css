@@ -568,6 +568,20 @@ menu {
   padding-right: 2px;
 }
 
+#custom-gamemode,
+#gamemode {
+  margin: 2px 0px 4px;
+  padding-right: 2px;
+}
+
+#custom-gamemode {
+  color: @c7;
+}
+
+#gamemode.running {
+  color: @accent;
+}
+
 #custom-keybindhint {
   font-size: 14px;
   margin: 2px 0px 4px;

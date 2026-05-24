@@ -22,7 +22,7 @@ configuration {
     icon-theme:                  "Tela-circle-dracula";
 }
 
-@theme "~/.config/rofi/theme.rasi"
+@theme "~/.config/rofi/colors.rasi"
 
 
 // Main //

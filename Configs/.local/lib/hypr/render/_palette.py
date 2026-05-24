@@ -14,6 +14,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import tomllib
 from pathlib import Path
 
 DEFAULT_OUT = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state"))) / "hypr" / "active-palette.json"
@@ -67,19 +68,39 @@ def parse_kitty_theme(path: Path) -> dict:
                 data["colors"][idx] = v
     return data
 
+def parse_palette_toml(path: Path) -> dict:
+    """Parse palette.toml: {background, foreground, cursor?, colors[0..15]}."""
+    with path.open("rb") as f:
+        raw = tomllib.load(f)
+    return {
+        "bg":     raw.get("background"),
+        "fg":     raw.get("foreground"),
+        "cursor": raw.get("cursor"),
+        "colors": (raw.get("colors") or [None] * 16) + [None] * 16,  # pad short lists
+    }
+
 def resolve_theme(pack_name: str) -> dict:
     pack_dir = THEME_ROOT / pack_name
+    toml_file = pack_dir / "palette.toml"
     kitty = pack_dir / "kitty.theme"
-    if not kitty.is_file():
-        sys.exit(f"_palette: {kitty} not found")
-    parsed = parse_kitty_theme(kitty)
+
+    if toml_file.is_file():
+        parsed = parse_palette_toml(toml_file)
+        source = toml_file
+    elif kitty.is_file():
+        parsed = parse_kitty_theme(kitty)
+        source = kitty
+    else:
+        sys.exit(f"_palette: no palette.toml or kitty.theme in {pack_dir}")
+
+    parsed["colors"] = parsed["colors"][:16]
     missing = []
     if not parsed["bg"]: missing.append("background")
     if not parsed["fg"]: missing.append("foreground")
     for i, c in enumerate(parsed["colors"]):
         if not c: missing.append(f"color{i}")
     if missing:
-        sys.exit(f"_palette: {kitty} missing: {', '.join(missing)}")
+        sys.exit(f"_palette: {source} missing: {', '.join(missing)}")
     out = {
         "source": f"theme:{pack_name}",
         "mode":   "theme",

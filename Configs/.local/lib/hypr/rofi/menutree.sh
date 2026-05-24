@@ -10,6 +10,8 @@ source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/menu.dynamic.bash"
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/menu.d/menu.domain.core.bash"
 # shellcheck source=/dev/null
+source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/menu.d/menu.domain.gaming.bash"
+# shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/menu.d/menu.domain.trigger.bash"
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/menu.d/menu.domain.style.bash"

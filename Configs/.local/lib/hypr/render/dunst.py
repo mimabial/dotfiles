@@ -8,8 +8,10 @@ import os
 import re
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _common import atomic_write, cache_hit, cache_store
 
 PALETTE = Path(sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] else
                os.environ.get("HYPR_STATE_HOME",
@@ -23,10 +25,7 @@ WAYBAR_CONF  = Path(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.con
 OUT_DIR      = Path(os.environ.get("HYPR_CACHE_HOME", os.path.expanduser("~/.cache/hypr"))) / "render" / "dunst"
 OUT_FILE     = OUT_DIR / "dunstrc"
 
-def cache_hit(h):
-    return subprocess.run(["render-cache", "hit?", "dunst", h]).returncode == 0
-def cache_store(h):
-    subprocess.run(["render-cache", "store", "dunst", h])
+APP = "dunst"
 
 def first(*vals):
     for v in vals:
@@ -213,7 +212,7 @@ def main():
     hasher.update(Path(__file__).read_bytes())
     h = hasher.hexdigest()[:16]
 
-    if cache_hit(h) and DUNST_CONF.exists() and OUT_FILE.exists():
+    if cache_hit(APP, h) and DUNST_CONF.exists() and OUT_FILE.exists():
         return
 
     base = BASE_CONF.read_text() if BASE_CONF.is_file() else "[global]\n    monitor = 0\n"
@@ -287,17 +286,9 @@ def main():
 
     # Write to both render cache + live dunstrc (dunst reads dunstrc directly)
     for target in (OUT_FILE, DUNST_CONF):
-        fd, tmp = tempfile.mkstemp(dir=str(target.parent), prefix=f".{target.name}.")
-        try:
-            with os.fdopen(fd, "w") as f:
-                f.write(content)
-            os.replace(tmp, target)
-        finally:
-            if Path(tmp).exists():
-                try: Path(tmp).unlink()
-                except FileNotFoundError: pass
+        atomic_write(target, content)
 
-    cache_store(h)
+    cache_store(APP, h)
     reload_dunst()
 
 if __name__ == "__main__":
