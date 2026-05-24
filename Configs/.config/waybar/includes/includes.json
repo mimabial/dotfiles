@@ -602,8 +602,8 @@
     },
     "custom/gamemode": {
         "justify": "center",
-        "format": "\uec17",
-        "tooltip-format": "\uec17 Toggle gaming workflow",
+        "format": "\udb83\udeb5",
+        "tooltip-format": "\udb83\udeb5 Toggle gaming workflow",
         "on-click": "hyprshell util/workflow-toggle.sh gaming"
     },
     "backlight/slider": {

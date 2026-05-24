@@ -24,7 +24,7 @@ general {
 group {
     col.border_active = rgba(B3BBA3ff)
     col.border_inactive = rgba(232425cc)
-    col.border_locked_active = rgba(FFFFFFff) rgba(0D0D0Dff) 45deg
+    col.border_locked_active = rgba(FFFFFFff)
     col.border_locked_inactive = rgba(FFFFFFcc)
 }
 
@@ -32,11 +32,11 @@ decoration {
     rounding = 4
     shadow:enabled = true
 
-    active_opacity = 0.95
+    active_opacity = 0.9
     inactive_opacity = 0.8
 
     dim_inactive = true
-    dim_strength = 0.15
+    dim_strength = 0.2
 
     blur {
         enabled = yes

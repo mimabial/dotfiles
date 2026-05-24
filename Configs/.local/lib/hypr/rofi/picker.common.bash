@@ -16,11 +16,11 @@ rofi_picker_bootstrap() {
 rofi_picker_hypr_dir_vars() {
   local out_config_name="$1"
   local out_cache_name="$2"
-  local config_dir="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}"
-  local cache_dir="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}"
+  local _picker_config_dir="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}"
+  local _picker_cache_dir="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}"
 
-  printf -v "${out_config_name}" '%s' "${config_dir}"
-  printf -v "${out_cache_name}" '%s' "${cache_dir}"
+  printf -v "${out_config_name}" '%s' "${_picker_config_dir}"
+  printf -v "${out_cache_name}" '%s' "${_picker_cache_dir}"
 }
 
 rofi_picker_prepare_data_file() {

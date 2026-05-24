@@ -10,8 +10,8 @@ $CURSOR_SIZE=25
 # Theme variables above are the primary inputs used by theme.switch.sh.
 
 general {
-    gaps_in = 6
-    gaps_out = 10
+    gaps_in = 4
+    gaps_out = 8
     border_size = 2
     col.active_border = rgba(447497ff)
     col.inactive_border = rgba(121b1ccc)
@@ -30,7 +30,7 @@ decoration {
     rounding = 3
 
     shadow {
-        enabled = true
+        enabled = false
         range = 10
         render_power = 6
         color = 0xaa82acc3

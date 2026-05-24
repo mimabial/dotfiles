@@ -10,6 +10,8 @@ if ! source "${scrDir}/global_fn.sh"; then
     exit 1
 fi
 
+flg_DryRun=${flg_DryRun:-0}
+
 # shellcheck disable=SC2154
 if chk_list "aurhlpr" "${aurList[@]}"; then
     print_log -sec "AUR" -stat "Detected" "${aurhlpr}"
@@ -17,6 +19,11 @@ if chk_list "aurhlpr" "${aurList[@]}"; then
 fi
 
 aurhlpr="${1:-yay-bin}"
+
+if [ "${flg_DryRun}" -eq 1 ]; then
+    print_log -sec "AUR" -stat "dry-run" "would install ${aurhlpr} aur helper"
+    exit 0
+fi
 
 if [ -d "$HOME/Clone" ]; then
     print_log -sec "AUR" -stat "exist" "$HOME/Clone directory..."

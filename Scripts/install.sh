@@ -4,19 +4,13 @@
 #|--/ /-| Main installation script |--/ /-|#
 #|/ /---+--------------------------+/ /---|#
 
-#--------------------------------#
-# import variables and functions #
-#--------------------------------#
-scrDir="$(dirname "$(realpath "$0")")"
+scrDir="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
 # shellcheck disable=SC1091
 if ! source "${scrDir}/global_fn.sh"; then
   echo "Error: unable to source global_fn.sh..."
   exit 1
 fi
 
-#------------------#
-# evaluate options #
-#------------------#
 flg_Install=0
 flg_Restore=0
 flg_Service=0
@@ -24,31 +18,11 @@ flg_DryRun=0
 flg_Shell=0
 flg_Nvidia=1
 flg_ThemeInstall=1
+flg_Lint=0
 
-while getopts idrstmnh RunStep; do
-  case $RunStep in
-    i) flg_Install=1 ;;
-    d)
-      flg_Install=1
-      export use_default="--noconfirm"
-      ;;
-    r) flg_Restore=1 ;;
-    s) flg_Service=1 ;;
-    n)
-      # shellcheck disable=SC2034
-      export flg_Nvidia=0
-      print_log -r "[nvidia] " -b "Ignored :: " "skipping Nvidia actions"
-      ;;
-    h)
-      # shellcheck disable=SC2034
-      export flg_Shell=1
-      print_log -r "[shell] " -b "Reevaluate :: " "shell options"
-      ;;
-    t) flg_DryRun=1 ;;
-    m) flg_ThemeInstall=0 ;;
-    *)
-      cat <<EOF
-Usage: $0 [options]
+usage() {
+  cat <<EOF
+Usage: $0 [options] [custom-package-list]
             i : [i]nstall hyprland without configs
             d : install hyprland [d]efaults without configs --noconfirm
             r : [r]estore config files
@@ -57,251 +31,112 @@ Usage: $0 [options]
             h : re-evaluate S[h]ell
             m : no the[m]e reinstallations
             t : [t]est run without executing (-irst to dry run all)
+            l : [l]int package manifests and exit
 
 NOTE:
         running without args is equivalent to -irs
         to ignore nvidia, run -irsn
 
 WRONG:
-        install.sh -n # This will not work
+        install.sh -n # This will not run install/restore/service phases
 
 EOF
-      exit 1
-      ;;
+}
+
+has_action() {
+  [ "${flg_Install}" -eq 1 ] || [ "${flg_Restore}" -eq 1 ] || [ "${flg_Service}" -eq 1 ]
+}
+
+run_package_lint() {
+  local -a lint_args=(--availability "${scrDir}/pkg_core.lst")
+  [ -n "${custom_pkg}" ] && lint_args+=("${custom_pkg}")
+  run_step "lint package manifests" "${scrDir}/packaging/lint.sh" "${lint_args[@]}"
+}
+
+while getopts idrstmnhl RunStep; do
+  case "${RunStep}" in
+  i) flg_Install=1 ;;
+  d)
+    flg_Install=1
+    export use_default="--noconfirm"
+    ;;
+  r) flg_Restore=1 ;;
+  s) flg_Service=1 ;;
+  n)
+    export flg_Nvidia=0
+    print_log -r "[nvidia] " -b "Ignored :: " "skipping Nvidia actions"
+    ;;
+  h)
+    export flg_Shell=1
+    print_log -r "[shell] " -b "Reevaluate :: " "shell options"
+    ;;
+  t) flg_DryRun=1 ;;
+  m) flg_ThemeInstall=0 ;;
+  l) flg_Lint=1 ;;
+  *)
+    usage
+    exit 1
+    ;;
   esac
 done
 
-# Only export that are used outside this script
+shift $((OPTIND - 1))
+custom_pkg="${1:-}"
+
 HYDE_LOG="$(date +'%y%m%d_%Hh%Mm%Ss')"
-export flg_DryRun flg_Nvidia flg_Shell flg_Install flg_ThemeInstall HYDE_LOG
+export flg_DryRun flg_Nvidia flg_Shell flg_Install flg_Restore flg_Service flg_ThemeInstall HYDE_LOG custom_pkg
 
 if [ "${flg_DryRun}" -eq 1 ]; then
   print_log -n "[test-run] " -b "enabled :: " "Testing without executing"
-elif [ $OPTIND -eq 1 ]; then
+elif [ "${flg_Lint}" -ne 1 ] && [ "${OPTIND}" -eq 1 ]; then
   flg_Install=1
   flg_Restore=1
   flg_Service=1
+  export flg_Install flg_Restore flg_Service
 fi
 
-#--------------------#
-# pre-install script #
-#--------------------#
-if [ ${flg_Install} -eq 1 ] && [ ${flg_Restore} -eq 1 ]; then
-  cat <<"EOF"
-                _         _       _ _
- ___ ___ ___   |_|___ ___| |_ ___| | |
-| . |  _| -_|  | |   |_ -|  _| .'| | |
-|  _|_| |___|  |_|_|_|___|_| |__,|_|_|
-|_|
-
-EOF
-
-  "${scrDir}/install_pre.sh"
+if [ "${flg_Lint}" -eq 1 ]; then
+  run_package_lint
+  exit $?
 fi
 
-#------------#
-# installing #
-#------------#
-if [ ${flg_Install} -eq 1 ]; then
-  cat <<"EOF"
-
- _         _       _ _ _
-|_|___ ___| |_ ___| | |_|___ ___
-| |   |_ -|  _| .'| | | |   | . |
-|_|_|_|___|_| |__,|_|_|_|_|_|_  |
-                            |___|
-
-EOF
-
-  #----------------------#
-  # prepare package list #
-  #----------------------#
-  shift $((OPTIND - 1))
-  custom_pkg=$1
-  cp "${scrDir}/pkg_core.lst" "${scrDir}/install_pkg.lst"
-  trap 'mv "${scrDir}/install_pkg.lst" "${cacheDir}/logs/${HYDE_LOG}/install_pkg.lst"' EXIT
-
-  echo -e "\n#user packages" >>"${scrDir}/install_pkg.lst" # Add a marker for user packages
-  if [ -f "${custom_pkg}" ] && [ -n "${custom_pkg}" ]; then
-    cat "${custom_pkg}" >>"${scrDir}/install_pkg.lst"
-  fi
-
-  #--------------------------------#
-  # add nvidia drivers to the list #
-  #--------------------------------#
-  if nvidia_detect; then
-    if [ ${flg_Nvidia} -eq 1 ]; then
-      cat /usr/lib/modules/*/pkgbase | while read -r kernel; do
-        echo "${kernel}-headers" >>"${scrDir}/install_pkg.lst"
-      done
-      nvidia_detect --drivers >>"${scrDir}/install_pkg.lst"
-    else
-      print_log -warn "Nvidia" "Nvidia GPU detected but ignored..."
-    fi
-  fi
-  nvidia_detect --verbose
-
-  #----------------#
-  # get user prefs #
-  #----------------#
-  echo ""
-  if ! chk_list "aurhlpr" "${aurList[@]}"; then
-    print_log -c "\nAUR Helpers :: "
-    aurList+=("yay-bin" "paru-bin") # Add this here instead of in global_fn.sh
-    for i in "${!aurList[@]}"; do
-      print_log -sec "$((i + 1))" " ${aurList[$i]} "
-    done
-
-    prompt_timer 120 "Enter option number [default: yay-bin] | q to quit "
-
-    case "${PROMPT_INPUT}" in
-      1) export getAur="yay" ;;
-      2) export getAur="paru" ;;
-      3) export getAur="yay-bin" ;;
-      4) export getAur="paru-bin" ;;
-      q)
-        print_log -sec "AUR" -crit "Quit" "Exiting..."
-        exit 1
-        ;;
-      *)
-        print_log -sec "AUR" -warn "Defaulting to yay-bin"
-        print_log -sec "AUR" -stat "default" "yay-bin"
-        export getAur="yay-bin"
-        ;;
-    esac
-    if [[ -z "$getAur" ]]; then
-      print_log -sec "AUR" -crit "No AUR helper found..." "Log file at ${cacheDir}/logs/${HYDE_LOG}"
-      exit 1
-    fi
-  fi
-
-  if ! chk_list "myShell" "${shlList[@]}"; then
-    print_log -c "Shell :: "
-    for i in "${!shlList[@]}"; do
-      print_log -sec "$((i + 1))" " ${shlList[$i]} "
-    done
-    prompt_timer 120 "Enter option number [default: zsh] | q to quit "
-
-    case "${PROMPT_INPUT}" in
-      1) export myShell="zsh" ;;
-      2) export myShell="fish" ;;
-      q)
-        print_log -sec "shell" -crit "Quit" "Exiting..."
-        exit 1
-        ;;
-      *)
-        print_log -sec "shell" -warn "Defaulting to zsh"
-        export myShell="zsh"
-        ;;
-    esac
-    print_log -sec "shell" -stat "Added as shell" "${myShell}"
-    echo "${myShell}" >>"${scrDir}/install_pkg.lst"
-
-    if [[ -z "$myShell" ]]; then
-      print_log -sec "shell" -crit "No shell found..." "Log file at ${cacheDir}/logs/${HYDE_LOG}"
-      exit 1
-    else
-      print_log -sec "shell" -stat "detected :: " "${myShell}"
-    fi
-  fi
-
-  if ! grep -q "^#user packages" "${scrDir}/install_pkg.lst"; then
-    print_log -sec "pkg" -crit "No user packages found..." "Log file at ${cacheDir}/logs/${HYDE_LOG}/install.sh"
-    exit 1
-  fi
-
-  #--------------------------------#
-  # install packages from the list #
-  #--------------------------------#
-  "${scrDir}/install_pkg.sh" "${scrDir}/install_pkg.lst"
-
-  #---------------------------#
-  # install bootloader (limine)
-  #---------------------------#
-  "${scrDir}/install_boot.sh"
+if has_action; then
+  run_step "preflight checks" "${scrDir}/preflight/all.sh"
 fi
 
-#---------------------------#
-# restore my custom configs #
-#---------------------------#
-if [ ${flg_Restore} -eq 1 ]; then
-  cat <<"EOF"
-
-             _           _
- ___ ___ ___| |_ ___ ___|_|___ ___
-|  _| -_|_ -|  _| . |  _| |   | . |
-|_| |___|___|_| |___|_| |_|_|_|_  |
-                              |___|
-
-EOF
-
-  if [ "${flg_DryRun}" -ne 1 ] && [ -n "$HYPRLAND_INSTANCE_SIGNATURE" ]; then
-    hyprctl keyword misc:disable_autoreload 1 -q
-  fi
-
-  "${scrDir}/restore_fnt.sh"
-  "${scrDir}/restore_cfg.sh"
-  "${scrDir}/restore_thm.sh"
-  print_log -g "[generate] " "cache ::" "Wallpapers..."
-  if [ "${flg_DryRun}" -ne 1 ]; then
-    export PATH="$HOME/.local/lib/hypr:$HOME/.local/bin:${PATH}"
-    "$HOME/.local/lib/hypr/swwwallcache.sh" -t ""
-    if command -v hyprshell >/dev/null 2>&1; then
-      hyprshell theme.switch.sh -q || true
-      hyprshell waybar.py --update || true
-    else
-      "$HOME/.local/lib/hypr/theme/theme.switch.sh" -q || true
-      "$HOME/.local/lib/hypr/waybar/waybar.py" --update || true
-    fi
-    echo "[install] reload :: Hyprland"
-  fi
-
+if [ "${flg_Install}" -eq 1 ]; then
+  run_step "hardware detection" "${scrDir}/hardware/all.sh"
 fi
 
-#---------------------#
-# post-install script #
-#---------------------#
-if [ ${flg_Install} -eq 1 ] && [ ${flg_Restore} -eq 1 ]; then
-  cat <<"EOF"
-
-             _      _         _       _ _
- ___ ___ ___| |_   |_|___ ___| |_ ___| | |
-| . | . |_ -|  _|  | |   |_ -|  _| .'| | |
-|  _|___|___|_|    |_|_|_|___|_| |__,|_|_|
-|_|
-
-EOF
-
-  "${scrDir}/install_pst.sh"
+if [ "${flg_Install}" -eq 1 ] && [ "${flg_Restore}" -eq 1 ]; then
+  run_step "pre-install config" "${scrDir}/install_pre.sh"
 fi
 
-#------------------------#
-# enable system services #
-#------------------------#
-if [ ${flg_Service} -eq 1 ]; then
-  cat <<"EOF"
-
-                 _
- ___ ___ ___ _ _|_|___ ___ ___
-|_ -| -_|  _| | | |  _| -_|_ -|
-|___|___|_|  \_/|_|___|___|___|
-
-EOF
-
-  "${scrDir}/restore_svc.sh"
+if [ "${flg_Install}" -eq 1 ]; then
+  run_step "packaging phase" "${scrDir}/packaging/all.sh" "${custom_pkg}"
 fi
 
-if [ $flg_Install -eq 1 ]; then
+if [ "${flg_Restore}" -eq 1 ]; then
+  run_step "restore phase" "${scrDir}/restore/all.sh"
+fi
+
+if [ "${flg_Install}" -eq 1 ] && [ "${flg_Restore}" -eq 1 ]; then
+  run_step "post-install phase" "${scrDir}/post-install/all.sh"
+fi
+
+if [ "${flg_Service}" -eq 1 ]; then
+  run_step "service phase" "${scrDir}/services/all.sh"
+fi
+
+if [ "${flg_Install}" -eq 1 ]; then
   echo ""
   print_log -g "Installation" " :: " "COMPLETED!"
 fi
-print_log -b "Log" " :: " -y "View logs at ${cacheDir}/logs/${HYDE_LOG}"
-if [ $flg_Install -eq 1 ] \
-  || [ $flg_Restore -eq 1 ] \
-  || [ $flg_Service -eq 1 ] \
-  && [ $flg_DryRun -ne 1 ]; then
 
-  if [[ -z "${HYPRLAND_CONFIG:-}" ]] || [[ ! -f "${HYPRLAND_CONFIG}" ]]; then
+print_log -b "Log" " :: " -y "View logs at ${cacheDir}/logs/${HYDE_LOG}"
+
+if has_action && [ "${flg_DryRun}" -ne 1 ]; then
+  if [[ -z "${HYPRLAND_CONFIG:-}" || ! -f "${HYPRLAND_CONFIG}" ]]; then
     print_log -warn "Hyprland config not found! Might be a new install or upgrade."
     print_log -warn "Please reboot the system to apply new changes."
   fi
@@ -309,7 +144,7 @@ if [ $flg_Install -eq 1 ] \
   print_log -stat "HyDE" "It is not recommended to use newly installed or upgraded HyDE without rebooting the system. Do you want to reboot the system? (y/N)"
   read -r answer
 
-  if [[ "$answer" == [Yy] ]]; then
+  if [[ "${answer}" == [Yy] ]]; then
     echo "Rebooting system"
     systemctl reboot
   else

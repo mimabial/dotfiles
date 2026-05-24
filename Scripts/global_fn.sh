@@ -5,7 +5,7 @@
 
 set -e
 
-scrDir="$(dirname "$(realpath "$0")")"
+scrDir="${HYDE_SCRIPTS_DIR:-$(dirname "$(realpath "${BASH_SOURCE[0]}")")}"
 cloneDir="$(dirname "${scrDir}")" # fallback, we will use CLONE_DIR now
 cloneDir="${CLONE_DIR:-${cloneDir}}"
 confDir="${XDG_CONFIG_HOME:-$HOME/.config}"
@@ -14,6 +14,7 @@ aurList=("yay" "paru")
 shlList=("zsh" "fish")
 pacmanCmd=${cloneDir}/Configs/.local/lib/hypr/system/pm.sh
 
+export HYDE_SCRIPTS_DIR="${scrDir}"
 export cloneDir
 export confDir
 export cacheDir
@@ -60,27 +61,6 @@ aur_available() {
 
     # shellcheck disable=SC2154
     if ${pacmanCmd} info "${PkgIn}" &>/dev/null; then
-        return 0
-    else
-        return 1
-    fi
-}
-
-nvidia_detect() {
-    readarray -t dGPU < <(lspci -k | grep -E "(VGA|3D)" | awk -F ': ' '{print $NF}')
-    if [ "${1}" == "--verbose" ]; then
-        for indx in "${!dGPU[@]}"; do
-            echo -e "\033[0;32m[gpu$indx]\033[0m detected :: ${dGPU[indx]}"
-        done
-        return 0
-    fi
-    if [ "${1}" == "--drivers" ]; then
-        while read -r -d ' ' nvcode; do
-            awk -F '|' -v nvc="${nvcode}" 'substr(nvc,1,length($3)) == $3 {split(FILENAME,driver,"/"); print driver[length(driver)],"\nnvidia-utils"}' "${scrDir}"/nvidia-db/nvidia*dkms
-        done <<<"${dGPU[@]}"
-        return 0
-    fi
-    if grep -iq nvidia <<<"${dGPU[@]}"; then
         return 0
     else
         return 1
@@ -179,3 +159,49 @@ print_log() {
         cat
     fi
 }
+
+step_log_file() {
+    local log_name="${HYDE_LOG:-manual}"
+    printf '%s/logs/%s/install.steps.log\n' "${cacheDir}" "${log_name}"
+}
+
+run_step() {
+    local label="$1"
+    shift
+
+    local log_file
+    local start_time
+    local end_time
+    local exit_code
+    log_file="$(step_log_file)"
+    mkdir -p "$(dirname "${log_file}")"
+
+    {
+        printf '[%s] START %s ::' "$(date '+%Y-%m-%d %H:%M:%S')" "${label}"
+        printf ' %q' "$@"
+        printf '\n'
+    } >>"${log_file}"
+    print_log -sec "step" -stat "start" "${label}"
+
+    start_time=$(date +%s)
+    set +e
+    "$@"
+    exit_code=$?
+    set -e
+    end_time=$(date +%s)
+
+    if [ "${exit_code}" -eq 0 ]; then
+        printf '[%s] DONE  %s (%ss)\n' "$(date '+%Y-%m-%d %H:%M:%S')" "${label}" "$((end_time - start_time))" >>"${log_file}"
+        print_log -sec "step" -stat "done" "${label} ($((end_time - start_time))s)"
+    else
+        printf '[%s] FAIL  %s (%ss, exit %s)\n' "$(date '+%Y-%m-%d %H:%M:%S')" "${label}" "$((end_time - start_time))" "${exit_code}" >>"${log_file}"
+        print_log -sec "step" -crit "failed" "${label} (exit ${exit_code})"
+    fi
+
+    return "${exit_code}"
+}
+
+if [ -r "${scrDir}/hardware/nvidia.sh" ]; then
+    # shellcheck source=/dev/null
+    source "${scrDir}/hardware/nvidia.sh"
+fi

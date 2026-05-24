@@ -84,15 +84,15 @@
     },
     "modules": [
       "custom/mark",
-      "custom/keybindhint",
-      "custom/colormode",
       "custom/focusmode",
       "custom/gamemode",
+      "custom/colormode",
       "gamemode",
       "custom/cliphist",
       "custom/caffeine",
       "custom/wallchange",
-      "custom/themeswitch"
+      "custom/themeswitch",
+      "custom/keybindhint"
     ]
   },
   "group/volumecontrol": {

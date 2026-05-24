@@ -564,18 +564,14 @@ menu {
 
 #custom-focusmode {
   font-size: 17px;
-  margin: 2px 0px 4px;
+  margin: 0px 0px 2px;
   padding-right: 2px;
 }
 
 #custom-gamemode,
 #gamemode {
-  margin: 2px 0px 4px;
-  padding-right: 2px;
-}
-
-#custom-gamemode {
-  color: @c7;
+  margin: 0px 0px 4px;
+  padding-right: 4px;
 }
 
 #gamemode.running {
@@ -584,7 +580,7 @@ menu {
 
 #custom-keybindhint {
   font-size: 14px;
-  margin: 2px 0px 4px;
+  margin: 2px 0px 0px;
   padding-right: 6px;
 }
 
