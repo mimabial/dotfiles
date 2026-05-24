@@ -113,6 +113,9 @@ Supported `Scripts/install.sh` flags:
 | `-m` | Skip theme reinstallations |
 | `-n` | Skip NVIDIA-specific actions |
 | `-h` | Re-evaluate shell handling |
+| `-l` | Lint package manifests and exit |
+
+Running with no flags is equivalent to `-irs` (install + restore + services).
 
 Top-level wrappers:
 
@@ -130,14 +133,18 @@ hyprshell list
 # Switch theme
 hyprshell theme.switch.sh "Tokyo Night"
 
-# Rotate wallpaper and regenerate colors
-hyprshell wallpaper.sh -Gn
+# Rotate global wallpaper (next / previous / random / select)
+hyprshell wallpaper next --global
 
 # Validate Hyprland config
 hyprctl configerrors
 
 # Rebuild Waybar runtime files from current state
 hyprshell waybar.py --update
+
+# Select / apply per-machine host profile (drives dotfiles-sync)
+dotfiles-host-profile show
+dotfiles-host-profile set <profile>
 ```
 
 See [KEYBINDINGS.md](KEYBINDINGS.md) for keybindings.
@@ -156,19 +163,26 @@ Current bundled theme directories:
 - Blue Sky
 - Catppuccin Latte
 - Catppuccin Mocha
+- Chilling Winters
+- City Lights
 - Code Garden
 - Crimson Blade
 - Decay Green
+- Dijon Mustard
 - Edge Runner
-- Eternal Arctic
 - Forest Green
-- Graphite Mono
+- Forest Light
+- Frosted Glass
+- Graphite Retro
 - Greenify
 - Grukai
 - Gruvbox Retro
+- Kanagawa Wave
 - Lime Frenzy
 - Material Sakura
+- Monochrome
 - Monokai
+- Moonlight
 - Nordic Blue
 - One Dark
 - Oxo Carbon
@@ -177,10 +191,13 @@ Current bundled theme directories:
 - Pixel Dream
 - Red Stone
 - Rosé Pine
+- Scarlet Night
 - Solarized Dark
+- Spider Verse
 - Synth Wave
 - Tokyo Night
 - Tundra
+- Versailles
 
 The desktop also rebuilds generated theme outputs for apps such as Hyprland, Waybar, Rofi, Dunst, Kitty, Alacritty, tmux, GTK, Qt/Kvantum, Hyprlock, and `rmpc`.
 
