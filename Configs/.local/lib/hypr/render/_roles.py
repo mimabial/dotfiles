@@ -110,7 +110,7 @@ class QtRoles:
                 or self._general.get("base.color")
                 or bg
             )
-            self.button_surface = self._general.get("button.color") or self.normal_surface
+            self.button_surface = self.normal_surface
         else:
             self.normal_surface = (
                 colors.get("color0", bg) if self.is_dark

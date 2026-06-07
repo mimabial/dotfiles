@@ -103,6 +103,7 @@ def patch_svg_state_roles(path):
     )
     surface_prefixes = (
         "button-normal", "header-normal", "toolbar-normal",
+        "menu-normal", "menuitem-normal",
         "menubar-normal", "menubaritem-normal",
     )
 
@@ -244,6 +245,8 @@ def patch_kvconfig_roles(path):
         "alt.base.color": normal_surface,
         "inactive.alt.base.color": normal_surface,
         "button.color": button_surface,
+        "light.color": button_surface,
+        "mid.light.color": button_surface,
         "highlight.color": accent,
         "inactive.highlight.color": accent,
         "text.color": fg,
