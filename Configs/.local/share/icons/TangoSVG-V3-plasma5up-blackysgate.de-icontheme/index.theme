@@ -1,0 +1,2019 @@
+[Icon Theme]
+  Name=Tango!SVG V3 BC with extras 
+  Comment=The good, old Tango! theme Reloaded 2025.06/08 Vers.3, from Blackysgate
+  DisplayDepth=32
+  Inherits=hicolor
+  Example=folder
+  DesktopDefault=32
+  DesktopSizes=8,12,16,22,24,32,48,64,96,128,256,512
+  ToolbarDefault=22
+  ToolbarSizes=8,12,16,22,24,32,48,64,96,128,256,512
+  MainToolbarDefault=22
+  MainToolbarSizes=8,12,16,22,24,32,48,64,96,128,256,512
+  SmallDefault=16
+  SmallSizes=16,22,24,32,48,64
+  PanelDefault=48
+  PanelSizes=8,12,16,22,24,32,48,64,96,128,256,512
+  Directories=48x48@2/animations,48x48@2/devices,48x48@2/categories,48x48@2/mimetypes,48x48@2/applets,48x48@2/places,48x48@2/preferences,48x48@2/emblems,48x48@2/status,48x48@2/apps,48x48@2/actions,48x48@2/emotes,48x48@2/intl,16x16@2/animations,16x16@2/devices,16x16@2/categories,16x16@2/mimetypes,16x16@2/applets,16x16@2/places,16x16@2/preferences,16x16@2/emblems,16x16@2/status,16x16@2/apps,16x16@2/actions,16x16@2/emotes,16x16@2/intl,8x8@3,8x8@3/animations,8x8@3/devices,8x8@3/categories,8x8@3/mimetypes,8x8@3/applets,8x8@3/places,8x8@3/preferences,8x8@3/emblems,8x8@3/status,8x8@3/apps,8x8@3/actions,8x8@3/emotes,8x8@3/intl,scalable/animations,scalable/devices,scalable/categories,scalable/mimetypes,scalable/applets,scalable/places,scalable/preferences,scalable/emblems,scalable/status,scalable/apps,scalable/actions,scalable/emotes,scalable/intl,32x32@3,32x32@3/animations,32x32@3/devices,32x32@3/categories,32x32@3/mimetypes,32x32@3/applets,32x32@3/places,32x32@3/preferences,32x32@3/emblems,32x32@3/status,32x32@3/apps,32x32@3/actions,32x32@3/emotes,32x32@3/intl,22x22@2,22x22@2/animations,22x22@2/devices,22x22@2/categories,22x22@2/mimetypes,22x22@2/applets,22x22@2/places,22x22@2/preferences,22x22@2/emblems,22x22@2/status,22x22@2/apps,22x22@2/actions,22x22@2/emotes,22x22@2/intl,12x12@3,12x12@3/animations,12x12@3/devices,12x12@3/categories,12x12@3/mimetypes,12x12@3/applets,12x12@3/places,12x12@3/preferences,12x12@3/emblems,12x12@3/status,12x12@3/apps,12x12@3/actions,12x12@3/emotes,12x12@3/intl,8x8@2/animations,8x8@2/devices,8x8@2/categories,8x8@2/mimetypes,8x8@2/applets,8x8@2/places,8x8@2/preferences,8x8@2/emblems,8x8@2/status,8x8@2/apps,8x8@2/actions,8x8@2/emotes,8x8@2/intl,48x48@3,48x48@3/animations,48x48@3/devices,48x48@3/categories,48x48@3/mimetypes,48x48@3/applets,48x48@3/places,48x48@3/preferences,48x48@3/emblems,48x48@3/status,48x48@3/apps,48x48@3/actions,48x48@3/emotes,48x48@3/intl,256x256/animations,256x256/devices,256x256/categories,256x256/mimetypes,256x256/applets,256x256/places,256x256/preferences,256x256/emblems,256x256/status,256x256/apps,256x256/actions,256x256/emotes,256x256/intl,64x64/animations,64x64/devices,64x64/categories,64x64/mimetypes,64x64/applets,64x64/places,64x64/preferences,64x64/emblems,64x64/status,64x64/apps,64x64/actions,64x64/emotes,64x64/intl,12x12@2,12x12@2/animations,12x12@2/devices,12x12@2/categories,12x12@2/mimetypes,12x12@2/applets,12x12@2/places,12x12@2/preferences,12x12@2/emblems,12x12@2/status,12x12@2/apps,12x12@2/actions,12x12@2/emotes,12x12@2/intl,32x32@2/animations,32x32@2/devices,32x32@2/categories,32x32@2/mimetypes,32x32@2/applets,32x32@2/places,32x32@2/preferences,32x32@2/emblems,32x32@2/status,32x32@2/apps,32x32@2/actions,32x32@2/emotes,32x32@2/intl,16x16/animations,16x16/devices,16x16/categories,16x16/mimetypes,16x16/applets,16x16/places,16x16/preferences,16x16/emblems,16x16/status,16x16/apps,16x16/actions,16x16/emotes,16x16/intl,24x24@2,24x24@2/animations,24x24@2/devices,24x24@2/categories,24x24@2/mimetypes,24x24@2/applets,24x24@2/places,24x24@2/preferences,24x24@2/emblems,24x24@2/status,24x24@2/apps,24x24@2/actions,24x24@2/emotes,24x24@2/intl,24x24@3,24x24@3/animations,24x24@3/devices,24x24@3/categories,24x24@3/mimetypes,24x24@3/applets,24x24@3/places,24x24@3/preferences,24x24@3/emblems,24x24@3/status,24x24@3/apps,24x24@3/actions,24x24@3/emotes,24x24@3/intl,48x48/animations,48x48/devices,48x48/categories,48x48/mimetypes,48x48/applets,48x48/places,48x48/preferences,48x48/emblems,48x48/status,48x48/apps,48x48/actions,48x48/emotes,48x48/intl,512x512/animations,512x512/devices,512x512/categories,512x512/mimetypes,512x512/applets,512x512/places,512x512/preferences,512x512/emblems,512x512/status,512x512/apps,512x512/actions,512x512/emotes,512x512/intl,32x32/animations,32x32/devices,32x32/categories,32x32/mimetypes,32x32/applets,32x32/places,32x32/preferences,32x32/emblems,32x32/status,32x32/apps,32x32/actions,32x32/emotes,32x32/intl,128x128/animations,128x128/devices,128x128/categories,128x128/mimetypes,128x128/applets,128x128/places,128x128/preferences,128x128/emblems,128x128/status,128x128/apps,128x128/actions,128x128/emotes,128x128/intl,22x22/animations,22x22/devices,22x22/categories,22x22/mimetypes,22x22/applets,22x22/places,22x22/preferences,22x22/emblems,22x22/status,22x22/apps,22x22/actions,22x22/emotes,22x22/intl,16x16@3,16x16@3/animations,16x16@3/devices,16x16@3/categories,16x16@3/mimetypes,16x16@3/applets,16x16@3/places,16x16@3/preferences,16x16@3/emblems,16x16@3/status,16x16@3/apps,16x16@3/actions,16x16@3/emotes,16x16@3/intl,12x12/animations,12x12/devices,12x12/categories,12x12/mimetypes,12x12/applets,12x12/places,12x12/preferences,12x12/emblems,12x12/status,12x12/apps,12x12/actions,12x12/emotes,12x12/intl,22x22@3,22x22@3/animations,22x22@3/devices,22x22@3/categories,22x22@3/mimetypes,22x22@3/applets,22x22@3/places,22x22@3/preferences,22x22@3/emblems,22x22@3/status,22x22@3/apps,22x22@3/actions,22x22@3/emotes,22x22@3/intl,24x24/animations,24x24/devices,24x24/categories,24x24/mimetypes,24x24/applets,24x24/places,24x24/preferences,24x24/emblems,24x24/status,24x24/apps,24x24/actions,24x24/emotes,24x24/intl,96x96/animations,96x96/devices,96x96/categories,96x96/mimetypes,96x96/applets,96x96/places,96x96/preferences,96x96/emblems,96x96/status,96x96/apps,96x96/actions,96x96/emotes,96x96/intl,8x8/animations,8x8/devices,8x8/categories,8x8/mimetypes,8x8/applets,8x8/places,8x8/preferences,8x8/emblems,8x8/status,8x8/apps,8x8/actions,8x8/emotes,8x8/intl
+
+  [48x48@2/animations]
+  Size=96
+  Context=Status
+  Scale=2
+  Type=Fixed
+
+  [48x48@2/devices]
+  Size=96
+  Context=Devices
+  Scale=2
+  Type=Fixed
+
+  [48x48@2/categories]
+  Size=96
+  Context=Categories
+  Scale=2
+  Type=Fixed
+
+  [48x48@2/mimetypes]
+  Size=96
+  Context=MimeTypes
+  Scale=2
+  Type=Fixed
+
+  [48x48@2/applets]
+  Size=96
+  Context=Applications
+  Scale=2
+  Type=Fixed
+
+  [48x48@2/places]
+  Size=96
+  Context=Places
+  Scale=2
+  Type=Fixed
+
+  [48x48@2/preferences]
+  Size=96
+  Context=Applications
+  Scale=2
+  Type=Fixed
+
+  [48x48@2/emblems]
+  Size=96
+  Context=Emblems
+  Scale=2
+  Type=Fixed
+
+  [48x48@2/status]
+  Size=96
+  Context=Status
+  Scale=2
+  Type=Fixed
+
+  [48x48@2/apps]
+  Size=96
+  Context=Applications
+  Scale=2
+  Type=Fixed
+
+  [48x48@2/actions]
+  Size=96
+  Context=Actions
+  Scale=2
+  Type=Fixed
+
+  [48x48@2/emotes]
+  Size=96
+  Context=Emotes
+  Scale=2
+  Type=Fixed
+
+  [48x48@2/intl]
+  Size=96
+  Context=International
+  Scale=2
+  Type=Fixed
+
+  [16x16@2/animations]
+  Size=32
+  Context=Status
+  Scale=2
+  Type=Fixed
+
+  [16x16@2/devices]
+  Size=32
+  Context=Devices
+  Scale=2
+  Type=Fixed
+
+  [16x16@2/categories]
+  Size=32
+  Context=Categories
+  Scale=2
+  Type=Fixed
+
+  [16x16@2/mimetypes]
+  Size=32
+  Context=MimeTypes
+  Scale=2
+  Type=Fixed
+
+  [16x16@2/applets]
+  Size=32
+  Context=Applications
+  Scale=2
+  Type=Fixed
+
+  [16x16@2/places]
+  Size=32
+  Context=Places
+  Scale=2
+  Type=Fixed
+
+  [16x16@2/preferences]
+  Size=32
+  Context=Applications
+  Scale=2
+  Type=Fixed
+
+  [16x16@2/emblems]
+  Size=32
+  Context=Emblems
+  Scale=2
+  Type=Fixed
+
+  [16x16@2/status]
+  Size=32
+  Context=Status
+  Scale=2
+  Type=Fixed
+
+  [16x16@2/apps]
+  Size=32
+  Context=Applications
+  Scale=2
+  Type=Fixed
+
+  [16x16@2/actions]
+  Size=32
+  Context=Actions
+  Scale=2
+  Type=Fixed
+
+  [16x16@2/emotes]
+  Size=32
+  Context=Emotes
+  Scale=2
+  Type=Fixed
+
+  [16x16@2/intl]
+  Size=32
+  Context=International
+  Scale=2
+  Type=Fixed
+
+  [8x8@3]
+  Size=512
+  Context=somethingwrong---------
+  Type=Threshold
+
+  [8x8@3/animations]
+  Size=512
+  Context=Status
+  Type=Threshold
+
+  [8x8@3/devices]
+  Size=512
+  Context=Devices
+  Type=Threshold
+
+  [8x8@3/categories]
+  Size=512
+  Context=Categories
+  Type=Threshold
+
+  [8x8@3/mimetypes]
+  Size=512
+  Context=MimeTypes
+  Type=Threshold
+
+  [8x8@3/applets]
+  Size=512
+  Context=Applications
+  Type=Threshold
+
+  [8x8@3/places]
+  Size=512
+  Context=Places
+  Type=Threshold
+
+  [8x8@3/preferences]
+  Size=512
+  Context=Applications
+  Type=Threshold
+
+  [8x8@3/emblems]
+  Size=512
+  Context=Emblems
+  Type=Threshold
+
+  [8x8@3/status]
+  Size=512
+  Context=Status
+  Type=Threshold
+
+  [8x8@3/apps]
+  Size=512
+  Context=Applications
+  Type=Threshold
+
+  [8x8@3/actions]
+  Size=512
+  Context=Actions
+  Type=Threshold
+
+  [8x8@3/emotes]
+  Size=512
+  Context=Emotes
+  Type=Threshold
+
+  [8x8@3/intl]
+  Size=512
+  Context=International
+  Type=Threshold
+
+  [scalable/animations]
+  Size=512
+  Context=Status
+  MinSize=1
+  MaxSize=512
+  Type=Scalable
+
+  [scalable/devices]
+  Size=512
+  Context=Devices
+  MinSize=1
+  MaxSize=512
+  Type=Scalable
+
+  [scalable/categories]
+  Size=512
+  Context=Categories
+  MinSize=1
+  MaxSize=512
+  Type=Scalable
+
+  [scalable/mimetypes]
+  Size=512
+  Context=MimeTypes
+  MinSize=1
+  MaxSize=512
+  Type=Scalable
+
+  [scalable/applets]
+  Size=512
+  Context=Applications
+  MinSize=1
+  MaxSize=512
+  Type=Scalable
+
+  [scalable/places]
+  Size=512
+  Context=Places
+  MinSize=1
+  MaxSize=512
+  Type=Scalable
+
+  [scalable/preferences]
+  Size=512
+  Context=Applications
+  MinSize=1
+  MaxSize=512
+  Type=Scalable
+
+  [scalable/emblems]
+  Size=512
+  Context=Emblems
+  MinSize=1
+  MaxSize=512
+  Type=Scalable
+
+  [scalable/status]
+  Size=512
+  Context=Status
+  MinSize=1
+  MaxSize=512
+  Type=Scalable
+
+  [scalable/apps]
+  Size=512
+  Context=Applications
+  MinSize=1
+  MaxSize=512
+  Type=Scalable
+
+  [scalable/actions]
+  Size=512
+  Context=Actions
+  MinSize=1
+  MaxSize=512
+  Type=Scalable
+
+  [scalable/emotes]
+  Size=512
+  Context=Emotes
+  MinSize=1
+  MaxSize=512
+  Type=Scalable
+
+  [scalable/intl]
+  Size=512
+  Context=International
+  MinSize=1
+  MaxSize=512
+  Type=Scalable
+
+  [32x32@3]
+  Size=512
+  Context=somethingwrong---------
+  MinSize=1
+  MaxSize=512
+  Type=Threshold
+
+  [32x32@3/animations]
+  Size=64
+  Context=Status
+  Scale=3
+  Type=Fixed
+
+  [32x32@3/devices]
+  Size=64
+  Context=Devices
+  Scale=3
+  Type=Fixed
+
+  [32x32@3/categories]
+  Size=64
+  Context=Categories
+  Scale=3
+  Type=Fixed
+
+  [32x32@3/mimetypes]
+  Size=64
+  Context=MimeTypes
+  Scale=3
+  Type=Fixed
+
+  [32x32@3/applets]
+  Size=64
+  Context=Applications
+  Scale=3
+  Type=Fixed
+
+  [32x32@3/places]
+  Size=64
+  Context=Places
+  Scale=3
+  Type=Fixed
+
+  [32x32@3/preferences]
+  Size=64
+  Context=Applications
+  Scale=3
+  Type=Fixed
+
+  [32x32@3/emblems]
+  Size=64
+  Context=Emblems
+  Scale=3
+  Type=Fixed
+
+  [32x32@3/status]
+  Size=64
+  Context=Status
+  Scale=3
+  Type=Fixed
+
+  [32x32@3/apps]
+  Size=64
+  Context=Applications
+  Scale=3
+  Type=Fixed
+
+  [32x32@3/actions]
+  Size=64
+  Context=Actions
+  Scale=3
+  Type=Fixed
+
+  [32x32@3/emotes]
+  Size=64
+  Context=Emotes
+  Scale=3
+  Type=Fixed
+
+  [32x32@3/intl]
+  Size=64
+  Context=International
+  Scale=3
+  Type=Fixed
+
+  [22x22@2]
+  Size=512
+  Context=somethingwrong---------
+  Type=Threshold
+
+  [22x22@2/animations]
+  Size=44
+  Context=Status
+  Scale=2
+  Type=Fixed
+
+  [22x22@2/devices]
+  Size=44
+  Context=Devices
+  Scale=2
+  Type=Fixed
+
+  [22x22@2/categories]
+  Size=44
+  Context=Categories
+  Scale=2
+  Type=Fixed
+
+  [22x22@2/mimetypes]
+  Size=44
+  Context=MimeTypes
+  Scale=2
+  Type=Fixed
+
+  [22x22@2/applets]
+  Size=44
+  Context=Applications
+  Scale=2
+  Type=Fixed
+
+  [22x22@2/places]
+  Size=44
+  Context=Places
+  Scale=2
+  Type=Fixed
+
+  [22x22@2/preferences]
+  Size=44
+  Context=Applications
+  Scale=2
+  Type=Fixed
+
+  [22x22@2/emblems]
+  Size=44
+  Context=Emblems
+  Scale=2
+  Type=Fixed
+
+  [22x22@2/status]
+  Size=44
+  Context=Status
+  Scale=2
+  Type=Fixed
+
+  [22x22@2/apps]
+  Size=44
+  Context=Applications
+  Scale=2
+  Type=Fixed
+
+  [22x22@2/actions]
+  Size=44
+  Context=Actions
+  Scale=2
+  Type=Fixed
+
+  [22x22@2/emotes]
+  Size=44
+  Context=Emotes
+  Scale=2
+  Type=Fixed
+
+  [22x22@2/intl]
+  Size=44
+  Context=International
+  Scale=2
+  Type=Fixed
+
+  [12x12@3]
+  Size=512
+  Context=somethingwrong---------
+  Type=Threshold
+
+  [12x12@3/animations]
+  Size=24
+  Context=Status
+  Scale=3
+  Type=Fixed
+
+  [12x12@3/devices]
+  Size=24
+  Context=Devices
+  Scale=3
+  Type=Fixed
+
+  [12x12@3/categories]
+  Size=24
+  Context=Categories
+  Scale=3
+  Type=Fixed
+
+  [12x12@3/mimetypes]
+  Size=24
+  Context=MimeTypes
+  Scale=3
+  Type=Fixed
+
+  [12x12@3/applets]
+  Size=24
+  Context=Applications
+  Scale=3
+  Type=Fixed
+
+  [12x12@3/places]
+  Size=24
+  Context=Places
+  Scale=3
+  Type=Fixed
+
+  [12x12@3/preferences]
+  Size=24
+  Context=Applications
+  Scale=3
+  Type=Fixed
+
+  [12x12@3/emblems]
+  Size=24
+  Context=Emblems
+  Scale=3
+  Type=Fixed
+
+  [12x12@3/status]
+  Size=24
+  Context=Status
+  Scale=3
+  Type=Fixed
+
+  [12x12@3/apps]
+  Size=24
+  Context=Applications
+  Scale=3
+  Type=Fixed
+
+  [12x12@3/actions]
+  Size=24
+  Context=Actions
+  Scale=3
+  Type=Fixed
+
+  [12x12@3/emotes]
+  Size=24
+  Context=Emotes
+  Scale=3
+  Type=Fixed
+
+  [12x12@3/intl]
+  Size=24
+  Context=International
+  Scale=3
+  Type=Fixed
+
+  [8x8@2/animations]
+  Size=16
+  Context=Status
+  Scale=2
+  Type=Fixed
+
+  [8x8@2/devices]
+  Size=16
+  Context=Devices
+  Scale=2
+  Type=Fixed
+
+  [8x8@2/categories]
+  Size=16
+  Context=Categories
+  Scale=2
+  Type=Fixed
+
+  [8x8@2/mimetypes]
+  Size=16
+  Context=MimeTypes
+  Scale=2
+  Type=Fixed
+
+  [8x8@2/applets]
+  Size=16
+  Context=Applications
+  Scale=2
+  Type=Fixed
+
+  [8x8@2/places]
+  Size=16
+  Context=Places
+  Scale=2
+  Type=Fixed
+
+  [8x8@2/preferences]
+  Size=16
+  Context=Applications
+  Scale=2
+  Type=Fixed
+
+  [8x8@2/emblems]
+  Size=16
+  Context=Emblems
+  Scale=2
+  Type=Fixed
+
+  [8x8@2/status]
+  Size=16
+  Context=Status
+  Scale=2
+  Type=Fixed
+
+  [8x8@2/apps]
+  Size=16
+  Context=Applications
+  Scale=2
+  Type=Fixed
+
+  [8x8@2/actions]
+  Size=16
+  Context=Actions
+  Scale=2
+  Type=Fixed
+
+  [8x8@2/emotes]
+  Size=16
+  Context=Emotes
+  Scale=2
+  Type=Fixed
+
+  [8x8@2/intl]
+  Size=16
+  Context=International
+  Scale=2
+  Type=Fixed
+
+  [48x48@3]
+  Size=512
+  Context=somethingwrong---------
+  Type=Threshold
+
+  [48x48@3/animations]
+  Size=96
+  Context=Status
+  Scale=3
+  Type=Fixed
+
+  [48x48@3/devices]
+  Size=96
+  Context=Devices
+  Scale=3
+  Type=Fixed
+
+  [48x48@3/categories]
+  Size=96
+  Context=Categories
+  Scale=3
+  Type=Fixed
+
+  [48x48@3/mimetypes]
+  Size=96
+  Context=MimeTypes
+  Scale=3
+  Type=Fixed
+
+  [48x48@3/applets]
+  Size=96
+  Context=Applications
+  Scale=3
+  Type=Fixed
+
+  [48x48@3/places]
+  Size=96
+  Context=Places
+  Scale=3
+  Type=Fixed
+
+  [48x48@3/preferences]
+  Size=96
+  Context=Applications
+  Scale=3
+  Type=Fixed
+
+  [48x48@3/emblems]
+  Size=96
+  Context=Emblems
+  Scale=3
+  Type=Fixed
+
+  [48x48@3/status]
+  Size=96
+  Context=Status
+  Scale=3
+  Type=Fixed
+
+  [48x48@3/apps]
+  Size=96
+  Context=Applications
+  Scale=3
+  Type=Fixed
+
+  [48x48@3/actions]
+  Size=96
+  Context=Actions
+  Scale=3
+  Type=Fixed
+
+  [48x48@3/emotes]
+  Size=96
+  Context=Emotes
+  Scale=3
+  Type=Fixed
+
+  [48x48@3/intl]
+  Size=96
+  Context=International
+  Scale=3
+  Type=Fixed
+
+  [256x256/animations]
+  Size=256
+  Context=Status
+  Type=Threshold
+
+  [256x256/devices]
+  Size=256
+  Context=Devices
+  Type=Threshold
+
+  [256x256/categories]
+  Size=256
+  Context=Categories
+  Type=Threshold
+
+  [256x256/mimetypes]
+  Size=256
+  Context=MimeTypes
+  Type=Threshold
+
+  [256x256/applets]
+  Size=256
+  Context=Applications
+  Type=Threshold
+
+  [256x256/places]
+  Size=256
+  Context=Places
+  Type=Threshold
+
+  [256x256/preferences]
+  Size=256
+  Context=Applications
+  Type=Threshold
+
+  [256x256/emblems]
+  Size=256
+  Context=Emblems
+  Type=Threshold
+
+  [256x256/status]
+  Size=256
+  Context=Status
+  Type=Threshold
+
+  [256x256/apps]
+  Size=256
+  Context=Applications
+  Type=Threshold
+
+  [256x256/actions]
+  Size=256
+  Context=Actions
+  Type=Threshold
+
+  [256x256/emotes]
+  Size=256
+  Context=Emotes
+  Type=Threshold
+
+  [256x256/intl]
+  Size=256
+  Context=International
+  Type=Threshold
+
+  [64x64/animations]
+  Size=64
+  Context=Status
+  Type=Threshold
+
+  [64x64/devices]
+  Size=64
+  Context=Devices
+  Type=Threshold
+
+  [64x64/categories]
+  Size=64
+  Context=Categories
+  Type=Threshold
+
+  [64x64/mimetypes]
+  Size=64
+  Context=MimeTypes
+  Type=Threshold
+
+  [64x64/applets]
+  Size=64
+  Context=Applications
+  Type=Threshold
+
+  [64x64/places]
+  Size=64
+  Context=Places
+  Type=Threshold
+
+  [64x64/preferences]
+  Size=64
+  Context=Applications
+  Type=Threshold
+
+  [64x64/emblems]
+  Size=64
+  Context=Emblems
+  Type=Threshold
+
+  [64x64/status]
+  Size=64
+  Context=Status
+  Type=Threshold
+
+  [64x64/apps]
+  Size=64
+  Context=Applications
+  Type=Threshold
+
+  [64x64/actions]
+  Size=64
+  Context=Actions
+  Type=Threshold
+
+  [64x64/emotes]
+  Size=64
+  Context=Emotes
+  Type=Threshold
+
+  [64x64/intl]
+  Size=64
+  Context=International
+  Type=Threshold
+
+  [12x12@2]
+  Size=512
+  Context=somethingwrong---------
+  Type=Threshold
+
+  [12x12@2/animations]
+  Size=24
+  Context=Status
+  Scale=2
+  Type=Fixed
+
+  [12x12@2/devices]
+  Size=24
+  Context=Devices
+  Scale=2
+  Type=Fixed
+
+  [12x12@2/categories]
+  Size=24
+  Context=Categories
+  Scale=2
+  Type=Fixed
+
+  [12x12@2/mimetypes]
+  Size=24
+  Context=MimeTypes
+  Scale=2
+  Type=Fixed
+
+  [12x12@2/applets]
+  Size=24
+  Context=Applications
+  Scale=2
+  Type=Fixed
+
+  [12x12@2/places]
+  Size=24
+  Context=Places
+  Scale=2
+  Type=Fixed
+
+  [12x12@2/preferences]
+  Size=24
+  Context=Applications
+  Scale=2
+  Type=Fixed
+
+  [12x12@2/emblems]
+  Size=24
+  Context=Emblems
+  Scale=2
+  Type=Fixed
+
+  [12x12@2/status]
+  Size=24
+  Context=Status
+  Scale=2
+  Type=Fixed
+
+  [12x12@2/apps]
+  Size=24
+  Context=Applications
+  Scale=2
+  Type=Fixed
+
+  [12x12@2/actions]
+  Size=24
+  Context=Actions
+  Scale=2
+  Type=Fixed
+
+  [12x12@2/emotes]
+  Size=24
+  Context=Emotes
+  Scale=2
+  Type=Fixed
+
+  [12x12@2/intl]
+  Size=24
+  Context=International
+  Scale=2
+  Type=Fixed
+
+  [32x32@2/animations]
+  Size=64
+  Context=Status
+  Scale=2
+  Type=Fixed
+
+  [32x32@2/devices]
+  Size=64
+  Context=Devices
+  Scale=2
+  Type=Fixed
+
+  [32x32@2/categories]
+  Size=64
+  Context=Categories
+  Scale=2
+  Type=Fixed
+
+  [32x32@2/mimetypes]
+  Size=64
+  Context=MimeTypes
+  Scale=2
+  Type=Fixed
+
+  [32x32@2/applets]
+  Size=64
+  Context=Applications
+  Scale=2
+  Type=Fixed
+
+  [32x32@2/places]
+  Size=64
+  Context=Places
+  Scale=2
+  Type=Fixed
+
+  [32x32@2/preferences]
+  Size=64
+  Context=Applications
+  Scale=2
+  Type=Fixed
+
+  [32x32@2/emblems]
+  Size=64
+  Context=Emblems
+  Scale=2
+  Type=Fixed
+
+  [32x32@2/status]
+  Size=64
+  Context=Status
+  Scale=2
+  Type=Fixed
+
+  [32x32@2/apps]
+  Size=64
+  Context=Applications
+  Scale=2
+  Type=Fixed
+
+  [32x32@2/actions]
+  Size=64
+  Context=Actions
+  Scale=2
+  Type=Fixed
+
+  [32x32@2/emotes]
+  Size=64
+  Context=Emotes
+  Scale=2
+  Type=Fixed
+
+  [32x32@2/intl]
+  Size=64
+  Context=International
+  Scale=2
+  Type=Fixed
+
+  [16x16/animations]
+  Size=16
+  Context=Status
+  Type=Fixed
+
+  [16x16/devices]
+  Size=16
+  Context=Devices
+  Type=Fixed
+
+  [16x16/categories]
+  Size=16
+  Context=Categories
+  Type=Fixed
+
+  [16x16/mimetypes]
+  Size=16
+  Context=MimeTypes
+  Type=Fixed
+
+  [16x16/applets]
+  Size=16
+  Context=Applications
+  Type=Fixed
+
+  [16x16/places]
+  Size=16
+  Context=Places
+  Type=Fixed
+
+  [16x16/preferences]
+  Size=16
+  Context=Applications
+  Type=Fixed
+
+  [16x16/emblems]
+  Size=16
+  Context=Emblems
+  Type=Fixed
+
+  [16x16/status]
+  Size=16
+  Context=Status
+  Type=Fixed
+
+  [16x16/apps]
+  Size=16
+  Context=Applications
+  Type=Fixed
+
+  [16x16/actions]
+  Size=16
+  Context=Actions
+  Type=Fixed
+
+  [16x16/emotes]
+  Size=16
+  Context=Emotes
+  Type=Fixed
+
+  [16x16/intl]
+  Size=16
+  Context=International
+  Type=Fixed
+
+  [24x24@2]
+  Size=512
+  Context=somethingwrong---------
+  Type=Threshold
+
+  [24x24@2/animations]
+  Size=48
+  Context=Status
+  Scale=2
+  Type=Fixed
+
+  [24x24@2/devices]
+  Size=48
+  Context=Devices
+  Scale=2
+  Type=Fixed
+
+  [24x24@2/categories]
+  Size=48
+  Context=Categories
+  Scale=2
+  Type=Fixed
+
+  [24x24@2/mimetypes]
+  Size=48
+  Context=MimeTypes
+  Scale=2
+  Type=Fixed
+
+  [24x24@2/applets]
+  Size=48
+  Context=Applications
+  Scale=2
+  Type=Fixed
+
+  [24x24@2/places]
+  Size=48
+  Context=Places
+  Scale=2
+  Type=Fixed
+
+  [24x24@2/preferences]
+  Size=48
+  Context=Applications
+  Scale=2
+  Type=Fixed
+
+  [24x24@2/emblems]
+  Size=48
+  Context=Emblems
+  Scale=2
+  Type=Fixed
+
+  [24x24@2/status]
+  Size=48
+  Context=Status
+  Scale=2
+  Type=Fixed
+
+  [24x24@2/apps]
+  Size=48
+  Context=Applications
+  Scale=2
+  Type=Fixed
+
+  [24x24@2/actions]
+  Size=48
+  Context=Actions
+  Scale=2
+  Type=Fixed
+
+  [24x24@2/emotes]
+  Size=48
+  Context=Emotes
+  Scale=2
+  Type=Fixed
+
+  [24x24@2/intl]
+  Size=48
+  Context=International
+  Scale=2
+  Type=Fixed
+
+  [24x24@3]
+  Size=512
+  Context=somethingwrong---------
+  Type=Threshold
+
+  [24x24@3/animations]
+  Size=48
+  Context=Status
+  Scale=3
+  Type=Fixed
+
+  [24x24@3/devices]
+  Size=48
+  Context=Devices
+  Scale=3
+  Type=Fixed
+
+  [24x24@3/categories]
+  Size=48
+  Context=Categories
+  Scale=3
+  Type=Fixed
+
+  [24x24@3/mimetypes]
+  Size=48
+  Context=MimeTypes
+  Scale=3
+  Type=Fixed
+
+  [24x24@3/applets]
+  Size=48
+  Context=Applications
+  Scale=3
+  Type=Fixed
+
+  [24x24@3/places]
+  Size=48
+  Context=Places
+  Scale=3
+  Type=Fixed
+
+  [24x24@3/preferences]
+  Size=48
+  Context=Applications
+  Scale=3
+  Type=Fixed
+
+  [24x24@3/emblems]
+  Size=48
+  Context=Emblems
+  Scale=3
+  Type=Fixed
+
+  [24x24@3/status]
+  Size=48
+  Context=Status
+  Scale=3
+  Type=Fixed
+
+  [24x24@3/apps]
+  Size=48
+  Context=Applications
+  Scale=3
+  Type=Fixed
+
+  [24x24@3/actions]
+  Size=48
+  Context=Actions
+  Scale=3
+  Type=Fixed
+
+  [24x24@3/emotes]
+  Size=48
+  Context=Emotes
+  Scale=3
+  Type=Fixed
+
+  [24x24@3/intl]
+  Size=48
+  Context=International
+  Scale=3
+  Type=Fixed
+
+  [48x48/animations]
+  Size=48
+  Context=Status
+  Type=Threshold
+
+  [48x48/devices]
+  Size=48
+  Context=Devices
+  Type=Threshold
+
+  [48x48/categories]
+  Size=48
+  Context=Categories
+  Type=Threshold
+
+  [48x48/mimetypes]
+  Size=48
+  Context=MimeTypes
+  Type=Threshold
+
+  [48x48/applets]
+  Size=48
+  Context=Applications
+  Type=Threshold
+
+  [48x48/places]
+  Size=48
+  Context=Places
+  Type=Threshold
+
+  [48x48/preferences]
+  Size=48
+  Context=Applications
+  Type=Threshold
+
+  [48x48/emblems]
+  Size=48
+  Context=Emblems
+  Type=Threshold
+
+  [48x48/status]
+  Size=48
+  Context=Status
+  Type=Threshold
+
+  [48x48/apps]
+  Size=48
+  Context=Applications
+  Type=Threshold
+
+  [48x48/actions]
+  Size=48
+  Context=Actions
+  Type=Threshold
+
+  [48x48/emotes]
+  Size=48
+  Context=Emotes
+  Type=Threshold
+
+  [48x48/intl]
+  Size=48
+  Context=International
+  Type=Threshold
+
+  [512x512/animations]
+  Size=512
+  Context=Status
+  Type=Threshold
+
+  [512x512/devices]
+  Size=512
+  Context=Devices
+  Type=Threshold
+
+  [512x512/categories]
+  Size=512
+  Context=Categories
+  Type=Threshold
+
+  [512x512/mimetypes]
+  Size=512
+  Context=MimeTypes
+  Type=Threshold
+
+  [512x512/applets]
+  Size=512
+  Context=Applications
+  Type=Threshold
+
+  [512x512/places]
+  Size=512
+  Context=Places
+  Type=Threshold
+
+  [512x512/preferences]
+  Size=512
+  Context=Applications
+  Type=Threshold
+
+  [512x512/emblems]
+  Size=512
+  Context=Emblems
+  Type=Threshold
+
+  [512x512/status]
+  Size=512
+  Context=Status
+  Type=Threshold
+
+  [512x512/apps]
+  Size=512
+  Context=Applications
+  Type=Threshold
+
+  [512x512/actions]
+  Size=512
+  Context=Actions
+  Type=Threshold
+
+  [512x512/emotes]
+  Size=512
+  Context=Emotes
+  Type=Threshold
+
+  [512x512/intl]
+  Size=512
+  Context=International
+  Type=Threshold
+
+  [32x32/animations]
+  Size=32
+  Context=Status
+  Type=Threshold
+
+  [32x32/devices]
+  Size=32
+  Context=Devices
+  Type=Threshold
+
+  [32x32/categories]
+  Size=32
+  Context=Categories
+  Type=Threshold
+
+  [32x32/mimetypes]
+  Size=32
+  Context=MimeTypes
+  Type=Threshold
+
+  [32x32/applets]
+  Size=32
+  Context=Applications
+  Type=Threshold
+
+  [32x32/places]
+  Size=32
+  Context=Places
+  Type=Threshold
+
+  [32x32/preferences]
+  Size=32
+  Context=Applications
+  Type=Threshold
+
+  [32x32/emblems]
+  Size=32
+  Context=Emblems
+  Type=Threshold
+
+  [32x32/status]
+  Size=32
+  Context=Status
+  Type=Threshold
+
+  [32x32/apps]
+  Size=32
+  Context=Applications
+  Type=Threshold
+
+  [32x32/actions]
+  Size=32
+  Context=Actions
+  Type=Threshold
+
+  [32x32/emotes]
+  Size=32
+  Context=Emotes
+  Type=Threshold
+
+  [32x32/intl]
+  Size=32
+  Context=International
+  Type=Threshold
+
+  [128x128/animations]
+  Size=128
+  Context=Status
+  Type=Threshold
+
+  [128x128/devices]
+  Size=128
+  Context=Devices
+  Type=Threshold
+
+  [128x128/categories]
+  Size=128
+  Context=Categories
+  Type=Threshold
+
+  [128x128/mimetypes]
+  Size=128
+  Context=MimeTypes
+  Type=Threshold
+
+  [128x128/applets]
+  Size=128
+  Context=Applications
+  Type=Threshold
+
+  [128x128/places]
+  Size=128
+  Context=Places
+  Type=Threshold
+
+  [128x128/preferences]
+  Size=128
+  Context=Applications
+  Type=Threshold
+
+  [128x128/emblems]
+  Size=128
+  Context=Emblems
+  Type=Threshold
+
+  [128x128/status]
+  Size=128
+  Context=Status
+  Type=Threshold
+
+  [128x128/apps]
+  Size=128
+  Context=Applications
+  Type=Threshold
+
+  [128x128/actions]
+  Size=128
+  Context=Actions
+  Type=Threshold
+
+  [128x128/emotes]
+  Size=128
+  Context=Emotes
+  Type=Threshold
+
+  [128x128/intl]
+  Size=128
+  Context=International
+  Type=Threshold
+
+  [22x22/animations]
+  Size=22
+  Context=Status
+  Type=Threshold
+
+  [22x22/devices]
+  Size=22
+  Context=Devices
+  Type=Threshold
+
+  [22x22/categories]
+  Size=22
+  Context=Categories
+  Type=Threshold
+
+  [22x22/mimetypes]
+  Size=22
+  Context=MimeTypes
+  Type=Threshold
+
+  [22x22/applets]
+  Size=22
+  Context=Applications
+  Type=Threshold
+
+  [22x22/places]
+  Size=22
+  Context=Places
+  Type=Threshold
+
+  [22x22/preferences]
+  Size=22
+  Context=Applications
+  Type=Threshold
+
+  [22x22/emblems]
+  Size=22
+  Context=Emblems
+  Type=Threshold
+
+  [22x22/status]
+  Size=22
+  Context=Status
+  Type=Threshold
+
+  [22x22/apps]
+  Size=22
+  Context=Applications
+  Type=Threshold
+
+  [22x22/actions]
+  Size=22
+  Context=Actions
+  Type=Threshold
+
+  [22x22/emotes]
+  Size=22
+  Context=Emotes
+  Type=Threshold
+
+  [22x22/intl]
+  Size=22
+  Context=International
+  Type=Threshold
+
+  [16x16@3]
+  Size=512
+  Context=somethingwrong---------
+  Type=Threshold
+
+  [16x16@3/animations]
+  Size=32
+  Context=Status
+  Scale=3
+  Type=Fixed
+
+  [16x16@3/devices]
+  Size=32
+  Context=Devices
+  Scale=3
+  Type=Fixed
+
+  [16x16@3/categories]
+  Size=32
+  Context=Categories
+  Scale=3
+  Type=Fixed
+
+  [16x16@3/mimetypes]
+  Size=32
+  Context=MimeTypes
+  Scale=3
+  Type=Fixed
+
+  [16x16@3/applets]
+  Size=32
+  Context=Applications
+  Scale=3
+  Type=Fixed
+
+  [16x16@3/places]
+  Size=32
+  Context=Places
+  Scale=3
+  Type=Fixed
+
+  [16x16@3/preferences]
+  Size=32
+  Context=Applications
+  Scale=3
+  Type=Fixed
+
+  [16x16@3/emblems]
+  Size=32
+  Context=Emblems
+  Scale=3
+  Type=Fixed
+
+  [16x16@3/status]
+  Size=32
+  Context=Status
+  Scale=3
+  Type=Fixed
+
+  [16x16@3/apps]
+  Size=32
+  Context=Applications
+  Scale=3
+  Type=Fixed
+
+  [16x16@3/actions]
+  Size=32
+  Context=Actions
+  Scale=3
+  Type=Fixed
+
+  [16x16@3/emotes]
+  Size=32
+  Context=Emotes
+  Scale=3
+  Type=Fixed
+
+  [16x16@3/intl]
+  Size=32
+  Context=International
+  Scale=3
+  Type=Fixed
+
+  [12x12/animations]
+  Size=16
+  Context=Status
+  Type=Fixed
+
+  [12x12/devices]
+  Size=16
+  Context=Devices
+  Type=Fixed
+
+  [12x12/categories]
+  Size=16
+  Context=Categories
+  Type=Fixed
+
+  [12x12/mimetypes]
+  Size=16
+  Context=MimeTypes
+  Type=Fixed
+
+  [12x12/applets]
+  Size=16
+  Context=Applications
+  Type=Fixed
+
+  [12x12/places]
+  Size=16
+  Context=Places
+  Type=Fixed
+
+  [12x12/preferences]
+  Size=16
+  Context=Applications
+  Type=Fixed
+
+  [12x12/emblems]
+  Size=16
+  Context=Emblems
+  Type=Fixed
+
+  [12x12/status]
+  Size=16
+  Context=Status
+  Type=Fixed
+
+  [12x12/apps]
+  Size=16
+  Context=Applications
+  Type=Fixed
+
+  [12x12/actions]
+  Size=16
+  Context=Actions
+  Type=Fixed
+
+  [12x12/emotes]
+  Size=16
+  Context=Emotes
+  Type=Fixed
+
+  [12x12/intl]
+  Size=16
+  Context=International
+  Type=Fixed
+
+  [22x22@3]
+  Size=512
+  Context=somethingwrong---------
+  Type=Threshold
+
+  [22x22@3/animations]
+  Size=44
+  Context=Status
+  Scale=3
+  Type=Fixed
+
+  [22x22@3/devices]
+  Size=44
+  Context=Devices
+  Scale=3
+  Type=Fixed
+
+  [22x22@3/categories]
+  Size=44
+  Context=Categories
+  Scale=3
+  Type=Fixed
+
+  [22x22@3/mimetypes]
+  Size=44
+  Context=MimeTypes
+  Scale=3
+  Type=Fixed
+
+  [22x22@3/applets]
+  Size=44
+  Context=Applications
+  Scale=3
+  Type=Fixed
+
+  [22x22@3/places]
+  Size=44
+  Context=Places
+  Scale=3
+  Type=Fixed
+
+  [22x22@3/preferences]
+  Size=44
+  Context=Applications
+  Scale=3
+  Type=Fixed
+
+  [22x22@3/emblems]
+  Size=44
+  Context=Emblems
+  Scale=3
+  Type=Fixed
+
+  [22x22@3/status]
+  Size=44
+  Context=Status
+  Scale=3
+  Type=Fixed
+
+  [22x22@3/apps]
+  Size=44
+  Context=Applications
+  Scale=3
+  Type=Fixed
+
+  [22x22@3/actions]
+  Size=44
+  Context=Actions
+  Scale=3
+  Type=Fixed
+
+  [22x22@3/emotes]
+  Size=44
+  Context=Emotes
+  Scale=3
+  Type=Fixed
+
+  [22x22@3/intl]
+  Size=44
+  Context=International
+  Scale=3
+  Type=Fixed
+
+  [24x24/animations]
+  Size=24
+  Context=Status
+  Type=Threshold
+
+  [24x24/devices]
+  Size=24
+  Context=Devices
+  Type=Threshold
+
+  [24x24/categories]
+  Size=24
+  Context=Categories
+  Type=Threshold
+
+  [24x24/mimetypes]
+  Size=24
+  Context=MimeTypes
+  Type=Threshold
+
+  [24x24/applets]
+  Size=24
+  Context=Applications
+  Type=Threshold
+
+  [24x24/places]
+  Size=24
+  Context=Places
+  Type=Threshold
+
+  [24x24/preferences]
+  Size=24
+  Context=Applications
+  Type=Threshold
+
+  [24x24/emblems]
+  Size=24
+  Context=Emblems
+  Type=Threshold
+
+  [24x24/status]
+  Size=24
+  Context=Status
+  Type=Threshold
+
+  [24x24/apps]
+  Size=24
+  Context=Applications
+  Type=Threshold
+
+  [24x24/actions]
+  Size=24
+  Context=Actions
+  Type=Threshold
+
+  [24x24/emotes]
+  Size=24
+  Context=Emotes
+  Type=Threshold
+
+  [24x24/intl]
+  Size=24
+  Context=International
+  Type=Threshold
+
+  [96x96/animations]
+  Size=512
+  Context=Status
+  Type=Threshold
+
+  [96x96/devices]
+  Size=512
+  Context=Devices
+  Type=Threshold
+
+  [96x96/categories]
+  Size=512
+  Context=Categories
+  Type=Threshold
+
+  [96x96/mimetypes]
+  Size=512
+  Context=MimeTypes
+  Type=Threshold
+
+  [96x96/applets]
+  Size=512
+  Context=Applications
+  Type=Threshold
+
+  [96x96/places]
+  Size=512
+  Context=Places
+  Type=Threshold
+
+  [96x96/preferences]
+  Size=512
+  Context=Applications
+  Type=Threshold
+
+  [96x96/emblems]
+  Size=512
+  Context=Emblems
+  Type=Threshold
+
+  [96x96/status]
+  Size=512
+  Context=Status
+  Type=Threshold
+
+  [96x96/apps]
+  Size=512
+  Context=Applications
+  Type=Threshold
+
+  [96x96/actions]
+  Size=512
+  Context=Actions
+  Type=Threshold
+
+  [96x96/emotes]
+  Size=512
+  Context=Emotes
+  Type=Threshold
+
+  [96x96/intl]
+  Size=512
+  Context=International
+  Type=Threshold
+
+  [8x8/animations]
+  Size=8
+  Context=Status
+  Type=Threshold
+
+  [8x8/devices]
+  Size=8
+  Context=Devices
+  Type=Threshold
+
+  [8x8/categories]
+  Size=8
+  Context=Categories
+  Type=Threshold
+
+  [8x8/mimetypes]
+  Size=8
+  Context=MimeTypes
+  Type=Threshold
+
+  [8x8/applets]
+  Size=8
+  Context=Applications
+  Type=Threshold
+
+  [8x8/places]
+  Size=8
+  Context=Places
+  Type=Threshold
+
+  [8x8/preferences]
+  Size=8
+  Context=Applications
+  Type=Threshold
+
+  [8x8/emblems]
+  Size=8
+  Context=Emblems
+  Type=Threshold
+
+  [8x8/status]
+  Size=8
+  Context=Status
+  Type=Threshold
+
+  [8x8/apps]
+  Size=8
+  Context=Applications
+  Type=Threshold
+
+  [8x8/actions]
+  Size=8
+  Context=Actions
+  Type=Threshold
+
+  [8x8/emotes]
+  Size=8
+  Context=Emotes
+  Type=Threshold
+
+  [8x8/intl]
+  Size=8
+  Context=International
+  Type=Threshold

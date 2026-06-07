@@ -6,29 +6,29 @@ $NVIM_VARIANT = soft
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
-$CURSOR_THEME = McMojave-cursors
-$CURSOR_SIZE = 29
+$CURSOR_THEME = material_light_cursors
+$CURSOR_SIZE = 28
 
 general {
     gaps_in = 5
     gaps_out = 10
     border_size = 3
-    col.active_border = rgba(a6a6a6ff)
-    col.inactive_border = rgba(404040cc) rgba(262626cc) 45deg
+    col.active_border = rgba(d9d9d9ff)
+    col.inactive_border = rgba(404040cc)
     layout = dwindle
     resize_on_border = true
 }
 
 group {
     col.border_active = rgba(a6a6a6ff)
-    col.border_inactive = rgba(404040cc)
+    col.border_inactive = rgba(262626cc)
     col.border_locked_active = rgba(a6a6a6ff)
-    col.border_locked_inactive = rgba(404040cc)
+    col.border_locked_inactive = rgba(262626cc)
 }
 
 
 decoration {
-    rounding = 5
+    rounding = 4
     drop_shadow = false
     shadow_offset = 6 6
     shadow_range = 3

@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="256mm"
+   height="256mm"
+   viewBox="0 0 256 256"
+   version="1.1"
+   id="svg1"
+   inkscape:version="1.4.2 (ebf0e940d0, 2025-05-08)"
+   sodipodi:docname="down-up.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     inkscape:zoom="0.32137521"
+     inkscape:cx="790.35343"
+     inkscape:cy="1050.1743"
+     inkscape:current-layer="svg1" />
+  <defs
+     id="defs1">
+    <radialGradient
+       xlink:href="#a"
+       id="e"
+       cx="24.837126"
+       cy="36.421127"
+       r="15.644737"
+       fx="24.837126"
+       fy="36.421127"
+       gradientTransform="matrix(1,0,0,0.53672,0,16.87306)"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       id="a">
+      <stop
+         offset="0"
+         id="stop7" />
+      <stop
+         offset="1"
+         stop-opacity="0"
+         id="stop8" />
+    </linearGradient>
+    <radialGradient
+       xlink:href="#a"
+       id="f"
+       cx="24.837126"
+       cy="36.421127"
+       r="15.644737"
+       fx="24.837126"
+       fy="36.421127"
+       gradientTransform="matrix(1,0,0,0.53672,0,16.87306)"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       xlink:href="#d"
+       id="g"
+       x1="215.56676"
+       x2="566.89117"
+       y1="573.56177"
+       y2="573.56177"
+       gradientTransform="matrix(1.36144,0,0,-1.36144,-311.80461,1441.795)"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       id="d">
+      <stop
+         offset="0"
+         stop-color="#a8e234"
+         id="stop3" />
+      <stop
+         offset="1"
+         stop-color="#4e9a06"
+         id="stop4" />
+    </linearGradient>
+    <radialGradient
+       xlink:href="#b"
+       id="h"
+       cx="24.53788"
+       cy="0.40010813"
+       r="17.171415"
+       fx="24.53788"
+       fy="0.40010813"
+       gradientTransform="matrix(0,27.99323,21.30353,0,-62.932009,46.37243)"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       id="b">
+      <stop
+         offset="0"
+         stop-color="#fff"
+         id="stop5" />
+      <stop
+         offset="1"
+         stop-color="#fff"
+         stop-opacity="0"
+         id="stop6" />
+    </linearGradient>
+    <radialGradient
+       xlink:href="#c"
+       id="i"
+       cx="11.319205"
+       cy="22.454971"
+       r="16.9562"
+       fx="11.319205"
+       fy="22.454971"
+       gradientTransform="matrix(0,-11.53006,13.9529,0,163.20958,660.45827)"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       id="c">
+      <stop
+         offset="0"
+         stop-color="#729fcf"
+         id="stop9" />
+      <stop
+         offset="1"
+         stop-color="#3465a4"
+         id="stop10" />
+    </linearGradient>
+    <radialGradient
+       xlink:href="#b"
+       id="j"
+       cx="24.53788"
+       cy="0.40010813"
+       r="17.171415"
+       fx="24.53788"
+       fy="0.40010813"
+       gradientTransform="matrix(0,-27.99323,21.30353,0,192.75982,993.44799)"
+       gradientUnits="userSpaceOnUse" />
+  </defs>
+  <metadata
+     id="metadata1">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <cc:license
+           rdf:resource="http://creativecommons.org/publicdomain/zero/1.0/" />
+        <dc:source>https://commons.wikimedia.org/wiki/File:Transfer-down_up.svg</dc:source>
+      </cc:Work>
+      <cc:License
+         rdf:about="http://creativecommons.org/publicdomain/zero/1.0/">
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Reproduction" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Distribution" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#DerivativeWorks" />
+      </cc:License>
+    </rdf:RDF>
+  </metadata>
+  <g
+     id="g16"
+     transform="matrix(0.29364044,0,0,0.29364044,22.669369,-30.315746)">
+    <path
+       fill="none"
+       d="M -64.879845,115.85568 H 785.12015 v 850 H -64.879845 Z"
+       id="path8" />
+    <path
+       fill="url(#e)"
+       fill-rule="evenodd"
+       d="m 40.481863,36.421127 a 15.644737,8.3968943 0 1 1 -31.2894745,0 15.644737,8.3968943 0 1 1 31.2894745,0 z"
+       opacity="0.299465"
+       overflow="visible"
+       style="fill:url(#e);marker:none"
+       transform="matrix(16.61031,0,0,8.14411,-174.23241,585.72965)"
+       id="path9" />
+    <path
+       fill="url(#f)"
+       fill-rule="evenodd"
+       d="m 40.481863,36.421127 a 15.644737,8.3968943 0 1 1 -31.2894745,0 15.644737,8.3968943 0 1 1 31.2894745,0 z"
+       opacity="0.299465"
+       overflow="visible"
+       style="fill:url(#f);marker:none"
+       transform="matrix(16.61031,0,0,8.14411,64.413347,322.89968)"
+       id="path10" />
+    <path
+       fill="url(#g)"
+       fill-rule="evenodd"
+       stroke="#4e9a06"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-miterlimit="10"
+       stroke-width="13.6771"
+       d="M 97.428481,435.24918 H 343.31021 V 612.4022 H 453.14423 L 218.92204,886.60284 -11.485202,613.19492 97.500955,612.28827 Z"
+       overflow="visible"
+       style="fill:url(#g);marker:none"
+       id="path11" />
+    <path
+       fill="url(#h)"
+       fill-rule="evenodd"
+       d="M 2.9710534,619.44453 H 104.32213 l 0.91091,-89.74613 C 182.5851,680.15232 323.97142,650.66389 332.19473,743.4388 L 218.81427,873.98233 Z"
+       opacity="0.508021"
+       overflow="visible"
+       style="fill:url(#h);marker:none"
+       id="path12" />
+    <path
+       fill="none"
+       stroke="#ffffff"
+       stroke-miterlimit="10"
+       stroke-width="13.6771"
+       d="m 112.62287,448.92622 h 217.463 v 177.70532 h 93.12708 L 218.73591,865.11782 17.593995,626.03769 l 93.282595,0.30224 z"
+       opacity="0.481283"
+       overflow="visible"
+       style="marker:none"
+       id="path13" />
+    <path
+       fill="url(#i)"
+       fill-rule="evenodd"
+       stroke="#204a87"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-miterlimit="10"
+       stroke-width="13.6771"
+       d="M 353.12028,604.57182 H 599.00203 V 427.41878 H 708.83602 L 474.61386,153.21813 244.2066,426.62607 l 108.98617,0.90665 z"
+       overflow="visible"
+       style="fill:url(#i);marker:none"
+       id="path14" />
+    <path
+       fill="url(#j)"
+       fill-rule="evenodd"
+       d="m 258.66285,420.37647 h 101.3511 l 0.91089,89.74611 C 438.27692,359.66866 579.66323,389.1571 587.88655,296.38219 L 474.50608,165.83872 Z"
+       opacity="0.508021"
+       overflow="visible"
+       style="fill:url(#j);marker:none"
+       id="path15" />
+    <path
+       fill="none"
+       stroke="#ffffff"
+       stroke-miterlimit="10"
+       stroke-width="13.6771"
+       d="M 368.31467,590.89478 H 585.77769 V 413.18945 h 93.1271 l -204.47708,-238.4863 -201.1419,239.08016 93.28259,-0.30226 z"
+       opacity="0.481283"
+       overflow="visible"
+       style="marker:none"
+       id="path16" />
+  </g>
+</svg>

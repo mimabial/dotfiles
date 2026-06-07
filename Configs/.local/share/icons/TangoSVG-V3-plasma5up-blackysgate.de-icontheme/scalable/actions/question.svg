@@ -1,0 +1,398 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   height="256"
+   width="256"
+   version="1.1"
+   id="svg18"
+   sodipodi:docname="question.svg"
+   viewBox="0 0 256 256"
+   inkscape:version="1.4.2 (ebf0e940d0, 2025-05-08)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <title
+     id="title28">Questionmark</title>
+  <sodipodi:namedview
+     id="namedview18"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="2.1037567"
+     inkscape:cx="204.63393"
+     inkscape:cy="264.05144"
+     inkscape:current-layer="svg18" />
+  <defs
+     id="defs12">
+    <linearGradient
+       id="h"
+       y2="47.094002"
+       gradientUnits="userSpaceOnUse"
+       x2="26.243"
+       y1="34.620998"
+       x1="20.573999">
+      <stop
+         stop-color="#fff"
+         offset="0"
+         id="stop1" />
+      <stop
+         stop-opacity="0"
+         stop-color="#888a85"
+         offset="1"
+         id="stop2" />
+    </linearGradient>
+    <linearGradient
+       id="m"
+       x1="23.33"
+       xlink:href="#c"
+       gradientUnits="userSpaceOnUse"
+       x2="38.740002"
+       y1="6.2399998"
+       y2="29.870001" />
+    <linearGradient
+       id="k"
+       x1="20.1"
+       xlink:href="#c"
+       gradientUnits="userSpaceOnUse"
+       x2="31.389999"
+       y1="21.75"
+       y2="41.75" />
+    <linearGradient
+       id="l"
+       x1="14.82"
+       xlink:href="#c"
+       gradientUnits="userSpaceOnUse"
+       x2="29.309999"
+       y1="12.4"
+       y2="36.5" />
+    <linearGradient
+       id="g"
+       y2="21.469999"
+       xlink:href="#c"
+       gradientUnits="userSpaceOnUse"
+       x2="24.1"
+       y1="13.7"
+       x1="13.77" />
+    <linearGradient
+       id="c"
+       y2="73.800003"
+       gradientUnits="userSpaceOnUse"
+       y1="17.1"
+       x2="31.860001"
+       x1="19.889999">
+      <stop
+         stop-color="#fff"
+         offset="0"
+         id="stop3" />
+      <stop
+         stop-color="#b3b3b3"
+         stop-opacity="0"
+         offset="1"
+         id="stop4" />
+    </linearGradient>
+    <linearGradient
+       id="d"
+       y2="10.49"
+       gradientUnits="userSpaceOnUse"
+       x2="9.125"
+       y1="59.23"
+       x1="31.5">
+      <stop
+         stop-color="#1a3b6e"
+         offset="0"
+         id="stop5" />
+      <stop
+         stop-color="#204a87"
+         offset="1"
+         id="stop6" />
+    </linearGradient>
+    <linearGradient
+       id="i"
+       y2="4.7940001"
+       gradientUnits="userSpaceOnUse"
+       x2="17.799999"
+       y1="23.219999"
+       x1="23.540001">
+      <stop
+         stop-color="#fff"
+         offset="0"
+         id="stop7" />
+      <stop
+         stop-color="#fff"
+         stop-opacity="0"
+         offset="1"
+         id="stop8" />
+    </linearGradient>
+    <radialGradient
+       id="j"
+       xlink:href="#a"
+       gradientUnits="userSpaceOnUse"
+       cy="42"
+       cx="25"
+       gradientTransform="matrix(1,0,0,0.346,0,27.99)"
+       r="13" />
+    <radialGradient
+       id="f"
+       xlink:href="#a"
+       gradientUnits="userSpaceOnUse"
+       cy="42"
+       cx="25"
+       gradientTransform="matrix(0.527,0,0,0.212,9.73,33.51)"
+       r="13" />
+    <radialGradient
+       id="a"
+       gradientUnits="userSpaceOnUse"
+       cy="36.419998"
+       cx="24.84"
+       gradientTransform="matrix(0.831,0,0,0.288,4.36,31.57)"
+       r="15.64">
+      <stop
+         offset="0"
+         id="stop9" />
+      <stop
+         stop-opacity="0"
+         offset="1"
+         id="stop10" />
+    </radialGradient>
+    <radialGradient
+       id="b"
+       gradientUnits="userSpaceOnUse"
+       cy="26.165001"
+       cx="26.033001"
+       gradientTransform="matrix(1,0,0,1.8455,-1.2238e-4,-19.879)"
+       r="10.97">
+      <stop
+         stop-color="#2a5387"
+         offset="0"
+         id="stop11" />
+      <stop
+         stop-color="#497fc6"
+         offset="1"
+         id="stop12" />
+    </radialGradient>
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#d"
+       id="linearGradient19"
+       gradientUnits="userSpaceOnUse"
+       x1="31.5"
+       y1="59.23"
+       x2="9.125"
+       y2="10.49" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#d"
+       id="linearGradient20"
+       gradientUnits="userSpaceOnUse"
+       x1="31.5"
+       y1="59.23"
+       x2="9.125"
+       y2="10.49" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#d"
+       id="linearGradient21"
+       gradientUnits="userSpaceOnUse"
+       x1="31.5"
+       y1="59.23"
+       x2="9.125"
+       y2="10.49" />
+    <radialGradient
+       inkscape:collect="always"
+       xlink:href="#b"
+       id="radialGradient21"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(1,0,0,1.8455,-1.2238e-4,-19.879)"
+       cx="26.033001"
+       cy="26.165001"
+       r="10.97" />
+    <radialGradient
+       inkscape:collect="always"
+       xlink:href="#b"
+       id="radialGradient22"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(1,0,0,1.8455,-1.2238e-4,-19.879)"
+       cx="26.033001"
+       cy="26.165001"
+       r="10.97" />
+    <radialGradient
+       inkscape:collect="always"
+       xlink:href="#b"
+       id="radialGradient23"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(1,0,0,1.8455,-1.2238e-4,-19.879)"
+       cx="26.033001"
+       cy="26.165001"
+       r="10.97" />
+    <radialGradient
+       inkscape:collect="always"
+       xlink:href="#b"
+       id="radialGradient24"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(1,0,0,1.8455,-1.2238e-4,-19.879)"
+       cx="26.033001"
+       cy="26.165001"
+       r="10.97" />
+    <radialGradient
+       inkscape:collect="always"
+       xlink:href="#b"
+       id="radialGradient25"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(1,0,0,1.8455,-1.2238e-4,-19.879)"
+       cx="26.033001"
+       cy="26.165001"
+       r="10.97" />
+    <radialGradient
+       inkscape:collect="always"
+       xlink:href="#b"
+       id="radialGradient26"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(1,0,0,1.8455,-1.2238e-4,-19.879)"
+       cx="26.033001"
+       cy="26.165001"
+       r="10.97" />
+    <radialGradient
+       inkscape:collect="always"
+       xlink:href="#b"
+       id="radialGradient27"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(1,0,0,1.8455,-1.2238e-4,-19.879)"
+       cx="26.033001"
+       cy="26.165001"
+       r="10.97" />
+    <radialGradient
+       inkscape:collect="always"
+       xlink:href="#b"
+       id="radialGradient28"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(1,0,0,1.8455,-1.2238e-4,-19.879)"
+       cx="26.033001"
+       cy="26.165001"
+       r="10.97" />
+  </defs>
+  <g
+     id="g19"
+     transform="matrix(5.7339894,0,0,5.7339894,-15.520458,-14.59167)">
+    <g
+       id="use12"
+       style="fill:none;stroke:url(#linearGradient21);stroke-width:3">
+      <path
+         d="m 22.08,27.93 c 0,-2.23 0.42,-3.68 1.85,-6.48 1.96,-3.81 2.49,-5.6 2.49,-8.36 0,-3.57 -1.14,-5.89 -3.35,-6.82 -1.33,-0.55 -2.98,-0.3 -3.96,0.6 -0.72,0.66 -0.69,1.1 0.19,3.15 1.19,2.76 0.93,4.65 -0.74,5.49 -1.63,0.82 -3.67,0.21 -4.57,-1.37 -0.39,-0.69 -0.48,-1.13 -0.45,-2.24 0.08,-3.51 3.05,-6.57 7.19,-7.41 1.58,-0.32 4.87,-0.32 6.44,0 4.26,0.88 7.12,3.89 7.3,7.68 0.08,1.78 -0.31,3.46 -1.14,4.87 -0.71,1.21 -3,3.33 -5.29,4.86 -3.49,2.35 -4.52,3.73 -4.85,6.53 -0.11,0.97 -0.18,1.09 -0.62,1.09 -0.47,0 -0.49,-0.06 -0.49,-1.61 z"
+         id="path19"
+         style="stroke:url(#linearGradient19)" />
+      <circle
+         cy="37.93"
+         cx="22.77"
+         r="4.2800002"
+         id="circle19"
+         style="stroke:url(#linearGradient20)" />
+    </g>
+    <g
+       opacity="0.2"
+       id="g13">
+      <ellipse
+         rx="6.8499999"
+         ry="2.76"
+         cy="42.400002"
+         cx="23"
+         fill="url(#f)"
+         id="ellipse12"
+         style="fill:url(#f)" />
+      <ellipse
+         rx="13"
+         ry="4.5"
+         cy="42.5"
+         cx="25"
+         fill="url(#j)"
+         id="ellipse13"
+         style="fill:url(#j)" />
+    </g>
+    <g
+       stroke="url(#b)"
+       fill="url(#b)"
+       id="g14"
+       style="fill:url(#radialGradient27);stroke:url(#radialGradient28)">
+      <g
+         id="q"
+         style="fill:url(#radialGradient25);stroke:url(#radialGradient26)">
+        <path
+           d="m 22.08,27.93 c 0,-2.23 0.42,-3.68 1.85,-6.48 1.96,-3.81 2.49,-5.6 2.49,-8.36 0,-3.57 -1.14,-5.89 -3.35,-6.82 -1.33,-0.55 -2.98,-0.3 -3.96,0.6 -0.72,0.66 -0.69,1.1 0.19,3.15 1.19,2.76 0.93,4.65 -0.74,5.49 -1.63,0.82 -3.67,0.21 -4.57,-1.37 -0.39,-0.69 -0.48,-1.13 -0.45,-2.24 0.08,-3.51 3.05,-6.57 7.19,-7.41 1.58,-0.32 4.87,-0.32 6.44,0 4.26,0.88 7.12,3.89 7.3,7.68 0.08,1.78 -0.31,3.46 -1.14,4.87 -0.71,1.21 -3,3.33 -5.29,4.86 -3.49,2.35 -4.52,3.73 -4.85,6.53 -0.11,0.97 -0.18,1.09 -0.62,1.09 -0.47,0 -0.49,-0.06 -0.49,-1.61 z"
+           id="path13"
+           style="fill:url(#radialGradient21);stroke:url(#radialGradient22)" />
+        <circle
+           cy="37.93"
+           cx="22.77"
+           r="4.2800002"
+           id="circle13"
+           style="fill:url(#radialGradient23);stroke:url(#radialGradient24)" />
+      </g>
+    </g>
+    <g
+       opacity="0.7"
+       fill="none"
+       id="g18">
+      <circle
+         stroke="url(#h)"
+         cy="37.93"
+         cx="22.77"
+         r="4.2800002"
+         fill="none"
+         id="circle14"
+         style="stroke:url(#h)" />
+      <path
+         stroke="url(#g)"
+         d="m 18.56,15.53 c -1.63,0.82 -3.845,0.345 -4.57,-1.37"
+         id="path14"
+         style="stroke:url(#g)" />
+      <path
+         stroke="url(#m)"
+         d="m 34.5,12.19 c 0.08,1.78 -0.31,3.45 -1.14,4.87 -0.71,1.21 -3,3.33 -5.29,4.86 -3.49,2.35 -4.52,3.73 -4.85,6.53 -0.11,0.97 -0.21,1.09 -0.65,1.09"
+         id="path15"
+         style="stroke:url(#m)" />
+      <path
+         d="m 22.57,29.54 c -0.47,0 -0.49,-0.06 -0.49,-1.61 0,-2.23 0.42,-3.7021 1.85,-6.48"
+         stroke="url(#k)"
+         id="path16"
+         style="stroke:url(#k)" />
+      <path
+         stroke="url(#l)"
+         d="m 13.99,14.16 c -0.81,-1.87 -0.471,-4.081 0.63,-5.76 1.469,-2.241 4,-3.5 6.59,-3.99 1.96,-0.3704 4,-0.3418 5.965,0.105 C 31.63,5.528 34.32,8.4 34.5,12.19"
+         id="path17"
+         style="stroke:url(#l)" />
+      <path
+         d="m 23.93,21.45 c 1.96,-3.81 2.49,-5.6 2.49,-8.36 0,-3.57 -1.14,-5.89 -3.35,-6.82 -1.33,-0.55 -2.98,-0.3 -3.96,0.6 -0.72,0.66 -0.69,1.1 0.19,3.15 1.19,2.76 0.93,4.67 -0.74,5.51"
+         stroke="url(#i)"
+         id="path18"
+         style="stroke:url(#i)" />
+    </g>
+  </g>
+  <metadata
+     id="metadata28">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:source>https://commons.wikimedia.org/wiki/File:Text-questionmark.svg</dc:source>
+        <dc:title>Questionmark</dc:title>
+        <cc:license
+           rdf:resource="http://creativecommons.org/publicdomain/zero/1.0/" />
+      </cc:Work>
+      <cc:License
+         rdf:about="http://creativecommons.org/publicdomain/zero/1.0/">
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Reproduction" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Distribution" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#DerivativeWorks" />
+      </cc:License>
+    </rdf:RDF>
+  </metadata>
+</svg>

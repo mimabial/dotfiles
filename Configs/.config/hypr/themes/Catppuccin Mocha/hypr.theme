@@ -6,8 +6,8 @@ $NVIM_VARIANT = mocha
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
-$CURSOR_THEME = phinger-cursors-dark
-$CURSOR_SIZE = 25
+$CURSOR_THEME = capitaine-cursors
+$CURSOR_SIZE = 28
 
 # Theme variables above are the primary inputs used by theme.switch.sh.
 

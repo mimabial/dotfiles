@@ -20,6 +20,9 @@ export_hypr_config
 
 color_mode_labels=("Theme" "Auto" "Dark" "Light")
 MODE_SWITCH_LOCK_FD=""
+COLOR_MODE_NOTIFY_ID="${COLOR_MODE_NOTIFY_ID:-95}"
+COLOR_MODE_NOTIFY_STACK_TAG="${COLOR_MODE_NOTIFY_STACK_TAG:-color-mode}"
+color_mode_notify=1
 
 color_mode_resolve_existing_path() {
   local path="$1"
@@ -325,6 +328,22 @@ notify_waybar_color_mode() {
   pkill -RTMIN+8 waybar >/dev/null 2>&1 || true
 }
 
+notify_color_mode_changed() {
+  [[ "${color_mode_notify}" -eq 1 ]] || return 0
+  local label="${color_mode_labels[target_color_mode]:-${target_color_mode}}"
+  local -a args=(-a "Color mode" -t 2000 -i "preferences-desktop-theme")
+
+  if command -v dunstify >/dev/null 2>&1; then
+    dunstify "${args[@]}" -r "${COLOR_MODE_NOTIFY_ID}" --stack-tag "${COLOR_MODE_NOTIFY_STACK_TAG}" \
+      "Color mode" "${label}" >/dev/null 2>&1 || true
+    return 0
+  fi
+
+  notify_send_safe "${args[@]}" \
+    -h "string:x-canonical-private-synchronous:${COLOR_MODE_NOTIFY_STACK_TAG}" \
+    "Color mode" "${label}" >/dev/null 2>&1 || true
+}
+
 revert_failed_auto_mode() {
   print_log -sec "color-mode" -warn "auto" "activation failed, reverting mode"
   target_color_mode="${previous_color_mode}"
@@ -355,6 +374,10 @@ apply_manual_mode() {
 
 main() {
   acquire_mode_switch_lock
+  if [[ "${1:-}" == "-q" || "${1:-}" == "--quiet" ]]; then
+    color_mode_notify=0
+    shift
+  fi
   parse_target_mode "$@"
   load_previous_color_mode
 
@@ -365,6 +388,7 @@ main() {
   fi
 
   notify_waybar_color_mode
+  notify_color_mode_changed
 }
 
 main "$@"

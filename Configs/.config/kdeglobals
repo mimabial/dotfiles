@@ -4,7 +4,7 @@ TerminalApplication=kitty
 TerminalService=kitty.desktop
 
 [Icons]
-Theme=Tela-green-dark
+Theme=buuf-nestort
 
 [KDE]
 ShowDeleteCommand=false

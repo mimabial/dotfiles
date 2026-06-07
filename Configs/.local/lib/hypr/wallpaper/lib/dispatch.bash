@@ -86,8 +86,7 @@ wallpaper_resolve_action_profile() {
     g | o | clean)
       wallpaper_action_requires_backend=0
       ;;
-    "")
-      ;;
+    "") ;;
     *)
       wallpaper_inventory_refresh_mode="sync"
       ;;
@@ -230,10 +229,10 @@ wallpaper_notify_emit() {
   local notify_icon="${2:-${HYPR_WALLPAPER_NOTIFY_ICON:-${selected_thumbnail:-}}}"
   local notify_body="${3:-${wallpaper_notify_body:-}}"
   local -a notify_args=()
-  local notify_title="${notify_name}"
+  local notify_title="Wallpaper: ${notify_name}"
 
   [[ -n "${notify_icon}" ]] && notify_args+=(-i "${notify_icon}")
-  [[ "${set_as_global}" == "true" ]] || notify_title="${notify_name} set for ${wallpaper_backend}"
+  [[ "${set_as_global}" == "true" ]] || notify_title="Wallpaper:${notify_name} (${wallpaper_backend})"
 
   if [[ -n "${notify_body}" ]]; then
     wallpaper_notify_send 2000 "${notify_args[@]}" "${notify_title}" "${notify_body}"
@@ -373,7 +372,10 @@ handle_wallpaper_action() {
       print_log -sec "wallpaper" "Current wallpaper copied to: ${wallpaper_output}"
       cp -f "${active_wallpaper_link}" "${wallpaper_output}"
       ;;
-    clean) Wall_Clean_Thumbs; exit 0 ;;
+    clean)
+      Wall_Clean_Thumbs
+      exit 0
+      ;;
     select)
       Wall_Select
       get_hashmap "${selected_wallpaper_path}" || exit 1

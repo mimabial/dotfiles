@@ -252,47 +252,21 @@ theme_desktop_resolve_values() {
     resolved_gtk="Pywal16-Gtk"
   fi
 
-  if [[ "${COLOR_SCHEME}" == "prefer-light" ]]; then
-    RESOLVED_GTK_THEME="${resolved_gtk}"
-    RESOLVED_KVANTUM_THEME="KvGnome"
-    RESOLVED_KDE_COLOR_SCHEME="KvGnome"
-  else
-    RESOLVED_GTK_THEME="${resolved_gtk}"
-    RESOLVED_KVANTUM_THEME="KvGnomeDark"
-    RESOLVED_KDE_COLOR_SCHEME="KvGnomeDark"
-  fi
-
-  RESOLVED_KDE_WIDGET_STYLE="kvantum"
-  # In theme mode, prefer the generated pywal16 Kvantum theme when the
-  # active pack ships kvconfig.theme and kvantum.theme.
-  # This keeps Qt widgets on the active palette instead of the hardcoded
-  # KvGnome[Dark] fallback.
+  RESOLVED_GTK_THEME="${resolved_gtk}"
+  RESOLVED_KVANTUM_THEME="$(theme_desktop_kvantum_output_theme_name)"
   RESOLVED_KVANTUM_THEME_IS_PACK=0
-  if [[ "${selected_color_mode:-0}" -eq 0 ]] && theme_desktop_pack_has_kvantum_theme; then
-    RESOLVED_KVANTUM_THEME="$(theme_desktop_kvantum_output_theme_name)"
+  if theme_desktop_pack_has_kvantum_theme; then
     RESOLVED_KVANTUM_THEME_IS_PACK=1
   fi
 
-  # Prefer the pywal-driven KDE color scheme whenever wal.qtct.sh has
-  # emitted Pywal.colors — this is what makes Dolphin's selection and
-  # other KColorScheme-driven widgets follow the active palette in both
-  # theme and wallpaper modes. Force widgetStyle=Fusion when we don't
-  # have a per-theme Kvantum (otherwise Kvantum's hardcoded KvGnome[Dark]
-  # palette paints over QPalette). When a pack-backed Kvantum theme is
-  # deployed, keep widgetStyle=kvantum so widget art stays theme-coherent;
-  # KColorScheme-driven bits still honor Pywal in parallel.
-  # Delete ${XDG_DATA_HOME}/color-schemes/Pywal.colors to fall back to
-  # the theme-pack-supplied KDE scheme.
   if [[ -f "${XDG_DATA_HOME:-$HOME/.local/share}/color-schemes/Pywal.colors" ]]; then
     RESOLVED_KDE_COLOR_SCHEME="Pywal"
-    if [[ "${selected_color_mode:-0}" -ne 0 ]]; then
-      RESOLVED_KVANTUM_THEME="$(theme_desktop_kvantum_output_theme_name)"
-    fi
-    if [[ "${RESOLVED_KVANTUM_THEME_IS_PACK:-0}" -ne 1 \
-      && "${RESOLVED_KVANTUM_THEME}" != "$(theme_desktop_kvantum_output_theme_name)" ]]; then
-      RESOLVED_KDE_WIDGET_STYLE="Fusion"
-    fi
+  elif [[ "${COLOR_SCHEME}" == "prefer-light" ]]; then
+    RESOLVED_KDE_COLOR_SCHEME="KvGnome"
+  else
+    RESOLVED_KDE_COLOR_SCHEME="KvGnomeDark"
   fi
+  RESOLVED_KDE_WIDGET_STYLE="kvantum"
 
   export ICON_THEME COLOR_SCHEME CURSOR_THEME CURSOR_SIZE TERMINAL \
     FONT FONT_SIZE FONT_STYLE DOCUMENT_FONT DOCUMENT_FONT_SIZE MONOSPACE_FONT \
@@ -337,20 +311,6 @@ theme_desktop_pack_has_kvantum_theme() {
   [[ -f "${pack_dir}/kvantum/kvantum.theme" ]] || return 1
 }
 
-theme_desktop_kvantum_pack_theme_name() {
-  local safe_name="${HYPR_THEME:-hypr-theme}"
-
-  safe_name="${safe_name//[[:space:]]/_}"
-  safe_name="${safe_name//\#/_}"
-  safe_name="${safe_name//\//_}"
-  while [[ "${safe_name}" == *"__"* ]]; do
-    safe_name="${safe_name//__/_}"
-  done
-  safe_name="${safe_name##_}"
-  safe_name="${safe_name%%_}"
-  printf '%s' "${safe_name:-hypr-theme}"
-}
-
 theme_desktop_kvantum_output_theme_name() {
   printf '%s' "pywal16"
 }
@@ -364,7 +324,8 @@ theme_desktop_kvantum_svg_source_path() {
 
 theme_desktop_kvantum_pack_source_hash() {
   local pack_dir="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME:-}"
-  local completion="${LIB_DIR}/hypr/theme/complete-kvantum-themes.sh"
+  local installer="${LIB_DIR}/hypr/theme/lib/install_kvantum_theme.py"
+  local roles="${LIB_DIR}/hypr/render/_roles.py"
   local kvantum_svg_source=""
   local -a input_files=()
 
@@ -381,78 +342,40 @@ theme_desktop_kvantum_pack_source_hash() {
   )
 
   [[ -f "${pack_dir}/kvantum/colors.map" ]] && input_files+=("${pack_dir}/kvantum/colors.map")
-  [[ -f "${completion}" ]] && input_files+=("${completion}")
+  [[ -f "${installer}" ]] && input_files+=("${installer}")
+  [[ -f "${roles}" ]] && input_files+=("${roles}")
 
   hypr_hash_cache_digest_files "${input_files[@]}"
 }
 
-theme_desktop_apply_kvantum_color_map() {
-  local colors_map="$1"
-  shift
-
-  local colors_shell="${XDG_CACHE_HOME:-$HOME/.cache}/wal/colors-shell.sh"
-  local hex_color=""
-  local pywal_var=""
-  local pywal_value=""
-  local -a sed_args=()
-
-  [[ -f "${colors_map}" && -f "${colors_shell}" ]] || return 0
-  # shellcheck source=/dev/null
-  source "${colors_shell}" || return 1
-
-  while IFS='=' read -r hex_color pywal_var || [[ -n "${hex_color}" ]]; do
-    [[ "${hex_color}" =~ ^#.*$ && ! "${hex_color}" =~ ^#[0-9A-Fa-f]{6}$ ]] && continue
-    [[ -n "${hex_color}" && -n "${pywal_var}" ]] || continue
-
-    pywal_value="${!pywal_var-}"
-    [[ -n "${pywal_value}" ]] || continue
-    pywal_value="$(sed_escape_replacement "${pywal_value}")"
-    sed_args+=(-e "s|${hex_color}|${pywal_value}|gi")
-  done <"${colors_map}"
-
-  ((${#sed_args[@]} > 0)) || return 0
-  sed -i "${sed_args[@]}" "$@"
-}
-
-# Deploy the active theme pack's Kvantum SVG plus config into
-# fixed-name Kvantum layout: ${XDG_CONFIG_HOME}/Kvantum/pywal16/pywal16.{svg,kvconfig}.
-# Source files in the pack use `.theme` extensions; Kvantum needs them
-# renamed at install time. No-op if the pack ships no kvantum subtree.
-#
-# Pipeline:
-#   1. Run completion (idempotent) for the active theme.
-#   2. Copy SVG and kvconfig from the active theme into Kvantum's install dir.
-#   3. In wallpaper/pywal recolor modes, rewrite the installed files using
-#      colors.map → live pywal palette. In theme mode, leave the theme's
-#      Kvantum files intact.
 theme_desktop_install_pack_kvantum_theme() {
   theme_desktop_pack_has_kvantum_theme || return 0
 
   local pack_dir="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}"
   local kvantum_theme=""
   local dest_dir=""
-  local completion="${LIB_DIR}/hypr/theme/complete-kvantum-themes.sh"
+  local installer="${LIB_DIR}/hypr/theme/lib/install_kvantum_theme.py"
   local colors_map="${pack_dir}/kvantum/colors.map"
   local kvantum_svg_source=""
+  local active_palette="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/active-palette.json"
+  local pywal_json="${XDG_CACHE_HOME:-$HOME/.cache}/wal/colors.json"
 
   kvantum_theme="$(theme_desktop_kvantum_output_theme_name)"
   dest_dir="${XDG_CONFIG_HOME}/Kvantum/${kvantum_theme}"
   kvantum_svg_source="$(theme_desktop_kvantum_svg_source_path)" || return 1
 
-  if [[ -f "${completion}" ]]; then
-    bash "${completion}" "${HYPR_THEME}" >/dev/null 2>&1 || true
-  fi
-
   mkdir -p "${dest_dir}" || return 1
   cp -f "${kvantum_svg_source}" "${dest_dir}/${kvantum_theme}.svg" || return 1
   cp -f "${pack_dir}/kvantum/kvconfig.theme" "${dest_dir}/${kvantum_theme}.kvconfig" || return 1
 
-  if [[ "${selected_color_mode:-0}" -ne 0 ]]; then
-    theme_desktop_apply_kvantum_color_map \
-      "${colors_map}" \
-      "${dest_dir}/${kvantum_theme}.svg" \
-      "${dest_dir}/${kvantum_theme}.kvconfig" || return 1
-  fi
+  ACTIVE_PALETTE_JSON="${active_palette}" \
+    COLORS_MAP="${colors_map}" \
+    PYWAL_JSON="${pywal_json}" \
+    SOURCE_KVCONFIG_PATH="${pack_dir}/kvantum/kvconfig.theme" \
+    SELECTED_COLOR_MODE="${selected_color_mode:-1}" \
+    SVG_PATH="${dest_dir}/${kvantum_theme}.svg" \
+    KVCONFIG_PATH="${dest_dir}/${kvantum_theme}.kvconfig" \
+    python3 "${installer}" || return 1
 }
 
 theme_desktop_configure_qt_kde_bridge() {
@@ -710,6 +633,8 @@ theme_desktop_static_state_hash() {
   local flatpak_installed=0
   local kvantum_pack_hash=""
   local pipeline_hash=""
+  local active_palette="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/active-palette.json"
+  local active_palette_hash=""
   local pywal_colors="${XDG_CACHE_HOME:-$HOME/.cache}/wal/colors.json"
   local pywal_hash=""
   local -a pipeline_files=(
@@ -718,6 +643,7 @@ theme_desktop_static_state_hash() {
 
   pkg_installed flatpak && flatpak_installed=1
   pipeline_hash="$(hypr_hash_cache_digest_files "${pipeline_files[@]}")"
+  [[ -f "${active_palette}" ]] && active_palette_hash="$(hypr_hash_cache_digest_files "${active_palette}")"
   [[ -f "${pywal_colors}" ]] && pywal_hash="$(hypr_hash_cache_digest_files "${pywal_colors}")"
   if [[ "${RESOLVED_KVANTUM_THEME_IS_PACK:-0}" -eq 1 ]]; then
     kvantum_pack_hash="$(theme_desktop_kvantum_pack_source_hash)"
@@ -744,6 +670,7 @@ theme_desktop_static_state_hash() {
     "kvantum_pack_hash=${kvantum_pack_hash}" \
     "kde_color_scheme=${RESOLVED_KDE_COLOR_SCHEME}" \
     "kde_widget_style=${RESOLVED_KDE_WIDGET_STYLE:-kvantum}" \
+    "active_palette=${active_palette_hash}" \
     "pywal_colors=${pywal_hash}" \
     "flatpak_installed=${flatpak_installed}"
 }

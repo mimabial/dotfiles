@@ -1,17 +1,14 @@
 $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
 
-$CURSOR_THEME = Capitaine-Cursors
+$CURSOR_THEME=Sweet-cursors
 $CURSOR_SIZE=24
+
 $ICON_THEME = One-Dark
 $COLOR_SCHEME = prefer-dark
 $NVIM_SCHEME = onedark
 $NVIM_VARIANT = dark
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
-
-exec = hyprctl setcursor onedark-cursor 25
-exec = gsettings set org.gnome.desktop.interface cursor-theme 'onedark-cursor'
-exec = gsettings set org.gnome.desktop.interface cursor-size 25
 
 general {
     gaps_in = 3

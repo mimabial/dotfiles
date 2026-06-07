@@ -1,0 +1,287 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="256"
+   height="256"
+   version="1.1"
+   id="svg28"
+   sodipodi:docname="internet-mail.svg"
+   viewBox="0 0 256 256"
+   inkscape:version="1.4.2 (ebf0e940d0, 2025-05-08)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <sodipodi:namedview
+     id="namedview28"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="2.1672335"
+     inkscape:cx="218.25059"
+     inkscape:cy="164.49542"
+     inkscape:current-layer="svg28" />
+  <defs
+     id="defs16">
+    <linearGradient
+       id="a">
+      <stop
+         offset="0"
+         stop-color="#9aa29a"
+         id="stop1" />
+      <stop
+         offset="1"
+         stop-color="#b5beb5"
+         id="stop2" />
+    </linearGradient>
+    <radialGradient
+       id="b"
+       cx="6.7030001"
+       cy="73.615997"
+       r="7.2280002"
+       gradientTransform="matrix(3.2374291,0,0,0.98126868,3.6985064,-32.245642)"
+       gradientUnits="userSpaceOnUse">
+      <stop
+         offset="0"
+         id="stop3" />
+      <stop
+         offset="1"
+         stop-opacity="0"
+         id="stop4" />
+    </radialGradient>
+    <linearGradient
+       id="i"
+       x1="8.7799997"
+       x2="9.7620001"
+       y1="37.785"
+       y2="32.202999"
+       gradientTransform="matrix(2.3949,0,0,0.78106,2.88,0.343)"
+       gradientUnits="userSpaceOnUse">
+      <stop
+         offset="0"
+         stop-opacity=".129"
+         id="stop5" />
+      <stop
+         offset="1"
+         stop-opacity="0"
+         id="stop6" />
+    </linearGradient>
+    <linearGradient
+       id="h"
+       x1="11.233"
+       x2="21.112"
+       y1="13.686"
+       y2="24.132999"
+       gradientTransform="matrix(1.3709,0,0,1.4438,2.431,-0.14)"
+       gradientUnits="userSpaceOnUse">
+      <stop
+         offset="0"
+         stop-color="#fff"
+         id="stop7" />
+      <stop
+         offset="1"
+         stop-color="#ededed"
+         id="stop8" />
+    </linearGradient>
+    <linearGradient
+       id="g"
+       x1="8.9160004"
+       x2="9.8859997"
+       y1="37.196999"
+       y2="52.091"
+       gradientTransform="matrix(2.4548,0,0,0.762,2.88,0.343)"
+       gradientUnits="userSpaceOnUse"
+       xlink:href="#a" />
+    <linearGradient
+       id="f"
+       x1="10.184"
+       x2="15.311"
+       y1="15.148"
+       y2="29.569"
+       gradientTransform="matrix(1.8193,0,0,1.0282,2.88,0.343)"
+       gradientUnits="userSpaceOnUse">
+      <stop
+         offset="0"
+         stop-color="#fff"
+         id="stop9" />
+      <stop
+         offset="1"
+         stop-color="#dcdcdc"
+         id="stop10" />
+    </linearGradient>
+    <linearGradient
+       id="e"
+       x1="5.8270001"
+       x2="13.467"
+       y1="7.2309999"
+       y2="17.877001"
+       gradientTransform="matrix(1.5706,0,0,1.191,2.88,0.343)"
+       gradientUnits="userSpaceOnUse">
+      <stop
+         offset="0"
+         stop-color="#ededed"
+         id="stop11" />
+      <stop
+         offset="1"
+         stop-color="#c8c8c8"
+         id="stop12" />
+    </linearGradient>
+    <linearGradient
+       id="c"
+       x1="11.573"
+       x2="18.475"
+       y1="4.7459998"
+       y2="26.023001"
+       gradientTransform="matrix(1.3435,0,0,1.4179,2.88,0.315)"
+       gradientUnits="userSpaceOnUse">
+      <stop
+         offset="0"
+         stop-color="#fff"
+         id="stop13" />
+      <stop
+         offset="1"
+         stop-color="#e2e2e2"
+         id="stop14" />
+    </linearGradient>
+    <linearGradient
+       id="d"
+       x1="2.062"
+       x2="30.6"
+       y1="15.257"
+       y2="15.257"
+       gradientTransform="matrix(1.3435,0,0,1.4179,2.88,0.315)"
+       gradientUnits="userSpaceOnUse">
+      <stop
+         offset="0"
+         stop-color="#989690"
+         id="stop15" />
+      <stop
+         offset="1"
+         stop-color="#656460"
+         id="stop16" />
+    </linearGradient>
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#a"
+       id="linearGradient28"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(2.4548,0,0,0.762,2.88,0.343)"
+       x1="8.9160004"
+       y1="37.196999"
+       x2="9.8859997"
+       y2="52.091" />
+  </defs>
+  <g
+     id="g28"
+     transform="matrix(5.2829369,0,0,5.2829369,-6.0568206,6.2701624)">
+    <path
+       fill="url(#b)"
+       d="m 48.7999,39.991561 a 23.401667,7.0930588 0 1 1 -46.803333,0 23.401667,7.0930588 0 1 1 46.803333,0 z"
+       color="#000000"
+       opacity="0.456"
+       id="path16"
+       style="fill:url(#b);stroke-width:1.78237" />
+    <path
+       fill="url(#c)"
+       fill-rule="evenodd"
+       stroke="url(#d)"
+       stroke-linejoin="round"
+       stroke-width="0.857"
+       d="m 6.333,16.972 v 24.51 H 43.306 L 43.244,17.09 C 43.241,15.712 31.396,2.412 29.211,2.412 H 20.66 c -2.297,0 -14.326,13.262 -14.326,14.56 z"
+       id="path17"
+       style="fill:url(#c);stroke:url(#d)" />
+    <path
+       fill="url(#e)"
+       fill-rule="evenodd"
+       d="M 6.923,16.787 C 6.525,16.357 18.81,3.093 20.667,3.093 h 8.376 c 1.747,0 14.037,13.128 13.427,13.886 L 31.61,30.474 19.295,30.156 6.923,16.786 Z"
+       id="path18"
+       style="fill:url(#e)" />
+    <path
+       fill-opacity="0.146"
+       fill-rule="evenodd"
+       d="m 19.078,30.018 -7.333,-8.746 24.818,-6.936 3.029,6.216 -7.416,9.44"
+       id="path19" />
+    <path
+       fill-opacity="0.146"
+       fill-rule="evenodd"
+       d="m 18.292,29.836 -7.483,-8.81 24.648,-6.893 3.174,6.271 -7.241,9.407"
+       id="path20" />
+    <path
+       fill-opacity="0.146"
+       fill-rule="evenodd"
+       d="m 18.775,29.957 -7.675,-8.66 24.968,-7.065 3.286,6.593 -7.48,9.107"
+       id="path21" />
+    <path
+       fill="url(#f)"
+       fill-rule="evenodd"
+       d="m 18.594,30.441 -7.333,-8.746 24.712,-6.894 3.11,6.388 -7.12,8.986"
+       id="path22"
+       style="fill:url(#f)" />
+    <path
+       fill="url(#g)"
+       fill-rule="evenodd"
+       d="M 20.488,29.064 7.092,40.036 21.001,30.432 h 9.018 l 12.42,9.482 -11.864,-10.85 z"
+       id="path23"
+       style="fill:url(#linearGradient28)" />
+    <path
+       fill="url(#g)"
+       fill-rule="evenodd"
+       d="M 6.963,16.885 18.48,31.201 19.548,30.347 6.964,16.885 Z"
+       color="#000000"
+       id="path24"
+       style="fill:url(#g)" />
+    <path
+       fill="none"
+       stroke="url(#h)"
+       stroke-width="0.857"
+       d="m 7.308,17.131 0.03,23.211 H 42.284 L 42.221,17.258 C 42.219,16.508 31.005,3.459 28.837,3.459 h -7.895 c -2.253,0 -13.635,12.892 -13.634,13.672 z"
+       id="path25"
+       style="stroke:url(#h)" />
+    <path
+       fill="#ffffff"
+       fill-rule="evenodd"
+       d="m 20.957,30.453 -11.941,8.271 2.219,0.006 9.998,-6.869 8.822,-1.423 z m -9.529,-8.783 1.324,1.411 22.791,-6.884 2.915,5.682 0.614,-0.712 -3.069,-6.378 z"
+       id="path26" />
+    <path
+       fill="url(#i)"
+       fill-rule="evenodd"
+       d="m 13.308,23.636 6.026,6.454 1.197,-1.026 10.087,0.043 0.812,0.727 3.975,-4.744 C 34.251,23.679 13.308,23.636 13.308,23.636 Z"
+       id="path27"
+       style="fill:url(#i)"
+       inkscape:label="path27" />
+    <path
+       fill="#b1b1b1"
+       fill-rule="evenodd"
+       d="M 41.813,17.848 31.861,30.479 30.793,29.624 Z"
+       color="#000000"
+       id="path28"
+       style="display:inline" />
+  </g>
+  <metadata
+     id="metadata28">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:source>https://commons.wikimedia.org/wiki/File:Internet-mail.svg</dc:source>
+        <cc:license
+           rdf:resource="http://creativecommons.org/publicdomain/zero/1.0/" />
+      </cc:Work>
+      <cc:License
+         rdf:about="http://creativecommons.org/publicdomain/zero/1.0/">
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Reproduction" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Distribution" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#DerivativeWorks" />
+      </cc:License>
+    </rdf:RDF>
+  </metadata>
+</svg>

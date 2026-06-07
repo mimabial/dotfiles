@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="256mm"
+   height="256mm"
+   viewBox="0 0 256 256"
+   version="1.1"
+   id="svg1"
+   inkscape:version="1.4 (e7c3feb100, 2024-10-09)"
+   sodipodi:docname="gnumeric-grapfguru.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     inkscape:zoom="0.90898636"
+     inkscape:cx="489.5563"
+     inkscape:cy="530.26098"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs1" />
+  <g
+     inkscape:label="Ebene 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <g
+       id="g14">
+      <rect
+         style="fill:#9b9b9b;stroke-width:0;stroke:#000000;stroke-opacity:1;fill-opacity:1"
+         id="rect1"
+         width="217.72421"
+         height="217.72421"
+         x="19.502033"
+         y="15.718058"
+         inkscape:label="bg" />
+      <path
+         id="rect2"
+         style="fill:#005edc;stroke:#000000;stroke-width:0"
+         d="M 20.957377 20.666439 L 20.957377 230.53167 L 21.248315 230.53167 L 21.248315 232.86021 L 234.31541 232.86021 L 234.31541 226.16552 L 27.361121 226.16552 L 27.361121 20.666439 L 20.957377 20.666439 z "
+         inkscape:label="yz" />
+      <g
+         id="g13"
+         style="fill:#679200;fill-opacity:1">
+        <path
+           id="rect3"
+           style="fill:#679200;stroke:#000000;stroke-width:0;fill-opacity:1"
+           d="M 25.614613,33.182564 H 234.89763 v 2.328601 H 25.614613 Z" />
+        <path
+           id="path3"
+           style="fill:#679200;stroke:#000000;stroke-width:0;fill-opacity:1"
+           d="M 25.614613,48.609546 H 234.89763 v 2.328601 H 25.614613 Z" />
+        <path
+           id="path4"
+           style="fill:#679200;stroke:#000000;stroke-width:0;fill-opacity:1"
+           d="M 25.614613,65.200829 H 234.89763 V 67.52943 H 25.614613 Z" />
+        <path
+           id="path5"
+           style="fill:#679200;stroke:#000000;stroke-width:0;fill-opacity:1"
+           d="M 25.614613,82.665338 H 234.89763 v 2.328601 H 25.614613 Z" />
+        <path
+           id="path6"
+           style="fill:#679200;stroke:#000000;stroke-width:0;fill-opacity:1"
+           d="M 25.614613,98.09232 H 234.89763 v 2.3286 H 25.614613 Z" />
+        <path
+           id="path7"
+           style="fill:#679200;stroke:#000000;stroke-width:0;fill-opacity:1"
+           d="M 25.614613,114.6836 H 234.89763 v 2.3286 H 25.614613 Z" />
+        <path
+           id="path8"
+           style="fill:#679200;stroke:#000000;stroke-width:0;fill-opacity:1"
+           d="M 25.614613,132.43919 H 234.89763 v 2.3286 H 25.614613 Z" />
+        <path
+           id="path9"
+           style="fill:#679200;stroke:#000000;stroke-width:0;fill-opacity:1"
+           d="M 25.614613,147.86617 H 234.89763 v 2.3286 H 25.614613 Z" />
+        <path
+           id="path10"
+           style="fill:#679200;stroke:#000000;stroke-width:0;fill-opacity:1"
+           d="M 25.614613,164.45745 H 234.89763 v 2.3286 H 25.614613 Z" />
+        <path
+           id="path11"
+           style="fill:#679200;stroke:#000000;stroke-width:0;fill-opacity:1"
+           d="M 25.614613,179.30229 H 234.89763 v 2.3286 H 25.614613 Z" />
+        <path
+           id="path12"
+           style="fill:#679200;stroke:#000000;stroke-width:0;fill-opacity:1"
+           d="M 25.614613,194.72927 H 234.89763 v 2.3286 H 25.614613 Z" />
+        <path
+           id="path13"
+           style="fill:#679200;stroke:#000000;stroke-width:0;fill-opacity:1"
+           d="M 25.614613,211.32055 H 234.89763 v 2.3286 H 25.614613 Z" />
+      </g>
+      <path
+         id="rect13"
+         style="fill:#00ff00;stroke:#000000;stroke-width:0"
+         d="M 25.905687,108.27995 H 236.35301 v 7.27688 H 25.905687 Z" />
+    </g>
+  </g>
+  <metadata
+     id="metadata1">
+    <rdf:RDF>
+      <cc:License
+         rdf:about="http://creativecommons.org/publicdomain/zero/1.0/">
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Reproduction" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Distribution" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#DerivativeWorks" />
+      </cc:License>
+      <cc:Work
+         rdf:about="">
+        <cc:license
+           rdf:resource="http://creativecommons.org/publicdomain/zero/1.0/" />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+</svg>

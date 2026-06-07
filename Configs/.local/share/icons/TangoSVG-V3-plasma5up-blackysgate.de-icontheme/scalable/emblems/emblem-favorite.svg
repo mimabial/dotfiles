@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="256"
+   height="256"
+   version="1.1"
+   id="svg11"
+   sodipodi:docname="emblem-favorite.svg"
+   viewBox="0 0 256 256"
+   inkscape:version="1.4.2 (ebf0e940d0, 2025-05-08)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <sodipodi:namedview
+     id="namedview11"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="3.3508215"
+     inkscape:cx="147.27732"
+     inkscape:cy="143.69611"
+     inkscape:current-layer="g11" />
+  <defs
+     id="defs6">
+    <linearGradient
+       id="b">
+      <stop
+         offset="0"
+         stop-color="#fff"
+         id="stop1" />
+      <stop
+         offset="1"
+         stop-color="#fff"
+         stop-opacity="0"
+         id="stop2" />
+    </linearGradient>
+    <linearGradient
+       id="c">
+      <stop
+         offset="0"
+         id="stop3" />
+      <stop
+         offset="1"
+         stop-opacity="0"
+         id="stop4" />
+    </linearGradient>
+    <linearGradient
+       id="a">
+      <stop
+         offset="0"
+         stop-color="#f5a108"
+         stop-opacity="0"
+         id="stop5" />
+      <stop
+         offset="1"
+         stop-color="#fefdc3"
+         stop-opacity=".743"
+         id="stop6" />
+    </linearGradient>
+    <linearGradient
+       xlink:href="#a"
+       id="e"
+       x1="22.82"
+       x2="12.85"
+       y1="28.829"
+       y2="12.239"
+       gradientTransform="matrix(0.94698,0,0,0.48732,3.735,4.05)"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       xlink:href="#a"
+       id="f"
+       x1="11.355"
+       x2="6.3579998"
+       y1="32.757"
+       y2="6.0999999"
+       gradientTransform="matrix(2.0123,0,0,1.07997,0.835,-1.34)"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       xlink:href="#b"
+       id="g"
+       x1="34.798"
+       x2="17.445"
+       y1="29.173"
+       y2="-6.8889999"
+       gradientTransform="matrix(0.9034,0,0,0.9034,2.335,2.178)"
+       gradientUnits="userSpaceOnUse" />
+    <radialGradient
+       xlink:href="#c"
+       id="d"
+       cx="17.313"
+       cy="25.531"
+       r="9.6879997"
+       fx="17.313"
+       fy="25.531"
+       gradientTransform="matrix(1,0,0,0.35161,0,16.554)"
+       gradientUnits="userSpaceOnUse" />
+  </defs>
+  <g
+     id="g11"
+     transform="matrix(6.0055331,0,0,6.0055331,-17.723383,-21.076842)">
+    <path
+       fill="url(#d)"
+       d="m 27,25.53125 a 9.6875,3.40625 0 1 1 -19.375,0 9.6875,3.40625 0 1 1 19.375,0 z"
+       color="#000000"
+       opacity="0.409"
+       style="fill:url(#d);marker:none"
+       transform="matrix(2.18291,0,0,2.18291,-13.527,-17.29)"
+       id="path6" />
+    <g
+       id="g12"
+       transform="translate(0,0.79509154)">
+      <path
+         fill="#d4572d"
+         fill-rule="evenodd"
+         d="m 22.261974,36.308953 c 0.05757,-0.08629 0.996774,1.111791 0.996774,1.111791 4.11807,-4.480684 14.628923,-12.852623 17.496233,-19.834828 -5.798549,6.431118 -15.27266,16.777409 -18.493007,18.723037 z"
+         id="path7"
+         style="display:inline" />
+      <path
+         fill="url(#e)"
+         fill-rule="evenodd"
+         d="M 15.165635,7.4843984 C 10.367349,7.2482186 8.1319642,10.330635 6.9227946,13.262905 5.7228453,17.12432 7.4190682,24.417626 15.731363,23.862782 c 4.741292,0 6.625787,-4.862255 9.121104,-6.12447 2.267775,-0.857459 2.446258,-0.934202 4.842198,-0.934202 3.329611,0 9.350819,-2.409661 9.35082,-4.800605 C 38.022041,10.084917 35.304933,6.6682093 30.312072,7.2505473 27.133914,7.6204422 24.127187,9.8922149 23.341787,11.022656 21.41782,9.3256958 18.961206,7.4843984 15.165635,7.4843984 Z"
+         id="path8"
+         style="fill:url(#e)" />
+      <path
+         fill="#c71807"
+         fill-rule="evenodd"
+         stroke="#820000"
+         d="M 23.924948,9.0032158 C 32.227971,0.70019061 43.638272,8.3531236 43.563217,16.227494 43.494602,23.426038 38.008283,26.873511 24.225169,39.677567 9.7983996,27.766131 4.7153311,25.019309 4.7903867,16.478476 4.8654422,7.6374205 14.633621,1.0021667 23.924948,9.0032158 Z"
+         id="path9" />
+      <path
+         fill="url(#f)"
+         fill-rule="evenodd"
+         d="m 5.0781932,16.188619 c -0.2179899,7.179938 0.7946415,6.042352 2.6242738,8.317024 1.7986877,2.236201 9.641911,0.82876 16.682247,-5.809313 C 31.50914,11.97897 38.771295,15.781074 42.291599,12.040936 39.669103,7.5441045 31.483974,2.0956372 23.948408,9.6457059 14.291385,0.91854006 5.2961831,8.9288309 5.0781932,16.188619 Z"
+         opacity="0.625"
+         id="path10"
+         style="fill:url(#f)" />
+      <path
+         fill="none"
+         stroke="url(#g)"
+         d="M 24.022024,10.249144 C 31.916622,1.7157434 42.705886,8.8450321 42.635965,16.180607 42.572046,22.886598 37.061872,26.577281 24.221854,38.505233 10.782221,27.408824 5.647706,24.4507 5.717626,16.494266 5.787546,8.2581504 15.366447,1.7575067 24.022024,10.249144 Z"
+         opacity="0.392"
+         id="path11"
+         style="stroke:url(#g)" />
+    </g>
+  </g>
+  <metadata
+     id="metadata11">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:source>https://commons.wikimedia.org/wiki/File:Emblem-favorites.svg</dc:source>
+        <cc:license
+           rdf:resource="http://creativecommons.org/publicdomain/zero/1.0/" />
+      </cc:Work>
+      <cc:License
+         rdf:about="http://creativecommons.org/publicdomain/zero/1.0/">
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Reproduction" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Distribution" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#DerivativeWorks" />
+      </cc:License>
+    </rdf:RDF>
+  </metadata>
+</svg>

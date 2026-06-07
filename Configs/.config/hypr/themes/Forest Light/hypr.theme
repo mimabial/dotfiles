@@ -1,7 +1,7 @@
 $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
 $ICON_THEME = Tela-green-light
 $COLOR_SCHEME = prefer-light
-$CURSOR_THEME = Capitaine-Cursors-White
+$CURSOR_THEME = material_light_cursors
 $CURSOR_SIZE = 28
 $NVIM_SCHEME = everforest
 $NVIM_VARIANT = hard
@@ -14,7 +14,7 @@ $NVIM_TRANSPARENCY = false
 general {
     gaps_in = 4
     gaps_out = 8
-    border_size = 2
+    border_size = 3
     col.active_border = rgba(228B22ff)
     col.inactive_border = rgba(a6b0a0cc)
     layout = dwindle
@@ -29,7 +29,7 @@ group {
 }
 
 decoration {
-    rounding = 3
+    rounding = 4
     shadow:enabled = false
 
     blur {

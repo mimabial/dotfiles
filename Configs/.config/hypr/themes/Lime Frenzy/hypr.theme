@@ -1,4 +1,5 @@
 $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
+
 $ICON_THEME = Tela-green-dark
 $COLOR_SCHEME = prefer-dark
 $NVIM_SCHEME = bamboo
@@ -8,7 +9,6 @@ $NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME=Hackneyed
 $CURSOR_SIZE=24
-exec = hyprctl setcursor $CURSOR_THEME $CURSOR_SIZE
 
 general {
     gaps_in = 3

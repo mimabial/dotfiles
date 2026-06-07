@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="256"
+   height="256"
+   version="1.0"
+   id="svg9"
+   sodipodi:docname="rating-half-rtl.svg"
+   viewBox="0 0 256 256"
+   inkscape:version="1.4.2 (ebf0e940d0, 2025-05-08)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <sodipodi:namedview
+     id="namedview9"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="1.5787047"
+     inkscape:cx="204.59811"
+     inkscape:cy="267.62446"
+     inkscape:current-layer="svg9" />
+  <defs
+     id="defs6">
+    <linearGradient
+       id="b">
+      <stop
+         offset="0"
+         stop-color="#e6cf00"
+         id="stop1" />
+      <stop
+         offset="1"
+         stop-color="#fde94a"
+         id="stop2" />
+    </linearGradient>
+    <linearGradient
+       id="a">
+      <stop
+         offset="0"
+         stop-color="#fcf9fb"
+         id="stop3" />
+      <stop
+         offset="1"
+         stop-color="#fcf9fb"
+         stop-opacity="0"
+         id="stop4" />
+    </linearGradient>
+    <linearGradient
+       id="c">
+      <stop
+         offset="0"
+         stop-opacity=".63"
+         id="stop5" />
+      <stop
+         offset="1"
+         stop-opacity="0"
+         id="stop6" />
+    </linearGradient>
+    <linearGradient
+       xlink:href="#a"
+       id="f"
+       x1="14.660452"
+       x2="24.030643"
+       y1="7.0243196"
+       y2="34.826122"
+       gradientUnits="userSpaceOnUse" />
+    <radialGradient
+       xlink:href="#b"
+       id="e"
+       cx="24"
+       cy="22"
+       r="22"
+       fx="24"
+       fy="22"
+       gradientTransform="translate(-3.8,6.8)"
+       gradientUnits="userSpaceOnUse" />
+    <radialGradient
+       xlink:href="#c"
+       id="d"
+       cx="17.3125"
+       cy="25.53125"
+       r="9.6875"
+       fx="17.3125"
+       fy="25.53125"
+       gradientTransform="matrix(2.4,0,0,0.67,-17.1,22.4)"
+       gradientUnits="userSpaceOnUse" />
+  </defs>
+  <g
+     id="g9"
+     transform="matrix(-5.5176493,0,0,5.5176493,260.32952,3.3415399)">
+    <path
+       fill="url(#d)"
+       d="M 47,39.5 C 47,43.08967 36.702552,46 24,46 11.297449,46 1,43.08967 1,39.5 1,35.91 11.297449,32 24,32 c 12.702552,0 23,3.909969 23,7.5 z"
+       opacity="0.5"
+       id="path6"
+       style="fill:url(#d)" />
+    <path
+       id="path7"
+       style="display:inline;fill:url(#e)"
+       d="M 23.893864,2.8368241 17.4097,15.326221 2.5511304,17.368318 13.289399,27.369251 10.735096,41.47137 23.893864,34.894464 Z M 45.246509,17.371858 v 0.324951 l 0.304775,-0.282474 z" />
+    <path
+       fill="url(#f)"
+       d="m 17.731857,15.79089 6.331883,-12.2040705 6.305712,12.2079845 14.070696,1.966694 -3.619753,3.360009 c -16.4375,-3.6875 -9.455375,7.220474 -27.568647,9.243214 L 13.819799,27.184324 3.6604518,17.718688 Z"
+       opacity="0.8"
+       id="path8"
+       style="fill:url(#f)" />
+    <path
+       fill="none"
+       stroke="#ffffff"
+       d="M 35.973752,39.712833 24.028333,33.709386 12.082531,39.678326 14.362768,27.008543 4.7776396,18.070249 18.056076,16.247921 24.062792,4.6783526 l 5.98244,11.5773884 13.277727,1.857319 -9.609256,8.921725 z"
+       opacity="0.69"
+       id="path9"
+       style="display:inline;stroke:#ffaa38;stroke-opacity:1" />
+  </g>
+  <metadata
+     id="metadata9">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:source>https://commons.wikimedia.org/wiki/File:Emblem-star.svg</dc:source>
+        <cc:license
+           rdf:resource="http://creativecommons.org/publicdomain/zero/1.0/" />
+      </cc:Work>
+      <cc:License
+         rdf:about="http://creativecommons.org/publicdomain/zero/1.0/">
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Reproduction" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Distribution" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#DerivativeWorks" />
+      </cc:License>
+    </rdf:RDF>
+  </metadata>
+</svg>

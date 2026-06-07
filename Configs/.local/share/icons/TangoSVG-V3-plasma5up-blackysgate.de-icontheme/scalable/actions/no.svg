@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="256mm"
+   height="256mm"
+   viewBox="0 0 256 256"
+   version="1.1"
+   id="svg1"
+   inkscape:version="1.4.2 (ebf0e940d0, 2025-05-08)"
+   sodipodi:docname="no.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     inkscape:zoom="0.41638253"
+     inkscape:cx="567.98733"
+     inkscape:cy="786.53636"
+     inkscape:current-layer="svg1" />
+  <defs
+     id="defs1">
+    <linearGradient
+       id="light100to0">
+      <stop
+         style="stop-color:#ffffff;stop-opacity:0.79848868;"
+         offset="0"
+         id="stop2764" />
+      <stop
+         style="stop-color:#ffffff;stop-opacity:0.0000000;"
+         offset="1.0000000"
+         id="stop2765" />
+    </linearGradient>
+  </defs>
+  <metadata
+     id="metadata1">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <cc:license
+           rdf:resource="http://creativecommons.org/publicdomain/zero/1.0/" />
+      </cc:Work>
+      <cc:License
+         rdf:about="http://creativecommons.org/publicdomain/zero/1.0/">
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Reproduction" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Distribution" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#DerivativeWorks" />
+      </cc:License>
+    </rdf:RDF>
+  </metadata>
+  <g
+     id="g42"
+     style="display:inline"
+     transform="matrix(12.002964,0,0,12.002964,-310.35628,-313.33902)">
+    <rect
+       width="20"
+       height="19"
+       x="26.612129"
+       y="27.550642"
+       fill="#cc0000"
+       fill-rule="evenodd"
+       stroke="#a40000"
+       stroke-linecap="square"
+       stroke-linejoin="round"
+       overflow="visible"
+       rx="2.2097087"
+       ry="2.2097087"
+       style="marker:none"
+       id="rect40" />
+    <path
+       fill="none"
+       stroke="#ffffff"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="2.5673"
+       d="M 8,32 18,42 M 18,32 8,42"
+       overflow="visible"
+       style="marker:none"
+       transform="matrix(0.77903,0,0,0.77903,26.80797,8.226563)"
+       id="path40-3" />
+    <rect
+       width="18.09524"
+       height="17.190477"
+       x="27.56451"
+       y="28.455404"
+       fill="none"
+       stroke="#ffffff"
+       stroke-linecap="square"
+       stroke-linejoin="round"
+       stroke-width="1"
+       opacity="0.4"
+       overflow="visible"
+       rx="1.5847089"
+       ry="1.5847089"
+       style="marker:none"
+       id="rect41" />
+  </g>
+</svg>

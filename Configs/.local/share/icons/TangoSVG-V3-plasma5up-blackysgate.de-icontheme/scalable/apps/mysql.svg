@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="256mm"
+   height="256mm"
+   version="1.0"
+   id="svg17"
+   sodipodi:docname="Mysql.svg"
+   viewBox="0 0 256 256"
+   inkscape:version="1.4.2 (ebf0e940d0, 2025-05-08)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <title
+     id="title17">MySQL Dolphin</title>
+  <sodipodi:namedview
+     id="namedview17"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="0.57914556"
+     inkscape:cx="504.19103"
+     inkscape:cy="608.65527"
+     inkscape:current-layer="svg17"
+     inkscape:document-units="mm" />
+  <defs
+     id="defs8">
+    <linearGradient
+       id="d">
+      <stop
+         offset="0"
+         stop-color="#204a87"
+         id="stop1" />
+      <stop
+         offset="1"
+         stop-color="#204a87"
+         stop-opacity="0"
+         id="stop2" />
+    </linearGradient>
+    <linearGradient
+       id="b">
+      <stop
+         offset="0"
+         stop-color="#788492"
+         id="stop3" />
+      <stop
+         offset="1"
+         stop-color="#fafafa"
+         id="stop4" />
+    </linearGradient>
+    <linearGradient
+       id="a">
+      <stop
+         offset="0"
+         stop-color="#fff"
+         stop-opacity=".45038167"
+         id="stop5" />
+      <stop
+         offset="1"
+         stop-color="#fff"
+         stop-opacity=".31297711"
+         id="stop6" />
+    </linearGradient>
+    <linearGradient
+       id="c">
+      <stop
+         offset="0"
+         stop-color="#729fcf"
+         id="stop7" />
+      <stop
+         offset="1"
+         stop-color="#2b5582"
+         id="stop8" />
+    </linearGradient>
+    <linearGradient
+       xlink:href="#a"
+       id="i"
+       x1="29.425014"
+       x2="43.14069"
+       y1="33.593369"
+       y2="38.189564"
+       gradientTransform="matrix(0.52677,-0.05114,0.04765,0.43855,5.1133609,13.806931)"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       xlink:href="#b"
+       id="h"
+       x1="16.920895"
+       x2="14.717065"
+       y1="41.527054"
+       y2="27.556486"
+       gradientTransform="matrix(0.8366,0,0,0.8366,4.9233357,-1.8602252)"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       xlink:href="#a"
+       id="g"
+       x1="-5.2845793"
+       x2="33.728188"
+       y1="19.362175"
+       y2="66.499512"
+       gradientTransform="matrix(0.77282,0,0,0.80595,10.536664,7.348652)"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       xlink:href="#c"
+       id="e"
+       x1="32.169682"
+       x2="36.310467"
+       y1="32.340691"
+       y2="37.614323"
+       gradientTransform="matrix(0.7901,0.1057,-0.10927,0.84638,11.919591,-0.3069913)"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       xlink:href="#d"
+       id="f"
+       x1="6.1471162"
+       x2="36.000057"
+       y1="20.343424"
+       y2="20.343424"
+       gradientUnits="userSpaceOnUse" />
+    <filter
+       id="j"
+       width="1.3239908"
+       height="2.2595591"
+       x="-0.16199539"
+       y="-0.62977957">
+      <feGaussianBlur
+         stdDeviation="2.0642511"
+         id="feGaussianBlur8" />
+    </filter>
+  </defs>
+  <g
+     id="g17"
+     transform="matrix(4.5737966,0,0,4.5737966,13.079367,7.4798575)">
+    <path
+       fill-rule="evenodd"
+       d="m 35.443728,33.636894 a 15.291184,3.9332832 0 1 1 -30.5823684,0 15.291184,3.9332832 0 1 1 30.5823684,0 z"
+       color="#000000"
+       filter="url(#j)"
+       opacity="0.1"
+       overflow="visible"
+       style="marker:none"
+       transform="matrix(1.0773186,0,0,0.50848,3.0895133,26.896269)"
+       id="path16" />
+    <path
+       fill="url(#e)"
+       fill-rule="evenodd"
+       stroke="#204a87"
+       d="m 6.6676246,30.90865 c 1.4196243,0.435235 3.3221753,-2.075549 4.9329524,-2.380438 5.043771,-0.954689 9.668592,-1.730901 12.212303,-3.110482 6.739676,-3.655276 8.981341,4.721714 9.90382,5.353749 1.429455,1.246711 -2.945975,4.657339 -2.668663,7.434251 0.153929,1.541435 0.770428,2.294271 0.770428,2.294271 1.207073,-3.478729 5.022251,-2.051735 4.802578,-5.671545 2.896632,1.664138 3.518009,-0.986368 6.878955,-0.45828 -0.474978,-0.736309 -1.088029,-1.832978 -2.40599,-2.407817 -1.404805,-0.53637 -3.77944,-0.461521 -4.396152,-2.286075 C 36.585267,27.61255 36.615953,16.603433 31.722327,13.237847 31.007376,11.771876 31.77891,9.6830833 33.170333,8.2560043 34.428477,6.9656135 36.034571,5.7195176 35.602932,5.5395154 34.377429,5.3341227 31.119708,5.9211836 28.263943,7.4939122 26.774681,8.3140824 25.463318,9.4933323 24.533871,9.9346658 18.424358,8.7013389 12.31361,12.450218 8.8348943,19.166737 c -0.74386,1.436206 -0.6086648,2.966173 -1.0356766,4.69255 -0.3187295,1.288604 -1.7316111,3.69454 -2.2374735,5.247809 -0.3095466,0.950474 0.6207842,1.492197 1.1058804,1.801554 z"
+       id="path8"
+       style="fill:url(#e)" />
+    <path
+       fill="url(#f)"
+       fill-rule="evenodd"
+       d="m 7.4907331,30.459169 c 2.1282038,-6.164941 6.8741179,-7.298679 9.7253799,-10.23441 2.805483,-2.888599 12.67543,-6.058073 18.783478,3.011013 0.029,0.04306 -1.287524,-7.214902 -4.597831,-10.09837 -1.32539,-0.484919 -5.762314,-3.135783 -6.663816,-2.713079 -7.476021,-1.3893005 -15.8544416,4.733574 -16.4660687,13.605575 -0.1080157,1.566831 -1.9906676,3.865838 -2.1207878,5.578924 -0.072633,0.956291 0.8691303,0.554051 1.3396456,0.850347 z"
+       opacity="0.569231"
+       id="path9"
+       style="fill:url(#f)" />
+    <path
+       fill="none"
+       stroke="url(#g)"
+       stroke-width="0.797634"
+       d="m 7.7618546,29.756942 c 4.4901724,-3.236533 4.8237844,-1.977492 9.1673914,-3.200298 3.513114,-0.989008 5.218886,-1.193105 6.89728,-2.031254 7.105493,-3.548312 9.418587,4.405352 10.559378,5.729455 1.589701,1.531288 -0.61256,3.404738 -1.873527,5.99049 -0.647632,1.32803 -0.577187,2.31279 -0.577187,2.31279 1.102899,-1.630382 4.713921,-0.986192 3.73057,-5.49876 3.378514,2.709197 4.053924,0.45319 5.935422,0.466742 C 41.003561,32.742446 40.348493,32.713853 39.705015,32.555428 38.391662,32.041693 36.681235,32.22999 35.823134,30.090309 35.717882,28.113678 36.227713,18.14602 31.073539,13.813322 30.18796,12.705007 30.327611,10.863483 31.514044,8.766691 31.850131,8.1727224 34.987515,5.77281 33.762938,6.549984 32.992131,6.427582 30.180093,7.487585 27.510249,8.993935 26.117942,9.779477 25.539427,10.469405 24.67049,10.89211 18.422461,9.749361 12.778059,12.930086 9.49525,19.815571 c -0.5204004,1.091505 -0.6047193,3.260371 -0.9716387,4.533244 -0.3050548,1.058262 -1.7801421,3.666652 -1.9654299,4.846749 -0.1486683,0.946862 0.45345,0.99628 1.2036732,0.561378 z"
+       id="path10"
+       style="stroke:url(#g)" />
+    <path
+       fill="url(#h)"
+       fill-rule="evenodd"
+       d="m 14.297362,27.440857 c 5.380817,-0.668589 6.182903,-1.32873 9.580694,-2.892001 5.918488,-2.761537 7.994889,1.146656 9.426496,2.809879 0.144972,0.195829 0.42896,-2.081168 -1.138552,-3.08634 -6.30256,-2.95694 1.482669,-1.806285 1.057856,-2.892013 -0.488762,-1.249155 -5.182785,-1.174522 -6.113809,-0.85435 -3.346449,1.150823 -4.737119,1.847119 -6.438093,2.195885 -3.132724,0.595946 -3.768539,0.04618 -5.750259,2.518586 -1.892934,2.361629 -1.164294,2.267445 -0.624333,2.200354 z"
+       opacity="0.578652"
+       id="path11"
+       style="fill:url(#h)" />
+    <path
+       fill="#729fcf"
+       fill-rule="evenodd"
+       stroke="#204a87"
+       d="m 24.238722,24.729828 c 2.078446,0.942009 7.263136,3.943507 5.02691,4.697679 -7.684977,0.534541 -6.669859,-2.593273 -8.674803,-2.856225 -1.15243,-0.827065 2.544277,-2.166781 3.647893,-1.841454 z"
+       id="path12" />
+    <path
+       fill="none"
+       stroke="url(#i)"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       d="m 24.140276,25.747363 c 1.253685,0.603332 4.880501,2.446055 4.19943,2.859199 -2.183377,-0.03108 -4.383599,-0.614445 -4.667088,-0.858407 -0.7527,-0.64775 -1.243975,-1.227618 -1.72306,-1.571518 -0.118352,0.01973 1.384585,-0.655827 2.190718,-0.429274 z"
+       id="path13"
+       style="stroke:url(#i)" />
+    <path
+       fill="#2e3436"
+       fill-rule="evenodd"
+       d="m 18.516129,19.751402 c 0.215402,0.681776 -1.232306,0.9594 -2.215874,1.911278 -1.184005,1.145859 -2.00827,2.870617 -2.585519,2.189182 -0.753717,-2.197417 2.210608,-6.437578 4.801393,-4.10046 z"
+       opacity="0.488764"
+       id="path14" />
+    <path
+       fill="#eeeeec"
+       fill-rule="evenodd"
+       d="m 17.707715,20.479481 c 0.127608,0.403897 -0.73004,0.568367 -1.312724,1.132276 -0.701423,0.678826 -1.189732,1.700603 -1.531704,1.296908 -0.446516,-1.301787 1.309602,-3.81373 2.844428,-2.429184 z"
+       opacity="0.752809"
+       id="path15" />
+    <path
+       fill="#555753"
+       fill-rule="evenodd"
+       d="m 6.1290423,14.077453 a 0.80869311,0.80869311 0 1 1 -1.6173862,0 0.80869311,0.80869311 0 1 1 1.6173862,0 z"
+       color="#000000"
+       enable-background="accumulate"
+       opacity="0.588462"
+       overflow="visible"
+       style="marker:none"
+       transform="matrix(1.2341,0,0,1.2341,9.5121244,4.4290862)"
+       id="path17" />
+  </g>
+  <metadata
+     id="metadata17">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:title>MySQL Dolphin</dc:title>
+        <dc:source>https://commons.wikimedia.org/wiki/File:Mysql.svg</dc:source>
+        <cc:license
+           rdf:resource="http://creativecommons.org/publicdomain/zero/1.0/" />
+        <dc:creator>
+          <cc:Agent>
+            <dc:title>Rocket000</dc:title>
+          </cc:Agent>
+        </dc:creator>
+        <dc:date>13:16, 27 August 2008</dc:date>
+        <dc:relation>Databases</dc:relation>
+        <dc:description>Thank you Sir Rocket, nice work - Blackcrack</dc:description>
+      </cc:Work>
+      <cc:License
+         rdf:about="http://creativecommons.org/publicdomain/zero/1.0/">
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Reproduction" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Distribution" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#DerivativeWorks" />
+      </cc:License>
+    </rdf:RDF>
+  </metadata>
+</svg>

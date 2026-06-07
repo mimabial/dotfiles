@@ -1,0 +1,17 @@
+[Desktop Entry]
+Comment[de_DE]=
+Comment=
+Exec=kcmshell6 kcm_filetypes
+GenericName[de_DE]=
+GenericName=
+Icon=preferences-desktop-filetype-association
+MimeType=
+Name[de_DE]=Filetypes
+Name=Filetypes
+Path=
+StartupNotify=true
+Terminal=false
+TerminalOptions=
+Type=Application
+X-KDE-SubstituteUID=false
+X-KDE-Username=

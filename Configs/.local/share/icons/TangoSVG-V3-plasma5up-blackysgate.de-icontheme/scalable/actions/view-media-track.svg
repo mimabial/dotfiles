@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="256"
+   height="256"
+   version="1.1"
+   id="svg8"
+   sodipodi:docname="audio-x-generic.svg"
+   viewBox="0 0 256 256"
+   inkscape:version="1.4.2 (ebf0e940d0, 2025-05-08)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <sodipodi:namedview
+     id="namedview8"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="3.064931"
+     inkscape:cx="168.19302"
+     inkscape:cy="175.37099"
+     inkscape:current-layer="svg8" />
+  <defs
+     id="defs4">
+    <radialGradient
+       xlink:href="#a"
+       id="d"
+       cx="4.3920336"
+       cy="32.307854"
+       r="6.375"
+       fx="4.3920336"
+       fy="32.307854"
+       gradientTransform="matrix(1,0,0,0.5098,0,16.05392)"
+       gradientUnits="userSpaceOnUse" />
+    <radialGradient
+       xlink:href="#a"
+       id="e"
+       cx="4.3920336"
+       cy="32.307854"
+       r="6.375"
+       fx="4.3920336"
+       fy="32.307854"
+       gradientTransform="matrix(1,0,0,0.5098,0,16.05392)"
+       gradientUnits="userSpaceOnUse" />
+    <radialGradient
+       xlink:href="#b"
+       id="c"
+       cx="23.25"
+       cy="35.375"
+       r="18.5"
+       fx="23.25"
+       fy="35.375"
+       gradientTransform="matrix(1,0,0,0.39865,0,21.2728)"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       id="b">
+      <stop
+         offset="0"
+         id="stop1" />
+      <stop
+         offset="1"
+         stop-opacity="0"
+         id="stop2" />
+    </linearGradient>
+    <linearGradient
+       id="a">
+      <stop
+         offset="0"
+         stop-color="#fff"
+         id="stop3" />
+      <stop
+         offset="1"
+         stop-color="#fff"
+         stop-opacity="0"
+         id="stop4" />
+    </linearGradient>
+  </defs>
+  <g
+     color="#000000"
+     id="g8"
+     transform="matrix(6.4961611,0,0,6.4961611,-25.147438,-40.095369)">
+    <path
+       fill="url(#c)"
+       fill-rule="evenodd"
+       d="m 41.75,35.375 a 18.5,7.375 0 1 1 -37,0 18.5,7.375 0 1 1 37,0 z"
+       opacity="0.3"
+       overflow="visible"
+       style="fill:url(#c);marker:none"
+       transform="translate(0,2.834646)"
+       id="path4" />
+    <path
+       fill="#9db029"
+       stroke="#596616"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       d="M 41.625,7.7951523 18.5625,10.629798 v 21.78125 c -1.645955,-0.557651 -3.931785,-0.703429 -6.4375,-0.1875 -4.356314,0.896969 -7.4778602,3.299487 -7,5.34375 0.4778601,2.044263 4.393685,2.99072 8.75,2.09375 4.116641,-0.84762 7.684123,-3.037802 7.602633,-5 l 0.15625,-19.03125 16.930457,-2.895306 v 17.284614 c -10.25,-1.5 -13.292201,2.893236 -12.81434,4.9375 0.47786,2.044263 4.393686,2.990719 8.75,2.09375 3.865376,-0.795885 6.63241,-2.763211 6.90625,-4.625 z"
+       display="block"
+       style="marker:none"
+       id="path5" />
+    <path
+       fill="none"
+       stroke="#ffffff"
+       d="M 40.729036,8.8956383 19.547267,11.730284 V 33.568621 C 11.982012,31.663311 5.8141632,35.40303 6.2685944,37.347065 6.9730255,40.6661 20.646969,38.449299 20.569474,34.208305 l 0.148589,-19.473166 18.850374,-2.892332 v 19.437166 c -7.566284,-1.926647 -13.265498,1.376384 -12.811066,3.32042 0.579431,3.194035 12.378226,2.113362 13.76364,-2.657146 z"
+       display="block"
+       opacity="0.511765"
+       style="marker:none"
+       id="path6" />
+    <path
+       fill="url(#d)"
+       d="m 12.25,32.75 a 6.375,3.25 0 1 1 -12.75,0 6.375,3.25 0 1 1 12.75,0 z"
+       display="block"
+       opacity="0.511765"
+       overflow="visible"
+       style="fill:url(#d);marker:none"
+       transform="matrix(0.73452,-0.11164,0.11164,0.73452,3.903362,12.22551)"
+       id="path7" />
+    <path
+       fill="url(#e)"
+       d="m 12.25,32.75 a 6.375,3.25 0 1 1 -12.75,0 6.375,3.25 0 1 1 12.75,0 z"
+       display="block"
+       opacity="0.511765"
+       overflow="visible"
+       style="fill:url(#e);marker:none"
+       transform="matrix(0.73452,-0.11164,0.11164,0.73452,23.74587,9.390864)"
+       id="path8" />
+  </g>
+  <metadata
+     id="metadata8">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:source>https://commons.wikimedia.org/wiki/File:Audio-x-generic.svg</dc:source>
+        <cc:license
+           rdf:resource="http://creativecommons.org/publicdomain/zero/1.0/" />
+      </cc:Work>
+      <cc:License
+         rdf:about="http://creativecommons.org/publicdomain/zero/1.0/">
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Reproduction" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Distribution" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#DerivativeWorks" />
+      </cc:License>
+    </rdf:RDF>
+  </metadata>
+</svg>

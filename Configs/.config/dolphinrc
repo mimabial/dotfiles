@@ -4,7 +4,8 @@ MenuBar=Disabled
 update_info=dolphin_detailsmodesettings.upd:rename-leading-padding
 
 [DetailsMode]
-LeftPadding=0
+IconSize=32
+LeftPadding=38
 PreviewSize=32
 
 [General]

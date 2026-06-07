@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="256"
+   height="256"
+   version="1.1"
+   id="svg9"
+   sodipodi:docname="go-up.svg"
+   viewBox="0 0 256 256"
+   inkscape:version="1.4.2 (ebf0e940d0, 2025-05-08)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <sodipodi:namedview
+     id="namedview9"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="3.3508215"
+     inkscape:cx="149.66479"
+     inkscape:cy="151.75383"
+     inkscape:current-layer="svg9" />
+  <defs
+     id="defs6">
+    <linearGradient
+       id="b">
+      <stop
+         offset="0"
+         stop-color="#73d216"
+         id="stop1" />
+      <stop
+         offset="1"
+         stop-color="#4e9a06"
+         id="stop2" />
+    </linearGradient>
+    <linearGradient
+       id="c">
+      <stop
+         offset="0"
+         id="stop3" />
+      <stop
+         offset="1"
+         stop-opacity="0"
+         id="stop4" />
+    </linearGradient>
+    <linearGradient
+       id="a">
+      <stop
+         offset="0"
+         stop-color="#fff"
+         id="stop5" />
+      <stop
+         offset="1"
+         stop-color="#fff"
+         stop-opacity="0"
+         id="stop6" />
+    </linearGradient>
+    <radialGradient
+       id="f"
+       cx="24.538"
+       cy="0.40000001"
+       r="17.171"
+       fx="24.538"
+       fy="0.40000001"
+       gradientTransform="matrix(0,-2.04673,1.55761,0,2.767,66.933)"
+       gradientUnits="userSpaceOnUse"
+       xlink:href="#a" />
+    <radialGradient
+       id="e"
+       cx="11.319"
+       cy="22.455"
+       r="16.955999"
+       fx="11.319"
+       fy="22.455"
+       gradientTransform="matrix(0,-0.84302,1.02017,0,0.606,42.586)"
+       gradientUnits="userSpaceOnUse"
+       xlink:href="#b" />
+    <radialGradient
+       id="d"
+       cx="24.837"
+       cy="36.421001"
+       r="15.645"
+       fx="24.837"
+       fy="36.421001"
+       gradientTransform="matrix(1,0,0,0.53672,0,16.873)"
+       gradientUnits="userSpaceOnUse"
+       xlink:href="#c" />
+  </defs>
+  <g
+     color="#000000"
+     id="g9"
+     transform="matrix(6.324678,0,0,6.324678,-24.057077,-16.771016)">
+    <path
+       fill="url(#d)"
+       fill-rule="evenodd"
+       d="m 40.481863,36.421127 a 15.644737,8.3968943 0 1 1 -31.2894745,0 15.644737,8.3968943 0 1 1 31.2894745,0 z"
+       opacity="0.299"
+       style="fill:url(#d);marker:none"
+       transform="matrix(1.21447,0,0,0.59546,-6.164,16.313)"
+       id="path6" />
+    <path
+       fill="url(#e)"
+       fill-rule="evenodd"
+       stroke="#3a7304"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-miterlimit="10"
+       d="M 14.491792,38.5 H 32.469477 V 25.547437 H 40.5 L 23.374809,5.4992135 6.5285585,25.489471 l 7.9685375,0.06629 z"
+       style="fill:url(#e);marker:none"
+       id="path7" />
+    <path
+       fill="url(#f)"
+       fill-rule="evenodd"
+       d="m 7.5855237,25.03253 h 7.4102973 l 0.0666,6.561809 c 5.655612,-11.000461 15.993095,-8.844411 16.594346,-15.627665 0,0 -8.28983,-9.5447048 -8.28983,-9.5447048 z"
+       opacity="0.508"
+       style="fill:url(#f);marker:none"
+       id="path8" />
+    <path
+       fill="none"
+       stroke="#ffffff"
+       stroke-miterlimit="10"
+       d="M 15.602735,37.5 H 31.502578 V 24.50705 h 6.808998 L 23.361206,7.0700896 8.6546798,24.55047 15.475049,24.52837 Z"
+       opacity="0.481"
+       style="marker:none"
+       id="path9" />
+  </g>
+  <metadata
+     id="metadata9">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:source>https://commons.wikimedia.org/wiki/File:Go-up.svg</dc:source>
+        <cc:license
+           rdf:resource="http://creativecommons.org/publicdomain/zero/1.0/" />
+      </cc:Work>
+      <cc:License
+         rdf:about="http://creativecommons.org/publicdomain/zero/1.0/">
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Reproduction" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Distribution" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#DerivativeWorks" />
+      </cc:License>
+    </rdf:RDF>
+  </metadata>
+</svg>

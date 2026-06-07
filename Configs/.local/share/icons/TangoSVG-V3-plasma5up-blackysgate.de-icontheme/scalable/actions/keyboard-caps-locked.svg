@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="256mm"
+   height="256mm"
+   viewBox="0 0 256 256"
+   version="1.1"
+   id="svg1"
+   inkscape:version="1.3.2 (091e20ef0f, 2023-11-25)"
+   sodipodi:docname="keyboard-caps-locked.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <defs
+     id="defs1" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.3"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="0.98994949"
+     inkscape:cx="505.07627"
+     inkscape:cy="476.792"
+     inkscape:document-units="mm"
+     inkscape:showpageshadow="2"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:current-layer="svg1"
+     showguides="true">
+    <sodipodi:guide
+       position="120.00744,24.300594"
+       orientation="0,-1"
+       id="guide8"
+       inkscape:locked="false" />
+  </sodipodi:namedview>
+  <metadata
+     id="metadata1">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <cc:license
+           rdf:resource="http://creativecommons.org/publicdomain/zero/1.0/" />
+      </cc:Work>
+      <cc:License
+         rdf:about="http://creativecommons.org/publicdomain/zero/1.0/">
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Reproduction" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Distribution" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#DerivativeWorks" />
+      </cc:License>
+    </rdf:RDF>
+  </metadata>
+  <g
+     id="rect1"
+     transform="translate(0,3.2072343)">
+    <path
+       id="path7"
+       style="color:#000000;fill:#ff3357;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:2.1;stroke:#259eff;stroke-opacity:1;stroke-width:7.3;stroke-dasharray:none;fill-opacity:1"
+       d="M 127.75396 1.0447025 C 126.36931 1.0450669 125.03834 1.5803107 124.03894 2.5386682 L 45.460791 77.909778 C 41.969761 81.258743 44.340227 87.154095 49.177877 87.154175 L 81.49425 87.154175 L 81.49425 198.04663 L 81.49425 209.21546 L 174.55059 209.21546 L 174.55059 198.84762 L 174.55059 86.656014 L 206.69643 86.886491 C 213.58136 87.051504 215.96932 80.948829 212.41391 77.605404 L 132.49992 2.5019779 C 131.50464 1.5663511 130.19019 1.045224 128.82418 1.0447025 L 127.75396 1.0447025 z M 81.49425 218.66501 L 81.49425 228.50782 C 81.49425 237.9456 82.733071 248.80477 96.260274 248.80477 L 165.5377 248.85128 C 174.57111 247.93544 174.55053 240.98783 174.55059 228.17451 L 174.55059 218.66501 L 81.49425 218.66501 z " />
+  </g>
+</svg>

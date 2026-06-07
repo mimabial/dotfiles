@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="256mm"
+   height="256mm"
+   viewBox="0 0 256 256"
+   version="1.1"
+   id="svg1"
+   inkscape:version="1.4 (e7c3feb100, 2024-10-09)"
+   sodipodi:docname="labplot-xy-plot-two-axes.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     inkscape:zoom="0.64275042"
+     inkscape:cx="308.05114"
+     inkscape:cy="493.19299"
+     inkscape:current-layer="svg1" />
+  <defs
+     id="defs1" />
+  <g
+     id="g14"
+     transform="matrix(1.1644875,0,0,1.1644875,-21.709874,-17.303482)">
+    <rect
+       style="fill:#f9f9f9;fill-opacity:1;stroke:#000000;stroke-width:1.54574437;stroke-opacity:1;stroke-dasharray:none"
+       id="rect1"
+       width="217.72421"
+       height="217.72421"
+       x="19.502033"
+       y="15.718058"
+       inkscape:label="bg" />
+    <g
+       id="g13"
+       style="fill:#679200;fill-opacity:1">
+      <path
+         id="rect3"
+         style="fill:#679200;fill-opacity:1;stroke:#000000;stroke-width:0"
+         d="M 25.614613,33.182564 H 234.89763 v 2.328601 H 25.614613 Z" />
+      <path
+         id="path3"
+         style="fill:#679200;fill-opacity:1;stroke:#000000;stroke-width:0"
+         d="M 25.614613,48.609546 H 234.89763 v 2.328601 H 25.614613 Z" />
+      <path
+         id="path4"
+         style="fill:#679200;fill-opacity:1;stroke:#000000;stroke-width:0"
+         d="M 25.614613,65.200829 H 234.89763 V 67.52943 H 25.614613 Z" />
+      <path
+         id="path5"
+         style="fill:#679200;fill-opacity:1;stroke:#000000;stroke-width:0"
+         d="M 25.614613,82.665338 H 234.89763 v 2.328601 H 25.614613 Z" />
+      <path
+         id="path6"
+         style="fill:#679200;fill-opacity:1;stroke:#000000;stroke-width:0"
+         d="M 25.614613,98.09232 H 234.89763 v 2.3286 H 25.614613 Z" />
+      <path
+         id="path7"
+         style="fill:#679200;fill-opacity:1;stroke:#000000;stroke-width:0"
+         d="M 25.614613,114.6836 H 234.89763 v 2.3286 H 25.614613 Z" />
+      <path
+         id="path8"
+         style="fill:#679200;fill-opacity:1;stroke:#000000;stroke-width:0"
+         d="M 25.614613,132.43919 H 234.89763 v 2.3286 H 25.614613 Z" />
+      <path
+         id="path9"
+         style="fill:#679200;fill-opacity:1;stroke:#000000;stroke-width:0"
+         d="M 25.614613,147.86617 H 234.89763 v 2.3286 H 25.614613 Z" />
+      <path
+         id="path10"
+         style="fill:#679200;fill-opacity:1;stroke:#000000;stroke-width:0"
+         d="M 25.614613,164.45745 H 234.89763 v 2.3286 H 25.614613 Z" />
+      <path
+         id="path11"
+         style="fill:#679200;fill-opacity:1;stroke:#000000;stroke-width:0"
+         d="M 25.614613,179.30229 H 234.89763 v 2.3286 H 25.614613 Z" />
+      <path
+         id="path12"
+         style="fill:#679200;fill-opacity:1;stroke:#000000;stroke-width:0"
+         d="M 25.614613,194.72927 H 234.89763 v 2.3286 H 25.614613 Z" />
+      <path
+         id="path13"
+         style="fill:#679200;fill-opacity:1;stroke:#000000;stroke-width:0"
+         d="M 25.614613,211.32055 H 234.89763 v 2.3286 H 25.614613 Z" />
+    </g>
+    <path
+       id="rect2"
+       style="fill:#005edc;stroke:#000000;stroke-width:0"
+       d="M 20.957377,20.666439 V 230.53167 h 0.290938 v 2.32854 H 234.31541 v -6.69469 H 27.361121 V 20.666439 Z"
+       inkscape:label="yz" />
+    <path
+       id="rect13"
+       style="color:#000000;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:medium;line-height:normal;font-family:sans-serif;font-variant-ligatures:normal;font-variant-position:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-alternates:normal;font-variant-east-asian:normal;font-feature-settings:normal;font-variation-settings:normal;text-indent:0;text-align:start;text-decoration-line:none;text-decoration-style:solid;text-decoration-color:#000000;letter-spacing:normal;word-spacing:normal;text-transform:none;writing-mode:lr-tb;direction:ltr;text-orientation:mixed;dominant-baseline:auto;baseline-shift:baseline;text-anchor:start;white-space:normal;shape-padding:0;shape-margin:0;inline-size:0;clip-rule:nonzero;display:inline;overflow:visible;visibility:visible;isolation:auto;mix-blend-mode:normal;color-interpolation:sRGB;color-interpolation-filters:linearRGB;solid-color:#000000;solid-opacity:1;vector-effect:none;fill:#008fff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1.29633;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;-inkscape-stroke:none;color-rendering:auto;image-rendering:auto;shape-rendering:auto;text-rendering:auto;enable-background:accumulate;stop-color:#000000;stop-opacity:1"
+       d="M 30.101942,113.37454 H 79.486893 L 98.494803,66.585831 132.73735,179.78432 156.57978,29.230327 173.63031,113.37454 h 48.62854 v 9.43321 H 167.59306 L 156.57978,73.755072 135.00132,217.89449 98.494803,92.621487 84.76949,122.80775 H 30.101942 Z"
+       sodipodi:nodetypes="ccccccccccccccc" />
+  </g>
+  <metadata
+     id="metadata1">
+    <rdf:RDF>
+      <cc:License
+         rdf:about="http://creativecommons.org/publicdomain/zero/1.0/">
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Reproduction" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Distribution" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#DerivativeWorks" />
+      </cc:License>
+      <cc:Work
+         rdf:about="">
+        <cc:license
+           rdf:resource="http://creativecommons.org/publicdomain/zero/1.0/" />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <ellipse
+     style="fill:#003fff;fill-opacity:1;stroke:#000000;stroke-width:0"
+     id="path1"
+     cx="236.69438"
+     cy="234.43036"
+     rx="5.7629933"
+     ry="6.3804574" />
+  <ellipse
+     style="fill:#ff4a00;fill-opacity:1;stroke:#000000;stroke-width:0"
+     id="ellipse1"
+     cx="236.69438"
+     cy="215.90645"
+     rx="5.7629933"
+     ry="6.3804574" />
+</svg>

@@ -1,0 +1,352 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<!-- Based on Image:Flag-jp.svg -->
+
+<svg
+   version="1.0"
+   width="48"
+   height="48"
+   id="svg2488"
+   inkscape:version="1.4.2 (ebf0e940d0, 2025-05-08)"
+   sodipodi:docname="flag-fr.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <metadata
+     id="metadata75">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:source>https://commons.wikimedia.org/wiki/File:Flag-fr.svg</dc:source>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="1920"
+     inkscape:window-height="1017"
+     id="namedview73"
+     showgrid="false"
+     inkscape:zoom="9.40749"
+     inkscape:cx="4.7834226"
+     inkscape:cy="23.651367"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg2488"
+     inkscape:showpageshadow="2"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1" />
+  <defs
+     id="defs2491">
+    <linearGradient
+       id="linearGradient4583">
+      <stop
+         id="stop4567"
+         offset="0"
+         style="stop-color:#3465a4;stop-opacity:1" />
+      <stop
+         id="stop4569"
+         offset="0.19283746"
+         style="stop-color:#729fcf;stop-opacity:1" />
+      <stop
+         id="stop4571"
+         offset="0.34"
+         style="stop-color:#3465a4;stop-opacity:1" />
+      <stop
+         id="stop4573"
+         offset="0.34"
+         style="stop-color:#e3e5e1;stop-opacity:1" />
+      <stop
+         id="stop4575"
+         offset="0.67000002"
+         style="stop-color:#d3d7cf;stop-opacity:1;" />
+      <stop
+         style="stop-color:#d74949;stop-opacity:1;"
+         offset="0.67000002"
+         id="stop4577" />
+      <stop
+         style="stop-color:#cc0000;stop-opacity:1;"
+         offset="0.81818181"
+         id="stop4579" />
+      <stop
+         id="stop4581"
+         offset="1"
+         style="stop-color:#cc0000;stop-opacity:1;" />
+    </linearGradient>
+    <linearGradient
+       id="lg_blackfade">
+      <stop
+         style="stop-color:black;stop-opacity:1"
+         offset="0"
+         id="stop5062" />
+      <stop
+         style="stop-color:black;stop-opacity:0"
+         offset="1"
+         id="stop5064" />
+    </linearGradient>
+    <linearGradient
+       id="lg_blackglow">
+      <stop
+         style="stop-color:black;stop-opacity:0"
+         offset="0"
+         id="stop5050" />
+      <stop
+         style="stop-color:black;stop-opacity:1"
+         offset="0.5"
+         id="stop5056" />
+      <stop
+         style="stop-color:black;stop-opacity:0"
+         offset="1"
+         id="stop5052" />
+    </linearGradient>
+    <linearGradient
+       id="lg_flagborder">
+      <stop
+         style="stop-color:white;stop-opacity:1"
+         offset="0"
+         id="stop3291" />
+      <stop
+         style="stop-color:white;stop-opacity:0.53389829"
+         offset="1"
+         id="stop3293" />
+    </linearGradient>
+    <linearGradient
+       id="lg_flagbluewhite">
+      <stop
+         style="stop-color:#3465a4;stop-opacity:1"
+         offset="0"
+         id="stop15" />
+      <stop
+         style="stop-color:#729fcf;stop-opacity:1"
+         offset="0.19283746"
+         id="stop17" />
+      <stop
+         style="stop-color:#3465a4;stop-opacity:1"
+         offset="0.34"
+         id="stop19" />
+      <stop
+         style="stop-color:#e3e5e1;stop-opacity:1"
+         offset="0.34"
+         id="stop21" />
+      <stop
+         style="stop-color:#d3d7cf;stop-opacity:1;"
+         offset="0.67000002"
+         id="stop23" />
+      <stop
+         id="stop3826"
+         offset="0.67000002"
+         style="stop-color:#d74949;stop-opacity:1;" />
+      <stop
+         id="stop3824"
+         offset="0.81818181"
+         style="stop-color:#cc0000;stop-opacity:1;" />
+      <stop
+         style="stop-color:#cc0000;stop-opacity:1;"
+         offset="1"
+         id="stop25" />
+    </linearGradient>
+    <linearGradient
+       id="lg_flagwhite">
+      <stop
+         style="stop-color:#d3d7cf;stop-opacity:1"
+         offset="0"
+         id="stop28" />
+      <stop
+         style="stop-color:#eeeeec;stop-opacity:1"
+         offset="0.19283746"
+         id="stop30" />
+      <stop
+         style="stop-color:#d3d7cf;stop-opacity:1"
+         offset="0.63636363"
+         id="stop32" />
+      <stop
+         style="stop-color:#d3d7cf;stop-opacity:1"
+         offset="1"
+         id="stop34" />
+    </linearGradient>
+    <linearGradient
+       id="lg_flagred">
+      <stop
+         style="stop-color:#cc0000;stop-opacity:1"
+         offset="0"
+         id="stop37" />
+      <stop
+         style="stop-color:#ef2929;stop-opacity:1"
+         offset="0.19283746"
+         id="stop39" />
+      <stop
+         style="stop-color:#cc0000;stop-opacity:1"
+         offset="0.63636363"
+         id="stop41" />
+      <stop
+         style="stop-color:#cc0000;stop-opacity:1"
+         offset="1"
+         id="stop43" />
+    </linearGradient>
+    <linearGradient
+       id="lg_flagblue">
+      <stop
+         style="stop-color:#204a87;stop-opacity:1"
+         offset="0"
+         id="stop46" />
+      <stop
+         style="stop-color:#3465a4;stop-opacity:1"
+         offset="0.19283746"
+         id="stop48" />
+      <stop
+         style="stop-color:#204a87;stop-opacity:1"
+         offset="0.63636363"
+         id="stop50" />
+      <stop
+         style="stop-color:#204a87;stop-opacity:1"
+         offset="1"
+         id="stop52" />
+    </linearGradient>
+    <linearGradient
+       x1="302.85715"
+       y1="366.64789"
+       x2="302.85715"
+       y2="609.50507"
+       id="ld_blackglow"
+       xlink:href="#lg_blackglow"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(3.781761,0,0,1.969706,-2104.846,-856.0366)" />
+    <radialGradient
+       cx="605.71429"
+       cy="486.64789"
+       r="117.14286"
+       fx="605.71429"
+       fy="486.64789"
+       id="lr_black1"
+       xlink:href="#lg_blackfade"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(2.03716,0,0,1.969706,-1052.701,-856.2756)" />
+    <radialGradient
+       cx="605.71429"
+       cy="486.64789"
+       r="117.14286"
+       fx="605.71429"
+       fy="486.64789"
+       id="lr_black2"
+       xlink:href="#lg_blackfade"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(-2.03716,0,0,2.018058,-423.3185,-879.5624)" />
+    <linearGradient
+       x1="36.880539"
+       y1="20.811714"
+       x2="23.073864"
+       y2="43.531128"
+       id="ld_flagborder"
+       xlink:href="#lg_flagborder"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(1.285742,0,0,1.285742,-13.28717,-14.93762)" />
+    <linearGradient
+       x1="11.002116"
+       y1="29.756582"
+       x2="46.998974"
+       y2="29.756582"
+       id="ld_flagbluewhite"
+       xlink:href="#lg_flagbluewhite"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(1.285742,0,0,1.4154225,-13.28717,-16.9657)" />
+    <linearGradient
+       x1="11.002116"
+       y1="29.756582"
+       x2="46.998974"
+       y2="29.756582"
+       id="ld_flagwhite"
+       xlink:href="#lg_flagwhite"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(1.285742,0,0,1.285742,-13.28717,-14.93762)" />
+    <linearGradient
+       x1="11.002116"
+       y1="29.756582"
+       x2="46.998974"
+       y2="29.756582"
+       id="ld_flagred"
+       xlink:href="#lg_flagred"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(1.285742,0,0,1.285742,-13.28717,-14.93762)" />
+    <linearGradient
+       x1="11.002116"
+       y1="29.756582"
+       x2="46.998974"
+       y2="29.756582"
+       id="ld_flagblue"
+       xlink:href="#lg_flagblue"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(1.285742,0,0,1.285742,-13.28717,-14.93762)" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient4583"
+       id="linearGradient3828"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(1.285742,0,0,1.3384629,-13.28717,-17.250704)"
+       x1="11.002116"
+       y1="29.756582"
+       x2="46.998974"
+       y2="29.756582" />
+  </defs>
+  <g
+     transform="matrix(1.971468e-2,0,0,3.343226e-2,-22.45038,36.48228)"
+     id="FlagShadow">
+    <g
+       transform="translate(0,-59.82244)"
+       id="g2623">
+      <g
+         transform="matrix(1.043479,0,0,1,3126.228,-59.82246)"
+         id="g3518">
+        <rect
+           width="1826.0504"
+           height="478.35718"
+           x="-1651.0347"
+           y="-133.84804"
+           style="opacity:0.40206185;color:black;fill:url(#ld_blackglow);fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;stroke-linecap:round;stroke-linejoin:miter;marker:none;marker-start:none;marker-mid:none;marker-end:none;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;visibility:visible;display:inline;overflow:visible"
+           id="rect6709" />
+        <path
+           d="M 175.01578,-134.07052 C 175.01578,-134.07052 175.01578,344.26027 175.01578,344.26027 C 279.92447,345.16072 428.63395,237.09061 428.63389,105.06409 C 428.63389,-26.962449 311.56369,-134.0705 175.01578,-134.07052 z "
+           style="opacity:0.40206185;color:black;fill:url(#lr_black1);fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;stroke-linecap:round;stroke-linejoin:miter;marker:none;marker-start:none;marker-mid:none;marker-end:none;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;visibility:visible;display:inline;overflow:visible"
+           id="path6711" />
+        <path
+           d="M -1651.0346,-133.82723 C -1651.0346,-133.82723 -1651.0346,344.50356 -1651.0346,344.50356 C -1755.9433,345.40401 -1904.6528,237.3339 -1904.6528,105.30739 C -1904.6528,-26.719152 -1787.5825,-133.82721 -1651.0346,-133.82723 z "
+           style="opacity:0.40206185;color:black;fill:url(#lr_black2);fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;stroke-linecap:round;stroke-linejoin:miter;marker:none;marker-start:none;marker-mid:none;marker-end:none;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;visibility:visible;display:inline;overflow:visible"
+           id="path6713" />
+      </g>
+    </g>
+  </g>
+  <path
+     d="m 1.501585,8.7375001 c 11.806124,-9.25790765 32.968045,2.7523499 44.996925,0 l 0,17.7651729 c -11.58337,4.253634 -31.631503,-9.007693 -44.996925,0 l 0,-17.7651729 z"
+     style="color:#000000;fill:url(#ld_flagbluewhite);fill-opacity:1;fill-rule:evenodd;stroke:none;marker:none;visibility:visible;display:block;overflow:visible"
+     id="FlagWhite"
+     inkscape:connector-curvature="0" />
+  <path
+     d="m 1.501585,23.854201 c 13.365422,-8.517926 33.413555,4.022354 44.996925,0 l 0,16.799242 c -11.58337,4.022354 -31.631503,-8.517926 -44.996925,0 l 0,-16.799242 z"
+     style="color:#000000;fill:url(#linearGradient3828);fill-opacity:1;fill-rule:evenodd;stroke:none;marker:none;visibility:visible;display:block;overflow:visible"
+     id="FlagRed"
+     inkscape:connector-curvature="0" />
+  <path
+     d="M 1.501585,8.4106625 C 13.307709,0.00096089264 34.46963,10.910843 46.49851,8.4106625 L 46.49851,40.685732 C 34.91514,44.549649 14.867007,32.50332 1.501585,40.685732 L 1.501585,8.4106625 z "
+     style="color:black;fill:none;stroke:#8a8d87;stroke-width:1.00000024;stroke-linecap:butt;stroke-linejoin:miter;marker:none;marker-start:none;marker-mid:none;marker-end:none;stroke-miterlimit:4;stroke-dashoffset:0;stroke-opacity:1;visibility:visible;display:block;overflow:visible"
+     id="FlagThickBorder" />
+  <path
+     d="M 2.420005,8.9831044 C 12.676559,1.6180695 33.7097,11.483286 45.54106,9.6259754 L 45.53501,39.959195 C 36.64789,43.028447 15.874652,32.449287 2.500364,39.087261 L 2.420005,8.9831044 z "
+     style="opacity:0.62921346;color:black;fill:none;fill-opacity:1;fill-rule:evenodd;stroke:url(#ld_flagborder);stroke-width:1.00000072;stroke-linecap:butt;stroke-linejoin:miter;marker:none;marker-start:none;marker-mid:none;marker-end:none;stroke-miterlimit:4;stroke-dashoffset:0;stroke-opacity:1;visibility:visible;display:block;overflow:visible"
+     id="FlagBorder" />
+</svg>
