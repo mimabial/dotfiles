@@ -14,7 +14,7 @@ general {
     gaps_out = 10
     border_size = 3
     col.active_border = rgba(d9d9d9ff)
-    col.inactive_border = rgba(404040cc)
+    col.inactive_border = rgba(a6a6a6cc)
     layout = dwindle
     resize_on_border = true
 }

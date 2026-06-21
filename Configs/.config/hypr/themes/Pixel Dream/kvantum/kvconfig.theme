@@ -65,12 +65,12 @@ submenu_delay=250
 [GeneralColors]
 window.color=#232323
 base.color=#232323
-alt.base.color=#232323
+alt.base.color=#2E2E2E
 button.color=#2E2E2E
 light.color=#504945
 mid.light.color=#3F3F3F
 dark.color=#1D2021
-mid.color=##202324
+mid.color=#202324
 highlight.color=#665C54CC
 inactive.highlight.color=#665C54BB
 text.color=#EBDBB2

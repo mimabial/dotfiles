@@ -3,6 +3,7 @@
 set -euo pipefail
 
 FONT_EXT_REGEX='\.(ttf|otf|ttc|otb|pfa|pfb|woff2?)$'
+LOCAL_FONT_ROOT="${XDG_DATA_HOME:-$HOME/.local/share}/fonts"
 SEARCH_ROOTS=(
   "${XDG_CONFIG_HOME:-$HOME/.config}/hypr"
   "${XDG_CONFIG_HOME:-$HOME/.config}/rofi"
@@ -13,7 +14,12 @@ SEARCH_ROOTS=(
   "${XDG_CONFIG_HOME:-$HOME/.config}/wlogout"
   "${XDG_CONFIG_HOME:-$HOME/.config}/kitty"
   "${XDG_CONFIG_HOME:-$HOME/.config}/alacritty"
-  "${XDG_CONFIG_HOME:-$HOME/.config}/qutebrowser"
+  "${XDG_CONFIG_HOME:-$HOME/.config}/fontconfig"
+  "${XDG_CONFIG_HOME:-$HOME/.config}/gtk-3.0"
+  "${XDG_CONFIG_HOME:-$HOME/.config}/gtk-4.0"
+  "${XDG_CONFIG_HOME:-$HOME/.config}/Kvantum"
+  "${XDG_CONFIG_HOME:-$HOME/.config}/nvim"
+  "${XDG_CONFIG_HOME:-$HOME/.config}/tmux"
   "${XDG_CONFIG_HOME:-$HOME/.config}/wal"
   "${XDG_CONFIG_HOME:-$HOME/.config}/satty"
   "${LIB_DIR:-$HOME/.local/lib}/hypr"
@@ -37,6 +43,8 @@ GSETTINGS_FONT_KEYS=(
 )
 SKIP_PACKAGES_REGEX='^(fontconfig|lib32-fontconfig|libfontenc|libxfont2|xorg-fonts-encodings)$'
 declare -gA PACKAGE_FAMILY_CACHE=()
+declare -gA LOCAL_FAMILY_FILES=()
+declare -gA LOCAL_FILE_FAMILIES=()
 
 require_cmd() {
   local cmd="$1"
@@ -58,10 +66,20 @@ collect_search_roots() {
 }
 
 build_rg_args() {
-  RG_ARGS=(-n -i -F --color=never)
+  RG_ARGS=(-n -i --color=never)
   for glob in "${SEARCH_GLOBS[@]}"; do
     RG_ARGS+=(--glob "$glob")
   done
+}
+
+regex_escape() {
+  sed 's/[][(){}.^$*+?|\\/]/\\&/g' <<<"$1"
+}
+
+font_reference_regex() {
+  local escaped=""
+  escaped="$(regex_escape "$1")"
+  printf '(^|[^[:alnum:]])%s([^[:alnum:]]|$)' "${escaped}"
 }
 
 collect_live_font_refs() {
@@ -191,7 +209,7 @@ classify_match_kind() {
       position=$((position + 1))
       item_norm=$(normalize_name "${item}")
       if [[ "${item_norm}" == *"${family_norm}"* || "${family_norm}" == *"${item_norm}"* ]]; then
-        if (( position == 1 )); then
+        if ((position == 1)); then
           printf 'explicit\n'
         else
           printf 'fallback\n'
@@ -202,6 +220,13 @@ classify_match_kind() {
   fi
 
   printf 'explicit\n'
+}
+
+is_commented_match() {
+  local match="$1"
+  local content="${match#*:*:}"
+
+  [[ "${content}" =~ ^[[:space:]]*(#|//|/\*|\*) ]]
 }
 
 reference_rank() {
@@ -225,51 +250,116 @@ reference_rank() {
   fi
 }
 
-find_best_reference_for_package() {
-  local pkg="$1"
-  local family alias match key kind score
+reference_scope() {
+  local match="$1"
+  local path="${match%%:*}"
+  local config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
+  local data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
+
+  if [[ "${path}" == "gsettings" ]]; then
+    printf 'active\n'
+    return 0
+  fi
+
+  case "${path}" in
+    "${config_home}/hypr/userfonts.conf" | \
+      "${config_home}/hypr/themes/theme.conf" | \
+      "${config_home}/hypr/variables.conf" | \
+      "${data_home}/hypr/variables.conf" | \
+      "${config_home}/waybar/"* | \
+      "${config_home}/rofi/"* | \
+      "${config_home}/dunst/"* | \
+      "${config_home}/wlogout/"* | \
+      "${config_home}/kitty/"* | \
+      "${config_home}/alacritty/"* | \
+      "${config_home}/qutebrowser/"* | \
+      "${config_home}/satty/"*)
+      printf 'active\n'
+      ;;
+    "${config_home}/hypr/themes/"* | \
+      "${config_home}/wal/templates/"* | \
+      "${data_home}/waybar/"* | \
+      "${data_home}/rofi/"* | \
+      "${LIB_DIR:-$HOME/.local/lib}/hypr/"*)
+      printf 'installed-config\n'
+      ;;
+    *)
+      printf 'config\n'
+      ;;
+  esac
+}
+
+find_best_reference_for_family() {
+  local family="$1"
+  local alias alias_regex match key kind score
   local best_kind=""
-  local best_family=""
   local best_match=""
   local best_score=0
   local -A seen_matches=()
 
+  [[ -n "$family" ]] || return 1
+  while IFS= read -r alias; do
+    [[ ${#alias} -ge 4 ]] || continue
+    alias_regex="$(font_reference_regex "${alias}")"
+    for match in "${LIVE_FONT_REFS[@]:-}"; do
+      [[ -n "${match}" ]] || continue
+      if ! grep -Eqi -- "${alias_regex}" <<<"${match}"; then
+        continue
+      fi
+      key="${match}"
+      [[ -n "${seen_matches[$key]:-}" ]] && continue
+      seen_matches["$key"]=1
+      kind="explicit"
+      score=$(reference_rank "${kind}" "${match}")
+      if ((score > best_score)); then
+        best_score=${score}
+        best_kind="${kind}"
+        best_match="${match}"
+      fi
+    done
+    while IFS= read -r match; do
+      [[ -n "${match}" ]] || continue
+      is_commented_match "${match}" && continue
+      key="${match}"
+      [[ -n "${seen_matches[$key]:-}" ]] && continue
+      seen_matches["$key"]=1
+      kind=$(classify_match_kind "$family" "$match")
+      score=$(reference_rank "${kind}" "${match}")
+      if ((score > best_score)); then
+        best_score=${score}
+        best_kind="${kind}"
+        best_match="${match}"
+      fi
+    done < <(rg "${RG_ARGS[@]}" -- "${alias_regex}" "${ACTIVE_SEARCH_ROOTS[@]}" 2>/dev/null || true)
+  done < <(family_aliases "$family")
+
+  if [[ -n "${best_match}" ]]; then
+    printf '%s\t%s\t%s\t%s\n' "${best_score}" "${best_kind}" "${family}" "${best_match}"
+    return 0
+  fi
+
+  return 1
+}
+
+find_best_reference_for_package() {
+  local pkg="$1"
+  local family reference score match_kind match_family match_path
+  local best_kind=""
+  local best_family=""
+  local best_match=""
+  local best_score=0
+
   while IFS= read -r family; do
     [[ -n "$family" ]] || continue
-    while IFS= read -r alias; do
-      [[ ${#alias} -ge 4 ]] || continue
-      for match in "${LIVE_FONT_REFS[@]:-}"; do
-        [[ -n "${match}" ]] || continue
-        if ! grep -Fqi -- "${alias}" <<<"${match}"; then
-          continue
-        fi
-        key="${match}"
-        [[ -n "${seen_matches[$key]:-}" ]] && continue
-        seen_matches["$key"]=1
-        kind="explicit"
-        score=$(reference_rank "${kind}" "${match}")
-        if (( score > best_score )); then
-          best_score=${score}
-          best_kind="${kind}"
-          best_family="${family}"
-          best_match="${match}"
-        fi
-      done
-      while IFS= read -r match; do
-        [[ -n "${match}" ]] || continue
-        key="${match}"
-        [[ -n "${seen_matches[$key]:-}" ]] && continue
-        seen_matches["$key"]=1
-        kind=$(classify_match_kind "$family" "$match")
-        score=$(reference_rank "${kind}" "${match}")
-        if (( score > best_score )); then
-          best_score=${score}
-          best_kind="${kind}"
-          best_family="${family}"
-          best_match="${match}"
-        fi
-      done < <(rg "${RG_ARGS[@]}" -- "$alias" "${ACTIVE_SEARCH_ROOTS[@]}" 2>/dev/null || true)
-    done < <(family_aliases "$family")
+    reference=$(find_best_reference_for_family "$family" || true)
+    [[ -n "${reference}" ]] || continue
+    IFS=$'\t' read -r score match_kind match_family match_path <<<"$reference"
+    if ((score > best_score)); then
+      best_score=${score}
+      best_kind="${match_kind}"
+      best_family="${match_family}"
+      best_match="${match_path}"
+    fi
   done < <(package_families "$pkg")
 
   if [[ -n "${best_match}" ]]; then
@@ -300,6 +390,37 @@ collect_installed_font_packages() {
   done
 }
 
+collect_local_font_families() {
+  local font_file family
+  declare -A seen_families=()
+
+  LOCAL_FONT_FAMILIES=()
+  LOCAL_FAMILY_FILES=()
+  LOCAL_FILE_FAMILIES=()
+  [[ -d "${LOCAL_FONT_ROOT}" ]] || return 0
+
+  while IFS= read -r font_file; do
+    while IFS= read -r family; do
+      [[ -n "${family}" ]] || continue
+      LOCAL_FAMILY_FILES["${family}"]+="${font_file}"$'\n'
+      LOCAL_FILE_FAMILIES["${font_file}"]+="${family}"$'\n'
+      if [[ -z "${seen_families[$family]:-}" ]]; then
+        seen_families["${family}"]=1
+        LOCAL_FONT_FAMILIES+=("${family}")
+      fi
+    done < <(
+      fc-scan --format '%{family}\n' "${font_file}" 2>/dev/null \
+        | tr ',' '\n' \
+        | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' \
+        | awk 'NF && !seen[tolower($0)]++'
+    )
+  done < <(
+    find "${LOCAL_FONT_ROOT}" -type f \
+      \( -iname '*.ttf' -o -iname '*.otf' -o -iname '*.ttc' -o -iname '*.otb' -o -iname '*.pfa' -o -iname '*.pfb' -o -iname '*.woff' -o -iname '*.woff2' \) \
+      2>/dev/null | sort
+  )
+}
+
 print_header() {
   echo "Finding fonts referenced by your runtime config..."
   echo
@@ -318,6 +439,9 @@ print_header() {
   done
   echo
   echo "Scanning installed font packages..."
+  if [[ -d "${LOCAL_FONT_ROOT}" ]]; then
+    echo "Scanning local font families in ${LOCAL_FONT_ROOT}..."
+  fi
 }
 
 main() {
@@ -330,16 +454,19 @@ main() {
   collect_live_font_refs
   collect_installed_font_packages
   print_header
+  collect_local_font_families
 
-  local -a explicit_packages=()
+  local -a active_packages=()
+  local -a installed_config_packages=()
   local -a fallback_packages=()
   local -a unused_packages=()
   local -a required_packages=()
   declare -A package_matches=()
   declare -A package_match_families=()
   declare -A package_match_kinds=()
+  declare -A package_match_scopes=()
 
-  local pkg reference match_kind match_family match_path
+  local pkg reference match_kind match_family match_path match_scope
   for pkg in "${INSTALLED_FONT_PACKAGES[@]}"; do
     if [[ "$pkg" =~ $SKIP_PACKAGES_REGEX ]]; then
       continue
@@ -348,13 +475,17 @@ main() {
     reference=$(find_best_reference_for_package "$pkg" || true)
     if [[ -n "$reference" ]]; then
       IFS=$'\t' read -r match_kind match_family match_path <<<"$reference"
-      if [[ "${match_kind}" == "explicit" ]]; then
-        explicit_packages+=("$pkg")
-      else
+      match_scope="$(reference_scope "${match_path}")"
+      if [[ "${match_kind}" == "fallback" ]]; then
         fallback_packages+=("$pkg")
+      elif [[ "${match_scope}" == "active" ]]; then
+        active_packages+=("$pkg")
+      else
+        installed_config_packages+=("$pkg")
       fi
       package_match_kinds["$pkg"]="$match_kind"
       package_match_families["$pkg"]="$match_family"
+      package_match_scopes["$pkg"]="$match_scope"
       package_matches["$pkg"]="$match_path"
       continue
     fi
@@ -367,15 +498,63 @@ main() {
     unused_packages+=("$pkg")
   done
 
+  local -a local_active_families=()
+  local -a local_installed_config_families=()
+  local -a local_fallback_families=()
+  local -a local_unused_families=()
+  declare -A local_matches=()
+  declare -A local_match_kinds=()
+  declare -A local_match_scopes=()
+
+  local family score
+  for family in "${LOCAL_FONT_FAMILIES[@]:-}"; do
+    reference=$(find_best_reference_for_family "${family}" || true)
+    if [[ -n "${reference}" ]]; then
+      IFS=$'\t' read -r score match_kind match_family match_path <<<"${reference}"
+      match_scope="$(reference_scope "${match_path}")"
+      if [[ "${match_kind}" == "fallback" ]]; then
+        local_fallback_families+=("${family}")
+      elif [[ "${match_scope}" == "active" ]]; then
+        local_active_families+=("${family}")
+      else
+        local_installed_config_families+=("${family}")
+      fi
+      local_match_kinds["${family}"]="${match_kind}"
+      local_match_scopes["${family}"]="${match_scope}"
+      local_matches["${family}"]="${match_path}"
+      continue
+    fi
+
+    local_unused_families+=("${family}")
+  done
+
+  declare -A unused_local_family_map=()
+  for family in "${local_unused_families[@]}"; do
+    unused_local_family_map["${family}"]=1
+  done
+
   echo
   echo "======================================"
-  echo "EXPLICIT FONT REFERENCES:"
+  echo "ACTIVE PACKAGE FONT REFERENCES:"
   echo "======================================"
-  if ((${#explicit_packages[@]} == 0)); then
-    echo "  No explicit font references found."
+  if ((${#active_packages[@]} == 0)); then
+    echo "  No active package font references found."
   else
-    for pkg in "${explicit_packages[@]}"; do
+    for pkg in "${active_packages[@]}"; do
       echo "  ✓ $pkg (${package_match_families[$pkg]})"
+      echo "    ↳ ${package_matches[$pkg]}"
+    done
+  fi
+
+  echo
+  echo "======================================"
+  echo "INSTALLED THEME/TEMPLATE PACKAGE REFERENCES:"
+  echo "======================================"
+  if ((${#installed_config_packages[@]} == 0)); then
+    echo "  No package fonts are kept only by installed themes/templates."
+  else
+    for pkg in "${installed_config_packages[@]}"; do
+      echo "  • $pkg (${package_match_families[$pkg]})"
       echo "    ↳ ${package_matches[$pkg]}"
     done
   fi
@@ -395,10 +574,10 @@ main() {
 
   echo
   echo "======================================"
-  echo "LIKELY UNUSED FONT PACKAGES:"
+  echo "UNREFERENCED PACKAGE FONTS:"
   echo "======================================"
   if ((${#unused_packages[@]} == 0)); then
-    echo "  No removable font packages found."
+    echo "  No unreferenced removable font packages found."
   else
     for pkg in "${unused_packages[@]}"; do
       echo "  ✗ $pkg ($(installed_size "$pkg"))"
@@ -410,13 +589,13 @@ main() {
     echo
 
     if [[ -t 0 ]]; then
-      read -r -p "Do you want to remove all likely unused font packages? [y/N] " reply
+      read -r -p "Remove all unreferenced package fonts with pacman? [y/N] " reply
       if [[ "$reply" =~ ^[Yy]$ ]]; then
         echo
-        echo "Removing unused font packages..."
+        echo "Removing unreferenced package fonts..."
         sudo pacman -Rns "${unused_packages[@]}"
         echo
-        echo "Unused font packages removed."
+        echo "Unreferenced package fonts removed."
       else
         echo
         echo "To remove them manually, run:"
@@ -425,6 +604,138 @@ main() {
     else
       echo "To remove them manually, run:"
       echo "  sudo pacman -Rns ${unused_packages[*]}"
+    fi
+  fi
+
+  echo
+  echo "======================================"
+  echo "LOCAL FONT FAMILIES:"
+  echo "======================================"
+  if ((${#LOCAL_FONT_FAMILIES[@]} == 0)); then
+    echo "  No local font families found in ${LOCAL_FONT_ROOT}."
+  else
+    if ((${#local_active_families[@]} > 0)); then
+      echo "  Active:"
+      for family in "${local_active_families[@]}"; do
+        echo "    ✓ ${family}"
+        echo "      ↳ ${local_matches[$family]}"
+      done
+    fi
+
+    if ((${#local_installed_config_families[@]} > 0)); then
+      echo "  Used by installed themes/templates:"
+      for family in "${local_installed_config_families[@]}"; do
+        echo "    • ${family}"
+        echo "      ↳ ${local_matches[$family]}"
+      done
+    fi
+
+    if ((${#local_fallback_families[@]} > 0)); then
+      echo "  Fallback-only:"
+      for family in "${local_fallback_families[@]}"; do
+        echo "    • ${family}"
+        echo "      ↳ ${local_matches[$family]}"
+      done
+    fi
+
+    if ((${#local_unused_families[@]} == 0)); then
+      echo "  No unreferenced local font families found."
+    else
+      local -a local_removable_families=()
+      local -a local_kept_provider_families=()
+      declare -A local_removable_file_counts=()
+      declare -A local_provider_file_counts=()
+      local file_count safe_file_count file_path file_family file_is_unreferenced
+
+      for family in "${local_unused_families[@]}"; do
+        file_count="$(printf '%s' "${LOCAL_FAMILY_FILES[$family]}" | sed '/^$/d' | sort -u | wc -l)"
+        safe_file_count=0
+        while IFS= read -r file_path; do
+          [[ -n "${file_path}" ]] || continue
+          file_is_unreferenced=1
+          while IFS= read -r file_family; do
+            [[ -n "${file_family}" ]] || continue
+            if [[ -z "${unused_local_family_map[$file_family]:-}" ]]; then
+              file_is_unreferenced=0
+              break
+            fi
+          done <<<"${LOCAL_FILE_FAMILIES[$file_path]}"
+          if ((file_is_unreferenced == 1)); then
+            safe_file_count=$((safe_file_count + 1))
+          fi
+        done < <(printf '%s' "${LOCAL_FAMILY_FILES[$family]}" | sed '/^$/d' | sort -u)
+
+        local_removable_file_counts["${family}"]="${safe_file_count}"
+        local_provider_file_counts["${family}"]="${file_count}"
+        if ((safe_file_count > 0)); then
+          local_removable_families+=("${family}")
+        else
+          local_kept_provider_families+=("${family}")
+        fi
+      done
+
+      if ((${#local_removable_families[@]} > 0)); then
+        echo "  Unreferenced removable files:"
+        for family in "${local_removable_families[@]}"; do
+          safe_file_count="${local_removable_file_counts[$family]}"
+          file_count="${local_provider_file_counts[$family]}"
+          if ((safe_file_count == file_count)); then
+            echo "    ✗ ${family} (${safe_file_count} files)"
+          else
+            echo "    ✗ ${family} (${safe_file_count} removable files, ${file_count} provider files)"
+          fi
+        done
+      else
+        echo "  No unreferenced removable local font files found."
+      fi
+
+      if ((${#local_kept_provider_families[@]} > 0)); then
+        echo "  Unreferenced aliases in kept font files:"
+        for family in "${local_kept_provider_families[@]}"; do
+          echo "    • ${family} (${local_provider_file_counts[$family]} provider files)"
+        done
+      fi
+
+      if ((${#local_removable_families[@]} > 0)) && [[ -t 0 ]]; then
+        read -r -p "Remove unreferenced local font files from ${LOCAL_FONT_ROOT}? [y/N] " reply
+        if [[ "$reply" =~ ^[Yy]$ ]]; then
+          local -a local_remove_files=()
+          declare -A seen_local_remove_files=()
+
+          for family in "${local_removable_families[@]}"; do
+            while IFS= read -r file_path; do
+              [[ -n "${file_path}" ]] || continue
+              [[ -n "${seen_local_remove_files[$file_path]:-}" ]] && continue
+
+              file_is_unreferenced=1
+              while IFS= read -r file_family; do
+                [[ -n "${file_family}" ]] || continue
+                if [[ -z "${unused_local_family_map[$file_family]:-}" ]]; then
+                  file_is_unreferenced=0
+                  break
+                fi
+              done <<<"${LOCAL_FILE_FAMILIES[$file_path]}"
+              ((file_is_unreferenced == 1)) || continue
+
+              seen_local_remove_files["$file_path"]=1
+              local_remove_files+=("${file_path}")
+            done <<<"${LOCAL_FAMILY_FILES[$family]}"
+          done
+
+          if ((${#local_remove_files[@]} > 0)); then
+            rm -f -- "${local_remove_files[@]}"
+            fc-cache -fq 2>/dev/null || true
+            echo
+            echo "Removed ${#local_remove_files[@]} unreferenced local font files."
+          fi
+        else
+          echo
+          echo "No local font files removed."
+        fi
+      elif ((${#local_removable_families[@]} > 0)); then
+        echo
+        echo "Run this script interactively to remove unreferenced local font files."
+      fi
     fi
   fi
 
@@ -442,11 +753,12 @@ main() {
   echo "======================================"
   echo "NOTES:"
   echo "======================================"
-  echo "  • This audit only checks package-managed fonts."
-  echo "  • Local fonts under ~/.local/share/fonts are not candidates for pacman removal."
+  echo "  • Active references are current live config, generated app config, or gsettings."
+  echo "  • Installed theme/template references are not active now, but removing them can break that theme later."
   echo "  • Matches are based on actual font family names referenced in your config roots."
   echo "  • Live gsettings font keys are audited as explicit desktop-font usage when available."
   echo "  • Fallback-only means the family appears later in a CSS font stack; other matches count as explicit."
+  echo "  • Local font removal deletes font files only; empty directories are left in place."
 }
 
 main "$@"

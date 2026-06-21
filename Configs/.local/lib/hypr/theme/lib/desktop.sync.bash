@@ -290,6 +290,39 @@ theme_desktop_update_xcursor_resource() {
   fi
 }
 
+theme_desktop_export_cursor_environment() {
+  local xcursor_path=""
+
+  [[ -n "${CURSOR_THEME}" && -n "${CURSOR_SIZE}" ]] || return 0
+
+  xcursor_path="${XCURSOR_PATH:-${XDG_DATA_HOME:-$HOME/.local/share}/icons:$HOME/.icons:/usr/share/icons}"
+  export XCURSOR_THEME="${CURSOR_THEME}"
+  export XCURSOR_SIZE="${CURSOR_SIZE}"
+  export XCURSOR_PATH="${xcursor_path}"
+
+  if command -v uwsm >/dev/null 2>&1 && [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
+    uwsm finalize \
+      "XCURSOR_THEME=${XCURSOR_THEME}" \
+      "XCURSOR_SIZE=${XCURSOR_SIZE}" \
+      "XCURSOR_PATH=${XCURSOR_PATH}" >/dev/null 2>&1 ||
+      print_log -sec "theme" -warn "cursor" "failed to update UWSM cursor environment"
+  fi
+
+  if command -v systemctl >/dev/null 2>&1; then
+    systemctl --user set-environment \
+      "XCURSOR_THEME=${XCURSOR_THEME}" \
+      "XCURSOR_SIZE=${XCURSOR_SIZE}" \
+      "XCURSOR_PATH=${XCURSOR_PATH}" >/dev/null 2>&1 ||
+      print_log -sec "theme" -warn "cursor" "failed to update systemd user cursor environment"
+  fi
+
+  if command -v dbus-update-activation-environment >/dev/null 2>&1; then
+    dbus-update-activation-environment --systemd \
+      XCURSOR_THEME XCURSOR_SIZE XCURSOR_PATH >/dev/null 2>&1 ||
+      print_log -sec "theme" -warn "cursor" "failed to update DBus cursor environment"
+  fi
+}
+
 theme_desktop_apply_cursor_theme() {
   if [[ -n "${CURSOR_THEME}" ]] && [[ -n "${CURSOR_SIZE}" ]] && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
     if ! hyprctl setcursor "${CURSOR_THEME}" "${CURSOR_SIZE}" >/dev/null 2>&1; then
@@ -378,7 +411,45 @@ theme_desktop_install_pack_kvantum_theme() {
     python3 "${installer}" || return 1
 }
 
+theme_desktop_install_kde_color_scheme() {
+  local source_file="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/render/qtct/Pywal.colors"
+  local target_file="${XDG_DATA_HOME:-$HOME/.local/share}/color-schemes/Pywal.colors"
+  local target_dir=""
+
+  [[ -f "${source_file}" ]] || return 0
+
+  target_dir="$(dirname "${target_file}")"
+  mkdir -p "${target_dir}" || return 1
+
+  if [[ -f "${target_file}" ]] && cmp -s "${source_file}" "${target_file}"; then
+    return 0
+  fi
+
+  cp -f -- "${source_file}" "${target_file}"
+}
+
+theme_desktop_install_qtct_color_scheme() {
+  local source_file="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/render/qtct/pywal16.conf"
+  local target_file="${XDG_CONFIG_HOME}/qt6ct/colors/pywal16.conf"
+  local target_dir=""
+
+  [[ -f "${source_file}" ]] || return 0
+
+  target_dir="$(dirname "${target_file}")"
+  mkdir -p "${target_dir}" || return 1
+
+  if [[ -f "${target_file}" ]] && cmp -s "${source_file}" "${target_file}"; then
+    return 0
+  fi
+
+  cp -f -- "${source_file}" "${target_file}"
+}
+
 theme_desktop_configure_qt_kde_bridge() {
+  local qt6ct_color_scheme="${XDG_CONFIG_HOME}/qt6ct/colors/pywal16.conf"
+  local qt6ct_general_font="${FONT},${FONT_SIZE},-1,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0"
+  local qt6ct_fixed_font="${MONOSPACE_FONT},${MONOSPACE_FONT_SIZE},-1,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0"
+
   theme_desktop_write_generated_file "${XDG_CONFIG_HOME}/Kvantum/kvantum.kvconfig" <<EOF
 [General]
 theme=${RESOLVED_KVANTUM_THEME}
@@ -394,6 +465,22 @@ EOF
     "General:ColorScheme=${RESOLVED_KDE_COLOR_SCHEME}" \
     "Icons:Theme=${ICON_THEME}" \
     "KDE:widgetStyle=${RESOLVED_KDE_WIDGET_STYLE:-kvantum}"
+
+  theme_desktop_write_generated_file "${XDG_CONFIG_HOME}/qt6ct/qt6ct.conf" <<EOF
+[Appearance]
+color_scheme_path=${qt6ct_color_scheme}
+custom_palette=true
+icon_theme=${ICON_THEME}
+standard_dialogs=default
+style=${RESOLVED_KDE_WIDGET_STYLE:-kvantum}
+
+[Interface]
+stylesheets=@Invalid()
+
+[Fonts]
+fixed="${qt6ct_fixed_font}"
+general="${qt6ct_general_font}"
+EOF
 }
 
 theme_desktop_write_gtk4_settings() {
@@ -637,6 +724,10 @@ theme_desktop_static_state_hash() {
   local active_palette_hash=""
   local pywal_colors="${XDG_CACHE_HOME:-$HOME/.cache}/wal/colors.json"
   local pywal_hash=""
+  local qtct_kde_colors="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/render/qtct/Pywal.colors"
+  local qtct_qt6_colors="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/render/qtct/pywal16.conf"
+  local qtct_hash=""
+  local -a qtct_files=()
   local -a pipeline_files=(
     "${BASH_SOURCE[0]}"
   )
@@ -645,6 +736,9 @@ theme_desktop_static_state_hash() {
   pipeline_hash="$(hypr_hash_cache_digest_files "${pipeline_files[@]}")"
   [[ -f "${active_palette}" ]] && active_palette_hash="$(hypr_hash_cache_digest_files "${active_palette}")"
   [[ -f "${pywal_colors}" ]] && pywal_hash="$(hypr_hash_cache_digest_files "${pywal_colors}")"
+  [[ -f "${qtct_kde_colors}" ]] && qtct_files+=("${qtct_kde_colors}")
+  [[ -f "${qtct_qt6_colors}" ]] && qtct_files+=("${qtct_qt6_colors}")
+  [[ ${#qtct_files[@]} -gt 0 ]] && qtct_hash="$(hypr_hash_cache_digest_files "${qtct_files[@]}")"
   if [[ "${RESOLVED_KVANTUM_THEME_IS_PACK:-0}" -eq 1 ]]; then
     kvantum_pack_hash="$(theme_desktop_kvantum_pack_source_hash)"
   fi
@@ -672,6 +766,7 @@ theme_desktop_static_state_hash() {
     "kde_widget_style=${RESOLVED_KDE_WIDGET_STYLE:-kvantum}" \
     "active_palette=${active_palette_hash}" \
     "pywal_colors=${pywal_hash}" \
+    "qtct_colors=${qtct_hash}" \
     "flatpak_installed=${flatpak_installed}"
 }
 
@@ -680,6 +775,8 @@ theme_desktop_static_targets_ready() {
   local kvantum_pack_theme=""
   local -a required_targets=(
     "${XDG_CONFIG_HOME}/Kvantum/kvantum.kvconfig"
+    "${XDG_CONFIG_HOME}/qt6ct/qt6ct.conf"
+    "${XDG_CONFIG_HOME}/qt6ct/colors/pywal16.conf"
     "${XDG_CONFIG_HOME}/kdeglobals"
     "${XDG_CONFIG_HOME}/kdedefaults/kdeglobals"
     "${XDG_DATA_HOME}/icons/default/index.theme"
@@ -691,6 +788,10 @@ theme_desktop_static_targets_ready() {
     "${XDG_CONFIG_HOME}/xsettingsd/xsettingsd.conf"
     "${HOME}/.Xresources"
   )
+
+  if [[ "${RESOLVED_KDE_COLOR_SCHEME:-}" == "Pywal" ]]; then
+    required_targets+=("${XDG_DATA_HOME:-$HOME/.local/share}/color-schemes/Pywal.colors")
+  fi
 
   if [[ "${RESOLVED_KVANTUM_THEME_IS_PACK:-0}" -eq 1 ]] && theme_desktop_pack_has_kvantum_theme; then
     kvantum_pack_theme="$(theme_desktop_kvantum_output_theme_name)"
@@ -706,6 +807,7 @@ theme_desktop_static_targets_ready() {
 }
 
 theme_desktop_apply_runtime_resolved() {
+  theme_desktop_export_cursor_environment
   theme_desktop_write_dconf_content
   theme_desktop_restart_portal_backends_if_needed
   if [[ "${THEME_DESKTOP_SYNC_LOG_DCONF:-1}" -eq 1 ]]; then
@@ -718,6 +820,8 @@ theme_desktop_apply_runtime_resolved() {
 
 theme_desktop_apply_static_resolved() {
   theme_desktop_install_pack_kvantum_theme
+  theme_desktop_install_kde_color_scheme
+  theme_desktop_install_qtct_color_scheme
   theme_desktop_configure_qt_kde_bridge
   theme_desktop_ini_write_batch "${XDG_DATA_HOME}/icons/default/index.theme" "Icon Theme:Inherits=${CURSOR_THEME}"
   theme_desktop_ini_write_batch "${HOME}/.icons/default/index.theme" "Icon Theme:Inherits=${CURSOR_THEME}"

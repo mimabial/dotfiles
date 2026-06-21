@@ -2223,12 +2223,12 @@
      style="opacity:0.00100002"
      transform="matrix(0.44036669,0,0,1.2307681,328.40992,-324.52585)">
     <path
-       style="fill:#232323;fill-opacity:1.0"
+       style="fill:rgb(46,46,46);fill-opacity:1.0"
        transform="scale(-1)"
        d="m 723.0562,-779.58405 a 11.354174,4.0625038 0 0 1 -11.35417,4.06251 v -4.06251 z"
        id="path563" />
     <path
-       style="fill:#232323;fill-opacity:1.0"
+       style="fill:rgb(46,46,46);fill-opacity:1.0"
        transform="scale(-1)"
        d="m 719.64995,-779.58405 a 7.9479218,2.8437526 0 0 1 -7.94792,2.84376 v -2.84376 z"
        id="path565" />
@@ -2238,12 +2238,12 @@
      style="opacity:0.00100002"
      transform="matrix(0.44036669,0,0,1.2307681,335.12006,-316.37576)">
     <path
-       style="fill:#232323;fill-opacity:1.0"
+       style="fill:rgb(46,46,46);fill-opacity:1.0"
        transform="rotate(90)"
        d="m 811.99335,726.93976 a 4.0625038,11.354175 0 0 1 -4.0625,11.35417 v -11.35417 z"
        id="path568" />
     <path
-       style="fill:#232323;fill-opacity:1.0"
+       style="fill:rgb(46,46,46);fill-opacity:1.0"
        transform="rotate(90)"
        d="m 810.7746,726.93964 a 2.8437526,7.9479218 0 0 1 -2.84375,7.94792 v -7.94792 z"
        id="path570" />
@@ -2253,14 +2253,14 @@
      style="opacity:0.00100002"
      transform="matrix(0.44036669,0,0,2.0512769,331.97913,-984.73254)">
     <rect
-       style="fill:#232323;fill-opacity:1.0"
+       style="fill:rgb(46,46,46);fill-opacity:1.0"
        width="11.354"
        height="21"
        x="-731.16"
        y="789.6"
        id="rect573" />
     <rect
-       style="fill:#232323;fill-opacity:1.0"
+       style="fill:rgb(46,46,46);fill-opacity:1.0"
        width="7.948"
        height="21"
        x="-727.75"
@@ -2272,14 +2272,14 @@
      style="opacity:0.00100002"
      transform="matrix(0.84070004,0,0,1.2307681,620.14199,-324.56424)">
     <rect
-       style="fill:#232323;fill-opacity:1.0"
+       style="fill:rgb(46,46,46);fill-opacity:1.0"
        width="55"
        height="4.063"
        x="-719.81"
        y="775.52"
        id="rect578" />
     <rect
-       style="fill:#232323;fill-opacity:1.0"
+       style="fill:rgb(46,46,46);fill-opacity:1.0"
        width="55"
        height="2.844"
        x="-719.81"
@@ -2291,14 +2291,14 @@
      style="opacity:0.00100002"
      transform="matrix(0.84070004,0,0,1.2307681,620.14199,-319.64118)">
     <rect
-       style="fill:#232323;fill-opacity:1.0"
+       style="fill:rgb(46,46,46);fill-opacity:1.0"
        width="55"
        height="4.063"
        x="-719.81"
        y="810.58"
        id="rect583" />
     <rect
-       style="fill:#232323;fill-opacity:1.0"
+       style="fill:rgb(46,46,46);fill-opacity:1.0"
        width="55"
        height="2.844"
        x="-719.81"
@@ -2309,11 +2309,11 @@
      id="tbutton-normal-topright"
      transform="translate(0,-0.0289917)">
     <path
-       style="opacity:0.00100002;fill:#232323;fill-opacity:1.0"
+       style="opacity:0.00100002;fill:rgb(46,46,46);fill-opacity:1.0"
        d="m 66.238478,634.95195 a 5,5 0 0 0 -5,-5 v 5 z"
        id="path588" />
     <path
-       style="opacity:0.00100002;fill:#232323;fill-opacity:1.0"
+       style="opacity:0.00100002;fill:rgb(46,46,46);fill-opacity:1.0"
        d="m 64.738478,634.95195 a 3.5000001,3.5 0 0 0 -3.5,-3.5 v 3.5 z"
        id="path590" />
   </g>
@@ -2322,11 +2322,11 @@
      style="opacity:0.00100002"
      transform="matrix(0.44036669,0,0,1.273756,353.99745,-354.48643)">
     <path
-       style="fill:#232323;fill-opacity:1.0"
+       style="fill:rgb(46,46,46);fill-opacity:1.0"
        d="m -653.45302,810.58392 a 11.354174,3.9253986 0 0 1 -11.35417,3.9254 v -3.9254 z"
        id="path593" />
     <path
-       style="fill:#232323;fill-opacity:1.0"
+       style="fill:rgb(46,46,46);fill-opacity:1.0"
        d="m -656.85921,810.58392 a 7.9479218,2.7477789 0 0 1 -7.94792,2.74778 v -2.74778 z"
        id="path595" />
   </g>
@@ -2335,14 +2335,14 @@
      style="opacity:0.00100002"
      transform="matrix(0.30924086,0,0,2.0512769,267.3238,-984.73254)">
     <rect
-       style="fill:#232323;fill-opacity:1.0"
+       style="fill:rgb(46,46,46);fill-opacity:1.0"
        width="16.169"
        height="21"
        x="-666.42"
        y="789.58"
        id="rect598" />
     <rect
-       style="fill:#232323;fill-opacity:1.0"
+       style="fill:rgb(46,46,46);fill-opacity:1.0"
        width="11.318"
        height="21"
        x="-666.42"
@@ -2351,7 +2351,7 @@
   </g>
   <rect
      id="tbutton-normal"
-     style="opacity:0.00100002;fill:#232323;fill-opacity:1.0"
+     style="opacity:0.00100002;fill:rgb(46,46,46);fill-opacity:1.0"
      width="46.239"
      height="43.077"
      x="15"
@@ -5774,7 +5774,7 @@
        style="fill:#b6b6b6;fill-opacity:1.0"
        transform="matrix(0.25,0,0,1,248.75,0)">
       <path
-         style="fill:#232323;fill-opacity:1.0"
+         style="fill:#b6b6b6;fill-opacity:1.0"
          d="m 305,621 h 20 v -1.00001 h -20 z"
          id="path1730" />
     </g>

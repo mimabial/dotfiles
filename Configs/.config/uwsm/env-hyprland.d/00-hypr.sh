@@ -1,8 +1,8 @@
 #!/usr/bin/env sh
 
-# Qt follows Omarchy's model: use Wayland with X11 fallback and let Kvantum
-# provide the widget style. Do not route through qt5ct/qt6ct.
-unset QT_QPA_PLATFORMTHEME
+# Qt uses Wayland with X11 fallback. qt6ct provides the generic Qt6 palette
+# bridge, while Kvantum provides the widget style.
+QT_QPA_PLATFORMTHEME=qt6ct
 QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-wayland;xcb}"
 QT_STYLE_OVERRIDE="${QT_STYLE_OVERRIDE:-kvantum}"
 
@@ -17,7 +17,7 @@ HYPRLAND_NO_SD_NOTIFY=1 # If systemd, disables the sd_notify calls.
 HYPRLAND_NO_SD_VARS=1   # Disables management of variables in systemd and dbus activation environments.
 
 export ELECTRON_OZONE_PLATFORM_HINT GDK_SCALE MOZ_ENABLE_WAYLAND \
-  QT_QPA_PLATFORM QT_STYLE_OVERRIDE \
+  QT_QPA_PLATFORM QT_QPA_PLATFORMTHEME QT_STYLE_OVERRIDE \
   HYPRLAND_NO_SD_NOTIFY HYPRLAND_NO_SD_VARS
 
 # TODO Set this if some toolkit are not working properly. // To set create a 'toolkit.sh' file in the 'env-hyprland.d' folder. and add the following line to it:

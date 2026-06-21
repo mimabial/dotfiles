@@ -7,7 +7,6 @@ $CURSOR_SIZE=28
 
 $FONT=Miracode
 $TERMINAL_FONT=Miracode
-
 $BAR_FONT=Miracode
 $MENU_FONT=Miracode
 $NVIM_SCHEME=gruvbox

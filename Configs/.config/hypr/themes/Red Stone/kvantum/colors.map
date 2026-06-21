@@ -7,10 +7,10 @@
 #522929=color0
 #6B3A3A=color8
 #7D4B4B=color7
-#F0ABAA=color4
+#F0ABAA=color1
 #FFFFFF=foreground
 #8F5757=color8
-#F0AAAA=color5
+#F0AAAA=color9
 
 # Additional SVG/template colors preserved from the existing map
 #0A0101=background
