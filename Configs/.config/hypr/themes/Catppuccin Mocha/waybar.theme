@@ -1,11 +1,11 @@
 $HOME/.config/waybar/theme.css
 
-@define-color bg #181825; /* Mantle */
+@define-color bg #11111b; /* Mantle */
 @define-color fg #cdd6f4; /* Text */
-@define-color br #f5c2e7; /* Surface1 */
+@define-color br #43465A; /* Surface1 */
 
-@define-color alt_bg #cdd6f4; /* Text */
-@define-color alt_fg #11111b;
+@define-color alt_bg #43465A; /* Text */
+@define-color alt_fg #cdd6f4;
 @define-color alt_br #CBA6F7; /* Flamingo */
 
 @define-color fg_selected #89b4fa; /* Rosewater */
@@ -16,7 +16,7 @@ $HOME/.config/waybar/theme.css
 
 @define-color hvr_bg #313244;
 @define-color hvr_fg @fg;
-@define-color hvr_br #f38ba8;
+@define-color hvr_br #F38BA8;
 
 @define-color c0 #43465A;
 @define-color c1 #F38BA8;
@@ -35,8 +35,17 @@ $HOME/.config/waybar/theme.css
 @define-color c14 #94E2D5;
 @define-color c15 #A1A8C9;
 
-@define-color accent #a6adc8;
+@define-color accent #CBA6F7;
 @define-color info @c6;
 @define-color warning #f5c2e7; /* Surface1 */
 @define-color error @c1;
 @define-color success @c2;
+
+@define-color main-bg #181825;
+@define-color main-fg #cdd6f4;
+
+@define-color wb-act-bg #a6adc8;
+@define-color wb-act-fg #313244;
+
+@define-color wb-hvr-bg #f5c2e7;
+@define-color wb-hvr-fg #313244;

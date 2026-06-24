@@ -14,21 +14,21 @@ $HOME/.config/waybar/theme.css
 
 @define-color hvr_bg #8d8d8d;
 @define-color hvr_fg #0d0d0d;
-@define-color hvr_br #ffffff;
+@define-color hvr_br #88e788;
 
 @define-color c0 #0d0d0d;
 @define-color c1 #a4a4a4;
-@define-color c2 #b6b6b6;
+@define-color c2 #88e788;
 @define-color c3 #cecece;
-@define-color c4 #8d8d8d;
+@define-color c4 #88e788;
 @define-color c5 #9b9b9b;
 @define-color c6 #b0b0b0;
 @define-color c7 #ececec;
 @define-color c8 #fdfdfd;
 @define-color c9 #a4a4a4;
-@define-color c10 #b6b6b6;
+@define-color c10 #88e788;
 @define-color c11 #cecece;
-@define-color c12 #8d8d8d;
+@define-color c12 #88e788;
 @define-color c13 #9b9b9b;
 @define-color c14 #b0b0b0;
 @define-color c15 #ffffff;

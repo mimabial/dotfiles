@@ -39,7 +39,8 @@ main() {
 
   window_address="$(launch_resolve_window_address "${window_pattern}")"
   if [[ -n "${window_address}" ]]; then
-    hyprctl dispatch focuswindow "address:${window_address}" >/dev/null 2>&1
+    launch_source_core_common || return 1
+    hypr_lua_dispatch "hl.dsp.focus({window=$(hypr_lua_quote "address:${window_address}")})" >/dev/null 2>&1
     return $?
   fi
 

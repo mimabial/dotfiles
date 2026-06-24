@@ -2,12 +2,13 @@
 set -euo pipefail
 PALETTE_ARG="${1:-}"
 . "$(dirname "$0")/_lib.sh"
-# Pack hypr.theme is the pack manifest (sourced elsewhere as hyprland config), not
-# a colors override; do not full-replace from it. Always derive.
-render_init hypr colors.conf hypr.theme
+# Pack hypr.theme is generation input, not runtime Hyprland configuration or a
+# colors override. Always derive native Lua from it.
+render_init hypr colors.meta hypr.theme
 
 hash="$(render_input_hash)"
-render_should_skip "${hash}" && exit 0
+lua_output="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/colors.lua"
+render_should_skip "${hash}" && [[ -f "${lua_output}" ]] && exit 0
 
 tmp="$(render_temp)"
 trap 'rm -f "${tmp}"' EXIT
@@ -78,4 +79,5 @@ EOF
 } > "${tmp}"
 
 render_commit "${tmp}" "${hash}"
+"${HOME}/.local/lib/hypr/util/hypr-to-lua.py" --input "${OUT_FILE}" --output "${lua_output}"
 trap - EXIT

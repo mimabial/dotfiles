@@ -142,7 +142,7 @@ case "${1:-}" in
     shift
     parse_config="${HYPR_LIB_DIR}/util/parse.config.py"
     if [[ -x "${parse_config}" ]]; then
-      "${parse_config}" --input "$XDG_CONFIG_HOME/hypr/config.toml" --env "$XDG_STATE_HOME/hypr/env-overrides" --hypr "$XDG_STATE_HOME/hypr/hyprland.conf" --export "$@"
+      "${parse_config}" --input "$XDG_CONFIG_HOME/hypr/config.toml" --env "$XDG_STATE_HOME/hypr/env-overrides" --export "$@"
     else
       echo "parse.config.py not found at ${parse_config}"
     fi

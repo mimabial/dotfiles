@@ -14,7 +14,7 @@ source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/window/stateful-choic
 
 shaders_user_dir="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}/shaders"
 shaders_shared_dir="${HYPR_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/hypr}/shaders"
-shaders_state_file="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/shaders.conf"
+shaders_state_file="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/shaders.lua"
 shaders_cache_dir="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/shaders"
 compiled_shader_file="${shaders_cache_dir}/compiled.cache.glsl"
 quiet_notifications=0
@@ -152,6 +152,7 @@ parse_includes_and_update() {
   local selected_shader
   selected_shader="$(normalize_shader_name "${1}")"
   local resolved_shader_path shader_path_compact compiled_path_compact
+  local shader_name_lua shader_path_lua compiled_path_lua
   local source_var inc_file
   local files=()
 
@@ -160,7 +161,7 @@ parse_includes_and_update() {
     return 1
   }
 
-  source_var="$(grep -iE '^\s*//\s*!source\s*=\s*.*' "${resolved_shader_path}" 2>/dev/null | head -n1 | sed -E 's/^\s*\/\/\s*!source\s*=\s*//I' | xargs)"
+  source_var="$(grep -iE '^\s*//\s*!source\s*=\s*.*' "${resolved_shader_path}" 2>/dev/null | head -n1 | sed -E 's/^\s*\/\/\s*!source\s*=\s*//I' | xargs || true)"
   if [[ -n "${source_var}" ]]; then
     # shellcheck disable=SC2088  # tilde here is a literal match prefix, not expansion
     if [[ "${source_var}" == "~/"* ]]; then
@@ -189,21 +190,19 @@ parse_includes_and_update() {
   shader_path_compact="$(hypr_compact_path "${resolved_shader_path}")"
   compiled_path_compact="$(hypr_compact_path "${compiled_shader_file}")"
 
-  cat <<CONF >"${shaders_state_file}"
-#! █▀ █░█ ▄▀█ █▀▄ █▀▀ █▀█ █▀
-#! ▄█ █▀█ █▀█ █▄▀ ██▄ █▀▄ ▄█
+  shader_name_lua="$(jq -Rn --arg value "${selected_shader}" '$value')"
+  shader_path_lua="$(jq -Rn --arg value "${resolved_shader_path}" '$value')"
+  compiled_path_lua="$(jq -Rn --arg value "${compiled_shader_file}" '$value')"
+  cat <<LUA >"${shaders_state_file}"
+-- Generated native Hyprland Lua. Do not edit manually.
+local runtime = require("runtime")
+local vars = require("vars")
 
-# *┌───────────────────────────────────────────────────────────────────────────┐
-# *│ System controlled content // DO NOT EDIT                                 │
-# *│ User overrides live in ~/.config/hypr/shaders/                           │
-# *│ Shared stock lives in ~/.local/share/hypr/shaders/                       │
-# *│ Compiled cache lives in ~/.cache/hypr/shaders/                           │
-# *└───────────────────────────────────────────────────────────────────────────┘
-
-\$SCREEN_SHADER = "${selected_shader}"
-\$SCREEN_SHADER_PATH = ${shader_path_compact}
-\$SCREEN_SHADER_COMPILED = ${compiled_path_compact}
-CONF
+vars.set("SCREEN_SHADER", ${shader_name_lua})
+vars.set("SCREEN_SHADER_PATH", ${shader_path_lua})
+vars.set("SCREEN_SHADER_COMPILED", ${compiled_path_lua})
+runtime.config("decoration.screen_shader", ${compiled_path_lua})
+LUA
 }
 
 fn_update() {

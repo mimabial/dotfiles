@@ -51,12 +51,13 @@ new_scale="${scales[$next_idx]}"
 new_gdk_scale="$(monitor_gdk_scale_for "${new_scale}")"
 mode="${width}x${height}@${refresh_rate}"
 position="${pos_x}x${pos_y}"
-rule="monitor=${active_monitor},${mode},${position},${new_scale}"
-if [[ "${transform}" != "0" ]]; then
-  rule+=",transform,${transform}"
-fi
-
 fragment_name="20-scale-$(monitor_sanitize_name "${active_monitor}")"
-monitor_set_fragment "${fragment_name}" "$(printf 'env = GDK_SCALE,%s\n%s' "${new_gdk_scale}" "${rule}")"
+monitor_set_fragment "${fragment_name}" "$(printf 'hl.env(\"GDK_SCALE\", %s)\nhl.monitor({output = %s, mode = %s, position = %s, scale = %s, transform = %s})' \
+  "$(monitor_lua_quote "${new_gdk_scale}")" \
+  "$(monitor_lua_quote "${active_monitor}")" \
+  "$(monitor_lua_quote "${mode}")" \
+  "$(monitor_lua_quote "${position}")" \
+  "${new_scale}" \
+  "${transform}")"
 monitor_reload
 monitor_notify "Display scaling set to ${new_scale}x" "${active_monitor} (GDK ${new_gdk_scale})"

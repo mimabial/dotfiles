@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+CORE_COMMON="${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh"
+# shellcheck source=/dev/null
+source "${CORE_COMMON}" || exit 1
+
 clients_json="$(hyprctl clients -j)"
 addrs_text="$(
   jq -r '.[] | .address // empty | select(length > 0)' <<<"${clients_json}"
@@ -13,6 +17,9 @@ fi
 
 mapfile -t addrs <<<"${addrs_text}"
 
+declare -a close_dispatchers=()
 for addr in "${addrs[@]}"; do
-  hyprctl dispatch closewindow "address:${addr}" >/dev/null 2>&1 || true
+  close_dispatchers+=("hl.dsp.window.close({window=$(hypr_lua_quote "address:${addr}")})")
 done
+
+hypr_lua_batch "${close_dispatchers[@]}" >/dev/null 2>&1 || true

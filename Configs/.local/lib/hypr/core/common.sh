@@ -1,6 +1,36 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
 
+# Native Hyprland 0.55 Lua IPC helpers.
+hypr_lua_quote() {
+  jq -Rn --arg value "${1:-}" '$value'
+}
+
+hypr_lua_dispatch() {
+  local expression="${1:-}"
+  [[ -n "${expression}" ]] || return 1
+  hyprctl dispatch "${expression}"
+}
+
+hypr_lua_batch() {
+  local expression=""
+  local batch=""
+
+  for expression in "$@"; do
+    [[ -n "${expression}" ]] || continue
+    batch+="${batch:+;}dispatch ${expression}"
+  done
+
+  [[ -n "${batch}" ]] || return 0
+  hyprctl -q --batch "${batch}"
+}
+
+hypr_lua_apply() {
+  local statement="${1:-}"
+  [[ -n "${statement}" ]] || return 1
+  hypr_lua_dispatch "(function() ${statement}; return hl.dsp.no_op() end)()"
+}
+
 hypr_user_uid() {
   printf '%s\n' "${UID:-$(id -u)}"
 }
@@ -70,19 +100,19 @@ hypr_core_file() {
 }
 
 hypr_variables_file() {
-  hypr_core_file "variables.conf"
+  hypr_core_file "variables.meta"
 }
 
 hypr_config_layer_files() {
   local config_home="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}"
   local data_home="${HYPR_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/hypr}"
-  local variables_file="${data_home}/variables.conf"
+  local variables_file="${data_home}/variables.meta"
 
-  [[ -f "${variables_file}" ]] || variables_file="${config_home}/variables.conf"
+  [[ -f "${variables_file}" ]] || variables_file="${config_home}/variables.meta"
 
   printf '%s\n' \
-    "${config_home}/userfonts.conf" \
-    "${config_home}/themes/theme.conf" \
+    "${config_home}/userfonts.lua" \
+    "${config_home}/themes/theme.meta" \
     "${variables_file}"
 }
 
@@ -117,6 +147,7 @@ hypr_config_layer_cache_load() {
   local lhs=""
   local rhs=""
   local variable_key=""
+  local lua_var_re='^[[:space:]]*vars\.set\("([^"]+)",[[:space:]]*"([^"]*)"\)'
 
   cache_key="$(hypr_config_file_signature)"
   if [[ "${HYPR_CONFIG_LAYER_CACHE_READY:-0}" -eq 1 && "${HYPR_CONFIG_LAYER_CACHE_KEY:-}" == "${cache_key}" ]]; then
@@ -134,6 +165,14 @@ hypr_config_layer_cache_load() {
     while IFS= read -r raw_line; do
       [[ -n "${raw_line//[[:space:]]/}" ]] || continue
       [[ ! "${raw_line}" =~ ^[[:space:]]*# ]] || continue
+      if [[ "${raw_line}" =~ ${lua_var_re} ]]; then
+        variable_key="${BASH_REMATCH[1]}"
+        rhs="${BASH_REMATCH[2]}"
+        [[ -n "${rhs}" ]] || continue
+        [[ -v "HYPR_CONFIG_LAYER_CACHE[${variable_key}]" ]] && continue
+        HYPR_CONFIG_LAYER_CACHE["${variable_key}"]="${rhs}"
+        continue
+      fi
       [[ "${raw_line}" == *=* ]] || continue
 
       lhs="${raw_line%%=*}"

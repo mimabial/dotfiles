@@ -1,4 +1,4 @@
-$HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
+$HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 $ICON_THEME = Tela-green-light
 $COLOR_SCHEME = prefer-light
 $CURSOR_THEME = material_light_cursors

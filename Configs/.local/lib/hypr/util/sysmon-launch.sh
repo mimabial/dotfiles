@@ -36,7 +36,7 @@ toggle_existing_monitor() {
   )"
   [[ -n "${address}" ]] || return 1
 
-  hyprctl dispatch closewindow "address:${address}" >/dev/null 2>&1
+  hypr_lua_dispatch "hl.dsp.window.close({window=$(hypr_lua_quote "address:${address}")})" >/dev/null 2>&1
 }
 
 select_monitor_command() {

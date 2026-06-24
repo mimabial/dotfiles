@@ -11,8 +11,8 @@ MOZ_ENABLE_WAYLAND="${MOZ_ENABLE_WAYLAND:-1}"                        # Enable Wa
 GDK_SCALE="${GDK_SCALE:-1}"                                          # Set GDK scale to 1, for Xwayland on HiDPI displays
 ELECTRON_OZONE_PLATFORM_HINT="${ELECTRON_OZONE_PLATFORM_HINT:-auto}" # Set Electron Ozone Platform Hint to auto, for Electron apps on Wayland
 
-# Hyprland Compositor Configuration
-# HYPRLAND_CONFIG removed - let Hyprland use its default or config-set value
+# Let Hyprland select hyprland.lua; discard stale values inherited from shells.
+unset HYPRLAND_CONFIG
 HYPRLAND_NO_SD_NOTIFY=1 # If systemd, disables the sd_notify calls.
 HYPRLAND_NO_SD_VARS=1   # Disables management of variables in systemd and dbus activation environments.
 

@@ -286,23 +286,12 @@ def read_active_palette() -> dict:
     return data if isinstance(data, dict) else {}
 
 
-def read_theme_from_wal_conf() -> Optional[str]:
-    wal_conf = config_home() / "hypr" / "themes" / "wal.conf"
-    if not wal_conf.exists():
-        return None
-    for line in wal_conf.read_text().splitlines():
-        line = line.strip()
-        if line.startswith("$HYPR_THEME="):
-            return line.split("=", 1)[1].strip().strip('"')
-    return None
-
-
 def resolve_wallpaper(staterc_values: dict) -> Optional[Path]:
     cache_wall = wallpaper_state_file()
     if cache_wall.exists():
         return cache_wall.resolve()
 
-    theme = staterc_values.get("HYPR_THEME") or read_theme_from_wal_conf()
+    theme = staterc_values.get("HYPR_THEME")
     if theme:
         theme_wall = config_home() / "hypr" / "themes" / theme / "wall.set"
         if theme_wall.exists():

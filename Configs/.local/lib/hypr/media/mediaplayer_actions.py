@@ -102,6 +102,9 @@ rofi_args=(
   -format i
   -no-custom
   -no-show-icons
+  -hover-select
+  -me-select-entry ""
+  -me-accept-entry MousePrimary
   -p "${prompt}"
   -theme "$(rofi_resolve_theme "${theme_ref}")"
   -theme-str "entry { placeholder: \"${placeholder}\"; } ${rofi_position} ${r_override}"

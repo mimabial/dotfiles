@@ -14,7 +14,7 @@ source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/window/stateful-choic
 
 workflows_user_dir="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}/workflows"
 workflows_shared_dir="${HYPR_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/hypr}/workflows"
-workflows_state_file="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/workflows.conf"
+workflows_state_file="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/workflows.lua"
 
 show_help() {
   cat <<HELP
@@ -30,8 +30,8 @@ HELP
 
 resolve_workflow_path() {
   local name="${1:-default}"
-  name="${name%.conf}"
-  hypr_stateful_choice_resolve_path "${name}" "conf" "${workflows_user_dir}" "${workflows_shared_dir}"
+  name="${name%.lua}"
+  hypr_stateful_choice_resolve_path "${name}" "lua" "${workflows_user_dir}" "${workflows_shared_dir}"
 }
 
 workflow_exists() {
@@ -41,20 +41,20 @@ workflow_exists() {
 }
 
 list_workflow_names() {
-  hypr_stateful_choice_list_names "conf" "${workflows_user_dir}" "${workflows_shared_dir}"
+  hypr_stateful_choice_list_names "lua" "${workflows_user_dir}" "${workflows_shared_dir}"
 }
 
 get_workflow_icon() {
   local workflow_path="$1"
   local workflow_icon
-  workflow_icon=$(get_hypr_conf "WORKFLOW_ICON" "${workflow_path}")
+  workflow_icon="$(sed -n 's/^[[:space:]]*vars\.set("WORKFLOW_ICON",[[:space:]]*"\([^"]*\)").*/\1/p' "${workflow_path}" | head -n1)"
   printf '%s\n' "${workflow_icon:0:1}"
 }
 
 get_workflow_description() {
   local workflow_path="$1"
   local description
-  description=$(get_hypr_conf "WORKFLOW_DESCRIPTION" "${workflow_path}")
+  description="$(sed -n 's/^[[:space:]]*vars\.set("WORKFLOW_DESCRIPTION",[[:space:]]*"\([^"]*\)").*/\1/p' "${workflow_path}" | head -n1)"
   printf '%s\n' "${description:-No description available}"
 }
 
@@ -115,28 +115,27 @@ get_info() {
 
 fn_update() {
   local workflow_path_compact
+  local workflow_name_lua workflow_icon_lua workflow_description_lua workflow_path_lua
 
   get_info
   mkdir -p "$(dirname "${workflows_state_file}")"
   workflow_path_compact="$(hypr_compact_path "${current_workflow_path}")"
 
-  cat <<CONF >"${workflows_state_file}"
-#! █░█░█ █▀█ █▀█ █▄▀ █▀▀ █░░ █▀█ █░█░█ █▀
-#! ▀▄▀▄▀ █▄█ █▀▄ █░█ █▀░ █▄▄ █▄█ ▀▄▀▄▀ ▄█
+  workflow_name_lua="$(jq -Rn --arg value "${current_workflow}" '$value')"
+  workflow_icon_lua="$(jq -Rn --arg value "${current_icon}" '$value')"
+  workflow_description_lua="$(jq -Rn --arg value "${current_description}" '$value')"
+  workflow_path_lua="$(jq -Rn --arg value "${current_workflow_path}" '$value')"
+  cat <<LUA >"${workflows_state_file}"
+-- Generated native Hyprland Lua. Do not edit manually.
+local runtime = require("runtime")
+local vars = require("vars")
 
-#*┌────────────────────────────────────────────────────────────────────────────┐
-#*│ # System controlled content // DO NOT EDIT                                │
-#*│ # User workflow overrides live in ~/.config/hypr/workflows/               │
-#*│ # Shared stock lives in ~/.local/share/hypr/workflows/                    │
-#*│ # Run 'hyprshell util/workflows.sh --select' to update the current one    │
-#*└────────────────────────────────────────────────────────────────────────────┘
-
-\$WORKFLOW = ${current_workflow}
-\$WORKFLOW_ICON = ${current_icon}
-\$WORKFLOW_DESCRIPTION = ${current_description}
-\$WORKFLOWS_PATH = ${workflow_path_compact}
-source = \$WORKFLOWS_PATH
-CONF
+vars.set("WORKFLOW", ${workflow_name_lua})
+vars.set("WORKFLOW_ICON", ${workflow_icon_lua})
+vars.set("WORKFLOW_DESCRIPTION", ${workflow_description_lua})
+vars.set("WORKFLOW_PATH", ${workflow_path_lua})
+runtime.load(${workflow_path_lua})
+LUA
 
   printf "%s %s: %s\n" "${current_icon}" "${current_workflow}" "${current_description}"
   send_ephemeral_notif "hypr-workflow" -t 2000 -i "preferences-desktop-display" "Workflow" "${current_icon} ${current_workflow}\n${current_description}"

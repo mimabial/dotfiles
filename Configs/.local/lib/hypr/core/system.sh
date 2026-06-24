@@ -146,9 +146,9 @@ paste_string() {
   done
 
   if command -v wtype >/dev/null; then
-    hyprctl -q dispatch exec 'wtype -M ctrl V -m ctrl'
+    hypr_lua_dispatch 'hl.dsp.exec_cmd("wtype -M ctrl V -m ctrl")' >/dev/null
   elif command -v hyprctl >/dev/null; then
-    hyprctl -q dispatch sendshortcut CTRL,V,activewindow
+    hypr_lua_dispatch 'hl.dsp.send_shortcut({mods="CTRL", key="V", window="activewindow"})' >/dev/null
   fi
 }
 

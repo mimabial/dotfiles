@@ -135,13 +135,15 @@ launch_prepare_target_workspace() {
   local active_workspace=""
   local has_other_window="false"
 
+  launch_source_core_common || return 1
+
   if [[ "${use_empty_workspace}" -eq 1 ]]; then
     IFS=$'\t' read -r active_workspace has_other_window \
       < <(launch_active_workspace_occupancy "${exclude_address}") || return 1
     [[ -n "${active_workspace}" ]] || return 1
 
     if [[ "${has_other_window}" == "true" ]]; then
-      hyprctl dispatch workspace empty >/dev/null 2>&1 || return 1
+      hypr_lua_dispatch 'hl.dsp.focus({workspace="empty"})' >/dev/null 2>&1 || return 1
       active_workspace="$(launch_focused_workspace_name)"
       [[ -n "${active_workspace}" ]] || return 1
     fi

@@ -2,6 +2,7 @@
 import subprocess
 import json
 import argparse
+import base64
 import os
 from collections import defaultdict
 import time
@@ -191,6 +192,11 @@ def generate_rofi(binds):
         description = bind["description"]
         dispatcher = bind["dispatcher"]
         arg = bind["arg"]
+        if dispatcher == "__lua":
+            dispatcher = "__lua_action"
+            arg = base64.urlsafe_b64encode(
+                bind.get("action_key", "").encode("utf-8")
+            ).decode("ascii")
         header1 = bind.get("header1", "")
         header2 = bind.get("header2", "")
         header3 = bind.get("header3", "")
@@ -252,6 +258,7 @@ def expand_meta_data(binds_data):
 
     # First pass: collect submap keys
     for bind in binds_data:
+        bind["action_key"] = bind.get("description", "")
         if bind.get("has_description", False):
             parsed_description = parse_description(bind["description"])
             bind.update(parsed_description)

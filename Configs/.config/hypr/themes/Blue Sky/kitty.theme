@@ -1,10 +1,10 @@
 $HOME/.config/kitty/theme.conf
 
 foreground              #FFF8F0
-background              #294052
+background              #122D41
 selection_foreground    #122D41
 selection_background    #FFF8F0
-cursor                  #E9D9C7
+cursor                  #7CBDF4
 cursor_text_color       #060605
 url_color               #86B8FF
 

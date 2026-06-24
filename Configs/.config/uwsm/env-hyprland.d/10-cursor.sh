@@ -9,7 +9,7 @@ hypr_cursor_value() {
     sed "s/[[:space:]]*#.*$//; s/^[[:space:]]*//; s/[[:space:]]*$//; s/^['\"]//; s/['\"]$//"
 }
 
-HYPR_THEME_CONF="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/theme.conf"
+HYPR_THEME_CONF="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/theme.meta"
 
 if [ -r "$HYPR_THEME_CONF" ]; then
   _hypr_cursor_theme="$(hypr_cursor_value CURSOR_THEME "$HYPR_THEME_CONF")"

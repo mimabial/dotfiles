@@ -105,7 +105,7 @@ theme_desktop_load_hyq_env() {
 }
 
 theme_desktop_load_config_values() {
-  local theme_conf="${HYPR_THEME_METADATA_FILE:-${HYPR_CONFIG_HOME}/themes/theme.conf}"
+  local theme_conf="${HYPR_THEME_METADATA_FILE:-${HYPR_CONFIG_HOME}/themes/theme.meta}"
   local theme_hyq_output=""
   local query_output=""
   local -a hyq_args=(
@@ -136,7 +136,7 @@ theme_desktop_load_config_values() {
   command -v hyq >/dev/null 2>&1 || return 0
 
   if [[ "${selected_color_mode:-1}" -eq 0 ]] && [[ -r "${theme_conf}" ]]; then
-    # Manual color mode uses theme.conf for icon/cursor instead of env overrides.
+    # Manual color mode uses theme metadata for icon/cursor instead of env overrides.
     theme_hyq_output="$(
       hyq "${theme_conf}" --export env --allow-missing \
         -Q '$ICON_THEME[string]' \
@@ -205,7 +205,7 @@ theme_desktop_resolve_values() {
   # shellcheck source=/dev/null
   [[ -f "${env_theme_file}" ]] && source "${env_theme_file}"
 
-  HYPRLAND_CONFIG="${HYPRLAND_CONFIG:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr/hyprland.conf}"
+  HYPRLAND_CONFIG="${HYPRLAND_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprland.lua}"
   color_variant="$(state_get_color_variant 2>/dev/null || true)"
   resolved_color_variant="${resolved_color_variant:-${color_variant:-dark}}"
 

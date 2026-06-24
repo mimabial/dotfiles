@@ -74,8 +74,12 @@ def run_hyprctl(*args: str, json_out: bool = False) -> object | str:
     return json.loads(proc.stdout) if json_out else proc.stdout.strip()
 
 
-def hypr_dispatch(dispatcher: str, payload: str) -> None:
-    subprocess.run(["hyprctl", "--quiet", "dispatch", dispatcher, payload], check=False)
+def lua_quote(value: str) -> str:
+    return json.dumps(str(value), ensure_ascii=False)
+
+
+def hypr_dispatch(expression: str) -> None:
+    subprocess.run(["hyprctl", "--quiet", "dispatch", expression], check=False)
 
 
 def session_path(name: str) -> Path:
@@ -329,21 +333,27 @@ def launch_client(client: dict) -> None:
     if not command:
         return
     rules = "; ".join(window_rules(client))
-    hypr_dispatch("exec", f"[{rules}] {command}")
+    hypr_dispatch(f"hl.dsp.exec_raw({lua_quote(f'[{rules}] {command}')})")
 
 
 def reposition(addr: str, saved: dict) -> None:
-    hypr_dispatch("movetoworkspacesilent", f"{ws_target(saved.get('workspace') or {})},address:{addr}")
+    window = lua_quote(f"address:{addr}")
+    workspace = lua_quote(ws_target(saved.get("workspace") or {}))
+    hypr_dispatch(f"hl.dsp.window.move({{workspace={workspace}, window={window}, silent=true}})")
     if saved.get("floating"):
         size = saved.get("size") or [0, 0]
         at = saved.get("at") or [0, 0]
-        hypr_dispatch("setfloating", f"address:{addr}")
+        hypr_dispatch(f"hl.dsp.window.float({{window={window}, action=\"on\"}})")
         if len(size) == 2 and size[0] > 0 and size[1] > 0:
-            hypr_dispatch("resizewindowpixel", f"exact {int(size[0])} {int(size[1])},address:{addr}")
+            hypr_dispatch(
+                f"hl.dsp.window.resize({{x={int(size[0])}, y={int(size[1])}, exact=true, window={window}}})"
+            )
         if len(at) == 2:
-            hypr_dispatch("movewindowpixel", f"exact {int(at[0])} {int(at[1])},address:{addr}")
+            hypr_dispatch(
+                f"hl.dsp.window.move({{x={int(at[0])}, y={int(at[1])}, exact=true, window={window}}})"
+            )
     if saved.get("pinned"):
-        hypr_dispatch("pin", f"address:{addr}")
+        hypr_dispatch(f"hl.dsp.window.pin({{window={window}, action=\"toggle\"}})")
 
 
 def live_match(saved: dict, live: dict) -> bool:

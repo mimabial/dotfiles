@@ -1,10 +1,14 @@
 # Hypr layer restore (manual use only)
-# Restores the HyDE-style split:
+# Restores the native Lua split:
 # - user layer: ~/.config/hypr
 # - shared layer: ~/.local/share/hypr
 
-# Cleanup legacy consolidated-core files from user layer.
-T|${HOME}/.config/hypr|variables.conf defaults.conf env.conf dynamic.conf startup.conf finale.conf|hyprland
+# Cleanup obsolete Hyprlang compositor files.
+T|${HOME}/.config/hypr|hyprland.conf variables.conf defaults.conf env.conf dynamic.conf startup.conf finale.conf gpu.conf keybindings.conf keybindings.fr.conf keybindings.us.conf monitors.conf userfonts.conf userprefs.conf windowrules.conf workspaces.conf|hyprland
+T|${HOME}/.config/hypr/themes|theme.conf wal.conf colors.conf|hyprland
+T|${HOME}/.config/hypr/workflows|focus.conf|hyprland
+T|${HOME}/.local/state/hypr|animations.conf monitor-toggles.conf shaders.conf workflows.conf hyprland.conf|hyprland
+T|${HOME}/.local/share/hypr|hyprland.conf defaults.conf env.conf dynamic.conf startup.conf finale.conf|hyprland
 
 S|${HOME}/.config|hypr|hyprland
 S|${HOME}/.local/share|hypr|hyprland

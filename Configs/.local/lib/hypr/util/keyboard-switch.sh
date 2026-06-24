@@ -47,43 +47,10 @@ usage() {
 Usage: hyprshell keyboard-switch.sh [--sync-current] [--quiet]
 
 Options:
-  --sync-current   Align all keyboards and keybindings.conf to the current active layout
+  --sync-current   Align all keyboards to the current active layout
   --quiet          Suppress the layout notification
   -h, --help       Show this help
 EOF
-}
-
-layout_keybindings_variant_for_keymap() {
-  local target_keymap="${1:-}"
-
-  case "${target_keymap}" in
-    *French*)
-      printf 'fr\n'
-      ;;
-    *)
-      printf 'us\n'
-      ;;
-  esac
-}
-
-sync_layout_keybindings() {
-  local target_keymap="$1"
-  local variant=""
-  local source_file=""
-  local target_file="${XDG_CONFIG_HOME}/hypr/keybindings.conf"
-
-  variant="$(layout_keybindings_variant_for_keymap "${target_keymap}")"
-  source_file="${XDG_CONFIG_HOME}/hypr/keybindings.${variant}.conf"
-
-  [[ -r "${source_file}" ]] || {
-    print_log -err "Missing keybindings variant: ${source_file}"
-    return 1
-  }
-
-  if ! cmp -s "${source_file}" "${target_file}" 2>/dev/null; then
-    cp "${source_file}" "${target_file}" || return 1
-    hyprctl reload >/dev/null 2>&1 || return 1
-  fi
 }
 
 ensure_hypr_instance_signature() {
@@ -209,8 +176,6 @@ main() {
     [[ "${keyboard_name}" == "${reference_name}" ]] && continue
     sync_keyboard_to_keymap "${keyboard_name}" "${target_keymap}" || return 1
   done < <(keyboard_name_list <<<"${keyboards_json}")
-
-  sync_layout_keybindings "${target_keymap}" || return 1
 
   if [[ "${notify_enabled}" -eq 1 ]]; then
     notify_send_safe \

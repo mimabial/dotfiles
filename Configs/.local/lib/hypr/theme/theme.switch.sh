@@ -254,7 +254,7 @@ set_active_theme() {
 prepare_active_theme_config() {
   [[ -r "${HYPR_THEME_DIR}/hypr.theme" ]] || return 0
   mkdir -p "${XDG_CACHE_HOME:-$HOME/.cache}/hypr" || return 1
-  theme_switch_metadata_file="$(mktemp "${XDG_CACHE_HOME:-$HOME/.cache}/hypr/theme.conf.XXXXXX")" || return 1
+  theme_switch_metadata_file="$(mktemp "${XDG_CACHE_HOME:-$HOME/.cache}/hypr/theme.meta.XXXXXX")" || return 1
   sanitize_hypr_theme "${HYPR_THEME_DIR}/hypr.theme" "${theme_switch_metadata_file}"
 }
 

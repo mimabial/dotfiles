@@ -306,7 +306,7 @@ elif [[ "$SUBJECT" == "area" ]]; then
 
     # disable animation for layer namespace "selection" (slurp)
     # this removes the black border seen around screenshots
-    hyprctl keyword layerrule "noanim,selection" >/dev/null
+    hyprctl dispatch '(function() hl.layer_rule({name="runtime:selection-no-animation", match={namespace="selection"}, animation="none"}); return hl.dsp.no_op() end)()' >/dev/null
 
     # convert SLURP_ARGS to a bash array
     IFS=' ' read -r -a _slurp_args <<<"${SLURP_ARGS:-}"

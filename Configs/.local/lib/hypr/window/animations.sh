@@ -14,7 +14,7 @@ source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/window/stateful-choic
 
 animations_user_dir="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}/animations"
 animations_shared_dir="${HYPR_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/hypr}/animations"
-animations_state_file="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/animations.conf"
+animations_state_file="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/animations.lua"
 
 show_help() {
   cat <<HELP
@@ -22,6 +22,7 @@ Usage: $0 [OPTIONS]
 
 Options:
     --select | -S       Select an animation from the available options
+    --set NAME          Set an animation without opening the selector
     --reload | -r       Reload the current animation
     --help   | -h       Show this help message
 HELP
@@ -29,12 +30,12 @@ HELP
 
 resolve_animation_path() {
   local name="${1:-theme}"
-  name="${name%.conf}"
-  hypr_stateful_choice_resolve_path "${name}" "conf" "${animations_user_dir}" "${animations_shared_dir}"
+  name="${name%.lua}"
+  hypr_stateful_choice_resolve_path "${name}" "lua" "${animations_user_dir}" "${animations_shared_dir}"
 }
 
 list_animation_names() {
-  hypr_stateful_choice_list_names "conf" "${animations_user_dir}" "${animations_shared_dir}" "disable" "theme"
+  hypr_stateful_choice_list_names "lua" "${animations_user_dir}" "${animations_shared_dir}" "disable" "theme"
 }
 
 fn_select() {
@@ -64,11 +65,12 @@ fn_select() {
     "Disable Animation") selected_animation="disable" ;;
   esac
 
-  hypr_stateful_choice_apply "HYPR_ANIMATION" "${selected_animation}" "hypr-animation" "Animation selected" fn_update
+  apply_animation "${selected_animation}" "Animation selected"
 }
 
 fn_update() {
   local current_animation animation_path compact_path
+  local animation_name_lua animation_path_lua
 
   declare -F export_hypr_config >/dev/null && export_hypr_config
 
@@ -81,27 +83,34 @@ fn_update() {
   mkdir -p "$(dirname "${animations_state_file}")"
   compact_path="$(hypr_compact_path "${animation_path}")"
 
-  cat <<CONF >"${animations_state_file}"
-#! ▄▀█ █▄░█ █ █▀▄▀█ ▄▀█ ▀█▀ █ █▀█ █▄░█
-#! █▀█ █░▀█ █ █░▀░█ █▀█ ░█░ █ █▄█ █░▀█
+  animation_name_lua="$(jq -Rn --arg value "${current_animation}" '$value')"
+  animation_path_lua="$(jq -Rn --arg value "${animation_path}" '$value')"
+  cat <<LUA >"${animations_state_file}"
+-- Generated native Hyprland Lua. Do not edit manually.
+local runtime = require("runtime")
+local vars = require("vars")
 
-
-#*┌────────────────────────────────────────────────────────────────────────────┐
-#*│ # System controlled content // DO NOT EDIT                                │
-#*│ # User overrides live in ~/.config/hypr/animations/                       │
-#*│ # Shared stock lives in ~/.local/share/hypr/animations/                   │
-#*│ # Run 'hyprshell window/animations.sh --select' to change the current one │
-#*└────────────────────────────────────────────────────────────────────────────┘
-
-\$ANIMATION=${current_animation}
-\$ANIMATION_PATH=${compact_path}
-source = \$ANIMATION_PATH
-CONF
+vars.set("ANIMATION", ${animation_name_lua})
+vars.set("ANIMATION_PATH", ${animation_path_lua})
+runtime.load(${animation_path_lua})
+LUA
 }
 
 fn_reload() {
   local animation_name="${HYPR_ANIMATION:-default}"
-  hypr_stateful_choice_apply "HYPR_ANIMATION" "${animation_name}" "hypr-animation" "Animation reloaded" fn_update
+  apply_animation "${animation_name}" "Animation reloaded"
+}
+
+apply_animation() {
+  local animation_name="$1"
+  local notification_title="$2"
+
+  resolve_animation_path "${animation_name}" >/dev/null || {
+    echo "Error: unknown animation '${animation_name}'" >&2
+    return 1
+  }
+  hypr_stateful_choice_apply "HYPR_ANIMATION" "${animation_name}" "hypr-animation" "${notification_title}" fn_update
+  hyprctl reload config-only -q
 }
 
 if [[ -z "${*}" ]]; then
@@ -110,7 +119,7 @@ if [[ -z "${*}" ]]; then
   exit 1
 fi
 
-LONGOPTS="select,reload,help"
+LONGOPTS="select,set:,reload,help"
 PARSED=$(getopt --options Srh --longoptions "${LONGOPTS}" --name "$0" -- "$@") || exit 2
 eval set -- "${PARSED}"
 
@@ -118,6 +127,14 @@ while true; do
   case "$1" in
     -S | --select)
       fn_select
+      exit 0
+      ;;
+    --set)
+      [[ -n "${2:-}" ]] || {
+        echo "Error: --set requires an animation name" >&2
+        exit 1
+      }
+      apply_animation "$2" "Animation selected"
       exit 0
       ;;
     -r | --reload)

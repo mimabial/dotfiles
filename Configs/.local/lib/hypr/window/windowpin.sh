@@ -45,11 +45,14 @@ read_normalized_monitor_geometry() {
 
 unpin_window() {
   local addr="$1"
+  local window_lua=""
 
-  hyprctl -q --batch \
-    "dispatch pin address:$addr;" \
-    "dispatch togglefloating address:$addr;" \
-    "dispatch tagwindow -pop address:$addr;"
+  window_lua="$(hypr_lua_quote "address:${addr}")"
+
+  hypr_lua_batch \
+    "hl.dsp.window.pin({window=${window_lua}, action=\"toggle\"})" \
+    "hl.dsp.window.float({window=${window_lua}, action=\"toggle\"})" \
+    "hl.dsp.window.tag({window=${window_lua}, tag=\"-pop\"})"
 }
 
 pin_window() {
@@ -67,6 +70,7 @@ pin_window() {
   local usable_height=1
   local pip_width=1
   local pip_height=1
+  local window_lua=""
 
   monitor_info="$(hypr_focused_monitor_geometry)" || return 1
   read_normalized_monitor_geometry "${monitor_info}" monitor_geometry
@@ -87,14 +91,15 @@ pin_window() {
 
   pip_width=$(awk "BEGIN {printf \"%.0f\", $usable_width * 0.7}")
   pip_height=$(awk "BEGIN {printf \"%.0f\", $usable_height * 0.7}")
+  window_lua="$(hypr_lua_quote "address:${addr}")"
 
-  hyprctl -q --batch \
-    "dispatch togglefloating address:$addr;" \
-    "dispatch resizewindowpixel exact ${pip_width} ${pip_height},address:$addr;" \
-    "dispatch centerwindow 1,address:$addr;" \
-    "dispatch pin address:$addr;" \
-    "dispatch alterzorder top address:$addr;" \
-    "dispatch tagwindow +pop address:$addr;"
+  hypr_lua_batch \
+    "hl.dsp.window.float({window=${window_lua}, action=\"toggle\"})" \
+    "hl.dsp.window.resize({x=${pip_width}, y=${pip_height}, exact=true, window=${window_lua}})" \
+    "hl.dsp.window.center({window=${window_lua}, respect_reserved=true})" \
+    "hl.dsp.window.pin({window=${window_lua}, action=\"toggle\"})" \
+    "hl.dsp.window.alter_zorder({window=${window_lua}, mode=\"top\"})" \
+    "hl.dsp.window.tag({window=${window_lua}, tag=\"+pop\"})"
 }
 
 main() {

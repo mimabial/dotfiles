@@ -262,10 +262,10 @@ reference_scope() {
   fi
 
   case "${path}" in
-    "${config_home}/hypr/userfonts.conf" | \
-      "${config_home}/hypr/themes/theme.conf" | \
-      "${config_home}/hypr/variables.conf" | \
-      "${data_home}/hypr/variables.conf" | \
+    "${config_home}/hypr/userfonts.lua" | \
+      "${config_home}/hypr/themes/theme.meta" | \
+      "${config_home}/hypr/variables.meta" | \
+      "${data_home}/hypr/variables.meta" | \
       "${config_home}/waybar/"* | \
       "${config_home}/rofi/"* | \
       "${config_home}/dunst/"* | \

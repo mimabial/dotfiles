@@ -1,4 +1,4 @@
-$HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
+$HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 $ICON_THEME = Tela-purple-light
 $COLOR_SCHEME = prefer-light
 $CURSOR_THEME = Layan-white-cursors
@@ -12,7 +12,7 @@ $NVIM_TRANSPARENCY = false
 # Theme variables above are the primary inputs used by theme.switch.sh.
 
 general {
-    gaps_in = 5
+    gaps_in = 4
     gaps_out = 8
     border_size = 2
     col.active_border = rgba(8839efff) 

@@ -1,17 +1,17 @@
 # domain|layer|kind|mode|backup|relative-path
 
 # Hypr user-facing config layer
-hypr-config|config|file|preserve|never|hypr/hyprland.conf
-hypr-config|config|file|preserve|never|hypr/windowrules.conf
-hypr-config|config|file|preserve|never|hypr/keybindings.conf
-hypr-config|config|file|preserve|never|hypr/userprefs.conf
-hypr-config|config|file|preserve|never|hypr/userfonts.conf
-hypr-config|config|file|preserve|never|hypr/workspaces.conf
+hypr-config|config|file|preserve|never|hypr/hyprland.lua
+hypr-config|config|file|preserve|never|hypr/windowrules.lua
+hypr-config|config|file|preserve|never|hypr/keybindings.lua
+hypr-config|config|file|preserve|never|hypr/userprefs.lua
+hypr-config|config|file|preserve|never|hypr/userfonts.lua
+hypr-config|config|file|preserve|never|hypr/workspaces.lua
 
 # Generated current state
-hypr-state|state|file|preserve|never|hypr/animations.conf
-hypr-state|state|file|preserve|never|hypr/shaders.conf
-hypr-state|state|file|preserve|never|hypr/workflows.conf
+hypr-state|state|file|preserve|never|hypr/animations.lua
+hypr-state|state|file|preserve|never|hypr/shaders.lua
+hypr-state|state|file|preserve|never|hypr/workflows.lua
 
 # Single-file refresh targets
 hyprlock|config|file|preserve|never|hypr/hyprlock.conf

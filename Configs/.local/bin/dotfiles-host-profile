@@ -132,8 +132,17 @@ apply_target() {
   local rel="$2"
   local dry_run="$3"
   local src="${host_dir}/${rel}"
+  local nested_src=""
   local dest="${HOME}/${rel}"
   local output=""
+
+  if [[ "${rel}" == ".config/hypr/gpu.lua" ]] && ! path_exists "${src}"; then
+    nested_src="$(find "${host_dir}/.config/hypr" -mindepth 2 -maxdepth 2 \
+      \( -type f -o -type l \) -name "$(basename -- "${rel}")" -print -quit 2>/dev/null || true)"
+    if [[ -n "${nested_src}" ]] && path_exists "${nested_src}"; then
+      src="${nested_src}"
+    fi
+  fi
 
   if path_exists "${src}"; then
     if $dry_run; then
@@ -154,7 +163,7 @@ apply_target() {
     return 0
   fi
 
-  if [[ "${rel}" == ".config/hypr/gpu.conf" ]]; then
+  if [[ "${rel}" == ".config/hypr/gpu.lua" ]]; then
     if $dry_run; then
       if [[ -f "${dest}" && ! -s "${dest}" ]]; then
         printf 'Unchanged: %s\n' "${rel}"

@@ -89,7 +89,7 @@ menu {
 
 #clock {
   font-weight: bold;
-  padding: 4px 2px 2px;
+  padding: 4px 0px 2px;
 }
 
 #clock.time {
@@ -107,7 +107,7 @@ menu {
    TERMINAL USER INTERFACES
    ============================================ */
 
-#tui {
+#tui-drawer {
   margin-bottom: 2px;
 }
 
@@ -138,20 +138,28 @@ menu {
   color: @fg;
   background: transparent;
   border-color: transparent;
-  animation: ws_normal 20s ease-in-out 1;
+  animation: ws_normal 5s ease-in-out 1;
 }
 
 #workspaces button.active {
-  padding: 4px 0px;
+  padding: 5.5px 0px 2.5px 0px;
   color: @act_fg;
   background: alpha(@act_bg, 0.5);
-  border: 1.6 solid @act_br;
+  border: 1.6px solid @act_br;
   margin: 2px 0px;
-  animation: ws_active 20s ease-in-out 1;
+  animation: ws_active 5s ease-in-out 1;
 }
 
 #workspaces button.active label {
   color: @act_fg;
+}
+
+#workspaces button.active:hover {
+  background: alpha(@hvr_bg, 0.5);
+}
+
+#workspaces button.active:hover label {
+  color: @hvr_br;
 }
 
 #workspaces button.urgent {
@@ -160,8 +168,8 @@ menu {
   background: alpha(@warning, 0.3);
 }
 
-#workspaces button:hover {
-  color: @br;
+#workspaces button:hover label {
+  color: @hvr_br;
   animation: ws_hover 20s ease-in-out 1;
 }
 
@@ -311,16 +319,10 @@ menu {
 }
 
 #pulseaudio {
-  padding: 4px 0px;
+  padding: 4px 4px 4px 0px;
   margin: 2px 2px 4px;
   background-color: alpha(@bg, 0.1);
   border: 1px solid alpha(@br, 0.3);
-}
-
-#pulseaudio.muted {
-  background-color: alpha(@bg, 0.1);
-  border: 1px solid alpha(@br, 0.3);
-  padding-right: 2px;
 }
 
 #custom-microphone {
@@ -511,8 +513,8 @@ menu {
 
 #tray {
   font-size: 14px;
-  padding-bottom: 6px;
-  padding-top: 4px;
+  padding-bottom: 8px;
+  padding-top: 8px;
   margin: 2px 2px 4px 2px;
   background: alpha(@alt_bg, 0.1);
   border: 1px solid alpha(@alt_br, 0.3);

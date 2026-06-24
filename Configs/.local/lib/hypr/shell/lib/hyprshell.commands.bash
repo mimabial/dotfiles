@@ -61,7 +61,7 @@ hyprlogout() {
   if uwsm check is-active; then
     uwsm stop
   elif [[ -n "${HYPRLAND_INSTANCE_SIGNATURE}" ]]; then
-    hyprctl dispatch exit 0
+    hypr_lua_dispatch 'hl.dsp.exit()'
   fi
 }
 

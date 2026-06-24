@@ -3,7 +3,7 @@
 
 set -euo pipefail
 
-theme_file="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/theme.conf"
+theme_file="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/theme.meta"
 palette_file="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/active-palette.json"
 sync_script="$HOME/.local/lib/hypr/util/nvim-theme-sync.sh"
 last_theme_mtime=0

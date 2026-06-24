@@ -9,11 +9,9 @@ selection_foreground    #101419
 cursor                  #56A0D3
 cursor_text_color       #000000
 
-active_tab_background   #000000
 active_tab_foreground   #56A0D3
 inactive_tab_foreground #4d5768
-inactive_tab_background #000000
-tab_bar_background      #000000
+tab_bar_background      #101419
 
 color0     #101419
 color1     #903035

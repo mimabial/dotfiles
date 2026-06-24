@@ -158,7 +158,9 @@ theme_apply_prepare_desktop_state() {
 
 theme_apply_commit_theme_metadata() {
   local staged_file="${HYPR_THEME_METADATA_FILE:-}"
-  local live_file="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/theme.conf"
+  local live_file="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/theme.meta"
+  local lua_file="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/theme.lua"
+  local converter="${LIB_DIR}/hypr/util/hypr-to-lua.py"
 
   [[ -n "${staged_file}" && -f "${staged_file}" ]] || return 0
   mkdir -p "$(dirname "${live_file}")" || return 1
@@ -171,6 +173,9 @@ theme_apply_commit_theme_metadata() {
 
   HYPR_THEME_METADATA_FILE="${live_file}"
   export HYPR_THEME_METADATA_FILE
+
+  [[ -x "${converter}" ]] || return 1
+  "${converter}" --input "${live_file}" --output "${lua_file}" --set "HYPR_THEME=${HYPR_THEME}"
 }
 
 theme_apply_sync_runtime_desktop_state() {

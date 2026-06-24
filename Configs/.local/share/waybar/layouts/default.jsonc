@@ -13,8 +13,8 @@
   ],
   "modules-left": [
     "group/datetime",
-    "group/tui",
-    "hyprland/workspaces#hindi",
+    "group/tui-drawer",
+    "ext/workspaces#hindi",
     "hyprland/submap",
     "group/forecast",
     "group/info"
@@ -30,7 +30,7 @@
     "group/connection",
     "group/power"
   ],
-  "group/tui": {
+  "group/tui-drawer": {
     "orientation": "inherit",
     "drawer": {
       "transition-duration": 500,

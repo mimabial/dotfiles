@@ -10,7 +10,7 @@ if hypr_user_pgrep -x rofi >/dev/null 2>&1; then
 fi
 
 keyconfDir="${XDG_CONFIG_HOME:-$HOME/.config}/hypr"
-kb_hint_conf=("$keyconfDir/hyprland.conf" "$keyconfDir/keybindings.conf" "$keyconfDir/userprefs.conf")
+kb_hint_conf=("$keyconfDir/lua/keybindings.lua")
 kb_hint_conf+=("${ROFI_KEYBIND_HINT_CONFIG[@]}")
 
 kb_cache_dir="$(hypr_runtime_subdir hypr)" || exit 1
@@ -104,14 +104,23 @@ arg=$(awk -F ':::' '{print $3}' <<<"${selected}" | xargs)
 repeat=$(awk -F ':::' '{print $4}' <<<"${selected}" | xargs)
 
 run_dispatch() {
-  local output
-  if [[ -n "${arg}" ]]; then
-    output=$(hyprctl dispatch "${dispatch}" "${arg}" 2>&1)
+  local output=""
+  local action_key=""
+  local action_lua=""
+
+  if [[ "${dispatch}" == "__lua_action" ]]; then
+    action_key="$(printf '%s' "${arg}" | base64 --decode 2>/dev/null)" || return 1
+    action_lua="$(hypr_lua_quote "${action_key}")"
+    output="$(hypr_lua_dispatch "_G.HYPR_BIND_ACTIONS[${action_lua}]" 2>&1)"
+  elif [[ "${dispatch}" == hl.dsp.* ]]; then
+    output="$(hypr_lua_dispatch "${dispatch}" 2>&1)"
   else
-    output=$(hyprctl dispatch "${dispatch}" 2>&1)
+    output="Unsupported dispatcher: ${dispatch}"
   fi
   case "${output}" in
-    *"Not enough arguments"*) exec "$0" ;;
+    *"Not enough arguments"* | *"Unsupported dispatcher"*)
+      dunstify -t 4000 -i "dialog-error" "Keybind Hint" "${output}"
+      ;;
   esac
 }
 

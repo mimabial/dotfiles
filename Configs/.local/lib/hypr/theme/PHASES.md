@@ -13,7 +13,7 @@ once. Runs in the foreground until the user-visible apps have been updated.
 theme_apply_next_generation        increment + cancel previous phase-D units
 theme_apply_prepare_common_state   acquire theme_update lock
 theme_apply_run_color_sync         color-sync.sh: pywal16 + colors-shell.sh
-theme_apply_commit_theme_metadata  promote staged theme.conf to live
+theme_apply_commit_theme_metadata  promote staged theme metadata and generate native Lua
 theme_apply_display_wallpaper     submit current wall.set to the backend
 theme_apply_update_waybar_border_radius
 theme_apply_start_envelope         fork phase D in a systemd-run user slice

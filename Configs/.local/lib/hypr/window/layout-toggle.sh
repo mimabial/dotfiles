@@ -3,6 +3,10 @@
 
 set -euo pipefail
 
+CORE_COMMON="${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh"
+# shellcheck source=/dev/null
+source "${CORE_COMMON}" || exit 1
+
 read -r ACTIVE_WORKSPACE CURRENT_LAYOUT < <(
   hyprctl activeworkspace -j | jq -r '[.id, .tiledLayout] | @tsv'
 )
@@ -17,5 +21,7 @@ case "$CURRENT_LAYOUT" in
   *) NEW_LAYOUT=dwindle ;;
 esac
 
-hyprctl keyword workspace "$ACTIVE_WORKSPACE, layout:$NEW_LAYOUT"
+workspace_lua="$(hypr_lua_quote "${ACTIVE_WORKSPACE}")"
+layout_lua="$(hypr_lua_quote "${NEW_LAYOUT}")"
+hypr_lua_apply "hl.workspace_rule({workspace=${workspace_lua}, layout=${layout_lua}})"
 dunstify -a "Hyprland" -t 3000 -i "preferences-system" -h "string:x-dunst-stack-tag:layout" "Layout: $NEW_LAYOUT"

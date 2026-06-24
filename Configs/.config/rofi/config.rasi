@@ -57,7 +57,7 @@ configuration {
 
 	/*---------- Window switcher settings ----------*/
 	window-match-fields: "title,class";
-	window-command: "hyprctl dispatch focuswindow address:{window}";
+	window-command: "hyprctl dispatch 'hl.dsp.focus({window=\"address:{window}\"})'";
 	window-format: "{c} - {t:0}";
 	window-thumbnail: false;
 

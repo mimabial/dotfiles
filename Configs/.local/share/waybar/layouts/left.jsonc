@@ -14,7 +14,7 @@
   "modules-left": [
     "group/datetime",
     "group/tui",
-    "hyprland/workspaces#hindi",
+    "ext/workspaces#hindi",
     "hyprland/submap",
     "group/forecast",
     "group/info"

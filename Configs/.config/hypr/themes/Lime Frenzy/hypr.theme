@@ -1,4 +1,4 @@
-$HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
+$HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 
 $ICON_THEME = Tela-green-dark
 $COLOR_SCHEME = prefer-dark
@@ -21,10 +21,10 @@ general {
 }
 
 group {
-    col.border_active = rgba(d79921ff) rgba(98971aff) 45deg
-    col.border_inactive = rgba(665c54cc) rgba(3c3836cc) 45deg
-    col.border_locked_active = rgba(d79921ff) rgba(98971aff) 45deg
-    col.border_locked_inactive = rgba(665c54cc) rgba(3c3836cc) 45deg
+    col.border_active = rgba(98971aff) 
+    col.border_inactive = rgba(3c3836cc) 
+    col.border_locked_active = rgba(98971aff) 
+    col.border_locked_inactive = rgba(3c3836cc) 
 }
 
 decoration {

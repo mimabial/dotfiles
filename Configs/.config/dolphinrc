@@ -3,14 +3,18 @@ MenuBar=Disabled
 [$Version]
 update_info=dolphin_detailsmodesettings.upd:rename-leading-padding
 
+[ContextMenu]
+ShowCopyMoveMenu=true
+
 [DetailsMode]
 IconSize=32
 LeftPadding=38
 PreviewSize=32
 
 [General]
+BrowseThroughArchives=true
 CloseActiveSplitView=false
-DynamicView=true
+CloseSplitViewChoice=RightView
 GlobalViewProps=false
 LockPanels=false
 ShowFullPath=false

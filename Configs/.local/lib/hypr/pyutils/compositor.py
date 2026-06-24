@@ -122,6 +122,16 @@ class HyprctlWrapper:
         mon_res[1] = mon_res[1] * 100 // mon_res[2]
         cur_pos = [cursor_pos["x"] - mon_res[3], cursor_pos["y"] - mon_res[4]]
 
+        try:
+            gaps_out = max(0, int(HyprctlWrapper.getoption("general:gaps_out")))
+        except (OSError, RuntimeError, TypeError, ValueError):
+            gaps_out = 5
+        try:
+            border_width = max(0, int(HyprctlWrapper.getoption("general:border_size")))
+        except (OSError, RuntimeError, TypeError, ValueError):
+            border_width = 2
+        edge_padding = gaps_out * 2 + border_width
+
         if cur_pos[0] >= mon_res[0] // 2:
             x_pos = "east"
             x_off = -(mon_res[0] - cur_pos[0] - off_res[2])
@@ -136,9 +146,10 @@ class HyprctlWrapper:
             y_pos = "north"
             y_off = cur_pos[1] - off_res[1]
 
-        # Clamp offsets so rofi stays within monitor bounds
-        x_off = max(x_off, 0) if x_pos == "west" else min(x_off, 0)
-        y_off = max(y_off, 0) if y_pos == "north" else min(y_off, 0)
+        # Keep the outer Rofi border box inside the same padded usable area as
+        # the shared shell implementation.
+        x_off = max(x_off, edge_padding) if x_pos == "west" else min(x_off, -edge_padding)
+        y_off = max(y_off, edge_padding) if y_pos == "north" else min(y_off, -edge_padding)
 
         coordinates = (
             f"window{{location:{x_pos} {y_pos};"

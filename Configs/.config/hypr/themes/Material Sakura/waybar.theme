@@ -4,12 +4,12 @@ $HOME/.config/waybar/theme.css
 @define-color fg #575279;
 @define-color br #9893a5; /* overlay */
 
-@define-color alt_bg #907aa9;
+@define-color alt_bg #56949f;
 @define-color alt_fg #faf4ed;
-@define-color alt_br #b4637a;
+@define-color alt_br #286983;
 
-@define-color act_bg #907aa9;
-@define-color act_fg #ffffff;
+@define-color act_bg #b4637a;
+@define-color act_fg #fffaf3;
 @define-color act_br #ffffff;
 
 @define-color hvr_bg #56949f;

@@ -216,8 +216,16 @@ get_rofi_pos() {
   local min_x=0 max_x=0 min_y=0 max_y=0
   local desired_x=0 desired_y=0
   local x_off=0 y_off=0
+  local ignored_border_radius=""
+  local border_width=0
 
   rofi_default_window_size window_width window_height
+  hypr_border_metrics_into ignored_border_radius border_width 2>/dev/null || true
+  [[ "${border_width}" =~ ^[0-9]+$ ]] || border_width=2
+  # Rofi dimensions describe the content box; clamp using its outer border box.
+  window_width=$((window_width + border_width * 2))
+  window_height=$((window_height + border_width * 2))
+
   if declare -F rofi_monitors_json >/dev/null 2>&1; then
     monitors_json="$(rofi_monitors_json)"
   else

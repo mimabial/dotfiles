@@ -61,10 +61,6 @@ WGETRC="${XDG_CONFIG_HOME}/wgetrc"
 PYTHON_HISTORY="$XDG_STATE_HOME/python_history"
 PYTHONHISTFILE="${PYTHONHISTFILE:-$PYTHON_HISTORY}"
 
-# Compositor Configuration
-export HYPRLAND_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprland.conf"
-
-
 # Export all variables
 export PATH \
   XDG_CONFIG_HOME XDG_DATA_HOME XDG_DATA_DIRS XDG_STATE_HOME XDG_CACHE_HOME \

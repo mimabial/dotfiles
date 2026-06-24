@@ -204,8 +204,8 @@ deploy_psv() {
 
 hyprland_hook() {
 
-    local template_config="${CfgDir}/.config/hypr/hyprland.conf"
-    local hyprland_default_config="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprland.conf"
+    local template_config="${CfgDir}/.config/hypr/hyprland.lua"
+    local hyprland_default_config="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprland.lua"
     if [[ ! -f "${template_config}" ]]; then
         print_log -r "[error] :: " "Template missing: ${template_config}"
         return 1
@@ -218,8 +218,7 @@ hyprland_hook() {
         return 0
     fi
 
-    if grep -Eq '^\s*\$(DOTFILES_HYPRLAND|HYDE_HYPRLAND)\s*=' "${hyprland_default_config}" \
-        || grep -Eq '^\s*source\s*=.*\.local/share/hypr/hyprland\.conf' "${hyprland_default_config}"; then
+    if grep -Eq '^local core = require\("lua\.core"\)' "${hyprland_default_config}"; then
         return 0
     fi
 
@@ -227,10 +226,10 @@ hyprland_hook() {
     print_log -g "[hook] " -b "hyprland :: " "No recognized wrapper marker in ${hyprland_default_config}, restoring template..."
 
     if [[ ${flg_DryRun} -ne 1 && -f "${hyprland_default_config}" ]]; then
-        cp -f "${hyprland_default_config}" "${BkpDir}/.config/hypr/hyprland.conf"
+        cp -f "${hyprland_default_config}" "${BkpDir}/.config/hypr/hyprland.lua"
     fi
 
-    print_log -r "[backup] :: " "${hyprland_default_config} to ${BkpDir}/.config/hypr/hyprland.conf"
+    print_log -r "[backup] :: " "${hyprland_default_config} to ${BkpDir}/.config/hypr/hyprland.lua"
     [[ ${flg_DryRun} -ne 1 ]] && cp -f "${template_config}" "${hyprland_default_config}"
     print_log -g "[restore] :: " "${template_config} to ${hyprland_default_config}"
 }

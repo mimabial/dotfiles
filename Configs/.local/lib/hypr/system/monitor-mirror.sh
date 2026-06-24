@@ -25,7 +25,7 @@ mirror_on() {
   fi
 
   monitor_remove_fragment "${disable_name}"
-  monitor_set_fragment "${toggle_name}" "monitor=${external_monitor},preferred,auto,1,mirror,${internal_monitor}"
+  monitor_set_fragment "${toggle_name}" "hl.monitor({output = $(monitor_lua_quote "${external_monitor}"), mode = \"preferred\", position = \"auto\", scale = 1, mirror = $(monitor_lua_quote "${internal_monitor}")})"
   monitor_reload
   monitor_notify "Display mirroring enabled" "${external_monitor} mirrors ${internal_monitor}"
 }

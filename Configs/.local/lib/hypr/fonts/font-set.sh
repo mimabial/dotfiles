@@ -9,7 +9,7 @@ source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
 hypr_runtime_require system || exit 1
 
 FONT_NAME="${1:-}"
-USER_FONTS_FILE="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}/userfonts.conf"
+USER_FONTS_FILE="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}/userfonts.lua"
 
 usage() {
   cat <<EOF2
@@ -45,31 +45,21 @@ require_installed_font() {
   exit 1
 }
 
-write_font_override() {
-  local var_name="$1"
-  local value="$2"
-  local file_path="$3"
-  local replacement="\$${var_name}=${value}"
-  local escaped=""
-
-  escaped="$(sed_escape_replacement "${replacement}")"
-  mkdir -p "$(dirname "${file_path}")"
-  touch "${file_path}"
-
-  if grep -q "^[[:space:]]*\$${var_name}=" "${file_path}"; then
-    sed -i "s|^[[:space:]]*\$${var_name}=.*|${escaped}|" "${file_path}"
-  else
-    printf '\n$%s=%s\n' "${var_name}" "${value}" >>"${file_path}"
-  fi
-}
-
 persist_font_selection() {
-  write_font_override 'FONT' "${FONT_NAME}" "${USER_FONTS_FILE}"
-  write_font_override 'DOCUMENT_FONT' "${FONT_NAME}" "${USER_FONTS_FILE}"
-  write_font_override 'MONOSPACE_FONT' "${FONT_NAME}" "${USER_FONTS_FILE}"
-  write_font_override 'BAR_FONT' "${FONT_NAME}" "${USER_FONTS_FILE}"
-  write_font_override 'MENU_FONT' "${FONT_NAME}" "${USER_FONTS_FILE}"
-  write_font_override 'TERMINAL_FONT' "${FONT_NAME}" "${USER_FONTS_FILE}"
+  local font_lua=""
+  font_lua="$(jq -Rn --arg value "${FONT_NAME}" '$value')"
+  mkdir -p "$(dirname "${USER_FONTS_FILE}")"
+  cat <<LUA >"${USER_FONTS_FILE}"
+-- Generated native Hyprland Lua font overrides.
+local vars = require("vars")
+
+vars.set("FONT", ${font_lua})
+vars.set("DOCUMENT_FONT", ${font_lua})
+vars.set("MONOSPACE_FONT", ${font_lua})
+vars.set("BAR_FONT", ${font_lua})
+vars.set("MENU_FONT", ${font_lua})
+vars.set("TERMINAL_FONT", ${font_lua})
+LUA
 }
 
 require_font_name

@@ -393,7 +393,7 @@ ensure_hyprsunset_process() {
   fi
 
   remove_stale_socket
-  hyprctl --quiet dispatch exec -- hyprsunset
+  hypr_lua_dispatch 'hl.dsp.exec_cmd("hyprsunset")' >/dev/null
 }
 
 sync_runtime_for_read() {

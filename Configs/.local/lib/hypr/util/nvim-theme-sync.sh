@@ -3,7 +3,7 @@
 
 set -euo pipefail
 
-theme_file="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/theme.conf"
+theme_file="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/theme.meta"
 
 log_dir="${XDG_CACHE_HOME:-$HOME/.cache}/hypr"
 log_file="${log_dir}/nvim-theme-sync.log"

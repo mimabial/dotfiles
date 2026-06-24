@@ -4,7 +4,7 @@
 # color.targets.sh - Materialize theme target files and wallpaper-mode cleanup
 
 active_theme_metadata_file() {
-  printf '%s\n' "${HYPR_THEME_METADATA_FILE:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/theme.conf}"
+  printf '%s\n' "${HYPR_THEME_METADATA_FILE:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/theme.meta}"
 }
 
 hypr_layered_value() {
@@ -12,9 +12,9 @@ hypr_layered_value() {
   local config_file value=""
 
   for config_file in \
-    "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/userfonts.conf" \
+    "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/userfonts.lua" \
     "$(active_theme_metadata_file)" \
-    "${XDG_DATA_HOME:-$HOME/.local/share}/hypr/variables.conf"
+    "${XDG_DATA_HOME:-$HOME/.local/share}/hypr/variables.meta"
   do
     [[ -r "${config_file}" ]] || continue
     value="$(
@@ -24,6 +24,13 @@ hypr_layered_value() {
           gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
           gsub(/^"/, "", value)
           gsub(/"$/, "", value)
+          print value
+          exit
+        }
+        $0 ~ "^[[:space:]]*vars\\.set\\(\\\"" key "\\\"," {
+          value = $0
+          sub(/^[^,]*,[[:space:]]*\"/, "", value)
+          sub(/\"\).*/, "", value)
           print value
           exit
         }
@@ -128,4 +135,3 @@ process_theme_files() {
 
   done < <(find "${HYPR_THEME_DIR}" -type f -name "*.theme" 2>/dev/null)
 }
-

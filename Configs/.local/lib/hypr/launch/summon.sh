@@ -32,10 +32,15 @@ EOF
 launch_summon_to_workspace() {
   local window_address="$1"
   local workspace_name="$2"
+  local window_lua=""
+  local workspace_lua=""
 
-  hyprctl -q --batch \
-    "dispatch movetoworkspacesilent ${workspace_name},address:${window_address}; \
-dispatch focuswindow address:${window_address}" \
+  launch_source_core_common || return 1
+  window_lua="$(hypr_lua_quote "address:${window_address}")"
+  workspace_lua="$(hypr_lua_quote "${workspace_name}")"
+  hypr_lua_batch \
+    "hl.dsp.window.move({workspace=${workspace_lua}, window=${window_lua}, silent=true})" \
+    "hl.dsp.focus({window=${window_lua}})" \
     >/dev/null 2>&1
 }
 
@@ -115,7 +120,8 @@ launch_ensure_window_floating() {
   local is_floating="$2"
 
   [[ "${is_floating}" == "true" ]] && return 0
-  hyprctl dispatch togglefloating "address:${window_address}" >/dev/null 2>&1
+  launch_source_core_common || return 1
+  hypr_lua_dispatch "hl.dsp.window.float({window=$(hypr_lua_quote "address:${window_address}"), action=\"toggle\"})" >/dev/null 2>&1
 }
 
 launch_resize_window_exact() {
@@ -123,8 +129,9 @@ launch_resize_window_exact() {
   local target_width="$2"
   local target_height="$3"
 
-  hyprctl -q --batch \
-    "dispatch resizewindowpixel exact ${target_width} ${target_height},address:${window_address}" \
+  launch_source_core_common || return 1
+  hypr_lua_dispatch \
+    "hl.dsp.window.resize({x=${target_width}, y=${target_height}, exact=true, window=$(hypr_lua_quote "address:${window_address}")})" \
     >/dev/null 2>&1
 }
 
@@ -235,14 +242,17 @@ launch_apply_window_position() {
   local usable_height="$8"
   local target_x=""
   local target_y=""
+  local window_lua=""
 
   IFS=$'\t' read -r target_x target_y \
     < <(launch_compute_target_position "${align}" "${usable_x}" "${usable_y}" "${usable_width}" "${usable_height}" \
       "${current_width}" "${current_height}") || return 1
 
-  hyprctl -q --batch \
-    "dispatch movewindowpixel exact ${target_x} ${target_y},address:${window_address}; \
-dispatch focuswindow address:${window_address}" \
+  launch_source_core_common || return 1
+  window_lua="$(hypr_lua_quote "address:${window_address}")"
+  hypr_lua_batch \
+    "hl.dsp.window.move({x=${target_x}, y=${target_y}, exact=true, window=${window_lua}})" \
+    "hl.dsp.focus({window=${window_lua}})" \
     >/dev/null 2>&1
 }
 

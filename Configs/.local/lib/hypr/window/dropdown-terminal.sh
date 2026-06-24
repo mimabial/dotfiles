@@ -59,6 +59,8 @@ dropdown_target_size() {
 show_dropdown_window() {
   local client_json="$1"
   local addr=""
+  local window_lua=""
+  local workspace_lua=""
   local target_width=""
   local target_height=""
   local workspace_name=""
@@ -68,23 +70,30 @@ show_dropdown_window() {
   workspace_name="$(focused_workspace_name)"
   [[ -n "${workspace_name}" ]] || return 1
   IFS=$'\t' read -r target_width target_height <<<"$(dropdown_target_size)" || return 1
+  window_lua="$(hypr_lua_quote "address:${addr}")"
+  workspace_lua="$(hypr_lua_quote "${workspace_name}")"
 
-  hyprctl -q --batch \
-    "dispatch movetoworkspacesilent ${workspace_name},address:${addr}; \
- dispatch resizeactive exact ${target_width} ${target_height} address:${addr}; \
- dispatch centerwindow address:${addr}; \
- dispatch focuswindow address:${addr}" \
+  hypr_lua_batch \
+    "hl.dsp.window.move({workspace=${workspace_lua}, window=${window_lua}, silent=true})" \
+    "hl.dsp.window.resize({x=${target_width}, y=${target_height}, exact=true, window=${window_lua}})" \
+    "hl.dsp.window.center({window=${window_lua}})" \
+    "hl.dsp.focus({window=${window_lua}})" \
     >/dev/null 2>&1 || return 1
 }
 
 hide_dropdown_window() {
   local client_json="$1"
   local addr=""
+  local window_lua=""
+  local workspace_lua=""
 
   addr="$(jq -r '.address // empty' <<<"${client_json}")"
   [[ -n "${addr}" ]] || return 1
+  dropdown_source_window_common || return 1
+  window_lua="$(hypr_lua_quote "address:${addr}")"
+  workspace_lua="$(hypr_lua_quote "$(dropdown_workspace_name)")"
 
-  hyprctl dispatch movetoworkspacesilent "$(dropdown_workspace_name),address:${addr}" \
+  hypr_lua_dispatch "hl.dsp.window.move({workspace=${workspace_lua}, window=${window_lua}, silent=true})" \
     >/dev/null 2>&1 || return 1
 }
 

@@ -35,7 +35,7 @@ internal_off() {
     monitor_remove_fragment "${mirror_name}"
   fi
 
-  monitor_set_fragment "${toggle_name}" "monitor=${internal_monitor},disable"
+  monitor_set_fragment "${toggle_name}" "hl.monitor({output = $(monitor_lua_quote "${internal_monitor}"), disabled = true})"
   monitor_reload
   monitor_notify "Laptop display disabled" "${internal_monitor}"
 }

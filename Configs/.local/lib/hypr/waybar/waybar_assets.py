@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import glob
 import os
+import re
 import sys
 
 from pyutils.compositor import HyprctlWrapper
@@ -245,9 +246,9 @@ def get_value_from_hypr_config(variable_name):
     variable_key = variable_name.lstrip("$")
     config_home = xdg_config_home()
     candidate_files = [
-        config_home / "hypr" / "themes" / "theme.conf",
-        config_home / "hypr" / "userfonts.conf",
-        xdg_data_home() / "hypr" / "variables.conf",
+        config_home / "hypr" / "themes" / "theme.meta",
+        config_home / "hypr" / "userfonts.lua",
+        xdg_data_home() / "hypr" / "variables.meta",
     ]
 
     for file_path in candidate_files:
@@ -257,6 +258,14 @@ def get_value_from_hypr_config(variable_name):
             with open(file_path, "r") as file:
                 for line in file:
                     stripped = line.strip()
+                    lua_match = re.match(
+                        rf'^vars\.set\("{re.escape(variable_key)}",\s*"([^"]*)"\)',
+                        stripped,
+                    )
+                    if lua_match:
+                        value = lua_match.group(1)
+                        logger.debug(f"Got {variable_name} from {file_path}: {value}")
+                        return value or None
                     if not stripped or stripped.startswith("#") or "=" not in stripped:
                         continue
                     lhs, rhs = stripped.split("=", 1)
@@ -276,7 +285,7 @@ def get_value_from_hypr_config(variable_name):
 
 
 def get_hypr_theme_rounding():
-    theme_conf = xdg_config_home() / "hypr" / "themes" / "theme.conf"
+    theme_conf = xdg_config_home() / "hypr" / "themes" / "theme.meta"
     if not theme_conf.exists():
         return None
 

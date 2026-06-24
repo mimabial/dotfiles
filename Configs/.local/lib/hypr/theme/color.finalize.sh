@@ -142,7 +142,7 @@ color_finalize_normalize_hyprshade_colors() {
 }
 
 color_finalize_read_hypr_border() {
-  local theme_conf="${1:-${HYPR_THEME_METADATA_FILE:-${HYPR_CONFIG_HOME}/themes/theme.conf}}"
+  local theme_conf="${1:-${HYPR_THEME_METADATA_FILE:-${HYPR_CONFIG_HOME}/themes/theme.meta}}"
 
   [[ -r "${theme_conf}" ]] || return 1
   awk -F= '
@@ -155,7 +155,7 @@ color_finalize_read_hypr_border() {
 }
 
 color_finalize_primary_theming() {
-  local theme_conf="${HYPR_THEME_METADATA_FILE:-${HYPR_CONFIG_HOME}/themes/theme.conf}"
+  local theme_conf="${HYPR_THEME_METADATA_FILE:-${HYPR_CONFIG_HOME}/themes/theme.meta}"
 
   print_log -sec "pywal16" -stat "deploy" "applying themes to applications"
 
@@ -175,7 +175,7 @@ color_finalize_primary_theming() {
 }
 
 color_finalize_export_icon_theme() {
-  local theme_conf="${HYPR_THEME_METADATA_FILE:-${HYPR_CONFIG_HOME}/themes/theme.conf}"
+  local theme_conf="${HYPR_THEME_METADATA_FILE:-${HYPR_CONFIG_HOME}/themes/theme.meta}"
   local hyq_out=""
   local hyq_icon=""
 
@@ -184,8 +184,8 @@ color_finalize_export_icon_theme() {
       hyq_out="$(hyq "${theme_conf}" --export env --allow-missing -Q "\$ICON_THEME[string]" 2>/dev/null)"
       hyq_icon="$(_safe_hyq_get "${hyq_out}" "ICON_THEME")"
       [[ -n "${hyq_icon}" ]] && ICON_THEME="${hyq_icon}"
-    elif [[ -z "${ICON_THEME}" ]]; then
-      hyq_out="$(hyq "${HYPR_CONFIG_HOME}/hyprland.conf" --source --export env --allow-missing -Q "\$ICON_THEME[string]" 2>/dev/null)"
+    elif [[ -z "${ICON_THEME}" ]] && [[ -r "${theme_conf}" ]]; then
+      hyq_out="$(hyq "${theme_conf}" --export env --allow-missing -Q "\$ICON_THEME[string]" 2>/dev/null)"
       hyq_icon="$(_safe_hyq_get "${hyq_out}" "ICON_THEME")"
       ICON_THEME="${hyq_icon:-$ICON_THEME}"
     fi
