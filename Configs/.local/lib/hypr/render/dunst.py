@@ -39,23 +39,32 @@ def with_alpha(color, alpha_hex):
     if len(c) == 6: return "#" + c.upper() + a
     return "#" + c
 
+_VAR_RX = re.compile(r"^\s*\$(\S+?)\s*=\s*(.*?)(?:\s*#.*)?$")
+_METRIC_RX = re.compile(r"^\s*([^$\s]\S*)\s*=\s*(\S+)")
+_theme_cache = None
+
+def _theme_cache_get():
+    global _theme_cache
+    if _theme_cache is not None:
+        return _theme_cache
+    vars_d, metrics_d = {}, {}
+    if THEME_CONF.is_file():
+        for line in THEME_CONF.read_text().splitlines():
+            m = _VAR_RX.match(line)
+            if m:
+                vars_d[m.group(1)] = m.group(2).strip().strip('"').strip("'")
+                continue
+            m = _METRIC_RX.match(line)
+            if m:
+                metrics_d[m.group(1)] = m.group(2)
+    _theme_cache = (vars_d, metrics_d)
+    return _theme_cache
+
 def read_theme_var(key):
-    if not THEME_CONF.is_file(): return ""
-    rx = re.compile(rf"^\s*\${re.escape(key)}\s*=\s*(.*?)(?:\s*#.*)?$")
-    for line in THEME_CONF.read_text().splitlines():
-        m = rx.match(line)
-        if m:
-            v = m.group(1).strip().strip('"').strip("'")
-            return v
-    return ""
+    return _theme_cache_get()[0].get(key, "")
 
 def read_theme_metric(key):
-    if not THEME_CONF.is_file(): return ""
-    rx = re.compile(rf"^\s*{re.escape(key)}\s*=\s*(\S+)")
-    for line in THEME_CONF.read_text().splitlines():
-        m = rx.match(line)
-        if m: return m.group(1)
-    return ""
+    return _theme_cache_get()[1].get(key, "")
 
 def read_hypr_metric(opt):
     try:

@@ -4,6 +4,11 @@ set -euo pipefail
 
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/install/desktop-entry.lib.bash"
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+
+hypr_help_guard "Usage: hyprshell install/webapp [name url icon-url [exec] [mime]]
+Create a web-app launcher and desktop entry (prompts when args are omitted)." "$@"
 
 ICON_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/applications/icons"
 DESKTOP_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/applications"

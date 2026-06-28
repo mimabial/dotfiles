@@ -15,7 +15,7 @@ find_audio_source() {
 }
 
 source_volume_pct() {
-  pactl get-source-volume "$1" 2>/dev/null | grep -o '[0-9]\+%' | head -1 | tr -d '%'
+  pactl get-source-volume "$1" 2>/dev/null | awk 'match($0,/[0-9]+%/){print substr($0,RSTART,RLENGTH-1); exit}'
 }
 
 source_is_muted() {

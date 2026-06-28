@@ -72,7 +72,7 @@ def main():
     d = 1 if roles.is_dark else -1
     bg_alt = shade(bg, 0.06 * d)
     bg_button = roles.button_surface
-    bg_tooltip = shade(bg, 0.10 * d)
+    bg_tooltip = roles.tooltip_surface
     fg_dim = shade(fg, 0.18 * -d)
 
     def rgb(c):
@@ -102,9 +102,9 @@ def main():
         "ForegroundInactive": rgb(fg_dim),
         "ForegroundLink": rgb(link),
         "ForegroundVisited": rgb(link_visited),
-        "ForegroundNegative": rgb(colors.get("color1", accent)),
-        "ForegroundNeutral":  rgb(colors.get("color3", accent)),
-        "ForegroundPositive": rgb(colors.get("color2", accent)),
+        "ForegroundNegative": rgb(colors["color1"]),
+        "ForegroundNeutral":  rgb(colors["color3"]),
+        "ForegroundPositive": rgb(colors["color2"]),
         "DecorationFocus": rgb(accent),
         "DecorationHover": rgb(hover),
     }
@@ -118,7 +118,7 @@ def main():
                                "ForegroundVisited": rgb(highlight_text), "ForegroundNegative": rgb(highlight_text),
                                "ForegroundNeutral": rgb(highlight_text), "ForegroundPositive": rgb(highlight_text),
                                "DecorationFocus": rgb(accent), "DecorationHover": rgb(hover)},
-        "Colors:Tooltip":     {"BackgroundNormal": rgb(bg_tooltip),"BackgroundAlternate": rgb(bg_alt),   "ForegroundNormal": rgb(fg), **shared},
+        "Colors:Tooltip":     {"BackgroundNormal": rgb(bg_tooltip),"BackgroundAlternate": rgb(bg_tooltip), "ForegroundNormal": rgb(fg), **shared},
         "Colors:Header":      {"BackgroundNormal": rgb(bg),       "BackgroundAlternate": rgb(bg_alt),    "ForegroundNormal": rgb(fg), **shared},
         "Colors:Complementary":{"BackgroundNormal": rgb(bg),      "BackgroundAlternate": rgb(bg_alt),    "ForegroundNormal": rgb(fg), **shared},
         "WM": {"activeBackground": rgb(accent), "activeBlend": rgb(accent), "activeForeground": rgb(highlight_text),

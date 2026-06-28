@@ -1,6 +1,7 @@
 -- Native Hyprland window and layer rules.
 hl.window_rule({["name"] = "lua:windowrules:12", ["match"] = {["class"] = "^(.*haruna.*)$"}, ["idle_inhibit"] = "fullscreen"})
 hl.window_rule({["name"] = "lua:windowrules:13", ["match"] = {["class"] = "^(.*firefox.*)$|^(.*chromium.*)$"}, ["idle_inhibit"] = "fullscreen"})
+hl.window_rule({["name"] = "center-new-floating-windows", ["match"] = {["float"] = true}, ["center"] = true})
 hl.window_rule({["name"] = "lua:windowrules:16", ["match"] = {["title"] = "^([Pp]icture[-\\s]?[Ii]n[-\\s]?[Pp]icture)(.*)$"}, ["tag"] = "+picture-in-picture"})
 hl.window_rule({["name"] = "lua:windowrules:17", ["match"] = {["tag"] = "picture-in-picture"}, ["float"] = true})
 hl.window_rule({["name"] = "lua:windowrules:18", ["match"] = {["tag"] = "picture-in-picture"}, ["keep_aspect_ratio"] = true})
@@ -57,9 +58,7 @@ hl.window_rule({["name"] = "lua:windowrules:75", ["match"] = {["class"] = "^(io\
 hl.window_rule({["name"] = "lua:windowrules:76", ["match"] = {["class"] = "^(com\\.github\\.unrud\\.VideoDownloader)$"}, ["float"] = true})
 hl.window_rule({["name"] = "lua:windowrules:77", ["match"] = {["class"] = "^(io\\.gitlab\\.adhami3310\\.Impression)$"}, ["float"] = true})
 hl.window_rule({["name"] = "lua:windowrules:78", ["match"] = {["class"] = "^(org\\.kde\\.partitionmanager)$"}, ["float"] = true})
-hl.window_rule({["name"] = "lua:windowrules:79", ["match"] = {["class"] = "^(org\\.qbittorrent\\.qBittorrent)$", ["modal"] = true}, ["float"] = true, ["center"] = true})
 hl.window_rule({["name"] = "qbittorrent-child-float", ["match"] = {["class"] = "^(org\\.qbittorrent\\.qBittorrent)$", ["initial_title"] = "negative:^qBittorrent v[0-9].*$"}, ["float"] = true, ["center"] = true})
-hl.window_rule({["name"] = "qbittorrent-save-path-center", ["match"] = {["class"] = "^(qbittorrent)$", ["initial_title"] = "^Choose save path$"}, ["float"] = true, ["center"] = true})
 hl.window_rule({["name"] = "lua:windowrules:82", ["match"] = {["class"] = "^(com\\.transmissionbt\\.transmission|transmission-gtk).*$", ["title"] = "^Transmission$"}, ["float"] = false})
 hl.window_rule({["name"] = "lua:windowrules:83", ["match"] = {["class"] = "^(com\\.transmissionbt\\.transmission|transmission-gtk).*$", ["title"] = "^Transmission Preferences$"}, ["float"] = false})
 hl.window_rule({["name"] = "lua:windowrules:84", ["match"] = {["class"] = "^(xdg-desktop-portal-gtk)$"}, ["float"] = true})
@@ -82,3 +81,20 @@ hl.layer_rule({["name"] = "lua:windowrules:108", ["match"] = {["namespace"] = "n
 hl.layer_rule({["name"] = "lua:windowrules:109", ["match"] = {["namespace"] = "logout_dialog"}, ["blur"] = true})
 hl.window_rule({["name"] = "lua:windowrules:112", ["match"] = {["class"] = "^(org\\.tui\\..*|org\\.font\\..*|lazygit|lazydocker)$"}, ["float"] = true})
 hl.window_rule({["name"] = "lua:windowrules:113", ["match"] = {["class"] = "^(org\\.tui\\..*|org\\.font\\..*|lazygit|lazydocker)$"}, ["center"] = true})
+hl.window_rule({["name"] = "mullvad-size", ["match"] = {["class"] = "^(Mullvad VPN)$"}, ["size"] = "320 568"})
+
+hl.on("window.open", function(win)
+  if not win or win.class ~= "Mullvad VPN" then return end
+  local mon = win.monitor
+  if not mon then return end
+  local sz = win.size or {}
+  local ww = sz.x or sz[1]
+  local wh = sz.y or sz[2]
+  if not ww or not wh then return end
+  local scale = mon.scale or 1
+  local mw = mon.width / scale
+  local mh = mon.height / scale
+  local x = math.floor(mw * 0.75 - ww / 2)
+  local y = math.floor((mh - wh) / 2)
+  hl.dispatch(hl.dsp.window.move({x = x, y = y, relative = false, selector = "address:" .. win.address}))
+end)

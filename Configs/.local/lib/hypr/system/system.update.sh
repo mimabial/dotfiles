@@ -7,6 +7,10 @@ set -euo pipefail
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/runtime/init.bash"
 hypr_runtime_require system || exit 1
+
+hypr_help_guard "Usage: hyprshell system/system.update [up|--run-upgrade]
+Report pending updates as waybar JSON; 'up' opens an upgrade terminal." "$@"
+
 if aur_helper="$(get_aur_helper)"; then
   :
 else

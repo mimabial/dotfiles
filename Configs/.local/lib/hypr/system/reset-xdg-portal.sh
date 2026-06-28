@@ -8,6 +8,9 @@ LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
 hypr_runtime_require system || exit 1
 
+hypr_help_guard "Usage: hyprshell system/reset-xdg-portal
+Restart the xdg-desktop-portal services (gtk, hyprland, base)." "$@"
+
 if [[ -d /run/current-system/sw/libexec ]]; then
   lib_dir=/run/current-system/sw/libexec
 else

@@ -151,8 +151,9 @@ resolve_percentages() {
   }
 
   monitor_json=$(hyprctl monitors -j 2>/dev/null) || return 1
-  mon_w=$(jq -r '.[] | select(.focused) | (.width / .scale | floor)' <<< "${monitor_json}") || return 1
-  mon_h=$(jq -r '.[] | select(.focused) | (.height / .scale | floor)' <<< "${monitor_json}") || return 1
+  read -r mon_w mon_h < <(
+    jq -r '.[] | select(.focused) | "\(.width / .scale | floor) \(.height / .scale | floor)"' <<<"${monitor_json}"
+  ) || return 1
 
   [[ "${mon_w}" =~ ^[0-9]+$ && "${mon_h}" =~ ^[0-9]+$ ]] || {
     printf 'Cannot determine focused monitor size for percentage geometry\n' >&2

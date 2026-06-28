@@ -1,0 +1,13 @@
+{
+  "custom/window-layout": {
+    "justify": "center",
+    "format": "{}",
+    "interval": "once",
+    "exec": "hyprshell window-layout.sh --waybar",
+    "on-click": "hyprshell window-layout.sh --toggle;pkill -RTMIN+22 waybar",
+    "on-click-right": "hyprshell window-layout.sh --toggle-reverse;pkill -RTMIN+22 waybar",
+    "tooltip": true,
+    "return-type": "json",
+    "signal": 22
+  }
+}

@@ -18,7 +18,11 @@ from mediaplayer_browser import (
     title_looks_live,
     youtube_position_is_untrusted,
 )
-from mediaplayer_actions import clear_active_player_state, write_active_player_state
+from mediaplayer_actions import (
+    read_active_player_state,
+    state_path,
+    write_active_player_state,
+)
 from mediaplayer_policy import (
     build_track_identity_key,
     read_player_metadata,
@@ -38,6 +42,68 @@ from mediaplayer_ui import (
 current_player = None
 _timer_id = None  # Track the timer source ID
 UI_CONFIG = None
+_active_player_cache = {"mtime": -1.0, "value": ""}
+
+
+def cached_active_player_state() -> str:
+    """Return the active player from state, re-reading only when mtime changes."""
+    try:
+        mtime = state_path().stat().st_mtime
+    except OSError:
+        _active_player_cache["mtime"] = -1.0
+        _active_player_cache["value"] = ""
+        return ""
+    if mtime != _active_player_cache["mtime"]:
+        _active_player_cache["value"] = read_active_player_state()
+        _active_player_cache["mtime"] = mtime
+    return _active_player_cache["value"]
+
+
+def player_state_name(player) -> str:
+    if player is None:
+        return ""
+    try:
+        return str(player.props.player_instance or player.props.player_name or "")
+    except Exception:
+        return ""
+
+
+def player_matches_name(player, name: str) -> bool:
+    if not name:
+        return False
+    if player_state_name(player) == name:
+        return True
+    try:
+        return str(player.props.player_name or "") == name
+    except Exception:
+        return False
+
+
+def is_current_player(player) -> bool:
+    current_name = player_state_name(current_player)
+    return bool(current_name and current_name == player_state_name(player))
+
+
+def preferred_player(players):
+    managed = list(players or [])
+    selected = cached_active_player_state()
+    if selected:
+        for player in managed:
+            if not player_matches_name(player, selected):
+                continue
+            try:
+                if player.props.status != "Stopped":
+                    return player
+            except Exception:
+                return player
+            break
+    for player in managed:
+        try:
+            if player.props.status == "Playing":
+                return player
+        except Exception:
+            continue
+    return managed[0] if managed else None
 
 
 def load_env_file(filepath: str) -> None:
@@ -74,10 +140,9 @@ def write_output(current_player):
 
     # --- Detect missing or invalid player ---
     if not current_player:
-        clear_active_player_state()
         output = {
             "text": UI_CONFIG.standby_text if UI_CONFIG else " MPlayer",
-            "class": "custom-nothing-playing",
+            "class": "nothing-playing",
             "alt": "",
             "tooltip": "",
         }
@@ -95,11 +160,6 @@ def write_output(current_player):
             return
 
     p_name = current_player.props.player_name
-    try:
-        action_player_name = current_player.props.player_instance or p_name
-    except Exception:
-        action_player_name = p_name
-    write_active_player_state(action_player_name)
 
     # --- Position ---
     try:
@@ -150,7 +210,7 @@ def write_output(current_player):
     if playback_rate <= 0:
         playback_rate = 1.0
 
-    # --- If stopped, clear cache and output nothing (hide module) ---
+    # --- If stopped, treat as no-player (mpd-mpris idle daemon, etc.) ---
     if is_stopped:
         _last_metadata = {
             "track": "",
@@ -161,8 +221,8 @@ def write_output(current_player):
             "live_status": "",
         }
         output = {
-            "text": "",
-            "class": "custom-stopped",
+            "text": UI_CONFIG.standby_text if UI_CONFIG else " MPlayer",
+            "class": "nothing-playing",
             "alt": "",
             "tooltip": "",
         }
@@ -271,7 +331,7 @@ def write_output(current_player):
                 standby_player_name=p_name,
             )
         ),
-        "class": f"custom-{p_name}",
+        "class": ["playing", p_name],
         "alt": (
             format_live_multiple_lines(is_playing)
             if is_live_stream
@@ -287,21 +347,24 @@ def write_output(current_player):
 
 
 def on_play(player, status, manager):
-    set_player(manager, player)
+    if is_current_player(player):
+        write_output(player)
 
 
 def on_playback_changed(player, status, manager):
-    if status == "Playing":
-        set_player(manager, player)
-    write_output(player)
+    if is_current_player(player):
+        write_output(player)
 
 
 def on_metadata(player, metadata, manager):
-    write_output(player)
+    if is_current_player(player):
+        write_output(player)
 
 
 def on_seeked(player, position, manager):
     global _last_seek_event
+    if not is_current_player(player):
+        return
     try:
         seek_seconds = max(0.0, float(position) / 1e6)
     except Exception:
@@ -315,33 +378,38 @@ def on_player_appeared(manager, player, selected_players=None):
         selected_players is None or player.name in selected_players
     ):
         p = init_player(manager, player)
-        set_player(manager, p)
+        if current_player is None:
+            set_player(manager, p)
         if not hasattr(manager, "_polling") or not manager._polling:
             manager._polling = True
-            # Store timer ID for potential cleanup
             global _timer_id
             if _timer_id:
                 GLib.source_remove(_timer_id)
-            _timer_id = GLib.timeout_add(950, timer_tick, manager)
+            _timer_id = GLib.timeout_add_seconds(1, timer_tick, manager)
 
 
 def on_player_vanished(manager, player, loop):
-    global current_player, _timer_id
-    p_name = player.props.player_name
-
-    if current_player and current_player.props.player_name == p_name:
-        if manager.props.players:
-            set_player(manager, manager.props.players[0])
+    global current_player, _timer_id, _last_valid_player
+    if _last_valid_player is player:
+        _last_valid_player = None
+    if is_current_player(player):
+        remaining = [
+            candidate
+            for candidate in manager.props.players
+            if player_state_name(candidate) != player_state_name(player)
+        ]
+        replacement = preferred_player(remaining)
+        if replacement:
+            set_player(manager, replacement)
         else:
             current_player = None
-            # Stop timer when no players left to prevent memory leaks
             if _timer_id:
                 GLib.source_remove(_timer_id)
                 _timer_id = None
                 manager._polling = False
             output = {
                 "text": UI_CONFIG.standby_text if UI_CONFIG else " MPlayer",
-                "class": "custom-nothing-playing",
+                "class": "nothing-playing",
                 "alt": "",
                 "tooltip": "",
             }
@@ -360,27 +428,40 @@ def init_player(manager, name):
 
 def timer_tick(manager):
     """Called every second to update display - with memory leak prevention"""
-    # Stop timer if no players are available
-    if not manager.props.players or not current_player:
+    players = list(manager.props.players or [])
+    if not players:
         global _timer_id
         _timer_id = None
         manager._polling = False
-        return False  # This stops the timer
+        return False
+
+    selected_name = cached_active_player_state()
+    selected_player = next(
+        (player for player in players if player_matches_name(player, selected_name)),
+        None,
+    )
+    try:
+        selected_stopped = selected_player is not None and selected_player.props.status == "Stopped"
+    except Exception:
+        selected_stopped = False
+    if selected_player and not selected_stopped and not is_current_player(selected_player):
+        set_player(manager, selected_player)
+    elif current_player is None or selected_stopped:
+        set_player(manager, preferred_player(players))
 
     if current_player and current_player.props.status == "Playing":
         write_output(current_player)
-    return True  # Continue the timer
+    return True
 
 
 def set_player(manager, player):
     global current_player
-    if current_player and current_player.props.player_name != player.props.player_name:
-        try:
-            current_player.pause()
-        except Exception:
-            pass
-    current_player = player
-    manager.move_player_to_top(player)
+    if player is None:
+        return
+    if player is not current_player:
+        current_player = player
+        manager.move_player_to_top(player)
+        write_active_player_state(player_state_name(player))
     write_output(player)
 
 
@@ -446,11 +527,7 @@ def run(arguments):
     if found:
         found = list(filter(lambda x: x is not None, found))
         if found:
-            try:
-                p = next(player for player in found if player.props.status == "Playing")
-            except StopIteration:
-                p = found[0]
-            set_player(manager, p)
+            set_player(manager, preferred_player(found))
         else:
             write_output(current_player)
     else:

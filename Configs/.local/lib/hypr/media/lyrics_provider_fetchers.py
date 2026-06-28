@@ -294,6 +294,8 @@ def _pick_best_simpmusic_search_result(
 
     requested_title = _normalize_text(title)
     requested_album = _normalize_text(album)
+    title_tokens = [tok for tok in requested_title.split() if len(tok) > 1]
+    title_token_rxes = [re.compile(rf"\b{re.escape(tok)}\b") for tok in title_tokens]
 
     for candidate in results[:8]:
         if not isinstance(candidate, dict):
@@ -328,29 +330,17 @@ def _pick_best_simpmusic_search_result(
         if requested_title and lyrics_preview_norm:
             if requested_title in lyrics_preview_norm:
                 title_in_lyrics = 1.0
-            else:
-                title_tokens = [tok for tok in requested_title.split() if len(tok) > 1]
-                if title_tokens:
-                    hits = sum(
-                        1
-                        for token in title_tokens
-                        if re.search(rf"\b{re.escape(token)}\b", lyrics_preview_norm)
-                    )
-                    title_in_lyrics = hits / len(title_tokens)
+            elif title_token_rxes:
+                hits = sum(1 for rx in title_token_rxes if rx.search(lyrics_preview_norm))
+                title_in_lyrics = hits / len(title_token_rxes)
 
         title_in_lead = 0.0
         if requested_title and lead_preview_norm:
             if requested_title in lead_preview_norm:
                 title_in_lead = 1.0
-            else:
-                title_tokens = [tok for tok in requested_title.split() if len(tok) > 1]
-                if title_tokens:
-                    hits = sum(
-                        1
-                        for token in title_tokens
-                        if re.search(rf"\b{re.escape(token)}\b", lead_preview_norm)
-                    )
-                    title_in_lead = hits / len(title_tokens)
+            elif title_token_rxes:
+                hits = sum(1 for rx in title_token_rxes if rx.search(lead_preview_norm))
+                title_in_lead = hits / len(title_token_rxes)
 
         # Prefer strong title/artist matches and reward lyrics previews that actually
         # contain the requested title phrase/tokens, especially near the start.

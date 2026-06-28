@@ -3,6 +3,12 @@
 # Parse options: -d/--download, -u/--upload, or both (default)
 set -euo pipefail
 
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+
+hypr_help_guard "Usage: hyprshell sysinfo/network-speed [-d|-u]
+Emit network speed as waybar JSON: -d download, -u upload, default both." "$@"
+
 MODE="both"
 case "${1:-}" in
   -u | --upload) MODE="upload" ;;

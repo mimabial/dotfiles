@@ -5,6 +5,11 @@ set -euo pipefail
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=/dev/null
 source "${script_dir}/../core/state.sh"
+# shellcheck source=/dev/null
+source "${script_dir}/../core/common.sh"
+
+hypr_help_guard "Usage: hyprshell util/state <set|clear> <state-name|pattern>
+Create or remove a UI state flag file under the hypr state directory." "$@"
 
 STATE_DIR_PATH="$(state_dir)"
 mkdir -p "${STATE_DIR_PATH}"

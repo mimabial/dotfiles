@@ -2,9 +2,6 @@ $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 $ICON_THEME = Tela-blue-light
 $COLOR_SCHEME = prefer-light
 $CURSOR_THEME = GoogleDot-Blue
-$NVIM_SCHEME = solarized
-$NVIM_BACKGROUND = light
-$NVIM_TRANSPARENCY = false
 
 general {
   gaps_in = 3

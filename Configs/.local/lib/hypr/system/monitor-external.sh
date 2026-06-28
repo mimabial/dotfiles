@@ -5,6 +5,9 @@ source "$(command -v hyprshell)" || exit 1
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/system/monitor.common.bash"
 
+hypr_help_guard "Usage: hyprshell system/monitor-external [connected|active|name|active-name]
+Query external-display state (default: connected)." "$@"
+
 print_monitor_or_fail() {
   local monitor_name="$1"
   [[ -n "${monitor_name}" ]] || return 1

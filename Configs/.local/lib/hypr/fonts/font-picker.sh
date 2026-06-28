@@ -6,6 +6,9 @@ set -euo pipefail
 
 source "$(command -v hyprshell)" || exit 1
 
+hypr_help_guard "Usage: hyprshell fonts/font-picker
+Pick a font via rofi and apply it with fonts/font-set." "$@"
+
 require_command() {
   local command_name="$1"
   local message="$2"

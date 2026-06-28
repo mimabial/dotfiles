@@ -14,11 +14,18 @@ ACTIONS = {
     "play-pause": ("play-pause",),
     "next": ("next",),
     "previous": ("previous",),
+    "cycle-next": (),
+    "cycle-previous": (),
     "stop": ("stop",),
     "shuffle": ("shuffle", "toggle"),
     "repeat": ("loop", "Track"),
     "loop": ("loop", "Playlist"),
     "disable-loop": ("loop", "None"),
+}
+
+PLAYER_CYCLE_STEPS = {
+    "cycle-next": 1,
+    "cycle-previous": -1,
 }
 
 ACTION_LABELS = {
@@ -129,11 +136,19 @@ def state_path() -> Path:
 def write_active_player_state(player_name: str) -> None:
     if not player_name:
         return
+    if read_active_player_state() == player_name:
+        return
     path = state_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(".tmp")
-    tmp.write_text(json.dumps({"player": player_name, "updated_at": time.time()}) + "\n")
-    tmp.replace(path)
+    tmp = path.with_suffix(f".tmp.{os.getpid()}")
+    try:
+        tmp.write_text(json.dumps({"player": player_name, "updated_at": time.time()}) + "\n")
+        tmp.replace(path)
+    finally:
+        try:
+            tmp.unlink()
+        except FileNotFoundError:
+            pass
 
 
 def clear_active_player_state() -> None:
@@ -199,81 +214,107 @@ def resolve_player(explicit_player: str = "") -> str:
     return players[0]
 
 
-def busctl_property(player: str, prop: str) -> str | None:
+def cycle_player(step: int) -> int:
+    players = available_players()
+    if not players:
+        return 0
+
+    active = [p for p in players if player_status(p) != "Stopped"]
+    pool = active if active else players
+
+    selected = read_active_player_state()
+    current = ""
+    if selected in pool:
+        current = selected
+    elif selected:
+        current = next(
+            (player for player in pool if player.startswith(f"{selected}.")),
+            "",
+        )
+
+    if not current:
+        current = resolve_player()
+
+    if current in pool:
+        index = pool.index(current)
+    else:
+        index = -1 if step > 0 else 0
+
+    write_active_player_state(pool[(index + step) % len(pool)])
+    return 0
+
+
+def fetch_player_properties(player: str) -> dict:
+    """Return all Player-interface properties via a single busctl GetAll call.
+    Output shape: {prop_name: {"type": str, "data": value}, ...}."""
     service = f"org.mpris.MediaPlayer2.{player}"
     proc = subprocess.run(
         [
-            "busctl",
-            "--user",
-            "get-property",
+            "busctl", "--user", "--json=short", "call",
             service,
             "/org/mpris/MediaPlayer2",
-            "org.mpris.MediaPlayer2.Player",
-            prop,
+            "org.freedesktop.DBus.Properties",
+            "GetAll", "s", "org.mpris.MediaPlayer2.Player",
         ],
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
+        text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
     )
-    if proc.returncode != 0:
-        return None
-    return proc.stdout.strip()
+    if proc.returncode != 0 or not proc.stdout.strip():
+        return {}
+    try:
+        return json.loads(proc.stdout)["data"][0]
+    except (json.JSONDecodeError, KeyError, IndexError, TypeError):
+        return {}
 
 
-def bool_property(player: str, prop: str) -> bool | None:
-    value = busctl_property(player, prop)
-    if value == "b true":
-        return True
-    if value == "b false":
-        return False
-    return None
+def _prop_value(props: dict, name: str):
+    entry = props.get(name)
+    return entry.get("data") if isinstance(entry, dict) else None
 
 
-def string_property(player: str, prop: str) -> str | None:
-    value = busctl_property(player, prop)
-    if value is None or not value.startswith('s "'):
-        return None
-    return value[3:-1]
+def _prop_bool(props: dict, name: str) -> bool | None:
+    value = _prop_value(props, name)
+    return value if isinstance(value, bool) else None
 
 
-def action_supported(player: str, action: str) -> bool:
+def _prop_string(props: dict, name: str) -> str | None:
+    value = _prop_value(props, name)
+    return value if isinstance(value, str) else None
+
+
+def action_supported(props: dict, action: str) -> bool:
     if action == "play-pause":
-        can_play = bool_property(player, "CanPlay")
-        can_pause = bool_property(player, "CanPause")
+        can_play = _prop_bool(props, "CanPlay")
+        can_pause = _prop_bool(props, "CanPause")
         return (can_play is not False) or (can_pause is not False)
-
     capability = CAPABILITY_BY_ACTION.get(action)
     if capability:
-        value = bool_property(player, capability)
-        return value is not False
-
+        return _prop_bool(props, capability) is not False
     prop = PROPERTY_BY_ACTION.get(action)
     if prop:
-        return busctl_property(player, prop) is not None
-
+        return _prop_value(props, prop) is not None
     return True
 
 
 def dynamic_menu_entries(player: str) -> list[tuple[str, str]]:
-    status = player_status(player)
+    props = fetch_player_properties(player)
+    status = _prop_string(props, "PlaybackStatus") or player_status(player)
     entries: list[tuple[str, str]] = []
 
-    if action_supported(player, "play-pause"):
+    if action_supported(props, "play-pause"):
         label = ACTION_LABELS["pause"] if status == "Playing" else ACTION_LABELS["play"]
         entries.append((label, "play-pause"))
-    if action_supported(player, "next"):
+    if action_supported(props, "next"):
         entries.append((ACTION_LABELS["next"], "next"))
-    if action_supported(player, "previous"):
+    if action_supported(props, "previous"):
         entries.append((ACTION_LABELS["previous"], "previous"))
-    if action_supported(player, "stop"):
-        entries.append((ACTION_LABELS["stop"], "stop"))
+    entries.append((ACTION_LABELS["stop"], "stop"))
 
-    if action_supported(player, "shuffle"):
-        enabled = bool_property(player, "Shuffle")
-        label = ACTION_LABELS["shuffle-off"] if enabled else ACTION_LABELS["shuffle-on"]
+    if action_supported(props, "shuffle"):
+        shuffle = _prop_bool(props, "Shuffle")
+        label = ACTION_LABELS["shuffle-off"] if shuffle else ACTION_LABELS["shuffle-on"]
         entries.append((label, "shuffle"))
 
-    loop_status = string_property(player, "LoopStatus")
+    loop_status = _prop_string(props, "LoopStatus")
     if loop_status is not None:
         if loop_status != "Track":
             entries.append((ACTION_LABELS["repeat"], "repeat"))
@@ -348,8 +389,13 @@ def run_action(action: str, explicit_player: str = "") -> int:
     if action not in ACTIONS:
         raise SystemExit(f"unsupported media action: {action}")
 
+    if action in PLAYER_CYCLE_STEPS:
+        return cycle_player(PLAYER_CYCLE_STEPS[action])
+
     player = resolve_player(explicit_player)
-    if not player or not action_supported(player, action):
+    if not player:
+        return 0
+    if not action_supported(fetch_player_properties(player), action):
         return 0
 
     proc = subprocess.run(

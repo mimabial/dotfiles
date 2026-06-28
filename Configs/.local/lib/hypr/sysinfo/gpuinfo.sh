@@ -12,6 +12,12 @@
 
 set -euo pipefail
 
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+
+hypr_help_guard "Usage: hyprshell sysinfo/gpuinfo [--toggle|--use <gpu>|--reset|--stat <amd|intel|nvidia>]
+Emit GPU stats as waybar JSON; flags manage GPU selection and cached state." "$@"
+
 script_dir=$(dirname "$(realpath "$0")")
 gpuinfo_file="${TMPDIR:-/tmp}/hypr-${UID}-gpuinfo"
 

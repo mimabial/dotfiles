@@ -417,7 +417,7 @@ theme_apply_job_secondary_updates() {
   theme_apply_generation_is_current || return 0
   color_finalize_source_generated_colors || return 1
   color_finalize_export_icon_theme || return 1
-  color_finalize_update_waybar_border_radius
+  # waybar border-radius already updated synchronously by theme.apply.sh:553.
   ASYNC_POST_UPDATES=1 post_updates >/dev/null 2>&1 || true
 }
 

@@ -6,6 +6,12 @@
 
 set -euo pipefail
 
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+
+hypr_help_guard "Usage: hyprshell launch/terminal-cwd
+Print the best working directory for terminal-launch keybinds." "$@"
+
 active_window_json="$(hyprctl activewindow -j 2>/dev/null || true)"
 read -r active_class terminal_pid < <(
   printf '%s' "${active_window_json}" \

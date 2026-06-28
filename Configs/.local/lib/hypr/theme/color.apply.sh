@@ -111,7 +111,7 @@ reload_live_theme_client() {
         return 0
       fi
 
-      rmpc_theme_name="$(grep -oP 'theme:\s*Some\("\K[^"]+' "${rmpc_config}" 2>/dev/null | head -1)"
+      rmpc_theme_name="$(sed -nE 's/.*theme:[[:space:]]*Some\("([^"]+)".*/\1/p; T; q' "${rmpc_config}" 2>/dev/null)"
       case "${rmpc_theme_name}" in
         pywal16 | pywal16-small | pywal16-big) ;;
         *) return 0 ;;

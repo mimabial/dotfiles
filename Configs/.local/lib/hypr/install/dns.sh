@@ -2,6 +2,12 @@
 
 set -euo pipefail
 
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+
+hypr_help_guard "Usage: hyprshell install/dns [Cloudflare|DHCP|Custom]
+Configure systemd-resolved DNS (prompts when no provider is given)." "$@"
+
 validate_dns_entry() {
   local entry="$1"
   local address="$entry"

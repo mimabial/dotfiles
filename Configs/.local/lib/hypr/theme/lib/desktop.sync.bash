@@ -348,6 +348,10 @@ theme_desktop_kvantum_output_theme_name() {
   printf '%s' "pywal16"
 }
 
+theme_desktop_kvantum_named_theme_name() {
+  printf '%s' "${HYPR_THEME// /_}"
+}
+
 theme_desktop_kvantum_svg_source_path() {
   local pack_dir="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME:-}"
 
@@ -411,6 +415,25 @@ theme_desktop_install_pack_kvantum_theme() {
     python3 "${installer}" || return 1
 }
 
+theme_desktop_install_named_pack_kvantum_theme() {
+  theme_desktop_pack_has_kvantum_theme || return 0
+
+  local pack_dir="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}"
+  local kvantum_theme=""
+  local dest_dir=""
+  local kvantum_svg_source=""
+
+  kvantum_theme="$(theme_desktop_kvantum_named_theme_name)"
+  [[ -n "${kvantum_theme}" ]] || return 0
+
+  dest_dir="${XDG_CONFIG_HOME}/Kvantum/${kvantum_theme}"
+  kvantum_svg_source="$(theme_desktop_kvantum_svg_source_path)" || return 1
+
+  mkdir -p "${dest_dir}" || return 1
+  cp -f "${kvantum_svg_source}" "${dest_dir}/${kvantum_theme}.svg" || return 1
+  cp -f "${pack_dir}/kvantum/kvconfig.theme" "${dest_dir}/${kvantum_theme}.kvconfig" || return 1
+}
+
 theme_desktop_install_kde_color_scheme() {
   local source_file="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/render/qtct/Pywal.colors"
   local target_file="${XDG_DATA_HOME:-$HOME/.local/share}/color-schemes/Pywal.colors"
@@ -426,6 +449,43 @@ theme_desktop_install_kde_color_scheme() {
   fi
 
   cp -f -- "${source_file}" "${target_file}"
+}
+
+theme_desktop_install_kdeglobals_color_sections() {
+  local target_file="$1"
+  local source_file="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/render/qtct/Pywal.colors"
+  local line=""
+  local section=""
+  local key=""
+  local value=""
+
+  [[ -n "${target_file}" ]] || return 1
+  [[ -f "${source_file}" ]] || return 0
+
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    line="${line%$'\r'}"
+
+    [[ -z "${line//[[:space:]]/}" ]] && continue
+    [[ "${line}" == \#* || "${line}" == \;* ]] && continue
+
+    if [[ "${line}" == \[*\] ]]; then
+      section="${line#\[}"
+      section="${section%\]}"
+      continue
+    fi
+
+    case "${section}" in
+      Colors:*|ColorEffects:*|KDE|WM) ;;
+      *) continue ;;
+    esac
+
+    [[ "${line}" == *=* ]] || continue
+    key="${line%%=*}"
+    value="${line#*=}"
+    [[ -n "${key}" ]] || continue
+
+    ini_write "${target_file}" "${section}" "${key}" "${value}" || return 1
+  done <"${source_file}"
 }
 
 theme_desktop_install_qtct_color_scheme() {
@@ -465,6 +525,11 @@ EOF
     "General:ColorScheme=${RESOLVED_KDE_COLOR_SCHEME}" \
     "Icons:Theme=${ICON_THEME}" \
     "KDE:widgetStyle=${RESOLVED_KDE_WIDGET_STYLE:-kvantum}"
+
+  if [[ "${RESOLVED_KDE_COLOR_SCHEME:-}" == "Pywal" ]]; then
+    theme_desktop_install_kdeglobals_color_sections "${XDG_CONFIG_HOME}/kdeglobals" || return 1
+    theme_desktop_install_kdeglobals_color_sections "${XDG_CONFIG_HOME}/kdedefaults/kdeglobals" || return 1
+  fi
 
   theme_desktop_write_generated_file "${XDG_CONFIG_HOME}/qt6ct/qt6ct.conf" <<EOF
 [Appearance]
@@ -799,6 +864,11 @@ theme_desktop_static_targets_ready() {
       "${XDG_CONFIG_HOME}/Kvantum/${kvantum_pack_theme}/${kvantum_pack_theme}.svg"
       "${XDG_CONFIG_HOME}/Kvantum/${kvantum_pack_theme}/${kvantum_pack_theme}.kvconfig"
     )
+    kvantum_pack_theme="$(theme_desktop_kvantum_named_theme_name)"
+    required_targets+=(
+      "${XDG_CONFIG_HOME}/Kvantum/${kvantum_pack_theme}/${kvantum_pack_theme}.svg"
+      "${XDG_CONFIG_HOME}/Kvantum/${kvantum_pack_theme}/${kvantum_pack_theme}.kvconfig"
+    )
   fi
 
   for required_target in "${required_targets[@]}"; do
@@ -820,6 +890,7 @@ theme_desktop_apply_runtime_resolved() {
 
 theme_desktop_apply_static_resolved() {
   theme_desktop_install_pack_kvantum_theme
+  theme_desktop_install_named_pack_kvantum_theme
   theme_desktop_install_kde_color_scheme
   theme_desktop_install_qtct_color_scheme
   theme_desktop_configure_qt_kde_bridge

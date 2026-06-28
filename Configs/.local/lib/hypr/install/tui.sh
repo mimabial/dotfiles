@@ -2,6 +2,12 @@
 
 set -euo pipefail
 
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+
+hypr_help_guard "Usage: hyprshell install/tui [name exec float|tile icon-url]
+Create a TUI app-launcher desktop entry (prompts when args are omitted)." "$@"
+
 desktop_exec_escape() {
   local value="$1"
 

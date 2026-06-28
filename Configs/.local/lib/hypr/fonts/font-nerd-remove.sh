@@ -48,7 +48,7 @@ font_package_family_names() {
 
   while IFS= read -r font_file; do
     [[ -f "${font_file}" ]] || continue
-    font_name=$(fc-query "${font_file}" 2>/dev/null | grep 'family:' | sed 's/.*family: "\(.*\)"(s)/\1/' | head -1)
+    font_name=$(fc-query "${font_file}" 2>/dev/null | awk -F'"' '/^[[:space:]]*family:/{print $2; exit}')
     [[ -n "${font_name}" ]] && printf '%s\n' "${font_name}"
   done < <(pacman -Ql "${pkg}" 2>/dev/null | grep -E '\.(ttf|otf)$' | awk '{print $2}')
 }

@@ -241,47 +241,56 @@ def get_waybar_icon_size():
     return get_waybar_value_from_sources("icon size", 10, icon_sources)
 
 
-def get_value_from_hypr_config(variable_name):
-    """Read a Hypr variable from live theme metadata, then persistent font/default files."""
-    variable_key = variable_name.lstrip("$")
+_HYPR_VARS_LUA_RX = re.compile(r'^vars\.set\("([^"]+)",\s*"([^"]*)"\)')
+_HYPR_VARS_EQ_RX = re.compile(r'^\$([A-Za-z_]\w*)\s*=\s*(.*)$')
+_HYPR_VARS_CACHE = None
+
+
+def _load_hypr_vars():
+    global _HYPR_VARS_CACHE
+    if _HYPR_VARS_CACHE is not None:
+        return _HYPR_VARS_CACHE
     config_home = xdg_config_home()
     candidate_files = [
         config_home / "hypr" / "themes" / "theme.meta",
         config_home / "hypr" / "userfonts.lua",
         xdg_data_home() / "hypr" / "variables.meta",
     ]
-
+    merged = {}
     for file_path in candidate_files:
         if not file_path.exists():
             continue
         try:
-            with open(file_path, "r") as file:
-                for line in file:
+            with open(file_path, "r") as f:
+                for line in f:
                     stripped = line.strip()
-                    lua_match = re.match(
-                        rf'^vars\.set\("{re.escape(variable_key)}",\s*"([^"]*)"\)',
-                        stripped,
-                    )
-                    if lua_match:
-                        value = lua_match.group(1)
-                        logger.debug(f"Got {variable_name} from {file_path}: {value}")
-                        return value or None
-                    if not stripped or stripped.startswith("#") or "=" not in stripped:
+                    if not stripped or stripped.startswith("#"):
                         continue
-                    lhs, rhs = stripped.split("=", 1)
-                    if lhs.strip() != f"${variable_key}":
+                    m = _HYPR_VARS_LUA_RX.match(stripped)
+                    if m:
+                        merged.setdefault(m.group(1), m.group(2))
                         continue
-                    value = rhs.strip().strip('"').strip("'")
-                    if not value:
-                        logger.warning(f"Invalid empty {variable_name} in {file_path}")
-                        return None
-                    logger.debug(f"Got {variable_name} from {file_path}: {value}")
-                    return value or None
+                    m = _HYPR_VARS_EQ_RX.match(stripped)
+                    if m:
+                        merged.setdefault(m.group(1), m.group(2).strip().strip('"').strip("'"))
         except Exception as e:
             logger.error(f"Error reading {file_path}: {e}")
+    _HYPR_VARS_CACHE = merged
+    return merged
 
-    logger.debug(f"{variable_name} not found in Hypr config files")
-    return None
+
+def get_value_from_hypr_config(variable_name):
+    """Read a Hypr variable from live theme metadata, then persistent font/default files."""
+    key = variable_name.lstrip("$")
+    value = _load_hypr_vars().get(key)
+    if value == "":
+        logger.warning(f"Invalid empty {variable_name}")
+        return None
+    if value is None:
+        logger.debug(f"{variable_name} not found in Hypr config files")
+        return None
+    logger.debug(f"Got {variable_name}: {value}")
+    return value
 
 
 def get_hypr_theme_rounding():
@@ -434,7 +443,6 @@ def update_style(style_path=None):
 
 
 def refresh_waybar_assets():
-    update_icon_size()
     update_border_radius()
     generate_includes()
     update_global_css()

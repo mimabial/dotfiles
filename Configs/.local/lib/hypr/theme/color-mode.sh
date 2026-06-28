@@ -18,6 +18,9 @@ source "$(command -v hyprshell)" || exit 1
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
 export_hypr_config
 
+hypr_help_guard "Usage: hyprshell theme/color-mode [-q] [m|n|p|--set <theme|auto|dark|light|0-3>]
+Switch the colour mode: menu (m), next (n), prev (p), or explicit --set (default: next)." "$@"
+
 color_mode_labels=("Theme" "Auto" "Dark" "Light")
 MODE_SWITCH_LOCK_FD=""
 COLOR_MODE_NOTIFY_ID="${COLOR_MODE_NOTIFY_ID:-95}"

@@ -11,6 +11,9 @@ IconSize=32
 LeftPadding=38
 PreviewSize=32
 
+[ExtractDialog]
+1280x720 screen: Window-Maximized=true
+
 [General]
 BrowseThroughArchives=true
 CloseActiveSplitView=false

@@ -2,6 +2,12 @@
 
 set -euo pipefail
 
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+
+hypr_help_guard "Usage: hyprshell install/docker-dbs [database...]
+Run selected database containers via docker (prompts when none given)." "$@"
+
 options=("MySQL" "PostgreSQL" "Redis" "MongoDB" "MariaDB" "MSSQL")
 
 if [[ "$#" -eq 0 ]]; then

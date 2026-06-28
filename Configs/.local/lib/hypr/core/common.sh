@@ -1,6 +1,24 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
 
+# Print usage text and exit 0 when -h/--help appears before a `--` terminator.
+# Usage: hypr_help_guard "<usage text>" "$@"
+hypr_help_guard() {
+  local usage_text="${1:-}"
+  shift || true
+
+  local arg=""
+  for arg in "$@"; do
+    case "${arg}" in
+      --) break ;;
+      -h | --help)
+        printf '%s\n' "${usage_text}"
+        exit 0
+        ;;
+    esac
+  done
+}
+
 # Native Hyprland 0.55 Lua IPC helpers.
 hypr_lua_quote() {
   jq -Rn --arg value "${1:-}" '$value'

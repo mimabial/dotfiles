@@ -1,14 +1,14 @@
 $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 $ICON_THEME=Fluent-green-dark
-$CURSOR_THEME=Hackneyed-Dark
-$CURSOR_SIZE=24
+$CURSOR_THEME = capitaine-cursors
+$CURSOR_SIZE = 28
 $COLOR_SCHEME=prefer-dark
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
 general {
-    gaps_in = 3
-    gaps_out = 6
+    gaps_in = 4
+    gaps_out = 8
     border_size = 2
     col.active_border = rgba(78c6ebff)
     col.inactive_border = rgba(FFFFFF80)

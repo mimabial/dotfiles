@@ -4,6 +4,9 @@ source "$(command -v hyprshell)" || exit 1
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
 
+hypr_help_guard "Usage: hyprshell rofi/bookmarks
+Open a rofi menu of browser bookmarks and launch the selection." "$@"
+
 # setup rofi configuration
 setup_rofi_config() {
   rofi_prepare_standard_context \

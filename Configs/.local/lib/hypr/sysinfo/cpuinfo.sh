@@ -2,6 +2,12 @@
 
 set -euo pipefail
 
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+
+hypr_help_guard "Usage: hyprshell sysinfo/cpuinfo
+Emit CPU usage, temperature, and clock speed as waybar JSON." "$@"
+
 cpuinfo_file="${XDG_RUNTIME_DIR:-/tmp}/hypr-$UID-processors"
 
 map_floor() {

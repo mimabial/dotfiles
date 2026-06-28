@@ -2,6 +2,12 @@
 
 set -euo pipefail
 
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+
+hypr_help_guard "Usage: hyprshell install/webapp-remove [name...]
+Remove web-app launchers and desktop entries (fzf multi-select when none given)." "$@"
+
 DESKTOP_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 LAUNCHER_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/hypr/webapps"
 ICON_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/applications/icons"

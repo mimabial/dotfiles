@@ -64,23 +64,22 @@ sanitize_hypr_theme() {
     return 1
   fi
 
-  for pattern in "${dirty_regex[@]}"; do
-    local -a matches=()
-    while IFS= read -r line; do
-      matches+=("$line")
-    done < <(grep -E "${pattern}" "${buffer_file}" 2>/dev/null)
+  local combined_regex
+  combined_regex="$(IFS='|'; printf '%s' "${dirty_regex[*]}")"
 
-    for line in "${matches[@]}"; do
-      [[ -n "${line}" ]] || continue
-      line_esc="$(escape_regex "${line}")"
-      if ! sed -i -E "\|${line_esc}|d" "${buffer_file}"; then
-        rm -f -- "${buffer_file}"
-        return 1
-      fi
-      log_line="${line#"${line%%[![:space:]]*}"}"
-      print_log -sec "theme" -warn "sanitize" "${log_line}"
-    done
+  while IFS= read -r line; do
+    log_line="${line#"${line%%[![:space:]]*}"}"
+    print_log -sec "theme" -warn "sanitize" "${log_line}"
+  done < <(grep -E "${combined_regex}" "${buffer_file}" 2>/dev/null)
+
+  local -a sed_args=()
+  for pattern in "${dirty_regex[@]}"; do
+    sed_args+=(-e "/${pattern}/d")
   done
+  if ! sed -i -E "${sed_args[@]}" "${buffer_file}"; then
+    rm -f -- "${buffer_file}"
+    return 1
+  fi
 
   if ! cat "${buffer_file}" >"${output_file}"; then
     rm -f -- "${buffer_file}"

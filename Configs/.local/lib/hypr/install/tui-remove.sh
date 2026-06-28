@@ -2,6 +2,12 @@
 
 set -euo pipefail
 
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+
+hypr_help_guard "Usage: hyprshell install/tui-remove [name...]
+Remove TUI desktop entries (fzf multi-select when none given)." "$@"
+
 XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 ICON_DIR="${XDG_DATA_HOME}/applications/icons"
 DESKTOP_DIR="${XDG_DATA_HOME}/applications/"

@@ -13,6 +13,7 @@ import pyutils.logger as logger_mod
 from pyutils.lock_paths import runtime_lock_path
 from pyutils.shell_env import load_shell_assignments
 from pyutils.xdg_base_dirs import xdg_config_home, xdg_data_home, xdg_state_home
+from waybar_jsonc import normalize_jsonc
 
 logger = logger_mod.get_logger()
 
@@ -147,14 +148,75 @@ CONFIG_JSONC_BANNER = (
 )
 
 
+def _resolve_layout_source(reference):
+    """Resolve a compose entry to an absolute layout-file path.
+
+    Accepts an absolute path, a relative path with or without `.jsonc`, or a
+    bare layout name. Names are looked up across LAYOUT_DIRS layered
+    user-first; the first match wins."""
+    if not isinstance(reference, str) or not reference:
+        raise ValueError(f"compose entry must be a non-empty string, got {reference!r}")
+    if os.path.isabs(reference):
+        if not os.path.isfile(reference):
+            raise FileNotFoundError(f"compose source not found: {reference}")
+        return reference
+    candidate = reference if reference.endswith(".jsonc") else f"{reference}.jsonc"
+    for layout_dir in LAYOUT_DIRS:
+        path = os.path.join(layout_dir, candidate)
+        if os.path.isfile(path):
+            return path
+    raise FileNotFoundError(f"compose source not found in LAYOUT_DIRS: {reference}")
+
+
+def _expand_layout_to_bars(layout_path, seen):
+    """Parse a layout file and return a flat list of bar-config dicts.
+
+    Recursively expands compose layouts. `seen` is a set of absolute paths
+    already visited in this expansion, used to detect cycles."""
+    abs_path = os.path.abspath(layout_path)
+    if abs_path in seen:
+        raise ValueError(f"compose cycle detected at: {abs_path}")
+    seen = seen | {abs_path}
+
+    with open(layout_path, "r") as src:
+        data = json.loads(normalize_jsonc(src.read()))
+
+    if isinstance(data, dict) and "compose" in data:
+        sources = data["compose"]
+        if not isinstance(sources, list):
+            raise ValueError(f"`compose` in {layout_path} must be a list")
+        bars = []
+        for entry in sources:
+            source_path = _resolve_layout_source(entry)
+            bars.extend(_expand_layout_to_bars(source_path, seen))
+        return bars
+    if isinstance(data, list):
+        return list(data)
+    if isinstance(data, dict):
+        return [data]
+    raise ValueError(f"layout {layout_path} must be an object or array, got {type(data).__name__}")
+
+
 def install_layout_as_active_config(layout_path):
     """Atomically replace CONFIG_JSONC with a layout file's content, prefixed
     with CONFIG_JSONC_BANNER. All write paths that point Waybar at a layout
     must go through this helper so the banner is never bypassed — users
     opening config.jsonc see the warning regardless of which code path wrote
-    it."""
+    it.
+
+    Compose layouts — objects with a top-level `compose` array naming other
+    layouts by name or path — are expanded into a JSON array of bar configs.
+    JSONC comments are lost for compose layouts (round-tripped through JSON);
+    plain layouts are copied verbatim."""
     with open(layout_path, "r") as src:
         layout_content = src.read()
+    try:
+        parsed = json.loads(normalize_jsonc(layout_content))
+    except json.JSONDecodeError:
+        parsed = None
+    if isinstance(parsed, dict) and "compose" in parsed:
+        bars = _expand_layout_to_bars(layout_path, set())
+        layout_content = json.dumps(bars, indent=2) + "\n"
     atomic_write_text(CONFIG_JSONC, CONFIG_JSONC_BANNER + layout_content)
 
 

@@ -12,6 +12,9 @@ hypr_runtime_load_state || exit 1
 # shellcheck source=/dev/null
 source "${LIB_DIR}/hypr/theme/color.targets.sh"
 
+hypr_help_guard "Usage: hyprshell fonts/font-apply [font-name]
+Apply the configured (or given) fonts across terminals, waybar, rofi, and GTK." "$@"
+
 FONT_NAME="${1:-}"
 UPDATED=()
 GENERAL_FONT=""

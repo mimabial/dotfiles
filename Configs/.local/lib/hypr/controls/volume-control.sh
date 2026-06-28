@@ -131,7 +131,7 @@ sink_is_muted() {
 
 source_volume_pct() {
   local target="$1"
-  pactl get-source-volume "${target}" 2>/dev/null | grep -o '[0-9]\+%' | head -1 | tr -d '%'
+  pactl get-source-volume "${target}" 2>/dev/null | awk 'match($0,/[0-9]+%/){print substr($0,RSTART,RLENGTH-1); exit}'
 }
 
 source_is_muted() {

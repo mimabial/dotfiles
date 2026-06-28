@@ -6,6 +6,9 @@ CORE_COMMON="${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh"
 # shellcheck source=/dev/null
 source "${CORE_COMMON}" || exit 1
 
+hypr_help_guard "Usage: hyprshell window/close-all
+Close every window on the focused Hyprland instance." "$@"
+
 clients_json="$(hyprctl clients -j)"
 addrs_text="$(
   jq -r '.[] | .address // empty | select(length > 0)' <<<"${clients_json}"

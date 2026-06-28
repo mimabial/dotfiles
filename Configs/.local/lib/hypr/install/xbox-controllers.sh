@@ -2,6 +2,12 @@
 
 set -euo pipefail
 
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+
+hypr_help_guard "Usage: hyprshell install/xbox-controllers
+Install xpadneo for Xbox controller support (reboots when confirmed)." "$@"
+
 # Install xpadneo to ensure controllers work out of the box
 hyprshell pm add linux-headers
 hyprshell pm aur-add xpadneo-dkms

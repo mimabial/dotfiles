@@ -3,6 +3,9 @@
 # shellcheck source=/home/rifle/.local/bin/hyprshell
 source "$(command -v hyprshell)" || exit 1
 
+hypr_help_guard "Usage: hyprshell rofi/calculator
+Launch qalculate-gtk (installing it first if missing)." "$@"
+
 # Calculator using qalculate-gtk (replacement for rofi-calc)
 
 # Check if qalculate-gtk is installed

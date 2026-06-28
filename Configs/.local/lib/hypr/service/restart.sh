@@ -2,6 +2,12 @@
 
 set -euo pipefail
 
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+
+hypr_help_guard "Usage: hyprshell service/restart <bluetooth|hypridle|hyprsunset|pipewire|wifi>
+Restart or unblock the named system service." "$@"
+
 [[ "$#" -eq 1 ]] || {
   printf 'Usage: hyprshell service/restart.sh <bluetooth|hypridle|hyprsunset|pipewire|wifi>\n' >&2
   exit 1

@@ -42,6 +42,7 @@
         "$XDG_DATA_HOME/waybar/modules/custom-weather#sunset.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-weather.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-wifimenu.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-window-layout.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-workflows.jsonc",
         "$XDG_DATA_HOME/waybar/modules/disk.jsonc",
         "$XDG_DATA_HOME/waybar/modules/ext-workspaces#hindi.jsonc",
@@ -360,7 +361,7 @@
         "menu-file": "$XDG_DATA_HOME/waybar/menus/power.xml",
         "menu-actions": {
             "lock": "hyprshell lock-screen.sh",
-            "logout": "hyprctl dispatch exit 0",
+            "logout": "hyprctl dispatch 'hl.dsp.exit()'",
             "shutdown-now": "shutdown now",
             "shutdown-wait": "systemctl poweroff",
             "reboot-now": "systemctl reboot",
@@ -384,6 +385,7 @@
         "interval": 5
     },
     "wlr/taskbar": {
+        "icon-size": 10,
         "all-outputs": true,
         "active-first": false,
         "markup": true,
@@ -507,7 +509,7 @@
         "return-type": "json",
         "format": "{0}",
         "rotate": 0,
-        "on-click": "hyprctl dispatch exec -- hyprshell system/system.update.sh up",
+        "on-click": "hyprctl dispatch 'hl.dsp.exec_cmd(\"hyprshell system/system.update.sh up\")'",
         "interval": 86400,
         "tooltip": true,
         "signal": 20
@@ -777,6 +779,17 @@
             "toggle": "hyprshell gpuinfo --toggle",
             "reset": "hyprshell gpuinfo --reset"
         }
+    },
+    "custom/window-layout": {
+        "justify": "center",
+        "format": "{}",
+        "interval": "once",
+        "exec": "hyprshell window-layout.sh --waybar",
+        "on-click": "hyprshell window-layout.sh --toggle;pkill -RTMIN+22 waybar",
+        "on-click-right": "hyprshell window-layout.sh --toggle-reverse;pkill -RTMIN+22 waybar",
+        "tooltip": true,
+        "return-type": "json",
+        "signal": 22
     },
     "custom/screenshot": {
         "format": "\udb80\udd04",

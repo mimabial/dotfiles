@@ -4,6 +4,9 @@ source "$(command -v hyprshell)" || exit 1
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
 
+hypr_help_guard "Usage: hyprshell keybinds/keybinds_hint
+Show the keybindings cheatsheet in rofi (toggles off if already open)." "$@"
+
 if hypr_user_pgrep -x rofi >/dev/null 2>&1; then
   hypr_user_pkill -x rofi
   exit 0

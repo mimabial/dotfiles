@@ -83,15 +83,16 @@ dark.color=#93a1a1
 mid.color=#93a1a180
 highlight.color=#268bd2
 inactive.highlight.color=#93a1a1
-text.color=#000000
-window.text.color=#657b83
-button.text.color=#657b83
-disabled.text.color=#657b8380
-tooltip.text.color=#657b83
+text.color=#011b29
+window.text.color=#011b29
+button.text.color=#011b29
+disabled.text.color=#011b2980
+tooltip.base.color=#fdf6e3
+tooltip.text.color=#011b29
 highlight.text.color=#fdf6e3
 link.color=#268bd2
 link.visited.color=#d33682
-progress.indicator.text.color=#657b83
+progress.indicator.text.color=#011b29
 
 [Hacks]
 transparent_ktitle_label=true
@@ -439,8 +440,8 @@ frame=true
 frame.element=menuitem
 interior.element=menuitem
 indicator.element=menuitem
-text.normal.color=#657b83
-text.focus.color=white
+text.normal.color=#011b29
+text.focus.color=#011b29
 text.margin.top=0
 text.margin.bottom=0
 text.margin.left=6
@@ -451,6 +452,8 @@ frame.left=4
 frame.right=4
 text.bold=false
 frame.expansion=0
+text.press.color=#011b29
+text.toggle.color=#011b29
 
 [MenuBar]
 inherits=PanelButtonCommand

@@ -2,6 +2,12 @@
 
 set -euo pipefail
 
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+
+hypr_help_guard "Usage: hyprshell media/tag_music
+Tag the configured album's tracks with artist/album/title/track metadata." "$@"
+
 ARTIST="Anderson .Paak"
 ALBUM="Oxnard"
 DIR="$HOME/Music/mpd/Anderson .Paak/Oxnard"

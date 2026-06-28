@@ -31,7 +31,9 @@ audio_enabled() {
 
 audio_playing() {
   command -v playerctl >/dev/null 2>&1 || return 1
-  playerctl -a status 2>/dev/null | grep -q '^Playing$'
+  local statuses
+  statuses=$'\n'"$(playerctl -a status 2>/dev/null)"$'\n'
+  [[ "${statuses}" == *$'\nPlaying\n'* ]]
 }
 
 hypridle_active() {

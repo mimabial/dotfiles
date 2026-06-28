@@ -5,6 +5,9 @@ source "$(command -v hyprshell)" || exit 1
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/system/monitor.common.bash"
 
+hypr_help_guard "Usage: hyprshell system/monitor-watch
+Watch for monitor hotplug events and recover internal/mirror toggles." "$@"
+
 recover_monitor_toggles() {
   "${HYPR_LIB_DIR}/system/monitor-internal.sh" recover || true
   "${HYPR_LIB_DIR}/system/monitor-mirror.sh" recover || true

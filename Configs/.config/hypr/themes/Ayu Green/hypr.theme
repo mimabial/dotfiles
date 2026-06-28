@@ -1,5 +1,5 @@
 $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
-$ICON_THEME = Newaita-reborn-manjaro-dark
+$ICON_THEME = Newaita-reborn-mint-dark
 $COLOR_SCHEME = prefer-dark
 $NVIM_SCHEME = ayu
 $NVIM_VARIANT = mirage

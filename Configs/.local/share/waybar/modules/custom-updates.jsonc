@@ -5,7 +5,7 @@
     "return-type": "json",
     "format": "{0}",
     "rotate": 0,
-    "on-click": "hyprctl dispatch exec -- hyprshell system/system.update.sh up",
+    "on-click": "hyprctl dispatch 'hl.dsp.exec_cmd(\"hyprshell system/system.update.sh up\")'",
     "interval": 86400,
     "tooltip": true,
     "signal": 20

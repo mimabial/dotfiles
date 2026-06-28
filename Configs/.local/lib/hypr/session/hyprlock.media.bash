@@ -25,7 +25,9 @@ mpris_icon() {
 }
 
 mpris_default_player() {
-  playerctl --list-all 2>/dev/null | head -n1
+  local first=""
+  IFS= read -r first < <(playerctl --list-all 2>/dev/null)
+  printf '%s' "${first}"
 }
 
 mpris_player_status() {
@@ -42,11 +44,12 @@ mpris_player_active() {
 mpris_active_player_value() {
   local player="$1"
   local format="$2"
-  local player_status=""
-
-  player_status="$(mpris_player_status "${player}")"
-  mpris_player_active "${player_status}" || return 1
-  playerctl -p "${player}" metadata --format "${format}" 2>/dev/null
+  local out=""
+  out="$(playerctl -p "${player}" metadata --format $'{{status}}\t'"${format}" 2>/dev/null)" || return 1
+  local status="${out%%$'\t'*}"
+  local value="${out#*$'\t'}"
+  mpris_player_active "${status}" || return 1
+  printf '%s\n' "${value}"
 }
 
 os_pretty_name() {

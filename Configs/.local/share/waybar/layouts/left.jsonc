@@ -13,7 +13,7 @@
   ],
   "modules-left": [
     "group/datetime",
-    "group/tui",
+    "group/tui-drawer",
     "ext/workspaces#hindi",
     "hyprland/submap",
     "group/forecast",
@@ -28,9 +28,9 @@
     "group/screen",
     "group/notification",
     "group/connection",
-    "group/forever"
+    "group/power"
   ],
-  "group/tui": {
+  "group/tui-drawer": {
     "orientation": "inherit",
     "drawer": {
       "transition-duration": 500,
@@ -119,13 +119,13 @@
       "transition-duration": 500,
       "transition-left-to-right": false
     },
-    "modules": ["tray", "custom/vpn", "custom/network#speed"]
-  },
-  "group/forever": {
-    "orientation": "inherit",
-    "modules": ["group/power", "custom/powermenu"]
+    "modules": ["tray", "custom/network#speed"]
   },
   "group/power": {
+    "orientation": "inherit",
+    "modules": ["group/powerconsumption", "custom/powermenu"]
+  },
+  "group/powerconsumption": {
     "orientation": "inherit",
     "drawer": {
       "transition-duration": 500,

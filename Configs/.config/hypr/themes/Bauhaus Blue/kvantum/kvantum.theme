@@ -4516,9 +4516,9 @@
      fill-rule="evenodd">
     <g
        transform="matrix(1 0 0 .57142 -127.25 735.45)"
-       fill="#586e75"
+       fill="#fdf6e3"
        id="g1228"
-       style="fill-opacity:1.0;fill:#586e75">
+       style="fill-opacity:1.0;fill:#fdf6e3">
       <path
          d="m190.36 252.46h50v10.5h-50z"
          id="path1226"
@@ -4565,9 +4565,9 @@
      fill-rule="evenodd">
     <g
        transform="matrix(.57143 0 0 1 -24.393 624.45)"
-       fill="#343031"
+       fill="#fdf6e3"
        id="g1244"
-       style="fill-opacity:1.0;fill:#343031">
+       style="fill-opacity:1.0;fill:#fdf6e3">
       <path
          d="m246.98 259v50l-10.5 1e-5v-50z"
          id="path1242"
@@ -4593,9 +4593,9 @@
      fill-rule="evenodd">
     <g
        transform="matrix(.57143 0 0 1 -45.822 624.45)"
-       fill="#343031"
+       fill="#fdf6e3"
        id="g1253"
-       style="fill-opacity:1.0;fill:#343031">
+       style="fill-opacity:1.0;fill:#fdf6e3">
       <path
          d="m182.98 259v50l10.5 1e-5v-50z"
          id="path1251"
@@ -4621,9 +4621,9 @@
      fill-rule="evenodd">
     <g
        transform="matrix(-1 0 0 -.57142 302.75 1081.5)"
-       fill="#343031"
+       fill="#fdf6e3"
        id="g1262"
-       style="fill-opacity:1.0;fill:#343031">
+       style="fill-opacity:1.0;fill:#fdf6e3">
       <path
          d="m190.01 252.09h50v10.5h-50z"
          id="path1260"
@@ -4649,9 +4649,9 @@
      y="562.99"
      width="2.5"
      height="7"
-     fill="#b74aff"
+     fill="#fdf6e3"
      fill-rule="evenodd"
-     style="fill-opacity:1.0;fill:#b74aff" />
+     style="fill-opacity:1.0;fill:#fdf6e3" />
   <rect
      id="tooltip-shadow-hint-right"
      transform="rotate(-90)"
@@ -4659,18 +4659,18 @@
      y="332.99"
      width="2.5"
      height="7"
-     fill="#b74aff"
+     fill="#fdf6e3"
      fill-rule="evenodd"
-     style="fill-opacity:1.0;fill:#b74aff" />
+     style="fill-opacity:1.0;fill:#fdf6e3" />
   <rect
      id="tooltip-shadow-hint-bottom"
      x="299.74"
      y="631.99"
      width="2.5"
      height="7"
-     fill="#b74aff"
+     fill="#fdf6e3"
      fill-rule="evenodd"
-     style="fill-opacity:1.0;fill:#b74aff" />
+     style="fill-opacity:1.0;fill:#fdf6e3" />
   <rect
      id="tooltip-shadow-hint-left"
      transform="rotate(-90)"
@@ -4678,9 +4678,9 @@
      y="263.99"
      width="2.5"
      height="6.9999"
-     fill="#b74aff"
+     fill="#fdf6e3"
      fill-rule="evenodd"
-     style="fill-opacity:1.0;fill:#b74aff" />
+     style="fill-opacity:1.0;fill:#fdf6e3" />
   <g
      id="tooltip-shadow-topleft"
      transform="matrix(-1 0 0 1 387.74 -309.46)"

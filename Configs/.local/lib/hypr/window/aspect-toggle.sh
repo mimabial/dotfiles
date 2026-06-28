@@ -7,6 +7,9 @@ CORE_COMMON="${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh"
 # shellcheck source=/dev/null
 source "${CORE_COMMON}" || exit 1
 
+hypr_help_guard "Usage: hyprshell window/aspect-toggle
+Toggle the single-window square (1:1) aspect ratio on/off." "$@"
+
 CURRENT_VALUE="$(hyprctl getoption "layout:single_window_aspect_ratio" -j 2>/dev/null | jq -c '.vec2 // [0, 0]')"
 
 if [[ "${CURRENT_VALUE}" == "[1,1]" ]]; then

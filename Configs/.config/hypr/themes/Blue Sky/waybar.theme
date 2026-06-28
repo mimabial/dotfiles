@@ -18,7 +18,7 @@ $HOME/.config/waybar/theme.css
 
 @define-color hvr_bg #294052;
 @define-color hvr_bg rgb(75,99,125);
-@define-color hvr_fg @fg;
+@define-color hvr_fg #9FD6B0;
 @define-color hvr_br rgb(170,203,240);
 @define-color hvr_br #9FD6B0;
 

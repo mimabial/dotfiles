@@ -10,3 +10,24 @@
 #FFFFFF=foreground
 #57778F=color8
 #AACCF0=color5
+
+# Auto-completed by complete-kvantum-maps.py
+#000000=background
+#141414=background
+#31363b=background
+#7f7f7f=color0
+#919191=color0
+#999999=color4
+#a6a6a6=color4
+#b4b4b4=color4
+#b6b6b6=color4
+#bebebe=color4
+#bfbfbf=color4
+#cce9ff=color7
+#cdd6f4=color8
+#cfc9c2=color4
+#d1d1d1=foreground
+#d2d2d2=color12
+#d6d6d6=color8
+#dcdcdc=color8
+#eaeaea=color7

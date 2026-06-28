@@ -12,9 +12,11 @@ cursor_text_color       #FFFFFF
 active_tab_foreground #bae67e
 active_tab_background #1f2430
 
+inactive_tab_foreground #c7c7c7
 inactive_tab_foreground #686868
 inactive_tab_background #1f2430
 
+tab_bar_background #295252
 tab_bar_background #0a320a
 
 color0 #191e2a
@@ -22,7 +24,6 @@ color8 #686868
 
 color1 #ed8274
 color9 #f28779
-color17 #f29e74
 
 color2  #a6cc70
 color10 #bae67e

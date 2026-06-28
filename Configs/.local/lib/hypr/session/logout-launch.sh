@@ -7,6 +7,9 @@ source "${LIB_DIR:-$HOME/.local/lib}/hypr/runtime/init.bash" || exit 1
 hypr_runtime_require state system || exit 1
 hypr_runtime_load_state || exit 1
 
+hypr_help_guard "Usage: hyprshell session/logout-launch [style]
+Open the wlogout menu (toggles off if already running)." "$@"
+
 #// Check if wlogout is already running
 
 if hypr_user_pgrep -x "wlogout" >/dev/null; then

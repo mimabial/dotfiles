@@ -15,7 +15,7 @@ $HOME/.config/waybar/theme.css
 @define-color act_br #CBA6F7;
 
 @define-color hvr_bg #313244;
-@define-color hvr_fg @fg;
+@define-color hvr_fg #F38BA8;
 @define-color hvr_br #F38BA8;
 
 @define-color c0 #43465A;
@@ -41,11 +41,3 @@ $HOME/.config/waybar/theme.css
 @define-color error @c1;
 @define-color success @c2;
 
-@define-color main-bg #181825;
-@define-color main-fg #cdd6f4;
-
-@define-color wb-act-bg #a6adc8;
-@define-color wb-act-fg #313244;
-
-@define-color wb-hvr-bg #f5c2e7;
-@define-color wb-hvr-fg #313244;

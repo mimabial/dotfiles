@@ -3,6 +3,12 @@
 # Install Steam with proper multilib support
 set -euo pipefail
 
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+
+hypr_help_guard "Usage: hyprshell gaming/install-steam
+Enable multilib and install Steam with 32-bit font dependencies." "$@"
+
 echo "Installing Steam..."
 
 # Enable multilib if not already enabled

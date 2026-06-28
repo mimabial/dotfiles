@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+
+hypr_help_guard "Usage: hyprshell rofi/color-picker [-l|-j]
+Pick a screen colour with hyprpicker; -l lists saved colours, -j emits waybar JSON." "$@"
+
 check() {
   command -v "$1" 1>/dev/null
 }

@@ -73,6 +73,59 @@ def _merge_state_lines(existing_lines, values):
     return merged_lines
 
 
+_STATE_CACHE = {"mtime": -1.0, "data": None}
+_CONFIG_CACHE = {"mtime": -1.0, "data": None}
+
+
+def _load_state_dict():
+    if not STATE_FILE.exists():
+        _STATE_CACHE["mtime"] = -1.0
+        _STATE_CACHE["data"] = None
+        return {}
+    try:
+        mtime = STATE_FILE.stat().st_mtime
+    except OSError:
+        return {}
+    if mtime == _STATE_CACHE["mtime"] and _STATE_CACHE["data"] is not None:
+        return _STATE_CACHE["data"]
+    data = {}
+    with open(STATE_FILE, "r") as f:
+        for line in f:
+            if "=" not in line:
+                continue
+            k, _, v = line.partition("=")
+            data.setdefault(k, v.strip())
+    _STATE_CACHE["mtime"] = mtime
+    _STATE_CACHE["data"] = data
+    return data
+
+
+def _load_config_dict():
+    if not HYPR_ENV_OVERRIDES.exists():
+        _CONFIG_CACHE["mtime"] = -1.0
+        _CONFIG_CACHE["data"] = None
+        return {}
+    try:
+        mtime = HYPR_ENV_OVERRIDES.stat().st_mtime
+    except OSError:
+        return {}
+    if mtime == _CONFIG_CACHE["mtime"] and _CONFIG_CACHE["data"] is not None:
+        return _CONFIG_CACHE["data"]
+    data = {}
+    with open(HYPR_ENV_OVERRIDES, "r") as f:
+        for line in f:
+            clean = line.strip()
+            if clean.startswith("export "):
+                clean = clean[7:]
+            if "=" not in clean:
+                continue
+            k, _, v = clean.partition("=")
+            data.setdefault(k, v.strip())
+    _CONFIG_CACHE["mtime"] = mtime
+    _CONFIG_CACHE["data"] = data
+    return data
+
+
 def get_state_value(key, default=None):
     """Get a value from the staterc.
 
@@ -83,27 +136,14 @@ def get_state_value(key, default=None):
       - waybar_watch.read_runtime_meta (Python, used for lock-meta files;
         strict KEY=value, no quoting)
     """
-    if not STATE_FILE.exists():
-        return default
-
-    with open(STATE_FILE, "r") as file:
-        for line in file:
-            if line.startswith(f"{key}="):
-                return line.split("=", 1)[1].strip()
-    return default
+    value = _load_state_dict().get(key)
+    return value if value is not None else default
 
 
 def get_config_value(key, default=None):
     """Get a value from the config file or state file."""
-    if HYPR_ENV_OVERRIDES.exists():
-        with open(HYPR_ENV_OVERRIDES, "r") as file:
-            for line in file:
-                clean_line = line.strip()
-                if clean_line.startswith("export "):
-                    clean_line = clean_line[7:]
-                if clean_line.startswith(f"{key}="):
-                    return clean_line.split("=", 1)[1].strip()
-    return default
+    value = _load_config_dict().get(key)
+    return value if value is not None else default
 
 
 def set_state_value(key, value):

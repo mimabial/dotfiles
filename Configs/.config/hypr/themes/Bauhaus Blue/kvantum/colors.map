@@ -4,7 +4,7 @@
 
 # Core colors derived from kvconfig.theme [GeneralColors]
 #eee8d5=background
-#fdf6e3=color0
+#fdf6e3=background
 #93a1a1=color0
 #268bd2=color4
 #000000=foreground

@@ -2,6 +2,12 @@
 
 set -euo pipefail
 
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+
+hypr_help_guard "Usage: hyprshell media/tag_genres <album-directory>
+Interactively set genre tags on each track in an album directory." "$@"
+
 if [[ $# -ne 1 ]]; then
   echo "Usage: $0 <path-to-album-directory>"
   exit 1

@@ -21,7 +21,7 @@ case "${cmd}" in
     [[ "${HYPR_FORCE_REGEN:-0}" -eq 1 ]] && exit 1
     [[ -n "${hash}" ]] || exit 1
     [[ -f "${cache_dir}/${key}" ]] || exit 1
-    stored="$(cat "${cache_dir}/${key}" 2>/dev/null || true)"
+    stored="$(<"${cache_dir}/${key}")"
     [[ "${stored}" == "${hash}" ]]
     ;;
   store)

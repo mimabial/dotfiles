@@ -2,6 +2,12 @@
 
 set -euo pipefail
 
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+
+hypr_help_guard "Usage: hyprshell system/drive-password
+Change the LUKS passphrase on an encrypted drive (prompts when several exist)." "$@"
+
 encrypted_drives=$(blkid -t TYPE=crypto_LUKS -o device)
 
 if [[ -n $encrypted_drives ]]; then

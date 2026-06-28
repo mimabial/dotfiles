@@ -5,6 +5,9 @@ source "$(command -v hyprshell)" || exit 1
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/system/monitor.common.bash"
 
+hypr_help_guard "Usage: hyprshell system/monitor-mirror {on|off|toggle|recover|status}
+Mirror the internal display onto a connected external one (default: toggle)." "$@"
+
 toggle_name="90-internal-mirror"
 disable_name="80-internal-disable"
 

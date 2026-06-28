@@ -31,7 +31,7 @@ button:focus {
 }
 
 button:hover {
-    background-color: @hover;
+    background-color: @hvr_bg;
     background-size: 40%;
     border-radius: ${active_rad}px;
     animation: gradient_f 20s ease-in infinite;

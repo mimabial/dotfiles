@@ -4,6 +4,11 @@ set -euo pipefail
 
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/install/auth.common.bash"
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+
+hypr_help_guard "Usage: hyprshell install/fido2 [--remove]
+Set up (or remove) FIDO2 hardware-key authentication for PAM." "$@"
 
 check_fido2_hardware() {
   tokens=$(fido2-token -L 2>/dev/null)

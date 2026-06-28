@@ -6,7 +6,7 @@ $NVIM_VARIANT = decayce
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
-$CURSOR_THEME = Capitaine-Cursors-White
+$CURSOR_THEME = capitaine-cursors-light
 $CURSOR_SIZE = 28
 
 # Theme variables above are the primary inputs used by theme.switch.sh.

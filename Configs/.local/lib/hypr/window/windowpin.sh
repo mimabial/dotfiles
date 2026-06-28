@@ -16,6 +16,9 @@ if ! declare -F hypr_focused_monitor_geometry >/dev/null 2>&1 \
   source "${CORE_COMMON}"
 fi
 
+hypr_help_guard "Usage: hyprshell window/windowpin
+Toggle pinning the active window as a centred floating pop-out." "$@"
+
 normalize_uint() {
   local value="${1:-}"
   local default_value="${2:-0}"

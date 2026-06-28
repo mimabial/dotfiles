@@ -12,7 +12,7 @@
     @import "theme.css";
 
     /* Shared or user-selected base style */
-    @import "../../.local/share/waybar/styles/default.css";
+    @import "../../.local/share/waybar/styles/dual.css";
 
     /* Runtime geometry overrides */
     @import "includes/border-radius.css";

@@ -74,22 +74,24 @@ def _env_bool(name: str, default: bool = False) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
+_NON_WORD_RX = re.compile(r"[^\w\s]")
+_WHITESPACE_RX = re.compile(r"\s+")
+_FEAT_RX = re.compile(r"\s*(feat\.|ft\.|featuring|with|&|and)\s*", re.IGNORECASE)
+_ARTIST_SPLIT_RX = re.compile(r"\s*,\s*|\s*/\s*|\s*;\s*")
+_LRC_TIMESTAMP_RX = re.compile(r"^\[(\d{2}):(\d{2})(?:\.(\d{1,3}))?\]")
+
+
 def _normalize_text(text: str) -> str:
-    text = re.sub(r"[^\w\s]", " ", text or "")
-    text = re.sub(r"\s+", " ", text)
+    text = _NON_WORD_RX.sub(" ", text or "")
+    text = _WHITESPACE_RX.sub(" ", text)
     return text.lower().strip()
 
 
 def _split_artists(artist_text: str) -> List[str]:
     if not artist_text:
         return []
-    artist_text = re.sub(
-        r"\s*(feat\.|ft\.|featuring|with|&|and)\s*",
-        ",",
-        artist_text,
-        flags=re.IGNORECASE,
-    )
-    parts = re.split(r"\s*,\s*|\s*/\s*|\s*;\s*", artist_text)
+    artist_text = _FEAT_RX.sub(",", artist_text)
+    parts = _ARTIST_SPLIT_RX.split(artist_text)
     return [p for p in (_normalize_text(part) for part in parts) if p]
 
 
@@ -124,7 +126,7 @@ def _extract_lrc_tag(lrc_text: str, tag: str) -> str:
 def _is_lrc_synced(lrc_text: str) -> bool:
     timestamps: List[Tuple[int, int, int]] = []
     for line in lrc_text.splitlines():
-        match = re.match(r"^\[(\d{2}):(\d{2})(?:\.(\d{1,3}))?\]", line.strip())
+        match = _LRC_TIMESTAMP_RX.match(line.strip())
         if not match:
             continue
         minutes = int(match.group(1))

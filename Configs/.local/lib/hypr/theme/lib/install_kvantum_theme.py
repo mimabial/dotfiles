@@ -4,20 +4,18 @@ import os
 import re
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "render"))
-from _roles import QtRoles, luminance, contrast_text
-
 theme_mode = os.environ.get("SELECTED_COLOR_MODE", "1") == "0"
+svg_path = os.environ["SVG_PATH"]
+kvconfig_path = os.environ["KVCONFIG_PATH"]
+
+if theme_mode:
+    sys.exit(0)
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "render"))
+from _roles import QtRoles, contrast_text
 
 
 def load_pywal():
-    active = os.environ.get("ACTIVE_PALETTE_JSON", "")
-    if theme_mode and active and os.path.exists(active):
-        p = json.load(open(active))
-        return {
-            "special": {"background": p["bg"], "foreground": p["fg"]},
-            "colors": {f"color{i}": c for i, c in enumerate(p.get("colors", [])[:16])},
-        }
     with open(os.environ["PYWAL_JSON"]) as f:
         return json.load(f)
 
@@ -38,51 +36,13 @@ link_color = roles.link
 link_visited_color = roles.link_visited
 normal_surface = roles.normal_surface
 button_surface = roles.button_surface
+tooltip_surface = roles.tooltip_surface
 substitutions = roles.substitutions
-active_is_dark = roles.is_dark
-
-# Fallback for hex codes not in colors.map. The completion template
-# (Tokyo Night) is a dark palette; when the active palette has the
-# opposite polarity (light), light-on-dark template colors invert to
-# light-on-light and become invisible.
-TEMPLATE_IS_DARK = True
-polarity_mismatch = TEMPLATE_IS_DARK != active_is_dark
-role_values = [
-    bg,
-    pywal["colors"].get("color0", bg),
-    pywal["colors"].get("color8", pywal["colors"].get("color0", bg)),
-    pywal["colors"].get("color4", fg),
-    pywal["colors"].get("color12", pywal["colors"].get("color4", fg)),
-    pywal["colors"].get("color5", fg),
-    pywal["colors"].get("color7", fg),
-    fg,
-]
-palette_by_lum = [(luminance(v), v) for v in role_values]
-template_substitutions = {
-    "#cfc9c2": pywal["colors"].get("color4", fg),
-    "#d1d1d1": fg,
-    "#ffffff": fg,
-}
-
-
-def fallback_for(hex_):
-    key = hex_.lower()
-    if key in template_substitutions:
-        return template_substitutions[key]
-    target_lum = 1 - luminance(hex_) if polarity_mismatch else luminance(hex_)
-    return min(palette_by_lum, key=lambda kv: abs(kv[0] - target_lum))[1]
-
-
-svg_path = os.environ["SVG_PATH"]
-kvconfig_path = os.environ["KVCONFIG_PATH"]
 
 
 def replace_hex(match):
     raw = match.group(0)
-    key = raw.lower()
-    if key in substitutions:
-        return substitutions[key]
-    return fallback_for(raw)
+    return substitutions.get(raw.lower(), raw)
 
 
 def rewrite_hex_file(path):
@@ -116,6 +76,8 @@ def patch_svg_state_roles(path):
             return "accent"
         if element_id.startswith(surface_prefixes):
             return "surface"
+        if element_id.startswith(("tooltip-normal", "tooltip-shadow")):
+            return "tooltip"
         if element_id.startswith("header-focused"):
             return "accent"
         return None
@@ -127,6 +89,8 @@ def patch_svg_state_roles(path):
             block = re.sub(r"opacity:0(?:\.\d+)?(?=;fill:#[0-9a-fA-F]{6})", "opacity:1", block)
         elif role == "surface":
             target = button_surface
+        elif role == "tooltip":
+            target = tooltip_surface
         else:
             return block
 
@@ -135,15 +99,30 @@ def patch_svg_state_roles(path):
             block = re.sub(r"\s+ry=\"[^\"]*\"", "", block)
             block = re.sub(r"\s*/>", "\n     rx=\"5\"\n     ry=\"5\" />", block, count=1)
 
-        if re.search(r"fill:#[0-9a-fA-F]{6}", block):
-            block = re.sub(r"fill:#[0-9a-fA-F]{6}", f"fill:{target}", block)
-        else:
+        def inject_fill(block):
             def _inject(m):
                 inner = m.group(1).rstrip(";")
                 sep = ";" if inner else ""
                 return "style=\"" + inner + sep + "fill:" + target + ";fill-opacity:1\""
             block = re.sub(r"style=\"([^\"]*)\"", _inject, block, count=1)
             block = re.sub(r"\bopacity:0(?:\.[0-9]+)?(?=[;\"\s])", "opacity:1", block)
+            return block
+
+        if role == "tooltip":
+            if re.search(r"(?:fill|stroke):#[0-9a-fA-F]{6}", block) or re.search(r"\b(?:fill|stroke)=\"#[0-9a-fA-F]{6}\"", block):
+                block = re.sub(r"fill:#[0-9a-fA-F]{6}", f"fill:{target}", block)
+                block = re.sub(r"stroke:#[0-9a-fA-F]{6}", f"stroke:{target}", block)
+                block = re.sub(r"\bfill=\"#[0-9a-fA-F]{6}\"", f'fill="{target}"', block)
+                block = re.sub(r"\bstroke=\"#[0-9a-fA-F]{6}\"", f'stroke="{target}"', block)
+            else:
+                block = inject_fill(block)
+            block = re.sub(r"fill-opacity:0(?:\.\d+)?", "fill-opacity:1", block)
+            return block
+
+        if re.search(r"fill:#[0-9a-fA-F]{6}", block):
+            block = re.sub(r"fill:#[0-9a-fA-F]{6}", f"fill:{target}", block)
+        else:
+            block = inject_fill(block)
 
         block = re.sub(r"fill-opacity:0(?:\.\d+)?", "fill-opacity:1", block)
         return block
@@ -234,6 +213,30 @@ def patch_svg_lineedit_roles(path):
         f.write(content)
 
 
+def patch_svg_menu_shadow_roles(path):
+    fill_re = re.compile(r"fill:(#[0-9a-fA-F]{6})")
+
+    def patch_block(block):
+        return fill_re.sub("fill:" + button_surface, block)
+
+    with open(path) as f:
+        content = f.read()
+
+    content = re.sub(
+        r"(<g\b(?=[^>]*\bid=\"menu-shadow[^\"]*\")[\s\S]*?</g>)",
+        lambda match: patch_block(match.group(1)),
+        content,
+    )
+    content = re.sub(
+        r"(<(?:path|rect|circle|ellipse|polygon)\b(?=[^>]*\bid=\"menu-shadow[^\"]*\")[\s\S]*?/>)",
+        lambda match: patch_block(match.group(1)),
+        content,
+    )
+
+    with open(path, "w") as f:
+        f.write(content)
+
+
 def patch_kvconfig_roles(path):
     highlight_fg = contrast_text(bg, fg, accent)
     toolbar_fg = fg
@@ -252,6 +255,7 @@ def patch_kvconfig_roles(path):
         "text.color": fg,
         "window.text.color": fg,
         "button.text.color": fg,
+        "tooltip.base.color": tooltip_surface,
         "tooltip.text.color": fg,
         "highlight.text.color": highlight_fg,
         "link.color": link_color,
@@ -292,6 +296,12 @@ def patch_kvconfig_roles(path):
             "text.focus.color": toolbar_fg,
             "text.press.color": toolbar_fg,
             "text.toggle.color": toolbar_fg,
+        },
+        "ToolTip": {
+            "text.normal.color": fg,
+            "text.focus.color": fg,
+            "text.press.color": fg,
+            "text.toggle.color": fg,
         },
     }
 
@@ -341,16 +351,20 @@ def patch_kvconfig_roles(path):
     content = "".join(rewritten)
     for section, values in section_replacements.items():
         content = ensure_section_values(content, section, values)
+    content = ensure_section_values(content, "GeneralColors", {
+        "tooltip.base.color": tooltip_surface,
+        "tooltip.text.color": fg,
+    })
 
     with open(path, "w") as f:
         f.write(content)
 
 
-if not theme_mode:
-    rewrite_hex_file(svg_path)
-    rewrite_hex_file(kvconfig_path)
+rewrite_hex_file(svg_path)
+rewrite_hex_file(kvconfig_path)
 patch_svg_state_roles(svg_path)
 patch_svg_lineedit_roles(svg_path)
+patch_svg_menu_shadow_roles(svg_path)
 for menuitem_base_id in (
     "menuitem-normal",
     "menuitem-normal-top",

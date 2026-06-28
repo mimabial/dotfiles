@@ -63,9 +63,10 @@ def _load_colors_map(colors_map_path, palette_full):
             var = var.strip()
             if not re.fullmatch(r"#[0-9a-fA-F]{6}", hex_part):
                 continue
-            if var not in palette_full:
-                continue
-            subs[hex_part.lower()] = palette_full[var]
+            if re.fullmatch(r"#[0-9a-fA-F]{6}", var):
+                subs[hex_part.lower()] = var.lower()
+            elif var in palette_full:
+                subs[hex_part.lower()] = palette_full[var]
     return subs
 
 
@@ -118,10 +119,10 @@ class QtRoles:
             )
             self.button_surface = self.normal_surface
 
+        self.tooltip_surface = self.normal_surface
+
     def _resolve_role(self, key, default_var):
         target = self._general.get(key)
         if not target:
             return self.colors.get(default_var, self.fg)
-        if self.theme_mode:
-            return target
         return self.substitutions.get(target, target)

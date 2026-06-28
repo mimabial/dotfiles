@@ -2,6 +2,12 @@
 
 set -euo pipefail
 
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+
+hypr_help_guard "Usage: hyprshell window/dropdown-terminal
+Toggle the dropdown terminal: spawn it, or show/hide it on the focused workspace." "$@"
+
 dropdown_source_window_common() {
   local common_file="${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/launch/window.common.bash"
 

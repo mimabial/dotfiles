@@ -185,7 +185,7 @@ def create_tooltip_text(
         tooltip += f"\n<span>{p_name}</span>"
     tooltip += (
         f"\n<span size='x-small' foreground='{ui_config.track_color}'>"
-        f"\n󰐎 click to play/pause\n scroll to seek\n󱥣 rightclick for options</span>"
+        f"\n󰐎 click to play/pause\n scroll to switch player\n󱥣 rightclick for options</span>"
     )
     return tooltip
 

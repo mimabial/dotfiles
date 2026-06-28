@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+
+hypr_help_guard "Usage: hyprshell system/font resolve <layout-file>
+Download and install fonts referenced by a Hyprland layout file." "$@"
+
 font_dir="${XDG_DATA_HOME:-$HOME/.local/share}/fonts"
 landing_dir="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/landing/fonts"
 mkdir -p "$font_dir" "$landing_dir"
