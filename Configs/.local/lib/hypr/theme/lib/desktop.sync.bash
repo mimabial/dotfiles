@@ -308,7 +308,7 @@ theme_desktop_export_cursor_environment() {
       print_log -sec "theme" -warn "cursor" "failed to update UWSM cursor environment"
   fi
 
-  if command -v systemctl >/dev/null 2>&1; then
+  if [[ -d /run/systemd/system ]] && command -v systemctl >/dev/null 2>&1; then
     systemctl --user set-environment \
       "XCURSOR_THEME=${XCURSOR_THEME}" \
       "XCURSOR_SIZE=${XCURSOR_SIZE}" \
@@ -317,9 +317,49 @@ theme_desktop_export_cursor_environment() {
   fi
 
   if command -v dbus-update-activation-environment >/dev/null 2>&1; then
-    dbus-update-activation-environment --systemd \
-      XCURSOR_THEME XCURSOR_SIZE XCURSOR_PATH >/dev/null 2>&1 ||
-      print_log -sec "theme" -warn "cursor" "failed to update DBus cursor environment"
+    if [[ -d /run/systemd/system ]]; then
+      dbus-update-activation-environment --systemd \
+        XCURSOR_THEME XCURSOR_SIZE XCURSOR_PATH >/dev/null 2>&1 ||
+        print_log -sec "theme" -warn "cursor" "failed to update DBus cursor environment"
+    else
+      dbus-update-activation-environment \
+        XCURSOR_THEME XCURSOR_SIZE XCURSOR_PATH >/dev/null 2>&1 ||
+        print_log -sec "theme" -warn "cursor" "failed to update DBus cursor environment"
+    fi
+  fi
+}
+
+# Re-assert the canonical Qt theme env onto the systemd --user manager and the
+# DBus activation environment, so DBus-activated and systemd-launched apps stop
+# inheriting a stale value (e.g. QT_QPA_PLATFORMTHEME=gtk3) seeded earlier in the
+# session. Values are read from core/qt-session.env and pushed as explicit
+# KEY=VALUE pairs — the current process env (which may carry the leak) is never
+# propagated. Runs at startup-sync and on every theme apply.
+theme_desktop_export_session_qt_env() {
+  local qt_env_file="${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/qt-session.env"
+  [[ -r "${qt_env_file}" ]] || return 0
+
+  local -a qt_pairs=()
+  local line=""
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    [[ -z "${line}" || "${line}" == \#* ]] && continue
+    qt_pairs+=("${line}")
+  done <"${qt_env_file}"
+  [[ ${#qt_pairs[@]} -gt 0 ]] || return 0
+
+  if [[ -d /run/systemd/system ]] && command -v systemctl >/dev/null 2>&1; then
+    systemctl --user set-environment "${qt_pairs[@]}" >/dev/null 2>&1 ||
+      print_log -sec "theme" -warn "qt-env" "failed to update systemd user Qt environment"
+  fi
+
+  if command -v dbus-update-activation-environment >/dev/null 2>&1; then
+    if [[ -d /run/systemd/system ]]; then
+      dbus-update-activation-environment --systemd "${qt_pairs[@]}" >/dev/null 2>&1 ||
+        print_log -sec "theme" -warn "qt-env" "failed to update DBus Qt environment"
+    else
+      dbus-update-activation-environment "${qt_pairs[@]}" >/dev/null 2>&1 ||
+        print_log -sec "theme" -warn "qt-env" "failed to update DBus Qt environment"
+    fi
   fi
 }
 
@@ -878,6 +918,7 @@ theme_desktop_static_targets_ready() {
 
 theme_desktop_apply_runtime_resolved() {
   theme_desktop_export_cursor_environment
+  theme_desktop_export_session_qt_env
   theme_desktop_write_dconf_content
   theme_desktop_restart_portal_backends_if_needed
   if [[ "${THEME_DESKTOP_SYNC_LOG_DCONF:-1}" -eq 1 ]]; then

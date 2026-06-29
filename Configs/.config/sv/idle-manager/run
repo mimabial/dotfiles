@@ -1,0 +1,6 @@
+#!/bin/sh
+# runit service: Hyprland idle manager (audio/manual-aware hypridle control).
+# Inherits the graphical-session env from the per-user runsvdir started inside
+# the Hyprland session (see ~/.config/sv/README.md).
+exec 2>&1
+exec "$HOME/.local/lib/hypr/session/idle-manager.sh"

@@ -38,6 +38,8 @@ check_and_sanitize_process() {
   local unit_name="${1:-${HYPRLOCK_SCOPE_NAME}}"
   if systemctl --user is-active "${unit_name}" >/dev/null 2>&1; then
     systemctl --user stop "${unit_name}" >/dev/null 2>&1
+  else
+    hypr_user_pkill -x hyprlock >/dev/null 2>&1 || true
   fi
 }
 

@@ -19,14 +19,14 @@ case "$1" in
     rfkill list "$1"
     ;;
   hypridle)
-    systemctl --user restart hyprland-hypridle.service >/dev/null 2>&1 || true
+    hypr_svc_user restart hyprland-hypridle || true
     ;;
   hyprsunset)
     pkill -x hyprsunset >/dev/null 2>&1 || true
     uwsm-app -- hyprsunset >/dev/null 2>&1 &
     ;;
   pipewire)
-    systemctl --user restart pipewire.service
+    hypr_svc_user restart pipewire
     ;;
   *)
     exit 1

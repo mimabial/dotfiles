@@ -21,7 +21,7 @@ restart_portal_service() {
   local service_name="$1"
   local exec_name="$2"
 
-  if systemctl --user restart "${service_name}.service" >/dev/null 2>&1; then
+  if hypr_svc_user restart "${service_name}"; then
     return 0
   fi
 

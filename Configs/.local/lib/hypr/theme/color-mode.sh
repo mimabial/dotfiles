@@ -198,30 +198,29 @@ set_mode_from_arg() {
 }
 
 auto_theme_systemd_available() {
-  command -v systemctl &>/dev/null || return 1
-  systemctl --user show-environment &>/dev/null
+  [[ "$(hypr_init_system)" != "other" ]]
 }
 
 start_auto_theme_service() {
   if ! auto_theme_systemd_available; then
-    print_log -sec "color-mode" -warn "auto" "systemd --user unavailable, auto-theme.service is required"
+    print_log -sec "color-mode" -warn "auto" "no service manager (systemd/runit) for auto-theme"
     return 1
   fi
 
-  systemctl --user start auto-theme.service 2>/dev/null || {
-    print_log -sec "color-mode" -warn "auto" "failed to start auto-theme.service"
+  hypr_svc_user start auto-theme || {
+    print_log -sec "color-mode" -warn "auto" "failed to start auto-theme service"
     return 1
   }
 }
 
 refresh_auto_theme_service() {
   auto_theme_systemd_available || return 0
-  systemctl --user kill -s USR2 auto-theme.service 2>/dev/null || true
+  hypr_svc_user_signal auto-theme USR2 || true
 }
 
 stop_auto_theme_service() {
   if auto_theme_systemd_available; then
-    systemctl --user stop auto-theme.service 2>/dev/null || true
+    hypr_svc_user stop auto-theme || true
   fi
 }
 

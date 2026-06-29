@@ -1,0 +1,46 @@
+#!/bin/sh
+# hypr-session — launch Hyprland WITHOUT uwsm (e.g. on Artix/runit).
+#
+# Replaces what `uwsm start hyprland` does: set session env, source the same
+# env.d files, ensure a session dbus, schedule the per-user runit supervisor,
+# then exec the compositor. Run it from greetd/ly or a TTY:
+#
+#   [initial_session]            # /etc/greetd/config.toml
+#   command = "hypr-session"
+#   user = "rifle"
+#
+# Harmless to keep installed on a systemd host; it just isn't used there.
+
+set -eu
+
+XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+export XDG_CONFIG_HOME
+export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
+export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+
+# Desktop/session identity (uwsm normally sets these).
+export XDG_CURRENT_DESKTOP=Hyprland
+export XDG_SESSION_DESKTOP=Hyprland
+export XDG_SESSION_TYPE=wayland
+
+# Global env, mirroring ~/.config/uwsm/env (which only uwsm reads otherwise).
+export APP2UNIT_SLICES='a=app-graphical.slice b=background-graphical.slice s=session-graphical.slice'
+for f in "$XDG_CONFIG_HOME"/uwsm/env.d/*.sh "$XDG_CONFIG_HOME"/uwsm/env-hyprland.d/*.sh; do
+	[ -r "$f" ] && . "$f"
+done
+
+# Bring up the per-user runit supervisor once the compositor is live (runit only;
+# no-ops on systemd, where the systemd --user units handle this instead).
+if command -v runsvdir >/dev/null 2>&1 && [ ! -d /run/systemd/system ]; then
+	"$HOME/.local/bin/hypr-runsvdir" &
+fi
+
+# Ensure a session bus when one isn't already provided (systemd/elogind+dbus
+# usually provide it; dbus-run-session covers the bare case).
+if [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ] && command -v dbus-run-session >/dev/null 2>&1; then
+	exec dbus-run-session -- Hyprland
+fi
+
+exec Hyprland

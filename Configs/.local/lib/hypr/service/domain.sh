@@ -19,6 +19,8 @@ set -euo pipefail
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=/dev/null
 source "${script_dir}/service.lib.bash"
+# shellcheck source=/dev/null
+source "${script_dir}/../core/common.sh"
 
 usage() {
   cat <<'USAGE'
@@ -89,7 +91,7 @@ case "${domain}" in
     [[ "${hypr_service_cli_dry_run}" -ne 0 ]] || hyprctl reload >/dev/null 2>&1 || true
     ;;
   hypridle)
-    [[ "${hypr_service_cli_dry_run}" -ne 0 ]] || systemctl --user restart hyprland-hypridle.service >/dev/null 2>&1 || true
+    [[ "${hypr_service_cli_dry_run}" -ne 0 ]] || hypr_svc_user restart hyprland-hypridle || true
     ;;
   rofi)
     [[ "${hypr_service_cli_dry_run}" -ne 0 ]] || pkill -x rofi >/dev/null 2>&1 || true

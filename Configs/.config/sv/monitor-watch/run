@@ -1,0 +1,4 @@
+#!/bin/sh
+# runit service: monitor hotplug watcher (recovers internal/mirror toggles).
+exec 2>&1
+exec "$HOME/.local/lib/hypr/system/monitor-watch.sh"

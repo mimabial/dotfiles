@@ -1,5 +1,5 @@
 $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
-$ICON_THEME = Papirus-kanagawa
+$ICON_THEME = Breeze Chameleon Kanagawa
 $COLOR_SCHEME = prefer-dark
 $NVIM_SCHEME = kanagawa
 $NVIM_VARIANT = wave
@@ -12,7 +12,7 @@ $CURSOR_SIZE = 22
 general {
     border_size = 3
     col.inactive_border = rgba(6A9589B0)
-    col.active_border = rgba(957FB8B0)
+    col.active_border = rgba(957FB8F0)
     gaps_in = 5
     gaps_out = 10
     resize_on_border = true

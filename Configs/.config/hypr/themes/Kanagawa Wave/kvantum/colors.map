@@ -4,8 +4,8 @@
 
 # Core colors derived from kvconfig.theme [GeneralColors]
 #1F1F28=background
-#2A2A37=color8
-#DCD7BA=color7
+#2A2A37=background
+#DCD7BA=foreground
 #C8C093=color7
 #16161D=color0
 #727169=color8
@@ -26,7 +26,6 @@
 #232325=color0
 #26272A=color0
 #28282A=color0
-#2A2A37=color4
 #2E3440=color0
 #323234=color0
 #343031=color0
@@ -47,11 +46,9 @@
 #8C8C8E=color7
 #989898=color7
 #AAAAAC=color7
-#C8C093=color5
 #C8C8CA=foreground
 #D2D2D4=foreground
 #D8DEE9=foreground
-#DCD7BA=foreground
 #FFFFFF=foreground
 #333399=color4
 #3DAEE9=color4

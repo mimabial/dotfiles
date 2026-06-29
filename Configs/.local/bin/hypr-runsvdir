@@ -1,0 +1,45 @@
+#!/bin/sh
+# hypr-runsvdir — start the per-user runit supervisor for the Hyprland session.
+#
+# Without systemd there is no import-environment step, so supervised services
+# (waybar, idle-manager, monitor-watch, …) would not see the compositor env.
+# This waits for the Wayland/Hyprland sockets, exports the discovered values,
+# then execs runsvdir so every service inherits them. Launched in the
+# background by hypr-session; runit only.
+
+set -u
+
+runtime="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+
+# Wait (up to ~10s) for Hyprland to create its IPC socket.
+i=0
+hypr_socket=""
+while [ "$i" -lt 100 ]; do
+	for s in "$runtime"/hypr/*/.socket.sock; do
+		[ -S "$s" ] && { hypr_socket="$s"; break; }
+	done
+	[ -n "$hypr_socket" ] && break
+	i=$((i + 1))
+	sleep 0.1
+done
+
+if [ -n "$hypr_socket" ]; then
+	sig_dir=$(dirname "$hypr_socket")
+	HYPRLAND_INSTANCE_SIGNATURE=$(basename "$sig_dir")
+	export HYPRLAND_INSTANCE_SIGNATURE
+fi
+
+# Discover the Wayland display socket (skip .lock files).
+for w in "$runtime"/wayland-*; do
+	case "$w" in
+	*.lock) continue ;;
+	esac
+	if [ -S "$w" ]; then
+		WAYLAND_DISPLAY=$(basename "$w")
+		export WAYLAND_DISPLAY
+		break
+	fi
+done
+
+export SVDIR="$HOME/.config/sv"
+exec runsvdir "$HOME/.config/sv"

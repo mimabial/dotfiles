@@ -19,6 +19,109 @@ hypr_help_guard() {
   done
 }
 
+# --- Init-system abstraction (systemd / runit) -----------------------------
+# Lets the same config drive a systemd user session or a runit (Artix) one.
+# Detection is cached per-process in HYPR_INIT_SYSTEM. Override for testing by
+# exporting HYPR_INIT_SYSTEM=systemd|runit|other before invoking.
+
+hypr_init_system() {
+  if [[ -n "${HYPR_INIT_SYSTEM:-}" ]]; then
+    printf '%s\n' "${HYPR_INIT_SYSTEM}"
+    return 0
+  fi
+
+  local detected="other"
+  if [[ -d /run/systemd/system ]] && command -v systemctl >/dev/null 2>&1; then
+    detected="systemd"
+  elif command -v sv >/dev/null 2>&1 && { [[ -d /run/runit ]] || [[ -d /etc/runit ]]; }; then
+    detected="runit"
+  fi
+
+  export HYPR_INIT_SYSTEM="${detected}"
+  printf '%s\n' "${detected}"
+}
+
+# True only when a usable systemd --user instance is reachable.
+hypr_systemd_user_ok() {
+  [[ "$(hypr_init_system)" == "systemd" ]] || return 1
+  systemctl --user is-active default.target >/dev/null 2>&1
+}
+
+# Directory holding per-user runit service definitions.
+hypr_user_sv_dir() {
+  printf '%s\n' "${HYPR_USER_SV_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/sv}"
+}
+
+# svc_user <start|stop|restart|is-active> <service-name>
+# Dispatches a user-service lifecycle op to the active init system. The name is
+# given without a suffix; the systemd path appends .service, the runit path uses
+# it as the sv service directory name. Returns success best-effort; is-active
+# returns the real running state. No supervisor -> lifecycle ops are no-ops.
+hypr_svc_user() {
+  local action="${1:-}" name="${2:-}"
+  [[ -n "${action}" && -n "${name}" ]] || return 2
+
+  case "$(hypr_init_system)" in
+    systemd)
+      local unit="${name%.service}.service"
+      case "${action}" in
+        start)     systemctl --user start --no-block "${unit}" >/dev/null 2>&1 ;;
+        stop)      systemctl --user stop "${unit}" >/dev/null 2>&1 ;;
+        restart)   systemctl --user restart "${unit}" >/dev/null 2>&1 ;;
+        is-active) systemctl --user is-active --quiet "${unit}" >/dev/null 2>&1 ;;
+        *) return 2 ;;
+      esac
+      ;;
+    runit)
+      command -v sv >/dev/null 2>&1 || return 1
+      local svc="${name%.service}"
+      local sv_dir; sv_dir="$(hypr_user_sv_dir)"
+      case "${action}" in
+        start)     SVDIR="${sv_dir}" sv up "${svc}" >/dev/null 2>&1 ;;
+        stop)      SVDIR="${sv_dir}" sv down "${svc}" >/dev/null 2>&1 ;;
+        restart)   SVDIR="${sv_dir}" sv restart "${svc}" >/dev/null 2>&1 ;;
+        is-active) SVDIR="${sv_dir}" sv status "${svc}" 2>/dev/null | grep -q '^run:' ;;
+        *) return 2 ;;
+      esac
+      ;;
+    *)
+      [[ "${action}" == "is-active" ]] && return 1
+      return 0
+      ;;
+  esac
+}
+
+# svc_user_signal <service-name> <SIGNAL>
+# Sends a signal to a running user service (e.g. USR2 to reload). Maps the
+# common signals to runit's sv control subcommands.
+hypr_svc_user_signal() {
+  local name="${1:-}" sig="${2:-}"
+  [[ -n "${name}" && -n "${sig}" ]] || return 2
+
+  case "$(hypr_init_system)" in
+    systemd)
+      systemctl --user kill --signal="${sig}" "${name%.service}.service" >/dev/null 2>&1
+      ;;
+    runit)
+      command -v sv >/dev/null 2>&1 || return 1
+      local sv_cmd=""
+      case "${sig#SIG}" in
+        USR1) sv_cmd="1" ;;
+        USR2) sv_cmd="2" ;;
+        HUP)  sv_cmd="hup" ;;
+        TERM) sv_cmd="term" ;;
+        INT)  sv_cmd="interrupt" ;;
+        KILL) sv_cmd="kill" ;;
+        *) return 1 ;;
+      esac
+      SVDIR="$(hypr_user_sv_dir)" sv "${sv_cmd}" "${name%.service}" >/dev/null 2>&1
+      ;;
+    *)
+      return 0
+      ;;
+  esac
+}
+
 # Native Hyprland 0.55 Lua IPC helpers.
 hypr_lua_quote() {
   jq -Rn --arg value "${1:-}" '$value'

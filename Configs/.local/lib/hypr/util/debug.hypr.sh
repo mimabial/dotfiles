@@ -11,6 +11,20 @@ Collect a redacted Hyprland/system debug log and view, save, or upload it." "$@"
 LOG_FILE="${TMPDIR:-/tmp}/hypr-debug.log"
 redacted_log=""
 
+# Recent error log lines. Uses the journal on systemd; falls back to common
+# syslog files on runit/non-systemd hosts.
+collect_recent_errors() {
+  if command -v journalctl >/dev/null 2>&1; then
+    journalctl -b -p 4..1
+    return
+  fi
+  local f
+  for f in /var/log/messages /var/log/everything.log /var/log/syslog; do
+    [[ -r "${f}" ]] && { tail -n 500 "${f}"; return; }
+  done
+  echo "(no journalctl and no readable /var/log syslog file)"
+}
+
 cleanup_redacted_log() {
   local exit_code="${1:-$?}"
   [[ -n "${redacted_log}" ]] && rm -f "${redacted_log}" 2>/dev/null || true
@@ -60,7 +74,7 @@ $(sudo dmesg)
 =========================================
 JOURNALCTL (CURRENT BOOT, ERRORS ONLY)
 =========================================
-$(journalctl -b -p 4..1)
+$(collect_recent_errors)
 
 =========================================
 INSTALLED PACKAGES

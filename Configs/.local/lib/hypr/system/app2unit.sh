@@ -8,6 +8,8 @@ USEP=$(printf '%b' '\037')
 TERMINAL_HANDLER=tui-terminal-exec
 SELF_NAME=${0##*/}
 APP2UNIT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)
+# Single source of truth for the Qt theme env normalized onto launched apps.
+APP2UNIT_QT_ENV_FILE="$(dirname -- "$APP2UNIT_DIR")/core/qt-session.env"
 
 # Treat non-zero exit status from simple commands as an error
 # Treat unset variables as errors when performing parameter expansion
@@ -488,8 +490,51 @@ systemd_apply_unit_type_args() {
 	esac
 }
 
+# Direct-exec fallback used when no systemd user manager is present (e.g. runit
+# on Artix). Receives the clean command argv, honors TEST_MODE / working dir /
+# output silencing, then detaches via setsid so the app outlives the launcher.
+app2unit_exec_without_systemd() {
+	case "$TEST_MODE" in
+	true)
+		printf '%s\n' 'Command and arguments (no systemd, direct exec):'
+		printf '  >%s<\n' "$@"
+		return 0
+		;;
+	esac
+
+	if [ -n "${ENTRY_WORKDIR:-}" ]; then
+		cd "$ENTRY_WORKDIR" 2>/dev/null || true
+	fi
+
+	# Normalize the Qt theme env directly on the child (no systemd to carry it).
+	if [ -r "$APP2UNIT_QT_ENV_FILE" ]; then
+		while IFS= read -r app2unit_qt_line || [ -n "$app2unit_qt_line" ]; do
+			case "$app2unit_qt_line" in
+			'' | \#*) continue ;;
+			esac
+			export "$app2unit_qt_line"
+		done <"$APP2UNIT_QT_ENV_FILE"
+	fi
+
+	case "${UNIT_TYPE}_${SILENT}" in
+	scope_out | service_out) exec >/dev/null ;;
+	scope_err | service_err) exec 2>/dev/null ;;
+	scope_both | service_both) exec >/dev/null 2>&1 ;;
+	esac
+
+	if command -v setsid >/dev/null 2>&1; then
+		exec setsid -- "$@"
+	fi
+	exec "$@"
+}
+
 systemd_run() {
 	# wrapper for systemd-run
+	# Without a systemd user manager (e.g. runit/Artix), exec the command directly.
+	if [ ! -d /run/systemd/system ] || ! command -v systemd-run >/dev/null 2>&1; then
+		app2unit_exec_without_systemd "$@"
+		return $?
+	fi
 	# prepend common args
 	UNIT_SLICE_ID=${UNIT_SLICE_ID:-app-graphical.slice}
 	if [ -z "$UNIT_DESCRIPTION" ]; then
@@ -509,6 +554,20 @@ systemd_run() {
 		--quiet \
 		--collect \
 		-- "$@"
+
+	# Normalize the Qt platform theme/style for every launched app. --setenv
+	# reaches both scope and service units regardless of the env they would
+	# inherit, so a stale value (e.g. QT_QPA_PLATFORMTHEME=gtk3) in the session
+	# env can't leak through. Values come from core/qt-session.env, never echoed
+	# from the (possibly stale) current env.
+	if [ -r "$APP2UNIT_QT_ENV_FILE" ]; then
+		while IFS= read -r app2unit_qt_line || [ -n "$app2unit_qt_line" ]; do
+			case "$app2unit_qt_line" in
+			'' | \#*) continue ;;
+			esac
+			set -- "--setenv=$app2unit_qt_line" "$@"
+		done <"$APP2UNIT_QT_ENV_FILE"
+	fi
 
 	if [ "$PART_OF_GST" = "true" ]; then
 		# prepend graphical session dependency/ordering args

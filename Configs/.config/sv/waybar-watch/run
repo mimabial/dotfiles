@@ -1,0 +1,5 @@
+#!/bin/sh
+# runit service: waybar watcher (starts waybar and restarts it if it dies).
+# Mirrors the systemd hyprland-waybar-watcher.service.
+exec 2>&1
+exec "$HOME/.local/bin/hyprshell" waybar/waybar --watch

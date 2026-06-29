@@ -11,14 +11,16 @@ warn_startup() {
   declare -F print_log >/dev/null 2>&1 && print_log -sec "auto-theme" -warn "startup" "$1"
 }
 
-command -v systemctl >/dev/null 2>&1 || { warn_startup "systemctl not available"; exit 0; }
-systemctl --user show-environment >/dev/null 2>&1 || { warn_startup "systemd --user unavailable"; exit 0; }
+if [[ "$(hypr_init_system)" == "other" ]]; then
+  warn_startup "no supported service manager (systemd/runit) available"
+  exit 0
+fi
 
 if [[ "${selected_color_mode}" -eq 1 ]]; then
-  systemctl --user start --no-block auto-theme.service 2>/dev/null || {
-    warn_startup "failed to start auto-theme.service"
+  hypr_svc_user start auto-theme || {
+    warn_startup "failed to start auto-theme service"
     exit 0
   }
 else
-  systemctl --user stop --no-block auto-theme.service 2>/dev/null || true
+  hypr_svc_user stop auto-theme || true
 fi

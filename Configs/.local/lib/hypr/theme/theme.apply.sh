@@ -203,6 +203,28 @@ theme_apply_restart_waybar_direct() {
   "${waybar_script}" --restart-direct
 }
 
+# Resolve the GTK icon theme currently in effect — the value waybar's
+# wlr/taskbar and tray modules would load on a restart. Prefer gsettings
+# (authoritative for GTK), fall back to the generated xsettingsd config.
+theme_apply_current_icon_theme() {
+  local value=""
+
+  if command -v gsettings >/dev/null 2>&1; then
+    value="$(gsettings get org.gnome.desktop.interface icon-theme 2>/dev/null || true)"
+    value="${value#\'}"
+    value="${value%\'}"
+  fi
+
+  if [[ -z "${value}" ]]; then
+    local xsettings_conf="${XDG_CONFIG_HOME:-$HOME/.config}/xsettingsd/xsettingsd.conf"
+    [[ -r "${xsettings_conf}" ]] && value="$(
+      sed -n 's/^Net\/IconThemeName[[:space:]]*"\(.*\)"$/\1/p' "${xsettings_conf}" | head -n1
+    )"
+  fi
+
+  printf '%s' "${value}"
+}
+
 theme_apply_write_dunst_runtime() {
   local r="${LIB_DIR}/hypr/render/dunst.py"
   [[ -x "${r}" ]] || return 1
@@ -485,12 +507,26 @@ theme_apply_job_waybar() {
     return 1
   }
 
-  hypr_user_pgrep -x waybar >/dev/null 2>&1 && return 0
+  # wlr/taskbar and tray load their icons from the GTK icon theme only at
+  # waybar startup; the theme CSS hot-reload does not refresh them. Restart
+  # waybar only when the icon theme actually changed (or it isn't running),
+  # otherwise keep the cheap CSS hot-reload.
+  local current_icon_theme="" cached_icon_theme=""
+  current_icon_theme="$(theme_apply_current_icon_theme)"
+  cached_icon_theme="$(state_get "waybar_icon_theme" "" 2>/dev/null || true)"
+
+  if hypr_user_pgrep -x waybar >/dev/null 2>&1 \
+    && [[ -n "${current_icon_theme}" && "${current_icon_theme}" == "${cached_icon_theme}" ]]; then
+    return 0
+  fi
 
   theme_apply_restart_waybar_direct || {
     print_log -sec "theme.apply" -warn "waybar" "start failed"
     return 1
   }
+
+  [[ -n "${current_icon_theme}" ]] \
+    && state_set "waybar_icon_theme" "${current_icon_theme}" "staterc" 2>/dev/null || true
 }
 
 theme_apply_job_dunst() {
