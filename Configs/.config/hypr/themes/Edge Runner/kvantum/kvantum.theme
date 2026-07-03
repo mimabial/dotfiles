@@ -1282,96 +1282,96 @@
      y="930.26"
      width="8"
      height="4"
-     style="fill:#cccccc;fill-opacity:1.0" />
+     style="fill:#FFA6C2;fill-opacity:1.0" />
   <rect
      id="itemview-pressed-bottom"
      x="52"
      y="942.26"
      width="8"
      height="4"
-     style="fill:#cccccc;fill-opacity:1.0" />
+     style="fill:#FFA6C2;fill-opacity:1.0" />
   <path
      id="itemview-pressed"
      d="m52 934.26h8v8h-8z"
-     style="fill:#cccccc;fill-opacity:1.0" />
+     style="fill:#FFA6C2;fill-opacity:1.0" />
   <path
      id="itemview-pressed-topright"
      d="m60 930.26c4 0 4 4 4 4h-4z"
-     style="fill:#cccccc;fill-opacity:1.0" />
+     style="fill:#FFA6C2;fill-opacity:1.0" />
   <path
      id="itemview-pressed-bottomright"
      d="m60 942.26h4s0 4-4 4z"
-     style="fill:#cccccc;fill-opacity:1.0" />
+     style="fill:#FFA6C2;fill-opacity:1.0" />
   <rect
      id="itemview-pressed-right"
      x="60"
      y="934.26"
      width="4"
      height="8"
-     style="fill:#cccccc;fill-opacity:1.0" />
+     style="fill:#FFA6C2;fill-opacity:1.0" />
   <rect
      id="itemview-pressed-left"
      x="48"
      y="934.26"
      width="4"
      height="8"
-     style="fill:#cccccc;fill-opacity:1.0" />
+     style="fill:#FFA6C2;fill-opacity:1.0" />
   <path
      id="itemview-pressed-topleft"
      d="m52 930.26v4h-4s0-4 4-4z"
-     style="fill:#cccccc;fill-opacity:1.0" />
+     style="fill:#FFA6C2;fill-opacity:1.0" />
   <path
      id="itemview-pressed-bottomleft"
      d="m48 942.26h4v4c-4 0-4-4-4-4z"
-     style="fill:#cccccc;fill-opacity:1.0" />
+     style="fill:#FFA6C2;fill-opacity:1.0" />
   <rect
      id="itemview-toggled-top"
      x="71"
      y="930.26"
      width="8"
      height="4"
-     style="fill:#fada16;fill-opacity:1.0" />
+     style="fill:#FFA6C2;fill-opacity:1.0" />
   <rect
      id="itemview-toggled-bottom"
      x="71"
      y="942.26"
      width="8"
      height="4"
-     style="fill:#fada16;fill-opacity:1.0" />
+     style="fill:#FFA6C2;fill-opacity:1.0" />
   <path
      id="itemview-toggled"
      d="m71 934.26h8v8h-8z"
-     style="fill:#fada16;fill-opacity:1.0" />
+     style="fill:#FFA6C2;fill-opacity:1.0" />
   <rect
      id="itemview-toggled-right"
      x="79"
      y="934.26"
      width="4"
      height="8"
-     style="fill:#fada16;fill-opacity:1.0" />
+     style="fill:#FFA6C2;fill-opacity:1.0" />
   <path
      id="itemview-toggled-topright"
      d="m79 930.26c4 0 4 4 4 4h-4z"
-     style="fill:#fada16;fill-opacity:1.0" />
+     style="fill:#FFA6C2;fill-opacity:1.0" />
   <path
      id="itemview-toggled-bottomright"
      d="m79 942.26h4s0 4-4 4z"
-     style="fill:#fada16;fill-opacity:1.0" />
+     style="fill:#FFA6C2;fill-opacity:1.0" />
   <rect
      id="itemview-toggled-left"
      x="67"
      y="934.26"
      width="4"
      height="8"
-     style="fill:#fada16;fill-opacity:1.0" />
+     style="fill:#FFA6C2;fill-opacity:1.0" />
   <path
      id="itemview-toggled-topleft"
      d="m71 930.26v4h-4s0-4 4-4z"
-     style="fill:#fada16;fill-opacity:1.0" />
+     style="fill:#FFA6C2;fill-opacity:1.0" />
   <path
      id="itemview-toggled-bottomleft"
      d="m67 942.26h4v4c-4 0-4-4-4-4z"
-     style="fill:#fada16;fill-opacity:1.0" />
+     style="fill:#FFA6C2;fill-opacity:1.0" />
   <rect
      id="itemview-focused-top"
      x="33"
@@ -5016,7 +5016,7 @@
     <path
        d="m1-80c-3.324 0-6 2.676-6 6h6z"
        id="path1558"
-       style="fill:#ffffff;opacity:0.25;fill-opacity:1.0" />
+       style="fill:#FFA6C2;opacity:0.25;fill-opacity:0.9" />
   </g>
   <g
      id="button-pressed-top"
@@ -5027,7 +5027,7 @@
        width="26"
        height="6"
        id="rect1561"
-       style="fill:#ffffff;opacity:0.25;fill-opacity:1.0" />
+       style="fill:#FFA6C2;opacity:0.25;fill-opacity:0.9" />
   </g>
   <g
      id="button-pressed"
@@ -5039,7 +5039,7 @@
        height="26"
        fill="#fff"
        opacity=".25"
-       style="paint-order:markers stroke fill;fill-opacity:1.0;fill:#ffffff"
+       style="paint-order:markers stroke fill;fill-opacity:0.9;fill:#FFA6C2"
        id="rect1564" />
   </g>
   <use
@@ -5091,7 +5091,7 @@
        id="rect1573" />
     <path
        d="m1-80c-3.324 0-6 2.676-6 6h6z"
-       style="paint-order:markers stroke fill;fill:#fada16;fill-opacity:1.0"
+       style="paint-order:markers stroke fill;fill:#FFA6C2;fill-opacity:0.9"
        id="path1575" />
   </g>
   <g
@@ -5102,7 +5102,7 @@
        y="-80"
        width="26"
        height="6"
-       style="paint-order:markers stroke fill;fill:#fada16;fill-opacity:1.0"
+       style="paint-order:markers stroke fill;fill:#FFA6C2;fill-opacity:0.9"
        id="rect1578" />
   </g>
   <g
@@ -5113,7 +5113,7 @@
        y="-74"
        width="26"
        height="26"
-       style="paint-order:markers stroke fill;fill:#fada16;fill-opacity:1.0"
+       style="paint-order:markers stroke fill;fill:#FFA6C2;fill-opacity:0.9"
        id="rect1581" />
   </g>
   <use
@@ -5167,7 +5167,7 @@
        id="rect1590" />
     <path
        transform="scale(0.26458)"
-       d="M 92,60 C 85.352,60 80,65.352 80,72 H 92 Z"
+       d="M 92,60 H 83 C 81.343,60 80,61.343 80,63 V 72 H 92 Z"
        id="path1592"
        style="fill:#ffffff;opacity:0.1;fill-opacity:1.0" />
   </g>
@@ -5217,9 +5217,9 @@
        fill="none"
        id="rect1602" />
     <path
-       d="m24.342 15.875c-1.7589 0-3.175 1.416-3.175 3.175h3.175z"
+       d="M 24.342,15.875 H 21.9608 C 21.5224,15.875 21.167,16.2304 21.167,16.6688 V 19.05 H 24.342 Z"
        id="path1604"
-       style="fill:#ffffff;opacity:0.15;fill-opacity:1.0" />
+       style="fill:#FFA6C2;opacity:0.15;fill-opacity:0.9" />
   </g>
   <g
      id="tbutton-toggled-top"
@@ -5230,7 +5230,7 @@
        width="3.175"
        height="3.175"
        id="rect1607"
-       style="fill:#ffffff;opacity:0.15;fill-opacity:1.0" />
+       style="fill:#FFA6C2;opacity:0.15;fill-opacity:0.9" />
   </g>
   <use
      id="tbutton-toggled-topright"
@@ -5267,9 +5267,9 @@
        fill="none"
        id="rect1614" />
     <path
-       d="m24.342 15.875c-1.7589 0-3.175 1.416-3.175 3.175h3.175z"
+       d="M 24.342,15.875 H 21.9608 C 21.5224,15.875 21.167,16.2304 21.167,16.6688 V 19.05 H 24.342 Z"
        id="path1616"
-       style="fill:#ffffff;opacity:0.2;fill-opacity:1.0" />
+       style="fill:#FFA6C2;opacity:0.2;fill-opacity:0.9" />
   </g>
   <g
      id="tbutton-pressed-top"
@@ -5280,7 +5280,7 @@
        width="3.175"
        height="3.175"
        id="rect1619"
-       style="fill:#ffffff;opacity:0.2;fill-opacity:1.0" />
+       style="fill:#FFA6C2;opacity:0.2;fill-opacity:0.9" />
   </g>
   <use
      id="tbutton-pressed-topright"
@@ -5343,7 +5343,7 @@
        width="16"
        height="1"
        id="rect1633"
-       style="fill:#ffffff;opacity:0.2;fill-opacity:1.0" />
+       style="fill:#FFA6C2;opacity:0.2;fill-opacity:0.9" />
   </g>
   <g
      id="tbutton-pressed"
@@ -5354,7 +5354,7 @@
        width="16"
        height="1"
        id="rect1636"
-       style="fill:#ffffff;opacity:0.2;fill-opacity:1.0" />
+       style="fill:#FFA6C2;opacity:0.2;fill-opacity:0.9" />
   </g>
   <use
      id="tbutton-pressed-right"
@@ -5371,7 +5371,7 @@
        width="16"
        height="1"
        id="rect1640"
-       style="fill:#ffffff;opacity:0.15;fill-opacity:1.0" />
+       style="fill:#FFA6C2;opacity:0.15;fill-opacity:0.9" />
   </g>
   <g
      id="tbutton-toggled"
@@ -5382,7 +5382,7 @@
        width="16"
        height="1"
        id="rect1643"
-       style="fill:#ffffff;opacity:0.15;fill-opacity:1.0" />
+       style="fill:#FFA6C2;opacity:0.15;fill-opacity:0.9" />
   </g>
   <use
      id="tbutton-toggled-right"

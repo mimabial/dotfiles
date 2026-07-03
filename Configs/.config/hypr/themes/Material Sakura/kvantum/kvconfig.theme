@@ -1,7 +1,7 @@
 [%General]
 author=elkrien based on Arc Dark style
 comment=Catppuccin-Latte-Rosewater
-spread_menuitems=false
+spread_menuitems=true
 left_tabs=true
 mirror_doc_tabs=true
 scroll_width=8
@@ -99,9 +99,7 @@ interior.element=itemview
 frame=true
 interior=true
 text.iconspacing=3
-text.toggle.color=#fffaf3
-text.focus.color=#fffaf3
-text.press.color=#fffaf3
+text.toggle.color=#fffaf3 
 
 [RadioButton]
 inherits=PanelButtonCommand
@@ -135,6 +133,8 @@ text.toggle.color=#fffaf3
 
 [PanelButtonTool]
 inherits=PanelButtonCommand
+interior.element=tbutton
+frame.element=tbutton
 
 [DockTitle]
 inherits=PanelButtonCommand

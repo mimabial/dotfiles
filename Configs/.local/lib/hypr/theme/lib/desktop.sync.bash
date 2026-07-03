@@ -298,12 +298,16 @@ theme_desktop_export_cursor_environment() {
   xcursor_path="${XCURSOR_PATH:-${XDG_DATA_HOME:-$HOME/.local/share}/icons:$HOME/.icons:/usr/share/icons}"
   export XCURSOR_THEME="${CURSOR_THEME}"
   export XCURSOR_SIZE="${CURSOR_SIZE}"
+  export HYPRCURSOR_THEME="${CURSOR_THEME}"
+  export HYPRCURSOR_SIZE="${CURSOR_SIZE}"
   export XCURSOR_PATH="${xcursor_path}"
 
   if command -v uwsm >/dev/null 2>&1 && [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
     uwsm finalize \
       "XCURSOR_THEME=${XCURSOR_THEME}" \
       "XCURSOR_SIZE=${XCURSOR_SIZE}" \
+      "HYPRCURSOR_THEME=${HYPRCURSOR_THEME}" \
+      "HYPRCURSOR_SIZE=${HYPRCURSOR_SIZE}" \
       "XCURSOR_PATH=${XCURSOR_PATH}" >/dev/null 2>&1 ||
       print_log -sec "theme" -warn "cursor" "failed to update UWSM cursor environment"
   fi
@@ -312,6 +316,8 @@ theme_desktop_export_cursor_environment() {
     systemctl --user set-environment \
       "XCURSOR_THEME=${XCURSOR_THEME}" \
       "XCURSOR_SIZE=${XCURSOR_SIZE}" \
+      "HYPRCURSOR_THEME=${HYPRCURSOR_THEME}" \
+      "HYPRCURSOR_SIZE=${HYPRCURSOR_SIZE}" \
       "XCURSOR_PATH=${XCURSOR_PATH}" >/dev/null 2>&1 ||
       print_log -sec "theme" -warn "cursor" "failed to update systemd user cursor environment"
   fi
@@ -319,11 +325,11 @@ theme_desktop_export_cursor_environment() {
   if command -v dbus-update-activation-environment >/dev/null 2>&1; then
     if [[ -d /run/systemd/system ]]; then
       dbus-update-activation-environment --systemd \
-        XCURSOR_THEME XCURSOR_SIZE XCURSOR_PATH >/dev/null 2>&1 ||
+        XCURSOR_THEME XCURSOR_SIZE HYPRCURSOR_THEME HYPRCURSOR_SIZE XCURSOR_PATH >/dev/null 2>&1 ||
         print_log -sec "theme" -warn "cursor" "failed to update DBus cursor environment"
     else
       dbus-update-activation-environment \
-        XCURSOR_THEME XCURSOR_SIZE XCURSOR_PATH >/dev/null 2>&1 ||
+        XCURSOR_THEME XCURSOR_SIZE HYPRCURSOR_THEME HYPRCURSOR_SIZE XCURSOR_PATH >/dev/null 2>&1 ||
         print_log -sec "theme" -warn "cursor" "failed to update DBus cursor environment"
     fi
   fi
@@ -363,18 +369,27 @@ theme_desktop_export_session_qt_env() {
   fi
 }
 
+theme_desktop_resolve_instance_signature() {
+  [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] && return 0
+  declare -F refresh_hypr_instance_signature >/dev/null 2>&1 || return 1
+  refresh_hypr_instance_signature
+  [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]
+}
+
 theme_desktop_apply_cursor_theme() {
-  if [[ -n "${CURSOR_THEME}" ]] && [[ -n "${CURSOR_SIZE}" ]] && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
-    if ! hyprctl setcursor "${CURSOR_THEME}" "${CURSOR_SIZE}" >/dev/null 2>&1; then
-      print_log -sec "theme" -warn "cursor" "failed to apply ${CURSOR_THEME} (${CURSOR_SIZE})"
-    fi
+  [[ -n "${CURSOR_THEME}" && -n "${CURSOR_SIZE}" ]] || return 0
+  theme_desktop_resolve_instance_signature || return 0
+  if ! HYPRLAND_INSTANCE_SIGNATURE="${HYPRLAND_INSTANCE_SIGNATURE}" \
+    hyprctl setcursor "${CURSOR_THEME}" "${CURSOR_SIZE}" >/dev/null 2>&1; then
+    print_log -sec "theme" -warn "cursor" "failed to apply ${CURSOR_THEME} (${CURSOR_SIZE})"
   fi
 }
 
 theme_desktop_set_cursor_async() {
   [[ -n "${CURSOR_THEME}" && -n "${CURSOR_SIZE}" ]] || return 0
-  [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] || return 0
-  hyprctl setcursor "${CURSOR_THEME}" "${CURSOR_SIZE}" >/dev/null 2>&1 &
+  theme_desktop_resolve_instance_signature || return 0
+  HYPRLAND_INSTANCE_SIGNATURE="${HYPRLAND_INSTANCE_SIGNATURE}" \
+    hyprctl setcursor "${CURSOR_THEME}" "${CURSOR_SIZE}" >/dev/null 2>&1 &
 }
 
 theme_desktop_pack_has_kvantum_theme() {

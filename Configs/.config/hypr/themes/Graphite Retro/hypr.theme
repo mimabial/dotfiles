@@ -1,10 +1,11 @@
 $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
+
 $ICON_THEME = Fluent-grey-dark
 $COLOR_SCHEME = prefer-dark
-$NVIM_SCHEME = darkvoid
-$NVIM_VARIANT = glow
+$NVIM_SCHEME = moonfly
+$NVIM_VARIANT =
 $NVIM_BACKGROUND = dark
-$NVIM_TRANSPARENCY = false
+$NVIM_TRANSPARENCY = true
 
 $CURSOR_THEME=McMojave-cursors
 $CURSOR_SIZE=28
@@ -12,8 +13,8 @@ $CURSOR_SIZE=28
 # Theme variables above are the primary inputs used by theme.switch.sh.
 
 general {
-    gaps_in = 6
-    gaps_out = 10
+    gaps_in = 8
+    gaps_out = 14
     border_size = 3
     col.active_border = rgba(a6a6a6ff) 
     col.inactive_border = rgba(262626cc) 

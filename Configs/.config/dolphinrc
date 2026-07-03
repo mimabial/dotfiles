@@ -3,11 +3,15 @@ MenuBar=Disabled
 [$Version]
 update_info=dolphin_detailsmodesettings.upd:rename-leading-padding
 
+[ContentDisplay]
+DirectorySizeMode=ContentSize
+UseShortRelativeDates=false
+
 [ContextMenu]
 ShowCopyMoveMenu=true
 
 [DetailsMode]
-IconSize=32
+IconSize=48
 LeftPadding=38
 PreviewSize=32
 
@@ -15,11 +19,11 @@ PreviewSize=32
 1280x720 screen: Window-Maximized=true
 
 [General]
-BrowseThroughArchives=true
 CloseActiveSplitView=false
-CloseSplitViewChoice=RightView
+CloseSplitViewChoice=InactiveView
 GlobalViewProps=false
-LockPanels=false
+OpenExternallyCalledFolderInNewTab=true
+OpenNewTabAfterLastTab=true
 ShowFullPath=false
 ShowSelectionToggle=false
 ShowStatusBar=Disabled
@@ -28,6 +32,7 @@ Version=202
 ViewPropsTimestamp=2023,4,26,16,58,48.324
 
 [IconsMode]
+IconSize=256
 PreviewSize=256
 
 [InformationPanel]

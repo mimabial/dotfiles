@@ -7,8 +7,8 @@ $NVIM_VARIANT = vulgaris
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
-$CURSOR_THEME=Hackneyed
-$CURSOR_SIZE=24
+$CURSOR_THEME = ComixCursors-Black
+$CURSOR_SIZE = 30
 
 general {
     gaps_in = 3

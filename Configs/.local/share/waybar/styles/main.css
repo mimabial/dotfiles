@@ -40,7 +40,7 @@ menuitem:hover {
   background-color: alpha(@c2, 0.6);
 }
 tooltip {
-  border: 2px solid alpha(@act_bg, 0.6);
+  border: 2px solid alpha(@hvr_bg, 0.6);
   background: alpha(@bg, 0.9);
 }
 

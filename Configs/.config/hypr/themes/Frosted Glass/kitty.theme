@@ -1,10 +1,8 @@
 $HOME/.config/kitty/theme.conf|killall -SIGUSR1 kitty
 # Created by https://github.com/dexpota/kitty-themes
 
-active_tab_foreground   #A44185
-active_tab_background   #ffffff
+active_tab_foreground   #125ccf
 inactive_tab_foreground #b2b2b2
-inactive_tab_background #ededec
 tab_bar_background      #ededec
 
 # Special 

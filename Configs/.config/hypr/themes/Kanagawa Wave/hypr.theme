@@ -1,12 +1,12 @@
 $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
-$ICON_THEME = Breeze Chameleon Kanagawa
+$ICON_THEME = Vimix-dark
 $COLOR_SCHEME = prefer-dark
 $NVIM_SCHEME = kanagawa
 $NVIM_VARIANT = wave
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
-$CURSOR_THEME = McMojave-cursors
+$CURSOR_THEME = Dracula-cursors
 $CURSOR_SIZE = 22
 
 general {

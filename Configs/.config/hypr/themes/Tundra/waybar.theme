@@ -17,13 +17,13 @@ $HOME/.config/waybar/theme.css
 @define-color hvr_br #FFCCD9;
 
 @define-color c0 #293A52;
-@define-color c1 #FFDDCC;
+@define-color c1 #F0AAB4;
 @define-color c2 #DFCCFF;
 @define-color c3 #FFCCD9;
 @define-color c4 #9ABAE6;
 @define-color c5 #B69AE6;
 @define-color c6 #E69AAD;
-@define-color c7 #FFDDCC;
+@define-color c7 #F0AAB4;
 @define-color c8 #576F8F;
 @define-color c9 #F0C1AA;
 @define-color c10 #C4AAF0;

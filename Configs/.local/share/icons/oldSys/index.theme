@@ -1,0 +1,5 @@
+[Icon Theme]
+Name=oldSys
+Comment= A set of standard alpha-blended cursors. For those who want the benefits of CursorXP with the precision of standard cursors. For more skins by this author, check out http://grayhaze.com Copyright 2002 grayhaze.com - Converted by sd2xc-2.3.pl
+Example=left_ptr
+Inherits=core

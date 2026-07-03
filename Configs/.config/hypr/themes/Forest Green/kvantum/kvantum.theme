@@ -4343,51 +4343,51 @@
      transform="scale(-1,1)" />
   <rect
      id="tbutton-pressed-bottom"
-     style="opacity:0.19;fill:#d3c6aa"
+     style="opacity:0.4;fill:#7fbbb3"
      width="8"
      height="8"
      x="231"
      y="58" />
   <rect
      id="tbutton-pressed"
-     style="opacity:0.19;fill:#d3c6aa"
+     style="opacity:0.4;fill:#7fbbb3"
      width="8"
      height="8"
      x="231"
      y="50" />
   <rect
      id="tbutton-pressed-top"
-     style="opacity:0.19;fill:#d3c6aa"
+     style="opacity:0.4;fill:#7fbbb3"
      width="8"
      height="8"
      x="231"
      y="42" />
   <path
      id="tbutton-pressed-topleft"
-     style="opacity:0.19;fill:#d3c6aa"
+     style="opacity:0.4;fill:#7fbbb3"
      d="m 223,50 h 8 v -8 c -8,0 -8,8 -8,8 z" />
   <path
      id="tbutton-pressed-bottomleft"
-     style="opacity:0.19;fill:#d3c6aa"
+     style="opacity:0.4;fill:#7fbbb3"
      d="m 223,58 h 8 v 8 c -8,0 -8,-8 -8,-8 z" />
   <rect
      id="tbutton-pressed-left"
-     style="opacity:0.19;fill:#d3c6aa"
+     style="opacity:0.4;fill:#7fbbb3"
      width="8"
      height="8"
      x="223"
      y="50" />
   <path
      id="tbutton-pressed-topright"
-     style="opacity:0.19;fill:#d3c6aa"
+     style="opacity:0.4;fill:#7fbbb3"
      d="m 247,50 h -8 v -8 c 8,0 8,8 8,8 z" />
   <path
      id="tbutton-pressed-bottomright"
-     style="opacity:0.19;fill:#d3c6aa"
+     style="opacity:0.4;fill:#7fbbb3"
      d="m 247,58 h -8 v 8 c 8,0 8,-8 8,-8 z" />
   <rect
      id="tbutton-pressed-right"
-     style="opacity:0.19;fill:#d3c6aa"
+     style="opacity:0.4;fill:#7fbbb3"
      width="8"
      height="8"
      x="-247"
@@ -4402,28 +4402,28 @@
      y="147" />
   <rect
      id="tbutton-toggled"
-     style="opacity:0.001"
+     style="opacity:0.4;fill:#7fbbb3"
      width="8"
      height="8"
      x="260"
      y="50" />
   <rect
      id="tbutton-toggled-top"
-     style="opacity:0.001"
+     style="opacity:0.4;fill:#7fbbb3"
      width="8"
      height="8"
      x="260"
      y="42" />
   <rect
      id="tbutton-toggled-left"
-     style="opacity:0.001"
+     style="opacity:0.4;fill:#7fbbb3"
      width="8"
      height="8"
      x="252"
      y="50" />
   <rect
      id="tbutton-toggled-right"
-     style="opacity:0.001"
+     style="opacity:0.4;fill:#7fbbb3"
      width="8"
      height="8"
      x="-276"
@@ -4431,14 +4431,14 @@
      transform="scale(-1,1)" />
   <rect
      id="tbutton-toggled-topleft"
-     style="opacity:0.001"
+     style="opacity:0.4;fill:#7fbbb3"
      width="8"
      height="8"
      x="252"
      y="42" />
   <rect
      id="tbutton-toggled-topright"
-     style="opacity:0.001"
+     style="opacity:0.4;fill:#7fbbb3"
      width="8"
      height="8"
      x="268"
@@ -4448,7 +4448,7 @@
      transform="translate(4.0000027,-1.0000004)">
     <rect
        id="rect1433"
-       style="opacity:0.001"
+       style="opacity:0.4;fill:#7fbbb3"
        width="8"
        height="8"
        x="248"
@@ -4463,7 +4463,7 @@
      transform="translate(4.0000027,-1.0000004)">
     <rect
        id="rect1438"
-       style="opacity:0.001"
+       style="opacity:0.4;fill:#7fbbb3"
        width="8"
        height="8"
        x="256"
@@ -4478,7 +4478,7 @@
      transform="translate(4.0000027,-1.0000004)">
     <rect
        id="rect1443"
-       style="opacity:0.001"
+       style="opacity:0.4;fill:#7fbbb3"
        width="8"
        height="8"
        x="264"
@@ -5141,7 +5141,7 @@
        d="m 57,73 v 5 h 26 v -5 z" />
     <path
        id="path1519"
-       style="fill:#3a464c;fill-opacity:1"
+       style="fill:#3a4d52;fill-opacity:1"
        d="m 57,68 v 5 h 26 v -5 z" />
   </g>
   <g
@@ -5153,7 +5153,7 @@
        d="m 50,68 v 10 h 7 v -5 h -1 c -2.216,0 -4,-1.784 -4,-4 v -1 z" />
     <path
        id="path1524"
-       style="fill:#3a464c;fill-opacity:1"
+       style="fill:#3a4d52;fill-opacity:1"
        d="m 52,68 v 1 c 0,2.216 1.784,4 4,4 h 1 v -5 z" />
   </g>
   <g
@@ -5165,7 +5165,7 @@
        d="m 88,68 v 1 c 0,2.216 -1.784,4 -4,4 h -1 v 5 h 7 V 68 Z" />
     <path
        id="path1529"
-       style="fill:#3a464c;fill-opacity:1"
+       style="fill:#3a4d52;fill-opacity:1"
        d="m 83,68 v 5 h 1 c 2.216,0 4,-1.784 4,-4 v -1 z" />
   </g>
   <g
@@ -5177,7 +5177,7 @@
        d="m 57,36 v 1 h 26 v -1 z" />
     <path
        id="path1534"
-       style="fill:#3a464c;fill-opacity:1"
+       style="fill:#3a4d52;fill-opacity:1"
        d="m 57,37 v 5 h 26 v -5 z" />
   </g>
   <g
@@ -5189,7 +5189,7 @@
        d="m 50,36 v 6 h 2 v -1 c 0,-2.216 1.784,-4 4,-4 h 1 v -1 z" />
     <path
        id="path1539"
-       style="fill:#3a464c;fill-opacity:1"
+       style="fill:#3a4d52;fill-opacity:1"
        d="m 56,37 c -2.216,0 -4,1.784 -4,4 v 1 h 5 v -5 z" />
   </g>
   <g
@@ -5201,7 +5201,7 @@
        d="m 83,36 v 1 h 1 c 2.216,0 4,1.784 4,4 v 1 h 2 v -6 z" />
     <path
        id="path1544"
-       style="fill:#3a464c;fill-opacity:1"
+       style="fill:#3a4d52;fill-opacity:1"
        d="m 83,37 v 5 h 5 v -1 c 0,-2.216 -1.784,-4 -4,-4 z" />
   </g>
   <g
@@ -5213,7 +5213,7 @@
        d="m 50,42 v 26 h 2 V 42 Z" />
     <path
        id="path1549"
-       style="fill:#3a464c;fill-opacity:1"
+       style="fill:#3a4d52;fill-opacity:1"
        d="m 52,42 v 26 h 5 V 42 Z" />
   </g>
   <g
@@ -5225,12 +5225,12 @@
        d="m 88,42 v 26 h 2 V 42 Z" />
     <path
        id="path1554"
-       style="fill:#3a464c;fill-opacity:1"
+       style="fill:#3a4d52;fill-opacity:1"
        d="m 83,42 v 26 h 5 V 42 Z" />
   </g>
   <rect
      id="button-focused"
-     style="fill:#3a464c;fill-opacity:1"
+     style="fill:#3a4d52;fill-opacity:1"
      width="26"
      height="26"
      x="62"
@@ -5245,7 +5245,7 @@
        d="m 105,73 v 5 h 26 v -5 z" />
     <path
        id="path1560-2"
-       style="fill:#434f55;fill-opacity:1"
+       style="fill:#3f5459;fill-opacity:1"
        d="m 9,68 v 5 h 26 v -5 z" />
   </g>
   <g
@@ -5258,7 +5258,7 @@
        d="m 98,68 v 10 h 7 v -5 h -1 c -2.216,0 -4,-1.784 -4,-4 v -1 z" />
     <path
        id="path1565"
-       style="fill:#434f55;fill-opacity:1"
+       style="fill:#3f5459;fill-opacity:1"
        d="m 4,68 v 1 c 0,2.216 1.784,4 4,4 h 1 v -5 z" />
   </g>
   <g
@@ -5271,7 +5271,7 @@
        d="m 136,68 v 1 c 0,2.216 -1.784,4 -4,4 h -1 v 5 h 7 V 68 Z" />
     <path
        id="path1570"
-       style="fill:#434f55;fill-opacity:1"
+       style="fill:#3f5459;fill-opacity:1"
        d="m 35,68 v 5 h 1 c 2.216,0 4,-1.784 4,-4 v -1 z" />
   </g>
   <g
@@ -5284,7 +5284,7 @@
        d="m 105,36 v 1 h 26 v -1 z" />
     <path
        id="path1575"
-       style="fill:#434f55;fill-opacity:1"
+       style="fill:#3f5459;fill-opacity:1"
        d="m 9,37 v 5 h 26 v -5 z" />
   </g>
   <g
@@ -5297,7 +5297,7 @@
        d="m 98,36 v 6 h 2 v -1 c 0,-2.216 1.784,-4 4,-4 h 1 v -1 z" />
     <path
        id="path1580"
-       style="fill:#434f55;fill-opacity:1"
+       style="fill:#3f5459;fill-opacity:1"
        d="m 8,37 c -2.216,0 -4,1.784 -4,4 v 1 h 5 v -5 z" />
   </g>
   <g
@@ -5310,7 +5310,7 @@
        d="m 131,36 v 1 h 1 c 2.216,0 4,1.784 4,4 v 1 h 2 v -6 z" />
     <path
        id="path1585"
-       style="fill:#434f55;fill-opacity:1"
+       style="fill:#3f5459;fill-opacity:1"
        d="m 35,37 v 5 h 5 v -1 c 0,-2.216 -1.784,-4 -4,-4 z" />
   </g>
   <g
@@ -5323,7 +5323,7 @@
        d="m 98,42 v 26 h 2 V 42 Z" />
     <path
        id="path1590"
-       style="fill:#434f55;fill-opacity:1"
+       style="fill:#3f5459;fill-opacity:1"
        d="M 4,42 V 68 H 9 V 42 Z" />
   </g>
   <g
@@ -5336,12 +5336,12 @@
        d="m 136,42 v 26 h 2 V 42 Z" />
     <path
        id="path1595"
-       style="fill:#434f55;fill-opacity:1"
+       style="fill:#3f5459;fill-opacity:1"
        d="m 35,42 v 26 h 5 V 42 Z" />
   </g>
   <rect
      id="button-pressed"
-     style="fill:#434f55;fill-opacity:1"
+     style="fill:#3f5459;fill-opacity:1"
      width="26"
      height="26"
      x="110"
@@ -5356,7 +5356,7 @@
        d="m 147,73 v 5 h 26 v -5 z" />
     <path
        id="path1601"
-       style="fill:#4c566a;fill-opacity:1"
+       style="fill:#455a5e;fill-opacity:1"
        d="m 9,68 v 5 h 26 v -5 z" />
   </g>
   <g
@@ -5369,7 +5369,7 @@
        d="m 140,68 v 10 h 7 v -5 h -1 c -2.216,0 -4,-1.784 -4,-4 v -1 z" />
     <path
        id="path1606"
-       style="fill:#4c566a;fill-opacity:1"
+       style="fill:#455a5e;fill-opacity:1"
        d="m 4,68 v 1 c 0,2.216 1.784,4 4,4 h 1 v -5 z" />
   </g>
   <g
@@ -5382,7 +5382,7 @@
        d="m 178,68 v 1 c 0,2.216 -1.784,4 -4,4 h -1 v 5 h 7 V 68 Z" />
     <path
        id="path1611"
-       style="fill:#4c566a;fill-opacity:1"
+       style="fill:#455a5e;fill-opacity:1"
        d="m 35,68 v 5 h 1 c 2.216,0 4,-1.784 4,-4 v -1 z" />
   </g>
   <g
@@ -5395,7 +5395,7 @@
        d="m 147,36 v 1 h 26 v -1 z" />
     <path
        id="path1616"
-       style="fill:#4c566a;fill-opacity:1"
+       style="fill:#455a5e;fill-opacity:1"
        d="m 9,37 v 5 h 26 v -5 z" />
   </g>
   <g
@@ -5408,7 +5408,7 @@
        d="m 140,36 v 6 h 2 v -1 c 0,-2.216 1.784,-4 4,-4 h 1 v -1 z" />
     <path
        id="path1621"
-       style="fill:#4c566a;fill-opacity:1"
+       style="fill:#455a5e;fill-opacity:1"
        d="m 8,37 c -2.216,0 -4,1.784 -4,4 v 1 h 5 v -5 z" />
   </g>
   <g
@@ -5421,7 +5421,7 @@
        d="m 173,36 v 1 h 1 c 2.216,0 4,1.784 4,4 v 1 h 2 v -6 z" />
     <path
        id="path1626"
-       style="fill:#4c566a;fill-opacity:1"
+       style="fill:#455a5e;fill-opacity:1"
        d="m 35,37 v 5 h 5 v -1 c 0,-2.216 -1.784,-4 -4,-4 z" />
   </g>
   <g
@@ -5434,7 +5434,7 @@
        d="m 140,42 v 26 h 2 V 42 Z" />
     <path
        id="path1631"
-       style="fill:#4c566a;fill-opacity:1"
+       style="fill:#455a5e;fill-opacity:1"
        d="M 4,42 V 68 H 9 V 42 Z" />
   </g>
   <g
@@ -5447,12 +5447,12 @@
        d="m 178,42 v 26 h 2 V 42 Z" />
     <path
        id="path1636"
-       style="fill:#4c566a;fill-opacity:1"
+       style="fill:#455a5e;fill-opacity:1"
        d="m 35,42 v 26 h 5 V 42 Z" />
   </g>
   <rect
      id="button-toggled"
-     style="fill:#4c566a;fill-opacity:1"
+     style="fill:#455a5e;fill-opacity:1"
      width="26"
      height="26"
      x="152"

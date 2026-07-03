@@ -6,8 +6,8 @@ $NVIM_VARIANT = soft
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
-$CURSOR_THEME = material_light_cursors
-$CURSOR_SIZE = 28
+$CURSOR_THEME = oldSys
+$CURSOR_SIZE = 20
 
 general {
     gaps_in = 5
@@ -28,7 +28,7 @@ group {
 
 
 decoration {
-    rounding = 4
+    rounding = 0
     drop_shadow = false
     shadow_offset = 6 6
     shadow_range = 3

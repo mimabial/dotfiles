@@ -14,13 +14,13 @@ background = "#ffffff"
 
 [colors.normal]
 black = "#293a52"
-red = "#ffddcc"
+red = "#f0aab4"
 green = "#dfccff"
 yellow = "#ffccd9"
 blue = "#9abae6"
 magenta = "#b69ae6"
 cyan = "#e69aad"
-white = "#ffddcc"
+white = "#f0aab4"
 
 [colors.bright]
 black = "#576f8f"

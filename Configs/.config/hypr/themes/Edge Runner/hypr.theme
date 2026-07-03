@@ -1,11 +1,12 @@
 $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
+
 $ICON_THEME = Fluent-green-dark
 $COLOR_SCHEME = prefer-dark
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
-$CURSOR_THEME = McMojave-cursors
-$CURSOR_SIZE = 29
+$CURSOR_THEME = Fluent-dark-cursors
+$CURSOR_SIZE = 24
 
 # Theme variables above are the primary inputs used by theme.switch.sh.
 
@@ -34,7 +35,7 @@ decoration {
         range = 0
         offset = 5 5
         render_power = 4
-        color= 0xffFFA6C2
+        color = 0xe6e5e4e2
     }
 
 

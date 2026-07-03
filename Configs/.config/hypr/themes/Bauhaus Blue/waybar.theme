@@ -4,13 +4,13 @@ $HOME/.config/waybar/theme.css
 @define-color fg #011b29; /* base00 */
 @define-color br #93a1a1; /* base1 */
 
-@define-color alt_bg #005CAB;
+@define-color alt_bg #93a1a1;
 @define-color alt_fg @fg;
 @define-color alt_br #005CAB; /* blue */
 
-@define-color act_bg #839496;
+@define-color act_bg #268bd2;
 @define-color act_fg #003DA5; /* base3 */
-@define-color act_br #ffffff;
+@define-color act_br #fdf6e3;
 
 @define-color hvr_bg #268bd2;
 @define-color hvr_fg #E1261C;

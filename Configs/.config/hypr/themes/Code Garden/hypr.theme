@@ -2,8 +2,8 @@ $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 
 $COLOR_SCHEME = prefer-dark
 $ICON_THEME = Fluent-dark
-$CURSOR_THEME = material_light_cursors
-$CURSOR_SIZE = 28
+$CURSOR_THEME = Fluent-dark-cursors
+$CURSOR_SIZE = 24
 $FONT = Noto_Sans
 $NVIM_SCHEME = decay
 $NVIM_VARIANT = default

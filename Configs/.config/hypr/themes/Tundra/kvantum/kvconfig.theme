@@ -1,6 +1,6 @@
 [%General]
 author=prasanth rangan
-comment=pywal16
+comment=wallbash
 spread_menuitems=true
 left_tabs=true
 mirror_doc_tabs=true
@@ -99,9 +99,7 @@ interior.element=itemview
 frame=true
 interior=true
 text.iconspacing=3
-text.toggle.color=#293A52
-text.focus.color=#293A52
-text.press.color=#293A52
+text.toggle.color=#293A52 
 
 [RadioButton]
 inherits=PanelButtonCommand
@@ -458,7 +456,7 @@ blur_translucent=true
 centered_forms=false
 kinetic_scrolling=false
 middle_click_scroll=false
-no_selection_tint=false
+no_selection_tint=true
 noninteger_translucency=false
 style_vertical_toolbars=false
 blur_only_active_window=false

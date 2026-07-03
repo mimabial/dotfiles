@@ -10,14 +10,14 @@ active_tab_foreground    #B68A95
 active_tab_background    #132B4B
 inactive_tab_foreground   #576F8F
 inactive_tab_background   #293A52
-tab_bar_background   #132B4B
+tab_bar_background   #293A52
 
 # black
 color0      #293A52
 color8      #576F8F
 
 # red
-color1      #FFDDCC
+color1      #F0AAB4
 color9      #F0C1AA
 
 # green
@@ -41,5 +41,5 @@ color6      #E69AAD
 color14     #E69AAD
 
 # white
-color7      #FFDDCC
+color7      #F0AAB4
 color15     #F0C1AA

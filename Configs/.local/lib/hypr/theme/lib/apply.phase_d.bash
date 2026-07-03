@@ -295,6 +295,37 @@ theme_apply_phase_d_run_jobs() {
   # this same envelope handles it (see envelope_launch_wallpaper above).
   # Running it as a parallel job raced with the wallpaper symlink update.
   theme_apply_wait_jobs "${job_log_dir}" || true
+
+  # The icon-theme sinks (gsettings, gtk settings.ini, xsettingsd + HUP) are now
+  # written and settled by the desktop jobs above; do the icon-aware waybar
+  # restart last so the bar reloads with the correct taskbar/tray icons.
+  theme_apply_phase_d_waybar_icon_sync || true
+}
+
+# Authoritative waybar restart for icon-theme changes. Runs after the phase-D
+# wait barrier, i.e. once the icon sinks are live, so it reads the correct icon
+# theme instead of racing it (unlike the old synchronous restart in
+# theme_apply_job_waybar). Restarts only when the icon theme actually changed
+# and advances the state cache.
+theme_apply_phase_d_waybar_icon_sync() {
+  theme_apply_generation_is_current || return 0
+
+  local current_icon_theme="" cached_icon_theme=""
+  current_icon_theme="$(theme_apply_current_icon_theme)"
+  cached_icon_theme="$(state_get "waybar_icon_theme" "" 2>/dev/null || true)"
+
+  if hypr_user_pgrep -x waybar >/dev/null 2>&1 \
+    && [[ -n "${current_icon_theme}" && "${current_icon_theme}" == "${cached_icon_theme}" ]]; then
+    return 0
+  fi
+
+  theme_apply_restart_waybar_direct || {
+    print_log -sec "theme.apply" -warn "waybar" "icon-theme restart failed"
+    return 1
+  }
+
+  [[ -n "${current_icon_theme}" ]] \
+    && state_set "waybar_icon_theme" "${current_icon_theme}" "staterc" 2>/dev/null || true
 }
 
 theme_apply_run_phase_d_script() {

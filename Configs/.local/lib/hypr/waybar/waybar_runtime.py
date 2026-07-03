@@ -286,6 +286,37 @@ def get_waybar_pids():
         return []
 
 
+def _live_cursor_env():
+    """os.environ with XCURSOR_*/HYPRCURSOR_* refreshed from gsettings.
+
+    Cursor env freezes at each process's start; this watcher starts at login, so
+    without this every (re)spawned Waybar would inherit the login-time cursor even
+    after a theme switch. gsettings is the init-agnostic source the theme pipeline
+    keeps current. Falls back to the inherited value when gsettings is unavailable.
+    """
+    env = dict(os.environ)
+
+    def _gsettings(key):
+        try:
+            out = subprocess.run(
+                ["gsettings", "get", "org.gnome.desktop.interface", key],
+                capture_output=True,
+                text=True,
+                timeout=2,
+            )
+        except Exception:
+            return ""
+        return out.stdout.strip().strip("'\"") if out.returncode == 0 else ""
+
+    theme = _gsettings("cursor-theme")
+    if theme:
+        env["XCURSOR_THEME"] = env["HYPRCURSOR_THEME"] = theme
+    size = _gsettings("cursor-size")
+    if size.isdigit():
+        env["XCURSOR_SIZE"] = env["HYPRCURSOR_SIZE"] = size
+    return env
+
+
 def _start_waybar_unlocked():
     """Start Waybar. Caller must hold waybar_operation_lock()."""
     locked_pid = read_waybar_lock_pid()
@@ -325,6 +356,7 @@ def _start_waybar_unlocked():
             stderr=subprocess.DEVNULL,
             start_new_session=True,
             preexec_fn=_waybar_preexec,
+            env=_live_cursor_env(),
         )
 
         WAYBAR_LOCK.write_text(str(proc.pid))

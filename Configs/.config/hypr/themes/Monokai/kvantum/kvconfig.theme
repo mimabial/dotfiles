@@ -81,8 +81,8 @@ light.color=#75715E
 mid.light.color=#A59F85     
 dark.color=#2C2525          ; Dark color updated
 mid.color=#49483E           
-highlight.color=#F92672     
-inactive.highlight.color=#2C2525 ; Changed inner highlight to #2C2525
+highlight.color=#87B0F9
+inactive.highlight.color=#87B0F9
 text.color=#F8F8F2          
 window.text.color=#F8F8F2   
 button.text.color=#F8F8F2   
@@ -152,6 +152,23 @@ frame.bottom=0
 text.normal.color=#F8F8F2
 frame.expansion=0
 text.bold=false
+
+[DockTitle]
+interior=false
+frame=false
+text.normal.color=#F8F8F2
+text.focus.color=#F8F8F2
+text.margin.top=5
+text.margin.bottom=5
+text.margin.left=5
+text.margin.right=5
+indicator.size=0
+
+[Dock]
+interior.element=toolbar
+frame.element=toolbar
+frame=true
+interior=true
 
 [TabFrame]
 frame.element=tabframe

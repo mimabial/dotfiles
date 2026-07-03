@@ -10,14 +10,12 @@ cursor_text_color        #575279
 
 url_color                #907aa9
 
-active_tab_foreground    #d7827e
-active_tab_background    #f2e9e1
+active_tab_foreground    #56949f
 inactive_tab_foreground  #9893a5
-inactive_tab_background  #faf4ed
+tab_bar_background       #f2e9e1
 
 active_border_color      #286983
 inactive_border_color    #dfdad9
-tab_bar_background       #dfdad9
 
 # black
 color0   #f2e9e1

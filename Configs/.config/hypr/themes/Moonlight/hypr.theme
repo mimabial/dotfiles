@@ -1,8 +1,8 @@
 $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 
-$ICON_THEME=Tela-nord-dark
+$ICON_THEME=Nordic-darker
 $COLOR_SCHEME=prefer-dark
-$CURSOR_THEME=Sunity-cursors
+$CURSOR_THEME=Nordic-cursors
 $CURSOR_SIZE=24
 $NVIM_SCHEME = nord
 $NVIM_BACKGROUND = dark

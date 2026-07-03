@@ -453,6 +453,22 @@ theme_apply_notify_wallpaper_detached() {
   disown "$!" 2>/dev/null || true
 }
 
+theme_apply_sync_theme_color_variant() {
+  # Theme mode: the theme itself decides light/dark. Mirror the palette's
+  # "background" mode (dark|light) into color_variant so phase-D desktop.sync
+  # (which derives color-scheme from the variant, not the theme's $COLOR_SCHEME)
+  # doesn't reuse the previous theme's stale value and hand libadwaita apps the
+  # wrong scheme (e.g. a light theme rendering dark).
+  local palette="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/active-palette.json"
+  command -v jq >/dev/null 2>&1 || return 0
+  [[ -r "${palette}" ]] || return 0
+  local mode=""
+  mode="$(jq -r '.background // empty' "${palette}" 2>/dev/null || true)"
+  [[ "${mode}" =~ ^(dark|light)$ ]] || return 0
+  state_set "BACKGROUND_MODE" "${mode}" "staterc" 2>/dev/null || true
+  state_set_color_variant "${mode}"
+}
+
 theme_apply_run_color_sync() {
   local wallpaper_path="$1"
   local hypr_theme_cmd=""
@@ -476,7 +492,9 @@ theme_apply_run_color_sync() {
 
   if [[ "${selected_color_mode}" -eq 0 ]]; then
     "${hypr_theme_cmd}" apply "${hypr_theme_args[@]}" "${HYPR_THEME}"
-    return $?
+    local apply_rc=$?
+    theme_apply_sync_theme_color_variant
+    return "${apply_rc}"
   fi
 
   case "${selected_color_mode}" in
@@ -507,26 +525,17 @@ theme_apply_job_waybar() {
     return 1
   }
 
-  # wlr/taskbar and tray load their icons from the GTK icon theme only at
-  # waybar startup; the theme CSS hot-reload does not refresh them. Restart
-  # waybar only when the icon theme actually changed (or it isn't running),
-  # otherwise keep the cheap CSS hot-reload.
-  local current_icon_theme="" cached_icon_theme=""
-  current_icon_theme="$(theme_apply_current_icon_theme)"
-  cached_icon_theme="$(state_get "waybar_icon_theme" "" 2>/dev/null || true)"
-
-  if hypr_user_pgrep -x waybar >/dev/null 2>&1 \
-    && [[ -n "${current_icon_theme}" && "${current_icon_theme}" == "${cached_icon_theme}" ]]; then
-    return 0
-  fi
+  # Icon-theme changes need a full restart (taskbar/tray icons load only at
+  # startup), but the icon sinks are written later in phase-D; restarting here
+  # races and reloads the old icons. The authoritative icon-aware restart runs
+  # in theme_apply_phase_d_waybar_icon_sync once those sinks settle. Here we only
+  # bring a dead bar back promptly; a running bar keeps its CSS hot-reload.
+  hypr_user_pgrep -x waybar >/dev/null 2>&1 && return 0
 
   theme_apply_restart_waybar_direct || {
     print_log -sec "theme.apply" -warn "waybar" "start failed"
     return 1
   }
-
-  [[ -n "${current_icon_theme}" ]] \
-    && state_set "waybar_icon_theme" "${current_icon_theme}" "staterc" 2>/dev/null || true
 }
 
 theme_apply_job_dunst() {

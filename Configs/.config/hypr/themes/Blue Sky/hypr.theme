@@ -1,6 +1,6 @@
 $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 
-$ICON_THEME = TangoSVG-V3-plasma5up-blackysgate.de-icontheme
+$ICON_THEME = Newaita-reborn-nord-dark
 $COLOR_SCHEME = prefer-dark
 $CURSOR_THEME= material_light_cursors
 $CURSOR_SIZE= 28

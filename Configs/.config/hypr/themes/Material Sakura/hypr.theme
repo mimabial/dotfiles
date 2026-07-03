@@ -5,8 +5,8 @@ $NVIM_SCHEME = rose-pine
 $NVIM_VARIANT = dawn
 $NVIM_BACKGROUND = light
 $NVIM_TRANSPARENCY = false
-$CURSOR_THEME = BreezeX-Dark
-$CURSOR_SIZE = 27
+$CURSOR_THEME = ComixCursors-Slim-White
+$CURSOR_SIZE = 32
 
 # Theme variables above are the primary inputs used by theme.switch.sh.
 

@@ -1,9 +1,7 @@
 $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
-$ICON_THEME = Tela-circle-black-dark
+$ICON_THEME = Vimix-black-dark
 $COLOR_SCHEME = prefer-dark
-
-$CURSOR_THEME=McMojave-cursors
-$CURSOR_SIZE=28
+$CURSOR_THEME = GoogleDot-Black
 
 general {
     gaps_in = 5

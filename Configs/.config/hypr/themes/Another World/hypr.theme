@@ -1,8 +1,9 @@
 $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
-$ICON_THEME=Fluent-green-dark
-$CURSOR_THEME = capitaine-cursors
+
+$ICON_THEME = Fluent-green-dark
+$CURSOR_THEME = Fluent-dark-cursors
 $CURSOR_SIZE = 28
-$COLOR_SCHEME=prefer-dark
+$COLOR_SCHEME = prefer-dark
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
