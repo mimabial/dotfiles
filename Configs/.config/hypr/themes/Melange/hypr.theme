@@ -1,0 +1,47 @@
+$HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
+
+$ICON_THEME = Fluent-light
+$COLOR_SCHEME = prefer-light
+$CURSOR_THEME = phinger-cursors-light
+$CURSOR_SIZE = 25
+$NVIM_SCHEME = melange
+$NVIM_VARIANT = light
+$NVIM_BACKGROUND = light
+
+# Theme variables above are the primary inputs used by theme.switch.sh.
+exec = gsettings set org.gnome.desktop.interface cursor-theme $CURSOR_THEME
+exec = gsettings set org.gnome.desktop.interface cursor-size $CURSOR_SIZE
+exec = hyprctl setcursor $CURSOR_THEME $CURSOR_SIZE
+
+general {
+    gaps_in = 4
+    gaps_out = 8
+    border_size = 2
+    col.active_border = rgba(AD8A3Eff)
+    col.inactive_border = rgba(C4B19Ecc)
+    layout = dwindle
+    resize_on_border = true
+}
+
+group {
+    col.border_active = rgba(AD8A3Eff)
+    col.border_inactive = rgba(C4B19Ecc)
+    col.border_locked_active = rgba(AD8A3Eff)
+    col.border_locked_inactive = rgba(C4B19Ecc)
+}
+
+decoration {
+    rounding = 3
+    shadow:enabled = false
+
+    blur {
+        enabled = yes
+        size = 5
+        passes = 2
+        new_optimizations = on
+        ignore_opacity = on
+        xray = false
+    }
+}
+
+layerrule = blur on, match:namespace waybar

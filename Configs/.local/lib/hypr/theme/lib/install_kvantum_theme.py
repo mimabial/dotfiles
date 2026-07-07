@@ -86,7 +86,6 @@ def patch_svg_state_roles(path):
         role = role_for(block)
         if role == "accent":
             target = accent
-            block = re.sub(r"opacity:0(?:\.\d+)?(?=;fill:#[0-9a-fA-F]{6})", "opacity:1", block)
         elif role == "surface":
             target = button_surface
         elif role == "tooltip":
@@ -94,18 +93,12 @@ def patch_svg_state_roles(path):
         else:
             return block
 
-        if re.search(r"\bid=\"tbutton-(?:focused|pressed|toggled)\"", block):
-            block = re.sub(r"\s+rx=\"[^\"]*\"", "", block)
-            block = re.sub(r"\s+ry=\"[^\"]*\"", "", block)
-            block = re.sub(r"\s*/>", "\n     rx=\"5\"\n     ry=\"5\" />", block, count=1)
-
         def inject_fill(block):
             def _inject(m):
                 inner = m.group(1).rstrip(";")
                 sep = ";" if inner else ""
                 return "style=\"" + inner + sep + "fill:" + target + ";fill-opacity:1\""
             block = re.sub(r"style=\"([^\"]*)\"", _inject, block, count=1)
-            block = re.sub(r"\bopacity:0(?:\.[0-9]+)?(?=[;\"\s])", "opacity:1", block)
             return block
 
         if role == "tooltip":
@@ -116,7 +109,6 @@ def patch_svg_state_roles(path):
                 block = re.sub(r"\bstroke=\"#[0-9a-fA-F]{6}\"", f'stroke="{target}"', block)
             else:
                 block = inject_fill(block)
-            block = re.sub(r"fill-opacity:0(?:\.\d+)?", "fill-opacity:1", block)
             return block
 
         if re.search(r"fill:#[0-9a-fA-F]{6}", block):
@@ -124,7 +116,6 @@ def patch_svg_state_roles(path):
         else:
             block = inject_fill(block)
 
-        block = re.sub(r"fill-opacity:0(?:\.\d+)?", "fill-opacity:1", block)
         return block
 
     with open(path) as f:
@@ -279,8 +270,6 @@ def patch_kvconfig_roles(path):
             "text.toggle.color": toolbar_fg,
         },
         "ToolbarButton": {
-            "frame": "false",
-            "interior": "true",
             "text.normal.color": toolbar_fg,
             "text.focus.color": toolbar_fg,
             "text.press.color": toolbar_fg,

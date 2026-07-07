@@ -11,6 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _common import atomic_write, cache_hit, cache_store
+from _roles import hex_to_rgb, luminance
 
 PALETTE = Path(sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] else
                os.environ.get("HYPR_STATE_HOME",
@@ -21,36 +22,28 @@ OUT_FILE = OUT_DIR / "gimp.css"
 
 APP = "gimp"
 
-def hex_rgb(c):
-    c = c.lstrip("#")
-    return int(c[0:2], 16), int(c[2:4], 16), int(c[4:6], 16)
-
 def rgb(c):
-    r, g, b = hex_rgb(c)
+    r, g, b = hex_to_rgb(c)
     return f"rgb({r},{g},{b})"
 
 def rgba(c, a):
-    r, g, b = hex_rgb(c)
+    r, g, b = hex_to_rgb(c)
     return f"rgba({r},{g},{b},{a})"
 
 def clamp(v):
     return max(0, min(255, v))
 
 def shift(c, offset):
-    r, g, b = (clamp(x + offset) for x in hex_rgb(c))
+    r, g, b = (clamp(x + offset) for x in hex_to_rgb(c))
     return f"rgb({r},{g},{b})"
 
 def blend(c1, c2, w):
-    r1, g1, b1 = hex_rgb(c1)
-    r2, g2, b2 = hex_rgb(c2)
+    r1, g1, b1 = hex_to_rgb(c1)
+    r2, g2, b2 = hex_to_rgb(c2)
     r = (r1 * (100 - w) + r2 * w) // 100
     g = (g1 * (100 - w) + g2 * w) // 100
     b = (b1 * (100 - w) + b2 * w) // 100
     return f"rgb({clamp(r)},{clamp(g)},{clamp(b)})"
-
-def luminance(c):
-    r, g, b = hex_rgb(c)
-    return (r * 299 + g * 587 + b * 114) // 1000
 
 def main():
     if not PALETTE.is_file():
@@ -76,7 +69,7 @@ def main():
     if cache_hit(APP, h) and OUT_FILE.exists():
         return
 
-    is_dark = luminance(bg) < 128
+    is_dark = luminance(bg) < 0.5
     sign = 1 if is_dark else 1  # both branches shift toward darker (fix from earlier session)
 
     widget_bg        = shift(bg, -18)

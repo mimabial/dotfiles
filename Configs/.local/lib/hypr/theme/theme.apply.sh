@@ -178,24 +178,6 @@ theme_apply_commit_theme_metadata() {
   "${converter}" --input "${live_file}" --output "${lua_file}" --set "HYPR_THEME=${HYPR_THEME}"
 }
 
-theme_apply_sync_runtime_desktop_state() {
-  local quiet="${1:-false}"
-
-  theme_apply_prepare_desktop_state || return 1
-
-  if [[ "${quiet}" == "true" ]]; then
-    if (
-      THEME_DESKTOP_SYNC_LOG_DCONF=0 theme_desktop_apply_runtime_resolved && theme_desktop_set_cursor_async
-    ) >/dev/null 2>&1; then
-      return 0
-    fi
-
-    return 1
-  fi
-
-  theme_desktop_apply_runtime_resolved && theme_desktop_set_cursor_async
-}
-
 theme_apply_restart_waybar_direct() {
   local waybar_script="${LIB_DIR}/hypr/waybar/waybar.py"
 

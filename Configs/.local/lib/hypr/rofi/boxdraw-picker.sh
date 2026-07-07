@@ -54,9 +54,8 @@ get_boxdraw_selection() {
   local style_type="${boxdraw_style:-${ROFI_BOXDRAW_STYLE:-}}"
   [[ -z "${style_type}" ]] && style_type="2"
   local size_override=""
-  # shellcheck disable=SC2016 # Awk program is literal.
-  local format_stream=(awk -F $'\t' 'BEGIN{OFS="\t"}{disp=$1; if($2!=""&&$2!=$1) disp=disp" "$2; print disp}')
-  local selection_index=""
+  local raw_line=""
+  local -a run_args=()
   local -a rofi_config_args=()
   local temp_data=""
   local temp_dir="${TMPDIR:-/tmp}"
@@ -79,11 +78,11 @@ get_boxdraw_selection() {
 
   if [[ -n "${use_rofile}" ]]; then
     rofi_picker_rasi_args rofi_config_args "${use_rofile}" "${rofi_position}"
-    selection_index=$("${format_stream[@]}" <"${temp_data}" | rofi -dmenu -i -format 'i' "${ROFI_BOXDRAW_ARGS[@]}" "${rofi_config_args[@]}" -theme-str "${boxdraw_window_theme}" -no-custom)
+    run_args=(-i "${ROFI_BOXDRAW_ARGS[@]}" "${rofi_config_args[@]}" -theme-str "${boxdraw_window_theme}" -no-custom)
   else
     case ${style_type} in
       2 | grid)
-        selection_index=$("${format_stream[@]}" <"${temp_data}" | rofi -dmenu -i -format 'i' "${ROFI_BOXDRAW_ARGS[@]/-multi-select/}" -display-columns 1 \
+        run_args=(-i "${ROFI_BOXDRAW_ARGS[@]/-multi-select/}" -display-columns 1 \
           -theme-str "listview {columns: ${boxdraw_columns}; lines: ${boxdraw_lines};}" \
           -theme-str "entry { placeholder: \" 󰇟 Box Drawing\";} ${rofi_position} ${r_override}" \
           -theme-str "${font_override}" \
@@ -93,7 +92,7 @@ get_boxdraw_selection() {
           -no-custom)
         ;;
       1 | list)
-        selection_index=$("${format_stream[@]}" <"${temp_data}" | rofi -dmenu -i -format 'i' "${ROFI_BOXDRAW_ARGS[@]}" \
+        run_args=(-i "${ROFI_BOXDRAW_ARGS[@]}" \
           -theme-str "entry { placeholder: \"  Box Drawing\";} ${rofi_position} ${r_override}" \
           -theme-str "${font_override}" \
           -theme-str "${boxdraw_window_theme}" \
@@ -101,7 +100,7 @@ get_boxdraw_selection() {
           -no-custom)
         ;;
       *)
-        selection_index=$("${format_stream[@]}" <"${temp_data}" | rofi -dmenu -i -format 'i' "${ROFI_BOXDRAW_ARGS[@]}" \
+        run_args=(-i "${ROFI_BOXDRAW_ARGS[@]}" \
           -theme-str "entry { placeholder: \" 📐 Box Drawing\";} ${rofi_position} ${r_override}" \
           -theme-str "${font_override}" \
           -theme-str "${boxdraw_window_theme}" \
@@ -111,13 +110,7 @@ get_boxdraw_selection() {
     esac
   fi
 
-  [[ -z "${selection_index}" ]] && {
-    rm -f "${temp_data}"
-    return
-  }
-  # rofi returns 0-based index; retrieve raw line
-  local raw_line
-  raw_line=$(awk -v idx=$((selection_index + 1)) 'NR==idx{print; exit}' "${temp_data}")
+  rofi_picker_run_indexed raw_line "${temp_data}" "${run_args[@]}"
   rm -f "${temp_data}"
   printf "%s" "${raw_line}"
 }

@@ -45,7 +45,7 @@ sanitize_hypr_theme() {
   local line=""
   local line_esc=""
   local log_line=""
-  local -a dirty_regex=(
+  local -a warn_regex=(
     "^ *exec"
     "^ *decoration[^:]*: *drop_shadow"
     "^ *drop_shadow"
@@ -53,10 +53,16 @@ sanitize_hypr_theme() {
     "^ *decoration[^:]*: *col.shadow* *="
     "^ *shadow_"
     "^ *col.shadow*"
+  )
+  local -a quiet_regex=(
     "^ *col\.(active_border|inactive_border|border_(active|inactive|locked_active|locked_inactive))"
   )
+  local -a dirty_regex=("${warn_regex[@]}" "${quiet_regex[@]}")
 
-  [[ -n "${HYPR_CONFIG_SANITIZE+set}" ]] && dirty_regex+=("${HYPR_CONFIG_SANITIZE[@]}")
+  if [[ -n "${HYPR_CONFIG_SANITIZE+set}" ]]; then
+    warn_regex+=("${HYPR_CONFIG_SANITIZE[@]}")
+    dirty_regex+=("${HYPR_CONFIG_SANITIZE[@]}")
+  fi
   buffer_file="$(mktemp)" || return 1
 
   if ! sed '1d' "${input_file}" >"${buffer_file}"; then
@@ -65,12 +71,12 @@ sanitize_hypr_theme() {
   fi
 
   local combined_regex
-  combined_regex="$(IFS='|'; printf '%s' "${dirty_regex[*]}")"
+  combined_regex="$(IFS='|'; printf '%s' "${warn_regex[*]}")"
 
   while IFS= read -r line; do
     log_line="${line#"${line%%[![:space:]]*}"}"
     print_log -sec "theme" -warn "sanitize" "${log_line}"
-  done < <(grep -E "${combined_regex}" "${buffer_file}" 2>/dev/null)
+  done < <(grep -E "${combined_regex}" "${buffer_file}" 2>/dev/null || true)
 
   local -a sed_args=()
   for pattern in "${dirty_regex[@]}"; do

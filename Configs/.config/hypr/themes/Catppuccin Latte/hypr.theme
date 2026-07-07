@@ -2,8 +2,8 @@ $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 
 $ICON_THEME = Tela-purple-light
 $COLOR_SCHEME = prefer-light
-$CURSOR_THEME = Layan-white-cursors
-$CURSOR_SIZE = 24
+$CURSOR_THEME = FrierenBLZ
+$CURSOR_SIZE = 32
 $NVIM_SCHEME = catppuccin
 $NVIM_VARIANT = latte
 $NVIM_BACKGROUND = light

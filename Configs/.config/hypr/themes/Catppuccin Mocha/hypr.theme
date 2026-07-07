@@ -7,8 +7,8 @@ $NVIM_VARIANT = mocha
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
-$CURSOR_THEME = capitaine-cursors
-$CURSOR_SIZE = 28
+$CURSOR_THEME = FernBLZ
+$CURSOR_SIZE = 32
 
 # Theme variables above are the primary inputs used by theme.switch.sh.
 

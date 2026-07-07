@@ -1,28 +1,10 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
 # GPU render and bucket helpers.
-map_floor() {
-  IFS=', ' read -r -a pairs <<<"$1"
-  if [[ ${pairs[-1]} != *":"* ]]; then
-    def_val="${pairs[-1]}"
-    unset 'pairs[${#pairs[@]}-1]'
-  fi
-  for pair in "${pairs[@]}"; do
-    IFS=':' read -r key value <<<"$pair"
-    num="${2%%.*}"
-    # if awk -v num="$2" -v k="$key" 'BEGIN { exit !(num > k) }'; then #! causes 50ms+ delay
-    if [[ "$num" =~ ^-?[0-9]+$ && "$key" =~ ^-?[0-9]+$ ]]; then # Prefer bash integer compares here to avoid spawning awk in the hot path.
-      if ((num > key)); then
-        echo "$value"
-        return
-      fi
-    elif [[ -n "$num" && -n "$key" && "$num" > "$key" ]]; then
-      echo "$value"
-      return
-    fi
-  done
-  [ -n "$def_val" ] && echo "$def_val" || echo " "
-}
+# shellcheck source=/dev/null
+source "${BASH_SOURCE[0]%/*}/lib/temp-color.bash"
+# shellcheck source=/dev/null
+source "${BASH_SOURCE[0]%/*}/lib/map-floor.bash"
 
 # Keep icon levels stable near thresholds.
 is_number() {
@@ -142,35 +124,6 @@ intel_gpu_top_util() {
 }
 
 # Function to determine color based on temperature
-get_temp_color() {
-  local temp=$1
-  if [[ -z "${temp}" || ! "${temp}" =~ ^-?[0-9]+([.][0-9]+)?$ ]]; then
-    return
-  fi
-  declare -A temp_colors=(
-    [90]="#8b0000" # Dark Red for 90 and above
-    [85]="#ad1f2f" # Red for 85 to 89
-    [80]="#d22f2f" # Light Red for 80 to 84
-    [75]="#ff471a" # Orange-Red for 75 to 79
-    [70]="#ff6347" # Tomato for 70 to 74
-    [65]="#ff8c00" # Dark Orange for 65 to 69
-    [60]="#ffa500" # Orange for 60 to 64
-    [45]=""        # No color for 45 to 59
-    [40]="#add8e6" # Light Blue for 40 to 44
-    [35]="#87ceeb" # Sky Blue for 35 to 39
-    [30]="#4682b4" # Steel Blue for 30 to 34
-    [25]="#4169e1" # Royal Blue for 25 to 29
-    [20]="#0000ff" # Blue for 20 to 24
-    [0]="#00008b"  # Dark Blue for below 20
-  )
-
-  for threshold in $(printf '%s\n' "${!temp_colors[@]}" | sort -nr); do
-    if ((temp >= threshold)); then
-      echo "${temp_colors[$threshold]}"
-      return
-    fi
-  done
-}
 
 resolve_bucket_icon() {
   local value="$1"

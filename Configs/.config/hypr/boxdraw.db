@@ -251,3 +251,526 @@
 ⬞	white medium small square
 ⯀	lower right drop-shadowed white square
 ⯁	upper right drop-shadowed white square
+▙	quadrant upper left and lower left and lower right
+▛	quadrant upper left and upper right and lower left
+▜	quadrant upper left and upper right and lower right
+▟	quadrant upper right and lower left and lower right
+◦	white bullet
+◯	large circle
+◴	white circle with upper left quadrant
+◵	white circle with lower left quadrant
+◶	white circle with lower right quadrant
+◷	white circle with upper right quadrant
+◸	upper left triangle
+◹	upper right triangle
+◺	lower left triangle
+◻	white medium square
+◼	black medium square
+◽	white medium small square
+◾	black medium small square
+◿	lower right triangle
+⠀	braille pattern blank
+⠁	braille pattern dots-1
+⠂	braille pattern dots-2
+⠃	braille pattern dots-12
+⠄	braille pattern dots-3
+⠅	braille pattern dots-13
+⠆	braille pattern dots-23
+⠇	braille pattern dots-123
+⠈	braille pattern dots-4
+⠉	braille pattern dots-14
+⠊	braille pattern dots-24
+⠋	braille pattern dots-124
+⠌	braille pattern dots-34
+⠍	braille pattern dots-134
+⠎	braille pattern dots-234
+⠏	braille pattern dots-1234
+⠐	braille pattern dots-5
+⠑	braille pattern dots-15
+⠒	braille pattern dots-25
+⠓	braille pattern dots-125
+⠔	braille pattern dots-35
+⠕	braille pattern dots-135
+⠖	braille pattern dots-235
+⠗	braille pattern dots-1235
+⠘	braille pattern dots-45
+⠙	braille pattern dots-145
+⠚	braille pattern dots-245
+⠛	braille pattern dots-1245
+⠜	braille pattern dots-345
+⠝	braille pattern dots-1345
+⠞	braille pattern dots-2345
+⠟	braille pattern dots-12345
+⠠	braille pattern dots-6
+⠡	braille pattern dots-16
+⠢	braille pattern dots-26
+⠣	braille pattern dots-126
+⠤	braille pattern dots-36
+⠥	braille pattern dots-136
+⠦	braille pattern dots-236
+⠧	braille pattern dots-1236
+⠨	braille pattern dots-46
+⠩	braille pattern dots-146
+⠪	braille pattern dots-246
+⠫	braille pattern dots-1246
+⠬	braille pattern dots-346
+⠭	braille pattern dots-1346
+⠮	braille pattern dots-2346
+⠯	braille pattern dots-12346
+⠰	braille pattern dots-56
+⠱	braille pattern dots-156
+⠲	braille pattern dots-256
+⠳	braille pattern dots-1256
+⠴	braille pattern dots-356
+⠵	braille pattern dots-1356
+⠶	braille pattern dots-2356
+⠷	braille pattern dots-12356
+⠸	braille pattern dots-456
+⠹	braille pattern dots-1456
+⠺	braille pattern dots-2456
+⠻	braille pattern dots-12456
+⠼	braille pattern dots-3456
+⠽	braille pattern dots-13456
+⠾	braille pattern dots-23456
+⠿	braille pattern dots-123456
+⡀	braille pattern dots-7
+⡁	braille pattern dots-17
+⡂	braille pattern dots-27
+⡃	braille pattern dots-127
+⡄	braille pattern dots-37
+⡅	braille pattern dots-137
+⡆	braille pattern dots-237
+⡇	braille pattern dots-1237
+⡈	braille pattern dots-47
+⡉	braille pattern dots-147
+⡊	braille pattern dots-247
+⡋	braille pattern dots-1247
+⡌	braille pattern dots-347
+⡍	braille pattern dots-1347
+⡎	braille pattern dots-2347
+⡏	braille pattern dots-12347
+⡐	braille pattern dots-57
+⡑	braille pattern dots-157
+⡒	braille pattern dots-257
+⡓	braille pattern dots-1257
+⡔	braille pattern dots-357
+⡕	braille pattern dots-1357
+⡖	braille pattern dots-2357
+⡗	braille pattern dots-12357
+⡘	braille pattern dots-457
+⡙	braille pattern dots-1457
+⡚	braille pattern dots-2457
+⡛	braille pattern dots-12457
+⡜	braille pattern dots-3457
+⡝	braille pattern dots-13457
+⡞	braille pattern dots-23457
+⡟	braille pattern dots-123457
+⡠	braille pattern dots-67
+⡡	braille pattern dots-167
+⡢	braille pattern dots-267
+⡣	braille pattern dots-1267
+⡤	braille pattern dots-367
+⡥	braille pattern dots-1367
+⡦	braille pattern dots-2367
+⡧	braille pattern dots-12367
+⡨	braille pattern dots-467
+⡩	braille pattern dots-1467
+⡪	braille pattern dots-2467
+⡫	braille pattern dots-12467
+⡬	braille pattern dots-3467
+⡭	braille pattern dots-13467
+⡮	braille pattern dots-23467
+⡯	braille pattern dots-123467
+⡰	braille pattern dots-567
+⡱	braille pattern dots-1567
+⡲	braille pattern dots-2567
+⡳	braille pattern dots-12567
+⡴	braille pattern dots-3567
+⡵	braille pattern dots-13567
+⡶	braille pattern dots-23567
+⡷	braille pattern dots-123567
+⡸	braille pattern dots-4567
+⡹	braille pattern dots-14567
+⡺	braille pattern dots-24567
+⡻	braille pattern dots-124567
+⡼	braille pattern dots-34567
+⡽	braille pattern dots-134567
+⡾	braille pattern dots-234567
+⡿	braille pattern dots-1234567
+⢀	braille pattern dots-8
+⢁	braille pattern dots-18
+⢂	braille pattern dots-28
+⢃	braille pattern dots-128
+⢄	braille pattern dots-38
+⢅	braille pattern dots-138
+⢆	braille pattern dots-238
+⢇	braille pattern dots-1238
+⢈	braille pattern dots-48
+⢉	braille pattern dots-148
+⢊	braille pattern dots-248
+⢋	braille pattern dots-1248
+⢌	braille pattern dots-348
+⢍	braille pattern dots-1348
+⢎	braille pattern dots-2348
+⢏	braille pattern dots-12348
+⢐	braille pattern dots-58
+⢑	braille pattern dots-158
+⢒	braille pattern dots-258
+⢓	braille pattern dots-1258
+⢔	braille pattern dots-358
+⢕	braille pattern dots-1358
+⢖	braille pattern dots-2358
+⢗	braille pattern dots-12358
+⢘	braille pattern dots-458
+⢙	braille pattern dots-1458
+⢚	braille pattern dots-2458
+⢛	braille pattern dots-12458
+⢜	braille pattern dots-3458
+⢝	braille pattern dots-13458
+⢞	braille pattern dots-23458
+⢟	braille pattern dots-123458
+⢠	braille pattern dots-68
+⢡	braille pattern dots-168
+⢢	braille pattern dots-268
+⢣	braille pattern dots-1268
+⢤	braille pattern dots-368
+⢥	braille pattern dots-1368
+⢦	braille pattern dots-2368
+⢧	braille pattern dots-12368
+⢨	braille pattern dots-468
+⢩	braille pattern dots-1468
+⢪	braille pattern dots-2468
+⢫	braille pattern dots-12468
+⢬	braille pattern dots-3468
+⢭	braille pattern dots-13468
+⢮	braille pattern dots-23468
+⢯	braille pattern dots-123468
+⢰	braille pattern dots-568
+⢱	braille pattern dots-1568
+⢲	braille pattern dots-2568
+⢳	braille pattern dots-12568
+⢴	braille pattern dots-3568
+⢵	braille pattern dots-13568
+⢶	braille pattern dots-23568
+⢷	braille pattern dots-123568
+⢸	braille pattern dots-4568
+⢹	braille pattern dots-14568
+⢺	braille pattern dots-24568
+⢻	braille pattern dots-124568
+⢼	braille pattern dots-34568
+⢽	braille pattern dots-134568
+⢾	braille pattern dots-234568
+⢿	braille pattern dots-1234568
+⣀	braille pattern dots-78
+⣁	braille pattern dots-178
+⣂	braille pattern dots-278
+⣃	braille pattern dots-1278
+⣄	braille pattern dots-378
+⣅	braille pattern dots-1378
+⣆	braille pattern dots-2378
+⣇	braille pattern dots-12378
+⣈	braille pattern dots-478
+⣉	braille pattern dots-1478
+⣊	braille pattern dots-2478
+⣋	braille pattern dots-12478
+⣌	braille pattern dots-3478
+⣍	braille pattern dots-13478
+⣎	braille pattern dots-23478
+⣏	braille pattern dots-123478
+⣐	braille pattern dots-578
+⣑	braille pattern dots-1578
+⣒	braille pattern dots-2578
+⣓	braille pattern dots-12578
+⣔	braille pattern dots-3578
+⣕	braille pattern dots-13578
+⣖	braille pattern dots-23578
+⣗	braille pattern dots-123578
+⣘	braille pattern dots-4578
+⣙	braille pattern dots-14578
+⣚	braille pattern dots-24578
+⣛	braille pattern dots-124578
+⣜	braille pattern dots-34578
+⣝	braille pattern dots-134578
+⣞	braille pattern dots-234578
+⣟	braille pattern dots-1234578
+⣠	braille pattern dots-678
+⣡	braille pattern dots-1678
+⣢	braille pattern dots-2678
+⣣	braille pattern dots-12678
+⣤	braille pattern dots-3678
+⣥	braille pattern dots-13678
+⣦	braille pattern dots-23678
+⣧	braille pattern dots-123678
+⣨	braille pattern dots-4678
+⣩	braille pattern dots-14678
+⣪	braille pattern dots-24678
+⣫	braille pattern dots-124678
+⣬	braille pattern dots-34678
+⣭	braille pattern dots-134678
+⣮	braille pattern dots-234678
+⣯	braille pattern dots-1234678
+⣰	braille pattern dots-5678
+⣱	braille pattern dots-15678
+⣲	braille pattern dots-25678
+⣳	braille pattern dots-125678
+⣴	braille pattern dots-35678
+⣵	braille pattern dots-135678
+⣶	braille pattern dots-235678
+⣷	braille pattern dots-1235678
+⣸	braille pattern dots-45678
+⣹	braille pattern dots-145678
+⣺	braille pattern dots-245678
+⣻	braille pattern dots-1245678
+⣼	braille pattern dots-345678
+⣽	braille pattern dots-1345678
+⣾	braille pattern dots-2345678
+⣿	braille pattern dots-12345678
+🬀	block sextant-1
+🬁	block sextant-2
+🬂	block sextant-12
+🬃	block sextant-3
+🬄	block sextant-13
+🬅	block sextant-23
+🬆	block sextant-123
+🬇	block sextant-4
+🬈	block sextant-14
+🬉	block sextant-24
+🬊	block sextant-124
+🬋	block sextant-34
+🬌	block sextant-134
+🬍	block sextant-234
+🬎	block sextant-1234
+🬏	block sextant-5
+🬐	block sextant-15
+🬑	block sextant-25
+🬒	block sextant-125
+🬓	block sextant-35
+🬔	block sextant-235
+🬕	block sextant-1235
+🬖	block sextant-45
+🬗	block sextant-145
+🬘	block sextant-245
+🬙	block sextant-1245
+🬚	block sextant-345
+🬛	block sextant-1345
+🬜	block sextant-2345
+🬝	block sextant-12345
+🬞	block sextant-6
+🬟	block sextant-16
+🬠	block sextant-26
+🬡	block sextant-126
+🬢	block sextant-36
+🬣	block sextant-136
+🬤	block sextant-236
+🬥	block sextant-1236
+🬦	block sextant-46
+🬧	block sextant-146
+🬨	block sextant-1246
+🬩	block sextant-346
+🬪	block sextant-1346
+🬫	block sextant-2346
+🬬	block sextant-12346
+🬭	block sextant-56
+🬮	block sextant-156
+🬯	block sextant-256
+🬰	block sextant-1256
+🬱	block sextant-356
+🬲	block sextant-1356
+🬳	block sextant-2356
+🬴	block sextant-12356
+🬵	block sextant-456
+🬶	block sextant-1456
+🬷	block sextant-2456
+🬸	block sextant-12456
+🬹	block sextant-3456
+🬺	block sextant-13456
+🬻	block sextant-23456
+🬼	lower left block diagonal lower middle left to lower centre
+🬽	lower left block diagonal lower middle left to lower right
+🬾	lower left block diagonal upper middle left to lower centre
+🬿	lower left block diagonal upper middle left to lower right
+🭀	lower left block diagonal upper left to lower centre
+🭁	lower right block diagonal upper middle left to upper centre
+🭂	lower right block diagonal upper middle left to upper right
+🭃	lower right block diagonal lower middle left to upper centre
+🭄	lower right block diagonal lower middle left to upper right
+🭅	lower right block diagonal lower left to upper centre
+🭆	lower right block diagonal lower middle left to upper middle right
+🭇	lower right block diagonal lower centre to lower middle right
+🭈	lower right block diagonal lower left to lower middle right
+🭉	lower right block diagonal lower centre to upper middle right
+🭊	lower right block diagonal lower left to upper middle right
+🭋	lower right block diagonal lower centre to upper right
+🭌	lower left block diagonal upper centre to upper middle right
+🭍	lower left block diagonal upper left to upper middle right
+🭎	lower left block diagonal upper centre to lower middle right
+🭏	lower left block diagonal upper left to lower middle right
+🭐	lower left block diagonal upper centre to lower right
+🭑	lower left block diagonal upper middle left to lower middle right
+🭒	upper right block diagonal lower middle left to lower centre
+🭓	upper right block diagonal lower middle left to lower right
+🭔	upper right block diagonal upper middle left to lower centre
+🭕	upper right block diagonal upper middle left to lower right
+🭖	upper right block diagonal upper left to lower centre
+🭗	upper left block diagonal upper middle left to upper centre
+🭘	upper left block diagonal upper middle left to upper right
+🭙	upper left block diagonal lower middle left to upper centre
+🭚	upper left block diagonal lower middle left to upper right
+🭛	upper left block diagonal lower left to upper centre
+🭜	upper left block diagonal lower middle left to upper middle right
+🭝	upper left block diagonal lower centre to lower middle right
+🭞	upper left block diagonal lower left to lower middle right
+🭟	upper left block diagonal lower centre to upper middle right
+🭠	upper left block diagonal lower left to upper middle right
+🭡	upper left block diagonal lower centre to upper right
+🭢	upper right block diagonal upper centre to upper middle right
+🭣	upper right block diagonal upper left to upper middle right
+🭤	upper right block diagonal upper centre to lower middle right
+🭥	upper right block diagonal upper left to lower middle right
+🭦	upper right block diagonal upper centre to lower right
+🭧	upper right block diagonal upper middle left to lower middle right
+🭨	upper and right and lower triangular three quarters block
+🭩	left and lower and right triangular three quarters block
+🭪	upper and left and lower triangular three quarters block
+🭫	left and upper and right triangular three quarters block
+🭬	left triangular one quarter block
+🭭	upper triangular one quarter block
+🭮	right triangular one quarter block
+🭯	lower triangular one quarter block
+🭰	vertical one eighth block-2
+🭱	vertical one eighth block-3
+🭲	vertical one eighth block-4
+🭳	vertical one eighth block-5
+🭴	vertical one eighth block-6
+🭵	vertical one eighth block-7
+🭶	horizontal one eighth block-2
+🭷	horizontal one eighth block-3
+🭸	horizontal one eighth block-4
+🭹	horizontal one eighth block-5
+🭺	horizontal one eighth block-6
+🭻	horizontal one eighth block-7
+🭼	left and lower one eighth block
+🭽	left and upper one eighth block
+🭾	right and upper one eighth block
+🭿	right and lower one eighth block
+🮀	upper and lower one eighth block
+🮁	horizontal one eighth block-1358
+🮂	upper one quarter block
+🮃	upper three eighths block
+🮄	upper five eighths block
+🮅	upper three quarters block
+🮆	upper seven eighths block
+🮇	right one quarter block
+🮈	right three eighths block
+🮉	right five eighths block
+🮊	right three quarters block
+🮋	right seven eighths block
+🮌	left half medium shade
+🮍	right half medium shade
+🮎	upper half medium shade
+🮏	lower half medium shade
+🮐	inverse medium shade
+🮑	upper half block and lower half inverse medium shade
+🮒	upper half inverse medium shade and lower half block
+🮔	left half inverse medium shade and right half block
+🮕	checker board fill
+🮖	inverse checker board fill
+🮗	heavy horizontal fill
+🮘	upper left to lower right fill
+🮙	upper right to lower left fill
+🮚	upper and lower triangular half block
+🮛	left and right triangular half block
+🮜	upper left triangular medium shade
+🮝	upper right triangular medium shade
+🮞	lower right triangular medium shade
+🮟	lower left triangular medium shade
+🮠	light diagonal upper centre to middle left
+🮡	light diagonal upper centre to middle right
+🮢	light diagonal middle left to lower centre
+🮣	light diagonal middle right to lower centre
+🮤	light diagonal upper centre to middle left to lower centre
+🮥	light diagonal upper centre to middle right to lower centre
+🮦	light diagonal middle left to lower centre to middle right
+🮧	light diagonal middle left to upper centre to middle right
+🮨	light diagonal upper centre to middle left and middle right to lower centre
+🮩	light diagonal upper centre to middle right and middle left to lower centre
+🮪	light diagonal upper centre to middle right to lower centre to middle left
+🮫	light diagonal upper centre to middle left to lower centre to middle right
+🮬	light diagonal middle left to upper centre to middle right to lower centre
+🮭	light diagonal middle right to upper centre to middle left to lower centre
+🮮	light diagonal diamond
+🮯	light horizontal with vertical stroke
+🮰	arrowhead-shaped pointer
+🮱	inverse check mark
+🮲	left half running man
+🮳	right half running man
+🮴	inverse downwards arrow with tip leftwards
+🮵	leftwards arrow and upper and lower one eighth block
+🮶	rightwards arrow and upper and lower one eighth block
+🮷	downwards arrow and right one eighth block
+🮸	upwards arrow and right one eighth block
+🮹	left half folder
+🮺	right half folder
+🮻	voided greek cross
+🮼	right open squared dot
+🮽	negative diagonal cross
+🮾	negative diagonal middle right to lower centre
+🮿	negative diagonal diamond
+🯀	white heavy saltire with rounded corners
+🯁	left third white right pointing index
+🯂	middle third white right pointing index
+🯃	right third white right pointing index
+🯄	negative squared question mark
+🯅	stick figure
+🯆	stick figure with arms raised
+🯇	stick figure leaning left
+🯈	stick figure leaning right
+🯉	stick figure with dress
+🯊	white up-pointing chevron
+🯋	white cross mark
+🯌	raised small left square bracket
+🯍	black small up-pointing chevron
+🯎	left two thirds block
+🯏	left one third block
+🯐	light diagonal middle right to lower left
+🯑	light diagonal upper right to middle left
+🯒	light diagonal upper left to middle right
+🯓	light diagonal middle left to lower right
+🯔	light diagonal upper left to lower centre
+🯕	light diagonal upper centre to lower right
+🯖	light diagonal upper right to lower centre
+🯗	light diagonal upper centre to lower left
+🯘	light diagonal upper left to middle centre to upper right
+🯙	light diagonal upper right to middle centre to lower right
+🯚	light diagonal lower left to middle centre to lower right
+🯛	light diagonal upper left to middle centre to lower left
+🯜	light diagonal upper left to lower centre to upper right
+🯝	light diagonal upper right to middle left to lower right
+🯞	light diagonal lower left to upper centre to lower right
+🯟	light diagonal upper left to middle right to lower left
+🯠	top justified lower half white circle
+🯡	right justified left half white circle
+🯢	bottom justified upper half white circle
+🯣	left justified right half white circle
+🯤	upper centre one quarter block
+🯥	lower centre one quarter block
+🯦	middle left one quarter block
+🯧	middle right one quarter block
+🯨	top justified lower half black circle
+🯩	right justified left half black circle
+🯪	bottom justified upper half black circle
+🯫	left justified right half black circle
+🯬	top right justified lower left quarter black circle
+🯭	bottom left justified upper right quarter black circle
+🯮	bottom right justified upper left quarter black circle
+🯯	top left justified lower right quarter black circle
+🯰	segmented digit zero
+🯱	segmented digit one
+🯲	segmented digit two
+🯳	segmented digit three
+🯴	segmented digit four
+🯵	segmented digit five
+🯶	segmented digit six
+🯷	segmented digit seven
+🯸	segmented digit eight
+🯹	segmented digit nine

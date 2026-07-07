@@ -4,38 +4,15 @@ set -euo pipefail
 
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+# shellcheck source=/dev/null
+source "${BASH_SOURCE[0]%/*}/lib/temp-color.bash"
+# shellcheck source=/dev/null
+source "${BASH_SOURCE[0]%/*}/lib/map-floor.bash"
 
 hypr_help_guard "Usage: hyprshell sysinfo/cpuinfo
 Emit CPU usage, temperature, and clock speed as waybar JSON." "$@"
 
 cpuinfo_file="${XDG_RUNTIME_DIR:-/tmp}/hypr-$UID-processors"
-
-map_floor() {
-  local mapping="$1"
-  local input="$2"
-  local def_val=""
-  local pair=""
-  local key=""
-  local value=""
-  local num="${input%%.*}"
-
-  IFS=', ' read -r -a pairs <<<"${mapping}"
-  if [[ ${pairs[-1]} != *":"* ]]; then
-    def_val="${pairs[-1]}"
-    unset 'pairs[${#pairs[@]}-1]'
-  fi
-
-  for pair in "${pairs[@]}"; do
-    IFS=':' read -r key value <<<"${pair}"
-    if [[ "$num" =~ ^-?[0-9]+$ && "$key" =~ ^-?[0-9]+$ ]]; then
-      (( num > key )) && printf '%s\n' "${value}" && return
-    elif [[ -n "$num" && -n "$key" && "$num" > "$key" ]]; then
-      printf '%s\n' "${value}" && return
-    fi
-  done
-
-  [[ -n "${def_val}" ]] && printf '%s\n' "${def_val}" || printf ' \n'
-}
 
 load_cpu_cache() {
   # Same file path declared at the top of the script — read AND write must
@@ -84,24 +61,6 @@ init_query() {
   load_cpu_cache
   initialize_cpu_metadata
   initialize_cpu_stats
-}
-
-get_temp_color() {
-  local temp=$1
-  declare -A temp_colors=(
-    [90]="#8b0000" [85]="#ad1f2f" [80]="#d22f2f" [75]="#ff471a"
-    [70]="#ff6347" [65]="#ff8c00" [60]="#ffa500" [45]=""
-    [40]="#add8e6" [35]="#87ceeb" [30]="#4682b4" [25]="#4169e1"
-    [20]="#0000ff" [0]="#00008b"
-  )
-  local threshold=""
-
-  for threshold in $(printf '%s\n' "${!temp_colors[@]}" | sort -nr); do
-    if ((temp >= threshold)); then
-      echo "${temp_colors[$threshold]}"
-      return
-    fi
-  done
 }
 
 update_cpu_stats_cache() {

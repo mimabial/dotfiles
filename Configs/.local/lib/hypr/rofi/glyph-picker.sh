@@ -111,42 +111,25 @@ get_glyph_selection() {
     return 1
   fi
 
-  # shellcheck disable=SC2016 # Awk program is literal.
-  local format_stream=(awk -F $'\t' 'BEGIN{OFS="\t"}{disp=$1; if($2!=""&&$2!=$1) disp=disp" "$2; print disp}')
-
-  local selection_index=""
+  local raw_line=""
+  local -a run_args=()
   local -a rofi_config_args=()
   if [[ -n "${use_rofile}" ]]; then
     rofi_picker_rasi_args rofi_config_args "${use_rofile}" "${rofi_position}"
-    selection_index=$("${format_stream[@]}" <"${temp_data}" | rofi -dmenu -i -format 'i' "${ROFI_GLYPH_ARGS[@]}" "${rofi_config_args[@]}" -no-custom)
+    run_args=(-i "${ROFI_GLYPH_ARGS[@]}" "${rofi_config_args[@]}" -no-custom)
   else
     case ${style_type} in
-      2 | grid)
-        selection_index=$("${format_stream[@]}" <"${temp_data}" | rofi -dmenu -format 'i' "${rofi_args[@]/-multi-select/}" -display-columns 1 \
-          -theme-str "listview {columns: ${glyph_columns}; lines: ${glyph_lines};}" \
-          -no-custom)
-        ;;
       1 | list)
-        selection_index=$("${format_stream[@]}" <"${temp_data}" | rofi -dmenu -format 'i' "${rofi_args[@]}" \
-          -theme-str "listview {lines: ${glyph_lines};}" \
-          -no-custom)
+        run_args=("${rofi_args[@]}" -theme-str "listview {lines: ${glyph_lines};}" -no-custom)
         ;;
       *)
-        selection_index=$("${format_stream[@]}" <"${temp_data}" | rofi -dmenu -format 'i' "${rofi_args[@]/-multi-select/}" -display-columns 1 \
-          -theme-str "listview {columns: ${glyph_columns}; lines: ${glyph_lines};}" \
-          -no-custom)
+        run_args=("${rofi_args[@]/-multi-select/}" -display-columns 1 \
+          -theme-str "listview {columns: ${glyph_columns}; lines: ${glyph_lines};}" -no-custom)
         ;;
     esac
   fi
 
-  if [[ -z "${selection_index}" ]]; then
-    rm -f "${temp_data}"
-    return
-  fi
-
-  # rofi returns 0-based index; retrieve from deduplicated temp_data
-  local raw_line
-  raw_line=$(awk -v idx=$((selection_index + 1)) 'NR==idx{print; exit}' "${temp_data}")
+  rofi_picker_run_indexed raw_line "${temp_data}" "${run_args[@]}"
   rm -f "${temp_data}"
   printf "%s" "${raw_line}"
 }

@@ -63,17 +63,6 @@ get_default_sink_label() {
     | head -1
 }
 
-get_default_source_target() {
-  local default_source=""
-
-  default_source="$(pactl info 2>/dev/null | sed -n 's/^Default Source: //p' | head -1)"
-  if [[ -n "${default_source}" && "${default_source}" != *.monitor ]]; then
-    printf '%s\n' "${default_source}"
-    return 0
-  fi
-  pactl list short sources 2>/dev/null | awk '$2 !~ /\.monitor$/ {print $2; exit}'
-}
-
 get_default_sink_id() {
   wpctl inspect @DEFAULT_AUDIO_SINK@ 2>/dev/null \
     | awk '/^id / { gsub(/,/, "", $2); print $2; exit }'
@@ -127,16 +116,6 @@ sink_volume_pct() {
 sink_is_muted() {
   local target="$1"
   wpctl get-volume "${target}" 2>/dev/null | grep -q "MUTED"
-}
-
-source_volume_pct() {
-  local target="$1"
-  pactl get-source-volume "${target}" 2>/dev/null | awk 'match($0,/[0-9]+%/){print substr($0,RSTART,RLENGTH-1); exit}'
-}
-
-source_is_muted() {
-  local target="$1"
-  [[ "$(pactl get-source-mute "${target}" 2>/dev/null | awk '{print $2}')" == "yes" ]]
 }
 
 refresh_waybar_mic() {

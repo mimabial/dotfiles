@@ -1,12 +1,14 @@
 $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
+
 $ICON_THEME = Tela-black-light
 $COLOR_SCHEME = prefer-dark
 $NVIM_SCHEME = rose-pine
 $NVIM_VARIANT = dawn
 $NVIM_BACKGROUND = light
 $NVIM_TRANSPARENCY = false
-$CURSOR_THEME = ComixCursors-Slim-White
-$CURSOR_SIZE = 32
+
+$CURSOR_THEME = BreezeX-Dark
+$CURSOR_SIZE = 28
 
 # Theme variables above are the primary inputs used by theme.switch.sh.
 

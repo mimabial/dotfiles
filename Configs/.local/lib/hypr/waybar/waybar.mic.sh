@@ -2,25 +2,8 @@
 
 set -euo pipefail
 
-find_audio_source() {
-  local default_source=""
-
-  default_source="$(pactl info 2>/dev/null | sed -n 's/^Default Source: //p' | head -1)"
-  if [[ -n "${default_source}" && "${default_source}" != *.monitor ]]; then
-    printf '%s\n' "${default_source}"
-    return 0
-  fi
-
-  pactl list short sources 2>/dev/null | awk '$2 !~ /\.monitor$/ {print $2; exit}'
-}
-
-source_volume_pct() {
-  pactl get-source-volume "$1" 2>/dev/null | awk 'match($0,/[0-9]+%/){print substr($0,RSTART,RLENGTH-1); exit}'
-}
-
-source_is_muted() {
-  [[ "$(pactl get-source-mute "$1" 2>/dev/null | awk '{print $2}')" == "yes" ]]
-}
+# shellcheck source=/dev/null
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../controls/lib" && pwd)/control.common.bash"
 
 main() {
   local source=""
@@ -30,7 +13,7 @@ main() {
   local class_name="absent"
   local tooltip="No microphone"
 
-  source="$(find_audio_source || true)"
+  source="$(get_default_source_target || true)"
   if [[ -n "${source}" ]]; then
     volume="$(source_volume_pct "${source}")"
     volume="${volume:-0}"

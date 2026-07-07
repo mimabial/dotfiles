@@ -13,7 +13,7 @@ import pyutils.logger as logger_mod
 from pyutils.lock_paths import runtime_lock_path
 from pyutils.shell_env import load_shell_assignments
 from pyutils.xdg_base_dirs import xdg_config_home, xdg_data_home, xdg_state_home
-from waybar_jsonc import normalize_jsonc
+from pyutils.jsonc import normalize_jsonc
 
 logger = logger_mod.get_logger()
 

@@ -30,31 +30,46 @@ local function exec(modifiers, key, description, command, options)
 end
 
 -- Window management
+local function toggle_floating()
+    local window = hl.get_active_window()
+    if not window then return end
+
+    local selector = "address:" .. window.address
+    local was_floating = window.floating
+    hl.dispatch(hl.dsp.window.float({action = "toggle", window = selector}))
+
+    if not was_floating then
+        hl.dispatch(hl.dsp.window.center({window = selector, respect_reserved = true}))
+        hl.dispatch(hl.dsp.window.alter_zorder({window = selector, mode = "top"}))
+    end
+end
+
 bind(mod, "Q", "[Window Management] close focused window", hl.dsp.window.close())
 bind("ALT", "F4", "[Window Management] close focused window", hl.dsp.window.close())
 exec(mod .. " ALT", "Q", "[Window Management] close all windows", "hyprshell window/close-all.sh")
-bind(mod, "F", "[Window Management] toggle floating", hl.dsp.window.float({action = "toggle"}))
+bind(mod, "F", "[Window Management] toggle fullscreen", hl.dsp.window.fullscreen({mode = "fullscreen", action = "toggle"}))
+bind(mod .. " SHIFT", "SPACE", "[Window Management] toggle floating", toggle_floating)
 exec(mod, "P", "[Window Management] toggle pin", "hyprshell window/windowpin.sh")
-bind(mod .. " SHIFT", "F", "[Window Management] toggle fullscreen", hl.dsp.window.fullscreen({mode = "fullscreen", action = "toggle"}))
 bind(mod .. " ALT", "F", "[Window Management] toggle maximize", hl.dsp.window.fullscreen({mode = "maximized", action = "toggle"}))
 bind(mod, "J", "[Window Management] toggle window split", hl.dsp.layout("togglesplit"))
 exec(mod .. " SHIFT", "J", "[Window Management] toggle workspace layout", "hyprshell window/layout-toggle.sh")
-bind(mod, "PERIOD", "[Window Management] move focused column", hl.dsp.layout("move +col"))
-bind(mod, "COMMA", "[Window Management] swap column left", hl.dsp.layout("swapcol l"))
+bind(mod .. " SHIFT", "L", "[Window Management] move focused column", hl.dsp.layout("move +col"))
+bind(mod .. " SHIFT", "H", "[Window Management] swap column left", hl.dsp.layout("swapcol l"))
 
 bind(mod, "LEFT", "[Window Management|Focus] focus left", hl.dsp.focus({direction = "left"}))
 bind(mod, "RIGHT", "[Window Management|Focus] focus right", hl.dsp.focus({direction = "right"}))
 bind(mod, "UP", "[Window Management|Focus] focus up", hl.dsp.focus({direction = "up"}))
 bind(mod, "DOWN", "[Window Management|Focus] focus down", hl.dsp.focus({direction = "down"}))
-bind("ALT", "TAB", "[Window Management|Focus] cycle next", hl.dsp.window.cycle_next())
-bind("ALT SHIFT", "TAB", "[Window Management|Focus] cycle previous", hl.dsp.window.cycle_next({next = false}))
-bind("ALT", "TAB", "[Window Management|Focus] reveal active window", hl.dsp.window.bring_to_top())
-bind("ALT SHIFT", "TAB", "[Window Management|Focus] reveal active window", hl.dsp.window.bring_to_top())
 
-bind(mod .. " SHIFT", "RIGHT", "[Window Management|Resize] resize right", hl.dsp.window.resize({x = 30, y = 0, relative = true}), {repeating = true})
-bind(mod .. " SHIFT", "LEFT", "[Window Management|Resize] resize left", hl.dsp.window.resize({x = -30, y = 0, relative = true}), {repeating = true})
-bind(mod .. " SHIFT", "UP", "[Window Management|Resize] resize up", hl.dsp.window.resize({x = 0, y = -30, relative = true}), {repeating = true})
-bind(mod .. " SHIFT", "DOWN", "[Window Management|Resize] resize down", hl.dsp.window.resize({x = 0, y = 30, relative = true}), {repeating = true})
+local function cycle_window(options)
+    return function()
+        hl.dispatch(hl.dsp.window.cycle_next(options))
+        hl.dispatch(hl.dsp.window.bring_to_top())
+    end
+end
+
+bind("ALT", "TAB", "[Window Management|Focus] cycle next and reveal", cycle_window())
+bind("ALT SHIFT", "TAB", "[Window Management|Focus] cycle previous and reveal", cycle_window({next = false}))
 
 local function move_window(direction, x, y)
     return function()
@@ -67,10 +82,10 @@ local function move_window(direction, x, y)
     end
 end
 
-bind(mod .. " ALT", "LEFT", "[Window Management|Move] move left", move_window("left", -30, 0), {repeating = true})
-bind(mod .. " ALT", "RIGHT", "[Window Management|Move] move right", move_window("right", 30, 0), {repeating = true})
-bind(mod .. " ALT", "UP", "[Window Management|Move] move up", move_window("up", 0, -30), {repeating = true})
-bind(mod .. " ALT", "DOWN", "[Window Management|Move] move down", move_window("down", 0, 30), {repeating = true})
+bind(mod .. " SHIFT", "LEFT", "[Window Management|Move] move left", move_window("left", -30, 0), {repeating = true})
+bind(mod .. " SHIFT", "RIGHT", "[Window Management|Move] move right", move_window("right", 30, 0), {repeating = true})
+bind(mod .. " SHIFT", "UP", "[Window Management|Move] move up", move_window("up", 0, -30), {repeating = true})
+bind(mod .. " SHIFT", "DOWN", "[Window Management|Move] move down", move_window("down", 0, 30), {repeating = true})
 
 bind(mod, "mouse:272", "[Window Management|Mouse] move window", hl.dsp.window.drag(), {mouse = true})
 bind(mod, "mouse:273", "[Window Management|Mouse] resize window", hl.dsp.window.resize(), {mouse = true})
@@ -80,14 +95,15 @@ bind(mod, "X", "[Window Management|Mouse] resize window", hl.dsp.window.resize()
 exec(mod, "DELETE", "[Window Management] end session", "hyprshell logout")
 exec(mod, "L", "[Window Management] lock screen", "hyprshell lock-screen.sh")
 exec("CTRL ALT", "DELETE", "[Window Management] logout menu", "hyprshell logout-launch.sh 2")
-exec(mod, "I", "[Window Management] toggle keep awake", "hyprshell session/toggle-keep-awake.sh")
+exec(mod, "ESCAPE", "[Window Management] logout menu", "hyprshell logout-launch.sh 2")
+exec(mod .. " SHIFT", "C", "[Utilities] toggle keep awake", "hyprshell session/toggle-keep-awake.sh")
 
 -- Applications and launchers
 exec(mod, "RETURN", "[Launcher|Apps] terminal in current directory", terminal .. [[ --working-directory "$(hyprshell terminal-cwd.sh)"]])
 exec(mod .. " SHIFT", "RETURN", "[Launcher|Apps] alternate terminal in current directory", terminal2 .. [[ --working-directory "$(hyprshell terminal-cwd.sh)"]])
 exec(mod .. " ALT", "RETURN", "[Launcher|Apps] dropdown terminal", "hyprshell window/dropdown-terminal")
-exec(mod, "D", "[Launcher|Apps] file explorer", explorer)
-exec(mod .. " SHIFT", "D", "[Launcher|Apps] file explorer in current directory", explorer .. [[ "$(hyprshell terminal-cwd.sh)"]])
+exec(mod, "E", "[Launcher|Apps] file explorer", explorer)
+exec(mod .. " SHIFT", "E", "[Launcher|Apps] file explorer in current directory", explorer .. [[ "$(hyprshell terminal-cwd.sh)"]])
 exec(mod, "B", "[Launcher|Apps] web browser", browser)
 exec(mod .. " SHIFT", "B", "[Launcher|Apps] private browser", "hyprshell browser.sh --private")
 exec(mod .. " CTRL", "S", "[Launcher|Apps] Signal", "hyprshell launch/summon.sh --empty-workspace-if-occupied class:signal -- signal-desktop")
@@ -95,21 +111,18 @@ exec(mod .. " CTRL", "B", "[Launcher|Apps] Bitwarden", "hyprshell launch/summon.
 exec(mod .. " ALT", "G", "[Launcher|Apps] GIMP", "hyprshell launch/summon.sh --empty-workspace-if-occupied gimp -- gimp")
 exec(mod, "C", "[Launcher|Apps] text editor", terminal .. " -e " .. editor)
 
-exec(mod, "A", "[Launcher|Menus] application finder", "hyprshell rofi-launch.sh d")
+exec(mod, "D", "[Launcher|Menus] application finder", "hyprshell rofi-launch.sh d")
 exec(mod .. " CTRL", "TAB", "[Launcher|Menus] window switcher", "hyprshell rofi-launch.sh w")
 exec(mod .. " CTRL", "F", "[Launcher|Menus] file finder", "pkill -x rofi || hyprshell launch/file-finder.sh")
 exec(mod, "SPACE", "[Launcher|Menus] menu tree", "pkill -x rofi || hyprshell menutree")
 exec(mod, "SLASH", "[Launcher|Menus] keybinding hints", "pkill -x rofi || hyprshell keybinds/keybinds_hint.sh")
-exec(mod, "E", "[Launcher|Menus] emoji picker", "pkill -x rofi || hyprshell emoji-picker.sh")
-exec(mod, "G", "[Launcher|Menus] glyph picker", "pkill -x rofi || hyprshell glyph-picker.sh")
+exec(mod, "K", "[Launcher|Menus] keybinding hints", "pkill -x rofi || hyprshell keybinds/keybinds_hint.sh")
+exec(mod, "PERIOD", "[Launcher|Menus] emoji picker", "pkill -x rofi || hyprshell emoji-picker.sh")
+bind(mod, "G", "[Window Management] toggle group", hl.dsp.group.toggle())
+exec(mod .. " SHIFT", "G", "[Launcher|Menus] glyph picker", "pkill -x rofi || hyprshell glyph-picker.sh")
 exec(mod, "H", "[Launcher|Menus] box drawing picker", "pkill -x rofi || hyprshell boxdraw-picker.sh")
 exec(mod, "V", "[Launcher|Menus] clipboard", "pkill -x rofi || hyprshell cliphist.sh -c")
 exec(mod .. " SHIFT", "V", "[Launcher|Menus] clipboard manager", "pkill -x rofi || hyprshell cliphist.sh")
-
-exec(mod .. " CTRL", "G", "[Launcher|Dev Tools] LazyGit", "hyprshell launch/tui.sh --app-id org.tui.LazyGit -- lazygit")
-exec(mod .. " CTRL", "D", "[Launcher|Dev Tools] LazyDocker", "hyprshell launch/tui.sh --app-id org.tui.LazyDocker -- lazydocker")
-exec(mod .. " CTRL", "T", "[Launcher|Dev Tools] htop", "hyprshell launch/tui.sh --app-id org.tui.Htop -- htop")
-exec(mod .. " ALT", "P", "[Launcher|Dev Tools] rmpc", "hyprshell launch/tui.sh --app-id org.tui.Rmpc -- rmpc")
 
 -- Hardware controls
 exec(mod .. " SHIFT", "O", "[Hardware|Audio] output switcher", "hyprshell controls/volume-control.sh -t")
@@ -130,10 +143,9 @@ exec("", "XF86MonBrightnessUp", "[Hardware|Brightness] increase", "hyprshell bri
 exec("", "XF86MonBrightnessDown", "[Hardware|Brightness] decrease", "hyprshell brightness-control.sh d", {locked = true, repeating = true})
 
 -- Utilities
-exec(mod, "K", "[Utilities] switch keyboard layout", "hyprshell keyboard-switch.sh", {locked = true})
+exec(mod .. " SHIFT", "K", "[Utilities] switch keyboard layout", "hyprshell keyboard-switch.sh", {locked = true})
 exec(mod, "M", "[Utilities] focus mode", "hyprshell util/workflow-toggle.sh focus")
-exec(mod .. " SHIFT", "M", "[Utilities] game mode", "hyprshell util/workflow-toggle.sh gaming")
-exec(mod .. " SHIFT", "G", "[Utilities] game launcher", "pkill -x rofi || hyprshell gaming/launcher.sh")
+exec(mod .. " SHIFT", "N", "[Utilities] toggle nightlight", "hyprshell system/hyprsunset.sh toggle")
 
 exec(mod .. " CTRL", "DELETE", "[Utilities|Monitors] toggle laptop display", "hyprshell system/monitor-internal.sh toggle")
 exec(mod .. " CTRL ALT", "DELETE", "[Utilities|Monitors] toggle mirroring", "hyprshell system/monitor-mirror.sh toggle")
@@ -151,16 +163,16 @@ exec(mod .. " ALT", "R", "[Utilities|Recording] toggle monitor recording", "hypr
 exec(mod .. " CTRL", "R", "[Utilities|Recording] stop recording", "hyprshell screenrecord --quit")
 
 -- Theme and wallpaper
-exec(mod, "APOSTROPHE", "[Theming] next wallpaper", "hyprshell wallpaper next --global")
-exec(mod, "SEMICOLON", "[Theming] previous wallpaper", "hyprshell wallpaper previous --global")
 exec(mod, "BRACKETRIGHT", "[Theming] next theme", "hyprshell theme.switch.sh -n --quiet")
 exec(mod, "BRACKETLEFT", "[Theming] previous theme", "hyprshell theme.switch.sh -p --quiet")
+exec(mod .. " SHIFT", "BRACKETRIGHT", "[Theming] next wallpaper", "hyprshell wallpaper next --global")
+exec(mod .. " SHIFT", "BRACKETLEFT", "[Theming] previous wallpaper", "hyprshell wallpaper previous --global")
 exec(mod, "W", "[Theming] select wallpaper", "hyprshell rofi/run-after-close.sh -- hyprshell wallpaper select --global")
 exec(mod, "T", "[Theming] select theme", "hyprshell rofi/run-after-close.sh -- hyprshell theme.select.sh")
 exec(mod .. " SHIFT", "COMMA", "[Theming] next Waybar layout", "hyprshell waybar.py --update --next")
 exec(mod .. " SHIFT", "PERIOD", "[Theming] previous Waybar layout", "hyprshell waybar.py --update --prev")
 exec(mod .. " SHIFT", "W", "[Theming] toggle Waybar", "hyprshell waybar.py --hide")
-exec(mod .. " SHIFT", "C", "[Theming] color mode", "pkill -x rofi || hyprshell color-mode.sh -m")
+exec(mod .. " SHIFT", "M", "[Theming] color mode", "pkill -x rofi || hyprshell color-mode.sh -m")
 exec(mod, "N", "[Theming] select font", "pkill -x rofi || hyprshell fonts/font-picker.sh")
 exec(mod .. " SHIFT", "T", "[Theming] select rofi theme", "hyprshell rofi/run-after-close.sh -- hyprshell theme.select.sh -s")
 exec(mod .. " SHIFT", "A", "[Theming] select launcher style", "hyprshell rofi-launch.sh -s")
@@ -185,8 +197,8 @@ bind(mod .. " SHIFT ALT", "RIGHT", "[Workspaces] move workspace right", hl.dsp.w
 bind(mod .. " SHIFT ALT", "UP", "[Workspaces] move workspace up", hl.dsp.workspace.move({monitor = "u"}))
 bind(mod .. " SHIFT ALT", "DOWN", "[Workspaces] move workspace down", hl.dsp.workspace.move({monitor = "d"}))
 
-bind(mod .. " CTRL ALT", "RIGHT", "[Workspaces] move window to next relative workspace", hl.dsp.window.move({workspace = "r+1"}))
-bind(mod .. " CTRL ALT", "LEFT", "[Workspaces] move window to previous relative workspace", hl.dsp.window.move({workspace = "r-1"}))
+bind(mod .. " CTRL SHIFT", "RIGHT", "[Workspaces] move window to next relative workspace", hl.dsp.window.move({workspace = "r+1"}))
+bind(mod .. " CTRL SHIFT", "LEFT", "[Workspaces] move window to previous relative workspace", hl.dsp.window.move({workspace = "r-1"}))
 bind(mod, "mouse_down", "[Workspaces] next existing workspace", hl.dsp.focus({workspace = "e+1"}))
 bind(mod, "mouse_up", "[Workspaces] previous existing workspace", hl.dsp.focus({workspace = "e-1"}))
 bind(mod .. " SHIFT", "S", "[Workspaces] move to scratchpad", hl.dsp.window.move({workspace = "special"}))

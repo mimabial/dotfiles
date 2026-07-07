@@ -6,11 +6,7 @@ $NVIM_SCHEME = moonfly
 $NVIM_VARIANT =
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = true
-
-$CURSOR_THEME=McMojave-cursors
-$CURSOR_SIZE=28
-
-# Theme variables above are the primary inputs used by theme.switch.sh.
+$CURSOR_THEME = GoogleDot-Black
 
 general {
     gaps_in = 8

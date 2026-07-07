@@ -3,5 +3,6 @@
 # Down by default — color-mode brings it up/down (sv up/down auto-theme) when
 # the colour mode is set to "auto". See the `down` file in this directory.
 exec 2>&1
+export PYTHONPYCACHEPREFIX="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/pycache"
 exec "$HOME/.local/state/hypr/pip_env/bin/python" \
 	"$HOME/.local/lib/hypr/theme/auto_theme.py"

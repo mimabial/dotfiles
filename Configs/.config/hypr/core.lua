@@ -97,7 +97,7 @@ hl.config({
     },
 })
 
-hl.exec_cmd("mkdir -p '" .. (vars.get("XDG_RUNTIME_DIR") or "") .. "/hypr' '" .. cache_home .. "/hypr/wal' '" .. config_home .. "/hypr' '" .. data_home .. "/hypr' '" .. state_home .. "/hypr' && python3 '" .. vars.get("scrPath") .. "/keybinds/lib/keybinds_hint.py' --format rofi > '" .. (vars.get("XDG_RUNTIME_DIR") or "") .. "/keybinds_hint.rofi'")
+hl.exec_cmd("mkdir -p '" .. (vars.get("XDG_RUNTIME_DIR") or "") .. "/hypr' '" .. cache_home .. "/hypr/wal' '" .. config_home .. "/hypr' '" .. data_home .. "/hypr' '" .. state_home .. "/hypr' && python3 '" .. vars.get("scrPath") .. "/keybinds/lib/keybinds_hint.py' --format rofi > '" .. (vars.get("XDG_RUNTIME_DIR") or "") .. "/hypr/keybinds_hint.rofi'")
 
 local startup = {
     "dbus-update-activation-environment --systemd --all",

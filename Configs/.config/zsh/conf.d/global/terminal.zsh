@@ -217,6 +217,9 @@ fi
 HISTSIZE=10000
 SAVEHIST=10000
 
+# Append per command and lock on write, so a crash/concurrent session can't
+# truncate the file (avoids the NUL-tail corruption from full rewrite-on-exit).
+setopt INC_APPEND_HISTORY HIST_FCNTL_LOCK
 
 export HISTFILE ZSH_AUTOSUGGEST_STRATEGY HISTSIZE SAVEHIST
 

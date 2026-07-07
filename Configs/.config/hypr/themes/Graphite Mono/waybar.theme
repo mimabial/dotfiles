@@ -4,9 +4,9 @@ $HOME/.config/waybar/theme.css
 @define-color fg #d9d9d9;
 @define-color br #a6a6a6;
 
-@define-color alt_bg #404040;
+@define-color alt_bg #b0b0b0;
 @define-color alt_fg #d9d9d9;
-@define-color alt_br #595959;
+@define-color alt_br #d9d9d9;
 
 @define-color act_fg #d9d9d9;
 @define-color act_bg #595959;

@@ -5,12 +5,11 @@ import hashlib
 import json
 import os
 import sys
-import tempfile
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _common import cache_hit, cache_store
-from _roles import QtRoles, shade
+from _common import atomic_write, cache_hit, cache_store
+from _roles import QtRoles, hex_to_rgb, shade
 
 PALETTE = Path(sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] else
                os.environ.get("HYPR_STATE_HOME",
@@ -84,7 +83,7 @@ def main():
     fg_dim = roles.disabled_text
 
     def rgb(c):
-        r, g, b = (int(c.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
+        r, g, b = hex_to_rgb(c)
         return f"{r},{g},{b}"
 
     def argb(c, alpha="ff"):
@@ -92,18 +91,6 @@ def main():
 
     def qtct_line(values):
         return ", ".join(argb(c) for c in values)
-
-    def atomic_write(path, content):
-        fd, tmp_path = tempfile.mkstemp(dir=str(path.parent), prefix=f".{path.name}.")
-        tmp = Path(tmp_path)
-        try:
-            with os.fdopen(fd, "w") as f:
-                f.write(content)
-            os.replace(tmp, path)
-        finally:
-            if tmp.exists():
-                try: tmp.unlink()
-                except FileNotFoundError: pass
 
     shared = {
         "ForegroundActive": rgb(accent),

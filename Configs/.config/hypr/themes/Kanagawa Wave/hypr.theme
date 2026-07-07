@@ -1,13 +1,13 @@
 $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
-$ICON_THEME = Vimix-dark
+$ICON_THEME = Papirus-black-dark
 $COLOR_SCHEME = prefer-dark
 $NVIM_SCHEME = kanagawa
 $NVIM_VARIANT = wave
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
-$CURSOR_THEME = Dracula-cursors
-$CURSOR_SIZE = 22
+$CURSOR_THEME = BreezeX-Dark
+$CURSOR_SIZE = 28
 
 general {
     border_size = 3
@@ -44,7 +44,7 @@ decoration {
         scale = 2
         render_power = 5
         color = rgba(16161DFF)
-        color_inactive = rgba(2A2A37FF)
+        color_inactive = rgba(16161DFF)
     }
 }
 

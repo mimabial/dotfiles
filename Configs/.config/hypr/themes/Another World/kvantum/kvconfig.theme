@@ -27,7 +27,7 @@ check_size=14
 menubar_mouse_tracking=true
 toolbutton_style=0
 double_click=false
-translucent_windows=true
+translucent_windows=false
 blurring=true
 popup_blurring=true
 vertical_spin_indicators=true
@@ -57,7 +57,7 @@ tooltip_delay=-1
 tree_branch_line=false
 dark_titlebar=true
 opaque=QMPlay2,kaffeine,kmplayer,subtitlecomposer,kdenlive,vlc,avidemux,avidemux2_qt4,avidemux3_qt4,avidemux3_qt5,kamoso,QtCreator,VirtualBox,trojita,dragon,digikam,virtualboxvm
-reduce_window_opacity=0
+reduce_window_opacity=40
 scrollable_menu=false
 submenu_delay=250
 no_inactiveness=true
@@ -335,9 +335,6 @@ text.margin.right=4
 min_width=+0.3font
 min_height=+0.3font
 frame.expansion=2.7font
-text.focus.color=#eceff4
-text.press.color=#eceff4
-text.toggle.color=#eceff4
 
 [Splitter]
 indicator.size=48

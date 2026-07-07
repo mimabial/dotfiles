@@ -21,12 +21,15 @@ PreviewSize=32
 [General]
 CloseActiveSplitView=false
 CloseSplitViewChoice=InactiveView
+DynamicView=true
 GlobalViewProps=false
+LockPanels=false
 OpenExternallyCalledFolderInNewTab=true
 OpenNewTabAfterLastTab=true
 ShowFullPath=false
 ShowSelectionToggle=false
 ShowStatusBar=Disabled
+SortingChoice=CaseInsensitiveSorting
 UseTabForSwitchingSplitView=true
 Version=202
 ViewPropsTimestamp=2023,4,26,16,58,48.324

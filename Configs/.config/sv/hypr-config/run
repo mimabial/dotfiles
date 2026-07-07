@@ -1,5 +1,6 @@
 #!/bin/sh
 # runit service: Hyprland config parse/export daemon.
 exec 2>&1
+export PYTHONPYCACHEPREFIX="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/pycache"
 exec "$HOME/.local/state/hypr/pip_env/bin/python" \
 	"$HOME/.local/lib/hypr/util/parse.config.py" --daemon --export

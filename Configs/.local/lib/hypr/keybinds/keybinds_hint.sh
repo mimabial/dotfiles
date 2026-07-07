@@ -13,8 +13,9 @@ if hypr_user_pgrep -x rofi >/dev/null 2>&1; then
 fi
 
 keyconfDir="${XDG_CONFIG_HOME:-$HOME/.config}/hypr"
-kb_hint_conf=("$keyconfDir/lua/keybindings.lua")
+kb_hint_conf=("$keyconfDir/keybindings.lua")
 kb_hint_conf+=("${ROFI_KEYBIND_HINT_CONFIG[@]}")
+kb_hint_conf+=("${BASH_SOURCE[0]}" "${LIB_DIR}/hypr/keybinds/lib/keybinds_hint.py")
 
 kb_cache_dir="$(hypr_runtime_subdir hypr)" || exit 1
 kb_cache="${kb_cache_dir}/keybinds_hint.rofi"

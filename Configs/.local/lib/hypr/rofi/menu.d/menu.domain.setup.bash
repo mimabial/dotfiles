@@ -8,7 +8,13 @@ menu_register_domain_setup() {
   menu_add_item setup "  Bluetooth" action setup_bluetooth
   menu_add_item setup "󱫋  Network" action setup_network
   menu_add_item setup "  Power Profile" action setup_power_profile
-  menu_add_item setup "󰍹  Monitors" action setup_monitors
+  menu_add_item setup "󰍹  Monitors" submenu setup_monitors
+
+  menu_define setup_monitors "Monitors"
+  menu_add_item setup_monitors "󰍹  Edit Config" action setup_monitors_config
+  menu_add_item setup_monitors "󰍹  Set Scale" action setup_monitor_scale
+  menu_add_item setup_monitors "󰍹  Toggle Laptop Display" action setup_monitor_laptop_toggle
+  menu_add_item setup_monitors "󰍹  Toggle Mirroring" action setup_monitor_mirror_toggle
 
   [[ -f ~/.config/hypr/keybindings.lua ]] && menu_add_item setup "  Keybindings" action setup_keybindings
 }
@@ -21,7 +27,10 @@ menu_run_action_setup() {
     setup_wifi) rfkill unblock wifi && present_terminal --hypr-profile tui --app-id org.tui.Impala --title Impala -- impala ;;
     setup_bluetooth) rfkill unblock bluetooth && present_terminal --hypr-profile tui --app-id org.tui.Bluetui --title Bluetui -- bluetui ;;
     setup_network) present_terminal --hypr-profile tui --app-id org.tui.Oryx --title Oryx -- sudo oryx ;;
-    setup_monitors) open_in_editor ~/.config/hypr/monitors.lua ;;
+    setup_monitors_config) open_in_editor ~/.config/hypr/monitors.lua ;;
+    setup_monitor_scale) hyprshell rofi/run-after-close.sh -- hyprshell system/monitor-scale.sh --select ;;
+    setup_monitor_laptop_toggle) hyprshell system/monitor-internal.sh toggle ;;
+    setup_monitor_mirror_toggle) hyprshell system/monitor-mirror.sh toggle ;;
     setup_keybindings) open_in_editor ~/.config/hypr/keybindings.lua ;;
     *) return 1 ;;
   esac

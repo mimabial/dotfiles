@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """Append missing #hex → palette-role entries to each pack's kvantum/colors.map.
 
-Mirrors the role-selection logic of install_kvantum_theme.py:fallback_for():
+This is the canonical role-selection heuristic for the Kvantum colour maps:
   - Restrict candidates to the structural roles
     (background, color0, color8, color4, color12, color5, color7, foreground).
   - Honor the hard-coded template substitutions (#cfc9c2, #d1d1d1, #ffffff).
   - Match by sRGB-corrected luminance.
 
-Baking these mappings in once per pack lets the apply-time generator drop its
-runtime fallback heuristic entirely. Re-run is idempotent.
+Baking these mappings into colors.map once per pack is why the apply-time
+generator (install_kvantum_theme.py, via COLORS_MAP) no longer needs a runtime
+fallback heuristic. Re-run is idempotent.
 """
 import re
 import sys

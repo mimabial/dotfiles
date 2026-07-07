@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
-# Picker helpers: CLI arg parsing, rasi arg list, recent-entry file ops, window geometry.
-# External deps: print_log (core/common); get_rofi_pos (core/common).
+# Picker helpers: CLI arg parsing, rasi arg list, indexed dmenu run, recent-entry
+# file ops, window geometry.
+# External deps: print_log (core/common); get_rofi_pos (core/common); rofi.
 
 rofi_picker_parse_style_args() {
   local out_style_name="$1"
@@ -50,6 +51,38 @@ rofi_picker_rasi_args() {
 
   out_ref=(-config "${rasi_file}")
   [[ -n "${position_override}" ]] && out_ref+=(-theme-str "${position_override}")
+}
+
+rofi_picker_index_to_line() {
+  local raw_file="$1"
+  local index="$2"
+  # rofi -format 'i' is 0-based; awk NR is 1-based.
+  awk -v idx=$((index + 1)) 'NR==idx{print; exit}' "${raw_file}"
+}
+
+rofi_picker_run_indexed() {
+  local out_line_var="$1"
+  local data_file="$2"
+  shift 2
+  local selection_index=""
+
+  # DATA_FILE holds "glyph<TAB>label" rows. Collapse each to one display column
+  # (1:1 per-line), let rofi return a 0-based index, then map it back to the
+  # untouched DATA_FILE line. Remaining args go verbatim to rofi (callers own
+  # -i, theme layering, -no-custom, etc.).
+  # shellcheck disable=SC2016 # Awk program is literal.
+  selection_index="$(
+    awk -F $'\t' 'BEGIN{OFS="\t"}{disp=$1; if($2!=""&&$2!=$1) disp=disp" "$2; print disp}' "${data_file}" |
+      rofi -dmenu -format 'i' "$@"
+  )"
+
+  if [[ -z "${selection_index}" ]]; then
+    printf -v "${out_line_var}" '%s' ""
+    return
+  fi
+
+  printf -v "${out_line_var}" '%s' \
+    "$(rofi_picker_index_to_line "${data_file}" "${selection_index}")"
 }
 
 rofi_picker_ensure_data_file() {

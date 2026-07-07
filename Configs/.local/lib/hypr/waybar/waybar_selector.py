@@ -144,7 +144,10 @@ def layout_selector():
         "Select layout:",
         current_layout_path,
         display_func=display_func,
-        extra_flags=["-theme-str", 'entry {placeholder: "󰍜  Waybar Layout";}'],
+        extra_flags=[
+            "-theme-str", 'entry {placeholder: "󰍜  Waybar Layout";}',
+            "-theme-str", "window { width: 24em; }",
+        ],
     )
     if selected_layout:
         layout_entry = resolve_layout_entry(selected_layout)

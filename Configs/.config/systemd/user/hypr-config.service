@@ -10,6 +10,7 @@ ExecStart=%h/.local/state/hypr/pip_env/bin/python %h/.local/lib/hypr/util/parse.
 Restart=on-failure
 RestartSec=5s
 Environment="PYTHONPATH=%h/.local/lib/hypr"
+Environment="PYTHONPYCACHEPREFIX=%C/hypr/pycache"
 
 # Make sure the required directories exist
 ExecStartPre=/bin/mkdir -p %h/.config/hypr

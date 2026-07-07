@@ -1,30 +1,29 @@
 $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
+
 $ICON_THEME = Vimix-black-dark
 $COLOR_SCHEME = prefer-dark
-$CURSOR_THEME = GoogleDot-Black
+$CURSOR_THEME = Hackneyed-White-Multi-Animated
+$CURSOR_SIZE = 20
 
 general {
     gaps_in = 5
     gaps_out = 10
     border_size = 3
-    col.active_border = rgba(8d8d8dff)
-    col.inactive_border = rgba(8d8d8d66)
-    layout = dwindle
+    col.active_border = rgba(ffffffee) rgba(bfbfbfb0) rgba(bfbfbfb0) rgba(ffffffee) 45deg
+    col.inactive_border = rgba(2a2a2ab0) rgba(3c3c3cb0) rgba(3c3c3cb0) rgba(2a2a2ab0) 45deg
     resize_on_border = true
 }
 
 group {
-    col.border_active = rgba(8d8d8dff)
-    col.border_inactive = rgba(8d8d8d66)
-    col.border_locked_active = rgba(ffffffff)
-    col.border_locked_inactive = rgba(8d8d8d66)
+    col.border_inactive = rgba(1a1a1ab0)
+    col.border_active = rgba(ffffffee) rgba(bfbfbfb0) rgba(bfbfbfb0) rgba(ffffffee) 45deg
 
     groupbar {
-      col.active = rgba(ffffffff)
-      col.inactive = rgba(8d8d8dcc)
+      col.active = rgba(bfbfbfcc)
+      col.inactive = rgba(82828299)
       font_family = JetBrainsMono NFM
       font_size = 10
-      text_color = rgba(0d0d0dff)
+      text_color = rgba(ffffffff)
     }
 }
 

@@ -8,6 +8,9 @@ set -euo pipefail
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/runtime/init.bash"
 hypr_runtime_require system || exit 1
 
+# shellcheck source=/dev/null
+source "${BASH_SOURCE[0]%/*}/pm.updates.lib.sh"
+
 hypr_help_guard "Usage: hyprshell system/system.update [up|--run-upgrade]
 Report pending updates as waybar JSON; 'up' opens an upgrade terminal." "$@"
 
@@ -44,10 +47,6 @@ system_update_handle_signal() {
 
 normalize_count() {
   [[ "${1:-0}" =~ ^[0-9]+$ ]] && printf '%s\n' "${1:-0}" || printf '0\n'
-}
-
-count_updates() {
-  awk 'NF {count++} END {print count + 0}' <<<"${1-}"
 }
 
 capture_update_list() {
@@ -155,20 +154,20 @@ trap 'system_update_cleanup_temp_db "$?"' EXIT
 trap 'system_update_handle_signal 130' INT
 trap 'system_update_handle_signal 143' TERM
 
-capture_update_list ofc_list pacman env CHECKUPDATES_DB="$temp_db" checkupdates
-ofc=$(count_updates "$ofc_list")
+capture_update_list ofc_list pacman pm_updates_repo_cmd "$temp_db"
+ofc=$(pm_updates_count <<<"$ofc_list")
 
 if [[ -n "${aur_helper}" ]]; then
-  capture_update_list aur_list aur "${aur_helper}" -Qua
-  aur=$(count_updates "$aur_list")
+  capture_update_list aur_list aur pm_updates_aur_cmd "${aur_helper}"
+  aur=$(pm_updates_count <<<"$aur_list")
 else
   aur_list=""
   aur=0
 fi
 
 if pkg_installed flatpak; then
-  capture_update_list fpk_list flatpak flatpak remote-ls --updates --columns=application,version,branch
-  fpk=$(count_updates "$fpk_list")
+  capture_update_list fpk_list flatpak pm_updates_flatpak_cmd
+  fpk=$(pm_updates_count <<<"$fpk_list")
 else
   fpk=0
   fpk_list=""

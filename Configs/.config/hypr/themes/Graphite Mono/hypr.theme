@@ -2,16 +2,15 @@ $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
 
 $ICON_THEME = Fluent-grey-dark
 $COLOR_SCHEME = prefer-dark
-$CURSOR_THEME=McMojave-cursors
-$CURSOR_SIZE=28
+$CURSOR_THEME = GoogleDot-Black
 $NVIM_SCHEME = darkvoid
 $NVIM_VARIANT = glow
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = true
 
 general {
-    gaps_in = 8
-    gaps_out = 14
+    gaps_in = 6
+    gaps_out = 12
     border_size = 3
     col.active_border = rgba(d9d9d9ff) rgba(a6a6a6ff) 45deg
     col.inactive_border = rgba(404040cc) rgba(262626cc) 45deg

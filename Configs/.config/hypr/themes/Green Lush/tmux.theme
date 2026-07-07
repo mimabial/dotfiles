@@ -1,0 +1,43 @@
+$HOME/.config/tmux/theme.conf
+
+# Tmux theme for Green Lush
+# Auto-generated from kitty.theme colors
+
+# Standard 16 color palette
+set -g @color0 "#295252"
+set -g @color1 "#F07178"
+set -g @color2 "#11B811"
+set -g @color3 "#CCFFCC"
+set -g @color4 "#12B812"
+set -g @color5 "#9AE6E6"
+set -g @color6 "#9BE6E6"
+set -g @color7 "#CCFFCC"
+set -g @color8 "#578F8F"
+set -g @color9 "#D95757"
+set -g @color10 "#AAF0F0"
+set -g @color11 "#AAF0AA"
+set -g @color12 "#12B812"
+set -g @color13 "#9AE6E6"
+set -g @color14 "#9BE6E6"
+set -g @color15 "#AAF0AA"
+
+# Semantic color aliases
+set -g @theme_bg "#0B0E14"
+set -g @theme_black "#295252"
+set -g @theme_fg "#FFFFFF"
+set -g @theme_accent "#12B812"
+set -g @theme_gray "#578F8F"
+set -g @theme_red "#F07178"
+set -g @theme_green "#11B811"
+set -g @theme_yellow "#CCFFCC"
+
+# Tmux color settings
+set -g status-style "bg=default,fg=#FFFFFF"
+set -g message-style "bg=#0B0E14,fg=#12B812"
+set -g message-command-style "bg=#0B0E14,fg=#12B812"
+set -g pane-border-style "fg=#578F8F"
+set -g pane-active-border-style "fg=#12B812"
+set -g window-status-style "fg=#578F8F"
+set -g window-status-current-style "fg=#12B812,bold"
+set -g mode-style "bg=#12B812,fg=#0B0E14"
+set -g clock-mode-colour "#12B812"

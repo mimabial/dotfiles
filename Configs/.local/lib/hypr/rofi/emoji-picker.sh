@@ -190,13 +190,6 @@ emoji_prepare_selection_workspace() {
   emoji_write_display_rows "${raw_file_ref}" "${display_file_ref}" || return 1
 }
 
-emoji_selection_raw_line() {
-  local raw_file="$1"
-  local selection_index="$2"
-
-  awk -v idx=$((selection_index + 1)) 'NR==idx{print;exit}' "${raw_file}"
-}
-
 emoji_rofi_selection_index() {
   local display_file="$1"
   local -a rofi_config_args=()
@@ -305,7 +298,7 @@ get_emoji_selection() {
     return
   }
   local raw_line
-  raw_line="$(emoji_selection_raw_line "${temp_data}" "${selection_index}")"
+  raw_line="$(rofi_picker_index_to_line "${temp_data}" "${selection_index}")"
   rm -rf "${work_dir}"
   printf "%s" "${raw_line}"
 }

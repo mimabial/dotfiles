@@ -162,9 +162,9 @@ def create_tooltip_text(
                 f' <span foreground="{ui_config.time_color}">{format_time(current_position_seconds)}</span>'
             )
         elif duration_seconds > 0:
-            progress = int((current_position_seconds / duration_seconds) * 20)
+            progress = max(0, min(20, int((current_position_seconds / duration_seconds) * 20)))
             bar = (
-                f'<span foreground="{ui_config.progress_color}">{"█" * progress}</span>'
+                f'<span foreground="{ui_config.progress_color}">{"─" * progress}</span>'
                 f'<span foreground="{ui_config.empty_color}">{"─" * (20 - progress)}</span>'
             )
             tooltip += (
@@ -185,7 +185,7 @@ def create_tooltip_text(
         tooltip += f"\n<span>{p_name}</span>"
     tooltip += (
         f"\n<span size='x-small' foreground='{ui_config.track_color}'>"
-        f"\n󰐎 click to play/pause\n scroll to switch player\n󱥣 rightclick for options</span>"
+        f"\n󰐎 click to play/pause\n scroll to switch player\n󱥣 rightclick for options</span>"
     )
     return tooltip
 

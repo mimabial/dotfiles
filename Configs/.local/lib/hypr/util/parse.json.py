@@ -9,23 +9,15 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 import pyutils.logger as logger
+from pyutils.jsonc import normalize_jsonc
 
 logger = logger.get_logger()
-
-
-def remove_comments(json_data):
-    """Remove single-line and multi-line comments from JSON data."""
-    json_data = re.sub(r"//.*", "", json_data)  # Remove single-line comments
-    json_data = re.sub(
-        r"/\*.*?\*/", "", json_data, flags=re.DOTALL
-    )  # Remove multi-line comments
-    return json_data
 
 
 def parse_json(json_data, query, skip_comments, raw_output):
     """Parse JSON data and return the queried part."""
     if skip_comments:
-        json_data = remove_comments(json_data)
+        json_data = normalize_jsonc(json_data)
     try:
         data = json.loads(json_data)
         if query == ".":
@@ -48,7 +40,7 @@ def parse_json(json_data, query, skip_comments, raw_output):
 def update_json(json_data, key, value, skip_comments):
     """Update the JSON data with the specified key and value."""
     if skip_comments:
-        json_data = remove_comments(json_data)
+        json_data = normalize_jsonc(json_data)
     try:
         data = json.loads(json_data)
         keys = re.findall(r'\["(.*?)"\]|(\w+)', key)

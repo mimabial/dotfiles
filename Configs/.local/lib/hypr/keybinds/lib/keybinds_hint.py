@@ -8,6 +8,32 @@ from collections import defaultdict
 import time
 
 
+CODE_DISPLAY_MAP = {
+    10: "1",
+    11: "2",
+    12: "3",
+    13: "4",
+    14: "5",
+    15: "6",
+    16: "7",
+    17: "8",
+    18: "9",
+    19: "0",
+    51: "backslash",
+    61: "slash",
+    87: "KP_1",
+    88: "KP_2",
+    89: "KP_3",
+    83: "KP_4",
+    84: "KP_5",
+    85: "KP_6",
+    79: "KP_7",
+    80: "KP_8",
+    81: "KP_9",
+    90: "KP_0",
+}
+
+
 def get_hyprctl_binds():
     while True:
         result = subprocess.run(
@@ -51,20 +77,27 @@ def map_dispatcher(dispatcher):
 def map_codeDisplay(keycode, key):
     if keycode == 0:
         return key
-    code_map = {
-        61: "slash",
-        87: "KP_1",
-        88: "KP_2",
-        89: "KP_3",
-        83: "KP_4",
-        84: "KP_5",
-        85: "KP_6",
-        79: "KP_7",
-        80: "KP_8",
-        81: "KP_9",
-        90: "KP_0",
-    }
-    return code_map.get(keycode, key)
+    return CODE_DISPLAY_MAP.get(keycode, key)
+
+
+def infer_blank_key_display(description):
+    if description in {
+        "[Utilities|Monitors] cycle scale",
+        "[Utilities|Monitors] cycle scale backward",
+    }:
+        return CODE_DISPLAY_MAP[51]
+
+    workspace_prefixes = (
+        "[Workspaces] go to workspace ",
+        "[Workspaces] move window to workspace ",
+        "[Workspaces] move window silently to workspace ",
+    )
+    for prefix in workspace_prefixes:
+        if description.startswith(prefix):
+            workspace = description.removeprefix(prefix)
+            if workspace.isdigit():
+                return "0" if workspace == "10" else workspace
+    return ""
 
 
 def map_modDisplay(modmask):
@@ -258,7 +291,8 @@ def expand_meta_data(binds_data):
 
     # First pass: collect submap keys
     for bind in binds_data:
-        bind["action_key"] = bind.get("description", "")
+        original_description = bind.get("description", "")
+        bind["action_key"] = original_description
         if bind.get("has_description", False):
             parsed_description = parse_description(bind["description"])
             bind.update(parsed_description)
@@ -269,6 +303,8 @@ def expand_meta_data(binds_data):
             )
         bind["key"] = map_codeDisplay(bind["keycode"], bind["key"])
         bind["key_display"] = map_keyDisplay(bind["key"])
+        if not bind["key_display"]:
+            bind["key_display"] = infer_blank_key_display(original_description)
         bind["mod_display"] = map_modDisplay(bind["modmask"])
 
         # Handle submaps

@@ -309,8 +309,8 @@
         "tooltip": true,
         "on-click": "hyprshell mediaplayer.py --action play-pause",
         "on-click-right": "hyprshell mediaplayer.py --menu",
-        "on-scroll-up": "hyprshell mediaplayer.py --action next",
-        "on-scroll-down": "hyprshell mediaplayer.py --action previous",
+        "on-scroll-up": "hyprshell mediaplayer.py --action cycle-next",
+        "on-scroll-down": "hyprshell mediaplayer.py --action cycle-previous",
         "restart-interval": 5
     },
     "custom/network#speed": {

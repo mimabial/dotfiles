@@ -264,10 +264,10 @@ show_image_history() {
         -show-icons \
         -eh 3 \
         -theme-str 'listview { lines: 4; columns: 2; }' \
-        -theme-str 'element { enabled: true; orientation: vertical; spacing: 0%; padding: 0%; cursor: pointer; background-color: transparent; text-color: @main-fg; horizontal-align: 0.5; }' \
+        -theme-str 'element { enabled: true; orientation: vertical; spacing: 0%; padding: 0%; cursor: pointer; background-color: transparent; text-color: @foreground; horizontal-align: 0.5; }' \
         -theme-str 'element-text { enabled: false; }' \
         -theme-str 'element-icon { size: 8%; spacing: 0%; padding: 0%; cursor: inherit; background-color: transparent; }' \
-        -theme-str 'element selected.normal { background-color: @select-bg; text-color: @select-fg; }'
+        -theme-str 'element selected.normal { background-color: @selected-background; text-color: @selected-foreground; }'
   )"
 
   [[ -n "${selected_item}" ]] || exit 0

@@ -108,33 +108,37 @@ def save_current_page(page):
         f.write(str(page))
 
 
-def get_temp_color(temp):
+def get_temp_color(temp, crit=100):
+    # Colour is chosen from the reading normalised to the sensor's own critical
+    # point (temp/crit), so one ramp fits any chip. Keep in sync with
+    # sysinfo/lib/temp-color.bash.
+    try:
+        crit = float(crit)
+    except (TypeError, ValueError):
+        crit = 100.0
+    if crit <= 0:
+        crit = 100.0
+    norm = temp * 100.0 / crit
+
     temp_colors = {
-        120: "#8b0000",  # Dark Red for 120 and above
-        115: "#ad1f2f",  # Red for 115 to 119
-        110: "#d22f2f",  # Light Red for 110 to 114
-        105: "#ff471a",  # Orange-Red for 105 to 109
-        100: "#ff6347",  # Tomato for 100 to 104
-        95: "#ff8c00",  # Dark Orange for 95 to 99
-        90: "#ffa500",  # Orange for 90 to 94
-        85: "#ffd700",  # Gold for 85 to 89
-        80: "#ffff00",  # Yellow for 80 to 84
-        75: "#ffa07a",  # Light Salmon for 75 to 79
-        70: "#ff7f50",  # Coral for 70 to 74
-        65: "#ff4500",  # Orange Red for 65 to 69
-        60: "#ff6347",  # Tomato for 60 to 64
-        55: "#ff8c00",  # Dark Orange for 55 to 59
-        45: "",  # No color for 45 to 54
-        40: "#add8e6",  # Light Blue for 40 to 44
-        35: "#87ceeb",  # Sky Blue for 35 to 39
-        30: "#4682b4",  # Steel Blue for 30 to 34
-        25: "#4169e1",  # Royal Blue for 25 to 29
-        20: "#0000ff",  # Blue for 20 to 24
-        0: "#00008b",  # Dark Blue for below 20
+        90: "#8b0000",
+        85: "#ad1f2f",
+        80: "#d22f2f",
+        75: "#ff471a",
+        70: "#ff6347",
+        65: "#ff8c00",
+        60: "#ffa500",
+        45: "",
+        40: "#add8e6",
+        35: "#87ceeb",
+        30: "#4682b4",
+        25: "#4169e1",
+        20: "#0000ff",
+        0: "#00008b",
     }
 
     for threshold in sorted(temp_colors.keys(), reverse=True):
-        if temp >= threshold:
+        if norm >= threshold:
             color = temp_colors[threshold]
             if color:
                 return f"<span color='{color}'><b>{temp}°C</b></span>"
@@ -170,7 +174,13 @@ def get_sensor_data(result_sensors, page=0):
             if isinstance(values, dict):
                 for key, value in values.items():
                     if "temp" in key and "input" in key:
-                        temp_color = get_temp_color(value)
+                        prefix = key[: -len("_input")]
+                        crit = (
+                            values.get(f"{prefix}_crit")
+                            or values.get(f"{prefix}_max")
+                            or 100
+                        )
+                        temp_color = get_temp_color(value, crit)
                         device_data[device]["temperatures"].append(
                             f"{sensor}: {temp_color}"
                         )

@@ -6,7 +6,7 @@ import sys
 
 from pyutils.compositor import HyprctlWrapper
 from pyutils.xdg_base_dirs import xdg_config_home, xdg_data_home
-from waybar_jsonc import modify_json_key, parse_json_file
+from pyutils.jsonc import modify_json_key, parse_json_file
 from waybar_layouts import layered_module_files, resolve_style_path
 from waybar_shared import (
     CONFIG_JSONC,

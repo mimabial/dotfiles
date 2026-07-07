@@ -4,6 +4,9 @@ set -euo pipefail
 
 export LC_ALL=C
 
+# shellcheck source=/dev/null
+source "${BASH_SOURCE[0]%/*}/pm.updates.lib.sh"
+
 NO_CONFIRM=0
 FORCE_PM=""
 
@@ -285,23 +288,23 @@ list_updates() {
 
   if has checkupdates; then
     temp_db="$(mktemp -d "${XDG_RUNTIME_DIR:-/tmp}/pm-checkupdates.XXXXXX")"
-    capture_updates env CHECKUPDATES_DB="${temp_db}" checkupdates |
+    capture_updates pm_updates_repo_cmd "${temp_db}" |
       awk 'NF { print "pacman\t" $0 }'
     rm -rf -- "${temp_db}" >/dev/null 2>&1 || true
   fi
 
   if helper="$(aur_helper)"; then
-    capture_updates "${helper}" -Qua | awk 'NF { print "aur\t" $0 }'
+    capture_updates pm_updates_aur_cmd "${helper}" | awk 'NF { print "aur\t" $0 }'
   fi
 
   if has flatpak; then
-    capture_updates flatpak remote-ls --updates --columns=application,version,branch |
+    capture_updates pm_updates_flatpak_cmd |
       awk 'NF { print "flatpak\t" $0 }'
   fi
 }
 
 count_updates() {
-  list_updates | awk 'NF { count++ } END { print count + 0 }'
+  list_updates | pm_updates_count
 }
 
 clean_cache() {

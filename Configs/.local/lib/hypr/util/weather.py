@@ -363,11 +363,14 @@ if weather is None:
     headers = {"User-Agent": "Mozilla/5.0"}
     try:
         response = requests.get(URL, timeout=10, headers=headers)
+        response.raise_for_status()
         weather = response.json()
         save_cache(weather)
     except (requests.RequestException, json.decoder.JSONDecodeError) as e:
-        print(f"Error: Failed to get weather data: {e}", file=sys.stderr)
-        sys.exit(1)
+        weather = load_cache()
+        if weather is None:
+            print(f"Error: Failed to get weather data: {e}", file=sys.stderr)
+            sys.exit(1)
 
 current_weather = weather["current_condition"][0]
 

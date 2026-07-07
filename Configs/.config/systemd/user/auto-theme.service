@@ -12,6 +12,7 @@ RestartSec=5
 
 # Environment
 Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONPYCACHEPREFIX=%C/hypr/pycache
 
 [Install]
 WantedBy=graphical-session.target
