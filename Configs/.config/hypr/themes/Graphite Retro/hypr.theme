@@ -2,27 +2,30 @@ $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 
 $ICON_THEME = Fluent-grey-dark
 $COLOR_SCHEME = prefer-dark
-$NVIM_SCHEME = moonfly
-$NVIM_VARIANT =
+
+$NVIM_SCHEME = darkvoid
+$NVIM_VARIANT = glow
 $NVIM_BACKGROUND = dark
-$NVIM_TRANSPARENCY = true
-$CURSOR_THEME = GoogleDot-Black
+$NVIM_TRANSPARENCY = false
+
+$CURSOR_THEME = Vimix-cursors
+$CURSOR_SIZE = 28
 
 general {
     gaps_in = 8
     gaps_out = 14
     border_size = 3
     col.active_border = rgba(a6a6a6ff) 
-    col.inactive_border = rgba(262626cc) 
+    col.inactive_border = rgba(1c1c1ccc) 
     layout = dwindle
     resize_on_border = true
 }
 
 group {
     col.border_active = rgba(a6a6a6ff) 
-    col.border_inactive = rgba(262626cc) 
+    col.border_inactive = rgba(1c1c1ccc) 
     col.border_locked_active = rgba(a6a6a6ff) 
-    col.border_locked_inactive = rgba(262626cc) 
+    col.border_locked_inactive = rgba(1c1c1ccc) 
 }
 
 decoration {

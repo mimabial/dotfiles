@@ -4,7 +4,7 @@ $HOME/.config/waybar/theme.css
 @define-color fg #eceffd;
 @define-color br #525fb8;
 
-@define-color alt_bg #6c5a30;
+@define-color alt_bg #03063c;
 @define-color alt_fg @fg;
 @define-color alt_br #abf157;
 

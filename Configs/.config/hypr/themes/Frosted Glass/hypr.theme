@@ -1,6 +1,7 @@
 $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 $ICON_THEME = Fluent-light
 $COLOR_SCHEME = prefer-light
+$NVIM_TRANSPARENCY = false
 $CURSOR_THEME = GoogleDot-Blue
 
 general {

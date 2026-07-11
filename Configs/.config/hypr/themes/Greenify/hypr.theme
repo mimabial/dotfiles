@@ -2,11 +2,11 @@ $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 $ICON_THEME = Tela-green-dark
 $COLOR_SCHEME=prefer-dark
 $NVIM_SCHEME = thorn
-$NVIM_VARIANT = dark
+$NVIM_VARIANT = forest
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
-$CURSOR_THEME = PearWhiteCursors
+$CURSOR_THEME = Colloid-cursors
 $CURSOR_SIZE = 24
 
 general {

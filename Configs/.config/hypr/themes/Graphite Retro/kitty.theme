@@ -4,7 +4,7 @@ $HOME/.config/kitty/theme.conf
 foreground #c0c0c0
 foreground              #D9D9D9
 background #1c1c1c
-background              #262626
+background              #1c1c1c
 selection_foreground #1c1c1c
 selection_background #1bfd9c
 

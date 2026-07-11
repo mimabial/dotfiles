@@ -1,6 +1,7 @@
 $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 $ICON_THEME = candy-icons
 $COLOR_SCHEME = prefer-dark
+$NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME = capitaine-cursors-light
 $CURSOR_SIZE = 28

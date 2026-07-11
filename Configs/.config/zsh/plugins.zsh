@@ -10,10 +10,6 @@ zinit snippet OMZP::sudo
 # Allows searching your command history by multiple words, making it easier to find previous commands.
 zinit load zdharma-continuum/history-search-multi-word
 
-# Snippet: Useful Zsh functions
-# Loads a collection of handy Zsh functions from a Gist (pinned).
-zinit snippet https://gist.githubusercontent.com/hightemp/5071909/raw/5786e425463ce8521d52211e883a1b94677c62f3
-
 # Plugin: z (rupa/z)
 # Enables quick directory jumping based on your usage history.
 # just like zoxide, but for zsh

@@ -2,16 +2,13 @@ $HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
 
 $ICON_THEME = Fluent-light
 $COLOR_SCHEME = prefer-light
-$CURSOR_THEME = phinger-cursors-light
-$CURSOR_SIZE = 25
 $NVIM_SCHEME = melange
 $NVIM_VARIANT = light
 $NVIM_BACKGROUND = light
+$NVIM_TRANSPARENCY = false
 
-# Theme variables above are the primary inputs used by theme.switch.sh.
-exec = gsettings set org.gnome.desktop.interface cursor-theme $CURSOR_THEME
-exec = gsettings set org.gnome.desktop.interface cursor-size $CURSOR_SIZE
-exec = hyprctl setcursor $CURSOR_THEME $CURSOR_SIZE
+$CURSOR_THEME = BreezeX-Dark
+$CURSOR_SIZE = 28
 
 general {
     gaps_in = 4
@@ -36,8 +33,8 @@ decoration {
 
     blur {
         enabled = yes
-        size = 5
-        passes = 2
+        size = 6
+        passes = 3
         new_optimizations = on
         ignore_opacity = on
         xray = false

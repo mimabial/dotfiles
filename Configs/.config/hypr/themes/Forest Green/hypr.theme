@@ -7,7 +7,7 @@ $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME = oldSys
-$CURSOR_SIZE = 20
+$CURSOR_SIZE = 28
 
 general {
     gaps_in = 5

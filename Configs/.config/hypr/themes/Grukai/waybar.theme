@@ -4,7 +4,7 @@ $HOME/.config/waybar/theme.css
 @define-color fg #F4FaFc;
 @define-color br #5E4533; /* active tab */
 
-@define-color alt_bg #8B6F56; /* cursor */
+@define-color alt_bg #131311; /* cursor */
 @define-color alt_fg #FFFFFF;
 @define-color alt_br #A3A365;
 

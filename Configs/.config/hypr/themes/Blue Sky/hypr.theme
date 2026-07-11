@@ -2,6 +2,7 @@ $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 
 $ICON_THEME = Newaita-reborn-nord-dark
 $COLOR_SCHEME = prefer-dark
+$NVIM_TRANSPARENCY = false
 $CURSOR_THEME= material_light_cursors
 $CURSOR_SIZE= 28
 
@@ -48,5 +49,4 @@ decoration {
         color_inactive = 0x40ffffff
     }
 }
-
 

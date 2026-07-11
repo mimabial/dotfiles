@@ -1,7 +1,7 @@
 $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 $ICON_THEME = Nordzy
-$CURSOR_THEME=Nordzy-cursors-white
-$CURSOR_SIZE = 24
+$CURSOR_THEME = Nordzy-cursors-white
+$CURSOR_SIZE = 28
 $COLOR_SCHEME = prefer-dark
 $NVIM_SCHEME = nord
 $NVIM_BACKGROUND = dark

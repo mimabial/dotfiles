@@ -7,7 +7,7 @@ $CURSOR_SIZE = 24
 
 $NVIM_SCHEME = dracula
 $NVIM_BACKGROUND = dark
-$NVIM_TRANSPARENCY = true
+$NVIM_TRANSPARENCY = false
 
 general {
     gaps_in = 3

@@ -130,7 +130,7 @@ theme_notify_finish() {
   local theme_name="${themeSet:-${HYPR_THEME}}"
   [[ -z "${exit_code}" ]] && exit_code=0
 
-  if [[ "${exit_code}" -ne 0 ]]; then
+  if [[ "${exit_code}" -ne 0 && "${theme_switch_state_updated}" -eq 1 ]]; then
     theme_notify_send "Theme switch interrupted" "${theme_name}" 2500 critical
   fi
 }

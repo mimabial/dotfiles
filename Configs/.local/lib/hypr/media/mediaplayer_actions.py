@@ -99,6 +99,11 @@ rofi_picker_compute_window_geometry \
   "${media_width_em}" "${media_height_em}" \
   360 220
 
+# Fixed height underestimates real row height; keep width, let rofi size height to content.
+if [[ "${media_window_theme}" =~ width:\ *([0-9]+)px ]]; then
+  media_window_theme="window { width: ${BASH_REMATCH[1]}px; }"
+fi
+
 theme_ref="${ROFI_MEDIAPLAYER_MENU_STYLE:-${ROFI_MEDIAPLAYER_STYLE:-clipboard}}"
 placeholder="${MEDIA_MENU_PLACEHOLDER:- Media}"
 prompt="${MEDIA_MENU_PROMPT:-Media}"
@@ -114,7 +119,7 @@ rofi_args=(
   -me-accept-entry MousePrimary
   -p "${prompt}"
   -theme "$(rofi_resolve_theme "${theme_ref}")"
-  -theme-str "entry { placeholder: \"${placeholder}\"; } ${rofi_position} ${r_override}"
+  -theme-str "entry { placeholder: \"${placeholder}\"; } listview { lines: ${menu_lines}; } ${rofi_position} ${r_override}"
   -theme-str "${font_override}"
   -theme-str "${media_window_theme}"
 )

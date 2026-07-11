@@ -6,7 +6,7 @@ $HOME/.config/dunst/theme.conf
 
 /* Background Colors - Deep void dark grays */
 @define-color bg-primary #1c1c1c;
-@define-color bg-secondary #262626;
+@define-color bg-secondary #1c1c1c;
 @define-color bg-tertiary #303030;
 
 /* Accent Colors - Signature glow colors from darkvoid */
@@ -20,7 +20,7 @@ $HOME/.config/dunst/theme.conf
 
 /* Border Colors - Muted grays */
 @define-color border-primary #a6a6a6;
-@define-color border-secondary #262626;
+@define-color border-secondary #1c1c1c;
 
 /* Utility Colors */
 @define-color gray #585858;

@@ -1,37 +1,37 @@
 $HOME/.config/waybar/theme.css
 
 @define-color bg #fdf6e3; /* base2 */
-@define-color fg #011b29; /* base00 */
+@define-color fg #2f4f4f; /* base00 */
 @define-color br #93a1a1; /* base1 */
 
-@define-color alt_bg #93a1a1;
+@define-color alt_bg #005CAB;
 @define-color alt_fg @fg;
-@define-color alt_br #005CAB; /* blue */
+@define-color alt_br #00A651; /* blue */
 
-@define-color act_bg #268bd2;
-@define-color act_fg #003DA5; /* base3 */
+@define-color act_bg #005CAB;
+@define-color act_fg #005CAB; /* base3 */
 @define-color act_br #fdf6e3;
 
 @define-color hvr_bg #268bd2;
 @define-color hvr_fg #E1261C;
 @define-color hvr_br #00A651;
 
-@define-color c0 #f8f9f9;
+@define-color c0 #fdf6e3;
 @define-color c1 #D0021B;
 @define-color c2 #00A651;
-@define-color c3 #FFC425;
+@define-color c3 #00A651;
 @define-color c4 #005CAB;
 @define-color c5 #D0021B; /* violet */
 @define-color c6 #005CAB;
-@define-color c7 #003DA5;
-@define-color c8 #f6ffec; /* base00 */
+@define-color c7 #778899;
+@define-color c8 #fdf6e3; /* base00 */
 @define-color c9 #E1261C;
 @define-color c10 #00C853;
-@define-color c11 #FFD500;
+@define-color c11 #00C853;
 @define-color c12 #0066CC;
 @define-color c13 #E1261C; /* magenta */
 @define-color c14 #0066CC;
-@define-color c15 #A4A4A4;
+@define-color c15 #708090;
 
 @define-color accent #005CAB; /* blue */
 @define-color info @c6;

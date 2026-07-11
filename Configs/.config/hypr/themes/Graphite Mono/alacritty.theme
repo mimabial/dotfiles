@@ -1,33 +1,29 @@
 $HOME/.config/alacritty/theme.toml
 
-[colors.primary]
-foreground = "#D9D9D9"
-background = "#262626"
+[colors.bright]
+black = "#403833"
+red = "#E8838F"
+green = "#8BAE68"
+yellow = "#D68C67"
+blue = "#61ABDA"
+magenta = "#CF86C1"
+cyan = "#65B8C1"
+white = "#888F94"
 
 [colors.cursor]
-text = "#D9D9D9"
-cursor = "#A6A6A6"
-
-[colors.selection]
-text = "#262626"
-background = "#A6A6A6"
+cursor = "#C4CACF"
+text = "#1C1917"
 
 [colors.normal]
-black = "#404040"
-red = "#D9D9D9"
-green = "#D9D9D9"
-yellow = "#595959"
-blue = "#A6A6A6"
-magenta = "#A6A6A6"
-cyan = "#A6A6A6"
-white = "#D9D9D9"
+black = "#1C1917"
+blue = "#6099C0"
+cyan = "#66A5AD"
+green = "#819B69"
+magenta = "#B279A7"
+red = "#DE6E7C"
+white = "#B4BDC3"
+yellow = "#B77E64"
 
-[colors.bright]
-black = "#404040"
-red = "#D9D9D9"
-green = "#D9D9D9"
-yellow = "#595959"
-blue = "#A6A6A6"
-magenta = "#A6A6A6"
-cyan = "#A6A6A6"
-white = "#D9D9D9"
+[colors.primary]
+background = "#1C1917"
+foreground = "#B4BDC3"

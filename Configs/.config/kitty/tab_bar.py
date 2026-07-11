@@ -17,6 +17,7 @@ try:
         TabBarData,
         as_rgb,
         draw_attributed_string,
+        get_boss,
     )
     from kitty.utils import color_as_int
 except ImportError:
@@ -34,6 +35,9 @@ except ImportError:
 
     def color_as_int(x: Any) -> int:  # type: ignore
         return 0
+
+    def get_boss() -> Any:  # type: ignore
+        return None
 
 
 ICON = " 󱚠 TERM "
@@ -195,13 +199,24 @@ def calc_draw_spaces(*args) -> int:
     return length
 
 
+def _active_window_bg() -> int:
+    """Live background of the focused window (tracks OSC 11), falling back to the theme icon_bg."""
+    try:
+        window = get_boss().active_window
+        if window is not None:
+            return as_rgb(color_as_int(window.screen.color_profile.default_bg))
+    except Exception:
+        pass
+    return icon_bg
+
+
 def _draw_icon(screen: Screen, index: int, layout_name: str) -> int:
     if index != 1:
         return 0
 
     fg, bg = screen.cursor.fg, screen.cursor.bg
     screen.cursor.fg = icon_fg
-    screen.cursor.bg = icon_bg
+    screen.cursor.bg = _active_window_bg()
     screen.cursor.italic = False
     screen.cursor.bold = True
 

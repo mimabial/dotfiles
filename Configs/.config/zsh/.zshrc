@@ -4,6 +4,8 @@
 typeset -g ZSHRC_LOADED=1
 # Ignore commands that start with spaces and consecutive duplicates.
 setopt HIST_IGNORE_SPACE HIST_IGNORE_DUPS
+# Typing a directory path as a command cds into it.
+setopt AUTO_CD
 # Don't add certain commands to the history file.
 zshaddhistory() {
   emulate -L zsh

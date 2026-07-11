@@ -23,7 +23,6 @@ CloseActiveSplitView=false
 CloseSplitViewChoice=InactiveView
 DynamicView=true
 GlobalViewProps=false
-LockPanels=false
 OpenExternallyCalledFolderInNewTab=true
 OpenNewTabAfterLastTab=true
 ShowFullPath=false

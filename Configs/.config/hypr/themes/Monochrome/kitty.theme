@@ -5,7 +5,7 @@ background              #0D0D0D
 selection_foreground    #0D0D0D
 selection_background    #FFFFFF
 
-cursor                  #88e788
+cursor                  #85dc85
 cursor_text_color       #0D0D0D
 
 url_color               #8D8D8D
@@ -17,7 +17,7 @@ bell_border_color       #FFFFFF
 wayland_titlebar_color  system
 macos_titlebar_color    system
 
-active_tab_foreground   #88e788
+active_tab_foreground   #80a0ff
 active_tab_background   #0D0D0D
 inactive_tab_foreground #8D8D8D
 inactive_tab_background #0D0D0D
@@ -30,19 +30,19 @@ mark2_background        #8D8D8D
 mark3_foreground        #0D0D0D
 mark3_background        #CECECE
 
-color0  #0D0D0D
-color1  #FF0000
-color2  #88e788
-color3  #CECECE
-color4  #9096C9
-color5  #9B9B9B
-color6  #B0B0B0
-color7  #ECECEC
-color8  #8D8D8D
-color9  #FF0000
-color10 #88e788
-color11 #CECECE
-color12 #9096C9
-color13 #9B9B9B
-color14 #B0B0B0
-color15 #FFFFFF
+color0  #323437
+color1  #ff5d5d
+color2  #8cc85f
+color3  #e3c78a
+color4  #80a0ff
+color5  #cf87e8
+color6  #79dac8
+color7  #c6c6c6
+color8  #949494
+color9  #ff5189
+color10 #36c692
+color11 #c6c684
+color12 #74b2ff
+color13 #ae81ff
+color14 #85dc85
+color15 #e4e4e4

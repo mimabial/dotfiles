@@ -2682,7 +2682,7 @@
        cy="416"
        r="6"
        id="circle29777"
-       style="stroke-width:1.2;fill:#2c2c2c;fill-opacity:1" />
+       style="stroke-width:1.2;fill:#1c1c1c;fill-opacity:1" />
   </g>
   <g
      id="slidercursor-tickless-pressed"
@@ -2711,7 +2711,7 @@
        cy="416"
        r="5"
        id="circle46204"
-       style="fill:#2c2c2c;fill-opacity:1;stroke-width:1" />
+       style="fill:#1c1c1c;fill-opacity:1;stroke-width:1" />
   </g>
   <g
      id="slidercursor-tickless-focused"
@@ -2740,7 +2740,7 @@
        cy="416"
        r="6"
        id="circle755"
-       style="fill:#2c2c2c;fill-opacity:1" />
+       style="fill:#1c1c1c;fill-opacity:1" />
   </g>
   <g
      id="slidercursor-normal"
@@ -2759,7 +2759,7 @@
     <path
        d="m 335,438 -3.4079,-3.4767 c -0.94165,-0.97333 -2.2378,-1.5231 -3.5921,-1.5234 -2.7614,0 -5,2.2386 -5,5 0,2.7614 2.2386,5 5,5 1.3405,-0.002 2.6242,-0.54194 3.5628,-1.499 0.004,-0.002 0.009,-0.004 0.013,-0.007 z"
        id="path53561"
-       style="fill:#2c2c2c;fill-opacity:1" />
+       style="fill:#1c1c1c;fill-opacity:1" />
   </g>
   <g
      id="slider-normal-right"
@@ -3261,7 +3261,7 @@
      y="912.5"
      width="30"
      height="30"
-     style="fill:#2c2c2c;fill-opacity:1" />
+     style="fill:#1c1c1c;fill-opacity:1" />
   <g
      transform="translate(2.5027073,-257.5)"
      id="g997">
@@ -3404,7 +3404,7 @@
      y="912.5"
      width="30"
      height="30"
-     style="fill:#2c2c2c;fill-opacity:1" />
+     style="fill:#1c1c1c;fill-opacity:1" />
   <g
      id="common-normal-top"
      transform="translate(-372,536.96735)">
@@ -3772,11 +3772,11 @@
   <path
      id="window-normal"
      d="m380 814.26h30v30h-30z"
-     style="fill:#2c2c2c;fill-opacity:1" />
+     style="fill:#1c1c1c;fill-opacity:1" />
   <path
      id="window-normal-inactive"
      d="m412 814.26h30v30h-30z"
-     style="fill:#2c2c2c" />
+     style="fill:#1c1c1c" />
   <rect
      id="menubar-normal"
      x="307.53"
@@ -3784,7 +3784,7 @@
      width="20"
      height="20"
      opacity=".35"
-     style="fill:#2c2c2c;fill-opacity:1;opacity:1" />
+     style="fill:#1c1c1c;fill-opacity:1;opacity:1" />
   <rect
      id="menubar-normal-left"
      transform="rotate(90)"
@@ -3793,7 +3793,7 @@
      width="20"
      height="5"
      opacity=".35"
-     style="fill:#2c2c2c;fill-opacity:1;opacity:1" />
+     style="fill:#1c1c1c;fill-opacity:1;opacity:1" />
   <rect
      id="menubar-normal-topleft"
      transform="rotate(90)"
@@ -3802,7 +3802,7 @@
      width="5"
      height="5"
      opacity=".35"
-     style="fill:#2c2c2c;fill-opacity:1;opacity:1" />
+     style="fill:#1c1c1c;fill-opacity:1;opacity:1" />
   <rect
      id="menubar-normal-top"
      x="307.53"
@@ -3810,7 +3810,7 @@
      width="20"
      height="5"
      opacity=".35"
-     style="fill:#2c2c2c;fill-opacity:1;opacity:1" />
+     style="fill:#1c1c1c;fill-opacity:1;opacity:1" />
   <rect
      id="menubar-normal-right"
      transform="rotate(90)"
@@ -3819,7 +3819,7 @@
      width="20"
      height="5"
      opacity=".35"
-     style="fill:#2c2c2c;fill-opacity:1;opacity:1" />
+     style="fill:#1c1c1c;fill-opacity:1;opacity:1" />
   <rect
      id="menubar-normal-topright"
      transform="rotate(90)"
@@ -3828,7 +3828,7 @@
      width="5"
      height="5"
      opacity=".35"
-     style="fill:#2c2c2c;fill-opacity:1;opacity:1" />
+     style="fill:#1c1c1c;fill-opacity:1;opacity:1" />
   <g
      id="menubar-normal-bottomleft"
      transform="translate(2.5269 -237.73)">
@@ -3840,7 +3840,7 @@
        opacity=".35"
        stroke-width="2"
        id="rect1157"
-       style="fill:#2c2c2c;fill-opacity:1;opacity:1" />
+       style="fill:#1c1c1c;fill-opacity:1;opacity:1" />
     <g
        transform="matrix(.25 0 0 1 223.75 0)"
        id="g1161">
@@ -3861,7 +3861,7 @@
        opacity=".35"
        stroke-width="2"
        id="rect1164"
-       style="fill:#2c2c2c;fill-opacity:1;opacity:1" />
+       style="fill:#1c1c1c;fill-opacity:1;opacity:1" />
     <g
        transform="matrix(.25 0 0 1 248.75 0)"
        fill="#b6b6b6"
@@ -3883,7 +3883,7 @@
        opacity=".35"
        stroke-width="2"
        id="rect1171"
-       style="fill:#2c2c2c;fill-opacity:1;opacity:1" />
+       style="fill:#1c1c1c;fill-opacity:1;opacity:1" />
     <rect
        x="305"
        y="618"
@@ -3899,7 +3899,7 @@
      width="20"
      height="20"
      opacity=".35"
-     style="fill:#2c2c2c;fill-opacity:1;opacity:1" />
+     style="fill:#1c1c1c;fill-opacity:1;opacity:1" />
   <rect
      id="menubar-normal-inactive-left"
      transform="rotate(90)"
@@ -3908,7 +3908,7 @@
      width="20"
      height="5"
      opacity=".35"
-     style="fill:#2c2c2c;fill-opacity:1;opacity:1" />
+     style="fill:#1c1c1c;fill-opacity:1;opacity:1" />
   <rect
      id="menubar-normal-inactive-topleft"
      transform="rotate(90)"
@@ -3917,7 +3917,7 @@
      width="5"
      height="5"
      opacity=".35"
-     style="fill:#2c2c2c;fill-opacity:1;opacity:1" />
+     style="fill:#1c1c1c;fill-opacity:1;opacity:1" />
   <rect
      id="menubar-normal-inactive-top"
      x="342.53"
@@ -3925,7 +3925,7 @@
      width="20"
      height="5"
      opacity=".35"
-     style="fill:#2c2c2c;fill-opacity:1;opacity:1" />
+     style="fill:#1c1c1c;fill-opacity:1;opacity:1" />
   <rect
      id="menubar-normal-inactive-right"
      transform="rotate(90)"
@@ -3934,7 +3934,7 @@
      width="20"
      height="5"
      opacity=".35"
-     style="fill:#2c2c2c;fill-opacity:1;opacity:1" />
+     style="fill:#1c1c1c;fill-opacity:1;opacity:1" />
   <rect
      id="menubar-normal-inactive-topright"
      transform="rotate(90)"
@@ -3943,7 +3943,7 @@
      width="5"
      height="5"
      opacity=".35"
-     style="fill:#2c2c2c;fill-opacity:1;opacity:1" />
+     style="fill:#1c1c1c;fill-opacity:1;opacity:1" />
   <g
      id="menubar-normal-inactive-bottomleft"
      transform="translate(37.527 -237.73)">
@@ -3955,7 +3955,7 @@
        opacity=".35"
        stroke-width="2"
        id="rect1182"
-       style="fill:#2c2c2c;fill-opacity:1;opacity:1" />
+       style="fill:#1c1c1c;fill-opacity:1;opacity:1" />
     <g
        transform="matrix(.25 0 0 1 223.75 0)"
        id="g1186">
@@ -3976,7 +3976,7 @@
        opacity=".35"
        stroke-width="2"
        id="rect1189"
-       style="fill:#2c2c2c;fill-opacity:1;opacity:1" />
+       style="fill:#1c1c1c;fill-opacity:1;opacity:1" />
     <g
        transform="matrix(.25 0 0 1 248.75 0)"
        fill="#b6b6b6"
@@ -3998,7 +3998,7 @@
        opacity=".35"
        stroke-width="2"
        id="rect1196"
-       style="fill:#2c2c2c;fill-opacity:1;opacity:1" />
+       style="fill:#1c1c1c;fill-opacity:1;opacity:1" />
     <rect
        x="305"
        y="618"
@@ -5571,14 +5571,14 @@
   <path
      id="tabframe-normal"
      d="m 274.99996,479.99997 h 48.00001 v 48 h -48.00001 z"
-     style="fill:#2c2c2c;fill-opacity:1" />
+     style="fill:#1c1c1c;fill-opacity:1" />
   <g
      id="tabframe-normal-topleft"
      transform="matrix(1.6667,0,0,1.6667,71.225402,-694.60684)">
     <path
        d="m 122.26023,699.35012 c -2.99055,9e-4 -5.39781,2.40906 -5.39781,5.39988 h 5.39988 z"
        id="path1079-9"
-       style="fill:#2c2c2c;fill-opacity:1" />
+       style="fill:#1c1c1c;fill-opacity:1" />
     <path
        id="path66441-2"
        style="fill:#ffffff;fill-opacity:1;opacity:0.12"
@@ -5591,7 +5591,7 @@
     <path
        d="m 116.85967,703.75 h 5.39989 v 48 h -5.39989 z"
        id="path1082-2"
-       style="fill:#2c2c2c;fill-opacity:1" />
+       style="fill:#1c1c1c;fill-opacity:1" />
     <path
        d="m 116.26,703.75 h 0.59999 v 48 H 116.26 Z"
        id="path66626-8"
@@ -5660,7 +5660,7 @@
     <path
        d="m 397,310.0001 -3.4079,-3.4767 C 392.65045,305.55007 391.3543,305.0003 390,305 c -2.7614,0 -5,2.2386 -5,5 0,2.7614 2.2386,5 5,5 1.3405,-0.002 2.6242,-0.54194 3.5628,-1.499 0.004,-0.002 0.009,-0.004 0.013,-0.007 z"
        id="path64499"
-       style="fill:#2c2c2c;fill-opacity:1" />
+       style="fill:#1c1c1c;fill-opacity:1" />
   </g>
   <g
      id="slidercursor-pressed"
@@ -5678,7 +5678,7 @@
     <path
        d="m 395.8,310.00008 -2.72632,-2.78136 C 392.32036,306.44006 391.28344,306.00024 390.2,306 c -2.20912,0 -4,1.79088 -4,4 0,2.20912 1.79088,4 4,4 1.0724,-0.002 2.09936,-0.43355 2.85024,-1.1992 0.003,-0.002 0.007,-0.003 0.0104,-0.006 z"
        id="path64792"
-       style="fill:#2c2c2c;fill-opacity:1;stroke-width:0.8" />
+       style="fill:#1c1c1c;fill-opacity:1;stroke-width:0.8" />
   </g>
   <g
      id="slidercursor-tickless-disabled"
@@ -5701,7 +5701,7 @@
        cy="416"
        r="6"
        id="circle64884"
-       style="fill:#2c2c2c;fill-opacity:1;stroke-width:1.2" />
+       style="fill:#1c1c1c;fill-opacity:1;stroke-width:1.2" />
   </g>
   <g
      id="slidercursor-disabled"
@@ -5720,7 +5720,7 @@
     <path
        d="m 335,438 -3.4079,-3.4767 c -0.94165,-0.97333 -2.2378,-1.5231 -3.5921,-1.5234 -2.7614,0 -5,2.2386 -5,5 0,2.7614 2.2386,5 5,5 1.3405,-0.002 2.6242,-0.54194 3.5628,-1.499 0.004,-0.002 0.009,-0.004 0.013,-0.007 z"
        id="path64892"
-       style="fill:#2c2c2c;fill-opacity:1" />
+       style="fill:#1c1c1c;fill-opacity:1" />
   </g>
   <g
      id="arrow-menu-disabled"

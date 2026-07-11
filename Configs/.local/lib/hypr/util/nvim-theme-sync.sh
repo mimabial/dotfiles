@@ -22,7 +22,7 @@ log_warn() {
 runtime_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 remote_timeout="${NVIM_THEME_SYNC_TIMEOUT:-2s}"
 remote_kill_after="${NVIM_THEME_SYNC_KILL_AFTER:-1s}"
-remote_cmd='<Cmd>lua package.loaded["lib.theme_manager"]=nil; package.loaded["plugins.themes.definitions.pywal"]=nil; local manager=require("lib.theme_manager"); manager.apply_system_theme(manager.load_themes())<CR><Cmd>redraw!<CR>'
+remote_cmd='<Cmd>lua package.loaded["lib.theme_manager"]=nil; for name in pairs(package.loaded) do if name:match("^plugins%.themes%.definitions%.") then package.loaded[name]=nil end end; local manager=require("lib.theme_manager"); manager.apply_system_theme(manager.load_themes())<CR><Cmd>redraw!<CR>'
 
 shopt -s nullglob
 for socket in "${runtime_dir}"/nvim.*.0; do

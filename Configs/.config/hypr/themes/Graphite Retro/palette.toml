@@ -1,5 +1,5 @@
-background = "#262626"
-foreground = "#D9D9D9"
+background = "#1c1c1c"
+foreground = "#c0c0c0"
 cursor = "#bdfe58"
 
 colors = [
@@ -10,7 +10,7 @@ colors = [
   "#7fa1c3",
   "#b2d8d8",
   "#1bfd9c",
-  "#D9D9D9",
+  "#c0c0c0",
   "#404040",
   "#dea6a0",
   "#d6efd8",

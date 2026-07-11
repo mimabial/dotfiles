@@ -22,7 +22,7 @@ set -g @color14 "#A6A6A6"
 set -g @color15 "#D9D9D9"
 
 # Semantic color aliases
-set -g @theme_bg "#262626"
+set -g @theme_bg "#1C1917"
 set -g @theme_black "#404040"
 set -g @theme_fg "#D9D9D9"
 set -g @theme_accent "#A6A6A6"
@@ -33,11 +33,11 @@ set -g @theme_yellow "#595959"
 
 # Tmux color settings
 set -g status-style "bg=default,fg=#D9D9D9"
-set -g message-style "bg=#262626,fg=#A6A6A6"
-set -g message-command-style "bg=#262626,fg=#A6A6A6"
+set -g message-style "bg=#1C1917,fg=#A6A6A6"
+set -g message-command-style "bg=#1C1917,fg=#A6A6A6"
 set -g pane-border-style "fg=#404040"
 set -g pane-active-border-style "fg=#A6A6A6"
 set -g window-status-style "fg=#404040"
 set -g window-status-current-style "fg=#A6A6A6,bold"
-set -g mode-style "bg=#A6A6A6,fg=#262626"
+set -g mode-style "bg=#A6A6A6,fg=#1C1917"
 set -g clock-mode-colour "#A6A6A6"

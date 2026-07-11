@@ -1,72 +1,62 @@
 $HOME/.config/kitty/theme.conf|killall -SIGUSR1 kitty
 
-# The basic colors
-foreground              #D9D9D9
-background              #262626
-selection_foreground    #262626
-selection_background    #A6A6A6
+# vim:ft=kitty
+## name: zenbones_dark
+## author: Michael Chris Lopez
+## license: MIT
+## upstream: https://github.com/mcchrish/zenbones.nvim/raw/main/extras/kitty/zenbones_dark.conf
+## blurb: A contrast-based colorscheme.
+
+foreground                      #B4BDC3
+background                      #1C1917
+selection_foreground            #B4BDC3
+selection_background            #3D4042
 
 # Cursor colors
-cursor                  #1bfd9c
-cursor_text_color       #262626
+cursor                          #C4CACF
+cursor_text_color               #1C1917
 
 # URL underline color when hovering with mouse
-url_color               #D9D9D9
-
-# Kitty window border colors
-active_border_color     #595959
-inactive_border_color   #595959
-bell_border_color       #595959
-
+# kitty window border colors
 # OS Window titlebar colors
-wayland_titlebar_color system
-macos_titlebar_color system
 
 # Tab bar colors
-active_tab_foreground   #1bfd9c
-active_tab_background   #262626
-inactive_tab_foreground #D9D9D9
-inactive_tab_background #262626
-tab_bar_background      #595959
+active_tab_foreground   #65435E
+inactive_tab_foreground #352F2D
+tab_bar_background      #1C1917
 
 # Colors for marks (marked text in the terminal)
-mark1_foreground #262626
-mark1_background #404040
-mark2_foreground #262626
-mark2_background #262626
-mark3_foreground #262626
-mark3_background #A6A6A6
 
-# The 16 terminal colors
+# The basic 16 colors
 
 # black
-color0 #404040
-color8 #404040
+color0 #1C1917
+color8 #403833
 
 # red
-color1 #ffb3ba
-color9 #ffb3ba
+color1 #DE6E7C
+color9 #E8838F
 
 # green
-color2  #1bfd9c
-color10 #1bfd9c
+color2  #D9D9D9
+color10 #D9D9D9
 
 # yellow
 color3  #595959
 color11 #595959
 
 # blue
-color4  #7fa1c3
-color12 #7fa1c3
+color4  #A6A6A6
+color12 #A6A6A6
 
 # magenta
-color5  #A6A6A6
-color13 #A6A6A6
+color5  #B279A7
+color13 #CF86C1
 
 # cyan
-color6  #A6A6A6
-color14 #A6A6A6
+color6  #66A5AD
+color14 #65B8C1
 
 # white
-color7  #D9D9D9
-color15 #D9D9D9
+color7  #B4BDC3
+color15 #888F94

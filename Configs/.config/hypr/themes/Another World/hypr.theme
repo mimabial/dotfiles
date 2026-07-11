@@ -1,11 +1,12 @@
 $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 
-$ICON_THEME = Fluent-green-dark
-$CURSOR_THEME = Fluent-dark-cursors
-$CURSOR_SIZE = 28
+$ICON_THEME = Vivid-Glassy-Dark-Icons
 $COLOR_SCHEME = prefer-dark
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
+
+$CURSOR_THEME = Sweet-cursors
+$CURSOR_SIZE = 28
 
 general {
     gaps_in = 4

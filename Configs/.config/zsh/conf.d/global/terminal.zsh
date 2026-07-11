@@ -269,4 +269,7 @@ alias cl='clear' \
     .3='cd ../../..' \
     .4='cd ../../../..' \
     .5='cd ../../../../..' \
+    mvi='mv -i' \
+    rmi='rm -i' \
+    rmI='rm -I' \
     mkdir='mkdir -p'

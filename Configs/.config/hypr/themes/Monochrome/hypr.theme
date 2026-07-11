@@ -2,8 +2,13 @@ $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 
 $ICON_THEME = Vimix-black-dark
 $COLOR_SCHEME = prefer-dark
+$NVIM_SCHEME = moonfly
+$NVIM_VARIANT =
+$NVIM_BACKGROUND = dark
+$NVIM_TRANSPARENCY = false
+
 $CURSOR_THEME = Hackneyed-White-Multi-Animated
-$CURSOR_SIZE = 20
+$CURSOR_SIZE = 24
 
 general {
     gaps_in = 5

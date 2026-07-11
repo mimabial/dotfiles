@@ -10,7 +10,6 @@ $TERMINAL_FONT =Miracode
 $BAR_FONT = Miracode
 $MENU_FONT = Miracode
 $NVIM_SCHEME = gruvbox
-$NVIM_VARIANT = dark-hard
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 

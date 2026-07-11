@@ -11,7 +11,7 @@
 
 # Basic PATH prepending (user local bin)
 typeset -gU path PATH
-path=("$HOME/.local/bin" $path)
+path=("$HOME/.local/bin" "$HOME/.local/share/npm/bin" $path)
 
 # XDG Base Directory Specification variables with defaults
 XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
