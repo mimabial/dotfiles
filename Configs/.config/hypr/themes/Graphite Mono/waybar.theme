@@ -35,10 +35,10 @@ $HOME/.config/waybar/theme.css
 @define-color c15 #888F94;
 
 @define-color accent #888F94;
-@define-color info @c4;
-@define-color warning @c3;
-@define-color error @c1;
-@define-color success @c2;
+@define-color info #6099C0;
+@define-color warning #66A5AD;
+@define-color error #CF86C1;
+@define-color success #6099C0;
 
 
 

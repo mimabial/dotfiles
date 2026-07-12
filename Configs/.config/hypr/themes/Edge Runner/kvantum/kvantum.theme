@@ -3113,7 +3113,7 @@
        cy="416"
        r="6"
        id="circle29777"
-       style="stroke-width:1.2;fill:#000000;fill-opacity:1.0" />
+       style="stroke-width:1.2;fill:#181818;fill-opacity:1.0" />
   </g>
   <g
      id="slidercursor-tickless-pressed"
@@ -3142,7 +3142,7 @@
        cy="416"
        r="5"
        id="circle46204"
-       style="fill:#000000;fill-opacity:1.0;stroke-width:1" />
+       style="fill:#181818;fill-opacity:1.0;stroke-width:1" />
   </g>
   <g
      id="slidercursor-tickless-focused"
@@ -3171,7 +3171,7 @@
        cy="416"
        r="6"
        id="circle755"
-       style="fill:#000000;fill-opacity:1.0" />
+       style="fill:#181818;fill-opacity:1.0" />
   </g>
   <g
      id="slidercursor-normal"
@@ -3190,7 +3190,7 @@
     <path
        d="m 335,438 -3.4079,-3.4767 c -0.94165,-0.97333 -2.2378,-1.5231 -3.5921,-1.5234 -2.7614,0 -5,2.2386 -5,5 0,2.7614 2.2386,5 5,5 1.3405,-0.002 2.6242,-0.54194 3.5628,-1.499 0.004,-0.002 0.009,-0.004 0.013,-0.007 z"
        id="path53561"
-       style="fill:#000000;fill-opacity:1.0" />
+       style="fill:#181818;fill-opacity:1.0" />
   </g>
   <g
      id="slider-normal-right"
@@ -3716,7 +3716,7 @@
      y="912.5"
      width="30"
      height="30"
-     style="fill:#000000;fill-opacity:1.0" />
+     style="fill:#181818;fill-opacity:1.0" />
   <g
      transform="translate(2.5027073,-257.5)"
      id="g997">
@@ -3859,7 +3859,7 @@
      y="912.5"
      width="30"
      height="30"
-     style="fill:#000000;fill-opacity:1.0" />
+     style="fill:#181818;fill-opacity:1.0" />
   <g
      id="common-normal-top"
      transform="translate(-372,536.96735)">
@@ -4078,14 +4078,14 @@
   <path
      id="menu-normal"
      d="m118 481h48v48h-48z"
-     style="fill:#000000;fill-opacity:1.0" />
+     style="fill:#181818;fill-opacity:1.0" />
   <g
      id="menu-normal-topleft"
      transform="matrix(1.6667,0,0,1.6667,-85.774575,-693.60683)">
     <path
        d="m 122.26,698.75 c -3.3229,10e-4 -5.9977,2.6768 -5.9977,6 h 6 z"
        id="path1079"
-       style="fill:#000000;fill-opacity:1.0" />
+       style="fill:#181818;fill-opacity:1.0" />
     <path
        id="path66441"
        d="M 117.99609 471 C 112.45782 471.00167 108 475.46122 108 481 L 109.99609 481 C 109.99609 476.56709 113.56357 472.99743 117.99609 472.99609 L 117.99609 471 z "
@@ -4098,7 +4098,7 @@
     <path
        d="m116.26 703.75h6v48h-6z"
        id="path1082"
-       style="fill:#000000;fill-opacity:1.0" />
+       style="fill:#181818;fill-opacity:1.0" />
     <path
        d="m 116.26,703.75 h 1.19998 v 48 H 116.26 Z"
        id="path66626"
@@ -4115,7 +4115,7 @@
       <path
          d="m 190,245.02 h 50 v 17.4427 h -50 z"
          id="path1100"
-         style="fill:#000000;stroke-width:0.998847;fill-opacity:1.0" />
+         style="fill:#181818;stroke-width:0.998847;fill-opacity:1.0" />
       <path
          d="m 190,245.01999 h 50 v 3.48854 h -50 z"
          id="path83751"
@@ -4187,7 +4187,7 @@
     <path
        d="m 20.999,480.0003 a 10,10 0 0 1 10,-10 v 10 z"
        id="path1128"
-       style="fill:#000000;fill-opacity:1.0" />
+       style="fill:#181818;fill-opacity:1.0" />
     <path
        id="path72191"
        style="fill:#fada16;fill-opacity:1.0"
@@ -4232,11 +4232,11 @@
   <path
      id="window-normal"
      d="m380 814.26h30v30h-30z"
-     style="fill:#000000;fill-opacity:1.0" />
+     style="fill:#181818;fill-opacity:1.0" />
   <path
      id="window-normal-inactive"
      d="m412 814.26h30v30h-30z"
-     style="fill:#000000;fill-opacity:1.0" />
+     style="fill:#181818;fill-opacity:1.0" />
   <rect
      id="menubar-normal"
      x="307.53"
@@ -4244,7 +4244,7 @@
      width="20"
      height="20"
      opacity=".35"
-     style="fill:#000000;fill-opacity:1.0;opacity:1" />
+     style="fill:#181818;fill-opacity:1.0;opacity:1" />
   <rect
      id="menubar-normal-left"
      transform="rotate(90)"
@@ -4253,7 +4253,7 @@
      width="20"
      height="5"
      opacity=".35"
-     style="fill:#000000;fill-opacity:1.0;opacity:1" />
+     style="fill:#181818;fill-opacity:1.0;opacity:1" />
   <rect
      id="menubar-normal-topleft"
      transform="rotate(90)"
@@ -4262,7 +4262,7 @@
      width="5"
      height="5"
      opacity=".35"
-     style="fill:#000000;fill-opacity:1.0;opacity:1" />
+     style="fill:#181818;fill-opacity:1.0;opacity:1" />
   <rect
      id="menubar-normal-top"
      x="307.53"
@@ -4270,7 +4270,7 @@
      width="20"
      height="5"
      opacity=".35"
-     style="fill:#000000;fill-opacity:1.0;opacity:1" />
+     style="fill:#181818;fill-opacity:1.0;opacity:1" />
   <rect
      id="menubar-normal-right"
      transform="rotate(90)"
@@ -4279,7 +4279,7 @@
      width="20"
      height="5"
      opacity=".35"
-     style="fill:#000000;fill-opacity:1.0;opacity:1" />
+     style="fill:#181818;fill-opacity:1.0;opacity:1" />
   <rect
      id="menubar-normal-topright"
      transform="rotate(90)"
@@ -4288,7 +4288,7 @@
      width="5"
      height="5"
      opacity=".35"
-     style="fill:#000000;fill-opacity:1.0;opacity:1" />
+     style="fill:#181818;fill-opacity:1.0;opacity:1" />
   <g
      id="menubar-normal-bottomleft"
      transform="translate(2.5269 -237.73)">
@@ -4300,7 +4300,7 @@
        opacity=".35"
        stroke-width="2"
        id="rect1157"
-       style="fill:#000000;fill-opacity:1.0;opacity:1" />
+       style="fill:#181818;fill-opacity:1.0;opacity:1" />
     <g
        transform="matrix(.25 0 0 1 223.75 0)"
        id="g1161">
@@ -4321,7 +4321,7 @@
        opacity=".35"
        stroke-width="2"
        id="rect1164"
-       style="fill:#000000;fill-opacity:1.0;opacity:1" />
+       style="fill:#181818;fill-opacity:1.0;opacity:1" />
     <g
        transform="matrix(.25 0 0 1 248.75 0)"
        fill="#b6b6b6"
@@ -4345,7 +4345,7 @@
        opacity=".35"
        stroke-width="2"
        id="rect1171"
-       style="fill:#000000;fill-opacity:1.0;opacity:1" />
+       style="fill:#181818;fill-opacity:1.0;opacity:1" />
     <rect
        x="305"
        y="618"
@@ -4361,7 +4361,7 @@
      width="20"
      height="20"
      opacity=".35"
-     style="fill:#000000;fill-opacity:1.0;opacity:1" />
+     style="fill:#181818;fill-opacity:1.0;opacity:1" />
   <rect
      id="menubar-normal-inactive-left"
      transform="rotate(90)"
@@ -4370,7 +4370,7 @@
      width="20"
      height="5"
      opacity=".35"
-     style="fill:#000000;fill-opacity:1.0;opacity:1" />
+     style="fill:#181818;fill-opacity:1.0;opacity:1" />
   <rect
      id="menubar-normal-inactive-topleft"
      transform="rotate(90)"
@@ -4379,7 +4379,7 @@
      width="5"
      height="5"
      opacity=".35"
-     style="fill:#000000;fill-opacity:1.0;opacity:1" />
+     style="fill:#181818;fill-opacity:1.0;opacity:1" />
   <rect
      id="menubar-normal-inactive-top"
      x="342.53"
@@ -4387,7 +4387,7 @@
      width="20"
      height="5"
      opacity=".35"
-     style="fill:#000000;fill-opacity:1.0;opacity:1" />
+     style="fill:#181818;fill-opacity:1.0;opacity:1" />
   <rect
      id="menubar-normal-inactive-right"
      transform="rotate(90)"
@@ -4396,7 +4396,7 @@
      width="20"
      height="5"
      opacity=".35"
-     style="fill:#000000;fill-opacity:1.0;opacity:1" />
+     style="fill:#181818;fill-opacity:1.0;opacity:1" />
   <rect
      id="menubar-normal-inactive-topright"
      transform="rotate(90)"
@@ -4405,7 +4405,7 @@
      width="5"
      height="5"
      opacity=".35"
-     style="fill:#000000;fill-opacity:1.0;opacity:1" />
+     style="fill:#181818;fill-opacity:1.0;opacity:1" />
   <g
      id="menubar-normal-inactive-bottomleft"
      transform="translate(37.527 -237.73)">
@@ -4417,7 +4417,7 @@
        opacity=".35"
        stroke-width="2"
        id="rect1182"
-       style="fill:#000000;fill-opacity:1.0;opacity:1" />
+       style="fill:#181818;fill-opacity:1.0;opacity:1" />
     <g
        transform="matrix(.25 0 0 1 223.75 0)"
        id="g1186">
@@ -4438,7 +4438,7 @@
        opacity=".35"
        stroke-width="2"
        id="rect1189"
-       style="fill:#000000;fill-opacity:1.0;opacity:1" />
+       style="fill:#181818;fill-opacity:1.0;opacity:1" />
     <g
        transform="matrix(.25 0 0 1 248.75 0)"
        fill="#b6b6b6"
@@ -4462,7 +4462,7 @@
        opacity=".35"
        stroke-width="2"
        id="rect1196"
-       style="fill:#000000;fill-opacity:1.0;opacity:1" />
+       style="fill:#181818;fill-opacity:1.0;opacity:1" />
     <rect
        x="305"
        y="618"
@@ -4477,7 +4477,7 @@
      fill="#1a1a1a"
      fill-rule="evenodd"
      opacity=".8"
-     style="fill-opacity:1.0;fill:#000000" />
+     style="fill-opacity:1.0;fill:#181818" />
   <g
      id="tooltip-normal-left"
      transform="translate(249.52 -125.7)">
@@ -4487,7 +4487,7 @@
        fill-rule="evenodd"
        opacity=".8"
        id="path1202"
-       style="fill-opacity:1.0;fill:#000000" />
+       style="fill-opacity:1.0;fill:#181818" />
   </g>
   <g
      id="tooltip-normal-topleft"
@@ -4498,7 +4498,7 @@
        fill-rule="evenodd"
        opacity=".8"
        id="path1205"
-       style="fill-opacity:1.0;fill:#000000" />
+       style="fill-opacity:1.0;fill:#181818" />
   </g>
   <g
      id="tooltip-normal-top"
@@ -4509,7 +4509,7 @@
        fill-rule="evenodd"
        opacity=".8"
        id="path1208"
-       style="fill-opacity:1.0;fill:#000000" />
+       style="fill-opacity:1.0;fill:#181818" />
   </g>
   <g
      id="tooltip-normal-topright"
@@ -4520,7 +4520,7 @@
        fill-rule="evenodd"
        opacity=".8"
        id="path1211"
-       style="fill-opacity:1.0;fill:#000000" />
+       style="fill-opacity:1.0;fill:#181818" />
   </g>
   <g
      id="tooltip-normal-right"
@@ -4531,7 +4531,7 @@
        fill-rule="evenodd"
        opacity=".8"
        id="path1214"
-       style="fill-opacity:1.0;fill:#000000" />
+       style="fill-opacity:1.0;fill:#181818" />
   </g>
   <g
      id="tooltip-normal-bottomright"
@@ -4542,7 +4542,7 @@
        fill-rule="evenodd"
        opacity=".8"
        id="path1217"
-       style="fill-opacity:1.0;fill:#000000" />
+       style="fill-opacity:1.0;fill:#181818" />
   </g>
   <g
      id="tooltip-normal-bottom"
@@ -4553,7 +4553,7 @@
        fill-rule="evenodd"
        opacity=".8"
        id="path1220"
-       style="fill-opacity:1.0;fill:#000000" />
+       style="fill-opacity:1.0;fill:#181818" />
   </g>
   <g
      id="tooltip-normal-bottomleft"
@@ -4564,7 +4564,7 @@
        fill-rule="evenodd"
        opacity=".8"
        id="path1223"
-       style="fill-opacity:1.0;fill:#000000" />
+       style="fill-opacity:1.0;fill:#181818" />
   </g>
   <g
      id="tooltip-shadow-top"
@@ -4580,7 +4580,7 @@
          fill="#1a1a1a"
          opacity=".8"
          id="path1226"
-         style="fill-opacity:1.0;fill:#000000" />
+         style="fill-opacity:1.0;fill:#181818" />
     </g>
     <g
        transform="matrix(0,-1,-1,0,369.75,1167.5)"
@@ -4608,23 +4608,23 @@
       <path
          transform="rotate(-90,33.97,445.97)"
          d="m426 408v7a6 6 0 0 1 6 6h7c-1e-4 -8.0772-4.9229-13-13-13z"
-         color="#000000"
+         color="#181818"
          color-rendering="auto"
          fill="url(#radialGradient4124)"
          image-rendering="auto"
          opacity=".01"
-         solid-color="#000000"
+         solid-color="#181818"
          style="isolation:auto;mix-blend-mode:normal"
          id="path1235" />
       <path
          d="m9.0003 47.939a6 6 0 0 0-6 6h6z"
-         color="#000000"
+         color="#181818"
          color-rendering="auto"
          fill="#1a1a1a"
          image-rendering="auto"
          opacity=".8"
-         solid-color="#000000"
-         style="isolation:auto;mix-blend-mode:normal;fill-opacity:1.0;fill:#000000"
+         solid-color="#181818"
+         style="isolation:auto;mix-blend-mode:normal;fill-opacity:1.0;fill:#181818"
          id="path1237" />
     </g>
   </g>
@@ -4642,7 +4642,7 @@
          fill="#1a1a1a"
          opacity=".8"
          id="path1242"
-         style="fill-opacity:1.0;fill:#000000" />
+         style="fill-opacity:1.0;fill:#181818" />
     </g>
     <g
        transform="matrix(1,0,0,-1,-171.25,1190.5)"
@@ -4672,7 +4672,7 @@
          fill="#1a1a1a"
          opacity=".8"
          id="path1251"
-         style="fill-opacity:1.0;fill:#000000" />
+         style="fill-opacity:1.0;fill:#181818" />
     </g>
     <g
        transform="rotate(180,173.38,595.23)"
@@ -4702,7 +4702,7 @@
          fill="#1a1a1a"
          opacity=".8"
          id="path1260"
-         style="fill-opacity:1.0;fill:#000000" />
+         style="fill-opacity:1.0;fill:#181818" />
     </g>
     <g
        transform="rotate(90,-139.85,509.6)"
@@ -4768,23 +4768,23 @@
       <path
          transform="matrix(0,1,1,0,-412,-322.06)"
          d="m376 408c-8.077 0-13 4.9229-13 13h7a6 6 0 0 1 6-6z"
-         color="#000000"
+         color="#181818"
          color-rendering="auto"
          fill="url(#radialGradient4192)"
          image-rendering="auto"
          opacity=".01"
-         solid-color="#000000"
+         solid-color="#181818"
          style="isolation:auto;mix-blend-mode:normal"
          id="path1273" />
       <path
          d="m9.0003 47.939a6 6 0 0 0-6 6h6z"
-         color="#000000"
+         color="#181818"
          color-rendering="auto"
          fill="#1a1a1a"
          image-rendering="auto"
          opacity=".8"
-         solid-color="#000000"
-         style="isolation:auto;mix-blend-mode:normal;fill-opacity:1.0;fill:#000000"
+         solid-color="#181818"
+         style="isolation:auto;mix-blend-mode:normal;fill-opacity:1.0;fill:#181818"
          id="path1275" />
     </g>
   </g>
@@ -4800,23 +4800,23 @@
       <path
          transform="matrix(0,-1,-1,0,480,479.94)"
          d="m432 471a6 6 0 0 1-6 6v7c8.0771 0 13-4.9228 13-13z"
-         color="#000000"
+         color="#181818"
          color-rendering="auto"
          fill="url(#radialGradient4170)"
          image-rendering="auto"
          opacity=".01"
-         solid-color="#000000"
+         solid-color="#181818"
          style="isolation:auto;mix-blend-mode:normal"
          id="path1280" />
       <path
          d="m9.0003 47.939a6 6 0 0 0-6 6h6z"
-         color="#000000"
+         color="#181818"
          color-rendering="auto"
          fill="#1a1a1a"
          image-rendering="auto"
          opacity=".8"
-         solid-color="#000000"
-         style="isolation:auto;mix-blend-mode:normal;fill-opacity:1.0;fill:#000000"
+         solid-color="#181818"
+         style="isolation:auto;mix-blend-mode:normal;fill-opacity:1.0;fill:#181818"
          id="path1282" />
     </g>
   </g>
@@ -4832,23 +4832,23 @@
       <path
          transform="rotate(90,401.03,78.97)"
          d="m363 471c1e-4 8.0772 4.9229 13 13 13v-7a6 6 0 0 1-6-6z"
-         color="#000000"
+         color="#181818"
          color-rendering="auto"
          fill="url(#radialGradient4148)"
          image-rendering="auto"
          opacity=".01"
-         solid-color="#000000"
+         solid-color="#181818"
          style="isolation:auto;mix-blend-mode:normal"
          id="path1287" />
       <path
          d="m9.0003 47.939a6 6 0 0 0-6 6h6z"
-         color="#000000"
+         color="#181818"
          color-rendering="auto"
          fill="#1a1a1a"
          image-rendering="auto"
          opacity=".8"
-         solid-color="#000000"
-         style="isolation:auto;mix-blend-mode:normal;fill-opacity:1.0;fill:#000000"
+         solid-color="#181818"
+         style="isolation:auto;mix-blend-mode:normal;fill-opacity:1.0;fill:#181818"
          id="path1289" />
     </g>
   </g>
@@ -6058,14 +6058,14 @@
   <path
      id="tabframe-normal"
      d="m 274.99996,479.99997 h 48.00001 v 48 h -48.00001 z"
-     style="fill:#000000;fill-opacity:1.0" />
+     style="fill:#181818;fill-opacity:1.0" />
   <g
      id="tabframe-normal-topleft"
      transform="matrix(1.6667,0,0,1.6667,71.225402,-694.60684)">
     <path
        d="m 122.26023,699.35012 c -2.99055,9e-4 -5.39781,2.40906 -5.39781,5.39988 h 5.39988 z"
        id="path1079-9"
-       style="fill:#000000;fill-opacity:1.0" />
+       style="fill:#181818;fill-opacity:1.0" />
     <path
        id="path66441-2"
        style="fill:#ffffff;fill-opacity:1.0;opacity:0.12"
@@ -6078,7 +6078,7 @@
     <path
        d="m 116.85967,703.75 h 5.39989 v 48 h -5.39989 z"
        id="path1082-2"
-       style="fill:#000000;fill-opacity:1.0" />
+       style="fill:#181818;fill-opacity:1.0" />
     <path
        d="m 116.26,703.75 h 0.59999 v 48 H 116.26 Z"
        id="path66626-8"
@@ -6147,7 +6147,7 @@
     <path
        d="m 397,310.0001 -3.4079,-3.4767 C 392.65045,305.55007 391.3543,305.0003 390,305 c -2.7614,0 -5,2.2386 -5,5 0,2.7614 2.2386,5 5,5 1.3405,-0.002 2.6242,-0.54194 3.5628,-1.499 0.004,-0.002 0.009,-0.004 0.013,-0.007 z"
        id="path64499"
-       style="fill:#000000;fill-opacity:1.0" />
+       style="fill:#181818;fill-opacity:1.0" />
   </g>
   <g
      id="slidercursor-pressed"
@@ -6165,7 +6165,7 @@
     <path
        d="m 395.8,310.00008 -2.72632,-2.78136 C 392.32036,306.44006 391.28344,306.00024 390.2,306 c -2.20912,0 -4,1.79088 -4,4 0,2.20912 1.79088,4 4,4 1.0724,-0.002 2.09936,-0.43355 2.85024,-1.1992 0.003,-0.002 0.007,-0.003 0.0104,-0.006 z"
        id="path64792"
-       style="fill:#000000;fill-opacity:1.0;stroke-width:0.8" />
+       style="fill:#181818;fill-opacity:1.0;stroke-width:0.8" />
   </g>
   <g
      id="slidercursor-tickless-disabled"
@@ -6188,7 +6188,7 @@
        cy="416"
        r="6"
        id="circle64884"
-       style="fill:#000000;fill-opacity:1.0;stroke-width:1.2" />
+       style="fill:#181818;fill-opacity:1.0;stroke-width:1.2" />
   </g>
   <g
      id="slidercursor-disabled"
@@ -6207,7 +6207,7 @@
     <path
        d="m 335,438 -3.4079,-3.4767 c -0.94165,-0.97333 -2.2378,-1.5231 -3.5921,-1.5234 -2.7614,0 -5,2.2386 -5,5 0,2.7614 2.2386,5 5,5 1.3405,-0.002 2.6242,-0.54194 3.5628,-1.499 0.004,-0.002 0.009,-0.004 0.013,-0.007 z"
        id="path64892"
-       style="fill:#000000;fill-opacity:1.0" />
+       style="fill:#181818;fill-opacity:1.0" />
   </g>
   <g
      id="arrow-menu-disabled"
@@ -6320,7 +6320,7 @@
      id="lineedit-normal"
      transform="matrix(3.7795276,0,0,3.7795276,169,-51.000001)">
     <rect
-       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.035319;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.035319;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        id="rect43255"
        width="3.175"
        height="1.5875"
@@ -6331,7 +6331,7 @@
      id="lineedit-normal-left"
      transform="matrix(3.7795276,0,0,3.7795276,169,-51.000001)">
     <rect
-       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        id="rect43257"
        width="1.5875"
        height="1.5875"
@@ -6342,7 +6342,7 @@
      id="lineedit-normal-top"
      transform="matrix(3.7795276,0,0,3.7795276,169,-51.000001)">
     <rect
-       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.035319;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.035319;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        id="rect43253"
        width="3.175"
        height="1.5875"
@@ -6366,7 +6366,7 @@
      transform="matrix(3.7795276,0,0,3.7795276,169,-51.000001)">
     <path
        id="rect43263"
-       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0943911;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0943911;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        d="m 130,99 c -3.324,0 -6,2.676 -6,6 h 6 z"
        transform="scale(0.26458333)" />
   </g>
@@ -6422,7 +6422,7 @@
      id="lineedit-focused"
      transform="matrix(3.7795276,0,0,3.7795276,204,-51.000001)">
     <rect
-       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.035319;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.035319;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        id="rect44039"
        width="3.175"
        height="1.5875"
@@ -6433,14 +6433,14 @@
      id="lineedit-focused-left"
      transform="matrix(3.7795276,0,0,3.7795276,204,-51.000001)">
     <rect
-       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        id="rect44043"
        width="1.5875"
        height="1.5875"
        x="32.808334"
        y="27.78125" />
     <rect
-       style="opacity:1;fill:#fada16;fill-opacity:1.0;stroke:none;stroke-width:0.0144189;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;stop-opacity:1.0"
+       style="opacity:1;fill:#fada16;fill-opacity:1.0;stroke:none;stroke-width:0.0144189;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;stop-opacity:1.0"
        id="rect44045"
        width="0.52916664"
        height="1.5875"
@@ -6451,14 +6451,14 @@
      id="lineedit-focused-top"
      transform="matrix(3.7795276,0,0,3.7795276,204,-51.000001)">
     <rect
-       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.035319;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.035319;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        id="rect44049"
        width="3.175"
        height="1.5875"
        x="34.395832"
        y="26.19375" />
     <rect
-       style="opacity:1;fill:#fada16;fill-opacity:1.0;stroke:none;stroke-width:0.0203914;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;stop-opacity:1.0"
+       style="opacity:1;fill:#fada16;fill-opacity:1.0;stroke:none;stroke-width:0.0203914;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;stop-opacity:1.0"
        id="rect44051"
        width="3.175"
        height="0.52916664"
@@ -6470,11 +6470,11 @@
      transform="matrix(3.7795276,0,0,3.7795276,204,-51.000001)">
     <path
        id="use44055"
-       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        d="m 39.158333,27.78125 c 0,-0.879475 -0.708025,-1.5875 -1.5875,-1.5875 v 1.5875 z" />
     <path
        id="use44057"
-       style="opacity:1;fill:#fada16;fill-opacity:1.0;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;stop-opacity:1.0"
+       style="opacity:1;fill:#fada16;fill-opacity:1.0;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;stop-opacity:1.0"
        d="m 39.158333,27.78125 c 0,-0.879475 -0.708025,-1.5875 -1.5875,-1.5875 v 0.529167 c 0.586317,0 1.058334,0.472016 1.058334,1.058333 z" />
   </g>
   <g
@@ -6482,12 +6482,12 @@
      transform="matrix(3.7795276,0,0,3.7795276,204,-51.000001)">
     <path
        id="path44061"
-       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0943911;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0943911;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        d="m 130,99 c -3.324,0 -6,2.676 -6,6 h 6 z"
        transform="scale(0.26458333)" />
     <path
        id="path44063"
-       style="opacity:1;fill:#fada16;fill-opacity:1.0;stroke:none;stroke-width:0.0943911;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;stop-opacity:1.0"
+       style="opacity:1;fill:#fada16;fill-opacity:1.0;stroke:none;stroke-width:0.0943911;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;stop-opacity:1.0"
        d="m 130,99 c -3.324,0 -6,2.676 -6,6 h 2 c 0,-2.216 1.784,-4 4,-4 z"
        transform="scale(0.26458333)" />
   </g>
@@ -6496,11 +6496,11 @@
      transform="matrix(3.7795276,0,0,3.7795276,204,-51.000001)">
     <path
        id="use44067"
-       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        d="m 37.570833,30.95625 c 0.879475,0 1.5875,-0.708025 1.5875,-1.5875 h -1.5875 z" />
     <path
        id="use44069"
-       style="opacity:1;fill:#fada16;fill-opacity:1.0;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;stop-opacity:1.0"
+       style="opacity:1;fill:#fada16;fill-opacity:1.0;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;stop-opacity:1.0"
        d="m 37.570833,30.95625 c 0.879475,0 1.5875,-0.708025 1.5875,-1.5875 h -0.529167 c 0,0.586317 -0.472016,1.058334 -1.058333,1.058334 z" />
   </g>
   <g
@@ -6508,18 +6508,18 @@
      transform="matrix(3.7795276,0,0,3.7795276,204,-51.000001)">
     <path
        id="use44073"
-       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        d="m 32.808333,29.36875 c 0,0.879475 0.708025,1.5875 1.5875,1.5875 v -1.5875 z" />
     <path
        id="use44075"
-       style="opacity:1;fill:#fada16;fill-opacity:1.0;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;stop-opacity:1.0"
+       style="opacity:1;fill:#fada16;fill-opacity:1.0;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;stop-opacity:1.0"
        d="m 32.808333,29.36875 c 0,0.879475 0.708025,1.5875 1.5875,1.5875 v -0.529167 c -0.586317,0 -1.058334,-0.472016 -1.058334,-1.058333 z" />
   </g>
   <g
      id="lineedit-focused-right"
      transform="matrix(3.7795276,0,0,3.7795276,204,-51.000001)">
     <rect
-       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        id="use44079"
        width="1.5875"
        height="1.5875"
@@ -6527,7 +6527,7 @@
        y="27.78125"
        transform="scale(-1,1)" />
     <rect
-       style="opacity:1;fill:#fada16;fill-opacity:1.0;stroke:none;stroke-width:0.0144189;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;stop-opacity:1.0"
+       style="opacity:1;fill:#fada16;fill-opacity:1.0;stroke:none;stroke-width:0.0144189;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;stop-opacity:1.0"
        id="use44081"
        width="0.52916664"
        height="1.5875"
@@ -6539,7 +6539,7 @@
      id="lineedit-focused-bottom"
      transform="matrix(3.7795276,0,0,3.7795276,204,-51.000001)">
     <rect
-       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.035319;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.035319;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        id="use44085"
        width="3.175"
        height="1.5875"
@@ -6547,7 +6547,7 @@
        y="-30.956251"
        transform="scale(1,-1)" />
     <rect
-       style="opacity:1;fill:#fada16;fill-opacity:1.0;stroke:none;stroke-width:0.0203914;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;stop-opacity:1.0"
+       style="opacity:1;fill:#fada16;fill-opacity:1.0;stroke:none;stroke-width:0.0203914;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;stop-opacity:1.0"
        id="use44087"
        width="3.175"
        height="0.52916664"
@@ -6559,7 +6559,7 @@
      id="combo-normal"
      transform="matrix(3.7795276,0,0,3.7795276,249,-51.000001)">
     <rect
-       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.035319;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.035319;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        id="rect44091"
        width="3.175"
        height="1.5875"
@@ -6570,7 +6570,7 @@
      id="combo-normal-left"
      transform="matrix(3.7795276,0,0,3.7795276,249,-51.000001)">
     <rect
-       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        id="rect44095"
        width="1.5875"
        height="1.5875"
@@ -6581,7 +6581,7 @@
      id="combo-normal-top"
      transform="matrix(3.7795276,0,0,3.7795276,249,-51.000001)">
     <rect
-       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.035319;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.035319;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        id="rect44101"
        width="3.175"
        height="1.5875"
@@ -6593,7 +6593,7 @@
      transform="matrix(3.7795276,0,0,3.7795276,249,-51.000001)">
     <path
        id="use44107"
-       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        d="m 39.158333,27.78125 c 0,-0.879475 -0.708025,-1.5875 -1.5875,-1.5875 v 1.5875 z" />
   </g>
   <g
@@ -6601,7 +6601,7 @@
      transform="matrix(3.7795276,0,0,3.7795276,249,-51.000001)">
     <path
        id="path44113"
-       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0943911;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0943911;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        d="m 130,99 c -3.324,0 -6,2.676 -6,6 h 6 z"
        transform="scale(0.26458333)" />
   </g>
@@ -6622,14 +6622,14 @@
      transform="matrix(3.7795276,0,0,3.7795276,249,-51.000001)">
     <path
        id="use44125"
-       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        d="m 32.808333,29.36875 c 0,0.879475 0.708025,1.5875 1.5875,1.5875 v -1.5875 z" />
   </g>
   <g
      id="combo-normal-right"
      transform="matrix(3.7795276,0,0,3.7795276,249,-51.000001)">
     <rect
-       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        id="use44131"
        width="1.5875"
        height="1.5875"
@@ -6641,7 +6641,7 @@
      id="combo-normal-bottom"
      transform="matrix(3.7795276,0,0,3.7795276,249,-51.000001)">
     <rect
-       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.035319;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.035319;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        id="use44137"
        width="3.175"
        height="1.5875"
@@ -6653,7 +6653,7 @@
      id="combo-focused"
      transform="matrix(3.7795276,0,0,3.7795276,287,-51.000001)">
     <rect
-       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.035319;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.035319;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        id="rect44143"
        width="3.175"
        height="1.5875"
@@ -6664,14 +6664,14 @@
      id="combo-focused-left"
      transform="matrix(3.7795276,0,0,3.7795276,287,-51.000001)">
     <rect
-       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        id="rect44147"
        width="1.5875"
        height="1.5875"
        x="32.808334"
        y="27.78125" />
     <rect
-       style="opacity:0.15;fill:#ffffff;stroke:none;stroke-width:0.0144189;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.15;fill:#ffffff;stroke:none;stroke-width:0.0144189;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        id="rect44149"
        width="0.52916664"
        height="1.5875"
@@ -6682,14 +6682,14 @@
      id="combo-focused-top"
      transform="matrix(3.7795276,0,0,3.7795276,287,-51.000001)">
     <rect
-       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.035319;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.035319;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        id="rect44153"
        width="3.175"
        height="1.5875"
        x="34.395832"
        y="26.19375" />
     <rect
-       style="opacity:0.15;fill:#ffffff;stroke:none;stroke-width:0.0203914;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.15;fill:#ffffff;stroke:none;stroke-width:0.0203914;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        id="rect44155"
        width="3.175"
        height="0.52916664"
@@ -6701,11 +6701,11 @@
      transform="matrix(3.7795276,0,0,3.7795276,287,-51.000001)">
     <path
        id="use44159"
-       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        d="m 39.158333,27.78125 c 0,-0.879475 -0.708025,-1.5875 -1.5875,-1.5875 v 1.5875 z" />
     <path
        id="use44161"
-       style="opacity:0.15;fill:#ffffff;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.15;fill:#ffffff;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        d="m 39.158333,27.78125 c 0,-0.879475 -0.708025,-1.5875 -1.5875,-1.5875 v 0.529167 c 0.586317,0 1.058334,0.472016 1.058334,1.058333 z" />
   </g>
   <g
@@ -6713,12 +6713,12 @@
      transform="matrix(3.7795276,0,0,3.7795276,287,-51.000001)">
     <path
        id="path44165"
-       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0943911;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0943911;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        d="m 130,99 c -3.324,0 -6,2.676 -6,6 h 6 z"
        transform="scale(0.26458333)" />
     <path
        id="path44167"
-       style="opacity:0.15;fill:#ffffff;stroke:none;stroke-width:0.0943911;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.15;fill:#ffffff;stroke:none;stroke-width:0.0943911;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        d="m 130,99 c -3.324,0 -6,2.676 -6,6 h 2 c 0,-2.216 1.784,-4 4,-4 z"
        transform="scale(0.26458333)" />
   </g>
@@ -6727,11 +6727,11 @@
      transform="matrix(3.7795276,0,0,3.7795276,287,-51.000001)">
     <path
        id="use44171"
-       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        d="m 37.570833,30.95625 c 0.879475,0 1.5875,-0.708025 1.5875,-1.5875 h -1.5875 z" />
     <path
        id="use44173"
-       style="opacity:0.15;fill:#ffffff;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.15;fill:#ffffff;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        d="m 37.570833,30.95625 c 0.879475,0 1.5875,-0.708025 1.5875,-1.5875 h -0.529167 c 0,0.586317 -0.472016,1.058334 -1.058333,1.058334 z" />
   </g>
   <g
@@ -6739,18 +6739,18 @@
      transform="matrix(3.7795276,0,0,3.7795276,287,-51.000001)">
     <path
        id="use44177"
-       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        d="m 32.808333,29.36875 c 0,0.879475 0.708025,1.5875 1.5875,1.5875 v -1.5875 z" />
     <path
        id="use44179"
-       style="opacity:0.15;fill:#ffffff;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.15;fill:#ffffff;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        d="m 32.808333,29.36875 c 0,0.879475 0.708025,1.5875 1.5875,1.5875 v -0.529167 c -0.586317,0 -1.058334,-0.472016 -1.058334,-1.058333 z" />
   </g>
   <g
      id="combo-focused-right"
      transform="matrix(3.7795276,0,0,3.7795276,287,-51.000001)">
     <rect
-       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.0249743;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        id="use44183"
        width="1.5875"
        height="1.5875"
@@ -6758,7 +6758,7 @@
        y="27.78125"
        transform="scale(-1,1)" />
     <rect
-       style="opacity:0.15;fill:#ffffff;stroke:none;stroke-width:0.0144189;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.15;fill:#ffffff;stroke:none;stroke-width:0.0144189;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        id="use44185"
        width="0.52916664"
        height="1.5875"
@@ -6770,7 +6770,7 @@
      id="combo-focused-bottom"
      transform="matrix(3.7795276,0,0,3.7795276,287,-51.000001)">
     <rect
-       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.035319;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.1;fill:#ffffff;stroke:none;stroke-width:0.035319;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        id="use44189"
        width="3.175"
        height="1.5875"
@@ -6778,7 +6778,7 @@
        y="-30.956251"
        transform="scale(1,-1)" />
     <rect
-       style="opacity:0.15;fill:#ffffff;stroke:none;stroke-width:0.0203914;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#000000;fill-opacity:1.0;stop-opacity:1.0"
+       style="opacity:0.15;fill:#ffffff;stroke:none;stroke-width:0.0203914;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers;stop-color:#181818;fill-opacity:1.0;stop-opacity:1.0"
        id="use44191"
        width="3.175"
        height="0.52916664"

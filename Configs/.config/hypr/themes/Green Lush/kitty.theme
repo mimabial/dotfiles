@@ -1,73 +1,42 @@
 $HOME/.config/kitty/theme.conf|killall -SIGUSR1 kitty
 
+foreground              #fdfff1
+background              #0c1021
 
-foreground              #BFBDB6
-background              #0B0E14
-
-selection_foreground    #0B0E14
+selection_foreground    #0c1021
 selection_background    #FFFFFF
 
-cursor                  #118911 
+cursor                  #55ba30 
 cursor_text_color       #FFFFFF
 
-active_tab_foreground     #118911
+active_tab_foreground     #55ba30
 active_tab_background     #1E4E50
 
 inactive_tab_foreground   #1E4E50
-inactive_tab_background   #0B0E14
+inactive_tab_background   #0c1021
 
-
-
-color0      #295252
-color8      #578F8F
+color0      #0a0d1a
+color8      #505257
 
 #Typing color
-color1      #CCFFCC
-color9      #AAF0AA
+color1      #e04a5f
+color9      #f25e01
 
 #Confirmed typing
-color2      #11b811
-color10     #AAF0F0
+color2      #55ba30
+color10     #b3f63a
 
-color3      #CCFFCC
-color11     #AAF0AA
+color3      #b3f63a
+color11     #f8e9c7
 
-color4      #12b812
-color12     #12b812
+color4      #6b8ab8
+color12     #97c7e9
 
-color5      #9AE6E6
-color13     #9AE6E6
+color5      #ff0cac
+color13     #ff0cac
 
-color6      #9BE6E6
-color14     #9BE6E6
+color6      #97c7e9
+color14     #f5c6b0
 
-color7      #CCFFCC
-color15     #AAF0AA
-
-# normal
-color0 #295252
-color1 #f07178
-color2 #11b811
-color3 #CCFFCC
-color4 #59c2ff
-color5 #d2a6ff
-color6 #95e6cb
-color7 #e6e1cf
-
-# bright
-color8 #578F8F
-color9 #f07178
-color10 #AAF0F0
-color11 #AAF0AA
-color12 #59c2ff
-color13 #d2a6ff
-color14 #95e6cb
-color15 #f3f4f5
-
-# extended base16 colors
-color16 #ff8f40
-color17 #e6b673
-color18 #131721
-color19 #272d38
-color20 #bfbdb6
-color21 #e6e1cf
+color7      #d8d9c8
+color15     #fdfff1

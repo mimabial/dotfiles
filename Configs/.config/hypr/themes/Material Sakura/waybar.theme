@@ -34,8 +34,8 @@ $HOME/.config/waybar/theme.css
 @define-color c15 #575279;
 
 @define-color accent #d7827e; /* iris */
-@define-color info @c6;
+@define-color info #d7827e;
 @define-color warning #286983;
-@define-color error @c1;
-@define-color success @c2;
+@define-color error #286983;
+@define-color success #b4637a;
 

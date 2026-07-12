@@ -190,6 +190,11 @@ build_terminal_command() {
     kitty)
       [[ -n "${app_id}" ]] && terminal_launch+=("--app-id=${app_id}")
       [[ -n "${title}" ]] && terminal_launch+=("--title=${title}")
+      if [[ -n "${hypr_width}" && -n "${hypr_height}" ]]; then
+        # Hyprland size rules are inert on the lua config engine; size the
+        # kitty window directly (resolved pixels from the geometry profile).
+        terminal_launch+=(-o "remember_window_size=no" -o "initial_window_width=${hypr_width}" -o "initial_window_height=${hypr_height}")
+      fi
       terminal_launch+=("${cmd[@]}")
       ;;
     alacritty)

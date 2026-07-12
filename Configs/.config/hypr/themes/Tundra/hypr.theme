@@ -2,7 +2,7 @@ $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 
 $ICON_THEME = MacTahoe-dark
 $COLOR_SCHEME = prefer-dark
-$CURSOR_THEME = MacTahoe-cursors 
+$CURSOR_THEME = MacTahoe-dark-cursors
 $CURSOR_SIZE = 30
 $NVIM_SCHEME = catppuccin
 $NVIM_VARIANT = macchiato
@@ -35,7 +35,7 @@ decoration {
     enabled = true
     ignore_window = true
     render_power = 5
-    color = 0x40ffffff
+    color = 0x12ffffff
     range = 10
     offset = 0 0
     }

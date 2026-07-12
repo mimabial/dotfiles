@@ -4,6 +4,7 @@ $ICON_THEME = buuf-nestort
 $COLOR_SCHEME = prefer-dark
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
+# $CURSOR_THEME = buuf-cursor-original
 $CURSOR_THEME = MeguminCursor
 $CURSOR_SIZE = 32
 $FONT = Inter

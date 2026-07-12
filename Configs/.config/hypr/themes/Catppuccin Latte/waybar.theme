@@ -9,7 +9,7 @@ $HOME/.config/waybar/theme.css
 @define-color alt_br #179299;
 
 @define-color act_bg #eff1f5;
-@define-color act_fg @fg; 
+@define-color act_fg #4c4f69; 
 @define-color act_br #7287fd;
 
 @define-color hvr_bg #eff1f5;
@@ -34,7 +34,7 @@ $HOME/.config/waybar/theme.css
 @define-color c15 #bcc0cc;
 
 @define-color accent #dd7878;
-@define-color info @c6;
+@define-color info #179299;
 @define-color warning #eff1f5;
-@define-color error @c1;
-@define-color success @c2;
+@define-color error #D20F39;
+@define-color success #40A02B;

@@ -12,8 +12,8 @@ $HOME/.config/waybar/theme.css
 @define-color act_fg #DCD7BA;
 @define-color act_br #DCD7BA;
 
-@define-color hvr_bg #FF5D62;
-@define-color hvr_fg @fg;
+@define-color hvr_bg #16161D;
+@define-color hvr_fg #FF5D62;
 @define-color hvr_br #FF5D62;
 
 @define-color c0 #16161D; /* roninYellow */
@@ -34,8 +34,8 @@ $HOME/.config/waybar/theme.css
 @define-color c15 #DCD7BA; /* oldWhite */
 
 @define-color accent #6A9589;
-@define-color info @c6;
+@define-color info #6A9589;
 @define-color warning #938AA9; /* crystalBlue */
-@define-color error @c1;
-@define-color success @c2;
+@define-color error #C34043;
+@define-color success #76946A;
 

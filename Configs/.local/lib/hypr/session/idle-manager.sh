@@ -82,10 +82,10 @@ apply_mode_transition() {
 enforce_mode_state() {
   case "$1" in
     inhibit)
-      hypridle_active && stop_hypridle
+      if hypridle_active; then stop_hypridle; fi
       ;;
     idle)
-      hypridle_active || start_hypridle
+      if ! hypridle_active; then start_hypridle; fi
       ;;
   esac
 }

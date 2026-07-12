@@ -1,40 +1,40 @@
 $HOME/.config/waybar/theme.css|${scrDir}/wbarconfgen.sh
 
-@define-color bg rgb(10, 50, 10);
-@define-color fg rgb(170, 240, 170);
+@define-color bg #0a320a;
+@define-color fg #aaf0aa;
 @define-color br #578F8F;
 
-@define-color alt_bg rgb(17,180,180);
+@define-color alt_bg #11b4b4;
 @define-color alt_fg #AAF0AA;
 @define-color alt_br #578F8F;
 
 @define-color act_bg #0f1419;
-@define-color act_fg rgb(170, 240, 170);
-@define-color act_br #11b811;
+@define-color act_fg #aaf0aa;
+@define-color act_br #55ba30;
 
-@define-color hvr_bg rgb(75,125,125);
+@define-color hvr_bg #4b7d7d;
 @define-color hvr_fg #AAF0F0;
 @define-color hvr_br #AAF0AA;
 
-@define-color c0 #295252;
-@define-color c1 #F07178;
-@define-color c2 #b8cc52;
-@define-color c3 #ffb454;
-@define-color c4 #59c2ff;
-@define-color c5 #d2a6ff;
-@define-color c6 #95e6cb;
-@define-color c7 #e6e1cf;
-@define-color c8 #272d38;
-@define-color c9 #D95757;
-@define-color c10 #AAD94C;
-@define-color c11 #E6B450;
-@define-color c12 #39BAE6;
-@define-color c13 #CB9FF8;
-@define-color c14 #9BE6E6;
-@define-color c15 #f3f4f5;
+@define-color c0 #0a0d1a;
+@define-color c1 #e04a5f;
+@define-color c2 #55ba30;
+@define-color c3 #b3f63a;
+@define-color c4 #6b8ab8;
+@define-color c5 #ff0cac;
+@define-color c6 #97c7e9;
+@define-color c7 #d8d9c8;
+@define-color c8 #505257;
+@define-color c9 #f25e01;
+@define-color c10 #b3f63a;
+@define-color c11 #f8e9c7;
+@define-color c12 #97c7e9;
+@define-color c13 #ff0cac;
+@define-color c14 #f5c6b0;
+@define-color c15 #fdfff1;
 
 @define-color accent #AAF0F0;
-@define-color info @c6;
-@define-color warning @c10;
-@define-color error @c1;
-@define-color success @c2;
+@define-color info #95e6cb;
+@define-color warning #AAD94C;
+@define-color error #F07178;
+@define-color success #b8cc52;

@@ -2,18 +2,18 @@ $HOME/.config/waybar/theme.css
 
 @define-color bg #0A320A;
 @define-color bg #295252;
-@define-color fg rgb(170,240,240); /* Light green, 80% opacity */
+@define-color fg #aaf0f0; /* Light green, 80% opacity */
 @define-color br #c7c7c7; /* foreground muted */
 
 @define-color alt_bg #73d0ff; /* Light blue, full opacity */
-@define-color alt_fg @fg;
-@define-color alt_br rgb(204,255,255); /* Light blue, full opacity */
+@define-color alt_fg #aaf0f0;
+@define-color alt_br #ccffff; /* Light blue, full opacity */
 
-@define-color act_bg rgb(75,125,125);
-@define-color act_fg rgb(170,240,240);
+@define-color act_bg #4b7d7d;
+@define-color act_fg #aaf0f0;
 @define-color act_br #bae67e;
 
-@define-color hvr_bg rgb(75,125,125);
+@define-color hvr_bg #4b7d7d;
 @define-color hvr_fg #f28779;
 @define-color hvr_br #f28779;
 
@@ -34,8 +34,8 @@ $HOME/.config/waybar/theme.css
 @define-color c14 #95e6cb;
 @define-color c15 #ffffff;
 
-@define-color accent rgb(17,180,180); /* Light blue, 40% opacity */
-@define-color info @c6;
-@define-color warning rgb(75,125,125); /* Light blue, full opacity */
-@define-color error @c1;
-@define-color success @c2;
+@define-color accent #11b4b4; /* Light blue, 40% opacity */
+@define-color info #90e1c6;
+@define-color warning #4b7d7d; /* Light blue, full opacity */
+@define-color error #ed8274;
+@define-color success #bae67e;

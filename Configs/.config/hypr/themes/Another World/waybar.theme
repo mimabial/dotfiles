@@ -34,7 +34,7 @@ $HOME/.config/waybar/theme.css
 @define-color c15 #f6ffec;
 
 @define-color accent #6AA9C9;
-@define-color info @c4;
-@define-color warning @c3;
-@define-color error @c5;
-@define-color success @c2;
+@define-color info #78C6EB;
+@define-color warning #fdcd5e;
+@define-color error #DE3163;
+@define-color success #abf157;

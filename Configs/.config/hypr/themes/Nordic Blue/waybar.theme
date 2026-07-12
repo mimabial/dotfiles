@@ -13,7 +13,7 @@ $HOME/.config/waybar/theme.css
 @define-color act_br #7287FD;
 
 @define-color hvr_bg #EFEFF5;
-@define-color hvr_fg @fg;
+@define-color hvr_fg #D9D9D9;
 @define-color hvr_br #81a1c1;
 
 @define-color c0 #3B4252;
@@ -34,7 +34,7 @@ $HOME/.config/waybar/theme.css
 @define-color c15 #ECEFF4;
 
 @define-color accent #A3BE8C;
-@define-color info @c6;
+@define-color info #88C0D0;
 @define-color warning #434c5e; /* nord2 */
-@define-color error @c1;
-@define-color success @c2;
+@define-color error #BF616A;
+@define-color success #A3BE8C;

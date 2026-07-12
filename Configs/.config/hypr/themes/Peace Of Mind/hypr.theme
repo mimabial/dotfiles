@@ -6,7 +6,7 @@ $NVIM_VARIANT = wave
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
-$CURSOR_THEME = McMojave-cursors
+$CURSOR_THEME = MacTahoe-cursors
 $CURSOR_SIZE = 22
 
 general {

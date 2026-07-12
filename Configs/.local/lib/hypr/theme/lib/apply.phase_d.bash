@@ -349,7 +349,7 @@ theme_apply_sync_runtime_desktop_state() {
 
   if [[ "${quiet}" == "true" ]]; then
     if (
-      THEME_DESKTOP_SYNC_LOG_DCONF=0 theme_desktop_apply_runtime_resolved && theme_desktop_set_cursor_async
+      THEME_DESKTOP_SYNC_LOG_DCONF=0 theme_desktop_apply_runtime_resolved && theme_desktop_apply_cursor_theme
     ) >/dev/null 2>&1; then
       return 0
     fi
@@ -357,7 +357,7 @@ theme_apply_sync_runtime_desktop_state() {
     return 1
   fi
 
-  theme_desktop_apply_runtime_resolved && theme_desktop_set_cursor_async
+  theme_desktop_apply_runtime_resolved && theme_desktop_apply_cursor_theme
 }
 
 theme_apply_run_static_desktop_sync() {

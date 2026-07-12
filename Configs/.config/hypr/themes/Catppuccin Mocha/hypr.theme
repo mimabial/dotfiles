@@ -7,10 +7,9 @@ $NVIM_VARIANT = mocha
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
+# $CURSOR_THEME = Layan-white-cursors
 $CURSOR_THEME = FernBLZ
 $CURSOR_SIZE = 40
-
-# Theme variables above are the primary inputs used by theme.switch.sh.
 
 general {
     gaps_in = 4

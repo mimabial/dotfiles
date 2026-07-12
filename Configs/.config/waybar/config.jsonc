@@ -6,7 +6,7 @@
 //
 {
   "layer": "top",
-  "position": "right",
+  "position": "left",
   "output": ["*"],
   "exclusive": true,
   "passthrough": false,
@@ -33,7 +33,7 @@
     "group/eyecare",
     "group/screen",
     "group/notification",
-    "group/networkmanagement",
+    "group/connection",
     "group/power"
   ],
   "group/tui-drawer": {
@@ -84,16 +84,15 @@
     },
     "modules": [
       "custom/mark",
+      "custom/keybindhint",
+      "custom/colormode",
       "custom/focusmode",
       "custom/gamemode",
-      "custom/colormode",
       "gamemode",
       "custom/cliphist",
       "custom/caffeine",
       "custom/wallchange",
-      "custom/themeswitch",
-      "custom/window-layout",
-      "custom/keybindhint"
+      "custom/themeswitch"
     ]
   },
   "group/volumecontrol": {
@@ -120,29 +119,13 @@
     },
     "modules": ["custom/dunst", "custom/github#notifications"]
   },
-  "group/bluetooth": {
+  "group/connection": {
     "orientation": "inherit",
     "drawer": {
       "transition-duration": 500,
       "transition-left-to-right": false
     },
-    "modules": ["bluetooth", "bluetooth#status"]
-  },
-  "group/wifi": {
-    "orientation": "inherit",
-    "drawer": {
-      "transition-duration": 500,
-      "transition-left-to-right": false
-    },
-    "modules": ["custom/wifimenu", "custom/network#speed"]
-  },
-  "group/networkmanagement": {
-    "orientation": "inherit",
-    "drawer": {
-      "transition-duration": 500,
-      "transition-left-to-right": false
-    },
-    "modules": ["custom/vpn", "custom/hotspot"]
+    "modules": ["tray", "custom/network#speed"]
   },
   "group/power": {
     "orientation": "inherit",

@@ -3,7 +3,7 @@
 # Theme: Edge Runner
 
 # Core colors derived from kvconfig.theme [GeneralColors]
-#000000=background
+#181818=background
 #FADA16=color8
 #FFA6C2=color4
 #ffffff=foreground

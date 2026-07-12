@@ -1,22 +1,22 @@
-background = "#0B0E14"
-foreground = "#FFFFFF"
-cursor = "#118911"
+background = "#0c1021"
+foreground = "#fdfff1"
+cursor = "#f25e01"
 
 colors = [
-  "#295252",
-  "#F07178",
-  "#11B811",
-  "#CCFFCC",
-  "#12B812",
-  "#9AE6E6",
-  "#9BE6E6",
-  "#CCFFCC",
-  "#578F8F",
-  "#D95757",
-  "#AAF0F0",
-  "#AAF0AA",
-  "#12B812",
-  "#9AE6E6",
-  "#9BE6E6",
-  "#AAF0AA",
+  "#0a0d1a",
+  "#e04a5f",
+  "#55ba30",
+  "#b3f63a",
+  "#6b8ab8",
+  "#ff0cac",
+  "#97c7e9",
+  "#d8d9c8",
+  "#505257",
+  "#f25e01",
+  "#b3f63a",
+  "#f8e9c7",
+  "#97c7e9",
+  "#ff0cac",
+  "#f5c6b0",
+  "#fdfff1",
 ]

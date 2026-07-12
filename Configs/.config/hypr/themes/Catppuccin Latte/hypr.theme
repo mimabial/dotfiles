@@ -2,13 +2,14 @@ $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 
 $ICON_THEME = Tela-purple-light
 $COLOR_SCHEME = prefer-light
-$CURSOR_THEME = FrierenBLZ
-$CURSOR_SIZE = 32
 $NVIM_SCHEME = catppuccin
 $NVIM_VARIANT = latte
 $NVIM_BACKGROUND = light
 $NVIM_TRANSPARENCY = false
 
+# $CURSOR_THEME = Layan-border-cursors
+$CURSOR_THEME = FrierenBLZ
+$CURSOR_SIZE = 32
 
 # Theme variables above are the primary inputs used by theme.switch.sh.
 

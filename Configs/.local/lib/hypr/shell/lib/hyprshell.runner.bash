@@ -58,7 +58,14 @@ list_script() {
     printf '%s\n' "${rel_path}"
   done < <(
     for dir in "${SCRIPT_DIRS[@]}"; do
-      find -L "${dir}" -maxdepth 2 -type f \( -name "*.sh" -o -name "*.py" \) -printf '%P\n' 2>/dev/null
+      find -L "${dir}" -maxdepth 2 -type f -name "*.sh" -printf '%P\n' 2>/dev/null
+      # Python: list entrypoints only, not import-only modules.
+      find -L "${dir}" -maxdepth 2 -type f -name "*.py" -printf '%p\t%P\n' 2>/dev/null |
+        while IFS=$'\t' read -r abs_path py_rel; do
+          if [[ -x "${abs_path}" ]] || grep -qs '__name__ == .__main__.' "${abs_path}"; then
+            printf '%s\n' "${py_rel}"
+          fi
+        done
     done | sort -u
   )
 }

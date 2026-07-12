@@ -36,8 +36,8 @@ $HOME/.config/waybar/theme.css
 @define-color c15 #A1A8C9;
 
 @define-color accent #CBA6F7;
-@define-color info @c6;
+@define-color info #94E2D5;
 @define-color warning #f5c2e7; /* Surface1 */
-@define-color error @c1;
-@define-color success @c2;
+@define-color error #F38BA8;
+@define-color success #A6E3A1;
 

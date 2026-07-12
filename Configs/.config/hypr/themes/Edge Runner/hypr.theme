@@ -2,11 +2,13 @@ $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 
 $ICON_THEME = Fluent-green-dark
 $COLOR_SCHEME = prefer-dark
+$NVIM_SCHEME = gruber-darker
+$NVIM_VARIANT =
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
-$CURSOR_THEME = Vimix-cursors
-$CURSOR_SIZE = 28
+$CURSOR_THEME = Hackneyed-Dark
+$CURSOR_SIZE = 24
 
 # Theme variables above are the primary inputs used by theme.switch.sh.
 

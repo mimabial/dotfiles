@@ -109,7 +109,12 @@ is_ac_online() {
 }
 
 current_power_profile() {
-  powerprofilesctl get 2>/dev/null || true
+  # busctl instead of powerprofilesctl: the python client crashes at exit
+  # (CPython 3.14 + PyGObject teardown race), spamming coredumps.
+  busctl --system get-property org.freedesktop.UPower.PowerProfiles \
+    /org/freedesktop/UPower/PowerProfiles \
+    org.freedesktop.UPower.PowerProfiles ActiveProfile 2>/dev/null |
+    awk -F'"' '{print $2}' || true
 }
 
 apply_power_profile() {

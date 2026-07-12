@@ -1,22 +1,22 @@
 $HOME/.config/alacritty/theme.toml
 
 [colors.primary]
-foreground = "#FDF500"
-background = "#000000"
+foreground = "#FFDD33"
+background = "#181818"
 
 [colors.cursor]
 text = "#FADA16"
 cursor = "#FADA16"
 
 [colors.selection]
-text = "#000000"
+text = "#181818"
 background = "#FADA16"
 
 [colors.normal]
 black = "#1F2229"
 red = "#D62246"
 green = "#4DBD4F"
-yellow = "#FDF500"
+yellow = "#FFDD33"
 blue = "#F29C6B"
 magenta = "#A56DF2"
 cyan = "#2CF6B3"

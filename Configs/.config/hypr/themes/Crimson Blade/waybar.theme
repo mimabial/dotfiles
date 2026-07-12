@@ -5,7 +5,7 @@ $HOME/.config/waybar/theme.css
 @define-color br #525fb8;
 
 @define-color alt_bg #03063c;
-@define-color alt_fg @fg;
+@define-color alt_fg #eceffd;
 @define-color alt_br #abf157;
 
 @define-color act_bg #525fb8;
@@ -34,10 +34,10 @@ $HOME/.config/waybar/theme.css
 @define-color c15 #f6ffec;
 
 @define-color accent #525fb8;
-@define-color info @c6;
+@define-color info #968662;
 @define-color warning #fdcd5e;
-@define-color error @c1;
-@define-color success @c2;
+@define-color error #c60049;
+@define-color success #abf157;
 
 @define-color main-bg #0e111a;
 @define-color main-fg #8b9ec5;

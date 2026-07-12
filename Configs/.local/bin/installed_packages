@@ -4,16 +4,14 @@ set -euo pipefail
 output_file="${HOME}/installed_packages.txt"
 
 {
-  printf '# Pacman packages\n'
+  printf '# Pacman packages (explicit, native)\n'
   if command -v pacman >/dev/null 2>&1; then
-    pacman -Qq
+    pacman -Qenq
   fi
 
-  printf '\n# AUR packages\n'
-  if command -v yay >/dev/null 2>&1; then
-    yay -Qmq
-  elif command -v paru >/dev/null 2>&1; then
-    paru -Qmq
+  printf '\n# AUR packages (explicit, foreign)\n'
+  if command -v pacman >/dev/null 2>&1; then
+    pacman -Qemq
   fi
 
   printf '\n# Flatpak packages\n'

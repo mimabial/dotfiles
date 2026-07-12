@@ -25,6 +25,7 @@ ZSH_STATE_DIR="${XDG_STATE_HOME}/zsh"
 ZSH_CACHE_DIR="${XDG_CACHE_HOME}/zsh"
 HISTFILE="${HISTFILE:-$ZSH_STATE_DIR/.zsh_history}"
 ZSH_COMPDUMP="${ZSH_COMPDUMP:-$ZSH_CACHE_DIR/.zcompdump}"
+export PYTHONPYCACHEPREFIX="${PYTHONPYCACHEPREFIX:-$XDG_CACHE_HOME/python}"
 
 # XDG User Directories (from config file; avoids external calls)
 _load_xdg_user_dirs() {
