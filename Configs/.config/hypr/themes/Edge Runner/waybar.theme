@@ -6,7 +6,7 @@ $HOME/.config/waybar/theme.css
 @define-color fg #FFDD33; /* foreground yellow */
 @define-color br #FADA16; /* yellow cursor */
 
-@define-color alt_bg #5032AC; /* pink/blue */
+@define-color alt_bg #A56DF2; /* pink/blue */
 @define-color alt_fg #181818;
 @define-color alt_br #4DBD4F; /* green */
 
@@ -15,7 +15,7 @@ $HOME/.config/waybar/theme.css
 @define-color act_br #FADA16;
 
 @define-color hvr_bg #1F2229;
-@define-color hvr_fg #A56DF2;
+@define-color hvr_fg #FFDD33;
 @define-color hvr_br #A56DF2;
 
 @define-color c0 #1F2229;

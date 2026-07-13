@@ -1,21 +1,21 @@
 $HOME/.config/waybar/theme.css
 
-@define-color bg #122d41;
+@define-color bg #294052;
 @define-color fg #aad2f0;
 @define-color fg #E9D9C7;
-@define-color br #376FAB;
+@define-color br transparent;
 
 @define-color alt_bg #294052;
 @define-color alt_fg #E9D9C7;
-@define-color alt_br #D3DCE6;
+@define-color alt_br transparent;
 
-@define-color act_bg #4b637d;
-@define-color act_fg #E9D9C7;
-@define-color act_br #cce4ff;
+@define-color act_bg #506477;
+@define-color act_fg #aad2f0;
+@define-color act_br transparent;
 
-@define-color hvr_bg #4b637d;
+@define-color hvr_bg #506477;
 @define-color hvr_fg #9FD6B0;
-@define-color hvr_br #9FD6B0;
+@define-color hvr_br transparent;
 
 @define-color c0 #294052;
 @define-color c1 #9FD6B0;

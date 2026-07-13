@@ -16,7 +16,7 @@ general {
     gaps_out = 13
     border_size = 3
     col.active_border = rgba(D3DCE6ff) rgba(293C52ff) 45deg
-    col.inactive_border = rgba(122D41ff) rgba(376FABff) 45deg
+    col.inactive_border = rgba(1B1E28ff) rgba(376FABff) 45deg
     layout = dwindle
     resize_on_border = true
 }
@@ -29,15 +29,15 @@ group {
 }
 
 decoration {
-    rounding = 6
+    rounding = 4
 
     active_opacity = 0.95
     inactive_opacity = 0.90
 
     blur {
         enabled = yes
-        size = 3
-        passes = 4
+        size = 4
+        passes = 2
         new_optimizations = on
         ignore_opacity = on
         xray = false

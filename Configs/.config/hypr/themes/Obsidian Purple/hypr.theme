@@ -1,0 +1,49 @@
+$HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
+
+$ICON_THEME = Tela-purple-dark
+$COLOR_SCHEME = prefer-dark
+
+$NVIM_SCHEME = silkcircuit
+$NVIM_VARIANT = soft
+$NVIM_BACKGROUND = dark
+$NVIM_TRANSPARENCY = false
+
+$CURSOR_THEME = Hackneyed-Dark
+$CURSOR_SIZE = 24
+
+general {
+    gaps_in = 3
+    gaps_out = 8
+    border_size = 2
+    col.active_border = rgba(814DDEff)
+    col.inactive_border = rgba(372952ff)
+    layout = dwindle
+    resize_on_border = true
+}
+
+group {
+    col.border_active = rgba(814DDEff)
+    col.border_inactive = rgba(372952ff)
+    col.border_locked_active = rgba(FFFFFFff)
+    col.border_locked_inactive = rgba(C7CAC2ff)
+}
+
+decoration {
+    rounding = 3
+    shadow:enabled = false
+
+    blur {
+        enabled = yes
+        size = 5
+        passes = 5
+        new_optimizations = on
+        ignore_opacity = on
+        xray = false
+    }
+
+    shadow {
+        enabled = true
+    }
+}
+
+layerrule = blur on, match:namespace waybar
