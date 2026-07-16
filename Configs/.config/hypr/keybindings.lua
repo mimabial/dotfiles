@@ -9,6 +9,13 @@ local editor = vars.get("EDITOR", "nvim")
 local bind_actions = {__probe = hl.dsp.no_op()}
 _G.HYPR_BIND_ACTIONS = bind_actions
 
+-- Modifier meanings, applied to letters, arrows and workspace numbers:
+--   mod        primary action for the key, or a submap leader
+--   mod SHIFT  the other/stronger version of that key's action
+--   mod ALT    same action, without following the window
+--   mod CTRL   relative/scoped navigation
+-- Function, XF86, mouse and Print keys are a hardware class and sit outside it.
+
 local function chord(modifiers, key)
     local parts = {}
     for item in tostring(modifiers or ""):gsub("%+", " "):gmatch("%S+") do
@@ -29,6 +36,41 @@ local function exec(modifiers, key, description, command, options)
     bind(modifiers, key, description, hl.dsp.exec_cmd(command), options)
 end
 
+-- Submaps give each domain its own key namespace, so no bind needs punctuation.
+-- That matters here: resolve_binds_by_sym resolves against the active layout's
+-- level-1 keysym, and AZERTY puts . / [ ] above level 1, where it cannot reach.
+local SUBMAP_MARKER = "[Submap] "
+
+-- The leader is tagged with SUBMAP_MARKER because the Lua plugin reports every
+-- bind as dispatcher "__lua"; keybinds_hint pairs inner binds back to the key
+-- that enters them via this description, not via hyprctl's dispatcher field.
+local function submap_leader(name, modifiers, key, body)
+    bind(modifiers, key, SUBMAP_MARKER .. name, hl.dsp.submap(name))
+    hl.define_submap(name, function()
+        body()
+        hl.bind("ESCAPE", hl.dsp.submap("reset"), {description = "[" .. name .. "] exit"})
+    end)
+end
+
+-- Leaves the submap before acting: inner binds are bare keys, so staying would
+-- swallow the keystrokes rofi needs. bind_actions keeps the bare dispatcher so
+-- keybinds_hint can run the action without entering the submap.
+local function submap_exec(key, description, command)
+    local dispatcher = hl.dsp.exec_cmd(command)
+    bind_actions[description] = dispatcher
+    hl.bind(key, function()
+        hl.dispatch(hl.dsp.submap("reset"))
+        hl.dispatch(dispatcher)
+    end, {description = description})
+end
+
+-- Stays in the submap, for repeat actions that never open a picker.
+local function submap_cycle(key, description, command)
+    local dispatcher = hl.dsp.exec_cmd(command)
+    bind_actions[description] = dispatcher
+    hl.bind(key, dispatcher, {description = description, repeating = true})
+end
+
 -- Window management
 local function toggle_floating()
     local window = hl.get_active_window()
@@ -46,11 +88,12 @@ end
 
 bind(mod, "Q", "[Window Management] close focused window", hl.dsp.window.close())
 bind("ALT", "F4", "[Window Management] close focused window", hl.dsp.window.close())
-exec(mod .. " ALT", "Q", "[Window Management] close all windows", "hyprshell window/close-all.sh")
+exec(mod .. " SHIFT", "Q", "[Window Management] close all windows", "hyprshell window/close-all.sh")
 bind(mod, "F", "[Window Management] toggle fullscreen", hl.dsp.window.fullscreen({mode = "fullscreen", action = "toggle"}))
+bind(mod .. " SHIFT", "F", "[Window Management] toggle maximize", hl.dsp.window.fullscreen({mode = "maximized", action = "toggle"}))
 bind(mod .. " SHIFT", "SPACE", "[Window Management] toggle floating", toggle_floating)
 exec(mod, "P", "[Window Management] toggle pin", "hyprshell window/windowpin.sh")
-bind(mod .. " ALT", "F", "[Window Management] toggle maximize", hl.dsp.window.fullscreen({mode = "maximized", action = "toggle"}))
+bind(mod, "G", "[Window Management] toggle group", hl.dsp.group.toggle())
 bind(mod, "J", "[Window Management] toggle window split", hl.dsp.layout("togglesplit"))
 exec(mod .. " SHIFT", "J", "[Window Management] toggle workspace layout", "hyprshell window/layout-toggle.sh")
 bind(mod .. " SHIFT", "L", "[Window Management] move focused column", hl.dsp.layout("move +col"))
@@ -96,36 +139,24 @@ exec(mod, "DELETE", "[Window Management] end session", "hyprshell logout")
 exec(mod, "L", "[Window Management] lock screen", "hyprshell lock-screen.sh")
 exec("CTRL ALT", "DELETE", "[Window Management] logout menu", "hyprshell logout-launch.sh 2")
 exec(mod, "ESCAPE", "[Window Management] logout menu", "hyprshell logout-launch.sh 2")
-exec(mod .. " SHIFT", "C", "[Utilities] toggle keep awake", "hyprshell session/toggle-keep-awake.sh")
 
 -- Applications and launchers
 exec(mod, "RETURN", "[Launcher|Apps] terminal in current directory", terminal .. [[ --working-directory "$(hyprshell terminal-cwd.sh)"]])
 exec(mod .. " SHIFT", "RETURN", "[Launcher|Apps] alternate terminal in current directory", terminal2 .. [[ --working-directory "$(hyprshell terminal-cwd.sh)"]])
-exec(mod .. " ALT", "RETURN", "[Launcher|Apps] dropdown terminal", "hyprshell window/dropdown-terminal")
 exec(mod, "E", "[Launcher|Apps] file explorer", explorer)
 exec(mod .. " SHIFT", "E", "[Launcher|Apps] file explorer in current directory", explorer .. [[ "$(hyprshell terminal-cwd.sh)"]])
 exec(mod, "B", "[Launcher|Apps] web browser", browser)
 exec(mod .. " SHIFT", "B", "[Launcher|Apps] private browser", "hyprshell browser.sh --private")
-exec(mod .. " CTRL", "S", "[Launcher|Apps] Signal", "hyprshell launch/summon.sh --empty-workspace-if-occupied class:signal -- signal-desktop")
-exec(mod .. " CTRL", "B", "[Launcher|Apps] Bitwarden", "hyprshell launch/summon.sh --align center bitwarden -- bitwarden-desktop")
-exec(mod .. " ALT", "G", "[Launcher|Apps] GIMP", "hyprshell launch/summon.sh --empty-workspace-if-occupied gimp -- gimp")
 exec(mod, "C", "[Launcher|Apps] text editor", terminal .. " -e " .. editor)
 
 exec(mod, "D", "[Launcher|Menus] application finder", "hyprshell rofi-launch.sh d")
-exec(mod .. " CTRL", "TAB", "[Launcher|Menus] window switcher", "hyprshell rofi-launch.sh w")
-exec(mod .. " CTRL", "F", "[Launcher|Menus] file finder", "pkill -x rofi || hyprshell launch/file-finder.sh")
+exec(mod .. " SHIFT", "D", "[Launcher|Menus] window switcher", "hyprshell rofi-launch.sh w")
 exec(mod, "SPACE", "[Launcher|Menus] menu tree", "pkill -x rofi || hyprshell menutree")
-exec(mod, "SLASH", "[Launcher|Menus] keybinding hints", "pkill -x rofi || hyprshell keybinds/keybinds_hint.sh")
 exec(mod, "K", "[Launcher|Menus] keybinding hints", "pkill -x rofi || hyprshell keybinds/keybinds_hint.sh")
-exec(mod, "PERIOD", "[Launcher|Menus] emoji picker", "pkill -x rofi || hyprshell emoji-picker.sh")
-bind(mod, "G", "[Window Management] toggle group", hl.dsp.group.toggle())
-exec(mod .. " SHIFT", "G", "[Launcher|Menus] glyph picker", "pkill -x rofi || hyprshell glyph-picker.sh")
-exec(mod, "H", "[Launcher|Menus] box drawing picker", "pkill -x rofi || hyprshell boxdraw-picker.sh")
 exec(mod, "V", "[Launcher|Menus] clipboard", "pkill -x rofi || hyprshell cliphist.sh -c")
 exec(mod .. " SHIFT", "V", "[Launcher|Menus] clipboard manager", "pkill -x rofi || hyprshell cliphist.sh")
 
 -- Hardware controls
-exec(mod .. " SHIFT", "O", "[Hardware|Audio] output switcher", "hyprshell controls/volume-control.sh -t")
 exec(mod, "F10", "[Hardware|Audio] mute output", "hyprshell volume-control.sh -o m", {locked = true})
 exec(mod .. " CTRL", "F10", "[Hardware|Audio] mute focused window", "hyprshell window-mute.py", {locked = true})
 exec("", "XF86AudioMute", "[Hardware|Audio] mute output", "hyprshell volume-control.sh -o m", {locked = true})
@@ -142,40 +173,63 @@ exec("", "XF86AudioPrev", "[Hardware|Media] previous", "playerctl previous", {lo
 exec("", "XF86MonBrightnessUp", "[Hardware|Brightness] increase", "hyprshell brightness-control.sh i", {locked = true, repeating = true})
 exec("", "XF86MonBrightnessDown", "[Hardware|Brightness] decrease", "hyprshell brightness-control.sh d", {locked = true, repeating = true})
 
--- Utilities
-exec(mod .. " SHIFT", "K", "[Utilities] switch keyboard layout", "hyprshell keyboard-switch.sh", {locked = true})
-exec(mod, "M", "[Utilities] focus mode", "hyprshell util/workflow-toggle.sh focus")
-exec(mod .. " SHIFT", "N", "[Utilities] toggle nightlight", "hyprshell system/hyprsunset.sh toggle")
-
-exec(mod .. " CTRL", "DELETE", "[Utilities|Monitors] toggle laptop display", "hyprshell system/monitor-internal.sh toggle")
-exec(mod .. " CTRL ALT", "DELETE", "[Utilities|Monitors] toggle mirroring", "hyprshell system/monitor-mirror.sh toggle")
-exec(mod, "code:51", "[Utilities|Monitors] cycle scale", "hyprshell system/monitor-scale.sh")
-exec(mod .. " ALT", "code:51", "[Utilities|Monitors] cycle scale backward", "hyprshell system/monitor-scale.sh --reverse")
+exec("", "Print", "[Utilities|Capture] all monitors", "hyprshell screenshot.sh p", {locked = true})
 exec("", "switch:on:Lid Switch", "[Utilities|Monitors] disable laptop display", "hyprshell system/monitor-internal.sh off", {locked = true})
 exec("", "switch:off:Lid Switch", "[Utilities|Monitors] enable laptop display", "hyprshell system/monitor-internal.sh on", {locked = true})
 
-exec(mod .. " SHIFT", "P", "[Utilities|Capture] smart screenshot", "hyprshell screenshot.sh smart")
-exec(mod .. " CTRL", "P", "[Utilities|Capture] color picker", "pkill -x rofi || hyprshell rofi/color-picker.sh")
-exec("", "Print", "[Utilities|Capture] all monitors", "hyprshell screenshot.sh p", {locked = true})
-exec(mod .. " CTRL", "Print", "[Utilities|Capture] extract text", "hyprshell screenshot.sh ocr")
-exec(mod .. " SHIFT", "R", "[Utilities|Recording] toggle webcam recording", "hyprshell screenrecord --toggle --audio --webcam")
-exec(mod .. " ALT", "R", "[Utilities|Recording] toggle monitor recording", "hyprshell screenrecord --toggle --audio --output")
-exec(mod .. " CTRL", "R", "[Utilities|Recording] stop recording", "hyprshell screenrecord --quit")
+-- Stays top-level and locked: the layout must be switchable on the lock screen.
+exec(mod .. " SHIFT", "K", "[Utilities] switch keyboard layout", "hyprshell keyboard-switch.sh", {locked = true})
 
--- Theme and wallpaper
-exec(mod, "BRACKETRIGHT", "[Theming] next theme", "hyprshell theme.switch.sh -n --quiet")
-exec(mod, "BRACKETLEFT", "[Theming] previous theme", "hyprshell theme.switch.sh -p --quiet")
-exec(mod .. " SHIFT", "BRACKETRIGHT", "[Theming] next wallpaper", "hyprshell wallpaper next --global")
-exec(mod .. " SHIFT", "BRACKETLEFT", "[Theming] previous wallpaper", "hyprshell wallpaper previous --global")
-exec(mod, "W", "[Theming] select wallpaper", "hyprshell rofi/run-after-close.sh -- hyprshell wallpaper select --global")
-exec(mod, "T", "[Theming] select theme", "hyprshell rofi/run-after-close.sh -- hyprshell theme.select.sh")
-exec(mod .. " SHIFT", "COMMA", "[Theming] next Waybar layout", "hyprshell waybar.py --update --next")
-exec(mod .. " SHIFT", "PERIOD", "[Theming] previous Waybar layout", "hyprshell waybar.py --update --prev")
-exec(mod .. " SHIFT", "W", "[Theming] toggle Waybar", "hyprshell waybar.py --hide")
-exec(mod .. " SHIFT", "M", "[Theming] color mode", "pkill -x rofi || hyprshell color-mode.sh -m")
-exec(mod, "N", "[Theming] select font", "pkill -x rofi || hyprshell fonts/font-picker.sh")
-exec(mod .. " SHIFT", "T", "[Theming] select rofi theme", "hyprshell rofi/run-after-close.sh -- hyprshell theme.select.sh -s")
-exec(mod .. " SHIFT", "A", "[Theming] select launcher style", "hyprshell rofi-launch.sh -s")
+-- Theming: arrows cycle and stay, letters pick and leave.
+submap_leader("theming", mod, "T", function()
+    submap_cycle("RIGHT", "[Theming] next theme", "hyprshell theme.switch.sh -n --quiet")
+    submap_cycle("LEFT", "[Theming] previous theme", "hyprshell theme.switch.sh -p --quiet")
+    submap_cycle("DOWN", "[Theming] next wallpaper", "hyprshell wallpaper next --global")
+    submap_cycle("UP", "[Theming] previous wallpaper", "hyprshell wallpaper previous --global")
+    submap_exec("T", "[Theming] select theme", "hyprshell rofi/run-after-close.sh -- hyprshell theme.select.sh")
+    submap_exec("W", "[Theming] select wallpaper", "hyprshell rofi/run-after-close.sh -- hyprshell wallpaper select --global")
+    submap_exec("F", "[Theming] select font", "pkill -x rofi || hyprshell fonts/font-picker.sh")
+    submap_exec("B", "[Theming] select Waybar layout", "hyprshell rofi/run-after-close.sh -- hyprshell waybar.py --select-layout")
+    submap_exec("V", "[Theming] toggle Waybar", "hyprshell waybar.py --hide")
+    submap_exec("M", "[Theming] color mode", "pkill -x rofi || hyprshell color-mode.sh -m")
+    submap_exec("R", "[Theming] select rofi theme", "hyprshell rofi/run-after-close.sh -- hyprshell theme.select.sh -s")
+    submap_exec("L", "[Theming] select launcher style", "hyprshell rofi-launch.sh -s")
+end)
+
+submap_leader("open", mod, "O", function()
+    submap_exec("O", "[Open] file finder", "pkill -x rofi || hyprshell launch/file-finder.sh")
+    submap_exec("D", "[Open] dropdown terminal", "hyprshell window/dropdown-terminal")
+    submap_exec("S", "[Open] Signal", "hyprshell launch/summon.sh --empty-workspace-if-occupied class:signal -- signal-desktop")
+    submap_exec("V", "[Open] Bitwarden", "hyprshell launch/summon.sh --align center bitwarden -- bitwarden-desktop")
+    submap_exec("G", "[Open] GIMP", "hyprshell launch/summon.sh --empty-workspace-if-occupied gimp -- gimp")
+end)
+
+submap_leader("capture", mod, "R", function()
+    submap_exec("S", "[Capture] smart screenshot", "hyprshell screenshot.sh smart")
+    submap_exec("A", "[Capture] all monitors", "hyprshell screenshot.sh p")
+    submap_exec("O", "[Capture] extract text", "hyprshell screenshot.sh ocr")
+    submap_exec("C", "[Capture] color picker", "pkill -x rofi || hyprshell rofi/color-picker.sh")
+    submap_exec("R", "[Capture] toggle monitor recording", "hyprshell screenrecord --toggle --audio --output")
+    submap_exec("W", "[Capture] toggle webcam recording", "hyprshell screenrecord --toggle --audio --webcam")
+    submap_exec("X", "[Capture] stop recording", "hyprshell screenrecord --quit")
+end)
+
+submap_leader("insert", mod, "I", function()
+    submap_exec("E", "[Insert] emoji picker", "pkill -x rofi || hyprshell emoji-picker.sh")
+    submap_exec("G", "[Insert] glyph picker", "pkill -x rofi || hyprshell glyph-picker.sh")
+    submap_exec("B", "[Insert] box drawing picker", "pkill -x rofi || hyprshell boxdraw-picker.sh")
+end)
+
+submap_leader("system", mod, "U", function()
+    submap_exec("N", "[System] toggle nightlight", "hyprshell system/hyprsunset.sh toggle")
+    submap_exec("A", "[System] toggle keep awake", "hyprshell session/toggle-keep-awake.sh")
+    submap_exec("F", "[System] focus mode", "hyprshell util/workflow-toggle.sh focus")
+    submap_exec("O", "[System] audio output switcher", "hyprshell controls/volume-control.sh -t")
+    submap_exec("S", "[System] cycle monitor scale", "hyprshell system/monitor-scale.sh")
+    submap_exec("SHIFT + S", "[System] cycle monitor scale backward", "hyprshell system/monitor-scale.sh --reverse")
+    submap_exec("D", "[System] toggle laptop display", "hyprshell system/monitor-internal.sh toggle")
+    submap_exec("M", "[System] toggle mirroring", "hyprshell system/monitor-mirror.sh toggle")
+end)
 
 -- Workspaces
 for workspace = 1, 10 do

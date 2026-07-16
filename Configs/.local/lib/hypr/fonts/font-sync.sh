@@ -48,15 +48,11 @@ done
 
 bar_font="${bar_to:-$(font_sync_resolve_font_value bar)}"
 
-# -----------------------------------------------------------------------------
 # Waybar: generated include
-# -----------------------------------------------------------------------------
 
 font_sync_apply_waybar_bar_font_include "${bar_font}"
 
-# -----------------------------------------------------------------------------
 # Rofi: rewrite OLD -> NEW inside quoted font strings
-# -----------------------------------------------------------------------------
 
 if command -v python3 >/dev/null 2>&1; then
   if [[ -n "${menu_from}" && -n "${menu_to}" && "${menu_from}" != "${menu_to}" ]]; then

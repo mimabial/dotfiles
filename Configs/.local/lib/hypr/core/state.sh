@@ -81,9 +81,7 @@ refresh_hypr_instance_signature() {
   fi
 }
 
-# ============================================================================
 # UNIFIED STATE MANAGEMENT
-# ============================================================================
 # All state is stored as scalar key=value entries in these files:
 #   - staterc:        User/runtime state (HYPR_THEME, selected_color_mode, etc.)
 #   - env-overrides:  Exported environment overrides
@@ -98,7 +96,6 @@ refresh_hypr_instance_signature() {
 #   state_set  - Write a state variable (atomic)
 #   state_get_color_variant - Read the resolved dark/light variant
 #   state_set_color_variant - Write the resolved dark/light variant
-# ============================================================================
 
 declare -gA HYPR_STATE_CACHE_VALUES=()
 declare -g HYPR_STATE_CACHE_SIGNATURE=""

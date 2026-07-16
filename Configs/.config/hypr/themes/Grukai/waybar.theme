@@ -13,11 +13,11 @@ $HOME/.config/waybar/theme.css
 @define-color act_br #4B5320;
 
 @define-color hvr_bg #131311;
-@define-color hvr_fg #5E4533;
+@define-color hvr_fg #C2C27A;
 @define-color hvr_br #C2C27A;
 
 @define-color c0 #525229;
-@define-color c1 #FFE4CC;
+@define-color c1 #b36d43;
 @define-color c2 #FFE1CC;
 @define-color c3 #FFE1CC;
 @define-color c4 #E6E69A;

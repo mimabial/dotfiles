@@ -43,8 +43,10 @@ def pywal_setting(name: str, variant: str) -> str:
             or PYWAL_DEFAULTS[variant].get(name, ""))
 
 def parse_kitty_theme(path: Path) -> dict:
-    """Parse a kitty.theme into {bg, fg, cursor?, colors[0..15]}."""
-    data = {"bg": None, "fg": None, "cursor": None, "colors": [None] * 16}
+    """Parse a kitty.theme into {bg, fg, cursor?, cursor_text?, selection_fg?,
+    selection_bg?, colors[0..15]}."""
+    data = {"bg": None, "fg": None, "cursor": None, "cursor_text": None,
+            "selection_fg": None, "selection_bg": None, "colors": [None] * 16}
     for raw in path.read_text().splitlines():
         line = raw.split("#", 1)[0].strip() if raw.lstrip().startswith("#") else raw
         m = KEY_VALUE.match(line)
@@ -59,6 +61,12 @@ def parse_kitty_theme(path: Path) -> dict:
             data["fg"] = v
         elif k == "cursor":
             data["cursor"] = v
+        elif k == "cursor_text_color":
+            data["cursor_text"] = v
+        elif k == "selection_foreground":
+            data["selection_fg"] = v
+        elif k == "selection_background":
+            data["selection_bg"] = v
         elif k.startswith("color"):
             try:
                 idx = int(k[5:])
@@ -69,13 +77,17 @@ def parse_kitty_theme(path: Path) -> dict:
     return data
 
 def parse_palette_toml(path: Path) -> dict:
-    """Parse palette.toml: {background, foreground, cursor?, colors[0..15]}."""
+    """Parse palette.toml: {background, foreground, cursor-color?, cursor-text?,
+    selection-foreground?, selection-background?, colors[0..15]}."""
     with path.open("rb") as f:
         raw = tomllib.load(f)
     return {
         "bg":     raw.get("background"),
         "fg":     raw.get("foreground"),
-        "cursor": raw.get("cursor"),
+        "cursor": raw.get("cursor-color") or raw.get("cursor"),  # "cursor" predates "cursor-color"
+        "cursor_text":  raw.get("cursor-text"),
+        "selection_fg": raw.get("selection-foreground"),
+        "selection_bg": raw.get("selection-background"),
         "colors": (raw.get("colors") or [None] * 16) + [None] * 16,  # pad short lists
     }
 
@@ -109,8 +121,9 @@ def resolve_theme(pack_name: str) -> dict:
         "fg":     parsed["fg"],
         "colors": parsed["colors"],
     }
-    if parsed["cursor"]:
-        out["cursor"] = parsed["cursor"]
+    for key in ("cursor", "cursor_text", "selection_fg", "selection_bg"):
+        if parsed.get(key):
+            out[key] = parsed[key]
     return out
 
 def resolve_wallpaper(image_path: str, variant: str) -> dict:

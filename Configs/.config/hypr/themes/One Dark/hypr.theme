@@ -1,7 +1,7 @@
 $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 
-$CURSOR_THEME=Sweet-cursors
-$CURSOR_SIZE=24
+$CURSOR_THEME = Sweet-cursors
+$CURSOR_SIZE = 24
 
 $ICON_THEME = One-Dark
 $COLOR_SCHEME = prefer-dark

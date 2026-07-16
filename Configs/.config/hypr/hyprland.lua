@@ -16,6 +16,8 @@ hl.env("XCURSOR_THEME", vars.get("CURSOR_THEME", "Bibata-Modern-Ice"), true)
 hl.env("XCURSOR_SIZE", vars.get("CURSOR_SIZE", "24"), true)
 hl.env("HYPRCURSOR_THEME", vars.get("CURSOR_THEME", "Bibata-Modern-Ice"), true)
 hl.env("HYPRCURSOR_SIZE", vars.get("CURSOR_SIZE", "24"), true)
+-- Force xcursor: xcursor-only themes have no hyprcursor manifest.
+hl.config({cursor = {enable_hyprcursor = false}})
 
 require("windowrules")
 require("userprefs")

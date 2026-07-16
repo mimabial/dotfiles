@@ -44,7 +44,7 @@ def load_palette(pack: Path) -> dict[str, str]:
         return {}
     data = tomllib.loads(p.read_text())
     roles: dict[str, str] = {}
-    for key in ("background", "foreground", "cursor"):
+    for key in ("background", "foreground", "cursor-color"):
         v = data.get(key)
         if isinstance(v, str) and HEX_RX.fullmatch(v):
             roles[key] = v.lower()

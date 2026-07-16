@@ -246,7 +246,6 @@ window_screenshot() {
   capture_selected_geometry "${selection}" "annotate"
 }
 
-# screenshot function, globbing was difficult to read and maintain
 take_screenshot() {
   local mode="$1"
   shift

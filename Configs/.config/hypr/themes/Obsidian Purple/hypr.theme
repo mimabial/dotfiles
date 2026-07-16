@@ -8,7 +8,7 @@ $NVIM_VARIANT = soft
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
-$CURSOR_THEME = Hackneyed-Dark
+$CURSOR_THEME = Sweet-cursors
 $CURSOR_SIZE = 24
 
 general {

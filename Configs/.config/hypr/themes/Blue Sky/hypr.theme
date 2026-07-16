@@ -12,8 +12,8 @@ $CURSOR_THEME= material_light_cursors
 $CURSOR_SIZE= 28
 
 general {
-    gaps_in = 7
-    gaps_out = 13
+    gaps_in = 6
+    gaps_out = 12
     border_size = 3
     col.active_border = rgba(D3DCE6ff) rgba(293C52ff) 45deg
     col.inactive_border = rgba(1B1E28ff) rgba(376FABff) 45deg
@@ -31,17 +31,17 @@ group {
 decoration {
     rounding = 4
 
-    active_opacity = 0.95
-    inactive_opacity = 0.90
+    active_opacity = 0.9
+    inactive_opacity = 0.8
 
     blur {
         enabled = yes
-        size = 4
+        size = 6
         passes = 2
         new_optimizations = on
         ignore_opacity = on
         xray = false
-        brightness = 0.7
+        brightness = 0.8
     }
 
     shadow {

@@ -2,8 +2,9 @@ $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 
 $ICON_THEME = buuf-nestort
 $COLOR_SCHEME = prefer-dark
+$NVIM_SCHEME = miasma
 $NVIM_BACKGROUND = dark
-$NVIM_TRANSPARENCY = false
+$NVIM_TRANSPARENCY = true
 # $CURSOR_THEME = buuf-cursor-original
 $CURSOR_THEME = MeguminCursor
 $CURSOR_SIZE = 32
@@ -39,11 +40,11 @@ decoration {
     blur {
         enabled = yes
         size = 2
-        passes = 7
+        passes = 5
         new_optimizations = on
         ignore_opacity = on
         xray = false
-        brightness = 1
+        brightness = 0.9
     }
 
     shadow {

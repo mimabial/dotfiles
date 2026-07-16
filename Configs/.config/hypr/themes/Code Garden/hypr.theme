@@ -12,7 +12,7 @@ $NVIM_TRANSPARENCY = false
 
 general {
     gaps_in = 4
-    gaps_out = 6
+    gaps_out = 7
     border_size = 2
     col.active_border = rgba(78c6ebff)
     col.inactive_border = rgba(4d576894)

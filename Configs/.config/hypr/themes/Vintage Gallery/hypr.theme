@@ -4,6 +4,7 @@ $ICON_THEME = Tela-red
 $CURSOR_THEME = GoogleDot-Blue
 $CURSOR_SIZE = 24
 $COLOR_SCHEME = prefer-light
+$NVIM_BACKGROUND = light
 $NVIM_TRANSPARENCY = false
 
 general {

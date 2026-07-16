@@ -1,6 +1,9 @@
 background = "#1A1626"
 foreground = "#F8F8F2"
-cursor = "#F8F8F2"
+cursor-color = "#F8F8F2"
+cursor-text = "#C7CAC2"
+selection-foreground = "#1a1626"
+selection-background = "#f8f8f2"
 
 colors = [
   "#141220",

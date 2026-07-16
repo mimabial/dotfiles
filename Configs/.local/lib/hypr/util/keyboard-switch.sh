@@ -119,6 +119,27 @@ sync_keyboard_to_keymap() {
   [[ "${current_keymap}" == "${target_keymap}" ]]
 }
 
+regenerate_keybind_hint_cache() {
+  local hint_py="${lib_root}/hypr/keybinds/lib/keybinds_hint.py"
+  local cache_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/hypr"
+  local cache="${cache_dir}/keybinds_hint.rofi"
+  local tmp=""
+
+  [[ -r "${hint_py}" ]] || return 0
+  command -v python3 >/dev/null 2>&1 || return 0
+  mkdir -p "${cache_dir}" 2>/dev/null || return 0
+
+  # keybinds_hint.py reads live binds via `hyprctl binds`, which already reflect
+  # the swap above; rewrite the mtime-cached rofi file atomically so the next
+  # hint shows the active layout's keys.
+  tmp="$(mktemp "${cache}.XXXXXX" 2>/dev/null)" || return 0
+  if python3 "${hint_py}" --format rofi >"${tmp}" 2>/dev/null && [[ -s "${tmp}" ]]; then
+    mv -f "${tmp}" "${cache}"
+  else
+    rm -f "${tmp}"
+  fi
+}
+
 main() {
   local sync_current_only=0
   local notify_enabled=1
@@ -185,6 +206,8 @@ main() {
       -i "${ICONS_DIR}/Pywal16-Icon/keyboard.svg" \
       "${target_keymap}" || true
   fi
+
+  regenerate_keybind_hint_cache
 }
 
 main "$@"

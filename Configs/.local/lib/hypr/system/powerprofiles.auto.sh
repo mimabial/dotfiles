@@ -108,6 +108,11 @@ is_ac_online() {
   ac_online_from_upower
 }
 
+ac_state() {
+  has_battery_device || { printf 'ac\n'; return 0; }
+  if is_ac_online; then printf 'ac\n'; else printf 'bat\n'; fi
+}
+
 current_power_profile() {
   # busctl instead of powerprofilesctl: the python client crashes at exit
   # (CPython 3.14 + PyGObject teardown race), spamming coredumps.
@@ -153,9 +158,29 @@ apply_auto_profile() {
 }
 
 monitor_power_events() {
+  local last_state="" current_state="" applied_profile=""
+
+  last_state="$(ac_state)"
+  applied_profile="$(current_power_profile)"
+
   upower --monitor-detail 2>/dev/null | while IFS= read -r line; do
     [[ -n "${line//[[:space:]]/}" ]] || continue
+
+    # Only react to AC<->battery transitions, so routine battery-poll events
+    # (and manual profile changes) never clobber the active profile.
+    current_state="$(ac_state)"
+    [[ "${current_state}" == "${last_state}" ]] && continue
+    last_state="${current_state}"
+
+    # Honor a manual override: if the live profile is not the one we last
+    # applied, the user changed it — adopt it as baseline and leave it alone.
+    if [[ "$(current_power_profile)" != "${applied_profile}" ]]; then
+      applied_profile="$(current_power_profile)"
+      continue
+    fi
+
     apply_auto_profile || true
+    applied_profile="$(current_power_profile)"
   done
 }
 

@@ -1,22 +1,25 @@
-background = "#131311"
-foreground = "#FFFFFF"
-cursor = "#8B6F56"
+background = "#222222"
+foreground = "#c2c2b0"
+cursor-color = "#685742"
+cursor-text = "#222222"
+selection-foreground = "#000000"
+selection-background = "#e4c47a"
 
 colors = [
-  "#525229",
-  "#FFE4CC",
-  "#FFE1CC",
-  "#FFE1CC",
-  "#E6E69A",
-  "#E6B99A",
-  "#E6B99A",
-  "#FFE4CC",
-  "#8F8F57",
-  "#F0CBAA",
-  "#F0C7AA",
-  "#F0C7AA",
-  "#E6E69A",
-  "#E6B99A",
-  "#E6B99A",
-  "#F0CBAA",
+  "#222222",
+  "#685742",
+  "#5f875f",
+  "#b36d43",
+  "#78824b",
+  "#bb7744",
+  "#c9a554",
+  "#d7c483",
+  "#666666",
+  "#685742",
+  "#5f875f",
+  "#b36d43",
+  "#78824b",
+  "#bb7744",
+  "#c9a554",
+  "#d7c483",
 ]

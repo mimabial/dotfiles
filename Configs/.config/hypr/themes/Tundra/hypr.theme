@@ -4,8 +4,6 @@ $ICON_THEME = MacTahoe-dark
 $COLOR_SCHEME = prefer-dark
 $CURSOR_THEME = MacTahoe-dark-cursors
 $CURSOR_SIZE = 30
-$NVIM_SCHEME = catppuccin
-$NVIM_VARIANT = macchiato
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 

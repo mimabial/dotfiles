@@ -7,6 +7,8 @@ import os
 from collections import defaultdict
 import time
 
+# Must match SUBMAP_MARKER in ~/.config/hypr/keybindings.lua.
+SUBMAP_MARKER = "[Submap] "
 
 CODE_DISPLAY_MAP = {
     10: "1",
@@ -131,7 +133,8 @@ def map_keyDisplay(key):
 def find_duplicated_binds(binds):
     bind_map = defaultdict(list)
     for bind in binds:
-        key = (bind["mod_display"], bind["key_display"])
+        # Same chord in two different submaps is not a conflict.
+        key = (bind.get("submap", ""), bind["mod_display"], bind["key_display"])
         bind_map[key].append(bind)
 
     duplicated_binds = {k: v for k, v in bind_map.items() if len(v) > 1}
@@ -307,9 +310,15 @@ def expand_meta_data(binds_data):
             bind["key_display"] = infer_blank_key_display(original_description)
         bind["mod_display"] = map_modDisplay(bind["modmask"])
 
-        # Handle submaps
+        # Handle submaps. The Lua config plugin routes every bind through its own
+        # handler, so hyprctl reports dispatcher "__lua" and never "submap"; a
+        # leader declared in Lua is identified by its SUBMAP_MARKER description.
+        submap_name = None
         if bind["dispatcher"] == "submap":
             submap_name = bind["arg"]
+        elif original_description.startswith(SUBMAP_MARKER):
+            submap_name = original_description[len(SUBMAP_MARKER) :].strip()
+        if submap_name:
             submap_keys[submap_name] = {
                 "mod_display": bind["mod_display"],
                 "key_display": bind["key_display"],

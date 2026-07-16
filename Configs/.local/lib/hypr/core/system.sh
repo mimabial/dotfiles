@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
 
-# ============================================================================
 # pkg_installed - Check if a package is installed
-# ============================================================================
 # Arguments:
 #   $1 - Package name to check
 # Returns:
@@ -68,9 +66,7 @@ get_hypr_conf_from_file() {
   ' "${file}"
 }
 
-# ============================================================================
 # get_hypr_conf - Get a variable value from Hyprland theme config
-# ============================================================================
 # Arguments:
 #   $1 - Variable name (without $ prefix)
 #   $2 - Config file path (optional, defaults to current theme's hypr.theme)
@@ -152,9 +148,7 @@ paste_string() {
   fi
 }
 
-# ============================================================================
 # ini_write - Write a key=value pair to an INI/KConfig file
-# ============================================================================
 # Arguments:
 #   $1 - Config file path
 #   $2 - Group/section name (e.g., "General", "Colors:View")
