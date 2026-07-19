@@ -1,0 +1,40 @@
+$HOME/.config/waybar/theme.css
+
+@define-color bg #282a36; /* bg */
+@define-color fg #6272a4; /* fg */
+@define-color br #6272a4; /* bg_highlight */
+
+@define-color alt_bg #282a36; /* bg */
+@define-color alt_fg #f8f8f2; /* fg */
+@define-color alt_br #bd93f9; /* blue */
+
+@define-color act_bg #1e222a;
+@define-color act_fg #03edf9;
+@define-color act_br #bd93f9;
+
+@define-color hvr_bg #44475a;
+@define-color hvr_fg #50fa7b;
+@define-color hvr_br #ff5555;
+
+@define-color c0 #21222c;
+@define-color c1 #ff5555;
+@define-color c2 #50fa7b;
+@define-color c3 #f1fa8c;
+@define-color c4 #bd93f9;
+@define-color c5 #ff79c6;
+@define-color c6 #8be9fd;
+@define-color c7 #f8f8f2;
+@define-color c8 #6272a4;
+@define-color c9 #ff6e6e;
+@define-color c10 #69ff94;
+@define-color c11 #ffffa5;
+@define-color c12 #d6acff;
+@define-color c13 #ff92df;
+@define-color c14 #a4ffff;
+@define-color c15 #ffffff;
+
+@define-color accent #72f1b8;
+@define-color info #8be9fd;
+@define-color warning #f1fa8c;
+@define-color error #ff5555;
+@define-color success #50fa7b;

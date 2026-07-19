@@ -5,7 +5,8 @@ $COLOR_SCHEME = prefer-dark
 $CURSOR_THEME = Sweet-cursors
 $CURSOR_SIZE = 24
 
-$NVIM_SCHEME = dracula
+$NVIM_SCHEME = cyberdream
+$NVIM_VARIANT = default
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 

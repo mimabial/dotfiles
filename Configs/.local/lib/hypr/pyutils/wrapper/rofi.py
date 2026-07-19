@@ -13,6 +13,27 @@ def __check_rofi_in_path() -> bool:
     return which(ROFI_CMD) is not None
 
 
+def rofi_font_text_height_px(font_desc: str) -> float:
+    """Measure a Pango font description's line height in pixels.
+
+    Raises if the gi/pango/cairo stack is unavailable; callers fall back to
+    an em heuristic, mirroring rofi_font_text_height_px in rofi/lib/fonts.bash.
+    """
+    import cairo
+    import gi
+
+    gi.require_version("Pango", "1.0")
+    gi.require_version("PangoCairo", "1.0")
+    from gi.repository import Pango, PangoCairo
+
+    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 1, 1)
+    pango_context = PangoCairo.create_context(cairo.Context(surface))
+    description = Pango.FontDescription.from_string(font_desc)
+    pango_context.set_font_description(description)
+    metrics = pango_context.get_metrics(description, Pango.Language.get_default())
+    return (metrics.get_ascent() + metrics.get_descent()) / Pango.SCALE
+
+
 def rofi_dmenu(choices: List[str], rofi_options: List[str] = []) -> str:
     """Summary
         Let user interactively choose from given choices using rofi program

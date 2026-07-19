@@ -54,6 +54,8 @@ rofi_wallpaper_post_clamp_reduction_px() {
       printf '%s\n' "${gaps_json}" | jq -r '
         if (.int? != null and (.int | tostring) != "") then
           .int
+        elif (.css? != null and .css != "") then
+          (.css | split(" ")[0])
         elif (.custom? != null and .custom != "") then
           (.custom | split(" ")[0])
         else
@@ -158,6 +160,8 @@ rofi_wallpaper_width_override() {
       printf '%s\n' "${gaps_json}" | jq -r '
         if (.int? != null and (.int | tostring) != "") then
           .int
+        elif (.css? != null and .css != "") then
+          (.css | split(" ")[0])
         elif (.custom? != null and .custom != "") then
           (.custom | split(" ")[0])
         else

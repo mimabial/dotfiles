@@ -21,7 +21,7 @@
     "group/datetime",
     "group/tui-drawer",
     "ext/workspaces#hindi",
-    "hyprland/submap",
+    "custom/submap",
     "group/forecast",
     "group/info"
   ],

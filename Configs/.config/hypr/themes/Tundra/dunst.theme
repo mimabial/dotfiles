@@ -12,7 +12,7 @@ $HOME/.config/dunst/theme.conf
 @define-color accent-yellow #ffccd9;
 @define-color accent-blue #9abae6;
 @define-color accent-purple #b69ae6;
-@define-color accent-aqua #e69aad;
+@define-color accent-aqua #9abae6;
 @define-color accent-orange #f0c1aa;
 
 @define-color border-primary #4B6587;

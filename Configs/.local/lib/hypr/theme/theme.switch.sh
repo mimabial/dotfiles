@@ -20,6 +20,9 @@ source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
 hypr_runtime_require state system wallpaper_catalog || exit 1
 hypr_runtime_load_state || exit 1
 
+# shellcheck source=/dev/null
+source "${LIB_DIR}/hypr/theme/pairs.sh" || exit 1
+
 [ -z "${HYPR_THEME}" ] && echo "ERROR: unable to detect theme" && exit 1
 get_themes
 
@@ -177,6 +180,7 @@ cleanup_theme_switch() {
 trap 'cleanup_theme_switch "$?"' EXIT
 
 quiet=false
+themeSet=""
 theme_switch_cache_args=()
 
 theme_switch_usage() {
@@ -263,11 +267,24 @@ prepare_active_theme_config() {
   sanitize_hypr_theme "${HYPR_THEME_DIR}/hypr.theme" "${theme_switch_metadata_file}"
 }
 
+theme_switch_reconcile_color_mode() {
+  local mode polarity desired
+  mode="$(state_get "selected_color_mode" "1")"
+  [[ "${mode}" == "2" || "${mode}" == "3" ]] || return 0
+  polarity="$(theme_polarity "${HYPR_THEME}")"
+  [[ "${polarity}" == "light" ]] && desired=3 || desired=2
+  [[ "${desired}" == "${mode}" ]] && return 0
+  state_set "selected_color_mode" "${desired}" "staterc"
+  selected_color_mode="${desired}"
+  export selected_color_mode
+}
+
 main() {
   local -a theme_apply_cmd=("${LIB_DIR}/hypr/theme/theme.apply.sh")
 
   parse_theme_switch_args "$@"
   set_active_theme
+  theme_switch_reconcile_color_mode
   prepare_active_theme_config || exit 1
   [[ "${quiet}" == "true" ]] && theme_apply_cmd+=(--quiet)
   theme_apply_cmd+=("${theme_switch_cache_args[@]}")

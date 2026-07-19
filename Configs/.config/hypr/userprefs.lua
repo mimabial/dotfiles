@@ -1,7 +1,3 @@
-hl.on("hyprland.start", function()
-    hl.exec_cmd(os.getenv("HOME") .. "/.local/lib/hypr/media/fftab-bridge/ensure.sh")
-end)
-
 hl.config({
     input = {
         kb_layout = "us,fr",

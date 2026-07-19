@@ -2,7 +2,7 @@ $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 $ICON_THEME = Tela-red-dark
 # $CURSOR_THEME = Skyrim-by-ru5tyshark-cursors
 $CURSOR_THEME = taiga-cursor
-$CURSOR_SIZE = 32
+$CURSOR_SIZE = 30
 $COLOR_SCHEME = prefer-dark
 $NVIM_SCHEME = ashen
 $NVIM_BACKGROUND = dark

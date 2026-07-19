@@ -2,20 +2,20 @@
 
 /* Core colors */
 @define-color bg {background};
-@define-color fg {color7};
-@define-color br {color5};
+@define-color fg {color15};
+@define-color br {color13};
 
-@define-color alt_bg {color6};
+@define-color alt_bg {background};
 @define-color alt_fg {color3};
-@define-color alt_br {color11};
+@define-color alt_br {color13};
 
 @define-color act_bg {color3};
 @define-color act_fg {background};
 @define-color act_br {color0};
 
-@define-color hvr_bg {background};
-@define-color hvr_fg {foreground};
-@define-color hvr_br {color13};
+@define-color hvr_bg transparent;
+@define-color hvr_fg {color13};
+@define-color hvr_br {color12};
 
 /* Numbered colors (c0-c15) */
 @define-color c0 {color0};

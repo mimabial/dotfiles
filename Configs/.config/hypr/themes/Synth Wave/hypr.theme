@@ -1,6 +1,10 @@
 $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
+
 $ICON_THEME = candy-icons
 $COLOR_SCHEME = prefer-dark
+$NVIM_SCHEME = fluoromachine
+$NVIM_VARIANT = default
+$NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME = capitaine-cursors-light
@@ -10,7 +14,7 @@ $CURSOR_SIZE = 28
 
 general {
     gaps_in = 6
-    gaps_out = 12
+    gaps_out = 14
     border_size = 2
     col.active_border = rgba(03edf9ff)
     col.inactive_border = rgba(495495cc)
@@ -19,9 +23,9 @@ general {
 }
 
 group {
-    col.border_active = rgba(03edf9ff)
+    col.border_active = rgba(61E2FFff)
     col.border_inactive = rgba(495495cc)
-    col.border_locked_active = rgba(03edf9ff)
+    col.border_locked_active = rgba(61E2FFff)
     col.border_locked_inactive = rgba(495495cc)
 }
 
@@ -30,11 +34,11 @@ decoration {
 
     shadow {
     enabled = true
-    scale = 2
+    scale = 1
     offset = 0 0
-    range = 9
-    render_power = 9
-    color = 0xff03edf9
+    range = 10
+    render_power = 10
+    color = 0x1a61e2ff
     }
 
     blur {

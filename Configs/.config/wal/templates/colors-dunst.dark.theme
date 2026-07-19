@@ -1,0 +1,2 @@
+@define-color fg-critical {color5};
+@define-color frame-critical {color4};

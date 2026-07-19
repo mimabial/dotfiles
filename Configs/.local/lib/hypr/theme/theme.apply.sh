@@ -47,6 +47,9 @@ fi
 # shellcheck source=/dev/null
 source "${theme_apply_phase_d_lib}" || exit 1
 
+# shellcheck source=/dev/null
+source "${LIB_DIR}/hypr/theme/pairs.sh" || exit 1
+
 THEME_UPDATE_LOCK="$(hypr_lock_path theme_update)"
 THEME_UPDATE_META="$(hypr_lock_path theme_update_meta)"
 
@@ -479,15 +482,7 @@ theme_apply_run_color_sync() {
     return "${apply_rc}"
   fi
 
-  case "${selected_color_mode}" in
-    2) variant="dark" ;;
-    3) variant="light" ;;
-    *)
-      variant="$(state_get_color_variant 2>/dev/null || true)"
-      [[ "${variant}" =~ ^(dark|light)$ ]] || variant="${BACKGROUND_MODE:-}"
-      [[ "${variant}" =~ ^(dark|light)$ ]] || variant="dark"
-      ;;
-  esac
+  variant="$(theme_polarity "${HYPR_THEME}")"
 
   state_set "BACKGROUND_MODE" "${variant}" "staterc"
   state_set_color_variant "${variant}"

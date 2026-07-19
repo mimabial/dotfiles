@@ -1,0 +1,16 @@
+{
+  // Replaces hyprland/submap, which renders only what a submap>> event tells it
+  // and so shows nothing when the bar starts while a submap is already active.
+  // submap-status prints the current submap on startup, then follows events.
+  //
+  // format is "{}" with no wrapping markup: Waybar hides the module when the
+  // rendered text is empty, which a static format or <b>{}</b> would defeat.
+  "custom/submap": {
+    "justify": "center",
+    "exec": "hyprshell keybinds/submap-status",
+    "return-type": "json",
+    "format": "{}",
+    "max-length": 8,
+    "tooltip": true
+  }
+}

@@ -216,15 +216,8 @@ get_rofi_pos() {
   local min_x=0 max_x=0 min_y=0 max_y=0
   local desired_x=0 desired_y=0
   local x_off=0 y_off=0
-  local ignored_border_radius=""
-  local border_width=0
 
   rofi_default_window_size window_width window_height
-  hypr_border_metrics_into ignored_border_radius border_width 2>/dev/null || true
-  [[ "${border_width}" =~ ^[0-9]+$ ]] || border_width=2
-  # Rofi dimensions describe the content box; clamp using its outer border box.
-  window_width=$((window_width + border_width * 2))
-  window_height=$((window_height + border_width * 2))
 
   if declare -F rofi_monitors_json >/dev/null 2>&1; then
     monitors_json="$(rofi_monitors_json)"
@@ -278,8 +271,10 @@ get_rofi_pos() {
   mon_x="${parsed_x}"
   mon_y="${parsed_y}"
   mon_reserved=("${off_left}" "${off_top}" "${off_right}" "${off_bottom}")
-  cursor_x="$(rofi_scaled_divide "$((raw_cursor_x - mon_x))" "${mon_scale}")"
-  cursor_y="$(rofi_scaled_divide "$((raw_cursor_y - mon_y))" "${mon_scale}")"
+  # hyprctl cursorpos and monitor x/y are already logical; only the monitor
+  # width/height need the scale division.
+  cursor_x=$((raw_cursor_x - mon_x))
+  cursor_y=$((raw_cursor_y - mon_y))
   edge_padding="$(hypr_window_edge_padding_px 2>/dev/null || true)"
   [[ "${edge_padding}" =~ ^[0-9]+$ ]] || edge_padding=12
 

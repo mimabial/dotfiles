@@ -31,6 +31,7 @@
         "$XDG_DATA_HOME/waybar/modules/custom-powermenu.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-screenrecord.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-screenshot.jsonc",
+        "$XDG_CONFIG_HOME/waybar/modules/custom-submap.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-terminal.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-themeswitch.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-updates.jsonc",
@@ -140,9 +141,9 @@
         "tooltip": true,
         "format-icons": {
             "default": "\uf0e7",
-            "performance": "<span color='#B37F34'><small>\uf0e7</small></span>",
-            "balanced": "<span><small>\uf24e </small></span>",
-            "power-saver": "<span color='#a6e3a1'><small>\uf06c</small></span>"
+            "performance": "\uf0e7",
+            "balanced": "\uf24e ",
+            "power-saver": "\uf06c"
         }
     },
     "custom/dmark": {
@@ -976,6 +977,14 @@
         "exec": "hyprshell screenrecord --status",
         "on-click": "hyprshell screenrecord --toggle",
         "on-click-right": "hyprshell screenrecord --quit"
+    },
+    "custom/submap": {
+        "justify": "center",
+        "exec": "hyprshell keybinds/submap-status",
+        "return-type": "json",
+        "format": "{}",
+        "max-length": 8,
+        "tooltip": true
     },
     "temperature#2": {
         "thermal-zone": 2,

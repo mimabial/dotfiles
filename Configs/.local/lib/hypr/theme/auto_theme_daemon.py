@@ -34,6 +34,7 @@ from auto_theme_support import (
     read_color_variant_file,
     read_staterc,
     resolve_auto_location,
+    resolve_hyprshell,
     resolve_wallpaper,
     save_state,
     set_state_value,
@@ -219,9 +220,53 @@ class AutoThemeDaemon:
         except Exception as exc:
             print(f"Warning: Failed to update Neovim: {exc}")
 
+    def _pair_theme_for(self, current_theme: Optional[str], mode: str) -> Optional[str]:
+        hyprshell = resolve_hyprshell()
+        if not hyprshell or not current_theme:
+            return current_theme
+        try:
+            result = subprocess.run(
+                [hyprshell, "theme/pairs", "--pair-for", current_theme, mode],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            target = result.stdout.strip()
+            if result.returncode == 0 and target:
+                return target
+        except Exception as exc:
+            print(f"Warning: pair resolution failed: {exc}")
+        return current_theme
+
+    def _switch_theme(self, theme: str) -> bool:
+        hyprshell = resolve_hyprshell()
+        if not hyprshell:
+            print("Warning: hyprshell not found, cannot switch theme")
+            return False
+        try:
+            result = subprocess.run(
+                [hyprshell, "theme/theme.switch", "-s", theme, "--quiet"],
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode != 0:
+                detail = (result.stderr or result.stdout or "").strip()
+                print(f"Warning: theme switch to '{theme}' failed: {detail or 'unknown error'}")
+                return False
+            return True
+        except Exception as exc:
+            print(f"Warning: theme switch failed: {exc}")
+            return False
+
     def _apply_hyprland(self, mode: Literal["light", "dark"]):
         try:
             staterc_values = read_staterc()
+            current_theme = staterc_values.get("HYPR_THEME")
+            target_theme = self._pair_theme_for(current_theme, mode)
+            if target_theme and current_theme and target_theme != current_theme:
+                self._switch_theme(target_theme)
+                return
+
             set_state_value("BACKGROUND_MODE", mode, "staterc")
             set_state_value("", mode, "color_variant")
 

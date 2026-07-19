@@ -202,15 +202,7 @@ monitor_transform_for() {
 }
 
 monitor_gdk_scale_for() {
-  case "$1" in
-    1) printf '1\n' ;;
-    1.25) printf '1.25\n' ;;
-    1.6) printf '1.75\n' ;;
-    2) printf '2\n' ;;
-    3) printf '3\n' ;;
-    4) printf '4\n' ;;
-    *) printf '%s\n' "$1" ;;
-  esac
+  awk -v s="$1" 'BEGIN { printf "%d\n", (s == int(s)) ? s : int(s) + 1 }'
 }
 
 monitor_sanitize_name() {

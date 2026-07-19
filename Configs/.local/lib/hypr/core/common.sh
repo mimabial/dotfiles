@@ -378,7 +378,7 @@ hypr_resolved_gaps_out() {
   if [[ ! "${gaps_out}" =~ ^[0-9]+$ ]] && command -v hyprctl >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
     gaps_out="$(
       hyprctl -j getoption general:gaps_out 2>/dev/null |
-        jq -r '.int // empty' 2>/dev/null
+        jq -r '.int // ((.css // .custom // "") | split(" ")[0]) // empty' 2>/dev/null
     )"
   fi
 

@@ -1,40 +1,40 @@
 $HOME/.config/waybar/theme.css
 
-@define-color bg #2a2139;
-@define-color fg #ff7edb;
-@define-color br #65baff;
+@define-color bg #262335;
+@define-color fg #8C57C7;
+@define-color br #8C57C7;
 
-@define-color alt_bg #3c3f58;
-@define-color alt_fg #ff7edb;
-@define-color alt_br #65baff;
+@define-color alt_bg #241B2F;
+@define-color alt_fg #495495;
+@define-color alt_br #72F1B8;
 
 @define-color act_bg #463465;
-@define-color act_fg #ff7edb;
-@define-color act_br #03edf9;
+@define-color act_fg #61E2FF;
+@define-color act_br #72F1B8;
 
-@define-color hvr_bg #ff87d4;
-@define-color hvr_fg #65baff;
-@define-color hvr_br #ff87d4;
+@define-color hvr_bg #241B2F;
+@define-color hvr_fg #61E2FF;
+@define-color hvr_br #FC199A;
 
 @define-color c0 #1a1b27;
-@define-color c1 #ff517d;
-@define-color c2 #8cffd1;
-@define-color c3 #ff87d4;
-@define-color c4 #65baff;
-@define-color c5 #fede5d;
-@define-color c6 #78faff;
-@define-color c7 #ffffff;
-@define-color c8 #3c3f58;
-@define-color c9 #ff517d;
-@define-color c10 #8cffd1;
-@define-color c11 #ff87d4;
-@define-color c12 #65baff;
-@define-color c13 #ffd36e;
-@define-color c14 #78faff;
+@define-color c1 #FE4450;
+@define-color c2 #72F1B8;
+@define-color c3 #FF8B39;
+@define-color c4 #61E2FF;
+@define-color c5 #FC199A;
+@define-color c6 #61E2FF;
+@define-color c7 #8BA7A7;
+@define-color c8 #495495;
+@define-color c9 #fe4450;
+@define-color c10 #72f1b8;
+@define-color c11 #ffcc00;
+@define-color c12 #af6df9;
+@define-color c13 #fc199a;
+@define-color c14 #8cf8f7;
 @define-color c15 #ffffff;
 
-@define-color accent #65baff;
-@define-color info #78faff;
-@define-color warning #ff87d4;
-@define-color error #ff517d;
-@define-color success #8cffd1;
+@define-color accent #8cf8f7;
+@define-color info #61E2FF;
+@define-color warning #FF8B39;
+@define-color error #FE4450;
+@define-color success #72F1B8;

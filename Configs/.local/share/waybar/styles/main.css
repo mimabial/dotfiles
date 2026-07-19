@@ -12,8 +12,7 @@
 }
 
 window#waybar {
-  background: alpha(@bg, 0.5);
-  border-left: 1px solid alpha(@bg, 0.1);
+  background: alpha(@bg, 0.6);
   border-radius: 0px;
 }
 
@@ -155,7 +154,7 @@ menu {
 }
 
 #workspaces button.active:hover {
-  background: alpha(@hvr_bg, 0.5);
+  background: alpha(@hvr_bg, 0.2);
 }
 
 #workspaces button.active:hover label {
@@ -262,6 +261,7 @@ menu {
 }
 
 #custom-vpn {
+  color: @c1;
   font-size: 18px;
   padding: 3px 2px 2px 0px;
 }
@@ -272,7 +272,7 @@ menu {
 }
 
 #custom-vpn.connected {
-  color: @accent;
+  color: @c2;
 }
 
 #custom-vpn.connecting {
@@ -442,11 +442,6 @@ menu {
   background: transparent;
 }
 
-#power-profiles-daemon {
-  margin: 1px 0px;
-  background: transparent;
-}
-
 #custom-powermenu {
   font-size: 18px;
   padding-right: 4px;
@@ -462,9 +457,21 @@ menu {
 }
 
 #power-profiles-daemon {
+  font-size: 13.5px;
+  margin: 1px 0px;
   background-color: alpha(@alt_bg, 0.1);
   border: 1px solid alpha(@alt_br, 0.3);
-  padding: 3px 0px 3px 1px;
+  padding: 3px 0px 3px 0px;
+}
+
+#power-profiles-daemon.performance {
+  padding-right: 2px;
+  color: @c3;
+}
+
+#power-profiles-daemon.power-saver {
+  padding-right: 4px;
+  color: @c6;
 }
 
 /* ============================================
@@ -694,12 +701,14 @@ menu {
    SUBMAP & OTHER STATES
    ============================================ */
 
-#submap {
+#submap,
+#custom-submap {
+  font-weight: bold;
   margin-bottom: 0px;
   min-width: 0px;
   margin: 4px;
-  background: alpha(@c4, 0.1);
-  border: 1px solid alpha(@c12, 0.3);
+  background: none;
+  border: transparent;
   animation-name: blink-active;
   animation-duration: 1s;
   animation-timing-function: linear;
@@ -725,8 +734,9 @@ menu {
 
 @keyframes blink-active {
   to {
-    background-color: @c12;
-    color: @bg;
+    background-color: alpha(@act_br, 0.9);
+    color: @act_fg;
+    border-color: alpha(@act_bg, 0.1);
   }
 }
 

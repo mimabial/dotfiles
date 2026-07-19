@@ -16,6 +16,8 @@ set -euo pipefail
 source "$(command -v hyprshell)" || exit 1
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
+# shellcheck source=/dev/null
+source "${LIB_DIR:-$HOME/.local/lib}/hypr/theme/pairs.sh"
 export_hypr_config
 
 hypr_help_guard "Usage: hyprshell theme/color-mode [-q] [m|n|p|--set <theme|auto|dark|light|0-3>]
@@ -273,6 +275,23 @@ apply_color_mode() {
   if [ "${target_color_mode}" -eq 0 ]; then
     "${hypr_theme_cmd}" apply "${HYPR_THEME}"
     return $?
+  fi
+
+  local target_polarity=""
+  case "${target_color_mode}" in
+    2) target_polarity="dark" ;;
+    3) target_polarity="light" ;;
+  esac
+
+  if [[ -n "${target_polarity}" && "$(theme_polarity "${HYPR_THEME}")" != "${target_polarity}" ]]; then
+    local target_theme=""
+    target_theme="$(theme_pair_for "${HYPR_THEME}" "${target_polarity}")" || true
+    if [[ -n "${target_theme}" && "${target_theme}" != "${HYPR_THEME}" ]]; then
+      local -a theme_switch_cmd=("${LIB_DIR}/hypr/theme/theme.switch.sh" -s "${target_theme}")
+      [[ "${color_mode_notify}" -eq 0 ]] && theme_switch_cmd+=(--quiet)
+      "${theme_switch_cmd[@]}"
+      return $?
+    fi
   fi
 
   wallpaper="$(resolve_wallpaper)" || return 1

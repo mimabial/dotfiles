@@ -376,9 +376,23 @@ theme_desktop_resolve_instance_signature() {
   [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]
 }
 
+theme_desktop_sanitize_cursor_theme_index() {
+  local dir=""
+  local index=""
+
+  for dir in "${XDG_DATA_HOME:-$HOME/.local/share}/icons" "${HOME}/.icons"; do
+    index="${dir}/${CURSOR_THEME}/index.theme"
+    [[ -f "${index}" && -w "${index}" ]] || continue
+    grep -qiE '^[[:space:]]*Inherits[[:space:]]*=[[:space:]]*"?default"?[[:space:]]*$' "${index}" || continue
+    sed -i -E '/^[[:space:]]*Inherits[[:space:]]*=[[:space:]]*"?default"?[[:space:]]*$/d' "${index}"
+    print_log -sec "theme" -stat "cursor" "removed Inherits=default cycle from ${index}"
+  done
+}
+
 theme_desktop_apply_cursor_theme() {
   [[ -n "${CURSOR_THEME}" && -n "${CURSOR_SIZE}" ]] || return 0
   theme_desktop_resolve_instance_signature || return 0
+  theme_desktop_sanitize_cursor_theme_index
   if ! HYPRLAND_INSTANCE_SIGNATURE="${HYPRLAND_INSTANCE_SIGNATURE}" \
     hyprctl setcursor "${CURSOR_THEME}" "${CURSOR_SIZE}" >/dev/null 2>&1; then
     print_log -sec "theme" -warn "cursor" "failed to apply ${CURSOR_THEME} (${CURSOR_SIZE})"
@@ -388,6 +402,7 @@ theme_desktop_apply_cursor_theme() {
 theme_desktop_set_cursor_async() {
   [[ -n "${CURSOR_THEME}" && -n "${CURSOR_SIZE}" ]] || return 0
   theme_desktop_resolve_instance_signature || return 0
+  theme_desktop_sanitize_cursor_theme_index
   HYPRLAND_INSTANCE_SIGNATURE="${HYPRLAND_INSTANCE_SIGNATURE}" \
     hyprctl setcursor "${CURSOR_THEME}" "${CURSOR_SIZE}" >/dev/null 2>&1 &
 }

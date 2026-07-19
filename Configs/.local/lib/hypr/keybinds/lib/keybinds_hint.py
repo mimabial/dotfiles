@@ -3,6 +3,7 @@ import subprocess
 import json
 import argparse
 import base64
+import html
 import os
 from collections import defaultdict
 import time
@@ -139,6 +140,34 @@ def find_duplicated_binds(binds):
 
     duplicated_binds = {k: v for k, v in bind_map.items() if len(v) > 1}
     return duplicated_binds
+
+
+def generate_hint(binds):
+    """Generate a Pango markup body listing binds, for a dunst notification."""
+    rows = []
+    for bind in binds:
+        if bind.get("catch_all", False):
+            continue
+        submap = bind.get("submap", "")
+        description = bind["description"]
+        prefix = f"[{submap}] "
+        if submap and description.startswith(prefix):
+            description = description[len(prefix) :]
+
+        mod_display = bind["mod_display"]
+        if mod_display is None or mod_display == "None":
+            mod_display = ""
+        key_display = bind["key_display"]
+        if key_display is None or key_display == "None":
+            key_display = ""
+        chord = " + ".join(part for part in (mod_display, key_display) if part)
+        rows.append((chord, description))
+
+    width = max((len(key) for key, _ in rows), default=0)
+    return "\n".join(
+        f"<tt><b>{html.escape(key):<{width}}</b></tt>  {html.escape(description)}"
+        for key, description in rows
+    )
 
 
 def generate_md(binds):
@@ -364,14 +393,21 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--format",
-        choices=["json", "md", "dmenu", "rofi"],
+        choices=["json", "md", "dmenu", "rofi", "hint"],
         default="json",
         help="Output format",
+    )
+    parser.add_argument(
+        "--submap",
+        metavar="NAME",
+        help="Only show binds belonging to this submap",
     )
     args = parser.parse_args()
     binds_data = get_hyprctl_binds()
     if binds_data:
         expand_meta_data(binds_data)
+        if args.submap:
+            binds_data = [b for b in binds_data if b.get("submap") == args.submap]
         if args.show_unbind:
             duplicated_binds = find_duplicated_binds(binds_data)
             for (mod_display, key_display), binds in duplicated_binds.items():
@@ -384,3 +420,5 @@ if __name__ == "__main__":
             print(generate_dmenu(binds_data))
         elif args.format == "rofi":
             print(generate_rofi(binds_data))
+        elif args.format == "hint":
+            print(generate_hint(binds_data))

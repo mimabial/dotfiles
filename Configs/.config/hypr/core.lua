@@ -105,6 +105,7 @@ local startup = {
     vars.get("start.SYSTEMD_SHARE_PICKER"),
     vars.get("start.XDG_PORTAL_RESET"),
     vars.get("start.KEYBIND_SYNC"),
+    vars.get("start.SUBMAP_HINT"),
     vars.get("start.THEME_OUTPUT_SYNC"),
     vars.get("start.AUTO_THEME"),
     vars.get("start.IDLE_DAEMON"),
@@ -122,6 +123,7 @@ local startup = {
     vars.get("start.APPTRAY_BLUETOOTH"),
     vars.get("start.BATTERY_NOTIFY"),
     "hyprshell theme/desktop.sync",
+    vars.get("start.FFTAB_BRIDGE"),
 }
 
 hl.on("hyprland.start", function()

@@ -9,7 +9,6 @@ MENU_ELEMENT_RADIUS="${MENU_ELEMENT_RADIUS:-}"
 MENU_WINDOW_THEME_CACHE="${MENU_WINDOW_THEME_CACHE:-}"
 MENU_FONT_SCALE_CACHE="${MENU_FONT_SCALE_CACHE:-}"
 MENU_FONT_NAME_CACHE="${MENU_FONT_NAME_CACHE:-}"
-MENU_MAX_HEIGHT="${MENU_MAX_HEIGHT:-}"
 MENU_WIDTH_OVERRIDE_CACHE="${MENU_WIDTH_OVERRIDE_CACHE:-}"
 
 declare -gA HYPR_MENU_PROMPTS=()
@@ -70,13 +69,6 @@ menu() {
     MENU_FONT_NAME_CACHE="$(rofi_effective_font_name "${ROFI_MENU_FONT:-$ROFI_FONT}")"
   fi
 
-  if [[ -z "${MENU_MAX_HEIGHT}" ]]; then
-    local screen_height=""
-    screen_height="$(hyprctl -j monitors 2>/dev/null | jq -r '.[0].height // empty' 2>/dev/null || true)"
-    [[ "${screen_height}" =~ ^[0-9]+$ ]] || screen_height=1080
-    MENU_MAX_HEIGHT=$((screen_height * 90 / 100))
-  fi
-
   if [[ -z "${width_override}" ]]; then
     if [[ -z "${MENU_WIDTH_OVERRIDE_CACHE}" ]]; then
       MENU_WIDTH_OVERRIDE_CACHE="$(
@@ -90,7 +82,6 @@ menu() {
 
   rofi_args+=("-theme-str" "* {font: \"${MENU_FONT_NAME_CACHE} ${MENU_FONT_SCALE_CACHE}\";}")
   rofi_args+=("-theme-str" "${MENU_WINDOW_THEME_CACHE}")
-  rofi_args+=("-theme-str" "window { max-height: ${MENU_MAX_HEIGHT}px; }")
   rofi_args+=("-theme-str" "textbox-prompt-colon {border-radius: ${MENU_ELEMENT_RADIUS}px; str: \"$prompt\";}")
   rofi_args+=("-theme-str" "entry {placeholder: \"Hello ${USER^}!\";}")
   rofi_args+=("-theme-str" "element selected.normal {border-radius: ${MENU_ELEMENT_RADIUS}px;}")

@@ -40,7 +40,7 @@ class HyprctlWrapper:
                 return data.get("set", False)
 
             # Try to get the value in order of preference
-            for key in ["int", "float", "str", "bool"]:
+            for key in ["int", "float", "str", "bool", "custom", "css"]:
                 if key in data:
                     return data[key]
 
@@ -50,38 +50,41 @@ class HyprctlWrapper:
             raise ValueError(f"Failed to parse hyprctl output: {output}")
 
     @staticmethod
+    def _rofi_font() -> tuple:
+        """Resolve the rofi menu font name and scale from the environment."""
+        font_scale = os.getenv("ROFI_CLIPHIST_SCALE", os.getenv("ROFI_SCALE", "10"))
+        font_name = os.getenv("ROFI_CLIPHIST_FONT", os.getenv("ROFI_FONT")) or "monospace"
+        return font_name, font_scale
+
+    @staticmethod
     def get_rofi_override_string() -> str:
         """
         Generate the rofi override string based on hyprctl options and environment variables.
 
+        A rounding of 0 is a valid value and passes through; fallbacks apply
+        only when the option cannot be read, matching rofi_standard_window_theme
+        in rofi/lib/geometry.bash.
+
         Returns:
             The formatted rofi override string.
         """
-        font_scale = os.getenv("ROFI_CLIPHIST_SCALE", os.getenv("ROFI_SCALE", "10"))
-        font_name = os.getenv("ROFI_CLIPHIST_FONT", os.getenv("ROFI_FONT"))
-        # if not font_name:
-        #     font_name = HyprctlWrapper.getoption("general:font_name")
-        font_name = font_name or "monospace"
+        font_name, font_scale = HyprctlWrapper._rofi_font()
 
-        hypr_border = HyprctlWrapper.getoption("decoration:rounding")
-        wind_border = hypr_border * 3 // 2 if hypr_border else 5
-        elem_border = hypr_border if hypr_border else 5
+        try:
+            hypr_border = max(0, int(HyprctlWrapper.getoption("decoration:rounding")))
+        except (OSError, RuntimeError, TypeError, ValueError):
+            hypr_border = 0
+        wind_border = hypr_border * 3 // 2
+        elem_border = hypr_border
 
-        hypr_width = HyprctlWrapper.getoption("general:border_size")
-
-        monitors = json.loads(
-            HyprctlWrapper._execute_command(["hyprctl", "monitors", "-j"])
-        )
-        focused = next((m for m in monitors if m["focused"]), None)
-        if focused:
-            scale = focused.get("scale", 1) or 1
-            max_h = int(focused["height"] / scale * 0.9)
-        else:
-            max_h = 972
+        try:
+            hypr_width = max(0, int(HyprctlWrapper.getoption("general:border_size")))
+        except (OSError, RuntimeError, TypeError, ValueError):
+            hypr_width = 0
 
         font_override = f'* {{font: "{font_name} {font_scale}";}}'
         r_override = (
-            f"window{{border:{hypr_width}px;border-radius:{wind_border}px;max-height:{max_h}px;}}"
+            f"window{{border:{hypr_width}px;border-radius:{wind_border}px;}}"
             f"wallbox{{border-radius:{elem_border}px;}}"
             f"element{{border-radius:{elem_border}px;}}"
         )
@@ -89,13 +92,39 @@ class HyprctlWrapper:
         return f"{font_override} {r_override}"
 
     @staticmethod
-    def get_rofi_pos() -> str:
+    def get_rofi_pos(window_width: int = 0, window_height: int = 0) -> str:
         """
         Get the rofi position based on the cursor position and monitor configuration.
+
+        Opens west-north at the cursor when the estimated window fits toward
+        the far edge; otherwise anchors that axis to the far edge at exactly
+        edge_padding, so clamped placement never depends on the size estimate.
 
         Returns:
             The formatted rofi position string.
         """
+        try:
+            font_scale = int(os.getenv("ROFI_SCALE", "10"))
+        except ValueError:
+            font_scale = 10
+        if window_width <= 0 and window_height <= 0:
+            window_width = 23 * font_scale * 2
+            window_height = 30 * font_scale * 2
+
+        try:
+            gaps_value = HyprctlWrapper.getoption("general:gaps_out")
+            if isinstance(gaps_value, str):
+                gaps_value = gaps_value.split()[0]
+            gaps_out = max(0, int(gaps_value))
+        except (OSError, RuntimeError, TypeError, ValueError, IndexError):
+            gaps_out = 5
+        try:
+            border_width = max(0, int(HyprctlWrapper.getoption("general:border_size")))
+        except (OSError, RuntimeError, TypeError, ValueError):
+            border_width = 2
+        edge_padding = gaps_out * 2 + border_width
+        cursor_padding = 8
+
         cursor_pos = json.loads(
             HyprctlWrapper._execute_command(["hyprctl", "cursorpos", "-j"])
         )
@@ -109,52 +138,77 @@ class HyprctlWrapper:
         if not focused_monitor:
             raise RuntimeError("No focused monitor found.")
 
-        mon_res = [
-            focused_monitor["width"],
-            focused_monitor["height"],
-            int(focused_monitor["scale"] * 100),
-            focused_monitor["x"],
-            focused_monitor["y"],
-        ]
-        off_res = focused_monitor["reserved"]
+        scale = focused_monitor.get("scale", 1) or 1
+        mon_width = int(focused_monitor["width"] / scale)
+        mon_height = int(focused_monitor["height"] / scale)
+        reserved = focused_monitor["reserved"]
 
-        mon_res[0] = mon_res[0] * 100 // mon_res[2]
-        mon_res[1] = mon_res[1] * 100 // mon_res[2]
-        cur_pos = [cursor_pos["x"] - mon_res[3], cursor_pos["y"] - mon_res[4]]
+        usable_width = max(1, mon_width - reserved[0] - reserved[2])
+        usable_height = max(1, mon_height - reserved[1] - reserved[3])
 
-        try:
-            gaps_out = max(0, int(HyprctlWrapper.getoption("general:gaps_out")))
-        except (OSError, RuntimeError, TypeError, ValueError):
-            gaps_out = 5
-        try:
-            border_width = max(0, int(HyprctlWrapper.getoption("general:border_size")))
-        except (OSError, RuntimeError, TypeError, ValueError):
-            border_width = 2
-        edge_padding = gaps_out * 2 + border_width
+        visible_cursor_x = int(cursor_pos["x"]) - focused_monitor["x"] - reserved[0]
+        visible_cursor_y = int(cursor_pos["y"]) - focused_monitor["y"] - reserved[1]
 
-        if cur_pos[0] >= mon_res[0] // 2:
-            x_pos = "east"
-            x_off = -(mon_res[0] - cur_pos[0] - off_res[2])
-        else:
+        if (
+            visible_cursor_x + cursor_padding + window_width
+            <= usable_width - edge_padding
+        ):
             x_pos = "west"
-            x_off = cur_pos[0] - off_res[0]
-
-        if cur_pos[1] >= mon_res[1] // 2:
-            y_pos = "south"
-            y_off = -(mon_res[1] - cur_pos[1] - off_res[3])
+            x_off = max(edge_padding, visible_cursor_x + cursor_padding)
         else:
+            x_pos = "east"
+            x_off = -edge_padding
+
+        if (
+            visible_cursor_y + cursor_padding + window_height
+            <= usable_height - edge_padding
+        ):
             y_pos = "north"
-            y_off = cur_pos[1] - off_res[1]
+            y_off = max(edge_padding, visible_cursor_y + cursor_padding)
+        else:
+            y_pos = "south"
+            y_off = -edge_padding
 
-        # Keep the outer Rofi border box inside the same padded usable area as
-        # the shared shell implementation.
-        x_off = max(x_off, edge_padding) if x_pos == "west" else min(x_off, -edge_padding)
-        y_off = max(y_off, edge_padding) if y_pos == "north" else min(y_off, -edge_padding)
-
-        coordinates = (
+        return (
             f"window{{location:{x_pos} {y_pos};"
             f"anchor:{x_pos} {y_pos};"
             f"x-offset:{x_off}px;"
             f"y-offset:{y_off}px;}}"
         )
-        return coordinates
+
+    @staticmethod
+    def get_rofi_window_geometry(width_em: float, height_em: float) -> tuple:
+        """
+        Compute a pinned window size and a matching position override.
+
+        Mirrors rofi_picker_compute_window_geometry in rofi/lib/picker.bash:
+        the em dimensions are converted to px with real font metrics and the
+        window is forced to that exact size, so the position clamp never
+        depends on an estimate.
+
+        Returns:
+            (position_theme_str, window_size_theme_str)
+        """
+        font_name, font_scale = HyprctlWrapper._rofi_font()
+        try:
+            scale = float(font_scale)
+        except ValueError:
+            scale = 10.0
+
+        try:
+            from pyutils.wrapper.rofi import rofi_font_text_height_px
+
+            font_px = rofi_font_text_height_px(f"{font_name} {font_scale}")
+        except Exception:
+            font_px = 0
+
+        if font_px > 0:
+            width_px = round(width_em * font_px)
+            height_px = round(height_em * font_px)
+        else:
+            width_px = int(width_em * scale * 2)
+            height_px = int(height_em * scale * 2)
+
+        position = HyprctlWrapper.get_rofi_pos(width_px, height_px)
+        size = f"window {{ width: {width_px}px; height: {height_px}px; }}"
+        return position, size

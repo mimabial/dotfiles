@@ -1,0 +1,54 @@
+$HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
+
+$ICON_THEME = Tela-circle-dracula-dark
+$COLOR_SCHEME = prefer-dark
+$NVIM_SCHEME = dracula
+$NVIM_VARIANT = default
+$NVIM_BACKGROUND = dark
+$NVIM_TRANSPARENCY = false
+
+$CURSOR_THEME = Dracula-cursors
+$CURSOR_SIZE = 24
+
+general {
+    gaps_in = 4
+    gaps_out = 9
+    border_size = 2
+    col.active_border = rgba(bd93f9ff)
+    col.inactive_border = rgba(44475aaa)
+    layout = dwindle
+    resize_on_border = true
+}
+
+group {
+    col.border_active = rgba(03edf9ff)
+    col.border_inactive = rgba(495495cc)
+    col.border_locked_active = rgba(72f1b8ff) 
+    col.border_locked_inactive = rgba(614D85cc) 
+}
+
+decoration {
+    rounding = 3
+
+    blur {
+        enabled = yes
+        size = 6
+        passes = 3
+        new_optimizations = on
+        ignore_opacity = on
+        xray = false
+    }
+
+    shadow {
+      enabled = true
+      scale = 1
+      ignore_window = true
+      offset = 0 0
+      range = 6
+      render_power = 3
+      color = 0x661E2029
+      color_inactive = 0x000000db
+    }
+}
+
+blurls = waybar

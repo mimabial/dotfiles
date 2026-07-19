@@ -41,7 +41,7 @@ def _resolve_current_selection_name(current_selection, files, names, display_fun
     return names[0]
 
 
-def _rofi_file_selector_flags(prompt, current_name, extra_flags):
+def _rofi_file_selector_flags(prompt, current_name, extra_flags, width_em, height_em):
     hyprland = HYPRLAND.HyprctlWrapper()
     base_flags = [
         "-p",
@@ -52,12 +52,15 @@ def _rofi_file_selector_flags(prompt, current_name, extra_flags):
         resolve_rofi_theme("clipboard"),
     ]
     try:
+        position, window_size = hyprland.get_rofi_window_geometry(width_em, height_em)
         base_flags.extend(
             [
                 "-theme-str",
                 hyprland.get_rofi_override_string(),
                 "-theme-str",
-                hyprland.get_rofi_pos(),
+                position,
+                "-theme-str",
+                window_size,
             ]
         )
     except (OSError, EnvironmentError):
@@ -76,6 +79,7 @@ def rofi_file_selector(
     extra_flags=None,
     display_func=None,
     recursive=True,
+    width_em=36,
 ):
     """Select a file from layered Waybar directories with a rofi menu."""
     files = _discover_layered_files(directories, extension, recursive)
@@ -94,7 +98,13 @@ def rofi_file_selector(
         names,
         display_func,
     )
-    rofi_flags = _rofi_file_selector_flags(prompt, current_name, extra_flags)
+    # clipboard.rasi: 2em per row plus 7em of entry/padding chrome
+    lines = min(len(names), 11)
+    height_em = 2 * lines + 7
+    rofi_flags = _rofi_file_selector_flags(
+        prompt, current_name, extra_flags, width_em, height_em
+    )
+    rofi_flags.extend(["-theme-str", f"listview {{ lines: {lines}; }}"])
 
     selected = rofi_dmenu(names, rofi_flags)
     logger.debug(f"Selected {prompt}: {selected}")
@@ -146,8 +156,8 @@ def layout_selector():
         display_func=display_func,
         extra_flags=[
             "-theme-str", 'entry {placeholder: "󰍜  Waybar Layout";}',
-            "-theme-str", "window { width: 24em; }",
         ],
+        width_em=24,
     )
     if selected_layout:
         layout_entry = resolve_layout_entry(selected_layout)

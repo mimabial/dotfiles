@@ -18,19 +18,19 @@ $HOME/.config/waybar/theme.css
 
 @define-color c0 #525229;
 @define-color c1 #b36d43;
-@define-color c2 #FFE1CC;
-@define-color c3 #FFE1CC;
+@define-color c2 #78824b;
+@define-color c3 #c9a554;
 @define-color c4 #E6E69A;
 @define-color c5 #E6B99A;
-@define-color c6 #E6B99A;
+@define-color c6 #5f875f;
 @define-color c7 #A3A365;
 @define-color c8 #8F8F57;
 @define-color c9 #B1610B;
-@define-color c10 #F0C7AA;
-@define-color c11 #F0C7AA;
+@define-color c10 #78824b;
+@define-color c11 #c9a554;
 @define-color c12 #E6E69A;
 @define-color c13 #E6B99A;
-@define-color c14 #E6B99A;
+@define-color c14 #5f875f;
 @define-color c15 #F0CBAA;
 
 @define-color accent #6c4c2f;

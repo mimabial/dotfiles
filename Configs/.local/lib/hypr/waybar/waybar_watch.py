@@ -279,6 +279,8 @@ def smart_reload_waybar(changed_files):
 
 def watch_waybar():
     """Watch waybar configs with inotify or fallback to polling."""
+    signal.signal(signal.SIGCHLD, signal.SIG_IGN)
+
     # Register signal handlers for graceful shutdown
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)

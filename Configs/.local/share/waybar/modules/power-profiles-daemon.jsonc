@@ -6,9 +6,9 @@
     "tooltip": true,
     "format-icons": {
       "default": "",
-      "performance": "<span color='#B37F34'><small></small></span>",
-      "balanced": "<span><small> </small></span>",
-      "power-saver": "<span color='#a6e3a1'><small></small></span>",
+      "performance": "",
+      "balanced": " ",
+      "power-saver": ""
     }
   }
 }

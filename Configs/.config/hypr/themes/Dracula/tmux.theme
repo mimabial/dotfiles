@@ -1,0 +1,43 @@
+$HOME/.config/tmux/theme.conf
+
+# Tmux theme for Dracula
+# Auto-generated from kitty.theme colors
+
+# Standard 16 color palette
+set -g @color0 "#21222c"
+set -g @color1 "#ff5555"
+set -g @color2 "#50fa7b"
+set -g @color3 "#f1fa8c"
+set -g @color4 "#bd93f9"
+set -g @color5 "#ff79c6"
+set -g @color6 "#8be9fd"
+set -g @color7 "#f8f8f2"
+set -g @color8 "#6272a4"
+set -g @color9 "#ff6e6e"
+set -g @color10 "#69ff94"
+set -g @color11 "#ffffa5"
+set -g @color12 "#d6acff"
+set -g @color13 "#ff92df"
+set -g @color14 "#a4ffff"
+set -g @color15 "#ffffff"
+
+# Semantic color aliases
+set -g @theme_bg "#282a36"
+set -g @theme_black "#21222c"
+set -g @theme_fg "#f8f8f2"
+set -g @theme_accent "#bd93f9"
+set -g @theme_gray "#6272a4"
+set -g @theme_red "#ff5555"
+set -g @theme_green "#50fa7b"
+set -g @theme_yellow "#f1fa8c"
+
+# Tmux color settings
+set -g status-style "bg=default,fg=#f8f8f2"
+set -g message-style "bg=#282a36,fg=#bd93f9"
+set -g message-command-style "bg=#282a36,fg=#bd93f9"
+set -g pane-border-style "fg=#21222c"
+set -g pane-active-border-style "fg=#bd93f9"
+set -g window-status-style "fg=#6272a4"
+set -g window-status-current-style "fg=#bd93f9,bold"
+set -g mode-style "bg=#bd93f9,fg=#282a36"
+set -g clock-mode-colour "#bd93f9"
