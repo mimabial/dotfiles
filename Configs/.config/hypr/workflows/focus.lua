@@ -4,6 +4,7 @@ local vars = require("vars")
 
 vars.set("WORKFLOW_ICON", "󰽏")
 vars.set("WORKFLOW_DESCRIPTION", "Focused workspace // Disables animations and blur with focus-mode geometry overrides")
+vars.set("WORKFLOW_WAYBAR", "opaque")
 runtime.config("decoration.shadow.enabled", 0)
 runtime.config("decoration.blur.enabled", 0)
 runtime.config("decoration.blur.xray", 1)
@@ -20,3 +21,5 @@ hl.layer_rule({["name"] = "lua:workflow:focus:31", ["match"] = {["namespace"] = 
 hl.layer_rule({["name"] = "lua:workflow:focus:32", ["match"] = {["namespace"] = "rofi"}, ["animation"] = "none"})
 hl.window_rule({["name"] = "lua:workflow:focus:34", ["match"] = {["class"] = "^(kitty)$"}, ["opacity"] = "1.0 override 0.9 override"})
 hl.window_rule({["name"] = "lua:workflow:focus:35", ["match"] = {["class"] = "^(Alacritty)$"}, ["opacity"] = "1.0 override 0.9 override"})
+hl.window_rule({["name"] = "lua:workflow:focus:36", ["match"] = {["class"] = "^(firefox)$"}, ["opacity"] = "1.0 override 0.9 override"})
+hl.window_rule({["name"] = "lua:workflow:focus:37", ["match"] = {["class"] = "^(org\\.kde\\.dolphin)$"}, ["opacity"] = "1.0 override 0.9 override"})

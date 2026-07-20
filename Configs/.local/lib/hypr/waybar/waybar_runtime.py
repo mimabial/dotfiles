@@ -317,6 +317,40 @@ def _live_cursor_env():
     return env
 
 
+def _spawn_waybar_transient_unit(env):
+    """Launch Waybar in its own systemd user unit; True when the unit started.
+
+    Escapes the caller's cgroup — a bar spawned inside a short-lived unit
+    (theme-apply envelope) is killed with it. False without systemd (runit).
+    """
+    if shutil.which("systemd-run") is None:
+        return False
+    unit = f"hyprshell-waybar-{os.getpid()}-{time.monotonic_ns()}"
+    cmd = [
+        "systemd-run",
+        "--user",
+        "--quiet",
+        "--collect",
+        f"--unit={unit}",
+        "--slice=app.slice",
+        "--description=hyprshell waybar",
+    ]
+    for key in ("XCURSOR_THEME", "XCURSOR_SIZE", "HYPRCURSOR_THEME", "HYPRCURSOR_SIZE"):
+        if env.get(key):
+            cmd += ["-E", f"{key}={env[key]}"]
+    # trap '' CHLD persists across exec: Waybar auto-reaps module execs.
+    cmd += ["--", "bash", "-c", 'trap "" CHLD; exec "$1"', "bash", WAYBAR_BIN]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+    except Exception as exc:
+        logger.debug(f"systemd-run waybar spawn failed: {exc}")
+        return False
+    if result.returncode != 0:
+        logger.debug(f"systemd-run waybar spawn failed: {result.stderr.strip()}")
+        return False
+    return True
+
+
 def _start_waybar_unlocked():
     """Start Waybar. Caller must hold waybar_operation_lock()."""
     locked_pid = read_waybar_lock_pid()
@@ -349,6 +383,20 @@ def _start_waybar_unlocked():
         # Ensure Waybar auto-reaps child module execs to prevent zombies.
         signal.signal(signal.SIGCHLD, signal.SIG_IGN)
 
+    env = _live_cursor_env()
+
+    if _spawn_waybar_transient_unit(env):
+        deadline = time.monotonic() + 3.0
+        while time.monotonic() < deadline:
+            pids = get_waybar_pids()
+            if pids:
+                WAYBAR_LOCK.write_text(str(pids[0]))
+                logger.debug(f"Started waybar in transient unit (PID {pids[0]})")
+                return
+            time.sleep(0.05)
+        logger.error("Waybar unit launched but no waybar process appeared")
+        return
+
     try:
         proc = subprocess.Popen(
             [WAYBAR_BIN],
@@ -356,7 +404,7 @@ def _start_waybar_unlocked():
             stderr=subprocess.DEVNULL,
             start_new_session=True,
             preexec_fn=_waybar_preexec,
-            env=_live_cursor_env(),
+            env=env,
         )
 
         WAYBAR_LOCK.write_text(str(proc.pid))

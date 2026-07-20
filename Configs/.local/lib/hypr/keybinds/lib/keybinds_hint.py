@@ -142,6 +142,44 @@ def find_duplicated_binds(binds):
     return duplicated_binds
 
 
+HINT_ARROW_ORDER = {"LEFT": 0, "RIGHT": 1, "UP": 2, "DOWN": 3}
+HINT_MOD_ORDER = {"": 0, "SHIFT": 1, "CTRL": 2, "ALT": 3, "SUPER": 4}
+
+DUNST_ROLES_FILE = os.path.join(
+    os.environ.get("HYPR_CACHE_HOME", os.path.expanduser("~/.cache/hypr")),
+    "render",
+    "dunst",
+    "colors.conf",
+)
+
+
+def dunst_role_color(role):
+    """Resolved palette hex for a role, written by render/dunst; '' if unavailable."""
+    try:
+        with open(DUNST_ROLES_FILE) as f:
+            for line in f:
+                parts = line.split()
+                if len(parts) == 3 and parts[:2] == ["@define-color", role]:
+                    return parts[2].rstrip(";")
+    except OSError:
+        pass
+    return ""
+
+
+def hint_sort_key(mod_display, key_display):
+    """Group rows by modifier, keys sorted arrows/letters/named, ESCAPE last."""
+    if key_display == "ESCAPE":
+        return (1, 0, "", 0, 0, "")
+    mod_rank = HINT_MOD_ORDER.get(mod_display, len(HINT_MOD_ORDER))
+    if key_display in HINT_ARROW_ORDER:
+        key_class, arrow_index = 0, HINT_ARROW_ORDER[key_display]
+    elif len(key_display) == 1:
+        key_class, arrow_index = 1, 0
+    else:
+        key_class, arrow_index = 2, 0
+    return (0, mod_rank, mod_display, key_class, arrow_index, key_display)
+
+
 def generate_hint(binds):
     """Generate a Pango markup body listing binds, for a dunst notification."""
     rows = []
@@ -161,13 +199,18 @@ def generate_hint(binds):
         if key_display is None or key_display == "None":
             key_display = ""
         chord = " + ".join(part for part in (mod_display, key_display) if part)
-        rows.append((chord, description))
+        rows.append((hint_sort_key(mod_display, key_display), chord, description))
 
-    width = max((len(key) for key, _ in rows), default=0)
-    return "\n".join(
-        f"<tt><b>{html.escape(key):<{width}}</b></tt>  {html.escape(description)}"
-        for key, description in rows
-    )
+    rows.sort(key=lambda row: row[0])
+    width = max((len(chord) for _, chord, _ in rows), default=0)
+    chord_color = dunst_role_color("fg-primary")
+    lines = []
+    for _, chord, description in rows:
+        chord_cell = f"{html.escape(chord):<{width}}"
+        if chord_color:
+            chord_cell = f"<span foreground='{chord_color}'>{chord_cell}</span>"
+        lines.append(f"<tt><b>{chord_cell}</b></tt>  {html.escape(description)}")
+    return "\n".join(lines)
 
 
 def generate_md(binds):

@@ -16,8 +16,7 @@ def __check_rofi_in_path() -> bool:
 def rofi_font_text_height_px(font_desc: str) -> float:
     """Measure a Pango font description's line height in pixels.
 
-    Raises if the gi/pango/cairo stack is unavailable; callers fall back to
-    an em heuristic, mirroring rofi_font_text_height_px in rofi/lib/fonts.bash.
+    Raises if the gi/pango/cairo stack is unavailable.
     """
     import cairo
     import gi

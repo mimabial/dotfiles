@@ -40,6 +40,7 @@ OUT_DIR = (
     / "dunst"
 )
 OUT_FILE = OUT_DIR / "dunstrc"
+ROLES_FILE = OUT_DIR / "colors.conf"
 WAL_TEMPLATES_DIR = (
     Path(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")))
     / "wal"
@@ -310,14 +311,14 @@ def main():
     bg_low_render = with_alpha(bg_secondary, "80")
     bg_normal_render = with_alpha(bg_primary, "80")
     bg_category_render = with_alpha(bg_tertiary, "80")
-    bg_critical_render = with_alpha(bg_critical, "80")
+    bg_critical_render = with_alpha(bg_critical, "CC")
     fg_low_render = with_alpha(fg_secondary, "E6")
     fg_normal_render = with_alpha(fg_primary, "E6")
     fg_category_render = with_alpha(fg_primary, "E6")
     fg_critical_render = fg_critical
     frame_low_render = with_alpha(border_secondary, "33")
     frame_normal_render = with_alpha(border_primary, "55")
-    frame_critical_render = with_alpha(frame_critical, "80")
+    frame_critical_render = with_alpha(frame_critical, "CC")
     progress_fg = accent_blue
     cat_email = with_alpha(accent_blue, "55")
     cat_chat = with_alpha(accent_aqua, "55")
@@ -419,7 +420,12 @@ def main():
         hasher.update(f.read_bytes())
     h = hasher.hexdigest()[:16]
 
-    if cache_hit(APP, h) and DUNST_CONF.exists() and OUT_FILE.exists():
+    if (
+        cache_hit(APP, h)
+        and DUNST_CONF.exists()
+        and OUT_FILE.exists()
+        and ROLES_FILE.exists()
+    ):
         return
 
     base = (
@@ -493,11 +499,38 @@ def main():
 {category_rule("update", "update", cat_update)}
 {category_rule("music", "music", cat_music)}
 {category_rule("volume", "volume", cat_volume)}
+
+[submap_hint]
+    stack_tag = "submap-hint"
+    format = "<span foreground='{accent_red}'>%s</span>\\n%b"
+    foreground = "{fg_low_render}"
 """
+
+    roles = {
+        "fg-primary": fg_primary,
+        "fg-secondary": fg_secondary,
+        "bg-primary": bg_primary,
+        "bg-secondary": bg_secondary,
+        "bg-tertiary": bg_tertiary,
+        "accent-red": accent_red,
+        "accent-green": accent_green,
+        "accent-yellow": accent_yellow,
+        "accent-blue": accent_blue,
+        "accent-purple": accent_purple,
+        "accent-aqua": accent_aqua,
+        "accent-orange": accent_orange,
+        "border-primary": border_primary,
+        "border-secondary": border_secondary,
+        "gray": gray,
+    }
+    roles_content = "".join(
+        f"@define-color {name} {value};\n" for name, value in roles.items()
+    )
 
     # Write to both render cache + live dunstrc (dunst reads dunstrc directly)
     for target in (OUT_FILE, DUNST_CONF):
         atomic_write(target, content)
+    atomic_write(ROLES_FILE, roles_content)
 
     cache_store(APP, h)
     reload_dunst()

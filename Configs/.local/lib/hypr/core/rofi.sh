@@ -271,8 +271,7 @@ get_rofi_pos() {
   mon_x="${parsed_x}"
   mon_y="${parsed_y}"
   mon_reserved=("${off_left}" "${off_top}" "${off_right}" "${off_bottom}")
-  # hyprctl cursorpos and monitor x/y are already logical; only the monitor
-  # width/height need the scale division.
+  # cursorpos and monitor x/y are logical; only width/height need descaling
   cursor_x=$((raw_cursor_x - mon_x))
   cursor_y=$((raw_cursor_y - mon_y))
   edge_padding="$(hypr_window_edge_padding_px 2>/dev/null || true)"

@@ -62,9 +62,15 @@ theme_phase_d_promote_file() {
   [[ -n "${tmp_file}" && -n "${target_file}" ]] || return 1
   [[ -f "${tmp_file}" ]] || return 1
   target_dir="$(dirname "${target_file}")"
-  mkdir -p "${target_dir}" || return 1
+  mkdir -p "${target_dir}" || {
+    rm -f -- "${tmp_file}"
+    return 1
+  }
 
-  theme_phase_d_acquire_lock || return 1
+  theme_phase_d_acquire_lock || {
+    rm -f -- "${tmp_file}"
+    return 1
+  }
   if ! theme_phase_d_current_generation; then
     rm -f -- "${tmp_file}"
     theme_phase_d_release_lock

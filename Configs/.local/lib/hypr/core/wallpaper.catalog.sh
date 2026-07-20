@@ -179,6 +179,63 @@ set_hash() {
   "${HYPR_HASH_COMMAND}" "${hashImage}" | awk '{print $1}'
 }
 
+# Populate an assoc array (by name) with content hashes for the given files,
+# via a persistent mtime/size-keyed cache; only changed files are re-hashed.
+wall_hash_map_into() {
+  local map_name="$1"
+  shift
+  local -n map_ref="${map_name}"
+  local -A cached=()
+  local -A file_meta=()
+  local -a stat_lines=()
+  local -a missing=()
+  local cache_dir=""
+  local cache_file=""
+  local append=""
+  local line="" hash="" mtime="" size="" path=""
+
+  map_ref=()
+  (($# > 0)) || return 0
+
+  cache_dir="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/hash-cache"
+  cache_file="${cache_dir}/wall.${HYPR_HASH_COMMAND:-xxh64sum}.tsv"
+
+  if [[ -r "${cache_file}" ]]; then
+    while IFS=$'\t' read -r hash mtime size path; do
+      [[ -n "${hash}" && -n "${path}" ]] || continue
+      cached["${path}"]="${mtime}"$'\t'"${size}"$'\t'"${hash}"
+    done <"${cache_file}"
+  fi
+
+  mapfile -t stat_lines < <(stat -c '%Y %s %n' -- "$@" 2>/dev/null)
+  for line in "${stat_lines[@]}"; do
+    mtime="${line%% *}"
+    line="${line#* }"
+    size="${line%% *}"
+    path="${line#* }"
+    [[ -n "${path}" && -z "${file_meta[${path}]:-}" ]] || continue
+    file_meta["${path}"]="${mtime}"$'\t'"${size}"
+    if [[ "${cached[${path}]:-}" == "${mtime}"$'\t'"${size}"$'\t'* ]]; then
+      map_ref["${path}"]="${cached[${path}]##*$'\t'}"
+    else
+      missing+=("${path}")
+    fi
+  done
+
+  ((${#missing[@]} > 0)) || return 0
+
+  while read -r hash path; do
+    [[ -n "${hash}" && -n "${path}" ]] || continue
+    map_ref["${path}"]="${hash}"
+    append+="${hash}"$'\t'"${file_meta[${path}]}"$'\t'"${path}"$'\n'
+  done < <("${HYPR_HASH_COMMAND:-xxh64sum}" "${missing[@]}" 2>/dev/null)
+
+  if [[ -n "${append}" ]]; then
+    mkdir -p "${cache_dir}" 2>/dev/null || return 0
+    printf '%s' "${append}" >>"${cache_file}"
+  fi
+}
+
 # Extract a thumbnail image for a video file with ffmpeg.
 # shellcheck disable=SC2317
 extract_thumbnail() {

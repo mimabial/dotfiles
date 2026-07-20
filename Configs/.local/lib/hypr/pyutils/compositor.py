@@ -1,6 +1,8 @@
 import os
 import json
+import re
 import subprocess
+from pathlib import Path
 from typing import Union, Any
 
 
@@ -57,13 +59,42 @@ class HyprctlWrapper:
         return font_name, font_scale
 
     @staticmethod
+    def _rofi_active_opacity_props() -> str:
+        """window{} properties tinting the theme's opaque background to match
+        decoration:active_opacity, mirroring rofi_active_opacity_override()
+        in rofi/lib/geometry.bash. Empty when active_opacity can't be read.
+        """
+        try:
+            opacity = float(HyprctlWrapper.getoption("decoration:active_opacity"))
+        except (OSError, RuntimeError, TypeError, ValueError):
+            return ""
+
+        alpha = (round(opacity * 1000) * 255 + 1000) // 2000
+        alpha = min(255, max(0, alpha))
+        if alpha == 255:
+            return ""
+
+        palette_file = (
+            Path(os.environ.get("HYPR_STATE_HOME", os.path.expanduser("~/.local/state/hypr")))
+            / "active-palette.json"
+        )
+        bg_color = "#000000"
+        try:
+            bg = json.loads(palette_file.read_text()).get("bg", "")
+            if re.fullmatch(r"#[0-9a-fA-F]{6}", bg):
+                bg_color = bg
+        except (OSError, json.JSONDecodeError):
+            pass
+
+        return f"background-color:{bg_color}{alpha:02X};"
+
+    @staticmethod
     def get_rofi_override_string() -> str:
         """
         Generate the rofi override string based on hyprctl options and environment variables.
 
-        A rounding of 0 is a valid value and passes through; fallbacks apply
-        only when the option cannot be read, matching rofi_standard_window_theme
-        in rofi/lib/geometry.bash.
+        Rounding 0 is valid and passes through; fallbacks apply only when an
+        option cannot be read.
 
         Returns:
             The formatted rofi override string.
@@ -82,23 +113,24 @@ class HyprctlWrapper:
         except (OSError, RuntimeError, TypeError, ValueError):
             hypr_width = 0
 
+        opacity_props = HyprctlWrapper._rofi_active_opacity_props()
+
         font_override = f'* {{font: "{font_name} {font_scale}";}}'
         r_override = (
-            f"window{{border:{hypr_width}px;border-radius:{wind_border}px;}}"
+            f"window{{border:{hypr_width}px;border-radius:{wind_border}px;{opacity_props}}}"
             f"wallbox{{border-radius:{elem_border}px;}}"
             f"element{{border-radius:{elem_border}px;}}"
         )
 
-        return f"{font_override} {r_override}"
+        return f"{r_override} {font_override}"
 
     @staticmethod
     def get_rofi_pos(window_width: int = 0, window_height: int = 0) -> str:
         """
         Get the rofi position based on the cursor position and monitor configuration.
 
-        Opens west-north at the cursor when the estimated window fits toward
-        the far edge; otherwise anchors that axis to the far edge at exactly
-        edge_padding, so clamped placement never depends on the size estimate.
+        Opens at the cursor when the window fits toward the far edge, else
+        flush to that edge — exact regardless of the size estimate.
 
         Returns:
             The formatted rofi position string.
@@ -181,10 +213,7 @@ class HyprctlWrapper:
         """
         Compute a pinned window size and a matching position override.
 
-        Mirrors rofi_picker_compute_window_geometry in rofi/lib/picker.bash:
-        the em dimensions are converted to px with real font metrics and the
-        window is forced to that exact size, so the position clamp never
-        depends on an estimate.
+        Mirrors rofi_picker_compute_window_geometry in rofi/lib/picker.bash.
 
         Returns:
             (position_theme_str, window_size_theme_str)

@@ -12,11 +12,35 @@ runtime.load(state_home .. "/hypr/animations.lua")
 runtime.load(state_home .. "/hypr/shaders.lua")
 
 hl.config({misc = {font_family = vars.get("FONT", "Cantarell")}})
-hl.env("XCURSOR_THEME", vars.get("CURSOR_THEME", "Bibata-Modern-Ice"), true)
-hl.env("XCURSOR_SIZE", vars.get("CURSOR_SIZE", "24"), true)
-hl.env("HYPRCURSOR_THEME", vars.get("CURSOR_THEME", "Bibata-Modern-Ice"), true)
-hl.env("HYPRCURSOR_SIZE", vars.get("CURSOR_SIZE", "24"), true)
-hl.config({cursor = {enable_hyprcursor = false, sync_gsettings_theme = false}})
+
+-- Manifest-less themes must stay on the xcursor path: their hyprcursor
+-- fallback ignores the requested size.
+local function has_hyprcursor_manifest(theme)
+    local dirs = {
+        vars.get("XDG_DATA_HOME", os.getenv("HOME") .. "/.local/share") .. "/icons/",
+        os.getenv("HOME") .. "/.icons/",
+        "/usr/share/icons/",
+    }
+    for _, dir in ipairs(dirs) do
+        local f = io.open(dir .. theme .. "/manifest.hl", "r")
+        if f then
+            f:close()
+            return true
+        end
+    end
+    return false
+end
+
+local cursor_theme = vars.get("CURSOR_THEME", "Bibata-Modern-Ice")
+local cursor_size = vars.get("CURSOR_SIZE", "24")
+hl.env("XCURSOR_THEME", cursor_theme, true)
+hl.env("XCURSOR_SIZE", cursor_size, true)
+hl.env("HYPRCURSOR_THEME", cursor_theme, true)
+hl.env("HYPRCURSOR_SIZE", cursor_size, true)
+hl.config({cursor = {
+    enable_hyprcursor = has_hyprcursor_manifest(cursor_theme),
+    sync_gsettings_theme = false,
+}})
 
 require("windowrules")
 require("userprefs")

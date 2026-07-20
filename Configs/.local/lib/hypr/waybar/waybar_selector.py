@@ -12,6 +12,10 @@ from waybar_layouts import resolve_rofi_theme, resolve_style_path
 from waybar_shared import LAYOUT_DIRS, STYLE_DIRS, logger
 from waybar_state import get_state_value
 
+CLIPBOARD_THEME_ROW_EM = 2
+CLIPBOARD_THEME_CHROME_EM = 8
+CLIPBOARD_THEME_MAX_LINES = 11
+
 
 def _discover_layered_files(directories, extension, recursive):
     layered = {}
@@ -98,9 +102,8 @@ def rofi_file_selector(
         names,
         display_func,
     )
-    # clipboard.rasi: 2em per row plus 7em of entry/padding chrome
-    lines = min(len(names), 11)
-    height_em = 2 * lines + 7
+    lines = min(len(names), CLIPBOARD_THEME_MAX_LINES)
+    height_em = CLIPBOARD_THEME_ROW_EM * lines + CLIPBOARD_THEME_CHROME_EM
     rofi_flags = _rofi_file_selector_flags(
         prompt, current_name, extra_flags, width_em, height_em
     )

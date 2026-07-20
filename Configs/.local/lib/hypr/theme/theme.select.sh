@@ -40,17 +40,23 @@ THEME_SELECTOR_MENU_ICON_OFFSET=5
 THEME_SELECTOR_PREVIEW_RADIUS_MULTIPLIER=2
 THEME_SELECTOR_PREVIEW_ICON_OFFSET=4
 
+# Memoized; must be seeded from the main shell — subshell callers cannot
+# persist the cache.
 theme_selector_monitor_metrics() {
-  local theme_border_radius=""
-  local mon_x_res=1920
-  local mon_y_res=1080
+  if [[ -z "${THEME_SELECTOR_METRICS_CACHE:-}" ]]; then
+    local theme_border_radius=""
+    local mon_x_res=1920
+    local mon_y_res=1080
 
-  theme_border_radius="$(rofi_default_border_radius 2)"
-  read -r mon_x_res mon_y_res < <(rofi_focused_monitor_logical_size)
-  mon_x_res=${mon_x_res:-1920}
-  mon_y_res=${mon_y_res:-1080}
+    theme_border_radius="$(rofi_default_border_radius 2)"
+    read -r mon_x_res mon_y_res < <(rofi_focused_monitor_logical_size)
+    mon_x_res=${mon_x_res:-1920}
+    mon_y_res=${mon_y_res:-1080}
 
-  printf '%s\t%s\t%s\n' "${theme_border_radius}" "${mon_x_res}" "${mon_y_res}"
+    THEME_SELECTOR_METRICS_CACHE="${theme_border_radius}"$'\t'"${mon_x_res}"$'\t'"${mon_y_res}"
+  fi
+
+  printf '%s\n' "${THEME_SELECTOR_METRICS_CACHE}"
 }
 
 theme_selector_border_radius() {
@@ -192,6 +198,7 @@ show_style_selector() {
   local selection=""
   local style_icon=""
 
+  theme_selector_monitor_metrics >/dev/null
   font_scale="$(rofi_effective_font_scale "${ROFI_THEME_SCALE}")"
   font_name="$(rofi_effective_font_name "${ROFI_THEME_MENU_FONT:-$ROFI_FONT}")"
   font_override="$(rofi_font_override "${font_name}" "${font_scale}")"
@@ -229,7 +236,8 @@ ensure_theme_thumbs() {
 
   for wall in "${thmWall[@]}"; do
     [[ -n "${wall}" && -r "${wall}" ]] || continue
-    hash="$(set_hash "${wall}")" || continue
+    hash="${THEME_WALL_HASHES[${wall}]:-}"
+    [[ -n "${hash}" ]] || continue
     thumb="${WALLPAPER_THUMB_DIR}/${hash}.${ext}"
     [[ -e "${thumb}" ]] || missing_walls+=("${wall}")
   done
@@ -297,7 +305,7 @@ theme_menu_entries() {
     printf '%s\x00icon\x1f%s/%s.%s\n' \
       "${thmList[$i]}" \
       "${WALLPAPER_THUMB_DIR}" \
-      "$(set_hash "${thmWall[$i]}")" \
+      "${THEME_WALL_HASHES[${thmWall[$i]}]:-}" \
       "${ext}"
     i=$((i + 1))
   done
@@ -313,6 +321,7 @@ show_theme_selector() {
   local selection=""
   local -a selector_data=()
 
+  theme_selector_monitor_metrics >/dev/null
   font_scale="$(rofi_effective_font_scale "${ROFI_THEME_SCALE}")"
   font_name="$(rofi_effective_font_name "${ROFI_THEME_FONT:-$ROFI_FONT}")"
   font_override="$(rofi_font_override "${font_name}" "${font_scale}")"
@@ -322,6 +331,8 @@ show_theme_selector() {
   layout_override="$(printf '%s\n' "${selector_data[@]:2}")"
 
   get_themes
+  local -A THEME_WALL_HASHES=()
+  wall_hash_map_into THEME_WALL_HASHES "${thmWall[@]}"
   ensure_theme_thumbs "${thmb_extn}"
 
   selection="$(

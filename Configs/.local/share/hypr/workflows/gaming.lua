@@ -4,6 +4,7 @@ local vars = require("vars")
 
 vars.set("WORKFLOW_ICON", "")
 vars.set("WORKFLOW_DESCRIPTION", "Emphasis on performance and disabling compositors expensive features")
+vars.set("WORKFLOW_WAYBAR", "hidden")
 runtime.config("decoration.shadow.enabled", 0)
 runtime.config("decoration.blur.enabled", 0)
 runtime.config("decoration.blur.xray", 1)

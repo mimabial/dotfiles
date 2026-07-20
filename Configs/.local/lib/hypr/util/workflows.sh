@@ -58,9 +58,45 @@ get_workflow_description() {
   printf '%s\n' "${description:-No description available}"
 }
 
+get_workflow_waybar_mode() {
+  local workflow_path="$1"
+  sed -n 's/^[[:space:]]*vars\.set("WORKFLOW_WAYBAR",[[:space:]]*"\([^"]*\)").*/\1/p' "${workflow_path}" | head -n1
+}
+
+apply_waybar_workflow() {
+  local mode css="" signal="RTMIN+7"
+  local workflow_css_file="${XDG_CONFIG_HOME:-$HOME/.config}/waybar/includes/workflow.css"
+
+  mode="$(get_workflow_waybar_mode "${current_workflow_path}")"
+
+  if [[ "${mode}" == "hidden" ]]; then
+    hyprshell waybar.py --kill >/dev/null 2>&1 || true
+    return 0
+  fi
+
+  [[ "${mode}" == "opaque" ]] && css='window#waybar { background: @bg; }'
+  if [[ "$(cat "${workflow_css_file}" 2>/dev/null)" != "${css}" ]]; then
+    printf '%s\n' "${css}" >"${workflow_css_file}"
+    signal="SIGUSR2"
+  fi
+
+  # A freshly started waybar must not be signaled: real-time signals arriving
+  # before its handlers are installed terminate it.
+  if hypr_user_pgrep -x waybar >/dev/null; then
+    hypr_user_pkill "-${signal}" -x waybar >/dev/null 2>&1 || true
+  else
+    hyprshell waybar.py --restart-direct >/dev/null 2>&1 || true
+  fi
+}
+
 fn_select() {
   local default_path default_icon workflow_list workflow_path workflow_name workflow_icon
   local selected_workflow
+  local workflow_count=1
+  local clipboard_row_em=2 clipboard_chrome_em=8 clipboard_max_lines=11
+  local width_em=24 height_em=0 menu_lines=0
+  local font_name="" font_scale=""
+  local rofi_position="" window_theme=""
   local -a rofi_args
 
   default_path="$(resolve_workflow_path default)" || {
@@ -75,15 +111,30 @@ fn_select() {
     workflow_path="$(resolve_workflow_path "${workflow_name}")" || continue
     workflow_icon="$(get_workflow_icon "${workflow_path}")"
     workflow_list="${workflow_list}\n${workflow_icon}\t ${workflow_name}"
+    workflow_count=$((workflow_count + 1))
   done < <(list_workflow_names)
+
+  menu_lines=$((workflow_count < clipboard_max_lines ? workflow_count : clipboard_max_lines))
+  height_em=$((clipboard_row_em * menu_lines + clipboard_chrome_em))
+  font_scale="$(rofi_effective_font_scale "${ROFI_WORKFLOW_SCALE:-}")"
+  font_name="$(rofi_effective_font_name "${ROFI_WORKFLOW_FONT:-${ROFI_FONT:-}}")"
+
+  rofi_picker_compute_window_geometry \
+    rofi_position window_theme \
+    "${font_name}" "${font_scale}" \
+    "${width_em}" "${height_em}" \
+    $((width_em * font_scale * 2)) $((height_em * font_scale * 2))
 
   rofi_build_standard_menu_args \
     rofi_args \
     "Select workflow" \
     " Workflow" \
     "clipboard" \
-    "${ROFI_WORKFLOW_SCALE:-}" \
-    "${ROFI_WORKFLOW_FONT:-${ROFI_FONT:-}}"
+    "${font_scale}" \
+    "${font_name}" \
+    wallbox same "${rofi_position}"
+  rofi_args+=(-theme-str "${window_theme}")
+  rofi_args+=(-theme-str "listview { lines: ${menu_lines}; }")
   rofi_args+=(-select "${HYPR_WORKFLOW:-default}")
 
   selected_workflow=$(echo -e "${workflow_list}" \
@@ -144,9 +195,7 @@ LUA
 apply_workflow_update() {
   fn_update
   hyprctl reload config-only -q
-  if hypr_user_pgrep -x waybar >/dev/null; then
-    hypr_user_pkill -RTMIN+7 -x waybar
-  fi
+  apply_waybar_workflow
 }
 
 handle_waybar() {

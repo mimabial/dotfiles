@@ -78,8 +78,7 @@
     },
     "modules": [
       "custom/mark",
-      "custom/focusmode",
-      "custom/gamemode",
+      "custom/workflows",
       "custom/colormode",
       "gamemode",
       "custom/cliphist",
