@@ -1,0 +1,10 @@
+{
+  "custom/submap#alt": {
+    "justify": "center",
+    "exec": "hyprshell keybinds/submap-status --alt",
+    "return-type": "json",
+    "format": "{}",
+    "max-length": 16,
+    "tooltip": true
+  }
+}

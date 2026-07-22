@@ -1,0 +1,10 @@
+{
+  "custom/cpuinfo#alt": {
+    "justify": "right",
+    "align": 0,
+    "exec": "HYPR_SYSINFO_ALT=1 hyprshell cpuinfo",
+    "return-type": "json",
+    "tooltip": true,
+    "interval": 5
+  }
+}

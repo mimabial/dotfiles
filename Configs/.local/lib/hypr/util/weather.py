@@ -108,7 +108,14 @@ parser.add_argument(
     action="store_true",
     help="Force refresh cache (ignore cached data)",
 )
+parser.add_argument(
+    "-A",
+    "--alt",
+    action="store_true",
+    help="Join fields horizontally with a space instead of stacking with newlines",
+)
 args = parser.parse_args()
+field_sep = " " if args.alt else "\n"
 
 
 ### Functions ###
@@ -382,7 +389,7 @@ if args.minmax:
     min_temp = get_min_temp(today).split("°")[0]
     max_temp = get_max_temp(today).split("°")[0]
     data["text"] = (
-        f"{max_temp}\n{min_temp}\n{max_rain_chance:2d}󱢋\n{get_wind_speed(current_weather).split('K')[0]}"
+        f"{max_temp}{field_sep}{min_temp}{field_sep}{max_rain_chance:2d}󱢋{field_sep}{get_wind_speed(current_weather).split('K')[0]}"
     )
 elif args.sunrise:
     today = weather["weather"][0]
@@ -397,7 +404,7 @@ elif args.sunset:
 else:
     data["text"] = get_feels_like(current_weather)
     if show_icon:
-        data["text"] = "\n" + data["text"]
+        data["text"] = field_sep + data["text"]
         data["text"] = f"{get_weather_icon(current_weather)}" + data["text"]
     if show_location:
         data["text"] += f" | {get_city_name(weather)}, {get_country_name(weather)}"
@@ -405,15 +412,19 @@ else:
     # waybar tooltip
     data["tooltip"] = ""
     if show_today_details:
+        today = weather["weather"][0]
         data["tooltip"] += (
             f"<b>{get_description(current_weather)} {get_temperature(current_weather)}</b>\n"
         )
-        data["tooltip"] += f"Feels like: {get_feels_like(current_weather)}\n"
         data["tooltip"] += (
             f"Location: {get_city_name(weather)}, {get_country_name(weather)}\n"
         )
+        data["tooltip"] += f"Feels like: {get_feels_like(current_weather)}\n"
         data["tooltip"] += f"Wind: {get_wind_speed(current_weather)}\n"
         data["tooltip"] += f"Humidity: {current_weather['humidity']}%\n"
+        data["tooltip"] += f"Sunrise: {get_sunrise(today)}\n"
+        data["tooltip"] += f"Sunset: {get_sunset(today)}\n"
+        data["tooltip"] += f"Max | Min: {get_max_temp(today)} | {get_min_temp(today)}"
 
 
 print(json.dumps(data))

@@ -1,0 +1,10 @@
+{
+  "memory#alt": {
+    "justify": "right",
+    "align": 0,
+    "interval": 30,
+    "format": "<span size='9pt'></span> {:2}󱉸",
+    "tooltip": true,
+    "tooltip-format": "󰾆 Memory usage: {percentage}%\n Used: {used:0.2f}GB / {total:0.2f}GB\n Available: {avail:0.2f}GB\n Swap used: {swapUsed:0.2f}GB / {swapTotal:0.2f}GB ({swapPercentage}%)"
+  }
+}

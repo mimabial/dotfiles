@@ -32,6 +32,7 @@ def commit_user_waybar_change(
     replace_id=None,
     transient=False,
     sync_tag=None,
+    restart=True,
 ):
     """Apply a user-requested layout/style change and let one restart path own the commit."""
     style_filepath = os.path.join(str(xdg_config_home()), "waybar", "style.css")
@@ -51,6 +52,10 @@ def commit_user_waybar_change(
         set_state_values(state_updates)
 
     refresh_waybar_assets()
+
+    if not restart:
+        return
+
     sync_dunst_position("--write-only")
     restart_waybar()
     sync_dunst_position_after_waybar_restart()
@@ -74,7 +79,7 @@ def resolve_layout_entry(layout_reference):
     return None
 
 
-def set_layout(layout):
+def set_layout(layout, restart=True):
     """Set the layout and corresponding style."""
     layout_entry = resolve_layout_entry(layout)
     if not layout_entry:
@@ -89,6 +94,7 @@ def set_layout(layout):
         replace_id=91,
         transient=True,
         sync_tag="hypr-waybar-layout",
+        restart=restart,
     )
 
 
@@ -134,4 +140,4 @@ def handle_layout_navigation(option, argv=None):
     if option == "--set":
         layout_reference = resolve_set_layout_argument(argv)
         if layout_reference:
-            set_layout(layout_reference)
+            set_layout(layout_reference, restart=("--no-restart" not in argv))

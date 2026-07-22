@@ -1,43 +1,58 @@
 {
     "include": [
+        "$XDG_DATA_HOME/waybar/modules/backlight-slider#alt.jsonc",
         "$XDG_DATA_HOME/waybar/modules/backlight-slider.jsonc",
         "$XDG_DATA_HOME/waybar/modules/backlight.jsonc",
         "$XDG_DATA_HOME/waybar/modules/battery.jsonc",
         "$XDG_DATA_HOME/waybar/modules/bluetooth#status.jsonc",
         "$XDG_DATA_HOME/waybar/modules/bluetooth.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/clock#date-alt.jsonc",
         "$XDG_DATA_HOME/waybar/modules/clock#date.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/clock#time-alt.jsonc",
         "$XDG_DATA_HOME/waybar/modules/clock#time.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-audiomenu.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-caffeine.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-cliphist.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-colormode.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-colorpicker.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-cpuinfo#alt.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-cpuinfo.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-dmark.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-dunst.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-fanspeedinfo#alt.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-fanspeedinfo.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-focusmode.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-gamemode.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-github#notifications.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-gpuinfo#alt.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-gpuinfo.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-hotspot.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-hyprmenu.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-hyprsunset.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-keybindhint.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-lmark.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-mark.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-mediaplayer#alt.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-mediaplayer.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-microphone.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-network#down-alt.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-network#speed.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-network#up-alt.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-powermenu#alt.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-powermenu.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-rmark.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-screenrecord.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-screenshot.jsonc",
-        "$XDG_CONFIG_HOME/waybar/modules/custom-submap.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-submap#alt.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-submap.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-terminal.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-themeswitch.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-updates.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-vpn.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-wallchange.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-wbarswitch.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-weather#alt.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-weather#minmax-alt.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-weather#minmax.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-weather#sunrise.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-weather#sunset.jsonc",
@@ -45,6 +60,7 @@
         "$XDG_DATA_HOME/waybar/modules/custom-wifimenu.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-window-layout.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-workflows.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/disk#alt.jsonc",
         "$XDG_DATA_HOME/waybar/modules/disk.jsonc",
         "$XDG_DATA_HOME/waybar/modules/ext-workspaces#hindi.jsonc",
         "$XDG_DATA_HOME/waybar/modules/ext-workspaces#kanji.jsonc",
@@ -54,10 +70,12 @@
         "$XDG_DATA_HOME/waybar/modules/hyprland-language.jsonc",
         "$XDG_DATA_HOME/waybar/modules/hyprland-submap.jsonc",
         "$XDG_DATA_HOME/waybar/modules/hyprland-window.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/memory#alt.jsonc",
         "$XDG_DATA_HOME/waybar/modules/memory.jsonc",
         "$XDG_DATA_HOME/waybar/modules/network.jsonc",
         "$XDG_DATA_HOME/waybar/modules/power-profiles-daemon.jsonc",
         "$XDG_DATA_HOME/waybar/modules/privacy.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/pulseaudio-slider#alt.jsonc",
         "$XDG_DATA_HOME/waybar/modules/pulseaudio-slider.jsonc",
         "$XDG_DATA_HOME/waybar/modules/pulseaudio.jsonc",
         "$XDG_CONFIG_HOME/waybar/modules/temperature.jsonc",
@@ -104,6 +122,13 @@
             "gamma-100": "hyprshell hyprsunset --cm gamma -s 100 -P waybar:19"
         }
     },
+    "backlight/slider#alt": {
+        "justify": "center",
+        "min": 5,
+        "max": 100,
+        "orientation": "vertical",
+        "device": "intel_backlight"
+    },
     "custom/wallchange": {
         "justify": "center",
         "format": "\udb80\udd8a",
@@ -114,6 +139,29 @@
         "interval": 86400,
         "tooltip": true
     },
+    "clock#date-alt": {
+        "justify": "center",
+        "format": "{:%d/%m/%y}",
+        "tooltip-format": "<span>{calendar}</span>",
+        "calendar": {
+            "mode": "month",
+            "mode-mon-col": 3,
+            "weeks-pos": "right",
+            "on-scroll": 1,
+            "on-click-right": "mode",
+            "format": {
+                "months": "<span color='#ffead3'><b>{}</b></span>",
+                "weekdays": "<span color='#ffcc66'><b>{}</b></span>",
+                "today": "<span color='#ff6699'><b>{}</b></span>"
+            }
+        },
+        "actions": {
+            "on-click-right": "mode",
+            "on-scroll-up": "shift_up",
+            "on-scroll-down": "shift_down"
+        },
+        "interval": 3600
+    },
     "custom/weather#sunset": {
         "exec": "hyprshell weather -S",
         "justify": "right",
@@ -121,6 +169,25 @@
         "format": "{0}",
         "interval": 3600,
         "return-type": "json"
+    },
+    "custom/powermenu#alt": {
+        "justify": "center",
+        "format": "\udb86\ude26",
+        "tooltip": false,
+        "on-click": "hyprshell logout-launch.sh 1",
+        "menu": "on-click-right",
+        "menu-file": "$XDG_DATA_HOME/waybar/menus/power.xml",
+        "menu-actions": {
+            "lock": "hyprshell lock-screen.sh",
+            "logout": "hyprctl dispatch 'hl.dsp.exit()'",
+            "shutdown-now": "shutdown now",
+            "shutdown-wait": "systemctl poweroff",
+            "reboot-now": "systemctl reboot",
+            "reboot-firmware": "systemctl reboot --firmware-setup",
+            "suspend": "systemctl suspend",
+            "hibernate": "systemctl hibernate"
+        },
+        "signal": 1
     },
     "custom/microphone": {
         "format": "{}",
@@ -146,6 +213,22 @@
             "power-saver": "\uf06c"
         }
     },
+    "custom/submap": {
+        "justify": "center",
+        "exec": "hyprshell keybinds/submap-status",
+        "return-type": "json",
+        "format": "{}",
+        "max-length": 8,
+        "tooltip": true
+    },
+    "custom/weather#minmax-alt": {
+        "exec": "hyprshell weather -m --alt",
+        "justify": "right",
+        "tooltip": true,
+        "format": "{0}",
+        "interval": 3600,
+        "return-type": "json"
+    },
     "custom/dmark": {
         "format": "\u2014",
         "justify": "center",
@@ -155,6 +238,15 @@
         "justify": "center",
         "format": "\u2014",
         "tooltip": false
+    },
+    "custom/network#up-alt": {
+        "justify": "center",
+        "exec": "hyprshell network-speed -u --alt",
+        "return-type": "json",
+        "format": "{}",
+        "interval": 3,
+        "tooltip": false,
+        "on-click": "pgrep -x rofi &>/dev/null && notify-send rofi || networkmanager_dmenu"
     },
     "custom/github#notifications": {
         "justify": "center",
@@ -230,6 +322,24 @@
         "smooth-scrolling-threshold": 1,
         "tooltip": true,
         "tooltip-format": "Backlight level: {icon} {percent}%\nUsing: intel_backlight"
+    },
+    "custom/fanspeedinfo#alt": {
+        "justify": "right",
+        "align": 0,
+        "exec": "hyprshell fanspeedinfo",
+        "format": "<span size='12pt'>\uefa7</span> {}",
+        "return-type": "json",
+        "interval": 5,
+        "tooltip": true,
+        "class": "default-margin-padding",
+        "on-click": "hyprshell fanspeedinfo.py --toggle",
+        "menu": "on-click-right",
+        "menu-file": "$XDG_DATA_HOME/waybar/menus/fanspeedinfo.xml",
+        "menu-actions": {
+            "toggle": "hyprshell fanspeedinfo.py --toggle",
+            "reset": "hyprshell fanspeedinfo.py --reset"
+        },
+        "signal": 19
     },
     "hyprland/submap": {
         "format": "<b>\udb80\uddd8</b>",
@@ -328,6 +438,14 @@
         "max": 140,
         "orientation": "horizontal"
     },
+    "custom/submap#alt": {
+        "justify": "center",
+        "exec": "hyprshell keybinds/submap-status --alt",
+        "return-type": "json",
+        "format": "{}",
+        "max-length": 16,
+        "tooltip": true
+    },
     "custom/weather": {
         "exec": "hyprshell weather",
         "justify": "center",
@@ -341,6 +459,29 @@
         "spacing": 10,
         "tooltip": "false"
     },
+    "memory#alt": {
+        "justify": "right",
+        "align": 0,
+        "interval": 30,
+        "format": "<span size='9pt'>\uf200</span> {:2}\udb84\ude78",
+        "tooltip": true,
+        "tooltip-format": "\udb83\udf86 Memory usage: {percentage}%\n\ue266 Used: {used:0.2f}GB / {total:0.2f}GB\n\uf85a Available: {avail:0.2f}GB\n\uf233 Swap used: {swapUsed:0.2f}GB / {swapTotal:0.2f}GB ({swapPercentage}%)"
+    },
+    "custom/gpuinfo#alt": {
+        "justify": "right",
+        "align": 0,
+        "exec": "HYPR_SYSINFO_ALT=1 hyprshell gpuinfo",
+        "return-type": "json",
+        "interval": 5,
+        "tooltip": true,
+        "on-click": "hyprshell gpuinfo --toggle",
+        "menu": "on-click-right",
+        "menu-file": "$XDG_DATA_HOME/waybar/menus/gpuinfo.xml",
+        "menu-actions": {
+            "toggle": "hyprshell gpuinfo --toggle",
+            "reset": "hyprshell gpuinfo --reset"
+        }
+    },
     "gamemode": {
         "format": "{glyph}",
         "format-alt": "{glyph} {count}",
@@ -352,6 +493,16 @@
         "icon-size": 10,
         "tooltip": true,
         "tooltip-format": "Games running with GameMode: {count}"
+    },
+    "pulseaudio/slider#alt": {
+        "min": 0,
+        "max": 140,
+        "orientation": "vertical"
+    },
+    "custom/lmark": {
+        "justify": "center",
+        "format": "\uf142",
+        "tooltip": false
     },
     "custom/powermenu": {
         "justify": "center",
@@ -440,6 +591,11 @@
         },
         "max-length": 50
     },
+    "custom/rmark": {
+        "justify": "center",
+        "format": "\uf142",
+        "tooltip": false
+    },
     "custom/hyprmenu": {
         "justify": "center",
         "format": "\udb80\udf5c",
@@ -504,6 +660,14 @@
             "default": "\uf111"
         }
     },
+    "disk#alt": {
+        "justify": "right",
+        "align": 0,
+        "interval": 600,
+        "format": "<span size='11pt'>\udb80\udeca</span> {percentage_used}\udb84\ude78",
+        "tooltip-format": "Used: {used} / {total} ({percentage_used}%)\nAvailable: {free} ({percentage_free}%)",
+        "path": "/"
+    },
     "custom/updates": {
         "justify": "center",
         "exec": "hyprshell system/system.update.sh",
@@ -531,6 +695,14 @@
         "on-click": "hyprshell launch/wifi.sh",
         "tooltip-format": "WiFi Manager (Impala)"
     },
+    "custom/weather#alt": {
+        "exec": "hyprshell weather --alt",
+        "justify": "center",
+        "tooltip": true,
+        "format": "{0}",
+        "interval": 600,
+        "return-type": "json"
+    },
     "custom/weather#sunrise": {
         "exec": "hyprshell weather -s",
         "justify": "left",
@@ -554,8 +726,8 @@
         "format": "\uf1a5",
         "rotate": 0,
         "tooltip-format": "\uf205 Switch bar",
-        "on-click": "hyprshell waybar -n",
-        "on-click-right": "hyprshell waybar -p",
+        "on-click": "hyprshell waybar/waybar -n",
+        "on-click-right": "hyprshell waybar/waybar -p",
         "interval": 86400,
         "tooltip": true
     },
@@ -574,15 +746,39 @@
             "jetbrains-datagrip": "DataGrip"
         }
     },
+    "clock#time-alt": {
+        "justify": "center",
+        "format": "{:%H:%M}",
+        "tooltip": true,
+        "tooltip-format": "<span>{calendar}</span>",
+        "calendar": {
+            "mode": "month",
+            "mode-mon-col": 3,
+            "weeks-pos": "right",
+            "on-scroll": 1,
+            "on-click-right": "mode",
+            "format": {
+                "months": "<span color='#ffead3'><b>{}</b></span>",
+                "weekdays": "<span color='#ffcc66'><b>{}</b></span>",
+                "today": "<span color='#ff6699'><b>{}</b></span>"
+            }
+        },
+        "interval": 60,
+        "actions": {
+            "on-click": "mode",
+            "on-scroll-up": "tz_up",
+            "on-scroll-down": "tz_down"
+        }
+    },
     "ext/workspaces#roman": {
         "class": "no-margin-padding",
         "all-outputs": true,
-        "active-only": false,
+        "active-only": true,
         "on-click": "activate",
         "on-scroll-up": "hyprctl dispatch \"hl.dsp.focus({ workspace = 'r-1' })\"",
         "on-scroll-down": "hyprctl dispatch \"hl.dsp.focus({ workspace = 'r+1' })\"",
         "sort-by-name": true,
-        "format": "{icon}",
+        "format": "\udb85\ude39 {icon} \udb85\ude39",
         "format-icons": {
             "1": "I",
             "2": "II",
@@ -604,8 +800,7 @@
             "18": "XVIII",
             "19": "XIX",
             "20": "XX",
-            "active": "\uf192",
-            "default": "\uf111 "
+            "default": "\uf111"
         }
     },
     "custom/gamemode": {
@@ -644,7 +839,6 @@
             "18": "\u5341\u516b",
             "19": "\u5341\u4e5d",
             "20": "\u4e8c\u5341",
-            "active": "\uf192",
             "default": "\uf111 "
         }
     },
@@ -680,6 +874,8 @@
         "interval": "once",
         "exec": "hyprshell color-picker.sh -j",
         "on-click": "sleep 1 && hyprshell color-picker.sh",
+        "on-scroll-up": "hyprshell color-picker.sh -u",
+        "on-scroll-down": "hyprshell color-picker.sh -d",
         "signal": 1
     },
     "custom/audiomenu": {
@@ -943,6 +1139,35 @@
         "return-type": "json",
         "signal": 19
     },
+    "custom/network#down-alt": {
+        "justify": "center",
+        "exec": "hyprshell network-speed -d --alt",
+        "return-type": "json",
+        "format": "{}",
+        "interval": 3,
+        "tooltip": false,
+        "on-click": "pgrep -x rofi &>/dev/null && notify-send rofi || networkmanager_dmenu"
+    },
+    "custom/mediaplayer#alt": {
+        "justify": "center",
+        "exec": "hyprshell mediaplayer.py --alt",
+        "return-type": "json",
+        "format": "{alt}",
+        "tooltip": true,
+        "on-click": "hyprshell mediaplayer.py --action play-pause",
+        "on-click-right": "hyprshell mediaplayer.py --menu",
+        "on-scroll-up": "hyprshell mediaplayer.py --action cycle-next",
+        "on-scroll-down": "hyprshell mediaplayer.py --action cycle-previous",
+        "restart-interval": 5
+    },
+    "custom/cpuinfo#alt": {
+        "justify": "right",
+        "align": 0,
+        "exec": "HYPR_SYSINFO_ALT=1 hyprshell cpuinfo",
+        "return-type": "json",
+        "tooltip": true,
+        "interval": 5
+    },
     "bluetooth": {
         "justify": "center",
         "format": "",
@@ -977,14 +1202,6 @@
         "exec": "hyprshell screenrecord --status",
         "on-click": "hyprshell screenrecord --toggle",
         "on-click-right": "hyprshell screenrecord --quit"
-    },
-    "custom/submap": {
-        "justify": "center",
-        "exec": "hyprshell keybinds/submap-status",
-        "return-type": "json",
-        "format": "{}",
-        "max-length": 8,
-        "tooltip": true
     },
     "temperature#2": {
         "thermal-zone": 2,

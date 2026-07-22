@@ -77,6 +77,7 @@ def should_skip_layout_sync(argv):
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description='Waybar configuration management')
     parser.add_argument('--set', type=str, help='Set a specific layout')
+    parser.add_argument('--no-restart', action='store_true', help='With --set, update config/state without restarting Waybar')
     parser.add_argument('-n', '--next', action='store_true', help='Switch to the next layout')
     parser.add_argument('-p', '--prev', action='store_true', help='Switch to the previous layout')
     parser.add_argument('-g', '--update-global-css', action='store_true', help='Update global.css file')

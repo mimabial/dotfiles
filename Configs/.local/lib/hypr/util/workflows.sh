@@ -15,6 +15,7 @@ source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/window/stateful-choic
 workflows_user_dir="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}/workflows"
 workflows_shared_dir="${HYPR_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/hypr}/workflows"
 workflows_state_file="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/workflows.lua"
+workflow_previous_name="$(state_get "HYPR_WORKFLOW" "default")"
 
 show_help() {
   cat <<HELP
@@ -63,22 +64,57 @@ get_workflow_waybar_mode() {
   sed -n 's/^[[:space:]]*vars\.set("WORKFLOW_WAYBAR",[[:space:]]*"\([^"]*\)").*/\1/p' "${workflow_path}" | head -n1
 }
 
+get_workflow_waybar_opacity() {
+  local workflow_path="$1"
+  sed -n 's/^[[:space:]]*vars\.set("WORKFLOW_WAYBAR_OPACITY",[[:space:]]*"\([^"]*\)").*/\1/p' "${workflow_path}" | head -n1
+}
+
 apply_waybar_workflow() {
   local mode css="" signal="RTMIN+7"
   local workflow_css_file="${XDG_CONFIG_HOME:-$HOME/.config}/waybar/includes/workflow.css"
+  local layout current_layout_name saved_layout target_layout=""
+  local rounding opacity last_applied
 
   mode="$(get_workflow_waybar_mode "${current_workflow_path}")"
+  opacity="$(get_workflow_waybar_opacity "${current_workflow_path}")"
+  layout="$(get_workflow_waybar_layout "${current_workflow_path}")"
+  current_layout_name="$(state_get "WAYBAR_LAYOUT_NAME" "")"
+  saved_layout="$(state_get "WORKFLOW_WAYBAR_PREV_LAYOUT" "")"
+  last_applied="$(state_get "WORKFLOW_WAYBAR_LAST_APPLIED_LAYOUT" "")"
+  rounding="$(hyprctl -j getoption decoration:rounding 2>/dev/null | jq -r '.int // empty')"
+
+  if [[ -n "${layout}" ]]; then
+    if [[ "${workflow_previous_name}" != "${current_workflow}" ]]; then
+      [[ "${current_layout_name}" != "${layout}" ]] && target_layout="${layout}"
+      [[ -n "${target_layout}" && -z "${saved_layout}" ]] && state_set "WORKFLOW_WAYBAR_PREV_LAYOUT" "${current_layout_name}" "staterc"
+    fi
+  elif [[ -n "${saved_layout}" ]]; then
+    state_set "WORKFLOW_WAYBAR_PREV_LAYOUT" "" "staterc"
+    if [[ -z "${last_applied}" || "${current_layout_name}" == "${last_applied}" ]]; then
+      [[ "${current_layout_name}" != "${saved_layout}" ]] && target_layout="${saved_layout}"
+    fi
+  fi
+
+  [[ -n "${target_layout}" ]] && state_set "WORKFLOW_WAYBAR_LAST_APPLIED_LAYOUT" "${target_layout}" "staterc"
 
   if [[ "${mode}" == "hidden" ]]; then
+    [[ -n "${target_layout}" ]] && WAYBAR_BORDER_RADIUS="${rounding}" hyprshell waybar.py --set "${target_layout}" --no-restart >/dev/null 2>&1
     hyprshell waybar.py --kill >/dev/null 2>&1 || true
     return 0
   fi
 
-  [[ "${mode}" == "opaque" ]] && css='window#waybar { background: @bg; }'
+  [[ "${opacity}" =~ ^[0-9]*\.?[0-9]+$ ]] && css="window#waybar { background: alpha(@bg, ${opacity}); }"
   if [[ "$(cat "${workflow_css_file}" 2>/dev/null)" != "${css}" ]]; then
     printf '%s\n' "${css}" >"${workflow_css_file}"
     signal="SIGUSR2"
   fi
+
+  if [[ -n "${target_layout}" ]]; then
+    WAYBAR_BORDER_RADIUS="${rounding}" hyprshell waybar.py --set "${target_layout}" >/dev/null 2>&1 || true
+    return 0
+  fi
+
+  WAYBAR_BORDER_RADIUS="${rounding}" hyprshell waybar.py --update-border-radius >/dev/null 2>&1 || true
 
   # A freshly started waybar must not be signaled: real-time signals arriving
   # before its handlers are installed terminate it.
@@ -87,6 +123,35 @@ apply_waybar_workflow() {
   else
     hyprshell waybar.py --restart-direct >/dev/null 2>&1 || true
   fi
+}
+
+get_workflow_power_profile() {
+  local workflow_path="$1"
+  sed -n 's/^[[:space:]]*vars\.set("WORKFLOW_POWER_PROFILE",[[:space:]]*"\([^"]*\)").*/\1/p' "${workflow_path}" | head -n1
+}
+
+apply_power_profile_workflow() {
+  local profile current_profile saved_profile
+  command -v powerprofilesctl >/dev/null 2>&1 || return 0
+
+  profile="$(get_workflow_power_profile "${current_workflow_path}")"
+  saved_profile="$(state_get "WORKFLOW_POWER_PROFILE_PREV" "")"
+
+  if [[ -n "${profile}" ]]; then
+    current_profile="$(powerprofilesctl get 2>/dev/null || true)"
+    if [[ "${current_profile}" != "${profile}" ]]; then
+      [[ -n "${saved_profile}" ]] || state_set "WORKFLOW_POWER_PROFILE_PREV" "${current_profile}" "staterc"
+      powerprofilesctl set "${profile}" >/dev/null 2>&1 || true
+    fi
+  elif [[ -n "${saved_profile}" ]]; then
+    state_set "WORKFLOW_POWER_PROFILE_PREV" "" "staterc"
+    powerprofilesctl set "${saved_profile}" >/dev/null 2>&1 || true
+  fi
+}
+
+get_workflow_waybar_layout() {
+  local workflow_path="$1"
+  sed -n 's/^[[:space:]]*vars\.set("WORKFLOW_WAYBAR_LAYOUT",[[:space:]]*"\([^"]*\)").*/\1/p' "${workflow_path}" | head -n1
 }
 
 fn_select() {
@@ -196,6 +261,7 @@ apply_workflow_update() {
   fn_update
   hyprctl reload config-only -q
   apply_waybar_workflow
+  apply_power_profile_workflow
 }
 
 handle_waybar() {

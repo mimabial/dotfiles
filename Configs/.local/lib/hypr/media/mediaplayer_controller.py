@@ -35,13 +35,16 @@ from mediaplayer_ui import (
     escape,
     format_artist_track,
     format_live_multiple_lines,
+    format_live_single_line,
     format_time_multiple_lines,
+    format_time_single_line,
     validate_ui_config,
 )
 
 current_player = None
 _timer_id = None  # Track the timer source ID
 UI_CONFIG = None
+ALT_MODE = False
 _active_player_cache = {"mtime": -1.0, "value": ""}
 
 
@@ -333,9 +336,11 @@ def write_output(current_player):
         ),
         "class": ["playing", p_name],
         "alt": (
-            format_live_multiple_lines(is_playing)
+            (format_live_single_line if ALT_MODE else format_live_multiple_lines)(
+                is_playing
+            )
             if is_live_stream
-            else format_time_multiple_lines(
+            else (format_time_single_line if ALT_MODE else format_time_multiple_lines)(
                 time_display_seconds,
                 is_playing,
                 countdown=countdown_display,
@@ -478,7 +483,7 @@ def signal_handler(sig, frame):
 
 
 def run(arguments):
-    global _timer_id, UI_CONFIG
+    global _timer_id, UI_CONFIG, ALT_MODE
 
     xdg_state = os.path.expanduser(os.getenv("XDG_STATE_HOME", "~/.local/state"))
     set_ytdlp_timeout_seconds(get_ytdlp_timeout_seconds())
@@ -487,6 +492,7 @@ def run(arguments):
     load_env_file(os.path.join(state_dir, "env-overrides"))
 
     UI_CONFIG = validate_ui_config()
+    ALT_MODE = getattr(arguments, "alt", False)
 
     players = os.getenv("MEDIAPLAYER_PLAYERS", None)
     if players:

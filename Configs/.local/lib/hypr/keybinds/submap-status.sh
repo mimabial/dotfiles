@@ -14,15 +14,22 @@ NO_SUBMAP="default"
 # Waybar hides a custom module only when its rendered text is empty, and the
 # module's format is static, so the glyph has to travel in "text".
 SUBMAP_GLYPH="󰇘"
+SUBMAP_GLYPH_ALT=""
+
+alt_mode=false
+[[ "${1:-}" == "--alt" || "${1:-}" == "-A" ]] && alt_mode=true
 
 emit() {
   local name="${1:-}"
+  local text="${SUBMAP_GLYPH}"
+  "${alt_mode}" && text="${SUBMAP_GLYPH_ALT}"
   [[ "${name}" == "${NO_SUBMAP}" ]] && name=""
   if [[ -z "${name}" ]]; then
     printf '{"text":"","tooltip":"","class":""}\n'
   else
+    "${alt_mode}" && text="${SUBMAP_GLYPH_ALT} ${name}"
     printf '{"text":"%s","tooltip":"submap: %s","class":"active","alt":"%s"}\n' \
-      "${SUBMAP_GLYPH}" "${name}" "${name}"
+      "${text}" "${name}" "${name}"
   fi
 }
 

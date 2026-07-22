@@ -1,0 +1,11 @@
+{
+  "custom/network#up-alt": {
+    "justify": "center",
+    "exec": "hyprshell network-speed -u --alt",
+    "return-type": "json",
+    "format": "{}",
+    "interval": 3,
+    "tooltip": false,
+    "on-click": "pgrep -x rofi &>/dev/null && notify-send rofi || networkmanager_dmenu"
+  }
+}

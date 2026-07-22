@@ -266,9 +266,13 @@ generate_json() {
   build_tooltip "${thermo}" "${speed}"
   formatted_util="$(format_utilization_text)"
 
+  local sep=$'\r'
+  [[ "${HYPR_SYSINFO_ALT:-0}" == "1" ]] && sep=" "
+
   jq -n -c \
     --arg icon "$icon_text" \
     --arg util "${formatted_util}" \
     --arg tooltip "$tooltip" \
-    '{text: ($icon + "\r" + $util), tooltip: $tooltip}'
+    --arg sep "$sep" \
+    '{text: ($icon + $sep + $util), tooltip: $tooltip}'
 }

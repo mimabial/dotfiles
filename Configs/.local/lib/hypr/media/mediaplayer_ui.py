@@ -62,13 +62,17 @@ def validate_ui_config() -> MediaPlayerUiConfig:
         max_length_module = int(os.getenv("MEDIAPLAYER_MAX_LENGTH", "70"))
         max_length_module = max(10, min(200, max_length_module))
     except (ValueError, TypeError):
-        print("WARNING: Invalid MEDIAPLAYER_MAX_LENGTH, using default 70", file=sys.stderr)
+        print(
+            "WARNING: Invalid MEDIAPLAYER_MAX_LENGTH, using default 70", file=sys.stderr
+        )
         max_length_module = 70
 
     prefix_playing = str(os.getenv("MEDIAPLAYER_PREFIX_PLAYING", ""))[:20]
     prefix_paused = str(os.getenv("MEDIAPLAYER_PREFIX_PAUSED", ""))[:20]
     standby_text = str(os.getenv("MEDIAPLAYER_STANDBY_TEXT", " MPlayer"))[:50]
-    artist_track_separator = str(os.getenv("MEDIAPLAYER_ARTIST_TRACK_SEPARATOR", "  "))[:10]
+    artist_track_separator = str(os.getenv("MEDIAPLAYER_ARTIST_TRACK_SEPARATOR", "  "))[
+        :10
+    ]
 
     xdg_cache = os.path.expanduser(os.getenv("XDG_CACHE_HOME", "~/.cache"))
     wal_colors = load_pywal_colors(xdg_cache)
@@ -79,16 +83,33 @@ def validate_ui_config() -> MediaPlayerUiConfig:
     default_time = wal_colors.get("foreground", "#FFFFFF")
 
     color_values = {
-        "artist_color": normalize_color(os.getenv("MEDIAPLAYER_TOOLTIP_ARTIST_COLOR", ""), wal_colors, default_artist),
-        "track_color": normalize_color(os.getenv("MEDIAPLAYER_TOOLTIP_TRACK_COLOR", ""), wal_colors, default_track),
-        "progress_color": normalize_color(os.getenv("MEDIAPLAYER_TOOLTIP_PROGRESS_COLOR", ""), wal_colors, default_progress),
-        "empty_color": normalize_color(os.getenv("MEDIAPLAYER_TOOLTIP_EMPTY_COLOR", ""), wal_colors, default_empty),
-        "time_color": normalize_color(os.getenv("MEDIAPLAYER_TOOLTIP_TIME_COLOR", ""), wal_colors, default_time),
+        "artist_color": normalize_color(
+            os.getenv("MEDIAPLAYER_TOOLTIP_ARTIST_COLOR", ""),
+            wal_colors,
+            default_artist,
+        ),
+        "track_color": normalize_color(
+            os.getenv("MEDIAPLAYER_TOOLTIP_TRACK_COLOR", ""), wal_colors, default_track
+        ),
+        "progress_color": normalize_color(
+            os.getenv("MEDIAPLAYER_TOOLTIP_PROGRESS_COLOR", ""),
+            wal_colors,
+            default_progress,
+        ),
+        "empty_color": normalize_color(
+            os.getenv("MEDIAPLAYER_TOOLTIP_EMPTY_COLOR", ""), wal_colors, default_empty
+        ),
+        "time_color": normalize_color(
+            os.getenv("MEDIAPLAYER_TOOLTIP_TIME_COLOR", ""), wal_colors, default_time
+        ),
     }
 
     for var_name, color_value in color_values.items():
         if not color_value.startswith("#") or len(color_value) not in [4, 7, 9]:
-            print(f"WARNING: Invalid color format for {var_name}: {color_value}", file=sys.stderr)
+            print(
+                f"WARNING: Invalid color format for {var_name}: {color_value}",
+                file=sys.stderr,
+            )
             color_values[var_name] = "#FFFFFF"
 
     return MediaPlayerUiConfig(
@@ -122,7 +143,9 @@ def format_time(seconds: float, *, countdown: bool = False) -> str:
         return "00:00"
 
 
-def format_time_multiple_lines(seconds: float, playing: bool, *, countdown: bool = False) -> str:
+def format_time_multiple_lines(
+    seconds: float, playing: bool, *, countdown: bool = False
+) -> str:
     try:
         total = quantize_display_seconds(seconds, countdown=countdown)
         h, m = divmod(total, 3600)
@@ -140,6 +163,18 @@ def format_live_multiple_lines(playing: bool) -> str:
     return f"{icon}LI\n:VE"
 
 
+def format_time_single_line(
+    seconds: float, playing: bool, *, countdown: bool = False
+) -> str:
+    icon = "󰼛 " if playing else " "
+    return f"{icon}{format_time(seconds, countdown=countdown)}"
+
+
+def format_live_single_line(playing: bool) -> str:
+    icon = "󰼛 " if playing else " "
+    return f"{icon}LIVE"
+
+
 def create_tooltip_text(
     artist,
     track,
@@ -155,14 +190,18 @@ def create_tooltip_text(
     tooltip = ""
     if artist or track:
         tooltip += f'<span foreground="{ui_config.track_color}"><b>{track}</b></span>'
-        tooltip += f'\n<span foreground="{ui_config.artist_color}"><i>{artist}</i></span>\n'
+        tooltip += (
+            f'\n<span foreground="{ui_config.artist_color}"><i>{artist}</i></span>\n'
+        )
         if is_live_stream:
             tooltip += (
                 f'<span foreground="{ui_config.progress_color}"><b>LIVE</b></span>'
                 f' <span foreground="{ui_config.time_color}">{format_time(current_position_seconds)}</span>'
             )
         elif duration_seconds > 0:
-            progress = max(0, min(20, int((current_position_seconds / duration_seconds) * 20)))
+            progress = max(
+                0, min(20, int((current_position_seconds / duration_seconds) * 20))
+            )
             bar = (
                 f'<span foreground="{ui_config.progress_color}">{"─" * progress}</span>'
                 f'<span foreground="{ui_config.empty_color}">{"─" * (20 - progress)}</span>'
@@ -211,10 +250,16 @@ def format_artist_track(
         artist = artist.split(",")[0].split("&")[0].strip()
         if full_length > ui_config.max_length_module:
             artist_weight = 0.65
-            artist_limit = min(int(ui_config.max_length_module * artist_weight), len(artist))
-            a_gain = max(0, artist_weight - (artist_limit / ui_config.max_length_module))
+            artist_limit = min(
+                int(ui_config.max_length_module * artist_weight), len(artist)
+            )
+            a_gain = max(
+                0, artist_weight - (artist_limit / ui_config.max_length_module)
+            )
             track_weight = 1 - artist_weight + a_gain
-            track_limit = min(int(ui_config.max_length_module * track_weight), len(track))
+            track_limit = min(
+                int(ui_config.max_length_module * track_weight), len(track)
+            )
             t_gain = max(0, track_weight - (track_limit / ui_config.max_length_module))
 
             if a_gain == 0 and t_gain > 0:

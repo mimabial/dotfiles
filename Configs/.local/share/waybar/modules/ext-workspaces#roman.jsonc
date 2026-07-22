@@ -2,12 +2,12 @@
   "ext/workspaces#roman": {
     "class": "no-margin-padding",
     "all-outputs": true,
-    "active-only": false,
+    "active-only": true,
     "on-click": "activate",
     "on-scroll-up": "hyprctl dispatch \"hl.dsp.focus({ workspace = 'r-1' })\"",
     "on-scroll-down": "hyprctl dispatch \"hl.dsp.focus({ workspace = 'r+1' })\"",
     "sort-by-name": true,
-    "format": "{icon}",
+    "format": "󱘹 {icon} 󱘹",
     "format-icons": {
       "1": "I",
       "2": "II",
@@ -29,8 +29,7 @@
       "18": "XVIII",
       "19": "XIX",
       "20": "XX",
-      "active": "",
-      "default": " "
+      "default": ""
     }
   }
 }

@@ -250,6 +250,13 @@ def smart_reload_waybar(changed_files):
         )
         return
 
+    if os.getenv("WAYBAR_WATCH_AUTO_RESTART", "0").strip().lower() in ("0", "false", "no"):
+        logger.debug(
+            "WAYBAR_WATCH_AUTO_RESTART disabled; ignoring changes: "
+            f"{[Path(f).name for f in changed_files]}"
+        )
+        return
+
     # Track whether a structural file changed for logging/diagnostics.
     # In practice we always do a full restart here, because SIGUSR2-based reloads
     # have proven unreliable and can leave defunct child processes behind.
@@ -287,8 +294,18 @@ def watch_waybar():
 
     waybar_dir = CONFIG_WAYBAR_DIR
     includes_dir = waybar_dir / "includes"
+    config_modules_dir = waybar_dir / "modules"
     shared_waybar_dir = DATA_WAYBAR_DIR
-    watch_dirs = [waybar_dir, includes_dir, shared_waybar_dir]
+    shared_styles_dir = DATA_WAYBAR_DIR / "styles"
+    shared_modules_dir = DATA_WAYBAR_DIR / "modules"
+    watch_dirs = [
+        waybar_dir,
+        includes_dir,
+        config_modules_dir,
+        shared_waybar_dir,
+        shared_styles_dir,
+        shared_modules_dir,
+    ]
     WAYBAR_WATCH_LOCK.parent.mkdir(parents=True, exist_ok=True)
     watcher_lock_file = open(WAYBAR_WATCH_LOCK, "a+")
     try:
@@ -316,7 +333,10 @@ def watch_waybar():
             )
             watcher.add_watch(str(waybar_dir), mask)
             watcher.add_watch(str(includes_dir), mask)
+            watcher.add_watch(str(config_modules_dir), mask)
             watcher.add_watch(str(shared_waybar_dir), mask)
+            watcher.add_watch(str(shared_styles_dir), mask)
+            watcher.add_watch(str(shared_modules_dir), mask)
             logger.debug("Using inotify for file watching")
 
         # Batch events that occur during theme updates

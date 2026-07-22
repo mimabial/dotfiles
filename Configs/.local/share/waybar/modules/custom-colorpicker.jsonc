@@ -6,6 +6,8 @@
     "interval": "once",
     "exec": "hyprshell color-picker.sh -j",
     "on-click": "sleep 1 && hyprshell color-picker.sh",
+    "on-scroll-up": "hyprshell color-picker.sh -u",
+    "on-scroll-down": "hyprshell color-picker.sh -d",
     "signal": 1
   }
 }

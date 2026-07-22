@@ -1,0 +1,17 @@
+{
+  "custom/gpuinfo#alt": {
+    "justify": "right",
+    "align": 0,
+    "exec": "HYPR_SYSINFO_ALT=1 hyprshell gpuinfo",
+    "return-type": "json",
+    "interval": 5,
+    "tooltip": true,
+    "on-click": "hyprshell gpuinfo --toggle",
+    "menu": "on-click-right",
+    "menu-file": "$XDG_DATA_HOME/waybar/menus/gpuinfo.xml",
+    "menu-actions": {
+      "toggle": "hyprshell gpuinfo --toggle",
+      "reset": "hyprshell gpuinfo --reset"
+    }
+  }
+}

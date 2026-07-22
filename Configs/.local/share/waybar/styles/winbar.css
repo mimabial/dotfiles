@@ -1,0 +1,17 @@
+@import "./alt.css";
+
+window#waybar {
+  background: alpha(@bg, 0.4);
+}
+
+#taskbar {
+  margin: 4px 0px;
+}
+
+#taskbar button {
+  margin: 0px 4px;
+}
+
+#tray {
+  margin: 4px;
+}

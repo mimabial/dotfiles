@@ -1,0 +1,78 @@
+@import "./alt.css";
+
+#taskbar {
+  margin: 4px 0px;
+}
+
+#custom-screenshot {
+  padding: 0px 10px 0px 2px;
+  margin-left: 2px;
+}
+#custom-github.notifications {
+  padding: 0px 8px 0px 0px;
+  margin-left: 2px;
+}
+
+#workspaces {
+  margin: 0px;
+  padding: 0px;
+}
+
+#workspaces button {
+  margin: 0px;
+  padding: 0px;
+}
+
+#workspaces button.active {
+  padding: 0px 8.5px;
+  margin: 0px 2px;
+  font-weight: normal;
+  border: transparent;
+  background: transparent;
+}
+
+#workspaces button.active label {
+  color: alpha(@hvr_br, 0.7);
+}
+
+#workspaces button.active:hover {
+  background: transparent;
+}
+
+#custom-mediaplayer {
+  margin-left: 4px;
+  background: transparent;
+  border: transparent;
+  color: alpha(@act_fg, 0.7);
+}
+
+#datetime {
+  font-weight: normal;
+}
+
+#submap,
+#custom-submap {
+  color: alpha(@br, 0.6);
+  font-weight: normal;
+  margin-right: 10px;
+}
+
+@keyframes blink-active {
+  to {
+    color: alpha(@act_br, 0.6);
+  }
+}
+
+window#waybar {
+  background: alpha(@bg, 0.4);
+}
+
+#screen-group,
+#notification-group {
+  background: transparent;
+}
+
+#custom-colorpicker {
+  font-size: 12px;
+  margin: 0px 8px 0px 2px;
+}

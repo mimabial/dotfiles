@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "FF Tab MPRIS Bridge",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Exposes each media-playing tab as its own MPRIS player via a native-messaging host.",
   "permissions": ["nativeMessaging", "tabs", "<all_urls>"],
   "background": { "scripts": ["background.js"] },

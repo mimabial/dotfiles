@@ -1,6 +1,6 @@
 {
   "layer": "top",
-  "position": "left",
+  "position": "bottom",
   "output": ["*"],
   "exclusive": true,
   "passthrough": false,
@@ -12,37 +12,31 @@
     "$XDG_CONFIG_HOME/waybar/includes/includes.json"
   ],
   "modules-left": [
-    "group/datetime",
-    "group/tui-drawer",
-    "ext/workspaces#hindi",
-    "custom/submap",
-    "group/forecast",
-    "group/info"
-  ],
-  "modules-right": [
-    "group/mark",
-    "custom/mediaplayer",
-    "privacy",
     "group/volumecontrol",
     "group/eyecare",
-    "group/screen",
-    "group/notification",
-    "group/connection",
-    "group/power"
+    "group/screen-group",
+    "group/notification-group",
+    "group/info",
+    "custom/mediaplayer#alt"
   ],
-  "group/tui-drawer": {
+  "modules-center": ["group/datetime", "ext/workspaces#hindi", "group/forecast"],
+  "modules-right": [
+    "custom/submap#alt",
+    "group/mark",
+    "privacy",
+    "group/networkmanagement",
+    "group/power-group",
+    "group/tui-group"
+  ],
+  "group/tui-group": {
+    "orientation": "inherit",
+    "modules": ["custom/updates", "custom/terminal"]
+  },
+  "group/screen-group": {
     "orientation": "inherit",
     "drawer": {
       "transition-duration": 500,
       "transition-left-to-right": true
-    },
-    "modules": ["custom/terminal", "custom/updates"]
-  },
-  "group/screen": {
-    "orientation": "inherit",
-    "drawer": {
-      "transition-duration": 500,
-      "transition-left-to-right": false
     },
     "modules": ["custom/screenrecord", "custom/screenshot"]
   },
@@ -52,7 +46,7 @@
       "transition-duration": 500,
       "transition-left-to-right": true
     },
-    "modules": ["clock#time", "clock#date"]
+    "modules": ["clock#time-alt", "clock#date-alt"]
   },
   "group/info": {
     "orientation": "inherit",
@@ -60,7 +54,13 @@
       "transition-duration": 500,
       "transition-left-to-right": true
     },
-    "modules": ["custom/dmark", "custom/gpuinfo", "custom/cpuinfo", "memory", "disk"]
+    "modules": [
+      "custom/lmark",
+      "custom/gpuinfo#alt",
+      "custom/cpuinfo#alt",
+      "memory#alt",
+      "disk#alt"
+    ]
   },
   "group/forecast": {
     "orientation": "inherit",
@@ -68,7 +68,7 @@
       "transition-duration": 500,
       "transition-left-to-right": true
     },
-    "modules": ["custom/weather", "custom/weather#minmax"]
+    "modules": ["custom/weather#alt", "custom/weather#minmax-alt"]
   },
   "group/mark": {
     "orientation": "inherit",
@@ -77,52 +77,65 @@
       "transition-left-to-right": false
     },
     "modules": [
-      "custom/mark",
-      "custom/keybindhint",
-      "custom/colormode",
+      "custom/rmark",
       "custom/workflows",
+      "custom/colormode",
       "gamemode",
       "custom/cliphist",
       "custom/caffeine",
       "custom/wallchange",
-      "custom/themeswitch"
+      "custom/themeswitch",
+      "custom/window-layout",
+      "custom/keybindhint"
     ]
   },
   "group/volumecontrol": {
     "orientation": "inherit",
     "drawer": {
       "transition-duration": 500,
-      "transition-left-to-right": false
+      "transition-left-to-right": true
     },
-    "modules": ["pulseaudio", "custom/microphone", "pulseaudio/slider"]
+    "modules": ["pulseaudio", "custom/microphone", "pulseaudio/slider#alt"]
   },
   "group/eyecare": {
     "orientation": "inherit",
     "drawer": {
       "transition-duration": 500,
-      "transition-left-to-right": false
+      "transition-left-to-right": true
     },
-    "modules": ["backlight#intel_backlight", "custom/hyprsunset", "backlight/slider"]
+    "modules": ["backlight#intel_backlight", "custom/hyprsunset", "backlight/slider#alt"]
   },
-  "group/notification": {
+  "group/notification-group": {
     "orientation": "inherit",
     "drawer": {
       "transition-duration": 500,
-      "transition-left-to-right": false
+      "transition-left-to-right": true
     },
     "modules": ["custom/dunst", "custom/github#notifications"]
   },
-  "group/connection": {
+  "group/bluetooth-group": {
     "orientation": "inherit",
     "drawer": {
       "transition-duration": 500,
       "transition-left-to-right": false
     },
-    "modules": ["tray", "custom/network#speed"]
+    "modules": ["bluetooth"]
   },
-  "group/power": {
+  "group/wifi-group": {
     "orientation": "inherit",
-    "modules": ["group/powerconsumption", "custom/powermenu"]
+    "drawer": {
+      "transition-duration": 500,
+      "transition-left-to-right": false
+    },
+    "modules": ["custom/wifimenu", "custom/network#down-alt", "custom/network#up-alt"]
+  },
+  "group/networkmanagement": {
+    "orientation": "inherit",
+    "modules": ["group/bluetooth-group", "group/wifi-group", "custom/vpn"]
+  },
+  "group/power-group": {
+    "orientation": "inherit",
+    "modules": ["group/powerconsumption", "custom/powermenu#alt"]
   },
   "group/powerconsumption": {
     "orientation": "inherit",

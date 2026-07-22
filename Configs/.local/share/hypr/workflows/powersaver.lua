@@ -4,6 +4,8 @@ local vars = require("vars")
 
 vars.set("WORKFLOW_ICON", "")
 vars.set("WORKFLOW_DESCRIPTION", "Saves as much power as possible by disabling all animations and effects, but preserving readability")
+vars.set("WORKFLOW_POWER_PROFILE", "power-saver")
+vars.set("WORKFLOW_WAYBAR_OPACITY", "1")
 runtime.config("decoration.shadow.enabled", 0)
 runtime.config("decoration.blur.enabled", 0)
 runtime.config("decoration.blur.xray", 1)

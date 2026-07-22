@@ -9,8 +9,17 @@ source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || ex
 hypr_help_guard "Usage: hyprshell sysinfo/network-speed [-d|-u]
 Emit network speed as waybar JSON: -d download, -u upload, default both." "$@"
 
+ALT_MODE=false
+args=()
+for arg in "$@"; do
+  case "${arg}" in
+    --alt | -A) ALT_MODE=true ;;
+    *) args+=("${arg}") ;;
+  esac
+done
+
 MODE="both"
-case "${1:-}" in
+case "${args[0]:-}" in
   -u | --upload) MODE="upload" ;;
   -d | --download) MODE="download" ;;
   "") MODE="both" ;;
@@ -39,7 +48,11 @@ INTERFACE=$(ip route | awk '/^default/ {print $5; exit}')
 
 # If no network interface is active
 if [ -z "$INTERFACE" ]; then
-  printf '%s\n' '{"text":"00\n00\nKB\n/s","tooltip":"Not Connected"}'
+  if "${ALT_MODE}"; then
+    printf '%s\n' '{"text":"0.00 KB/s","tooltip":"Not Connected"}'
+  else
+    printf '%s\n' '{"text":"00\n00\nKB\n/s","tooltip":"Not Connected"}'
+  fi
   exit 0
 fi
 
@@ -142,6 +155,16 @@ UP_SPEED=$(awk -v b="$TX_BYTES_PER_SEC" 'BEGIN {
     else if (b >= 1048576) printf "%.2f MB/s", b / 1048576;
     else printf "%.2f KB/s", b / 1024;
 }')
+
+if "${ALT_MODE}"; then
+  DOWN_COMPACT="${DOWN_SPEED// /}"
+  UP_COMPACT="${UP_SPEED// /}"
+  case "${MODE}" in
+    both) JSON_TEXT="{\"text\":\"󰮏:${DOWN_COMPACT} 󰸇:${UP_COMPACT}\"}" ;;
+    download) JSON_TEXT="{\"text\":\"󰮏:${DOWN_COMPACT}\"}" ;;
+    upload) JSON_TEXT="{\"text\":\"󰸇:${UP_COMPACT}\"}" ;;
+  esac
+fi
 
 TOOLTIP=$(printf 'Down: %s\nUp: %s' "$DOWN_SPEED" "$UP_SPEED" | jq -Rs .)
 

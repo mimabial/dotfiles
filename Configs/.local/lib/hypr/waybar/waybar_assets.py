@@ -4,9 +4,6 @@ import os
 import re
 import sys
 
-from pyutils.compositor import HyprctlWrapper
-from pyutils.xdg_base_dirs import xdg_config_home, xdg_data_home
-from pyutils.jsonc import modify_json_key, parse_json_file
 from waybar_layouts import layered_module_files, resolve_style_path
 from waybar_shared import (
     CONFIG_JSONC,
@@ -23,6 +20,10 @@ from waybar_state import (
     get_config_value,
     get_current_layout_from_config,
 )
+
+from pyutils.compositor import HyprctlWrapper
+from pyutils.jsonc import modify_json_key, parse_json_file
+from pyutils.xdg_base_dirs import xdg_config_home, xdg_data_home
 
 
 def normalize_menu_file_path(raw_path):
@@ -248,7 +249,7 @@ def get_waybar_icon_size():
 
 
 _HYPR_VARS_LUA_RX = re.compile(r'^vars\.set\("([^"]+)",\s*"([^"]*)"\)')
-_HYPR_VARS_EQ_RX = re.compile(r'^\$([A-Za-z_]\w*)\s*=\s*(.*)$')
+_HYPR_VARS_EQ_RX = re.compile(r"^\$([A-Za-z_]\w*)\s*=\s*(.*)$")
 _HYPR_VARS_CACHE = None
 
 
@@ -278,7 +279,9 @@ def _load_hypr_vars():
                         continue
                     m = _HYPR_VARS_EQ_RX.match(stripped)
                     if m:
-                        merged.setdefault(m.group(1), m.group(2).strip().strip('"').strip("'"))
+                        merged.setdefault(
+                            m.group(1), m.group(2).strip().strip('"').strip("'")
+                        )
         except Exception as e:
             logger.error(f"Error reading {file_path}: {e}")
     _HYPR_VARS_CACHE = merged
@@ -350,10 +353,6 @@ popover,
 popover * {{
   border-radius: {border_radius}pt;
 }}
-
-window#waybar #custom-mediaplayer {{
-  border-radius: 0pt;
-}}
 """
 
 
@@ -423,7 +422,9 @@ def generate_includes():
 
 def update_config(config_path):
     install_layout_as_active_config(config_path)
-    logger.debug(f"Successfully installed layout from '{config_path}' to '{CONFIG_JSONC}'")
+    logger.debug(
+        f"Successfully installed layout from '{config_path}' to '{CONFIG_JSONC}'"
+    )
 
 
 def update_style(style_path=None):

@@ -1,13 +1,12 @@
 (() => {
   let media = null;
 
-  const pick = () => {
+  const pick = (requirePlaying) => {
     const els = [...document.querySelectorAll("video, audio")];
     if (!els.length) return null;
-    return (
-      els.find((el) => !el.paused && !el.ended) ||
-      els.sort((a, b) => (b.duration || 0) - (a.duration || 0))[0]
-    );
+    const playing = els.find((el) => !el.paused && !el.ended);
+    if (playing || requirePlaying) return playing || null;
+    return els.sort((a, b) => (b.duration || 0) - (a.duration || 0))[0];
   };
 
   const state = () => {
@@ -37,8 +36,8 @@
     report("attach");
   };
 
-  const rescan = () => {
-    const el = pick();
+  const rescan = (requirePlaying) => {
+    const el = pick(requirePlaying);
     if (el) attach(el);
   };
 
@@ -87,5 +86,5 @@
     setTimeout(() => report("command"), 100);
   });
 
-  rescan();
+  rescan(true);
 })();

@@ -4,8 +4,8 @@
     "format": "", //    //
     "rotate": 0,
     "tooltip-format": "\uf205 Switch bar",
-    "on-click": "hyprshell waybar -n",
-    "on-click-right": "hyprshell waybar -p",
+    "on-click": "hyprshell waybar/waybar -n",
+    "on-click-right": "hyprshell waybar/waybar -p",
     "interval": 86400,
     "tooltip": true
   }

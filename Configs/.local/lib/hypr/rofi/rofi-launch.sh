@@ -168,27 +168,27 @@ configure_mode() {
   }
 
   case "${action}" in
-    d|--drun|"") configure_drun_mode ;;
-    w|--window)
+    d | --drun | "") configure_drun_mode ;;
+    w | --window)
       r_mode="window"
       rofi_config="$(resolve_rofi_launcher_theme "${ROFI_LAUNCH_WINDOW_STYLE:-${ROFI_LAUNCH_STYLE:-style_1}}")"
       rofi_args+=("${ROFI_LAUNCH_WINDOW_ARGS[@]:-}")
       ;;
-    f|--filebrowser)
+    f | --filebrowser)
       r_mode="filebrowser"
       rofi_config="$(resolve_rofi_launcher_theme "${ROFI_LAUNCH_FILEBROWSER_STYLE:-${ROFI_LAUNCH_STYLE:-style_1}}")"
       rofi_args+=("${ROFI_LAUNCH_FILEBROWSER_ARGS[@]:-}")
       ;;
-    r|--run)
+    r | --run)
       r_mode="run"
       rofi_config="$(resolve_rofi_launcher_theme "${ROFI_LAUNCH_RUN_STYLE:-${ROFI_LAUNCH_STYLE:-style_1}}")"
       rofi_args+=("-run-command" "$(launcher_run_command)" "${ROFI_LAUNCH_RUN_ARGS[@]:-}")
       ;;
-    s|-s|--select-style)
+    s | -s | --select-style)
       launcher_style_select
       exit 0
       ;;
-    h|--help)
+    h | --help)
       show_help
       ;;
     *) configure_drun_mode ;;
@@ -220,6 +220,11 @@ build_runtime_overrides() {
 
   mapfile -d '' -t width_args < <(width_override_args "${rofi_config}" "${font_name}" "${font_scale}" | tr '\n' '\0')
   [[ ${#width_args[@]} -gt 0 ]] && rofi_args+=("${width_args[@]}")
+
+  if [[ "$(state_get "HYPR_WORKFLOW" "default")" == "focus" && "$(basename "${rofi_config}" .rasi)" == "style_11" ]]; then
+    rofi_args+=(-theme-str "inputbar { background-color: #000000CC; } listbox { background-color: #000000CC; }")
+  fi
+
   rofi_args+=(-theme "${rofi_config}")
 }
 

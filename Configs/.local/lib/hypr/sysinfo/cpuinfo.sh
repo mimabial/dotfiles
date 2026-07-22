@@ -212,11 +212,14 @@ emit_cpu_json() {
   local util_int="${utilization%%.*}"
   [[ "${util_int}" =~ ^[0-9]+$ ]] && (( util_int > 99 )) && util_int=99
   formatted_util=$(printf "%02d" "${util_int}")
+  local sep=$'\r'
+  [[ "${HYPR_SYSINFO_ALT:-0}" == "1" ]] && sep=" "
   jq -n -c \
     --arg icon "${icon}" \
     --arg util "${formatted_util}󱉸" \
     --arg tooltip "${tooltip}" \
-    '{text: ($icon + "\r" + $util), tooltip: $tooltip}'
+    --arg sep "$sep" \
+    '{text: ($icon + $sep + $util), tooltip: $tooltip}'
 }
 
 init_query
