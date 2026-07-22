@@ -261,6 +261,26 @@ def reload_dunst():
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
+    refresh_submap_hint()
+
+
+def refresh_submap_hint():
+    # The reload restyles only new notifications; a submap hint on screen
+    # would keep the previous palette until the submap is re-entered.
+    hint_script = (
+        Path(__file__).resolve().parent.parent / "keybinds" / "submap-hint.sh"
+    )
+    if not hint_script.is_file():
+        return
+    try:
+        subprocess.Popen(
+            ["bash", str(hint_script), "--refresh"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+    except OSError:
+        pass
 
 
 def main():
@@ -311,11 +331,11 @@ def main():
     bg_low_render = with_alpha(bg_secondary, "80")
     bg_normal_render = with_alpha(bg_primary, "80")
     bg_category_render = with_alpha(bg_tertiary, "80")
-    bg_critical_render = with_alpha(bg_critical, "CC")
+    bg_critical_render = with_alpha(bg_critical, "80")
     fg_low_render = with_alpha(fg_secondary, "E6")
     fg_normal_render = with_alpha(fg_primary, "E6")
     fg_category_render = with_alpha(fg_primary, "E6")
-    fg_critical_render = fg_critical
+    fg_critical_render = with_alpha(fg_critical, "E6")
     frame_low_render = with_alpha(border_secondary, "33")
     frame_normal_render = with_alpha(border_primary, "55")
     frame_critical_render = with_alpha(frame_critical, "CC")

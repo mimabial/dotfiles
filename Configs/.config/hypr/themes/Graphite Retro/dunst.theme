@@ -2,7 +2,7 @@ $HOME/.config/dunst/theme.conf
 
 /* Foreground Colors - Grayscale with high contrast */
 @define-color fg-primary #c0c0c0;
-@define-color fg-secondary #b1b1b1;
+@define-color fg-secondary #baffc9;
 
 /* Background Colors - Deep void dark grays */
 @define-color bg-primary #1c1c1c;

@@ -3,11 +3,12 @@ set -euo pipefail
 
 source "$(command -v hyprshell)" || exit 1
 
-hypr_help_guard "Usage: hyprshell keybinds/submap-hint [--show NAME|--dismiss]
+hypr_help_guard "Usage: hyprshell keybinds/submap-hint [--show NAME|--dismiss|--refresh]
 Show a keybind hint notification while a Hyprland submap is active.
 
 With no arguments, watch submap events on socket2 and show the hint on entry,
-dismiss it on exit." "$@"
+dismiss it on exit. --refresh re-sends the hint for the currently active
+submap, if any." "$@"
 
 SUBMAP_HINT_NOTIF_ID=9042
 
@@ -32,6 +33,17 @@ show_hint() {
 
 dismiss_hint() {
   dunstify -C "${SUBMAP_HINT_NOTIF_ID}" 2>/dev/null || true
+}
+
+# Dunst restyles only new notifications on config reload, so the sticky hint
+# keeps its birth palette across a theme change; re-sending under the same
+# replace id picks up the current one.
+refresh_hint() {
+  local name=""
+
+  name="$(hyprctl submap 2>/dev/null || true)"
+  [[ -n "${name}" && "${name}" != "default" ]] || return 0
+  show_hint "${name}"
 }
 
 watch_submaps() {
@@ -60,6 +72,10 @@ case "${1:-}" in
     ;;
   --dismiss)
     dismiss_hint
+    exit 0
+    ;;
+  --refresh)
+    refresh_hint
     exit 0
     ;;
   "") ;;
