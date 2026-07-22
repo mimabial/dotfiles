@@ -249,3 +249,107 @@ ini_write() {
     return 1
   }
 }
+
+# Apply many entries to an INI file in a single awk pass. Reads
+# `group<TAB>key<TAB>value` records on stdin. ini_write spawns one
+# kwriteconfig6 per key, which is ~1.4s for a kdeglobals color scheme; this
+# does not go through kwriteconfig6, so keep it for plain value keys and use
+# ini_write where KDE's cascade or immutability markers matter.
+ini_write_multi() {
+  local config_file="${1}"
+
+  [[ -z "${config_file}" ]] && return 1
+
+  if [[ ! -f "${config_file}" ]]; then
+    mkdir -p "$(dirname "${config_file}")" || return 1
+    : >"${config_file}" || return 1
+  fi
+
+  local tmp_file=""
+  tmp_file="$(mktemp "$(dirname "${config_file}")/.ini-write.XXXXXX")" || return 1
+
+  awk -F'\t' '
+    function flush_group(sec,   i, k) {
+      for (i = 1; i <= key_count[sec]; i++) {
+        k = keys[sec, i]
+        if (!((sec, k) in written)) {
+          print k "=" pending[sec, k]
+          written[sec, k] = 1
+        }
+      }
+    }
+    NR == FNR {
+      if (NF < 3 || $1 == "" || $2 == "") {
+        next
+      }
+      if (!(($1, $2) in pending)) {
+        keys[$1, ++key_count[$1]] = $2
+      }
+      if (!($1 in group_seen)) {
+        group_seen[$1] = 1
+        group_order[++group_total] = $1
+      }
+      pending[$1, $2] = $3
+      next
+    }
+    /^[[:space:]]*\[/ {
+      if (in_group != "") {
+        flush_group(in_group)
+      }
+
+      section = $0
+      sub(/^[[:space:]]*\[/, "", section)
+      sub(/\][[:space:]]*$/, "", section)
+      in_group = (section in group_seen) ? section : ""
+      if (in_group != "") {
+        group_found[in_group] = 1
+      }
+
+      lines++
+      print
+      next
+    }
+    {
+      if (in_group != "") {
+        lhs = $0
+        sub(/=.*$/, "", lhs)
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", lhs)
+        if ((in_group, lhs) in pending) {
+          if (!((in_group, lhs) in written)) {
+            print lhs "=" pending[in_group, lhs]
+            written[in_group, lhs] = 1
+          }
+          lines++
+          next
+        }
+      }
+
+      lines++
+      print
+    }
+    END {
+      if (in_group != "") {
+        flush_group(in_group)
+      }
+
+      for (i = 1; i <= group_total; i++) {
+        if (!(group_order[i] in group_found)) {
+          if (lines > 0) {
+            print ""
+          }
+          print "[" group_order[i] "]"
+          flush_group(group_order[i])
+          lines++
+        }
+      }
+    }
+  ' /dev/stdin "${config_file}" >"${tmp_file}" || {
+    rm -f "${tmp_file}"
+    return 1
+  }
+
+  mv -f "${tmp_file}" "${config_file}" || {
+    rm -f "${tmp_file}"
+    return 1
+  }
+}

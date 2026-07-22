@@ -10,9 +10,9 @@ $CURSOR_THEME = oldSys
 $CURSOR_SIZE = 28
 
 general {
-    gaps_in = 5
-    gaps_out = 10
-    border_size = 3
+    gaps_in = 4
+    gaps_out = 9
+    border_size = 2
     col.active_border = rgba(d9d9d9ff)
     col.inactive_border = rgba(a6a6a6cc)
     layout = dwindle
@@ -28,7 +28,7 @@ group {
 
 
 decoration {
-    rounding = 0
+    rounding = 2
     drop_shadow = false
     shadow_offset = 6 6
     shadow_range = 3

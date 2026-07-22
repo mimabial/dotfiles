@@ -47,6 +47,8 @@
         "$XDG_DATA_HOME/waybar/modules/custom-submap.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-terminal.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-themeswitch.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-tmark#left.jsonc",
+        "$XDG_DATA_HOME/waybar/modules/custom-tmark#right.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-updates.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-vpn.jsonc",
         "$XDG_DATA_HOME/waybar/modules/custom-wallchange.jsonc",
@@ -703,6 +705,11 @@
         "interval": 600,
         "return-type": "json"
     },
+    "custom/tmark#right": {
+        "justify": "center",
+        "format": "\udb85\ude39",
+        "tooltip": false
+    },
     "custom/weather#sunrise": {
         "exec": "hyprshell weather -s",
         "justify": "left",
@@ -730,6 +737,11 @@
         "on-click-right": "hyprshell waybar/waybar -p",
         "interval": 86400,
         "tooltip": true
+    },
+    "custom/tmark#left": {
+        "justify": "center",
+        "format": "\udb85\ude39",
+        "tooltip": false
     },
     "wlr/taskbar#windows": {
         "format": "{icon}{app_id}",
@@ -778,7 +790,7 @@
         "on-scroll-up": "hyprctl dispatch \"hl.dsp.focus({ workspace = 'r-1' })\"",
         "on-scroll-down": "hyprctl dispatch \"hl.dsp.focus({ workspace = 'r+1' })\"",
         "sort-by-name": true,
-        "format": "\udb85\ude39 {icon} \udb85\ude39",
+        "format": "{icon}",
         "format-icons": {
             "1": "I",
             "2": "II",

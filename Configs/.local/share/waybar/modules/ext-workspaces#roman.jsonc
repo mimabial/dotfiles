@@ -7,7 +7,7 @@
     "on-scroll-up": "hyprctl dispatch \"hl.dsp.focus({ workspace = 'r-1' })\"",
     "on-scroll-down": "hyprctl dispatch \"hl.dsp.focus({ workspace = 'r+1' })\"",
     "sort-by-name": true,
-    "format": "󱘹 {icon} 󱘹",
+    "format": "{icon}",
     "format-icons": {
       "1": "I",
       "2": "II",

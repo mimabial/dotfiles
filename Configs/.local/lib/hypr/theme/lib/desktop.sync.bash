@@ -54,156 +54,168 @@ theme_desktop_write_generated_file() {
   mv -f -- "${tmp_file}" "${target_file}"
 }
 
-theme_desktop_hyq_value() {
-  local raw_value="${1-}"
-
-  if [[ ${#raw_value} -ge 2 && "${raw_value:0:1}" == '"' && "${raw_value:${#raw_value}-1:1}" == '"' ]]; then
-    raw_value="${raw_value:1:${#raw_value}-2}"
-    raw_value="${raw_value//\\\"/\"}"
-    raw_value="${raw_value//\\\$/\$}"
-    raw_value="${raw_value//\\\`/\`}"
-    raw_value="${raw_value//\\\\/\\}"
-    printf '%s' "${raw_value}"
-    return 0
-  fi
-
-  if [[ ${#raw_value} -ge 2 && "${raw_value:0:1}" == "'" && "${raw_value:${#raw_value}-1:1}" == "'" ]]; then
-    printf '%s' "${raw_value:1:${#raw_value}-2}"
-    return 0
-  fi
-
-  printf '%s' "${raw_value}"
-}
-
-theme_desktop_load_hyq_env() {
-  local hyq_output="$1"
-  local var_name=""
-  local raw_value=""
-  local value=""
-  local line=""
-
-  while IFS= read -r line; do
-    [[ -n "${line}" ]] || continue
-    [[ "${line}" =~ ^(__[A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]] || continue
-    var_name="${BASH_REMATCH[1]}"
-    raw_value="${BASH_REMATCH[2]}"
-
-    case "${var_name}" in
-      __ICON_THEME | __COLOR_SCHEME | __CURSOR_THEME | __CURSOR_SIZE | \
-      __TERMINAL | __FONT | __FONT_SIZE | __FONT_STYLE | __DOCUMENT_FONT | \
-      __DOCUMENT_FONT_SIZE | __MONOSPACE_FONT | __MONOSPACE_FONT_SIZE | \
-      __BUTTON_LAYOUT | __FONT_ANTIALIASING | __FONT_HINTING)
-        ;;
-      *)
-        continue
-        ;;
-    esac
-
-    value="$(theme_desktop_hyq_value "${raw_value}")"
-    printf -v "${var_name}" '%s' "${value}"
-  done <<<"${hyq_output}"
-}
-
-theme_desktop_load_config_values() {
+# In theme mode the pack's theme.meta is authoritative for icon/cursor,
+# above env-theme and userfonts; wallpaper mode leaves them to the layered
+# resolution. The shared layer parser agrees with hyq on this flat generated
+# file and avoids the subprocess.
+theme_desktop_load_theme_meta_values() {
   local theme_conf="${HYPR_THEME_METADATA_FILE:-${HYPR_CONFIG_HOME}/themes/theme.meta}"
-  local theme_hyq_output=""
-  local query_output=""
-  local -a hyq_args=(
-    "${HYPRLAND_CONFIG}"
-    --source
-    --export env
-    --allow-missing
-    -Q '$COLOR_SCHEME[string]'
-    -Q '$TERMINAL[string]'
-    -Q '$FONT[string]'
-    -Q '$FONT_SIZE'
-    -Q '$FONT_STYLE[string]'
-    -Q '$DOCUMENT_FONT[string]'
-    -Q '$DOCUMENT_FONT_SIZE'
-    -Q '$MONOSPACE_FONT[string]'
-    -Q '$MONOSPACE_FONT_SIZE'
-    -Q '$BUTTON_LAYOUT[string]'
-    -Q '$FONT_ANTIALIASING[string]'
-    -Q '$FONT_HINTING[string]'
-  )
+  local -A theme_meta_values=()
 
-  unset __ICON_THEME __COLOR_SCHEME __CURSOR_THEME __CURSOR_SIZE \
-    __TERMINAL __FONT __FONT_SIZE __FONT_STYLE __DOCUMENT_FONT \
-    __DOCUMENT_FONT_SIZE __MONOSPACE_FONT __MONOSPACE_FONT_SIZE \
-    __BUTTON_LAYOUT __FONT_ANTIALIASING __FONT_HINTING
+  [[ "${selected_color_mode:-1}" -eq 0 ]] || return 0
+  [[ -r "${theme_conf}" ]] || return 0
 
-  [[ -r "${HYPRLAND_CONFIG}" ]] || return 0
-  command -v hyq >/dev/null 2>&1 || return 0
+  hypr_config_parse_layer_file "${theme_conf}" theme_meta_values
+  [[ -n "${theme_meta_values[ICON_THEME]-}" ]] && ICON_THEME="${theme_meta_values[ICON_THEME]}"
+  [[ -n "${theme_meta_values[CURSOR_THEME]-}" ]] && CURSOR_THEME="${theme_meta_values[CURSOR_THEME]}"
+  [[ -n "${theme_meta_values[CURSOR_SIZE]-}" ]] && CURSOR_SIZE="${theme_meta_values[CURSOR_SIZE]}"
+  return 0
+}
 
-  if [[ "${selected_color_mode:-1}" -eq 0 ]] && [[ -r "${theme_conf}" ]]; then
-    # Manual color mode uses theme metadata for icon/cursor instead of env overrides.
-    theme_hyq_output="$(
-      hyq "${theme_conf}" --export env --allow-missing \
-        -Q '$ICON_THEME[string]' \
-        -Q '$CURSOR_THEME[string]' \
-        -Q '$CURSOR_SIZE'
-    )"
-    theme_desktop_load_hyq_env "${theme_hyq_output}"
-    ICON_THEME="${__ICON_THEME:-${ICON_THEME:-}}"
-    CURSOR_THEME="${__CURSOR_THEME:-${CURSOR_THEME:-}}"
-    CURSOR_SIZE="${__CURSOR_SIZE:-${CURSOR_SIZE:-}}"
-  else
-    hyq_args+=(
-      -Q '$ICON_THEME[string]'
-      -Q '$CURSOR_THEME[string]'
-      -Q '$CURSOR_SIZE'
-    )
+declare -ga theme_desktop_layered_vars=(
+  ICON_THEME
+  CURSOR_THEME
+  CURSOR_SIZE
+  TERMINAL
+  FONT
+  FONT_SIZE
+  FONT_STYLE
+  DOCUMENT_FONT
+  DOCUMENT_FONT_SIZE
+  MONOSPACE_FONT
+  MONOSPACE_FONT_SIZE
+  BUTTON_LAYOUT
+  FONT_ANTIALIASING
+  FONT_HINTING
+)
+
+theme_desktop_base_state_hash() {
+  local env_theme_file="${HYPR_CONFIG_HOME}/env-theme"
+  local env_theme_hash=""
+  local pipeline_hash=""
+
+  pipeline_hash="$(hypr_hash_cache_digest_files "${BASH_SOURCE[0]}")"
+  [[ -f "${env_theme_file}" ]] && env_theme_hash="$(hypr_hash_cache_digest_files "${env_theme_file}")"
+
+  hypr_hash_cache_digest_strings \
+    "pipeline=${pipeline_hash}" \
+    "env_theme=${env_theme_hash}" \
+    "config_signature=$(hypr_config_file_signature "$@")"
+}
+
+theme_desktop_lv_value() {
+  local lv_name="theme_desktop_lv_$1"
+  printf '%s' "${!lv_name-}"
+}
+
+theme_desktop_write_base_snapshot() {
+  local snapshot_file="$1"
+  local snapshot_tmp=""
+  local layer_var=""
+
+  snapshot_tmp="$(mktemp "${snapshot_file}.tmp.XXXXXX")" || return 1
+  {
+    for layer_var in "${theme_desktop_layered_vars[@]}"; do
+      printf '%s=%q\n' "${layer_var}" "${!layer_var-}"
+    done
+    for layer_var in "${theme_desktop_layered_vars[@]}"; do
+      printf 'theme_desktop_lv_%s=%q\n' "${layer_var}" "$(theme_desktop_lv_value "${layer_var}")"
+    done
+  } >"${snapshot_tmp}" || {
+    rm -f "${snapshot_tmp}"
+    return 1
+  }
+  mv -f "${snapshot_tmp}" "${snapshot_file}"
+}
+
+# The layers other than theme.meta are a pure function of the digested
+# files, so their resolution is snapshotted under the runtime dir until a
+# config edit (or --regen) invalidates it. theme.meta sits between userfonts
+# and variables in precedence but changes on every theme switch, so it is
+# merged live instead: the snapshot keeps the above-theme.meta values in the
+# variables themselves and the variables.meta fallbacks in
+# theme_desktop_lv_*.
+theme_desktop_resolve_base_values() {
+  local env_theme_file="${HYPR_CONFIG_HOME}/env-theme"
+  local hash_file=""
+  local snapshot_file=""
+  local base_hash=""
+  local layer_var=""
+  local layer_value=""
+  local -a layer_files=()
+  local -A userfonts_values=()
+  local -A variables_values=()
+  local -A theme_meta_values=()
+
+  # Positional order contract documented on hypr_config_layer_files:
+  # [0] userfonts.lua, [1] themes/theme.meta, [2] variables.meta.
+  mapfile -t layer_files < <(hypr_config_layer_files)
+
+  if hash_file="$(hypr_hash_cache_runtime_file "theme-desktop-base.hash")"; then
+    snapshot_file="${hash_file%.hash}.env"
+    base_hash="$(theme_desktop_base_state_hash "${layer_files[0]}" "${layer_files[2]}")" || base_hash=""
   fi
 
-  query_output="$(hyq "${hyq_args[@]}")"
-  theme_desktop_load_hyq_env "${query_output}"
+  if [[ -n "${base_hash}" && -r "${snapshot_file}" ]] \
+    && hypr_hash_cache_is_current "${hash_file}" "${base_hash}"; then
+    # shellcheck source=/dev/null
+    source "${snapshot_file}"
+  else
+    # Ambient values would leak into the snapshot; resolve from files only.
+    # Set-empty rather than unset: consumers run under set -u and expect
+    # every layered variable defined.
+    for layer_var in "${theme_desktop_layered_vars[@]}"; do
+      printf -v "${layer_var}" '%s' ""
+    done
 
-  COLOR_SCHEME="${__COLOR_SCHEME:-${COLOR_SCHEME:-}}"
-  ICON_THEME="${__ICON_THEME:-${ICON_THEME:-}}"
-  CURSOR_THEME="${__CURSOR_THEME:-${CURSOR_THEME:-}}"
-  CURSOR_SIZE="${__CURSOR_SIZE:-${CURSOR_SIZE:-}}"
-  TERMINAL="${__TERMINAL:-${TERMINAL:-}}"
-  FONT="${__FONT:-${FONT:-}}"
-  FONT_SIZE="${__FONT_SIZE:-${FONT_SIZE:-}}"
-  FONT_STYLE="${__FONT_STYLE:-${FONT_STYLE:-}}"
-  DOCUMENT_FONT="${__DOCUMENT_FONT:-${DOCUMENT_FONT:-}}"
-  DOCUMENT_FONT_SIZE="${__DOCUMENT_FONT_SIZE:-${DOCUMENT_FONT_SIZE:-}}"
-  MONOSPACE_FONT="${__MONOSPACE_FONT:-${MONOSPACE_FONT:-}}"
-  MONOSPACE_FONT_SIZE="${__MONOSPACE_FONT_SIZE:-${MONOSPACE_FONT_SIZE:-}}"
-  BUTTON_LAYOUT="${__BUTTON_LAYOUT:-${BUTTON_LAYOUT:-}}"
-  FONT_ANTIALIASING="${__FONT_ANTIALIASING:-${FONT_ANTIALIASING:-}}"
-  FONT_HINTING="${__FONT_HINTING:-${FONT_HINTING:-}}"
+    # shellcheck source=/dev/null
+    [[ -f "${env_theme_file}" ]] && source "${env_theme_file}"
+
+    FONT="${FONT:-Cantarell}"
+    FONT_SIZE="${FONT_SIZE:-10}"
+    DOCUMENT_FONT="${DOCUMENT_FONT:-Cantarell}"
+    DOCUMENT_FONT_SIZE="${DOCUMENT_FONT_SIZE:-10}"
+    MONOSPACE_FONT="${MONOSPACE_FONT:-JetBrainsMono Nerd Font}"
+    MONOSPACE_FONT_SIZE="${MONOSPACE_FONT_SIZE:-9}"
+    FONT_ANTIALIASING="${FONT_ANTIALIASING:-rgba}"
+    FONT_HINTING="${FONT_HINTING:-}"
+
+    hypr_config_parse_layer_file "${layer_files[0]}" userfonts_values
+    for layer_var in "${theme_desktop_layered_vars[@]}"; do
+      [[ -n "${!layer_var-}" ]] && continue
+      layer_value="${userfonts_values[${layer_var}]-}"
+      [[ -n "${layer_value}" ]] && printf -v "${layer_var}" '%s' "${layer_value}"
+    done
+
+    hypr_config_parse_layer_file "${layer_files[2]}" variables_values
+    for layer_var in "${theme_desktop_layered_vars[@]}"; do
+      printf -v "theme_desktop_lv_${layer_var}" '%s' "${variables_values[${layer_var}]-}"
+    done
+
+    if [[ -n "${base_hash}" && -n "${snapshot_file}" ]]; then
+      theme_desktop_write_base_snapshot "${snapshot_file}" \
+        && hypr_hash_cache_store "${hash_file}" "${base_hash}" 2>/dev/null \
+        || true
+    fi
+  fi
+
+  hypr_config_parse_layer_file "${layer_files[1]}" theme_meta_values
+  for layer_var in "${theme_desktop_layered_vars[@]}"; do
+    [[ -n "${!layer_var-}" ]] && continue
+    layer_value="${theme_meta_values[${layer_var}]-}"
+    [[ -z "${layer_value}" ]] && layer_value="$(theme_desktop_lv_value "${layer_var}")"
+    [[ -n "${layer_value}" ]] && printf -v "${layer_var}" '%s' "${layer_value}"
+  done
+  return 0
 }
 
 theme_desktop_resolve_values() {
-  local env_theme_file="${HYPR_CONFIG_HOME}/env-theme"
   local color_variant=""
-  local layer_var=""
-  local layer_value=""
-  local -a layered_vars=(
-    ICON_THEME
-    CURSOR_THEME
-    CURSOR_SIZE
-    TERMINAL
-    FONT
-    FONT_SIZE
-    FONT_STYLE
-    DOCUMENT_FONT
-    DOCUMENT_FONT_SIZE
-    MONOSPACE_FONT
-    MONOSPACE_FONT_SIZE
-    BUTTON_LAYOUT
-    FONT_ANTIALIASING
-    FONT_HINTING
-  )
 
   if [[ -d /run/current-system/sw/share/themes ]]; then
     THEMES_DIR=/run/current-system/sw/share/themes
     export THEMES_DIR
   fi
-
-  # shellcheck source=/dev/null
-  [[ -f "${env_theme_file}" ]] && source "${env_theme_file}"
 
   HYPRLAND_CONFIG="${HYPRLAND_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprland.lua}"
   color_variant="$(state_get_color_variant 2>/dev/null || true)"
@@ -215,21 +227,8 @@ theme_desktop_resolve_values() {
   esac
 
   COLOR_SCHEME="prefer-${resolved_color_variant}"
-  FONT="${FONT:-Cantarell}"
-  FONT_SIZE="${FONT_SIZE:-10}"
-  DOCUMENT_FONT="${DOCUMENT_FONT:-Cantarell}"
-  DOCUMENT_FONT_SIZE="${DOCUMENT_FONT_SIZE:-10}"
-  MONOSPACE_FONT="${MONOSPACE_FONT:-JetBrainsMono Nerd Font}"
-  MONOSPACE_FONT_SIZE="${MONOSPACE_FONT_SIZE:-9}"
-  FONT_ANTIALIASING="${FONT_ANTIALIASING:-rgba}"
-  FONT_HINTING="${FONT_HINTING:-}"
-  theme_desktop_load_config_values
-
-  for layer_var in "${layered_vars[@]}"; do
-    [[ -n "${!layer_var-}" ]] && continue
-    layer_value="$(hypr_config_value_from_layers "${layer_var}" 2>/dev/null || true)"
-    [[ -n "${layer_value}" ]] && printf -v "${layer_var}" '%s' "${layer_value}"
-  done
+  theme_desktop_resolve_base_values
+  theme_desktop_load_theme_meta_values
 
   if [[ "${revert_colors:-0}" -eq 1 ]] \
     || [[ "${selected_color_mode:-0}" -eq 2 && "${resolved_color_variant:-}" == "light" ]] \
@@ -528,6 +527,7 @@ theme_desktop_install_kdeglobals_color_sections() {
   local section=""
   local key=""
   local value=""
+  local records=""
 
   [[ -n "${target_file}" ]] || return 1
   [[ -f "${source_file}" ]] || return 0
@@ -554,8 +554,12 @@ theme_desktop_install_kdeglobals_color_sections() {
     value="${line#*=}"
     [[ -n "${key}" ]] || continue
 
-    ini_write "${target_file}" "${section}" "${key}" "${value}" || return 1
+    records+="${section}"$'\t'"${key}"$'\t'"${value}"$'\n'
   done <"${source_file}"
+
+  [[ -n "${records}" ]] || return 0
+
+  printf '%s' "${records}" | ini_write_multi "${target_file}" || return 1
 }
 
 theme_desktop_install_qtct_color_scheme() {

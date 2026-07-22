@@ -2,7 +2,7 @@ $HOME/.config/waybar/theme.css
 
 @define-color bg #11111b; /* Mantle */
 @define-color fg #cdd6f4; /* Text */
-@define-color br #43465A; /* Surface1 */
+@define-color br #A1A8C9; /* Surface1 */
 
 @define-color alt_bg #43465A; /* Text */
 @define-color alt_fg #cdd6f4;

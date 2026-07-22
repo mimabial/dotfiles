@@ -2,7 +2,7 @@ $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 $ICON_THEME = Tela-green-light
 $COLOR_SCHEME = prefer-light
 $CURSOR_THEME = material_light_cursors
-$CURSOR_SIZE = 30
+$CURSOR_SIZE = 24
 $NVIM_SCHEME = everforest
 $NVIM_VARIANT = hard
 $NVIM_BACKGROUND = light

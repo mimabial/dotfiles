@@ -224,6 +224,9 @@ hypr_variables_file() {
   hypr_core_file "variables.meta"
 }
 
+# Output order is the layer precedence (first wins) and is relied on
+# positionally by theme_desktop_resolve_base_values (desktop.sync.bash):
+# userfonts.lua, themes/theme.meta, variables.meta. Change both together.
 hypr_config_layer_files() {
   local config_home="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}"
   local data_home="${HYPR_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/hypr}"
@@ -249,26 +252,87 @@ hypr_trim_whitespace() {
   printf '%s' "${value}"
 }
 
+hypr_config_file_signature_line() {
+  local file_path="$1"
+
+  if [[ -e "${file_path}" || -L "${file_path}" ]]; then
+    stat -Lc '%n:%y:%s:%i' -- "${file_path}" 2>/dev/null || printf '%s:unreadable\n' "${file_path}"
+  else
+    printf '%s:missing\n' "${file_path}"
+  fi
+}
+
 hypr_config_file_signature() {
   local file_path=""
 
+  if (($#)); then
+    for file_path in "$@"; do
+      hypr_config_file_signature_line "${file_path}"
+    done
+    return 0
+  fi
+
   while IFS= read -r file_path; do
-    if [[ -e "${file_path}" || -L "${file_path}" ]]; then
-      stat -Lc '%n:%y:%s:%i' -- "${file_path}" 2>/dev/null || printf '%s:unreadable\n' "${file_path}"
-    else
-      printf '%s:missing\n' "${file_path}"
-    fi
+    hypr_config_file_signature_line "${file_path}"
   done < <(hypr_config_layer_files)
 }
 
-hypr_config_layer_cache_load() {
-  local cache_key=""
-  local file_path=""
+# Existing keys are kept, so calling this per file in layer order preserves
+# first-definition-wins.
+hypr_config_parse_layer_file() {
+  local file_path="$1"
+  local -n layer_values_ref="$2"
   local raw_line=""
   local lhs=""
   local rhs=""
   local variable_key=""
   local lua_var_re='^[[:space:]]*vars\.set\("([^"]+)",[[:space:]]*"([^"]*)"\)'
+
+  [[ -f "${file_path}" ]] || return 0
+  if [[ ! -r "${file_path}" ]]; then
+    printf 'ERROR: cannot read Hypr config file: %s\n' "${file_path}" >&2
+    return 0
+  fi
+
+  while IFS= read -r raw_line; do
+    [[ -n "${raw_line//[[:space:]]/}" ]] || continue
+    [[ ! "${raw_line}" =~ ^[[:space:]]*# ]] || continue
+    if [[ "${raw_line}" =~ ${lua_var_re} ]]; then
+      variable_key="${BASH_REMATCH[1]}"
+      rhs="${BASH_REMATCH[2]}"
+      [[ -n "${rhs}" ]] || continue
+      [[ -v "layer_values_ref[${variable_key}]" ]] && continue
+      layer_values_ref["${variable_key}"]="${rhs}"
+      continue
+    fi
+    [[ "${raw_line}" == *=* ]] || continue
+
+    lhs="${raw_line%%=*}"
+    rhs="${raw_line#*=}"
+    lhs="$(hypr_trim_whitespace "${lhs}")"
+    [[ "${lhs}" == \$* ]] || continue
+    variable_key="${lhs#\$}"
+    [[ -n "${variable_key}" ]] || continue
+
+    rhs="${rhs%%#*}"
+    rhs="$(hypr_trim_whitespace "${rhs}")"
+    rhs="${rhs%\'}"
+    rhs="${rhs#\'}"
+    rhs="${rhs%\"}"
+    rhs="${rhs#\"}"
+
+    if [[ -z "${rhs}" ]]; then
+      continue
+    fi
+
+    [[ -v "layer_values_ref[${variable_key}]" ]] && continue
+    layer_values_ref["${variable_key}"]="${rhs}"
+  done < "${file_path}"
+}
+
+hypr_config_layer_cache_load() {
+  local cache_key=""
+  local file_path=""
 
   cache_key="$(hypr_config_file_signature)"
   if [[ "${HYPR_CONFIG_LAYER_CACHE_READY:-0}" -eq 1 && "${HYPR_CONFIG_LAYER_CACHE_KEY:-}" == "${cache_key}" ]]; then
@@ -277,46 +341,7 @@ hypr_config_layer_cache_load() {
 
   HYPR_CONFIG_LAYER_CACHE=()
   while IFS= read -r file_path; do
-    [[ -f "${file_path}" ]] || continue
-    if [[ ! -r "${file_path}" ]]; then
-      printf 'ERROR: cannot read Hypr config file: %s\n' "${file_path}" >&2
-      continue
-    fi
-
-    while IFS= read -r raw_line; do
-      [[ -n "${raw_line//[[:space:]]/}" ]] || continue
-      [[ ! "${raw_line}" =~ ^[[:space:]]*# ]] || continue
-      if [[ "${raw_line}" =~ ${lua_var_re} ]]; then
-        variable_key="${BASH_REMATCH[1]}"
-        rhs="${BASH_REMATCH[2]}"
-        [[ -n "${rhs}" ]] || continue
-        [[ -v "HYPR_CONFIG_LAYER_CACHE[${variable_key}]" ]] && continue
-        HYPR_CONFIG_LAYER_CACHE["${variable_key}"]="${rhs}"
-        continue
-      fi
-      [[ "${raw_line}" == *=* ]] || continue
-
-      lhs="${raw_line%%=*}"
-      rhs="${raw_line#*=}"
-      lhs="$(hypr_trim_whitespace "${lhs}")"
-      [[ "${lhs}" == \$* ]] || continue
-      variable_key="${lhs#\$}"
-      [[ -n "${variable_key}" ]] || continue
-
-      rhs="${rhs%%#*}"
-      rhs="$(hypr_trim_whitespace "${rhs}")"
-      rhs="${rhs%\'}"
-      rhs="${rhs#\'}"
-      rhs="${rhs%\"}"
-      rhs="${rhs#\"}"
-
-      if [[ -z "${rhs}" ]]; then
-        continue
-      fi
-
-      [[ -v "HYPR_CONFIG_LAYER_CACHE[${variable_key}]" ]] && continue
-      HYPR_CONFIG_LAYER_CACHE["${variable_key}"]="${rhs}"
-    done < "${file_path}"
+    hypr_config_parse_layer_file "${file_path}" HYPR_CONFIG_LAYER_CACHE
   done < <(hypr_config_layer_files)
 
   HYPR_CONFIG_LAYER_CACHE_KEY="${cache_key}"

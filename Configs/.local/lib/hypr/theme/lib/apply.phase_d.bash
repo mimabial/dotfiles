@@ -7,9 +7,10 @@
 #   Phase A (foreground, in theme.apply.sh): color-sync runs, theme metadata
 #   commits, submits the wallpaper display, runs hyprctl reload, then a small
 #   required job pool updates the immediately visible clients. Waybar CSS is
-#   hot-reloaded by Waybar itself; the foreground path only writes CSS includes
-#   and starts Waybar if missing. Dunst and Firefox refreshes are detached
-#   best-effort jobs.
+#   hot-reloaded by Waybar itself; the foreground waybar job writes the font
+#   include and the dconf icon sink, restarting Waybar only when the icon
+#   theme changed (or starting it if missing). Dunst and Firefox refreshes are
+#   detached best-effort jobs.
 #   Phase A holds the theme-update lock end-to-end and is the path the user
 #   waits on.
 #
@@ -296,17 +297,16 @@ theme_apply_phase_d_run_jobs() {
   # Running it as a parallel job raced with the wallpaper symlink update.
   theme_apply_wait_jobs "${job_log_dir}" || true
 
-  # The icon-theme sinks (gsettings, gtk settings.ini, xsettingsd + HUP) are now
-  # written and settled by the desktop jobs above; do the icon-aware waybar
-  # restart last so the bar reloads with the correct taskbar/tray icons.
+  # Must follow the wait barrier: the desktop jobs write the icon sinks it reads.
   theme_apply_phase_d_waybar_icon_sync || true
 }
 
-# Authoritative waybar restart for icon-theme changes. Runs after the phase-D
-# wait barrier, i.e. once the icon sinks are live, so it reads the correct icon
-# theme instead of racing it (unlike the old synchronous restart in
-# theme_apply_job_waybar). Restarts only when the icon theme actually changed
-# and advances the state cache.
+# Safety net behind the phase-A icon-aware restart (theme_apply_job_waybar):
+# phase A writes the dconf sink and restarts against it, so this normally
+# short-circuits on the cache match. It still catches a bar that died, a
+# phase-A restart that failed, and sinks that only settle with the desktop
+# jobs (gtk settings.ini, xsettingsd). Concurrent restarts serialize on
+# WAYBAR_OP_LOCK inside waybar.py.
 theme_apply_phase_d_waybar_icon_sync() {
   theme_apply_generation_is_current || return 0
 
@@ -314,9 +314,16 @@ theme_apply_phase_d_waybar_icon_sync() {
   current_icon_theme="$(theme_apply_current_icon_theme)"
   cached_icon_theme="$(state_get "waybar_icon_theme" "" 2>/dev/null || true)"
 
-  if hypr_user_pgrep -x waybar >/dev/null 2>&1 \
-    && [[ -n "${current_icon_theme}" && "${current_icon_theme}" == "${cached_icon_theme}" ]]; then
-    return 0
+  if [[ -n "${current_icon_theme}" && "${current_icon_theme}" == "${cached_icon_theme}" ]]; then
+    # A matching cache means phase A claimed the restart; if the bar is down
+    # we are likely inside its kill/start window, so give it time to land
+    # before resurrecting.
+    local grace=0
+    while ((grace < 30)); do
+      hypr_user_pgrep -x waybar >/dev/null 2>&1 && return 0
+      sleep 0.1
+      grace=$((grace + 1))
+    done
   fi
 
   theme_apply_restart_waybar_direct || {

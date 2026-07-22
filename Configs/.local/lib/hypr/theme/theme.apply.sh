@@ -216,6 +216,7 @@ theme_apply_write_dunst_runtime() {
   "${r}"
 }
 
+# render/dunst.py reloads dunst itself once it has written dunstrc.
 theme_apply_reload_dunst_runtime() {
   return 0
 }
@@ -490,12 +491,6 @@ theme_apply_run_color_sync() {
   "${hypr_theme_cmd}" wallpaper "${hypr_theme_args[@]}" --variant "${variant}" "${wallpaper_path}"
 }
 
-theme_apply_job_hypr_reload() {
-  [[ -n "${HYPRLAND_INSTANCE_SIGNATURE}" ]] || return 0
-  command -v hyprctl >/dev/null 2>&1 || return 0
-  hyprctl reload config-only
-}
-
 theme_apply_job_waybar() {
   font_sync_apply_waybar_bar_font_include || {
     print_log -sec "theme.apply" -warn "font" "font sync failed"
@@ -503,14 +498,31 @@ theme_apply_job_waybar() {
   }
 
   # Icon-theme changes need a full restart (taskbar/tray icons load only at
-  # startup), but the icon sinks are written later in phase-D; restarting here
-  # races and reloads the old icons. The authoritative icon-aware restart runs
-  # in theme_apply_phase_d_waybar_icon_sync once those sinks settle. Here we only
-  # bring a dead bar back promptly; a running bar keeps its CSS hot-reload.
-  hypr_user_pgrep -x waybar >/dev/null 2>&1 && return 0
+  # startup), and waybar reads the icon theme from gsettings, so the dconf
+  # sink must be written before the restart. theme_apply_phase_d_waybar_icon_sync
+  # is the safety net if this restart fails or the bar dies later.
+  if theme_apply_prepare_desktop_state; then
+    theme_desktop_write_dconf_content || true
+    theme_desktop_restart_portal_backends_if_needed || true
+  fi
+
+  local current_icon_theme="" cached_icon_theme=""
+  current_icon_theme="$(theme_apply_current_icon_theme)"
+  cached_icon_theme="$(state_get "waybar_icon_theme" "" 2>/dev/null || true)"
+
+  if hypr_user_pgrep -x waybar >/dev/null 2>&1 \
+    && [[ -n "${current_icon_theme}" && "${current_icon_theme}" == "${cached_icon_theme}" ]]; then
+    return 0
+  fi
+
+  # Advance the cache before the kill window so the phase-D icon sync sees
+  # this restart as claimed; roll it back on failure so the safety net retakes.
+  [[ -n "${current_icon_theme}" ]] \
+    && state_set "waybar_icon_theme" "${current_icon_theme}" "staterc" 2>/dev/null || true
 
   theme_apply_restart_waybar_direct || {
-    print_log -sec "theme.apply" -warn "waybar" "start failed"
+    state_set "waybar_icon_theme" "${cached_icon_theme}" "staterc" 2>/dev/null || true
+    print_log -sec "theme.apply" -warn "waybar" "restart failed"
     return 1
   }
 }
@@ -525,8 +537,6 @@ theme_apply_job_dunst() {
     print_log -sec "theme.apply" -warn "dunst" "reload failed"
     return 1
   }
-
-  theme_apply_notify_wallpaper_detached || true
 }
 
 trap 'theme_apply_cleanup "$?"' EXIT
@@ -569,16 +579,18 @@ fi
 
 theme_apply_timed_call "generation" theme_apply_next_generation || exit 1
 theme_apply_timed_call "prepare_common_state" theme_apply_prepare_common_state || exit 1
-theme_apply_timed_call "color_sync" theme_apply_run_color_sync "${wallpaper_path}" || exit 1
 theme_apply_timed_call "metadata_commit" theme_apply_commit_theme_metadata || exit 1
+theme_apply_timed_call "color_sync" theme_apply_run_color_sync "${wallpaper_path}" || exit 1
 theme_apply_timed_call "wallpaper_display" theme_apply_display_wallpaper || true
 theme_apply_timed_call "waybar_border_radius" theme_apply_update_waybar_border_radius || true
 theme_apply_timed_call "envelope_launch" theme_apply_start_envelope || true
 
 theme_apply_prepare_job_log_dir || exit 1
 theme_apply_reset_jobs
-theme_apply_start_job "${theme_apply_job_log_dir}" "hypr_reload" required theme_apply_job_hypr_reload || exit 1
 theme_apply_start_job "${theme_apply_job_log_dir}" "waybar" required theme_apply_job_waybar || exit 1
 theme_apply_start_job "${theme_apply_job_log_dir}" "kitty" required theme_apply_job_kitty || exit 1
 theme_apply_start_detached_job "dunst" theme_apply_job_dunst || true
 theme_apply_wait_jobs "${theme_apply_job_log_dir}" || exit 1
+# After the wait barrier: the toast promises the switch lock is free again,
+# so it must not appear while jobs still hold up the exit.
+theme_apply_notify_wallpaper_detached || true

@@ -13,6 +13,11 @@
   margin-left: 2px;
 }
 
+#custom-tmark.left,
+#custom-tmark.right {
+  margin: 0px 8px;
+}
+
 #workspaces {
   margin: 0px;
   padding: 0px;
@@ -24,9 +29,10 @@
 }
 
 #workspaces button.active {
-  padding: 0px 8.5px;
-  margin: 0px 2px;
+  padding: 0px;
+  margin: 0px;
   font-weight: normal;
+  font-size: 12px;
   border: transparent;
   background: transparent;
 }
@@ -46,20 +52,20 @@
   color: alpha(@act_fg, 0.7);
 }
 
-#datetime {
-  font-weight: normal;
+#clock.time-alt {
+  font-size: 12px;
+  font-weight: bold;
 }
 
-#submap,
 #custom-submap {
-  color: alpha(@br, 0.6);
+  color: alpha(@br, 0.7);
   font-weight: normal;
   margin-right: 10px;
 }
 
 @keyframes blink-active {
   to {
-    color: alpha(@act_br, 0.6);
+    color: alpha(@act_br, 0.7);
   }
 }
 

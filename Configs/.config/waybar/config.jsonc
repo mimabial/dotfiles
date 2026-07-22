@@ -18,7 +18,13 @@
     "$XDG_CONFIG_HOME/waybar/includes/includes.json"
   ],
   "modules-left": ["wlr/taskbar", "custom/mediaplayer#alt"],
-  "modules-center": ["clock#time-alt", "ext/workspaces#roman", "custom/weather#alt"],
+  "modules-center": [
+    "clock#time-alt",
+    "custom/tmark#left",
+    "ext/workspaces#roman",
+    "custom/tmark#right",
+    "custom/weather#alt"
+  ],
   "modules-right": [
     "custom/submap#alt",
     "group/volumecontrol",
