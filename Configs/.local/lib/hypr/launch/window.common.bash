@@ -4,7 +4,8 @@
 launch_source_core_common() {
   local core_common="${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh"
 
-  if declare -F hypr_focused_monitor_geometry >/dev/null 2>&1 \
+  if declare -F hypr_monitor_geometry >/dev/null 2>&1 \
+    && declare -F hypr_focused_monitor_geometry >/dev/null 2>&1 \
     && declare -F hypr_window_edge_padding_px >/dev/null 2>&1; then
     return 0
   fi
@@ -157,7 +158,14 @@ launch_prepare_target_workspace() {
 
 launch_focused_monitor_geometry() {
   launch_source_core_common || return 1
-  hypr_focused_monitor_geometry
+  hypr_monitor_geometry
+}
+
+launch_monitor_geometry() {
+  local monitor_selector="${1:-}"
+
+  launch_source_core_common || return 1
+  hypr_monitor_geometry "${monitor_selector}"
 }
 
 launch_resolve_dimension() {
@@ -176,6 +184,105 @@ launch_resolve_dimension() {
       printf '%s\n' "${spec}"
       ;;
   esac
+}
+
+launch_window_profile_file() {
+  printf '%s\n' "${HYPR_WINDOW_PROFILE_FILE:-${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}/window_profiles.lua}"
+}
+
+launch_geometry_profile_specs() {
+  local profile_name="$1"
+  local profile_file=""
+
+  profile_file="$(launch_window_profile_file)"
+  [[ -r "${profile_file}" ]] || {
+    printf 'Window profile file not found: %s\n' "${profile_file}" >&2
+    return 1
+  }
+  command -v lua >/dev/null 2>&1 || {
+    printf 'lua is required to read window profiles\n' >&2
+    return 1
+  }
+
+  HYPR_WINDOW_PROFILE_FILE="${profile_file}" HYPR_WINDOW_PROFILE_NAME="${profile_name}" lua -e '
+    local profile_file = assert(os.getenv("HYPR_WINDOW_PROFILE_FILE"))
+    local profile_name = assert(os.getenv("HYPR_WINDOW_PROFILE_NAME"))
+    local profiles = assert(loadfile(profile_file))()
+    local profile = profiles[profile_name]
+    assert(type(profile) == "table", "unknown window profile: " .. profile_name)
+    assert(type(profile.width) == "string" and profile.width:match("^%d+%%?$"), "invalid profile width")
+    assert(type(profile.height) == "string" and profile.height:match("^%d+%%?$"), "invalid profile height")
+    assert(profile.basis == "monitor" or profile.basis == "usable", "invalid profile basis")
+    io.write(profile.width, "\t", profile.height, "\t", profile.basis, "\n")
+  '
+}
+
+launch_monitor_usable_geometry() {
+  local monitor_selector="${1:-}"
+  local monitor_x=""
+  local monitor_y=""
+  local monitor_width=""
+  local monitor_height=""
+  local reserve_left=""
+  local reserve_top=""
+  local reserve_right=""
+  local reserve_bottom=""
+  local visible_width=""
+  local visible_height=""
+  local edge_padding=""
+
+  IFS=$'\t' read -r monitor_x monitor_y monitor_width monitor_height reserve_left reserve_top reserve_right reserve_bottom \
+    <<<"$(launch_monitor_geometry "${monitor_selector}")"
+
+  visible_width=$((monitor_width - reserve_left - reserve_right))
+  visible_height=$((monitor_height - reserve_top - reserve_bottom))
+  ((visible_width > 0 && visible_height > 0)) || return 1
+
+  edge_padding="$(launch_window_edge_padding_px)"
+
+  local padded_width=$((visible_width - (edge_padding * 2)))
+  local padded_height=$((visible_height - (edge_padding * 2)))
+  local usable_x=$((monitor_x + reserve_left + edge_padding))
+  local usable_y=$((monitor_y + reserve_top + edge_padding))
+  local usable_width=$((monitor_width - reserve_left - reserve_right - (edge_padding * 2)))
+  local usable_height=$((monitor_height - reserve_top - reserve_bottom - (edge_padding * 2)))
+
+  ((padded_width > 0)) || padded_width=1
+  ((padded_height > 0)) || padded_height=1
+  ((usable_width > 0)) || usable_width=1
+  ((usable_height > 0)) || usable_height=1
+
+  printf '%s\t%s\t%s\t%s\t%s\t%s\n' \
+    "${padded_width}" \
+    "${padded_height}" \
+    "${usable_x}" \
+    "${usable_y}" \
+    "${usable_width}" \
+    "${usable_height}"
+}
+
+launch_resolve_geometry_profile() {
+  local profile_name="$1"
+  local monitor_selector="${2:-}"
+  local width_spec=""
+  local height_spec=""
+  local basis=""
+  local base_width=""
+  local base_height=""
+  local ignored=""
+
+  IFS=$'\t' read -r width_spec height_spec basis <<<"$(launch_geometry_profile_specs "${profile_name}")" || return 1
+  if [[ "${basis}" == "usable" ]]; then
+    IFS=$'\t' read -r base_width base_height ignored ignored ignored ignored \
+      <<<"$(launch_monitor_usable_geometry "${monitor_selector}")" || return 1
+  else
+    IFS=$'\t' read -r ignored ignored base_width base_height ignored ignored ignored ignored \
+      <<<"$(launch_monitor_geometry "${monitor_selector}")" || return 1
+  fi
+
+  printf '%s\t%s\n' \
+    "$(launch_resolve_dimension "${width_spec}" "${base_width}")" \
+    "$(launch_resolve_dimension "${height_spec}" "${base_height}")"
 }
 
 launch_window_edge_padding_px() {

@@ -250,7 +250,7 @@ def smart_reload_waybar(changed_files):
         )
         return
 
-    if os.getenv("WAYBAR_WATCH_AUTO_RESTART", "0").strip().lower() in ("0", "false", "no"):
+    if os.getenv("WAYBAR_WATCH_AUTO_RESTART", "1").strip().lower() in ("0", "false", "no"):
         logger.debug(
             "WAYBAR_WATCH_AUTO_RESTART disabled; ignoring changes: "
             f"{[Path(f).name for f in changed_files]}"

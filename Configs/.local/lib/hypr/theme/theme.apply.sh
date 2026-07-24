@@ -2,8 +2,9 @@
 #
 # Subsystem inputs:
 #   thmWall              - populated by core/wallpaper.catalog.sh:get_themes
+#   selected_color_source - loaded by hypr_runtime_load_state from staterc
 #   selected_color_mode  - loaded by hypr_runtime_load_state from staterc
-: "${thmWall-}" "${selected_color_mode-}"
+: "${thmWall-}" "${selected_color_source-}" "${selected_color_mode-}"
 
 set -euo pipefail
 
@@ -440,7 +441,7 @@ theme_apply_notify_wallpaper_detached() {
 }
 
 theme_apply_sync_theme_color_variant() {
-  # Theme mode: the theme itself decides light/dark. Mirror the palette's
+  # Theme palettes decide light/dark. Mirror the palette's
   # "background" mode (dark|light) into color_variant so phase-D desktop.sync
   # (which derives color-scheme from the variant, not the theme's $COLOR_SCHEME)
   # doesn't reuse the previous theme's stale value and hand libadwaita apps the
@@ -476,7 +477,7 @@ theme_apply_run_color_sync() {
     esac
   done
 
-  if [[ "${selected_color_mode}" -eq 0 ]]; then
+  if [[ "${selected_color_source}" == "theme" ]]; then
     "${hypr_theme_cmd}" apply "${hypr_theme_args[@]}" "${HYPR_THEME}"
     local apply_rc=$?
     theme_apply_sync_theme_color_variant
@@ -571,7 +572,7 @@ export theme_apply_quiet
 theme_apply_started_ms="$(theme_apply_now_ms)"
 
 wallpaper_path=""
-if [[ "${selected_color_mode}" -eq 0 ]]; then
+if [[ "${selected_color_source}" == "theme" ]]; then
   :
 else
   wallpaper_path="$(theme_apply_resolve_current_wallpaper)" || exit 1

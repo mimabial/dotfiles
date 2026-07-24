@@ -2,10 +2,10 @@
 # Sourced module; strict mode is owned by the entrypoint.
 #
 # Subsystem inputs:
-#   selected_color_mode      - set by color-sync.sh via color.plan.sh
+#   selected_color_source, selected_color_mode - active palette policy
 #   background, foreground   - pywal palette, sourced by color.finalize.sh
 #   color4, color5           - pywal palette accent slots
-: "${selected_color_mode-}" "${background-}" "${foreground-}" "${color4-}" "${color5-}"
+: "${selected_color_source-}" "${selected_color_mode-}" "${background-}" "${foreground-}" "${color4-}" "${color5-}"
 #
 # color.apply.sh - Apply generated colors to applications
 #
@@ -91,9 +91,7 @@ write_secondary_app_theme_outputs() {
 reload_live_theme_client() {
   local client="$1"
   local tmux_config=""
-  local rmpc_config=""
-  local rmpc_theme_name=""
-  local rmpc_theme_path=""
+  local rmpc_reload="${LIB_DIR}/hypr/theme/lib/rmpc.reload.bash"
 
   case "${client}" in
     kitty)
@@ -106,19 +104,7 @@ reload_live_theme_client() {
       fi
       ;;
     rmpc)
-      rmpc_config="${XDG_CONFIG_HOME:-$HOME/.config}/rmpc/config.ron"
-      if ! command -v rmpc &>/dev/null || ! pgrep -x rmpc >/dev/null 2>&1 || [[ ! -f "${rmpc_config}" ]]; then
-        return 0
-      fi
-
-      rmpc_theme_name="$(sed -nE 's/.*theme:[[:space:]]*Some\("([^"]+)".*/\1/p; T; q' "${rmpc_config}" 2>/dev/null)"
-      case "${rmpc_theme_name}" in
-        pywal16 | pywal16-small | pywal16-big) ;;
-        *) return 0 ;;
-      esac
-
-      rmpc_theme_path="${XDG_CONFIG_HOME:-$HOME/.config}/rmpc/themes/${rmpc_theme_name}.ron"
-      [[ -f "${rmpc_theme_path}" ]] && rmpc remote set theme "${rmpc_theme_path}" >/dev/null 2>&1 || true
+      [[ -r "${rmpc_reload}" ]] && bash "${rmpc_reload}"
       ;;
   esac
 }

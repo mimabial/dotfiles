@@ -43,9 +43,21 @@ from mediaplayer_ui import (
 
 current_player = None
 _timer_id = None  # Track the timer source ID
+_main_loop = None
+_shutdown_requested = False
 UI_CONFIG = None
 ALT_MODE = False
 _active_player_cache = {"mtime": -1.0, "value": ""}
+
+
+def stop_poll_timer() -> None:
+    """Remove the polling source at most once."""
+    global _timer_id
+
+    timer_id = _timer_id
+    _timer_id = None
+    if timer_id:
+        GLib.source_remove(timer_id)
 
 
 def cached_active_player_state() -> str:
@@ -379,6 +391,8 @@ def on_seeked(player, position, manager):
 
 
 def on_player_appeared(manager, player, selected_players=None):
+    global _timer_id
+
     if player is not None and (
         selected_players is None or player.name in selected_players
     ):
@@ -387,14 +401,12 @@ def on_player_appeared(manager, player, selected_players=None):
             set_player(manager, p)
         if not hasattr(manager, "_polling") or not manager._polling:
             manager._polling = True
-            global _timer_id
-            if _timer_id:
-                GLib.source_remove(_timer_id)
+            stop_poll_timer()
             _timer_id = GLib.timeout_add_seconds(1, timer_tick, manager)
 
 
 def on_player_vanished(manager, player, loop):
-    global current_player, _timer_id, _last_valid_player
+    global current_player, _last_valid_player
     if _last_valid_player is player:
         _last_valid_player = None
     if is_current_player(player):
@@ -408,10 +420,8 @@ def on_player_vanished(manager, player, loop):
             set_player(manager, replacement)
         else:
             current_player = None
-            if _timer_id:
-                GLib.source_remove(_timer_id)
-                _timer_id = None
-                manager._polling = False
+            stop_poll_timer()
+            manager._polling = False
             output = {
                 "text": UI_CONFIG.standby_text if UI_CONFIG else " MPlayer",
                 "class": "nothing-playing",
@@ -471,19 +481,23 @@ def set_player(manager, player):
 
 
 def signal_handler(sig, frame):
-    global _timer_id
+    global _shutdown_requested
+
     if sig == signal.SIGPIPE:
         os._exit(0)
-    # Clean up timer on exit
-    if _timer_id:
-        GLib.source_remove(_timer_id)
-    sys.exit(0)
 
-
+    loop = _main_loop
+    if loop is None:
+        os._exit(0)
+    if not _shutdown_requested:
+        _shutdown_requested = True
+        GLib.idle_add(loop.quit)
 
 
 def run(arguments):
-    global _timer_id, UI_CONFIG, ALT_MODE
+    global _timer_id, _main_loop, _shutdown_requested, UI_CONFIG, ALT_MODE
+
+    _shutdown_requested = False
 
     xdg_state = os.path.expanduser(os.getenv("XDG_STATE_HOME", "~/.local/state"))
     set_ytdlp_timeout_seconds(get_ytdlp_timeout_seconds())
@@ -512,6 +526,7 @@ def run(arguments):
             players = [arguments.player]
 
     loop = GLib.MainLoop()
+    _main_loop = loop
 
     manager.connect(
         "name-appeared",
@@ -548,5 +563,5 @@ def run(arguments):
     except KeyboardInterrupt:
         print("INFO: Received interrupt, shutting down...", file=sys.stderr)
     finally:
-        if _timer_id:
-            GLib.source_remove(_timer_id)
+        _main_loop = None
+        stop_poll_timer()

@@ -8,6 +8,7 @@
 set -euo pipefail
 
 TERMINAL_TUI="${TERMINAL_TUI:-kitty}"
+HYPR_LIB_ROOT="${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}"
 hypr_profile=""
 hypr_width=""
 hypr_height=""
@@ -121,19 +122,27 @@ parse_args() {
 }
 
 apply_geometry_profile() {
+  local profile_name=""
+
   case "${hypr_profile}" in
     "")
       return 0
       ;;
-    tui | dialog)
-      hypr_width="50%"
-      hypr_height="80%"
-      ;;
+    tui) profile_name="standard" ;;
+    dialog) profile_name="compact" ;;
+    overlay | compact | standard | large) profile_name="${hypr_profile}" ;;
     *)
       printf 'Unknown hypr profile: %s\n' "${hypr_profile}" >&2
       return 1
       ;;
   esac
+
+  if ! declare -F launch_resolve_geometry_profile >/dev/null 2>&1; then
+    # shellcheck source=/dev/null
+    source "${HYPR_LIB_ROOT}/launch/window.common.bash" || return 1
+  fi
+  IFS=$'\t' read -r hypr_width hypr_height \
+    <<<"$(launch_resolve_geometry_profile "${profile_name}")" || return 1
 }
 
 resolve_percentages() {
@@ -247,7 +256,7 @@ print_terminal_target() {
   fi
 
   if [[ "${print_cmd}" -eq 1 ]]; then
-    ((${print_path} == 1)) && printf '\n'
+    ((print_path == 1)) && printf '\n'
     if ((${#terminal_launch[@]} > 0)); then
       printf -v joined_cmd "%s${print_cmd_sep}" "${terminal_launch[@]}"
       printf '%s' "${joined_cmd%"${print_cmd_sep}"}"

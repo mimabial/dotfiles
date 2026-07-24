@@ -102,10 +102,9 @@ if [ -n "${wal_background}" ]; then
   fi
 fi
 
-#  Theme mode: detects the color-scheme set in hypr.theme and falls back if nothing is parsed.
-selected_color_mode="${selected_color_mode:-1}"
+# Theme palettes detect the color-scheme set in hypr.theme and fall back if nothing is parsed.
 if [ -z "${BtnCol}" ]; then
-  if [ "${selected_color_mode}" -eq 0 ]; then
+  if [[ "${selected_color_source:-theme}" == "theme" ]]; then
     HYPR_THEME_DIR="${HYPR_THEME_DIR:-${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}}"
     resolved_color_variant=$(get_hypr_conf "COLOR_SCHEME")
     resolved_color_variant=${resolved_color_variant#prefer-}

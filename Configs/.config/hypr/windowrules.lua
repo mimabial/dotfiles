@@ -1,4 +1,6 @@
 -- Native Hyprland window and layer rules.
+local window_profiles = require("window_profiles")
+
 hl.window_rule({["name"] = "lua:windowrules:12", ["match"] = {["class"] = "^(.*haruna.*)$"}, ["idle_inhibit"] = "fullscreen"})
 hl.window_rule({["name"] = "lua:windowrules:13", ["match"] = {["class"] = "^(.*firefox.*)$|^(.*chromium.*)$"}, ["idle_inhibit"] = "fullscreen"})
 hl.window_rule({["name"] = "center-new-floating-windows", ["match"] = {["float"] = true}, ["center"] = true})
@@ -6,7 +8,7 @@ hl.window_rule({["name"] = "lua:windowrules:16", ["match"] = {["title"] = "^([Pp
 hl.window_rule({["name"] = "lua:windowrules:17", ["match"] = {["tag"] = "picture-in-picture"}, ["float"] = true})
 hl.window_rule({["name"] = "lua:windowrules:18", ["match"] = {["tag"] = "picture-in-picture"}, ["keep_aspect_ratio"] = true})
 hl.window_rule({["name"] = "lua:windowrules:19", ["match"] = {["tag"] = "picture-in-picture"}, ["move"] = "73% 72%"})
-hl.window_rule({["name"] = "lua:windowrules:20", ["match"] = {["tag"] = "picture-in-picture"}, ["size"] = "25% 25%"})
+hl.window_rule({["name"] = "lua:windowrules:20", ["match"] = {["tag"] = "picture-in-picture"}, ["size"] = window_profiles.rule_size("overlay")})
 hl.window_rule({["name"] = "lua:windowrules:21", ["match"] = {["tag"] = "picture-in-picture"}, ["pin"] = true})
 hl.window_rule({["name"] = "lua:windowrules:24", ["match"] = {["class"] = "^(dropdown-terminal)$"}, ["float"] = true})
 hl.window_rule({["name"] = "lua:windowrules:25", ["match"] = {["class"] = "^(dropdown-terminal)$"}, ["opacity"] = "0.80 override 0.80 override 1"})
@@ -81,6 +83,19 @@ hl.layer_rule({["name"] = "lua:windowrules:109", ["match"] = {["namespace"] = "l
 hl.window_rule({["name"] = "lua:windowrules:112", ["match"] = {["class"] = "^(org\\.tui\\..*|org\\.font\\..*|lazygit|lazydocker)$"}, ["float"] = true})
 hl.window_rule({["name"] = "lua:windowrules:113", ["match"] = {["class"] = "^(org\\.tui\\..*|org\\.font\\..*|lazygit|lazydocker)$"}, ["center"] = true})
 hl.window_rule({["name"] = "mullvad-size", ["match"] = {["class"] = "^(Mullvad VPN)$"}, ["size"] = "320 568"})
+
+local open_profiles = {
+  ["org.gnome.SimpleScan"] = "standard",
+  ["simple-scan"] = "standard",
+}
+
+hl.on("window.open", function(win)
+  if not win then return end
+  local profile = open_profiles[win.class]
+  local mon = win.monitor
+  if not profile or not mon then return end
+  hl.exec_cmd("hyprshell window/apply-profile " .. profile .. " " .. win.address .. " " .. tostring(mon.id))
+end)
 
 hl.on("window.open", function(win)
   if not win or win.class ~= "Mullvad VPN" then return end

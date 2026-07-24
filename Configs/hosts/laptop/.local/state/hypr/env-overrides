@@ -2,3 +2,4 @@ export ROFI_EMOJI_ARGS=("-multi-select")
 export AUTO_THEME_LATITUDE="49.0379"
 export AUTO_THEME_LONGITUDE="2.2092"
 export AUTO_THEME_TIMEZONE="Europe/Paris"
+export WAYBAR_WATCH_AUTO_RESTART="1"

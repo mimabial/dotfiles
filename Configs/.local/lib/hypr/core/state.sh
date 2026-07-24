@@ -8,6 +8,37 @@ if ! declare -F hypr_runtime_subdir >/dev/null 2>&1; then
 fi
 unset _hypr_state_dir
 
+state_resolve_color_source() {
+  local source="${1-}"
+  local mode="${2-}"
+
+  case "${source}" in
+    theme | pywal)
+      printf '%s\n' "${source}"
+      ;;
+    *)
+      case "${mode}" in
+        1 | 2 | 3) printf 'pywal\n' ;;
+        *) printf 'theme\n' ;;
+      esac
+      ;;
+  esac
+}
+
+state_resolve_color_mode() {
+  local mode="${1-}"
+  local variant="${2-}"
+
+  case "${mode}" in
+    1 | 2 | 3)
+      printf '%s\n' "${mode}"
+      ;;
+    *)
+      [[ "${variant}" == "light" ]] && printf '3\n' || printf '2\n'
+      ;;
+  esac
+}
+
 export_hypr_config() {
   # Reload runtime state into the current shell.
   # Use this after state changes, in a fresh shell, or when array variables
@@ -26,10 +57,8 @@ export_hypr_config() {
 
 refresh_hypr_runtime_state() {
   # Keep derived theme/runtime paths in sync after reloading state.
-  case "${selected_color_mode:-}" in
-    0 | 1 | 2 | 3) ;;
-    *) selected_color_mode=0 ;;
-  esac
+  selected_color_source="$(state_resolve_color_source "${selected_color_source:-}" "${selected_color_mode:-}")"
+  selected_color_mode="$(state_resolve_color_mode "${selected_color_mode:-}" "${BACKGROUND_MODE:-}")"
 
   if [[ -z "${HYPR_THEME:-}" ]]; then
     if declare -F print_log >/dev/null 2>&1; then
@@ -54,7 +83,7 @@ refresh_hypr_runtime_state() {
     fi
   fi
   refresh_hypr_instance_signature
-  export HYPR_THEME HYPR_THEME_DIR selected_color_mode HYPRLAND_INSTANCE_SIGNATURE
+  export HYPR_THEME HYPR_THEME_DIR selected_color_source selected_color_mode HYPRLAND_INSTANCE_SIGNATURE
 }
 
 refresh_hypr_instance_signature() {

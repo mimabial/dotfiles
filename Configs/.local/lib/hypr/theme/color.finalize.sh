@@ -6,10 +6,10 @@
 # state-and-notify hand-off after color generation succeeds.
 #
 # Subsystem inputs (caller-scope globals consumed by these functions):
-#   resolved_color_variant, selected_color_mode
+#   resolved_color_variant, selected_color_source, selected_color_mode
 #   color_variant_changed, selected_color_mode_changed
 #   wal_cache_populate, wal_used_cache
-: "${resolved_color_variant-}" "${selected_color_mode-}" \
+: "${resolved_color_variant-}" "${selected_color_source-}" "${selected_color_mode-}" \
   "${color_variant_changed-}" "${selected_color_mode_changed-}" \
   "${wal_cache_populate-}" "${wal_used_cache-}"
 
@@ -27,6 +27,7 @@ color_state_persist() {
     echo "${wal_cache_key:-${state_wallpaper}:${resolved_color_variant}}"
     echo "wallpaper=${state_wallpaper}"
     echo "color_variant=${resolved_color_variant}"
+    echo "selected_color_source=${selected_color_source}"
     echo "selected_color_mode=${selected_color_mode}"
     echo "backend=${PYWAL_BACKEND}"
   } >"${tmp_file}" && mv -f "${tmp_file}" "${STATE_FILE}"
@@ -169,7 +170,7 @@ color_finalize_primary_theming() {
   color_finalize_normalize_hyprshade_colors
   signal_and_reload_live_apps kitty tmux rmpc
 
-  if [[ "${selected_color_mode}" -eq 0 ]]; then
+  if [[ "${selected_color_source}" == "theme" ]]; then
     process_theme_files
   fi
 }
@@ -180,7 +181,7 @@ color_finalize_export_icon_theme() {
   local hyq_icon=""
 
   if command -v hyq &>/dev/null; then
-    if [[ "${selected_color_mode}" -eq 0 ]] && [[ -r "${theme_conf}" ]]; then
+    if [[ "${selected_color_source}" == "theme" ]] && [[ -r "${theme_conf}" ]]; then
       hyq_out="$(hyq "${theme_conf}" --export env --allow-missing -Q "\$ICON_THEME[string]" 2>/dev/null)"
       hyq_icon="$(_safe_hyq_get "${hyq_out}" "ICON_THEME")"
       [[ -n "${hyq_icon}" ]] && ICON_THEME="${hyq_icon}"
@@ -223,7 +224,7 @@ color_finalize_secondary_theming() {
 }
 
 color_finalize_render_pipeline() {
-  [[ "${selected_color_mode}" -eq 1 ]] || return 0
+  [[ "${selected_color_source}" == "pywal" && "${selected_color_mode}" -eq 1 ]] || return 0
   command -v hypr-theme >/dev/null 2>&1 || return 0
 
   local variant="${resolved_color_variant:-dark}"

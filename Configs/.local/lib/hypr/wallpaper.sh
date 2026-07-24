@@ -34,7 +34,7 @@
 #       Wallpaper discovery overrides.
 
 : "${wallList-}" "${wallHash-}" "${wallPathArray-}" "${setIndex-}" \
-  "${selected_color_mode-}" "${HYPR_THEME_DIR-}" "${WALLPAPER_CURRENT_DIR-}"
+  "${selected_color_source-}" "${selected_color_mode-}" "${HYPR_THEME_DIR-}" "${WALLPAPER_CURRENT_DIR-}"
 
 LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 

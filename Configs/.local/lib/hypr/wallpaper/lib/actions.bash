@@ -31,7 +31,7 @@ wallpaper_prepare_notification_payload() {
 wallpaper_should_apply_colors_async() {
   [[ "${set_as_global}" == "true" ]] || return 1
   [[ "${WALLPAPER_SKIP_COLORS:-0}" -eq 0 ]] || return 1
-  [[ "${selected_color_mode:-1}" -eq 0 ]] && return 1
+  [[ "${selected_color_source:-theme}" == "theme" ]] && return 1
   return 0
 }
 

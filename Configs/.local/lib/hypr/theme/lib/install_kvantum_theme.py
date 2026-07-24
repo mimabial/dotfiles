@@ -4,7 +4,7 @@ import os
 import re
 import sys
 
-theme_mode = os.environ.get("SELECTED_COLOR_MODE", "1") == "0"
+theme_mode = os.environ.get("SELECTED_COLOR_SOURCE", "theme") == "theme"
 svg_path = os.environ["SVG_PATH"]
 kvconfig_path = os.environ["KVCONFIG_PATH"]
 

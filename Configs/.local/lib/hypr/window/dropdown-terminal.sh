@@ -2,27 +2,16 @@
 
 set -euo pipefail
 
+HYPR_LIB_ROOT="${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}"
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+source "${HYPR_LIB_ROOT}/launch/window.common.bash" || exit 1
+launch_source_core_common || exit 1
 
 hypr_help_guard "Usage: hyprshell window/dropdown-terminal
 Toggle the dropdown terminal: spawn it, or show/hide it on the focused workspace." "$@"
 
-dropdown_source_window_common() {
-  local common_file="${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/launch/window.common.bash"
-
-  declare -F launch_resolve_dimension >/dev/null 2>&1 && return 0
-  [[ -r "${common_file}" ]] || return 1
-  # shellcheck source=/dev/null
-  source "${common_file}"
-}
-
 dropdown_workspace_name() {
   printf '%s\n' "special:dropdown"
-}
-
-dropdown_size_specs() {
-  printf '%s\t%s\n' "50%" "70%"
 }
 
 dropdown_client_json() {
@@ -36,30 +25,8 @@ focused_workspace_name() {
     | jq -r '.name // empty'
 }
 
-focused_monitor_logical_size() {
-  hyprctl -j monitors 2>/dev/null \
-    | jq -r '
-        (map(select(.focused == true))[0] // .[0]) as $monitor
-        | [$monitor.width, $monitor.height, $monitor.scale]
-        | @tsv
-      ' \
-    | awk -F '\t' '{ printf "%d\t%d\n", $1 / $3, $2 / $3 }'
-}
-
 dropdown_target_size() {
-  local logical_width=""
-  local logical_height=""
-  local width_spec=""
-  local height_spec=""
-  local target_width=""
-  local target_height=""
-
-  IFS=$'\t' read -r width_spec height_spec <<<"$(dropdown_size_specs)" || return 1
-  IFS=$'\t' read -r logical_width logical_height <<<"$(focused_monitor_logical_size)" || return 1
-  dropdown_source_window_common || return 1
-  target_width="$(launch_resolve_dimension "${width_spec}" "${logical_width}")" || return 1
-  target_height="$(launch_resolve_dimension "${height_spec}" "${logical_height}")" || return 1
-  printf '%s\t%s\n' "${target_width}" "${target_height}"
+  launch_resolve_geometry_profile compact
 }
 
 show_dropdown_window() {
@@ -95,7 +62,6 @@ hide_dropdown_window() {
 
   addr="$(jq -r '.address // empty' <<<"${client_json}")"
   [[ -n "${addr}" ]] || return 1
-  dropdown_source_window_common || return 1
   window_lua="$(hypr_lua_quote "address:${addr}")"
   workspace_lua="$(hypr_lua_quote "$(dropdown_workspace_name)")"
 
@@ -105,13 +71,10 @@ hide_dropdown_window() {
 
 spawn_dropdown_window() {
   local cwd=""
-  local width_spec=""
-  local height_spec=""
 
-  IFS=$'\t' read -r width_spec height_spec <<<"$(dropdown_size_specs)" || return 1
   cwd="$(hyprshell terminal-cwd.sh)"
   setsid uwsm-app -- tui-terminal-exec \
-    --hypr-size "${width_spec}" "${height_spec}" \
+    --hypr-profile compact \
     --app-id dropdown-terminal \
     --title "Dropdown Terminal" \
     -- bash -lc 'cd "$1" && exec "${SHELL:-/bin/bash}" -l' bash "${cwd}" \

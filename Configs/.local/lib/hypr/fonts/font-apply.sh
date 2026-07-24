@@ -78,7 +78,7 @@ apply_terminal_fonts() {
 }
 
 apply_theme_terminal_overlays() {
-  if [[ "${selected_color_mode:-0}" -eq 0 ]]; then
+  if [[ "${selected_color_source:-theme}" == "theme" ]]; then
     process_theme_files
     append_updated 'Theme terminal overlays'
   fi

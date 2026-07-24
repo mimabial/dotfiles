@@ -9,7 +9,13 @@ DRY_RUN=false
 LIST_ONLY=false
 HOST_PROFILE_STATE_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/host-profile"
 DEFAULT_SYNC_MANIFEST_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/dotfiles-sync.conf"
-SYNC_MANIFEST_SOURCE="${DOTFILES_SYNC_MANIFEST:-${DEFAULT_SYNC_MANIFEST_FILE}}"
+if [[ -n "${DOTFILES_SYNC_MANIFEST:-}" ]]; then
+  SYNC_MANIFEST_SOURCE="${DOTFILES_SYNC_MANIFEST}"
+  PRUNE_HOST_ORPHANS=false
+else
+  SYNC_MANIFEST_SOURCE="${DEFAULT_SYNC_MANIFEST_FILE}"
+  PRUNE_HOST_ORPHANS=true
+fi
 SYNC_MANIFEST_FILE=""
 SYNC_MANIFEST_TEMP_FILE=""
 ACTIVE_HOST_PROFILE=""
@@ -21,7 +27,7 @@ Usage: $(basename "$0") [options]
 Options:
   --dry-run   Preview actual sync changes without writing
   --list      List configured sync mappings only
-  --manifest  Use a specific manifest file
+  --manifest  Use a specific manifest file (disables host orphan pruning)
   -h, --help  Show this help
 USAGE
 }
@@ -37,6 +43,7 @@ while [[ $# -gt 0 ]]; do
         exit 1
       }
       SYNC_MANIFEST_SOURCE="${2}"
+      PRUNE_HOST_ORPHANS=false
       shift
       ;;
     -h | --help)
@@ -313,6 +320,51 @@ remove_path() {
   log_success "Removed ${name}"
 }
 
+purge_orphaned_host_files() {
+  local host_root="$1"
+  shift
+  local hosts_root="${DOTFILES_DIR}/hosts"
+  local host_entry=""
+  local rel_path=""
+  local host_dir=""
+  local -A managed_paths=()
+
+  path_is_within_root "${host_root}" "${hosts_root}" && [[ "${host_root}" != "${hosts_root}" ]] || {
+    log_error "Refusing to prune invalid host root: ${host_root}"
+    return 1
+  }
+  [[ ! -L "${host_root}" ]] || {
+    log_error "Refusing to prune symlinked host root: ${host_root}"
+    return 1
+  }
+  [[ -d "${host_root}" ]] || return 0
+
+  for rel_path in "$@"; do
+    managed_paths["${rel_path}"]=1
+  done
+
+  while IFS= read -r -d '' host_entry; do
+    rel_path="${host_entry#"${host_root}/"}"
+    [[ -z "${managed_paths["${rel_path}"]+managed}" ]] || continue
+
+    if $LIST_ONLY; then
+      printf 'PLAN ABSENT %s\n' "${host_entry}"
+    elif $DRY_RUN; then
+      emit_preview_result "orphaned host file ${rel_path}" \
+        "*deleting   ${host_entry#"${DOTFILES_DIR}/"}"
+    else
+      rm -f -- "${host_entry}"
+      log_success "Removed orphaned host file ${rel_path}"
+    fi
+  done < <(find -P "${host_root}" -mindepth 1 ! -type d -print0)
+
+  if ! $LIST_ONLY && ! $DRY_RUN; then
+    while IFS= read -r -d '' host_dir; do
+      rmdir -- "${host_dir}" 2>/dev/null || true
+    done < <(find -P "${host_root}" -depth -mindepth 1 -type d -empty -print0)
+  fi
+}
+
 sync_host_profile_files() {
   local profile="${ACTIVE_HOST_PROFILE}"
   local host_root=""
@@ -351,6 +403,12 @@ sync_host_profile_files() {
   for rel_path in "${host_paths[@]}"; do
     copy_path file "${HOME}/${rel_path}" "${host_root}/${rel_path}" "hosts/${profile}/${rel_path}"
   done
+
+  if $PRUNE_HOST_ORPHANS; then
+    purge_orphaned_host_files "${host_root}" "${host_paths[@]}"
+  else
+    log_info "Skipping host orphan pruning for alternate manifest"
+  fi
 }
 
 create_dirs() {

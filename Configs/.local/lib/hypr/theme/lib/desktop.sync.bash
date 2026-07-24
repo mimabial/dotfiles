@@ -54,7 +54,7 @@ theme_desktop_write_generated_file() {
   mv -f -- "${tmp_file}" "${target_file}"
 }
 
-# In theme mode the pack's theme.meta is authoritative for icon/cursor,
+# With a theme palette the pack's theme.meta is authoritative for icon/cursor,
 # above env-theme and userfonts; wallpaper mode leaves them to the layered
 # resolution. The shared layer parser agrees with hyq on this flat generated
 # file and avoids the subprocess.
@@ -62,7 +62,7 @@ theme_desktop_load_theme_meta_values() {
   local theme_conf="${HYPR_THEME_METADATA_FILE:-${HYPR_CONFIG_HOME}/themes/theme.meta}"
   local -A theme_meta_values=()
 
-  [[ "${selected_color_mode:-1}" -eq 0 ]] || return 0
+  [[ "${selected_color_source:-theme}" == "theme" ]] || return 0
   [[ -r "${theme_conf}" ]] || return 0
 
   hypr_config_parse_layer_file "${theme_conf}" theme_meta_values
@@ -221,10 +221,8 @@ theme_desktop_resolve_values() {
   color_variant="$(state_get_color_variant 2>/dev/null || true)"
   resolved_color_variant="${resolved_color_variant:-${color_variant:-dark}}"
 
-  case "${selected_color_mode:-}" in
-    0 | 1 | 2 | 3) ;;
-    *) selected_color_mode=0 ;;
-  esac
+  selected_color_source="$(state_resolve_color_source "${selected_color_source:-}" "${selected_color_mode:-}")"
+  selected_color_mode="$(state_resolve_color_mode "${selected_color_mode:-}" "${resolved_color_variant}")"
 
   COLOR_SCHEME="prefer-${resolved_color_variant}"
   theme_desktop_resolve_base_values
@@ -478,7 +476,7 @@ theme_desktop_install_pack_kvantum_theme() {
     COLORS_MAP="${colors_map}" \
     PYWAL_JSON="${pywal_json}" \
     SOURCE_KVCONFIG_PATH="${pack_dir}/kvantum/kvconfig.theme" \
-    SELECTED_COLOR_MODE="${selected_color_mode:-1}" \
+    SELECTED_COLOR_SOURCE="${selected_color_source:-theme}" \
     SVG_PATH="${dest_dir}/${kvantum_theme}.svg" \
     KVCONFIG_PATH="${dest_dir}/${kvantum_theme}.kvconfig" \
     python3 "${installer}" || return 1

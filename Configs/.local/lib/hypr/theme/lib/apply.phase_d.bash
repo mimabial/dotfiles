@@ -27,11 +27,11 @@
 #
 # Subsystem inputs (set by theme.apply.sh entrypoint):
 #   theme_apply_generation, theme_apply_phase_d_log_dir, theme_apply_quiet,
-#   theme_apply_preserve_job_logs, selected_color_mode, thmWall
+#   theme_apply_preserve_job_logs, selected_color_source, selected_color_mode, thmWall
 
 : "${theme_apply_generation-}" "${theme_apply_quiet-}" \
   "${theme_apply_preserve_job_logs-}" \
-  "${selected_color_mode-}" "${thmWall-}"
+  "${selected_color_source-}" "${selected_color_mode-}" "${thmWall-}"
 
 theme_apply_phase_d_log_dir=""
 

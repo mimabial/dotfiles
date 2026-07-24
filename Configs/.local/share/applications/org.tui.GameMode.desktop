@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=GameMode Status
+Comment=Display Feral GameMode status
+Icon=applications-games
+Exec=gamemoded -s
+Terminal=true
+NoDisplay=true
+StartupWMClass=org.tui.GameMode
+Keywords=GameMode;Gaming;Status;

@@ -411,13 +411,24 @@ hypr_resolved_gaps_out() {
   printf '%s\n' "${gaps_out}"
 }
 
-hypr_focused_monitor_geometry() {
+hypr_monitor_geometry() {
+  local selector="${1:-}"
+
   command -v hyprctl >/dev/null 2>&1 || return 1
   command -v jq >/dev/null 2>&1 || return 1
 
   hyprctl -j monitors \
-    | jq -r '
-        (map(select(.focused == true))[0] // .[0]) as $monitor
+    | jq -r --arg selector "${selector}" '
+        (
+          if $selector == "" then
+            map(select(.focused == true))[0] // .[0]
+          elif $selector | test("^[0-9]+$") then
+            map(select((.id | tostring) == $selector))[0]
+          else
+            map(select(.name == $selector))[0]
+          end
+        ) as $monitor
+        | select($monitor != null)
         | [
             ($monitor.x // 0),
             ($monitor.y // 0),
@@ -432,6 +443,10 @@ hypr_focused_monitor_geometry() {
         | @tsv
       ' \
     | awk -F '\t' '{ scale = ($5 > 0 ? $5 : 1); printf "%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n", $1 / scale, $2 / scale, $3 / scale, $4 / scale, $6, $7, $8, $9 }'
+}
+
+hypr_focused_monitor_geometry() {
+  hypr_monitor_geometry
 }
 
 hypr_window_edge_padding_px() {

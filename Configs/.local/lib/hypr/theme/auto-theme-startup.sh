@@ -4,8 +4,11 @@ set -euo pipefail
 
 source "$(command -v hyprshell)" || exit 1
 
-selected_color_mode="$(state_get "selected_color_mode" "1")"
-[[ "${selected_color_mode}" =~ ^[0-3]$ ]] || selected_color_mode=1
+selected_color_mode="$(
+  state_resolve_color_mode \
+    "$(state_get "selected_color_mode" "")" \
+    "$(state_get "BACKGROUND_MODE" "dark")"
+)"
 
 warn_startup() {
   declare -F print_log >/dev/null 2>&1 && print_log -sec "auto-theme" -warn "startup" "$1"

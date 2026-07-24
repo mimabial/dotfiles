@@ -25,6 +25,7 @@ Options:
                                  workspace already contains another tiled window
   --width SPEC                   Target width in px or percent
   --height SPEC                  Target height in px or percent
+  --profile NAME                 Target a named window geometry profile
   --align left|right|center      Horizontal placement after summon/resize
 EOF
 }
@@ -55,49 +56,6 @@ launch_window_geometry_state() {
   window_info="$(launch_wait_for_window_info_stable "${window_address}")"
   [[ -n "${window_info}" ]] || return 1
   printf '%s\n' "${window_info}"
-}
-
-launch_monitor_usable_geometry() {
-  local monitor_x=""
-  local monitor_y=""
-  local monitor_width=""
-  local monitor_height=""
-  local reserve_left=""
-  local reserve_top=""
-  local reserve_right=""
-  local reserve_bottom=""
-  local visible_width=""
-  local visible_height=""
-  local edge_padding=""
-
-  IFS=$'\t' read -r monitor_x monitor_y monitor_width monitor_height reserve_left reserve_top reserve_right reserve_bottom \
-    <<<"$(launch_focused_monitor_geometry)"
-
-  visible_width=$((monitor_width - reserve_left - reserve_right))
-  visible_height=$((monitor_height - reserve_top - reserve_bottom))
-  ((visible_width > 0 && visible_height > 0)) || return 1
-
-  edge_padding="$(launch_window_edge_padding_px)"
-
-  local padded_width=$((visible_width - (edge_padding * 2)))
-  local padded_height=$((visible_height - (edge_padding * 2)))
-  local usable_x=$((monitor_x + reserve_left + edge_padding))
-  local usable_y=$((monitor_y + reserve_top + edge_padding))
-  local usable_width=$((monitor_width - reserve_left - reserve_right - (edge_padding * 2)))
-  local usable_height=$((monitor_height - reserve_top - reserve_bottom - (edge_padding * 2)))
-
-  ((padded_width > 0)) || padded_width=1
-  ((padded_height > 0)) || padded_height=1
-  ((usable_width > 0)) || usable_width=1
-  ((usable_height > 0)) || usable_height=1
-
-  printf '%s\t%s\t%s\t%s\t%s\t%s\n' \
-    "${padded_width}" \
-    "${padded_height}" \
-    "${usable_x}" \
-    "${usable_y}" \
-    "${usable_width}" \
-    "${usable_height}"
 }
 
 launch_target_window_size() {
@@ -287,6 +245,7 @@ main() {
   local use_empty_workspace=0
   local width_spec=""
   local height_spec=""
+  local geometry_profile=""
   local align=""
   local window_pattern=""
   local target_workspace=""
@@ -298,6 +257,7 @@ main() {
       --empty-workspace-if-occupied) use_empty_workspace=1; shift ;;
       --width)  width_spec="$2";  shift 2 ;;
       --height) height_spec="$2"; shift 2 ;;
+      --profile) geometry_profile="$2"; shift 2 ;;
       --align)  align="$2";       shift 2 ;;
       --)
         shift
@@ -319,6 +279,15 @@ main() {
     usage >&2
     return 2
   }
+
+  if [[ -n "${geometry_profile}" ]]; then
+    if [[ -n "${width_spec}" || -n "${height_spec}" ]]; then
+      print_log -sec "summon" -err "geometry" "--profile cannot be combined with --width or --height"
+      return 2
+    fi
+    IFS=$'\t' read -r width_spec height_spec \
+      <<<"$(launch_resolve_geometry_profile "${geometry_profile}")" || return 1
+  fi
 
   window_address="$(launch_resolve_window_address "${window_pattern}")"
   target_workspace="$(launch_prepare_target_workspace "${use_empty_workspace}" "${window_address}")"

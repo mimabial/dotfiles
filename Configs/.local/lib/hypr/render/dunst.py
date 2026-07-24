@@ -178,7 +178,7 @@ def waybar_position():
 
 
 _DEFINE_COLOR_RX = re.compile(
-    r"^\s*@define-color\s+(\S+)\s+(#[0-9A-Fa-f]{6,8})\s*;?\s*$"
+    r"^\s*@define-color\s+(\S+)\s+(#[0-9A-Fa-f]{6,8})\s*;?\s*(?:/\*.*\*/\s*)?$"
 )
 
 
@@ -522,6 +522,7 @@ def main():
 
 [submap_hint]
     stack_tag = "submap-hint"
+    history_ignore = yes
     format = "<span foreground='{accent_red}'>%s</span>\\n%b"
     foreground = "{fg_low_render}"
 """

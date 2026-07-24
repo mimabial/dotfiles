@@ -269,7 +269,7 @@ prepare_active_theme_config() {
 
 theme_switch_reconcile_color_mode() {
   local mode polarity desired
-  mode="$(state_get "selected_color_mode" "1")"
+  mode="${selected_color_mode}"
   [[ "${mode}" == "2" || "${mode}" == "3" ]] || return 0
   polarity="$(theme_polarity "${HYPR_THEME}")"
   [[ "${polarity}" == "light" ]] && desired=3 || desired=2
