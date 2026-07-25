@@ -1,13 +1,13 @@
 $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
+
 $ICON_THEME = Nordzy
-$CURSOR_THEME = Nordzy-cursors-white
-$CURSOR_SIZE = 26
 $COLOR_SCHEME = prefer-dark
 $NVIM_SCHEME = nord
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
-# Theme variables above are the primary inputs used by theme.switch.sh.
+$CURSOR_THEME = Nordzy-cursors-white
+$CURSOR_SIZE = 26
 
 general {
     gaps_in = 4

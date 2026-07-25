@@ -2,11 +2,12 @@ $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 
 $ICON_THEME = Nordic-darker
 $COLOR_SCHEME = prefer-dark
-$CURSOR_THEME = Radioactive-nord
-$CURSOR_SIZE = 24
 $NVIM_SCHEME = nord
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
+
+$CURSOR_THEME = Nordzy-cursors-white
+$CURSOR_SIZE = 26
 
 general {
     border_size = 2

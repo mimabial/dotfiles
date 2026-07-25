@@ -156,15 +156,6 @@ def write_active_player_state(player_name: str) -> None:
             pass
 
 
-def clear_active_player_state() -> None:
-    try:
-        state_path().unlink()
-    except FileNotFoundError:
-        pass
-    except OSError:
-        pass
-
-
 def read_active_player_state() -> str:
     try:
         data = json.loads(state_path().read_text())
@@ -189,7 +180,7 @@ def available_players() -> list[str]:
     return [
         player
         for player in players
-        if any(player == name or player.startswith(f"{name}.") for name in configured)
+        if any(player_name_matches(player, name) for name in configured)
     ]
 
 
@@ -198,19 +189,23 @@ def player_status(player: str) -> str:
     return output
 
 
+def player_name_matches(player: str, requested: str) -> bool:
+    return player == requested or player.startswith(f"{requested}.")
+
+
 def resolve_player(explicit_player: str = "") -> str:
     players = available_players()
     if not players:
         return ""
     if explicit_player:
         for player in players:
-            if player == explicit_player or player.startswith(f"{explicit_player}."):
+            if player_name_matches(player, explicit_player):
                 return player
 
     saved = read_active_player_state()
     if saved:
         for player in players:
-            if player == saved or player.startswith(f"{saved}."):
+            if player_name_matches(player, saved):
                 return player
 
     for player in players:
@@ -233,7 +228,7 @@ def cycle_player(step: int) -> int:
         current = selected
     elif selected:
         current = next(
-            (player for player in pool if player.startswith(f"{selected}.")),
+            (player for player in pool if player_name_matches(player, selected)),
             "",
         )
 

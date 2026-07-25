@@ -335,6 +335,23 @@ def _poll_ytdlp_media_info_probe(url: str) -> YtDlpMediaInfo | None:
     return YtDlpMediaInfo()
 
 
+def _reuse_last_media_info(
+    same_track_as_last: bool,
+    last_duration_seconds: float,
+    last_live_status: str,
+) -> YtDlpMediaInfo | None:
+    if not same_track_as_last:
+        return None
+    if last_live_status == "is_live":
+        return YtDlpMediaInfo(live_status="is_live")
+    if last_duration_seconds > 0:
+        return YtDlpMediaInfo(
+            duration_seconds=last_duration_seconds,
+            live_status="not_live",
+        )
+    return None
+
+
 def get_ytdlp_media_info(
     url: str,
     *,
@@ -358,14 +375,13 @@ def get_ytdlp_media_info(
     ):
         return current_track_info
 
-    if same_track_as_last:
-        if last_live_status == "is_live":
-            return YtDlpMediaInfo(live_status="is_live")
-        if last_duration_seconds > 0:
-            return YtDlpMediaInfo(
-                duration_seconds=last_duration_seconds,
-                live_status="not_live",
-            )
+    reused_info = _reuse_last_media_info(
+        same_track_as_last,
+        last_duration_seconds,
+        last_live_status,
+    )
+    if reused_info is not None:
+        return reused_info
 
     completed_probe = _poll_ytdlp_media_info_probe(url)
     if completed_probe is not None:
@@ -374,27 +390,11 @@ def get_ytdlp_media_info(
         return completed_probe
 
     if url in _ytdlp_inflight:
-        if same_track_as_last:
-            if last_live_status == "is_live":
-                return YtDlpMediaInfo(live_status="is_live")
-            if last_duration_seconds > 0:
-                return YtDlpMediaInfo(
-                    duration_seconds=last_duration_seconds,
-                    live_status="not_live",
-                )
         return YtDlpMediaInfo()
 
     if _current_track_media_info.get("media_url") != url:
         _current_track_media_info = {"media_url": url, "info": None}
     _start_ytdlp_media_info_probe(url)
-    if same_track_as_last:
-        if last_live_status == "is_live":
-            return YtDlpMediaInfo(live_status="is_live")
-        if last_duration_seconds > 0:
-            return YtDlpMediaInfo(
-                duration_seconds=last_duration_seconds,
-                live_status="not_live",
-            )
     return YtDlpMediaInfo()
 
 

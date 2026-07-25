@@ -1,32 +1,34 @@
 #!/usr/bin/env python3
 import logging
 import os
-import gi
 import signal
 import sys
 import time
+from dataclasses import dataclass, field
+
+import gi
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
 gi.require_version("Playerctl", "2.0")
 
 from gi.repository import GLib, Playerctl
-from pyutils.shell_env import load_shell_assignments
-from mediaplayer_browser import (
-    get_ytdlp_timeout_seconds,
-    set_ytdlp_timeout_seconds,
-    youtube_position_is_untrusted,
-)
 from mediaplayer_actions import (
+    player_name_matches,
     read_active_player_state,
     state_path,
     write_active_player_state,
 )
+from mediaplayer_browser import (
+    get_ytdlp_timeout_seconds,
+    set_ytdlp_timeout_seconds,
+)
 from mediaplayer_policy import (
-    build_track_identity_key,
+    PlaybackSnapshot,
+    PlaybackState,
+    ResolvedPlayback,
     read_player_metadata,
-    resolve_browser_metadata_fallbacks,
-    resolve_metadata_duration,
+    resolve_playback,
 )
 from mediaplayer_ui import (
     create_tooltip_text,
@@ -39,38 +41,55 @@ from mediaplayer_ui import (
     format_time_single_line,
     validate_ui_config,
 )
+from pyutils.shell_env import load_shell_assignments
 
-current_player = None
-_timer_id = None  # Track the timer source ID
-_main_loop = None
-_shutdown_requested = False
-UI_CONFIG = None
-ALT_MODE = False
-_active_player_cache = {"mtime": -1.0, "value": ""}
+
+@dataclass
+class ControllerState:
+    current_player: object | None = None
+    current_player_name: str = ""
+    last_valid_player: object | None = None
+    timer_id: int | None = None
+    main_loop: object | None = None
+    shutdown_requested: bool = False
+    ui_config: object | None = None
+    alt_mode: bool = False
+    active_player_mtime: float = -1.0
+    active_player_value: str = ""
+    playback: PlaybackState = field(default_factory=PlaybackState)
+
+
+STATE = ControllerState()
+LOOP_STATUS_LABELS = {
+    Playerctl.LoopStatus.NONE: "None",
+    Playerctl.LoopStatus.TRACK: "Track",
+    Playerctl.LoopStatus.PLAYLIST: "Playlist",
+}
 
 
 def stop_poll_timer() -> None:
-    """Remove the polling source at most once."""
-    global _timer_id
-
-    timer_id = _timer_id
-    _timer_id = None
+    timer_id = STATE.timer_id
+    STATE.timer_id = None
     if timer_id:
         GLib.source_remove(timer_id)
 
 
+def start_poll_timer(manager) -> None:
+    if STATE.timer_id is None:
+        STATE.timer_id = GLib.timeout_add_seconds(1, timer_tick, manager)
+
+
 def cached_active_player_state() -> str:
-    """Return the active player from state, re-reading only when mtime changes."""
     try:
         mtime = state_path().stat().st_mtime
     except OSError:
-        _active_player_cache["mtime"] = -1.0
-        _active_player_cache["value"] = ""
+        STATE.active_player_mtime = -1.0
+        STATE.active_player_value = ""
         return ""
-    if mtime != _active_player_cache["mtime"]:
-        _active_player_cache["value"] = read_active_player_state()
-        _active_player_cache["mtime"] = mtime
-    return _active_player_cache["value"]
+    if mtime != STATE.active_player_mtime:
+        STATE.active_player_value = read_active_player_state()
+        STATE.active_player_mtime = mtime
+    return STATE.active_player_value
 
 
 def player_state_name(player) -> str:
@@ -94,19 +113,28 @@ def player_matches_name(player, name: str) -> bool:
 
 
 def is_current_player(player) -> bool:
-    current_name = player_state_name(current_player)
-    return bool(current_name and current_name == player_state_name(player))
+    return bool(
+        player is STATE.current_player
+        or (
+            STATE.current_player_name
+            and STATE.current_player_name == player_state_name(player)
+        )
+    )
 
 
 def preferred_player(players):
     managed = list(players or [])
     selected = cached_active_player_state()
+    selected_player = None
+    selected_status = None
     if selected:
         for player in managed:
             if not player_matches_name(player, selected):
                 continue
+            selected_player = player
             try:
-                if player.props.status != "Stopped":
+                selected_status = player.props.status
+                if selected_status == "Playing":
                     return player
             except Exception:
                 return player
@@ -117,6 +145,8 @@ def preferred_player(players):
                 return player
         except Exception:
             continue
+    if selected_player is not None and selected_status != "Stopped":
+        return selected_player
     return managed[0] if managed else None
 
 
@@ -126,241 +156,121 @@ def load_env_file(filepath: str) -> None:
             os.environ[key] = value
     except FileNotFoundError:
         return
-    except OSError as e:
-        print(f"ERROR: Error loading environment file {filepath}: {e}", file=sys.stderr)
+    except OSError as error:
+        print(
+            f"ERROR: Error loading environment file {filepath}: {error}",
+            file=sys.stderr,
+        )
 
 
-_last_metadata = {
-    "track": "",
-    "artist": "",
-    "track_id": "",
-    "media_url": "",
-    "duration": 0.0,
-    "live_status": "",
-}
-_last_valid_player = None
-_last_seek_event = {"at": 0.0, "position": None}
-_position_state = {
-    "track_key": "",
-    "raw_position": 0.0,
-    "timestamp": 0.0,
-    "status": "Stopped",
-    "rate": 1.0,
-}
-
-def write_output(current_player):
-    """Get current state and write JSON output safely, even if Firefox changes song naturally."""
-    global _last_metadata, _last_valid_player, _last_seek_event, _position_state
-
-    # --- Detect missing or invalid player ---
-    if not current_player:
-        output = {
-            "text": UI_CONFIG.standby_text if UI_CONFIG else " MPlayer",
+def emit_standby() -> None:
+    text = STATE.ui_config.standby_text if STATE.ui_config else " MPlayer"
+    emit_json_output(
+        {
+            "text": escape(text),
             "class": "nothing-playing",
             "alt": "",
             "tooltip": "",
         }
-        emit_json_output(output)
-        return
+    )
 
-    # Firefox sometimes respawns MPRIS under a new instance name.
+
+def recover_player(player):
     try:
-        _ = current_player.props.player_name
-        _last_valid_player = current_player
+        _ = player.props.player_name
     except Exception:
-        if _last_valid_player:
-            current_player = _last_valid_player
-        else:
-            return
+        fallback = STATE.last_valid_player
+        if (
+            player is STATE.current_player
+            and fallback is not None
+            and player_state_name(fallback) == STATE.current_player_name
+        ):
+            return fallback
+        return None
+    STATE.last_valid_player = player
+    if player is STATE.current_player:
+        STATE.current_player_name = player_state_name(player)
+    return player
 
-    p_name = current_player.props.player_name
 
-    # --- Position ---
+def read_playback_snapshot(player) -> PlaybackSnapshot:
     try:
-        position_seconds = current_player.get_position() / 1e6
+        position_seconds = player.get_position() / 1e6
     except Exception:
         position_seconds = 0.0
-    now_mono = time.monotonic()
-    seek_position = _last_seek_event.get("position")
-    seek_age = now_mono - float(_last_seek_event.get("at", 0.0))
-    if (
-        seek_position is not None
-        and 0.0 <= seek_age <= 2.0
-        and abs(float(seek_position) - position_seconds) > 1.0
-    ):
-        # Some MPRIS providers lag after jumps; trust the fresh seek event.
-        position_seconds = max(0.0, float(seek_position))
-
-    player_status = current_player.props.status
-    is_playing = player_status == "Playing"
-    is_stopped = player_status == "Stopped"
-    raw_metadata = resolve_metadata_duration(
-        read_player_metadata(current_player),
-        _last_metadata,
-    )
-    resolved_metadata, _last_metadata = resolve_browser_metadata_fallbacks(
-        raw_metadata,
-        player_status=player_status,
-        position_seconds=position_seconds,
-        seek_position=seek_position,
-        seek_age=seek_age,
-        last_metadata=_last_metadata,
-        position_state=_position_state,
-    )
-    track = resolved_metadata.track
-    artist = resolved_metadata.artist
-    track_id = resolved_metadata.track_id
-    media_url = resolved_metadata.media_url
-    duration_seconds = resolved_metadata.duration_seconds
-    is_live_stream = resolved_metadata.is_live_stream
-
-    try:
-        playback_rate = float(current_player.get_rate())
-    except Exception:
-        try:
-            playback_rate = float(current_player.props.rate)
-        except Exception:
-            playback_rate = 1.0
-    if playback_rate <= 0:
-        playback_rate = 1.0
-
-    # --- If stopped, treat as no-player (mpd-mpris idle daemon, etc.) ---
-    if is_stopped:
-        _last_metadata = {
-            "track": "",
-            "artist": "",
-            "track_id": "",
-            "media_url": "",
-            "duration": 0.0,
-            "live_status": "",
-        }
-        output = {
-            "text": UI_CONFIG.standby_text if UI_CONFIG else " MPlayer",
-            "class": "nothing-playing",
-            "alt": "",
-            "tooltip": "",
-        }
-        emit_json_output(output)
-        _position_state = {
-            "track_key": "",
-            "raw_position": 0.0,
-            "timestamp": 0.0,
-            "status": "Stopped",
-            "rate": 1.0,
-        }
-        return
-
-    # --- Normalize raw values ---
-    reported_position_seconds = max(0.0, position_seconds)
-    duration_seconds = max(0.0, round(duration_seconds, 2))
-
-    track_key = build_track_identity_key(p_name, track_id, media_url, track, artist)
-    previous_track_key = str(_position_state.get("track_key", ""))
-    previous_raw = float(_position_state.get("raw_position", 0.0))
-    recent_seek = seek_position is not None and 0.0 <= seek_age <= 2.5
-    recent_seek_to_end = (
-        recent_seek
-        and duration_seconds > 0
-        and float(seek_position) >= max(0.0, duration_seconds - 5.0)
-    )
-    position_untrusted = youtube_position_is_untrusted(
-        resolved_metadata=resolved_metadata,
-        raw_metadata=raw_metadata,
-        reported_position_seconds=reported_position_seconds,
-        duration_seconds=duration_seconds,
-        is_playing=is_playing,
-        recent_seek_to_end=recent_seek_to_end,
-        previous_track_key=previous_track_key,
-        current_track_key=track_key,
-        previous_raw_position=previous_raw,
-    )
-    if position_untrusted:
-        if previous_track_key == track_key:
-            position_seconds = previous_raw
-        else:
-            position_seconds = 0.0
-    else:
-        position_seconds = reported_position_seconds
-
-    position_seconds = max(0.0, round(position_seconds, 2))
-    if duration_seconds > 0 and position_seconds > duration_seconds:
-        position_seconds = duration_seconds
-
-    _position_state = {
-        "track_key": track_key,
-        "raw_position": position_seconds,
-        "timestamp": now_mono,
-        "status": player_status,
-        "rate": playback_rate,
-    }
-
-    # --- Compute displayed time ---
-    countdown_display = bool(duration_seconds and not is_live_stream and not position_untrusted)
-    time_display_seconds = (
-        max(0.0, round(duration_seconds - position_seconds, 2))
-        if countdown_display
-        else max(0.0, round(position_seconds, 2))
+    return PlaybackSnapshot(
+        player_name=player.props.player_name,
+        status=player.props.status,
+        reported_position_seconds=position_seconds,
+        metadata=read_player_metadata(player),
+        observed_at=time.monotonic(),
+        loop_status=LOOP_STATUS_LABELS.get(player.props.loop_status),
+        shuffle_status=bool(player.props.shuffle),
     )
 
-    # --- Loop & shuffle status (safe queries) ---
-    try:
-        loop_status = current_player.get_loop_status()
-    except Exception:
-        loop_status = None
-    try:
-        shuffle_status = current_player.get_shuffle()
-    except Exception:
-        shuffle_status = None
 
-    # --- Tooltip ---
+def emit_playback(playback: ResolvedPlayback) -> None:
+    metadata = playback.metadata
     tooltip_text = create_tooltip_text(
-        artist,
-        track,
-        position_seconds,
-        duration_seconds,
-        p_name,
-        UI_CONFIG,
-        is_live_stream=is_live_stream,
-        loop_status=loop_status,
-        shuffle_status=shuffle_status,
+        metadata.artist,
+        metadata.track,
+        playback.position_seconds,
+        metadata.duration_seconds,
+        playback.player_name,
+        STATE.ui_config,
+        is_live_stream=metadata.is_live_stream,
+        loop_status=playback.loop_status,
+        shuffle_status=playback.shuffle_status,
+    )
+    if metadata.is_live_stream:
+        alt_formatter = (
+            format_live_single_line if STATE.alt_mode else format_live_multiple_lines
+        )
+        alt = alt_formatter(playback.is_playing)
+    else:
+        alt_formatter = (
+            format_time_single_line if STATE.alt_mode else format_time_multiple_lines
+        )
+        alt = alt_formatter(
+            playback.time_display_seconds,
+            playback.is_playing,
+            countdown=playback.countdown_display,
+        )
+    emit_json_output(
+        {
+            "text": format_artist_track(
+                metadata.artist,
+                metadata.track,
+                playback.is_playing,
+                STATE.ui_config,
+                standby_player_name=playback.player_name,
+            ),
+            "class": ["playing", playback.player_name],
+            "alt": alt,
+            "tooltip": tooltip_text,
+        }
     )
 
-    # --- Output ---
-    output_data = {
-        "text": escape(
-            format_artist_track(
-                artist,
-                track,
-                is_playing,
-                UI_CONFIG,
-                standby_player_name=p_name,
-            )
-        ),
-        "class": ["playing", p_name],
-        "alt": (
-            (format_live_single_line if ALT_MODE else format_live_multiple_lines)(
-                is_playing
-            )
-            if is_live_stream
-            else (format_time_single_line if ALT_MODE else format_time_multiple_lines)(
-                time_display_seconds,
-                is_playing,
-                countdown=countdown_display,
-            )
-        ),
-        "tooltip": escape(tooltip_text),
-    }
-    emit_json_output(output_data)
 
-
-def on_play(player, status, manager):
-    if not is_current_player(player):
-        set_player(manager, player)
+def write_output(player) -> None:
+    if player is None:
+        emit_standby()
         return
-    write_output(player)
+    player = recover_player(player)
+    if player is None:
+        return
+    snapshot = read_playback_snapshot(player)
+    if snapshot.status == "Stopped":
+        STATE.playback.reset()
+        emit_standby()
+        return
+    emit_playback(resolve_playback(snapshot, STATE.playback))
 
 
 def on_playback_changed(player, status, manager):
+    if player.props.status == "Playing" and not is_current_player(player):
+        set_player(manager, player)
+        return
     if is_current_player(player):
         write_output(player)
 
@@ -371,62 +281,54 @@ def on_metadata(player, metadata, manager):
 
 
 def on_seeked(player, position, manager):
-    global _last_seek_event
     if not is_current_player(player):
         return
     try:
         seek_seconds = max(0.0, float(position) / 1e6)
     except Exception:
         seek_seconds = None
-    _last_seek_event = {"at": time.monotonic(), "position": seek_seconds}
+    STATE.playback.record_seek(seek_seconds, time.monotonic())
     write_output(player)
 
 
 def on_player_appeared(manager, player, selected_players=None):
-    global _timer_id
-
     if player is not None and (
-        selected_players is None or player.name in selected_players
+        selected_players is None
+        or any(player_name_matches(player.name, name) for name in selected_players)
     ):
-        p = init_player(manager, player)
-        if current_player is None:
-            set_player(manager, p)
-        if not hasattr(manager, "_polling") or not manager._polling:
-            manager._polling = True
-            stop_poll_timer()
-            _timer_id = GLib.timeout_add_seconds(1, timer_tick, manager)
+        managed_player = init_player(manager, player)
+        if (
+            STATE.current_player is None
+            or managed_player.props.status == "Playing"
+        ):
+            set_player(manager, managed_player)
+        start_poll_timer(manager)
 
 
 def on_player_vanished(manager, player, loop):
-    global current_player, _last_valid_player
-    if _last_valid_player is player:
-        _last_valid_player = None
-    if is_current_player(player):
-        remaining = [
-            candidate
-            for candidate in manager.props.players
-            if player_state_name(candidate) != player_state_name(player)
-        ]
-        replacement = preferred_player(remaining)
-        if replacement:
-            set_player(manager, replacement)
-        else:
-            current_player = None
-            stop_poll_timer()
-            manager._polling = False
-            output = {
-                "text": UI_CONFIG.standby_text if UI_CONFIG else " MPlayer",
-                "class": "nothing-playing",
-                "alt": "",
-                "tooltip": "",
-            }
-            emit_json_output(output)
+    if STATE.last_valid_player is player:
+        STATE.last_valid_player = None
+    if not is_current_player(player):
+        return
+    remaining = [
+        candidate
+        for candidate in manager.props.players
+        if player_state_name(candidate) != player_state_name(player)
+    ]
+    replacement = preferred_player(remaining)
+    if replacement:
+        set_player(manager, replacement)
+        return
+    STATE.current_player = None
+    STATE.current_player_name = ""
+    STATE.playback.reset()
+    stop_poll_timer()
+    emit_standby()
 
 
 def init_player(manager, name):
     player = Playerctl.Player.new_from_name(name)
     player.connect("playback-status", on_playback_changed, manager)
-    player.connect("playback-status::playing", on_play, manager)
     player.connect("metadata", on_metadata, manager)
     player.connect("seeked", on_seeked, manager)
     manager.manage_player(player)
@@ -434,62 +336,59 @@ def init_player(manager, name):
 
 
 def timer_tick(manager):
-    """Called every second to update display - with memory leak prevention"""
     players = list(manager.props.players or [])
     if not players:
-        global _timer_id
-        _timer_id = None
-        manager._polling = False
+        STATE.timer_id = None
         return False
 
-    selected_name = cached_active_player_state()
-    selected_player = next(
-        (player for player in players if player_matches_name(player, selected_name)),
-        None,
-    )
-    try:
-        selected_stopped = selected_player is not None and selected_player.props.status == "Stopped"
-    except Exception:
-        selected_stopped = False
-    if selected_player and not selected_stopped and not is_current_player(selected_player):
+    selected_player = preferred_player(players)
+    if selected_player is not None and not is_current_player(selected_player):
         set_player(manager, selected_player)
-    elif current_player is None or selected_stopped:
-        set_player(manager, preferred_player(players))
 
-    if current_player and current_player.props.status == "Playing":
-        write_output(current_player)
+    if (
+        STATE.current_player
+        and STATE.current_player.props.status == "Playing"
+    ):
+        write_output(STATE.current_player)
     return True
 
 
 def set_player(manager, player):
-    global current_player
     if player is None:
         return
-    if player is not current_player:
-        current_player = player
+    if player is not STATE.current_player:
+        STATE.current_player = player
+        STATE.current_player_name = player_state_name(player)
         manager.move_player_to_top(player)
-        write_active_player_state(player_state_name(player))
+        write_active_player_state(STATE.current_player_name)
     write_output(player)
 
 
-def signal_handler(sig, frame):
-    global _shutdown_requested
-
-    if sig == signal.SIGPIPE:
+def signal_handler(received_signal, frame):
+    if received_signal == signal.SIGPIPE:
         os._exit(0)
-
-    loop = _main_loop
-    if loop is None:
+    if STATE.main_loop is None:
         os._exit(0)
-    if not _shutdown_requested:
-        _shutdown_requested = True
-        GLib.idle_add(loop.quit)
+    if not STATE.shutdown_requested:
+        STATE.shutdown_requested = True
+        GLib.idle_add(STATE.main_loop.quit)
+
+
+def resolve_players(arguments, manager):
+    players = os.getenv("MEDIAPLAYER_PLAYERS", None)
+    if players:
+        players = players.split(",")
+    if arguments.players:
+        return arguments.players, True
+    if arguments.player:
+        return [arguments.player], True
+    if players:
+        return players, True
+    return [name.name for name in manager.props.player_names], False
 
 
 def run(arguments):
-    global _timer_id, _main_loop, _shutdown_requested, UI_CONFIG, ALT_MODE
-
-    _shutdown_requested = False
+    STATE.shutdown_requested = False
 
     xdg_state = os.path.expanduser(os.getenv("XDG_STATE_HOME", "~/.local/state"))
     set_ytdlp_timeout_seconds(get_ytdlp_timeout_seconds())
@@ -497,28 +396,20 @@ def run(arguments):
     load_env_file(os.path.join(state_dir, "staterc"))
     load_env_file(os.path.join(state_dir, "env-overrides"))
 
-    UI_CONFIG = validate_ui_config()
-    ALT_MODE = getattr(arguments, "alt", False)
+    STATE.ui_config = validate_ui_config()
+    STATE.alt_mode = getattr(arguments, "alt", False)
 
-    players = os.getenv("MEDIAPLAYER_PLAYERS", None)
-    if players:
-        players = players.split(",")
-
-    logging.basicConfig(stream=sys.stderr, level=logging.WARNING, format="%(message)s")
+    logging.basicConfig(
+        stream=sys.stderr,
+        level=logging.WARNING,
+        format="%(message)s",
+    )
 
     manager = Playerctl.PlayerManager()
-    choose = False
-    if not (arguments.players or arguments.player) and not players:
-        players = [name.name for name in manager.props.player_names]
-    else:
-        choose = True
-        if arguments.players:
-            players = arguments.players
-        elif arguments.player:
-            players = [arguments.player]
+    players, choose = resolve_players(arguments, manager)
 
     loop = GLib.MainLoop()
-    _main_loop = loop
+    STATE.main_loop = loop
 
     manager.connect(
         "name-appeared",
@@ -530,30 +421,24 @@ def run(arguments):
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGPIPE, signal_handler)
 
-    found = [None] * len(players)
+    found = []
     for player in manager.props.player_names:
-        if players is not None and player.name not in players:
+        if not any(player_name_matches(player.name, name) for name in players):
             continue
-        p = init_player(manager, player)
-        found[players.index(player.name)] = p
+        found.append(init_player(manager, player))
 
     if found:
-        found = list(filter(lambda x: x is not None, found))
-        if found:
-            set_player(manager, preferred_player(found))
-        else:
-            write_output(current_player)
+        set_player(manager, preferred_player(found))
     else:
-        write_output(current_player)
+        write_output(STATE.current_player)
 
     if manager.props.players:
-        manager._polling = True
-        _timer_id = GLib.timeout_add_seconds(1, timer_tick, manager)
+        start_poll_timer(manager)
 
     try:
         loop.run()
     except KeyboardInterrupt:
         print("INFO: Received interrupt, shutting down...", file=sys.stderr)
     finally:
-        _main_loop = None
+        STATE.main_loop = None
         stop_poll_timer()

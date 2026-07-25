@@ -384,7 +384,7 @@ submap_leader("open", mod, "O", function()
 	submap_exec(
 		"R",
 		"[Open] rmpc",
-		"hyprshell launch/summon.sh class:org.tui.Rmpc -- hyprshell launch/tui.sh --app-id org.tui.Rmpc --title Rmpc -- \"$HOME/.config/rmpc/lib/launch\""
+		'hyprshell launch/summon.sh class:org.tui.Rmpc -- hyprshell launch/tui.sh --app-id org.tui.Rmpc --title Rmpc -- "$HOME/.config/rmpc/lib/launch"'
 	)
 end)
 

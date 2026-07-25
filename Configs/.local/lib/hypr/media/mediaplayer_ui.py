@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import html
 import json
 import math
 import os
@@ -189,9 +190,12 @@ def create_tooltip_text(
 ) -> str:
     tooltip = ""
     if artist or track:
-        tooltip += f'<span foreground="{ui_config.track_color}"><b>{track}</b></span>'
         tooltip += (
-            f'\n<span foreground="{ui_config.artist_color}"><i>{artist}</i></span>\n'
+            f'<span foreground="{ui_config.track_color}"><b>{escape(track)}</b></span>'
+        )
+        tooltip += (
+            f'\n<span foreground="{ui_config.artist_color}">'
+            f"<i>{escape(artist)}</i></span>\n"
         )
         if is_live_stream:
             tooltip += (
@@ -217,11 +221,15 @@ def create_tooltip_text(
                     "Track": "󰑖 Loop Once",
                     "Playlist": "󰑘 Loop Playlist",
                 }
-                tooltip += f"\n<span foreground='{ui_config.track_color}'>{loop_glyphs.get(loop_status, str(loop_status))}</span>"
+                loop_label = loop_glyphs.get(loop_status, str(loop_status))
+                tooltip += (
+                    f"\n<span foreground='{ui_config.track_color}'>"
+                    f"{escape(loop_label)}</span>"
+                )
             if shuffle_status is not None:
                 shuffle_glyph = "󰒟 Shuffle On" if shuffle_status else "󰒞 Shuffle Off"
                 tooltip += f"\n<span foreground='{ui_config.track_color}'>{shuffle_glyph}</span>"
-        tooltip += f"\n<span>{p_name}</span>"
+        tooltip += f"\n<span>{escape(p_name)}</span>"
     tooltip += (
         f"\n<span size='x-small' foreground='{ui_config.track_color}'>"
         f"\n󰐎 click to play/pause\n scroll to switch player\n󱥣 rightclick for options</span>"
@@ -237,14 +245,14 @@ def format_artist_track(
     *,
     standby_player_name: str = "",
 ):
-    prefix = ui_config.prefix_playing if playing else ui_config.prefix_paused
+    prefix = escape(ui_config.prefix_playing if playing else ui_config.prefix_paused)
     prefix_separator = "  "
     full_length = len(artist + track)
 
     if track and not artist:
         if len(track) > ui_config.max_length_module:
             track = track[: ui_config.max_length_module].rstrip() + "…"
-        return f"{prefix}{prefix_separator}<b>{track}</b>"
+        return f"{prefix}{prefix_separator}<b>{escape(track)}</b>"
 
     if track and artist:
         artist = artist.split(",")[0].split("&")[0].strip()
@@ -273,14 +281,15 @@ def format_artist_track(
                 track = track[:track_limit].rstrip() + "…"
 
         return (
-            f"{prefix}{prefix_separator}<i>{artist}</i>"
-            f"{ui_config.artist_track_separator}<b>{track}</b>"
+            f"{prefix}{prefix_separator}<i>{escape(artist)}</i>"
+            f"{escape(ui_config.artist_track_separator)}<b>{escape(track)}</b>"
         )
 
+    standby_text = escape(ui_config.standby_text)
     if standby_player_name:
-        return f"<b>{ui_config.standby_text} {standby_player_name}</b>"
-    return f"<b>{ui_config.standby_text}</b>"
+        return f"<b>{standby_text} {escape(standby_player_name)}</b>"
+    return f"<b>{standby_text}</b>"
 
 
 def escape(string):
-    return string.replace("&", "&amp;")
+    return html.escape(str(string), quote=False)

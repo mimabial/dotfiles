@@ -110,5 +110,5 @@ hl.on("window.open", function(win)
   local mh = mon.height / scale
   local x = math.floor(mw * 0.75 - ww / 2)
   local y = math.floor((mh - wh) / 2)
-  hl.dispatch(hl.dsp.window.move({x = x, y = y, relative = false, selector = "address:" .. win.address}))
+  hl.dispatch(hl.dsp.window.move({x = x, y = y, relative = false, window = "address:" .. win.address}))
 end)

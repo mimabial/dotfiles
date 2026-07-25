@@ -6,10 +6,10 @@ import base64
 import html
 import os
 from collections import defaultdict
-import time
 
 # Must match SUBMAP_MARKER in ~/.config/hypr/keybindings.lua.
 SUBMAP_MARKER = "[Submap] "
+HYPRCTL_TIMEOUT_SECONDS = 2
 
 CODE_DISPLAY_MAP = {
     10: "1",
@@ -37,19 +37,129 @@ CODE_DISPLAY_MAP = {
 }
 
 
-def get_hyprctl_binds():
-    while True:
-        result = subprocess.run(
-            ["hyprctl", "binds", "-j"], capture_output=True, text=True
+def parse_bool(value):
+    normalized = value.casefold()
+    if normalized not in {"true", "false"}:
+        raise ValueError(f"invalid boolean value from hyprctl: {value!r}")
+    return normalized == "true"
+
+
+def validate_binds(binds):
+    if not isinstance(binds, list):
+        raise ValueError("hyprctl binds did not return a list")
+
+    required = {
+        "modmask": int,
+        "submap": str,
+        "key": str,
+        "keycode": int,
+        "description": str,
+        "dispatcher": str,
+        "arg": str,
+    }
+    for index, bind in enumerate(binds):
+        if not isinstance(bind, dict):
+            raise ValueError(f"hyprctl bind {index} is not an object")
+        for field, expected_type in required.items():
+            if field not in bind:
+                raise ValueError(f"hyprctl bind {index} is missing {field!r}")
+            if type(bind[field]) is not expected_type:
+                raise ValueError(
+                    f"hyprctl bind {index} field {field!r} has invalid type"
+                )
+    return binds
+
+
+def parse_hyprctl_binds_text(output):
+    binds = []
+    current = None
+
+    def finish_current():
+        if current is None:
+            return
+        required = (
+            "modmask",
+            "submap",
+            "key",
+            "keycode",
+            "description",
+            "dispatcher",
+            "arg",
         )
-        if result.returncode != 0:
-            print("Waiting for hyprctl command to succeed...")
-            time.sleep(1)
+        missing = [field for field in required if field not in current]
+        if missing:
+            raise ValueError(
+                "incomplete bind from hyprctl text output; missing "
+                + ", ".join(missing)
+            )
+        binds.append(current)
+
+    for raw_line in output.splitlines():
+        line = raw_line.strip()
+        if not line:
             continue
-        try:
-            return json.loads(result.stdout)
-        except json.JSONDecodeError:
-            time.sleep(1)
+        if raw_line == raw_line.lstrip() and line.startswith("bind"):
+            finish_current()
+            flags = line.removeprefix("bind")
+            current = {
+                "locked": "l" in flags,
+                "mouse": "m" in flags,
+                "release": "r" in flags,
+                "repeat": "e" in flags,
+                "longPress": "o" in flags,
+                "non_consuming": "n" in flags,
+                "auto_consuming": False,
+                "has_description": "d" in flags,
+                "submap_universal": "",
+                "allow_input_capture": False,
+            }
+            continue
+        if current is None or ":" not in line:
+            continue
+
+        field, value = (part.strip() for part in line.split(":", 1))
+        if field in {"modmask", "keycode"}:
+            current[field] = int(value)
+        elif field == "catchall":
+            current["catch_all"] = parse_bool(value)
+        elif field in {"submap", "key", "description", "dispatcher", "arg"}:
+            current[field] = value
+
+    finish_current()
+    if not binds:
+        raise RuntimeError("hyprctl binds returned no parseable bindings")
+    return validate_binds(binds)
+
+
+def get_hyprctl_binds():
+    try:
+        result = subprocess.run(
+            ["hyprctl", "binds", "-j"],
+            capture_output=True,
+            text=True,
+            timeout=HYPRCTL_TIMEOUT_SECONDS,
+        )
+        if result.returncode == 0:
+            try:
+                return validate_binds(json.loads(result.stdout))
+            except (json.JSONDecodeError, ValueError):
+                pass
+    except subprocess.TimeoutExpired:
+        pass
+
+    try:
+        result = subprocess.run(
+            ["hyprctl", "binds"],
+            capture_output=True,
+            text=True,
+            timeout=HYPRCTL_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired as error:
+        raise RuntimeError("hyprctl binds timed out") from error
+    if result.returncode != 0:
+        message = result.stderr.strip() or "hyprctl binds failed"
+        raise RuntimeError(message)
+    return parse_hyprctl_binds_text(result.stdout)
 
 
 def parse_description(description):
