@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Bluetui
+Icon=bluetooth
+Exec=/usr/bin/true
+Terminal=false
+NoDisplay=true
+StartupWMClass=org.tui.Bluetui

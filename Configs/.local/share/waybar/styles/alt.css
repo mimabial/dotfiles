@@ -1,3 +1,5 @@
+@import "./interactive.css";
+
 /* ============================================
    BASE STYLES
    ============================================ */
@@ -535,21 +537,6 @@ window.popup decoration {
 /* ============================================
    CUSTOM MODULES
    ============================================ */
-
-#custom-caffeine:hover,
-#custom-cliphist:hover,
-#custom-colormode:hover,
-#custom-display:hover,
-#custom-focusmode:hover,
-#custom-gamemode:hover,
-#custom-keybindhint:hover,
-#custom-themeswitch:hover,
-#custom-wallchange:hover,
-#custom-wbarswitch:hover,
-#custom-window-layout:hover,
-#custom-workflows:hover {
-  color: @hvr_fg;
-}
 
 #custom-display,
 #custom-focusmode,

@@ -26,7 +26,7 @@ show_hint() {
   body="$(hint_body "${name}")" || return 0
   [[ -n "${body}" ]] || return 0
 
-  dunstify -u critical -a "Submap" -r "${SUBMAP_HINT_NOTIF_ID}" -t 0 \
+  dunstify -e -u critical -a "Submap" -r "${SUBMAP_HINT_NOTIF_ID}" -t 0 \
     -h string:x-dunst-stack-tag:submap-hint \
     -- "${name^}:" "${body}" || true
 }

@@ -1,8 +1,8 @@
 $HOME/.config/dunst/theme.conf
 
 /* Foreground colors */
-@define-color fg-primary #657b83;     /* base00 - primary content */
-@define-color fg-secondary #93a1a1;   /* base1 - secondary content */
+@define-color fg-primary #778899;     /* base00 - primary content */
+@define-color fg-secondary #005CAB;   /* base1 - secondary content */
 
 /* Background colors */
 @define-color bg-primary #fdf6e3;     /* base3 - primary background */
@@ -10,13 +10,13 @@ $HOME/.config/dunst/theme.conf
 @define-color bg-tertiary #e6dfd0;    /* slightly darker than base2 */
 
 /* Accent colors - Solarized palette */
-@define-color accent-red #dc322f;     /* red */
-@define-color accent-green #859900;   /* green */
-@define-color accent-yellow #b58900;  /* yellow */
-@define-color accent-blue #268bd2;    /* blue */
-@define-color accent-purple #6c71c4;  /* violet */
-@define-color accent-aqua #2aa198;    /* cyan */
-@define-color accent-orange #cb4b16;  /* orange */
+@define-color accent-red #D0021B;     /* red */
+@define-color accent-green #00A651;   /* green */
+@define-color accent-yellow #FFC425;  /* yellow */
+@define-color accent-blue #005CAB;    /* blue */
+@define-color accent-purple #9B26AF;  /* violet */
+@define-color accent-aqua #00A6A6;    /* cyan */
+@define-color accent-orange #E85D00;  /* orange */
 
 /* Border colors */
 @define-color border-primary #003DA5;    /* base1 */

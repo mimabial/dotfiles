@@ -2,11 +2,11 @@ $HOME/.config/waybar/theme.css
 
 @define-color bg #F1F1F1;
 @define-color fg #3D3632;
-@define-color br #C4B19E;
+@define-color br #8B6079;
 
 @define-color alt_bg #E5D8C6;
 @define-color alt_fg #3D3632;
-@define-color alt_br #AD8A3E;
+@define-color alt_br #4D8A80;
 
 @define-color act_br #D8C8B6;
 @define-color act_fg #C4B19E;

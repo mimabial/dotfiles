@@ -1,7 +1,7 @@
 $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 
 $CURSOR_THEME = capitaine-cursors-light
-$CURSOR_SIZE = 28
+$CURSOR_SIZE = 24
 $ICON_THEME = Tela-pink-dark
 $COLOR_SCHEME = prefer-dark
 $NVIM_SCHEME = rose-pine

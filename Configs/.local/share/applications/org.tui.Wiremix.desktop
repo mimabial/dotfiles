@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Wiremix
+Icon=multimedia-volume-control
+Exec=/usr/bin/true
+Terminal=false
+NoDisplay=true
+StartupWMClass=org.tui.Wiremix

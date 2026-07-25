@@ -8,7 +8,7 @@ $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME = material_light_cursors
-$CURSOR_SIZE = 24
+$CURSOR_SIZE = 26
 
 general {
     gaps_in = 3

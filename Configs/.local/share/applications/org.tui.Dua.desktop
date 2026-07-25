@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Dua
+Icon=disk-usage-analyzer
+Exec=/usr/bin/true
+Terminal=false
+NoDisplay=true
+StartupWMClass=org.tui.Dua

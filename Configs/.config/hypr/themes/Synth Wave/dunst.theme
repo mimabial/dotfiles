@@ -1,7 +1,7 @@
 $HOME/.config/dunst/theme.conf
 
 @define-color fg-primary #e2e8ff;
-@define-color fg-secondary #ffffff;
+@define-color fg-secondary #AF6DF9;
 
 @define-color bg-primary #262335;
 @define-color bg-secondary #1a1b27;

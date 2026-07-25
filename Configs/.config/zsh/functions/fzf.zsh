@@ -571,7 +571,7 @@ zle -N _fuzzy_search_cmd_history
 bindkey '^Xr' _fuzzy_search_cmd_history
 
 unalias ff fs fS fj fh fd 2>/dev/null
-alias fs='_fuzzy_edit_search_content' \
+alias ft='_fuzzy_edit_search_content' \
       fj='_fuzzy_change_directory' \
       ff='_fuzzy_edit_search_file' \
       fh='_fuzzy_search_cmd_history'

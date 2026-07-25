@@ -25,7 +25,7 @@ menu_run_action_gaming() {
     gaming_workflow) hyprshell util/workflow-toggle.sh gaming ;;
     gaming_mangohud_config) open_in_editor ~/.config/MangoHud/MangoHud.conf ;;
     gaming_gamemode_status)
-      present_terminal --hypr-profile tui --app-id org.tui.GameMode --title GameMode -- bash -lc 'printf "GameMode status:\n"; gamemoded -s || true; printf "\nClients:\n"; gamemodelist || true; printf "\n"; read -r -p "Press Enter to close..."'
+      present_terminal --hypr-profile tui --app-id org.tui.GameMode --title GameMode -- bash -lc 'printf "GameMode status:\n"; gamemoded -s || true; printf "\nClients:\n"; gamemodelist || true'
       ;;
     *) return 1 ;;
   esac

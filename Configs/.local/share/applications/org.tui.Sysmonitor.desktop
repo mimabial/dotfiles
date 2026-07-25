@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=System Monitor
+Icon=utilities-system-monitor
+Exec=/usr/bin/true
+Terminal=false
+NoDisplay=true
+StartupWMClass=org.tui.Sysmonitor

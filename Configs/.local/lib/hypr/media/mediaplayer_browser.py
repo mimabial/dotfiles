@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
+import json
 import os
-import re
 import shlex
 import shutil
 import subprocess
@@ -70,21 +70,6 @@ def canonicalize_youtube_url(url: str) -> str:
     return url
 
 
-def title_looks_live(title: str) -> bool:
-    normalized = (title or "").upper()
-    return any(
-        marker in normalized
-        for marker in (
-            "[LIVE]",
-            " LIVE",
-            "EN DIRECT",
-            "EN VIVO",
-            "AO VIVO",
-            "🔴",
-        )
-    )
-
-
 def _parse_ytdlp_duration(stdout: str) -> float | None:
     for line in stdout.splitlines():
         line = line.strip()
@@ -116,24 +101,72 @@ def _parse_ytdlp_media_info(stdout: str) -> YtDlpMediaInfo:
     return YtDlpMediaInfo(duration_seconds=duration_seconds, live_status=live_status)
 
 
+def _extract_initial_player_response(html: str) -> dict | None:
+    decoder = json.JSONDecoder()
+    for marker in ("ytInitialPlayerResponse = ", '"ytInitialPlayerResponse":'):
+        marker_offset = html.find(marker)
+        if marker_offset < 0:
+            continue
+        object_offset = html.find("{", marker_offset + len(marker))
+        if object_offset < 0:
+            continue
+        try:
+            response, _ = decoder.raw_decode(html[object_offset:])
+        except (json.JSONDecodeError, TypeError):
+            continue
+        if isinstance(response, dict):
+            return response
+    return None
+
+
+def _find_boolean_field(value, field: str) -> bool | None:
+    if isinstance(value, dict):
+        field_value = value.get(field)
+        if isinstance(field_value, bool):
+            return field_value
+        for child in value.values():
+            found = _find_boolean_field(child, field)
+            if found is not None:
+                return found
+    elif isinstance(value, list):
+        for child in value:
+            found = _find_boolean_field(child, field)
+            if found is not None:
+                return found
+    return None
+
+
 def _parse_youtube_watch_page_media_info(html: str) -> YtDlpMediaInfo:
-    live_match = re.search(r'"isLiveContent":(true|false)', html)
-    if not live_match:
-        live_match = re.search(r'"isLiveNow":(true|false)', html)
-    if live_match and live_match.group(1) == "true":
+    response = _extract_initial_player_response(html)
+    if response is None:
+        return YtDlpMediaInfo()
+
+    is_live_now = _find_boolean_field(response, "isLiveNow")
+    if is_live_now is True:
         return YtDlpMediaInfo(live_status="is_live")
 
-    duration_match = re.search(r'"lengthSeconds":"(\d+)"', html)
-    if duration_match:
-        try:
-            duration_seconds = float(duration_match.group(1))
-            if duration_seconds > 0:
-                return YtDlpMediaInfo(
-                    duration_seconds=duration_seconds,
-                    live_status="not_live",
-                )
-        except ValueError:
-            pass
+    video_details = response.get("videoDetails")
+    if not isinstance(video_details, dict):
+        video_details = {}
+
+    duration_seconds = None
+    try:
+        parsed_duration = float(video_details.get("lengthSeconds", 0))
+        if parsed_duration > 0:
+            duration_seconds = parsed_duration
+    except (TypeError, ValueError):
+        pass
+
+    is_live_content = video_details.get("isLiveContent")
+    if (
+        duration_seconds is not None
+        or is_live_now is False
+        or is_live_content is False
+    ):
+        return YtDlpMediaInfo(
+            duration_seconds=duration_seconds,
+            live_status="not_live",
+        )
 
     return YtDlpMediaInfo()
 

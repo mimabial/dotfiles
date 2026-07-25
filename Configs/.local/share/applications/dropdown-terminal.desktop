@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Dropdown Terminal
+Icon=utilities-terminal
+Exec=/usr/bin/true
+Terminal=false
+NoDisplay=true
+StartupWMClass=dropdown-terminal

@@ -9,7 +9,7 @@ $NVIM_TRANSPARENCY = false
 
 # $CURSOR_THEME = Layan-white-cursors
 $CURSOR_THEME = FernBLZ
-$CURSOR_SIZE = 50
+$CURSOR_SIZE = 34
 
 general {
     gaps_in = 4

@@ -15,7 +15,6 @@ from pyutils.shell_env import load_shell_assignments
 from mediaplayer_browser import (
     get_ytdlp_timeout_seconds,
     set_ytdlp_timeout_seconds,
-    title_looks_live,
     youtube_position_is_untrusted,
 )
 from mediaplayer_actions import (
@@ -255,15 +254,6 @@ def write_output(current_player):
     reported_position_seconds = max(0.0, position_seconds)
     duration_seconds = max(0.0, round(duration_seconds, 2))
 
-    if (
-        not is_live_stream
-        and resolved_metadata.is_youtube
-        and not resolved_metadata.ytdlp_live_status
-        and title_looks_live(track)
-    ):
-        is_live_stream = True
-        duration_seconds = 0.0
-
     track_key = build_track_identity_key(p_name, track_id, media_url, track, artist)
     previous_track_key = str(_position_state.get("track_key", ""))
     previous_raw = float(_position_state.get("raw_position", 0.0))
@@ -364,8 +354,10 @@ def write_output(current_player):
 
 
 def on_play(player, status, manager):
-    if is_current_player(player):
-        write_output(player)
+    if not is_current_player(player):
+        set_player(manager, player)
+        return
+    write_output(player)
 
 
 def on_playback_changed(player, status, manager):

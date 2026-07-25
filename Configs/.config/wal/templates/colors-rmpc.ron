@@ -36,7 +36,7 @@
 
         (
             prop: (kind: Property(Title), style: (fg: "{color5}"), default: (kind: Text("Unknown"))),
-            width: "50%",
+            width: "49%",
         ),
         (
             prop: (kind: Text("│"), style: (fg: "{color4}"), default: (kind: Text("unknown"))),
@@ -45,7 +45,7 @@
         ),
         (
             prop: (kind: Property(Artist), style: (fg: "{color4}"), default: (kind: Text("unknown"))),
-            width: "40%",
+            width: "39%",
             alignment: Left,
         ),
         (
@@ -233,7 +233,7 @@
         size: "100%",
         borders: "BOTTOM",
         direction: Horizontal, panes: [
-        (size: "49%", pane: Pane(Property(content: [
+        (size: "48%", pane: Pane(Property(content: [
                         (kind: Text(" 󰸪 "), style: (fg: "{color8}")),
                         (kind: Text("Title "), style: (fg: "{foreground}")),
                     ], align: Left))
@@ -242,7 +242,7 @@
                         (kind: Text(" │ "), style: (fg: "{color8}", modifiers: "Bold")),
                     ], align: Center))
         ),
-        (size: "39%", pane: Pane(Property(content: [
+        (size: "41%", pane: Pane(Property(content: [
                         (kind: Text("󰳩 "), style: (fg: "{color8}")),
                         (kind: Text("Artist "), style: (fg: "{foreground}")),
                     ], align: Left))
@@ -251,7 +251,7 @@
                         (kind: Text(" │ "), style: (fg: "{color8}", modifiers: "Bold")),
                     ], align: Center))
         ),
-        (size: "12%", pane: Pane(Property(content: [
+        (size: "11%", pane: Pane(Property(content: [
                         (kind: Text("󰔚 "), style: (fg: "{color8}")),
                         (kind: Text("Time "), style: (fg: "{foreground}")),
                     ], align: Left))

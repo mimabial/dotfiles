@@ -4,6 +4,9 @@ import os
 import re
 import sys
 
+from pyutils.compositor import HyprctlWrapper
+from pyutils.jsonc import modify_json_key, parse_json_file
+from pyutils.xdg_base_dirs import xdg_config_home, xdg_data_home
 from waybar_layouts import layered_module_files, resolve_style_path
 from waybar_shared import (
     CONFIG_JSONC,
@@ -20,10 +23,6 @@ from waybar_state import (
     get_config_value,
     get_current_layout_from_config,
 )
-
-from pyutils.compositor import HyprctlWrapper
-from pyutils.jsonc import modify_json_key, parse_json_file
-from pyutils.xdg_base_dirs import xdg_config_home, xdg_data_home
 
 
 def normalize_menu_file_path(raw_path):
@@ -78,11 +77,11 @@ def write_style_file(style_filepath, source_filepath):
     /* Theme configuration is generated through the `theme.css` file */
     @import "theme.css";
 
-    /* Shared or user-selected base style */
-    @import "{style_import}";
-
-    /* Runtime geometry overrides */
+    /* Runtime geometry */
     @import "includes/border-radius.css";
+
+    /* Shared base style */
+    @import "{style_import}";
 
     /* Active workflow overrides, written by util/workflows.sh */
     @import "includes/workflow.css";
@@ -343,7 +342,6 @@ window#waybar {{
   border-radius: 0pt;
 }}
 
-window#waybar *,
 menu,
 menu *,
 menuitem,

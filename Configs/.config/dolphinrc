@@ -11,7 +11,7 @@ UseShortRelativeDates=false
 ShowCopyMoveMenu=true
 
 [DetailsMode]
-IconSize=48
+IconSize=32
 LeftPadding=38
 PreviewSize=32
 
@@ -35,7 +35,7 @@ ViewPropsTimestamp=2023,4,26,16,58,48.324
 
 [IconsMode]
 IconSize=256
-PreviewSize=256
+PreviewSize=208
 
 [InformationPanel]
 dateFormat=ShortFormat

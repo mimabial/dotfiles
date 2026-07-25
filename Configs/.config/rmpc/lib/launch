@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
+rmpc_lib="${config_home}/rmpc/lib"
+themes_dir="${config_home}/rmpc/themes"
+rmpc_bin="/usr/bin/rmpc"
+
+# shellcheck source=/dev/null
+source "${rmpc_lib}/theme-size.bash"
+
+"${rmpc_lib}/apply_theme" --prepare
+
+theme_name="pywal16"
+terminal_size="$(rmpc_terminal_size || true)"
+if [[ -n "${terminal_size}" ]]; then
+  read -r rows columns <<<"${terminal_size}"
+  theme_name="$(rmpc_theme_for_size "${columns}" "${rows}")"
+fi
+theme_path="${themes_dir}/${theme_name}.ron"
+
+"${rmpc_lib}/apply_theme" "${theme_name}" "${theme_path}"
+exec "${rmpc_bin}" --theme "${theme_path}" "$@"

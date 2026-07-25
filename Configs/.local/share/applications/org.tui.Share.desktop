@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Share
+Icon=document-send
+Exec=/usr/bin/true
+Terminal=false
+NoDisplay=true
+StartupWMClass=org.tui.Share

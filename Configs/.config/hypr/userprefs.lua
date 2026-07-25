@@ -2,7 +2,7 @@ hl.config({
     input = {
         kb_layout = "us,fr",
         kb_variant = ",",
-        kb_options = "grp:alt_shift_toggle",
+        kb_options = "",
         resolve_binds_by_sym = true,
         touchpad = {natural_scroll = false},
     },

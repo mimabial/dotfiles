@@ -176,13 +176,13 @@
 
     tabs: [
         (name: " Home", pane: Split(direction: Horizontal, panes: [
-              (size: "67%", borders: "NONE", pane: Split(direction: Vertical,panes: [
+              (size: "80%", borders: "NONE", pane: Split(direction: Vertical,panes: [
                           (size: "100%", borders: "ALL", pane: Pane(Queue)),
                       ])
               ),
-              (size: "33%", borders: "NONE", pane: Split(direction: Vertical, panes: [
-                          (size: "100%", borders: "TOP", pane: Pane(Lyrics)),
-                          (size: "0.5r", borders: "BOTTOM", pane: Pane(AlbumArt)),
+              (size: "20%", borders: "NONE", pane: Split(direction: Vertical, panes: [
+                          (size: "50%", borders: "TOP", pane: Pane(Lyrics)),
+                          (size: "50%", borders: "BOTTOM", pane: Pane(AlbumArt)),
                       ])
               ),
           ])

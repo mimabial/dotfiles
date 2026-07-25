@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Terminal Application
+Icon=utilities-terminal
+Exec=/usr/bin/true
+Terminal=false
+NoDisplay=true
+StartupWMClass=org.tui.Terminal

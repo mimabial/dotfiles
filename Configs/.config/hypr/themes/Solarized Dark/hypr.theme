@@ -2,7 +2,7 @@ $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 $ICON_THEME = Tela-circle-solarized
 $COLOR_SCHEME = prefer-dark
 $CURSOR_THEME = capitaine-cursors-light
-$CURSOR_SIZE = 28
+$CURSOR_SIZE = 24
 $NVIM_SCHEME = solarized
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false

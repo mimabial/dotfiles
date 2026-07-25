@@ -424,7 +424,7 @@ else:
         data["tooltip"] += f"Humidity: {current_weather['humidity']}%\n"
         data["tooltip"] += f"Sunrise: {get_sunrise(today)}\n"
         data["tooltip"] += f"Sunset: {get_sunset(today)}\n"
-        data["tooltip"] += f"Max | Min: {get_max_temp(today)} | {get_min_temp(today)}"
+        data["tooltip"] += f"Max|Min: {get_max_temp(today)} | {get_min_temp(today)}"
 
 
 print(json.dumps(data))

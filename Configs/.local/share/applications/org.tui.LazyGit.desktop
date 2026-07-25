@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=LazyGit
+Icon=git
+Exec=/usr/bin/true
+Terminal=false
+NoDisplay=true
+StartupWMClass=org.tui.LazyGit

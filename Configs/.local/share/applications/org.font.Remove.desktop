@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Font Remover
+Icon=font-x-generic
+Exec=/usr/bin/true
+Terminal=false
+NoDisplay=true
+StartupWMClass=org.font.Remove

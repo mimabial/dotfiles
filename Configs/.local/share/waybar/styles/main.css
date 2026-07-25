@@ -1,3 +1,5 @@
+@import "./interactive.css";
+
 /* ============================================
    BASE STYLES
    ============================================ */
@@ -328,15 +330,13 @@ menu {
 }
 
 #custom-microphone {
-  background-color: alpha(@bg, 0.1);
   border: 1px solid alpha(@br, 0.3);
   padding: 3px 0px;
-  margin-bottom: 2px;
+  margin: 2px;
 }
 
 #custom-microphone.muted,
 #custom-microphone.absent {
-  background-color: alpha(@bg, 0.3);
   border: 1px solid alpha(@br, 0.3);
   padding-right: 0px;
 }
@@ -577,21 +577,6 @@ menu {
 /* ============================================
    CUSTOM MODULES
    ============================================ */
-
-#custom-caffeine:hover,
-#custom-cliphist:hover,
-#custom-colormode:hover,
-#custom-display:hover,
-#custom-focusmode:hover,
-#custom-gamemode:hover,
-#custom-keybindhint:hover,
-#custom-themeswitch:hover,
-#custom-wallchange:hover,
-#custom-wbarswitch:hover,
-#custom-window-layout:hover,
-#custom-workflows:hover {
-  color: @hvr_fg;
-}
 
 #custom-display {
   margin: 2px 0px 4px;

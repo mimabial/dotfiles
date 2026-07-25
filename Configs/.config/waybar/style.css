@@ -11,11 +11,11 @@
     /* Theme configuration is generated through the `theme.css` file */
     @import "theme.css";
 
-    /* Shared or user-selected base style */
-    @import "../../.local/share/waybar/styles/top.css";
-
-    /* Runtime geometry overrides */
+    /* Runtime geometry */
     @import "includes/border-radius.css";
+
+    /* Shared base style */
+    @import "../../.local/share/waybar/styles/top.css";
 
     /* Active workflow overrides, written by util/workflows.sh */
     @import "includes/workflow.css";

@@ -115,6 +115,7 @@ run_renderers() {
 
 reload_clients() {
   local background=""
+  local rmpc_reload="$HOME/.local/lib/hypr/theme/lib/rmpc.reload.bash"
   background="$(jq -r '.background // empty' "${PALETTE}" 2>/dev/null || true)"
 
   if [[ "${background}" =~ ^(dark|light)$ ]] && command -v gsettings >/dev/null 2>&1; then
@@ -122,6 +123,10 @@ reload_clients() {
   fi
 
   pkill -SIGUSR1 -x kitty 2>/dev/null || true
+
+  if [[ -r "${rmpc_reload}" ]]; then
+    bash "${rmpc_reload}"
+  fi
 
   if command -v tmux >/dev/null 2>&1 && tmux list-sessions >/dev/null 2>&1; then
     tmux source-file "${XDG_CONFIG_HOME:-$HOME/.config}/tmux/tmux.conf" 2>/dev/null || true

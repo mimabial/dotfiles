@@ -2,11 +2,11 @@ $HOME/.config/waybar/theme.css
 
 @define-color bg #fdf6e3; /* base2 */
 @define-color fg #2f4f4f; /* base00 */
-@define-color br #93a1a1; /* base1 */
+@define-color br #00A6A6; /* base1 */
 
-@define-color alt_bg #005CAB;
+@define-color alt_bg #00D4D4;
 @define-color alt_fg #2f4f4f;
-@define-color alt_br #00A651; /* blue */
+@define-color alt_br #B833CC; /* blue */
 
 @define-color act_bg #005CAB;
 @define-color act_fg #005CAB; /* base3 */
@@ -14,7 +14,7 @@ $HOME/.config/waybar/theme.css
 
 @define-color hvr_bg #268bd2;
 @define-color hvr_fg #E1261C;
-@define-color hvr_br #00A651;
+@define-color hvr_br #D0021B;
 
 @define-color c0 #fdf6e3;
 @define-color c1 #D0021B;

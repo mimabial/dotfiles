@@ -6,7 +6,7 @@ $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME = Sweet-cursors
-$CURSOR_SIZE = 28
+$CURSOR_SIZE = 24
 
 general {
     gaps_in = 4

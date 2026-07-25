@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=HyprShell
+Icon=system-run
+Exec=/usr/bin/true
+Terminal=false
+NoDisplay=true
+StartupWMClass=org.tui.HyprShell
