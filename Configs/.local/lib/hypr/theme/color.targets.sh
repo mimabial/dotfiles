@@ -3,48 +3,6 @@
 #
 # color.targets.sh - Materialize theme target files and wallpaper-mode cleanup
 
-active_theme_metadata_file() {
-  printf '%s\n' "${HYPR_THEME_METADATA_FILE:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/theme.meta}"
-}
-
-hypr_layered_value() {
-  local key="$1"
-  local config_file value=""
-
-  for config_file in \
-    "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/userfonts.lua" \
-    "$(active_theme_metadata_file)" \
-    "${XDG_DATA_HOME:-$HOME/.local/share}/hypr/variables.meta"
-  do
-    [[ -r "${config_file}" ]] || continue
-    value="$(
-      awk -F= -v key="${key}" '
-        $0 ~ "^\\$" key "[[:space:]]*=" {
-          value = substr($0, index($0, "=") + 1)
-          gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
-          gsub(/^"/, "", value)
-          gsub(/"$/, "", value)
-          print value
-          exit
-        }
-        $0 ~ "^[[:space:]]*vars\\.set\\(\\\"" key "\\\"," {
-          value = $0
-          sub(/^[^,]*,[[:space:]]*\"/, "", value)
-          sub(/\"\).*/, "", value)
-          print value
-          exit
-        }
-      ' "${config_file}"
-    )"
-    [[ -n "${value}" ]] && {
-      printf '%s\n' "${value}"
-      return 0
-    }
-  done
-
-  return 1
-}
-
 rewrite_if_changed() {
   local source_file="$1"
   local target_file="$2"
@@ -54,11 +12,7 @@ rewrite_if_changed() {
   if [[ -f "${target_file}" ]] && cmp -s "${source_file}" "${target_file}"; then
     rm -f "${source_file}"
   else
-    if declare -F theme_phase_d_promote_file >/dev/null 2>&1; then
-      theme_phase_d_promote_file "${source_file}" "${target_file}" || return 1
-    else
-      mv -f "${source_file}" "${target_file}"
-    fi
+    mv -f "${source_file}" "${target_file}"
     changed=1
   fi
 

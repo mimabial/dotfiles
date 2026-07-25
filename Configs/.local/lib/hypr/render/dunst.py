@@ -8,6 +8,7 @@ import os
 import re
 import subprocess
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -48,6 +49,35 @@ WAL_TEMPLATES_DIR = (
 )
 
 APP = "dunst"
+
+
+@dataclass(frozen=True)
+class DunstColors:
+    roles: dict
+    urgency: dict
+    categories: dict
+    progress_fg: str
+
+
+@dataclass(frozen=True)
+class DunstLayout:
+    rounding: str
+    gaps_in: str
+    border_size: str
+    gap_size: int
+    edge_padding: int
+    origin: str
+
+
+@dataclass(frozen=True)
+class DunstFont:
+    icon_theme: str
+    name: str
+    size: str
+
+    @property
+    def config_line(self):
+        return f"    font = {self.name} {self.size}" if self.name else ""
 
 
 def first(*vals):
@@ -157,7 +187,13 @@ def read_hypr_metric(opt):
         ).stdout
         v = json.loads(out).get("int", "")
         return str(v) if v != "" else ""
-    except Exception:
+    except (
+        OSError,
+        subprocess.CalledProcessError,
+        json.JSONDecodeError,
+        TypeError,
+        ValueError,
+    ):
         return ""
 
 
@@ -172,8 +208,8 @@ def waybar_position():
                 m = re.search(r'"position"\s*:\s*"([^"]*)"', line)
                 if m:
                     return m.group(1)
-        except Exception:
-            pass
+        except OSError:
+            return "right"
     return "right"
 
 
@@ -244,6 +280,7 @@ def reload_dunst():
             subprocess.run(
                 ["pgrep", "-u", str(os.getuid()), "-x", "dunst"],
                 stdout=subprocess.DEVNULL,
+                check=False,
             ).returncode
             != 0
         ):
@@ -252,7 +289,10 @@ def reload_dunst():
         return
     if (
         subprocess.run(
-            ["dunstctl", "reload"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            ["dunstctl", "reload"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
         ).returncode
         != 0
     ):
@@ -260,6 +300,7 @@ def reload_dunst():
             ["pkill", "-HUP", "-x", "dunst"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
+            check=False,
         )
     refresh_submap_hint()
 
@@ -267,9 +308,7 @@ def reload_dunst():
 def refresh_submap_hint():
     # The reload restyles only new notifications; a submap hint on screen
     # would keep the previous palette until the submap is re-entered.
-    hint_script = (
-        Path(__file__).resolve().parent.parent / "keybinds" / "submap-hint.sh"
-    )
+    hint_script = Path(__file__).resolve().parent.parent / "keybinds" / "submap-hint.sh"
     if not hint_script.is_file():
         return
     try:
@@ -283,78 +322,125 @@ def refresh_submap_hint():
         pass
 
 
-def main():
-    if not PALETTE.is_file():
-        sys.exit(f"render/dunst: missing {PALETTE}")
-    CONF_DIR.mkdir(parents=True, exist_ok=True)
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
-    ensure_base()
-
-    p = json.loads(PALETTE.read_text())
-    bg = p["bg"]
-    fg = p["fg"]
-    c = p["colors"]
+def resolve_colors(palette):
+    bg = palette["bg"]
+    fg = palette["fg"]
+    colors = palette["colors"]
     pack = (
-        p.get("source", "").removeprefix("theme:")
-        if p.get("source", "").startswith("theme:")
+        palette.get("source", "").removeprefix("theme:")
+        if palette.get("source", "").startswith("theme:")
         else ""
     )
     overrides = load_pack_overrides(pack)
-    variant = p.get("background", "dark")
+    variant = palette.get("background", "dark")
     if variant not in ("dark", "light"):
         variant = "dark"
-    template = {} if pack else load_dunst_template(variant, bg, fg, c)
+    template = {} if pack else load_dunst_template(variant, bg, fg, colors)
 
     def role(name, fallback):
         return overrides.get(name) or template.get(name) or fallback
 
-    bg_primary = role("bg-primary", first(bg, c[0], "#1e1e2e"))
+    bg_primary = role("bg-primary", first(bg, colors[0], "#1e1e2e"))
     bg_secondary = role("bg-secondary", bg_primary)
     bg_tertiary = role("bg-tertiary", bg_primary)
-    fg_primary = role("fg-primary", first(fg, c[15], "#f8f8f2"))
+    fg_primary = role("fg-primary", first(fg, colors[15], "#f8f8f2"))
     fg_secondary = role("fg-secondary", fg_primary)
-    border_primary = role("border-primary", first(c[4], c[12], "#6272a4"))
-    border_secondary = role("border-secondary", first(c[8], border_primary, "#44475a"))
-    accent_red = role("accent-red", first(c[1], c[9], "#ff5555"))
-    accent_green = role("accent-green", first(c[2], c[10], border_primary, "#50fa7b"))
-    accent_yellow = role("accent-yellow", first(c[3], c[11], border_primary, "#f1fa8c"))
-    accent_blue = role("accent-blue", first(c[4], c[12], border_primary, "#8be9fd"))
-    accent_purple = role("accent-purple", first(c[5], c[13], accent_blue, "#bd93f9"))
-    accent_aqua = role("accent-aqua", first(c[6], c[14], accent_blue, "#8be9fd"))
-    accent_orange = role("accent-orange", first(c[11], c[3], accent_red, "#ffb86c"))
-    gray = role("gray", first(c[8], border_secondary, "#6272a4"))
+    border_primary = role("border-primary", first(colors[4], colors[12], "#6272a4"))
+    border_secondary = role(
+        "border-secondary", first(colors[8], border_primary, "#44475a")
+    )
+    accent_red = role("accent-red", first(colors[1], colors[9], "#ff5555"))
+    accent_green = role(
+        "accent-green",
+        first(colors[2], colors[10], border_primary, "#50fa7b"),
+    )
+    accent_yellow = role(
+        "accent-yellow",
+        first(colors[3], colors[11], border_primary, "#f1fa8c"),
+    )
+    accent_blue = role(
+        "accent-blue",
+        first(colors[4], colors[12], border_primary, "#8be9fd"),
+    )
+    accent_purple = role(
+        "accent-purple",
+        first(colors[5], colors[13], accent_blue, "#bd93f9"),
+    )
+    accent_aqua = role(
+        "accent-aqua",
+        first(colors[6], colors[14], accent_blue, "#8be9fd"),
+    )
+    accent_orange = role(
+        "accent-orange",
+        first(colors[11], colors[3], accent_red, "#ffb86c"),
+    )
+    gray = role("gray", first(colors[8], border_secondary, "#6272a4"))
 
     bg_critical = role("bg-critical", bg_primary)
     fg_critical = role("fg-critical", fg_primary)
     frame_critical = role("frame-critical", accent_red)
 
-    bg_low_render = with_alpha(bg_secondary, "80")
-    bg_normal_render = with_alpha(bg_primary, "80")
-    bg_category_render = with_alpha(bg_tertiary, "80")
-    bg_critical_render = with_alpha(bg_critical, "80")
-    fg_low_render = with_alpha(fg_secondary, "E6")
-    fg_normal_render = with_alpha(fg_primary, "E6")
-    fg_category_render = with_alpha(fg_primary, "E6")
-    fg_critical_render = with_alpha(fg_critical, "E6")
-    frame_low_render = with_alpha(border_secondary, "33")
-    frame_normal_render = with_alpha(border_primary, "55")
-    frame_critical_render = with_alpha(frame_critical, "CC")
-    progress_fg = accent_blue
-    cat_email = with_alpha(accent_blue, "55")
-    cat_chat = with_alpha(accent_aqua, "55")
-    cat_warning = with_alpha(accent_yellow, "55")
-    cat_error = with_alpha(accent_red, "55")
-    cat_network = with_alpha(accent_blue, "55")
-    cat_battery = with_alpha(accent_orange, "55")
-    cat_update = with_alpha(accent_green, "55")
-    cat_music = with_alpha(accent_purple, "55")
-    cat_volume = with_alpha(gray, "55")
+    resolved = DunstColors(
+        roles={
+            "fg-primary": fg_primary,
+            "fg-secondary": fg_secondary,
+            "bg-primary": bg_primary,
+            "bg-secondary": bg_secondary,
+            "bg-tertiary": bg_tertiary,
+            "accent-red": accent_red,
+            "accent-green": accent_green,
+            "accent-yellow": accent_yellow,
+            "accent-blue": accent_blue,
+            "accent-purple": accent_purple,
+            "accent-aqua": accent_aqua,
+            "accent-orange": accent_orange,
+            "border-primary": border_primary,
+            "border-secondary": border_secondary,
+            "gray": gray,
+        },
+        urgency={
+            "low": {
+                "background": with_alpha(bg_secondary, "80"),
+                "foreground": with_alpha(fg_secondary, "E6"),
+                "frame": with_alpha(border_secondary, "33"),
+            },
+            "normal": {
+                "background": with_alpha(bg_primary, "80"),
+                "foreground": with_alpha(fg_primary, "E6"),
+                "frame": with_alpha(border_primary, "55"),
+            },
+            "critical": {
+                "background": with_alpha(bg_critical, "80"),
+                "foreground": with_alpha(fg_critical, "E6"),
+                "frame": with_alpha(frame_critical, "CC"),
+            },
+            "category": {
+                "background": with_alpha(bg_tertiary, "80"),
+                "foreground": with_alpha(fg_primary, "E6"),
+            },
+        },
+        categories={
+            "email": with_alpha(accent_blue, "55"),
+            "chat": with_alpha(accent_aqua, "55"),
+            "warning": with_alpha(accent_yellow, "55"),
+            "error": with_alpha(accent_red, "55"),
+            "network": with_alpha(accent_blue, "55"),
+            "battery": with_alpha(accent_orange, "55"),
+            "update": with_alpha(accent_green, "55"),
+            "music": with_alpha(accent_purple, "55"),
+            "volume": with_alpha(gray, "55"),
+        },
+        progress_fg=accent_blue,
+    )
+    return pack, variant, resolved
 
-    # Layout metrics
+
+def resolve_layout():
     rounding = resolve_metric("rounding", "decoration:rounding", "5")
     gaps_in = resolve_metric("gaps_in", "general:gaps_in", "5")
     gaps_out = resolve_metric("gaps_out", "general:gaps_out", "6")
     border_size = resolve_metric("border_size", "general:border_size", "2")
+
     try:
         gap_size = int(gaps_in) * 2
     except ValueError:
@@ -364,12 +450,22 @@ def main():
     except ValueError:
         edge_padding = 14
 
-    pos = waybar_position()
-    origin = {"left": "top-left", "bottom": "bottom-right", "top": "top-right"}.get(
-        pos, "top-right"
+    origin = {
+        "left": "top-left",
+        "bottom": "bottom-right",
+        "top": "top-right",
+    }.get(waybar_position(), "top-right")
+    return DunstLayout(
+        rounding=rounding,
+        gaps_in=gaps_in,
+        border_size=border_size,
+        gap_size=gap_size,
+        edge_padding=edge_padding,
+        origin=origin,
     )
 
-    # Font
+
+def resolve_icon_theme():
     icon_theme = first(
         os.environ.get("ICON_THEME"),
         os.environ.get("GTK_ICON"),
@@ -382,6 +478,7 @@ def main():
                     ["gsettings", "get", "org.gnome.desktop.interface", "icon-theme"],
                     capture_output=True,
                     text=True,
+                    check=False,
                 )
                 .stdout.strip()
                 .strip("'")
@@ -389,8 +486,10 @@ def main():
             icon_theme = out
         except FileNotFoundError:
             pass
-    icon_theme = icon_theme or "hicolor"
+    return icon_theme or "hicolor"
 
+
+def resolve_font():
     notification_font = first(
         os.environ.get("NOTIFICATION_FONT"),
         read_layer_var("NOTIFICATION_FONT"),
@@ -404,13 +503,14 @@ def main():
     )
     if not notification_font_size.isdigit():
         notification_font_size = "10"
-    font_line = (
-        f"    font = {notification_font} {notification_font_size}"
-        if notification_font
-        else ""
+    return DunstFont(
+        icon_theme=resolve_icon_theme(),
+        name=notification_font,
+        size=notification_font_size,
     )
 
-    # Cache key
+
+def renderer_hash(pack, variant, colors, layout, font):
     hasher = hashlib.sha256()
     hasher.update(PALETTE.read_bytes())
     if BASE_CONF.is_file():
@@ -420,28 +520,124 @@ def main():
         if dt.is_file():
             hasher.update(dt.read_bytes())
     for s in (
-        rounding,
-        gaps_in,
-        border_size,
-        origin,
-        str(edge_padding),
-        notification_font,
-        notification_font_size,
-        icon_theme,
-        bg_normal_render,
-        fg_normal_render,
-        frame_normal_render,
-        progress_fg,
+        layout.rounding,
+        layout.gaps_in,
+        layout.border_size,
+        layout.origin,
+        str(layout.edge_padding),
+        font.name,
+        font.size,
+        font.icon_theme,
+        colors.urgency["normal"]["background"],
+        colors.urgency["normal"]["foreground"],
+        colors.urgency["normal"]["frame"],
+        colors.progress_fg,
     ):
         hasher.update(str(s).encode())
     hasher.update(Path(__file__).read_bytes())
     hasher.update(variant.encode())
     for f in dunst_template_layers(variant):
         hasher.update(f.read_bytes())
-    h = hasher.hexdigest()[:16]
+    return hasher.hexdigest()[:16]
 
+
+def category_rule(section, category, color, colors):
+    out = []
+    for urgency in ("low", "normal"):
+        out.append(f"""
+[category_{section}_{urgency}]
+    category = {category}
+    msg_urgency = {urgency}
+    background = "{colors.urgency["category"]["background"]}"
+    foreground = "{colors.urgency["category"]["foreground"]}"
+    frame_color = "{color}"
+    highlight = "{color}"
+    timeout = 2""")
+    return "".join(out)
+
+
+def category_rules(colors):
+    return "\n".join(
+        category_rule(name, name, color, colors)
+        for name, color in colors.categories.items()
+    )
+
+
+def render_config(base, colors, layout, font):
+    try:
+        corner_radius = int(layout.rounding) * 3 // 2
+    except ValueError:
+        corner_radius = 7
+
+    return f"""# WARNING: This file is auto-generated by render/dunst.
+# DO NOT edit manually.
+# Edit '{BASE_CONF}' to change the base configuration.
+
+{base}
+
+# Dynamic overrides generated from active palette + Hyprland state.
+[global]
+    monitor = 0
+    origin = {layout.origin}
+    offset = ({layout.edge_padding},{layout.edge_padding})
+    gap_size = {layout.gap_size}
+    frame_width = {layout.border_size}
+    progress_bar_corner_radius = {layout.rounding}
+    icon_theme = "{font.icon_theme}"
+    corner_radius = {corner_radius}
+    icon_corner_radius = {layout.rounding}
+{font.config_line}
+
+[urgency_low]
+    background = "{colors.urgency["low"]["background"]}"
+    foreground = "{colors.urgency["low"]["foreground"]}"
+    frame_color = "{colors.urgency["low"]["frame"]}"
+    highlight = "{colors.progress_fg}"
+    timeout = 2
+
+[urgency_normal]
+    background = "{colors.urgency["normal"]["background"]}"
+    foreground = "{colors.urgency["normal"]["foreground"]}"
+    frame_color = "{colors.urgency["normal"]["frame"]}"
+    highlight = "{colors.progress_fg}"
+    timeout = 2
+
+[urgency_critical]
+    background = "{colors.urgency["critical"]["background"]}"
+    foreground = "{colors.urgency["critical"]["foreground"]}"
+    frame_color = "{colors.urgency["critical"]["frame"]}"
+    highlight = "{colors.urgency["critical"]["frame"]}"
+    timeout = 0
+{category_rules(colors)}
+
+[submap_hint]
+    stack_tag = "submap-hint"
+    history_ignore = yes
+    format = "<span foreground='{colors.roles["accent-red"]}'>%s</span>\\n%b"
+    foreground = "{colors.urgency["low"]["foreground"]}"
+"""
+
+
+def render_roles(colors):
+    return "".join(
+        f"@define-color {name} {value};\n" for name, value in colors.roles.items()
+    )
+
+
+def main():
+    if not PALETTE.is_file():
+        sys.exit(f"render/dunst: missing {PALETTE}")
+    CONF_DIR.mkdir(parents=True, exist_ok=True)
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    ensure_base()
+
+    palette = json.loads(PALETTE.read_text())
+    pack, variant, colors = resolve_colors(palette)
+    layout = resolve_layout()
+    font = resolve_font()
+    cache_key = renderer_hash(pack, variant, colors, layout, font)
     if (
-        cache_hit(APP, h)
+        cache_hit(APP, cache_key)
         and DUNST_CONF.exists()
         and OUT_FILE.exists()
         and ROLES_FILE.exists()
@@ -451,109 +647,13 @@ def main():
     base = (
         BASE_CONF.read_text() if BASE_CONF.is_file() else "[global]\n    monitor = 0\n"
     )
-
-    def category_rule(section, category, color):
-        out = []
-        for urgency in ("low", "normal"):
-            out.append(f"""
-[category_{section}_{urgency}]
-    category = {category}
-    msg_urgency = {urgency}
-    background = "{bg_category_render}"
-    foreground = "{fg_category_render}"
-    frame_color = "{color}"
-    highlight = "{color}"
-    timeout = 2""")
-        return "".join(out)
-
-    try:
-        corner_radius = int(rounding) * 3 // 2
-    except ValueError:
-        corner_radius = 7
-
-    content = f"""# WARNING: This file is auto-generated by render/dunst.
-# DO NOT edit manually.
-# Edit '{BASE_CONF}' to change the base configuration.
-
-{base}
-
-# Dynamic overrides generated from active palette + Hyprland state.
-[global]
-    monitor = 0
-    origin = {origin}
-    offset = ({edge_padding},{edge_padding})
-    gap_size = {gap_size}
-    frame_width = {border_size}
-    progress_bar_corner_radius = {rounding}
-    icon_theme = "{icon_theme}"
-    corner_radius = {corner_radius}
-    icon_corner_radius = {rounding}
-{font_line}
-
-[urgency_low]
-    background = "{bg_low_render}"
-    foreground = "{fg_low_render}"
-    frame_color = "{frame_low_render}"
-    highlight = "{progress_fg}"
-    timeout = 2
-
-[urgency_normal]
-    background = "{bg_normal_render}"
-    foreground = "{fg_normal_render}"
-    frame_color = "{frame_normal_render}"
-    highlight = "{progress_fg}"
-    timeout = 2
-
-[urgency_critical]
-    background = "{bg_critical_render}"
-    foreground = "{fg_critical_render}"
-    frame_color = "{frame_critical_render}"
-    highlight = "{frame_critical_render}"
-    timeout = 0
-{category_rule("email", "email", cat_email)}
-{category_rule("chat", "chat", cat_chat)}
-{category_rule("warning", "warning", cat_warning)}
-{category_rule("error", "error", cat_error)}
-{category_rule("network", "network", cat_network)}
-{category_rule("battery", "battery", cat_battery)}
-{category_rule("update", "update", cat_update)}
-{category_rule("music", "music", cat_music)}
-{category_rule("volume", "volume", cat_volume)}
-
-[submap_hint]
-    stack_tag = "submap-hint"
-    history_ignore = yes
-    format = "<span foreground='{accent_red}'>%s</span>\\n%b"
-    foreground = "{fg_low_render}"
-"""
-
-    roles = {
-        "fg-primary": fg_primary,
-        "fg-secondary": fg_secondary,
-        "bg-primary": bg_primary,
-        "bg-secondary": bg_secondary,
-        "bg-tertiary": bg_tertiary,
-        "accent-red": accent_red,
-        "accent-green": accent_green,
-        "accent-yellow": accent_yellow,
-        "accent-blue": accent_blue,
-        "accent-purple": accent_purple,
-        "accent-aqua": accent_aqua,
-        "accent-orange": accent_orange,
-        "border-primary": border_primary,
-        "border-secondary": border_secondary,
-        "gray": gray,
-    }
-    roles_content = "".join(
-        f"@define-color {name} {value};\n" for name, value in roles.items()
-    )
-
+    content = render_config(base, colors, layout, font)
     # Write to both render cache + live dunstrc (dunst reads dunstrc directly)
     for target in (OUT_FILE, DUNST_CONF):
         atomic_write(target, content)
-    atomic_write(ROLES_FILE, roles_content)
+    atomic_write(ROLES_FILE, render_roles(colors))
 
-    cache_store(APP, h)
+    cache_store(APP, cache_key)
     reload_dunst()
 
 

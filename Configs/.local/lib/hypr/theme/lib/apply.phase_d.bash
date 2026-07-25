@@ -335,18 +335,6 @@ theme_apply_phase_d_waybar_icon_sync() {
     && state_set "waybar_icon_theme" "${current_icon_theme}" "staterc" 2>/dev/null || true
 }
 
-theme_apply_run_phase_d_script() {
-  local lock_key="$1"
-  local script_rel="$2"
-  local script_path="${LIB_DIR}/hypr/${script_rel}"
-
-  theme_apply_generation_is_current || return 0
-  [[ -f "${script_path}" ]] || return 0
-  HYPR_THEME_APPLY_GENERATION="${theme_apply_generation}" \
-    HYPR_THEME_PHASE_D_LOCK_KEY="${lock_key}" \
-    bash "${script_path}"
-}
-
 # --- Helpers used by phase-D jobs ---
 
 theme_apply_sync_runtime_desktop_state() {

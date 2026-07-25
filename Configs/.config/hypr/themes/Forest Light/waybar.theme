@@ -8,33 +8,33 @@ $HOME/.config/waybar/theme.css
 @define-color alt_fg #5c6a72;
 @define-color alt_br #35a77c;
 
+@define-color act_bg #2E6F40;
+@define-color act_fg #35a77c;
 @define-color act_br #ecf5ed;
-@define-color act_fg #8da101;
-@define-color act_bg #829181;
 
-@define-color hvr_bg #a6b0a0;
-@define-color hvr_fg #8da101;
-@define-color hvr_br #8da101;
+@define-color hvr_bg #2E6F40;
+@define-color hvr_fg #35a77c;
+@define-color hvr_br #f85552;
 
 @define-color c0 #5c6a72;
 @define-color c1 #f85552;
-@define-color c2 #8da101;
+@define-color c2 #35a77c;
 @define-color c3 #dfa000;
 @define-color c4 #3a94c5;
 @define-color c5 #df69ba;
-@define-color c6 #35a77c;
+@define-color c6 #8da101;
 @define-color c7 #a6b0a0;
 @define-color c8 #829181;
 @define-color c9 #f85552;
-@define-color c10 #8da101;
+@define-color c10 #35a77c;
 @define-color c11 #dfa000;
 @define-color c12 #3a94c5;
 @define-color c13 #df69ba;
-@define-color c14 #35a77c;
+@define-color c14 #8da101;
 @define-color c15 #e8e5d5;
 
 @define-color accent #2E6F40;
-@define-color info #35a77c;
-@define-color warning #fffbef;
+@define-color info #3a94c5;
+@define-color warning #dfa000;
 @define-color error #f85552;
-@define-color success #8da101;
+@define-color success #35a77c;

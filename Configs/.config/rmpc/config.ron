@@ -161,26 +161,26 @@
         borders: "BOTTOM",
         direction: Horizontal, panes: [
         (size: "48%", pane: Pane(Property(content: [
-                        (kind: Text(" 󰸪 "), style: (fg: "#43465A")),
-                        (kind: Text("Title "), style: (fg: "#CDD6F4")),
+                        (kind: Text(" 󰸪 "), style: (fg: "#686868")),
+                        (kind: Text("Title "), style: (fg: "#FFFFFF")),
                     ], align: Left))
         ),
         (size: "3", pane: Pane(Property(content: [
-                        (kind: Text(" │ "), style: (fg: "#43465A", modifiers: "Bold")),
+                        (kind: Text(" │ "), style: (fg: "#686868", modifiers: "Bold")),
                     ], align: Center))
         ),
         (size: "41%", pane: Pane(Property(content: [
-                        (kind: Text("󰳩 "), style: (fg: "#43465A")),
-                        (kind: Text("Artist "), style: (fg: "#CDD6F4")),
+                        (kind: Text("󰳩 "), style: (fg: "#686868")),
+                        (kind: Text("Artist "), style: (fg: "#FFFFFF")),
                     ], align: Left))
         ),
         (size: "3", pane: Pane(Property(content: [
-                        (kind: Text(" │ "), style: (fg: "#43465A", modifiers: "Bold")),
+                        (kind: Text(" │ "), style: (fg: "#686868", modifiers: "Bold")),
                     ], align: Center))
         ),
         (size: "11%", pane: Pane(Property(content: [
-                        (kind: Text("󰔚 "), style: (fg: "#43465A")),
-                        (kind: Text("Time "), style: (fg: "#CDD6F4")),
+                        (kind: Text("󰔚 "), style: (fg: "#686868")),
+                        (kind: Text("Time "), style: (fg: "#FFFFFF")),
                     ], align: Left))
         ),
       ]),

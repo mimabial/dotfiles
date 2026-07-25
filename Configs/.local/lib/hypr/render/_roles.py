@@ -11,7 +11,7 @@ import re
 
 def hex_to_rgb(hex_):
     h = hex_.lstrip("#")
-    return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
+    return tuple(int(h[i : i + 2], 16) for i in (0, 2, 4))
 
 
 def luminance(hex_):
@@ -20,7 +20,12 @@ def luminance(hex_):
 
 
 def contrast_text(bg, fg, against):
-    return bg if abs(luminance(fg) - luminance(against)) < abs(luminance(bg) - luminance(against)) else fg
+    return (
+        bg
+        if abs(luminance(fg) - luminance(against))
+        < abs(luminance(bg) - luminance(against))
+        else fg
+    )
 
 
 def shade(hex_, amount):
@@ -45,7 +50,11 @@ def _parse_general_colors(kvconfig_path):
     if not sec:
         return {}
     result = {}
-    for m in re.finditer(r"^([a-z._]+)\s*=\s*(#[0-9a-fA-F]{6})(?:[0-9a-fA-F]{2})?", sec.group(1), re.M):
+    for m in re.finditer(
+        r"^([a-z._]+)\s*=\s*(#[0-9a-fA-F]{6})(?:[0-9a-fA-F]{2})?",
+        sec.group(1),
+        re.MULTILINE,
+    ):
         result[m.group(1)] = m.group(2).lower()
     return result
 
@@ -71,6 +80,104 @@ def _load_colors_map(colors_map_path, palette_full):
     return subs
 
 
+class _RoleSource:
+    """Resolve kvconfig colors either literally or through colors.map."""
+
+    def __init__(self, general, substitutions, theme_mode):
+        self._general = general
+        self._substitutions = substitutions
+        self._theme_mode = theme_mode
+
+    def color(self, key):
+        target = self._general.get(key)
+        if not target:
+            return None
+        if self._theme_mode:
+            return target
+        return self._substitutions.get(target, target)
+
+    def role(self, key, default_var, colors, fg):
+        return self.color(key) or colors.get(default_var, fg)
+
+
+def _resolve_theme_base(source, bg, fg):
+    bg = source.color("window.color") or bg
+    fg = source.color("text.color") or source.color("window.text.color") or fg
+    if not fg and bg:
+        fg = "#e0e0e0" if luminance(bg) < 0.5 else "#202020"
+    return bg, fg
+
+
+def _resolve_shared_roles(source, bg, fg, colors, is_dark, theme_mode):
+    accent = source.role("highlight.color", "color4", colors, fg)
+    highlight_text = source.color("highlight.text.color") or contrast_text(
+        bg, fg, accent
+    )
+    return {
+        "accent": accent,
+        "inactive_accent": source.color("inactive.highlight.color") or accent,
+        "link": source.role("link.color", "color4", colors, fg),
+        "link_visited": source.role("link.visited.color", "color5", colors, fg),
+        "hover": accent if theme_mode else colors.get("color12", accent),
+        "highlight_text": highlight_text,
+        "inactive_highlight_text": highlight_text,
+    }
+
+
+def _resolve_theme_roles(source, bg, fg, is_dark):
+    window_surface = source.color("window.color") or bg
+    base_surface = source.color("base.color") or window_surface
+    alternate_surface = source.color("alt.base.color") or base_surface
+    text = source.color("text.color") or fg
+    return {
+        "window_surface": window_surface,
+        "base_surface": base_surface,
+        "alternate_surface": alternate_surface,
+        "button_surface": source.color("button.color") or base_surface,
+        "normal_surface": base_surface,
+        "tooltip_surface": source.color("tooltip.base.color") or alternate_surface,
+        "text": text,
+        "window_text": source.color("window.text.color") or text,
+        "button_text": source.color("button.text.color") or text,
+        "disabled_text": (
+            source.color("disabled.text.color")
+            or source.color("text.disabled.color")
+            or shade(text, 0.18 * (-1 if is_dark else 1))
+        ),
+        "tooltip_text": source.color("tooltip.text.color") or text,
+        "bright_text": source.color("progress.indicator.text.color")
+        or ("#ffffff" if is_dark else "#000000"),
+        "light": source.color("light.color"),
+        "mid_light": source.color("mid.light.color"),
+        "dark": source.color("dark.color"),
+        "mid": source.color("mid.color"),
+        "shadow": None,
+    }
+
+
+def _resolve_wallpaper_roles(bg, fg, colors, is_dark):
+    normal_surface = colors.get("color0", bg) if is_dark else colors.get("color7", bg)
+    return {
+        "normal_surface": normal_surface,
+        "window_surface": bg,
+        "base_surface": bg,
+        "alternate_surface": None,
+        "button_surface": normal_surface,
+        "tooltip_surface": normal_surface,
+        "text": fg,
+        "window_text": fg,
+        "button_text": fg,
+        "disabled_text": shade(fg, 0.18 * (-1 if is_dark else 1)),
+        "tooltip_text": fg,
+        "bright_text": "#ffffff" if is_dark else "#000000",
+        "light": None,
+        "mid_light": None,
+        "dark": None,
+        "mid": None,
+        "shadow": None,
+    }
+
+
 class QtRoles:
     """Resolved Qt palette roles from an active palette + pack kvconfig."""
 
@@ -80,96 +187,23 @@ class QtRoles:
 
         bg = pywal["special"]["background"]
         fg = pywal["special"]["foreground"]
-        colors = pywal["colors"]
-
-        palette_full = {**colors, "background": bg, "foreground": fg}
+        self.colors = pywal["colors"]
+        palette_full = {**self.colors, "background": bg, "foreground": fg}
         self.substitutions = _load_colors_map(colors_map_path, palette_full)
+        source = _RoleSource(self._general, self.substitutions, theme_mode)
 
         if theme_mode:
-            bg = self._source_color("window.color") or bg
-            fg = (
-                self._source_color("text.color")
-                or self._source_color("window.text.color")
-                or fg
-            )
-            if not fg and bg:
-                fg = "#e0e0e0" if luminance(bg) < 0.5 else "#202020"
+            bg, fg = _resolve_theme_base(source, bg, fg)
 
         self.bg = bg
         self.fg = fg
-        self.colors = colors
         self.is_dark = luminance(bg) < 0.5
-
-        self.accent = self._resolve_role("highlight.color", "color4")
-        self.inactive_accent = self._source_color("inactive.highlight.color") or self.accent
-        self.link = self._resolve_role("link.color", "color4")
-        self.link_visited = self._resolve_role("link.visited.color", "color5")
-        self.hover = self.accent if theme_mode else colors.get("color12", self.accent)
-        self.highlight_text = self._source_color("highlight.text.color") or contrast_text(bg, fg, self.accent)
-        self.inactive_highlight_text = self.highlight_text
-
+        resolved = _resolve_shared_roles(
+            source, bg, fg, self.colors, self.is_dark, theme_mode
+        )
         if theme_mode:
-            self.window_surface = self._source_color("window.color") or bg
-            self.base_surface = self._source_color("base.color") or self.window_surface
-            self.alternate_surface = self._source_color("alt.base.color") or self.base_surface
-            self.button_surface = self._source_color("button.color") or self.base_surface
-            self.normal_surface = self.base_surface
-            self.tooltip_surface = (
-                self._source_color("tooltip.base.color")
-                or self.alternate_surface
-            )
-            self.text = self._source_color("text.color") or fg
-            self.window_text = self._source_color("window.text.color") or self.text
-            self.button_text = self._source_color("button.text.color") or self.text
-            self.disabled_text = (
-                self._source_color("disabled.text.color")
-                or self._source_color("text.disabled.color")
-                or shade(self.text, 0.18 * (-1 if self.is_dark else 1))
-            )
-            self.tooltip_text = self._source_color("tooltip.text.color") or self.text
-            self.bright_text = self._source_color("progress.indicator.text.color") or (
-                "#ffffff" if self.is_dark else "#000000"
-            )
-            self.light = self._source_color("light.color")
-            self.mid_light = self._source_color("mid.light.color")
-            self.dark = self._source_color("dark.color")
-            self.mid = self._source_color("mid.color")
-            self.shadow = None
+            resolved.update(_resolve_theme_roles(source, bg, fg, self.is_dark))
         else:
-            self.normal_surface = (
-                colors.get("color0", bg) if self.is_dark
-                else colors.get("color7", bg)
-            )
-            self.window_surface = bg
-            self.base_surface = bg
-            self.alternate_surface = None
-            self.button_surface = self.normal_surface
-            self.tooltip_surface = self.normal_surface
-            self.text = fg
-            self.window_text = fg
-            self.button_text = fg
-            self.disabled_text = shade(fg, 0.18 * (-1 if self.is_dark else 1))
-            self.tooltip_text = fg
-            self.bright_text = "#ffffff" if self.is_dark else "#000000"
-            self.light = None
-            self.mid_light = None
-            self.dark = None
-            self.mid = None
-            self.shadow = None
-
-    def _resolve_role(self, key, default_var):
-        target = self._resolve_general_color(key)
-        if not target:
-            return self.colors.get(default_var, self.fg)
-        return target
-
-    def _resolve_general_color(self, key):
-        target = self._general.get(key)
-        if not target:
-            return None
-        if self.theme_mode:
-            return target
-        return self.substitutions.get(target, target)
-
-    def _source_color(self, key):
-        return self._resolve_general_color(key)
+            resolved.update(_resolve_wallpaper_roles(bg, fg, self.colors, self.is_dark))
+        for name, value in resolved.items():
+            setattr(self, name, value)
