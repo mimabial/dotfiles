@@ -97,8 +97,28 @@ hl.on("window.open", function(win)
   hl.exec_cmd("hyprshell window/apply-profile " .. profile .. " " .. win.address .. " " .. tostring(mon.id))
 end)
 
+local mullvad_workspace_rule = hl.window_rule({["name"] = "mullvad-startup-workspace", ["match"] = {["class"] = "^(Mullvad VPN)$"}, ["workspace"] = "10 silent"})
+mullvad_workspace_rule:set_enabled(false)
+
+local mullvad_startup_pending = false
+local mullvad_startup_timer = nil
+
+local function end_mullvad_startup()
+  mullvad_startup_pending = false
+  mullvad_workspace_rule:set_enabled(false)
+end
+
+hl.on("hyprland.start", function()
+  mullvad_startup_pending = true
+  mullvad_workspace_rule:set_enabled(true)
+  -- Held in a local so the timer object outlives this closure and still fires.
+  mullvad_startup_timer = hl.timer(end_mullvad_startup, {timeout = 120000, type = "oneshot"})
+end)
+
 hl.on("window.open", function(win)
   if not win or win.class ~= "Mullvad VPN" then return end
+  if not mullvad_startup_pending then return end
+  end_mullvad_startup()
   local mon = win.monitor
   if not mon then return end
   local sz = win.size or {}

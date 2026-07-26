@@ -39,6 +39,7 @@ ACTION_LABELS = {
     "repeat": "Repeat Track",
     "loop": "Repeat Playlist",
     "disable-loop": "Disable Repeat",
+    "cancel": "Cancel",
 }
 
 CAPABILITY_BY_ACTION = {
@@ -323,6 +324,8 @@ def dynamic_menu_entries(player: str) -> list[tuple[str, str]]:
         if loop_status != "None":
             entries.append((ACTION_LABELS["disable-loop"], "disable-loop"))
 
+    entries.append((ACTION_LABELS["cancel"], "cancel"))
+
     return entries
 
 
@@ -382,7 +385,11 @@ def run_menu(explicit_player: str = "") -> int:
     selected_index = rofi_menu_index(labels, player)
     if selected_index is None:
         return 0
-    return run_action(entries[selected_index][1], player)
+
+    action = entries[selected_index][1]
+    if action == "cancel":
+        return 0
+    return run_action(action, player)
 
 
 def run_action(action: str, explicit_player: str = "") -> int:

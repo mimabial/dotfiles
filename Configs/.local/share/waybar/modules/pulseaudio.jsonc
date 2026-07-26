@@ -10,9 +10,9 @@
     "smooth-scrolling-threshold": 1,
     "tooltip-format": "{volume}% {icon} | {desc}",
     "format-icons": {
-      "headphone": "",
-      "hands-free": "",
-      "headset": "",
+      "headphone": "",
+      "hands-free": "",
+      "headset": "",
       "phone": "",
       "portable": "",
       "car": "",

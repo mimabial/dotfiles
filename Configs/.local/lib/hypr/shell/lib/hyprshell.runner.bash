@@ -171,6 +171,39 @@ print_ambiguous_command_error() {
   done
 }
 
+resolve_command_target() {
+  local command_name="${1:-}"
+  local target_path=""
+  local dir=""
+
+  if [[ -z "${command_name}" ]]; then
+    printf 'Usage: hyprshell resolve <command>\n' >&2
+    return 1
+  fi
+
+  resolve_command_candidates "${command_name}"
+
+  if ((${#CANDIDATES[@]} > 1)); then
+    print_ambiguous_command_error "${command_name}"
+    return 1
+  fi
+
+  if ((${#CANDIDATES[@]} == 0)); then
+    printf 'Command not found: %s\n' "${command_name}" >&2
+    return 1
+  fi
+
+  target_path="${CANDIDATES[0]#*$'\t'}"
+  for dir in "${SCRIPT_DIRS[@]}"; do
+    if [[ "${target_path}" == "${dir}/"* ]]; then
+      printf '%s\n' "${target_path#${dir}/}"
+      return 0
+    fi
+  done
+
+  printf '%s\n' "${target_path}"
+}
+
 run_command() {
   local command_name="$1"
   shift

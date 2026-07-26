@@ -222,6 +222,7 @@ reset_main_arg_state() {
 	ENTRY_PATH=''
 	EXEC_NAME=''
 	EXEC_PATH=''
+	EXEC_WRAPPER_ARG=''
 }
 
 parse_desktop_entry_ref() {
@@ -261,9 +262,26 @@ resolve_desktop_entry_ref() {
 	fi
 }
 
+locate_hyprshell() {
+	if [ -n "${BIN_DIR:-}" ] && [ -x "${BIN_DIR}/hyprshell" ]; then
+		printf '%s\n' "${BIN_DIR}/hyprshell"
+		return 0
+	fi
+	app2unit_hyprshell_path=$(command -v hyprshell 2>/dev/null)
+	if [ -n "$app2unit_hyprshell_path" ]; then
+		printf '%s\n' "$app2unit_hyprshell_path"
+		return 0
+	fi
+	if [ -x "${HOME}/.local/bin/hyprshell" ]; then
+		printf '%s\n' "${HOME}/.local/bin/hyprshell"
+		return 0
+	fi
+	return 1
+}
+
 resolve_executable_ref() {
 	case "$MAIN_ARG" in
-	*/*)
+	/* | ./* | ../*)
 		EXEC_PATH=$MAIN_ARG
 		EXEC_NAME=${EXEC_PATH##*/}
 		debug "EXEC_PATH: $EXEC_PATH" "EXEC_NAME: $EXEC_NAME"
@@ -277,14 +295,38 @@ resolve_executable_ref() {
 		fi
 		return 0
 		;;
+	*/*)
+		if [ -f "$MAIN_ARG" ] && [ -x "$MAIN_ARG" ]; then
+			EXEC_PATH=$MAIN_ARG
+			EXEC_NAME=${EXEC_PATH##*/}
+			debug "EXEC_PATH: $EXEC_PATH" "EXEC_NAME: $EXEC_NAME"
+			return 0
+		fi
+		;;
 	esac
 
-	EXEC_NAME=$MAIN_ARG
+	EXEC_NAME=${MAIN_ARG##*/}
 	debug "EXEC_NAME: $EXEC_NAME"
-	if ! type "$EXEC_NAME" >/dev/null 2>&1; then
-		error "Executable not found: '$EXEC_NAME'"
+	case "$MAIN_ARG" in
+	*/*) ;;
+	*)
+		if type "$EXEC_NAME" >/dev/null 2>&1; then
+			return 0
+		fi
+		;;
+	esac
+
+	app2unit_hyprshell=$(locate_hyprshell) || {
+		error "Executable not found: '$MAIN_ARG'"
 		return 1
-	fi
+	}
+	app2unit_target=$("$app2unit_hyprshell" resolve "$MAIN_ARG" 2>&1) || {
+		error "Executable not found: '$MAIN_ARG'" "$app2unit_target"
+		return 1
+	}
+	EXEC_PATH=$app2unit_hyprshell
+	EXEC_WRAPPER_ARG=$app2unit_target
+	debug "resolved via hyprshell: $EXEC_WRAPPER_ARG"
 }
 
 parse_main_arg() {
@@ -806,6 +848,7 @@ initialize_state() {
 
 	EXEC_NAME=''
 	EXEC_PATH=''
+	EXEC_WRAPPER_ARG=''
 	EXEC_RSEP_USEP=''
 	ENTRY_PATH=''
 	ENTRY_ID=''
@@ -1107,6 +1150,9 @@ execute_direct_target() {
 	# shellcheck disable=SC2086
 	set -- $1
 	IFS=$OIFS
+	if [ -n "${EXEC_WRAPPER_ARG:-}" ]; then
+		set -- "$EXEC_WRAPPER_ARG" "$@"
+	fi
 	set -- "${EXEC_PATH:-$EXEC_NAME}" "$@"
 	inject_terminal_handler_args "$@"
 	IFS=$USEP

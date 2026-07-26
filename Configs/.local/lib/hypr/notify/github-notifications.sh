@@ -2,7 +2,6 @@
 
 set -euo pipefail
 
-[ -f "${XDG_CACHE_HOME:-$HOME/.cache}/wal/colors-shell.sh" ] && source "${XDG_CACHE_HOME:-$HOME/.cache}/wal/colors-shell.sh"
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/notify/github-notifications.lib.sh"
 

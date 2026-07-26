@@ -62,6 +62,8 @@
 #custom-keybindhint:hover,
 #custom-mediaplayer:hover,
 #custom-microphone:hover,
+#custom-microphone.muted:hover,
+#custom-microphone.absent:hover,
 #custom-network:hover,
 #custom-powermenu:hover,
 #custom-screenrecord:hover,

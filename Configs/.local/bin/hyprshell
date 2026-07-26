@@ -151,6 +151,11 @@ case "${1:-}" in
   pyinit)
     python_initialized
     ;;
+  resolve)
+    shift
+    resolve_command_target "${1:-}"
+    exit $?
+    ;;
   *)
     run_command "$@"
     ;;

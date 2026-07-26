@@ -63,7 +63,7 @@
   },
   "group/networkmanagement": {
     "orientation": "inherit",
-    "modules": ["tray"]
+    "modules": ["custom/vpn", "tray"]
   },
   "group/power-group": {
     "orientation": "inherit",

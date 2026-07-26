@@ -5,16 +5,33 @@ source "$(command -v hyprshell)" || exit 1
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/system/monitor.common.bash"
 
-hypr_help_guard "Usage: hyprshell system/monitor-internal {on|off|toggle|recover|status}
-Enable, disable, or query the internal laptop display (default: toggle)." "$@"
+hypr_help_guard "Usage: hyprshell system/monitor-internal {on|off|toggle|recover|status} [-q|--quiet]
+Enable, disable, or query the internal laptop display (default: toggle).
+  -q, --quiet  Suppress notifications." "$@"
+
+quiet=0
+args=()
+for arg in "$@"; do
+  case "${arg}" in
+    -q | --quiet) quiet=1 ;;
+    *) args+=("${arg}") ;;
+  esac
+done
+set -- "${args[@]}"
 
 toggle_name="80-internal-disable"
 mirror_name="90-internal-mirror"
 
+internal_notify() {
+  if [[ "${quiet}" == 0 ]]; then
+    monitor_notify "$@"
+  fi
+}
+
 internal_monitor_required() {
   internal_monitor="$(monitor_internal_name)"
   if [[ -z "${internal_monitor}" ]]; then
-    monitor_notify "Monitor" "No internal laptop display found"
+    internal_notify "Monitor" "No internal laptop display found"
     return 1
   fi
 }
@@ -23,14 +40,14 @@ internal_on() {
   internal_monitor_required || return 1
   monitor_remove_fragment "${toggle_name}"
   monitor_reload
-  monitor_notify "Laptop display enabled" "${internal_monitor}"
+  internal_notify "Laptop display enabled" "${internal_monitor}"
 }
 
 internal_off() {
   internal_monitor_required || return 1
 
   if ! monitor_has_active_external; then
-    monitor_notify "Can't disable laptop display" "No active external display is enabled"
+    internal_notify "Can't disable laptop display" "No active external display is enabled"
     return 1
   fi
 
@@ -40,7 +57,7 @@ internal_off() {
 
   monitor_set_fragment "${toggle_name}" "hl.monitor({output = $(monitor_lua_quote "${internal_monitor}"), disabled = true})"
   monitor_reload
-  monitor_notify "Laptop display disabled" "${internal_monitor}"
+  internal_notify "Laptop display disabled" "${internal_monitor}"
 }
 
 internal_recover() {
@@ -48,7 +65,7 @@ internal_recover() {
   if ! monitor_has_active_external && monitor_fragment_exists "${toggle_name}"; then
     monitor_remove_fragment "${toggle_name}"
     monitor_reload
-    monitor_notify "Laptop display recovered" "${internal_monitor}"
+    internal_notify "Laptop display recovered" "${internal_monitor}"
   fi
 }
 

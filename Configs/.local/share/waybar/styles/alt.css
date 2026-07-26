@@ -221,7 +221,7 @@ window.popup decoration {
   color: @c1;
   font-size: 18px;
   margin: 2px;
-  padding: 2px 10px 0px 8px;
+  padding: 2px 12px 0px 10px;
   border: 1px solid alpha(@alt_br, 0.3);
 }
 
@@ -283,14 +283,15 @@ window.popup decoration {
 }
 
 #pulseaudio {
-  padding: 0px 12px;
+  font-size: 14px;
+  padding: 0px 14px 0px 10px;
   margin: 4px 2px;
   border: 1px solid alpha(@br, 0.3);
 }
 
 #custom-microphone {
   border: 1px solid alpha(@c1, 0.3);
-  padding: 0px 11px;
+  padding: 0px 12px 0px 11.5px;
   margin: 4px 2px;
 }
 
@@ -396,7 +397,7 @@ window.popup decoration {
 }
 
 #power-group {
-  margin: 4px 4px 4px 2px;
+  margin: 4px 4px 4px 0px;
   background: alpha(@alt_bg, 0.1);
   border: 1px solid alpha(@alt_br, 0.3);
 }
@@ -452,6 +453,15 @@ window.popup decoration {
   margin: 2px 4px 2px 2px;
 }
 
+#custom-colorpicker:hover,
+#custom-screenshot:hover,
+#custom-screenrecord:hover,
+#custom-github.notifications:hover,
+#custom-dunst:hover,
+#custom-powermenu:hover {
+  background-color: transparent;
+}
+
 #custom-github.notifications {
   padding: 0px 0px 0px 8px;
   margin-right: 4px;
@@ -460,6 +470,23 @@ window.popup decoration {
 #custom-github.notifications.error,
 #custom-github.notifications.degraded {
   color: @warning;
+}
+
+#custom-github.notifications.inbox-security {
+  color: @c5;
+}
+
+#custom-github.notifications.inbox {
+  color: @success;
+}
+
+#custom-github.notifications.security {
+  color: @error;
+}
+
+/* Must stay after the state rules: same specificity, so source order decides. */
+#custom-github.notifications:hover {
+  color: @hvr_br;
 }
 
 /* ============================================
@@ -496,11 +523,12 @@ window.popup decoration {
 #taskbar button.active {
   padding: 0px 5px;
   border: 1px solid alpha(@act_br, 0.3);
-  background: alpha(@alt_bg, 0.1);
+  background: alpha(@act_bg, 0.2);
 }
 
 #taskbar button:hover {
-  background: alpha(@hvr_bg, 0.1);
+  background: alpha(@hvr_bg, 0.2);
+  border: 1px solid alpha(@hvr_br, 0.2);
 }
 
 #tray {

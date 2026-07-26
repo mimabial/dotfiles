@@ -139,8 +139,8 @@ exec(mod .. " CTRL", "DELETE", "[Utilities|Monitors] toggle laptop display", "hy
 exec(mod .. " CTRL ALT", "DELETE", "[Utilities|Monitors] toggle mirroring", "hyprshell system/monitor-mirror.sh toggle")
 exec(mod, "code:51", "[Utilities|Monitors] cycle scale", "hyprshell system/monitor-scale.sh")
 exec(mod .. " ALT", "code:51", "[Utilities|Monitors] cycle scale backward", "hyprshell system/monitor-scale.sh --reverse")
-exec("", "switch:on:Lid Switch", "[Utilities|Monitors] disable laptop display", "hyprshell system/monitor-internal.sh off", {locked = true})
-exec("", "switch:off:Lid Switch", "[Utilities|Monitors] enable laptop display", "hyprshell system/monitor-internal.sh on", {locked = true})
+exec("", "switch:on:Lid Switch", "[Utilities|Monitors] disable laptop display", "hyprshell system/monitor-internal.sh off --quiet", {locked = true})
+exec("", "switch:off:Lid Switch", "[Utilities|Monitors] enable laptop display", "hyprshell system/monitor-internal.sh on --quiet", {locked = true})
 
 exec(mod .. " SHIFT", "P", "[Utilities|Capture] smart screenshot", "hyprshell screenshot.sh smart")
 exec(mod .. " CTRL", "P", "[Utilities|Capture] color picker", "pkill -x rofi || hyprshell rofi/color-picker.sh")

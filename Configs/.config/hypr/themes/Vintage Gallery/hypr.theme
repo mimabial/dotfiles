@@ -1,11 +1,11 @@
 $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 
 $ICON_THEME = Tela-red
-$CURSOR_THEME = GoogleDot-Blue
-$CURSOR_SIZE = 24
 $COLOR_SCHEME = prefer-light
 $NVIM_BACKGROUND = light
 $NVIM_TRANSPARENCY = false
+
+$CURSOR_THEME = GoogleDot-Blue
 
 general {
     gaps_in = 3
@@ -30,8 +30,8 @@ decoration {
 
     blur {
         enabled = yes
-        size = 5
-        passes = 3
+        size = 6
+        passes = 4
         new_optimizations = on
         ignore_opacity = on
         xray = false

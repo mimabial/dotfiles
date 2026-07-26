@@ -9,7 +9,7 @@ $NVIM_TRANSPARENCY = false
 
 # $CURSOR_THEME = Layan-border-cursors
 $CURSOR_THEME = FrierenBLZ
-$CURSOR_SIZE = 30
+$CURSOR_SIZE = 34
 
 # Theme variables above are the primary inputs used by theme.switch.sh.
 

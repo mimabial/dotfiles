@@ -6,11 +6,11 @@ $HOME/.config/waybar/theme.css
 
 @define-color alt_bg #EEE2D0;
 @define-color alt_fg #376B8C; /* RAL 5007 Brilliant Blue */
-@define-color alt_br #F7B500; /* RAL 1023 Traffic Yellow */
+@define-color alt_br #E08C00; /* RAL 1023 Traffic Yellow */
 
-@define-color act_bg #EEE2D0;
+@define-color act_bg #C49800;
 @define-color act_fg #376B8C;
-@define-color act_br #F7B500;
+@define-color act_br #F4EEE3;
 
 @define-color hvr_bg #E5D8C6;
 @define-color hvr_fg #3C5478;

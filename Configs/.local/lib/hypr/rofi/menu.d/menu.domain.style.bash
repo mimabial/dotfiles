@@ -26,7 +26,7 @@ menu_run_action_style() {
     style_color_mode) hyprshell rofi/run-after-close.sh -- hyprshell color-mode.sh -m ;;
     style_waybar) hyprshell rofi/run-after-close.sh -- hyprshell waybar.py --select-layout ;;
     style_animations) hyprshell rofi/run-after-close.sh -- hyprshell animations.sh --select ;;
-    style_lock_layout) hyprshell rofi/run-after-close.sh -- hyprshell hyprlock.sh --select ;;
+    style_lock_layout) hyprshell rofi/run-after-close.sh -- hyprshell session/hyprlock.sh --select ;;
     style_workflow) hyprshell rofi/run-after-close.sh -- hyprshell util/workflows.sh --select ;;
     style_font) hyprshell rofi/run-after-close.sh -- hyprshell fonts/font-picker.sh ;;
     *) return 1 ;;

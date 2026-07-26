@@ -106,6 +106,34 @@ local function layout_action(layout, action)
 end
 
 -- Window management
+local function usable_area(monitor)
+	local scale = monitor.scale
+	if not scale or scale <= 0 then
+		scale = 1
+	end
+
+	local width, height = monitor.size.width / scale, monitor.size.height / scale
+	if (monitor.transform or 0) % 2 == 1 then
+		width, height = height, width
+	end
+
+	local reserved = monitor.reserved
+	local border = hl.get_config("general:border_size") or 0
+	return width - reserved.left - reserved.right - 2 * border,
+		height - reserved.top - reserved.bottom - 2 * border
+end
+
+local function clamp_floating_size(window, selector)
+	local max_width, max_height = usable_area(window.monitor)
+	local width = math.min(window.size.x, max_width)
+	local height = math.min(window.size.y, max_height)
+	if width == window.size.x and height == window.size.y then
+		return
+	end
+
+	hl.dispatch(hl.dsp.window.resize({ x = width, y = height, relative = false, window = selector }))
+end
+
 local function toggle_floating()
 	local window = hl.get_active_window()
 	if not window then
@@ -117,6 +145,10 @@ local function toggle_floating()
 	hl.dispatch(hl.dsp.window.float({ action = "toggle", window = selector }))
 
 	if not was_floating then
+		local floated = hl.get_window(selector)
+		if floated then
+			clamp_floating_size(floated, selector)
+		end
 		hl.dispatch(hl.dsp.window.center({ window = selector, respect_reserved = true }))
 		hl.dispatch(hl.dsp.window.alter_zorder({ window = selector, mode = "top" }))
 	end
@@ -167,9 +199,19 @@ end
 
 local function resize_window(x, y)
 	return function()
-		if not hl.get_active_window() then
+		local window = hl.get_active_window()
+		if not window then
 			return
 		end
+
+		if window.floating then
+			local max_width, max_height = usable_area(window.monitor)
+			local width = math.min(window.size.x + x, max_width)
+			local height = math.min(window.size.y + y, max_height)
+			hl.dispatch(hl.dsp.window.resize({ x = width, y = height, relative = false }))
+			return
+		end
+
 		hl.dispatch(hl.dsp.window.resize({ x = x, y = y, relative = true }))
 	end
 end
@@ -271,14 +313,14 @@ exec(
 	"",
 	"switch:on:Lid Switch",
 	"[Utilities|Monitors] disable laptop display",
-	"hyprshell system/monitor-internal.sh off",
+	"hyprshell system/monitor-internal.sh off --quiet",
 	{ locked = true }
 )
 exec(
 	"",
 	"switch:off:Lid Switch",
 	"[Utilities|Monitors] enable laptop display",
-	"hyprshell system/monitor-internal.sh on",
+	"hyprshell system/monitor-internal.sh on --quiet",
 	{ locked = true }
 )
 

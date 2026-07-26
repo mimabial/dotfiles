@@ -519,22 +519,22 @@ emit_github_notifications_status() {
   tooltip="$(build_github_notifications_tooltip)"
 
   if [ "$notif_available" -eq 0 ] && [ "$security_available" -eq 0 ]; then
-    print_json "<span color='${color1:-#E6C384}'>󰅙</span>" "$tooltip" "error"
+    print_json "󰅙" "$tooltip" "error"
     return 0
   fi
 
   if [ "$notif_available" -eq 0 ] || [ "$security_available" -eq 0 ] || [ -n "$notif_issue" ] || [ -n "$security_note" ] || [ -n "$security_issue" ]; then
-    print_json "<span color='${color3:-#E6C384}'>󰀪</span>" "$tooltip" "degraded"
+    print_json "󰀪" "$tooltip" "degraded"
     return 0
   fi
 
   if [ "$notif_count" -gt 0 ] && [ "$security_count" -gt 0 ]; then
-    print_json "<span color='${color5:-#E6C384}'></span>" "$tooltip"
+    print_json "" "$tooltip" "inbox-security"
   elif [ "$notif_count" -gt 0 ]; then
-    print_json "<span color='${color4:-#98BB6C}'></span>" "$tooltip"
+    print_json "" "$tooltip" "inbox"
   elif [ "$security_count" -gt 0 ]; then
-    print_json "<span color='${color1:-#E82424}'></span>" "$tooltip"
+    print_json "" "$tooltip" "security"
   else
-    print_json "<span color='${foreground:-#D3C6AA}'></span>" "$tooltip"
+    print_json "" "$tooltip"
   fi
 }
