@@ -428,6 +428,12 @@ submap_leader("open", mod, "O", function()
 		"[Open] rmpc",
 		'hyprshell launch/summon.sh class:org.tui.Rmpc -- hyprshell launch/tui.sh --app-id org.tui.Rmpc --title Rmpc -- "$HOME/.config/rmpc/lib/launch"'
 	)
+	submap_exec("M", "[Open] Mullvad VPN", 'hyprshell launch/summon.sh "class:Mullvad VPN" -- mullvad-vpn')
+	submap_exec(
+		"Q",
+		"[Open] qBittorrent",
+		"hyprshell launch/summon.sh --empty-workspace-if-occupied class:qbittorrent -- qbittorrent"
+	)
 end)
 
 submap_leader("capture", mod, "R", function()

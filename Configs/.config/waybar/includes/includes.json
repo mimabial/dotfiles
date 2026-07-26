@@ -401,9 +401,9 @@
         "smooth-scrolling-threshold": 1,
         "tooltip-format": "{volume}% {icon} | {desc}",
         "format-icons": {
-            "headphone": "\uf025",
-            "hands-free": "\uf025",
-            "headset": "\uf025",
+            "headphone": "\uee58",
+            "hands-free": "\uee58",
+            "headset": "\uee58",
             "phone": "\uf095",
             "portable": "\uf095",
             "car": "\uf1b9",

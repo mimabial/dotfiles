@@ -69,7 +69,11 @@
   },
   "group/networkmanagement": {
     "orientation": "inherit",
-    "modules": ["custom/vpn", "tray"]
+    "drawer": {
+      "transition-duration": 500,
+      "transition-left-to-right": false
+    },
+    "modules": ["tray"]
   },
   "group/power-group": {
     "orientation": "inherit",
