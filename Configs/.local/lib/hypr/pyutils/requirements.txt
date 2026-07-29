@@ -1,5 +1,6 @@
 astral
 jsonschema
+mutagen
 pulsectl==24.12.0
 PyGObject
 PyQt6

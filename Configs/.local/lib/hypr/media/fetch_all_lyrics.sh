@@ -2,12 +2,55 @@
 set -euo pipefail
 
 # Fetch lyrics for entire music library
-# Usage: fetch_all_lyrics.sh [music_directory]
+# Usage: fetch_all_lyrics.sh [--dry-run] [--ext mp3,opus] [music_directory]
+
+DRY_RUN=0
+EXT_LIST="mp3,flac,m4a,ogg,opus"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -n | --dry-run)
+      DRY_RUN=1
+      shift
+      ;;
+    --ext)
+      EXT_LIST="${2:-}"
+      shift 2
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      echo "Usage: $(basename "$0") [--dry-run] [--ext mp3,opus] [music_directory]" >&2
+      exit 2
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
 
 MUSIC_DIR="${1:-$HOME/Music}"
 SCRIPT_DIR="$(dirname "$(realpath "$0")")"
 LYRICS_FETCHER="$SCRIPT_DIR/fetch_album_lyrics.py"
 LYRICS_RUNTIME_SH="$SCRIPT_DIR/lyrics_runtime.sh"
+LYRICS_PATHS_LIB="$SCRIPT_DIR/lyrics_paths.lib.sh"
+
+# Build the find predicate from --ext.
+FIND_ARGS=()
+IFS=',' read -r -a EXT_ARRAY <<<"$EXT_LIST"
+for ext in "${EXT_ARRAY[@]}"; do
+  ext="${ext// /}"
+  ext="${ext#.}"
+  [[ -n "$ext" ]] || continue
+  [[ ${#FIND_ARGS[@]} -gt 0 ]] && FIND_ARGS+=(-o)
+  FIND_ARGS+=(-name "*.${ext}")
+done
+if [[ ${#FIND_ARGS[@]} -eq 0 ]]; then
+  echo "❌ Error: --ext produced no extensions" >&2
+  exit 2
+fi
 
 # Check if lyrics fetcher exists
 if [[ ! -f "$LYRICS_FETCHER" ]]; then
@@ -26,6 +69,13 @@ if [[ ! -f "$LYRICS_RUNTIME_SH" ]]; then
   exit 1
 fi
 
+if [[ ! -f "$LYRICS_PATHS_LIB" ]]; then
+  echo "❌ Error: Lyrics path helper not found at $LYRICS_PATHS_LIB"
+  exit 1
+fi
+
+# shellcheck disable=SC1090
+source "$LYRICS_PATHS_LIB"
 # shellcheck disable=SC1090
 source "$LYRICS_RUNTIME_SH"
 PYTHON_EXEC="$(resolve_lyrics_python || true)"
@@ -49,7 +99,7 @@ failed_albums=0
 
 # Find all directories that contain audio files (albums) and store in array
 # This is faster than counting in a loop
-mapfile -t ALBUM_DIRS < <(find "$MUSIC_DIR" -type f \( -name "*.mp3" -o -name "*.flac" -o -name "*.m4a" -o -name "*.ogg" -o -name "*.opus" \) -exec dirname {} \; | sort -u)
+mapfile -t ALBUM_DIRS < <(find "$MUSIC_DIR" -type f \( "${FIND_ARGS[@]}" \) -not -path "${LYRICS_HIDDEN_DIR}/*" -exec dirname {} \; | sort -u)
 
 total_albums=${#ALBUM_DIRS[@]}
 
@@ -65,9 +115,9 @@ for album_dir in "${ALBUM_DIRS[@]}"; do
   existing_count=0
   while IFS= read -r -d '' audio_file; do
     ((audio_count++)) || true
-    lrc_file="${audio_file%.*}.lrc"
+    lrc_file="$(lyrics_lrc_path "$audio_file")"
     [[ -f "$lrc_file" ]] && ((existing_count++)) || true
-  done < <(find "$album_dir" -maxdepth 1 -type f \( -name "*.mp3" -o -name "*.flac" -o -name "*.m4a" -o -name "*.ogg" -o -name "*.opus" \) -print0)
+  done < <(find "$album_dir" -maxdepth 1 -type f \( "${FIND_ARGS[@]}" \) -print0)
 
   missing_count=$((audio_count - existing_count))
 
@@ -78,13 +128,18 @@ for album_dir in "${ALBUM_DIRS[@]}"; do
     continue
   fi
 
+  if [[ $DRY_RUN -eq 1 ]]; then
+    echo "[$processed_albums/$total_albums] would fetch: $album_dir ($missing_count of $audio_count missing)"
+    continue
+  fi
+
   echo ""
   echo "[$processed_albums/$total_albums] 🎵 Processing: $album_dir"
   echo "  Audio files: $audio_count | Existing lyrics: $existing_count"
   echo ""
 
   # Run lyrics fetcher
-  if "$PYTHON_EXEC" "$LYRICS_FETCHER" "$album_dir"; then
+  if "$PYTHON_EXEC" "$LYRICS_FETCHER" --ext "$EXT_LIST" "$album_dir"; then
     echo "  ✅ Successfully processed album"
   else
     echo "  ⚠️  Failed to fetch some lyrics"
@@ -102,6 +157,13 @@ echo "════════════════════════�
 echo "  Total albums found:     $total_albums"
 echo "  Processed:              $processed_albums"
 echo "  Skipped (complete):     $skipped_albums"
+if [[ $DRY_RUN -eq 1 ]]; then
+  echo "  Would fetch:            $((processed_albums - skipped_albums))"
+  echo "═══════════════════════════════════════════════════════════"
+  echo ""
+  echo "Preview only; re-run without --dry-run to fetch."
+  exit 0
+fi
 echo "  Had failures:           $failed_albums"
 echo "  Successfully fetched:   $((processed_albums - skipped_albums - failed_albums))"
 echo "═══════════════════════════════════════════════════════════"

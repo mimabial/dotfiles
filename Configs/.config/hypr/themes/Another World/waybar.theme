@@ -13,7 +13,7 @@ $HOME/.config/waybar/theme.css
 @define-color act_br #6c5a30;
 
 @define-color hvr_bg #020817;
-@define-color hvr_fg #EFEFF5;
+@define-color hvr_fg #ae00f3;
 @define-color hvr_br #ae00f3;
 
 @define-color c0 #03063c;

@@ -36,9 +36,18 @@
     report("attach");
   };
 
+  // Firefox only autostarts muted, so muted-on-play means trailer, not track.
+  const worthAttaching = (el) => !el.muted;
+
+  // Going quiet is the signal; background.js prunes 20s after the last report.
+  const release = () => {
+    media = null;
+  };
+
   const rescan = (requirePlaying) => {
     const el = pick(requirePlaying);
-    if (el) attach(el);
+    // A command means the user asked for this tab, so honour it even when muted.
+    if (el && (!requirePlaying || worthAttaching(el))) attach(el);
   };
 
   for (const evt of ["play", "pause", "seeked", "ratechange", "durationchange", "ended"]) {
@@ -46,8 +55,13 @@
       evt,
       (e) => {
         if (!(e.target instanceof HTMLMediaElement)) return;
-        if (evt === "play") attach(e.target);
-        if (e.target === media) report(evt);
+        if (evt === "play" && worthAttaching(e.target)) attach(e.target);
+        if (e.target !== media) return;
+        if (evt === "ended" && !pick(true)) {
+          release();
+          return;
+        }
+        report(evt);
       },
       true
     );

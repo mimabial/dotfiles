@@ -6,6 +6,7 @@ Uses shared provider logic from lyrics_provider.py.
 
 import argparse
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -93,14 +94,32 @@ def get_audio_metadata(file_path: str) -> Dict[str, Any]:
         }
 
 
+def lrc_path_for(file_path: Path) -> Path:
+    """Mirror of lyrics_lrc_path() in lyrics_paths.lib.sh; keep the two in step."""
+    root = Path(os.environ.get("RMPC_LYRICS_DIR", Path.home() / "Music"))
+    hidden = root / ".lyrics"
+    target = file_path
+    if not file_path.is_relative_to(hidden) and file_path.is_relative_to(root):
+        target = hidden / file_path.relative_to(root)
+    return target.with_suffix(".lrc")
+
+
 def process_audio_file(
-    file_path: Path, artist_dir: str, album_dir: str, force: bool = False
+    file_path: Path,
+    artist_dir: str,
+    album_dir: str,
+    force: bool = False,
+    dry_run: bool = False,
 ) -> bool:
     """Process a single audio file and fetch lyrics."""
-    lrc_file = file_path.with_suffix(".lrc")
+    lrc_file = lrc_path_for(file_path)
 
     if lrc_file.exists() and not force:
         print(f"– Skipping {file_path.name} (already have .lrc)")
+        return True
+
+    if dry_run:
+        print(f"– Would fetch {file_path.name} -> {lrc_file}")
         return True
 
     metadata = get_audio_metadata(str(file_path))
@@ -158,6 +177,14 @@ def main() -> None:
     parser.add_argument(
         "-f", "--force", action="store_true", help="Overwrite existing .lrc files"
     )
+    parser.add_argument(
+        "-n", "--dry-run", action="store_true",
+        help="Report what would be fetched without contacting providers",
+    )
+    parser.add_argument(
+        "--ext", default="mp3,flac,m4a,ogg,opus",
+        help="Comma-separated extensions to include (default: mp3,flac,m4a,ogg,opus)",
+    )
 
     args = parser.parse_args()
 
@@ -174,7 +201,9 @@ def main() -> None:
     print(f"  Album:  {album}")
     print()
 
-    audio_extensions = [".mp3", ".flac", ".m4a", ".ogg", ".opus"]
+    audio_extensions = [
+        "." + e.strip().lstrip(".").lower() for e in args.ext.split(",") if e.strip()
+    ]
     audio_files = []
     for ext in audio_extensions:
         audio_files.extend(album_path.glob(f"*{ext}"))
@@ -187,7 +216,7 @@ def main() -> None:
 
     success_count = 0
     for audio_file in audio_files:
-        if process_audio_file(audio_file, artist, album, args.force):
+        if process_audio_file(audio_file, artist, album, args.force, args.dry_run):
             success_count += 1
         print()
 

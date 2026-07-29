@@ -5,7 +5,7 @@ $HOME/.config/waybar/theme.css
 @define-color fg #aaf0f0; /* Light green, 80% opacity */
 @define-color br #c7c7c7; /* foreground muted */
 
-@define-color alt_bg #73d0ff; /* Light blue, full opacity */
+@define-color alt_bg #bae67e; /* Light blue, full opacity */
 @define-color alt_fg #aaf0f0;
 @define-color alt_br #ccffff; /* Light blue, full opacity */
 

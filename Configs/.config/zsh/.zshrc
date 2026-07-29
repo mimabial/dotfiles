@@ -21,12 +21,54 @@ zshaddhistory() {
 # zinit plugins are loaded in $ZDOTDIR/startup.zsh file, see the file for more information
 #  Aliases 
 # Override aliases here in '$ZDOTDIR/.zshrc' (already set in .zshenv)
-alias ytx='yt-dlp --no-playlist -x --audio-format best'
-alias yta='yt-dlp -x --audio-format best'
-alias yts="yt-dlp --no-playlist -x --audio-format best \
-          --parse-metadata 'title:^(?P<artist>.+?)\s*-\s*(?P<title>.+)$' \
-          --replace-in-metadata 'title' '(?i)\s*[\(\[]\s*(official music video(?:\s+(?:hd|hq|4k|8k))?|official video(?:\s+(?:hd|hq|4k|8k))?|music video(?:\s+(?:hd|hq|4k|8k))?|official performance video|performance video|video clip|official visuali[sz]er|visuali[sz]er|official lyric video|lyric video|official lyric visuali[sz]er|lyric visuali[sz]er|official audio)\s*[\)\]]\s*$' '' \
-          --replace-in-metadata 'title' '(?i)\s*[|:-]\s*(official music video(?:\s+(?:hd|hq|4k|8k))?|official video(?:\s+(?:hd|hq|4k|8k))?|music video(?:\s+(?:hd|hq|4k|8k))?|official performance video|performance video|video clip|official visuali[sz]er|visuali[sz]er|official lyric video|lyric video|official lyric visuali[sz]er|lyric visuali[sz]er|official audio)\s*$' ''"
+# Extract audio into ~/Music. See `yt -h`.
+yt() {
+  local usage="usage: yt [-p] [-s] [-n] [-d <subdir>] [--] <url...>"
+  local playlist=0 split=0 nothumb=0 sub=""
+  while (( $# )); do
+    case $1 in
+      -h|--help)
+        print -r -- "$usage
+  -p, --playlist    follow the playlist, numbering files 01, 02, … for albums
+  -s, --split       split an \"Artist - Title\" upload title into real tags.
+                    Wrong for the reversed \"Title - Artist\" form, so opt-in;
+                    media/autotag derives the artist more reliably afterwards.
+  -n, --no-thumb    skip the cover art, for live sets and non-music uploads
+                    where the thumbnail is a video frame rather than a sleeve
+  -d, --dir <sub>   download into ~/Music/<sub>, created on demand. One level
+                    names the artist, two name the album, and a [G] or [C]
+                    bucket names neither — media/autotag reads all of them.
+
+-p, -s and -n shadow yt-dlp's --password, --simulate and --netrc; reach those
+with --. Unrecognised options go to yt-dlp and stop the parsing above, so one of
+ours placed after them is read by yt-dlp instead. Use -- when mixing:
+  yt -p -d Kaey -- --playlist-items 1-3 <url>
+
+Filename template, noise stripping and cover art: ~/.config/yt-dlp/config"
+        return 0 ;;
+      -p|--playlist) playlist=1; shift ;;
+      -s|--split)    split=1; shift ;;
+      -n|--no-thumb) nothumb=1; shift ;;
+      -d|--dir)      sub=$2; shift 2 ;;
+      --)            shift; break ;;
+      *)             break ;;
+    esac
+  done
+  (( $# )) || { print -u2 "\n$usage"; return 2 }
+
+  local -a opts=(-x --audio-format best)
+  if (( playlist )); then
+    opts+=(--yes-playlist
+      -o "%(playlist_index&{:02d} - |)s%(artist&{} - |)s%(track,title,id).200B.%(ext)s")
+  else
+    opts+=(--no-playlist)
+  fi
+  (( split )) && opts+=(--parse-metadata 'title:^(?P<artist>.+?)\s*-\s*(?P<title>.+)$')
+  (( nothumb )) && opts+=(--no-embed-thumbnail)
+  [[ -n $sub ]] && opts+=(-P "$HOME/Music/$sub")
+
+  yt-dlp "${opts[@]}" "$@"
+}
 export EDITOR=nvim
 # export EDITOR=code
 # unset -f command_not_found_handler # Uncomment to prevent searching for commands not found in package manager

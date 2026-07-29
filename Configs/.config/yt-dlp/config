@@ -1,5 +1,31 @@
 --cookies-from-browser firefox
 --embed-chapters
 --embed-metadata
--o "%(title).200B.%(ext)s"
 --paths ~/Music
+
+# YouTube thumbnails are 16:9 video stills; crop to the centre square so players
+# show cover art rather than a letterboxed frame. jpg keeps it ~38KB, not ~780KB.
+--embed-thumbnail
+--convert-thumbnails jpg
+--ppa "ThumbnailsConvertor:-vf crop=ih:ih"
+
+# --embed-metadata otherwise writes the whole video description — credits, lyrics
+# and hashtags — into every file.
+--parse-metadata ":(?P<meta_description>)"
+--parse-metadata ":(?P<meta_synopsis>)"
+--parse-metadata ":(?P<meta_comment>)"
+
+# YouTube fills artist/track/album for uploads linked to a release; those beat
+# anything a tagger can infer later. The prefix appears only when it is present,
+# so plain channel uploads keep their original title as the filename.
+# id is the last resort: a title consisting only of "(Official Video)" strips to
+# nothing, and without it every such download would collide on "NA".
+-o "%(artist&{} - |)s%(track,title,id).200B.%(ext)s"
+
+# Strip upload noise before --embed-metadata writes it into the tags. Every word
+# inside the brackets must itself be noise, so "(Video Games Remix)" and "(2019)"
+# survive while "(Official Music Video)" does not.
+--replace-in-metadata "title,track" "(?i)\s*[\(\[【（｛]\s*(?=[^)\]】）｝]*(?:video|vídeo|vidéo|visuali[sz]er|audio|full\s+stream|clip|mv))(?:(?:officiel(?:le)?|official|oficial|music|lyrics?|audio|only|full|stream|clip|video|vídeo|vidéo|visuali[sz]er|mv|hd|hq|4k|8k|\d{4})[\s.]*)+(?:by\s+[^)\]】）｝]*)?[\)\]】）｝]" ""
+--replace-in-metadata "title,track" "(?i)\s*[\(\[【（｛]\s*prod(?:uced)?\.?\s+by[^)\]】）｝]*[\)\]】）｝]" ""
+# A qualifier is required, so a song genuinely called "Video" keeps its title.
+--replace-in-metadata "title,track" "(?i)\s*[|｜:-]\s*(?:(?:official(?:\s+(?:music|lyrics?))?|music|lyrics?)\s+(?:video|vídeo|vidéo)|(?:video|vídeo|vidéo)\s+(?:officielle?|oficial))(?:\s+\d{4})?(?=\s*$|\s*[\(\[【（｛])" ""
