@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 import json
 import os
-import shlex
 import shutil
 import subprocess
 import time
 from dataclasses import dataclass
 from urllib.parse import parse_qs, urlparse
 
+from ytdlp_config import ytdlp_auth_args
+
 _ytdlp_inflight = {}
 _ytdlp_timeout_seconds = 20.0
-_ytdlp_auth_args_cache = None
 _youtube_page_timeout_seconds = 2.5
 _current_track_media_info = {"media_url": "", "info": None}
 
@@ -192,44 +192,6 @@ def _build_youtube_watch_page_probe_command(url: str) -> list[str] | None:
     ]
 
 
-def _get_ytdlp_auth_args() -> list[str]:
-    global _ytdlp_auth_args_cache
-    if _ytdlp_auth_args_cache is not None:
-        return list(_ytdlp_auth_args_cache)
-
-    config_home = os.path.expanduser(os.getenv("XDG_CONFIG_HOME", "~/.config"))
-    config_path = os.path.join(config_home, "yt-dlp", "config")
-    args = []
-
-    try:
-        tokens = []
-        with open(config_path, encoding="utf-8") as file:
-            for raw_line in file:
-                line = raw_line.strip()
-                if not line or line.startswith("#"):
-                    continue
-                tokens.extend(shlex.split(line))
-
-        idx = 0
-        while idx < len(tokens):
-            token = tokens[idx]
-            if token in ("--cookies-from-browser", "--cookies"):
-                if idx + 1 < len(tokens):
-                    args.extend((token, tokens[idx + 1]))
-                idx += 2
-                continue
-            if token.startswith("--cookies-from-browser=") or token.startswith(
-                "--cookies="
-            ):
-                args.append(token)
-            idx += 1
-    except (FileNotFoundError, OSError, ValueError):
-        args = []
-
-    _ytdlp_auth_args_cache = tuple(args)
-    return list(_ytdlp_auth_args_cache)
-
-
 def _build_ytdlp_probe_command(url: str) -> list[str] | None:
     url = canonicalize_youtube_url(url)
     ytdlp_bin = shutil.which("yt-dlp")
@@ -238,6 +200,7 @@ def _build_ytdlp_probe_command(url: str) -> list[str] | None:
     return [
         ytdlp_bin,
         "--ignore-config",
+        *ytdlp_auth_args(),
         "--quiet",
         "--no-progress",
         "--no-warnings",

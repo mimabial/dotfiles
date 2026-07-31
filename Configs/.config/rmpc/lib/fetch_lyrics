@@ -457,12 +457,20 @@ fetch_candidate_track() {
   candidate_artist="$1"
   candidate_title="$2"
   call_timeout="${3:-}"
+  lrc_artist="$(trim_value "${ARTIST:-}")"
+  lrc_title="$(trim_value "${TITLE:-}")"
+  lrc_album="$(trim_value "${ALBUM:-}")"
+  [ -n "$lrc_artist" ] || lrc_artist="$candidate_artist"
+  [ -n "$lrc_title" ] || lrc_title="$candidate_title"
 
   if [ -n "${EXPECTED_DURATION:-}" ]; then
     run_track_fetcher "$call_timeout" \
       --artist "$candidate_artist" \
       --title "$candidate_title" \
       --album "$ALBUM" \
+      --lrc-artist "$lrc_artist" \
+      --lrc-title "$lrc_title" \
+      --lrc-album "$lrc_album" \
       --lrc-file "$LRC_FILE" \
       --expected-duration "$EXPECTED_DURATION"
     return $?
@@ -472,6 +480,9 @@ fetch_candidate_track() {
     --artist "$candidate_artist" \
     --title "$candidate_title" \
     --album "$ALBUM" \
+    --lrc-artist "$lrc_artist" \
+    --lrc-title "$lrc_title" \
+    --lrc-album "$lrc_album" \
     --lrc-file "$LRC_FILE"
 }
 

@@ -3,14 +3,15 @@
 
 from __future__ import annotations
 
+import json
 import os
 import re
+import shutil
+import subprocess
 import sys
-import xml.etree.ElementTree as ET
-from html import unescape
-from typing import List, Optional
-
-import requests
+import threading
+import time
+from pathlib import Path
 
 try:
     from lyricsgenius import Genius
@@ -19,17 +20,16 @@ try:
 except ImportError:
     HAS_GENIUS = False
 
+from lyrics_cache import lyrics_miss_cache
 from lyrics_provider_common import (
-    CHARTLYRICS_API,
     DEFAULT_TIMEOUT,
     HAS_YTMUSIC,
     LRCLIB_API_GET,
     LRCLIB_API_SEARCH,
-    LYRICSFREEK_BASE,
-    LYRICSOVH_API,
     LYRICS_OVH_BOILERPLATE_PATTERNS,
-    ProviderResult,
+    LYRICSOVH_API,
     SIMPMUSIC_API_BASE,
+    ProviderResult,
     _build_result,
     _is_lrc_synced,
     _normalize_text,
@@ -37,21 +37,103 @@ from lyrics_provider_common import (
     _strip_leading_boilerplate_lines,
     _to_lrc_from_plain,
     get_ytmusic_client,
+    http_get,
 )
 
 _GENIUS_CLIENT = None
+_GENIUS_TOKEN_KEYS = ("GENIUS_TOKEN", "GENIUS_ACCESS_TOKEN")
+_GENIUS_WORKER_FLAG = "--genius-worker"
+GENIUS_WORKER_TIMEOUT = DEFAULT_TIMEOUT * 4 + 5
+_SIMPMUSIC_COOLDOWN_KEY = "simpmusic"
+SIMPMUSIC_COOLDOWN_TTL = 60 * 60
+_SIMPMUSIC_COOLDOWN_LOCK = threading.Lock()
+_SIMPMUSIC_COOLDOWN_UNTIL = 0.0
+_SIMPMUSIC_NOTICE_UNTIL = 0.0
+
+
+def _parse_env_value(raw_value: str) -> str:
+    """Parse the limited value syntax needed by the private Genius env file."""
+    value = raw_value.strip()
+    if not value:
+        return ""
+
+    if value[0] in {"'", '"'}:
+        quote = value[0]
+        closing_quote = value.find(quote, 1)
+        if closing_quote == -1:
+            return ""
+        remainder = value[closing_quote + 1 :].strip()
+        if remainder and not remainder.startswith("#"):
+            return ""
+        return value[1:closing_quote]
+
+    return value.split(" #", 1)[0].strip()
+
+
+def _genius_token_from_file() -> str:
+    config_home = Path(
+        os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")
+    ).expanduser()
+    env_file = config_home / "genius" / "env"
+
+    try:
+        if env_file.stat().st_mode & 0o077:
+            print(
+                f"  [genius] Ignoring {env_file} "
+                "(group/other permissions are not allowed)",
+                file=sys.stderr,
+            )
+            return ""
+        lines = env_file.read_text(encoding="utf-8").splitlines()
+    except FileNotFoundError:
+        return ""
+    except OSError as error:
+        print(f"  [genius] Cannot read {env_file}: {error}", file=sys.stderr)
+        return ""
+
+    values: dict[str, str] = {}
+    for raw_line in lines:
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line[7:].lstrip()
+
+        key, separator, raw_value = line.partition("=")
+        key = key.strip()
+        if not separator or key not in _GENIUS_TOKEN_KEYS:
+            continue
+
+        value = _parse_env_value(raw_value)
+        if value:
+            values[key] = value
+
+    return next((values[key] for key in _GENIUS_TOKEN_KEYS if values.get(key)), "")
+
+
+def get_genius_token() -> str:
+    """Get an explicit Genius token, falling back to the private env file."""
+    return next(
+        (
+            token
+            for key in _GENIUS_TOKEN_KEYS
+            if (token := os.environ.get(key, "").strip())
+        ),
+        "",
+    ) or _genius_token_from_file()
+
 
 def fetch_lyrics_lrclib(
     artist: str,
     title: str,
     album: str = "",
     use_local_album: bool = True,
-) -> Optional[ProviderResult]:
+) -> ProviderResult | None:
     try:
         print(f"  [lrclib] Searching for: {artist} - {title}", file=sys.stderr)
 
         search_params = {"track_name": title, "artist_name": artist}
-        search_resp = requests.get(
+        search_resp = http_get(
             LRCLIB_API_SEARCH, params=search_params, timeout=DEFAULT_TIMEOUT
         )
         if search_resp.status_code != 200:
@@ -80,7 +162,7 @@ def fetch_lyrics_lrclib(
             "album_name": best_match["albumName"],
             "duration": best_match["duration"],
         }
-        get_resp = requests.get(
+        get_resp = http_get(
             LRCLIB_API_GET, params=get_params, timeout=DEFAULT_TIMEOUT
         )
         if get_resp.status_code != 200:
@@ -120,7 +202,7 @@ def fetch_lyrics_lrclib(
             True,
         )
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - provider boundary
         print(f"  [lrclib] Error: {e}", file=sys.stderr)
         return None
 
@@ -133,7 +215,7 @@ def _extract_yt_line_text(line: object) -> str:
     return str(getattr(line, "text", "")).strip()
 
 
-def _extract_yt_line_start_ms(line: object) -> Optional[int]:
+def _extract_yt_line_start_ms(line: object) -> int | None:
     value = None
     if isinstance(line, dict):
         value = (
@@ -148,15 +230,15 @@ def _extract_yt_line_start_ms(line: object) -> Optional[int]:
         if value is None:
             return None
         return int(value)
-    except Exception:
+    except (TypeError, ValueError):
         return None
 
 
-def _payload_to_plain_lines(payload: object) -> List[str]:
+def _payload_to_plain_lines(payload: object) -> list[str]:
     if isinstance(payload, str):
         return payload.splitlines()
     if isinstance(payload, list):
-        lines: List[str] = []
+        lines: list[str] = []
         for entry in payload:
             text = _extract_yt_line_text(entry)
             if text:
@@ -166,7 +248,7 @@ def _payload_to_plain_lines(payload: object) -> List[str]:
 
 
 def _extract_yt_song_artist(song_info: dict, fallback: str) -> str:
-    artists: List[str] = []
+    artists: list[str] = []
     raw_artists = song_info.get("artists")
 
     if isinstance(raw_artists, list):
@@ -190,7 +272,7 @@ def _extract_yt_song_artist(song_info: dict, fallback: str) -> str:
     if artists:
         return ", ".join(artists)
     return fallback
-def fetch_lyrics_youtube(artist: str, title: str) -> Optional[ProviderResult]:
+def fetch_lyrics_youtube(artist: str, title: str) -> ProviderResult | None:
     if not HAS_YTMUSIC:
         print("  [ytmusic] Skipped (ytmusicapi not installed)", file=sys.stderr)
         return None
@@ -229,7 +311,10 @@ def fetch_lyrics_youtube(artist: str, title: str) -> Optional[ProviderResult]:
             print("  [ytmusic] No lyrics browseId", file=sys.stderr)
             return None
 
-        lyrics_data = ytmusic.get_lyrics(browseId=lyrics_browse_id)
+        lyrics_data = ytmusic.get_lyrics(
+            browseId=lyrics_browse_id,
+            timestamps=True,
+        )
         if not lyrics_data or not lyrics_data.get("lyrics"):
             print("  [ytmusic] No lyrics data", file=sys.stderr)
             return None
@@ -277,18 +362,18 @@ def fetch_lyrics_youtube(artist: str, title: str) -> Optional[ProviderResult]:
             synced,
         )
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - third-party client boundary
         print(f"  [ytmusic] Error: {e}", file=sys.stderr)
         return None
 
 
 def _pick_best_simpmusic_search_result(
-    results: List[dict],
+    results: list[dict],
     artist: str,
     title: str,
     album: str = "",
-    expected_duration: Optional[float] = None,
-) -> Optional[dict]:
+    expected_duration: float | None = None,
+) -> dict | None:
     best_result = None
     best_score = -1.0
 
@@ -363,21 +448,82 @@ def _pick_best_simpmusic_search_result(
     return best_result
 
 
+def _simpmusic_cooldown_expiry() -> float:
+    global _SIMPMUSIC_COOLDOWN_UNTIL
+
+    with _SIMPMUSIC_COOLDOWN_LOCK:
+        cache = lyrics_miss_cache()
+        persistent_expiry = (
+            cache.cooldown_until(_SIMPMUSIC_COOLDOWN_KEY) if cache else None
+        )
+        if persistent_expiry:
+            _SIMPMUSIC_COOLDOWN_UNTIL = max(
+                _SIMPMUSIC_COOLDOWN_UNTIL,
+                persistent_expiry,
+            )
+        return _SIMPMUSIC_COOLDOWN_UNTIL
+
+
+def _activate_simpmusic_cooldown() -> None:
+    global _SIMPMUSIC_COOLDOWN_UNTIL, _SIMPMUSIC_NOTICE_UNTIL
+
+    expires_at = time.time() + SIMPMUSIC_COOLDOWN_TTL
+    with _SIMPMUSIC_COOLDOWN_LOCK:
+        cache = lyrics_miss_cache()
+        if cache:
+            expires_at = cache.put_cooldown(
+                _SIMPMUSIC_COOLDOWN_KEY,
+                SIMPMUSIC_COOLDOWN_TTL,
+            )
+        _SIMPMUSIC_COOLDOWN_UNTIL = expires_at
+        _SIMPMUSIC_NOTICE_UNTIL = expires_at
+
+    print(
+        "  [simpmusic] Rate limited (429); cooling down for 1 hour",
+        file=sys.stderr,
+    )
+
+
+def _simpmusic_cooldown_active() -> bool:
+    global _SIMPMUSIC_NOTICE_UNTIL
+
+    expires_at = _simpmusic_cooldown_expiry()
+    remaining = expires_at - time.time()
+    if remaining <= 0:
+        return False
+
+    with _SIMPMUSIC_COOLDOWN_LOCK:
+        if _SIMPMUSIC_NOTICE_UNTIL != expires_at:
+            minutes = max(1, int((remaining + 59) // 60))
+            print(
+                f"  [simpmusic] Cooldown active ({minutes}m remaining); skipping",
+                file=sys.stderr,
+            )
+            _SIMPMUSIC_NOTICE_UNTIL = expires_at
+    return True
+
+
 def fetch_lyrics_simpmusic(
     artist: str,
     title: str,
     album: str = "",
-    expected_duration: Optional[float] = None,
-) -> Optional[ProviderResult]:
+    expected_duration: float | None = None,
+) -> ProviderResult | None:
     try:
+        if _simpmusic_cooldown_active():
+            return None
+
         print(f"  [simpmusic] Searching for: {artist} - {title}", file=sys.stderr)
 
         query = f"{title} {artist}".strip()
-        search_resp = requests.get(
+        search_resp = http_get(
             f"{SIMPMUSIC_API_BASE}/search",
             params={"q": query},
             timeout=DEFAULT_TIMEOUT,
         )
+        if search_resp.status_code == 429:
+            _activate_simpmusic_cooldown()
+            return None
         if search_resp.status_code != 200:
             print(
                 f"  [simpmusic] Search failed with status {search_resp.status_code}",
@@ -411,10 +557,13 @@ def fetch_lyrics_simpmusic(
             print("  [simpmusic] Search result missing video id", file=sys.stderr)
             return None
 
-        details_resp = requests.get(
+        details_resp = http_get(
             f"{SIMPMUSIC_API_BASE}/{video_id}",
             timeout=DEFAULT_TIMEOUT,
         )
+        if details_resp.status_code == 429:
+            _activate_simpmusic_cooldown()
+            return None
         if details_resp.status_code != 200:
             print(
                 f"  [simpmusic] Lyrics fetch failed with status {details_resp.status_code}",
@@ -466,7 +615,7 @@ def fetch_lyrics_simpmusic(
             synced,
         )
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - provider boundary
         print(f"  [simpmusic] Error: {e}", file=sys.stderr)
         return None
 
@@ -479,9 +628,7 @@ def get_genius_client():
     if not HAS_GENIUS:
         return None
 
-    token = os.environ.get("GENIUS_TOKEN", "").strip() or os.environ.get(
-        "GENIUS_ACCESS_TOKEN", ""
-    ).strip()
+    token = get_genius_token()
     if not token:
         return None
 
@@ -491,22 +638,24 @@ def get_genius_client():
                 token,
                 skip_non_songs=True,
                 remove_section_headers=True,
-                verbose=False,
                 timeout=DEFAULT_TIMEOUT,
             )
-        except TypeError:
+        except TypeError as error:
+            if "timeout" not in str(error):
+                raise
             # Older lyricsgenius versions may not support timeout kwarg.
             _GENIUS_CLIENT = Genius(
                 token,
                 skip_non_songs=True,
                 remove_section_headers=True,
-                verbose=False,
             )
         return _GENIUS_CLIENT
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - third-party client boundary
         print(f"  [genius] Client init failed: {e}", file=sys.stderr)
         return None
-def fetch_lyrics_genius(artist: str, title: str) -> Optional[ProviderResult]:
+
+
+def _fetch_lyrics_genius_direct(artist: str, title: str) -> ProviderResult | None:
     if not HAS_GENIUS:
         print("  [genius] Skipped (lyricsgenius not installed)", file=sys.stderr)
         return None
@@ -543,124 +692,73 @@ def fetch_lyrics_genius(artist: str, title: str) -> Optional[ProviderResult]:
             False,
         )
 
-    except Exception as e:
-        print(f"  [genius] Error: {e}", file=sys.stderr)
+    except Exception as error:  # noqa: BLE001 - third-party client boundary
+        message = str(error).split("Response body:", 1)[0].strip()
+        print(f"  [genius] Error: {message or type(error).__name__}", file=sys.stderr)
         return None
 
 
-def fetch_lyrics_chartlyrics(artist: str, title: str) -> Optional[ProviderResult]:
+def _fetch_lyrics_genius_excluded(
+    mullvad_exclude: str,
+    artist: str,
+    title: str,
+) -> ProviderResult | None:
+    command = [
+        mullvad_exclude,
+        sys.executable,
+        str(Path(__file__).resolve()),
+        _GENIUS_WORKER_FLAG,
+        artist,
+        title,
+    ]
     try:
-        print(f"  [chartlyrics] Searching for: {artist} - {title}", file=sys.stderr)
-        response = requests.get(
-            CHARTLYRICS_API,
-            params={"artist": artist, "song": title},
-            timeout=DEFAULT_TIMEOUT,
+        completed = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            timeout=GENIUS_WORKER_TIMEOUT,
+            check=False,
         )
-        if response.status_code != 200:
-            print(
-                f"  [chartlyrics] Request failed with status {response.status_code}",
-                file=sys.stderr,
-            )
-            return None
-        if "<Lyric>" not in response.text:
-            print("  [chartlyrics] No lyrics in response", file=sys.stderr)
-            return None
-
-        root = ET.fromstring(response.text)
-        lyric_text = (root.findtext(".//Lyric") or "").strip()
-        if not lyric_text:
-            print("  [chartlyrics] Empty lyric field", file=sys.stderr)
-            return None
-
-        result_artist = (root.findtext(".//LyricArtist") or artist).strip() or artist
-        result_title = (root.findtext(".//LyricSong") or title).strip() or title
-
-        lrc_lines = [f"[ar:{result_artist}]", f"[ti:{result_title}]", ""]
-        lrc_lines.append(_to_lrc_from_plain(lyric_text))
-
-        print("  [chartlyrics] Found plain lyrics", file=sys.stderr)
-        return _build_result(
-            "chartlyrics",
-            "\n".join(lrc_lines),
-            result_artist,
-            result_title,
-            False,
-        )
-    except ET.ParseError as e:
-        print(f"  [chartlyrics] XML parse error: {e}", file=sys.stderr)
-        return None
-    except Exception as e:
-        print(f"  [chartlyrics] Error: {e}", file=sys.stderr)
+    except (OSError, subprocess.TimeoutExpired) as error:
+        print(f"  [genius] Split-tunnel worker failed: {error}", file=sys.stderr)
         return None
 
+    if completed.stderr:
+        print(completed.stderr.rstrip(), file=sys.stderr)
+    if completed.returncode != 0:
+        print(
+            f"  [genius] Split-tunnel worker exited with status "
+            f"{completed.returncode}",
+            file=sys.stderr,
+        )
+        return None
 
-def _slugify_lyricsfreek(value: str) -> str:
-    slug = _normalize_text(value).replace(" ", "-")
-    slug = re.sub(r"-+", "-", slug).strip("-")
-    return slug
-def fetch_lyrics_lyricsfreek(artist: str, title: str) -> Optional[ProviderResult]:
     try:
-        print(f"  [lyricsfreek] Searching for: {artist} - {title}", file=sys.stderr)
-        artist_slug = _slugify_lyricsfreek(artist)
-        title_slug = _slugify_lyricsfreek(title)
-        if not artist_slug or not title_slug:
-            return None
-
-        response = requests.get(
-            f"{LYRICSFREEK_BASE}/{artist_slug}/{title_slug}-lyrics",
-            headers={"User-Agent": "Mozilla/5.0 (compatible; LyricsFetcher/1.0)"},
-            timeout=DEFAULT_TIMEOUT,
-            allow_redirects=True,
-        )
-        if response.status_code != 200:
-            print(
-                f"  [lyricsfreek] Request failed with status {response.status_code}",
-                file=sys.stderr,
-            )
-            return None
-
-        lyrics_match = re.search(
-            r'(?is)<div[^>]*class=["\']lyrics["\'][^>]*>(.*?)</div>',
-            response.text,
-        )
-        if not lyrics_match:
-            print("  [lyricsfreek] No lyrics block found", file=sys.stderr)
-            return None
-
-        lyrics_text = re.sub(r"(?is)<br\s*/?>", "\n", lyrics_match.group(1))
-        lyrics_text = re.sub(r"(?is)<[^>]+>", "", lyrics_text)
-        lyrics_text = unescape(lyrics_text)
-        lyrics_text = re.sub(
-            r"\n*Submit Corrections.*",
-            "",
-            lyrics_text,
-            flags=re.IGNORECASE | re.DOTALL,
-        ).strip()
-        if not lyrics_text:
-            print("  [lyricsfreek] Empty lyrics payload", file=sys.stderr)
-            return None
-
-        lrc_lines = [f"[ar:{artist}]", f"[ti:{title}]", ""]
-        lrc_lines.append(_to_lrc_from_plain(lyrics_text))
-
-        print("  [lyricsfreek] Found plain lyrics", file=sys.stderr)
-        return _build_result(
-            "lyricsfreek",
-            "\n".join(lrc_lines),
-            artist,
-            title,
-            False,
-        )
-    except Exception as e:
-        print(f"  [lyricsfreek] Error: {e}", file=sys.stderr)
+        result = json.loads(completed.stdout)
+    except json.JSONDecodeError as error:
+        print(f"  [genius] Invalid worker response: {error}", file=sys.stderr)
         return None
 
+    if result is None:
+        return None
+    if not isinstance(result, dict) or not isinstance(result.get("lyrics"), str):
+        print("  [genius] Invalid worker result", file=sys.stderr)
+        return None
+    return result
 
-def fetch_lyrics_lyricsovh(artist: str, title: str) -> Optional[ProviderResult]:
+
+def fetch_lyrics_genius(artist: str, title: str) -> ProviderResult | None:
+    mullvad_exclude = shutil.which("mullvad-exclude")
+    if mullvad_exclude:
+        return _fetch_lyrics_genius_excluded(mullvad_exclude, artist, title)
+    return _fetch_lyrics_genius_direct(artist, title)
+
+
+def fetch_lyrics_lyricsovh(artist: str, title: str) -> ProviderResult | None:
     try:
         print(f"  [lyrics.ovh] Searching for: {artist} - {title}", file=sys.stderr)
         url = f"{LYRICSOVH_API}/{artist}/{title}"
-        response = requests.get(url, timeout=DEFAULT_TIMEOUT)
+        response = http_get(url, timeout=DEFAULT_TIMEOUT)
         if response.status_code == 200:
             data = response.json()
             lyrics_text = data.get("lyrics", "").strip()
@@ -689,6 +787,21 @@ def fetch_lyrics_lyricsovh(artist: str, title: str) -> Optional[ProviderResult]:
 
         print("  [lyrics.ovh] No lyrics found", file=sys.stderr)
         return None
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - provider boundary
         print(f"  [lyrics.ovh] Error: {e}", file=sys.stderr)
         return None
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = sys.argv[1:] if argv is None else argv
+    if len(args) != 3 or args[0] != _GENIUS_WORKER_FLAG:
+        print("This module provides internal lyrics fetchers.", file=sys.stderr)
+        return 2
+
+    result = _fetch_lyrics_genius_direct(args[1], args[2])
+    json.dump(result, sys.stdout, ensure_ascii=False)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

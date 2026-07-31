@@ -257,7 +257,6 @@ state_get() {
   local var_name="$1"
   local default_value="${2:-}"
 
-  # Validate input
   if [[ -z "${var_name}" || ! "${var_name}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
     printf '%s\n' "${default_value}"
     return 1

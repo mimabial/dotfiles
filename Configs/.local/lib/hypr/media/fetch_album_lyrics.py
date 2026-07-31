@@ -1,24 +1,31 @@
 #!/usr/bin/env python3
-"""
-Album lyrics fetcher for rmpc.
-Uses shared provider logic from lyrics_provider.py.
-"""
+"""Fetch lyrics for one album or a complete music library."""
+
+from __future__ import annotations
 
 import argparse
-import json
-import os
 import re
 import sys
+from collections import Counter, defaultdict
+from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
+
+from mutagen import File as MutagenFile
+from mutagen import MutagenError
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from lyrics_provider import fetch_lyrics  # noqa: E402
-from lyrics_io import save_lrc  # noqa: E402
+from lyrics_io import save_lrc
+from lyrics_paths import lrc_path_for, music_library_dir
+from lyrics_provider import fetch_lyrics
+from lyrics_provider_common import _is_lrc_synced
 
+DEFAULT_EXTENSIONS = "mp3,flac,m4a,ogg,opus"
+TRACK_PREFIX = re.compile(r"^\s*\d{1,3}\s*[-._)]\s*")
+BUCKET = re.compile(r"\s*\[(?P<kind>[gc])\]\s*$", re.IGNORECASE)
 GENERIC_ALBUM_ARTISTS = {
     "various artists",
     "various artist",
@@ -30,203 +37,461 @@ GENERIC_ALBUM_ARTISTS = {
 }
 
 
+class LrcState(Enum):
+    MISSING = "missing"
+    UNTIMED = "untimed"
+    SYNCED = "synced"
+
+
+class ProcessResult(Enum):
+    SAVED = "saved"
+    KEPT = "kept"
+    SKIPPED = "skipped"
+    FAILED = "failed"
+
+
+def lrc_state(path: Path) -> LrcState:
+    if not path.is_file():
+        return LrcState.MISSING
+    try:
+        content = path.read_text(encoding="utf-8", errors="replace")
+    except OSError as exc:
+        print(f"Warning: Could not read lyrics file {path}: {exc}", file=sys.stderr)
+        return LrcState.UNTIMED
+    return LrcState.SYNCED if _is_lrc_synced(content) else LrcState.UNTIMED
+
+
+def should_fetch_lrc(
+    state: LrcState,
+    force: bool,
+    upgrade_plain: bool,
+    synced_only: bool = False,
+) -> bool:
+    if force:
+        return True
+    if upgrade_plain:
+        return state is LrcState.UNTIMED or (
+            synced_only and state is LrcState.MISSING
+        )
+    return state is LrcState.MISSING
+
+
 def is_generic_album_artist(value: str) -> bool:
-    return value.strip().lower() in GENERIC_ALBUM_ARTISTS
+    return value.strip().casefold() in GENERIC_ALBUM_ARTISTS
 
 
-def build_artist_candidates(track_artist: str, album_artist: str, fallback: str) -> List[str]:
-    candidates: List[str] = []
+def build_artist_candidates(
+    track_artist: str,
+    album_artist: str,
+    fallback: str,
+) -> list[str]:
+    candidates: list[str] = []
 
     def add(value: str) -> None:
         name = (value or "").strip()
-        if not name or name in candidates:
-            return
-        candidates.append(name)
+        if name and name not in candidates:
+            candidates.append(name)
 
+    # The complete track credit is the best identity. Album artist and directory
+    # hints are progressively broader fallbacks.
+    add(track_artist)
     if album_artist and not is_generic_album_artist(album_artist):
         add(album_artist)
-    add(track_artist)
     add(fallback)
     return candidates
 
 
-def get_audio_metadata(file_path: str) -> Dict[str, Any]:
-    """Extract metadata from audio file using ffprobe."""
-    import subprocess
+def _first_tag(tags, *wanted: str) -> str:
+    normalized = {
+        re.sub(r"[\s_-]+", "", str(key).casefold()): value
+        for key, value in tags.items()
+    }
+    for key in wanted:
+        value = normalized.get(re.sub(r"[\s_-]+", "", key.casefold()))
+        if isinstance(value, (list, tuple)):
+            value = value[0] if value else ""
+        if value is not None and str(value).strip():
+            return str(value).strip()
+    return ""
+
+
+def get_audio_metadata(file_path: str | Path) -> dict[str, Any]:
+    """Read tags and duration directly, including Opus stream comments."""
+    empty = {
+        "title": "",
+        "artist": "",
+        "album_artist": "",
+        "album": "",
+        "duration": 0.0,
+    }
+    try:
+        audio = MutagenFile(file_path, easy=True)
+        if audio is None:
+            return empty
+        tags = audio.tags or {}
+        info = getattr(audio, "info", None)
+        return {
+            "title": _first_tag(tags, "title"),
+            "artist": _first_tag(tags, "artist"),
+            "album_artist": _first_tag(tags, "albumartist", "album_artist"),
+            "album": _first_tag(tags, "album"),
+            "duration": float(getattr(info, "length", 0.0) or 0.0),
+        }
+    except (MutagenError, OSError, TypeError, ValueError) as exc:
+        print(f"Warning: Could not read metadata for {file_path}: {exc}", file=sys.stderr)
+        return empty
+
+
+def parse_filename(path: Path) -> tuple[str, str]:
+    stem = TRACK_PREFIX.sub("", path.stem)
+    if " - " not in stem:
+        return "", stem.strip()
+    artist, _, title = stem.partition(" - ")
+    return artist.strip(), title.strip()
+
+
+def directory_hints(
+    file_path: Path,
+    scan_root: Path,
+    recursive: bool,
+) -> tuple[str, str]:
+    if not recursive:
+        return scan_root.parent.name, scan_root.name
 
     try:
-        result = subprocess.run(
-            [
-                "ffprobe",
-                "-v",
-                "quiet",
-                "-show_entries",
-                "format=duration:format_tags=title,artist,album,album_artist,albumartist",
-                "-of",
-                "json",
-                file_path,
-            ],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        data = json.loads(result.stdout)
-        tags = data.get("format", {}).get("tags", {})
+        parts = file_path.relative_to(scan_root).parts[:-1]
+    except ValueError:
+        return "", ""
+    if not parts:
+        return "", ""
 
-        return {
-            "title": tags.get("TITLE") or tags.get("title") or "",
-            "artist": tags.get("ARTIST") or tags.get("artist") or "",
-            "album_artist": tags.get("ALBUMARTIST")
-            or tags.get("album_artist")
-            or tags.get("albumartist")
-            or "",
-            "album": tags.get("ALBUM") or tags.get("album") or "",
-            "duration": float(data.get("format", {}).get("duration", 0) or 0),
-        }
-    except Exception as e:
-        print(f"Warning: Could not extract metadata: {e}", file=sys.stderr)
-        return {
-            "title": "",
-            "artist": "",
-            "album_artist": "",
-            "album": "",
-            "duration": 0.0,
-        }
+    bucket_at = next(
+        (index for index, part in enumerate(parts) if BUCKET.search(part)),
+        -1,
+    )
+    if bucket_at >= 0:
+        kind = BUCKET.search(parts[bucket_at]).group("kind").casefold()
+        inner = parts[bucket_at + 1 :]
+        if kind == "c":
+            return "", inner[0] if inner else ""
+        artist = inner[0] if inner else ""
+        album = inner[1] if len(inner) > 1 else ""
+        return artist, album
+
+    return parts[0], parts[1] if len(parts) > 1 else ""
 
 
-def lrc_path_for(file_path: Path) -> Path:
-    """Mirror of lyrics_lrc_path() in lyrics_paths.lib.sh; keep the two in step."""
-    root = Path(os.environ.get("RMPC_LYRICS_DIR", Path.home() / "Music"))
-    hidden = root / ".lyrics"
-    target = file_path
-    if not file_path.is_relative_to(hidden) and file_path.is_relative_to(root):
-        target = hidden / file_path.relative_to(root)
-    return target.with_suffix(".lrc")
+def track_identity(
+    file_path: Path,
+    metadata: dict[str, Any],
+    scan_root: Path,
+    recursive: bool,
+) -> tuple[str, list[str], str, str, float]:
+    file_artist, file_title = parse_filename(file_path)
+    dir_artist, dir_album = directory_hints(file_path, scan_root, recursive)
+    track_artist = str(metadata.get("artist") or file_artist or dir_artist).strip()
+    album_artist = str(metadata.get("album_artist") or "").strip()
+    fallback_artist = file_artist or dir_artist
+    artists = build_artist_candidates(
+        track_artist,
+        album_artist,
+        fallback_artist,
+    )
+    save_artist = track_artist
+    if not save_artist and album_artist and not is_generic_album_artist(album_artist):
+        save_artist = album_artist
+    save_artist = save_artist or fallback_artist or "Unknown Artist"
+    title = str(metadata.get("title") or file_title).strip()
+    album = str(metadata.get("album") or dir_album).strip()
+    duration = float(metadata.get("duration") or 0.0)
+    return save_artist, artists, title, album, duration
 
 
 def process_audio_file(
     file_path: Path,
-    artist_dir: str,
-    album_dir: str,
+    scan_root: Path,
+    recursive: bool,
     force: bool = False,
-    dry_run: bool = False,
-) -> bool:
-    """Process a single audio file and fetch lyrics."""
+    upgrade_plain: bool = False,
+    synced_only: bool = False,
+    refresh_cache: bool = False,
+    metadata: dict[str, Any] | None = None,
+) -> ProcessResult:
     lrc_file = lrc_path_for(file_path)
+    state = lrc_state(lrc_file)
+    if not should_fetch_lrc(state, force, upgrade_plain, synced_only):
+        if upgrade_plain and state is LrcState.SYNCED:
+            reason = "already synchronized"
+        elif upgrade_plain:
+            reason = "no existing .lrc"
+        else:
+            reason = "already have .lrc"
+        print(f"– Skipping {file_path.name} ({reason})")
+        return ProcessResult.SKIPPED
 
-    if lrc_file.exists() and not force:
-        print(f"– Skipping {file_path.name} (already have .lrc)")
-        return True
-
-    if dry_run:
-        print(f"– Would fetch {file_path.name} -> {lrc_file}")
-        return True
-
-    metadata = get_audio_metadata(str(file_path))
-
-    track_artist = metadata.get("artist") or ""
-    album_artist = metadata.get("album_artist") or ""
-    artist_candidates = build_artist_candidates(track_artist, album_artist, artist_dir)
-    save_artist = track_artist or (
-        album_artist if album_artist and not is_generic_album_artist(album_artist) else ""
+    metadata = metadata or get_audio_metadata(file_path)
+    artist, artist_candidates, title, album, duration = track_identity(
+        file_path,
+        metadata,
+        scan_root,
+        recursive,
     )
-    if not save_artist:
-        save_artist = artist_dir
-
-    album = metadata["album"] or album_dir
-    title = metadata["title"]
-    expected_duration = float(metadata.get("duration") or 0.0)
-
-    if not title:
-        title = file_path.stem
-        title = re.sub(r"^[0-9]{1,3}[. -]+", "", title)
+    if not title or not artist_candidates:
+        print(f'✗ Missing usable identity for: "{file_path.name}"')
+        return ProcessResult.FAILED
 
     print(f"→ Processing: {file_path.name}")
     print(f"  Title: {title}")
-    print(f"  Artist: {save_artist}")
+    print(f"  Artist: {artist}")
     print(f"  Album: {album}")
 
     lyrics = None
     used_artist = ""
     for candidate_artist in artist_candidates:
         lyrics = fetch_lyrics(
-            candidate_artist, title, album, expected_duration=expected_duration
+            candidate_artist,
+            title,
+            album,
+            fast_mode=False,
+            expected_duration=duration,
+            refresh_cache=refresh_cache,
+            synced_only=upgrade_plain or synced_only,
         )
         if lyrics:
             used_artist = candidate_artist
             break
 
     if not lyrics:
+        if upgrade_plain and state is LrcState.UNTIMED:
+            print(f'– No synchronized lyrics found; kept existing file for: "{title}"')
+            return ProcessResult.KEPT
+        if synced_only:
+            print(f'✗ No synchronized lyrics found for: "{title}"')
+            return ProcessResult.FAILED
         print(f'✗ No lyrics found for: "{title}"')
-        return False
+        return ProcessResult.FAILED
 
-    if used_artist != save_artist:
+    if used_artist != artist:
         print(f"  Lookup fallback used: {used_artist}")
-
-    save_lrc(lrc_file, lyrics, save_artist, title, album)
-
+    save_lrc(lrc_file, lyrics, artist, title, album)
     print(f"✔ Saved lyrics: {lrc_file.name}")
-    return True
+    return ProcessResult.SAVED
 
 
-def main() -> None:
+def parse_extensions(raw: str) -> set[str]:
+    return {
+        "." + value.strip().lstrip(".").casefold()
+        for value in raw.split(",")
+        if value.strip()
+    }
+
+
+def collect_audio_files(
+    scan_root: Path,
+    extensions: set[str],
+    recursive: bool,
+) -> list[Path]:
+    iterator = scan_root.rglob("*") if recursive else scan_root.iterdir()
+    return sorted(
+        path
+        for path in iterator
+        if path.is_file() and path.suffix.casefold() in extensions
+    )
+
+
+def print_directory_plan(
+    groups: dict[Path, list[Path]],
+    states: dict[Path, LrcState],
+    force: bool,
+    upgrade_plain: bool,
+    synced_only: bool,
+) -> int:
+    selected_total = 0
+    total = len(groups)
+    for index, (directory, files) in enumerate(sorted(groups.items()), start=1):
+        selected = sum(
+            should_fetch_lrc(states[path], force, upgrade_plain, synced_only)
+            for path in files
+        )
+        selected_total += selected
+        if selected:
+            print(
+                f"[{index}/{total}] would fetch: {directory} "
+                f"({selected} of {len(files)} selected)"
+            )
+        else:
+            print(
+                f"[{index}/{total}] skipped: {directory} "
+                f"(0 of {len(files)} selected)"
+            )
+    return selected_total
+
+
+def dry_run(
+    audio_files: list[Path],
+    scan_root: Path,
+    recursive: bool,
+    force: bool,
+    upgrade_plain: bool,
+    synced_only: bool,
+) -> int:
+    groups: dict[Path, list[Path]] = defaultdict(list)
+    for path in audio_files:
+        groups[path.parent].append(path)
+    states = {path: lrc_state(lrc_path_for(path)) for path in audio_files}
+    selected = print_directory_plan(
+        groups,
+        states,
+        force,
+        upgrade_plain,
+        synced_only,
+    )
+    state_counts = Counter(states.values())
+
+    tagged = 0
+    fallback = 0
+    unusable = 0
+    for path in audio_files:
+        if not should_fetch_lrc(
+            states[path],
+            force,
+            upgrade_plain,
+            synced_only,
+        ):
+            continue
+        metadata = get_audio_metadata(path)
+        _, artists, title, _, _ = track_identity(
+            path,
+            metadata,
+            scan_root,
+            recursive,
+        )
+        if metadata["title"] and metadata["artist"]:
+            tagged += 1
+        elif title and artists:
+            fallback += 1
+        else:
+            unusable += 1
+
+    print()
+    print("Summary")
+    print(f"  Audio files:             {len(audio_files)}")
+    print(f"  Synchronized lyrics:     {state_counts[LrcState.SYNCED]}")
+    print(f"  Untimed lyrics:          {state_counts[LrcState.UNTIMED]}")
+    print(f"  Lyrics missing:          {state_counts[LrcState.MISSING]}")
+    print(f"  Would fetch:             {selected}")
+    print(f"  Tagged identities:       {tagged}")
+    print(f"  Filename fallbacks:      {fallback}")
+    print(f"  Unusable identities:     {unusable}")
+    print()
+    print("Preview only; providers were not contacted and no files were written.")
+    return 1 if unusable else 0
+
+
+def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Fetch synced lyrics for audio files using multiple sources"
-    )
-    parser.add_argument("album_dir", help="Path to album directory")
-    parser.add_argument(
-        "-f", "--force", action="store_true", help="Overwrite existing .lrc files"
+        description="Fetch lyrics for an album or music library"
     )
     parser.add_argument(
-        "-n", "--dry-run", action="store_true",
-        help="Report what would be fetched without contacting providers",
+        "directory",
+        nargs="?",
+        default=str(music_library_dir()),
+        help=f"Album or music-library directory (default: {music_library_dir()})",
+    )
+    existing_group = parser.add_mutually_exclusive_group()
+    existing_group.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        help="Overwrite existing .lrc files and refresh recent misses",
+    )
+    existing_group.add_argument(
+        "--upgrade-plain",
+        action="store_true",
+        help="Replace existing untimed lyrics with synchronized lyrics only",
     )
     parser.add_argument(
-        "--ext", default="mp3,flac,m4a,ogg,opus",
-        help="Comma-separated extensions to include (default: mp3,flac,m4a,ogg,opus)",
+        "--synced-only",
+        action="store_true",
+        help="Save only synchronized lyrics; ignore untimed results",
     )
-
+    parser.add_argument(
+        "-n",
+        "--dry-run",
+        action="store_true",
+        help="Validate identities and report work without contacting providers",
+    )
+    parser.add_argument(
+        "--recursive",
+        action="store_true",
+        help="Process every supported audio file below the directory",
+    )
+    parser.add_argument(
+        "--refresh-cache",
+        action="store_true",
+        help="Retry provider lookups cached as complete misses",
+    )
+    parser.add_argument(
+        "--ext",
+        default=DEFAULT_EXTENSIONS,
+        help=f"Comma-separated extensions (default: {DEFAULT_EXTENSIONS})",
+    )
     args = parser.parse_args()
 
-    album_path = Path(args.album_dir)
-    if not album_path.is_dir():
-        print(f"Error: '{args.album_dir}' is not a directory", file=sys.stderr)
-        sys.exit(1)
+    scan_root = Path(args.directory).expanduser()
+    if not scan_root.is_dir():
+        print(f"Error: '{scan_root}' is not a directory", file=sys.stderr)
+        return 2
 
-    artist = album_path.parent.name
-    album = album_path.name
+    extensions = parse_extensions(args.ext)
+    if not extensions:
+        parser.error("--ext produced no extensions")
+    audio_files = collect_audio_files(scan_root, extensions, args.recursive)
+    if not audio_files:
+        print("No supported audio files found", file=sys.stderr)
+        return 0
 
-    print(f"▶ Fetching lyrics for all audio files in: {album_path}")
-    print(f"  Artist: {artist}")
-    print(f"  Album:  {album}")
+    mode = "music library" if args.recursive else "album"
+    print(f"▶ Scanning {mode}: {scan_root}")
+    print(f"  Audio files: {len(audio_files)}")
     print()
 
-    audio_extensions = [
-        "." + e.strip().lstrip(".").lower() for e in args.ext.split(",") if e.strip()
-    ]
-    audio_files = []
-    for ext in audio_extensions:
-        audio_files.extend(album_path.glob(f"*{ext}"))
+    if args.dry_run:
+        return dry_run(
+            audio_files,
+            scan_root,
+            args.recursive,
+            args.force,
+            args.upgrade_plain,
+            args.synced_only,
+        )
 
-    audio_files.sort()
-
-    if not audio_files:
-        print("No audio files found")
-        sys.exit(1)
-
-    success_count = 0
-    for audio_file in audio_files:
-        if process_audio_file(audio_file, artist, album, args.force, args.dry_run):
-            success_count += 1
+    results: Counter[ProcessResult] = Counter()
+    current_directory = None
+    for path in audio_files:
+        if path.parent != current_directory:
+            current_directory = path.parent
+            print(f"\n[{current_directory}]")
+        result = process_audio_file(
+            path,
+            scan_root,
+            args.recursive,
+            force=args.force,
+            upgrade_plain=args.upgrade_plain,
+            synced_only=args.synced_only,
+            refresh_cache=args.force or args.refresh_cache,
+        )
+        results[result] += 1
         print()
 
-    total_files = len(audio_files)
-    print(f"Done. Successfully fetched lyrics for {success_count}/{total_files} files.")
-
-    if success_count == total_files:
-        sys.exit(0)
-    sys.exit(1)
+    print("Summary")
+    print(f"  Audio files:   {len(audio_files)}")
+    print(f"  Saved:         {results[ProcessResult.SAVED]}")
+    print(f"  Kept existing: {results[ProcessResult.KEPT]}")
+    print(f"  Skipped:       {results[ProcessResult.SKIPPED]}")
+    print(f"  Failed:        {results[ProcessResult.FAILED]}")
+    return 1 if results[ProcessResult.FAILED] else 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

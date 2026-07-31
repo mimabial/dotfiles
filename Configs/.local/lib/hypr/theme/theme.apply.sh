@@ -548,6 +548,10 @@ if [[ "${1:-}" == "--theme-envelope" ]]; then
   exit $?
 fi
 
+theme_apply_usage() {
+  printf '%s\n' "Usage: $(basename "$0") [--quiet] [--regen|--force-regenerate] [--no-cache]"
+}
+
 quiet=false
 while (($#)); do
   case "$1" in
@@ -560,8 +564,12 @@ while (($#)); do
       theme_apply_color_sync_args+=(--no-cache)
       export HYPR_WAL_CACHE_ENABLE=0
       ;;
+    -h | --help)
+      theme_apply_usage
+      exit 0
+      ;;
     *)
-      echo "Usage: $(basename "$0") [--quiet] [--regen|--force-regenerate] [--no-cache]" >&2
+      theme_apply_usage >&2
       exit 1
       ;;
   esac

@@ -6,6 +6,11 @@ LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 
 # shellcheck source=/dev/null
 source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
+
+hypr_help_guard "Usage: hyprshell wallpaper/wallpaper.kde-service [-t THEME -w WALLPAPER]
+Install the KDE service menu that adds a wallpaper to a theme; with no options,
+regenerate the menu entry from the current theme list." "$@"
+
 hypr_runtime_require state wallpaper_catalog || exit 1
 hypr_runtime_load_state || exit 1
 scrPath="$(realpath "$0")"

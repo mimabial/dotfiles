@@ -48,7 +48,6 @@ cleanup_temp_screenshot() {
   return "${exit_code}"
 }
 
-# Create secure temporary file
 temp_screenshot=$(mktemp -t screenshot_XXXXXX.png)
 
 XDG_PICTURES_DIR="${XDG_PICTURES_DIR:-$HOME/Pictures}"
@@ -89,7 +88,6 @@ annotation_args=(
 
 mkdir -p "$save_dir"
 
-# Add any additional annotation arguments
 [[ -n "${SCREENSHOT_ANNOTATION_ARGS[*]:-}" ]] && annotation_args+=("${SCREENSHOT_ANNOTATION_ARGS[@]}")
 
 run_annotation() {

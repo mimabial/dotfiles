@@ -15,11 +15,9 @@ import json
 import os
 import re
 import sys
-import xml.etree.ElementTree as ET
-from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
+import threading
+from collections.abc import Callable
 from difflib import SequenceMatcher
-from html import unescape
-from typing import Callable, Dict, List, Optional, Tuple
 
 import requests
 
@@ -30,19 +28,10 @@ try:
 except ImportError:
     HAS_YTMUSIC = False
 
-try:
-    from lyricsgenius import Genius
-
-    HAS_GENIUS = True
-except ImportError:
-    HAS_GENIUS = False
-
 LRCLIB_API_SEARCH = "https://lrclib.net/api/search"
 LRCLIB_API_GET = "https://lrclib.net/api/get"
 LYRICSOVH_API = "https://api.lyrics.ovh/v1"
 SIMPMUSIC_API_BASE = "https://api-lyrics.simpmusic.org/v1"
-CHARTLYRICS_API = "https://api.chartlyrics.com/apiv1.asmx/SearchLyricDirect"
-LYRICSFREEK_BASE = "https://www.lyricsfreek.com"
 OAUTH_TOKEN_KEYS = {
     "scope",
     "token_type",
@@ -54,17 +43,26 @@ OAUTH_TOKEN_KEYS = {
 
 _YTMUSIC_CLIENT = None
 _YTMUSIC_MODE = "uninitialized"
-_GENIUS_CLIENT = None
+_HTTP_LOCAL = threading.local()
 DEFAULT_TIMEOUT = 10
 SONG_MATCH_THRESHOLD = 0.72
 ARTIST_MATCH_THRESHOLD = 0.68
 
-ProviderResult = Dict[str, object]
-ProviderFetcher = Callable[[str, str, str], Optional[ProviderResult]]
+ProviderResult = dict[str, object]
+ProviderFetcher = Callable[[str, str, str], ProviderResult | None]
 LYRICS_OVH_BOILERPLATE_PATTERNS = [
     re.compile(r"^\s*paroles?\s+de\s+la\s+chanson\b.*\bpar\b.+$", re.IGNORECASE),
     re.compile(r"^\s*lyrics?\s+(?:for|of)\b.*\bby\b.+$", re.IGNORECASE),
 ]
+
+
+def http_get(url: str, **kwargs):
+    """Reuse connections without sharing a requests session between workers."""
+    session = getattr(_HTTP_LOCAL, "session", None)
+    if session is None:
+        session = requests.Session()
+        _HTTP_LOCAL.session = session
+    return session.get(url, **kwargs)
 
 
 def _env_bool(name: str, default: bool = False) -> bool:
@@ -87,7 +85,7 @@ def _normalize_text(text: str) -> str:
     return text.lower().strip()
 
 
-def _split_artists(artist_text: str) -> List[str]:
+def _split_artists(artist_text: str) -> list[str]:
     if not artist_text:
         return []
     artist_text = _FEAT_RX.sub(",", artist_text)
@@ -124,7 +122,7 @@ def _extract_lrc_tag(lrc_text: str, tag: str) -> str:
 
 
 def _is_lrc_synced(lrc_text: str) -> bool:
-    timestamps: List[Tuple[int, int, int]] = []
+    timestamps: list[tuple[int, int, int]] = []
     for line in lrc_text.splitlines():
         match = _LRC_TIMESTAMP_RX.match(line.strip())
         if not match:
@@ -139,13 +137,13 @@ def _is_lrc_synced(lrc_text: str) -> bool:
 
 
 def _to_lrc_from_plain(plain_text: str) -> str:
-    lines: List[str] = []
+    lines: list[str] = []
     for line in plain_text.splitlines():
         lines.append(f"[00:00.00]{line}")
     return "\n".join(lines)
 
 
-def _strip_leading_boilerplate_lines(text: str, patterns: List[re.Pattern]) -> Tuple[str, int]:
+def _strip_leading_boilerplate_lines(text: str, patterns: list[re.Pattern]) -> tuple[str, int]:
     lines = text.splitlines()
     idx = 0
     removed = 0
@@ -197,7 +195,7 @@ def _is_oauth_token_file(token_path: str) -> bool:
         with open(token_path, encoding="utf-8") as f:
             payload = json.load(f)
         return isinstance(payload, dict) and OAUTH_TOKEN_KEYS.issubset(payload.keys())
-    except Exception:
+    except (OSError, json.JSONDecodeError, TypeError):
         return False
 
 
@@ -205,7 +203,7 @@ def _read_secret_file(path: str) -> str:
     try:
         with open(path, encoding="utf-8") as handle:
             return handle.read().strip()
-    except Exception:
+    except (OSError, UnicodeError):
         return ""
 
 
@@ -246,7 +244,7 @@ def get_ytmusic_client():
             _YTMUSIC_CLIENT = YTMusic(auth=oauth_file, oauth_credentials=creds)
             _YTMUSIC_MODE = "oauth"
             return _YTMUSIC_CLIENT
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - third-party client boundary
             print(
                 f"  [ytmusic] OAuth init failed, falling back to unauthenticated mode: {e}",
                 file=sys.stderr,
@@ -256,7 +254,7 @@ def get_ytmusic_client():
         _YTMUSIC_CLIENT = YTMusic(auth=None)
         _YTMUSIC_MODE = "unauthenticated"
         return _YTMUSIC_CLIENT
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - third-party client boundary
         _YTMUSIC_MODE = "init_failed"
         print(f"  [ytmusic] Client init failed: {e}", file=sys.stderr)
         return None

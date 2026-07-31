@@ -23,7 +23,6 @@ fi
 print_color() {
   local name=$1
   local hex=$2
-  # Ensure hex is at least 6 characters
   if [ ${#hex} -lt 6 ]; then
     printf "%-10s %s (invalid)\n" "$name" "#$hex"
     return

@@ -168,7 +168,6 @@ get_themes() {
 set_hash() {
   local hashImage="${1}"
 
-  # Validate input
   if [[ -z "${hashImage}" ]]; then
     return 1
   fi

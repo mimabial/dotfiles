@@ -11,6 +11,18 @@ function connect() {
   }
   port.onMessage.addListener((msg) => {
     if (msg && msg.type === "command" && seen.has(msg.tabId)) {
+      if (msg.command === "raise") {
+        browser.tabs
+          .get(msg.tabId)
+          .then((tab) =>
+            Promise.all([
+              browser.tabs.update(msg.tabId, { active: true }),
+              browser.windows.update(tab.windowId, { focused: true }),
+            ])
+          )
+          .catch(() => {});
+        return;
+      }
       browser.tabs.sendMessage(msg.tabId, msg).catch(() => {});
     }
   });

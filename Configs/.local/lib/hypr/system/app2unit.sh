@@ -352,7 +352,6 @@ parse_main_arg() {
 }
 
 check_terminal_handler() {
-	# checks terminal handler availability
 	if ! command -v "$TERMINAL_HANDLER" >/dev/null; then
 		error "Terminal launch requested but '$TERMINAL_HANDLER' is unavailable!"
 		return 1
@@ -360,7 +359,6 @@ check_terminal_handler() {
 }
 
 get_mime() {
-	# prints mime type of file or url
 	app2unit_resolve_mime=
 	case "$1" in
 	[a-zA-Z]*:*)
@@ -393,7 +391,6 @@ get_mime() {
 }
 
 get_assoc() {
-	# prints file association for mime type
 	app2unit_resolve_assoc=$(xdg-mime query default "$1")
 	case "$app2unit_resolve_assoc" in
 	?*.desktop)
@@ -432,7 +429,6 @@ gen_unit_id() {
 			read -r UNIT_DESKTOP_SUBSTRING UNIT_APP_SUBSTRING <<-EOL
 				$(systemd-escape "A$UNIT_DESKTOP_SUBSTRING" "A$UNIT_APP_SUBSTRING")
 			EOL
-			# remove character
 			UNIT_DESKTOP_SUBSTRING=${UNIT_DESKTOP_SUBSTRING#A}
 			UNIT_APP_SUBSTRING=${UNIT_APP_SUBSTRING#A}
 			;;
@@ -478,7 +474,6 @@ gen_unit_id() {
 }
 
 randomize_unit_id() {
-	# updates random string in existing UNIT_ID
 
 	if [ -z "$RANDOM_STRING" ]; then
 		debug "refusing to randomize unit ID"
@@ -577,7 +572,6 @@ systemd_run() {
 		app2unit_exec_without_systemd "$@"
 		return $?
 	fi
-	# prepend common args
 	UNIT_SLICE_ID=${UNIT_SLICE_ID:-app-graphical.slice}
 	if [ -z "$UNIT_DESCRIPTION" ]; then
 		if [ -n "${ENTRY_LNAME:-$ENTRY_NAME}" ] && [ -n "${ENTRY_LCOMMENT:-$ENTRY_COMMENT}" ]; then
@@ -648,7 +642,6 @@ systemd_run() {
 	scope_both) exec >/dev/null 2>&1 ;;
 	esac
 
-	# exec
 	exec systemd-run --user "$@"
 }
 

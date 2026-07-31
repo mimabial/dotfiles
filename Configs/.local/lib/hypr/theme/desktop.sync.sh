@@ -20,14 +20,22 @@ source "${desktop_sync_lib}" || exit 1
 
 sync_mode="full"
 
+desktop_sync_usage() {
+  printf '%s\n' "Usage: $(basename "$0") [--full|--static-only|--runtime-only] [--quiet]"
+}
+
 while (($#)); do
   case "$1" in
     --full) sync_mode="full" ;;
     --static-only) sync_mode="static" ;;
     --runtime-only) sync_mode="runtime" ;;
     --quiet) THEME_DESKTOP_SYNC_LOG_DCONF=0 ;;
+    -h | --help)
+      desktop_sync_usage
+      exit 0
+      ;;
     *)
-      echo "Usage: $(basename "$0") [--full|--static-only|--runtime-only] [--quiet]" >&2
+      desktop_sync_usage >&2
       exit 1
       ;;
   esac

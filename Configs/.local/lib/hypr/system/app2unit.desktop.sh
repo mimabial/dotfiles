@@ -121,7 +121,6 @@ de_expand_str() {
 		# left is substring of remainder before the first encountered backslash
 		exp_left=${exp_remainder%%\\*}
 
-		# append left to EXPANDED_STR
 		EXPANDED_STR=${EXPANDED_STR}${exp_left}
 		debug "expander appended: $exp_left"
 
@@ -650,7 +649,6 @@ de_validate_entry_payload() {
 }
 
 read_entry_path() {
-	# Read entry from given path
 	DE_ENTRY_PATH=$1
 	DE_ENTRY_ACTION=${2-}
 	DE_READ_EXEC=false
@@ -713,12 +711,10 @@ read_entry_path() {
 }
 
 random_string() {
-	# gets random 8 hex characters
 	tr -dc '0-9a-f' </dev/urandom 2>/dev/null | head -c 8
 }
 
 validate_entry_id() {
-	# validates Entry ID ($1)
 
 	case "$1" in
 	# invalid characters or degrees of emptiness
@@ -737,7 +733,6 @@ validate_entry_id() {
 }
 
 validate_action_id() {
-	# validates action ID ($1)
 
 	case "$1" in
 	# empty is ok

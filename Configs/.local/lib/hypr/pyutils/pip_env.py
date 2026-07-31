@@ -116,7 +116,6 @@ def create_venv(venv_path, requirements_file=None):
     if not os.path.exists(os.path.join(venv_path, "bin", "pip")):
         subprocess.run([sys.executable, "-m", "venv", venv_path], check=True)
         pip_executable = os.path.join(venv_path, "bin", "pip")
-        subprocess.run([pip_executable, "install", "--upgrade", "pip"], check=True)
         if requirements_file and os.path.exists(requirements_file):
             with open(requirements_file, "r") as f:
                 list_requirements = "\n".join(
@@ -195,6 +194,14 @@ def rebuild_venv(venv_path=None, requirements_file=None):
     # Use XDG_STATE_HOME for venv_path if not provided
     if venv_path is None:
         venv_path = hypr_venv_path()
+
+    if os.path.exists(venv_path) and not is_venv_valid(venv_path):
+        notify.send(
+            "PIP",
+            "⚠️ Python version changed or virtualenv is broken, rebuilding…",
+        )
+        destroy_venv(venv_path)
+
     pip_executable = os.path.join(venv_path, "bin", "pip")
     # Recreate venv if missing
     if not os.path.exists(pip_executable):
@@ -218,7 +225,6 @@ def rebuild_venv(venv_path=None, requirements_file=None):
                 return sline.strip()
         return ""
 
-    # Install/upgrade requirements (capture output)
     if requirements_file and os.path.exists(requirements_file):
         result = subprocess.run(
             [pip_executable, "install", "--upgrade", "-r", requirements_file],
@@ -256,7 +262,13 @@ def rebuild_venv(venv_path=None, requirements_file=None):
 
     try:
         outdated_packages = json.loads(result.stdout) if result.stdout.strip() else []
-        outdated = [pkg["name"] for pkg in outdated_packages]
+        # Keep the venv's bootstrap pip paired with the system Python.
+        # Self-upgrading pip while it is running can leave a partial install.
+        outdated = [
+            pkg["name"]
+            for pkg in outdated_packages
+            if pkg["name"].lower() != "pip"
+        ]
     except (json.JSONDecodeError, KeyError) as e:
         notify.send(
             "PIP",
@@ -311,7 +323,6 @@ def v_install(module_name, force_reinstall=False):
     if not os.path.exists(os.path.join(venv_path, "bin", "pip")):
         create_venv(venv_path)
     pip_executable = os.path.join(venv_path, "bin", "pip")
-    # Check if module is already installed
     result = subprocess.run(
         [pip_executable, "show", module_name],
         capture_output=True,

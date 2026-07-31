@@ -157,7 +157,6 @@ def get_sensor_data(result_sensors, page=0):
             "tooltip": "Error: Failed to decode JSON from sensors output",
         }
 
-    # Initialize variables
     device_data = {}
 
     # Extract top-level sensor data
@@ -251,7 +250,6 @@ def get_sensor_data(result_sensors, page=0):
             tooltip_parts.append("\n".join(device_parts))
             tooltip_parts.append("\n")  # Add a newline after each device's information
 
-    # Add page indicator
     tooltip_parts.append(f"\nPage {page + 1}/{total_pages} ← →")
 
     tooltip = "\n".join(tooltip_parts)

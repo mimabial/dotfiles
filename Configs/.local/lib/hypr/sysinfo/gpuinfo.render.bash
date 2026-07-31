@@ -123,7 +123,6 @@ intel_gpu_top_util() {
   printf "%.0f" "${util}"
 }
 
-# Function to determine color based on temperature
 
 resolve_bucket_icon() {
   local value="$1"

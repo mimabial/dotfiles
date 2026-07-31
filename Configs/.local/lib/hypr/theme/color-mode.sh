@@ -304,7 +304,6 @@ resolve_wallpaper() {
   local cache_wall="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wallpaper/current/wall.set"
   if [ -e "${cache_wall}" ]; then
     resolved_path="$(color_mode_resolve_existing_path "${cache_wall}" || true)"
-    # Verify resolved path exists
     if [ -f "${resolved_path}" ]; then
       echo "${resolved_path}"
       return 0
@@ -324,7 +323,6 @@ resolve_wallpaper() {
   local theme_wall="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/${theme}/wall.set"
   if [ -e "${theme_wall}" ]; then
     resolved_path="$(color_mode_resolve_existing_path "${theme_wall}" || true)"
-    # Verify resolved path exists
     if [ -f "${resolved_path}" ]; then
       echo "${resolved_path}"
       return 0

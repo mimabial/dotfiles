@@ -142,8 +142,6 @@ Environment:
 USAGE
 }
 
-# --- Webcam ---
-
 screenrecord_webcam_device() {
   local device="${WEBCAM_DEVICE}"
   if [[ -n "$device" ]]; then
@@ -243,8 +241,6 @@ clear_recording_state_if_matches() {
   rm -f "$RECORDING_FILE"
 }
 
-# --- Resolution ---
-
 default_resolution() {
   local width height
   read -r width height < <(screenrecord_focused_monitor_value '"\(.width) \(.height)"')
@@ -256,8 +252,6 @@ default_resolution() {
     echo "0x0"
   fi
 }
-
-# --- Window selection ---
 
 workspace_windows() {
   hyprctl --batch -j "activeworkspace;clients" \
@@ -302,8 +296,6 @@ select_window() {
     [[ $exit_code -eq 1 ]] && return 1
   done
 }
-
-# --- Recording ---
 
 ensure_screen_recorder_available() {
   if ! pkg_installed gpu-screen-recorder; then
@@ -555,8 +547,6 @@ show_status() {
     echo '{"text": "󰑋", "class": "idle", "tooltip": "Start recording"}'
   fi
 }
-
-# --- Argument parsing ---
 
 DESKTOP_AUDIO=false
 MICROPHONE_AUDIO=false

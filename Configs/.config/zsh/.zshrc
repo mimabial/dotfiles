@@ -21,13 +21,25 @@ zshaddhistory() {
 # zinit plugins are loaded in $ZDOTDIR/startup.zsh file, see the file for more information
 #  Aliases 
 # Override aliases here in '$ZDOTDIR/.zshrc' (already set in .zshenv)
-# Extract audio into ~/Music. See `yt -h`.
+music-library() {
+  if [[ ${1:-} == '-s' || ${1:-} == '--set' || ${1:-} == --set=* ]]; then
+    local library
+    library=$(hyprshell media/music_library_config "$@") || return
+    export XDG_MUSIC_DIR=$library
+    print -r -- "$library"
+    return
+  fi
+  hyprshell media/music_library_config "$@"
+}
+
+# Extract audio into $XDG_MUSIC_DIR. See `yt -h`.
 yt() {
   local usage="usage: yt [-p] [-s] [-n] [-d <subdir>] [--] <url...>"
+  local music_dir=${XDG_MUSIC_DIR:-$HOME/Music}
   local playlist=0 split=0 nothumb=0 sub=""
   while (( $# )); do
     case $1 in
-      -h|--help)
+      '-h'|'--help')
         print -r -- "$usage
   -p, --playlist    follow the playlist, numbering files 01, 02, … for albums
   -s, --split       split an \"Artist - Title\" upload title into real tags.
@@ -35,7 +47,7 @@ yt() {
                     media/autotag derives the artist more reliably afterwards.
   -n, --no-thumb    skip the cover art, for live sets and non-music uploads
                     where the thumbnail is a video frame rather than a sleeve
-  -d, --dir <sub>   download into ~/Music/<sub>, created on demand. One level
+  -d, --dir <sub>   download into $music_dir/<sub>, created on demand. One level
                     names the artist, two name the album, and a [G] or [C]
                     bucket names neither — media/autotag reads all of them.
 
@@ -44,19 +56,24 @@ with --. Unrecognised options go to yt-dlp and stop the parsing above, so one of
 ours placed after them is read by yt-dlp instead. Use -- when mixing:
   yt -p -d Kaey -- --playlist-items 1-3 <url>
 
+Repeated artist credits are removed before filenames and tags are generated.
 Filename template, noise stripping and cover art: ~/.config/yt-dlp/config"
         return 0 ;;
-      -p|--playlist) playlist=1; shift ;;
-      -s|--split)    split=1; shift ;;
-      -n|--no-thumb) nothumb=1; shift ;;
-      -d|--dir)      sub=$2; shift 2 ;;
-      --)            shift; break ;;
+      '-p'|'--playlist') playlist=1; shift ;;
+      '-s'|'--split')    split=1; shift ;;
+      '-n'|'--no-thumb') nothumb=1; shift ;;
+      '-d'|'--dir')      sub=$2; shift 2 ;;
+      '--')               shift; break ;;
       *)             break ;;
     esac
   done
   (( $# )) || { print -u2 "\n$usage"; return 2 }
 
-  local -a opts=(-x --audio-format best)
+  local -a opts=(
+    -x
+    --audio-format best
+    --use-postprocessor 'DeduplicateArtists:when=pre_process'
+  )
   if (( playlist )); then
     opts+=(--yes-playlist
       -o "%(playlist_index&{:02d} - |)s%(artist&{} - |)s%(track,title,id).200B.%(ext)s")
@@ -65,7 +82,7 @@ Filename template, noise stripping and cover art: ~/.config/yt-dlp/config"
   fi
   (( split )) && opts+=(--parse-metadata 'title:^(?P<artist>.+?)\s*-\s*(?P<title>.+)$')
   (( nothumb )) && opts+=(--no-embed-thumbnail)
-  [[ -n $sub ]] && opts+=(-P "$HOME/Music/$sub")
+  [[ -n $sub ]] && opts+=(-P "$music_dir/$sub")
 
   yt-dlp "${opts[@]}" "$@"
 }

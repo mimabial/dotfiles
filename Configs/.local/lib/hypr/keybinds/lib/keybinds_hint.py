@@ -5,6 +5,7 @@ import argparse
 import base64
 import html
 import os
+import re
 from collections import defaultdict
 
 # Must match SUBMAP_MARKER in ~/.config/hypr/keybindings.lua.
@@ -182,35 +183,31 @@ def parse_description(description):
 def map_dispatcher(dispatcher):
     dispatcher_map = {
         "exec": "execute",
-        # Add more mappings as needed
     }
     return dispatcher_map.get(dispatcher, dispatcher)
 
 
+CODE_KEY = re.compile(r"code:(\d+)")
+MODIFIER_NAMES = {"SUPER", "HYPER", "META", "ALT", "CTRL", "CAPSLOCK", "SHIFT"}
+
+
+def strip_modifiers(key):
+    """Keycode binds arrive with the whole chord in key ("SUPER + code:10") while
+    modmask carries the same modifiers, so joining both would repeat them."""
+    parts = [part.strip() for part in key.split("+")]
+    while len(parts) > 1 and parts[0].upper() in MODIFIER_NAMES:
+        parts.pop(0)
+    return " + ".join(parts)
+
+
 def map_codeDisplay(keycode, key):
-    if keycode == 0:
-        return key
-    return CODE_DISPLAY_MAP.get(keycode, key)
-
-
-def infer_blank_key_display(description):
-    if description in {
-        "[Utilities|Monitors] cycle scale",
-        "[Utilities|Monitors] cycle scale backward",
-    }:
-        return CODE_DISPLAY_MAP[51]
-
-    workspace_prefixes = (
-        "[Workspaces] go to workspace ",
-        "[Workspaces] move window to workspace ",
-        "[Workspaces] move window silently to workspace ",
+    if keycode:
+        return CODE_DISPLAY_MAP.get(keycode, key)
+    # Binds declared as "code:N" arrive with keycode 0 and the literal chord in
+    # key ("SUPER + code:10"), so the lookup above never sees their keycode.
+    return CODE_KEY.sub(
+        lambda match: CODE_DISPLAY_MAP.get(int(match.group(1)), match.group(0)), key
     )
-    for prefix in workspace_prefixes:
-        if description.startswith(prefix):
-            workspace = description.removeprefix(prefix)
-            if workspace.isdigit():
-                return "0" if workspace == "10" else workspace
-    return ""
 
 
 def map_modDisplay(modmask):
@@ -290,9 +287,41 @@ def hint_sort_key(mod_display, key_display):
     return (0, mod_rank, mod_display, key_class, arrow_index, key_display)
 
 
+NUMBERED = re.compile(r"^(.*?)\s+(\d+)$")
+
+
+def collapse_numbered_series(entries):
+    """Fold "… workspace 1" through "… workspace 10" into a single row. Ten near
+    identical lines crowd out the rest of the submap in a notification."""
+    series = defaultdict(list)
+    singles = []
+    for mod_display, key_display, description in entries:
+        match = NUMBERED.match(description)
+        if match and len(key_display) == 1:
+            series[(mod_display, match.group(1))].append(
+                (int(match.group(2)), key_display)
+            )
+        else:
+            singles.append((mod_display, key_display, description))
+
+    collapsed = []
+    for (mod_display, stem), members in series.items():
+        if len(members) < 3:
+            collapsed.extend(
+                (mod_display, key, f"{stem} {number}") for number, key in members
+            )
+            continue
+        members.sort()
+        keys = f"{members[0][1]}…{members[-1][1]}"
+        collapsed.append(
+            (mod_display, keys, f"{stem} {members[0][0]}-{members[-1][0]}")
+        )
+    return singles + collapsed
+
+
 def generate_hint(binds):
     """Generate a Pango markup body listing binds, for a dunst notification."""
-    rows = []
+    entries = []
     for bind in binds:
         if bind.get("catch_all", False):
             continue
@@ -308,6 +337,10 @@ def generate_hint(binds):
         key_display = bind["key_display"]
         if key_display is None or key_display == "None":
             key_display = ""
+        entries.append((mod_display, key_display, description))
+
+    rows = []
+    for mod_display, key_display, description in collapse_numbered_series(entries):
         chord = " + ".join(part for part in (mod_display, key_display) if part)
         rows.append((hint_sort_key(mod_display, key_display), chord, description))
 
@@ -327,7 +360,6 @@ def generate_md(binds):
     """Generate markdown table for binds data."""
     headers = ["Keys", "Action"]
 
-    # Create the header row
     header_row = "| " + " | ".join(headers) + " |"
     separator_row = "| :--- | :--- |"
 
@@ -342,7 +374,6 @@ def generate_md(binds):
         header4 = bind.get("header4", "")
         header_groups[header1][header2][header3][header4].append(bind)
 
-    # Create the table rows
     rows = []
     for header1, group1 in header_groups.items():
         rows.append(f"## {header1}")
@@ -427,7 +458,6 @@ def generate_rofi(binds):
 
         displayed_rofi_keys = f"{displayed_keys:<20} {delimiter:<5} {description}"
 
-        # Create nested dictionary structure
         if header1 not in groups:
             groups[header1] = {}
         if header2 not in groups[header1]:
@@ -486,10 +516,8 @@ def expand_meta_data(binds_data):
             bind.update(
                 {"header1": "Misc", "header2": "", "header3": "", "header4": ""}
             )
-        bind["key"] = map_codeDisplay(bind["keycode"], bind["key"])
+        bind["key"] = strip_modifiers(map_codeDisplay(bind["keycode"], bind["key"]))
         bind["key_display"] = map_keyDisplay(bind["key"])
-        if not bind["key_display"]:
-            bind["key_display"] = infer_blank_key_display(original_description)
         bind["mod_display"] = map_modDisplay(bind["modmask"])
 
         # Handle submaps. The Lua config plugin routes every bind through its own

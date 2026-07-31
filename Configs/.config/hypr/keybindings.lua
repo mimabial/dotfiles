@@ -41,6 +41,13 @@ end
 -- level-1 keysym, and AZERTY puts . / [ ] above level 1, where it cannot reach.
 local SUBMAP_MARKER = "[Submap] "
 
+-- Number row, left to right: workspace 1 sits on keycode 10 and workspace 10 on
+-- keycode 19, the "0" key. Digits share the punctuation problem above -- AZERTY
+-- reaches them at level 2 -- so these bind by keycode, which no layout remaps.
+local function workspace_code(workspace)
+	return "code:" .. tostring(workspace + 9)
+end
+
 -- The leader is tagged with SUBMAP_MARKER because the Lua plugin reports every
 -- bind as dispatcher "__lua"; keybinds_hint pairs inner binds back to the key
 -- that enters them via this description, not via hyprctl's dispatcher field.
@@ -123,6 +130,11 @@ local function usable_area(monitor)
 		height - reserved.top - reserved.bottom - 2 * border
 end
 
+-- Hyprland only sometimes restores a window's pre-tile floating size, so one tiled
+-- alone re-floats at the whole usable area. Keep our own record, keyed by address.
+local float_geometry = {}
+local FLOAT_FALLBACK_FRACTION = 0.9
+
 local function clamp_floating_size(window, selector)
 	local max_width, max_height = usable_area(window.monitor)
 	local width = math.min(window.size.x, max_width)
@@ -134,6 +146,26 @@ local function clamp_floating_size(window, selector)
 	hl.dispatch(hl.dsp.window.resize({ x = width, y = height, relative = false, window = selector }))
 end
 
+local function restore_float_size(window, selector)
+	local remembered = float_geometry[window.address]
+	if remembered then
+		float_geometry[window.address] = nil
+		hl.dispatch(hl.dsp.window.resize({ x = remembered.x, y = remembered.y, relative = false, window = selector }))
+		local floated = hl.get_window(selector)
+		if floated then
+			clamp_floating_size(floated, selector)
+		end
+		return
+	end
+
+	-- Nothing remembered: reuse the tiled footprint, capped so a window that was
+	-- tiled alone does not float at full screen.
+	local max_width, max_height = usable_area(window.monitor)
+	local width = math.min(window.size.x, math.floor(max_width * FLOAT_FALLBACK_FRACTION))
+	local height = math.min(window.size.y, math.floor(max_height * FLOAT_FALLBACK_FRACTION))
+	hl.dispatch(hl.dsp.window.resize({ x = width, y = height, relative = false, window = selector }))
+end
+
 local function toggle_floating()
 	local window = hl.get_active_window()
 	if not window then
@@ -142,13 +174,15 @@ local function toggle_floating()
 
 	local selector = "address:" .. window.address
 	local was_floating = window.floating
+
+	if was_floating then
+		float_geometry[window.address] = { x = window.size.x, y = window.size.y }
+	end
+
 	hl.dispatch(hl.dsp.window.float({ action = "toggle", window = selector }))
 
 	if not was_floating then
-		local floated = hl.get_window(selector)
-		if floated then
-			clamp_floating_size(floated, selector)
-		end
+		restore_float_size(window, selector)
 		hl.dispatch(hl.dsp.window.center({ window = selector, respect_reserved = true }))
 		hl.dispatch(hl.dsp.window.alter_zorder({ window = selector, mode = "top" }))
 	end
@@ -352,7 +386,26 @@ submap_leader("window", mod, "W", function()
 	submap_stay_action("G", "[Window Mode|State] toggle group", hl.dsp.group.toggle())
 	submap_stay_exec("P", "[Window Mode|State] toggle pin", "hyprshell window/windowpin.sh")
 
-	submap_stay_exec("T", "[Window Mode|Layout] toggle workspace layout", "hyprshell window/layout-toggle.sh")
+	for workspace = 1, 10 do
+		local code = workspace_code(workspace)
+		submap_stay_action(
+			code,
+			"[Window Mode|Workspace] go to workspace " .. workspace,
+			hl.dsp.focus({ workspace = workspace })
+		)
+		submap_stay_action(
+			"SHIFT + " .. code,
+			"[Window Mode|Workspace] move window to workspace " .. workspace,
+			hl.dsp.window.move({ workspace = workspace })
+		)
+		submap_stay_action(
+			"ALT + " .. code,
+			"[Window Mode|Workspace] move window silently to workspace " .. workspace,
+			hl.dsp.window.move({ workspace = workspace, follow = false })
+		)
+	end
+
+	submap_stay_exec("T", "[Window Mode|Layout] cycle global layout", "hyprshell window/layout-toggle.sh")
 	submap_stay_action(
 		"S",
 		"[Window Mode|Dwindle] toggle window split",
@@ -377,6 +430,159 @@ submap_leader("window", mod, "W", function()
 		"SHIFT + L",
 		"[Window Mode|Scrolling] swap column right",
 		layout_action("scrolling", hl.dsp.layout("swapcol r"))
+	)
+	submap_repeat_action(
+		"C",
+		"[Window Mode|Scrolling] focus previous column",
+		layout_action("scrolling", hl.dsp.layout("focus -col"))
+	)
+	submap_repeat_action(
+		"SHIFT + C",
+		"[Window Mode|Scrolling] focus next column",
+		layout_action("scrolling", hl.dsp.layout("focus +col"))
+	)
+	submap_repeat_action(
+		"E",
+		"[Window Mode|Scrolling] shrink column",
+		layout_action("scrolling", hl.dsp.layout("colresize -conf"))
+	)
+	submap_repeat_action(
+		"SHIFT + E",
+		"[Window Mode|Scrolling] grow column",
+		layout_action("scrolling", hl.dsp.layout("colresize +conf"))
+	)
+	submap_stay_action(
+		"X",
+		"[Window Mode|Scrolling] expand column",
+		layout_action("scrolling", hl.dsp.layout("colresize expand"))
+	)
+	submap_stay_action(
+		"V",
+		"[Window Mode|Scrolling] promote window",
+		layout_action("scrolling", hl.dsp.layout("promote"))
+	)
+	submap_stay_action(
+		"B",
+		"[Window Mode|Scrolling] consume into column",
+		layout_action("scrolling", hl.dsp.layout("consume"))
+	)
+	submap_stay_action(
+		"SHIFT + B",
+		"[Window Mode|Scrolling] expel from column",
+		layout_action("scrolling", hl.dsp.layout("expel"))
+	)
+	submap_stay_action(
+		"I",
+		"[Window Mode|Scrolling] fit column into view",
+		layout_action("scrolling", hl.dsp.layout("fit_into_view"))
+	)
+
+	submap_stay_action(
+		"SHIFT + S",
+		"[Window Mode|Dwindle] swap split",
+		layout_action("dwindle", hl.dsp.layout("swapsplit"))
+	)
+	submap_stay_action(
+		"R",
+		"[Window Mode|Dwindle] rotate split",
+		layout_action("dwindle", hl.dsp.layout("rotatesplit"))
+	)
+	submap_stay_action(
+		"SHIFT + R",
+		"[Window Mode|Dwindle] move to root",
+		layout_action("dwindle", hl.dsp.layout("movetoroot"))
+	)
+	submap_repeat_action(
+		"D",
+		"[Window Mode|Dwindle] shrink split",
+		layout_action("dwindle", hl.dsp.layout("splitratio -0.05"))
+	)
+	submap_repeat_action(
+		"SHIFT + D",
+		"[Window Mode|Dwindle] grow split",
+		layout_action("dwindle", hl.dsp.layout("splitratio +0.05"))
+	)
+
+	submap_stay_action(
+		"W",
+		"[Window Mode|Master] focus master",
+		layout_action("master", hl.dsp.layout("focusmaster"))
+	)
+	submap_stay_action(
+		"SHIFT + W",
+		"[Window Mode|Master] swap with master",
+		layout_action("master", hl.dsp.layout("swapwithmaster"))
+	)
+	submap_repeat_action(
+		"N",
+		"[Window Mode|Master] focus next",
+		layout_action("master", hl.dsp.layout("cyclenext"))
+	)
+	submap_repeat_action(
+		"SHIFT + N",
+		"[Window Mode|Master] focus previous",
+		layout_action("master", hl.dsp.layout("cycleprev"))
+	)
+	submap_repeat_action(
+		"J",
+		"[Window Mode|Master] swap next",
+		layout_action("master", hl.dsp.layout("swapnext"))
+	)
+	submap_repeat_action(
+		"SHIFT + J",
+		"[Window Mode|Master] swap previous",
+		layout_action("master", hl.dsp.layout("swapprev"))
+	)
+	submap_stay_action(
+		"A",
+		"[Window Mode|Master] add master",
+		layout_action("master", hl.dsp.layout("addmaster"))
+	)
+	submap_stay_action(
+		"SHIFT + A",
+		"[Window Mode|Master] remove master",
+		layout_action("master", hl.dsp.layout("removemaster"))
+	)
+	submap_stay_action(
+		"O",
+		"[Window Mode|Master] cycle orientation",
+		layout_action("master", hl.dsp.layout("orientationcycle"))
+	)
+	submap_stay_action(
+		"SHIFT + O",
+		"[Window Mode|Master] center orientation",
+		layout_action("master", hl.dsp.layout("orientationcenter"))
+	)
+	submap_repeat_action(
+		"K",
+		"[Window Mode|Master] roll next",
+		layout_action("master", hl.dsp.layout("rollnext"))
+	)
+	submap_repeat_action(
+		"SHIFT + K",
+		"[Window Mode|Master] roll previous",
+		layout_action("master", hl.dsp.layout("rollprev"))
+	)
+	submap_repeat_action(
+		"Z",
+		"[Window Mode|Master] shrink master",
+		layout_action("master", hl.dsp.layout("mfact -0.05"))
+	)
+	submap_repeat_action(
+		"SHIFT + Z",
+		"[Window Mode|Master] grow master",
+		layout_action("master", hl.dsp.layout("mfact +0.05"))
+	)
+
+	submap_repeat_action(
+		"Y",
+		"[Window Mode|Monocle] focus next",
+		layout_action("monocle", hl.dsp.layout("cyclenext"))
+	)
+	submap_repeat_action(
+		"SHIFT + Y",
+		"[Window Mode|Monocle] focus previous",
+		layout_action("monocle", hl.dsp.layout("cycleprev"))
 	)
 end)
 
@@ -468,7 +674,7 @@ end)
 
 -- Workspaces
 for workspace = 1, 10 do
-	local code = "code:" .. tostring(workspace + 9)
+	local code = workspace_code(workspace)
 	bind(mod, code, "[Workspaces] go to workspace " .. workspace, hl.dsp.focus({ workspace = workspace }))
 	bind(
 		mod .. " SHIFT",

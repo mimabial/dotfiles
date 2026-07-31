@@ -74,7 +74,6 @@ fn_background() {
 
   mime="$(file --mime-type -b "${wp}" 2>/dev/null || true)"
 
-  # Check PNG cache by wallpaper hash
   wp_hash="$(${HYPR_HASH_COMMAND:-sha1sum} "${wp}" | cut -d' ' -f1)"
   png_cache="${WALLPAPER_CACHE_DIR}/png_cache/${wp_hash}.png"
 
@@ -99,7 +98,6 @@ fn_background() {
     }
   fi
 
-  # Cache the converted PNG
   cp -f "${bg_tmp}" "${png_cache}" 2>/dev/null || true
   mv -f "${bg_tmp}" "${bg}" || {
     rm -f "${bg_tmp}"
@@ -107,14 +105,11 @@ fn_background() {
   }
 }
 
-# Convert .face.icon to PNG if needed
 ensure_face_icon_png() {
   local face_icon="$HOME/.face.icon"
 
-  # Check if .face.icon exists
   [ ! -f "$face_icon" ] && return 1
 
-  # Check if it's already a PNG using file command
   local file_type=$(file -b "$face_icon")
   if [[ "$file_type" =~ ^PNG ]]; then
     # Already PNG, no conversion needed
@@ -132,7 +127,6 @@ colorize_fallback_icon() {
   local output_path="$1"
   local source_icon="$XDG_DATA_HOME/icons/Pywal16-Icon/hypr.png"
 
-  # Get pywal colors
   local color_file="${XDG_CACHE_HOME:-$HOME/.cache}/wal/colors-shell.sh"
   if [ ! -f "$color_file" ]; then
     # No colors available, just copy
@@ -140,7 +134,6 @@ colorize_fallback_icon() {
     return
   fi
 
-  # Source colors
   source "$color_file"
 
   # Apply colorization - tint the icon while preserving detail

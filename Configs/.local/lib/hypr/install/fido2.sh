@@ -34,16 +34,13 @@ remove_pam_config() {
 if [[ "--remove" == "${1:-}" ]]; then
   print_success "Removing FIDO2 device from authentication.\n"
 
-  # Remove PAM configuration
   remove_pam_config
 
-  # Remove FIDO2 configuration
   if [ -d /etc/fido2 ]; then
     print_info "Removing FIDO2 configuration..."
     sudo rm -rf /etc/fido2
   fi
 
-  # Uninstall packages
   print_info "Removing FIDO2 packages..."
   hyprshell pm --noconfirm remove libfido2 pam-u2f
 
@@ -51,7 +48,6 @@ if [[ "--remove" == "${1:-}" ]]; then
 else
   print_success "Setting up FIDO2 device for authentication.\n"
 
-  # Install required packages
   print_info "Installing required packages..."
   hyprshell pm add libfido2 pam-u2f
 
@@ -59,7 +55,6 @@ else
     exit 1
   fi
 
-  # Create the pamu2fcfg file
   if [ ! -f /etc/fido2/fido2 ]; then
     sudo mkdir -p /etc/fido2
     print_success "\nLet's setup your device by confirming on the device now."
@@ -76,7 +71,6 @@ else
     print_info "FIDO2 device already registered."
   fi
 
-  # Configure PAM
   setup_pam_config
 
   # Test with sudo

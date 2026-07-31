@@ -242,7 +242,7 @@
                         (kind: Text(" │ "), style: (fg: "{color8}", modifiers: "Bold")),
                     ], align: Center))
         ),
-        (size: "41%", pane: Pane(Property(content: [
+        (size: "40%", pane: Pane(Property(content: [
                         (kind: Text("󰳩 "), style: (fg: "{color8}")),
                         (kind: Text("Artist "), style: (fg: "{foreground}")),
                     ], align: Left))
@@ -251,7 +251,7 @@
                         (kind: Text(" │ "), style: (fg: "{color8}", modifiers: "Bold")),
                     ], align: Center))
         ),
-        (size: "11%", pane: Pane(Property(content: [
+        (size: "12%", pane: Pane(Property(content: [
                         (kind: Text("󰔚 "), style: (fg: "{color8}")),
                         (kind: Text("Time "), style: (fg: "{foreground}")),
                     ], align: Left))

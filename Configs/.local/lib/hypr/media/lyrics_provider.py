@@ -5,8 +5,8 @@ from __future__ import annotations
 
 import sys
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
-from typing import List, Optional, Tuple
 
+from lyrics_cache import lyrics_miss_cache, miss_cache_key
 from lyrics_provider_common import (
     ProviderFetcher,
     ProviderResult,
@@ -17,11 +17,9 @@ from lyrics_provider_common import (
     _split_artists,
 )
 from lyrics_provider_fetchers import (
-    fetch_lyrics_chartlyrics,
     fetch_lyrics_genius,
-    fetch_lyrics_lyricsfreek,
-    fetch_lyrics_lyricsovh,
     fetch_lyrics_lrclib,
+    fetch_lyrics_lyricsovh,
     fetch_lyrics_simpmusic,
     fetch_lyrics_youtube,
 )
@@ -80,7 +78,7 @@ def _fetch_candidate(
     artist: str,
     title: str,
     album: str,
-) -> Optional[ProviderResult]:
+) -> ProviderResult | None:
     result = fetcher(artist, title, album)
     if not result:
         return None
@@ -91,9 +89,9 @@ def _fetch_candidate(
 
 
 def _choose_plain_candidate(
-    plain_candidates: List[ProviderResult],
-    ordered_sources: List[Tuple[str, ProviderFetcher]],
-) -> Optional[ProviderResult]:
+    plain_candidates: list[ProviderResult],
+    ordered_sources: list[tuple[str, ProviderFetcher]],
+) -> ProviderResult | None:
     if not plain_candidates:
         return None
 
@@ -106,13 +104,13 @@ def _choose_plain_candidate(
 
 
 def _fetch_sequential(
-    providers: List[Tuple[str, ProviderFetcher]],
+    providers: list[tuple[str, ProviderFetcher]],
     artist: str,
     title: str,
     album: str,
     require_synced: bool,
-) -> Tuple[Optional[ProviderResult], List[ProviderResult]]:
-    plain_candidates: List[ProviderResult] = []
+) -> tuple[ProviderResult | None, list[ProviderResult]]:
+    plain_candidates: list[ProviderResult] = []
     for source_name, fetcher in providers:
         result = _fetch_candidate(source_name, fetcher, artist, title, album)
         if not result:
@@ -129,16 +127,16 @@ def _fetch_sequential(
 
 
 def _fetch_parallel(
-    providers: List[Tuple[str, ProviderFetcher]],
+    providers: list[tuple[str, ProviderFetcher]],
     artist: str,
     title: str,
     album: str,
     require_synced: bool,
-) -> Tuple[Optional[ProviderResult], List[ProviderResult]]:
+) -> tuple[ProviderResult | None, list[ProviderResult]]:
     if not providers:
         return None, []
 
-    plain_candidates: List[ProviderResult] = []
+    plain_candidates: list[ProviderResult] = []
     max_workers = min(len(providers), 4)
     executor = ThreadPoolExecutor(max_workers=max_workers)
     executor_shutdown = False
@@ -154,7 +152,7 @@ def _fetch_parallel(
                 source_name = pending.pop(future)
                 try:
                     result = future.result()
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - isolate provider workers
                     print(f"  [{source_name}] Error in worker: {e}", file=sys.stderr)
                     continue
 
@@ -188,13 +186,40 @@ def fetch_lyrics(
     artist: str,
     title: str,
     album: str = "",
-    fast_mode: bool = False,
-    expected_duration: Optional[float] = None,
-) -> Optional[str]:
-    parallel_mode = fast_mode or _env_bool("LYRICS_FAST_MODE", True)
+    fast_mode: bool | None = None,
+    expected_duration: float | None = None,
+    refresh_cache: bool = False,
+    synced_only: bool = False,
+) -> str | None:
+    parallel_mode = (
+        _env_bool("LYRICS_FAST_MODE", True)
+        if fast_mode is None
+        else fast_mode
+    )
     prefer_synced = _env_bool("LYRICS_PREFER_SYNCED", True)
+    cache = lyrics_miss_cache()
+    cache_key = miss_cache_key(
+        artist,
+        title,
+        album,
+        expected_duration,
+        prefer_synced,
+        synced_only,
+    )
+    if cache is not None and not refresh_cache and cache.contains(cache_key):
+        print("  [cache] Recent complete miss; skipping providers", file=sys.stderr)
+        return None
 
-    synced_providers: List[Tuple[str, ProviderFetcher]] = [
+    def found(result: ProviderResult) -> str:
+        if cache is not None:
+            cache.discard(cache_key)
+        return str(result["lyrics"])
+
+    def missed() -> None:
+        if cache is not None:
+            cache.put(cache_key)
+
+    synced_providers: list[tuple[str, ProviderFetcher]] = [
         (
             "lrclib",
             lambda a, t, alb: fetch_lyrics_lrclib(a, t, alb),
@@ -210,7 +235,7 @@ def fetch_lyrics(
             lambda a, t, alb: fetch_lyrics_youtube(a, t),
         ),
     ]
-    plain_providers: List[Tuple[str, ProviderFetcher]] = [
+    plain_providers: list[tuple[str, ProviderFetcher]] = [
         (
             "genius",
             lambda a, t, alb: fetch_lyrics_genius(a, t),
@@ -219,30 +244,33 @@ def fetch_lyrics(
             "lyrics.ovh",
             lambda a, t, alb: fetch_lyrics_lyricsovh(a, t),
         ),
-        (
-            "chartlyrics",
-            lambda a, t, alb: fetch_lyrics_chartlyrics(a, t),
-        ),
-        (
-            "lyricsfreek",
-            lambda a, t, alb: fetch_lyrics_lyricsfreek(a, t),
-        ),
     ]
     provider_order = synced_providers + plain_providers
 
     fetch_fn = _fetch_parallel if parallel_mode else _fetch_sequential
     mode_name = "parallel" if parallel_mode else "sequential"
     print(
-        f"  [multi] mode={mode_name} prefer_synced={str(prefer_synced).lower()}",
+        f"  [multi] mode={mode_name} prefer_synced={str(prefer_synced).lower()} "
+        f"synced_only={str(synced_only).lower()}",
         file=sys.stderr,
     )
+
+    if synced_only:
+        synced_result, _ = fetch_fn(
+            synced_providers, artist, title, album, require_synced=True
+        )
+        if synced_result:
+            return found(synced_result)
+
+        missed()
+        return None
 
     if prefer_synced:
         synced_result, plain_candidates = fetch_fn(
             synced_providers, artist, title, album, require_synced=True
         )
         if synced_result:
-            return str(synced_result["lyrics"])
+            return found(synced_result)
 
         plain_result = _choose_plain_candidate(plain_candidates, provider_order)
         if plain_result:
@@ -250,20 +278,22 @@ def fetch_lyrics(
                 f"  [{plain_result['source']}] Using plain lyrics fallback after synced search",
                 file=sys.stderr,
             )
-            return str(plain_result["lyrics"])
+            return found(plain_result)
 
         plain_direct_result, _ = fetch_fn(
             plain_providers, artist, title, album, require_synced=False
         )
         if plain_direct_result:
-            return str(plain_direct_result["lyrics"])
+            return found(plain_direct_result)
 
+        missed()
         return None
 
     first_result, _ = fetch_fn(
         provider_order, artist, title, album, require_synced=False
     )
     if first_result:
-        return str(first_result["lyrics"])
+        return found(first_result)
 
+    missed()
     return None

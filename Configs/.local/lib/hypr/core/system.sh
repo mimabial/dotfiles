@@ -168,7 +168,6 @@ ini_write() {
   local key="${3}"
   local value="${4}"
 
-  # Validate inputs
   [[ -z "${config_file}" ]] && return 1
   [[ -z "${group}" ]] && return 1
   [[ -z "${key}" ]] && return 1

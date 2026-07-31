@@ -59,26 +59,18 @@ _hyprshell_completion() {
     built_in_commands="${built_in_commands}"
 
     if command -v hyprshell >/dev/null 2>&1; then
-        hyprscripts=\$(hyprshell --list-script 2>/dev/null | sed 's/\.[^.]*$//' | tr '\n' ' ')
+        hyprscripts=\$(hyprshell --list-script 2>/dev/null | tr '\n' ' ')
     fi
 
     if [[ \$COMP_CWORD -eq 1 ]]; then
         local all_commands="\$built_in_commands \$hyprscripts"
         COMPREPLY=(\$(compgen -W "\$all_commands" -- "\$cur"))
-    elif [[ \$COMP_CWORD -eq 2 ]]; then
-        case \$prev in
-            --completions)
-                COMPREPLY=(\$(compgen -W "bash zsh" -- "\$cur"))
-                return 0
-                ;;
-            *)
-                COMPREPLY=()
-                return 0
-                ;;
-        esac
+    elif [[ \$COMP_CWORD -eq 2 && \$prev == --completions ]]; then
+        COMPREPLY=(\$(compgen -W "bash zsh" -- "\$cur"))
+    elif declare -F _filedir >/dev/null 2>&1; then
+        _filedir
     else
-        COMPREPLY=()
-        return 0
+        COMPREPLY=(\$(compgen -f -- "\$cur"))
     fi
 }
 
@@ -104,27 +96,48 @@ _hyprshell() {
     built_in_commands=(${built_in_commands_zsh})
 
     if (( \$+commands[hyprshell] )); then
-        local scripts_raw
-        scripts_raw=(\${(f)"\$(hyprshell --list-script 2>/dev/null)"})
-        hyprscripts=(\${scripts_raw[@]%.*})
+        hyprscripts=(\${(f)"\$(hyprshell --list-script 2>/dev/null)"})
     fi
 
     if [[ \$CURRENT -eq 2 ]]; then
         local all_commands=(\$built_in_commands \$hyprscripts)
         compadd -M 'r:|/=* r:|=*' -a all_commands
-    elif [[ \$CURRENT -eq 3 ]]; then
-        case \$words[2] in
-            --completions)
-                compadd "bash" "zsh"
-                return 0
-                ;;
-            *)
-                return 0
-                ;;
-        esac
+    elif [[ \$CURRENT -eq 3 && \$words[2] == --completions ]]; then
+        compadd "bash" "zsh"
     else
-        return 0
+        local -a script_options
+        script_options=(\${=\$(_hyprshell_script_options \$words[2])})
+        (( \${#script_options} )) && compadd -a script_options
+        _files
     fi
+}
+
+# Cache hit stays inside zsh: no subprocess, no interpreter start. Python runs
+# only when the script changed, and then reparses just that one file.
+_hyprshell_script_options() {
+    local name="\$1" cache line
+    local -a entry mt sz
+    [[ -n "\$name" ]] || return 0
+    cache="\${HYPR_CACHE_HOME:-\${XDG_CACHE_HOME:-\$HOME/.cache}/hypr}/completion-options"
+    zmodload -F zsh/stat b:zstat 2>/dev/null
+
+    if [[ -r "\$cache" ]]; then
+        for line in \${(f)"\$(<\$cache)"}; do
+            [[ \$line == \$name\$'\t'* ]] || continue
+            # (ps:...:) not (s:...:) — the latter splits on a literal backslash-t.
+            entry=(\${(ps:\t:)line})
+            zstat -A mt +mtime \$entry[2] 2>/dev/null
+            zstat -A sz +size \$entry[2] 2>/dev/null
+            if [[ \$mt[1] == \$entry[3] && \$sz[1] == \$entry[4] ]]; then
+                print -r -- \$entry[5]
+                return 0
+            fi
+            break
+        done
+    fi
+
+    local helper="\${LIB_DIR:-\$HOME/.local/lib}/hypr/shell/lib/hyprshell.options.py"
+    [[ -r \$helper ]] && python3 \$helper \$name 2>/dev/null
 }
 
 compdef _hyprshell hyprshell

@@ -1,7 +1,11 @@
 --cookies-from-browser firefox
 --embed-chapters
 --embed-metadata
---paths ~/Music
+--paths $XDG_MUSIC_DIR
+
+# Prefer the distributor's music release date; yt-dlp otherwise embeds the
+# YouTube upload date. When release_date is absent, upload_date remains the fallback.
+--parse-metadata "release_date:meta_date"
 
 # YouTube thumbnails are 16:9 video stills; crop to the centre square so players
 # show cover art rather than a letterboxed frame. jpg keeps it ~38KB, not ~780KB.

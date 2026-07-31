@@ -106,7 +106,6 @@ toggle() {
       echo Error: "${NEXT_PRIORITY}" not found in "${gpuinfo_file}"
     fi
   else
-    # Initialize GPUINFO_AVAILABLE and GPUINFO_PRIORITY if they don't exist
     if ! grep -q "GPUINFO_AVAILABLE=" "${gpuinfo_file}"; then
       GPUINFO_AVAILABLE=$(grep "_ENABLE=1" "${gpuinfo_file}" | cut -d '=' -f 1 | tr '\n' ' ' | tr -d '#')
       echo "" >>"${gpuinfo_file}"

@@ -17,7 +17,7 @@ manifest="${HOME}/.mozilla/native-messaging-hosts/fftab_bridge.json"
 ext_id="fftab-bridge@hypr.local"
 issues=()
 
-for bin in playerctl jq yt-dlp; do
+for bin in playerctl jq yt-dlp unzip; do
   command -v "${bin}" >/dev/null 2>&1 || issues+=("missing binary: ${bin} (in pkg_core.lst)")
 done
 python3 - <<'EOF' >/dev/null 2>&1 || issues+=("missing GI bindings: python-gobject + playerctl (in pkg_core.lst)")
@@ -53,9 +53,32 @@ if [[ -n "${profile}" && -d "${HOME}/.mozilla/firefox/${profile}" ]]; then
     grep -qsF '"media.hardwaremediakeys.enabled", false' "${profile_dir}/prefs.js" ||
       issues+=("Firefox pref set via user.js — restart Firefox to apply")
   fi
-  if ! grep -qsF "${ext_id}" "${profile_dir}/extensions.json" 2>/dev/null; then
-    xpi="$(ls -t "${bridge_dir}"/extension/web-ext-artifacts/*.xpi 2>/dev/null | head -1 || true)"
-    issues+=("extension not installed — open in Firefox: ${xpi:-<no signed xpi found; see README>}")
+  extension_manifest="${bridge_dir}/extension/manifest.json"
+  source_version="$(jq -r '.version // empty' "${extension_manifest}" 2>/dev/null || true)"
+  installed_version="$(
+    jq -r --arg id "${ext_id}" \
+      '.addons[] | select(.id == $id) | .version' \
+      "${profile_dir}/extensions.json" 2>/dev/null | head -1
+  )"
+  signed_xpi=""
+  if [[ -n "${source_version}" ]]; then
+    for candidate in "${bridge_dir}"/extension/web-ext-artifacts/*.xpi; do
+      [[ -f "${candidate}" ]] || continue
+      candidate_version="$(unzip -p "${candidate}" manifest.json 2>/dev/null | jq -r '.version // empty' 2>/dev/null || true)"
+      if [[ "${candidate_version}" == "${source_version}" ]]; then
+        signed_xpi="${candidate}"
+        break
+      fi
+    done
+  fi
+  if [[ -z "${installed_version}" ]]; then
+    issues+=("extension not installed — open in Firefox: ${signed_xpi:-<no current signed xpi found; see README>}")
+  elif [[ -n "${source_version}" && "${installed_version}" != "${source_version}" ]]; then
+    if [[ -n "${signed_xpi}" ]]; then
+      issues+=("extension ${installed_version} is outdated — install ${source_version}: ${signed_xpi}")
+    else
+      issues+=("extension ${installed_version} is outdated — source ${source_version} needs AMO signing; see README")
+    fi
   fi
 else
   issues+=("no default Firefox profile yet — run Firefox once, then re-login")

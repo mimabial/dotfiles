@@ -6,6 +6,11 @@ LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 
 # shellcheck source=/dev/null
 source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
+
+hypr_help_guard "Usage: hyprshell wallpaper/wallpaper.cache [-w WALLPAPER] [-t THEME] [-f]
+Generate wallpaper thumbnail/blur caches: -w a single image, -t one theme,
+-f every theme (rebuilding entries that already exist)." "$@"
+
 hypr_runtime_require state wallpaper_catalog || exit 1
 hypr_runtime_load_state || exit 1
 export WALLPAPER_THUMB_DIR

@@ -93,6 +93,8 @@ class TabPlayer:
             "status": "Paused",
             "duration": 0.0,
             "rate": 1.0,
+            "can_go_next": False,
+            "can_go_previous": False,
         }
         self.anchor_pos = 0.0
         self.anchor_ts = time.monotonic()
@@ -114,8 +116,6 @@ class TabPlayer:
             self.conn, BUS_PREFIX + str(tab_id), Gio.BusNameOwnerFlags.NONE, None, None
         )
 
-    # --- state ---
-
     def position_seconds(self) -> float:
         pos = self.anchor_pos
         if self.state["status"] == "Playing":
@@ -134,6 +134,8 @@ class TabPlayer:
             "status": "Playing" if msg.get("status") == "Playing" else "Paused",
             "duration": max(0.0, float(msg.get("duration", 0.0) or 0.0)),
             "rate": float(msg.get("rate", 1.0) or 1.0),
+            "can_go_next": bool(msg.get("canGoNext", False)),
+            "can_go_previous": bool(msg.get("canGoPrevious", False)),
         }
         position = max(0.0, float(msg.get("position", 0.0) or 0.0))
 
@@ -142,6 +144,10 @@ class TabPlayer:
             changed["PlaybackStatus"] = GLib.Variant("s", new["status"])
         if new["rate"] != self.state["rate"]:
             changed["Rate"] = GLib.Variant("d", new["rate"])
+        if new["can_go_next"] != self.state["can_go_next"]:
+            changed["CanGoNext"] = GLib.Variant("b", new["can_go_next"])
+        if new["can_go_previous"] != self.state["can_go_previous"]:
+            changed["CanGoPrevious"] = GLib.Variant("b", new["can_go_previous"])
         if (new["title"], new["url"], new["duration"], new["site"]) != (
             self.state["title"],
             self.state["url"],
@@ -181,8 +187,6 @@ class TabPlayer:
         self.reg_ids = []
         self.conn.close(None, None, None)
 
-    # --- dbus ---
-
     def _metadata(self, state=None) -> GLib.Variant:
         s = state or self.state
         meta = {
@@ -200,7 +204,7 @@ class TabPlayer:
     def _on_get_property(self, conn, sender, path, iface, prop):
         if iface == ROOT_IFACE:
             return {
-                "CanRaise": GLib.Variant("b", False),
+                "CanRaise": GLib.Variant("b", True),
                 "CanQuit": GLib.Variant("b", False),
                 "HasTrackList": GLib.Variant("b", False),
                 "Identity": GLib.Variant("s", f"Firefox tab {self.tab_id}"),
@@ -215,8 +219,8 @@ class TabPlayer:
             "Position": GLib.Variant("x", int(self.position_seconds() * 1e6)),
             "MinimumRate": GLib.Variant("d", 0.25),
             "MaximumRate": GLib.Variant("d", 4.0),
-            "CanGoNext": GLib.Variant("b", False),
-            "CanGoPrevious": GLib.Variant("b", False),
+            "CanGoNext": GLib.Variant("b", self.state["can_go_next"]),
+            "CanGoPrevious": GLib.Variant("b", self.state["can_go_previous"]),
             "CanPlay": GLib.Variant("b", True),
             "CanPause": GLib.Variant("b", True),
             "CanSeek": GLib.Variant("b", True),
@@ -228,8 +232,14 @@ class TabPlayer:
 
     def _on_method_call(self, conn, sender, path, iface, method, params, invocation):
         command = None
-        if method in ("Play", "Pause", "PlayPause", "Stop"):
+        if iface == ROOT_IFACE and method == "Raise":
+            command = {"command": "raise"}
+        elif method in ("Play", "Pause", "PlayPause", "Stop"):
             command = {"command": method.lower()}
+        elif method == "Next" and self.state["can_go_next"]:
+            command = {"command": "next"}
+        elif method == "Previous" and self.state["can_go_previous"]:
+            command = {"command": "previous"}
         elif method == "Seek":
             command = {"command": "seek", "offset": params.unpack()[0] / 1e6}
         elif method == "SetPosition":

@@ -118,7 +118,6 @@ args = parser.parse_args()
 field_sep = " " if args.alt else "\n"
 
 
-### Functions ###
 def load_env_file(filepath):
     try:
         for key, value in load_shell_assignments(filepath).items():
@@ -260,7 +259,6 @@ def format_chances(hour):
     return ", ".join(conditions)
 
 
-### Variables ###
 state_home = os.environ.get("XDG_STATE_HOME") or os.path.join(
     os.environ.get("HOME"), ".local", "state"
 )

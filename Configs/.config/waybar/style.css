@@ -15,7 +15,7 @@
     @import "includes/border-radius.css";
 
     /* Shared base style */
-    @import "../../.local/share/waybar/styles/top.css";
+    @import "../../.local/share/waybar/styles/left.css";
 
     /* Active workflow overrides, written by util/workflows.sh */
     @import "includes/workflow.css";

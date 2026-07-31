@@ -63,7 +63,6 @@ TIME_NOW=$(date +%s%N)
 if [ -f "$STATE_FILE" ]; then
   read -r PREV_INTERFACE RX_PREV TX_PREV TIME_PREV <"$STATE_FILE"
 
-  # Reset if interface changed
   if [ "$PREV_INTERFACE" != "$INTERFACE" ]; then
     RX_BYTES_PER_SEC=0
     TX_BYTES_PER_SEC=0

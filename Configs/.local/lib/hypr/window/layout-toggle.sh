@@ -1,30 +1,22 @@
 #!/usr/bin/env bash
-# Toggle workspace layout between dwindle and scrolling
+# Cycle the global tiled layout. Delegates to util/window-layout.sh, which owns the
+# layout list and persists the choice in window-layout.lua. This used to set a
+# per-workspace rule, but those are runtime-only and any config reload discards them.
 
 set -euo pipefail
 
-CORE_COMMON="${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh"
+HYPR_LIB="${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}"
 # shellcheck source=/dev/null
-source "${CORE_COMMON}" || exit 1
+source "${HYPR_LIB}/core/common.sh" || exit 1
 
 hypr_help_guard "Usage: hyprshell window/layout-toggle
-Toggle the active workspace layout between dwindle and scrolling." "$@"
+Cycle the global tiled layout: dwindle -> master -> scrolling -> monocle." "$@"
 
-read -r ACTIVE_WORKSPACE CURRENT_LAYOUT < <(
-  hyprctl activeworkspace -j | jq -r '[.id, .tiledLayout] | @tsv'
-)
+"${HYPR_LIB}/util/window-layout.sh" --toggle
 
-[[ "${ACTIVE_WORKSPACE}" =~ ^-?[0-9]+$ ]] || {
-  dunstify -a "Hyprland" -t 3000 -i "dialog-error" "Failed to resolve active workspace"
-  exit 1
-}
+NEW_LAYOUT="$(hyprctl getoption general:layout -j | jq -r '.str')"
 
-case "$CURRENT_LAYOUT" in
-  dwindle) NEW_LAYOUT=scrolling ;;
-  *) NEW_LAYOUT=dwindle ;;
-esac
-
-workspace_lua="$(hypr_lua_quote "${ACTIVE_WORKSPACE}")"
-layout_lua="$(hypr_lua_quote "${NEW_LAYOUT}")"
-hypr_lua_apply "hl.workspace_rule({workspace=${workspace_lua}, layout=${layout_lua}})"
-dunstify -a "Hyprland" -t 3000 -i "preferences-system" -h "string:x-dunst-stack-tag:layout" "Layout: $NEW_LAYOUT"
+# The waybar module is interval:once, so it only refreshes on its signal.
+pkill -RTMIN+22 waybar 2>/dev/null || true
+dunstify -a "Hyprland" -t 3000 -i "preferences-system" \
+  -h "string:x-dunst-stack-tag:layout" "Layout: ${NEW_LAYOUT}"

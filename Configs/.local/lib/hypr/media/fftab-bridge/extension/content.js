@@ -1,6 +1,12 @@
 (() => {
   let media = null;
 
+  const playlistCapabilities = () =>
+    globalThis.fftabPlaylistNavigation?.capabilities(document, location.href) || {
+      canGoNext: false,
+      canGoPrevious: false,
+    };
+
   const pick = (requirePlaying) => {
     const els = [...document.querySelectorAll("video, audio")];
     if (!els.length) return null;
@@ -19,6 +25,7 @@
       position: media.currentTime || 0,
       duration: Number.isFinite(media.duration) ? media.duration : 0,
       rate: media.playbackRate || 1,
+      ...playlistCapabilities(),
     };
   };
 
@@ -95,6 +102,14 @@
         break;
       case "setposition":
         media.currentTime = Math.max(0, msg.position || 0);
+        break;
+      case "next":
+      case "previous":
+        globalThis.fftabPlaylistNavigation?.navigate(
+          msg.command,
+          document,
+          location.href
+        );
         break;
     }
     setTimeout(() => report("command"), 100);

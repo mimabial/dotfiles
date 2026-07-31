@@ -15,7 +15,7 @@
 
 #custom-tmark.left,
 #custom-tmark.right {
-  margin: 0px 8px;
+  margin: 0px 4px;
 }
 
 #workspaces {
@@ -43,6 +43,12 @@
 
 #workspaces button.active:hover {
   background: transparent;
+}
+
+#workspaces button.urgent {
+  background: alpha(@error, 0.2);
+  padding: 0px 8px;
+  margin: 8px 4px;
 }
 
 #custom-mediaplayer {

@@ -485,7 +485,6 @@ def main():
     debounce_ms = args.debounce_ms
 
     if daemon_mode:
-        # Generate the config on launch
         parse_toml_to_env(CONFIG_FILE, ENV_FILE, export_mode)
 
         try:

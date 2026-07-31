@@ -24,7 +24,6 @@ else
   root_drive="$drive"
 fi
 
-# Get basic disk information
 size=$(lsblk -dno SIZE "$drive" 2>/dev/null)
 model=$(lsblk -dno MODEL "$root_drive" 2>/dev/null)
 

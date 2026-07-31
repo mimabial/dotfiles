@@ -2,7 +2,9 @@
 
 Exposes each Firefox media tab as its own MPRIS player, so playerctl/waybar
 see every tab as an independent player with exact positions and per-tab
-controls (the waybar mediaplayer module cycles them with scroll).
+controls (the waybar mediaplayer module cycles them with scroll). YouTube
+playlist tabs also expose Next/Previous when the corresponding playlist
+navigation is available.
 
 ## Components
 

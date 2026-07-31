@@ -33,7 +33,6 @@ def get_all_fans():
         data = sensors_data[device]
         for sensor, values in data.items():
             if isinstance(values, dict):
-                # Check if this sensor has any fan inputs
                 has_fan = any("fan" in key and "input" in key for key in values.keys())
                 if has_fan:
                     fans.append({"device": device, "sensor": sensor, "values": values})
@@ -107,7 +106,6 @@ def generate_output(fans):
         # Format for display:
         text = format_fan_speed_multiline(fan_rpm)
 
-        # Build tooltip with all fans
         tooltip_lines = ["Fan Speeds:"]
         for i, fan in enumerate(fans):
             speed = get_fan_speed(fan)
@@ -142,7 +140,6 @@ def main():
         toggle_fan(fans)
         return
 
-    # Generate fresh output every time
     output = generate_output(fans)
     print(json.dumps(output, separators=(",", ":")))
 

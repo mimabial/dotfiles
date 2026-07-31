@@ -329,6 +329,5 @@ fn_select() {
   "${HYPR_LIB_DIR}/font.sh" resolve "$hyprlock_conf_path"
   fn_profile
 
-  # Notify the user
   send_ephemeral_notif "hypr-hyprlock-layout" -t 2000 -i "system-lock-screen" "Hyprlock layout" "${selected_layout}"
 }

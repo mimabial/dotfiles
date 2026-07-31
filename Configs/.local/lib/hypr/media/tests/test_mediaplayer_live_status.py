@@ -2,12 +2,14 @@ import json
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 MEDIA_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(MEDIA_DIR))
 
 from mediaplayer_actions import player_name_matches
 from mediaplayer_browser import (
+    _build_ytdlp_probe_command,
     _parse_youtube_watch_page_media_info,
     _parse_ytdlp_media_info,
     _reuse_last_media_info,
@@ -49,6 +51,20 @@ def ui_config() -> MediaPlayerUiConfig:
 
 
 class YouTubeLiveStatusTests(unittest.TestCase):
+    @patch(
+        "mediaplayer_browser.ytdlp_auth_args",
+        return_value=["--cookies-from-browser", "firefox"],
+    )
+    @patch("mediaplayer_browser.shutil.which", return_value="/usr/bin/yt-dlp")
+    def test_ytdlp_probe_reuses_configured_authentication(self, _which, _auth_args):
+        command = _build_ytdlp_probe_command(
+            "https://www.youtube.com/watch?v=video-id"
+        )
+
+        self.assertIn("--ignore-config", command)
+        self.assertIn("--cookies-from-browser", command)
+        self.assertIn("firefox", command)
+
     def test_live_in_recorded_title_does_not_mark_video_live(self):
         info = _parse_youtube_watch_page_media_info(
             watch_page(

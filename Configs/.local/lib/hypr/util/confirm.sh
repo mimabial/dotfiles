@@ -6,6 +6,10 @@ source "$(command -v hyprshell)" || exit 1
 
 action="${1:-}"
 
+confirm_usage() {
+  printf '%s\n' "Usage: $(basename "$0") [--logout|--suspend|--reboot|--shutdown]"
+}
+
 prompt="Confirm"
 label="Proceed?"
 cmd=()
@@ -31,8 +35,12 @@ case "${action}" in
     label="Power off the system?"
     cmd=(hyprshell system/powerctl.sh shutdown)
     ;;
+  -h | --help)
+    confirm_usage
+    exit 0
+    ;;
   *)
-    echo "Usage: $(basename "$0") [--logout|--suspend|--reboot|--shutdown]" >&2
+    confirm_usage >&2
     exit 2
     ;;
 esac

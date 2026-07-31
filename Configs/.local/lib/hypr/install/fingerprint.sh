@@ -33,10 +33,8 @@ remove_pam_config() {
 if [[ "--remove" == "${1:-}" ]]; then
   print_success "Removing fingerprint scanner from authentication.\n"
 
-  # Remove PAM configuration
   remove_pam_config
 
-  # Uninstall packages
   print_info "Removing fingerprint packages..."
   hyprshell pm --noconfirm remove fprintd
 
@@ -44,7 +42,6 @@ if [[ "--remove" == "${1:-}" ]]; then
 else
   print_success "Setting up fingerprint scanner for authentication.\n"
 
-  # Install required packages
   print_info "Installing required packages..."
   hyprshell pm add fprintd usbutils
 
@@ -52,7 +49,6 @@ else
     exit 1
   fi
 
-  # Configure PAM
   setup_pam_config
 
   # Enroll first fingerprint
@@ -62,7 +58,6 @@ else
   if sudo fprintd-enroll "$USER"; then
     print_success "\nFingerprint enrolled successfully!"
 
-    # Verify
     print_info "\nNow let's verify that it's working correctly.\n"
     if fprintd-verify; then
       print_success "\nPerfect! Fingerprint authentication is now configured."

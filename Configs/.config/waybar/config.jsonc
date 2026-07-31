@@ -6,7 +6,7 @@
 //
 {
   "layer": "top",
-  "position": "top",
+  "position": "left",
   "output": ["*"],
   "exclusive": true,
   "passthrough": false,
@@ -17,31 +17,82 @@
     "$XDG_DATA_HOME/waybar/modules/*json*",
     "$XDG_CONFIG_HOME/waybar/includes/includes.json"
   ],
-  "modules-left": ["wlr/taskbar", "custom/mediaplayer#alt"],
-  "modules-center": [
-    "clock#time-alt",
-    "custom/tmark#left",
-    "ext/workspaces#roman",
-    "custom/tmark#right",
-    "custom/weather#alt"
+  "modules-left": [
+    "group/datetime",
+    "group/tui-drawer",
+    "ext/workspaces#hindi",
+    "custom/submap",
+    "group/forecast",
+    "group/info"
   ],
   "modules-right": [
-    "custom/submap#alt",
+    "group/mark",
+    "custom/mediaplayer",
+    "privacy",
     "group/volumecontrol",
     "group/eyecare",
-    "group/screen-group",
-    "group/notification-group",
-    "privacy",
-    "group/networkmanagement",
-    "group/power-group"
+    "group/screen",
+    "group/notification",
+    "group/connection",
+    "group/power"
   ],
-  "group/screen-group": {
+  "group/tui-drawer": {
+    "orientation": "inherit",
+    "drawer": {
+      "transition-duration": 500,
+      "transition-left-to-right": true
+    },
+    "modules": ["custom/terminal", "custom/updates"]
+  },
+  "group/screen": {
     "orientation": "inherit",
     "drawer": {
       "transition-duration": 500,
       "transition-left-to-right": false
     },
-    "modules": ["custom/screenrecord", "custom/colorpicker", "custom/screenshot"]
+    "modules": ["custom/screenrecord", "custom/screenshot"]
+  },
+  "group/datetime": {
+    "orientation": "inherit",
+    "drawer": {
+      "transition-duration": 500,
+      "transition-left-to-right": true
+    },
+    "modules": ["clock#time", "clock#date"]
+  },
+  "group/info": {
+    "orientation": "inherit",
+    "drawer": {
+      "transition-duration": 500,
+      "transition-left-to-right": true
+    },
+    "modules": ["custom/dmark", "custom/gpuinfo", "custom/cpuinfo", "memory", "disk"]
+  },
+  "group/forecast": {
+    "orientation": "inherit",
+    "drawer": {
+      "transition-duration": 500,
+      "transition-left-to-right": true
+    },
+    "modules": ["custom/weather", "custom/weather#minmax"]
+  },
+  "group/mark": {
+    "orientation": "inherit",
+    "drawer": {
+      "transition-duration": 500,
+      "transition-left-to-right": false
+    },
+    "modules": [
+      "custom/mark",
+      "custom/keybindhint",
+      "custom/colormode",
+      "custom/workflows",
+      "gamemode",
+      "custom/cliphist",
+      "custom/caffeine",
+      "custom/wallchange",
+      "custom/themeswitch"
+    ]
   },
   "group/volumecontrol": {
     "orientation": "inherit",
@@ -49,7 +100,7 @@
       "transition-duration": 500,
       "transition-left-to-right": false
     },
-    "modules": ["pulseaudio", "custom/microphone", "pulseaudio/slider#alt"]
+    "modules": ["pulseaudio", "custom/microphone", "pulseaudio/slider"]
   },
   "group/eyecare": {
     "orientation": "inherit",
@@ -57,9 +108,9 @@
       "transition-duration": 500,
       "transition-left-to-right": false
     },
-    "modules": ["backlight#intel_backlight", "custom/hyprsunset", "backlight/slider#alt"]
+    "modules": ["backlight#intel_backlight", "custom/hyprsunset", "backlight/slider"]
   },
-  "group/notification-group": {
+  "group/notification": {
     "orientation": "inherit",
     "drawer": {
       "transition-duration": 500,
@@ -67,17 +118,17 @@
     },
     "modules": ["custom/dunst", "custom/github#notifications"]
   },
-  "group/networkmanagement": {
+  "group/connection": {
     "orientation": "inherit",
     "drawer": {
       "transition-duration": 500,
       "transition-left-to-right": false
     },
-    "modules": ["tray"]
+    "modules": ["tray", "custom/network#speed"]
   },
-  "group/power-group": {
+  "group/power": {
     "orientation": "inherit",
-    "modules": ["group/powerconsumption", "custom/powermenu#alt"]
+    "modules": ["group/powerconsumption", "custom/powermenu"]
   },
   "group/powerconsumption": {
     "orientation": "inherit",

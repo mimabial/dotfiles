@@ -9,6 +9,8 @@ import time
 import tempfile
 from pathlib import Path
 
+from mediaplayer_presenter import show_player
+
 
 ACTIONS = {
     "play-pause": ("play-pause",),
@@ -21,6 +23,7 @@ ACTIONS = {
     "repeat": ("loop", "Track"),
     "loop": ("loop", "Playlist"),
     "disable-loop": ("loop", "None"),
+    "show-player": (),
 }
 
 PLAYER_CYCLE_STEPS = {
@@ -39,6 +42,7 @@ ACTION_LABELS = {
     "repeat": "Repeat Track",
     "loop": "Repeat Playlist",
     "disable-loop": "Disable Repeat",
+    "show-player": "Show Player",
     "cancel": "Cancel",
 }
 
@@ -245,8 +249,8 @@ def cycle_player(step: int) -> int:
     return 0
 
 
-def fetch_player_properties(player: str) -> dict:
-    """Return all Player-interface properties via a single busctl GetAll call.
+def fetch_interface_properties(player: str, interface: str) -> dict:
+    """Return all interface properties via a single busctl GetAll call.
     Output shape: {prop_name: {"type": str, "data": value}, ...}."""
     service = f"org.mpris.MediaPlayer2.{player}"
     proc = subprocess.run(
@@ -255,7 +259,7 @@ def fetch_player_properties(player: str) -> dict:
             service,
             "/org/mpris/MediaPlayer2",
             "org.freedesktop.DBus.Properties",
-            "GetAll", "s", "org.mpris.MediaPlayer2.Player",
+            "GetAll", "s", interface,
         ],
         text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
     )
@@ -265,6 +269,14 @@ def fetch_player_properties(player: str) -> dict:
         return json.loads(proc.stdout)["data"][0]
     except (json.JSONDecodeError, KeyError, IndexError, TypeError):
         return {}
+
+
+def fetch_player_properties(player: str) -> dict:
+    return fetch_interface_properties(player, "org.mpris.MediaPlayer2.Player")
+
+
+def fetch_root_properties(player: str) -> dict:
+    return fetch_interface_properties(player, "org.mpris.MediaPlayer2")
 
 
 def _prop_value(props: dict, name: str):
@@ -280,6 +292,17 @@ def _prop_bool(props: dict, name: str) -> bool | None:
 def _prop_string(props: dict, name: str) -> str | None:
     value = _prop_value(props, name)
     return value if isinstance(value, str) else None
+
+
+def _metadata_string(props: dict, name: str) -> str:
+    metadata = _prop_value(props, "Metadata")
+    if not isinstance(metadata, dict):
+        return ""
+    entry = metadata.get(name)
+    if not isinstance(entry, dict):
+        return ""
+    value = entry.get("data")
+    return value if isinstance(value, str) else ""
 
 
 def action_supported(props: dict, action: str) -> bool:
@@ -304,6 +327,7 @@ def dynamic_menu_entries(player: str) -> list[tuple[str, str]]:
     if action_supported(props, "play-pause"):
         label = ACTION_LABELS["pause"] if status == "Playing" else ACTION_LABELS["play"]
         entries.append((label, "play-pause"))
+    entries.append((ACTION_LABELS["show-player"], "show-player"))
     if action_supported(props, "next"):
         entries.append((ACTION_LABELS["next"], "next"))
     if action_supported(props, "previous"):
@@ -402,7 +426,16 @@ def run_action(action: str, explicit_player: str = "") -> int:
     player = resolve_player(explicit_player)
     if not player:
         return 0
-    if not action_supported(fetch_player_properties(player), action):
+    player_props = fetch_player_properties(player)
+    if action == "show-player":
+        root_props = fetch_root_properties(player)
+        return show_player(
+            player,
+            desktop_entry=_prop_string(root_props, "DesktopEntry") or "",
+            can_raise=_prop_bool(root_props, "CanRaise") is True,
+            media_url=_metadata_string(player_props, "xesam:url"),
+        )
+    if not action_supported(player_props, action):
         return 0
 
     proc = subprocess.run(

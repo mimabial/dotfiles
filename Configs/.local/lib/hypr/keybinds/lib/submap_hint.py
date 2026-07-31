@@ -2,18 +2,35 @@ import argparse
 import asyncio
 import contextlib
 import fcntl
+import json
 import logging
 import os
 import signal
+import subprocess
 import sys
 from pathlib import Path
 
-from keybinds_hint import expand_meta_data, generate_hint, get_hyprctl_binds
+from keybinds_hint import (
+    HYPRCTL_TIMEOUT_SECONDS,
+    expand_meta_data,
+    generate_hint,
+    get_hyprctl_binds,
+)
 
 COMMAND_TIMEOUT = 2
 HINT_BUILD_TIMEOUT = 5
 NOTIFICATION_ID = "9042"
 LOG = logging.getLogger("submap-hint")
+
+# keybindings.lua gates these binds on the workspace layout at press time, inside
+# a Lua closure that hyprctl cannot see: every bind reports dispatcher "__lua".
+# The sub-category header is the only signal that a bind is layout-specific.
+LAYOUT_HEADERS = {
+    "Dwindle": "dwindle",
+    "Master": "master",
+    "Scrolling": "scrolling",
+    "Monocle": "monocle",
+}
 
 
 def normalize_submap(name):
@@ -21,10 +38,54 @@ def normalize_submap(name):
     return "" if name.casefold() in {"", "default", "reset"} else name
 
 
+def hyprctl_json(command):
+    result = subprocess.run(
+        ["hyprctl", command, "-j"],
+        capture_output=True,
+        text=True,
+        timeout=HYPRCTL_TIMEOUT_SECONDS,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"hyprctl {command} failed with status {result.returncode}")
+    return json.loads(result.stdout)
+
+
+def active_tiled_layout():
+    """Mirrors layout_action in keybindings.lua: a special workspace, when one is
+    open on the focused monitor, owns the layout the gate compares against."""
+    monitors = hyprctl_json("monitors")
+    focused = next((m for m in monitors if m.get("focused")), None)
+    if focused is None:
+        return None
+    special = (focused.get("specialWorkspace") or {}).get("name") or ""
+    wanted = special or (focused.get("activeWorkspace") or {}).get("name") or ""
+    if not wanted:
+        return None
+    for workspace in hyprctl_json("workspaces"):
+        if workspace.get("name") == wanted:
+            return workspace.get("tiledLayout")
+    return None
+
+
+def applies_to_layout(bind, layout):
+    required = LAYOUT_HEADERS.get(bind.get("header2", ""))
+    return required is None or required == layout
+
+
 def build_hint(name):
     binds = get_hyprctl_binds()
     expand_meta_data(binds)
-    return generate_hint([bind for bind in binds if bind.get("submap") == name])
+    submap_binds = [bind for bind in binds if bind.get("submap") == name]
+    try:
+        layout = active_tiled_layout()
+    except (OSError, ValueError, RuntimeError, subprocess.TimeoutExpired) as error:
+        LOG.error("layout lookup failed, showing all binds: %s", error)
+        layout = None
+    if layout is not None:
+        submap_binds = [
+            bind for bind in submap_binds if applies_to_layout(bind, layout)
+        ]
+    return generate_hint(submap_binds)
 
 
 async def stop_process(process):

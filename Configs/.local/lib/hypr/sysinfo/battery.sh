@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # A simple script to display a battery icon
 
-# Function to display usage information
 set -euo pipefail
 
 usage() {
@@ -18,8 +17,7 @@ Options:
 USAGE
 }
 
-# Check for help option
-if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+if [[ "${1-}" == "-h" || "${1-}" == "--help" ]]; then
     usage
     exit 0
 fi
@@ -60,10 +58,8 @@ status_icons=("" "X" "󰂇") # Add appropriate icons for different statuses
 
 battery_status=$(cat "$battery_path/status")
 
-# Parse format options
 formats=("$@")
 
-# Function to output the appropriate information based on format option
 output_format() {
     case "$1" in
     icon)

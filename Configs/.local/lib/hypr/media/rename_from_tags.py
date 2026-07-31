@@ -18,22 +18,30 @@ import re
 import sys
 from pathlib import Path
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-if str(SCRIPT_DIR) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_DIR))
+from mutagen import MutagenError
 
-from autotag import (  # noqa: E402
+from autotag import (
+    MIN_ALBUM_SIMILARITY,
     SUPPORTED,
     clean_title,
+    drop_redundant_feat,
     existing,
-    normalize,
+    missing_credit_names,
+    parse_filename,
     read_tags,
+    similarity,
     split_leading_artist,
 )
-
-from mutagen import MutagenError  # noqa: E402
+from media_move import (
+    MoveError,
+    apply_move_plan,
+    build_move_plan,
+    update_mpd,
+)
+from lyrics_paths import music_library_dir
 
 DEFAULT_PATTERN = "{artist} - {title}"
+DEFAULT_ALBUM_PATTERN = "{tracknumber}. {title}"
 FIELDS = ("artist", "albumartist", "title", "album", "tracknumber", "date", "genre")
 
 
@@ -42,27 +50,6 @@ def sanitize(value: str) -> str:
     value = re.sub(r"[\x00-\x1f]", "", value)
     value = re.sub(r"\s{2,}", " ", value)
     return value.strip().rstrip(". ")
-
-
-FEAT = re.compile(
-    r"\s*[\(\[]\s*(?:feat\.?|ft\.?|featuring|with)\s+(?P<who>[^)\]]*)[\)\]]", re.I
-)
-
-
-def drop_redundant_feat(title: str, artist: str) -> str:
-    """YouTube Music credits featured artists in the artist field and again inside
-    the official title. Drop the second copy only when the first already names
-    them: on a plain upload the feat is the only record of the collaborator."""
-    if not artist:
-        return title
-
-    known = set(normalize(artist))
-
-    def prune(match: re.Match) -> str:
-        who = set(normalize(match.group("who")))
-        return "" if who and who <= known else match.group(0)
-
-    return re.sub(r"\s{2,}", " ", FEAT.sub(prune, title)).strip()
 
 
 def fields_for(tags) -> dict:
@@ -76,7 +63,7 @@ def fields_for(tags) -> dict:
         )
     )
     # "9/18" is a position plus a total; only the position belongs in a filename.
-    track = values["tracknumber"].split("/")[0].strip()
+    track = existing(tags, "tracknumber").split("/", 1)[0].strip()
     values["tracknumber"] = f"{int(track):02d}" if track.isdigit() else track
     return values
 
@@ -86,6 +73,42 @@ def render(pattern: str, values: dict) -> str:
         return sanitize(pattern.format(**values))
     except KeyError as exc:
         raise SystemExit(f"unknown field {exc} in pattern; known: {', '.join(FIELDS)}")
+
+
+def default_pattern_for(path: Path, tags) -> str:
+    """Use compact numbered names only when the file is demonstrably in an album."""
+    album = existing(tags, "album")
+    raw_track = existing(tags, "tracknumber")
+    if not album or not raw_track:
+        return DEFAULT_PATTERN
+
+    position, separator, total = raw_track.partition("/")
+    position = position.strip()
+    total = total.strip()
+    numbered_album = (
+        position.isdigit()
+        and (
+            int(position) > 1
+            or (separator and total.isdigit() and int(total) > 1)
+        )
+    )
+    album_folder = (
+        similarity(path.parent.name, album) >= MIN_ALBUM_SIMILARITY
+    )
+    return DEFAULT_ALBUM_PATTERN if numbered_album or album_folder else DEFAULT_PATTERN
+
+
+def credit_loss_for_rename(path: Path, values: dict) -> list[str]:
+    """Return credits present in the current filename but absent from its target."""
+    file_artist, file_title = parse_filename(path)
+    if not file_artist or not file_title:
+        return []
+    return missing_credit_names(
+        file_artist,
+        file_title,
+        values.get("artist", ""),
+        values.get("title", ""),
+    )
 
 
 def collect(paths: list[str], wanted: set[str]) -> list[Path]:
@@ -108,12 +131,30 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Rename audio files after their tags (previews unless --apply)"
     )
-    parser.add_argument("paths", nargs="+", help="Files or directories to rename")
+    parser.add_argument(
+        "paths",
+        nargs="*",
+        metavar="PATH",
+        help="Files or directories to rename (default: configured music library)",
+    )
     parser.add_argument("--apply", action="store_true",
                         help="Perform the renames; without this nothing is written")
-    parser.add_argument("--pattern", default=DEFAULT_PATTERN,
-                        help=f"Naming pattern (default: {DEFAULT_PATTERN!r}); "
-                             f"fields: {', '.join('{%s}' % f for f in FIELDS)}")
+    parser.add_argument("--no-update", action="store_true",
+                        help="Do not request an MPD database update after renaming")
+    parser.add_argument(
+        "--allow-credit-loss",
+        action="store_true",
+        help="Allow a rename that removes a credited artist from the filename",
+    )
+    parser.add_argument(
+        "--pattern",
+        default="",
+        help=(
+            f"Naming pattern override; defaults: {DEFAULT_ALBUM_PATTERN!r} for "
+            f"album tracks, {DEFAULT_PATTERN!r} otherwise; fields: "
+            f"{', '.join(f'{{{field}}}' for field in FIELDS)}"
+        ),
+    )
     parser.add_argument("--ext", default="",
                         help="Comma-separated extensions to include "
                              f"(default: {','.join(sorted(e[1:] for e in SUPPORTED))})")
@@ -127,7 +168,8 @@ def main() -> int:
     else:
         wanted = set(SUPPORTED)
 
-    files = collect(args.paths, wanted)
+    paths = args.paths or [str(music_library_dir())]
+    files = collect(paths, wanted)
     if not files:
         print(f"no {'/'.join(sorted(wanted))} files found", file=sys.stderr)
         return 0
@@ -137,19 +179,28 @@ def main() -> int:
 
     for path in files:
         try:
-            values = fields_for(read_tags(path))
+            tags = read_tags(path)
+            values = fields_for(tags)
         except (MutagenError, OSError) as exc:
             print(f"!! {path.name}: unreadable: {exc}", file=sys.stderr)
             skipped += 1
             continue
 
-        missing = [f for f in re.findall(r"{(\w+)}", args.pattern) if not values.get(f)]
+        pattern = args.pattern or default_pattern_for(path, tags)
+        missing = [f for f in re.findall(r"{(\w+)}", pattern) if not values.get(f)]
         if missing:
             print(f"?? {path.name}: no {', '.join(missing)} tag", file=sys.stderr)
             skipped += 1
             continue
 
-        target = path.with_name(render(args.pattern, values) + path.suffix.lower())
+        lost_credits = credit_loss_for_rename(path, values)
+        if lost_credits and not args.allow_credit_loss:
+            detail = f"would remove credit(s): {', '.join(lost_credits)}"
+            print(f"!! {path.name}: {detail}", file=sys.stderr)
+            skipped += 1
+            continue
+
+        target = path.with_name(render(pattern, values) + path.suffix.lower())
         if target == path:
             unchanged += 1
             continue
@@ -158,21 +209,37 @@ def main() -> int:
             skipped += 1
             continue
 
-        planned.add(target)
+        try:
+            move_plan = build_move_plan(path, target)
+        except MoveError as exc:
+            print(f"!! {path.name}: {exc}", file=sys.stderr)
+            skipped += 1
+            continue
+
         renamed += 1
+        planned.add(target)
         if args.apply:
             try:
-                path.rename(target)
-            except OSError as exc:
+                apply_move_plan(move_plan)
+            except (MoveError, OSError) as exc:
                 print(f"!! {path.name}: rename failed: {exc}", file=sys.stderr)
                 skipped += 1
                 renamed -= 1
                 continue
         verb = "RENAMED" if args.apply else "would rename"
         print(f"{verb}: {path.name}\n         -> {target.name}", flush=True)
+        if move_plan.has_lyrics:
+            lrc_verb = "RENAMED LRC" if args.apply else "would rename LRC"
+            print(
+                f"{lrc_verb}: {move_plan.lyrics_source.name}\n"
+                f"             -> {move_plan.lyrics_target.name}",
+                flush=True,
+            )
 
     print(f"\n{renamed} to rename, {unchanged} already correct, {skipped} skipped"
           f"{'' if args.apply else '  (preview only; pass --apply)'}")
+    if args.apply and renamed and not args.no_update:
+        update_mpd()
     return 1 if skipped else 0
 
 
