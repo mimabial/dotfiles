@@ -77,7 +77,6 @@ fi
 menu_lines="${MEDIA_MENU_LINES:-5}"
 [[ "${menu_lines}" =~ ^[0-9]+$ ]] || menu_lines=5
 ((menu_lines < 1)) && menu_lines=1
-((menu_lines > 8)) && menu_lines=8
 
 font_scale=""
 font_name=""
@@ -88,9 +87,9 @@ rofi_position=""
 media_window_theme=""
 
 media_width_em="${ROFI_MEDIAPLAYER_MENU_WIDTH_EM:-24}"
-media_height_em="${ROFI_MEDIAPLAYER_MENU_HEIGHT_EM:-$((menu_lines * 2 + 7))}"
+media_height_em="${ROFI_MEDIAPLAYER_MENU_HEIGHT_EM:-$((menu_lines * 2 + 12))}"
 [[ "${media_width_em}" =~ ^[0-9]+([.][0-9]+)?$ ]] || media_width_em=24
-[[ "${media_height_em}" =~ ^[0-9]+([.][0-9]+)?$ ]] || media_height_em=$((menu_lines * 2 + 7))
+[[ "${media_height_em}" =~ ^[0-9]+([.][0-9]+)?$ ]] || media_height_em=$((menu_lines * 2 + 12))
 
 rofi_prepare_standard_context \
   font_scale font_name font_override r_override _rofi_opacity \
@@ -104,7 +103,8 @@ rofi_picker_compute_window_geometry \
   "${media_width_em}" "${media_height_em}" \
   360 220
 
-# Fixed height underestimates real row height; keep width, let rofi size height to content.
+# The clipboard theme uses 2em per row and 12em of surrounding input/list
+# chrome. Clamp against that measured height, then let Rofi size naturally.
 if [[ "${media_window_theme}" =~ width:\ *([0-9]+)px ]]; then
   media_window_theme="window { width: ${BASH_REMATCH[1]}px; }"
 fi
@@ -322,12 +322,13 @@ def action_supported(props: dict, action: str) -> bool:
 def dynamic_menu_entries(player: str) -> list[tuple[str, str]]:
     props = fetch_player_properties(player)
     status = _prop_string(props, "PlaybackStatus") or player_status(player)
-    entries: list[tuple[str, str]] = []
+    entries: list[tuple[str, str]] = [
+        (ACTION_LABELS["show-player"], "show-player")
+    ]
 
     if action_supported(props, "play-pause"):
         label = ACTION_LABELS["pause"] if status == "Playing" else ACTION_LABELS["play"]
         entries.append((label, "play-pause"))
-    entries.append((ACTION_LABELS["show-player"], "show-player"))
     if action_supported(props, "next"):
         entries.append((ACTION_LABELS["next"], "next"))
     if action_supported(props, "previous"):

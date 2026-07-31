@@ -78,7 +78,7 @@ screenrecord_has_matching_process() {
 }
 
 screenrecord_refresh_waybar() {
-  screenrecord_signal_matching RTMIN+8 -x waybar
+  screenrecord_signal_matching RTMIN+10 -x waybar
 }
 
 screenrecord_monitors_json() {

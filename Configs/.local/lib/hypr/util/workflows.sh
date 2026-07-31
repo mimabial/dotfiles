@@ -70,7 +70,7 @@ get_workflow_waybar_opacity() {
 }
 
 apply_waybar_workflow() {
-  local mode css="" signal="RTMIN+7"
+  local mode css="" signal="RTMIN+19"
   local workflow_css_file="${XDG_CONFIG_HOME:-$HOME/.config}/waybar/includes/workflow.css"
   local layout current_layout_name saved_layout target_layout=""
   local rounding opacity last_applied

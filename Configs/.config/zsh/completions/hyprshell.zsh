@@ -1,10 +1,8 @@
 #compdef hyprshell
 
 _hyprshell() {
-    local cur prev words
-    cur="${words[CURRENT]}"
-    prev="${words[CURRENT-1]}"
-
+    # Never declare `words` local: it is the completion system's array, and
+    # shadowing it leaves $words[2] empty so the subcommand cannot be read.
     local built_in_commands hyprscripts
     built_in_commands=("--help" "help" "-h" "-r" "reload" "--version" "version" "-v" "--release-notes" "release-notes" "list" "--list-script" "--list-script-path" "--completions" "validate" "pyinit" "init" "lock-session" "logout" "pip" "pypr" "app" )
 
@@ -20,8 +18,14 @@ _hyprshell() {
     else
         local -a script_options
         script_options=(${=$(_hyprshell_script_options $words[2])})
-        (( ${#script_options} )) && compadd -a script_options
-        _files
+        if (( ${#script_options} )); then
+            # Two tagged groups, so options and paths are offered side by side.
+            _alternative \
+                "options:script option:compadd -a script_options" \
+                "files:file:_files"
+        else
+            _files
+        fi
     fi
 }
 

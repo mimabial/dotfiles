@@ -18,6 +18,13 @@ from mediaplayer_presenter import (
 
 
 class MediaPlayerMenuTests(unittest.TestCase):
+    def test_menu_clamps_using_every_action_without_hiding_rows(self):
+        menu_script = mediaplayer_actions.ROFI_MENU_SCRIPT
+
+        self.assertNotIn("menu_lines > 8", menu_script)
+        self.assertIn("menu_lines * 2 + 12", menu_script)
+        self.assertIn('media_window_theme="window { width:', menu_script)
+
     @patch("mediaplayer_actions.player_status", return_value="Playing")
     @patch(
         "mediaplayer_actions.fetch_player_properties",
@@ -29,8 +36,11 @@ class MediaPlayerMenuTests(unittest.TestCase):
             "CanGoPrevious": {"data": False},
         },
     )
-    def test_menu_always_offers_show_player(self, _properties, _status):
-        self.assertIn(("Show Player", "show-player"), dynamic_menu_entries("mpd"))
+    def test_menu_puts_show_player_first(self, _properties, _status):
+        self.assertEqual(
+            ("Show Player", "show-player"),
+            dynamic_menu_entries("mpd")[0],
+        )
 
     @patch("mediaplayer_actions.show_player", return_value=0)
     @patch(
