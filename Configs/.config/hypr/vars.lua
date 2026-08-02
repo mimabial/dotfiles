@@ -34,6 +34,7 @@ local values = {
     ["start.APPTRAY_BLUETOOTH"] = "hyprshell system/start-if-available.sh HYPR_START_BLUETOOTH_APPLET blueman-applet -- hyprshell app -t service blueman-applet",
     ["start.BATTERY_NOTIFY"] = "hyprshell app -t service -- hyprshell sysinfo/battery-notify",
     ["start.IDLE_DAEMON"] = "systemctl --user start --no-block hyprland-hypridle.service",
+    ["start.LID_INHIBITOR"] = "$scrPath/session/lid-inhibitor.py",
     ["start.AUTO_THEME"] = "hyprshell auto-theme-startup",
     ["start.IDLE_MANAGER"] = "systemctl --user start --no-block hyprland-idle-manager.service",
     ["start.ZSH_ZCOMPDUMP"] = "systemctl --user start --no-block zsh-zcompdump-clean.timer",

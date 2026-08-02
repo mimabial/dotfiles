@@ -23,6 +23,8 @@ Window pattern may be plain text, class:<class-pattern>, or title:<title-pattern
 Options:
   --empty-workspace-if-occupied  Use the nearest empty workspace when the current
                                  workspace already contains another tiled window
+  --tile                         Keep the summoned window tiled, overriding an
+                                 initial floating window rule
   --width SPEC                   Target width in px or percent
   --height SPEC                  Target height in px or percent
   --profile NAME                 Target a named window geometry profile
@@ -80,6 +82,15 @@ launch_ensure_window_floating() {
   [[ "${is_floating}" == "true" ]] && return 0
   launch_source_core_common || return 1
   hypr_lua_dispatch "hl.dsp.window.float({window=$(hypr_lua_quote "address:${window_address}"), action=\"toggle\"})" >/dev/null 2>&1
+}
+
+launch_ensure_window_tiled() {
+  local window_address="$1"
+
+  launch_source_core_common || return 1
+  hypr_lua_dispatch \
+    "hl.dsp.window.float({window=$(hypr_lua_quote "address:${window_address}"), action=\"off\"})" \
+    >/dev/null 2>&1
 }
 
 launch_resize_window_exact() {
@@ -243,6 +254,7 @@ launch_apply_window_geometry() {
 
 main() {
   local use_empty_workspace=0
+  local force_tiled=0
   local width_spec=""
   local height_spec=""
   local geometry_profile=""
@@ -250,11 +262,14 @@ main() {
   local window_pattern=""
   local target_workspace=""
   local window_address=""
+  local snapshot=""
+  local clients_json=""
   local launch_cmd=()
 
   while [[ "$#" -gt 0 ]]; do
     case "$1" in
       --empty-workspace-if-occupied) use_empty_workspace=1; shift ;;
+      --tile) force_tiled=1; shift ;;
       --width)  width_spec="$2";  shift 2 ;;
       --height) height_spec="$2"; shift 2 ;;
       --profile) geometry_profile="$2"; shift 2 ;;
@@ -280,6 +295,11 @@ main() {
     return 2
   }
 
+  snapshot="$(hyprctl --batch -j 'activeworkspace;clients;monitors all' | jq -sc '.')"
+  clients_json="$(jq -c '.[1] // []' <<<"${snapshot}")"
+  HYPR_MONITORS_JSON_CACHE="$(jq -c '.[2] // []' <<<"${snapshot}")"
+  HYPR_MONITORS_JSON_CACHE_READY=1
+
   if [[ -n "${geometry_profile}" ]]; then
     if [[ -n "${width_spec}" || -n "${height_spec}" ]]; then
       print_log -sec "summon" -err "geometry" "--profile cannot be combined with --width or --height"
@@ -289,8 +309,13 @@ main() {
       <<<"$(launch_resolve_geometry_profile "${geometry_profile}")" || return 1
   fi
 
-  window_address="$(launch_resolve_window_address "${window_pattern}")"
-  target_workspace="$(launch_prepare_target_workspace "${use_empty_workspace}" "${window_address}")"
+  if ((force_tiled == 1)) && launch_geometry_requested "${width_spec}" "${height_spec}" "${align}"; then
+    print_log -sec "summon" -err "geometry" "--tile cannot be combined with floating-window geometry"
+    return 2
+  fi
+
+  window_address="$(launch_resolve_window_address "${window_pattern}" "${clients_json}")"
+  target_workspace="$(launch_prepare_target_workspace "${use_empty_workspace}" "${window_address}" "${snapshot}")"
   [[ -n "${target_workspace}" ]] || return 1
 
   if [[ -z "${window_address}" ]]; then
@@ -301,6 +326,7 @@ main() {
 
   launch_summon_to_workspace "${window_address}" "${target_workspace}" || return 1
   launch_apply_window_geometry "${window_address}" "${width_spec}" "${height_spec}" "${align}" || return 1
+  ((force_tiled == 0)) || launch_ensure_window_tiled "${window_address}" || return 1
 }
 
 main "$@"

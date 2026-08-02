@@ -135,22 +135,22 @@ def parse_hyprctl_binds_text(output):
 def get_hyprctl_binds():
     try:
         result = subprocess.run(
-            ["hyprctl", "binds", "-j"],
+            ["hyprctl", "binds"],
             capture_output=True,
             text=True,
             timeout=HYPRCTL_TIMEOUT_SECONDS,
         )
         if result.returncode == 0:
             try:
-                return validate_binds(json.loads(result.stdout))
-            except (json.JSONDecodeError, ValueError):
+                return parse_hyprctl_binds_text(result.stdout)
+            except (RuntimeError, ValueError):
                 pass
     except subprocess.TimeoutExpired:
         pass
 
     try:
         result = subprocess.run(
-            ["hyprctl", "binds"],
+            ["hyprctl", "binds", "-j"],
             capture_output=True,
             text=True,
             timeout=HYPRCTL_TIMEOUT_SECONDS,
@@ -160,7 +160,10 @@ def get_hyprctl_binds():
     if result.returncode != 0:
         message = result.stderr.strip() or "hyprctl binds failed"
         raise RuntimeError(message)
-    return parse_hyprctl_binds_text(result.stdout)
+    try:
+        return validate_binds(json.loads(result.stdout))
+    except (json.JSONDecodeError, ValueError) as error:
+        raise RuntimeError("hyprctl binds returned no parseable bindings") from error
 
 
 def parse_description(description):

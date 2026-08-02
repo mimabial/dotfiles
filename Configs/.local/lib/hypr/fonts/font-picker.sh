@@ -4,7 +4,10 @@
 
 set -euo pipefail
 
-source "$(command -v hyprshell)" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
+hypr_runtime_require rofi || exit 1
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR}/rofi/rofi.lib.bash"
 
 hypr_help_guard "Usage: hyprshell fonts/font-picker
 Pick a font via rofi and apply it with fonts/font-set." "$@"
@@ -37,10 +40,10 @@ ui_font="${ui_font:-monospace}"
 font_override="* {font: \"${ui_font} ${font_scale}\";}"
 
 # Basic theming (border-radius similar to other rofi scripts)
-hypr_border="${HYPR_RUNTIME_BORDER_RADIUS:-${HYPR_BORDER_RADIUS:-5}}"
+rofi_hypr_snapshot
+IFS=$'\t' read -r hypr_border hypr_width < <(rofi_default_border_metrics 5 2)
 wind_border=$((hypr_border * 3 / 2))
 elem_border=$((hypr_border == 0 ? 5 : hypr_border))
-hypr_width="${HYPR_RUNTIME_BORDER_WIDTH:-${HYPR_BORDER_WIDTH:-2}}"
 r_override="window{border:${hypr_width}px;border-radius:${wind_border}px;} wallbox{border-radius:${elem_border}px;} element{border-radius:${elem_border}px;}"
 rofi_position="$(get_rofi_pos 2>/dev/null || echo "")"
 

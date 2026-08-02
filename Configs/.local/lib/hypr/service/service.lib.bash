@@ -101,7 +101,7 @@ hypr_service_report_diff() {
 }
 
 hypr_service_init() {
-  source "$(command -v hyprshell)" || return 1
+  source "${HYPR_SERVICE_LIB_DIR}/../runtime/init.bash" || return 1
 }
 
 hypr_service_die() {

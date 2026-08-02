@@ -67,7 +67,7 @@ menu_run_action_system() {
     update_password_drive) present_terminal hyprshell system/drive-password.sh ;;
     update_password_user) present_terminal passwd ;;
     system_lock) hyprshell session/hyprlock.sh ;;
-    system_suspend) systemctl suspend ;;
+    system_suspend) hyprshell session/suspend.sh ;;
     system_restart) hyprshell system/powerctl.sh reboot ;;
     system_shutdown) hyprshell system/powerctl.sh shutdown ;;
     *) return 1 ;;

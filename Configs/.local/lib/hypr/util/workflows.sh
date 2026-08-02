@@ -2,11 +2,8 @@
 
 set -euo pipefail
 
-# shellcheck source=/dev/null
-if ! source "$(command -v hyprshell)"; then
-  echo "[$0] :: Error: hyprshell not found."
-  exit 1
-fi
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
+hypr_runtime_require state rofi || exit 1
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/rofi/rofi.lib.bash"
 # shellcheck source=/dev/null
@@ -200,7 +197,7 @@ fn_select() {
     wallbox same "${rofi_position}"
   rofi_args+=(-theme-str "${window_theme}")
   rofi_args+=(-theme-str "listview { lines: ${menu_lines}; }")
-  rofi_args+=(-select "${HYPR_WORKFLOW:-default}")
+  rofi_args+=(-select "${workflow_previous_name}")
 
   selected_workflow=$(echo -e "${workflow_list}" \
     | rofi "${rofi_args[@]}")
@@ -214,8 +211,7 @@ fn_select() {
 get_info() {
   local workflow_path
 
-  declare -F export_hypr_config >/dev/null && export_hypr_config
-  current_workflow=${HYPR_WORKFLOW:-default}
+  current_workflow="$(state_get "HYPR_WORKFLOW" "default")"
 
   workflow_path="$(resolve_workflow_path "${current_workflow}" || true)"
   if [[ -z "${workflow_path}" ]]; then

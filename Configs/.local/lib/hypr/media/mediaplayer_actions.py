@@ -6,7 +6,6 @@ import os
 import subprocess
 import sys
 import time
-import tempfile
 from pathlib import Path
 
 from mediaplayer_presenter import show_player
@@ -87,9 +86,10 @@ rofi_position=""
 media_window_theme=""
 
 media_width_em="${ROFI_MEDIAPLAYER_MENU_WIDTH_EM:-24}"
-media_height_em="${ROFI_MEDIAPLAYER_MENU_HEIGHT_EM:-$((menu_lines * 2 + 12))}"
+measured_height_em=$(((menu_lines * 13 + 4) / 5 + 9))
+media_height_em="${ROFI_MEDIAPLAYER_MENU_HEIGHT_EM:-${measured_height_em}}"
 [[ "${media_width_em}" =~ ^[0-9]+([.][0-9]+)?$ ]] || media_width_em=24
-[[ "${media_height_em}" =~ ^[0-9]+([.][0-9]+)?$ ]] || media_height_em=$((menu_lines * 2 + 12))
+[[ "${media_height_em}" =~ ^[0-9]+([.][0-9]+)?$ ]] || media_height_em="${measured_height_em}"
 
 rofi_prepare_standard_context \
   font_scale font_name font_override r_override _rofi_opacity \
@@ -103,8 +103,8 @@ rofi_picker_compute_window_geometry \
   "${media_width_em}" "${media_height_em}" \
   360 220
 
-# The clipboard theme uses 2em per row and 12em of surrounding input/list
-# chrome. Clamp against that measured height, then let Rofi size naturally.
+# Live clipboard-theme geometry is approximately 2.6em per row plus 9em of
+# input/list chrome. Round upward for clamping, then let Rofi size naturally.
 if [[ "${media_window_theme}" =~ width:\ *([0-9]+)px ]]; then
   media_window_theme="window { width: ${BASH_REMATCH[1]}px; }"
 fi
@@ -130,9 +130,7 @@ rofi_args=(
 )
 [[ -n "${_rofi_opacity:-}" ]] && rofi_args+=(-theme-str "${_rofi_opacity}")
 
-input_file="${MEDIA_MENU_INPUT:-}"
-[[ -n "${input_file}" && -r "${input_file}" ]] || exit 2
-rofi "${rofi_args[@]}" <"${input_file}"
+rofi "${rofi_args[@]}"
 """
 
 
@@ -170,7 +168,13 @@ def read_active_player_state() -> str:
 
 
 def command_output(args: list[str]) -> tuple[int, str]:
-    proc = subprocess.run(args, text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    proc = subprocess.run(
+        args,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
     return proc.returncode, proc.stdout.strip()
 
 
@@ -224,7 +228,8 @@ def cycle_player(step: int) -> int:
     if not players:
         return 0
 
-    active = [p for p in players if player_status(p) != "Stopped"]
+    statuses = {player: player_status(player) for player in players}
+    active = [player for player in players if statuses[player] != "Stopped"]
     pool = active if active else players
 
     selected = read_active_player_state()
@@ -238,7 +243,10 @@ def cycle_player(step: int) -> int:
         )
 
     if not current:
-        current = resolve_player()
+        current = next(
+            (player for player in pool if statuses[player] == "Playing"),
+            pool[0],
+        )
 
     if current in pool:
         index = pool.index(current)
@@ -262,6 +270,7 @@ def fetch_interface_properties(player: str, interface: str) -> dict:
             "GetAll", "s", interface,
         ],
         text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+        check=False,
     )
     if proc.returncode != 0 or not proc.stdout.strip():
         return {}
@@ -319,8 +328,12 @@ def action_supported(props: dict, action: str) -> bool:
     return True
 
 
-def dynamic_menu_entries(player: str) -> list[tuple[str, str]]:
-    props = fetch_player_properties(player)
+def dynamic_menu_entries(
+    player: str,
+    props: dict | None = None,
+) -> list[tuple[str, str]]:
+    if props is None:
+        props = fetch_player_properties(player)
     status = _prop_string(props, "PlaybackStatus") or player_status(player)
     entries: list[tuple[str, str]] = [
         (ACTION_LABELS["show-player"], "show-player")
@@ -363,25 +376,14 @@ def rofi_menu_index(labels: list[str], player: str) -> int | None:
     env["MEDIA_MENU_PROMPT"] = f"Media: {player.split('.')[0]}"
     env["MEDIA_MENU_PLACEHOLDER"] = " Media"
 
-    input_path = ""
-    try:
-        with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False) as input_file:
-            input_file.write("\n".join(labels) + "\n")
-            input_path = input_file.name
-        env["MEDIA_MENU_INPUT"] = input_path
-        proc = subprocess.run(
-            ["bash", "-lc", ROFI_MENU_SCRIPT],
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            env=env,
-        )
-    finally:
-        if input_path:
-            try:
-                os.unlink(input_path)
-            except OSError:
-                pass
+    proc = subprocess.run(
+        ["bash", "-c", ROFI_MENU_SCRIPT],
+        input="\n".join(labels) + "\n",
+        text=True,
+        capture_output=True,
+        env=env,
+        check=False,
+    )
 
     if proc.returncode != 0:
         if proc.returncode not in (1, 130) and proc.stderr.strip():
@@ -402,7 +404,8 @@ def run_menu(explicit_player: str = "") -> int:
     player = resolve_player(explicit_player)
     if not player:
         return 0
-    entries = dynamic_menu_entries(player)
+    player_props = fetch_player_properties(player)
+    entries = dynamic_menu_entries(player, player_props)
     if not entries:
         return 0
 
@@ -414,20 +417,16 @@ def run_menu(explicit_player: str = "") -> int:
     action = entries[selected_index][1]
     if action == "cancel":
         return 0
-    return run_action(action, player)
+    return run_resolved_action(action, player, player_props)
 
 
-def run_action(action: str, explicit_player: str = "") -> int:
-    if action not in ACTIONS:
-        raise SystemExit(f"unsupported media action: {action}")
-
-    if action in PLAYER_CYCLE_STEPS:
-        return cycle_player(PLAYER_CYCLE_STEPS[action])
-
-    player = resolve_player(explicit_player)
-    if not player:
-        return 0
-    player_props = fetch_player_properties(player)
+def run_resolved_action(
+    action: str,
+    player: str,
+    player_props: dict | None = None,
+) -> int:
+    if player_props is None:
+        player_props = fetch_player_properties(player)
     if action == "show-player":
         root_props = fetch_root_properties(player)
         return show_player(
@@ -443,5 +442,19 @@ def run_action(action: str, explicit_player: str = "") -> int:
         ["playerctl", "-p", player, *ACTIONS[action]],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
+        check=False,
     )
     return 0 if proc.returncode == 0 else 1
+
+
+def run_action(action: str, explicit_player: str = "") -> int:
+    if action not in ACTIONS:
+        raise SystemExit(f"unsupported media action: {action}")
+
+    if action in PLAYER_CYCLE_STEPS:
+        return cycle_player(PLAYER_CYCLE_STEPS[action])
+
+    player = resolve_player(explicit_player)
+    if not player:
+        return 0
+    return run_resolved_action(action, player)

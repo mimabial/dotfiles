@@ -154,6 +154,7 @@ rofi_picker_compute_window_geometry() {
   local width_px=""
   local height_px=""
 
+  rofi_hypr_snapshot
   width_px="$(rofi_length_em_to_px "${width_em}" "${font_name}" "${font_scale}" 2>/dev/null || true)"
   [[ "${width_px}" =~ ^[0-9]+$ ]] || width_px="${fallback_width_px}"
 

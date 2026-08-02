@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-source "$(command -v hyprshell)" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/system/monitor.common.bash"
 
@@ -34,6 +34,7 @@ watch_by_polling() {
   previous_connected="$(monitor_external_connected_name || true)"
   while true; do
     sleep "${HYPR_MONITOR_WATCH_INTERVAL:-3}"
+    hypr_monitors_invalidate
     current_connected="$(monitor_external_connected_name || true)"
     if [[ -n "${previous_connected}" && -z "${current_connected}" ]]; then
       recover_monitor_toggles

@@ -20,10 +20,6 @@ pkg_installed() {
   hyprshell pm query "${pkgIn}" &>/dev/null
 }
 
-escape_regex() {
-  printf '%s' "$1" | sed 's/[][(){}.^$?*+|\\/]/\\&/g'
-}
-
 sed_escape_replacement() {
   local value="$1"
   value="${value//\\/\\\\}"

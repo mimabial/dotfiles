@@ -2,8 +2,6 @@
 
 set -euo pipefail
 
-source "$(command -v hyprshell)" || exit 1
-
 declare -A dict
 
 dict["file-manager"]="inode/directory"
@@ -101,7 +99,7 @@ main() {
   local mime_type
   mime_type=$(find_mime_type "$input")
 
-  local app2unit="${HYPR_LIB_DIR}/system/app2unit.sh"
+  local app2unit="${HOME}/.local/lib/hypr/system/app2unit.sh"
   if [[ -z "${mime_type}" ]]; then
     printf 'Error: No matching MIME type found for %s\n\n' "${input}" >&2
     [[ -n "${fallbackCmd}" ]] && exec "${app2unit}" "${fallbackCmd}"

@@ -169,16 +169,15 @@ def launch_on_empty_workspace(
         return False
     pattern, launch = spec
     hyprshell = shutil.which("hyprshell") or str(Path.home() / ".local/bin/hyprshell")
-    proc = command(
-        [
-            hyprshell,
-            "launch/summon.sh",
-            "--empty-workspace-if-occupied",
-            pattern,
-            "--",
-            *launch,
-        ]
-    )
+    summon = [
+        hyprshell,
+        "launch/summon.sh",
+        "--empty-workspace-if-occupied",
+    ]
+    if player_base(player) == "mpd":
+        summon.append("--tile")
+    summon.extend([pattern, "--", *launch])
+    proc = command(summon)
     return proc.returncode == 0
 
 
@@ -197,10 +196,11 @@ def show_player(
     if window is not None:
         return 0 if focus_window(str(window.get("address") or "")) else 1
 
-    if not focus_empty_workspace():
-        return 1
-    if can_raise and raise_mpris_player(player):
-        window = wait_for_window(player, desktop_entry)
-        if window is not None:
-            return 0 if focus_window(str(window.get("address") or "")) else 1
+    if can_raise:
+        if not focus_empty_workspace():
+            return 1
+        if raise_mpris_player(player):
+            window = wait_for_window(player, desktop_entry)
+            if window is not None:
+                return 0 if focus_window(str(window.get("address") or "")) else 1
     return 0 if launch_on_empty_workspace(player, desktop_entry, media_url) else 1

@@ -114,27 +114,22 @@ run_renderers() {
 }
 
 reload_clients() {
+  if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] && command -v hyprctl >/dev/null 2>&1; then
+    hyprctl reload config-only >/dev/null 2>&1 || true
+  fi
+  [[ "${HYPR_THEME_DEFER_CLIENTS:-0}" == 1 ]] && return
+  source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/theme/color.apply.sh"
+
   local background=""
-  local rmpc_reload="$HOME/.local/lib/hypr/theme/lib/rmpc.reload.bash"
   background="$(jq -r '.background // empty' "${PALETTE}" 2>/dev/null || true)"
 
   if [[ "${background}" =~ ^(dark|light)$ ]] && command -v gsettings >/dev/null 2>&1; then
     gsettings set org.gnome.desktop.interface color-scheme "prefer-${background}" >/dev/null 2>&1 || true
   fi
 
-  pkill -SIGUSR1 -x kitty 2>/dev/null || true
-
-  if [[ -r "${rmpc_reload}" ]]; then
-    bash "${rmpc_reload}"
-  fi
-
-  if command -v tmux >/dev/null 2>&1 && tmux list-sessions >/dev/null 2>&1; then
-    tmux source-file "${XDG_CONFIG_HOME:-$HOME/.config}/tmux/tmux.conf" 2>/dev/null || true
-  fi
-
-  if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] && command -v hyprctl >/dev/null 2>&1; then
-    hyprctl reload config-only >/dev/null 2>&1 || true
-  fi
+  reload_live_theme_client kitty
+  reload_live_theme_client rmpc
+  reload_live_theme_client tmux
 
   if [[ -x "$HOME/.local/lib/hypr/util/nvim-theme-sync.sh" ]]; then
     "$HOME/.local/lib/hypr/util/nvim-theme-sync.sh" >/dev/null 2>&1 || true

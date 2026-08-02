@@ -41,12 +41,6 @@ hypr_init_system() {
   printf '%s\n' "${detected}"
 }
 
-# True only when a usable systemd --user instance is reachable.
-hypr_systemd_user_ok() {
-  [[ "$(hypr_init_system)" == "systemd" ]] || return 1
-  systemctl --user is-active default.target >/dev/null 2>&1
-}
-
 # Directory holding per-user runit service definitions.
 hypr_user_sv_dir() {
   printf '%s\n' "${HYPR_USER_SV_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/sv}"
@@ -362,10 +356,7 @@ hypr_config_value_from_layers() {
 hypr_border_metrics_into() {
   local border_name="${1:-}"
   local width_name="${2:-}"
-  local metrics_dir=""
-  local metrics_file=""
-  local line=""
-  local -a ints=()
+  local metrics=""
 
   [[ -n "${border_name}" && -n "${width_name}" ]] || return 1
   command -v hyprctl >/dev/null 2>&1 || return 1
@@ -376,25 +367,9 @@ hypr_border_metrics_into() {
 
   border_ref=""
   width_ref=""
-  metrics_dir="$(hypr_runtime_subdir hypr)" || return 1
-  metrics_file="${metrics_dir}/hypr-border-metrics.$$.$RANDOM"
-
-  if ! hyprctl --batch "getoption decoration:rounding;getoption general:border_size" >"${metrics_file}" 2>/dev/null; then
-    rm -f -- "${metrics_file}"
-    return 1
-  fi
-
-  while IFS= read -r line; do
-    [[ "${line}" =~ ^int:\ ([0-9]+)$ ]] || continue
-    ints+=("${BASH_REMATCH[1]}")
-    (( ${#ints[@]} >= 2 )) && break
-  done < "${metrics_file}"
-
-  rm -f -- "${metrics_file}"
-  (( ${#ints[@]} >= 2 )) || return 1
-
-  border_ref="${ints[0]}"
-  width_ref="${ints[1]}"
+  metrics="$(hyprctl --batch -j 'getoption decoration:rounding;getoption general:border_size' 2>/dev/null | jq -sr '[(.[0].int // ""), (.[1].int // "")] | @tsv')" || return 1
+  IFS=$'\t' read -r border_ref width_ref <<<"${metrics}"
+  [[ "${border_ref}" =~ ^[0-9]+$ && "${width_ref}" =~ ^[0-9]+$ ]]
 }
 
 hypr_resolved_gaps_out() {
@@ -402,7 +377,7 @@ hypr_resolved_gaps_out() {
 
   if [[ ! "${gaps_out}" =~ ^[0-9]+$ ]] && command -v hyprctl >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
     gaps_out="$(
-      hyprctl -j getoption general:gaps_out 2>/dev/null |
+      if declare -F rofi_option_json >/dev/null 2>&1; then rofi_option_json general:gaps_out; else hyprctl -j getoption general:gaps_out 2>/dev/null; fi |
         jq -r '.int // ((.css // .custom // "") | split(" ")[0]) // empty' 2>/dev/null
     )"
   fi
@@ -411,13 +386,26 @@ hypr_resolved_gaps_out() {
   printf '%s\n' "${gaps_out}"
 }
 
+hypr_monitors_json() {
+  if [[ -z "${HYPR_MONITORS_JSON_CACHE_READY:-}" ]]; then
+    declare -g HYPR_MONITORS_JSON_CACHE_READY=1
+    declare -g HYPR_MONITORS_JSON_CACHE
+    HYPR_MONITORS_JSON_CACHE="$(hyprctl -j monitors all 2>/dev/null || true)"
+  fi
+  printf '%s\n' "${HYPR_MONITORS_JSON_CACHE}"
+}
+
+hypr_monitors_invalidate() {
+  unset HYPR_MONITORS_JSON_CACHE_READY HYPR_MONITORS_JSON_CACHE ROFI_HYPR_SNAPSHOT_READY
+}
+
 hypr_monitor_geometry() {
   local selector="${1:-}"
 
   command -v hyprctl >/dev/null 2>&1 || return 1
   command -v jq >/dev/null 2>&1 || return 1
 
-  hyprctl -j monitors \
+  hypr_monitors_json \
     | jq -r --arg selector "${selector}" '
         (
           if $selector == "" then
@@ -459,7 +447,11 @@ hypr_window_edge_padding_px() {
 
   border_width="${hypr_width:-${HYPR_RUNTIME_BORDER_WIDTH:-${HYPR_BORDER_WIDTH:-}}}"
   if [[ ! "${border_width}" =~ ^[0-9]+$ ]]; then
-    hypr_border_metrics_into ignored_border border_width 2>/dev/null || true
+    if declare -F rofi_option_json >/dev/null 2>&1; then
+      border_width="$(rofi_option_json general:border_size | jq -r '.int // empty' 2>/dev/null || true)"
+    else
+      hypr_border_metrics_into ignored_border border_width 2>/dev/null || true
+    fi
   fi
   [[ "${border_width}" =~ ^[0-9]+$ ]] || border_width=2
 

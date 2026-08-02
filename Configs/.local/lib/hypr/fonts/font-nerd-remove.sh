@@ -3,10 +3,7 @@
 
 set -euo pipefail
 
-# shellcheck source=/home/rifle/.local/bin/hyprshell
-source "$(command -v hyprshell)" || exit 1
-# shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/core/notify.sh"
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/fonts/font-nerd.common.bash"
 

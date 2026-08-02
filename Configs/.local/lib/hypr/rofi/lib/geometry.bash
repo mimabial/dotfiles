@@ -11,7 +11,8 @@ rofi_default_border_metrics() {
   local width="${hypr_width:-${HYPR_RUNTIME_BORDER_WIDTH:-${HYPR_BORDER_WIDTH:-}}}"
 
   if [[ ! "${border}" =~ ^[0-9]+$ || ! "${width}" =~ ^[0-9]+$ ]]; then
-    hypr_border_metrics_into border width 2>/dev/null || true
+    border="$(rofi_option_json decoration:rounding | jq -r '.int // empty' 2>/dev/null || true)"
+    width="$(rofi_option_json general:border_size | jq -r '.int // empty' 2>/dev/null || true)"
   fi
   [[ "${border}" =~ ^[0-9]+$ ]] || border="${fallback_border}"
   [[ "${width}" =~ ^[0-9]+$ ]] || width="${fallback_width}"
@@ -130,6 +131,7 @@ rofi_prepare_standard_context() {
   local window_theme=""
   local opacity_override=""
 
+  rofi_hypr_snapshot
   effective_scale="$(rofi_effective_font_scale "${requested_scale}")"
   effective_font="$(rofi_effective_font_name "${requested_font}")"
   font_override="$(rofi_font_override "${effective_font}" "${effective_scale}")"
@@ -158,6 +160,7 @@ rofi_build_standard_menu_args() {
   local -n rofi_menu_args_ref="${out_name}"
   rofi_menu_args_ref=()
 
+  rofi_hypr_snapshot
   font_scale="$(rofi_effective_font_scale "${requested_scale}")"
   font_name="$(rofi_effective_font_name "${requested_font}")"
   [[ -n "${position_override}" ]] || position_override="$(get_rofi_pos)"

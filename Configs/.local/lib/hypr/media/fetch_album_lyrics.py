@@ -21,7 +21,7 @@ if str(SCRIPT_DIR) not in sys.path:
 from lyrics_io import save_lrc
 from lyrics_paths import lrc_path_for, music_library_dir
 from lyrics_provider import fetch_lyrics
-from lyrics_provider_common import _is_lrc_synced
+from lyrics_provider_common import _is_lrc_synced, _similarity
 
 DEFAULT_EXTENSIONS = "mp3,flac,m4a,ogg,opus"
 TRACK_PREFIX = re.compile(r"^\s*\d{1,3}\s*[-._)]\s*")
@@ -35,6 +35,19 @@ GENERIC_ALBUM_ARTISTS = {
     "original soundtrack",
     "original motion picture soundtrack",
 }
+FEATURE_SUFFIX = re.compile(
+    r"\s*(?:[\[(]\s*(?:feat\.?|ft\.?|featuring)\s+[^\])]+[\])]|"
+    r"(?:feat\.?|ft\.?|featuring)\s+.+)\s*$",
+    re.IGNORECASE,
+)
+NOISE_SUFFIX = re.compile(
+    r"\s*(?:[\[(]\s*(?:(?:official\s+)?(?:music\s+|lyric\s+)?video|"
+    r"(?:official\s+)?(?:audio|visuali[sz]er)|lyrics?|mv|hd|hq|4k|8k|"
+    r"remaster(?:ed)?(?:\s+\d{4})?|explicit|clean|official)\s*[\])]|"
+    r"[|:-]\s*(?:(?:official\s+)?(?:music\s+|lyric\s+)?video|"
+    r"official\s+(?:audio|visuali[sz]er)))\s*$",
+    re.IGNORECASE,
+)
 
 
 class LrcState(Enum):
@@ -150,6 +163,37 @@ def parse_filename(path: Path) -> tuple[str, str]:
     return artist.strip(), title.strip()
 
 
+def build_title_candidates(
+    tagged_title: str,
+    filename_title: str,
+    artists: list[str],
+) -> list[str]:
+    """Build one canonical title sequence for interactive and bulk lookups."""
+    candidates: list[str] = []
+
+    def add(value: str) -> None:
+        value = value.replace("⧸", "/").strip()
+        if value and value not in candidates:
+            candidates.append(value)
+
+    def without_leading_artist(value: str) -> str:
+        for separator in (" - ", " – ", " — "):
+            if separator not in value:
+                continue
+            prefix, title = value.split(separator, 1)
+            if title and any(_similarity(prefix, artist) >= 0.5 for artist in artists):
+                return title.strip()
+        return value
+
+    for raw in (tagged_title, filename_title):
+        raw = without_leading_artist(raw.strip())
+        clean = NOISE_SUFFIX.sub("", raw).strip(" -–—") or raw
+        add(FEATURE_SUFFIX.sub("", clean).strip(" -–—"))
+        add(clean)
+        add(raw)
+    return candidates
+
+
 def directory_hints(
     file_path: Path,
     scan_root: Path,
@@ -216,8 +260,10 @@ def process_audio_file(
     synced_only: bool = False,
     refresh_cache: bool = False,
     metadata: dict[str, Any] | None = None,
+    lrc_file: Path | None = None,
+    report_kind: bool = False,
 ) -> ProcessResult:
-    lrc_file = lrc_path_for(file_path)
+    lrc_file = lrc_file or lrc_path_for(file_path)
     state = lrc_state(lrc_file)
     if not should_fetch_lrc(state, force, upgrade_plain, synced_only):
         if upgrade_plain and state is LrcState.SYNCED:
@@ -245,20 +291,26 @@ def process_audio_file(
     print(f"  Artist: {artist}")
     print(f"  Album: {album}")
 
+    _, filename_title = parse_filename(file_path)
+    title_candidates = build_title_candidates(title, filename_title, artist_candidates)
     lyrics = None
     used_artist = ""
-    for candidate_artist in artist_candidates:
-        lyrics = fetch_lyrics(
-            candidate_artist,
-            title,
-            album,
-            fast_mode=False,
-            expected_duration=duration,
-            refresh_cache=refresh_cache,
-            synced_only=upgrade_plain or synced_only,
-        )
+    used_title = ""
+    for candidate_title in title_candidates:
+        for candidate_artist in artist_candidates:
+            lyrics = fetch_lyrics(
+                candidate_artist,
+                candidate_title,
+                album,
+                fast_mode=False,
+                expected_duration=duration,
+                refresh_cache=refresh_cache,
+                synced_only=upgrade_plain or synced_only,
+            )
+            if lyrics:
+                used_artist, used_title = candidate_artist, candidate_title
+                break
         if lyrics:
-            used_artist = candidate_artist
             break
 
     if not lyrics:
@@ -273,7 +325,12 @@ def process_audio_file(
 
     if used_artist != artist:
         print(f"  Lookup fallback used: {used_artist}")
+    if used_title != title:
+        print(f"  Lookup title used: {used_title}")
     save_lrc(lrc_file, lyrics, artist, title, album)
+    if report_kind:
+        kind = "synchronized lyrics" if _is_lrc_synced(lyrics) else "untimed lyrics"
+        print(f"LYRICS_RESULT={kind}")
     print(f"✔ Saved lyrics: {lrc_file.name}")
     return ProcessResult.SAVED
 

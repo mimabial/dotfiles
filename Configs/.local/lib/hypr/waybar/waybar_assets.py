@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import glob
 import os
 import re
 import sys
@@ -12,7 +11,6 @@ from waybar_shared import (
     CONFIG_JSONC,
     CONFIG_WAYBAR_DIR,
     DATA_WAYBAR_DIR,
-    INCLUDES_DIRS,
     atomic_write_json,
     atomic_write_text,
     ensure_directory_exists,

@@ -14,15 +14,8 @@ dropdown_workspace_name() {
   printf '%s\n' "special:dropdown"
 }
 
-dropdown_client_json() {
-  hyprctl clients -j 2>/dev/null \
-    | jq -c '.[] | select(.class=="dropdown-terminal")' \
-    | head -n1
-}
-
-focused_workspace_name() {
-  hyprctl activeworkspace -j 2>/dev/null \
-    | jq -r '.name // empty'
+dropdown_snapshot() {
+  hyprctl --batch -j 'clients;activeworkspace;monitors all' 2>/dev/null | jq -sc '.'
 }
 
 dropdown_target_size() {
@@ -31,16 +24,15 @@ dropdown_target_size() {
 
 show_dropdown_window() {
   local client_json="$1"
+  local workspace_name="$2"
   local addr=""
   local window_lua=""
   local workspace_lua=""
   local target_width=""
   local target_height=""
-  local workspace_name=""
 
   addr="$(jq -r '.address // empty' <<<"${client_json}")"
   [[ -n "${addr}" ]] || return 1
-  workspace_name="$(focused_workspace_name)"
   [[ -n "${workspace_name}" ]] || return 1
   IFS=$'\t' read -r target_width target_height <<<"$(dropdown_target_size)" || return 1
   window_lua="$(hypr_lua_quote "address:${addr}")"
@@ -82,21 +74,25 @@ spawn_dropdown_window() {
 }
 
 main() {
+  local snapshot=""
   local client_json=""
   local workspace_name=""
   local current_workspace=""
 
-  client_json="$(dropdown_client_json)"
+  snapshot="$(dropdown_snapshot)"
+  client_json="$(jq -c '.[0][] | select(.class=="dropdown-terminal")' <<<"${snapshot}" | head -n1)"
+  current_workspace="$(jq -r '.[1].name // empty' <<<"${snapshot}")"
+  HYPR_MONITORS_JSON_CACHE="$(jq -c '.[2] // []' <<<"${snapshot}")"
+  HYPR_MONITORS_JSON_CACHE_READY=1
   if [[ -z "${client_json}" ]]; then
     spawn_dropdown_window
     return 0
   fi
 
   workspace_name="$(jq -r '.workspace.name // empty' <<<"${client_json}")"
-  current_workspace="$(focused_workspace_name)"
 
   if [[ "${workspace_name}" == "$(dropdown_workspace_name)" ]]; then
-    show_dropdown_window "${client_json}"
+    show_dropdown_window "${client_json}" "${current_workspace}"
     return 0
   fi
 
@@ -105,7 +101,7 @@ main() {
     return 0
   fi
 
-  show_dropdown_window "${client_json}"
+  show_dropdown_window "${client_json}" "${current_workspace}"
 }
 
 main "$@"

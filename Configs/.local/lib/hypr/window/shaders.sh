@@ -2,11 +2,8 @@
 
 set -euo pipefail
 
-# shellcheck source=/dev/null
-if ! source "$(command -v hyprshell)"; then
-  echo "[$0] :: Error: hyprshell not found."
-  exit 1
-fi
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
+hypr_runtime_require state rofi || exit 1
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/rofi/rofi.lib.bash"
 # shellcheck source=/dev/null
@@ -105,7 +102,7 @@ fn_select() {
     "clipboard" \
     "${ROFI_SHADER_SCALE:-}" \
     "${ROFI_SHADER_FONT:-${ROFI_FONT:-}}" \
-    "$(normalize_shader_name "${HYPR_SHADER:-neutral}")" \
+    "$(normalize_shader_name "$(state_get "HYPR_SHADER" "neutral")")" \
     "${shader_items}" \
     selected_shader
 
@@ -117,7 +114,7 @@ fn_select() {
 
 fn_reload() {
   local shader_name
-  shader_name="$(normalize_shader_name "${HYPR_SHADER:-neutral}")"
+  shader_name="$(normalize_shader_name "$(state_get "HYPR_SHADER" "neutral")")"
   apply_shader_state "HYPR_SHADER" "${shader_name}" "hypr-shader" "Shader reloaded" fn_update
 }
 

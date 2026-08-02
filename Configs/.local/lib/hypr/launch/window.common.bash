@@ -21,6 +21,7 @@ launch_regex_escape() {
 
 launch_resolve_window_address() {
   local window_pattern="$1"
+  local clients_json="${2:-}"
   local selector_kind="any"
   local escaped_pattern=""
 
@@ -37,7 +38,8 @@ launch_resolve_window_address() {
 
   escaped_pattern="$(launch_regex_escape "${window_pattern}")"
 
-  hyprctl clients -j \
+  [[ -n "${clients_json}" ]] || clients_json="$(hyprctl clients -j)"
+  printf '%s\n' "${clients_json}" \
     | jq -r --arg p "${window_pattern}" --arg re "${escaped_pattern}" --arg kind "${selector_kind}" '
         def word_match($value; $re):
           (($value // "") | test("\\b" + $re + "\\b"; "i"));
@@ -115,9 +117,11 @@ launch_focused_workspace_name() {
 
 launch_active_workspace_occupancy() {
   local exclude_address="${1:-}"
+  local snapshot="${2:-}"
 
-  hyprctl --batch -j "activeworkspace;clients" \
-    | jq -sr --arg exclude "${exclude_address}" '
+  [[ -n "${snapshot}" ]] || snapshot="$(hyprctl --batch -j 'activeworkspace;clients' | jq -sc '.')"
+  printf '%s\n' "${snapshot}" \
+    | jq -r --arg exclude "${exclude_address}" '
         .[0].name as $workspace_name
         | [
             $workspace_name,
@@ -133,6 +137,7 @@ launch_active_workspace_occupancy() {
 launch_prepare_target_workspace() {
   local use_empty_workspace="$1"
   local exclude_address="${2:-}"
+  local snapshot="${3:-}"
   local active_workspace=""
   local has_other_window="false"
 
@@ -140,7 +145,7 @@ launch_prepare_target_workspace() {
 
   if [[ "${use_empty_workspace}" -eq 1 ]]; then
     IFS=$'\t' read -r active_workspace has_other_window \
-      < <(launch_active_workspace_occupancy "${exclude_address}") || return 1
+      < <(launch_active_workspace_occupancy "${exclude_address}" "${snapshot}") || return 1
     [[ -n "${active_workspace}" ]] || return 1
 
     if [[ "${has_other_window}" == "true" ]]; then
@@ -149,16 +154,15 @@ launch_prepare_target_workspace() {
       [[ -n "${active_workspace}" ]] || return 1
     fi
   else
-    active_workspace="$(launch_focused_workspace_name)"
+    if [[ -n "${snapshot}" ]]; then
+      active_workspace="$(jq -r '.[0].name // empty' <<<"${snapshot}")"
+    else
+      active_workspace="$(launch_focused_workspace_name)"
+    fi
     [[ -n "${active_workspace}" ]] || return 1
   fi
 
   printf '%s\n' "${active_workspace}"
-}
-
-launch_focused_monitor_geometry() {
-  launch_source_core_common || return 1
-  hypr_monitor_geometry
 }
 
 launch_monitor_geometry() {

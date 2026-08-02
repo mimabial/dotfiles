@@ -2,11 +2,7 @@
 
 set -euo pipefail
 
-# shellcheck source=/dev/null
-if ! source "$(command -v hyprshell)"; then
-  echo "[$0] :: Error: hyprshell not found."
-  exit 1
-fi
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 
 # shellcheck source=/dev/null
 source "${LIB_DIR}/hypr/wallpaper/lib/common.bash"

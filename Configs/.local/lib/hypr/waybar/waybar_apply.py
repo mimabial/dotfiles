@@ -11,7 +11,7 @@ from waybar_dunst import (
     sync_dunst_position,
     sync_dunst_position_after_waybar_restart,
 )
-from waybar_layouts import list_layouts, resolve_style_path
+from waybar_layouts import list_layouts
 from waybar_runtime import restart_waybar
 from waybar_shared import install_layout_as_active_config, logger
 from waybar_state import (

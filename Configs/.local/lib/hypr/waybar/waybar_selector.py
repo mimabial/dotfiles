@@ -56,11 +56,11 @@ def _rofi_file_selector_flags(prompt, current_name, extra_flags, width_em, heigh
         resolve_rofi_theme("clipboard"),
     ]
     try:
-        position, window_size = hyprland.get_rofi_window_geometry(width_em, height_em)
+        override, position, window_size = hyprland.get_rofi_context(width_em, height_em)
         base_flags.extend(
             [
                 "-theme-str",
-                hyprland.get_rofi_override_string(),
+                override,
                 "-theme-str",
                 position,
                 "-theme-str",

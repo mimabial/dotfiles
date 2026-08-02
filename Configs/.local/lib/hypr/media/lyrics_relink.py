@@ -7,6 +7,7 @@ import argparse
 import re
 import shutil
 import sys
+from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -31,6 +32,36 @@ class LrcEntry:
     title: str
     album: str
     owner_key: str
+
+
+@dataclass
+class LibraryIndex:
+    audio_files: list[Path]
+    audio_keys: set[str]
+    by_metadata: dict[tuple[str, str], list[LrcEntry]]
+    by_basename: dict[str, list[LrcEntry]]
+    active_paths: set[Path]
+
+    def available(
+        self,
+        entries: list[LrcEntry],
+        current_key: str,
+    ) -> list[LrcEntry]:
+        return sorted(
+            (
+                entry
+                for entry in entries
+                if entry.path in self.active_paths
+                and (
+                    entry.owner_key == current_key
+                    or entry.owner_key not in self.audio_keys
+                )
+            ),
+            key=lambda entry: entry.path,
+        )
+
+    def remove(self, entry: LrcEntry) -> None:
+        self.active_paths.discard(entry.path)
 
 
 def parse_extensions(raw: str) -> set[str]:
@@ -73,35 +104,56 @@ def read_lrc_entry(path: Path) -> LrcEntry:
     )
 
 
-def collect_audio_files(
+def _metadata_key(artist: str, title: str) -> tuple[str, str]:
+    return artist.strip().casefold(), title.strip().casefold()
+
+
+def _audio_is_in_scope(
+    path: Path,
+    directory: Path,
+    recursive: bool,
+) -> bool:
+    return directory in path.parents if recursive else path.parent == directory
+
+
+def build_library_index(
     directory: Path,
     recursive: bool,
     extensions: set[str],
-) -> list[Path]:
-    iterator = directory.rglob("*") if recursive else directory.iterdir()
-    return sorted(
-        path
-        for path in iterator
-        if path.is_file() and path.suffix.casefold() in extensions
+) -> LibraryIndex:
+    audio_files: list[Path] = []
+    audio_keys: set[str] = set()
+    by_metadata: dict[tuple[str, str], list[LrcEntry]] = defaultdict(list)
+    by_basename: dict[str, list[LrcEntry]] = defaultdict(list)
+    active_paths: set[Path] = set()
+
+    for path in music_library_dir().rglob("*"):
+        if not path.is_file():
+            continue
+        suffix = path.suffix.casefold()
+        if suffix in extensions and not is_in_hidden_lyrics(path):
+            audio_keys.add(path_stem_key(path))
+            if _audio_is_in_scope(path, directory, recursive):
+                audio_files.append(path)
+            continue
+        if suffix != ".lrc":
+            continue
+
+        entry = read_lrc_entry(path)
+        active_paths.add(entry.path)
+        by_basename[entry.path.stem.casefold()].append(entry)
+        key = _metadata_key(entry.artist, entry.title)
+        if all(key):
+            by_metadata[key].append(entry)
+
+    audio_files.sort()
+    return LibraryIndex(
+        audio_files=audio_files,
+        audio_keys=audio_keys,
+        by_metadata=dict(by_metadata),
+        by_basename=dict(by_basename),
+        active_paths=active_paths,
     )
-
-
-def library_audio_keys(extensions: set[str]) -> set[str]:
-    return {
-        path_stem_key(path)
-        for path in music_library_dir().rglob("*")
-        if path.is_file()
-        and not is_in_hidden_lyrics(path)
-        and path.suffix.casefold() in extensions
-    }
-
-
-def library_lrc_entries() -> list[LrcEntry]:
-    return [
-        read_lrc_entry(path)
-        for path in sorted(music_library_dir().rglob("*.lrc"))
-        if path.is_file()
-    ]
 
 
 def _same(left: str, right: str) -> bool:
@@ -119,24 +171,26 @@ def _metadata_matches(entry: LrcEntry, metadata: dict) -> bool:
 
 def find_relink_candidate(
     audio_file: Path,
-    entries: list[LrcEntry],
-    audio_keys: set[str],
+    index: LibraryIndex,
 ) -> tuple[LrcEntry | None, list[LrcEntry]]:
     current_key = path_stem_key(audio_file)
-    available = [
-        entry
-        for entry in entries
-        if entry.owner_key == current_key or entry.owner_key not in audio_keys
-    ]
     metadata = get_audio_metadata(audio_file)
+    metadata_key = _metadata_key(
+        str(metadata.get("artist") or ""),
+        str(metadata.get("title") or ""),
+    )
     metadata_matches = [
-        entry for entry in available if _metadata_matches(entry, metadata)
-    ]
-    basename_matches = [
         entry
-        for entry in available
-        if entry.path.stem.casefold() == audio_file.stem.casefold()
+        for entry in index.available(
+            index.by_metadata.get(metadata_key, []),
+            current_key,
+        )
+        if _metadata_matches(entry, metadata)
     ]
+    basename_matches = index.available(
+        index.by_basename.get(audio_file.stem.casefold(), []),
+        current_key,
+    )
 
     if len(metadata_matches) == 1:
         return metadata_matches[0], []
@@ -174,13 +228,12 @@ def relink_directory(
     dry_run: bool,
     extensions: set[str],
 ) -> int:
-    audio_files = collect_audio_files(directory, recursive, extensions)
+    index = build_library_index(directory, recursive, extensions)
+    audio_files = index.audio_files
     if not audio_files:
         print(f"No supported audio files in {directory}", file=sys.stderr)
         return 0
 
-    audio_keys = library_audio_keys(extensions)
-    entries = library_lrc_entries()
     moved = present = missing = ambiguous = 0
 
     for audio_file in audio_files:
@@ -190,7 +243,7 @@ def relink_directory(
             present += 1
             continue
 
-        candidate, conflicts = find_relink_candidate(audio_file, entries, audio_keys)
+        candidate, conflicts = find_relink_candidate(audio_file, index)
         if candidate is None:
             if conflicts:
                 paths = ", ".join(str(entry.path) for entry in conflicts)
@@ -207,7 +260,7 @@ def relink_directory(
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.move(str(candidate.path), str(target))
             _prune_empty_hidden_parents(candidate.path.parent)
-        entries.remove(candidate)
+        index.remove(candidate)
         moved += 1
 
     print(

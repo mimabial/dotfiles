@@ -14,6 +14,9 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _common import atomic_write, cache_hit, cache_store
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from pyutils.hyprctl import batch_json
+
 PALETTE = Path(
     sys.argv[1]
     if len(sys.argv) > 1 and sys.argv[1]
@@ -177,28 +180,14 @@ def read_theme_metric(key):
     return _theme_cache_get()[1].get(key, "")
 
 
-def read_hypr_metric(opt):
+def read_hypr_metrics(options):
+    if not options:
+        return {}
     try:
-        out = subprocess.run(
-            ["hyprctl", "-j", "getoption", opt],
-            capture_output=True,
-            text=True,
-            check=True,
-        ).stdout
-        v = json.loads(out).get("int", "")
-        return str(v) if v != "" else ""
-    except (
-        OSError,
-        subprocess.CalledProcessError,
-        json.JSONDecodeError,
-        TypeError,
-        ValueError,
-    ):
-        return ""
-
-
-def resolve_metric(key, opt, default):
-    return read_theme_metric(key) or read_hypr_metric(opt) or default
+        values = batch_json(*(f"getoption {option}" for option in options))
+        return {option: str(value.get("int", "")) for option, value in zip(options, values)}
+    except (OSError, subprocess.SubprocessError, json.JSONDecodeError, TypeError, ValueError):
+        return {}
 
 
 def waybar_position():
@@ -436,10 +425,17 @@ def resolve_colors(palette):
 
 
 def resolve_layout():
-    rounding = resolve_metric("rounding", "decoration:rounding", "5")
-    gaps_in = resolve_metric("gaps_in", "general:gaps_in", "5")
-    gaps_out = resolve_metric("gaps_out", "general:gaps_out", "6")
-    border_size = resolve_metric("border_size", "general:border_size", "2")
+    specs = (
+        ("rounding", "decoration:rounding", "5"),
+        ("gaps_in", "general:gaps_in", "5"),
+        ("gaps_out", "general:gaps_out", "6"),
+        ("border_size", "general:border_size", "2"),
+    )
+    metrics = {key: read_theme_metric(key) for key, _, _ in specs}
+    live = read_hypr_metrics([option for key, option, _ in specs if not metrics[key]])
+    rounding, gaps_in, gaps_out, border_size = (
+        metrics[key] or live.get(option) or default for key, option, default in specs
+    )
 
     try:
         gap_size = int(gaps_in) * 2

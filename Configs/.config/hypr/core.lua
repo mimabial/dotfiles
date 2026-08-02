@@ -109,6 +109,7 @@ local startup = {
     vars.get("start.THEME_OUTPUT_SYNC"),
     vars.get("start.AUTO_THEME"),
     vars.get("start.IDLE_DAEMON"),
+    vars.get("start.LID_INHIBITOR"),
     vars.get("start.IDLE_MANAGER"),
     vars.get("start.ZSH_ZCOMPDUMP"),
     vars.get("start.AUTH_DIALOGUE"),

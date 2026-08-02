@@ -5,7 +5,6 @@
 import hashlib
 import json
 import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -58,19 +57,10 @@ def main():
     hasher.update(Path(__file__).read_bytes())
     h = hasher.hexdigest()[:16]
 
-    # Resolve newest GIMP 3.x config dir for staging
-    gimp_base = Path(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config"))) / "GIMP"
-    gimp_dir = None
-    if gimp_base.is_dir():
-        candidates = sorted([d for d in gimp_base.iterdir() if d.is_dir() and d.name.startswith("3.")])
-        if candidates:
-            gimp_dir = candidates[-1]
-
     if cache_hit(APP, h) and OUT_FILE.exists():
         return
 
     is_dark = luminance(bg) < 0.5
-    sign = 1 if is_dark else 1  # both branches shift toward darker (fix from earlier session)
 
     widget_bg        = shift(bg, -18)
     extreme_bg       = shift(bg, -24)

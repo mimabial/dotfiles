@@ -13,14 +13,18 @@ Resize and center a floating window using a shared geometry profile." "$@"
 profile="${1:-}"
 window_address="${2:-}"
 monitor_selector="${3:-}"
+snapshot=""
 
 [[ -n "${profile}" ]] || {
   printf 'Missing window profile\n' >&2
   exit 2
 }
 
-if [[ -z "${window_address}" ]]; then
-  window_address="$(hyprctl activewindow -j | jq -r '.address // empty')"
+if [[ -z "${window_address}" || -z "${monitor_selector}" ]]; then
+  snapshot="$(hyprctl --batch -j 'activewindow;clients;monitors all' | jq -sc '.')"
+  [[ -n "${window_address}" ]] || window_address="$(jq -r '.[0].address // empty' <<<"${snapshot}")"
+  HYPR_MONITORS_JSON_CACHE="$(jq -c '.[2] // []' <<<"${snapshot}")"
+  HYPR_MONITORS_JSON_CACHE_READY=1
 fi
 
 [[ -n "${window_address}" ]] || {
@@ -32,8 +36,7 @@ window_address="${window_address#address:}"
 
 if [[ -z "${monitor_selector}" ]]; then
   monitor_selector="$(
-    hyprctl clients -j \
-      | jq -r --arg address "${window_address}" '.[] | select(.address == $address) | .monitor' \
+    jq -r --arg address "${window_address}" '.[1][] | select(.address == $address) | .monitor' <<<"${snapshot}" \
       | head -n1
   )"
 fi

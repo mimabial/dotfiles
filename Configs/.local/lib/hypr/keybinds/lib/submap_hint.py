@@ -2,7 +2,6 @@ import argparse
 import asyncio
 import contextlib
 import fcntl
-import json
 import logging
 import os
 import signal
@@ -10,12 +9,14 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from keybinds_hint import (
     HYPRCTL_TIMEOUT_SECONDS,
     expand_meta_data,
     generate_hint,
     get_hyprctl_binds,
 )
+from pyutils.hyprctl import batch_json
 
 COMMAND_TIMEOUT = 2
 HINT_BUILD_TIMEOUT = 5
@@ -38,22 +39,11 @@ def normalize_submap(name):
     return "" if name.casefold() in {"", "default", "reset"} else name
 
 
-def hyprctl_json(command):
-    result = subprocess.run(
-        ["hyprctl", command, "-j"],
-        capture_output=True,
-        text=True,
-        timeout=HYPRCTL_TIMEOUT_SECONDS,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(f"hyprctl {command} failed with status {result.returncode}")
-    return json.loads(result.stdout)
-
-
-def active_tiled_layout():
+def active_tiled_layout(monitors=None, workspaces=None):
     """Mirrors layout_action in keybindings.lua: a special workspace, when one is
     open on the focused monitor, owns the layout the gate compares against."""
-    monitors = hyprctl_json("monitors")
+    if monitors is None or workspaces is None:
+        monitors, workspaces = batch_json("monitors", "workspaces", timeout=HYPRCTL_TIMEOUT_SECONDS)
     focused = next((m for m in monitors if m.get("focused")), None)
     if focused is None:
         return None
@@ -61,7 +51,7 @@ def active_tiled_layout():
     wanted = special or (focused.get("activeWorkspace") or {}).get("name") or ""
     if not wanted:
         return None
-    for workspace in hyprctl_json("workspaces"):
+    for workspace in workspaces:
         if workspace.get("name") == wanted:
             return workspace.get("tiledLayout")
     return None
@@ -74,13 +64,13 @@ def applies_to_layout(bind, layout):
 
 def build_hint(name):
     binds = get_hyprctl_binds()
-    expand_meta_data(binds)
-    submap_binds = [bind for bind in binds if bind.get("submap") == name]
     try:
         layout = active_tiled_layout()
-    except (OSError, ValueError, RuntimeError, subprocess.TimeoutExpired) as error:
+    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
         LOG.error("layout lookup failed, showing all binds: %s", error)
         layout = None
+    expand_meta_data(binds)
+    submap_binds = [bind for bind in binds if bind.get("submap") == name]
     if layout is not None:
         submap_binds = [
             bind for bind in submap_binds if applies_to_layout(bind, layout)

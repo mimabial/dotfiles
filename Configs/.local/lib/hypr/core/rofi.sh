@@ -120,8 +120,10 @@ rofi_focused_monitor_record() {
 
   if declare -F rofi_monitors_json >/dev/null 2>&1; then
     monitors_json="$(rofi_monitors_json)"
+  elif declare -F hypr_monitors_json >/dev/null 2>&1; then
+    monitors_json="$(hypr_monitors_json)"
   else
-    monitors_json="$(hyprctl -j monitors 2>/dev/null || true)"
+    monitors_json="$(hyprctl -j monitors all 2>/dev/null || true)"
   fi
 
   printf '%s\n' "${monitors_json}" | jq -r '
@@ -221,13 +223,15 @@ get_rofi_pos() {
 
   if declare -F rofi_monitors_json >/dev/null 2>&1; then
     monitors_json="$(rofi_monitors_json)"
+  elif declare -F hypr_monitors_json >/dev/null 2>&1; then
+    monitors_json="$(hypr_monitors_json)"
   else
-    monitors_json="$(hyprctl -j monitors 2>/dev/null || true)"
+    monitors_json="$(hyprctl -j monitors all 2>/dev/null || true)"
   fi
   [[ -n "${monitors_json}" ]] || return 1
 
   IFS=$'\t' read -r raw_cursor_x raw_cursor_y < <(
-    hyprctl cursorpos -j 2>/dev/null |
+    if declare -F rofi_cursor_json >/dev/null 2>&1; then rofi_cursor_json; else hyprctl cursorpos -j 2>/dev/null; fi |
       jq -r '[(.x // 0 | floor), (.y // 0 | floor)] | @tsv' 2>/dev/null
   )
   [[ "${raw_cursor_x}" =~ ^-?[0-9]+$ ]] || raw_cursor_x=0

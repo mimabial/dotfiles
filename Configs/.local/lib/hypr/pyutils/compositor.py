@@ -1,12 +1,16 @@
-import os
 import json
+import os
 import re
 import subprocess
 from pathlib import Path
-from typing import Union, Any
+from typing import Any, Union
+
+from pyutils.hyprctl import batch_json
 
 
 class HyprctlWrapper:
+    _json_cache = None
+
     @staticmethod
     def _execute_command(cmd: list) -> str:
         """Execute hyprctl command and return output"""
@@ -15,6 +19,12 @@ class HyprctlWrapper:
             return result.stdout
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"hyprctl command failed: {e}")
+
+    @staticmethod
+    def _json(command: str) -> Any:
+        if HyprctlWrapper._json_cache is not None and command in HyprctlWrapper._json_cache:
+            return HyprctlWrapper._json_cache[command]
+        return json.loads(HyprctlWrapper._execute_command(["hyprctl", *command.split(), "-j"]))
 
     @staticmethod
     def getoption(option: str, get_set: bool = False) -> Union[int, str, bool, Any]:
@@ -33,11 +43,8 @@ class HyprctlWrapper:
                 "HYPRLAND_INSTANCE_SIGNATURE is not set. Cannot run hyprctl command."
             )
 
-        cmd = ["hyprctl", "getoption", option, "-j"]
-        output = HyprctlWrapper._execute_command(cmd)
-
         try:
-            data = json.loads(output)
+            data = HyprctlWrapper._json(f"getoption {option}")
             if get_set:
                 return data.get("set", False)
 
@@ -48,8 +55,8 @@ class HyprctlWrapper:
 
             return None
 
-        except json.JSONDecodeError:
-            raise ValueError(f"Failed to parse hyprctl output: {output}")
+        except json.JSONDecodeError as error:
+            raise ValueError(f"Failed to parse hyprctl option {option}") from error
 
     @staticmethod
     def _rofi_font() -> tuple:
@@ -157,12 +164,8 @@ class HyprctlWrapper:
         edge_padding = gaps_out * 2 + border_width
         cursor_padding = 8
 
-        cursor_pos = json.loads(
-            HyprctlWrapper._execute_command(["hyprctl", "cursorpos", "-j"])
-        )
-        monitors = json.loads(
-            HyprctlWrapper._execute_command(["hyprctl", "monitors", "-j"])
-        )
+        cursor_pos = HyprctlWrapper._json("cursorpos")
+        monitors = HyprctlWrapper._json("monitors")
 
         focused_monitor = next(
             (monitor for monitor in monitors if monitor["focused"]), None
@@ -207,6 +210,24 @@ class HyprctlWrapper:
             f"x-offset:{x_off}px;"
             f"y-offset:{y_off}px;}}"
         )
+
+    @staticmethod
+    def get_rofi_context(width_em: float, height_em: float) -> tuple[str, str, str]:
+        commands = (
+            "getoption decoration:rounding",
+            "getoption general:border_size",
+            "getoption decoration:active_opacity",
+            "getoption general:gaps_out",
+            "cursorpos",
+            "monitors",
+        )
+        previous = HyprctlWrapper._json_cache
+        try:
+            HyprctlWrapper._json_cache = dict(zip(commands, batch_json(*commands)))
+            position, size = HyprctlWrapper.get_rofi_window_geometry(width_em, height_em)
+            return HyprctlWrapper.get_rofi_override_string(), position, size
+        finally:
+            HyprctlWrapper._json_cache = previous
 
     @staticmethod
     def get_rofi_window_geometry(width_em: float, height_em: float) -> tuple:

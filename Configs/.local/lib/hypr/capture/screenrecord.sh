@@ -4,7 +4,8 @@
 
 set -euo pipefail
 
-source "$(command -v hyprshell)" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
+hypr_runtime_require system || exit 1
 
 [[ -f ~/.config/user-dirs.dirs ]] && source ~/.config/user-dirs.dirs
 

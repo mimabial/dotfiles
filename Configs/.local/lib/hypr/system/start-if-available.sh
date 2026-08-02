@@ -2,7 +2,8 @@
 
 set -euo pipefail
 
-source "$(command -v hyprshell)" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
+hypr_runtime_require state || exit 1
 
 hypr_help_guard "Usage: hyprshell system/start-if-available <state-key> <command> [--] <argv...>
 Run argv only when <state-key> is not disabled and <command> exists." "$@"

@@ -2,8 +2,6 @@
 
 set -euo pipefail
 
-source "$(command -v hyprshell)" || exit 1
-
 action="${1:-}"
 
 confirm_usage() {
@@ -23,7 +21,7 @@ case "${action}" in
   --suspend)
     prompt="Suspend"
     label="Suspend the system?"
-    cmd=(systemctl suspend)
+    cmd=(hyprshell session/suspend.sh)
     ;;
   --reboot)
     prompt="Reboot"

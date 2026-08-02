@@ -478,7 +478,7 @@ theme_apply_run_color_sync() {
   done
 
   if [[ "${selected_color_source}" == "theme" ]]; then
-    "${hypr_theme_cmd}" apply "${hypr_theme_args[@]}" "${HYPR_THEME}"
+    HYPR_THEME_DEFER_CLIENTS=1 "${hypr_theme_cmd}" apply "${hypr_theme_args[@]}" "${HYPR_THEME}"
     local apply_rc=$?
     theme_apply_sync_theme_color_variant
     return "${apply_rc}"
@@ -489,10 +489,11 @@ theme_apply_run_color_sync() {
   state_set "BACKGROUND_MODE" "${variant}" "staterc"
   state_set_color_variant "${variant}"
 
-  "${hypr_theme_cmd}" wallpaper "${hypr_theme_args[@]}" --variant "${variant}" "${wallpaper_path}"
+  HYPR_THEME_DEFER_CLIENTS=1 "${hypr_theme_cmd}" wallpaper "${hypr_theme_args[@]}" --variant "${variant}" "${wallpaper_path}"
 }
 
 theme_apply_job_waybar() {
+  theme_apply_update_waybar_border_radius || true
   font_sync_apply_waybar_bar_font_include || {
     print_log -sec "theme.apply" -warn "font" "font sync failed"
     return 1
@@ -590,16 +591,15 @@ theme_apply_timed_call "generation" theme_apply_next_generation || exit 1
 theme_apply_timed_call "prepare_common_state" theme_apply_prepare_common_state || exit 1
 theme_apply_timed_call "metadata_commit" theme_apply_commit_theme_metadata || exit 1
 theme_apply_timed_call "color_sync" theme_apply_run_color_sync "${wallpaper_path}" || exit 1
-theme_apply_timed_call "wallpaper_display" theme_apply_display_wallpaper || true
-theme_apply_timed_call "waybar_border_radius" theme_apply_update_waybar_border_radius || true
-theme_apply_timed_call "envelope_launch" theme_apply_start_envelope || true
-
 theme_apply_prepare_job_log_dir || exit 1
 theme_apply_reset_jobs
+theme_apply_start_job "${theme_apply_job_log_dir}" "wallpaper_display" best_effort theme_apply_display_wallpaper || true
 theme_apply_start_job "${theme_apply_job_log_dir}" "waybar" required theme_apply_job_waybar || exit 1
 theme_apply_start_job "${theme_apply_job_log_dir}" "kitty" required theme_apply_job_kitty || exit 1
 theme_apply_start_detached_job "dunst" theme_apply_job_dunst || true
-theme_apply_wait_jobs "${theme_apply_job_log_dir}" || exit 1
+theme_apply_wait_jobs "${theme_apply_job_log_dir}" || theme_apply_required_rc=$?
+theme_apply_timed_call "envelope_launch" theme_apply_start_envelope || true
+[[ -z "${theme_apply_required_rc:-}" ]] || exit "${theme_apply_required_rc}"
 # After the wait barrier: the toast promises the switch lock is free again,
 # so it must not appear while jobs still hold up the exit.
 theme_apply_notify_wallpaper_detached || true

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-source "$(command -v hyprshell)" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/system/monitor.common.bash"
 
@@ -31,7 +31,7 @@ case "${1:-}" in
     ;;
 esac
 
-monitor_info="$(hyprctl monitors -j | jq -r '([.[] | select(.focused == true)][0] // .[0])')"
+monitor_info="$(hypr_monitors_json | jq -r '([.[] | select(.focused == true)][0] // .[0])')"
 active_monitor="$(jq -r '.name // empty' <<<"${monitor_info}")"
 current_scale="$(jq -r '.scale // 1' <<<"${monitor_info}")"
 width="$(jq -r '.width // empty' <<<"${monitor_info}")"
@@ -83,6 +83,7 @@ select_scale() {
     return 1
   fi
 
+  hypr_runtime_require rofi || return 1
   # shellcheck source=/dev/null
   source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/rofi/rofi.lib.bash"
 

@@ -64,6 +64,7 @@ CACHE_VERSION = 1
 CACHE_SUCCESS_TTL = 99 * 24 * 60 * 60
 CACHE_MISS_TTL = 60 * 60
 DEEZER_COOLDOWN = 60 * 60
+CACHE_COMMIT_BATCH = 64
 
 # MusicBrainz scores matches 0-100; below this a hit is usually a different song.
 MUSICBRAINZ_MIN_SCORE = 90
@@ -184,6 +185,8 @@ class ResolutionCache:
         path.parent.mkdir(parents=True, exist_ok=True)
         self.connection = sqlite3.connect(path, timeout=5)
         os.chmod(path, 0o600)
+        self.connection.execute("PRAGMA journal_mode=WAL")
+        self.connection.execute("PRAGMA synchronous=NORMAL")
         self.connection.execute(
             """
             CREATE TABLE IF NOT EXISTS resolutions (
@@ -210,8 +213,20 @@ class ResolutionCache:
             (time.time(),),
         )
         self.connection.commit()
+        self._pending_writes = 0
         self.hits = 0
         self.misses = 0
+
+    def _mark_dirty(self) -> None:
+        self._pending_writes += 1
+        if self._pending_writes >= CACHE_COMMIT_BATCH:
+            self.flush()
+
+    def flush(self) -> None:
+        if not self._pending_writes:
+            return
+        self.connection.commit()
+        self._pending_writes = 0
 
     def get(self, cache_key: str) -> dict | None:
         row = self.connection.execute(
@@ -226,7 +241,7 @@ class ResolutionCache:
                 "DELETE FROM resolutions WHERE cache_key = ?",
                 (cache_key,),
             )
-            self.connection.commit()
+            self._mark_dirty()
             self.misses += 1
             return None
         try:
@@ -236,7 +251,7 @@ class ResolutionCache:
                 "DELETE FROM resolutions WHERE cache_key = ?",
                 (cache_key,),
             )
-            self.connection.commit()
+            self._mark_dirty()
             self.misses += 1
             return None
         self.hits += 1
@@ -253,7 +268,7 @@ class ResolutionCache:
             """,
             (cache_key, json.dumps(payload, ensure_ascii=False), time.time() + ttl),
         )
-        self.connection.commit()
+        self._mark_dirty()
 
     def state_active(self, state_key: str) -> bool:
         row = self.connection.execute(
@@ -271,9 +286,12 @@ class ResolutionCache:
             """,
             (state_key, time.time() + ttl),
         )
+        # Provider cooldowns are rare and must survive an interrupted run.
         self.connection.commit()
+        self._pending_writes = 0
 
     def close(self) -> None:
+        self.flush()
         self.connection.close()
 
 

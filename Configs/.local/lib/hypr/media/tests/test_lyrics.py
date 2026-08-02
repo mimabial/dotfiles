@@ -1,6 +1,7 @@
 import contextlib
 import io
 import json
+import sqlite3
 import sys
 import tempfile
 import time
@@ -20,6 +21,7 @@ from fetch_album_lyrics import (
     LrcState,
     ProcessResult,
     build_artist_candidates,
+    build_title_candidates,
     directory_hints,
     get_audio_metadata,
     lrc_state,
@@ -85,6 +87,20 @@ class LyricsMetadataTests(unittest.TestCase):
         self.assertEqual(candidates, ["Didi B, Naira Marley"])
         self.assertEqual(title, "FATÚMATA")
         self.assertEqual(album, "")
+
+    def test_title_candidates_are_shared_cleaned_and_ordered(self):
+        self.assertEqual(
+            build_title_candidates(
+                "Ayra Starr & Lojay - Running (Visualizer)",
+                "Running (Visualizer)",
+                ["Ayra Starr"],
+            ),
+            ["Running", "Running (Visualizer)"],
+        )
+        self.assertEqual(
+            build_title_candidates("Song (feat. Guest)", "", ["Artist"]),
+            ["Song", "Song (feat. Guest)"],
+        )
 
     def test_recursive_directory_hints_handle_album_and_genre_bucket(self):
         self.assertEqual(
@@ -247,6 +263,7 @@ class LyricsMetadataTests(unittest.TestCase):
             root = Path(temporary)
             audio_file = root / "Song.opus"
             lrc_file = root / "Song.lrc"
+            output = io.StringIO()
             with (
                 patch("fetch_album_lyrics.lrc_path_for", return_value=lrc_file),
                 patch(
@@ -254,6 +271,7 @@ class LyricsMetadataTests(unittest.TestCase):
                     return_value="[00:01.00]Timed line",
                 ),
                 patch("fetch_album_lyrics.save_lrc") as save_lrc,
+                contextlib.redirect_stdout(output),
             ):
                 result = process_audio_file(
                     audio_file,
@@ -261,9 +279,11 @@ class LyricsMetadataTests(unittest.TestCase):
                     recursive=False,
                     synced_only=True,
                     metadata=metadata,
+                    report_kind=True,
                 )
 
         self.assertIs(result, ProcessResult.SAVED)
+        self.assertIn("LYRICS_RESULT=synchronized lyrics", output.getvalue())
         save_lrc.assert_called_once()
 
     def test_summary_reports_each_process_result_separately(self):
@@ -299,6 +319,26 @@ class LyricsMetadataTests(unittest.TestCase):
 
 
 class LyricsMissCacheTests(unittest.TestCase):
+    def test_batches_miss_writes_until_flush(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "lyrics.sqlite3"
+            cache = LyricsMissCache(path)
+            cache.put("missing")
+
+            with contextlib.closing(sqlite3.connect(path)) as observer:
+                count_before = observer.execute(
+                    "SELECT count(*) FROM misses"
+                ).fetchone()[0]
+            cache.flush()
+            with contextlib.closing(sqlite3.connect(path)) as observer:
+                count_after = observer.execute(
+                    "SELECT count(*) FROM misses"
+                ).fetchone()[0]
+            cache.close()
+
+        self.assertEqual(count_before, 0)
+        self.assertEqual(count_after, 1)
+
     def test_provider_cooldown_persists_for_requested_ttl(self):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "lyrics.sqlite3"
@@ -644,38 +684,74 @@ class TrackLyricsWriterTests(unittest.TestCase):
         full_artist = (
             "Ayetian, DJ MAC, Malik Tercien, Nathaneal Brown, Stephen Beckford"
         )
-        lyrics = "[00:01.00] Balance"
-        argv = [
-            "fetch_track_lyrics.py",
-            "--artist",
-            "Ayetian",
-            "--title",
-            "Balance",
-            "--album",
-            "Balance",
-            "--lrc-artist",
-            full_artist,
-            "--lrc-title",
-            "Balance",
-            "--lrc-album",
-            "Balance",
-            "--lrc-file",
-            "/tmp/Balance.lrc",
-        ]
+        lyrics = "[00:00.00] Balance"
+        metadata = {
+            "title": "Balance",
+            "artist": full_artist,
+            "album_artist": "Ayetian",
+            "album": "Balance",
+            "duration": 180,
+        }
 
-        with (
-            patch.object(sys, "argv", argv),
-            patch("fetch_track_lyrics.fetch_lyrics", return_value=lyrics),
-            patch("fetch_track_lyrics.save_lrc") as save_lrc,
-        ):
-            self.assertEqual(fetch_track_lyrics.main(), 0)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            audio_file = root / "Ayetian - Balance.opus"
+            lrc_file = root / "Balance.lrc"
+            output = io.StringIO()
 
+            def fetch(artist, *_args, **_kwargs):
+                return lyrics if artist == "Ayetian" else None
+
+            with (
+                patch("fetch_album_lyrics.fetch_lyrics", side_effect=fetch),
+                patch("fetch_album_lyrics.save_lrc") as save_lrc,
+                contextlib.redirect_stdout(output),
+            ):
+                result = process_audio_file(
+                    audio_file,
+                    root,
+                    recursive=True,
+                    metadata=metadata,
+                    lrc_file=lrc_file,
+                    report_kind=True,
+                )
+
+        self.assertIs(result, ProcessResult.SAVED)
+        self.assertIn("LYRICS_RESULT=untimed lyrics", output.getvalue())
         save_lrc.assert_called_once_with(
-            "/tmp/Balance.lrc",
-            lyrics,
-            full_artist,
-            "Balance",
-            "Balance",
+            lrc_file, lyrics, full_artist, "Balance", "Balance"
+        )
+
+    def test_single_track_cli_delegates_to_the_bulk_pipeline(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            audio_file = root / "Song.opus"
+            lrc_file = root / "Song.lrc"
+            audio_file.touch()
+            argv = [
+                "fetch_track_lyrics.py",
+                "--audio-file",
+                str(audio_file),
+                "--scan-root",
+                str(root),
+                "--lrc-file",
+                str(lrc_file),
+            ]
+            with (
+                patch.object(sys, "argv", argv),
+                patch(
+                    "fetch_track_lyrics.process_audio_file",
+                    return_value=ProcessResult.SAVED,
+                ) as process,
+            ):
+                self.assertEqual(fetch_track_lyrics.main(), 0)
+
+        process.assert_called_once_with(
+            audio_file,
+            root,
+            recursive=True,
+            lrc_file=lrc_file,
+            report_kind=True,
         )
 
 

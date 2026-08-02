@@ -2,11 +2,8 @@
 
 set -euo pipefail
 
-# shellcheck source=/dev/null
-if ! source "$(command -v hyprshell)"; then
-  echo "[$0] :: Error: hyprshell not found."
-  exit 1
-fi
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
+hypr_runtime_require state rofi || exit 1
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/rofi/rofi.lib.bash"
 # shellcheck source=/dev/null
@@ -46,7 +43,7 @@ fn_select() {
   animation_items="$(list_animation_names)"
   animation_items=$(printf 'Disable Animation\n%s\n' "${animation_items}" | sed '/^$/d')
 
-  rofi_select="${HYPR_ANIMATION:-default}"
+  rofi_select="$(state_get "HYPR_ANIMATION" "default")"
   rofi_select="${rofi_select/disable/Disable Animation}"
 
   hypr_stateful_choice_select \
@@ -72,9 +69,7 @@ fn_update() {
   local current_animation animation_path compact_path
   local animation_name_lua animation_path_lua
 
-  declare -F export_hypr_config >/dev/null && export_hypr_config
-
-  current_animation=${HYPR_ANIMATION:-default}
+  current_animation="${1:-$(state_get "HYPR_ANIMATION" "default")}"
   animation_path="$(resolve_animation_path "${current_animation}")" || {
     send_ephemeral_notif "hypr-animation-error" -t 3000 -i "preferences-desktop-display" "Error" "Animation '${current_animation}' not found in ${animations_user_dir} or ${animations_shared_dir}"
     return 1
@@ -97,7 +92,7 @@ LUA
 }
 
 fn_reload() {
-  local animation_name="${HYPR_ANIMATION:-default}"
+  local animation_name="$(state_get "HYPR_ANIMATION" "default")"
   apply_animation "${animation_name}" "Animation reloaded"
 }
 

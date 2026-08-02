@@ -58,11 +58,22 @@ HYPR_SCRIPTS_PATH="${HYPR_SCRIPTS_PATH:-${XDG_CONFIG_HOME}/hypr/scripts:${LIB_DI
 
 export BIN_DIR LIB_DIR PATH HYPR_SCRIPTS_PATH
 
+hyprshell_load_python_helpers() {
+  declare -F python_activate >/dev/null 2>&1 && return 0
+  # shellcheck source=/dev/null
+  source "${LIB_DIR}/hypr/shell/lib/hyprshell.python.bash"
+}
+
+hyprshell_load_completion_helpers() {
+  declare -F generate_completions >/dev/null 2>&1 && return 0
+  # shellcheck source=/dev/null
+  source "${LIB_DIR}/hypr/shell/lib/hyprshell.completion.bash"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" && "${1:-}" == "app" ]]; then
   export PATH="${HYPR_SCRIPTS_PATH}:${PATH}"
   if [[ "${HYPRPY:-0}" =~ ^[0-9]+$ && "${HYPRPY:-0}" -eq 1 ]]; then
-    # shellcheck source=/dev/null
-    source "${LIB_DIR}/hypr/shell/lib/hyprshell.python.bash" || exit 1
+    hyprshell_load_python_helpers || exit 1
     python_activate
   fi
   shift
@@ -71,8 +82,6 @@ fi
 
 for hyprshell_lib in \
   "${LIB_DIR}/hypr/shell/lib/hyprshell.runner.bash" \
-  "${LIB_DIR}/hypr/shell/lib/hyprshell.python.bash" \
-  "${LIB_DIR}/hypr/shell/lib/hyprshell.completion.bash" \
   "${LIB_DIR}/hypr/shell/lib/hyprshell.commands.bash"; do
   if [[ ! -r "${hyprshell_lib}" ]]; then
     echo "Error: missing lib ${hyprshell_lib}" >&2
@@ -83,6 +92,8 @@ for hyprshell_lib in \
 done
 
 if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+  hyprshell_load_python_helpers || return 1
+  hyprshell_load_completion_helpers || return 1
   if ! hypr_runtime_bootstrap; then
     echo "Error: Could not load config, broken installation?"
     return 1
@@ -109,14 +120,17 @@ case "${1:-}" in
     hyprlogout
     ;;
   pypr)
+    hyprshell_load_python_helpers || exit 1
     run_pypr "$@"
     exit 0
     ;;
   pip)
+    hyprshell_load_python_helpers || exit 1
     run_pip "$@"
     exit 0
     ;;
   -r | reload)
+    hyprshell_load_python_helpers || exit 1
     hyprreload
     ;;
   --release-notes | release-notes)
@@ -136,6 +150,7 @@ case "${1:-}" in
     ;;
   --completions)
     shift
+    hyprshell_load_completion_helpers || exit 1
     generate_completions "${1:-}"
     ;;
   validate)
@@ -149,6 +164,7 @@ case "${1:-}" in
     exit 0
     ;;
   pyinit)
+    hyprshell_load_python_helpers || exit 1
     python_initialized
     ;;
   resolve)

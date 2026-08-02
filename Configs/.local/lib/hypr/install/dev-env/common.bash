@@ -1,9 +1,5 @@
 # Shared helpers for development environment installers.
 
-if [[ "${HYPR_SHELL_INIT:-0}" -ne 1 ]]; then
-  source "$(command -v hyprshell)" || exit 1
-fi
-
 dev_env_usage_list() {
   printf '%s\n' \
     ruby node bun deno go laravel symfony php python elixir phoenix rust java zig ocaml dotnet clojure scala

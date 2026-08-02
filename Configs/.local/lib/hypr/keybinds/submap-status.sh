@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-source "$(command -v hyprshell)" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 
 hypr_help_guard "Usage: hyprshell keybinds/submap-status
 Emit the active Hyprland submap for a Waybar custom module (one line per change).

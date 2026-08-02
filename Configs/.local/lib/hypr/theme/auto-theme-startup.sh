@@ -2,7 +2,8 @@
 
 set -euo pipefail
 
-source "$(command -v hyprshell)" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
+hypr_runtime_require state || exit 1
 
 selected_color_mode="$(
   state_resolve_color_mode \

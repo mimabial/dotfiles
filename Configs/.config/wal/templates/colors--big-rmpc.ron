@@ -54,20 +54,31 @@
     ),
 
     song_table_format: [
+
         (
-            prop: (kind: Property(Title), style: (fg: "{color6}"),
-                default: (kind: Property(Filename), style: (fg: "{foreground}"))),
-            width: "50%"
+            prop: (kind: Property(Artist), style: (fg: "{color6}"),
+                default: (kind: Text("Unknown Artist"), style: (fg: "{color14}"))),
+            width: "25%"
         ),
         (
-            prop: (kind: Property(Artist), style: (fg: "{color4}"),
-                default: (kind: Text("Unknown Artist"), style: (fg: "{color13}"))),
-            width: "40%"
+            prop: (kind: Property(Album), style: (fg: "{color4}"),
+                default: (kind: Text("Unknown Album"), style: (fg: "{color12}"))),
+            width: "25%"
         ),
         (
-            prop: (kind: Property(Duration), style: (fg: "{color6}"),
+            prop: (kind: Property(Title), style: (fg: "{color3}"),
+                default: (kind: Property(Filename), style: (fg: "{color11}"))),
+            width: "35%"
+        ),
+        (
+            prop: (kind: Property(Other("genre")), style: (fg: "{color2}"),
+                default: (kind: Text("unknown"), style: (fg: "{color10}"))),
+            width: "10%"
+        ),
+        (
+            prop: (kind: Property(Duration), style: (fg: "{color1}"),
                 default: (kind: Text("-"))),
-            width: "10%", alignment: Right, label: "Time"
+            width: "5%", alignment: Right, label: "Time"
         ),
     ],
 

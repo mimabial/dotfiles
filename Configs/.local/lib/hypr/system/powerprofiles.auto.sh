@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-source "$(command -v hyprshell)" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 
 list_power_profiles() {
   powerprofilesctl list |

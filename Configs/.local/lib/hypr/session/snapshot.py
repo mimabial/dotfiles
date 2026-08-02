@@ -13,6 +13,9 @@ import time
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from pyutils.hyprctl import batch_json
+
 STATE_DIR = Path(os.environ.get("HYPR_STATE_HOME", Path.home() / ".local/state/hypr"))
 SESSION_DIR = STATE_DIR / "sessions"
 
@@ -78,8 +81,10 @@ def lua_quote(value: str) -> str:
     return json.dumps(str(value), ensure_ascii=False)
 
 
-def hypr_dispatch(expression: str) -> None:
-    subprocess.run(["hyprctl", "--quiet", "dispatch", expression], check=False)
+def hypr_dispatch(*expressions: str) -> None:
+    command = ["hyprctl", "--quiet"]
+    command += (["dispatch", expressions[0]] if len(expressions) == 1 else ["--batch", ";".join(f"dispatch {item}" for item in expressions)])
+    subprocess.run(command, check=False)
 
 
 def session_path(name: str) -> Path:
@@ -339,21 +344,22 @@ def launch_client(client: dict) -> None:
 def reposition(addr: str, saved: dict) -> None:
     window = lua_quote(f"address:{addr}")
     workspace = lua_quote(ws_target(saved.get("workspace") or {}))
-    hypr_dispatch(f"hl.dsp.window.move({{workspace={workspace}, window={window}, silent=true}})")
+    expressions = [f"hl.dsp.window.move({{workspace={workspace}, window={window}, silent=true}})"]
     if saved.get("floating"):
         size = saved.get("size") or [0, 0]
         at = saved.get("at") or [0, 0]
-        hypr_dispatch(f"hl.dsp.window.float({{window={window}, action=\"on\"}})")
+        expressions.append(f"hl.dsp.window.float({{window={window}, action=\"on\"}})")
         if len(size) == 2 and size[0] > 0 and size[1] > 0:
-            hypr_dispatch(
+            expressions.append(
                 f"hl.dsp.window.resize({{x={int(size[0])}, y={int(size[1])}, exact=true, window={window}}})"
             )
         if len(at) == 2:
-            hypr_dispatch(
+            expressions.append(
                 f"hl.dsp.window.move({{x={int(at[0])}, y={int(at[1])}, exact=true, window={window}}})"
             )
     if saved.get("pinned"):
-        hypr_dispatch(f"hl.dsp.window.pin({{window={window}, action=\"toggle\"}})")
+        expressions.append(f"hl.dsp.window.pin({{window={window}, action=\"toggle\"}})")
+    hypr_dispatch(*expressions)
 
 
 def live_match(saved: dict, live: dict) -> bool:
@@ -368,9 +374,7 @@ def live_match(saved: dict, live: dict) -> bool:
 
 
 def save_session(name: str, verbose: bool) -> None:
-    clients = run_hyprctl("clients", json_out=True)
-    workspaces = run_hyprctl("workspaces", json_out=True)
-    monitors = run_hyprctl("monitors", json_out=True)
+    clients, workspaces, monitors = batch_json("clients", "workspaces", "monitors")
     desktops = desktop_cache()
     folders = code_folder_cache()
 

@@ -14,6 +14,8 @@ rofi_wallpaper_post_clamp_reduction_px() {
   local border_size_milli=0
   local reduction_milli=0
 
+  rofi_hypr_snapshot
+
   case "${theme_name}" in
     style_1 | style_11 | pywal16) ;;
     *)
@@ -31,12 +33,7 @@ rofi_wallpaper_post_clamp_reduction_px() {
   fi
   focused_monitor_name="${ROFI_FOCUSED_MONITOR_NAME_CACHE}"
   if [[ -n "${focused_monitor_name}" ]]; then
-    if [[ -z "${ROFI_LAYERS_JSON_CACHE_READY:-}" ]]; then
-      declare -g ROFI_LAYERS_JSON_CACHE_READY=1
-      declare -g ROFI_LAYERS_JSON_CACHE
-      ROFI_LAYERS_JSON_CACHE="$(hyprctl -j layers 2>/dev/null || true)"
-    fi
-    layers_json="${ROFI_LAYERS_JSON_CACHE}"
+    layers_json="$(rofi_layers_json)"
     if [[ "${layers_json}" == \{* ]]; then
       waybar_width_px="$(
         printf '%s\n' "${layers_json}" | jq -r --arg mon "${focused_monitor_name}" '

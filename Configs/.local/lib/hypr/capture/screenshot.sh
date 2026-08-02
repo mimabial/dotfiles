@@ -7,9 +7,9 @@
 #
 set -euo pipefail
 
-source "$(command -v hyprshell)" || exit 1
+hypr_lib="${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}"
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/capture/capture.select.bash"
+source "${hypr_lib}/capture/capture.select.bash"
 
 USAGE() {
   cat <<USAGE
@@ -52,7 +52,7 @@ temp_screenshot=$(mktemp -t screenshot_XXXXXX.png)
 
 XDG_PICTURES_DIR="${XDG_PICTURES_DIR:-$HOME/Pictures}"
 
-grimblast_script="${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/capture/grimblast.sh"
+grimblast_script="${hypr_lib}/capture/grimblast.sh"
 mode="${1:-}"
 destination_arg="${2:-}"
 save_dir_arg="${2:-}"

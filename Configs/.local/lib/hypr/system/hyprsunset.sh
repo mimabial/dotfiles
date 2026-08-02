@@ -2,11 +2,8 @@
 
 set -euo pipefail
 
-# shellcheck source=/dev/null
-if ! source "$(command -v hyprshell)"; then
-  echo "[$0] :: Error: hyprshell not found."
-  exit 1
-fi
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
+hypr_runtime_require state || exit 1
 
 DEFAULT_TEMP=6500
 DEFAULT_GAMMA=100
@@ -412,14 +409,12 @@ sync_runtime_for_write() {
   local -n state_ref="$2"
 
   if [ "${state_ref[enabled]}" -eq 0 ]; then
-    hyprctl --quiet hyprsunset identity
-    hyprctl --quiet hyprsunset gamma "${DEFAULT_GAMMA}"
+    hyprctl --quiet --batch "hyprsunset identity;hyprsunset gamma ${DEFAULT_GAMMA}"
     return 0
   fi
 
   if [ "${options_ref[color_mode]}" = "gamma" ] && [ -n "${state_ref[new_gamma]}" ]; then
-    hyprctl --quiet hyprsunset temperature "${state_ref[temp]}"
-    hyprctl --quiet hyprsunset gamma "${state_ref[new_gamma]}"
+    hyprctl --quiet --batch "hyprsunset temperature ${state_ref[temp]};hyprsunset gamma ${state_ref[new_gamma]}"
     return 0
   fi
 
@@ -428,8 +423,7 @@ sync_runtime_for_write() {
     return 0
   fi
 
-  hyprctl --quiet hyprsunset temperature "${state_ref[temp]}"
-  hyprctl --quiet hyprsunset gamma "${state_ref[gamma]}"
+  hyprctl --quiet --batch "hyprsunset temperature ${state_ref[temp]};hyprsunset gamma ${state_ref[gamma]}"
 }
 
 sync_runtime_state() {

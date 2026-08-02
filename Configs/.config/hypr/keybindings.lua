@@ -343,21 +343,15 @@ exec(
 )
 
 exec("", "Print", "[Utilities|Capture] all monitors", "hyprshell screenshot.sh p", { locked = true })
+-- The compositor sees the switch itself, so locking here needs no init system and
+-- survives caffeine stopping hypridle.
 exec(
 	"",
 	"switch:on:Lid Switch",
-	"[Utilities|Monitors] disable laptop display",
-	"hyprshell system/monitor-internal.sh off --quiet",
+	"[Utilities|Session] lid close: lock and suspend",
+	"hyprshell session/lid-close.sh",
 	{ locked = true }
 )
-exec(
-	"",
-	"switch:off:Lid Switch",
-	"[Utilities|Monitors] enable laptop display",
-	"hyprshell system/monitor-internal.sh on --quiet",
-	{ locked = true }
-)
-
 -- Stays top-level and locked: the layout must be switchable on the lock screen.
 exec(mod, "K", "[Utilities] switch keyboard layout", "hyprshell keyboard-switch.sh", { locked = true })
 

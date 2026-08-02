@@ -125,25 +125,22 @@ monitor_fragment_exists() {
 monitor_reload() {
   if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] && command -v hyprctl >/dev/null 2>&1; then
     hyprctl reload >/dev/null
+    declare -F hypr_monitors_invalidate >/dev/null 2>&1 && hypr_monitors_invalidate
   fi
 }
 
-monitor_is_internal_name() {
-  [[ "${1:-}" =~ ^(eDP|LVDS) ]]
-}
-
 monitor_internal_name() {
-  hyprctl monitors all -j 2>/dev/null \
+  hypr_monitors_json \
     | jq -r '[.[] | select(.name | test("^(eDP|LVDS)"))][0].name // empty'
 }
 
 monitor_focused_name() {
-  hyprctl monitors -j 2>/dev/null \
+  hypr_monitors_json \
     | jq -r '([.[] | select(.focused == true)][0] // .[0]).name // empty'
 }
 
 monitor_external_active_name() {
-  hyprctl monitors -j 2>/dev/null \
+  hypr_monitors_json \
     | jq -r '[.[] | select((.name | test("^(eDP|LVDS)") | not) and (.disabled != true))][0].name // empty'
 }
 
@@ -162,7 +159,7 @@ monitor_external_connected_name() {
     return 0
   done
 
-  hyprctl monitors all -j 2>/dev/null \
+  hypr_monitors_json \
     | jq -r '[.[] | select(.name | test("^(eDP|LVDS)") | not)][0].name // empty'
 }
 
@@ -172,33 +169,6 @@ monitor_has_active_external() {
 
 monitor_has_connected_external() {
   [[ -n "$(monitor_external_connected_name)" ]]
-}
-
-monitor_mode_for() {
-  local output="$1"
-  hyprctl monitors all -j 2>/dev/null \
-    | jq -r --arg output "${output}" '
-        [.[] | select(.name == $output)][0] as $m
-        | if ($m.width // 0) > 0 and ($m.height // 0) > 0 and ($m.refreshRate // 0) > 0
-          then "\($m.width)x\($m.height)@\($m.refreshRate)"
-          else "preferred"
-          end
-      '
-}
-
-monitor_position_for() {
-  local output="$1"
-  hyprctl monitors -j 2>/dev/null \
-    | jq -r --arg output "${output}" '
-        [.[] | select(.name == $output)][0] as $m
-        | if $m == null then "auto" else "\($m.x)x\($m.y)" end
-      '
-}
-
-monitor_transform_for() {
-  local output="$1"
-  hyprctl monitors all -j 2>/dev/null \
-    | jq -r --arg output "${output}" '[.[] | select(.name == $output)][0].transform // 0'
 }
 
 monitor_gdk_scale_for() {

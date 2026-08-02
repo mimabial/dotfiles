@@ -2,8 +2,6 @@
 
 set -euo pipefail
 
-source "$(command -v hyprshell)" || exit 1
-
 DEV_ENV_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/dev-env" && pwd)"
 # shellcheck source=/dev/null
 source "${DEV_ENV_DIR}/common.bash"

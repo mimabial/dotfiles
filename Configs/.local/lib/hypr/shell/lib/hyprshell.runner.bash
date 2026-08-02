@@ -106,6 +106,7 @@ exec_resolved_script_target() {
       exec bash "${target_path}" "$@"
       ;;
     python)
+      hyprshell_load_python_helpers || return 1
       python_activate
       exec python "${target_path}" "$@"
       ;;

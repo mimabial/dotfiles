@@ -17,7 +17,6 @@ waybar_runtime.py):
     restarting again. css-hot events are still classified by smart_reload_waybar.
   - During THEME_UPDATE_LOCK, events are batched until the lock releases.
 """
-import contextlib
 import ctypes
 import fcntl
 import os

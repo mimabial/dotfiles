@@ -1,6 +1,7 @@
 import contextlib
 import io
 import json
+import sqlite3
 import sys
 import tempfile
 import unittest
@@ -131,6 +132,26 @@ class ResolutionCacheTests(unittest.TestCase):
             fallback=True,
             min_similarity=0.6,
         )
+
+    def test_batches_resolution_writes_until_flush(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "cache.sqlite3"
+            cache = ResolutionCache(path)
+            cache.put("song", {"identified": True}, CACHE_SUCCESS_TTL)
+
+            with contextlib.closing(sqlite3.connect(path)) as observer:
+                count_before = observer.execute(
+                    "SELECT count(*) FROM resolutions"
+                ).fetchone()[0]
+            cache.flush()
+            with contextlib.closing(sqlite3.connect(path)) as observer:
+                count_after = observer.execute(
+                    "SELECT count(*) FROM resolutions"
+                ).fetchone()[0]
+            cache.close()
+
+        self.assertEqual(count_before, 0)
+        self.assertEqual(count_after, 1)
 
     @patch("autotag.from_itunes")
     def test_reuses_success_without_calling_provider_again(self, from_itunes):

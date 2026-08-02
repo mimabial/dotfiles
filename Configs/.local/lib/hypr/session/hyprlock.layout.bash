@@ -326,7 +326,7 @@ fn_select() {
   local hyprlock_conf_path
   hyprlock_conf_path=$(find_filepath "${selected_layout}")
   generate_conf "$hyprlock_conf_path"
-  "${HYPR_LIB_DIR}/font.sh" resolve "$hyprlock_conf_path"
+  "${HYPR_LIB_DIR}/system/font.sh" resolve "$hyprlock_conf_path"
   fn_profile
 
   send_ephemeral_notif "hypr-hyprlock-layout" -t 2000 -i "system-lock-screen" "Hyprlock layout" "${selected_layout}"

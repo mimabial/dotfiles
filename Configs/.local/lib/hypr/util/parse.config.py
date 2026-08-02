@@ -7,7 +7,6 @@ import os
 import select
 import struct
 import threading
-import time
 import sys
 import urllib.parse
 import urllib.request

@@ -14,12 +14,10 @@ theme_apply_next_generation        increment + cancel previous phase-D units
 theme_apply_prepare_common_state   acquire theme_update lock
 theme_apply_commit_theme_metadata  promote staged theme metadata and generate native Lua
 theme_apply_run_color_sync         color-sync.sh: pywal16 + colors-shell.sh
-theme_apply_display_wallpaper     submit current wall.set to the backend
-theme_apply_update_waybar_border_radius
-theme_apply_start_envelope         fork phase D in a systemd-run user slice
-theme_apply_start_job (2x)         waybar (font include + icon-aware restart), kitty
+theme_apply_start_job (3x)         wallpaper, waybar (radius/font/icon), kitty
 theme_apply_start_detached_job     dunst, firefox
-theme_apply_wait_jobs              block on the 2 phase-A jobs
+theme_apply_wait_jobs              block on all foreground jobs
+theme_apply_start_envelope         fork phase D after wallpaper submission
 ```
 
 Metadata is committed before the color sync so that `theme.lua` is already on
@@ -28,8 +26,8 @@ the sync. That single reload picks up both generated Lua files, so phase A no
 longer issues a reload of its own — a second reload would drop whatever submap
 the user is in.
 
-The 2 phase-A jobs are required. Wallpaper display is submitted before the
-detached envelope starts, so it does not lag behind phase-D bootstrap.
+Waybar and Kitty are required; wallpaper is best-effort. All three run in
+parallel, and the detached envelope starts only after wallpaper submission.
 Waybar is not restarted for theme CSS: generated CSS is hot-reloaded by
 Waybar itself. The waybar job writes the font include and the dconf icon
 sink (gsettings), then restarts Waybar only when the icon theme changed —

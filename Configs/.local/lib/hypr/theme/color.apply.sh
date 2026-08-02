@@ -10,23 +10,20 @@
 #   source color.apply.sh
 #
 # DEPENDENCIES:
-#   - LIB_DIR must be set (path to ~/.local/lib)
 #   - print_log function from core/notify.sh
 
 # Signal or live-reload running applications so they pick up fresh theme files.
 reload_live_theme_client() {
   local client="$1"
-  local tmux_config=""
-  local rmpc_reload="${LIB_DIR}/hypr/theme/lib/rmpc.reload.bash"
+  local rmpc_reload="${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/theme/lib/rmpc.reload.bash"
 
   case "${client}" in
     kitty)
       pkill -SIGUSR1 -x kitty 2>/dev/null || true
       ;;
     tmux)
-      tmux_config="${XDG_CONFIG_HOME:-$HOME/.config}/tmux/tmux.conf"
-      if command -v tmux &>/dev/null && tmux list-sessions &>/dev/null; then
-        tmux source-file "${tmux_config}" 2>/dev/null || true
+      if command -v tmux &>/dev/null; then
+        tmux source-file "${XDG_CONFIG_HOME:-$HOME/.config}/tmux/colors.conf" 2>/dev/null || true
       fi
       ;;
     rmpc)
