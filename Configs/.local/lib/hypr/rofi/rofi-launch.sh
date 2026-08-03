@@ -159,7 +159,7 @@ launcher_style_select() {
 
 configure_mode() {
   local action="${1:-}"
-  rofi_args=(-show-icons)
+  rofi_args=(-show-icons -me-select-entry "" -me-accept-entry MousePrimary)
 
   configure_drun_mode() {
     r_mode="drun"

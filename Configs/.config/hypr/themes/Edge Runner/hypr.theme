@@ -2,7 +2,7 @@ $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 
 $ICON_THEME = Fluent-green-dark
 $COLOR_SCHEME = prefer-dark
-$NVIM_SCHEME = gruber-darker
+$NVIM_SCHEME = citruszest
 $NVIM_VARIANT =
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false

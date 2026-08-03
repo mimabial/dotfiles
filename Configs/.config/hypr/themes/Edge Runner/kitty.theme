@@ -45,7 +45,7 @@ wayland_titlebar_color system
 macos_titlebar_color system
 
 # Tab bar colors
-active_tab_foreground   #FADA16
+active_tab_foreground   #FFA6C2
 active_tab_background   #181818
 inactive_tab_foreground #a9a9a9
 inactive_tab_background #FADA16

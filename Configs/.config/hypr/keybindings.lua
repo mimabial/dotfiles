@@ -190,6 +190,8 @@ end
 
 bind(mod, "Q", "[Window Management] close focused window", hl.dsp.window.close())
 bind("ALT", "F4", "[Window Management] close focused window", hl.dsp.window.close())
+-- close() only requests WM_DELETE_WINDOW; fullscreen Proton/Unreal titles ignore it.
+bind(mod .. " SHIFT", "Q", "[Window Management] force kill focused window", hl.dsp.window.kill())
 bind(
 	mod,
 	"F",
@@ -686,10 +688,10 @@ end
 
 bind(mod .. " CTRL", "RIGHT", "[Workspaces] next relative workspace", hl.dsp.focus({ workspace = "r+1" }))
 bind(mod .. " CTRL", "LEFT", "[Workspaces] previous relative workspace", hl.dsp.focus({ workspace = "r-1" }))
+bind(mod .. " CTRL", "UP", "[Workspaces] previous workspace", hl.dsp.focus({ workspace = "previous" }))
 bind(mod .. " CTRL", "DOWN", "[Workspaces] nearest empty workspace", hl.dsp.focus({ workspace = "empty" }))
 bind(mod, "TAB", "[Workspaces] next existing workspace", hl.dsp.focus({ workspace = "e+1" }))
 bind(mod .. " SHIFT", "TAB", "[Workspaces] previous existing workspace", hl.dsp.focus({ workspace = "e-1" }))
-bind(mod .. " ALT", "TAB", "[Workspaces] previous workspace", hl.dsp.focus({ workspace = "previous" }))
 
 bind(mod .. " SHIFT ALT", "LEFT", "[Workspaces] move workspace left", hl.dsp.workspace.move({ monitor = "l" }))
 bind(mod .. " SHIFT ALT", "RIGHT", "[Workspaces] move workspace right", hl.dsp.workspace.move({ monitor = "r" }))
