@@ -112,7 +112,6 @@
         );
         break;
     }
-    setTimeout(() => report("command"), 100);
   });
 
   rescan(true);

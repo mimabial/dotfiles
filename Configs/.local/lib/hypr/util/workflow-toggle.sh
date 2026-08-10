@@ -19,25 +19,6 @@ Toggle the requested workflow on, or switch back to default if it is already act
 HELP
 }
 
-sync_workflow_flags() {
-  local active_mode="${1:-default}"
-
-  case "${active_mode}" in
-    focus)
-      state_set "HYPR_FOCUSMODE" "1" "staterc"
-      state_set "HYPR_GAMEMODE" "0" "staterc"
-      ;;
-    gaming)
-      state_set "HYPR_FOCUSMODE" "0" "staterc"
-      state_set "HYPR_GAMEMODE" "1" "staterc"
-      ;;
-    *)
-      state_set "HYPR_FOCUSMODE" "0" "staterc"
-      state_set "HYPR_GAMEMODE" "0" "staterc"
-      ;;
-  esac
-}
-
 main() {
   local requested_mode="${1:-}"
   local current_workflow target_workflow
@@ -64,7 +45,6 @@ main() {
 
   if "${workflows_script}" --set "${target_workflow}"; then
     rm -f "${focusmode_state_file}" "${gamemode_state_file}"
-    sync_workflow_flags "${target_workflow}"
   fi
 }
 

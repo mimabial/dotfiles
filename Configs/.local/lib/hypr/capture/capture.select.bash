@@ -4,13 +4,20 @@
 # Shared selection helpers for screenshot tooling.
 
 capture_start_freeze() {
-  local delay="${1:-0.1}"
-  local freeze_pid=""
+  local freeze_pid="" ready=0
 
   if command -v hyprpicker >/dev/null 2>&1; then
     hyprpicker -r -z >/dev/null 2>&1 &
     freeze_pid=$!
-    sleep "${delay}"
+    for _ in {1..20}; do
+      if hyprctl -j layers 2>/dev/null | jq -e '[.. | objects | .namespace?] | any(. == "hyprpicker")' >/dev/null; then
+        ready=1
+        break
+      fi
+      kill -0 "${freeze_pid}" 2>/dev/null || break
+      sleep 0.01
+    done
+    ((ready)) || { kill "${freeze_pid}" 2>/dev/null || true; freeze_pid=""; }
   fi
 
   printf '%s\n' "${freeze_pid}"

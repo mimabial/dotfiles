@@ -40,6 +40,8 @@ fi
 [[ -n "${app_id}" ]] || app_id="org.tui.$(basename "${cmd[0]}")"
 
 launch_args=(--hypr-profile tui --app-id "${app_id}")
+unit_env=()
 [[ -n "${title}" ]] && launch_args+=(--title "${title}")
+[[ -z "${HYPR_SUMMON_EXPECTED_FLOAT:-}" ]] || unit_env=(env "HYPR_SUMMON_EXPECTED_FLOAT=${HYPR_SUMMON_EXPECTED_FLOAT}")
 
-exec setsid uwsm-app -- tui-terminal-exec "${launch_args[@]}" -- "${cmd[@]}"
+exec setsid uwsm-app -- tui-terminal-exec "${launch_args[@]}" -- "${unit_env[@]}" "${cmd[@]}"

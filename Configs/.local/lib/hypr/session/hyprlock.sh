@@ -2,13 +2,37 @@
 
 set -euo pipefail
 
+LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
+
+queue_art_update() {
+  local dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/hypr" lock fd now last=0
+  [[ -d "${dir}" ]] || mkdir -m 700 "${dir}" || return
+  lock="${dir}/hyprlock-art.lock"
+  exec {fd}>"${lock}" && flock -n "${fd}" || return 0
+  [[ -r "${lock}.stamp" ]] && read -r last <"${lock}.stamp"
+  [[ "${last}" =~ ^[0-9]+$ ]] || last=0
+  now="$(date +%s)"
+  ((now - last > 2)) || return 0
+  printf '%s\n' "${now}" >"${lock}.stamp"
+  exec {fd}>&-
+  "${BASH_SOURCE[0]}" --update-art >/dev/null 2>&1 &
+}
+
+case "${1:-}" in
+  --mpris|--title|--artist|--source|--status|--length)
+    source "${LIB_DIR}/hypr/session/hyprlock.media.bash"
+    [[ "$1" == --source ]] && queue_art_update
+    "fn_${1#--}" "${2:-}"
+    exit
+    ;;
+esac
+
 # Use the same runtime-init pattern as the other entrypoints. Sourcing
 # hyprshell from $(command -v hyprshell) only works when the script is
 # invoked through the hyprshell wrapper (or the user's PATH happens to
 # include ~/.local/bin); the theme.apply phase-D envelope runs under
 # systemd-run --user with neither, so this script needs to bootstrap
 # directly via runtime/init.bash like wallpaper.sh and theme.switch.sh do.
-LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 # shellcheck source=/dev/null
 source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
 hypr_runtime_require state system notify wallpaper_catalog || exit 1
@@ -88,41 +112,6 @@ run_default_lock() {
   check_and_sanitize_process
   lock_bitwarden_if_running
   "${HYPR_LIB_DIR}/system/app2unit.sh" -u "${HYPRLOCK_SCOPE_NAME}" -t scope -- hyprlock
-}
-
-update_art_cache_if_needed() {
-  local runtime_dir=""
-  local lock_file=""
-  local stamp_file=""
-  local lock_fd=""
-  local now=0
-  local last_spawn=0
-
-  [[ "${1:-}" == "--source" ]] || return 0
-  runtime_dir="$(hypr_runtime_subdir hypr)" || return 0
-  lock_file="${runtime_dir}/hyprlock-art.lock"
-  stamp_file="${lock_file}.stamp"
-
-  if ! exec {lock_fd}>"${lock_file}"; then
-    return 0
-  fi
-  if ! flock -x "${lock_fd}"; then
-    exec {lock_fd}>&-
-    return 0
-  fi
-
-  now="$(date +%s)"
-  if [[ -r "${stamp_file}" ]]; then
-    read -r last_spawn <"${stamp_file}" || last_spawn=0
-  fi
-
-  if (( now - last_spawn > 2 )); then
-    printf '%s\n' "${now}" >"${stamp_file}"
-    "${BASH_SOURCE[0]}" --update-art >/dev/null 2>&1 &
-  fi
-
-  flock -u "${lock_fd}" 2>/dev/null || true
-  exec {lock_fd}>&-
 }
 
 handle_hyprlock_action() {
@@ -210,5 +199,4 @@ if [[ $# -eq 0 ]]; then
   exit 0
 fi
 
-update_art_cache_if_needed "${1:-}"
 parse_and_dispatch_args "$@"

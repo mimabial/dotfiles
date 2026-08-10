@@ -17,3 +17,11 @@ tmux_f() {
     kill -TERM "$PPID"
   fi
 }
+
+copy-line-to-clipboard() {
+  print -rn -- "$BUFFER" | "$HOME/.config/tmux/scripts/tmux-copy"
+  zle -M "Line copied to clipboard!"
+}
+zle -N copy-line-to-clipboard
+bindkey -M viins '^X^Y' copy-line-to-clipboard
+bindkey -M vicmd '^X^Y' copy-line-to-clipboard

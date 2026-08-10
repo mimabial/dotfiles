@@ -6,7 +6,7 @@ working_directory = "None"
 [terminal]
 
 [terminal.shell]
-args = ["-l", "-c", "tmux attach || tmux"]
+args = ["-l", "-c", "exec tmux new-session -A -s main"]
 program = "/bin/zsh"
 
 [font]

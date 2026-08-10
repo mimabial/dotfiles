@@ -128,6 +128,12 @@ fn_title() {
   fi
 }
 
+fn_mpris() {
+  local player=${1:-$(mpris_default_player)}
+  mpris_player_active "$(mpris_player_status "${player}" || true)" || return 1
+  fn_title "${player}"
+}
+
 fn_artist() {
   local player=${1:-$(mpris_default_player)}
 
@@ -140,7 +146,7 @@ fn_source() {
   local player=${1:-$(mpris_default_player)}
   local player_status=""
 
-  player_status="$(mpris_player_status "${player}")"
+  player_status="$(mpris_player_status "${player}" || true)"
   if mpris_player_active "${player_status}"; then
     mpris_icon "${player}"
   fi
@@ -150,7 +156,7 @@ fn_status() {
   local player=${1:-$(mpris_default_player)}
   local player_status=""
 
-  player_status="$(mpris_player_status "${player}")"
+  player_status="$(mpris_player_status "${player}" || true)"
   case "${player_status}" in
     Playing) echo "▶" ;;
     Paused) echo "⏸" ;;

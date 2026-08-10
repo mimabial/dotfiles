@@ -300,7 +300,7 @@ elif [[ "$SUBJECT" == "area" ]]; then
     GEOM="$CUSTOM_GEOM"
   else
     if [[ "$FREEZE" == "yes" ]] && command -v "hyprpicker" >/dev/null 2>&1; then
-      FREEZE_PID="$(capture_start_freeze 0.2)"
+      FREEZE_PID="$(capture_start_freeze)"
     fi
 
     # disable animation for layer namespace "selection" (slurp)

@@ -4,7 +4,7 @@
     "align": 0,
     "exec": "hyprshell gpuinfo",
     "return-type": "json",
-    "interval": 5,
+    "interval": 60,
     "tooltip": true,
     "on-click": "hyprshell gpuinfo --toggle",
     "menu": "on-click-right",

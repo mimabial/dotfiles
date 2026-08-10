@@ -154,7 +154,7 @@ select_geometry_from_rectangles() {
   local selection=""
   local freeze_pid=""
 
-  freeze_pid="$(capture_start_freeze 0.1)"
+  freeze_pid="$(capture_start_freeze)"
   selection="$(printf '%s\n' "${rectangles}" | slurp "$@" 2>/dev/null)"
   capture_stop_freeze "${freeze_pid}"
   [[ -n "${selection}" ]] || return 1

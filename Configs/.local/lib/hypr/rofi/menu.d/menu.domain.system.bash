@@ -6,36 +6,37 @@ menu_register_domain_system() {
   menu_add_item remove "󰣇  Package" action remove_package
   menu_add_item remove "  Font" action remove_font
 
-  menu_define update "Update"
-  menu_add_item update "  Config" submenu update_config
-  menu_add_item update "  Process" submenu update_process
-  menu_add_item update "󰇅  Hardware" submenu update_hardware
-  menu_add_item update "  Firmware" action update_firmware
-  menu_add_item update "  Password" submenu update_password
-  menu_add_item update "  Timezone" action update_timezone
-  menu_add_item update "  Time" action update_time
+  menu_define update "Maintenance"
+  menu_add_item update "󰏗  Update system packages" action update_system
+  menu_add_item update "  Restore stock configs" submenu update_config
+  menu_add_item update "  Desktop processes" submenu update_process
+  menu_add_item update "󰇅  Hardware recovery" submenu update_hardware
+  menu_add_item update "  Update firmware" action update_firmware
+  menu_add_item update "  Change passwords" submenu update_password
+  menu_add_item update "  Set timezone" action update_timezone
+  menu_add_item update "  Resync system clock" action update_time
 
-  menu_define update_process "Restart"
-  menu_add_item update_process "  Hypridle" action update_process_hypridle
-  menu_add_item update_process "  Hyprsunset" action update_process_hyprsunset
-  menu_add_item update_process "󰍜  Waybar" action update_process_waybar
-  menu_add_item update_process "󰀻  Rofi" action update_process_rofi
+  menu_define update_process "Desktop processes"
+  menu_add_item update_process "  Restart Hypridle" action update_process_hypridle
+  menu_add_item update_process "  Restart Hyprsunset" action update_process_hyprsunset
+  menu_add_item update_process "󰍜  Restart Waybar" action update_process_waybar
+  menu_add_item update_process "󰀻  Close Rofi instances" action update_process_rofi
 
   menu_define update_config "Restore stock config"
-  menu_add_item update_config "  Hyprland" action update_config_hyprland
-  menu_add_item update_config "  Hypridle" action update_config_hypridle
-  menu_add_item update_config "  Hyprlock" action update_config_hyprlock
-  menu_add_item update_config "󰍜  Waybar" action update_config_waybar
-  menu_add_item update_config "󰀻  Rofi" action update_config_rofi
+  menu_add_item update_config "  Restore stock Hyprland config" action update_config_hyprland
+  menu_add_item update_config "  Restore stock Hypridle config" action update_config_hypridle
+  menu_add_item update_config "  Restore stock Hyprlock config" action update_config_hyprlock
+  menu_add_item update_config "󰍜  Restore stock Waybar config" action update_config_waybar
+  menu_add_item update_config "󰀻  Restore stock Rofi config" action update_config_rofi
 
-  menu_define update_hardware "Restart"
-  menu_add_item update_hardware "  Audio" action update_hardware_audio
-  menu_add_item update_hardware "󱚾  Wi-Fi" action update_hardware_wifi
-  menu_add_item update_hardware "󰂯  Bluetooth" action update_hardware_bluetooth
+  menu_define update_hardware "Hardware recovery"
+  menu_add_item update_hardware "  Restart audio service" action update_hardware_audio
+  menu_add_item update_hardware "󱚾  Unblock Wi-Fi radio" action update_hardware_wifi
+  menu_add_item update_hardware "󰂯  Unblock Bluetooth radio" action update_hardware_bluetooth
 
-  menu_define update_password "Update Password"
-  menu_add_item update_password "  Drive Encryption" action update_password_drive
-  menu_add_item update_password "  User" action update_password_user
+  menu_define update_password "Change password"
+  menu_add_item update_password "  Change drive encryption password" action update_password_drive
+  menu_add_item update_password "  Change user password" action update_password_user
 
   menu_define system "System"
   menu_add_item system "  Lock" action system_lock
@@ -49,6 +50,7 @@ menu_run_action_system() {
 
   case "${action_id}" in
     remove_package) terminal hyprshell pm --noconfirm remove ;;
+    update_system) hyprshell system/system.update.sh up ;;
     update_firmware) present_terminal hyprshell system/firmware.sh ;;
     update_timezone) present_terminal hyprshell system/timezone.sh ;;
     update_time) present_terminal hyprshell system/time.sh ;;

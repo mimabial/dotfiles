@@ -45,7 +45,7 @@ menu_run_action_core() {
     dev_cpu_monitor) present_terminal --hypr-profile tui --app-id org.tui.Htop --title Htop -- htop ;;
     dev_gpu_monitor) present_terminal --hypr-profile tui --app-id org.tui.Nvtop --title Nvtop -- nvtop ;;
     dev_disk_usage) present_terminal --hypr-profile tui --app-id org.tui.Dua --title Dua -- dua i ;;
-    dev_music_player) present_terminal --hypr-profile tui --app-id org.tui.Rmpc --title Rmpc -- "${XDG_CONFIG_HOME}/rmpc/lib/launch" ;;
+    dev_music_player) hyprshell launch/summon.sh --float-if-workspace-occupied class:org.tui.Rmpc -- hyprshell launch/tui.sh --app-id org.tui.Rmpc --title Rmpc -- "${XDG_CONFIG_HOME}/rmpc/lib/launch" ;;
     learn_keybindings) hyprshell keybinds/keybinds_hint.sh ;;
     learn_bash_cheatsheet) hyprshell launch/webapp.sh "https://devhints.io/bash" ;;
     learn_bash_shellcheck) hyprshell launch/webapp.sh "https://www.shellcheck.net/wiki/" ;;

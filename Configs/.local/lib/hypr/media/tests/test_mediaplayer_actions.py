@@ -11,7 +11,7 @@ from mediaplayer_actions import cycle_player, dynamic_menu_entries, run_action, 
 from mediaplayer_presenter import (
     focus_empty_workspace,
     focus_window,
-    launch_on_empty_workspace,
+    launch_frontend,
     launch_spec,
     show_player,
     window_aliases,
@@ -166,10 +166,10 @@ class MediaPlayerPresenterTests(unittest.TestCase):
         focus_window.assert_called_once_with("0xplayer")
         focus_empty_workspace.assert_not_called()
 
-    @patch("mediaplayer_presenter.launch_on_empty_workspace", return_value=True)
+    @patch("mediaplayer_presenter.launch_frontend", return_value=True)
     @patch("mediaplayer_presenter.focus_empty_workspace", return_value=True)
     @patch("mediaplayer_presenter.matching_window", return_value=None)
-    def test_missing_window_is_launched_on_empty_workspace(
+    def test_missing_window_is_launched_by_frontend_policy(
         self,
         _matching_window,
         focus_empty_workspace,
@@ -179,7 +179,6 @@ class MediaPlayerPresenterTests(unittest.TestCase):
         focus_empty_workspace.assert_not_called()
         launch.assert_called_once_with("mpd", "", "")
 
-    @patch("mediaplayer_presenter.time.sleep")
     @patch("mediaplayer_presenter.focus_window", return_value=True)
     @patch(
         "mediaplayer_presenter.matching_window",
@@ -191,7 +190,6 @@ class MediaPlayerPresenterTests(unittest.TestCase):
         raise_player,
         _matching_window,
         focus_window,
-        _sleep,
     ):
         self.assertEqual(show_player("fftab_t98"), 0)
         raise_player.assert_called_once_with("fftab_t98")
@@ -207,19 +205,18 @@ class MediaPlayerPresenterTests(unittest.TestCase):
 
     @patch("mediaplayer_presenter.command")
     @patch("mediaplayer_presenter.shutil.which", return_value="/usr/bin/hyprshell")
-    def test_mpd_summon_overrides_the_general_tui_float_rule(self, _which, command):
+    def test_mpd_summon_uses_conditional_float_policy(self, _which, command):
         command.return_value.returncode = 0
 
-        self.assertTrue(launch_on_empty_workspace("mpd", "", ""))
+        self.assertTrue(launch_frontend("mpd", "", ""))
 
         summon = command.call_args.args[0]
         self.assertEqual(
-            summon[:5],
+            summon[:4],
             [
                 "/usr/bin/hyprshell",
                 "launch/summon.sh",
-                "--empty-workspace-if-occupied",
-                "--tile",
+                "--float-if-workspace-occupied",
                 "class:org.tui.Rmpc",
             ],
         )

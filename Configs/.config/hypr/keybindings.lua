@@ -190,7 +190,6 @@ end
 
 bind(mod, "Q", "[Window Management] close focused window", hl.dsp.window.close())
 bind("ALT", "F4", "[Window Management] close focused window", hl.dsp.window.close())
--- close() only requests WM_DELETE_WINDOW; fullscreen Proton/Unreal titles ignore it.
 bind(mod .. " SHIFT", "Q", "[Window Management] force kill focused window", hl.dsp.window.kill())
 bind(
 	mod,
@@ -615,7 +614,8 @@ submap_leader("theming", mod, "T", function()
 end)
 
 submap_leader("open", mod, "O", function()
-	submap_exec("O", "[Open] File finder", "pkill -x rofi || hyprshell launch/file-finder.sh")
+	submap_exec("F", "[Open] File finder", "pkill -x rofi || hyprshell launch/file-finder.sh")
+	submap_exec("L", "[Open] Game launcher", "hyprshell gaming/launcher.sh")
 	submap_exec("D", "[Open] Dropdown terminal", "hyprshell window/dropdown-terminal")
 	submap_exec(
 		"S",
@@ -628,7 +628,7 @@ submap_leader("open", mod, "O", function()
 	submap_exec(
 		"R",
 		"[Open] rmpc",
-		'hyprshell launch/summon.sh class:org.tui.Rmpc -- hyprshell launch/tui.sh --app-id org.tui.Rmpc --title Rmpc -- "$HOME/.config/rmpc/lib/launch"'
+		'hyprshell launch/summon.sh --float-if-workspace-occupied class:org.tui.Rmpc -- hyprshell launch/tui.sh --app-id org.tui.Rmpc --title Rmpc -- "$HOME/.config/rmpc/lib/launch"'
 	)
 	submap_exec("M", "[Open] Mullvad VPN", 'hyprshell launch/summon.sh "class:Mullvad VPN" -- mullvad-vpn')
 	submap_exec(

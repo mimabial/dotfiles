@@ -159,7 +159,7 @@ def launch_spec(
     return None
 
 
-def launch_on_empty_workspace(
+def launch_frontend(
     player: str,
     desktop_entry: str,
     media_url: str,
@@ -172,10 +172,10 @@ def launch_on_empty_workspace(
     summon = [
         hyprshell,
         "launch/summon.sh",
-        "--empty-workspace-if-occupied",
+        "--float-if-workspace-occupied"
+        if player_base(player) == "mpd"
+        else "--empty-workspace-if-occupied",
     ]
-    if player_base(player) == "mpd":
-        summon.append("--tile")
     summon.extend([pattern, "--", *launch])
     proc = command(summon)
     return proc.returncode == 0
@@ -190,7 +190,6 @@ def show_player(
     is_firefox_tab = player_base(player) == "fftab"
     if is_firefox_tab:
         raise_mpris_player(player)
-        time.sleep(0.15)
 
     window = matching_window(player, desktop_entry)
     if window is not None:
@@ -203,4 +202,4 @@ def show_player(
             window = wait_for_window(player, desktop_entry)
             if window is not None:
                 return 0 if focus_window(str(window.get("address") or "")) else 1
-    return 0 if launch_on_empty_workspace(player, desktop_entry, media_url) else 1
+    return 0 if launch_frontend(player, desktop_entry, media_url) else 1

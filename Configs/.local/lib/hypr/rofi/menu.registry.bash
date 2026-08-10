@@ -17,7 +17,7 @@ menu_register_all() {
   menu_add_item main "  Setup" submenu setup
   menu_add_item main "󰉉  Install" submenu install
   menu_add_item main "󰭌  Remove" submenu remove
-  menu_add_item main "  Update" submenu update
+  menu_add_item main "  Maintenance" submenu update
   menu_add_item main "  System" submenu system
 
   menu_register_domain_core

@@ -22,7 +22,9 @@ Window pattern may be plain text, class:<class-pattern>, or title:<title-pattern
 
 Options:
   --empty-workspace-if-occupied  Use the nearest empty workspace when the current
-                                 workspace already contains another tiled window
+                                 workspace already contains another window
+  --float-if-workspace-occupied Float when the current workspace contains another
+                                 window; otherwise tile
   --tile                         Keep the summoned window tiled, overriding an
                                  initial floating window rule
   --width SPEC                   Target width in px or percent
@@ -81,7 +83,7 @@ launch_ensure_window_floating() {
 
   [[ "${is_floating}" == "true" ]] && return 0
   launch_source_core_common || return 1
-  hypr_lua_dispatch "hl.dsp.window.float({window=$(hypr_lua_quote "address:${window_address}"), action=\"toggle\"})" >/dev/null 2>&1
+  hypr_lua_dispatch "hl.dsp.window.float({window=$(hypr_lua_quote "address:${window_address}"), action=\"on\"})" >/dev/null 2>&1
 }
 
 launch_ensure_window_tiled() {
@@ -254,6 +256,7 @@ launch_apply_window_geometry() {
 
 main() {
   local use_empty_workspace=0
+  local float_if_occupied=0
   local force_tiled=0
   local width_spec=""
   local height_spec=""
@@ -264,11 +267,13 @@ main() {
   local window_address=""
   local snapshot=""
   local clients_json=""
+  local workspace_has_other_window="false"
   local launch_cmd=()
 
   while [[ "$#" -gt 0 ]]; do
     case "$1" in
       --empty-workspace-if-occupied) use_empty_workspace=1; shift ;;
+      --float-if-workspace-occupied) float_if_occupied=1; shift ;;
       --tile) force_tiled=1; shift ;;
       --width)  width_spec="$2";  shift 2 ;;
       --height) height_spec="$2"; shift 2 ;;
@@ -315,6 +320,11 @@ main() {
   fi
 
   window_address="$(launch_resolve_window_address "${window_pattern}" "${clients_json}")"
+  if ((float_if_occupied == 1)); then
+    IFS=$'\t' read -r _ workspace_has_other_window \
+      < <(launch_active_workspace_occupancy "${window_address}" "${snapshot}") || return 1
+    export HYPR_SUMMON_EXPECTED_FLOAT="${workspace_has_other_window}"
+  fi
   target_workspace="$(launch_prepare_target_workspace "${use_empty_workspace}" "${window_address}" "${snapshot}")"
   [[ -n "${target_workspace}" ]] || return 1
 
@@ -326,7 +336,11 @@ main() {
 
   launch_summon_to_workspace "${window_address}" "${target_workspace}" || return 1
   launch_apply_window_geometry "${window_address}" "${width_spec}" "${height_spec}" "${align}" || return 1
-  ((force_tiled == 0)) || launch_ensure_window_tiled "${window_address}" || return 1
+  if ((float_if_occupied == 1)) && [[ "${workspace_has_other_window}" == "true" ]]; then
+    launch_ensure_window_floating "${window_address}" false || return 1
+  elif ((float_if_occupied == 1 || force_tiled == 1)); then
+    launch_ensure_window_tiled "${window_address}" || return 1
+  fi
 }
 
 main "$@"

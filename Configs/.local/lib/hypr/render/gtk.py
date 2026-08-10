@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -20,11 +21,30 @@ PALETTE = Path(sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] else
                               os.path.expanduser("~/.local/state/hypr")) + "/active-palette.json")
 TEMPLATES = Path(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config"))) / "wal" / "templates"
 OUT_DIR = Path(os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))) / "themes" / "Pywal16-Gtk"
+ASSETS = Path(__file__).resolve().parent / "assets"
 
 APP = "gtk"
 
 BORDER_RADIUS_FULL = re.compile(r"border-radius:\s*([0-9]+)px")
 BORDER_RADIUS_QUAD = re.compile(r"border-radius:\s*([0-9]+)px\s+([0-9]+)px\s+([0-9]+)px\s+([0-9]+)px")
+
+# Materia ships its scale knobs and selection-mode checkboxes as pre-rendered
+# @1x/@2x rasters, whose colours -gtk-scaled() cannot tint. Repoint them at the
+# vendored symbolic SVGs so -gtk-recolor() picks up the palette instead; SVG
+# scales natively, so the @2x half of each pair goes away.
+SCALED_PNG = re.compile(r"-gtk-scaled\(\s*url\('assets/([\w-]+)-dark\.png'\),\s*"
+                        r"url\('assets/\1-dark@2\.png'\)\s*\)")
+SCALED_SVG = re.compile(r"-gtk-scaled\(\s*-gtk-recolor\(url\('assets/scalable/([\w-]+)\.svg'\)\),\s*"
+                        r"-gtk-recolor\(url\('assets/scalable/\1@2\.svg'\)\)\s*\)")
+
+# The selection-mode tick sits on top of a thumbnail, so it cannot be a hole in
+# the box. It carries class="success", which this palette entry colours.
+SELECTIONMODE_PALETTE = """
+.view.content-view.check:not(list):checked,
+.content-view .tile check:not(list):checked {{
+  -gtk-icon-palette: success {bg};
+}}
+"""
 
 class _KeepMissing(dict):
     def __missing__(self, key):
@@ -51,6 +71,19 @@ def scale_radius(content: str, r: int) -> str:
         return f"border-radius: {scale_one(int(m.group(1)))}px"
     content = BORDER_RADIUS_FULL.sub(sub_one, content)
     return content
+
+def use_symbolic_assets(content: str) -> str:
+    # GTK3 only recolours icons whose filename ends in -symbolic.svg; renaming
+    # them silently drops the tint and paints the SVG's own black fill.
+    content = SCALED_PNG.sub(r"-gtk-recolor(url('assets/scalable/\1-symbolic.svg'))", content)
+    return SCALED_SVG.sub(r"-gtk-recolor(url('assets/scalable/\1.svg'))", content)
+
+
+def install_assets(subdir: str) -> None:
+    src = ASSETS / subdir
+    if src.is_dir():
+        shutil.copytree(src, OUT_DIR / subdir / "assets", dirs_exist_ok=True)
+
 
 def hypr_border_radius() -> int:
     try:
@@ -80,9 +113,14 @@ def main():
         if tp.is_file(): hasher.update(tp.read_bytes())
     hasher.update(str(radius).encode())
     hasher.update(Path(__file__).read_bytes())
+    for a in sorted(ASSETS.rglob("*.svg")):
+        hasher.update(str(a.relative_to(ASSETS)).encode())
+        hasher.update(a.read_bytes())
     h = hasher.hexdigest()[:16]
 
-    if cache_hit(APP, h) and (OUT_DIR / "gtk-3.0" / "gtk.css").exists() and (OUT_DIR / "gtk-4.0" / "gtk.css").exists():
+    if (cache_hit(APP, h)
+            and all((OUT_DIR / d / "gtk.css").exists() for d in ("gtk-3.0", "gtk-4.0"))
+            and all((OUT_DIR / d / "assets" / "scalable").is_dir() for d in ("gtk-3.0", "gtk-4.0"))):
         return
 
     for template_name, out_subdir in (("colors-gtk3.css", "gtk-3.0"), ("colors-gtk4.css", "gtk-4.0")):
@@ -93,6 +131,10 @@ def main():
         content = tp.read_text()
         content = substitute(content, vars_)
         content = scale_radius(content, radius)
+        content = use_symbolic_assets(content)
+        if out_subdir == "gtk-3.0":
+            content += SELECTIONMODE_PALETTE.format(bg=p["bg"])
+        install_assets(out_subdir)
         # Header note + write
         out = f"/* Hyprland border radius: {radius}px */\n\n{content}"
         out_path = OUT_DIR / out_subdir / "gtk.css"

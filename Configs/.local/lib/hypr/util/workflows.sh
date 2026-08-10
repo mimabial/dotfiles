@@ -136,14 +136,19 @@ apply_power_profile_workflow() {
 
   if [[ -n "${profile}" ]]; then
     current_profile="$(powerprofilesctl get 2>/dev/null || true)"
-    if [[ "${current_profile}" != "${profile}" ]]; then
-      [[ -n "${saved_profile}" ]] || state_set "WORKFLOW_POWER_PROFILE_PREV" "${current_profile}" "staterc"
-      powerprofilesctl set "${profile}" >/dev/null 2>&1 || true
-    fi
+    [[ -n "${saved_profile}" ]] || state_set "WORKFLOW_POWER_PROFILE_PREV" "${current_profile}" "staterc"
+    [[ "${current_profile}" == "${profile}" ]] || powerprofilesctl set "${profile}" >/dev/null 2>&1 || true
   elif [[ -n "${saved_profile}" ]]; then
-    state_set "WORKFLOW_POWER_PROFILE_PREV" "" "staterc"
-    powerprofilesctl set "${saved_profile}" >/dev/null 2>&1 || true
+    powerprofilesctl set "${saved_profile}" >/dev/null 2>&1 && state_set "WORKFLOW_POWER_PROFILE_PREV" "" "staterc" || true
   fi
+}
+
+sync_workflow_flags() {
+  local focus=0 gaming=0
+  [[ "${current_workflow}" == focus ]] && focus=1
+  [[ "${current_workflow}" == gaming ]] && gaming=1
+  state_set HYPR_FOCUSMODE "${focus}" staterc
+  state_set HYPR_GAMEMODE "${gaming}" staterc
 }
 
 get_workflow_waybar_layout() {
@@ -255,6 +260,7 @@ LUA
 
 apply_workflow_update() {
   fn_update
+  sync_workflow_flags
   hyprctl reload config-only -q
   apply_waybar_workflow
   apply_power_profile_workflow
