@@ -4,6 +4,7 @@
     "format": "{icon}",
     "tooltip-format": "Power profile: {profile}\nDriver: {driver}",
     "tooltip": true,
+    "on-click": "hyprshell system/powerprofiles.sh --cycle",
     "format-icons": {
       "default": "",
       "performance": "",

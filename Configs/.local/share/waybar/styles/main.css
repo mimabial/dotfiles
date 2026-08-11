@@ -589,16 +589,6 @@ menu {
   padding-right: 2px;
 }
 
-#custom-gamemode,
-#gamemode {
-  margin: 0px 0px 4px;
-  padding-right: 4px;
-}
-
-#gamemode.running {
-  color: @accent;
-}
-
 #custom-keybindhint {
   font-size: 14px;
   margin: 2px 0px 0px;

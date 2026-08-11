@@ -31,6 +31,8 @@ B = Backup - Backup the target
 S|${HOME}/.config|hypr|hyprland
 S|${HOME}/.config|uwsm|uwsm
 S|${HOME}/.config|systemd|systemd
+S|${HOME}/.config|sv|
+S|${HOME}/.config|menus autostart xdg-terminals.list|
 
  Desktop 
 S|${HOME}/.config|waybar|waybar
@@ -54,9 +56,14 @@ S|${HOME}/.config|bat|bat
 S|${HOME}/.config|mpd|mpd
 S|${HOME}/.config|xsettingsd|xsettingsd
 S|${HOME}/.config|yt-dlp|yt-dlp
+S|${HOME}/.config|vim|vim
+S|${HOME}/.config|satty|satty
+S|${HOME}/.config|baloofilerc|
+S|${HOME}|.npmrc|
 
  Theming 
 S|${HOME}/.config|gtk-3.0|nwg-look
+S|${HOME}/.config|nwg-look|nwg-look
 S|${HOME}|.gtkrc-2.0|nwg-look
 S|${HOME}/.config|Kvantum|kvantum
 S|${HOME}/.config|wal|python-pywal16
@@ -67,4 +74,6 @@ S|${HOME}/.config|dolphinrc kdeglobals|dolphin
  Local data 
 S|${HOME}/.local|bin lib|hyprland
 S|${HOME}/.local/share|hypr|hyprland
-S|${HOME}/.local/share|icons themes|
+S|${HOME}/.local/share|waybar|waybar
+S|${HOME}/.local/share|rofi|rofi
+S|${HOME}/.local/share|icons themes fonts applications|

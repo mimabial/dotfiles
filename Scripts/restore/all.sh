@@ -33,11 +33,36 @@ refresh_generated_outputs() {
     echo "[install] reload :: Hyprland"
 }
 
+restore_host_layer() {
+    local apply_args=()
+    [ "${flg_DryRun}" -eq 1 ] && apply_args+=(--dry-run)
+
+    if ! command -v dotfiles-host-profile >/dev/null 2>&1; then
+        print_log -warn "host profile" "dotfiles-host-profile not found"
+        return 0
+    fi
+
+    dotfiles-host-profile apply "${apply_args[@]}" || print_log -warn "host profile" "apply failed"
+}
+
+seed_hypr_state() {
+    local seed_args=(--mode restore hypr-state)
+    [ "${flg_DryRun}" -eq 1 ] && seed_args+=(-n)
+
+    if ! command -v hyprshell >/dev/null 2>&1; then
+        print_log -warn "hypr state" "hyprshell not found"
+        return 0
+    fi
+
+    hyprshell service/managed.sh "${seed_args[@]}" || print_log -warn "hypr state" "seed failed"
+}
+
 if [ "${flg_DryRun}" -ne 1 ] && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
-    hyprctl keyword misc:disable_autoreload 1 -q
+    hyprctl dispatch '(function() hl.config({misc = {disable_autoreload = true}}); return hl.dsp.no_op() end)()' >/dev/null
 fi
 
-run_step "restore fonts" "${scrDir}/restore_fnt.sh"
 run_step "restore configs" "${scrDir}/restore_cfg.sh"
+run_step "restore host layer" restore_host_layer
+run_step "seed hypr state" seed_hypr_state
 run_step "restore themes" "${scrDir}/restore_thm.sh"
 run_step "refresh generated outputs" refresh_generated_outputs

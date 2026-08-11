@@ -4,21 +4,19 @@ __pycache__/
 .DS_Store
 # Configs/ generated files (mirror of above)
 Configs/.config/alacritty/colors.toml
-Configs/.config/alacritty/theme.toml
 Configs/.config/cava/config
 Configs/.config/hypr/hyprlock/colors.conf
-Configs/.config/hypr/themes/colors.conf
-Configs/.config/hypr/themes/theme.conf
-Configs/.config/hypr/themes/wal.conf
+Configs/.config/hypr/themes/colors.lua
+Configs/.config/hypr/themes/colors.meta
+Configs/.config/hypr/themes/theme.lua
+Configs/.config/hypr/themes/theme.meta
 Configs/.config/hypr/themes/*/wall.set
 Configs/.config/hypr/themes/*/wall.swww.png
 Configs/.config/hypr/themes/*/wall.hyprlock.png
-Configs/.config/hypr/monitors.conf
 Configs/.config/kitty/colors.conf
 Configs/.config/kitty/theme.conf
 Configs/.config/Kvantum/pywal16/
 Configs/.config/rofi/colors.rasi
-Configs/.config/rofi/theme.rasi
 Configs/.config/gtk-3.0/colors.css
 Configs/.local/share/icons/default/index.theme
 Configs/.local/share/themes/Pywal16-Gtk/gtk-3.0/gtk.css
@@ -30,6 +28,9 @@ Configs/.config/tmux/theme.conf
 Configs/.config/tmux/plugins/
 Configs/.config/waybar/colors.css
 Configs/.config/waybar/theme.css
+Configs/.config/waybar/config.jsonc
+Configs/.config/waybar/style.css
+Configs/.config/waybar/includes/includes.json
 Configs/.config/waybar/includes/border-radius.css
 Configs/.config/rmpc/themes/pywal16*.ron
 Configs/.config/systemd/user/*.target.wants/

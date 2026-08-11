@@ -616,6 +616,11 @@ end)
 submap_leader("open", mod, "O", function()
 	submap_exec("F", "[Open] File finder", "pkill -x rofi || hyprshell launch/file-finder.sh")
 	submap_exec("L", "[Open] Game launcher", "hyprshell gaming/launcher.sh")
+	submap_exec(
+		"SHIFT + L",
+		"[Open] Lutris",
+		"hyprshell launch/summon.sh --empty-workspace-if-occupied class:net.lutris.Lutris -- lutris"
+	)
 	submap_exec("D", "[Open] Dropdown terminal", "hyprshell window/dropdown-terminal")
 	submap_exec(
 		"S",
@@ -659,7 +664,6 @@ submap_leader("utilities", mod, "U", function()
 	submap_exec("N", "[System] toggle nightlight", "hyprshell system/hyprsunset.sh toggle")
 	submap_exec("A", "[System] toggle keep awake", "hyprshell session/toggle-keep-awake.sh")
 	submap_exec("F", "[System] focus mode", "hyprshell util/workflow-toggle.sh focus")
-	submap_exec("G", "[System] gaming mode", "hyprshell util/workflow-toggle.sh gaming")
 	submap_exec("W", "[System] select workflow", "pkill -x rofi || hyprshell workflows --select")
 	submap_exec("O", "[System] audio output switcher", "hyprshell controls/volume-control.sh -t")
 	submap_cycle("S", "[System] cycle monitor scale", "hyprshell system/monitor-scale.sh")

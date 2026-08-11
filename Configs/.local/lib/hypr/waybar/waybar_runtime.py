@@ -331,6 +331,8 @@ def _spawn_waybar_transient_unit(env):
         "--user",
         "--quiet",
         "--collect",
+        # Keep click handlers alive when they replace Waybar during a layout switch.
+        "--property=ExitType=cgroup",
         f"--unit={unit}",
         "--slice=app.slice",
         "--description=hyprshell waybar",

@@ -29,7 +29,7 @@ group {
 }
 
 decoration {
-    rounding = 3
+    rounding = 2
     shadow:enabled = false
 
     blur {

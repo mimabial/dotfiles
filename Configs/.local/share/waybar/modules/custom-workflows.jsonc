@@ -4,7 +4,7 @@
     "format": "{}",
     "interval": "once",
     "exec": "hyprshell workflows --waybar",
-    "on-click": "hyprshell workflows --select;pkill -RTMIN+19 waybar",
+    "on-click": "hyprshell workflows --select",
     "tooltip": true,
     "return-type": "json",
     "signal": 19

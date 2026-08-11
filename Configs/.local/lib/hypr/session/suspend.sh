@@ -3,6 +3,7 @@
 set -euo pipefail
 
 [[ "${1:-}" == "--no-lock" ]] || hyprshell session/lid-close.sh --no-suspend
+trap 'hyprshell gaming/gamemode-hook reconcile >/dev/null 2>&1 || true' EXIT
 
 if command -v dbus-send >/dev/null && dbus-send --system --print-reply --dest=org.freedesktop.login1 /org/freedesktop/login1 org.freedesktop.login1.Manager.Suspend boolean:true; then
   exit 0

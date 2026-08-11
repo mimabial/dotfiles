@@ -218,7 +218,7 @@ hyprland_hook() {
         return 0
     fi
 
-    if grep -Eq '^local core = require\("lua\.core"\)' "${hyprland_default_config}"; then
+    if grep -Eq '^local core = require\("core"\)' "${hyprland_default_config}"; then
         return 0
     fi
 

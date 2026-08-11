@@ -3,11 +3,47 @@
 set -euo pipefail
 
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+source "${LIB_DIR:-$HOME/.local/lib}/hypr/runtime/init.bash" || exit 1
 
-hypr_help_guard "Usage: hyprshell system/powerprofiles
-List the available power profiles (active first)." "$@"
+usage="Usage: hyprshell system/powerprofiles.sh [--set PROFILE|--cycle]
+List or change power profiles. Manual changes are locked while GameMode is active."
+hypr_help_guard "${usage}" "$@"
 
-powerprofilesctl list |
-  awk '/^\s*[* ]\s*[a-zA-Z0-9\-]+:$/ { gsub(/^[*[:space:]]+|:$/,""); print }' |
-  tac
+list_profiles() {
+  busctl --system get-property org.freedesktop.UPower.PowerProfiles /org/freedesktop/UPower/PowerProfiles org.freedesktop.UPower.PowerProfiles Profiles |
+    grep -oP '"Profile" s "\K[^"]+'
+}
+
+gamemode_active() {
+  [[ "$(busctl --user get-property com.feralinteractive.GameMode /com/feralinteractive/GameMode com.feralinteractive.GameMode ClientCount 2>/dev/null)" =~ ^i[[:space:]]+[1-9][0-9]*$ ]]
+}
+
+active_profile() {
+  local type profile
+  read -r type profile < <(busctl --system get-property org.freedesktop.UPower.PowerProfiles /org/freedesktop/UPower/PowerProfiles org.freedesktop.UPower.PowerProfiles ActiveProfile)
+  printf '%s\n' "${profile//\"/}"
+}
+
+set_profile() {
+  if gamemode_active; then
+    notify_send_safe -a hyprshell "Power profile locked" "GameMode owns performance until the game exits." || true
+    return 1
+  fi
+  busctl --system set-property org.freedesktop.UPower.PowerProfiles /org/freedesktop/UPower/PowerProfiles org.freedesktop.UPower.PowerProfiles ActiveProfile s "$1"
+}
+
+case "${1:-}" in
+  "") list_profiles ;;
+  --set) [[ -n "${2:-}" ]] || { printf '%s\n' "${usage}" >&2; exit 2; }; set_profile "$2" ;;
+  --cycle)
+    mapfile -t profiles < <(list_profiles)
+    current="$(active_profile)"
+    for i in "${!profiles[@]}"; do
+      [[ "${profiles[i]}" == "${current}" ]] || continue
+      set_profile "${profiles[(i + 1) % ${#profiles[@]}]}"
+      exit
+    done
+    ((${#profiles[@]})) && set_profile "${profiles[0]}"
+    ;;
+  *) printf '%s\n' "${usage}" >&2; exit 2 ;;
+esac

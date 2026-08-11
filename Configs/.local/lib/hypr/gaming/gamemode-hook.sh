@@ -14,22 +14,47 @@ exec {lock_fd}>"${state_dir}/gamemode-hook.lock" || exit 1
 flock "${lock_fd}" || exit 1
 
 workflow_set() {
-  [[ -x "${workflows_script}" ]] && "${workflows_script}" --set "$1" >/dev/null 2>&1
+  local output=""
+  if ! output="$("${workflows_script}" --set "$1" 2>&1)"; then
+    print_log -sec "gamemode" -err "workflow" "${output:-failed to set $1}"
+    return 1
+  fi
+}
+
+gamemode_active() {
+  [[ "$(busctl --user get-property com.feralinteractive.GameMode /com/feralinteractive/GameMode com.feralinteractive.GameMode ClientCount 2>/dev/null)" =~ ^i[[:space:]]+[1-9][0-9]*$ ]]
+}
+
+start_mode() {
+  local current
+  current="$(state_get HYPR_WORKFLOW default 2>/dev/null || printf 'default\n')"
+  if [[ "${current}" == gaming ]]; then
+    [[ -s "${previous_file}" ]] || printf 'default\n' >"${previous_file}"
+    return
+  fi
+  printf '%s\n' "${current}" >"${previous_file}"
+  workflow_set gaming
+}
+
+end_mode() {
+  local current previous=default
+  current="$(state_get HYPR_WORKFLOW default 2>/dev/null || printf 'default\n')"
+  if [[ "${current}" == gaming ]]; then
+    [[ ! -s "${previous_file}" ]] || read -r previous <"${previous_file}"
+    [[ -n "${previous}" ]] || previous=default
+    workflow_set "${previous}" || return
+  fi
+  rm -f "${previous_file}"
 }
 
 case "${action}" in
-  start)
-    current_workflow="$(state_get HYPR_WORKFLOW "default" 2>/dev/null || printf 'default\n')"
-    if [[ "${current_workflow}" != "gaming" ]]; then
-      printf '%s\n' "${current_workflow}" >"${previous_file}"
-      workflow_set gaming || exit 1
-    fi
-    ;;
-  end)
-    if [[ -s "${previous_file}" ]]; then
-      read -r previous_workflow <"${previous_file}" || previous_workflow=default
-      [[ -n "${previous_workflow}" ]] || previous_workflow=default
-      workflow_set "${previous_workflow}" && rm -f "${previous_file}"
+  start) start_mode ;;
+  end) end_mode ;;
+  reconcile)
+    if gamemode_active; then
+      [[ -s "${previous_file}" ]] || start_mode
+    else
+      end_mode
     fi
     ;;
   *)

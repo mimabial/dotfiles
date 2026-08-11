@@ -105,7 +105,6 @@ if [ "${flg_Restore}" -eq 1 ]; then
     require_dir "${cloneDir}/Configs"
     require_file "${scrDir}/restore_cfg.psv"
     require_file "${scrDir}/restore_cfg.sh"
-    require_file "${scrDir}/restore_fnt.sh"
     require_file "${scrDir}/restore_thm.sh"
 fi
 

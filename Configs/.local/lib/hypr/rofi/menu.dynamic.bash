@@ -135,7 +135,7 @@ show_setup_power_profile_menu() {
     return 0
   fi
 
-  powerprofilesctl set "${profile}"
+  hyprshell system/powerprofiles.sh --set "${profile}"
 }
 
 show_install_font_menu() {

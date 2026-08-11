@@ -8,9 +8,9 @@ menu_register_domain_gaming() {
   menu_add_item gaming "󰺵  Lutris Games" action gaming_launcher_lutris
   menu_add_item gaming "  Steam" action gaming_steam
   menu_add_item gaming "󰺵  Lutris" action gaming_lutris
-  menu_add_item gaming "  Toggle Gaming Workflow" action gaming_workflow
   menu_add_item gaming "󰹑  MangoHud Config" action gaming_mangohud_config
   menu_add_item gaming "  GameMode Status" action gaming_gamemode_status
+  menu_add_item gaming "󰜺  Stop Lutris Wine" action gaming_wine_stop
 }
 
 menu_run_action_gaming() {
@@ -22,8 +22,8 @@ menu_run_action_gaming() {
     gaming_launcher_lutris) hyprshell gaming/launcher.sh --backend lutris ;;
     gaming_steam) uwsm-app -- steam ;;
     gaming_lutris) uwsm-app -- lutris ;;
-    gaming_workflow) hyprshell util/workflow-toggle.sh gaming ;;
     gaming_mangohud_config) open_in_editor ~/.config/MangoHud/MangoHud.conf ;;
+    gaming_wine_stop) hyprshell gaming/wine-stop.sh ;;
     gaming_gamemode_status)
       present_terminal --hypr-profile tui --app-id org.tui.GameMode --title GameMode -- bash -lc 'printf "GameMode status:\n"; gamemoded -s || true; printf "\nClients:\n"; gamemodelist || true'
       ;;

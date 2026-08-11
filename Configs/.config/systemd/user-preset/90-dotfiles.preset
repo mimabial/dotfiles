@@ -2,6 +2,9 @@
 enable auto-theme.service
 enable hyprland-hypridle.service
 enable hyprland-idle-manager.service
+enable hyprland-monitor-watch.service
+enable power-profile-auto.service
+enable tmux.service
 enable mpd.service
 enable mpd-mpris.service
 enable zsh-zcompdump-clean.timer

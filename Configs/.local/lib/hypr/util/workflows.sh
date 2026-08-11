@@ -174,7 +174,7 @@ fn_select() {
   workflow_list="${default_icon}\t default"
 
   while IFS= read -r workflow_name; do
-    [[ "${workflow_name}" == "default" ]] && continue
+    [[ "${workflow_name}" == "default" || "${workflow_name}" == "gaming" ]] && continue
     workflow_path="$(resolve_workflow_path "${workflow_name}")" || continue
     workflow_icon="$(get_workflow_icon "${workflow_path}")"
     workflow_list="${workflow_list}\n${workflow_icon}\t ${workflow_name}"
