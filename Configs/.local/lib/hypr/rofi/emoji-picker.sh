@@ -308,7 +308,7 @@ parse_arguments() {
   usage_text="$(cat <<'HELP'
 Usage:
 --style [1 | 2]         Change Emoji style
-                        Add 'emoji_style=[1|2]' variable in ~/.config/hypr/config.toml'
+                        Set ROFI_EMOJI_STYLE=1|2 in env-overrides
                             1 = list
                             2 = grid
 HELP

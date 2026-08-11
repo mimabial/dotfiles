@@ -4,7 +4,7 @@ _hyprshell() {
     # Never declare `words` local: it is the completion system's array, and
     # shadowing it leaves $words[2] empty so the subcommand cannot be read.
     local built_in_commands hyprscripts
-    built_in_commands=("--help" "help" "-h" "-r" "reload" "--version" "version" "-v" "--release-notes" "release-notes" "list" "--list-script" "--list-script-path" "--completions" "validate" "pyinit" "init" "lock-session" "logout" "pip" "pypr" "app" )
+    built_in_commands=("--help" "help" "-h" "-r" "reload" "--version" "version" "-v" "--release-notes" "release-notes" "list" "--list-script" "--list-script-path" "--completions" "pyinit" "init" "lock-session" "logout" "pip" "pypr" "app" )
 
     if (( $+commands[hyprshell] )); then
         hyprscripts=(${(f)"$(hyprshell --list-script 2>/dev/null)"})

@@ -86,10 +86,6 @@ monitor_rebuild_toggles_unlocked() {
   mv -f -- "${tmp_file}" "${aggregate}"
 }
 
-monitor_rebuild_toggles() {
-  monitor_with_lock monitor_rebuild_toggles_unlocked
-}
-
 monitor_set_fragment_unlocked() {
   local name="$1"
   local content="$2"

@@ -13,12 +13,10 @@ Usage: $(basename "$0") --[option]
     -h, --help      Display this help and exit
     -e, --execute   Explicit command to execute
 
-Config: ~/.config/hypr/config.toml
-
-    [sysmonitor]
-    execute = "btop"                    # Default command to execute // accepts executable or app.desktop
-    commands = ["btop", "htop", "top"]  # Fallback command options
-    terminal = "kitty"                  # Explicit terminal // uses \$TERMINAL if available
+Overrides: ${XDG_STATE_HOME}/hypr/env-overrides
+    SYSMONITOR_EXECUTE="htop"
+    SYSMONITOR_COMMANDS=("nvtop")  # Extra fallbacks
+    SYSMONITOR_TERMINAL="kitty"
 
 This script launches the system monitor application.
     It will launch the first available system monitor

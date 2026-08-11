@@ -18,7 +18,7 @@ completion_builtin_commands() {
     "--release-notes" "release-notes" \
     "--list-script" "--list-script-path" \
     "--completions" \
-    "validate" "pyinit" "init" "lock-session" "logout" "pip" "pypr" "app"
+    "pyinit" "init" "lock-session" "logout" "pip" "pypr" "app"
 }
 
 completion_join_space() {

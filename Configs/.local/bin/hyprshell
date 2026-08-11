@@ -153,16 +153,6 @@ case "${1:-}" in
     hyprshell_load_completion_helpers || exit 1
     generate_completions "${1:-}"
     ;;
-  validate)
-    shift
-    parse_config="${HYPR_LIB_DIR}/util/parse.config.py"
-    if [[ -x "${parse_config}" ]]; then
-      "${parse_config}" --input "$XDG_CONFIG_HOME/hypr/config.toml" --env "$XDG_STATE_HOME/hypr/env-overrides" --export "$@"
-    else
-      echo "parse.config.py not found at ${parse_config}"
-    fi
-    exit 0
-    ;;
   pyinit)
     hyprshell_load_python_helpers || exit 1
     python_initialized

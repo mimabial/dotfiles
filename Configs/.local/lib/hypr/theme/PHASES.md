@@ -44,11 +44,11 @@ short-circuits via `theme_apply_generation_is_current` if the persisted
 generation has moved on, so a newer foreground apply implicitly cancels
 the current envelope's remaining work.
 
-Phase-D work is all best-effort. It runs app theming that the user does
-not need synchronized to the keypress: gtk, qt, chrome, gimp, theme_files
-(alacritty/tmux/rofi), secondary_updates, static_desktop, tmux, rmpc,
-nvim, runtime_desktop, backend_wallpaper_links, wallpaper maintenance for
-hyprlock/current links, wallpaper_thumbs.
+Phase-D work is best-effort. Eight jobs run in parallel: `secondary_updates`,
+`static_desktop`, `tmux`, `rmpc`, `nvim`, `runtime_desktop`,
+`backend_wallpaper_links`, and `wallpaper_thumbs`. The envelope also resumes
+wallpaper maintenance and runs `waybar_icon_sync` after the job barrier.
+Application files are generated earlier by `hypr-theme`'s renderer scan.
 
 ## Cancellation
 
@@ -69,15 +69,14 @@ generation check handles the gap before systemd has reaped everything.
 
 `theme_apply_start_envelope` forks `bash theme.apply.sh --theme-envelope
 --generation N --log-dir DIR --unit-file FILE`. That subprocess re-runs
-the entrypoint top-to-bottom, sources `theme.apply.phase_d.bash`, hits
-the `--theme-envelope` dispatch on line 463 of `theme.apply.sh`, and
-calls `theme_apply_run_envelope_cli` which:
+the entrypoint top-to-bottom, sources `theme.apply.phase_d.bash`, and calls
+`theme_apply_run_envelope_cli` through the `--theme-envelope` dispatch:
 
 1. parses the envelope args, sets `theme_apply_generation`
-2. calls `theme_apply_phase_d_bootstrap` — sources `color.files.sh` +
-   `color.finalize.sh` for the secondary_updates job
+2. calls `theme_apply_phase_d_bootstrap` — sources `color.finalize.sh`
+   for the secondary_updates job
 3. forks wallpaper resume into the same cgroup
-4. runs the 14 phase-D jobs via `theme_apply_phase_d_run_jobs`
+4. runs the eight phase-D jobs via `theme_apply_phase_d_run_jobs`
 5. prunes old phase-D log directories (keep `HYPR_THEME_PHASE_D_LOG_KEEP`,
    default 20)
 
@@ -96,7 +95,6 @@ calls `theme_apply_run_envelope_cli` which:
   foreground jobs, shared primitives (timing, generation counter, job
   pool, wallpaper display, restart/start helpers, desktop-state prep)
 - `lib/theme.apply.phase_d.bash` — envelope start, envelope CLI
-  re-entry, phase-D bootstrap, the 14 phase-D jobs, phase-D-only helpers
+  re-entry, phase-D bootstrap, the eight phase-D jobs, phase-D-only helpers
   (sync_nvim_theme, enqueue_wallpaper_thumbs, sync_backend_wallpaper_links,
-  sync_runtime_desktop_state, run_static_desktop_sync,
-  run_phase_d_script, envelope_launch_wallpaper)
+  sync_runtime_desktop_state, run_static_desktop_sync, envelope_launch_wallpaper)

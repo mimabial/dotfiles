@@ -17,7 +17,7 @@ dock=${BATTERY_NOTIFY_DOCK:-false}
 config_info() {
   cat <<EOF
 
-Modify '$XDG_CONFIG_HOME/hypr/config.toml'  to set options.
+Set BATTERY_NOTIFY_* overrides in '$XDG_STATE_HOME/hypr/env-overrides'.
 
       STATUS      THRESHOLD    INTERVAL
       Full        $battery_full_threshold          $notify Minutes

@@ -11,7 +11,7 @@ hyprshell_builtin_commands() {
     "--release-notes" "release-notes" \
     "list" "--list-script" "--list-script-path" \
     "--completions" \
-    "validate" "pyinit" "init" "lock-session" "logout" "pip" "pypr" "app"
+    "pyinit" "init" "lock-session" "logout" "pip" "pypr" "app"
 }
 
 initialized() {
@@ -37,7 +37,6 @@ Commands:
   -r, reload                    : Reload Hyprland Environment
   release-notes                 : Show release notes
   completions [bash|zsh]        : Generate shell completions
-  validate [args]               : Validate Hyprland configuration
   pyinit                        : Initialize python virtual environment
   version                       : Show version information
   init                          : Source initialization script
