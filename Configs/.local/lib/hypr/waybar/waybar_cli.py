@@ -7,6 +7,7 @@ import signal
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
 from pyutils.xdg_base_dirs import xdg_runtime_dir, xdg_state_home
+from pyutils.shell_env import load_shell_assignments
 from waybar_apply import handle_layout_navigation
 from waybar_selector import layout_selector, select_layout_and_style, style_selector
 from waybar_assets import (
@@ -103,6 +104,8 @@ def main(argv=None):
     logger.debug('Starting waybar.py')
 
     if '--hide' in argv:
+        if load_shell_assignments(STATE_FILE).get('HYPR_WORKFLOW') == 'gaming':
+            return 1
         pid = get_waybar_pid()
         if pid:
             try:

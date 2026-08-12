@@ -92,8 +92,9 @@ refresh_hypr_instance_signature() {
   local candidate_count=0
   local candidate_path=""
 
-  [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] && return 0
   [[ -n "${runtime_dir}" && -d "${runtime_dir}" ]] || return 0
+  [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" && -S "${runtime_dir}/${HYPRLAND_INSTANCE_SIGNATURE}/.socket.sock" ]] && return 0
+  unset HYPRLAND_INSTANCE_SIGNATURE
 
   while IFS= read -r -d '' candidate_path; do
     [[ -S "${candidate_path}/.socket.sock" ]] || continue

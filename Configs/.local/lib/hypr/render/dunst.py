@@ -16,6 +16,7 @@ from _common import atomic_write, cache_hit, cache_store
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from pyutils.hyprctl import batch_json
+from pyutils.shell_env import load_shell_assignments
 
 PALETTE = Path(
     sys.argv[1]
@@ -52,6 +53,7 @@ WAL_TEMPLATES_DIR = (
 )
 
 APP = "dunst"
+STATE_FILE = Path(os.environ.get("HYPR_STATE_HOME", Path.home() / ".local/state/hypr")) / "staterc"
 
 
 @dataclass(frozen=True)
@@ -291,6 +293,8 @@ def reload_dunst():
             stderr=subprocess.DEVNULL,
             check=False,
         )
+    state = "enable" if load_shell_assignments(STATE_FILE).get("HYPR_WORKFLOW") == "gaming" else "disable"
+    subprocess.run(["dunstctl", "rule", "gaming_opaque", state], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     refresh_submap_hint()
 
 
@@ -611,6 +615,10 @@ def render_config(base, colors, layout, font):
     history_ignore = yes
     format = "<span foreground='{colors.roles["accent-red"]}'>%s</span>\\n%b"
     foreground = "{colors.urgency["low"]["foreground"]}"
+
+[gaming_opaque]
+    enabled = no
+    background = "{with_alpha(colors.roles["bg-primary"], "FF")}"
 """
 
 

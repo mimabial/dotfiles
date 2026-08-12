@@ -4,6 +4,8 @@ set -euo pipefail
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_require state rofi || exit 1
+refresh_hypr_instance_signature
+export HYPRLAND_INSTANCE_SIGNATURE
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/rofi/rofi.lib.bash"
 # shellcheck source=/dev/null
@@ -234,7 +236,6 @@ fn_update() {
   local workflow_path_compact
   local workflow_name_lua workflow_icon_lua workflow_description_lua workflow_path_lua
 
-  get_info
   mkdir -p "$(dirname "${workflows_state_file}")"
   workflow_path_compact="$(hypr_compact_path "${current_workflow_path}")"
 
@@ -259,6 +260,10 @@ LUA
 }
 
 apply_workflow_update() {
+  local notification_state=disable
+  get_info
+  [[ "${current_workflow}" == gaming ]] && notification_state=enable
+  dunstctl rule gaming_opaque "${notification_state}" >/dev/null 2>&1 || true
   fn_update
   sync_workflow_flags
   hyprctl reload config-only -q

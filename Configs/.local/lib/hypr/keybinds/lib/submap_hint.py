@@ -17,11 +17,13 @@ from keybinds_hint import (
     get_hyprctl_binds,
 )
 from pyutils.hyprctl import batch_json
+from pyutils.shell_env import load_shell_assignments
 
 COMMAND_TIMEOUT = 2
 HINT_BUILD_TIMEOUT = 5
 NOTIFICATION_ID = "9042"
 LOG = logging.getLogger("submap-hint")
+STATE_FILE = Path(os.environ.get("HYPR_STATE_HOME", Path.home() / ".local/state/hypr")) / "staterc"
 
 # keybindings.lua gates these binds on the workspace layout at press time, inside
 # a Lua closure that hyprctl cannot see: every bind reports dispatcher "__lua".
@@ -71,6 +73,9 @@ def build_hint(name):
         layout = None
     expand_meta_data(binds)
     submap_binds = [bind for bind in binds if bind.get("submap") == name]
+    workflow = load_shell_assignments(STATE_FILE).get("HYPR_WORKFLOW") if STATE_FILE.is_file() else ""
+    if workflow == "gaming":
+        submap_binds = [bind for bind in submap_binds if "Waybar" not in bind["action_key"]]
     if layout is not None:
         submap_binds = [
             bind for bind in submap_binds if applies_to_layout(bind, layout)
