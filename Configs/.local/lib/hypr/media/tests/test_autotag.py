@@ -114,6 +114,39 @@ class AlbumMatchingTests(unittest.TestCase):
         self.assertEqual(album, "DIYILEM & BAZARHOFF GENIUS")
         self.assertTrue(key)
 
+    @patch("autotag.from_itunes")
+    def test_delisted_single_uses_reissue_without_mixing_release_tags(self, itunes):
+        def result(_artist, _title, _limiter, _threshold, album=""):
+            if album:
+                raise Unidentified("no itunes match on requested album")
+            return {
+                "artist": "Shan'L", "title": "Tchizabengue",
+                "album": "Eklektik 2.0", "date": "2020", "tracknumber": "10/24",
+                "genre": "Worldwide", "artwork_url": "https://example.test/reissue.jpg",
+            }
+
+        itunes.side_effect = result
+        args = SimpleNamespace(
+            no_fingerprint=True, min_score=0.5, provider_order=["itunes"],
+            fallback=True, min_similarity=0.6,
+        )
+        tags = {
+            "artist": ["Shan'L"], "title": ["Tchizabengué"],
+            "album": ["Tchizabengué"], "date": ["20180426"],
+        }
+        result = resolve(
+            Path("/music/Shan'L/Shan'L - Tchizabengué.opus"), Path("/music"), args,
+            {"itunes": RateLimiter(0)}, "", tags,
+        )
+
+        self.assertEqual(
+            {key: result[key] for key in ("artist", "title", "album", "date", "tracknumber")},
+            {"artist": "Shan'L", "title": "Tchizabengué", "album": "Tchizabengué",
+             "date": "20180426", "tracknumber": "1/1"},
+        )
+        self.assertEqual(result["artwork_url"], "")
+        self.assertEqual(itunes.call_count, 2)
+
 
 class CachePolicyTests(unittest.TestCase):
     def test_requested_expirations(self):

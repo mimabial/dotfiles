@@ -106,21 +106,14 @@ get_hashmap() {
 # broken `wall.set` links when a theme still has valid wallpapers.
 # shellcheck disable=SC2120
 get_themes() {
-  thmSort=()
   thmList=()
   thmWall=()
   local -a theme_dirs=()
-  local -a theme_rows=()
   local thmDir=""
   local realWallPath=""
   local wallLinkTarget=""
-  local sort_value=""
-  local row=""
-  local sort=""
-  local theme=""
-  local wall=""
 
-  mapfile -t theme_dirs < <(find -H "${HYPR_CONFIG_HOME}/themes" -mindepth 1 -maxdepth 1 -type d)
+  mapfile -t theme_dirs < <(find -H "${HYPR_CONFIG_HOME}/themes" -mindepth 1 -maxdepth 1 -type d | LC_ALL=C sort)
 
   for thmDir in "${theme_dirs[@]}"; do
     wallLinkTarget="$(readlink "${thmDir}/wall.set" 2>/dev/null || true)"
@@ -143,24 +136,8 @@ get_themes() {
       realWallPath="${theme_wall_list[0]}"
     fi
 
-    if [[ -f "${thmDir}/.sort" ]]; then
-      sort_value="$(head -1 "${thmDir}/.sort")"
-    else
-      sort_value="0"
-    fi
-
-    theme_rows+=("${sort_value}"$'\t'"${thmDir##*/}"$'\t'"${realWallPath}")
-  done
-
-  ((${#theme_rows[@]} > 0)) || return 0
-
-  mapfile -t theme_rows < <(printf '%s\n' "${theme_rows[@]}" | sort -n -t $'\t' -k1,1 -k2,2)
-
-  for row in "${theme_rows[@]}"; do
-    IFS=$'\t' read -r sort theme wall <<< "${row}"
-    thmSort+=("${sort}")
-    thmList+=("${theme}")
-    thmWall+=("${wall}")
+    thmList+=("${thmDir##*/}")
+    thmWall+=("${realWallPath}")
   done
 }
 

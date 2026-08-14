@@ -221,7 +221,7 @@ build_runtime_overrides() {
   mapfile -d '' -t width_args < <(width_override_args "${rofi_config}" "${font_name}" "${font_scale}" | tr '\n' '\0')
   [[ ${#width_args[@]} -gt 0 ]] && rofi_args+=("${width_args[@]}")
 
-  if [[ "$(state_get "HYPR_WORKFLOW" "default")" == "focus" && "$(basename "${rofi_config}" .rasi)" == "style_11" ]]; then
+  if [[ "$(state_get "HYPR_WORKFLOW" "default")" == "windows" && "$(basename "${rofi_config}" .rasi)" == "style_11" ]]; then
     rofi_args+=(-theme-str "inputbar { background-color: #000000CC; } listbox { background-color: #000000CC; }")
   fi
 

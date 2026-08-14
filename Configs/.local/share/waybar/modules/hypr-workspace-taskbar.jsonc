@@ -1,0 +1,12 @@
+{
+  "hyprland/workspaces#winbar": {
+    "active-only": true,
+    "format": "{windows}",
+    "workspace-taskbar": {
+      "enable": true,
+      "update-active-window": true,
+      "icon-size": 24,
+      "on-click-window": "hyprshell waybar/window-action {address} {button}"
+    }
+  }
+}

@@ -293,8 +293,10 @@ def reload_dunst():
             stderr=subprocess.DEVNULL,
             check=False,
         )
-    state = "enable" if load_shell_assignments(STATE_FILE).get("HYPR_WORKFLOW") == "gaming" else "disable"
-    subprocess.run(["dunstctl", "rule", "gaming_opaque", state], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    workflow = load_shell_assignments(STATE_FILE).get("HYPR_WORKFLOW")
+    for rule in ("windows_90", "gaming_opaque"):
+        state = "enable" if workflow == rule.split("_", 1)[0] else "disable"
+        subprocess.run(["dunstctl", "rule", rule, state], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     refresh_submap_hint()
 
 
@@ -615,6 +617,10 @@ def render_config(base, colors, layout, font):
     history_ignore = yes
     format = "<span foreground='{colors.roles["accent-red"]}'>%s</span>\\n%b"
     foreground = "{colors.urgency["low"]["foreground"]}"
+
+[windows_90]
+    enabled = no
+    background = "{with_alpha(colors.roles["bg-primary"], "E6")}"
 
 [gaming_opaque]
     enabled = no

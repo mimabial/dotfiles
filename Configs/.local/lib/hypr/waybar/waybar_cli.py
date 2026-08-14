@@ -102,9 +102,10 @@ def parse_args(argv=None):
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     logger.debug('Starting waybar.py')
+    workflow = load_shell_assignments(STATE_FILE).get('HYPR_WORKFLOW')
 
     if '--hide' in argv:
-        if load_shell_assignments(STATE_FILE).get('HYPR_WORKFLOW') == 'gaming':
+        if workflow in {'gaming', 'windows'}:
             return 1
         pid = get_waybar_pid()
         if pid:
@@ -118,6 +119,10 @@ def main(argv=None):
         else:
             logger.warning('Waybar not running, cannot toggle visibility')
         return 0
+
+    locked = {'--next', '-n', '--prev', '-p', '--select-layout', '-L', '--select', '-S', '--config', '-c'}
+    if workflow == 'windows' and (locked.intersection(arg.partition('=')[0] for arg in argv) or any(arg.startswith('--set=') and arg != '--set=winbar' for arg in argv) or '--set' in argv and argv[argv.index('--set') + 1:][:1] != ['winbar']):
+        return 1
 
     if '--kill' in argv or '-k' in argv:
         kill_waybar_and_watcher()

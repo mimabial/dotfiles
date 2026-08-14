@@ -114,6 +114,7 @@ parser.add_argument(
     action="store_true",
     help="Join fields horizontally with a space instead of stacking with newlines",
 )
+parser.add_argument("--temps-only", action="store_true", help="Only show min/max temperatures")
 args = parser.parse_args()
 field_sep = " " if args.alt else "\n"
 
@@ -193,12 +194,12 @@ def get_min_temp(day):
     return day["mintempF"] + "°F"
 
 
-def get_sunrise(day):
-    return get_timestamp(day["astronomy"][0]["sunrise"])
+def get_sunrise(day, force_24h=False):
+    return get_timestamp(day["astronomy"][0]["sunrise"], force_24h)
 
 
-def get_sunset(day):
-    return get_timestamp(day["astronomy"][0]["sunset"])
+def get_sunset(day, force_24h=False):
+    return get_timestamp(day["astronomy"][0]["sunset"], force_24h)
 
 
 def get_city_name(weather):
@@ -219,8 +220,8 @@ def format_temp(temp):
     return temp.ljust(5)
 
 
-def get_timestamp(time_str):
-    if time_format == "24h":
+def get_timestamp(time_str, force_24h=False):
+    if force_24h or time_format == "24h":
         return datetime.strptime(time_str, "%I:%M %p").strftime("%H:%M")
 
     return time_str
@@ -381,24 +382,24 @@ current_weather = weather["current_condition"][0]
 
 if args.minmax:
     today = weather["weather"][0]
-    max_rain_chance = min(
-        max(int(hour.get("chanceofrain", 0)) for hour in today["hourly"]), 99
-    )
     min_temp = get_min_temp(today).split("°")[0]
     max_temp = get_max_temp(today).split("°")[0]
-    data["text"] = (
-        f"{max_temp}{field_sep}{min_temp}{field_sep}{max_rain_chance:2d}󱢋{field_sep}{get_wind_speed(current_weather).split('K')[0]}"
-    )
+    data["text"] = f"{max_temp}{field_sep}{min_temp}"
+    if not args.temps_only:
+        max_rain_chance = min(
+            max(int(hour.get("chanceofrain", 0)) for hour in today["hourly"]), 99
+        )
+        data["text"] += f"{field_sep}{max_rain_chance:2d}󱢋{field_sep}{get_wind_speed(current_weather).split('K')[0]}"
 elif args.sunrise:
     today = weather["weather"][0]
-    sunrise = get_sunrise(today)
+    sunrise = get_sunrise(today, args.alt)
     sunrise_h, sunrise_m, _ = split_time_parts(sunrise)
-    data["text"] = f"  \n{sunrise_h}:\n{sunrise_m} "
+    data["text"] = f" {sunrise}" if args.alt else f"  \n{sunrise_h}:\n{sunrise_m} "
 elif args.sunset:
     today = weather["weather"][0]
-    sunset = get_sunset(today)
+    sunset = get_sunset(today, args.alt)
     sunset_h, sunset_m, _ = split_time_parts(sunset)
-    data["text"] = f"  \n {sunset_h}\n:{sunset_m}"
+    data["text"] = f" {sunset}" if args.alt else f"  \n {sunset_h}\n:{sunset_m}"
 else:
     data["text"] = get_feels_like(current_weather)
     if show_icon:

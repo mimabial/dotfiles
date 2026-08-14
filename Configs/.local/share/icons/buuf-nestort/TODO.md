@@ -3,23 +3,21 @@
 
 This list is not completely updated so it's not really meaningful now... But it gives some idea.
 
-
-
 # Things to check:
 
 Why and how Gnome processes some icons (such as app drawer, or list type), which make buuf's icons appear with wrong colours.
 
 always execute `gtk-update-icon-cache .` before commiting
 
-# places
+## places
 
 poi:
 light-rail-station, railway-station, school
 
 
-# actions
+## actions
 
-# apps
+## apps
 
 kpat
 ksmserver
@@ -257,23 +255,23 @@ yast*
 xterm _32x32 _48x48 -color_*
 zanshin
    
-# categories
+## categories
 slideshow-symbolic (and not symbolic)
 
-# devices
+## devices
 check optic media, highly improvable (CD-DVD-BR...)
 drive-partition
 network* link with statuses
 different makes of phones??
 
-# emblems
+## emblems
 distributor-logo!
 see more
 
-# mime-types
+## mime-types
 all related to office / productivity
 
-# status
+## status
 ac-adapter (-symbolic)
 airplane-mode (-symbolic)
 alarm (-symbolic)
@@ -330,7 +328,9 @@ weather-clouds
 
 Check many network manager statuses for different mobile network types (GSM, LTE, EDGE...)
 
-# Possible problems with these symbolic icons in Gnome:
+## Possible problems with these symbolic icons in Gnome:
+
+Note: apparently this is no longer the case, but, still, I keep the section just in case.
 
 Apparently, if you use an icon with colors Gnome does weird things with them.
 I've been able to sort these icon's problems by using dessaturated versions:
@@ -345,3 +345,75 @@ Also,  these need to be disabled:
 actions/view-grid-symbolic.symbolic.png.disabled
 actions/view-list-symbolic.symbolic.png.disabled
 actions/view-app-grid-symbolic.symbolic.png.disabled
+
+## Pending xsi symbolic icons
+
+Some icons can be linked automatically, but some don't, because xsi's name does not contain a buuf icon. Here's the list, taken from the execution of the script `transfer_links_from_xsi.sh`:
+
+### Probably never to be done:
+
+xsi-annotations-squiggly-symbolic
+xsi-focus-legacy-systray-symbolic
+xsi-focus-top-bar-symbolic
+xsi-focus-windows-symbolic
+xsi-git-pr-symbolic
+xsi-group-symbolic
+xsi-image-crop-symbolic
+xsi-list-drag-handle-symbolic
+xsi-media-tape-symbolic
+xsi-orientation-landscape-inverse-symbolic
+xsi-orientation-landscape-symbolic
+xsi-orientation-portrait-left-symbolic
+xsi-orientation-portrait-right-symbolic
+xsi-rotation-allowed-symbolic
+xsi-rotation-locked-symbolic
+xsi-search-entire-word-symbolic
+xsi-sign-at-symbolic
+xsi-text-case-symbolic
+xsi-use-regex-symbolic
+xsi-video-joined-displays-symbolic
+xsi-video-single-display-symbolic
+xsi-view-fit-height-symbolic
+xsi-view-fit-width-symbolic
+xsi-view-list-bullet-symbolic
+xsi-view-list-ordered-symbolic
+xsi-view-mirror-symbolic
+
+### Hopefully RTL are optional, hence not doing them either
+
+xsi-network-cellular-disabled-symbolic-rtl
+xsi-network-cellular-hardware-disabled-symbolic-rtl
+xsi-network-cellular-no-route-symbolic-rtl
+xsi-network-cellular-offline-symbolic-rtl
+xsi-network-cellular-signal-excellent-symbolic-rtl
+xsi-network-cellular-signal-good-symbolic-rtl
+xsi-network-cellular-signal-none-symbolic-rtl
+xsi-network-cellular-signal-ok-symbolic-rtl
+xsi-network-cellular-signal-weak-symbolic-rtl
+xsi-network-receive-symbolic-rtl
+xsi-network-transmit-symbolic-rtl
+xsi-orientation-portrait-right-symbolic-rtl
+xsi-orientation-portrait-left-symbolic-rtl
+xsi-pan-end-symbolic-rtl
+xsi-pan-start-symbolic-rtl
+xsi-power-profile-power-saver-symbolic-rtl
+xsi-power-profile-balanced-symbolic-rtl
+xsi-power-profile-performance-symbolic-rtl
+xsi-security-medium-symbolic-rtl
+xsi-semi-starred-symbolic-rtl
+xsi-view-list-bullet-symbolic-rtl
+xsi-switch-user-symbolic-rtl
+xsi-view-sort-ascending-symbolic-rtl
+xsi-view-sort-descending-symbolic-rtl
+xsi-view-list-ordered-symbolic-rtl
+xsi-view-list-symbolic-rtl
+xsi-view-paged-symbolic-rtl
+xsi-view-wrapped-symbolic-rtl
+xsi-search-wrap-symbolic
+
+
+### Pending that will be done:
+
+All done!
+
+

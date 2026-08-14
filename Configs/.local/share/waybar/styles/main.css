@@ -184,7 +184,8 @@ menu {
   color: @c2;
 }
 
-#custom-weather.minmax {
+#custom-weather.minmax,
+#custom-weather.minmax-only {
   font-size: 12px;
   margin: 2px 3px;
   color: @fg;
@@ -581,12 +582,6 @@ menu {
 #custom-display {
   margin: 2px 0px 4px;
   padding-right: 4px;
-}
-
-#custom-focusmode {
-  font-size: 17px;
-  margin: 0px 0px 2px;
-  padding-right: 2px;
 }
 
 #custom-keybindhint {

@@ -59,7 +59,7 @@ hl.window_rule({["name"] = "lua:windowrules:76", ["match"] = {["class"] = "^(com
 hl.window_rule({["name"] = "lua:windowrules:77", ["match"] = {["class"] = "^(io\\.gitlab\\.adhami3310\\.Impression)$"}, ["float"] = true})
 hl.window_rule({["name"] = "lua:windowrules:78", ["match"] = {["class"] = "^(org\\.kde\\.partitionmanager)$"}, ["float"] = true})
 hl.window_rule({["name"] = "ark-float", ["match"] = {["class"] = "^(org\\.kde\\.ark)$"}, ["float"] = true})
-hl.window_rule({["name"] = "qbittorrent-child-float", ["match"] = {["class"] = "^(org\\.qbittorrent\\.qBittorrent)$", ["initial_title"] = "negative:^qBittorrent v[0-9].*$"}, ["float"] = true, ["center"] = true})
+hl.window_rule({["name"] = "qbittorrent-child-float", ["match"] = {["class"] = "^(org\\.qbittorrent\\.qBittorrent)$", ["initial_title"] = "negative:^(qBittorrent.*)?$"}, ["float"] = true, ["center"] = true})
 hl.window_rule({["name"] = "lua:windowrules:82", ["match"] = {["class"] = "^(com\\.transmissionbt\\.transmission|transmission-gtk).*$", ["title"] = "^Transmission$"}, ["float"] = false})
 hl.window_rule({["name"] = "lua:windowrules:83", ["match"] = {["class"] = "^(com\\.transmissionbt\\.transmission|transmission-gtk).*$", ["title"] = "^Transmission Preferences$"}, ["float"] = false})
 hl.window_rule({["name"] = "lua:windowrules:84", ["match"] = {["class"] = "^(xdg-desktop-portal-gtk)$"}, ["float"] = true})

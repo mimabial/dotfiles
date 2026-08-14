@@ -1439,6 +1439,8 @@ def resolution_cache_key(
         "fallback": args.fallback,
         "min_similarity": args.min_similarity,
     }
+    if album and any(normalize(album) == normalize(title) for _, title in candidates):
+        payload["single_reissue"] = True
     encoded = json.dumps(
         payload,
         ensure_ascii=False,
@@ -1495,6 +1497,11 @@ def resolve(
     candidates = derive_candidates(path, tags, root)
     fallback_candidates = first_artist_fallbacks(candidates)
     album, _ = album_context(path, tags, root)
+    single_release = bool(
+        album
+        and not folder_hints(path, root)[1]
+        and normalize(album) == normalize(existing(tags, "title"))
+    )
     cache_key = (
         resolution_cache_key(
             path,
@@ -1522,6 +1529,19 @@ def resolve(
                 CACHE_SUCCESS_TTL,
             )
         return metadata
+
+    def lookup(provider: str, artist: str, title: str, requested_album: str) -> dict:
+        if provider == "itunes":
+            return from_itunes(
+                artist, title, limiters["itunes"], args.min_similarity, requested_album
+            )
+        if provider == "deezer":
+            return from_deezer(
+                artist, title, limiters["deezer"], args.min_similarity, requested_album
+            )
+        return from_musicbrainz(
+            artist, title, limiters["musicbrainz"], album=requested_album
+        )
 
     if key and not args.no_fingerprint:
         try:
@@ -1566,46 +1586,40 @@ def resolve(
         for provider in args.provider_order:
             for artist, title in candidate_tier:
                 try:
-                    if provider == "itunes":
-                        metadata = from_itunes(
-                            artist,
-                            title,
-                            limiters["itunes"],
-                            args.min_similarity,
-                            album=album,
-                        )
-                    elif provider == "deezer":
-                        metadata = from_deezer(
-                            artist,
-                            title,
-                            limiters["deezer"],
-                            args.min_similarity,
-                            album=album,
-                        )
-                    else:
-                        metadata = from_musicbrainz(
-                            artist,
-                            title,
-                            limiters["musicbrainz"],
-                            album=album,
-                        )
-
-                    if tier_index == 0:
-                        return identified(metadata)
-
-                    score = match_score(
-                        metadata.get("artist", ""),
-                        metadata.get("title", ""),
-                        artist,
-                        title,
-                    )
-                    if score > best_fallback_score:
-                        best_fallback = metadata
-                        best_fallback_score = score
-                    if score >= 0.999:
-                        return identified(metadata)
+                    metadata = lookup(provider, artist, title, album)
                 except Unidentified as exc:
-                    failures.setdefault(str(exc), []).append(provider)
+                    if not single_release or not args.fallback:
+                        failures.setdefault(str(exc), []).append(provider)
+                        continue
+                    try:
+                        metadata = lookup(provider, artist, title, "")
+                    except Unidentified as relaxed_exc:
+                        failures.setdefault(str(relaxed_exc), []).append(provider)
+                        continue
+                    metadata.update(
+                        title=existing(tags, "title") or metadata.get("title", ""),
+                        artist=existing(tags, "artist") or metadata.get("artist", ""),
+                        album=album,
+                        date=existing(tags, "date"),
+                        tracknumber=existing(tags, "tracknumber") or "1/1",
+                        artwork_url="",
+                    )
+                    metadata.pop("musicbrainz_releasegroupid", None)
+
+                if tier_index == 0:
+                    return identified(metadata)
+
+                score = match_score(
+                    metadata.get("artist", ""),
+                    metadata.get("title", ""),
+                    artist,
+                    title,
+                )
+                if score > best_fallback_score:
+                    best_fallback = metadata
+                    best_fallback_score = score
+                if score >= 0.999:
+                    return identified(metadata)
             if not args.fallback:
                 break
         if best_fallback is not None:

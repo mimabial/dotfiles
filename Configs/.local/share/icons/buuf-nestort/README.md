@@ -19,7 +19,24 @@ There are two options:
 
 To make this theme available for every user (including root, useful when you run apps with root privileges such as packet manager), copy this directory to `/usr/share/icons` (you'll need super-user rights).
 
-If you just need to make it available for your user, you may copy it to `~/.icons` (`~` stands for your home directory, in case you don't know the basics of GNU/Linux shell). For KDE Plasma desktop environments, it's usually better to copy it to `~/.local/share/icons`, instead.
+If you just need to make it available for your user, you may copy it to `~/.local/share/icons` (`~` stands for your home directory, in case you don't know the basics of GNU/Linux shell). Older distributions might need them in `~/.icons` (although then I suggest to create a symbolic link, like `ln -s ~/.local/share/icons .icons` from your home directory). Althought the most recommendable way to install it (because then it's very straightforward to update) is to clone the repo and link it:
+
+```sh
+cd ~/Themes/icons # for example; you need to have created it before
+git clone https://git.disroot.org/eudaimon/buuf-nestort.git
+cd ~/.local/share/icons # note: you may need to create the directory, if it is not present
+ln -s ~/Themes/icons/buuf-nestort
+```
+
+This way, the theme will be available for your user (not everyone else; for that, you'd have to link it in `/usr/share/icons`)
+
+Now, when you want to update the theme:
+
+```sh
+cd ~/Themes/icons/buuf-nestort
+git pull # this fetches the latest changes
+```
+
 
 # Customization
 
@@ -34,7 +51,11 @@ you need to do it before installing the theme (or, if you have already installed
 
 # Change log
 
-## Current state (2022-02-22)
+## Current state
+
+See logs (`git log`) to get the idea of all the icons that I continuously add. Basically I try to adapt to the new icons that many desktops periodically add, plus new applications. Keeping an icon theme up to date is laborious!.
+
+## 2022-02-22
 
 Cleaned many placeholder icons (see previous change logs).
 Added Mate support.

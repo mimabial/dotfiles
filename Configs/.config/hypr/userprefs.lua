@@ -1,3 +1,5 @@
+hl.env("HYPR_PROFILE_WORKFLOW_LOCK", "1")
+
 hl.config({
     input = {
         kb_layout = "us,fr",

@@ -25,7 +25,6 @@ if [ "$flg_ThemeInstall" -eq 1 ]; then
         themeRepoQ+=("${themeRepo//\"/}")
         themePath="${confDir}/hypr/themes/${themeName}"
         [ -d "${themePath}" ] || mkdir -p "${themePath}"
-        [ -f "${themePath}/.sort" ] || echo "${#themeNameQ[@]}" >"${themePath}/.sort"
 
         if [ "${THEME_IMPORT_ASYNC}" -ne 1 ] && [ "${flg_DryRun}" -ne 1 ]; then
             if ! "${scrDir}/themepatcher.sh" "${themeName}" "${themeRepo}" "--skipcaching" "false"; then

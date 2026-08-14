@@ -15,7 +15,7 @@ flock "${lock_fd}" || exit 1
 
 workflow_set() {
   local output=""
-  if ! output="$("${workflows_script}" --set "$1" 2>&1)"; then
+  if ! output="$(HYPR_WORKFLOW_UNLOCK=1 "${workflows_script}" --set "$1" 2>&1)"; then
     print_log -sec "gamemode" -err "workflow" "${output:-failed to set $1}"
     return 1
   fi

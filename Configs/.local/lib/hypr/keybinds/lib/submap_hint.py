@@ -73,9 +73,17 @@ def build_hint(name):
         layout = None
     expand_meta_data(binds)
     submap_binds = [bind for bind in binds if bind.get("submap") == name]
-    workflow = load_shell_assignments(STATE_FILE).get("HYPR_WORKFLOW") if STATE_FILE.is_file() else ""
-    if workflow == "gaming":
-        submap_binds = [bind for bind in submap_binds if "Waybar" not in bind["action_key"]]
+    state = load_shell_assignments(STATE_FILE) if STATE_FILE.is_file() else {}
+    workflow = state.get("HYPR_WORKFLOW", "")
+    profile_locked = os.getenv("HYPR_PROFILE_WORKFLOW_LOCK", "1") != "0"
+    blocked = {
+        "gaming": ("Waybar", "windows mode", "select workflow"),
+        "powersaver": ("windows mode", "select workflow") if profile_locked else (),
+        "snappy": ("windows mode", "select workflow") if profile_locked and state.get("POWER_PROFILE_WORKFLOW_PREV") else (),
+        "windows": ("Waybar layout", "toggle Waybar", "cycle global layout"),
+    }.get(workflow, ())
+    if blocked:
+        submap_binds = [bind for bind in submap_binds if not any(text in bind["action_key"] for text in blocked)]
     if layout is not None:
         submap_binds = [
             bind for bind in submap_binds if applies_to_layout(bind, layout)

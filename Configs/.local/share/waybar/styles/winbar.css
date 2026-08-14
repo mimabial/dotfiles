@@ -4,14 +4,149 @@ window#waybar {
   background: alpha(@bg, 0.4);
 }
 
-#taskbar {
-  margin: 4px 0px;
+#workspaces {
+  margin: 2px 4px;
 }
 
-#taskbar button {
-  margin: 0px 4px;
+#workspaces > button,
+#workspaces > button.active,
+#workspaces > button:hover,
+#workspaces > button.active:hover {
+  margin: 0px;
+  padding: 0px;
+  border: 0px;
+  background: transparent;
+  animation: none;
+}
+
+#workspaces .taskbar-window {
+  margin: 2px 0px;
+  padding: 0px 5.5px;
+  border-bottom: 2px solid alpha(@br, 0);
+  border-radius: 0px;
+  background: alpha(@bg, 0.1);
+  transition-property: background-color;
+  transition-duration: 0.2s;
+}
+
+#workspaces .taskbar-window.active {
+  border-color: alpha(@act_br, 0.3);
+  background: alpha(@act_bg, 0.1);
+}
+
+#workspaces .taskbar-window:hover {
+  border-color: alpha(@hvr_br, 0.3);
+  background: alpha(@hvr_bg, 0.1);
+}
+
+#workspaces.kanji button,
+#workspaces.kanji button.active {
+  padding: 0 2px;
+}
+
+#workspaces.kanji button label {
+  color: alpha(@br, 0.2);
+  font-size: 12px;
+}
+
+#workspaces.kanji button.active {
+  font-size: 0px;
+  margin: 0px;
+  padding: 0px;
+}
+
+#workspaces.kanji-active button.active label {
+  font-weight: bold;
+  color: alpha(@act_br, 0.8);
+}
+
+#workspaces.kanji button:hover label {
+  color: alpha(@hvr_br, 0.8);
+}
+
+#workspaces.kanji button.urgent label {
+  color: @warning;
+}
+
+#clock.datetime-winbar {
+  margin: 2px 4px;
+  padding: 0 6px;
+  color: @fg;
+  font-size: 10px;
 }
 
 #tray {
-  margin: 4px;
+  font-size: 10px;
+  margin: 8px 2px 8px 4px;
+  padding: 0px;
+  border-radius: 0px;
+  border: none;
+  background: transparent;
+}
+
+#custom-gpuinfo.alt,
+#custom-cpuinfo.alt {
+  font-weight: normal;
+  margin: 8px 4px;
+  padding: 0px 6px 0px 4px;
+  color: @c7;
+  background: transparent;
+  border-radius: 0px;
+  font-size: 12px;
+}
+
+#custom-weather.alt {
+  font-size: 12px;
+}
+
+#custom-weather.minmax-alt,
+#custom-weather.minmax-only-alt {
+  font-size: 12px;
+  margin: 8px 2px;
+  padding: 0px 8px 0px 4px;
+  color: @fg;
+  border: none;
+  border-radius: 0px;
+}
+
+#custom-weather.sunrise-alt {
+  font-size: 12px;
+  margin: 8px 2px;
+  padding: 0px 4px 0px 4px;
+  color: @fg;
+  border: none;
+  border-radius: 0px;
+}
+
+#power-group {
+  padding: 0px;
+  margin: 6px 4px;
+  border-radius: 0px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid alpha(@alt_br, 0.3);
+}
+
+#power-profiles-daemon {
+  margin: 0px;
+  font-size: 13.5px;
+  border-radius: 0px;
+  background: transparent;
+  border: 1px solid alpha(@alt_br, 0.3);
+  padding: 0px 7px;
+}
+
+#custom-powermenu {
+  padding: 0px 6px 0px 8px;
+  margin-left: 2px;
+}
+
+#custom-hyprmenu {
+  font-size: 16px;
+  margin: 8px;
+  padding: 0px 10px 0px 8px;
+  border-radius: 0px;
+  border: 1px solid alpha(@act_br, 0.3);
+  background: alpha(@act_bg, 0.3);
+  color: @act_fg;
 }

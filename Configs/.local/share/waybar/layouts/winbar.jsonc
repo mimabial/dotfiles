@@ -12,6 +12,28 @@
     "$XDG_DATA_HOME/waybar/modules/*json*",
     "$XDG_CONFIG_HOME/waybar/includes/includes.json"
   ],
-  "modules-left": ["wlr/taskbar"],
-  "modules-right": ["tray"]
+  "modules-left": ["custom/hyprmenu", "hyprland/workspaces#winbar", "group/active-group"],
+  "modules-center": ["ext/workspaces#kanji"],
+  "modules-right": ["group/tray-group", "clock#datetime-winbar"],
+  "group/active-group": {
+    "orientation": "inherit",
+    "drawer": {
+      "transition-duration": 500,
+      "transition-left-to-right": true
+    },
+    "modules": [
+      "hyprland/workspaces#kanji-active",
+      "custom/weather#sunrise-alt",
+      "custom/weather#minmax-only-alt",
+      "custom/weather#alt"
+    ]
+  },
+  "group/tray-group": {
+    "orientation": "inherit",
+    "drawer": {
+      "transition-duration": 500,
+      "transition-left-to-right": false
+    },
+    "modules": ["tray#winbar", "custom/cpuinfo#alt", "custom/gpuinfo#alt"]
+  }
 }

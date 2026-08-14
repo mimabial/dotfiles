@@ -131,7 +131,7 @@ exec("", "XF86MonBrightnessDown", "[Hardware|Brightness] decrease", "hyprshell b
 
 -- Utilities
 exec(mod, "K", "[Utilities] switch keyboard layout", "hyprshell keyboard-switch.sh", {locked = true})
-exec(mod, "M", "[Utilities] focus mode", "hyprshell util/workflow-toggle.sh focus")
+exec(mod, "M", "[Utilities] windows mode", "hyprshell util/workflow-toggle.sh windows")
 exec(mod .. " SHIFT", "M", "[Utilities] game mode", "hyprshell util/workflow-toggle.sh gaming")
 exec(mod .. " SHIFT", "G", "[Utilities] game launcher", "pkill -x rofi || hyprshell gaming/launcher.sh")
 

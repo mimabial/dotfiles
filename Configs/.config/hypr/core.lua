@@ -21,6 +21,7 @@ hl.config({
     input = {accel_profile = "flat", numlock_by_default = true},
     dwindle = {preserve_split = true},
     master = {new_status = "master"},
+    scrolling = {column_width = 0.5},
     misc = {
         vrr = 0,
         disable_hyprland_logo = true,
@@ -32,6 +33,31 @@ hl.config({
     xwayland = {force_zero_scaling = true},
     general = {snap = {enabled = true}},
 })
+
+local function sync_scrolling_width()
+    local ws = hl.get_active_special_workspace() or hl.get_active_workspace()
+    if ws and ws.tiled_layout == "scrolling" then
+        local windows = hl.get_windows({workspace = ws, floating = false, mapped = true})
+        local overflow = #windows > 2
+        hl.dispatch(hl.dsp.layout("colresize all " .. (overflow and 0.45 or 0.5)))
+        if not overflow then hl.dispatch(hl.dsp.layout("fit all")); return end
+        local m, gaps, border = ws.monitor, hl.get_config("general.gaps_out"), hl.get_config("general.border_size")
+        local left, right = m.position.x + m.reserved.left + gaps.left + border, m.position.x + m.size.width / m.scale - m.reserved.right - gaps.right - border
+        table.sort(windows, function(a, b) return a.at.x < b.at.x end)
+        local active, index, shift = hl.get_active_window(), 0, 0
+        for i, w in ipairs(windows) do if w.address == active.address then index = i; break end end
+        if #windows > 3 and index > 1 and index < #windows then
+            local pair = math.min(index, #windows - 2)
+            shift = (left + right - windows[pair].at.x - windows[pair + 1].at.x - windows[pair + 1].size.x) / 2
+        else
+            local first, last = windows[1], windows[#windows]
+            shift = first.at.x > left and left - first.at.x or last.at.x + last.size.x < right and right - last.at.x - last.size.x or 0
+        end
+        if shift ~= 0 then hl.dispatch(hl.dsp.layout("move " .. (shift > 0 and "+" or "") .. shift)) end
+    end
+end
+for _, event in ipairs({"window.open", "window.destroy", "window.move_to_workspace", "window.active", "workspace.active"}) do hl.on(event, sync_scrolling_width) end
+sync_scrolling_width()
 
 hl.curve("wind", {type = "bezier", points = {{0.05, 0.9}, {0.1, 1.05}}})
 hl.curve("winIn", {type = "bezier", points = {{0.1, 1.1}, {0.1, 1.1}}})

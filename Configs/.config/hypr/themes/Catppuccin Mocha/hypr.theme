@@ -7,8 +7,8 @@ $NVIM_VARIANT = mocha
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
-# $CURSOR_THEME = Layan-white-cursors
-$CURSOR_THEME = FernBLZ
+$CURSOR_THEME = Layan-white-cursors
+# $CURSOR_THEME = FernBLZ
 $CURSOR_SIZE = 34
 
 general {

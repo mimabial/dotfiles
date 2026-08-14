@@ -6,7 +6,8 @@
     "on-click": "activate",
     "on-scroll-up": "hyprctl dispatch \"hl.dsp.focus({ workspace = 'r-1' })\"",
     "on-scroll-down": "hyprctl dispatch \"hl.dsp.focus({ workspace = 'r+1' })\"",
-    "sort-by-name": true,
+    "sort-by-name": false,
+    "sort-by-coordinates": true,
     "format": "{icon}",
     "format-icons": {
       "1": "一",
@@ -29,7 +30,7 @@
       "18": "十八",
       "19": "十九",
       "20": "二十",
-      "default": " "
+      "default": ""
     }
   }
 }

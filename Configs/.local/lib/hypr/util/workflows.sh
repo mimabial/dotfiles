@@ -16,6 +16,19 @@ workflows_shared_dir="${HYPR_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/hyp
 workflows_state_file="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/workflows.lua"
 workflow_previous_name="$(state_get "HYPR_WORKFLOW" "default")"
 
+workflow_locked() {
+  local owner=""
+  [[ "${HYPR_WORKFLOW_UNLOCK:-0}" == 1 ]] && return 1
+  [[ "$(busctl --user get-property com.feralinteractive.GameMode /com/feralinteractive/GameMode com.feralinteractive.GameMode ClientCount 2>/dev/null)" =~ ^i[[:space:]]+[1-9][0-9]*$ ]] && owner=gaming
+  if [[ -z "${owner}" && "${HYPR_PROFILE_WORKFLOW_LOCK:-1}" != 0 ]]; then
+    case "$(powerprofilesctl get 2>/dev/null)" in
+      power-saver) owner=powersaver ;;
+      performance) owner=snappy ;;
+    esac
+  fi
+  [[ -n "${owner}" && "${1:-}" != "${owner}" ]]
+}
+
 show_help() {
   cat <<HELP
 Usage: $0 [OPTIONS]
@@ -124,32 +137,11 @@ apply_waybar_workflow() {
   fi
 }
 
-get_workflow_power_profile() {
-  local workflow_path="$1"
-  sed -n 's/^[[:space:]]*vars\.set("WORKFLOW_POWER_PROFILE",[[:space:]]*"\([^"]*\)").*/\1/p' "${workflow_path}" | head -n1
-}
-
-apply_power_profile_workflow() {
-  local profile current_profile saved_profile
-  command -v powerprofilesctl >/dev/null 2>&1 || return 0
-
-  profile="$(get_workflow_power_profile "${current_workflow_path}")"
-  saved_profile="$(state_get "WORKFLOW_POWER_PROFILE_PREV" "")"
-
-  if [[ -n "${profile}" ]]; then
-    current_profile="$(powerprofilesctl get 2>/dev/null || true)"
-    [[ -n "${saved_profile}" ]] || state_set "WORKFLOW_POWER_PROFILE_PREV" "${current_profile}" "staterc"
-    [[ "${current_profile}" == "${profile}" ]] || powerprofilesctl set "${profile}" >/dev/null 2>&1 || true
-  elif [[ -n "${saved_profile}" ]]; then
-    powerprofilesctl set "${saved_profile}" >/dev/null 2>&1 && state_set "WORKFLOW_POWER_PROFILE_PREV" "" "staterc" || true
-  fi
-}
-
 sync_workflow_flags() {
-  local focus=0 gaming=0
-  [[ "${current_workflow}" == focus ]] && focus=1
+  local windows=0 gaming=0
+  [[ "${current_workflow}" == windows ]] && windows=1
   [[ "${current_workflow}" == gaming ]] && gaming=1
-  state_set HYPR_FOCUSMODE "${focus}" staterc
+  state_set HYPR_FOCUSMODE "${windows}" staterc
   state_set HYPR_GAMEMODE "${gaming}" staterc
 }
 
@@ -176,7 +168,7 @@ fn_select() {
   workflow_list="${default_icon}\t default"
 
   while IFS= read -r workflow_name; do
-    [[ "${workflow_name}" == "default" || "${workflow_name}" == "gaming" ]] && continue
+    [[ "${workflow_name}" == "default" || "${workflow_name}" == "gaming" || "${workflow_name}" == "powersaver" || "${workflow_name}" == "snappy" ]] && continue
     workflow_path="$(resolve_workflow_path "${workflow_name}")" || continue
     workflow_icon="$(get_workflow_icon "${workflow_path}")"
     workflow_list="${workflow_list}\n${workflow_icon}\t ${workflow_name}"
@@ -260,15 +252,16 @@ LUA
 }
 
 apply_workflow_update() {
-  local notification_state=disable
+  local notification_rule notification_state
   get_info
-  [[ "${current_workflow}" == gaming ]] && notification_state=enable
-  dunstctl rule gaming_opaque "${notification_state}" >/dev/null 2>&1 || true
+  for notification_rule in windows_90 gaming_opaque; do
+    [[ "${current_workflow}" == "${notification_rule%%_*}" ]] && notification_state=enable || notification_state=disable
+    dunstctl rule "${notification_rule}" "${notification_state}" >/dev/null 2>&1 || true
+  done
   fn_update
   sync_workflow_flags
   hyprctl reload config-only -q
   apply_waybar_workflow
-  apply_power_profile_workflow
 }
 
 handle_waybar() {
@@ -291,6 +284,7 @@ eval set -- "${PARSED}"
 while true; do
   case "$1" in
     -S | --select)
+      workflow_locked && exit 1
       fn_select
       apply_workflow_update
       exit 0
@@ -304,6 +298,7 @@ while true; do
         echo "Error: unknown workflow '$2'" >&2
         exit 1
       fi
+      workflow_locked "$2" && exit 1
       state_set "HYPR_WORKFLOW" "$2" "staterc"
       apply_workflow_update
       exit 0
