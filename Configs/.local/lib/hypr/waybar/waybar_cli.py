@@ -91,6 +91,8 @@ def parse_args(argv=None):
     parser.add_argument('--select', '-S', action='store_true', help='Select layout and then style')
     parser.add_argument('-G', '--generate-includes', action='store_true', help='Generate includes.json file')
     parser.add_argument('--kill', '-k', action='store_true', help='Kill all Waybar instances and watcher script')
+    parser.add_argument('--disable', action='store_true', help='Persistently stop Waybar and its watcher')
+    parser.add_argument('--enable', action='store_true', help='Enable and start Waybar')
     parser.add_argument('--hide', action='store_true', help='Send SIGUSR1 to Waybar systemd unit to toggle hide')
     parser.add_argument('--restart-direct', action='store_true', help='Restart Waybar immediately without deferring to the watcher')
     parser.add_argument('-u', '--update', action='store_true', help='Update all (icon size, border radius, includes, config, style)')
@@ -124,6 +126,14 @@ def main(argv=None):
     if workflow == 'windows' and (locked.intersection(arg.partition('=')[0] for arg in argv) or any(arg.startswith('--set=') and arg != '--set=winbar' for arg in argv) or '--set' in argv and argv[argv.index('--set') + 1:][:1] != ['winbar']):
         return 1
 
+    if '--disable' in argv:
+        set_state_value('WAYBAR_ENABLED', '0')
+        kill_waybar_and_watcher()
+        return 0
+    if '--enable' in argv:
+        set_state_value('WAYBAR_ENABLED', '1')
+        restart_waybar_direct()
+        return 0
     if '--kill' in argv or '-k' in argv:
         kill_waybar_and_watcher()
         return 0

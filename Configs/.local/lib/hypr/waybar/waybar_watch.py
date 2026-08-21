@@ -32,6 +32,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 from pyutils.xdg_base_dirs import xdg_runtime_dir
 from waybar_runtime import (
     get_waybar_pid,
+    is_waybar_enabled,
     is_waybar_operation_locked,
     is_waybar_running_or_starting,
     is_runtime_lock_held,
@@ -285,6 +286,10 @@ def smart_reload_waybar(changed_files):
 
 def watch_waybar():
     """Watch waybar configs with inotify or fallback to polling."""
+    if not is_waybar_enabled():
+        logger.debug("Waybar is disabled; skipping watcher")
+        return
+
     signal.signal(signal.SIGCHLD, signal.SIG_IGN)
 
     # Register signal handlers for graceful shutdown

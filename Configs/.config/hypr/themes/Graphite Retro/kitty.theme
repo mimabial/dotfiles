@@ -25,7 +25,7 @@ active_tab_background #1c1c1c
 active_tab_foreground #7fa1c3
 inactive_tab_foreground #D9D9D9
 inactive_tab_background #303030
-tab_bar_background #595959
+tab_bar_background #303030
 
 # Colors for marks (marked text in the terminal)
 mark1_foreground #1c1c1c
@@ -39,7 +39,7 @@ mark3_background #66b2b2
 
 # black
 color0 #1c1c1c
-color8 #404040
+color8 #595959
 
 # red
 color1 #ffb3ba
@@ -50,8 +50,8 @@ color2 #baffc9
 color10 #d6efd8
 
 # yellow
-color3 #ffffba
-color11 #bedc74
+color3 #bedc74
+color11 #ffffba
 
 # blue
 color4 #7fa1c3

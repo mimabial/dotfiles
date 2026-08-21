@@ -19,11 +19,12 @@ STATE_FILE="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/windo
 
 show_help() {
   cat <<'HELP'
-Usage: window-layout.sh [--toggle|--toggle-reverse|--set <name>|--waybar|--help]
+Usage: window-layout.sh [--toggle|--toggle-reverse|--set <name>|--list|--waybar|--help]
 
   --toggle           Cycle to the next layout
   --toggle-reverse   Cycle to the previous layout
   --set <name>       Apply a specific layout
+  --list             List layouts as name, icon and label
   --waybar           Emit JSON for the waybar custom module
 HELP
 }
@@ -74,6 +75,11 @@ handle_waybar() {
     "${icon}" "${icon}" "${label}"
 }
 
+handle_list() {
+  local name
+  for name in "${LAYOUTS[@]}"; do printf '%s\t%s\t%s\n' "${name}" "${LAYOUT_ICONS[$name]}" "${LAYOUT_LABELS[$name]}"; done
+}
+
 case "${1:-}" in
   --toggle) handle_toggle 1 ;;
   --toggle-reverse) handle_toggle -1 ;;
@@ -83,6 +89,7 @@ case "${1:-}" in
     handle_set "$1"
     ;;
   --waybar) handle_waybar ;;
+  --list) handle_list ;;
   -h | --help | "") show_help ;;
   *) printf 'Unknown option: %s\n' "$1" >&2; show_help >&2; exit 1 ;;
 esac

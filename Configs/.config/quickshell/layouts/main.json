@@ -1,0 +1,30 @@
+[
+  "date",
+  {
+    "id": "eyecare",
+    "props": {
+      "sliderFirst": true
+    }
+  },
+  {
+    "id": "status",
+    "props": {
+      "reverse": false,
+      "sliderFirst": true
+    }
+  },
+  "privacybutton",
+  "screen",
+  "mediaplayer",
+  "spacer",
+  "datetime",
+  "tui-drawer",
+  "workspaces",
+  "submap",
+  "forecast",
+  "spacer",
+  "notification",
+  "updates",
+  "connectivity",
+  "power"
+]

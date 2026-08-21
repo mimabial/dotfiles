@@ -28,6 +28,8 @@
     "group/screen",
     "group/notification",
     "group/networkmanagement",
+    "group/bluetooth",
+    "group/wifi",
     "group/power"
   ],
   "group/tui-drawer": {
@@ -119,7 +121,7 @@
       "transition-duration": 500,
       "transition-left-to-right": false
     },
-    "modules": ["bluetooth", "bluetooth#status"]
+    "modules": ["custom/bluetooth", "custom/bluetooth#status"]
   },
   "group/wifi": {
     "orientation": "inherit",

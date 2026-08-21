@@ -38,16 +38,16 @@ color1 #DE6E7C
 color9 #E8838F
 
 # green
-color2  #D9D9D9
-color10 #D9D9D9
+color2  #66A5AD
+color10 #65B8C1
 
 # yellow
-color3  #595959
-color11 #595959
+color3  #B279A7
+color11 #CF86C1
 
 # blue
-color4  #A6A6A6
-color12 #A6A6A6
+color4  #888F94
+color12 #888F94
 
 # magenta
 color5  #B279A7
@@ -58,5 +58,5 @@ color6  #66A5AD
 color14 #65B8C1
 
 # white
-color7  #B4BDC3
-color15 #888F94
+color7  #D9D9D9
+color15 #D9D9D9

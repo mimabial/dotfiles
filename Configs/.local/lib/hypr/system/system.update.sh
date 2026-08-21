@@ -11,8 +11,9 @@ hypr_runtime_require system || exit 1
 # shellcheck source=/dev/null
 source "${BASH_SOURCE[0]%/*}/pm.updates.lib.sh"
 
-hypr_help_guard "Usage: hyprshell system/system.update [up|--run-upgrade]
-Report pending updates as waybar JSON; 'up' opens an upgrade terminal." "$@"
+hypr_help_guard "Usage: hyprshell system/system.update [up|--run-upgrade|--refresh]
+Report pending updates as waybar JSON; 'up' opens an upgrade terminal.
+Repeat calls inside ${cache_ttl:-900}s reuse the cached report; --refresh forces a re-check." "$@"
 
 if aur_helper="$(get_aur_helper)"; then
   :
@@ -21,6 +22,8 @@ else
 fi
 runtime_dir="${XDG_RUNTIME_DIR:-/tmp}/hypr"
 temp_file="${runtime_dir}/update_info"
+cache_file="${runtime_dir}/update_status.json"
+cache_ttl="${HYPR_UPDATE_CACHE_TTL:-900}"
 temp_db=""
 declare -a system_update_errors=()
 
@@ -124,7 +127,7 @@ require_update_info() {
 }
 
 run_updates() {
-  trap 'system_update_refresh_waybar "$?"' EXIT
+  trap 'rm -f "${cache_file}" 2>/dev/null; system_update_refresh_waybar "$?"' EXIT
   require_update_info || return 1
   read_update_info || return 1
   command -v fastfetch >/dev/null 2>&1 && fastfetch
@@ -147,6 +150,13 @@ fi
 if [[ "${1:-}" == "--run-upgrade" ]]; then
   run_updates
   exit $?
+fi
+
+if [[ "${1:-}" != "--refresh" ]] && [[ -s "${cache_file}" ]] \
+  && (($(date +%s) - $(stat -c %Y "${cache_file}" 2>/dev/null || echo 0) < cache_ttl)) \
+  && jq -e . >/dev/null 2>&1 <"${cache_file}"; then
+  cat "${cache_file}"
+  exit 0
 fi
 
 temp_db=$(mktemp -d "${XDG_RUNTIME_DIR:-"/tmp"}/checkupdates_db_XXXXXX")
@@ -215,9 +225,12 @@ format_check_errors() {
   printf '  %s\n' "${system_update_errors[@]}"
 }
 
+pango_escape() { sed 's/&/\&amp;/g;s/</\&lt;/g;s/>/\&gt;/g'; }
+
 append_tooltip_section() {
   local header="$1"
-  local body="$2"
+  local body
+  body="$(pango_escape <<<"$2")"
   [[ -n "$body" ]] || return 0
   [[ -n "$content" ]] && content+=$'\n'
   content+="<b>${header}:</b>"$'\n'"${body}"
@@ -239,11 +252,53 @@ build_tooltip() {
   [[ -n "$content" ]] && printf '\n\n%s' "$content"
 }
 
+packages_json() {
+  # "pkg old -> new [age]" lines (pacman/aur) into objects the popup can render
+  jq -R -s -c 'split("\n")
+    | map(select(length > 0)
+      | (split(" ") | map(select(length > 0)))
+      | select(length > 0)
+      | (index("->") // index("\u2192")) as $arrow
+      | {name: .[0],
+         from: (.[1] // ""),
+         to: (if $arrow then (.[$arrow + 1] // "") else (.[-1] // "") end)})' <<<"${1-}"
+}
+
+flatpak_json() {
+  local body
+  body="$(format_flatpak_updates)"
+  jq -R -s -c 'split("\n")
+    | map(select(length > 0)
+      | sub("^ +"; "")
+      | (split("  ") | map(select(length > 0)))
+      | select(length > 0)
+      | {name: .[0], from: ((.[1] // "") | split(" \u2192 ") | .[0] // ""),
+         to: ((.[1] // "") | split(" \u2192 ") | .[1] // "")})' <<<"${body}"
+}
+
+errors_json() {
+  local list=""
+  ((${#system_update_errors[@]})) && printf -v list '%s\n' "${system_update_errors[@]}"
+  jq -R -s -c 'split("\n") | map(select(length > 0))' <<<"${list}"
+}
+
 print_waybar_json() {
   local text="$1"
   local tooltip="$2"
   local class="${3:-}"
-  jq -cn --arg text "$text" --arg tooltip "$tooltip" --arg class "$class" '{text:$text, tooltip:$tooltip, class:$class}'
+  local payload
+  payload="$(jq -cn --arg text "$text" --arg tooltip "$tooltip" --arg class "$class" \
+    --argjson pacman "$(packages_json "${ofc_list-}")" \
+    --argjson aur "$(packages_json "${aur_list-}")" \
+    --argjson flatpak "$(flatpak_json)" \
+    --argjson errors "$(errors_json)" \
+    '{text:$text, tooltip:$tooltip, class:$class,
+      packages: {pacman: $pacman, aur: $aur, flatpak: $flatpak}, errors: $errors}')"
+  mkdir -p "${runtime_dir}"
+  local tmp
+  tmp="$(mktemp "${cache_file}.XXXXXX")"
+  printf '%s\n' "${payload}" >"${tmp}" && mv -f "${tmp}" "${cache_file}" || rm -f "${tmp}"
+  printf '%s\n' "${payload}"
 }
 
 write_update_info "$ofc" "$aur" "$fpk"

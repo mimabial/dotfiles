@@ -151,12 +151,24 @@ def format_time_multiple_lines(
         total = quantize_display_seconds(seconds, countdown=countdown)
         h, m = divmod(total, 3600)
         m, s = divmod(m, 60)
-        icon = "󰼛" if playing else " "
+        icon = "󰼛" if playing else "󰈅"
         if h:
             return f"{icon}{h:02d}\n:{m:02d}\n:{s:02d}"
         return f"{icon}{m:02d}\n:{s:02d}"
     except Exception:
         return " \n:00"
+
+
+# All three from Material Design so the states share an optical box.
+STATE_ICONS = {
+    "Playing": "\U000f0f1b",
+    "Paused": "\U000f03e4",
+    "Stopped": "\U000f04db",
+}
+
+
+def format_state_icon(status: str) -> str:
+    return STATE_ICONS.get(status, STATE_ICONS["Stopped"])
 
 
 def format_live_multiple_lines(playing: bool) -> str:

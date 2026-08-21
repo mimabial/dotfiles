@@ -297,16 +297,10 @@ theme_apply_phase_d_run_jobs() {
   # Running it as a parallel job raced with the wallpaper symlink update.
   theme_apply_wait_jobs "${job_log_dir}" || true
 
-  # Must follow the wait barrier: the desktop jobs write the icon sinks it reads.
   theme_apply_phase_d_waybar_icon_sync || true
+  theme_apply_phase_d_quickshell_icon_sync || true
 }
 
-# Safety net behind the phase-A icon-aware restart (theme_apply_job_waybar):
-# phase A writes the dconf sink and restarts against it, so this normally
-# short-circuits on the cache match. It still catches a bar that died, a
-# phase-A restart that failed, and sinks that only settle with the desktop
-# jobs (gtk settings.ini, xsettingsd). Concurrent restarts serialize on
-# WAYBAR_OP_LOCK inside waybar.py.
 theme_apply_phase_d_waybar_icon_sync() {
   theme_apply_generation_is_current || return 0
 
@@ -315,9 +309,6 @@ theme_apply_phase_d_waybar_icon_sync() {
   cached_icon_theme="$(state_get "waybar_icon_theme" "" 2>/dev/null || true)"
 
   if [[ -n "${current_icon_theme}" && "${current_icon_theme}" == "${cached_icon_theme}" ]]; then
-    # A matching cache means phase A claimed the restart; if the bar is down
-    # we are likely inside its kill/start window, so give it time to land
-    # before resurrecting.
     local grace=0
     while ((grace < 30)); do
       hypr_user_pgrep -x waybar >/dev/null 2>&1 && return 0
@@ -333,6 +324,33 @@ theme_apply_phase_d_waybar_icon_sync() {
 
   [[ -n "${current_icon_theme}" ]] \
     && state_set "waybar_icon_theme" "${current_icon_theme}" "staterc" 2>/dev/null || true
+}
+
+# Quickshell resolves icons through qt6ct, which reads its conf once at process
+# start — an ipc reload keeps the stale theme, only a process restart works.
+# Unlike waybar, a stopped quickshell stays stopped.
+theme_apply_phase_d_quickshell_icon_sync() {
+  theme_apply_generation_is_current || return 0
+
+  local current_icon_theme="" cached_icon_theme=""
+  current_icon_theme="$(theme_apply_current_icon_theme)"
+  cached_icon_theme="$(state_get "quickshell_icon_theme" "" 2>/dev/null || true)"
+
+  if [[ -n "${current_icon_theme}" && "${current_icon_theme}" == "${cached_icon_theme}" ]]; then
+    return 0
+  fi
+
+  if systemctl --user --quiet is-active hyprland-quickshell.service 2>/dev/null; then
+    systemctl --user restart hyprland-quickshell.service 2>/dev/null || {
+      print_log -sec "theme.apply" -warn "quickshell" "icon-theme restart failed"
+      return 1
+    }
+  elif hypr_user_pgrep -x quickshell >/dev/null 2>&1; then
+    print_log -sec "theme.apply" -warn "quickshell" "running outside hyprland-quickshell.service; icons follow after manual restart"
+  fi
+
+  [[ -n "${current_icon_theme}" ]] \
+    && state_set "quickshell_icon_theme" "${current_icon_theme}" "staterc" 2>/dev/null || true
 }
 
 # --- Helpers used by phase-D jobs ---
@@ -443,7 +461,7 @@ theme_apply_job_secondary_updates() {
   theme_apply_generation_is_current || return 0
   color_finalize_source_generated_colors || return 1
   color_finalize_export_icon_theme || return 1
-  # waybar border-radius already updated synchronously by theme.apply.sh:553.
+  # waybar border-radius already updated synchronously by theme.apply.sh.
   ASYNC_POST_UPDATES=1 post_updates >/dev/null 2>&1 || true
 }
 

@@ -12,6 +12,9 @@ hl.config({
         mouse_move_enables_dpms = true,
         key_press_enables_dpms = true,
     },
+    decoration = {
+        blur = {popups = true},
+    },
 })
 
 hl.on("hyprland.start", function()

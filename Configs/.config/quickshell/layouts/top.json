@@ -1,0 +1,5 @@
+{
+  "left": ["taskbar", "mediaplayer"],
+  "center": ["datetime", "mark-left", "workspaces", "mark-right", "weather"],
+  "right": ["submap", "status", "monitor", "screen", "notification", "privacybutton", "tray", "power"]
+}

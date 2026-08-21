@@ -189,9 +189,6 @@ theme_apply_restart_waybar_direct() {
   "${waybar_script}" --restart-direct
 }
 
-# Resolve the GTK icon theme currently in effect — the value waybar's
-# wlr/taskbar and tray modules would load on a restart. Prefer gsettings
-# (authoritative for GTK), fall back to the generated xsettingsd config.
 theme_apply_current_icon_theme() {
   local value=""
 
@@ -397,7 +394,6 @@ theme_apply_update_waybar_border_radius() {
 
   if ! declare -F color_finalize_update_waybar_border_radius >/dev/null; then
     [[ -r "${finalize_lib}" ]] || return 1
-    # shellcheck source=/dev/null
     source "${finalize_lib}" || return 1
   fi
 
@@ -499,10 +495,6 @@ theme_apply_job_waybar() {
     return 1
   }
 
-  # Icon-theme changes need a full restart (taskbar/tray icons load only at
-  # startup), and waybar reads the icon theme from gsettings, so the dconf
-  # sink must be written before the restart. theme_apply_phase_d_waybar_icon_sync
-  # is the safety net if this restart fails or the bar dies later.
   if theme_apply_prepare_desktop_state; then
     theme_desktop_write_dconf_content || true
     theme_desktop_restart_portal_backends_if_needed || true
@@ -517,8 +509,6 @@ theme_apply_job_waybar() {
     return 0
   fi
 
-  # Advance the cache before the kill window so the phase-D icon sync sees
-  # this restart as claimed; roll it back on failure so the safety net retakes.
   [[ -n "${current_icon_theme}" ]] \
     && state_set "waybar_icon_theme" "${current_icon_theme}" "staterc" 2>/dev/null || true
 

@@ -251,21 +251,21 @@ window.popup decoration {
    BLUETOOTH
    ============================================ */
 
-#bluetooth {
+#custom-bluetooth {
   margin: 2px;
   padding: 0px 11px 0px 10px;
   border: 1px solid alpha(@alt_br, 0.3);
 }
 
-#bluetooth.status {
+#custom-bluetooth.status {
   margin: 6px 2px;
   border: transparent;
   background: alpha(@alt_bg, 0.1);
   color: alpha(@accent, 0.7);
 }
 
-#bluetooth.discoverable,
-#bluetooth.discovering {
+#custom-bluetooth.discoverable,
+#custom-bluetooth.discovering {
   animation-name: blink-active;
   animation-duration: 1s;
   animation-timing-function: linear;

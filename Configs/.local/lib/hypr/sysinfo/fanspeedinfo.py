@@ -49,10 +49,10 @@ def get_fan_speed(fan_data):
 
 
 def format_fan_speed_multiline(fan_rpm):
-    """Format fan speed as thousands over three-digit remainder."""
-    thousands = fan_rpm // 1000
-    remainder = fan_rpm % 1000
-    return f"{thousands}".rjust(3, "_") + f"\n{remainder:03d}"
+    """Format fan speed as an icon over thousands and a three-digit remainder."""
+    thousands, remainder = divmod(fan_rpm, 1000)
+    icon = "<span size='12pt'>\ue27e</span>"
+    return icon + "\n" + f"{thousands}".rjust(2, " ") + "." + f"\n{remainder:03d}"
 
 
 def get_current_fan_index(total_fans):
@@ -84,6 +84,21 @@ def toggle_fan(fans):
     save_fan_index(next_index)
 
     fan = fans[next_index]
+    print(f"Switched to: {fan['device']} - {fan['sensor']}")
+
+
+def use_fan(fans, index):
+    """Select a fan by index."""
+    if not fans:
+        print("No fans available")
+        return
+    try:
+        chosen = int(index) % len(fans)
+    except ValueError:
+        print(f"Not a fan index: {index}")
+        return
+    save_fan_index(chosen)
+    fan = fans[chosen]
     print(f"Switched to: {fan['device']} - {fan['sensor']}")
 
 
@@ -119,7 +134,19 @@ def generate_output(fans):
             tooltip_lines.append("(Click to cycle through fans)")
 
         tooltip = "\n".join(tooltip_lines)
-        output = {"text": text, "tooltip": tooltip}
+        rows = []
+        choices = []
+        for i, fan in enumerate(fans):
+            label = f"{fan['device']} - {fan['sensor']}"
+            rows.append({"label": label, "value": f"{get_fan_speed(fan)} RPM"})
+            choices.append({"id": str(i), "label": label, "active": i == current_index})
+        output = {
+            "text": text,
+            "tooltip": tooltip,
+            "title": "Fan",
+            "rows": rows,
+            "choices": choices,
+        }
 
     return output
 
@@ -128,12 +155,17 @@ def main():
     parser = argparse.ArgumentParser(description="Fan Speed Info")
     parser.add_argument("--toggle", "-t", action="store_true", help="Cycle to next fan")
     parser.add_argument("--reset", "-rf", action="store_true", help="Reset fan index")
+    parser.add_argument("--use", "-u", metavar="INDEX", help="Select fan by index")
     args = parser.parse_args()
 
     fans = get_all_fans()
 
     if args.reset:
         reset()
+        return
+
+    if args.use is not None:
+        use_fan(fans, args.use)
         return
 
     if args.toggle:

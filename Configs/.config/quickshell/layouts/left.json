@@ -1,0 +1,61 @@
+[
+ "screenshot",
+ "screenrecord",
+ "eyecare",
+ {
+  "id": "status",
+  "props": {
+   "reverse": false,
+   "sliderFirst": true
+  }
+ },
+ "privacybutton",
+ {
+  "id": "mediaplayer",
+  "props": {
+   "iconOnly": false
+  }
+ },
+ "spacer",
+ {
+  "id": "datetime",
+  "props": {
+   "showDate": true
+  }
+ },
+ "terminal",
+ "workspaces",
+ "submap",
+ {
+  "id": "forecast",
+  "props": {
+   "showMinMax": true
+  }
+  },
+  "mark",
+  "desktop",
+  "barlayout",
+  "colormode",
+  "spacer",
+ {
+  "id": "info-drawer",
+  "props": {
+   "reverse": true
+  }
+ },
+ "dunst",
+ {
+  "id": "bluetooth",
+  "props": {
+   "showReadout": true
+  }
+ },
+ {
+  "id": "wifi",
+  "props": {
+   "showReadout": true,
+   "showVpn": true
+  }
+ },
+ "power"
+]

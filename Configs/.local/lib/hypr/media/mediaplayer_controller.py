@@ -37,6 +37,7 @@ from mediaplayer_ui import (
     format_artist_track,
     format_live_multiple_lines,
     format_live_single_line,
+    format_state_icon,
     format_time_multiple_lines,
     format_time_single_line,
     validate_ui_config,
@@ -54,6 +55,7 @@ class ControllerState:
     shutdown_requested: bool = False
     ui_config: object | None = None
     alt_mode: bool = False
+    icon_mode: bool = False
     active_player_mtime: float = -1.0
     active_player_value: str = ""
     playback: PlaybackState = field(default_factory=PlaybackState)
@@ -163,13 +165,13 @@ def load_env_file(filepath: str) -> None:
         )
 
 
-def emit_standby() -> None:
+def emit_standby(player_name: str = "") -> None:
     text = STATE.ui_config.standby_text if STATE.ui_config else " MPlayer"
     emit_json_output(
         {
             "text": escape(text),
-            "class": "nothing-playing",
-            "alt": "",
+            "class": ["stopped", player_name] if player_name else "nothing-playing",
+            "alt": format_state_icon("Stopped") if STATE.icon_mode else "",
             "tooltip": "",
         }
     )
@@ -236,6 +238,8 @@ def emit_playback(playback: ResolvedPlayback) -> None:
             playback.is_playing,
             countdown=playback.countdown_display,
         )
+    if STATE.icon_mode:
+        alt = format_state_icon(playback.status)
     emit_json_output(
         {
             "text": format_artist_track(
@@ -245,7 +249,7 @@ def emit_playback(playback: ResolvedPlayback) -> None:
                 STATE.ui_config,
                 standby_player_name=playback.player_name,
             ),
-            "class": ["playing", playback.player_name],
+            "class": [playback.status.lower(), playback.player_name],
             "alt": alt,
             "tooltip": tooltip_text,
         }
@@ -262,7 +266,7 @@ def write_output(player) -> None:
     snapshot = read_playback_snapshot(player)
     if snapshot.status == "Stopped":
         STATE.playback.reset()
-        emit_standby()
+        emit_standby(snapshot.player_name)
         return
     emit_playback(resolve_playback(snapshot, STATE.playback))
 
@@ -398,6 +402,7 @@ def run(arguments):
 
     STATE.ui_config = validate_ui_config()
     STATE.alt_mode = getattr(arguments, "alt", False)
+    STATE.icon_mode = getattr(arguments, "icon", False)
 
     logging.basicConfig(
         stream=sys.stderr,

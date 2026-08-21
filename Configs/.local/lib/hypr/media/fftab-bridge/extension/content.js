@@ -65,6 +65,7 @@
         if (evt === "play" && worthAttaching(e.target)) attach(e.target);
         if (e.target !== media) return;
         if (evt === "ended" && !pick(true)) {
+          report(evt);
           release();
           return;
         }
@@ -76,7 +77,13 @@
 
   // Heartbeat: keeps positions fresh and lets the background prune dead tabs.
   setInterval(() => {
-    if (media) report("tick");
+    if (!media) return;
+    if (!media.isConnected) {
+      release();
+      rescan(true);
+      return;
+    }
+    report("tick");
   }, 5000);
 
   browser.runtime.onMessage.addListener((msg) => {

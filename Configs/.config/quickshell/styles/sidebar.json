@@ -1,0 +1,84 @@
+{
+  "custom-hyprmenu": {
+    "fill": ["bg", 0.3],
+    "border": 1.0,
+    "outline": ["br", 0.0],
+    "hover": { "fg": ["fg"] },
+    "margin": [4.0, 1.0, 2.0, 1.0],
+    "padding": [4.0, 2.0, 4.0, 0.0]
+  },
+  "taskbar": { "margin": [0.0, 0.0, 4.0, 0.0] },
+  "#taskbar button": {
+    "fill": ["bg", 0.3],
+    "outline": ["br", 0.0],
+    "border": 1.2,
+    "hover": { "border": ["hvr_br", 0.4] },
+    "margin": [2.0, 0.0, 2.0, 0.0],
+    "padding": [4.0, 2.0, 4.0, 2.0]
+  },
+  "#taskbar button.active": {
+    "outline": ["act_br", 0.4],
+    "border": 1.2,
+    "hover": { "border": ["hvr_br", 0.4] },
+    "margin": [2.0, 0.0, 2.0, 0.0],
+    "padding": [4.0, 2.0, 4.0, 2.0]
+  },
+  "workspaces": {
+    "padding": [0.0, 0.0, 0.0, 0.0],
+    "margin": [0.0, 0.0, 0.0, 0.0]
+  },
+  "#workspaces button.active": {
+    "border": 1.5,
+    "margin": [2.0, 1.0, 0.0, 1.0],
+    "fill": ["alt_bg", 0.1],
+    "outline": ["act_br", 0.0],
+    "hover": {
+      "border": ["hvr_br", 0.4],
+      "bg": null,
+      "fg": ["fg"]
+    }
+  },
+  "custom-cpuinfo": {
+    "fill": ["alt_bg", 0.1],
+    "border": 1.2,
+    "margin": [0.0, 2.0, 8.0, 0.0],
+    "edge": { "top": false, "left": false, "right": false, "color": ["c7", 0.4] }
+  },
+  "custom-fanspeedinfo": {
+    "fill": ["alt_bg", 0.1],
+    "border": 1.2,
+    "fontSize": 12.0,
+    "fontWeight": 700,
+    "hover": { "fg": ["hvr_fg", 1.0], "bg": null },
+    "justify": "right",
+    "margin": [0.0, 2.0, 8.0, 2.0],
+    "minHeight": 0.0,
+    "minWidth": 0.0,
+    "padding": [0.0, 4.0, 0.0, 0.0],
+    "edge": { "top": false, "left": false, "right": false, "color": ["c7", 0.4] }
+  },
+  "custom-gpuinfo": {
+    "fill": ["alt_bg", 0.1],
+    "border": 1.2,
+    "margin": [0.0, 2.0, 8.0, 0.0],
+    "edge": { "top": false, "left": false, "right": false, "color": ["c7", 0.4] }
+  },
+  "disk": {
+    "fill": ["alt_bg", 0.1],
+    "border": 1.2,
+    "margin": [0.0, 2.0, 8.0, 0.0],
+    "edge": { "top": false, "left": false, "right": false, "color": ["c7", 0.4] }
+  },
+  "memory": {
+    "fill": ["alt_bg", 0.1],
+    "border": 1.2,
+    "margin": [0.0, 2.0, 8.0, 0.0],
+    "edge": { "top": false, "left": false, "right": false, "color": ["c7", 0.4] }
+  },
+  "tray": {
+    "border": 1.5,
+    "fill": ["alt_bg", 0.1],
+    "outline": ["alt_br", 0.0],
+    "margin": [2.0, 2.0, 2.0, 2.0]
+  }
+}

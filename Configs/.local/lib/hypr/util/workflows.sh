@@ -3,11 +3,9 @@
 set -euo pipefail
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
-hypr_runtime_require state rofi || exit 1
+hypr_runtime_require state || exit 1
 refresh_hypr_instance_signature
 export HYPRLAND_INSTANCE_SIGNATURE
-# shellcheck source=/dev/null
-source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/rofi/rofi.lib.bash"
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/window/stateful-choice.common.bash"
 
@@ -36,6 +34,7 @@ Usage: $0 [OPTIONS]
 Options:
     --select | -S       Select a workflow from the available options
     --set               Set the given workflow
+    --list              List selectable workflows as name, icon and description
     --waybar            Get workflow info for Waybar
     --help   | -h       Show this help message
 HELP
@@ -127,9 +126,6 @@ apply_waybar_workflow() {
   fi
 
   WAYBAR_BORDER_RADIUS="${rounding}" hyprshell waybar.py --update-border-radius >/dev/null 2>&1 || true
-
-  # A freshly started waybar must not be signaled: real-time signals arriving
-  # before its handlers are installed terminate it.
   if hypr_user_pgrep -x waybar >/dev/null; then
     hypr_user_pkill "-${signal}" -x waybar >/dev/null 2>&1 || true
   else
@@ -159,6 +155,10 @@ fn_select() {
   local font_name="" font_scale=""
   local rofi_position="" window_theme=""
   local -a rofi_args
+
+  hypr_runtime_require rofi
+  # shellcheck source=/dev/null
+  source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/rofi/rofi.lib.bash"
 
   default_path="$(resolve_workflow_path default)" || {
     dunstify -t 3000 -i "preferences-desktop-display" "Error" "Default workflow not found in ${workflows_user_dir} or ${workflows_shared_dir}"
@@ -205,6 +205,15 @@ fn_select() {
 
   selected_workflow=$(awk -F'\t' '{print $2}' <<<"${selected_workflow}" | xargs)
   state_set "HYPR_WORKFLOW" "${selected_workflow}" "staterc"
+}
+
+handle_list() {
+  local name path
+  while IFS= read -r name; do
+    [[ "${name}" =~ ^(gaming|powersaver|snappy)$ ]] && continue
+    path="$(resolve_workflow_path "${name}")" || continue
+    printf '%s\t%s\t%s\n' "${name}" "$(get_workflow_icon "${path}")" "$(get_workflow_description "${path}")"
+  done < <(list_workflow_names)
 }
 
 get_info() {
@@ -276,7 +285,7 @@ if [[ -z "${*}" ]]; then
   exit 1
 fi
 
-LONG_OPTS="select,set:,waybar,help"
+LONG_OPTS="select,set:,list,waybar,help"
 SHORT_OPTS="Sh"
 PARSED=$(getopt --options "${SHORT_OPTS}" --longoptions "${LONG_OPTS}" --name "$0" -- "$@") || exit 2
 eval set -- "${PARSED}"
@@ -309,6 +318,10 @@ while true; do
       ;;
     --waybar)
       handle_waybar
+      exit 0
+      ;;
+    --list)
+      handle_list
       exit 0
       ;;
     --)

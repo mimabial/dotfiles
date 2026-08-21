@@ -473,6 +473,7 @@ get_gamma_color() {
 generate_status() {
   local -n state_ref="$1"
   local text_output alt_text tooltip_text
+  local active_json temp_value
   local current_running_temp temp_colored gamma_colored
   local saved_temp_colored saved_gamma_colored
 
@@ -480,6 +481,8 @@ generate_status() {
   if [ "${state_ref[enabled]}" -eq 1 ]; then
     text_output="󱩌"
     alt_text="active"
+    active_json=true
+    temp_value="${current_running_temp}"
     temp_colored="$(get_temp_color "${current_running_temp}")"
     gamma_colored="$(get_gamma_color "${state_ref[gamma]}")"
     tooltip_text="󰈈 <b>Hyprsunset Active</b>\n"
@@ -489,6 +492,8 @@ generate_status() {
   else
     text_output="󱩍"
     alt_text="inactive"
+    active_json=false
+    temp_value="${state_ref[temp]}"
     saved_temp_colored="$(get_temp_color "${state_ref[temp]}")"
     saved_gamma_colored="$(get_gamma_color "${state_ref[gamma]}")"
     tooltip_text="<b> Hyprsunset: Inactive</b>\n"
@@ -497,8 +502,10 @@ generate_status() {
     tooltip_text+="\n<i>󰀨 Click to activate with saved settings</i>"
   fi
 
+  [[ "${temp_value}" =~ ^[0-9]+$ ]] || temp_value="${DEFAULT_TEMP}"
+
   cat <<JSON
-{"text":"${text_output}", "alt":"${alt_text}", "tooltip":"${tooltip_text}"}
+{"text":"${text_output}", "alt":"${alt_text}", "tooltip":"${tooltip_text}", "active":${active_json}, "temperature":${temp_value}, "gamma":${state_ref[gamma]}, "limits":{"tempMin":${MIN_TEMP},"tempMax":${MAX_TEMP},"gammaMin":${MIN_GAMMA},"gammaMax":${MAX_GAMMA}}}
 JSON
 }
 

@@ -514,6 +514,52 @@ build_github_notifications_tooltip() {
   printf '%s' "$tooltip"
 }
 
+# Same collected state as the tooltip, but structured, so a panel can lay it
+# out instead of parsing a pango blob.
+emit_github_notifications_report() {
+  jq -n \
+    --arg notif_available "${notif_available:-0}" \
+    --arg notif_count "${notif_count:-0}" \
+    --arg notif_issue "${notif_issue:-}" \
+    --arg security_available "${security_available:-0}" \
+    --arg security_count "${security_count:-0}" \
+    --arg dependabot_count "${dependabot_count:-0}" \
+    --arg code_scanning_count "${code_scanning_count:-0}" \
+    --arg secret_scanning_count "${secret_scanning_count:-0}" \
+    --arg dependabot_details "${dependabot_details:-}" \
+    --arg code_scanning_details "${code_scanning_details:-}" \
+    --arg secret_scanning_details "${secret_scanning_details:-}" \
+    --arg security_issue "${security_issue:-}" \
+    --arg security_note "${security_note:-}" \
+    '
+    def num: try tonumber catch 0;
+    def repos: split("\n")
+      | map(select(test("\\S")) | sub("^\\s+"; "") | split(": "))
+      | map(select(length == 2))
+      | map({repo: .[0], count: (.[1] | num)});
+    {
+      inbox: {
+        available: ($notif_available == "1"),
+        count: ($notif_count | num),
+        issue: $notif_issue
+      },
+      security: {
+        available: ($security_available == "1"),
+        count: ($security_count | num),
+        issue: $security_issue,
+        note: $security_note,
+        kinds: [
+          {key: "dependabot", label: "Dependabot",
+           count: ($dependabot_count | num), repos: ($dependabot_details | repos)},
+          {key: "code-scanning", label: "Code scanning",
+           count: ($code_scanning_count | num), repos: ($code_scanning_details | repos)},
+          {key: "secret-scanning", label: "Secret scanning",
+           count: ($secret_scanning_count | num), repos: ($secret_scanning_details | repos)}
+        ]
+      }
+    }'
+}
+
 emit_github_notifications_status() {
   local tooltip
   tooltip="$(build_github_notifications_tooltip)"

@@ -1,0 +1,18 @@
+{
+  "custom/bluetooth": {
+    "justify": "center",
+    "format": "{}",
+    "exec": "hyprshell waybar/bluetooth",
+    "return-type": "json",
+    "interval": 5,
+    "on-click": "hyprshell launch/bluetooth",
+    "on-click-right": "hyprshell rofi/bluetooth",
+    "tooltip": true
+  },
+  "custom/bluetooth#status": {
+    "justify": "center",
+    "exec": "hyprshell waybar/bluetooth --status",
+    "interval": 5,
+    "tooltip": false
+  }
+}

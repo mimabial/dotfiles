@@ -1,0 +1,10 @@
+[Unit]
+Description=Quickshell bar
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Environment=QS_NO_RELOAD_POPUP=1
+ExecStart=/usr/bin/quickshell
+Restart=on-failure
+RestartSec=1

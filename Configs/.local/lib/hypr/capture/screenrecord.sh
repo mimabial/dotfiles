@@ -5,6 +5,8 @@
 set -euo pipefail
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/capture/capture.select.bash"
 hypr_runtime_require system || exit 1
 
 [[ -f ~/.config/user-dirs.dirs ]] && source ~/.config/user-dirs.dirs
@@ -129,6 +131,7 @@ Options:
     --resolution=WxH         Override resolution (0x0 for native)
     --window                 Record the focused window (no portal)
     --region                 Select region with slurp (no portal)
+    --smart                  Smart selection: click a window or drag (no portal)
     --output                 Record entire focused output (no portal)
     --help                   Show this help message
 
@@ -335,7 +338,7 @@ screenrecord_formatted_region() {
 }
 
 screenrecord_maybe_force_display_gpu() {
-  [[ "$USE_REGION" == true || "$USE_OUTPUT" == true || "$USE_WINDOW" == true ]] || return 0
+  [[ "$USE_REGION" == true || "$USE_SMART" == true || "$USE_OUTPUT" == true || "$USE_WINDOW" == true ]] || return 0
   [[ -z "$(gpu-screen-recorder --list-monitors 2>/dev/null)" ]] || return 0
 
   local output_name card mesa_vendor
@@ -378,6 +381,20 @@ screenrecord_region_args() {
   screenrecord_target_args "${out_args_name}" "region" "$resolution" -region "$region_formatted"
 }
 
+screenrecord_smart_args() {
+  local out_args_name="$1"
+  local resolution="$2"
+  local region=""
+  local region_formatted=""
+
+  region="$(capture_smart_select)" || {
+    screenrecord_notify "Region selection cancelled"
+    return 1
+  }
+  region_formatted=$(screenrecord_formatted_region <<<"$region")
+  screenrecord_target_args "${out_args_name}" "region" "$resolution" -region "$region_formatted"
+}
+
 screenrecord_output_args() {
   local out_args_name="$1"
   local resolution="$2"
@@ -395,6 +412,8 @@ screenrecord_capture_args() {
   screenrecord_target_args "${out_args_name}" "portal" "$resolution"
   if [[ "$USE_WINDOW" == true ]]; then
     screenrecord_window_args "${out_args_name}" "$resolution"
+  elif [[ "$USE_SMART" == true ]]; then
+    screenrecord_smart_args "${out_args_name}" "$resolution"
   elif [[ "$USE_REGION" == true ]]; then
     screenrecord_region_args "${out_args_name}" "$resolution"
   elif [[ "$USE_OUTPUT" == true ]]; then
@@ -424,7 +443,7 @@ start_recording() {
 
   write_recording_state "$pid" "$filename"
   screenrecord_refresh_waybar
-  if [[ "$USE_WINDOW" == true || "$USE_REGION" == true || "$USE_OUTPUT" == true ]]; then
+  if [[ "$USE_WINDOW" == true || "$USE_REGION" == true || "$USE_SMART" == true || "$USE_OUTPUT" == true ]]; then
     screenrecord_notify "Recording started" "" "media-record" "normal" "3000" "screenrec"
   else
     screenrecord_notify "Choose what to record" "" "media-record" "normal" "3000" "screenrec"
@@ -556,6 +575,7 @@ WEBCAM_DEVICE=""
 RESOLUTION=""
 USE_OUTPUT=false
 USE_REGION=false
+USE_SMART=false
 USE_WINDOW=false
 ACTION=""
 
@@ -573,6 +593,7 @@ for arg in "$@"; do
     --resolution=*) RESOLUTION="${arg#*=}" ;;
     --output) USE_OUTPUT=true ;;
     --region) USE_REGION=true ;;
+    --smart) USE_SMART=true ;;
     --window) USE_WINDOW=true ;;
   esac
 done

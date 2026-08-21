@@ -37,7 +37,7 @@ rofi_wallpaper_post_clamp_reduction_px() {
     if [[ "${layers_json}" == \{* ]]; then
       waybar_width_px="$(
         printf '%s\n' "${layers_json}" | jq -r --arg mon "${focused_monitor_name}" '
-          .[$mon].levels[]?[]? | select(.namespace=="waybar") | .w
+          .[$mon].levels[]?[]? | select(.namespace=="hypr-shell-bar" or .namespace=="waybar") | .w
         ' 2>/dev/null | head -n 1
       )"
     fi

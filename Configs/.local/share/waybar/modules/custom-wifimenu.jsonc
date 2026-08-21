@@ -2,6 +2,7 @@
   "custom/wifimenu": {
     "format": "󰖩",
     "on-click": "hyprshell launch/tui --app-id org.tui.Impala --title Impala -- impala",
+    "on-click-right": "hyprshell rofi/wifi",
     "tooltip-format": "WiFi Manager (Impala)"
   }
 }

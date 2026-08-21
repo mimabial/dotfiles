@@ -74,9 +74,9 @@ update_cpu_stats_cache() {
     -e "/^CPUINFO_PREV_STAT=/c\CPUINFO_PREV_STAT=\"$curr_stat\"" \
     -e "/^CPUINFO_PREV_IDLE=/c\CPUINFO_PREV_IDLE=\"$curr_idle\"" \
     "$cpuinfo_file" || {
-      echo "CPUINFO_PREV_STAT=\"$curr_stat\"" >>"$cpuinfo_file"
-      echo "CPUINFO_PREV_IDLE=\"$curr_idle\"" >>"$cpuinfo_file"
-    }
+    echo "CPUINFO_PREV_STAT=\"$curr_stat\"" >>"$cpuinfo_file"
+    echo "CPUINFO_PREV_IDLE=\"$curr_idle\"" >>"$cpuinfo_file"
+  }
 }
 
 get_utilization() {
@@ -194,9 +194,9 @@ build_cpu_icon() {
 
   color=$(get_temp_color "${temperature}")
   if [[ -n "${color}" ]]; then
-    printf "<span size='14pt' color='%s'>󰻠</span>\n" "${color}"
+    printf "<span size='16pt' color='%s'>󰻠</span>\n" "${color}"
   else
-    printf "<span size='14pt'>󰻠</span>\n"
+    printf "<span size='16pt'>󰻠</span>\n"
   fi
 }
 
@@ -210,16 +210,33 @@ emit_cpu_json() {
   # fixed-width slot. The tooltip is built upstream with the raw value, so
   # 100% is visible there.
   local util_int="${utilization%%.*}"
-  [[ "${util_int}" =~ ^[0-9]+$ ]] && (( util_int > 99 )) && util_int=99
+  [[ "${util_int}" =~ ^[0-9]+$ ]] && ((util_int > 99)) && util_int=99
   formatted_util=$(printf "%02d" "${util_int}")
   local sep=$'\r'
   [[ "${HYPR_SYSINFO_ALT:-0}" == "1" ]] && sep=" "
+  # rows repeats the tooltip's figures as label/value pairs so the quickshell
+  # panel does not have to parse markup
+  local rows
+  rows="$(jq -n -c \
+    --arg model "${CPUINFO_MODEL}" \
+    --arg util "${utilization}%" \
+    --arg temp "${temperature}°C" \
+    --arg clock "${frequency}/${CPUINFO_MAX_FREQ} MHz" \
+    --arg cores "${cpu_temps//$'\n'/, }" \
+    '[{label: "Model", value: $model},
+      {label: "Utilization", value: $util},
+      {label: "Temperature", value: $temp},
+      {label: "Clock", value: $clock},
+      {label: "Cores", value: $cores}]')"
+
   jq -n -c \
     --arg icon "${icon}" \
     --arg util "${formatted_util}󱉸" \
     --arg tooltip "${tooltip}" \
     --arg sep "$sep" \
-    '{text: ($icon + $sep + $util), tooltip: $tooltip}'
+    --arg title "CPU" \
+    --argjson rows "${rows}" \
+    '{text: ($icon + $sep + $util), tooltip: $tooltip, title: $title, rows: $rows}'
 }
 
 init_query

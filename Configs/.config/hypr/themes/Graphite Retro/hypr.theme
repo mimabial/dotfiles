@@ -12,8 +12,8 @@ $CURSOR_THEME = Vimix-cursors
 $CURSOR_SIZE = 30
 
 general {
-    gaps_in = 8
-    gaps_out = 14
+    gaps_in = 6
+    gaps_out = 12
     border_size = 3
     col.active_border = rgba(a6a6a6ff) 
     col.inactive_border = rgba(1c1c1ccc) 

@@ -141,6 +141,7 @@ local startup = {
     vars.get("start.AUTH_DIALOGUE"),
     vars.get("start.WALLPAPER"),
     vars.get("start.BAR"),
+    vars.get("start.QUICKSHELL"),
     vars.get("start.NOTIFICATIONS"),
     "xsettingsd",
     vars.get("start.TEXT_CLIPBOARD"),

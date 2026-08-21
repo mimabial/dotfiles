@@ -308,6 +308,28 @@ menu_show_menu() {
   fi
 }
 
+# jq owns the escaping; labels pass through as raw UTF-8, which sidesteps
+# jq's inability to write \uXXXX escapes above the BMP
+menu_dump_json() {
+  local menu_id=""
+  local label=""
+  local kind=""
+  local target=""
+  local searchable=""
+
+  for menu_id in "${!HYPR_MENU_PROMPTS[@]}"; do
+    while IFS=$'\t' read -r label kind target searchable; do
+      [[ -n "${label}" ]] || continue
+      printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+        "${menu_id}" "${HYPR_MENU_PROMPTS["${menu_id}"]}" "${HYPR_MENU_PARENTS["${menu_id}"]:-}" \
+        "${label}" "${kind}" "${target}" "${searchable}"
+    done <<<"${HYPR_MENU_ITEMS["${menu_id}"]:-}"
+  done | jq -Rs '
+    split("\n") | map(select(length > 0) | split("\t"))
+    | reduce .[] as $r ({}; .[$r[0]] = ((.[$r[0]] // {prompt: $r[1], parent: $r[2], items: []})
+        | .items += [{label: $r[3], kind: $r[4], target: $r[5], searchable: ($r[6] != "0")}]))'
+}
+
 menu_collect_search_entries() {
   local menu_id="$1"
   local out_labels_name="$2"

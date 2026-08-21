@@ -136,4 +136,7 @@ toggle() {
   sed -i 's/^\(GPUINFO_NVIDIA_ENABLE=1\|GPUINFO_AMD_ENABLE=1\|GPUINFO_INTEL_ENABLE=1\)/#\1/' "${gpuinfo_file}" # Comment out all the gpu flags in the file
   sed -i "s/^#${NEXT_PRIORITY}/${NEXT_PRIORITY}/" "${gpuinfo_file}"                                            # Uncomment the next GPUINFO_PRIORITY in the file
   sed -i "s/GPUINFO_PRIORITY=${GPUINFO_PRIORITY}/GPUINFO_PRIORITY=${NEXT_PRIORITY}/" "${gpuinfo_file}"         # Update the GPUINFO_PRIORITY in the file
+
+  # survive the reboot that wipes the cache
+  gpu_state_lib && state_set GPUINFO_PRIORITY "${NEXT_PRIORITY}" >/dev/null 2>&1
 }

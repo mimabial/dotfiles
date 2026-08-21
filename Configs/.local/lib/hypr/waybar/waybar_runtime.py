@@ -30,6 +30,7 @@ import time
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
 from waybar_assets import update_border_radius
+from waybar_state import get_state_value
 from waybar_shared import (
     CONFIG_WAYBAR_DIR,
     WAYBAR_LOCK,
@@ -90,6 +91,10 @@ def is_runtime_lock_held(lock_path):
 def is_waybar_running_for_current_user():
     """Check if Waybar is running for the current user."""
     return get_waybar_pid() is not None
+
+
+def is_waybar_enabled():
+    return str(get_state_value("WAYBAR_ENABLED", "1")).lower() not in {"0", "false", "no"}
 
 
 def is_waybar_watcher_active():
@@ -355,6 +360,10 @@ def _spawn_waybar_transient_unit(env):
 
 def _start_waybar_unlocked():
     """Start Waybar. Caller must hold waybar_operation_lock()."""
+    if not is_waybar_enabled():
+        logger.debug("Waybar is disabled; skipping start")
+        return
+
     locked_pid = read_waybar_lock_pid()
     if pid_is_live_waybar(locked_pid):
         logger.debug(f"Waybar already starting or running (locked PID {locked_pid})")

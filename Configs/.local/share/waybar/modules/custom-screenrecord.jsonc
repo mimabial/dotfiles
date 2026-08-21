@@ -6,7 +6,7 @@
     "interval": 1,
     "signal": 10,
     "exec": "hyprshell screenrecord --status",
-    "on-click": "hyprshell screenrecord --toggle",
+    "on-click": "hyprshell screenrecord --toggle --smart",
     "on-click-right": "hyprshell screenrecord --quit"
   }
 }

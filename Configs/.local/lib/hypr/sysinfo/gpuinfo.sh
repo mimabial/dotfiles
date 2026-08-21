@@ -21,8 +21,10 @@ Emit GPU stats as waybar JSON; flags manage GPU selection and cached state." "$@
 script_dir=$(dirname "$(realpath "$0")")
 gpuinfo_file="${TMPDIR:-/tmp}/hypr-${UID}-gpuinfo"
 
-# Use the AQ_DRM_DEVICES variable to set the priority of the GPUs
-AQ_DRM_DEVICES="${AQ_DRM_DEVICES:-WLR_DRM_DEVICES}"
+# Use the AQ_DRM_DEVICES variable to set the priority of the GPUs; older
+# Hyprland exported it as WLR_DRM_DEVICES. Substituting the *value*, not the
+# literal name — the latter left the "is it set?" guard in query() always true.
+AQ_DRM_DEVICES="${AQ_DRM_DEVICES:-${WLR_DRM_DEVICES:-}}"
 
 tired=false
 if [[ " $* " =~ " --tired " ]]; then
@@ -48,13 +50,37 @@ if [[ " $* " =~ " --emoji " ]]; then
   exit 0
 fi
 
-# Namespace the state file by the second positional arg so multi-GPU contexts
-# (e.g. `gpuinfo --use NVIDIA`) get their own cache. ${2:-} keeps no-arg
-# polling invocations safe under set -u — they fall through to the base file.
-if [[ ! " $* " =~ " --startup " ]]; then
-  gpuinfo_file="${gpuinfo_file}${2:-}"
-fi
 # shellcheck source=/dev/null
+# The detection cache lives in TMPDIR and is wiped on reboot, which is right:
+# drivers and hardware can change between boots. The *selection* is the user's
+# though, so it is kept in the state store and re-applied to each fresh cache.
+gpu_state_lib() {
+  [[ "$(type -t state_get)" == "function" ]] && return 0
+  # shellcheck source=/dev/null
+  source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/state.sh" 2>/dev/null || return 1
+}
+
+restore_gpu_selection() {
+  local saved
+  gpu_state_lib || return 0
+  saved="$(state_get GPUINFO_PRIORITY)"
+  [[ -n "${saved}" ]] || return 0
+  # the saved card may not be present this boot
+  grep -q "^#\?${saved}=1" "${gpuinfo_file}" || return 0
+
+  sed -i 's/^\(GPUINFO_NVIDIA_ENABLE=1\|GPUINFO_AMD_ENABLE=1\|GPUINFO_INTEL_ENABLE=1\)/#\1/' "${gpuinfo_file}"
+  sed -i "s/^#${saved}=1/${saved}=1/" "${gpuinfo_file}"
+  if grep -q "^GPUINFO_PRIORITY=" "${gpuinfo_file}"; then
+    sed -i "s/^GPUINFO_PRIORITY=.*/GPUINFO_PRIORITY=${saved}/" "${gpuinfo_file}"
+  else
+    printf 'GPUINFO_PRIORITY=%s\n' "${saved}" >>"${gpuinfo_file}"
+  fi
+
+  # query() arms `trap detect EXIT` to pick a GPU when none is set; an explicit
+  # choice outranks that, so cancel it
+  trap - EXIT
+}
+
 source "${script_dir}/gpuinfo.detect.bash"
 # shellcheck source=/dev/null
 source "${script_dir}/gpuinfo.render.bash"
@@ -67,6 +93,7 @@ source "${script_dir}/gpuinfo.vendor.bash"
 # GPUINFO_TEMP_BUCKET leaves the script stuck reporting primary_gpu="Not found".
 if [[ ! -f "${gpuinfo_file}" ]] || ! grep -q "_ENABLE=1" "${gpuinfo_file}"; then
   query
+  restore_gpu_selection
 fi
 # shellcheck source=/dev/null
 source "${gpuinfo_file}"
@@ -82,29 +109,23 @@ case "${1:-}" in
     ;;
   "--reset" | "-rf")
     rm -fr "${gpuinfo_file}"*
+    gpu_state_lib && state_set GPUINFO_PRIORITY "" >/dev/null 2>&1
     query
     echo -e "Initialized Variable:\n$(cat "${gpuinfo_file}" || true)\n\nReboot or '$0 --reset' to RESET Variables"
     exit
     ;;
   "--stat")
-    case "$2" in
-      "amd")
-        if [[ "${GPUINFO_AMD_ENABLE}" -eq 1 ]]; then
-          echo "GPUINFO_AMD_ENABLE: ${GPUINFO_AMD_ENABLE}"
+    # a GPU that is not the active one stays commented out in the cache, so its
+    # flag is undefined after sourcing; ${:-0} keeps set -u from aborting
+    case "${2:-}" in
+      "amd" | "intel" | "nvidia")
+        stat_flag="GPUINFO_${2^^}_ENABLE"
+        if [[ "${!stat_flag:-0}" -eq 1 ]]; then
+          echo "${stat_flag}: 1"
           exit 0
         fi
-        ;;
-      "intel")
-        if [[ "${GPUINFO_INTEL_ENABLE}" -eq 1 ]]; then
-          echo "GPUINFO_INTEL_ENABLE: ${GPUINFO_INTEL_ENABLE}"
-          exit 0
-        fi
-        ;;
-      "nvidia")
-        if [[ "${GPUINFO_NVIDIA_ENABLE}" -eq 1 ]]; then
-          echo "GPUINFO_NVIDIA_ENABLE: ${GPUINFO_NVIDIA_ENABLE}"
-          exit 0
-        fi
+        echo "${stat_flag}: 0"
+        exit 1
         ;;
       *)
         echo "Error: Invalid argument for --stat. Use amd, intel, or nvidia."
@@ -125,7 +146,6 @@ case "${1:-}" in
 
 [flags]
 --tired            * Adding this option will not query nvidia-smi if gpu is in suspend mode
---startup          * Useful if you want a certain GPU to be set at startup
 --emoji            * Use Emoji instead of Glyphs
 
 * If ${USER} declared env = AQ_DRM_DEVICES on hyprland then use this as the primary GPU

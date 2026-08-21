@@ -390,7 +390,6 @@ apply_color_policy() {
         || print_log -sec "color-mode" -warn "waybar" "start failed"
     fi
   fi
-
 }
 
 parse_target_policy() {

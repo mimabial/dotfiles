@@ -12,6 +12,8 @@ def parse_arguments():
     parser.add_argument('--action', choices=sorted(ACTIONS))
     parser.add_argument('--menu', action='store_true')
     parser.add_argument('--alt', '-A', action='store_true')
+    parser.add_argument('--icon', action='store_true',
+                        help='emit only the playback state glyph as {alt}')
     return parser.parse_args()
 
 

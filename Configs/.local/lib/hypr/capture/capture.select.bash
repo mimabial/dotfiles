@@ -80,3 +80,59 @@ capture_visible_workspace_rectangles() {
           )
       "
 }
+
+capture_smart_rectangles() {
+  capture_active_workspace_rectangles
+}
+
+capture_select_geometry() {
+  local rectangles="$1"
+  shift
+  local selection=""
+  local freeze_pid=""
+
+  freeze_pid="$(capture_start_freeze)"
+  selection="$(printf '%s\n' "${rectangles}" | slurp "$@" 2>/dev/null)"
+  capture_stop_freeze "${freeze_pid}"
+  [[ -n "${selection}" ]] || return 1
+  printf '%s\n' "${selection}"
+}
+
+capture_expand_tiny_selection() {
+  local selection="$1"
+  local rectangles="$2"
+  local rect=""
+
+  if [[ "${selection}" =~ ^([0-9]+),([0-9]+)[[:space:]]([0-9]+)x([0-9]+)$ ]]; then
+    if (( BASH_REMATCH[3] * BASH_REMATCH[4] < 20 )); then
+      local click_x="${BASH_REMATCH[1]}"
+      local click_y="${BASH_REMATCH[2]}"
+
+      while IFS= read -r rect; do
+        if [[ "$rect" =~ ^([0-9]+),([0-9]+)[[:space:]]([0-9]+)x([0-9]+) ]]; then
+          local rect_x="${BASH_REMATCH[1]}"
+          local rect_y="${BASH_REMATCH[2]}"
+          local rect_width="${BASH_REMATCH[3]}"
+          local rect_height="${BASH_REMATCH[4]}"
+
+          if (( click_x >= rect_x && click_x < rect_x+rect_width && click_y >= rect_y && click_y < rect_y+rect_height )); then
+            selection="${rect_x},${rect_y} ${rect_width}x${rect_height}"
+            break
+          fi
+        fi
+      done <<<"${rectangles}"
+    fi
+  fi
+
+  printf '%s\n' "${selection}"
+}
+
+# One smart pick: window rectangles, frozen screen, and a click that lands on
+# a window rather than a 1px drag. Prints "X,Y WxH"; returns 1 if cancelled.
+capture_smart_select() {
+  local rectangles="" selection=""
+
+  rectangles="$(capture_smart_rectangles)"
+  selection="$(capture_select_geometry "${rectangles}")" || return 1
+  capture_expand_tiny_selection "${selection}" "${rectangles}"
+}

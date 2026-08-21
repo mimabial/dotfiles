@@ -24,6 +24,7 @@ local values = {
     ["start.THEME_OUTPUT_SYNC"] = "hyprshell theme/startup-sync.sh",
     ["start.AUTH_DIALOGUE"] = "hyprshell app -t service -- hyprshell session/polkit-kde-auth",
     ["start.BAR"] = "hyprshell app -u hyprland-waybar-watcher.service -t service -- hyprshell waybar/waybar --watch",
+    ["start.QUICKSHELL"] = "hyprshell system/start-if-available.sh HYPR_START_QUICKSHELL quickshell -- systemctl --user start --no-block hyprland-quickshell.service",
     ["start.WALLPAPER"] = "hyprshell app -u hyprland-wallpaper.service -t service -- hyprshell wallpaper start --global",
     ["start.NOTIFICATIONS"] = "hyprshell app -t service dunst",
     ["start.TEXT_CLIPBOARD"] = "hyprshell app -t service wl-paste --type text --watch cliphist store",

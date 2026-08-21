@@ -223,18 +223,46 @@ prepare_favorites_for_display() {
     decoded_favorite=$(echo "$favorite" | base64 --decode)
     local single_line_favorite
     single_line_favorite=$(echo "$decoded_favorite" | tr '\n' ' ')
+    local masked_favorite
+    masked_favorite=$(printf '%s' "$single_line_favorite" | mask_secret_field 1)
+    if [ "$masked_favorite" != "$single_line_favorite" ]; then
+      single_line_favorite="${masked_favorite} #$((${#decoded_lines[@]} + 1))"
+    fi
     decoded_lines+=("$single_line_favorite")
   done
 
   return 0
 }
 
+# Token-shaped values are shown masked in the picker. rofi returns the whole
+# line, but cliphist decode/delete key off the leading id, so rewriting the
+# preview column is display-only.
+mask_secret_field() {
+  awk -F '\t' -v f="${1:-2}" 'BEGIN { OFS = "\t" }
+    {
+      label = ""
+      if ($f ~ /ghp_[A-Za-z0-9]{20,}/ || $f ~ /gh[ousr]_[A-Za-z0-9]{20,}/) label = "GitHub token"
+      else if ($f ~ /github_pat_[A-Za-z0-9_]{20,}/) label = "GitHub fine-grained token"
+      else if ($f ~ /glpat-[A-Za-z0-9_-]{15,}/) label = "GitLab token"
+      else if ($f ~ /xox[abprs]-[A-Za-z0-9-]{10,}/) label = "Slack token"
+      else if ($f ~ /sk-(ant-)?[A-Za-z0-9_-]{20,}/) label = "API key"
+      else if ($f ~ /AKIA[0-9A-Z]{16}/) label = "AWS access key"
+      else if ($f ~ /AIza[0-9A-Za-z_-]{35}/) label = "Google API key"
+      else if ($f ~ /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\./) label = "JWT"
+      else if ($f ~ /-----BEGIN [A-Z ]*PRIVATE KEY-----/) label = "Private key"
+      if (label != "") $f = "\342\200\242\342\200\242\342\200\242\342\200\242\342\200\242\342\200\242\342\200\242\342\200\242  " label
+      print
+    }'
+}
+
+mask_secret_previews() { mask_secret_field 2; }
+
 show_history() {
   local selected_item
   selected_item=$( (
     printf '%s\t%s\n' "${action_favorites}" "📌 Favorites"
     printf '%s\t%s\n' "${action_options}" "⚙️ Options"
-    cliphist list
+    cliphist list | mask_secret_previews
   ) | run_rofi " 📜 History" -i -display-columns 2 -selected-row 2)
 
   [ -n "${selected_item}" ] || exit 0
@@ -291,7 +319,7 @@ delete_items() {
   local selected_items
   selected_items=$( (
     printf '%s\t%s\n' "${action_back}" "Back"
-    cliphist list
+    cliphist list | mask_secret_previews
   ) | run_rofi " 🗑️ Delete" -i -display-columns 2 -selected-row 1)
 
   if cliphist_dispatch_action "$(cliphist_action_id "${selected_items}")"; then
@@ -338,7 +366,7 @@ add_to_favorites() {
   local item
   item=$( (
     printf '%s\t%s\n' "${action_back}" "Back"
-    cliphist list
+    cliphist list | mask_secret_previews
   ) | run_rofi "➕ Add to Favorites..." -i -display-columns 2 -selected-row 1)
   if cliphist_dispatch_action "$(cliphist_action_id "${item}")"; then
     return
@@ -611,6 +639,67 @@ qr_latest_image() {
   rm -f "${image_path}"
 }
 
+# Non-interactive API for the quickshell panel: the favourites store lives here,
+# so the panel asks this script rather than reimplementing base64 line handling.
+panel_json() {
+  local favorites_json="[]"
+  if [ -f "$favorites_file" ] && [ -s "$favorites_file" ]; then
+    favorites_json="$(
+      while IFS= read -r encoded; do
+        [ -n "$encoded" ] || continue
+        printf '%s' "$encoded" | base64 --decode 2>/dev/null | tr '\n' ' '
+        printf '\n'
+      done <"$favorites_file" | jq -R -s 'split("\n") | map(select(length > 0)) |
+        to_entries | map({index: (.key + 1), text: .value})'
+    )"
+  fi
+
+  cliphist list | jq -R -s --argjson favorites "$favorites_json" '
+    split("\n") | map(select(length > 0)) | map(split("\t") | {
+      id: .[0],
+      preview: (.[1:] | join("\t"))
+    }) | map(. + {image: (.preview | test("\\[\\[ binary data"))})
+    | {entries: ., favorites: $favorites}'
+}
+
+panel_copy_id() {
+  local id="$1"
+  [ -n "$id" ] || return 1
+  printf '%s\t' "$id" | cliphist decode | wl-copy
+  # the watcher re-stores it at the top, so drop the stale row
+  printf '%s\t' "$id" | cliphist delete
+}
+
+panel_delete_id() {
+  local id="$1"
+  [ -n "$id" ] || return 1
+  printf '%s\t' "$id" | cliphist delete
+}
+
+panel_fav_add_id() {
+  local id="$1"
+  [ -n "$id" ] || return 1
+  local encoded
+  encoded="$(printf '%s\t' "$id" | cliphist decode | base64 -w 0)"
+  mkdir -p "$(dirname "$favorites_file")"
+  if [ -f "$favorites_file" ] && grep -Fxq "$encoded" "$favorites_file"; then
+    return 0
+  fi
+  printf '%s\n' "$encoded" >>"$favorites_file"
+}
+
+panel_fav_remove_index() {
+  local index="$1"
+  [ -n "$index" ] && [ -f "$favorites_file" ] || return 1
+  sed -i "${index}d" "$favorites_file"
+}
+
+panel_fav_copy_index() {
+  local index="$1"
+  [ -n "$index" ] && [ -f "$favorites_file" ] || return 1
+  sed -n "${index}p" "$favorites_file" | base64 --decode | wl-copy
+}
+
 show_help() {
   local exit_code="${1:-0}"
   cat <<EOF
@@ -624,6 +713,14 @@ Options:
   -qr | --scan-qr                   Decode the latest clipboard QR image and copy text
   -w  | --wipe | Clear History      Clear clipboard history
   -h  | --help | Help               Display this help message
+
+Panel API (non-interactive, used by the quickshell popup):
+  --panel-json                      Emit history entries and favourites as JSON
+  --panel-copy <id>                 Copy a history entry to the clipboard
+  --panel-delete <id>               Delete a history entry
+  --panel-fav-add <id>              Add a history entry to favourites
+  --panel-fav-remove <index>        Remove favourite by 1-based index
+  --panel-fav-copy <index>          Copy favourite by 1-based index
 
 Note: To enable autopaste, install 'wtype' package.
 EOF
@@ -665,6 +762,24 @@ main() {
       ;;
     -w | --wipe | "Clear History")
       clear_history
+      ;;
+    --panel-json)
+      panel_json
+      ;;
+    --panel-copy)
+      panel_copy_id "$2"
+      ;;
+    --panel-delete)
+      panel_delete_id "$2"
+      ;;
+    --panel-fav-add)
+      panel_fav_add_id "$2"
+      ;;
+    --panel-fav-remove)
+      panel_fav_remove_index "$2"
+      ;;
+    --panel-fav-copy)
+      panel_fav_copy_index "$2"
       ;;
     "")
       exit 0

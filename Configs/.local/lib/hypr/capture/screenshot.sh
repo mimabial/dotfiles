@@ -144,52 +144,6 @@ capture_then_annotate() {
   }
 }
 
-get_rectangles() {
-  capture_active_workspace_rectangles
-}
-
-select_geometry_from_rectangles() {
-  local rectangles="$1"
-  shift
-  local selection=""
-  local freeze_pid=""
-
-  freeze_pid="$(capture_start_freeze)"
-  selection="$(printf '%s\n' "${rectangles}" | slurp "$@" 2>/dev/null)"
-  capture_stop_freeze "${freeze_pid}"
-  [[ -n "${selection}" ]] || return 1
-  printf '%s\n' "${selection}"
-}
-
-expand_tiny_selection_to_rectangle() {
-  local selection="$1"
-  local rectangles="$2"
-  local rect=""
-
-  if [[ "${selection}" =~ ^([0-9]+),([0-9]+)[[:space:]]([0-9]+)x([0-9]+)$ ]]; then
-    if (( BASH_REMATCH[3] * BASH_REMATCH[4] < 20 )); then
-      local click_x="${BASH_REMATCH[1]}"
-      local click_y="${BASH_REMATCH[2]}"
-
-      while IFS= read -r rect; do
-        if [[ "$rect" =~ ^([0-9]+),([0-9]+)[[:space:]]([0-9]+)x([0-9]+) ]]; then
-          local rect_x="${BASH_REMATCH[1]}"
-          local rect_y="${BASH_REMATCH[2]}"
-          local rect_width="${BASH_REMATCH[3]}"
-          local rect_height="${BASH_REMATCH[4]}"
-
-          if (( click_x >= rect_x && click_x < rect_x+rect_width && click_y >= rect_y && click_y < rect_y+rect_height )); then
-            selection="${rect_x},${rect_y} ${rect_width}x${rect_height}"
-            break
-          fi
-        fi
-      done <<<"${rectangles}"
-    fi
-  fi
-
-  printf '%s\n' "${selection}"
-}
-
 capture_selected_geometry() {
   local selection="$1"
   local destination="${2:-annotate}"
@@ -228,9 +182,9 @@ smart_screenshot() {
   local rectangles=""
   local selection=""
 
-  rectangles="$(get_rectangles)"
-  selection="$(select_geometry_from_rectangles "${rectangles}")" || return 0
-  selection="$(expand_tiny_selection_to_rectangle "${selection}" "${rectangles}")"
+  rectangles="$(capture_smart_rectangles)"
+  selection="$(capture_select_geometry "${rectangles}")" || return 0
+  selection="$(capture_expand_tiny_selection "${selection}" "${rectangles}")"
 
   capture_selected_geometry "${selection}" "${destination}"
 }
@@ -239,8 +193,8 @@ window_screenshot() {
   local rectangles=""
   local selection=""
 
-  rectangles="$(get_rectangles)"
-  selection="$(select_geometry_from_rectangles "${rectangles}" -r)" || return 0
+  rectangles="$(capture_smart_rectangles)"
+  selection="$(capture_select_geometry "${rectangles}" -r)" || return 0
   capture_selected_geometry "${selection}" "annotate"
 }
 
@@ -313,14 +267,14 @@ ocr_capture_subject() {
       grimblast_capture --freeze save area "${temp_screenshot}"
       ;;
     smart)
-      rectangles="$(get_rectangles)"
-      selection="$(select_geometry_from_rectangles "${rectangles}")" || return 1
-      selection="$(expand_tiny_selection_to_rectangle "${selection}" "${rectangles}")"
+      rectangles="$(capture_smart_rectangles)"
+      selection="$(capture_select_geometry "${rectangles}")" || return 1
+      selection="$(capture_expand_tiny_selection "${selection}" "${rectangles}")"
       grimblast_capture_geometry "save" "${selection}" "${temp_screenshot}"
       ;;
     window | w)
-      rectangles="$(get_rectangles)"
-      selection="$(select_geometry_from_rectangles "${rectangles}" -r)" || return 1
+      rectangles="$(capture_smart_rectangles)"
+      selection="$(capture_select_geometry "${rectangles}" -r)" || return 1
       grimblast_capture_geometry "save" "${selection}" "${temp_screenshot}"
       ;;
     monitor | output | m)
@@ -418,13 +372,13 @@ ocr_emit_text() {
 
   case "${destination}" in
     "" | clipboard | copy)
-      printf '%s' "${text}" | wl-copy
+      printf '%s' "${text}" | wl-copy --sensitive
       ;;
     save | file)
       printf '%s\n' "${text}" >"${text_file}"
       ;;
     both | copy-save | save-copy)
-      printf '%s' "${text}" | wl-copy
+      printf '%s' "${text}" | wl-copy --sensitive
       printf '%s\n' "${text}" >"${text_file}"
       ;;
     stdout | print)
@@ -470,7 +424,7 @@ case "${mode}" in
     take_screenshot "screen"
     ;;
   smart) # smart selection with wayfreeze and auto window detection
-    smart_screenshot "${smart_destination:-$2}"
+    smart_screenshot "${smart_destination}"
     ;;
   area) # manual area selection
     manual_area_screenshot 0

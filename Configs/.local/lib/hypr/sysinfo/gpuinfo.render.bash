@@ -123,7 +123,6 @@ intel_gpu_top_util() {
   printf "%.0f" "${util}"
 }
 
-
 resolve_bucket_icon() {
   local value="$1"
   local prev="$2"
@@ -173,11 +172,11 @@ render_thermo_icon() {
 
   thermo_alt="$(vendor_thermo_icon)"
   if [[ -n "${temp_color}" ]]; then
-    printf "<span size='14pt' color='%s'>%s</span>\n" "${temp_color}" "${thermo_alt}"
+    printf "<span size='16pt' color='%s'>%s</span>\n" "${temp_color}" "${thermo_alt}"
     return 0
   fi
 
-  printf "<span size='14pt'>%s</span>\n" "${thermo_alt}"
+  printf "<span size='16pt'>%s</span>\n" "${thermo_alt}"
 }
 
 append_tooltip_line() {
@@ -232,7 +231,7 @@ format_utilization_text() {
     # fixed-width slot. The tooltip (build_tooltip) still shows the raw
     # value, so 100% is visible there.
     local util_int="${utilization%%.*}"
-    [[ "${util_int}" =~ ^[0-9]+$ ]] && (( util_int > 99 )) && util_int=99
+    [[ "${util_int}" =~ ^[0-9]+$ ]] && ((util_int > 99)) && util_int=99
     printf '%02d󱉸\n' "${util_int}"
     return 0
   fi
@@ -268,10 +267,54 @@ generate_json() {
   local sep=$'\r'
   [[ "${HYPR_SYSINFO_ALT:-0}" == "1" ]] && sep=" "
 
+  local clock=""
+  if [[ -n "${core_clock:-}" ]]; then
+    clock="${core_clock} MHz"
+  elif [[ -n "${current_clock_speed:-}" && -n "${max_clock_speed:-}" ]]; then
+    clock="${current_clock_speed}/${max_clock_speed} MHz"
+  fi
+
+  # every metric below is optional per vendor path; empty rows are dropped
+  local rows
+  rows="$(jq -n -c \
+    --arg model "${primary_gpu:-}" \
+    --arg util "${utilization:+${utilization}%}" \
+    --arg temp "${temperature:+${temperature}°C}" \
+    --arg clock "${clock}" \
+    --arg power "${power_usage:+${power_usage} W}" \
+    '[{label: "Model", value: $model},
+      {label: "Utilization", value: $util},
+      {label: "Temperature", value: $temp},
+      {label: "Clock", value: $clock},
+      {label: "Power", value: $power}] | map(select(.value != ""))')"
+
+  # both cards are listed so the panel can switch between them; the state file
+  # names them as GPUINFO_<VENDOR>_ENABLE
+  # read the enable flags straight from the cache: GPUINFO_AVAILABLE is only
+  # written lazily by toggle(), so a freshly queried cache has none
+  local choices="[]" entry vendor name
+  local enabled
+  enabled="$(grep "_ENABLE=1" "${gpuinfo_file}" | cut -d '=' -f 1 | tr -d '#')"
+  if [[ -n "${enabled}" ]]; then
+    choices="$(for entry in ${enabled}; do
+      vendor="${entry#GPUINFO_}"
+      vendor="${vendor%_ENABLE}"
+      name="GPUINFO_${vendor}_GPU"
+      printf '%s\t%s\t%s\n' "${vendor,,}" "${!name:-${vendor,,}}" \
+        "$([[ "${entry}" == "${GPUINFO_PRIORITY:-}" ]] && echo true || echo false)"
+    done | jq -R -s -c 'split("\n") | map(select(length > 0) | split("\t"))
+                        | map({id: .[0], label: .[1], active: (.[2] == "true")})')"
+    [[ -n "${choices}" ]] || choices="[]"
+  fi
+
   jq -n -c \
+    --argjson choices "${choices}" \
     --arg icon "$icon_text" \
     --arg util "${formatted_util}" \
     --arg tooltip "$tooltip" \
     --arg sep "$sep" \
-    '{text: ($icon + $sep + $util), tooltip: $tooltip}'
+    --arg title "GPU" \
+    --argjson rows "${rows}" \
+    '{text: ($icon + $sep + $util), tooltip: $tooltip, title: $title,
+      rows: $rows, choices: $choices}'
 }

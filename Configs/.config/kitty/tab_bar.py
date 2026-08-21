@@ -45,10 +45,13 @@ RIGHT_MARGIN = 1
 
 THEME_CONFIG_PATH = Path.home() / ".config" / "kitty" / "theme.generated.conf"
 COLORS_CONFIG_PATH = Path.home() / ".config" / "kitty" / "colors.conf"
+QS_STATUS_PATH = Path.home() / ".local" / "state" / "quickshell" / "time-visibility"
 
 # Track file modification time
 _last_mtime = None
 _colors_last_mtime = None
+_qs_status_mtime = None
+_qs_status = (0, False, False)
 
 FALLBACK_COLORS = {
     "icon_fg": "#dcd7ba",
@@ -210,6 +213,18 @@ def _active_window_bg() -> int:
     return icon_bg
 
 
+def _quickshell_visibility():
+    global _qs_status_mtime, _qs_status
+    try:
+        mtime = QS_STATUS_PATH.stat().st_mtime_ns
+        if mtime != _qs_status_mtime:
+            pid, date, clock = QS_STATUS_PATH.read_text().split()
+            _qs_status_mtime, _qs_status = mtime, (int(pid), date == "1", clock == "1")
+        return _qs_status[1:] if (Path("/proc") / str(_qs_status[0])).exists() else (False, False)
+    except (OSError, ValueError):
+        return False, False
+
+
 def _draw_icon(screen: Screen, index: int, layout_name: str) -> int:
     if index != 1:
         return 0
@@ -309,11 +324,15 @@ def _draw_right_status(screen: Screen, is_last: bool) -> int:
     separator = " "  # alt: ⋮
     clock = datetime.now().strftime("%H:%M")
     date = datetime.now().strftime("(%a,%b.%d)")
+    qs_date, qs_clock = _quickshell_visibility()
     cells = []
 
-    cells.append((icon_fg, clock))
-    cells.append((sep_color, separator))
-    cells.append((utc_color, date))
+    if not qs_clock:
+        cells.append((icon_fg, clock))
+    if not qs_clock and not qs_date:
+        cells.append((sep_color, separator))
+    if not qs_date:
+        cells.append((utc_color, date))
 
     right_status_length = RIGHT_MARGIN
     for cell in cells:

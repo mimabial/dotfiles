@@ -1,16 +1,27 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+scales=(1 1.25 1.5 1.67 2 3 4)
+[[ "${1:-}" == "--list" ]] && { printf '%s\n' "${scales[*]}"; exit; }
+
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/system/monitor.common.bash"
 
-hypr_help_guard "Usage: hyprshell system/monitor-scale [--reverse|--select|SCALE]
-Set or cycle the focused monitor's scale. Use --select for a rofi picker." "$@"
+hypr_help_guard "Usage: hyprshell system/monitor-scale [-m NAME] [--reverse|--select|SCALE]
+Set or cycle a monitor's scale. Use --select for a rofi picker.
+  --list               print available scales
+  -m, --monitor NAME   target this monitor instead of the focused one" "$@"
 
-scales=(1 1.25 1.5 1.67 2 3 4)
 mode="next"
 target_scale=""
+
+target_monitor=""
+if [[ "${1:-}" == "-m" || "${1:-}" == "--monitor" ]]; then
+  [[ -n "${2:-}" ]] || { printf 'Missing monitor name after %s\n' "${1}" >&2; exit 2; }
+  target_monitor="$2"
+  shift 2
+fi
 
 case "${1:-}" in
   "") ;;
@@ -31,7 +42,11 @@ case "${1:-}" in
     ;;
 esac
 
-monitor_info="$(hypr_monitors_json | jq -r '([.[] | select(.focused == true)][0] // .[0])')"
+if [[ -n "${target_monitor}" ]]; then
+  monitor_info="$(hypr_monitors_json | jq -r --arg name "${target_monitor}" '([.[] | select(.name == $name)][0] // empty)')"
+else
+  monitor_info="$(hypr_monitors_json | jq -r '([.[] | select(.focused == true)][0] // .[0])')"
+fi
 active_monitor="$(jq -r '.name // empty' <<<"${monitor_info}")"
 current_scale="$(jq -r '.scale // 1' <<<"${monitor_info}")"
 width="$(jq -r '.width // empty' <<<"${monitor_info}")"
@@ -42,7 +57,7 @@ pos_y="$(jq -r '.y // 0' <<<"${monitor_info}")"
 transform="$(jq -r '.transform // 0' <<<"${monitor_info}")"
 
 if [[ -z "${active_monitor}" || -z "${width}" || -z "${height}" || -z "${refresh_rate}" ]]; then
-  monitor_notify "Monitor scaling failed" "No focused monitor found"
+  monitor_notify "Monitor scaling failed" "${target_monitor:-No focused monitor} not found"
   exit 1
 fi
 

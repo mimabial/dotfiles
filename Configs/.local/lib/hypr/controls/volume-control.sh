@@ -9,10 +9,40 @@
 #   volume-control.sh -s                  # Select output sink via rofi
 #   volume-control.sh -t                  # Toggle to next output sink
 #   volume-control.sh -q ...              # Quiet (no notification)
+#   volume-control.sh --limits             # Print the default sink's dB range as JSON
 #
 # Depends on: wpctl, pactl, pw-dump, jq, dunstify, playerctl (for -p), rofi (for -s)
 #
 set -u
+
+print_volume_limits() {
+  local sink="" fields="" api="" card="" port="" control="PCM" file="" data=""
+  command -v pactl >/dev/null && command -v jq >/dev/null || { printf '{"minimum":-60,"maximum":0,"step":1,"backend":"software"}\n'; return; }
+  sink="$(pactl get-default-sink 2>/dev/null || true)"
+  fields="$(pactl --format=json list sinks 2>/dev/null | jq -r --arg sink "${sink}" '.[] | select(.name == $sink) | [(.properties["device.api"] // ""), (.properties["alsa.card"] // ""), (.active_port // "")] | @tsv' | head -1)"
+  IFS=$'\t' read -r api card port <<< "${fields}"
+  [[ "${api}" == "alsa" && "${card}" =~ ^[0-9]+$ ]] || { printf '{"minimum":-60,"maximum":0,"step":1,"backend":"software"}\n'; return; }
+  case "${port,,}" in *headphone*|*headset*) control="Headphone" ;; *speaker*) control="Speaker" ;; *lineout*|*line-out*) control="Line Out" ;; esac
+  for file in /proc/asound/card"${card}"/codec#*; do
+    [[ -r "${file}" ]] || continue
+    data="$(awk -v wanted="${control} Playback Volume" '/Control: name=/ { volume=/Playback Volume/; exact=index($0, "name=\"" wanted "\"") } volume && /Amp-Out caps:/ { if (exact) { print; found=1; exit } if (!fallback) fallback=$0; volume=0 } END { if (!found && fallback) print fallback }' "${file}")"
+    [[ -n "${data}" ]] && break
+  done
+  if [[ "${data}" =~ ofs=0x([[:xdigit:]]+),[[:space:]]+nsteps=0x([[:xdigit:]]+),[[:space:]]+stepsize=0x([[:xdigit:]]+) ]]; then
+    local offset=$((16#${BASH_REMATCH[1]})) steps=$((16#${BASH_REMATCH[2]})) size=$((16#${BASH_REMATCH[3]}))
+    awk -v o="${offset}" -v n="${steps}" -v s="${size}" 'BEGIN { s=(s+1)/4; printf "{\"minimum\":%.2f,\"maximum\":%.2f,\"step\":%.2f,\"backend\":\"alsa\"}\n", -o*s, (n-o)*s, s }'
+    return
+  fi
+  file="/proc/asound/card${card}/usbmixer"
+  [[ -r "${file}" ]] && data="$(awk -v wanted="${control} Playback Volume" '/Control: name=/ { volume=/Playback Volume/; exact=index($0, "name=\"" wanted "\"") } volume && /Volume:.*dBmin=/ { if (exact) { print; found=1; exit } if (!fallback) fallback=$0; volume=0 } END { if (!found && fallback) print fallback }' "${file}")"
+  if [[ "${data}" =~ dBmin=(-?[0-9]+),[[:space:]]*dBmax=(-?[0-9]+) ]]; then
+    awk -v min="${BASH_REMATCH[1]}" -v max="${BASH_REMATCH[2]}" 'BEGIN { printf "{\"minimum\":%.2f,\"maximum\":%.2f,\"step\":1,\"backend\":\"alsa\"}\n", min/100, max/100 }'
+  else
+    printf '{"minimum":-60,"maximum":0,"step":1,"backend":"software"}\n'
+  fi
+}
+
+[[ "${1:-}" == "--limits" ]] && { print_volume_limits; exit; }
 
 LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 # shellcheck source=/dev/null
@@ -177,14 +207,12 @@ apply_sink_delta() {
   local delta="$2"
   local step="$3"
   local boost_enabled="$4"
-  local boost_limit_decimal=""
+  local limit=""
 
-  if is_true "${boost_enabled}"; then
-    boost_limit_decimal="$(awk -v limit="${VOLUME_BOOST_LIMIT:-${VOLUME_DEFAULT_BOOST_LIMIT}}" 'BEGIN { print limit / 100 }')"
-    wpctl set-volume -l "${boost_limit_decimal}" "${target}" "${step}%${delta}"
-  else
-    wpctl set-volume -l 1.0 "${target}" "${step}%${delta}"
-  fi
+  read -r limit < "${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/volume-limit" || limit=""
+  [[ "${limit}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || limit=""
+  [[ -n "${limit}" ]] || { is_true "${boost_enabled}" && limit="$(awk -v value="${VOLUME_BOOST_LIMIT:-${VOLUME_DEFAULT_BOOST_LIMIT}}" 'BEGIN { print value / 100 }')" || limit=1; }
+  wpctl set-volume -l "${limit}" "${target}" "${step}%${delta}"
 }
 
 apply_source_delta() {
