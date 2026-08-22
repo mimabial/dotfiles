@@ -112,7 +112,7 @@ case "${1:---report}" in
       (map(select(.mounted)) | length) as $mounted |
       length as $count |
       {
-        text: (if $count == 0 then "" else "" end),
+        text: (if $count == 0 then "" else "󰕓" end),
         class: (if $count == 0 then "empty" elif $mounted > 0 then "mounted" else "present" end),
         tooltip: (if $count == 0 then "No removable media"
                   else (map("\(.title) \(.size) \(if .mounted then "— " + .mountpoint else "— not mounted" end)") | join("\n"))

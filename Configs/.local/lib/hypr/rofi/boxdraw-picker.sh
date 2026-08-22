@@ -33,21 +33,30 @@ setup_rofi_config() {
 
   boxdraw_lines="${ROFI_BOXDRAW_LINES:-}"
   if [[ -z "${boxdraw_lines}" || ! "${boxdraw_lines}" =~ ^[0-9]+$ ]]; then
-    local calc_lines=$((logical_height / (font_scale * 8)))
+    local calc_lines=$((logical_height / (font_scale * 6)))
     ((calc_lines < 6)) && calc_lines=6
-    ((calc_lines > 14)) && calc_lines=14
+    ((calc_lines > 18)) && calc_lines=18
     boxdraw_lines=${calc_lines}
   fi
 
+  # same coupling as the glyph picker: columns shrink as the font grows and the
+  # width follows them down, so floor the window at three quarters of the screen
   local default_width=$((boxdraw_columns * 14))
+  local em_px=""
+  em_px="$(rofi_length_em_to_px 1 "${font_name}" "${font_scale}" 2>/dev/null || true)"
+  if [[ "${em_px}" =~ ^[0-9]+$ ]] && ((em_px > 0)); then
+    local screen_em=$((logical_width * 3 / 4 / em_px))
+    ((screen_em > default_width)) && default_width=${screen_em}
+  fi
   boxdraw_window_width="${ROFI_BOXDRAW_WIDTH_EM:-${default_width}}"
   [[ "${boxdraw_window_width}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || boxdraw_window_width=${default_width}
-  local boxdraw_window_height_em=$((boxdraw_lines * 2 + 8))
+  local boxdraw_window_height_em=""
+  boxdraw_window_height_em="$(rofi_picker_listview_height_em "${boxdraw_lines}")"
   rofi_picker_compute_window_geometry \
     rofi_position boxdraw_window_theme \
     "${font_name}" "${font_scale}" \
     "${boxdraw_window_width}" "${boxdraw_window_height_em}" \
-    $((default_width * font_scale * 2)) $((boxdraw_window_height_em * font_scale * 2))
+    $((default_width * font_scale * 2)) $(((boxdraw_lines * 2 + 8) * font_scale * 2))
 }
 
 get_boxdraw_selection() {

@@ -16,8 +16,12 @@ Item {
             ? connectivityGroup.shell.alpha(connectivityGroup.shell.role(spec[0], connectivityGroup.shell.foreground), spec[1])
             : connectivityGroup.shell.role(spec, connectivityGroup.shell.foreground)
     }
+    readonly property real borderWidth: connectivityEdge.replacesOutline ? 0 : box.border
+    readonly property real spanX: box.margin[1] + box.margin[3] + box.padding[1] + box.padding[3] + 2 * borderWidth
+    readonly property real spanY: box.margin[0] + box.margin[2] + box.padding[0] + box.padding[2] + 2 * borderWidth
     Layout.fillWidth: true
-    implicitHeight: connectivityColumn.implicitHeight + box.margin[0] + box.margin[2] + box.padding[0] + box.padding[2]
+    implicitWidth: connectivityColumn.implicitWidth + spanX
+    implicitHeight: connectivityColumn.implicitHeight + spanY
     Rectangle {
         anchors.fill: parent
         anchors.topMargin: parent.box.margin[0]; anchors.rightMargin: parent.box.margin[1]
@@ -25,15 +29,15 @@ Item {
         radius: connectivityGroup.shell.moduleRadius
         color: connectivityGroup.boxColor("fill")
         border.color: connectivityGroup.boxColor("outline")
-        border.width: connectivityEdge.replacesOutline ? 0 : parent.box.border
+        border.width: connectivityGroup.borderWidth
     }
     ColumnLayout {
         id: connectivityColumn
         anchors.fill: parent
-        anchors.topMargin: parent.box.margin[0] + parent.box.padding[0]
-        anchors.rightMargin: parent.box.margin[1] + parent.box.padding[1]
-        anchors.bottomMargin: parent.box.margin[2] + parent.box.padding[2]
-        anchors.leftMargin: parent.box.margin[3] + parent.box.padding[3]
+        anchors.topMargin: parent.box.margin[0] + connectivityGroup.borderWidth + parent.box.padding[0]
+        anchors.rightMargin: parent.box.margin[1] + connectivityGroup.borderWidth + parent.box.padding[1]
+        anchors.bottomMargin: parent.box.margin[2] + connectivityGroup.borderWidth + parent.box.padding[2]
+        anchors.leftMargin: parent.box.margin[3] + connectivityGroup.borderWidth + parent.box.padding[3]
         spacing: 0
 
         Loader { Layout.fillWidth: true; active: !connectivityGroup.pairDrawers; sourceComponent: Component { VpnModule { shell: connectivityGroup.shell; popupsAllowed: connectivityGroup.popupsAllowed } } }

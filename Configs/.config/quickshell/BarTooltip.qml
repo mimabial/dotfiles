@@ -46,7 +46,7 @@ PopupWindow {
         border.color: root.shell.alpha(root.shell.role("br", root.shell.foreground), .45)
         Text {
             id: label; anchors.centerIn: parent; width: Math.min(340, implicitWidth)
-            color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: 11
+            color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.px(11)
             text: root.text; textFormat: Text.RichText; wrapMode: Text.Wrap
         }
     }

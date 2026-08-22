@@ -8,7 +8,7 @@ QtObject {
     property var theme: ({ rounding: 0, palette: {} })
     property var baseRules: ({})
     property var overrides: ({})
-    readonly property var rules: merge(baseRules, overrides)
+    readonly property var rules: resolve(merge(baseRules, overrides))
 
     readonly property var palette: theme.palette || ({})
     readonly property real radius: theme.rounding || 0
@@ -18,7 +18,15 @@ QtObject {
         justify: "center"
     })
 
-    function box(name) { const key = String(name || ""), base = key.endsWith(".active") && rules[key.slice(0, -7)]; return base ? merge(base, rules[key] || {}) : rules[key] || rules[""] || fallback }
+    // a rule inherits its dotted parent then the "" root, so a file states only
+    // what it changes; the chain is flattened once per load, never per lookup
+    function box(name) { const key = String(name || ""); return rules[key] || (key.includes(".") ? box(key.slice(0, key.lastIndexOf("."))) : rules[""] || fallback) }
+    function resolve(flat) {
+        const out = {}
+        const build = key => key in out ? out[key] : (out[key] = merge(key.includes(".") ? build(key.slice(0, key.lastIndexOf("."))) : merge(fallback, flat[""] || {}), flat[key] || {}))
+        for (const key in flat) build(key)
+        return out
+    }
     function merge(base, over) {
         const out = Object.assign({}, base)
         for (const key in over) out[key] = out[key] && over[key] && typeof out[key] === "object" && typeof over[key] === "object" && !Array.isArray(out[key]) && !Array.isArray(over[key]) ? merge(out[key], over[key]) : over[key]

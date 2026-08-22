@@ -36,9 +36,21 @@ ShellRoot {
     readonly property color accent: role("accent", foreground)
     property string baseFont: "JetBrainsMono Nerd Font"
     property string userFont: ""
-    readonly property string fontFamily: userFont || baseFont
+    property string themeFont: ""
+    // same precedence hyprland.lua loads them in: userfonts beats the theme pack,
+    // the theme pack beats the vars default
+    readonly property string fontFamily: userFont || themeFont || baseFont
     property string iconFont: "CaskaydiaCove Nerd Font"
     readonly property var fontFamilies: [fontFamily, iconFont, "Noto Color Emoji", "monospace"]
+    // Nerd Font ships double-width icon glyphs with a single-cell advance, and Qt
+    // centres on the advance, so the ink hangs off to the right. The Mono faces
+    // squeeze them into one cell, making ink and advance agree. Icons come from
+    // this face whatever the theme font is, so centring never depends on the
+    // theme shipping a Nerd Font (or a Mono twin of it).
+    readonly property string iconGlyphFont: {
+        const mono = iconFont + " Mono"
+        return Qt.fontFamilies().includes(mono) ? mono : iconFont
+    }
     readonly property real rounding: style.radius
     readonly property real moduleRadius: layoutName === "winbar" ? 0 : rounding
     readonly property real barOpacity: workflow === "powersaver" ? 1 : workflow === "windows" ? .5 : ["top", "winbar"].includes(layoutName) ? .4 : .6
@@ -103,17 +115,22 @@ ShellRoot {
         return Qt.rgba(parseInt(hex.slice(0, 2), 16) / 255, parseInt(hex.slice(2, 4), 16) / 255, parseInt(hex.slice(4, 6), 16) / 255, hex.length > 6 ? parseInt(hex.slice(6, 8), 16) / 255 : 1)
     }
     function role(name, fallback) { return color(palette[name] || fallback) }
-    function loadFont(raw, user) {
-        const icon = String(raw).match(/BAR_ICON_FONT\s*=\s*"([^"]+)"/)
-        if (icon) iconFont = icon[1]
+    // one hover recipe for every popup surface; `strength` scales the Style base
+    // so an emphasised row stays a ratio of the plain one instead of a literal
+    function hoverFill(strength) { return alpha(role("hvr_bg", accent), Style.hoverFillAlpha * (strength === undefined ? 1 : strength)) }
+    function hoverEdge(strength) { return alpha(role("hvr_br", foreground), Style.hoverBorderAlpha * (strength === undefined ? 1 : strength)) }
+    function loadFont(raw, key) {
+        const icon = String(raw).match(/vars\.set\("BAR_ICON_FONT",\s*"([^"]+)"\)|BAR_ICON_FONT\s*=\s*"([^"]+)"/)
+        if (icon) iconFont = icon[1] || icon[2]
         const match = String(raw).match(/vars\.set\("BAR_FONT",\s*"([^"]+)"\)|BAR_FONT\s*=\s*"([^"]+)"/)
-        if (user) userFont = match ? match[1] : ""
-        else if (match) baseFont = match[1] || match[2]
+        if (key === "baseFont") { if (match) baseFont = match[1] || match[2] }
+        else shellRoot[key] = match ? (match[1] || match[2]) : ""
     }
     function refresh() {
         stateFile.reload()
         layoutFile.reload()
         baseFontFile.reload()
+        themeFontFile.reload()
         userFontFile.reload()
     }
 
@@ -129,15 +146,16 @@ ShellRoot {
         id: baseFontFile
         path: shellRoot.home + "/.config/hypr/vars.lua"
         watchChanges: true
-        onLoaded: shellRoot.loadFont(text(), false)
+        onLoaded: shellRoot.loadFont(text(), "baseFont")
         onFileChanged: reload()
     }
+    FileView { id: themeFontFile; path: shellRoot.home + "/.config/hypr/themes/theme.lua"; watchChanges: true; printErrors: false; onLoaded: shellRoot.loadFont(text(), "themeFont"); onFileChanged: reload() }
     FileView {
         id: userFontFile
         path: shellRoot.home + "/.config/hypr/userfonts.lua"
         watchChanges: true
         printErrors: false
-        onLoaded: shellRoot.loadFont(text(), true)
+        onLoaded: shellRoot.loadFont(text(), "userFont")
         onFileChanged: reload()
     }
     FileView { id: volumeLimitFile; path: shellRoot.home + "/.local/state/quickshell/volume-limit"; printErrors: false; onLoaded: { const value = Number(text()); if (value > 0) shellRoot.setVolumeLimit(value, false) } }
@@ -149,6 +167,7 @@ ShellRoot {
     Process { id: volumeRangeProbe; command: [shellRoot.home + "/.local/lib/hypr/controls/volume-control.sh", "--limits"]; stdout: StdioCollector { waitForEnd: true; onStreamFinished: shellRoot.loadVolumeRange(text) } }
     Process { command: [shellRoot.home + "/.local/lib/hypr/calendar/alarm-timer.sh", "restore"]; running: true }
     ReloadToast { shell: shellRoot }
+    LooknfeelPanel { shell: shellRoot }
 
     onModeChanged: closePopup()
     onLayoutNameChanged: { barLayout = []; layoutFile.reload() }

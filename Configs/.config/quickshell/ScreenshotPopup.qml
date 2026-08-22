@@ -5,7 +5,7 @@ import QtQuick
 PopupCard {
     id: root
     popupName: "screenshot"
-    contentWidth: 320
+    contentWidth: Style.px(320)
 
     property string target: "smart"
     property string destination: "annotate"

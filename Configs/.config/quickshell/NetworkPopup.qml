@@ -6,8 +6,8 @@ import Quickshell.Networking
 PopupCard {
     id: root
     popupName: "network"
-    contentWidth: 380
-    contentHeight: 560
+    contentWidth: Style.px(440)
+    contentHeight: Style.px(560)
     property var pendingNetwork: null
     readonly property var device: {
         const devices = Networking.devices.values
@@ -36,13 +36,21 @@ PopupCard {
     property real txRate: 0
     property var lastSample: null
 
+    function statusName() {
+        if (!Networking.wifiEnabled) return "wi-fi off"
+        if (!root.active) return "not connected"
+        return root.active.name || "connected"
+    }
+    function pingText(key) { const ms = (root.status.ping || ({}))[key]; return ms === null || ms === undefined ? "" : ms + " ms" }
+    // split by family, not by index: resolv.conf order is whatever was pushed
+    function dnsFor(v6) { return (root.status.dns || []).filter(entry => String(entry).includes(":") === v6).join(", ") }
     function refreshStatus() { if (!statusProc.running) statusProc.running = true }
     function bytes(value) {
         const n = Number(value) || 0
         if (n >= 1024 * 1024 * 1024) return (n / 1024 / 1024 / 1024).toFixed(1) + " GB"
         if (n >= 1024 * 1024) return (n / 1024 / 1024).toFixed(1) + " MB"
         if (n >= 1024) return (n / 1024).toFixed(1) + " KB"
-        return n + " B"
+        return Math.round(n) + " B"
     }
     function sample(next) {
         const now = Date.now()
@@ -77,19 +85,29 @@ PopupCard {
     component InfoPair: Row {
         property string label: ""
         property string value: ""
-        visible: value !== ""
         width: parent.width; spacing: Style.lg
-        Text { id: pairLabel; text: parent.label; color: root.shell.alpha(root.shell.foreground, .6); font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
+        Text { id: pairLabel; text: parent.label; color: root.shell.alpha(root.shell.foreground, .6); font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall; elide: Text.ElideRight }
         Item { width: Math.max(0, parent.width - pairLabel.implicitWidth - pairValue.implicitWidth - parent.spacing * 2); height: 1 }
-        Text { id: pairValue; text: parent.value; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
+        Text { id: pairValue; text: parent.value || "—"; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall; elide: Text.ElideRight }
+    }
+    // paired left/right so conjugate readings sit on one line; a cell keeps its
+    // place and reads "—" when empty, or the pairing shifts as probes land
+    component InfoDuo: Row {
+        id: duo
+        property string label1: ""; property string value1: ""
+        property string label2: ""; property string value2: ""
+        width: parent.width; spacing: Style.xxl
+        InfoPair { width: (duo.width - duo.spacing) / 2; label: duo.label1; value: duo.value1 }
+        InfoPair { width: (duo.width - duo.spacing) / 2; label: duo.label2; value: duo.value2 }
     }
 
     Column {
-        anchors.fill: parent; spacing: 14
-        PopupSection { shell: root.shell; text: "NETWORK" }
+        anchors.fill: parent; spacing: Style.px(14)
+        PopupHero { shell: root.shell; title: "Network"; status: root.statusName() }
         Row {
             width: parent.width; spacing: Style.xs
             PopupRow {
+                id: wifiRow
                 width: parent.width - qrAction.width - Style.xs
                 shell: root.shell
                 icon: Networking.wifiEnabled ? "󰖩" : "󰖪"
@@ -101,7 +119,7 @@ PopupCard {
             BarButton {
                 id: qrAction
                 shell: root.shell
-                implicitWidth: 44; implicitHeight: 46
+                implicitWidth: Style.px(44); implicitHeight: wifiRow.implicitHeight
                 text: "󰐲"; tooltip: "Show QR code"
                 fontSize: Style.title
                 outline: root.shell.alpha(root.shell.role("br", root.shell.foreground), .3)
@@ -145,39 +163,16 @@ PopupCard {
                 }
             }
             Item { width: 1; height: 2 }
-            InfoPair {
-                label: "Signal"
-                value: root.active ? Math.round(root.active.signalStrength * 100) + "%" : ""
-            }
-            InfoPair {
-                label: "Security"
-                value: root.active ? WifiSecurityType.toString(root.active.security) : ""
-            }
-            InfoPair { label: "IP address"; value: String(root.status.address || "") }
-            InfoPair { label: "Gateway"; value: String(root.status.gateway || "") }
-            InfoPair { label: "Band"; value: String(root.status.band || "") }
-            InfoPair { label: "DNS"; value: (root.status.dns || []).join(", ") }
-            InfoPair {
-                label: "Ping"
-                value: {
-                    const ping = root.status.ping || ({})
-                    const parts = []
-                    if (ping.router !== null && ping.router !== undefined) parts.push(ping.router + " ms router")
-                    if (ping.internet !== null && ping.internet !== undefined) parts.push(ping.internet + " ms internet")
-                    return parts.join("  ·  ")
-                }
-            }
-            InfoPair {
-                label: "Connectivity"
-                value: Networking.canCheckConnectivity ? NetworkConnectivity.toString(Networking.connectivity) : ""
-            }
-            InfoPair { label: "Downloaded"; value: root.status.rx ? root.bytes(root.status.rx) : "" }
-            InfoPair { label: "Uploaded"; value: root.status.tx ? root.bytes(root.status.tx) : "" }
-            InfoPair { label: "Receiving"; value: root.lastSample ? root.bytes(root.rxRate) + "/s" : "" }
-            InfoPair { label: "Sending"; value: root.lastSample ? root.bytes(root.txRate) + "/s" : "" }
+            InfoDuo { label1: "Signal"; value1: root.active ? Math.round(root.active.signalStrength * 100) + "%" : ""; label2: "Security"; value2: root.active ? WifiSecurityType.toString(root.active.security) : "" }
+            InfoDuo { label1: "IP address"; value1: String(root.status.address || ""); label2: "Gateway"; value2: String(root.status.gateway || "") }
+            InfoDuo { label1: "Router ping"; value1: root.pingText("router"); label2: "Internet ping"; value2: root.pingText("internet") }
+            InfoDuo { label1: "Band"; value1: String(root.status.band || ""); label2: "Connectivity"; value2: Networking.canCheckConnectivity ? ({[NetworkConnectivity.Full]: "Full", [NetworkConnectivity.Limited]: "Limited", [NetworkConnectivity.Portal]: "Captive portal", [NetworkConnectivity.None]: "None"})[Networking.connectivity] || "" : "" }
+            InfoDuo { label1: "Downloaded"; value1: root.status.rx ? root.bytes(root.status.rx) : ""; label2: "Uploaded"; value2: root.status.tx ? root.bytes(root.status.tx) : "" }
+            InfoDuo { label1: "Receiving"; value1: root.lastSample ? root.bytes(root.rxRate) + "/s" : ""; label2: "Sending"; value2: root.lastSample ? root.bytes(root.txRate) + "/s" : "" }
+            InfoDuo { visible: value1 !== "" || value2 !== ""; label1: "DNS"; value1: root.dnsFor(false); label2: "DNS IPv6"; value2: root.dnsFor(true) }
         }
 
-        Text { visible: root.pendingNetwork !== null; text: root.pendingNetwork ? "PASSWORD · " + root.pendingNetwork.name : ""; color: root.shell.alpha(root.shell.foreground, .5); font.family: root.shell.fontFamily; font.pixelSize: 10; font.bold: true }
+        Text { visible: root.pendingNetwork !== null; text: root.pendingNetwork ? "PASSWORD · " + root.pendingNetwork.name : ""; color: root.shell.alpha(root.shell.foreground, .5); font.family: root.shell.fontFamily; font.pixelSize: Style.px(10); font.bold: true }
         TextField {
             id: password
             visible: root.pendingNetwork !== null
@@ -188,9 +183,9 @@ PopupCard {
             Keys.onEscapePressed: root.pendingNetwork = null
         }
         PopupSeparator { shell: root.shell }
-        PopupSection { shell: root.shell; text: root.device && root.device.scannerEnabled ? "AVAILABLE · SCANNING" : "AVAILABLE" }
+        PopupSection { shell: root.shell; text: "AVAILABLE"; value: root.device && root.device.scannerEnabled ? "scanning" : "" }
         ListView {
-            width: parent.width; height: parent.height - y; spacing: 4; clip: true
+            width: parent.width; height: parent.height - y; spacing: Style.px(4); clip: true
             model: root.device ? root.device.networks : null
             delegate: PopupRow {
                 required property var modelData

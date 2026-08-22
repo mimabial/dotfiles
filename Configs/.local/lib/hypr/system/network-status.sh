@@ -26,6 +26,13 @@ if command -v resolvectl >/dev/null 2>&1 && [[ -n "${iface}" ]]; then
     | jq -R -s -c 'split("\n") | map(select(length > 0))' || true)"
   [[ -n "${dns_json}" ]] || dns_json='[]'
 fi
+# resolvectl is silent without systemd-resolved; NetworkManager writes the real
+# list straight to resolv.conf there.
+if [[ "${dns_json}" == '[]' && -r /etc/resolv.conf ]]; then
+  dns_json="$(awk '$1 == "nameserver" { print $2 }' /etc/resolv.conf \
+    | jq -R -s -c 'split("\n") | map(select(length > 0))' || true)"
+  [[ -n "${dns_json}" ]] || dns_json='[]'
+fi
 
 band=""
 signal=""
@@ -57,12 +64,12 @@ if command -v nmcli >/dev/null 2>&1 && [[ -n "${iface}" ]]; then
   [[ -n "${uuid}" ]] && autoconnect="$(nmcli -g connection.autoconnect connection show "${uuid}" 2>/dev/null | head -n 1 || true)"
 fi
 
-# One sample each, short deadline: this runs on a timer and must not stall.
+# Second sample: the first pays ARP plus the Wi-Fi radio waking, reading 20x high.
 latency() {
   local host="$1"
   [[ -n "${host}" ]] || return 0
-  LC_ALL=C ping -n -c 1 -W 1 "${host}" 2>/dev/null \
-    | awk -F'time[=<]' '/time[=<]/ { split($2, part, " "); print part[1]; exit }' || true
+  LC_ALL=C ping -n -c 2 -i 0.2 -W 1 "${host}" 2>/dev/null \
+    | awk -F'time[=<]' '/time[=<]/ { split($2, part, " "); value = part[1] } END { print value }' || true
 }
 router_ms="$(latency "${gateway}")"
 internet_ms="$(latency "${probe}")"

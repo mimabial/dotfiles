@@ -5,7 +5,7 @@ import Quickshell.Hyprland
 PopupCard {
     id: root
     popupName: "workspaces"
-    contentWidth: 340
+    contentWidth: Style.px(340)
 
     readonly property var spaces: {
         const rows = []
@@ -34,7 +34,7 @@ PopupCard {
         id: spaceColumn
         anchors.left: parent.left; anchors.right: parent.right; spacing: Style.sm
 
-        PopupSection { shell: root.shell; text: "WORKSPACES · " + root.spaces.length }
+        PopupSection { shell: root.shell; text: "WORKSPACES"; value: root.spaces.length }
 
         Repeater {
             model: root.spaces

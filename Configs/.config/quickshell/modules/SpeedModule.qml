@@ -7,6 +7,6 @@ import ".."
 ScriptButton {
     id: root
     property bool popupsAllowed: true
-    css: "custom-network.speed"
+    css: "network.speed"
     command: ["hyprshell", "sysinfo/network-speed"]; interval: 3000
 }

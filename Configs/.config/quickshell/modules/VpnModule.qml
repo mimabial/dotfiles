@@ -11,7 +11,7 @@ import ".."
 ScriptButton {
     id: root
     property bool popupsAllowed: true
-    css: "custom-vpn"
+    css: "vpn"
     command: ["hyprshell", "waybar.vpn.sh"]; interval: 5000
     readonly property string state: String(output.class || "")
     textColor: state === "connected" ? root.shell.role("c2", root.shell.foreground)

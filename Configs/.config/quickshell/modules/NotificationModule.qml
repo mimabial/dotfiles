@@ -18,7 +18,7 @@ DrawerGroup {
     primary: Component { NotificationButton { shell: root.shell; popupEnabled: root.popupsAllowed } }
     secondary: Component { ScriptButton {
         id: githubModule
-        shell: root.shell; css: "custom-github.notifications"
+        shell: root.shell; css: "github.notifications"
         textColor: root.shell.role(output.class === "degraded" ? "warning" : output.class === "error" ? "error" : "success", root.shell.foreground)
         command: ["hyprshell", "github-notifications"]; interval: 3600000
         onClicked: button => button === Qt.RightButton

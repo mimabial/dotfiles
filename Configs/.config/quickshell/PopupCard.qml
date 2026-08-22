@@ -8,7 +8,7 @@ PopupWindow {
     required property var shell
     required property string popupName
     property bool popupEnabled: true
-    property int contentWidth: 380
+    property int contentWidth: Style.px(380)
     property int contentHeight: holder.childrenRect.height + padding * 2
     property int margin: Style.popupGap
     property int padding: Style.popupPadding
@@ -18,7 +18,6 @@ PopupWindow {
     property var extraGrabWindows: []
     readonly property bool open: popupEnabled && shell.popupName === popupName
     readonly property var anchorWindow: anchorItem ? anchorItem.QsWindow.window : null
-    property var returnFocus: null
     readonly property string position: shell.layoutName === "main" ? "right" : ["left", "sidebar"].includes(shell.layoutName) ? "left" : shell.layoutName === "top" ? "top" : "bottom"
     default property alias content: holder.children
 
@@ -67,20 +66,12 @@ PopupWindow {
         cursorIndex = -1
         syncCursor()
     }
-    onOpenChanged: {
-        if (open) returnFocus = Hyprland.activeToplevel ? Hyprland.activeToplevel.wayland : null
-        else clearCursor()
-    }
-    function dismiss() {
-        const window = returnFocus
-        shell.closePopup()
-        if (window) Qt.callLater(() => window.activate())
-    }
+    onOpenChanged: if (!open) clearCursor()
 
     HyprlandFocusGrab {
         active: root.open && !root.shell.focusPriming
         windows: (root.anchorWindow ? [root, root.anchorWindow] : [root]).concat(root.extraGrabWindows)
-        onCleared: root.dismiss()
+        onCleared: root.shell.closePopup()
     }
     anchor {
         window: root.anchorWindow

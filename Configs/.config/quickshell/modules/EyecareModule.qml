@@ -13,7 +13,7 @@ DrawerGroup {
     property bool popupsAllowed: true
     property bool sliderFirst: false
     shell: root.shell; css: "eyecare"; Layout.fillWidth: true
-    holdOpen: root.shell.popupName === "hyprsunset"
+    holdOpen: ["hyprsunset", "caffeine"].includes(root.shell.popupName)
     primary: Component { BarButton {
         id: monitorButton; shell: root.shell; css: "backlight"; text: Backlight.icon
         onClicked: root.shell.togglePopup("monitor"); onWheeled: delta => { root.shell.run(["hyprshell", "brightness-control.sh", delta > 0 ? "i" : "d"]); Backlight.nudge() }
@@ -22,8 +22,8 @@ DrawerGroup {
     secondary: Component { GridLayout { columns: 1; rowSpacing: 0; columnSpacing: 0
         ScriptButton {
             id: sunsetModule
-            Layout.fillWidth: true; shell: root.shell; css: "custom-hyprsunset"
-            Layout.row: root.sliderFirst ? 1 : 0; Layout.column: 0
+            Layout.fillWidth: true; shell: root.shell; css: "hyprsunset"
+            Layout.row: 1; Layout.column: 0
             command: ["hyprshell", "hyprsunset", "-rq"]; interval: 86400000
             onClicked: button => button === Qt.RightButton
                 ? root.shell.run(["hyprshell", "hyprsunset", "-t", "-q", "-P", "waybar:19"])
@@ -32,8 +32,21 @@ DrawerGroup {
         }
         BrightnessSlider {
             Layout.fillWidth: true; shell: root.shell
-            Layout.row: root.sliderFirst ? 0 : 1; Layout.column: 0
+            Layout.row: root.sliderFirst ? 0 : 2; Layout.column: 0
         }
-        ScriptButton { Layout.row: 2; Layout.column: 0; Layout.fillWidth: true; id: caffeineEyecare; shell: root.shell; css: "custom-caffeine"; command: ["hyprshell", "waybar/caffeine.sh"]; interval: 2000; onClicked: button => { root.shell.run(["hyprshell", button === Qt.RightButton ? "session/toggle-audio-keep-awake.sh" : "session/toggle-keep-awake.sh"]); caffeineEyecare.refresh(300) } }
+        ScriptButton {
+            Layout.row: root.sliderFirst ? 2 : 0; Layout.column: 0; Layout.fillWidth: true
+            id: caffeineEyecare; shell: root.shell; css: "caffeine"
+            command: ["hyprshell", "waybar/caffeine.sh"]; interval: 2000
+            // held by the manual switch and held by playback look different: the
+            // second one you cannot turn off from here, and the glyph is the same
+            textColor: !caffeineEyecare.output.manual && !caffeineEyecare.output.playing
+                ? root.shell.foreground
+                : root.shell.role(caffeineEyecare.output.manual ? "warning" : "c9", root.shell.foreground)
+            onClicked: button => button === Qt.RightButton
+                ? (root.shell.run(["hyprshell", "session/toggle-keep-awake.sh"]), caffeineEyecare.refresh(500))
+                : root.shell.togglePopup("caffeine")
+            CaffeinePopup { anchorItem: caffeineEyecare; shell: root.shell; popupEnabled: root.popupsAllowed }
+        }
     } }
 }

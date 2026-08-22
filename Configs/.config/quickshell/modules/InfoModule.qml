@@ -12,7 +12,7 @@ DrawerGroup {
     shell: root.shell; css: "info"; reverse: true; Layout.fillWidth: true
     holdOpen: ["gpu", "cpu", "memory", "disk"].includes(root.shell.popupName)
     primary: Component { BarButton {
-        shell: root.shell; css: "custom-dmark"; text: "—"; fontWeight: Font.Bold
+        shell: root.shell; css: "dmark"; text: "—"; fontWeight: Font.Bold
         textColor: root.shell.role("c7", root.shell.foreground)
         tooltip: root.single ? "Show " + (root.showGpu ? "CPU" : "GPU") : ""
         onClicked: button => { if (root.single && button === Qt.LeftButton) root.showGpu = !root.showGpu }

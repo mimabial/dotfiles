@@ -10,7 +10,7 @@ DrawerGroup {
     holdOpen: ["disks", "printers"].includes(root.shell.popupName)
     primary: Component { ScriptButton {
         id: disksButton
-        shell: root.shell; css: "custom-removable"
+        shell: root.shell; css: "removable"
         command: ["hyprshell", "system/removable", "--waybar"]; interval: 5000
         onClicked: root.shell.togglePopup("disks")
         DisksPopup { anchorItem: disksButton; shell: root.shell; popupEnabled: root.popupsAllowed }

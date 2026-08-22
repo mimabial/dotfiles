@@ -5,7 +5,7 @@ BarButton {
     id: root
     readonly property var source: Pipewire.defaultAudioSource
     readonly property bool live: source && !source.audio.muted
-    css: live ? "custom-microphone" : "custom-microphone.muted"
+    css: live ? "microphone" : "microphone.muted"
     radius: shell.moduleRadius
     outline: shell.alpha(shell.role(live ? "c1" : "br", shell.foreground), .3)
     text: !root.source || root.source.audio.muted ? "󰍭" : "󰍬"

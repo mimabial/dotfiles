@@ -14,7 +14,7 @@ StackedReadout {
     gap: 6
     iconLine: 21
     iconPadRight: 3
-    css: "custom-gpuinfo"; fontWeight: Font.Bold
+    css: "gpuinfo"; fontWeight: Font.Bold
     command: ["hyprshell", "gpuinfo"]; interval: 60000
     textColor: root.shell.role("c7", root.shell.foreground)
     onClicked: button => {

@@ -4,7 +4,7 @@ import Quickshell.Io
 PopupCard {
     id: root
     popupName: "language"
-    contentWidth: 260
+    contentWidth: Style.px(260)
 
     property var report: ({})
     readonly property string active: String(report.text || "")

@@ -4,8 +4,8 @@ import Quickshell.Io
 PopupCard {
     id: root
     popupName: "notifications"
-    contentWidth: 380
-    contentHeight: 430
+    contentWidth: Style.px(380)
+    contentHeight: Style.px(430)
 
     property var report: ({})
     readonly property var entries: report.entries || []
@@ -40,7 +40,7 @@ PopupCard {
         id: notifyColumn
         anchors.fill: parent; spacing: Style.sm
 
-        PopupSection { shell: root.shell; text: "NOTIFICATIONS" }
+        PopupHero { shell: root.shell; title: "Notifications"; status: root.paused ? "do not disturb" : "on" }
 
         PopupRow {
             width: parent.width; shell: root.shell
@@ -55,7 +55,7 @@ PopupCard {
         PopupSeparator { shell: root.shell }
         PopupSection {
             shell: root.shell
-            text: root.entries.length > 0 ? "HISTORY · " + root.entries.length : "HISTORY"
+            text: "HISTORY"; value: root.entries.length || ""
         }
 
         Text {
@@ -68,7 +68,7 @@ PopupCard {
         ListView {
             width: parent.width
             height: Math.max(0, parent.height - y - 34)
-            spacing: 4; clip: true
+            spacing: Style.px(4); clip: true
             model: root.entries
             delegate: Rectangle {
                 required property var modelData
@@ -76,7 +76,7 @@ PopupCard {
                 height: entryText.implicitHeight + Style.controlPaddingY * 2
                 radius: root.shell.rounding
                 color: entryMouse.containsMouse
-                    ? root.shell.alpha(root.shell.role("hvr_bg", root.shell.accent), Style.hoverFillAlpha)
+                    ? root.shell.hoverFill()
                     : "transparent"
 
                 Column {

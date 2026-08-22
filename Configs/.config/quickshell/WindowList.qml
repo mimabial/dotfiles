@@ -30,6 +30,14 @@ Item {
                 readonly property bool active: modelData.activated
                 readonly property var box: root.shell.style.box(active ? "#taskbar button.active" : "#taskbar button")
                 property var entry: null
+                function act(button) {
+                    const target = modelData.wayland, address = String((modelData.lastIpcObject || {}).address || "")
+                    if (!target) return
+                    if (button === Qt.LeftButton && address) Quickshell.execDetached(["hyprctl", "eval", "local w=hl.get_config('cursor.no_warps');hl.config({cursor={no_warps=true}});hl.exec_scheduled_prop_refresh_immediately();hl.dispatch(hl.dsp.focus({window='address:" + address + "'}));hl.config({cursor={no_warps=w}})"])
+                    else if (button === Qt.LeftButton) target.activate()
+                    else if (button === Qt.MiddleButton) target.close()
+                    else target.fullscreen = !target.fullscreen
+                }
                 function refreshEntry() { const ipc = modelData.lastIpcObject || {}, name = String(ipc.class || ipc.initialClass || ""); entry = name ? DesktopEntries.heuristicLookup(name) : null }
                 Component.onCompleted: refreshEntry()
                 Connections { target: window.modelData; function onLastIpcObjectChanged() { window.refreshEntry() } }
@@ -68,7 +76,7 @@ Item {
                     anchors.fill: parent
                     acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
                     hoverEnabled: true
-                    onClicked: event => root.shell.run(["hyprshell", "waybar/window-action", window.modelData.address, event.button === Qt.LeftButton ? "1" : event.button === Qt.MiddleButton ? "2" : "3"])
+                    onClicked: event => window.act(event.button)
                 }
                 BarTooltip { anchorItem: window; shell: root.shell; text: modelData.title; hovered: mouse.containsMouse }
             }

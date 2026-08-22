@@ -7,9 +7,9 @@ BarButton {
     readonly property var sink: Pipewire.defaultAudioSink
     property bool popupEnabled: true
     property bool framed: true
-    // the fa device glyphs are double-width in a mono advance; that key adds
-    // the right padding that recentres them
-    css: root.portIcon !== "" && !(root.sink && root.sink.audio.muted) ? "pulseaudio.headphone" : "pulseaudio"
+    css: "pulseaudio"
+    TextMetrics { id: iconMetrics; font.family: root.shell.fontFamily; font.pixelSize: root.fontSize; font.weight: root.fontWeight; text: root.text }
+    textOffsetX: iconMetrics.advanceWidth / 2 - iconMetrics.tightBoundingRect.x - iconMetrics.tightBoundingRect.width / 2
     radius: shell.moduleRadius
     fill: framed ? shell.alpha(shell.background, .1) : "transparent"
     outline: shell.alpha(shell.role("br", shell.foreground), .3)
@@ -18,7 +18,7 @@ BarButton {
     // active port name; quickshell's pipewire API exposes no port, so this
     // matches the node properties that carry the same words
     readonly property var portIcons: [
-        ["headphone", ""], ["hands-free", ""], ["headset", ""],
+        ["headphone", "󰋋"], ["hands-free", "󰋋"], ["headset", "󰋋"],
         ["phone", ""], ["portable", ""], ["car", ""]
     ]
     // the active port is the only thing that tracks the analog jack, and

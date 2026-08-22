@@ -4,7 +4,7 @@ import Quickshell.Io
 PopupCard {
     id: root
     popupName: "printers"
-    contentWidth: 360
+    contentWidth: Style.px(360)
 
     property var report: ({})
     readonly property var printers: report.printers || []
@@ -37,7 +37,7 @@ PopupCard {
         id: printersColumn
         anchors.left: parent.left; anchors.right: parent.right; spacing: Style.sm
 
-        PopupSection { shell: root.shell; text: "PRINTERS" }
+        PopupHero { shell: root.shell; title: "Printers"; status: root.printers.length > 0 ? root.printers.length + " configured" : "none configured" }
 
         Text {
             visible: root.printers.length === 0
@@ -67,7 +67,7 @@ PopupCard {
         PopupSeparator { visible: root.jobs.length > 0; shell: root.shell }
         PopupSection {
             visible: root.jobs.length > 0
-            shell: root.shell; text: "QUEUE · " + root.jobs.length
+            shell: root.shell; text: "QUEUE"; value: root.jobs.length
         }
 
         Repeater {

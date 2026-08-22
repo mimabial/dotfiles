@@ -61,46 +61,20 @@ font_name="$(rofi_effective_font_name "${ROFI_KEYBIND_HINT_FONT:-$ROFI_FONT}")"
 font_override="$(rofi_font_override "${font_name}" "${font_scale}")"
 icon_override="$(rofi_icon_theme_override)"
 r_override="$(rofi_standard_window_theme listview same)"
-read -r logical_width logical_height <<<"$(rofi_focused_monitor_logical_size)"
-
 entry_count=$(printf '%s\n' "${output}" | sed '/^[[:space:]]*$/d' | wc -l)
 entry_count=${entry_count//[[:space:]]/}
 [[ "${entry_count}" =~ ^[0-9]+$ ]] || entry_count=13
-
-kb_hint_width="${ROFI_KEYBIND_HINT_WIDTH:-}"
-if [[ ! "${kb_hint_width}" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
-  kb_hint_width="$(awk -v w="${logical_width:-1280}" -v fs="${font_scale}" 'BEGIN { v = w / (fs * 3.26); if (v < 35) v = 35; if (v > 72) v = 72; printf "%.1f", v }')"
-fi
-
-kb_hint_line="${ROFI_KEYBIND_HINT_LINE:-}"
-if [[ ! "${kb_hint_line}" =~ ^[0-9]+$ ]]; then
-  kb_hint_line=$(((${logical_height:-720}) / (font_scale * 5)))
-  ((kb_hint_line < 10)) && kb_hint_line=10
-  ((kb_hint_line > 26)) && kb_hint_line=26
-  ((entry_count > 0 && kb_hint_line > entry_count)) && kb_hint_line=${entry_count}
-fi
-
-kb_hint_height="${ROFI_KEYBIND_HINT_HEIGHT:-}"
-if [[ ! "${kb_hint_height}" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
-  kb_hint_height="$(awk -v lines="${kb_hint_line}" 'BEGIN { v = (lines * 1.9) + 7; if (v < 24) v = 24; if (v > 48) v = 48; printf "%.1f", v }')"
-fi
-
-kb_hint_width_px="$(rofi_length_em_to_px "${kb_hint_width}" "${font_name}" "${font_scale}" 2>/dev/null || true)"
-kb_hint_height_px="$(rofi_length_em_to_px "${kb_hint_height}" "${font_name}" "${font_scale}" 2>/dev/null || true)"
-[[ "${kb_hint_width_px}" =~ ^[0-9]+$ ]] || kb_hint_width_px=800
-[[ "${kb_hint_height_px}" =~ ^[0-9]+$ ]] || kb_hint_height_px=420
-rofi_position="$(get_rofi_pos "${kb_hint_width_px}" "${kb_hint_height_px}")"
-layout_override="window { width: ${kb_hint_width}em; height: ${kb_hint_height}em; } listview { lines: ${kb_hint_line}; } ${rofi_position}"
+layout_override="$(rofi_cheatsheet_layout_override "${entry_count}" "${font_name}" "${font_scale}")"
 
 selected=$(printf '%s\n' "${output}" | rofi -dmenu -p " Keybinds" -i \
   -display-columns 1 \
   -display-column-separator ":::" \
+  -theme "$(rofi_resolve_theme "${ROFI_KEYBIND_HINT_STYLE:-clipboard}")" \
   -theme-str "entry { placeholder: \"  Keybindings\"; }" \
   -theme-str "${font_override}" \
   -theme-str "${icon_override}" \
   -theme-str "${r_override}" \
   -theme-str "${layout_override}" \
-  -theme "$(rofi_resolve_theme "${ROFI_KEYBIND_HINT_STYLE:-clipboard}")" \
   | sed 's/.*\s*//')
 [[ -z "${selected}" ]] && exit 0
 

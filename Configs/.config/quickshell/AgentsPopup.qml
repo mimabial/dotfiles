@@ -3,7 +3,7 @@ import QtQuick
 PopupCard {
     id: root
     popupName: "agents"
-    contentWidth: 380
+    contentWidth: Style.px(380)
     contentHeight: agentsColumn.implicitHeight + padding * 2
 
     property var records: []
@@ -34,6 +34,8 @@ PopupCard {
         return out
     }
     readonly property real heaviestModel: models.length ? models[0].total : 0
+    readonly property string todayDate: Qt.formatDate(shell.clock.date, "yyyy-MM-dd")
+    readonly property int dayLabelWidth: Style.px(40)
 
     function compact(value) {
         const n = Number(value) || 0
@@ -45,7 +47,7 @@ PopupCard {
     function resetsIn(iso) {
         const target = Date.parse(iso)
         if (isNaN(target)) return ""
-        const minutes = Math.max(0, Math.round((target - Date.now()) / 60000))
+        const minutes = Math.max(0, Math.round((target - shell.clock.date.getTime()) / 60000))
         if (minutes >= 1440) return Math.floor(minutes / 1440) + "d " + Math.floor(minutes % 1440 / 60) + "h"
         if (minutes >= 60) return Math.floor(minutes / 60) + "h " + minutes % 60 + "m"
         return minutes + "m"
@@ -55,22 +57,10 @@ PopupCard {
         id: agentsColumn
         anchors.left: parent.left; anchors.right: parent.right; spacing: Style.sectionGap
 
-        PopupSection { shell: root.shell; text: "AGENTS" }
-        Column {
-            width: parent.width; spacing: Style.xxs
-            Text {
-                width: parent.width
-                text: root.provider ? root.provider.name : "No AI coding subscriptions found"
-                color: root.shell.foreground; font.family: root.shell.fontFamily
-                font.pixelSize: Style.title; font.bold: true; elide: Text.ElideRight
-            }
-            Text {
-                visible: text !== ""
-                width: parent.width
-                text: root.provider ? (String(root.provider.usageStatusText || "") || String(root.provider.tierLabel || "")) : ""
-                color: root.shell.alpha(root.shell.foreground, .6)
-                font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall; elide: Text.ElideRight
-            }
+        PopupHero {
+            shell: root.shell
+            title: root.provider ? root.provider.name : "No AI coding subscriptions found"
+            status: root.provider ? (String(root.provider.usageStatusText || "") || String(root.provider.tierLabel || "")) : ""
         }
 
         // Subscription switch — only when more than one agent reports usage.
@@ -101,17 +91,16 @@ PopupCard {
                 model: root.limits
                 Column {
                     required property var modelData
-                    width: agentsColumn.width; spacing: Style.xxs
+                    width: agentsColumn.width; spacing: Style.md
                     Row {
                         width: parent.width
                         Text {
-                            text: modelData.label; color: root.shell.foreground
+                            text: String(modelData.label).replace(/\s*\(.*\)\s*$/, ""); color: root.shell.foreground
                             font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
                         }
                         Item { width: Math.max(0, parent.width - parent.children[0].implicitWidth - parent.children[2].implicitWidth); height: 1 }
                         Text {
                             text: Math.round(Number(modelData.percent) * 100) + "%"
-                                + (root.resetsIn(modelData.resetsAt) ? "  ·  " + root.resetsIn(modelData.resetsAt) : "")
                             color: root.shell.alpha(root.shell.foreground, .65)
                             font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
                         }
@@ -127,6 +116,13 @@ PopupCard {
                                 : root.shell.role("act_br", root.shell.accent)
                         }
                     }
+                    Text {
+                        visible: text !== ""
+                        width: parent.width
+                        text: root.resetsIn(modelData.resetsAt) ? "Resets in " + root.resetsIn(modelData.resetsAt) : ""
+                        color: root.shell.alpha(root.shell.foreground, .55)
+                        font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                    }
                 }
             }
         }
@@ -139,17 +135,18 @@ PopupCard {
             Repeater {
                 model: root.days
                 Row {
-                    required property int index; required property var modelData
-                    readonly property bool today: index === root.days.length - 1
+                    required property var modelData
+                    readonly property bool today: String(modelData.date) === root.todayDate
                     width: agentsColumn.width; spacing: Style.lg
                     Text {
-                        width: 32; text: Qt.formatDate(new Date(modelData.date), "ddd")
+                        width: root.dayLabelWidth
+                        text: today ? "Today" : Qt.formatDate(new Date(String(modelData.date) + "T00:00:00"), "ddd")
                         color: root.shell.alpha(root.shell.foreground, today ? .9 : .55)
                         font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: today
                     }
                     Rectangle {
                         anchors.verticalCenter: parent.verticalCenter
-                        width: parent.width - 32 - 56 - Style.lg * 2; height: Style.trackHeight
+                        width: parent.width - root.dayLabelWidth - Style.px(56) - Style.lg * 2; height: Style.trackHeight
                         radius: Style.trackHeight / 2; color: root.shell.alpha(root.shell.foreground, .1)
                         Rectangle {
                             width: root.busiestDay > 0 ? parent.width * (Number(modelData.messageCount) / root.busiestDay) : 0
@@ -158,7 +155,7 @@ PopupCard {
                         }
                     }
                     Text {
-                        width: 56; horizontalAlignment: Text.AlignRight
+                        width: Style.px(56); horizontalAlignment: Text.AlignRight
                         text: root.compact(modelData.messageCount)
                         color: root.shell.alpha(root.shell.foreground, today ? .9 : .55)
                         font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: today
@@ -169,41 +166,45 @@ PopupCard {
 
         Column {
             visible: root.models.length > 0
-            width: parent.width; spacing: Style.sm
+            width: parent.width; spacing: Style.md
             PopupSeparator { shell: root.shell }
             PopupSection { shell: root.shell; text: "TOKENS BY MODEL" }
             Repeater {
                 model: root.models.slice(0, 5)
-                // name and total on one line, the bar on its own beneath: model
-                // names are long, and the bar used to be drawn inside the text's
-                // line box, which left it colliding with the descenders
-                Column {
+                Item {
+                    id: modelRow
                     required property var modelData
-                    width: agentsColumn.width; spacing: 3
-                    Row {
-                        width: parent.width; spacing: Style.lg
-                        Text {
-                            width: parent.width - 56 - Style.lg
-                            text: parent.parent.modelData.name; elide: Text.ElideRight
-                            color: root.shell.alpha(root.shell.foreground, .8)
-                            font.family: root.shell.fontFamily; font.pixelSize: Style.caption
-                        }
-                        Text {
-                            width: 56; horizontalAlignment: Text.AlignRight
-                            text: root.compact(parent.parent.modelData.total)
-                            color: root.shell.alpha(root.shell.foreground, .65)
-                            font.family: root.shell.fontFamily; font.pixelSize: Style.caption
-                        }
+                    width: agentsColumn.width
+                    implicitHeight: modelName.implicitHeight + Style.lg
+
+                    Rectangle {
+                        anchors.fill: parent; radius: root.shell.rounding
+                        color: root.shell.alpha(root.shell.foreground, .05)
                     }
                     Rectangle {
-                        width: parent.width; height: Style.trackHeight
-                        radius: Style.trackHeight / 2
-                        color: root.shell.alpha(root.shell.foreground, .1)
-                        Rectangle {
-                            width: root.heaviestModel > 0 ? parent.width * (parent.parent.modelData.total / root.heaviestModel) : 0
-                            height: parent.height; radius: parent.radius
-                            color: root.shell.alpha(root.shell.role("act_br", root.shell.accent), .55)
-                        }
+                        anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
+                        width: root.heaviestModel > 0
+                            ? parent.width * Math.min(1, modelRow.modelData.total / root.heaviestModel)
+                            : 0
+                        radius: root.shell.rounding
+                        color: root.shell.alpha(root.shell.foreground, .14)
+                    }
+                    Text {
+                        id: modelName
+                        text: modelRow.modelData.name; elide: Text.ElideRight
+                        color: root.shell.foreground
+                        font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
+                        anchors.left: parent.left; anchors.leftMargin: Style.lg
+                        anchors.right: modelTokens.left; anchors.rightMargin: Style.lg
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                    Text {
+                        id: modelTokens
+                        text: root.compact(modelRow.modelData.total)
+                        color: root.shell.alpha(root.shell.foreground, .65)
+                        font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall; font.bold: true
+                        anchors.right: parent.right; anchors.rightMargin: Style.lg
+                        anchors.verticalCenter: parent.verticalCenter
                     }
                 }
             }

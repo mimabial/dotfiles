@@ -125,24 +125,27 @@ rofi_prepare_standard_context() {
   local requested_font="${7:-}"
   local container_name="${8:-wallbox}"
   local elem_mode="${9:-same}"
-  local effective_scale=""
-  local effective_font=""
-  local font_override=""
-  local window_theme=""
-  local opacity_override=""
+  # prefixed so a caller naming an out-variable after one of these (font_override,
+  # window_theme, ...) does not have its own local shadowed by ours: printf -v
+  # would then write to this frame and the caller would come back empty
+  local _ctx_scale=""
+  local _ctx_font=""
+  local _ctx_font_override=""
+  local _ctx_window_theme=""
+  local _ctx_opacity=""
 
   rofi_hypr_snapshot
-  effective_scale="$(rofi_effective_font_scale "${requested_scale}")"
-  effective_font="$(rofi_effective_font_name "${requested_font}")"
-  font_override="$(rofi_font_override "${effective_font}" "${effective_scale}")"
-  window_theme="$(rofi_standard_window_theme "${container_name}" "${elem_mode}")"
-  opacity_override="$(rofi_active_opacity_override)"
+  _ctx_scale="$(rofi_effective_font_scale "${requested_scale}")"
+  _ctx_font="$(rofi_effective_font_name "${requested_font}")"
+  _ctx_font_override="$(rofi_font_override "${_ctx_font}" "${_ctx_scale}")"
+  _ctx_window_theme="$(rofi_standard_window_theme "${container_name}" "${elem_mode}")"
+  _ctx_opacity="$(rofi_active_opacity_override)"
 
-  printf -v "${out_scale_name}" '%s' "${effective_scale}"
-  printf -v "${out_font_name}" '%s' "${effective_font}"
-  printf -v "${out_font_override_name}" '%s' "${font_override}"
-  printf -v "${out_window_theme_name}" '%s' "${window_theme}"
-  printf -v "${out_opacity_name}" '%s' "${opacity_override}"
+  printf -v "${out_scale_name}" '%s' "${_ctx_scale}"
+  printf -v "${out_font_name}" '%s' "${_ctx_font}"
+  printf -v "${out_font_override_name}" '%s' "${_ctx_font_override}"
+  printf -v "${out_window_theme_name}" '%s' "${_ctx_window_theme}"
+  printf -v "${out_opacity_name}" '%s' "${_ctx_opacity}"
 }
 
 rofi_build_standard_menu_args() {
@@ -296,4 +299,41 @@ rofi_active_opacity_override() {
   fi
   [[ "${bg_color}" =~ ^#[0-9a-fA-F]{6}$ ]] || bg_color="#000000"
   printf 'window { transparency: "real"; background-color: %s%s; }\n' "${bg_color}" "${hex_alpha}"
+}
+
+# Cheatsheet geometry: a wide list sized to the monitor and the entry count, in
+# em so it tracks the font scale. Shared so every cheatsheet renders alike.
+rofi_cheatsheet_layout_override() {
+  local entry_count="${1:-13}"
+  local font_name="$2"
+  local font_scale="$3"
+  local logical_width="" logical_height="" width="" lines="" height="" width_px="" height_px=""
+
+  read -r logical_width logical_height <<<"$(rofi_focused_monitor_logical_size)"
+
+  width="${ROFI_KEYBIND_HINT_WIDTH:-}"
+  if [[ ! "${width}" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+    width="$(awk -v w="${logical_width:-1280}" -v fs="${font_scale}" 'BEGIN { v = w / (fs * 3.26); if (v < 35) v = 35; if (v > 72) v = 72; printf "%.1f", v }')"
+  fi
+
+  lines="${ROFI_KEYBIND_HINT_LINE:-}"
+  if [[ ! "${lines}" =~ ^[0-9]+$ ]]; then
+    lines=$(((${logical_height:-720}) / (font_scale * 5)))
+    ((lines < 10)) && lines=10
+    ((lines > 26)) && lines=26
+    ((entry_count > 0 && lines > entry_count)) && lines=${entry_count}
+  fi
+
+  height="${ROFI_KEYBIND_HINT_HEIGHT:-}"
+  if [[ ! "${height}" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+    height="$(awk -v lines="${lines}" 'BEGIN { v = (lines * 1.9) + 7; if (v < 24) v = 24; if (v > 48) v = 48; printf "%.1f", v }')"
+  fi
+
+  width_px="$(rofi_length_em_to_px "${width}" "${font_name}" "${font_scale}" 2>/dev/null || true)"
+  height_px="$(rofi_length_em_to_px "${height}" "${font_name}" "${font_scale}" 2>/dev/null || true)"
+  [[ "${width_px}" =~ ^[0-9]+$ ]] || width_px=800
+  [[ "${height_px}" =~ ^[0-9]+$ ]] || height_px=420
+
+  printf 'window { width: %sem; height: %sem; } listview { lines: %s; } %s\n' \
+    "${width}" "${height}" "${lines}" "$(get_rofi_pos "${width_px}" "${height_px}")"
 }

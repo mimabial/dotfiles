@@ -11,7 +11,7 @@ import ".."
 ScriptButton {
     id: root
     property bool popupsAllowed: true
-    css: "custom-printers"
+    css: "printers"
     command: ["hyprshell", "system/printers", "--waybar"]; interval: 10000
     onClicked: root.shell.togglePopup("printers")
     PrintersPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed }

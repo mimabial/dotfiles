@@ -5,7 +5,7 @@ import Quickshell.Io
 PopupCard {
     id: root
     popupName: "wifiqr"
-    contentWidth: 260
+    contentWidth: Style.px(260)
     contentHeight: qrColumn.implicitHeight + padding * 2
 
     property var rows: []
@@ -46,7 +46,7 @@ PopupCard {
         Rectangle {
             visible: root.rows.length > 0
             anchors.horizontalCenter: parent.horizontalCenter
-            width: 212; height: 212; color: "#ffffff"; radius: 2
+            width: Style.px(212); height: Style.px(212); color: "#ffffff"; radius: 2
             Grid {
                 anchors.centerIn: parent
                 readonly property int size: root.rows.length

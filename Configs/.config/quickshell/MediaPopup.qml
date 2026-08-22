@@ -4,7 +4,7 @@ import Quickshell.Services.Mpris
 PopupCard {
     id: root
     popupName: "media"
-    contentWidth: 360
+    contentWidth: Style.px(360)
     contentHeight: mediaColumn.implicitHeight + 32
     readonly property var player: Media.player
     readonly property var players: player ? [player].concat(Mpris.players.values.filter(item => item !== player)) : Mpris.players.values
@@ -12,11 +12,11 @@ PopupCard {
         const p = root.player
         const loop = ["󰑗", "󰑖", "󰑘"]
         return [
-            { glyph: p && p.shuffle ? "󰒟" : "󰒞", size: 18, enabled: !!(p && p.shuffleSupported), lit: !!(p && p.shuffle) },
-            { glyph: "󰒮", size: 18, enabled: !!(p && p.canGoPrevious), lit: false },
-            { glyph: p && p.isPlaying ? "󰏤" : "󰐊", size: 22, enabled: !!p, lit: false },
-            { glyph: "󰒭", size: 18, enabled: !!(p && p.canGoNext), lit: false },
-            { glyph: loop[p ? p.loopState : 0], size: 18, enabled: !!(p && p.loopSupported), lit: !!(p && p.loopState !== MprisLoopState.None) }
+            { glyph: p && p.shuffle ? "󰒟" : "󰒞", size: Style.px(18), enabled: !!(p && p.shuffleSupported), lit: !!(p && p.shuffle) },
+            { glyph: "󰒮", size: Style.px(18), enabled: !!(p && p.canGoPrevious), lit: false },
+            { glyph: p && p.isPlaying ? "󰏤" : "󰐊", size: Style.px(22), enabled: !!p, lit: false },
+            { glyph: "󰒭", size: Style.px(18), enabled: !!(p && p.canGoNext), lit: false },
+            { glyph: loop[p ? p.loopState : 0], size: Style.px(18), enabled: !!(p && p.loopSupported), lit: !!(p && p.loopState !== MprisLoopState.None) }
         ]
     }
     function activate(index) {
@@ -32,20 +32,20 @@ PopupCard {
 
     Column {
         id: mediaColumn
-        anchors.left: parent.left; anchors.right: parent.right; spacing: 14
+        anchors.left: parent.left; anchors.right: parent.right; spacing: Style.px(14)
         PopupSection { shell: root.shell; text: "NOW PLAYING" }
         Row {
-            width: parent.width; spacing: 12
+            width: parent.width; spacing: Style.px(12)
             Rectangle {
-                width: 84; height: 84; radius: root.shell.rounding; clip: true; color: root.shell.alpha(root.shell.foreground, .08)
+                width: Style.px(84); height: Style.px(84); radius: root.shell.rounding; clip: true; color: root.shell.alpha(root.shell.foreground, .08)
                 Image { anchors.fill: parent; source: root.player ? root.player.trackArtUrl : ""; fillMode: Image.PreserveAspectCrop; asynchronous: true }
-                Text { anchors.centerIn: parent; visible: !root.player || !root.player.trackArtUrl; text: "󰝚"; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: 32 }
+                Text { anchors.centerIn: parent; visible: !root.player || !root.player.trackArtUrl; text: "󰝚"; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.px(32) }
             }
             Column {
-                width: parent.width - 96; anchors.verticalCenter: parent.verticalCenter; spacing: 4
-                Text { width: parent.width; text: root.player ? root.player.trackTitle || "Nothing playing" : "Nothing playing"; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: 15; font.bold: true; elide: Text.ElideRight }
-                Text { visible: text !== ""; width: parent.width; text: root.player ? root.player.trackArtist : ""; color: root.shell.alpha(root.shell.foreground, .7); font.family: root.shell.fontFamily; font.pixelSize: 12; elide: Text.ElideRight }
-                Text { visible: text !== ""; width: parent.width; text: root.player ? root.player.trackAlbum : ""; color: root.shell.alpha(root.shell.foreground, .45); font.family: root.shell.fontFamily; font.pixelSize: 10; elide: Text.ElideRight }
+                width: parent.width - 96; anchors.verticalCenter: parent.verticalCenter; spacing: Style.px(4)
+                Text { width: parent.width; text: root.player ? root.player.trackTitle || "Nothing playing" : "Nothing playing"; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.px(15); font.bold: true; elide: Text.ElideRight }
+                Text { visible: text !== ""; width: parent.width; text: root.player ? root.player.trackArtist : ""; color: root.shell.alpha(root.shell.foreground, .7); font.family: root.shell.fontFamily; font.pixelSize: Style.px(12); elide: Text.ElideRight }
+                Text { visible: text !== ""; width: parent.width; text: root.player ? root.player.trackAlbum : ""; color: root.shell.alpha(root.shell.foreground, .45); font.family: root.shell.fontFamily; font.pixelSize: Style.px(10); elide: Text.ElideRight }
             }
         }
         PopupSlider {
@@ -61,13 +61,13 @@ PopupCard {
             onReleased: value => { if (root.player && root.player.canSeek) root.player.position = value * duration }
         }
         Row {
-            anchors.horizontalCenter: parent.horizontalCenter; spacing: 8
+            anchors.horizontalCenter: parent.horizontalCenter; spacing: Style.px(8)
             Repeater {
                 model: root.controls
                 Rectangle {
                     required property int index; required property var modelData
-                    width: 44; height: 40; radius: root.shell.rounding
-                    color: controlMouse.containsMouse ? root.shell.alpha(root.shell.role("hvr_bg", root.shell.accent), Style.hoverFillAlpha) : "transparent"
+                    width: Style.px(44); height: Style.px(40); radius: root.shell.rounding
+                    color: controlMouse.containsMouse ? root.shell.hoverFill() : "transparent"
                     opacity: modelData.enabled ? 1 : .35
                     Behavior on color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
                     Text {

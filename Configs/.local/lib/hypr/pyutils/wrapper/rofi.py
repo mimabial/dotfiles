@@ -30,6 +30,10 @@ def rofi_font_text_height_px(font_desc: str) -> float:
     description = Pango.FontDescription.from_string(font_desc)
     pango_context.set_font_description(description)
     metrics = pango_context.get_metrics(description, Pango.Language.get_default())
+    # rofi's em is the line height, line gap included; ascent+descent undercounts it.
+    height = metrics.get_height() / Pango.SCALE
+    if height > 0:
+        return height
     return (metrics.get_ascent() + metrics.get_descent()) / Pango.SCALE
 
 

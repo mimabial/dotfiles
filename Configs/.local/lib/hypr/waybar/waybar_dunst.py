@@ -3,8 +3,8 @@
 
 When Waybar's position changes, Dunst's notification origin/offset must move
 so notifications don't appear underneath the bar. The actual Dunst write is
-done by `render/dunst.py` (which reads Waybar's config.jsonc); this module
-shells out to it after Waybar restarts.
+done by `render/dunst.py`, which resolves the bar's edge through
+`pyutils.bar_position`; this module shells out to it after Waybar restarts.
 """
 import json
 import os
@@ -12,7 +12,8 @@ import subprocess
 import sys
 import time
 
-from waybar_shared import CONFIG_JSONC, DUNST_SYNC_SCRIPT, logger
+from pyutils.bar_position import bar_position
+from waybar_shared import DUNST_SYNC_SCRIPT, logger
 
 
 def sync_dunst_position(mode=None):
@@ -27,15 +28,6 @@ def sync_dunst_position(mode=None):
         logger.debug("Synced dunst position with waybar")
     except Exception as exc:
         logger.warning(f"Failed to sync dunst position: {exc}")
-
-
-def get_waybar_position():
-    """Read Waybar's `position` from CONFIG_JSONC (top|bottom|left|right)."""
-    try:
-        with open(CONFIG_JSONC, "r") as file:
-            return json.load(file).get("position", "right")
-    except Exception:
-        return "right"
 
 
 def read_focused_monitor_reserved():
@@ -84,5 +76,5 @@ def sync_dunst_position_after_waybar_restart():
     """Wait for Waybar to claim its monitor edge, then trigger the Dunst
     reload. Called from the apply path right after restart_waybar() so the
     user never sees notifications stranded behind the bar's old geometry."""
-    wait_for_waybar_reserved_edge(get_waybar_position())
+    wait_for_waybar_reserved_edge(bar_position())
     sync_dunst_position("--reload-only")

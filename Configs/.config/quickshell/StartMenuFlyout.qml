@@ -9,7 +9,7 @@ PopupWindow {
     property var menus: ({})
     property string menuId: ""
     property Item anchorItem: null
-    property int contentWidth: 230
+    property int contentWidth: Style.px(230)
     property int padding: Style.popupPadding
     readonly property bool open: menuId !== "" && anchorItem !== null
     readonly property var anchorWindow: anchorItem ? anchorItem.QsWindow.window : null

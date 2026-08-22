@@ -4,7 +4,7 @@ import Quickshell
 PopupCard {
     id: root
     popupName: "tray"
-    contentWidth: 260
+    contentWidth: Style.px(260)
 
     property var handle: null
     property string label: ""

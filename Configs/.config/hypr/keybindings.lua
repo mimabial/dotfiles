@@ -293,6 +293,12 @@ exec(mod, "D", "[Launcher|Menus] application finder", "hyprshell rofi-launch.sh 
 exec(mod .. " SHIFT", "D", "[Launcher|Menus] window switcher", "hyprshell rofi-launch.sh w")
 exec(mod, "SPACE", "[Launcher|Menus] menu tree", "pkill -x rofi || hyprshell menutree")
 exec(mod, "H", "[Launcher|Menus] keybinding hints", "pkill -x rofi || hyprshell keybinds/keybinds_hint.sh")
+exec(
+	mod .. " SHIFT",
+	"H",
+	"[Launcher|Menus] app keybinding hints",
+	"pkill -x rofi || hyprshell keybinds/app-hints.sh"
+)
 exec(mod, "V", "[Launcher|Menus] clipboard", "pkill -x rofi || hyprshell cliphist.sh -c")
 exec(mod .. " SHIFT", "V", "[Launcher|Menus] clipboard manager", "pkill -x rofi || hyprshell cliphist.sh")
 
@@ -597,18 +603,14 @@ submap_leader("theming", mod, "T", function()
 	submap_exec("F", "[Theming] select font", "pkill -x rofi || hyprshell fonts/font-picker.sh")
 	submap_exec(
 		"B",
-		"[Theming] select Waybar layout",
-		"hyprshell rofi/run-after-close.sh -- hyprshell waybar.py --select-layout"
+		"[Theming] select bar layout",
+		"hyprshell rofi/run-after-close.sh -- hyprshell quickshell/layout select"
 	)
-	submap_cycle("C", "[Theming] cycle Waybar layout", "hyprshell waybar/waybar -n")
-	submap_cycle("SHIFT + C", "[Theming] cycle Waybar layout backward", "hyprshell waybar/waybar -p")
-	submap_exec(
-		"SHIFT + B",
-		"[Theming] refresh Waybar colors",
-		"hypr-theme refresh && hyprshell waybar.py --restart-direct"
-	)
-	submap_exec("I", "[Theming] refresh Waybar includes", "hyprshell waybar.py -G --restart-direct")
-	submap_exec("V", "[Theming] toggle Waybar", "hyprshell waybar.py --hide")
+	submap_exec("SHIFT + B", "[Theming] reload bar", "quickshell ipc call bar reload")
+	submap_cycle("C", "[Theming] cycle bar layout", "hyprshell quickshell/layout next")
+	submap_cycle("SHIFT + C", "[Theming] cycle bar layout backward", "hyprshell quickshell/layout previous")
+	submap_cycle("H", "[Theming] toggle bar", "hyprshell quickshell/visibility toggle")
+	submap_exec("V", "[Theming] look and feel", "hyprshell window/looknfeel.sh")
 	submap_exec("M", "[Theming] color mode", "pkill -x rofi || hyprshell color-mode.sh -m")
 	submap_exec("R", "[Theming] select rofi theme", "hyprshell rofi/run-after-close.sh -- hyprshell theme.select.sh -s")
 	submap_exec("L", "[Theming] select launcher style", "hyprshell rofi-launch.sh -s")

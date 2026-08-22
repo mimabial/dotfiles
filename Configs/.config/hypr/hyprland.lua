@@ -44,6 +44,9 @@ hl.config({cursor = {
 
 require("windowrules")
 require("userprefs")
+-- Last of the visual layers, so panel edits win over the theme pack and over
+-- hand-written prefs. Resolves the active theme's file itself.
+runtime.load(state_home .. "/hypr/looknfeel.lua", true)
 require("keybindings")
 runtime.load(config_home .. "/hypr/monitors.lua")
 runtime.load(state_home .. "/hypr/monitor-toggles.lua", true)

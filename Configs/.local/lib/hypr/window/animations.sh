@@ -20,6 +20,7 @@ Usage: $0 [OPTIONS]
 Options:
     --select | -S       Select an animation from the available options
     --set NAME          Set an animation without opening the selector
+    --list              List selectable animations as name, icon and description
     --reload | -r       Reload the current animation
     --help   | -h       Show this help message
 HELP
@@ -33,6 +34,20 @@ resolve_animation_path() {
 
 list_animation_names() {
   hypr_stateful_choice_list_names "lua" "${animations_user_dir}" "${animations_shared_dir}" "disable" "theme"
+}
+
+# Same shape as util/workflows.sh --list, so one parser serves every pipeline.
+# Animations carry no icon or description, so those fields are empty rather than
+# absent. "disable" is prepended for the same reason fn_select does it: the
+# listing helper skips it, but it is a selectable value.
+fn_list() {
+  local name=""
+  {
+    printf 'disable\n'
+    list_animation_names
+  } | sed '/^$/d' | while IFS= read -r name; do
+    printf '%s\t\t\n' "${name}"
+  done
 }
 
 fn_select() {
@@ -114,7 +129,7 @@ if [[ -z "${*}" ]]; then
   exit 1
 fi
 
-LONGOPTS="select,set:,reload,help"
+LONGOPTS="select,set:,list,reload,help"
 PARSED=$(getopt --options Srh --longoptions "${LONGOPTS}" --name "$0" -- "$@") || exit 2
 eval set -- "${PARSED}"
 
@@ -130,6 +145,10 @@ while true; do
         exit 1
       }
       apply_animation "$2" "Animation selected"
+      exit 0
+      ;;
+    --list)
+      fn_list
       exit 0
       ;;
     -r | --reload)

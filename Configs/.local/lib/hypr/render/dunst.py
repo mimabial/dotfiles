@@ -16,6 +16,7 @@ from _common import atomic_write, cache_hit, cache_store
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from pyutils.hyprctl import batch_json
+from pyutils.bar_position import bar_position
 from pyutils.shell_env import load_shell_assignments
 
 PALETTE = Path(
@@ -34,11 +35,6 @@ THEMES_DIR = (
     / "themes"
 )
 THEME_CONF = THEMES_DIR / "theme.meta"
-WAYBAR_CONF = (
-    Path(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")))
-    / "waybar"
-    / "config.jsonc"
-)
 OUT_DIR = (
     Path(os.environ.get("HYPR_CACHE_HOME", os.path.expanduser("~/.cache/hypr")))
     / "render"
@@ -72,6 +68,8 @@ class DunstLayout:
     gap_size: int
     edge_padding: int
     origin: str
+    width: int
+    height: str
 
 
 @dataclass(frozen=True)
@@ -190,18 +188,6 @@ def read_hypr_metrics(options):
         return {option: str(value.get("int", "")) for option, value in zip(options, values)}
     except (OSError, subprocess.SubprocessError, json.JSONDecodeError, TypeError, ValueError):
         return {}
-
-
-def waybar_position():
-    if WAYBAR_CONF.is_file():
-        try:
-            for line in WAYBAR_CONF.read_text().splitlines():
-                m = re.search(r'"position"\s*:\s*"([^"]*)"', line)
-                if m:
-                    return m.group(1)
-        except OSError:
-            return "right"
-    return "right"
 
 
 _DEFINE_COLOR_RX = re.compile(
@@ -430,6 +416,39 @@ def resolve_colors(palette):
     return pack, variant, resolved
 
 
+def text_scale():
+    """The desktop text-size knob as a multiplier; 12px is the 1.0 anchor."""
+    try:
+        return int(load_shell_assignments(STATE_FILE).get("TEXT_SIZE", "12")) / 12
+    except (OSError, ValueError):
+        return 1.0
+
+
+def base_metric(name, default):
+    """A `name = N` value from the user's base dunst.conf."""
+    if BASE_CONF.is_file():
+        for line in BASE_CONF.read_text().splitlines():
+            match = re.match(rf"^\s*{name}\s*=\s*(\d+)", line)
+            if match:
+                return int(match.group(1))
+    return default
+
+
+def base_height():
+    """`height = (min, max)` from the base config, scaled. dunst also accepts a
+    bare number there, which it reads as the maximum."""
+    raw = ""
+    if BASE_CONF.is_file():
+        for line in BASE_CONF.read_text().splitlines():
+            match = re.match(r"^\s*height\s*=\s*(\(?\s*\d+(?:\s*,\s*\d+)?\s*\)?)", line)
+            if match:
+                raw = match.group(1)
+                break
+    numbers = [int(value) for value in re.findall(r"\d+", raw)] or [0, 600]
+    scaled = [max(0, round(value * text_scale())) for value in numbers]
+    return f"({scaled[0]},{scaled[1]})" if len(scaled) > 1 else str(scaled[0])
+
+
 def resolve_layout():
     specs = (
         ("rounding", "decoration:rounding", "5"),
@@ -452,11 +471,12 @@ def resolve_layout():
     except ValueError:
         edge_padding = 14
 
+    width = max(1, round(base_metric("width", 300) * text_scale()))
     origin = {
         "left": "top-left",
         "bottom": "bottom-right",
         "top": "top-right",
-    }.get(waybar_position(), "top-right")
+    }.get(bar_position(), "top-right")
     return DunstLayout(
         rounding=rounding,
         gaps_in=gaps_in,
@@ -464,6 +484,8 @@ def resolve_layout():
         gap_size=gap_size,
         edge_padding=edge_padding,
         origin=origin,
+        width=width,
+        height=base_height(),
     )
 
 
@@ -505,6 +527,7 @@ def resolve_font():
     )
     if not notification_font_size.isdigit():
         notification_font_size = "10"
+    notification_font_size = str(max(1, round(int(notification_font_size) * text_scale())))
     return DunstFont(
         icon_theme=resolve_icon_theme(),
         name=notification_font,
@@ -527,6 +550,8 @@ def renderer_hash(pack, variant, colors, layout, font):
         layout.border_size,
         layout.origin,
         str(layout.edge_padding),
+        str(layout.width),
+        layout.height,
         font.name,
         font.size,
         font.icon_theme,
@@ -581,6 +606,8 @@ def render_config(base, colors, layout, font):
 [global]
     monitor = 0
     origin = {layout.origin}
+    width = {layout.width}
+    height = {layout.height}
     offset = ({layout.edge_padding},{layout.edge_padding})
     gap_size = {layout.gap_size}
     frame_width = {layout.border_size}

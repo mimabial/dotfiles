@@ -4,7 +4,7 @@ import Quickshell.Io
 PopupCard {
     id: root
     popupName: "vpn"
-    contentWidth: 380
+    contentWidth: Style.px(380)
     contentHeight: vpnColumn.implicitHeight + padding * 2
 
     property var status: ({})
@@ -96,7 +96,6 @@ PopupCard {
         id: vpnColumn
         anchors.left: parent.left; anchors.right: parent.right; spacing: Style.sectionGap
 
-        PopupSection { shell: root.shell; text: "VPN" }
         Column {
             width: parent.width; spacing: Style.xxs
             Text {
@@ -162,7 +161,7 @@ PopupCard {
                 id: locationList
                 visible: root.browsing !== ""
                 width: parent.width
-                height: Math.min(contentHeight, 208)
+                height: Math.min(contentHeight, Style.px(208))
                 clip: true; spacing: Style.xxs
                 model: root.openCountry ? root.openCountry.cities : root.countries
                 header: Column {

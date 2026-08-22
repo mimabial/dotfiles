@@ -14,7 +14,7 @@ DrawerGroup {
     readonly property bool shown: root.shell.workflow === "gaming"
     visible: root.shown
     holdOpen: root.shell.popupName === "cliphist"
-    primary: Component { BarButton { shell: root.shell; css: "custom-mark"; text: "—"; fontWeight: Font.Bold; textColor: root.shell.role("c7", root.shell.foreground) } }
+    primary: Component { BarButton { shell: root.shell; css: "mark-button"; text: "—"; fontWeight: Font.Bold; textColor: root.shell.role("c7", root.shell.foreground) } }
     secondary: Component { ColumnLayout { spacing: 0;
         BarButton { Layout.fillWidth: true; readonly property bool shown: root.shell.workflow === "gaming"
     visible: root.shown; shell: root.shell; text: ""; tooltip: "GameMode active" }

@@ -22,6 +22,8 @@ Usage: $0 [OPTIONS]
 
 Options:
     --select | -S       Select a shader from the available options
+    --set NAME          Set a shader without opening the selector
+    --list              List selectable shaders as name, icon and description
     --reload | -r       Reload the current shader
     --quiet  | -q       Suppress success notifications
     --help   | -h       Show this help message
@@ -65,6 +67,21 @@ resolve_shader_inc_path() {
 
 list_shader_names() {
   hypr_stateful_choice_list_names "frag" "${shaders_user_dir}" "${shaders_shared_dir}" "neutral"
+}
+
+# Same shape as util/workflows.sh --list, so one parser serves every pipeline.
+# Shaders carry no icon or description, so those fields are empty rather than
+# absent. "neutral" is prepended on the same condition fn_select uses.
+fn_list() {
+  local name=""
+  {
+    if resolve_shader_path neutral >/dev/null 2>&1; then
+      printf 'neutral\n'
+    fi
+    list_shader_names
+  } | sed '/^$/d' | while IFS= read -r name; do
+    printf '%s\t\t\n' "${name}"
+  done
 }
 
 apply_shader_state() {
@@ -116,6 +133,18 @@ fn_reload() {
   local shader_name
   shader_name="$(normalize_shader_name "$(state_get "HYPR_SHADER" "neutral")")"
   apply_shader_state "HYPR_SHADER" "${shader_name}" "hypr-shader" "Shader reloaded" fn_update
+}
+
+fn_set() {
+  local shader_name
+  shader_name="$(normalize_shader_name "${1:-}")"
+
+  resolve_shader_path "${shader_name}" >/dev/null 2>&1 || {
+    echo "Error: unknown shader '${shader_name}'" >&2
+    return 1
+  }
+
+  apply_shader_state "HYPR_SHADER" "${shader_name}" "hypr-shader" "Shader selected" fn_update
 }
 
 concat_shader_files() {
@@ -212,17 +241,26 @@ if [[ -z "${*}" ]]; then
   exit 1
 fi
 
-LONG_OPTS="select,help,reload,quiet"
+LONG_OPTS="select,set:,list,help,reload,quiet"
 SHORT_OPTS="Shrq"
 PARSED=$(getopt --options "${SHORT_OPTS}" --longoptions "${LONG_OPTS}" --name "$0" -- "$@") || exit 2
 eval set -- "${PARSED}"
 
 action=""
+shader_set_name=""
 
 while true; do
   case "$1" in
     -S | --select)
       action="select"
+      ;;
+    --set)
+      action="set"
+      shader_set_name="${2:-}"
+      shift
+      ;;
+    --list)
+      action="list"
       ;;
     -r | --reload)
       action="reload"
@@ -250,6 +288,16 @@ done
 case "${action}" in
   select)
     fn_select
+    ;;
+  set)
+    [[ -n "${shader_set_name}" ]] || {
+      echo "Error: --set requires a shader name" >&2
+      exit 1
+    }
+    fn_set "${shader_set_name}"
+    ;;
+  list)
+    fn_list
     ;;
   reload)
     fn_reload

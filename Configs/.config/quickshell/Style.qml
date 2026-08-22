@@ -8,24 +8,24 @@ import Quickshell.Io
 // invented at a use site is how the padding drifted in the first place.
 Singleton {
     id: root
-    readonly property int xxs: 2
-    readonly property int xs: 3
-    readonly property int sm: 4
-    readonly property int md: 6
-    readonly property int lg: 8
-    readonly property int xl: 10
-    readonly property int xxl: 12
-    readonly property int xxxl: 14
+    readonly property int xxs: px(2)
+    readonly property int xs: px(3)
+    readonly property int sm: px(4)
+    readonly property int md: px(6)
+    readonly property int lg: px(8)
+    readonly property int xl: px(10)
+    readonly property int xxl: px(12)
+    readonly property int xxxl: px(14)
 
     readonly property int popupGap: 5           // omarchy gapsOut — card offset from the bar
-    readonly property int popupPadding: 14
-    readonly property int sectionGap: 14        // between popup sections
-    readonly property int rowGap: 8
-    readonly property int controlGap: 8
-    readonly property int controlPaddingX: 10
-    readonly property int controlPaddingY: 6
-    readonly property int controlHeight: 28
-    readonly property int popupRowHeight: 28
+    readonly property int popupPadding: px(14)
+    readonly property int sectionGap: px(14)    // between popup sections
+    readonly property int rowGap: px(8)
+    readonly property int controlGap: px(8)
+    readonly property int controlPaddingX: px(10)
+    readonly property int controlPaddingY: px(6)
+    readonly property int controlHeight: px(28)
+    readonly property int popupRowHeight: px(28)
 
     readonly property int trackHeight: Math.max(4, Math.round(controlHeight * 0.11))
     readonly property int knobSize: Math.max(14, Math.round(controlHeight * 0.38))
@@ -40,6 +40,10 @@ Singleton {
     property int textSize: 12
     readonly property real scale: textSize / 12
     function px(size) { return Math.round(size * scale) }
+
+    // Mono Nerd Font faces pack a double-width glyph into one cell, so an icon
+    // drawn from them lands ~3/4 the width of the same glyph in the wide face
+    readonly property real iconGlyphBoost: 1.3
 
     readonly property int caption: px(10)
     readonly property int bodySmall: px(11)

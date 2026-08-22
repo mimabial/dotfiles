@@ -7,7 +7,7 @@ import ".."
 ScriptButton {
     id: root
     property bool popupsAllowed: true
-    css: "custom-language"
+    css: "language"
     command: ["hyprshell", "util/keyboard-layout"]; interval: 5000
     onClicked: button => {
         if (button !== Qt.RightButton) return root.shell.togglePopup("language")

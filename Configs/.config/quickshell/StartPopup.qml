@@ -6,7 +6,7 @@ import Quickshell.Io
 PopupCard {
     id: root
     popupName: "start"
-    contentWidth: 620
+    contentWidth: Style.px(620)
     contentHeight: startColumn.implicitHeight + padding * 2
 
     property string filter: ""
@@ -195,7 +195,7 @@ PopupCard {
         anchors.left: parent.left; anchors.right: parent.right; spacing: Style.sm
 
         Rectangle {
-            width: parent.width; height: 30; radius: root.shell.rounding
+            width: parent.width; height: Style.px(30); radius: root.shell.rounding
             color: root.shell.alpha(root.shell.foreground, .06)
             border.color: root.shell.alpha(root.shell.role("br", root.shell.foreground), .3)
             Text {
@@ -211,7 +211,7 @@ PopupCard {
                 anchors.left: searchGlyph.right; anchors.leftMargin: Style.xs
                 anchors.right: countText.left; anchors.rightMargin: Style.xs
                 anchors.verticalCenter: parent.verticalCenter
-                height: 22
+                height: Style.px(22)
                 leftPadding: 0; rightPadding: 0; topPadding: 0; bottomPadding: 0
                 placeholderText: "Search apps, actions, places — Enter launches, Esc closes"
                 color: root.shell.foreground
@@ -298,7 +298,7 @@ PopupCard {
 
             Column {
                 id: rightPane
-                width: 216
+                width: Style.px(216)
                 spacing: Style.sm
                 Column {
                     id: placesCol
@@ -310,7 +310,7 @@ PopupCard {
                         PopupRow {
                             required property var modelData
                             width: placesCol.width; shell: root.shell
-                            implicitHeight: 24
+                            implicitHeight: Style.px(24)
                             icon: modelData.icon
                             title: modelData.label
                             onClicked: root.activate({type: "place", place: modelData})

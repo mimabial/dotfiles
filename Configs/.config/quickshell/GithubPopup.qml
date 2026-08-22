@@ -4,7 +4,7 @@ import Quickshell.Io
 PopupCard {
     id: root
     popupName: "github"
-    contentWidth: 340
+    contentWidth: Style.px(340)
 
     property var report: ({})
     readonly property var inbox: report.inbox || ({})
@@ -30,7 +30,7 @@ PopupCard {
         id: githubColumn
         anchors.left: parent.left; anchors.right: parent.right; spacing: Style.sm
 
-        PopupSection { shell: root.shell; text: "GITHUB" }
+        PopupHero { shell: root.shell; title: "GitHub"; status: root.inbox.available === false ? "unavailable" : root.inbox.count > 0 ? root.inbox.count + " unread" : "all caught up" }
 
         PopupRow {
             width: parent.width; shell: root.shell
@@ -46,8 +46,7 @@ PopupCard {
         PopupSeparator { shell: root.shell }
         PopupSection {
             shell: root.shell
-            text: root.security.available === false ? "SECURITY · UNAVAILABLE"
-                : "SECURITY · " + (root.security.count || 0)
+            text: "SECURITY"; value: root.security.available === false ? "unavailable" : String(root.security.count || 0)
         }
 
         Column {

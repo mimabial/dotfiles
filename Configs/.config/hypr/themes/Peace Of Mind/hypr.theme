@@ -7,7 +7,7 @@ $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME = MacTahoe-cursors
-$CURSOR_SIZE = 22
+$CURSOR_SIZE = 30
 
 general {
     gaps_in = 3

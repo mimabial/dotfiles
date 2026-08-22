@@ -16,6 +16,7 @@ emoji_data="${emoji_dir}/emoji.db"
 emoji_categories_dir="${emoji_dir}/emoji-categories"
 recent_data="${cache_dir}/landing/show_emoji.recent"
 favorites_data="${cache_dir}/landing/emoji_favorites"
+EMOJI_GRID_COLUMNS=3
 EMOJI_ICONLESS_THEME_STR='listview { show-icons: false; } element { children: [ "element-text" ]; } element-icon { enabled: false; size: 0em; width: 0em; padding: 0; margin: 0; border: 0; }'
 EMOJI_MULTI_PERSON="🤝👫👬👭🧑‍🤝‍🧑💑👩‍❤️‍👨👨‍❤️‍👨👩‍❤️‍👩🧑‍❤️‍🧑💏👩‍❤️‍💋‍👨👨‍❤️‍💋‍👨👩‍❤️‍💋‍👩🧑‍❤️‍💋‍🧑"
 EMOJI_GENDER_VARIANTS="🧑👱🙍🙎🙅🙆💁🙋🧏🙇🤦🤷👮🕵️💂🥷👷🤴👸👳👲🧕🤵👰🦸🦹🧙🧚🧛🧜🧝🧞💆💇🚶🧍🧎🏃🕺💃🧖🧗🤸🏌️🏄🚣🏊⛹️🏋️🚴🚵🤽🤾🤹🧘🧑‍🎓🧑‍🏫🧑‍⚕️🧑‍🌾🧑‍🍳🧑‍🔧🧑‍🏭🧑‍💼🧑‍🔬🧑‍💻🧑‍🎤🧑‍🎨🧑‍✈️🧑‍🚀🧑‍🚒🧑‍🦯🧑‍🦼🧑‍🦽"
@@ -65,9 +66,12 @@ setup_rofi_config() {
     font_scale font_name font_override r_override _rofi_opacity \
     "${ROFI_EMOJI_SCALE:-}" "${ROFI_EMOJI_FONT:-${ROFI_FONT:-}}" wallbox same
 
-  local emoji_window_width_em="${ROFI_EMOJI_WIDTH_EM:-36}"
+  # 17em per column keeps labels readable, so the grid's column count drives the
+  # width — at a fixed 36em a third column just truncates all three
+  local default_width=$((EMOJI_GRID_COLUMNS * 17 + 2))
+  local emoji_window_width_em="${ROFI_EMOJI_WIDTH_EM:-${default_width}}"
   local emoji_window_height_em="${ROFI_EMOJI_HEIGHT_EM:-30}"
-  [[ "${emoji_window_width_em}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || emoji_window_width_em="40.5"
+  [[ "${emoji_window_width_em}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || emoji_window_width_em="${default_width}"
   [[ "${emoji_window_height_em}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || emoji_window_height_em="30"
 
   rofi_picker_compute_window_geometry \
@@ -93,7 +97,7 @@ emoji_style_menu_args() {
   args_ref=()
   case "${style_type}" in
     2 | grid)
-      args_ref+=(-theme-str "listview {columns: 2;}")
+      args_ref+=(-theme-str "listview {columns: ${EMOJI_GRID_COLUMNS};}")
       ;;
   esac
 }

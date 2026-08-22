@@ -98,5 +98,10 @@ fi
 
 tooltip="<span foreground='${header_color}'>${icon} ${header_text}</span>\nManual: ${manual_label}\nAudio Toggle: ${audio_label}\nAudio Status: ${audio_status_label}\nReason: ${reason_label}"
 
-printf '{"text": "%s", "tooltip": "%s", "class": "%s%s", "alt": "%s"}' \
-  "${icon}" "${tooltip}" "${class_name}" "${class_extra}" "${alt_text}"
+# the flags ride along for the bar popup; waybar ignores keys it has no use for
+printf '{"text": "%s", "tooltip": "%s", "class": "%s%s", "alt": "%s", "manual": %s, "audioEnabled": %s, "playing": %s, "reason": "%s"}' \
+  "${icon}" "${tooltip}" "${class_name}" "${class_extra}" "${alt_text}" \
+  "$([[ ${manual_on} -eq 1 ]] && echo true || echo false)" \
+  "$([[ ${audio_enabled} -eq 1 ]] && echo true || echo false)" \
+  "$([[ ${audio_playing} -eq 1 ]] && echo true || echo false)" \
+  "${reason_label}"

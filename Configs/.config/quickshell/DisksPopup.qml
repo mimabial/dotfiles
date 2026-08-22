@@ -6,7 +6,7 @@ import Quickshell.Io
 PopupCard {
     id: root
     popupName: "disks"
-    contentWidth: 360
+    contentWidth: Style.px(360)
 
     property var report: ({})
     readonly property var devices: report.devices || []
@@ -39,7 +39,7 @@ PopupCard {
 
         PopupSection {
             shell: root.shell
-            text: root.devices.length > 0 ? "REMOVABLE · " + root.devices.length : "REMOVABLE"
+            text: "REMOVABLE"; value: root.devices.length || ""
         }
 
         Text {
@@ -181,7 +181,7 @@ PopupCard {
         required property string glyph
         required property string hint
         signal triggered
-        width: 26; height: 26; radius: root.shell.rounding
+        width: Style.px(26); height: Style.px(26); radius: root.shell.rounding
         color: actionArea.containsMouse ? root.shell.alpha(root.shell.foreground, .14) : "transparent"
         Text {
             anchors.centerIn: parent

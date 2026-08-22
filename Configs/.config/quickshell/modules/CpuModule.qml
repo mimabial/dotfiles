@@ -14,7 +14,7 @@ StackedReadout {
     gap: 6
     iconLine: 21
     iconPadRight: 1
-    css: "custom-cpuinfo"; fontWeight: Font.Bold
+    css: "cpuinfo"; fontWeight: Font.Bold
     command: ["hyprshell", "cpuinfo"]; interval: 5000
     textColor: root.shell.role("c7", root.shell.foreground)
     onClicked: root.shell.togglePopup("cpu")

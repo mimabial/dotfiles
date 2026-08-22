@@ -4,7 +4,7 @@ import Quickshell.Io
 PopupCard {
     id: root
     popupName: "barlayout"
-    contentWidth: 320
+    contentWidth: Style.px(320)
     contentHeight: layoutColumn.implicitHeight + padding * 2
     property var layouts: []
     function title(name) { return name.charAt(0).toUpperCase() + name.slice(1).replace(/-/g, " ") }
@@ -26,7 +26,7 @@ PopupCard {
                 width: layoutColumn.width; shell: root.shell; icon: root.shell.barLayoutIcon(modelData); title: root.title(modelData)
                 detail: active ? "Active" : "Switch to this layout"
                 active: root.shell.layoutName === modelData
-                onClicked: root.shell.run(["hyprshell", "quickshell/layout", "set", modelData])
+                onClicked: { root.shell.closePopup(); root.shell.run(["hyprshell", "quickshell/layout", "set", modelData]) }
             }
         }
     }

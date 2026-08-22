@@ -5,7 +5,7 @@ import ".."
 ScriptButton {
     id: root
     property bool popupsAllowed: true
-    css: "custom-screenrecord"
+    css: "screenrecord"
     readonly property bool recording: output.class === "recording"
     fill: recording ? root.shell.alpha(root.shell.role("c9", root.shell.accent), blink.phase) : "transparent"
     textColor: recording

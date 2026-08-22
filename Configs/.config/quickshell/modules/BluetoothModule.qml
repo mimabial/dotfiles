@@ -17,7 +17,7 @@ DrawerGroup {
     holdOpen: root.shell.popupName === "bluetooth"
     primary: Component { ScriptButton {
         id: bluetoothButton
-        shell: root.shell; css: "custom-bluetooth"
+        shell: root.shell; css: "bluetooth-button"
         command: ["hyprshell", "waybar/bluetooth"]; interval: 5000
         // omarchy: left opens the panel, right toggles the radio
         onClicked: button => {
@@ -28,7 +28,7 @@ DrawerGroup {
         BluetoothPopup { anchorItem: bluetoothButton; shell: root.shell; popupEnabled: root.popupsAllowed }
     } }
     secondary: Component { ScriptButton {
-        shell: root.shell; css: "custom-bluetooth.status"
+        shell: root.shell; css: "bluetooth-button.status"
         command: ["hyprshell", "waybar/bluetooth", "--status"]; interval: 5000
     } }
 }

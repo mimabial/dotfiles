@@ -69,10 +69,21 @@ rofi_picker_run_indexed() {
   # DATA_FILE holds "glyph<TAB>label" rows. Collapse each to one display column
   # (1:1 per-line), let rofi return a 0-based index, then map it back to the
   # untouched DATA_FILE line. Remaining args go verbatim to rofi (callers own
-  # -i, theme layering, -no-custom, etc.).
+  # -i, theme layering, -no-custom, etc.). A caller passing -sep (with -markup-rows
+  # and -eh 5) gets glyph, family prefix and name stacked over three lines, which
+  # needs a NUL record so one entry can hold newlines; the glyph is grown with
+  # markup, which only renders unclipped because -eh reserves the extra rows.
+  # Matching still runs on the stripped text.
+  local stacked=0
+  [[ " $* " == *" -sep "* ]] && stacked=1
   # shellcheck disable=SC2016 # Awk program is literal.
   selection_index="$(
-    awk -F $'\t' 'BEGIN{OFS="\t"}{disp=$1; if($2!=""&&$2!=$1) disp=disp" "$2; print disp}' "${data_file}" |
+    awk -F $'\t' -v s="${stacked}" '
+      function e(t) {gsub(/&/,"\\&amp;",t); gsub(/</,"\\&lt;",t); gsub(/>/,"\\&gt;",t); return t}
+      {l = ($2 == $1) ? "" : $2; n = index(l, "-"); t = substr(l, n + 1); u = index(t, "_")}
+      s {printf "<span size=\"220%%\">%s</span>\n%s\n%s\n%s%c", e($1), e(substr(l, 1, n)), e(u ? substr(t, 1, u) : t), e(u ? substr(t, u + 1) : ""), 0; next}
+      {print $1 (l == "" ? "" : " " l)}
+    ' "${data_file}" |
       rofi -dmenu -format 'i' "$@"
   )"
 
@@ -140,6 +151,17 @@ rofi_picker_save_recent_entry() {
     rm -f "${tmp_file}"
     return 1
   fi
+}
+
+# Measured on the clipboard theme: a listview row costs ~2.09em and the chrome
+# (input bar + mainbox/listview padding) ~7.18em. Rounded up, so the window is
+# never shorter than the rows rofi draws into it.
+rofi_picker_listview_height_em() {
+  local lines="$1"
+  local row_em="${2:-2.1}"
+
+  [[ "${lines}" =~ ^[0-9]+$ ]] || return 1
+  awk -v lines="${lines}" -v row="${row_em}" 'BEGIN { printf "%.1f\n", (lines * row) + 7.3 }'
 }
 
 rofi_picker_compute_window_geometry() {

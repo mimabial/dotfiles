@@ -7,7 +7,7 @@ import Quickshell.Io
 PopupCard {
     id: root
     popupName: "screenrecord"
-    contentWidth: 320
+    contentWidth: Style.px(320)
     contentHeight: recordColumn.implicitHeight + padding * 2
 
     property var report: ({})
@@ -72,7 +72,7 @@ PopupCard {
         required property string label
         property bool checked: false
         signal toggled
-        width: recordColumn.width; height: 26
+        width: recordColumn.width; height: Style.px(26)
         Text {
             anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
             text: parent.label

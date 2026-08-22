@@ -18,7 +18,7 @@ DrawerGroup {
     holdOpen: ["screenrecord", "cliphist", "screenshot"].includes(root.shell.popupName)
     primary: Component { ScriptButton {
         id: recordButton
-        shell: root.shell; css: "custom-screenrecord"
+        shell: root.shell; css: "screenrecord"
         readonly property bool recording: output.class === "recording"
         fill: recording ? root.shell.alpha(root.shell.role("c9", root.shell.accent), blink.phase) : "transparent"
         textColor: recording
@@ -43,7 +43,7 @@ DrawerGroup {
         BarButton {
             id: cliphistModule
             Layout.fillWidth: true; visible: root.showCliphist
-            shell: root.shell; css: "custom-cliphist"; text: ""
+            shell: root.shell; css: "cliphist"; text: ""
             onClicked: button => button === Qt.MiddleButton
                 ? root.shell.run(["hyprshell", "cliphist", "--image-history"])
                 : button === Qt.RightButton
@@ -53,7 +53,7 @@ DrawerGroup {
         }
         BarButton {
             id: shotModule
-            Layout.fillWidth: true; visible: root.showScreenshot; shell: root.shell; css: "custom-screenshot"; text: "󰄄"
+            Layout.fillWidth: true; visible: root.showScreenshot; shell: root.shell; css: "screenshot"; text: "󰄄"
             // the old three-way click stays; left opens the panel
             onClicked: button => button === Qt.MiddleButton
                 ? root.shell.run(["hyprshell", "screenshot", "p"])

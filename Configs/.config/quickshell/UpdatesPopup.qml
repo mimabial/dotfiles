@@ -3,11 +3,13 @@ import QtQuick
 PopupCard {
     id: root
     popupName: "updates"
-    contentWidth: 380
+    contentWidth: Style.px(380)
     contentHeight: updatesColumn.implicitHeight + padding * 2
 
     // system.update.sh emits the waybar fields plus a structured breakdown.
     property var report: ({})
+    property bool checking: false
+    signal recheck()
 
     readonly property var packages: report && report.packages ? report.packages : ({})
     readonly property var errors: report && report.errors ? report.errors : []
@@ -24,26 +26,48 @@ PopupCard {
         for (const group of groups) sum += group.items.length
         return sum
     }
+    readonly property var system: report && report.system ? report.system : ({})
+    function ago(epoch) {
+        const minutes = Math.round((shell.clock.date.getTime() / 1000 - Number(epoch)) / 60)
+        if (!(Number(epoch) > 0)) return ""
+        if (minutes >= 1440) return Math.floor(minutes / 1440) + "d ago"
+        if (minutes >= 60) return Math.floor(minutes / 60) + "h ago"
+        return minutes < 1 ? "just now" : minutes + "m ago"
+    }
 
     Column {
         id: updatesColumn
         anchors.left: parent.left; anchors.right: parent.right; spacing: Style.sectionGap
 
-        PopupSection { shell: root.shell; text: "UPDATES" }
+        PopupHero {
+            shell: root.shell
+            title: root.total > 0 ? root.total + (root.total === 1 ? " package" : " packages") : "Up to date"
+            status: root.total > 0
+                ? root.groups.map(group => group.items.length + " " + group.label.toLowerCase()).join("  ·  ")
+                : "checked " + root.ago(root.system.checked)
+        }
+
+        // nothing to list when there is nothing pending, so the panel says what
+        // it knows about the system instead of showing an empty card
         Column {
-            width: parent.width; spacing: Style.xxs
-            Text {
-                width: parent.width
-                text: root.total > 0 ? root.total + (root.total === 1 ? " package" : " packages") : "Up to date"
-                color: root.shell.foreground; font.family: root.shell.fontFamily
-                font.pixelSize: Style.title; font.bold: true
+            visible: root.total === 0 && root.errors.length === 0
+            width: parent.width; spacing: Style.sm
+            PopupSeparator { shell: root.shell }
+            PopupSection { shell: root.shell; text: "SYSTEM" }
+            PopupRow {
+                width: parent.width; shell: root.shell
+                interactive: false; icon: "󰏗"; title: "Installed packages"; value: String(root.system.installed || "—")
             }
-            Text {
-                visible: text !== ""
-                width: parent.width
-                text: root.groups.map(group => group.items.length + " " + group.label.toLowerCase()).join("  ·  ")
-                color: root.shell.alpha(root.shell.foreground, .6)
-                font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
+            PopupRow {
+                width: parent.width; shell: root.shell
+                interactive: false; icon: "󰚰"; title: "Last upgrade"; value: root.ago(root.system.upgraded) || "—"
+            }
+            PopupRow {
+                width: parent.width; shell: root.shell
+                icon: "󰑐"; title: "Check now"
+                detail: root.checking ? "Checking…" : "Query pacman, AUR and flatpak now"
+                active: root.checking
+                onClicked: if (!root.checking) root.recheck()
             }
         }
 
@@ -53,10 +77,10 @@ PopupCard {
                 required property var modelData
                 width: updatesColumn.width; spacing: Style.xs
                 PopupSeparator { shell: root.shell }
-                PopupSection { shell: root.shell; text: modelData.label + "  ·  " + modelData.items.length }
+                PopupSection { shell: root.shell; text: modelData.label; value: modelData.items.length }
                 ListView {
                     width: parent.width
-                    height: Math.min(contentHeight, 168)
+                    height: Math.min(contentHeight, Style.px(168))
                     clip: true; spacing: Style.xxs
                     model: modelData.items
                     delegate: Row {

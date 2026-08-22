@@ -11,6 +11,9 @@ hypr_runtime_require system || exit 1
 # shellcheck source=/dev/null
 source "${BASH_SOURCE[0]%/*}/pm.updates.lib.sh"
 
+# long by default: the bar panel offers an explicit re-check for when it matters
+cache_ttl="${HYPR_UPDATE_CACHE_TTL:-21600}"
+
 hypr_help_guard "Usage: hyprshell system/system.update [up|--run-upgrade|--refresh]
 Report pending updates as waybar JSON; 'up' opens an upgrade terminal.
 Repeat calls inside ${cache_ttl:-900}s reuse the cached report; --refresh forces a re-check." "$@"
@@ -23,7 +26,6 @@ fi
 runtime_dir="${XDG_RUNTIME_DIR:-/tmp}/hypr"
 temp_file="${runtime_dir}/update_info"
 cache_file="${runtime_dir}/update_status.json"
-cache_ttl="${HYPR_UPDATE_CACHE_TTL:-900}"
 temp_db=""
 declare -a system_update_errors=()
 
@@ -282,6 +284,18 @@ errors_json() {
   jq -R -s -c 'split("\n") | map(select(length > 0))' <<<"${list}"
 }
 
+# Facts for the panel's idle state, gathered only on a real check: the payload
+# they ride in is what gets cached.
+system_facts_json() {
+  local line upgraded=0
+  line="$(tac /var/log/pacman.log 2>/dev/null | grep -m1 'starting full system upgrade' || true)"
+  [[ "${line}" =~ ^\[([^]]+)\] ]] && upgraded="$(date -d "${BASH_REMATCH[1]}" +%s 2>/dev/null || echo 0)"
+  jq -cn --argjson checked "$(date +%s)" \
+    --argjson installed "$(pacman -Qq 2>/dev/null | wc -l)" \
+    --argjson upgraded "${upgraded}" \
+    '{checked: $checked, installed: $installed, upgraded: $upgraded}'
+}
+
 print_waybar_json() {
   local text="$1"
   local tooltip="$2"
@@ -292,8 +306,9 @@ print_waybar_json() {
     --argjson aur "$(packages_json "${aur_list-}")" \
     --argjson flatpak "$(flatpak_json)" \
     --argjson errors "$(errors_json)" \
+    --argjson system "$(system_facts_json)" \
     '{text:$text, tooltip:$tooltip, class:$class,
-      packages: {pacman: $pacman, aur: $aur, flatpak: $flatpak}, errors: $errors}')"
+      packages: {pacman: $pacman, aur: $aur, flatpak: $flatpak}, errors: $errors, system: $system}')"
   mkdir -p "${runtime_dir}"
   local tmp
   tmp="$(mktemp "${cache_file}.XXXXXX")"

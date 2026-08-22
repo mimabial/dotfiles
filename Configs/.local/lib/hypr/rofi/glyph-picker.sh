@@ -59,40 +59,51 @@ setup_rofi_config() {
 
   glyph_columns="${ROFI_GLYPH_COLUMNS:-}"
   if [[ -z "${glyph_columns}" || ! "${glyph_columns}" =~ ^[0-9]+$ ]]; then
-    local calc_cols=$((logical_width / (font_scale * 26)))
-    ((calc_cols < 5)) && calc_cols=4
-    ((calc_cols > 12)) && calc_cols=12
+    local calc_cols=$((logical_width / (font_scale * 16)))
+    ((calc_cols < 6)) && calc_cols=6
+    ((calc_cols > 20)) && calc_cols=20
     glyph_columns=${calc_cols}
   fi
 
+  # a cell stacks glyph, prefix and the name split over two lines, across six
+  # reserved rows (~6.5em) against the ~2.1em a plain row costs
+  local glyph_row_em=6.5
   glyph_lines="${ROFI_GLYPH_LINES:-}"
   if [[ -z "${glyph_lines}" || ! "${glyph_lines}" =~ ^[0-9]+$ ]]; then
-    local calc_lines=$((logical_height / (font_scale * 8)))
-    ((calc_lines < 6)) && calc_lines=6
-    ((calc_lines > 14)) && calc_lines=14
+    local calc_lines=$((logical_height / (font_scale * 14)))
+    ((calc_lines < 3)) && calc_lines=3
+    ((calc_lines > 8)) && calc_lines=8
     glyph_lines=${calc_lines}
   fi
 
-  local default_width=$((glyph_columns * 9))
+  # 5:4 tiles: a column is a quarter wider than a row is tall, over the 2em of
+  # mainbox and listview padding the theme puts either side of the grid
+  local default_width=""
+  default_width="$(awk -v c="${glyph_columns}" -v r="${glyph_row_em}" 'BEGIN { printf "%.1f\n", (c * r * 1.25) + 2 }')"
   glyph_window_width="${ROFI_GLYPH_WIDTH_EM:-${default_width}}"
   [[ "${glyph_window_width}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || glyph_window_width=${default_width}
-  local glyph_window_height_em=$((glyph_lines * 2 + 8))
+  local glyph_window_height_em=""
+  glyph_window_height_em="$(rofi_picker_listview_height_em "${glyph_lines}" "${glyph_row_em}")"
   rofi_picker_compute_window_geometry \
     rofi_position glyph_window_theme \
     "${font_name}" "${font_scale}" \
     "${glyph_window_width}" "${glyph_window_height_em}" \
-    $((default_width * font_scale * 2)) $((glyph_window_height_em * font_scale * 2))
+    $((logical_width / 2)) $((logical_height * 3 / 4))
 
   rofi_args+=(
     "${ROFI_GLYPH_ARGS[@]}"
     -i
     -matching normal
     -no-custom
+    -markup-rows
+    -sep '\0'
+    -eh 6
+    -theme "$(rofi_resolve_theme "${ROFI_GLYPH_STYLE:-clipboard}")"
     -theme-str "entry { placeholder: \"   Glyph\";} ${rofi_position}"
     -theme-str "${font_override}"
+    -theme-str "listview {flow: horizontal; fixed-columns: true;} element {padding: 0.25em 0.5em;} element-text {horizontal-align: 0.5;}"
     -theme-str "${glyph_window_theme}"
     -theme-str "${r_override}"
-    -theme "$(rofi_resolve_theme "${ROFI_GLYPH_STYLE:-clipboard}")"
   )
 
   [[ -n "${_rofi_opacity:-}" ]] && rofi_args+=("-theme-str" "${_rofi_opacity}")
@@ -123,7 +134,7 @@ get_glyph_selection() {
         run_args=("${rofi_args[@]}" -theme-str "listview {lines: ${glyph_lines};}" -no-custom)
         ;;
       *)
-        run_args=("${rofi_args[@]/-multi-select/}" -display-columns 1 \
+        run_args=("${rofi_args[@]/-multi-select/}" \
           -theme-str "listview {columns: ${glyph_columns}; lines: ${glyph_lines};}" -no-custom)
         ;;
     esac

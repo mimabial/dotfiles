@@ -4,7 +4,7 @@ import Quickshell.Io
 PopupCard {
     id: root
     popupName: "colormode"
-    contentWidth: 320
+    contentWidth: Style.px(320)
     contentHeight: colorColumn.implicitHeight + padding * 2
     property string source: "theme"
     property string mode: "dark"
@@ -13,14 +13,45 @@ PopupCard {
     function apply(nextSource, nextMode) { if (nextSource === source && nextMode === mode) return; shell.run(["hyprshell", "theme/color-mode", "--set", nextSource, nextMode]) }
     property FileView stateFile: FileView { path: root.shell.home + "/.local/state/hypr/staterc"; watchChanges: true; onLoaded: root.load(text()); onFileChanged: reload() }
 
+    component NavButton: BarButton {
+        shell: root.shell; implicitWidth: Style.controlHeight; implicitHeight: Style.controlHeight
+        radius: shell.rounding; fill: shell.alpha(shell.foreground, .07); outline: shell.alpha(shell.role("br", shell.foreground), .3); fontSize: Style.subtitle
+    }
+    component SourceRow: Item {
+        id: sourceRow
+        required property string rowSource
+        required property string icon
+        required property string title
+        required property string detail
+        signal previous()
+        signal next()
+        implicitHeight: row.implicitHeight
+        PopupRow { id: row; anchors.fill: parent; shell: root.shell; icon: sourceRow.icon; title: sourceRow.title; detail: sourceRow.detail; active: root.source === sourceRow.rowSource; rightInset: actions.width + Style.xs; onClicked: root.apply(sourceRow.rowSource, root.mode) }
+        Row {
+            id: actions; anchors.right: parent.right; anchors.rightMargin: Style.controlPaddingX; anchors.verticalCenter: parent.verticalCenter; spacing: Style.xs
+            NavButton { text: "󰒮"; tooltip: "Previous " + sourceRow.title.toLowerCase(); onClicked: sourceRow.previous() }
+            NavButton { text: "󰒭"; tooltip: "Next " + sourceRow.title.toLowerCase(); onClicked: sourceRow.next() }
+        }
+    }
+    component ModeButton: BarButton {
+        readonly property bool navigable: true
+        property bool cursored: false
+        shell: root.shell; radius: shell.rounding; fontSize: Style.bodySmall
+        fill: active ? shell.alpha(shell.role("act_bg", shell.accent), .3) : shell.alpha(shell.foreground, .07)
+        outline: active ? shell.alpha(shell.role("act_br", shell.accent), .65) : cursored ? shell.hoverEdge(.85) : shell.alpha(shell.role("br", shell.foreground), .25)
+    }
+
     Column {
         id: colorColumn
         anchors.left: parent.left; anchors.right: parent.right; spacing: Style.sm
         PopupSection { shell: root.shell; text: "COLOR SOURCE" }
-        PopupRow { width: parent.width; shell: root.shell; icon: "󰏘"; title: "Theme"; detail: "Use the theme palette"; active: root.source === "theme"; onClicked: root.apply("theme", root.mode) }
-        PopupRow { width: parent.width; shell: root.shell; icon: "󰸉"; title: "Wallpaper"; detail: "Generate colors from the wallpaper"; active: root.source === "pywal"; onClicked: root.apply("pywal", root.mode) }
+        SourceRow { width: parent.width; rowSource: "theme"; icon: "󰏘"; title: "Theme"; detail: "Use the theme palette"; onPrevious: root.shell.run(["hyprshell", "theme/theme.switch", "-p", "--quiet"]); onNext: root.shell.run(["hyprshell", "theme/theme.switch", "-n", "--quiet"]) }
+        SourceRow { width: parent.width; rowSource: "pywal"; icon: "󰸉"; title: "Wallpaper"; detail: "Generate colors from the wallpaper"; onPrevious: root.shell.run(["hyprshell", "wallpaper", "previous", "--global"]); onNext: root.shell.run(["hyprshell", "wallpaper", "next", "--global"]) }
         PopupSeparator { shell: root.shell }
         PopupSection { shell: root.shell; text: "VARIANT" }
-        Repeater { model: root.modes; PopupRow { required property var modelData; width: colorColumn.width; shell: root.shell; icon: modelData.icon; title: modelData.name; detail: modelData.value === root.mode ? "Active" : ""; active: modelData.value === root.mode; onClicked: root.apply(root.source, modelData.value) } }
+        Row {
+            width: parent.width; height: Style.controlHeight; spacing: Style.xs
+            Repeater { model: root.modes; ModeButton { required property var modelData; width: (colorColumn.width - Style.xs * 2) / 3; height: parent.height; text: modelData.icon + "  " + modelData.name; active: modelData.value === root.mode; onClicked: root.apply(root.source, modelData.value) } }
+        }
     }
 }

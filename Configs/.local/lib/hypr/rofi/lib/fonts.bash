@@ -17,6 +17,17 @@ rofi_effective_font_scale() {
       scale=""
     fi
   fi
+  # follow the desktop text-size knob, anchored the same way it is: 12px = 1.0.
+  # Callers that only required the rofi module still get it: pull state in here
+  # rather than leaving them silently pinned to the default size.
+  if [[ -z "${scale}" ]]; then
+    local text_size=""
+    declare -F state_get >/dev/null 2>&1 || hypr_runtime_require state >/dev/null 2>&1 || true
+    if declare -F state_get >/dev/null 2>&1; then
+      text_size="$(state_get TEXT_SIZE 12 2>/dev/null || true)"
+      [[ "${text_size}" =~ ^[0-9]+$ ]] && scale=$(( text_size * 10 / 12 ))
+    fi
+  fi
   [[ -n "${scale}" ]] || scale="10"
   printf '%s\n' "${scale}"
 }
@@ -98,7 +109,11 @@ pango_context = PangoCairo.create_context(context)
 description = Pango.FontDescription.from_string(font_desc)
 pango_context.set_font_description(description)
 metrics = pango_context.get_metrics(description, Pango.Language.get_default())
-height = (metrics.get_ascent() + metrics.get_descent()) / Pango.SCALE
+# rofi's em is the line height, which includes the line gap; ascent+descent
+# undercounts it (Miracode 15: 21px vs rofi's 22px) and clips the last row.
+height = metrics.get_height() / Pango.SCALE
+if height <= 0:
+    height = (metrics.get_ascent() + metrics.get_descent()) / Pango.SCALE
 if height <= 0:
     sys.exit(1)
 

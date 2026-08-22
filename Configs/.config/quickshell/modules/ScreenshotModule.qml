@@ -5,7 +5,7 @@ import ".."
 BarButton {
     id: root
     property bool popupsAllowed: true
-    css: "custom-screenshot"; text: "󰄄"
+    css: "screenshot"; text: "󰄄"
     // the old three-way click stays; left opens the panel
     onClicked: button => button === Qt.MiddleButton
         ? root.shell.run(["hyprshell", "screenshot", "p"])

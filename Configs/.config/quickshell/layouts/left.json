@@ -1,61 +1,51 @@
 [
- "screenshot",
- "screenrecord",
- "eyecare",
- {
-  "id": "status",
-  "props": {
-   "reverse": false,
-   "sliderFirst": true
-  }
- },
- "privacybutton",
- {
-  "id": "mediaplayer",
-  "props": {
-   "iconOnly": false
-  }
- },
- "spacer",
- {
-  "id": "datetime",
-  "props": {
-   "showDate": true
-  }
- },
- "terminal",
- "workspaces",
- "submap",
- {
-  "id": "forecast",
-  "props": {
-   "showMinMax": true
-  }
+  "datetime",
+  "date",
+  "terminal",
+  "workspaces",
+  {
+    "id": "forecast",
+    "props": {
+      "showMinMax": true
+    }
   },
-  "mark",
-  "desktop",
-  "barlayout",
-  "colormode",
+  "submap",
   "spacer",
- {
-  "id": "info-drawer",
-  "props": {
-   "reverse": true
-  }
- },
- "dunst",
- {
-  "id": "bluetooth",
-  "props": {
-   "showReadout": true
-  }
- },
- {
-  "id": "wifi",
-  "props": {
-   "showReadout": true,
-   "showVpn": true
-  }
- },
- "power"
+  {
+    "id": "mediaplayer",
+    "props": {
+      "iconOnly": false
+    }
+  },
+  {
+    "id": "status",
+    "props": {
+      "reverse": true,
+      "sliderFirst": false
+    }
+  },
+  { "id": "eyecare", "props": { "reverse": true, "sliderFirst": false } },
+  { "id": "screen", "props": { "reverse": true, "showCliphist": false } },
+  {
+    "id": "bluetooth",
+    "props": {
+      "showReadout": true
+    }
+  },
+  {
+    "id": "wifi",
+    "props": {
+      "showReadout": true,
+      "showVpn": true
+    }
+  },
+
+  { "id": "barlayout", "props": { "reverse": true } },
+  { "id": "colormode", "props": { "reverse": true } },
+  "wallpaper",
+  "privacybutton",
+
+  "dunst",
+
+  "power"
 ]

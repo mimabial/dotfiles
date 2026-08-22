@@ -33,8 +33,9 @@ Item {
             : shell.role(spec, shell.foreground)
     }
 
-    readonly property real spanX: box.margin[1] + box.margin[3] + box.padding[1] + box.padding[3] + 2 * box.border
-    readonly property real spanY: box.margin[0] + box.margin[2] + box.padding[0] + box.padding[2] + 2 * box.border
+    readonly property real borderWidth: drawerEdge.replacesOutline ? 0 : outline.a > 0 ? Math.max(1, box.border) : 0
+    readonly property real spanX: box.margin[1] + box.margin[3] + box.padding[1] + box.padding[3] + 2 * borderWidth
+    readonly property real spanY: box.margin[0] + box.margin[2] + box.padding[0] + box.padding[2] + 2 * borderWidth
     implicitWidth: !primaryVisible ? 0 : spanX + (vertical ? Math.max(first.implicitWidth, second.implicitWidth) : first.implicitWidth + (open ? second.implicitWidth : 0))
     implicitHeight: !primaryVisible ? 0 : spanY + (vertical ? first.implicitHeight + (open ? second.implicitHeight : 0) : Math.max(first.implicitHeight, second.implicitHeight))
     clip: true
@@ -47,17 +48,17 @@ Item {
         anchors.bottomMargin: root.box.margin[2]; anchors.leftMargin: root.box.margin[3]
         radius: root.radius; color: root.fill
         border.color: root.outline
-        border.width: drawerEdge.replacesOutline ? 0 : root.outline.a > 0 ? Math.max(1, root.box.border) : 0
+        border.width: root.borderWidth
     }
     GridLayout {
         anchors.left: root.vertical || !root.reverse ? parent.left : undefined
         anchors.right: root.vertical || root.reverse ? parent.right : undefined
         anchors.top: !root.vertical || !root.reverse ? parent.top : undefined
         anchors.bottom: !root.vertical || root.reverse ? parent.bottom : undefined
-        anchors.topMargin: root.box.margin[0] + root.box.padding[0]
-        anchors.rightMargin: root.box.margin[1] + root.box.padding[1]
-        anchors.bottomMargin: root.box.margin[2] + root.box.padding[2]
-        anchors.leftMargin: root.box.margin[3] + root.box.padding[3]
+        anchors.topMargin: root.box.margin[0] + root.borderWidth + root.box.padding[0]
+        anchors.rightMargin: root.box.margin[1] + root.borderWidth + root.box.padding[1]
+        anchors.bottomMargin: root.box.margin[2] + root.borderWidth + root.box.padding[2]
+        anchors.leftMargin: root.box.margin[3] + root.borderWidth + root.box.padding[3]
         rows: root.vertical ? 2 : 1
         columns: root.vertical ? 1 : 2
         rowSpacing: 0

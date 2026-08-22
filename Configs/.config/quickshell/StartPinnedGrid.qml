@@ -23,7 +23,7 @@ Column {
                 required property var modelData
                 readonly property bool hovered: tileMouse.containsMouse
                 width: Math.floor((root.width - Style.lg * 3) / 4)
-                height: 62
+                height: Style.px(62)
                 radius: root.shell.rounding
                 color: hovered ? root.shell.alpha(root.shell.foreground, .1) : "transparent"
                 border.color: hovered ? root.shell.alpha(root.shell.role("br", root.shell.foreground), .35) : "transparent"

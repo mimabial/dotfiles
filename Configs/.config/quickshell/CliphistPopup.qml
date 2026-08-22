@@ -8,16 +8,16 @@ import Quickshell.Io
 PopupCard {
     id: root
     popupName: "cliphist"
-    contentWidth: 430
-    contentHeight: 470
+    contentWidth: Style.px(430)
+    contentHeight: Style.px(470)
 
     property var entries: []
     property var favorites: []
     property string filter: ""
     property bool showFavorites: false
 
-    // previews render on hover now, so anything token-shaped is shown masked.
-    // the entry still copies normally — only the display is withheld
+    // the preview pane shows the whole entry, so anything token-shaped is masked
+    // in both places. the entry still copies normally — only the display is withheld
     readonly property var secretRules: [
         { re: /\bghp_[A-Za-z0-9]{20,}/, label: "GitHub token" },
         { re: /\bgh[ousr]_[A-Za-z0-9]{20,}/, label: "GitHub token" },
@@ -42,6 +42,18 @@ PopupCard {
             ? favorites.map(entry => ({ key: entry.index, text: entry.text, favorite: true, image: false }))
             : entries.map(entry => ({ key: entry.id, text: entry.preview, favorite: false, image: entry.image === true }))
         return needle === "" ? source : source.filter(entry => entry.text.toLowerCase().indexOf(needle) >= 0)
+    }
+
+    // the mouse wins while it is over a row; otherwise the keyboard cursor drives
+    property int hoverIndex: -1
+    readonly property var previewRow: {
+        const index = hoverIndex >= 0 ? hoverIndex : Math.max(0, cursorIndex)
+        return index >= 0 && index < rows.length ? rows[index] : null
+    }
+    readonly property string previewText: {
+        if (!previewRow) return ""
+        const body = String(previewRow.text || "")
+        return secretKind(body) || body
     }
 
     function refresh() { if (!listProc.running) listProc.running = true }
@@ -86,10 +98,10 @@ PopupCard {
         required property bool selected
         signal picked
         implicitWidth: tabText.implicitWidth + Style.controlPaddingX * 2
-        implicitHeight: 24
+        implicitHeight: Style.px(24)
         radius: root.shell.rounding
         color: selected ? root.shell.alpha(root.shell.role("act_bg", root.shell.accent), .25)
-            : tabArea.containsMouse ? root.shell.alpha(root.shell.role("hvr_bg", root.shell.accent), Style.hoverFillAlpha)
+            : tabArea.containsMouse ? root.shell.hoverFill()
             : "transparent"
         Text {
             id: tabText
@@ -113,8 +125,8 @@ PopupCard {
         required property string hint
         signal triggered
         readonly property alias hovered: actionArea.containsMouse
-        width: 30; height: 30; radius: root.shell.rounding
-        color: actionArea.containsMouse ? root.shell.alpha(root.shell.role("hvr_bg", root.shell.accent), .35) : "transparent"
+        width: Style.px(30); height: Style.px(30); radius: root.shell.rounding
+        color: actionArea.containsMouse ? root.shell.hoverFill(3) : "transparent"
         Text {
             anchors.centerIn: parent
             text: rowAction.glyph
@@ -146,7 +158,7 @@ PopupCard {
         }
 
         Rectangle {
-            width: parent.width; height: 28
+            width: parent.width; height: Style.px(28)
             radius: root.shell.rounding
             color: root.shell.alpha(root.shell.role("alt_bg", root.shell.background), .25)
             border.width: 1
@@ -164,7 +176,7 @@ PopupCard {
                 anchors.left: searchGlyph.right; anchors.leftMargin: Style.xs
                 anchors.right: countText.left; anchors.rightMargin: Style.xs
                 anchors.verticalCenter: parent.verticalCenter
-                height: 20
+                height: Style.px(20)
                 leftPadding: 0; rightPadding: 0; topPadding: 0; bottomPadding: 0
                 placeholderText: "Type to filter — Enter copies, Esc closes"
                 color: root.shell.foreground
@@ -197,7 +209,7 @@ PopupCard {
         ListView {
             id: rowList
             width: parent.width
-            height: Math.max(0, parent.height - y - footerBlock.height - clipColumn.spacing * 2)
+            height: Math.max(0, parent.height - y - previewBlock.height - footerBlock.height - clipColumn.spacing * 3)
             spacing: 2; clip: true
             model: root.rows
             currentIndex: root.cursorIndex
@@ -222,13 +234,13 @@ PopupCard {
                     || pinAction.hovered || deleteAction.hovered
 
                 width: ListView.view.width
-                height: 34
+                height: Style.px(34)
                 radius: root.shell.rounding
                 color: highlighted
-                    ? root.shell.alpha(root.shell.role("hvr_bg", root.shell.accent), Style.hoverFillAlpha * 2)
+                    ? root.shell.hoverFill(2)
                     : "transparent"
                 border.width: highlighted ? 1 : 0
-                border.color: root.shell.alpha(root.shell.role("hvr_br", root.shell.foreground), cursored ? .55 : .3)
+                border.color: root.shell.hoverEdge(cursored ? 1 : .55)
                 Behavior on color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
                 onClicked: root.copyRow(modelData)
 
@@ -236,6 +248,8 @@ PopupCard {
                     id: rowArea
                     anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                     onClicked: root.copyRow(row.modelData)
+                    onEntered: root.hoverIndex = row.index
+                    onExited: if (root.hoverIndex === row.index) root.hoverIndex = -1
                 }
                 Text {
                     id: rowGlyph
@@ -277,6 +291,24 @@ PopupCard {
                         onTriggered: root.deleteRow(row.modelData)
                     }
                 }
+            }
+        }
+
+        Column {
+            id: previewBlock
+            visible: root.rows.length > 0
+            width: parent.width; spacing: Style.xs
+            PopupSeparator { shell: root.shell }
+            // fixed at five lines: a pane that grew with each entry would resize
+            // the list under the cursor as you move down it
+            Text {
+                width: parent.width; height: lineProbe.implicitHeight * 5
+                text: root.previewText
+                wrapMode: Text.Wrap; maximumLineCount: 5; elide: Text.ElideRight
+                color: root.shell.alpha(root.shell.foreground, .75)
+                font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                font.italic: root.previewRow && root.secretKind(String(root.previewRow.text || "")) !== ""
+                Text { id: lineProbe; visible: false; text: "M"; font: parent.font }
             }
         }
 

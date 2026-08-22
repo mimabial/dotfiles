@@ -1,12 +1,22 @@
 [
-  "menu",
-  { "id": "tray", "props": { "vertical": true, "iconSize": 18, "iconSpacing": 10 } },
-  "spacer",
   "workspaces",
-  { "id": "taskbar", "props": { "vertical": true, "allWorkspaces": true, "framed": true } },
+  {
+    "id": "taskbar",
+    "props": {
+      "vertical": true,
+      "allWorkspaces": true,
+      "framed": true
+    }
+  },
+  "submap",
   "spacer",
-  "gpu",
-  "cpu",
-  "memory",
-  "disk"
+  {
+    "id": "tray",
+    "props": {
+      "vertical": true,
+      "iconSize": 18,
+      "iconSpacing": 10
+    }
+  },
+  "menu"
 ]

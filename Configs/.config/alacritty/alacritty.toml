@@ -11,7 +11,7 @@ program = "/bin/zsh"
 
 [font]
 builtin_box_drawing = true
-size = 9
+size = 14
 
 [font.normal]
 family = "JetBrainsMono Nerd Font"

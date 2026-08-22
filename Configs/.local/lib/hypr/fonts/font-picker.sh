@@ -57,11 +57,11 @@ selected_font="$(
     | rofi -dmenu -i \
       -p "Font" \
       -select "${current_font}" \
+      -theme "${ROFI_FONT_PICKER_STYLE:-clipboard}" \
       -theme-str "${font_override}" \
       -theme-str "${r_override}" \
       -theme-str "${rofi_position}" \
-      -theme-str 'entry { placeholder: "Search fonts..."; }' \
-      -theme "${ROFI_FONT_PICKER_STYLE:-clipboard}"
+      -theme-str 'entry { placeholder: "Search fonts..."; }' 
 )"
 
 [[ -n "${selected_font}" ]] || exit 0

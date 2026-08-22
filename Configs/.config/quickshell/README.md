@@ -1,104 +1,173 @@
-# quickshell bar
+# Quickshell bar
 
-A waybar-shaped shell built on quickshell. Same three concerns waybar splits into
-JSONC / CSS / scripts, split here into **layout data / style data / QML**.
+Quickshell is the active status bar. Waybar is disabled and kept only as a
+legacy reference and script-output format. Do not start, restart, or regenerate
+Waybar while working on this config.
+
+The implementation separates three concerns:
+
+- `layouts/`: which modules appear and in what order
+- `styles/`: shared style rules plus per-layout overrides
+- QML: module behavior, drawers, popups, and data plumbing
 
 ## Flow
 
+```text
+~/.local/state/hypr/staterc  WAYBAR_LAYOUT_NAME=<layout>
+             │               (historical key; Quickshell owns it now)
+             ▼
+          shell.qml ── layouts/<layout>.json
+             │        styles/base.json + styles/<layout>.json
+             │        ~/.cache/hypr/render/quickshell/theme.json
+             ▼
+ MainBar.qml | TopBar.qml | WinBar.qml ── module registry ── QML component
 ```
-~/.local/state/hypr/staterc   WAYBAR_LAYOUT_NAME=main   ← the same key waybar reads
-   │
-   ├─ shell.qml        staterc, vars.lua (BAR_FONT), userfonts.lua
-   ├─ Theme.qml        ~/.cache/hypr/render/quickshell/theme.json   palette (generated)
-   │                   styles/<layout>.json                          module boxes
-   ├─ layouts/<layout>.json    ["notification","screen",…]           what is on the bar
-   │
-   └─ MainBar.qml      Repeater over the layout array
-                         └─ Loader → registry[id] → Component
+
+Use the layout helper instead of editing state directly:
+
+```bash
+hyprshell quickshell/layout list
+hyprshell quickshell/layout select
+hyprshell quickshell/layout next
+hyprshell quickshell/layout previous
+hyprshell quickshell/layout set left
 ```
 
-`layouts/*.json` and `styles/*.json` are watched: save and the bar picks them up.
-Everything else needs `quickshell ipc call bar reload`.
+It discovers layouts from `layouts/*.json` and writes state through the locked
+`state_set` helper. Layout switching needs no process restart or service-manager
+call.
 
-## I want to…
+## Layouts
 
-| …do this | edit this |
+| name | panel | edge | purpose |
+| --- | --- | --- | --- |
+| `main` | `MainBar` | right | primary vertical layout |
+| `left` | `MainBar` | left | full vertical controls layout |
+| `sidebar` | `MainBar` | left | taskbar/workspace sidebar |
+| `top` | `TopBar` | top | three-section horizontal bar |
+| `winbar` | `WinBar` | bottom | compact three-section bar |
+
+`main`, `left`, and `sidebar` are ordered arrays. `top` and `winbar` contain
+`left`, `center`, and `right` arrays. An entry may be a module id or
+`{"id":"status","props":{"reverse":false}}`; `"spacer"` consumes remaining
+space. Keep layout-specific composition in JSON rather than adding layout-name
+conditions to components.
+
+## Where to edit
+
+| goal | edit |
 | --- | --- |
-| reorder / add / remove a bar module | `layouts/<layout>.json` — an ordered list of ids; `"spacer"` pushes the rest away |
-| make a layout differ from another | give it a different `layouts/<name>.json`. **Do not** add `onLeft` conditionals |
-| change a module's colours, border, padding, size | its key in `styles/<layout>.json` |
-| change what a module *is* | its `Component { id: mod_… }` in `MainBar.qml` |
-| add a whole new module | write the component, add it to `registry`, add its id to the layouts, add its style key |
-| change a popup | `<Name>Popup.qml` |
-| change what a script reports | the script under `~/.local/lib/hypr/` |
+| reorder, add, or remove modules | `layouts/<layout>.json` |
+| change per-layout module properties | that module entry's `props` |
+| change shared appearance | `styles/base.json` |
+| override one layout | `styles/<layout>.json` |
+| change module behavior | the relevant root or `modules/*Module.qml` file |
+| add a module | component, panel registry, layout entry, and style key |
+| change a popup | the matching `*Popup.qml` |
+| change provider output | the existing helper under `~/.local/lib/hypr/` |
 
-Registry ids currently in use:
+Composed modules such as `status`, `eyecare`, `screen`, `wifi`, `notification`,
+`updates`, `barlayout`, and `colormode` own drawers. Style the drawer frame by
+its `css` key and its children by their own keys.
 
-```
-connectivity  datetime  eyecare  forecast  info  mark  mediaplayer
-notification  power  privacybutton  screen  status  submap  tui-drawer  workspaces
-```
+## Styling
 
-## Where style comes from
+`Theme.qml` recursively merges `styles/base.json`, then the active layout file.
+QML properties override the merged rule only where runtime behavior requires it.
+Static appearance belongs in JSON.
 
-Three layers, highest wins:
+Rules are keyed by a component's `css` value. Common fields are `margin`,
+`padding`, `border`, `minWidth`, `minHeight`, `fontSize`, `fontWeight`, `justify`,
+`fill`, `outline`, `fg`, `hover`, and `edge`. Colors use a palette role or
+`[role, opacity]`; `null` paints nothing.
 
-1. **`styles/<layout>.json`**, keyed by the module's `css:` string — geometry
-   (`margin`, `padding`, `border`, `minHeight`, `fontSize`) and colour roles
-   (`fill`, `outline`, `hover`). This is the source of truth.
-2. **Component defaults** — `BarButton.hoverPaint()` when a box has no `hover` map,
-   `PopupCard`/`PopupRow` chrome.
-3. **QML overrides on an instance** — `fill:`, `outline:`, `textColor:`.
+Important geometry rules:
 
-**The rule:** static appearance goes in layer 1. Layer 3 is only for colour that
-changes at runtime — the VPN connecting blink, GitHub's degraded amber, the media
-per-player tint. If a module needs a different box, give it its own key
-(`custom-bluetooth.connected`, `pulseaudio.headphone`).
+- `border` contributes to size even when `outline` is `null`; use `border: 0`
+  when no border space should exist.
+- Adjacent margins do not collapse.
+- Theme rounding comes from generated `theme.json`; module rectangles use
+  `shell.moduleRadius` unless a component deliberately overrides it.
+- `edge` is drawn by `ModuleEdge` and selects border sides; it is not an
+  independent second outline.
+- An `.active` rule inherits its unsuffixed rule before applying overrides.
 
-Colour values are `[role, alpha]`, resolved against the palette. `null` means
-paint nothing.
+## Drawers and popups
+
+`DrawerGroup` lazy-loads its secondary component only while hovered or held open.
+This keeps inactive scripts out of the process tree. A script-backed button that
+initially has no output may therefore make a drawer appear in two stages.
+
+For a vertical reversed drawer, the last secondary item is immediately above the
+primary item. Slider placement is explicit through module properties such as
+`sliderFirst`; do not infer it from the drawer direction.
+
+Only one popup is open globally (`shell.popupName`), and only the focused monitor
+accepts it. Bars normally use `WlrKeyboardFocus.None`; a newly opened popup is
+briefly primed with `Exclusive`, then uses `OnDemand`. Preserve that transition
+when fixing outside-click behavior so the first click reaches the target window.
+
+The standalone `date` module opens the calendar. `datetime` opens the
+alarm/timer/stopwatch popup where configured as the timer clock.
+
+## Cross-component contracts
+
+- `shell.qml` writes `~/.local/state/quickshell/time-visibility`; Kitty's
+  `tab_bar.py` reads it to hide its own date and/or clock only while the matching
+  Quickshell module is visible.
+- Audio limits are expressed in dB. `controls/volume-control.sh --limits` probes
+  the active backend and supplies portable minimum, maximum, and step values;
+  QML converts between dB and PipeWire/PulseAudio's cubic scalar.
+- Alarm/timer and stopwatch state lives under `~/.local/state/quickshell/` and is
+  restored by `calendar/alarm-timer.sh`; do not move scheduling into QML timers
+  that disappear on reload.
+- Taskbar focus is address-based. Its helper temporarily suppresses Hyprland
+  cursor warps only for taskbar activation and restores the prior setting in the
+  same compositor call; do not add an arbitrary delay.
 
 ## Files
 
 | role | files |
 | --- | --- |
-| bars | `MainBar.qml` (main, left, dual), `TopBar.qml`, `WinBar.qml` |
-| primitives | `BarButton` `ScriptButton` `DrawerGroup` `PopupCard` `PopupRow` `PopupSection` `PopupSeparator` `BarTooltip` |
-| singletons | `Style` (spacing/type scale) `Theme` (palette + boxes) `Media` `Backlight` `Weather` |
-| modules | `*Button.qml` |
-| panels | `*Popup.qml` |
+| entry and shared state | `shell.qml`, `Style.qml`, `Theme.qml` |
+| panels | `MainBar.qml`, `TopBar.qml`, `WinBar.qml`, `BarSection.qml` |
+| primitives | `BarButton.qml`, `ScriptButton.qml`, `DrawerGroup.qml`, `ModuleEdge.qml`, `Popup*.qml` |
+| modules | root `*Button.qml`/service components and `modules/*Module.qml` |
+| popups | `*Popup.qml` and menu/flyout helpers |
+| live data | `layouts/*.json`, `styles/*.json`, generated theme JSON |
 
-`ScriptButton` runs a command and reads waybar's own JSON — `{text, class, tooltip}`
-— so the scripts under `~/.local/lib/hypr/` are shared with waybar unchanged.
+`ScriptButton` accepts the legacy Waybar JSON shape
+`{"text":"…","class":"…","tooltip":"…"}`. That compatibility does not mean
+Waybar is running.
 
-## Traps worth knowing
+## Portability
 
-Each of these cost real debugging time:
+Bar QML and helpers must not depend on systemd. The current user unit is only a
+supervisor for `/usr/bin/quickshell`; runit can supervise the same process. Do not
+add `systemctl` calls to layout switching, module actions, reloads, or providers.
 
-- **`visible: false` does not stop a `Timer`.** A hidden `ScriptButton` keeps
-  spawning its script. Don't gate modules by visibility; leave them out of the layout.
-- **Ids declared inside a `Component` are private to it.** A function on the root
-  cannot reach `titleField` inside a `Loader`'s component; pass values out instead.
-- **Anchors are ignored inside `Row`/`Column`/`Grid`.** Use an `Item` wrapper.
-- **A name declared in a derived type shadows the base.** `ClockPopup.moveCursor`
-  hid `PopupCard.moveCursor`, so every Down key moved the calendar a week.
-- **jq cannot write `\uXXXX` above the BMP.** Nerd Font icons live in plane 15;
-  paste the glyph literally.
-- **`PopupCard`'s default property only takes Items** — a `WheelHandler` has to go
-  inside a child.
-- **Palette roles are not all visible.** `hvr_bg` and `act_bg` sit within two levels
-  of `bg`, so a 12% tint of them is invisible. Use `fg` at low alpha to lift a surface.
-- **Masked `TextField`s are never empty** — they hold their separators. Test for a
-  digit, not for `""`.
+## Traps
 
-## Verifying a change
+- `visible: false` does not stop a `Timer`; omit inactive modules from layouts.
+- A `ScriptButton` process is recreated with its loader; avoid arbitrary sleeps.
+- IDs inside a `Component` are private to it; expose values through properties.
+- Anchors are ignored inside `Row`, `Column`, and `Grid`; wrap when necessary.
+- A derived property can shadow a base property with the same name.
+- `PopupCard`'s default property accepts Items, not handlers.
+- Masked text fields contain separators even when they have no digits.
+- Nerd Font glyphs above the BMP must be stored literally, not through jq's
+  `\\uXXXX` escape form.
+
+## Verification
 
 ```bash
+qmllint ~/.config/quickshell/<changed>.qml
+jq empty ~/.config/quickshell/layouts/*.json ~/.config/quickshell/styles/*.json
 n=$(quickshell log | wc -l)
 quickshell ipc call bar reload
-quickshell log | tail -n +$((n+1)) | grep -v font.db
+quickshell log | tail -n +$((n + 1)) | grep -v font.db
 ```
 
-A failed load prints `Failed to load configuration` and **does not** print
-`Configuration Loaded` — so diff from a mark, don't tail blindly. A clean load does
-not prove a popup works: errors inside a panel only appear when it is opened.
+Layout, style, state, theme, and font files are watched and update in place.
+Quickshell normally reloads changed QML itself; the IPC reload is the deterministic
+verification path. Popup-only errors may not appear until the popup is opened.

@@ -19,7 +19,7 @@ BarButton {
     }
     readonly property bool alarming: headline !== null && Number(headline.percent) >= 0.9
 
-    css: "custom-agents"
+    css: "agents"
     visible: records.length > 0
     text: "󱚣"
     textColor: alarming ? shell.role("error", shell.foreground) : shell.role("c9", shell.foreground)

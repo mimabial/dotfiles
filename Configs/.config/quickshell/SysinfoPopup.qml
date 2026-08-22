@@ -5,7 +5,7 @@ import Quickshell.Io
 // a change to the script alone.
 PopupCard {
     id: root
-    contentWidth: 320
+    contentWidth: Style.px(320)
     contentHeight: sysinfoColumn.implicitHeight + padding * 2
 
     required property list<string> command

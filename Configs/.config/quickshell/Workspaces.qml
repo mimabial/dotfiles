@@ -11,8 +11,9 @@ Item {
     property bool hideActive: false
     property bool popupEnabled: false
     property string numerals: vertical ? "hindi" : "kanji"
-    readonly property real spanX: box.margin[1] + box.margin[3] + box.padding[1] + box.padding[3] + 2 * box.border
-    readonly property real spanY: box.margin[0] + box.margin[2] + box.padding[0] + box.padding[2] + 2 * box.border
+    // no frame is painted here, so box.border reserves nothing
+    readonly property real spanX: box.margin[1] + box.margin[3] + box.padding[1] + box.padding[3]
+    readonly property real spanY: box.margin[0] + box.margin[2] + box.padding[0] + box.padding[2]
     implicitWidth: grid.implicitWidth + spanX
     implicitHeight: grid.implicitHeight + spanY
 

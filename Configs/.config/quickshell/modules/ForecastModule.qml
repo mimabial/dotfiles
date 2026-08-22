@@ -15,13 +15,13 @@ DrawerGroup {
     shell: root.shell; css: "forecast"; Layout.fillWidth: true
     primary: Component { ScriptButton {
         id: weatherButton
-        shell: root.shell; css: "custom-weather"; command: ["hyprshell", "weather"]; interval: 600000; textColor: root.shell.role("c2", root.shell.foreground)
+        shell: root.shell; css: "weather"; command: ["hyprshell", "weather"]; interval: 600000; textColor: root.shell.role("c2", root.shell.foreground)
         onClicked: root.shell.togglePopup("weather")
         WeatherPopup { anchorItem: weatherButton; shell: root.shell; popupEnabled: root.popupsAllowed }
     } }
     secondaryAvailable: root.showMinMax
     secondary: Component { ScriptButton {
-        shell: root.shell; css: "custom-weather.minmax"
+        shell: root.shell; css: "weather.minmax"
         command: ["hyprshell", "weather", "-m"]; interval: 3600000
     } }
 }

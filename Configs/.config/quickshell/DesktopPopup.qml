@@ -5,7 +5,7 @@ import Quickshell.Io
 PopupCard {
     id: root
     popupName: "desktop"
-    contentWidth: 340
+    contentWidth: Style.px(340)
     contentHeight: desktopColumn.implicitHeight + padding * 2
     property var layouts: []
     property var workflows: []

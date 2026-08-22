@@ -5,7 +5,7 @@ import Quickshell.Io
 PopupCard {
     id: root
     popupName: "weather"
-    contentWidth: 420
+    contentWidth: Style.px(420)
     contentHeight: weatherColumn.implicitHeight + 32
     readonly property var conditions: Weather.data.current_condition ? Weather.data.current_condition[0] : ({})
     readonly property var days: Weather.data.weather ? Weather.data.weather.slice(0, 3) : []
@@ -63,9 +63,10 @@ PopupCard {
     property bool pendingAccept: false
 
     function readOverride() { if (!overrideProc.running) overrideProc.running = true }
+    // the previous results stay up until the new ones land — clearing here made
+    // the list blink shut and reopen on every keystroke
     function searchCities(query) {
-        suggestions = []
-        if (query.trim() === "") return
+        if (query.trim() === "") { suggestions = []; return }
         searchProc.command = ["hyprshell", "weather", "--search", query.trim()]
         searchProc.running = true
     }
@@ -91,10 +92,11 @@ PopupCard {
         } }
     }
     function cityFieldText(value) { cityField.text = value }
-    // typing shouldn't fire a request per keystroke
+    // typing shouldn't fire a request per keystroke, and a keystroke landing mid
+    // request would be dropped: Process ignores a new command while it runs
     property Timer searchDebounce: Timer {
-        interval: 350
-        onTriggered: root.searchCities(cityField.text)
+        interval: 200
+        onTriggered: if (root.searchProc.running) restart(); else root.searchCities(cityField.text)
     }
     // the override stores what was typed; show the name the provider resolved
     function cityName() {
@@ -144,7 +146,7 @@ PopupCard {
     Column {
         id: weatherColumn
         anchors.left: parent.left; anchors.right: parent.right
-        spacing: 14
+        spacing: Style.px(14)
         Item {
             width: parent.width
             height: heroStack.implicitHeight
@@ -156,16 +158,16 @@ PopupCard {
                 anchors.verticalCenter: parent.verticalCenter
                 text: String(Weather.output.text).trim().split(/\s+/)[0] || "󰖐"
                 color: root.shell.role("c2", root.shell.foreground)
-                font.family: root.shell.fontFamily; font.pixelSize: 92
+                font.family: root.shell.fontFamily; font.pixelSize: Style.px(92)
             }
             Column {
                     id: heroStack
-                    anchors.left: heroIcon.right; anchors.leftMargin: 12
+                    anchors.left: heroIcon.right; anchors.leftMargin: Style.px(12)
                     anchors.verticalCenter: parent.verticalCenter; spacing: 2
                     Text {
                         text: root.temp(root.conditions, "FeelsLike") + root.degrees
                         color: tempMouse.containsMouse ? root.shell.role("hvr_fg", root.shell.foreground) : root.shell.foreground
-                        font.family: root.shell.fontFamily; font.pixelSize: 32; font.bold: true
+                        font.family: root.shell.fontFamily; font.pixelSize: Style.px(32); font.bold: true
                         MouseArea {
                             id: tempMouse; anchors.fill: parent; anchors.margins: -4
                             hoverEnabled: true; cursorShape: Qt.PointingHandCursor
@@ -175,12 +177,12 @@ PopupCard {
                     Text {
                         text: root.value(root.conditions.weatherDesc, "Weather")
                         color: root.shell.foreground
-                        font.family: root.shell.fontFamily; font.pixelSize: 13
+                        font.family: root.shell.fontFamily; font.pixelSize: Style.px(13)
                     }
                     Item {
                         // from wherever the stack begins out to the popup's right
                         // edge, so the search glyph sits flush right
-                        width: heroActions.x - heroStack.x - 10; height: 18
+                        width: heroActions.x - heroStack.x - 10; height: Style.px(18)
 
                         Text {
                             id: locationLabel
@@ -190,7 +192,7 @@ PopupCard {
                             color: (actionMouse.containsMouse || locationMouse.containsMouse)
                                 ? root.shell.role("hvr_fg", root.shell.foreground)
                                 : root.shell.alpha(root.shell.foreground, .55)
-                            font.family: root.shell.fontFamily; font.pixelSize: 10
+                            font.family: root.shell.fontFamily; font.pixelSize: Style.px(10)
                         }
                         MouseArea {
                             id: locationMouse
@@ -206,11 +208,11 @@ PopupCard {
                             visible: root.searching
                             anchors.left: parent.left; anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
-                            height: 18
+                            height: Style.px(18)
                             leftPadding: 0; rightPadding: 0; topPadding: 0; bottomPadding: 0
                             placeholderText: "City name \u2014 Empty to auto-detect"
                             color: root.shell.foreground
-                            font.family: root.shell.fontFamily; font.pixelSize: 10
+                            font.family: root.shell.fontFamily; font.pixelSize: Style.px(10)
                             background: null
                             onTextChanged: if (root.searching) { root.pendingAccept = false; root.searchDebounce.restart() }
                             onAccepted: {
@@ -230,19 +232,19 @@ PopupCard {
             Column {
                 id: heroActions
                 anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
-                spacing: 10
+                spacing: Style.px(10)
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: root.imperial ? "󰔅" : "󰔄"
                     color: unitsMouse.containsMouse ? root.shell.role("hvr_fg", root.shell.foreground) : root.shell.alpha(root.shell.foreground, .55)
-                    font.family: root.shell.fontFamily; font.pixelSize: 14
+                    font.family: root.shell.fontFamily; font.pixelSize: Style.px(14)
                     MouseArea { id: unitsMouse; anchors.fill: parent; anchors.margins: -6; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.toggleUnits() }
                 }
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: "󰑐"
                     color: refreshMouse.containsMouse ? root.shell.role("hvr_fg", root.shell.foreground) : root.shell.alpha(root.shell.foreground, .55)
-                    font.family: root.shell.fontFamily; font.pixelSize: 14
+                    font.family: root.shell.fontFamily; font.pixelSize: Style.px(14)
                     MouseArea { id: refreshMouse; anchors.fill: parent; anchors.margins: -6; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.shell.run(["hyprshell", "weather", "--force", "--alt"]) }
                 }
                 Text {
@@ -250,7 +252,7 @@ PopupCard {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: root.searching ? "󰅖" : "󰍉"
                     color: actionMouse.containsMouse ? root.shell.role("hvr_fg", root.shell.foreground) : root.shell.alpha(root.shell.foreground, .55)
-                    font.family: root.shell.fontFamily; font.pixelSize: 14
+                    font.family: root.shell.fontFamily; font.pixelSize: Style.px(14)
                     MouseArea {
                         id: actionMouse; anchors.fill: parent; anchors.margins: -6
                         hoverEnabled: true; cursorShape: Qt.PointingHandCursor
@@ -287,10 +289,10 @@ PopupCard {
                 model: root.suggestions
                 Rectangle {
                     required property var modelData
-                    width: parent.width; height: 26; radius: root.shell.rounding
-                    color: pickMouse.containsMouse ? root.shell.alpha(root.shell.role("hvr_bg", root.shell.accent), .18) : "transparent"
+                    width: parent.width; height: Style.px(26); radius: root.shell.rounding
+                    color: pickMouse.containsMouse ? root.shell.hoverFill(1.5) : "transparent"
                     Text {
-                        anchors.left: parent.left; anchors.leftMargin: 6
+                        anchors.left: parent.left; anchors.leftMargin: Style.px(6)
                         anchors.verticalCenter: parent.verticalCenter
                         text: parent.modelData.name
                             + (parent.modelData.region ? "  \u00b7  " + parent.modelData.region : "")
@@ -310,29 +312,29 @@ PopupCard {
         }
         PopupSeparator { shell: root.shell }
         Row {
-            anchors.horizontalCenter: parent.horizontalCenter; spacing: 28
+            anchors.horizontalCenter: parent.horizontalCenter; spacing: Style.px(28)
             Repeater {
                 model: root.days
                 Row {
                     required property var modelData
-                    spacing: 7
+                    spacing: Style.px(7)
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
                         text: parent.modelData.icon || "󰖐"
                         color: root.shell.role("c2", root.shell.foreground)
-                        font.family: root.shell.fontFamily; font.pixelSize: 22
+                        font.family: root.shell.fontFamily; font.pixelSize: Style.px(22)
                     }
                     Column {
                         anchors.verticalCenter: parent.verticalCenter; spacing: 1
                         Text {
                             text: Qt.formatDate(new Date(parent.parent.modelData.date + "T12:00:00"), "ddd").toUpperCase()
                             color: root.shell.alpha(root.shell.foreground, .5)
-                            font.family: root.shell.fontFamily; font.pixelSize: 10; font.bold: true
+                            font.family: root.shell.fontFamily; font.pixelSize: Style.px(10); font.bold: true
                         }
                         Text {
                             text: root.temp(parent.parent.modelData, "maxtemp") + "\u00b0 | " + root.temp(parent.parent.modelData, "mintemp") + "\u00b0"
                             color: root.shell.foreground
-                            font.family: root.shell.fontFamily; font.pixelSize: 13
+                            font.family: root.shell.fontFamily; font.pixelSize: Style.px(13)
                         }
                     }
                 }
@@ -347,18 +349,18 @@ PopupCard {
                 Column {
                     required property var modelData
                     width: (weatherColumn.width - 12) / 2; spacing: 2
-                    Text { text: parent.modelData[0]; color: root.shell.alpha(root.shell.foreground, .45); font.family: root.shell.fontFamily; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1 }
-                    Text { text: parent.modelData[1]; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: 13 }
+                    Text { text: parent.modelData[0]; color: root.shell.alpha(root.shell.foreground, .45); font.family: root.shell.fontFamily; font.pixelSize: Style.px(9); font.bold: true; font.letterSpacing: 1 }
+                    Text { text: parent.modelData[1]; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.px(13) }
                 }
             }
         }
         Item {
-            width: parent.width; height: 16
+            width: parent.width; height: Style.px(16)
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: weatherColumn.expanded ? "\u25b4  less" : "\u25be  more"
                 color: moreMouse.containsMouse ? root.shell.role("hvr_fg", root.shell.foreground) : root.shell.alpha(root.shell.foreground, .5)
-                font.family: root.shell.fontFamily; font.pixelSize: 10
+                font.family: root.shell.fontFamily; font.pixelSize: Style.px(10)
                 MouseArea { id: moreMouse; anchors.fill: parent; anchors.margins: -8; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: weatherColumn.expanded = !weatherColumn.expanded }
             }
         }

@@ -6,7 +6,7 @@ PopupWindow {
     required property var shell
     property Item anchorItem: null
     property var handle: null
-    property int contentWidth: 240
+    property int contentWidth: Style.px(240)
     property int padding: Style.popupPadding
     readonly property bool open: handle !== null && anchorItem !== null
     readonly property var anchorWindow: anchorItem ? anchorItem.QsWindow.window : null

@@ -15,7 +15,7 @@ ScriptButton {
     id: mediaButton
     // left bar: the stacked countdown; main bar: --icon, the state glyph
     // alone. One instance either way, so only one daemon runs
-    shell: mediaButton.shell; css: "custom-mediaplayer"; Layout.fillWidth: true; useAlt: true
+    shell: mediaButton.shell; css: "mediaplayer"; Layout.fillWidth: true; useAlt: true
     command: iconOnly ? ["hyprshell", "mediaplayer.py", "--icon"] : ["hyprshell", "mediaplayer.py"]
     interval: 5000; textColor: mediaButton.shell.mediaColor(output)
     onClicked: button => button === Qt.RightButton ? mediaButton.shell.run(["hyprshell", "mediaplayer.py", "--action", "play-pause"]) : mediaButton.shell.togglePopup("media")

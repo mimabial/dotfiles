@@ -18,7 +18,7 @@ DrawerGroup {
     holdOpen: ["network", "wifiqr", "vpn"].includes(root.shell.popupName)
     primary: Component { BarButton {
         id: wifiButton
-        shell: root.shell; css: "custom-wifimenu"; text: "󰖩"
+        shell: root.shell; css: "wifimenu"; text: "󰖩"
         // omarchy: left opens the panel, right toggles the radio
         onClicked: button => button === Qt.RightButton
             ? Networking.wifiEnabled = !Networking.wifiEnabled
@@ -34,7 +34,7 @@ DrawerGroup {
         ScriptButton {
             id: speedButton
             Layout.fillWidth: true; visible: root.showReadout
-            shell: root.shell; css: "custom-network.speed"
+            shell: root.shell; css: "network.speed"
             command: ["hyprshell", "sysinfo/network-speed"]; interval: 3000
         }
     } }

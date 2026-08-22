@@ -4,7 +4,7 @@ import Quickshell.Io
 PopupCard {
     id: root
     popupName: "hyprsunset"
-    contentWidth: 320
+    contentWidth: Style.px(320)
     contentHeight: sunsetColumn.implicitHeight + padding * 2
 
     property var report: ({})
@@ -13,9 +13,13 @@ PopupCard {
     readonly property int temperature: report.temperature || 4500
     readonly property int gamma: report.gamma || 100
 
-    // -q keeps the script from firing a notification for every slider step
+    // -q keeps the script from firing a notification for every slider step.
+    // The readback is a script run away, so adopt the value now: otherwise the
+    // handle snaps to the stale reading until the report catches up.
     function apply(mode, value) {
-        shell.run(["hyprshell", "hyprsunset", "--cm", mode, "-s", String(Math.round(value)), "-q"])
+        const set = Math.round(value)
+        report = Object.assign({}, report, mode === "temp" ? { temperature: set } : { gamma: set })
+        shell.run(["hyprshell", "hyprsunset", "--cm", mode, "-s", String(set), "-q"])
         settle.restart()
     }
     function refresh() { if (!readProc.running) readProc.running = true }
@@ -34,7 +38,7 @@ PopupCard {
         } }
     }
     property Timer settle: Timer { interval: 400; onTriggered: root.refresh() }
-    property Timer poll: Timer { interval: 5000; running: root.open; repeat: true; onTriggered: root.refresh() }
+    property Timer poll: Timer { interval: 5000; running: root.open; repeat: true; triggeredOnStart: true; onTriggered: root.refresh() }
 
     Column {
         id: sunsetColumn
@@ -58,7 +62,7 @@ PopupCard {
             readonly property int low: root.limits.tempMin || 3000
             readonly property int high: root.limits.tempMax || 10000
             value: (root.temperature - low) / Math.max(1, high - low)
-            onChanged: fraction => root.apply("temp", low + fraction * (high - low))
+            onReleased: fraction => root.apply("temp", low + fraction * (high - low))
         }
 
         PopupSlider {
@@ -68,7 +72,7 @@ PopupCard {
             readonly property int low: root.limits.gammaMin || 20
             readonly property int high: root.limits.gammaMax || 100
             value: (root.gamma - low) / Math.max(1, high - low)
-            onChanged: fraction => root.apply("gamma", low + fraction * (high - low))
+            onReleased: fraction => root.apply("gamma", low + fraction * (high - low))
         }
 
         PopupSeparator { shell: root.shell }

@@ -10,7 +10,7 @@ StackedReadout {
     gap: 0
     iconLine: 17
     iconPadRight: 4
-    css: "custom-fanspeedinfo"; fontWeight: Font.Bold
+    css: "fanspeedinfo"; fontWeight: Font.Bold
     command: ["hyprshell", "sysinfo/fanspeedinfo"]; interval: 10000
     textColor: root.shell.role("c7", root.shell.foreground)
     onClicked: button => {

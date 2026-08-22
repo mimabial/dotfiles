@@ -11,6 +11,6 @@ import ".."
 BarButton {
     id: root
     property bool popupsAllowed: true
-    css: "custom-dmark"; text: "—"; fontWeight: Font.Bold
+    css: "dmark"; text: "—"; fontWeight: Font.Bold
     textColor: root.shell.role("c7", root.shell.foreground)
 }

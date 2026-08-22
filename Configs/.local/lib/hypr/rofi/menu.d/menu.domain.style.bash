@@ -6,7 +6,7 @@ menu_register_domain_style() {
   menu_add_item style "󰸌  Theme" action style_theme
   menu_add_item style "  Wallpaper" action style_wallpaper
   menu_add_item style "  Color Mode" action style_color_mode
-  menu_add_item style "󰍜  Waybar Layout" action style_waybar
+  menu_add_item style "󰍜  Bar Layout" action style_bar
   menu_add_item style "󰹑  Animations" action style_animations
   menu_add_item style "󰏘  Lock Layout" action style_lock_layout
   menu_add_item style "  Workflow" action style_workflow
@@ -24,7 +24,7 @@ menu_run_action_style() {
     style_theme) hyprshell rofi/run-after-close.sh -- hyprshell theme/theme.select.sh ;;
     style_wallpaper) hyprshell rofi/run-after-close.sh -- hyprshell wallpaper select --global ;;
     style_color_mode) hyprshell rofi/run-after-close.sh -- hyprshell color-mode.sh -m ;;
-    style_waybar) hyprshell rofi/run-after-close.sh -- hyprshell waybar.py --select-layout ;;
+    style_bar) hyprshell rofi/run-after-close.sh -- hyprshell quickshell/layout select ;;
     style_animations) hyprshell rofi/run-after-close.sh -- hyprshell animations.sh --select ;;
     style_lock_layout) hyprshell rofi/run-after-close.sh -- hyprshell session/hyprlock.sh --select ;;
     style_workflow) hyprshell rofi/run-after-close.sh -- hyprshell util/workflows.sh --select ;;

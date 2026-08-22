@@ -6,7 +6,7 @@ BarButton {
     property bool popupEnabled: true
     readonly property var adapter: Bluetooth.defaultAdapter
     readonly property var connected: Bluetooth.devices.values.filter(device => device.connected)
-    css: "custom-bluetooth.connected"
+    css: "bluetooth-button.connected"
     radius: shell.moduleRadius
     fill: shell.alpha(shell.background, .1)
     outline: shell.alpha(shell.role("br", shell.foreground), .3)

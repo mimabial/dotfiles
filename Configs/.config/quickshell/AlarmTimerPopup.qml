@@ -6,7 +6,7 @@ import Quickshell.Io
 PopupCard {
     id: root
     popupName: "timer"
-    contentWidth: 360
+    contentWidth: Style.px(360)
     contentHeight: timerColumn.implicitHeight + padding * 2
     property var entries: []
     property int now: Math.floor(Date.now() / 1000)
@@ -60,13 +60,13 @@ PopupCard {
         background: Rectangle { radius: root.shell.rounding; color: root.shell.alpha(root.shell.foreground, .06); border.width: 1; border.color: root.shell.alpha(root.shell.foreground, parent.activeFocus ? .45 : .18) }
     }
     component NumberField: Field {
-        id: field; property int maximum: 59; property var submit: () => root.addTimer(root.duration(), ""); width: 44; text: "00"; horizontalAlignment: TextInput.AlignHCenter; inputMethodHints: Qt.ImhDigitsOnly
+        id: field; property int maximum: 59; property var submit: () => root.addTimer(root.duration(), ""); width: Style.px(44); text: "00"; horizontalAlignment: TextInput.AlignHCenter; inputMethodHints: Qt.ImhDigitsOnly
         validator: IntValidator { bottom: 0; top: field.maximum }
         onActiveFocusChanged: if (activeFocus) selectAll()
         onEditingFinished: text = String(Number(text) || 0).padStart(2, "0")
         onAccepted: submit()
     }
-    component TimeMark: Text { width: 52; height: Style.bodySmall; color: root.shell.alpha(root.shell.foreground, .55); font.family: root.shell.fontFamily; font.pixelSize: Style.caption; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+    component TimeMark: Text { width: Style.px(52); height: Style.bodySmall; color: root.shell.alpha(root.shell.foreground, .55); font.family: root.shell.fontFamily; font.pixelSize: Style.caption; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
     component ModeTab: BarButton {
         property bool selected: false
         active: false; radius: shell.rounding; fill: "transparent"; outline: "transparent"; textColor: selected ? shell.accent : shell.alpha(shell.foreground, .6)
@@ -93,14 +93,14 @@ PopupCard {
             Column { width: pages.width; spacing: Style.sectionGap
                 Column { width: parent.width; spacing: Style.xs
                     Row { anchors.horizontalCenter: parent.horizontalCenter; spacing: Style.sm
-                        NumberField { id: hoursField; width: 52; height: Style.controlHeight + Style.sm; maximum: 99; font.pixelSize: Style.title }
-                        TimeMark { width: 9; height: Style.controlHeight + Style.sm; text: ":"; font.pixelSize: Style.title }
-                        NumberField { id: minutesField; width: 52; height: Style.controlHeight + Style.sm; font.pixelSize: Style.title }
-                        TimeMark { width: 9; height: Style.controlHeight + Style.sm; text: ":"; font.pixelSize: Style.title }
-                        NumberField { id: secondsField; width: 52; height: Style.controlHeight + Style.sm; font.pixelSize: Style.title }
+                        NumberField { id: hoursField; width: Style.px(52); height: Style.controlHeight + Style.sm; maximum: 99; font.pixelSize: Style.title }
+                        TimeMark { width: Style.px(9); height: Style.controlHeight + Style.sm; text: ":"; font.pixelSize: Style.title }
+                        NumberField { id: minutesField; width: Style.px(52); height: Style.controlHeight + Style.sm; font.pixelSize: Style.title }
+                        TimeMark { width: Style.px(9); height: Style.controlHeight + Style.sm; text: ":"; font.pixelSize: Style.title }
+                        NumberField { id: secondsField; width: Style.px(52); height: Style.controlHeight + Style.sm; font.pixelSize: Style.title }
                     }
                     Row { anchors.horizontalCenter: parent.horizontalCenter; spacing: Style.sm
-                        TimeMark { text: "H" } TimeMark { width: 9 } TimeMark { text: "M" } TimeMark { width: 9 } TimeMark { text: "S" }
+                        TimeMark { text: "H" } TimeMark { width: Style.px(9) } TimeMark { text: "M" } TimeMark { width: Style.px(9) } TimeMark { text: "S" }
                     }
                 }
                 Grid { width: parent.width; columns: 3; spacing: Style.sm
@@ -118,35 +118,35 @@ PopupCard {
             Column { width: pages.width; spacing: Style.sectionGap
                 Column { width: parent.width; spacing: Style.xs
                     Row { anchors.horizontalCenter: parent.horizontalCenter; spacing: Style.sm
-                        NumberField { id: alarmHours; width: 52; height: Style.controlHeight + Style.sm; maximum: 23; font.pixelSize: Style.title; text: Qt.formatTime(new Date(Date.now() + 3600000), "HH"); submit: () => root.addAlarm() }
-                        TimeMark { width: 9; height: Style.controlHeight + Style.sm; text: ":"; font.pixelSize: Style.title }
-                        NumberField { id: alarmMinutes; width: 52; height: Style.controlHeight + Style.sm; font.pixelSize: Style.title; text: Qt.formatTime(new Date(Date.now() + 3600000), "mm"); submit: () => root.addAlarm() }
+                        NumberField { id: alarmHours; width: Style.px(52); height: Style.controlHeight + Style.sm; maximum: 23; font.pixelSize: Style.title; text: Qt.formatTime(new Date(Date.now() + 3600000), "HH"); submit: () => root.addAlarm() }
+                        TimeMark { width: Style.px(9); height: Style.controlHeight + Style.sm; text: ":"; font.pixelSize: Style.title }
+                        NumberField { id: alarmMinutes; width: Style.px(52); height: Style.controlHeight + Style.sm; font.pixelSize: Style.title; text: Qt.formatTime(new Date(Date.now() + 3600000), "mm"); submit: () => root.addAlarm() }
                     }
                     Row { anchors.horizontalCenter: parent.horizontalCenter; spacing: Style.sm
-                        TimeMark { text: "H" } TimeMark { width: 9 } TimeMark { text: "M" }
+                        TimeMark { text: "H" } TimeMark { width: Style.px(9) } TimeMark { text: "M" }
                     }
                 }
                 Field { id: alarmLabel; width: parent.width; placeholderText: "Label (optional)" }
                 BarButton { width: parent.width; height: Style.controlHeight; shell: root.shell; text: "SET ALARM"; active: true; onClicked: root.addAlarm() }
             }
             Column { width: pages.width; spacing: Style.sm
-                Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: root.elapsed(root.stopwatchMs); color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: 28; font.bold: true }
+                Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: root.elapsed(root.stopwatchMs); color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.px(28); font.bold: true }
                 Row { width: parent.width; spacing: Style.sm
                     BarButton { width: (parent.width - parent.spacing * 2) / 3; height: Style.controlHeight; shell: root.shell; text: "RESET"; enabled: root.stopwatchMs > 0; opacity: enabled ? 1 : .4; onClicked: root.stopwatchAction("reset") }
                     BarButton { width: (parent.width - parent.spacing * 2) / 3; height: Style.controlHeight; shell: root.shell; text: "LAP"; enabled: root.stopwatch.running; opacity: enabled ? 1 : .4; onClicked: root.stopwatchAction("lap") }
                     BarButton { width: (parent.width - parent.spacing * 2) / 3; height: Style.controlHeight; shell: root.shell; text: root.stopwatch.running ? "PAUSE" : "START"; active: true; onClicked: root.stopwatchAction("toggle") }
                 }
-                ListView { visible: root.stopwatch.laps && root.stopwatch.laps.length > 0; width: parent.width; height: Math.min(contentHeight, 100); spacing: Style.xs; clip: true; model: (root.stopwatch.laps || []).slice().reverse()
+                ListView { visible: root.stopwatch.laps && root.stopwatch.laps.length > 0; width: parent.width; height: Math.min(contentHeight, Style.px(100)); spacing: Style.xs; clip: true; model: (root.stopwatch.laps || []).slice().reverse()
                     delegate: PopupRow { required property var modelData; required property int index; width: ListView.view.width; shell: root.shell; title: "Lap " + (root.stopwatch.laps.length - index); value: root.elapsed(modelData) }
                 }
             }
         }
         Text { visible: root.error !== ""; width: parent.width; text: root.error; color: root.shell.role("error", root.shell.foreground); font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
         PopupSeparator { shell: root.shell }
-        PopupSection { shell: root.shell; text: "ACTIVE · " + root.entries.length }
+        PopupSection { shell: root.shell; text: "ACTIVE"; value: root.entries.length }
         Text { visible: root.entries.length === 0; width: parent.width; text: "No active alarms or timers"; color: root.shell.alpha(root.shell.foreground, .5); font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
         ListView {
-            visible: root.entries.length > 0; width: parent.width; height: Math.min(contentHeight, 180); spacing: Style.sm; clip: true; model: root.entries
+            visible: root.entries.length > 0; width: parent.width; height: Math.min(contentHeight, Style.px(180)); spacing: Style.sm; clip: true; model: root.entries
             delegate: PopupRow { required property var modelData; width: ListView.view.width; shell: root.shell; icon: modelData.kind === "alarm" ? "󰀠" : "󰔛"; title: modelData.label || (modelData.kind === "alarm" ? "Alarm" : "Timer"); detail: (modelData.kind === "alarm" ? Qt.formatDateTime(new Date(modelData.epoch * 1000), "ddd HH:mm") : "Ends " + Qt.formatTime(new Date(modelData.epoch * 1000), "HH:mm")) + " · click to cancel"; value: root.remaining(modelData.epoch); active: true; onClicked: root.run(["cancel", String(modelData.id)]) }
         }
     }

@@ -10,9 +10,15 @@ Item {
     // set by any PopupCard anchored here: a module with a panel never tooltips
     property bool hasPopup: false
     property bool active: false
-    property real fontSize: box.fontSize * Style.scale
+    // A module whose whole label is private-use codepoints is an icon button: it
+    // renders from the Mono icon face, sized up to hold the weight it had at the
+    // font's own width. Mixed labels keep the theme font, where a glyph's ink
+    // overhang is invisible next to the text beside it.
+    readonly property bool iconOnly: text.length > 0 && !/[\u0020-\u024f]/.test(text)
+    property real fontSize: box.fontSize * Style.scale * (iconOnly ? Style.iconGlyphBoost : 1)
     property int fontWeight: box.fontWeight
     property int textFormat: Text.AutoText
+    property real textOffsetX: 0
     // waybar's per-module "justify"; multi-line modules line their values up on one edge
     readonly property int align: box.justify === "right" ? Text.AlignRight
         : box.justify === "left" ? Text.AlignLeft : Text.AlignHCenter
@@ -57,8 +63,10 @@ Item {
         return spec ? shell.alpha(shell.role(spec[0], fallback), spec[1]) : "transparent"
     }
 
-    readonly property real spanX: box.margin[1] + box.margin[3] + box.padding[1] + box.padding[3] + 2 * box.border
-    readonly property real spanY: box.margin[0] + box.margin[2] + box.padding[0] + box.padding[2] + 2 * box.border
+    // the frame the Rectangle actually paints; span and inset have to agree with it
+    readonly property real borderWidth: edge.replacesOutline ? 0 : box.border > 0 ? box.border : active && box.outline === undefined ? 1.6 : baseOutline.a > 0 ? 1 : 0
+    readonly property real spanX: box.margin[1] + box.margin[3] + box.padding[1] + box.padding[3] + 2 * borderWidth
+    readonly property real spanY: box.margin[0] + box.margin[2] + box.padding[0] + box.padding[2] + 2 * borderWidth
     implicitWidth: Math.max(box.minWidth, label.implicitWidth) + spanX
     implicitHeight: Math.max(box.minHeight, label.implicitHeight) + spanY
 
@@ -69,22 +77,23 @@ Item {
         radius: root.radius
         color: root.hoverPaint("bg", root.baseFill)
         border.color: root.hoverPaint("border", root.baseOutline)
-        border.width: edge.replacesOutline ? 0 : root.box.border > 0 ? root.box.border : root.active && root.box.outline === undefined ? 1.6 : root.baseOutline.a > 0 ? 1 : 0
+        border.width: root.borderWidth
         Behavior on color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
         Behavior on border.color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
     }
     Text {
         id: label
         anchors.fill: parent
-        anchors.topMargin: root.box.margin[0] + root.box.border + root.box.padding[0]
-        anchors.rightMargin: root.box.margin[1] + root.box.border + root.box.padding[1]
-        anchors.bottomMargin: root.box.margin[2] + root.box.border + root.box.padding[2]
-        anchors.leftMargin: root.box.margin[3] + root.box.border + root.box.padding[3]
+        anchors.topMargin: root.box.margin[0] + root.borderWidth + root.box.padding[0]
+        anchors.rightMargin: root.box.margin[1] + root.borderWidth + root.box.padding[1]
+        anchors.bottomMargin: root.box.margin[2] + root.borderWidth + root.box.padding[2]
+        anchors.leftMargin: root.box.margin[3] + root.borderWidth + root.box.padding[3]
         color: root.hoverPaint("fg", root.textColor)
         Behavior on color { enabled: root.smoothTextColor; ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
-        font.family: root.shell.fontFamily
+        font.family: root.iconOnly ? root.shell.iconGlyphFont : root.shell.fontFamily
         font.pixelSize: root.fontSize
         font.weight: root.fontWeight
+        transform: Translate { x: root.textOffsetX }
         textFormat: root.textFormat
         horizontalAlignment: root.align
         verticalAlignment: Text.AlignVCenter

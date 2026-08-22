@@ -380,7 +380,7 @@ send_signal_to_process() {
 
 remove_stale_socket() {
   local socket_path="${XDG_RUNTIME_DIR}/hypr/${HYPRLAND_INSTANCE_SIGNATURE}/.hyprsunset.sock"
-  [ -f "${socket_path}" ] || return 0
+  [ -S "${socket_path}" ] || return 0
   rm "${socket_path}"
 }
 
@@ -409,12 +409,12 @@ sync_runtime_for_write() {
   local -n state_ref="$2"
 
   if [ "${state_ref[enabled]}" -eq 0 ]; then
-    hyprctl --quiet --batch "hyprsunset identity;hyprsunset gamma ${DEFAULT_GAMMA}"
+    hyprctl --quiet hyprsunset temperature "${DEFAULT_TEMP}"; hyprctl --quiet hyprsunset gamma "${DEFAULT_GAMMA}"
     return 0
   fi
 
   if [ "${options_ref[color_mode]}" = "gamma" ] && [ -n "${state_ref[new_gamma]}" ]; then
-    hyprctl --quiet --batch "hyprsunset temperature ${state_ref[temp]};hyprsunset gamma ${state_ref[new_gamma]}"
+    hyprctl --quiet hyprsunset temperature "${state_ref[temp]}"; hyprctl --quiet hyprsunset gamma "${state_ref[new_gamma]}"
     return 0
   fi
 
@@ -423,7 +423,7 @@ sync_runtime_for_write() {
     return 0
   fi
 
-  hyprctl --quiet --batch "hyprsunset temperature ${state_ref[temp]};hyprsunset gamma ${state_ref[gamma]}"
+  hyprctl --quiet hyprsunset temperature "${state_ref[temp]}"; hyprctl --quiet hyprsunset gamma "${state_ref[gamma]}"
 }
 
 sync_runtime_state() {
