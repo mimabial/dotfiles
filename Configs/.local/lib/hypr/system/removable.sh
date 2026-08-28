@@ -19,7 +19,6 @@ Usage: hyprshell system/removable [option]
   --eject DEV     Unmount, then power the drive down so it is safe to pull
   --browse DEV    Open the mountpoint in the file manager
   --automount on|off|toggle   udiskie's automount, persisted to its config
-  --notify on|off|toggle      udiskie's mount notifications
 
 Devices are the hotplug or removable partitions lsblk reports, which is the
 same set udiskie acts on.
@@ -29,7 +28,7 @@ USAGE
 UDISKIE_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/udiskie/config.yml"
 
 # udiskie has no runtime toggle, so the setting is persisted and the daemon
-# restarted. Only these two keys are managed, so the file is rewritten whole.
+# restarted. Notifications belong to Quickshell's event service.
 udiskie_option() {
   local key="$1" fallback="$2"
   [[ -f "${UDISKIE_CONFIG}" ]] || {
@@ -42,24 +41,18 @@ udiskie_option() {
 }
 
 udiskie_write() {
-  local automount="$1" notify="$2"
+  local automount="$1"
   mkdir -p "$(dirname "${UDISKIE_CONFIG}")"
   cat >"${UDISKIE_CONFIG}" <<EOF
 # AUTO-GENERATED — do not edit.
-# Rewritten in full by: hyprshell system/removable --automount|--notify
-# Only the two keys below are managed; anything else added here is lost.
+# Rewritten in full by: hyprshell system/removable --automount
+# Only the keys below are managed; anything else added here is lost.
 program_options:
   automount: ${automount}
-  notify: ${notify}
+  notify: false
 EOF
-  local unit
-  unit="$(systemctl --user list-units --plain --no-legend 'app-Hyprland-udiskie@*.service' 2>/dev/null | awk 'NR==1{print $1}')"
-  if [[ -n "${unit}" ]]; then
-    systemctl --user restart "${unit}" >/dev/null 2>&1 || true
-  else
-    pkill -x udiskie >/dev/null 2>&1 || true
-    hyprshell app -t service udiskie --smart-tray >/dev/null 2>&1 || true
-  fi
+  pkill -x udiskie >/dev/null 2>&1 || true
+  hyprshell app -t service udiskie --smart-tray >/dev/null 2>&1 || true
 }
 
 resolve_flag() {
@@ -113,6 +106,7 @@ case "${1:---report}" in
       length as $count |
       {
         text: (if $count == 0 then "" else "󰕓" end),
+        alt: "󱊞",
         class: (if $count == 0 then "empty" elif $mounted > 0 then "mounted" else "present" end),
         tooltip: (if $count == 0 then "No removable media"
                   else (map("\(.title) \(.size) \(if .mounted then "— " + .mountpoint else "— not mounted" end)") | join("\n"))
@@ -138,15 +132,7 @@ case "${1:---report}" in
       usage >&2
       exit 1
     }
-    udiskie_write "${next}" "$(udiskie_option notify true)"
-    ;;
-  --notify)
-    current="$(udiskie_option notify true)"
-    next="$(resolve_flag "${2:-toggle}" "${current}")" || {
-      usage >&2
-      exit 1
-    }
-    udiskie_write "$(udiskie_option automount true)" "${next}"
+    udiskie_write "${next}"
     ;;
   --mount)
     [[ -n "${2:-}" ]] || {
@@ -167,10 +153,21 @@ case "${1:---report}" in
       usage >&2
       exit 1
     }
-    udisksctl unmount -b "$2" --no-user-interaction >/dev/null 2>&1 || true
-    # power-off takes the parent disk, not the partition
     parent="$(lsblk -no PKNAME "$2" 2>/dev/null | head -1)"
-    udisksctl power-off -b "/dev/${parent:-$(basename "$2")}" --no-user-interaction >/dev/null
+    disk="/dev/${parent:-$(basename "$2")}"
+    if quickshell ipc call removable-drives eject "${disk}" >/dev/null 2>&1; then
+      exit 0
+    fi
+    system_mount="$(lsblk -J -o MOUNTPOINTS "${disk}" 2>/dev/null | jq -r '[.. | objects | .mountpoints? // [] | .[]?] | any(. == "/" or . == "/boot" or . == "/boot/efi" or . == "/efi" or . == "/home" or . == "/var" or . == "/usr" or . == "[SWAP]")')"
+    [[ "${system_mount}" != "true" ]] || {
+      printf 'Refusing to eject the system drive: %s\n' "${disk}" >&2
+      exit 1
+    }
+    mapfile -t mounted_nodes < <(lsblk -J -o PATH,MOUNTPOINT "${disk}" 2>/dev/null | jq -r '.. | objects | select(.mountpoint? != null) | .path' | tac)
+    for node in "${mounted_nodes[@]}"; do
+      udisksctl unmount -b "${node}" --no-user-interaction >/dev/null
+    done
+    udisksctl power-off -b "${disk}" --no-user-interaction >/dev/null
     ;;
   *)
     usage >&2

@@ -24,7 +24,7 @@ PopupCard {
     }
     function refresh() { if (!readProc.running) readProc.running = true }
     function toggle() {
-        shell.run(["hyprshell", "hyprsunset", "-t", "-q", "-P", "waybar:19"])
+        shell.run(["hyprshell", "hyprsunset", "-t", "-q"])
         settle.restart()
     }
 

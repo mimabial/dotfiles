@@ -4,8 +4,10 @@ set -euo pipefail
 
 if [ -z "${*}" ]; then
   clear
-  exec fastfetch --logo-type kitty
-  exit
+  # No --logo-type: the configured source may be text or an image, and only
+  # fastfetch's own auto-detection picks the right renderer for each. Forcing
+  # kitty silently discarded every text logo and fell back to the builtin.
+  exec fastfetch
 fi
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
@@ -266,6 +268,6 @@ case "$1" in
     ;;
   *)
     clear
-    exec fastfetch --logo-type kitty
+    exec fastfetch
     ;;
 esac

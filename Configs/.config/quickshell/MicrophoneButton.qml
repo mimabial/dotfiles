@@ -7,10 +7,10 @@ BarButton {
     readonly property bool live: source && !source.audio.muted
     css: live ? "microphone" : "microphone.muted"
     radius: shell.moduleRadius
-    outline: shell.alpha(shell.role(live ? "c1" : "br", shell.foreground), .3)
-    text: !root.source || root.source.audio.muted ? "󰍭" : "󰍬"
-    tooltip: source ? "Microphone " + Math.round(source.audio.volume * 100) + "%" : "No microphone"
-    onClicked: if (source) source.audio.muted = !source.audio.muted
+    text: !root.source || root.source.audio.muted ? "" : ""
+    onClicked: button => button === Qt.RightButton
+        ? (source ? source.audio.muted = !source.audio.muted : false)
+        : shell.togglePopup("audio")
 
     PwObjectTracker { objects: [root.source].filter(x => x) }
 }

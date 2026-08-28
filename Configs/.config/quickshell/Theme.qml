@@ -8,7 +8,7 @@ QtObject {
     property var theme: ({ rounding: 0, palette: {} })
     property var baseRules: ({})
     property var overrides: ({})
-    readonly property var rules: resolve(merge(baseRules, overrides))
+    readonly property var rules: resolve(baseRules, overrides)
 
     readonly property var palette: theme.palette || ({})
     readonly property real radius: theme.rounding || 0
@@ -19,12 +19,17 @@ QtObject {
     })
 
     // a rule inherits its dotted parent then the "" root, so a file states only
-    // what it changes; the chain is flattened once per load, never per lookup
+    // what it changes; the chain is flattened once per load, never per lookup.
+    // the layout's own "" lands above every base rule, so it overrides rather
+    // than being buried under them: fallback < base"" < base[key] < over"" < over[key]
     function box(name) { const key = String(name || ""); return rules[key] || (key.includes(".") ? box(key.slice(0, key.lastIndexOf("."))) : rules[""] || fallback) }
-    function resolve(flat) {
-        const out = {}
-        const build = key => key in out ? out[key] : (out[key] = merge(key.includes(".") ? build(key.slice(0, key.lastIndexOf("."))) : merge(fallback, flat[""] || {}), flat[key] || {}))
-        for (const key in flat) build(key)
+    function resolve(base, over) {
+        const out = {}, root = merge(fallback, base[""] || {})
+        const build = key => key in out ? out[key] : (out[key] = merge(merge(merge(
+            key.includes(".") ? build(key.slice(0, key.lastIndexOf("."))) : root,
+            base[key] || {}), over[""] || {}), over[key] || {}))
+        for (const key in base) build(key)
+        for (const key in over) build(key)
         return out
     }
     function merge(base, over) {

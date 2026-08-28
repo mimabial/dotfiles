@@ -15,7 +15,7 @@ source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
 source "${HYPR_LIB_DIR}/controls/lib/brightness.common.bash"
 
 readonly BRIGHTNESS_NOTIFY_REPLACE_ID=7
-readonly BRIGHTNESS_UNAVAILABLE_REPLACE_ID=8
+readonly BRIGHTNESS_UNAVAILABLE_REPLACE_ID=9
 readonly BRIGHTNESS_NOTIFY_TIMEOUT_MS=800
 readonly BRIGHTNESS_UNAVAILABLE_TIMEOUT_MS=1200
 readonly BRIGHTNESS_BAR_DIVISOR=15
@@ -74,7 +74,7 @@ notify_brightness() {
   bar="$(printf '%*s' $((brightness / BRIGHTNESS_BAR_DIVISOR)) '' | tr ' ' '.')"
 
   dunstify -a "Brightness control" -r "${BRIGHTNESS_NOTIFY_REPLACE_ID}" -t "${BRIGHTNESS_NOTIFY_TIMEOUT_MS}" \
-    -i "${icon}" "${brightness}${bar}" "${device_name}"
+    -e -i "${icon}" "${brightness}${bar}" "${device_name}"
 }
 
 apply_increase() {

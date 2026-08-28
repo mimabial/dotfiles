@@ -114,7 +114,11 @@ github_get_code() {
   local body_file="$3"
   local headers_file="$4"
 
+  # a bar provider must return: without these a stalled connection hangs the
+  # module forever, and the button renders as empty text
   curl -sS -L \
+    --connect-timeout "${GITHUB_CONNECT_TIMEOUT:-5}" \
+    --max-time "${GITHUB_MAX_TIME:-10}" \
     -H "Accept: application/vnd.github+json" \
     -H "Authorization: Bearer ${token}" \
     -H "X-GitHub-Api-Version: 2022-11-28" \

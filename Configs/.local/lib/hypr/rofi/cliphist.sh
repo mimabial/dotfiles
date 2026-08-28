@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 
-pkill -u "$USER" rofi && exit 0
+# pressing the keybind again dismisses an open menu. Actions re-exec this script
+# to switch views, so they must not take that path — it would kill the UI they
+# are about to draw and exit.
+if [[ -z "${CLIPHIST_REENTRY:-}" ]]; then
+  pkill -u "$USER" rofi && exit 0
+fi
+export CLIPHIST_REENTRY=1
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_require system rofi || exit 1
@@ -23,13 +29,20 @@ action_back="__action__:back"
 action_image_history="__action__:image-history"
 action_scan_image="__action__:scan-image"
 action_scan_qr="__action__:scan-qr"
+action_delete_entry="__action__:delete-entry"
+action_expand="__action__:expand"
 
 cliphist_action_id() {
   printf '%s\n' "${1%%$'\t'*}"
 }
 
 cliphist_dispatch_action() {
-  case "$1" in
+  local action="${1%%$'\n'*}"
+  local payload=""
+
+  [[ "$1" == *$'\n'* ]] && payload="${1#*$'\n'}"
+
+  case "${action}" in
     "${action_copy}")
       "${0}" --copy
       ;;
@@ -52,10 +65,16 @@ cliphist_dispatch_action() {
       "${0}" --image-history
       ;;
     "${action_scan_image}")
-      "${0}" --scan-image
+      "${0}" --scan-image "${payload}"
       ;;
     "${action_scan_qr}")
-      "${0}" --scan-qr
+      "${0}" --scan-qr "${payload}"
+      ;;
+    "${action_delete_entry}")
+      "${0}" --delete-entry "${payload}"
+      ;;
+    "${action_expand}")
+      "${0}" --expand "${payload}"
       ;;
     *)
       return 1
@@ -77,6 +96,24 @@ latest_image_history_entry() {
   done < <(cliphist list)
 
   return 1
+}
+
+# an image entry picked in the menu wins; a text row, a stale id or no selection
+# at all falls back to the newest image, which is what the bare flags act on
+resolve_image_entry() {
+  local id="${1%%$'\t'*}"
+  local line=""
+
+  id="${id//[^0-9]/}"
+  if [[ -n "${id}" ]]; then
+    line="$(cliphist list | grep -m1 -E "^${id}[[:space:]]" || true)"
+    if [[ -n "${line}" && "${line}" =~ (\[\[[[:space:]])?binary.*(jpg|jpeg|png|bmp) ]]; then
+      printf '%s\n' "${line}"
+      return 0
+    fi
+  fi
+
+  latest_image_history_entry
 }
 
 process_selections() {
@@ -164,6 +201,9 @@ run_rofi() {
     -kb-custom-6 "Alt+v"
     -kb-custom-7 "Alt+s"
     -kb-custom-8 "Alt+q"
+    -kb-custom-9 "Delete"
+    -kb-custom-10 "Alt+e"
+    -kb-remove-char-forward "Control+d"
   )
 
   local rofi_output=""
@@ -182,8 +222,10 @@ run_rofi() {
     13) printf '%s' "${action_wipe}" ;;
     14) printf '%s' "${action_options}" ;;
     15) printf '%s' "${action_image_history}" ;;
-    16) printf '%s' "${action_scan_image}" ;;
-    17) printf '%s' "${action_scan_qr}" ;;
+    16) printf '%s\n%s' "${action_scan_image}" "${rofi_output}" ;;
+    17) printf '%s\n%s' "${action_scan_qr}" "${rofi_output}" ;;
+    18) printf '%s\n%s' "${action_delete_entry}" "${rofi_output}" ;;
+    19) printf '%s\n%s' "${action_expand}" "${rofi_output}" ;;
     *) return "${rofi_status}" ;;
   esac
 
@@ -256,6 +298,18 @@ mask_secret_field() {
 }
 
 mask_secret_previews() { mask_secret_field 2; }
+
+# Same detection, applied to fully decoded content. The list only ever sees a
+# truncated preview, so a token past preview-width is not masked there — this
+# is what keeps expand from being a way around the mask.
+secret_label() {
+  local flat="${1//$'\n'/ }"
+  local masked=""
+
+  masked="$(printf 'x\t%s\n' "${flat}" | mask_secret_field 2 | cut -f2-)"
+  [[ "${masked}" != "${flat}" ]] && printf '%s' "${masked##*  }"
+  return 0
+}
 
 show_history() {
   local selected_item
@@ -515,7 +569,7 @@ clear_history() {
   fi
 }
 
-ocr_latest_image() {
+ocr_image_entry() {
   local runtime_dir="${XDG_RUNTIME_DIR:-/tmp}/hypr"
   local image_line=""
   local image_path=""
@@ -529,7 +583,7 @@ ocr_latest_image() {
   local -a tesseract_languages=("${SCREENSHOT_OCR_TESSERACT_LANGUAGES[@]:-${tesseract_default_language[@]}}")
   local -a tesseract_packages=()
 
-  image_line="$(latest_image_history_entry)" || {
+  image_line="$(resolve_image_entry "${1:-}")" || {
     dunstify -t 3000 -i "dialog-error" "OCR Error" "No images in clipboard history."
     return 1
   }
@@ -551,7 +605,7 @@ ocr_latest_image() {
 
   if ! cliphist decode <<<"${image_line}" >"${image_path}"; then
     rm -f "${image_path}"
-    dunstify -t 3000 -i "dialog-error" "OCR Error" "Failed to decode the latest clipboard image."
+    dunstify -t 3000 -i "dialog-error" "OCR Error" "Failed to decode the clipboard image."
     return 1
   fi
 
@@ -591,13 +645,66 @@ ocr_latest_image() {
   rm -f "${image_path}"
 }
 
-qr_latest_image() {
+# Delete on a highlighted row drops just that entry and reopens the list, so
+# several can go in a row without walking back through the menu
+delete_entry() {
+  local line="${1:-}"
+  local id="${line%%$'\t'*}"
+
+  id="${id//[^0-9]/}"
+  if [[ -n "${id}" ]]; then
+    line="$(cliphist list | grep -m1 -E "^${id}[[:space:]]" || true)"
+    if [[ -n "${line}" ]]; then
+      cliphist delete <<<"${line}"
+      dunstify -t 2000 -i "edit-delete" "Deleted" "$(printf '%s' "${line}" | cut -c1-60)"
+    fi
+  fi
+
+  show_history
+}
+
+# the list truncates at preview-width; this shows the entry in full, folded so
+# long lines stay readable, and Enter copies the whole thing
+expand_entry() {
+  local line="${1:-}"
+  local id="${line%%$'\t'*}"
+  local text=""
+  local choice=""
+  local label=""
+
+  id="${id//[^0-9]/}"
+  [[ -n "${id}" ]] && text="$(printf '%s\t' "${id}" | cliphist decode)"
+  if [[ -z "${text}" ]]; then
+    show_history
+    return
+  fi
+
+  label="$(secret_label "${text}")"
+  if [[ -n "${label}" ]]; then
+    dunstify -t 3000 -i "dialog-password" "Expand blocked" "Entry looks like a ${label}."
+    show_history
+    return
+  fi
+
+  choice="$(printf '%s\n' "${text}" \
+    | fold -s -w "${ROFI_CLIPHIST_EXPAND_WIDTH:-100}" \
+    | rofi -dmenu -i -p " 🔍 Entry" \
+        -theme "${cliphist_style}" \
+        -theme-str "${font_override}" \
+        -theme-str "${r_override}" \
+        -theme-str "${rofi_position}" || true)"
+  [[ -n "${choice}" ]] && printf '%s' "${text}" | wl-copy
+
+  show_history
+}
+
+qr_image_entry() {
   local runtime_dir="${XDG_RUNTIME_DIR:-/tmp}/hypr"
   local image_line=""
   local image_path=""
   local qr_output=""
 
-  image_line="$(latest_image_history_entry)" || {
+  image_line="$(resolve_image_entry "${1:-}")" || {
     dunstify -t 3000 -i "dialog-error" "QR Error" "No images in clipboard history."
     return 1
   }
@@ -615,7 +722,7 @@ qr_latest_image() {
 
   if ! cliphist decode <<<"${image_line}" >"${image_path}"; then
     rm -f "${image_path}"
-    dunstify -t 3000 -i "dialog-error" "QR Error" "Failed to decode the latest clipboard image."
+    dunstify -t 3000 -i "dialog-error" "QR Error" "Failed to decode the clipboard image."
     return 1
   fi
 
@@ -634,7 +741,9 @@ qr_latest_image() {
     return 1
   fi
 
-  printf '%s' "${qr_output}" | wl-copy
+  # QR codes routinely carry secrets such as otpauth:// URIs, so the decoded
+  # value is copied as sensitive and never lands in clipboard history
+  printf '%s' "${qr_output}" | wl-copy --sensitive
   dunstify -t 5000 -i "${image_path}" "QR" "Successfully recognized and copied to clipboard."
   rm -f "${image_path}"
 }
@@ -668,6 +777,10 @@ panel_copy_id() {
   printf '%s\t' "$id" | cliphist decode | wl-copy
   # the watcher re-stores it at the top, so drop the stale row
   printf '%s\t' "$id" | cliphist delete
+  # the panel closes as this runs; give the compositor a moment to hand focus
+  # back before typing into whatever was underneath
+  sleep "${CLIPHIST_PASTE_DELAY:-0.2}"
+  paste_string
 }
 
 panel_delete_id() {
@@ -709,8 +822,10 @@ Options:
   -i  | --image-history             Show clipboard image history
   -f  | --favorites| View Favorites              View favorite clipboard items
   -mf | -manage-fav | Manage Favorites  Manage favorite clipboard items
-  -sc | --scan-image                OCR the latest clipboard image and copy text
-  -qr | --scan-qr                   Decode the latest clipboard QR image and copy text
+  -sc | --scan-image [entry]        OCR an image entry (default: latest) and copy text
+  -qr | --scan-qr [entry]           Decode a QR image entry (default: latest) and copy text
+  -de | --delete-entry [entry]      Delete one entry (Delete key in the list)
+  -x  | --expand [entry]            Show an entry in full (Alt+e in the list)
   -w  | --wipe | Clear History      Clear clipboard history
   -h  | --help | Help               Display this help message
 
@@ -746,10 +861,16 @@ main() {
       show_image_history "$@"
       ;;
     -sc | --scan-image | "OCR Latest Image")
-      ocr_latest_image
+      ocr_image_entry "${2:-}"
       ;;
     -qr | --scan-qr | "QR Latest Image")
-      qr_latest_image
+      qr_image_entry "${2:-}"
+      ;;
+    -de | --delete-entry)
+      delete_entry "${2:-}"
+      ;;
+    -x | --expand)
+      expand_entry "${2:-}"
       ;;
     -d | --delete | "Delete")
       delete_items

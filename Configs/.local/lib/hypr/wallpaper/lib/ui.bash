@@ -175,30 +175,37 @@ Wall_Json() {
   wallpaper_catalog_emit_and_cache_json "${cache_home}" "${json_cache}"
 }
 
-wallpaper_select_monitor_width() {
+wallpaper_select_monitor_geometry() {
   local mon_x_res=""
+  local mon_y_res=""
 
-  read -r mon_x_res _ < <(rofi_focused_monitor_logical_size)
+  read -r mon_x_res mon_y_res < <(rofi_focused_monitor_logical_size)
   [[ "${mon_x_res}" =~ ^[0-9]+$ ]] || mon_x_res=1920
-  printf '%s\n' "${mon_x_res}"
+  [[ "${mon_y_res}" =~ ^[0-9]+$ ]] || mon_y_res=1080
+  printf '%s %s\n' "${mon_x_res}" "${mon_y_res}"
 }
 
 wallpaper_select_theme_override() {
   local font_scale="$1"
+  local font_name="$2"
   local mon_x_res=""
+  local mon_y_res=""
   local border_radius=0
   local elem_border=0
   local elm_width=0
   local max_avail=0
   local col_count=0
   local icon_em=33
+  local max_icon_em=0
+  local em_px=""
+  local em_px_milli=""
   local mon_scale_milli=1000
   local scale_json=""
 
   border_radius="${HYPR_RUNTIME_BORDER_RADIUS:-${HYPR_BORDER_RADIUS:-0}}"
   [[ "${border_radius}" =~ ^[0-9]+$ ]] || border_radius=0
   elem_border=$((border_radius * 2))
-  mon_x_res="$(wallpaper_select_monitor_width)"
+  read -r mon_x_res mon_y_res < <(wallpaper_select_monitor_geometry)
   elm_width=$(((16 + 8 + 5) * font_scale))
   max_avail=$((mon_x_res - (4 * font_scale)))
   col_count=$((max_avail / elm_width))
@@ -218,6 +225,19 @@ wallpaper_select_theme_override() {
   ((icon_em < 8)) && icon_em=8
   ((icon_em > 100)) && icon_em=100
 
+  # The table above only tracks monitor scale, but rofi resolves em against the
+  # font, so a larger TEXT_SIZE grows the row until it no longer fits the
+  # viewport and rofi renders an empty listview. wallpaper.rasi spends 7em on
+  # the entry, the label and the listview padding; the icon gets what is left.
+  em_px="$(rofi_font_text_height_px "${font_name}" "${font_scale}" 2>/dev/null || true)"
+  em_px_milli="$(rofi_decimal_milli "${em_px}" 2>/dev/null || true)"
+  if [[ "${em_px_milli}" =~ ^[1-9][0-9]*$ ]]; then
+    max_icon_em=$(((mon_y_res * 1000 / em_px_milli) - 7))
+    if ((max_icon_em >= 8)) && ((icon_em > max_icon_em)); then
+      icon_em="${max_icon_em}"
+    fi
+  fi
+
   cat <<EOF
 listview{columns:${col_count};}
 element-icon{size:${icon_em}em;}
@@ -234,7 +254,7 @@ wallpaper_select_rofi_args() {
   local opacity_override=""
 
   font_override="* {font: \"${font_name} ${font_scale}\";}"
-  r_override="$(wallpaper_select_theme_override "${font_scale}")"
+  r_override="$(wallpaper_select_theme_override "${font_scale}" "${font_name}")"
   opacity_override="$(rofi_active_opacity_override)"
 
   rofi_args=(

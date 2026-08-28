@@ -18,12 +18,7 @@ workflow_locked() {
   local owner=""
   [[ "${HYPR_WORKFLOW_UNLOCK:-0}" == 1 ]] && return 1
   [[ "$(busctl --user get-property com.feralinteractive.GameMode /com/feralinteractive/GameMode com.feralinteractive.GameMode ClientCount 2>/dev/null)" =~ ^i[[:space:]]+[1-9][0-9]*$ ]] && owner=gaming
-  if [[ -z "${owner}" && "${HYPR_PROFILE_WORKFLOW_LOCK:-1}" != 0 ]]; then
-    case "$(powerprofilesctl get 2>/dev/null)" in
-      power-saver) owner=powersaver ;;
-      performance) owner=snappy ;;
-    esac
-  fi
+  [[ -z "${owner}" && "${HYPR_PROFILE_WORKFLOW_LOCK:-1}" != 0 && "$(powerprofilesctl get 2>/dev/null)" == power-saver ]] && owner=powersaver
   [[ -n "${owner}" && "${1:-}" != "${owner}" ]]
 }
 
@@ -92,7 +87,6 @@ apply_waybar_workflow() {
   current_layout_name="$(state_get "WAYBAR_LAYOUT_NAME" "")"
   saved_layout="$(state_get "WORKFLOW_WAYBAR_PREV_LAYOUT" "")"
   last_applied="$(state_get "WORKFLOW_WAYBAR_LAST_APPLIED_LAYOUT" "")"
-  rounding="$(hyprctl -j getoption decoration:rounding 2>/dev/null | jq -r '.int // empty')"
 
   if [[ -n "${layout}" ]]; then
     if [[ "${workflow_previous_name}" != "${current_workflow}" ]]; then
@@ -107,6 +101,14 @@ apply_waybar_workflow() {
   fi
 
   [[ -n "${target_layout}" ]] && state_set "WORKFLOW_WAYBAR_LAST_APPLIED_LAYOUT" "${target_layout}" "staterc"
+
+  # Quickshell reads the layout out of staterc, so that transition still matters
+  # when Waybar is off; the CSS, radius and signalling below are Waybar's alone.
+  if [[ "$(state_get WAYBAR_ENABLED 1)" == 0 ]]; then
+    [[ -n "${target_layout}" ]] && hyprshell waybar.py --set "${target_layout}" --no-restart >/dev/null 2>&1
+    return 0
+  fi
+  rounding="$(hyprctl -j getoption decoration:rounding 2>/dev/null | jq -r '.int // empty')"
 
   if [[ "${mode}" == "hidden" ]]; then
     [[ -n "${target_layout}" ]] && WAYBAR_BORDER_RADIUS="${rounding}" hyprshell waybar.py --set "${target_layout}" --no-restart >/dev/null 2>&1
@@ -168,7 +170,7 @@ fn_select() {
   workflow_list="${default_icon}\t default"
 
   while IFS= read -r workflow_name; do
-    [[ "${workflow_name}" == "default" || "${workflow_name}" == "gaming" || "${workflow_name}" == "powersaver" || "${workflow_name}" == "snappy" ]] && continue
+    [[ "${workflow_name}" == "default" || "${workflow_name}" == "gaming" || "${workflow_name}" == "powersaver" ]] && continue
     workflow_path="$(resolve_workflow_path "${workflow_name}")" || continue
     workflow_icon="$(get_workflow_icon "${workflow_path}")"
     workflow_list="${workflow_list}\n${workflow_icon}\t ${workflow_name}"
@@ -210,7 +212,7 @@ fn_select() {
 handle_list() {
   local name path
   while IFS= read -r name; do
-    [[ "${name}" =~ ^(gaming|powersaver|snappy)$ ]] && continue
+    [[ "${name}" =~ ^(gaming|powersaver)$ ]] && continue
     path="$(resolve_workflow_path "${name}")" || continue
     printf '%s\t%s\t%s\n' "${name}" "$(get_workflow_icon "${path}")" "$(get_workflow_description "${path}")"
   done < <(list_workflow_names)
@@ -263,7 +265,7 @@ LUA
 apply_workflow_update() {
   local notification_rule notification_state
   get_info
-  for notification_rule in windows_90 gaming_opaque; do
+  for notification_rule in windows_90 gaming_opaque powersaver_opaque; do
     [[ "${current_workflow}" == "${notification_rule%%_*}" ]] && notification_state=enable || notification_state=disable
     dunstctl rule "${notification_rule}" "${notification_state}" >/dev/null 2>&1 || true
   done
@@ -275,8 +277,7 @@ apply_workflow_update() {
 
 handle_waybar() {
   get_info
-  printf '{"text": "%s", "tooltip": "Mode: %s %s \\n%s", "class": "custom-workflows"}\n' \
-    "${current_icon}" "${current_icon}" "${current_workflow}" "${current_description}"
+  printf '{"text": "%s", "class": "custom-workflows"}\n' "${current_icon}"
 }
 
 if [[ -z "${*}" ]]; then

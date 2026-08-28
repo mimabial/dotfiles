@@ -2,9 +2,6 @@ hl.env("HYPR_PROFILE_WORKFLOW_LOCK", "1")
 
 hl.config({
     input = {
-        kb_layout = "us,fr",
-        kb_variant = ",",
-        kb_options = "",
         resolve_binds_by_sym = true,
         touchpad = {natural_scroll = false},
     },

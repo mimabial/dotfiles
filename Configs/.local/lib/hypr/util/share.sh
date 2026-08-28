@@ -3,7 +3,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: hyprshell util/share.sh [clipboard|file|folder] [paths...]" >&2
+  echo "Usage: hyprshell util/share.sh [clipboard|file|folder|receive] [paths...]" >&2
 }
 
 share_notify_error() {
@@ -77,6 +77,17 @@ cleanup_temp_file() {
 trap cleanup_temp_file EXIT
 
 case "${MODE}" in
+  receive)
+    # Receiving is the app's own UI, not a headless send, so it takes no files
+    # and none of the picker or temp-file machinery below.
+    if command -v localsend >/dev/null 2>&1; then
+      exec uwsm-app -- localsend
+    elif command -v flatpak >/dev/null 2>&1 && flatpak info org.localsend.localsend_app >/dev/null 2>&1; then
+      exec uwsm-app -- flatpak run org.localsend.localsend_app
+    fi
+    share_notify_error "LocalSend is not installed."
+    exit 1
+    ;;
   clipboard)
     TEMP_FILE=$(mktemp --suffix=.txt) || exit 1
     wl-paste >"${TEMP_FILE}"

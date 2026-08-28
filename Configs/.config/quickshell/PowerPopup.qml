@@ -29,7 +29,8 @@ PopupCard {
 
     function duration(seconds) { const minutes = Math.round(seconds / 60); return minutes > 59 ? Math.floor(minutes / 60) + "h " + minutes % 60 + "m" : minutes + "m" }
     function profileName(profile) { return PowerProfile.toString(profile).replace(/([a-z])([A-Z])/g, "$1 $2") }
-    function profileIcon(profile) { return profile === PowerProfile.Performance ? "" : profile === PowerProfile.PowerSaver ? "" : "" }
+    function profileId(profile) { return PowerProfile.toString(profile).replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase() }
+    function profileIcon(profile) { return profile === PowerProfile.Performance ? "󱐌" : profile === PowerProfile.PowerSaver ? "󰌪" : "󰗑" }
 
     Column {
         id: powerColumn
@@ -67,7 +68,7 @@ PopupCard {
                 required property var modelData
                 visible: modelData !== PowerProfile.Performance || PowerProfiles.hasPerformanceProfile
                 width: parent.width; shell: root.shell; icon: root.profileIcon(modelData); title: root.profileName(modelData); detail: modelData === PowerProfiles.profile ? "Active" : ""; active: modelData === PowerProfiles.profile
-                onClicked: PowerProfiles.profile = modelData
+                onClicked: root.shell.run(["hyprshell", "system/powerprofiles", "--set", root.profileId(modelData)])
             }
         }
     }

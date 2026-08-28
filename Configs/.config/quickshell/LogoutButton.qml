@@ -1,8 +1,12 @@
 import QtQuick
 
 BarButton {
+    id: root
+    property bool popupEnabled: true
     css: "powermenu"
     text: "󰨚"
-    tooltip: "Session"
-    onClicked: shell.run(["hyprshell", "logout-launch.sh", "1"])
+    active: shell.popupName === "powermenu"
+    onClicked: shell.togglePopup("powermenu")
+
+    PowerMenuPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled }
 }

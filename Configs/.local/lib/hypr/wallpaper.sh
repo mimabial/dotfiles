@@ -19,6 +19,9 @@
 #       Output of the rofi selector (lib/ui.bash:Wall_Select).
 #   wallpaper_action_*, wallpaper_inventory_refresh_mode
 #       Action policy flags resolved by wallpaper_resolve_action_profile.
+#   wallpaper_started_ms
+#       Run start in epoch ms; lib/common.bash:wallpaper_elapsed_label turns it
+#       into the "Time:" line of the notification body.
 #
 # Environment toggles read by various subsystems:
 #   WALLPAPER_WAIT_FOR_LOCK     - wait for lock instead of dropping if busy
@@ -47,6 +50,7 @@ declare -ga wallHash=()
 declare -ga wallList=()
 declare -ga wallPathArray=()
 
+wallpaper_started_ms="$(date +%s%3N)"
 wallpaper_lock_acquired=0
 
 wallpaper_release_lock() {

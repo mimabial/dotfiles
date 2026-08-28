@@ -1,0 +1,33 @@
+# Shell colour map: SVG literal -> palette role.
+# Artwork palette: Rosé Pine. Regenerate only if shell.svg changes.
+
+#26233a=color0
+#c4a7e7=color5
+#31748f=color2
+#1f1d2e=background
+#191724=background
+#6e6a86=color8
+#908caa=color8
+#e0def4=foreground
+#000000=background
+#cdd6f4=foreground
+#eb6f92=color1
+#cba6f7=color5
+#bebebe=color7
+#999999=color8
+#7f7f7f=color8
+#bfbfbf=color7
+#d6d6d6=color7
+#eaeaea=color7
+#919191=color8
+#d2d2d2=color7
+#a6a6a6=color7
+#141414=background
+#524f67=color8
+#ffffff=color7
+#d1d1d1=color7
+#dcdcdc=color7
+#b4b4b4=color7
+#31363b=color0
+#b6b6b6=color7
+#9ccfd8=color4

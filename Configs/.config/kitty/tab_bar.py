@@ -220,7 +220,11 @@ def _quickshell_visibility():
         if mtime != _qs_status_mtime:
             pid, date, clock = QS_STATUS_PATH.read_text().split()
             _qs_status_mtime, _qs_status = mtime, (int(pid), date == "1", clock == "1")
-        return _qs_status[1:] if (Path("/proc") / str(_qs_status[0])).exists() else (False, False)
+        return (
+            _qs_status[1:]
+            if (Path("/proc") / str(_qs_status[0])).exists()
+            else (False, False)
+        )
     except (OSError, ValueError):
         return False, False
 
@@ -323,8 +327,8 @@ def _draw_right_status(screen: Screen, is_last: bool) -> int:
 
     separator = " "  # alt: ⋮
     clock = datetime.now().strftime("%H:%M")
-    date = datetime.now().strftime("(%a,%b.%d)")
     qs_date, qs_clock = _quickshell_visibility()
+    date = datetime.now().strftime(" %a,%b.%d " if qs_clock else "(%a,%b.%d)")
     cells = []
 
     if not qs_clock:

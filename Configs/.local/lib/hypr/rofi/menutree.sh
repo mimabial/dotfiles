@@ -15,6 +15,8 @@ source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/menu.d/menu.domain.gaming.bash"
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/menu.d/menu.domain.trigger.bash"
 # shellcheck source=/dev/null
+source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/menu.d/menu.domain.media.bash"
+# shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/menu.d/menu.domain.style.bash"
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/menu.d/menu.domain.setup.bash"

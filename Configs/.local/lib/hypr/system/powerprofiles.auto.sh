@@ -19,26 +19,29 @@ active_profile() {
   printf '%s\n' "${profile//\"/}"
 }
 
+# Edge-triggered: the UPower root object also emits PropertiesChanged for
+# LidIsClosed, and re-applying there would stomp a manually set profile.
 apply_profile() {
-  local profile=balanced
+  local battery=0 profile=balanced
   gamemode_active && return
-  on_battery && profile=power-saver
+  on_battery && { battery=1 profile=power-saver; }
+  [[ "${battery}" == "${last_battery:--}" ]] && return
+  last_battery="${battery}"
   [[ "$(active_profile)" == "${profile}" ]] || busctl --system set-property org.freedesktop.UPower.PowerProfiles /org/freedesktop/UPower/PowerProfiles org.freedesktop.UPower.PowerProfiles ActiveProfile s "${profile}"
 }
 
 sync_workflow() {
-  local profile current previous target=""
+  local current previous saving=0
   gamemode_active && return
-  profile="$(active_profile)"
+  [[ "$(active_profile)" == power-saver ]] && saving=1
   current="$(state_get HYPR_WORKFLOW default)"
   previous="$(state_get POWER_PROFILE_WORKFLOW_PREV "")"
-  [[ "${profile}" == power-saver ]] && target=powersaver
-  [[ "${profile}" == performance ]] && target=snappy
-  if [[ -n "${target}" && "${current}" != gaming ]]; then
+  [[ "${current}" == gaming ]] && return
+  if [[ "${saving}" == 1 ]]; then
     [[ -n "${previous}" ]] || state_set POWER_PROFILE_WORKFLOW_PREV "${current}" staterc
-    [[ "${current}" == "${target}" ]] || HYPR_WORKFLOW_UNLOCK=1 "${workflows_script}" --set "${target}" >/dev/null
-  elif [[ -z "${target}" && -n "${previous}" && "${current}" != gaming ]]; then
-    [[ "${current}" != powersaver && "${current}" != snappy ]] || HYPR_WORKFLOW_UNLOCK=1 "${workflows_script}" --set "${previous}" >/dev/null
+    [[ "${current}" == powersaver ]] || HYPR_WORKFLOW_UNLOCK=1 "${workflows_script}" --set powersaver >/dev/null
+  elif [[ -n "${previous}" ]]; then
+    [[ "${current}" != powersaver ]] || HYPR_WORKFLOW_UNLOCK=1 "${workflows_script}" --set "${previous}" >/dev/null
     state_set POWER_PROFILE_WORKFLOW_PREV "" staterc
   fi
 }

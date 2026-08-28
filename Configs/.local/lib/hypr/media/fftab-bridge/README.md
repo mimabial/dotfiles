@@ -1,8 +1,8 @@
 # fftab-bridge
 
-Exposes each Firefox media tab as its own MPRIS player, so playerctl/waybar
-see every tab as an independent player with exact positions and per-tab
-controls (the waybar mediaplayer module cycles them with scroll). YouTube
+Exposes each Firefox media tab as its own MPRIS player, so playerctl and the
+bar see every tab as an independent player with exact positions and per-tab
+controls (the Quickshell mediaplayer module cycles them with scroll). YouTube
 playlist tabs also expose Next/Previous when the corresponding playlist
 navigation is available.
 
@@ -21,8 +21,8 @@ navigation is available.
 
 ## New machine setup
 
-Nothing to remember: `ensure.sh` runs at every Hyprland start (hooked in
-`~/.config/hypr/userprefs.lua`). It auto-fixes the native-messaging manifest
+Nothing to remember: `ensure.sh` runs at every Hyprland start (hooked as
+`start.FFTAB_BRIDGE` in `~/.config/hypr/vars.lua`). It auto-fixes the native-messaging manifest
 and the `media.hardwaremediakeys.enabled=false` pref (via profile `user.js`),
 checks packages (pkg_core.lst covers them), and sends a notification listing
 whatever still needs a human — normally just one step: opening the signed

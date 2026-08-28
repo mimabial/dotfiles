@@ -7,6 +7,7 @@ set -euo pipefail
 
 quiet=false
 copy=false
+qr=false
 target_ssid=""
 
 while [[ $# -gt 0 ]]; do

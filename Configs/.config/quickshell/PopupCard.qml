@@ -13,18 +13,26 @@ PopupWindow {
     property int margin: Style.popupGap
     property int padding: Style.popupPadding
     property color background: shell.role("bg", "#0c1021")
+    property color borderColor: shell.role("alt_br", shell.foreground)
     property real surfaceOpacity: 0.94
+    property real borderOpacity: 0.45
     // windows that belong to this panel and must not dismiss it (submenu flyouts)
     property var extraGrabWindows: []
     readonly property bool open: popupEnabled && shell.popupName === popupName
     readonly property var anchorWindow: anchorItem ? anchorItem.QsWindow.window : null
     readonly property string position: shell.layoutName === "main" ? "right" : ["left", "sidebar"].includes(shell.layoutName) ? "left" : shell.layoutName === "top" ? "top" : "bottom"
-    default property alias content: holder.children
+    // Keep controllers/timers beside visual content. Item.data accepts both
+    // QObjects and Items; visual entries still become holder.children.
+    default property alias content: holder.data
 
     visible: open || card.opacity > 0
     color: "transparent"
+    // the card never outgrows the screen it is anchored on; a panel that sizes
+    // itself from content reads maxHeight to shrink its own panes first
+    readonly property int maxHeight: anchorWindow && anchorWindow.screen
+        ? anchorWindow.screen.height - margin * 2 : contentHeight
     implicitWidth: contentWidth
-    implicitHeight: contentHeight
+    implicitHeight: Math.min(contentHeight, maxHeight)
 
     Component.onCompleted: if (anchorItem && anchorItem.hasPopup !== undefined) anchorItem.hasPopup = true
 
@@ -33,6 +41,7 @@ PopupWindow {
     // asking each panel to maintain a list.
     property int cursorIndex: -1
     property var navigableRows: []
+    onCursorIndexChanged: syncCursor()
 
     function collectRows(item, found) {
         for (const child of item.children) {
@@ -56,7 +65,6 @@ PopupWindow {
         cursorIndex = cursorIndex < 0
             ? (step > 0 ? 0 : navigableRows.length - 1)
             : (cursorIndex + step + navigableRows.length) % navigableRows.length
-        syncCursor()
     }
     function activateCursor() {
         if (cursorIndex >= 0 && cursorIndex < navigableRows.length)
@@ -67,6 +75,24 @@ PopupWindow {
         syncCursor()
     }
     onOpenChanged: if (!open) clearCursor()
+
+    property bool wantsKeyboard: false
+    property Binding typingFocus: Binding { target: root.shell; property: "popupTyping"; value: root.wantsKeyboard; when: root.open }
+    property Binding cardRef: Binding { target: root.shell; property: "popupCard"; value: root; when: root.open }
+
+    // The bar and focusable popup content both route here. Derived cards
+    // override handleKey and fall back to this.
+    function defaultKey(event) {
+        switch (event.key) {
+        case Qt.Key_Down:   moveCursor(1);    return true
+        case Qt.Key_Up:     moveCursor(-1);   return true
+        case Qt.Key_Return:
+        case Qt.Key_Enter:  activateCursor(); return true
+        case Qt.Key_Escape: shell.closePopup(); return true
+        }
+        return false
+    }
+    function handleKey(event) { return defaultKey(event) }
 
     HyprlandFocusGrab {
         active: root.open && !root.shell.focusPriming
@@ -96,23 +122,13 @@ PopupWindow {
         opacity: root.open ? 1 : 0
         Behavior on opacity { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
         color: root.shell.alpha(root.background, root.surfaceOpacity)
-        border.color: root.shell.alpha(root.shell.role("alt_br", root.shell.foreground), .45)
+        border.color: root.shell.alpha(root.borderColor, root.borderOpacity)
         border.width: 2
         radius: root.shell.rounding
         FocusScope {
             anchors.fill: parent; anchors.margins: root.padding
             focus: root.open
-            Keys.onEscapePressed: root.shell.closePopup()
-            Keys.onPressed: event => {
-                switch (event.key) {
-                case Qt.Key_Down: root.moveCursor(1); break
-                case Qt.Key_Up:   root.moveCursor(-1); break
-                case Qt.Key_Return:
-                case Qt.Key_Enter: root.activateCursor(); break
-                default: return
-                }
-                event.accepted = true
-            }
+            Keys.onPressed: event => event.accepted = root.handleKey(event)
             Item { id: holder; anchors.fill: parent }
         }
     }

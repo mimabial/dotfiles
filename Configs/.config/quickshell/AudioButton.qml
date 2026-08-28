@@ -7,29 +7,31 @@ BarButton {
     readonly property var sink: Pipewire.defaultAudioSink
     property bool popupEnabled: true
     property bool framed: true
-    css: "pulseaudio"
-    TextMetrics { id: iconMetrics; font.family: root.shell.fontFamily; font.pixelSize: root.fontSize; font.weight: root.fontWeight; text: root.text }
+    css: root.portKey ? "pulseaudio." + root.portKey : "pulseaudio"
+    // must measure the face BarButton draws with, or the nudge corrects an ink
+    // overhang the drawn glyph does not have
+    TextMetrics { id: iconMetrics; font.family: root.iconOnly ? root.shell.iconGlyphFont : root.shell.fontFamily; font.pixelSize: root.fontSize; font.weight: root.fontWeight; text: root.text }
     textOffsetX: iconMetrics.advanceWidth / 2 - iconMetrics.tightBoundingRect.x - iconMetrics.tightBoundingRect.width / 2
     radius: shell.moduleRadius
-    fill: framed ? shell.alpha(shell.background, .1) : "transparent"
-    outline: shell.alpha(shell.role("br", shell.foreground), .3)
+    fill: framed ? root.boxColor("fill") : "transparent"
     // waybar's pulseaudio format-icons, in its declared order: a matching
     // port wins over the volume ramp, mute wins over both. waybar reads the
     // active port name; quickshell's pipewire API exposes no port, so this
     // matches the node properties that carry the same words
     readonly property var portIcons: [
         ["headphone", "󰋋"], ["hands-free", "󰋋"], ["headset", "󰋋"],
-        ["phone", ""], ["portable", ""], ["car", ""]
+        ["phone", "󰏲"], ["portable", "󰏲"], ["car", "󰄋"]
     ]
     // the active port is the only thing that tracks the analog jack, and
     // pipewire does not expose it — waybar reads it from pulse directly
     property string activePort: ""
     function probePort() { if (!portProbe.running) portProbe.running = true }
     function clampVolume() { if (sink && sink.audio && sink.audio.volume > shell.volumeLimit) sink.audio.volume = shell.volumeLimit }
+    function volumeAction(action) { shell.run(["hyprshell", "volume-control.sh", "-o", action]) }
     onSinkChanged: { probePort(); shell.refreshVolumeRange(); clampVolume() }
     onActivePortChanged: shell.refreshVolumeRange()
 
-    readonly property string portIcon: {
+    readonly property string portKey: {
         const props = root.sink ? root.sink.properties : null
         const port = root.activePort.toLowerCase()
         // exact on the properties: "audio-card-analog" contains "car".
@@ -40,10 +42,11 @@ BarButton {
             const key = portIcons[i][0]
             if (port.includes(key) || factor === key
                 || iconName === "audio-" + key || iconName === "audio-" + key + "s")
-                return portIcons[i][1]
+                return key
         }
         return ""
     }
+    readonly property string portIcon: { const hit = portIcons.find(entry => entry[0] === root.portKey); return hit ? hit[1] : "" }
 
     Process {
         id: portProbe
@@ -58,11 +61,11 @@ BarButton {
     }
     // only changes when something is physically plugged in
     Timer { interval: 3000; running: true; repeat: true; triggeredOnStart: true; onTriggered: root.probePort() }
-    readonly property string volumeIcon: !root.sink ? "󰕾" : root.sink.audio.volume < .34 ? "󰕿"
-        : root.sink.audio.volume < .67 ? "󰖀" : "󰕾"
-    text: !root.sink || root.sink.audio.muted ? "󰝟" : root.portIcon || root.volumeIcon
-    onClicked: button => button === Qt.RightButton ? (sink ? sink.audio.muted = !sink.audio.muted : false) : shell.togglePopup("audio")
-    onWheeled: delta => { if (sink) sink.audio.volume = Math.max(0, Math.min(shell.volumeLimit, sink.audio.volume + (delta > 0 ? .05 : -.05))) }
+    readonly property string volumeIcon: !root.sink ? "" : root.sink.audio.volume < .34 ? ""
+        : root.sink.audio.volume < .67 ? "" : ""
+    text: !root.sink ? "󰖁" : root.sink.audio.muted ? "" : root.portIcon || root.volumeIcon
+    onClicked: button => button === Qt.RightButton ? (sink ? root.volumeAction("m") : false) : shell.togglePopup("audio")
+    onWheeled: delta => { if (sink) root.volumeAction(delta > 0 ? "i" : "d") }
 
     PwObjectTracker { objects: [root.sink].filter(x => x) }
     Connections { target: root.sink ? root.sink.audio : null; function onVolumeChanged() { root.clampVolume() } }

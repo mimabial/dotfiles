@@ -46,7 +46,7 @@ hypr_user_sv_dir() {
   printf '%s\n' "${HYPR_USER_SV_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/sv}"
 }
 
-# svc_user <start|stop|restart|is-active> <service-name>
+# svc_user <start|stop|restart|is-active|reset-failed> <service-name>
 # Dispatches a user-service lifecycle op to the active init system. The name is
 # given without a suffix; the systemd path appends .service, the runit path uses
 # it as the sv service directory name. Returns success best-effort; is-active
@@ -63,6 +63,8 @@ hypr_svc_user() {
         stop)      systemctl --user stop "${unit}" >/dev/null 2>&1 ;;
         restart)   systemctl --user restart "${unit}" >/dev/null 2>&1 ;;
         is-active) systemctl --user is-active --quiet "${unit}" >/dev/null 2>&1 ;;
+        # Clears start-limit-hit, which otherwise refuses every later activation.
+        reset-failed) systemctl --user reset-failed "${unit}" >/dev/null 2>&1 ;;
         *) return 2 ;;
       esac
       ;;
@@ -75,6 +77,7 @@ hypr_svc_user() {
         stop)      SVDIR="${sv_dir}" sv down "${svc}" >/dev/null 2>&1 ;;
         restart)   SVDIR="${sv_dir}" sv restart "${svc}" >/dev/null 2>&1 ;;
         is-active) SVDIR="${sv_dir}" sv status "${svc}" 2>/dev/null | grep -q '^run:' ;;
+        reset-failed) return 0 ;;
         *) return 2 ;;
       esac
       ;;

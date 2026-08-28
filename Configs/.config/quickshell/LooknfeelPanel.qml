@@ -10,7 +10,7 @@ import "LooknfeelLua.js" as LuaConfig
 // A GUI for the visual half of the Hyprland config: read current values, preview
 // live while adjusting, and persist per theme.
 //
-// Its own layershell surface rather than a bar popup, because ~50 rows across 11
+// Its own layershell surface rather than a bar popup, because ~50 rows across 12
 // sections needs a two-pane window. It still respects the one-global-popup rule
 // by closing any open bar popup when it opens.
 //
@@ -27,8 +27,10 @@ Scope {
     // the theme pack's own values, so "back to default" means the theme's value
     // and not merely the value this panel happened to open with
     property var themeDefaults: ({})
+    property var variableDefaults: ({})
     // Keys this panel owns. Absent means "the theme's value stands".
     property var overrides: ({})
+    property var variableOverrides: ({})
     property var baselineAnimations: []
     property real speedMultiplier: 1
     property string engine: "master"
@@ -38,6 +40,11 @@ Scope {
     property string errorText: ""
     property var pipelineOptions: ({})
     property var pipelineCurrent: ({})
+    property string pipelinePendingId: ""
+    property var pipelinePendingValue: null
+    property bool cursorPersistPending: false
+    property bool cursorPreviewPending: false
+    property bool cursorSyncPending: false
 
     readonly property string stateDir: root.shell.home + "/.local/state/hypr"
     readonly property string libDir: root.shell.home + "/.local/lib/hypr"
@@ -141,10 +148,17 @@ Scope {
             onStreamFinished: {
                 var parsed = LuaConfig.parseRecords(text)
                 root.overrides = parsed.keys
+                root.variableOverrides = parsed.variables
                 root.speedMultiplier = root.deriveMultiplier(parsed.animations)
             }
         }
-        onExited: code => { if (code !== 0) { root.overrides = ({}); root.speedMultiplier = 1 } }
+        onExited: code => {
+            if (code !== 0) {
+                root.overrides = ({})
+                root.variableOverrides = ({})
+                root.speedMultiplier = 1
+            }
+        }
     }
 
     Process {
@@ -171,17 +185,21 @@ Scope {
 
     // ------------------------------------------------------------- pipelines
 
-    readonly property var pipelineRows: {
+    readonly property var listedRows: {
+        var out = []
         var base = Schema.sections()
-        for (var i = 0; i < base.length; i++)
-            if (base[i].title === "Pipelines") return base[i].rows
-        return []
+        for (var i = 0; i < base.length; i++) {
+            for (var j = 0; j < base[i].rows.length; j++) {
+                if (base[i].rows[j].list) out.push(base[i].rows[j])
+            }
+        }
+        return out
     }
 
     // Instantiator rather than Repeater: Repeater only creates Items, and these
     // delegates are Processes.
     Instantiator {
-        model: root.pipelineRows
+        model: root.listedRows
         delegate: Process {
             id: listProc
             required property var modelData
@@ -204,15 +222,17 @@ Scope {
         }
     }
 
-    Process { id: pipelineSetter }
+    Process {
+        id: pipelineSetter
+        onExited: code => { if (code === 0) pipelineState.reload(); else root.pipelinePendingId = "" }
+    }
 
     function setPipeline(row, name) {
+        root.pipelinePendingValue = name
+        root.pipelinePendingId = row.id
         pipelineSetter.command =
             [root.shell.home + "/.local/bin/hyprshell"].concat(row.set).concat([name])
         pipelineSetter.running = true
-        var next = Object.assign({}, root.pipelineCurrent)
-        next[row.id] = name
-        root.pipelineCurrent = next
     }
 
     FileView {
@@ -220,10 +240,14 @@ Scope {
         watchChanges: true
         printErrors: false
         onFileChanged: reload()
-        onLoaded: root.themeDefaults = LuaConfig.parseThemeConfig(text())
+        onLoaded: {
+            root.themeDefaults = LuaConfig.parseThemeConfig(text())
+            root.variableDefaults = LuaConfig.parseThemeVariables(text())
+        }
     }
 
     FileView {
+        id: pipelineState
         path: root.stateDir + "/staterc"
         watchChanges: true
         printErrors: false
@@ -232,11 +256,16 @@ Scope {
             var raw = String(text())
             var animation = raw.match(/(?:^|\n)HYPR_ANIMATION=["']?([^"'\n]+)/)
             var shader = raw.match(/(?:^|\n)HYPR_SHADER=["']?([^"'\n]+)/)
-            root.pipelineCurrent = {
+            var workflow = raw.match(/(?:^|\n)HYPR_WORKFLOW=["']?([^"'\n]+)/)
+            var next = {
                 animation_preset: animation ? animation[1] : "default",
                 shader: shader ? shader[1] : "neutral",
-                workflow: root.shell.workflow
+                workflow: workflow ? workflow[1] : "default"
             }
+            root.pipelineCurrent = next
+            if (!pipelineSetter.running && root.pipelinePendingId !== ""
+                    && String(next[root.pipelinePendingId]) === String(root.pipelinePendingValue))
+                root.pipelinePendingId = ""
         }
     }
 
@@ -251,8 +280,14 @@ Scope {
     // -------------------------------------------------------------- writing
 
     function valueFor(row) {
-        if (row.type === "pipeline") return root.pipelineCurrent[row.id]
+        if (row.type === "pipeline") return row.id === root.pipelinePendingId ? root.pipelinePendingValue : root.pipelineCurrent[row.id]
         if (row.id === "animation_speed") return root.speedMultiplier
+        if (row.variable) {
+            if (row.variable in root.variableOverrides)
+                return root.variableOverrides[row.variable]
+            return row.variable in root.variableDefaults
+                ? root.variableDefaults[row.variable] : null
+        }
         if (row.key in root.overrides) return root.overrides[row.key]
         var live = root.current[row.key]
         return live ? live.value : null
@@ -261,6 +296,7 @@ Scope {
     function isOverridden(row) {
         if (row.id === "animation_speed") return root.speedMultiplier !== 1
         if (row.type === "pipeline") return false
+        if (row.variable) return row.variable in root.variableOverrides
         return row.key in root.overrides
     }
 
@@ -278,7 +314,7 @@ Scope {
                 })
             }
         }
-        return LuaConfig.renderBlock(root.overrides, animations)
+        return LuaConfig.renderBlock(root.overrides, animations, root.variableOverrides)
     }
 
     // Dialling a row back to what the theme asks for is the same as resetting it,
@@ -286,6 +322,9 @@ Scope {
     // file is the reference; the live read is the fallback for keys it leaves to
     // Hyprland's own defaults.
     function baselineFor(row) {
+        if (row.variable)
+            return row.variable in root.variableDefaults
+                ? root.variableDefaults[row.variable] : null
         if (row.key in root.themeDefaults) return root.themeDefaults[row.key]
         var live = root.current[row.key]
         return live && live.value !== undefined ? live.value : null
@@ -300,6 +339,17 @@ Scope {
     }
 
     function setOverride(row, value) {
+        if (row.variable) {
+            var variableNext = Object.assign({}, root.variableOverrides)
+            if (row.type === "int") value = Math.round(value)
+            if (root.matchesBaseline(row, value)) delete variableNext[row.variable]
+            else variableNext[row.variable] = String(value)
+            root.variableOverrides = variableNext
+            root.cursorPersistPending = true
+            root.queueCursorPreview()
+            root.applyPreview()
+            return
+        }
         var next = Object.assign({}, root.overrides)
         if (row.type === "int") value = Math.round(value)
         if (root.matchesBaseline(row, value)) delete next[row.key]
@@ -313,13 +363,19 @@ Scope {
     function resetRow(row) {
         if (row.id === "animation_speed") {
             root.speedMultiplier = 1
+        } else if (row.variable) {
+            var variableNext = Object.assign({}, root.variableOverrides)
+            delete variableNext[row.variable]
+            root.variableOverrides = variableNext
+            root.cursorPersistPending = true
+            root.queueCursorPreview()
         } else if (row.type !== "pipeline") {
             var next = Object.assign({}, root.overrides)
             delete next[row.key]
             root.overrides = next
         }
         root.applyPreview()
-        reloadDebounce.restart()
+        if (!row.variable) reloadDebounce.restart()
     }
 
     function applyPreview() {
@@ -334,13 +390,69 @@ Scope {
     }
 
     Process { id: preview }
+    Timer {
+        id: cursorPreviewTimer
+        interval: 40
+        onTriggered: root.startCursorPreview()
+    }
+    Process {
+        id: cursorPreview
+        onExited: {
+            if (root.cursorPreviewPending) cursorPreviewTimer.restart()
+        }
+    }
     Timer { id: persistTimer; interval: 250; onTriggered: root.persist() }
     // A cleared key only comes back on reload, since eval cannot un-set one.
     Timer { id: reloadDebounce; interval: 300; onTriggered: { reloader.running = true } }
     Process { id: reloader; command: ["hyprctl", "reload"] }
 
+    function cursorValue(name) {
+        if (name in root.variableOverrides) return root.variableOverrides[name]
+        return name in root.variableDefaults ? root.variableDefaults[name] : ""
+    }
+
+    function queueCursorPreview() {
+        root.cursorPreviewPending = true
+        cursorPreviewTimer.restart()
+    }
+
+    function startCursorPreview() {
+        if (cursorPreview.running) return
+        var theme = String(root.cursorValue("CURSOR_THEME"))
+        var size = Math.round(Number(root.cursorValue("CURSOR_SIZE")))
+        if (theme === "" || isNaN(size) || size <= 0) return
+        root.cursorPreviewPending = false
+        cursorPreview.command = ["hyprctl", "setcursor", theme, String(size)]
+        cursorPreview.running = true
+    }
+
+    function queueCursorSync() {
+        root.cursorSyncPending = true
+        cursorSyncTimer.restart()
+    }
+
+    function startCursorSync() {
+        if (cursorSync.running) return
+        root.cursorSyncPending = false
+        cursorSync.running = true
+    }
+
+    Timer { id: cursorSyncTimer; interval: 700; onTriggered: root.startCursorSync() }
+    Process {
+        id: cursorSync
+        command: [root.shell.home + "/.local/bin/hyprshell",
+                  "theme/desktop.sync.sh", "--full", "--quiet"]
+        onExited: code => {
+            if (code !== 0) root.errorText = "could not sync cursor settings"
+            else if (root.errorText === "could not sync cursor settings") root.errorText = ""
+            if (root.cursorSyncPending) cursorSyncTimer.restart()
+        }
+    }
+
     function persist() {
         var block = root.renderCurrent()
+        writer.syncCursor = root.cursorPersistPending
+        root.cursorPersistPending = false
         if (block === "") {
             writer.command = ["sh", "-c", 'rm -f "$1"', "sh", root.overridePath]
         } else {
@@ -353,9 +465,13 @@ Scope {
 
     Process {
         id: writer
+        property bool syncCursor: false
         onExited: code => {
             if (code !== 0) root.errorText = "could not write " + root.overridePath
-            else { errorCheck.running = true }
+            else {
+                errorCheck.running = true
+                if (writer.syncCursor) root.queueCursorSync()
+            }
         }
     }
 
@@ -397,8 +513,7 @@ Scope {
     }
 
     function cycle(row, direction) {
-        var options = row.type === "pipeline"
-            ? (root.pipelineOptions[row.id] || []) : row.options
+        var options = row.list ? (root.pipelineOptions[row.id] || []) : row.options
         if (!options || options.length === 0) return
         var currentValue = String(root.valueFor(row))
         var index = options.indexOf(currentValue)
@@ -440,10 +555,17 @@ Scope {
         Rectangle {
             anchors.fill: parent
             radius: root.shell.rounding
-            // same card as PopupCard: surface at 94%, 2px alt_br edge
+            // Same card as PopupCard, with a focus-aware active/neutral edge.
             color: root.shell.alpha(root.shell.role("bg", root.shell.background), .94)
-            border.width: 2
-            border.color: root.shell.alpha(root.shell.role("alt_br", root.shell.foreground), .45)
+            border.width: "general:border_size" in root.themeDefaults
+                ? Number(root.themeDefaults["general:border_size"]) : 2
+            border.color: root.shell.alpha(
+                root.shell.role(keyCatcher.activeFocus ? "act_br" : "br", root.shell.foreground),
+                keyCatcher.activeFocus ? .45 : .25
+            )
+            Behavior on border.color {
+                ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic }
+            }
 
             Item {
                 id: keyCatcher
@@ -538,6 +660,9 @@ Scope {
                                 shell: root.shell
                                 row: optionRow.modelData
                                 value: root.valueFor(optionRow.modelData)
+                                options: optionRow.modelData.list
+                                    ? (root.pipelineOptions[optionRow.modelData.id] || [])
+                                    : (optionRow.modelData.options || [])
                                 overridden: root.isOverridden(optionRow.modelData)
                                 selected: optionRow.index === root.rowIndex
                                 onChanged: value => {
@@ -556,6 +681,12 @@ Scope {
                                 onCycled: direction => {
                                     root.rowIndex = optionRow.index
                                     root.cycle(optionRow.modelData, direction)
+                                }
+                                onChosen: value => {
+                                    root.rowIndex = optionRow.index
+                                    if (optionRow.modelData.type === "pipeline")
+                                        root.setPipeline(optionRow.modelData, value)
+                                    else root.setOverride(optionRow.modelData, value)
                                 }
                             }
                         }
@@ -591,5 +722,6 @@ Scope {
         function open(): void { root.open() }
         function close(): void { root.close() }
         function toggle(): void { root.toggle() }
+        function isOpen(): bool { return root.opened }
     }
 }

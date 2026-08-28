@@ -126,7 +126,7 @@ PopupCard {
             PopupSeparator { shell: root.shell }
             PopupRow {
                 width: parent.width; shell: root.shell
-                icon: "󰮯"; title: "Run upgrade"; detail: "Opens a terminal"
+                icon: ""; title: "Run upgrade"; detail: "Opens a terminal"
                 onClicked: {
                     root.shell.closePopup()
                     root.shell.run(["hyprshell", "system/system.update.sh", "up"])

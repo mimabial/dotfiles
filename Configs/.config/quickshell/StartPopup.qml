@@ -12,7 +12,15 @@ PopupCard {
     property string filter: ""
     property int cursorIndex: 0
     readonly property bool searching: filter.trim() !== ""
-    readonly property int paneHeight: 420
+    // everything in the column that is not the pane, so the pane can take what
+    // is left of the screen instead of pushing the card off it
+    readonly property int chromeHeight: Style.px(30) + Style.sm + padding * 2
+    // tall enough for the whole menu column, then clamped by the screen; the
+    // app list scrolls, the menu should not have to
+    readonly property int menuColumnHeight: placesCol.implicitHeight + paneSep.height
+        + Style.sm * 2 + menuPane.contentHeight
+    readonly property int paneHeight: Math.min(root.maxHeight - root.chromeHeight,
+        Math.max(Style.px(320), root.menuColumnHeight))
 
     readonly property var allApps: {
         const out = []
@@ -79,13 +87,6 @@ PopupCard {
     }
     readonly property var cursorModel: searching ? results : allApps
 
-    readonly property var session: [
-        {label: "Lock",     icon: "\u{f033e}", run: ["hyprshell", "lock-screen.sh"]},
-        {label: "Suspend",  icon: "\u{f04b2}", run: ["systemctl", "suspend"]},
-        {label: "Log out",  icon: "\u{f0343}", run: ["hyprshell", "logout-launch.sh", "1"]},
-        {label: "Reboot",   icon: "\u{f0709}", run: ["systemctl", "reboot"]},
-        {label: "Shutdown", icon: "\u{f0425}", run: ["systemctl", "poweroff"]}
-    ]
 
     function runAction(target) {
         shell.run(["hyprshell", "rofi/menutree", "--action", target])
@@ -158,7 +159,15 @@ PopupCard {
         } }
     }
 
-    extraGrabWindows: [sessionTip, flyout, flyout2, flyout3, flyout4]
+    extraGrabWindows: [flyout, flyout2, flyout3, flyout4]
+
+    // flyouts open on hover and would otherwise sit over the pinned/apps side
+    // until something else was clicked. The delay only has to outlast the
+    // leave/enter gap when the pointer crosses between the two surfaces
+    readonly property bool menuChainHovered: menuPane.hovered
+        || flyout.hovered || flyout2.hovered || flyout3.hovered || flyout4.hovered
+    onMenuChainHoveredChanged: if (root.menuChainHovered) root.flyoutClose.stop(); else root.flyoutClose.restart()
+    property Timer flyoutClose: Timer { interval: 10; onTriggered: if (!root.menuChainHovered) menuPane.reset() }
 
     property StartMenuFlyout flyout: StartMenuFlyout {
         shell: root.shell; menus: root.menus
@@ -179,15 +188,6 @@ PopupCard {
         shell: root.shell; menus: root.menus
         menuId: root.flyout3.openSubId; anchorItem: root.flyout3.openRow
         onActionTriggered: target => root.runAction(target)
-    }
-
-    property Item tipRow: null
-    property string tipText: ""
-    property BarTooltip sessionTip: BarTooltip {
-        shell: root.shell
-        anchorItem: root.tipRow
-        text: root.tipText
-        hovered: root.tipRow !== null
     }
 
     Column {
@@ -261,6 +261,9 @@ PopupCard {
             visible: !root.searching
             width: parent.width
             spacing: Style.sectionGap
+            // the narrow places/menu column sits away from the bar, so the apps
+            // list is the half under the cursor that just came off the button
+            layoutDirection: root.position === "right" ? Qt.RightToLeft : Qt.LeftToRight
 
             Column {
                 width: parent.width - rightPane.width - parent.spacing
@@ -329,52 +332,5 @@ PopupCard {
             }
         }
 
-        PopupSeparator { shell: root.shell }
-
-        Item {
-            width: parent.width
-            height: sessionRow.implicitHeight
-            Row {
-                id: sessionRow
-                anchors.left: parent.left
-                spacing: Style.xs
-                Repeater {
-                    model: root.session
-                    PopupRow {
-                        id: sessionButton
-                        required property var modelData
-                        width: Style.controlHeight * 2
-                        shell: root.shell
-                        centerTitle: true
-                        title: modelData.icon
-                        onHoveredChanged: {
-                            if (hovered) { root.tipRow = sessionButton; root.tipText = modelData.label }
-                            else if (root.tipRow === sessionButton) root.tipRow = null
-                        }
-                        onClicked: { root.shell.run(modelData.run); root.shell.closePopup() }
-                    }
-                }
-            }
-            Row {
-                anchors.right: parent.right; anchors.rightMargin: Style.controlPaddingX
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: Style.xs
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "\u{f0004}"
-                    color: root.shell.alpha(root.shell.foreground, .5)
-                    font.family: root.shell.fontFamily; font.pixelSize: Style.subtitle
-                }
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: {
-                        const user = Quickshell.env("USER") || ""
-                        return user.charAt(0).toUpperCase() + user.slice(1)
-                    }
-                    color: root.shell.alpha(root.shell.foreground, .75)
-                    font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
-                }
-            }
-        }
     }
 }

@@ -9,7 +9,7 @@ BarButton {
     readonly property int timingSeconds: shell.activeTimers.length ? Math.max(0, Number(shell.activeTimers[0].epoch) - shell.timerNow) : Math.floor(shell.stopwatchMs / 1000)
     readonly property var formats: kind === "main" ? ["HH\n—\nmm", "h\n—\nmm\nAP", "dd\nMMM\n''yy", "HH\nmm"]
         : kind === "winbar" ? ["HH:mm\ndd|MM", "dd|MM\nHH:mm", "ddd dd\nHH:mm", "HH:mm"]
-        : ["dddd HH:mm", "dddd h:mm AP", "HH:mm", "h:mm AP", "ddd d MMM HH:mm", "ddd d MMM h:mm AP", "d MMMM yyyy", "yyyy-MM-dd HH:mm"]
+        : ["dddd HH:mm", "dddd h:mm AP", "HH:mm", "h:mm AP", "ddd d MMM HH:mm", "ddd d MMM h:mm AP", "d MMMM yyyy", "yyyy-MM-dd HH:mm", "ddd,d HH:mm"]
     readonly property int index: shell.store[kind + "Clock"] % formats.length
     text: timing ? statusText(timingSeconds) : Qt.formatDateTime(shell.clock.date, timerPopup ? "HH\nmm" : formats[index])
     smoothTextColor: !timing

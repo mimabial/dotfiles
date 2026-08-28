@@ -10,6 +10,9 @@ Column {
     property string openSubId: ""
     property Item openRow: null
     signal action(string target)
+    // what the menu wants if nothing constrains it, so the card can size to it
+    readonly property int contentHeight: menuHeader.height + root.spacing + menuList.contentHeight
+    readonly property bool hovered: paneHover.hovered
     spacing: Style.sm
     height: totalHeight
 
@@ -28,6 +31,7 @@ Column {
     function labelText(label) { const m = label.match(/^\S+\s{2,}(.*)$/); return m ? m[1] : label }
     function reset() { openSubId = ""; openRow = null }
 
+    HoverHandler { id: paneHover }
     PopupSection { id: menuHeader; shell: root.shell; text: "MENU" }
     ListView {
         id: menuList

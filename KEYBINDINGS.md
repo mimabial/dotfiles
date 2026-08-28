@@ -1,276 +1,416 @@
-<div align="center">
-
 # rifle's keybindings
 
-Current Hyprland keybindings for this dotfiles stack.
+Generated from the live bind set (`hyprctl binds`). Source of truth:
+`Configs/.config/hypr/keybindings.lua`.
 
-Source of truth:
+`SUPER` is the mod key. Bindings use letters and submaps only — never punctuation:
+`input:resolve_binds_by_sym` resolves against the active layout's level-1 keysym, so a
+punctuation bind is silently dead on the `fr` layout. Workspace digits are bound by
+keycode for the same reason.
 
-`Configs/.config/hypr/keybindings.conf`
+| chord | meaning |
+| --- | --- |
+| `mod` | primary action for that key, or a submap leader |
+| `mod SHIFT` | the other/stronger version of that key's action |
+| `mod ALT` | same action, without following the window |
+| `mod CTRL` | relative/scoped navigation |
 
-</div>
-
-<div align="center">
-
-<a href="#window-management"><kbd> <br> Window Management <br> </kbd></a>&ensp;
-<a href="#launcher"><kbd> <br> Launcher <br> </kbd></a>&ensp;
-<a href="#hardware-controls"><kbd> <br> Hardware Controls <br> </kbd></a>&ensp;
-<a href="#utilities"><kbd> <br> Utilities <br> </kbd></a>&ensp;
-<a href="#theming-and-wallpaper"><kbd> <br> Theming and Wallpaper <br> </kbd></a>&ensp;
-<a href="#workspaces"><kbd> <br> Workspaces <br> </kbd></a>
-
-</div>
+Function, `XF86`, mouse, `Print` and switch bindings sit outside that convention.
 
 > [!TIP]
-> <kbd>SUPER</kbd> + <kbd>/</kbd> opens the live keybindings hint.
+> <kbd>SUPER</kbd> + <kbd>H</kbd> then <kbd>H</kbd> opens the live Hyprland
+> keybindings hint; <kbd>K</kbd> and <kbd>T</kbd> show the kitty and tmux ones.
 
-## Window Management
+## Global
 
-| Keys | Action |
-| --- | --- |
-| <kbd>SUPER</kbd> + <kbd>Q</kbd> | Close focused window |
-| <kbd>ALT</kbd> + <kbd>F4</kbd> | Close focused window |
-| <kbd>SUPER</kbd> + <kbd>ALT</kbd> + <kbd>Q</kbd> | Close all windows |
-| <kbd>SUPER</kbd> + <kbd>Delete</kbd> | Kill Hyprland session |
-| <kbd>SUPER</kbd> + <kbd>F</kbd> | Toggle floating |
-| <kbd>SUPER</kbd> + <kbd>P</kbd> | Toggle pin on focused window |
-| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>F</kbd> | Toggle fullscreen (entire screen) |
-| <kbd>SUPER</kbd> + <kbd>ALT</kbd> + <kbd>F</kbd> | Maximize window (keep gaps and bars) |
-| <kbd>SUPER</kbd> + <kbd>J</kbd> | Toggle window split |
-| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>J</kbd> | Toggle workspace layout |
-| <kbd>SUPER</kbd> + <kbd>.</kbd> | Move focused window one column into the next column |
-| <kbd>SUPER</kbd> + <kbd>,</kbd> | Swap focused window's column with the column to the left |
-| <kbd>SUPER</kbd> + <kbd>L</kbd> | Lock screen |
-| <kbd>SUPER</kbd> + <kbd>I</kbd> | Toggle keep-awake mode |
-| <kbd>CTRL</kbd> + <kbd>ALT</kbd> + <kbd>Delete</kbd> | Logout menu |
-
-### Focus
+### Window Management
 
 | Keys | Action |
 | --- | --- |
-| <kbd>SUPER</kbd> + <kbd>Left</kbd> | Focus left |
-| <kbd>SUPER</kbd> + <kbd>Right</kbd> | Focus right |
-| <kbd>SUPER</kbd> + <kbd>Up</kbd> | Focus up |
-| <kbd>SUPER</kbd> + <kbd>Down</kbd> | Focus down |
-| <kbd>ALT</kbd> + <kbd>Tab</kbd> | Cycle to next window |
-| <kbd>ALT</kbd> + <kbd>SHIFT</kbd> + <kbd>Tab</kbd> | Cycle to previous window |
+| <kbd>ALT</kbd> + <kbd>F4</kbd> | close focused window |
+| <kbd>SUPER</kbd> + <kbd>Q</kbd> | close focused window |
+| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>Q</kbd> | force kill focused window |
+| <kbd>SUPER</kbd> + <kbd>L</kbd> | lock screen |
+| <kbd>ALT</kbd> + <kbd>CTRL</kbd> + <kbd>DELETE</kbd> | logout menu |
+| <kbd>SUPER</kbd> + <kbd>ESCAPE</kbd> | logout menu |
+| <kbd>SUPER</kbd> + <kbd>F</kbd> | toggle fullscreen |
+| <kbd>SUPER</kbd> + <kbd>G</kbd> | toggle group |
+| <kbd>SUPER</kbd> + <kbd>M</kbd> | toggle maximize |
+| <kbd>SUPER</kbd> + <kbd>P</kbd> | toggle pin |
 
-### Resize Active Window
-
-| Keys | Action |
-| --- | --- |
-| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>Right</kbd> | Resize right |
-| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>Left</kbd> | Resize left |
-| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>Up</kbd> | Resize up |
-| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>Down</kbd> | Resize down |
-
-### Move Active Window
+**Focus**
 
 | Keys | Action |
 | --- | --- |
-| <kbd>SUPER</kbd> + <kbd>ALT</kbd> + <kbd>Left</kbd> | Move window left |
-| <kbd>SUPER</kbd> + <kbd>ALT</kbd> + <kbd>Right</kbd> | Move window right |
-| <kbd>SUPER</kbd> + <kbd>ALT</kbd> + <kbd>Up</kbd> | Move window up |
-| <kbd>SUPER</kbd> + <kbd>ALT</kbd> + <kbd>Down</kbd> | Move window down |
+| <kbd>ALT</kbd> + <kbd>TAB</kbd> | cycle next and reveal |
+| <kbd>ALT</kbd> + <kbd>SHIFT</kbd> + <kbd>TAB</kbd> | cycle previous and reveal |
+| <kbd>SUPER</kbd> + <kbd>DOWN</kbd> | focus down |
+| <kbd>SUPER</kbd> + <kbd>LEFT</kbd> | focus left |
+| <kbd>SUPER</kbd> + <kbd>RIGHT</kbd> | focus right |
+| <kbd>SUPER</kbd> + <kbd>UP</kbd> | focus up |
 
-### Mouse / Hold Actions
-
-| Keys | Action |
-| --- | --- |
-| <kbd>SUPER</kbd> + <kbd>mouse:272</kbd> | Hold to move window |
-| <kbd>SUPER</kbd> + <kbd>mouse:273</kbd> | Hold to resize window |
-| <kbd>SUPER</kbd> + <kbd>Z</kbd> | Hold to move window |
-| <kbd>SUPER</kbd> + <kbd>X</kbd> | Hold to resize window |
-
-## Launcher
-
-### Apps
+**Mouse**
 
 | Keys | Action |
 | --- | --- |
-| <kbd>SUPER</kbd> + <kbd>Return</kbd> | Quick terminal (cwd) |
-| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>Return</kbd> | Tmux terminal (cwd) |
-| <kbd>SUPER</kbd> + <kbd>ALT</kbd> + <kbd>Return</kbd> | Dropdown terminal (cwd) |
-| <kbd>SUPER</kbd> + <kbd>D</kbd> | File explorer |
-| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>D</kbd> | File explorer (cwd) |
-| <kbd>SUPER</kbd> + <kbd>B</kbd> | Web browser |
-| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>B</kbd> | Web browser (private) |
-| <kbd>SUPER</kbd> + <kbd>C</kbd> | Text editor in terminal |
-| <kbd>SUPER</kbd> + <kbd>CTRL</kbd> + <kbd>S</kbd> | Signal |
-| <kbd>SUPER</kbd> + <kbd>CTRL</kbd> + <kbd>B</kbd> | Bitwarden |
-| <kbd>SUPER</kbd> + <kbd>ALT</kbd> + <kbd>G</kbd> | GIMP |
+| <kbd>SUPER</kbd> + <kbd>LMB</kbd> | move window |
+| <kbd>SUPER</kbd> + <kbd>Z</kbd> | move window |
+| <kbd>SUPER</kbd> + <kbd>RMB</kbd> | resize window |
+| <kbd>SUPER</kbd> + <kbd>X</kbd> | resize window |
 
-### Menus
+**Move**
 
 | Keys | Action |
 | --- | --- |
-| <kbd>SUPER</kbd> + <kbd>A</kbd> | Application finder |
-| <kbd>SUPER</kbd> + <kbd>CTRL</kbd> + <kbd>Tab</kbd> | Window switcher |
-| <kbd>SUPER</kbd> + <kbd>CTRL</kbd> + <kbd>F</kbd> | Fzf file finder |
-| <kbd>SUPER</kbd> + <kbd>SPACE</kbd> | Menu tree |
-| <kbd>SUPER</kbd> + <kbd>/</kbd> | Keybindings hint |
-| <kbd>SUPER</kbd> + <kbd>E</kbd> | Emoji picker |
-| <kbd>SUPER</kbd> + <kbd>G</kbd> | Glyph picker |
-| <kbd>SUPER</kbd> + <kbd>H</kbd> | Box-drawing character picker |
-| <kbd>SUPER</kbd> + <kbd>V</kbd> | Clipboard quick pick |
-| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>V</kbd> | Clipboard manager |
+| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>DOWN</kbd> | move down |
+| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>LEFT</kbd> | move left |
+| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>RIGHT</kbd> | move right |
+| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>UP</kbd> | move up |
 
-### Dev Tools
+### Workspaces
 
 | Keys | Action |
 | --- | --- |
-| <kbd>SUPER</kbd> + <kbd>CTRL</kbd> + <kbd>G</kbd> | LazyGit |
-| <kbd>SUPER</kbd> + <kbd>CTRL</kbd> + <kbd>D</kbd> | LazyDocker |
-| <kbd>SUPER</kbd> + <kbd>CTRL</kbd> + <kbd>T</kbd> | HTop system monitor |
-| <kbd>SUPER</kbd> + <kbd>ALT</kbd> + <kbd>P</kbd> | Rmpc music player |
+| <kbd>SUPER</kbd> + <kbd>SUPER</kbd> | go to workspace 1 |
+| <kbd>SUPER</kbd> + <kbd>SUPER</kbd> | go to workspace 10 |
+| <kbd>SUPER</kbd> + <kbd>SUPER</kbd> | go to workspace 2 |
+| <kbd>SUPER</kbd> + <kbd>SUPER</kbd> | go to workspace 3 |
+| <kbd>SUPER</kbd> + <kbd>SUPER</kbd> | go to workspace 4 |
+| <kbd>SUPER</kbd> + <kbd>SUPER</kbd> | go to workspace 5 |
+| <kbd>SUPER</kbd> + <kbd>SUPER</kbd> | go to workspace 6 |
+| <kbd>SUPER</kbd> + <kbd>SUPER</kbd> | go to workspace 7 |
+| <kbd>SUPER</kbd> + <kbd>SUPER</kbd> | go to workspace 8 |
+| <kbd>SUPER</kbd> + <kbd>SUPER</kbd> | go to workspace 9 |
+| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>S</kbd> | move to scratchpad |
+| <kbd>SUPER</kbd> + <kbd>ALT</kbd> + <kbd>S</kbd> | move to scratchpad silently |
+| <kbd>SUPER</kbd> + <kbd>ALT</kbd> + <kbd>SUPER</kbd> | move window silently to workspace 1 |
+| <kbd>SUPER</kbd> + <kbd>ALT</kbd> + <kbd>SUPER</kbd> | move window silently to workspace 10 |
+| <kbd>SUPER</kbd> + <kbd>ALT</kbd> + <kbd>SUPER</kbd> | move window silently to workspace 2 |
+| <kbd>SUPER</kbd> + <kbd>ALT</kbd> + <kbd>SUPER</kbd> | move window silently to workspace 3 |
+| <kbd>SUPER</kbd> + <kbd>ALT</kbd> + <kbd>SUPER</kbd> | move window silently to workspace 4 |
+| <kbd>SUPER</kbd> + <kbd>ALT</kbd> + <kbd>SUPER</kbd> | move window silently to workspace 5 |
+| <kbd>SUPER</kbd> + <kbd>ALT</kbd> + <kbd>SUPER</kbd> | move window silently to workspace 6 |
+| <kbd>SUPER</kbd> + <kbd>ALT</kbd> + <kbd>SUPER</kbd> | move window silently to workspace 7 |
+| <kbd>SUPER</kbd> + <kbd>ALT</kbd> + <kbd>SUPER</kbd> | move window silently to workspace 8 |
+| <kbd>SUPER</kbd> + <kbd>ALT</kbd> + <kbd>SUPER</kbd> | move window silently to workspace 9 |
+| <kbd>SUPER</kbd> + <kbd>CTRL</kbd> + <kbd>SHIFT</kbd> + <kbd>RIGHT</kbd> | move window to next relative workspace |
+| <kbd>SUPER</kbd> + <kbd>CTRL</kbd> + <kbd>SHIFT</kbd> + <kbd>LEFT</kbd> | move window to previous relative workspace |
+| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>SUPER</kbd> | move window to workspace 1 |
+| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>SUPER</kbd> | move window to workspace 10 |
+| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>SUPER</kbd> | move window to workspace 2 |
+| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>SUPER</kbd> | move window to workspace 3 |
+| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>SUPER</kbd> | move window to workspace 4 |
+| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>SUPER</kbd> | move window to workspace 5 |
+| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>SUPER</kbd> | move window to workspace 6 |
+| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>SUPER</kbd> | move window to workspace 7 |
+| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>SUPER</kbd> | move window to workspace 8 |
+| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>SUPER</kbd> | move window to workspace 9 |
+| <kbd>SUPER</kbd> + <kbd>ALT</kbd> + <kbd>SHIFT</kbd> + <kbd>DOWN</kbd> | move workspace down |
+| <kbd>SUPER</kbd> + <kbd>ALT</kbd> + <kbd>SHIFT</kbd> + <kbd>LEFT</kbd> | move workspace left |
+| <kbd>SUPER</kbd> + <kbd>ALT</kbd> + <kbd>SHIFT</kbd> + <kbd>RIGHT</kbd> | move workspace right |
+| <kbd>SUPER</kbd> + <kbd>ALT</kbd> + <kbd>SHIFT</kbd> + <kbd>UP</kbd> | move workspace up |
+| <kbd>SUPER</kbd> + <kbd>CTRL</kbd> + <kbd>DOWN</kbd> | nearest empty workspace |
+| <kbd>SUPER</kbd> + <kbd>Scroll Down</kbd> | next existing workspace |
+| <kbd>SUPER</kbd> + <kbd>TAB</kbd> | next existing workspace |
+| <kbd>SUPER</kbd> + <kbd>CTRL</kbd> + <kbd>RIGHT</kbd> | next relative workspace |
+| <kbd>SUPER</kbd> + <kbd>Scroll Up</kbd> | previous existing workspace |
+| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>TAB</kbd> | previous existing workspace |
+| <kbd>SUPER</kbd> + <kbd>CTRL</kbd> + <kbd>LEFT</kbd> | previous relative workspace |
+| <kbd>SUPER</kbd> + <kbd>CTRL</kbd> + <kbd>UP</kbd> | previous workspace |
+| <kbd>SUPER</kbd> + <kbd>S</kbd> | toggle scratchpad |
 
-## Hardware Controls
+### Launcher
 
-### Audio
-
-| Keys | Action |
-| --- | --- |
-| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>O</kbd> | Audio output switcher |
-| <kbd>SUPER</kbd> + <kbd>F10</kbd> | Toggle output mute |
-| <kbd>SUPER</kbd> + <kbd>CTRL</kbd> + <kbd>F10</kbd> | Toggle mute for focused window |
-| <kbd>XF86AudioMute</kbd> | Toggle output mute |
-| <kbd>SUPER</kbd> + <kbd>F11</kbd> | Volume down |
-| <kbd>SUPER</kbd> + <kbd>F12</kbd> | Volume up |
-| <kbd>XF86AudioMicMute</kbd> | Toggle microphone mute |
-| <kbd>XF86AudioLowerVolume</kbd> | Volume down |
-| <kbd>XF86AudioRaiseVolume</kbd> | Volume up |
-
-### Media
-
-| Keys | Action |
-| --- | --- |
-| <kbd>XF86AudioPlay</kbd> | Play / pause |
-| <kbd>XF86AudioPause</kbd> | Play / pause |
-| <kbd>XF86AudioNext</kbd> | Next track |
-| <kbd>XF86AudioPrev</kbd> | Previous track |
-
-### Brightness
-
-| Keys | Action |
-| --- | --- |
-| <kbd>XF86MonBrightnessUp</kbd> | Brightness up |
-| <kbd>XF86MonBrightnessDown</kbd> | Brightness down |
-
-## Utilities
-
-| Keys | Action |
-| --- | --- |
-| <kbd>SUPER</kbd> + <kbd>K</kbd> | Toggle keyboard layout |
-| <kbd>SUPER</kbd> + <kbd>M</kbd> | Toggle focus mode |
-| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>M</kbd> | Toggle game mode |
-| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>G</kbd> | Game launcher |
-
-### Monitors
-
-| Keys | Action |
-| --- | --- |
-| <kbd>SUPER</kbd> + <kbd>CTRL</kbd> + <kbd>Delete</kbd> | Toggle laptop display |
-| <kbd>SUPER</kbd> + <kbd>CTRL</kbd> + <kbd>ALT</kbd> + <kbd>Delete</kbd> | Toggle laptop display mirroring |
-| <kbd>SUPER</kbd> + <kbd>=</kbd> | Cycle monitor scaling |
-| <kbd>SUPER</kbd> + <kbd>ALT</kbd> + <kbd>=</kbd> | Cycle monitor scaling backward |
-| Lid switch (open) | Enable laptop display |
-| Lid switch (closed, external active) | Disable laptop display |
-
-### Screen Capture
+**Apps**
 
 | Keys | Action |
 | --- | --- |
-| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>P</kbd> | Smart screenshot (window-aware selection) |
-| <kbd>SUPER</kbd> + <kbd>CTRL</kbd> + <kbd>P</kbd> | Color picker |
-| <kbd>Print</kbd> | Screenshot all monitors |
-| <kbd>SUPER</kbd> + <kbd>CTRL</kbd> + <kbd>Print</kbd> | OCR selected screenshot area |
+| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>RETURN</kbd> | alternate terminal in current directory |
+| <kbd>SUPER</kbd> + <kbd>E</kbd> | file explorer |
+| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>E</kbd> | file explorer in current directory |
+| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>B</kbd> | private browser |
+| <kbd>SUPER</kbd> + <kbd>RETURN</kbd> | terminal in current directory |
+| <kbd>SUPER</kbd> + <kbd>C</kbd> | text editor |
+| <kbd>SUPER</kbd> + <kbd>B</kbd> | web browser |
 
-### Screen Recording
-
-| Keys | Action |
-| --- | --- |
-| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>R</kbd> | Toggle screen recording with webcam |
-| <kbd>SUPER</kbd> + <kbd>ALT</kbd> + <kbd>R</kbd> | Toggle full monitor recording |
-| <kbd>SUPER</kbd> + <kbd>CTRL</kbd> + <kbd>R</kbd> | Stop active recording |
-
-## Theming and Wallpaper
+**Menus**
 
 | Keys | Action |
 | --- | --- |
-| <kbd>SUPER</kbd> + <kbd>'</kbd> | Next global wallpaper |
-| <kbd>SUPER</kbd> + <kbd>;</kbd> | Previous global wallpaper |
-| <kbd>SUPER</kbd> + <kbd>W</kbd> | Select a global wallpaper |
-| <kbd>SUPER</kbd> + <kbd>]</kbd> | Next theme |
-| <kbd>SUPER</kbd> + <kbd>[</kbd> | Previous theme |
-| <kbd>SUPER</kbd> + <kbd>T</kbd> | Select a theme |
-| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>T</kbd> | Select theme rofi style |
-| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>A</kbd> | Select launcher style |
-| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>,</kbd> | Next waybar layout |
-| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>.</kbd> | Previous waybar layout |
-| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>W</kbd> | Toggle waybar visibility |
-| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>C</kbd> | Color mode selector |
-| <kbd>SUPER</kbd> + <kbd>N</kbd> | Font selector |
+| <kbd>SUPER</kbd> + <kbd>D</kbd> | application finder |
+| <kbd>SUPER</kbd> + <kbd>V</kbd> | clipboard |
+| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>V</kbd> | clipboard manager |
+| <kbd>SUPER</kbd> + <kbd>SPACE</kbd> | menu tree |
+| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>D</kbd> | window switcher |
 
-## Workspaces
+### Hardware
 
-### Navigation
+**Audio**
 
 | Keys | Action |
 | --- | --- |
-| <kbd>SUPER</kbd> + <kbd>1</kbd> to <kbd>SUPER</kbd> + <kbd>0</kbd> | Go to workspaces 1 to 10 |
-| <kbd>SUPER</kbd> + <kbd>CTRL</kbd> + <kbd>Right</kbd> | Next relative workspace |
-| <kbd>SUPER</kbd> + <kbd>CTRL</kbd> + <kbd>Left</kbd> | Previous relative workspace |
-| <kbd>SUPER</kbd> + <kbd>CTRL</kbd> + <kbd>Down</kbd> | Nearest empty workspace |
-| <kbd>SUPER</kbd> + <kbd>Tab</kbd> | Next workspace |
-| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>Tab</kbd> | Previous workspace |
-| <kbd>SUPER</kbd> + <kbd>ALT</kbd> + <kbd>Tab</kbd> | Former workspace |
-| <kbd>SUPER</kbd> + <kbd>mouse_down</kbd> | Next existing workspace |
-| <kbd>SUPER</kbd> + <kbd>mouse_up</kbd> | Previous existing workspace |
+| <kbd>SUPER</kbd> + <kbd>CTRL</kbd> + <kbd>F10</kbd> | mute focused window |
+| <kbd>SUPER</kbd> + <kbd>F10</kbd> | mute output |
+| <kbd>SUPER</kbd> + <kbd>F11</kbd> | volume down |
+| <kbd>SUPER</kbd> + <kbd>F12</kbd> | volume up |
+| <kbd>XF86AudioMicMute</kbd> | mute microphone |
+| <kbd>XF86AudioMute</kbd> | mute output |
+| <kbd>XF86AudioLowerVolume</kbd> | volume down |
+| <kbd>XF86AudioRaiseVolume</kbd> | volume up |
 
-### Move Workspace to Monitor
-
-| Keys | Action |
-| --- | --- |
-| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>ALT</kbd> + <kbd>Left</kbd> | Move workspace to left monitor |
-| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>ALT</kbd> + <kbd>Right</kbd> | Move workspace to right monitor |
-| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>ALT</kbd> + <kbd>Up</kbd> | Move workspace to up monitor |
-| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>ALT</kbd> + <kbd>Down</kbd> | Move workspace to down monitor |
-
-### Scratchpad
+**Brightness**
 
 | Keys | Action |
 | --- | --- |
-| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>S</kbd> | Move focused window to scratchpad |
-| <kbd>SUPER</kbd> + <kbd>ALT</kbd> + <kbd>S</kbd> | Move focused window to scratchpad silently |
-| <kbd>SUPER</kbd> + <kbd>S</kbd> | Toggle scratchpad |
+| <kbd>XF86MonBrightnessDown</kbd> | decrease |
+| <kbd>XF86MonBrightnessUp</kbd> | increase |
 
-### Move Window to Workspace
-
-| Keys | Action |
-| --- | --- |
-| <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>1</kbd> to <kbd>SUPER</kbd> + <kbd>SHIFT</kbd> + <kbd>0</kbd> | Move focused window to workspaces 1 to 10 |
-| <kbd>SUPER</kbd> + <kbd>CTRL</kbd> + <kbd>ALT</kbd> + <kbd>Right</kbd> | Move window to next relative workspace |
-| <kbd>SUPER</kbd> + <kbd>CTRL</kbd> + <kbd>ALT</kbd> + <kbd>Left</kbd> | Move window to previous relative workspace |
-
-### Move Window Silently
+**Media**
 
 | Keys | Action |
 | --- | --- |
-| <kbd>SUPER</kbd> + <kbd>ALT</kbd> + <kbd>1</kbd> to <kbd>SUPER</kbd> + <kbd>ALT</kbd> + <kbd>0</kbd> | Move focused window silently to workspaces 1 to 10 |
+| <kbd>XF86AudioNext</kbd> | next |
+| <kbd>XF86AudioPause</kbd> | play or pause |
+| <kbd>XF86AudioPlay</kbd> | play or pause |
+| <kbd>XF86AudioPrev</kbd> | previous |
 
-## Custom Keybindings
+### Utilities
 
-To add your own keybindings, edit:
+| Keys | Action |
+| --- | --- |
+| <kbd>SUPER</kbd> + <kbd>K</kbd> | switch keyboard layout |
 
-```
-~/.config/hypr/keybindings.conf
-```
+**Capture**
 
-Use `bindd` for documented binds (shown in the keybindings hint) or `bind` for undocumented ones. Group descriptions use the `$d=[Group|Subgroup]` metadata prefix.
+| Keys | Action |
+| --- | --- |
+| <kbd>Print</kbd> | all monitors |
 
-If rebinding an existing key, `unbind` it first to avoid conflicts:
+**Session**
 
-```
-unbind = SUPER, F
-bind = SUPER, F, exec, nautilus
-```
+| Keys | Action |
+| --- | --- |
+| `switch:on:Lid` | lid close: lock and suspend |
+
+## Submaps
+
+A leader opens the submap; <kbd>ESCAPE</kbd> exits. Inner binds are bare keys unless
+a modifier is shown. A layout-gated group registers its binds unconditionally — the
+layout check runs at press time, so those keys no-op under a different layout.
+
+### Window — <kbd>SUPER</kbd> + <kbd>W</kbd>
+
+**Dwindle** — active only under the `dwindle` layout
+
+| Key | Action |
+| --- | --- |
+| <kbd>SHIFT</kbd> + <kbd>D</kbd> | grow split |
+| <kbd>SHIFT</kbd> + <kbd>R</kbd> | move to root |
+| <kbd>R</kbd> | rotate split |
+| <kbd>D</kbd> | shrink split |
+| <kbd>SHIFT</kbd> + <kbd>S</kbd> | swap split |
+| <kbd>S</kbd> | toggle window split |
+
+**Focus**
+
+| Key | Action |
+| --- | --- |
+| <kbd>DOWN</kbd> | focus down |
+| <kbd>LEFT</kbd> | focus left |
+| <kbd>RIGHT</kbd> | focus right |
+| <kbd>UP</kbd> | focus up |
+
+**Layout**
+
+| Key | Action |
+| --- | --- |
+| <kbd>T</kbd> | cycle global layout |
+
+**Master** — active only under the `master` layout
+
+| Key | Action |
+| --- | --- |
+| <kbd>A</kbd> | add master |
+| <kbd>SHIFT</kbd> + <kbd>O</kbd> | center orientation |
+| <kbd>O</kbd> | cycle orientation |
+| <kbd>W</kbd> | focus master |
+| <kbd>N</kbd> | focus next |
+| <kbd>SHIFT</kbd> + <kbd>N</kbd> | focus previous |
+| <kbd>SHIFT</kbd> + <kbd>Z</kbd> | grow master |
+| <kbd>SHIFT</kbd> + <kbd>A</kbd> | remove master |
+| <kbd>K</kbd> | roll next |
+| <kbd>SHIFT</kbd> + <kbd>K</kbd> | roll previous |
+| <kbd>Z</kbd> | shrink master |
+| <kbd>J</kbd> | swap next |
+| <kbd>SHIFT</kbd> + <kbd>J</kbd> | swap previous |
+| <kbd>SHIFT</kbd> + <kbd>W</kbd> | swap with master |
+
+**Monocle** — active only under the `monocle` layout
+
+| Key | Action |
+| --- | --- |
+| <kbd>Y</kbd> | focus next |
+| <kbd>SHIFT</kbd> + <kbd>Y</kbd> | focus previous |
+
+**Move**
+
+| Key | Action |
+| --- | --- |
+| <kbd>SHIFT</kbd> + <kbd>DOWN</kbd> | move down |
+| <kbd>SHIFT</kbd> + <kbd>LEFT</kbd> | move left |
+| <kbd>SHIFT</kbd> + <kbd>RIGHT</kbd> | move right |
+| <kbd>SHIFT</kbd> + <kbd>UP</kbd> | move up |
+
+**Resize**
+
+| Key | Action |
+| --- | --- |
+| <kbd>CTRL</kbd> + <kbd>DOWN</kbd> | grow height |
+| <kbd>CTRL</kbd> + <kbd>RIGHT</kbd> | grow width |
+| <kbd>CTRL</kbd> + <kbd>UP</kbd> | shrink height |
+| <kbd>CTRL</kbd> + <kbd>LEFT</kbd> | shrink width |
+
+**Scrolling** — active only under the `scrolling` layout
+
+| Key | Action |
+| --- | --- |
+| <kbd>B</kbd> | consume into column |
+| <kbd>X</kbd> | expand column |
+| <kbd>SHIFT</kbd> + <kbd>B</kbd> | expel from column |
+| <kbd>I</kbd> | fit column into view |
+| <kbd>SHIFT</kbd> + <kbd>C</kbd> | focus next column |
+| <kbd>C</kbd> | focus previous column |
+| <kbd>SHIFT</kbd> + <kbd>E</kbd> | grow column |
+| <kbd>L</kbd> | next column |
+| <kbd>H</kbd> | previous column |
+| <kbd>V</kbd> | promote window |
+| <kbd>E</kbd> | shrink column |
+| <kbd>SHIFT</kbd> + <kbd>H</kbd> | swap column left |
+| <kbd>SHIFT</kbd> + <kbd>L</kbd> | swap column right |
+
+**State**
+
+| Key | Action |
+| --- | --- |
+| <kbd>F</kbd> | toggle floating |
+| <kbd>G</kbd> | toggle group |
+| <kbd>M</kbd> | toggle maximize |
+| <kbd>P</kbd> | toggle pin |
+
+**Workspace**
+
+| Key | Action |
+| --- | --- |
+| <kbd>1</kbd> | go to workspace 1 |
+| <kbd>0</kbd> | go to workspace 10 |
+| <kbd>2</kbd> | go to workspace 2 |
+| <kbd>3</kbd> | go to workspace 3 |
+| <kbd>4</kbd> | go to workspace 4 |
+| <kbd>5</kbd> | go to workspace 5 |
+| <kbd>6</kbd> | go to workspace 6 |
+| <kbd>7</kbd> | go to workspace 7 |
+| <kbd>8</kbd> | go to workspace 8 |
+| <kbd>9</kbd> | go to workspace 9 |
+| <kbd>ALT</kbd> + <kbd>ALT</kbd> | move window silently to workspace 1 |
+| <kbd>ALT</kbd> + <kbd>ALT</kbd> | move window silently to workspace 10 |
+| <kbd>ALT</kbd> + <kbd>ALT</kbd> | move window silently to workspace 2 |
+| <kbd>ALT</kbd> + <kbd>ALT</kbd> | move window silently to workspace 3 |
+| <kbd>ALT</kbd> + <kbd>ALT</kbd> | move window silently to workspace 4 |
+| <kbd>ALT</kbd> + <kbd>ALT</kbd> | move window silently to workspace 5 |
+| <kbd>ALT</kbd> + <kbd>ALT</kbd> | move window silently to workspace 6 |
+| <kbd>ALT</kbd> + <kbd>ALT</kbd> | move window silently to workspace 7 |
+| <kbd>ALT</kbd> + <kbd>ALT</kbd> | move window silently to workspace 8 |
+| <kbd>ALT</kbd> + <kbd>ALT</kbd> | move window silently to workspace 9 |
+| <kbd>SHIFT</kbd> + <kbd>SHIFT</kbd> | move window to workspace 1 |
+| <kbd>SHIFT</kbd> + <kbd>SHIFT</kbd> | move window to workspace 10 |
+| <kbd>SHIFT</kbd> + <kbd>SHIFT</kbd> | move window to workspace 2 |
+| <kbd>SHIFT</kbd> + <kbd>SHIFT</kbd> | move window to workspace 3 |
+| <kbd>SHIFT</kbd> + <kbd>SHIFT</kbd> | move window to workspace 4 |
+| <kbd>SHIFT</kbd> + <kbd>SHIFT</kbd> | move window to workspace 5 |
+| <kbd>SHIFT</kbd> + <kbd>SHIFT</kbd> | move window to workspace 6 |
+| <kbd>SHIFT</kbd> + <kbd>SHIFT</kbd> | move window to workspace 7 |
+| <kbd>SHIFT</kbd> + <kbd>SHIFT</kbd> | move window to workspace 8 |
+| <kbd>SHIFT</kbd> + <kbd>SHIFT</kbd> | move window to workspace 9 |
+
+### Open — <kbd>SUPER</kbd> + <kbd>O</kbd>
+
+| Key | Action |
+| --- | --- |
+| <kbd>V</kbd> | Bitwarden |
+| <kbd>D</kbd> | Dropdown terminal |
+| <kbd>E</kbd> | Elisa |
+| <kbd>F</kbd> | File finder |
+| <kbd>L</kbd> | Game launcher |
+| <kbd>G</kbd> | Gimp |
+| <kbd>SHIFT</kbd> + <kbd>L</kbd> | Lutris |
+| <kbd>M</kbd> | Mullvad VPN |
+| <kbd>Q</kbd> | qBittorrent |
+| <kbd>R</kbd> | rmpc |
+| <kbd>S</kbd> | Signal |
+
+### Capture — <kbd>SUPER</kbd> + <kbd>R</kbd>
+
+| Key | Action |
+| --- | --- |
+| <kbd>A</kbd> | all monitors |
+| <kbd>C</kbd> | color picker |
+| <kbd>Q</kbd> | decode qr code |
+| <kbd>O</kbd> | extract text |
+| <kbd>S</kbd> | smart screenshot |
+| <kbd>X</kbd> | stop recording |
+| <kbd>R</kbd> | toggle monitor recording |
+| <kbd>W</kbd> | toggle webcam recording |
+
+### Theming — <kbd>SUPER</kbd> + <kbd>T</kbd>
+
+| Key | Action |
+| --- | --- |
+| <kbd>M</kbd> | color mode |
+| <kbd>C</kbd> | cycle bar layout |
+| <kbd>SHIFT</kbd> + <kbd>C</kbd> | cycle bar layout backward |
+| <kbd>V</kbd> | look and feel |
+| <kbd>RIGHT</kbd> | next theme |
+| <kbd>DOWN</kbd> | next wallpaper |
+| <kbd>LEFT</kbd> | previous theme |
+| <kbd>UP</kbd> | previous wallpaper |
+| <kbd>SHIFT</kbd> + <kbd>T</kbd> | reapply theme |
+| <kbd>SHIFT</kbd> + <kbd>B</kbd> | reload bar |
+| <kbd>B</kbd> | select bar layout |
+| <kbd>F</kbd> | select font |
+| <kbd>L</kbd> | select launcher style |
+| <kbd>R</kbd> | select rofi theme |
+| <kbd>T</kbd> | select theme |
+| <kbd>W</kbd> | select wallpaper |
+| <kbd>H</kbd> | toggle bar |
+
+### Insert — <kbd>SUPER</kbd> + <kbd>I</kbd>
+
+| Key | Action |
+| --- | --- |
+| <kbd>B</kbd> | box drawing picker |
+| <kbd>E</kbd> | emoji picker |
+| <kbd>G</kbd> | glyph picker |
+
+### Hints — <kbd>SUPER</kbd> + <kbd>H</kbd>
+
+| Key | Action |
+| --- | --- |
+| <kbd>H</kbd> | Hyprland keybindings |
+| <kbd>K</kbd> | kitty keybindings |
+| <kbd>T</kbd> | tmux keybindings |
+
+### Utilities — <kbd>SUPER</kbd> + <kbd>U</kbd>
+
+| Key | Action |
+| --- | --- |
+| <kbd>O</kbd> | audio output switcher |
+| <kbd>Q</kbd> | close all windows |
+| <kbd>S</kbd> | cycle monitor scale |
+| <kbd>SHIFT</kbd> + <kbd>S</kbd> | cycle monitor scale backward |
+| <kbd>W</kbd> | select workflow |
+| <kbd>A</kbd> | toggle keep awake |
+| <kbd>D</kbd> | toggle laptop display |
+| <kbd>M</kbd> | toggle mirroring |
+| <kbd>N</kbd> | toggle nightlight |
+| <kbd>F</kbd> | windows mode |
+

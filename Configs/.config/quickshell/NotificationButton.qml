@@ -6,10 +6,18 @@ ScriptButton {
     css: "dunst"
     command: ["hyprshell", "notifications"]; interval: 2000
     property bool popupEnabled: true
+    property bool activeOnly: false
+    readonly property bool paused: output.paused === true
+    active: paused
+    visible: activeOnly ? paused : text !== ""
     // left opens the panel, right still toggles do-not-disturb directly
-    onClicked: button => button === Qt.RightButton
-        ? shell.run(["dunstctl", "set-paused", "toggle"])
-        : shell.togglePopup("notifications")
+    onClicked: button => {
+        if (button !== Qt.RightButton) {
+            shell.togglePopup("notifications")
+            return
+        }
+        shell.run(["hyprshell", "notify/notifications", "--toggle"])
+    }
     onWheeled: shell.run(["dunstctl", "history-pop"])
 
     NotificationPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled }

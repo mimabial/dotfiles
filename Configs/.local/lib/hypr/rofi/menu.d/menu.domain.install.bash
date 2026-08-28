@@ -4,14 +4,16 @@
 install() {
   local name="$1"
   local package_list="$2"
+  local desktop_id="${3:-}"
   local -a packages=()
   read -r -a packages <<<"${package_list}"
   present_terminal -- bash -lc '
     name="$1"
-    shift
+    desktop_id="$2"
+    shift 2
     printf "Installing %s...\n" "$name"
-    exec hyprshell pm add "$@"
-  ' _ "${name}" "${packages[@]}"
+    hyprshell pm add "$@" && { [[ -z "$desktop_id" ]] || setsid -f gtk-launch "$desktop_id" >/dev/null 2>&1; }
+  ' _ "${name}" "${desktop_id}" "${packages[@]}"
 }
 
 aur_install() {
@@ -31,27 +33,6 @@ aur_install() {
   ' _ "${name}" "${packages[@]}"
 }
 
-aur_install_and_launch() {
-  if ! get_aur_helper >/dev/null; then
-    dunstify -i "dialog-error" "AUR Helper Missing" "Install yay or paru to use AUR installs from the menu" -u critical
-    return 1
-  fi
-  local name="$1"
-  local package_list="$2"
-  local desktop_id="$3"
-  local -a packages=()
-  read -r -a packages <<<"${package_list}"
-  present_terminal -- bash -lc '
-    name="$1"
-    desktop_id="$2"
-    shift 2
-    printf "Installing %s from AUR...\n" "$name"
-    if hyprshell pm aur-add "$@"; then
-      setsid gtk-launch "$desktop_id"
-    fi
-  ' _ "${name}" "${desktop_id}" "${packages[@]}"
-}
-
 run_dev_env_install() {
   present_terminal -- hyprshell install/dev-env.sh "$1"
 }
@@ -64,6 +45,9 @@ menu_register_domain_install() {
   menu_add_item install "󰵮  Development" submenu install_development
   menu_add_item install "󱚤  AI" submenu install_ai
   menu_add_item install "  Gaming" submenu install_gaming
+  menu_add_item install "  Web App" action install_webapp
+  menu_add_item install "  TUI" action install_tui
+  menu_add_item install "󰍲  Windows VM" action install_windows
 
   menu_define install_ai "Install"
   menu_add_item install_ai "󱚤  Claude Code" action install_ai_claude
@@ -77,7 +61,11 @@ menu_register_domain_install() {
 
   menu_define install_gaming "Install"
   menu_add_item install_gaming "  Steam" action install_gaming_steam
-  menu_add_item install_gaming "  RetroArch [AUR]" action install_gaming_retroarch
+  menu_add_item install_gaming "  RetroArch" action install_gaming_retroarch
+  menu_add_item install_gaming "  Lutris" action install_gaming_lutris
+  menu_add_item install_gaming "󱓟  Heroic (Epic Games)" action install_gaming_heroic
+  menu_add_item install_gaming "󰯉  RetroArch Game Launcher" action install_gaming_retro_launcher
+  menu_add_item install_gaming "󰖺  Xbox Controllers" action install_gaming_xbox_controllers
 
   menu_define install_development "Install"
   menu_add_item install_development "󰫏  Ruby on Rails" action install_dev_ruby
@@ -93,7 +81,7 @@ menu_register_domain_install() {
   menu_add_item install_development "  .NET" action install_dev_dotnet
   menu_add_item install_development "  OCaml" action install_dev_ocaml
   menu_add_item install_development "  Clojure" action install_dev_clojure
-  menu_add_item install_development "Scala" action install_dev_scala
+  menu_add_item install_development "  Scala" action install_dev_scala
 
   menu_define install_javascript "Install"
   menu_add_item install_javascript "  Node.js" action install_dev_node
@@ -132,8 +120,15 @@ menu_run_action_install() {
       ;;
     install_ai_crush) install "Crush" "crush-bin" ;;
     install_ai_opencode) install "opencode" "opencode" ;;
+    install_webapp) present_terminal hyprshell install/webapp.sh ;;
+    install_tui) present_terminal hyprshell install/tui.sh ;;
+    install_windows) present_terminal hyprshell vm/windows.sh install ;;
     install_gaming_steam) present_terminal hyprshell gaming/install-steam.sh ;;
-    install_gaming_retroarch) aur_install_and_launch "RetroArch" "retroarch retroarch-assets libretro libretro-fbneo" "com.libretro.RetroArch.desktop" ;;
+    install_gaming_xbox_controllers) present_terminal hyprshell install/xbox-controllers.sh ;;
+    install_gaming_retroarch) install "RetroArch" "retroarch retroarch-assets-xmb libretro-core-info" "com.libretro.RetroArch.desktop" ;;
+    install_gaming_lutris) install "Lutris" "lutris umu-launcher wine-staging wine-mono wine-gecko winetricks python-protobuf" "net.lutris.Lutris.desktop" ;;
+    install_gaming_heroic) aur_install "Heroic Games Launcher" "heroic-games-launcher-bin" ;;
+    install_gaming_retro_launcher) hyprshell gaming/retro-launcher.sh ;;
     install_dev_ruby) run_dev_env_install ruby ;;
     install_dev_docker_dbs) present_terminal hyprshell install/docker-dbs.sh ;;
     install_dev_go) run_dev_env_install go ;;

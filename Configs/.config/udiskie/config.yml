@@ -1,0 +1,6 @@
+# AUTO-GENERATED — do not edit.
+# Rewritten in full by: hyprshell system/removable --automount
+# Only the keys below are managed; anything else added here is lost.
+program_options:
+  automount: true
+  notify: false

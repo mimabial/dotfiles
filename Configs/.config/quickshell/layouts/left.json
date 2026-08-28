@@ -1,51 +1,18 @@
 [
-  "datetime",
-  "date",
-  "terminal",
-  "workspaces",
-  {
-    "id": "forecast",
-    "props": {
-      "showMinMax": true
-    }
-  },
+  { "id": "datetime", "props": { "showDate": true } },
+  { "id": "forecast", "props": { "showMinMax": true, "showUnit": false } },
   "submap",
   "spacer",
-  {
-    "id": "mediaplayer",
-    "props": {
-      "iconOnly": false
-    }
-  },
-  {
-    "id": "status",
-    "props": {
-      "reverse": true,
-      "sliderFirst": false
-    }
-  },
-  { "id": "eyecare", "props": { "reverse": true, "sliderFirst": false } },
-  { "id": "screen", "props": { "reverse": true, "showCliphist": false } },
-  {
-    "id": "bluetooth",
-    "props": {
-      "showReadout": true
-    }
-  },
-  {
-    "id": "wifi",
-    "props": {
-      "showReadout": true,
-      "showVpn": true
-    }
-  },
-
-  { "id": "barlayout", "props": { "reverse": true } },
-  { "id": "colormode", "props": { "reverse": true } },
-  "wallpaper",
+  { "id": "workspaces", "props": { "activeOnly": false } },
   "privacybutton",
-
-  "dunst",
-
+  "spacer",
+  { "id": "wallpaper", "props": { "reverse": true } },
+  { "id": "screen", "props": { "reverse": true, "showCliphist": true, "showPicker": true } },
+  { "id": "bluetooth", "props": { "showReadout": false, "reverse": true } },
+  { "id": "wifi", "props": { "showReadout": false, "showVpn": true } },
+  { "id": "eyecare", "props": { "reverse": true, "sliderFirst": true, "showSlider": false } },
+  { "id": "audio", "props": { "reverse": true, "sliderFirst": true, "showSlider": false } },
+  "spacer",
+  { "id": "mediaplayer", "props": { "iconOnly": false } },
   "power"
 ]

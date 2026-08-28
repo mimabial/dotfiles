@@ -1,6 +1,7 @@
 import json
 import os
 import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -25,7 +26,10 @@ def read(source):
     return [line.split("\t") for line in proc.stdout.splitlines() if line]
 
 
-LUA_EXPORTS = "renderBlock,parseRecords,parseGetoption,BEGIN_FENCE,END_FENCE"
+LUA_EXPORTS = (
+    "renderBlock,parseRecords,parseGetoption,parseThemeVariables,"
+    "BEGIN_FENCE,END_FENCE"
+)
 SCHEMA_EXPORTS = "sections,queryKeys,layoutRows"
 
 
@@ -51,11 +55,13 @@ def call_js(path, exports, expr, raw=False):
     return proc.stdout if raw else json.loads(proc.stdout)
 
 
-def render(overrides, animations=None):
+def render(overrides, animations=None, variables=None):
     """Render a managed block by calling LooknfeelLua.js under node."""
     return call_js(
         LUA_JS, LUA_EXPORTS,
-        f"m.renderBlock({json.dumps(overrides)}, {json.dumps(animations or [])})",
+        "m.renderBlock("
+        f"{json.dumps(overrides)}, {json.dumps(animations or [])}, "
+        f"{json.dumps(variables or {})})",
         raw=True,
     )
 
@@ -92,6 +98,15 @@ class ReaderTest(unittest.TestCase):
     def test_runtime_config_is_recorded_like_hl_config(self):
         records = read('local r = require("runtime") r.config("general.gaps_out", 7)')
         self.assertIn(["k", "general:gaps_out", "number", "7"], records)
+
+    def test_reads_theme_variables(self):
+        records = read(
+            'local vars = require("vars") '
+            'vars.set("CURSOR_THEME", "Bibata-Modern-Ice") '
+            'vars.set("CURSOR_SIZE", "24")'
+        )
+        self.assertIn(["v", "CURSOR_THEME", "string", "Bibata-Modern-Ice"], records)
+        self.assertIn(["v", "CURSOR_SIZE", "string", "24"], records)
 
     def test_ignores_rules_and_env(self):
         records = read(
@@ -217,6 +232,47 @@ class PipelineCliTest(unittest.TestCase):
                 self.assertIn(flag, proc.stdout, f"{script} {flag}")
 
 
+class CursorCliTest(unittest.TestCase):
+    def test_cursor_list_contains_the_active_theme(self):
+        active = subprocess.run(
+            ["gsettings", "get", "org.gnome.desktop.interface", "cursor-theme"],
+            capture_output=True, text=True,
+        ).stdout.strip().strip("'")
+        rows = hyprshell("theme/cursor-list.sh")
+        self.assertEqual(rows.returncode, 0, rows.stderr)
+        names = [line.split("\t")[0] for line in rows.stdout.splitlines() if line]
+        self.assertIn(active, names)
+
+    def test_desktop_sync_resolves_the_saved_theme_cursor(self):
+        with tempfile.TemporaryDirectory() as temp:
+            override_dir = Path(temp) / "looknfeel.d"
+            override_dir.mkdir()
+            (override_dir / "ros-pine.dark.lua").write_text(
+                'local vars = require("vars")\n'
+                'vars.set("CURSOR_THEME", "Bibata-Modern-Ice")\n'
+            )
+            script = "\n".join([
+                "set -e",
+                'source "$HOME/.local/lib/hypr/core/common.sh"',
+                'source "$HOME/.local/lib/hypr/theme/lib/desktop.sync.bash"',
+                'CURSOR_THEME=default CURSOR_SIZE=24',
+                'HYPR_THEME="Rosé Pine" resolved_color_variant=dark',
+                "theme_desktop_load_looknfeel_cursor_values",
+                "printf '%s\\t%s' \"$CURSOR_THEME\" \"$CURSOR_SIZE\"",
+            ])
+            env = os.environ.copy()
+            env["HYPR_STATE_HOME"] = temp
+            proc = subprocess.run(
+                ["bash", "-c", script], env=env, capture_output=True, text=True,
+            )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(proc.stdout, "Bibata-Modern-Ice\t24")
+
+    def test_quiet_desktop_sync_reports_success(self):
+        proc = hyprshell("theme/desktop.sync.sh", "--runtime-only", "--quiet")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+
+
 class SchemaTest(unittest.TestCase):
     ENGINES = ("dwindle", "master", "scrolling")
 
@@ -224,7 +280,7 @@ class SchemaTest(unittest.TestCase):
         titles = [s["title"] for s in schema_call("m.sections()")]
         self.assertEqual(titles, [
             "Windows", "Layout", "Corners", "Opacity", "Dimming", "Blur",
-            "Shadow", "Glow", "Animations", "Groups", "Pipelines",
+            "Shadow", "Glow", "Animations", "Groups", "Cursor", "Pipelines",
         ])
 
     def test_keys_are_unique(self):
@@ -242,7 +298,7 @@ class SchemaTest(unittest.TestCase):
         for section in schema_call("m.sections()"):
             for row in section["rows"]:
                 if row["type"] == "enum":
-                    self.assertTrue(row.get("options"), row)
+                    self.assertTrue(row.get("options") or row.get("list"), row)
 
     def test_pipeline_rows_are_excluded_from_queries(self):
         keys = schema_call("m.queryKeys()")
@@ -332,6 +388,40 @@ class RenderTest(unittest.TestCase):
                   "bezier": "wind", "style": "slide"}]
         self.assertIn(["a", "windows", "true", "4", "wind", "slide"],
                       read(render({}, anims)))
+
+    def test_round_trip_preserves_cursor_variables(self):
+        source = render({}, variables={
+            "CURSOR_THEME": "Gruvbox-Retro",
+            "CURSOR_SIZE": "30",
+        })
+        parsed = call_js(
+            LUA_JS, LUA_EXPORTS,
+            "m.parseRecords(" + json.dumps(
+                subprocess.run(
+                    ["lua", str(READER), "-e", source],
+                    capture_output=True, text=True, check=True,
+                ).stdout
+            ) + ")",
+        )
+        self.assertEqual(parsed["variables"], {
+            "CURSOR_SIZE": "30",
+            "CURSOR_THEME": "Gruvbox-Retro",
+        })
+        self.assertIn('vars.set("CURSOR_SIZE", "30")', source)
+
+    def test_parse_theme_variables_reads_cursor_defaults(self):
+        source = (
+            'vars.set("CURSOR_THEME", "Gruvbox-Retro")\n'
+            'vars.set("CURSOR_SIZE", "30")\n'
+        )
+        got = call_js(
+            LUA_JS, LUA_EXPORTS,
+            "m.parseThemeVariables(" + json.dumps(source) + ")",
+        )
+        self.assertEqual(got, {
+            "CURSOR_THEME": "Gruvbox-Retro",
+            "CURSOR_SIZE": "30",
+        })
 
     def test_rendered_block_is_valid_lua(self):
         source = render({"general:gaps_in": 8, "decoration:blur:size": 6})

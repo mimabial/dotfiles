@@ -10,11 +10,13 @@ Item {
     property bool activeOnly: false
     property bool hideActive: false
     property bool popupEnabled: false
+    property bool omarchyStyle: false
     property string numerals: vertical ? "hindi" : "kanji"
+    readonly property real trailingGap: omarchyStyle && !vertical ? 1.5 * Style.scale : 0
     // no frame is painted here, so box.border reserves nothing
     readonly property real spanX: box.margin[1] + box.margin[3] + box.padding[1] + box.padding[3]
     readonly property real spanY: box.margin[0] + box.margin[2] + box.padding[0] + box.padding[2]
-    implicitWidth: grid.implicitWidth + spanX
+    implicitWidth: grid.implicitWidth + spanX + trailingGap
     implicitHeight: grid.implicitHeight + spanY
 
     function workspace(id) {
@@ -34,12 +36,12 @@ Item {
         id: grid
         anchors.fill: parent
         anchors.topMargin: root.box.margin[0] + root.box.padding[0]
-        anchors.rightMargin: root.box.margin[1] + root.box.padding[1]
+        anchors.rightMargin: root.box.margin[1] + root.box.padding[1] + root.trailingGap
         anchors.bottomMargin: root.box.margin[2] + root.box.padding[2]
         anchors.leftMargin: root.box.margin[3] + root.box.padding[3]
         columns: root.vertical ? 1 : 20
         rows: root.vertical ? 20 : 1
-        columnSpacing: 0
+        columnSpacing: root.omarchyStyle && !root.vertical ? Style.px(1) : 0
         rowSpacing: 0
 
         Repeater {
@@ -47,21 +49,30 @@ Item {
             delegate: BarButton {
                 required property int index
                 property var ws: root.workspace(index + 1)
-                property bool shown: ws !== null && (!root.activeOnly || ws.focused) && (!root.hideActive || !ws.focused)
+                readonly property bool focused: ws !== null && ws.focused
+                readonly property bool occupied: ws !== null && ws.toplevels.values.length > 0
+                property bool shown: root.omarchyStyle
+                    ? index < 5 || index < 10 && ws !== null
+                    : ws !== null && (!root.activeOnly || ws.focused) && (!root.hideActive || !ws.focused)
                 shell: root.shell
-                css: ws && ws.focused ? "#workspaces button.active" : "#workspaces button"
+                css: focused ? "#workspaces button.active" : "#workspaces button"
                 Layout.fillWidth: root.vertical
                 Layout.fillHeight: !root.vertical
-                text: root.symbol(index + 1)
-                active: root.vertical && ws && ws.focused
+                fixedWidth: root.omarchyStyle && !root.vertical ? Style.px(20) : 0
+                text: root.omarchyStyle ? focused ? "󱓻" : index === 9 ? "0" : String(index + 1) : root.symbol(index + 1)
+                active: root.vertical && focused
                 fontSize: (root.vertical ? 16 : box.fontSize) * Style.scale
-                fontWeight: (ws && ws.urgent) || (root.activeOnly && root.numerals !== "roman") ? Font.Bold : Font.Normal
-                textColor: ws && ws.urgent ? root.shell.role("warning", root.shell.foreground) : box.fg !== undefined ? boxColor("fg") : root.vertical ? (active ? root.shell.role("act_fg", root.shell.foreground) : root.shell.foreground) : root.shell.alpha(root.shell.role(hovered || root.activeOnly && root.numerals === "roman" ? "hvr_br" : root.activeOnly ? "act_br" : "br", root.shell.foreground), root.activeOnly && root.numerals === "roman" ? .7 : root.activeOnly || hovered ? .8 : .2)
+                fontWeight: !root.omarchyStyle && ((ws && ws.urgent) || (root.activeOnly && root.numerals !== "roman")) ? Font.Bold : Font.Normal
+                textColor: root.omarchyStyle ? root.shell.foreground : ws && ws.urgent ? root.shell.role("warning", root.shell.foreground) : box.content !== undefined ? boxColor("content") : root.vertical ? (active ? root.shell.role("act_fg", root.shell.foreground) : root.shell.foreground) : root.shell.alpha(root.shell.role(hovered || root.activeOnly && root.numerals === "roman" ? "hvr_br" : root.activeOnly ? "act_br" : "br", root.shell.foreground), root.activeOnly && root.numerals === "roman" ? .7 : root.activeOnly || hovered ? .8 : .2)
+                opacity: root.omarchyStyle && !occupied && !focused ? .5 : 1
                 visible: shown
-                onClicked: button => button === Qt.RightButton
-                    ? root.shell.togglePopup("workspaces")
-                    : ws.activate()
+                onClicked: button => {
+                    if (button === Qt.RightButton) return root.shell.togglePopup("workspaces")
+                    if (ws) return ws.activate()
+                    Hyprland.dispatch("workspace " + (index + 1))
+                }
                 onWheeled: delta => Hyprland.dispatch("workspace " + (delta > 0 ? "r-1" : "r+1"))
+                Behavior on opacity { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
             }
         }
     }

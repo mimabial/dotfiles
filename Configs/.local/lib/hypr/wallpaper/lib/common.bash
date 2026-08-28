@@ -14,6 +14,24 @@ run_low_prio() {
   fi
 }
 
+wallpaper_now_ms() {
+  date +%s%3N
+}
+
+# Same label format as theme.apply.sh's elapsed label.
+wallpaper_elapsed_label() {
+  local now_ms=""
+  local elapsed_ms=0
+  local centiseconds=0
+
+  [[ "${wallpaper_started_ms:-}" =~ ^[0-9]+$ ]] || return 1
+  now_ms="$(wallpaper_now_ms)"
+  elapsed_ms=$((now_ms - wallpaper_started_ms))
+  [[ "${elapsed_ms}" -ge 0 ]] || elapsed_ms=0
+  centiseconds=$(((elapsed_ms + 5) / 10))
+  printf '%d.%02ds' "$((centiseconds / 100))" "$((centiseconds % 100))"
+}
+
 wallpaper_cache_root() {
   local cache_root="${WALLPAPER_CACHE_DIR}"
   [[ -z "${cache_root}" ]] && cache_root="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/wallpaper"

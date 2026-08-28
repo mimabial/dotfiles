@@ -13,12 +13,15 @@ Item {
     // A module whose whole label is private-use codepoints is an icon button: it
     // renders from the Mono icon face, sized up to hold the weight it had at the
     // font's own width. Mixed labels keep the theme font, where a glyph's ink
-    // overhang is invisible next to the text beside it.
-    readonly property bool iconOnly: text.length > 0 && !/[\u0020-\u024f]/.test(text)
+    // overhang is invisible next to the text beside it. Markup is not label text:
+    // a provider that wraps its glyph in <b> is still an icon button.
+    readonly property string labelText: text.replace(/<[^>]*>/g, "")
+    readonly property bool iconOnly: labelText.length > 0 && !/[\u0020-\u024f]/.test(labelText)
     property real fontSize: box.fontSize * Style.scale * (iconOnly ? Style.iconGlyphBoost : 1)
     property int fontWeight: box.fontWeight
     property int textFormat: Text.AutoText
     property real textOffsetX: 0
+    property real fixedWidth: 0
     // waybar's per-module "justify"; multi-line modules line their values up on one edge
     readonly property int align: box.justify === "right" ? Text.AlignRight
         : box.justify === "left" ? Text.AlignLeft : Text.AlignHCenter
@@ -29,7 +32,8 @@ Item {
     readonly property color baseFill: active && box.fill === undefined ? shell.alpha(shell.role("act_bg", shell.accent), .2) : fill
     readonly property color baseOutline: active && box.outline === undefined ? shell.role("act_br", shell.accent) : outline
     property color cornerOutline: "transparent"
-    property color textColor: box.fg !== undefined ? boxColor("fg") : active ? shell.role("act_fg", shell.foreground) : shell.foreground
+    property color textColor: box.content !== undefined ? boxColor("content") : active ? shell.role("act_fg", shell.foreground) : shell.foreground
+    property var hoverOverride: null
     property bool smoothTextColor: true
     signal clicked(int button)
     signal wheeled(int delta)
@@ -51,11 +55,12 @@ Item {
     // the one role that reads against any of these backgrounds.
     function hoverPaint(key, fallback) {
         if (!hovered) return fallback
+        if (hoverOverride && key in hoverOverride) return hoverOverride[key]
         if (box.hover && !(key in box.hover)) return fallback
         if (!box.hover) {
-            if (key === "bg") return shell.alpha(shell.foreground, .1)
+            if (key === "fill") return shell.alpha(shell.foreground, .1)
             // only recolour a border that is actually drawn
-            if (key === "border" && fallback.a > 0)
+            if (key === "outline" && fallback.a > 0)
                 return shell.alpha(shell.role("br", shell.foreground), .6)
             return fallback
         }
@@ -67,7 +72,7 @@ Item {
     readonly property real borderWidth: edge.replacesOutline ? 0 : box.border > 0 ? box.border : active && box.outline === undefined ? 1.6 : baseOutline.a > 0 ? 1 : 0
     readonly property real spanX: box.margin[1] + box.margin[3] + box.padding[1] + box.padding[3] + 2 * borderWidth
     readonly property real spanY: box.margin[0] + box.margin[2] + box.padding[0] + box.padding[2] + 2 * borderWidth
-    implicitWidth: Math.max(box.minWidth, label.implicitWidth) + spanX
+    implicitWidth: fixedWidth > 0 ? fixedWidth : Math.max(box.minWidth, label.implicitWidth) + spanX
     implicitHeight: Math.max(box.minHeight, label.implicitHeight) + spanY
 
     Rectangle {
@@ -75,8 +80,8 @@ Item {
         anchors.topMargin: root.box.margin[0]; anchors.rightMargin: root.box.margin[1]
         anchors.bottomMargin: root.box.margin[2]; anchors.leftMargin: root.box.margin[3]
         radius: root.radius
-        color: root.hoverPaint("bg", root.baseFill)
-        border.color: root.hoverPaint("border", root.baseOutline)
+        color: root.hoverPaint("fill", root.baseFill)
+        border.color: root.hoverPaint("outline", root.baseOutline)
         border.width: root.borderWidth
         Behavior on color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
         Behavior on border.color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
@@ -88,7 +93,7 @@ Item {
         anchors.rightMargin: root.box.margin[1] + root.borderWidth + root.box.padding[1]
         anchors.bottomMargin: root.box.margin[2] + root.borderWidth + root.box.padding[2]
         anchors.leftMargin: root.box.margin[3] + root.borderWidth + root.box.padding[3]
-        color: root.hoverPaint("fg", root.textColor)
+        color: root.hoverPaint("content", root.textColor)
         Behavior on color { enabled: root.smoothTextColor; ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
         font.family: root.iconOnly ? root.shell.iconGlyphFont : root.shell.fontFamily
         font.pixelSize: root.fontSize
@@ -105,6 +110,9 @@ Item {
     ModuleEdge { id: edge; shell: root.shell; hovered: root.hovered; active: root.active }
     MouseArea {
         id: mouse
+        // a derived type's children stack above the base's, and a rich-text Text
+        // accepts hover events, so the hit area has to sit on top of them
+        z: 1
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
         hoverEnabled: true

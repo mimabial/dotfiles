@@ -230,6 +230,14 @@ wallpaper_notify_emit() {
   local notify_body="${3:-${wallpaper_notify_body:-}}"
   local -a notify_args=()
   local notify_title="Wallpaper: ${notify_name}"
+  local elapsed_label=""
+
+  # `notify` only re-displays the current wallpaper, so it applied nothing to time.
+  if [[ -z "${notify_body}" && "${wallpaper_setter_flag}" != "notify" ]]; then
+    if elapsed_label="$(wallpaper_elapsed_label 2>/dev/null)"; then
+      notify_body="Time: ${elapsed_label}"
+    fi
+  fi
 
   [[ -n "${notify_icon}" ]] && notify_args+=(-i "${notify_icon}")
   [[ "${set_as_global}" == "true" ]] || notify_title="Wallpaper:${notify_name} (${wallpaper_backend})"

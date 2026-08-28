@@ -6,13 +6,17 @@ menu_register_domain_style() {
   menu_add_item style "󰸌  Theme" action style_theme
   menu_add_item style "  Wallpaper" action style_wallpaper
   menu_add_item style "  Color Mode" action style_color_mode
-  menu_add_item style "󰍜  Bar Layout" action style_bar
+  menu_add_item style "󰍜  Bar" submenu style_bar
   menu_add_item style "󰹑  Animations" action style_animations
   menu_add_item style "󰏘  Lock Layout" action style_lock_layout
   menu_add_item style "  Workflow" action style_workflow
   menu_add_item style "󰩨  Theme Menu Style" action style_theme_menu
   menu_add_item style "󰀻  Launcher Style" action style_launcher
   menu_add_item style "  Font" action style_font
+
+  menu_define style_bar "Bar"
+  menu_add_item style_bar "󰍜  Layout" action style_bar_layout
+  menu_add_item style_bar "󰂵  Transparency" action style_bar_transparency
 }
 
 menu_run_action_style() {
@@ -24,7 +28,8 @@ menu_run_action_style() {
     style_theme) hyprshell rofi/run-after-close.sh -- hyprshell theme/theme.select.sh ;;
     style_wallpaper) hyprshell rofi/run-after-close.sh -- hyprshell wallpaper select --global ;;
     style_color_mode) hyprshell rofi/run-after-close.sh -- hyprshell color-mode.sh -m ;;
-    style_bar) hyprshell rofi/run-after-close.sh -- hyprshell quickshell/layout select ;;
+    style_bar_layout) hyprshell rofi/run-after-close.sh -- hyprshell quickshell/layout select ;;
+    style_bar_transparency) quickshell ipc --any-display call bar transparency ;;
     style_animations) hyprshell rofi/run-after-close.sh -- hyprshell animations.sh --select ;;
     style_lock_layout) hyprshell rofi/run-after-close.sh -- hyprshell session/hyprlock.sh --select ;;
     style_workflow) hyprshell rofi/run-after-close.sh -- hyprshell util/workflows.sh --select ;;

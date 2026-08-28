@@ -1,0 +1,37 @@
+# Shell colour map: SVG literal -> palette role.
+# Artwork palette: Nordic Blue. Regenerate only if shell.svg changes.
+
+#5e81ac=color4
+#2e3440=background
+#4c566a=color8
+#eceff4=color15
+#aaaaac=foreground
+#c8c8ca=foreground
+#111111=background
+#989898=foreground
+#d2d2d4=foreground
+#d8dee9=foreground
+#1e1e20=background
+#bf616a=color1
+#343031=background
+#323234=background
+#22252e=background
+#666666=color8
+#001419=background
+#ff00cc=color5
+#333399=color1
+#7a7a7c=color8
+#646466=color8
+#88888a=color8
+#727274=color8
+#525254=color8
+#48484a=color0
+#606062=color8
+#565658=color8
+#232325=background
+#28282a=background
+#151926=background
+#000000=background
+#26272a=background
+#81a1c1=color4
+#8fbcbb=color14

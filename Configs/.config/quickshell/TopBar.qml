@@ -3,13 +3,26 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Wayland
+import "modules"
 
 PanelWindow {
     id: root
     required property var shell
     readonly property var section: shell.style.box(".modules-left")
     readonly property var layout: shell.barLayout
-    readonly property var registry: ({"taskbar": mod_taskbar, "mediaplayer": mod_mediaplayer, "datetime": mod_datetime, "mark-left": mod_mark_left, "workspaces": mod_workspaces, "mark-right": mod_mark_right, "weather": mod_weather, "submap": mod_submap, "status": mod_status, "monitor": mod_monitor, "screen": mod_screen, "notification": mod_notification, "privacybutton": mod_privacy, "tray": mod_tray, "power": mod_power})
+    readonly property var registry: ({"menu": mod_menu, "taskbar": mod_taskbar, "mediaplayer": mod_mediaplayer, "datetime": mod_datetime, "indicators": mod_indicators, "language": mod_language, "updates": mod_updates, "converter": mod_converter, "sudoku": mod_sudoku, "mark-left": mod_mark_left, "workspaces": mod_workspaces, "mark-right": mod_mark_right, "weather": mod_weather, "submap": mod_submap, "audio": mod_audio, "bluetooth": mod_bluetooth, "vpn": mod_vpn, "wifi": mod_wifi, "pulseaudio": mod_pulseaudio, "display": mod_display, "powerprofile": mod_powerprofile, "powerbutton": mod_powerbutton, "monitor": mod_monitor, "screen": mod_screen, "notification": mod_notification, "privacybutton": mod_privacy, "tray": mod_tray, "connectivity": mod_connectivity, "power": mod_power})
+    readonly property var centerModules: layout.center || []
+    readonly property int centerAnchorIndex: moduleIndex(centerModules, String(layout.centerAnchor || ""))
+    readonly property var centerBeforeModules: centerAnchorIndex < 0 ? [] : centerModules.slice(0, centerAnchorIndex)
+    readonly property var centerAnchorModules: centerAnchorIndex < 0 ? [] : [centerModules[centerAnchorIndex]]
+    readonly property var centerAfterModules: centerAnchorIndex < 0 ? [] : centerModules.slice(centerAnchorIndex + 1)
+    function moduleIndex(modules, id) {
+        for (let i = 0; i < modules.length; i++) {
+            const entry = modules[i]
+            if ((typeof entry === "string" ? entry : String(entry.id || "")) === id) return i
+        }
+        return -1
+    }
     property bool active: shell.mode === "top" && !shell.userHidden
     // only the focused monitor's instance may own a panel: two focus grabs
     // cancel each other, which reads as the popup refusing to open
@@ -17,7 +30,7 @@ PanelWindow {
         || !screen || Hyprland.focusedMonitor.name === screen.name)
     anchors.left: true; anchors.right: true; anchors.top: true
     margins.top: active ? 0 : -implicitHeight
-    implicitHeight: Math.max(leftRow.implicitHeight, centerRow.implicitHeight, rightRow.implicitHeight)
+    implicitHeight: Math.max(leftRow.implicitHeight, centerFallback.implicitHeight, centerBefore.implicitHeight, centerAnchor.implicitHeight, centerAfter.implicitHeight, rightRow.implicitHeight)
     color: shell.barColor
     exclusionMode: active ? ExclusionMode.Auto : ExclusionMode.Ignore
     WlrLayershell.namespace: "hypr-shell-bar"
@@ -28,7 +41,7 @@ PanelWindow {
     // keybind does not, so prime Exclusive briefly then fall back — an
     // exclusive surface swallows pointer events on every monitor
     WlrLayershell.keyboardFocus: !popupOpen ? WlrKeyboardFocus.None
-        : exclusivePhase ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
+        : exclusivePhase || shell.popupTyping ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
     onPopupOpenChanged: {
         if (!popupOpen) return
         exclusivePhase = true
@@ -36,49 +49,59 @@ PanelWindow {
         focusPrime.restart()
         focusSettle.restart()
     }
+    // the compositor focuses this surface, not the popup's own window
+    Item {
+        anchors.fill: parent; focus: true
+        Keys.onPressed: event => { if (root.shell.popupCard) event.accepted = root.shell.popupCard.handleKey(event) }
+    }
     Timer { id: focusPrime; interval: 150; onTriggered: root.exclusivePhase = false }
     // the grab settles a little after the mode drops back
     Timer { id: focusSettle; interval: 450; onTriggered: root.shell.focusPriming = false }
 
+    Component { id: mod_menu; StartButton { shell: root.shell; popupEnabled: root.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_taskbar; WindowList { shell: root.shell; allWorkspaces: true; framed: true; Layout.fillHeight: true } }
     Component { id: mod_mediaplayer; MediaButton { shell: root.shell; Layout.fillHeight: true; popupEnabled: root.popupsAllowed } }
-    Component { id: mod_datetime; ClockButton { shell: root.shell; kind: "top"; css: "clock.time-alt"; Layout.fillHeight: true; fontWeight: Font.Bold; textColor: root.shell.accent; popupEnabled: root.popupsAllowed } }
+    Component { id: mod_datetime; ClockButton { shell: root.shell; kind: "top"; css: "clock.time-alt"; Layout.fillHeight: true; textColor: root.shell.accent; popupEnabled: root.popupsAllowed } }
+    Component { id: mod_indicators; IndicatorsGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillHeight: true } }
+    Component { id: mod_language; LanguageButton { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillHeight: true } }
+    Component { id: mod_updates; UpdatesButton { shell: root.shell; popupEnabled: root.popupsAllowed; Layout.fillHeight: true } }
+    Component { id: mod_converter; ConverterButton { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillHeight: true } }
+    Component { id: mod_sudoku; SudokuButton { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_mark_left; BarButton { shell: root.shell; css: "tmark.left"; text: "󱘹"; Layout.fillHeight: true } }
-    Component { id: mod_workspaces; Workspaces { shell: root.shell; activeOnly: true; numerals: "roman"; Layout.fillHeight: true } }
+    Component { id: mod_workspaces; Workspaces { shell: root.shell; activeOnly: true; numerals: "roman"; popupEnabled: root.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_mark_right; BarButton { shell: root.shell; css: "tmark.right"; text: "󱘹"; Layout.fillHeight: true } }
-    Component { id: mod_weather; BarButton { id: weatherButton; shell: root.shell; css: "weather"; text: Weather.output.text; Layout.fillHeight: true; textColor: root.shell.role("c2", root.shell.foreground); onClicked: root.shell.togglePopup("weather"); WeatherPopup { anchorItem: weatherButton; shell: root.shell; popupEnabled: root.popupsAllowed } } }
+    Component { id: mod_weather; BarButton { id: weatherButton; shell: root.shell; css: "weather"; text: Weather.output.text; Layout.fillHeight: true; onClicked: root.shell.togglePopup("weather"); WeatherPopup { anchorItem: weatherButton; shell: root.shell; popupEnabled: root.popupsAllowed } } }
     Component { id: mod_submap; SubmapButton { shell: root.shell; command: ["hyprshell", "keybinds/submap-status", "--alt"]; Layout.fillHeight: true; baseColor: root.shell.alpha(root.shell.role("br", root.shell.foreground), .7) } }
-    Component { id: mod_status; Status { shell: root.shell; vertical: false; Layout.fillHeight: true; showNetwork: false; showPower: false; showLogout: false; popupsEnabled: root.popupsAllowed } }
-    Component { id: mod_monitor; DrawerGroup {
+    Component { id: mod_audio; AudioGroup { shell: root.shell; vertical: false; Layout.fillHeight: true; popupsAllowed: root.popupsAllowed } }
+    Component { id: mod_bluetooth; BluetoothGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; vertical: false; Layout.fillHeight: true } }
+    Component { id: mod_vpn; VpnButton { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillHeight: true } }
+    Component { id: mod_wifi; WifiGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; vertical: false; Layout.fillHeight: true } }
+    Component { id: mod_pulseaudio; AudioButton { shell: root.shell; popupEnabled: root.popupsAllowed; Layout.fillHeight: true } }
+    Component { id: mod_display; DisplayButton { shell: root.shell; popupEnabled: root.popupsAllowed; Layout.fillHeight: true } }
+    Component { id: mod_powerprofile; PowerProfileButton { shell: root.shell; popupEnabled: root.popupsAllowed; Layout.fillHeight: true } }
+    Component { id: mod_powerbutton; LogoutButton { shell: root.shell; text: "󱨦"; popupEnabled: root.popupsAllowed; Layout.fillHeight: true } }
+    Component { id: mod_monitor; BarGroup {
         shell: root.shell; vertical: false; reverse: true; Layout.fillHeight: true
-        primary: Component { BarButton { id: monitorButton; shell: root.shell; css: "backlight"; text: "󰃠"; Layout.fillHeight: true; radius: root.shell.moduleRadius; onClicked: root.shell.togglePopup("monitor"); onWheeled: delta => root.shell.run(["hyprshell", "brightness-control.sh", delta > 0 ? "i" : "d"]); MonitorPopup { anchorItem: monitorButton; shell: root.shell; popupEnabled: root.popupsAllowed } } }
-        secondary: Component { ScriptButton { shell: root.shell; css: "hyprsunset"; Layout.fillHeight: true; radius: root.shell.moduleRadius; command: ["hyprshell", "hyprsunset", "-rq"]; interval: 86400000; onClicked: root.shell.run(["hyprshell", "hyprsunset", "-t", "-P", "waybar:19"]) } }
+        primary: Component { DisplayButton { shell: root.shell; popupEnabled: root.popupsAllowed; Layout.fillHeight: true } }
+        secondary: Component { ScriptButton { shell: root.shell; css: "hyprsunset"; Layout.fillHeight: true; radius: root.shell.moduleRadius; command: ["hyprshell", "hyprsunset", "-rq"]; interval: 86400000; refreshKey: root.shell.sunsetEnabled; onClicked: root.shell.run(["hyprshell", "hyprsunset", "-t", "-P", "waybar:19"]) } }
     } }
-    Component { id: mod_screen; DrawerGroup {
-        shell: root.shell; css: "screen-group"; vertical: false; reverse: true; Layout.fillHeight: true; radius: root.shell.moduleRadius; fill: root.shell.alpha(root.shell.background, .1)
-        primary: Component { ScriptButton { shell: root.shell; css: "screenrecord"; Layout.fillHeight: true; textColor: root.shell.role(output.class === "recording" ? "error" : "c1", root.shell.foreground); command: ["hyprshell", "screenrecord", "--status"]; interval: 1000; onClicked: button => root.shell.run(["hyprshell", "screenrecord", button === Qt.RightButton ? "--quit" : "--toggle"]) } }
-        secondary: Component { RowLayout { spacing: 0
-            ScriptButton { Layout.fillHeight: true; shell: root.shell; css: "colorpicker"; command: ["hyprshell", "color-picker.sh", "-j"]; interval: 86400000; onClicked: root.shell.run(["hyprshell", "color-picker.sh"]); onWheeled: delta => root.shell.run(["hyprshell", "color-picker.sh", delta > 0 ? "-u" : "-d"]) }
-            BarButton { Layout.fillHeight: true; shell: root.shell; css: "screenshot"; text: "󰄄"; tooltip: "<b>Screenshot</b>\nLeft: Select area\nMiddle: Full screen\nRight: Focused monitor"; onClicked: button => root.shell.run(["hyprshell", "screenshot", button === Qt.MiddleButton ? "p" : button === Qt.RightButton ? "m" : "smart"]) }
-        } }
+    Component { id: mod_screen; BarGroup {
+        shell: root.shell; css: "screen-group"; vertical: false; reverse: true; Layout.fillHeight: true; radius: root.shell.moduleRadius
+        slots: [topRecordSlot, topPickerSlot, topShotSlot]
+        Component { id: topRecordSlot; ScriptButton { shell: root.shell; css: "screenrecord"; Layout.fillHeight: true; textColor: root.shell.role(output.class === "recording" ? "error" : "c1", root.shell.foreground); command: ["hyprshell", "screenrecord", "--status"]; interval: 1000; onClicked: button => root.shell.run(["hyprshell", "screenrecord", button === Qt.RightButton ? "--quit" : "--toggle"]) } }
+        Component { id: topPickerSlot; ScriptButton { Layout.fillHeight: true; shell: root.shell; css: "colorpicker"; command: ["hyprshell", "color-picker.sh", "-j"]; interval: 86400000; onClicked: root.shell.run(["hyprshell", "color-picker.sh"]); onWheeled: delta => root.shell.run(["hyprshell", "color-picker.sh", delta > 0 ? "-u" : "-d"]) } }
+        Component { id: topShotSlot; BarButton { Layout.fillHeight: true; shell: root.shell; css: "screenshot"; text: "󰄄"; tooltip: "<b>Screenshot</b>\nLeft: Select area\nMiddle: Full screen\nRight: Focused monitor"; onClicked: button => root.shell.run(["hyprshell", "screenshot", button === Qt.MiddleButton ? "p" : button === Qt.RightButton ? "m" : "smart"]) } }
     } }
-    Component { id: mod_notification; DrawerGroup {
-        shell: root.shell; css: "notification-group"; vertical: false; reverse: true; Layout.fillHeight: true; radius: root.shell.moduleRadius; fill: root.shell.alpha(root.shell.background, .1)
-        primary: Component { NotificationButton { shell: root.shell; Layout.fillHeight: true; popupEnabled: root.popupsAllowed } }
-        secondary: Component { ScriptButton { shell: root.shell; css: "github.notifications"; Layout.fillHeight: true; textColor: root.shell.role(output.class === "degraded" ? "warning" : output.class === "error" ? "error" : "success", root.shell.foreground); command: ["hyprshell", "github-notifications"]; interval: 3600000; onClicked: root.shell.run(["xdg-open", "https://github.com/notifications"]) } }
+    Component { id: mod_notification; NotificationGroup {
+        shell: root.shell; popupsAllowed: root.popupsAllowed
+        vertical: false; reverse: true; Layout.fillHeight: true
     } }
     Component { id: mod_privacy; PrivacyButton { shell: root.shell; Layout.fillHeight: true } }
-    Component { id: mod_tray; Tray { shell: root.shell; framed: true; iconSize: 18; iconSpacing: 10; popupsAllowed: root.popupsAllowed; Layout.fillHeight: true } }
-    Component { id: mod_power; Item {
-        id: topPower
-        readonly property var box: root.shell.style.box("power-group")
-        readonly property real borderWidth: topPowerEdge.replacesOutline ? 0 : Math.max(1, box.border)
-        Layout.fillHeight: true
-        implicitWidth: powerStatus.implicitWidth + box.margin[1] + box.margin[3] + box.padding[1] + box.padding[3] + 2 * borderWidth
-        implicitHeight: powerStatus.implicitHeight + box.margin[0] + box.margin[2] + box.padding[0] + box.padding[2] + 2 * borderWidth
-        Rectangle { anchors.fill: parent; anchors.topMargin: parent.box.margin[0]; anchors.rightMargin: parent.box.margin[1]; anchors.bottomMargin: parent.box.margin[2]; anchors.leftMargin: parent.box.margin[3]; radius: root.shell.moduleRadius; color: root.shell.alpha(root.shell.role("alt_bg", root.shell.background), .1); border.color: root.shell.alpha(root.shell.role("alt_br", root.shell.foreground), .3); border.width: topPower.borderWidth }
-        Status { id: powerStatus; shell: root.shell; vertical: false; showAudio: false; showNetwork: false; popupsEnabled: root.popupsAllowed; anchors.fill: parent; anchors.topMargin: parent.box.margin[0] + topPower.borderWidth + parent.box.padding[0]; anchors.rightMargin: parent.box.margin[1] + topPower.borderWidth + parent.box.padding[1]; anchors.bottomMargin: parent.box.margin[2] + topPower.borderWidth + parent.box.padding[2]; anchors.leftMargin: parent.box.margin[3] + topPower.borderWidth + parent.box.padding[3] }
-        ModuleEdge { id: topPowerEdge; shell: root.shell }
+    Component { id: mod_tray; Tray { shell: root.shell; framed: true; popupsAllowed: root.popupsAllowed; Layout.fillHeight: true } }
+    Component { id: mod_connectivity; ConnectivityGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; vertical: false; Layout.fillHeight: true } }
+    Component { id: mod_power; PowerGroup {
+        shell: root.shell; popupsAllowed: root.popupsAllowed
+        vertical: false; reverse: false; Layout.fillHeight: true
     } }
 
     BarSection {
@@ -87,9 +110,24 @@ PanelWindow {
         registry: root.registry; modules: root.layout.left || []
     }
     BarSection {
-        id: centerRow
+        id: centerFallback
         anchors.horizontalCenter: parent.horizontalCenter; anchors.top: parent.top; anchors.bottom: parent.bottom
-        registry: root.registry; modules: root.layout.center || []
+        registry: root.registry; modules: root.centerAnchorIndex < 0 ? root.centerModules : []
+    }
+    BarSection {
+        id: centerBefore
+        anchors.right: centerAnchor.left; anchors.top: parent.top; anchors.bottom: parent.bottom
+        registry: root.registry; modules: root.centerBeforeModules
+    }
+    BarSection {
+        id: centerAnchor
+        anchors.horizontalCenter: parent.horizontalCenter; anchors.top: parent.top; anchors.bottom: parent.bottom
+        registry: root.registry; modules: root.centerAnchorModules
+    }
+    BarSection {
+        id: centerAfter
+        anchors.left: centerAnchor.right; anchors.top: parent.top; anchors.bottom: parent.bottom
+        registry: root.registry; modules: root.centerAfterModules
     }
     BarSection {
         id: rightRow

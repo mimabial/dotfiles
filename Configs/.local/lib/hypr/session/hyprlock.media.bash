@@ -52,6 +52,33 @@ mpris_active_player_value() {
   printf '%s\n' "${value}"
 }
 
+mpris_art_url() {
+  local player="$1"
+  local art_url=""
+  local video_url=""
+  local video_id=""
+  local youtube_watch_re='youtube\.com/watch\?v=([^&]+)'
+  local youtube_short_re='youtu\.be/([^?]+)'
+
+  art_url="$(playerctl -p "${player}" metadata --format '{{mpris:artUrl}}' 2>/dev/null)"
+  if [[ -z "${art_url}" ]]; then
+    video_url="$(playerctl -p "${player}" metadata --format '{{xesam:url}}' 2>/dev/null)"
+    if [[ "${video_url}" =~ ${youtube_watch_re} ]] || [[ "${video_url}" =~ ${youtube_short_re} ]]; then
+      video_id="${BASH_REMATCH[1]}"
+      art_url="https://img.youtube.com/vi/${video_id}/maxresdefault.jpg"
+    fi
+  fi
+
+  printf '%s\n' "${art_url}"
+}
+
+mpris_cleanup_temps() {
+  local path=""
+  for path in "$@"; do
+    [[ -n "${path}" ]] && rm -f -- "${path}"
+  done
+}
+
 os_pretty_name() {
   awk -F'=' '/^PRETTY_NAME=/ {gsub(/"/,"",$2); print $2; exit}' /etc/os-release
 }
@@ -60,41 +87,84 @@ mpris_thumb() {
   local player=${1:-""}
   local thumb="${HYPR_CACHE_HOME}/landing/mpris"
   local art_url=""
-  local video_url=""
-  local video_id=""
+  local fetch_url=""
+  local cache_key=""
   local size=""
   local monitor_info=""
   local width=""
   local height=""
+  local art_tmp=""
+  local png_tmp=""
+  local blurred_tmp=""
+  local link_tmp=""
 
-  art_url=$(playerctl -p "${player}" metadata --format '{{mpris:artUrl}}' 2>/dev/null)
-  if [[ -z "${art_url}" ]]; then
-    video_url=$(playerctl -p "${player}" metadata --format '{{xesam:url}}' 2>/dev/null)
-    if [[ "${video_url}" =~ youtube\.com/watch\?v=([^&]+) ]] || [[ "${video_url}" =~ youtu\.be/([^?]+) ]]; then
-      video_id="${BASH_REMATCH[1]}"
-      art_url="https://img.youtube.com/vi/${video_id}/maxresdefault.jpg"
-      echo "YouTube thumbnail extracted: ${art_url}" >"${thumb}.log"
+  art_url="$(mpris_art_url "${player}")"
+  [[ -n "${art_url}" ]] || return 1
+  fetch_url="${art_url}"
+  cache_key="v2:${art_url}"
+
+  [[ "${cache_key}" == "$(cat "${thumb}.lnk" 2>/dev/null)" && -s "${thumb}.png" ]] && return 0
+
+  mkdir -p "$(dirname "${thumb}")"
+  art_tmp="$(mktemp "${thumb}.art.XXXXXX")" || return 1
+  png_tmp="$(mktemp "${thumb}.png.XXXXXX")" || {
+    mpris_cleanup_temps "${art_tmp}"
+    return 1
+  }
+  blurred_tmp="$(mktemp "${thumb}.blurred.png.XXXXXX")" || {
+    mpris_cleanup_temps "${art_tmp}" "${png_tmp}"
+    return 1
+  }
+  link_tmp="$(mktemp "${thumb}.lnk.XXXXXX")" || {
+    mpris_cleanup_temps "${art_tmp}" "${png_tmp}" "${blurred_tmp}"
+    return 1
+  }
+
+  if ! curl --fail --location --silent --show-error --output "${art_tmp}" -- "${fetch_url}" 2>/dev/null; then
+    mpris_cleanup_temps "${art_tmp}" "${png_tmp}" "${blurred_tmp}" "${link_tmp}"
+    return 1
+  fi
+
+  size="$(identify -format "%w" "${art_tmp}" 2>/dev/null || true)"
+  if [[ "${size}" =~ ^[0-9]+$ ]] && ((size < 200)) && [[ "${fetch_url}" == *youtube* ]]; then
+    fetch_url="${fetch_url/maxresdefault/hqdefault}"
+    if ! curl --fail --location --silent --show-error --output "${art_tmp}" -- "${fetch_url}" 2>/dev/null; then
+      mpris_cleanup_temps "${art_tmp}" "${png_tmp}" "${blurred_tmp}" "${link_tmp}"
+      return 1
     fi
   fi
 
-  [[ "${art_url}" == "$(cat "${thumb}.lnk" 2>/dev/null)" && -f "${thumb}.png" ]] && return 0
-
-  echo "${art_url}" >"${thumb}.lnk"
-  if curl -Lso "${thumb}.art" "${art_url}" 2>/dev/null; then
-    size=$(identify -format "%w" "${thumb}.art" 2>/dev/null)
-    if [[ "${size:-0}" -lt 200 && "${art_url}" =~ youtube ]]; then
-      art_url="${art_url/maxresdefault/hqdefault}"
-      curl -Lso "${thumb}.art" "${art_url}" 2>/dev/null
-    fi
-
-    magick "${MAGICK_LIMITS[@]}" "${thumb}.art" -quality 50 "${thumb}.png" 2>/dev/null || return 1
-
-    monitor_info=$(hyprctl monitors -j | jq -r '.[0] | "\(.width)x\(.height)"')
-    IFS=x read -r width height <<<"${monitor_info}"
-    magick "${MAGICK_LIMITS[@]}" "${thumb}.art" -blur 20x3 -resize "${width}x^" -gravity center -extent "${width}x${height}!" "${thumb}.blurred.png" 2>/dev/null
-
-    reload_hyprlock
+  if ! magick "${MAGICK_LIMITS[@]}" "${art_tmp}" -quality 50 "png:${png_tmp}" 2>/dev/null; then
+    mpris_cleanup_temps "${art_tmp}" "${png_tmp}" "${blurred_tmp}" "${link_tmp}"
+    return 1
   fi
+
+  monitor_info="$(hyprctl monitors -j 2>/dev/null | jq -r '.[0] | "\(.width)x\(.height)"' 2>/dev/null || true)"
+  IFS=x read -r width height <<<"${monitor_info}"
+  if [[ "${width}" =~ ^[0-9]+$ && "${height}" =~ ^[0-9]+$ ]]; then
+    if ! magick "${MAGICK_LIMITS[@]}" "${art_tmp}" -blur 20x3 -resize "${width}x^" -gravity center -extent "${width}x${height}!" "png:${blurred_tmp}" 2>/dev/null; then
+      mpris_cleanup_temps "${art_tmp}" "${png_tmp}" "${blurred_tmp}" "${link_tmp}"
+      return 1
+    fi
+  else
+    rm -f -- "${blurred_tmp}"
+    blurred_tmp=""
+  fi
+
+  # The song may change while its cover is downloading. Never publish a
+  # completed image unless it still belongs to the selected player and track.
+  if [[ "$(mpris_default_player)" != "${player}" || "$(mpris_art_url "${player}")" != "${art_url}" ]]; then
+    mpris_cleanup_temps "${art_tmp}" "${png_tmp}" "${blurred_tmp}" "${link_tmp}"
+    return 1
+  fi
+
+  printf '%s\n' "${cache_key}" >"${link_tmp}"
+  mv -f -- "${art_tmp}" "${thumb}.art"
+  mv -f -- "${png_tmp}" "${thumb}.png"
+  [[ -z "${blurred_tmp}" ]] || mv -f -- "${blurred_tmp}" "${thumb}.blurred.png"
+  mv -f -- "${link_tmp}" "${thumb}.lnk"
+  reload_hyprlock
+  return 0
 }
 
 convert_length() {
@@ -183,11 +253,19 @@ fn_update_art() {
   local thumb="${HYPR_CACHE_HOME}/landing/mpris"
   local player_status=""
   local temp_colored="${HYPR_CACHE_HOME}/landing/hypr-colored.tmp.png"
+  local lock_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/hypr"
+  local lock="${lock_dir}/hyprlock-art.lock"
+  local lock_fd=""
 
-  player_status="$(mpris_player_status "${player}")"
+  [[ -d "${lock_dir}" ]] || mkdir -m 700 "${lock_dir}" || return 1
+  exec {lock_fd}>"${lock}"
+  flock -n "${lock_fd}" || return 0
+
+  player_status="$(mpris_player_status "${player}" || true)"
   if mpris_player_active "${player_status}"; then
-    mpris_thumb "${player}"
-    return 0
+    if mpris_thumb "${player}"; then
+      return 0
+    fi
   fi
 
   rm -f "${thumb}.lnk" "${thumb}.art" 2>/dev/null

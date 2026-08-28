@@ -1,0 +1,7 @@
+module qs.Ui
+BorderSurface 1.0 BorderSurface.qml
+Button 1.0 Button.qml
+ConfirmDialog 1.0 ConfirmDialog.qml
+PanelActionButton 1.0 PanelActionButton.qml
+PanelSeparator 1.0 PanelSeparator.qml
+TextField 1.0 TextField.qml

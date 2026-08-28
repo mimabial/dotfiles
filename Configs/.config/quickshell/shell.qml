@@ -3,6 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Mpris
+import Quickshell.Services.UPower
 
 ShellRoot {
     id: shellRoot
@@ -10,12 +11,18 @@ ShellRoot {
     property string workflow: "default"
     property string themeName: ""
     property string layoutName: "main"
+    property string sunsetEnabled: ""
+    property bool keepAwakeManual: false
+    property bool keepAwakeAudio: true
+    property string indicatorRefreshTarget: "all"
+    property int indicatorRefreshSerial: 0
+    property bool powerProfileRestorePending: false
     property bool stateReady: false
     property string mode: workflow === "gaming" ? "hidden" : layoutName === "top" ? "top" : layoutName === "winbar" ? "winbar" : "main"
     property bool userHidden: false
     property string popupName: ""
     property var barLayout: []
-    readonly property var barModules: (Array.isArray(barLayout) ? barLayout : Object.keys(barLayout || {}).reduce((all, key) => all.concat(barLayout[key] || []), [])).map(item => typeof item === "string" ? item : String(item.id || ""))
+    readonly property var barModules: (Array.isArray(barLayout) ? barLayout : Object.keys(barLayout || {}).reduce((all, key) => Array.isArray(barLayout[key]) ? all.concat(barLayout[key]) : all, [])).map(item => typeof item === "string" ? item : String(item.id || ""))
     readonly property bool dateModuleVisible: !userHidden && (barModules.includes("date") || barModules.includes("datetime") && (mode === "winbar" ? store.winbarClock % 4 < 3 : mode === "top" ? [0, 1, 4, 5, 6, 7].includes(store.topClock % 8) : store.mainClock % 4 === 2))
     readonly property bool clockModuleVisible: !userHidden && barModules.includes("datetime") && (mode === "winbar" || mode === "top" ? store.topClock % 8 !== 6 : store.mainClock % 4 !== 2)
     readonly property string timeVisibility: Quickshell.processId + " " + Number(dateModuleVisible) + " " + Number(clockModuleVisible) + "\n"
@@ -41,6 +48,8 @@ ShellRoot {
     // the theme pack beats the vars default
     readonly property string fontFamily: userFont || themeFont || baseFont
     property string iconFont: "CaskaydiaCove Nerd Font"
+    // hypr's vars.lua owns the terminal choice; this is only the pre-load default
+    property string terminal: "kitty"
     readonly property var fontFamilies: [fontFamily, iconFont, "Noto Color Emoji", "monospace"]
     // Nerd Font ships double-width icon glyphs with a single-cell advance, and Qt
     // centres on the advance, so the ink hangs off to the right. The Mono faces
@@ -64,6 +73,10 @@ ShellRoot {
         property bool mainDateNumeric: false
         property int winbarClock: 0
         property bool barTransparent: false
+        property string sudokuDifficulty: "easy"
+        property int sudokuBestEasy: 0
+        property int sudokuBestMedium: 0
+        property int sudokuBestHard: 0
     }
 
     function alpha(color, opacity) { return Qt.rgba(color.r, color.g, color.b, opacity) }
@@ -77,7 +90,22 @@ ShellRoot {
     // the focus grab clears during that transition and must not be read as a
     // click outside
     property bool focusPriming: false
+    // a popup you type into must hold keyboard focus even with the pointer away
+    property bool popupTyping: false
+    property var popupCard: null
     function run(command) { Quickshell.execDetached(command) }
+    function refreshIndicators(target) {
+        indicatorRefreshTarget = String(target || "all")
+        ++indicatorRefreshSerial
+    }
+    function restorePowerProfile() {
+        if (powerProfileRestore.running) {
+            powerProfileRestorePending = true
+            return
+        }
+        powerProfileRestore.command = ["hyprshell", "system/powerprofiles", "--restore"]
+        powerProfileRestore.running = true
+    }
     // PipeWire exposes PulseAudio's cubic scalar: dB = 60 log10(volume).
     function volumeToDb(value) { return 60 * Math.log10(value) }
     function dbToVolume(value) { return Math.pow(10, value / 60) }
@@ -104,9 +132,15 @@ ShellRoot {
         const modeMatch = text.match(/(?:^|\n)HYPR_WORKFLOW=["']?([^"'\n]+)/)
         const themeMatch = text.match(/(?:^|\n)HYPR_THEME=["']?([^"'\n]+)/)
         const layoutMatch = text.match(/(?:^|\n)WAYBAR_LAYOUT_NAME=["']?([^"'\n]+)/)
+        const sunsetMatch = text.match(/(?:^|\n)HYPRSUNSET_ENABLED=["']?([^"'\n]+)/)
+        const keepAwakeMatch = text.match(/(?:^|\n)HYPR_KEEP_AWAKE=["']?([^"'\n]+)/)
+        const keepAwakeAudioMatch = text.match(/(?:^|\n)HYPR_KEEP_AWAKE_AUDIO=["']?([^"'\n]+)/)
         workflow = modeMatch ? modeMatch[1].trim() : "default"
         themeName = themeMatch ? themeMatch[1].trim() : ""
         layoutName = layoutMatch ? layoutMatch[1].trim() : "main"
+        sunsetEnabled = sunsetMatch ? sunsetMatch[1].trim() : ""
+        keepAwakeManual = keepAwakeMatch ? keepAwakeMatch[1].trim() === "1" : false
+        keepAwakeAudio = keepAwakeAudioMatch ? keepAwakeAudioMatch[1].trim() !== "0" : true
         stateReady = true
     }
     function color(value) {
@@ -122,6 +156,8 @@ ShellRoot {
     function loadFont(raw, key) {
         const icon = String(raw).match(/vars\.set\("BAR_ICON_FONT",\s*"([^"]+)"\)|BAR_ICON_FONT\s*=\s*"([^"]+)"/)
         if (icon) iconFont = icon[1] || icon[2]
+        const term = String(raw).match(/vars\.set\("TERMINAL",\s*"([^"]+)"\)|TERMINAL\s*=\s*"([^"]+)"/)
+        if (term) terminal = term[1] || term[2]
         const match = String(raw).match(/vars\.set\("BAR_FONT",\s*"([^"]+)"\)|BAR_FONT\s*=\s*"([^"]+)"/)
         if (key === "baseFont") { if (match) baseFont = match[1] || match[2] }
         else shellRoot[key] = match ? (match[1] || match[2]) : ""
@@ -165,6 +201,15 @@ ShellRoot {
     Timer { id: timeVisibilityWrite; interval: 0; running: true; onTriggered: timeVisibilityFile.setText(shellRoot.timeVisibility) }
     Timer { interval: shellRoot.stopwatch.running && shellRoot.popupName === "timer" ? 100 : 1000; repeat: true; running: shellRoot.activeTimers.length > 0 || shellRoot.stopwatch.running; triggeredOnStart: true; onTriggered: shellRoot.timerNowMs = Date.now() }
     Process { id: volumeRangeProbe; command: [shellRoot.home + "/.local/lib/hypr/controls/volume-control.sh", "--limits"]; stdout: StdioCollector { waitForEnd: true; onStreamFinished: shellRoot.loadVolumeRange(text) } }
+    Process {
+        id: powerProfileRestore
+        onExited: {
+            if (shellRoot.powerProfileRestorePending) {
+                shellRoot.powerProfileRestorePending = false
+                shellRoot.restorePowerProfile()
+            }
+        }
+    }
     Process { command: [shellRoot.home + "/.local/lib/hypr/calendar/alarm-timer.sh", "restore"]; running: true }
     ReloadToast { shell: shellRoot }
     LooknfeelPanel { shell: shellRoot }
@@ -173,6 +218,12 @@ ShellRoot {
     onLayoutNameChanged: { barLayout = []; layoutFile.reload() }
     onUserHiddenChanged: if (userHidden) closePopup()
     onTimeVisibilityChanged: timeVisibilityWrite.restart()
+    Component.onCompleted: restorePowerProfile()
+
+    Connections {
+        target: UPower
+        function onOnBatteryChanged() { shellRoot.restorePowerProfile() }
+    }
 
     IpcHandler {
         target: "bar"
@@ -183,8 +234,21 @@ ShellRoot {
         function refresh(): void { shellRoot.refresh() }
         function reload(): void { Quickshell.reload(false) }
         function popup(name: string): void { shellRoot.togglePopup(name) }
+        function bookmarks(): void { shellRoot.togglePopup("bookmarks") }
         function transparency(): void { shellRoot.toggleBarTransparency() }
         function popupName(): string { return shellRoot.popupName }
+    }
+    IpcHandler {
+        target: "indicators"
+        function refresh(target: string): void { shellRoot.refreshIndicators(target) }
+    }
+    IpcHandler {
+        target: "crmne.mpris"
+        function status(): string { return JSON.stringify(Media.statusObject()) }
+        function playPause(): string { return Media.playPause() ? "ok" : "unhandled" }
+        function previous(): string { return Media.previous() ? "ok" : "unhandled" }
+        function next(): string { return Media.next() ? "ok" : "unhandled" }
+        function raise(): string { return Media.raisePlayer() ? "ok" : "unhandled" }
     }
     Variants {
         model: shellRoot.stateReady && shellRoot.mode === "main" ? Quickshell.screens : []

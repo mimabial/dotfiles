@@ -47,9 +47,9 @@ reload_hyprlock() {
   local unit_name="${1:-${HYPRLOCK_SCOPE_NAME}}"
 
   if systemctl --user is-active "${unit_name}" >/dev/null 2>&1; then
-    systemctl --user kill -s USR2 "${unit_name}" >/dev/null 2>&1
+    systemctl --user kill -s USR2 "${unit_name}" >/dev/null 2>&1 || true
   else
-    hypr_user_pkill -USR2 -x hyprlock >/dev/null 2>&1
+    hypr_user_pkill -USR2 -x hyprlock >/dev/null 2>&1 || true
   fi
 }
 

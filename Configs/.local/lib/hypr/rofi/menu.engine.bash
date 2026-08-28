@@ -130,6 +130,7 @@ present_terminal() {
   local app_id=""
   local title=""
   local hypr_profile=""
+  local hypr_cells=()
   local cmd=()
   local launch_args=()
 
@@ -147,6 +148,10 @@ present_terminal() {
         hypr_profile="$2"
         shift 2
         ;;
+      --hypr-cells)
+        hypr_cells=("$2" "$3")
+        shift 3
+        ;;
       --)
         shift
         cmd+=("$@")
@@ -163,8 +168,9 @@ present_terminal() {
     return 0
   fi
 
-  if [[ -n "$app_id" || -n "$title" || -n "$hypr_profile" ]]; then
+  if [[ -n "$app_id" || -n "$title" || -n "$hypr_profile" || "${#hypr_cells[@]}" -gt 0 ]]; then
     [[ -n "${hypr_profile}" ]] && launch_args+=(--hypr-profile "${hypr_profile}")
+    [[ "${#hypr_cells[@]}" -gt 0 ]] && launch_args+=(--hypr-cells "${hypr_cells[@]}")
     launch_args+=(--app-id "${app_id:-org.tui.Terminal}" --title "${title:-Terminal}" -- "${cmd[@]}")
     hyprshell launch/terminal-present.sh "${launch_args[@]}"
   else

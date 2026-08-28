@@ -1,0 +1,17 @@
+-- Expressive motion with one controlled overshoot instead of prolonged wobble.
+local runtime = require("runtime")
+
+runtime.config("animations.enabled", true)
+hl.curve("bounceOut", {type = "bezier", points = {{0.16, 1.18}, {0.3, 1}}})
+hl.curve("bounceSettle", {type = "bezier", points = {{0.14, 0.78}, {0.18, 1}}})
+hl.curve("bounceIn", {type = "bezier", points = {{0.4, 0}, {0.8, 0.18}}})
+hl.animation({leaf = "windowsIn", enabled = true, speed = 4.0, bezier = "bounceOut", style = "popin 72%"})
+hl.animation({leaf = "windowsOut", enabled = true, speed = 2.6, bezier = "bounceIn", style = "popin 88%"})
+hl.animation({leaf = "windowsMove", enabled = true, speed = 3.4, bezier = "bounceSettle", style = "slide"})
+hl.animation({leaf = "layersIn", enabled = true, speed = 3.2, bezier = "bounceOut", style = "slide"})
+hl.animation({leaf = "layersOut", enabled = true, speed = 2.2, bezier = "bounceIn", style = "slide"})
+hl.animation({leaf = "fade", enabled = true, speed = 2.3, bezier = "bounceSettle"})
+hl.animation({leaf = "border", enabled = true, speed = 2.4, bezier = "bounceSettle"})
+hl.animation({leaf = "borderangle", enabled = false})
+hl.animation({leaf = "workspaces", enabled = true, speed = 4.4, bezier = "bounceSettle", style = "slidefade 22%"})
+hl.animation({leaf = "specialWorkspace", enabled = true, speed = 3.5, bezier = "bounceOut", style = "slidefadevert 18%"})

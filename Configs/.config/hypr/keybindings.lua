@@ -188,7 +188,7 @@ local function toggle_floating()
 	end
 end
 
-bind(mod, "Q", "[Window Management] close focused window", hl.dsp.window.close())
+exec(mod, "Q", "[Window Management] close panel or focused window", "hyprshell window/close-focused.sh")
 bind("ALT", "F4", "[Window Management] close focused window", hl.dsp.window.close())
 bind(mod .. " SHIFT", "Q", "[Window Management] force kill focused window", hl.dsp.window.kill())
 bind(
@@ -292,14 +292,7 @@ exec(mod, "C", "[Launcher|Apps] text editor", terminal .. " -e " .. editor)
 exec(mod, "D", "[Launcher|Menus] application finder", "hyprshell rofi-launch.sh d")
 exec(mod .. " SHIFT", "D", "[Launcher|Menus] window switcher", "hyprshell rofi-launch.sh w")
 exec(mod, "SPACE", "[Launcher|Menus] menu tree", "pkill -x rofi || hyprshell menutree")
-exec(mod, "H", "[Launcher|Menus] keybinding hints", "pkill -x rofi || hyprshell keybinds/keybinds_hint.sh")
-exec(
-	mod .. " SHIFT",
-	"H",
-	"[Launcher|Menus] app keybinding hints",
-	"pkill -x rofi || hyprshell keybinds/app-hints.sh"
-)
-exec(mod, "V", "[Launcher|Menus] clipboard", "pkill -x rofi || hyprshell cliphist.sh -c")
+exec(mod, "V", "[Launcher|Menus] clipboard", "quickshell ipc call bar popup cliphist")
 exec(mod .. " SHIFT", "V", "[Launcher|Menus] clipboard manager", "pkill -x rofi || hyprshell cliphist.sh")
 
 -- Hardware controls
@@ -638,7 +631,7 @@ submap_leader("open", mod, "O", function()
 		"[Open] rmpc",
 		'hyprshell launch/summon.sh --float-if-workspace-occupied class:org.tui.Rmpc -- hyprshell launch/tui.sh --app-id org.tui.Rmpc --title Rmpc -- "$HOME/.config/rmpc/lib/launch"'
 	)
-	submap_exec("M", "[Open] Mullvad VPN", 'hyprshell launch/summon.sh "class:Mullvad VPN" -- mullvad-vpn')
+	submap_exec("M", "[Open] Mullvad VPN", "hyprshell launch/summon.sh class:mullvad-vpn -- mullvad-vpn")
 	submap_exec(
 		"Q",
 		"[Open] qBittorrent",
@@ -661,6 +654,12 @@ submap_leader("insert", mod, "I", function()
 	submap_exec("E", "[Insert] emoji picker", "pkill -x rofi || hyprshell emoji-picker.sh")
 	submap_exec("G", "[Insert] glyph picker", "pkill -x rofi || hyprshell glyph-picker.sh")
 	submap_exec("B", "[Insert] box drawing picker", "pkill -x rofi || hyprshell boxdraw-picker.sh")
+end)
+
+submap_leader("hints", mod, "H", function()
+	submap_exec("H", "[Hints] Hyprland keybindings", "pkill -x rofi || hyprshell keybinds/keybinds_hint.sh")
+	submap_exec("K", "[Hints] kitty keybindings", "pkill -x rofi || hyprshell keybinds/app-hints.sh kitty")
+	submap_exec("T", "[Hints] tmux keybindings", "pkill -x rofi || hyprshell keybinds/app-hints.sh tmux")
 end)
 
 submap_leader("utilities", mod, "U", function()

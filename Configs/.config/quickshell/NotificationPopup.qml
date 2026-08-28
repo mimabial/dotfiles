@@ -49,7 +49,7 @@ PopupCard {
             detail: root.paused ? "Incoming ones are held" : root.report.waiting > 0
                 ? root.report.waiting + " waiting" : "Delivering normally"
             active: root.paused
-            onClicked: root.act(["dunstctl", "set-paused", "toggle"])
+            onClicked: root.act(["hyprshell", "notify/notifications", "--toggle"])
         }
 
         PopupSeparator { shell: root.shell }

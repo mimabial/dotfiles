@@ -9,8 +9,10 @@ Item {
     readonly property var box: shell.style.box("tray")
     property int iconSize: 16
     property int iconSpacing: vertical ? 2 : 6
-    readonly property int scaledIcon: Math.round(iconSize * Style.scale)
-    readonly property int scaledSpacing: Math.round(iconSpacing * Style.scale)
+    // "iconSize"/"iconSpacing" in the style file win, declared in the same units
+    // as fontSize; an image has no glyph boost to ride, so they scale directly
+    readonly property int scaledIcon: Math.round((box.iconSize !== undefined ? box.iconSize : iconSize) * Style.scale)
+    readonly property int scaledSpacing: Math.round((box.iconSpacing !== undefined ? box.iconSpacing : iconSpacing) * Style.scale)
     property bool vertical: false
     property bool popupsAllowed: true
     property var menuHandle: null

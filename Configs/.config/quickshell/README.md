@@ -49,9 +49,11 @@ call.
 
 `main`, `left`, and `sidebar` are ordered arrays. `top` and `winbar` contain
 `left`, `center`, and `right` arrays. An entry may be a module id or
-`{"id":"status","props":{"reverse":false}}`; `"spacer"` consumes remaining
-space. Keep layout-specific composition in JSON rather than adding layout-name
-conditions to components.
+`{"id":"audio","props":{"reverse":false}}`; `"spacer"` consumes remaining
+space. A top layout may set `centerAnchor` to pin one center module to the exact
+screen center; entries before and after it flank that anchor. Keep
+layout-specific composition in JSON rather than adding layout-name conditions
+to components.
 
 ## Where to edit
 
@@ -66,7 +68,7 @@ conditions to components.
 | change a popup | the matching `*Popup.qml` |
 | change provider output | the existing helper under `~/.local/lib/hypr/` |
 
-Composed modules such as `status`, `eyecare`, `screen`, `wifi`, `notification`,
+Composed modules such as `audio`, `power`, `eyecare`, `screen`, `wifi`, `notification`,
 `updates`, `barlayout`, and `colormode` own drawers. Style the drawer frame by
 its `css` key and its children by their own keys.
 
@@ -78,7 +80,8 @@ Static appearance belongs in JSON.
 
 Rules are keyed by a component's `css` value. Common fields are `margin`,
 `padding`, `border`, `minWidth`, `minHeight`, `fontSize`, `fontWeight`, `justify`,
-`fill`, `outline`, `fg`, `hover`, and `edge`. Colors use a palette role or
+`fill`, `outline`, `content`, `hover`, and `edge`. Hover uses the same
+`fill`/`outline`/`content` channels. Colors use a palette role or
 `[role, opacity]`; `null` paints nothing.
 
 Important geometry rules:
@@ -161,7 +164,9 @@ add `systemctl` calls to layout switching, module actions, reloads, or providers
 ## Verification
 
 ```bash
-qmllint ~/.config/quickshell/<changed>.qml
+# Not bare `qmllint` — $PATH resolves to the qt5 build, which resolves no types
+# and exits 0 on anything that merely parses.
+/usr/lib/qt6/bin/qmllint -I /usr/lib/qt6/qml -I ~/.config/quickshell ~/.config/quickshell/<changed>.qml
 jq empty ~/.config/quickshell/layouts/*.json ~/.config/quickshell/styles/*.json
 n=$(quickshell log | wc -l)
 quickshell ipc call bar reload

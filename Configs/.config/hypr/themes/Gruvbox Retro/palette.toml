@@ -23,3 +23,5 @@ colors = [
   "#8ec07b",
   "#ebdbb2",
 ]
+
+kvantum-shell = "materia"

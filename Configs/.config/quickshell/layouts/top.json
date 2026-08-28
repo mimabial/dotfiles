@@ -1,5 +1,17 @@
 {
-  "left": ["taskbar", "mediaplayer"],
-  "center": ["datetime", "mark-left", "workspaces", "mark-right", "weather"],
-  "right": ["submap", "status", "monitor", "screen", "notification", "privacybutton", "tray", "power"]
+  "left": ["menu", { "id": "workspaces", "props": { "omarchyStyle": true } }, "submap"],
+  "centerAnchor": "datetime",
+  "center": ["indicators", "datetime", "updates", "weather"],
+  "right": [
+    {
+      "id": "mediaplayer",
+      "props": { "appearance": "mpris", "showControls": false, "showArtist": true }
+    },
+    "pulseaudio",
+    "display",
+    "bluetooth",
+    "vpn",
+    "wifi",
+    "powerprofile"
+  ]
 }

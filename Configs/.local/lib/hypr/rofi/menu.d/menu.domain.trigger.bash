@@ -61,14 +61,21 @@ trigger_spawn_detached() {
 
 menu_register_domain_trigger() {
   menu_define trigger "Trigger"
+  menu_add_item trigger "󰞅  Insert" submenu trigger_insert
   menu_add_item trigger "  Capture" submenu trigger_capture
   menu_add_item trigger "󰕍  Share" submenu trigger_share
   menu_add_item trigger "󰔎  Toggle" submenu trigger_toggle
+
+  menu_define trigger_insert "Insert"
+  menu_add_item trigger_insert "  Emoji" action trigger_insert_emoji
+  menu_add_item trigger_insert "  Glyph" action trigger_insert_glyph
+  menu_add_item trigger_insert "  Box Drawing" action trigger_insert_boxdraw
 
   menu_define trigger_capture "Capture"
   menu_add_item trigger_capture "  Screenshot" submenu trigger_screenshot
   menu_add_item trigger_capture "  Screenrecord" submenu trigger_screenrecord
   menu_add_item trigger_capture "  Color Picker" action trigger_color_picker
+  menu_add_item trigger_capture "󰐲  QR Code" action trigger_capture_qr
 
   menu_define trigger_screenshot "Screenshot"
   menu_add_item trigger_screenshot "  Smart with Editing" action trigger_screenshot_edit
@@ -100,11 +107,15 @@ menu_register_domain_trigger() {
   menu_add_item trigger_share "  Clipboard" action trigger_share_clipboard
   menu_add_item trigger_share "󰈔  File" action trigger_share_file
   menu_add_item trigger_share "󰉋  Folder" action trigger_share_folder
+  menu_add_item trigger_share "󰥦  Receive" action trigger_share_receive
 
   menu_define trigger_toggle "Toggle"
   menu_add_item trigger_toggle "󰔎  Nightlight" action trigger_toggle_nightlight
   menu_add_item trigger_toggle "󱫖  Keep Awake" action trigger_toggle_keep_awake
-  menu_add_item trigger_toggle "󰍜  Waybar" action trigger_toggle_waybar
+  menu_add_item trigger_toggle "󰹬  Notifications" action trigger_toggle_notifications
+  menu_add_item trigger_toggle "󰍜  Menu Bar" action trigger_toggle_bar
+  menu_add_item trigger_toggle "󱂬  Workspace Layout" action trigger_toggle_workspace_layout
+  menu_add_item trigger_toggle "󰊥  Window Gaps" action trigger_toggle_window_gaps
 }
 
 menu_run_action_trigger() {
@@ -127,10 +138,18 @@ menu_run_action_trigger() {
     trigger_share_clipboard) trigger_spawn_detached hyprshell util/share.sh clipboard ;;
     trigger_share_file) trigger_spawn_detached uwsm-app -- tui-terminal-exec --hypr-profile dialog --app-id org.tui.Share --title Share -- hyprshell util/share.sh file ;;
     trigger_share_folder) trigger_spawn_detached uwsm-app -- tui-terminal-exec --hypr-profile dialog --app-id org.tui.Share --title Share -- hyprshell util/share.sh folder ;;
+    trigger_share_receive) hyprshell util/share.sh receive ;;
     trigger_color_picker) hyprshell rofi/color-picker.sh ;;
+    trigger_capture_qr) trigger_spawn_detached hyprshell capture/qr.sh ;;
+    trigger_insert_emoji) hyprshell rofi/run-after-close.sh -- hyprshell rofi/emoji-picker.sh ;;
+    trigger_insert_glyph) hyprshell rofi/run-after-close.sh -- hyprshell rofi/glyph-picker.sh ;;
+    trigger_insert_boxdraw) hyprshell rofi/run-after-close.sh -- hyprshell rofi/boxdraw-picker.sh ;;
     trigger_toggle_nightlight) hyprshell hyprsunset --toggle && pkill -u "${UID:-$(id -u)}" -SIGUSR2 -x waybar ;;
     trigger_toggle_keep_awake) hyprshell session/toggle-keep-awake.sh ;;
-    trigger_toggle_waybar) hyprshell waybar/waybar.py --hide ;;
+    trigger_toggle_notifications) hyprshell notify/notifications --toggle ;;
+    trigger_toggle_bar) hyprshell quickshell/visibility.sh toggle ;;
+    trigger_toggle_workspace_layout) hyprshell window/layout-toggle.sh ;;
+    trigger_toggle_window_gaps) hyprshell window/gaps-toggle.sh ;;
     *) return 1 ;;
   esac
 

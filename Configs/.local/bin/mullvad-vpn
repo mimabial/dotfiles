@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# The packaged wrapper passes a literal %U and drops "$@". The scale factor is
+# pinned because GTK text-scaling crops Mullvad's fixed 320x568 window.
+exec "/opt/Mullvad VPN/mullvad-vpn" --force-device-scale-factor=1 "$@"

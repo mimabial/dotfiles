@@ -1,30 +1,61 @@
 [
-  "date",
+  {
+    "id": "datetime",
+    "props": {
+      "showDate": true,
+      "alwaysOpen": false
+    }
+  },
+  {
+    "id": "forecast",
+    "props": {
+      "showUnit": false,
+      "showMinMax": true,
+      "showSunrise": true,
+      "showSunset": false,
+      "alwaysOpen": false
+    }
+  },
+  "spacer",
+  {
+    "id": "workspaces",
+    "props": {
+      "activeOnly": false
+    }
+  },
+  "submap",
+  "spacer",
+  "mediaplayer",
   {
     "id": "eyecare",
     "props": {
+      "reverse": true,
       "sliderFirst": true
     }
   },
   {
-    "id": "status",
+    "id": "audio",
     "props": {
-      "reverse": false,
+      "reverse": true,
       "sliderFirst": true
     }
   },
   "privacybutton",
-  "screen",
-  "mediaplayer",
-  "spacer",
-  "datetime",
-  "tui-drawer",
-  "workspaces",
-  "submap",
-  "forecast",
-  "spacer",
-  "notification",
-  "updates",
+  "agents",
+  {
+    "id": "terminal",
+    "props": {
+      "showUpdates": true
+    }
+  },
+  "dunst",
+  {
+    "id": "power",
+    "props": {
+      "showLogout": false
+    }
+  },
   "connectivity",
-  "power"
+  "converter",
+  "menu"
 ]

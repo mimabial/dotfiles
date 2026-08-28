@@ -1,0 +1,16 @@
+# Shell colour map: SVG literal -> palette role.
+# Artwork palette: Vintage Gallery. Regenerate only if shell.svg changes.
+
+#3c5478=foreground
+#376b8c=color4
+#eee2d0=background
+#d8ccb8=color7
+#6b7b8c=color8
+#b06f78=color5
+#f7b500=color11
+#f4eee3=color15
+#424242=color0
+#e5d8c6=background
+#ede1cf=background
+#e1d4c1=color7
+#6f9a84=color2

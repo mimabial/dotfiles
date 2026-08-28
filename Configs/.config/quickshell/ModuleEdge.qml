@@ -15,7 +15,7 @@ Item {
     property bool hovered: false
     property bool active: false
     readonly property color line: {
-        const paint = hovered && box.hover && "border" in box.hover ? box.hover.border
+        const paint = hovered && box.hover && "outline" in box.hover ? box.hover.outline
             : spec && spec.color ? spec.color : active ? ["act_br", 1] : ["br", .3]
         if (!paint) return "transparent"
         return shell.alpha(shell.role(paint[0], shell.foreground), paint[1])

@@ -162,10 +162,10 @@
 ◱	white square with lower left quadrant
 ◲	white square with lower right quadrant
 ◳	white square with upper right quadrant
-◧	square with upper right diagonal half black
-◨	square with lower left diagonal half black
-◩	white square with diagonal crosshatch fill
-◪	square with diagonal crosshatch fill
+◧	square with left half black
+◨	square with right half black
+◩	square with upper left diagonal half black
+◪	square with lower right diagonal half black
 ◫	white square with vertical bisecting line
 ◬	white up-pointing triangle with dot
 ◭	up-pointing triangle with left half black
@@ -236,27 +236,28 @@
 ◟	lower left quadrant circular arc
 ◠	upper half circle
 ◡	lower half circle
-⬒	black large square
-⬓	white large square
-⬔	black very small square
-⬕	white very small square
-⬖	black pentagon
-⬗	white pentagon
-⬘	black hexagon
-⬙	white hexagon
-⬚	black medium square
+⬒	square with top half black
+⬓	square with bottom half black
+⬔	square with upper right diagonal half black
+⬕	square with lower left diagonal half black
+⬖	diamond with left half black
+⬗	diamond with right half black
+⬘	diamond with top half black
+⬙	diamond with bottom half black
+⬚	dotted square
 ⬛	black large square
 ⬜	white large square
-⬝	black medium small square
-⬞	white medium small square
-⯀	lower right drop-shadowed white square
-⯁	upper right drop-shadowed white square
+⬝	black very small square
+⬞	white very small square
+⯀	black square centred
+⯁	black diamond centred
 ▙	quadrant upper left and lower left and lower right
 ▛	quadrant upper left and upper right and lower left
 ▜	quadrant upper left and upper right and lower right
 ▟	quadrant upper right and lower left and lower right
 ◦	white bullet
 ◯	large circle
+⭘	heavy circle
 ◴	white circle with upper left quadrant
 ◵	white circle with lower left quadrant
 ◶	white circle with lower right quadrant
@@ -585,6 +586,236 @@
 🬹	block sextant-3456
 🬺	block sextant-13456
 🬻	block sextant-23456
+𜴀	block octant-3
+𜴁	block octant-23
+𜴂	block octant-123
+𜴃	block octant-4
+𜴄	block octant-14
+𜴅	block octant-124
+𜴆	block octant-34
+𜴇	block octant-134
+𜴈	block octant-234
+𜴉	block octant-5
+𜴊	block octant-15
+𜴋	block octant-25
+𜴌	block octant-125
+𜴍	block octant-135
+𜴎	block octant-235
+𜴏	block octant-1235
+𜴐	block octant-45
+𜴑	block octant-145
+𜴒	block octant-245
+𜴓	block octant-1245
+𜴔	block octant-345
+𜴕	block octant-1345
+𜴖	block octant-2345
+𜴗	block octant-12345
+𜴘	block octant-6
+𜴙	block octant-16
+𜴚	block octant-26
+𜴛	block octant-126
+𜴜	block octant-36
+𜴝	block octant-136
+𜴞	block octant-236
+𜴟	block octant-1236
+𜴠	block octant-146
+𜴡	block octant-246
+𜴢	block octant-1246
+𜴣	block octant-346
+𜴤	block octant-1346
+𜴥	block octant-2346
+𜴦	block octant-12346
+𜴧	block octant-56
+𜴨	block octant-156
+𜴩	block octant-256
+𜴪	block octant-1256
+𜴫	block octant-356
+𜴬	block octant-1356
+𜴭	block octant-2356
+𜴮	block octant-12356
+𜴯	block octant-456
+𜴰	block octant-1456
+𜴱	block octant-2456
+𜴲	block octant-12456
+𜴳	block octant-3456
+𜴴	block octant-13456
+𜴵	block octant-23456
+𜴶	block octant-17
+𜴷	block octant-27
+𜴸	block octant-127
+𜴹	block octant-37
+𜴺	block octant-137
+𜴻	block octant-237
+𜴼	block octant-1237
+𜴽	block octant-47
+𜴾	block octant-147
+𜴿	block octant-247
+𜵀	block octant-1247
+𜵁	block octant-347
+𜵂	block octant-1347
+𜵃	block octant-2347
+𜵄	block octant-12347
+𜵅	block octant-157
+𜵆	block octant-257
+𜵇	block octant-1257
+𜵈	block octant-357
+𜵉	block octant-2357
+𜵊	block octant-12357
+𜵋	block octant-457
+𜵌	block octant-1457
+𜵍	block octant-12457
+𜵎	block octant-3457
+𜵏	block octant-13457
+𜵐	block octant-23457
+𜵑	block octant-67
+𜵒	block octant-167
+𜵓	block octant-267
+𜵔	block octant-1267
+𜵕	block octant-367
+𜵖	block octant-1367
+𜵗	block octant-2367
+𜵘	block octant-12367
+𜵙	block octant-467
+𜵚	block octant-1467
+𜵛	block octant-2467
+𜵜	block octant-12467
+𜵝	block octant-3467
+𜵞	block octant-13467
+𜵟	block octant-23467
+𜵠	block octant-123467
+𜵡	block octant-567
+𜵢	block octant-1567
+𜵣	block octant-2567
+𜵤	block octant-12567
+𜵥	block octant-3567
+𜵦	block octant-13567
+𜵧	block octant-23567
+𜵨	block octant-123567
+𜵩	block octant-4567
+𜵪	block octant-14567
+𜵫	block octant-24567
+𜵬	block octant-124567
+𜵭	block octant-34567
+𜵮	block octant-134567
+𜵯	block octant-234567
+𜵰	block octant-1234567
+𜵱	block octant-18
+𜵲	block octant-28
+𜵳	block octant-128
+𜵴	block octant-38
+𜵵	block octant-138
+𜵶	block octant-238
+𜵷	block octant-1238
+𜵸	block octant-48
+𜵹	block octant-148
+𜵺	block octant-248
+𜵻	block octant-1248
+𜵼	block octant-348
+𜵽	block octant-1348
+𜵾	block octant-2348
+𜵿	block octant-12348
+𜶀	block octant-58
+𜶁	block octant-158
+𜶂	block octant-258
+𜶃	block octant-1258
+𜶄	block octant-358
+𜶅	block octant-1358
+𜶆	block octant-2358
+𜶇	block octant-12358
+𜶈	block octant-458
+𜶉	block octant-1458
+𜶊	block octant-2458
+𜶋	block octant-12458
+𜶌	block octant-3458
+𜶍	block octant-13458
+𜶎	block octant-23458
+𜶏	block octant-123458
+𜶐	block octant-168
+𜶑	block octant-268
+𜶒	block octant-1268
+𜶓	block octant-368
+𜶔	block octant-2368
+𜶕	block octant-12368
+𜶖	block octant-468
+𜶗	block octant-1468
+𜶘	block octant-12468
+𜶙	block octant-3468
+𜶚	block octant-13468
+𜶛	block octant-23468
+𜶜	block octant-568
+𜶝	block octant-1568
+𜶞	block octant-2568
+𜶟	block octant-12568
+𜶠	block octant-3568
+𜶡	block octant-13568
+𜶢	block octant-23568
+𜶣	block octant-123568
+𜶤	block octant-4568
+𜶥	block octant-14568
+𜶦	block octant-24568
+𜶧	block octant-124568
+𜶨	block octant-34568
+𜶩	block octant-134568
+𜶪	block octant-234568
+𜶫	block octant-1234568
+𜶬	block octant-178
+𜶭	block octant-278
+𜶮	block octant-1278
+𜶯	block octant-378
+𜶰	block octant-1378
+𜶱	block octant-2378
+𜶲	block octant-12378
+𜶳	block octant-478
+𜶴	block octant-1478
+𜶵	block octant-2478
+𜶶	block octant-12478
+𜶷	block octant-3478
+𜶸	block octant-13478
+𜶹	block octant-23478
+𜶺	block octant-123478
+𜶻	block octant-578
+𜶼	block octant-1578
+𜶽	block octant-2578
+𜶾	block octant-12578
+𜶿	block octant-3578
+𜷀	block octant-13578
+𜷁	block octant-23578
+𜷂	block octant-123578
+𜷃	block octant-4578
+𜷄	block octant-14578
+𜷅	block octant-24578
+𜷆	block octant-124578
+𜷇	block octant-34578
+𜷈	block octant-134578
+𜷉	block octant-234578
+𜷊	block octant-1234578
+𜷋	block octant-678
+𜷌	block octant-1678
+𜷍	block octant-2678
+𜷎	block octant-12678
+𜷏	block octant-3678
+𜷐	block octant-13678
+𜷑	block octant-23678
+𜷒	block octant-123678
+𜷓	block octant-4678
+𜷔	block octant-14678
+𜷕	block octant-24678
+𜷖	block octant-124678
+𜷗	block octant-34678
+𜷘	block octant-134678
+𜷙	block octant-234678
+𜷚	block octant-1234678
+𜷛	block octant-15678
+𜷜	block octant-25678
+𜷝	block octant-125678
+𜷞	block octant-35678
+𜷟	block octant-235678
+𜷠	block octant-1235678
+𜷡	block octant-45678
+𜷢	block octant-145678
+𜷣	block octant-1245678
+𜷤	block octant-1345678
+𜷥	block octant-2345678
 🬼	lower left block diagonal lower middle left to lower centre
 🬽	lower left block diagonal lower middle left to lower right
 🬾	lower left block diagonal upper middle left to lower centre

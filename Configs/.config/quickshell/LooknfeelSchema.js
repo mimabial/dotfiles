@@ -12,8 +12,9 @@
 //
 // Row shapes:
 //   { key, label, type: "int"|"float"|"bool"|"enum", min, max, step, options }
-//   { id,  label, type: "float", ... }        synthetic; not queried
-//   { id,  label, type: "pipeline", list, set } dispatches to hyprshell
+//   { variable, id, label, type, ... }         theme variable; not queried
+//   { id, label, type: "float", ... }          synthetic; not queried
+//   { id, label, type: "pipeline", list, set } dispatches to hyprshell
 
 var SECTIONS = [
     {
@@ -115,6 +116,15 @@ var SECTIONS = [
             { key: "group:groupbar:stacked", label: "Stacked", type: "bool" },
             { key: "group:insert_after_current", label: "Insert after current", type: "bool" },
             { key: "group:merge_groups_on_drag", label: "Merge on drag", type: "bool" }
+        ]
+    },
+    {
+        title: "Cursor",
+        rows: [
+            { id: "cursor_theme", variable: "CURSOR_THEME", label: "Theme", type: "enum",
+              list: ["theme/cursor-list.sh"] },
+            { id: "cursor_size", variable: "CURSOR_SIZE", label: "Size", type: "int",
+              min: 8, max: 96, step: 1 }
         ]
     },
     {

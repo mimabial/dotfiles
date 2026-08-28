@@ -303,18 +303,14 @@ theme_apply_phase_d_run_jobs() {
 
 theme_apply_phase_d_waybar_icon_sync() {
   theme_apply_generation_is_current || return 0
+  theme_apply_waybar_running || return 0
 
   local current_icon_theme="" cached_icon_theme=""
   current_icon_theme="$(theme_apply_current_icon_theme)"
   cached_icon_theme="$(state_get "waybar_icon_theme" "" 2>/dev/null || true)"
 
   if [[ -n "${current_icon_theme}" && "${current_icon_theme}" == "${cached_icon_theme}" ]]; then
-    local grace=0
-    while ((grace < 30)); do
-      hypr_user_pgrep -x waybar >/dev/null 2>&1 && return 0
-      sleep 0.1
-      grace=$((grace + 1))
-    done
+    return 0
   fi
 
   theme_apply_restart_waybar_direct || {

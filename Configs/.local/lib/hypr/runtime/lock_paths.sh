@@ -34,6 +34,7 @@ declare -grA HYPR_LOCK_NAMES=(
   [wallpaper_switch]="wallpaper-switch.lock"
   [wallpaper_awww]="wallpaper-awww.lock"
   [mode_switch]="mode-switch.lock"
+  [system_update]="system-update.lock"
   [wal_cache_clean]="wal-cache-clean.lock"
   [wal_cache_store]="wal-cache-store.lock"
   [wal_cache_prune]="wal-cache-prune.lock"

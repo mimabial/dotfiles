@@ -7,9 +7,8 @@ hypr_runtime_require rofi || exit 1
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
 
-hypr_help_guard "Usage: hyprshell keybinds/app-hints [kitty|tmux]
+hypr_help_guard "Usage: hyprshell keybinds/app-hints <kitty|tmux>
 Read-only keybinding cheatsheet for an app, in rofi.
-  (no args)   pick the app from a list
 Hyprland's own cheatsheet is keybinds/keybinds_hint, which can also run a bind." "$@"
 
 if hypr_user_pgrep -x rofi >/dev/null 2>&1; then
@@ -58,17 +57,10 @@ kitty_binds() {
 }
 
 app="${1:-}"
-if [[ -z "${app}" ]]; then
-  picker_args=()
-  rofi_build_standard_menu_args picker_args "Keybinds" "App" "$(rofi_resolve_theme "${ROFI_KEYBIND_HINT_STYLE:-clipboard}")"
-  app="$(printf 'kitty\ntmux\n' | rofi "${picker_args[@]}" -no-custom -no-show-icons)" || exit 0
-fi
-[[ -n "${app}" ]] || exit 0
-
 case "${app}" in
   kitty) binds="$(kitty_binds || true)" ;;
   tmux) binds="$(tmux_binds || true)" ;;
-  *) printf 'unknown app: %s\n' "${app}" >&2; exit 1 ;;
+  *) printf 'usage: %s <kitty|tmux>\n' "$(basename "$0")" >&2; exit 1 ;;
 esac
 
 if [[ -z "${binds}" ]]; then

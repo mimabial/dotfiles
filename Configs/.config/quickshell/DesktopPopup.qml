@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell.Io
+import Quickshell.Services.UPower
 
 PopupCard {
     id: root
@@ -10,6 +11,11 @@ PopupCard {
     property var layouts: []
     property var workflows: []
     property string windowLayout: ""
+    // mirrors workflow_locked() in util/workflows.sh: while one of these owns the
+    // workflow, --set refuses, so the rows must not offer a click that no-ops
+    readonly property string workflowOwner: shell.workflow === "gaming" ? "gamemode"
+        : PowerProfiles.profile === PowerProfile.PowerSaver ? "power saver"
+        : PowerProfiles.profile === PowerProfile.Performance ? "performance" : ""
 
     function rows(raw, labels) { return String(raw).trim().split("\n").filter(Boolean).map(line => { const p = line.split("\t"), name = p[0]; return {name:name, icon:p[1] || "", label:p[2] || labels(name), detail:p[3] || ""} }) }
     function title(name) { return name.charAt(0).toUpperCase() + name.slice(1).replace(/-/g, " ") }
@@ -30,10 +36,11 @@ PopupCard {
             Repeater { model: root.layouts; PopupRow { required property var modelData; Layout.fillWidth: true; shell: root.shell; icon: modelData.icon; title: modelData.label; active: root.windowLayout === modelData.name; onClicked: root.shell.run(["hyprshell", "util/window-layout", "--set", modelData.name]) } }
         }
         PopupSeparator { shell: root.shell }
-        PopupSection { shell: root.shell; text: "WORKFLOW" }
+        PopupSection { shell: root.shell; text: root.workflowOwner ? "WORKFLOW · LOCKED BY " + root.workflowOwner.toUpperCase() : "WORKFLOW" }
         GridLayout {
             width: parent.width; columns: 2; rowSpacing: Style.xs; columnSpacing: Style.xs
-            Repeater { model: root.workflows; PopupRow { required property var modelData; Layout.fillWidth: true; shell: root.shell; icon: modelData.icon; title: root.title(modelData.name); detail: modelData.label; active: root.shell.workflow === modelData.name; onClicked: root.shell.run(["hyprshell", "util/workflows", "--set", modelData.name]) } }
+            opacity: root.workflowOwner ? .45 : 1
+            Repeater { model: root.workflows; PopupRow { required property var modelData; Layout.fillWidth: true; shell: root.shell; icon: modelData.icon; title: root.title(modelData.name); detail: modelData.label; interactive: !root.workflowOwner; active: root.shell.workflow === modelData.name; onClicked: root.shell.run(["hyprshell", "util/workflows", "--set", modelData.name]) } }
         }
     }
 }

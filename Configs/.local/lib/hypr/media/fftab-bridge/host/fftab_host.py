@@ -12,11 +12,19 @@ import struct
 import sys
 import threading
 import time
+from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 import gi
 
 gi.require_version("Gio", "2.0")
 from gi.repository import Gio, GLib
+
+MEDIA_DIR = Path(__file__).resolve().parents[2]
+if str(MEDIA_DIR) not in sys.path:
+    sys.path.insert(0, str(MEDIA_DIR))
+
+from title_cleanup import clean_web_title
 
 BUS_PREFIX = "org.mpris.MediaPlayer2.fftab_t"
 OBJ_PATH = "/org/mpris/MediaPlayer2"
@@ -81,6 +89,25 @@ def send_to_extension(payload: dict) -> None:
 
 def log(msg: str) -> None:
     print(f"fftab_host: {msg}", file=sys.stderr, flush=True)
+
+
+def artwork_url(url: str) -> str:
+    """Derive stable artwork for providers whose media element has none."""
+    try:
+        parsed = urlparse(url)
+        host = parsed.hostname or ""
+        video_id = ""
+        if host == "youtu.be" or host.endswith(".youtu.be"):
+            video_id = parsed.path.strip("/").split("/", 1)[0]
+        elif host == "youtube.com" or host.endswith(".youtube.com"):
+            video_id = parse_qs(parsed.query).get("v", [""])[0]
+            if not video_id and parsed.path.startswith("/shorts/"):
+                video_id = parsed.path.split("/", 3)[2]
+        if video_id and all(ch.isalnum() or ch in "-_" for ch in video_id):
+            return f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg"
+    except (TypeError, ValueError):
+        pass
+    return ""
 
 
 class TabPlayer:
@@ -193,10 +220,15 @@ class TabPlayer:
             "mpris:trackid": GLib.Variant(
                 "o", f"/org/mpris/MediaPlayer2/fftab/t{self.tab_id}"
             ),
-            "xesam:title": GLib.Variant("s", s["title"]),
+            "xesam:title": GLib.Variant(
+                "s", clean_web_title(s["title"]) or s["title"]
+            ),
             "xesam:url": GLib.Variant("s", s["url"]),
             "xesam:artist": GLib.Variant("as", [s["site"]] if s["site"] else []),
         }
+        art_url = artwork_url(s["url"])
+        if art_url:
+            meta["mpris:artUrl"] = GLib.Variant("s", art_url)
         if s["duration"] > 0:
             meta["mpris:length"] = GLib.Variant("x", int(s["duration"] * 1e6))
         return GLib.Variant("a{sv}", meta)

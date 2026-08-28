@@ -8,13 +8,17 @@ import Quickshell.Io
 PopupCard {
     id: root
     popupName: "cliphist"
+    wantsKeyboard: true
     contentWidth: Style.px(430)
     contentHeight: Style.px(470)
 
     property var entries: []
     property var favorites: []
     property string filter: ""
-    property bool showFavorites: false
+    // "history" | "images" | "favourites"
+    property string view: "history"
+    // Ctrl+E swaps the five-line preview for a full-height, scrollable one
+    property bool previewExpanded: false
 
     // the preview pane shows the whole entry, so anything token-shaped is masked
     // in both places. the entry still copies normally — only the display is withheld
@@ -38,17 +42,17 @@ PopupCard {
 
     readonly property var rows: {
         const needle = filter.toLowerCase()
-        const source = showFavorites
+        const source = view === "favourites"
             ? favorites.map(entry => ({ key: entry.index, text: entry.text, favorite: true, image: false }))
-            : entries.map(entry => ({ key: entry.id, text: entry.preview, favorite: false, image: entry.image === true }))
+            : entries.filter(entry => view !== "images" || entry.image === true)
+                .map(entry => ({ key: entry.id, text: entry.preview, favorite: false, image: entry.image === true }))
         return needle === "" ? source : source.filter(entry => entry.text.toLowerCase().indexOf(needle) >= 0)
     }
 
-    // the mouse wins while it is over a row; otherwise the keyboard cursor drives
-    property int hoverIndex: -1
+    // mouse and keyboard drive the same cursor, so one row is ever focused
     readonly property var previewRow: {
-        const index = hoverIndex >= 0 ? hoverIndex : Math.max(0, cursorIndex)
-        return index >= 0 && index < rows.length ? rows[index] : null
+        const index = Math.max(0, cursorIndex)
+        return index < rows.length ? rows[index] : null
     }
     readonly property string previewText: {
         if (!previewRow) return ""
@@ -56,6 +60,19 @@ PopupCard {
         return secretKind(body) || body
     }
 
+    // the search box can never hold focus (the bar owns it), so typing is routed
+    // through the field's text, which stays the single source of truth
+    function handleKey(event) {
+        if (event.key === Qt.Key_Delete && searchField.text === "" && rows.length > 0) {
+            deleteRow(rows[Math.max(0, cursorIndex)]); return true
+        }
+        if (event.key === Qt.Key_E && (event.modifiers & Qt.ControlModifier)) {
+            previewExpanded = !previewExpanded; return true
+        }
+        if (event.key === Qt.Key_Backspace) { searchField.text = searchField.text.slice(0, -1); return true }
+        if (event.text && event.text.length === 1 && event.text >= " ") { searchField.text += event.text; return true }
+        return defaultKey(event)
+    }
     function refresh() { if (!listProc.running) listProc.running = true }
     function act(args, close) {
         const process = actionComponent.createObject(root)
@@ -76,10 +93,11 @@ PopupCard {
     }
 
     onOpenChanged: {
-        if (!open) { filter = ""; showFavorites = false; return }
+        if (!open) { filter = ""; view = "history"; previewExpanded = false; return }
         refresh()
         searchField.forceActiveFocus()
     }
+
 
     property Process listProc: Process {
         command: ["hyprshell", "cliphist", "--panel-json"]
@@ -148,12 +166,16 @@ PopupCard {
         Row {
             width: parent.width; spacing: Style.xs
             Tab {
-                label: "HISTORY"; selected: !root.showFavorites
-                onPicked: root.showFavorites = false
+                label: "HISTORY"; selected: root.view === "history"
+                onPicked: root.view = "history"
             }
             Tab {
-                label: "FAVOURITES  " + root.favorites.length; selected: root.showFavorites
-                onPicked: root.showFavorites = true
+                label: "IMAGES"; selected: root.view === "images"
+                onPicked: root.view = "images"
+            }
+            Tab {
+                label: "FAVOURITES  " + root.favorites.length; selected: root.view === "favourites"
+                onPicked: root.view = "favourites"
             }
         }
 
@@ -178,7 +200,7 @@ PopupCard {
                 anchors.verticalCenter: parent.verticalCenter
                 height: Style.px(20)
                 leftPadding: 0; rightPadding: 0; topPadding: 0; bottomPadding: 0
-                placeholderText: "Type to filter — Enter copies, Esc closes"
+                placeholderText: "Filter — Enter copy, Del remove, Ctrl+E expand"
                 color: root.shell.foreground
                 font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
                 background: null
@@ -187,6 +209,18 @@ PopupCard {
                 Keys.onUpPressed: root.moveCursor(-1)
                 Keys.onReturnPressed: if (root.rows.length > 0) root.copyRow(root.rows[Math.max(0, root.cursorIndex)])
                 Keys.onEnterPressed: if (root.rows.length > 0) root.copyRow(root.rows[Math.max(0, root.cursorIndex)])
+                // Delete only reaches the list once the filter box is empty, so
+                // backspacing a search never eats an entry by accident
+                Keys.onPressed: event => {
+                    if (event.key === Qt.Key_E && (event.modifiers & Qt.ControlModifier)) {
+                        root.previewExpanded = !root.previewExpanded
+                        event.accepted = true
+                    }
+                }
+                Keys.onDeletePressed: event => {
+                    if (text !== "" || root.rows.length === 0) { event.accepted = false; return }
+                    root.deleteRow(root.rows[Math.max(0, root.cursorIndex)])
+                }
             }
             Text {
                 id: countText
@@ -201,7 +235,7 @@ PopupCard {
         Text {
             visible: root.rows.length === 0
             width: parent.width
-            text: root.filter !== "" ? "No match" : root.showFavorites ? "No favourites yet — pin one from History" : "History is empty"
+            text: root.filter !== "" ? "No match" : root.view === "favourites" ? "No favourites yet — pin one from History" : root.view === "images" ? "No images in history" : "History is empty"
             color: root.shell.alpha(root.shell.foreground, .5)
             font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
         }
@@ -228,19 +262,13 @@ PopupCard {
                 readonly property bool navigable: true
                 property bool cursored: false
                 signal clicked(int button)
-                // the action buttons take the hover off rowArea, so the row's
-                // highlight has to account for them too
-                readonly property bool highlighted: rowArea.containsMouse || cursored
-                    || pinAction.hovered || deleteAction.hovered
 
                 width: ListView.view.width
                 height: Style.px(34)
                 radius: root.shell.rounding
-                color: highlighted
-                    ? root.shell.hoverFill(2)
-                    : "transparent"
-                border.width: highlighted ? 1 : 0
-                border.color: root.shell.hoverEdge(cursored ? 1 : .55)
+                color: cursored ? root.shell.hoverFill(2) : "transparent"
+                border.width: cursored ? 1 : 0
+                border.color: root.shell.hoverEdge(1)
                 Behavior on color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
                 onClicked: root.copyRow(modelData)
 
@@ -248,8 +276,9 @@ PopupCard {
                     id: rowArea
                     anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                     onClicked: root.copyRow(row.modelData)
-                    onEntered: root.hoverIndex = row.index
-                    onExited: if (root.hoverIndex === row.index) root.hoverIndex = -1
+                    // movement, not entry: a list that re-filters or scrolls under a
+                    // still pointer must not steal the cursor from the keyboard
+                    onPositionChanged: root.cursorIndex = row.index
                 }
                 Text {
                     id: rowGlyph
@@ -276,8 +305,22 @@ PopupCard {
                     anchors.right: parent.right; anchors.rightMargin: Style.xs
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 0
-                    opacity: row.highlighted ? 1 : 0
+                    opacity: row.cursored ? 1 : 0
                     Behavior on opacity { NumberAnimation { duration: 90 } }
+                    RowAction {
+                        id: ocrAction
+                        visible: row.isImage
+                        glyph: "\u{f113d}"
+                        hint: "Extract text (OCR)"
+                        onTriggered: root.act(["--scan-image", String(row.modelData.key)], true)
+                    }
+                    RowAction {
+                        id: qrAction
+                        visible: row.isImage
+                        glyph: "\u{f0432}"
+                        hint: "Decode QR code"
+                        onTriggered: root.act(["--scan-qr", String(row.modelData.key)], true)
+                    }
                     RowAction {
                         id: pinAction
                         glyph: row.isFavorite ? "\u{f04ce}" : "\u{f04d2}"
@@ -301,14 +344,24 @@ PopupCard {
             PopupSeparator { shell: root.shell }
             // fixed at five lines: a pane that grew with each entry would resize
             // the list under the cursor as you move down it
+            Flickable {
+                width: parent.width
+                height: lineProbe.implicitHeight * (root.previewExpanded ? 16 : 5)
+                contentHeight: previewText.implicitHeight
+                clip: true; interactive: root.previewExpanded
+                Behavior on height { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
             Text {
-                width: parent.width; height: lineProbe.implicitHeight * 5
+                id: previewText
+                width: parent.width
                 text: root.previewText
-                wrapMode: Text.Wrap; maximumLineCount: 5; elide: Text.ElideRight
+                wrapMode: Text.Wrap
+                maximumLineCount: root.previewExpanded ? 0 : 5
+                elide: root.previewExpanded ? Text.ElideNone : Text.ElideRight
                 color: root.shell.alpha(root.shell.foreground, .75)
                 font.family: root.shell.fontFamily; font.pixelSize: Style.caption
                 font.italic: root.previewRow && root.secretKind(String(root.previewRow.text || "")) !== ""
                 Text { id: lineProbe; visible: false; text: "M"; font: parent.font }
+            }
             }
         }
 

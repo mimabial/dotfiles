@@ -155,8 +155,10 @@ new_gdk_scale="$(monitor_gdk_scale_for "${new_scale}")"
 mode="${width}x${height}@${refresh_rate}"
 position="${pos_x}x${pos_y}"
 fragment_name="20-scale-$(monitor_sanitize_name "${active_monitor}")"
-monitor_set_fragment "${fragment_name}" "$(printf 'hl.env(\"GDK_SCALE\", %s)\nhl.monitor({output = %s, mode = %s, position = %s, scale = %s, transform = %s})' \
-  "$(monitor_lua_quote "${new_gdk_scale}")" \
+# GDK_SCALE is session-global, so it lives in its own fragment: kept per monitor,
+# a disconnected output's fragment would still win over the connected one.
+monitor_set_fragment "10-gdk-scale" "hl.env(\"GDK_SCALE\", $(monitor_lua_quote "${new_gdk_scale}"))"
+monitor_set_fragment "${fragment_name}" "$(printf 'hl.monitor({output = %s, mode = %s, position = %s, scale = %s, transform = %s})' \
   "$(monitor_lua_quote "${active_monitor}")" \
   "$(monitor_lua_quote "${mode}")" \
   "$(monitor_lua_quote "${position}")" \

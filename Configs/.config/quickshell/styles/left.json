@@ -1,171 +1,181 @@
 {
+  "": {
+    "border": 0.0,
+    "outline": null,
+    "fill": null,
+    "hover": { "fill": null, "content": ["hvr_fg", 1.0] }
+  },
+  "eyecare": {
+    "margin": [2.0, 0.0, 0.0, 0.0]
+  },
   "backlight": {
-    "fontSize": 16.0,
-    "margin": [2.0, 2.0, 2.0, 2.0],
-    "outline": ["br", 0.3],
-    "padding": [2.5, 0.5, 2.5, 0.5]
-  },
-  "barlayout": { "margin": [2.0, 2.0, 2.0, 2.0], "outline": ["br", 0.4], "padding": [3.5, 3.0, 3.5, 3.0] },
-  "barlayout-button": { "border": 1.0, "fill": ["bg", 0.1], "fontSize": 14, "padding": [0.5, 1.0, 0.5, 1.0] },
-  "colormode": {
-    "border": 1.0,
-    "fill": ["bg", 0.1],
-    "margin": [2.0, 2.0, 2.0, 2.0],
-    "outline": ["br", 0.4],
-    "padding": [3.0, 2.0, 3.0, 2.0]
-  },
-  "bluetooth-button": {
-    "fill": ["bg", 0.1],
-    "hover": { "bg": null, "border": ["hvr_br", 0.55], "fg": ["hvr_fg", 1.0] },
-    "outline": ["br", 0.3],
     "padding": [2.0, 0.0, 2.0, 0.0]
   },
-  "caffeine": { "fill": ["bg", 0.1], "outline": ["br", 0.3], "padding": [2.5, 1.0, 2.5, 1.0] },
+  "removable": {
+    "padding": [2.0, 0.0, 2.0, 0.0]
+  },
+  "caffeine": {
+    "padding": [2.0, 0.0, 2.0, 0.0]
+  },
   "colorpicker": {
     "border": 1.0,
     "fill": ["bg", 0.1],
     "fontSize": 14,
-    "margin": [2.0, 2.0, 2.0, 2.0],
-    "outline": ["br", 0.4],
-    "padding": [3.0, 1.0, 3.0, 1.0]
+    "outline": ["br", 0.2],
+    "padding": [6.0, 0.0, 6.0, 0.0]
   },
   "cpuinfo": {
     "border": 1.2,
     "edge": { "color": ["c7", 0.4], "right": true, "top": true },
-    "hover": { "bg": null, "fg": ["hvr_fg", 1.0] },
+    "hover": { "fill": null, "content": ["hvr_fg", 1.0] },
     "margin": [4.0, 3.5, 4.0, 3.5]
   },
   "dunst": {
-    "border": 1.0,
-    "fill": ["bg", 0.1],
-    "margin": [3.0, 2.0, 3.0, 2.0],
-    "outline": ["br", 0.3],
-    "padding": [3.0, 1.0, 3.0, 1.0]
+    "padding": [2.0, 0.0, 2.0, 0.0]
   },
   "gpuinfo": {
     "border": 1.2,
     "edge": { "color": ["c7", 0.4], "right": true, "top": true },
-    "hover": { "bg": null, "fg": ["hvr_fg", 1.0] },
+    "hover": { "fill": null, "content": ["hvr_fg", 1.0] },
     "margin": [4.0, 3.5, 4.0, 3.5]
   },
-  "hyprsunset": { "fill": ["bg", 0.1], "outline": ["br", 0.3], "padding": [2.0, 0.0, 2.0, 0.0] },
+  "hyprsunset": {
+    "padding": [2.0, 0.0, 2.0, 2.0]
+  },
   "mediaplayer": {
-    "border": 1.2,
-    "edge": { "color": ["hvr_br", 0.7], "left": true, "radius": 0 },
-    "hover": { "border": ["hvr_br", 0.7], "fg": ["hvr_fg", 1.0] },
-    "padding": [0.0, 0.0, 0.0, 0.0]
+    "edge": null,
+    "margin": [4.0, 4.0, 4.0, 0.0]
   },
   "microphone": {
-    "border": 1.0,
-    "fill": ["bg", 0.1],
-    "fontSize": 16.0,
-    "hover": { "bg": ["hvr_bg", 0.12], "border": ["hvr_br", 0.55], "fg": ["hvr_fg", 1.0] },
-    "margin": [2.0, 2.0, 2.0, 2.0],
-    "outline": ["br", 0.3],
-    "padding": [2.5, 0.25, 2.5, 0.25]
+    "padding": [2.0, 0.0, 2.0, 0.0]
   },
-  "printers": { "border": 0.0, "margin": [0.0, 0.0, 0.0, 0.0], "padding": [0.0, 0.0, 0.0, 0.0] },
-  "removable": { "border": 0.0, "margin": [0.0, 0.0, 0.0, 0.0], "padding": [0.0, 0.0, 0.0, 0.0] },
+  "microphone.muted": {
+    "padding": [2.0, 0.0, 2.0, 0.0]
+  },
   "screenrecord": {
-    "border": 1.0,
-    "fill": ["bg", 0.1],
-    "fontSize": 18.0,
-    "margin": [2.0, 2.0, 2.0, 2.0],
-    "outline": ["br", 0.3],
-    "padding": [0.5, 0.5, 0.5, 0.5]
+    "border": 0.0,
+    "outline": null,
+    "margin": [0.0, 0.0, 0.0, 0.0],
+    "padding": [2.0, 0.0, 2.0, 0.0]
   },
   "screenshot": {
-    "border": 1.0,
-    "fill": ["bg", 0.1],
-    "margin": [2.0, 2.0, 2.0, 2.0],
-    "outline": ["br", 0.3],
-    "padding": [2.5, 1.0, 2.5, 1.0]
+    "border": 0.0,
+    "outline": null,
+    "margin": [0.0, 0.0, 0.0, 0.0],
+    "padding": [2.0, 0.0, 2.0, 0.0]
   },
-  "terminal": { "fontSize": 16.0, "margin": [3.0, 2.0, 3.0, 2.0] },
-  "vpn": {
-    "fill": ["bg", 0.1],
-    "hover": { "bg": null, "border": ["hvr_br", 0.55], "fg": ["hvr_fg", 1.0] },
-    "outline": ["br", 0.3],
-    "padding": [2.0, 0.5, 2.0, 0.5]
-  },
-  "weather": { "hover": { "bg": null, "fg": ["hvr_fg", 1.0] }, "margin": [2.0, 0.0, 2.0, 0.0] },
-  "wifimenu": {
-    "fill": ["bg", 0.1],
-    "hover": { "bg": null, "border": ["hvr_br", 0.55], "fg": ["hvr_fg", 1.0] },
-    "outline": ["br", 0.3],
-    "padding": [1.5, 1.25, 1.5, 1.25]
+  "desktop-group": {
+    "padding": [2.0, 2.0, 2.0, 2.0]
   },
   "window-layout": {
-    "border": 1.0,
+    "border": 0.0,
     "fill": ["bg", 0.1],
-    "hover": { "bg": null, "border": null, "fg": ["hvr_fg", 1.0] },
+    "hover": { "fill": null, "outline": null, "content": ["hvr_fg", 1.0] },
     "padding": [0.0, 2.0, 0.0, 2.0]
-  },
-  "workflows": {
-    "border": 1.0,
-    "fill": ["bg", 0.1],
-    "fontSize": 16.0,
-    "hover": { "bg": null, "border": null, "fg": ["hvr_fg", 1.0] },
-    "margin": [0.0, 0.0, 0.0, 0.0],
-    "padding": [0.0, 1.0, 0.0, 1.0]
   },
   "disk": {
     "border": 1.2,
     "edge": { "color": ["c7", 0.4], "right": true, "top": true },
-    "hover": { "bg": null, "fg": ["hvr_fg", 1.0] },
+    "hover": { "fill": null, "content": ["hvr_fg", 1.0] },
     "margin": [4.0, 3.5, 4.0, 3.5]
   },
   "info": { "padding": [0.0, 0.0, 0.0, 0.0] },
   "memory": {
     "border": 1.2,
     "edge": { "color": ["c7", 0.4], "right": true, "top": true },
-    "hover": { "bg": null, "fg": ["hvr_fg", 1.0] },
+    "hover": { "fill": null, "content": ["hvr_fg", 1.0] },
     "margin": [4.0, 3.5, 4.0, 3.5]
   },
-  "privacy": { "margin": [2.0, 2.0, 2.0, 2.0], "outline": ["c12", 0.3], "padding": [2.0, 0.0, 2.0, 0.0] },
-  "pulseaudio": {
-    "fill": ["bg", 0.1],
-    "margin": [2.0, 2.0, 2.0, 2.0],
-    "outline": ["br", 0.3],
+  "privacy": {
     "padding": [2.0, 0.0, 2.0, 0.0]
   },
-  "screen": { "border": 0.0, "margin": [0.0, 0.0, 0.0, 0.0], "outline": null },
-  "wallpaper": {
-    "border": 1.0,
-    "fill": ["bg", 0.1],
-    "margin": [2.0, 2.0, 2.0, 2.0],
-    "outline": ["br", 0.4],
-    "padding": [3.0, 1.5, 3.0, 1.5]
+  "volumecontrol": {
+    "margin": [0.0, 0.0, 2.0, 0.0]
   },
-  "#workspaces button.active": { "hover": { "bg": ["hvr_bg", 0.2], "fg": ["hvr_fg", 1.0] } },
-  "clock.date": {
-    "border": 2.0,
-    "edge": { "bottom": true, "color": ["c10", 0.9], "right": true, "top": true },
+  "pulseaudio": {
+    "fontSize": 18.0,
+    "padding": [2.0, 0.0, 2.0, 0.0]
+  },
+  "pulseaudio.headphone": {
+    "padding": [2.0, 0.0, 2.0, 0.0]
+  },
+  "screen": {
+    "margin": [2.0, 2.0, 2.0, 2.0]
+  },
+  "#workspaces button.active": {
+    "padding": [4.0, 0.0, 4.0, 0.0],
+    "content": ["act_br", 1.0],
+    "fill": null
+  },
+  "datetime": {
+    "margin": [4.0, 0.0, 4.0, 0.0]
+  },
+  "clock.time": {
     "fontWeight": 700,
-    "hover": { "bg": null, "fg": ["hvr_fg", 1.0] },
-    "justify": "left",
-    "margin": [4.0, 0.0, 4.0, 0.0],
-    "outline": null,
-    "padding": [0.0, 1.0, 0.0, 1.0]
+    "margin": [4.0, 10.0, 2.0, 10.0]
   },
-  "bluetooth-button.connected": {
-    "border": 0.0,
-    "fill": null,
-    "margin": [0.0, 0.0, 0.0, 0.0],
-    "outline": null,
-    "padding": [0.0, 0.0, 0.0, 0.0]
+  "clock.date": {
+    "fontWeight": 700,
+    "fontSize": 12.0,
+    "outline": ["c10", 0.9],
+    "hover": { "fill": null, "content": ["hvr_fg", 1.0] },
+    "justify": "center",
+    "padding": [0.0, 2.0, 2.0, 2.0]
   },
-  "bluetooth-button.status": { "padding": [0.0, 0.0, 0.0, 0.0] },
-  "github.notifications": { "margin": [0.0, 1.0, 0.0, 1.0] },
-  "microphone.muted": { "padding": [2.5, 1.0, 2.5, 1.0] },
+  "terminal": {
+    "outline": ["alt_br", 0.3],
+    "padding": [2.0, 0.0, 2.0, 0.0],
+    "margin": [2.0, 2.0, 4.0, 2.0]
+  },
+  "wifi": {
+    "margin": [0.0, 0.0, 2.0, 0.0]
+  },
+  "wifimenu": {
+    "padding": [2.0, 0.0, 2.0, 0.0]
+  },
+  "vpn": {
+    "padding": [2.0, 0.0, 2.0, 0.0]
+  },
+  "bluetooth": {
+    "margin": [2.0, 0.0, 0.0, 0.0]
+  },
+  "bluetooth-button": {
+    "margin": [4.0, 2.0, 2.0, 2.0],
+    "padding": [2.0, 0.0, 2.0, 0.0]
+  },
   "network.speed": {
-    "edge": { "color": ["warning", 0.6], "right": true, "top": true },
-    "hover": { "bg": null, "border": null, "fg": ["hvr_fg", 1.0] },
-    "margin": [2.0, 2.0, 2.0, 2.0],
-    "padding": [0.0, 1.0, 0.0, 1.0]
+    "padding": [4.0, 6.0, 0.0, 0.0],
+    "edge": { "color": ["warning", 0.6], "right": true, "top": true }
   },
-  "weather.minmax": { "margin": [2.0, 2.0, 2.0, 2.0] },
-  "power": { "border": 1.5, "fill": ["alt_bg", 0.1], "outline": ["alt_br", 0.6] },
-  "powermenu": { "margin": [0.0, 0.0, 0.0, 0.0], "padding": [0.0, 0.0, 0.0, 0.0] },
-  "power-profiles-daemon": { "fill": ["bg", 0.1], "outline": ["br", 0.6] }
+  "weather": {
+    "fontSize": 12.0,
+    "iconSize": 14.0
+  },
+  "weather.minmax": {
+    "border": 1.0,
+    "outline": ["c4", 0.6],
+    "margin": [2.0, 4.0, 2.0, 4.0],
+    "padding": [0.0, 2.0, 0.0, -8.0]
+  },
+  "wallpaper": {
+    "margin": [4.0, 2.0, 4.0, 2.0]
+  },
+  "power": {
+    "margin": [4.0, 2.0, 4.0, 2.0],
+    "border": 1.0,
+    "outline": ["alt_br", 0.3]
+  },
+  "powermenu": { "fill": ["bg", 0.1], "outline": ["br", 0.2] },
+  "power-profiles-daemon": { "outline": null, "hover": { "outline": null } },
+  "notification": { "border": 0.0, "margin": [0.0, 0.0, 0.0, 0.0], "outline": null },
+  "updates": {
+    "fontSize": 14.0,
+    "padding": [2.0, 0.0, 2.0, 0.0]
+  },
+  "updates-agents": {
+    "border": 1.0,
+    "outline": ["br", 0.2],
+    "margin": [2.0, 1.0, 2.0, 1.0],
+    "padding": [2.0, 0.0, 2.0, 0.0]
+  }
 }

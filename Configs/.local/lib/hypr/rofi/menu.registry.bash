@@ -10,7 +10,9 @@ menu_register_all() {
   menu_add_item main "󱡴  Search All" action search_all 0
   menu_add_item main "  Tools" submenu dev_tools
   menu_add_item main "󰀻  Apps" action main_apps 0
+  menu_add_item main "󰃀  Bookmarks" action main_bookmarks
   menu_add_item main "  Gaming" submenu gaming
+  menu_add_item main "󰝚  Media" submenu media
   menu_add_item main "  Learn" submenu learn
   menu_add_item main "󱊨  Trigger" submenu trigger
   menu_add_item main "󰢵  Style" submenu style
@@ -18,11 +20,13 @@ menu_register_all() {
   menu_add_item main "󰉉  Install" submenu install
   menu_add_item main "󰭌  Remove" submenu remove
   menu_add_item main "  Maintenance" submenu update
+  menu_add_item main "  About" action main_about
   menu_add_item main "  System" submenu system
 
   menu_register_domain_core
   menu_register_domain_gaming
   menu_register_domain_trigger
+  menu_register_domain_media
   menu_register_domain_style
   menu_register_domain_setup
   menu_register_domain_install
@@ -52,6 +56,8 @@ menu_open_argument() {
         *tools*) menu_show_menu dev_tools ;;
         *apps*) menu_run_action main_apps ;;
         *gaming* | *game*) menu_show_menu gaming ;;
+        *media* | *music*) menu_show_menu media ;;
+        *bookmark*) menu_run_action main_bookmarks ;;
         *learn*) menu_show_menu learn ;;
         *trigger*) menu_show_menu trigger ;;
         *style*) menu_show_menu style ;;
@@ -62,6 +68,7 @@ menu_open_argument() {
         *install*) menu_show_menu install ;;
         *remove*) menu_show_menu remove ;;
         *update*) menu_show_menu update ;;
+        *about*) menu_run_action main_about ;;
         *system*) menu_show_menu system ;;
         *) menu_show_menu main ;;
       esac

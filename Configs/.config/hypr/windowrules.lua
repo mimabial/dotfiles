@@ -83,7 +83,7 @@ hl.layer_rule({["name"] = "lua:windowrules:109", ["match"] = {["namespace"] = "l
 hl.layer_rule({["name"] = "quickshell-bar-blur", ["match"] = {["namespace"] = "hypr-shell-bar"}, ["blur"] = true})
 hl.window_rule({["name"] = "lua:windowrules:112", ["match"] = {["class"] = "^(org\\.tui\\..*|org\\.font\\..*|lazygit|lazydocker)$"}, ["float"] = true})
 hl.window_rule({["name"] = "lua:windowrules:113", ["match"] = {["class"] = "^(org\\.tui\\..*|org\\.font\\..*|lazygit|lazydocker)$"}, ["center"] = true})
-hl.window_rule({["name"] = "mullvad-size", ["match"] = {["class"] = "^(Mullvad VPN)$"}, ["size"] = "320 568"})
+hl.window_rule({["name"] = "mullvad-size", ["match"] = {["class"] = "^(mullvad-vpn)$"}, ["size"] = "320 568"})
 
 local open_profiles = {
   ["org.gnome.SimpleScan"] = "standard",
@@ -98,7 +98,7 @@ hl.on("window.open", function(win)
   hl.exec_cmd("hyprshell window/apply-profile " .. profile .. " " .. win.address .. " " .. tostring(mon.id))
 end)
 
-local mullvad_workspace_rule = hl.window_rule({["name"] = "mullvad-startup-workspace", ["match"] = {["class"] = "^(Mullvad VPN)$"}, ["workspace"] = "10 silent"})
+local mullvad_workspace_rule = hl.window_rule({["name"] = "mullvad-startup-workspace", ["match"] = {["class"] = "^(mullvad-vpn)$"}, ["workspace"] = "10 silent"})
 mullvad_workspace_rule:set_enabled(false)
 
 local mullvad_startup_pending = false
@@ -117,7 +117,7 @@ hl.on("hyprland.start", function()
 end)
 
 hl.on("window.open", function(win)
-  if not win or win.class ~= "Mullvad VPN" then return end
+  if not win or win.class ~= "mullvad-vpn" then return end
   if not mullvad_startup_pending then return end
   end_mullvad_startup()
   local mon = win.monitor

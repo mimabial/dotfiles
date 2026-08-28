@@ -26,7 +26,7 @@ PanelWindow {
     margins.left: onLeft ? (active ? 0 : -implicitWidth) : 0
     margins.right: onLeft ? 0 : (active ? 0 : -implicitWidth)
     // composition is data: reordering the bar is editing layouts/<name>.json
-    readonly property var registry: ({"menu": mod_menu, "taskbar": mod_taskbar, "tray": mod_tray, "updates": mod_updates, "gpu": mod_gpu, "cpu": mod_cpu, "memory": mod_memory, "disk": mod_disk, "fan": mod_fan, "minmax": mod_minmax, "dmark": mod_dmark, "wifi": mod_wifi, "speed": mod_speed, "bluetooth": mod_bluetooth, "vpn": mod_vpn, "printers": mod_printers, "disks": mod_disks, "connectivity": mod_connectivity, "barlayout": mod_barlayout, "colormode": mod_colormode, "wallpaper": mod_wallpaper, "datetime": mod_datetime, "date": mod_date, "eyecare": mod_eyecare, "forecast": mod_forecast, "info": mod_info, "info-drawer": mod_info_drawer, "mark": mod_mark, "mediaplayer": mod_mediaplayer, "notification": mod_notification, "dunst": mod_dunst, "power": mod_power, "privacybutton": mod_privacybutton, "screen": mod_screen, "screenshot": mod_screenshot, "screenrecord": mod_screenrecord, "terminal": mod_terminal, "status": mod_status, "submap": mod_submap, "tui-drawer": mod_tui_drawer, "workspaces": mod_workspaces})
+    readonly property var registry: ({"menu": mod_menu, "taskbar": mod_taskbar, "tray": mod_tray, "updates": mod_updates, "agents": mod_agents, "gpu": mod_gpu, "cpu": mod_cpu, "memory": mod_memory, "disk": mod_disk, "fan": mod_fan, "minmax": mod_minmax, "dmark": mod_dmark, "wifi": mod_wifi, "speed": mod_speed, "bluetooth": mod_bluetooth, "vpn": mod_vpn, "printers": mod_printers, "disks": mod_disks, "connectivity": mod_connectivity, "barlayout": mod_barlayout, "colormode": mod_colormode, "wallpaper": mod_wallpaper, "converter": mod_converter, "sudoku": mod_sudoku, "datetime": mod_datetime, "date": mod_date, "eyecare": mod_eyecare, "forecast": mod_forecast, "info": mod_info, "info-drawer": mod_info_drawer, "mark": mod_mark, "mediaplayer": mod_mediaplayer, "notification": mod_notification, "dunst": mod_dunst, "power": mod_power, "privacybutton": mod_privacybutton, "screen": mod_screen, "screenshot": mod_screenshot, "screenrecord": mod_screenrecord, "terminal": mod_terminal, "audio": mod_audio, "submap": mod_submap, "workspaces": mod_workspaces})
     readonly property var layout: shell.barLayout
     readonly property var section: shell.style.box(".modules-left")
     implicitWidth: mainColumn.implicitWidth + section.margin[1] + section.margin[3] + section.padding[1] + section.padding[3]
@@ -37,13 +37,18 @@ PanelWindow {
     readonly property bool popupOpen: shell.popupName !== "" && popupsAllowed
     property bool exclusivePhase: false
     WlrLayershell.keyboardFocus: !popupOpen ? WlrKeyboardFocus.None
-        : exclusivePhase ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
+        : exclusivePhase || shell.popupTyping ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
     onPopupOpenChanged: {
         if (!popupOpen) return
         exclusivePhase = true
         shell.focusPriming = true
         focusPrime.restart()
         focusSettle.restart()
+    }
+    // the compositor focuses this surface, not the popup's own window
+    Item {
+        anchors.fill: parent; focus: true
+        Keys.onPressed: event => { if (root.shell.popupCard) event.accepted = root.shell.popupCard.handleKey(event) }
     }
     Timer { id: focusPrime; interval: 150; onTriggered: root.exclusivePhase = false }
     // the grab settles a little after the mode drops back
@@ -52,44 +57,46 @@ PanelWindow {
     Component { id: mod_menu; StartButton { shell: root.shell; popupEnabled: root.popupsAllowed; Layout.fillWidth: true } }
     Component { id: mod_taskbar; WindowList { shell: root.shell; Layout.fillWidth: true } }
     Component { id: mod_tray; Tray { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
-    Component { id: mod_notification; NotificationModule { shell: root.shell; popupsAllowed: root.popupsAllowed; reverse: root.shell.layoutName === "main"; Layout.fillWidth: true } }
-    Component { id: mod_dunst; DunstModule { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
-    Component { id: mod_screen; ScreenModule { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
-    Component { id: mod_screenshot; ScreenshotModule { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
-    Component { id: mod_screenrecord; ScreenRecordModule { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
-    Component { id: mod_terminal; TerminalModule { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
-    Component { id: mod_barlayout; BarLayoutModule { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
-    Component { id: mod_colormode; ColorModeModule { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
-    Component { id: mod_wallpaper; WallpaperModule { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
-    Component { id: mod_eyecare; EyecareModule { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
-    Component { id: mod_status; Status { shell: root.shell; reverse: true; showNetwork: false; showPower: false; showLogout: false; popupsEnabled: root.popupsAllowed; Layout.fillWidth: true } }
+    Component { id: mod_notification; NotificationGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; reverse: root.shell.layoutName === "main"; Layout.fillWidth: true } }
+    Component { id: mod_dunst; DunstButton { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
+    Component { id: mod_screen; ScreenGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
+    Component { id: mod_screenshot; ScreenshotButton { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
+    Component { id: mod_screenrecord; ScreenRecordButton { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
+    Component { id: mod_terminal; TerminalButton { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
+    Component { id: mod_converter; ConverterButton { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
+    Component { id: mod_sudoku; SudokuButton { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
+    Component { id: mod_barlayout; BarLayoutGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
+    Component { id: mod_colormode; ColorModeGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
+    Component { id: mod_wallpaper; WallpaperGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
+    Component { id: mod_eyecare; EyecareGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
+    Component { id: mod_audio; AudioGroup { shell: root.shell; reverse: true; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
     Component { id: mod_privacybutton; PrivacyButton { shell: root.shell; Layout.fillWidth: true } }
-    Component { id: mod_mediaplayer; MediaplayerModule { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
-    Component { id: mod_datetime; DatetimeModule { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
-    Component { id: mod_date; BarButton { id: dateButton; shell: root.shell; css: "clock.date"; fontWeight: Font.Bold; text: Qt.formatDate(root.shell.clock.date, root.shell.store.mainDateNumeric ? "dd|\nMM|\nyy " : "ddd\ndd\nMMM"); onClicked: button => button === Qt.RightButton ? root.shell.store.mainDateNumeric = !root.shell.store.mainDateNumeric : root.shell.togglePopup("clock"); Layout.fillWidth: true; ClockPopup { anchorItem: dateButton; shell: dateButton.shell; popupEnabled: root.popupsAllowed } } }
-    Component { id: mod_tui_drawer; TuiDrawerModule { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
+    Component { id: mod_mediaplayer; MediaplayerButton { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
+    Component { id: mod_datetime; DatetimeGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
+    Component { id: mod_date; BarButton { id: dateButton; property string dateFormat: "ddd\ndd\nMMM"; property string dateFormatAlt: "dd|\nMM|\nyy "; shell: root.shell; css: "clock.date"; text: Qt.formatDate(root.shell.clock.date, root.shell.store.mainDateNumeric ? dateButton.dateFormatAlt : dateButton.dateFormat); onClicked: button => button === Qt.RightButton ? root.shell.store.mainDateNumeric = !root.shell.store.mainDateNumeric : root.shell.togglePopup("clock"); Layout.fillWidth: true; ClockPopup { anchorItem: dateButton; shell: dateButton.shell; popupEnabled: root.popupsAllowed } } }
     Component { id: mod_workspaces; Workspaces { shell: root.shell; vertical: true; activeOnly: true; popupEnabled: root.popupsAllowed; Layout.fillWidth: true } }
-    Component { id: mod_submap; SubmapButton { shell: root.shell; command: ["hyprshell", "keybinds/submap-status"]; fontWeight: Font.Bold; Layout.fillWidth: true } }
-    Component { id: mod_forecast; ForecastModule { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
-    Component { id: mod_mark; MarkModule { shell: root.shell; Layout.fillWidth: true } }
-    Component { id: mod_info; InfoModule { shell: root.shell; popupsAllowed: root.popupsAllowed; single: root.shell.layoutName === "main"; Layout.fillWidth: true } }
-    Component { id: mod_info_drawer; InfoDrawerModule { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
-    Component { id: mod_updates; UpdatesModule { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
-    Component { id: mod_gpu; GpuModule { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
-    Component { id: mod_cpu; CpuModule { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
-    Component { id: mod_memory; MemoryModule { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
-    Component { id: mod_disk; DiskModule { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
-    Component { id: mod_fan; FanModule { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
-    Component { id: mod_minmax; MinmaxModule { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
-    Component { id: mod_dmark; DmarkModule { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
-    Component { id: mod_wifi; WifiModule { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
-    Component { id: mod_bluetooth; BluetoothModule { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
-    Component { id: mod_speed; SpeedModule { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
-    Component { id: mod_vpn; VpnModule { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
-    Component { id: mod_printers; PrintersModule { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
-    Component { id: mod_disks; DisksModule { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
-    Component { id: mod_connectivity; ConnectivityModule { shell: root.shell; popupsAllowed: root.popupsAllowed; pairDrawers: root.shell.layoutName === "main"; Layout.fillWidth: true } }
-    Component { id: mod_power; PowerModule { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
+    Component { id: mod_submap; SubmapButton { shell: root.shell; command: ["hyprshell", "keybinds/submap-status"]; Layout.fillWidth: true } }
+    Component { id: mod_forecast; ForecastGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
+    Component { id: mod_mark; MarkGroup { shell: root.shell; Layout.fillWidth: true } }
+    Component { id: mod_info; InfoGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; single: root.shell.layoutName === "main"; Layout.fillWidth: true } }
+    Component { id: mod_info_drawer; InfoDrawerGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
+    Component { id: mod_updates; UpdatesGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
+    Component { id: mod_agents; UpdatesGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; agentsFirst: true; Layout.fillWidth: true } }
+    Component { id: mod_gpu; GpuReadout { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
+    Component { id: mod_cpu; CpuReadout { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
+    Component { id: mod_memory; MemoryReadout { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
+    Component { id: mod_disk; DiskReadout { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
+    Component { id: mod_fan; FanReadout { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
+    Component { id: mod_minmax; MinmaxButton { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
+    Component { id: mod_dmark; DmarkButton { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
+    Component { id: mod_wifi; WifiGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
+    Component { id: mod_bluetooth; BluetoothGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
+    Component { id: mod_speed; SpeedButton { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
+    Component { id: mod_vpn; VpnButton { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
+    Component { id: mod_printers; PrintersButton { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
+    Component { id: mod_disks; DisksGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
+    Component { id: mod_connectivity; ConnectivityGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
+    Component { id: mod_power; PowerGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
     ColumnLayout {
         id: mainColumn
         anchors.fill: parent

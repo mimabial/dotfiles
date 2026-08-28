@@ -16,6 +16,7 @@ Rectangle {
     required property var shell
     required property var row
     property var value: null
+    property var options: []
     property bool overridden: false
     property bool selected: false
 
@@ -23,9 +24,22 @@ Rectangle {
     signal released(real value)
     signal toggled
     signal cycled(int direction)
+    signal chosen(var value)
 
     readonly property bool isSlider: row.type === "int" || row.type === "float"
     readonly property bool isToggle: row.type === "bool"
+    readonly property bool isChoice: !isSlider && !isToggle
+    readonly property var choiceModel: {
+        var values = root.options || []
+        var out = []
+        for (var i = 0; i < values.length; i++) out.push({label: String(values[i]), value: values[i]})
+        return out
+    }
+    readonly property int choiceIndex: {
+        for (var i = 0; i < choiceModel.length; i++)
+            if (String(choiceModel[i].value) === String(root.value)) return i
+        return -1
+    }
 
     readonly property string valueText: {
         if (value === null || value === undefined) return "—"
@@ -36,8 +50,6 @@ Rectangle {
     implicitHeight: Style.popupRowHeight + Style.sm
     radius: shell.rounding
     color: selected ? shell.hoverFill(1) : "transparent"
-    border.width: selected ? 1 : 0
-    border.color: selected ? shell.hoverEdge(1) : "transparent"
     Behavior on color { ColorAnimation { duration: Style.hoverDuration } }
 
     // The panel's core question is "which of these have I changed", so an
@@ -64,11 +76,12 @@ Rectangle {
 
         Text {
             text: root.row.label
-            color: root.shell.foreground
+            color: root.selected ? root.shell.role("act_br", root.shell.accent) : root.shell.foreground
             font.family: root.shell.fontFamily
             font.pixelSize: Style.body
             elide: Text.ElideRight
             Layout.preferredWidth: Math.round(layout.width * 0.42)
+            Layout.fillWidth: root.isToggle
         }
 
         PopupSlider {
@@ -93,59 +106,34 @@ Rectangle {
             shell: root.shell
             checked: root.value === true
             onToggled: root.toggled()
-            Layout.alignment: Qt.AlignVCenter
+            Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
         }
 
-        // Enum and pipeline rows share a presentation: the current value with
-        // arrows, cycled by the same keys that adjust a slider.
-        Item {
-            visible: !root.isSlider && !root.isToggle
+        PopupSelect {
+            id: chooser
+            visible: root.isChoice
+            shell: root.shell
+            keyboardNavigation: false
             implicitHeight: Style.controlHeight
+            choices: root.choiceModel
+            selectedIndex: root.choiceIndex
+            onActivated: index => {
+                if (index >= 0 && index < root.choiceModel.length)
+                    root.chosen(root.choiceModel[index].value)
+            }
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignVCenter
-
-            Text {
-                id: prev
-                anchors.left: parent.left
-                anchors.verticalCenter: parent.verticalCenter
-                text: "‹"
-                color: root.shell.alpha(root.shell.foreground, .55)
-                font.family: root.shell.fontFamily
-                font.pixelSize: Style.body
-                MouseArea {
-                    anchors.fill: parent
-                    anchors.margins: -Style.sm
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: root.cycled(-1)
-                }
-            }
-            Text {
-                anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
-                text: "›"
-                color: root.shell.alpha(root.shell.foreground, .55)
-                font.family: root.shell.fontFamily
-                font.pixelSize: Style.body
-                MouseArea {
-                    anchors.fill: parent
-                    anchors.margins: -Style.sm
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: root.cycled(1)
-                }
-            }
         }
 
-        // Numbers need a narrow column; enum and pipeline values are words and
-        // need room, or "optimized" reads as "…imized".
         Text {
-            visible: !root.isToggle
+            visible: root.isSlider
             text: root.valueText
             color: root.shell.alpha(root.shell.foreground, .65)
             font.family: root.shell.fontFamily
             font.pixelSize: Style.bodySmall
             horizontalAlignment: Text.AlignRight
             elide: Text.ElideRight
-            Layout.preferredWidth: Style.px(root.isSlider ? 52 : 104)
+            Layout.preferredWidth: Style.px(52)
         }
     }
 

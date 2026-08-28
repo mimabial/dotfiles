@@ -9,6 +9,7 @@
 -- Output is one tab-separated record per line:
 --
 --   k  <key:path>  <type>  <value>                     a config setting
+--   v  <name>  <type>  <value>                         a theme variable
 --   a  <leaf>  <enabled>  <speed>  <bezier>  <style>   an animation leaf
 --
 -- Nothing is applied: every stub only records. Exits non-zero with the Lua
@@ -70,7 +71,9 @@ local stubs = {
         load = function(path) run_file(path, true) end,
     },
     vars = {
-        set = noop,
+        set = function(name, value)
+            emit("v", name, type(value), value)
+        end,
         get = function(_, fallback) return fallback or "" end,
     },
 }

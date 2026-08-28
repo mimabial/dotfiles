@@ -1,91 +1,119 @@
 {
   "": { "fontSize": 14.0 },
-  "#taskbar button": {
-    "border": 2.0,
-    "edge": { "bottom": true, "color": ["br", 0.0] },
+  "hyprmenu": {
+    "fontSize": 16.0,
     "fill": null,
-    "hover": { "bg": null, "border": ["hvr_br", 0.2] },
-    "margin": [2.0, 2.0, 2.0, 2.0],
+    "fontWeight": 700,
+    "hover": { "fill": ["hvr_bg", 0.2], "outline": null, "content": ["hvr_fg", 1.0] },
+    "margin": [8.0, 4.0, 8.0, 4.0],
     "outline": null,
-    "padding": [4.0, 4.0, 4.0, 4.0]
+    "padding": [0.0, 8.0, 0.0, 8.0]
   },
-  "#workspaces button": {
-    "fg": ["fg", 0.3],
-    "fontSize": 12.0,
-    "margin": [0.0, 4.0, 0.0, 4.0],
-    "padding": [1.0, 0.0, 1.0, 0.0]
-  },
-  "cpuinfo": {
-    "fontWeight": 400,
-    "hover": { "bg": null, "fg": ["hvr_fg", 1.0] },
+
+  "taskbar": { "margin": [0.0, 0.0, 0.0, 0.0], "padding": [0.0, 4.0, 8.0, 4.0], "iconSize": 22.0 },
+  "#taskbar button": {
+    "fill": null,
+    "border": 3.0,
+    "edge": { "bottom": true, "color": ["br", 0.0] },
+    "hover": { "fill": null, "outline": ["hvr_br", 0.2] },
     "margin": [0.0, 2.0, 0.0, 2.0],
+    "outline": null,
+    "padding": [0.0, 4.0, 6.0, 4.0]
+  },
+  "#taskbar button.active": {
+    "fill": null,
+    "edge": { "bottom": true, "color": ["alt_br", 0.3] },
+    "margin": [0.0, 2.0, 0.0, 2.0],
+    "padding": [0.0, 4.0, 6.0, 4.0],
+    "outline": null
+  },
+
+  "workspaces": { "margin": [0.0, 0.0, 0.0, 0.0] },
+  "#workspaces button": {
+    "content": ["fg", 0.3],
+    "fontSize": 12.0,
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "#workspaces button.active": {
+    "content": ["act_br", 0.6],
+    "outline": null,
+    "fontSize": 14.0,
+    "hover": { "fill": null, "content": ["hvr_fg", 1.0] },
+    "margin": [0.0, 2.0, 0.0, 2.0],
+    "padding": [0.0, 6.0, 0.0, 6.0]
+  },
+
+  "weather": {
+    "fontSize": 12.0,
+    "margin": [0.0, 8.0, 0.0, 8.0],
+    "padding": [0.0, 0.0, 0.0, 0.0],
+    "hover": { "fill": null, "content": ["hvr_fg", 1.0] }
+  },
+  "weather.minmax-only-alt": {
+    "fontSize": 12.0,
+    "justify": "left",
+    "hover": { "fill": null, "content": ["hvr_fg"] },
+    "margin": [0.0, 8.0, 0.0, 8.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "weather.sunrise": {
+    "fontSize": 12.0,
+    "hover": { "fill": null, "content": ["hvr_fg"] },
+    "margin": [0.0, 8.0, 0.0, 8.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+
+  "tray-group": {
+    "margin": [0.0, 0.0, 0.0, 0.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "tray": {
+    "iconSize": 18.0,
+    "iconSpacing": 6.0,
+    "border": 0.0,
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+
+  "cpuinfo": {
+    "fontSize": 12.0,
+    "fontWeight": 400,
+    "hover": { "fill": null, "content": ["hvr_fg", 1.0] },
+    "margin": [0.0, 10.0, 0.0, 2.0],
     "padding": [0.0, 5.0, 0.0, 5.0]
   },
   "gpuinfo": {
+    "fontSize": 12.0,
     "fontWeight": 400,
-    "hover": { "bg": null, "fg": ["hvr_fg", 1.0] },
+    "hover": { "fill": null, "content": ["hvr_fg", 1.0] },
     "margin": [0.0, 2.0, 0.0, 2.0],
     "padding": [0.0, 5.0, 0.0, 5.0]
   },
-  "hyprmenu": {
-    "fill": ["act_bg", 0.1],
-    "fontWeight": 700,
-    "hover": { "bg": ["hvr_bg", 0.2], "border": null, "fg": ["hvr_fg", 1.0] },
-    "margin": [6.0, 4.0, 6.0, 4.0],
-    "outline": null,
-    "padding": [0.0, 9.0, 0.0, 9.0]
-  },
-  "language": {
-    "fontWeight": 700,
-    "hover": { "bg": null, "fg": ["hvr_fg", 1.0] },
-    "margin": [0.0, 2.0, 0.0, 2.0],
-    "padding": [0.0, 2.0, 0.0, 2.0]
-  },
-  "mediaplayer": {
-    "edge": { "color": ["hvr_br", 0.7], "left": true },
-    "fontSize": 14.0,
-    "margin": [8.0, 3.0, 8.0, 3.0]
-  },
-  "weather": { "hover": { "bg": null, "fg": ["hvr_fg", 1.0] } },
   "disk": {
+    "fontSize": 12.0,
     "fontWeight": 400,
-    "hover": { "bg": null, "fg": ["hvr_fg", 1.0] },
+    "hover": { "fill": null, "content": ["hvr_fg", 1.0] },
     "padding": [0.0, 4.0, 0.0, 4.0]
   },
   "memory": {
+    "fontSize": 12.0,
     "fontWeight": 400,
-    "hover": { "bg": null, "fg": ["hvr_fg", 1.0] },
+    "hover": { "fill": null, "content": ["hvr_fg", 1.0] },
     "padding": [0.0, 5.0, 0.0, 5.0]
   },
-  "taskbar": { "fontSize": 14.0, "margin": [0.0, 4.0, 0.0, 4.0] },
-  "tray": { "border": 0.0, "margin": [0.0, 6.0, 0.0, 6.0], "padding": [0.0, 0.0, 0.0, 0.0] },
-  "workspaces": { "margin": [0.0, 0.0, 0.0, 0.0] },
-  "#taskbar button.active": {
-    "edge": { "bottom": true, "color": ["alt_br", 0.3] },
-    "fill": null,
-    "fontSize": 14.0,
-    "outline": null
-  },
-  "#workspaces button.active": {
-    "fg": ["act_br", 0.6],
-    "fontSize": 14.0,
-    "hover": { "bg": null, "fg": ["hvr_fg", 1.0] },
-    "margin": [0.0, 2.0, 0.0, 2.0],
-    "padding": [1.0, 6.0, 1.0, 6.0]
+
+  "language": {
+    "fontSize": 12.0,
+    "hover": { "fill": null, "content": ["hvr_fg", 1.0] },
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
   },
   "clock.datetime-winbar": {
     "fontSize": 10.0,
     "fontWeight": 400,
-    "hover": { "bg": null, "fg": ["hvr_fg", 1.0] },
-    "margin": [2.0, 4.0, 2.0, 4.0],
-    "padding": [0.0, 6.0, 0.0, 6.0]
-  },
-  "network.speed": { "hover": { "bg": null, "border": null, "fg": ["hvr_fg", 1.0] } },
-  "weather.minmax-only-alt": {
-    "fg": ["c4", 1.0],
-    "hover": { "bg": null, "fg": ["hvr_fg"] },
-    "margin": [0.0, 2.0, 0.0, 2.0],
-    "padding": [0.0, 6.0, 0.0, 6.0]
-  },
-  "weather.sunrise": { "fg": ["c2", 1.0], "hover": { "bg": null, "fg": ["hvr_fg"] }, "margin": [0.0, 2.0, 0.0, 2.0] }
+    "hover": { "fill": null, "content": ["hvr_fg", 1.0] },
+    "margin": [0.0, 10.0, 0.0, 10.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  }
 }

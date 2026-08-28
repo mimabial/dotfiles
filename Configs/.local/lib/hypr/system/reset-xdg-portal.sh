@@ -9,28 +9,23 @@ source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
 hypr_runtime_require system || exit 1
 
 hypr_help_guard "Usage: hyprshell system/reset-xdg-portal
-Restart the xdg-desktop-portal services (gtk, hyprland, base)." "$@"
+Drop the running xdg-desktop-portal instances (gtk, hyprland, base) so the next
+portal request re-activates them against the current settings." "$@"
 
-if [[ -d /run/current-system/sw/libexec ]]; then
-  lib_dir=/run/current-system/sw/libexec
-else
-  lib_dir=/usr/lib
-fi
+# Every portal ships a D-Bus service file with SystemdService=, so the reset is
+# a stop, not a start: the next portal request activates a fresh instance. The
+# previous version started them by hand when the unit restart failed, which left
+# duplicate instances owning the bus names and the packaged units wedged in
+# start-limit-hit behind them ("Failed to request bus name (File exists)").
+reset_portal() {
+  local name="$1"
 
-restart_portal_service() {
-  local service_name="$1"
-  local exec_name="$2"
-
-  if hypr_svc_user restart "${service_name}"; then
-    return 0
-  fi
-
-  local app2unit="${HYPR_LIB_DIR}/system/app2unit.sh"
-  if [[ -x "${app2unit}" ]]; then
-    "${app2unit}" -t service "${lib_dir}/${exec_name}" >/dev/null 2>&1 || true
-  fi
+  hypr_svc_user stop "${name}" || true
+  # Instances started outside the unit: the whole cmdline is the binary path.
+  pkill -u "$(id -u)" -f "^[^ ]*/${name}$" 2>/dev/null || true
+  hypr_svc_user reset-failed "${name}" || true
 }
 
-restart_portal_service xdg-desktop-portal-gtk xdg-desktop-portal-gtk
-restart_portal_service xdg-desktop-portal-hyprland xdg-desktop-portal-hyprland
-restart_portal_service xdg-desktop-portal xdg-desktop-portal
+reset_portal xdg-desktop-portal-gtk
+reset_portal xdg-desktop-portal-hyprland
+reset_portal xdg-desktop-portal

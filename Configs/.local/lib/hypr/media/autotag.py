@@ -39,6 +39,7 @@ from mutagen.mp3 import MP3
 from mutagen.oggopus import OggOpus
 
 from lyrics_paths import music_library_dir
+from title_cleanup import clean_title
 from ytdlp_config import ytdlp_auth_args
 
 ACOUSTID_ENDPOINT = "https://api.acoustid.org/v2/lookup"
@@ -74,51 +75,6 @@ MUSICBRAINZ_MIN_SCORE = 90
 MIN_TITLE_SIMILARITY = 0.50
 MIN_ARTIST_SIMILARITY = 0.50
 MIN_ALBUM_SIMILARITY = 0.60
-
-# "vidéo"/"vídeo" appear as often as "video" on francophone and lusophone uploads.
-_VIDEO = r"v[ií]d[eé]o"
-_NOISE_TAG = (
-    rf"(?:official\s+)?(?:music\s+|lyrics?\s+|audio\s+|performance\s+)?{_VIDEO}"
-    r"(?:\s+(?:hd|hq|4k|8k))?"
-    rf"|{_VIDEO}\s+clip"
-    r"|(?:official\s+)?lyrics?\s+visuali[sz]er"
-    rf"|official\s+(?:audio|visuali[sz]er|performance\s+{_VIDEO})"
-    rf"|{_VIDEO}\s+(?:oficial|officielle?)"
-    r"|clip\s+officiel(?:le)?|(?:official\s+)?(?:audio\s+only|full\s+stream)"
-    rf"|(?:\w+\s+)?{_VIDEO}"
-    r"|prod(?:uced)?\.?\s+by\s+[^)\]】）｝]*"
-    r"|lyrics?|audio|visuali[sz]er|mv|hd|hq|4k|8k"
-    r"|remaster(?:ed)?(?:\s+\d{4})?"
-    r"|explicit|clean|official"
-)
-# Uploaders often append a year: "(Clip Officiel) 2018".
-_NOISE_YEAR = r"(?:\s+\d{4})?"
-
-# CJK and fullwidth brackets included: Japanese uploads annotate with 【MV】.
-_OPEN, _CLOSE = r"[\(\[【（｛]", r"[\)\]】）｝]"
-
-# "(Official Video by NS PICTURES)" — a production credit trailing the boilerplate.
-_NOISE_CREDIT = r"(?:\s*by\s+[^)\]】）｝]*)?"
-
-NOISE_BRACKET = re.compile(
-    rf"\s*{_OPEN}\s*(?:{_NOISE_TAG}){_NOISE_YEAR}{_NOISE_CREDIT}\s*{_CLOSE}{_NOISE_YEAR}",
-    re.I,
-)
-
-# Unbracketed, a bare keyword is not enough: "India.Arie - Video" is a real title,
-# so the trailing form demands a qualifier that only boilerplate carries.
-_NOISE_TAG_QUALIFIED = (
-    r"(?:official(?:\s+(?:music|lyrics?))?|music|lyrics?|performance)\s+v[ií]d[eé]o"
-    r"|v[ií]d[eé]o\s+(?:officielle?|oficial|clip|lyrics?)"
-    r"|clip\s+officiel(?:le)?"
-    r"|official\s+(?:audio|visuali[sz]er)"
-    r"|(?:official\s+)?(?:audio\s+only|full\s+stream)"
-)
-# Kept in step with strip_title_noise in ~/.config/rmpc/lib/fetch_lyrics.
-# May be followed by a real bracket group: "Title | Music Video (Story Book Riddim)".
-NOISE_TRAILING = re.compile(
-    rf"\s*[|｜:-]\s*(?:{_NOISE_TAG_QUALIFIED}){_NOISE_YEAR}(?=\s*$|\s*{_OPEN})", re.I
-)
 
 PROVIDERS = ("deezer", "itunes", "musicbrainz")
 # iTunes leads as the only provider returning a genre; it costs ~5.4s to Deezer's ~0.3s.
@@ -794,14 +750,6 @@ def from_deezer(
         except requests.RequestException:
             pass
     return meta
-
-
-def clean_title(title: str) -> str:
-    cleaned = title.replace("⧸", "/")
-    cleaned = NOISE_BRACKET.sub("", cleaned)
-    cleaned = NOISE_TRAILING.sub("", cleaned)
-    cleaned = re.sub(r"\s*-\s*Topic\s*$", "", cleaned, flags=re.I)
-    return re.sub(r"\s{2,}", " ", cleaned).strip(" -–—")
 
 
 BRACKETED_FEATURE = re.compile(

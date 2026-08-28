@@ -142,7 +142,7 @@ wallpaper_prune_thumb_cache() {
   [[ -d "${thumb_dir}" ]] || return 0
 
   while IFS= read -r -d '' file; do
-    base="$(basename "${file}")"
+    base="${file##*/}"
     if [[ "${base}" =~ ^\.?([0-9a-fA-F]+)\.(thmb|sqre|blur|quad)(\.png)?$ ]]; then
       hash="${BASH_REMATCH[1]}"
       if [[ -z "${valid_hashes_ref["${hash}"]-}" ]]; then
@@ -167,7 +167,7 @@ wallpaper_prune_png_cache() {
   [[ -d "${png_cache_dir}" ]] || return 0
 
   while IFS= read -r -d '' file; do
-    base="$(basename "${file}")"
+    base="${file##*/}"
     if [[ "${base}" =~ ^([0-9a-fA-F]+)\.png$ ]]; then
       hash="${BASH_REMATCH[1]}"
       if [[ -z "${valid_hashes_ref["${hash}"]-}" ]]; then
@@ -182,10 +182,27 @@ wallpaper_prune_png_cache() {
   fi
 }
 
+# awww's client re-reads its whole cache dir on every `img`, so a switch pays for
+# cache size; keep the newest entries under a byte budget.
+wallpaper_prune_awww_cache() {
+  local budget="${WALLPAPER_AWWW_CACHE_MB:-64}"
+  local dir
+
+  [[ "${budget}" =~ ^[0-9]+$ ]] || budget=64
+  for dir in "${XDG_CACHE_HOME:-$HOME/.cache}"/awww/*/; do
+    [[ -d "${dir}" ]] || continue
+    find "${dir}" -maxdepth 1 -type f -printf '%T@\t%s\t%p\0' 2>/dev/null \
+      | sort -zrn \
+      | awk -v RS='\0' -v ORS='\0' -F'\t' -v b=$((budget * 1048576)) '{t += $2} t > b {print $3}' \
+      | xargs -0r rm -f --
+  done
+}
+
 wallpaper_prune_loaded_inventory() {
   local -A valid_thumb_hashes=()
   local -A valid_png_hashes=()
 
+  wallpaper_prune_awww_cache
   [[ ${#wallInventoryList[@]} -gt 0 ]] || return 0
 
   wallpaper_collect_valid_thumb_hashes valid_thumb_hashes

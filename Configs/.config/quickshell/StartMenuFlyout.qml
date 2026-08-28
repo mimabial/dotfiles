@@ -16,6 +16,7 @@ PopupWindow {
     property string openSubId: ""
     property Item openRow: null
     signal actionTriggered(string target)
+    readonly property bool hovered: flyHover.hovered
 
     readonly property var items: {
         const menu = menus[menuId]
@@ -57,6 +58,8 @@ PopupWindow {
         border.color: root.shell.alpha(root.shell.role("alt_br", root.shell.foreground), .45)
         border.width: 1
         radius: root.shell.rounding
+
+        HoverHandler { id: flyHover }
 
         Column {
             id: flyColumn

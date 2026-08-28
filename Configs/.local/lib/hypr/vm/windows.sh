@@ -518,7 +518,7 @@ show_usage() {
   echo "  hyprshell vm/windows.sh stop              # Shut down the VM"
 }
 
-case "$1" in
+case "${1:-}" in
   install)
     install_windows
     ;;

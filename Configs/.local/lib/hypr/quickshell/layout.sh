@@ -34,4 +34,10 @@ else
   for i in "${!layouts[@]}"; do [[ "${layouts[$i]}" == "${current}" ]] && break; done
   target="${layouts[$(((i + step + ${#layouts[@]}) % ${#layouts[@]}))]}"
 fi
-[[ "$(state_get HYPR_WORKFLOW default)" == windows ]] || state_set WAYBAR_LAYOUT_NAME "${target}" staterc
+if [[ "$(state_get HYPR_WORKFLOW default)" == windows ]]; then
+  exit 0
+fi
+state_set WAYBAR_LAYOUT_NAME "${target}" staterc
+# dunstrc bakes the notification origin at render time, so a bar that moved to
+# another edge only reaches dunst when the renderer re-runs
+hyprshell render/dunst.py >/dev/null 2>&1 || true

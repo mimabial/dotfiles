@@ -13,6 +13,29 @@
 
 set -eu
 
+usage() {
+	cat <<'USAGE'
+Usage: hypr-session
+
+Launch Hyprland without uwsm: export the session environment, source the uwsm
+env.d files, start the runit user supervisor on runit hosts, ensure a session
+dbus, then exec the compositor. Takes no options.
+USAGE
+}
+
+case "${1:-}" in
+	-h | --help)
+		usage
+		exit 0
+		;;
+	"") ;;
+	*)
+		printf 'hypr-session: unknown option: %s\n' "$1" >&2
+		usage >&2
+		exit 2
+		;;
+esac
+
 XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 export XDG_CONFIG_HOME
 export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"

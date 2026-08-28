@@ -8,7 +8,14 @@ PopupCard {
     contentWidth: Style.px(420)
     contentHeight: weatherColumn.implicitHeight + 32
     readonly property var conditions: Weather.data.current_condition ? Weather.data.current_condition[0] : ({})
-    readonly property var days: Weather.data.weather ? Weather.data.weather.slice(0, 3) : []
+    readonly property var days: Weather.data.weather ? Weather.data.weather.slice(0, 7) : []
+    readonly property var hours: {
+        const upcoming = [], cutoff = Date.now() - 3600000
+        for (const day of days) for (const hour of day.hourly || [])
+            if (new Date(hour.time).getTime() >= cutoff) upcoming.push(hour)
+        return upcoming.slice(0, 12)
+    }
+    property int forecastTab: 0
     // the producer reports both unit systems, so switching needs no refetch
     // -1 = never chosen, so fall back to where the reading is from
     property int unitChoice: -1
@@ -134,6 +141,12 @@ PopupCard {
 
     function value(list, fallback) { return list && list.length ? list[0].value : fallback }
     function location() { const area = Weather.data.nearest_area; return area && area.length ? value(area[0].areaName, "") + ", " + value(area[0].country, "") : "" }
+
+    component ForecastTab: BarButton {
+        required property int tab
+        active: false; radius: shell.rounding; fill: "transparent"; outline: "transparent"
+        textColor: root.forecastTab === tab ? shell.accent : shell.alpha(shell.foreground, .6)
+    }
 
     // sits under the content, and only while searching: a click that no control
     // handles lands here and closes the field
@@ -312,33 +325,41 @@ PopupCard {
         }
         PopupSeparator { shell: root.shell }
         Row {
-            anchors.horizontalCenter: parent.horizontalCenter; spacing: Style.px(28)
-            Repeater {
-                model: root.days
-                Row {
-                    required property var modelData
-                    spacing: Style.px(7)
+            width: parent.width; spacing: Style.sm
+            ForecastTab { width: (parent.width - parent.spacing) / 2; height: Style.controlHeight; shell: root.shell; tab: 0; text: "HOURLY"; onClicked: { root.forecastTab = 0; forecast.positionViewAtBeginning() } }
+            ForecastTab { width: (parent.width - parent.spacing) / 2; height: Style.controlHeight; shell: root.shell; tab: 1; text: "DAILY"; onClicked: { root.forecastTab = 1; forecast.positionViewAtBeginning() } }
+        }
+        ListView {
+            id: forecast
+            width: parent.width; height: Style.px(88); orientation: ListView.Horizontal
+            model: root.forecastTab === 0 ? root.hours : root.days
+            spacing: Style.sm; clip: true; boundsBehavior: Flickable.StopAtBounds; snapMode: ListView.SnapToItem
+            delegate: Rectangle {
+                required property var modelData
+                required property int index
+                width: (forecast.width - forecast.spacing * 4) / 5; height: forecast.height
+                radius: root.shell.rounding; color: root.shell.alpha(root.shell.foreground, .045)
+                Column {
+                    anchors.centerIn: parent; spacing: Style.xxs
                     Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: parent.modelData.icon || "󰖐"
-                        color: root.shell.role("c2", root.shell.foreground)
-                        font.family: root.shell.fontFamily; font.pixelSize: Style.px(22)
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: index === 0 ? (root.forecastTab === 0 ? "NOW" : "TODAY")
+                            : root.forecastTab === 0 ? Qt.formatTime(new Date(modelData.time), "HH:mm")
+                            : Qt.formatDate(new Date(modelData.date + "T12:00:00"), "ddd").toUpperCase()
+                        color: root.shell.alpha(root.shell.foreground, .5)
+                        font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: true
                     }
-                    Column {
-                        anchors.verticalCenter: parent.verticalCenter; spacing: 1
-                        Text {
-                            text: Qt.formatDate(new Date(parent.parent.modelData.date + "T12:00:00"), "ddd").toUpperCase()
-                            color: root.shell.alpha(root.shell.foreground, .5)
-                            font.family: root.shell.fontFamily; font.pixelSize: Style.px(10); font.bold: true
-                        }
-                        Text {
-                            text: root.temp(parent.parent.modelData, "maxtemp") + "\u00b0 | " + root.temp(parent.parent.modelData, "mintemp") + "\u00b0"
-                            color: root.shell.foreground
-                            font.family: root.shell.fontFamily; font.pixelSize: Style.px(13)
-                        }
+                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: modelData.icon || "󰖐"; color: root.shell.role("c2", root.shell.foreground); font.family: root.shell.fontFamily; font.pixelSize: Style.px(22) }
+                    Text {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: root.forecastTab === 0 ? root.temp(modelData, "temp") + "\u00b0"
+                            : root.temp(modelData, "maxtemp") + "\u00b0 | " + root.temp(modelData, "mintemp") + "\u00b0"
+                        color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
                     }
+                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "󱢋 " + (modelData.chanceofrain || "0") + "%"; color: root.shell.alpha(root.shell.foreground, .55); font.family: root.shell.fontFamily; font.pixelSize: Style.caption }
                 }
             }
+            WheelHandler { onWheel: event => { const step = Style.px(72) * (event.angleDelta.y > 0 ? -1 : 1); forecast.contentX = Math.max(0, Math.min(forecast.contentWidth - forecast.width, forecast.contentX + step)) } }
         }
 
         PopupSeparator { shell: root.shell }

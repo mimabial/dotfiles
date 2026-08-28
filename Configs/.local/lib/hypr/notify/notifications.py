@@ -105,10 +105,25 @@ def get_dunst_status():
         "alt": alt,
         "tooltip": "\n".join(tooltip_lines),
         "class": alt,
+        "paused": paused,
     }
 
 
+def toggle_dnd():
+    _run(["dunstctl", "set-paused", "toggle"])
+    if shutil.which("quickshell"):
+        subprocess.run(
+            ["quickshell", "ipc", "call", "indicators", "refresh", "dnd"],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+
 def main():
+    if sys.argv[1:] == ["--toggle"]:
+        toggle_dnd()
+        return
     status = get_dunst_status()
     sys.stdout.write(json.dumps(status) + "\n")
     sys.stdout.flush()

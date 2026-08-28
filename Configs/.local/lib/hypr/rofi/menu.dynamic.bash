@@ -219,6 +219,67 @@ show_remove_font_menu() {
   esac
 }
 
+show_media_genre_menu() {
+  local empty_label="Music library is empty"
+  local library=""
+  local albums=""
+  local selection=""
+
+  library="$(hyprshell media/music_library_config 2>/dev/null | tail -n1)"
+  # tag_genres reads one directory without descending, so only offer the
+  # directories that actually hold tracks
+  if [[ -n "${library}" && -d "${library}" ]]; then
+    albums="$(
+      find "${library}" -mindepth 1 -type f \
+        \( -iname '*.mp3' -o -iname '*.opus' -o -iname '*.flac' \) \
+        -printf '%h\n' 2>/dev/null | sed "s|^${library}/\?||" | sed '/^$/d' | sort -u
+    )"
+  fi
+
+  if [[ -n "${albums}" ]]; then
+    selection="$(menu "Album" "${albums}")"
+  else
+    selection="$(menu "Album" "${empty_label}")"
+  fi
+
+  case "${selection}" in
+    "${empty_label}" | "" | "CNCLD")
+      menu_exit_or_show media
+      ;;
+    *)
+      present_terminal hyprshell media/tag_genres "${library}/${selection}"
+      ;;
+  esac
+}
+
+show_session_snapshot_menu() {
+  local mode="${1:-restore}"
+  local empty_label="No saved sessions"
+  local prompt="Restore Session"
+  local names=""
+  local selection=""
+
+  [[ "${mode}" == "delete" ]] && prompt="Delete Session"
+
+  names="$(hyprshell session/snapshot.py list 2>/dev/null)"
+  [[ "${names}" == "no saved sessions" ]] && names=""
+
+  if [[ -n "${names}" ]]; then
+    selection="$(menu "${prompt}" "${names}")"
+  else
+    selection="$(menu "${prompt}" "${empty_label}")"
+  fi
+
+  case "${selection}" in
+    "${empty_label}" | "" | "CNCLD")
+      menu_exit_or_show system_session
+      ;;
+    *)
+      present_terminal hyprshell session/snapshot.py "${mode}" "${selection}"
+      ;;
+  esac
+}
+
 show_search_all_menu() {
   local selection=""
   local action_id=""
@@ -262,6 +323,15 @@ menu_run_action_dynamic() {
       ;;
     remove_font)
       show_remove_font_menu
+      ;;
+    media_genres)
+      show_media_genre_menu
+      ;;
+    system_session_restore)
+      show_session_snapshot_menu restore
+      ;;
+    system_session_delete)
+      show_session_snapshot_menu delete
       ;;
     *)
       return 1

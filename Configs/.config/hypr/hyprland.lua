@@ -31,6 +31,15 @@ local function has_hyprcursor_manifest(theme)
     return false
 end
 
+require("windowrules")
+require("userprefs")
+runtime.load(config_home .. "/hypr/keyboard.lua", true)
+-- Last of the visual layers, so panel edits win over the theme pack and over
+-- hand-written prefs. Resolves the active theme's file itself.
+runtime.load(state_home .. "/hypr/looknfeel.lua", true)
+
+-- Resolve the cursor after Look & Feel so its per-theme CURSOR_* variables feed
+-- the same compositor path as the theme pack's defaults.
 local cursor_theme = vars.get("CURSOR_THEME", "Bibata-Modern-Ice")
 local cursor_size = vars.get("CURSOR_SIZE", "24")
 hl.env("XCURSOR_THEME", cursor_theme, true)
@@ -42,11 +51,6 @@ hl.config({cursor = {
     sync_gsettings_theme = false,
 }})
 
-require("windowrules")
-require("userprefs")
--- Last of the visual layers, so panel edits win over the theme pack and over
--- hand-written prefs. Resolves the active theme's file itself.
-runtime.load(state_home .. "/hypr/looknfeel.lua", true)
 require("keybindings")
 runtime.load(config_home .. "/hypr/monitors.lua")
 runtime.load(state_home .. "/hypr/monitor-toggles.lua", true)

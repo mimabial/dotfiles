@@ -1,5 +1,9 @@
 # Waybar state contract
 
+> Waybar is disabled; Quickshell is the active bar. This document describes the
+> legacy subsystem retained for reference. The `staterc` format it specifies is
+> still the live one — Quickshell reads the same keys.
+
 State is read by three different code paths in this subsystem, each with a
 different reason for existing. They MUST agree on the file format. This
 document is the canonical description of that format.
@@ -46,7 +50,7 @@ shell quoting tolerance would just be dead code.
 ### 3. Bash — `waybar.state.common.sh:waybar_state_value(key, default)`
 
 Used by indicator scripts that emit JSON for waybar custom modules
-(currently only `waybar.colormode.sh`). Reads staterc and env-overrides
+(`waybar.colormode.sh` and `waybar.vpn.common.sh`). Reads staterc and env-overrides
 WITHOUT sourcing them (sourcing arbitrary user shell could execute code).
 Strips `export ` prefix and surrounding `"`/`'` quotes.
 

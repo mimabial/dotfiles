@@ -9,7 +9,8 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _common import atomic_write, cache_hit, cache_store
-from _roles import QtRoles, hex_to_rgb, shade
+from _roles import QtRoles, hex_to_rgb, palette_to_pywal, shade
+from _shell import shell_files
 
 PALETTE = Path(
     sys.argv[1]
@@ -24,10 +25,6 @@ OUT_DIR = (
 )
 KDE_FILE = OUT_DIR / "Pywal.colors"
 QTCT_FILE = OUT_DIR / "pywal16.conf"
-THEMES_DIR = (
-    Path(os.environ.get("HYPR_CONFIG_HOME", os.path.expanduser("~/.config/hypr")))
-    / "themes"
-)
 
 
 def rgb(color):
@@ -43,26 +40,12 @@ def qtct_line(values):
     return ", ".join(argb(color) for color in values)
 
 
-def pack_role_files(palette):
-    source = palette.get("source", "")
-    if palette.get("mode", "wallpaper") != "theme" or not source.startswith("theme:"):
-        return None, None
-
-    pack_dir = THEMES_DIR / source.removeprefix("theme:")
-    kvconfig = pack_dir / "kvantum" / "kvconfig.theme"
-    colors_map = pack_dir / "kvantum" / "colors.map"
-    return (
-        kvconfig if kvconfig.is_file() else None,
-        colors_map if colors_map.is_file() else None,
-    )
-
-
-def renderer_hash(pack_kvconfig, pack_colors_map):
+def renderer_hash(shell_kvconfig, shell_colors_map):
     hasher = hashlib.sha256()
     hasher.update(PALETTE.read_bytes())
     for path in (
-        pack_kvconfig,
-        pack_colors_map,
+        shell_kvconfig,
+        shell_colors_map,
         Path(__file__),
         Path(__file__).with_name("_roles.py"),
     ):
@@ -71,21 +54,11 @@ def renderer_hash(pack_kvconfig, pack_colors_map):
     return hasher.hexdigest()[:16]
 
 
-def resolve_roles(palette, pack_kvconfig, pack_colors_map):
-    pywal = {
-        "special": {
-            "background": palette["bg"],
-            "foreground": palette["fg"],
-        },
-        "colors": {
-            f"color{index}": color for index, color in enumerate(palette["colors"])
-        },
-    }
+def resolve_roles(palette, shell_kvconfig, shell_colors_map):
     return QtRoles(
-        pywal=pywal,
-        theme_mode=palette.get("mode", "wallpaper") == "theme",
-        kvconfig_path=str(pack_kvconfig) if pack_kvconfig else None,
-        colors_map_path=str(pack_colors_map) if pack_colors_map else None,
+        pywal=palette_to_pywal(palette),
+        kvconfig_path=str(shell_kvconfig) if shell_kvconfig else None,
+        colors_map_path=str(shell_colors_map) if shell_colors_map else None,
     )
 
 
@@ -271,12 +244,12 @@ def main():
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
     palette = json.loads(PALETTE.read_text())
-    pack_kvconfig, pack_colors_map = pack_role_files(palette)
-    cache_key = renderer_hash(pack_kvconfig, pack_colors_map)
+    _svg, shell_kvconfig, shell_colors_map = shell_files(palette)
+    cache_key = renderer_hash(shell_kvconfig, shell_colors_map)
     if cache_hit("qtct", cache_key) and KDE_FILE.exists() and QTCT_FILE.exists():
         return
 
-    roles = resolve_roles(palette, pack_kvconfig, pack_colors_map)
+    roles = resolve_roles(palette, shell_kvconfig, shell_colors_map)
     atomic_write(KDE_FILE, render_kde(roles))
     atomic_write(QTCT_FILE, render_qtct(roles))
     cache_store("qtct", cache_key)

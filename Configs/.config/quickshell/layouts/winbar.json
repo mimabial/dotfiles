@@ -1,16 +1,5 @@
 {
-  "left": [
-    "menu",
-    "taskbar",
-    "active"
-  ],
-  "center": [
-    "workspaces"
-  ],
-  "right": [
-    "submap",
-    "tray",
-    "language",
-    "datetime"
-  ]
+  "left": ["menu", "taskbar", "active", "submap"],
+  "center": ["workspaces"],
+  "right": ["tray", "language", "datetime"]
 }

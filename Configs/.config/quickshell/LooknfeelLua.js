@@ -1,7 +1,7 @@
 .pragma library
 
-// Renders the managed block the panel writes, and parses the two things it
-// reads back: looknfeel-read.lua's records and `hyprctl -j --batch getoption`.
+// Renders the managed block the panel writes, then parses the reader records,
+// theme variables, and `hyprctl -j --batch getoption` output it reads back.
 //
 // The rendered string is the same one handed to `hyprctl eval` for the live
 // preview, so preview and saved state cannot drift. Keep it that way: a second
@@ -69,13 +69,26 @@ function renderAnimation(animation) {
 
 // Returns "" when there is nothing to write, which is what lets clearing the
 // last override delete the file and hand the keys back to the theme layer.
-function renderBlock(overrides, animations) {
+function renderBlock(overrides, animations, variables) {
     var keys = []
     for (var key in (overrides || {})) keys.push(key)
     var list = animations || []
-    if (keys.length === 0 && list.length === 0) return ""
+    var variableKeys = []
+    for (var variable in (variables || {})) variableKeys.push(variable)
+    if (keys.length === 0 && list.length === 0 && variableKeys.length === 0) return ""
 
     var body = []
+    if (variableKeys.length > 0) {
+        variableKeys.sort()
+        body.push('local vars = require("vars")')
+        for (var v = 0; v < variableKeys.length; v++) {
+            var name = variableKeys[v]
+            // Hypr's vars module stores strings, and the shared shell config
+            // parser deliberately accepts only this quoted generated form.
+            body.push("vars.set(" + renderValue(name) + ", "
+                + renderValue(String(variables[name])) + ")")
+        }
+    }
     if (keys.length > 0)
         body.push("hl.config(" + renderTable(buildTree(overrides), 0) + ")")
     for (var i = 0; i < list.length; i++)
@@ -88,6 +101,7 @@ function renderBlock(overrides, animations) {
 
 function parseRecords(text) {
     var keys = {}
+    var variables = {}
     var animations = []
     var lines = String(text || "").split("\n")
     for (var i = 0; i < lines.length; i++) {
@@ -98,6 +112,8 @@ function parseRecords(text) {
             keys[f[1]] = f[2] === "number" ? Number(raw)
                 : f[2] === "boolean" ? raw === "true"
                 : raw
+        } else if (f[0] === "v") {
+            variables[f[1]] = f[3]
         } else if (f[0] === "a") {
             animations.push({
                 leaf: f[1],
@@ -108,7 +124,7 @@ function parseRecords(text) {
             })
         }
     }
-    return { keys: keys, animations: animations }
+    return { keys: keys, variables: variables, animations: animations }
 }
 
 // Custom-type values serialize as four edge values ("7 7 7 7"). Nothing in this
@@ -165,6 +181,19 @@ function parseThemeConfig(text) {
         else if (value === "true" || value === "false") value = value === "true"
         else if (!isNaN(Number(value))) value = Number(value)
         out[match[1].split(".").join(":")] = value
+    }
+    return out
+}
+
+// Theme variables need their own namespace: CURSOR_SIZE is not a Hyprland
+// option and must never be mistaken for one by baseline/reset handling.
+function parseThemeVariables(text) {
+    var out = {}
+    var rx = /vars\.set\(\s*"([^"]+)"\s*,\s*"([^"]*)"\s*\)\s*$/
+    var lines = String(text).split("\n")
+    for (var i = 0; i < lines.length; i++) {
+        var match = rx.exec(lines[i].trim())
+        if (match) out[match[1]] = match[2]
     }
     return out
 }

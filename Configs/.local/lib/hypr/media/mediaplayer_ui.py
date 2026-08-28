@@ -161,9 +161,9 @@ def format_time_multiple_lines(
 
 # All three from Material Design so the states share an optical box.
 STATE_ICONS = {
-    "Playing": "\U000f0f1b",
-    "Paused": "\U000f03e4",
-    "Stopped": "\U000f04db",
+    "Playing": "",
+    "Paused": "",
+    "Stopped": "",
 }
 
 

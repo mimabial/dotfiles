@@ -182,6 +182,12 @@ theme_apply_commit_theme_metadata() {
   "${converter}" --input "${live_file}" --output "${lua_file}" --set "HYPR_THEME=${HYPR_THEME}"
 }
 
+# Quickshell owns the bar. Waybar assets are only worth generating, and waybar
+# only worth restarting, when waybar is actually running.
+theme_apply_waybar_running() {
+  hypr_user_pgrep -x waybar >/dev/null 2>&1
+}
+
 theme_apply_restart_waybar_direct() {
   local waybar_script="${LIB_DIR}/hypr/waybar/waybar.py"
 
@@ -488,24 +494,24 @@ theme_apply_run_color_sync() {
   HYPR_THEME_DEFER_CLIENTS=1 "${hypr_theme_cmd}" wallpaper "${hypr_theme_args[@]}" --variant "${variant}" "${wallpaper_path}"
 }
 
-theme_apply_job_waybar() {
+theme_apply_job_desktop() {
+  if theme_apply_prepare_desktop_state; then
+    theme_desktop_write_dconf_content || true
+  fi
+
+  theme_apply_waybar_running || return 0
+
   theme_apply_update_waybar_border_radius || true
   font_sync_apply_waybar_bar_font_include || {
     print_log -sec "theme.apply" -warn "font" "font sync failed"
     return 1
   }
 
-  if theme_apply_prepare_desktop_state; then
-    theme_desktop_write_dconf_content || true
-    theme_desktop_restart_portal_backends_if_needed || true
-  fi
-
   local current_icon_theme="" cached_icon_theme=""
   current_icon_theme="$(theme_apply_current_icon_theme)"
   cached_icon_theme="$(state_get "waybar_icon_theme" "" 2>/dev/null || true)"
 
-  if hypr_user_pgrep -x waybar >/dev/null 2>&1 \
-    && [[ -n "${current_icon_theme}" && "${current_icon_theme}" == "${cached_icon_theme}" ]]; then
+  if [[ -n "${current_icon_theme}" && "${current_icon_theme}" == "${cached_icon_theme}" ]]; then
     return 0
   fi
 
@@ -584,7 +590,7 @@ theme_apply_timed_call "color_sync" theme_apply_run_color_sync "${wallpaper_path
 theme_apply_prepare_job_log_dir || exit 1
 theme_apply_reset_jobs
 theme_apply_start_job "${theme_apply_job_log_dir}" "wallpaper_display" best_effort theme_apply_display_wallpaper || true
-theme_apply_start_job "${theme_apply_job_log_dir}" "waybar" required theme_apply_job_waybar || exit 1
+theme_apply_start_job "${theme_apply_job_log_dir}" "desktop" required theme_apply_job_desktop || exit 1
 theme_apply_start_job "${theme_apply_job_log_dir}" "kitty" required theme_apply_job_kitty || exit 1
 theme_apply_start_detached_job "dunst" theme_apply_job_dunst || true
 theme_apply_wait_jobs "${theme_apply_job_log_dir}" || theme_apply_required_rc=$?

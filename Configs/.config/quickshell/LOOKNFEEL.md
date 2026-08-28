@@ -14,7 +14,8 @@ ours.
 
 Editing the visual keys a theme sets, so they can be overridden without hand
 editing Lua: gaps, border width, rounding, opacity, dimming, blur, shadow,
-glow, animations, groups, and the active layout engine's own knobs.
+glow, animations, groups, cursor theme and size, and the active layout engine's
+own knobs.
 
 Plus two things Omaland does not do:
 
@@ -51,7 +52,7 @@ exclusionMode:           ExclusionMode.Ignore
 ```
 
 Centered, two panes — a section list on the left, rows for the selected section
-on the right. Roughly 50 rows across 11 sections is more than a bar popup
+on the right. Roughly 50 rows across 12 sections is more than a bar popup
 comfortably holds, which is why this is a window rather than a drawer.
 
 ### Focus
@@ -90,6 +91,10 @@ site.
   looknfeel.sh            entry point; IPC toggle
   tests/test_looknfeel.py the engine's test suite
 
+~/.local/lib/hypr/theme/
+  cursor-list.sh          installed XCursor + hyprcursor catalogue
+  lib/desktop.sync.bash   applies saved cursor overrides to desktop consumers
+
 ~/.config/hypr/
   hyprland.lua            +1 runtime.load, after require("userprefs")
   keybindings.lua         +1 submap_exec in the theming submap
@@ -107,7 +112,7 @@ files plus one instantiation line.
 
 Three QML choices that are not obvious and should not be "simplified" later:
 
-- **`Instantiator`, not `Repeater`, for the pipeline list processes.** `Repeater`
+- **`Instantiator`, not `Repeater`, for dynamic-list processes.** `Repeater`
   only creates Items; handed a `Process` delegate it silently creates nothing.
 - **The row's three controls are siblings with `visible` bindings, not a `Loader`
   over inline `Component`s.** A `Component` has its own scope, so every `root.`
@@ -171,7 +176,9 @@ Two jobs `getoption` cannot do:
 
 1. **Reading back the panel's own block**, to know which keys the panel owns
    versus which the theme set.
-2. **The animation baseline.** Per-leaf animations (`animations:windows`) are
+2. **Reading saved cursor variables.** `CURSOR_THEME` and `CURSOR_SIZE` are
+   theme variables rather than Hyprland options.
+3. **The animation baseline.** Per-leaf animations (`animations:windows`) are
    keywords, not options; `getoption` cannot enumerate them.
 
 Stubs needed: `hl.config`, `hl.animation`, `hl.curve`, plus no-ops for
@@ -185,7 +192,7 @@ stub tables:
 
 - `runtime.config(path, value)` → emit the same record `hl.config` would.
 - `runtime.load(path)` → recurse into that file.
-- `vars.set` / `vars.get` → no-op / empty string.
+- `vars.set(name, value)` → emit a variable record; `vars.get` → empty string.
 
 `runtime.load` recursion is what makes the baseline work: reading
 `$XDG_STATE_HOME/hypr/animations.lua` follows the chain into the active preset
@@ -195,7 +202,7 @@ the animation preset row changes, since the shipped speeds the multiplier scales
 change with it.
 
 Output stays one tab-separated record per line, as upstream: `k` for a config
-key, `a` for an animation leaf.
+key, `v` for a theme variable, and `a` for an animation leaf.
 
 ## Writing
 
@@ -217,6 +224,12 @@ Both properties are pinned by `LivePreviewTest` in
 `~/.local/lib/hypr/window/tests/test_looknfeel.py`, including a test that
 asserts the un-separated form *fails*, so the separator cannot be quietly
 dropped later.
+
+Cursor rows also queue `hyprctl setcursor <theme> <size>` for compositor preview.
+After the managed block is written, the existing desktop sync consumes the same
+saved `vars.set` values and updates GTK, Xresources, dconf, activation
+environments, and Hyprland. The 700 ms idle debounce keeps slider movement from
+running the desktop-wide sync for every intermediate size.
 
 ### Per-theme memory
 
@@ -255,12 +268,12 @@ local key = slug(vars.get("HYPR_THEME", "default")) .. "." .. variant
 runtime.load(state_home .. "/hypr/looknfeel.d/" .. key .. ".lua", true)
 ```
 
-This is the reason for storing Lua rather than JSON, and it is what keeps the
-theme-switch path untouched. A theme switch regenerates `theme.lua` with a new
-`HYPR_THEME`, Hyprland reloads, and the resolver picks up the matching overrides
-with no hook anywhere in the apply pipeline — which is phase-structured and not
-somewhere to add a step lightly. Nothing is rendered on switch, nothing is
-parsed, so there is no second renderer and nothing to drift.
+This is the reason for storing Lua rather than JSON. A theme switch regenerates
+`theme.lua` with a new `HYPR_THEME`, Hyprland reloads, and the resolver picks up
+the matching compositor overrides without rendering or rewriting anything.
+Desktop sync already runs on theme switches; its value-resolution step reads
+the quoted cursor `vars.set` records from that same block before updating
+desktop consumers. There is still one renderer and one saved source of truth.
 
 `runtime.load`'s optional flag means a theme with no overrides yet simply loads
 nothing.
@@ -273,7 +286,8 @@ no such pair exists here.
 The panel writes `looknfeel.d/<key>.lua` directly, atomically (write to a
 temporary file in the same directory, then rename). No `staterc` key is
 involved, so no `state_set` locking is required; the per-theme filename is the
-only coordination needed.
+only coordination needed. Cursor overrides are quoted `vars.set` calls in this
+same block; there is no parallel cursor state file.
 
 ### Load order
 
@@ -320,6 +334,9 @@ inconsistencies in code being touched.
 `--list` output follows the `workflows.sh` format: tab-separated name, icon,
 description. Where animations and shaders have no icon or description, the
 fields are empty rather than absent, so one parser serves all three.
+
+Selectable rows use `PopupSelect`: clicking the current value opens the complete
+catalogue and applies only the chosen entry. Arrow keys remain quick cycling.
 
 ## Keyboard model
 
@@ -412,7 +429,9 @@ journalctl --user --since "10 seconds ago" | grep -iE 'WARN|ERROR|TypeError' | g
 Then by hand: `mod+T V` opens the panel and closes any bar popup; dragging a gaps
 row changes gaps immediately; `Esc` persists across `hyprctl reload`; `Backspace`
 restores the theme's value; switching themes swaps which `looknfeel.d/` file
-applies and returning restores the first theme's overrides.
+applies and returning restores the first theme's overrides. The Cursor section
+lists installed XCursor and hyprcursor themes; changing either cursor row updates
+the compositor immediately and desktop toolkit settings after the debounce.
 
 `~/.config/quickshell` and `~/.local/lib/hypr` are dotfiles-tracked, so the QML,
 schema, tests and this document mirror on the next `dotfiles-sync`.

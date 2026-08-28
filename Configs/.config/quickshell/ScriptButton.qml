@@ -6,6 +6,7 @@ BarButton {
     property var command: []
     property var processEnvironment: ({})
     property int interval: 60000
+    property bool polling: true
     property var icons: ({})
     property string fallback: ""
     property bool useAlt: false
@@ -35,7 +36,7 @@ BarButton {
         } }
     }
     Timer {
-        interval: root.interval; running: true; repeat: true; triggeredOnStart: true
+        interval: root.interval; running: root.polling; repeat: root.polling; triggeredOnStart: true
         onTriggered: if (!process.running) process.running = true
     }
     Timer { id: refreshDelay; onTriggered: if (!process.running) process.running = true }

@@ -43,7 +43,7 @@ def render(objects, status=False):
             {"text": "󰂲", "class": "off", "tooltip": "No Bluetooth controller"}
         )
     powered = any(adapter["powered"] for adapter in adapters.values())
-    text, css = ("", "on") if powered else ("", "disabled")
+    text, css = ("󰂯", "on") if powered else ("󰂲", "disabled")
     if connected:
         text, css = "<b>󰂱</b>", "connected"
     if any(adapter["discoverable"] for adapter in adapters.values()):

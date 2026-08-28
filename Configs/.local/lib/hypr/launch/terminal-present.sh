@@ -2,14 +2,14 @@
 #
 # terminal-present.sh — Run a command in a TUI terminal; for non-interactive commands, hold the terminal open until keypress.
 #
-# Usage: terminal-present.sh [--app-id ID] [--title TITLE] [--hypr-profile PROFILE] -- <command>
+# Usage: terminal-present.sh [--app-id ID] [--title TITLE] [--hypr-profile PROFILE] [--hypr-cells COLUMNS ROWS] -- <command>
 #
 # Depends on: setsid, uwsm-app, tui-terminal-exec, bash
 #
 
 usage() {
   cat <<EOF
-Usage: $(basename "$0") [--app-id ID] [--title TITLE] [--hypr-profile PROFILE] -- <command>
+Usage: $(basename "$0") [--app-id ID] [--title TITLE] [--hypr-profile PROFILE] [--hypr-cells COLUMNS ROWS] -- <command>
 EOF
 }
 
@@ -18,7 +18,9 @@ presented_command_name() {
 
   [[ "$#" -gt 0 ]] || return 1
 
-  if [[ "${command_name}" == "sudo" && "$#" -ge 2 ]]; then
+  # sudo and hyprshell are both wrappers whose next argument names the command
+  # that actually owns the screen.
+  if [[ "${command_name}" == "sudo" || "${command_name}" == "hyprshell" ]] && [[ "$#" -ge 2 ]]; then
     command_name="${2##*/}"
   fi
 
@@ -28,7 +30,7 @@ presented_command_name() {
 
 command_needs_hold_prompt() {
   case "$(presented_command_name "$@" || true)" in
-    nvim | vim | htop | btop | bottom | nano | less | more | rmpc | nvtop | dua | wiremix | bluetui | oryx)
+    nvim | vim | htop | btop | bottom | nano | less | more | bat | about.sh | calc-tui.py | rmpc | nvtop | dua | wiremix | bluetui | oryx)
       return 1
       ;;
     *)
@@ -41,6 +43,7 @@ main() {
   local app_id="org.tui.Terminal"
   local title="Terminal"
   local hypr_profile=""
+  local hypr_cells=()
   local cmd=()
   local launch_args=()
 
@@ -49,6 +52,7 @@ main() {
       --app-id)        app_id="$2";        shift 2 ;;
       --title)         title="$2";         shift 2 ;;
       --hypr-profile)  hypr_profile="$2";  shift 2 ;;
+      --hypr-cells)    hypr_cells=("$2" "$3"); shift 3 ;;
       --)
         shift
         cmd=("$@")
@@ -67,6 +71,7 @@ main() {
   fi
 
   [[ -n "${hypr_profile}" ]] && launch_args+=(--hypr-profile "${hypr_profile}")
+  [[ "${#hypr_cells[@]}" -gt 0 ]] && launch_args+=(--hypr-cells "${hypr_cells[@]}")
   launch_args+=(--app-id "${app_id}" --title "${title}" --)
 
   if command_needs_hold_prompt "${cmd[@]}"; then

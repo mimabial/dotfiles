@@ -81,34 +81,23 @@ def _load_colors_map(colors_map_path, palette_full):
 
 
 class _RoleSource:
-    """Resolve kvconfig colors either literally or through colors.map."""
+    """Resolve a shell's literal kvconfig colors through its colors.map."""
 
-    def __init__(self, general, substitutions, theme_mode):
+    def __init__(self, general, substitutions):
         self._general = general
         self._substitutions = substitutions
-        self._theme_mode = theme_mode
 
     def color(self, key):
         target = self._general.get(key)
         if not target:
             return None
-        if self._theme_mode:
-            return target
         return self._substitutions.get(target, target)
 
     def role(self, key, default_var, colors, fg):
         return self.color(key) or colors.get(default_var, fg)
 
 
-def _resolve_theme_base(source, bg, fg):
-    bg = source.color("window.color") or bg
-    fg = source.color("text.color") or source.color("window.text.color") or fg
-    if not fg and bg:
-        fg = "#e0e0e0" if luminance(bg) < 0.5 else "#202020"
-    return bg, fg
-
-
-def _resolve_shared_roles(source, bg, fg, colors, is_dark, theme_mode):
+def _resolve_shared_roles(source, bg, fg, colors):
     accent = source.role("highlight.color", "color4", colors, fg)
     highlight_text = source.color("highlight.text.color") or contrast_text(
         bg, fg, accent
@@ -118,44 +107,13 @@ def _resolve_shared_roles(source, bg, fg, colors, is_dark, theme_mode):
         "inactive_accent": source.color("inactive.highlight.color") or accent,
         "link": source.role("link.color", "color4", colors, fg),
         "link_visited": source.role("link.visited.color", "color5", colors, fg),
-        "hover": accent if theme_mode else colors.get("color12", accent),
+        "hover": colors.get("color12", accent),
         "highlight_text": highlight_text,
         "inactive_highlight_text": highlight_text,
     }
 
 
-def _resolve_theme_roles(source, bg, fg, is_dark):
-    window_surface = source.color("window.color") or bg
-    base_surface = source.color("base.color") or window_surface
-    alternate_surface = source.color("alt.base.color") or base_surface
-    text = source.color("text.color") or fg
-    return {
-        "window_surface": window_surface,
-        "base_surface": base_surface,
-        "alternate_surface": alternate_surface,
-        "button_surface": source.color("button.color") or base_surface,
-        "normal_surface": base_surface,
-        "tooltip_surface": source.color("tooltip.base.color") or alternate_surface,
-        "text": text,
-        "window_text": source.color("window.text.color") or text,
-        "button_text": source.color("button.text.color") or text,
-        "disabled_text": (
-            source.color("disabled.text.color")
-            or source.color("text.disabled.color")
-            or shade(text, 0.18 * (-1 if is_dark else 1))
-        ),
-        "tooltip_text": source.color("tooltip.text.color") or text,
-        "bright_text": source.color("progress.indicator.text.color")
-        or ("#ffffff" if is_dark else "#000000"),
-        "light": source.color("light.color"),
-        "mid_light": source.color("mid.light.color"),
-        "dark": source.color("dark.color"),
-        "mid": source.color("mid.color"),
-        "shadow": None,
-    }
-
-
-def _resolve_wallpaper_roles(bg, fg, colors, is_dark):
+def _resolve_roles(bg, fg, colors, is_dark):
     normal_surface = colors.get("color0", bg) if is_dark else colors.get("color7", bg)
     return {
         "normal_surface": normal_surface,
@@ -178,11 +136,24 @@ def _resolve_wallpaper_roles(bg, fg, colors, is_dark):
     }
 
 
-class QtRoles:
-    """Resolved Qt palette roles from an active palette + pack kvconfig."""
+def palette_to_pywal(palette):
+    """active-palette.json -> the pywal shape QtRoles consumes."""
+    return {
+        "special": {"background": palette["bg"], "foreground": palette["fg"]},
+        "colors": {
+            f"color{index}": color for index, color in enumerate(palette["colors"])
+        },
+    }
 
-    def __init__(self, *, pywal, theme_mode, kvconfig_path=None, colors_map_path=None):
-        self.theme_mode = theme_mode
+
+class QtRoles:
+    """Resolved Qt palette roles from the active palette + the shell's kvconfig.
+
+    The palette is the only colour authority. The shell contributes geometry and,
+    through its colours.map, which of its literals stands for which palette role.
+    """
+
+    def __init__(self, *, pywal, kvconfig_path=None, colors_map_path=None):
         self._general = _parse_general_colors(kvconfig_path)
 
         bg = pywal["special"]["background"]
@@ -190,20 +161,12 @@ class QtRoles:
         self.colors = pywal["colors"]
         palette_full = {**self.colors, "background": bg, "foreground": fg}
         self.substitutions = _load_colors_map(colors_map_path, palette_full)
-        source = _RoleSource(self._general, self.substitutions, theme_mode)
-
-        if theme_mode:
-            bg, fg = _resolve_theme_base(source, bg, fg)
+        source = _RoleSource(self._general, self.substitutions)
 
         self.bg = bg
         self.fg = fg
         self.is_dark = luminance(bg) < 0.5
-        resolved = _resolve_shared_roles(
-            source, bg, fg, self.colors, self.is_dark, theme_mode
-        )
-        if theme_mode:
-            resolved.update(_resolve_theme_roles(source, bg, fg, self.is_dark))
-        else:
-            resolved.update(_resolve_wallpaper_roles(bg, fg, self.colors, self.is_dark))
+        resolved = _resolve_shared_roles(source, bg, fg, self.colors)
+        resolved.update(_resolve_roles(bg, fg, self.colors, self.is_dark))
         for name, value in resolved.items():
             setattr(self, name, value)

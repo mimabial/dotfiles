@@ -13,9 +13,7 @@ class XDGPaths:
         self.xdg_config = os.environ.get(
             "XDG_CONFIG_HOME", os.path.join(self.HOME, ".config")
         )
-        self.xdg_runtime = os.environ.get(
-            "XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}"
-        )
+        self.xdg_runtime = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
         self.xdg_data = os.environ.get(
             "XDG_DATA_HOME", os.path.join(self.HOME, ".local/share")
         )
@@ -36,12 +34,8 @@ class BookmarkManager:
 
         files = []
         # Firefox
-        for root, dirs, filelist in os.walk(
-            os.path.join(self.xdg.HOME, ".mozilla/firefox")
-        ):
-            for file in filelist:
-                if file == "places.sqlite":
-                    files.append(os.path.join(root, file))
+        firefox_dir = Path(self.xdg.HOME, ".mozilla/firefox")
+        files.extend(str(path) for path in firefox_dir.glob("*/places.sqlite"))
         # Chromium/Brave/Chrome
         for path in [
             os.path.join(
@@ -61,8 +55,10 @@ class BookmarkManager:
         return files
 
     def read_firefox_bookmarks(self, places_file):
+        import shutil
         import sqlite3
         import sys
+        import tempfile
 
         query = """
         SELECT b.title, p.url
@@ -72,13 +68,20 @@ class BookmarkManager:
         """
         bookmarks = []
         try:
-            conn = sqlite3.connect(places_file)
-            for title, url in conn.execute(query):
-                if not title:
-                    title = url
-                bookmarks.append({"title": title, "url": url})
-            conn.close()
-        except Exception as e:
+            source = Path(places_file)
+            with tempfile.TemporaryDirectory(prefix="hypr-bookmarks-") as temp_dir:
+                snapshot = Path(temp_dir, source.name)
+                shutil.copy2(source, snapshot)
+                wal = Path(f"{source}-wal")
+                if wal.is_file():
+                    shutil.copy2(wal, Path(f"{snapshot}-wal"))
+
+                with sqlite3.connect(snapshot) as conn:
+                    for title, url in conn.execute(query):
+                        if not title:
+                            title = url
+                        bookmarks.append({"title": title, "url": url})
+        except (OSError, sqlite3.Error) as e:
             print(f"Error reading Firefox bookmarks: {e}", file=sys.stderr)
         return bookmarks
 

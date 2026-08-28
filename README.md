@@ -2,6 +2,8 @@
 
 Arch Linux + Hyprland desktop configuration, originally derived from HyDE and maintained here as a mirror of the persistent parts of the running setup.
 
+The bar is Quickshell (`Configs/.config/quickshell/`). Waybar is disabled and kept only as legacy reference and as a provider output format.
+
 The running desktop uses files under `$HOME` such as:
 
 - `~/.config/`
@@ -17,6 +19,7 @@ This repository stores the mirrored config under `Configs/` and the restore/inst
 - `Configs/` — mirrored config files and assets
 - `Configs/hosts/` — host-specific overlays
 - `Scripts/` — install, restore, and helper scripts
+- `docs/runtime-state.md` — contract for `~/.local/state/hypr`
 - `KEYBINDINGS.md` — keybinding reference
 
 This is not a generic “copy these files anywhere” repo. The scripts assume an Arch or Arch-like system and a Hyprland-based desktop.
@@ -57,6 +60,8 @@ dotfiles/
 │   ├── .zshenv
 │   └── hosts/
 ├── Scripts/
+├── docs/
+│   └── runtime-state.md
 ├── KEYBINDINGS.md
 ├── install.sh
 ├── update.sh
@@ -135,8 +140,8 @@ Useful commands on the running system:
 # List available hyprshell targets
 hyprshell list
 
-# Switch theme
-hyprshell theme.switch.sh "Tokyo Night"
+# Switch theme (-s is required; the script rejects a bare positional name)
+hyprshell theme.switch.sh -s "Tokyo Night"
 
 # Rotate global wallpaper (next / previous / random / select)
 hyprshell wallpaper next --global
@@ -144,8 +149,8 @@ hyprshell wallpaper next --global
 # Validate Hyprland config
 hyprctl configerrors
 
-# Rebuild Waybar runtime files from current state
-hyprshell waybar.py --update
+# Switch the Quickshell bar layout (main / left / sidebar / top / winbar)
+hyprshell quickshell/layout select
 
 # Select / apply per-machine host profile (drives dotfiles-sync)
 dotfiles-host-profile show
@@ -161,32 +166,34 @@ Theme packs live under `Configs/.config/hypr/themes/`.
 | Theme | Description |
 | --- | --- |
 | Another World | Step beyond the horizon, where reality fades and imagination reigns supreme |
-| Ayu Green | Dark theme based on Ayu Mirage with green tones |
+| Ayu Mirage | Ayu Mirage dark palette on a muted blue-grey base |
 | Bauhaus Blue | Light Solarized-inspired theme with bold blue accents |
 | Blue Sky | A serene theme inspired by bright cloudy skies |
 | Catppuccin Latte | Catppuccin pastel light theme |
 | Catppuccin Mocha | Catppuccin warm dark theme |
-| Chilling Winters | Soft rose-tinted light theme |
-| City Lights | Dark theme with muted natural tones |
 | Code Garden | A sleek and transparent, color-agnostic theme |
 | Crimson Blade | Sharp elegance, cutting through darkness with bold hues |
 | Decay Green | Dark theme with soft green accents |
-| Dijon Mustard | Warm cream light theme inspired by GMK Diner keycaps |
+| Dracula | Dracula dark theme |
 | Edge Runner | Cyberpunk yellow-on-black theme |
 | Forest Green | Everforest dark variant with earthy greens |
 | Forest Light | Everforest light variant |
 | Frosted Glass | Icy blue translucent theme |
+| Graphite Mono | Warm-black monochrome dark theme |
 | Graphite Retro | Grayscale monochrome theme |
+| Green Lush | Near-black navy base with lime-green accents |
 | Greenify | Dark green based theme |
 | Grukai | Where retro warmth meets modern edge |
 | Gruvbox Retro | Retro warm dark Gruvbox palette |
 | Kanagawa Wave | Dark theme inspired by the Kanagawa color scheme |
 | Lime Frenzy | Lime's rhythm splits the night, where chaos crafts the vibe |
 | Material Sakura | Soft pink Material Design-inspired light theme |
+| Melange | Warm light theme with brown-toned foreground |
 | Monochrome | Pure black and white theme |
 | Monokai | Monokai editor color scheme |
 | Moonlight | Gentle, soft moonlight lingers on my face... |
 | Nordic Blue | Nordic pastel blue-grey theme |
+| Obsidian Purple | Dark purple base with pastel accents |
 | One Dark | One Dark editor theme port |
 | Oxo Carbon | IBM Carbon Design dark theme |
 | Paranoid Sweet | Dark purple based theme |
@@ -194,15 +201,13 @@ Theme packs live under `Configs/.config/hypr/themes/`.
 | Pixel Dream | Pixel art inspired theme |
 | Red Stone | Hot red based theme |
 | Rosé Pine | Warm muted dark theme |
-| Scarlet Night | Hot-Red + Deep-Black |
 | Solarized Dark | Solarized Dark color scheme |
-| Spider Verse | Dark red-tinted comic book inspired theme |
 | Synth Wave | Neon retrowave inspired theme |
 | Tokyo Night | Blue-purple dark theme |
 | Tundra | A soothing, pastel tundra theme |
-| Versailles | Warm cream and brown classical light theme |
+| Vintage Gallery | Cream light theme with slate-blue foreground |
 
-The desktop rebuilds generated theme outputs for Hyprland, Waybar, Rofi, Dunst, Kitty, Alacritty, tmux, GTK, Qt/Kvantum, Hyprlock, and `rmpc`.
+The desktop rebuilds generated theme outputs for Hyprland, Quickshell, Rofi, Dunst, Kitty, Alacritty, tmux, GTK, Qt/Kvantum, Hyprlock, `rmpc`, and the legacy Waybar tree.
 
 ## Notes
 

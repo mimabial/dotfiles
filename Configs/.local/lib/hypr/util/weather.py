@@ -185,12 +185,18 @@ def annotate_day_icons(weather):
     """Attach a forecast glyph to each day, whichever provider supplied it."""
     for day in weather.get("weather", []):
         code = day.get("weatherCode")
+        hours = day.get("hourly") or []
         if not code:
-            hours = day.get("hourly") or []
             midday = hours[len(hours) // 2] if hours else {}
             code = midday.get("weatherCode")
         if code:
             day["icon"] = get_weather_icon_from_code(code)
+        for hour in hours:
+            if hour.get("weatherCode"):
+                hour["icon"] = get_weather_icon_from_code(hour["weatherCode"])
+            stamp = str(hour.get("time", ""))
+            if stamp.isdigit():
+                hour["time"] = f"{day.get('date')}T{int(stamp) // 100:02d}:{int(stamp) % 100:02d}"
     return weather
 
 
@@ -220,13 +226,17 @@ def to_wttr_shape(payload, city, country):
     dew_c, dew_f = temp_pair(at_hour("dew_point_2m") or 0)
     metres = at_hour("visibility")
 
-    rain_by_date = {}
-    for stamp, chance in zip(
-        hourly.get("time", []), hourly.get("precipitation_probability", [])
-    ):
-        rain_by_date.setdefault(stamp[:10], []).append(
-            {"chanceofrain": str(chance or 0)}
-        )
+    hours_by_date = {}
+    for index, stamp in enumerate(hourly.get("time", [])):
+        hour_c, hour_f = temp_pair(hourly["temperature_2m"][index])
+        hour_code, _ = WMO_CONDITIONS.get(hourly["weather_code"][index], ("119", ""))
+        hours_by_date.setdefault(stamp[:10], []).append({
+            "time": stamp,
+            "tempC": hour_c,
+            "tempF": hour_f,
+            "weatherCode": hour_code,
+            "chanceofrain": str(hourly["precipitation_probability"][index] or 0),
+        })
 
     days = []
     for index, date in enumerate(daily["time"]):
@@ -249,9 +259,9 @@ def to_wttr_shape(payload, city, country):
                         "sunset": clock_12h(daily["sunset"][index]),
                     }
                 ],
-                "hourly": rain_by_date.get(date, []),
+                "hourly": hours_by_date.get(date, []),
                 "chanceofrain": str(max(
-                    (int(hour["chanceofrain"]) for hour in rain_by_date.get(date, [])),
+                    (int(hour["chanceofrain"]) for hour in hours_by_date.get(date, [])),
                     default=0,
                 )),
             }
@@ -305,9 +315,9 @@ def fetch_open_meteo(location, city, country):
                 "longitude": longitude,
                 "current": "temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,uv_index,cloud_cover,surface_pressure",
                 "daily": "temperature_2m_max,temperature_2m_min,sunrise,sunset,weather_code",
-                "hourly": "precipitation_probability,dew_point_2m,visibility",
+                "hourly": "temperature_2m,weather_code,precipitation_probability,dew_point_2m,visibility",
                 "timezone": "auto",
-                "forecast_days": 3,
+                "forecast_days": 7,
             },
             timeout=10,
         )
@@ -378,6 +388,16 @@ parser.add_argument(
     help="Join fields horizontally with a space instead of stacking with newlines",
 )
 parser.add_argument("--temps-only", action="store_true", help="Only show min/max temperatures")
+parser.add_argument(
+    "--no-unit",
+    action="store_true",
+    help="Drop the C/F suffix from the displayed text, keeping ° (tooltip keeps it)",
+)
+parser.add_argument(
+    "--icon-size",
+    metavar="SIZE",
+    help="Render the icon at this size (e.g. 18pt) instead of the module font size",
+)
 parser.add_argument(
     "--search",
     metavar="QUERY",
@@ -643,9 +663,14 @@ elif args.sunset:
     data["text"] = f" {sunset}" if args.alt else f"  \n {sunset_h}\n:{sunset_m}"
 else:
     data["text"] = get_feels_like(current_weather)
+    if args.no_unit:
+        value, degree, _ = data["text"].partition("°")
+        data["text"] = value + degree
     if show_icon:
-        data["text"] = field_sep + data["text"]
-        data["text"] = f"{get_weather_icon(current_weather)}" + data["text"]
+        icon = get_weather_icon(current_weather)
+        if args.icon_size:
+            icon = f"<span size='{args.icon_size}'>{icon}</span>"
+        data["text"] = icon + field_sep + data["text"]
     if show_location:
         data["text"] += f" | {get_city_name(weather)}, {get_country_name(weather)}"
 

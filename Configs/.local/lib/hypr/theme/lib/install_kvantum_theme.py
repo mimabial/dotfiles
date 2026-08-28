@@ -3,30 +3,22 @@ import json
 import os
 import re
 import sys
+from pathlib import Path
 
-theme_mode = os.environ.get("SELECTED_COLOR_SOURCE", "theme") == "theme"
 svg_path = os.environ["SVG_PATH"]
 kvconfig_path = os.environ["KVCONFIG_PATH"]
 
-if theme_mode:
-    sys.exit(0)
-
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "render"))
-from _roles import QtRoles, contrast_text
+from _roles import QtRoles, contrast_text, palette_to_pywal
+from _shell import shell_files
 
-
-def load_pywal():
-    with open(os.environ["PYWAL_JSON"]) as f:
-        return json.load(f)
-
-
-pywal = load_pywal()
+palette = json.loads(Path(os.environ["ACTIVE_PALETTE_JSON"]).read_text())
+_shell_svg, shell_kvconfig, shell_colors_map = shell_files(palette)
 
 roles = QtRoles(
-    pywal=pywal,
-    theme_mode=theme_mode,
-    kvconfig_path=os.environ.get("SOURCE_KVCONFIG_PATH"),
-    colors_map_path=os.environ.get("COLORS_MAP"),
+    pywal=palette_to_pywal(palette),
+    kvconfig_path=str(shell_kvconfig) if shell_kvconfig else None,
+    colors_map_path=str(shell_colors_map) if shell_colors_map else None,
 )
 
 bg = roles.bg
@@ -169,8 +161,7 @@ def patch_svg_lineedit_roles(path):
         if not color:
             continue
         field_colors.add(color.lower())
-        if not theme_mode:
-            field_colors.add(substitutions.get(color.lower(), color).lower())
+        field_colors.add(substitutions.get(color.lower(), color).lower())
     field_colors.add(normal_surface.lower())
     field_colors.discard(accent.lower())
     field_colors.discard(bg.lower())

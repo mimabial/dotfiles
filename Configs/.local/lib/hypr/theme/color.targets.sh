@@ -54,8 +54,6 @@ process_theme_files() {
     case "${theme_basename}" in
       hypr.theme|kitty.theme|rofi.theme|waybar.theme|alacritty.theme|tmux.theme|dunst.theme) continue ;;
     esac
-    [[ "${theme_file}" =~ /kvantum/.*\.theme$ ]] && continue
-
     first_line=$(head -1 "${theme_file}")
     theme_target_filter_allows "${theme_basename}" || continue
     target_path="${first_line%%|*}"

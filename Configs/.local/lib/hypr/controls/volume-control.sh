@@ -8,6 +8,7 @@
 #   volume-control.sh -p PLAYER {i|d|m} [step]
 #   volume-control.sh -s                  # Select output sink via rofi
 #   volume-control.sh -t                  # Toggle to next output sink
+#   volume-control.sh --set-default ID NAME # Set output and move app streams
 #   volume-control.sh -q ...              # Quiet (no notification)
 #   volume-control.sh --limits             # Print the default sink's dB range as JSON
 #
@@ -183,7 +184,7 @@ notify_volume() {
   icon="$(icons_media_dir)/knob-${angle}.svg"
   bar="$(printf '%*s' $((volume_pct / VOLUME_BAR_DIVISOR)) '' | tr ' ' '.')"
   dunstify -a "Volume control" -r "${VOLUME_NOTIFY_REPLACE_ID}" -t "${VOLUME_NOTIFY_TIMEOUT_MS}" \
-    -i "${icon}" "${volume_pct}${bar}" "${label}"
+    -e -i "${icon}" "${volume_pct}${bar}" "${label}"
 }
 
 notify_mute() {
@@ -199,7 +200,7 @@ notify_mute() {
   [[ "${muted}" == "true" ]] && prefix="muted"
 
   dunstify -a "Volume control" -r "${VOLUME_NOTIFY_REPLACE_ID}" -t "${VOLUME_NOTIFY_TIMEOUT_MS}" \
-    -i "$(icons_media_dir)/${prefix}-${icon_suffix}.svg" "${prefix}" "${label}"
+    -e -i "$(icons_media_dir)/${prefix}-${icon_suffix}.svg" "${prefix}" "${label}"
 }
 
 apply_sink_delta() {
@@ -276,12 +277,38 @@ set_output_by_description() {
     return 1
   fi
 
-  if wpctl set-default "${sink_id}"; then
+  set_default_output "${sink_id}" "${selection}"
+}
+
+move_application_streams() {
+  local sink_name="$1"
+  local input=""
+
+  while IFS= read -r input; do
+    [[ -n "${input}" ]] && pactl move-sink-input "${input}" "${sink_name}" >/dev/null 2>&1 || true
+  done < <(
+    pactl list sink-inputs 2>/dev/null | awk '
+      /^Sink Input #/ {id = substr($3, 2)}
+      /application\.name = / {
+        app = $0
+        sub(/.*application\.name = "/, "", app)
+        sub(/"$/, "", app)
+        if (app != "EasyEffects") print id
+      }'
+  )
+}
+
+set_default_output() {
+  local sink_id="$1"
+  local sink_name="$2"
+
+  if wpctl set-default "${sink_id}" && pactl set-default-sink "${sink_name}"; then
+    move_application_streams "${sink_name}"
     dunstify -t "${VOLUME_NOTIFY_TIMEOUT_MS}" -i "$(icons_media_dir)/unmuted-speaker.svg" \
-      -r "${VOLUME_NOTIFY_REPLACE_ID}" -u low "Activated: ${selection}"
+      -r "${VOLUME_NOTIFY_REPLACE_ID}" -u low "Activated: ${sink_name}"
   else
     dunstify -t "${VOLUME_NOTIFY_TIMEOUT_MS}" -r "${VOLUME_NOTIFY_REPLACE_ID}" -u critical \
-      -i "dialog-error" "Error activating ${selection}"
+      -i "dialog-error" "Error activating ${sink_name}"
     return 1
   fi
 }
@@ -310,14 +337,7 @@ toggle_output_to_next_sink() {
   next_id="${next_line%%$'\t'*}"
   next_desc="${next_line#*$'\t'}"
 
-  if wpctl set-default "${next_id}"; then
-    dunstify -t "${VOLUME_NOTIFY_TIMEOUT_MS}" -i "$(icons_media_dir)/unmuted-speaker.svg" \
-      -r "${VOLUME_NOTIFY_REPLACE_ID}" -u low "Activated: ${next_desc}"
-  else
-    dunstify -t "${VOLUME_NOTIFY_TIMEOUT_MS}" -r "${VOLUME_NOTIFY_REPLACE_ID}" -u critical \
-      -i "dialog-error" "Error activating ${next_desc}"
-    return 1
-  fi
+  set_default_output "${next_id}" "${next_desc}"
 }
 
 run_action() {
@@ -376,6 +396,15 @@ run_action() {
 
 main() {
   require_commands wpctl pw-dump jq dunstify pactl || return 1
+
+  if [[ "${1:-}" == "--set-default" ]]; then
+    [[ -n "${2:-}" && -n "${3:-}" ]] || {
+      printf 'Usage: %s --set-default ID NAME\n' "$(basename "$0")" >&2
+      return 2
+    }
+    set_default_output "$2" "$3"
+    return
+  fi
 
   local notify_enabled="${VOLUME_NOTIFY:-true}"
   local boost_enabled="${VOLUME_BOOST:-false}"

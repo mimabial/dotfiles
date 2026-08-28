@@ -80,8 +80,9 @@ screenrecord_has_matching_process() {
   return 1
 }
 
-screenrecord_refresh_waybar() {
+screenrecord_refresh_bars() {
   screenrecord_signal_matching RTMIN+10 -x waybar
+  quickshell ipc call indicators refresh screenrecord >/dev/null 2>&1 || true
 }
 
 screenrecord_monitors_json() {
@@ -442,7 +443,7 @@ start_recording() {
   disown "$pid" 2>/dev/null || true
 
   write_recording_state "$pid" "$filename"
-  screenrecord_refresh_waybar
+  screenrecord_refresh_bars
   if [[ "$USE_WINDOW" == true || "$USE_REGION" == true || "$USE_SMART" == true || "$USE_OUTPUT" == true ]]; then
     screenrecord_notify "Recording started" "" "media-record" "normal" "3000" "screenrec"
   else
@@ -506,13 +507,14 @@ stop_recording() {
 
   signal_recording_stop stop_pid stop_path
 
-  screenrecord_refresh_waybar
+  screenrecord_refresh_bars
   cleanup_webcam
 
   (
     wait_for_recording_stop "$stop_pid"
     finalize_recording_stop "$stop_pid" "$stop_path"
     clear_recording_state_if_matches "$stop_pid" "$stop_path"
+    screenrecord_refresh_bars
   ) &
 }
 

@@ -79,7 +79,6 @@ def build_hint(name):
     blocked = {
         "gaming": ("Waybar", "windows mode", "select workflow"),
         "powersaver": ("windows mode", "select workflow") if profile_locked else (),
-        "snappy": ("windows mode", "select workflow") if profile_locked and state.get("POWER_PROFILE_WORKFLOW_PREV") else (),
         "windows": ("Waybar layout", "toggle Waybar", "cycle global layout"),
     }.get(workflow, ())
     if blocked:

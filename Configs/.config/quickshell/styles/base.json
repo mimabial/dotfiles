@@ -1,107 +1,135 @@
 {
-  "": { "fontSize": 18.0 },
+  "": { "fontSize": 14.0 },
   "#taskbar button": {
     "fill": ["bg", 0.1],
     "outline": ["br", 0.1],
     "border": 1.0,
     "fontSize": 16.0,
-    "hover": { "bg": ["hvr_bg", 0.2], "border": ["hvr_br", 0.2] },
+    "hover": { "fill": ["hvr_bg", 0.2], "outline": ["hvr_br", 0.2] },
     "margin": [3.0, 0.0, 3.0, 0.0],
     "padding": [5.0, 0.0, 5.0, 0.0]
   },
   "#taskbar button.active": { "fill": ["act_bg", 0.2], "outline": ["act_br", 0.3] },
-  "#workspaces button": { "fontSize": 16.0, "hover": { "fg": ["hvr_fg", 1.0] } },
+  "#workspaces button": { "fontSize": 16.0, "hover": { "content": ["hvr_fg", 1.0] } },
   "#workspaces button.active": {
-    "border": 1.6,
-    "hover": { "bg": ["hvr_bg", 0.2], "fg": ["hvr_fg", 1.0] },
-    "margin": [2.0, 0.0, 2.0, 0.0],
-    "padding": [4.0, 0.0, 4.0, 0.0]
+    "border": 1.5,
+    "outline": ["act_br", 0.3],
+    "hover": { "fill": ["hvr_bg", 0.1], "content": ["hvr_fg", 1.0] },
+    "margin": [2.0, 2.0, 2.0, 2.0]
   },
   ".modules-left": { "fontSize": 16.0, "margin": [0.0, 2.0, 0.0, 2.0] },
   "active-group": { "fontSize": 16.0 },
   "backlight": {
     "fill": ["bg", 0.1],
     "border": 1.0,
-    "fontSize": 15.0,
-    "hover": { "bg": ["hvr_bg", 0.12], "border": ["hvr_br", 0.55], "fg": ["hvr_fg", 1.0] },
-    "margin": [4.0, 2.0, 4.0, 2.0],
-    "padding": [0.0, 11.0, 0.0, 11.0]
+    "outline": ["br", 0.3],
+    "hover": { "fill": ["hvr_bg", 0.12], "outline": ["hvr_br", 0.55], "content": ["hvr_fg", 1.0] },
+    "margin": [2.0, 2.0, 2.0, 2.0]
   },
   "backlight-slider": { "fontSize": 16.0, "padding": [4.0, 3.0, 4.0, 3.0] },
-  "backlight-slider trough": { "border": 1.0, "fontSize": 16.0, "minHeight": 4.0, "minWidth": 32.0 },
+  "backlight-slider trough": {
+    "border": 1.0,
+    "fontSize": 16.0,
+    "minHeight": 4.0,
+    "minWidth": 32.0
+  },
   "battery": { "fontSize": 16.0, "margin": [4.0, 2.0, 4.0, 2.0], "padding": [4.0, 0.0, 4.0, 0.0] },
-  "bluetooth": { "fontSize": 16.0 },
   "clock.date": {
     "border": 1.0,
-    "fontSize": 14.0,
-    "hover": { "fg": ["hvr_fg", 1.0] },
-    "margin": [3.0, 2.0, 3.0, 2.0],
-    "padding": [3.0, 0.0, 3.0, 0.0],
+    "hover": { "content": ["hvr_fg", 1.0] },
+    "margin": [2.0, 2.0, 2.0, 2.0],
     "outline": ["c10", 0.9]
   },
-  "clock.datetime-winbar": { "fontSize": 16.0, "fontWeight": 700, "padding": [3.0, 0.0, 3.0, 0.0], "hover": { "bg": null } },
-  "clock.time": { "fontSize": 16.0, "fontWeight": 700, "padding": [3.0, 0.0, 3.0, 0.0], "hover": { "bg": null } },
-  "clock.time-alt": { "fontSize": 16.0, "fontWeight": 700, "padding": [3.0, 0.0, 3.0, 0.0], "hover": { "bg": null } },
-  "agents": {
-    "fontSize": 14.0,
+  "clock.datetime-winbar": {
+    "fontSize": 16.0,
     "fontWeight": 700,
-    "hover": { "bg": null, "border": ["hvr_br", 0.55], "fg": ["hvr_fg", 1.0] },
-    "margin": [4.0, 0.0, 4.0, 0.0],
-    "padding": [0.0, 2.0, 0.0, 2.0]
+    "padding": [3.0, 0.0, 3.0, 0.0],
+    "hover": { "fill": null }
+  },
+  "clock.time": {
+    "margin": [2.0, 2.0, 2.0, 2.0],
+    "hover": { "fill": null, "content": ["hvr_fg", 1.0] }
+  },
+  "clock.time-alt": {
+    "fontSize": 16.0,
+    "fontWeight": 400,
+    "padding": [3.0, 0.0, 3.0, 0.0],
+    "hover": { "fill": null }
+  },
+  "agents": {
+    "hover": { "fill": ["hvr_bg", 0.3], "content": ["hvr_fg", 1.0] }
   },
   "bluetooth-button": {
     "border": 1.0,
-    "fontSize": 16.0,
-    "hover": { "bg": null, "border": null, "fg": ["hvr_fg", 1.0] },
-    "margin": [2.0, 2.0, 2.0, 2.0],
-    "padding": [0.0, 10.5, 0.0, 10.5]
+    "fill": ["bg", 0.1],
+    "hover": { "fill": null, "outline": ["hvr_br", 0.6], "content": ["hvr_fg", 1.0] },
+    "outline": ["br", 0.3],
+    "margin": [2.0, 2.0, 2.0, 2.0]
   },
-  "bluetooth-button.status": { "border": 0.0 },
+  "bluetooth-button.status": {
+    "border": 0.0,
+    "outline": null
+  },
   "caffeine": {
+    "fill": ["bg", 0.1],
+    "outline": ["br", 0.3],
     "border": 1.0,
-    "fontSize": 16.0,
-    "hover": { "bg": null, "border": ["hvr_br", 0.55], "fg": ["hvr_fg", 1.0] },
-    "margin": [2.0, 2.0, 2.0, 2.0],
-    "padding": [0.0, 7.0, 0.0, 7.0]
+    "hover": { "fill": null, "outline": ["hvr_br", 0.6], "content": ["hvr_fg", 1.0] },
+    "margin": [2.0, 2.0, 2.0, 2.0]
   },
   "cliphist": {
     "fontSize": 16.0,
-    "hover": { "bg": ["hvr_bg", 0.12], "border": ["hvr_br", 0.55], "fg": ["hvr_fg", 1.0] }
+    "hover": { "fill": ["hvr_bg", 0.12], "outline": ["hvr_br", 0.55], "content": ["hvr_fg", 1.0] }
   },
   "colormode": {
-    "fontSize": 15.0,
-    "hover": { "bg": null, "border": ["hvr_br", 0.55], "fg": ["hvr_fg", 1.0] },
-    "padding": [0.0, 1.5, 0.0, 1.5]
+    "border": 1.0,
+    "fill": ["bg", 0.1],
+    "outline": ["br", 0.4],
+    "margin": [2.0, 2.0, 2.0, 2.0],
+    "hover": { "fill": null, "outline": ["hvr_br", 0.6], "content": ["hvr_fg", 1.0] }
   },
   "colorpicker": {
-    "fontSize": 16.0,
-    "hover": { "bg": ["hvr_bg", 0.12], "border": ["hvr_br", 0.55], "fg": ["hvr_fg", 1.0] },
-    "margin": [2.0, 0.0, 2.0, 0.0]
+    "hover": { "fill": ["hvr_bg", 0.12], "outline": ["hvr_br", 0.55], "content": ["hvr_fg", 1.0] },
+    "margin": [2.0, 2.0, 2.0, 2.0]
+  },
+  "converter": {
+    "border": 1.0, "fill": ["bg", 0.1], "outline": ["br", 0.3], "margin": [2.0, 2.0, 2.0, 2.0],
+    "hover": { "fill": null, "outline": ["hvr_br", 0.6], "content": ["hvr_fg", 1.0] }
   },
   "cpuinfo": {
     "fontSize": 12.0,
-    "fontWeight": 700,
-    "hover": { "fg": ["hvr_fg", 1.0], "bg": null },
+    "fontWeight": 400,
+    "gap": 6.0,
+    "hover": { "content": ["hvr_fg", 1.0], "fill": null },
+    "iconLine": 21.0,
+    "iconPadRight": 1.0,
     "justify": "right",
     "margin": [8.0, 4.0, 8.0, 4.0],
     "padding": [0.0, 2.0, 0.0, 2.0],
     "edge": { "color": ["c7", 0.4] }
   },
-  "dmark": { "fontSize": 16.0, "fontWeight": 700, "hover": { "bg": null } },
+  "dmark": { "fontSize": 16.0, "fontWeight": 400, "hover": { "fill": null } },
+  "fanspeedinfo": { "iconLine": 17.0, "iconPadRight": 4.0 },
   "dunst": {
-    "hover": { "bg": ["hvr_bg", 0.12], "border": ["hvr_br", 0.55], "fg": ["hvr_fg", 1.0] },
+    "border": 1.0,
+    "fill": ["bg", 0.1],
+    "outline": ["br", 0.3],
+    "hover": { "fill": null, "outline": ["hvr_br", 0.6], "content": ["hvr_fg", 1.0] },
     "margin": [2.0, 2.0, 2.0, 2.0]
   },
   "github.notifications": {
-    "fontSize": 16.0,
-    "hover": { "bg": ["hvr_bg", 0.12], "border": ["hvr_br", 0.55], "fg": ["hvr_fg", 1.0] },
-    "margin": [0.0, 2.0, 0.0, 2.0],
-    "padding": [0.0, 3.0, 0.0, 3.0]
+    "border": 1.0,
+    "outline": ["br", 0.3],
+    "hover": { "fill": null, "outline": ["hvr_br", 0.6], "content": ["hvr_fg", 1.0] },
+    "margin": [2.0, 2.0, 2.0, 2.0]
   },
   "gpuinfo": {
     "fontSize": 12.0,
-    "fontWeight": 700,
-    "hover": { "fg": ["hvr_fg", 1.0], "bg": null },
+    "fontWeight": 400,
+    "gap": 6.0,
+    "hover": { "content": ["hvr_fg", 1.0], "fill": null },
+    "iconLine": 21.0,
+    "iconPadRight": 3.0,
     "justify": "right",
     "margin": [8.0, 4.0, 8.0, 4.0],
     "padding": [0.0, 2.0, 0.0, 2.0],
@@ -109,113 +137,140 @@
   },
   "hotspot": {
     "fontSize": 17.0,
-    "hover": { "bg": ["hvr_bg", 0.12], "border": ["hvr_br", 0.55], "fg": ["hvr_fg", 1.0] },
+    "hover": { "fill": ["hvr_bg", 0.1], "outline": ["hvr_br", 0.6], "content": ["hvr_fg", 1.0] },
     "padding": [2.0, 2.0, 2.0, 2.0]
   },
   "hyprmenu": {
     "fill": ["act_bg", 0.3],
     "outline": ["act_br", 0.3],
-    "fg": ["act_fg", 1.0],
+    "content": ["act_fg", 1.0],
     "fontSize": 16.0,
-    "hover": { "bg": ["hvr_bg", 0.12], "border": ["hvr_br", 0.55], "fg": ["hvr_fg", 1.0] }
+    "hover": { "fill": ["hvr_bg", 0.1], "outline": ["hvr_br", 0.6], "content": ["hvr_fg", 1.0] }
   },
   "hyprsunset": {
+    "fill": ["bg", 0.1],
+    "outline": ["br", 0.3],
     "border": 1.0,
-    "fontSize": 16.0,
-    "hover": { "bg": ["hvr_bg", 0.12], "border": ["hvr_br", 0.55], "fg": ["hvr_fg", 1.0] },
-    "margin": [2.0, 2.0, 2.0, 2.0],
-    "padding": [0.0, 7.0, 0.0, 7.0]
+    "hover": { "fill": ["hvr_bg", 0.1], "outline": ["hvr_br", 0.6], "content": ["hvr_fg", 1.0] },
+    "margin": [2.0, 2.0, 2.0, 2.0]
   },
   "keybindhint": {
-    "fontSize": 14.0,
-    "hover": { "bg": ["hvr_bg", 0.12], "border": ["hvr_br", 0.55], "fg": ["hvr_fg", 1.0] },
-    "margin": [1.0, 0.0, 1.0, 0.0],
-    "padding": [0.0, 2.5, 0.0, 2.5]
+    "hover": { "fill": ["hvr_bg", 0.1], "outline": ["hvr_br", 0.6], "content": ["hvr_fg", 1.0] },
+    "margin": [1.0, 0.0, 1.0, 0.0]
   },
-  "mark-button": { "fontSize": 16.0, "fontWeight": 700, "hover": { "bg": null } },
+  "mark-button": { "fontSize": 16.0, "fontWeight": 400, "hover": { "fill": null } },
   "mediaplayer": {
-    "fontSize": 16.0,
-    "hover": { "border": ["hvr_br", 0.55], "fg": ["hvr_fg", 1.0] },
+    "border": 0.0,
+    "hover": { "outline": ["hvr_br", 0.6], "content": ["hvr_fg", 1.0] },
     "margin": [2.0, 2.0, 2.0, 2.0],
-    "padding": [0.0, 4.0, 0.0, 4.0],
-    "edge": { "left": true, "color": ["hvr_br", 0.7] }
+    "edge": { "color": ["warning", 0.6], "left": true, "radius": 0 }
   },
   "network.speed": {
-    "border": 1.0,
-    "fontSize": 13.0,
-    "hover": { "bg": null, "fg": ["hvr_fg", 1.0], "border": null },
-    "margin": [3.0, 3.0, 3.0, 3.0],
-    "padding": [0.0, 1.5, 0.0, 1.5]
+    "border": 1.5,
+    "fontSize": 12.0,
+    "hover": { "fill": null, "content": ["hvr_fg", 1.0], "outline": ["hvr_br", 0.6] },
+    "margin": [2.0, 2.0, 2.0, 2.0]
   },
   "screenrecord": {
-    "hover": { "bg": ["hvr_bg", 0.12], "border": ["hvr_br", 0.55], "fg": ["hvr_fg", 1.0] },
-    "padding": [0.0, 1.0, 0.0, 1.0]
+    "border": 1.0,
+    "fill": ["bg", 0.1],
+    "margin": [2.0, 2.0, 2.0, 2.0],
+    "outline": ["br", 0.3],
+    "hover": { "fill": ["hvr_bg", 0.1], "outline": ["hvr_br", 0.6], "content": ["hvr_fg", 1.0] }
   },
   "screenshot": {
-    "fontSize": 16.0,
-    "hover": { "bg": ["hvr_bg", 0.12], "border": ["hvr_br", 0.55], "fg": ["hvr_fg", 1.0] },
-    "padding": [0.0, 6.0, 0.0, 6.0]
+    "border": 1.0,
+    "fill": ["bg", 0.1],
+    "margin": [2.0, 2.0, 2.0, 2.0],
+    "outline": ["br", 0.3],
+    "hover": { "fill": ["hvr_bg", 0.1], "outline": ["hvr_br", 0.6], "content": ["hvr_fg", 1.0] }
   },
   "submap": { "fontSize": 16.0, "fontWeight": 700, "margin": [4.0, 4.0, 4.0, 4.0] },
-  "terminal": {
-    "fontSize": 14.0,
-    "hover": { "bg": null, "border": ["hvr_br", 0.55], "fg": ["hvr_fg", 1.0] },
-    "padding": [0.0, 3.0, 0.0, 3.0]
+  "sudoku": {
+    "border": 1.0, "fill": ["bg", 0.1], "outline": ["br", 0.3], "margin": [2.0, 2.0, 2.0, 2.0],
+    "hover": { "fill": null, "outline": ["hvr_br", 0.6], "content": ["hvr_fg", 1.0] }
   },
-  "tmark.left": { "fontSize": 16.0, "hover": { "bg": null } },
-  "tmark.right": { "fontSize": 16.0, "hover": { "bg": null } },
+  "terminal": {
+    "border": 1.0,
+    "outline": ["br", 0.3],
+    "fill": ["bg", 0.1],
+    "hover": { "fill": null, "outline": ["hvr_br", 0.6], "content": ["hvr_fg", 1.0] },
+    "margin": [2.0, 2.0, 2.0, 2.0]
+  },
+  "tmark.left": { "fontSize": 16.0, "hover": { "fill": null } },
+  "tmark.right": { "fontSize": 16.0, "hover": { "fill": null } },
   "updates": {
-    "fontSize": 14.0,
-    "fontWeight": 700,
-    "hover": { "bg": null, "border": ["hvr_br", 0.55], "fg": ["hvr_fg", 1.0] },
-    "margin": [4.0, 0.0, 4.0, 0.0],
-    "padding": [0.0, 2.0, 0.0, 2.0]
+    "hover": { "fill": ["hvr_bg", 0.3], "content": ["hvr_fg", 1.0] }
   },
   "vpn": {
     "border": 1.0,
-    "fontSize": 16.0,
-    "hover": { "bg": null, "border": null, "fg": ["hvr_fg", 1.0] },
-    "margin": [2.0, 2.0, 2.0, 2.0],
-    "padding": [1.0, 11.0, 1.0, 11.0]
+    "fill": ["bg", 0.1],
+    "hover": { "fill": null, "outline": ["hvr_br", 0.6], "content": ["hvr_fg", 1.0] },
+    "outline": ["br", 0.3],
+    "margin": [2.0, 2.0, 2.0, 2.0]
   },
-  "barlayout": { "fontSize": 16.0 },
-  "barlayout-button": { "fontSize": 16.0, "hover": { "bg": null, "fg": ["hvr_fg", 1.0] } },
+  "barlayout-button": {
+    "border": 1.0,
+    "fill": ["bg", 0.1],
+    "margin": [2.0, 2.0, 2.0, 2.0],
+    "outline": ["br", 0.3],
+    "hover": { "fill": null, "outline": ["hvr_br", 0.6], "content": ["hvr_fg", 1.0] }
+  },
   "color": { "fontSize": 16.0 },
-  "weather": { "fontSize": 12.0, "hover": { "fg": ["hvr_fg", 1.0], "bg": null }, "margin": [0.0, 4.0, 0.0, 4.0] },
+  "weather": {
+    "hover": { "content": ["hvr_fg", 1.0], "fill": null },
+    "iconPadRight": 5.0,
+    "valuePadLeft": 5.0,
+    "margin": [2.0, 2.0, 2.0, 2.0]
+  },
   "weather.minmax": {
+    "fontSize": 12.0,
     "border": 1.0,
     "justify": "right",
-    "margin": [2.0, 3.0, 2.0, 3.0],
-    "padding": [0.0, 1.0, 0.0, 1.0],
+    "margin": [2.0, 2.0, 2.0, 2.0],
     "outline": ["c4", 0.6]
   },
   "weather.minmax-only-alt": { "justify": "right", "margin": [0.0, 0.0, 0.0, 0.0] },
-  "weather.sunrise": { "justify": "left", "margin": [2.0, 3.0, 2.0, 3.0] },
+  "weather.sunrise": {
+    "justify": "left",
+    "margin": [2.0, 3.0, 2.0, 3.0],
+    "hover": { "content": ["hvr_fg", 1.0], "fill": null }
+  },
+  "weather.sunset": {
+    "hover": { "content": ["hvr_fg", 1.0], "fill": null },
+    "justify": "right",
+    "margin": [2.0, 3.0, 2.0, 3.0]
+  },
   "wifimenu": {
     "border": 1.0,
-    "fontSize": 16.0,
-    "hover": { "bg": null, "border": null, "fg": ["hvr_fg", 1.0] },
-    "margin": [2.0, 2.0, 2.0, 2.0],
-    "padding": [0.0, 10.5, 0.0, 10.5]
+    "fill": ["bg", 0.1],
+    "hover": { "fill": null, "outline": ["hvr_br", 0.55], "content": ["hvr_fg", 1.0] },
+    "outline": ["br", 0.3],
+    "margin": [2.0, 2.0, 2.0, 2.0]
+  },
+  "desktop-group": {
+    "border": 1.0,
+    "outline": ["alt_br", 0.3],
+    "margin": [2.0, 2.0, 2.0, 2.0]
   },
   "window-layout": {
-    "hover": { "bg": null, "border": ["hvr_br", 0.55], "fg": ["hvr_fg", 1.0] },
+    "hover": { "fill": null, "outline": ["hvr_br", 0.55], "content": ["hvr_fg", 1.0] },
     "padding": [0.0, 0.5, 0.0, 0.5]
   },
   "workflows": {
-    "fontSize": 13.0,
-    "hover": { "bg": null, "border": ["hvr_br", 0.55], "fg": ["hvr_fg", 1.0] },
+    "border": 1.0,
+    "fill": ["bg", 0.1],
+    "hover": { "fill": null, "outline": ["hvr_br", 0.6], "content": ["hvr_fg", 1.0] },
     "margin": [3.0, 0.0, 3.0, 0.0]
   },
-  "datetime": { "fontSize": 16.0 },
   "disk": {
     "fontSize": 12.0,
-    "fontWeight": 700,
-    "hover": { "fg": ["hvr_fg", 1.0], "bg": null },
+    "fontWeight": 400,
+    "hover": { "content": ["hvr_fg", 1.0], "fill": null },
     "justify": "right",
     "margin": [8.0, 4.0, 8.0, 4.0],
     "padding": [0.0, 2.0, 0.0, 2.0],
-    "edge": { "color": ["c7", 0.4] }
+    "edge": { "color": ["c7", 0.3] }
   },
   "eyecare": { "fontSize": 16.0 },
   "forecast": { "fontSize": 16.0 },
@@ -223,12 +278,15 @@
   "mark": { "fontSize": 16.0 },
   "memory": {
     "fontSize": 12.0,
-    "fontWeight": 700,
-    "hover": { "fg": ["hvr_fg", 1.0], "bg": null },
+    "fontWeight": 400,
+    "gap": 5.0,
+    "hover": { "content": ["hvr_fg", 1.0], "fill": null },
+    "iconLine": 20.0,
+    "iconPadRight": 3.0,
     "justify": "right",
     "margin": [8.0, 4.0, 8.0, 4.0],
     "padding": [0.0, 2.0, 0.0, 2.0],
-    "edge": { "color": ["c7", 0.4] }
+    "edge": { "color": ["c7", 0.3] }
   },
   "networkmanagement": { "border": 1.0, "fontSize": 16.0, "margin": [3.0, 2.0, 3.0, 2.0] },
   "notification": {
@@ -238,27 +296,44 @@
     "fill": ["bg", 0.1],
     "outline": ["br", 0.3]
   },
-  "notification-group": { "border": 1.0, "fontSize": 16.0, "fill": ["bg", 0.1], "outline": ["br", 0.3] },
-  "privacy": { "border": 1.0, "fontSize": 16.0, "margin": [3.0, 2.0, 3.0, 2.0] },
-  "pulseaudio": {
+  "privacy": {
+    "outline": ["c12", 0.3],
     "border": 1.0,
-    "fontSize": 16.0,
-    "hover": { "bg": ["hvr_bg", 0.12], "border": ["hvr_br", 0.55], "fg": ["hvr_fg", 1.0] },
-    "margin": [4.0, 2.0, 4.0, 2.0],
-    "padding": [0.0, 12.0, 0.0, 12.0]
+    "margin": [2.0, 2.0, 2.0, 2.0]
   },
-  "pulseaudio-slider": { "fontSize": 16.0, "padding": [4.0, 3.0, 4.0, 3.0] },
-  "pulseaudio-slider trough": { "border": 1.0, "fontSize": 16.0, "minHeight": 4.0, "minWidth": 32.0 },
+  "pulseaudio": {
+    "fill": ["bg", 0.1],
+    "outline": ["br", 0.3],
+    "border": 1.0,
+    "hover": { "fill": ["hvr_bg", 0.1], "outline": ["hvr_br", 0.6], "content": ["hvr_fg", 1.0] },
+    "margin": [2.0, 2.0, 2.0, 2.0]
+  },
+  "pulseaudio-slider": { "padding": [2.0, 0.0, 2.0, 0.0] },
+  "pulseaudio-slider trough": {
+    "border": 1.0,
+    "minHeight": 4.0,
+    "minWidth": 32.0
+  },
+  "microphone": {
+    "border": 1.0,
+    "fill": ["bg", 0.1],
+    "hover": { "fill": ["hvr_bg", 0.1], "outline": ["hvr_br", 0.6], "content": ["hvr_fg", 1.0] },
+    "margin": [2.0, 2.0, 2.0, 2.0],
+    "outline": ["c1", 0.3]
+  },
+  "microphone.muted": { "outline": ["br", 0.3] },
   "screen": {
     "border": 1.0,
     "fontSize": 16.0,
-    "margin": [3.0, 2.0, 3.0, 2.0],
+    "margin": [2.0, 2.0, 2.0, 2.0],
     "fill": ["bg", 0.1],
     "outline": ["br", 0.3]
   },
   "screen-group": { "border": 1.0, "fontSize": 16.0, "fill": ["bg", 0.1], "outline": ["br", 0.3] },
-  "taskbar": { "fontSize": 16.0, "margin": [4.0, 2.0, 4.0, 2.0] },
+  "taskbar": { "iconSize": 24.0, "fontSize": 16.0, "margin": [4.0, 2.0, 4.0, 2.0] },
   "tray": {
+    "iconSize": 16.0,
+    "iconSpacing": 2.0,
     "border": 1.0,
     "fill": ["alt_bg", 0.1],
     "outline": ["alt_br", 0.3],
@@ -267,35 +342,38 @@
     "padding": [8.0, 0.0, 8.0, 0.0]
   },
   "tray-group": { "fontSize": 16.0 },
-  "tui-drawer": { "fontSize": 16.0, "margin": [1.0, 0.0, 1.0, 0.0] },
   "volumecontrol": { "fontSize": 16.0 },
-  "wifi": { "fontSize": 16.0 },
-  "workspaces": { "fontSize": 16.0, "margin": [1.0, 2.0, 1.0, 2.0] },
+  "workspaces": { "margin": [2.0, 2.0, 2.0, 2.0] },
   "powerconsumption": { "fontSize": 16.0, "margin": [2.0, 2.0, 2.0, 2.0] },
-  "power": { "border": 1.0, "padding": [2.0, 2.0, 2.0, 2.0], "margin": [2.0, 2.0, 2.0, 2.0] },
-  "powermenu": { "hover": { "bg": ["hvr_bg", 0.12], "border": ["hvr_br", 0.55], "fg": ["hvr_fg", 1.0] } },
-  "power-profiles-daemon": { "border": 1.0, "outline": ["alt_br", 0.3] },
-  "removable": {
+  "power": { "border": 1.0, "padding": [1.0, 1.0, 1.0, 1.0], "margin": [2.0, 2.0, 2.0, 2.0] },
+  "powermenu": {
+    "hover": { "fill": null, "outline": ["hvr_br", 0.6], "content": ["hvr_fg", 1.0] }
+  },
+  "power-profiles-daemon": {
     "border": 1.0,
-    "fontSize": 16.0,
-    "hover": { "bg": null, "border": null, "fg": ["hvr_fg", 1.0] },
-    "margin": [2.0, 2.0, 2.0, 2.0],
-    "padding": [0.0, 10.5, 0.0, 10.5]
+    "outline": ["alt_br", 0.3],
+    "hover": { "fill": null, "outline": ["hvr_br", 0.6], "content": ["hvr_fg", 1.0] }
+  },
+  "removable": {
+    "hover": { "content": ["hvr_fg", 1.0] },
+    "margin": [2.0, 2.0, 2.0, 2.0]
   },
   "connectivity": {
     "border": 1.0,
     "fontSize": 16.0,
     "margin": [2.0, 2.0, 2.0, 2.0],
-    "padding": [2.0, 0.0, 2.0, 0.0],
     "fill": ["bg", 0.1],
     "outline": ["br", 0.3]
   },
   "printers": {
-    "border": 1.0,
-    "fontSize": 16.0,
-    "hover": { "bg": null, "border": null, "fg": ["hvr_fg", 1.0] },
     "margin": [2.0, 2.0, 2.0, 2.0],
-    "padding": [0.0, 10.5, 0.0, 10.5]
+    "hover": { "content": ["hvr_fg", 1.0] }
   },
-  "wallpaper": { "hover": { "bg": null, "border": ["hvr_br", 0.55], "fg": ["hvr_fg", 1.0] } }
+  "wallpaper": {
+    "border": 1.0,
+    "fill": ["bg", 0.1],
+    "margin": [2.0, 2.0, 2.0, 2.0],
+    "outline": ["br", 0.3],
+    "hover": { "fill": null, "outline": ["hvr_br", 0.6], "content": ["hvr_fg", 1.0] }
+  }
 }

@@ -5,14 +5,20 @@ menu_register_domain_core() {
   menu_define dev_tools "Dev Tools"
   menu_add_item dev_tools "󰊢  Git (LazyGit)" action dev_git
   menu_add_item dev_tools "  Docker (LazyDocker)" action dev_docker
-  menu_add_item dev_tools "󰻠  CPU Monitor (Htop)" action dev_cpu_monitor
+  menu_add_item dev_tools "󰓅  System Monitor" action dev_system_monitor
   menu_add_item dev_tools "  GPU Monitor (Nvtop)" action dev_gpu_monitor
   menu_add_item dev_tools "  Disk Usage (Dua)" action dev_disk_usage
+  menu_add_item dev_tools "󰃬  Calculator (Qalc)" action dev_calculator
   menu_add_item dev_tools "  Music Player (Rmpc)" action dev_music_player
 
   menu_define learn "Learn"
-  menu_add_item learn "  Keybindings" action learn_keybindings
+  menu_add_item learn "  Keybindings" submenu learn_keybindings
   menu_add_item learn "󱆃  Scripting" submenu learn_scripting
+
+  menu_define learn_keybindings "Keybindings"
+  menu_add_item learn_keybindings "  Hyprland" action learn_keybindings_hyprland
+  menu_add_item learn_keybindings "  Kitty" action learn_keybindings_kitty
+  menu_add_item learn_keybindings "  Tmux" action learn_keybindings_tmux
 
   menu_define learn_scripting "Scripting"
   menu_add_item learn_scripting "󱆃  Bash" submenu learn_bash
@@ -40,13 +46,18 @@ menu_run_action_core() {
 
   case "${action_id}" in
     main_apps) hyprshell rofi/rofi-launch.sh ;;
+    main_bookmarks) hyprshell rofi/run-after-close.sh -- quickshell ipc call bar bookmarks ;;
+    main_about) present_terminal --hypr-profile tui --app-id org.tui.About --title About -- hyprshell util/about.sh ;;
+    dev_calculator) present_terminal --hypr-cells 96 28 --app-id org.tui.Calc --title Calculator -- hyprshell util/calc-tui.py ;;
     dev_git) present_terminal --hypr-profile tui --app-id org.tui.LazyGit --title LazyGit -- lazygit ;;
     dev_docker) present_terminal --hypr-profile tui --app-id org.tui.LazyDocker --title LazyDocker -- lazydocker ;;
-    dev_cpu_monitor) present_terminal --hypr-profile tui --app-id org.tui.Htop --title Htop -- htop ;;
+    dev_system_monitor) hyprshell util/sysmon-launch.sh ;;
     dev_gpu_monitor) present_terminal --hypr-profile tui --app-id org.tui.Nvtop --title Nvtop -- nvtop ;;
     dev_disk_usage) present_terminal --hypr-profile tui --app-id org.tui.Dua --title Dua -- dua i ;;
     dev_music_player) hyprshell launch/summon.sh --float-if-workspace-occupied class:org.tui.Rmpc -- hyprshell launch/tui.sh --app-id org.tui.Rmpc --title Rmpc -- "${XDG_CONFIG_HOME}/rmpc/lib/launch" ;;
-    learn_keybindings) hyprshell keybinds/keybinds_hint.sh ;;
+    learn_keybindings_hyprland) hyprshell rofi/run-after-close.sh -- hyprshell keybinds/keybinds_hint.sh ;;
+    learn_keybindings_kitty) hyprshell rofi/run-after-close.sh -- hyprshell keybinds/app-hints.sh kitty ;;
+    learn_keybindings_tmux) hyprshell rofi/run-after-close.sh -- hyprshell keybinds/app-hints.sh tmux ;;
     learn_bash_cheatsheet) hyprshell launch/webapp.sh "https://devhints.io/bash" ;;
     learn_bash_shellcheck) hyprshell launch/webapp.sh "https://www.shellcheck.net/wiki/" ;;
     learn_bash_posix) hyprshell launch/webapp.sh "https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html" ;;

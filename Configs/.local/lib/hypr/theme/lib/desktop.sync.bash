@@ -72,6 +72,30 @@ theme_desktop_load_theme_meta_values() {
   return 0
 }
 
+# Look & Feel stores manual cursor choices in the same per-theme Lua block as
+# compositor overrides. The generated vars.set form is understood by the
+# shared layer parser, so desktop-facing cursor settings and Hyprland keep one
+# source of truth.
+theme_desktop_load_looknfeel_cursor_values() {
+  local theme_slug=""
+  local override_file=""
+  local -A looknfeel_values=()
+
+  [[ -n "${HYPR_THEME:-}" ]] || return 0
+  theme_slug="$(LC_ALL=C printf '%s' "${HYPR_THEME}" \
+    | tr '[:upper:]' '[:lower:]' \
+    | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//')"
+  [[ -n "${theme_slug}" ]] || theme_slug="default"
+  override_file="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/looknfeel.d/${theme_slug}.${resolved_color_variant:-dark}.lua"
+
+  hypr_config_parse_layer_file "${override_file}" looknfeel_values
+  [[ -n "${looknfeel_values[CURSOR_THEME]-}" ]] \
+    && CURSOR_THEME="${looknfeel_values[CURSOR_THEME]}"
+  [[ -n "${looknfeel_values[CURSOR_SIZE]-}" ]] \
+    && CURSOR_SIZE="${looknfeel_values[CURSOR_SIZE]}"
+  return 0
+}
+
 declare -ga theme_desktop_layered_vars=(
   ICON_THEME
   CURSOR_THEME
@@ -227,6 +251,7 @@ theme_desktop_resolve_values() {
   COLOR_SCHEME="prefer-${resolved_color_variant}"
   theme_desktop_resolve_base_values
   theme_desktop_load_theme_meta_values
+  theme_desktop_load_looknfeel_cursor_values
 
   if [[ "${revert_colors:-0}" -eq 1 ]] \
     || [[ "${selected_color_mode:-0}" -eq 2 && "${resolved_color_variant:-}" == "light" ]] \
@@ -251,10 +276,6 @@ theme_desktop_resolve_values() {
 
   RESOLVED_GTK_THEME="${resolved_gtk}"
   RESOLVED_KVANTUM_THEME="$(theme_desktop_kvantum_output_theme_name)"
-  RESOLVED_KVANTUM_THEME_IS_PACK=0
-  if theme_desktop_pack_has_kvantum_theme; then
-    RESOLVED_KVANTUM_THEME_IS_PACK=1
-  fi
 
   if [[ -f "${XDG_DATA_HOME:-$HOME/.local/share}/color-schemes/Pywal.colors" ]]; then
     RESOLVED_KDE_COLOR_SCHEME="Pywal"
@@ -404,101 +425,57 @@ theme_desktop_set_cursor_async() {
     hyprctl setcursor "${CURSOR_THEME}" "${CURSOR_SIZE}" >/dev/null 2>&1 &
 }
 
-theme_desktop_pack_has_kvantum_theme() {
-  local pack_dir="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME:-}"
-  [[ -n "${HYPR_THEME:-}" ]] || return 1
-  [[ -f "${pack_dir}/kvantum/kvconfig.theme" ]] || return 1
-  [[ -f "${pack_dir}/kvantum/kvantum.theme" ]] || return 1
-}
-
 theme_desktop_kvantum_output_theme_name() {
   printf '%s' "pywal16"
 }
 
-theme_desktop_kvantum_named_theme_name() {
-  printf '%s' "${HYPR_THEME// /_}"
+# render/_shell.py owns the pack -> shell rule for both languages.
+theme_desktop_kvantum_shell_dir() {
+  HYPR_THEME="${HYPR_THEME:-}" python3 "${LIB_DIR}/hypr/render/_shell.py" 2>/dev/null
 }
 
-theme_desktop_kvantum_svg_source_path() {
-  local pack_dir="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME:-}"
-
-  [[ -n "${HYPR_THEME:-}" && -f "${pack_dir}/kvantum/kvantum.theme" ]] || return 1
-  printf '%s\n' "${pack_dir}/kvantum/kvantum.theme"
-}
-
-theme_desktop_kvantum_pack_source_hash() {
-  local pack_dir="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME:-}"
+theme_desktop_kvantum_shell_hash() {
   local installer="${LIB_DIR}/hypr/theme/lib/install_kvantum_theme.py"
   local roles="${LIB_DIR}/hypr/render/_roles.py"
-  local kvantum_svg_source=""
+  local shell_dir=""
   local -a input_files=()
 
-  theme_desktop_pack_has_kvantum_theme || {
+  shell_dir="$(theme_desktop_kvantum_shell_dir)"
+  [[ -n "${shell_dir}" && -d "${shell_dir}" ]] || {
     printf ''
     return 0
   }
 
-  kvantum_svg_source="$(theme_desktop_kvantum_svg_source_path)" || return 1
-
-  input_files+=(
-    "${kvantum_svg_source}"
-    "${pack_dir}/kvantum/kvconfig.theme"
-  )
-
-  [[ -f "${pack_dir}/kvantum/colors.map" ]] && input_files+=("${pack_dir}/kvantum/colors.map")
+  input_files+=("${shell_dir}/shell.svg" "${shell_dir}/shell.kvconfig")
+  [[ -f "${shell_dir}/shell.map" ]] && input_files+=("${shell_dir}/shell.map")
   [[ -f "${installer}" ]] && input_files+=("${installer}")
   [[ -f "${roles}" ]] && input_files+=("${roles}")
 
   hypr_hash_cache_digest_files "${input_files[@]}"
 }
 
-theme_desktop_install_pack_kvantum_theme() {
-  theme_desktop_pack_has_kvantum_theme || return 0
-
-  local pack_dir="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}"
+theme_desktop_install_kvantum_theme() {
+  local installer="${LIB_DIR}/hypr/theme/lib/install_kvantum_theme.py"
+  local active_palette="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/active-palette.json"
   local kvantum_theme=""
   local dest_dir=""
-  local installer="${LIB_DIR}/hypr/theme/lib/install_kvantum_theme.py"
-  local colors_map="${pack_dir}/kvantum/colors.map"
-  local kvantum_svg_source=""
-  local active_palette="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/active-palette.json"
-  local pywal_json="${XDG_CACHE_HOME:-$HOME/.cache}/wal/colors.json"
+  local shell_dir=""
+
+  shell_dir="$(theme_desktop_kvantum_shell_dir)"
+  [[ -f "${shell_dir}/shell.svg" && -f "${shell_dir}/shell.kvconfig" ]] || return 0
 
   kvantum_theme="$(theme_desktop_kvantum_output_theme_name)"
   dest_dir="${XDG_CONFIG_HOME}/Kvantum/${kvantum_theme}"
-  kvantum_svg_source="$(theme_desktop_kvantum_svg_source_path)" || return 1
 
   mkdir -p "${dest_dir}" || return 1
-  cp -f "${kvantum_svg_source}" "${dest_dir}/${kvantum_theme}.svg" || return 1
-  cp -f "${pack_dir}/kvantum/kvconfig.theme" "${dest_dir}/${kvantum_theme}.kvconfig" || return 1
+  cp -f "${shell_dir}/shell.svg" "${dest_dir}/${kvantum_theme}.svg" || return 1
+  cp -f "${shell_dir}/shell.kvconfig" "${dest_dir}/${kvantum_theme}.kvconfig" || return 1
 
   ACTIVE_PALETTE_JSON="${active_palette}" \
-    COLORS_MAP="${colors_map}" \
-    PYWAL_JSON="${pywal_json}" \
-    SOURCE_KVCONFIG_PATH="${pack_dir}/kvantum/kvconfig.theme" \
-    SELECTED_COLOR_SOURCE="${selected_color_source:-theme}" \
+    HYPR_THEME="${HYPR_THEME:-}" \
     SVG_PATH="${dest_dir}/${kvantum_theme}.svg" \
     KVCONFIG_PATH="${dest_dir}/${kvantum_theme}.kvconfig" \
     python3 "${installer}" || return 1
-}
-
-theme_desktop_install_named_pack_kvantum_theme() {
-  theme_desktop_pack_has_kvantum_theme || return 0
-
-  local pack_dir="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}"
-  local kvantum_theme=""
-  local dest_dir=""
-  local kvantum_svg_source=""
-
-  kvantum_theme="$(theme_desktop_kvantum_named_theme_name)"
-  [[ -n "${kvantum_theme}" ]] || return 0
-
-  dest_dir="${XDG_CONFIG_HOME}/Kvantum/${kvantum_theme}"
-  kvantum_svg_source="$(theme_desktop_kvantum_svg_source_path)" || return 1
-
-  mkdir -p "${dest_dir}" || return 1
-  cp -f "${kvantum_svg_source}" "${dest_dir}/${kvantum_theme}.svg" || return 1
-  cp -f "${pack_dir}/kvantum/kvconfig.theme" "${dest_dir}/${kvantum_theme}.kvconfig" || return 1
 }
 
 theme_desktop_install_kde_color_scheme() {
@@ -807,7 +784,6 @@ theme_desktop_write_dconf_content() {
   local new_content=""
   local new_hash=""
   local old_hash=""
-  theme_desktop_dconf_content_changed=0
 
   mkdir -p "$(dirname "${dconf_file}")"
   new_content="$(theme_desktop_dconf_payload)"
@@ -827,7 +803,6 @@ theme_desktop_write_dconf_content() {
 
   if dconf load -f / <"${dconf_tmp}" >/dev/null 2>&1; then
     mv -f "${dconf_tmp}" "${dconf_file}"
-    theme_desktop_dconf_content_changed=1
     print_log -sec "dconf" -stat "loaded" "${dconf_file}"
   else
     rm -f "${dconf_tmp}"
@@ -836,13 +811,24 @@ theme_desktop_write_dconf_content() {
   fi
 }
 
+# Keyed off the persisted hash of the written sink, not an in-process flag, so
+# the restart can run in whichever process gets there — phase A writes the sink,
+# the phase-D runtime_desktop job pays the ~225ms restart off the critical path.
+# The hash only advances on a successful restart, so a cancelled envelope leaves
+# the work for the next apply.
 theme_desktop_restart_portal_backends_if_needed() {
   local portal_reset_script="${LIB_DIR}/hypr/system/reset-xdg-portal.sh"
+  local dconf_file="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/dconf"
+  local current_hash="" synced_hash=""
 
-  [[ "${theme_desktop_dconf_content_changed:-0}" -eq 1 ]] || return 0
   [[ -x "${portal_reset_script}" ]] || return 0
+  current_hash="$(md5sum "${dconf_file}" 2>/dev/null | cut -d' ' -f1)"
+  [[ -n "${current_hash}" ]] || return 0
+  synced_hash="$(state_get "portal_dconf_hash" "" 2>/dev/null || true)"
+  [[ "${current_hash}" == "${synced_hash}" ]] && return 0
 
   if "${portal_reset_script}" >/dev/null 2>&1; then
+    state_set "portal_dconf_hash" "${current_hash}" "staterc" 2>/dev/null || true
     print_log -sec "dconf" -stat "portal" "restarted"
   else
     print_log -sec "dconf" -warn "portal" "restart failed"
@@ -855,7 +841,7 @@ theme_desktop_prepare_state() {
 
 theme_desktop_static_state_hash() {
   local flatpak_installed=0
-  local kvantum_pack_hash=""
+  local kvantum_shell_hash=""
   local pipeline_hash=""
   local active_palette="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/active-palette.json"
   local active_palette_hash=""
@@ -876,9 +862,7 @@ theme_desktop_static_state_hash() {
   [[ -f "${qtct_kde_colors}" ]] && qtct_files+=("${qtct_kde_colors}")
   [[ -f "${qtct_qt6_colors}" ]] && qtct_files+=("${qtct_qt6_colors}")
   [[ ${#qtct_files[@]} -gt 0 ]] && qtct_hash="$(hypr_hash_cache_digest_files "${qtct_files[@]}")"
-  if [[ "${RESOLVED_KVANTUM_THEME_IS_PACK:-0}" -eq 1 ]]; then
-    kvantum_pack_hash="$(theme_desktop_kvantum_pack_source_hash)"
-  fi
+  kvantum_shell_hash="$(theme_desktop_kvantum_shell_hash)"
 
   hypr_hash_cache_digest_strings \
     "pipeline_hash=${pipeline_hash}" \
@@ -898,7 +882,7 @@ theme_desktop_static_state_hash() {
     "font_antialiasing=${FONT_ANTIALIASING}" \
     "font_hinting=${FONT_HINTING}" \
     "kvantum_theme=${RESOLVED_KVANTUM_THEME}" \
-    "kvantum_pack_hash=${kvantum_pack_hash}" \
+    "kvantum_shell_hash=${kvantum_shell_hash}" \
     "kde_color_scheme=${RESOLVED_KDE_COLOR_SCHEME}" \
     "kde_widget_style=${RESOLVED_KDE_WIDGET_STYLE:-kvantum}" \
     "active_palette=${active_palette_hash}" \
@@ -909,7 +893,7 @@ theme_desktop_static_state_hash() {
 
 theme_desktop_static_targets_ready() {
   local required_target=""
-  local kvantum_pack_theme=""
+  local kvantum_theme=""
   local -a required_targets=(
     "${XDG_CONFIG_HOME}/Kvantum/kvantum.kvconfig"
     "${XDG_CONFIG_HOME}/qt6ct/qt6ct.conf"
@@ -930,18 +914,11 @@ theme_desktop_static_targets_ready() {
     required_targets+=("${XDG_DATA_HOME:-$HOME/.local/share}/color-schemes/Pywal.colors")
   fi
 
-  if [[ "${RESOLVED_KVANTUM_THEME_IS_PACK:-0}" -eq 1 ]] && theme_desktop_pack_has_kvantum_theme; then
-    kvantum_pack_theme="$(theme_desktop_kvantum_output_theme_name)"
-    required_targets+=(
-      "${XDG_CONFIG_HOME}/Kvantum/${kvantum_pack_theme}/${kvantum_pack_theme}.svg"
-      "${XDG_CONFIG_HOME}/Kvantum/${kvantum_pack_theme}/${kvantum_pack_theme}.kvconfig"
-    )
-    kvantum_pack_theme="$(theme_desktop_kvantum_named_theme_name)"
-    required_targets+=(
-      "${XDG_CONFIG_HOME}/Kvantum/${kvantum_pack_theme}/${kvantum_pack_theme}.svg"
-      "${XDG_CONFIG_HOME}/Kvantum/${kvantum_pack_theme}/${kvantum_pack_theme}.kvconfig"
-    )
-  fi
+  kvantum_theme="$(theme_desktop_kvantum_output_theme_name)"
+  required_targets+=(
+    "${XDG_CONFIG_HOME}/Kvantum/${kvantum_theme}/${kvantum_theme}.svg"
+    "${XDG_CONFIG_HOME}/Kvantum/${kvantum_theme}/${kvantum_theme}.kvconfig"
+  )
 
   for required_target in "${required_targets[@]}"; do
     [[ -e "${required_target}" ]] || return 1
@@ -959,11 +936,11 @@ theme_desktop_apply_runtime_resolved() {
     theme_desktop_dconf_payload
     print_log -y "#-----------------------------------------------#"
   fi
+  return 0
 }
 
 theme_desktop_apply_static_resolved() {
-  theme_desktop_install_pack_kvantum_theme
-  theme_desktop_install_named_pack_kvantum_theme
+  theme_desktop_install_kvantum_theme
   theme_desktop_install_kde_color_scheme
   theme_desktop_install_qtct_color_scheme
   theme_desktop_configure_qt_kde_bridge

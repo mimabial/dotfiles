@@ -57,24 +57,31 @@ setup_rofi_config() {
 
   read -r logical_width logical_height <<<"$(rofi_focused_monitor_logical_size)"
 
-  glyph_columns="${ROFI_GLYPH_COLUMNS:-}"
-  if [[ -z "${glyph_columns}" || ! "${glyph_columns}" =~ ^[0-9]+$ ]]; then
-    local calc_cols=$((logical_width / (font_scale * 16)))
-    ((calc_cols < 6)) && calc_cols=6
-    ((calc_cols > 20)) && calc_cols=20
-    glyph_columns=${calc_cols}
-  fi
-
   # a cell stacks glyph, prefix and the name split over two lines, across six
   # reserved rows (~6.5em) against the ~2.1em a plain row costs
   local glyph_row_em=6.5
+  # Tiles are budgeted in em, and em is line height -- not proportional to point
+  # size across fonts (JetBrainsMono 15 is 27px where Miracode 15 is 22px), so
+  # the grid has to divide the real pixel budget, not font_scale.
+  local em_px=""
+  em_px="$(rofi_length_em_to_px 1 "${font_name}" "${font_scale}" 2>/dev/null || true)"
+  [[ "${em_px}" =~ ^[0-9]+$ ]] && ((em_px > 0)) || em_px=$((font_scale * 3 / 2))
+
+  # fill 85% of the monitor, less the theme's chrome (7.3em tall, 2em wide)
+  local calc_cols="" calc_lines=""
+  read -r calc_cols calc_lines <<<"$(
+    awk -v w="${logical_width}" -v h="${logical_height}" -v e="${em_px}" -v r="${glyph_row_em}" '
+      BEGIN {
+        c = int((w * 0.85 - 2 * e) / (r * 1.25 * e))
+        l = int((h * 0.85 - 7.3 * e) / (r * e))
+        printf "%d %d\n", (c < 6 ? 6 : (c > 20 ? 20 : c)), (l < 3 ? 3 : (l > 8 ? 8 : l))
+      }'
+  )"
+
+  glyph_columns="${ROFI_GLYPH_COLUMNS:-}"
+  [[ "${glyph_columns}" =~ ^[0-9]+$ ]] || glyph_columns=${calc_cols}
   glyph_lines="${ROFI_GLYPH_LINES:-}"
-  if [[ -z "${glyph_lines}" || ! "${glyph_lines}" =~ ^[0-9]+$ ]]; then
-    local calc_lines=$((logical_height / (font_scale * 14)))
-    ((calc_lines < 3)) && calc_lines=3
-    ((calc_lines > 8)) && calc_lines=8
-    glyph_lines=${calc_lines}
-  fi
+  [[ "${glyph_lines}" =~ ^[0-9]+$ ]] || glyph_lines=${calc_lines}
 
   # 5:4 tiles: a column is a quarter wider than a row is tall, over the 2em of
   # mainbox and listview padding the theme puts either side of the grid

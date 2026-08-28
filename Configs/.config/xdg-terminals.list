@@ -1,4 +1,2 @@
-# See https://github.com/Vladimir-csp/xdg-terminal-exec?tab=readme-ov-file#configuration
+# Terminal emulator preference order
 kitty.desktop
-Alacritty.desktop
-foot.desktop

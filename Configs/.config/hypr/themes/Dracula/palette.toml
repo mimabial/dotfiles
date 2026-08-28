@@ -23,3 +23,5 @@ colors = [
   "#a4ffff",
   "#ffffff",
 ]
+
+kvantum-shell = "pill"
