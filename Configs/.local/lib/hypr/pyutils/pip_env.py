@@ -313,37 +313,6 @@ def v_import(module_name):
         ) from exc
 
 
-def v_install(module_name, force_reinstall=False):
-    """Install a module in the virtual environment without importing it.
-    Args:
-        module_name (str): Name of module to install
-        force_reinstall (bool): If True, reinstall even if module exists
-    """
-    venv_path = get_venv_path()
-    if not os.path.exists(os.path.join(venv_path, "bin", "pip")):
-        create_venv(venv_path)
-    pip_executable = os.path.join(venv_path, "bin", "pip")
-    result = subprocess.run(
-        [pip_executable, "show", module_name],
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0 or force_reinstall:
-        notify.send("PIP", f"Installing {module_name} module...")
-        install_package(venv_path, module_name)
-        notify.send("PIP", f"Successfully installed {module_name}.")
-    sys.path.insert(0, venv_path)
-    sys.path.insert(
-        0,
-        os.path.join(
-            venv_path,
-            "lib",
-            f"python{sys.version_info.major}.{sys.version_info.minor}",
-            "site-packages",
-        ),
-    )
-
-
 def main(args):
     parser = argparse.ArgumentParser(
         description="Python environment manager for Hyprland"

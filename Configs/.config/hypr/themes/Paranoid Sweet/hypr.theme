@@ -9,6 +9,11 @@ $NVIM_SCHEME = cyberdream
 $NVIM_VARIANT = default
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
+$FONT = RecMonoCasual Nerd Font
+$BAR_FONT = RecMonoCasual Nerd Font
+$MENU_FONT = RecMonoCasual Nerd Font
+$MONOSPACE_FONT = RecMonoCasual Nerd Font
+$NOTIFICATION_FONT = RecMonoCasual Nerd Font Mono
 
 general {
     gaps_in = 3

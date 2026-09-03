@@ -8,6 +8,11 @@ $NVIM_SCHEME = gruvbox-material
 $NVIM_VARIANT = medium
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
+$FONT = UbuntuMono Nerd Font
+$BAR_FONT = UbuntuMono Nerd Font
+$MENU_FONT = UbuntuMono Nerd Font
+$MONOSPACE_FONT = UbuntuMono Nerd Font
+$NOTIFICATION_FONT = UbuntuMono Nerd Font Mono
 
 general {
     gaps_in = 3
@@ -40,5 +45,3 @@ decoration {
         xray = false
     }
 }
-
-layerrule = blur on, match:namespace waybar

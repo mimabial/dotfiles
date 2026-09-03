@@ -9,6 +9,11 @@ $NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME = material_light_cursors
 $CURSOR_SIZE = 26
+$FONT = Monofur Nerd Font
+$BAR_FONT = Monofur Nerd Font
+$MENU_FONT = Monofur Nerd Font
+$MONOSPACE_FONT = Monofur Nerd Font
+$NOTIFICATION_FONT = Monofur Nerd Font Mono
 
 general {
     gaps_in = 3

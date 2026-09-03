@@ -1,13 +1,18 @@
 $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 
 $CURSOR_THEME = capitaine-cursors-light
-$CURSOR_SIZE = 24
+$CURSOR_SIZE = 30
 $ICON_THEME = Tela-pink-dark
 $COLOR_SCHEME = prefer-dark
 $NVIM_SCHEME = rose-pine
 $NVIM_VARIANT = main
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
+$FONT = CaskaydiaCove Nerd Font
+$BAR_FONT = CaskaydiaCove Nerd Font
+$MENU_FONT = CaskaydiaCove Nerd Font
+$MONOSPACE_FONT = CaskaydiaCove Nerd Font
+$NOTIFICATION_FONT = CaskaydiaCove Nerd Font Mono
 
 # Theme variables above are the primary inputs used by theme.switch.sh.
 
@@ -41,5 +46,3 @@ decoration {
         xray = false
     }
 }
-
-layerrule = blur on, match:namespace waybar

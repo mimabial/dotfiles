@@ -6,7 +6,7 @@ function codepoint(code) {
     return String.fromCharCode(0xD800 + (offset >> 10), 0xDC00 + (offset & 0x3FF))
 }
 
-var GLYPH_USB = codepoint(0xF129E)
+var GLYPH_USB = codepoint(0xF129F)
 var GLYPH_SD = codepoint(0xF0479)
 var GLYPH_DISK = codepoint(0xF02CA)
 var GLYPH_EJECT = codepoint(0xF01EA)

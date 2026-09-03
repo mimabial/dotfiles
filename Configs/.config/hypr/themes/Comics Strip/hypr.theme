@@ -1,0 +1,43 @@
+$HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
+
+$ICON_THEME = Tela-red-dark
+$COLOR_SCHEME = prefer-dark
+$CURSOR_THEME = ComixCursors-White
+$CURSOR_SIZE = 40
+$FONT = ComicShannsMono Nerd Font
+$BAR_FONT = ComicShannsMono Nerd Font
+$MENU_FONT = ComicShannsMono Nerd Font
+$MONOSPACE_FONT = ComicShannsMono Nerd Font
+$NOTIFICATION_FONT = ComicShannsMono Nerd Font Mono
+
+
+general {
+    gaps_in = 4
+    gaps_out = 8
+    border_size = 2
+    col.active_border = rgba(c74b8aff)
+    col.inactive_border = rgba(462f4acc)
+    layout = dwindle
+    resize_on_border = true
+}
+
+group {
+    col.border_active = rgba(c74b8aff)
+    col.border_inactive = rgba(462f4acc)
+    col.border_locked_active = rgba(d32d38ff)
+    col.border_locked_inactive = rgba(462f4acc)
+}
+
+decoration {
+    rounding = 4
+    shadow:enabled = false
+
+    blur {
+        enabled = yes
+        size = 6
+        passes = 3
+        new_optimizations = on
+        ignore_opacity = on
+        xray = false
+    }
+}

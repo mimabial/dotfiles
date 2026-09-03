@@ -382,14 +382,6 @@ apply_color_policy() {
   state_set_color_variant "${target_mode}"
 
   "${hypr_theme_cmd}" wallpaper --variant "${target_mode}" "${wallpaper}"
-
-  if ! hypr_user_pgrep -x waybar >/dev/null 2>&1; then
-    local waybar_script="${LIB_DIR}/hypr/waybar/waybar.py"
-    if [[ -x "${waybar_script}" ]]; then
-      "${waybar_script}" --restart-direct >/dev/null 2>&1 \
-        || print_log -sec "color-mode" -warn "waybar" "start failed"
-    fi
-  fi
 }
 
 parse_target_policy() {
@@ -419,10 +411,6 @@ load_previous_color_policy() {
 persist_color_policy() {
   state_set "selected_color_source" "${target_color_source}" "staterc"
   state_set "selected_color_mode" "${target_color_mode}" "staterc"
-}
-
-notify_waybar_color_mode() {
-  pkill -RTMIN+8 waybar >/dev/null 2>&1 || true
 }
 
 notify_color_mode_changed() {
@@ -458,7 +446,6 @@ revert_failed_auto_mode() {
     stop_auto_theme_service
     apply_color_policy || exit 1
   fi
-  notify_waybar_color_mode
   exit 1
 }
 
@@ -479,7 +466,6 @@ apply_manual_mode() {
       start_auto_theme_service || true
       refresh_auto_theme_service
     fi
-    notify_waybar_color_mode
     exit 1
   fi
 }
@@ -499,7 +485,6 @@ main() {
     apply_manual_mode
   fi
 
-  notify_waybar_color_mode
   notify_color_mode_changed
 }
 

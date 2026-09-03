@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 
 // The target and destination choices screenshot.sh takes positionally, so the

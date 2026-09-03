@@ -22,8 +22,7 @@ PreviewSize=32
 CloseActiveSplitView=false
 CloseSplitViewChoice=InactiveView
 DynamicView=true
-GlobalViewProps=false
-ModifiedStartupSettings=true
+GlobalViewProps=true
 OpenExternallyCalledFolderInNewTab=true
 OpenNewTabAfterLastTab=true
 ShowFullPath=false
@@ -36,7 +35,7 @@ ViewPropsTimestamp=2023,4,26,16,58,48.324
 
 [IconsMode]
 IconSize=256
-PreviewSize=208
+PreviewSize=224
 
 [InformationPanel]
 dateFormat=ShortFormat

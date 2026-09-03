@@ -261,7 +261,7 @@ class AutoThemeDaemon:
             return False
         try:
             result = subprocess.run(
-                [hyprshell, "theme/theme.switch", "-s", theme, "--quiet"],
+                [hyprshell, "theme/theme.switch", "-s", theme, "--quiet", "--from-auto"],
                 capture_output=True,
                 text=True,
             )

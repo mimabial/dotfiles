@@ -11,8 +11,7 @@ pavucontrol                                           # PulseAudio volume contro
 pamixer                                               # PulseAudio CLI mixer
 networkmanager                                        # network manager
 network-manager-applet                                # NetworkManager tray utility
-nm-connection-editor                                  # network editor used by Waybar
-networkmanager-dmenu                                  # rofi network menu launcher
+nm-connection-editor                                  # network editor (has a window rule)
 bluez                                                 # bluetooth protocol stack
 bluez-utils                                           # bluetooth CLI utilities
 blueman                                               # bluetooth GUI manager
@@ -35,7 +34,7 @@ limine                                                # bootloader
 # --------------------------------------------------- // Window Manager
 hyprland                                              # wlroots-based Wayland compositor
 rofi                                                  # application launcher
-waybar                                                # system bar
+quickshell                                            # QtQuick shell toolkit — the active bar
 awww                                                  # wallpaper daemon/backend
 dunst                                                 # notification daemon
 hyprlock                                              # lock screen
@@ -60,6 +59,7 @@ git                                                   # dotfiles, shell plugins,
 rsync                                                 # dotfiles and service sync helpers
 pacman-contrib                                        # system update check
 parallel                                              # parallel processing
+gum                                                   # TUI prompts used by the install/* flows
 jq                                                    # JSON processing
 openbsd-netcat                                        # nc socket helpers
 inetutils                                             # classic network utilities
@@ -76,9 +76,6 @@ libnotify                                             # notifications
 python                                                # Python runtime for Hypr helpers
 python-pip                                            # managed Hypr Python virtualenv bootstrap
 python-gobject                                        # GI bindings for media/player helpers
-python-requests                                       # lyrics/weather/network Python helpers
-python-astral                                         # sunrise/sunset auto-theme scheduling
-python-jsonschema                                     # Hypr config schema validation
 ripgrep                                               # shell, fzf, and font search helpers
 fd                                                    # shell and fzf file search helpers
 bat                                                   # shell, fzf, and preview helpers
@@ -92,7 +89,6 @@ wtype                                                 # Wayland autopaste
 xmlstarlet                                            # XML font updates
 fwupd                                                 # firmware update helper
 chafa                                                 # terminal image previews
-jp2a                                                  # terminal image preview fallback
 zbar                                                  # clipboard QR scanning
 qrencode                                              # Wi-Fi QR generation
 tesseract                                             # screenshot and clipboard OCR
@@ -135,16 +131,18 @@ mpv                                                   # recording/media playback
 loupe                                                 # image viewer
 haruna                                                # video player
 zathura                                               # document viewer
+zathura-pdf-mupdf                                     # zathura PDF rendering backend
 gimp                                                  # image editor and screenshot editor
 bitwarden                                             # password manager keybind/session lock integration
 signal-desktop                                        # messaging keybind
 qalculate-gtk                                         # calculator launcher
+khal                                                  # calendar backend for calendar/agenda
+vdirsyncer                                            # CalDAV sync for khal
 libreoffice-fresh                                     # office suite taskbar/window support
 partitionmanager                                      # partition manager window rules
 skanlite                                              # scanner window rules
 localsend-bin                                         # local file sharing helper
 yt-dlp                                                # media/YouTube metadata helper
-wttrbar                                               # waybar weather widget
 
 # --------------------------------------------------- // TUI Utilities
 bluetui                                               # bluetooth TUI launcher
@@ -159,8 +157,6 @@ dua-cli                                               # disk usage TUI launcher
 mpd                                                   # music player daemon
 mpd-mpris                                             # expose MPD over MPRIS
 rmpc                                                  # MPD TUI client
-python-ytmusicapi                                     # optional YouTube Music lyrics provider
-python-lyricsgenius                                   # optional Genius lyrics provider
 
 # --------------------------------------------------- // Shell
 zsh                                                   # configured shell

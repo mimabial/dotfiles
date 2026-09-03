@@ -24,24 +24,6 @@ import time
 import sys
 from pathlib import Path
 
-DEVICE_GLYPHS = {
-    "iwlwifi": "",
-    "nvme": "",
-    "acpitz": "",
-    "coretemp": "",
-    "pch_cannonlake": "",
-    "BAT": "",
-    "acpi_fan": "󰈐",
-    "default": "",
-}
-
-
-def get_device_glyph(device_name):
-    return next(
-        (glyph for key, glyph in DEVICE_GLYPHS.items() if key in device_name),
-        DEVICE_GLYPHS["default"],
-    )
-
 
 def format_columns(data, max_entries_per_column=15):
     if not data:
@@ -259,13 +241,6 @@ def get_sensor_data(result_sensors, page=0):
     return {"text": text, "tooltip": tooltip}
 
 
-def signal_waybar() -> None:
-    subprocess.run(
-        ["pkill", "-u", str(os.getuid()), "-RTMIN+19", "-x", "waybar"],
-        check=False,
-    )
-
-
 def main():
     parser = argparse.ArgumentParser(description="Sensor Info")
     parser.add_argument(
@@ -309,10 +284,8 @@ def main():
         page = get_current_page(total_pages)
         if total_pages > 0 and args.next:
             page = (page + 1) % total_pages
-            signal_waybar()
         elif total_pages > 0 and args.prev:
             page = (page - 1 + total_pages) % total_pages
-            signal_waybar()
         save_current_page(page)
         sensor_info = get_sensor_data(result_sensors, page)
         print(json.dumps(sensor_info, separators=(",", ":")))

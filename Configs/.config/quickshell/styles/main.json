@@ -4,58 +4,54 @@
   },
   "clock.time": {
     "hover": { "fill": null, "content": ["hvr_fg", 1.0] },
-    "margin": [2.0, 10.0, 2.0, 10.0]
+    "margin": [8.0, 10.0, 2.0, 10.0]
   },
   "clock.date": {
+    "fontSize": 12.0,
     "border": 1.5,
     "fontWeight": 400,
     "edge": { "bottom": true, "color": ["c10", 0.3], "right": true, "top": true },
-    "fontSize": 12.0,
     "hover": { "content": ["hvr_fg", 1.0] },
     "justify": "left",
     "outline": null,
     "padding": [4.0, 4.0, 4.0, 4.0]
   },
   "weather": {
-    "fontSize": 12.0,
     "iconPadRight": 5.0,
-    "iconSize": 14.0,
-    "iconLine": 20.0,
+    "iconLine": 11.1,
     "valuePadLeft": 5.0,
     "margin": [2.0, 0.0, 2.0, 0.0],
     "padding": [0.0, 0.2, 0.0, 0.2]
   },
   "weather.minmax": {
+    "fontSize": 12.0,
     "border": 1.5,
     "outline": null,
     "edge": { "bottom": true, "color": ["c4", 0.3], "left": true, "top": true },
-    "fontSize": 12,
     "justify": "center",
     "padding": [4.0, 0.0, 4.0, 0.0]
   },
   "weather.sunrise": {
+    "fontSize": 12.0,
     "border": 1.5,
-    "iconSize": 12,
     "iconLine": 0,
     "iconPadRight": 1,
     "valuePadLeft": 0,
     "outline": null,
     "justify": "center",
     "edge": { "bottom": true, "color": ["c5", 0.3], "right": true, "top": true },
-    "fontSize": 12,
     "margin": [2.0, 2.0, 2.0, 2.0],
     "padding": [2.0, 0.0, 2.0, 2.0]
   },
   "weather.sunset": {
+    "fontSize": 12.0,
     "border": 1.5,
     "justify": "center",
-    "iconSize": 12,
     "iconLine": 0,
     "iconPadRight": -2,
     "valuePadLeft": 0,
     "outline": null,
     "edge": { "color": ["c5", 0.3], "top": true, "left": true, "bottom": true },
-    "fontSize": 12,
     "padding": [2.0, 2.0, 2.0, 0.0]
   },
   "connectivity": {
@@ -117,6 +113,9 @@
 
   "vpn": { "outline": null, "hover": { "outline": null } },
   "wifimenu": { "outline": null, "hover": { "outline": null } },
+  "network.speed": {
+    "fontSize": 10.0
+  },
   "bluetooth-button": { "outline": null, "hover": { "outline": null } },
   "disks": { "outline": null },
   "memory": {
@@ -149,7 +148,6 @@
   "updates-agents": {
     "border": 1.0,
     "fill": ["bg", 0.1],
-    "fontSize": 16.0,
     "margin": [3.0, 2.0, 3.0, 2.0],
     "outline": ["br", 0.3]
   },

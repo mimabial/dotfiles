@@ -4,7 +4,7 @@
 
 function render(ctx, d) {
   var bands = d.bands || []
-  var w = d.width, h = d.height, frame = d.frame || 0
+  var w = d.width, h = d.height
   var isPlaying = d.playing
   var midY = h / 2.0
 
@@ -32,9 +32,15 @@ function render(ctx, d) {
   var midsAmp = Math.min(maxSafeAmp * 0.9, (h * 0.06) + (mids * (h * 0.22)))
   var highsAmp = Math.min(maxSafeAmp * 0.8, (h * 0.05) + (highs * (h * 0.20)))
 
-  // Smooth, non-chaotic phase travel modulated by music tempo
-  var speed = 0.035 + (totalEnergy * 0.035)
-  var phase = frame * speed
+  // Integrate the phase instead of frame * speed. speed changes with the audio every
+  // paint, and frame never resets, so that product jumps by frame * dspeed -- a rotation
+  // proportional to uptime. Rate is rad/s: the old per-frame value * 23.4 ticks/s.
+  var st = d.state, now = Date.now()
+  if (st.siriPhase === undefined) { st.siriPhase = 0; st.siriLast = now }
+  var dt = Math.min(0.12, Math.max(0.001, (now - st.siriLast) / 1000))
+  st.siriLast = now
+  st.siriPhase += (0.820 + totalEnergy * 0.820) * dt
+  var phase = st.siriPhase
 
   // Apple Global Attenuation Formula: (4 / (4 + x^4))^4 on x in [-2, 2]
   function globalAttenuation(x) {
@@ -44,10 +50,13 @@ function render(ctx, d) {
   }
 
   // 3. Theme-derived ribbons (pure harmonic sine curves with zero jagged noise)
+  // Bass, mids and highs take three adjacent hues from the theme's own palette
+  // (pink / accent / blue) rather than rotations synthesised off the accent.
+  var pal = d.colors || []
   var ribbons = [
-    { from: d.accent, to: d.accent, mix: 0.0, alpha: 0.55, freq: 1.15, speed: 1.0,  phaseOff: 0.0, amp: bassAmp },
-    { from: d.accent, to: d.foreground, mix: 0.35, alpha: 0.50, freq: 1.65, speed: -1.2, phaseOff: 1.4, amp: midsAmp },
-    { from: d.accent, to: d.dim, mix: 0.45, alpha: 0.45, freq: 2.15, speed: 1.5,  phaseOff: 2.8, amp: highsAmp }
+    { from: pal[1] || d.accent, to: d.foreground, mix: 0.10, alpha: 0.55, freq: 1.15, speed: 1.0,  phaseOff: 0.0, amp: bassAmp },
+    { from: d.accent,           to: d.foreground, mix: 0.15, alpha: 0.50, freq: 1.65, speed: -1.2, phaseOff: 1.4, amp: midsAmp },
+    { from: pal[4] || d.dim,    to: d.foreground, mix: 0.10, alpha: 0.45, freq: 2.15, speed: 1.5,  phaseOff: 2.8, amp: highsAmp }
   ]
 
   // Render 3 fluid harmonic color curves

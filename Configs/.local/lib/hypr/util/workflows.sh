@@ -30,7 +30,7 @@ Options:
     --select | -S       Select a workflow from the available options
     --set               Set the given workflow
     --list              List selectable workflows as name, icon and description
-    --waybar            Get workflow info for Waybar
+    --bar               Get workflow info for the active bar
     --help   | -h       Show this help message
 HELP
 }
@@ -65,74 +65,31 @@ get_workflow_description() {
   printf '%s\n' "${description:-No description available}"
 }
 
-get_workflow_waybar_mode() {
-  local workflow_path="$1"
-  sed -n 's/^[[:space:]]*vars\.set("WORKFLOW_WAYBAR",[[:space:]]*"\([^"]*\)").*/\1/p' "${workflow_path}" | head -n1
-}
-
-get_workflow_waybar_opacity() {
-  local workflow_path="$1"
-  sed -n 's/^[[:space:]]*vars\.set("WORKFLOW_WAYBAR_OPACITY",[[:space:]]*"\([^"]*\)").*/\1/p' "${workflow_path}" | head -n1
-}
-
-apply_waybar_workflow() {
-  local mode css="" signal="RTMIN+19"
-  local workflow_css_file="${XDG_CONFIG_HOME:-$HOME/.config}/waybar/includes/workflow.css"
+apply_quickshell_workflow() {
   local layout current_layout_name saved_layout target_layout=""
-  local rounding opacity last_applied
+  local last_applied
 
-  mode="$(get_workflow_waybar_mode "${current_workflow_path}")"
-  opacity="$(get_workflow_waybar_opacity "${current_workflow_path}")"
-  layout="$(get_workflow_waybar_layout "${current_workflow_path}")"
-  current_layout_name="$(state_get "WAYBAR_LAYOUT_NAME" "")"
-  saved_layout="$(state_get "WORKFLOW_WAYBAR_PREV_LAYOUT" "")"
-  last_applied="$(state_get "WORKFLOW_WAYBAR_LAST_APPLIED_LAYOUT" "")"
+  layout="$(get_workflow_quickshell_layout "${current_workflow_path}")"
+  current_layout_name="$(state_get "QUICKSHELL_LAYOUT_NAME" "main")"
+  saved_layout="$(state_get "WORKFLOW_QUICKSHELL_PREV_LAYOUT" "")"
+  last_applied="$(state_get "WORKFLOW_QUICKSHELL_LAST_APPLIED_LAYOUT" "")"
 
   if [[ -n "${layout}" ]]; then
     if [[ "${workflow_previous_name}" != "${current_workflow}" ]]; then
       [[ "${current_layout_name}" != "${layout}" ]] && target_layout="${layout}"
-      [[ -n "${target_layout}" && -z "${saved_layout}" ]] && state_set "WORKFLOW_WAYBAR_PREV_LAYOUT" "${current_layout_name}" "staterc"
+      [[ -n "${target_layout}" && -z "${saved_layout}" ]] && state_set "WORKFLOW_QUICKSHELL_PREV_LAYOUT" "${current_layout_name}" "staterc"
     fi
   elif [[ -n "${saved_layout}" ]]; then
-    state_set "WORKFLOW_WAYBAR_PREV_LAYOUT" "" "staterc"
+    state_set "WORKFLOW_QUICKSHELL_PREV_LAYOUT" "" "staterc"
     if [[ -z "${last_applied}" || "${current_layout_name}" == "${last_applied}" ]]; then
       [[ "${current_layout_name}" != "${saved_layout}" ]] && target_layout="${saved_layout}"
     fi
   fi
 
-  [[ -n "${target_layout}" ]] && state_set "WORKFLOW_WAYBAR_LAST_APPLIED_LAYOUT" "${target_layout}" "staterc"
-
-  # Quickshell reads the layout out of staterc, so that transition still matters
-  # when Waybar is off; the CSS, radius and signalling below are Waybar's alone.
-  if [[ "$(state_get WAYBAR_ENABLED 1)" == 0 ]]; then
-    [[ -n "${target_layout}" ]] && hyprshell waybar.py --set "${target_layout}" --no-restart >/dev/null 2>&1
-    return 0
-  fi
-  rounding="$(hyprctl -j getoption decoration:rounding 2>/dev/null | jq -r '.int // empty')"
-
-  if [[ "${mode}" == "hidden" ]]; then
-    [[ -n "${target_layout}" ]] && WAYBAR_BORDER_RADIUS="${rounding}" hyprshell waybar.py --set "${target_layout}" --no-restart >/dev/null 2>&1
-    hyprshell waybar.py --kill >/dev/null 2>&1 || true
-    return 0
-  fi
-
-  [[ "${opacity}" =~ ^[0-9]*\.?[0-9]+$ ]] && css="window#waybar { background: alpha(@bg, ${opacity}); }"
-  if [[ "$(cat "${workflow_css_file}" 2>/dev/null)" != "${css}" ]]; then
-    printf '%s\n' "${css}" >"${workflow_css_file}"
-    signal="SIGUSR2"
-  fi
-
-  if [[ -n "${target_layout}" ]]; then
-    WAYBAR_BORDER_RADIUS="${rounding}" hyprshell waybar.py --set "${target_layout}" >/dev/null 2>&1 || true
-    return 0
-  fi
-
-  WAYBAR_BORDER_RADIUS="${rounding}" hyprshell waybar.py --update-border-radius >/dev/null 2>&1 || true
-  if hypr_user_pgrep -x waybar >/dev/null; then
-    hypr_user_pkill "-${signal}" -x waybar >/dev/null 2>&1 || true
-  else
-    hyprshell waybar.py --restart-direct >/dev/null 2>&1 || true
-  fi
+  [[ -n "${target_layout}" ]] || return 0
+  state_set "WORKFLOW_QUICKSHELL_LAST_APPLIED_LAYOUT" "${target_layout}" "staterc"
+  state_set "QUICKSHELL_LAYOUT_NAME" "${target_layout}" "staterc"
+  hyprshell render/dunst.py >/dev/null 2>&1 || true
 }
 
 sync_workflow_flags() {
@@ -143,9 +100,9 @@ sync_workflow_flags() {
   state_set HYPR_GAMEMODE "${gaming}" staterc
 }
 
-get_workflow_waybar_layout() {
+get_workflow_quickshell_layout() {
   local workflow_path="$1"
-  sed -n 's/^[[:space:]]*vars\.set("WORKFLOW_WAYBAR_LAYOUT",[[:space:]]*"\([^"]*\)").*/\1/p' "${workflow_path}" | head -n1
+  sed -n 's/^[[:space:]]*vars\.set("WORKFLOW_QUICKSHELL_LAYOUT",[[:space:]]*"\([^"]*\)").*/\1/p' "${workflow_path}" | head -n1
 }
 
 fn_select() {
@@ -272,10 +229,10 @@ apply_workflow_update() {
   fn_update
   sync_workflow_flags
   hyprctl reload config-only -q
-  apply_waybar_workflow
+  apply_quickshell_workflow
 }
 
-handle_waybar() {
+handle_bar() {
   get_info
   printf '{"text": "%s", "class": "custom-workflows"}\n' "${current_icon}"
 }
@@ -286,7 +243,7 @@ if [[ -z "${*}" ]]; then
   exit 1
 fi
 
-LONG_OPTS="select,set:,list,waybar,help"
+LONG_OPTS="select,set:,list,bar,help"
 SHORT_OPTS="Sh"
 PARSED=$(getopt --options "${SHORT_OPTS}" --longoptions "${LONG_OPTS}" --name "$0" -- "$@") || exit 2
 eval set -- "${PARSED}"
@@ -317,8 +274,8 @@ while true; do
       show_help
       exit 0
       ;;
-    --waybar)
-      handle_waybar
+    --bar)
+      handle_bar
       exit 0
       ;;
     --list)

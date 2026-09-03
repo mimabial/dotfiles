@@ -10,7 +10,7 @@ usage() {
 Usage: hyprshell notify/github-notifications [--report]
 
 Emit GitHub inbox and security-alert status.
-  (default)   waybar JSON: text, tooltip, class
+  (default)   bar JSON: text, tooltip, class
   --report    structured JSON for a panel
 USAGE
 }

@@ -144,7 +144,7 @@ menu_run_action_trigger() {
     trigger_insert_emoji) hyprshell rofi/run-after-close.sh -- hyprshell rofi/emoji-picker.sh ;;
     trigger_insert_glyph) hyprshell rofi/run-after-close.sh -- hyprshell rofi/glyph-picker.sh ;;
     trigger_insert_boxdraw) hyprshell rofi/run-after-close.sh -- hyprshell rofi/boxdraw-picker.sh ;;
-    trigger_toggle_nightlight) hyprshell hyprsunset --toggle && pkill -u "${UID:-$(id -u)}" -SIGUSR2 -x waybar ;;
+    trigger_toggle_nightlight) hyprshell hyprsunset --toggle ;;
     trigger_toggle_keep_awake) hyprshell session/toggle-keep-awake.sh ;;
     trigger_toggle_notifications) hyprshell notify/notifications --toggle ;;
     trigger_toggle_bar) hyprshell quickshell/visibility.sh toggle ;;

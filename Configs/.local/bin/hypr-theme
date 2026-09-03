@@ -49,7 +49,7 @@ while (($#)); do
 done
 
 write_hypr_theme_state() {
-  # Update HYPR_THEME in staterc so other consumers (waybar widgets, shell vars,
+  # Update HYPR_THEME in staterc so other consumers (bar providers, shell vars,
   # theme.switch.sh re-runs, etc.) see the same theme that the palette belongs to.
   local theme="$1"
   local state_file="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/staterc"
@@ -130,6 +130,12 @@ reload_clients() {
   reload_live_theme_client kitty
   reload_live_theme_client rmpc
   reload_live_theme_client tmux
+
+  # theme.lua and theme.json are replaced with mv, so the bar's file watches are
+  # left on the old inode and never see the new palette or font.
+  if command -v quickshell >/dev/null 2>&1; then
+    quickshell ipc --any-display call bar reload >/dev/null 2>&1 || true
+  fi
 
   if [[ -x "$HOME/.local/lib/hypr/util/nvim-theme-sync.sh" ]]; then
     "$HOME/.local/lib/hypr/util/nvim-theme-sync.sh" >/dev/null 2>&1 || true

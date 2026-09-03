@@ -9,13 +9,89 @@ PopupCard {
     contentHeight: weatherColumn.implicitHeight + 32
     readonly property var conditions: Weather.data.current_condition ? Weather.data.current_condition[0] : ({})
     readonly property var days: Weather.data.weather ? Weather.data.weather.slice(0, 7) : []
+    // -1 = the rolling next-12-hours view; otherwise the day whose card was clicked
+    property int selectedDay: -1
     readonly property var hours: {
+        if (selectedDay >= 0 && selectedDay < days.length) return days[selectedDay].hourly || []
         const upcoming = [], cutoff = Date.now() - 3600000
         for (const day of days) for (const hour of day.hourly || [])
             if (new Date(hour.time).getTime() >= cutoff) upcoming.push(hour)
         return upcoming.slice(0, 12)
     }
+    readonly property string hourlyLabel: selectedDay < 0 || selectedDay >= days.length ? "HOURLY"
+        : selectedDay === 0 ? "TODAY"
+        : Qt.formatDate(new Date(days[selectedDay].date + "T12:00:00"), "ddd").toUpperCase()
     property int forecastTab: 0
+    readonly property var cards: forecastTab === 0 ? hours : days
+    // the keyboard cursor over the strip; -1 until an arrow key claims one
+    property int cardIndex: -1
+    function showHours(day) {
+        selectedDay = day
+        forecastTab = 0
+        cardIndex = -1
+        forecast.positionViewAtBeginning()
+    }
+    function showDays() {
+        // coming back out of a day, land the cursor on the day we drilled into
+        const from = selectedDay
+        selectedDay = -1
+        forecastTab = 1
+        cardIndex = from
+        forecast.positionViewAtBeginning()
+        if (from >= 0) Qt.callLater(() => forecast.positionViewAtIndex(from, ListView.Contain))
+    }
+    function scrollForecast(amount) {
+        const limit = Math.max(0, forecast.contentWidth - forecast.width)
+        forecast.contentX = Math.max(0, Math.min(limit, forecast.contentX + amount))
+    }
+    function moveCard(step) { moveCardTo(cardIndex < 0 ? (step > 0 ? 0 : cards.length - 1) : cardIndex + step) }
+    function moveCardTo(index) {
+        if (!cards.length) return
+        cardIndex = Math.max(0, Math.min(cards.length - 1, index))
+        forecast.positionViewAtIndex(cardIndex, ListView.Contain)
+    }
+    // DAILY is the parent level and HOURLY the child, so Down drills into the
+    // selected day and Up backs out of whichever hourly view is showing
+    function drillIn() {
+        if (forecastTab !== 1) return false
+        showHours(cardIndex < 0 ? 0 : cardIndex)
+        return true
+    }
+    function drillOut() {
+        if (forecastTab !== 0) return false
+        showDays()
+        return true
+    }
+
+    function handleKey(event) {
+        if (event.key === Qt.Key_Escape && searching) { cityField.text = ""; searching = false; return true }
+        // the city field owns the keyboard while the search is up
+        if (searching) return false
+        switch (event.key) {
+        case Qt.Key_Left:
+        case Qt.Key_H:      moveCard(-1); return true
+        case Qt.Key_Right:
+        case Qt.Key_L:      moveCard(1); return true
+        case Qt.Key_Home:   moveCardTo(0); return true
+        case Qt.Key_End:    moveCardTo(cards.length - 1); return true
+        // no Tab binding: Qt's focus navigation escapes the popup's focus grab,
+        // which closes the card out from under the keypress
+        case Qt.Key_Down:
+        case Qt.Key_J:      return drillIn()
+        case Qt.Key_Return:
+        case Qt.Key_Enter:  return drillIn()
+        case Qt.Key_Up:
+        case Qt.Key_K:      return drillOut()
+        case Qt.Key_U:      toggleUnits(); return true
+        case Qt.Key_R:      shell.run(["hyprshell", "weather", "--force", "--alt"]); return true
+        case Qt.Key_M:      weatherColumn.expanded = !weatherColumn.expanded; return true
+        case Qt.Key_S:
+        case Qt.Key_Slash:  openSearch(); return true
+        // back out of a pinned day before the popup itself closes
+        case Qt.Key_Escape: if (selectedDay >= 0) { showDays(); return true } break
+        }
+        return defaultKey(event)
+    }
     // the producer reports both unit systems, so switching needs no refetch
     // -1 = never chosen, so fall back to where the reading is from
     property int unitChoice: -1
@@ -66,6 +142,13 @@ PopupCard {
     property string override: ""
 
     property var suggestions: []
+    // keyboard cursor over the results; new results always reselect the first
+    property int suggestionIndex: 0
+    onSuggestionsChanged: suggestionIndex = 0
+    function moveSuggestion(step) {
+        if (!suggestions.length) return
+        suggestionIndex = Math.max(0, Math.min(suggestions.length - 1, suggestionIndex + step))
+    }
     // set when Enter arrived before the search returned
     property bool pendingAccept: false
 
@@ -124,7 +207,7 @@ PopupCard {
     // only needs to learn whether a city is pinned
     onOpenChanged: {
         if (open) readOverride()
-        else { searching = false; cityField.text = "" }
+        else { searching = false; cityField.text = ""; selectedDay = -1; cardIndex = -1; forecastTab = 0 }
     }
 
     property Process overrideProc: Process {
@@ -146,6 +229,19 @@ PopupCard {
         required property int tab
         active: false; radius: shell.rounding; fill: "transparent"; outline: "transparent"
         textColor: root.forecastTab === tab ? shell.accent : shell.alpha(shell.foreground, .6)
+    }
+
+    component ForecastArrow: Text {
+        required property string glyph
+        text: glyph
+        color: root.shell.alpha(root.shell.foreground, arrowMouse.containsMouse ? 1 : .5)
+        font.family: root.shell.fontFamily; font.pixelSize: Style.display
+        signal activated
+        MouseArea {
+            id: arrowMouse; anchors.fill: parent; anchors.margins: -6
+            hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+            onClicked: parent.activated()
+        }
     }
 
     // sits under the content, and only while searching: a click that no control
@@ -171,7 +267,7 @@ PopupCard {
                 anchors.verticalCenter: parent.verticalCenter
                 text: String(Weather.output.text).trim().split(/\s+/)[0] || "󰖐"
                 color: root.shell.role("c2", root.shell.foreground)
-                font.family: root.shell.fontFamily; font.pixelSize: Style.px(92)
+                font.family: root.shell.fontFamily; font.pixelSize: Style.heroIcon
             }
             Column {
                     id: heroStack
@@ -180,7 +276,7 @@ PopupCard {
                     Text {
                         text: root.temp(root.conditions, "FeelsLike") + root.degrees
                         color: tempMouse.containsMouse ? root.shell.role("hvr_fg", root.shell.foreground) : root.shell.foreground
-                        font.family: root.shell.fontFamily; font.pixelSize: Style.px(32); font.bold: true
+                        font.family: root.shell.fontFamily; font.pixelSize: Style.displayLarge; font.bold: true
                         MouseArea {
                             id: tempMouse; anchors.fill: parent; anchors.margins: -4
                             hoverEnabled: true; cursorShape: Qt.PointingHandCursor
@@ -190,7 +286,7 @@ PopupCard {
                     Text {
                         text: root.value(root.conditions.weatherDesc, "Weather")
                         color: root.shell.foreground
-                        font.family: root.shell.fontFamily; font.pixelSize: Style.px(13)
+                        font.family: root.shell.fontFamily; font.pixelSize: Style.subtitle
                     }
                     Item {
                         // from wherever the stack begins out to the popup's right
@@ -205,7 +301,7 @@ PopupCard {
                             color: (actionMouse.containsMouse || locationMouse.containsMouse)
                                 ? root.shell.role("hvr_fg", root.shell.foreground)
                                 : root.shell.alpha(root.shell.foreground, .55)
-                            font.family: root.shell.fontFamily; font.pixelSize: Style.px(10)
+                            font.family: root.shell.fontFamily; font.pixelSize: Style.caption
                         }
                         MouseArea {
                             id: locationMouse
@@ -225,16 +321,18 @@ PopupCard {
                             leftPadding: 0; rightPadding: 0; topPadding: 0; bottomPadding: 0
                             placeholderText: "City name \u2014 Empty to auto-detect"
                             color: root.shell.foreground
-                            font.family: root.shell.fontFamily; font.pixelSize: Style.px(10)
+                            font.family: root.shell.fontFamily; font.pixelSize: Style.caption
                             background: null
                             onTextChanged: if (root.searching) { root.pendingAccept = false; root.searchDebounce.restart() }
                             onAccepted: {
                                 if (text === "") { root.setLocation("--clear"); root.searching = false }
-                                else if (root.suggestions.length > 0) root.pick(root.suggestions[0])
+                                else if (root.suggestions.length > 0) root.pick(root.suggestions[root.suggestionIndex])
                                 // typed and hit Enter before the debounce fired:
                                 // run the search now and take the first result
                                 else { root.pendingAccept = true; root.searchCities(text) }
                             }
+                            Keys.onDownPressed: root.moveSuggestion(1)
+                            Keys.onUpPressed: root.moveSuggestion(-1)
                             Keys.onEscapePressed: { text = ""; root.searching = false }
                         }
 
@@ -250,14 +348,14 @@ PopupCard {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: root.imperial ? "󰔅" : "󰔄"
                     color: unitsMouse.containsMouse ? root.shell.role("hvr_fg", root.shell.foreground) : root.shell.alpha(root.shell.foreground, .55)
-                    font.family: root.shell.fontFamily; font.pixelSize: Style.px(14)
+                    font.family: root.shell.fontFamily; font.pixelSize: Style.title
                     MouseArea { id: unitsMouse; anchors.fill: parent; anchors.margins: -6; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.toggleUnits() }
                 }
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: "󰑐"
                     color: refreshMouse.containsMouse ? root.shell.role("hvr_fg", root.shell.foreground) : root.shell.alpha(root.shell.foreground, .55)
-                    font.family: root.shell.fontFamily; font.pixelSize: Style.px(14)
+                    font.family: root.shell.fontFamily; font.pixelSize: Style.title
                     MouseArea { id: refreshMouse; anchors.fill: parent; anchors.margins: -6; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.shell.run(["hyprshell", "weather", "--force", "--alt"]) }
                 }
                 Text {
@@ -265,7 +363,7 @@ PopupCard {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: root.searching ? "󰅖" : "󰍉"
                     color: actionMouse.containsMouse ? root.shell.role("hvr_fg", root.shell.foreground) : root.shell.alpha(root.shell.foreground, .55)
-                    font.family: root.shell.fontFamily; font.pixelSize: Style.px(14)
+                    font.family: root.shell.fontFamily; font.pixelSize: Style.title
                     MouseArea {
                         id: actionMouse; anchors.fill: parent; anchors.margins: -6
                         hoverEnabled: true; cursorShape: Qt.PointingHandCursor
@@ -302,8 +400,12 @@ PopupCard {
                 model: root.suggestions
                 Rectangle {
                     required property var modelData
+                    required property int index
+                    readonly property bool cursored: root.suggestionIndex === index
                     width: parent.width; height: Style.px(26); radius: root.shell.rounding
-                    color: pickMouse.containsMouse ? root.shell.hoverFill(1.5) : "transparent"
+                    color: (pickMouse.containsMouse || cursored) ? root.shell.hoverFill(1.5) : "transparent"
+                    border.width: cursored ? 1 : 0
+                    border.color: root.shell.hoverEdge(.85)
                     Text {
                         anchors.left: parent.left; anchors.leftMargin: Style.px(6)
                         anchors.verticalCenter: parent.verticalCenter
@@ -326,40 +428,71 @@ PopupCard {
         PopupSeparator { shell: root.shell }
         Row {
             width: parent.width; spacing: Style.sm
-            ForecastTab { width: (parent.width - parent.spacing) / 2; height: Style.controlHeight; shell: root.shell; tab: 0; text: "HOURLY"; onClicked: { root.forecastTab = 0; forecast.positionViewAtBeginning() } }
-            ForecastTab { width: (parent.width - parent.spacing) / 2; height: Style.controlHeight; shell: root.shell; tab: 1; text: "DAILY"; onClicked: { root.forecastTab = 1; forecast.positionViewAtBeginning() } }
+            ForecastTab { width: (parent.width - parent.spacing) / 2; height: Style.controlHeight; shell: root.shell; tab: 0; text: root.hourlyLabel; onClicked: root.showHours(-1) }
+            ForecastTab { width: (parent.width - parent.spacing) / 2; height: Style.controlHeight; shell: root.shell; tab: 1; text: "DAILY"; onClicked: root.showDays() }
         }
-        ListView {
-            id: forecast
-            width: parent.width; height: Style.px(88); orientation: ListView.Horizontal
-            model: root.forecastTab === 0 ? root.hours : root.days
-            spacing: Style.sm; clip: true; boundsBehavior: Flickable.StopAtBounds; snapMode: ListView.SnapToItem
-            delegate: Rectangle {
-                required property var modelData
-                required property int index
-                width: (forecast.width - forecast.spacing * 4) / 5; height: forecast.height
-                radius: root.shell.rounding; color: root.shell.alpha(root.shell.foreground, .045)
-                Column {
-                    anchors.centerIn: parent; spacing: Style.xxs
-                    Text {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: index === 0 ? (root.forecastTab === 0 ? "NOW" : "TODAY")
-                            : root.forecastTab === 0 ? Qt.formatTime(new Date(modelData.time), "HH:mm")
-                            : Qt.formatDate(new Date(modelData.date + "T12:00:00"), "ddd").toUpperCase()
-                        color: root.shell.alpha(root.shell.foreground, .5)
-                        font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: true
+        Item {
+            width: parent.width; height: Style.px(88)
+            ListView {
+                id: forecast
+                anchors.fill: parent
+                // the arrows keep their own gutters, so a click near an edge picks
+                // the arrow rather than the card that would otherwise sit under it
+                anchors.leftMargin: Style.px(15); anchors.rightMargin: Style.px(15)
+                orientation: ListView.Horizontal
+                model: root.cards
+                spacing: Style.sm; clip: true; boundsBehavior: Flickable.StopAtBounds; snapMode: ListView.SnapToItem
+                delegate: Rectangle {
+                    id: forecastCard
+                    required property var modelData
+                    required property int index
+                    readonly property bool cursored: root.cardIndex === index
+                    width: (forecast.width - forecast.spacing * 4) / 5; height: forecast.height
+                    radius: root.shell.rounding
+                    color: (dayMouse.containsMouse || cursored) ? root.shell.hoverFill(1.5) : root.shell.alpha(root.shell.foreground, .045)
+                    border.width: cursored ? 1 : 0
+                    border.color: root.shell.hoverEdge(.85)
+                    Column {
+                        anchors.centerIn: parent; spacing: Style.xxs
+                        Text {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: root.forecastTab === 1
+                                ? (index === 0 ? "TODAY" : Qt.formatDate(new Date(modelData.date + "T12:00:00"), "ddd").toUpperCase())
+                                : (root.selectedDay < 0 && index === 0 ? "NOW" : Qt.formatTime(new Date(modelData.time), "HH:mm"))
+                            color: root.shell.alpha(root.shell.foreground, .5)
+                            font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: true
+                        }
+                        Text { anchors.horizontalCenter: parent.horizontalCenter; text: modelData.icon || "󰖐"; color: root.shell.role("c2", root.shell.foreground); font.family: root.shell.fontFamily; font.pixelSize: Style.display }
+                        Text {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: root.forecastTab === 0 ? root.temp(modelData, "temp") + "\u00b0"
+                                : root.temp(modelData, "maxtemp") + "\u00b0 | " + root.temp(modelData, "mintemp") + "\u00b0"
+                            color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
+                        }
+                        Text { anchors.horizontalCenter: parent.horizontalCenter; text: "󱢋 " + (modelData.chanceofrain || "0") + "%"; color: root.shell.alpha(root.shell.foreground, .55); font.family: root.shell.fontFamily; font.pixelSize: Style.caption }
                     }
-                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: modelData.icon || "󰖐"; color: root.shell.role("c2", root.shell.foreground); font.family: root.shell.fontFamily; font.pixelSize: Style.px(22) }
-                    Text {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: root.forecastTab === 0 ? root.temp(modelData, "temp") + "\u00b0"
-                            : root.temp(modelData, "maxtemp") + "\u00b0 | " + root.temp(modelData, "mintemp") + "\u00b0"
-                        color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
+                    MouseArea {
+                        id: dayMouse; anchors.fill: parent
+                        enabled: root.forecastTab === 1
+                        hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: root.showHours(forecastCard.index)
                     }
-                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "󱢋 " + (modelData.chanceofrain || "0") + "%"; color: root.shell.alpha(root.shell.foreground, .55); font.family: root.shell.fontFamily; font.pixelSize: Style.caption }
                 }
+                WheelHandler { onWheel: event => {
+                    const delta = event.angleDelta.x || event.angleDelta.y
+                    if (delta) root.scrollForecast(delta > 0 ? -Style.px(72) : Style.px(72))
+                } }
             }
-            WheelHandler { onWheel: event => { const step = Style.px(72) * (event.angleDelta.y > 0 ? -1 : 1); forecast.contentX = Math.max(0, Math.min(forecast.contentWidth - forecast.width, forecast.contentX + step)) } }
+            ForecastArrow {
+                anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
+                glyph: "\u2039"; opacity: forecast.atXBeginning ? .25 : 1
+                onActivated: root.scrollForecast(-forecast.width)
+            }
+            ForecastArrow {
+                anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+                glyph: "\u203a"; opacity: forecast.atXEnd ? .25 : 1
+                onActivated: root.scrollForecast(forecast.width)
+            }
         }
 
         PopupSeparator { shell: root.shell }
@@ -370,8 +503,8 @@ PopupCard {
                 Column {
                     required property var modelData
                     width: (weatherColumn.width - 12) / 2; spacing: 2
-                    Text { text: parent.modelData[0]; color: root.shell.alpha(root.shell.foreground, .45); font.family: root.shell.fontFamily; font.pixelSize: Style.px(9); font.bold: true; font.letterSpacing: 1 }
-                    Text { text: parent.modelData[1]; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.px(13) }
+                    Text { text: parent.modelData[0]; color: root.shell.alpha(root.shell.foreground, .45); font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: true; font.letterSpacing: 1 }
+                    Text { text: parent.modelData[1]; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.subtitle }
                 }
             }
         }
@@ -381,7 +514,7 @@ PopupCard {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: weatherColumn.expanded ? "\u25b4  less" : "\u25be  more"
                 color: moreMouse.containsMouse ? root.shell.role("hvr_fg", root.shell.foreground) : root.shell.alpha(root.shell.foreground, .5)
-                font.family: root.shell.fontFamily; font.pixelSize: Style.px(10)
+                font.family: root.shell.fontFamily; font.pixelSize: Style.caption
                 MouseArea { id: moreMouse; anchors.fill: parent; anchors.margins: -8; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: weatherColumn.expanded = !weatherColumn.expanded }
             }
         }

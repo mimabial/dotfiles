@@ -54,7 +54,7 @@ hyprshell_prepend_path() {
 
 hyprshell_prepend_path "${XDG_CONFIG_HOME}/hypr/scripts" "${BIN_DIR}" "${HYPR_LIB_DIR}"
 
-HYPR_SCRIPTS_PATH="${HYPR_SCRIPTS_PATH:-${XDG_CONFIG_HOME}/hypr/scripts:${LIB_DIR}/hypr}:${XDG_DATA_HOME}/waybar/scripts:${XDG_CONFIG_HOME}/waybar/scripts"
+HYPR_SCRIPTS_PATH="${HYPR_SCRIPTS_PATH:-${XDG_CONFIG_HOME}/hypr/scripts:${LIB_DIR}/hypr}"
 
 export BIN_DIR LIB_DIR PATH HYPR_SCRIPTS_PATH
 

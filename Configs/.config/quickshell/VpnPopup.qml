@@ -215,7 +215,7 @@ PopupCard {
         } }
     }
     property Process actionProc: Process {
-        command: ["hyprshell", "waybar.vpn.toggle.sh"]
+        command: ["hyprshell", "quickshell/vpn-toggle"]
         stderr: StdioCollector { id: actionStderr; waitForEnd: true }
         onExited: (code, status) => {
             root.pendingAction = ""

@@ -947,10 +947,6 @@ def search_variants(artist: str, title: str) -> list[tuple[str, str]]:
     return unique
 
 
-def strip_feat(title: str) -> str:
-    return split_featured_title(title)[0]
-
-
 def drop_redundant_feat(title: str, artist: str) -> str:
     """YouTube Music credits featured artists in the artist field and again inside
     the official title. Drop the second copy only when the first already names

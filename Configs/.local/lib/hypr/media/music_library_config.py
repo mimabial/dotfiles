@@ -7,6 +7,7 @@ import argparse
 import json
 import os
 import re
+import shutil
 import stat
 import subprocess
 import sys
@@ -58,6 +59,22 @@ def update_rmpc_config(library: Path) -> None:
         raise
 
 
+def export_to_activation_environment(assignment: str) -> None:
+    """Publish KEY=VALUE to the DBus activation environment.
+
+    --systemd also updates the systemd user manager where there is one, so this
+    covers both inits. Best-effort: the library is already configured on disk by
+    the time this runs, and a missing dbus tool must not fail the whole call.
+    """
+    if not shutil.which("dbus-update-activation-environment"):
+        return
+    command = ["dbus-update-activation-environment"]
+    if Path("/run/systemd/system").is_dir():
+        command.append("--systemd")
+    command.append(assignment)
+    subprocess.run(command, check=False)
+
+
 def set_music_library(raw_directory: str) -> Path:
     library = absolute_path(raw_directory)
     if library == Path("/"):
@@ -73,15 +90,7 @@ def set_music_library(raw_directory: str) -> Path:
         check=True,
     )
     update_rmpc_config(library)
-    subprocess.run(
-        [
-            "systemctl",
-            "--user",
-            "set-environment",
-            f"XDG_MUSIC_DIR={library}",
-        ],
-        check=True,
-    )
+    export_to_activation_environment(f"XDG_MUSIC_DIR={library}")
     return library
 
 

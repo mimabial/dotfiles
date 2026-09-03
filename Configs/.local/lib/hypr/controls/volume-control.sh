@@ -57,7 +57,6 @@ readonly VOLUME_DEFAULT_BOOST_LIMIT=150
 readonly VOLUME_DEFAULT_STEP=5
 readonly VOLUME_BAR_DIVISOR=15
 readonly VOLUME_ANGLE_QUANTIZATION_DEG=5
-readonly WAYBAR_MIC_REFRESH_SIGNAL="RTMIN+18"
 
 usage() {
   cat <<EOF
@@ -147,10 +146,6 @@ sink_volume_pct() {
 sink_is_muted() {
   local target="$1"
   wpctl get-volume "${target}" 2>/dev/null | grep -q "MUTED"
-}
-
-refresh_waybar_mic() {
-  hypr_user_pkill "-${WAYBAR_MIC_REFRESH_SIGNAL}" -x waybar >/dev/null 2>&1 || true
 }
 
 clamp_angle() {
@@ -315,13 +310,22 @@ set_default_output() {
 
 select_output_via_rofi() {
   local choice=""
+  local font_override=""
 
   require_cmd rofi || {
     print_log -sec "volume" -err "missing" "rofi is required for output selection"
     return 1
   }
 
-  choice="$(list_sinks_tsv | cut -f2 | awk 'NF' | sort -u | rofi -dmenu -theme "notification" -p "Audio Output")" || return 0
+  # sourced here, not at the top: the volume keys are the hot path and never
+  # reach rofi. The size is resolved per launch; without it the menu falls back
+  # to the 10 hardcoded in notification.rasi.
+  # shellcheck source=/dev/null
+  source "${HYPR_LIB_DIR}/rofi/rofi.lib.bash"
+  font_override="$(rofi_font_override "$(rofi_effective_font_name)" "$(rofi_effective_font_scale)")"
+
+  choice="$(list_sinks_tsv | cut -f2 | awk 'NF' | sort -u |
+    rofi -dmenu -theme "notification" -p "Audio Output" -theme-str "${font_override}")" || return 0
   [[ -n "${choice}" ]] || return 0
   set_output_by_description "${choice}"
 }
@@ -366,7 +370,6 @@ run_action() {
           [[ -n "${target}" ]] || return 0
           apply_source_delta "${target}" "${delta}" "${step}"
           volume_pct="$(source_volume_pct "${target}")"
-          refresh_waybar_mic
           ;;
         player)
           apply_player_delta "${player_name}" "${delta}" "${step}"
@@ -383,7 +386,6 @@ run_action() {
         source)
           [[ -n "${target}" ]] || return 0
           muted="$(toggle_source_mute "${target}")"
-          refresh_waybar_mic
           ;;
         player)
           muted="$(toggle_player_mute "${player_name}")"

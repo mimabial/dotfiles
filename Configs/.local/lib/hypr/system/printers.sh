@@ -2,7 +2,7 @@
 #
 # printers.sh — CUPS queue state and actions for the bar.
 #
-# Usage: printers.sh [--report|--waybar|--enable P|--disable P|--default P|--cancel ID|--cancel-all|--web]
+# Usage: printers.sh [--report|--bar|--enable P|--disable P|--default P|--cancel ID|--cancel-all|--web]
 # Depends on: lpstat, jq; cupsenable/cupsdisable/cancel/lpoptions for the actions
 #
 set -euo pipefail
@@ -13,7 +13,7 @@ Usage: hyprshell system/printers [option]
 
   --report        JSON: {"printers":[{name,state,enabled,reason,default}],
                          "jobs":[{id,printer,user,size}],"pending":n,"stopped":n}
-  --waybar        Bar JSON: text, class, tooltip
+  --bar           Bar JSON: text, class, tooltip
   --enable NAME   Resume a stopped queue
   --disable NAME  Stop a queue, leaving its jobs held
   --default NAME  Make it the default destination
@@ -77,7 +77,7 @@ case "${1:---report}" in
   --report)
     report_json
     ;;
-  --waybar)
+  --bar)
     # a stopped queue is the case worth surfacing: jobs pile up silently
     report_json | jq -r '
       {

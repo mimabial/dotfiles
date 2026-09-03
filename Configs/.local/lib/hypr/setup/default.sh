@@ -84,16 +84,9 @@ if [[ -z "${selection}" ]]; then
 fi
 
 case "${kind}:${selection}" in
-  agent:agy) command_name=agy; display_name=Antigravity ;;
   agent:claude) command_name=claude; display_name=Claude ;;
   agent:codex) command_name=codex; display_name=Codex ;;
-  agent:copilot) command_name=copilot; display_name=Copilot ;;
-  agent:crush) command_name=crush; display_name=Crush ;;
-  agent:grok) command_name=grok; display_name=Grok ;;
-  agent:omp) command_name=omp; display_name='Oh My Pi' ;;
   agent:opencode) command_name=opencode; display_name=OpenCode ;;
-  agent:ori) command_name=ori; display_name=Ori ;;
-  agent:pi) command_name=pi; display_name=Pi ;;
   browser:chromium) command_name=chromium; desktop_id=chromium.desktop; display_name=Chromium ;;
   browser:chrome) command_name=google-chrome-stable; desktop_id=google-chrome.desktop; display_name=Chrome ;;
   browser:brave) command_name=brave; desktop_id=brave-browser.desktop; display_name=Brave ;;

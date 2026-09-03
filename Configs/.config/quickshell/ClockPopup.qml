@@ -286,7 +286,7 @@ PopupCard {
 
     component FieldLabel: Text {
         color: root.shell.alpha(root.shell.foreground, .45)
-        font.family: root.shell.fontFamily; font.pixelSize: Style.px(9)
+        font.family: root.shell.fontFamily; font.pixelSize: Style.caption
         font.letterSpacing: 1; font.bold: true
     }
     component FormField: TextField {
@@ -295,7 +295,7 @@ PopupCard {
         topPadding: 0; bottomPadding: 0
         color: root.shell.foreground
         placeholderTextColor: root.shell.alpha(root.shell.foreground, .28)
-        font.family: root.shell.fontFamily; font.pixelSize: Style.px(11)
+        font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
         Keys.onEscapePressed: root.cancelCompose()
         readonly property bool masked: inputMask !== ""
         readonly property bool blank: !/\d/.test(text)
@@ -324,7 +324,7 @@ PopupCard {
             id: chipText
             anchors.centerIn: parent
             color: root.shell.alpha(root.shell.foreground, parent.selected ? 1 : .6)
-            font.family: root.shell.fontFamily; font.pixelSize: Style.px(10)
+            font.family: root.shell.fontFamily; font.pixelSize: Style.caption
         }
         MouseArea {
             id: chipArea
@@ -352,7 +352,7 @@ PopupCard {
             topPadding: Style.controlPaddingY; bottomPadding: Style.controlPaddingY
             color: root.shell.foreground
             placeholderTextColor: root.shell.alpha(root.shell.foreground, .28)
-            font.family: root.shell.fontFamily; font.pixelSize: Style.px(11)
+            font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
             background: null
             Keys.onEscapePressed: root.cancelCompose()
         }
@@ -376,7 +376,7 @@ PopupCard {
             id: buttonText
             anchors.centerIn: parent
             color: root.shell.foreground
-            font.family: root.shell.fontFamily; font.pixelSize: Style.px(11)
+            font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
         }
         MouseArea {
             id: buttonArea
@@ -401,7 +401,7 @@ PopupCard {
 
     component NavButton: Text {
         required property string glyph
-        property real size: Style.px(24)
+        property real size: Style.display
         text: glyph
         color: root.shell.alpha(root.shell.foreground, mouse.containsMouse ? 1 : .75)
         font.family: root.shell.fontFamily; font.pixelSize: size
@@ -438,15 +438,15 @@ PopupCard {
 
         Text {
             width: parent.width; text: "󰃭  " + Qt.formatDate(root.today, "MMMM d")
-            color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.px(38); font.bold: true
+            color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.displayLarge; font.bold: true
             horizontalAlignment: Text.AlignHCenter
         }
         Item {
             width: parent.width; height: Style.px(18)
             readonly property real progress: (root.today - new Date(root.today.getFullYear(), 0, 1)) / (new Date(root.today.getFullYear() + 1, 0, 1) - new Date(root.today.getFullYear(), 0, 1))
 
-            Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: root.today.getFullYear(); color: root.shell.alpha(root.shell.foreground, .5); font.family: root.shell.fontFamily; font.pixelSize: Style.px(10) }
-            Text { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; text: Math.floor(parent.progress * 100) + "%"; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.px(10) }
+            Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: root.today.getFullYear(); color: root.shell.alpha(root.shell.foreground, .5); font.family: root.shell.fontFamily; font.pixelSize: Style.caption }
+            Text { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; text: Math.floor(parent.progress * 100) + "%"; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.caption }
             Rectangle { anchors.left: parent.left; anchors.right: parent.right; anchors.leftMargin: Style.px(42); anchors.rightMargin: Style.px(34); anchors.verticalCenter: parent.verticalCenter; height: Style.px(5); radius: 3; color: root.shell.alpha(root.shell.foreground, .12); Rectangle { width: parent.width * parent.parent.progress; height: parent.height; radius: parent.radius; color: root.shell.role("act_br", root.shell.accent) } }
         }
 
@@ -471,7 +471,7 @@ PopupCard {
                 Text {
                     anchors.centerIn: parent; text: "W"
                     color: weekStartMouse.containsMouse ? root.shell.role("hvr_fg", root.shell.foreground) : Qt.darker(root.shell.foreground, 1.9)
-                    font.family: root.shell.fontFamily; font.pixelSize: Style.px(9)
+                    font.family: root.shell.fontFamily; font.pixelSize: Style.caption
                     font.bold: true; font.letterSpacing: 1
                 }
                 MouseArea {
@@ -486,7 +486,7 @@ PopupCard {
                     required property var modelData
                     width: root.cellWidth; height: Style.px(18); text: modelData
                     color: root.shell.alpha(root.shell.foreground, .45)
-                    font.family: root.shell.fontFamily; font.pixelSize: Style.px(9); font.bold: true
+                    font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: true
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
                 }
@@ -543,7 +543,7 @@ PopupCard {
                             : parent.day.getMonth() === root.viewDate.getMonth() ? root.shell.foreground
                             : root.shell.alpha(root.shell.foreground, .25)
                         font.family: root.shell.fontFamily
-                        font.pixelSize: parent.isWeek ? 9 : 12
+                        font.pixelSize: parent.isWeek ? Style.caption : Style.body
                         font.bold: parent.current
                     }
                 }
@@ -558,7 +558,7 @@ PopupCard {
                 anchors.centerIn: parent
                 text: Qt.formatDate(root.viewDate, "MMMM yyyy").toUpperCase()
                 color: root.shell.alpha(root.shell.foreground, .7)
-                font.family: root.shell.fontFamily; font.pixelSize: Style.px(12); font.bold: true; font.letterSpacing: 1
+                font.family: root.shell.fontFamily; font.pixelSize: Style.body; font.bold: true; font.letterSpacing: 1
                 MouseArea { anchors.fill: parent; anchors.margins: -8; onClicked: root.goToToday() }
             }
             NavButton { anchors.right: parent.right; anchors.rightMargin: Style.px(26); anchors.verticalCenter: parent.verticalCenter; glyph: "›"; onActivated: root.moveMonth(1) }
@@ -588,7 +588,7 @@ PopupCard {
                 ? "EDITING \u2014 " + Qt.formatDate(root.cursor, "dddd d MMMM").toUpperCase()
                 : Qt.formatDate(root.cursor, "dddd d MMMM").toUpperCase()
             color: root.shell.alpha(root.shell.foreground, .55)
-            font.family: root.shell.fontFamily; font.pixelSize: Style.px(9)
+            font.family: root.shell.fontFamily; font.pixelSize: Style.caption
             font.letterSpacing: 1; font.bold: true
         }
         Text {
@@ -596,7 +596,7 @@ PopupCard {
             width: parent.width
             text: root.agenda.unavailable === true ? "khal is not configured" : "Nothing scheduled"
             color: root.shell.alpha(root.shell.foreground, .35)
-            font.family: root.shell.fontFamily; font.pixelSize: Style.px(11)
+            font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
         }
         Column {
             visible: !root.composing
@@ -629,7 +629,7 @@ PopupCard {
                         width: Style.px(40)
                         text: parent.parent.modelData.allDay ? "all" : parent.parent.modelData.start
                         color: root.shell.alpha(root.shell.foreground, .55)
-                        font.family: root.shell.fontFamily; font.pixelSize: Style.px(11)
+                        font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
                     }
                     Column {
                         readonly property var modelData: parent.parent.modelData
@@ -637,7 +637,7 @@ PopupCard {
                         Text {
                             width: parent.width; text: modelData.title; elide: Text.ElideRight
                             color: root.shell.foreground
-                            font.family: root.shell.fontFamily; font.pixelSize: Style.px(11)
+                            font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
                         }
                         Row {
                             width: parent.width; spacing: Style.xs
@@ -647,7 +647,7 @@ PopupCard {
                                 text: [parent.parent.modelData.location, parent.parent.modelData.description].filter(part => !!part).join("  ·  ")
                                 elide: Text.ElideRight
                                 color: root.shell.alpha(root.shell.foreground, .4)
-                                font.family: root.shell.fontFamily; font.pixelSize: Style.px(9)
+                                font.family: root.shell.fontFamily; font.pixelSize: Style.caption
                             }
                         }
                     }
@@ -665,7 +665,7 @@ PopupCard {
                             text: "\u{f0a7a}"
                             color: binArea.containsMouse ? root.shell.role("error", root.shell.foreground)
                                 : root.shell.alpha(root.shell.foreground, .6)
-                            font.family: root.shell.fontFamily; font.pixelSize: Style.px(11)
+                            font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
                         }
                         MouseArea {
                             id: binArea
@@ -730,7 +730,7 @@ PopupCard {
                             Item { width: Style.xl; height: startFields.implicitHeight; opacity: startFields.opacity
                                 Text { anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; height: Style.px(24)
                                     text: "→"; color: root.shell.alpha(root.shell.foreground, .35)
-                                    font.family: root.shell.fontFamily; font.pixelSize: Style.px(11)
+                                    font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
                                     horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
                                 }
                             }
@@ -806,7 +806,7 @@ PopupCard {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: "\u{f002a}  " + root.composeError; elide: Text.ElideRight
                                 color: root.shell.role("error", root.shell.foreground)
-                                font.family: root.shell.fontFamily; font.pixelSize: Style.px(10)
+                                font.family: root.shell.fontFamily; font.pixelSize: Style.caption
                             }
                             Row {
                                 id: formButtons; anchors.right: parent.right; spacing: Style.lg
@@ -839,7 +839,7 @@ PopupCard {
                 anchors.centerIn: parent
                 text: "\u{f0415}  Add event"
                 color: root.shell.alpha(root.shell.foreground, addArea.containsMouse ? .9 : .45)
-                font.family: root.shell.fontFamily; font.pixelSize: Style.px(11)
+                font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
             }
             MouseArea {
                 id: addArea

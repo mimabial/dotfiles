@@ -106,7 +106,8 @@ run_dispatch() {
 if [[ -n "${dispatch}" && "${dispatch}" != *$'\n'* ]]; then
   if [[ "${repeat}" == "repeat" ]]; then
     while true; do
-      repeat_command=$(printf 'Repeat\n' | rofi -dmenu -no-custom -p "Repeat command?" -theme "notification")
+      repeat_command=$(printf 'Repeat\n' | rofi -dmenu -no-custom -p "Repeat command?" \
+        -theme "notification" -theme-str "${font_override}")
       if [[ "${repeat_command}" == "Repeat" ]]; then
         run_dispatch
       else

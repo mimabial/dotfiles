@@ -1,0 +1,7 @@
+#!/bin/sh
+# runit service: Quickshell bar (the active bar; Waybar is retired).
+# Inherits the graphical-session env from the per-user runsvdir started inside
+# the Hyprland session (see ~/.config/sv/README.md).
+exec 2>&1
+export QS_NO_RELOAD_POPUP=1
+exec /usr/bin/quickshell

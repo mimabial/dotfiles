@@ -21,17 +21,6 @@ rewrite_if_changed() {
   fi
 }
 
-theme_target_filter_allows() {
-  local theme_basename="$1"
-  local filter="${HYPR_THEME_FILE_BASENAMES:-}"
-
-  [[ -n "${filter}" ]] || return 0
-  case " ${filter} " in
-    *" ${theme_basename} "*) return 0 ;;
-    *) return 1 ;;
-  esac
-}
-
 process_theme_files() {
   [ -z "${HYPR_THEME_DIR}" ] && {
     print_log -sec "theme" -warn "skip" "HYPR_THEME_DIR not set"
@@ -52,10 +41,9 @@ process_theme_files() {
     [ ! -f "${theme_file}" ] && continue
     theme_basename="$(basename "${theme_file}")"
     case "${theme_basename}" in
-      hypr.theme|kitty.theme|rofi.theme|waybar.theme|alacritty.theme|tmux.theme|dunst.theme) continue ;;
+      hypr.theme|kitty.theme|rofi.theme|quickshell.theme|alacritty.theme|tmux.theme|dunst.theme) continue ;;
     esac
     first_line=$(head -1 "${theme_file}")
-    theme_target_filter_allows "${theme_basename}" || continue
     target_path="${first_line%%|*}"
     target_path="$(echo "${target_path}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
 
@@ -65,10 +53,15 @@ process_theme_files() {
     target_path="${target_path//\$XDG_DATA_HOME/${XDG_DATA_HOME:-$HOME/.local/share}}"
     target_path="${target_path//\$USER/$USER}"
 
-    [ -z "${target_path}" ] && {
-      print_log -sec "theme" -warn "skip" "no target path in $(basename "${theme_file}")"
-      continue
-    }
+    # A pack whose first line is prose rather than a target would otherwise be
+    # written into the caller's cwd under that literal name.
+    case "${target_path}" in
+      /*) ;;
+      *)
+        print_log -sec "theme" -warn "skip" "no target path in ${theme_basename}"
+        continue
+        ;;
+    esac
 
     mkdir -p "$(dirname "${target_path}")"
     new_content="$(sed '1d' "${theme_file}")"

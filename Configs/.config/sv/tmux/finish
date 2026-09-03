@@ -1,0 +1,3 @@
+#!/bin/sh
+# runit's ExecStop equivalent: save the resurrect state before the server dies.
+"$HOME/.config/tmux/scripts/tmux-resurrect-save-safe" quiet 2>/dev/null || true

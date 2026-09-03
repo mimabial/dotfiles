@@ -146,7 +146,6 @@ without a rewrite.
 | `~/.config/quickshell/README.md`    | bar layouts, styling, popups          |
 | `~/.config/quickshell/LOOKNFEEL.md` | the look-and-feel panel               |
 | `~/.local/lib/hypr/theme/PHASES.md` | theme phases and cancellation         |
-| `~/.local/lib/hypr/waybar/STATE.md` | the state file format contract        |
 | `~/.config/sv/README.md`            | runit services                        |
 | `~/dotfiles/README.md`              | install, restore, the full theme list |
 | `~/dotfiles/KEYBINDINGS.md`         | every keybinding, from the live set   |

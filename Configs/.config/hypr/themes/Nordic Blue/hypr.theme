@@ -8,6 +8,11 @@ $NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME = Nordzy-cursors-white
 $CURSOR_SIZE = 30
+$FONT = SauceCodePro Nerd Font
+$BAR_FONT = SauceCodePro Nerd Font
+$MENU_FONT = SauceCodePro Nerd Font
+$MONOSPACE_FONT = SauceCodePro Nerd Font
+$NOTIFICATION_FONT = SauceCodePro Nerd Font Mono
 
 general {
     gaps_in = 4
@@ -39,5 +44,3 @@ decoration {
         xray = false
     }
 }
-
-blurls = waybar

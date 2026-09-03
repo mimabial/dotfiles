@@ -80,8 +80,7 @@ screenrecord_has_matching_process() {
   return 1
 }
 
-screenrecord_refresh_bars() {
-  screenrecord_signal_matching RTMIN+10 -x waybar
+screenrecord_refresh_bar() {
   quickshell ipc call indicators refresh screenrecord >/dev/null 2>&1 || true
 }
 
@@ -122,7 +121,7 @@ Usage: hyprshell screenrecord [option]
 Options:
     --start                  Start screen recording (portal selection)
     --toggle                 Toggle recording on/off
-    --status                 Show recording status (JSON for waybar)
+    --status                 Show recording status as bar JSON
     --quit                   Stop the recording
     --with-desktop-audio     Record desktop audio
     --with-microphone-audio  Record microphone audio
@@ -211,8 +210,15 @@ cleanup_webcam() {
   screenrecord_signal_matching TERM -f "WebcamOverlay"
 }
 
+# the bar holds no timer while idle, so a transition has to be pushed to it
+notify_indicators() {
+  command -v quickshell >/dev/null 2>&1 || return 0
+  quickshell ipc call indicators refresh screenrecord >/dev/null 2>&1 || true
+}
+
 write_recording_state() {
   printf '%s:::%s\n' "$1" "$2" >"$RECORDING_FILE"
+  notify_indicators
 }
 
 read_recording_state() {
@@ -244,6 +250,7 @@ clear_recording_state_if_matches() {
   current_state="$(<"$RECORDING_FILE")"
   [[ "${current_state}" == "${expected_state}" ]] || return 0
   rm -f "$RECORDING_FILE"
+  notify_indicators
 }
 
 default_resolution() {
@@ -443,7 +450,7 @@ start_recording() {
   disown "$pid" 2>/dev/null || true
 
   write_recording_state "$pid" "$filename"
-  screenrecord_refresh_bars
+  screenrecord_refresh_bar
   if [[ "$USE_WINDOW" == true || "$USE_REGION" == true || "$USE_SMART" == true || "$USE_OUTPUT" == true ]]; then
     screenrecord_notify "Recording started" "" "media-record" "normal" "3000" "screenrec"
   else
@@ -507,14 +514,14 @@ stop_recording() {
 
   signal_recording_stop stop_pid stop_path
 
-  screenrecord_refresh_bars
+  screenrecord_refresh_bar
   cleanup_webcam
 
   (
     wait_for_recording_stop "$stop_pid"
     finalize_recording_stop "$stop_pid" "$stop_path"
     clear_recording_state_if_matches "$stop_pid" "$stop_path"
-    screenrecord_refresh_bars
+    screenrecord_refresh_bar
   ) &
 }
 

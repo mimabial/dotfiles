@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell.Io
 import Quickshell.Services.UPower
@@ -35,8 +36,8 @@ PopupCard {
     Column {
         id: powerColumn
         anchors.left: parent.left; anchors.right: parent.right; spacing: Style.px(14)
-        Text { width: parent.width; text: root.battery && root.battery.isPresent ? Math.round(root.battery.percentage * 100) + "%" : "AC POWER"; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.px(38); font.bold: true; horizontalAlignment: Text.AlignHCenter }
-        Text { width: parent.width; text: root.battery && root.battery.isPresent ? (UPower.onBattery ? root.duration(root.battery.timeToEmpty) + " remaining" : root.battery.timeToFull > 0 ? root.duration(root.battery.timeToFull) + " until full" : "Connected to power") : "No battery detected"; color: root.shell.alpha(root.shell.foreground, .55); font.family: root.shell.fontFamily; font.pixelSize: Style.px(11); horizontalAlignment: Text.AlignHCenter }
+        Text { width: parent.width; text: root.battery && root.battery.isPresent ? Math.round(root.battery.percentage * 100) + "%" : "AC POWER"; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.displayLarge; font.bold: true; horizontalAlignment: Text.AlignHCenter }
+        Text { width: parent.width; text: root.battery && root.battery.isPresent ? (UPower.onBattery ? root.duration(root.battery.timeToEmpty) + " remaining" : root.battery.timeToFull > 0 ? root.duration(root.battery.timeToFull) + " until full" : "Connected to power") : "No battery detected"; color: root.shell.alpha(root.shell.foreground, .55); font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall; horizontalAlignment: Text.AlignHCenter }
         Rectangle { visible: root.battery && root.battery.isPresent; width: parent.width; height: Style.px(7); radius: 4; color: root.shell.alpha(root.shell.foreground, .12); Rectangle { width: parent.width * (root.battery ? root.battery.percentage : 0); height: parent.height; radius: parent.radius; color: root.shell.role("act_br", root.shell.accent) } }
         Row {
             visible: root.battery && root.battery.isPresent

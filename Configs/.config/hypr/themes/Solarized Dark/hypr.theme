@@ -2,14 +2,19 @@ $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 $ICON_THEME = Tela-circle-solarized
 $COLOR_SCHEME = prefer-dark
 $CURSOR_THEME = capitaine-cursors-light
-$CURSOR_SIZE = 24
+$CURSOR_SIZE = 30
 $NVIM_SCHEME = solarized
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
+$FONT = DejaVuSansM Nerd Font
+$BAR_FONT = DejaVuSansM Nerd Font
+$MENU_FONT = DejaVuSansM Nerd Font
+$MONOSPACE_FONT = DejaVuSansM Nerd Font
+$NOTIFICATION_FONT = DejaVuSansM Nerd Font Mono
 
 general {
-    gaps_in = 3
-    gaps_out = 6
+    gaps_in = 5
+    gaps_out = 10
     border_size = 2
     col.active_border = rgba(b58900ff)
     col.inactive_border = rgba(93a1a1cc)
@@ -40,5 +45,3 @@ decoration {
         enabled = false
     }
 }
-
-layerrule = blur on, match:namespace waybar

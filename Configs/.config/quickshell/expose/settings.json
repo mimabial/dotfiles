@@ -1,0 +1,14 @@
+{
+  "previewPlacement": "in-place",
+  "windowFooterStyle": "floating",
+  "animationStyle": "original",
+  "animationTimings": {},
+  "slideDirection": {},
+  "backgroundBlur": 4,
+  "backgroundDim": 6,
+  "hotCornerEnabled": true,
+  "hotCornerPosition": "top-left",
+  "moveCursorToWindow": true,
+  "multiMonitorMode": "mirrored",
+  "showFooter": true
+}

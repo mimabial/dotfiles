@@ -25,7 +25,6 @@ $start.THEME_OUTPUT_SYNC=hyprshell theme/startup-sync.sh
 $start.AUTH_DIALOGUE=hyprshell app -t service -- hyprshell session/polkit-kde-auth
 
 # Use stable unit names (avoid $XDG_SESSION_DESKTOP being empty/variable across sessions)
-$start.BAR=hyprshell app -u hyprland-waybar-watcher.service -t service -- hyprshell waybar/waybar --watch # systemd service for waybar watcher
 $start.WALLPAPER=hyprshell app -u hyprland-wallpaper.service -t service -- hyprshell wallpaper start --global
 $start.NOTIFICATIONS=hyprshell app -t service dunst
 

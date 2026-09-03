@@ -40,28 +40,18 @@ idle_notify() {
   fi
 }
 
-idle_update_waybar() {
-  hypr_user_pkill -RTMIN+21 -x waybar 2>/dev/null || true
-}
-
-idle_systemd_user_ok() {
-  systemctl --user is-active default.target >/dev/null 2>&1
-}
-
 idle_ensure_manager_running() {
   local manager_unit="${1:-hyprland-idle-manager.service}"
 
-  if idle_systemd_user_ok && systemctl --user list-unit-files "${manager_unit}" >/dev/null 2>&1; then
-    systemctl --user start --no-block "${manager_unit}" >/dev/null 2>&1 || true
-  fi
+  hypr_svc_user start "${manager_unit}" || true
 }
 
 idle_notify_manager() {
   local manager_unit="${1:-hyprland-idle-manager.service}"
   local manager_script="${2:-${HOME}/.local/lib/hypr/session/idle-manager.sh}"
 
-  if idle_systemd_user_ok && systemctl --user is-active --quiet "${manager_unit}" >/dev/null 2>&1; then
-    systemctl --user kill --signal=USR1 "${manager_unit}" >/dev/null 2>&1 || true
+  if hypr_svc_user is-active "${manager_unit}"; then
+    hypr_svc_user_signal "${manager_unit}" USR1 || true
     return 0
   fi
 
@@ -99,5 +89,4 @@ idle_toggle_state() {
 
   idle_ensure_manager_running "${manager_unit}"
   idle_notify_manager "${manager_unit}" "${manager_script}"
-  idle_update_waybar
 }

@@ -1,4 +1,4 @@
-$HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
+$HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 
 $ICON_THEME = Fluent-grey-dark
 $COLOR_SCHEME = prefer-dark
@@ -10,6 +10,11 @@ $NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME = Vimix-cursors
 $CURSOR_SIZE = 30
+$FONT = iMWritingMono Nerd Font
+$BAR_FONT = iMWritingMono Nerd Font
+$MENU_FONT = iMWritingMono Nerd Font
+$MONOSPACE_FONT = iMWritingMono Nerd Font
+$NOTIFICATION_FONT = iMWritingMono Nerd Font Mono
 
 general {
     gaps_in = 6
@@ -48,5 +53,3 @@ decoration {
         xray = false
     }
 }
-
-layerrule = unset,waybar

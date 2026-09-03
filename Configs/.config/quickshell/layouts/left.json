@@ -7,12 +7,14 @@
   "privacybutton",
   "spacer",
   { "id": "wallpaper", "props": { "reverse": true } },
-  { "id": "screen", "props": { "reverse": true, "showCliphist": true, "showPicker": true } },
+  { "id": "tools", "props": { "reverse": true } },
+  { "id": "screen", "props": { "reverse": true, "showCliphist": true } },
+  { "id": "disks", "props": { "showPrinters": true } },
   { "id": "bluetooth", "props": { "showReadout": false, "reverse": true } },
   { "id": "wifi", "props": { "showReadout": false, "showVpn": true } },
   { "id": "eyecare", "props": { "reverse": true, "sliderFirst": true, "showSlider": false } },
   { "id": "audio", "props": { "reverse": true, "sliderFirst": true, "showSlider": false } },
   "spacer",
-  { "id": "mediaplayer", "props": { "iconOnly": false } },
+  { "id": "mediaplayer", "props": { "iconMode": false, "randomizeProgressShape": true } },
   "power"
 ]

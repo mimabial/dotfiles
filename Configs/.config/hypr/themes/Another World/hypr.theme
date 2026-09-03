@@ -7,6 +7,11 @@ $NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME = Sweet-cursors
 $CURSOR_SIZE = 24
+$FONT = MonaspiceKr Nerd Font
+$BAR_FONT = MonaspiceKr Nerd Font
+$MENU_FONT = MonaspiceKr Nerd Font
+$MONOSPACE_FONT = MonaspiceKr Nerd Font
+$NOTIFICATION_FONT = MonaspiceKr Nerd Font Mono
 
 general {
     gaps_in = 4
@@ -31,6 +36,3 @@ decoration {
         xray = false
     }
 }
-
-blurls = waybar
-

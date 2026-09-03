@@ -13,8 +13,8 @@ The implementation separates three concerns:
 ## Flow
 
 ```text
-~/.local/state/hypr/staterc  WAYBAR_LAYOUT_NAME=<layout>
-             │               (historical key; Quickshell owns it now)
+~/.local/state/hypr/staterc  QUICKSHELL_LAYOUT_NAME=<layout>
+             │
              ▼
           shell.qml ── layouts/<layout>.json
              │        styles/base.json + styles/<layout>.json
@@ -64,7 +64,7 @@ to components.
 | change shared appearance | `styles/base.json` |
 | override one layout | `styles/<layout>.json` |
 | change module behavior | the relevant root or `modules/*Module.qml` file |
-| add a module | component, panel registry, layout entry, and style key |
+| add a module | component, its directory's `qmldir`, panel registry, layout entry, and style key |
 | change a popup | the matching `*Popup.qml` |
 | change provider output | the existing helper under `~/.local/lib/hypr/` |
 
@@ -94,6 +94,8 @@ Important geometry rules:
 - `edge` is drawn by `ModuleEdge` and selects border sides; it is not an
   independent second outline.
 - An `.active` rule inherits its unsuffixed rule before applying overrides.
+- `agents` takes an extra `alarm` channel, used instead of `content` once a
+  provider limit reaches 90%; unset, it paints the `error` role.
 
 ## Drawers and popups
 
@@ -121,6 +123,13 @@ alarm/timer/stopwatch popup where configured as the timer clock.
 - Audio limits are expressed in dB. `controls/volume-control.sh --limits` probes
   the active backend and supplies portable minimum, maximum, and step values;
   QML converts between dB and PipeWire/PulseAudio's cubic scalar.
+- The media popup passes the selected player identity to `cliamp/spectrum.py`,
+  which captures only that sink input. Its payload keeps normalized display
+  values alongside calibrated band/RMS/sample-peak/true-peak dBFS values and
+  separate L/R spectra and waveform samples; analytical visualizers use those fields
+  rather than infer measurements from decorative spectrum bars. QML samples
+  the raw analyzer at a fixed visual cadence and applies time-based smoothing
+  only to the bands used by decorative renderers.
 - Alarm/timer and stopwatch state lives under `~/.local/state/quickshell/` and is
   restored by `calendar/alarm-timer.sh`; do not move scheduling into QML timers
   that disappear on reload.
@@ -139,9 +148,8 @@ alarm/timer/stopwatch popup where configured as the timer clock.
 | popups | `*Popup.qml` and menu/flyout helpers |
 | live data | `layouts/*.json`, `styles/*.json`, generated theme JSON |
 
-`ScriptButton` accepts the legacy Waybar JSON shape
-`{"text":"…","class":"…","tooltip":"…"}`. That compatibility does not mean
-Waybar is running.
+`ScriptButton` providers use the compact JSON shape
+`{"text":"…","class":"…","tooltip":"…"}`.
 
 ## Portability
 
@@ -175,4 +183,16 @@ quickshell log | tail -n +$((n + 1)) | grep -v font.db
 
 Layout, style, state, theme, and font files are watched and update in place.
 Quickshell normally reloads changed QML itself; the IPC reload is the deterministic
-verification path. Popup-only errors may not appear until the popup is opened.
+verification path. Popup-only errors may not appear until the popup is opened, so
+open the ones you changed — a clean reload log does not cover them.
+
+Every QML directory declares its types in a `qmldir`, so lint resolves `Style` and
+the other singletons and a wrong member is a real finding rather than noise. A new
+component must be added to its directory's `qmldir`; with one present, an
+undeclared file is not a type.
+
+`pragma ComponentBehavior: Bound` is on the files that lint clean. Under it an
+unqualified access is a runtime break rather than a style nit, and a delegate must
+declare `required property var modelData` / `required property int index` for what
+it reads. Add the pragma only to a file with no `[unqualified]` left; the files
+that still have some deliberately go without it.

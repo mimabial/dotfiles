@@ -62,6 +62,7 @@ Usage: $(basename "${0}") --[arg]
 
 arguments:
   --background -b    - Converts and ensures background to be a png
+  --mpris            - Returns MPRIS song title, or fails if nothing is playing
   --title            - Returns MPRIS song title
   --artist           - Returns MPRIS artist name
   --source           - Returns MPRIS player icon

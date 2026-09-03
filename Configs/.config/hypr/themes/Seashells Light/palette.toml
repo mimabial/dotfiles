@@ -1,0 +1,25 @@
+background = "#e0d6c8"
+foreground = "#0f2838"
+cursor-color = "#d05023"
+cursor-text = "#e0d6c8"
+selection-foreground = "#0f2838"
+selection-background = "#c8dde8"
+
+colors = [
+  "#b8a796",
+  "#d05023",
+  "#027b9b",
+  "#d88821",
+  "#2d6870",
+  "#0f7b8a",
+  "#50a3b5",
+  "#0f2838",
+  "#4a5a65",
+  "#d38677",
+  "#618c98",
+  "#c57a1a",
+  "#0e8fb5",
+  "#2d6870",
+  "#3a6a75",
+  "#08131a",
+]

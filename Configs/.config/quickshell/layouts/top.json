@@ -5,7 +5,7 @@
   "right": [
     {
       "id": "mediaplayer",
-      "props": { "appearance": "mpris", "showControls": false, "showArtist": true }
+      "props": { "appearance": "mpris", "showControls": false, "showArtist": true, "randomizeProgressShape": true }
     },
     "pulseaudio",
     "display",

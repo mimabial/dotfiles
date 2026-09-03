@@ -86,6 +86,7 @@ hl.env("XDG_STATE_HOME", state_home)
 env_default("XCURSOR_PATH", data_home .. "/icons:" .. home .. "/.icons:/usr/share/icons")
 hl.env("QT_QPA_PLATFORMTHEME", "qt6ct")
 hl.env("QT_STYLE_OVERRIDE", "kvantum")
+hl.env("QT_FONT_DPI", "96")
 env_default("QT_QPA_PLATFORM", "wayland;xcb")
 env_default("MOZ_ENABLE_WAYLAND", "1")
 env_default("GDK_SCALE", "1")
@@ -140,7 +141,6 @@ local startup = {
     vars.get("start.ZSH_ZCOMPDUMP"),
     vars.get("start.AUTH_DIALOGUE"),
     vars.get("start.WALLPAPER"),
-    vars.get("start.BAR"),
     vars.get("start.QUICKSHELL"),
     vars.get("start.NOTIFICATIONS"),
     "xsettingsd",

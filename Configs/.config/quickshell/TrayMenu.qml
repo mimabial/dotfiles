@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 
@@ -18,18 +19,21 @@ PopupCard {
 
     property TrayFlyout flyout: TrayFlyout {
         shell: root.shell
+        openLeft: root.position === "right"
         handle: root.openSub
         anchorItem: root.openRow
         onPicked: root.shell.closePopup()
     }
     property TrayFlyout flyout2: TrayFlyout {
         shell: root.shell
+        openLeft: root.position === "right"
         handle: root.flyout.openSub
         anchorItem: root.flyout.openRow
         onPicked: root.shell.closePopup()
     }
     property TrayFlyout flyout3: TrayFlyout {
         shell: root.shell
+        openLeft: root.position === "right"
         handle: root.flyout2.openSub
         anchorItem: root.flyout2.openRow
         onPicked: root.shell.closePopup()

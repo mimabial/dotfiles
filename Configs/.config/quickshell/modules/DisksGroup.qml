@@ -18,7 +18,8 @@ BarGroup {
         id: disksButton
         shell: root.shell; css: "removable"
         text: Removable.barGlyph
-        visible: Removable.present
+        readonly property bool shown: Removable.present
+        visible: shown
         active: Removable.anyBusy
         tooltip: Model.plain(Removable.summary)
         onClicked: button => button === Qt.RightButton ? Removable.rescan()

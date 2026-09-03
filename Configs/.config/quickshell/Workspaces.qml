@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import Quickshell.Hyprland
@@ -12,7 +13,7 @@ Item {
     property bool popupEnabled: false
     property bool omarchyStyle: false
     property string numerals: vertical ? "hindi" : "kanji"
-    readonly property real trailingGap: omarchyStyle && !vertical ? 1.5 * Style.scale : 0
+    readonly property real trailingGap: omarchyStyle && !vertical ? 1.5 : 0
     // no frame is painted here, so box.border reserves nothing
     readonly property real spanX: box.margin[1] + box.margin[3] + box.padding[1] + box.padding[3]
     readonly property real spanY: box.margin[0] + box.margin[2] + box.padding[0] + box.padding[2]
@@ -61,7 +62,7 @@ Item {
                 fixedWidth: root.omarchyStyle && !root.vertical ? Style.px(20) : 0
                 text: root.omarchyStyle ? focused ? "󱓻" : index === 9 ? "0" : String(index + 1) : root.symbol(index + 1)
                 active: root.vertical && focused
-                fontSize: (root.vertical ? 16 : box.fontSize) * Style.scale
+                fontSize: Style.fontPx(box.fontSize)
                 fontWeight: !root.omarchyStyle && ((ws && ws.urgent) || (root.activeOnly && root.numerals !== "roman")) ? Font.Bold : Font.Normal
                 textColor: root.omarchyStyle ? root.shell.foreground : ws && ws.urgent ? root.shell.role("warning", root.shell.foreground) : box.content !== undefined ? boxColor("content") : root.vertical ? (active ? root.shell.role("act_fg", root.shell.foreground) : root.shell.foreground) : root.shell.alpha(root.shell.role(hovered || root.activeOnly && root.numerals === "roman" ? "hvr_br" : root.activeOnly ? "act_br" : "br", root.shell.foreground), root.activeOnly && root.numerals === "roman" ? .7 : root.activeOnly || hovered ? .8 : .2)
                 opacity: root.omarchyStyle && !occupied && !focused ? .5 : 1

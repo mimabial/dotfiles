@@ -466,6 +466,7 @@ copy_path() {
         --delete-excluded
         --exclude='.git'
         --exclude='__pycache__'
+        --exclude='.ruff_cache'
         --exclude='*.pyc'
         --exclude='node_modules'
         --exclude='.cache'

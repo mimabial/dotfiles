@@ -3,7 +3,18 @@ import Quickshell.Services.Pipewire
 
 BarButton {
     id: root
-    readonly property var captures: Pipewire.nodes.values.filter(node => node.isStream && ((node.type & PwNodeType.AudioInStream) === PwNodeType.AudioInStream || (node.type & PwNodeType.Video) === PwNodeType.Video))
+    function isMonitorCapture(node) {
+        const value = node.properties ? node.properties["stream.capture.sink"] : false
+        return value === true || String(value) === "true"
+    }
+    function isInternalCapture(node) {
+        const value = node.properties ? node.properties["quickshell.privacy.ignore"] : false
+        return value === true || String(value) === "true"
+    }
+    readonly property var captures: Pipewire.nodes.values.filter(node => node.isStream
+        && ((node.type & PwNodeType.Video) === PwNodeType.Video
+            || (node.type & PwNodeType.AudioInStream) === PwNodeType.AudioInStream
+                && !root.isMonitorCapture(node) && !root.isInternalCapture(node)))
     readonly property bool shown: captures.length > 0
     visible: shown
     css: "privacy"

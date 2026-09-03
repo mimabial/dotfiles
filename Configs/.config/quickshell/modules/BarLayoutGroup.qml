@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import ".."
@@ -18,7 +19,7 @@ BarGroup {
         implicitWidth: tools.implicitWidth + 2; implicitHeight: tools.implicitHeight + 2
         radius: root.shell.moduleRadius; color: "transparent"; border.width: 1; border.color: root.outline
         ColumnLayout { id: tools; anchors.fill: parent; anchors.margins: 1; spacing: 0
-            ScriptButton { Layout.fillWidth: true; shell: root.shell; css: "workflows"; command: ["hyprshell", "util/workflows", "--waybar"]; interval: 86400000; refreshKey: root.shell.workflow; onClicked: root.shell.togglePopup("desktop") }
+            ScriptButton { Layout.fillWidth: true; shell: root.shell; css: "workflows"; command: ["hyprshell", "util/workflows", "--bar"]; interval: 86400000; refreshKey: root.shell.workflow; onClicked: root.shell.togglePopup("desktop") }
             WindowLayoutButton { Layout.fillWidth: true; shell: root.shell; popupsAllowed: root.popupsAllowed }
         }
     } }

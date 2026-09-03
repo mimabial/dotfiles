@@ -107,13 +107,24 @@ nerd_font_menu_build() {
 
 show_font_menu() {
   local font_list=""
+  local current_font=""
   local font=""
+  local menu_exit=0
 
   font_list="$(hyprshell fonts/font-list.sh)"
-  font="$(menu "Select Font" "Theme Default\n${font_list}")"
+  current_font="$(hyprshell fonts/font-get.sh mono 2>/dev/null || true)"
+  font="$(menu "Select Font" "Theme Default\n${font_list}" "${current_font}" "" copy)"
+  menu_exit=$?
 
   if [[ -z "${font}" || "${font}" == "CNCLD" ]]; then
     menu_exit_or_show style
+    return 0
+  fi
+
+  if ((menu_exit == MENU_EXIT_COPY)); then
+    [[ "${font}" == "Theme Default" ]] && return 0
+    printf '%s' "${font}" | wl-copy
+    send_ephemeral_notif "font-copy" -a "Font" -t 2000 "Copied" "${font}"
     return 0
   fi
 
@@ -140,13 +151,15 @@ show_setup_power_profile_menu() {
 
 show_install_font_menu() {
   local selection=""
-  local package=""
+  local label=""
+  local title=""
   local -a font_labels=()
   local -A font_packages=()
+  local -a packages=()
 
   nerd_font_menu_build installable font_labels font_packages
   if [[ "${#font_labels[@]}" -gt 0 ]]; then
-    selection="$(menu "Install Font" "$(printf '%s\n' "${font_labels[@]}")")"
+    selection="$(menu "Install Font" "$(printf '%s\n' "${font_labels[@]}")" "" "" multi)"
   else
     selection="$(menu "Install Font" "No installable Nerd Fonts")"
   fi
@@ -154,16 +167,29 @@ show_install_font_menu() {
   case "${selection}" in
     "No installable Nerd Fonts" | "" | "CNCLD")
       menu_exit_or_show install
-      ;;
-    *)
-      package="${font_packages["${selection}"]:-}"
-      [[ -n "${package}" ]] || {
-        show_install_font_menu
-        return 0
-      }
-      present_terminal --hypr-profile dialog --app-id org.font.Install --title "Install ${selection}" -- hyprshell fonts/font-nerd-install.sh --packages "${package}"
+      return 0
       ;;
   esac
+
+  while IFS= read -r label; do
+    [[ -n "${label}" ]] || continue
+    [[ -n "${font_packages["${label}"]:-}" ]] || continue
+    packages+=("${font_packages["${label}"]}")
+    title+="${label}, "
+  done <<<"${selection}"
+
+  if [[ "${#packages[@]}" -eq 0 ]]; then
+    show_install_font_menu
+    return 0
+  fi
+
+  if [[ "${#packages[@]}" -gt 1 ]]; then
+    title="${#packages[@]} Nerd Fonts"
+  else
+    title="${title%, }"
+  fi
+
+  present_terminal --hypr-profile dialog --app-id org.font.Install --title "Install ${title}" -- hyprshell fonts/font-nerd-install.sh --packages "${packages[@]}"
 }
 
 show_remove_font_menu() {
@@ -281,27 +307,7 @@ show_session_snapshot_menu() {
 }
 
 show_search_all_menu() {
-  local selection=""
-  local action_id=""
-  local options=""
-  local width_override=""
-  local -a search_labels=()
-  local -A search_actions=()
-
-  menu_collect_search_entries main search_labels search_actions
-  options="$(printf '%s\n' "${search_labels[@]}")"
-  width_override="$(
-    rofi_theme_width_multiplier_override menutree "${ROFI_MENU_SEARCH_WIDTH_MULTIPLIER:-2.2}" 650px 2>/dev/null || true
-  )"
-  selection="$(menu "Search All" "${options}" "" "${width_override}")"
-
-  if [[ -z "${selection}" || "${selection}" == "CNCLD" ]]; then
-    menu_exit_or_show main
-    return 0
-  fi
-
-  action_id="${search_actions["${selection}"]:-}"
-  [[ -n "${action_id}" ]] && menu_run_action "${action_id}"
+  menu_show_search main
 }
 
 menu_run_action_dynamic() {

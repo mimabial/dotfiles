@@ -26,7 +26,6 @@ Domains:
   hypr-state
   hyprlock
   hypridle
-  waybar
   rofi
 USAGE
 }

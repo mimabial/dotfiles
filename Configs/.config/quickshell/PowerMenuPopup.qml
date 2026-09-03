@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -67,7 +68,7 @@ PopupCard {
 
         Row {
             width: parent.width; spacing: Style.xxl
-            Text { width: Style.px(30); anchors.verticalCenter: parent.verticalCenter; text: "󰐥"; color: root.shell.foreground; font.family: root.shell.iconGlyphFont; font.pixelSize: Style.px(27); horizontalAlignment: Text.AlignHCenter }
+            Text { width: Style.px(30); anchors.verticalCenter: parent.verticalCenter; text: "󰐥"; color: root.shell.foreground; font.family: root.shell.iconGlyphFont; font.pixelSize: Style.displayLarge; horizontalAlignment: Text.AlignHCenter }
             PopupHero { width: parent.width - Style.px(30) - parent.spacing; shell: root.shell; title: "Power"; status: root.sessionText }
         }
         PopupSection { shell: root.shell; text: "SCREEN" }

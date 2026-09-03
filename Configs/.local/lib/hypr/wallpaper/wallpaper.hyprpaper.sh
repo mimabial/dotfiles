@@ -28,7 +28,7 @@ fi
 # ? Setting wallpaper using hyprctl IPC!
 # https://wiki.hypr.land/Hypr-Ecosystem/hyprpaper/#the-reload-keyword
 if ! hyprctl hyprpaper reload ",${selected_wall}" >/dev/null 2>&1; then
-  if ! systemctl --user start hyprpaper.service >/dev/null 2>&1; then
+  if ! hypr_svc_user start hyprpaper; then
     command -v hyprpaper >/dev/null 2>&1 || {
       print_log -sec "hyprpaper" -err "hyprpaper backend is unavailable"
       exit 1

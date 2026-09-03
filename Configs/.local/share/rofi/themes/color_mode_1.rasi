@@ -12,7 +12,6 @@ configuration {
     modes:                        "drun";
     show-icons:                  true;
     drun-display-format:         "{name}";
-    font:                        "JetBrainsMono Nerd Font 10";
 }
 
 * {

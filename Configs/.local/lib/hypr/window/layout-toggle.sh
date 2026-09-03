@@ -16,7 +16,5 @@ Cycle the global tiled layout: dwindle -> master -> scrolling -> monocle." "$@"
 
 NEW_LAYOUT="$(hyprctl getoption general:layout -j | jq -r '.str')"
 
-# The waybar module is interval:once, so it only refreshes on its signal.
-pkill -RTMIN+22 waybar 2>/dev/null || true
 dunstify -a "Hyprland" -t 3000 -i "preferences-system" \
   -h "string:x-dunst-stack-tag:layout" "Layout: ${NEW_LAYOUT}"

@@ -22,8 +22,18 @@ BarButton {
     textFormat: markup ? Text.RichText : Text.PlainText
     tooltip: output.tooltip || ""
     visible: text !== ""
+    // subscribes this button to `quickshell ipc call indicators refresh <name>`,
+    // so a state change pushes one run instead of a timer discovering it later
+    property string indicator: ""
     function refresh(delay) { refreshDelay.interval = delay || 0; refreshDelay.restart() }
     onRefreshKeyChanged: refresh()
+
+    Connections {
+        target: root.indicator ? root.shell : null
+        function onIndicatorRefreshSerialChanged() {
+            if (["all", root.indicator].includes(root.shell.indicatorRefreshTarget)) root.refresh()
+        }
+    }
 
     Process {
         id: process

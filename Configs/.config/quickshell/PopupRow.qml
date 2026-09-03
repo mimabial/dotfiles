@@ -47,7 +47,32 @@ Rectangle {
             id: textColumn
             width: parent.width - (iconText.visible ? iconText.width + parent.spacing : 0) - (iconImage.visible ? iconImage.width + parent.spacing : 0) - (valueText.visible ? valueText.width + parent.spacing : 0)
             anchors.verticalCenter: parent.verticalCenter; spacing: 1
-            Text { width: parent.width; text: root.title; color: root.titleColor; font.family: root.shell.fontFamily; font.pixelSize: Style.subtitle; font.bold: root.active; elide: Text.ElideRight; horizontalAlignment: root.centerTitle ? Text.AlignHCenter : Text.AlignLeft }
+            Item {
+                id: titleClip
+                width: parent.width; height: titleText.implicitHeight
+                clip: true
+                readonly property real overflow: Math.max(0, titleText.implicitWidth - width)
+                readonly property int scrollDuration: Math.max(600, overflow * 34)
+                // elide is what the row shows at rest; hovering reads the rest of it
+                readonly property bool scrolling: root.hovered && overflow > 0
+                onScrollingChanged: if (!scrolling) titleText.x = 0
+                Text {
+                    id: titleText
+                    width: titleClip.scrolling ? implicitWidth : titleClip.width
+                    text: root.title; color: root.titleColor
+                    font.family: root.shell.fontFamily; font.pixelSize: Style.subtitle; font.bold: root.active
+                    elide: titleClip.scrolling ? Text.ElideNone : Text.ElideRight
+                    horizontalAlignment: root.centerTitle ? Text.AlignHCenter : Text.AlignLeft
+                    SequentialAnimation on x {
+                        running: titleClip.scrolling
+                        loops: Animation.Infinite
+                        PauseAnimation { duration: 650 }
+                        NumberAnimation { to: -titleClip.overflow; duration: titleClip.scrollDuration; easing.type: Easing.InOutQuad }
+                        PauseAnimation { duration: 650 }
+                        NumberAnimation { to: 0; duration: titleClip.scrollDuration; easing.type: Easing.InOutQuad }
+                    }
+                }
+            }
             Text { visible: text !== ""; width: parent.width; text: root.detail; color: root.detailColor; font.family: root.shell.fontFamily; font.pixelSize: Style.caption; elide: Text.ElideRight }
         }
         Text { id: valueText; visible: text !== ""; anchors.verticalCenter: parent.verticalCenter; text: root.value; color: root.valueColor; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }

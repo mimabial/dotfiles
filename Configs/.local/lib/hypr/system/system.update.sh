@@ -15,7 +15,7 @@ source "${BASH_SOURCE[0]%/*}/pm.updates.lib.sh"
 cache_ttl="${HYPR_UPDATE_CACHE_TTL:-21600}"
 
 hypr_help_guard "Usage: hyprshell system/system.update [up|--run-upgrade|--refresh]
-Report pending updates as waybar JSON; 'up' opens an upgrade terminal.
+Report pending updates as bar JSON; 'up' opens an upgrade terminal.
 Repeat calls inside ${cache_ttl:-900}s reuse the cached report; --refresh forces a re-check." "$@"
 
 if aur_helper="$(get_aur_helper)"; then
@@ -469,7 +469,7 @@ system_facts_json() {
     '{checked: $checked, installed: $installed, upgraded: $upgraded}'
 }
 
-print_waybar_json() {
+print_bar_json() {
   local text="$1"
   local tooltip="$2"
   local class="${3:-}"
@@ -491,11 +491,11 @@ print_waybar_json() {
 
 write_update_info "$ofc" "$aur" "$fpk"
 if [[ "${#system_update_errors[@]}" -gt 0 && "$upd" -eq 0 ]]; then
-  print_waybar_json "" "$(build_tooltip)" "error"
+  print_bar_json "" "$(build_tooltip)" "error"
 elif [[ "${#system_update_errors[@]}" -gt 0 ]]; then
-  print_waybar_json "" "$(build_tooltip)" "warning"
+  print_bar_json "" "$(build_tooltip)" "warning"
 elif [ "$upd" -eq 0 ]; then
-  print_waybar_json "" " Packages are up to date" "up-to-date"
+  print_bar_json "" " Packages are up to date" "up-to-date"
 else
-  print_waybar_json "" "$(build_tooltip)" "updates"
+  print_bar_json "" "$(build_tooltip)" "updates"
 fi

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
-hypr_runtime_require rofi || exit 1
+hypr_runtime_bootstrap || exit 1
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
 # shellcheck source=/dev/null

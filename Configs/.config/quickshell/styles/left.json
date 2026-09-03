@@ -6,7 +6,7 @@
     "hover": { "fill": null, "content": ["hvr_fg", 1.0] }
   },
   "eyecare": {
-    "margin": [2.0, 0.0, 0.0, 0.0]
+    "margin": [0.0, 0.0, 0.0, 0.0]
   },
   "backlight": {
     "padding": [2.0, 0.0, 2.0, 0.0]
@@ -17,12 +17,20 @@
   "caffeine": {
     "padding": [2.0, 0.0, 2.0, 0.0]
   },
+  "converter": {
+    "fontSize": 12.0,
+    "fontWeight": 400,
+    "fill": null,
+    "outline": null,
+    "padding": [2.0, 0.0, 2.0, 0.0],
+    "hover": { "outline": null, "content": ["hvr_fg", 1.0] }
+  },
   "colorpicker": {
-    "border": 1.0,
-    "fill": ["bg", 0.1],
-    "fontSize": 14,
-    "outline": ["br", 0.2],
-    "padding": [6.0, 0.0, 6.0, 0.0]
+    "fontSize": 12.0,
+    "fill": null,
+    "outline": null,
+    "padding": [2.0, 0.0, 2.0, 0.0],
+    "hover": { "outline": null, "content": ["hvr_fg", 1.0] }
   },
   "cpuinfo": {
     "border": 1.2,
@@ -46,17 +54,15 @@
     "edge": null,
     "margin": [4.0, 4.0, 4.0, 0.0]
   },
-  "microphone": {
-    "padding": [2.0, 0.0, 2.0, 0.0]
-  },
-  "microphone.muted": {
-    "padding": [2.0, 0.0, 2.0, 0.0]
+
+  "screen": {
+    "margin": [0.0, 0.0, 0.0, 0.0]
   },
   "screenrecord": {
     "border": 0.0,
     "outline": null,
     "margin": [0.0, 0.0, 0.0, 0.0],
-    "padding": [2.0, 0.0, 2.0, 0.0]
+    "padding": [2.0, 0.0, 0.0, 0.0]
   },
   "screenshot": {
     "border": 0.0,
@@ -90,17 +96,21 @@
     "padding": [2.0, 0.0, 2.0, 0.0]
   },
   "volumecontrol": {
-    "margin": [0.0, 0.0, 2.0, 0.0]
+    "margin": [0.0, 0.0, 0.0, 0.0]
   },
   "pulseaudio": {
-    "fontSize": 18.0,
     "padding": [2.0, 0.0, 2.0, 0.0]
   },
   "pulseaudio.headphone": {
     "padding": [2.0, 0.0, 2.0, 0.0]
   },
-  "screen": {
-    "margin": [2.0, 2.0, 2.0, 2.0]
+  "microphone": {
+    "margin": [0.0, 0.0, 0.0, 0.0],
+    "padding": [2.0, 0.0, 2.0, 0.0]
+  },
+  "microphone.muted": {
+    "margin": [0.0, 0.0, 0.0, 0.0],
+    "padding": [2.0, 0.0, 2.0, 0.0]
   },
   "#workspaces button.active": {
     "padding": [4.0, 0.0, 4.0, 0.0],
@@ -116,7 +126,6 @@
   },
   "clock.date": {
     "fontWeight": 700,
-    "fontSize": 12.0,
     "outline": ["c10", 0.9],
     "hover": { "fill": null, "content": ["hvr_fg", 1.0] },
     "justify": "center",
@@ -147,10 +156,6 @@
     "padding": [4.0, 6.0, 0.0, 0.0],
     "edge": { "color": ["warning", 0.6], "right": true, "top": true }
   },
-  "weather": {
-    "fontSize": 12.0,
-    "iconSize": 14.0
-  },
   "weather.minmax": {
     "border": 1.0,
     "outline": ["c4", 0.6],
@@ -169,7 +174,6 @@
   "power-profiles-daemon": { "outline": null, "hover": { "outline": null } },
   "notification": { "border": 0.0, "margin": [0.0, 0.0, 0.0, 0.0], "outline": null },
   "updates": {
-    "fontSize": 14.0,
     "padding": [2.0, 0.0, 2.0, 0.0]
   },
   "updates-agents": {

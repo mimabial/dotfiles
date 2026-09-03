@@ -37,6 +37,9 @@ if sudo test -f "${sudoers_file}" && ! ${explicit_minutes}; then
   exit 0
 fi
 
+# Deliberately systemd-only: the expiry must survive this shell and a reboot.
+# A detached `sleep N && rm` satisfies neither, and a passwordless-sudo rule that
+# outlives its timer is worse than not offering the feature.
 command -v systemd-run >/dev/null 2>&1 || {
   printf 'Automatic expiry requires systemd-run; refusing to enable a permanent rule.\n' >&2
   exit 1

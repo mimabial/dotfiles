@@ -6,5 +6,5 @@ After=graphical-session.target
 [Service]
 Environment=QS_NO_RELOAD_POPUP=1
 ExecStart=/usr/bin/quickshell
-Restart=on-failure
+Restart=always
 RestartSec=1

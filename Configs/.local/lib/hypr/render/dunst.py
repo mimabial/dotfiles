@@ -49,6 +49,13 @@ WAL_TEMPLATES_DIR = (
 )
 
 APP = "dunst"
+# the 1.0 anchor for the text-size knob, matching system/text-size.sh
+BASE_PX = 12
+# A face carrying no Nerd Font glyphs makes fontconfig pick the fallback per
+# glyph, so a notification body lands in some unrelated proportional font.
+# Miracode is Monocraft's vector reinterpretation and inherits its cell width,
+# but none of its icons. quickshell/shell.qml carries the same map for the bar.
+GLYPH_COMPANIONS = {"Miracode": "Monocraft"}
 STATE_FILE = Path(os.environ.get("HYPR_STATE_HOME", Path.home() / ".local/state/hypr")) / "staterc"
 
 
@@ -416,12 +423,17 @@ def resolve_colors(palette):
     return pack, variant, resolved
 
 
-def text_scale():
-    """The desktop text-size knob as a multiplier; 12px is the 1.0 anchor."""
+def text_size_px():
+    """The desktop text-size knob in px; system/text-size.sh owns it."""
     try:
-        return int(load_shell_assignments(STATE_FILE).get("TEXT_SIZE", "12")) / 12
+        return int(load_shell_assignments(STATE_FILE).get("TEXT_SIZE", str(BASE_PX)))
     except (OSError, ValueError):
-        return 1.0
+        return BASE_PX
+
+
+def text_scale():
+    """The same knob as a multiplier, for pixel geometry; 12px is the 1.0 anchor."""
+    return text_size_px() / BASE_PX
 
 
 def base_metric(name, default):
@@ -519,6 +531,7 @@ def resolve_font():
         read_layer_var("NOTIFICATION_FONT"),
         read_layer_var("FONT"),
     )
+    notification_font = GLYPH_COMPANIONS.get(notification_font, notification_font)
     font_size_env = os.environ.get("FONT_SIZE", "")
     notification_font_size = (
         font_size_env
@@ -527,7 +540,12 @@ def resolve_font():
     )
     if not notification_font_size.isdigit():
         notification_font_size = "10"
-    notification_font_size = str(max(1, round(int(notification_font_size) * text_scale())))
+    # Integer division, not rounding: system/text-size.sh derives rofi's point size
+    # the same way, and the launcher and the notification stack share the same 10pt
+    # base - rounding here landed them a point apart at most text sizes.
+    notification_font_size = str(
+        max(1, int(notification_font_size) * text_size_px() // BASE_PX)
+    )
     return DunstFont(
         icon_theme=resolve_icon_theme(),
         name=notification_font,

@@ -9,7 +9,7 @@ PopupWindow {
     property bool hovered: false
     property bool ready: false
     readonly property var anchorWindow: anchorItem ? anchorItem.QsWindow.window : null
-    readonly property string edge: shell.layoutName === "main" ? "right" : ["left", "sidebar"].includes(shell.layoutName) ? "left" : shell.layoutName === "top" ? "top" : "bottom"
+    readonly property string edge: ["main", "alt"].includes(shell.layoutName) ? "right" : ["left", "sidebar"].includes(shell.layoutName) ? "left" : shell.layoutName === "top" ? "top" : "bottom"
 
     property bool dismissed: false
 
@@ -46,7 +46,7 @@ PopupWindow {
         border.color: root.shell.alpha(root.shell.role("br", root.shell.foreground), .45)
         Text {
             id: label; anchors.centerIn: parent; width: Math.min(340, implicitWidth)
-            color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.px(11)
+            color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
             text: root.text; textFormat: Text.RichText; wrapMode: Text.Wrap
         }
     }

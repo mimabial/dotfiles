@@ -1,4 +1,4 @@
-$HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
+$HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 
 $ICON_THEME = Tela-purple-dark
 $COLOR_SCHEME = prefer-dark
@@ -10,6 +10,11 @@ $NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME = Sweet-cursors
 $CURSOR_SIZE = 24
+$FONT = CommitMono Nerd Font
+$BAR_FONT = CommitMono Nerd Font
+$MENU_FONT = CommitMono Nerd Font
+$MONOSPACE_FONT = CommitMono Nerd Font
+$NOTIFICATION_FONT = CommitMono Nerd Font Mono
 
 general {
     gaps_in = 3
@@ -45,5 +50,3 @@ decoration {
         enabled = true
     }
 }
-
-layerrule = blur on, match:namespace waybar

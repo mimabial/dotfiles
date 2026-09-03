@@ -22,7 +22,7 @@ PopupCard {
     onOpenChanged: if (open) refresh()
 
     property Process readProc: Process {
-        command: ["hyprshell", "waybar/caffeine.sh"]
+        command: ["hyprshell", "quickshell/caffeine"]
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: {
             try { root.report = JSON.parse(text) || ({}) }
             catch (error) { root.report = ({}) }

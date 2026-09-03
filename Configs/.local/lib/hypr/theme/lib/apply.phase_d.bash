@@ -6,22 +6,20 @@
 # Phase model:
 #   Phase A (foreground, in theme.apply.sh): color-sync runs, theme metadata
 #   commits, submits the wallpaper display, runs hyprctl reload, then a small
-#   required job pool updates the immediately visible clients. Waybar CSS is
-#   hot-reloaded by Waybar itself; the foreground waybar job writes the font
-#   include and the dconf icon sink, restarting Waybar only when the icon
-#   theme changed (or starting it if missing). Dunst and Firefox refreshes are
-#   detached best-effort jobs.
+#   required job pool updates the immediately visible clients. Dunst and
+#   Firefox refreshes are detached best-effort jobs.
 #   Phase A holds the theme-update lock end-to-end and is the path the user
 #   waits on.
 #
 #   Phase D (this file): everything best-effort that should not block the
-#   foreground. Runs in a detached systemd-run user-slice unit so it survives
-#   the foreground exiting and can be cancelled by a newer theme apply.
+#   foreground. Runs in a detached systemd-run user-slice unit, or in a setsid
+#   session where there is no systemd user manager, so it survives the
+#   foreground exiting and can be cancelled by a newer theme apply.
 #   Each phase-D job short-circuits via theme_apply_generation_is_current if
 #   a newer generation has started.
 #
 # Subprocess re-entry: theme.apply.sh re-execs itself with --theme-envelope
-# inside the systemd unit. That subprocess sources this file and dispatches
+# inside that unit or session. That subprocess sources this file and dispatches
 # theme_apply_run_envelope_cli, which bootstraps color.finalize.sh and runs
 # the phase-D job pool.
 #
@@ -53,16 +51,25 @@ theme_apply_phase_d_unit_dir() {
   printf '%s/theme.apply.phase-d.units\n' "${runtime_dir}"
 }
 
-theme_apply_cancel_phase_d_unit() {
-  local unit="$1"
+# A handle is either a systemd unit name or "pid:<pid>" from the detached
+# envelope, whose setsid session makes the pid its own process group — so the
+# negative signal reaches its jobs and wallpaper child the way stopping the
+# unit reaches its cgroup.
+theme_apply_cancel_phase_d_handle() {
+  local handle="$1"
 
-  [[ -n "${unit}" ]] || return 0
+  [[ -n "${handle}" ]] || return 0
+  theme_apply_timing_enabled && print_log -sec "theme.apply" -stat "cancel" "${handle}"
+
+  if [[ "${handle}" == pid:* ]]; then
+    kill -TERM -- "-${handle#pid:}" 2>/dev/null || true
+    return 0
+  fi
+
   command -v systemctl >/dev/null 2>&1 || return 0
-
-  theme_apply_timing_enabled && print_log -sec "theme.apply" -stat "cancel" "unit:${unit}"
-  systemctl --user stop --job-mode=replace-irreversibly --no-block "${unit}" 2>/dev/null || true
-  systemctl --user kill --kill-whom=all --signal=SIGKILL --wait "${unit}" 2>/dev/null || true
-  systemctl --user reset-failed "${unit}" 2>/dev/null || true
+  systemctl --user stop --job-mode=replace-irreversibly --no-block "${handle}" 2>/dev/null || true
+  systemctl --user kill --kill-whom=all --signal=SIGKILL --wait "${handle}" 2>/dev/null || true
+  systemctl --user reset-failed "${handle}" 2>/dev/null || true
 }
 
 theme_apply_cancel_previous_phase_d_jobs() {
@@ -70,7 +77,7 @@ theme_apply_cancel_previous_phase_d_jobs() {
   local handle_file=""
   local base=""
   local generation=""
-  local unit=""
+  local handle=""
 
   unit_dir="$(theme_apply_phase_d_unit_dir)" || return 0
   mkdir -p "${unit_dir}" || return 0
@@ -79,9 +86,9 @@ theme_apply_cancel_previous_phase_d_jobs() {
     base="${handle_file##*/}"
     generation="${base%%-*}"
     [[ "${generation}" == "${theme_apply_generation}" ]] && continue
-    unit="$(cat -- "${handle_file}" 2>/dev/null || true)"
+    handle="$(cat -- "${handle_file}" 2>/dev/null || true)"
     rm -f -- "${handle_file}"
-    theme_apply_cancel_phase_d_unit "${unit}"
+    theme_apply_cancel_phase_d_handle "${handle}"
   done < <(find "${unit_dir}" -maxdepth 1 -type f -name '*.unit' -print0 2>/dev/null)
 }
 
@@ -140,8 +147,8 @@ theme_apply_start_envelope() {
   [[ "${theme_apply_quiet}" == "true" ]] && envelope_cmd+=(--quiet)
 
   if ! theme_apply_phase_d_systemd_available; then
-    print_log -sec "theme.apply" -warn "envelope" "systemd user manager unavailable"
-    return 1
+    theme_apply_start_envelope_detached "${log_file}" "${envelope_cmd[@]}"
+    return $?
   fi
 
   unit_name="hyprshell-theme-${theme_apply_generation}.service"
@@ -166,13 +173,36 @@ theme_apply_start_envelope() {
   fi
 
   print_log -sec "theme.apply" -warn "envelope" "systemd-run failed"
-  return 1
+  theme_apply_start_envelope_detached "${log_file}" "${envelope_cmd[@]}"
+}
+
+# No systemd user manager (runit), or systemd-run refused: run the envelope in
+# its own session so it outlives the foreground. The envelope writes its own
+# "pid:" handle, so cancellation does not depend on which pid setsid leaves
+# behind; until it does, the per-job generation check is what stops the work —
+# the same pair the unit path leans on, minus the cgroup. nice/ionice stand in
+# for the unit's reduced CPU/IO weight.
+theme_apply_start_envelope_detached() {
+  local log_file="$1"
+  shift
+
+  local -a prio=()
+  command -v setsid >/dev/null 2>&1 || {
+    print_log -sec "theme.apply" -warn "envelope" "no systemd user manager and no setsid"
+    return 1
+  }
+  command -v ionice >/dev/null 2>&1 && prio=(ionice -c 3)
+  command -v nice >/dev/null 2>&1 && prio+=(nice -n "${HYPR_THEME_PHASE_D_NICE:-10}")
+
+  setsid "${prio[@]}" "$@" --detached </dev/null >>"${log_file}" 2>&1 &
+  disown "$!" 2>/dev/null || true
 }
 
 theme_apply_run_envelope_cli() {
   local log_dir=""
   local unit_file=""
   local quiet="${theme_apply_quiet}"
+  local detached=0
   local wallpaper_log=""
   local wallpaper_pid=""
 
@@ -194,6 +224,9 @@ theme_apply_run_envelope_cli() {
       --quiet)
         quiet=true
         ;;
+      --detached)
+        detached=1
+        ;;
       *)
         print_log -sec "theme.apply" -warn "envelope" "unknown arg: $1"
         return 1
@@ -203,6 +236,12 @@ theme_apply_run_envelope_cli() {
   done
 
   [[ -n "${log_dir}" ]] || return 1
+  # setsid made this process its own session leader, so its pid is the group a
+  # newer generation signals. Written here rather than by the parent: the pid
+  # setsid reports back depends on whether it had to fork.
+  if [[ "${detached}" -eq 1 && -n "${unit_file}" ]]; then
+    printf 'pid:%s\n' "$$" >"${unit_file}" 2>/dev/null || true
+  fi
   theme_apply_preserve_job_logs=1
   mkdir -p "${log_dir}" || return 1
   theme_apply_quiet="${quiet}"
@@ -297,34 +336,12 @@ theme_apply_phase_d_run_jobs() {
   # Running it as a parallel job raced with the wallpaper symlink update.
   theme_apply_wait_jobs "${job_log_dir}" || true
 
-  theme_apply_phase_d_waybar_icon_sync || true
   theme_apply_phase_d_quickshell_icon_sync || true
-}
-
-theme_apply_phase_d_waybar_icon_sync() {
-  theme_apply_generation_is_current || return 0
-  theme_apply_waybar_running || return 0
-
-  local current_icon_theme="" cached_icon_theme=""
-  current_icon_theme="$(theme_apply_current_icon_theme)"
-  cached_icon_theme="$(state_get "waybar_icon_theme" "" 2>/dev/null || true)"
-
-  if [[ -n "${current_icon_theme}" && "${current_icon_theme}" == "${cached_icon_theme}" ]]; then
-    return 0
-  fi
-
-  theme_apply_restart_waybar_direct || {
-    print_log -sec "theme.apply" -warn "waybar" "icon-theme restart failed"
-    return 1
-  }
-
-  [[ -n "${current_icon_theme}" ]] \
-    && state_set "waybar_icon_theme" "${current_icon_theme}" "staterc" 2>/dev/null || true
 }
 
 # Quickshell resolves icons through qt6ct, which reads its conf once at process
 # start — an ipc reload keeps the stale theme, only a process restart works.
-# Unlike waybar, a stopped quickshell stays stopped.
+# A stopped Quickshell stays stopped.
 theme_apply_phase_d_quickshell_icon_sync() {
   theme_apply_generation_is_current || return 0
 
@@ -336,8 +353,8 @@ theme_apply_phase_d_quickshell_icon_sync() {
     return 0
   fi
 
-  if systemctl --user --quiet is-active hyprland-quickshell.service 2>/dev/null; then
-    systemctl --user restart hyprland-quickshell.service 2>/dev/null || {
+  if hypr_svc_user is-active hyprland-quickshell; then
+    hypr_svc_user restart hyprland-quickshell || {
       print_log -sec "theme.apply" -warn "quickshell" "icon-theme restart failed"
       return 1
     }
@@ -457,7 +474,6 @@ theme_apply_job_secondary_updates() {
   theme_apply_generation_is_current || return 0
   color_finalize_source_generated_colors || return 1
   color_finalize_export_icon_theme || return 1
-  # waybar border-radius already updated synchronously by theme.apply.sh.
   ASYNC_POST_UPDATES=1 post_updates >/dev/null 2>&1 || true
 }
 

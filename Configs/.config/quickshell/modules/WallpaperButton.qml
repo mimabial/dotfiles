@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Layouts
 import ".."
 
 // Auto-wallpaper button. The glyph carries accent while the rotation runs, so

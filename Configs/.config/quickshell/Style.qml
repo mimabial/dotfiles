@@ -36,20 +36,21 @@ Singleton {
     readonly property int hoverDuration: 180
     readonly property int tooltipDelay: 400
 
-    // hyprshell system/text-size writes TEXT_SIZE; 12px is the 1.0 anchor.
+    // hyprshell system/text-size writes the application body size directly.
     property int textSize: 12
-    readonly property real scale: textSize / 12
-    function px(size) { return Math.round(size * scale) }
+    readonly property real uiScale: textSize / 12
+    function px(size) { return Math.round(size * uiScale) }
+    function fontPx(nominalSize) { return Math.round(nominalSize * textSize / 12) }
+    function typePx(ratio) { return Math.max(1, Math.round(textSize * ratio)) }
 
-    // Mono Nerd Font faces pack a double-width glyph into one cell, so an icon
-    // drawn from them lands ~3/4 the width of the same glyph in the wide face
-    readonly property real iconGlyphBoost: 1.3
-
-    readonly property int caption: px(10)
-    readonly property int bodySmall: px(11)
-    readonly property int body: px(12)
-    readonly property int subtitle: px(13)
-    readonly property int title: px(14)
+    readonly property int caption: typePx(0.78)
+    readonly property int bodySmall: typePx(0.89)
+    readonly property int body: textSize
+    readonly property int subtitle: body
+    readonly property int title: body
+    readonly property int display: body
+    readonly property int displayLarge: body
+    readonly property int heroIcon: typePx(1.78)
 
     property FileView stateFile: FileView {
         path: Quickshell.env("HOME") + "/.local/state/hypr/staterc"

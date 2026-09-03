@@ -9,6 +9,11 @@ $NVIM_SCHEME = onedark
 $NVIM_VARIANT = dark
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
+$FONT = Hack Nerd Font
+$BAR_FONT = Hack Nerd Font
+$MENU_FONT = Hack Nerd Font
+$MONOSPACE_FONT = Hack Nerd Font
+$NOTIFICATION_FONT = Hack Nerd Font Mono
 
 general {
     gaps_in = 3
@@ -46,5 +51,3 @@ decoration {
         xray = false
     }
 }
-
-blurls = waybar

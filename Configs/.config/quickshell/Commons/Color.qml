@@ -24,22 +24,22 @@ QtObject {
         root.shell ? root.shell.accent : foreground
     readonly property color urgent: role("error", "#f38ba8")
 
-    readonly property QtObject popups: QtObject {
-        readonly property color background: root.background
-        readonly property color text: root.foreground
-        readonly property color border: root.alpha(root.role("alt_br", root.accent), 0.45)
+    readonly property ColorPopups popups: ColorPopups {
+        background: root.background
+        text: root.foreground
+        border: root.alpha(root.role("alt_br", root.accent), 0.45)
     }
 
-    readonly property QtObject menu: QtObject {
-        readonly property color background: root.background
-        readonly property color text: root.foreground
-        readonly property color border: root.alpha(root.role("alt_br", root.accent), 0.45)
-        readonly property color scrim: root.alpha(root.background, 0.72)
-        readonly property color selectedBackground:
+    readonly property ColorMenu menu: ColorMenu {
+        background: root.background
+        text: root.foreground
+        border: root.alpha(root.role("alt_br", root.accent), 0.45)
+        scrim: root.alpha(root.background, 0.72)
+        selectedBackground:
             root.shell ? root.shell.hoverFill(2)
                        : root.alpha(root.role("hvr_bg", root.accent), 0.25)
-        readonly property color selectedText: root.role("hvr_fg", root.accent)
-        readonly property color selectedBorder:
+        selectedText: root.role("hvr_fg", root.accent)
+        selectedBorder:
             root.shell ? root.shell.hoverEdge(1)
                        : root.alpha(root.role("hvr_br", root.accent), 0.55)
     }

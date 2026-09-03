@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Mpris
 import Quickshell.Services.UPower
+import "expose" as Expose
 
 ShellRoot {
     id: shellRoot
@@ -31,11 +32,12 @@ ShellRoot {
     property real volumeMaxDb: 0
     property real volumeStepDb: 1
     property var timerItems: []
-    property var stopwatch: ({elapsed: 0, started: 0, running: false, laps: []})
     property double timerNowMs: Date.now()
     readonly property int timerNow: Math.floor(timerNowMs / 1000)
-    readonly property real stopwatchMs: Math.max(0, Number(stopwatch.elapsed) + (stopwatch.running ? timerNowMs - Number(stopwatch.started) : 0))
-    readonly property var activeTimers: timerItems.filter(item => Number(item.epoch) > timerNow).sort((a, b) => a.epoch - b.epoch)
+    readonly property var activeEntries: timerItems.filter(item => Number(item.epoch) > timerNow).sort((a, b) => a.epoch - b.epoch)
+    readonly property var activeTimers: activeEntries.filter(item => item.kind === "timer")
+    readonly property var activeAlarms: activeEntries.filter(item => item.kind === "alarm")
+    readonly property alias clockwork: clockworkState
     property Theme style: Theme { home: shellRoot.home; layout: shellRoot.layoutName }
     readonly property var palette: style.palette
     readonly property color background: role("bg", "#1f2430")
@@ -47,25 +49,63 @@ ShellRoot {
     // same precedence hyprland.lua loads them in: userfonts beats the theme pack,
     // the theme pack beats the vars default
     readonly property string fontFamily: userFont || themeFont || baseFont
-    property string iconFont: "CaskaydiaCove Nerd Font"
+    // a theme font carrying no Nerd Font glyphs needs a companion face for icons,
+    // or they resolve through fontconfig to whatever proportional face it picks.
+    // Miracode is Monocraft's vector reinterpretation, so Monocraft's icons share
+    // its skeleton and cell width. Any font not listed keeps the default.
+    readonly property var iconFonts: ({
+        "Miracode": "Monocraft"
+    })
+    property string iconFontOverride: ""
+    // a patched theme font already has the glyphs, and its own Mono twin matches
+    // the text's drawing style; the pinned face is only for fonts that ship neither
+    readonly property string iconFont: iconFontOverride || iconFonts[fontFamily]
+        || (Qt.fontFamilies().includes(fontFamily + " Mono") ? fontFamily : "CaskaydiaCove Nerd Font")
     // hypr's vars.lua owns the terminal choice; this is only the pre-load default
     property string terminal: "kitty"
-    readonly property var fontFamilies: [fontFamily, iconFont, "Noto Color Emoji", "monospace"]
     // Nerd Font ships double-width icon glyphs with a single-cell advance, and Qt
     // centres on the advance, so the ink hangs off to the right. The Mono faces
-    // squeeze them into one cell, making ink and advance agree. Icons come from
-    // this face whatever the theme font is, so centring never depends on the
-    // theme shipping a Nerd Font (or a Mono twin of it).
+    // squeeze them into one cell, making ink and advance agree.
     readonly property string iconGlyphFont: {
         const mono = iconFont + " Mono"
         return Qt.fontFamilies().includes(mono) ? mono : iconFont
     }
+    // A Mono face sizes its icons to the cell while text is sized by cap height,
+    // and the two are unrelated in every font, so swapping the theme font changes
+    // how large the icons read beside it. Measuring beats tabulating: the median
+    // of these five glyphs tracks the median of the whole icon set to within
+    // 0.002em on every face installed here, so the ratio needs no per-font entry.
+    TextMetrics { id: capProbe; font.family: shellRoot.fontFamily; font.pixelSize: 200; text: "M" }
+    TextMetrics { id: inkProbe0; font.family: shellRoot.iconGlyphFont; font.pixelSize: 200; text: "" }
+    TextMetrics { id: inkProbe1; font.family: shellRoot.iconGlyphFont; font.pixelSize: 200; text: "" }
+    TextMetrics { id: inkProbe2; font.family: shellRoot.iconGlyphFont; font.pixelSize: 200; text: "" }
+    TextMetrics { id: inkProbe3; font.family: shellRoot.iconGlyphFont; font.pixelSize: 200; text: "" }
+    TextMetrics { id: inkProbe4; font.family: shellRoot.iconGlyphFont; font.pixelSize: 200; text: "" }
+    readonly property real iconCapRatio: {
+        const cap = capProbe.tightBoundingRect.height
+        const ink = [inkProbe0, inkProbe1, inkProbe2, inkProbe3, inkProbe4]
+            .map(probe => probe.tightBoundingRect.height).filter(height => height > 0).sort((a, b) => a - b)
+        return cap > 0 && ink.length ? cap / ink[Math.floor(ink.length / 2)] : 1
+    }
+    // Ink equal to cap height reads as a smaller icon: a letter carries the eye on
+    // its stems, a pictogram spreads the same height over a box. Taste, not
+    // measurement — the one number here meant to be tuned by eye.
+    property real iconOpticalBoost: 1.20
+    readonly property real iconFontScale: iconCapRatio * iconOpticalBoost
     readonly property real rounding: style.radius
     readonly property real moduleRadius: layoutName === "winbar" ? 0 : rounding
     readonly property real barOpacity: workflow === "powersaver" ? 1 : workflow === "windows" ? .5 : ["top", "winbar"].includes(layoutName) ? .4 : .6
     readonly property color barColor: store.barTransparent ? "transparent" : alpha(background, barOpacity)
     property SystemClock clock: SystemClock { precision: SystemClock.Minutes }
     readonly property alias store: persistent
+    readonly property var exposeDefaults: ({
+        previewPlacement: "in-place", windowFooterStyle: "floating",
+        animationStyle: "original", animationTimings: ({}), slideDirection: ({}),
+        backgroundBlur: 4, backgroundDim: 6, hotCornerEnabled: true,
+        hotCornerPosition: "top-left", moveCursorToWindow: true,
+        multiMonitorMode: "mirrored", showFooter: true
+    })
+    property var exposeConfig: Object.assign({}, exposeDefaults)
     PersistentProperties {
         id: persistent
         property int topClock: 2
@@ -77,9 +117,33 @@ ShellRoot {
         property int sudokuBestEasy: 0
         property int sudokuBestMedium: 0
         property int sudokuBestHard: 0
+        property int clockworkWorkMinutes: 25
+        property int clockworkShortBreakMinutes: 5
+        property int clockworkCycles: 4
+        property int clockworkLongBreakMinutes: 15
+        property bool clockworkSound: true
+        property string clockworkBreakColor: "#a6e3a1"
     }
 
+    ClockworkState { id: clockworkState; shell: shellRoot }
+
     function alpha(color, opacity) { return Qt.rgba(color.r, color.g, color.b, opacity) }
+    function loadExposeConfig(raw) {
+        try {
+            const value = JSON.parse(String(raw))
+            exposeConfig = value && typeof value === "object"
+                ? Object.assign({}, exposeDefaults, value) : Object.assign({}, exposeDefaults)
+        } catch (error) {
+            console.warn("expose settings: " + error)
+            exposeConfig = Object.assign({}, exposeDefaults)
+        }
+    }
+    function updateExposeSetting(name, value) {
+        const next = Object.assign({}, exposeConfig)
+        next[name] = value
+        exposeConfig = next
+        exposeSettingsFile.setText(JSON.stringify(next, null, 2) + "\n")
+    }
     function mediaColor(output) {
         const classes = output && output.class ? [].concat(output.class) : [], map = { firefox: "c3", elisa: "c4", mpd: "c2", spotify: "c2", chromium: "c1", chrome: "c1", brave: "c1", vlc: "c5", mpv: "c5" }
         if (classes.includes("nothing-playing")) return alpha(role("c8", foreground), .4)
@@ -113,25 +177,17 @@ ShellRoot {
     function refreshVolumeRange() { if (!volumeRangeProbe.running) volumeRangeProbe.running = true }
     function loadVolumeRange(raw) { try { const range = JSON.parse(raw), min = Number(range.minimum), max = Number(range.maximum), step = Number(range.step); if (isFinite(min) && isFinite(max) && isFinite(step) && min < max && step > 0) { volumeMinDb = min; volumeMaxDb = max; volumeStepDb = step; setVolumeLimit(volumeLimit, true) } } catch (error) {} }
     function loadTimers(raw) { try { timerItems = JSON.parse(raw) || [] } catch (error) { timerItems = [] } }
-    function loadStopwatch(raw) { try { const saved = JSON.parse(raw); stopwatch = ({elapsed:Number(saved.elapsed)||0, started:Number(saved.started)||0, running:saved.running===true, laps:saved.laps||[]}) } catch (error) {} }
     function refreshTimers() { timerStateFile.reload() }
-    function controlStopwatch(action) {
-        const elapsed = stopwatchMs, running = stopwatch.running, laps = stopwatch.laps || []
-        stopwatch = action === "reset" ? ({elapsed:0, started:0, running:false, laps:[]})
-            : action === "lap" ? ({elapsed:stopwatch.elapsed, started:stopwatch.started, running:running, laps:laps.concat([elapsed])})
-            : running ? ({elapsed:elapsed, started:0, running:false, laps:laps}) : ({elapsed:elapsed, started:Date.now(), running:true, laps:laps})
-        timerNowMs = Date.now(); stopwatchStateFile.setText(JSON.stringify(stopwatch))
-    }
     function togglePopup(name) { popupName = popupName === name ? "" : name }
     function closePopup() { popupName = "" }
     function toggleBarTransparency() { store.barTransparent = !store.barTransparent }
-    function barLayoutIcon(name) { return ({winbar:"", top:"", left:"", sidebar:"", main:""})[name] || "" }
+    function barLayoutIcon(name) { return ({winbar:"", top:"", left:"", sidebar:"", main:"", alt:""})[name] || "" }
     function loadBarLayout(raw) { try { barLayout = JSON.parse(raw) } catch (error) { barLayout = [] } }
     function loadState(raw) {
         const text = String(raw)
         const modeMatch = text.match(/(?:^|\n)HYPR_WORKFLOW=["']?([^"'\n]+)/)
         const themeMatch = text.match(/(?:^|\n)HYPR_THEME=["']?([^"'\n]+)/)
-        const layoutMatch = text.match(/(?:^|\n)WAYBAR_LAYOUT_NAME=["']?([^"'\n]+)/)
+        const layoutMatch = text.match(/(?:^|\n)QUICKSHELL_LAYOUT_NAME=["']?([^"'\n]+)/)
         const sunsetMatch = text.match(/(?:^|\n)HYPRSUNSET_ENABLED=["']?([^"'\n]+)/)
         const keepAwakeMatch = text.match(/(?:^|\n)HYPR_KEEP_AWAKE=["']?([^"'\n]+)/)
         const keepAwakeAudioMatch = text.match(/(?:^|\n)HYPR_KEEP_AWAKE_AUDIO=["']?([^"'\n]+)/)
@@ -155,7 +211,7 @@ ShellRoot {
     function hoverEdge(strength) { return alpha(role("hvr_br", foreground), Style.hoverBorderAlpha * (strength === undefined ? 1 : strength)) }
     function loadFont(raw, key) {
         const icon = String(raw).match(/vars\.set\("BAR_ICON_FONT",\s*"([^"]+)"\)|BAR_ICON_FONT\s*=\s*"([^"]+)"/)
-        if (icon) iconFont = icon[1] || icon[2]
+        if (icon) iconFontOverride = icon[1] || icon[2]
         const term = String(raw).match(/vars\.set\("TERMINAL",\s*"([^"]+)"\)|TERMINAL\s*=\s*"([^"]+)"/)
         if (term) terminal = term[1] || term[2]
         const match = String(raw).match(/vars\.set\("BAR_FONT",\s*"([^"]+)"\)|BAR_FONT\s*=\s*"([^"]+)"/)
@@ -196,10 +252,10 @@ ShellRoot {
     }
     FileView { id: volumeLimitFile; path: shellRoot.home + "/.local/state/quickshell/volume-limit"; printErrors: false; onLoaded: { const value = Number(text()); if (value > 0) shellRoot.setVolumeLimit(value, false) } }
     FileView { id: timerStateFile; path: shellRoot.home + "/.local/state/quickshell/timers.json"; watchChanges: true; printErrors: false; onLoaded: shellRoot.loadTimers(text()); onFileChanged: reload() }
-    FileView { id: stopwatchStateFile; path: shellRoot.home + "/.local/state/quickshell/stopwatch.json"; watchChanges: true; printErrors: false; onLoaded: shellRoot.loadStopwatch(text()); onFileChanged: reload() }
+    FileView { id: exposeSettingsFile; path: shellRoot.home + "/.config/quickshell/expose/settings.json"; watchChanges: true; onLoaded: shellRoot.loadExposeConfig(text()); onFileChanged: reload() }
     FileView { id: timeVisibilityFile; path: shellRoot.home + "/.local/state/quickshell/time-visibility"; printErrors: false }
     Timer { id: timeVisibilityWrite; interval: 0; running: true; onTriggered: timeVisibilityFile.setText(shellRoot.timeVisibility) }
-    Timer { interval: shellRoot.stopwatch.running && shellRoot.popupName === "timer" ? 100 : 1000; repeat: true; running: shellRoot.activeTimers.length > 0 || shellRoot.stopwatch.running; triggeredOnStart: true; onTriggered: shellRoot.timerNowMs = Date.now() }
+    Timer { interval: 1000; repeat: true; running: shellRoot.activeEntries.length > 0; triggeredOnStart: true; onTriggered: shellRoot.timerNowMs = Date.now() }
     Process { id: volumeRangeProbe; command: [shellRoot.home + "/.local/lib/hypr/controls/volume-control.sh", "--limits"]; stdout: StdioCollector { waitForEnd: true; onStreamFinished: shellRoot.loadVolumeRange(text) } }
     Process {
         id: powerProfileRestore
@@ -213,6 +269,7 @@ ShellRoot {
     Process { command: [shellRoot.home + "/.local/lib/hypr/calendar/alarm-timer.sh", "restore"]; running: true }
     ReloadToast { shell: shellRoot }
     LooknfeelPanel { shell: shellRoot }
+    Expose.Overview { shell: shellRoot }
 
     onModeChanged: closePopup()
     onLayoutNameChanged: { barLayout = []; layoutFile.reload() }
@@ -233,6 +290,9 @@ ShellRoot {
         function hide(): void { shellRoot.userHidden = true }
         function refresh(): void { shellRoot.refresh() }
         function reload(): void { Quickshell.reload(false) }
+        // the soft reload keeps live instances, so it misses a changed vars.lua
+        // value or a re-evaluated font.family; this is the one to verify against
+        function reloadHard(): void { Quickshell.reload(true) }
         function popup(name: string): void { shellRoot.togglePopup(name) }
         function bookmarks(): void { shellRoot.togglePopup("bookmarks") }
         function transparency(): void { shellRoot.toggleBarTransparency() }

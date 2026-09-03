@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Memory usage as waybar JSON. `rows` carries the same figures already broken
+# Memory usage as bar JSON. `rows` carries the same figures already broken
 # into label/value pairs, so the quickshell panel renders them without having
 # to parse the tooltip markup.
 set -euo pipefail
@@ -7,7 +7,7 @@ set -euo pipefail
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash"
 
 hypr_help_guard "Usage: hyprshell sysinfo/meminfo
-Emit memory usage as waybar JSON, with structured rows for the panel." "$@"
+Emit memory usage as bar JSON, with structured rows for the panel." "$@"
 
 declare -A mem
 while IFS=":" read -r key value; do

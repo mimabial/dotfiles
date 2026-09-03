@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Services.SystemTray
@@ -7,12 +8,11 @@ Item {
     id: root
     required property var shell
     readonly property var box: shell.style.box("tray")
-    property int iconSize: 16
-    property int iconSpacing: vertical ? 2 : 6
-    // "iconSize"/"iconSpacing" in the style file win, declared in the same units
-    // as fontSize; an image has no glyph boost to ride, so they scale directly
-    readonly property int scaledIcon: Math.round((box.iconSize !== undefined ? box.iconSize : iconSize) * Style.scale)
-    readonly property int scaledSpacing: Math.round((box.iconSpacing !== undefined ? box.iconSpacing : iconSpacing) * Style.scale)
+    property int iconSize: 12
+    property int iconSpacing: vertical ? 2 : 5
+    // "iconSize"/"iconSpacing" in the style file win and remain geometry-only.
+    readonly property int scaledIcon: Math.round(box.iconSize !== undefined ? box.iconSize : iconSize)
+    readonly property int scaledSpacing: Math.round(box.iconSpacing !== undefined ? box.iconSpacing : iconSpacing)
     property bool vertical: false
     property bool popupsAllowed: true
     property var menuHandle: null

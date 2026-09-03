@@ -205,6 +205,7 @@ emoji_rofi_selection_index() {
       -no-show-icons \
       -theme-str "${emoji_window_theme}" \
       -theme-str "${EMOJI_ICONLESS_THEME_STR}" \
+      -theme-str "${font_override}" \
       -no-custom <"${display_file}"
     return 0
   fi

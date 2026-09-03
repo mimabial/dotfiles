@@ -8,6 +8,11 @@ $NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME=Emo
 $CURSOR_SIZE=24
+$FONT = JetBrainsMono Nerd Font
+$BAR_FONT = JetBrainsMono Nerd Font
+$MENU_FONT = JetBrainsMono Nerd Font
+$MONOSPACE_FONT = JetBrainsMono Nerd Font
+$NOTIFICATION_FONT = JetBrainsMono Nerd Font Mono
 
 # Theme variables above are the primary inputs used by theme.switch.sh.
 
@@ -41,5 +46,3 @@ decoration {
         xray = false
     }
 }
-
-layerrule = blur on, match:namespace waybar

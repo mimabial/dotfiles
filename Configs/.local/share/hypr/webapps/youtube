@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+exec hyprshell launch/webapp.sh www.youtube.com "$@"

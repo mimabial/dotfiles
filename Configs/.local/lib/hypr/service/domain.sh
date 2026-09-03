@@ -6,7 +6,7 @@
 #   hyprshell service/domain.sh refresh <domain> [options]
 #   hyprshell service/domain.sh restore <domain> [options]
 #
-# Domains: hypr-config, hypr-state, hyprlock, hypridle, waybar, rofi
+# Domains: hypr-config, hypr-state, hyprlock, hypridle, rofi
 #
 # Options:
 #   -n, --dry-run          preview without changing files
@@ -29,7 +29,7 @@ Actions:
   restore   overwrite managed files from stock defaults (backs up first)
 
 Domains:
-  hypr-config   hypr-state   hyprlock   hypridle   waybar   rofi
+  hypr-config   hypr-state   hyprlock   hypridle   rofi
 
 Options:
   -n, --dry-run          preview without changing files
@@ -58,7 +58,7 @@ case "${action}" in
 esac
 
 case "${domain}" in
-  hypr-config|hypr-state|hyprlock|hypridle|waybar|rofi) ;;
+  hypr-config|hypr-state|hyprlock|hypridle|rofi) ;;
   -h|--help|help) usage; exit 0 ;;
   *) hypr_service_die "Unknown domain: ${domain}" ;;
 esac
@@ -93,13 +93,6 @@ case "${domain}" in
     ;;
   rofi)
     [[ "${hypr_service_cli_dry_run}" -ne 0 ]] || pkill -x rofi >/dev/null 2>&1 || true
-    ;;
-  waybar)
-    if [[ "${hypr_service_cli_dry_run}" -eq 0 ]]; then
-      hyprshell waybar/waybar.py --update
-    else
-      [[ "${hypr_service_cli_quiet}" -eq 1 ]] || printf 'Dry run skipped: waybar wrapper rebuild\n'
-    fi
     ;;
 esac
 

@@ -68,10 +68,6 @@ def state_config_file() -> Path:
     return state_home() / "hypr" / "env-overrides"
 
 
-def color_state_file() -> Path:
-    return cache_home() / "hypr" / "color.gen.state"
-
-
 def active_palette_file() -> Path:
     return state_home() / "hypr" / "active-palette.json"
 
@@ -257,22 +253,6 @@ def read_color_variant_file() -> Optional[str]:
     if variant_file.exists():
         return variant_file.read_text().strip()
     return None
-
-
-def read_color_state() -> dict:
-    state_file = color_state_file()
-    if not state_file.exists():
-        return {}
-    data = {}
-    try:
-        for line in state_file.read_text().splitlines():
-            if "=" not in line:
-                continue
-            key, value = line.split("=", 1)
-            data[key.strip()] = value.strip()
-    except Exception:
-        return {}
-    return data
 
 
 def read_active_palette() -> dict:

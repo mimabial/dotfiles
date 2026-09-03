@@ -6,7 +6,7 @@ PopupCard {
     contentWidth: Style.px(380)
     contentHeight: updatesColumn.implicitHeight + padding * 2
 
-    // system.update.sh emits the waybar fields plus a structured breakdown.
+    // system.update.sh emits the bar fields plus a structured breakdown.
     property var report: ({})
     property bool checking: false
     signal recheck()

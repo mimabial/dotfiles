@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Layouts
 import ".."
 
 ScriptButton {
@@ -21,7 +20,11 @@ ScriptButton {
         NumberAnimation { target: blink; property: "phase"; from: 0; to: 1; duration: 500 }
         NumberAnimation { target: blink; property: "phase"; from: 1; to: 0; duration: 500 }
     }
-    command: ["hyprshell", "screenrecord", "--status"]; interval: 1000
+    // the recorder pushes its own transitions; the timer only runs while recording,
+    // to catch a gpu-screen-recorder that died without clearing its state file
+    command: ["hyprshell", "screenrecord", "--status"]
+    indicator: "screenrecord"; polling: recording; interval: 3000
+    Component.onCompleted: refresh()
     // the panel replaces the portal's ScreenCast dialog
     onClicked: button => button === Qt.RightButton
         ? root.shell.run(["hyprshell", "screenrecord", "--quit"])

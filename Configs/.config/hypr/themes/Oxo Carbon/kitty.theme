@@ -1,6 +1,7 @@
 $HOME/.config/kitty/theme.conf
 # Oxocarbon theme for Kitty
 
+font_family     BlexMono Nerd Font
 # The basic colors
 foreground              #ffffff
 background              #161616

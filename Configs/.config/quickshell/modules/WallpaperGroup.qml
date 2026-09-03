@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import ".."
@@ -21,7 +22,7 @@ BarGroup {
     Component { id: wallpaperSlot; WallpaperButton { shell: root.shell; popupsAllowed: root.popupsAllowed } }
     Component { id: colorModeSlot; ScriptButton {
         id: colorButton; shell: root.shell; css: "colormode"
-        command: ["hyprshell", "waybar/waybar.colormode"]; interval: 86400000; refreshKey: root.shell.palette
+        command: ["hyprshell", "quickshell/color-mode"]; interval: 86400000; refreshKey: root.shell.palette
         onClicked: button => button === Qt.LeftButton
             ? root.shell.togglePopup("colormode")
             : root.shell.run(["hyprshell", "theme/color-mode", button === Qt.RightButton ? "-p" : "-n"])
@@ -39,7 +40,7 @@ BarGroup {
     Component { id: windowLayoutSlot; WindowLayoutButton { shell: root.shell; popupsAllowed: root.popupsAllowed } }
     Component { id: workflowsSlot; ScriptButton {
         shell: root.shell; css: "workflows"
-        command: ["hyprshell", "util/workflows", "--waybar"]; interval: 86400000; refreshKey: root.shell.workflow
+        command: ["hyprshell", "util/workflows", "--bar"]; interval: 86400000; refreshKey: root.shell.workflow
         onClicked: root.shell.togglePopup("desktop")
     } }
 }

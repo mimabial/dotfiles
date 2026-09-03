@@ -1,9 +1,8 @@
 import QtQuick
-import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Mpris
-import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "cliamp"
 
@@ -13,14 +12,14 @@ PopupCard {
   padding: 0
   surfaceOpacity: 0.94
   borderOpacity: 0.45
-  contentWidth: Style.space(400)
-  contentHeight: Math.min(mainColumn.implicitHeight + Style.space(16), Style.space(560))
+  contentWidth: Commons.Style.space(400)
+  contentHeight: Math.min(mainColumn.implicitHeight + Commons.Style.space(16), Commons.Style.space(560))
   wantsKeyboard: trackList.urlInput.activeFocus
 
   readonly property color foreground: shell.foreground
   readonly property color urgent: shell.role("error", foreground)
-  readonly property color warning: shell.role("warning", Color.accent)
-  readonly property color success: shell.role("success", Color.accent)
+  readonly property color warning: shell.role("warning", Commons.Color.accent)
+  readonly property color success: shell.role("success", Commons.Color.accent)
   readonly property color dim: shell.alpha(foreground, 0.55)
   readonly property color surface: shell.role("bg", shell.background)
   readonly property string fontFamily: shell.fontFamily
@@ -33,13 +32,14 @@ PopupCard {
   property string currentArtist: ""
   property string currentUrl: ""
   property string artPath: ""
-  property color dynamicAccent: Color.accent
+  property color dynamicAccent: Commons.Color.accent
   Behavior on dynamicAccent { ColorAnimation { duration: 500; easing.type: Easing.InOutQuad } }
   property string timeCurrent: "00:00"
   property string timeTotal: "00:00"
   property real curSecs: 0.0
   property real totalSecs: 0.0
   property real progress: 0.0
+  property bool randomizeProgressShape: false
   property real playbackSpeed: 1.0
   property int volumePct: 80
   property real volumeDb: 0.0
@@ -62,15 +62,39 @@ PopupCard {
   property string selectedTab: "history"
   property string urlInputText: ""
   property string visMode: "siriwave"
+  property bool visBackground: false
   property bool visPickerOpen: false
   property bool eqPickerOpen: false
-  property var visModes: ["bars", "peaks", "siriwave", "soundcloud_wave", "telegram_wave", "stereo", "ascii"]
+  property var visModes: [
+    "bars", "bricks", "columns", "classic_led",
+    "peaks", "stereo", "correlation", "ascii",
+    "wave", "scope", "sine", "heartbeat",
+    "siriwave", "soundcloud_wave", "telegram_wave",
+    "daw_wave", "led_scrubber", "heatmap_wave", "grounded_wave",
+    "retro", "matrix", "binary", "terrain", "mosaic",
+    "scatter", "butterfly",
+    "plasma", "osc_warp", "crt_scanline", "cyber_tunnel"
+  ]
 
   // Visualizer state
   property var visBands: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  property var visBandsRaw: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  property var visBandsStereo: ({ "left": [], "right": [] })
   property var visPeaks: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
   property var visWave: []
-  property int visFrame: 0
+  property var visWaveStereo: ({ "left": [], "right": [] })
+  property var visBandsDb: []
+  property var visBandEdges: []
+  property var visStereo: ({ "levels": [0, 0], "peaks": [0, 0] })
+  property var visAnalysis: ({})
+  property string _latestSpectrumRaw: ""
+  property double _lastSpectrumCapture: 0
+  // Animation clock for the visualizers. Wall-clock rather than a per-spectrum-frame
+  // counter so d.frame keeps its cadence when the capture hop or repaint rate changes.
+  // double, not int: an epoch-derived counter overflows int32 after ~25h of uptime.
+  property double visFrame: 0
+  readonly property double _visEpoch: Date.now()
+  readonly property double _visTick: 42.7
   property var _visState: ({})
   property var resumeInfo: null
   property bool resumeVisible: false
@@ -109,17 +133,15 @@ PopupCard {
     root.currentArtist = newArtist
     root.currentUrl = newUrl
     root.artPath = String(p.trackArtUrl || "")
-    root.curSecs = p.positionSupported ? Number(p.position || 0) : 0
     root.totalSecs = p.lengthSupported ? Number(p.length || 0) : 0
-    root.progress = root.totalSecs > 0 ? root.curSecs / root.totalSecs : 0
-    root.timeCurrent = Media.time(root.curSecs)
     root.timeTotal = Media.time(root.totalSecs)
     root.playbackSpeed = Number(p.rate || 1)
     if (p.volumeSupported) root.volumePct = Math.round(Number(p.volume || 0) * 100)
     root.shuffleMode = p.shuffleSupported ? p.shuffle : false
     root.repeatMode = !p.loopSupported || p.loopState === MprisLoopState.None ? "off"
       : p.loopState === MprisLoopState.Track ? "track" : "all"
-    root._lastStatusTime = Date.now()
+    if (trackChanged || !p.positionSupported) root.applyMprisPosition(0)
+    root.requestMprisPosition()
     root.resumeVisible = false
     if (trackChanged && newTrack !== "No track loaded") {
       recentProc.command = ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", ""),
@@ -127,14 +149,40 @@ PopupCard {
       recentProc.running = true
     }
     if (trackChanged && root.open && root.selectedTab === "queue") root.loadQueue()
+    if (trackChanged && root.open) root.startSpectrum()
     if (trackChanged && playerComp.lyricsVisible && playerComp.lyricsTrack !== newTrack)
       playerComp.fetchLyrics()
     if (playerComp.lyricsVisible) playerComp.updateLyricsPosition(root.curSecs)
     return true
   }
 
+  function applyMprisPosition(seconds) {
+    const value = Number(seconds)
+    if (!Number.isFinite(value)) return
+    root.curSecs = Math.max(0, root.totalSecs > 0 ? Math.min(value, root.totalSecs) : value)
+    root.progress = root.totalSecs > 0 ? root.curSecs / root.totalSecs : 0
+    root.timeCurrent = Media.time(root.curSecs)
+    root._lastStatusTime = Date.now()
+    if (playerComp.lyricsVisible) playerComp.updateLyricsPosition(root.curSecs)
+  }
+
+  function requestMprisPosition() {
+    const p = root.mprisPlayer
+    if (!p || !p.positionSupported || mprisPositionProc.running) return
+    const service = String(p.dbusName || "")
+    if (!service) {
+      root.applyMprisPosition(p.position)
+      return
+    }
+    mprisPositionProc.source = service
+    mprisPositionProc.command = ["busctl", "--user", "--json=short", "get-property", service,
+      "/org/mpris/MediaPlayer2", "org.mpris.MediaPlayer2.Player", "Position"]
+    mprisPositionProc.running = true
+  }
+
   onMprisPlayerChanged: {
     if (!root.syncMpris()) root.refresh()
+    if (root.open) root.startSpectrum()
   }
 
   onOpenChanged: {
@@ -156,16 +204,29 @@ PopupCard {
 
   // ---- Lifecycle
   Component.onCompleted: {
-    Style.shell = root.shell
-    Color.shell = root.shell
+    Commons.Style.shell = root.shell
+    Commons.Color.shell = root.shell
     loadPlaylists()
     loadHistory()
     loadQueue()
   }
 
+  function spectrumSelectors() {
+    const player = root.mprisPlayer
+    if (!player) return ["cliamp", "mpv"]
+    const candidates = [Media.playerKey(player), player.dbusName, player.desktopEntry, player.identity,
+      player.trackTitle, Media.displayArtist(player)]
+    const selectors = []
+    for (var i = 0; i < candidates.length; i++) {
+      const value = String(candidates[i] || "").trim()
+      if (value && selectors.indexOf(value) === -1) selectors.push(value)
+    }
+    return selectors
+  }
+
   function startSpectrum() {
     spectrumProc.running = false
-    spectrumProc.command = ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", ""), "start_spectrum"]
+    spectrumProc.command = ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", ""), "start_spectrum"].concat(spectrumSelectors())
     spectrumProc.running = true
   }
 
@@ -296,7 +357,13 @@ PopupCard {
 
   function seekTo(sec) {
     const p = root.mprisPlayer
-    if (p) { if (p.canSeek && p.positionSupported) p.position = sec; return }
+    if (p) {
+      if (p.canSeek && p.positionSupported) {
+        p.position = sec
+        root.applyMprisPosition(sec)
+      }
+      return
+    }
     runCmd(["seek", String(sec)])
   }
   function cycleSpeed() {
@@ -318,6 +385,11 @@ PopupCard {
     if (!mode) return
     root.visMode = mode
     runCmd(["set_vis_mode", mode])
+    if (playerComp) playerComp.requestPaint()
+  }
+  function setVisBackground(enabled) {
+    root.visBackground = enabled
+    runCmd(["set_vis_bg", enabled ? "1" : "0"])
     if (playerComp) playerComp.requestPaint()
   }
   function toggleLoudnorm() {
@@ -489,6 +561,22 @@ PopupCard {
   }
 
   // ---- Processes
+  Process {
+    id: mprisPositionProc
+    property string source: ""
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        try {
+          const data = JSON.parse(text || "{}")
+          const p = root.mprisPlayer
+          if (p && String(p.dbusName || "") === mprisPositionProc.source)
+            root.applyMprisPosition(Number(data.data) / 1000000)
+        } catch (error) {}
+      }
+    }
+  }
+
   Connections {
     target: root.mprisPlayer
     function onMetadataChanged() { root.syncMpris() }
@@ -539,6 +627,9 @@ PopupCard {
           if (data.vis_mode && String(data.vis_mode) !== root.visMode && !root.visPickerOpen) {
             root.visMode = String(data.vis_mode)
           }
+          if (data.vis_bg !== undefined && !root.visPickerOpen) {
+            root.visBackground = data.vis_bg === true
+          }
           if (data.resume && root.playbackState === "stopped") {
             root.resumeInfo = data.resume
             root.resumeVisible = true
@@ -560,6 +651,7 @@ PopupCard {
           root.queueSource = data.source || "cliamp"
           root.queueList = root.displayQueue(root.queueSource, data.items)
         } catch (e) { root.queueSource = "cliamp"; root.queueList = [] }
+        trackList.queueUpdated()
       }
     }
   }
@@ -670,7 +762,7 @@ PopupCard {
     id: pollTimer
     interval: root.open ? 500 : 2000
     running: true; repeat: true; triggeredOnStart: true
-    onTriggered: if (!root.syncMpris()) root.refresh()
+    onTriggered: if (root.mprisPlayer) root.requestMprisPosition(); else root.refresh()
   }
 
   readonly property var _xdg: Quickshell.env("XDG_RUNTIME_DIR") || "/run/user/1000"
@@ -683,7 +775,7 @@ PopupCard {
     atomicWrites: true
     printErrors: false
     onFileChanged: reload()
-    onLoaded: root.updateSpectrumData(text())
+    onLoaded: root._latestSpectrumRaw = text()
     onLoadFailed: {}
   }
 
@@ -710,16 +802,41 @@ PopupCard {
       var data = JSON.parse(content)
       var bands = data.bands || data
       if (Array.isArray(bands) && bands.length >= 24) {
-        var newBands = [], newPeaks = []
+        var analysis = data.analysis || ({})
+        var capturedAt = Number(analysis.captured_at_ms || Date.now())
+        if (capturedAt === root._lastSpectrumCapture) return
+        var spectrumDt = root._lastSpectrumCapture > 0 ? Math.min(0.12, Math.max(0.015, (capturedAt - root._lastSpectrumCapture) / 1000.0)) : root._visTick / 1000.0
+        root._lastSpectrumCapture = capturedAt
+        var stereoBands = data.bands_stereo || ({}), stereoLeft = stereoBands.left || [], stereoRight = stereoBands.right || []
+        var previousStereo = root.visBandsStereo || ({}), previousLeft = previousStereo.left || [], previousRight = previousStereo.right || []
+        var newBands = [], newRawBands = [], newPeaks = [], newLeft = [], newRight = []
         for (var i = 0; i < 24; i++) {
           var target = Math.min(1.0, Math.max(0.0, Number(bands[i]) || 0.0))
+          var previous = Number(root.visBands[i]) || 0.0
+          var tau = target > previous ? 0.075 : 0.23
+          var display = previous + (target - previous) * (1.0 - Math.exp(-spectrumDt / tau))
+          if (target === 0 && display < 0.001) display = 0
           var prevPeak = root.visPeaks[i] || 0.0
-          newBands.push(target)
-          newPeaks.push(Math.max(target, prevPeak - 0.03))
+          newRawBands.push(target)
+          newBands.push(display)
+          newPeaks.push(Math.max(display, prevPeak - 0.38 * spectrumDt))
+          var leftTarget = Math.min(1.0, Math.max(0.0, Number(stereoLeft[i]) || 0.0))
+          var rightTarget = Math.min(1.0, Math.max(0.0, Number(stereoRight[i]) || 0.0))
+          var leftPrevious = Number(previousLeft[i]) || 0.0, rightPrevious = Number(previousRight[i]) || 0.0
+          var leftTau = leftTarget > leftPrevious ? 0.075 : 0.23
+          var rightTau = rightTarget > rightPrevious ? 0.075 : 0.23
+          newLeft.push(leftPrevious + (leftTarget - leftPrevious) * (1.0 - Math.exp(-spectrumDt / leftTau)))
+          newRight.push(rightPrevious + (rightTarget - rightPrevious) * (1.0 - Math.exp(-spectrumDt / rightTau)))
         }
-        root.visBands = newBands; root.visPeaks = newPeaks
+        root.visBandsRaw = newRawBands; root.visBands = newBands; root.visPeaks = newPeaks
+        root.visBandsStereo = ({ "left": newLeft, "right": newRight })
         root.visWave = Array.isArray(data.wave) ? data.wave : []
-        root.visFrame++
+        root.visWaveStereo = data.wave_stereo || ({ "left": [], "right": [] })
+        root.visBandsDb = Array.isArray(data.bands_dbfs) ? data.bands_dbfs : []
+        root.visBandEdges = Array.isArray(data.band_edges_hz) ? data.band_edges_hz : []
+        root.visStereo = data.stereo || ({ "levels": [0, 0], "peaks": [0, 0] })
+        root.visAnalysis = analysis
+        root.visFrame = Math.floor((Date.now() - root._visEpoch) / root._visTick)
         if (playerComp) playerComp.requestPaint()
       }
     } catch (e) {}
@@ -727,9 +844,10 @@ PopupCard {
 
   Timer {
     id: visTimer
-    interval: 35; running: root.open; repeat: true
+    interval: Math.round(root._visTick); running: root.open; repeat: true
     onTriggered: {
       if (root.isPlaying) {
+        root.updateSpectrumData(root._latestSpectrumRaw)
         specFile.reload()
         if (playerComp && playerComp.lyricsVisible && root._lastStatusTime > 0) {
           var elapsed = (Date.now() - root._lastStatusTime) / 1000.0
@@ -760,35 +878,35 @@ PopupCard {
 
   Column {
         id: mainColumn
-        width: parent.width - Style.space(20)
+        width: parent.width - Commons.Style.space(20)
         anchors.horizontalCenter: parent.horizontalCenter
-        spacing: Style.space(8)
-        topPadding: Style.space(12)
-        bottomPadding: Style.space(8)
+        spacing: Commons.Style.space(8)
+        topPadding: Commons.Style.space(12)
+        bottomPadding: Commons.Style.space(8)
 
         BorderSurface {
           visible: root.resumeVisible
-          width: parent.width; implicitHeight: Style.space(28)
-          radius: Style.cornerRadius
+          width: parent.width; implicitHeight: Commons.Style.space(28)
+          radius: Commons.Style.cornerRadius
           color: "transparent"
-          borderSpec: Border.none()
+          borderSpec: Commons.Border.none()
 
           Row {
-            anchors.fill: parent; anchors.margins: Style.space(6); spacing: Style.space(6)
-            Text { anchors.verticalCenter: parent.verticalCenter; text: "\uf0e2"; color: Color.accent; font.family: root.fontFamily; font.pixelSize: Style.font.caption }
+            anchors.fill: parent; anchors.margins: Commons.Style.space(6); spacing: Commons.Style.space(6)
+            Text { anchors.verticalCenter: parent.verticalCenter; text: "\uf0e2"; color: Commons.Color.accent; font.family: root.fontFamily; font.pixelSize: Commons.Style.font.caption }
             Text {
-              width: parent.width - Style.space(80); anchors.verticalCenter: parent.verticalCenter
+              width: parent.width - Commons.Style.space(80); anchors.verticalCenter: parent.verticalCenter
               text: root.resumeInfo ? "Resume: " + (root.resumeInfo.title || "last track") : ""
-              color: root.foreground; font.family: root.fontFamily; font.pixelSize: Style.font.caption; elide: Text.ElideRight
+              color: root.foreground; font.family: root.fontFamily; font.pixelSize: Commons.Style.font.caption; elide: Text.ElideRight
             }
             Text {
-              anchors.verticalCenter: parent.verticalCenter; text: "Resume"; color: Color.accent
-              font.family: root.fontFamily; font.pixelSize: Style.font.caption; font.bold: true
+              anchors.verticalCenter: parent.verticalCenter; text: "Resume"; color: Commons.Color.accent
+              font.family: root.fontFamily; font.pixelSize: Commons.Style.font.caption; font.bold: true
               MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.doResume() }
             }
             Text {
               anchors.verticalCenter: parent.verticalCenter; text: "\uf00d"; color: root.dim
-              font.family: root.fontFamily; font.pixelSize: Style.font.caption
+              font.family: root.fontFamily; font.pixelSize: Commons.Style.font.caption
               MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.resumeVisible = false }
             }
           }
@@ -824,38 +942,38 @@ PopupCard {
         Item {
           visible: playerComp.lyricsVisible && !root.visPickerOpen && !root.eqPickerOpen
           width: parent.width
-          height: Style.space(200)
+          height: Commons.Style.space(200)
 
           BorderSurface {
             anchors.fill: parent
-            radius: Style.cornerRadius
+            radius: Commons.Style.cornerRadius
             color: "transparent"
-            borderSpec: Border.none()
+            borderSpec: Commons.Border.none()
 
             Item {
               id: lyricsHeader
               anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
-              anchors.margins: Style.space(8)
-              implicitHeight: Style.space(20)
+              anchors.margins: Commons.Style.space(8)
+              implicitHeight: Commons.Style.space(20)
 
               Row {
                 anchors.left: parent.left
                 anchors.right: closeLyricsBtn.left
-                anchors.rightMargin: Style.space(8)
+                anchors.rightMargin: Commons.Style.space(8)
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: Style.space(6)
+                spacing: Commons.Style.space(6)
 
                 Text {
                   anchors.verticalCenter: parent.verticalCenter
                   text: "\uf10d"
-                  color: Color.accent; font.family: root.fontFamily; font.pixelSize: Style.font.caption
+                  color: Commons.Color.accent; font.family: root.fontFamily; font.pixelSize: Commons.Style.font.caption
                 }
                 Text {
-                  width: parent.width - Style.space(24)
+                  width: parent.width - Commons.Style.space(24)
                   anchors.verticalCenter: parent.verticalCenter
                   textFormat: Text.PlainText
                   text: "Lyrics — " + (root.currentTrack || "No track")
-                  color: root.foreground; font.family: root.fontFamily; font.pixelSize: Style.font.caption
+                  color: root.foreground; font.family: root.fontFamily; font.pixelSize: Commons.Style.font.caption
                   font.bold: true; elide: Text.ElideRight
                 }
               }
@@ -865,13 +983,13 @@ PopupCard {
                 id: closeLyricsBtn
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
-                width: Style.space(20); height: Style.space(20)
+                width: Commons.Style.space(20); height: Commons.Style.space(20)
 
                 Text {
                   anchors.centerIn: parent
                   text: "\uf00d"
-                  color: closeLyricsMouse.containsMouse ? Color.accent : root.dim
-                  font.family: root.fontFamily; font.pixelSize: Style.font.caption
+                  color: closeLyricsMouse.containsMouse ? Commons.Color.accent : root.dim
+                  font.family: root.fontFamily; font.pixelSize: Commons.Style.font.caption
                 }
                 MouseArea {
                   id: closeLyricsMouse
@@ -885,7 +1003,7 @@ PopupCard {
               visible: playerComp.lyricsLines.length === 0
               anchors.centerIn: parent
               text: "No synced lyrics available"
-              color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption
+              color: root.dim; font.family: root.fontFamily; font.pixelSize: Commons.Style.font.caption
             }
 
             ListView {
@@ -895,10 +1013,10 @@ PopupCard {
               anchors.bottom: parent.bottom
               anchors.left: parent.left
               anchors.right: parent.right
-              anchors.margins: Style.space(8)
+              anchors.margins: Commons.Style.space(8)
               clip: true
               model: playerComp.lyricsLines
-              spacing: Style.space(6)
+              spacing: Commons.Style.space(6)
               boundsBehavior: Flickable.StopAtBounds
 
               Connections {
@@ -916,7 +1034,7 @@ PopupCard {
                 readonly property bool isCurrent: index === playerComp.lyricsCurrentIdx
                 readonly property bool isPast: playerComp.lyricsCurrentIdx >= 0 && index < playerComp.lyricsCurrentIdx
                 width: lyricsList.width
-                implicitHeight: lyricText.implicitHeight + Style.space(4)
+                implicitHeight: lyricText.implicitHeight + Commons.Style.space(4)
 
                 MouseArea {
                   anchors.fill: parent
@@ -939,7 +1057,7 @@ PopupCard {
                   text: modelData.text || "♪"
                   color: isCurrent ? root.dynamicAccent : root.shell.alpha(root.foreground, isPast ? 0.28 : 0.65)
                   font.family: root.fontFamily
-                  font.pixelSize: isCurrent ? Style.font.body : Style.font.caption
+                  font.pixelSize: isCurrent ? Commons.Style.font.body : Commons.Style.font.caption
                   font.bold: isCurrent
                   Behavior on color { ColorAnimation { duration: 250 } }
                 }

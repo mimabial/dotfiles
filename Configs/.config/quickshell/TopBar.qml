@@ -71,7 +71,7 @@ PanelWindow {
     Component { id: mod_workspaces; Workspaces { shell: root.shell; activeOnly: true; numerals: "roman"; popupEnabled: root.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_mark_right; BarButton { shell: root.shell; css: "tmark.right"; text: "󱘹"; Layout.fillHeight: true } }
     Component { id: mod_weather; BarButton { id: weatherButton; shell: root.shell; css: "weather"; text: Weather.output.text; Layout.fillHeight: true; onClicked: root.shell.togglePopup("weather"); WeatherPopup { anchorItem: weatherButton; shell: root.shell; popupEnabled: root.popupsAllowed } } }
-    Component { id: mod_submap; SubmapButton { shell: root.shell; command: ["hyprshell", "keybinds/submap-status", "--alt"]; Layout.fillHeight: true; baseColor: root.shell.alpha(root.shell.role("br", root.shell.foreground), .7) } }
+    Component { id: mod_submap; SubmapButton { shell: root.shell; alt: true; Layout.fillHeight: true; baseColor: root.shell.alpha(root.shell.role("br", root.shell.foreground), .7) } }
     Component { id: mod_audio; AudioGroup { shell: root.shell; vertical: false; Layout.fillHeight: true; popupsAllowed: root.popupsAllowed } }
     Component { id: mod_bluetooth; BluetoothGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; vertical: false; Layout.fillHeight: true } }
     Component { id: mod_vpn; VpnButton { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillHeight: true } }
@@ -83,12 +83,12 @@ PanelWindow {
     Component { id: mod_monitor; BarGroup {
         shell: root.shell; vertical: false; reverse: true; Layout.fillHeight: true
         primary: Component { DisplayButton { shell: root.shell; popupEnabled: root.popupsAllowed; Layout.fillHeight: true } }
-        secondary: Component { ScriptButton { shell: root.shell; css: "hyprsunset"; Layout.fillHeight: true; radius: root.shell.moduleRadius; command: ["hyprshell", "hyprsunset", "-rq"]; interval: 86400000; refreshKey: root.shell.sunsetEnabled; onClicked: root.shell.run(["hyprshell", "hyprsunset", "-t", "-P", "waybar:19"]) } }
+        secondary: Component { ScriptButton { shell: root.shell; css: "hyprsunset"; Layout.fillHeight: true; radius: root.shell.moduleRadius; command: ["hyprshell", "hyprsunset", "-rq"]; interval: 86400000; refreshKey: root.shell.sunsetEnabled; onClicked: root.shell.run(["hyprshell", "hyprsunset", "-t"]) } }
     } }
     Component { id: mod_screen; BarGroup {
         shell: root.shell; css: "screen-group"; vertical: false; reverse: true; Layout.fillHeight: true; radius: root.shell.moduleRadius
         slots: [topRecordSlot, topPickerSlot, topShotSlot]
-        Component { id: topRecordSlot; ScriptButton { shell: root.shell; css: "screenrecord"; Layout.fillHeight: true; textColor: root.shell.role(output.class === "recording" ? "error" : "c1", root.shell.foreground); command: ["hyprshell", "screenrecord", "--status"]; interval: 1000; onClicked: button => root.shell.run(["hyprshell", "screenrecord", button === Qt.RightButton ? "--quit" : "--toggle"]) } }
+        Component { id: topRecordSlot; ScriptButton { id: topRecord; shell: root.shell; css: "screenrecord"; Layout.fillHeight: true; textColor: root.shell.role(output.class === "recording" ? "error" : "c1", root.shell.foreground); command: ["hyprshell", "screenrecord", "--status"]; indicator: "screenrecord"; polling: output.class === "recording"; interval: 3000; Component.onCompleted: topRecord.refresh(); onClicked: button => root.shell.run(["hyprshell", "screenrecord", button === Qt.RightButton ? "--quit" : "--toggle"]) } }
         Component { id: topPickerSlot; ScriptButton { Layout.fillHeight: true; shell: root.shell; css: "colorpicker"; command: ["hyprshell", "color-picker.sh", "-j"]; interval: 86400000; onClicked: root.shell.run(["hyprshell", "color-picker.sh"]); onWheeled: delta => root.shell.run(["hyprshell", "color-picker.sh", delta > 0 ? "-u" : "-d"]) } }
         Component { id: topShotSlot; BarButton { Layout.fillHeight: true; shell: root.shell; css: "screenshot"; text: "󰄄"; tooltip: "<b>Screenshot</b>\nLeft: Select area\nMiddle: Full screen\nRight: Focused monitor"; onClicked: button => root.shell.run(["hyprshell", "screenshot", button === Qt.MiddleButton ? "p" : button === Qt.RightButton ? "m" : "smart"]) } }
     } }

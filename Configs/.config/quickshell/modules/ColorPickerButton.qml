@@ -17,7 +17,7 @@ BarButton {
         watchChanges: true; printErrors: false
         onLoaded: root.loadColor(text()); onFileChanged: reload()
     }
-    css: "colorpicker"; text: ""
+    css: "colorpicker"; text: ""
     textColor: root.lastColor || root.shell.foreground
     tooltip: "Color picker"
     onClicked: root.shell.togglePopup("colorpicker")

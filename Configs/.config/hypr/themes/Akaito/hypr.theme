@@ -1,0 +1,39 @@
+$HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
+
+$ICON_THEME = Tela-red
+$COLOR_SCHEME = prefer-light
+$NVIM_SCHEME = aether
+$NVIM_VARIANT = akaito
+$NVIM_BACKGROUND = light
+$NVIM_TRANSPARENCY = false
+$CURSOR_THEME = OpenZone_Fire
+$CURSOR_SIZE = 30
+$FONT = M+1Code Nerd Font
+$BAR_FONT = M+1Code Nerd Font
+$MENU_FONT = M+1Code Nerd Font
+$MONOSPACE_FONT = M+1Code Nerd Font
+$NOTIFICATION_FONT = M+1Code Nerd Font Mono
+
+general {
+    col.active_border = rgb(a32f1a) rgba(13131dee) 45deg
+    border_size = 2
+    gaps_in = 3
+    gaps_out = 5
+}
+
+group {
+    col.border_active = rgb(a32f1a) rgba(13131dee) 45deg
+}
+
+decoration {
+    rounding = 5
+    active_opacity = 1.98
+    inactive_opacity = 1.92
+    fullscreen_opacity = 1.0
+    shadow {
+      enabled = yes
+      render_power = 4
+      range = 5
+      color = rgba(00000052)
+    }
+}

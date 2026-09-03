@@ -1,21 +1,18 @@
 {
   "": {
-    "fontSize": 16.0,
+    "fontSize": 12.0,
     "outline": null,
     "fill": null,
     "hover": { "outline": null, "fill": null }
   },
   "#workspaces button": {
-    "fontSize": 12,
     "hover": { "fill": null, "outline": null, "content": ["hvr_fg", 1.0] }
   },
   "bluetooth-button": {
-    "fontSize": 14.0,
     "margin": [0.0, 6.0, 0.0, 6.0],
     "padding": [0.0, 0.0, 0.0, 0.0]
   },
   "caffeine": {
-    "fontSize": 12.0,
     "margin": [0.0, 6.0, 0.0, 6.0],
     "padding": [0.0, 0.0, 0.0, 0.0]
   },
@@ -29,10 +26,9 @@
     "hover": { "outline": null, "content": ["hvr_fg", 1.0] },
     "padding": [0.0, 0.0, 0.0, 0.0]
   },
-  "hyprsunset": { "fontSize": 14.0, "margin": [4.0, 2.0, 4.0, 2.0] },
+  "hyprsunset": { "margin": [4.0, 2.0, 4.0, 2.0] },
   "keybindhint": { "margin": [0.0, 6.0, 0.0, 6.0], "padding": [0.0, 0.0, 0.0, 0.0] },
   "powermenu": {
-    "fontSize": 12,
     "outline": null,
     "hover": { "fill": null, "content": ["hvr_fg", 1.0] },
     "margin": [0.0, 6.0, 0.0, 6.0],
@@ -41,19 +37,16 @@
   "screenrecord": {
     "hover": { "fill": null, "outline": ["hvr_br", 0.55], "content": ["hvr_fg", 1.0] }
   },
-  "submap": { "fontSize": 14.0, "fontWeight": 400, "margin": [4.0, 7.0, 4.0, 7.0] },
+  "submap": { "fontWeight": 400, "margin": [4.0, 7.0, 4.0, 7.0] },
   "updates": {
-    "fontSize": 12.0,
     "margin": [0.0, 6.0, 0.0, 6.0],
     "padding": [0.0, 0.0, 0.0, 0.0]
   },
   "vpn": {
-    "fontSize": 14.0,
     "margin": [0.0, 6.0, 0.0, 6.0],
     "padding": [0.0, 0.0, 0.0, 0.0]
   },
   "weather": {
-    "fontSize": 12.0,
     "hover": { "fill": null, "content": ["hvr_fg", 1.0] },
     "margin": [0.0, 6.0, 0.0, 6.0],
     "padding": [0.0, 0.0, 0.0, 0.0]
@@ -63,43 +56,40 @@
     "padding": [0.0, 0.0, 0.0, 0.0]
   },
   "backlight": {
-    "fontSize": 14,
     "margin": [0.0, 6.0, 0.0, 6.0],
     "padding": [0.0, 0.0, 0.0, 0.0]
   },
   "power-profiles-daemon": {
-    "fontSize": 16,
     "margin": [0.0, 6.0, 0.0, 6.0],
     "padding": [0.0, 0.0, 0.0, 0.0]
   },
   "power-profiles-daemon.power-saver": {
-    "fontSize": 14,
     "margin": [0.0, 6.0, 0.0, 6.0],
     "padding": [0.0, 0.0, 0.0, 0.0]
   },
   "power-profiles-daemon.performance": {
-    "fontSize": 14,
     "margin": [0.0, 6.0, 0.0, 6.0],
     "padding": [0.0, 0.0, 0.0, 0.0]
   },
-  "privacy": { "fontSize": 14.0, "margin": [2.0, 3.0, 2.0, 3.0] },
+  "privacy": { "margin": [2.0, 3.0, 2.0, 3.0] },
   "pulseaudio": {
-    "fontSize": 20.0,
+    "fontSize": 16.0,
     "margin": [0.0, 6.0, 0.0, 6.0],
     "padding": [0.0, 0.0, 0.0, 0.0]
   },
-  "workspaces": { "fontSize": 14.0, "margin": [0.0, 0.0, 0.0, 0.0] },
+  "pulseaudio.headphone": {
+    "fontSize": 12.0
+  },
+  "workspaces": { "margin": [0.0, 0.0, 0.0, 0.0] },
   "#workspaces button.active": {
     "border": 0.0,
     "fill": null,
-    "fontSize": 12.0,
     "hover": { "fill": null, "outline": null, "content": ["fg", 1.0] },
     "margin": [0.0, 0.0, 0.0, 0.0],
     "outline": null,
     "padding": [0.0, 0.0, 0.0, 0.0]
   },
   "clock.time-alt": {
-    "fontSize": 12.0,
     "margin": [0.0, 8.0, 0.0, 8.0],
     "padding": [0.0, 0.0, 0.0, 0.0]
   }

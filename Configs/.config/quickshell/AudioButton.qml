@@ -10,7 +10,7 @@ BarButton {
     css: root.portKey ? "pulseaudio." + root.portKey : "pulseaudio"
     // must measure the face BarButton draws with, or the nudge corrects an ink
     // overhang the drawn glyph does not have
-    TextMetrics { id: iconMetrics; font.family: root.iconOnly ? root.shell.iconGlyphFont : root.shell.fontFamily; font.pixelSize: root.fontSize; font.weight: root.fontWeight; text: root.text }
+    TextMetrics { id: iconMetrics; font.family: root.iconOnly ? root.shell.iconGlyphFont : root.shell.fontFamily; font.pixelSize: root.labelFontSize; font.weight: root.fontWeight; text: root.text }
     textOffsetX: iconMetrics.advanceWidth / 2 - iconMetrics.tightBoundingRect.x - iconMetrics.tightBoundingRect.width / 2
     radius: shell.moduleRadius
     fill: framed ? root.boxColor("fill") : "transparent"
@@ -47,6 +47,7 @@ BarButton {
         return ""
     }
     readonly property string portIcon: { const hit = portIcons.find(entry => entry[0] === root.portKey); return hit ? hit[1] : "" }
+    readonly property string mutedPortIcon: ["headphone", "hands-free", "headset"].includes(root.portKey) ? "󰟎" : ""
 
     Process {
         id: portProbe
@@ -63,7 +64,7 @@ BarButton {
     Timer { interval: 3000; running: true; repeat: true; triggeredOnStart: true; onTriggered: root.probePort() }
     readonly property string volumeIcon: !root.sink ? "" : root.sink.audio.volume < .34 ? ""
         : root.sink.audio.volume < .67 ? "" : ""
-    text: !root.sink ? "󰖁" : root.sink.audio.muted ? "" : root.portIcon || root.volumeIcon
+    text: !root.sink ? "󰖁" : root.sink.audio.muted ? root.mutedPortIcon || "" : root.portIcon || root.volumeIcon
     onClicked: button => button === Qt.RightButton ? (sink ? root.volumeAction("m") : false) : shell.togglePopup("audio")
     onWheeled: delta => { if (sink) root.volumeAction(delta > 0 ? "i" : "d") }
 

@@ -16,7 +16,6 @@ hypr_runtime_require state system wallpaper_catalog || exit 1
 hypr_runtime_load_state || exit 1
 
 theme_apply_desktop_sync_lib="${LIB_DIR}/hypr/theme/lib/desktop.sync.bash"
-theme_apply_font_sync_lib="${LIB_DIR}/hypr/fonts/font.sync.lib.bash"
 theme_apply_color_apply_lib="${LIB_DIR}/hypr/theme/color.apply.sh"
 theme_apply_phase_d_lib="${LIB_DIR}/hypr/theme/lib/apply.phase_d.bash"
 
@@ -26,13 +25,6 @@ if [[ ! -r "${theme_apply_desktop_sync_lib}" ]]; then
 fi
 # shellcheck source=/dev/null
 source "${theme_apply_desktop_sync_lib}" || exit 1
-
-if [[ ! -r "${theme_apply_font_sync_lib}" ]]; then
-  print_log -sec "theme.apply" -err "source" "missing ${theme_apply_font_sync_lib}"
-  exit 1
-fi
-# shellcheck source=/dev/null
-source "${theme_apply_font_sync_lib}" || exit 1
 
 if [[ ! -r "${theme_apply_color_apply_lib}" ]]; then
   print_log -sec "theme.apply" -err "source" "missing ${theme_apply_color_apply_lib}"
@@ -52,7 +44,6 @@ source "${theme_apply_phase_d_lib}" || exit 1
 source "${LIB_DIR}/hypr/theme/pairs.sh" || exit 1
 
 THEME_UPDATE_LOCK="$(hypr_lock_path theme_update)"
-THEME_UPDATE_META="$(hypr_lock_path theme_update_meta)"
 
 theme_apply_lock_fd=""
 theme_apply_lock_owned=0
@@ -115,24 +106,15 @@ theme_apply_elapsed_label() {
 }
 
 theme_apply_acquire_update_lock() {
-  local lock_tmp=""
   [[ "${theme_apply_lock_owned}" -eq 1 ]] && return 0
   exec {theme_apply_lock_fd}>"${THEME_UPDATE_LOCK}"
   flock "${theme_apply_lock_fd}"
-  lock_tmp="$(mktemp "${THEME_UPDATE_META}.tmp.XXXXXX")" || return 1
-  {
-    printf 'pid=%s\n' "$$"
-    printf 'started=%s\n' "$(date +%s)"
-    printf 'cmd=%s\n' "${BASH_SOURCE[0]##*/}"
-    printf 'waybar_reload=css-hot\n'
-  } >"${lock_tmp}" && mv -f "${lock_tmp}" "${THEME_UPDATE_META}"
   theme_apply_lock_owned=1
 }
 
 theme_apply_release_update_lock() {
   local exit_code="${1:-0}"
   [[ "${theme_apply_lock_owned}" -eq 1 ]] || return "${exit_code}"
-  rm -f "${THEME_UPDATE_META}"
   flock -u "${theme_apply_lock_fd}" 2>/dev/null || true
   exec {theme_apply_lock_fd}>&-
   theme_apply_lock_fd=""
@@ -180,19 +162,6 @@ theme_apply_commit_theme_metadata() {
 
   [[ -x "${converter}" ]] || return 1
   "${converter}" --input "${live_file}" --output "${lua_file}" --set "HYPR_THEME=${HYPR_THEME}"
-}
-
-# Quickshell owns the bar. Waybar assets are only worth generating, and waybar
-# only worth restarting, when waybar is actually running.
-theme_apply_waybar_running() {
-  hypr_user_pgrep -x waybar >/dev/null 2>&1
-}
-
-theme_apply_restart_waybar_direct() {
-  local waybar_script="${LIB_DIR}/hypr/waybar/waybar.py"
-
-  [[ -x "${waybar_script}" ]] || return 1
-  "${waybar_script}" --restart-direct
 }
 
 theme_apply_current_icon_theme() {
@@ -395,17 +364,6 @@ theme_apply_prepare_common_state() {
   theme_apply_acquire_update_lock || return 1
 }
 
-theme_apply_update_waybar_border_radius() {
-  local finalize_lib="${LIB_DIR}/hypr/theme/color.finalize.sh"
-
-  if ! declare -F color_finalize_update_waybar_border_radius >/dev/null; then
-    [[ -r "${finalize_lib}" ]] || return 1
-    source "${finalize_lib}" || return 1
-  fi
-
-  color_finalize_update_waybar_border_radius
-}
-
 theme_apply_display_wallpaper() {
   local -a wallpaper_env=(
     WALLPAPER_SKIP_COLORS=1
@@ -498,31 +456,6 @@ theme_apply_job_desktop() {
   if theme_apply_prepare_desktop_state; then
     theme_desktop_write_dconf_content || true
   fi
-
-  theme_apply_waybar_running || return 0
-
-  theme_apply_update_waybar_border_radius || true
-  font_sync_apply_waybar_bar_font_include || {
-    print_log -sec "theme.apply" -warn "font" "font sync failed"
-    return 1
-  }
-
-  local current_icon_theme="" cached_icon_theme=""
-  current_icon_theme="$(theme_apply_current_icon_theme)"
-  cached_icon_theme="$(state_get "waybar_icon_theme" "" 2>/dev/null || true)"
-
-  if [[ -n "${current_icon_theme}" && "${current_icon_theme}" == "${cached_icon_theme}" ]]; then
-    return 0
-  fi
-
-  [[ -n "${current_icon_theme}" ]] \
-    && state_set "waybar_icon_theme" "${current_icon_theme}" "staterc" 2>/dev/null || true
-
-  theme_apply_restart_waybar_direct || {
-    state_set "waybar_icon_theme" "${cached_icon_theme}" "staterc" 2>/dev/null || true
-    print_log -sec "theme.apply" -warn "waybar" "restart failed"
-    return 1
-  }
 }
 
 theme_apply_job_dunst() {

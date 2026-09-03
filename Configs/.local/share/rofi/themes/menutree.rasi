@@ -36,14 +36,18 @@ window {
 /*****----- Main Box -----*****/
 mainbox {
     enabled:                     true;
-    spacing:                     10px;
+    /* The gap to the listview lives on the listview (see below), not here: a
+       box emits its spacing even for a child of zero height, so a listview
+       hidden by require-input would leave the gap behind and push the input
+       row off centre. Identical layout once the listview has rows. */
+    spacing:                     0px;
     margin:                      0px;
     padding:                     20px;
     border:                      0px solid;
     border-radius:               0px;
     border-color:                @border;
     background-color:            transparent;
-    children:                    [ "inputbar", "listview" ];
+    children:                    [ "inputbar", "listview", "message" ];
 }
 
 /*****----- Inputbar -----*****/
@@ -67,17 +71,19 @@ entry {
     background-color:            transparent;
     text-color:                  @foreground;
     placeholder:                 "";
-    placeholder-color:           @accent;
+    placeholder-color:           @active;
 }
 
 textbox-prompt-colon {
+    border:                      1px;
     enabled:                     true;
     expand:                      false;
     str:                         "";
     padding:                     8px 12px;
+    text-color:                  @separator;
     border-radius:               @element-border-radius;
-    background-color:            @active;
-    text-color:                  @background;
+    background-color:            @background-alpha;
+    border-color:            @accent;
 }
 
 prompt {
@@ -95,14 +101,14 @@ listview {
     lines:                       10;
     cycle:                       true;
     dynamic:                     true;
-    scrollbar:                   false;
+    scrollbar:                   true;
     layout:                      vertical;
     reverse:                     false;
     fixed-height:                false;
     fixed-columns:               true;
 
     spacing:                     5px;
-    margin:                      0px;
+    margin:                      20px 0px 0px 0px;
     padding:                     0px;
     border:                      0px solid;
     border-radius:               0px;
@@ -110,6 +116,14 @@ listview {
     background-color:            transparent;
     text-color:                  @foreground;
     cursor:                      "default";
+}
+
+scrollbar {
+    handle-width:                4px;
+    handle-color:                @separator;
+    handle-rounded-corners:      false;
+    background-color:            @background;
+    border-color:                @border;
 }
 
 /*****----- Elements -----*****/
@@ -153,24 +167,24 @@ element-icon {
 /*****----- Message -----*****/
 message {
     enabled:                     true;
-    margin:                      0px;
+    margin:                      12px 0px 0px 0px;
     padding:                     0px;
     border:                      0px solid;
     border-radius:               0px;
     border-color:                @border;
     background-color:            transparent;
-    text-color:                  @foreground;
+    text-color:                  @separator;
 }
 
 textbox {
-    padding:                     8px;
+    padding:                     6px;
     border:                      0px solid;
     border-radius:               @element-border-radius;
     border-color:                @border;
-    background-color:            @background;
-    text-color:                  @foreground;
+    background-color:            transparent;
+    text-color:                  inherit;
     vertical-align:              0.5;
-    horizontal-align:            0.0;
+    horizontal-align:            0.5;
 }
 
 error-message {

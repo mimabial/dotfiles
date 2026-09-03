@@ -14,6 +14,7 @@ DESKTOP_DIR="${XDG_DATA_HOME}/applications/"
 
 if [ "$#" -eq 0 ]; then
   # Find all TUIs
+  TUIS=()
   while IFS= read -r -d '' file; do
     if grep -Eq '^X-Hypr-Tui=true$' "$file" || grep -Eq '^Exec=(\$TERMINAL_TUI|tui-terminal-exec)\b' "$file"; then
       TUIS+=("$(basename "${file%.desktop}")")

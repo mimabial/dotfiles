@@ -2,7 +2,7 @@
 # hypr-runsvdir — start the per-user runit supervisor for the Hyprland session.
 #
 # Without systemd there is no import-environment step, so supervised services
-# (waybar, idle-manager, monitor-watch, …) would not see the compositor env.
+# (quickshell, idle-manager, monitor-watch, …) would not see the compositor env.
 # This waits for the Wayland/Hyprland sockets, exports the discovered values,
 # then execs runsvdir so every service inherits them. Launched in the
 # background by hypr-session; runit only.

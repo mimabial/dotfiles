@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import Quickshell.Io
@@ -172,7 +173,7 @@ PopupCard {
             InfoDuo { visible: value1 !== "" || value2 !== ""; label1: "DNS"; value1: root.dnsFor(false); label2: "DNS IPv6"; value2: root.dnsFor(true) }
         }
 
-        Text { visible: root.pendingNetwork !== null; text: root.pendingNetwork ? "PASSWORD · " + root.pendingNetwork.name : ""; color: root.shell.alpha(root.shell.foreground, .5); font.family: root.shell.fontFamily; font.pixelSize: Style.px(10); font.bold: true }
+        Text { visible: root.pendingNetwork !== null; text: root.pendingNetwork ? "PASSWORD · " + root.pendingNetwork.name : ""; color: root.shell.alpha(root.shell.foreground, .5); font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: true }
         TextField {
             id: password
             visible: root.pendingNetwork !== null

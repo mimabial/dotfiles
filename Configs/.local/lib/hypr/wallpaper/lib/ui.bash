@@ -253,7 +253,7 @@ wallpaper_select_rofi_args() {
   local r_override=""
   local opacity_override=""
 
-  font_override="* {font: \"${font_name} ${font_scale}\";}"
+  font_override="$(rofi_font_override "${font_name}" "${font_scale}")"
   r_override="$(wallpaper_select_theme_override "${font_scale}" "${font_name}")"
   opacity_override="$(rofi_active_opacity_override)"
 

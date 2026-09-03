@@ -13,9 +13,7 @@ LOCAL_FONT_ROOT="${XDG_DATA_HOME:-$HOME/.local/share}/fonts"
 SEARCH_ROOTS=(
   "${XDG_CONFIG_HOME:-$HOME/.config}/hypr"
   "${XDG_CONFIG_HOME:-$HOME/.config}/rofi"
-  "${XDG_CONFIG_HOME:-$HOME/.config}/waybar"
   "${XDG_DATA_HOME:-$HOME/.local/share}/rofi"
-  "${XDG_DATA_HOME:-$HOME/.local/share}/waybar"
   "${XDG_CONFIG_HOME:-$HOME/.config}/dunst"
   "${XDG_CONFIG_HOME:-$HOME/.config}/wlogout"
   "${XDG_CONFIG_HOME:-$HOME/.config}/kitty"
@@ -272,7 +270,6 @@ reference_scope() {
       "${config_home}/hypr/themes/theme.meta" | \
       "${config_home}/hypr/variables.meta" | \
       "${data_home}/hypr/variables.meta" | \
-      "${config_home}/waybar/"* | \
       "${config_home}/rofi/"* | \
       "${config_home}/dunst/"* | \
       "${config_home}/wlogout/"* | \
@@ -284,7 +281,6 @@ reference_scope() {
       ;;
     "${config_home}/hypr/themes/"* | \
       "${config_home}/wal/templates/"* | \
-      "${data_home}/waybar/"* | \
       "${data_home}/rofi/"* | \
       "${LIB_DIR:-$HOME/.local/lib}/hypr/"*)
       printf 'installed-config\n'

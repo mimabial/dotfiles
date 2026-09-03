@@ -12,7 +12,7 @@ refresh_generated_outputs() {
     print_log -g "[generate] " "cache ::" "Wallpapers and themed outputs..."
 
     if [ "${flg_DryRun}" -eq 1 ]; then
-        print_log -y "[dry-run] " "would refresh wallpaper cache, theme, and waybar"
+        print_log -y "[dry-run] " "would refresh wallpaper cache and themed outputs"
         return 0
     fi
 
@@ -21,13 +21,11 @@ refresh_generated_outputs() {
     if command -v hyprshell >/dev/null 2>&1; then
         hyprshell wallpaper/wallpaper.cache -f || print_log -warn "wallpaper cache" "refresh failed"
         hyprshell theme/theme.switch -q || print_log -warn "theme" "refresh failed"
-        hyprshell waybar/waybar --update || print_log -warn "waybar" "refresh failed"
     else
         if [ -x "$HOME/.local/lib/hypr/wallpaper/wallpaper.cache.sh" ]; then
             "$HOME/.local/lib/hypr/wallpaper/wallpaper.cache.sh" -f || print_log -warn "wallpaper cache" "refresh failed"
         fi
         "$HOME/.local/lib/hypr/theme/theme.switch.sh" -q || print_log -warn "theme" "refresh failed"
-        "$HOME/.local/lib/hypr/waybar/waybar.py" --update || print_log -warn "waybar" "refresh failed"
     fi
 
     echo "[install] reload :: Hyprland"

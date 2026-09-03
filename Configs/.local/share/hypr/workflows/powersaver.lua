@@ -4,7 +4,6 @@ local vars = require("vars")
 
 vars.set("WORKFLOW_ICON", "")
 vars.set("WORKFLOW_DESCRIPTION", "Saves as much power as possible by disabling all animations and effects, but preserving readability")
-vars.set("WORKFLOW_WAYBAR_OPACITY", "1")
 runtime.config("decoration.shadow.enabled", 0)
 runtime.config("decoration.blur.enabled", 0)
 -- the selected shader is a pass-through, so the post-process pass costs a frame copy for no effect

@@ -8,6 +8,11 @@ $NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME = BreezeX-Dark
 $CURSOR_SIZE = 28
+$FONT = VictorMono Nerd Font
+$BAR_FONT = VictorMono Nerd Font
+$MENU_FONT = VictorMono Nerd Font
+$MONOSPACE_FONT = VictorMono Nerd Font
+$NOTIFICATION_FONT = VictorMono Nerd Font Mono
 
 general {
     border_size = 3
@@ -62,5 +67,3 @@ group {
       text_color = rgba(1F1F28FF)
     }
 }
-
-layerrule = blur on, match:namespace waybar

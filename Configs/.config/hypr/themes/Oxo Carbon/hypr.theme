@@ -2,10 +2,15 @@ $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 $ICON_THEME = Tela-blue-dark
 $COLOR_SCHEME = prefer-dark
 $CURSOR_THEME = capitaine-cursors
-$CURSOR_SIZE = 26
+$CURSOR_SIZE = 30
 $NVIM_SCHEME = oxocarbon
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
+$FONT = BlexMono Nerd Font
+$BAR_FONT = BlexMono Nerd Font
+$MENU_FONT = BlexMono Nerd Font
+$MONOSPACE_FONT = BlexMono Nerd Font
+$NOTIFICATION_FONT = BlexMono Nerd Font Mono
 
 general {
     gaps_in = 3
@@ -40,5 +45,3 @@ decoration {
         enabled = false
     }
 }
-
-layerrule = blur on, match:namespace waybar

@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 
 // Single-side rules, which Rectangle cannot draw (it is all four sides or none).

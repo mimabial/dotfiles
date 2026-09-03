@@ -103,7 +103,6 @@ declare -ga theme_desktop_layered_vars=(
   TERMINAL
   FONT
   FONT_SIZE
-  FONT_STYLE
   DOCUMENT_FONT
   DOCUMENT_FONT_SIZE
   MONOSPACE_FONT
@@ -195,15 +194,6 @@ theme_desktop_resolve_base_values() {
     # shellcheck source=/dev/null
     [[ -f "${env_theme_file}" ]] && source "${env_theme_file}"
 
-    FONT="${FONT:-Cantarell}"
-    FONT_SIZE="${FONT_SIZE:-10}"
-    DOCUMENT_FONT="${DOCUMENT_FONT:-Cantarell}"
-    DOCUMENT_FONT_SIZE="${DOCUMENT_FONT_SIZE:-10}"
-    MONOSPACE_FONT="${MONOSPACE_FONT:-JetBrainsMono Nerd Font}"
-    MONOSPACE_FONT_SIZE="${MONOSPACE_FONT_SIZE:-9}"
-    FONT_ANTIALIASING="${FONT_ANTIALIASING:-rgba}"
-    FONT_HINTING="${FONT_HINTING:-}"
-
     hypr_config_parse_layer_file "${layer_files[0]}" userfonts_values
     for layer_var in "${theme_desktop_layered_vars[@]}"; do
       [[ -n "${!layer_var-}" ]] && continue
@@ -230,6 +220,17 @@ theme_desktop_resolve_base_values() {
     [[ -z "${layer_value}" ]] && layer_value="$(theme_desktop_lv_value "${layer_var}")"
     [[ -n "${layer_value}" ]] && printf -v "${layer_var}" '%s' "${layer_value}"
   done
+
+  # Last resort, below every layer: variables.meta normally supplies these, so
+  # this only covers a missing or unreadable shared layer. Applying them any
+  # earlier makes the merge loops above skip the var as already-set.
+  FONT="${FONT:-Cantarell}"
+  FONT_SIZE="${FONT_SIZE:-10}"
+  DOCUMENT_FONT="${DOCUMENT_FONT:-Cantarell}"
+  DOCUMENT_FONT_SIZE="${DOCUMENT_FONT_SIZE:-10}"
+  MONOSPACE_FONT="${MONOSPACE_FONT:-JetBrainsMono Nerd Font}"
+  MONOSPACE_FONT_SIZE="${MONOSPACE_FONT_SIZE:-10}"
+  FONT_ANTIALIASING="${FONT_ANTIALIASING:-rgba}"
   return 0
 }
 
@@ -287,7 +288,7 @@ theme_desktop_resolve_values() {
   RESOLVED_KDE_WIDGET_STYLE="kvantum"
 
   export ICON_THEME COLOR_SCHEME CURSOR_THEME CURSOR_SIZE TERMINAL \
-    FONT FONT_SIZE FONT_STYLE DOCUMENT_FONT DOCUMENT_FONT_SIZE MONOSPACE_FONT \
+    FONT FONT_SIZE DOCUMENT_FONT DOCUMENT_FONT_SIZE MONOSPACE_FONT \
     MONOSPACE_FONT_SIZE BUTTON_LAYOUT FONT_ANTIALIASING FONT_HINTING \
     RESOLVED_KVANTUM_THEME RESOLVED_KDE_COLOR_SCHEME RESOLVED_KDE_WIDGET_STYLE
 }
@@ -330,16 +331,8 @@ theme_desktop_export_cursor_environment() {
       print_log -sec "theme" -warn "cursor" "failed to update UWSM cursor environment"
   fi
 
-  if [[ -d /run/systemd/system ]] && command -v systemctl >/dev/null 2>&1; then
-    systemctl --user set-environment \
-      "XCURSOR_THEME=${XCURSOR_THEME}" \
-      "XCURSOR_SIZE=${XCURSOR_SIZE}" \
-      "HYPRCURSOR_THEME=${HYPRCURSOR_THEME}" \
-      "HYPRCURSOR_SIZE=${HYPRCURSOR_SIZE}" \
-      "XCURSOR_PATH=${XCURSOR_PATH}" >/dev/null 2>&1 ||
-      print_log -sec "theme" -warn "cursor" "failed to update systemd user cursor environment"
-  fi
-
+  # No systemctl set-environment here: --systemd below already writes the
+  # systemd user manager's environment as well as the DBus activation one.
   if command -v dbus-update-activation-environment >/dev/null 2>&1; then
     if [[ -d /run/systemd/system ]]; then
       dbus-update-activation-environment --systemd \
@@ -353,8 +346,8 @@ theme_desktop_export_cursor_environment() {
   fi
 }
 
-# Re-assert the canonical Qt theme env onto the systemd --user manager and the
-# DBus activation environment, so DBus-activated and systemd-launched apps stop
+# Re-assert the canonical Qt theme env onto the DBus activation environment (and
+# the systemd --user manager where there is one), so DBus-activated apps stop
 # inheriting a stale value (e.g. QT_QPA_PLATFORMTHEME=gtk3) seeded earlier in the
 # session. Values are read from core/qt-session.env and pushed as explicit
 # KEY=VALUE pairs — the current process env (which may carry the leak) is never
@@ -371,11 +364,8 @@ theme_desktop_export_session_qt_env() {
   done <"${qt_env_file}"
   [[ ${#qt_pairs[@]} -gt 0 ]] || return 0
 
-  if [[ -d /run/systemd/system ]] && command -v systemctl >/dev/null 2>&1; then
-    systemctl --user set-environment "${qt_pairs[@]}" >/dev/null 2>&1 ||
-      print_log -sec "theme" -warn "qt-env" "failed to update systemd user Qt environment"
-  fi
-
+  # As above: --systemd covers the systemd user manager, so no separate
+  # systemctl set-environment call is needed.
   if command -v dbus-update-activation-environment >/dev/null 2>&1; then
     if [[ -d /run/systemd/system ]]; then
       dbus-update-activation-environment --systemd "${qt_pairs[@]}" >/dev/null 2>&1 ||
@@ -556,8 +546,20 @@ theme_desktop_install_qtct_color_scheme() {
 
 theme_desktop_configure_qt_kde_bridge() {
   local qt6ct_color_scheme="${XDG_CONFIG_HOME}/qt6ct/colors/pywal16.conf"
-  local qt6ct_general_font="${FONT},${FONT_SIZE},-1,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0"
-  local qt6ct_fixed_font="${MONOSPACE_FONT},${MONOSPACE_FONT_SIZE},-1,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0"
+  local base_px=12 base_pt=10 text_size=""
+  local ui_size="10.00" fixed_size="10.00"
+
+  # qt6ct owns the app font while QT_QPA_PLATFORMTHEME=qt6ct, so this file has to
+  # use the same exact px-to-point conversion as Quickshell and the terminals.
+  text_size="$(state_get TEXT_SIZE "${base_px}" 2>/dev/null || true)"
+  if [[ ${text_size} =~ ^[0-9]+$ ]]; then
+    ui_size="$(awk -v size="${text_size}" -v pt="${base_pt}" -v base="${base_px}" \
+      'BEGIN { printf "%.2f", size * pt / base }')"
+    fixed_size="${ui_size}"
+  fi
+
+  local qt6ct_general_font="${FONT},${ui_size},-1,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0"
+  local qt6ct_fixed_font="${MONOSPACE_FONT},${fixed_size},-1,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0"
 
   theme_desktop_write_generated_file "${XDG_CONFIG_HOME}/Kvantum/kvantum.kvconfig" <<EOF
 [General]
@@ -761,7 +763,14 @@ font-name='${FONT} ${FONT_SIZE}'
 document-font-name='${DOCUMENT_FONT} ${DOCUMENT_FONT_SIZE}'
 monospace-font-name='${MONOSPACE_FONT} ${MONOSPACE_FONT_SIZE}'
 font-antialiasing='${FONT_ANTIALIASING}'
-font-hinting='${FONT_HINTING}'
+EOF
+
+  # dconf load does not validate against the schema, so an empty FONT_HINTING
+  # would be stored as '', outside the key's enum, and GSettings then silently
+  # serves the schema default instead.
+  [[ -n "${FONT_HINTING:-}" ]] && printf "font-hinting='%s'\n" "${FONT_HINTING}"
+
+  cat <<EOF
 
 [org/cinnamon/desktop/interface]
 icon-theme='${ICON_THEME}'
@@ -787,7 +796,7 @@ theme_desktop_write_dconf_content() {
 
   mkdir -p "$(dirname "${dconf_file}")"
   new_content="$(theme_desktop_dconf_payload)"
-  new_hash="$(printf '%s' "${new_content}" | md5sum | cut -d' ' -f1)"
+  new_hash="$(printf '%s\n' "${new_content}" | md5sum | cut -d' ' -f1)"
   [[ -f "${dconf_file}" ]] && old_hash="$(md5sum "${dconf_file}" 2>/dev/null | cut -d' ' -f1)"
 
   if [[ "${new_hash}" == "${old_hash}" ]]; then
@@ -873,7 +882,6 @@ theme_desktop_static_state_hash() {
     "terminal=${TERMINAL}" \
     "font=${FONT}" \
     "font_size=${FONT_SIZE}" \
-    "font_style=${FONT_STYLE}" \
     "document_font=${DOCUMENT_FONT}" \
     "document_font_size=${DOCUMENT_FONT_SIZE}" \
     "monospace_font=${MONOSPACE_FONT}" \

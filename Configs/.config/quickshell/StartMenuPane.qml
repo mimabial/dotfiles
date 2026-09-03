@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 
 // Top level of the rofi menu.d tree (menutree --dump-json). Submenu rows open

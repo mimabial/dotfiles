@@ -3,21 +3,11 @@
 set -euo pipefail
 
 LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
-font_sync_lib="${LIB_DIR}/hypr/fonts/font.sync.lib.bash"
-
 # shellcheck source=/dev/null
 source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
-if [[ ! -r "${font_sync_lib}" ]]; then
-  printf 'ERROR: missing %s\n' "${font_sync_lib}" >&2
-  exit 1
-fi
-
-# shellcheck source=/dev/null
-source "${font_sync_lib}" || exit 1
 
 menu_from=""
 menu_to=""
-bar_to=""
 rofi_to=""
 
 while [[ $# -gt 0 ]]; do
@@ -26,16 +16,13 @@ while [[ $# -gt 0 ]]; do
       menu_from="${2:-}"; shift 2 ;;
     --menu-to)
       menu_to="${2:-}"; shift 2 ;;
-    --bar-to)
-      bar_to="${2:-}"; shift 2 ;;
     --rofi-to)
       rofi_to="${2:-}"; shift 2 ;;
     -h|--help)
       cat <<'EOF'
-Usage: hyprshell fonts/font-sync.sh [--menu-from OLD] [--menu-to NEW] [--bar-to NEW]
+Usage: hyprshell fonts/font-sync.sh [--menu-from OLD] [--menu-to NEW] [--rofi-to NEW]
 
-Regenerates Waybar font include, and (optionally) rewrites Rofi font-family
-strings in *.rasi from OLD -> NEW while keeping existing sizes.
+Rewrites Rofi font-family strings in *.rasi while keeping existing sizes.
 EOF
       exit 0
       ;;
@@ -45,12 +32,6 @@ EOF
       ;;
   esac
 done
-
-bar_font="${bar_to:-$(font_sync_resolve_font_value bar)}"
-
-# Waybar: generated include
-
-font_sync_apply_waybar_bar_font_include "${bar_font}"
 
 # Rofi: rewrite OLD -> NEW inside quoted font strings
 

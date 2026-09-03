@@ -1,6 +1,22 @@
 // Shared helpers for all visualizers — ported from  visualizer.go
 .pragma library
 
+// scatterHash — deterministic per-dot hash for stable particle patterns
+function scatterHash(band, row, col, frame) {
+  var f = Math.floor((frame + row * 3 + col) / 3)
+  var h = (band * 7919 + row * 6271 + col * 3037 + f * 104729) & 0xFFFFFFFF
+  h ^= Math.floor(h / 65536)
+  h = (h * 0x45d9f3b) & 0xFFFFFFFF
+  h ^= Math.floor(h / 65536)
+  return (h % 10000) / 10000.0
+}
+
+// shade — same hue and saturation at a different lightness. Palette colours are picked
+// to sit as text on a dark background, so they need darkening to work as fills.
+function shade(color, light) {
+  return hueShift(color, 0, undefined, light)
+}
+
 // sampleBandLinear — linear interpolation between band values
 function sampleBandLinear(bands, pos) {
   if (bands.length === 0) return 0
@@ -64,6 +80,36 @@ function rgba(color, alpha) {
   return "rgba(" + c.r + "," + c.g + "," + c.b + "," + alpha + ")"
 }
 
+// hueShift — rotate a colour around the hue circle. sat and light are optional absolute
+// HSL targets; omit them to keep the input's own. Decorative fills should set them,
+// because a pale low-chroma accent stays pale through any rotation and five such blobs
+// composite to grey mud rather than a nebula.
+// Returns a normalised {r,g,b} rather than a string so the result still composes with
+// rgba/mixColor/specColor; a fully desaturated input has no hue to rotate and passes
+// through unchanged unless sat is given.
+function hueShift(color, degrees, sat, light) {
+  var c = colorRgb(color)
+  var r = c.r / 255, g = c.g / 255, b = c.b / 255
+  var max = Math.max(r, g, b), min = Math.min(r, g, b), span = max - min
+  var l = (max + min) / 2
+  if (span === 0 && sat === undefined) return { r: r, g: g, b: b }
+  var s = span === 0 ? 0 : (l > 0.5 ? span / (2 - max - min) : span / (max + min))
+  var h = span === 0 ? 0
+    : max === r ? ((g - b) / span) % 6 : max === g ? (b - r) / span + 2 : (r - g) / span + 4
+  h = (((h * 60 + degrees) % 360) + 360) % 360
+  if (sat !== undefined) s = sat
+  if (light !== undefined) l = light
+  var chroma = (1 - Math.abs(2 * l - 1)) * s
+  var x = chroma * (1 - Math.abs((h / 60) % 2 - 1))
+  var m = l - chroma / 2
+  if (h < 60) return { r: chroma + m, g: x + m, b: m }
+  if (h < 120) return { r: x + m, g: chroma + m, b: m }
+  if (h < 180) return { r: m, g: chroma + m, b: x + m }
+  if (h < 240) return { r: m, g: x + m, b: chroma + m }
+  if (h < 300) return { r: x + m, g: m, b: chroma + m }
+  return { r: chroma + m, g: m, b: x + m }
+}
+
 function mixColor(first, second, amount, alpha) {
   var a = colorRgb(first), b = colorRgb(second)
   var t = Math.max(0, Math.min(1, amount))
@@ -86,10 +132,12 @@ function lcgRng(state) {
   return state.v
 }
 
-// Extract [0,1) float from upper bits of an LCG state (use >>16, not >>33)
+// Extract [0,1) float from upper bits of an LCG state. The shift must be unsigned:
+// lcgRng masks with & 0xFFFFFFFF, which yields a signed 32-bit int, so an arithmetic
+// >> returns a negative float half the time and every `rand01() < p` test passes.
 function lcgRand01(state) {
   lcgRng(state)
-  return ((state.v >> 16) % 1000) / 1000.0
+  return ((state.v >>> 16) % 1000) / 1000.0
 }
 
 // Universal rounded rectangle path compatible with all Qt Quick Canvas versions

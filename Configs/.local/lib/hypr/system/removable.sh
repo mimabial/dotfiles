@@ -2,7 +2,7 @@
 #
 # removable.sh — Removable media state and actions, the udiskie tray job.
 #
-# Usage: removable.sh [--report|--waybar|--mount DEV|--unmount DEV|--eject DEV]
+# Usage: removable.sh [--report|--bar|--mount DEV|--unmount DEV|--eject DEV]
 # Depends on: lsblk, jq, udisksctl
 #
 set -euo pipefail
@@ -13,7 +13,7 @@ Usage: hyprshell system/removable [option]
 
   --report        JSON: {"devices":[{path,name,title,label,size,fstype,mountpoint,mounted}],
                          "mounted":n,"count":n}
-  --waybar        Bar JSON: text, class, tooltip
+  --bar           Bar JSON: text, class, tooltip
   --mount DEV     Mount a device with udisksctl (polkit, no root)
   --unmount DEV   Unmount it
   --eject DEV     Unmount, then power the drive down so it is safe to pull
@@ -100,7 +100,7 @@ case "${1:---report}" in
       notify: $notify
     }'
     ;;
-  --waybar)
+  --bar)
     devices_json | jq -r '
       (map(select(.mounted)) | length) as $mounted |
       length as $count |

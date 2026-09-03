@@ -1,0 +1,35 @@
+$HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
+
+$ICON_THEME = Tela-circle-solarized
+$COLOR_SCHEME = prefer-light
+$NVIM_SCHEME = solarized
+$NVIM_BACKGROUND = light
+$NVIM_TRANSPARENCY = false
+$CURSOR_THEME = OpenZone_Fire
+$CURSOR_SIZE = 30
+$FONT = DejaVuSansM Nerd Font
+$BAR_FONT = DejaVuSansM Nerd Font
+$MENU_FONT = DejaVuSansM Nerd Font
+$MONOSPACE_FONT = DejaVuSansM Nerd Font
+$NOTIFICATION_FONT = DejaVuSansM Nerd Font Mono
+
+general {
+    gaps_in = 5
+    gaps_out = 10
+    border_size = 2
+    # https://wiki.hyprland.org/Configuring/Variables/#variable-types for info about colors
+    col.active_border = rgb(2AA198)
+}
+
+decoration {
+    rounding = 4
+
+    blur {
+        enabled = yes
+        size = 6
+        passes = 3
+        new_optimizations = on
+        ignore_opacity = on
+        xray = false
+    }
+}

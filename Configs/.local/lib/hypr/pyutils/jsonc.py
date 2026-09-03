@@ -1,6 +1,6 @@
 """Shared JSONC (JSON-with-comments) parsing.
 
-Several configs here (waybar layouts/modules, etc.) are written in JSONC: JSON
+Some imported and utility configs are written in JSONC: JSON
 with // and /* */ comments and trailing commas, which Python's json module
 rejects. normalize_jsonc() strips both with a string-aware state machine, so a
 '//' inside a string value (e.g. a URL) is left untouched -- unlike a naive
@@ -8,8 +8,6 @@ regex, which truncates it.
 
 Kept free of other project imports so any module can use it without cycles.
 """
-import json
-import os
 
 
 def normalize_jsonc(content):
@@ -118,28 +116,3 @@ def normalize_jsonc(content):
         i += 1
 
     return "".join(result)
-
-
-def parse_json_file(filepath):
-    """Read a JSON or JSONC file and return the parsed data."""
-    with open(filepath, "r", encoding="utf-8") as file:
-        content = file.read()
-    if os.fspath(filepath).endswith(".jsonc"):
-        content = normalize_jsonc(content)
-    return json.loads(content)
-
-
-def modify_json_key(data, key, value):
-    """Recursively set the specified key to the given value in nested
-    dict/list structures. Returns the modified data (also mutated in place)."""
-    if isinstance(data, dict):
-        for k, v in data.items():
-            if k == key:
-                data[k] = value
-            elif isinstance(v, dict):
-                modify_json_key(v, key, value)
-            elif isinstance(v, list):
-                for item in v:
-                    if isinstance(item, dict):
-                        modify_json_key(item, key, value)
-    return data

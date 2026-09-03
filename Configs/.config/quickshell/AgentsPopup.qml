@@ -11,6 +11,28 @@ PopupCard {
     signal select(int index)
 
     readonly property var provider: records.length ? records[Math.min(selected, records.length - 1)] : null
+    // Prefer the subscription whose tightest quota window has the least use.
+    // The sum breaks ties, so both the rolling session and weekly allowances
+    // affect the answer. Model-scoped limits count too: the busiest matching
+    // window is the one that can stop work first.
+    readonly property var recommendation: {
+        let best = null
+        for (const record of records) {
+            const hourly = root.windowUsage(record, "hourly")
+            const weekly = root.windowUsage(record, "weekly")
+            const known = (hourly >= 0 ? 1 : 0) + (weekly >= 0 ? 1 : 0)
+            if (known === 0) continue
+            const pressure = Math.max(hourly, weekly)
+            const total = Math.max(0, hourly) + Math.max(0, weekly)
+            const score = pressure + (2 - known)
+            if (!best || score < best.score || (score === best.score && total < best.total))
+                best = { record: record, hourly: hourly, weekly: weekly, score: score, total: total }
+        }
+        return best
+    }
+    readonly property string recommendationId: recommendation ? String(recommendation.record.id || "") : ""
+    readonly property string providerSummary: provider ? usageSummary({ hourly: windowUsage(provider, "hourly"), weekly: windowUsage(provider, "weekly") })
+        || String(provider.usageStatusText || provider.tierLabel || "") : ""
     readonly property var limits: provider && provider.limits ? provider.limits : []
     readonly property var days: provider && provider.recentDays ? provider.recentDays : []
     readonly property real busiestDay: {
@@ -44,6 +66,30 @@ PopupCard {
         if (n >= 1e3) return (n / 1e3).toFixed(1) + "K"
         return String(Math.round(n))
     }
+    function windowKind(limit) {
+        const label = String(limit && (limit.label || limit.title) || "").toLowerCase()
+        if (label.includes("week") || label.includes("day")) return "weekly"
+        if (label.includes("hour") || label.includes("session") || /\d+\s*h\b/.test(label)) return "hourly"
+        return ""
+    }
+    function windowUsage(record, kind) {
+        let highest = -1
+        for (const limit of (record && record.limits || [])) {
+            const reset = Date.parse(limit.resetsAt)
+            const expired = !isNaN(reset) && reset <= root.shell.clock.date.getTime()
+            const percent = expired ? 0 : Number(limit.percent)
+            if (windowKind(limit) === kind && percent >= 0)
+                highest = Math.max(highest, Math.min(1, percent))
+        }
+        return highest
+    }
+    function usageSummary(choice) {
+        if (!choice) return ""
+        const parts = []
+        if (choice.hourly >= 0) parts.push(Math.round(choice.hourly * 100) + "% 5h used")
+        if (choice.weekly >= 0) parts.push(Math.round(choice.weekly * 100) + "% weekly used")
+        return parts.join("  ·  ")
+    }
     function resetsIn(iso) {
         const target = Date.parse(iso)
         if (isNaN(target)) return ""
@@ -51,6 +97,11 @@ PopupCard {
         if (minutes >= 1440) return Math.floor(minutes / 1440) + "d " + Math.floor(minutes % 1440 / 60) + "h"
         if (minutes >= 60) return Math.floor(minutes / 60) + "h " + minutes % 60 + "m"
         return minutes + "m"
+    }
+    onRecommendationIdChanged: {
+        if (recommendationId === "") return
+        shell.run(["hyprshell", "system/agent-recommendation", recommendationId,
+            String(recommendation.record.name || recommendationId), usageSummary(recommendation)])
     }
 
     Column {
@@ -60,7 +111,7 @@ PopupCard {
         PopupHero {
             shell: root.shell
             title: root.provider ? root.provider.name : "No AI coding subscriptions found"
-            status: root.provider ? (String(root.provider.usageStatusText || "") || String(root.provider.tierLabel || "")) : ""
+            status: root.providerSummary
         }
 
         // Subscription switch — only when more than one agent reports usage.
@@ -74,14 +125,16 @@ PopupCard {
                     shell: root.shell
                     implicitWidth: (agentsColumn.width - Style.xs * (root.records.length - 1)) / root.records.length
                     implicitHeight: Style.controlHeight
-                    text: modelData.name
+                    text: modelData.name + (root.recommendation && root.recommendation.record.id === modelData.id ? "  *" : "")
                     fontSize: Style.bodySmall
-                    active: index === root.selected
+                    active: index === root.selected; radius: shell.rounding
+                    fill: active ? shell.alpha(shell.role("act_bg", shell.accent), .3) : "transparent"
+                    outline: active ? shell.alpha(shell.role("act_br", shell.accent), .65) : "transparent"
+                    textColor: index === root.selected ? shell.accent : shell.alpha(shell.foreground, .6)
                     onClicked: root.select(index)
                 }
             }
         }
-
         Column {
             visible: root.limits.length > 0
             width: parent.width; spacing: Style.md
@@ -208,6 +261,15 @@ PopupCard {
                     }
                 }
             }
+        }
+
+        Text {
+            visible: root.records.length > 1 && root.recommendation !== null
+            width: parent.width
+            text: "* Recommended based on 5-hour and weekly limits"
+            horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap
+            color: root.shell.alpha(root.shell.foreground, .55)
+            font.family: root.shell.fontFamily; font.pixelSize: Style.caption
         }
     }
 }

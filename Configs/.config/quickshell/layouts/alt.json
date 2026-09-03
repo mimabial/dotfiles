@@ -1,0 +1,21 @@
+[
+  { "id": "datetime", "props": { "showDate": true } },
+  "terminal",
+  { "id": "forecast", "props": { "showMinMax": true, "showUnit": false } },
+  "submap",
+  "spacer",
+  { "id": "workspaces", "props": { "activeOnly": false } },
+  "spacer",
+  { "id": "mediaplayer", "props": { "iconMode": false, "randomizeProgressShape": true } },
+  { "id": "audio", "props": { "reverse": true, "sliderFirst": true } },
+  { "id": "eyecare", "props": { "reverse": true, "sliderFirst": true } },
+  { "id": "screen", "props": { "reverse": true, "showCliphist": true } },
+  { "id": "bluetooth", "props": { "showReadout": true, "reverse": true } },
+  { "id": "wifi", "props": { "showReadout": true, "showVpn": true } },
+  { "id": "wallpaper", "props": { "reverse": true } },
+  "privacybutton",
+  { "id": "notification", "props": { "reverse": true } },
+  "agents",
+  "power",
+  "menu"
+]

@@ -8,6 +8,11 @@ $NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME = MacTahoe-cursors
 $CURSOR_SIZE = 30
+$FONT = Lekton Nerd Font
+$BAR_FONT = Lekton Nerd Font
+$MENU_FONT = Lekton Nerd Font
+$MONOSPACE_FONT = Lekton Nerd Font
+$NOTIFICATION_FONT = Lekton Nerd Font Mono
 
 general {
     gaps_in = 3
@@ -42,5 +47,3 @@ decoration {
         xray = false
     }
 }
-
-layerrule = blur on, match:namespace waybar

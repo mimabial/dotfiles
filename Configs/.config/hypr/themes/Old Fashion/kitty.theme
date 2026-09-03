@@ -1,0 +1,58 @@
+$HOME/.config/kitty/theme.conf
+
+font_family     VictorMono NFM Medium
+bold_font       VictorMono NFM SemiBold
+italic_font     VictorMono NFM Medium Italic
+
+# The basic colors
+foreground #3B2E23
+background #EFE3CD
+selection_foreground #3B2E23
+selection_background #D7BE87
+
+cursor #B85C1E
+cursor_text_color #EFE3CD
+
+url_color #4A5D6E
+
+active_border_color #B85C1E
+inactive_border_color #BFAC93
+bell_border_color #9C3B33
+
+active_tab_background #D7BE87
+active_tab_foreground #B85C1E
+inactive_tab_background #E7DAC2
+inactive_tab_foreground #6B5C4B
+tab_bar_background #EFE3CD
+
+# black
+color0 #3B2E23
+color8 #6B5C4B
+
+# red
+color1 #9C3B33
+color9 #AD4732
+
+# green
+color2  #5A6633
+color10 #6D7E44
+
+# yellow
+color3  #8F6518
+color11 #A87A1C
+
+# blue
+color4  #4A5D6E
+color12 #5C7183
+
+# magenta
+color5  #7B5560
+color13 #946A74
+
+# cyan
+color6  #48746A
+color14 #4F8478
+
+# white
+color7 #BFAC93
+color15 #E2D4B8

@@ -9,7 +9,7 @@ files=("${layout_dir}"/*.json)
 mapfile -t layouts < <(printf '%s\n' "${files[@]}" | sed -E 's!.*/!!;s/\.json$//' | sort -u)
 action="${1:-next}"
 [[ "${action}" == list ]] && { printf '%s\n' "${layouts[@]}"; exit; }
-current="$(state_get WAYBAR_LAYOUT_NAME main)" step=1 i=0
+current="$(state_get QUICKSHELL_LAYOUT_NAME main)" step=1 i=0
 if [[ "${action}" == select ]]; then
   hypr_runtime_require rofi
   # geometry.bash carries the font, border and opacity overrides; without them
@@ -37,7 +37,7 @@ fi
 if [[ "$(state_get HYPR_WORKFLOW default)" == windows ]]; then
   exit 0
 fi
-state_set WAYBAR_LAYOUT_NAME "${target}" staterc
+state_set QUICKSHELL_LAYOUT_NAME "${target}" staterc
 # dunstrc bakes the notification origin at render time, so a bar that moved to
 # another edge only reaches dunst when the renderer re-runs
 hyprshell render/dunst.py >/dev/null 2>&1 || true

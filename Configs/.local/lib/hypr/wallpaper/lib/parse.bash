@@ -19,7 +19,7 @@
 #   wallpaper_modern_command_token
 #       Verb form: next, previous|prev, random, select, resume, display, notify,
 #       start, get, link, clean, json, set <file>, output <file>, help.
-#       Preferred for new keybinds and waybar invocations.
+#       Preferred for new keybinds and bar invocations.
 #
 # These three exist because all three forms appear in live keybind config
 # files. They share state (wallpaper_setter_flag, set_as_global,

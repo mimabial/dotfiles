@@ -22,15 +22,20 @@ setup_add_default_item() {
 }
 
 menu_register_domain_setup() {
-  local default_agent=""
-  local default_browser=""
-  local default_editor=""
-  local default_terminal=""
+  local default_agent="${HYPR_DEFAULT_AGENT:-}"
+  local default_browser="${BROWSER:-}"
+  local default_editor="${EDITOR:-}"
+  local default_terminal="${TERMINAL:-}"
 
-  default_agent="$(hyprshell setup/default.sh agent 2>/dev/null || true)"
-  default_browser="$(hyprshell setup/default.sh browser 2>/dev/null || true)"
-  default_terminal="$(hyprshell setup/default.sh terminal 2>/dev/null || true)"
-  default_editor="$(hyprshell setup/default.sh editor 2>/dev/null || true)"
+  default_browser="${default_browser##*/}"
+  default_editor="${default_editor##*/}"
+  default_terminal="${default_terminal##*/}"
+
+  case "${default_browser}" in
+    google-chrome-stable) default_browser="chrome" ;;
+    microsoft-edge-stable) default_browser="edge" ;;
+    zen-browser) default_browser="zen" ;;
+  esac
 
   menu_define setup "Setup"
   menu_add_item setup "  Defaults" submenu setup_default
@@ -57,16 +62,9 @@ menu_register_domain_setup() {
   menu_add_item setup_default "  Editor" submenu setup_default_editor
 
   menu_define setup_default_agent "Default Agent"
-  setup_add_default_item setup_default_agent "${default_agent}" agy "󰫢  Antigravity" setup_default_agent_agy agy
   setup_add_default_item setup_default_agent "${default_agent}" claude "󰛄  Claude" setup_default_agent_claude claude
   setup_add_default_item setup_default_agent "${default_agent}" codex "󱙺  Codex" setup_default_agent_codex codex
-  setup_add_default_item setup_default_agent "${default_agent}" copilot "  Copilot" setup_default_agent_copilot copilot
-  setup_add_default_item setup_default_agent "${default_agent}" crush "󰋑  Crush" setup_default_agent_crush crush
-  setup_add_default_item setup_default_agent "${default_agent}" grok "󰧑  Grok" setup_default_agent_grok grok
-  setup_add_default_item setup_default_agent "${default_agent}" omp "󰚩  Oh My Pi" setup_default_agent_omp omp
   setup_add_default_item setup_default_agent "${default_agent}" opencode "󰚩  OpenCode" setup_default_agent_opencode opencode
-  setup_add_default_item setup_default_agent "${default_agent}" ori "󰚩  Ori" setup_default_agent_ori ori
-  setup_add_default_item setup_default_agent "${default_agent}" pi "󰚩  Pi" setup_default_agent_pi pi
 
   menu_define setup_default_browser "Default Browser"
   setup_add_default_item setup_default_browser "${default_browser}" chromium "  Chromium" setup_default_browser_chromium chromium

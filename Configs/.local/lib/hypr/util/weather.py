@@ -674,7 +674,7 @@ else:
     if show_location:
         data["text"] += f" | {get_city_name(weather)}, {get_country_name(weather)}"
 
-    # waybar tooltip
+    # Bar tooltip
     data["tooltip"] = ""
     if show_today_details:
         today = weather["weather"][0]

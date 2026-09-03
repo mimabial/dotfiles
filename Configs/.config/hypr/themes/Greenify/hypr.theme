@@ -8,6 +8,11 @@ $NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME = Colloid-cursors
 $CURSOR_SIZE = 28
+$FONT = Terminess Nerd Font
+$BAR_FONT = Terminess Nerd Font
+$MENU_FONT = Terminess Nerd Font
+$MONOSPACE_FONT = Terminess Nerd Font
+$NOTIFICATION_FONT = Terminess Nerd Font Mono
 
 general {
     gaps_in = 3
@@ -44,5 +49,3 @@ decoration {
     }
 
 }
-
-layerrule = blur on, match:namespace waybar

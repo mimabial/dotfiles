@@ -11,5 +11,4 @@ Pick a timezone via fzf and set it with timedatectl." "$@"
 timezone=$(timedatectl list-timezones | fzf --prompt="Set timezone > " --height=20 --reverse) || exit 1
 sudo timedatectl set-timezone "$timezone"
 echo "Timezone is now set to $timezone"
-hyprshell waybar/waybar --restart-direct
 quickshell ipc --any-display call bar reload 2>/dev/null || true

@@ -9,6 +9,11 @@ $NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME = Layan-white-cursors
 $CURSOR_SIZE = 40
+$FONT = MonaspiceAr Nerd Font
+$BAR_FONT = MonaspiceAr Nerd Font
+$MENU_FONT = MonaspiceAr Nerd Font
+$MONOSPACE_FONT = MonaspiceAr Nerd Font
+$NOTIFICATION_FONT = MonaspiceAr Nerd Font Mono
 # $CURSOR_THEME = FernBLZ
 # $CURSOR_SIZE = 34
 
@@ -42,5 +47,3 @@ decoration {
         xray = false
     }
 }
-
-layerrule = blur on, match:namespace waybar

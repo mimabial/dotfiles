@@ -3,7 +3,7 @@
 
 Receives per-tab media state from the fftab-bridge WebExtension over stdio
 and owns one MPRIS bus name per media tab (each on its own DBus connection),
-so playerctl/waybar see every tab as an independent player with an exact,
+so playerctl and other media consumers see every tab as an independent player with an exact,
 interpolated Position. MPRIS commands are forwarded back to the extension.
 """
 

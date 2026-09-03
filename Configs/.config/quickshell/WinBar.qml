@@ -10,7 +10,7 @@ PanelWindow {
     required property var shell
     readonly property var section: shell.style.box(".modules-left")
     readonly property var layout: shell.barLayout
-    readonly property var registry: ({"menu": mod_menu, "taskbar": mod_taskbar, "active": mod_active, "workspaces": mod_workspaces, "tray": mod_tray, "language": mod_language, "datetime": mod_datetime, "converter": mod_converter, "sudoku": mod_sudoku, "submap": mod_submap})
+    readonly property var registry: ({"menu": mod_menu, "taskbar": mod_taskbar, "active": mod_active, "workspaces": mod_workspaces, "mediaplayer": mod_mediaplayer, "tray": mod_tray, "language": mod_language, "datetime": mod_datetime, "converter": mod_converter, "sudoku": mod_sudoku, "submap": mod_submap})
     property bool active: shell.mode === "winbar" && !shell.userHidden
     // only the focused monitor's instance may own a panel: two focus grabs
     // cancel each other, which reads as the popup refusing to open
@@ -57,6 +57,7 @@ PanelWindow {
         Component { id: weatherSlot; BarButton { id: weatherButton; Layout.fillHeight: true; shell: root.shell; css: "weather"; text: Weather.output.text || ""; onClicked: root.shell.togglePopup("weather"); WeatherPopup { anchorItem: weatherButton; shell: root.shell; popupEnabled: root.popupsAllowed } } }
     } }
     Component { id: mod_workspaces; Workspaces { shell: root.shell; hideActive: true; Layout.fillHeight: true } }
+    Component { id: mod_mediaplayer; MediaButton { shell: root.shell; Layout.fillHeight: true; popupEnabled: root.popupsAllowed } }
     Component { id: mod_tray; BarGroup {
         shell: root.shell; css: "tray-group"; vertical: false; Layout.fillHeight: true; reverse: true
         holdOpen: ["cpu", "gpu", "memory", "disk"].includes(root.shell.popupName)
@@ -67,7 +68,7 @@ PanelWindow {
         Component { id: trayMemSlot; MemoryReadout { Layout.fillHeight: true; shell: root.shell; popupsAllowed: root.popupsAllowed; processEnvironment: ({ HYPR_SYSINFO_ALT: "1" }); interval: 30000 } }
         Component { id: trayDiskSlot; DiskReadout { Layout.fillHeight: true; shell: root.shell; popupsAllowed: root.popupsAllowed; processEnvironment: ({ HYPR_SYSINFO_ALT: "1" }); interval: 600000 } }
     } }
-    Component { id: mod_submap; SubmapButton { shell: root.shell; command: ["hyprshell", "keybinds/submap-status", "--alt"]; Layout.fillHeight: true; baseColor: root.shell.alpha(root.shell.role("br", root.shell.foreground), .7) } }
+    Component { id: mod_submap; SubmapButton { shell: root.shell; alt: true; Layout.fillHeight: true; baseColor: root.shell.alpha(root.shell.role("br", root.shell.foreground), .7) } }
     Component { id: mod_language; LanguageButton { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_datetime; ClockButton { shell: root.shell; kind: "winbar"; css: "clock.datetime-winbar"; Layout.fillHeight: true; popupEnabled: root.popupsAllowed } }
     Component { id: mod_converter; ConverterButton { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillHeight: true } }

@@ -13,14 +13,13 @@ hypr_runtime_load_state || exit 1
 source "${LIB_DIR}/hypr/theme/color.targets.sh"
 
 hypr_help_guard "Usage: hyprshell fonts/font-apply [font-name]
-Apply the configured (or given) fonts across terminals, waybar, rofi, and GTK." "$@"
+Apply the configured (or given) fonts across terminals, Quickshell, Rofi, and GTK." "$@"
 
 FONT_NAME="${1:-}"
 UPDATED=()
 GENERAL_FONT=""
 DOCUMENT_FONT=""
 MONOSPACE_FONT=""
-BAR_FONT=""
 MENU_FONT=""
 TERMINAL_FONT=""
 XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
@@ -38,14 +37,12 @@ resolve_font_targets() {
   general_font="$(hypr_config_value_from_layers 'FONT' 2>/dev/null || true)"
   DOCUMENT_FONT="$(hypr_config_value_from_layers 'DOCUMENT_FONT' 2>/dev/null || true)"
   MONOSPACE_FONT="$(hypr_config_value_from_layers 'MONOSPACE_FONT' 2>/dev/null || true)"
-  BAR_FONT="$(hypr_config_value_from_layers 'BAR_FONT' 2>/dev/null || true)"
   MENU_FONT="$(hypr_config_value_from_layers 'MENU_FONT' 2>/dev/null || true)"
   TERMINAL_FONT="$(hypr_config_value_from_layers 'TERMINAL_FONT' 2>/dev/null || true)"
 
   GENERAL_FONT="${general_font:-${FONT_NAME:-sans-serif}}"
   DOCUMENT_FONT="${DOCUMENT_FONT:-${GENERAL_FONT}}"
   MONOSPACE_FONT="${MONOSPACE_FONT:-${FONT_NAME:-monospace}}"
-  BAR_FONT="${BAR_FONT:-${GENERAL_FONT:-${MONOSPACE_FONT}}}"
   MENU_FONT="${MENU_FONT:-${GENERAL_FONT:-${MONOSPACE_FONT}}}"
   TERMINAL_FONT="${TERMINAL_FONT:-${MONOSPACE_FONT}}"
 }
@@ -102,11 +99,8 @@ apply_fontconfig_alias() {
 }
 
 sync_ui_fonts() {
-  hyprshell fonts/font-sync.sh --bar-to "${BAR_FONT}" --rofi-to "${MENU_FONT}" >/dev/null 2>&1 || true
-  append_updated 'Waybar and Rofi fonts'
-
-  hyprshell waybar.py --restart-direct >/dev/null 2>&1 || true
-  append_updated 'Waybar reload'
+  hyprshell fonts/font-sync.sh --rofi-to "${MENU_FONT}" >/dev/null 2>&1 || true
+  append_updated 'Rofi fonts'
 
   hypr_user_pgrep -x rofi >/dev/null 2>&1 || return 0
   hypr_user_pkill -x rofi >/dev/null 2>&1 || true

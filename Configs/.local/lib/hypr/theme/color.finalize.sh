@@ -34,19 +34,6 @@ color_finalize_source_generated_colors() {
   set +a
 }
 
-color_finalize_read_hypr_border() {
-  local theme_conf="${1:-${HYPR_THEME_METADATA_FILE:-${HYPR_CONFIG_HOME}/themes/theme.meta}}"
-
-  [[ -r "${theme_conf}" ]] || return 1
-  awk -F= '
-    /^[[:space:]]*rounding[[:space:]]*=/ {
-      gsub(/[[:space:]]/, "", $2)
-      print $2
-      exit
-    }
-  ' "${theme_conf}"
-}
-
 color_finalize_export_icon_theme() {
   local theme_conf="${HYPR_THEME_METADATA_FILE:-${HYPR_CONFIG_HOME}/themes/theme.meta}"
   local hyq_out=""
@@ -65,16 +52,4 @@ color_finalize_export_icon_theme() {
   fi
 
   export ICON_THEME
-}
-
-color_finalize_update_waybar_border_radius() {
-  local border_radius="${hypr_border:-}"
-
-  [[ "${SKIP_WAYBAR_UPDATE:-0}" -ne 1 ]] || return 0
-  [[ -n "${border_radius}" ]] || border_radius="$(color_finalize_read_hypr_border || true)"
-
-  if [[ -x "${LIB_DIR}/hypr/waybar/waybar.py" ]]; then
-    WAYBAR_BORDER_RADIUS="${border_radius}" "${LIB_DIR}/hypr/waybar/waybar.py" --update-border-radius &>/dev/null
-    print_log -sec "waybar" -stat "updated" "border-radius from theme"
-  fi
 }

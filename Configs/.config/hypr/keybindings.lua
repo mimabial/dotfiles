@@ -291,6 +291,7 @@ exec(mod, "C", "[Launcher|Apps] text editor", terminal .. " -e " .. editor)
 
 exec(mod, "D", "[Launcher|Menus] application finder", "hyprshell rofi-launch.sh d")
 exec(mod .. " SHIFT", "D", "[Launcher|Menus] window switcher", "hyprshell rofi-launch.sh w")
+bind(mod, "A", "[Launcher|Menus] Exposé window overview", hl.dsp.event("expose.window-overview:toggle"))
 exec(mod, "SPACE", "[Launcher|Menus] menu tree", "pkill -x rofi || hyprshell menutree")
 exec(mod, "V", "[Launcher|Menus] clipboard", "quickshell ipc call bar popup cliphist")
 exec(mod .. " SHIFT", "V", "[Launcher|Menus] clipboard manager", "pkill -x rofi || hyprshell cliphist.sh")
@@ -593,7 +594,8 @@ submap_leader("theming", mod, "T", function()
 		"[Theming] select wallpaper",
 		"hyprshell rofi/run-after-close.sh -- hyprshell wallpaper select --global"
 	)
-	submap_exec("F", "[Theming] select font", "pkill -x rofi || hyprshell fonts/font-picker.sh")
+	submap_exec("F", "[Theming] select font", "pkill -x rofi || hyprshell rofi/menutree --action style_font")
+	submap_exec("SHIFT + F", "[Theming] install Nerd Font", "pkill -x rofi || hyprshell rofi/menutree --action install_font")
 	submap_exec(
 		"B",
 		"[Theming] select bar layout",

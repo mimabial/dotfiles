@@ -7,7 +7,7 @@ set -euo pipefail
 source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
 
 hypr_help_guard "Usage: hyprshell sysinfo/network-speed [-d|-u]
-Emit network speed as waybar JSON: -d download, -u upload, default both." "$@"
+Emit network speed as bar JSON: -d download, -u upload, default both." "$@"
 
 ALT_MODE=false
 args=()
@@ -43,7 +43,7 @@ network_speed_state_dir() {
 }
 
 STATE_DIR="$(network_speed_state_dir)" || exit 1
-STATE_FILE="${STATE_DIR}/waybar-netspeed-${UID:-$(id -u)}"
+STATE_FILE="${STATE_DIR}/bar-netspeed-${UID:-$(id -u)}"
 INTERFACE=$(ip route | awk '/^default/ {print $5; exit}')
 
 # If no network interface is active

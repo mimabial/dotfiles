@@ -5,7 +5,7 @@
 # Usage:
 #   powerctl.sh <shutdown|poweroff|reboot>
 #
-# Depends on: hyprshell, systemctl
+# Depends on: hyprshell, and systemctl or loginctl
 #
 set -euo pipefail
 
@@ -17,9 +17,9 @@ EOF
 
 action="${1:-}"
 case "${action}" in
-  shutdown | poweroff) systemctl_action="poweroff" ;;
-  reboot)              systemctl_action="reboot"  ;;
-  *)                   usage >&2; exit 2          ;;
+  shutdown | poweroff) power_action="poweroff" ;;
+  reboot)              power_action="reboot"  ;;
+  *)                   usage >&2; exit 2      ;;
 esac
 
 hyprshell util/state.sh clear 're*-required'
@@ -37,4 +37,10 @@ if hyprshell window/close-all.sh; then
   done
 fi
 
-exec systemctl "${systemctl_action}" --no-wall
+# elogind (Artix) offers the same verbs through loginctl; both route the request
+# through the session manager, so neither needs sudo.
+if [[ -d /run/systemd/system ]] && command -v systemctl >/dev/null 2>&1; then
+  exec systemctl "${power_action}" --no-wall
+fi
+command -v loginctl >/dev/null 2>&1 && exec loginctl "${power_action}"
+exec "${power_action}"

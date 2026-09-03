@@ -6,7 +6,16 @@ set -euo pipefail
 source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
 
 hypr_help_guard "Usage: hyprshell install/dns [Cloudflare|DHCP|Custom]
-Configure systemd-resolved DNS (prompts when no provider is given)." "$@"
+Configure systemd-resolved DNS (prompts when no provider is given).
+Requires systemd-resolved; there is no equivalent path on other init systems." "$@"
+
+# Every write target here is systemd-networkd's (/etc/systemd/network/*.network,
+# resolved.conf). On a host without it the file loop would quietly match nothing
+# and the restart would fail after the config edits — say so up front instead.
+if ! [[ -d /run/systemd/system ]] || ! command -v resolvectl >/dev/null 2>&1; then
+  printf 'install/dns requires systemd-resolved; configure DNS with this host'\''s own tooling.\n' >&2
+  exit 1
+fi
 
 validate_dns_entry() {
   local entry="$1"

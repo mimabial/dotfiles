@@ -9,6 +9,11 @@ $NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME=Sweet-cursors
 $CURSOR_SIZE=30
+$FONT = MesloLGS Nerd Font
+$BAR_FONT = MesloLGS Nerd Font
+$MENU_FONT = MesloLGS Nerd Font
+$MONOSPACE_FONT = MesloLGS Nerd Font
+$NOTIFICATION_FONT = MesloLGS Nerd Font Mono
 
 general {
     gaps_in = 3
@@ -53,5 +58,4 @@ windowrule = opacity 0.80 0.70, match:class ^(nm-applet)$
 windowrule = opacity 0.80 0.70, match:class ^(nm-connection-editor)$
 windowrule = opacity 0.70 0.70, match:class ^(kitty)$
 windowrule = opacity 0.80 0.70, match:class ^(dev.warp.Warp)$
-layerrule = blur on, match:namespace waybar
 layerrule = blur on, match:namespace rofi

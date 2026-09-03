@@ -1,11 +1,5 @@
+pragma ComponentBehavior: Bound
 import QtQuick
-import QtQuick.Layouts
-import Quickshell
-import Quickshell.Io
-import Quickshell.Bluetooth
-import Quickshell.Hyprland
-import Quickshell.Networking
-import Quickshell.Wayland
 import ".."
 
 BarGroup {

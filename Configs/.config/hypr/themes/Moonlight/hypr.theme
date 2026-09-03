@@ -8,6 +8,11 @@ $NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME = Nordzy-cursors-white
 $CURSOR_SIZE = 26
+$FONT = Lilex Nerd Font
+$BAR_FONT = Lilex Nerd Font
+$MENU_FONT = Lilex Nerd Font
+$MONOSPACE_FONT = Lilex Nerd Font
+$NOTIFICATION_FONT = Lilex Nerd Font Mono
 
 general {
     border_size = 2
@@ -60,6 +65,3 @@ group {
       text_color = rgba(d8dee9ff) # Nord Snow Storm (no. 1)
     }
 }
-
-
-blurls = waybar

@@ -1,5 +1,19 @@
 {
   "left": ["menu", "taskbar", "active", "submap"],
   "center": ["workspaces"],
-  "right": ["tray", "language", "datetime"]
+  "right": [
+    {
+      "id": "mediaplayer",
+      "props": {
+        "appearance": "mpris",
+        "showControls": true,
+        "controlsRight": true,
+        "showArtist": false,
+        "randomizeProgressShape": true
+      }
+    },
+    "tray",
+    "language",
+    "datetime"
+  ]
 }

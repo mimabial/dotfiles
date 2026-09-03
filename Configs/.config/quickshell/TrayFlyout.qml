@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 
@@ -12,6 +13,8 @@ PopupWindow {
     readonly property var anchorWindow: anchorItem ? anchorItem.QsWindow.window : null
     property var openSub: null
     property Item openRow: null
+    // preferred cascade side; see StartMenuFlyout.openLeft
+    property bool openLeft: false
     signal picked
 
     property QsMenuOpener opener: QsMenuOpener { menu: root.open ? root.handle : null }
@@ -23,15 +26,17 @@ PopupWindow {
     implicitWidth: contentWidth
     implicitHeight: flyColumn.implicitHeight + padding * 2
 
+    // see StartMenuFlyout: row-sized rect so the compositor can flip this level
     anchor {
         window: root.anchorWindow
-        adjustment: PopupAdjustment.Slide
-        edges: Edges.Top | Edges.Left
-        gravity: Edges.Bottom | Edges.Right
-        rect.width: 1; rect.height: 1
+        adjustment: PopupAdjustment.FlipX | PopupAdjustment.Slide
+        edges: Edges.Top | (root.openLeft ? Edges.Left : Edges.Right)
+        gravity: Edges.Bottom | (root.openLeft ? Edges.Left : Edges.Right)
+        rect.width: root.anchorItem ? root.anchorItem.width : 1
+        rect.height: root.anchorItem ? root.anchorItem.height : 1
         onAnchoring: {
             if (!root.anchorItem || !root.anchorWindow) return
-            const point = root.anchorWindow.contentItem.mapFromItem(root.anchorItem, root.anchorItem.width, 0)
+            const point = root.anchorWindow.contentItem.mapFromItem(root.anchorItem, 0, 0)
             anchor.rect.x = Math.round(point.x); anchor.rect.y = Math.round(point.y)
         }
     }

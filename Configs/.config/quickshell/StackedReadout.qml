@@ -61,7 +61,7 @@ ScriptButton {
             text: root.halves.icon
             textFormat: root.markup ? Text.RichText : Text.PlainText
             lineHeightMode: root.iconLine > 0 ? Text.FixedHeight : Text.ProportionalHeight
-            lineHeight: root.iconLine > 0 ? root.iconLine : 1
+            lineHeight: root.iconLine > 0 ? Style.fontPx(root.iconLine) : 1
             color: root.hoverPaint("content", root.textColor)
             font.family: root.shell.fontFamily
             font.pixelSize: root.iconSize

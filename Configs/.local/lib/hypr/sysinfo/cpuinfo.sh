@@ -10,7 +10,7 @@ source "${BASH_SOURCE[0]%/*}/lib/temp-color.bash"
 source "${BASH_SOURCE[0]%/*}/lib/map-floor.bash"
 
 hypr_help_guard "Usage: hyprshell sysinfo/cpuinfo
-Emit CPU usage, temperature, and clock speed as waybar JSON." "$@"
+Emit CPU usage, temperature, and clock speed as bar JSON." "$@"
 
 cpuinfo_file="${XDG_RUNTIME_DIR:-/tmp}/hypr-$UID-processors"
 

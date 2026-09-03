@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell.Io
 
@@ -13,7 +14,7 @@ PopupCard {
     readonly property var issues: [inbox.issue, security.issue, security.note].filter(entry => !!entry)
 
     function refresh() { if (!reportProc.running) reportProc.running = true }
-    function open(url) { shell.run(["xdg-open", url]); shell.closePopup() }
+    function openUrl(url) { shell.run(["xdg-open", url]); shell.closePopup() }
 
     onOpenChanged: if (open) refresh()
 
@@ -40,7 +41,7 @@ PopupCard {
                 : root.inbox.count > 0 ? "Unread notifications" : "All caught up"
             value: root.inbox.available === false ? "—" : String(root.inbox.count || 0)
             active: root.inbox.count > 0
-            onClicked: root.open("https://github.com/notifications")
+            onClicked: root.openUrl("https://github.com/notifications")
         }
 
         PopupSeparator { shell: root.shell }
@@ -64,7 +65,7 @@ PopupCard {
                         : ""
                     value: String(modelData.count || 0)
                     active: modelData.count > 0
-                    onClicked: root.open("https://github.com/settings/security_analysis")
+                    onClicked: root.openUrl("https://github.com/settings/security_analysis")
                 }
             }
         }

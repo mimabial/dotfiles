@@ -121,7 +121,7 @@ Options:
     -r, --read                  Read current screen temperature and gamma
     -t, --toggle                Toggle hyprsunset (on/off)
     -q, --quiet                 Disable notifications
-    -P, --sigproc PROC,SIGNAL   Send signal to process (e.g., --sigproc waybar,19)
+    -P, --sigproc PROC,SIGNAL   Send signal to a process (for example: process,10)
     -h, --help                  Show this help message
 
 Examples:
@@ -133,7 +133,7 @@ Examples:
     $(basename "$0") --cm gamma -d 10       # Decrease gamma by 10
     $(basename "$0") --cm gamma -s 80       # Set gamma to 80
     $(basename "$0") -t --quiet             # Toggle mode quietly
-    $(basename "$0") --sigproc waybar,19    # Send SIGUSR1 to waybar
+    $(basename "$0") --sigproc process,10   # Send SIGUSR1 to a process
 EOF
 }
 
@@ -511,7 +511,7 @@ JSON
 
 main() {
   local -A options=(
-    [notify]="${waybar_temperature_notification:-true}"
+    [notify]="${HYPRSUNSET_NOTIFY:-true}"
     [action]=""
     [color_mode]="temp"
     [custom_step]=""

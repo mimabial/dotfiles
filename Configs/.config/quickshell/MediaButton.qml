@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 
 Item {
@@ -10,7 +11,9 @@ Item {
     property int albumArtSize: 18
     property int maxLabelWidth: 300
     property bool showControls: true
+    property bool controlsRight: false
     property bool showArtist: true
+    property bool randomizeProgressShape: false
     readonly property bool mprisAppearance: appearance === "mpris"
     readonly property var player: Media.player
     readonly property bool shown: player !== null
@@ -54,24 +57,29 @@ Item {
         }
     }
 
-    MediaPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled }
+    MediaPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled; randomizeProgressShape: root.randomizeProgressShape }
 
     Row {
         id: contents
         anchors.centerIn: parent
         spacing: Style.px(4)
+        layoutDirection: root.controlsRight ? Qt.RightToLeft : Qt.LeftToRight
         visible: root.mprisAppearance
 
-        TransportButton { iconText: "󰒮"; enabled: !!(root.player && root.player.canGoPrevious); visible: root.showControls && !root.vertical; onTriggered: Media.previous() }
-        TransportButton {
-            iconText: root.player && root.player.isPlaying ? "󰏤" : "󰐊"
-            enabled: !!(root.player && (root.player.canPlay || root.player.canPause || root.player.canTogglePlaying))
-            visible: root.showControls
-            onTriggered: Media.playPause()
+        Row {
+            spacing: Style.px(4); layoutDirection: Qt.LeftToRight; visible: root.showControls
+            TransportButton { iconText: "󰒮"; enabled: !!(root.player && root.player.canGoPrevious); visible: !root.vertical; onTriggered: Media.previous() }
+            TransportButton {
+                iconText: root.player && root.player.isPlaying ? "󰏤" : "󰐊"
+                enabled: !!(root.player && (root.player.canPlay || root.player.canPause || root.player.canTogglePlaying))
+                onTriggered: Media.playPause()
+            }
+            TransportButton { iconText: "󰒭"; enabled: !!(root.player && root.player.canGoNext); visible: !root.vertical; onTriggered: Media.next() }
         }
-        TransportButton { iconText: "󰒭"; enabled: !!(root.player && root.player.canGoNext); visible: root.showControls && !root.vertical; onTriggered: Media.next() }
 
-        Item {
+        Row {
+          spacing: Style.px(4); layoutDirection: Qt.LeftToRight; visible: !root.vertical
+          Item {
             id: artContainer
             width: root.artSize; height: root.artSize
             anchors.verticalCenter: parent.verticalCenter
@@ -102,7 +110,7 @@ Item {
             }
         }
 
-        Item {
+          Item {
             id: labelClip
             width: Math.min(Style.px(root.maxLabelWidth), label.implicitWidth)
             height: Math.max(root.artSize, label.implicitHeight)
@@ -126,6 +134,7 @@ Item {
                 onClicked: event => root.metadataClick(event.button)
                 onWheel: event => root.wheel(event.angleDelta.y)
             }
+          }
         }
     }
 

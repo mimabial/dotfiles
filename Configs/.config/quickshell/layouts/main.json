@@ -25,7 +25,7 @@
   },
   "submap",
   "spacer",
-  "mediaplayer",
+  { "id": "mediaplayer", "props": { "randomizeProgressShape": true } },
   {
     "id": "eyecare",
     "props": {
@@ -41,7 +41,6 @@
     }
   },
   "privacybutton",
-  "agents",
   {
     "id": "terminal",
     "props": {
@@ -56,6 +55,5 @@
     }
   },
   "connectivity",
-  "converter",
   "menu"
 ]

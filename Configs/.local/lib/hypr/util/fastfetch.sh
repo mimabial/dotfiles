@@ -100,12 +100,20 @@ fastfetch_select_logo_ui() {
   shift
   local -a labels=("$@")
   local selected_label=""
+  local -a font_args=()
 
   if command -v rofi >/dev/null 2>&1 && { [[ -n "${WAYLAND_DISPLAY:-}" ]] || [[ -n "${DISPLAY:-}" ]]; }; then
+    # rofi's size is resolved per launch; config.rasi only carries the family.
+    # Sourced here rather than at the top so the terminal path stays standalone.
+    if [[ -r "${lib_root}/rofi/rofi.lib.bash" ]]; then
+      # shellcheck source=/dev/null
+      source "${lib_root}/rofi/rofi.lib.bash"
+      font_args=(-theme-str "$(rofi_font_override "$(rofi_effective_font_name)" "$(rofi_effective_font_scale)")")
+    fi
     if [[ -n "${current_label}" ]]; then
-      selected_label="$(printf '%s\n' "${labels[@]}" | rofi -dmenu -i -p "Fastfetch logo" -select "${current_label}")"
+      selected_label="$(printf '%s\n' "${labels[@]}" | rofi -dmenu -i -p "Fastfetch logo" "${font_args[@]}" -select "${current_label}")"
     else
-      selected_label="$(printf '%s\n' "${labels[@]}" | rofi -dmenu -i -p "Fastfetch logo")"
+      selected_label="$(printf '%s\n' "${labels[@]}" | rofi -dmenu -i -p "Fastfetch logo" "${font_args[@]}")"
     fi
   elif command -v fzf >/dev/null 2>&1; then
     selected_label="$(printf '%s\n' "${labels[@]}" | fzf --prompt="Fastfetch logo > " --reverse --select-1 --query="${current_label}")"

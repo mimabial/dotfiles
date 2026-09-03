@@ -20,9 +20,10 @@ usage() {
 Usage: hyprshell fonts/font-get.sh <kind>
 
 Kinds:
-  mono   -> $MONOSPACE_FONT (fallback to native monospace)
-  bar    -> $BAR_FONT (fallback to $FONT, then native monospace)
-  menu   -> $MENU_FONT (fallback to $FONT, then native monospace)
+  mono     -> $MONOSPACE_FONT (fallback to native monospace)
+  bar      -> $BAR_FONT (fallback to native monospace)
+  bar-icon -> $BAR_ICON_FONT (fallback to CaskaydiaCove Nerd Font)
+  menu     -> $MENU_FONT (fallback to native monospace)
 EOF
 }
 

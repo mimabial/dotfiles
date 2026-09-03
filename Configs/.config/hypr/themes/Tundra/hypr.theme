@@ -3,9 +3,14 @@ $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 $ICON_THEME = MacTahoe-dark
 $COLOR_SCHEME = prefer-dark
 $CURSOR_THEME = MacTahoe-dark-cursors
-$CURSOR_SIZE = 30
+$CURSOR_SIZE = 40
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
+$FONT = ZedMono Nerd Font
+$BAR_FONT = ZedMono Nerd Font
+$MENU_FONT = ZedMono Nerd Font
+$MONOSPACE_FONT = ZedMono Nerd Font
+$NOTIFICATION_FONT = ZedMono Nerd Font Mono
 
 general {
     gaps_in = 7
@@ -47,5 +52,3 @@ decoration {
         xray = false
     }
 }
-
-layerrule = blur on, match:namespace waybar

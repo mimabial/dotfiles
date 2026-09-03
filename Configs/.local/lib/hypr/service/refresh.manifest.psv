@@ -17,9 +17,5 @@ hypr-state|state|file|preserve|never|hypr/workflows.lua
 hyprlock|config|file|preserve|never|hypr/hyprlock.conf
 hypridle|config|file|preserve|never|hypr/hypridle.conf
 
-# Waybar split
-waybar|config|file|preserve|never|waybar/config.jsonc
-waybar|config|file|preserve|never|waybar/style.css
-
 # Rofi split
 rofi|config|file|preserve|never|rofi/config.rasi

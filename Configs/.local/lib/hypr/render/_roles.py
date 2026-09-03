@@ -114,7 +114,14 @@ def _resolve_shared_roles(source, bg, fg, colors):
 
 
 def _resolve_roles(bg, fg, colors, is_dark):
-    normal_surface = colors.get("color0", bg) if is_dark else colors.get("color7", bg)
+    # color0/color7 are the palette's surface pair, but not every theme follows the
+    # ANSI convention that color0 is the dark end -- some light packs put their ink
+    # in color7. Pick by luminance so an inverted palette can't hand back its
+    # darkest colour as a surface that then gets fg-coloured text drawn on it.
+    pair = [color for color in (colors.get("color0"), colors.get("color7")) if color]
+    normal_surface = (
+        min(pair, key=lambda color: abs(luminance(color) - luminance(bg))) if pair else bg
+    )
     return {
         "normal_surface": normal_surface,
         "window_surface": bg,

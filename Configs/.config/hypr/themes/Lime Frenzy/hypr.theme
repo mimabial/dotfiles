@@ -9,6 +9,11 @@ $NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME = Gruvbox-Retro
 $CURSOR_SIZE = 28
+$FONT = Monoid Nerd Font
+$BAR_FONT = Monoid Nerd Font
+$MENU_FONT = Monoid Nerd Font
+$MONOSPACE_FONT = Monoid Nerd Font
+$NOTIFICATION_FONT = Monoid Nerd Font Mono
 
 general {
     gaps_in = 3

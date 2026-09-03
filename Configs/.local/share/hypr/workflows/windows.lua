@@ -4,8 +4,7 @@ local vars = require("vars")
 
 vars.set("WORKFLOW_ICON", "󰽏")
 vars.set("WORKFLOW_DESCRIPTION", "Window-focused workspace // Uses scrolling and winbar with effects disabled")
-vars.set("WORKFLOW_WAYBAR_OPACITY", "0.5")
-vars.set("WORKFLOW_WAYBAR_LAYOUT", "winbar")
+vars.set("WORKFLOW_QUICKSHELL_LAYOUT", "winbar")
 runtime.config("decoration.shadow.enabled", 0)
 runtime.config("decoration.blur.enabled", 0)
 runtime.config("decoration.blur.xray", 1)
@@ -17,7 +16,7 @@ runtime.config("general.gaps_in", 3)
 runtime.config("general.gaps_out", 6)
 runtime.config("general.border_size", 2)
 runtime.config("animations.enabled", 1)
-hl.layer_rule({ ["name"] = "lua:workflow:windows:29", ["match"] = { ["namespace"] = "waybar" }, ["animation"] = "none" })
+hl.layer_rule({ ["name"] = "lua:workflow:windows:29", ["match"] = { ["namespace"] = "hypr-shell-bar" }, ["animation"] = "none" })
 hl.layer_rule({
 	["name"] = "lua:workflow:windows:30",
 	["match"] = { ["namespace"] = "notifications" },

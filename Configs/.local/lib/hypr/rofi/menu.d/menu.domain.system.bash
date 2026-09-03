@@ -28,7 +28,6 @@ menu_register_domain_system() {
 
   menu_define update "Maintenance"
   menu_add_item update "󰏗  Update system packages" action update_system
-  menu_add_item update "  Restore stock configs" submenu update_config
   menu_add_item update "  Desktop processes" submenu update_process
   menu_add_item update "󰇅  Hardware recovery" submenu update_hardware
   menu_add_item update "  Update firmware" action update_firmware
@@ -44,16 +43,9 @@ menu_register_domain_system() {
   menu_define update_process "Desktop processes"
   menu_add_item update_process "  Restart Hypridle" action update_process_hypridle
   menu_add_item update_process "  Restart Hyprsunset" action update_process_hyprsunset
-  menu_add_item update_process "󰍜  Restart Waybar" action update_process_waybar
+  menu_add_item update_process "󰍜  Reload Quickshell" action update_process_quickshell
   menu_add_item update_process "󰀻  Close Rofi instances" action update_process_rofi
   menu_add_item update_process "󰒓  Restart desktop portals" action update_process_portals
-
-  menu_define update_config "Restore stock config"
-  menu_add_item update_config "  Restore stock Hyprland config" action update_config_hyprland
-  menu_add_item update_config "  Restore stock Hypridle config" action update_config_hypridle
-  menu_add_item update_config "  Restore stock Hyprlock config" action update_config_hyprlock
-  menu_add_item update_config "󰍜  Restore stock Waybar config" action update_config_waybar
-  menu_add_item update_config "󰀻  Restore stock Rofi config" action update_config_rofi
 
   menu_define update_hardware "Hardware recovery"
   menu_add_item update_hardware "  Restart audio service" action update_hardware_audio
@@ -97,19 +89,14 @@ menu_run_action_system() {
     update_time) present_terminal hyprshell system/time.sh ;;
     update_process_hypridle) hyprshell service/restart.sh hypridle ;;
     update_process_hyprsunset) hyprshell service/restart.sh hyprsunset ;;
-    update_process_waybar) hyprshell waybar.py --restart-direct ;;
-    update_managed_refresh) present_terminal hyprshell service/managed.sh --mode refresh hypr-config hypr-state hyprlock hypridle waybar rofi ;;
+    update_process_quickshell) quickshell ipc call bar reload ;;
+    update_managed_refresh) present_terminal hyprshell service/managed.sh --mode refresh hypr-config hypr-state hyprlock hypridle rofi ;;
     update_picker_db) present_terminal hyprshell rofi/picker-db-generate.py --boxdraw --glyph ;;
     update_wallpaper_cache) present_terminal hyprshell wallpaper/wallpaper.cache.sh -f ;;
     update_fonts_unused) present_terminal hyprshell fonts/find-unused.sh ;;
     update_debug_log) present_terminal hyprshell util/debug.hypr.sh ;;
     update_process_rofi) pkill -u "${UID:-$(id -u)}" -x rofi >/dev/null 2>&1 || true ;;
     update_process_portals) present_terminal hyprshell system/reset-xdg-portal.sh ;;
-    update_config_hyprland) present_terminal hyprshell service/domain.sh restore hypr-config ;;
-    update_config_hypridle) present_terminal hyprshell service/domain.sh restore hypridle ;;
-    update_config_hyprlock) present_terminal hyprshell service/domain.sh restore hyprlock ;;
-    update_config_waybar) present_terminal hyprshell service/domain.sh restore waybar ;;
-    update_config_rofi) present_terminal hyprshell service/domain.sh restore rofi ;;
     update_hardware_audio) present_terminal hyprshell service/restart.sh pipewire ;;
     update_hardware_wifi) present_terminal hyprshell service/restart.sh wifi ;;
     update_hardware_bluetooth) present_terminal hyprshell service/restart.sh bluetooth ;;

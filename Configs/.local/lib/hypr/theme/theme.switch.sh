@@ -27,7 +27,9 @@ source "${LIB_DIR}/hypr/theme/pairs.sh" || exit 1
 get_themes
 
 theme_switch_previous_theme="${HYPR_THEME:-}"
+theme_switch_previous_color_mode="${selected_color_mode:-}"
 theme_switch_state_updated=0
+theme_switch_auto_mode_changed=0
 theme_switch_metadata_file=""
 THEME_SWITCH_NOTIFY_ID="${THEME_SWITCH_NOTIFY_ID:-94}"
 THEME_SWITCH_NOTIFY_STACK_TAG="${THEME_SWITCH_NOTIFY_STACK_TAG:-theme-switch}"
@@ -172,6 +174,11 @@ cleanup_theme_switch() {
   if [[ "${exit_code}" -ne 0 ]] && [[ "${theme_switch_state_updated}" -eq 1 ]] && [[ -n "${theme_switch_previous_theme}" ]]; then
     state_set "HYPR_THEME" "${theme_switch_previous_theme}" "staterc" || true
   fi
+  if [[ "${exit_code}" -ne 0 ]] && [[ "${theme_switch_auto_mode_changed}" -eq 1 ]]; then
+    state_set "selected_color_mode" "${theme_switch_previous_color_mode}" "staterc" || true
+    hypr_svc_user start auto-theme || true
+    hypr_svc_user_signal auto-theme USR2 || true
+  fi
   [[ -n "${theme_switch_metadata_file}" && -e "${theme_switch_metadata_file}" ]] && rm -f -- "${theme_switch_metadata_file}"
   theme_notify_finish "${exit_code}"
   flock -u 201 2>/dev/null || true
@@ -181,6 +188,8 @@ trap 'cleanup_theme_switch "$?"' EXIT
 
 quiet=false
 themeSet=""
+theme_switch_selection_requested=0
+theme_switch_from_auto=0
 theme_switch_cache_args=()
 
 theme_switch_usage() {
@@ -195,6 +204,7 @@ Options:
       --regen             Regenerate colors and refresh cache
       --force-regenerate  Alias for --regen
       --no-cache          Bypass cache reads and writes
+      --from-auto         Preserve auto mode for scheduler-driven switches
 EOF
 }
 
@@ -202,9 +212,11 @@ parse_theme_switch_args() {
   while (($#)); do
     case "$1" in
       -n | --next)
+        theme_switch_selection_requested=1
         select_adjacent_theme n
         ;;
       -p | --previous | --prev)
+        theme_switch_selection_requested=1
         select_adjacent_theme p
         ;;
       -s | --set)
@@ -213,9 +225,11 @@ parse_theme_switch_args() {
           theme_switch_usage >&2
           exit 1
         fi
+        theme_switch_selection_requested=1
         themeSet="$1"
         ;;
       -s?*)
+        theme_switch_selection_requested=1
         themeSet="${1#-s}"
         ;;
       -q | --quiet)
@@ -226,6 +240,9 @@ parse_theme_switch_args() {
         ;;
       --no-cache)
         theme_switch_cache_args+=(--no-cache)
+        ;;
+      --from-auto)
+        theme_switch_from_auto=1
         ;;
       -h | --help)
         theme_switch_usage
@@ -240,7 +257,7 @@ parse_theme_switch_args() {
   done
 }
 
-set_active_theme() {
+resolve_theme_selection() {
   local theme_exists=0
   local theme_name=""
 
@@ -252,6 +269,9 @@ set_active_theme() {
   done
 
   [[ "${theme_exists}" -eq 1 ]] || themeSet="${HYPR_THEME}"
+}
+
+set_active_theme() {
   state_set "HYPR_THEME" "${themeSet}" "staterc"
   theme_switch_state_updated=1
   HYPR_THEME="${themeSet}"
@@ -270,9 +290,16 @@ prepare_active_theme_config() {
 theme_switch_reconcile_color_mode() {
   local mode polarity desired
   mode="${selected_color_mode}"
-  [[ "${mode}" == "2" || "${mode}" == "3" ]] || return 0
-  polarity="$(theme_polarity "${HYPR_THEME}")"
+  [[ "${mode}" =~ ^[1-3]$ ]] || return 0
+  polarity="$(theme_polarity "${themeSet}")"
   [[ "${polarity}" == "light" ]] && desired=3 || desired=2
+
+  if [[ "${mode}" == "1" ]]; then
+    [[ "${theme_switch_selection_requested}" -eq 1 && "${theme_switch_from_auto}" -eq 0 ]] || return 0
+    theme_switch_auto_mode_changed=1
+    hypr_svc_user stop auto-theme || true
+  fi
+
   [[ "${desired}" == "${mode}" ]] && return 0
   state_set "selected_color_mode" "${desired}" "staterc"
   selected_color_mode="${desired}"
@@ -283,8 +310,9 @@ main() {
   local -a theme_apply_cmd=("${LIB_DIR}/hypr/theme/theme.apply.sh")
 
   parse_theme_switch_args "$@"
-  set_active_theme
+  resolve_theme_selection
   theme_switch_reconcile_color_mode
+  set_active_theme
   prepare_active_theme_config || exit 1
   [[ "${quiet}" == "true" ]] && theme_apply_cmd+=(--quiet)
   theme_apply_cmd+=("${theme_switch_cache_args[@]}")

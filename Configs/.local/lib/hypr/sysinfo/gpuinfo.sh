@@ -16,7 +16,7 @@ set -euo pipefail
 source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
 
 hypr_help_guard "Usage: hyprshell sysinfo/gpuinfo [--toggle|--use <gpu>|--reset|--stat <amd|intel|nvidia>]
-Emit GPU stats as waybar JSON; flags manage GPU selection and cached state." "$@"
+Emit GPU stats as bar JSON; flags manage GPU selection and cached state." "$@"
 
 script_dir=$(dirname "$(realpath "$0")")
 gpuinfo_file="${TMPDIR:-/tmp}/hypr-${UID}-gpuinfo"
@@ -132,8 +132,6 @@ case "${1:-}" in
         exit 1
         ;;
     esac
-    echo "GPU not enabled."
-    exit 1
     ;;
   *"-"*)
     GPUINFO_AVAILABLE=${GPUINFO_AVAILABLE//GPUINFO_/}
@@ -141,7 +139,7 @@ case "${1:-}" in
   Available GPU: ${GPUINFO_AVAILABLE//_ENABLE/}
 [options]
 --toggle         * Toggle available GPU
---use [GPU]      * Only call the specified GPU (Useful for adding specific GPU on waybar)
+--use [GPU]      * Only call the specified GPU
 --reset          *  Remove & restart all query
 
 [flags]
@@ -176,4 +174,4 @@ if [[ -n "${utilization}" && "${utilization}" != "N/A" ]]; then
   fi
 fi
 
-generate_json #? AutoGen the Json txt for Waybar
+generate_json

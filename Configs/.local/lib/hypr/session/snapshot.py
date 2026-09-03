@@ -32,7 +32,6 @@ BLACKLIST_EXE = {
     "xdg-permission-store",
     "dbus-daemon",
     "dbus-broker",
-    "waybar",
     "ags",
     "eww",
     "dunst",

@@ -32,6 +32,7 @@ SOCK_PATH = os.path.join(RUN_DIR, "mpv.sock")
 STREAM_FIFO = os.path.join(RUN_DIR, "stream.fifo")
 STREAM_PID_FILE = os.path.join(RUN_DIR, "stream_ytdlp.pid")
 SPECTRUM_PID_FILE = os.path.join(RUN_DIR, "spectrum.pid")
+SPECTRUM_TARGET_FILE = os.path.join(RUN_DIR, "spectrum-target.json")
 MPRIS_PLUGIN = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mpris.so")
 MPRIS_SYSTEM_PATHS = (
     "/etc/mpv/scripts/mpris.so",
@@ -328,7 +329,25 @@ def is_mpv_running(timeout=0.2):
     res = send_mpv_cmd(["get_property", "idle-active"], timeout=timeout)
     return res is not None and res.get("error") == "success"
 
-def start_spectrum_daemon():
+def write_spectrum_target(selectors=None):
+    values = []
+    for value in selectors or ("cliamp", "mpv"):
+        value = str(value).strip()[:160]
+        if value and value not in values:
+            values.append(value)
+    temporary = SPECTRUM_TARGET_FILE + ".tmp"
+    try:
+        with os.fdopen(os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600), "w") as target:
+            json.dump({"selectors": values or ["cliamp", "mpv"]}, target, separators=(",", ":"))
+        os.replace(temporary, SPECTRUM_TARGET_FILE)
+    except (OSError, TypeError):
+        try:
+            os.remove(temporary)
+        except OSError:
+            pass
+
+def start_spectrum_daemon(selectors=None):
+    write_spectrum_target(selectors)
     if os.path.exists(SPECTRUM_PID_FILE):
         try:
             with open(SPECTRUM_PID_FILE, "r", encoding="utf-8") as f:
@@ -619,10 +638,33 @@ EQ_FREQS = [31.25, 62.5, 125, 250, 500, 1000, 2000, 4000, 8000, 16000]
 EQ_CACHE_FILE = os.path.join(CACHE_DIR, "eq.json")
 VIS_MODE_FILE = os.path.join(CACHE_DIR, "vis_mode.txt")
 VIS_MODES = {
-    "bars", "peaks",
+    "bars", "bricks", "columns", "classic_led",
+    "peaks", "stereo", "correlation", "ascii",
+    "wave", "scope", "sine", "heartbeat",
     "siriwave", "soundcloud_wave", "telegram_wave",
-    "stereo", "ascii",
+    "daw_wave", "led_scrubber", "heatmap_wave", "grounded_wave",
+    "retro", "matrix", "binary", "terrain", "mosaic",
+    "scatter", "butterfly",
+    "plasma", "osc_warp", "crt_scanline", "cyber_tunnel",
 }
+
+VIS_BG_FILE = os.path.join(CACHE_DIR, "vis_bg.txt")
+
+def get_vis_bg():
+    try:
+        with open(VIS_BG_FILE, "r", encoding="utf-8") as f:
+            return f.read().strip() == "1"
+    except Exception:
+        return False
+
+def set_vis_bg(enabled):
+    try:
+        os.makedirs(CACHE_DIR, exist_ok=True)
+        with open(VIS_BG_FILE, "w", encoding="utf-8") as f:
+            f.write("1" if enabled else "0")
+        return {"success": True, "vis_bg": bool(enabled)}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 def get_vis_mode():
     if os.path.exists(VIS_MODE_FILE):
@@ -747,7 +789,9 @@ def get_status():
             "volume_pct": 80,
             "shuffle": False,
             "repeat": "off",
-            "eq": cur_eq
+            "eq": cur_eq,
+            "vis_mode": get_vis_mode(),
+            "vis_bg": get_vis_bg()
         }
 
     try:
@@ -853,6 +897,7 @@ def get_status():
             "eq": cur_fx.get("eq", "Flat"),
             "audio_fx": cur_fx,
             "vis_mode": get_vis_mode(),
+            "vis_bg": get_vis_bg(),
             "resume": resume
         }
     except Exception as e:
@@ -875,7 +920,8 @@ def get_status():
             "repeat": "off",
             "eq": cur_fx.get("eq", "Flat"),
             "audio_fx": cur_fx,
-            "vis_mode": get_vis_mode()
+            "vis_mode": get_vis_mode(),
+            "vis_bg": get_vis_bg()
         }
 
 def resolve_spotify_url(url):
@@ -1431,7 +1477,7 @@ if __name__ == "__main__":
             send_mpv_cmd(["cycle", "pause"])
         print(json.dumps({"success": True}))
     elif action == "start_spectrum":
-        start_spectrum_daemon()
+        start_spectrum_daemon(sys.argv[2:])
         print(json.dumps({"success": True}))
     elif action == "stop_spectrum":
         stop_spectrum_daemon()
@@ -1531,5 +1577,9 @@ if __name__ == "__main__":
         print(json.dumps(set_vis_mode(mode)))
     elif action == "get_vis_mode":
         print(json.dumps({"vis_mode": get_vis_mode()}))
+    elif action == "set_vis_bg":
+        print(json.dumps(set_vis_bg(len(sys.argv) > 2 and sys.argv[2] in ("1", "true", "on"))))
+    elif action == "get_vis_bg":
+        print(json.dumps({"vis_bg": get_vis_bg()}))
     else:
         print(json.dumps({"error": f"Unknown action {action}"}))

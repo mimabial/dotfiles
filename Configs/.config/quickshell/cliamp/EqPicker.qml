@@ -39,27 +39,27 @@ BorderSurface {
       Text {
         anchors.verticalCenter: parent.verticalCenter
         text: "\uf1de"
-        color: Color.accent; font.family: p ? p.fontFamily : "sans-serif"; font.pixelSize: Style.font.caption
+        color: Color.accent; font.family: root.p ? root.p.fontFamily : "sans-serif"; font.pixelSize: Style.font.caption
       }
 
       Text {
         width: parent.width - Style.space(48)
         anchors.verticalCenter: parent.verticalCenter
-        text: "Equalizer Profiles (" + (p ? p.eqText : "Flat") + ")"
-        color: p ? p.foreground : Color.foreground
-        font.family: p ? p.fontFamily : "sans-serif"
+        text: "Equalizer Profiles (" + (root.p ? root.p.eqText : "Flat") + ")"
+        color: root.p ? root.p.foreground : Color.foreground
+        font.family: root.p ? root.p.fontFamily : "sans-serif"
         font.pixelSize: Style.font.caption; font.bold: true
       }
 
       Text {
         anchors.verticalCenter: parent.verticalCenter
         text: "\uf00d"
-        color: closeEqMouse.containsMouse ? Color.accent : (p ? p.dim : Color.foreground)
-        font.family: p ? p.fontFamily : "sans-serif"; font.pixelSize: Style.font.caption
+        color: closeEqMouse.containsMouse ? Color.accent : (root.p ? root.p.dim : Color.foreground)
+        font.family: root.p ? root.p.fontFamily : "sans-serif"; font.pixelSize: Style.font.caption
         MouseArea {
           id: closeEqMouse
           anchors.fill: parent; cursorShape: Qt.PointingHandCursor; hoverEnabled: true
-          onClicked: if (p) p.eqPickerOpen = false
+          onClicked: if (root.p) root.p.eqPickerOpen = false
         }
       }
     }
@@ -71,13 +71,13 @@ BorderSurface {
 
       Rectangle {
         id: loudnormBtn
-        readonly property bool active: p && p.audioFx && p.audioFx.loudnorm
+        readonly property bool active: root.p && root.p.audioFx && root.p.audioFx.loudnorm
         width: (parent.width - Style.space(6)) / 2
         height: Style.space(24)
         radius: Style.space(4)
         color: active ? Color.menu.selectedBackground
-          : (loudMouse.containsMouse ? (p ? p.shell.hoverFill(1) : Color.menu.selectedBackground)
-            : (p ? p.shell.alpha(p.surface, 0.8) : Color.popups.background))
+          : (loudMouse.containsMouse ? (root.p ? root.p.shell.hoverFill(1) : Color.menu.selectedBackground)
+            : (root.p ? root.p.shell.alpha(root.p.surface, 0.8) : Color.popups.background))
         border.width: 1
         border.color: active || loudMouse.containsMouse ? Color.menu.selectedBorder : "transparent"
 
@@ -86,14 +86,14 @@ BorderSurface {
           spacing: Style.space(4)
           Text {
             text: "\uf028"
-            color: loudnormBtn.active ? Color.menu.selectedText : (p ? p.dim : Color.foreground)
-            font.family: p ? p.fontFamily : "sans-serif"; font.pixelSize: Style.font.caption * 0.8
+            color: loudnormBtn.active ? Color.menu.selectedText : (root.p ? root.p.dim : Color.foreground)
+            font.family: root.p ? root.p.fontFamily : "sans-serif"; font.pixelSize: Style.font.caption * 0.8
             anchors.verticalCenter: parent.verticalCenter
           }
           Text {
             text: "Normalizer"
-            color: loudnormBtn.active ? Color.menu.selectedText : (p ? p.foreground : Color.foreground)
-            font.family: p ? p.fontFamily : "sans-serif"; font.pixelSize: Style.font.caption * 0.8
+            color: loudnormBtn.active ? Color.menu.selectedText : (root.p ? root.p.foreground : Color.foreground)
+            font.family: root.p ? root.p.fontFamily : "sans-serif"; font.pixelSize: Style.font.caption * 0.8
             font.bold: loudnormBtn.active
             anchors.verticalCenter: parent.verticalCenter
           }
@@ -101,19 +101,19 @@ BorderSurface {
 
         MouseArea {
           id: loudMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-          onClicked: if (p) p.toggleLoudnorm()
+          onClicked: if (root.p) root.p.toggleLoudnorm()
         }
       }
 
       Rectangle {
         id: spatialBtn
-        readonly property bool active: p && p.audioFx && p.audioFx.spatial
+        readonly property bool active: root.p && root.p.audioFx && root.p.audioFx.spatial
         width: (parent.width - Style.space(6)) / 2
         height: Style.space(24)
         radius: Style.space(4)
         color: active ? Color.menu.selectedBackground
-          : (spatialMouse.containsMouse ? (p ? p.shell.hoverFill(1) : Color.menu.selectedBackground)
-            : (p ? p.shell.alpha(p.surface, 0.8) : Color.popups.background))
+          : (spatialMouse.containsMouse ? (root.p ? root.p.shell.hoverFill(1) : Color.menu.selectedBackground)
+            : (root.p ? root.p.shell.alpha(root.p.surface, 0.8) : Color.popups.background))
         border.width: 1
         border.color: active || spatialMouse.containsMouse ? Color.menu.selectedBorder : "transparent"
 
@@ -122,14 +122,14 @@ BorderSurface {
           spacing: Style.space(4)
           Text {
             text: "\uf025"
-            color: spatialBtn.active ? Color.menu.selectedText : (p ? p.dim : Color.foreground)
-            font.family: p ? p.fontFamily : "sans-serif"; font.pixelSize: Style.font.caption * 0.8
+            color: spatialBtn.active ? Color.menu.selectedText : (root.p ? root.p.dim : Color.foreground)
+            font.family: root.p ? root.p.fontFamily : "sans-serif"; font.pixelSize: Style.font.caption * 0.8
             anchors.verticalCenter: parent.verticalCenter
           }
           Text {
             text: "3D Spatial"
-            color: spatialBtn.active ? Color.menu.selectedText : (p ? p.foreground : Color.foreground)
-            font.family: p ? p.fontFamily : "sans-serif"; font.pixelSize: Style.font.caption * 0.8
+            color: spatialBtn.active ? Color.menu.selectedText : (root.p ? root.p.foreground : Color.foreground)
+            font.family: root.p ? root.p.fontFamily : "sans-serif"; font.pixelSize: Style.font.caption * 0.8
             font.bold: spatialBtn.active
             anchors.verticalCenter: parent.verticalCenter
           }
@@ -137,7 +137,7 @@ BorderSurface {
 
         MouseArea {
           id: spatialMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-          onClicked: if (p) p.toggleSpatial()
+          onClicked: if (root.p) root.p.toggleSpatial()
         }
       }
     }
@@ -158,13 +158,14 @@ BorderSurface {
         Repeater {
           model: root.presets
           delegate: Rectangle {
+            required property var modelData
             id: presetRow
-            readonly property bool isActive: p && p.eqText === modelData.id
+            readonly property bool isActive: root.p && root.p.eqText === modelData.id
             width: parent.width
             height: Style.space(32)
             radius: Style.space(4)
             color: isActive ? Color.menu.selectedBackground
-              : (rowMouse.containsMouse ? (p ? p.shell.hoverFill(1) : Color.menu.selectedBackground) : "transparent")
+              : (rowMouse.containsMouse ? (root.p ? root.p.shell.hoverFill(1) : Color.menu.selectedBackground) : "transparent")
             border.width: 1
             border.color: isActive || rowMouse.containsMouse ? Color.menu.selectedBorder : "transparent"
 
@@ -175,8 +176,8 @@ BorderSurface {
 
               Text {
                 text: modelData.icon
-                color: presetRow.isActive ? Color.menu.selectedText : (p ? p.foreground : Color.foreground)
-                font.family: p ? p.fontFamily : "sans-serif"
+                color: presetRow.isActive ? Color.menu.selectedText : (root.p ? root.p.foreground : Color.foreground)
+                font.family: root.p ? root.p.fontFamily : "sans-serif"
                 font.pixelSize: Style.font.caption
                 anchors.verticalCenter: parent.verticalCenter
               }
@@ -189,8 +190,8 @@ BorderSurface {
                 Text {
                   width: parent.width
                   text: modelData.name
-                  color: presetRow.isActive ? Color.menu.selectedText : (p ? p.foreground : Color.foreground)
-                  font.family: p ? p.fontFamily : "sans-serif"
+                  color: presetRow.isActive ? Color.menu.selectedText : (root.p ? root.p.foreground : Color.foreground)
+                  font.family: root.p ? root.p.fontFamily : "sans-serif"
                   font.pixelSize: Style.font.caption
                   font.bold: presetRow.isActive
                   elide: Text.ElideRight
@@ -199,8 +200,8 @@ BorderSurface {
                 Text {
                   width: parent.width
                   text: modelData.desc
-                  color: p ? p.dim : Color.foreground
-                  font.family: p ? p.fontFamily : "sans-serif"
+                  color: root.p ? root.p.dim : Color.foreground
+                  font.family: root.p ? root.p.fontFamily : "sans-serif"
                   font.pixelSize: Style.font.caption * 0.8
                   elide: Text.ElideRight
                 }
@@ -211,7 +212,7 @@ BorderSurface {
                 anchors.verticalCenter: parent.verticalCenter
                 text: "\uf00c"
                 color: Color.menu.selectedText
-                font.family: p ? p.fontFamily : "sans-serif"
+                font.family: root.p ? root.p.fontFamily : "sans-serif"
                 font.pixelSize: Style.font.caption * 0.8
               }
             }
@@ -220,7 +221,7 @@ BorderSurface {
               id: rowMouse
               anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
               onClicked: {
-                if (p) p.setEq(modelData.id)
+                if (root.p) root.p.setEq(modelData.id)
               }
             }
           }

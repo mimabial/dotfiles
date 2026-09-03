@@ -36,6 +36,7 @@ is_internal_script() {
   local rel_path="$1"
   case "${rel_path}" in
     core/* | runtime/* | pyutils/* | shell/lib/* | shell/*) return 0 ;;
+    _* | */_*) return 0 ;;
     *.lib.sh | *.lib.bash | *.lib.py) return 0 ;;
     *.common.sh | *.common.bash | *.common.py) return 0 ;;
     *_lib.sh | *_lib.bash | *_lib.py) return 0 ;;

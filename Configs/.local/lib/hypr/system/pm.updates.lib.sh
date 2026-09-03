@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Shared package-update queries for pm.sh (count/list-updates CLI) and
-# system.update.sh (waybar widget). Each runs one source's query and writes its
+# system.update.sh bar provider. Each runs one source's query and writes its
 # raw update lines to stdout; callers own exit-handling, labelling and format.
 # checkupdates exits 2 when there are no updates -- both callers already treat
 # 1/2 as "no updates", so these pass the exit code through unchanged.

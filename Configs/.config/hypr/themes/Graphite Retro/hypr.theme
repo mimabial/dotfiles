@@ -10,6 +10,11 @@ $NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME = Vimix-cursors
 $CURSOR_SIZE = 30
+$FONT = SpaceMono Nerd Font
+$BAR_FONT = SpaceMono Nerd Font
+$MENU_FONT = SpaceMono Nerd Font
+$MONOSPACE_FONT = SpaceMono Nerd Font
+$NOTIFICATION_FONT = SpaceMono Nerd Font Mono
 
 general {
     gaps_in = 6

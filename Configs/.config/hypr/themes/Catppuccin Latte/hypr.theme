@@ -7,9 +7,14 @@ $NVIM_VARIANT = latte
 $NVIM_BACKGROUND = light
 $NVIM_TRANSPARENCY = false
 
-# $CURSOR_THEME = Layan-border-cursors
-$CURSOR_THEME = FrierenBLZ
-$CURSOR_SIZE = 34
+$CURSOR_THEME = Layan-border-cursors
+# $CURSOR_THEME = FrierenBLZ
+$CURSOR_SIZE = 40
+$FONT = MonaspiceAr Nerd Font
+$BAR_FONT = MonaspiceAr Nerd Font
+$MENU_FONT = MonaspiceAr Nerd Font
+$MONOSPACE_FONT = MonaspiceAr Nerd Font
+$NOTIFICATION_FONT = MonaspiceAr Nerd Font Mono
 
 # Theme variables above are the primary inputs used by theme.switch.sh.
 
@@ -43,5 +48,3 @@ decoration {
         xray = false
     }
 }
-
-layerrule = blur on, match:namespace waybar

@@ -1,11 +1,13 @@
 pragma Singleton
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import Quickshell.Services.Mpris
 
 Singleton {
     id: root
     property int tick: 0
+    property string selectedPlayer: ""
     readonly property var players: Mpris.players ? Mpris.players.values : []
     readonly property var sourcePlayers: availablePlayers()
     readonly property var player: chooseActivePlayer()
@@ -19,7 +21,7 @@ Singleton {
     readonly property real elapsed: { tick; return player && player.positionSupported ? player.position : 0 }
 
     function playerKey(player) {
-        return player ? String(player.dbusName || player.desktopEntry || player.identity || player.uniqueId || "") : ""
+        return player ? String(player.dbusName || player.desktopEntry || player.identity || player.uniqueId || "").replace(/^org\.mpris\.MediaPlayer2\./, "") : ""
     }
     function displayArtist(player) {
         if (!player) return ""
@@ -49,7 +51,7 @@ Singleton {
     function availablePlayers() { return players.filter(player => isAvailable(player)) }
     function preferredPlayer() {
         for (let i = 0; i < sourcePlayers.length; ++i)
-            if (playerKey(sourcePlayers[i]) === store.lastPlayer) return sourcePlayers[i]
+            if (playerKey(sourcePlayers[i]) === selectedPlayer) return sourcePlayers[i]
         return null
     }
     function firstMatching(playing, proxy) {
@@ -71,7 +73,10 @@ Singleton {
         const pad = value => String(value).padStart(2, "0")
         return h ? h + ":" + pad(m) + ":" + pad(s) : m + ":" + pad(s)
     }
-    function select(player) { if (player) store.lastPlayer = playerKey(player) }
+    function select(player) {
+        const key = playerKey(player)
+        if (key && key !== selectedPlayer) { selectedPlayer = key; selection.setText(JSON.stringify({ player: key, updated_at: Date.now() / 1000 }) + "\n") }
+    }
     function playPause() {
         const target = player
         if (!target) return false
@@ -126,7 +131,12 @@ Singleton {
         }
     }
 
-    PersistentProperties { id: store; property string lastPlayer: "" }
+    FileView {
+        id: selection
+        path: Quickshell.env("HOME") + "/.local/state/hypr/mediaplayer.json"; watchChanges: true; printErrors: false; atomicWrites: true
+        onLoaded: { try { root.selectedPlayer = String(JSON.parse(selection.text()).player || "") } catch (error) { root.selectedPlayer = "" } }
+        onFileChanged: selection.reload()
+    }
     Timer { interval: 1000; repeat: true; running: root.player && root.player.isPlaying; onTriggered: ++root.tick }
 
 }

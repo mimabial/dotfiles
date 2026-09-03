@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
-# Wallpaper-aware width override + post-clamp reduction for waybar/gaps/border.
+# Wallpaper-aware width override + post-clamp reduction for the bar/gaps/border.
 
 rofi_wallpaper_post_clamp_reduction_px() {
   local theme_name="$1"
   local layers_json=""
   local focused_monitor_name=""
-  local waybar_width_px="0"
+  local bar_width_px="0"
   local gaps_out_px="0"
   local border_size_px="0"
-  local waybar_width_milli=0
+  local bar_width_milli=0
   local gaps_out_milli=0
   local border_size_milli=0
   local reduction_milli=0
@@ -35,14 +35,14 @@ rofi_wallpaper_post_clamp_reduction_px() {
   if [[ -n "${focused_monitor_name}" ]]; then
     layers_json="$(rofi_layers_json)"
     if [[ "${layers_json}" == \{* ]]; then
-      waybar_width_px="$(
+      bar_width_px="$(
         printf '%s\n' "${layers_json}" | jq -r --arg mon "${focused_monitor_name}" '
-          .[$mon].levels[]?[]? | select(.namespace=="hypr-shell-bar" or .namespace=="waybar") | .w
+          .[$mon].levels[]?[]? | select(.namespace=="hypr-shell-bar") | .w
         ' 2>/dev/null | head -n 1
       )"
     fi
   fi
-  waybar_width_milli="$(rofi_decimal_milli_or_zero "${waybar_width_px}")"
+  bar_width_milli="$(rofi_decimal_milli_or_zero "${bar_width_px}")"
 
   local gaps_json=""
   gaps_json="$(rofi_option_json general:gaps_out)"
@@ -70,7 +70,7 @@ rofi_wallpaper_post_clamp_reduction_px() {
   fi
   border_size_milli="$(rofi_decimal_milli_or_zero "${border_size_px}")"
 
-  reduction_milli=$((waybar_width_milli + (gaps_out_milli * 4) + (border_size_milli * 2)))
+  reduction_milli=$((bar_width_milli + (gaps_out_milli * 4) + (border_size_milli * 2)))
   rofi_milli_to_fixed2 "${reduction_milli}"
 }
 

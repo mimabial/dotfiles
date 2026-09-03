@@ -14,13 +14,13 @@ PopupWindow {
     property int padding: Style.popupPadding
     property color background: shell.role("bg", "#0c1021")
     property color borderColor: shell.role("alt_br", shell.foreground)
-    property real surfaceOpacity: 0.94
+    property real surfaceOpacity: 0.92
     property real borderOpacity: 0.45
     // windows that belong to this panel and must not dismiss it (submenu flyouts)
     property var extraGrabWindows: []
     readonly property bool open: popupEnabled && shell.popupName === popupName
     readonly property var anchorWindow: anchorItem ? anchorItem.QsWindow.window : null
-    readonly property string position: shell.layoutName === "main" ? "right" : ["left", "sidebar"].includes(shell.layoutName) ? "left" : shell.layoutName === "top" ? "top" : "bottom"
+    readonly property string position: ["main", "alt"].includes(shell.layoutName) ? "right" : ["left", "sidebar"].includes(shell.layoutName) ? "left" : shell.layoutName === "top" ? "top" : "bottom"
     // Keep controllers/timers beside visual content. Item.data accepts both
     // QObjects and Items; visual entries still become holder.children.
     default property alias content: holder.data
@@ -45,7 +45,8 @@ PopupWindow {
 
     function collectRows(item, found) {
         for (const child of item.children) {
-            if (child.navigable === true && child.visible) found.push(child)
+            if (!child.visible) continue
+            if (child.navigable === true) found.push(child)
             if (child.children) collectRows(child, found)
         }
         return found
@@ -66,10 +67,16 @@ PopupWindow {
             ? (step > 0 ? 0 : navigableRows.length - 1)
             : (cursorIndex + step + navigableRows.length) % navigableRows.length
     }
+    function selectRow(item) {
+        rebuildRows()
+        const index = navigableRows.indexOf(item)
+        if (index >= 0) cursorIndex = index
+    }
     function activateCursor() {
         if (cursorIndex >= 0 && cursorIndex < navigableRows.length)
             navigableRows[cursorIndex].clicked(Qt.LeftButton)
     }
+    function resumeKeyboard() { cardFocus.forceActiveFocus() }
     function clearCursor() {
         cursorIndex = -1
         syncCursor()
@@ -126,6 +133,7 @@ PopupWindow {
         border.width: 2
         radius: root.shell.rounding
         FocusScope {
+            id: cardFocus
             anchors.fill: parent; anchors.margins: root.padding
             focus: root.open
             Keys.onPressed: event => event.accepted = root.handleKey(event)

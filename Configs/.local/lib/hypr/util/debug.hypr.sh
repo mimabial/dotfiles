@@ -39,7 +39,7 @@ redact_debug_log() {
     -e "s|${HOME}|~|g" \
     -e 's/\bgh[pousr]_[A-Za-z0-9_]{20,}\b/[REDACTED_GITHUB_TOKEN]/g' \
     -e 's/\bBearer[[:space:]]+[A-Za-z0-9._~-]+\b/Bearer [REDACTED]/g' \
-    -e 's/\b([A-Za-z0-9_-]+\.){2}[A-Za-z0-9_-]+\b/[REDACTED_JWT]/g' \
+    -e 's/\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]*/[REDACTED_JWT]/g' \
     -e 's/\b([A-Za-z0-9_]*(TOKEN|SECRET|PASSWORD|PASSWD|API_KEY|ACCESS_KEY|AUTHORIZATION|COOKIE)[A-Za-z0-9_]*)(=|:[[:space:]]*)[^[:space:]]+/\1\3[REDACTED]/Ig' \
     "${src_file}" >"${out_file}"
 }

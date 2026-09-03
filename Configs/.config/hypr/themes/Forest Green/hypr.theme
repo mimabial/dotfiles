@@ -8,6 +8,11 @@ $NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME = oldSys
 $CURSOR_SIZE = 28
+$FONT = FantasqueSansM Nerd Font
+$BAR_FONT = FantasqueSansM Nerd Font
+$MENU_FONT = FantasqueSansM Nerd Font
+$MONOSPACE_FONT = FantasqueSansM Nerd Font
+$NOTIFICATION_FONT = FantasqueSansM Nerd Font Mono
 
 general {
     gaps_in = 4
@@ -44,5 +49,3 @@ decoration {
         xray = false
     }
 }
-
-layerrule = blur on, match:namespace waybar

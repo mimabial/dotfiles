@@ -9,7 +9,12 @@ $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME= material_light_cursors
-$CURSOR_SIZE= 26
+$CURSOR_SIZE= 30
+$FONT = GeistMono Nerd Font
+$BAR_FONT = GeistMono Nerd Font
+$MENU_FONT = GeistMono Nerd Font
+$MONOSPACE_FONT = GeistMono Nerd Font
+$NOTIFICATION_FONT = GeistMono Nerd Font Mono
 
 general {
     gaps_in = 6

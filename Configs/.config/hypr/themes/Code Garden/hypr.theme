@@ -4,7 +4,11 @@ $COLOR_SCHEME = prefer-dark
 $ICON_THEME = Fluent-dark
 $CURSOR_THEME = Fluent-dark-cursors
 $CURSOR_SIZE = 22
-$FONT = Noto_Sans
+$FONT = MonaspiceRn Nerd Font
+$BAR_FONT = MonaspiceRn Nerd Font
+$MENU_FONT = MonaspiceRn Nerd Font
+$MONOSPACE_FONT = MonaspiceRn Nerd Font
+$NOTIFICATION_FONT = MonaspiceRn Nerd Font Mono
 $NVIM_SCHEME = decay
 $NVIM_VARIANT = default
 $NVIM_BACKGROUND = dark
@@ -33,5 +37,3 @@ decoration {
         xray = false
     }
 }
-
-blurls = waybar

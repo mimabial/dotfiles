@@ -1,13 +1,18 @@
 $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 $ICON_THEME = Tela-red-dark
 $CURSOR_THEME = Skyrim-by-ru5tyshark-cursors
-$CURSOR_SIZE = 28
-# $CURSOR_SIZE = 30
+$CURSOR_SIZE = 40
 # $CURSOR_THEME = taiga-cursor
+# $CURSOR_SIZE = 30
 $COLOR_SCHEME = prefer-dark
 $NVIM_SCHEME = ashen
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
+$FONT = IosevkaTerm Nerd Font
+$BAR_FONT = IosevkaTerm Nerd Font
+$MENU_FONT = IosevkaTerm Nerd Font
+$MONOSPACE_FONT = IosevkaTerm Nerd Font
+$NOTIFICATION_FONT = IosevkaTerm Nerd Font Mono
 
 general {
     gaps_in = 3
@@ -41,6 +46,3 @@ decoration {
         enabled = false
     }
 }
-
-layerrule = blur on, match:namespace waybar
-layerrule = ignore_alpha 0, match:namespace waybar

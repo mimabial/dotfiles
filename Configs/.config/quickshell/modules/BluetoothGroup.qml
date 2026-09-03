@@ -1,24 +1,30 @@
 import QtQuick
-import QtQuick.Layouts
-import Quickshell
-import Quickshell.Io
 import Quickshell.Bluetooth
-import Quickshell.Hyprland
-import Quickshell.Networking
-import Quickshell.Wayland
 import ".."
 
 BarGroup {
     id: root
     property bool popupsAllowed: true
     property bool showReadout: false
+    readonly property var adapters: Bluetooth.adapters.values
+    readonly property var connected: Bluetooth.devices.values.filter(device => device.connected)
     css: "bluetooth"; reverse: true
     secondaryAvailable: root.showReadout
     holdOpen: root.shell.popupName === "bluetooth"
-    primary: Component { ScriptButton {
+    primary: Component { BarButton {
         id: bluetoothButton
         shell: root.shell; css: "bluetooth-button"
-        command: ["hyprshell", "waybar/bluetooth"]; interval: 5000
+        text: root.connected.length ? "<b>󰂱</b>" : root.adapters.some(adapter => adapter.enabled) ? "󰂯" : "󰂲"
+        // the tooltip renders as rich text, so the rows are separated by <br>
+        tooltip: root.adapters.length
+            ? root.adapters.slice().sort((a, b) => a.name.localeCompare(b.name)).map(adapter => {
+                const devices = root.connected.filter(device => device.adapter === adapter)
+                return ["<b>Controller</b>", adapter.name, "<b>Bluetooth</b>",
+                    "Powered " + adapter.enabled, "<b>Connected</b>" + (devices.length ? "" : " none")]
+                    .concat(devices.map(device => device.batteryAvailable
+                        ? device.name + " " + Math.round(device.battery * 100) + "%" : device.name)).join("<br>")
+            }).join("<br>")
+            : "No Bluetooth controller"
         // omarchy: left opens the panel, right toggles the radio
         onClicked: button => {
             if (button !== Qt.RightButton) return root.shell.togglePopup("bluetooth")
@@ -27,8 +33,11 @@ BarGroup {
         }
         BluetoothPopup { anchorItem: bluetoothButton; shell: root.shell; popupEnabled: root.popupsAllowed }
     } }
-    secondary: Component { ScriptButton {
+    secondary: Component { BarButton {
         shell: root.shell; css: "bluetooth-button.status"
-        command: ["hyprshell", "waybar/bluetooth", "--status"]; interval: 5000
+        readonly property var solo: root.connected.length === 1 && root.connected[0].batteryAvailable ? root.connected[0] : null
+        text: solo ? "<small><b>" + Math.round(solo.battery * 100) + "</b></small>"
+            : root.connected.length ? "<b>" + root.connected.length + "</b>" : ""
+        visible: text !== ""
     } }
 }

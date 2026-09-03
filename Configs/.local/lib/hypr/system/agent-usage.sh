@@ -17,18 +17,22 @@ source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash"
 hypr_help_guard "Usage: hyprshell system/agent-usage [--write] [agent...]
   (no args)   print a JSON array of records for every agent that reports usage
   --write     refresh the cache the bar reads instead of printing
-  <agent>     limit collection to the named agents (claude, codex, fireworks)
+  <agent>     limit collection to the named agents (claude, codex)
 
 Cache: \${HYPR_CACHE_HOME:-~/.cache/hypr}/agents/usage.json" "$@"
 
-readonly AGENTS=(claude codex fireworks)
+readonly AGENTS=(claude codex)
+readonly COLLECTOR_DIR="${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/system"
 readonly FALLBACK_DIR="${HOME}/omarchy/bin"
 readonly CACHE_DIR="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/agents"
 readonly CACHE_FILE="${CACHE_DIR}/usage.json"
 
 collector_for() {
   local name="omarchy-agent-usage-$1"
-  if command -v "${name}" >/dev/null 2>&1; then
+  local live_collector="${COLLECTOR_DIR}/agent-usage-$1.py"
+  if [[ -x "${live_collector}" ]]; then
+    printf '%s\n' "${live_collector}"
+  elif command -v "${name}" >/dev/null 2>&1; then
     command -v "${name}"
   elif [[ -x "${FALLBACK_DIR}/${name}" ]]; then
     printf '%s\n' "${FALLBACK_DIR}/${name}"

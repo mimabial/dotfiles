@@ -22,7 +22,12 @@ BarButton {
     css: "agents"
     visible: records.length > 0
     text: "󱚣"
-    textColor: alarming ? shell.role("error", shell.foreground) : shell.role("c9", shell.foreground)
+    // `alarm` is the style's channel for the >=90% state; both states fall back
+    // to their own role when the rule leaves them out.
+    textColor: alarming
+        ? (box.alarm !== undefined ? boxColor("alarm") : shell.role("error", shell.foreground))
+        : box.content !== undefined ? boxColor("content")
+        : shell.role("c9", shell.foreground)
     onClicked: shell.togglePopup("agents")
 
     function refresh() { if (!collect.running) collect.running = true }

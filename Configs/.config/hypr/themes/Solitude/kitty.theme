@@ -1,0 +1,32 @@
+$HOME/.config/kitty/theme.conf
+
+font_family Agave Nerd Font
+
+background #101315
+foreground #cacccc
+cursor #7293a8
+cursor_text_color #101315
+selection_foreground #101315
+selection_background #7293a8
+
+active_tab_foreground     #7293a8
+inactive_tab_foreground   #798186
+
+url_color               #6E9296
+
+color0 #101315
+color1 #565d60
+color2 #9fa5a9
+color3 #d9dbdc
+color4 #798186
+color5 #aeaeae
+color6 #707070
+color7 #cbc2be
+color8 #4b4e55
+color9 #de6145
+color10 #343d41
+color11 #c9c2b4
+color12 #5d6367
+color13 #9a9a9a
+color14 #707070
+color15 #a5aeb4

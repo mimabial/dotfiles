@@ -1,4 +1,4 @@
-$HOME/.config/hypr/themes/theme.conf|> $HOME/.config/hypr/themes/colors.conf
+$HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 
 $ICON_THEME = Fluent-light
 $COLOR_SCHEME = prefer-light
@@ -9,6 +9,11 @@ $NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME = BreezeX-Dark
 $CURSOR_SIZE = 28
+$FONT = iMWritingDuo Nerd Font
+$BAR_FONT = iMWritingDuo Nerd Font
+$MENU_FONT = iMWritingDuo Nerd Font
+$MONOSPACE_FONT = iMWritingDuo Nerd Font
+$NOTIFICATION_FONT = iMWritingDuo Nerd Font
 
 general {
     gaps_in = 4
@@ -40,5 +45,3 @@ decoration {
         xray = false
     }
 }
-
-layerrule = blur on, match:namespace waybar

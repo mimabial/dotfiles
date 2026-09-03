@@ -6,6 +6,11 @@ $NVIM_BACKGROUND = light
 $NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME = GoogleDot-Blue
+$FONT = IntoneMono Nerd Font
+$BAR_FONT = IntoneMono Nerd Font
+$MENU_FONT = IntoneMono Nerd Font
+$MONOSPACE_FONT = IntoneMono Nerd Font
+$NOTIFICATION_FONT = IntoneMono Nerd Font Mono
 
 general {
     gaps_in = 5
@@ -47,5 +52,3 @@ decoration {
         xray = false
     }
 }
-
-layerrule = blur on, match:namespace waybar

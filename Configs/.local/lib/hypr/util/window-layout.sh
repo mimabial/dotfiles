@@ -19,13 +19,13 @@ STATE_FILE="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/windo
 
 show_help() {
   cat <<'HELP'
-Usage: window-layout.sh [--toggle|--toggle-reverse|--set <name>|--list|--waybar|--help]
+Usage: window-layout.sh [--toggle|--toggle-reverse|--set <name>|--list|--bar|--help]
 
   --toggle           Cycle to the next layout
   --toggle-reverse   Cycle to the previous layout
   --set <name>       Apply a specific layout
   --list             List layouts as name, icon and label
-  --waybar           Emit JSON for the waybar custom module
+  --bar              Emit JSON for the bar module
 HELP
 }
 
@@ -65,7 +65,7 @@ handle_set() {
   apply_layout "$1"
 }
 
-handle_waybar() {
+handle_bar() {
   local name icon label
   name="$(current_layout)"
   [[ -v LAYOUT_ICONS[$name] ]] || name="${LAYOUTS[0]}"
@@ -88,7 +88,7 @@ case "${1:-}" in
     [[ $# -gt 0 ]] || { printf 'Error: --set requires a layout name\n' >&2; exit 1; }
     handle_set "$1"
     ;;
-  --waybar) handle_waybar ;;
+  --bar) handle_bar ;;
   --list) handle_list ;;
   -h | --help | "") show_help ;;
   *) printf 'Unknown option: %s\n' "$1" >&2; show_help >&2; exit 1 ;;

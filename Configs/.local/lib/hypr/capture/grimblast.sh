@@ -60,6 +60,7 @@ FREEZE=
 WAIT=no
 SCALE=
 CUSTOM_GEOM=
+OUTPUT=
 
 pos=()
 

@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 
@@ -33,10 +34,10 @@ Item {
         return !spec ? "transparent" : Array.isArray(spec) ? shell.alpha(shell.role(spec[0], outline), spec[1]) : shell.role(spec, outline)
     }
     readonly property bool hovered: hover.hovered
-    readonly property bool primaryVisible: head.item && head.item.visible
+    readonly property bool primaryFilled: itemFilled(head.item)
     readonly property bool ordered: reverse && !alwaysOpen
-    readonly property bool empty: alwaysOpen ? content.implicitHeight <= 0 && content.implicitWidth <= 0 : !primaryVisible
-    property bool open: alwaysOpen || (primaryVisible && secondaryAvailable && (hovered || holdOpen))
+    readonly property bool empty: alwaysOpen ? content.implicitHeight <= 0 && content.implicitWidth <= 0 : !primaryFilled
+    property bool open: alwaysOpen || (primaryFilled && secondaryAvailable && (hovered || holdOpen))
     // "outline": "br" or ["br", 0.3] in the style file; an explicit QML
     // assignment still overrides the binding
     function boxColor(key) {
@@ -45,6 +46,14 @@ Item {
         return Array.isArray(spec)
             ? shell.alpha(shell.role(spec[0], shell.foreground), spec[1])
             : shell.role(spec, shell.foreground)
+    }
+
+    function itemFilled(item) {
+        if (!item) return false
+        if (item.shown !== undefined) return item.shown
+        if (item.text !== undefined) return String(item.text) !== ""
+        if (item.empty !== undefined) return !item.empty
+        return item.visible
     }
 
     readonly property real borderWidth: drawerEdge.replacesOutline ? 0 : outline.a > 0 ? Math.max(1, box.border) : 0
@@ -82,6 +91,7 @@ Item {
         Loader {
             id: head
             sourceComponent: root.chain[0] || null
+            visible: !root.alwaysOpen || root.primaryFilled
             Layout.fillWidth: root.vertical; Layout.fillHeight: !root.vertical
             Layout.row: root.vertical && root.ordered ? root.chain.length - 1 : 0
             Layout.column: !root.vertical && root.ordered ? root.chain.length - 1 : 0
@@ -95,10 +105,7 @@ Item {
                 // a script that prints nothing hides its button, and an empty
                 // drawer is worse than no drawer. `visible` is inherited from the
                 // closed loader, so ask the button for its own text instead
-                readonly property bool filled: !slot.item ? false
-                    : slot.item.shown !== undefined ? slot.item.shown
-                    : slot.item.text === undefined ? true
-                    : String(slot.item.text) !== ""
+                readonly property bool filled: root.itemFilled(slot.item)
                 readonly property int place: root.ordered ? root.chain.length - 2 - slot.index : slot.index + 1
                 sourceComponent: root.secondaryAvailable && (root.alwaysOpen || root.preload || root.hovered || root.holdOpen) ? slot.modelData : null
                 Layout.fillWidth: root.vertical; Layout.fillHeight: !root.vertical

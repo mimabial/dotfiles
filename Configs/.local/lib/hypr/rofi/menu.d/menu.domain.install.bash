@@ -51,12 +51,8 @@ menu_register_domain_install() {
 
   menu_define install_ai "Install"
   menu_add_item install_ai "󱚤  Claude Code" action install_ai_claude
-  menu_add_item install_ai "󱚤  Cursor CLI" action install_ai_cursor
-  menu_add_item install_ai "󱚤  Gemini" action install_ai_gemini
   menu_add_item install_ai "󱚤  OpenAI Codex" action install_ai_openai
-  menu_add_item install_ai "󱚤  LM Studio" action install_ai_lmstudio
   menu_add_item install_ai "󱚤  Ollama" action install_ai_ollama
-  menu_add_item install_ai "󱚤  Crush" action install_ai_crush
   menu_add_item install_ai "󱚤  opencode" action install_ai_opencode
 
   menu_define install_gaming "Install"
@@ -106,10 +102,7 @@ menu_run_action_install() {
     install_package) terminal hyprshell pm install-repo ;;
     install_aur) terminal hyprshell pm install-aur ;;
     install_ai_claude) install "Claude Code" "claude-code" ;;
-    install_ai_cursor) install "Cursor CLI" "cursor-cli" ;;
-    install_ai_gemini) install "Gemini" "gemini-cli" ;;
     install_ai_openai) install "OpenAI Codex" "openai-codex-bin" ;;
-    install_ai_lmstudio) install "LM Studio" "lmstudio" ;;
     install_ai_ollama)
       ollama_pkg=$(
         (command -v nvidia-smi &>/dev/null && echo ollama-cuda) \
@@ -118,7 +111,6 @@ menu_run_action_install() {
       )
       install "Ollama" "${ollama_pkg}"
       ;;
-    install_ai_crush) install "Crush" "crush-bin" ;;
     install_ai_opencode) install "opencode" "opencode" ;;
     install_webapp) present_terminal hyprshell install/webapp.sh ;;
     install_tui) present_terminal hyprshell install/tui.sh ;;

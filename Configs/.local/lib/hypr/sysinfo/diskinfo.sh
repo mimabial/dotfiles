@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Disk usage as waybar JSON, with structured rows for the quickshell panel.
+# Disk usage as bar JSON, with structured rows for the Quickshell panel.
 set -euo pipefail
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash"
 
 hypr_help_guard "Usage: hyprshell sysinfo/diskinfo [mountpoint]
-Emit disk usage as waybar JSON, with structured rows for the panel.
+Emit disk usage as bar JSON, with structured rows for the panel.
   mountpoint   filesystem to report (default /)" "$@"
 
 mountpoint="${1:-/}"

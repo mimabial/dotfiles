@@ -10,6 +10,42 @@ MENU_WINDOW_THEME_CACHE="${MENU_WINDOW_THEME_CACHE:-}"
 MENU_FONT_SCALE_CACHE="${MENU_FONT_SCALE_CACHE:-}"
 MENU_FONT_NAME_CACHE="${MENU_FONT_NAME_CACHE:-}"
 MENU_WIDTH_OVERRIDE_CACHE="${MENU_WIDTH_OVERRIDE_CACHE:-}"
+MENU_SUBMENU_GLYPH="${MENU_SUBMENU_GLYPH:-›}"
+MENU_NAV_HINT="${MENU_NAV_HINT:-<span size=\"x-small\">  ← Back · → Open 
+[Tab] Search · [Esc] Close</span>}"
+MENU_COPY_HINT="${MENU_COPY_HINT:-<span size=\"x-small\">[Enter] Apply · [Alt+C] Copy</span>}"
+MENU_MULTI_HINT="${MENU_MULTI_HINT:-<span size=\"x-small\">[Shift+Enter] Mark · [Enter] Confirm</span>}"
+
+# rofi's own ballot pair is ☑/☐, whose tick reads as a smudge at menu sizes; a
+# filled square against a hollow one is the same mark at a glance
+MENU_MULTI_BALLOT_ON="${MENU_MULTI_BALLOT_ON:-■}"
+MENU_MULTI_BALLOT_OFF="${MENU_MULTI_BALLOT_OFF:-□}"
+
+# menutree.rasi chrome beside the element text: mainbox 20*2, element 10*2,
+# border 2*2, plus the scrollbar handle 4 and the listview spacing 5 before it
+MENU_CONTENT_CHROME_PX=73
+
+# rofi exits 10+N-1 for kb-custom-N; the tree binds Left/Right/Tab to 1, 2 and 3.
+MENU_EXIT_BACK=10
+MENU_EXIT_COPY=10
+MENU_EXIT_DESCEND=11
+MENU_EXIT_SEARCH=12
+
+# Detail rows carry their own newline, so they need a separator that is not one.
+# It cannot be NUL either -- that is the one byte a bash variable cannot hold.
+MENU_ROW_SEP=$'\x1e'
+
+# A row's options follow it after a NUL, keys and values split by \x1f. The NUL
+# is the byte a bash variable cannot hold, so rows carry this stand-in and it is
+# translated on the way into rofi.
+MENU_ROW_OPT=$'\x01'
+MENU_ROW_OPT_SEP=$'\x1f'
+
+# require-input hides the list until something is typed, but Enter still accepts
+# while it is hidden and takes row 0 with it. This sits in that slot: it maps to
+# nothing, so the stray Enter is a no-op, and it holds no character anyone can
+# type, so it never surfaces once a query starts filtering.
+MENU_SEARCH_GUARD_ROW=$'​\n​'
 
 declare -gA HYPR_MENU_PROMPTS=()
 declare -gA HYPR_MENU_DEFAULTS=()
@@ -32,12 +68,114 @@ menu_exit_or_show() {
   exit 0
 }
 
+menu_metrics_cache_init() {
+  if [[ -z "${MENU_FONT_SCALE_CACHE}" ]]; then
+    MENU_FONT_SCALE_CACHE="$(rofi_effective_font_scale "${ROFI_MENU_SCALE:-$ROFI_SCALE}")"
+  fi
+
+  if [[ -z "${MENU_FONT_NAME_CACHE}" ]]; then
+    MENU_FONT_NAME_CACHE="$(rofi_effective_font_name "${ROFI_MENU_FONT:-$ROFI_FONT}")"
+  fi
+
+  if [[ -z "${MENU_WIDTH_OVERRIDE_CACHE}" ]]; then
+    MENU_WIDTH_OVERRIDE_CACHE="$(
+      rofi_theme_width_multiplier_override menutree "${ROFI_MENU_WIDTH_MULTIPLIER:-1}" 295px 2>/dev/null || true
+    )"
+  fi
+}
+
+# Width of the text column rofi will draw rows in, or 0 when the rows themselves
+# set it. The theme floor is a window width, so back the chrome out of it.
+menu_text_column_px() {
+  local floor_px=""
+
+  [[ "${MENU_WIDTH_OVERRIDE_CACHE}" =~ ([0-9]+)(\.[0-9]+)?px ]] || {
+    printf '0'
+    return 0
+  }
+  floor_px="${BASH_REMATCH[1]}"
+  ((floor_px > MENU_CONTENT_CHROME_PX)) || {
+    printf '0'
+    return 0
+  }
+
+  printf '%s' "$((floor_px - MENU_CONTENT_CHROME_PX))"
+}
+
+menu_emit_options() {
+  local rows="$1"
+  local row_mode="${2:-}"
+
+  if [[ "${row_mode}" == "detail" ]]; then
+    printf '%s' "${rows}" | tr "${MENU_ROW_OPT}" '\000'
+    return 0
+  fi
+
+  printf '%s' "${rows}"
+}
+
+menu_content_theme_override() {
+  local rows="$1"
+  local explicit_width="${2:-}"
+  local lines_per_row="${3:-1}"
+  local footer_mode="${4:-}"
+  local extents="" content_px="" text_px="" cap_px="" rows_max="" footer_px=0 mon_width="" mon_height=""
+
+  extents="$(
+    printf '%s\n' "${rows}" | rofi_font_text_extents_px "${MENU_FONT_NAME_CACHE}" "${MENU_FONT_SCALE_CACHE}" 2>/dev/null || true
+  )"
+  read -r content_px text_px <<<"${extents}"
+  [[ "${content_px}" =~ ^[0-9]+$ && "${text_px}" =~ ^[0-9]+$ ]] || return 1
+
+  case "${footer_mode}" in
+    tree) footer_px=$((text_px * 2 + 24)) ;;
+    copy | multi) footer_px=$((text_px + 24)) ;;
+  esac
+
+  read -r mon_width mon_height < <(rofi_focused_monitor_logical_size)
+
+  if [[ -n "${explicit_width}" ]]; then
+    printf '%s' "${explicit_width}"
+  else
+    content_px=$((content_px + MENU_CONTENT_CHROME_PX))
+    if [[ "${MENU_WIDTH_OVERRIDE_CACHE}" =~ ([0-9]+)(\.[0-9]+)?px ]] && ((content_px < BASH_REMATCH[1])); then
+      content_px="${BASH_REMATCH[1]}"
+    fi
+    if [[ "${mon_width}" =~ ^[0-9]+$ ]]; then
+      cap_px=$((mon_width * 60 / 100))
+      ((content_px > cap_px)) && content_px="${cap_px}"
+    fi
+    printf 'window { width: %spx; }' "${content_px}"
+  fi
+
+  # chrome above the rows: border 2*2, mainbox 20*2 padding + the listview's 20 top
+  # margin, inputbar 8*2 + text.
+  # each row costs element 10*2 padding + listview 5 spacing on top of its text,
+  # which a detail row spends twice over. text_px stays one line either way: the
+  # extents pass splits a detail row's own newline into two rows of its own.
+  if [[ "${mon_height}" =~ ^[0-9]+$ ]]; then
+    rows_max=$(((mon_height * 80 / 100 - 75 - text_px - footer_px) / (text_px * lines_per_row + 25)))
+    ((rows_max < 1)) && rows_max=1
+    printf ' listview { lines: %s; }' "${rows_max}"
+  fi
+
+  printf '\n'
+}
+
 menu() {
   local prompt="$1"
   local options="$2"
   local preselect="${3:-}"
   local width_override="${4:-}"
+  local nav_keys="${5:-}"
+  local row_mode="${6:-}"
+  local lines_per_row=1
+  local ballot=""
+  local content_override=""
   local options_rendered=""
+  local measured_rows=""
+  local measure_rest=""
+  local measure_chunk=""
   local rofi_args=()
   local rofi_stderr_file=""
   local rofi_stderr_target="/dev/stderr"
@@ -50,7 +188,7 @@ menu() {
 
   if [[ -z "${MENU_BORDER_RADIUS}" || -z "${MENU_BORDER_WIDTH}" ]]; then
     menu_border_metrics="$(rofi_default_border_metrics 2 2)"
-    IFS=$'\t' read -r MENU_BORDER_RADIUS MENU_BORDER_WIDTH <<< "${menu_border_metrics}"
+    IFS=$'\t' read -r MENU_BORDER_RADIUS MENU_BORDER_WIDTH <<<"${menu_border_metrics}"
     [[ "${MENU_BORDER_RADIUS}" =~ ^[0-9]+$ ]] || MENU_BORDER_RADIUS=2
     [[ "${MENU_BORDER_WIDTH}" =~ ^[0-9]+$ ]] || MENU_BORDER_WIDTH=2
   fi
@@ -61,31 +199,72 @@ menu() {
     MENU_WINDOW_THEME_CACHE="$(rofi_standard_window_theme "listview" "same")"
   fi
 
-  if [[ -z "${MENU_FONT_SCALE_CACHE}" ]]; then
-    MENU_FONT_SCALE_CACHE="$(rofi_effective_font_scale "${ROFI_MENU_SCALE:-$ROFI_SCALE}")"
+  menu_metrics_cache_init
+
+  options_rendered="$(printf '%b' "${options}")"
+  measured_rows="${options_rendered}"
+  # the ballot rides ahead of every row, so it is measured with them or the
+  # marker column pushes the text out of the window
+  if [[ "${nav_keys}" == "multi" ]]; then
+    ballot="${MENU_MULTI_BALLOT_ON} "
+    measured_rows="${ballot}${options_rendered//$'\n'/$'\n'${ballot}}"
+  fi
+  if [[ "${row_mode}" == "detail" ]]; then
+    lines_per_row=2
+    # Width is fixed before the first keystroke, so it is set by the widest row
+    # in the whole subtree either way. Spend it on the labels -- those are what
+    # is being picked and must stay whole -- and let an over-long path ellipsize
+    # rather than widen every row to fit the deepest one. The text before the
+    # options is exactly the label, so it is also what there is to measure.
+    measured_rows=""
+    measure_rest="${options_rendered}"
+    while [[ -n "${measure_rest}" ]]; do
+      measure_chunk="${measure_rest%%"${MENU_ROW_SEP}"*}"
+      measured_rows+="${measure_chunk%%"${MENU_ROW_OPT}"*}"$'\n'
+      [[ "${measure_rest}" == *"${MENU_ROW_SEP}"* ]] || break
+      measure_rest="${measure_rest#*"${MENU_ROW_SEP}"}"
+    done
   fi
 
-  if [[ -z "${MENU_FONT_NAME_CACHE}" ]]; then
-    MENU_FONT_NAME_CACHE="$(rofi_effective_font_name "${ROFI_MENU_FONT:-$ROFI_FONT}")"
-  fi
-
-  if [[ -z "${width_override}" ]]; then
-    if [[ -z "${MENU_WIDTH_OVERRIDE_CACHE}" ]]; then
-      MENU_WIDTH_OVERRIDE_CACHE="$(
-        rofi_theme_width_multiplier_override menutree "${ROFI_MENU_WIDTH_MULTIPLIER:-1}" 295px 2>/dev/null || true
-      )"
-    fi
+  content_override="$(menu_content_theme_override "${measured_rows}" "${width_override}" "${lines_per_row}" "${nav_keys}" || true)"
+  if [[ -n "${content_override}" ]]; then
+    width_override="${content_override}"
+  elif [[ -z "${width_override}" ]]; then
     width_override="${MENU_WIDTH_OVERRIDE_CACHE}"
   fi
 
-  options_rendered="$(printf '%b' "${options}")"
-
-  rofi_args+=("-theme-str" "* {font: \"${MENU_FONT_NAME_CACHE} ${MENU_FONT_SCALE_CACHE}\";}")
+  rofi_args+=("-theme-str" "$(rofi_font_override "${MENU_FONT_NAME_CACHE}" "${MENU_FONT_SCALE_CACHE}")")
   rofi_args+=("-theme-str" "${MENU_WINDOW_THEME_CACHE}")
   rofi_args+=("-theme-str" "textbox-prompt-colon {border-radius: ${MENU_ELEMENT_RADIUS}px; str: \"$prompt\";}")
   rofi_args+=("-theme-str" "entry {placeholder: \"Hello ${USER^}!\";}")
   rofi_args+=("-theme-str" "element selected.normal {border-radius: ${MENU_ELEMENT_RADIUS}px;}")
   [[ -n "${width_override}" ]] && rofi_args+=("-theme-str" "${width_override}")
+
+  # only the tree steers with Left/Right/Tab; a dynamic caller reads the selection
+  # alone and would mistake a custom exit code for an accepted row unless it opts
+  # into "copy" and checks MENU_EXIT_COPY itself. Tab is rofi's own
+  # kb-element-next, so it has to be surrendered before it is taken.
+  if [[ "${nav_keys}" == "tree" ]]; then
+    rofi_args+=(-kb-move-char-back "" -kb-move-char-forward "" -kb-element-next ""
+      -kb-custom-1 "Left" -kb-custom-2 "Right" -kb-custom-3 "Tab")
+    rofi_args+=(-mesg "${MENU_NAV_HINT}")
+  elif [[ "${nav_keys}" == "copy" ]]; then
+    rofi_args+=(-kb-custom-1 "Alt+c")
+    rofi_args+=(-mesg "${MENU_COPY_HINT}")
+  elif [[ "${nav_keys}" == "multi" ]]; then
+    # Shift+Enter is rofi's kb-accept-alt, which toggles a row's ballot here;
+    # Enter prints every marked row, or the highlighted one when none are marked
+    rofi_args+=(-multi-select)
+    rofi_args+=(-ballot-selected-str "${MENU_MULTI_BALLOT_ON} " -ballot-unselected-str "${MENU_MULTI_BALLOT_OFF} ")
+    rofi_args+=(-mesg "${MENU_MULTI_HINT}")
+  fi
+
+  # the row text is the label alone, so the answer has to be the index: labels
+  # repeat across the tree and would not identify the row that was picked
+  if [[ "${row_mode}" == "detail" ]]; then
+    rofi_args+=(-sep "${MENU_ROW_SEP}" -eh 2 -markup-rows -no-custom -format i)
+    rofi_args+=("-theme-str" "listview {require-input: true;}")
+  fi
 
   local opacity_override
   opacity_override="$(rofi_active_opacity_override)"
@@ -105,7 +284,7 @@ menu() {
   [[ -n "${rofi_stderr_file}" ]] && rofi_stderr_target="${rofi_stderr_file}"
 
   selection="$(
-    printf '%s' "${options_rendered}" | rofi -dmenu -i -no-show-icons -p "$prompt" -theme "$(rofi_resolve_theme menutree)" "${rofi_args[@]}" 2>"${rofi_stderr_target}"
+    menu_emit_options "${options_rendered}" "${row_mode}" | rofi -dmenu -i -no-show-icons -p "$prompt" -theme "$(rofi_resolve_theme menutree)" "${rofi_args[@]}" 2>"${rofi_stderr_target}"
   )"
   rofi_exit=$?
 
@@ -225,11 +404,30 @@ menu_render_options() {
   local target=""
   local searchable=""
   local output=""
+  local flagged=""
+  local aligned=""
 
   while IFS=$'\t' read -r label kind target searchable; do
     [[ -n "${label}" ]] || continue
     output+="${label}"$'\n'
+    if [[ "${kind}" == "submenu" ]]; then
+      flagged+="1"$'\t'"${label}"$'\n'
+    else
+      flagged+="0"$'\t'"${label}"$'\n'
+    fi
   done <<<"${HYPR_MENU_ITEMS["${menu_id}"]:-}"
+
+  if [[ -n "${flagged}" ]]; then
+    aligned="$(
+      printf '%s' "${flagged}" \
+        | rofi_font_align_trailing "${MENU_FONT_NAME_CACHE}" "${MENU_FONT_SCALE_CACHE}" \
+          "${MENU_SUBMENU_GLYPH}" "$(menu_text_column_px)" 2>/dev/null || true
+    )"
+    if [[ -n "${aligned}" ]]; then
+      printf '%s' "${aligned}"
+      return 0
+    fi
+  fi
 
   printf '%s' "${output%$'\n'}"
 }
@@ -243,6 +441,12 @@ menu_lookup_selection() {
   local item_kind=""
   local item_target=""
   local _item_searchable=""
+
+  # submenu rows carry a right-aligned chevron that is not part of their label
+  if [[ "${selection}" == *"${MENU_SUBMENU_GLYPH}" ]]; then
+    selection="${selection%"${MENU_SUBMENU_GLYPH}"}"
+    selection="${selection%"${selection##*[![:space:]]}"}"
+  fi
 
   while IFS=$'\t' read -r label item_kind item_target _item_searchable; do
     [[ "${label}" == "${selection}" ]] || continue
@@ -296,17 +500,30 @@ menu_show_menu() {
   local prompt="${HYPR_MENU_PROMPTS["${menu_id}"]:-${menu_id}}"
   local options=""
   local selection=""
+  local rofi_exit=0
 
+  menu_metrics_cache_init
   options="$(menu_render_options "${menu_id}")"
-  selection="$(menu "${prompt}" "${options}" "${HYPR_MENU_DEFAULTS["${menu_id}"]:-}")"
+  selection="$(menu "${prompt}" "${options}" "${HYPR_MENU_DEFAULTS["${menu_id}"]:-}" "" tree)"
+  rofi_exit=$?
 
-  if [[ -z "${selection}" || "${selection}" == "CNCLD" ]]; then
-    if [[ "${menu_id}" == "main" ]]; then
-      exit 0
-    else
-      back_to "${HYPR_MENU_PARENTS["${menu_id}"]:-main}"
-    fi
+  if ((rofi_exit == MENU_EXIT_SEARCH)); then
+    menu_show_search "${menu_id}"
     return 0
+  fi
+
+  if ((rofi_exit == MENU_EXIT_BACK)); then
+    [[ "${menu_id}" == "main" ]] && exit 0
+    back_to "${HYPR_MENU_PARENTS["${menu_id}"]:-main}"
+    return 0
+  fi
+
+  # anything else non-zero is cancel, and cancel always leaves the tree
+  if ((rofi_exit != 0 && rofi_exit != MENU_EXIT_DESCEND)); then
+    exit 0
+  fi
+  if [[ -z "${selection}" || "${selection}" == "CNCLD" ]]; then
+    exit 0
   fi
 
   if ! menu_dispatch_selection "${menu_id}" "${selection}"; then
@@ -336,34 +553,148 @@ menu_dump_json() {
         | .items += [{label: $r[3], kind: $r[4], target: $r[5], searchable: ($r[6] != "0")}]))'
 }
 
-menu_collect_search_entries() {
+# Walk a menu's subtree into two-line search rows: the label on top, the parent
+# path beneath it. rofi filters every row it is handed, a divider row included,
+# so the two groups cannot be separated by a header -- they are separated by
+# order and by the depth of the path each one carries. Direct children come
+# first, under the menu's own name; everything deeper follows, under the path
+# that places it. Every row carries a path because rofi's row height is global:
+# a row that left the second line empty would reserve it anyway.
+#
+# The path rides in rofi's per-row `display` option rather than in the row
+# itself, because rofi filters on the row and displays the option: a path in the
+# row would mean typing a menu's name drags its whole branch into the results.
+# Emitted as "<label>\0display\x1f<label>\n<path>", each element prefixed with
+# its kind and target since the row text is no longer a usable key -- labels
+# repeat across the tree, so the caller keys on rofi's row index instead.
+menu_collect_subtree() {
   local menu_id="$1"
-  local out_labels_name="$2"
-  local out_actions_name="$3"
-  local prefix="${4:-}"
+  local out_direct_name="$2"
+  local out_deeper_name="$3"
+  local path="$4"
+  local depth="${5:-0}"
   local label=""
   local kind=""
   local target=""
   local searchable=""
-  local path=""
+  local label_markup=""
+  local path_display=""
+  local path_markup=""
+  local row=""
 
-  local -n out_labels_ref="${out_labels_name}"
-  local -n out_actions_ref="${out_actions_name}"
+  local -n out_direct_ref="${out_direct_name}"
+  local -n out_deeper_ref="${out_deeper_name}"
+
+  # Every row in the view hangs off the searched menu, so naming it on the deeper
+  # rows says nothing they do not already share -- they show what lies below it
+  # instead. The direct children keep it, because for them it is the whole path
+  # and the one place it distinguishes anything.
+  path_display="${path}"
+  if ((depth > 0)); then
+    path_display="${path#* › }"
+    # what is left carries depth segments; from four, collapse the middle, since
+    # the ends are what locate a row and the rest is what overruns the window
+    ((depth >= 4)) && path_display="${path_display%% › *} › … › ${path_display##* › }"
+  fi
+
+  path_markup="${path_display//&/&amp;}"
+  path_markup="${path_markup//</&lt;}"
+  path_markup="${path_markup//>/&gt;}"
 
   while IFS=$'\t' read -r label kind target searchable; do
     [[ -n "${label}" ]] || continue
     [[ "${searchable}" != "0" ]] || continue
-    path="${prefix:+${prefix} › }${label}"
 
-    case "${kind}" in
-      submenu)
-        menu_collect_search_entries "${target}" "${out_labels_name}" "${out_actions_name}" "${path}"
-        ;;
-      action)
-        out_labels_ref+=("${path}")
-        # shellcheck disable=SC2034 # Nameref output assigned for the caller.
-        out_actions_ref["${path}"]="${target}"
-        ;;
-    esac
+    label_markup="${label//&/&amp;}"
+    label_markup="${label_markup//</&lt;}"
+    label_markup="${label_markup//>/&gt;}"
+
+    row="${kind}"$'\t'"${target}"$'\t'"${label}"
+    row+="${MENU_ROW_OPT}display${MENU_ROW_OPT_SEP}${label_markup}"
+    row+=$'\n'"<span size=\"small\" alpha=\"55%\">${path_markup}</span>"
+    if ((depth > 0)); then
+      # shellcheck disable=SC2034 # Nameref output assigned for the caller.
+      out_deeper_ref+=("${row}")
+    else
+      # shellcheck disable=SC2034 # Nameref output assigned for the caller.
+      out_direct_ref+=("${row}")
+    fi
+
+    [[ "${kind}" == "submenu" ]] || continue
+
+    # the path reads as menu names, so drop the leading icon from the label
+    if [[ "${label}" =~ ^[^\ -~][[:space:]]+(.+)$ ]]; then
+      menu_collect_subtree "${target}" "${out_direct_name}" "${out_deeper_name}" \
+        "${path} › ${BASH_REMATCH[1]}" $((depth + 1))
+    else
+      menu_collect_subtree "${target}" "${out_direct_name}" "${out_deeper_name}" \
+        "${path} › ${label}" $((depth + 1))
+    fi
   done <<<"${HYPR_MENU_ITEMS["${menu_id}"]:-}"
+}
+
+menu_show_search() {
+  local menu_id="${1:-main}"
+  local root_name="${HYPR_MENU_PROMPTS["${menu_id}"]:-${menu_id}}"
+  local -a direct_records=()
+  local -a deeper_records=()
+  local -a row_targets=()
+  local options=""
+  local record=""
+  local rest=""
+  local selection=""
+  local kind=""
+  local target=""
+  local rofi_exit=0
+
+  menu_metrics_cache_init
+  menu_collect_subtree "${menu_id}" direct_records deeper_records "${root_name}" 0
+
+  if ((${#direct_records[@]} + ${#deeper_records[@]} == 0)); then
+    menu_exit_or_show "${menu_id}"
+    return 0
+  fi
+
+  # index 0 is the guard row, so it holds no target and a stray Enter is a no-op
+  row_targets=("")
+  options="${MENU_SEARCH_GUARD_ROW}${MENU_ROW_SEP}"
+  for record in "${direct_records[@]}" "${deeper_records[@]}"; do
+    kind="${record%%$'\t'*}"
+    rest="${record#*$'\t'}"
+    target="${rest%%$'\t'*}"
+    row_targets+=("${kind}"$'\t'"${target}")
+    options+="${rest#*$'\t'}${MENU_ROW_SEP}"
+  done
+  options="${options%"${MENU_ROW_SEP}"}"
+
+  # no explicit width: the rows are short now that the path is its own line, so
+  # the measured fit beats the fixed one the inline-path list used to need
+  selection="$(menu "Search" "${options}" "" "" "" detail)"
+  rofi_exit=$?
+
+  # cancel always leaves the tree, the same as it does from a menu
+  ((rofi_exit == 0)) || exit 0
+
+  # detail mode answers with a row index, so a miss is a non-number or a gap
+  if [[ ! "${selection}" =~ ^[0-9]+$ ]]; then
+    menu_exit_or_show "${menu_id}"
+    return 0
+  fi
+
+  record="${row_targets[selection]:-}"
+  if [[ -z "${record}" ]]; then
+    menu_exit_or_show "${menu_id}"
+    return 0
+  fi
+
+  kind="${record%%$'\t'*}"
+  target="${record#*$'\t'}"
+  case "${kind}" in
+    submenu)
+      menu_show_menu "${target}"
+      ;;
+    action)
+      menu_run_action "${target}"
+      ;;
+  esac
 }

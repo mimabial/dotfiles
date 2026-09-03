@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell.Io
 
@@ -34,8 +35,8 @@ PopupCard {
         }
     }
     component ModeButton: BarButton {
-        readonly property bool navigable: true
-        property bool cursored: false
+        // opt into the card's row walk through the base property, not a shadow of it
+        keyboardEnabled: true
         shell: root.shell; radius: shell.rounding; fontSize: Style.bodySmall
         fill: active ? shell.alpha(shell.role("act_bg", shell.accent), .3) : shell.alpha(shell.foreground, .07)
         outline: active ? shell.alpha(shell.role("act_br", shell.accent), .65) : cursored ? shell.hoverEdge(.85) : shell.alpha(shell.role("br", shell.foreground), .25)

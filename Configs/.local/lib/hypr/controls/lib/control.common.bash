@@ -16,7 +16,7 @@ is_true() {
 }
 
 # Default audio source (microphone) readers, shared by volume-control.sh
-# (controller) and waybar.mic.sh (widget).
+# (controller) and bar providers.
 get_default_source_target() {
   local default_source=""
 

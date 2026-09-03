@@ -10,9 +10,9 @@ Item {
     property bool allWorkspaces: false
     property bool framed: false
     property bool vertical: false
-    property int iconSize: 24
+    property int iconSize: 18
     // "iconSize" in the style file wins, as it does for the tray
-    readonly property int scaledIcon: Math.round((box.iconSize !== undefined ? box.iconSize : iconSize) * Style.scale)
+    readonly property int scaledIcon: Math.round(box.iconSize !== undefined ? box.iconSize : iconSize)
     readonly property real spanX: box.margin[1] + box.margin[3] + box.padding[1] + box.padding[3] + 2 * box.border
     readonly property real spanY: box.margin[0] + box.margin[2] + box.padding[0] + box.padding[2] + 2 * box.border
     implicitWidth: windows.implicitWidth + spanX

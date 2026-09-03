@@ -17,7 +17,7 @@ import pyutils.pip_env as pip_env
 
 pip_env.ensure_managed_interpreter()
 
-from pyutils.compositor import HyprctlWrapper
+from pyutils.hyprctl import batch_json
 import pyutils.wrapper.libnotify as notify
 import pyutils.xdg_base_dirs as xdg
 
@@ -301,7 +301,7 @@ def _default_sink_label() -> str:
 
 
 def _active_window() -> dict[str, Any]:
-    return json.loads(HyprctlWrapper._execute_command(["hyprctl", "activewindow", "-j"]))
+    return batch_json("activewindow")[0]
 
 
 def main() -> int:

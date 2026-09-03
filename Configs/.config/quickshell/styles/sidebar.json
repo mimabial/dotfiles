@@ -16,7 +16,6 @@
   "fanspeedinfo": {
     "border": 1.2,
     "edge": { "color": ["c7", 0.4], "left": false, "right": false, "top": false },
-    "fontSize": 12.0,
     "fontWeight": 700,
     "hover": { "fill": null, "content": ["hvr_fg", 1.0] },
     "justify": "right",

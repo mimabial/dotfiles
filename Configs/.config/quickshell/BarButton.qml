@@ -7,17 +7,26 @@ Item {
     readonly property var box: shell.style.box(css)
     property string text: ""
     property string tooltip: ""
+    property bool keyboardEnabled: false
+    readonly property bool navigable: keyboardEnabled && enabled
+    property bool cursored: false
     // set by any PopupCard anchored here: a module with a panel never tooltips
     property bool hasPopup: false
     property bool active: false
-    // A module whose whole label is private-use codepoints is an icon button: it
-    // renders from the Mono icon face, sized up to hold the weight it had at the
-    // font's own width. Mixed labels keep the theme font, where a glyph's ink
-    // overhang is invisible next to the text beside it. Markup is not label text:
-    // a provider that wraps its glyph in <b> is still an icon button.
+    // Markup is not label text: a provider that wraps its glyph in <b> is still
+    // an icon button.
     readonly property string labelText: text.replace(/<[^>]*>/g, "")
-    readonly property bool iconOnly: labelText.length > 0 && !/[\u0020-\u024f]/.test(labelText)
-    property real fontSize: box.fontSize * Style.scale * (iconOnly ? Style.iconGlyphBoost : 1)
+    // Match the icon ranges themselves rather than "holds no Latin": the old
+    // test classified a Devanagari or kanji workspace numeral as an icon, so it
+    // drew in the icon face and took its size correction. Plane-15 glyphs match
+    // by their surrogate halves - Qt's JS engine honours a braced escape for a
+    // single code point but not for a range inside a character class.
+    readonly property bool iconOnly: labelText.length > 0
+        && !/[^\ue000-\uf8ff\ud800-\udfff\u23fb-\u23fe\u2b58]/.test(labelText)
+    property real fontSize: Style.fontPx(box.fontSize)
+    // the icon face is scaled to match the text face's cap height, so anything
+    // measuring this label has to measure the size it is actually drawn at
+    readonly property real labelFontSize: iconOnly ? fontSize * shell.iconFontScale : fontSize
     property int fontWeight: box.fontWeight
     property int textFormat: Text.AutoText
     property real textOffsetX: 0
@@ -80,9 +89,9 @@ Item {
         anchors.topMargin: root.box.margin[0]; anchors.rightMargin: root.box.margin[1]
         anchors.bottomMargin: root.box.margin[2]; anchors.leftMargin: root.box.margin[3]
         radius: root.radius
-        color: root.hoverPaint("fill", root.baseFill)
-        border.color: root.hoverPaint("outline", root.baseOutline)
-        border.width: root.borderWidth
+        color: root.cursored ? root.shell.hoverFill() : root.hoverPaint("fill", root.baseFill)
+        border.color: root.cursored ? root.shell.hoverEdge(.85) : root.hoverPaint("outline", root.baseOutline)
+        border.width: root.cursored ? 2 : root.borderWidth
         Behavior on color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
         Behavior on border.color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
     }
@@ -96,7 +105,7 @@ Item {
         color: root.hoverPaint("content", root.textColor)
         Behavior on color { enabled: root.smoothTextColor; ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
         font.family: root.iconOnly ? root.shell.iconGlyphFont : root.shell.fontFamily
-        font.pixelSize: root.fontSize
+        font.pixelSize: root.labelFontSize
         font.weight: root.fontWeight
         transform: Translate { x: root.textOffsetX }
         textFormat: root.textFormat

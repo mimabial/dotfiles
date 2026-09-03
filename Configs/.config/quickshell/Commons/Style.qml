@@ -12,8 +12,10 @@ QtObject {
     readonly property int gapsOut: Active.Style.popupGap
     readonly property string fontFamily:
         root.shell ? String(root.shell.fontFamily) : "JetBrainsMono Nerd Font"
-    readonly property real scale: Active.Style.scale
     readonly property int normalBorderWidth: Math.max(1, Active.Style.px(1))
+    readonly property int hoverBorderWidth: normalBorderWidth
+    readonly property int selectedBorderWidth: 0
+    readonly property int focusBorderWidth: hoverBorderWidth
 
     function hoverFillFor(foreground, accent) {
         return Util.alpha(accent || foreground || Color.foreground,
@@ -24,22 +26,25 @@ QtObject {
         return Active.Style.px(Number(value))
     }
 
-    readonly property QtObject spacing: QtObject {
-        readonly property int xs: Active.Style.xs
-        readonly property int sm: Active.Style.sm
-        readonly property int md: Active.Style.md
-        readonly property int panelPadding: Active.Style.popupPadding
+    readonly property StyleSpacing spacing: StyleSpacing {
+        xs: Active.Style.xs
+        sm: Active.Style.sm
+        md: Active.Style.md
+        lg: Active.Style.lg
+        xl: Active.Style.xl
+        panelPadding: Active.Style.popupPadding
     }
 
-    readonly property QtObject font: QtObject {
-        readonly property string family: root.fontFamily
-        readonly property string menuFamily: root.fontFamily
-        readonly property int caption: Active.Style.caption
-        readonly property int bodySmall: Active.Style.bodySmall
-        readonly property int body: Active.Style.body
-        readonly property int title: Active.Style.title
-        readonly property int heading: Active.Style.subtitle
-        readonly property int displayLarge: Active.Style.px(28)
-        readonly property int iconLarge: Active.Style.title
+    readonly property StyleFont font: StyleFont {
+        family: root.fontFamily
+        menuFamily: root.fontFamily
+        caption: Active.Style.caption
+        bodySmall: Active.Style.bodySmall
+        body: Active.Style.body
+        title: Active.Style.title
+        heading: Active.Style.subtitle
+        display: Active.Style.display
+        displayLarge: Active.Style.displayLarge
+        iconLarge: Active.Style.title
     }
 }

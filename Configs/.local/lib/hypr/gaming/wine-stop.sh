@@ -3,6 +3,19 @@ set -euo pipefail
 
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/runtime/init.bash" || exit 1
+hypr_runtime_require rofi || exit 1
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR}/rofi/rofi.lib.bash"
+
+pick() {
+  local prompt="$1"
+  local -a rofi_args=()
+
+  rofi_build_standard_menu_args rofi_args "${prompt}" "${prompt}" "$(rofi_resolve_theme clipboard)"
+  # cancel is an empty selection, not a failure; without this rofi's exit 1
+  # trips set -e before the caller can check
+  rofi "${rofi_args[@]}" -no-custom -no-show-icons || true
+}
 
 declare -A servers=()
 scan_prefixes() {
@@ -37,12 +50,12 @@ if ((${#prefixes[@]} == 0)); then
 elif ((${#prefixes[@]} == 1)); then
   prefix="${prefixes[0]}"
 else
-  prefix="$(printf '%s\n' "${prefixes[@]}" | sort | rofi -dmenu -i -p "Stop Wine prefix")"
+  prefix="$(printf '%s\n' "${prefixes[@]}" | sort | pick "Stop Wine prefix")"
   [[ -n "${prefix}" ]] || exit
 fi
 
 label="${prefix##*/}"
-choice="$(printf 'Cancel\nStop\n' | rofi -dmenu -p "Stop ${label}?")"
+choice="$(printf 'Cancel\nStop\n' | pick "Stop ${label}?")"
 [[ "${choice}" == Stop ]] || exit
 server="${servers[${prefix}]}"
 if [[ ! -x "${server}" ]] || ! WINEPREFIX="${prefix}" "${server}" -k -w; then

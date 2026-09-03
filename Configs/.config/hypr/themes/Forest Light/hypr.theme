@@ -7,6 +7,11 @@ $NVIM_SCHEME = everforest
 $NVIM_VARIANT = hard
 $NVIM_BACKGROUND = light
 $NVIM_TRANSPARENCY = false
+$FONT = Inconsolata Nerd Font
+$BAR_FONT = Inconsolata Nerd Font
+$MENU_FONT = Inconsolata Nerd Font
+$MONOSPACE_FONT = Inconsolata Nerd Font
+$NOTIFICATION_FONT = Inconsolata Nerd Font Mono
 
 
 # Theme variables above are the primary inputs used by theme.switch.sh.
@@ -41,5 +46,3 @@ decoration {
         xray = false
     }
 }
-
-layerrule = blur on, match:namespace waybar

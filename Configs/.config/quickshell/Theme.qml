@@ -14,7 +14,7 @@ QtObject {
     readonly property real radius: theme.rounding || 0
     readonly property var fallback: ({
         margin: [0, 0, 0, 0], padding: [0, 0, 0, 0],
-        fontSize: 16, fontWeight: 400, border: 0, minWidth: 0, minHeight: 0,
+        fontSize: 12, fontWeight: 400, border: 0, minWidth: 0, minHeight: 0,
         justify: "center"
     })
 

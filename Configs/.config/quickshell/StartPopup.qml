@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import Quickshell
@@ -10,7 +11,7 @@ PopupCard {
     contentHeight: startColumn.implicitHeight + padding * 2
 
     property string filter: ""
-    property int cursorIndex: 0
+    property int selectedIndex: 0
     readonly property bool searching: filter.trim() !== ""
     // everything in the column that is not the pane, so the pane can take what
     // is left of the screen instead of pushing the card off it
@@ -109,20 +110,20 @@ PopupCard {
     }
     function moveCursor(step) {
         if (cursorModel.length === 0) return
-        cursorIndex = Math.max(0, Math.min(cursorModel.length - 1, cursorIndex + step))
+        selectedIndex = Math.max(0, Math.min(cursorModel.length - 1, selectedIndex + step))
         const list = searching ? resultList : appList
-        list.positionViewAtIndex(cursorIndex, ListView.Contain)
+        list.positionViewAtIndex(selectedIndex, ListView.Contain)
     }
     onOpenChanged: {
         searchField.text = ""
-        cursorIndex = 0
+        selectedIndex = 0
         menuPane.reset()
         if (open) {
             searchField.forceActiveFocus()
             menuProc.running = true
         }
     }
-    onFilterChanged: cursorIndex = 0
+    onFilterChanged: selectedIndex = 0
 
     property FileView pinsFile: FileView {
         path: root.shell.home + "/.config/quickshell/pins.json"
@@ -170,22 +171,22 @@ PopupCard {
     property Timer flyoutClose: Timer { interval: 10; onTriggered: if (!root.menuChainHovered) menuPane.reset() }
 
     property StartMenuFlyout flyout: StartMenuFlyout {
-        shell: root.shell; menus: root.menus
+        shell: root.shell; menus: root.menus; openLeft: root.position === "right"
         menuId: menuPane.openSubId; anchorItem: menuPane.openRow
         onActionTriggered: target => root.runAction(target)
     }
     property StartMenuFlyout flyout2: StartMenuFlyout {
-        shell: root.shell; menus: root.menus
+        shell: root.shell; menus: root.menus; openLeft: root.position === "right"
         menuId: root.flyout.openSubId; anchorItem: root.flyout.openRow
         onActionTriggered: target => root.runAction(target)
     }
     property StartMenuFlyout flyout3: StartMenuFlyout {
-        shell: root.shell; menus: root.menus
+        shell: root.shell; menus: root.menus; openLeft: root.position === "right"
         menuId: root.flyout2.openSubId; anchorItem: root.flyout2.openRow
         onActionTriggered: target => root.runAction(target)
     }
     property StartMenuFlyout flyout4: StartMenuFlyout {
-        shell: root.shell; menus: root.menus
+        shell: root.shell; menus: root.menus; openLeft: root.position === "right"
         menuId: root.flyout3.openSubId; anchorItem: root.flyout3.openRow
         onActionTriggered: target => root.runAction(target)
     }
@@ -220,8 +221,8 @@ PopupCard {
                 onTextChanged: root.filter = text
                 Keys.onDownPressed: root.moveCursor(1)
                 Keys.onUpPressed: root.moveCursor(-1)
-                Keys.onReturnPressed: root.activate(root.cursorModel[root.cursorIndex])
-                Keys.onEnterPressed: root.activate(root.cursorModel[root.cursorIndex])
+                Keys.onReturnPressed: root.activate(root.cursorModel[root.selectedIndex])
+                Keys.onEnterPressed: root.activate(root.cursorModel[root.selectedIndex])
             }
             Text {
                 id: countText
@@ -251,7 +252,7 @@ PopupCard {
                 detail: modelData.type === "app" ? (modelData.app.genericName || modelData.app.comment)
                     : modelData.type === "place" ? modelData.place.path : ""
                 value: modelData.type === "app" && root.pinIds.indexOf(modelData.app.id) >= 0 ? "\u{f0403}" : ""
-                cursored: index === root.cursorIndex
+                cursored: index === root.selectedIndex
                 onClicked: button => modelData.type === "app" && button === Qt.RightButton
                     ? root.togglePin(modelData.app) : root.activate(modelData)
             }
@@ -292,7 +293,7 @@ PopupCard {
                         title: modelData.name
                         detail: modelData.genericName || modelData.comment
                         value: root.pinIds.indexOf(modelData.id) >= 0 ? "\u{f0403}" : ""
-                        cursored: index === root.cursorIndex
+                        cursored: index === root.selectedIndex
                         onClicked: button => button === Qt.RightButton
                             ? root.togglePin(modelData) : root.activate(modelData)
                     }
