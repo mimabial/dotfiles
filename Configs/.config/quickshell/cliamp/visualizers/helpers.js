@@ -125,6 +125,17 @@ function specColor(d, norm, alpha) {
   return mixColor(d.accent, d.foreground, (level - 0.5) * 2, alpha === undefined ? 0.9 : alpha)
 }
 
+// specRamp — one specColor per pixel row, built once per frame. Every per-pixel
+// visualizer asks for a colour that varies only with the row, and each specColor parses
+// two hex strings and builds an rgba() string, so calling it per pixel costs ~50x what
+// the ramp does. One spare slot absorbs a rounded bar height landing on h.
+function specRamp(d, height, alpha) {
+  var steps = Math.max(1, Math.ceil(height)) + 1
+  var out = new Array(steps)
+  for (var i = 0; i < steps; i++) out[i] = specColor(d, i / height, alpha)
+  return out
+}
+
 // LCG RNG — uses 64-bit constants that JS doubles can't handle precisely.
 // 32-bit Numerical Recipes LCG produces equivalent deterministic pseudo-randomness.
 function lcgRng(state) {

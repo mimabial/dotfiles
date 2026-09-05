@@ -12,6 +12,7 @@ $FONT = CaskaydiaCove Nerd Font
 $BAR_FONT = CaskaydiaCove Nerd Font
 $MENU_FONT = CaskaydiaCove Nerd Font
 $MONOSPACE_FONT = CaskaydiaCove Nerd Font
+$TERMINAL_FONT = CaskaydiaCove Nerd Font
 $NOTIFICATION_FONT = CaskaydiaCove Nerd Font Mono
 
 # Theme variables above are the primary inputs used by theme.switch.sh.

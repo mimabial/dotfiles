@@ -2,14 +2,14 @@
 #
 # terminal-present.sh — Run a command in a TUI terminal; for non-interactive commands, hold the terminal open until keypress.
 #
-# Usage: terminal-present.sh [--app-id ID] [--title TITLE] [--hypr-profile PROFILE] [--hypr-cells COLUMNS ROWS] -- <command>
+# Usage: terminal-present.sh [--app-id ID] [--title TITLE] [--hypr-profile PROFILE] [--hypr-cells COLUMNS ROWS] [--hypr-size WIDTH HEIGHT] -- <command>
 #
 # Depends on: setsid, uwsm-app, tui-terminal-exec, bash
 #
 
 usage() {
   cat <<EOF
-Usage: $(basename "$0") [--app-id ID] [--title TITLE] [--hypr-profile PROFILE] [--hypr-cells COLUMNS ROWS] -- <command>
+Usage: $(basename "$0") [--app-id ID] [--title TITLE] [--hypr-profile PROFILE] [--hypr-cells COLUMNS ROWS] [--hypr-size WIDTH HEIGHT] -- <command>
 EOF
 }
 
@@ -30,7 +30,7 @@ presented_command_name() {
 
 command_needs_hold_prompt() {
   case "$(presented_command_name "$@" || true)" in
-    nvim | vim | htop | btop | bottom | nano | less | more | bat | about.sh | calc-tui.py | rmpc | nvtop | dua | wiremix | bluetui | oryx)
+    nvim | vim | htop | btop | bottom | nano | less | more | bat | about.sh | agent-tui | calc-tui.py | rmpc | nvtop | dua | wiremix | bluetui | oryx | claude | codex | opencode)
       return 1
       ;;
     *)
@@ -44,6 +44,7 @@ main() {
   local title="Terminal"
   local hypr_profile=""
   local hypr_cells=()
+  local hypr_size=()
   local cmd=()
   local launch_args=()
 
@@ -53,6 +54,7 @@ main() {
       --title)         title="$2";         shift 2 ;;
       --hypr-profile)  hypr_profile="$2";  shift 2 ;;
       --hypr-cells)    hypr_cells=("$2" "$3"); shift 3 ;;
+      --hypr-size)     hypr_size=("$2" "$3"); shift 3 ;;
       --)
         shift
         cmd=("$@")
@@ -72,6 +74,7 @@ main() {
 
   [[ -n "${hypr_profile}" ]] && launch_args+=(--hypr-profile "${hypr_profile}")
   [[ "${#hypr_cells[@]}" -gt 0 ]] && launch_args+=(--hypr-cells "${hypr_cells[@]}")
+  [[ "${#hypr_size[@]}" -gt 0 ]] && launch_args+=(--hypr-size "${hypr_size[@]}")
   launch_args+=(--app-id "${app_id}" --title "${title}" --)
 
   if command_needs_hold_prompt "${cmd[@]}"; then

@@ -13,7 +13,6 @@ ICON_DIR="${XDG_DATA_HOME}/applications/icons"
 DESKTOP_DIR="${XDG_DATA_HOME}/applications/"
 
 if [ "$#" -eq 0 ]; then
-  # Find all TUIs
   TUIS=()
   while IFS= read -r -d '' file; do
     if grep -Eq '^X-Hypr-Tui=true$' "$file" || grep -Eq '^Exec=(\$TERMINAL_TUI|tui-terminal-exec)\b' "$file"; then
@@ -24,7 +23,6 @@ if [ "$#" -eq 0 ]; then
   if ((${#TUIS[@]})); then
     mapfile -t SORTED_TUIS < <(printf '%s\n' "${TUIS[@]}" | sort)
     APP_NAMES_STRING=$(printf '%s\n' "${SORTED_TUIS[@]}" | fzf --multi --prompt="Select TUIs to remove (TAB to select) > " --header="Select one or more TUIs" --reverse)
-    # Convert newline-separated string to array
     APP_NAMES=()
     while IFS= read -r line; do
       [[ -n "$line" ]] && APP_NAMES+=("$line")

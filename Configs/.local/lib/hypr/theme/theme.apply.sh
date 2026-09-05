@@ -43,6 +43,9 @@ source "${theme_apply_phase_d_lib}" || exit 1
 # shellcheck source=/dev/null
 source "${LIB_DIR}/hypr/theme/pairs.sh" || exit 1
 
+# shellcheck source=/dev/null
+source "${LIB_DIR}/hypr/fonts/font.sync.lib.bash" || exit 1
+
 THEME_UPDATE_LOCK="$(hypr_lock_path theme_update)"
 
 theme_apply_lock_fd=""
@@ -340,7 +343,17 @@ theme_apply_wait_jobs() {
   return "${failed}"
 }
 
-theme_apply_job_kitty() {
+# Runs after metadata_commit, so the layer cascade already resolves the new
+# pack's $TERMINAL_FONT; a userfonts.lua pin still shadows it.
+theme_apply_job_terminal() {
+  local terminal_font=""
+
+  terminal_font="$(font_sync_resolve_font_value terminal 2>/dev/null || true)"
+  if [[ -n "${terminal_font}" ]]; then
+    font_sync_apply_kitty_family "${terminal_font}" || true
+    font_sync_apply_alacritty_family "${terminal_font}" || true
+  fi
+
   reload_live_theme_client kitty
 }
 
@@ -524,7 +537,7 @@ theme_apply_prepare_job_log_dir || exit 1
 theme_apply_reset_jobs
 theme_apply_start_job "${theme_apply_job_log_dir}" "wallpaper_display" best_effort theme_apply_display_wallpaper || true
 theme_apply_start_job "${theme_apply_job_log_dir}" "desktop" required theme_apply_job_desktop || exit 1
-theme_apply_start_job "${theme_apply_job_log_dir}" "kitty" required theme_apply_job_kitty || exit 1
+theme_apply_start_job "${theme_apply_job_log_dir}" "terminal" required theme_apply_job_terminal || exit 1
 theme_apply_start_detached_job "dunst" theme_apply_job_dunst || true
 theme_apply_wait_jobs "${theme_apply_job_log_dir}" || theme_apply_required_rc=$?
 theme_apply_timed_call "envelope_launch" theme_apply_start_envelope || true

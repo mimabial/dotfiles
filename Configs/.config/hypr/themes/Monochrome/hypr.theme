@@ -13,6 +13,7 @@ $FONT = Hurmit Nerd Font
 $BAR_FONT = Hurmit Nerd Font
 $MENU_FONT = Hurmit Nerd Font
 $MONOSPACE_FONT = Hurmit Nerd Font
+$TERMINAL_FONT = Hurmit Nerd Font
 $NOTIFICATION_FONT = Hurmit Nerd Font Mono
 
 general {

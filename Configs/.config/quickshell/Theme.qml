@@ -5,13 +5,14 @@ QtObject {
     id: root
     required property string home
     property string layout: "main"
-    property var theme: ({ rounding: 0, palette: {} })
+    property var theme: ({ rounding: 0, borderSize: 0, palette: {} })
     property var baseRules: ({})
     property var overrides: ({})
     readonly property var rules: resolve(baseRules, overrides)
 
     readonly property var palette: theme.palette || ({})
     readonly property real radius: theme.rounding || 0
+    readonly property real border: theme.borderSize || 0
     readonly property var fallback: ({
         margin: [0, 0, 0, 0], padding: [0, 0, 0, 0],
         fontSize: 12, fontWeight: 400, border: 0, minWidth: 0, minHeight: 0,

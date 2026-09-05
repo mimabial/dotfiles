@@ -14,6 +14,7 @@ $FONT = MartianMono Nerd Font
 $BAR_FONT = MartianMono Nerd Font
 $MENU_FONT = MartianMono Nerd Font
 $MONOSPACE_FONT = MartianMono Nerd Font
+$TERMINAL_FONT = MartianMono Nerd Font
 $NOTIFICATION_FONT = MartianMono Nerd Font Mono
 
 general {

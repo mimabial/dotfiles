@@ -205,7 +205,7 @@ c.fonts.contextmenu = '11pt "CaskaydiaCove Nerd Font Mono"'
 # Note: border and radius are set by qute-hypr-sync.py (Hyprland integration)
 c.hints.border = '1px solid ' + border  # Border color from pywal
 
-# Tabs padding (matching waybar style)
+# Tabs padding (matching the bar's style)
 c.tabs.padding = {{'top': 4, 'bottom': 4, 'left': 5, 'right': 5}}
 c.tabs.indicator.width = 3
 

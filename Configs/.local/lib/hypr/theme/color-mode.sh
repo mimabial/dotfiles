@@ -8,8 +8,6 @@
 #   - selected_color_source and selected_color_mode state updates
 #   - auto-theme daemon start/stop coordination
 
-#// set variables
-
 set -euo pipefail
 
 # shellcheck source=/dev/null
@@ -213,8 +211,6 @@ select_color_mode_with_rofi() {
     exit 1
   fi
 }
-
-#// switch mode
 
 cycle_color_mode() {
   local i=""

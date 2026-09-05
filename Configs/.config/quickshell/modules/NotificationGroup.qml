@@ -6,10 +6,11 @@ BarGroup {
     id: root
     property bool popupsAllowed: true
     property bool showGithub: true
-    shell: root.shell; css: "notification"; radius: root.shell.moduleRadius
+    property string badge: "dot"
+    shell: root.shell; css: "notification-group"; radius: root.shell.moduleRadius
     secondaryAvailable: root.showGithub
     holdOpen: ["notifications", "github"].includes(root.shell.popupName)
-    primary: Component { NotificationButton { shell: root.shell; popupEnabled: root.popupsAllowed } }
+    primary: Component { NotificationButton { shell: root.shell; popupEnabled: root.popupsAllowed; badge: root.badge } }
     secondary: Component { ScriptButton {
         id: githubModule
         shell: root.shell; css: "github.notifications"

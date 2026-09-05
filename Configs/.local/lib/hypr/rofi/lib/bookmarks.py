@@ -33,10 +33,8 @@ class BookmarkManager:
         import os
 
         files = []
-        # Firefox
         firefox_dir = Path(self.xdg.HOME, ".mozilla/firefox")
         files.extend(str(path) for path in firefox_dir.glob("*/places.sqlite"))
-        # Chromium/Brave/Chrome
         for path in [
             os.path.join(
                 self.xdg.xdg_config, "BraveSoftware/Brave-Browser/Default/Bookmarks"
@@ -46,7 +44,6 @@ class BookmarkManager:
         ]:
             if os.path.exists(path):
                 files.append(path)
-        # Custom .lst files
         for path in [
             os.path.join(self.xdg.xdg_config, "hypr/bookmarks.lst"),
         ]:

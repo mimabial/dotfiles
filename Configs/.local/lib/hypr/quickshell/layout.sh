@@ -1,6 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash"
+
+usage() {
+  printf 'usage: %s [list|select|next|previous|set NAME]\n' "$0"
+}
+
+case "${1:-}" in
+  -h | --help)
+    usage
+    exit 0
+    ;;
+esac
+
 hypr_runtime_require state
 
 layout_dir="${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/layouts"
@@ -30,7 +42,7 @@ if [[ "${action}" =~ ^(select|set)$ ]]; then
   [[ " ${layouts[*]} " == *" ${target} "* ]] || { printf 'unknown bar layout: %s\n' "${target}" >&2; exit 1; }
 else
   [[ "${action}" == previous ]] && step=-1
-  [[ "${action}" =~ ^(next|previous)$ ]] || { printf 'usage: %s [list|select|next|previous|set NAME]\n' "$0" >&2; exit 1; }
+  [[ "${action}" =~ ^(next|previous)$ ]] || { usage >&2; exit 1; }
   for i in "${!layouts[@]}"; do [[ "${layouts[$i]}" == "${current}" ]] && break; done
   target="${layouts[$(((i + step + ${#layouts[@]}) % ${#layouts[@]}))]}"
 fi

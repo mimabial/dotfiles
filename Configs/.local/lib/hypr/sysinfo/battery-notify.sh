@@ -42,7 +42,7 @@ is_laptop() { # Check if the system is a laptop
   fi
 }
 is_laptop
-fn_verbose() {
+print_verbose_state() {
   if $verbose; then
     cat <<VERBOSE
 =============================================
@@ -96,7 +96,7 @@ run_configured_command() {
   esac
 }
 
-fn_percentage() {
+notify_thresholds() {
   if [[ "$battery_percentage" -ge "$unplug_charger_threshold" ]] && [[ "$battery_status" != "Discharging" ]] && [[ "$battery_status" != "Full" ]] && (((battery_percentage - last_notified_percentage) >= interval)); then
     steps=$(printf "%03d" $(((battery_percentage + 5) / 10 * 10)))
     if $verbose; then echo "Prompt:UNPLUG: $unplug_charger_threshold $battery_status $battery_percentage $steps"; fi
@@ -111,7 +111,7 @@ fn_percentage() {
       count=$((count - 1))
       sleep 1
     done
-    [ $count -eq 0 ] && fn_action
+    [ $count -eq 0 ] && run_critical_action
   elif [[ "$battery_percentage" -le "$battery_low_threshold" ]] && [[ "$battery_status" == "Discharging" ]] && (((last_notified_percentage - battery_percentage) >= interval)); then
     steps=$(printf "%1d" $(((battery_percentage + 5) / 10 * 10)))
     if $verbose; then echo "Prompt:LOW: $battery_low_threshold $battery_status $battery_percentage"; fi
@@ -120,12 +120,12 @@ fn_percentage() {
   fi
 }
 
-fn_action() {                          #handles the $execute_critical command #? This is special as it will try to execute always
+run_critical_action() {                          #handles the $execute_critical command #? This is special as it will try to execute always
   count=$((timer > mnt ? timer : mnt)) # reset count
   run_configured_command "${execute_critical}" background
 }
 
-fn_status() {
+resolve_battery_status() {
   if [[ $battery_percentage -ge $battery_full_threshold ]] && [[ "$battery_status" != *"Discharging"* ]]; then
     echo "Full and $battery_status"
     battery_status="Full"
@@ -140,7 +140,7 @@ fn_status() {
         dunstify -a "Power" -t 3000 -r 5 -u "${urgency:-normal}" -i "battery-level-${steps:-10}-symbolic" "Charger Plug Out" "Battery is at $battery_percentage%."
         run_configured_command "${execute_discharging}"
       fi
-      fn_percentage
+      notify_thresholds
       ;;
     "Not"* | "Charging")
       if $verbose; then echo "Case:$battery_status Level: $battery_percentage"; fi
@@ -152,7 +152,7 @@ fn_status() {
         dunstify -a "Power" -t 3000 -r 5 -u "${urgency:-normal}" -i "battery-${steps:-100}-charging" "Charger Plug In" "Battery is at $battery_percentage%."
         run_configured_command "${execute_charging}"
       fi
-      fn_percentage
+      notify_thresholds
       ;;
     "Full")
       if $verbose; then echo "Case:$battery_status Level: $battery_percentage"; fi
@@ -172,7 +172,7 @@ fn_status() {
         echo "Status: '==>> \"${battery_status}\" <<==' Script on Fallback mode,Unknown power supply status.Please copy this line and raise an issue to the Github Repo.Also run 'ls ${TMPDIR:-/tmp}/battery.notify' to see the list of lock files.*"
         touch "${TMPDIR:-/tmp}/battery.notify.status.fallback.$battery_status-$$"
       fi
-      fn_percentage
+      notify_thresholds
       ;;
   esac
 }
@@ -225,7 +225,7 @@ get_battery_info() { # Read battery state directly from sysfs to avoid desktop-s
   battery_percentage=$((total_percentage / battery_count)) #? For Multiple Battery
 }
 
-fn_status_change() { # Handle when status changes
+handle_status_change() { # Handle when status changes
   get_battery_info
   local executed_low=false
   local executed_unplug=false
@@ -233,8 +233,8 @@ fn_status_change() { # Handle when status changes
   if [ "$battery_status" != "$last_battery_status" ] || [ "$battery_percentage" != "$last_battery_percentage" ]; then
     last_battery_status=$battery_status
     last_battery_percentage=$battery_percentage
-    fn_verbose
-    fn_percentage
+    print_verbose_state
+    notify_thresholds
 
     if [[ "$battery_percentage" -le "$battery_low_threshold" ]] && ! $executed_low; then
       run_configured_command "${execute_low}"
@@ -244,7 +244,7 @@ fn_status_change() { # Handle when status changes
       run_configured_command "${execute_unplug}"
       executed_unplug=true executed_low=false
     fi
-    if ! $dock; then fn_status; fi
+    if ! $dock; then resolve_battery_status; fi
   fi
 }
 
@@ -269,19 +269,15 @@ main() {
   config_info
   if $verbose; then
     for line in "Verbose Mode is ON..." "" "" "" ""; do echo "${line}"; done
-  # Debug helper to pause other battery-notify instances during verbose runs.
-  # current_pid=$$
-  # pids=$(pgrep -f "/usr/bin/env bash ${script_dir}/battery.notify.sh" )
-  # for pid in $pids ; do if [ "$pid" -ne $current_pid ] ;then kill -STOP "$pid" ;dunstify -a "Battery Notify" -t 2000 -r 9889 -u "CRITICAL" "Debugging STARTED, Pausing Regular Process" ;fi ; done  ; trap resume_processes SIGINT ;
   fi
-  get_battery_info # initiate the function
+  get_battery_info
   last_notified_percentage=$battery_percentage
   prev_status=$battery_status
   last_full_notify_ts=0
   local battery_path=""
   battery_path="$(upower -e | grep battery || true)"
   [[ -n "${battery_path}" ]] || return 0
-  dbus-monitor --system "type='signal',interface='org.freedesktop.DBus.Properties',path='${battery_path}'" 2>/dev/null | while read -r battery_status_change; do fn_status_change; done
+  dbus-monitor --system "type='signal',interface='org.freedesktop.DBus.Properties',path='${battery_path}'" 2>/dev/null | while read -r battery_status_change; do handle_status_change; done
 }
 
 verbose=false

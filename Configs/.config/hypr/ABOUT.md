@@ -114,7 +114,7 @@ into one fuzzy-searchable list when you cannot remember where something lives.
 - **Per-tab media control.** A native-messaging bridge exposes every Firefox
   media tab as its own MPRIS player, so the bar can scroll between them and
   scrub each one independently.
-- **A look-and-feel panel** with live preview, remembering overrides per theme,
+- **A look-and-feel TUI** with live preview, remembering overrides per theme,
   so gaps and rounding tuned for a dark theme do not follow you into a light one.
 - **Workflow profiles** that retune animations, blur and power behavior in one
   keystroke when a game starts or the battery drops.
@@ -144,7 +144,7 @@ without a rewrite.
 | File                                | Covers                                |
 | ----------------------------------- | ------------------------------------- |
 | `~/.config/quickshell/README.md`    | bar layouts, styling, popups          |
-| `~/.config/quickshell/LOOKNFEEL.md` | the look-and-feel panel               |
+| `~/.local/lib/hypr/window/LOOKNFEEL.md` | the look-and-feel TUI             |
 | `~/.local/lib/hypr/theme/PHASES.md` | theme phases and cancellation         |
 | `~/.config/sv/README.md`            | runit services                        |
 | `~/dotfiles/README.md`              | install, restore, the full theme list |

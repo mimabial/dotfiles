@@ -13,6 +13,7 @@ $FONT = ShureTechMono Nerd Font
 $BAR_FONT = ShureTechMono Nerd Font
 $MENU_FONT = ShureTechMono Nerd Font
 $MONOSPACE_FONT = ShureTechMono Nerd Font
+$TERMINAL_FONT = ShureTechMono Nerd Font
 $NOTIFICATION_FONT = ShureTechMono Nerd Font Mono
 
 # Theme variables above are the primary inputs used by theme.switch.sh.

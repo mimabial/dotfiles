@@ -28,8 +28,6 @@ PopupCard {
     function size() { return battery && battery.energyCapacity > 0 ? battery.energyCapacity.toFixed(1) + "Wh" : "\u2014" }
     function rate() { return battery ? Math.abs(battery.changeRate).toFixed(1) + "W" : "\u2014" }
 
-    function duration(seconds) { const minutes = Math.round(seconds / 60); return minutes > 59 ? Math.floor(minutes / 60) + "h " + minutes % 60 + "m" : minutes + "m" }
-    function profileName(profile) { return PowerProfile.toString(profile).replace(/([a-z])([A-Z])/g, "$1 $2") }
     function profileId(profile) { return PowerProfile.toString(profile).replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase() }
     function profileIcon(profile) { return profile === PowerProfile.Performance ? "󱐌" : profile === PowerProfile.PowerSaver ? "󰌪" : "󰗑" }
 
@@ -37,7 +35,7 @@ PopupCard {
         id: powerColumn
         anchors.left: parent.left; anchors.right: parent.right; spacing: Style.px(14)
         Text { width: parent.width; text: root.battery && root.battery.isPresent ? Math.round(root.battery.percentage * 100) + "%" : "AC POWER"; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.displayLarge; font.bold: true; horizontalAlignment: Text.AlignHCenter }
-        Text { width: parent.width; text: root.battery && root.battery.isPresent ? (UPower.onBattery ? root.duration(root.battery.timeToEmpty) + " remaining" : root.battery.timeToFull > 0 ? root.duration(root.battery.timeToFull) + " until full" : "Connected to power") : "No battery detected"; color: root.shell.alpha(root.shell.foreground, .55); font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall; horizontalAlignment: Text.AlignHCenter }
+        Text { width: parent.width; text: root.battery && root.battery.isPresent ? (UPower.onBattery ? root.shell.duration(root.battery.timeToEmpty) + " remaining" : root.battery.timeToFull > 0 ? root.shell.duration(root.battery.timeToFull) + " until full" : "Connected to power") : "No battery detected"; color: root.shell.alpha(root.shell.foreground, .55); font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall; horizontalAlignment: Text.AlignHCenter }
         Rectangle { visible: root.battery && root.battery.isPresent; width: parent.width; height: Style.px(7); radius: 4; color: root.shell.alpha(root.shell.foreground, .12); Rectangle { width: parent.width * (root.battery ? root.battery.percentage : 0); height: parent.height; radius: parent.radius; color: root.shell.role("act_br", root.shell.accent) } }
         Row {
             visible: root.battery && root.battery.isPresent
@@ -53,7 +51,7 @@ PopupCard {
                     label: root.thresholdActive ? "Charge limit" : root.discharging ? "Time left" : "Time to full"
                     value: root.thresholdActive ? root.thresholdText
                         : root.full ? "-"
-                        : root.duration(root.discharging ? root.battery.timeToEmpty : root.battery.timeToFull)
+                        : root.shell.duration(root.discharging ? root.battery.timeToEmpty : root.battery.timeToFull)
                 }
                 InfoPair {
                     label: root.thresholdActive ? "Battery state" : root.discharging ? "Discharging" : "Charging"
@@ -68,7 +66,7 @@ PopupCard {
             PopupRow {
                 required property var modelData
                 visible: modelData !== PowerProfile.Performance || PowerProfiles.hasPerformanceProfile
-                width: parent.width; shell: root.shell; icon: root.profileIcon(modelData); title: root.profileName(modelData); detail: modelData === PowerProfiles.profile ? "Active" : ""; active: modelData === PowerProfiles.profile
+                width: parent.width; shell: root.shell; icon: root.profileIcon(modelData); title: root.shell.profileName(modelData); detail: modelData === PowerProfiles.profile ? "Active" : ""; active: modelData === PowerProfiles.profile
                 onClicked: root.shell.run(["hyprshell", "system/powerprofiles", "--set", root.profileId(modelData)])
             }
         }

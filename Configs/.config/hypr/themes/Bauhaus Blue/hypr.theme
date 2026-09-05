@@ -8,6 +8,7 @@ $FONT = OverpassM Nerd Font
 $BAR_FONT = OverpassM Nerd Font
 $MENU_FONT = OverpassM Nerd Font
 $MONOSPACE_FONT = OverpassM Nerd Font
+$TERMINAL_FONT = OverpassM Nerd Font
 $NOTIFICATION_FONT = OverpassM Nerd Font Mono
 
 general {

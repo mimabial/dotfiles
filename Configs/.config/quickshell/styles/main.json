@@ -7,13 +7,12 @@
     "margin": [8.0, 10.0, 2.0, 10.0]
   },
   "clock.date": {
-    "fontSize": 12.0,
+    "fontSize": 11.0,
     "border": 1.5,
     "fontWeight": 400,
-    "edge": { "bottom": true, "color": ["c10", 0.3], "right": true, "top": true },
     "hover": { "content": ["hvr_fg", 1.0] },
     "justify": "left",
-    "outline": null,
+    "outline": ["c10", 0.3],
     "padding": [4.0, 4.0, 4.0, 4.0]
   },
   "weather": {
@@ -24,29 +23,28 @@
     "padding": [0.0, 0.2, 0.0, 0.2]
   },
   "weather.minmax": {
-    "fontSize": 12.0,
+    "fontSize": 11.0,
     "border": 1.5,
-    "outline": null,
-    "edge": { "bottom": true, "color": ["c4", 0.3], "left": true, "top": true },
-    "justify": "center",
-    "padding": [4.0, 0.0, 4.0, 0.0]
+    "outline": ["c4", 0.3],
+    "justify": "right",
+    "padding": [4.0, 4.0, 4.0, 0.0]
   },
   "weather.sunrise": {
-    "fontSize": 12.0,
+    "fontSize": 11.0,
     "border": 1.5,
     "iconLine": 0,
     "iconPadRight": 1,
     "valuePadLeft": 0,
     "outline": null,
-    "justify": "center",
+    "justify": "left",
     "edge": { "bottom": true, "color": ["c5", 0.3], "right": true, "top": true },
-    "margin": [2.0, 2.0, 2.0, 2.0],
-    "padding": [2.0, 0.0, 2.0, 2.0]
+    "margin": [4.0, 2.0, 4.0, 2.0],
+    "padding": [2.0, 2.0, 2.0, 2.0]
   },
   "weather.sunset": {
-    "fontSize": 12.0,
+    "fontSize": 11.0,
     "border": 1.5,
-    "justify": "center",
+    "justify": "right",
     "iconLine": 0,
     "iconPadRight": -2,
     "valuePadLeft": 0,
@@ -69,7 +67,7 @@
     "margin": [2.0, 0.0, 2.0, 0.0]
   },
   "dmark": { "padding": [0.0, 2.0, 0.0, 2.0] },
-  "dunst": {
+  "notification": {
     "padding": [2.0, 0.0, 2.0, 0.0]
   },
   "github.notifications": {
@@ -98,7 +96,11 @@
   },
 
   "printers": { "border": 0.0, "margin": [0.0, 0.0, 0.0, 0.0], "padding": [2.0, 1.5, 2.0, 1.5] },
-  "removable": { "outline": null, "hover": { "outline": null } },
+  "removable": {
+    "fontSize": 12.0,
+    "outline": null,
+    "hover": { "outline": null }
+  },
   "screenrecord": {
     "outline": null,
     "padding": [1.0, 0.0, 1.0, 0.0],
@@ -130,7 +132,7 @@
     "hover": { "outline": null }
   },
   "privacy": { "outline": ["c12", 0.3], "padding": [2.0, 0.0, 2.0, 0.0] },
-  "pulseaudio": {
+  "volume": {
     "fill": ["bg", 0.1],
     "margin": [3.0, 2.0, 3.0, 2.0],
     "outline": ["br", 0.3],

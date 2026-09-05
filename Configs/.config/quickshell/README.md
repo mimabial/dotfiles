@@ -1,8 +1,7 @@
 # Quickshell bar
 
-Quickshell is the active status bar. Waybar is disabled and kept only as a
-legacy reference and script-output format. Do not start, restart, or regenerate
-Waybar while working on this config.
+Quickshell is the status bar. Script providers still emit the `{text, class,
+tooltip}` JSON shape that `ScriptButton` reads.
 
 The implementation separates three concerns:
 
@@ -47,6 +46,10 @@ call.
 | `top` | `TopBar` | top | three-section horizontal bar |
 | `winbar` | `WinBar` | bottom | compact three-section bar |
 
+The dock in `dock/` is not a layout: it is a separate bottom-edge panel that
+runs alongside whichever bar layout is active, the way `expose/` does. See
+`dock/README.md`.
+
 `main`, `left`, and `sidebar` are ordered arrays. `top` and `winbar` contain
 `left`, `center`, and `right` arrays. An entry may be a module id or
 `{"id":"audio","props":{"reverse":false}}`; `"spacer"` consumes remaining
@@ -72,6 +75,15 @@ Composed modules such as `audio`, `power`, `eyecare`, `screen`, `wifi`, `notific
 `updates`, `barlayout`, and `colormode` own drawers. Style the drawer frame by
 its `css` key and its children by their own keys.
 
+`mediaplayer` takes `showWhenIdle: true`, which keeps a placeholder glyph
+(`idleIcon`, default `\uf001`) in the bar when no player is running — the
+provider prints nothing then, and an empty `ScriptButton` hides itself.
+
+`notification` and `notification-group` take a `badge` prop for the unread
+marker: `"dot"`, `"count"`, `"highlight"` (recolour the glyph instead), or
+`"none"` to disable it. `updates` and `agents` take `showAgents: false`, which
+drops the agents slot and leaves the group as the updates button alone.
+
 ## Styling
 
 `Theme.qml` recursively merges `styles/base.json`, then the active layout file.
@@ -94,8 +106,20 @@ Important geometry rules:
 - `edge` is drawn by `ModuleEdge` and selects border sides; it is not an
   independent second outline.
 - An `.active` rule inherits its unsuffixed rule before applying overrides.
+- `volume` keys off the active output port and mute state:
+  `volume.<port>[.muted]`, where `<port>` is one of `headphone`, `hands-free`,
+  `headset`, `phone`, `portable`, `car`, or absent for a plain sink. Each level
+  inherits the one above, so `volume.headphone.muted` falls back to
+  `volume.headphone` and then `volume`.
 - `agents` takes an extra `alarm` channel, used instead of `content` once a
   provider limit reaches 90%; unset, it paints the `error` role.
+- `notification` takes `badgeOffsetX` and `badgeOffsetY`, moving the unread badge
+  off the glyph's top-right corner; positive pushes it right and down. The badge
+  tracks the glyph, not the module frame, so it stays put as the bar widens.
+  `badgeSize` sizes it: the dot's diameter in `"dot"` mode, the glyph's em in
+  `"count"` mode, defaulting to 6 and 13. Because a rule inherits its base entry,
+  set it in the layout file that picks that `badge` mode rather than in
+  `base.json`, where one value would reach both.
 
 ## Drawers and popups
 
@@ -108,7 +132,9 @@ primary item. Slider placement is explicit through module properties such as
 `sliderFirst`; do not infer it from the drawer direction.
 
 Only one popup is open globally (`shell.popupName`), and only the focused monitor
-accepts it. Bars normally use `WlrKeyboardFocus.None`; a newly opened popup is
+accepts it. `PopupCard.position` defaults to the side the bar layout implies;
+a host that is not the bar (the dock's `dockstart` menu) sets it explicitly.
+Bars normally use `WlrKeyboardFocus.None`; a newly opened popup is
 briefly primed with `Exclusive`, then uses `OnDemand`. Preserve that transition
 when fixing outside-click behavior so the first click reaches the target window.
 
@@ -120,6 +146,13 @@ alarm/timer/stopwatch popup where configured as the timer clock.
 - `shell.qml` writes `~/.local/state/quickshell/time-visibility`; Kitty's
   `tab_bar.py` reads it to hide its own date and/or clock only while the matching
   Quickshell module is visible.
+- The agents popup and `agent-tui` both read
+  `~/.cache/hypr/agents/usage.json`; `system/agent-usage.sh` is the only
+  producer, so quota and token calculations stay aligned between the bar and
+  terminal views. Each surface triggers its own refresh: the TUI on open when
+  the cache is older than its `STALE_AFTER`, `AgentsButton` on a 15 minute
+  Timer. That Timer only runs on layouts that instantiate the button, so it is
+  not a refresh path anything else may rely on.
 - Audio limits are expressed in dB. `controls/volume-control.sh --limits` probes
   the active backend and supplies portable minimum, maximum, and step values;
   QML converts between dB and PipeWire/PulseAudio's cubic scalar.
@@ -130,9 +163,27 @@ alarm/timer/stopwatch popup where configured as the timer clock.
   rather than infer measurements from decorative spectrum bars. QML samples
   the raw analyzer at a fixed visual cadence and applies time-based smoothing
   only to the bands used by decorative renderers.
+- The media popup's local library is `~/Music`, overridable with
+  `CLIAMP_MUSIC_DIR`. Both the Files tab (`cliamp_ctl.py files [rel]`) and the
+  local half of search read it and nothing outside it; `browse_library` clamps
+  any `rel` that escapes the root back to the root.
+- Local tracks have no cover file on disk, so `attach_covers()` pulls the
+  embedded art out with one `ffmpeg` call per track into `~/.cache/cliamp/covers/`,
+  keyed by path and mtime. The pass is parallel and time-boxed; anything that
+  misses the budget lands on the next listing, and cached art costs nothing.
+  Files, Recents, and the local half of search all go through it.
+- Adding to the queue writes `~/.cache/cliamp/queue.json` *and* appends to mpv's
+  own playlist, so the entry carries the `target` mpv was handed (a direct stream
+  URL or the FIFO for YouTube, the file path otherwise). `reconcile_queue()`
+  matches on it to drop entries mpv advanced into by itself, which is what keeps
+  the visible queue and the playlist from disagreeing.
 - Alarm/timer and stopwatch state lives under `~/.local/state/quickshell/` and is
   restored by `calendar/alarm-timer.sh`; do not move scheduling into QML timers
   that disappear on reload.
+- Bar and dock share `store.barTransparent` and `store.barBlur`. While the dock
+  is linked it renders from those and writes back to them, so a toggle from
+  either surface moves both; `LayerBlur` turns each surface's blur into a named
+  Hyprland layer rule and re-applies it after a compositor config reload.
 - Taskbar focus is address-based. Its helper temporarily suppresses Hyprland
   cursor warps only for taskbar activation and restores the prior setting in the
   same compositor call; do not add an arbitrary delay.
@@ -142,6 +193,8 @@ alarm/timer/stopwatch popup where configured as the timer clock.
 | role | files |
 | --- | --- |
 | entry and shared state | `shell.qml`, `Style.qml`, `Theme.qml` |
+| standalone panels | `dock/`, `expose/` |
+| layer blur | `LayerBlur.qml` |
 | panels | `MainBar.qml`, `TopBar.qml`, `WinBar.qml`, `BarSection.qml` |
 | primitives | `BarButton.qml`, `ScriptButton.qml`, `DrawerGroup.qml`, `ModuleEdge.qml`, `Popup*.qml` |
 | modules | root `*Button.qml`/service components and `modules/*Module.qml` |

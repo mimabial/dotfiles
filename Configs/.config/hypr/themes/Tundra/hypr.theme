@@ -10,6 +10,7 @@ $FONT = ZedMono Nerd Font
 $BAR_FONT = ZedMono Nerd Font
 $MENU_FONT = ZedMono Nerd Font
 $MONOSPACE_FONT = ZedMono Nerd Font
+$TERMINAL_FONT = ZedMono Nerd Font
 $NOTIFICATION_FONT = ZedMono Nerd Font Mono
 
 general {

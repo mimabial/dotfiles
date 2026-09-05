@@ -33,8 +33,6 @@
 
 theme_apply_phase_d_log_dir=""
 
-# --- Phase-D log directory and unit tracking ---
-
 theme_apply_phase_d_prepare_log_dir() {
   local log_root="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/theme.apply.phase-d"
 
@@ -113,8 +111,6 @@ theme_apply_phase_d_prune_log_dirs() {
       | cut -f2-
   )
 }
-
-# --- systemd envelope start/run ---
 
 theme_apply_phase_d_systemd_available() {
   [[ -n "${XDG_RUNTIME_DIR:-}" ]] || return 1
@@ -294,8 +290,6 @@ theme_apply_envelope_launch_wallpaper() {
   fi
 }
 
-# --- Phase-D bootstrap and job pool ---
-
 theme_apply_phase_d_bootstrap() {
   local module=""
   local module_path=""
@@ -366,8 +360,6 @@ theme_apply_phase_d_quickshell_icon_sync() {
     && state_set "quickshell_icon_theme" "${current_icon_theme}" "staterc" 2>/dev/null || true
 }
 
-# --- Helpers used by phase-D jobs ---
-
 theme_apply_sync_runtime_desktop_state() {
   local quiet="${1:-false}"
 
@@ -436,8 +428,6 @@ theme_apply_sync_backend_wallpaper_links() {
     "${LIB_DIR}/hypr/wallpaper.sh" link --backend "${base}" >/dev/null 2>&1 || true
   done < <(find -H "${WALLPAPER_CURRENT_DIR}" -maxdepth 1 -type l -name "*.png" -print0)
 }
-
-# --- Phase-D job functions ---
 
 theme_apply_job_nvim() {
   theme_apply_generation_is_current || return 0

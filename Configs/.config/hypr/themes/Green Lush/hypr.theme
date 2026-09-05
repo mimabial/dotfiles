@@ -13,6 +13,7 @@ $FONT = Monofur Nerd Font
 $BAR_FONT = Monofur Nerd Font
 $MENU_FONT = Monofur Nerd Font
 $MONOSPACE_FONT = Monofur Nerd Font
+$TERMINAL_FONT = Monofur Nerd Font
 $NOTIFICATION_FONT = Monofur Nerd Font Mono
 
 general {

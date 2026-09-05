@@ -12,6 +12,7 @@ $FONT = 3270 Nerd Font
 $BAR_FONT = 3270 Nerd Font
 $MENU_FONT = 3270 Nerd Font
 $MONOSPACE_FONT = 3270 Nerd Font
+$TERMINAL_FONT = 3270 Nerd Font
 $NOTIFICATION_FONT = 3270 Nerd Font Mono
 
 # Theme variables above are the primary inputs used by theme.switch.sh.

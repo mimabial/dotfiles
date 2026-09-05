@@ -1,9 +1,12 @@
 module qs.Commons
+ColorBar 1.0 ColorBar.qml
 ColorMenu 1.0 ColorMenu.qml
 ColorPopups 1.0 ColorPopups.qml
+ColorTooltip 1.0 ColorTooltip.qml
 singleton Border 1.0 Border.qml
 singleton Color 1.0 Color.qml
 singleton Style 1.0 Style.qml
 singleton Util 1.0 Util.qml
+StyleBar 1.0 StyleBar.qml
 StyleFont 1.0 StyleFont.qml
 StyleSpacing 1.0 StyleSpacing.qml

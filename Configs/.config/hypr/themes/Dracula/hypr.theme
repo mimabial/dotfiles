@@ -13,6 +13,7 @@ $FONT = FiraCode Nerd Font
 $BAR_FONT = FiraCode Nerd Font
 $MENU_FONT = FiraCode Nerd Font
 $MONOSPACE_FONT = FiraCode Nerd Font
+$TERMINAL_FONT = FiraCode Nerd Font
 $NOTIFICATION_FONT = FiraCode Nerd Font Mono
 
 general {

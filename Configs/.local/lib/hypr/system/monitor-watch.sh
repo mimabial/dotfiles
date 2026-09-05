@@ -9,6 +9,7 @@ hypr_help_guard "Usage: hyprshell system/monitor-watch
 Watch for monitor hotplug events and recover internal/mirror toggles." "$@"
 
 recover_monitor_toggles() {
+  hyprmoncfg doctor >/dev/null 2>&1 && return 0
   "${HYPR_LIB_DIR}/system/monitor-internal.sh" recover || true
   "${HYPR_LIB_DIR}/system/monitor-mirror.sh" recover || true
 }

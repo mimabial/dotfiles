@@ -13,6 +13,7 @@ $FONT = MesloLGS Nerd Font
 $BAR_FONT = MesloLGS Nerd Font
 $MENU_FONT = MesloLGS Nerd Font
 $MONOSPACE_FONT = MesloLGS Nerd Font
+$TERMINAL_FONT = MesloLGS Nerd Font
 $NOTIFICATION_FONT = MesloLGS Nerd Font Mono
 
 general {

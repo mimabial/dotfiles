@@ -9,7 +9,7 @@ import Quickshell.Io
 Singleton {
     id: root
 
-    // waybar's backlight format-icons: a moon-phase ramp, new -> full
+    // backlight ramp: moon phases, new -> full
     readonly property var icons: [
         "\u{e38d}", "\u{e3d3}", "\u{e3d1}", "\u{e3cf}", "\u{e3ce}",
         "\u{e3cd}", "\u{e3ca}", "\u{e3c8}", "\u{e39b}"
@@ -19,7 +19,7 @@ Singleton {
     property int raw: 0
     property int maximum: 0
     readonly property int percent: maximum > 0 ? Math.round(raw * 100 / maximum) : 0
-    // waybar buckets with integer division: idx = percent / (100 / count)
+    // bucket with integer division: idx = percent / (100 / count)
     readonly property string icon: icons[Math.min(icons.length - 1,
         Math.floor(percent / Math.floor(100 / icons.length)))]
 

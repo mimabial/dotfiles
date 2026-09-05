@@ -12,6 +12,7 @@ $FONT = IosevkaTerm Nerd Font
 $BAR_FONT = IosevkaTerm Nerd Font
 $MENU_FONT = IosevkaTerm Nerd Font
 $MONOSPACE_FONT = IosevkaTerm Nerd Font
+$TERMINAL_FONT = IosevkaTerm Nerd Font
 $NOTIFICATION_FONT = IosevkaTerm Nerd Font Mono
 
 general {

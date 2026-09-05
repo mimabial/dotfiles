@@ -19,8 +19,7 @@ case "${1:-}" in
     ;;
   screen-off)
     sleep 0.4
-    hypr_lua_dispatch 'hl.dsp.dpms({ action = "disable" })' >/dev/null 2>&1 \
-      || hyprctl dispatch dpms off >/dev/null
+    hypr_lua_dispatch 'hl.dsp.dpms({ action = "disable" })' >/dev/null 2>&1 || true
     ;;
   hibernate)
     hyprshell session/lid-close.sh --no-suspend

@@ -7,7 +7,7 @@ BarGroup {
     property bool popupsAllowed: true
     property bool sliderFirst: false
     property bool showSlider: true
-    css: "volumecontrol"
+    css: "audio"
     slots: !root.vertical || !root.showSlider ? [audioSlot, microphoneSlot]
         : root.sliderFirst ? [audioSlot, volumeSlot, microphoneSlot]
         : [audioSlot, microphoneSlot, volumeSlot]

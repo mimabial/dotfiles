@@ -1,0 +1,8 @@
+module qs.monitor
+BrightnessControl 1.0 BrightnessControl.qml
+DisplayCanvas 1.0 DisplayCanvas.qml
+EditorPane 1.0 EditorPane.qml
+DisplayPanel 1.0 DisplayPanel.qml
+DisplayPreviewGuard 1.0 DisplayPreviewGuard.qml
+KeyboardHelp 1.0 KeyboardHelp.qml
+PanelDropdown 1.0 PanelDropdown.qml

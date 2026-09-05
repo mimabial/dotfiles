@@ -11,6 +11,7 @@ $FONT = MonaspiceKr Nerd Font
 $BAR_FONT = MonaspiceKr Nerd Font
 $MENU_FONT = MonaspiceKr Nerd Font
 $MONOSPACE_FONT = MonaspiceKr Nerd Font
+$TERMINAL_FONT = MonaspiceKr Nerd Font
 $NOTIFICATION_FONT = MonaspiceKr Nerd Font Mono
 
 general {

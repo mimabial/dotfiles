@@ -9,7 +9,6 @@ import Quickshell.Io
 PopupCard {
     id: root
     popupName: "cliphist"
-    wantsKeyboard: true
     contentWidth: Style.px(430)
     contentHeight: Style.px(470)
 

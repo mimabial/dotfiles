@@ -29,6 +29,7 @@ TEMPLATES = {
     "pywal16.ron": TEMPLATE_DIR / "colors-rmpc.ron",
     "pywal16-small.ron": TEMPLATE_DIR / "colors--small-rmpc.ron",
     "pywal16-big.ron": TEMPLATE_DIR / "colors--big-rmpc.ron",
+    "pywal16-wide.ron": TEMPLATE_DIR / "colors--wide-rmpc.ron",
 }
 APP = "rmpc"
 

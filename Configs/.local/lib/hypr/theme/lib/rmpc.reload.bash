@@ -8,7 +8,7 @@ config="${config_home}/rmpc/config.ron"
 
 theme_name="$(sed -nE 's/.*theme:[[:space:]]*Some\("([^"]+)".*/\1/p; T; q' "${config}" 2>/dev/null)"
 case "${theme_name}" in
-  pywal16 | pywal16-small | pywal16-big) ;;
+  pywal16 | pywal16-small | pywal16-big | pywal16-wide) ;;
   *) exit 0 ;;
 esac
 

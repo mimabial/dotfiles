@@ -33,6 +33,7 @@ declare -grA HYPR_LOCK_NAMES=(
   [wal_cache_clean]="wal-cache-clean.lock"
   [wal_cache_store]="wal-cache-store.lock"
   [wal_cache_prune]="wal-cache-prune.lock"
+  [notify_archive]="notify-archive.lock"
 )
 
 hypr_lock_path() {

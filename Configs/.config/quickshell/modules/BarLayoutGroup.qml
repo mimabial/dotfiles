@@ -11,7 +11,6 @@ BarGroup {
     primary: Component { BarButton {
         id: barButton; Layout.fillWidth: true; shell: root.shell; css: "barlayout-button"; text: root.shell.barLayoutIcon(root.shell.layoutName)
         textColor: root.shell.store.barTransparent ? root.shell.accent : root.shell.foreground
-        tooltip: "Bar: " + root.shell.layoutName + " · " + (root.shell.store.barTransparent ? "transparent" : "themed") + "\nLeft: layouts · Middle: next · Right: transparency"
         onClicked: button => button === Qt.LeftButton ? root.shell.togglePopup("barlayout") : button === Qt.RightButton ? root.shell.toggleBarTransparency() : root.shell.run(["hyprshell", "quickshell/layout", "next"])
         BarLayoutPopup { anchorItem: barButton; shell: root.shell; popupEnabled: root.popupsAllowed }
     } }

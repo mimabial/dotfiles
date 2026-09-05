@@ -3,6 +3,8 @@
 # Font resolution, override emission, em->px and text->px conversion via Pango.
 # External deps: hypr_config_value_from_layers (core/common).
 
+ROFI_PANGO_MEASURE="$(dirname -- "${BASH_SOURCE[0]}")/pango_measure.py"
+
 rofi_effective_font_scale() {
   local requested_scale="${1:-}"
   local scale="${requested_scale}"
@@ -109,39 +111,7 @@ rofi_font_text_height_px() {
   fi
 
   font_px="$(
-    FONT_DESC="${font_desc}" python3 - <<'PY'
-import os
-import sys
-
-try:
-    import gi
-    gi.require_version("Pango", "1.0")
-    gi.require_version("PangoCairo", "1.0")
-    from gi.repository import Pango, PangoCairo
-    import cairo
-except Exception:
-    sys.exit(1)
-
-font_desc = os.environ.get("FONT_DESC", "").strip()
-if not font_desc:
-    sys.exit(1)
-
-surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 1, 1)
-context = cairo.Context(surface)
-pango_context = PangoCairo.create_context(context)
-description = Pango.FontDescription.from_string(font_desc)
-pango_context.set_font_description(description)
-metrics = pango_context.get_metrics(description, Pango.Language.get_default())
-# rofi's em is the line height, which includes the line gap; ascent+descent
-# undercounts it (Miracode 15: 21px vs rofi's 22px) and clips the last row.
-height = metrics.get_height() / Pango.SCALE
-if height <= 0:
-    height = (metrics.get_ascent() + metrics.get_descent()) / Pango.SCALE
-if height <= 0:
-    sys.exit(1)
-
-print(f"{height:.2f}")
-PY
+    FONT_DESC="${font_desc}" python3 "${ROFI_PANGO_MEASURE}" height
   )" || return 1
 
   [[ -n "${font_px}" ]] || return 1
@@ -175,40 +145,8 @@ rofi_font_text_extents_px() {
     return 0
   fi
 
-  # program on fd 3, so the rows keep stdin
   extents="$(
-    printf '%s\n' "${rows}" | FONT_DESC="${font_name} ${font_scale}" python3 /dev/fd/3 3<<'PY'
-import os
-import sys
-
-try:
-    import gi
-    gi.require_version("Pango", "1.0")
-    gi.require_version("PangoCairo", "1.0")
-    from gi.repository import Pango, PangoCairo
-    import cairo
-except Exception:
-    sys.exit(1)
-
-font_desc = os.environ.get("FONT_DESC", "").strip()
-if not font_desc:
-    sys.exit(1)
-
-layout = PangoCairo.create_layout(cairo.Context(cairo.ImageSurface(cairo.FORMAT_ARGB32, 1, 1)))
-layout.set_font_description(Pango.FontDescription.from_string(font_desc))
-
-width = 0
-height = 0
-for row in sys.stdin.read().splitlines():
-    layout.set_text(row, -1)
-    row_width, row_height = layout.get_pixel_size()
-    width = max(width, row_width)
-    height = max(height, row_height)
-if width <= 0 or height <= 0:
-    sys.exit(1)
-
-print(width, height)
-PY
+    printf '%s\n' "${rows}" | FONT_DESC="${font_name} ${font_scale}" python3 "${ROFI_PANGO_MEASURE}" extents
   )" || return 1
 
   read -r width_px height_px <<<"${extents}"
@@ -249,63 +187,10 @@ rofi_font_align_trailing() {
     return 0
   fi
 
-  # program on fd 3, so the rows keep stdin
   aligned="$(
     printf '%s\n' "${rows}" |
       FONT_DESC="${font_name} ${font_scale}" GLYPH="${glyph}" TARGET_PX="${target_px}" \
-        PYTHONIOENCODING=utf-8 python3 /dev/fd/3 3<<'PY'
-import os
-import sys
-
-try:
-    import gi
-    gi.require_version("Pango", "1.0")
-    gi.require_version("PangoCairo", "1.0")
-    from gi.repository import Pango, PangoCairo
-    import cairo
-except Exception:
-    sys.exit(1)
-
-font_desc = os.environ.get("FONT_DESC", "").strip()
-glyph = os.environ.get("GLYPH", "")
-if not font_desc or not glyph:
-    sys.exit(1)
-
-layout = PangoCairo.create_layout(cairo.Context(cairo.ImageSurface(cairo.FORMAT_ARGB32, 1, 1)))
-layout.set_font_description(Pango.FontDescription.from_string(font_desc))
-
-
-def width(text):
-    layout.set_text(text, -1)
-    return layout.get_pixel_size()[0]
-
-
-rows = []
-for line in sys.stdin.read().splitlines():
-    flag, _, label = line.partition("\t")
-    rows.append((flag == "1", label))
-
-space = width(" ")
-if not rows or space <= 0:
-    sys.exit(1)
-
-glyph_width = width(glyph)
-# two spaces of breathing room past the widest label, when the rows themselves
-# are what the column is measured from
-edge = max(width(label) for _, label in rows) + 2 * space + glyph_width
-# Reaching a wider target costs whole spaces, and the division floors twice
-# over: a target landing mid-space would round labels of differing length to
-# columns one space apart, and a row as wide as the column rofi hands it is
-# elided -- taking the glyph with it.
-target = int(os.environ.get("TARGET_PX", "0") or 0)
-edge += max(0, (target - edge) // space) * space
-
-for flagged, label in rows:
-    if not flagged:
-        print(label)
-        continue
-    print(label + " " * max(1, round((edge - glyph_width - width(label)) / space)) + glyph)
-PY
+        PYTHONIOENCODING=utf-8 python3 "${ROFI_PANGO_MEASURE}" align
   )" || return 1
   [[ -n "${aligned}" ]] || return 1
 

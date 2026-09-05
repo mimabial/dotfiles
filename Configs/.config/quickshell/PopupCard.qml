@@ -14,13 +14,14 @@ PopupWindow {
     property int padding: Style.popupPadding
     property color background: shell.role("bg", "#0c1021")
     property color borderColor: shell.role("alt_br", shell.foreground)
-    property real surfaceOpacity: 0.92
-    property real borderOpacity: 0.45
+    property real surfaceOpacity: Style.popupSurfaceOpacity
+    property real borderOpacity: Style.popupBorderOpacity
     // windows that belong to this panel and must not dismiss it (submenu flyouts)
     property var extraGrabWindows: []
     readonly property bool open: popupEnabled && shell.popupName === popupName
     readonly property var anchorWindow: anchorItem ? anchorItem.QsWindow.window : null
-    readonly property string position: ["main", "alt"].includes(shell.layoutName) ? "right" : ["left", "sidebar"].includes(shell.layoutName) ? "left" : shell.layoutName === "top" ? "top" : "bottom"
+    readonly property bool centered: shell.popupCenteredName === root.popupName
+    property string position: shell.barEdge
     // Keep controllers/timers beside visual content. Item.data accepts both
     // QObjects and Items; visual entries still become holder.children.
     default property alias content: holder.data
@@ -34,7 +35,7 @@ PopupWindow {
     implicitWidth: contentWidth
     implicitHeight: Math.min(contentHeight, maxHeight)
 
-    Component.onCompleted: if (anchorItem && anchorItem.hasPopup !== undefined) anchorItem.hasPopup = true
+    Component.onCompleted: if (anchorItem && anchorItem.popupCards !== undefined) anchorItem.popupCards = anchorItem.popupCards.concat(root)
 
     // ---- keyboard cursor over the panel's rows -------------------------------
     // Rows opt in with `navigable`; the card walks its own content rather than
@@ -84,7 +85,6 @@ PopupWindow {
     onOpenChanged: if (!open) clearCursor()
 
     property bool wantsKeyboard: false
-    property Binding typingFocus: Binding { target: root.shell; property: "popupTyping"; value: root.wantsKeyboard; when: root.open }
     property Binding cardRef: Binding { target: root.shell; property: "popupCard"; value: root; when: root.open }
 
     // The bar and focusable popup content both route here. Derived cards
@@ -114,6 +114,19 @@ PopupWindow {
         rect.width: 1; rect.height: 1
         onAnchoring: {
             if (!root.anchorItem || !root.anchorWindow) return
+            if (root.centered) {
+                // a layer surface has no x/y of its own; the compositor derives it
+                // from the anchors, so redo that to express screen coordinates in
+                // window ones. Margins are zero whenever popups are allowed
+                const screen = root.anchorWindow.screen
+                if (!screen) return
+                const anchors = root.anchorWindow.anchors
+                const originX = anchors.left ? 0 : anchors.right ? screen.width - root.anchorWindow.width : (screen.width - root.anchorWindow.width) / 2
+                const originY = anchors.top ? 0 : anchors.bottom ? screen.height - root.anchorWindow.height : (screen.height - root.anchorWindow.height) / 2
+                anchor.rect.x = Math.round((screen.width - root.width) / 2 - originX)
+                anchor.rect.y = Math.round((screen.height - root.height) / 2 - originY)
+                return
+            }
             let x = root.anchorItem.width / 2 - root.width / 2
             let y = root.anchorItem.height + root.margin
             if (root.position === "bottom") y = -root.height - root.margin
@@ -130,7 +143,7 @@ PopupWindow {
         Behavior on opacity { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
         color: root.shell.alpha(root.background, root.surfaceOpacity)
         border.color: root.shell.alpha(root.borderColor, root.borderOpacity)
-        border.width: 2
+        border.width: root.shell.borderWidth
         radius: root.shell.rounding
         FocusScope {
             id: cardFocus

@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+
+# List available PipeWire/PulseAudio card profiles as JSON.
+
+set -o pipefail
+
+timeout --kill-after=1s 2 pactl -f json list cards 2>/dev/null | jq -c '
+  # UCM cards name their ports "[Out] Speaker"/"[In] Mic", whereas
+  # classic ACP cards use analog-output/analog-input style names.
+  def port_supports($card; $profile; $direction):
+    any(
+      (($card.ports // {}) | to_entries)[]?;
+      ((.value.priority // 0) > 0)
+      and ((.value.profiles // []) | index($profile) != null)
+      and (.key | test($direction))
+    );
+
+  map(. as $card | {
+    name: $card.name,
+    label: ($card.properties["device.description"] // $card.properties["device.alias"] // $card.name),
+    bluetooth: (($card.properties["device.api"] // "") == "bluez5"),
+    # `//` does not skip empty strings. Build an ordered candidate list so a
+    # present-but-empty PipeWire property cannot suppress the BlueZ object path
+    # or card-name fallback that follows it.
+    address: ([
+      $card.properties["api.bluez5.address"],
+      $card.properties["bluez5.address"],
+      $card.properties["device.string"],
+      (if ($card.properties["device.api"] // "") == "bluez5"
+        then $card.name else empty end)
+    ] | map(select(type == "string"
+        and test("[0-9a-f]{12}|[0-9a-f]{2}([:_-][0-9a-f]{2}){5}"; "i")))
+      | .[0] // ""),
+    activeProfile: ($card.active_profile // "off"),
+    profiles: (
+      ($card.profiles // {})
+      | to_entries
+      | map(
+          select((.value.available != false and .value.available != "no") or .key == $card.active_profile)
+          | select(
+              .key == $card.active_profile
+              or .key == "off"
+              or (($card.properties["device.api"] // "") == "bluez5")
+              or (
+                ((.value.sinks // 0) == 0 or port_supports($card; .key; "^\\[Out\\] |output"))
+                and ((.value.sources // 0) == 0 or port_supports($card; .key; "^\\[In\\] |input"))
+              )
+            )
+          | {
+              value: .key,
+              label: (.value.description // .key),
+              sinks: (.value.sinks // 0),
+              sources: (.value.sources // 0),
+              priority: (.value.priority // 0)
+            }
+        )
+      | sort_by(-.priority, .label)
+      | map(del(.priority))
+    )
+  })
+' || exit 1

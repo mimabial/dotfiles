@@ -33,7 +33,7 @@ from autotag import (
     missing_credit_names,
     prepare_metadata,
     recovered_youtube_artist,
-    resolve,
+    Resolver,
     restore_youtube_credit_tags,
     search_variants,
     split_featured_title,
@@ -134,9 +134,14 @@ class AlbumMatchingTests(unittest.TestCase):
             "artist": ["Shan'L"], "title": ["Tchizabengué"],
             "album": ["Tchizabengué"], "date": ["20180426"],
         }
-        result = resolve(
-            Path("/music/Shan'L/Shan'L - Tchizabengué.opus"), Path("/music"), args,
-            {"itunes": RateLimiter(0)}, "", tags,
+        result = Resolver(
+            args,
+            {"itunes": RateLimiter(0)},
+            "",
+        ).resolve(
+            Path("/music/Shan'L/Shan'L - Tchizabengué.opus"),
+            Path("/music"),
+            tags,
         )
 
         self.assertEqual(
@@ -198,23 +203,25 @@ class ResolutionCacheTests(unittest.TestCase):
             cache = ResolutionCache(root / "cache.sqlite3")
             self.addCleanup(cache.close)
 
-            first = resolve(
-                song,
-                root,
+            first = Resolver(
                 self.args(),
                 {"itunes": RateLimiter(0)},
                 "",
-                tags,
                 cache,
+            ).resolve(
+                song,
+                root,
+                tags,
             )
-            second = resolve(
-                song,
-                root,
+            second = Resolver(
                 self.args(),
                 {"itunes": RateLimiter(0)},
                 "",
-                tags,
                 cache,
+            ).resolve(
+                song,
+                root,
+                tags,
             )
 
         self.assertEqual(first, second)
@@ -233,24 +240,26 @@ class ResolutionCacheTests(unittest.TestCase):
             self.addCleanup(cache.close)
 
             with self.assertRaisesRegex(Unidentified, r"no itunes match"):
-                resolve(
-                    song,
-                    root,
+                Resolver(
                     self.args(),
                     {"itunes": RateLimiter(0)},
                     "",
-                    tags,
                     cache,
+                ).resolve(
+                    song,
+                    root,
+                    tags,
                 )
             with self.assertRaisesRegex(Unidentified, r"\[cached\]"):
-                resolve(
-                    song,
-                    root,
+                Resolver(
                     self.args(),
                     {"itunes": RateLimiter(0)},
                     "",
-                    tags,
                     cache,
+                ).resolve(
+                    song,
+                    root,
+                    tags,
                 )
 
         self.assertEqual(from_itunes.call_count, 1)
@@ -268,24 +277,26 @@ class ResolutionCacheTests(unittest.TestCase):
             cache = ResolutionCache(root / "cache.sqlite3")
             self.addCleanup(cache.close)
 
-            resolve(
-                song,
-                root,
+            Resolver(
                 self.args(),
                 {"itunes": RateLimiter(0)},
                 "",
-                tags,
                 cache,
+            ).resolve(
+                song,
+                root,
+                tags,
             )
             song.write_bytes(b"different audio")
-            resolve(
-                song,
-                root,
+            Resolver(
                 self.args(),
                 {"itunes": RateLimiter(0)},
                 "",
-                tags,
                 cache,
+            ).resolve(
+                song,
+                root,
+                tags,
             )
 
         self.assertEqual(from_itunes.call_count, 2)
@@ -302,24 +313,26 @@ class ResolutionCacheTests(unittest.TestCase):
             cache = ResolutionCache(root / "cache.sqlite3")
             self.addCleanup(cache.close)
 
-            resolve(
-                song,
-                root,
+            Resolver(
                 self.args(),
                 {"itunes": RateLimiter(0)},
                 "",
-                tags,
                 cache,
-            )
-            resolve(
+            ).resolve(
                 song,
                 root,
+                tags,
+            )
+            Resolver(
                 self.args(),
                 {"itunes": RateLimiter(0)},
                 "",
-                tags,
                 cache,
                 refresh_cache=True,
+            ).resolve(
+                song,
+                root,
+                tags,
             )
 
         self.assertEqual(from_itunes.call_count, 2)
@@ -524,15 +537,16 @@ class CandidateTierTests(unittest.TestCase):
             root = Path(temporary)
             song = root / f"{artist} - Song.opus"
             song.write_bytes(b"audio")
-            result = resolve(
-                song,
-                root,
+            result = Resolver(
                 self.args(),
                 {
                     "itunes": RateLimiter(0),
                     "deezer": RateLimiter(0),
                 },
                 "",
+            ).resolve(
+                song,
+                root,
                 tags,
             )
 
@@ -559,15 +573,16 @@ class CandidateTierTests(unittest.TestCase):
             root = Path(temporary)
             song = root / f"{artist} - Song.opus"
             song.write_bytes(b"audio")
-            result = resolve(
-                song,
-                root,
+            result = Resolver(
                 self.args(),
                 {
                     "itunes": RateLimiter(0),
                     "deezer": RateLimiter(0),
                 },
                 "",
+            ).resolve(
+                song,
+                root,
                 tags,
             )
 
@@ -600,15 +615,16 @@ class CandidateTierTests(unittest.TestCase):
             root = Path(temporary)
             song = root / f"{full_artist} - Balance.opus"
             song.write_bytes(b"audio")
-            result = resolve(
-                song,
-                root,
+            result = Resolver(
                 self.args(),
                 {
                     "itunes": RateLimiter(0),
                     "deezer": RateLimiter(0),
                 },
                 "",
+            ).resolve(
+                song,
+                root,
                 tags,
             )
 

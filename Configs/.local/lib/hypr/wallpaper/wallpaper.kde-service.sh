@@ -21,8 +21,6 @@ setTheme=""
 setWall=""
 get_themes
 
-#// Evaluate options
-
 while getopts "t:w:" option; do
   case $option in
 
@@ -52,8 +50,6 @@ while getopts "t:w:" option; do
 
   esac
 done
-
-#// Regenerate desktop
 
 if [[ -n "${setTheme}" && -n "${setWall}" ]]; then
   theme_hashes=()

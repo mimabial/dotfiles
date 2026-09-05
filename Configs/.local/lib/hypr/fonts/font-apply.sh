@@ -6,14 +6,17 @@ LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 
 # shellcheck source=/dev/null
 source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
+
+hypr_help_guard "Usage: hyprshell fonts/font-apply [font-name]
+Apply the configured (or given) fonts across terminals, Quickshell, Rofi, and GTK." "$@"
+
 hypr_runtime_require state system || exit 1
 hypr_runtime_load_state || exit 1
 
 # shellcheck source=/dev/null
 source "${LIB_DIR}/hypr/theme/color.targets.sh"
-
-hypr_help_guard "Usage: hyprshell fonts/font-apply [font-name]
-Apply the configured (or given) fonts across terminals, Quickshell, Rofi, and GTK." "$@"
+# shellcheck source=/dev/null
+source "${LIB_DIR}/hypr/fonts/font.sync.lib.bash"
 
 FONT_NAME="${1:-}"
 UPDATED=()
@@ -23,8 +26,6 @@ MONOSPACE_FONT=""
 MENU_FONT=""
 TERMINAL_FONT=""
 XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
-ALACRITTY_CONF="${XDG_CONFIG_HOME}/alacritty/alacritty.toml"
-KITTY_CONF="${XDG_CONFIG_HOME}/kitty/kitty.conf"
 FONTCONFIG_FILE="${XDG_CONFIG_HOME}/fontconfig/fonts.conf"
 
 append_updated() {
@@ -48,10 +49,7 @@ resolve_font_targets() {
 }
 
 apply_alacritty_font() {
-  [[ -f "${ALACRITTY_CONF}" ]] || return 0
-  local escaped_font=""
-  escaped_font="$(sed_escape_replacement "${TERMINAL_FONT}")"
-  sed -i "s|family = \".*\"|family = \"${escaped_font}\"|g" "${ALACRITTY_CONF}"
+  font_sync_apply_alacritty_family "${TERMINAL_FONT}" || return 0
   append_updated 'Alacritty base font'
 }
 
@@ -61,10 +59,7 @@ reload_kitty_instances() {
 }
 
 apply_kitty_font() {
-  [[ -f "${KITTY_CONF}" ]] || return 0
-  local escaped_font=""
-  escaped_font="$(sed_escape_replacement "${TERMINAL_FONT}")"
-  sed -i "s|^font_family .*|font_family ${escaped_font}|g" "${KITTY_CONF}"
+  font_sync_apply_kitty_family "${TERMINAL_FONT}" || return 0
   reload_kitty_instances
   append_updated 'Kitty base font'
 }

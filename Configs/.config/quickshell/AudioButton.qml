@@ -7,23 +7,24 @@ BarButton {
     readonly property var sink: Pipewire.defaultAudioSink
     property bool popupEnabled: true
     property bool framed: true
-    css: root.portKey ? "pulseaudio." + root.portKey : "pulseaudio"
+    readonly property bool muted: root.sink ? root.sink.audio.muted : false
+    css: (root.portKey ? "volume." + root.portKey : "volume") + (root.muted ? ".muted" : "")
     // must measure the face BarButton draws with, or the nudge corrects an ink
     // overhang the drawn glyph does not have
     TextMetrics { id: iconMetrics; font.family: root.iconOnly ? root.shell.iconGlyphFont : root.shell.fontFamily; font.pixelSize: root.labelFontSize; font.weight: root.fontWeight; text: root.text }
     textOffsetX: iconMetrics.advanceWidth / 2 - iconMetrics.tightBoundingRect.x - iconMetrics.tightBoundingRect.width / 2
     radius: shell.moduleRadius
     fill: framed ? root.boxColor("fill") : "transparent"
-    // waybar's pulseaudio format-icons, in its declared order: a matching
-    // port wins over the volume ramp, mute wins over both. waybar reads the
+    // pulseaudio format-icons, in their declared order: a matching port wins
+    // over the volume ramp, mute wins over both. The selection keys off the
     // active port name; quickshell's pipewire API exposes no port, so this
     // matches the node properties that carry the same words
     readonly property var portIcons: [
-        ["headphone", "󰋋"], ["hands-free", "󰋋"], ["headset", "󰋋"],
+        ["headphone", "󱡏"], ["hands-free", "󱡏"], ["headset", "󱡏"],
         ["phone", "󰏲"], ["portable", "󰏲"], ["car", "󰄋"]
     ]
     // the active port is the only thing that tracks the analog jack, and
-    // pipewire does not expose it — waybar reads it from pulse directly
+    // pipewire does not expose it — it has to come from pulse directly
     property string activePort: ""
     function probePort() { if (!portProbe.running) portProbe.running = true }
     function clampVolume() { if (sink && sink.audio && sink.audio.volume > shell.volumeLimit) sink.audio.volume = shell.volumeLimit }
@@ -35,7 +36,7 @@ BarButton {
         const props = root.sink ? root.sink.properties : null
         const port = root.activePort.toLowerCase()
         // exact on the properties: "audio-card-analog" contains "car".
-        // substring on the port, as waybar does: "analog-output-headphones"
+        // substring on the port: "analog-output-headphones"
         const factor = props ? String(props["device.form_factor"] || "").toLowerCase() : ""
         const iconName = props ? String(props["device.icon-name"] || "").toLowerCase() : ""
         for (let i = 0; i < portIcons.length; ++i) {
@@ -47,7 +48,7 @@ BarButton {
         return ""
     }
     readonly property string portIcon: { const hit = portIcons.find(entry => entry[0] === root.portKey); return hit ? hit[1] : "" }
-    readonly property string mutedPortIcon: ["headphone", "hands-free", "headset"].includes(root.portKey) ? "󰟎" : ""
+    readonly property string mutedPortIcon: ["headphone", "hands-free", "headset"].includes(root.portKey) ? "󱡒" : ""
 
     Process {
         id: portProbe
@@ -64,7 +65,10 @@ BarButton {
     Timer { interval: 3000; running: true; repeat: true; triggeredOnStart: true; onTriggered: root.probePort() }
     readonly property string volumeIcon: !root.sink ? "" : root.sink.audio.volume < .34 ? ""
         : root.sink.audio.volume < .67 ? "" : ""
-    text: !root.sink ? "󰖁" : root.sink.audio.muted ? root.mutedPortIcon || "" : root.portIcon || root.volumeIcon
+    text: !root.sink ? "󰖁" : root.muted ? root.mutedPortIcon || "" : root.portIcon || root.volumeIcon
+    tooltip: !root.sink ? "No output device"
+        : "Volume level: " + Math.round(root.sink.audio.volume * 100) + "%" + (root.portKey ? " " + root.portKey : "")
+            + "\nUsing: " + (root.sink.description || root.sink.nickname || root.sink.name)
     onClicked: button => button === Qt.RightButton ? (sink ? root.volumeAction("m") : false) : shell.togglePopup("audio")
     onWheeled: delta => { if (sink) root.volumeAction(delta > 0 ? "i" : "d") }
 

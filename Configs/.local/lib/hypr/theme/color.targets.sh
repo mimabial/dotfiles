@@ -41,7 +41,7 @@ process_theme_files() {
     [ ! -f "${theme_file}" ] && continue
     theme_basename="$(basename "${theme_file}")"
     case "${theme_basename}" in
-      hypr.theme|kitty.theme|rofi.theme|quickshell.theme|alacritty.theme|tmux.theme|dunst.theme) continue ;;
+      hypr.theme|kitty.theme|rofi.theme|quickshell.theme|alacritty.theme|tmux.theme|dunst.theme|wlogout.theme) continue ;;
     esac
     first_line=$(head -1 "${theme_file}")
     target_path="${first_line%%|*}"

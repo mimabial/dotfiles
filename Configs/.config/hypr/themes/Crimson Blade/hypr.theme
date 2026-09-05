@@ -9,6 +9,7 @@ $FONT = 0xProto Nerd Font
 $BAR_FONT = 0xProto Nerd Font
 $MENU_FONT = 0xProto Nerd Font
 $MONOSPACE_FONT = 0xProto Nerd Font
+$TERMINAL_FONT = 0xProto Nerd Font
 $NOTIFICATION_FONT = 0xProto Nerd Font Mono
 
 general {

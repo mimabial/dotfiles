@@ -80,10 +80,8 @@ hl.layer_rule({["name"] = "lua:windowrules:106", ["match"] = {["namespace"] = "r
 hl.layer_rule({["name"] = "lua:windowrules:107", ["match"] = {["namespace"] = "notifications"}, ["blur"] = true})
 hl.layer_rule({["name"] = "lua:windowrules:108", ["match"] = {["namespace"] = "notifications"}, ["ignore_alpha"] = 0})
 hl.layer_rule({["name"] = "lua:windowrules:109", ["match"] = {["namespace"] = "logout_dialog"}, ["blur"] = true})
-hl.layer_rule({["name"] = "quickshell-bar-blur", ["match"] = {["namespace"] = "hypr-shell-bar"}, ["blur"] = true})
 hl.window_rule({["name"] = "lua:windowrules:112", ["match"] = {["class"] = "^(org\\.tui\\..*|org\\.font\\..*|lazygit|lazydocker)$"}, ["float"] = true})
 hl.window_rule({["name"] = "lua:windowrules:113", ["match"] = {["class"] = "^(org\\.tui\\..*|org\\.font\\..*|lazygit|lazydocker)$"}, ["center"] = true})
-hl.window_rule({["name"] = "mullvad-size", ["match"] = {["class"] = "^(mullvad-vpn)$"}, ["size"] = "320 568"})
 
 local open_profiles = {
   ["org.gnome.SimpleScan"] = "standard",

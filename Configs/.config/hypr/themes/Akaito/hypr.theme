@@ -12,6 +12,7 @@ $FONT = M+1Code Nerd Font
 $BAR_FONT = M+1Code Nerd Font
 $MENU_FONT = M+1Code Nerd Font
 $MONOSPACE_FONT = M+1Code Nerd Font
+$TERMINAL_FONT = M+1Code Nerd Font
 $NOTIFICATION_FONT = M+1Code Nerd Font Mono
 
 general {

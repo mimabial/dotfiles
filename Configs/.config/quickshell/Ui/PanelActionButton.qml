@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import "../Commons" as Commons
 
 BorderSurface {
@@ -36,7 +37,21 @@ BorderSurface {
         color: root.enabled ? (root.hot ? root.hoverColor : root.foreground)
                             : Commons.Util.alpha(root.foreground, 0.35)
         font.family: root.fontFamily
-        font.pixelSize: root.fontSize
+        // play and pause draw at different ink heights to every other icon here
+        font.pixelSize: root.fontSize * Commons.Style.iconScale(root.iconText)
+    }
+
+    ToolTip {
+        visible: root.tooltipText !== "" && mouse.containsMouse
+        text: root.tooltipText; delay: 400; padding: Commons.Style.space(6)
+        background: Rectangle {
+            color: Commons.Color.popups.background; radius: Commons.Style.cornerRadius
+            border.color: Commons.Color.popups.border
+        }
+        contentItem: Text {
+            text: root.tooltipText; color: Commons.Color.popups.text
+            font.family: root.fontFamily; font.pixelSize: Commons.Style.font.bodySmall
+        }
     }
 
     MouseArea {

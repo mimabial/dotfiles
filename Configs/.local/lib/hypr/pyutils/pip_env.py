@@ -137,15 +137,12 @@ def create_venv(venv_path, requirements_file=None):
             )
             result.check_returncode()
         notify.send("PIP", "✅ Virtual environment created successfully")
-    else:
-        pass
 
 
 def destroy_venv(venv_path):
     """Destroy the virtual environment while retaining the requirements.txt file."""
     if os.path.exists(venv_path):
         shutil.rmtree(venv_path)
-    # else:
 
 
 def install_dependencies(venv_path, requirements_file):
@@ -191,7 +188,6 @@ def uninstall_package(venv_path, package):
 
 def rebuild_venv(venv_path=None, requirements_file=None):
     """Rebuild the virtual environment: reinstall if missing, install/upgrade requirements, and update all packages."""
-    # Use XDG_STATE_HOME for venv_path if not provided
     if venv_path is None:
         venv_path = hypr_venv_path()
 
@@ -203,11 +199,9 @@ def rebuild_venv(venv_path=None, requirements_file=None):
         destroy_venv(venv_path)
 
     pip_executable = os.path.join(venv_path, "bin", "pip")
-    # Recreate venv if missing
     if not os.path.exists(pip_executable):
         create_venv(venv_path, requirements_file)
 
-    # Helper to produce a short summary for informational pip output
     def _short_summary(stdout: str, stderr: str) -> str:
         if stderr:
             for sline in stderr.splitlines():

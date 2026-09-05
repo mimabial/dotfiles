@@ -1,0 +1,169 @@
+#![enable(implicit_some)]
+#![enable(unwrap_newtypes)]
+#![enable(unwrap_variant_newtypes)]
+(
+    show_song_table_header: true,
+    draw_borders: false,
+    browser_column_widths: [20, 38, 42],
+
+    background_color: "{background}",
+    modal_backdrop: true,
+    text_color: "{foreground}",
+    header_background_color: "{background}",
+    modal_background_color: "{background}",
+
+    preview_label_style: (fg: "{color13}"),
+    preview_metadata_group_style: (fg: "{color4}"),
+
+    song_table_album_separator: None,
+
+    tab_bar: (
+        enabled: true,
+        active_style: (fg: "{background}", bg: "{color4}", modifiers: "Bold"),
+        inactive_style: (fg: "{foreground}", bg: "{background}"),
+    ),
+
+    highlighted_item_style: (fg: "{color2}", modifiers: "Bold"),
+    current_item_style: (fg: "{background}", bg: "{color4}", modifiers: "Bold"),
+
+    borders_style: (fg: "{color4}", modifiers: "Bold"),
+    highlight_border_style: (fg: "{color4}"),
+
+    symbols: (
+        song: "󰝚 ",
+        dir: " ",
+        playlist: "󰲸 ",
+        marker: "* ",
+        ellipsis: "...",
+        song_style: (fg: "{color4}"),
+        dir_style: (fg: "{color4}")
+    ),
+
+    progress_bar: (
+        symbols: ["█", "░", "░", " ", "█" ],
+        track_style: (fg: "{color4}", bg: "{color0}"),
+        elapsed_style: (fg: "{color4}", bg: "{color0}"),
+        thumb_style: (fg: "{color4}", bg: "{color0}"),
+    ),
+
+    scrollbar: (
+        symbols: [" ", "🮐", "🮑", "🮒"],
+        track_style: (fg: "{color4}"),
+        ends_style: (fg: "{color4}"),
+        thumb_style: (fg: "{color4}"),
+    ),
+
+    song_table_format: [
+        (
+            prop: (kind: Property(Artist), style: (fg: "{color6}"),
+                default: (kind: Text("Unknown Artist"), style: (fg: "{color14}"))),
+            width: "25%"
+        ),
+        (
+            prop: (kind: Property(Album), style: (fg: "{color4}"),
+                default: (kind: Text("Unknown Album"), style: (fg: "{color12}"))),
+            width: "25%"
+        ),
+        (
+            prop: (kind: Property(Title), style: (fg: "{color3}"),
+                default: (kind: Property(Filename), style: (fg: "{color11}"))),
+            width: "35%"
+        ),
+        (
+            prop: (kind: Property(Other("genre")), style: (fg: "{color2}"),
+                default: (kind: Text("unknown"), style: (fg: "{color10}"))),
+            width: "10%"
+        ),
+        (
+            prop: (kind: Property(Duration), style: (fg: "{color1}"),
+                default: (kind: Text("-"))),
+            width: "5%", alignment: Right, label: "Time"
+        ),
+    ],
+
+    layout: Split(
+        direction: Vertical,
+        panes: [
+            (size: "1", borders: "NONE", pane: Pane(Tabs)),
+            (size: "100%", borders: "NONE", pane: Split(
+                direction: Horizontal,
+                panes: [
+                    (size: "62%", borders: "NONE", pane: Pane(TabContent)),
+                    (size: "20%", borders: "LEFT", pane: Pane(Lyrics)),
+                    (size: "18%", borders: "LEFT", pane: Pane(AlbumArt)),
+                ]
+            )),
+            (size: "1", borders: "NONE", pane: Pane(ProgressBar)),
+            (size: "1", borders: "NONE", pane: Pane(Header)),
+        ]
+    ),
+
+    header: (
+        rows: [
+            (
+                left: [
+                    (kind: Property(Status(StateV2(playing_label: " Playing", paused_label: " Paused", stopped_label: " Stopped"))), style: (fg: "{color4}", modifiers: "Bold")),
+                    (kind: Text("  "), style: (fg: "{color8}")),
+                    (kind: Property(Status(Elapsed)), style: (fg: "{foreground}")),
+                    (kind: Text(" / "), style: (fg: "{color8}")),
+                    (kind: Property(Status(Duration)), style: (fg: "{foreground}")),
+                    (kind: Text("  ("), style: (fg: "{color8}")),
+                    (kind: Property(Status(Bitrate)), style: (fg: "{color8}"), default: (kind: Text("0"), style: (fg: "{color8}"))),
+                    (kind: Text(" kbps)"), style: (fg: "{color8}")),
+                ],
+                center: [
+                    (kind: Property(Song(Title)), style: (fg: "{color3}", modifiers: "Bold"),
+                        default: (kind: Property(Song(Filename)), style: (fg: "{color11}", modifiers: "Bold"))),
+                    (kind: Text("  ·  "), style: (fg: "{color8}")),
+                    (kind: Property(Song(Artist)), style: (fg: "{color6}"),
+                        default: (kind: Text("Unknown Artist"), style: (fg: "{color14}"))),
+                ],
+                right: [
+                    (kind: Property(Status(RepeatV2(on_label: " Repeat", off_label: " Repeat",
+                        on_style: (fg: "{color4}", modifiers: "Bold"), off_style: (fg: "{color8}"))))),
+                    (kind: Text(" | "), style: (fg: "{color8}")),
+                    (kind: Property(Status(RandomV2(on_label: " Random", off_label: " Random",
+                        on_style: (fg: "{color4}", modifiers: "Bold"), off_style: (fg: "{color8}"))))),
+                    (kind: Text("   󰴍 "), style: (fg: "{color4}", modifiers: "Bold")),
+                    (kind: Property(Status(QueueLength())), style: (fg: "{foreground}")),
+                    (kind: Text("   󱡬 "), style: (fg: "{color4}", modifiers: "Bold")),
+                    (kind: Property(Status(Volume)), style: (fg: "{foreground}")),
+                    (kind: Text("%"), style: (fg: "{color8}")),
+                ]
+            ),
+        ],
+    ),
+
+    browser_song_format: [
+        (kind: Group([
+            (kind: Property(Track)),
+            (kind: Text(" ")),
+        ])),
+        (kind: Group([
+            (kind: Property(Artist)),
+            (kind: Text(" - ")),
+            (kind: Property(Title)),
+        ]), default: (kind: Property(Filename)))
+    ],
+
+    level_styles: (
+        info:  (fg: "{color2}", bg: "{background}"),
+        warn:  (fg: "{color3}", bg: "{background}"),
+        error: (fg: "{color1}", bg: "{background}"),
+        debug: (fg: "{color9}", bg: "{background}"),
+        trace: (fg: "{color13}", bg: "{background}"),
+    ),
+
+    components: {{
+    }},
+
+    tabs: [
+        (name: " Queue", pane: Pane(Queue)),
+        (name: "󱏒 Files", pane: Pane(Directories)),
+        (name: "󰥩 Search", pane: Pane(Search)),
+        (name: "󰀥 Albums", pane: Pane(Albums)),
+        (name: "󰳩 Artists", pane: Pane(Artists)),
+        (name: "󰲹 Playlists", pane: Pane(Playlists)),
+        (name: "󱝠 Genre", pane: Pane(Browser(root_tag: "genre", separator: ";"))),
+    ],
+)

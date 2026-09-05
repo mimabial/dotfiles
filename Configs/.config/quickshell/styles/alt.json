@@ -31,15 +31,21 @@
     "margin": [2.0, 4.0, 2.0, 4.0],
     "padding": [0.0, 3.0, 0.0, -5.0]
   },
+  "#workspaces button": {
+    "margin": [0.0, 0.0, 0.0, 0.0],
+    "padding": [6.0, 0.0, 6.0, 0.0]
+  },
   "#workspaces button.active": {
-    "padding": [4.0, 0.0, 4.0, 0.0],
+    "margin": [0.0, 0.0, 0.0, 0.0],
+    "padding": [6.0, 0.0, 6.0, 0.0],
     "content": ["act_br", 1.0],
     "fill": null,
     "hover": { "fill": null, "content": ["hvr_fg", 1.0] }
   },
   "mediaplayer": {
-    "edge": null,
-    "margin": [4.0, 4.0, 4.0, 0.0]
+    "border": 2.0,
+    "margin": [4.0, 4.0, 4.0, 2.0],
+    "edge": { "color": ["c7", 0.4] }
   },
   "microphone": {
     "padding": [2.0, 0.0, 2.0, 0.0],
@@ -67,21 +73,25 @@
   "privacy": {
     "padding": [2.0, 0.0, 2.0, 0.0]
   },
-  "volumecontrol": {
+  "audio": {
     "margin": [0.0, 0.0, 2.0, 0.0]
   },
-  "pulseaudio": {
+  "volume": {
     "fontSize": 16.0,
     "border": 1.0,
     "outline": ["br", 0.2],
     "padding": [2.0, 0.0, 2.0, 0.0]
   },
-  "pulseaudio.headphone": {
-    "fontSize": 14.0,
+  "volume.headphone": {
+    "fontSize": 15.0,
     "outline": ["br", 0.2],
     "padding": [2.0, 0.0, 2.0, 0.0]
   },
-  "screen": {
+  "volume.headphone.muted": {
+    "fontSize": 15.0,
+    "padding": [2.0, 0.0, 2.0, 0.0]
+  },
+  "capture": {
     "outline": ["br", 0.2],
     "margin": [2.0, 2.0, 2.0, 2.0]
   },
@@ -105,6 +115,11 @@
     "padding": [2.0, 0.0, 2.0, 0.0],
     "outline": ["br", 0.2]
   },
+  "bluetooth-button.status": {
+    "fontSize": 12.0,
+    "margin": [0.0, 0.0, 0.0, 0.0],
+    "padding": [6.0, 0.0, 2.0, 0.0]
+  },
   "wifi": {
     "margin": [0.0, 0.0, 0.0, 0.0]
   },
@@ -121,13 +136,16 @@
     "padding": [2.0, 0.0, 2.0, 0.0],
     "outline": ["br", 0.2]
   },
-  "wallpaper-group": {
+  "appearance-group": {
     "border": 1.0,
     "outline": ["br", 0.2],
     "margin": [2.0, 2.0, 2.0, 2.0]
   },
-  "notification": { "border": 0.0, "margin": [0.0, 0.0, 0.0, 0.0], "outline": null },
-  "dunst": {
+  "notification-group": { "border": 0.0, "margin": [0.0, 0.0, 0.0, 0.0], "outline": null },
+  "notification": {
+    "badgeSize": 16.0,
+    "badgeOffsetX": 6,
+    "badgeOffsetY": -5,
     "border": 1.0,
     "outline": ["br", 0.2],
     "padding": [2.0, 0.0, 2.0, 0.0]
@@ -135,10 +153,13 @@
   "updates-agents": {
     "border": 1.0,
     "outline": ["br", 0.2],
+    "hover": { "fill": null, "content": ["hvr_fg", 1.0] },
     "margin": [2.0, 2.0, 2.0, 2.0],
-    "padding": [2.0, 0.0, 2.0, 0.0]
+    "padding": [0.0, 0.0, 0.0, 0.0]
   },
   "updates": {
+    "hover": { "fill": null, "content": ["hvr_fg", 1.0] },
+    "margin": [0.0, 0.0, 4.0, 0.0],
     "padding": [2.0, 0.0, 2.0, 0.0]
   },
   "agents": {

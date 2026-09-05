@@ -2,6 +2,12 @@
 # Sourced module; strict mode is owned by the entrypoint.
 
 menu_register_domain_core() {
+  menu_define ai "AI"
+  menu_add_item ai "󱚣  Agent Hub" action ai_dashboard
+  command -v claude >/dev/null 2>&1 && menu_add_item ai "󰛄  Claude Code" action ai_claude
+  command -v codex >/dev/null 2>&1 && menu_add_item ai "󱙺  Codex" action ai_codex
+  command -v opencode >/dev/null 2>&1 && menu_add_item ai "󰚩  OpenCode" action ai_opencode
+
   menu_define dev_tools "Dev Tools"
   menu_add_item dev_tools "󰊢  Git (LazyGit)" action dev_git
   menu_add_item dev_tools "  Docker (LazyDocker)" action dev_docker
@@ -45,6 +51,10 @@ menu_run_action_core() {
   local action_id="$1"
 
   case "${action_id}" in
+    ai_dashboard) hyprshell system/agent-hub ;;
+    ai_claude) present_terminal --hypr-profile large --app-id org.agent.Claude --title "Claude Code" -- claude ;;
+    ai_codex) present_terminal --hypr-profile large --app-id org.agent.Codex --title Codex -- codex ;;
+    ai_opencode) present_terminal --hypr-profile large --app-id org.agent.OpenCode --title OpenCode -- opencode ;;
     main_apps) hyprshell rofi/rofi-launch.sh ;;
     main_bookmarks) hyprshell rofi/run-after-close.sh -- quickshell ipc call bar bookmarks ;;
     main_about) present_terminal --hypr-profile tui --app-id org.tui.About --title About -- hyprshell util/about.sh ;;

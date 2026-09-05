@@ -8,3 +8,5 @@ Environment=QS_NO_RELOAD_POPUP=1
 ExecStart=/usr/bin/quickshell
 Restart=always
 RestartSec=1
+KillMode=mixed
+TimeoutStopSec=5

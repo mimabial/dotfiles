@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell.Bluetooth
 import ".."
@@ -16,20 +17,14 @@ BarGroup {
         shell: root.shell; css: "bluetooth-button"
         text: root.connected.length ? "<b>󰂱</b>" : root.adapters.some(adapter => adapter.enabled) ? "󰂯" : "󰂲"
         // the tooltip renders as rich text, so the rows are separated by <br>
-        tooltip: root.adapters.length
-            ? root.adapters.slice().sort((a, b) => a.name.localeCompare(b.name)).map(adapter => {
-                const devices = root.connected.filter(device => device.adapter === adapter)
-                return ["<b>Controller</b>", adapter.name, "<b>Bluetooth</b>",
-                    "Powered " + adapter.enabled, "<b>Connected</b>" + (devices.length ? "" : " none")]
-                    .concat(devices.map(device => device.batteryAvailable
-                        ? device.name + " " + Math.round(device.battery * 100) + "%" : device.name)).join("<br>")
-            }).join("<br>")
-            : "No Bluetooth controller"
-        // omarchy: left opens the panel, right toggles the radio
+        tooltip: !root.adapters.length ? "No Bluetooth controller"
+            : "<b>Connected</b>" + (root.connected.length ? "" : " none")
+                + root.connected.map(device => "<br>" + (device.batteryAvailable
+                    ? device.name + " " + Math.round(device.battery * 100) + "%" : device.name)).join("")
+        // Left opens the panel; right uses the same persistent power path.
         onClicked: button => {
             if (button !== Qt.RightButton) return root.shell.togglePopup("bluetooth")
-            const adapter = Bluetooth.defaultAdapter
-            if (adapter) adapter.enabled = !adapter.enabled
+            root.shell.run(["hyprshell", "bluetooth/power", "toggle"])
         }
         BluetoothPopup { anchorItem: bluetoothButton; shell: root.shell; popupEnabled: root.popupsAllowed }
     } }

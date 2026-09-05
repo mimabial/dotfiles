@@ -22,6 +22,7 @@ font_sync_resolve_font_value() {
   local bar_font=""
   local bar_icon_font=""
   local menu_font=""
+  local terminal_font=""
 
   font_sync_ensure_runtime || return 1
 
@@ -42,6 +43,42 @@ font_sync_resolve_font_value() {
       menu_font="$(hypr_config_value_from_layers "MENU_FONT" 2>/dev/null || true)"
       printf '%s\n' "${menu_font:-monospace}"
       ;;
+    terminal)
+      # Packs that predate $TERMINAL_FONT still carry $MONOSPACE_FONT.
+      terminal_font="$(hypr_config_value_from_layers "TERMINAL_FONT" 2>/dev/null || true)"
+      [[ -n "${terminal_font}" ]] || terminal_font="$(hypr_config_value_from_layers "MONOSPACE_FONT" 2>/dev/null || true)"
+      printf '%s\n' "${terminal_font:-monospace}"
+      ;;
     *) return 1 ;;
   esac
+}
+
+font_sync_ensure_sed_escape() {
+  declare -F sed_escape_replacement >/dev/null 2>&1 && return 0
+  font_sync_ensure_runtime || return 1
+  hypr_runtime_require system
+}
+
+font_sync_apply_kitty_family() {
+  local font="$1"
+  local kitty_conf="${XDG_CONFIG_HOME:-$HOME/.config}/kitty/kitty.conf"
+  local escaped=""
+
+  [[ -n "${font}" ]] || return 1
+  [[ -f "${kitty_conf}" ]] || return 1
+  font_sync_ensure_sed_escape || return 1
+  escaped="$(sed_escape_replacement "${font}")"
+  sed -i "s|^font_family .*|font_family ${escaped}|g" "${kitty_conf}"
+}
+
+font_sync_apply_alacritty_family() {
+  local font="$1"
+  local alacritty_conf="${XDG_CONFIG_HOME:-$HOME/.config}/alacritty/alacritty.toml"
+  local escaped=""
+
+  [[ -n "${font}" ]] || return 1
+  [[ -f "${alacritty_conf}" ]] || return 1
+  font_sync_ensure_sed_escape || return 1
+  escaped="$(sed_escape_replacement "${font}")"
+  sed -i "s|family = \".*\"|family = \"${escaped}\"|g" "${alacritty_conf}"
 }

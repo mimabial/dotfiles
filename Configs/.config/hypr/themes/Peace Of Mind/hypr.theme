@@ -12,6 +12,7 @@ $FONT = Lekton Nerd Font
 $BAR_FONT = Lekton Nerd Font
 $MENU_FONT = Lekton Nerd Font
 $MONOSPACE_FONT = Lekton Nerd Font
+$TERMINAL_FONT = Lekton Nerd Font
 $NOTIFICATION_FONT = Lekton Nerd Font Mono
 
 general {

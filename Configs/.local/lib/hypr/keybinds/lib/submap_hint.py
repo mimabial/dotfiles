@@ -28,6 +28,10 @@ STATE_FILE = Path(os.environ.get("HYPR_STATE_HOME", Path.home() / ".local/state/
 # keybindings.lua gates these binds on the workspace layout at press time, inside
 # a Lua closure that hyprctl cannot see: every bind reports dispatcher "__lua".
 # The sub-category header is the only signal that a bind is layout-specific.
+# keybindings.lua tags binds a submap re-exposes from the global set with this
+# prefix: they work inside the submap but stay out of its hint. Change both.
+HIDDEN_MARKER = "[Hidden] "
+
 LAYOUT_HEADERS = {
     "Dwindle": "dwindle",
     "Master": "master",
@@ -73,13 +77,17 @@ def build_hint(name):
         layout = None
     expand_meta_data(binds)
     submap_binds = [bind for bind in binds if bind.get("submap") == name]
+    # expand_meta_data rewrites description; action_key keeps the original
+    submap_binds = [
+        bind for bind in submap_binds if not bind.get("action_key", "").startswith(HIDDEN_MARKER)
+    ]
     state = load_shell_assignments(STATE_FILE) if STATE_FILE.is_file() else {}
     workflow = state.get("HYPR_WORKFLOW", "")
     profile_locked = os.getenv("HYPR_PROFILE_WORKFLOW_LOCK", "1") != "0"
     blocked = {
-        "gaming": ("Waybar", "windows mode", "select workflow"),
+        "gaming": ("bar", "windows mode", "select workflow"),
         "powersaver": ("windows mode", "select workflow") if profile_locked else (),
-        "windows": ("Waybar layout", "toggle Waybar", "cycle global layout"),
+        "windows": ("bar layout", "toggle bar", "cycle global layout"),
     }.get(workflow, ())
     if blocked:
         submap_binds = [bind for bind in submap_binds if not any(text in bind["action_key"] for text in blocked)]

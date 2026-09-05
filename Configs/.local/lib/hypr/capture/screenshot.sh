@@ -10,6 +10,8 @@ set -euo pipefail
 hypr_lib="${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}"
 # shellcheck source=/dev/null
 source "${hypr_lib}/capture/capture.select.bash"
+# shellcheck source=/dev/null
+source "${hypr_lib}/capture/ocr.common.bash"
 
 USAGE() {
   cat <<USAGE
@@ -42,8 +44,8 @@ cleanup_temp_screenshot() {
   if [[ -n "${temp_screenshot:-}" && -f "${temp_screenshot}" ]]; then
     rm -f "${temp_screenshot}" || true
   fi
-  if [[ -n "${temp_ocr_image:-}" && -f "${temp_ocr_image}" ]]; then
-    rm -f "${temp_ocr_image}" || true
+  if [[ -n "${HYPR_OCR_TEMP_IMAGE:-}" && -f "${HYPR_OCR_TEMP_IMAGE}" ]]; then
+    rm -f "${HYPR_OCR_TEMP_IMAGE}" || true
   fi
   return "${exit_code}"
 }
@@ -211,10 +213,8 @@ ocr_screenshot() {
   local destination="${2:-clipboard}"
   local ocr_image="${temp_screenshot}"
   local text_file="${save_dir}/${save_text_file}"
-  local tesseract_languages_prepared=""
-  local tesseract_languages_body="Languages used"
+  local tesseract_languages_body=""
   local tesseract_output=""
-  local language=""
   local -a tesseract_languages=()
 
   ocr_capture_subject "${subject}" || {
@@ -222,28 +222,16 @@ ocr_screenshot() {
     return 1
   }
 
-  ocr_prepare_languages tesseract_languages || return 1
-  tesseract_languages_prepared="$(
-    IFS=+
-    printf '%s' "${tesseract_languages[*]}"
-  )"
-  for language in "${tesseract_languages[@]}"; do
-    tesseract_languages_body+=$'\n '"${language}"
-  done
+  hypr_ocr_prepare_languages tesseract_languages || {
+    screenshot_notify 7000 "dialog-error" "OCR: ${HYPR_OCR_ERROR%%$'\n'*}" "${HYPR_OCR_ERROR#*$'\n'}"
+    return 1
+  }
+  tesseract_languages_body="$(hypr_ocr_language_summary tesseract_languages)"
 
-  ocr_image="$(ocr_preprocess_image "${temp_screenshot}")"
+  hypr_ocr_preprocess ocr_image "${temp_screenshot}" screen
+  [[ -z "${HYPR_OCR_ERROR}" ]] || screenshot_notify 5000 "dialog-warning" "OCR: ${HYPR_OCR_ERROR}"
 
-  if ! tesseract_output=$(
-    tesseract \
-      "${ocr_image}" \
-      stdout \
-      --oem "${SCREENSHOT_OCR_OEM:-1}" \
-      --psm "${SCREENSHOT_OCR_PSM:-6}" \
-      --dpi "${SCREENSHOT_OCR_DPI:-300}" \
-      -l "${tesseract_languages_prepared}" \
-      -c preserve_interword_spaces=1 \
-      2>/dev/null
-  ); then
+  if ! tesseract_output="$(hypr_ocr_recognize "${ocr_image}" "$(hypr_ocr_language_argument tesseract_languages)")"; then
     screenshot_notify 5000 "dialog-error" "OCR: text recognition failed"
     return 1
   fi
@@ -288,81 +276,6 @@ ocr_capture_subject() {
       return 1
       ;;
   esac
-}
-
-ocr_configured_languages() {
-  local raw=""
-  local -a languages=()
-
-  if declare -p SCREENSHOT_OCR_TESSERACT_LANGUAGES >/dev/null 2>&1; then
-    eval 'languages=("${SCREENSHOT_OCR_TESSERACT_LANGUAGES[@]}")'
-  else
-    raw="${SCREENSHOT_OCR_LANGS:-${OMARCHY_OCR_LANGS:-eng}}"
-    raw="${raw//+/ }"
-    raw="${raw//,/ }"
-    # shellcheck disable=SC2206
-    languages=(${raw})
-  fi
-
-  printf '%s\n' "${languages[@]}" | awk 'NF && !seen[$0]++'
-}
-
-ocr_prepare_languages() {
-  local -n out_languages="$1"
-  local language=""
-  local installed=""
-  local missing=""
-
-  if ! command -v tesseract >/dev/null 2>&1; then
-    screenshot_notify 5000 "dialog-error" "OCR: tesseract is not installed"
-    return 1
-  fi
-
-  installed="$(tesseract --list-langs 2>/dev/null | tail -n +2)"
-  mapfile -t out_languages < <(ocr_configured_languages)
-  [[ "${#out_languages[@]}" -gt 0 ]] || out_languages=("eng")
-
-  for language in "${out_languages[@]}"; do
-    if ! grep -Fxq "${language}" <<<"${installed}"; then
-      missing+="${missing:+, }${language}"
-    fi
-  done
-
-  if [[ -n "${missing}" ]]; then
-    screenshot_notify 7000 "dialog-error" "OCR: missing tesseract language data" "Missing: ${missing}"$'\n'"Installed: ${installed//$'\n'/, }"
-    return 1
-  fi
-}
-
-ocr_preprocess_image() {
-  local input="$1"
-
-  if [[ "${SCREENSHOT_OCR_PREPROCESS:-1}" != "1" ]]; then
-    printf '%s\n' "${input}"
-    return 0
-  fi
-
-  if ! command -v magick >/dev/null 2>&1; then
-    screenshot_notify 5000 "dialog-warning" "OCR: imagemagick is not installed, recognition accuracy is reduced"
-    printf '%s\n' "${input}"
-    return 0
-  fi
-
-  temp_ocr_image="$(mktemp -t screenshot_ocr_XXXXXX.png)"
-  if magick "${input}" \
-    -colorspace gray \
-    -contrast-stretch 0 \
-    -resize 300% \
-    -sharpen 0x1 \
-    -deskew 40% \
-    "${temp_ocr_image}"; then
-    printf '%s\n' "${temp_ocr_image}"
-  else
-    rm -f "${temp_ocr_image}"
-    temp_ocr_image=""
-    screenshot_notify 5000 "dialog-warning" "OCR: image preprocessing failed, using original screenshot"
-    printf '%s\n' "${input}"
-  fi
 }
 
 ocr_emit_text() {

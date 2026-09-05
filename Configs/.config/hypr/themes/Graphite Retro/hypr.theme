@@ -14,6 +14,7 @@ $FONT = SpaceMono Nerd Font
 $BAR_FONT = SpaceMono Nerd Font
 $MENU_FONT = SpaceMono Nerd Font
 $MONOSPACE_FONT = SpaceMono Nerd Font
+$TERMINAL_FONT = SpaceMono Nerd Font
 $NOTIFICATION_FONT = SpaceMono Nerd Font Mono
 
 general {

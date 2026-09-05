@@ -40,6 +40,9 @@ end
 -- That matters here: resolve_binds_by_sym resolves against the active layout's
 -- level-1 keysym, and AZERTY puts . / [ ] above level 1, where it cannot reach.
 local SUBMAP_MARKER = "[Submap] "
+-- Binds a submap re-exposes from the global set: they work, but the submap hint
+-- already has enough rows. submap_hint.py filters on this same string.
+local HIDDEN_MARKER = "[Hidden] "
 
 -- Number row, left to right: workspace 1 sits on keycode 10 and workspace 10 on
 -- keycode 19, the "0" key. Digits share the punctuation problem above -- AZERTY
@@ -278,14 +281,44 @@ exec(
 	"[Launcher|Apps] alternate terminal in current directory",
 	terminal2 .. [[ --working-directory "$(hyprshell terminal-cwd.sh)"]]
 )
-exec(mod, "E", "[Launcher|Apps] file explorer", explorer)
+-- Focus the existing window if there is one -- hl.dsp.focus pulls in a hidden
+-- special workspace as well as a regular one -- otherwise spawn it on its workspace.
+-- On a scratchpad the same key hides it again while it is showing, so the bind toggles.
+local function summon_app(class, workspace, command)
+	local scratchpad = workspace:match("^special:(.+)$")
+	return function()
+		local shown = hl.get_active_special_workspace()
+		for _, window in ipairs(hl.get_windows() or {}) do
+			if window.class == class or window.initial_class == class then
+				local on_shown_scratchpad = scratchpad
+					and shown
+					and shown.name == workspace
+					and window.workspace
+					and window.workspace.name == workspace
+				if on_shown_scratchpad then
+					hl.dispatch(hl.dsp.workspace.toggle_special(scratchpad))
+				else
+					hl.dispatch(hl.dsp.focus({ window = "address:" .. window.address }))
+				end
+				return
+			end
+		end
+		hl.dispatch(hl.dsp.exec_cmd("[workspace " .. workspace .. "] " .. command))
+		-- Spawning onto a scratchpad does not reveal it, so the first press would look inert.
+		if scratchpad and not (shown and shown.name == workspace) then
+			hl.dispatch(hl.dsp.workspace.toggle_special(scratchpad))
+		end
+	end
+end
+
+bind(mod, "E", "[Launcher|Apps] file explorer", summon_app("org.kde.dolphin", "special:explorer", explorer))
 exec(
 	mod .. " SHIFT",
 	"E",
 	"[Launcher|Apps] file explorer in current directory",
 	explorer .. [[ "$(hyprshell terminal-cwd.sh)"]]
 )
-exec(mod, "B", "[Launcher|Apps] web browser", browser)
+bind(mod, "B", "[Launcher|Apps] web browser", summon_app("firefox", "special:browser", browser))
 exec(mod .. " SHIFT", "B", "[Launcher|Apps] private browser", "hyprshell browser.sh --private")
 exec(mod, "C", "[Launcher|Apps] text editor", terminal .. " -e " .. editor)
 
@@ -609,6 +642,14 @@ submap_leader("theming", mod, "T", function()
 	submap_exec("M", "[Theming] color mode", "pkill -x rofi || hyprshell color-mode.sh -m")
 	submap_exec("R", "[Theming] select rofi theme", "hyprshell rofi/run-after-close.sh -- hyprshell theme.select.sh -s")
 	submap_exec("L", "[Theming] select launcher style", "hyprshell rofi-launch.sh -s")
+	-- the number row keeps working, so a theme can be judged on another workspace
+	for workspace = 1, 10 do
+		submap_stay_action(
+			chord(mod, workspace_code(workspace)),
+			HIDDEN_MARKER .. "go to workspace " .. workspace,
+			hl.dsp.focus({ workspace = workspace })
+		)
+	end
 end)
 
 submap_leader("open", mod, "O", function()
@@ -619,7 +660,6 @@ submap_leader("open", mod, "O", function()
 		"[Open] Lutris",
 		"hyprshell launch/summon.sh --empty-workspace-if-occupied class:net.lutris.Lutris -- lutris"
 	)
-	submap_exec("D", "[Open] Dropdown terminal", "hyprshell window/dropdown-terminal")
 	submap_exec(
 		"S",
 		"[Open] Signal",
@@ -628,16 +668,46 @@ submap_leader("open", mod, "O", function()
 	submap_exec("V", "[Open] Bitwarden", "hyprshell launch/summon.sh --align center bitwarden -- bitwarden-desktop")
 	submap_exec("G", "[Open] Gimp", "hyprshell launch/summon.sh --empty-workspace-if-occupied gimp -- gimp")
 	submap_exec("E", "[Open] Elisa", "hyprshell launch/summon.sh --empty-workspace-if-occupied class:elisa -- elisa")
-	submap_exec(
-		"R",
-		"[Open] rmpc",
-		'hyprshell launch/summon.sh --float-if-workspace-occupied class:org.tui.Rmpc -- hyprshell launch/tui.sh --app-id org.tui.Rmpc --title Rmpc -- "$HOME/.config/rmpc/lib/launch"'
-	)
 	submap_exec("M", "[Open] Mullvad VPN", "hyprshell launch/summon.sh class:mullvad-vpn -- mullvad-vpn")
 	submap_exec(
 		"Q",
 		"[Open] qBittorrent",
 		"hyprshell launch/summon.sh --empty-workspace-if-occupied class:qbittorrent -- qbittorrent"
+	)
+end)
+
+-- Every org.tui.* app opens the same way: focus its window if one exists, else
+-- launch it in the TUI terminal profile. Agent Hub is the exception and keeps
+-- its own entrypoint, because the profile leaves it too few rows.
+local function tui_app(key, name, app_id, command)
+	submap_exec(
+		key,
+		"[Terminal] " .. name,
+		"hyprshell launch/focus.sh "
+			.. app_id
+			.. " -- hyprshell launch/tui.sh --app-id "
+			.. app_id
+			.. " --title '"
+			.. name
+			.. "' -- "
+			.. command
+	)
+end
+
+submap_leader("terminal", mod, "J", function()
+	submap_exec("A", "[Terminal] Agent Hub", "hyprshell system/agent-hub")
+	tui_app("H", "Htop", "org.tui.Htop", "htop")
+	tui_app("N", "Nvtop", "org.tui.Nvtop", "nvtop")
+	tui_app("B", "Bluetui", "org.tui.Bluetui", "bluetui")
+	tui_app("W", "Impala", "org.tui.Impala", "impala")
+	tui_app("V", "Wiremix", "org.tui.Wiremix", "wiremix")
+	tui_app("U", "Dua", "org.tui.Dua", "dua i")
+	tui_app("M", "Display Profiles", "hyprmoncfg", "hyprmoncfg")
+	submap_exec("T", "[Terminal] Dropdown terminal", "hyprshell window/dropdown-terminal")
+	submap_exec(
+		"R",
+		"[Terminal] rmpc",
+		'hyprshell launch/summon.sh --float-if-workspace-occupied class:org.tui.Rmpc -- hyprshell launch/tui.sh --app-id org.tui.Rmpc --title Rmpc -- "$HOME/.config/rmpc/lib/launch"'
 	)
 end)
 

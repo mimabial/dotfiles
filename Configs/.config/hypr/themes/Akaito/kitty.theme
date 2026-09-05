@@ -7,6 +7,10 @@ cursor_text_color #f3e4cb
 selection_foreground #4d2e1a
 selection_background #a32f1a
 
+active_tab_foreground #a32f1a
+inactive_tab_foreground #4d2e1a
+tab_bar_background #f3e4cb
+
 color0 #f3e4cb
 color1 #a4373c
 color2 #a46d2d

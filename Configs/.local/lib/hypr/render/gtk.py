@@ -135,7 +135,6 @@ def main():
         if out_subdir == "gtk-3.0":
             content += SELECTIONMODE_PALETTE.format(bg=p["bg"])
         install_assets(out_subdir)
-        # Header note + write
         out = f"/* Hyprland border radius: {radius}px */\n\n{content}"
         out_path = OUT_DIR / out_subdir / "gtk.css"
         atomic_write(out_path, out)

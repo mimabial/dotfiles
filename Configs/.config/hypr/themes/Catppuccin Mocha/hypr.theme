@@ -13,6 +13,7 @@ $FONT = MonaspiceAr Nerd Font
 $BAR_FONT = MonaspiceAr Nerd Font
 $MENU_FONT = MonaspiceAr Nerd Font
 $MONOSPACE_FONT = MonaspiceAr Nerd Font
+$TERMINAL_FONT = MonaspiceAr Nerd Font
 $NOTIFICATION_FONT = MonaspiceAr Nerd Font Mono
 # $CURSOR_THEME = FernBLZ
 # $CURSOR_SIZE = 34

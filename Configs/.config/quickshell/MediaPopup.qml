@@ -14,7 +14,6 @@ PopupCard {
   borderOpacity: 0.45
   contentWidth: Commons.Style.space(400)
   contentHeight: Math.min(mainColumn.implicitHeight + Commons.Style.space(16), Commons.Style.space(560))
-  wantsKeyboard: trackList.urlInput.activeFocus
 
   readonly property color foreground: shell.foreground
   readonly property color urgent: shell.role("error", foreground)
@@ -46,29 +45,67 @@ PopupCard {
   property bool shuffleMode: false
   property string repeatMode: "off"
   property real _lastStatusTime: 0
+  // a status read overlapping a command carries pre-command values, and would stamp
+  // them back over what the click just set. Bumped on issue and on completion, so a
+  // response is only trusted when nothing happened for its whole lifetime.
+  property int _commandGen: 0
+  property int _statusGen: 0
   property string eqText: "Custom"
   property var audioFx: ({ "eq": "Flat", "loudnorm": false, "spatial": false })
   property int _preMuteVol: 80
 
   property var historyList: []
+  // played_at is UTC, so the local day has to come from Date, not a string split.
+  // The list is already newest-first, so a run of equal labels is a group.
+  readonly property var historyGroups: {
+    const key = d => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+    const today = key(new Date()), groups = []
+    for (const item of root.historyList) {
+      const when = new Date(item.played_at || 0)
+      const days = Math.round((today - key(when)) / 86400000)
+      const label = days <= 0 ? "Today" : days === 1 ? "Yesterday"
+        : days < 7 ? when.toLocaleDateString(Qt.locale(), "dddd")
+        : when.toLocaleDateString(Qt.locale(), "d MMMM")
+      if (!groups.length || groups[groups.length - 1].label !== label) groups.push({ label: label, items: [] })
+      groups[groups.length - 1].items.push(item)
+    }
+    return groups
+  }
   property var playlistsList: []
-  property var queueList: []
-  property int queueCount: 0
+  property var queueItems: []
   property string queueSource: "cliamp"
+  // a binding, not a snapshot: displayQueue folds in live playback state, so the
+  // list has to re-render when that state lands rather than only on a queue read
+  readonly property var queueList: root.displayQueue(root.queueSource, root.queueItems)
+  // one Process backs runCmd, so a command issued alongside another has to wait
+  // for it rather than replace it
+  property var pendingCmds: []
+  property bool queueReloadPending: false
+  property bool currentLiked: false
+  property bool _likeDirty: false
+  // mpd-mpris owns org.mpris.MediaPlayer2.mpd whenever mpd runs, so the derived
+  // context would send every queue read to mpd and hide what "+" just wrote.
+  // Adding pins the view to the queue it appended to, until the popup closes.
+  property string queueOverride: ""
+  // Files tab: one directory of the library at a time, paths relative to its root
+  property var filesList: []
+  property string filesPath: ""
+  property string filesParent: ""
+  property bool filesAtRoot: true
   property var searchResults: []
   property bool isSearching: false
   property string searchQuery: ""
   property string loadingVid: ""
   property string selectedTab: "history"
   property string urlInputText: ""
-  property string visMode: "siriwave"
-  property bool visBackground: false
+  property string visMode: "osc_warp"
+  property bool visBackground: true
   property bool visPickerOpen: false
   property bool eqPickerOpen: false
   property var visModes: [
-    "bars", "bricks", "columns", "classic_led",
+    "bars", "bricks", "classic_led",
     "peaks", "stereo", "correlation", "ascii",
-    "wave", "scope", "sine", "heartbeat",
+    "wave", "sine",
     "siriwave", "soundcloud_wave", "telegram_wave",
     "daw_wave", "led_scrubber", "heatmap_wave", "grounded_wave",
     "retro", "matrix", "binary", "terrain", "mosaic",
@@ -149,6 +186,7 @@ PopupCard {
       recentProc.running = true
     }
     if (trackChanged && root.open && root.selectedTab === "queue") root.loadQueue()
+    if (trackChanged) root.refreshLiked()
     if (trackChanged && root.open) root.startSpectrum()
     if (trackChanged && playerComp.lyricsVisible && playerComp.lyricsTrack !== newTrack)
       playerComp.fetchLyrics()
@@ -194,11 +232,16 @@ PopupCard {
       loadHistory()
       loadPlaylists()
       loadQueue()
+      loadFiles(root.filesPath)
+      refreshLiked()
       startSpectrum()
     } else {
       stopSpectrum()
+      root.queueOverride = ""
       root.visPickerOpen = false
       root.eqPickerOpen = false
+      // a field left focused reopens mid-edit
+      trackList.urlInput.focus = false
     }
   }
 
@@ -274,7 +317,9 @@ PopupCard {
 
   // ---- Actions
   function refresh() {
-    if (!statusProc.running) statusProc.running = true
+    if (statusProc.running) return
+    root._statusGen = root._commandGen
+    statusProc.running = true
   }
 
   function togglePlayback() {
@@ -342,7 +387,7 @@ PopupCard {
     root.volumePct = pct
     const p = root.mprisPlayer
     if (p) { if (p.volumeSupported) p.volume = pct / 100; return }
-    runCmd(["volume_pct", String(pct)])
+    liveCmd(["volume_pct", String(pct)])
   }
 
   function toggleMute() {
@@ -364,7 +409,7 @@ PopupCard {
       }
       return
     }
-    runCmd(["seek", String(sec)])
+    liveCmd(["seek", String(sec)])
   }
   function cycleSpeed() {
     var speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0]
@@ -386,6 +431,14 @@ PopupCard {
     root.visMode = mode
     runCmd(["set_vis_mode", mode])
     if (playerComp) playerComp.requestPaint()
+  }
+  // The track list, both pickers and the lyrics view are mutually exclusive. Route every
+  // open through here: setting one flag without clearing the others opens a pane behind
+  // another one, and the click reads as dead.
+  function showPane(pane) {
+    root.visPickerOpen = pane === "vis"
+    root.eqPickerOpen = pane === "eq"
+    playerComp.lyricsVisible = pane === "lyrics"
   }
   function setVisBackground(enabled) {
     root.visBackground = enabled
@@ -423,7 +476,7 @@ PopupCard {
 
   function openPlaylist(pl) {
     if (!pl) return
-    if (pl.system || pl.name === "Recently Played") {
+    if (pl.name === "Recently Played") {
       var recents = []
       for (var i = 0; i < root.historyList.length; i++) {
         var h = root.historyList[i]
@@ -446,7 +499,7 @@ PopupCard {
 
   function doResume() { runCmd(["resume"]); root.resumeVisible = false; root.loadingVid = "" }
 
-  function playUrl(url, title, artist) {
+  function playUrl(url, title, artist, keepQueue) {
     if (!url || !url.trim()) return
     const active = root.mprisPlayer
     if (active && active.isPlaying && active.canPause) active.pause()
@@ -455,17 +508,31 @@ PopupCard {
     root.currentTrack = title || "Buffering..."
     root.currentArtist = artist || ""
     root.playbackState = "buffering"
-    runCmd(["play_item", u, title || "", artist || ""])
+    runCmd([keepQueue ? "play_item" : "play_replace", u, title || "", artist || ""])
     root.urlInputText = ""
   }
 
   function queueUrl(url, title, artist) {
     if (!url || !url.trim()) return
+    root.queueOverride = "cliamp"
     runCmd(["queue", url.trim(), title || "", artist || ""])
     root.urlInputText = ""
   }
 
+  function queueDir(rel) {
+    root.queueOverride = "cliamp"
+    runCmd(["queue_dir", rel || ""])
+  }
+
+  function playDir(rel) {
+    root.queueOverride = "cliamp"
+    root.pendingCmds = []
+    root.playbackState = "buffering"
+    runCmd(["play_dir", rel || ""])
+  }
+
   function queueContext() {
+    if (root.queueOverride) return root.queueOverride
     const p = root.mprisPlayer
     const key = p ? String(p.dbusName || p.identity || "").toLowerCase() : ""
     if (key.indexOf("mpd") !== -1) return "mpd"
@@ -473,10 +540,21 @@ PopupCard {
     return url.indexOf("list=") !== -1 && (url.indexOf("youtube.com/") !== -1 || url.indexOf("youtu.be/") !== -1) ? url : ""
   }
 
-  function loadQueue() {
-    if (queueProc.running) return
+  function loadFiles(rel) {
+    if (filesProc.running) return
+    filesProc.command = ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", ""), "files", rel || ""]
+    filesProc.running = true
+  }
+
+  function startQueueLoad() {
     queueProc.command = ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", ""), "queue_list", queueContext()]
     queueProc.running = true
+  }
+
+  function loadQueue() {
+    // dropping the reload leaves the panel showing rows the store no longer has
+    if (queueProc.running) { root.queueReloadPending = true; return }
+    startQueueLoad()
   }
 
   function displayQueue(source, items) {
@@ -492,11 +570,14 @@ PopupCard {
     if (item.backend === "youtube" && root.mprisPlayer) {
       root.mprisPlayer.openUri(item.url); Media.select(root.mprisPlayer); return
     }
-    playUrl(item.url, item.title, item.artist)
+    if (!item.url || !item.url.trim()) return
+    playUrl(item.url, item.title, item.artist, true)
     removeFromQueue(item.queueIndex === undefined ? index : item.queueIndex)
   }
 
   function clearQueue() {
+    // a pending chain of adds would refill the queue the moment this command exits
+    root.pendingCmds = []
     runCmd(["queue_clear"])
   }
 
@@ -550,14 +631,49 @@ PopupCard {
     if (!historyProc.running) historyProc.running = true
   }
 
+  function toggleLiked() {
+    if (!root.currentUrl && root.currentTrack === "No track loaded") return
+    root.currentLiked = !root.currentLiked
+    root._likeDirty = true
+    runCmd(["toggle_liked", root.currentUrl || "", root.currentTrack, root.currentArtist])
+    Qt.callLater(loadPlaylists)
+  }
+
+  function refreshLiked() {
+    if (likedProc.running) return
+    likedProc.command = ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", ""),
+      "liked", root.currentUrl || "", root.currentTrack, root.currentArtist]
+    likedProc.running = true
+  }
+
   function loadPlaylists() {
     if (!playlistsProc.running) playlistsProc.running = true
   }
 
-  function runCmd(args) {
-    actionProc.running = false
-    actionProc.command = ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", "")].concat(args)
+  function ctlCmd(args) {
+    return ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", "")].concat(args)
+  }
+
+  function startAction(args) {
+    root._commandGen++
+    actionProc.command = root.ctlCmd(args)
     actionProc.running = true
+  }
+
+  // Actions queue behind each other. Replacing a running one used to drop it, which
+  // is what made a second "+" click, or a click paired with another action, vanish.
+  function runCmd(args) {
+    if (actionProc.running) { root.pendingCmds.push(args); return }
+    startAction(args)
+  }
+
+  // Sliders emit per-drag-step, where only the newest value matters; these run on
+  // their own process so they never cancel a queue write.
+  function liveCmd(args) {
+    root._commandGen++
+    liveProc.running = false
+    liveProc.command = root.ctlCmd(args)
+    liveProc.running = true
   }
 
   // ---- Processes
@@ -596,8 +712,9 @@ PopupCard {
         if (root.syncMpris()) return
         try {
           var data = JSON.parse(text || "{}")
+          const fresh = root._statusGen === root._commandGen
           root.isRunning = data.running === true
-          root.playbackState = data.state || "stopped"
+          if (fresh) root.playbackState = data.state || "stopped"
           var newTrack = String(data.track || "No track loaded")
           var newUrl = String(data.url || "")
           var trackChanged = (newTrack !== root.currentTrack) || (newUrl !== root.currentUrl)
@@ -606,6 +723,7 @@ PopupCard {
           root.currentUrl = newUrl
           root.artPath = String(data.art_path || "")
           if (trackChanged && root.open && root.selectedTab === "queue") root.loadQueue()
+          if (trackChanged) { root.refreshLiked(); if (root.open) root.loadHistory() }
           if (trackChanged && playerComp.lyricsVisible && playerComp.lyricsTrack !== newTrack) {
             playerComp.fetchLyrics()
           }
@@ -616,12 +734,13 @@ PopupCard {
           if (playerComp.lyricsVisible) playerComp.updateLyricsPosition(root.curSecs)
           root.totalSecs = Number(data.total_secs || 0)
           root.progress = Number(data.progress || 0.0)
-          root.volumePct = (data.volume_pct !== undefined && data.volume_pct !== null) ? Number(data.volume_pct) : 80
-          root.playbackSpeed = Number(data.speed || 1.0)
-          root.volumeDb = Number(data.volume_db || 0.0)
-          root.shuffleMode = data.shuffle === true
-          root.repeatMode = String(data.repeat || "off")
-          root.queueCount = (data.queue_count !== undefined) ? Number(data.queue_count) : 0
+          if (fresh) {
+            root.volumePct = (data.volume_pct !== undefined && data.volume_pct !== null) ? Number(data.volume_pct) : 80
+            root.playbackSpeed = Number(data.speed || 1.0)
+            root.volumeDb = Number(data.volume_db || 0.0)
+            root.shuffleMode = data.shuffle === true
+            root.repeatMode = String(data.repeat || "off")
+          }
           root.eqText = String(data.eq || "Custom")
           if (data.audio_fx) root.audioFx = data.audio_fx
           if (data.vis_mode && String(data.vis_mode) !== root.visMode && !root.visPickerOpen) {
@@ -642,16 +761,48 @@ PopupCard {
   }
 
   Process {
+    id: filesProc
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        try {
+          const data = JSON.parse(text || "{}")
+          root.filesPath = data.path || ""
+          root.filesParent = data.parent || ""
+          root.filesAtRoot = data.atRoot !== false
+          root.filesList = data.items || []
+        } catch (error) { root.filesList = [] }
+      }
+    }
+  }
+
+  Process {
     id: queueProc
+    onExited: function() {
+      if (!root.queueReloadPending) return
+      root.queueReloadPending = false
+      root.startQueueLoad()
+    }
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
         try {
           const data = JSON.parse(text || "{}")
           root.queueSource = data.source || "cliamp"
-          root.queueList = root.displayQueue(root.queueSource, data.items)
-        } catch (e) { root.queueSource = "cliamp"; root.queueList = [] }
+          root.queueItems = data.items || []
+        } catch (e) { root.queueSource = "cliamp"; root.queueItems = [] }
         trackList.queueUpdated()
+      }
+    }
+  }
+
+  Process {
+    id: likedProc
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        try { root.currentLiked = JSON.parse(text || "{}").liked === true }
+        catch (e) { root.currentLiked = false }
       }
     }
   }
@@ -670,7 +821,7 @@ PopupCard {
 
   Process {
     id: historyProc
-    command: ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", ""), "history", "200"]
+    command: ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", ""), "history", "99"]
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
@@ -718,12 +869,23 @@ PopupCard {
     }
   }
 
+  Process { id: liveProc; onExited: root._commandGen++ }
+
   Process {
     id: actionProc
     onExited: function() {
+      root._commandGen++
+      if (root.pendingCmds.length > 0) {
+        root.startAction(root.pendingCmds.shift())
+        return
+      }
+      if (root._likeDirty) {
+        root._likeDirty = false
+        root.refreshLiked()
+      }
       root.loadingVid = ""
       root.refresh()
-      if (root.open) { loadHistory(); loadQueue() }
+      if (root.open) loadQueue()
       // On cold start (first play after reboot) mpv needs 1-4s to boot + buffer.
       // Poll again at 1s and 3.5s so the UI catches the playing state.
       coldStartTimer.restart()
@@ -760,8 +922,8 @@ PopupCard {
   // Poll timer
   Timer {
     id: pollTimer
-    interval: root.open ? 500 : 2000
-    running: true; repeat: true; triggeredOnStart: true
+    interval: 500
+    running: root.open; repeat: true; triggeredOnStart: true
     onTriggered: if (root.mprisPlayer) root.requestMprisPosition(); else root.refresh()
   }
 
@@ -859,6 +1021,11 @@ PopupCard {
     }
   }
 
+  // a click anywhere else must release the search field, or every single-key
+  // shortcut in handleKey stays swallowed by it. DragThreshold keeps the grab
+  // passive, so rows and tabs still get their own click.
+  TapHandler { gesturePolicy: TapHandler.DragThreshold; onTapped: trackList.urlInput.focus = false }
+
   // IPC
   IpcHandler {
     target: "cliamp"
@@ -922,7 +1089,7 @@ PopupCard {
 
         // Visualizer Picker (Lazy loaded on demand)
         Loader {
-          visible: root.visPickerOpen && !root.eqPickerOpen
+          visible: root.visPickerOpen
           active: root.visPickerOpen
           width: parent.width
           source: "cliamp/VisPicker.qml"
@@ -940,7 +1107,7 @@ PopupCard {
 
         // Lyrics view — replaces track list when toggled
         Item {
-          visible: playerComp.lyricsVisible && !root.visPickerOpen && !root.eqPickerOpen
+          visible: playerComp.lyricsVisible
           width: parent.width
           height: Commons.Style.space(200)
 

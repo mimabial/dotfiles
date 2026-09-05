@@ -9,6 +9,8 @@ import time
 import re
 import signal
 import shutil
+import hashlib
+import concurrent.futures
 import urllib.request
 import urllib.parse
 try:
@@ -39,9 +41,15 @@ MPRIS_SYSTEM_PATHS = (
     os.path.expanduser("~/.config/mpv/scripts/mpris.so"),
 )
 
+MUSIC_DIR = os.path.realpath(os.path.expanduser(os.environ.get("CLIAMP_MUSIC_DIR", "~/Music")))
+AUDIO_EXTS = ("mp3", "flac", "wav", "m4a", "ogg", "opus", "aac", "aiff", "wma")
 CACHE_DIR = os.path.expanduser("~/.cache/cliamp")
 AUDIO_CACHE_DIR = os.path.join(CACHE_DIR, "audio")
+COVER_CACHE_DIR = os.path.join(CACHE_DIR, "covers")
 HISTORY_PATH = os.path.expanduser("~/.config/cliamp/history.toml")
+# append-only, and parse_history reads all of it on every call, so cap the file
+HISTORY_MAX_BYTES = 96 * 1024
+HISTORY_KEEP = 400
 NOW_PLAYING_PATH = os.path.join(CACHE_DIR, "now_playing.json")
 QUEUE_PATH = os.path.join(CACHE_DIR, "queue.json")
 EXTERNAL_QUEUE_CACHE_PATH = os.path.join(CACHE_DIR, "external_queue.json")
@@ -223,7 +231,7 @@ def save_queue(q_list):
     except Exception:
         pass
 
-def add_to_queue(url, title=None, artist=None):
+def add_to_queue(url, title=None, artist=None, target=None):
     real_url, final_title, final_artist = resolve_track_url(url, title, artist)
     if not real_url:
         return {"success": False, "error": "Unable to resolve track"}
@@ -236,10 +244,24 @@ def add_to_queue(url, title=None, artist=None):
         "url": real_url,
         "title": final_title,
         "artist": final_artist,
-        "thumb": thumb
+        "thumb": thumb,
+        # what mpv was handed for this entry: a direct stream URL or the FIFO for
+        # youtube, the file path otherwise. reconcile_queue() matches on it.
+        "target": target or ""
     })
     save_queue(q)
     return {"success": True, "queue": q}
+
+def drop_mpv_queue_entry(i):
+    """Remove queue.json entry i from mpv's playlist.
+
+    mpv keeps the playing entry at playlist-pos and queue.json does not, so a
+    queue index sits that many places further along.
+    """
+    pos = (send_mpv_cmd(["get_property", "playlist-pos"]) or {}).get("data")
+    if not isinstance(pos, int) or pos < 0:
+        return
+    send_mpv_cmd(["playlist-remove", pos + 1 + int(i)])
 
 def remove_from_queue(idx):
     q = read_queue()
@@ -248,6 +270,7 @@ def remove_from_queue(idx):
         if 0 <= i < len(q):
             q.pop(i)
             save_queue(q)
+            drop_mpv_queue_entry(i)
             return {"success": True, "queue": q}
     except Exception:
         pass
@@ -255,15 +278,170 @@ def remove_from_queue(idx):
 
 def clear_queue():
     save_queue([])
+    # mpv's stop is "stop playback and clear playlist", so this empties both sides
+    send_mpv_cmd(["stop"])
     return {"success": True}
 
-def play_next_in_queue():
+def reconcile_queue():
+    """Drop entries mpv has already advanced into on its own.
+
+    keep-open leaves appended entries playable, so the playlist can move on
+    without anything popping the queue file. Entries play in order, so only the
+    head can match what is loaded now.
+    """
     q = read_queue()
+    if not q:
+        return q
+    res = send_mpv_cmd(["get_property", "path"])
+    playing = (res or {}).get("data")
+    if not playing:
+        return q
+    popped = False
+    while q and playing in (q[0].get("target"), q[0].get("url")):
+        q.pop(0)
+        popped = True
+    if popped:
+        save_queue(q)
+    return q
+
+def play_next_in_queue():
+    q = reconcile_queue()
     if q:
         next_track = q.pop(0)
         save_queue(q)
         return play_item(next_track["url"], next_track.get("title"), next_track.get("artist"))
     return {"success": False, "error": "Queue empty"}
+
+def cover_path(track):
+    """Cache slot for a track's embedded art, keyed by path and mtime so a
+    re-tagged file gets a fresh thumbnail."""
+    try:
+        stat = os.stat(track)
+    except OSError:
+        return ""
+    key = hashlib.sha1(f"{os.path.realpath(track)}:{int(stat.st_mtime)}".encode("utf-8")).hexdigest()
+    return os.path.join(COVER_CACHE_DIR, key + ".jpg")
+
+def extract_cover(track):
+    dest = cover_path(track)
+    if not dest:
+        return ""
+    if os.path.exists(dest):
+        return dest
+    try:
+        os.makedirs(COVER_CACHE_DIR, mode=0o700, exist_ok=True)
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", track, "-an", "-vframes", "1",
+                        "-vf", "scale=96:-1", dest], capture_output=True, timeout=6.0)
+    except Exception:
+        pass
+    return dest if os.path.exists(dest) else ""
+
+def attach_covers(tracks, budget=2.5, key="url"):
+    """Fill in "thumb" for local tracks. Cached art costs nothing; a cold file
+    costs one ffmpeg call, so the pass is parallel and time-boxed — anything that
+    misses the budget is already extracting and lands on the next listing."""
+    local = [t for t in tracks if t.get(key) and os.path.isfile(t[key])]
+    if not local or not shutil.which("ffmpeg"):
+        return tracks
+    deadline = time.monotonic() + budget
+    pool = concurrent.futures.ThreadPoolExecutor(max_workers=8)
+    try:
+        pending = {pool.submit(extract_cover, t[key]): t for t in local}
+        for future, track in pending.items():
+            try:
+                track["thumb"] = future.result(timeout=max(0.0, deadline - time.monotonic())) or ""
+            except Exception:
+                track["thumb"] = ""
+    finally:
+        pool.shutdown(wait=False, cancel_futures=True)
+    return tracks
+
+def dir_tracks(rel="", limit=500):
+    """Every track under one library folder, in listing order. None if not a directory."""
+    base = MUSIC_DIR
+    target = os.path.realpath(os.path.join(base, rel)) if rel else base
+    if target != base and not target.startswith(base + os.sep):
+        target = base
+    if not os.path.isdir(target):
+        return None
+
+    exts = tuple("." + e for e in AUDIO_EXTS)
+    tracks = []
+    for walk_root, dirs, files in os.walk(target):
+        dirs[:] = sorted((d for d in dirs if not d.startswith(".")), key=str.lower)
+        for name in sorted(files, key=str.lower):
+            if len(tracks) >= limit:
+                return tracks
+            if name.startswith(".") or not name.lower().endswith(exts):
+                continue
+            stem = os.path.splitext(name)[0]
+            artist, title = "", stem
+            if " - " in stem:
+                artist, title = (part.strip() for part in stem.split(" - ", 1))
+            tracks.append((os.path.join(walk_root, name), title, artist))
+    return tracks
+
+def append_tracks(tracks):
+    for full, title, artist in tracks:
+        appended = queue_item(full, title, artist)
+        add_to_queue(full, title, artist, appended.get("target"))
+
+def queue_dir(rel="", limit=500):
+    """Append every track under one library folder, in listing order."""
+    tracks = dir_tracks(rel, limit)
+    if tracks is None:
+        return {"success": False, "error": "Not a directory"}
+    append_tracks(tracks)
+    return {"success": True, "added": len(tracks), "truncated": len(tracks) >= limit, "queue": read_queue()}
+
+def play_dir(rel="", limit=500):
+    """Replace the queue with one folder and start it."""
+    tracks = dir_tracks(rel, limit)
+    if tracks is None:
+        return {"success": False, "error": "Not a directory"}
+    if not tracks:
+        return {"success": False, "error": "No tracks in folder"}
+    save_queue([])
+    first, rest = tracks[0], tracks[1:]
+    result = play_item(first[0], first[1], first[2])
+    append_tracks(rest)
+    return {"success": result.get("success", True), "added": len(tracks), "queue": read_queue()}
+
+def browse_library(rel=""):
+    """One directory of MUSIC_DIR, folders first. rel is always relative to it,
+    and a path that escapes the root falls back to the root."""
+    base = MUSIC_DIR
+    target = os.path.realpath(os.path.join(base, rel)) if rel else base
+    if target != base and not target.startswith(base + os.sep):
+        target = base
+    if not os.path.isdir(target):
+        target = base
+
+    exts = tuple("." + e for e in AUDIO_EXTS)
+    dirs, tracks = [], []
+    try:
+        for name in sorted(os.listdir(target), key=str.lower):
+            if name.startswith("."):
+                continue
+            full = os.path.join(target, name)
+            if os.path.isdir(full):
+                dirs.append({"kind": "dir", "title": name, "artist": "",
+                             "rel": os.path.relpath(full, base), "url": "", "duration": ""})
+            elif name.lower().endswith(exts):
+                stem = os.path.splitext(name)[0]
+                artist, title = "", stem
+                if " - " in stem:
+                    artist, title = (part.strip() for part in stem.split(" - ", 1))
+                tracks.append({"kind": "track", "title": title, "artist": artist,
+                               "rel": os.path.relpath(full, base), "url": full,
+                               "duration": "Local", "thumb": ""})
+    except Exception:
+        pass
+
+    attach_covers(tracks)
+    here = "" if target == base else os.path.relpath(target, base)
+    return {"root": base, "path": here, "parent": os.path.dirname(here),
+            "atRoot": target == base, "items": dirs + tracks}
 
 def read_mpd_queue():
     try:
@@ -414,9 +592,23 @@ def record_history(title, artist, url, dur):
                 f.seek(max(0, os.path.getsize(HISTORY_PATH) - 2048))
                 if key in f.read().decode("utf-8", "ignore").rsplit("[[entry]]", 1)[-1]:
                     return
+        if not dur and os.path.isfile(url):
+            # lazy import: status polls this module twice a second and never gets here
+            try:
+                from mutagen import File as MutagenFile
+                dur = MutagenFile(url).info.length or 0
+            except Exception:
+                dur = 0
         entry = f'\n[[entry]]\nplayed_at = "{time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}"\npath = "{esc(url)}"\ntitle = "{esc(title)}"\nartist = "{esc(artist)}"\nduration_secs = {int(dur or 0)}\n'
         with open(HISTORY_PATH, "a", encoding="utf-8") as f:
             f.write(entry)
+        if os.path.getsize(HISTORY_PATH) > HISTORY_MAX_BYTES:
+            with open(HISTORY_PATH, "r", encoding="utf-8") as f:
+                kept = f.read().split("[[entry]]")[-HISTORY_KEEP:]
+            tmp = HISTORY_PATH + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                f.write("[[entry]]".join([""] + kept))
+            os.replace(tmp, HISTORY_PATH)
     except Exception:
         pass
 
@@ -459,7 +651,7 @@ def parse_history(limit=500):
                     entries.append(item)
                 if len(entries) >= limit:
                     break
-            return entries
+            return attach_covers(entries, budget=1.5, key="path")
     except Exception:
         pass
     return []
@@ -490,6 +682,57 @@ def delete_playlist(name):
     playlists = [p for p in playlists if p.get("name") != name]
     save_playlists(playlists)
     return {"success": True}
+
+LIKED_FILE = os.path.join(CACHE_DIR, "liked.json")
+LIKED_NAME = "Liked"
+
+def read_liked():
+    if os.path.exists(LIKED_FILE):
+        try:
+            with open(LIKED_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return []
+
+def save_liked(tracks):
+    try:
+        os.makedirs(CACHE_DIR, exist_ok=True)
+        with open(LIKED_FILE, "w", encoding="utf-8") as f:
+            json.dump(tracks, f, indent=2)
+    except Exception:
+        pass
+
+def liked_key(url, title, artist):
+    """The same song reaches here as a library path, a search string or a stream
+    URL, so a real target identifies it and the title/artist pair is the fallback."""
+    target = (url or "").strip()
+    if target:
+        return "url:" + target
+    return "meta:{}::{}".format((title or "").strip().lower(), (artist or "").strip().lower())
+
+def is_liked(url, title, artist):
+    key = liked_key(url, title, artist)
+    return any(liked_key(t.get("url"), t.get("title"), t.get("artist")) == key for t in read_liked())
+
+def toggle_liked(url, title, artist):
+    if not (url or "").strip() and not (title or "").strip():
+        return {"success": False, "error": "Nothing playing"}
+    key = liked_key(url, title, artist)
+    tracks = read_liked()
+    kept = [t for t in tracks if liked_key(t.get("url"), t.get("title"), t.get("artist")) != key]
+    if len(kept) != len(tracks):
+        save_liked(kept)
+        return {"success": True, "liked": False}
+    kept.append({
+        "id": "",
+        "title": title or "Track",
+        "artist": artist or "",
+        "duration": "",
+        "url": (url or "").strip() or " ".join(x for x in (title, artist) if x).strip()
+    })
+    save_liked(kept)
+    return {"success": True, "liked": True}
 
 def youtube_tracks(url, limit=100):
     list_id = urllib.parse.parse_qs(urllib.parse.urlparse(url).query).get("list", [""])[0]
@@ -638,24 +881,27 @@ EQ_FREQS = [31.25, 62.5, 125, 250, 500, 1000, 2000, 4000, 8000, 16000]
 EQ_CACHE_FILE = os.path.join(CACHE_DIR, "eq.json")
 VIS_MODE_FILE = os.path.join(CACHE_DIR, "vis_mode.txt")
 VIS_MODES = {
-    "bars", "bricks", "columns", "classic_led",
+    "bars", "bricks", "classic_led",
     "peaks", "stereo", "correlation", "ascii",
-    "wave", "scope", "sine", "heartbeat",
+    "wave", "sine",
     "siriwave", "soundcloud_wave", "telegram_wave",
     "daw_wave", "led_scrubber", "heatmap_wave", "grounded_wave",
     "retro", "matrix", "binary", "terrain", "mosaic",
     "scatter", "butterfly",
     "plasma", "osc_warp", "crt_scanline", "cyber_tunnel",
 }
+DEFAULT_VIS_MODE = "osc_warp"
 
 VIS_BG_FILE = os.path.join(CACHE_DIR, "vis_bg.txt")
 
+# The nebula backdrop is on unless it was explicitly turned off, so a missing or truncated
+# state file falls back to on rather than to off.
 def get_vis_bg():
     try:
         with open(VIS_BG_FILE, "r", encoding="utf-8") as f:
-            return f.read().strip() == "1"
+            return f.read().strip() != "0"
     except Exception:
-        return False
+        return True
 
 def set_vis_bg(enabled):
     try:
@@ -675,7 +921,7 @@ def get_vis_mode():
                     return mode
         except Exception:
             pass
-    return "siriwave"
+    return DEFAULT_VIS_MODE
 
 def set_vis_mode(mode):
     mode = str(mode).strip()
@@ -1000,20 +1246,15 @@ def search_tracks(query, limit=10):
 
     results = []
 
-    # 1. Fast global audio scan across user system using fd / fallback
-    ext_list = ["mp3", "flac", "wav", "m4a", "ogg", "opus", "aac", "aiff", "wma"]
+    # 1. Local library scan (MUSIC_DIR) using fd / fallback
+    ext_list = list(AUDIO_EXTS)
     found_local = []
-    if shutil.which("fd"):
+    if shutil.which("fd") and os.path.isdir(MUSIC_DIR):
         try:
-            fd_cmd = [
-                "fd", "--max-results", str(limit), "--ignore-case",
-                "--exclude", ".cache", "--exclude", ".local", "--exclude", ".git",
-                "--exclude", "node_modules", "--exclude", ".gemini", "--exclude", ".npm",
-                "--exclude", ".cargo", "--exclude", ".rustup"
-            ]
+            fd_cmd = ["fd", "--max-results", str(limit), "--ignore-case"]
             for ext in ext_list:
                 fd_cmd.extend(["-e", ext])
-            fd_cmd.extend([q, os.path.expanduser("~")])
+            fd_cmd.extend([q, MUSIC_DIR])
             r = subprocess.run(fd_cmd, capture_output=True, text=True, timeout=1.5)
             for line in (r.stdout or "").splitlines():
                 p = line.strip()
@@ -1022,15 +1263,9 @@ def search_tracks(query, limit=10):
         except Exception:
             pass
 
-    # Fallback scan across common directories if fd is missing or found nothing
+    # Fallback walk if fd is missing or found nothing
     if not found_local:
-        candidate_dirs = [
-            os.path.expanduser("~/Music"),
-            os.path.expanduser("~/Downloads"),
-            os.path.expanduser("~/Desktop"),
-            os.path.expanduser("~/Documents"),
-            os.path.expanduser("~/Audio")
-        ]
+        candidate_dirs = [MUSIC_DIR]
         exts = tuple("." + e for e in ext_list)
         for cdir in candidate_dirs:
             if not os.path.isdir(cdir):
@@ -1063,6 +1298,8 @@ def search_tracks(query, limit=10):
             "duration": "Local",
             "thumb": ""
         })
+
+    attach_covers(results, budget=1.0)
 
     # 2. Spotify track URL resolver
     if "spotify.com/track/" in q:
@@ -1139,11 +1376,33 @@ LYRICS_DIR = os.path.join(CACHE_DIR, "lyrics")
 os.makedirs(LYRICS_DIR, mode=0o700, exist_ok=True)
 
 LYRICS_CACHE = {}
+NEGATIVE_TTL = 7 * 86400
+# The hypr lyrics pipeline already writes .lrc files under the music library and has
+# more providers than this one. Prefer its files, and never cache them, so a refetch
+# there takes effect immediately.
+LYRICS_LIB = os.path.expanduser("~/.local/lib/hypr/media")
+
+def read_local_lrc(path):
+    if not path or not os.path.isfile(path):
+        return ""
+    try:
+        if LYRICS_LIB not in sys.path:
+            sys.path.insert(0, LYRICS_LIB)
+        from lyrics_paths import lrc_path_for
+        with open(lrc_path_for(path), "r", encoding="utf-8") as f:
+            return f.read()
+    except Exception:
+        return ""
+
 def fetch_lyrics(title, artist, url=""):
     raw_t = (title or "").strip()
     raw_a = (artist or "").strip()
     if not raw_t or raw_t in ("CLIamp", "cliamp_stream", "No track loaded"):
         return {"synced": "", "plain": "", "source": ""}
+
+    local = read_local_lrc(url)
+    if local:
+        return {"synced": local, "plain": "", "source": "lrc"}
 
     key = raw_t.lower() + "|" + raw_a.lower()
     if key in LYRICS_CACHE:
@@ -1156,6 +1415,8 @@ def fetch_lyrics(title, artist, url=""):
         try:
             with open(disk_cache, "r", encoding="utf-8") as f:
                 data = json.load(f)
+            # a miss is not permanent: lyrics get added upstream, so let them expire
+            if data.get("source") or time.time() - os.path.getmtime(disk_cache) < NEGATIVE_TTL:
                 LYRICS_CACHE[key] = data
                 return data
         except Exception:
@@ -1172,40 +1433,19 @@ def fetch_lyrics(title, artist, url=""):
             clean_a = parts[0].strip()
             clean_t = parts[1].strip()
 
-        data = []
-        # Strategy 1: Combined search query (fastest & highest hit rate on LRCLIB)
-        search_query = f"{clean_t} {clean_a}".strip() if clean_a else clean_t
+        # one fetcher for the whole system: lrclib + simpmusic + ytmusic in parallel,
+        # with the match validation and miss cache that library already carries
+        text = ""
         try:
-            u = f"https://lrclib.net/api/search?q={urllib.parse.quote(search_query)}"
-            req = urllib.request.Request(u, headers={"User-Agent": "CLIamp/1.0 (Linux)"})
-            with urllib.request.urlopen(req, timeout=2.5) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
+            if LYRICS_LIB not in sys.path:
+                sys.path.insert(0, LYRICS_LIB)
+            from lyrics_provider import fetch_lyrics as provider_fetch
+            text = provider_fetch(clean_a, clean_t) or ""
         except Exception:
-            pass
-
-        # Strategy 2: Structured get if search returned nothing
-        if not data and clean_a and clean_t:
-            try:
-                u = f"https://lrclib.net/api/get?artist_name={urllib.parse.quote(clean_a)}&track_name={urllib.parse.quote(clean_t)}"
-                req = urllib.request.Request(u, headers={"User-Agent": "CLIamp/1.0 (Linux)"})
-                with urllib.request.urlopen(req, timeout=2.0) as resp:
-                    item = json.loads(resp.read().decode("utf-8"))
-                    if item:
-                        data = [item]
-            except Exception:
-                pass
-
-        result = {"synced": "", "plain": "", "source": ""}
-        if isinstance(data, list):
-            for e in data:
-                if e.get("syncedLyrics"):
-                    result = {"synced": e["syncedLyrics"], "plain": e.get("plainLyrics", ""), "source": "lrclib"}
-                    break
-            if not result["synced"]:
-                for e in data:
-                    if e.get("plainLyrics"):
-                        result = {"synced": "", "plain": e["plainLyrics"], "source": "lrclib"}
-                        break
+            text = ""
+        synced = bool(re.search(r"^\[\d+:\d+", text, re.M))
+        result = {"synced": text if synced else "", "plain": "" if synced else text,
+                  "source": "provider" if text else ""}
 
         LYRICS_CACHE[key] = result
         try:
@@ -1365,9 +1605,7 @@ def queue_item(url, title=None, artist=None):
     if not real_url:
         return {"success": False, "error": "Unable to resolve track"}
     start_mpv_daemon()
-    record_history(final_title, final_artist, real_url, 0)
-    save_now_playing(final_title, final_artist, real_url)
-    
+
     stream_target = real_url
     if is_youtube_url(real_url):
         save_youtube_meta(real_url, final_title, final_artist)
@@ -1379,7 +1617,7 @@ def queue_item(url, title=None, artist=None):
             stream_target = STREAM_FIFO
 
     send_mpv_cmd(["loadfile", stream_target, "append"])
-    return {"success": True}
+    return {"success": True, "target": stream_target}
 
 def stop_daemon():
     terminate_tracked_pid(STREAM_PID_FILE, expected_signature=["yt-dlp", STREAM_FIFO])
@@ -1409,7 +1647,9 @@ if __name__ == "__main__":
         print(json.dumps({"success": True}))
     elif action == "playlists":
         custom = parse_playlists()
-        result = [{"name": "Recently Played", "count": len(parse_history(500)), "system": True}]
+        liked = read_liked()
+        result = [{"name": "Recently Played", "count": len(parse_history(500)), "system": True},
+                  {"name": LIKED_NAME, "count": len(liked), "tracks": liked, "system": True}]
         for pl in custom:
             result.append({"name": pl.get("name", "Untitled"), "count": len(pl.get("tracks", [])), "tracks": pl.get("tracks", [])})
         print(json.dumps(result))
@@ -1417,6 +1657,12 @@ if __name__ == "__main__":
         u = sys.argv[2] if len(sys.argv) > 2 else ""
         n = sys.argv[3] if len(sys.argv) > 3 else None
         print(json.dumps(import_playlist(u, n)))
+    elif action == "liked":
+        url, title, artist = (sys.argv[2:5] + ["", "", ""])[:3]
+        print(json.dumps({"liked": is_liked(url, title, artist)}))
+    elif action == "toggle_liked":
+        url, title, artist = (sys.argv[2:5] + ["", "", ""])[:3]
+        print(json.dumps(toggle_liked(url, title, artist)))
     elif action == "delete_playlist":
         n = sys.argv[2] if len(sys.argv) > 2 else ""
         print(json.dumps(delete_playlist(n)))
@@ -1499,7 +1745,7 @@ if __name__ == "__main__":
         send_mpv_cmd(["stop"])
         print(json.dumps({"success": True}))
     elif action == "next":
-        q = read_queue()
+        q = reconcile_queue()
         if q:
             print(json.dumps(play_next_in_queue()))
         else:
@@ -1516,16 +1762,20 @@ if __name__ == "__main__":
         pct = float(sys.argv[2]) if len(sys.argv) > 2 else 80.0
         send_mpv_cmd(["set_property", "volume", pct])
         print(json.dumps({"success": True}))
-    elif action == "play_item":
+    elif action in ["play_item", "play_replace"]:
         url = sys.argv[2] if len(sys.argv) > 2 else ""
         t = sys.argv[3] if len(sys.argv) > 3 else ""
         a = sys.argv[4] if len(sys.argv) > 4 else ""
+        # play_replace starts a new queue; play_item keeps the rest of the current one
+        if action == "play_replace":
+            save_queue([])
         print(json.dumps(play_item(url, t, a)))
     elif action in ["queue", "queue_add"]:
         url = sys.argv[2] if len(sys.argv) > 2 else ""
         t = sys.argv[3] if len(sys.argv) > 3 else ""
         a = sys.argv[4] if len(sys.argv) > 4 else ""
-        print(json.dumps(add_to_queue(url, t, a)))
+        appended = queue_item(url, t, a)
+        print(json.dumps(add_to_queue(url, t, a, appended.get("target"))))
     elif action in ["queue_list", "get_queue"]:
         source = sys.argv[2] if len(sys.argv) > 2 else ""
         if source == "mpd":
@@ -1533,7 +1783,13 @@ if __name__ == "__main__":
         elif "list=" in source and is_youtube_url(source):
             print(json.dumps({"source": "youtube", "items": read_youtube_queue(source)}))
         else:
-            print(json.dumps({"source": "cliamp", "items": read_queue()}))
+            print(json.dumps({"source": "cliamp", "items": reconcile_queue()}))
+    elif action == "files":
+        print(json.dumps(browse_library(sys.argv[2] if len(sys.argv) > 2 else "")))
+    elif action == "queue_dir":
+        print(json.dumps(queue_dir(sys.argv[2] if len(sys.argv) > 2 else "")))
+    elif action == "play_dir":
+        print(json.dumps(play_dir(sys.argv[2] if len(sys.argv) > 2 else "")))
     elif action == "mpd_play":
         subprocess.run(["rmpc", "play", str(int(sys.argv[2]))], timeout=2.0)
         print(json.dumps({"success": True}))
@@ -1573,7 +1829,7 @@ if __name__ == "__main__":
                 time.sleep(1)
                 send_mpv_cmd(["seek", pos, "absolute"])
     elif action == "set_vis_mode":
-        mode = sys.argv[2] if len(sys.argv) > 2 else "siriwave"
+        mode = sys.argv[2] if len(sys.argv) > 2 else DEFAULT_VIS_MODE
         print(json.dumps(set_vis_mode(mode)))
     elif action == "get_vis_mode":
         print(json.dumps({"vis_mode": get_vis_mode()}))

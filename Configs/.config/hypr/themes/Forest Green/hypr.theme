@@ -12,6 +12,7 @@ $FONT = FantasqueSansM Nerd Font
 $BAR_FONT = FantasqueSansM Nerd Font
 $MENU_FONT = FantasqueSansM Nerd Font
 $MONOSPACE_FONT = FantasqueSansM Nerd Font
+$TERMINAL_FONT = FantasqueSansM Nerd Font
 $NOTIFICATION_FONT = FantasqueSansM Nerd Font Mono
 
 general {

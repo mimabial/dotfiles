@@ -13,6 +13,9 @@ BarButton {
     }
     css: Networking.wifiEnabled ? "network.wifi" : "network.disabled"
     text: !Networking.wifiEnabled ? "󰖪" : "󰖩"
+    tooltip: !Networking.wifiEnabled ? "Wi-Fi off"
+        : !root.network ? "Not Connected to any type of Network"
+        : root.network.name + "\nSignal: " + Math.round(root.network.signalStrength * 100) + "%"
     onClicked: button => button === Qt.RightButton ? shell.run(["hyprshell", "rofi/wifi"]) : shell.togglePopup("network")
 
     NetworkPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled }

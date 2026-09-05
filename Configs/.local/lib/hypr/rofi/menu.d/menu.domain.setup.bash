@@ -111,7 +111,7 @@ menu_run_action_setup() {
     setup_default_editor_*) hyprshell setup/default.sh editor "${action_id#setup_default_editor_}" ;;
     setup_audio) present_terminal --hypr-profile tui --app-id org.tui.Wiremix --title Wiremix -- wiremix ;;
     setup_wifi) rfkill unblock wifi && present_terminal --hypr-profile tui --app-id org.tui.Impala --title Impala -- impala ;;
-    setup_bluetooth) rfkill unblock bluetooth && present_terminal --hypr-profile tui --app-id org.tui.Bluetui --title Bluetui -- bluetui ;;
+    setup_bluetooth) hyprshell launch/bluetooth ;;
     setup_network) present_terminal --hypr-profile tui --app-id org.tui.Oryx --title Oryx -- sudo oryx ;;
     setup_monitors_config) open_in_editor ~/.config/hypr/monitors.lua ;;
     setup_monitor_scale) hyprshell rofi/run-after-close.sh -- hyprshell system/monitor-scale.sh --select ;;

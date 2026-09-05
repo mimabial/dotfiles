@@ -3,7 +3,7 @@
 fanspeedinfo.py
 A script to gather and display fan speed information from the system.
 It uses the `sensors` command to get fan speed data and formats it for display.
-This script is designed to be used with Waybar or similar status bars.
+It emits status-bar JSON ({text, tooltip}) on stdout.
 """
 
 import argparse
@@ -110,7 +110,7 @@ def reset():
 
 
 def generate_output(fans):
-    """Generate JSON output for Waybar."""
+    """Generate status-bar JSON output."""
     if not fans:
         output = {"text": "N/A", "tooltip": "No fans detected"}
     else:
@@ -118,7 +118,6 @@ def generate_output(fans):
         current_fan = fans[current_index]
         fan_rpm = get_fan_speed(current_fan)
 
-        # Format for display:
         text = format_fan_speed_multiline(fan_rpm)
 
         tooltip_lines = ["Fan Speeds:"]

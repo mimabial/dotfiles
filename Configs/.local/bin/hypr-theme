@@ -1,15 +1,5 @@
 #!/usr/bin/env bash
 # hypr-theme: orchestrator for the new render/ pipeline.
-#
-# Usage:
-#   hypr-theme apply <pack-name>      # theme mode
-#   hypr-theme wallpaper <path>       # wallpaper mode
-#   hypr-theme refresh                # re-run renderers on the current palette
-#
-# Flags:
-#   --regen      force re-render even if input hash matches
-#   --no-cache   don't write cache after rendering (next run also re-renders)
-#   --variant dark|light
 
 set -euo pipefail
 
@@ -17,7 +7,17 @@ LIB_DIR="${HOME}/.local/lib/hypr/render"
 PALETTE="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/active-palette.json"
 
 usage() {
-  sed -n '3,12p' "$0" >&2
+  cat >&2 <<'USAGE'
+Usage:
+  hypr-theme apply <pack-name>      # theme mode
+  hypr-theme wallpaper <path>       # wallpaper mode
+  hypr-theme refresh                # re-run renderers on the current palette
+
+Flags:
+  --regen      force re-render even if input hash matches
+  --no-cache   don't write cache after rendering (next run also re-renders)
+  --variant dark|light
+USAGE
   exit 2
 }
 
@@ -68,16 +68,17 @@ write_hypr_theme_state() {
 }
 
 resolve_palette() {
-  local subcmd="$1"; shift
+  local subcmd="$1"
+  local target="${2:-}"
   case "${subcmd}" in
     apply)
-      [[ ${#positional[@]} -ge 1 ]] || { echo "hypr-theme apply: pack name required" >&2; exit 2; }
-      python3 "${LIB_DIR}/_palette.py" --theme "${positional[0]}" --out "${PALETTE}"
-      write_hypr_theme_state "${positional[0]}"
+      [[ -n "${target}" ]] || { echo "hypr-theme apply: pack name required" >&2; exit 2; }
+      python3 "${LIB_DIR}/_palette.py" --theme "${target}" --out "${PALETTE}"
+      write_hypr_theme_state "${target}"
       ;;
     wallpaper)
-      [[ ${#positional[@]} -ge 1 ]] || { echo "hypr-theme wallpaper: image path required" >&2; exit 2; }
-      python3 "${LIB_DIR}/_palette.py" --wallpaper "${positional[0]}" --variant "${variant}" --out "${PALETTE}"
+      [[ -n "${target}" ]] || { echo "hypr-theme wallpaper: image path required" >&2; exit 2; }
+      python3 "${LIB_DIR}/_palette.py" --wallpaper "${target}" --variant "${variant}" --out "${PALETTE}"
       ;;
     refresh)
       [[ -f "${PALETTE}" ]] || { echo "hypr-theme refresh: no palette at ${PALETTE}" >&2; exit 1; }
@@ -131,10 +132,10 @@ reload_clients() {
   reload_live_theme_client rmpc
   reload_live_theme_client tmux
 
-  # theme.lua and theme.json are replaced with mv, so the bar's file watches are
-  # left on the old inode and never see the new palette or font.
+  # FileView re-arms across the renderers' mv, so the palette lands on its own;
+  # this only re-reads the font sources, which a soft reload would miss.
   if command -v quickshell >/dev/null 2>&1; then
-    quickshell ipc --any-display call bar reload >/dev/null 2>&1 || true
+    quickshell ipc --any-display call bar refresh >/dev/null 2>&1 || true
   fi
 
   if [[ -x "$HOME/.local/lib/hypr/util/nvim-theme-sync.sh" ]]; then
@@ -144,9 +145,11 @@ reload_clients() {
 
 case "${cmd}" in
   apply|wallpaper|refresh)
-    resolve_palette "${cmd}"
-    run_renderers
+    resolve_palette "${cmd}" "${positional[0]:-}"
+    render_failed=0
+    run_renderers || render_failed=1
     reload_clients
+    exit "${render_failed}"
     ;;
   *)
     usage

@@ -14,7 +14,6 @@ BorderSurface {
     { id: "bars", name: "Bars", category: "classic", icon: "\uf080" },
     { id: "classic_led", name: "Classic LED", category: "classic", icon: "\uf111" },
     { id: "peaks", name: "Peaks", category: "classic", icon: "\uf012" },
-    { id: "columns", name: "Columns", category: "classic", icon: "\uf0db" },
     { id: "bricks", name: "Bricks", category: "classic", icon: "\uf0c9" },
     { id: "stereo", name: "Stereo VU", category: "classic", icon: "\uf025" },
     { id: "correlation", name: "Correlation", category: "classic", icon: "\uf07e" },
@@ -29,9 +28,7 @@ BorderSurface {
     { id: "heatmap_wave", name: "Heatmap Wave", category: "wave", icon: "\uf06d" },
     { id: "grounded_wave", name: "Baseline Wave", category: "wave", icon: "\uf012" },
     { id: "wave", name: "Waveform", category: "wave", icon: "\uf21e" },
-    { id: "scope", name: "XY Scope", category: "wave", icon: "\uf1fe" },
     { id: "sine", name: "Sine Wave", category: "wave", icon: "\uf1d8" },
-    { id: "heartbeat", name: "Heartbeat", category: "wave", icon: "\uf004" },
 
     // Synth & Retro
     { id: "retro", name: "Retro Synth", category: "retro", icon: "\uf185" },

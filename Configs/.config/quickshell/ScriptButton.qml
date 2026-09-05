@@ -7,6 +7,9 @@ BarButton {
     property var processEnvironment: ({})
     property int interval: 60000
     property bool polling: true
+    // a streaming command stays alive and pushes a line per event; the timer
+    // below then only serves to respawn it if it dies
+    property bool streaming: false
     property var icons: ({})
     property string fallback: ""
     property bool useAlt: false
@@ -46,7 +49,7 @@ BarButton {
         } }
     }
     Timer {
-        interval: root.interval; running: root.polling; repeat: root.polling; triggeredOnStart: true
+        interval: root.interval; running: root.polling || root.streaming; repeat: true; triggeredOnStart: true
         onTriggered: if (!process.running) process.running = true
     }
     Timer { id: refreshDelay; onTriggered: if (!process.running) process.running = true }

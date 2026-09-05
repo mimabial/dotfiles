@@ -10,6 +10,7 @@ $FONT = BlexMono Nerd Font
 $BAR_FONT = BlexMono Nerd Font
 $MENU_FONT = BlexMono Nerd Font
 $MONOSPACE_FONT = BlexMono Nerd Font
+$TERMINAL_FONT = BlexMono Nerd Font
 $NOTIFICATION_FONT = BlexMono Nerd Font Mono
 
 general {

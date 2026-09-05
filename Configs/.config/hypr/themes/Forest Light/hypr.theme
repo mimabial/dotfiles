@@ -11,6 +11,7 @@ $FONT = Inconsolata Nerd Font
 $BAR_FONT = Inconsolata Nerd Font
 $MENU_FONT = Inconsolata Nerd Font
 $MONOSPACE_FONT = Inconsolata Nerd Font
+$TERMINAL_FONT = Inconsolata Nerd Font
 $NOTIFICATION_FONT = Inconsolata Nerd Font Mono
 
 

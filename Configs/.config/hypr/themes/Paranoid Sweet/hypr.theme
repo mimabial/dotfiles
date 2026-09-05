@@ -13,6 +13,7 @@ $FONT = RecMonoCasual Nerd Font
 $BAR_FONT = RecMonoCasual Nerd Font
 $MENU_FONT = RecMonoCasual Nerd Font
 $MONOSPACE_FONT = RecMonoCasual Nerd Font
+$TERMINAL_FONT = RecMonoCasual Nerd Font
 $NOTIFICATION_FONT = RecMonoCasual Nerd Font Mono
 
 general {

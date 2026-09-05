@@ -16,7 +16,7 @@
     "margin": [0.0, 6.0, 0.0, 6.0],
     "padding": [0.0, 0.0, 0.0, 0.0]
   },
-  "dunst": {
+  "notification": {
     "fill": null,
     "hover": { "fill": null, "outline": ["hvr_br", 0.55], "content": ["hvr_fg", 1.0] }
   },
@@ -72,12 +72,12 @@
     "padding": [0.0, 0.0, 0.0, 0.0]
   },
   "privacy": { "margin": [2.0, 3.0, 2.0, 3.0] },
-  "pulseaudio": {
+  "volume": {
     "fontSize": 16.0,
     "margin": [0.0, 6.0, 0.0, 6.0],
     "padding": [0.0, 0.0, 0.0, 0.0]
   },
-  "pulseaudio.headphone": {
+  "volume.headphone": {
     "fontSize": 12.0
   },
   "workspaces": { "margin": [0.0, 0.0, 0.0, 0.0] },
@@ -91,6 +91,34 @@
   },
   "clock.time-alt": {
     "margin": [0.0, 8.0, 0.0, 8.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "appearance": {
+    "margin": [0.0, 0.0, 0.0, 0.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "wallpaper": {
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "colormode": {
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "barlayout-button": {
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "desktop-group": {
+    "margin": [0.0, 0.0, 0.0, 0.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "window-layout": {
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "workflows": {
+    "margin": [0.0, 6.0, 0.0, 6.0],
     "padding": [0.0, 0.0, 0.0, 0.0]
   }
 }

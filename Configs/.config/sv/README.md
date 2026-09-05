@@ -21,7 +21,7 @@ the call still returns success through its `|| true`, and nothing runs.
 | -------------------------- | ------------- | ------------------------------------------- |
 | `hyprland-quickshell`      | yes           | the active bar                              |
 | `hyprland-idle-manager`    | yes           | audio/manual-aware hypridle control         |
-| `hyprland-monitor-watch`   | yes           | monitor hotplug recovery                    |
+| `hyprland-monitor-watch`   | no            | legacy monitor-toggle recovery              |
 | `power-profile-auto`       | yes           | idles if power-profiles-daemon is absent    |
 | `auto-theme`               | **no** (`down`) | brought up/down by `theme/color-mode` on demand |
 | `tmux`                     | yes           | `tmux -D` in the foreground; `finish` saves resurrect state |

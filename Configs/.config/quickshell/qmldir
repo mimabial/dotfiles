@@ -32,24 +32,25 @@ DisksPopup 1.0 DisksPopup.qml
 GithubPopup 1.0 GithubPopup.qml
 HyprsunsetPopup 1.0 HyprsunsetPopup.qml
 LanguagePopup 1.0 LanguagePopup.qml
+LayerBlur 1.0 LayerBlur.qml
 LogoutButton 1.0 LogoutButton.qml
-LooknfeelPanel 1.0 LooknfeelPanel.qml
-LooknfeelRow 1.0 LooknfeelRow.qml
 MainBar 1.0 MainBar.qml
 MediaButton 1.0 MediaButton.qml
 MediaPopup 1.0 MediaPopup.qml
 MicrophoneButton 1.0 MicrophoneButton.qml
 ModuleEdge 1.0 ModuleEdge.qml
-MonitorPopup 1.0 MonitorPopup.qml
 NetworkButton 1.0 NetworkButton.qml
 NetworkEnrichmentDialog 1.0 NetworkEnrichmentDialog.qml
 NetworkPopup 1.0 NetworkPopup.qml
 NotificationButton 1.0 NotificationButton.qml
+NotificationEntry 1.0 NotificationEntry.qml
 NotificationPopup 1.0 NotificationPopup.qml
 PopupCard 1.0 PopupCard.qml
 PopupHero 1.0 PopupHero.qml
+PopupHost 1.0 PopupHost.qml
 PopupNumberField 1.0 PopupNumberField.qml
 PopupRow 1.0 PopupRow.qml
+PopupScrollBar 1.0 PopupScrollBar.qml
 PopupSection 1.0 PopupSection.qml
 PopupSelect 1.0 PopupSelect.qml
 PopupSeparator 1.0 PopupSeparator.qml
@@ -63,12 +64,12 @@ ReloadToast 1.0 ReloadToast.qml
 ScreenRecordPopup 1.0 ScreenRecordPopup.qml
 ScreenshotPopup 1.0 ScreenshotPopup.qml
 ScriptButton 1.0 ScriptButton.qml
-singleton Backlight 1.0 Backlight.qml
-singleton Media 1.0 Media.qml
-singleton Removable 1.0 Removable.qml
-singleton Style 1.0 Style.qml
 singleton Wallpaper 1.0 Wallpaper.qml
+singleton Media 1.0 Media.qml
+singleton Backlight 1.0 Backlight.qml
+singleton Style 1.0 Style.qml
 singleton Weather 1.0 Weather.qml
+singleton Removable 1.0 Removable.qml
 StackedReadout 1.0 StackedReadout.qml
 StartButton 1.0 StartButton.qml
 StartMenuFlyout 1.0 StartMenuFlyout.qml

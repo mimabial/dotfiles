@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import QtQuick.Controls
 
 // Top level of the rofi menu.d tree (menutree --dump-json). Submenu rows open
 // cascading StartMenuFlyout windows chained off openSubId/openRow.
@@ -14,6 +15,7 @@ Column {
     // what the menu wants if nothing constrains it, so the card can size to it
     readonly property int contentHeight: menuHeader.height + root.spacing + menuList.contentHeight
     readonly property bool hovered: paneHover.hovered
+    readonly property bool overflowing: menuList.contentHeight > menuList.height
     spacing: Style.sm
     height: totalHeight
 
@@ -41,10 +43,12 @@ Column {
         clip: true
         spacing: 2
         model: root.items
+        ScrollBar.vertical: PopupScrollBar { shell: root.shell }
         delegate: PopupRow {
             id: row
             required property var modelData
             width: menuList.width; shell: root.shell
+            rightInset: root.overflowing ? Style.md : 0
             icon: root.labelIcon(modelData.label)
             title: root.labelText(modelData.label)
             active: modelData.kind === "submenu" && root.openSubId === modelData.target

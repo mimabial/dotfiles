@@ -14,7 +14,6 @@ shaders_shared_dir="${HYPR_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/hypr}
 shaders_state_file="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/shaders.lua"
 shaders_cache_dir="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/shaders"
 compiled_shader_file="${shaders_cache_dir}/compiled.cache.glsl"
-quiet_notifications=0
 
 show_help() {
   cat <<HELP
@@ -71,8 +70,8 @@ list_shader_names() {
 
 # Same shape as util/workflows.sh --list, so one parser serves every pipeline.
 # Shaders carry no icon or description, so those fields are empty rather than
-# absent. "neutral" is prepended on the same condition fn_select uses.
-fn_list() {
+# absent. "neutral" is prepended on the same condition select_shader uses.
+list_shaders() {
   local name=""
   {
     if resolve_shader_path neutral >/dev/null 2>&1; then
@@ -84,22 +83,7 @@ fn_list() {
   done
 }
 
-apply_shader_state() {
-  local state_key="$1"
-  local value="$2"
-  local notify_tag="$3"
-  local notify_title="$4"
-  local update_fn="$5"
-
-  state_set "${state_key}" "${value}" "staterc"
-  "${update_fn}" "${value}"
-
-  if [[ "${quiet_notifications}" -ne 1 ]]; then
-    send_ephemeral_notif "${notify_tag}" -t 2000 -i "preferences-desktop-display" "${notify_title}" "${value}"
-  fi
-}
-
-fn_select() {
+select_shader() {
   local shader_items=""
   local selected_shader=""
 
@@ -126,16 +110,16 @@ fn_select() {
   [[ -n "${selected_shader}" ]] || exit 0
   selected_shader="$(normalize_shader_name "${selected_shader}")"
 
-  apply_shader_state "HYPR_SHADER" "${selected_shader}" "hypr-shader" "Shader selected" fn_update
+  hypr_stateful_choice_apply "HYPR_SHADER" "${selected_shader}" "hypr-shader" "Shader selected" write_shader_state
 }
 
-fn_reload() {
+reload_shader() {
   local shader_name
   shader_name="$(normalize_shader_name "$(state_get "HYPR_SHADER" "neutral")")"
-  apply_shader_state "HYPR_SHADER" "${shader_name}" "hypr-shader" "Shader reloaded" fn_update
+  hypr_stateful_choice_apply "HYPR_SHADER" "${shader_name}" "hypr-shader" "Shader reloaded" write_shader_state
 }
 
-fn_set() {
+set_shader() {
   local shader_name
   shader_name="$(normalize_shader_name "${1:-}")"
 
@@ -144,7 +128,7 @@ fn_set() {
     return 1
   }
 
-  apply_shader_state "HYPR_SHADER" "${shader_name}" "hypr-shader" "Shader selected" fn_update
+  hypr_stateful_choice_apply "HYPR_SHADER" "${shader_name}" "hypr-shader" "Shader selected" write_shader_state
 }
 
 concat_shader_files() {
@@ -177,8 +161,7 @@ concat_shader_files() {
 parse_includes_and_update() {
   local selected_shader
   selected_shader="$(normalize_shader_name "${1}")"
-  local resolved_shader_path shader_path_compact compiled_path_compact
-  local shader_name_lua shader_path_lua compiled_path_lua
+  local resolved_shader_path
   local source_var inc_file
   local files=()
 
@@ -212,26 +195,14 @@ parse_includes_and_update() {
   files+=("${resolved_shader_path}")
   concat_shader_files "${files[@]}"
 
-  mkdir -p "$(dirname "${shaders_state_file}")"
-  shader_path_compact="$(hypr_compact_path "${resolved_shader_path}")"
-  compiled_path_compact="$(hypr_compact_path "${compiled_shader_file}")"
-
-  shader_name_lua="$(jq -Rn --arg value "${selected_shader}" '$value')"
-  shader_path_lua="$(jq -Rn --arg value "${resolved_shader_path}" '$value')"
-  compiled_path_lua="$(jq -Rn --arg value "${compiled_shader_file}" '$value')"
-  cat <<LUA >"${shaders_state_file}"
--- Generated native Hyprland Lua. Do not edit manually.
-local runtime = require("runtime")
-local vars = require("vars")
-
-vars.set("SCREEN_SHADER", ${shader_name_lua})
-vars.set("SCREEN_SHADER_PATH", ${shader_path_lua})
-vars.set("SCREEN_SHADER_COMPILED", ${compiled_path_lua})
-runtime.config("decoration.screen_shader", ${compiled_path_lua})
-LUA
+  hypr_stateful_choice_write_lua "${shaders_state_file}" \
+    --config decoration.screen_shader "${compiled_shader_file}" \
+    "SCREEN_SHADER=${selected_shader}" \
+    "SCREEN_SHADER_PATH=${resolved_shader_path}" \
+    "SCREEN_SHADER_COMPILED=${compiled_shader_file}"
 }
 
-fn_update() {
+write_shader_state() {
   parse_includes_and_update "$1"
 }
 
@@ -266,7 +237,7 @@ while true; do
       action="reload"
       ;;
     -q | --quiet)
-      quiet_notifications=1
+      HYPR_STATEFUL_CHOICE_QUIET=1
       ;;
     --help | -h)
       show_help
@@ -287,20 +258,20 @@ done
 
 case "${action}" in
   select)
-    fn_select
+    select_shader
     ;;
   set)
     [[ -n "${shader_set_name}" ]] || {
       echo "Error: --set requires a shader name" >&2
       exit 1
     }
-    fn_set "${shader_set_name}"
+    set_shader "${shader_set_name}"
     ;;
   list)
-    fn_list
+    list_shaders
     ;;
   reload)
-    fn_reload
+    reload_shader
     ;;
   *)
     echo "No action provided"

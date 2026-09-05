@@ -12,6 +12,7 @@ $FONT = Lilex Nerd Font
 $BAR_FONT = Lilex Nerd Font
 $MENU_FONT = Lilex Nerd Font
 $MONOSPACE_FONT = Lilex Nerd Font
+$TERMINAL_FONT = Lilex Nerd Font
 $NOTIFICATION_FONT = Lilex Nerd Font Mono
 
 general {

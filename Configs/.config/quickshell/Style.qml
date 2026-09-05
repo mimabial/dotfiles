@@ -3,8 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// Shared spacing and type tokens, mirroring omarchy's qs.Commons Style so the
-// two codebases stay comparable. Every popup metric comes from here — a value
+// Shared spacing and type tokens. Every popup metric comes from here — a value
 // invented at a use site is how the padding drifted in the first place.
 Singleton {
     id: root
@@ -17,7 +16,7 @@ Singleton {
     readonly property int xxl: px(12)
     readonly property int xxxl: px(14)
 
-    readonly property int popupGap: 5           // omarchy gapsOut — card offset from the bar
+    readonly property int popupGap: 5
     readonly property int popupPadding: px(14)
     readonly property int sectionGap: px(14)    // between popup sections
     readonly property int rowGap: px(8)
@@ -30,6 +29,11 @@ Singleton {
     readonly property int trackHeight: Math.max(4, Math.round(controlHeight * 0.11))
     readonly property int knobSize: Math.max(14, Math.round(controlHeight * 0.38))
     readonly property int sliderHeight: knobSize + sm
+
+    // Popup surfaces. PopupCard defaults from these, and the qs.Commons shim
+    // re-exports them so ported panels land on the same glass as the bar's own.
+    readonly property real popupSurfaceOpacity: 0.92
+    readonly property real popupBorderOpacity: 0.45
 
     readonly property real hoverFillAlpha: 0.12
     readonly property real hoverBorderAlpha: 0.55

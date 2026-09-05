@@ -105,15 +105,12 @@ get_workflow_quickshell_layout() {
   sed -n 's/^[[:space:]]*vars\.set("WORKFLOW_QUICKSHELL_LAYOUT",[[:space:]]*"\([^"]*\)").*/\1/p' "${workflow_path}" | head -n1
 }
 
-fn_select() {
+select_workflow() {
   local default_path default_icon workflow_list workflow_path workflow_name workflow_icon
   local selected_workflow
   local workflow_count=1
-  local clipboard_row_em=2 clipboard_chrome_em=8 clipboard_max_lines=11
-  local width_em=24 height_em=0 menu_lines=0
-  local font_name="" font_scale=""
-  local rofi_position="" window_theme=""
-  local -a rofi_args
+  local max_lines=11
+  local menu_lines=0
 
   hypr_runtime_require rofi
   # shellcheck source=/dev/null
@@ -134,31 +131,21 @@ fn_select() {
     workflow_count=$((workflow_count + 1))
   done < <(list_workflow_names)
 
-  menu_lines=$((workflow_count < clipboard_max_lines ? workflow_count : clipboard_max_lines))
-  height_em=$((clipboard_row_em * menu_lines + clipboard_chrome_em))
-  font_scale="$(rofi_effective_font_scale "${ROFI_WORKFLOW_SCALE:-}")"
-  font_name="$(rofi_effective_font_name "${ROFI_WORKFLOW_FONT:-${ROFI_FONT:-}}")"
+  menu_lines=$((workflow_count < max_lines ? workflow_count : max_lines))
 
-  rofi_picker_compute_window_geometry \
-    rofi_position window_theme \
-    "${font_name}" "${font_scale}" \
-    "${width_em}" "${height_em}" \
-    $((width_em * font_scale * 2)) $((height_em * font_scale * 2))
-
-  rofi_build_standard_menu_args \
-    rofi_args \
+  # 2em per row plus 8em of chrome, matching the clipboard picker it shares a theme with
+  HYPR_STATEFUL_CHOICE_WIDTH_EM=24 \
+    HYPR_STATEFUL_CHOICE_HEIGHT_EM=$((2 * menu_lines + 8)) \
+    hypr_stateful_choice_select \
     "Select workflow" \
-    " Workflow" \
+    " Workflow" \
     "clipboard" \
-    "${font_scale}" \
-    "${font_name}" \
-    wallbox same "${rofi_position}"
-  rofi_args+=(-theme-str "${window_theme}")
-  rofi_args+=(-theme-str "listview { lines: ${menu_lines}; }")
-  rofi_args+=(-select "${workflow_previous_name}")
-
-  selected_workflow=$(echo -e "${workflow_list}" \
-    | rofi "${rofi_args[@]}")
+    "${ROFI_WORKFLOW_SCALE:-}" \
+    "${ROFI_WORKFLOW_FONT:-${ROFI_FONT:-}}" \
+    "${workflow_previous_name}" \
+    "$(printf '%b' "${workflow_list}")" \
+    selected_workflow \
+    -theme-str "listview { lines: ${menu_lines}; }"
 
   [[ -n "${selected_workflow}" ]] || exit 0
 
@@ -192,28 +179,13 @@ get_info() {
   export current_icon current_workflow current_description current_workflow_path
 }
 
-fn_update() {
-  local workflow_path_compact
-  local workflow_name_lua workflow_icon_lua workflow_description_lua workflow_path_lua
-
-  mkdir -p "$(dirname "${workflows_state_file}")"
-  workflow_path_compact="$(hypr_compact_path "${current_workflow_path}")"
-
-  workflow_name_lua="$(jq -Rn --arg value "${current_workflow}" '$value')"
-  workflow_icon_lua="$(jq -Rn --arg value "${current_icon}" '$value')"
-  workflow_description_lua="$(jq -Rn --arg value "${current_description}" '$value')"
-  workflow_path_lua="$(jq -Rn --arg value "${current_workflow_path}" '$value')"
-  cat <<LUA >"${workflows_state_file}"
--- Generated native Hyprland Lua. Do not edit manually.
-local runtime = require("runtime")
-local vars = require("vars")
-
-vars.set("WORKFLOW", ${workflow_name_lua})
-vars.set("WORKFLOW_ICON", ${workflow_icon_lua})
-vars.set("WORKFLOW_DESCRIPTION", ${workflow_description_lua})
-vars.set("WORKFLOW_PATH", ${workflow_path_lua})
-runtime.load(${workflow_path_lua})
-LUA
+write_workflow_state() {
+  hypr_stateful_choice_write_lua "${workflows_state_file}" \
+    --load "${current_workflow_path}" \
+    "WORKFLOW=${current_workflow}" \
+    "WORKFLOW_ICON=${current_icon}" \
+    "WORKFLOW_DESCRIPTION=${current_description}" \
+    "WORKFLOW_PATH=${current_workflow_path}"
 
   printf "%s %s: %s\n" "${current_icon}" "${current_workflow}" "${current_description}"
   send_ephemeral_notif "hypr-workflow" -t 2000 -i "preferences-desktop-display" "Workflow" "${current_icon} ${current_workflow}\n${current_description}"
@@ -226,7 +198,7 @@ apply_workflow_update() {
     [[ "${current_workflow}" == "${notification_rule%%_*}" ]] && notification_state=enable || notification_state=disable
     dunstctl rule "${notification_rule}" "${notification_state}" >/dev/null 2>&1 || true
   done
-  fn_update
+  write_workflow_state
   sync_workflow_flags
   hyprctl reload config-only -q
   apply_quickshell_workflow
@@ -252,7 +224,7 @@ while true; do
   case "$1" in
     -S | --select)
       workflow_locked && exit 1
-      fn_select
+      select_workflow
       apply_workflow_update
       exit 0
       ;;

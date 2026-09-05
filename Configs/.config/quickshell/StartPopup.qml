@@ -16,12 +16,24 @@ PopupCard {
     // everything in the column that is not the pane, so the pane can take what
     // is left of the screen instead of pushing the card off it
     readonly property int chromeHeight: Style.px(30) + Style.sm + padding * 2
-    // tall enough for the whole menu column, then clamped by the screen; the
-    // app list scrolls, the menu should not have to
+    readonly property int usableHeight: root.maxHeight - root.chromeHeight
     readonly property int menuColumnHeight: placesCol.implicitHeight + paneSep.height
         + Style.sm * 2 + menuPane.contentHeight
-    readonly property int paneHeight: Math.min(root.maxHeight - root.chromeHeight,
-        Math.max(Style.px(320), root.menuColumnHeight))
+
+    // What Hyprland leaves a tiled window on this monitor, so the card lines up
+    // with the windows behind it instead of picking a size of its own. The
+    // monitor's reserved area, not the bar's own height: a dock or any other
+    // exclusive-zone surface takes its cut of the same budget.
+    property int reservedVertical: 0
+    property int gapsVertical: 0
+    property int borderSize: 0
+    readonly property int windowHeight: root.anchorWindow && root.anchorWindow.screen
+        ? root.anchorWindow.screen.height - root.reservedVertical - root.gapsVertical
+            - root.borderSize * 2
+        : root.maxHeight
+    readonly property int paneHeight: Math.min(root.usableHeight,
+        Math.max(Math.round(root.usableHeight * 0.35),
+            Math.min(root.windowHeight - root.chromeHeight, root.menuColumnHeight)))
 
     readonly property var allApps: {
         const out = []
@@ -52,7 +64,69 @@ PopupCard {
         pinsFile.setText(JSON.stringify(ids, null, 2) + "\n")
     }
 
-    property var places: []
+    // XDG-derived defaults stay live; places.json only records what the user
+    // added on top and which defaults they removed
+    property var xdgPlaces: []
+    property var addedPlaces: []
+    property var hiddenPlaces: []
+    readonly property var places: {
+        const out = []
+        for (const place of xdgPlaces)
+            if (hiddenPlaces.indexOf(place.path) < 0) out.push(place)
+        return out.concat(addedPlaces)
+    }
+
+    property bool addingPlace: false
+    property string placeError: ""
+
+    function savePlaces() {
+        placesFile.setText(JSON.stringify({added: addedPlaces, hidden: hiddenPlaces}, null, 2) + "\n")
+    }
+    function expandPath(raw) {
+        let path = raw.replace(/^~(?=\/|$)/, shell.home)
+        if (path.indexOf("/") !== 0) path = shell.home + "/" + path
+        return path.length > 1 ? path.replace(/\/+$/, "") : path
+    }
+    function beginAddPlace() {
+        placeError = ""
+        placeField.text = ""
+        addingPlace = true
+        placeField.forceActiveFocus()
+    }
+    function cancelAddPlace() {
+        addingPlace = false
+        placeError = ""
+        placeField.text = ""
+        searchField.forceActiveFocus()
+    }
+    function commitPlace() {
+        const raw = placeField.text.trim()
+        if (raw === "") { cancelAddPlace(); return }
+        placeCheck.candidate = expandPath(raw)
+        placeCheck.running = true
+    }
+    function acceptPlace(path) {
+        const hides = hiddenPlaces.slice()
+        const at = hides.indexOf(path)
+        if (at >= 0) hides.splice(at, 1)
+        const adds = addedPlaces.slice()
+        if (!xdgPlaces.some(p => p.path === path) && !adds.some(p => p.path === path))
+            adds.push({icon: "\u{f024b}", label: path.split("/").pop() || path, path: path})
+        hiddenPlaces = hides
+        addedPlaces = adds
+        savePlaces()
+        cancelAddPlace()
+    }
+    // a default is remembered as hidden so it stays gone; an added one just goes
+    function removePlace(place) {
+        const adds = addedPlaces.slice()
+        const at = adds.findIndex(p => p.path === place.path)
+        if (at >= 0) { adds.splice(at, 1); addedPlaces = adds }
+        else if (hiddenPlaces.indexOf(place.path) < 0)
+            hiddenPlaces = hiddenPlaces.concat([place.path])
+        savePlaces()
+    }
+
     property var menus: ({})
 
     function labelIcon(label) { const m = label.match(/^(\S+)\s{2,}/); return m ? m[1] : "" }
@@ -108,6 +182,12 @@ PopupCard {
         app.execute()
         shell.closePopup()
     }
+    function secondaryAction(item) {
+        if (!item) return
+        if (item.type === "app") togglePin(item.app)
+        else if (item.type === "place") removePlace(item.place)
+        else activate(item)
+    }
     function moveCursor(step) {
         if (cursorModel.length === 0) return
         selectedIndex = Math.max(0, Math.min(cursorModel.length - 1, selectedIndex + step))
@@ -117,10 +197,14 @@ PopupCard {
     onOpenChanged: {
         searchField.text = ""
         selectedIndex = 0
+        addingPlace = false
+        placeError = ""
+        placeField.text = ""
         menuPane.reset()
         if (open) {
             searchField.forceActiveFocus()
             menuProc.running = true
+            geometryProc.running = true
         }
     }
     onFilterChanged: selectedIndex = 0
@@ -150,9 +234,60 @@ PopupCard {
                 if (!dir || !icons[key] || dir === root.shell.home || dir === root.shell.home + "/") continue
                 out.push({icon: icons[key], label: dir.split("/").pop(), path: dir})
             }
-            root.places = out
+            root.xdgPlaces = out
         }
     }
+    property FileView placesFile: FileView {
+        path: root.shell.home + "/.config/quickshell/places.json"
+        watchChanges: true
+        printErrors: false
+        onFileChanged: reload()
+        onLoaded: {
+            try {
+                const data = JSON.parse(String(text()))
+                root.addedPlaces = Array.isArray(data.added) ? data.added : []
+                root.hiddenPlaces = Array.isArray(data.hidden) ? data.hidden : []
+            } catch (error) { root.addedPlaces = []; root.hiddenPlaces = [] }
+        }
+    }
+    property Process placeCheck: Process {
+        property string candidate: ""
+        command: ["test", "-d", candidate]
+        onExited: code => code === 0 ? root.acceptPlace(candidate)
+            : root.placeError = "Not a directory"
+    }
+    // --batch emits one blank-line separated chunk per command, and a failed one
+    // is a bare non-JSON line, so each chunk is parsed on its own and dispatched
+    // on its shape rather than on its position
+    function loadGeometry(raw) {
+        const screen = root.anchorWindow ? root.anchorWindow.screen : null
+        for (const chunk of String(raw).split(/\n\s*\n/)) {
+            const text = chunk.trim()
+            if (text === "") continue
+            let data
+            try { data = JSON.parse(text) } catch (error) { continue }
+            if (Array.isArray(data)) {
+                for (const monitor of data) {
+                    if (!screen || monitor.name !== screen.name) continue
+                    if (Array.isArray(monitor.reserved) && monitor.reserved.length === 4)
+                        root.reservedVertical = monitor.reserved[1] + monitor.reserved[3]
+                }
+            } else if (data.option === "general:gaps_out" && typeof data.css === "string") {
+                const edges = data.css.trim().split(/\s+/).map(Number)
+                if (edges.length === 4 && edges.every(n => !isNaN(n)))
+                    root.gapsVertical = edges[0] + edges[2]
+            } else if (data.option === "general:border_size" && typeof data.int === "number") {
+                root.borderSize = data.int
+            }
+        }
+    }
+    property Process geometryProc: Process {
+        running: true
+        command: ["hyprctl", "-j", "--batch",
+            "getoption general:gaps_out ; getoption general:border_size ; monitors"]
+        stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.loadGeometry(text) }
+    }
+
     property Process menuProc: Process {
         command: ["hyprshell", "rofi/menutree", "--dump-json"]
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: {
@@ -240,10 +375,13 @@ PopupCard {
             width: parent.width; height: root.paneHeight
             clip: true; spacing: 2
             model: root.results
+            readonly property bool overflowing: contentHeight > height
+            ScrollBar.vertical: PopupScrollBar { shell: root.shell }
             delegate: PopupRow {
                 required property var modelData
                 required property int index
                 width: resultList.width; shell: root.shell
+                rightInset: resultList.overflowing ? Style.md : 0
                 iconSource: modelData.type === "app" ? Quickshell.iconPath(modelData.app.icon, true) : ""
                 icon: modelData.type === "action" ? modelData.entry.icon
                     : modelData.type === "place" ? modelData.place.icon : ""
@@ -253,8 +391,8 @@ PopupCard {
                     : modelData.type === "place" ? modelData.place.path : ""
                 value: modelData.type === "app" && root.pinIds.indexOf(modelData.app.id) >= 0 ? "\u{f0403}" : ""
                 cursored: index === root.selectedIndex
-                onClicked: button => modelData.type === "app" && button === Qt.RightButton
-                    ? root.togglePin(modelData.app) : root.activate(modelData)
+                onClicked: button => button === Qt.RightButton
+                    ? root.secondaryAction(modelData) : root.activate(modelData)
             }
         }
 
@@ -285,10 +423,13 @@ PopupCard {
                         - (pinnedGrid.visible ? pinnedGrid.height + Style.sm : 0)
                     clip: true; spacing: 2
                     model: root.allApps
+                    readonly property bool overflowing: contentHeight > height
+                    ScrollBar.vertical: PopupScrollBar { shell: root.shell }
                     delegate: PopupRow {
                         required property var modelData
                         required property int index
                         width: appList.width; shell: root.shell
+                        rightInset: appList.overflowing ? Style.md : 0
                         iconSource: Quickshell.iconPath(modelData.icon, true)
                         title: modelData.name
                         detail: modelData.genericName || modelData.comment
@@ -317,8 +458,56 @@ PopupCard {
                             implicitHeight: Style.px(24)
                             icon: modelData.icon
                             title: modelData.label
-                            onClicked: root.activate({type: "place", place: modelData})
+                            // right-click removes; the glyph is the only hint it does
+                            value: hovered ? "\u{f0156}" : ""
+                            valueColor: root.shell.role("error", root.shell.foreground)
+                            onClicked: button => button === Qt.RightButton
+                                ? root.removePlace(modelData)
+                                : root.activate({type: "place", place: modelData})
                         }
+                    }
+                    PopupRow {
+                        visible: !root.addingPlace
+                        width: placesCol.width; shell: root.shell
+                        implicitHeight: Style.px(24)
+                        icon: "\u{f0415}"
+                        iconColor: root.shell.alpha(root.shell.foreground, .55)
+                        title: "Add place…"
+                        titleColor: root.shell.alpha(root.shell.foreground, .55)
+                        onClicked: root.beginAddPlace()
+                    }
+                    Rectangle {
+                        visible: root.addingPlace
+                        width: placesCol.width; height: Style.px(24)
+                        radius: root.shell.rounding
+                        color: root.shell.alpha(root.shell.foreground, .06)
+                        border.color: root.placeError !== ""
+                            ? root.shell.role("error", root.shell.foreground)
+                            : root.shell.alpha(root.shell.role("br", root.shell.foreground), .3)
+                        TextField {
+                            id: placeField
+                            anchors.fill: parent
+                            anchors.leftMargin: Style.controlPaddingX
+                            anchors.rightMargin: Style.controlPaddingX
+                            leftPadding: 0; rightPadding: 0; topPadding: 0; bottomPadding: 0
+                            verticalAlignment: TextInput.AlignVCenter
+                            placeholderText: "~/path/to/folder"
+                            color: root.shell.foreground
+                            font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
+                            background: null
+                            onTextChanged: root.placeError = ""
+                            Keys.onReturnPressed: root.commitPlace()
+                            Keys.onEnterPressed: root.commitPlace()
+                            Keys.onEscapePressed: root.cancelAddPlace()
+                        }
+                    }
+                    Text {
+                        visible: root.placeError !== ""
+                        width: placesCol.width
+                        text: root.placeError
+                        color: root.shell.role("error", root.shell.foreground)
+                        font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                        elide: Text.ElideRight
                     }
                 }
                 PopupSeparator { id: paneSep; shell: root.shell }

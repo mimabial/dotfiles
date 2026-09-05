@@ -19,7 +19,6 @@ if ! source "${HOME}/.cache/wal/colors-shell.sh" 2>/dev/null; then
   exit 1
 fi
 
-# Color display function
 print_color() {
   local name=$1
   local hex=$2

@@ -112,6 +112,5 @@ def send(
     thread.start()
 
 
-# Example usage
 if __name__ == "__main__":
     send("Test Notification", "This is a test notification body.", urgency="normal")

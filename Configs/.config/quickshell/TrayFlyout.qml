@@ -20,6 +20,8 @@ PopupWindow {
     property QsMenuOpener opener: QsMenuOpener { menu: root.open ? root.handle : null }
 
     onOpenChanged: if (!open) { openSub = null; openRow = null }
+    // see StartMenuFlyout: equal-size sibling rows do not re-trigger anchoring
+    onAnchorItemChanged: if (root.open) anchor.updateAnchor()
 
     visible: open
     color: "transparent"

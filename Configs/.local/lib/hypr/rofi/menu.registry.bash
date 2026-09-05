@@ -8,6 +8,7 @@ menu_register_all() {
 
   menu_define main "Main"
   menu_add_item main "󱡴  Search All" action search_all 0
+  menu_add_item main "󱚣  AI" submenu ai
   menu_add_item main "  Tools" submenu dev_tools
   menu_add_item main "󰀻  Apps" action main_apps 0
   menu_add_item main "󰃀  Bookmarks" action main_bookmarks
@@ -53,6 +54,7 @@ menu_open_argument() {
     *)
       case "${normalized}" in
         *search*) show_search_all_menu ;;
+        ai | agent | agents | *agent-hub* | *agent_hub*) menu_show_menu ai ;;
         *tools*) menu_show_menu dev_tools ;;
         *apps*) menu_run_action main_apps ;;
         *gaming* | *game*) menu_show_menu gaming ;;

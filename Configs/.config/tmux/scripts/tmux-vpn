@@ -12,14 +12,14 @@ Usage: tmux-vpn [--short]
 EOF
 }
 
-hypr_vpn_common="${HOME}/.local/lib/hypr/waybar/waybar.vpn.common.sh"
+hypr_vpn_common="${HOME}/.local/lib/hypr/quickshell/vpn.common.bash"
 if [[ -r "${hypr_vpn_common}" ]]; then
   # shellcheck source=/dev/null
   source "${hypr_vpn_common}"
-  waybar_vpn_load_env
-  vpn_provider="$(waybar_vpn_normalize_provider "${WAYBAR_VPN_PROVIDER:-auto}")"
+  vpn_load_env
+  vpn_provider="$(vpn_normalize_provider "${QUICKSHELL_VPN_PROVIDER:-auto}")"
 else
-  vpn_provider="${WAYBAR_VPN_PROVIDER:-auto}"
+  vpn_provider="${QUICKSHELL_VPN_PROVIDER:-auto}"
 fi
 
 wireguard_globs=(wg* mullvad*)

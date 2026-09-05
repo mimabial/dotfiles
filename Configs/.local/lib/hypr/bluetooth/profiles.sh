@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+
+# List connected Bluetooth audio modes and codecs as JSON.
+
+if (( $# != 0 )); then
+  echo "Usage: profiles.sh" >&2
+  exit 1
+fi
+
+set -o pipefail
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+
+"$script_dir/audio-cards.sh" | jq -c '
+  def normalized_address:
+    ascii_downcase
+    | if test("^([0-9a-f]{12}|[0-9a-f]{2}([:_-][0-9a-f]{2}){5})$") then .
+      elif test("dev_[0-9a-f]{2}([:_-][0-9a-f]{2}){5}") then
+        capture("dev_(?<address>[0-9a-f]{2}([:_-][0-9a-f]{2}){5})").address
+      elif test("bluez_card[._][0-9a-f]{2}([:_-][0-9a-f]{2}){5}") then
+        capture("bluez_card[._](?<address>[0-9a-f]{2}([:_-][0-9a-f]{2}){5})").address
+      else empty end
+    | gsub("[:_-]"; "");
+
+  def canonical_address:
+    [scan("[0-9a-f]{2}")] | join(":") | ascii_upcase;
+
+  def codec:
+    try ((.label // "") | capture("codec (?<codec>[^)]+)"; "i").codec) catch ""
+    | if ascii_upcase == "MSBC" then "mSBC" else . end;
+
+  def option_label:
+    codec as $codec
+    | if $codec == "" then (.label // .value)
+      elif (.sources // 0) > 0 then "Headset + microphone · " + $codec
+      else "High fidelity · " + $codec
+      end;
+
+  [
+    .[]
+    | select(.bluetooth == true)
+    | . as $card
+    # An unusable device.string must not hide the MAC embedded
+    # in the canonical BlueZ card name.
+    | ([$card.address, $card.name] | map(normalized_address) | .[0] // "") as $address
+    | select($address != "")
+    | [
+        .profiles[]
+        | select(.value != "off" and (.sinks // 0) > 0)
+        | {
+            value,
+            codec: codec,
+            label: option_label,
+            hasInput: ((.sources // 0) > 0)
+          }
+      ] as $profiles
+    | select($profiles | length > 0)
+    | {
+        key: $address,
+        value: {
+          # profile-set.sh accepts a BlueZ MAC. Never leak an object path or card-name
+          # fallback into that command even though either can identify the key.
+          address: ($address | canonical_address),
+          card: $card.name,
+          label: $card.label,
+          activeProfile: $card.activeProfile,
+          activeCodec: (($profiles | map(select(.value == $card.activeProfile))[0].codec) // ""),
+          profiles: $profiles
+        }
+      }
+  ]
+  | from_entries
+' || exit 1

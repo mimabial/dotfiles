@@ -4,6 +4,7 @@ import Quickshell.Io
 ScriptButton {
     id: root
     css: "updates"
+    tooltip: ""
     command: ["hyprshell", "system/system.update.sh"]
     interval: 86400000
     fallback: ""

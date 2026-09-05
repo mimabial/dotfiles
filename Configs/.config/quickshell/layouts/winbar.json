@@ -1,5 +1,5 @@
 {
-  "left": ["menu", "taskbar", "active", "submap"],
+  "left": ["menu", "taskbar", "workspace-weather", "submap"],
   "center": ["workspaces"],
   "right": [
     {

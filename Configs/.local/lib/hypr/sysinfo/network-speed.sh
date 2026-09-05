@@ -46,7 +46,6 @@ STATE_DIR="$(network_speed_state_dir)" || exit 1
 STATE_FILE="${STATE_DIR}/bar-netspeed-${UID:-$(id -u)}"
 INTERFACE=$(ip route | awk '/^default/ {print $5; exit}')
 
-# If no network interface is active
 if [ -z "$INTERFACE" ]; then
   if "${ALT_MODE}"; then
     printf '%s\n' '{"text":"0.00 KB/s","tooltip":"Not Connected"}'
@@ -84,11 +83,9 @@ fi
 
 echo "$INTERFACE $RX_NOW $TX_NOW $TIME_NOW" >"$STATE_FILE"
 
-# Format speed display based on mode
 if [ "$MODE" = "both" ]; then
   # Format both download and upload with empty line between
   JSON_TEXT=$(awk -v down="$RX_BYTES_PER_SEC" -v up="$TX_BYTES_PER_SEC" 'BEGIN {
-        # Download speed
         down_unit = "K";
         down_speed = down / 1024;
         if (down >= 1048576) { down_unit = "M"; down_speed = down / 1048576; }
@@ -98,7 +95,6 @@ if [ "$MODE" = "both" ]; then
         if (down_int > 99) down_int = 99;
         down_dec = int((down_speed - down_int) * 100);
         
-        # Upload speed
         up_unit = "K";
         up_speed = up / 1024;
         if (up >= 1048576) { up_unit = "M"; up_speed = up / 1048576; }
@@ -142,7 +138,6 @@ else # upload mode
     }')
 fi
 
-# Format both speeds for tooltip
 DOWN_SPEED=$(awk -v b="$RX_BYTES_PER_SEC" 'BEGIN {
     if (b >= 1073741824) printf "%.2f GB/s", b / 1073741824;
     else if (b >= 1048576) printf "%.2f MB/s", b / 1048576;

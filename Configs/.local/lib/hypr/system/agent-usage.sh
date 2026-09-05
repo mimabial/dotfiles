@@ -14,9 +14,12 @@ set -euo pipefail
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash"
 
-hypr_help_guard "Usage: hyprshell system/agent-usage [--write] [agent...]
+hypr_help_guard "Usage: hyprshell system/agent-usage [--write] [--force] [agent...]
   (no args)   print a JSON array of records for every agent that reports usage
   --write     refresh the cache the bar reads instead of printing
+  --force     rescan local usage now, for a person who asked rather than for a
+              periodic refresh. The limits probe keeps its own short window,
+              which is what stops repeat presses hitting a server rate limit.
   <agent>     limit collection to the named agents (claude, codex)
 
 Cache: \${HYPR_CACHE_HOME:-~/.cache/hypr}/agents/usage.json" "$@"
@@ -40,20 +43,46 @@ collector_for() {
 }
 
 write=0
+force=0
 wanted=()
 for arg in "$@"; do
   case "${arg}" in
     --write) write=1 ;;
+    --force) force=1 ;;
+    -*) printf '%s: unknown option: %s\n' "${0##*/}" "${arg}" >&2; exit 2 ;;
     *) wanted+=("${arg}") ;;
   esac
 done
 [[ ${#wanted[@]} -eq 0 ]] && wanted=("${AGENTS[@]}")
 
-records=()
+scratch="$(mktemp -d "${TMPDIR:-/tmp}/agent-usage.XXXXXX")"
+cleanup_paths=("${scratch}")
+trap 'rm -rf "${cleanup_paths[@]}"' EXIT
+
+# Each collector spends nearly all of its wall time waiting on a network or RPC
+# probe, and they share no state, so they run concurrently. Output slots are
+# numbered rather than named after the agent: the name comes from argv.
+collector_args=()
+((force)) && collector_args+=(--force)
+
+pids=()
+slots=()
 for agent in "${wanted[@]}"; do
   collector="$(collector_for "${agent}")"
   [[ -n "${collector}" ]] || continue
-  record="$("${collector}" 2>/dev/null || true)"
+  slots+=("${scratch}/${#pids[@]}")
+  "${collector}" "${collector_args[@]}" >"${slots[-1]}" 2>/dev/null &
+  pids+=("$!")
+done
+
+# Reaped in launch order, so the record order stays stable regardless of which
+# collector finishes first.
+records=()
+for index in "${!pids[@]}"; do
+  # A collector killed by a signal makes the shell announce the job on our own
+  # stderr, which the sequential form never had to suppress.
+  wait "${pids[index]}" 2>/dev/null || true
+  record="$(<"${slots[index]}")"
   # A collector with nothing to report exits quietly rather than emitting a stub.
   [[ -n "${record}" ]] && jq -e . >/dev/null 2>&1 <<<"${record}" && records+=("${record}")
 done
@@ -67,10 +96,9 @@ fi
 if ((write)); then
   mkdir -p "${CACHE_DIR}"
   tmp="$(mktemp "${CACHE_FILE}.XXXXXX")"
-  trap 'rm -f "${tmp}"' EXIT
+  cleanup_paths+=("${tmp}")
   printf '%s\n' "${payload}" >"${tmp}"
   mv -f "${tmp}" "${CACHE_FILE}"          # atomic, so the watcher never sees a partial file
-  trap - EXIT
   print_log -sec "agent-usage" -stat "cached" "$(jq -r 'length' <<<"${payload}") record(s)"
 else
   printf '%s\n' "${payload}"

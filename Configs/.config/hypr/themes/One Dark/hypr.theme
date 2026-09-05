@@ -13,6 +13,7 @@ $FONT = Hack Nerd Font
 $BAR_FONT = Hack Nerd Font
 $MENU_FONT = Hack Nerd Font
 $MONOSPACE_FONT = Hack Nerd Font
+$TERMINAL_FONT = Hack Nerd Font
 $NOTIFICATION_FONT = Hack Nerd Font Mono
 
 general {

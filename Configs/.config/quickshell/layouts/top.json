@@ -1,17 +1,34 @@
 {
-  "left": ["menu", { "id": "workspaces", "props": { "omarchyStyle": true } }, "submap"],
+  "left": [{ "id": "workspaces", "props": { "compactStyle": true } }, "submap"],
   "centerAnchor": "datetime",
-  "center": ["indicators", "datetime", "updates", "weather"],
+  "center": [
+    { "id": "indicators", "props": { "caffeineActiveOnly": false } },
+    "datetime",
+    { "id": "updates", "props": { "hideWhenCurrent": false } },
+    "weather"
+  ],
   "right": [
     {
       "id": "mediaplayer",
-      "props": { "appearance": "mpris", "showControls": false, "showArtist": true, "randomizeProgressShape": true }
+      "props": {
+        "appearance": "mpris",
+        "showControls": false,
+        "showArtist": true,
+        "randomizeProgressShape": true
+      }
     },
-    "pulseaudio",
+    "volume",
     "display",
     "bluetooth",
     "vpn",
     "wifi",
+    {
+      "id": "appearance",
+      "props": {
+        "alwaysOpen": false,
+        "reverse": true
+      }
+    },
     "powerprofile"
   ]
 }

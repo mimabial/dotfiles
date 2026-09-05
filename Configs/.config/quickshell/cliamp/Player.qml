@@ -6,16 +6,13 @@ import qs.Ui
 
 import "visualizers/bars.js" as VisBars
 import "visualizers/bricks.js" as VisBricks
-import "visualizers/columns.js" as VisColumns
 import "visualizers/classic_led.js" as VisClassicLED
 import "visualizers/peaks.js" as VisPeaks
 import "visualizers/stereo.js" as VisStereo
 import "visualizers/correlation.js" as VisCorrelation
 import "visualizers/ascii.js" as VisAscii
 import "visualizers/wave.js" as VisWave
-import "visualizers/scope.js" as VisScope
 import "visualizers/sine.js" as VisSine
-import "visualizers/heartbeat.js" as VisHeartbeat
 import "visualizers/siriwave.js" as VisSiriWave
 import "visualizers/soundcloud_wave.js" as VisSoundCloudWave
 import "visualizers/telegram_wave.js" as VisTelegramWave
@@ -100,7 +97,7 @@ Item {
   }
 
   function toggleLyrics() {
-    lyricsVisible = !lyricsVisible
+    root.p.showPane(lyricsVisible ? "" : "lyrics")
     if (lyricsVisible && (lyricsLines.length === 0 || lyricsTrack !== root.p.currentTrack)) {
       fetchLyrics()
     }
@@ -167,12 +164,12 @@ Item {
   }
 
   readonly property var _renderers: ({
-    "bars": VisBars.render, "bricks": VisBricks.render, "columns": VisColumns.render,
+    "bars": VisBars.render, "bricks": VisBricks.render,
     "classic_led": VisClassicLED.render,
     "peaks": VisPeaks.render, "stereo": VisStereo.render,
     "correlation": VisCorrelation.render, "ascii": VisAscii.render,
-    "wave": VisWave.render, "scope": VisScope.render, "sine": VisSine.render,
-    "heartbeat": VisHeartbeat.render, "siriwave": VisSiriWave.render,
+    "wave": VisWave.render, "sine": VisSine.render,
+    "siriwave": VisSiriWave.render,
     "soundcloud_wave": VisSoundCloudWave.render, "telegram_wave": VisTelegramWave.render,
     "daw_wave": VisDAWWave.render, "led_scrubber": VisLEDScrubber.render,
     "heatmap_wave": VisHeatmapWave.render, "grounded_wave": VisGroundedWave.render,
@@ -185,10 +182,10 @@ Item {
   })
 
   readonly property var _modeLabels: ({
-    "bars": "Bars", "bricks": "Bricks", "columns": "Columns", "classic_led": "Classic LED",
+    "bars": "Bars", "bricks": "Bricks", "classic_led": "Classic LED",
     "peaks": "Peaks", "stereo": "Stereo", "correlation": "Correlation", "ascii": "Ascii",
-    "wave": "Wave", "scope": "Scope", "sine": "Sine Wave",
-    "heartbeat": "Heartbeat", "siriwave": "Siri Wave",
+    "wave": "Wave", "sine": "Sine Wave",
+    "siriwave": "Siri Wave",
     "soundcloud_wave": "SoundCloud Wave", "telegram_wave": "Telegram Wave",
     "daw_wave": "DAW Meter", "led_scrubber": "LED Scrubber",
     "heatmap_wave": "Heatmap Wave", "grounded_wave": "Baseline Wave",
@@ -278,7 +275,13 @@ Item {
           MouseArea {
             id: lyricsMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
             onClicked: root.toggleLyrics()
-            onContainsMouseChanged: lyricsTip.visible = containsMouse
+          }
+          Text {
+            visible: lyricsMouse.containsMouse; z: 9999
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottom: parent.top; anchors.bottomMargin: Style.space(2)
+            text: "Lyrics"; color: Color.accent
+            font.family: root.p.fontFamily; font.pixelSize: Style.font.caption * 0.7
           }
         }
 
@@ -292,7 +295,13 @@ Item {
           MouseArea {
             id: speedMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
             onClicked: root.p.cycleSpeed()
-            onContainsMouseChanged: speedTip.visible = containsMouse
+          }
+          Text {
+            visible: speedMouse.containsMouse; z: 9999
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottom: parent.top; anchors.bottomMargin: Style.space(2)
+            text: "Speed"; color: Color.accent
+            font.family: root.p.fontFamily; font.pixelSize: Style.font.caption * 0.7
           }
         }
 
@@ -305,14 +314,14 @@ Item {
           font.family: root.p.fontFamily; font.pixelSize: Style.font.caption * 0.8; font.bold: (root.p.eqText && root.p.eqText !== "Flat") || root.p.eqPickerOpen
           MouseArea {
             id: eqMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-            onClicked: {
-              root.p.eqPickerOpen = !root.p.eqPickerOpen
-              if (root.p.eqPickerOpen) {
-                root.p.visPickerOpen = false
-                root.lyricsVisible = false
-              }
-            }
-            onContainsMouseChanged: eqTip.visible = containsMouse
+            onClicked: root.p.showPane(root.p.eqPickerOpen ? "" : "eq")
+          }
+          Text {
+            visible: eqMouse.containsMouse; z: 9999
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottom: parent.top; anchors.bottomMargin: Style.space(2)
+            text: "EQ: " + (root.p.eqText || "Flat"); color: Color.accent
+            font.family: root.p.fontFamily; font.pixelSize: Style.font.caption * 0.7
           }
         }
       }
@@ -511,8 +520,7 @@ Item {
           acceptedButtons: Qt.LeftButton | Qt.RightButton
           onClicked: function(mouse) {
             if (mouse.button === Qt.RightButton) {
-              root.p.visPickerOpen = !root.p.visPickerOpen
-              if (root.p.visPickerOpen && root.lyricsVisible) root.lyricsVisible = false
+              root.p.showPane(root.p.visPickerOpen ? "" : "vis")
             } else {
               var idx = root.p.visModes.indexOf(root.p.visMode)
               root.p.setVisMode(root.p.visModes[(idx + 1) % root.p.visModes.length])
@@ -539,10 +547,7 @@ Item {
 
           MouseArea {
             id: modeMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-            onClicked: {
-              root.p.visPickerOpen = !root.p.visPickerOpen
-              if (root.p.visPickerOpen && root.lyricsVisible) root.lyricsVisible = false
-            }
+            onClicked: root.p.showPane(root.p.visPickerOpen ? "" : "vis")
           }
         }
       }
@@ -649,32 +654,6 @@ Item {
       }
     }
 
-    Text {
-      id: lyricsTip; visible: false
-      anchors.right: parent.right; anchors.rightMargin: Style.space(24)
-      anchors.top: parent.top; anchors.topMargin: Style.space(2)
-      text: "Lyrics"; color: Color.accent
-      font.family: root.p.fontFamily; font.pixelSize: Style.font.caption * 0.7
-      z: 9999
-    }
-
-    Text {
-      id: speedTip; visible: false
-      anchors.right: parent.right; anchors.rightMargin: Style.space(48)
-      anchors.top: parent.top; anchors.topMargin: Style.space(2)
-      text: "Speed"; color: Color.accent
-      font.family: root.p.fontFamily; font.pixelSize: Style.font.caption * 0.7
-      z: 9999
-    }
-
-    Text {
-      id: eqTip; visible: false
-      anchors.right: parent.right; anchors.rightMargin: Style.space(72)
-      anchors.top: parent.top; anchors.topMargin: Style.space(2)
-      text: "EQ: " + (root.p.eqText || "Flat"); color: Color.accent
-      font.family: root.p.fontFamily; font.pixelSize: Style.font.caption * 0.7
-      z: 9999
-    }
   }
 
   Process {

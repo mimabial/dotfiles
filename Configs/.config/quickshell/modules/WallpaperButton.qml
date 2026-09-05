@@ -2,18 +2,13 @@ import QtQuick
 import ".."
 
 // Auto-wallpaper button. The glyph carries accent while the rotation runs, so
-// the bar shows automation state without a reading of its own. A button that owns a
-// popup never tooltips (BarButton suppresses it once anchored), so the click
-// map is documented here rather than in a tooltip that cannot appear:
-//   left   open the wallpaper panel
-//   middle apply the next wallpaper now, per the configured rotation
-//   right  pause or resume automatic switching
-//   wheel  step the theme's wallpapers directly, either way
+// the bar shows automation state without a reading of its own.
 BarButton {
     id: root
     property bool popupsAllowed: true
     css: "wallpaper"
     text: "󰸉"
+    tooltip: "Switch wallpaper\nLeft: Panel\nMiddle: Next now\nRight: Pause or resume\nWheel: Step the theme's wallpapers"
     // accent means the rotation is running; plain foreground means it is paused
     textColor: Wallpaper.lastError !== "" ? shell.role("error", shell.foreground)
         : Wallpaper.enabled ? shell.accent : shell.foreground

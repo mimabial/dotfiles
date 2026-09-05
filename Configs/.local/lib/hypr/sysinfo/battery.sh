@@ -25,7 +25,6 @@ fi
 total_capacity=0
 battery_count=0
 
-# Find the first available battery
 battery_path=""
 for bat in /sys/class/power_supply/BAT*; do
     if [[ -d "$bat" ]]; then
@@ -41,12 +40,10 @@ for capacity in /sys/class/power_supply/BAT*/capacity; do
     fi
 done
 
-# Exit if no battery is found
 if ((battery_count == 0)); then
     exit 0
 fi
 
-# Determine the icon based on average capacity
 average_capacity=$((total_capacity / battery_count))
 index=$((average_capacity / 10))
 

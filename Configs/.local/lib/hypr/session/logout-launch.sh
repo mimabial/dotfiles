@@ -4,20 +4,16 @@ set -euo pipefail
 
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/runtime/init.bash" || exit 1
-hypr_runtime_require state system || exit 1
-hypr_runtime_load_state || exit 1
-
 hypr_help_guard "Usage: hyprshell session/logout-launch [style]
 Open the wlogout menu (toggles off if already running)." "$@"
 
-#// Check if wlogout is already running
+hypr_runtime_require state system || exit 1
+hypr_runtime_load_state || exit 1
 
 if hypr_user_pgrep -x "wlogout" >/dev/null; then
   hypr_user_pkill -x "wlogout"
   exit 0
 fi
-
-#// set file variables
 
 [ -n "${1:-}" ] && wlogout_style="${1}"
 wlogout_style=${wlogout_style:-${WLOGOUT_STYLE:-}}
@@ -34,8 +30,6 @@ if [ ! -f "${wl_layout}" ] || [ ! -f "${wl_template}" ]; then
   wl_template="${XDG_CONFIG_HOME:-$HOME/.config}/wlogout/style_${wlogout_style}.css"
 fi
 
-#// detect monitor res
-
 # Treat scale as fixed-point tenths so multi-decimal values like 1.25
 # stay in the same sizing range as the existing 1.0/1.5/2.0 behavior.
 read -r x_mon y_mon hypr_scale < <(
@@ -48,7 +42,6 @@ hypr_scale="${hypr_scale:-10}"
 [[ "${hypr_scale}" =~ ^[0-9]+$ ]] || hypr_scale=10
 (( hypr_scale > 0 )) || hypr_scale=10
 scale_divisor=$((hypr_scale * 10))
-#// scale config layout and style
 
 case "${wlogout_style}" in
   1)
@@ -65,11 +58,7 @@ case "${wlogout_style}" in
     ;;
 esac
 
-#// scale font size
-
 export fntSize=$((y_mon * 2 / 100))
-
-#// detect wallpaper brightness
 
 WALLPAPER_CURRENT_DIR="${WALLPAPER_CURRENT_DIR:-${HYPR_CACHE_HOME}/wallpaper/current}"
 resolved_color_variant="${resolved_color_variant:-dark}"
@@ -113,16 +102,10 @@ if [ -z "${BtnCol}" ]; then
 fi
 export BtnCol
 
-#// eval hypr border radius
-
 hypr_border="${HYPR_RUNTIME_BORDER_RADIUS:-${HYPR_BORDER_RADIUS:-10}}"
 export active_rad=$((hypr_border * 5))
 export button_rad=$((hypr_border * 8))
 
-#// eval config files
-
 wl_style="$(envsubst <"${wl_template}")"
-
-#// launch wlogout
 
 wlogout -b "${wl_columns}" -c 0 -r 0 -m 0 --layout "${wl_layout}" --css <(echo "${wl_style}") --protocol layer-shell

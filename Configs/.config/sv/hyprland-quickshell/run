@@ -1,5 +1,5 @@
 #!/bin/sh
-# runit service: Quickshell bar (the active bar; Waybar is retired).
+# runit service: Quickshell bar.
 # Inherits the graphical-session env from the per-user runsvdir started inside
 # the Hyprland session (see ~/.config/sv/README.md).
 exec 2>&1

@@ -461,6 +461,10 @@ hypr_window_edge_padding_px() {
   printf '%s\n' "$((gaps_out * 2 + border_width))"
 }
 
+hypr_lua_string() {
+  jq -Rn --arg value "${1-}" '$value'
+}
+
 hypr_compact_path() {
   local path="$1"
   local var_name=""

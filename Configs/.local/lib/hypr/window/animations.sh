@@ -38,9 +38,9 @@ list_animation_names() {
 
 # Same shape as util/workflows.sh --list, so one parser serves every pipeline.
 # Animations carry no icon or description, so those fields are empty rather than
-# absent. "disable" is prepended for the same reason fn_select does it: the
+# absent. "disable" is prepended for the same reason select_animation does it: the
 # listing helper skips it, but it is a selectable value.
-fn_list() {
+list_animations() {
   local name=""
   {
     printf 'disable\n'
@@ -50,7 +50,7 @@ fn_list() {
   done
 }
 
-fn_select() {
+select_animation() {
   local animation_items=""
   local rofi_select=""
   local selected_animation=""
@@ -80,9 +80,8 @@ fn_select() {
   apply_animation "${selected_animation}" "Animation selected"
 }
 
-fn_update() {
-  local current_animation animation_path compact_path
-  local animation_name_lua animation_path_lua
+write_animation_state() {
+  local current_animation animation_path
 
   current_animation="${1:-$(state_get "HYPR_ANIMATION" "default")}"
   animation_path="$(resolve_animation_path "${current_animation}")" || {
@@ -90,24 +89,15 @@ fn_update() {
     return 1
   }
 
-  mkdir -p "$(dirname "${animations_state_file}")"
-  compact_path="$(hypr_compact_path "${animation_path}")"
-
-  animation_name_lua="$(jq -Rn --arg value "${current_animation}" '$value')"
-  animation_path_lua="$(jq -Rn --arg value "${animation_path}" '$value')"
-  cat <<LUA >"${animations_state_file}"
--- Generated native Hyprland Lua. Do not edit manually.
-local runtime = require("runtime")
-local vars = require("vars")
-
-vars.set("ANIMATION", ${animation_name_lua})
-vars.set("ANIMATION_PATH", ${animation_path_lua})
-runtime.load(${animation_path_lua})
-LUA
+  hypr_stateful_choice_write_lua "${animations_state_file}" \
+    --load "${animation_path}" \
+    "ANIMATION=${current_animation}" \
+    "ANIMATION_PATH=${animation_path}"
 }
 
-fn_reload() {
-  local animation_name="$(state_get "HYPR_ANIMATION" "default")"
+reload_animation() {
+  local animation_name
+  animation_name="$(state_get "HYPR_ANIMATION" "default")"
   apply_animation "${animation_name}" "Animation reloaded"
 }
 
@@ -119,7 +109,7 @@ apply_animation() {
     echo "Error: unknown animation '${animation_name}'" >&2
     return 1
   }
-  hypr_stateful_choice_apply "HYPR_ANIMATION" "${animation_name}" "hypr-animation" "${notification_title}" fn_update
+  hypr_stateful_choice_apply "HYPR_ANIMATION" "${animation_name}" "hypr-animation" "${notification_title}" write_animation_state
   hyprctl reload config-only -q
 }
 
@@ -136,7 +126,7 @@ eval set -- "${PARSED}"
 while true; do
   case "$1" in
     -S | --select)
-      fn_select
+      select_animation
       exit 0
       ;;
     --set)
@@ -148,11 +138,11 @@ while true; do
       exit 0
       ;;
     --list)
-      fn_list
+      list_animations
       exit 0
       ;;
     -r | --reload)
-      fn_reload
+      reload_animation
       exit 0
       ;;
     --help | -h)

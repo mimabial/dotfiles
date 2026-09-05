@@ -1,59 +1,16 @@
 [
-  {
-    "id": "datetime",
-    "props": {
-      "showDate": true,
-      "alwaysOpen": false
-    }
-  },
-  {
-    "id": "forecast",
-    "props": {
-      "showUnit": false,
-      "showMinMax": true,
-      "showSunrise": true,
-      "showSunset": false,
-      "alwaysOpen": false
-    }
-  },
+  { "id": "datetime", "props": { "showDate": true, "alwaysOpen": false } },
+  { "id": "forecast", "props": { "showUnit": false, "showMinMax": true, "showSunrise": true, "showSunset": true, "alwaysOpen": false } },
   "spacer",
-  {
-    "id": "workspaces",
-    "props": {
-      "activeOnly": false
-    }
-  },
+  { "id": "workspaces", "props": { "activeOnly": false } },
   "submap",
   "spacer",
   { "id": "mediaplayer", "props": { "randomizeProgressShape": true } },
-  {
-    "id": "eyecare",
-    "props": {
-      "reverse": true,
-      "sliderFirst": true
-    }
-  },
-  {
-    "id": "audio",
-    "props": {
-      "reverse": true,
-      "sliderFirst": true
-    }
-  },
-  "privacybutton",
-  {
-    "id": "terminal",
-    "props": {
-      "showUpdates": true
-    }
-  },
-  "dunst",
-  {
-    "id": "power",
-    "props": {
-      "showLogout": false
-    }
-  },
-  "connectivity",
-  "menu"
+  { "id": "eyecare", "props": { "reverse": true, "sliderFirst": true } },
+  { "id": "audio", "props": { "reverse": true, "sliderFirst": true } },
+  "privacy",
+  "terminal",
+  "notification",
+  { "id": "power", "props": { "showLogout": false } },
+  "connectivity"
 ]

@@ -47,6 +47,9 @@ PopupWindow {
 
     onOpenChanged: if (!open) { openSubId = ""; openRow = null }
     onMenuIdChanged: { openSubId = ""; openRow = null }
+    // Switching between two equal-length sibling submenus changes nothing the
+    // anchor watches, so it would keep the previous row's y.
+    onAnchorItemChanged: if (root.open) anchor.updateAnchor()
 
     visible: open
     color: "transparent"

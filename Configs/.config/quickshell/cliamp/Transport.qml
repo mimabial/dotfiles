@@ -63,6 +63,16 @@ Row {
     onClicked: root.p.stop()
   }
 
+  // Like / Unlike the current track
+  PanelActionButton {
+    iconText: root.p.currentLiked ? "\uf004" : "\uf08a"
+    tooltipText: root.p.currentLiked ? "Remove from Liked" : "Add to Liked"
+    foreground: root.p.currentLiked ? root.p.urgent : root.p.dim
+    hoverColor: root.p.urgent; fontFamily: root.p.fontFamily
+    anchors.verticalCenter: parent.verticalCenter
+    onClicked: root.p.toggleLiked()
+  }
+
   Item { width: Style.space(4) }
 
   // Volume Section

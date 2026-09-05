@@ -107,7 +107,6 @@ get_hypr_conf() {
   fi
 }
 
-#? handle pasting
 paste_string() {
   local class=""
   local arg=""

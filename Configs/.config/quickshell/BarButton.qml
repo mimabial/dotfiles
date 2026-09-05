@@ -10,8 +10,10 @@ Item {
     property bool keyboardEnabled: false
     readonly property bool navigable: keyboardEnabled && enabled
     property bool cursored: false
-    // set by any PopupCard anchored here: a module with a panel never tooltips
-    property bool hasPopup: false
+    // every PopupCard anchored here registers itself; a module tooltips only
+    // while its panels are closed
+    property var popupCards: []
+    readonly property bool hasPopup: root.popupCards.some(card => card.open)
     property bool active: false
     // Markup is not label text: a provider that wraps its glyph in <b> is still
     // an icon button.
@@ -31,7 +33,7 @@ Item {
     property int textFormat: Text.AutoText
     property real textOffsetX: 0
     property real fixedWidth: 0
-    // waybar's per-module "justify"; multi-line modules line their values up on one edge
+    // per-module "justify"; multi-line modules line their values up on one edge
     readonly property int align: box.justify === "right" ? Text.AlignRight
         : box.justify === "left" ? Text.AlignLeft : Text.AlignHCenter
     property real radius: shell.moduleRadius
@@ -57,8 +59,8 @@ Item {
             : shell.role(spec, shell.foreground)
     }
 
-    // waybar's :hover recolours only the channels its CSS names, and never
-    // touches border-width — a module with no border keeps none while hovered.
+    // a CSS :hover recolours only the channels it names, and never touches
+    // border-width — a module with no border keeps none while hovered.
     // Buttons with no css key have no hover map to read, and would otherwise be
     // inert; they fall back to lifting the surface with the foreground, which is
     // the one role that reads against any of these backgrounds.
@@ -83,6 +85,14 @@ Item {
     readonly property real spanY: box.margin[0] + box.margin[2] + box.padding[0] + box.padding[2] + 2 * borderWidth
     implicitWidth: fixedWidth > 0 ? fixedWidth : Math.max(box.minWidth, label.implicitWidth) + spanX
     implicitHeight: Math.max(box.minHeight, label.implicitHeight) + spanY
+    // where the glyph is actually drawn, not the button's frame — a badge pinned
+    // to the outer corner drifts away from the icon as the module widens
+    readonly property rect labelRect: Qt.rect(
+        label.x + textOffsetX + (align === Text.AlignLeft ? 0
+            : align === Text.AlignRight ? label.width - label.paintedWidth
+            : (label.width - label.paintedWidth) / 2),
+        label.y + (label.height - label.paintedHeight) / 2,
+        label.paintedWidth, label.paintedHeight)
 
     Rectangle {
         anchors.fill: parent

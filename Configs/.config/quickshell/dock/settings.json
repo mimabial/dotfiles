@@ -1,0 +1,33 @@
+{
+  "autohide": true,
+  "intelligentAutohide": true,
+  "linkToBar": true,
+  "edge": "right",
+  "minimizeMode": "active",
+  "showMinimizedTiles": true,
+  "showAppsButton": true,
+  "showTooltips": true,
+  "advancedTooltips": true,
+  "launchBounce": true,
+  "hoverEffect": "zoom",
+  "opacity": "theme",
+  "shape": "theme",
+  "bgColor": "theme",
+  "transparent": false,
+  "blur": true,
+  "folderColor": "theme",
+  "itemSpacing": 4,
+  "showUrgentHint": true,
+  "urgentSound": true,
+  "urgentSoundName": "bell",
+  "revealDelay": 160,
+  "tooltipDelay": 450,
+  "pinnedFolders": [
+    {
+      "path": "~/Downloads",
+      "name": "Downloads",
+      "icon": "folder-download"
+    }
+  ],
+  "clickToMinimize": true
+}

@@ -84,7 +84,7 @@ for hyprshell_lib in \
   "${LIB_DIR}/hypr/shell/lib/hyprshell.runner.bash" \
   "${LIB_DIR}/hypr/shell/lib/hyprshell.commands.bash"; do
   if [[ ! -r "${hyprshell_lib}" ]]; then
-    echo "Error: missing lib ${hyprshell_lib}" >&2
+    printf 'Error: missing lib %s\n' "${hyprshell_lib}" >&2
     exit 1
   fi
   # shellcheck source=/dev/null
@@ -95,7 +95,7 @@ if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
   hyprshell_load_python_helpers || return 1
   hyprshell_load_completion_helpers || return 1
   if ! hypr_runtime_bootstrap; then
-    echo "Error: Could not load config, broken installation?"
+    printf 'Error: could not load config, broken installation?\n' >&2
     return 1
   fi
   return 0
@@ -122,12 +122,10 @@ case "${1:-}" in
   pypr)
     hyprshell_load_python_helpers || exit 1
     run_pypr "$@"
-    exit 0
     ;;
   pip)
     hyprshell_load_python_helpers || exit 1
     run_pip "$@"
-    exit 0
     ;;
   -r | reload)
     hyprshell_load_python_helpers || exit 1

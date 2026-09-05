@@ -162,28 +162,8 @@ menu_content_theme_override() {
   printf '\n'
 }
 
-menu() {
-  local prompt="$1"
-  local options="$2"
-  local preselect="${3:-}"
-  local width_override="${4:-}"
-  local nav_keys="${5:-}"
-  local row_mode="${6:-}"
-  local lines_per_row=1
-  local ballot=""
-  local content_override=""
-  local options_rendered=""
-  local measured_rows=""
-  local measure_rest=""
-  local measure_chunk=""
-  local rofi_args=()
-  local rofi_stderr_file=""
-  local rofi_stderr_target="/dev/stderr"
-  local rofi_error=""
-  local rofi_exit=0
-  local selection=""
-  local line=""
-  local index=0
+# menu <prompt> <options> [--select ROW] [--nav tree|copy|multi] [--rows detail]
+menu_ensure_border_metrics() {
   local menu_border_metrics=""
 
   if [[ -z "${MENU_BORDER_RADIUS}" || -z "${MENU_BORDER_WIDTH}" ]]; then
@@ -195,69 +175,163 @@ menu() {
   [[ "${MENU_BORDER_RADIUS}" =~ ^[0-9]+$ ]] || MENU_BORDER_RADIUS=2
   MENU_ELEMENT_RADIUS="${MENU_BORDER_RADIUS}"
 
-  if [[ -z "${MENU_WINDOW_THEME_CACHE}" ]]; then
+  [[ -n "${MENU_WINDOW_THEME_CACHE}" ]] ||
     MENU_WINDOW_THEME_CACHE="$(rofi_standard_window_theme "listview" "same")"
-  fi
+}
 
-  menu_metrics_cache_init
+# The text the window has to be wide enough for, which is not always the rows
+# themselves.
+menu_measured_rows() {
+  local options_rendered="$1"
+  local nav_keys="$2"
+  local row_mode="$3"
+  local ballot="" measured_rows="" measure_rest="" measure_chunk=""
 
-  options_rendered="$(printf '%b' "${options}")"
-  measured_rows="${options_rendered}"
   # the ballot rides ahead of every row, so it is measured with them or the
   # marker column pushes the text out of the window
   if [[ "${nav_keys}" == "multi" ]]; then
     ballot="${MENU_MULTI_BALLOT_ON} "
-    measured_rows="${ballot}${options_rendered//$'\n'/$'\n'${ballot}}"
-  fi
-  if [[ "${row_mode}" == "detail" ]]; then
-    lines_per_row=2
-    # Width is fixed before the first keystroke, so it is set by the widest row
-    # in the whole subtree either way. Spend it on the labels -- those are what
-    # is being picked and must stay whole -- and let an over-long path ellipsize
-    # rather than widen every row to fit the deepest one. The text before the
-    # options is exactly the label, so it is also what there is to measure.
-    measured_rows=""
-    measure_rest="${options_rendered}"
-    while [[ -n "${measure_rest}" ]]; do
-      measure_chunk="${measure_rest%%"${MENU_ROW_SEP}"*}"
-      measured_rows+="${measure_chunk%%"${MENU_ROW_OPT}"*}"$'\n'
-      [[ "${measure_rest}" == *"${MENU_ROW_SEP}"* ]] || break
-      measure_rest="${measure_rest#*"${MENU_ROW_SEP}"}"
-    done
+    printf '%s' "${ballot}${options_rendered//$'\n'/$'\n'${ballot}}"
+    return 0
   fi
 
-  content_override="$(menu_content_theme_override "${measured_rows}" "${width_override}" "${lines_per_row}" "${nav_keys}" || true)"
-  if [[ -n "${content_override}" ]]; then
-    width_override="${content_override}"
-  elif [[ -z "${width_override}" ]]; then
-    width_override="${MENU_WIDTH_OVERRIDE_CACHE}"
+  if [[ "${row_mode}" != "detail" ]]; then
+    printf '%s' "${options_rendered}"
+    return 0
   fi
+
+  # Width is fixed before the first keystroke, so it is set by the widest row
+  # in the whole subtree either way. Spend it on the labels -- those are what
+  # is being picked and must stay whole -- and let an over-long path ellipsize
+  # rather than widen every row to fit the deepest one. The text before the
+  # options is exactly the label, so it is also what there is to measure.
+  measure_rest="${options_rendered}"
+  while [[ -n "${measure_rest}" ]]; do
+    measure_chunk="${measure_rest%%"${MENU_ROW_SEP}"*}"
+    measured_rows+="${measure_chunk%%"${MENU_ROW_OPT}"*}"$'\n'
+    [[ "${measure_rest}" == *"${MENU_ROW_SEP}"* ]] || break
+    measure_rest="${measure_rest#*"${MENU_ROW_SEP}"}"
+  done
+  printf '%s' "${measured_rows}"
+}
+
+# Appends the keybindings and hint for one navigation mode.
+#
+# Only the tree steers with Left/Right/Tab; a dynamic caller reads the selection
+# alone and would mistake a custom exit code for an accepted row unless it opts
+# into "copy" and checks MENU_EXIT_COPY itself. Tab is rofi's own
+# kb-element-next, so it has to be surrendered before it is taken.
+menu_append_nav_args() {
+  local -n nav_args_ref="$1"
+
+  case "$2" in
+    tree)
+      nav_args_ref+=(-kb-move-char-back "" -kb-move-char-forward "" -kb-element-next ""
+        -kb-custom-1 "Left" -kb-custom-2 "Right" -kb-custom-3 "Tab")
+      nav_args_ref+=(-mesg "${MENU_NAV_HINT}")
+      ;;
+    copy)
+      nav_args_ref+=(-kb-custom-1 "Alt+c")
+      nav_args_ref+=(-mesg "${MENU_COPY_HINT}")
+      ;;
+    multi)
+      # Shift+Enter is rofi's kb-accept-alt, which toggles a row's ballot here;
+      # Enter prints every marked row, or the highlighted one when none are marked
+      nav_args_ref+=(-multi-select)
+      nav_args_ref+=(-ballot-selected-str "${MENU_MULTI_BALLOT_ON} " -ballot-unselected-str "${MENU_MULTI_BALLOT_OFF} ")
+      nav_args_ref+=(-mesg "${MENU_MULTI_HINT}")
+      ;;
+  esac
+}
+
+# The zero-based index of the row matching $2, or nothing when it is not there.
+menu_preselect_row() {
+  local options_rendered="$1"
+  local preselect="$2"
+  local line="" index=0
+
+  [[ -n "${preselect}" ]] || return 0
+  while IFS= read -r line; do
+    if [[ "${line}" == "${preselect}" ]]; then
+      printf '%s' "${index}"
+      return 0
+    fi
+    ((index += 1))
+  done <<<"${options_rendered}"
+}
+
+# Runs rofi, forwarding its exit code and reporting anything it wrote to stderr.
+menu_run_rofi() {
+  local prompt="$1"
+  local options_rendered="$2"
+  local row_mode="$3"
+  shift 3
+  local stderr_file="" stderr_target="/dev/stderr" error="" selection="" exit_code=0
+
+  stderr_file="$(mktemp "${XDG_RUNTIME_DIR:-/tmp}/rofi-menu.XXXXXX" 2>/dev/null || true)"
+  [[ -n "${stderr_file}" ]] && stderr_target="${stderr_file}"
+
+  selection="$(
+    menu_emit_options "${options_rendered}" "${row_mode}" |
+      rofi -dmenu -i -no-show-icons -p "${prompt}" -theme "$(rofi_resolve_theme menutree)" "$@" \
+        2>"${stderr_target}"
+  )"
+  exit_code=$?
+
+  if [[ -n "${stderr_file}" ]]; then
+    [[ -s "${stderr_file}" ]] && error="$(<"${stderr_file}")"
+    rm -f "${stderr_file}"
+  fi
+  if ((exit_code != 0)) && [[ -n "${error}" ]]; then
+    printf 'WARN: rofi menu failed: %s\n' "${error}" >&2
+  fi
+
+  printf '%s' "${selection}"
+  return "${exit_code}"
+}
+
+# menu <prompt> <options> [--select ROW] [--nav tree|copy|multi] [--rows detail]
+menu() {
+  local prompt="$1"
+  local options="$2"
+  shift 2
+  local preselect="" nav_keys="" row_mode=""
+
+  while (($#)); do
+    case "$1" in
+      --select) preselect="${2:-}" ;;
+      --nav) nav_keys="${2:-}" ;;
+      --rows) row_mode="${2:-}" ;;
+      *)
+        printf 'menu: unknown option: %s\n' "$1" >&2
+        return 2
+        ;;
+    esac
+    shift 2
+  done
+
+  local options_rendered="" measured_rows="" width_override="" selected_row=""
+  local opacity_override="" lines_per_row=1
+  local -a rofi_args=()
+
+  menu_ensure_border_metrics
+  menu_metrics_cache_init
+
+  options_rendered="$(printf '%b' "${options}")"
+  measured_rows="$(menu_measured_rows "${options_rendered}" "${nav_keys}" "${row_mode}")"
+  [[ "${row_mode}" == "detail" ]] && lines_per_row=2
+
+  width_override="$(menu_content_theme_override "${measured_rows}" "" "${lines_per_row}" "${nav_keys}" || true)"
+  [[ -n "${width_override}" ]] || width_override="${MENU_WIDTH_OVERRIDE_CACHE}"
 
   rofi_args+=("-theme-str" "$(rofi_font_override "${MENU_FONT_NAME_CACHE}" "${MENU_FONT_SCALE_CACHE}")")
   rofi_args+=("-theme-str" "${MENU_WINDOW_THEME_CACHE}")
-  rofi_args+=("-theme-str" "textbox-prompt-colon {border-radius: ${MENU_ELEMENT_RADIUS}px; str: \"$prompt\";}")
+  rofi_args+=("-theme-str" "textbox-prompt-colon {border-radius: ${MENU_ELEMENT_RADIUS}px; str: \"${prompt}\";}")
   rofi_args+=("-theme-str" "entry {placeholder: \"Hello ${USER^}!\";}")
   rofi_args+=("-theme-str" "element selected.normal {border-radius: ${MENU_ELEMENT_RADIUS}px;}")
   [[ -n "${width_override}" ]] && rofi_args+=("-theme-str" "${width_override}")
 
-  # only the tree steers with Left/Right/Tab; a dynamic caller reads the selection
-  # alone and would mistake a custom exit code for an accepted row unless it opts
-  # into "copy" and checks MENU_EXIT_COPY itself. Tab is rofi's own
-  # kb-element-next, so it has to be surrendered before it is taken.
-  if [[ "${nav_keys}" == "tree" ]]; then
-    rofi_args+=(-kb-move-char-back "" -kb-move-char-forward "" -kb-element-next ""
-      -kb-custom-1 "Left" -kb-custom-2 "Right" -kb-custom-3 "Tab")
-    rofi_args+=(-mesg "${MENU_NAV_HINT}")
-  elif [[ "${nav_keys}" == "copy" ]]; then
-    rofi_args+=(-kb-custom-1 "Alt+c")
-    rofi_args+=(-mesg "${MENU_COPY_HINT}")
-  elif [[ "${nav_keys}" == "multi" ]]; then
-    # Shift+Enter is rofi's kb-accept-alt, which toggles a row's ballot here;
-    # Enter prints every marked row, or the highlighted one when none are marked
-    rofi_args+=(-multi-select)
-    rofi_args+=(-ballot-selected-str "${MENU_MULTI_BALLOT_ON} " -ballot-unselected-str "${MENU_MULTI_BALLOT_OFF} ")
-    rofi_args+=(-mesg "${MENU_MULTI_HINT}")
-  fi
+  menu_append_nav_args rofi_args "${nav_keys}"
 
   # the row text is the label alone, so the answer has to be the index: labels
   # repeat across the tree and would not identify the row that was picked
@@ -266,39 +340,13 @@ menu() {
     rofi_args+=("-theme-str" "listview {require-input: true;}")
   fi
 
-  local opacity_override
   opacity_override="$(rofi_active_opacity_override)"
   [[ -n "${opacity_override}" ]] && rofi_args+=("-theme-str" "${opacity_override}")
 
-  if [[ -n "${preselect}" ]]; then
-    while IFS= read -r line; do
-      ((index += 1))
-      if [[ "${line}" == "${preselect}" ]]; then
-        rofi_args+=("-selected-row" "$((index - 1))")
-        break
-      fi
-    done <<<"${options_rendered}"
-  fi
+  selected_row="$(menu_preselect_row "${options_rendered}" "${preselect}")"
+  [[ -n "${selected_row}" ]] && rofi_args+=("-selected-row" "${selected_row}")
 
-  rofi_stderr_file="$(mktemp "${XDG_RUNTIME_DIR:-/tmp}/rofi-menu.XXXXXX" 2>/dev/null || true)"
-  [[ -n "${rofi_stderr_file}" ]] && rofi_stderr_target="${rofi_stderr_file}"
-
-  selection="$(
-    menu_emit_options "${options_rendered}" "${row_mode}" | rofi -dmenu -i -no-show-icons -p "$prompt" -theme "$(rofi_resolve_theme menutree)" "${rofi_args[@]}" 2>"${rofi_stderr_target}"
-  )"
-  rofi_exit=$?
-
-  if [[ -n "${rofi_stderr_file}" && -s "${rofi_stderr_file}" ]]; then
-    rofi_error="$(<"${rofi_stderr_file}")"
-  fi
-  [[ -n "${rofi_stderr_file}" ]] && rm -f "${rofi_stderr_file}"
-
-  if ((rofi_exit != 0)) && [[ -n "${rofi_error}" ]]; then
-    printf 'WARN: rofi menu failed: %s\n' "${rofi_error}" >&2
-  fi
-
-  printf '%s' "${selection}"
-  return "${rofi_exit}"
+  menu_run_rofi "${prompt}" "${options_rendered}" "${row_mode}" "${rofi_args[@]}"
 }
 
 terminal() {
@@ -310,6 +358,7 @@ present_terminal() {
   local title=""
   local hypr_profile=""
   local hypr_cells=()
+  local hypr_size=()
   local cmd=()
   local launch_args=()
 
@@ -331,6 +380,10 @@ present_terminal() {
         hypr_cells=("$2" "$3")
         shift 3
         ;;
+      --hypr-size)
+        hypr_size=("$2" "$3")
+        shift 3
+        ;;
       --)
         shift
         cmd+=("$@")
@@ -347,9 +400,10 @@ present_terminal() {
     return 0
   fi
 
-  if [[ -n "$app_id" || -n "$title" || -n "$hypr_profile" || "${#hypr_cells[@]}" -gt 0 ]]; then
+  if [[ -n "$app_id" || -n "$title" || -n "$hypr_profile" || "${#hypr_cells[@]}" -gt 0 || "${#hypr_size[@]}" -gt 0 ]]; then
     [[ -n "${hypr_profile}" ]] && launch_args+=(--hypr-profile "${hypr_profile}")
     [[ "${#hypr_cells[@]}" -gt 0 ]] && launch_args+=(--hypr-cells "${hypr_cells[@]}")
+    [[ "${#hypr_size[@]}" -gt 0 ]] && launch_args+=(--hypr-size "${hypr_size[@]}")
     launch_args+=(--app-id "${app_id:-org.tui.Terminal}" --title "${title:-Terminal}" -- "${cmd[@]}")
     hyprshell launch/terminal-present.sh "${launch_args[@]}"
   else
@@ -504,7 +558,7 @@ menu_show_menu() {
 
   menu_metrics_cache_init
   options="$(menu_render_options "${menu_id}")"
-  selection="$(menu "${prompt}" "${options}" "${HYPR_MENU_DEFAULTS["${menu_id}"]:-}" "" tree)"
+  selection="$(menu "${prompt}" "${options}" --select "${HYPR_MENU_DEFAULTS["${menu_id}"]:-}" --nav tree)"
   rofi_exit=$?
 
   if ((rofi_exit == MENU_EXIT_SEARCH)); then
@@ -669,7 +723,7 @@ menu_show_search() {
 
   # no explicit width: the rows are short now that the path is its own line, so
   # the measured fit beats the fixed one the inline-path list used to need
-  selection="$(menu "Search" "${options}" "" "" "" detail)"
+  selection="$(menu "Search" "${options}" --rows detail)"
   rofi_exit=$?
 
   # cancel always leaves the tree, the same as it does from a menu

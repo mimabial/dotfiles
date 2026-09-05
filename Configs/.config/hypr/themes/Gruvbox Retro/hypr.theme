@@ -12,6 +12,7 @@ $FONT = UbuntuMono Nerd Font
 $BAR_FONT = UbuntuMono Nerd Font
 $MENU_FONT = UbuntuMono Nerd Font
 $MONOSPACE_FONT = UbuntuMono Nerd Font
+$TERMINAL_FONT = UbuntuMono Nerd Font
 $NOTIFICATION_FONT = UbuntuMono Nerd Font Mono
 
 general {

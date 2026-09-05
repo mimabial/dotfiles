@@ -7,7 +7,7 @@
   "backgroundBlur": 4,
   "backgroundDim": 6,
   "hotCornerEnabled": true,
-  "hotCornerPosition": "top-left",
+  "hotCornerPosition": "bottom-right",
   "moveCursorToWindow": true,
   "multiMonitorMode": "mirrored",
   "showFooter": true

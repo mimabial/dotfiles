@@ -73,7 +73,6 @@ else
 
   setup_pam_config
 
-  # Test with sudo
   print_info "\nTesting FIDO2 authentication with sudo..."
   print_info "Touch your FIDO2 key when prompted.\n"
 

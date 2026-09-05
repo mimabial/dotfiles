@@ -3,7 +3,7 @@
 sensorsinfo.py
 A script to gather and display sensor information from the system.
 It uses the `sensors` command to get sensor data and formats it for display.
-This script is designed to be used with Waybar or similar status bars.
+It emits status-bar JSON on stdout.
 
 
 Use --interval
@@ -31,7 +31,6 @@ def format_columns(data, max_entries_per_column=15):
     columns = []
     for i in range(0, len(data), max_entries_per_column):
         columns.append(data[i : i + max_entries_per_column])
-    # Merge columns into rows
     rows = []
     max_rows = max(len(col) for col in columns)
     for i in range(max_rows):
@@ -141,7 +140,6 @@ def get_sensor_data(result_sensors, page=0):
 
     device_data = {}
 
-    # Extract top-level sensor data
     for device in sorted(sensors_data.keys()):
         data = sensors_data[device]
         device_data[device] = {
@@ -176,7 +174,6 @@ def get_sensor_data(result_sensors, page=0):
                     elif "power" in key and "input" in key:
                         device_data[device]["powers"].append(f"{sensor}: {value} W")
 
-    # Format the output
     text = " "
     tooltip_parts = []
 

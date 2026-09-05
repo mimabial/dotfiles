@@ -252,8 +252,6 @@ class Calculator:
         self.history = load_history()
         self.history_pos = len(self.history)
 
-    # ---------------------------------------------------------------- input
-
     def setup(self) -> None:
         curses.use_default_colors()
         curses.curs_set(1)
@@ -318,8 +316,6 @@ class Calculator:
             "dim": -1,
             "tab": curses.COLOR_CYAN,
         }[role]
-
-    # ------------------------------------------------------------ evaluate
 
     def ask(self, expr: str) -> list[tuple[str, str]]:
         lines, _ = self.session.evaluate(ANS.sub(f"({self.last or '0'})", expr))
@@ -401,8 +397,6 @@ class Calculator:
         self.extras = []
         self.status = ""
 
-    # -------------------------------------------------------------- keypad
-
     def keypad(self, width: int) -> list[list[tuple[str, str]]]:
         if self.mode != "convert":
             return KEYPADS[self.mode]
@@ -444,8 +438,6 @@ class Calculator:
         if row < len(rows) and column < len(rows[row]):
             return rows[row][column]
         return None
-
-    # ---------------------------------------------------------------- draw
 
     def write(self, y: int, x: int, text: str, attr: int = curses.A_NORMAL) -> int:
         height, width = self.screen.getmaxyx()
@@ -607,8 +599,6 @@ class Calculator:
             hint = "enter commit · ^Y copy · ↑↓ history · tab keys · esc clear · ^C quit"
         self.write(row, 0, hint, self.roles["dim"])
 
-    # -------------------------------------------------------------- keys
-
     def recall(self, delta: int) -> None:
         if not self.history:
             return
@@ -671,13 +661,14 @@ class Calculator:
             return True
         if key in ("\x1b", 27):
             # a bare ESC also arrives when a terminal sends an escape sequence
-            # this build has no mapping for, so it must not be an instant exit
+            # this build has no mapping for, so it must not be an instant exit.
+            # It no longer exits at all: ncurses holds the byte for ESCDELAY
+            # (1s by default) to tell it from a sequence, which made closing
+            # look like a hang. ^C quits, as the hint says.
             if self.focus == "keys":
                 self.focus = "input"
             elif self.buffer:
                 self.edit("", 0)
-            else:
-                return False
             return True
         if key in ("\x0c", 12):
             self.entries.clear()

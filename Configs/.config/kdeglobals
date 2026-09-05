@@ -120,11 +120,11 @@ ForegroundVisited=164,188,134
 ColorScheme=Pywal
 TerminalApplication=kitty
 TerminalService=kitty.desktop
-fixed=Miracode,15.00,-1,5,400,0,0,0,0,0
-font=Miracode,15.00,-1,5,400,0,0,0,0,0
-menuFont=Miracode,15.00,-1,5,400,0,0,0,0,0
-smallestReadableFont=Miracode,12.00,-1,5,400,0,0,0,0,0
-toolBarFont=Miracode,15.00,-1,5,400,0,0,0,0,0
+fixed=IosevkaTermSlab Nerd Font,13.33,-1,5,400,0,0,0,0,0
+font=IosevkaTermSlab Nerd Font,13.33,-1,5,400,0,0,0,0,0
+menuFont=IosevkaTermSlab Nerd Font,13.33,-1,5,400,0,0,0,0,0
+smallestReadableFont=IosevkaTermSlab Nerd Font,10.67,-1,5,400,0,0,0,0,0
+toolBarFont=IosevkaTermSlab Nerd Font,13.33,-1,5,400,0,0,0,0,0
 
 [Icons]
 Theme=Vivid-Glassy-Dark-Icons
@@ -144,7 +144,7 @@ ColorScheme=Pywal
 [WM]
 activeBackground=120,198,235
 activeBlend=120,198,235
-activeFont=Miracode,15.00,-1,5,400,0,0,0,0,0
+activeFont=IosevkaTermSlab Nerd Font,13.33,-1,5,400,0,0,0,0,0
 activeForeground=246,255,236
 inactiveBackground=3,6,60
 inactiveBlend=3,6,60

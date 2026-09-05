@@ -12,6 +12,12 @@ QtObject {
     function surfaceSpec(section, token, fallbackColor, fallbackWidth) {
         return flat(fallbackColor, fallbackWidth)
     }
+    function localOrSurfaceSpec(section, token, localColor, fallbackColor, fallbackWidth) {
+        return flat(localColor || fallbackColor, fallbackWidth)
+    }
+    function controlHasWidth(state) {
+        return state !== "selected" || Style.selectedBorderWidth > 0
+    }
     function controlSpec(state, foreground, accent, urgent) {
         const focused = ["focus", "focused", "selected"].includes(state)
         const color = focused ? (accent || foreground)

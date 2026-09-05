@@ -115,34 +115,45 @@ rofi_list_asset_files() {
   rofi_list_files asset "${1:-*}"
 }
 
-rofi_focused_monitor_record() {
+rofi_resolve_monitors_json() {
+  if declare -F rofi_monitors_json >/dev/null 2>&1; then
+    rofi_monitors_json
+  elif declare -F hypr_monitors_json >/dev/null 2>&1; then
+    hypr_monitors_json
+  else
+    hyprctl -j monitors all 2>/dev/null || true
+  fi
+}
+
+# rofi_monitor_record <jq-selector> [jq-args...] -> first matching monitor as TSV:
+# width height scale x y reserved_left reserved_top reserved_right reserved_bottom
+rofi_monitor_record() {
+  local selector="$1"
+  shift
   local monitors_json=""
 
-  if declare -F rofi_monitors_json >/dev/null 2>&1; then
-    monitors_json="$(rofi_monitors_json)"
-  elif declare -F hypr_monitors_json >/dev/null 2>&1; then
-    monitors_json="$(hypr_monitors_json)"
-  else
-    monitors_json="$(hyprctl -j monitors all 2>/dev/null || true)"
-  fi
+  monitors_json="$(rofi_resolve_monitors_json)"
+  [[ -n "${monitors_json}" ]] || return 1
 
-  printf '%s\n' "${monitors_json}" | jq -r '
-    def monitor_width: if (.transform % 2 == 0) then .width else .height end;
-    def monitor_height: if (.transform % 2 == 0) then .height else .width end;
-    def record: [
-      monitor_width,
-      monitor_height,
-      (.scale // 1),
-      (.x // 0),
-      (.y // 0),
-      (.reserved[0] // 0),
-      (.reserved[1] // 0),
-      (.reserved[2] // 0),
-      (.reserved[3] // 0)
-    ] | @tsv;
+  printf '%s\n' "${monitors_json}" |
+    jq -r "$@" "def monitor_width: if (.transform % 2 == 0) then .width else .height end;
+def monitor_height: if (.transform % 2 == 0) then .height else .width end;
+def record: [
+  monitor_width,
+  monitor_height,
+  (.scale // 1),
+  (.x // 0),
+  (.y // 0),
+  (.reserved[0] // 0),
+  (.reserved[1] // 0),
+  (.reserved[2] // 0),
+  (.reserved[3] // 0)
+] | @tsv;
+${selector} | record" 2>/dev/null | head -n 1
+}
 
-    .[] | select(.focused==true) | record
-  ' 2>/dev/null | head -n 1
+rofi_focused_monitor_record() {
+  rofi_monitor_record '.[] | select(.focused == true)'
 }
 
 rofi_default_window_size() {
@@ -199,16 +210,14 @@ rofi_scaled_divide() {
   printf '%s\n' "${result}"
 }
 
-# launcher spawn location (wofi/rofi)
 get_rofi_pos() {
   local window_width="${1:-0}"
   local window_height="${2:-0}"
-  local monitors_json=""
   local monitor_line=""
   local raw_cursor_x=0 raw_cursor_y=0
-  local parsed_width=0 parsed_height=0 parsed_scale=1 parsed_x=0 parsed_y=0
+  local parsed_width=0 parsed_height=0 parsed_scale=1
   local off_left=0 off_top=0 off_right=0 off_bottom=0
-  local mon_width=0 mon_height=0 mon_scale=1 mon_x=0 mon_y=0
+  local mon_width=0 mon_height=0 mon_x=0 mon_y=0
   local cursor_x=0 cursor_y=0
   local -a mon_reserved=(0 0 0 0)
   local edge_padding=0
@@ -221,15 +230,6 @@ get_rofi_pos() {
 
   rofi_default_window_size window_width window_height
 
-  if declare -F rofi_monitors_json >/dev/null 2>&1; then
-    monitors_json="$(rofi_monitors_json)"
-  elif declare -F hypr_monitors_json >/dev/null 2>&1; then
-    monitors_json="$(hypr_monitors_json)"
-  else
-    monitors_json="$(hyprctl -j monitors all 2>/dev/null || true)"
-  fi
-  [[ -n "${monitors_json}" ]] || return 1
-
   IFS=$'\t' read -r raw_cursor_x raw_cursor_y < <(
     if declare -F rofi_cursor_json >/dev/null 2>&1; then rofi_cursor_json; else hyprctl cursorpos -j 2>/dev/null; fi |
       jq -r '[(.x // 0 | floor), (.y // 0 | floor)] | @tsv' 2>/dev/null
@@ -237,43 +237,24 @@ get_rofi_pos() {
   [[ "${raw_cursor_x}" =~ ^-?[0-9]+$ ]] || raw_cursor_x=0
   [[ "${raw_cursor_y}" =~ ^-?[0-9]+$ ]] || raw_cursor_y=0
 
-  monitor_line="$(
-    printf '%s\n' "${monitors_json}" | jq -r --argjson cx "${raw_cursor_x}" --argjson cy "${raw_cursor_y}" '
-      def monitor_width: if (.transform % 2 == 0) then .width else .height end;
-      def monitor_height: if (.transform % 2 == 0) then .height else .width end;
-      def record: [
-        monitor_width,
-        monitor_height,
-        (.scale // 1),
-        (.x // 0),
-        (.y // 0),
-        (.reserved[0] // 0),
-        (.reserved[1] // 0),
-        (.reserved[2] // 0),
-        (.reserved[3] // 0)
-      ] | @tsv;
-
-      (
-        .[] | select(
-          ($cx >= .x) and
-          ($cx < (.x + monitor_width)) and
-          ($cy >= .y) and
-          ($cy < (.y + monitor_height))
-        )
-      ),
-      (.[] | select(.focused == true))
-      | record
-    ' 2>/dev/null | head -n 1
-  )"
+  monitor_line="$(rofi_monitor_record '
+    (
+      .[] | select(
+        ($cx >= .x) and
+        ($cx < (.x + monitor_width)) and
+        ($cy >= .y) and
+        ($cy < (.y + monitor_height))
+      )
+    ),
+    (.[] | select(.focused == true))
+  ' --argjson cx "${raw_cursor_x}" --argjson cy "${raw_cursor_y}")" || return 1
   [[ -n "${monitor_line}" ]] || return 1
 
-  IFS=$'\t' read -r parsed_width parsed_height parsed_scale parsed_x parsed_y off_left off_top off_right off_bottom <<<"${monitor_line}"
+  IFS=$'\t' read -r parsed_width parsed_height parsed_scale mon_x mon_y \
+    off_left off_top off_right off_bottom <<<"${monitor_line}"
   [[ "${parsed_scale}" =~ ^[0-9]+([.][0-9]+)?$ ]] || parsed_scale=1
   mon_width="$(rofi_scaled_divide "${parsed_width}" "${parsed_scale}" 1)"
   mon_height="$(rofi_scaled_divide "${parsed_height}" "${parsed_scale}" 1)"
-  mon_scale="${parsed_scale}"
-  mon_x="${parsed_x}"
-  mon_y="${parsed_y}"
   mon_reserved=("${off_left}" "${off_top}" "${off_right}" "${off_bottom}")
   # cursorpos and monitor x/y are logical; only width/height need descaling
   cursor_x=$((raw_cursor_x - mon_x))

@@ -24,6 +24,18 @@ QtObject {
         root.shell ? root.shell.accent : foreground
     readonly property color urgent: role("error", "#f38ba8")
 
+    readonly property ColorBar bar: ColorBar {
+        background: root.background
+        text: root.foreground
+        active: root.accent
+    }
+
+    readonly property ColorTooltip tooltip: ColorTooltip {
+        background: root.background
+        text: root.foreground
+        border: root.alpha(root.role("alt_br", root.accent), 0.45)
+    }
+
     readonly property ColorPopups popups: ColorPopups {
         background: root.background
         text: root.foreground

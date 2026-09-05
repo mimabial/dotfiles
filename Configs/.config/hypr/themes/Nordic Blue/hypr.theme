@@ -12,6 +12,7 @@ $FONT = SauceCodePro Nerd Font
 $BAR_FONT = SauceCodePro Nerd Font
 $MENU_FONT = SauceCodePro Nerd Font
 $MONOSPACE_FONT = SauceCodePro Nerd Font
+$TERMINAL_FONT = SauceCodePro Nerd Font
 $NOTIFICATION_FONT = SauceCodePro Nerd Font Mono
 
 general {

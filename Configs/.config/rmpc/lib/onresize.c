@@ -10,13 +10,17 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#define THEME_SMALL "pywal16-small"
+#define THEME_MEDIUM "pywal16"
+#define THEME_LARGE "pywal16-big"
+#define THEME_WIDE "pywal16-wide"
+
 static int build_path(char *buffer, size_t size, const char *base, const char *suffix) {
     int written = snprintf(buffer, size, "%s%s", base, suffix);
     return written >= 0 && (size_t)written < size ? 0 : -1;
 }
 
-static int env_dimension(const char *name, unsigned short *value) {
-    const char *raw = getenv(name);
+static int parse_dimension(const char *raw, unsigned short *value) {
     char *end = NULL;
 
     if (raw == NULL || *raw == '\0') {
@@ -31,6 +35,17 @@ static int env_dimension(const char *name, unsigned short *value) {
 
     *value = (unsigned short)parsed;
     return 0;
+}
+
+static int env_dimension(const char *name, unsigned short *value) {
+    return parse_dimension(getenv(name), value);
+}
+
+static const char *theme_for_size(unsigned short rows, unsigned short columns) {
+    if (columns < 120) {
+        return rows < 30 ? THEME_SMALL : THEME_MEDIUM;
+    }
+    return rows < 30 ? THEME_WIDE : THEME_LARGE;
 }
 
 static int terminal_size(unsigned short *rows, unsigned short *columns) {
@@ -168,7 +183,7 @@ static int fallback(const char *config_home, const char *theme_name) {
     return 1;
 }
 
-int main(void) {
+int main(int argc, char **argv) {
     const char *home = getenv("HOME");
     const char *config_home = getenv("XDG_CONFIG_HOME");
     const char *cache_home = getenv("XDG_CACHE_HOME");
@@ -180,10 +195,18 @@ int main(void) {
     char snapshot_path[PATH_MAX];
     char theme_path[PATH_MAX];
     char theme_marker[64];
-    const char *theme_names[] = {"pywal16-small", "pywal16", "pywal16-big"};
+    const char *theme_names[] = {THEME_SMALL, THEME_MEDIUM, THEME_LARGE, THEME_WIDE};
     unsigned short rows;
     unsigned short columns;
     const char *theme_name;
+
+    if (argc == 4 && strcmp(argv[1], "--print") == 0) {
+        if (parse_dimension(argv[2], &columns) < 0 || parse_dimension(argv[3], &rows) < 0) {
+            return 2;
+        }
+        puts(theme_for_size(rows, columns));
+        return 0;
+    }
 
     if (home == NULL) {
         return 0;
@@ -204,13 +227,7 @@ int main(void) {
         return 0;
     }
 
-    if (columns < 90 && rows < 30) {
-        theme_name = "pywal16-small";
-    } else if (columns < 90 || rows < 30) {
-        theme_name = "pywal16";
-    } else {
-        theme_name = "pywal16-big";
-    }
+    theme_name = theme_for_size(rows, columns);
 
     if (config_override != NULL) {
         int written = snprintf(config_path, sizeof(config_path), "%s", config_override);

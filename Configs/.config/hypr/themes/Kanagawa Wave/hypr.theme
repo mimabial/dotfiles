@@ -12,6 +12,7 @@ $FONT = VictorMono Nerd Font
 $BAR_FONT = VictorMono Nerd Font
 $MENU_FONT = VictorMono Nerd Font
 $MONOSPACE_FONT = VictorMono Nerd Font
+$TERMINAL_FONT = VictorMono Nerd Font
 $NOTIFICATION_FONT = VictorMono Nerd Font Mono
 
 general {

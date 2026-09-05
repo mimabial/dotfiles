@@ -16,11 +16,11 @@ cwd="$(_tmux_layout_current_cwd "$pane_id")"
 window_name="$(_tmux_layout_project_name "$cwd")"
 pane_count="$(_tmux_layout_window_pane_count "$pane_id")"
 dual_mode="${TMUX_LAYOUT_DUAL_MODE:-0}"
+dual_fallback="${TMUX_LAYOUT_DUAL_FALLBACK:-0}"
 agent_cmd="${TMUX_LAYOUT_AGENT_CMD:-claude}"
 second_agent_cmd="${TMUX_LAYOUT_SECOND_AGENT_CMD:-}"
 focus_agent_slot="${TMUX_LAYOUT_FOCUS_AGENT_SLOT:-none}"
 editor_cmd="${TMUX_LAYOUT_EDITOR_CMD:-}"
-agentless="${TMUX_LAYOUT_AGENTLESS:-0}"
 editor_pane="$pane_id"
 primary_agent_pane=""
 secondary_agent_pane=""
@@ -41,13 +41,8 @@ if [[ "$pane_count" == "1" ]]; then
       secondary_agent_pane="$(tmux split-window -h -l "$right_width" -t "$pane_id" -c "$cwd" -P -F '#{pane_id}')"
       editor_pane="$pane_id"
       default_focus_pane="$editor_pane"
-    elif _tmux_dev_dual_supports_two_agents "$total_width"; then
-      primary_agent_pane="$(tmux split-window -h -b -p 50 -t "$pane_id" -c "$cwd" -P -F '#{pane_id}')"
-      secondary_agent_pane="$pane_id"
-      editor_pane=""
-      default_focus_pane="$primary_agent_pane"
     else
-      print -u2 "Current pane is too narrow for two agent panes."
+      print -u2 "Current pane is too narrow for two agents and an editor."
       exit 1
     fi
   else
@@ -55,7 +50,7 @@ if [[ "$pane_count" == "1" ]]; then
     total_width="$(tmux display-message -p -t "$pane_id" '#{pane_width}')"
     if right_width="$(_tmux_dev_single_agent_side_width "$total_width" 2>/dev/null)"; then
       primary_agent_pane="$(tmux split-window -h -l "$right_width" -t "$pane_id" -c "$cwd" -P -F '#{pane_id}')"
-      tmux split-window -v -p "$dev_bottom_height_pct" -t "$pane_id" -c "$cwd" >/dev/null
+      [[ "$dual_fallback" == "1" ]] || tmux split-window -v -p "$dev_bottom_height_pct" -t "$pane_id" -c "$cwd" >/dev/null
     else
       primary_agent_pane="$(tmux split-window -v -p "$dev_single_agent_bottom_agent_height_pct" -t "$pane_id" -c "$cwd" -P -F '#{pane_id}')"
     fi
@@ -64,8 +59,8 @@ if [[ "$pane_count" == "1" ]]; then
     default_focus_pane="$editor_pane"
   fi
 
-  [[ "$agentless" == "1" ]] || [[ -z "$primary_agent_pane" ]] || tmux send-keys -t "$primary_agent_pane" "$agent_cmd" C-m
-  [[ "$agentless" == "1" ]] || [[ -z "$secondary_agent_pane" ]] || tmux send-keys -t "$secondary_agent_pane" "$second_agent_cmd" C-m
+  [[ -z "$primary_agent_pane" ]] || tmux send-keys -t "$primary_agent_pane" "$agent_cmd" C-m
+  [[ -z "$secondary_agent_pane" ]] || tmux send-keys -t "$secondary_agent_pane" "$second_agent_cmd" C-m
   [[ -n "$editor_cmd" ]] && [[ -n "$editor_pane" ]] && tmux send-keys -t "$editor_pane" "$editor_cmd" C-m
 
   focus_pane="$default_focus_pane"

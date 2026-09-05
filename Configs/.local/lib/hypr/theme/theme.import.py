@@ -2,7 +2,7 @@
 """Build a Hypr theme pack from an omarchy theme source tree.
 
 Emits only palette.toml, hypr.theme and wallpapers/. The per-app files an
-omarchy theme ships (waybar.css, mako.ini, kitty.conf, ...) are dropped: with
+omarchy theme ships (btop.theme, chromium.theme, vscode.json, ...) are dropped: with
 no <app>.theme override in the pack, every renderer under render/ derives that
 app's colours from the pack palette, which fits a foreign theme better than its
 own stylesheets do.

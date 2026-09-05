@@ -12,6 +12,7 @@ $FONT = Terminess Nerd Font
 $BAR_FONT = Terminess Nerd Font
 $MENU_FONT = Terminess Nerd Font
 $MONOSPACE_FONT = Terminess Nerd Font
+$TERMINAL_FONT = Terminess Nerd Font
 $NOTIFICATION_FONT = Terminess Nerd Font Mono
 
 general {

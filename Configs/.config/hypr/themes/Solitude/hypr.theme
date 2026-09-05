@@ -11,6 +11,7 @@ $FONT = Agave Nerd Font
 $BAR_FONT = Agave Nerd Font
 $MENU_FONT = Agave Nerd Font
 $MONOSPACE_FONT = Agave Nerd Font
+$TERMINAL_FONT = Agave Nerd Font
 $NOTIFICATION_FONT = Agave Nerd Font Mono
 
 general {

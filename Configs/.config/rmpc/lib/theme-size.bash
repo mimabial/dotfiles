@@ -1,18 +1,9 @@
 #!/usr/bin/env bash
 
 rmpc_theme_for_size() {
-  local columns="${1:-}"
-  local rows="${2:-}"
+  local helper="${XDG_DATA_HOME:-$HOME/.local/share}/rmpc/bin/rmpc-onresize"
 
-  [[ "${columns}" =~ ^[0-9]+$ && "${rows}" =~ ^[0-9]+$ ]] || return 2
-
-  if ((columns < 90 && rows < 30)); then
-    printf '%s\n' "pywal16-small"
-  elif ((columns < 90 || rows < 30)); then
-    printf '%s\n' "pywal16"
-  else
-    printf '%s\n' "pywal16-big"
-  fi
+  "${helper}" --print "${1:-}" "${2:-}"
 }
 
 rmpc_terminal_size() {

@@ -83,8 +83,8 @@ theme_desktop_load_looknfeel_cursor_values() {
 
   [[ -n "${HYPR_THEME:-}" ]] || return 0
   theme_slug="$(LC_ALL=C printf '%s' "${HYPR_THEME}" \
-    | tr '[:upper:]' '[:lower:]' \
-    | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//')"
+    | LC_ALL=C tr '[:upper:]' '[:lower:]' \
+    | LC_ALL=C sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//')"
   [[ -n "${theme_slug}" ]] || theme_slug="default"
   override_file="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/looknfeel.d/${theme_slug}.${resolved_color_variant:-dark}.lua"
 

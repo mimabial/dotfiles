@@ -12,7 +12,12 @@
     "padding": [0.0, 8.0, 0.0, 8.0]
   },
 
-  "taskbar": { "margin": [0.0, 0.0, 0.0, 0.0], "padding": [0.0, 4.0, 8.0, 4.0], "iconSize": 32 },
+  "taskbar": {
+    "fill": ["c1", 1.0],
+    "margin": [0.0, 0.0, 0.0, 0.0],
+    "padding": [0.0, 4.0, 8.0, 4.0],
+    "iconSize": 32
+  },
   "#taskbar button": {
     "fill": null,
     "border": 3.0,
@@ -105,7 +110,7 @@
   "clock.datetime-winbar": {
     "fontWeight": 400,
     "hover": { "fill": null, "content": ["hvr_fg", 1.0] },
-    "margin": [0.0, 10.0, 0.0, 10.0],
+    "margin": [6.0, 10.0, 6.0, 10.0],
     "padding": [0.0, 0.0, 0.0, 0.0]
   }
 }

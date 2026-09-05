@@ -14,6 +14,7 @@ $FONT = CommitMono Nerd Font
 $BAR_FONT = CommitMono Nerd Font
 $MENU_FONT = CommitMono Nerd Font
 $MONOSPACE_FONT = CommitMono Nerd Font
+$TERMINAL_FONT = CommitMono Nerd Font
 $NOTIFICATION_FONT = CommitMono Nerd Font Mono
 
 general {

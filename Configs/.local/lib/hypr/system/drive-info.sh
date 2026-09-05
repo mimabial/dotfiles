@@ -27,7 +27,6 @@ fi
 size=$(lsblk -dno SIZE "$drive" 2>/dev/null)
 model=$(lsblk -dno MODEL "$root_drive" 2>/dev/null)
 
-# Format display string
 display="$drive"
 [[ -n "$size" ]] && display="$display ($size)"
 [[ -n "$model" ]] && display="$display - $model"

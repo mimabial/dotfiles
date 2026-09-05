@@ -10,7 +10,7 @@ PanelWindow {
     required property var shell
     readonly property var section: shell.style.box(".modules-left")
     readonly property var layout: shell.barLayout
-    readonly property var registry: ({"menu": mod_menu, "taskbar": mod_taskbar, "active": mod_active, "workspaces": mod_workspaces, "mediaplayer": mod_mediaplayer, "tray": mod_tray, "language": mod_language, "datetime": mod_datetime, "converter": mod_converter, "sudoku": mod_sudoku, "submap": mod_submap})
+    readonly property var registry: ({"menu": mod_menu, "taskbar": mod_taskbar, "workspace-weather": mod_workspace_weather, "workspaces": mod_workspaces, "mediaplayer": mod_mediaplayer, "tray": mod_tray, "language": mod_language, "datetime": mod_datetime, "converter": mod_converter, "sudoku": mod_sudoku, "submap": mod_submap})
     property bool active: shell.mode === "winbar" && !shell.userHidden
     // only the focused monitor's instance may own a panel: two focus grabs
     // cancel each other, which reads as the popup refusing to open
@@ -28,8 +28,11 @@ PanelWindow {
     // a click routes focus into an xdg-popup by itself; a panel summoned by
     // keybind does not, so prime Exclusive briefly then fall back — an
     // exclusive surface swallows pointer events on every monitor
+    // Only the priming phase takes Exclusive. Holding it while a text field has
+    // focus pins the compositor to this surface, and the focus grab never sees the
+    // click outside, so the popup cannot be dismissed by clicking away.
     WlrLayershell.keyboardFocus: !popupOpen ? WlrKeyboardFocus.None
-        : exclusivePhase || shell.popupTyping ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
+        : exclusivePhase ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
     onPopupOpenChanged: {
         if (!popupOpen) return
         exclusivePhase = true
@@ -48,8 +51,8 @@ PanelWindow {
 
     Component { id: mod_menu; StartButton { shell: root.shell; popupEnabled: root.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_taskbar; WindowList { shell: root.shell; Layout.fillHeight: true } }
-    Component { id: mod_active; BarGroup {
-        shell: root.shell; css: "active-group"; vertical: false; Layout.fillHeight: true; holdOpen: root.shell.popupName === "weather"; preload: true
+    Component { id: mod_workspace_weather; BarGroup {
+        shell: root.shell; css: "workspace-weather"; vertical: false; Layout.fillHeight: true; holdOpen: root.shell.popupName === "weather"; preload: true
         slots: [activeWsSlot, sunriseSlot, minmaxSlot, weatherSlot]
         Component { id: activeWsSlot; Workspaces { shell: root.shell; activeOnly: true; Layout.fillHeight: true } }
         Component { id: sunriseSlot; ScriptButton { Layout.fillHeight: true; shell: root.shell; css: "weather.sunrise"; command: ["hyprshell", "weather", "-s", "--alt"]; interval: 3600000 } }
@@ -91,4 +94,6 @@ PanelWindow {
         anchors.right: parent.right; anchors.rightMargin: root.section.margin[1] + root.section.padding[1]; anchors.top: parent.top; anchors.bottom: parent.bottom
         registry: root.registry; modules: root.layout.right || []
     }
+
+    PopupHost { shell: root.shell; anchorItem: leftRow; popupsAllowed: root.popupsAllowed }
 }

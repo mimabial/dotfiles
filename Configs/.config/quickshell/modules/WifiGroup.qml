@@ -9,6 +9,13 @@ BarGroup {
     property bool showReadout: false
     property bool showVpn: false
     property bool vpnFirst: false
+    readonly property var network: {
+        for (const device of Networking.devices.values)
+            if (device.type === DeviceType.Wifi)
+                for (const candidate of device.networks.values)
+                    if (candidate.connected) return candidate
+        return null
+    }
     css: "wifi"; reverse: true
     secondaryAvailable: root.showReadout || root.showVpn
     holdOpen: ["network", "wifiqr", "vpn"].includes(root.shell.popupName)
@@ -19,6 +26,9 @@ BarGroup {
     Component { id: wifiSlot; BarButton {
         id: wifiButton
         shell: root.shell; css: "wifimenu"; text: "󰖩"
+        tooltip: !Networking.wifiEnabled ? "Wi-Fi off"
+        : !root.network ? "Not Connected to any type of Network"
+        : root.network.name + "\nSignal: " + Math.round(root.network.signalStrength * 100) + "%"
         // omarchy: left opens the panel, right toggles the radio
         onClicked: button => button === Qt.RightButton
             ? Networking.wifiEnabled = !Networking.wifiEnabled

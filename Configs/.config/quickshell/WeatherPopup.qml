@@ -257,6 +257,7 @@ PopupCard {
         anchors.left: parent.left; anchors.right: parent.right
         spacing: Style.px(14)
         Item {
+            id: hero
             width: parent.width
             height: heroStack.implicitHeight
             // the popup's centre line is the seam: glyph ends on it, stack starts
@@ -268,6 +269,14 @@ PopupCard {
                 text: String(Weather.output.text).trim().split(/\s+/)[0] || "󰖐"
                 color: root.shell.role("c2", root.shell.foreground)
                 font.family: root.shell.fontFamily; font.pixelSize: Style.heroIcon
+            }
+            Text {
+                id: refreshAction
+                anchors.top: parent.top; anchors.right: parent.right
+                text: "󰑐"
+                color: refreshMouse.containsMouse ? root.shell.role("hvr_fg", root.shell.foreground) : root.shell.alpha(root.shell.foreground, .55)
+                font.family: root.shell.fontFamily; font.pixelSize: Style.title
+                MouseArea { id: refreshMouse; anchors.fill: parent; anchors.margins: -6; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.shell.run(["hyprshell", "weather", "--force", "--alt"]) }
             }
             Column {
                     id: heroStack
@@ -289,16 +298,15 @@ PopupCard {
                         font.family: root.shell.fontFamily; font.pixelSize: Style.subtitle
                     }
                     Item {
-                        // from wherever the stack begins out to the popup's right
-                        // edge, so the search glyph sits flush right
-                        width: heroActions.x - heroStack.x - 10; height: Style.px(18)
+                        // out to the popup's right edge
+                        width: hero.width - heroStack.x; height: Style.px(18)
 
                         Text {
                             id: locationLabel
                             visible: !root.searching
                             anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
                             text: root.location()
-                            color: (actionMouse.containsMouse || locationMouse.containsMouse)
+                            color: locationMouse.containsMouse
                                 ? root.shell.role("hvr_fg", root.shell.foreground)
                                 : root.shell.alpha(root.shell.foreground, .55)
                             font.family: root.shell.fontFamily; font.pixelSize: Style.caption
@@ -337,42 +345,6 @@ PopupCard {
                         }
 
                     }
-            }
-            // units, refresh and search share one column, so the hero has a
-            // single place to look for actions
-            Column {
-                id: heroActions
-                anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
-                spacing: Style.px(10)
-                Text {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    text: root.imperial ? "󰔅" : "󰔄"
-                    color: unitsMouse.containsMouse ? root.shell.role("hvr_fg", root.shell.foreground) : root.shell.alpha(root.shell.foreground, .55)
-                    font.family: root.shell.fontFamily; font.pixelSize: Style.title
-                    MouseArea { id: unitsMouse; anchors.fill: parent; anchors.margins: -6; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.toggleUnits() }
-                }
-                Text {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    text: "󰑐"
-                    color: refreshMouse.containsMouse ? root.shell.role("hvr_fg", root.shell.foreground) : root.shell.alpha(root.shell.foreground, .55)
-                    font.family: root.shell.fontFamily; font.pixelSize: Style.title
-                    MouseArea { id: refreshMouse; anchors.fill: parent; anchors.margins: -6; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.shell.run(["hyprshell", "weather", "--force", "--alt"]) }
-                }
-                Text {
-                    id: actionGlyph
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    text: root.searching ? "󰅖" : "󰍉"
-                    color: actionMouse.containsMouse ? root.shell.role("hvr_fg", root.shell.foreground) : root.shell.alpha(root.shell.foreground, .55)
-                    font.family: root.shell.fontFamily; font.pixelSize: Style.title
-                    MouseArea {
-                        id: actionMouse; anchors.fill: parent; anchors.margins: -6
-                        hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            if (root.searching) { cityField.text = ""; root.searching = false }
-                            else root.openSearch()
-                        }
-                    }
-                }
             }
         }
         // everything is one block now: the four that matter stay visible and

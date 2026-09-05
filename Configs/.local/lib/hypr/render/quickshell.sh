@@ -6,15 +6,20 @@ PALETTE_ARG="${1:-}"
 render_init quickshell theme.json quickshell.theme
 
 theme_meta="${HYPR_CONFIG_HOME:-$HOME/.config/hypr}/themes/theme.meta"
-rounding="$(awk -F= '
-  /^[[:space:]]*rounding[[:space:]]*=/ { gsub(/[[:space:]]/, "", $2); print $2; exit }
-' "${theme_meta}" 2>/dev/null || true)"
+meta_number() {
+  awk -F= -v key="$1" '
+    $0 ~ "^[[:space:]]*" key "[[:space:]]*=" { gsub(/[[:space:]]/, "", $2); print $2; exit }
+  ' "${theme_meta}" 2>/dev/null || true
+}
+rounding="$(meta_number rounding)"
 [[ "${rounding}" =~ ^[0-9]+([.][0-9]+)?$ ]] || rounding=0
+border="$(meta_number border_size)"
+[[ "${border}" =~ ^[0-9]+([.][0-9]+)?$ ]] || border=0
 
 hash="$(
   {
     render_input_hash
-    printf 'rounding:%s\n' "${rounding}"
+    printf 'rounding:%s\nborder:%s\n' "${rounding}" "${border}"
   } | { xxh64sum 2>/dev/null || md5sum; } | awk '{print $1}'
 )"
 render_should_skip "${hash}" && exit 0
@@ -48,8 +53,8 @@ fi
   exit 1
 }
 
-jq -n --argjson palette "${palette}" --argjson rounding "${rounding}" \
-  '{rounding: $rounding, palette: $palette}' > "${tmp}"
+jq -n --argjson palette "${palette}" --argjson rounding "${rounding}" --argjson border "${border}" \
+  '{rounding: $rounding, borderSize: $border, palette: $palette}' > "${tmp}"
 
 render_commit "${tmp}" "${hash}"
 trap - EXIT

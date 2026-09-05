@@ -131,7 +131,6 @@ declare -gA HYPR_STATE_CACHE_VALUES=()
 declare -g HYPR_STATE_CACHE_SIGNATURE=""
 declare -g HYPR_STATE_CACHE_READY=0
 
-# State path resolution
 state_dir() {
   printf '%s\n' "${STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}"
 }
@@ -334,7 +333,11 @@ state_write_color_variant_file() {
     return 1
   fi
 
-  printf '%s\n' "${var_value}" >"${tmp_file}" && mv -f "${tmp_file}" "${state_file}"
+  (
+    trap 'rm -f "${tmp_file}" 2>/dev/null' EXIT HUP INT TERM
+    printf '%s\n' "${var_value}" >"${tmp_file}"
+    mv -f "${tmp_file}" "${state_file}"
+  )
 }
 
 state_quote_value() {
@@ -379,12 +382,16 @@ state_write_key_value_file() {
     return 1
   }
 
-  {
-    grep -Ev "^(export[[:space:]]+)?${var_escaped}=" "${state_file}" 2>/dev/null || true
-    printf '%s%s=%s\n' "${value_prefix}" "${var_name}" "${quoted_value}"
-  } >"${tmp_file}"
-
-  if mv -f "${tmp_file}" "${state_file}"; then
+  # Unique tmp names accumulate if the process dies mid-write, so the subshell
+  # carries its own trap; the parent's EXIT trap must stay untouched.
+  if (
+    trap 'rm -f "${tmp_file}" 2>/dev/null' EXIT HUP INT TERM
+    {
+      grep -Ev "^(export[[:space:]]+)?${var_escaped}=" "${state_file}" 2>/dev/null || true
+      printf '%s%s=%s\n' "${value_prefix}" "${var_name}" "${quoted_value}"
+    } >"${tmp_file}"
+    mv -f "${tmp_file}" "${state_file}"
+  ); then
     return 0
   fi
 

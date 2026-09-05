@@ -4,7 +4,6 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Mpris
 import Quickshell.Services.UPower
-import "expose" as Expose
 
 ShellRoot {
     id: shellRoot
@@ -38,11 +37,13 @@ ShellRoot {
     readonly property var activeTimers: activeEntries.filter(item => item.kind === "timer")
     readonly property var activeAlarms: activeEntries.filter(item => item.kind === "alarm")
     readonly property alias clockwork: clockworkState
+    readonly property var monitorPreviewCoordinator: monitorPreviewGuardLoader.item
     property Theme style: Theme { home: shellRoot.home; layout: shellRoot.layoutName }
     readonly property var palette: style.palette
     readonly property color background: role("bg", "#1f2430")
     readonly property color foreground: role("fg", "#ffffff")
     readonly property color accent: role("accent", foreground)
+    readonly property color urgent: role("error", "#f38ba8")
     property string baseFont: "JetBrainsMono Nerd Font"
     property string userFont: ""
     property string themeFont: ""
@@ -93,7 +94,17 @@ ShellRoot {
     property real iconOpticalBoost: 1.20
     readonly property real iconFontScale: iconCapRatio * iconOpticalBoost
     readonly property real rounding: style.radius
+    // unscaled: the card's frame has to read as the same weight as the frames on
+    // the windows behind it, and Hyprland draws those in raw pixels
+    readonly property real borderWidth: style.border
     readonly property real moduleRadius: layoutName === "winbar" ? 0 : rounding
+    // Which screen edge the active layout puts the bar on. One source: popups
+    // and tooltips anchor against it, and the dock derives its own edge from it.
+    // It used to be spelled out separately in each of those, and the copy that
+    // forgot "alt" put the dock on the wrong side.
+    readonly property string barEdge: ["main", "alt"].includes(layoutName) ? "right"
+        : ["left", "sidebar"].includes(layoutName) ? "left"
+        : layoutName === "top" ? "top" : "bottom"
     readonly property real barOpacity: workflow === "powersaver" ? 1 : workflow === "windows" ? .5 : ["top", "winbar"].includes(layoutName) ? .4 : .6
     readonly property color barColor: store.barTransparent ? "transparent" : alpha(background, barOpacity)
     property SystemClock clock: SystemClock { precision: SystemClock.Minutes }
@@ -113,6 +124,7 @@ ShellRoot {
         property bool mainDateNumeric: false
         property int winbarClock: 0
         property bool barTransparent: false
+        property bool barBlur: true
         property string sudokuDifficulty: "easy"
         property int sudokuBestEasy: 0
         property int sudokuBestMedium: 0
@@ -123,6 +135,7 @@ ShellRoot {
         property int clockworkLongBreakMinutes: 15
         property bool clockworkSound: true
         property string clockworkBreakColor: "#a6e3a1"
+        property string bluetoothAudioPolicies: "{}"
     }
 
     ClockworkState { id: clockworkState; shell: shellRoot }
@@ -154,8 +167,6 @@ ShellRoot {
     // the focus grab clears during that transition and must not be read as a
     // click outside
     property bool focusPriming: false
-    // a popup you type into must hold keyboard focus even with the pointer away
-    property bool popupTyping: false
     property var popupCard: null
     function run(command) { Quickshell.execDetached(command) }
     function refreshIndicators(target) {
@@ -176,11 +187,17 @@ ShellRoot {
     function setVolumeLimit(value, persist) { volumeLimit = Math.max(dbToVolume(volumeMinDb), Math.min(dbToVolume(volumeMaxDb), value)); if (persist) volumeLimitFile.setText(volumeLimit.toFixed(6) + "\n") }
     function refreshVolumeRange() { if (!volumeRangeProbe.running) volumeRangeProbe.running = true }
     function loadVolumeRange(raw) { try { const range = JSON.parse(raw), min = Number(range.minimum), max = Number(range.maximum), step = Number(range.step); if (isFinite(min) && isFinite(max) && isFinite(step) && min < max && step > 0) { volumeMinDb = min; volumeMaxDb = max; volumeStepDb = step; setVolumeLimit(volumeLimit, true) } } catch (error) {} }
+    function duration(seconds) { const minutes = Math.round(seconds / 60); return minutes > 59 ? Math.floor(minutes / 60) + "h " + minutes % 60 + "m" : minutes + "m" }
+    function profileName(profile) { return PowerProfile.toString(profile).replace(/([a-z])([A-Z])/g, "$1 $2") }
     function loadTimers(raw) { try { timerItems = JSON.parse(raw) || [] } catch (error) { timerItems = [] } }
     function refreshTimers() { timerStateFile.reload() }
-    function togglePopup(name) { popupName = popupName === name ? "" : name }
+    // a popup opened by name (keybind, menutree) centers on the screen; a click
+    // on a bar module keeps its popup anchored to the button it came from
+    property string popupCenteredName: ""
+    function togglePopup(name, centered) { popupCenteredName = centered === true ? name : ""; popupName = popupName === name ? "" : name }
     function closePopup() { popupName = "" }
     function toggleBarTransparency() { store.barTransparent = !store.barTransparent }
+    function toggleBarBlur() { store.barBlur = !store.barBlur }
     function barLayoutIcon(name) { return ({winbar:"", top:"", left:"", sidebar:"", main:"", alt:""})[name] || "" }
     function loadBarLayout(raw) { try { barLayout = JSON.parse(raw) } catch (error) { barLayout = [] } }
     function loadState(raw) {
@@ -268,8 +285,33 @@ ShellRoot {
     }
     Process { command: [shellRoot.home + "/.local/lib/hypr/calendar/alarm-timer.sh", "restore"]; running: true }
     ReloadToast { shell: shellRoot }
-    LooknfeelPanel { shell: shellRoot }
-    Expose.Overview { shell: shellRoot }
+    // The three heaviest subtrees in the config and none of them is on screen at
+    // startup. Loading by url keeps their compile off the path to the first bar,
+    // and setSource passes shell as an initial property because each wires the
+    // Commons singletons from its own Component.onCompleted — a later assignment
+    // would let them publish a null shell first.
+    Loader {
+        id: overviewLoader
+        asynchronous: true
+        Component.onCompleted: overviewLoader.setSource(Qt.resolvedUrl("expose/Overview.qml"), { shell: shellRoot })
+    }
+    Loader {
+        id: dockLoader
+        asynchronous: true
+        Component.onCompleted: dockLoader.setSource(Qt.resolvedUrl("dock/Dock.qml"), { shell: shellRoot })
+    }
+    // The guard adopts any preview the display daemon reports, including one it
+    // did not start, so it must end up loaded rather than wait for a first use.
+    Loader {
+        id: monitorPreviewGuardLoader
+        asynchronous: true
+        Component.onCompleted: monitorPreviewGuardLoader.setSource(Qt.resolvedUrl("monitor/DisplayPreviewGuard.qml"), { shell: shellRoot })
+    }
+    // A popup is an xdg child of the bar's layer surface, so a blur rule on that
+    // surface blurs the popup's whole area too — well past the bar. The
+    // threshold confines it to what is actually painted: the bar at barOpacity
+    // and the popup card at its own, but not the empty margin around either.
+    LayerBlur { surface: "hypr-shell-bar"; enabled: shellRoot.store.barBlur; ignoreAlpha: 0.1 }
 
     onModeChanged: closePopup()
     onLayoutNameChanged: { barLayout = []; layoutFile.reload() }
@@ -293,9 +335,10 @@ ShellRoot {
         // the soft reload keeps live instances, so it misses a changed vars.lua
         // value or a re-evaluated font.family; this is the one to verify against
         function reloadHard(): void { Quickshell.reload(true) }
-        function popup(name: string): void { shellRoot.togglePopup(name) }
-        function bookmarks(): void { shellRoot.togglePopup("bookmarks") }
+        function popup(name: string): void { shellRoot.togglePopup(name, true) }
+        function bookmarks(): void { shellRoot.togglePopup("bookmarks", true) }
         function transparency(): void { shellRoot.toggleBarTransparency() }
+        function blur(): void { shellRoot.toggleBarBlur() }
         function popupName(): string { return shellRoot.popupName }
     }
     IpcHandler {

@@ -9,7 +9,7 @@ cache_home = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
 config_path = Path(os.environ.get("RMPC_CONFIG_PATH", config_home / "rmpc/config.ron"))
 themes_dir = config_home / "rmpc/themes"
 output_dir = cache_home / "rmpc/configs"
-theme_names = ("pywal16-small", "pywal16", "pywal16-big")
+theme_names = ("pywal16-small", "pywal16", "pywal16-big", "pywal16-wide")
 
 
 def field_span(lines: list[str], name: str) -> tuple[int, int] | None:

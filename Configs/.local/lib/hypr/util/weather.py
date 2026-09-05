@@ -48,7 +48,6 @@ def get_weather_icon_from_code(weather_code):
     return codes.get(str(weather_code), codes.get("default", "󰖐"))
 
 
-# Weather data cache
 CACHE_DIR = os.path.join(os.getenv("HOME"), ".cache/wttr")
 WEATHER_DATA_CACHE = os.path.join(CACHE_DIR, "weather_data.json")
 CACHE_EXPIRY = 3600  # 1 hour in seconds
@@ -674,7 +673,6 @@ else:
     if show_location:
         data["text"] += f" | {get_city_name(weather)}, {get_country_name(weather)}"
 
-    # Bar tooltip
     data["tooltip"] = ""
     if show_today_details:
         today = weather["weather"][0]

@@ -11,6 +11,7 @@ $FONT = DejaVuSansM Nerd Font
 $BAR_FONT = DejaVuSansM Nerd Font
 $MENU_FONT = DejaVuSansM Nerd Font
 $MONOSPACE_FONT = DejaVuSansM Nerd Font
+$TERMINAL_FONT = DejaVuSansM Nerd Font
 $NOTIFICATION_FONT = DejaVuSansM Nerd Font Mono
 
 general {

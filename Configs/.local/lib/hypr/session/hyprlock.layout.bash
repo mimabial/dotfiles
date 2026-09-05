@@ -277,7 +277,6 @@ source = ${source_conf}
 CONF
 }
 
-# hyprlock selector
 fn_select() {
   # List available .conf files from user overrides first, then shared stock.
   local layout_items
@@ -299,8 +298,6 @@ fn_select() {
     send_ephemeral_notif "hypr-hyprlock-error" -t 3000 -i "preferences-desktop-display" "Error" "No .conf files found in ${HYPRLOCK_USER_DIR} or ${HYPRLOCK_SHARED_DIR}"
     exit 1
   fi
-
-  layout_items="${layout_items}"
 
   rofi_build_standard_menu_args \
     rofi_args \

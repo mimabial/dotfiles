@@ -1,5 +1,4 @@
 source "${XDG_CONFIG_HOME:-$HOME/.config}/tmux/layouts/_dev_geometry.zsh"
-source "${XDG_CONFIG_HOME:-$HOME/.config}/tmux/layouts/_window_helpers.zsh"
 
 typeset -gA _TDL_AGENT_BEHAVIOR_FLAGS=(
   "claude:focus_after_layout" 1
@@ -266,7 +265,7 @@ _tdl_prompt_dual_agent_choice() {
             --layout=reverse \
             --border=sharp \
             --no-multi \
-            --header='Current pane is too narrow for two agent panes. Choose one agent to open.'
+            --header='Current pane is too narrow for two agents and an editor. Choose one agent to open.'
     )" || {
       print -u2 "Cancelled dual layout."
       return 1
@@ -277,7 +276,7 @@ _tdl_prompt_dual_agent_choice() {
   fi
 
   while true; do
-    print -u2 "Current pane is too narrow for two agent panes."
+    print -u2 "Current pane is too narrow for two agents and an editor."
     print -u2 "Choose one agent to open instead:"
     print -u2 "1) $primary_cmd"
     print -u2 "2) $secondary_cmd"
@@ -301,63 +300,13 @@ _tdl_prompt_dual_agent_choice() {
   done
 }
 
-_tdl_ensure_aux_window() {
-  local after_target="$1" name="$2" cwd="$3" cmd="${4:-}"
-  local session
 
-  session="${after_target%%:*}"
-  _tmux_layout_has_window "$session" "$name" && {
-    print -r -- "$after_target"
-    return 0
-  }
 
-  _tmux_layout_spawn_window "$after_target" "$name" "$cwd" "$cmd" 1
-}
 
 tdl() {
-  local open_git=0 open_docker=0 dual_mode=0
-
-  while (($#)); do
-    case "$1" in
-      --git)
-        open_git=1
-        shift
-        ;;
-      --docker)
-        open_docker=1
-        shift
-        ;;
-      --dual | -d)
-        dual_mode=1
-        shift
-        ;;
-      --)
-        shift
-        break
-        ;;
-      -*)
-        print -u2 "Unknown option: $1"
-        return 1
-        ;;
-      *)
-        break
-        ;;
-    esac
-  done
-
   (($# > 2)) && {
-    print -u2 "Usage: tdl [--git] [--docker] [--dual|-d] [ai_command] [second_ai_command]"
+    print -u2 "Usage: tdl [ai_command] [second_ai_command]"
     print -u2 "Quote commands with spaces when provided."
-    return 1
-  }
-
-  (( dual_mode && $# != 2 )) && {
-    print -u2 "Dual mode requires exactly two AI commands."
-    return 1
-  }
-
-  (( ! dual_mode && $# == 2 )) && {
-    print -u2 "A second AI command requires --dual or -d."
     return 1
   }
 
@@ -366,34 +315,30 @@ tdl() {
     return 1
   }
 
-  local layout_runner ai ai2 editor_cmd current_dir current_target git_cmd docker_cmd agentless focus_agent_slot current_width
-  ai="${1:-}"
+  local layout_runner ai ai2 editor_cmd focus_agent_slot current_width dual_fallback
+  integer dual_mode=$(( $# == 2 ))
+  ai="${1:-opencode}"
   ai2="${2:-}"
   editor_cmd="${EDITOR:-nvim} ."
-  current_dir="$PWD"
   layout_runner="${XDG_CONFIG_HOME:-$HOME/.config}/tmux/scripts/tmux-layout"
-  agentless=0
-  focus_agent_slot="none"
+  dual_fallback=0
 
-  if [[ -z "$ai" ]]; then
-    agentless=1
-  else
-    _tdl_validate_command "$ai" "primary AI" || return 1
-    _tdl_validate_command "$ai2" "secondary AI" || return 1
+  _tdl_validate_command "$ai" "primary AI" || return 1
+  _tdl_validate_command "$ai2" "secondary AI" || return 1
 
-    if (( dual_mode )); then
-      current_width="$(_tdl_current_pane_width)" || return 1
-      if ! _tmux_dev_dual_supports_two_agents "$current_width"; then
-        ai="$(_tdl_prompt_dual_agent_choice "$ai" "$ai2")" || return 1
-        ai2=""
-        dual_mode=0
-      fi
+  if (( dual_mode )); then
+    current_width="$(_tdl_current_pane_width)" || return 1
+    if ! _tmux_dev_dual_three_pane_agent_widths "$current_width" >/dev/null 2>&1; then
+      ai="$(_tdl_prompt_dual_agent_choice "$ai" "$ai2")" || return 1
+      ai2=""
+      dual_mode=0
+      dual_fallback=1
     fi
-
-    focus_agent_slot="$(_tdl_focus_agent_slot "$ai" "$ai2")"
-    ai="$(_tdl_prepare_ai_command "$ai")"
-    ai2="$(_tdl_prepare_ai_command "$ai2")"
   fi
+
+  focus_agent_slot="$(_tdl_focus_agent_slot "$ai" "$ai2")"
+  ai="$(_tdl_prepare_ai_command "$ai")"
+  ai2="$(_tdl_prepare_ai_command "$ai2")"
   editor_cmd="$(_tdl_prepare_editor_command "$editor_cmd")"
 
   [[ -x "$layout_runner" ]] || {
@@ -401,25 +346,76 @@ tdl() {
     return 1
   }
 
-  TMUX_LAYOUT_AGENTLESS="$agentless" \
   TMUX_LAYOUT_DUAL_MODE="$dual_mode" \
+  TMUX_LAYOUT_DUAL_FALLBACK="$dual_fallback" \
   TMUX_LAYOUT_AGENT_CMD="$ai" \
   TMUX_LAYOUT_SECOND_AGENT_CMD="$ai2" \
   TMUX_LAYOUT_FOCUS_AGENT_SLOT="$focus_agent_slot" \
   TMUX_LAYOUT_EDITOR_CMD="$editor_cmd" \
-  "$layout_runner" dev || return 1
+  "$layout_runner" dev
+}
 
-  current_target="$(tmux display-message -p -t "${TMUX_PANE:-}" '#{session_name}:#{window_index}')" || return 1
+tds() {
+  (($# > 1)) && {
+    print -u2 "Usage: tds [ai_command]"
+    print -u2 "Quote commands with spaces when provided."
+    return 1
+  }
 
-  if (( open_git )); then
-    git_cmd=""
-    command -v lazygit >/dev/null 2>&1 && git_cmd="lazygit"
-    current_target="$(_tdl_ensure_aux_window "$current_target" git "$current_dir" "$git_cmd")" || return 1
-  fi
+  [[ -z "${TMUX:-}" ]] && {
+    print -u2 "[Error] Must start tmux to use tds."
+    return 1
+  }
 
-  if (( open_docker )); then
-    docker_cmd=""
-    command -v lazydocker >/dev/null 2>&1 && docker_cmd="lazydocker"
-    current_target="$(_tdl_ensure_aux_window "$current_target" docker "$current_dir" "$docker_cmd")" || return 1
-  fi
+  local layout_runner ai editor_cmd
+  ai="${1:-opencode}"
+  editor_cmd="${EDITOR:-nvim} ."
+  layout_runner="${XDG_CONFIG_HOME:-$HOME/.config}/tmux/scripts/tmux-layout"
+
+  _tdl_validate_command "$ai" "AI" || return 1
+  ai="$(_tdl_prepare_ai_command "$ai")"
+  editor_cmd="$(_tdl_prepare_editor_command "$editor_cmd")"
+
+  [[ -x "$layout_runner" ]] || {
+    print -u2 "tmux layout runner is not available."
+    return 1
+  }
+
+  TMUX_LAYOUT_AGENT_CMD="$ai" \
+  TMUX_LAYOUT_EDITOR_CMD="$editor_cmd" \
+  "$layout_runner" square
+}
+
+tsl() {
+  (( $# < 1 || $# > 4 )) && {
+    print -u2 "Usage: tsl <command> [command ...]"
+    print -u2 "Up to 4 commands, one per pane. Quote commands with spaces."
+    return 1
+  }
+
+  [[ -z "${TMUX:-}" ]] && {
+    print -u2 "[Error] Must start tmux to use tsl."
+    return 1
+  }
+
+  local layout_runner
+  local -a prepared env_assignments
+  integer index
+
+  for index in {1..$#}; do
+    _tdl_validate_command "${@[$index]}" "swarm pane ${index}" || return 1
+    prepared+=("$(_tdl_prepare_ai_command "${@[$index]}")")
+  done
+
+  layout_runner="${XDG_CONFIG_HOME:-$HOME/.config}/tmux/scripts/tmux-layout"
+  [[ -x "$layout_runner" ]] || {
+    print -u2 "tmux layout runner is not available."
+    return 1
+  }
+
+  for index in {1..${#prepared[@]}}; do
+    env_assignments+=("TMUX_LAYOUT_SWARM_CMD_${index}=${prepared[$index]}")
+  done
+
+  env TMUX_LAYOUT_SWARM_PANES="${#prepared[@]}" "${env_assignments[@]}" "$layout_runner" swarm
 }

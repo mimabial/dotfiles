@@ -12,6 +12,7 @@ menu_register_domain_style() {
   menu_add_item style "  Wallpaper" action style_wallpaper
   menu_add_item style "  Color Mode" action style_color_mode
   menu_add_item style "󰍜  Bar" submenu style_bar
+  menu_add_item style "󰇊  Dock" submenu style_dock
   menu_add_item style "󰕸  Exposé" submenu style_expose
   menu_add_item style "󰹑  Animations" action style_animations
   menu_add_item style "󰏘  Lock Layout" action style_lock_layout
@@ -23,6 +24,19 @@ menu_register_domain_style() {
   menu_define style_bar "Bar"
   menu_add_item style_bar "󰍜  Layout" submenu style_bar_layout
   menu_add_item style_bar "󰂵  Transparency" action style_bar_transparency
+  menu_add_item style_bar "󰐷  Blur" action style_bar_blur
+
+  menu_define style_dock "Dock"
+  menu_add_item style_dock "󰄶  Position" submenu style_dock_position
+  menu_add_item style_dock "󰂵  Transparency" action style_dock_transparency
+  menu_add_item style_dock "󰐷  Blur" action style_dock_blur
+
+  menu_define style_dock_position "Position"
+  menu_add_item style_dock_position "󰌷  Opposite the Bar" action style_dock_position_link
+  menu_add_item style_dock_position "↓  Bottom" action style_dock_position_bottom
+  menu_add_item style_dock_position "↑  Top" action style_dock_position_top
+  menu_add_item style_dock_position "←  Left" action style_dock_position_left
+  menu_add_item style_dock_position "→  Right" action style_dock_position_right
 
   menu_define style_bar_layout "Layout"
   for layout_file in "${layout_dir}"/*.json; do
@@ -47,6 +61,7 @@ menu_register_domain_style() {
 menu_run_action_style() {
   local action_id="$1"
   local corner=""
+  local edge_name=""
   local layout_name=""
 
   case "${action_id}" in
@@ -61,6 +76,18 @@ menu_run_action_style() {
       hyprshell quickshell/layout set "${layout_name}"
       ;;
     style_bar_transparency) quickshell ipc --any-display call bar transparency ;;
+    style_bar_blur) quickshell ipc --any-display call bar blur ;;
+    style_dock_transparency) quickshell ipc --any-display call dock transparency ;;
+    style_dock_blur) quickshell ipc --any-display call dock blur ;;
+    style_dock_position_link) quickshell ipc --any-display call dock link ;;
+    style_dock_position_*)
+      edge_name="${action_id#style_dock_position_}"
+      case "${edge_name}" in
+        top | bottom | left | right) ;;
+        *) return 1 ;;
+      esac
+      quickshell ipc --any-display call dock position "${edge_name}"
+      ;;
     style_expose_hot_corner_*)
       corner="${action_id#style_expose_hot_corner_}"
       case "${corner}" in

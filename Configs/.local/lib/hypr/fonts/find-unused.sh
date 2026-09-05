@@ -49,6 +49,15 @@ SKIP_PACKAGES_REGEX='^(fontconfig|lib32-fontconfig|libfontenc|libxfont2|xorg-fon
 declare -gA PACKAGE_FAMILY_CACHE=()
 declare -gA LOCAL_FAMILY_FILES=()
 declare -gA LOCAL_FILE_FAMILIES=()
+declare -ga ACTIVE_PACKAGES=() INSTALLED_CONFIG_PACKAGES=() FALLBACK_PACKAGES=()
+declare -ga UNUSED_PACKAGES=() REQUIRED_PACKAGES=()
+declare -gA PACKAGE_MATCHES=() PACKAGE_MATCH_FAMILIES=()
+declare -ga LOCAL_ACTIVE_FAMILIES=() LOCAL_INSTALLED_CONFIG_FAMILIES=()
+declare -ga LOCAL_FALLBACK_FAMILIES=() LOCAL_UNUSED_FAMILIES=()
+declare -gA LOCAL_MATCHES=() UNUSED_LOCAL_FAMILY_MAP=()
+declare -ga LOCAL_REMOVABLE_FAMILIES=() LOCAL_KEPT_PROVIDER_FAMILIES=()
+declare -gA LOCAL_REMOVABLE_FILE_COUNTS=() LOCAL_PROVIDER_FILE_COUNTS=()
+declare -ga REMOVABLE_LOCAL_FILES=()
 
 require_cmd() {
   local cmd="$1"
@@ -247,6 +256,15 @@ reference_rank() {
     base=10
   fi
 
+  # Scope outranks location, so a font carried by both the config in force and
+  # an installed theme is reported from the active one. Without this the two
+  # score equally and the winner -- and with it the ACTIVE/INSTALLED split the
+  # report is built on -- comes down to which file rg happened to match first.
+  case "$(reference_scope "${match}")" in
+    active) base=$((base + 100)) ;;
+    config) base=$((base + 50)) ;;
+  esac
+
   if [[ "${kind}" == "explicit" ]]; then
     printf '%s\n' $((base + 2))
   else
@@ -332,7 +350,9 @@ find_best_reference_for_family() {
         best_kind="${kind}"
         best_match="${match}"
       fi
-    done < <(rg "${RG_ARGS[@]}" -- "${alias_regex}" "${ACTIVE_SEARCH_ROOTS[@]}" 2>/dev/null || true)
+      # rg searches the roots in parallel, so equal-ranked references would
+      # otherwise be reported from whichever file happened to match first.
+    done < <({ rg "${RG_ARGS[@]}" -- "${alias_regex}" "${ACTIVE_SEARCH_ROOTS[@]}" 2>/dev/null || true; } | sort)
   done < <(family_aliases "$family")
 
   if [[ -n "${best_match}" ]]; then
@@ -446,6 +466,291 @@ print_header() {
   fi
 }
 
+classify_packages() {
+  ACTIVE_PACKAGES=()
+  INSTALLED_CONFIG_PACKAGES=()
+  FALLBACK_PACKAGES=()
+  UNUSED_PACKAGES=()
+  REQUIRED_PACKAGES=()
+  PACKAGE_MATCHES=()
+  PACKAGE_MATCH_FAMILIES=()
+
+  local pkg reference match_kind match_family match_path match_scope
+  for pkg in "${INSTALLED_FONT_PACKAGES[@]}"; do
+    [[ "$pkg" =~ $SKIP_PACKAGES_REGEX ]] && continue
+
+    reference=$(find_best_reference_for_package "$pkg" || true)
+    if [[ -z "${reference}" ]]; then
+      if is_required_by "$pkg"; then
+        REQUIRED_PACKAGES+=("$pkg")
+      else
+        UNUSED_PACKAGES+=("$pkg")
+      fi
+      continue
+    fi
+
+    IFS=$'\t' read -r match_kind match_family match_path <<<"${reference}"
+    match_scope="$(reference_scope "${match_path}")"
+    if [[ "${match_kind}" == "fallback" ]]; then
+      FALLBACK_PACKAGES+=("$pkg")
+    elif [[ "${match_scope}" == "active" ]]; then
+      ACTIVE_PACKAGES+=("$pkg")
+    else
+      INSTALLED_CONFIG_PACKAGES+=("$pkg")
+    fi
+    PACKAGE_MATCH_FAMILIES["$pkg"]="${match_family}"
+    PACKAGE_MATCHES["$pkg"]="${match_path}"
+  done
+}
+
+classify_local_families() {
+  LOCAL_ACTIVE_FAMILIES=()
+  LOCAL_INSTALLED_CONFIG_FAMILIES=()
+  LOCAL_FALLBACK_FAMILIES=()
+  LOCAL_UNUSED_FAMILIES=()
+  LOCAL_MATCHES=()
+  UNUSED_LOCAL_FAMILY_MAP=()
+
+  local family reference score match_kind match_family match_path match_scope
+  for family in "${LOCAL_FONT_FAMILIES[@]}"; do
+    reference=$(find_best_reference_for_family "${family}" || true)
+    if [[ -z "${reference}" ]]; then
+      LOCAL_UNUSED_FAMILIES+=("${family}")
+      UNUSED_LOCAL_FAMILY_MAP["${family}"]=1
+      continue
+    fi
+
+    IFS=$'\t' read -r score match_kind match_family match_path <<<"${reference}"
+    match_scope="$(reference_scope "${match_path}")"
+    if [[ "${match_kind}" == "fallback" ]]; then
+      LOCAL_FALLBACK_FAMILIES+=("${family}")
+    elif [[ "${match_scope}" == "active" ]]; then
+      LOCAL_ACTIVE_FAMILIES+=("${family}")
+    else
+      LOCAL_INSTALLED_CONFIG_FAMILIES+=("${family}")
+    fi
+    LOCAL_MATCHES["${family}"]="${match_path}"
+  done
+}
+
+family_files() {
+  printf '%s' "${LOCAL_FAMILY_FILES[$1]}" | sed '/^$/d' | sort -u
+}
+
+# A file is only safe to delete when every family it provides is itself
+# unreferenced -- one live alias keeps the whole file. This is the sole
+# criterion for both the count that is reported and the files that are removed.
+file_is_removable() {
+  local file_family
+  while IFS= read -r file_family; do
+    [[ -n "${file_family}" ]] || continue
+    [[ -n "${UNUSED_LOCAL_FAMILY_MAP[$file_family]:-}" ]] || return 1
+  done <<<"${LOCAL_FILE_FAMILIES[$1]}"
+}
+
+partition_unused_local_families() {
+  LOCAL_REMOVABLE_FAMILIES=()
+  LOCAL_KEPT_PROVIDER_FAMILIES=()
+  LOCAL_REMOVABLE_FILE_COUNTS=()
+  LOCAL_PROVIDER_FILE_COUNTS=()
+
+  local family file_path file_count safe_file_count
+  for family in "${LOCAL_UNUSED_FAMILIES[@]}"; do
+    file_count=0
+    safe_file_count=0
+    while IFS= read -r file_path; do
+      [[ -n "${file_path}" ]] || continue
+      file_count=$((file_count + 1))
+      file_is_removable "${file_path}" && safe_file_count=$((safe_file_count + 1))
+    done < <(family_files "${family}")
+
+    LOCAL_REMOVABLE_FILE_COUNTS["${family}"]="${safe_file_count}"
+    LOCAL_PROVIDER_FILE_COUNTS["${family}"]="${file_count}"
+    if ((safe_file_count > 0)); then
+      LOCAL_REMOVABLE_FAMILIES+=("${family}")
+    else
+      LOCAL_KEPT_PROVIDER_FAMILIES+=("${family}")
+    fi
+  done
+}
+
+collect_removable_local_files() {
+  REMOVABLE_LOCAL_FILES=()
+  local -A seen=()
+  local family file_path
+  for family in "${LOCAL_REMOVABLE_FAMILIES[@]}"; do
+    while IFS= read -r file_path; do
+      [[ -n "${file_path}" ]] || continue
+      [[ -n "${seen[$file_path]:-}" ]] && continue
+      file_is_removable "${file_path}" || continue
+      seen["${file_path}"]=1
+      REMOVABLE_LOCAL_FILES+=("${file_path}")
+    done < <(family_files "${family}")
+  done
+}
+
+section_header() {
+  echo
+  echo "======================================"
+  echo "$1"
+  echo "======================================"
+}
+
+# Renders one classified package list; the array is passed by name because the
+# four lists differ only in their heading and bullet.
+print_package_section() {
+  local heading="$1" empty_message="$2" bullet="$3"
+  local -n packages_ref="$4"
+  local pkg
+
+  section_header "${heading}"
+  if ((${#packages_ref[@]} == 0)); then
+    echo "  ${empty_message}"
+    return
+  fi
+  for pkg in "${packages_ref[@]}"; do
+    echo "  ${bullet} $pkg (${PACKAGE_MATCH_FAMILIES[$pkg]})"
+    echo "    ↳ ${PACKAGE_MATCHES[$pkg]}"
+  done
+}
+
+print_local_family_group() {
+  local heading="$1" bullet="$2"
+  local -n families_ref="$3"
+  local family
+
+  ((${#families_ref[@]} > 0)) || return 0
+  echo "  ${heading}"
+  for family in "${families_ref[@]}"; do
+    echo "    ${bullet} ${family}"
+    echo "      ↳ ${LOCAL_MATCHES[$family]}"
+  done
+}
+
+report_unused_packages() {
+  local pkg reply
+
+  section_header "UNREFERENCED PACKAGE FONTS:"
+  if ((${#UNUSED_PACKAGES[@]} == 0)); then
+    echo "  No unreferenced removable font packages found."
+    return
+  fi
+
+  for pkg in "${UNUSED_PACKAGES[@]}"; do
+    echo "  ✗ $pkg ($(installed_size "$pkg"))"
+    echo "    families: $(summarize_families "$pkg")"
+  done
+
+  echo
+  echo "Total likely unused font packages: ${#UNUSED_PACKAGES[@]}"
+  echo
+
+  if [[ -t 0 ]]; then
+    read -r -p "Remove all unreferenced package fonts with pacman? [y/N] " reply
+    if [[ "$reply" =~ ^[Yy]$ ]]; then
+      echo
+      echo "Removing unreferenced package fonts..."
+      sudo pacman -Rns "${UNUSED_PACKAGES[@]}"
+      echo
+      echo "Unreferenced package fonts removed."
+      return
+    fi
+    echo
+  fi
+
+  echo "To remove them manually, run:"
+  echo "  sudo pacman -Rns ${UNUSED_PACKAGES[*]}"
+}
+
+report_unused_local_families() {
+  local family reply safe_file_count file_count
+
+  if ((${#LOCAL_UNUSED_FAMILIES[@]} == 0)); then
+    echo "  No unreferenced local font families found."
+    return
+  fi
+
+  partition_unused_local_families
+
+  if ((${#LOCAL_REMOVABLE_FAMILIES[@]} == 0)); then
+    echo "  No unreferenced removable local font files found."
+  else
+    echo "  Unreferenced removable files:"
+    for family in "${LOCAL_REMOVABLE_FAMILIES[@]}"; do
+      safe_file_count="${LOCAL_REMOVABLE_FILE_COUNTS[$family]}"
+      file_count="${LOCAL_PROVIDER_FILE_COUNTS[$family]}"
+      if ((safe_file_count == file_count)); then
+        echo "    ✗ ${family} (${safe_file_count} files)"
+      else
+        echo "    ✗ ${family} (${safe_file_count} removable files, ${file_count} provider files)"
+      fi
+    done
+  fi
+
+  if ((${#LOCAL_KEPT_PROVIDER_FAMILIES[@]} > 0)); then
+    echo "  Unreferenced aliases in kept font files:"
+    for family in "${LOCAL_KEPT_PROVIDER_FAMILIES[@]}"; do
+      echo "    • ${family} (${LOCAL_PROVIDER_FILE_COUNTS[$family]} provider files)"
+    done
+  fi
+
+  ((${#LOCAL_REMOVABLE_FAMILIES[@]} > 0)) || return 0
+
+  if [[ ! -t 0 ]]; then
+    echo
+    echo "Run this script interactively to remove unreferenced local font files."
+    return 0
+  fi
+
+  read -r -p "Remove unreferenced local font files from ${LOCAL_FONT_ROOT}? [y/N] " reply
+  if [[ ! "$reply" =~ ^[Yy]$ ]]; then
+    echo
+    echo "No local font files removed."
+    return 0
+  fi
+
+  collect_removable_local_files
+  if ((${#REMOVABLE_LOCAL_FILES[@]} > 0)); then
+    rm -f -- "${REMOVABLE_LOCAL_FILES[@]}"
+    fc-cache -fq 2>/dev/null || true
+    echo
+    echo "Removed ${#REMOVABLE_LOCAL_FILES[@]} unreferenced local font files."
+  fi
+}
+
+report_local_families() {
+  section_header "LOCAL FONT FAMILIES:"
+  if ((${#LOCAL_FONT_FAMILIES[@]} == 0)); then
+    echo "  No local font families found in ${LOCAL_FONT_ROOT}."
+    return
+  fi
+
+  print_local_family_group "Active:" "✓" LOCAL_ACTIVE_FAMILIES
+  print_local_family_group "Used by installed themes/templates:" "•" LOCAL_INSTALLED_CONFIG_FAMILIES
+  print_local_family_group "Fallback-only:" "•" LOCAL_FALLBACK_FAMILIES
+  report_unused_local_families
+}
+
+report_required_packages() {
+  local pkg
+
+  ((${#REQUIRED_PACKAGES[@]} > 0)) || return 0
+  section_header "REQUIRED BY APPS OR LIBRARIES:"
+  for pkg in "${REQUIRED_PACKAGES[@]}"; do
+    echo "  • $pkg (required by: $(required_by_list "$pkg"))"
+  done
+}
+
+print_notes() {
+  section_header "NOTES:"
+  echo "  • Active references are current live config, generated app config, or gsettings."
+  echo "  • Installed theme/template references are not active now, but removing them can break that theme later."
+  echo "  • Matches are based on actual font family names referenced in your config roots."
+  echo "  • Live gsettings font keys are audited as explicit desktop-font usage when available."
+  echo "  • Fallback-only means the family appears later in a CSS font stack; other matches count as explicit."
+  echo "  • Local font removal deletes font files only; empty directories are left in place."
+}
+
 main() {
   require_cmd pacman
   require_cmd rg
@@ -458,309 +763,20 @@ main() {
   print_header
   collect_local_font_families
 
-  local -a active_packages=()
-  local -a installed_config_packages=()
-  local -a fallback_packages=()
-  local -a unused_packages=()
-  local -a required_packages=()
-  declare -A package_matches=()
-  declare -A package_match_families=()
-  declare -A package_match_kinds=()
-  declare -A package_match_scopes=()
+  classify_packages
+  classify_local_families
 
-  local pkg reference match_kind match_family match_path match_scope
-  for pkg in "${INSTALLED_FONT_PACKAGES[@]}"; do
-    if [[ "$pkg" =~ $SKIP_PACKAGES_REGEX ]]; then
-      continue
-    fi
+  print_package_section "ACTIVE PACKAGE FONT REFERENCES:" \
+    "No active package font references found." "✓" ACTIVE_PACKAGES
+  print_package_section "INSTALLED THEME/TEMPLATE PACKAGE REFERENCES:" \
+    "No package fonts are kept only by installed themes/templates." "•" INSTALLED_CONFIG_PACKAGES
+  print_package_section "FALLBACK-ONLY FONT REFERENCES:" \
+    "No fallback-only font references found." "•" FALLBACK_PACKAGES
 
-    reference=$(find_best_reference_for_package "$pkg" || true)
-    if [[ -n "$reference" ]]; then
-      IFS=$'\t' read -r match_kind match_family match_path <<<"$reference"
-      match_scope="$(reference_scope "${match_path}")"
-      if [[ "${match_kind}" == "fallback" ]]; then
-        fallback_packages+=("$pkg")
-      elif [[ "${match_scope}" == "active" ]]; then
-        active_packages+=("$pkg")
-      else
-        installed_config_packages+=("$pkg")
-      fi
-      package_match_kinds["$pkg"]="$match_kind"
-      package_match_families["$pkg"]="$match_family"
-      package_match_scopes["$pkg"]="$match_scope"
-      package_matches["$pkg"]="$match_path"
-      continue
-    fi
-
-    if is_required_by "$pkg"; then
-      required_packages+=("$pkg")
-      continue
-    fi
-
-    unused_packages+=("$pkg")
-  done
-
-  local -a local_active_families=()
-  local -a local_installed_config_families=()
-  local -a local_fallback_families=()
-  local -a local_unused_families=()
-  declare -A local_matches=()
-  declare -A local_match_kinds=()
-  declare -A local_match_scopes=()
-
-  local family score
-  for family in "${LOCAL_FONT_FAMILIES[@]:-}"; do
-    reference=$(find_best_reference_for_family "${family}" || true)
-    if [[ -n "${reference}" ]]; then
-      IFS=$'\t' read -r score match_kind match_family match_path <<<"${reference}"
-      match_scope="$(reference_scope "${match_path}")"
-      if [[ "${match_kind}" == "fallback" ]]; then
-        local_fallback_families+=("${family}")
-      elif [[ "${match_scope}" == "active" ]]; then
-        local_active_families+=("${family}")
-      else
-        local_installed_config_families+=("${family}")
-      fi
-      local_match_kinds["${family}"]="${match_kind}"
-      local_match_scopes["${family}"]="${match_scope}"
-      local_matches["${family}"]="${match_path}"
-      continue
-    fi
-
-    local_unused_families+=("${family}")
-  done
-
-  declare -A unused_local_family_map=()
-  for family in "${local_unused_families[@]}"; do
-    unused_local_family_map["${family}"]=1
-  done
-
-  echo
-  echo "======================================"
-  echo "ACTIVE PACKAGE FONT REFERENCES:"
-  echo "======================================"
-  if ((${#active_packages[@]} == 0)); then
-    echo "  No active package font references found."
-  else
-    for pkg in "${active_packages[@]}"; do
-      echo "  ✓ $pkg (${package_match_families[$pkg]})"
-      echo "    ↳ ${package_matches[$pkg]}"
-    done
-  fi
-
-  echo
-  echo "======================================"
-  echo "INSTALLED THEME/TEMPLATE PACKAGE REFERENCES:"
-  echo "======================================"
-  if ((${#installed_config_packages[@]} == 0)); then
-    echo "  No package fonts are kept only by installed themes/templates."
-  else
-    for pkg in "${installed_config_packages[@]}"; do
-      echo "  • $pkg (${package_match_families[$pkg]})"
-      echo "    ↳ ${package_matches[$pkg]}"
-    done
-  fi
-
-  echo
-  echo "======================================"
-  echo "FALLBACK-ONLY FONT REFERENCES:"
-  echo "======================================"
-  if ((${#fallback_packages[@]} == 0)); then
-    echo "  No fallback-only font references found."
-  else
-    for pkg in "${fallback_packages[@]}"; do
-      echo "  • $pkg (${package_match_families[$pkg]})"
-      echo "    ↳ ${package_matches[$pkg]}"
-    done
-  fi
-
-  echo
-  echo "======================================"
-  echo "UNREFERENCED PACKAGE FONTS:"
-  echo "======================================"
-  if ((${#unused_packages[@]} == 0)); then
-    echo "  No unreferenced removable font packages found."
-  else
-    for pkg in "${unused_packages[@]}"; do
-      echo "  ✗ $pkg ($(installed_size "$pkg"))"
-      echo "    families: $(summarize_families "$pkg")"
-    done
-
-    echo
-    echo "Total likely unused font packages: ${#unused_packages[@]}"
-    echo
-
-    if [[ -t 0 ]]; then
-      read -r -p "Remove all unreferenced package fonts with pacman? [y/N] " reply
-      if [[ "$reply" =~ ^[Yy]$ ]]; then
-        echo
-        echo "Removing unreferenced package fonts..."
-        sudo pacman -Rns "${unused_packages[@]}"
-        echo
-        echo "Unreferenced package fonts removed."
-      else
-        echo
-        echo "To remove them manually, run:"
-        echo "  sudo pacman -Rns ${unused_packages[*]}"
-      fi
-    else
-      echo "To remove them manually, run:"
-      echo "  sudo pacman -Rns ${unused_packages[*]}"
-    fi
-  fi
-
-  echo
-  echo "======================================"
-  echo "LOCAL FONT FAMILIES:"
-  echo "======================================"
-  if ((${#LOCAL_FONT_FAMILIES[@]} == 0)); then
-    echo "  No local font families found in ${LOCAL_FONT_ROOT}."
-  else
-    if ((${#local_active_families[@]} > 0)); then
-      echo "  Active:"
-      for family in "${local_active_families[@]}"; do
-        echo "    ✓ ${family}"
-        echo "      ↳ ${local_matches[$family]}"
-      done
-    fi
-
-    if ((${#local_installed_config_families[@]} > 0)); then
-      echo "  Used by installed themes/templates:"
-      for family in "${local_installed_config_families[@]}"; do
-        echo "    • ${family}"
-        echo "      ↳ ${local_matches[$family]}"
-      done
-    fi
-
-    if ((${#local_fallback_families[@]} > 0)); then
-      echo "  Fallback-only:"
-      for family in "${local_fallback_families[@]}"; do
-        echo "    • ${family}"
-        echo "      ↳ ${local_matches[$family]}"
-      done
-    fi
-
-    if ((${#local_unused_families[@]} == 0)); then
-      echo "  No unreferenced local font families found."
-    else
-      local -a local_removable_families=()
-      local -a local_kept_provider_families=()
-      declare -A local_removable_file_counts=()
-      declare -A local_provider_file_counts=()
-      local file_count safe_file_count file_path file_family file_is_unreferenced
-
-      for family in "${local_unused_families[@]}"; do
-        file_count="$(printf '%s' "${LOCAL_FAMILY_FILES[$family]}" | sed '/^$/d' | sort -u | wc -l)"
-        safe_file_count=0
-        while IFS= read -r file_path; do
-          [[ -n "${file_path}" ]] || continue
-          file_is_unreferenced=1
-          while IFS= read -r file_family; do
-            [[ -n "${file_family}" ]] || continue
-            if [[ -z "${unused_local_family_map[$file_family]:-}" ]]; then
-              file_is_unreferenced=0
-              break
-            fi
-          done <<<"${LOCAL_FILE_FAMILIES[$file_path]}"
-          if ((file_is_unreferenced == 1)); then
-            safe_file_count=$((safe_file_count + 1))
-          fi
-        done < <(printf '%s' "${LOCAL_FAMILY_FILES[$family]}" | sed '/^$/d' | sort -u)
-
-        local_removable_file_counts["${family}"]="${safe_file_count}"
-        local_provider_file_counts["${family}"]="${file_count}"
-        if ((safe_file_count > 0)); then
-          local_removable_families+=("${family}")
-        else
-          local_kept_provider_families+=("${family}")
-        fi
-      done
-
-      if ((${#local_removable_families[@]} > 0)); then
-        echo "  Unreferenced removable files:"
-        for family in "${local_removable_families[@]}"; do
-          safe_file_count="${local_removable_file_counts[$family]}"
-          file_count="${local_provider_file_counts[$family]}"
-          if ((safe_file_count == file_count)); then
-            echo "    ✗ ${family} (${safe_file_count} files)"
-          else
-            echo "    ✗ ${family} (${safe_file_count} removable files, ${file_count} provider files)"
-          fi
-        done
-      else
-        echo "  No unreferenced removable local font files found."
-      fi
-
-      if ((${#local_kept_provider_families[@]} > 0)); then
-        echo "  Unreferenced aliases in kept font files:"
-        for family in "${local_kept_provider_families[@]}"; do
-          echo "    • ${family} (${local_provider_file_counts[$family]} provider files)"
-        done
-      fi
-
-      if ((${#local_removable_families[@]} > 0)) && [[ -t 0 ]]; then
-        read -r -p "Remove unreferenced local font files from ${LOCAL_FONT_ROOT}? [y/N] " reply
-        if [[ "$reply" =~ ^[Yy]$ ]]; then
-          local -a local_remove_files=()
-          declare -A seen_local_remove_files=()
-
-          for family in "${local_removable_families[@]}"; do
-            while IFS= read -r file_path; do
-              [[ -n "${file_path}" ]] || continue
-              [[ -n "${seen_local_remove_files[$file_path]:-}" ]] && continue
-
-              file_is_unreferenced=1
-              while IFS= read -r file_family; do
-                [[ -n "${file_family}" ]] || continue
-                if [[ -z "${unused_local_family_map[$file_family]:-}" ]]; then
-                  file_is_unreferenced=0
-                  break
-                fi
-              done <<<"${LOCAL_FILE_FAMILIES[$file_path]}"
-              ((file_is_unreferenced == 1)) || continue
-
-              seen_local_remove_files["$file_path"]=1
-              local_remove_files+=("${file_path}")
-            done <<<"${LOCAL_FAMILY_FILES[$family]}"
-          done
-
-          if ((${#local_remove_files[@]} > 0)); then
-            rm -f -- "${local_remove_files[@]}"
-            fc-cache -fq 2>/dev/null || true
-            echo
-            echo "Removed ${#local_remove_files[@]} unreferenced local font files."
-          fi
-        else
-          echo
-          echo "No local font files removed."
-        fi
-      elif ((${#local_removable_families[@]} > 0)); then
-        echo
-        echo "Run this script interactively to remove unreferenced local font files."
-      fi
-    fi
-  fi
-
-  if ((${#required_packages[@]} > 0)); then
-    echo
-    echo "======================================"
-    echo "REQUIRED BY APPS OR LIBRARIES:"
-    echo "======================================"
-    for pkg in "${required_packages[@]}"; do
-      echo "  • $pkg (required by: $(required_by_list "$pkg"))"
-    done
-  fi
-
-  echo
-  echo "======================================"
-  echo "NOTES:"
-  echo "======================================"
-  echo "  • Active references are current live config, generated app config, or gsettings."
-  echo "  • Installed theme/template references are not active now, but removing them can break that theme later."
-  echo "  • Matches are based on actual font family names referenced in your config roots."
-  echo "  • Live gsettings font keys are audited as explicit desktop-font usage when available."
-  echo "  • Fallback-only means the family appears later in a CSS font stack; other matches count as explicit."
-  echo "  • Local font removal deletes font files only; empty directories are left in place."
+  report_unused_packages
+  report_local_families
+  report_required_packages
+  print_notes
 }
 
 main "$@"

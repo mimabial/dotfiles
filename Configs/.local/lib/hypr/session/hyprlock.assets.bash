@@ -78,7 +78,6 @@ fn_background() {
   png_cache="${WALLPAPER_CACHE_DIR}/png_cache/${wp_hash}.png"
 
   if [[ -f "${png_cache}" ]]; then
-    # Use cached PNG
     cp -f "${png_cache}" "${bg}"
     rm -f "${bg_tmp}"
     return 0
@@ -110,26 +109,23 @@ ensure_face_icon_png() {
 
   [ ! -f "$face_icon" ] && return 1
 
-  local file_type=$(file -b "$face_icon")
+  local file_type
+  file_type="$(file -b "$face_icon" 2>/dev/null || true)"
   if [[ "$file_type" =~ ^PNG ]]; then
-    # Already PNG, no conversion needed
     return 0
   fi
 
-  # Not a PNG, convert it
   magick "${MAGICK_LIMITS[@]}" "${face_icon}[0]" "png:${face_icon}.tmp.png" 2>/dev/null || return 1
   mv -f "${face_icon}.tmp.png" "$face_icon" || return 1
   return 0
 }
 
-# Colorize fallback icon with pywal colors
 colorize_fallback_icon() {
   local output_path="$1"
   local source_icon="$XDG_DATA_HOME/icons/Pywal16-Icon/hypr.png"
 
   local color_file="${XDG_CACHE_HOME:-$HOME/.cache}/wal/colors-shell.sh"
   if [ ! -f "$color_file" ]; then
-    # No colors available, just copy
     cp "$source_icon" "$output_path"
     return
   fi

@@ -11,6 +11,8 @@ export CLIPHIST_REENTRY=1
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_require system rofi || exit 1
 # shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/capture/ocr.common.bash" || exit 1
+# shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -573,29 +575,24 @@ ocr_image_entry() {
   local runtime_dir="${XDG_RUNTIME_DIR:-/tmp}/hypr"
   local image_line=""
   local image_path=""
+  local ocr_image=""
   local tesseract_output=""
-  local tesseract_package_prefix="tesseract-data-"
-  local tesseract_languages_prepared=""
-  local tesseract_languages_body="Languages used"
-  local pkg=""
-  local language=""
-  local -a tesseract_default_language=("eng")
-  local -a tesseract_languages=("${SCREENSHOT_OCR_TESSERACT_LANGUAGES[@]:-${tesseract_default_language[@]}}")
-  local -a tesseract_packages=()
+  local tesseract_languages_body=""
+  local -a tesseract_languages=()
 
   image_line="$(resolve_image_entry "${1:-}")" || {
     dunstify -t 3000 -i "dialog-error" "OCR Error" "No images in clipboard history."
     return 1
   }
 
-  tesseract_packages=("${tesseract_languages[@]/#/${tesseract_package_prefix}}")
-  tesseract_packages+=("tesseract" "tesseract-data-osd")
-  for pkg in "${tesseract_packages[@]}"; do
-    if ! pkg_installed "${pkg}"; then
-      dunstify -t 5000 -i "dialog-error" "OCR Error" "Required package is not installed: ${pkg}"
-      return 1
-    fi
-  done
+  hypr_ocr_prepare_languages tesseract_languages || {
+    dunstify -t 7000 -i "dialog-error" "OCR Error" "${HYPR_OCR_ERROR}"
+    return 1
+  }
+  # Clipboard images arrive at an arbitrary rotation, so this path also asks for
+  # orientation and script detection; a fresh screen grab never needs it.
+  tesseract_languages+=("osd")
+  tesseract_languages_body="$(hypr_ocr_language_summary tesseract_languages)"
 
   mkdir -p "${runtime_dir}"
   image_path="$(mktemp "${runtime_dir}/cliphist-ocr.XXXXXX.png")" || {
@@ -609,40 +606,17 @@ ocr_image_entry() {
     return 1
   fi
 
-  if pkg_installed imagemagick; then
-    magick "${image_path}" \
-      -colorspace gray \
-      -contrast-stretch 0 \
-      -level 15%,85% \
-      -resize 400% \
-      -sharpen 0x1 \
-      -auto-threshold triangle \
-      -morphology close diamond:1 \
-      -deskew 40% \
-      "${image_path}"
+  hypr_ocr_preprocess ocr_image "${image_path}" image
+
+  if ! tesseract_output="$(hypr_ocr_recognize "${ocr_image}" "$(hypr_ocr_language_argument tesseract_languages)")"; then
+    rm -f "${image_path}" "${HYPR_OCR_TEMP_IMAGE}"
+    dunstify -t 5000 -i "dialog-error" "OCR Error" "Text recognition failed."
+    return 1
   fi
 
-  tesseract_languages+=("osd")
-  tesseract_languages_prepared=$(
-    IFS=+
-    printf '%s' "${tesseract_languages[*]}"
-  )
-  for language in "${tesseract_languages[@]}"; do
-    tesseract_languages_body+=$'\n '"${language}"
-  done
-
-  tesseract_output="$(
-    tesseract \
-      --psm 6 \
-      --oem 3 \
-      -l "${tesseract_languages_prepared}" \
-      "${image_path}" \
-      stdout \
-      2>/dev/null
-  )"
   printf '%s' "${tesseract_output}" | wl-copy
   dunstify -t 5000 -i "${image_path}" "OCR" "${#tesseract_output} symbols recognized\n${tesseract_languages_body}"
-  rm -f "${image_path}"
+  rm -f "${image_path}" "${HYPR_OCR_TEMP_IMAGE}"
 }
 
 # Delete on a highlighted row drops just that entry and reopens the list, so

@@ -1,18 +1,22 @@
 import json
 import os
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
 WINDOW_DIR = Path(__file__).resolve().parents[1]
 READER = WINDOW_DIR / "looknfeel-read.lua"
-QS_DIR = Path(os.path.expanduser("~/.config/quickshell"))
-LUA_JS = QS_DIR / "LooknfeelLua.js"
-SCHEMA_JS = QS_DIR / "LooknfeelSchema.js"
 STATE = Path(os.path.expanduser("~/.local/state/hypr"))
 RESOLVER = STATE / "looknfeel.lua"
 HYPRSHELL = Path(os.path.expanduser("~/.local/bin/hyprshell"))
+
+sys.path.insert(0, str(WINDOW_DIR / "lib"))
+
+import looknfeel_lua as lua  # noqa: E402
+import looknfeel_schema as schema  # noqa: E402
+import looknfeel_tui as tui  # noqa: E402
 
 
 def read(source):
@@ -26,48 +30,8 @@ def read(source):
     return [line.split("\t") for line in proc.stdout.splitlines() if line]
 
 
-LUA_EXPORTS = (
-    "renderBlock,parseRecords,parseGetoption,parseThemeVariables,"
-    "BEGIN_FENCE,END_FENCE"
-)
-SCHEMA_EXPORTS = "sections,queryKeys,layoutRows"
-
-
-def call_js(path, exports, expr, raw=False):
-    """Evaluate an expression against a QML `.pragma library` module.
-
-    QML's pragma header is stripped so node can evaluate the file; nothing else
-    about the module changes, so the tests exercise exactly what QML imports.
-    """
-    tail = ";Object.assign(__exports, {" + exports + "});"
-    script = "\n".join([
-        'const fs = require("fs");',
-        f"const src = fs.readFileSync({json.dumps(str(path))}, \"utf8\")"
-        '.replace(".pragma library", "");',
-        "const m = {};",
-        f'new Function("__exports", src + {json.dumps(tail)})(m);',
-        "process.stdout.write("
-        + ("String(" if raw else "JSON.stringify(") + expr + "));",
-    ])
-    proc = subprocess.run(["node", "-e", script], capture_output=True, text=True)
-    if proc.returncode != 0:
-        raise AssertionError(f"node failed: {proc.stderr}")
-    return proc.stdout if raw else json.loads(proc.stdout)
-
-
 def render(overrides, animations=None, variables=None):
-    """Render a managed block by calling LooknfeelLua.js under node."""
-    return call_js(
-        LUA_JS, LUA_EXPORTS,
-        "m.renderBlock("
-        f"{json.dumps(overrides)}, {json.dumps(animations or [])}, "
-        f"{json.dumps(variables or {})})",
-        raw=True,
-    )
-
-
-def schema_call(expr):
-    return call_js(SCHEMA_JS, SCHEMA_EXPORTS, expr)
+    return lua.render_block(overrides, animations, variables)
 
 
 def hyprshell(*args):
@@ -166,31 +130,27 @@ class ResolverTest(unittest.TestCase):
                               capture_output=True, text=True)
         self.assertEqual(proc.returncode, 0, proc.stderr)
 
-    def test_resolver_slug_matches_the_panel_filename_rule(self):
-        """Panel and resolver must derive the same filename or overrides are
-        written where nothing reads them."""
-        cases = {
-            "Catppuccin Mocha": "catppuccin-mocha",
-            "Tokyo Night": "tokyo-night",
-            "Gruvbox-Retro": "gruvbox-retro",
-            "Nord": "nord",
-        }
-        script = (
+    def test_tui_slug_matches_the_resolver_rule(self):
+        """TUI and resolver must derive the same filename or overrides are
+        written where nothing reads them. Lua's %a is ASCII-only, so accents
+        collapse; the Python side has to collapse them identically."""
+        lua_slug = (
             "local function slug(name)\n"
             '  return (name:lower():gsub("[^%a%d]+", "-")'
             ':gsub("^%-+", ""):gsub("%-+$", ""))\n'
             "end\n"
         )
-        for name, expected in cases.items():
+        for name in ("Catppuccin Mocha", "Tokyo Night", "Gruvbox-Retro", "Nord",
+                     "Rosé Pine", "Another World", "  Edge  "):
             proc = subprocess.run(
-                ["lua", "-e", script + f'io.write(slug("{name}"))'],
+                ["lua", "-e", lua_slug + f'io.write(slug("{name}"))'],
                 capture_output=True, text=True)
-            self.assertEqual(proc.stdout, expected, name)
+            self.assertEqual(tui.slug(name), proc.stdout, name)
 
 
 class PipelineCliTest(unittest.TestCase):
     """util/workflows.sh already exposed --list and --set; the other two
-    pipelines are brought in line so the panel needs one parser, not three."""
+    pipelines are brought in line so the TUI needs one parser, not three."""
 
     def rows(self, *args):
         proc = hyprshell(*args)
@@ -230,6 +190,28 @@ class PipelineCliTest(unittest.TestCase):
             self.assertEqual(proc.returncode, 0, script)
             for flag in expected:
                 self.assertIn(flag, proc.stdout, f"{script} {flag}")
+
+
+class EntryPointTest(unittest.TestCase):
+    """The TUI is a window now, so the entry point focuses an existing one
+    rather than toggling a surface inside another process."""
+
+    def test_help_is_on_stdout_and_exits_zero(self):
+        proc = hyprshell("window/looknfeel", "--help")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("Usage:", proc.stdout)
+
+    def test_app_id_is_floated_by_a_window_rule(self):
+        """org.tui.* is already floated; a Looknfeel window inherits that, so
+        the rule set needs no entry of its own."""
+        rules = (Path(os.path.expanduser("~/.config/hypr/windowrules.lua"))
+                 .read_text())
+        self.assertIn("org\\\\.tui\\\\.", rules)
+
+    def test_keybinding_points_at_the_entry_point(self):
+        binds = (Path(os.path.expanduser("~/.config/hypr/keybindings.lua"))
+                 .read_text())
+        self.assertIn("window/looknfeel.sh", binds)
 
 
 class CursorCliTest(unittest.TestCase):
@@ -274,36 +256,34 @@ class CursorCliTest(unittest.TestCase):
 
 
 class SchemaTest(unittest.TestCase):
-    ENGINES = ("dwindle", "master", "scrolling")
-
     def test_has_the_specified_sections(self):
-        titles = [s["title"] for s in schema_call("m.sections()")]
+        titles = [s["title"] for s in schema.sections()]
         self.assertEqual(titles, [
             "Windows", "Layout", "Corners", "Opacity", "Dimming", "Blur",
             "Shadow", "Glow", "Animations", "Groups", "Cursor", "Pipelines",
         ])
 
     def test_keys_are_unique(self):
-        keys = schema_call("m.queryKeys()")
+        keys = schema.query_keys()
         self.assertEqual(len(keys), len(set(keys)))
 
     def test_every_row_has_a_label_and_known_type(self):
         known = {"int", "float", "bool", "enum", "pipeline"}
-        for section in schema_call("m.sections()"):
+        for section in schema.sections():
             for row in section["rows"]:
                 self.assertTrue(row.get("label"), row)
                 self.assertIn(row.get("type"), known, row)
 
     def test_enum_rows_carry_options(self):
-        for section in schema_call("m.sections()"):
+        for section in schema.sections():
             for row in section["rows"]:
                 if row["type"] == "enum":
                     self.assertTrue(row.get("options") or row.get("list"), row)
 
     def test_pipeline_rows_are_excluded_from_queries(self):
-        keys = schema_call("m.queryKeys()")
+        keys = schema.query_keys()
         self.assertTrue(all(":" in k for k in keys), keys)
-        pipelines = [r for s in schema_call("m.sections()") if s["title"] == "Pipelines"
+        pipelines = [r for s in schema.sections() if s["title"] == "Pipelines"
                      for r in s["rows"]]
         self.assertTrue(pipelines)
         for row in pipelines:
@@ -311,9 +291,23 @@ class SchemaTest(unittest.TestCase):
             self.assertTrue(row.get("list"), row)
             self.assertTrue(row.get("set"), row)
 
+    def test_numeric_rows_carry_a_range(self):
+        """The TUI draws a gauge across min..max and clamps to it, so a numeric
+        row without both is a divide-by-zero waiting for a keypress."""
+        for section in schema.sections():
+            rows = list(section["rows"])
+            if section["title"] == "Layout":
+                for engine in schema.ENGINES:
+                    rows += schema.layout_rows(engine)
+            for row in rows:
+                if row["type"] in ("int", "float"):
+                    self.assertIn("min", row, row)
+                    self.assertIn("max", row, row)
+                    self.assertGreater(row["max"], row["min"], row)
+
     def test_layout_rows_cover_each_engine(self):
-        for engine in self.ENGINES:
-            rows = schema_call(f"m.layoutRows({json.dumps(engine)})")
+        for engine in schema.ENGINES:
+            rows = schema.layout_rows(engine)
             self.assertTrue(rows, engine)
             for row in rows:
                 self.assertTrue(row["key"].startswith(engine + ":"), row)
@@ -322,9 +316,9 @@ class SchemaTest(unittest.TestCase):
         """The wiki is not the contract; the running compositor is.
         A typo or a key dropped upstream is otherwise invisible until a row
         silently goes blank."""
-        keys = list(schema_call("m.queryKeys()"))
-        for engine in self.ENGINES:
-            keys += [r["key"] for r in schema_call(f"m.layoutRows({json.dumps(engine)})")]
+        keys = list(schema.query_keys())
+        for engine in schema.ENGINES:
+            keys += [r["key"] for r in schema.layout_rows(engine)]
 
         batch = " ; ".join(f"getoption {k}" for k in keys)
         out = subprocess.run(["hyprctl", "-j", "--batch", batch],
@@ -336,7 +330,7 @@ class SchemaTest(unittest.TestCase):
 
 
 class LivePreviewTest(unittest.TestCase):
-    """The block the panel writes must be the block it previews.
+    """The block the TUI writes must be the block it previews.
 
     `hyprctl eval` parses a leading `--` as a flag, so the fenced block only
     survives after an end-of-flags separator. Getting this wrong is invisible
@@ -383,6 +377,14 @@ class RenderTest(unittest.TestCase):
         self.assertEqual(got["decoration:blur:enabled"], "false")
         self.assertEqual(float(got["decoration:active_opacity"]), 0.85)
 
+    def test_integral_floats_render_without_a_decimal_point(self):
+        """Slider arithmetic yields floats; Lua would take `7.0`, but the block
+        is compared byte for byte against the preview, so it must read the way
+        an int-typed row's value always has."""
+        got = {r[1]: r[3] for r in read(render({"general:gaps_in": 7.0})) if r[0] == "k"}
+        self.assertEqual(got["general:gaps_in"], "7")
+        self.assertIn("gaps_in = 7\n", render({"general:gaps_in": 7.0}))
+
     def test_round_trip_preserves_animation_leaf(self):
         anims = [{"leaf": "windows", "enabled": True, "speed": 4,
                   "bezier": "wind", "style": "slide"}]
@@ -394,14 +396,11 @@ class RenderTest(unittest.TestCase):
             "CURSOR_THEME": "Gruvbox-Retro",
             "CURSOR_SIZE": "30",
         })
-        parsed = call_js(
-            LUA_JS, LUA_EXPORTS,
-            "m.parseRecords(" + json.dumps(
-                subprocess.run(
-                    ["lua", str(READER), "-e", source],
-                    capture_output=True, text=True, check=True,
-                ).stdout
-            ) + ")",
+        parsed = lua.parse_records(
+            subprocess.run(
+                ["lua", str(READER), "-e", source],
+                capture_output=True, text=True, check=True,
+            ).stdout
         )
         self.assertEqual(parsed["variables"], {
             "CURSOR_SIZE": "30",
@@ -414,14 +413,22 @@ class RenderTest(unittest.TestCase):
             'vars.set("CURSOR_THEME", "Gruvbox-Retro")\n'
             'vars.set("CURSOR_SIZE", "30")\n'
         )
-        got = call_js(
-            LUA_JS, LUA_EXPORTS,
-            "m.parseThemeVariables(" + json.dumps(source) + ")",
-        )
-        self.assertEqual(got, {
+        self.assertEqual(lua.parse_theme_variables(source), {
             "CURSOR_THEME": "Gruvbox-Retro",
             "CURSOR_SIZE": "30",
         })
+
+    def test_parse_theme_config_reads_the_live_theme(self):
+        parsed = lua.parse_theme_config(
+            'runtime.config("general.gaps_in", 4)\n'
+            'runtime.config("general.layout", "dwindle")\n'
+            'runtime.config("general.resize_on_border", true)\n'
+            'runtime.config("decoration.active_opacity", 0.95)\n'
+        )
+        self.assertEqual(parsed["general:gaps_in"], 4)
+        self.assertEqual(parsed["general:layout"], "dwindle")
+        self.assertIs(parsed["general:resize_on_border"], True)
+        self.assertAlmostEqual(parsed["decoration:active_opacity"], 0.95)
 
     def test_rendered_block_is_valid_lua(self):
         source = render({"general:gaps_in": 8, "decoration:blur:size": 6})
@@ -431,19 +438,14 @@ class RenderTest(unittest.TestCase):
 
     def test_block_is_fenced(self):
         source = render({"general:gaps_in": 8})
-        begin = call_js(LUA_JS, LUA_EXPORTS, "m.BEGIN_FENCE")
-        end = call_js(LUA_JS, LUA_EXPORTS, "m.END_FENCE")
-        self.assertIn(begin, source)
-        self.assertIn(end, source)
+        self.assertIn(lua.BEGIN_FENCE, source)
+        self.assertIn(lua.END_FENCE, source)
 
     def test_parse_records_round_trips_types(self):
-        parsed = call_js(
-            LUA_JS, LUA_EXPORTS,
-            "m.parseRecords(" + json.dumps(
-                "k\tgeneral:gaps_in\tnumber\t8\n"
-                "k\tdecoration:blur:enabled\tboolean\tfalse\n"
-                "a\twindows\ttrue\t4\twind\tslide"
-            ) + ")",
+        parsed = lua.parse_records(
+            "k\tgeneral:gaps_in\tnumber\t8\n"
+            "k\tdecoration:blur:enabled\tboolean\tfalse\n"
+            "a\twindows\ttrue\t4\twind\tslide"
         )
         self.assertEqual(parsed["keys"]["general:gaps_in"], 8)
         self.assertIs(parsed["keys"]["decoration:blur:enabled"], False)
@@ -458,8 +460,7 @@ class RenderTest(unittest.TestCase):
             '{"option": "decoration:blur:enabled", "bool": true, "set": true }\n\n'
             '{"option": "general:layout", "str": "master", "set": true }\n'
         )
-        got = call_js(LUA_JS, LUA_EXPORTS,
-                      "m.parseGetoption(" + json.dumps(sample) + ")")
+        got = lua.parse_getoption(sample)
         self.assertEqual(got["general:gaps_out"]["value"], 7)
         self.assertEqual(got["general:border_size"]["value"], 2)
         self.assertAlmostEqual(got["decoration:active_opacity"]["value"], 0.9)
@@ -474,8 +475,7 @@ class RenderTest(unittest.TestCase):
             "no such option\n\n"
             '{"option": "decoration:rounding", "int": 4, "set": true }\n'
         )
-        got = call_js(LUA_JS, LUA_EXPORTS,
-                      "m.parseGetoption(" + json.dumps(sample) + ")")
+        got = lua.parse_getoption(sample)
         self.assertEqual(sorted(got), ["decoration:rounding", "general:gaps_in"])
 
 

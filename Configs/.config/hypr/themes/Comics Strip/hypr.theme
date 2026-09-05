@@ -8,6 +8,7 @@ $FONT = ComicShannsMono Nerd Font
 $BAR_FONT = ComicShannsMono Nerd Font
 $MENU_FONT = ComicShannsMono Nerd Font
 $MONOSPACE_FONT = ComicShannsMono Nerd Font
+$TERMINAL_FONT = ComicShannsMono Nerd Font
 $NOTIFICATION_FONT = ComicShannsMono Nerd Font Mono
 
 

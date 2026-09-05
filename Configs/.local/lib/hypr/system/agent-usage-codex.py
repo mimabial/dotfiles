@@ -37,6 +37,10 @@ AUTH_HELP = "Run `codex login` to authenticate."
 SCAN_REUSE_SECONDS = 20
 LIMITS_ONLY_REUSE_SECONDS = 900
 
+# Bump when parse_native_codex_file changes shape or meaning: the per-file
+# aggregates it cached against a session's mtime are otherwise reused forever.
+NATIVE_CACHE_VERSION = 1
+
 
 def local_day(value):
   if value is None:
@@ -107,10 +111,10 @@ total_sessions = set()
 seen_pi_messages = set()
 
 
-def add_usage(day, session_key, model, input_tokens, output_tokens, cache_read, cache_write):
+def add_usage(day, session_key, model, input_tokens, output_tokens, cache_read, cache_write, prompts=1):
   global today_prompts, today_total_tokens, total_prompts
   total = input_tokens + output_tokens + cache_read + cache_write
-  total_prompts += 1
+  total_prompts += prompts
   total_sessions.add(session_key)
   active_days.add(day)
 
@@ -129,7 +133,7 @@ def add_usage(day, session_key, model, input_tokens, output_tokens, cache_read, 
     recent[day]["messageCount"] += total
 
   if day == today:
-    today_prompts += 1
+    today_prompts += prompts
     today_sessions.add(session_key)
     today_total_tokens += total
     today_tokens_by_model[model] = today_tokens_by_model.get(model, 0) + total
@@ -283,6 +287,72 @@ def scan_opencode_sessions():
   return True
 
 
+def parse_native_codex_file(path, mtime):
+  """Aggregate one session file into {day: {model: [in, out, cacheRead, cacheWrite, prompts]}}.
+
+  Carries no today/recent logic, so the result stays valid across midnight and
+  can be reused until the file itself changes.
+  """
+  days = {}
+  current_model = "codex"
+  with path.open(errors="replace") as handle:
+    for raw in handle:
+      try:
+        entry = json.loads(raw)
+      except Exception:
+        continue
+      if entry.get("type") == "turn_context":
+        payload = entry.get("payload") or {}
+        current_model = model_name(payload.get("model") or payload.get("model_slug") or current_model)
+        continue
+      payload = entry.get("payload") or entry
+      if entry.get("type") == "response_item" and isinstance(payload, dict):
+        payload = payload.get("payload") or payload
+      if not isinstance(payload, dict):
+        continue
+      if payload.get("type") != "token_count":
+        continue
+      info = payload.get("info") or {}
+      # total_token_usage is cumulative for the session. Adding every
+      # snapshot makes usage grow quadratically, so count the last turn.
+      usage = info.get("last_token_usage") or {}
+      cache_read = number(usage.get("cached_input_tokens"))
+      cache_write = number(usage.get("cache_write_input_tokens"))
+      # Cached tokens are included in input_tokens, and reasoning tokens
+      # are included in output_tokens. Keep the cache split without
+      # counting either category twice.
+      input_tokens = max(0, number(usage.get("input_tokens")) - cache_read - cache_write)
+      output_tokens = number(usage.get("output_tokens"))
+      if not (input_tokens or output_tokens or cache_read or cache_write):
+        continue
+      day = local_day(entry.get("timestamp") or mtime)
+      bucket = days.setdefault(day, {}).setdefault(current_model, [0, 0, 0, 0, 0])
+      bucket[0] += input_tokens
+      bucket[1] += output_tokens
+      bucket[2] += cache_read
+      bucket[3] += cache_write
+      bucket[4] += 1
+  return days
+
+
+def merge_native_days(session_key, days):
+  """Fold one file's aggregate in, exactly as per-message add_usage calls would."""
+  # A cache entry is only as trustworthy as the file it came from, so every
+  # shape assumption is checked rather than assumed.
+  for day, models in (days or {}).items():
+    if not isinstance(models, dict):
+      continue
+    for model, counts in models.items():
+      if not isinstance(counts, list) or len(counts) != 5:
+        continue
+      add_usage(day, session_key, model, *(number(value) for value in counts))
+
+
+def native_cache_file(codex_home):
+  digest = hashlib.sha1(str(codex_home).encode("utf-8")).hexdigest()[:16]
+  return cache_root() / f"codex-files-v{NATIVE_CACHE_VERSION}-{digest}.json"
+
+
 def scan_native_codex_sessions():
   codex_home = Path(os.environ.get("CODEX_HOME") or (Path.home() / ".codex"))
   roots = [codex_home / "sessions", codex_home / "archived_sessions"]
@@ -293,48 +363,55 @@ def scan_native_codex_sessions():
       continue
     for path in root.rglob("*.jsonl"):
       try:
-        if path.stat().st_mtime >= cutoff:
-          files.append(path)
+        info = path.stat()
       except OSError:
-        pass
+        continue
+      if info.st_mtime >= cutoff:
+        files.append((path, info))
 
-  for path in files:
-    current_model = "codex"
+  # A closed session file grows to hundreds of MB and then never changes
+  # again, so re-parsing it every refresh is the entire cost of this scan.
+  # mtime+size is the cheapest key that still catches a session being
+  # appended to right now. Like every cache here it must never take the
+  # collector down, so an unusable cache root degrades to a plain scan.
+  #
+  # --force does not skip this. The key is derived from the file itself, so
+  # the cache cannot serve stale data the way the time-based reuse windows
+  # can, and bypassing it would buy a person nothing but a full rescan. Bump
+  # NATIVE_CACHE_VERSION to invalidate it after a parse change.
+  try:
+    cache_file = native_cache_file(codex_home)
+  except Exception:
+    cache_file = None
+  cached = read_json(cache_file) if cache_file else None
+  cached = cached if isinstance(cached, dict) else {}
+  fresh = {}
+  dirty = False
+
+  for path, info in files:
+    key = str(path)
+    entry = cached.get(key)
+    if not (isinstance(entry, dict)
+            and entry.get("mtime") == info.st_mtime_ns
+            and entry.get("size") == info.st_size
+            and isinstance(entry.get("days"), dict)):
+      try:
+        days = parse_native_codex_file(path, info.st_mtime)
+      except Exception:
+        # Nothing is cached for a file that failed to parse, so the next run
+        # retries it instead of inheriting a partial aggregate.
+        continue
+      entry = {"mtime": info.st_mtime_ns, "size": info.st_size, "days": days}
+      dirty = True
+    fresh[key] = entry
+    merge_native_days(key, entry["days"])
+
+  # Rebuilt from the current window, so files that aged out are pruned.
+  if cache_file and (dirty or len(fresh) != len(cached)):
     try:
-      with path.open(errors="replace") as handle:
-        for raw in handle:
-          try:
-            entry = json.loads(raw)
-          except Exception:
-            continue
-          if entry.get("type") == "turn_context":
-            payload = entry.get("payload") or {}
-            current_model = model_name(payload.get("model") or payload.get("model_slug") or current_model)
-            continue
-          payload = entry.get("payload") or entry
-          if entry.get("type") == "response_item" and isinstance(payload, dict):
-            payload = payload.get("payload") or payload
-          if not isinstance(payload, dict):
-            continue
-          if payload.get("type") != "token_count":
-            continue
-          info = payload.get("info") or {}
-          # total_token_usage is cumulative for the session. Adding every
-          # snapshot makes usage grow quadratically, so count the last turn.
-          usage = info.get("last_token_usage") or {}
-          cache_read = number(usage.get("cached_input_tokens"))
-          cache_write = number(usage.get("cache_write_input_tokens"))
-          # Cached tokens are included in input_tokens, and reasoning tokens
-          # are included in output_tokens. Keep the cache split without
-          # counting either category twice.
-          input_tokens = max(0, number(usage.get("input_tokens")) - cache_read - cache_write)
-          output_tokens = number(usage.get("output_tokens"))
-          if not (input_tokens or output_tokens or cache_read or cache_write):
-            continue
-          day = local_day(entry.get("timestamp") or path.stat().st_mtime)
-          add_usage(day, str(path), current_model, input_tokens, output_tokens, cache_read, cache_write)
-    except Exception:
-      continue
+      write_json(cache_file, fresh)
+    except Exception as exc:
+      print(f"omarchy-agent-usage-codex: could not write session cache ({exc})", file=sys.stderr)
 
 
 def cache_root():
@@ -351,6 +428,13 @@ def scan_cache_paths():
   digest = hashlib.sha1((str(Path.home()) + "\n" + str(codex_home) + "\n" + str(db)).encode("utf-8")).hexdigest()[:16]
   root = cache_root()
   return root / f"codex-scan-{digest}.json", root / f"codex-scan-{digest}.lock"
+
+
+def read_json(path):
+  try:
+    return json.loads(path.read_text(encoding="utf-8"))
+  except Exception:
+    return None
 
 
 def read_fresh_json(path, max_age_seconds):

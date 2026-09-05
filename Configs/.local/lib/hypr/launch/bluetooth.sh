@@ -15,4 +15,5 @@ hypr_help_guard "Usage: hyprshell launch/bluetooth
 Unblock bluetooth and focus or launch the bluetui TUI." "$@"
 
 rfkill unblock bluetooth
-exec hyprshell launch/focus.sh org.tui.Bluetui -- hyprshell launch/tui.sh --app-id org.tui.Bluetui -- bluetui
+exec hyprshell launch/focus.sh org.tui.Bluetui -- \
+  hyprshell launch/tui.sh --app-id org.tui.Bluetui --title Bluetui -- bluetui

@@ -9,7 +9,7 @@ PopupWindow {
     property bool hovered: false
     property bool ready: false
     readonly property var anchorWindow: anchorItem ? anchorItem.QsWindow.window : null
-    readonly property string edge: ["main", "alt"].includes(shell.layoutName) ? "right" : ["left", "sidebar"].includes(shell.layoutName) ? "left" : shell.layoutName === "top" ? "top" : "bottom"
+    readonly property string edge: shell.barEdge
 
     property bool dismissed: false
 
@@ -47,7 +47,8 @@ PopupWindow {
         Text {
             id: label; anchors.centerIn: parent; width: Math.min(340, implicitWidth)
             color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
-            text: root.text; textFormat: Text.RichText; wrapMode: Text.Wrap
+            // RichText eats a literal newline, and providers emit plain \n
+            text: root.text.replace(/\n/g, "<br>"); textFormat: Text.RichText; wrapMode: Text.Wrap
         }
     }
 }

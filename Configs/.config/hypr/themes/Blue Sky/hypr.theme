@@ -14,6 +14,7 @@ $FONT = GeistMono Nerd Font
 $BAR_FONT = GeistMono Nerd Font
 $MENU_FONT = GeistMono Nerd Font
 $MONOSPACE_FONT = GeistMono Nerd Font
+$TERMINAL_FONT = GeistMono Nerd Font
 $NOTIFICATION_FONT = GeistMono Nerd Font Mono
 
 general {

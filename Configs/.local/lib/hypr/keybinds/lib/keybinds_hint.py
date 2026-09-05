@@ -366,7 +366,6 @@ def generate_md(binds):
     header_row = "| " + " | ".join(headers) + " |"
     separator_row = "| :--- | :--- |"
 
-    # Group binds by headers
     header_groups = defaultdict(
         lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
     )
@@ -507,7 +506,6 @@ def generate_rofi(binds):
 def expand_meta_data(binds_data):
     submap_keys = {}
 
-    # First pass: collect submap keys
     for bind in binds_data:
         original_description = bind.get("description", "")
         bind["action_key"] = original_description

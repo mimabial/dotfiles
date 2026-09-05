@@ -51,7 +51,6 @@ else
 
   setup_pam_config
 
-  # Enroll first fingerprint
   print_success "\nLet's setup your right index finger as the first fingerprint."
   print_info "Keep moving the finger around on sensor until the process completes.\n"
 

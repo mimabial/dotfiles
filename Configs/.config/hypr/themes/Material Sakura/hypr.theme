@@ -13,6 +13,7 @@ $FONT = RobotoMono Nerd Font
 $BAR_FONT = RobotoMono Nerd Font
 $MENU_FONT = RobotoMono Nerd Font
 $MONOSPACE_FONT = RobotoMono Nerd Font
+$TERMINAL_FONT = RobotoMono Nerd Font
 $NOTIFICATION_FONT = RobotoMono Nerd Font Mono
 
 # Theme variables above are the primary inputs used by theme.switch.sh.

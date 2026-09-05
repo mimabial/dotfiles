@@ -13,6 +13,7 @@ $FONT = iMWritingDuo Nerd Font
 $BAR_FONT = iMWritingDuo Nerd Font
 $MENU_FONT = iMWritingDuo Nerd Font
 $MONOSPACE_FONT = iMWritingDuo Nerd Font
+$TERMINAL_FONT = iMWritingDuo Nerd Font
 $NOTIFICATION_FONT = iMWritingDuo Nerd Font
 
 general {

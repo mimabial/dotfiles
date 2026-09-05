@@ -7,9 +7,11 @@ BarGroup {
     property bool popupsAllowed: true
     // updates take the head; agentsFirst pins agents there instead
     property bool agentsFirst: false
+    property bool showAgents: true
     css: "updates-agents"; reverse: true
     holdOpen: ["updates", "agents"].includes(root.shell.popupName)
-    slots: root.agentsFirst ? [agentsView, updateView] : [updateView, agentsView]
+    slots: !root.showAgents ? [updateView]
+        : root.agentsFirst ? [agentsView, updateView] : [updateView, agentsView]
     Component { id: updateView; UpdatesButton { shell: root.shell; popupEnabled: root.popupsAllowed } }
     Component { id: agentsView; AgentsButton { shell: root.shell; popupEnabled: root.popupsAllowed } }
 }

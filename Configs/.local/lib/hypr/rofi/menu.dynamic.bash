@@ -113,7 +113,7 @@ show_font_menu() {
 
   font_list="$(hyprshell fonts/font-list.sh)"
   current_font="$(hyprshell fonts/font-get.sh mono 2>/dev/null || true)"
-  font="$(menu "Select Font" "Theme Default\n${font_list}" "${current_font}" "" copy)"
+  font="$(menu "Select Font" "Theme Default\n${font_list}" --select "${current_font}" --nav copy)"
   menu_exit=$?
 
   if [[ -z "${font}" || "${font}" == "CNCLD" ]]; then
@@ -140,7 +140,7 @@ show_font_menu() {
 show_setup_power_profile_menu() {
   local profile=""
 
-  profile="$(menu "Power Profile" "$(hyprshell system/powerprofiles.sh)" "$(busctl --system get-property org.freedesktop.UPower.PowerProfiles /org/freedesktop/UPower/PowerProfiles org.freedesktop.UPower.PowerProfiles ActiveProfile 2>/dev/null | awk -F'"' '{print $2}')")"
+  profile="$(menu "Power Profile" "$(hyprshell system/powerprofiles.sh)" --select "$(busctl --system get-property org.freedesktop.UPower.PowerProfiles /org/freedesktop/UPower/PowerProfiles org.freedesktop.UPower.PowerProfiles ActiveProfile 2>/dev/null | awk -F'"' '{print $2}')")"
   if [[ -z "${profile}" || "${profile}" == "CNCLD" ]]; then
     menu_exit_or_show setup
     return 0
@@ -159,7 +159,7 @@ show_install_font_menu() {
 
   nerd_font_menu_build installable font_labels font_packages
   if [[ "${#font_labels[@]}" -gt 0 ]]; then
-    selection="$(menu "Install Font" "$(printf '%s\n' "${font_labels[@]}")" "" "" multi)"
+    selection="$(menu "Install Font" "$(printf '%s\n' "${font_labels[@]}")" --nav multi)"
   else
     selection="$(menu "Install Font" "No installable Nerd Fonts")"
   fi
@@ -223,7 +223,7 @@ show_remove_font_menu() {
     if [[ "${mode}" == "unused" ]]; then
       selection="$(menu "${prompt}" "${empty_label}")"
     else
-      selection="$(menu "${prompt}" "${unused_option}\n${empty_label}" "${unused_option}")"
+      selection="$(menu "${prompt}" "${unused_option}\n${empty_label}" --select "${unused_option}")"
     fi
   fi
 

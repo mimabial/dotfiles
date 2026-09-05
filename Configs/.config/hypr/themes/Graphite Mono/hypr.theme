@@ -14,6 +14,7 @@ $FONT = iMWritingMono Nerd Font
 $BAR_FONT = iMWritingMono Nerd Font
 $MENU_FONT = iMWritingMono Nerd Font
 $MONOSPACE_FONT = iMWritingMono Nerd Font
+$TERMINAL_FONT = iMWritingMono Nerd Font
 $NOTIFICATION_FONT = iMWritingMono Nerd Font Mono
 
 general {

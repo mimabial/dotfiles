@@ -177,7 +177,10 @@ Singleton {
         if (root.busy) return
         const next = root.pickNext()
         if (next.changed && next.path) { root.switchTo(next.path, next); return }
-        root.lastAction = root.entries.length > 0 ? "Already showing the only wallpaper" : "No wallpapers for this theme"
+        // an empty catalog is a failed listing, not a satisfied schedule: leave the
+        // clock alone and relist so the next tick retries a minute later
+        if (root.entries.length === 0) { root.lastAction = "No wallpapers for this theme"; root.refresh(); return }
+        root.lastAction = "Already showing the only wallpaper"
         root.save({lastChangeEpoch: Date.now()})
     }
     function setWallpaper(path) { if (!root.busy && path) root.switchTo(path, null) }
@@ -224,7 +227,8 @@ Singleton {
         if (root.isDue()) root.applyNext()
     }
     function applyTheme(name) {
-        if (name === root.themeName) return
+        // an unreadable staterc parses to "": no information, not a theme change
+        if (!name || name === root.themeName) return
         const known = root.themeKnown
         root.themeName = name
         root.themeKnown = true
@@ -249,10 +253,10 @@ Singleton {
     // before reading it back
     function nudge() { settle.restart() }
     function loadCatalog(code, out, error) {
-        if (code !== 0) { root.lastError = String(error || "Could not list wallpapers").trim(); return }
+        if (code !== 0) { root.lastError = String(error || "Could not list wallpapers").trim(); catalogRetry.restart(); return }
         let list = []
         try { list = JSON.parse(out) || [] }
-        catch (parseError) { root.lastError = "Could not read the wallpaper catalog: " + parseError; return }
+        catch (parseError) { root.lastError = "Could not read the wallpaper catalog: " + parseError; catalogRetry.restart(); return }
         const seen = {}, next = []
         for (const item of list) {
             const path = String(item.path || "").trim()
@@ -309,6 +313,8 @@ Singleton {
         onExited: code => root.finishSwitch(code, setErr.text)
     }
     property Timer settle: Timer { interval: 1500; onTriggered: root.updateCurrent() }
+    // a failed listing leaves entries stale, and nothing else would ever relist
+    property Timer catalogRetry: Timer { interval: 30000; onTriggered: root.refresh() }
     // in-memory check; reconcile spawns a process only when a change is really
     // due, so an idle schedule costs a comparison a minute
     property Timer scheduleTimer: Timer {

@@ -1,9 +1,18 @@
 pragma Singleton
 import QtQuick
+import Quickshell
 
 QtObject {
     function alpha(color, opacity) {
         return Qt.rgba(color.r, color.g, color.b, (color.a === undefined ? 1 : color.a) * opacity)
+    }
+
+    function shellQuote(value) {
+        return "'" + String(value || "").replace(/'/g, "'\\''") + "'"
+    }
+
+    function execDetached(command) {
+        Quickshell.execDetached(["bash", "-lc", command])
     }
 
     function editsFilter(event, text) {
