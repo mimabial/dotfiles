@@ -5,6 +5,7 @@ StackedReadout {
     id: root
     property bool popupsAllowed: true
     css: "gpuinfo"
+    tooltip: ""
     command: ["hyprshell", "gpuinfo"]; interval: 60000
     textColor: root.box.content !== undefined ? root.boxColor("content")
         : root.shell.role("c7", root.shell.foreground)

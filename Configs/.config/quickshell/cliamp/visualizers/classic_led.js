@@ -60,7 +60,7 @@ function render(ctx, d) {
     }
   }
 
-  var tiers = H.specTiers(d)
+  var tiers = H.playerTiers(d)
   var barPx = charW * BAR_W
   var stepPx = charW * (BAR_W + BAR_GAP)
   var halfH = Math.max(1, Math.round(charH / 2))

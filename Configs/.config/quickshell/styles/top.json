@@ -151,7 +151,7 @@
   "memory": {
     "gap": 3.0,
     "iconLine": 0.0,
-    "iconPadRight": 1.0,
+    "iconPadRight": 2.0,
     "iconSize": 10.0,
     "content": ["fg", 1.0],
     "margin": [0.0, 6.0, 0.0, 6.0],

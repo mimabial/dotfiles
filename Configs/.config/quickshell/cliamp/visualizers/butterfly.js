@@ -4,7 +4,7 @@
 
 function render(ctx, d) {
   var bands = d.bands, w = d.width, h = d.height, count = d.count, frame = d.frame
-  var cx = w / 2, ramp = H.specTierRamp(d, h)
+  var cx = w / 2, ramp = H.playerTierRamp(d, h)
   for (var y = 0; y < h; y++) {
     var bandF = y / Math.max(1, h - 1) * (count - 1)
     var bi = Math.floor(bandF)

@@ -49,7 +49,7 @@ function render(ctx, d) {
   }
 
   // Audio wave at horizon — cosine-interpolated FFT bands
-  ctx.strokeStyle = tiers[2]
+  ctx.strokeStyle = H.rgba(d.foreground, 1)
   ctx.lineWidth = 2
   ctx.beginPath()
   var maxWave = horizon * 0.85

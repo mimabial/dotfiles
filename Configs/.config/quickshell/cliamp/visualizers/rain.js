@@ -26,7 +26,7 @@ function render(ctx, d) {
   if (numCols < 1 || numRows < 1 || bandCount < 1) return
 
   var widths = bandWidths(bandCount, numCols)
-  var tiers = H.specTiers(d)
+  var tiers = H.playerTiers(d)
   var gate = Math.floor(frame / 12)
 
   ctx.save()

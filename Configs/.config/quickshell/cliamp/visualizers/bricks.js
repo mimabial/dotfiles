@@ -8,7 +8,7 @@ function render(ctx, d) {
   var bands = d.bands, h = d.height, w = d.width, count = d.count, barW = d.barW, gap = d.gap
   // Each "brick" = bottom half of a 4px row unit (2px filled + 2px gap)
   var rowUnit = 4
-  var ramp = H.specTierRamp(d, h)
+  var ramp = H.playerTierRamp(d, h)
   for (var i = 0; i < count; i++) {
     var level = d.playing ? (bands[i] || 0) : 0
     var x = i * (barW + gap)

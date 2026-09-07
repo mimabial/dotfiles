@@ -35,7 +35,6 @@ BorderSurface {
     { id: "retro", name: "Retro Synth", category: "retro", icon: "\uf185" },
     { id: "matrix", name: "Matrix", category: "retro", icon: "\uf108" },
     { id: "terrain", name: "Terrain", category: "retro", icon: "\uf06e" },
-    { id: "village", name: "Clair de Lune", category: "retro", icon: "󰽡" },
     { id: "binary", name: "Binary", category: "retro", icon: "\uf120" },
     { id: "mosaic", name: "Mosaic", category: "retro", icon: "\uf009" },
 
@@ -83,7 +82,7 @@ BorderSurface {
       }
 
       Text {
-        width: parent.width - Style.space(48) - bgToggle.width - Style.space(6)
+        width: parent.width - Style.space(54) - bgToggle.width - pulseToggle.width - Style.space(6)
         anchors.verticalCenter: parent.verticalCenter
         text: "Visualizer Styles (" + root.allModes.length + ")"
         color: root.p ? root.p.foreground : Color.foreground
@@ -118,6 +117,36 @@ BorderSurface {
           id: bgMouse
           anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
           onClicked: if (root.p) root.p.setVisBackground(!root.p.visBackground)
+        }
+      }
+
+      Rectangle {
+        id: pulseToggle
+        readonly property bool active: root.p ? root.p.visBackgroundPulse : false
+        anchors.verticalCenter: parent.verticalCenter
+        width: pulseLabel.implicitWidth + Style.space(10); height: Style.space(17)
+        radius: Style.space(4)
+        color: active ? Color.menu.selectedBackground
+          : (pulseMouse.containsMouse ? (root.p ? root.p.shell.hoverFill(1) : Color.menu.selectedBackground) : "transparent")
+        border.width: 1
+        border.color: active ? Color.menu.selectedBorder
+          : (root.p ? root.p.shell.alpha(root.p.shell.role("br", root.p.foreground), 0.25) : Color.popups.border)
+
+        Text {
+          id: pulseLabel
+          anchors.centerIn: parent
+          text: "\uf0e7 PULSE"
+          color: pulseToggle.active ? Color.menu.selectedText
+            : (pulseMouse.containsMouse ? Color.accent : (root.p ? root.p.dim : Color.foreground))
+          font.family: root.p ? root.p.fontFamily : "sans-serif"
+          font.pixelSize: Style.font.caption * 0.8
+          font.bold: pulseToggle.active
+        }
+
+        MouseArea {
+          id: pulseMouse
+          anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+          onClicked: if (root.p) root.p.setVisBackgroundPulse(!root.p.visBackgroundPulse)
         }
       }
 

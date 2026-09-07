@@ -101,6 +101,7 @@ PopupCard {
   property string urlInputText: ""
   property string visMode: "osc_warp"
   property bool visBackground: true
+  property bool visBackgroundPulse: true
   property bool visPickerOpen: false
   property bool eqPickerOpen: false
   property var visModes: [
@@ -109,7 +110,7 @@ PopupCard {
     "wave", "sine", "mirror",
     "siriwave", "soundcloud_wave", "telegram_wave",
     "daw_wave", "led_scrubber", "heatmap_wave", "grounded_wave",
-    "retro", "matrix", "binary", "terrain", "village", "mosaic",
+    "retro", "matrix", "binary", "terrain", "mosaic",
     "scatter", "rain", "butterfly",
     "plasma", "osc_warp", "crt_scanline", "cyber_tunnel"
   ]
@@ -450,6 +451,11 @@ PopupCard {
     runCmd(["set_vis_bg", enabled ? "1" : "0"])
     if (playerComp) playerComp.requestPaint()
   }
+  function setVisBackgroundPulse(enabled) {
+    root.visBackgroundPulse = enabled
+    runCmd(["set_vis_bg_pulse", enabled ? "1" : "0"])
+    if (playerComp) playerComp.requestPaint()
+  }
   function toggleLoudnorm() {
     runCmd(["toggle_loudnorm"])
     var next = !(root.audioFx && root.audioFx.loudnorm)
@@ -721,6 +727,9 @@ PopupCard {
           }
           if (data.vis_bg !== undefined && !root.visPickerOpen) {
             root.visBackground = data.vis_bg === true
+          }
+          if (data.vis_bg_pulse !== undefined && !root.visPickerOpen) {
+            root.visBackgroundPulse = data.vis_bg_pulse === true
           }
           if (root.syncMpris()) return
           const fresh = root._statusGen === root._commandGen

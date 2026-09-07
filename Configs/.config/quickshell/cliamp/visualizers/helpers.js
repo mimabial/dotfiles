@@ -80,6 +80,19 @@ function rgba(color, alpha) {
   return "rgba(" + c.r + "," + c.g + "," + c.b + "," + alpha + ")"
 }
 
+// hsl — {h in degrees, s, l} plus the normalised rgb it came from, so callers that need
+// to reason about a colour's own lightness or hue don't re-derive the conversion.
+function hsl(color) {
+  var c = colorRgb(color)
+  var r = c.r / 255, g = c.g / 255, b = c.b / 255
+  var max = Math.max(r, g, b), min = Math.min(r, g, b), span = max - min
+  var l = (max + min) / 2
+  var s = span === 0 ? 0 : (l > 0.5 ? span / (2 - max - min) : span / (max + min))
+  var h = span === 0 ? 0
+    : max === r ? ((g - b) / span) % 6 : max === g ? (b - r) / span + 2 : (r - g) / span + 4
+  return { h: (((h * 60) % 360) + 360) % 360, s: s, l: l, r: r, g: g, b: b }
+}
+
 // hueShift — rotate a colour around the hue circle. sat and light are optional absolute
 // HSL targets; omit them to keep the input's own. Decorative fills should set them,
 // because a pale low-chroma accent stays pale through any rotation and five such blobs
@@ -88,15 +101,10 @@ function rgba(color, alpha) {
 // rgba/mixColor/specColor; a fully desaturated input has no hue to rotate and passes
 // through unchanged unless sat is given.
 function hueShift(color, degrees, sat, light) {
-  var c = colorRgb(color)
-  var r = c.r / 255, g = c.g / 255, b = c.b / 255
-  var max = Math.max(r, g, b), min = Math.min(r, g, b), span = max - min
-  var l = (max + min) / 2
-  if (span === 0 && sat === undefined) return { r: r, g: g, b: b }
-  var s = span === 0 ? 0 : (l > 0.5 ? span / (2 - max - min) : span / (max + min))
-  var h = span === 0 ? 0
-    : max === r ? ((g - b) / span) % 6 : max === g ? (b - r) / span + 2 : (r - g) / span + 4
-  h = (((h * 60 + degrees) % 360) + 360) % 360
+  var c = hsl(color)
+  var s = c.s, l = c.l
+  if (s === 0 && sat === undefined) return { r: c.r, g: c.g, b: c.b }
+  var h = (((c.h + degrees) % 360) + 360) % 360
   if (sat !== undefined) s = sat
   if (light !== undefined) l = light
   var chroma = (1 - Math.abs(2 * l - 1)) * s
@@ -133,20 +141,30 @@ function specTiers(d) {
   return [rgba(c[10] || d.accent, 1), rgba(c[11] || d.accent, 1), rgba(c[9] || d.foreground, 1)]
 }
 
+function playerTiers(d) {
+  return [rgba(d.accent, 1), rgba(d.foreground, 1), rgba(d.success || d.foreground, 1)]
+}
+
 // specTag — cliamp's row colour tier (visualizer.go specTag): a hard three-way split
 // on normalised height, not a gradient. specWrap tags every rendered row with it.
 function specTag(norm) {
   return norm >= 0.6 ? 2 : norm >= 0.3 ? 1 : 0
 }
 
-// specTierRamp — one tier colour per pixel row, built once per frame. Drop-in for
-// specRamp wherever a visualizer is reproducing specWrap rather than a gradient.
-function specTierRamp(d, height) {
-  var tiers = specTiers(d)
+// tierRamp — one tier colour per pixel row, built once per frame.
+function tierRamp(tiers, height) {
   var steps = Math.max(1, Math.ceil(height)) + 1
   var out = new Array(steps)
   for (var i = 0; i < steps; i++) out[i] = tiers[specTag(i / height)]
   return out
+}
+
+function specTierRamp(d, height) {
+  return tierRamp(specTiers(d), height)
+}
+
+function playerTierRamp(d, height) {
+  return tierRamp(playerTiers(d), height)
 }
 
 // specRamp — one specColor per pixel row, built once per frame. Every per-pixel

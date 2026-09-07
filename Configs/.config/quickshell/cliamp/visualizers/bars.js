@@ -6,7 +6,7 @@
 // fillStyle assignment per row instead of one per pixel.
 function render(ctx, d) {
   var bands = d.bands, h = d.height, count = d.count, barW = d.barW, gap = d.gap
-  var ramp = H.specTierRamp(d, h), heights = new Array(count)
+  var ramp = H.playerTierRamp(d, h), heights = new Array(count)
   for (var i = 0; i < count; i++) heights[i] = Math.round((d.playing ? (bands[i] || 0) : 0) * h)
   for (var y = 0; y < h; y++) {
     ctx.fillStyle = ramp[y]

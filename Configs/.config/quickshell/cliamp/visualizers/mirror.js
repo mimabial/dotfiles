@@ -54,11 +54,12 @@ function render(ctx, d) {
     var bx = x0 + i * 2 + 1
 
     for (var y = axisY - radius; y <= axisY + radius; y++) {
-      setDot(bx, y, Math.abs(y - axisY) / radius >= 0.75 ? 3 : 2)
+      var radial = Math.abs(y - axisY) / radius
+      setDot(bx, y, radial >= 0.75 ? 3 : radial >= 0.5 ? 2 : 1)
     }
   }
 
-  var tiers = H.specTiers(d)
+  var tiers = H.playerTiers(d)
 
   ctx.save()
   ctx.font = "bold 10px monospace"

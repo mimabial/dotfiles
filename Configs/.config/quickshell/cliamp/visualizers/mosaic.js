@@ -93,7 +93,7 @@ function render(ctx, d) {
     if (cell.value < 0.001) cell.value = 0
   }
 
-  var tone = H.specTiers(d)
+  var tone = H.playerTiers(d)
 
   ctx.save()
   ctx.font = "bold 10px monospace"

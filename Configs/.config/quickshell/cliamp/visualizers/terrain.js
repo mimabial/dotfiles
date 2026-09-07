@@ -36,7 +36,7 @@ function render(ctx, d) {
 
   // Rows outer: the tier depends only on the row, and a row's filled columns are mostly
   // contiguous, so this is one fillStyle and a handful of spans per row.
-  var ramp = H.specTierRamp(d, h)
+  var ramp = H.playerTierRamp(d, h)
   var colW = w / dotCols
   for (var y = 0; y < h; y++) {
     ctx.fillStyle = ramp[h - 1 - y]

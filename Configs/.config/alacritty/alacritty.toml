@@ -11,22 +11,22 @@ program = "/bin/zsh"
 
 [font]
 builtin_box_drawing = true
-size = 13.33
+size = 16.67
 
 [font.normal]
-family = "CaskaydiaCove Nerd Font"
+family = "3270 Nerd Font Mono"
 style = "Regular"
 
 [font.bold]
-family = "CaskaydiaCove Nerd Font"
+family = "3270 Nerd Font Mono"
 style = "Bold"
 
 [font.italic]
-family = "CaskaydiaCove Nerd Font"
+family = "3270 Nerd Font Mono"
 style = "Italic"
 
 [font.bold_italic]
-family = "CaskaydiaCove Nerd Font"
+family = "3270 Nerd Font Mono"
 style = "Bold Italic"
 
 [font.offset]

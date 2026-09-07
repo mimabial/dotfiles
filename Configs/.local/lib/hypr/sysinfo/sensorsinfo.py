@@ -89,10 +89,55 @@ def save_current_page(page):
         f.write(str(page))
 
 
+RAMP_FILE = Path(
+    os.environ.get(
+        "HYPR_CACHE_HOME",
+        os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache")) + "/hypr",
+    )
+) / "render" / "tempramp" / "ramp.psv"
+
+# What the sensors show before the first theme apply has rendered a ramp.
+FALLBACK_RAMP = {
+    90: "#8b0000",
+    85: "#ad1f2f",
+    80: "#d22f2f",
+    75: "#ff471a",
+    70: "#ff6347",
+    65: "#ff8c00",
+    60: "#ffa500",
+    45: "",
+    40: "#add8e6",
+    35: "#87ceeb",
+    30: "#4682b4",
+    25: "#4169e1",
+    20: "#0000ff",
+    0: "#00008b",
+}
+
+_ramp = None
+
+
+def load_ramp():
+    # render/tempramp.py derives these from the active palette; the same file
+    # backs sysinfo/lib/temp-color.bash, so both read one ramp.
+    global _ramp
+    if _ramp is not None:
+        return _ramp
+    ramp = {}
+    try:
+        for line in RAMP_FILE.read_text(encoding="utf-8").splitlines():
+            threshold, _, color = line.partition("|")
+            if threshold.strip().isdigit():
+                ramp[int(threshold)] = color.strip()
+    except OSError:
+        ramp = {}
+    _ramp = ramp or dict(FALLBACK_RAMP)
+    return _ramp
+
+
 def get_temp_color(temp, crit=100):
     # Colour is chosen from the reading normalised to the sensor's own critical
-    # point (temp/crit), so one ramp fits any chip. Keep in sync with
-    # sysinfo/lib/temp-color.bash.
+    # point (temp/crit), so one ramp fits any chip.
     try:
         crit = float(crit)
     except (TypeError, ValueError):
@@ -101,22 +146,7 @@ def get_temp_color(temp, crit=100):
         crit = 100.0
     norm = temp * 100.0 / crit
 
-    temp_colors = {
-        90: "#8b0000",
-        85: "#ad1f2f",
-        80: "#d22f2f",
-        75: "#ff471a",
-        70: "#ff6347",
-        65: "#ff8c00",
-        60: "#ffa500",
-        45: "",
-        40: "#add8e6",
-        35: "#87ceeb",
-        30: "#4682b4",
-        25: "#4169e1",
-        20: "#0000ff",
-        0: "#00008b",
-    }
+    temp_colors = load_ramp()
 
     for threshold in sorted(temp_colors.keys(), reverse=True):
         if norm >= threshold:

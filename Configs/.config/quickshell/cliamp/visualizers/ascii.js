@@ -29,7 +29,7 @@ function render(ctx, d) {
 
   var activeCols = Math.max(1, Math.floor((numCols + BAR_GAP) / (BAR_W + BAR_GAP)))
   var cols = H.resampleBandsLinear(d.bands, activeCols)
-  var tiers = H.specTiers(d)
+  var tiers = H.playerTiers(d)
   var stepPx = charW * (BAR_W + BAR_GAP)
 
   ctx.save()

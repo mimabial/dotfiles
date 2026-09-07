@@ -25,7 +25,6 @@ import "visualizers/retro.js" as VisRetro
 import "visualizers/matrix.js" as VisMatrix
 import "visualizers/binary.js" as VisBinary
 import "visualizers/terrain.js" as VisTerrain
-import "visualizers/village.js" as VisVillage
 import "visualizers/mosaic.js" as VisMosaic
 import "visualizers/scatter.js" as VisScatter
 import "visualizers/rain.js" as VisRain
@@ -178,7 +177,6 @@ Item {
     "heatmap_wave": VisHeatmapWave.render, "grounded_wave": VisGroundedWave.render,
     "retro": VisRetro.render,
     "matrix": VisMatrix.render, "binary": VisBinary.render, "terrain": VisTerrain.render,
-    "village": VisVillage.render,
     "mosaic": VisMosaic.render, "scatter": VisScatter.render, "rain": VisRain.render,
     "butterfly": VisButterfly.render, "plasma": VisPlasma.render,
     "osc_warp": VisOscWarp.render, "crt_scanline": VisCRTScanline.render,
@@ -188,7 +186,7 @@ Item {
   // Mirrors the Go drivers' OnEnter: a renderer that must rebuild its state on every
   // visit exports onEnter(state) and is listed here.
   readonly property var _enterHooks: ({ "mosaic": VisMosaic.onEnter, "peaks": VisPeaks.onEnter,
-                                      "classic_led": VisClassicLED.onEnter, "village": VisVillage.onEnter })
+                                      "classic_led": VisClassicLED.onEnter })
 
   readonly property var _modeLabels: ({
     "bars": "Bars", "bricks": "Bricks", "classic_led": "Classic LED",
@@ -199,7 +197,7 @@ Item {
     "daw_wave": "DAW Meter", "led_scrubber": "LED Scrubber",
     "heatmap_wave": "Heatmap Wave", "grounded_wave": "Baseline Wave",
     "retro": "Retro",
-    "matrix": "Matrix", "binary": "Binary", "terrain": "Terrain", "village": "Clair de Lune",
+    "matrix": "Matrix", "binary": "Binary", "terrain": "Terrain",
     "mosaic": "Mosaic", "scatter": "Scatter", "rain": "Rain",
     "butterfly": "Butterfly", "plasma": "Liquid Plasma",
     "osc_warp": "Oscilloscope Warp", "crt_scanline": "CRT Radar Scope",
@@ -223,7 +221,31 @@ Item {
     return out
   }
 
-  function requestPaint() { if (visCanvas) visCanvas.requestPaint() }
+  // The nebula composites as one flattened layer: its blobs stack inside nebulaCanvas,
+  // then this scales the finished result. Applied per blob it would not bound the overlaps.
+  readonly property real nebulaOpacity: 0.95
+
+  function requestPaint() {
+    if (visCanvas) visCanvas.requestPaint()
+    if (nebulaCanvas) nebulaCanvas.requestPaint()
+  }
+
+  function visPayload(w, h) {
+    var count = 24, gap = 3
+    return {
+      bands: root.p.visBands, bandsDb: root.p.visBandsDb, bandEdges: root.p.visBandEdges,
+      rawBands: root.p.visBandsRaw, bandsStereo: root.p.visBandsStereo,
+      wave: root.p.visWave, waveStereo: root.p.visWaveStereo, stereo: root.p.visStereo,
+      analysis: root.p.visAnalysis, frame: root.p.visFrame,
+      playing: root.p.isPlaying, width: w, height: h, S: 2,
+      count: count, barW: Math.floor((w - (count - 1) * gap) / count), gap: gap,
+      accent: root.p.dynamicAccent, foreground: root.p.foreground, success: root.p.success, dim: root.visDim,
+      surface: root.p.surface, colors: root.visColors,
+      beatDrop: root.beatDropPulse, backgroundPulse: root.p.visBackgroundPulse,
+      progress: root.p.progress,
+      state: root.p._visState
+    }
+  }
 
   BorderSurface {
     id: hud
@@ -482,6 +504,23 @@ Item {
         borderSpec: Border.flat(root.p.isPlaying ? root.p.shell.alpha(root.p.dynamicAccent, 0.7) : root.p.shell.alpha(root.p.shell.role("br", root.p.foreground), 0.3), 1)
 
         Canvas {
+          id: nebulaCanvas
+          anchors.fill: parent
+          anchors.margins: Style.space(3)
+          z: 3
+          visible: root.p.visBackground
+          opacity: root.nebulaOpacity
+
+          onVisibleChanged: if (visible) requestPaint()
+
+          onPaint: {
+            var ctx = getContext("2d")
+            ctx.clearRect(0, 0, width, height)
+            VisBackground.render(ctx, root.visPayload(width, height))
+          }
+        }
+
+        Canvas {
           id: visCanvas
           anchors.fill: parent
           anchors.margins: Style.space(3)
@@ -489,10 +528,12 @@ Item {
 
           Connections {
             target: root.p
-            function onDynamicAccentChanged() { visCanvas.requestPaint() }
+            function onDynamicAccentChanged() { root.requestPaint() }
             function onForegroundChanged() { visCanvas.requestPaint() }
+            function onSuccessChanged() { root.requestPaint() }
             function onDimChanged() { visCanvas.requestPaint() }
-            function onSurfaceChanged() { visCanvas.requestPaint() }
+            function onSurfaceChanged() { root.requestPaint() }
+            function onVisBackgroundPulseChanged() { root.requestPaint() }
             function onVisModeChanged() {
               var hook = root._enterHooks[root.p.visMode]
               if (hook) hook(root.p._visState)
@@ -506,23 +547,7 @@ Item {
             var w = width, h = height
             ctx.clearRect(0, 0, w, h)
 
-            var count = 24, gap = 3
-            var barW = Math.floor((w - (count - 1) * gap) / count)
-            var payload = {
-              bands: root.p.visBands, bandsDb: root.p.visBandsDb, bandEdges: root.p.visBandEdges,
-              rawBands: root.p.visBandsRaw, bandsStereo: root.p.visBandsStereo,
-              wave: root.p.visWave, waveStereo: root.p.visWaveStereo, stereo: root.p.visStereo,
-              analysis: root.p.visAnalysis, frame: root.p.visFrame,
-              playing: root.p.isPlaying, width: w, height: h, S: 2,
-              count: count, barW: barW, gap: gap,
-              accent: root.p.dynamicAccent, foreground: root.p.foreground, dim: root.visDim,
-              surface: root.p.surface, colors: root.visColors,
-              beatDrop: root.beatDropPulse, progress: root.p.progress,
-              state: root.p._visState
-            }
-
-            if (root.p.visBackground) VisBackground.render(ctx, payload)
-
+            var payload = root.visPayload(w, h)
             var fn = root._renderers[root.p.visMode]
             if (fn) fn(ctx, payload)
           }

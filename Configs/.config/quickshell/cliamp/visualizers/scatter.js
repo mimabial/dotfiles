@@ -6,7 +6,7 @@
 // each is computed once per row instead of once per dot.
 function render(ctx, d) {
   var bands = d.bands, h = d.height, count = d.count, barW = d.barW, gap = d.gap, S = 2
-  var ramp = H.specTierRamp(d, h)
+  var ramp = H.playerTierRamp(d, h)
   for (var sy = 0; sy < h; sy += S) {
     ctx.fillStyle = ramp[h - 1 - sy]
     var gravity = 0.5 + 0.5 * sy / h

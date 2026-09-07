@@ -280,8 +280,8 @@ def reconcile_queue():
     """Drop entries mpv has already advanced into on its own.
 
     keep-open leaves appended entries playable, so the playlist can move on
-    without anything popping the queue file. Entries play in order, so only the
-    head can match what is loaded now.
+    without anything popping the queue file. Entries through the loaded track
+    have therefore been consumed.
     """
     q = read_queue()
     if not q:
@@ -290,12 +290,13 @@ def reconcile_queue():
     playing = (res or {}).get("data")
     if not playing:
         return q
-    popped = False
-    while q and playing in (q[0].get("target"), q[0].get("url")):
-        q.pop(0)
-        popped = True
-    if popped:
+    for i, track in enumerate(q):
+        if playing not in (track.get("target"), track.get("url")):
+            continue
+        q = q[i + 1:]
         save_queue(q)
+        save_now_playing(track.get("title"), track.get("artist"), track.get("url"))
+        break
     return q
 
 def play_next_in_queue():
@@ -494,6 +495,9 @@ def send_mpv_cmd(cmd_list, timeout=1.0):
     except Exception:
         return None
     return None
+
+def load_mpv(url, mode, title):
+    return send_mpv_cmd(["loadfile", url, mode, -1, {"force-media-title": title or ""}])
 
 def is_mpv_running(timeout=0.2):
     if not os.path.exists(SOCK_PATH):
@@ -878,31 +882,43 @@ VIS_MODES = {
     "wave", "sine", "mirror",
     "siriwave", "soundcloud_wave", "telegram_wave",
     "daw_wave", "led_scrubber", "heatmap_wave", "grounded_wave",
-    "retro", "matrix", "binary", "terrain", "village", "mosaic",
+    "retro", "matrix", "binary", "terrain", "mosaic",
     "scatter", "rain", "butterfly",
     "plasma", "osc_warp", "crt_scanline", "cyber_tunnel",
 }
 DEFAULT_VIS_MODE = "osc_warp"
 
 VIS_BG_FILE = os.path.join(CACHE_DIR, "vis_bg.txt")
+VIS_BG_PULSE_FILE = os.path.join(CACHE_DIR, "vis_bg_pulse.txt")
 
-# The nebula backdrop is on unless it was explicitly turned off, so a missing or truncated
-# state file falls back to on rather than to off.
-def get_vis_bg():
+# Background options are on unless explicitly disabled, including with a missing state file.
+def get_vis_toggle(path):
     try:
-        with open(VIS_BG_FILE, "r", encoding="utf-8") as f:
+        with open(path, "r", encoding="utf-8") as f:
             return f.read().strip() != "0"
     except Exception:
         return True
 
-def set_vis_bg(enabled):
+def set_vis_toggle(path, key, enabled):
     try:
         os.makedirs(CACHE_DIR, exist_ok=True)
-        with open(VIS_BG_FILE, "w", encoding="utf-8") as f:
+        with open(path, "w", encoding="utf-8") as f:
             f.write("1" if enabled else "0")
-        return {"success": True, "vis_bg": bool(enabled)}
+        return {"success": True, key: bool(enabled)}
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+def get_vis_bg():
+    return get_vis_toggle(VIS_BG_FILE)
+
+def set_vis_bg(enabled):
+    return set_vis_toggle(VIS_BG_FILE, "vis_bg", enabled)
+
+def get_vis_bg_pulse():
+    return get_vis_toggle(VIS_BG_PULSE_FILE)
+
+def set_vis_bg_pulse(enabled):
+    return set_vis_toggle(VIS_BG_PULSE_FILE, "vis_bg_pulse", enabled)
 
 def get_vis_mode():
     if os.path.exists(VIS_MODE_FILE):
@@ -1029,10 +1045,12 @@ def get_status():
             "repeat": "off",
             "eq": cur_eq,
             "vis_mode": get_vis_mode(),
-            "vis_bg": get_vis_bg()
+            "vis_bg": get_vis_bg(),
+            "vis_bg_pulse": get_vis_bg_pulse()
         }
 
     try:
+        reconcile_queue()
         np = read_now_playing()
         pos_res = send_mpv_cmd(["get_property", "time-pos"])
         dur_res = send_mpv_cmd(["get_property", "duration"])
@@ -1136,6 +1154,7 @@ def get_status():
             "audio_fx": cur_fx,
             "vis_mode": get_vis_mode(),
             "vis_bg": get_vis_bg(),
+            "vis_bg_pulse": get_vis_bg_pulse(),
             "resume": resume
         }
     except Exception as e:
@@ -1159,7 +1178,8 @@ def get_status():
             "eq": cur_fx.get("eq", "Flat"),
             "audio_fx": cur_fx,
             "vis_mode": get_vis_mode(),
-            "vis_bg": get_vis_bg()
+            "vis_bg": get_vis_bg(),
+            "vis_bg_pulse": get_vis_bg_pulse()
         }
 
 def resolve_spotify_url(url):
@@ -1584,9 +1604,8 @@ def play_item(url, title=None, artist=None):
             stream_youtube(real_url)
             stream_target = STREAM_FIFO
 
-    send_mpv_cmd(["loadfile", stream_target, "replace"])
+    load_mpv(stream_target, "replace", final_title)
     if final_title:
-        send_mpv_cmd(["set_property", "force-media-title", final_title])
         import threading
         threading.Thread(target=fetch_lyrics, args=(final_title, final_artist, real_url), daemon=True).start()
     send_mpv_cmd(["set_property", "pause", False])
@@ -1608,7 +1627,7 @@ def queue_item(url, title=None, artist=None):
             stream_youtube(real_url)
             stream_target = STREAM_FIFO
 
-    send_mpv_cmd(["loadfile", stream_target, "append"])
+    load_mpv(stream_target, "append", final_title)
     return {"success": True, "target": stream_target}
 
 def stop_daemon():
@@ -1829,5 +1848,9 @@ if __name__ == "__main__":
         print(json.dumps(set_vis_bg(len(sys.argv) > 2 and sys.argv[2] in ("1", "true", "on"))))
     elif action == "get_vis_bg":
         print(json.dumps({"vis_bg": get_vis_bg()}))
+    elif action == "set_vis_bg_pulse":
+        print(json.dumps(set_vis_bg_pulse(len(sys.argv) > 2 and sys.argv[2] in ("1", "true", "on"))))
+    elif action == "get_vis_bg_pulse":
+        print(json.dumps({"vis_bg_pulse": get_vis_bg_pulse()}))
     else:
         print(json.dumps({"error": f"Unknown action {action}"}))
