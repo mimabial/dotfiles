@@ -355,7 +355,7 @@ def generate_hint(binds):
         chord_cell = f"{html.escape(chord):<{width}}"
         if chord_color:
             chord_cell = f"<span foreground='{chord_color}'>{chord_cell}</span>"
-        lines.append(f"<b>{chord_cell}</b>  {html.escape(description)}")
+        lines.append(f"{chord_cell}  {html.escape(description)}")
     return "\n".join(lines)
 
 

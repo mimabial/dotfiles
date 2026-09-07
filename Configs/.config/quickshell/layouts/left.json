@@ -1,18 +1,90 @@
 [
-  { "id": "datetime", "props": { "showDate": true } },
-  { "id": "forecast", "props": { "showMinMax": true, "showUnit": false } },
+  {
+    "id": "datetime",
+    "props": {
+      "showDate": true
+    }
+  },
+  "terminal",
+  {
+    "id": "forecast",
+    "props": {
+      "showMinMax": true,
+      "showUnit": false
+    }
+  },
   "submap",
   "spacer",
-  { "id": "workspaces", "props": { "activeOnly": false } },
-  "privacy",
+  {
+    "id": "workspaces",
+    "props": {
+      "activeOnly": false
+    }
+  },
   "spacer",
-  { "id": "appearance", "props": { "reverse": true } },
-  { "id": "bluetooth", "props": { "showReadout": false, "reverse": true } },
-  { "id": "wifi", "props": { "showReadout": false, "showVpn": true } },
-  "printers",
-  { "id": "eyecare", "props": { "reverse": true, "sliderFirst": true, "showSlider": false } },
-  { "id": "audio", "props": { "reverse": true, "sliderFirst": true, "showSlider": false } },
-  "disks",
-  { "id": "mediaplayer", "props": { "iconMode": false, "randomizeProgressShape": true } },
-  "power"
+  {
+    "id": "mediaplayer",
+    "props": {
+      "iconMode": false,
+      "randomizeProgressShape": true,
+      "showWhenIdle": true
+    }
+  },
+  {
+    "id": "audio",
+    "props": {
+      "reverse": true,
+      "sliderFirst": true
+    }
+  },
+  {
+    "id": "eyecare",
+    "props": {
+      "reverse": true,
+      "sliderFirst": true
+    }
+  },
+  {
+    "id": "capture",
+    "props": {
+      "reverse": true,
+      "showCliphist": true
+    }
+  },
+  {
+    "id": "bluetooth",
+    "props": {
+      "showReadout": true,
+      "reverse": true
+    }
+  },
+  {
+    "id": "wifi",
+    "props": {
+      "showReadout": true,
+      "showVpn": true
+    }
+  },
+  {
+    "id": "appearance",
+    "props": {
+      "reverse": true
+    }
+  },
+  "privacy",
+  "tasks",
+  {
+    "id": "notification-group",
+    "props": {
+      "reverse": true,
+      "badge": "none"
+    }
+  },
+  "power",
+  {
+    "id": "updates",
+    "props": {
+      "showAgents": false
+    }
+  }
 ]

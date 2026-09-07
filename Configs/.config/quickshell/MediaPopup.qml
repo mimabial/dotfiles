@@ -323,7 +323,7 @@ PopupCard {
 
   // ---- Actions
   function refresh() {
-    if (statusProc.running) return
+    if (statusProc.running || actionProc.running) return
     root._statusGen = root._commandGen
     statusProc.running = true
   }
@@ -722,17 +722,13 @@ PopupCard {
       onStreamFinished: {
         try {
           var data = JSON.parse(text || "{}")
-          if (data.vis_mode && String(data.vis_mode) !== root.visMode && !root.visPickerOpen) {
-            root.visMode = String(data.vis_mode)
-          }
-          if (data.vis_bg !== undefined && !root.visPickerOpen) {
-            root.visBackground = data.vis_bg === true
-          }
-          if (data.vis_bg_pulse !== undefined && !root.visPickerOpen) {
-            root.visBackgroundPulse = data.vis_bg_pulse === true
+          const fresh = root._statusGen === root._commandGen
+          if (fresh && !root.visPickerOpen) {
+            if (data.vis_mode && String(data.vis_mode) !== root.visMode) root.visMode = String(data.vis_mode)
+            if (data.vis_bg !== undefined) root.visBackground = data.vis_bg === true
+            if (data.vis_bg_pulse !== undefined) root.visBackgroundPulse = data.vis_bg_pulse === true
           }
           if (root.syncMpris()) return
-          const fresh = root._statusGen === root._commandGen
           root.isRunning = data.running === true
           if (fresh) root.playbackState = data.state || "stopped"
           var newTrack = String(data.track || "No track loaded")
