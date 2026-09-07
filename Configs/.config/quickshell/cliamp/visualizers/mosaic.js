@@ -1,58 +1,116 @@
-// Mosaic — vis_mosaic.go: static heatmap of flickering tiles
+// Mosaic — exact cliamp vis_mosaic.go: static heatmap of shade-block tiles that
+// ignite in place when their assigned band crosses a per-cell threshold
 .pragma library
 .import "helpers.js" as H
 
-function render(ctx, d) {
-  var bands = d.bands, h = d.height, w = d.width, count = d.count
-  var cellW = 4, cellGap = 2
-  var numTiles = Math.floor((w + cellGap) / (cellW + cellGap))
-  var numRows = Math.floor(h / 4)
-  var s = d.state
-  if (!s.mosaicCells || s.mosaicRows !== numRows || s.mosaicTiles !== numTiles) {
-    s.mosaicRows = numRows
-    s.mosaicTiles = numTiles
-    s.mosaicCells = new Array(numRows * numTiles)
-    var rngVal = 0xC1AB1A10
-    for (var r = 0; r < numRows; r++) {
-      var baseBand = numRows > 1 ? Math.floor((numRows - 1 - r) * (count - 1) / (numRows - 1)) : Math.floor(count / 2)
-      for (var c = 0; c < numTiles; c++) {
-        rngVal = (rngVal * 1664525 + 1013904223) & 0xFFFFFFFF
-        var jitter = ((rngVal >>> 16) % 5) - 2
-        var band = Math.max(0, Math.min(count - 1, baseBand + jitter))
-        rngVal = (rngVal * 1664525 + 1013904223) & 0xFFFFFFFF
-        var th = 0.04 + ((rngVal >>> 16) % 1000) / 1000.0 * 0.74
-        s.mosaicCells[r * numTiles + c] = { bandIdx: band, threshold: th, value: 0 }
+var CELL_W = 2    // characters per tile
+var CELL_GAP = 1  // characters between tiles
+var DECAY = 0.88
+
+// Discrete brightness tiers. tier -1 renders as spaces so unlit tiles vanish.
+var LEVELS = [
+  { glyph: " ", tier: -1 },
+  { glyph: "░", tier: 0 },
+  { glyph: "▒", tier: 0 },
+  { glyph: "▓", tier: 0 },
+  { glyph: "█", tier: 0 },
+  { glyph: "█", tier: 1 },
+  { glyph: "█", tier: 2 }
+]
+
+function levelFor(intensity) {
+  if (intensity >= 0.85) return LEVELS[6]
+  if (intensity >= 0.65) return LEVELS[5]
+  if (intensity >= 0.45) return LEVELS[4]
+  if (intensity >= 0.28) return LEVELS[3]
+  if (intensity >= 0.15) return LEVELS[2]
+  if (intensity >= 0.05) return LEVELS[1]
+  return LEVELS[0]
+}
+
+function tileCount(panelWidth) {
+  if (panelWidth < CELL_W) return 0
+  return Math.floor((panelWidth + CELL_GAP) / (CELL_W + CELL_GAP))
+}
+
+// Each cell is wired to a band biased by its row (top treble, bottom bass) with a
+// small jitter, and to a threshold in [0.04, 0.78] so lit density rises with loudness.
+function ensureGrid(s, rows, tiles, bandCount) {
+  if (s.mosaicRows === rows && s.mosaicTiles === tiles && s.mosaicCells
+      && s.mosaicCells.length === rows * tiles) return
+  s.mosaicRows = rows
+  s.mosaicTiles = tiles
+  s.mosaicCells = new Array(rows * tiles)
+
+  var rng = { v: 0xC1AB1A10 }
+  for (var r = 0; r < rows; r++) {
+    var baseBand = rows > 1 ? Math.floor((rows - 1 - r) * (bandCount - 1) / (rows - 1))
+                            : Math.floor(bandCount / 2)
+    for (var c = 0; c < tiles; c++) {
+      var jitter = (H.lcgRng(rng) >>> 16) % 5 - 2
+      var band = Math.max(0, Math.min(bandCount - 1, baseBand + jitter))
+      s.mosaicCells[r * tiles + c] = {
+        bandIdx: band,
+        threshold: 0.04 + H.lcgRand01(rng) * 0.74,
+        value: 0
       }
     }
   }
+}
+
+// vis_mosaic.go OnEnter. ensureGrid reseeds from a fixed constant, so the rebuilt
+// grid is identical — what dropping it actually buys is tile intensities back at
+// zero, so entering the mode fades up from dark instead of resuming mid-bright.
+function onEnter(state) {
+  state.mosaicCells = null
+  state.mosaicRows = 0
+  state.mosaicTiles = 0
+}
+
+function render(ctx, d) {
+  var bands = d.bands, w = d.width, h = d.height
+
+  var charW = 6
+  var charH = 10
+  var numCols = Math.floor(w / charW)
+  var numRows = Math.floor(h / charH)
+  var tiles = tileCount(numCols)
+  if (numRows < 1 || tiles < 1) return
+
+  var s = d.state
+  ensureGrid(s, numRows, tiles, bands.length || 24)
   var cells = s.mosaicCells
 
+  // Ignite above threshold, then decay in place. Silence just decays.
   for (var i = 0; i < cells.length; i++) {
-    var c = cells[i]
-    var level = bands[c.bandIdx] || 0
-    if (level > c.threshold) {
+    var cell = cells[i]
+    var level = bands.length ? (bands[cell.bandIdx] || 0) : 0
+    if (level > cell.threshold) {
       var ignited = Math.min(1.05, level)
-      if (ignited > c.value) c.value = ignited
+      if (ignited > cell.value) cell.value = ignited
     }
-    c.value *= 0.88
-    if (c.value < 0.001) c.value = 0
+    cell.value *= DECAY
+    if (cell.value < 0.001) cell.value = 0
   }
 
-  for (var r2 = 0; r2 < numRows; r2++) {
-    for (var c2 = 0; c2 < numTiles; c2++) {
-      var cell = cells[r2 * numTiles + c2]
-      var v = cell.value
-      if (v < 0.05) continue
-      var x = c2 * (cellW + cellGap)
-      var y = r2 * 4
-      var tone, alpha
-      if (v >= 0.85) { tone = 0.9; alpha = v }
-      else if (v >= 0.65) { tone = 0.7; alpha = v }
-      else if (v >= 0.45) { tone = 0.45; alpha = v }
-      else if (v >= 0.28) { tone = 0.3; alpha = v * 0.7 }
-      else { tone = 0.15; alpha = v * 0.4 }
-      ctx.fillStyle = H.specColor(d, tone, Math.min(0.9, alpha))
-      ctx.fillRect(x, y, cellW, 3)
+  var tone = H.specTiers(d)
+
+  ctx.save()
+  ctx.font = "bold 10px monospace"
+  ctx.textAlign = "center"
+  ctx.textBaseline = "middle"
+
+  for (var r = 0; r < numRows; r++) {
+    var cy = r * charH + charH / 2
+    for (var t = 0; t < tiles; t++) {
+      var lvl = levelFor(cells[r * tiles + t].value)
+      if (lvl.tier < 0) continue
+      ctx.fillStyle = tone[lvl.tier]
+      for (var k = 0; k < CELL_W; k++) {
+        ctx.fillText(lvl.glyph, (t * (CELL_W + CELL_GAP) + k) * charW + charW / 2, cy)
+      }
     }
   }
+
+  ctx.restore()
 }

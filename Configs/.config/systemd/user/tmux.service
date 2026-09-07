@@ -3,15 +3,15 @@ Description=tmux default session (detached)
 Documentation=man:tmux(1)
 
 [Service]
-Type=forking
+Type=simple
 Environment=DISPLAY=:0
 Environment=XDG_CONFIG_HOME=/home/rifle/.config
 Environment=XDG_DATA_HOME=/home/rifle/.local/share
 Environment=XDG_STATE_HOME=/home/rifle/.local/state
-ExecStart=/usr/sbin/tmux new-session -d
+ExecStart=%h/.local/lib/hypr/system/tmux-server.sh
 
-ExecStop=/home/rifle/.config/tmux/scripts/tmux-resurrect-save-safe quiet
-ExecStop=/usr/sbin/tmux kill-server
+# Runs before SIGTERM, while the server is still alive.
+ExecStop=-%h/.config/tmux/scripts/tmux-resurrect-save-safe quiet
 KillMode=control-group
 
 RestartSec=2

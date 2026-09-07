@@ -1,3 +1,5 @@
 #!/bin/sh
-# runit's ExecStop equivalent: save the resurrect state before the server dies.
+# Crash path: runsv runs ./finish only after ./run has exited, so the server is
+# already gone and the save is a no-op that just repoints `last` at the newest
+# valid snapshot. The real save happens in control/t.
 "$HOME/.config/tmux/scripts/tmux-resurrect-save-safe" quiet 2>/dev/null || true

@@ -4,6 +4,9 @@ import QtQuick
 // lines is font metrics; two Texts make it an explicit number.
 ScriptButton {
     id: root
+    // the stack is for the vertical bars; a horizontal one sets this false and
+    // gets the same two parts side by side
+    property bool vertical: true
     property real gap: box.gap || 0
     // a larger icon reserves ascent above its ink; pinning its line box stops
     // that headroom scaling with the span's point size
@@ -19,9 +22,15 @@ ScriptButton {
         ? root.fontSize * box.iconSize / box.fontSize : root.fontSize
     readonly property var halves: {
         const parts = String(root.rendered).split(/<br\s*\/?>|\r\n?|\n/i)
+        // the scripts size their icon in the markup, which reads as a deliberate
+        // step up over the value below it but as a mismatch beside it — and it
+        // would drive the bar's height. Drop the size, keep the colour a script
+        // uses to signal temperature, and let iconSize rule.
+        const icon = root.vertical ? parts[0] || ""
+            : String(parts[0] || "").replace(/font-size:[^;']*;?/g, "")
         // the scripts pad a line's edge to sit its digits under the icon, so the
         // parts are passed through whole; plain text keeps those spaces as typed
-        return { icon: parts[0] || "", value: parts[1] || "", tail: parts[2] || "" }
+        return { icon: icon, value: parts[1] || "", tail: parts[2] || "" }
     }
     // the inherited single-line label stands down; the column below draws instead
     text: ""
@@ -34,9 +43,16 @@ ScriptButton {
     function remeasure() {
         // the value's leading pad only nudges the line inside the box; letting it
         // count here would widen the button, and with it the whole bar
-        root.spanWidth = Math.max(iconLabel.implicitWidth, valueLabel.implicitWidth - root.valuePadLeft, tailLabel.implicitWidth)
+        const value = valueLabel.implicitWidth - root.valuePadLeft
+        if (root.vertical) {
+            root.spanWidth = Math.max(iconLabel.implicitWidth, value, tailLabel.implicitWidth)
+            return
+        }
+        const drawn = [iconLabel.implicitWidth, value, tailLabel.implicitWidth].filter(width => width > 0)
+        root.spanWidth = drawn.reduce((total, width) => total + width, 0) + root.gap * Math.max(0, drawn.length - 1)
     }
     onHalvesChanged: Qt.callLater(root.remeasure)
+    onVerticalChanged: Qt.callLater(root.remeasure)
     onFontSizeChanged: Qt.callLater(root.remeasure)
     onIconSizeChanged: Qt.callLater(root.remeasure)
     onGapChanged: Qt.callLater(root.remeasure)
@@ -45,8 +61,12 @@ ScriptButton {
     implicitWidth: root.spanWidth + spanX
     implicitHeight: stack.implicitHeight + spanY
 
-    Column {
+    Grid {
         id: stack
+        // one column stacks, three put the parts in a single row; either way the
+        // children stay in script order
+        columns: root.vertical ? 1 : 3
+        verticalItemAlignment: Grid.AlignVCenter
         anchors.verticalCenter: parent.verticalCenter
         anchors.left: parent.left; anchors.right: parent.right
         anchors.leftMargin: root.box.margin[3] + root.box.border + root.box.padding[3]
@@ -54,7 +74,7 @@ ScriptButton {
         spacing: root.gap
         Text {
             id: iconLabel
-            width: parent.width
+            width: root.vertical ? parent.width : implicitWidth
             horizontalAlignment: root.align
             rightPadding: root.iconPadRight
             visible: text !== ""
@@ -68,7 +88,7 @@ ScriptButton {
         }
         Text {
             id: valueLabel
-            width: parent.width
+            width: root.vertical ? parent.width : implicitWidth
             horizontalAlignment: root.align
             leftPadding: root.valuePadLeft
             visible: text !== ""
@@ -81,7 +101,7 @@ ScriptButton {
         }
         Text {
             id: tailLabel
-            width: parent.width
+            width: root.vertical ? parent.width : implicitWidth
             horizontalAlignment: root.align
             topPadding: root.tailGap
             visible: text !== ""

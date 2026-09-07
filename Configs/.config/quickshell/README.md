@@ -76,8 +76,10 @@ Composed modules such as `audio`, `power`, `eyecare`, `screen`, `wifi`, `notific
 its `css` key and its children by their own keys.
 
 `mediaplayer` takes `showWhenIdle: true`, which keeps a placeholder glyph
-(`idleIcon`, default `\uf001`) in the bar when no player is running — the
-provider prints nothing then, and an empty `ScriptButton` hides itself.
+(`idleIcon`, default `\uf001`) in the bar when no player is running —
+otherwise the module collapses to nothing, the `ScriptButton` on an empty
+provider line in `main`/`alt` and `MediaButton` on a null `Media.player` in
+`top`/`winbar`.
 
 `notification` and `notification-group` take a `badge` prop for the unread
 marker: `"dot"`, `"count"`, `"highlight"` (recolour the glyph instead), or

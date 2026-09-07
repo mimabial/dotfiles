@@ -5,7 +5,7 @@ ScriptButton {
     id: root
     property bool popupsAllowed: true
     property bool activeOnly: false
-    css: "screenrecord"
+    css: "screenrecord"; tooltip: ""
     readonly property bool recording: output.class === "recording"
     visible: activeOnly ? recording : text !== ""
     fill: recording ? root.shell.alpha(root.shell.role("c9", root.shell.accent), blink.phase) : "transparent"

@@ -16,12 +16,10 @@ Item {
   property bool popoutSwitchClosing: false
   readonly property bool opened: shell && shell.popupName === popupName
   readonly property color barForeground: bar ? bar.foreground : Color.foreground
-  property QtObject controller: QtObject {
-    function show() { if (root.shell) root.shell.togglePopup(root.popupName) }
-    function hide() { if (root.shell && root.opened) root.shell.closePopup() }
-  }
-  function open() { controller.show() }
-  function close() { controller.hide() }
+  function showPopup() { if (root.shell) root.shell.togglePopup(root.popupName) }
+  function hidePopup() { if (root.shell && root.opened) root.shell.closePopup() }
+  function open() { root.showPopup() }
+  function close() { root.hidePopup() }
   function closeForPopoutSwitch() { close() }
   function toggle() { opened ? close() : open() }
   function switchPanel(direction) { return false }

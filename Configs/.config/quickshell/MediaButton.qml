@@ -14,18 +14,25 @@ Item {
     property bool controlsRight: false
     property bool showArtist: true
     property bool randomizeProgressShape: false
+    // with no player the module collapses to nothing; showWhenIdle keeps a
+    // placeholder in the bar to open the popup from
+    property bool showWhenIdle: false
+    property string idleIcon: "\uf001"
     readonly property bool mprisAppearance: appearance === "mpris"
     readonly property var player: Media.player
-    readonly property bool shown: player !== null
+    readonly property bool hasPlayer: player !== null
+    // the placeholder is a plain glyph, so the transport row only stands in for a live player
+    readonly property bool mprisView: mprisAppearance && hasPlayer
+    readonly property bool shown: hasPlayer || showWhenIdle
     readonly property int artSize: Math.max(Style.px(12), Style.px(albumArtSize))
     readonly property string displayText: showArtist && Media.artist && Media.title
         ? Media.artist + " — " + Media.title : Media.title || Media.artist
 
     visible: shown
-    implicitWidth: !shown ? 0 : mprisAppearance
+    implicitWidth: !shown ? 0 : mprisView
         ? (vertical ? artSize : contents.implicitWidth + Style.px(12))
         : compactLoader.item ? compactLoader.item.implicitWidth : 0
-    implicitHeight: !shown ? 0 : mprisAppearance
+    implicitHeight: !shown ? 0 : mprisView
         ? Math.max(artSize, contents.implicitHeight)
         : compactLoader.item ? compactLoader.item.implicitHeight : 0
 
@@ -41,7 +48,7 @@ Item {
     Loader {
         id: compactLoader
         anchors.centerIn: parent
-        active: !root.mprisAppearance
+        active: !root.mprisView
         sourceComponent: compactView
     }
     Component {
@@ -50,7 +57,8 @@ Item {
             shell: root.shell
             css: "mediaplayer"
             textColor: shell.alpha(shell.role("act_fg", shell.foreground), .7)
-            text: root.player ? Media.icon(root.player) + "  " + Media.remaining(root.player) : ""
+            text: root.player ? Media.icon(root.player) + "  " + Media.remaining(root.player)
+                : root.showWhenIdle ? root.idleIcon : ""
             onClicked: button => button === Qt.RightButton ? Media.playPause()
                 : button === Qt.MiddleButton ? Media.next() : root.shell.togglePopup("media")
             onWheeled: delta => root.wheel(delta)
@@ -64,7 +72,7 @@ Item {
         anchors.centerIn: parent
         spacing: Style.px(4)
         layoutDirection: root.controlsRight ? Qt.RightToLeft : Qt.LeftToRight
-        visible: root.mprisAppearance
+        visible: root.mprisView
 
         Row {
             spacing: Style.px(4); layoutDirection: Qt.LeftToRight; visible: root.showControls

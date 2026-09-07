@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import Quickshell
@@ -13,16 +14,10 @@ Panel {
   ipcTarget: "display-panel"
   manageIpc: false
 
-  property var anchorItem: null
   property var hostWidget: null
   readonly property var barIdentity: hostWidget || root
 
-  property bool installed: false
-  property string installedVersion: ""
-  property bool compatible: false
-  property bool checkingInstallation: true
-  property bool installationStateKnown: false
-  property bool installing: false
+  property string backendVersion: ""
   property bool serviceEnabled: false
   property bool serviceActive: false
   property bool serviceStateKnown: false
@@ -152,10 +147,10 @@ Panel {
       ? !root.daemonUnmanaged
       : (serviceEnabled || serviceActive || backendConnected))
   readonly property string runningVersion: Model.releaseVersion(root.document ? root.document.version : "")
-  readonly property string installedRelease: Model.releaseVersion(root.installedVersion)
+  readonly property string backendRelease: Model.releaseVersion(root.backendVersion)
   readonly property bool daemonOutdated: root.backendConnected
     && root.documentReady
-    && Model.daemonNeedsRestart(root.installedVersion, root.document ? root.document.version : "")
+    && Model.daemonNeedsRestart(root.backendVersion, root.document ? root.document.version : "")
   // Every actionable row in one list, so their cursor positions cannot drift
   // apart from what is on screen.
   readonly property var actionRows: {
@@ -172,7 +167,7 @@ Panel {
         id: "restart-service",
         icon: "󰑓",
         title: "Restart daemon",
-        subtitle: "Running " + root.runningVersion + ", installed " + root.installedRelease
+        subtitle: "Running " + root.runningVersion + ", on disk " + root.backendRelease
       })
     return rows
   }
@@ -184,14 +179,10 @@ Panel {
     && !serviceActionPending
   readonly property string runtimeDir: String(Quickshell.env("XDG_RUNTIME_DIR") || "")
   readonly property string socketPath: root.runtimeDir + "/hyprmoncfgd.sock"
-  readonly property string installFailurePath: root.runtimeDir + "/display-panel-install.failed"
-  readonly property string installCompletePath: root.runtimeDir + "/display-panel-install.complete"
   readonly property var previewCoordinator: {
     return root.shell ? root.shell.monitorPreviewCoordinator : null
   }
-  readonly property bool barIconDimmed: root.installationStateKnown
-    && root.compatible
-    && root.serviceStateKnown
+  readonly property bool barIconDimmed: root.serviceStateKnown
     && !root.managedChecked
     && !root.serviceActionPending
   readonly property color foreground: bar ? bar.foreground : Color.foreground
@@ -291,11 +282,11 @@ Panel {
   }
 
   function open() {
-    root.controller.show()
+    root.showPopup()
     root.cursorActive = false
     root.cursorIndex = 0
-    root.checkInstallation()
-    if (root.compatible) root.checkServiceState()
+    root.checkBackend()
+    root.checkServiceState()
     if (root.backendConnected) root.requestEditorState()
   }
 
@@ -304,7 +295,7 @@ Panel {
     if (root.previewTransaction !== "" && !root.previewCoordinator) root.revertPreview()
     root.keyboardHelpOpen = false
     root.execEditing = false
-    root.controller.hide()
+    root.hidePopup()
   }
 
   function toggle() {
@@ -386,33 +377,22 @@ Panel {
     root.startBrightnessSet(connector, percent)
   }
 
-  function checkInstallation() {
+  function checkBackend() {
     if (whichProcess.running) return
-    if (!root.installationStateKnown) root.checkingInstallation = true
     whichProcess.command = [
-      "sh",
-      "-c",
-      "if test \"$3\" = \"1\"; then if test -f \"$1\"; then cat \"$1\"; exit 2; elif ! test -f \"$2\"; then exit 3; fi; fi; if command -v hyprmoncfg >/dev/null 2>&1; then hyprmoncfg version; else exit 1; fi",
-      "sh",
-      root.installFailurePath,
-      root.installCompletePath,
-      root.installing ? "1" : "0"
+      "sh", "-c", "command -v hyprmoncfg >/dev/null 2>&1 && hyprmoncfg version"
     ]
     whichProcess.running = true
   }
 
   function checkServiceState() {
-    if (!root.compatible || serviceProcess.running || enabledProcess.running || activeProcess.running) return
+    if (serviceProcess.running || enabledProcess.running || activeProcess.running) return
     enabledProcess.command = ["hyprshell", "system/monitor-profile", "service-enabled"]
     enabledProcess.running = true
   }
 
-  function install() {
-    root.lastError = "Install the display profile backend, then reopen this panel."
-  }
-
   function setManaged(enabled) {
-    if (!root.compatible || serviceProcess.running || root.serviceActionPending) return
+    if (serviceProcess.running || root.serviceActionPending) return
     root.lastError = ""
     root.serviceActionPending = true
     root.serviceTargetManaged = enabled === true
@@ -422,7 +402,7 @@ Panel {
   }
 
   function restartService() {
-    if (!root.compatible || serviceProcess.running || root.serviceActionPending) return
+    if (serviceProcess.running || root.serviceActionPending) return
     root.lastError = ""
     root.serviceActionPending = true
     root.serviceTargetManaged = true
@@ -432,7 +412,7 @@ Panel {
   }
 
   function connectBackend() {
-    if (!root.compatible || backendSocket.connected || root.socketPath === "/hyprmoncfgd.sock") return
+    if (backendSocket.connected || root.socketPath === "/hyprmoncfgd.sock") return
     if (!root.serviceEnabled && !root.serviceActive && !(root.serviceActionPending && root.serviceTargetManaged)) return
     backendSocket.connected = true
   }
@@ -1181,7 +1161,6 @@ Panel {
   }
 
   function itemCount() {
-    if (!root.compatible) return 1
     return root.layoutRowIndex + 1
   }
 
@@ -1191,10 +1170,6 @@ Panel {
   }
 
   function activateCursor() {
-    if (!root.compatible) {
-      root.install()
-      return
-    }
     if (root.cursorIndex === 0) {
       root.setManaged(!root.managedChecked)
       return
@@ -1214,7 +1189,7 @@ Panel {
   Component.onCompleted: {
     Style.shell = root.shell
     Color.shell = root.shell
-    root.checkInstallation()
+    root.checkBackend()
   }
   onActivePageChanged: {
     if (root.activePage === "workspaces")
@@ -1237,8 +1212,8 @@ Panel {
       root.keyboardLayoutPane = "canvas"
       root.keyboardInspectorField = 0
       root.workspaceKeyboardIndex = 0
-      root.checkInstallation()
-      if (root.compatible) root.checkServiceState()
+      root.checkBackend()
+      root.checkServiceState()
       if (root.backendConnected) root.requestEditorState()
       brightnessSelectionTimer.restart()
     } else {
@@ -1258,7 +1233,6 @@ Panel {
       if (connected) {
         root.connectionGrace = false
         root.lastError = ""
-        root.installing = false
         root.subscribe()
       } else {
         root.pendingMethods = ({})
@@ -1268,7 +1242,7 @@ Panel {
         root.editPending = false
         root.profileModePending = false
         root.clearPreview(false)
-        if (root.compatible && (root.serviceEnabled || root.serviceActive))
+        if (root.serviceEnabled || root.serviceActive)
           serviceRefreshTimer.restart()
       }
     }
@@ -1279,38 +1253,8 @@ Panel {
     id: whichProcess
     stdout: StdioCollector { id: versionOutput; waitForEnd: true }
     onExited: function(exitCode) {
-      if (exitCode === 3 && root.installing) return
-
-      root.checkingInstallation = false
-      root.installationStateKnown = true
-      var probedInstalled = exitCode === 0
-      var probedCompatible = probedInstalled && Model.versionAtLeast(versionOutput.text, "1.16.2")
-
-      if (root.installing && exitCode === 2) {
-        root.installing = false
-        installPoll.stop()
-        installTimeout.stop()
-        root.lastError = String(versionOutput.text || "").trim() === "130"
-          ? "Installation was canceled."
-          : "Installation did not finish."
-        return
-      }
-
-      if (root.installing && !probedCompatible) {
-        root.installing = false
-        installPoll.stop()
-        installTimeout.stop()
-        root.lastError = "The update finished, but the display profile backend is still incompatible."
-        return
-      }
-
-      root.installed = probedInstalled
-      root.installedVersion = probedInstalled ? String(versionOutput.text || "") : ""
-      root.compatible = probedCompatible
-      if (root.compatible) {
-        root.installing = false
-        installPoll.stop()
-        installTimeout.stop()
+      root.backendVersion = exitCode === 0 ? String(versionOutput.text || "") : ""
+      if (exitCode === 0) {
         root.checkServiceState()
       } else {
         backendSocket.connected = false
@@ -1363,24 +1307,6 @@ Panel {
       }
     }
   }
-
-  Process {
-    id: installPreparationProcess
-    onExited: function(exitCode) {
-      if (!root.installing) return
-      if (exitCode !== 0) {
-        root.installing = false
-        root.lastError = "Could not prepare the display backend update."
-        return
-      }
-      installerProcess.command = Model.installProcessArgs()
-      installerProcess.startDetached()
-      installPoll.restart()
-      installTimeout.restart()
-    }
-  }
-
-  Process { id: installerProcess }
 
   Process {
     id: serviceProcess
@@ -1470,25 +1396,6 @@ Panel {
   }
 
   Timer {
-    id: installPoll
-    interval: 1000
-    repeat: true
-    running: root.installing && !root.compatible
-    onTriggered: root.checkInstallation()
-  }
-
-  Timer {
-    id: installTimeout
-    interval: 300000
-    onTriggered: {
-      if (!root.installing) return
-      root.installing = false
-      installPoll.stop()
-      root.lastError = "Installation is still waiting."
-    }
-  }
-
-  Timer {
     id: serviceRefreshTimer
     interval: 250
     onTriggered: root.checkServiceState()
@@ -1498,7 +1405,7 @@ Panel {
     id: serviceDiscoveryTimer
     interval: 2000
     repeat: true
-    running: root.compatible && !root.backendConnected && !root.serviceActionPending
+    running: !root.backendConnected && !root.serviceActionPending
     onTriggered: root.checkServiceState()
   }
 
@@ -1524,8 +1431,7 @@ Panel {
     id: reconnectTimer
     interval: 1000
     repeat: true
-    running: root.compatible
-      && (root.serviceActive || (root.serviceActionPending && root.serviceTargetManaged))
+    running: (root.serviceActive || (root.serviceActionPending && root.serviceTargetManaged))
       && !root.backendConnected
     onTriggered: {
       root.checkServiceState()
@@ -1721,7 +1627,6 @@ Panel {
 
           Button {
             id: compactExpandButton
-            visible: root.compatible
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             text: "Expand"
@@ -1746,43 +1651,6 @@ Panel {
         }
 
         Column {
-          visible: !root.compatible && !root.checkingInstallation
-          width: parent.width
-          spacing: Style.space(14)
-
-          PanelSeparator { foreground: root.foreground }
-
-          Text {
-            textFormat: Text.PlainText
-            width: parent.width
-            text: root.installed
-              ? "Update the display backend to use the visual editor."
-              : "Install the display backend to manage monitor layouts."
-            color: root.dim
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.body
-            wrapMode: Text.WordWrap
-            horizontalAlignment: Text.AlignHCenter
-          }
-
-          Button {
-            width: parent.width
-            text: root.installing
-              ? (root.installed ? "Updating display backend…" : "Installing display backend…")
-              : (root.installed ? "Update display backend" : "Install display backend")
-            iconText: root.installed ? "󰚰" : "󰏔"
-            iconSpinning: root.installing
-            selected: !root.installed
-            bordered: true
-            enabled: !root.installing
-            foreground: root.foreground
-            fontFamily: root.fontFamily
-            onClicked: root.install()
-          }
-        }
-
-        Column {
-          visible: root.compatible
           width: parent.width
           spacing: Style.space(14)
 
@@ -2877,6 +2745,7 @@ Panel {
                   model: root.document && root.document.profiles instanceof Array ? root.document.profiles : []
 
                   BorderSurface {
+                    id: profileRow
                     required property var modelData
                     width: parent.width
                     height: Style.space(32)
@@ -2896,11 +2765,11 @@ Panel {
                         textFormat: Text.PlainText
                         anchors.verticalCenter: parent.verticalCenter
                         width: parent.width - profileMatchText.width - Style.space(8)
-                        text: (modelData.active ? "›  " : "   ") + String(modelData.name || "Profile")
-                        color: modelData.active || parent.parent.selected ? root.foreground : root.dim
+                        text: (profileRow.modelData.active ? "›  " : "   ") + String(profileRow.modelData.name || "Profile")
+                        color: profileRow.modelData.active || parent.parent.selected ? root.foreground : root.dim
                         font.family: root.fontFamily
                         font.pixelSize: Style.font.bodySmall
-                        font.bold: modelData.active
+                        font.bold: profileRow.modelData.active
                         elide: Text.ElideRight
                       }
 
@@ -2908,11 +2777,11 @@ Panel {
                         textFormat: Text.PlainText
                         id: profileMatchText
                         anchors.verticalCenter: parent.verticalCenter
-                        text: Number(modelData.match_score || 0) > 0 ? String(modelData.match_score) : "—"
-                        color: modelData.recommended ? Color.accent : root.dim
+                        text: Number(profileRow.modelData.match_score || 0) > 0 ? String(profileRow.modelData.match_score) : "—"
+                        color: profileRow.modelData.recommended ? Color.accent : root.dim
                         font.family: root.fontFamily
                         font.pixelSize: Style.font.bodySmall
-                        font.bold: modelData.recommended
+                        font.bold: profileRow.modelData.recommended
                       }
                     }
 
@@ -3178,6 +3047,7 @@ Panel {
                     ? [] : (((root.draftProfile || {}).workspaces || {}).monitor_order || [])
 
                   BorderSurface {
+                    id: orderRow
                     required property var modelData
                     required property int index
                     width: parent.width
@@ -3202,7 +3072,7 @@ Panel {
                         textFormat: Text.PlainText
                         anchors.verticalCenter: parent.verticalCenter
                         width: parent.width - orderUp.width - orderDown.width - parent.spacing * 2
-                        text: (index + 1) + ".  " + Model.outputDisplayLabel(root.draftProfile, String(modelData))
+                        text: (orderRow.index + 1) + ".  " + Model.outputDisplayLabel(root.draftProfile, String(orderRow.modelData))
                         color: root.foreground
                         font.family: root.fontFamily
                         font.pixelSize: Style.font.body
@@ -3214,10 +3084,10 @@ Panel {
                         anchors.verticalCenter: parent.verticalCenter
                         text: "↑"
                         bordered: true
-                        enabled: index > 0 && !root.editPending
+                        enabled: orderRow.index > 0 && !root.editPending
                         foreground: root.foreground
                         fontFamily: root.fontFamily
-                        onClicked: root.moveWorkspaceMonitor(String(modelData), -1)
+                        onClicked: root.moveWorkspaceMonitor(String(orderRow.modelData), -1)
                       }
 
                       Button {
@@ -3225,11 +3095,11 @@ Panel {
                         anchors.verticalCenter: parent.verticalCenter
                         text: "↓"
                         bordered: true
-                        enabled: index < (((root.draftProfile || {}).workspaces || {}).monitor_order || []).length - 1
+                        enabled: orderRow.index < (((root.draftProfile || {}).workspaces || {}).monitor_order || []).length - 1
                           && !root.editPending
                         foreground: root.foreground
                         fontFamily: root.fontFamily
-                        onClicked: root.moveWorkspaceMonitor(String(modelData), 1)
+                        onClicked: root.moveWorkspaceMonitor(String(orderRow.modelData), 1)
                       }
                     }
                   }
@@ -3252,6 +3122,7 @@ Panel {
                   }
 
                   delegate: BorderSurface {
+                    id: manualRow
                     required property var modelData
                     required property int index
                     width: manualAssignmentList.width - (manualScrollBar.visible
@@ -3278,7 +3149,7 @@ Panel {
                         textFormat: Text.PlainText
                         anchors.verticalCenter: parent.verticalCenter
                         width: Style.space(82)
-                        text: "Workspace " + String(modelData.workspace || "?")
+                        text: "Workspace " + String(manualRow.modelData.workspace || "?")
                         color: root.dim
                         font.family: root.fontFamily
                         font.pixelSize: Style.font.bodySmall
@@ -3290,12 +3161,12 @@ Panel {
                         anchors.verticalCenter: parent.verticalCenter
                         width: parent.width - manualWorkspaceLabel.width
                           - manualLeft.width - manualRight.width - parent.spacing * 3
-                        text: String(modelData.display_name || "Display")
+                        text: String(manualRow.modelData.display_name || "Display")
                         color: root.foreground
                         font.family: root.fontFamily
                         font.pixelSize: Style.font.body
                         font.bold: root.expanded && root.activePage === "workspaces"
-                          && root.workspaceKeyboardIndex === root.workspaceListKeyboardStart + index
+                          && root.workspaceKeyboardIndex === root.workspaceListKeyboardStart + manualRow.index
                         elide: Text.ElideRight
                       }
 
@@ -3307,7 +3178,7 @@ Panel {
                         enabled: root.manualWorkspaceTargetCount > 1 && !root.editPending
                         foreground: root.foreground
                         fontFamily: root.fontFamily
-                        onClicked: root.moveManualWorkspace(index, -1)
+                        onClicked: root.moveManualWorkspace(manualRow.index, -1)
                       }
 
                       Button {
@@ -3318,7 +3189,7 @@ Panel {
                         enabled: root.manualWorkspaceTargetCount > 1 && !root.editPending
                         foreground: root.foreground
                         fontFamily: root.fontFamily
-                        onClicked: root.moveManualWorkspace(index, 1)
+                        onClicked: root.moveManualWorkspace(manualRow.index, 1)
                       }
                     }
                   }

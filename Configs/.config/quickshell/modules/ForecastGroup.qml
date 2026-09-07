@@ -18,7 +18,7 @@ BarGroup {
 
     Component { id: weatherSlot; StackedReadout {
         id: weatherButton
-        shell: root.shell; css: "weather"; interval: 600000
+        shell: root.shell; css: "weather"; tooltip: ""; interval: 600000
         command: root.showUnit ? ["hyprshell", "weather"] : ["hyprshell", "weather", "--no-unit"]
         // c2 unless a style file names a colour; setting it on "weather" itself
         // would also repaint minmax/sunrise/sunset, which inherit that key

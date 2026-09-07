@@ -40,7 +40,6 @@ local values = {
     ["start.AUTO_THEME"] = "hyprshell auto-theme-startup",
     ["start.IDLE_MANAGER"] = "systemctl --user start --no-block hyprland-idle-manager.service",
     ["start.ZSH_ZCOMPDUMP"] = "systemctl --user start --no-block zsh-zcompdump-clean.timer",
-    ["start.TMUX_SERVER"] = "tmux new-session -d",
     ICON_THEME = "Tela-circle-dracula",
     COLOR_SCHEME = "prefer-dark",
     BUTTON_LAYOUT = "",

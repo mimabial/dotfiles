@@ -1543,6 +1543,10 @@ Item {
   onActiveIdChanged: if (root.activeId) root.clearUrgentApp(root.activeId, root.activeWindowAddress)
   onActiveWindowAddressChanged: if (root.activeWindowAddress) root.clearUrgentApp(root.activeId, root.activeWindowAddress)
 
+  readonly property string dockMonitorName: dockScreen ? String(dockScreen.name || "") : ""
+  property string dockSpecialWorkspace: ""
+  property bool dockSpecialSeeded: false
+
   readonly property int focusedWorkspaceId: Hyprland.focusedWorkspace
     ? Hyprland.focusedWorkspace.id
     : -99999
@@ -1818,10 +1822,22 @@ Item {
     // the ones that can overlap it.
     var dockWsId = (mon && mon.activeWorkspace) ? mon.activeWorkspace.id : -1
 
+    // A scratchpad is not the active workspace — Hyprland keeps it in a slot of
+    // its own — so its windows have to be admitted separately or a full-screen
+    // one reads as an empty desktop. The name is maintained by the activespecial
+    // event; the monitor object is only correct on the first read, so it seeds.
+    if (!root.dockSpecialSeeded && mon && mon.lastIpcObject && mon.lastIpcObject.specialWorkspace) {
+      root.dockSpecialWorkspace = String(mon.lastIpcObject.specialWorkspace.name || "")
+      root.dockSpecialSeeded = true
+    }
+    var dockSpecialWs = root.dockSpecialWorkspace
+
     for (var i = 0; i < clients.length; i++) {
       var c = clients[i]
       if (!c.mapped || c.hidden) continue
-      if (!c.workspace || c.workspace.id !== dockWsId) continue
+      if (!c.workspace) continue
+      if (c.workspace.id !== dockWsId
+        && !(dockSpecialWs !== "" && String(c.workspace.name || "") === dockSpecialWs)) continue
 
       var at = c.at
       var sz = c.size
@@ -2110,6 +2126,15 @@ Item {
     }
     function onRawEvent(event) {
       var n = String((event && event.name) || "")
+      if (n === "activespecial") {
+        var special = String(event.data || "").split(",")
+        var onMonitor = special.length > 1 ? special[special.length - 1].trim() : ""
+        if (onMonitor === "" || onMonitor === root.dockMonitorName) {
+          root.dockSpecialWorkspace = special[0].trim()
+          root.dockSpecialSeeded = true
+          debounceOverlapTimer.restart()
+        }
+      }
       if (n === "openwindow") {
         var rawAddr = String(event.data || "").split(",")[0].trim()
         if (rawAddr.slice(0, 2) === "0x" || rawAddr.slice(0, 2) === "0X") rawAddr = rawAddr.slice(2)

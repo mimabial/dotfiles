@@ -13,6 +13,7 @@ import "visualizers/correlation.js" as VisCorrelation
 import "visualizers/ascii.js" as VisAscii
 import "visualizers/wave.js" as VisWave
 import "visualizers/sine.js" as VisSine
+import "visualizers/mirror.js" as VisMirror
 import "visualizers/siriwave.js" as VisSiriWave
 import "visualizers/soundcloud_wave.js" as VisSoundCloudWave
 import "visualizers/telegram_wave.js" as VisTelegramWave
@@ -24,8 +25,10 @@ import "visualizers/retro.js" as VisRetro
 import "visualizers/matrix.js" as VisMatrix
 import "visualizers/binary.js" as VisBinary
 import "visualizers/terrain.js" as VisTerrain
+import "visualizers/village.js" as VisVillage
 import "visualizers/mosaic.js" as VisMosaic
 import "visualizers/scatter.js" as VisScatter
+import "visualizers/rain.js" as VisRain
 import "visualizers/butterfly.js" as VisButterfly
 import "visualizers/plasma.js" as VisPlasma
 import "visualizers/osc_warp.js" as VisOscWarp
@@ -168,30 +171,36 @@ Item {
     "classic_led": VisClassicLED.render,
     "peaks": VisPeaks.render, "stereo": VisStereo.render,
     "correlation": VisCorrelation.render, "ascii": VisAscii.render,
-    "wave": VisWave.render, "sine": VisSine.render,
+    "wave": VisWave.render, "sine": VisSine.render, "mirror": VisMirror.render,
     "siriwave": VisSiriWave.render,
     "soundcloud_wave": VisSoundCloudWave.render, "telegram_wave": VisTelegramWave.render,
     "daw_wave": VisDAWWave.render, "led_scrubber": VisLEDScrubber.render,
     "heatmap_wave": VisHeatmapWave.render, "grounded_wave": VisGroundedWave.render,
     "retro": VisRetro.render,
     "matrix": VisMatrix.render, "binary": VisBinary.render, "terrain": VisTerrain.render,
-    "mosaic": VisMosaic.render, "scatter": VisScatter.render,
+    "village": VisVillage.render,
+    "mosaic": VisMosaic.render, "scatter": VisScatter.render, "rain": VisRain.render,
     "butterfly": VisButterfly.render, "plasma": VisPlasma.render,
     "osc_warp": VisOscWarp.render, "crt_scanline": VisCRTScanline.render,
     "cyber_tunnel": VisCyberTunnel.render
   })
 
+  // Mirrors the Go drivers' OnEnter: a renderer that must rebuild its state on every
+  // visit exports onEnter(state) and is listed here.
+  readonly property var _enterHooks: ({ "mosaic": VisMosaic.onEnter, "peaks": VisPeaks.onEnter,
+                                      "classic_led": VisClassicLED.onEnter, "village": VisVillage.onEnter })
+
   readonly property var _modeLabels: ({
     "bars": "Bars", "bricks": "Bricks", "classic_led": "Classic LED",
     "peaks": "Peaks", "stereo": "Stereo", "correlation": "Correlation", "ascii": "Ascii",
-    "wave": "Wave", "sine": "Sine Wave",
+    "wave": "Wave", "sine": "Sine Wave", "mirror": "Mirror",
     "siriwave": "Siri Wave",
     "soundcloud_wave": "SoundCloud Wave", "telegram_wave": "Telegram Wave",
     "daw_wave": "DAW Meter", "led_scrubber": "LED Scrubber",
     "heatmap_wave": "Heatmap Wave", "grounded_wave": "Baseline Wave",
     "retro": "Retro",
-    "matrix": "Matrix", "binary": "Binary", "terrain": "Terrain",
-    "mosaic": "Mosaic", "scatter": "Scatter",
+    "matrix": "Matrix", "binary": "Binary", "terrain": "Terrain", "village": "Clair de Lune",
+    "mosaic": "Mosaic", "scatter": "Scatter", "rain": "Rain",
     "butterfly": "Butterfly", "plasma": "Liquid Plasma",
     "osc_warp": "Oscilloscope Warp", "crt_scanline": "CRT Radar Scope",
     "cyber_tunnel": "3D Cyber Tunnel"
@@ -484,6 +493,11 @@ Item {
             function onForegroundChanged() { visCanvas.requestPaint() }
             function onDimChanged() { visCanvas.requestPaint() }
             function onSurfaceChanged() { visCanvas.requestPaint() }
+            function onVisModeChanged() {
+              var hook = root._enterHooks[root.p.visMode]
+              if (hook) hook(root.p._visState)
+              visCanvas.requestPaint()
+            }
           }
 
           onPaint: {

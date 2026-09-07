@@ -32,7 +32,7 @@ ICON_ROOTS = (
 # Mirrors the extensions core/wallpaper.catalog.sh treats as wallpapers.
 WALL_SUFFIXES = (".gif", ".jpg", ".jpeg", ".png")
 ANSI_ORDER = ("black", "red", "green", "yellow", "blue", "magenta", "cyan", "white")
-WALL_LINKS = ("wall.set", "wall.awww.png", "wall.hyprlock.png")
+WALL_LINK = "wall.set"
 KEEP_BLOCKS = ("general", "group", "decoration")
 HEADER = "$HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta"
 KVANTUM_SHELLS = ("flat", "materia", "pill")
@@ -340,11 +340,10 @@ def install_wallpapers(images, pack_dir):
     for image in images:
         shutil.copy2(image, wallpapers / image.name)
     target = (wallpapers / images[0].name).resolve()
-    for link in WALL_LINKS:
-        path = pack_dir / link
-        if path.is_symlink() or path.exists():
-            path.unlink()
-        path.symlink_to(target)
+    path = pack_dir / WALL_LINK
+    if path.is_symlink() or path.exists():
+        path.unlink()
+    path.symlink_to(target)
     return target
 
 
@@ -439,7 +438,7 @@ def main():
             print(f"==> {pack_dir}/wallpapers/ ({len(images)} images, {len(skipped)} skipped)")
             for image in images:
                 print(f"    {image.name}")
-            print(f"==> {'/'.join(WALL_LINKS)} -> wallpapers/{images[0].name}")
+            print(f"==> {WALL_LINK} -> wallpapers/{images[0].name}")
             return 0
 
         pack_dir.mkdir(parents=True, exist_ok=True)

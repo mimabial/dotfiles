@@ -1,14 +1,3 @@
-function installCommand() {
-  return "yay -S --needed hyprmoncfg-bin"
-}
-
-function installProcessArgs() {
-  return [
-    "tui-terminal-exec", "--hypr-size", "1000", "700", "--",
-    "sh", "-lc", installCommand()
-  ]
-}
-
 function parseEnvelope(raw) {
   try {
     var value = JSON.parse(String(raw || ""))
@@ -838,29 +827,8 @@ function daemonNeedsRestart(installedOutput, daemonVersion) {
   return installed !== "" && running !== "" && installed !== running
 }
 
-function versionAtLeast(output, minimum) {
-  var text = String(output || "")
-  if (/\bdev\b/.test(text)) return true
-
-  function parts(value) {
-    var match = String(value || "").match(/v?(\d+)\.(\d+)\.(\d+)/)
-    return match ? [Number(match[1]), Number(match[2]), Number(match[3])] : null
-  }
-
-  var current = parts(text)
-  var wanted = parts(minimum)
-  if (!current || !wanted) return false
-  for (var i = 0; i < 3; i++) {
-    if (current[i] > wanted[i]) return true
-    if (current[i] < wanted[i]) return false
-  }
-  return true
-}
-
 if (typeof module !== "undefined") {
   module.exports = {
-    installCommand: installCommand,
-    installProcessArgs: installProcessArgs,
     parseEnvelope: parseEnvelope,
     hiddenDisplays: hiddenDisplays,
     layoutDisplays: layoutDisplays,
@@ -916,7 +884,6 @@ if (typeof module !== "undefined") {
     workspaceText: workspaceText,
     namedProfile: namedProfile,
     releaseVersion: releaseVersion,
-    daemonNeedsRestart: daemonNeedsRestart,
-    versionAtLeast: versionAtLeast
+    daemonNeedsRestart: daemonNeedsRestart
   }
 }

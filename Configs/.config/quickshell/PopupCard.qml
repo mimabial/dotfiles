@@ -11,6 +11,10 @@ PopupWindow {
     property int contentWidth: Style.px(380)
     property int contentHeight: holder.childrenRect.height + padding * 2
     property int margin: Style.popupGap
+    // Strip kept above the card for a detached header. Reserved whether or not
+    // the header draws anything: the anchor centres the window on its bar button,
+    // so a height that changes would slide the card itself.
+    property int headerHeight: 0
     property int padding: Style.popupPadding
     property color background: shell.role("bg", "#0c1021")
     property color borderColor: shell.role("alt_br", shell.foreground)
@@ -25,6 +29,7 @@ PopupWindow {
     // Keep controllers/timers beside visual content. Item.data accepts both
     // QObjects and Items; visual entries still become holder.children.
     default property alias content: holder.data
+    property alias header: headerHolder.data
 
     visible: open || card.opacity > 0
     color: "transparent"
@@ -33,7 +38,7 @@ PopupWindow {
     readonly property int maxHeight: anchorWindow && anchorWindow.screen
         ? anchorWindow.screen.height - margin * 2 : contentHeight
     implicitWidth: contentWidth
-    implicitHeight: Math.min(contentHeight, maxHeight)
+    implicitHeight: Math.min(contentHeight, maxHeight - headerHeight) + headerHeight
 
     Component.onCompleted: if (anchorItem && anchorItem.popupCards !== undefined) anchorItem.popupCards = anchorItem.popupCards.concat(root)
 
@@ -139,6 +144,7 @@ PopupWindow {
     Rectangle {
         id: card
         anchors.fill: parent
+        anchors.topMargin: root.headerHeight
         opacity: root.open ? 1 : 0
         Behavior on opacity { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
         color: root.shell.alpha(root.background, root.surfaceOpacity)
@@ -152,5 +158,13 @@ PopupWindow {
             Keys.onPressed: event => event.accepted = root.handleKey(event)
             Item { id: holder; anchors.fill: parent }
         }
+    }
+    Item {
+        id: headerHolder
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        height: root.headerHeight
+        opacity: card.opacity
     }
 }

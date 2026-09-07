@@ -278,13 +278,15 @@ state_target_file() {
   esac
 }
 
+# Name is derived from the file's basename alone so that
+# theme/auto_theme_support.py:state_lock_file() lands on the same lock; the
+# daemon and every state_set write the same three files.
 state_lock_name() {
   local lock_target="$1"
-  local lock_label="${lock_target//[^A-Za-z0-9._-]/_}"
-  local lock_checksum=""
+  local lock_label="${lock_target##*/}"
 
-  lock_checksum="$(printf '%s' "${lock_target}" | cksum | awk '{print $1}')" || return 1
-  printf 'state-%s-%s.lock\n' "${lock_label:-state}" "${lock_checksum}"
+  lock_label="${lock_label//[^A-Za-z0-9._-]/_}"
+  printf 'state-%s.lock\n' "${lock_label:-state}"
 }
 
 state_acquire_lock() {

@@ -35,12 +35,6 @@ STREAM_FIFO = os.path.join(RUN_DIR, "stream.fifo")
 STREAM_PID_FILE = os.path.join(RUN_DIR, "stream_ytdlp.pid")
 SPECTRUM_PID_FILE = os.path.join(RUN_DIR, "spectrum.pid")
 SPECTRUM_TARGET_FILE = os.path.join(RUN_DIR, "spectrum-target.json")
-MPRIS_PLUGIN = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mpris.so")
-MPRIS_SYSTEM_PATHS = (
-    "/etc/mpv/scripts/mpris.so",
-    os.path.expanduser("~/.config/mpv/scripts/mpris.so"),
-)
-
 MUSIC_DIR = os.path.realpath(os.path.expanduser(os.environ.get("CLIAMP_MUSIC_DIR", "~/Music")))
 AUDIO_EXTS = ("mp3", "flac", "wav", "m4a", "ogg", "opus", "aac", "aiff", "wma")
 CACHE_DIR = os.path.expanduser("~/.cache/cliamp")
@@ -573,8 +567,6 @@ def start_mpv_daemon():
             "--demuxer-max-bytes=10M",
             "--demuxer-readahead-secs=30"
         ]
-        if os.path.isfile(MPRIS_PLUGIN) and not any(os.path.exists(path) for path in MPRIS_SYSTEM_PATHS):
-            cmd.append(f"--script={MPRIS_PLUGIN}")
         subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
         for _ in range(30):
             time.sleep(0.05)
@@ -883,11 +875,11 @@ VIS_MODE_FILE = os.path.join(CACHE_DIR, "vis_mode.txt")
 VIS_MODES = {
     "bars", "bricks", "classic_led",
     "peaks", "stereo", "correlation", "ascii",
-    "wave", "sine",
+    "wave", "sine", "mirror",
     "siriwave", "soundcloud_wave", "telegram_wave",
     "daw_wave", "led_scrubber", "heatmap_wave", "grounded_wave",
-    "retro", "matrix", "binary", "terrain", "mosaic",
-    "scatter", "butterfly",
+    "retro", "matrix", "binary", "terrain", "village", "mosaic",
+    "scatter", "rain", "butterfly",
     "plasma", "osc_warp", "crt_scanline", "cyber_tunnel",
 }
 DEFAULT_VIS_MODE = "osc_warp"

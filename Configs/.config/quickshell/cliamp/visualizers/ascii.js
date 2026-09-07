@@ -1,49 +1,52 @@
-// Ascii — exact cliamp vis_ascii.go: shade-block columns (█ ▓ ▒ ░)
+// Ascii — exact cliamp vis_ascii.go: shade-block columns (█ ▓ ▒ ░) on the same
+// 1-wide/1-gap layout as ClassicPeak
 .pragma library
 .import "helpers.js" as H
 
-function render(ctx, d) {
-  var bands = d.bands, h = d.height, w = d.width
-  var playing = d.playing
+var BAR_W = 1
+var BAR_GAP = 1
 
-  // Authentic monospace character grid matching cliamp
-  var charW = 10
-  var charH = 11
+// shadeBlock: fractional fill within a row, quartered.
+function shadeBlock(level, rowBottom, rowTop) {
+  if (level >= rowTop) return "█"
+  if (level > rowBottom) {
+    var frac = (level - rowBottom) / (rowTop - rowBottom)
+    if (frac >= 0.75) return "▓"
+    if (frac >= 0.50) return "▒"
+    if (frac >= 0.25) return "░"
+  }
+  return ""
+}
+
+function render(ctx, d) {
+  var w = d.width, h = d.height
+
+  var charW = 6
+  var charH = 10
   var numCols = Math.floor(w / charW)
   var numRows = Math.floor(h / charH)
   if (numCols < 1 || numRows < 1) return
 
-  var cols = H.resampleBandsLinear(bands, numCols)
+  var activeCols = Math.max(1, Math.floor((numCols + BAR_GAP) / (BAR_W + BAR_GAP)))
+  var cols = H.resampleBandsLinear(d.bands, activeCols)
+  var tiers = H.specTiers(d)
+  var stepPx = charW * (BAR_W + BAR_GAP)
 
   ctx.save()
   ctx.font = "bold 10px monospace"
   ctx.textAlign = "center"
   ctx.textBaseline = "middle"
 
-  for (var c = 0; c < numCols; c++) {
-    var level = playing ? Math.min(1.0, Math.max(0.0, cols[c] || 0)) : 0.0
-    var barHeight = level * numRows
-    var cx = c * charW + charW / 2
+  for (var row = 0; row < numRows; row++) {
+    var rowBottom = (numRows - 1 - row) / numRows
+    var rowTop = (numRows - row) / numRows
+    var cy = row * charH + charH / 2
+    ctx.fillStyle = tiers[H.specTag(rowBottom)]
 
-    for (var r = 0; r < numRows; r++) {
-      // r = 0 is bottom, r = numRows - 1 is top
-      var cy = h - (r * charH + charH / 2)
-      var normY = r / numRows
-
-      ctx.fillStyle = H.specColor(d, normY, 0.95)
-
-      if (r < Math.floor(barHeight)) {
-        // Full solid block
-        ctx.fillText("█", cx, cy)
-      } else if (r === Math.floor(barHeight) && level > 0.02) {
-        // Fractional shade block at top
-        var frac = barHeight - Math.floor(barHeight)
-        var shade = "░"
-        if (frac >= 0.66) shade = "▓"
-        else if (frac >= 0.33) shade = "▒"
-        else shade = "░"
-        ctx.fillText(shade, cx, cy)
-      }
+    for (var c = 0; c < activeCols; c++) {
+      var glyph = shadeBlock(cols[c] || 0, rowBottom, rowTop)
+      if (glyph === "") continue
+      ctx.fillText(glyph, c * stepPx + charW / 2, cy)
     }
   }
 

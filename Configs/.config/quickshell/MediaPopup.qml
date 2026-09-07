@@ -14,6 +14,7 @@ PopupCard {
   borderOpacity: 0.45
   contentWidth: Commons.Style.space(400)
   contentHeight: Math.min(mainColumn.implicitHeight + Commons.Style.space(16), Commons.Style.space(560))
+  headerHeight: Commons.Style.space(34)
 
   readonly property color foreground: shell.foreground
   readonly property color urgent: shell.role("error", foreground)
@@ -105,11 +106,11 @@ PopupCard {
   property var visModes: [
     "bars", "bricks", "classic_led",
     "peaks", "stereo", "correlation", "ascii",
-    "wave", "sine",
+    "wave", "sine", "mirror",
     "siriwave", "soundcloud_wave", "telegram_wave",
     "daw_wave", "led_scrubber", "heatmap_wave", "grounded_wave",
-    "retro", "matrix", "binary", "terrain", "mosaic",
-    "scatter", "butterfly",
+    "retro", "matrix", "binary", "terrain", "village", "mosaic",
+    "scatter", "rain", "butterfly",
     "plasma", "osc_warp", "crt_scanline", "cyber_tunnel"
   ]
 
@@ -135,6 +136,9 @@ PopupCard {
   property var _visState: ({})
   property var resumeInfo: null
   property bool resumeVisible: false
+  // Dismissal has to outlive the status poll below, which would otherwise raise
+  // the banner again a tick later. Keyed by url so a different saved track asks.
+  property string resumeDismissedUrl: ""
   property var activePlaylist: null
   property bool isImportingPl: false
   property string plImportError: ""
@@ -249,6 +253,7 @@ PopupCard {
   Component.onCompleted: {
     Commons.Style.shell = root.shell
     Commons.Color.shell = root.shell
+    refresh()
     loadPlaylists()
     loadHistory()
     loadQueue()
@@ -709,9 +714,15 @@ PopupCard {
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
-        if (root.syncMpris()) return
         try {
           var data = JSON.parse(text || "{}")
+          if (data.vis_mode && String(data.vis_mode) !== root.visMode && !root.visPickerOpen) {
+            root.visMode = String(data.vis_mode)
+          }
+          if (data.vis_bg !== undefined && !root.visPickerOpen) {
+            root.visBackground = data.vis_bg === true
+          }
+          if (root.syncMpris()) return
           const fresh = root._statusGen === root._commandGen
           root.isRunning = data.running === true
           if (fresh) root.playbackState = data.state || "stopped"
@@ -743,17 +754,15 @@ PopupCard {
           }
           root.eqText = String(data.eq || "Custom")
           if (data.audio_fx) root.audioFx = data.audio_fx
-          if (data.vis_mode && String(data.vis_mode) !== root.visMode && !root.visPickerOpen) {
-            root.visMode = String(data.vis_mode)
-          }
-          if (data.vis_bg !== undefined && !root.visPickerOpen) {
-            root.visBackground = data.vis_bg === true
-          }
           if (data.resume && root.playbackState === "stopped") {
             root.resumeInfo = data.resume
-            root.resumeVisible = true
+            // Below the seek threshold in the resume action, so Resume would do
+            // nothing the play button does not already do.
+            root.resumeVisible = Number(data.resume.pos || 0) > 5
+              && String(data.resume.url || "") !== root.resumeDismissedUrl
           } else {
             root.resumeVisible = false
+            root.resumeDismissedUrl = ""
           }
         } catch (e) {}
       }
@@ -1043,6 +1052,68 @@ PopupCard {
     function playUrl(url: string) { root.playUrl(url) }
   }
 
+  // Detached strip above the card, in the reserved header space, so showing
+  // or hiding it never resizes the window or moves the player.
+  header: BorderSurface {
+    visible: root.resumeVisible
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.top: parent.top
+    height: Commons.Style.space(28)
+    radius: root.shell.rounding
+    color: root.shell.alpha(root.background, root.surfaceOpacity)
+    borderSpec: Commons.Border.flat(root.shell.alpha(Commons.Color.accent, root.borderOpacity), root.shell.borderWidth)
+
+    Item {
+      anchors.fill: parent
+      anchors.leftMargin: Commons.Style.space(6)
+      anchors.rightMargin: Commons.Style.space(6)
+
+      PanelActionButton {
+        id: resumeAction
+        anchors.left: parent.left
+        anchors.verticalCenter: parent.verticalCenter
+        iconText: "\uf0e2"
+        tooltipText: "Resume playback"
+        foreground: Commons.Color.accent; hoverColor: Commons.Color.accent
+        fontFamily: root.fontFamily
+        onClicked: root.doResume()
+      }
+
+      Text {
+        anchors.left: resumeAction.right
+        anchors.leftMargin: Commons.Style.space(2)
+        anchors.right: dismissBtn.left
+        anchors.rightMargin: Commons.Style.space(4)
+        anchors.verticalCenter: parent.verticalCenter
+        text: root.resumeInfo ? "Resume at " + Media.time(Number(root.resumeInfo.pos || 0)) : ""
+        color: root.foreground
+        font.family: root.fontFamily; font.pixelSize: Commons.Style.font.caption
+        elide: Text.ElideRight
+      }
+
+      Text {
+        id: dismissBtn
+        anchors.right: parent.right
+        anchors.verticalCenter: parent.verticalCenter
+        text: "\uf00d"
+        color: dismissMouse.containsMouse ? Commons.Color.accent : root.dim
+        font.family: root.fontFamily; font.pixelSize: Commons.Style.font.caption
+
+        MouseArea {
+          id: dismissMouse
+          anchors.fill: parent; anchors.margins: -4
+          hoverEnabled: true
+          cursorShape: Qt.PointingHandCursor
+          onClicked: {
+            root.resumeDismissedUrl = root.resumeInfo ? String(root.resumeInfo.url || "") : ""
+            root.resumeVisible = false
+          }
+        }
+      }
+    }
+  }
+
   Column {
         id: mainColumn
         width: parent.width - Commons.Style.space(20)
@@ -1050,34 +1121,6 @@ PopupCard {
         spacing: Commons.Style.space(8)
         topPadding: Commons.Style.space(12)
         bottomPadding: Commons.Style.space(8)
-
-        BorderSurface {
-          visible: root.resumeVisible
-          width: parent.width; implicitHeight: Commons.Style.space(28)
-          radius: Commons.Style.cornerRadius
-          color: "transparent"
-          borderSpec: Commons.Border.none()
-
-          Row {
-            anchors.fill: parent; anchors.margins: Commons.Style.space(6); spacing: Commons.Style.space(6)
-            Text { anchors.verticalCenter: parent.verticalCenter; text: "\uf0e2"; color: Commons.Color.accent; font.family: root.fontFamily; font.pixelSize: Commons.Style.font.caption }
-            Text {
-              width: parent.width - Commons.Style.space(80); anchors.verticalCenter: parent.verticalCenter
-              text: root.resumeInfo ? "Resume: " + (root.resumeInfo.title || "last track") : ""
-              color: root.foreground; font.family: root.fontFamily; font.pixelSize: Commons.Style.font.caption; elide: Text.ElideRight
-            }
-            Text {
-              anchors.verticalCenter: parent.verticalCenter; text: "Resume"; color: Commons.Color.accent
-              font.family: root.fontFamily; font.pixelSize: Commons.Style.font.caption; font.bold: true
-              MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.doResume() }
-            }
-            Text {
-              anchors.verticalCenter: parent.verticalCenter; text: "\uf00d"; color: root.dim
-              font.family: root.fontFamily; font.pixelSize: Commons.Style.font.caption
-              MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.resumeVisible = false }
-            }
-          }
-        }
 
         Player { id: playerComp; p: root }
 

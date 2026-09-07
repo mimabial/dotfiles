@@ -77,7 +77,14 @@ def wallpaper_state_file() -> Path:
 
 
 def runtime_lock_dir() -> Path:
-    return Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "hypr"
+    # Mirrors core/common.sh:hypr_runtime_root_dir so this shares a lock
+    # directory, not just a lock name, with bash state_set.
+    root = Path(os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}")
+    try:
+        root.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        root = state_home() / "hypr" / "runtime"
+    return root / "hypr"
 
 
 def state_data_file(target_file: str) -> Path:

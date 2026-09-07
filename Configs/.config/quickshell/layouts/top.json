@@ -1,5 +1,17 @@
 {
-  "left": [{ "id": "workspaces", "props": { "compactStyle": true } }, "submap"],
+  "left": [
+    { "id": "workspaces", "props": { "compactStyle": true } },
+    {
+      "id": "mediaplayer",
+      "props": {
+        "appearance": "mpris",
+        "showControls": false,
+        "showArtist": true,
+        "randomizeProgressShape": true,
+        "showWhenIdle": true
+      }
+    }
+  ],
   "centerAnchor": "datetime",
   "center": [
     { "id": "indicators", "props": { "caffeineActiveOnly": false } },
@@ -8,15 +20,11 @@
     "weather"
   ],
   "right": [
-    {
-      "id": "mediaplayer",
-      "props": {
-        "appearance": "mpris",
-        "showControls": false,
-        "showArtist": true,
-        "randomizeProgressShape": true
-      }
-    },
+    "memory",
+    "disk",
+    "gpu",
+    "cpu",
+    "submap",
     "volume",
     "display",
     "bluetooth",

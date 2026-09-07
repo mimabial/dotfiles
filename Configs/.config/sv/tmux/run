@@ -1,16 +1,4 @@
 #!/bin/sh
 # runit service: tmux server holding the default detached session.
-# `tmux -D` keeps the server in the foreground for runsv to supervise (it also
-# turns exit-empty off) but forbids a command, so the default session is created
-# by a helper once the socket is up.
 exec 2>&1
-(
-	i=0
-	while [ "$i" -lt 50 ]; do
-		tmux has-session 2>/dev/null && exit 0
-		tmux new-session -d 2>/dev/null && exit 0
-		i=$((i + 1))
-		sleep 0.1
-	done
-) &
-exec tmux -D
+exec "$HOME/.local/lib/hypr/system/tmux-server.sh"

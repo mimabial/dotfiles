@@ -6,10 +6,12 @@ function render(ctx, d) {
   var bands = d.bands, w = d.width, h = d.height, count = d.count, frame = d.frame
   var horizon = h * 0.4
   var cx = w / 2.0
+  // Go tags each cell by priority: wave > sun > grid, mapped to high/mid/low.
+  var tiers = H.specTiers(d)
 
   // Striped sun semicircle
   var sunR = horizon * 0.85
-  ctx.fillStyle = H.rgba(d.accent, 0.95)
+  ctx.fillStyle = tiers[1]
   for (var sy = 0; sy < horizon; sy++) {
     var rowDist = horizon - sy
     if (rowDist > sunR) continue
@@ -22,7 +24,7 @@ function render(ctx, d) {
   }
 
   // Perspective grid — vertical lines converging to vanishing point
-  ctx.strokeStyle = H.mixColor(d.accent, d.dim, 0.5, 0.35)
+  ctx.strokeStyle = tiers[0]
   ctx.lineWidth = 1
   var numV = 18
   for (var vi = 0; vi <= numV; vi++) {
@@ -47,7 +49,7 @@ function render(ctx, d) {
   }
 
   // Audio wave at horizon — cosine-interpolated FFT bands
-  ctx.strokeStyle = H.rgba(d.foreground, 0.95)
+  ctx.strokeStyle = tiers[2]
   ctx.lineWidth = 2
   ctx.beginPath()
   var maxWave = horizon * 0.85
@@ -56,8 +58,9 @@ function render(ctx, d) {
     var bi = Math.floor(bandF)
     var frac = bandF - bi
     var t = (1 - Math.cos(frac * Math.PI)) / 2
-    var level = d.playing ? Math.max(0.0, bi >= count - 1 ? (bands[count-1] || 0) :
-                (bands[bi] || 0) * (1 - t) + (bands[bi+1] || 0) * t) : 0
+    // Go floors the wave so it never fully vanishes.
+    var level = Math.max(0.03, d.playing ? (bi >= count - 1 ? (bands[count-1] || 0) :
+                (bands[bi] || 0) * (1 - t) + (bands[bi+1] || 0) * t) : 0)
     var ry = horizon - level * maxWave
     if (rx === 0) ctx.moveTo(rx, ry)
     else ctx.lineTo(rx, ry)

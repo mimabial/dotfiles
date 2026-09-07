@@ -15,7 +15,10 @@
     "fontSize": 12.0,
     "fontWeight": 700,
     "outline": ["c10", 0.9],
-    "hover": { "fill": null, "content": ["hvr_fg", 1.0] },
+    "hover": {
+      "fill": null,
+      "content": ["hvr_fg", 1.0]
+    },
     "justify": "center",
     "padding": [0.0, 2.0, 2.0, 2.0]
   },
@@ -40,12 +43,17 @@
     "padding": [6.0, 0.0, 6.0, 0.0],
     "content": ["act_br", 1.0],
     "fill": null,
-    "hover": { "fill": null, "content": ["hvr_fg", 1.0] }
+    "hover": {
+      "fill": null,
+      "content": ["hvr_fg", 1.0]
+    }
   },
   "mediaplayer": {
     "border": 2.0,
     "margin": [4.0, 4.0, 4.0, 2.0],
-    "edge": { "color": ["c7", 0.4] }
+    "edge": {
+      "color": ["c7", 0.4]
+    }
   },
   "microphone": {
     "padding": [2.0, 0.0, 2.0, 0.0],
@@ -130,7 +138,11 @@
   "network.speed": {
     "fontSize": 12.0,
     "padding": [4.0, 0.0, 0.0, 0.0],
-    "edge": { "color": ["warning", 0.6], "right": true, "top": true }
+    "edge": {
+      "color": ["warning", 0.6],
+      "right": true,
+      "top": true
+    }
   },
   "vpn": {
     "padding": [2.0, 0.0, 2.0, 0.0],
@@ -141,7 +153,24 @@
     "outline": ["br", 0.2],
     "margin": [2.0, 2.0, 2.0, 2.0]
   },
-  "notification-group": { "border": 0.0, "margin": [0.0, 0.0, 0.0, 0.0], "outline": null },
+  "tasks.due": {
+    "content": ["fg", 1.0]
+  },
+  "tasks": {
+    "border": 1.0,
+    "outline": ["br", 0.2],
+    "margin": [2.0, 2.0, 2.0, 2.0],
+    "padding": [2.0, 0.0, 2.0, 0.0],
+    "hover": {
+      "fill": null,
+      "content": ["hvr_fg", 1.0]
+    }
+  },
+  "notification-group": {
+    "border": 0.0,
+    "margin": [0.0, 0.0, 0.0, 0.0],
+    "outline": null
+  },
   "notification": {
     "badgeSize": 16.0,
     "badgeOffsetX": 6,
@@ -153,12 +182,18 @@
   "updates-agents": {
     "border": 1.0,
     "outline": ["br", 0.2],
-    "hover": { "fill": null, "content": ["hvr_fg", 1.0] },
+    "hover": {
+      "fill": null,
+      "content": ["hvr_fg", 1.0]
+    },
     "margin": [2.0, 2.0, 2.0, 2.0],
     "padding": [0.0, 0.0, 0.0, 0.0]
   },
   "updates": {
-    "hover": { "fill": null, "content": ["hvr_fg", 1.0] },
+    "hover": {
+      "fill": null,
+      "content": ["hvr_fg", 1.0]
+    },
     "margin": [0.0, 0.0, 4.0, 0.0],
     "padding": [2.0, 0.0, 2.0, 0.0]
   },
@@ -171,15 +206,22 @@
     "border": 1.0,
     "outline": ["br", 0.2]
   },
-  "power-profiles-daemon": { "outline": null, "hover": { "outline": null } },
-  "powermenu": { "fill": ["bg", 0.1], "outline": ["br", 0.2] },
+  "power-profiles-daemon": {
+    "outline": null,
+    "hover": {
+      "outline": null
+    }
+  },
+  "powermenu": {
+    "fill": ["bg", 0.1],
+    "outline": ["br", 0.2]
+  },
   "hyprmenu": {
     "outline": ["alt_br", 0.3],
     "fill": null,
     "margin": [2.0, 2.0, 4.0, 2.0],
     "padding": [2.0, 0.0, 2.0, 0.0]
   },
-
   "removable": {
     "padding": [2.0, 0.0, 2.0, 0.0]
   },
@@ -195,32 +237,66 @@
   "window-layout": {
     "border": 0.0,
     "fill": ["bg", 0.1],
-    "hover": { "fill": null, "outline": null, "content": ["hvr_fg", 1.0] },
+    "hover": {
+      "fill": null,
+      "outline": null,
+      "content": ["hvr_fg", 1.0]
+    },
     "padding": [0.0, 2.0, 0.0, 2.0]
   },
   "disk": {
     "border": 1.2,
-    "edge": { "color": ["c7", 0.4], "right": true, "top": true },
-    "hover": { "fill": null, "content": ["hvr_fg", 1.0] },
+    "edge": {
+      "color": ["c7", 0.4],
+      "right": true,
+      "top": true
+    },
+    "hover": {
+      "fill": null,
+      "content": ["hvr_fg", 1.0]
+    },
     "margin": [4.0, 3.5, 4.0, 3.5]
   },
-  "info": { "padding": [0.0, 0.0, 0.0, 0.0] },
+  "info": {
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
   "memory": {
     "border": 1.2,
-    "edge": { "color": ["c7", 0.4], "right": true, "top": true },
-    "hover": { "fill": null, "content": ["hvr_fg", 1.0] },
+    "edge": {
+      "color": ["c7", 0.4],
+      "right": true,
+      "top": true
+    },
+    "hover": {
+      "fill": null,
+      "content": ["hvr_fg", 1.0]
+    },
     "margin": [4.0, 3.5, 4.0, 3.5]
   },
   "gpuinfo": {
     "border": 1.2,
-    "edge": { "color": ["c7", 0.4], "right": true, "top": true },
-    "hover": { "fill": null, "content": ["hvr_fg", 1.0] },
+    "edge": {
+      "color": ["c7", 0.4],
+      "right": true,
+      "top": true
+    },
+    "hover": {
+      "fill": null,
+      "content": ["hvr_fg", 1.0]
+    },
     "margin": [4.0, 3.5, 4.0, 3.5]
   },
   "cpuinfo": {
     "border": 1.2,
-    "edge": { "color": ["c7", 0.4], "right": true, "top": true },
-    "hover": { "fill": null, "content": ["hvr_fg", 1.0] },
+    "edge": {
+      "color": ["c7", 0.4],
+      "right": true,
+      "top": true
+    },
+    "hover": {
+      "fill": null,
+      "content": ["hvr_fg", 1.0]
+    },
     "margin": [4.0, 3.5, 4.0, 3.5]
   }
 }

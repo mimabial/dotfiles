@@ -208,6 +208,7 @@ bind(
 )
 exec(mod, "P", "[Window Management] toggle pin", "hyprshell window/windowpin.sh")
 bind(mod, "G", "[Window Management] toggle group", hl.dsp.group.toggle())
+bind(mod .. " SHIFT", "F", "[Window Management] toggle floating", toggle_floating)
 
 bind(mod, "LEFT", "[Window Management|Focus] focus left", hl.dsp.focus({ direction = "left" }))
 bind(mod, "RIGHT", "[Window Management|Focus] focus right", hl.dsp.focus({ direction = "right" }))
@@ -258,6 +259,13 @@ bind(mod .. " SHIFT", "LEFT", "[Window Management|Move] move left", move_window(
 bind(mod .. " SHIFT", "RIGHT", "[Window Management|Move] move right", move_window("right", 30, 0), { repeating = true })
 bind(mod .. " SHIFT", "UP", "[Window Management|Move] move up", move_window("up", 0, -30), { repeating = true })
 bind(mod .. " SHIFT", "DOWN", "[Window Management|Move] move down", move_window("down", 0, 30), { repeating = true })
+
+-- ALT here is not the convention's "without following": SUPER+CTRL+arrows is
+-- relative workspace navigation, so this is the only free arrow modifier.
+bind(mod .. " ALT", "LEFT", "[Window Management|Resize] shrink width", resize_window(-30, 0), { repeating = true })
+bind(mod .. " ALT", "RIGHT", "[Window Management|Resize] grow width", resize_window(30, 0), { repeating = true })
+bind(mod .. " ALT", "UP", "[Window Management|Resize] shrink height", resize_window(0, -30), { repeating = true })
+bind(mod .. " ALT", "DOWN", "[Window Management|Resize] grow height", resize_window(0, 30), { repeating = true })
 
 bind(mod, "mouse:272", "[Window Management|Mouse] move window", hl.dsp.window.drag(), { mouse = true })
 bind(mod, "mouse:273", "[Window Management|Mouse] resize window", hl.dsp.window.resize(), { mouse = true })
@@ -377,6 +385,7 @@ exec(
 )
 
 exec("", "Print", "[Utilities|Capture] all monitors", "hyprshell screenshot.sh p", { locked = true })
+exec("SHIFT", "Print", "[Utilities|Capture] smart screenshot", "hyprshell screenshot.sh smart", { locked = true })
 -- The compositor sees the switch itself, so locking here needs no init system and
 -- survives caffeine stopping hypridle.
 exec(
@@ -522,12 +531,12 @@ submap_leader("window", mod, "W", function()
 	)
 	submap_repeat_action(
 		"D",
-		"[Window Mode|Dwindle] shrink split",
+		"[Window Mode|Dwindle] shrink parent split",
 		layout_action("dwindle", hl.dsp.layout("splitratio -0.05"))
 	)
 	submap_repeat_action(
 		"SHIFT + D",
-		"[Window Mode|Dwindle] grow split",
+		"[Window Mode|Dwindle] grow parent split",
 		layout_action("dwindle", hl.dsp.layout("splitratio +0.05"))
 	)
 
@@ -639,7 +648,7 @@ submap_leader("theming", mod, "T", function()
 	submap_cycle("SHIFT + C", "[Theming] cycle bar layout backward", "hyprshell quickshell/layout previous")
 	submap_cycle("H", "[Theming] toggle bar", "hyprshell quickshell/visibility toggle")
 	submap_exec("V", "[Theming] look and feel", "hyprshell window/looknfeel.sh")
-	submap_exec("M", "[Theming] color mode", "pkill -x rofi || hyprshell color-mode.sh -m")
+	submap_exec("M", "[Theming] color mode", "pkill -x rofi || hyprshell theme/color-mode -m")
 	submap_exec("R", "[Theming] select rofi theme", "hyprshell rofi/run-after-close.sh -- hyprshell theme.select.sh -s")
 	submap_exec("L", "[Theming] select launcher style", "hyprshell rofi-launch.sh -s")
 	-- the number row keeps working, so a theme can be judged on another workspace
@@ -702,7 +711,6 @@ submap_leader("terminal", mod, "J", function()
 	tui_app("W", "Impala", "org.tui.Impala", "impala")
 	tui_app("V", "Wiremix", "org.tui.Wiremix", "wiremix")
 	tui_app("U", "Dua", "org.tui.Dua", "dua i")
-	tui_app("M", "Display Profiles", "hyprmoncfg", "hyprmoncfg")
 	submap_exec("T", "[Terminal] Dropdown terminal", "hyprshell window/dropdown-terminal")
 	submap_exec(
 		"R",

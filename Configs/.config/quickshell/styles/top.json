@@ -8,6 +8,15 @@
   "#workspaces button": {
     "hover": { "fill": null, "outline": null, "content": ["hvr_fg", 1.0] }
   },
+  "mediaplayer": {
+    "border": 2.0,
+    "margin": [4.0, 4.0, 4.0, 4.0],
+    "padding": [0.0, 4.0, 0.0, 12.0],
+    "edge": {
+      "color": ["c6", 0.5]
+    },
+    "hover": { "outline": ["c6", 0.5], "content": ["hvr_fg", 1.0] }
+  },
   "bluetooth-button": {
     "margin": [0.0, 6.0, 0.0, 6.0],
     "padding": [0.0, 0.0, 0.0, 0.0]
@@ -118,6 +127,42 @@
     "padding": [0.0, 0.0, 0.0, 0.0]
   },
   "workflows": {
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "cpuinfo": {
+    "gap": 3.0,
+    "iconLine": 0.0,
+    "iconPadRight": 0.0,
+    "iconSize": 14.0,
+    "content": ["fg", 1.0],
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "gpuinfo": {
+    "gap": 3.0,
+    "iconLine": 0.0,
+    "iconPadRight": 2.0,
+    "iconSize": 14.0,
+    "content": ["fg", 1.0],
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "memory": {
+    "gap": 3.0,
+    "iconLine": 0.0,
+    "iconPadRight": 1.0,
+    "iconSize": 10.0,
+    "content": ["fg", 1.0],
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "disk": {
+    "gap": 3.0,
+    "iconLine": 0.0,
+    "iconPadRight": 0.0,
+    "iconSize": 11.0,
+    "content": ["fg", 1.0],
     "margin": [0.0, 6.0, 0.0, 6.0],
     "padding": [0.0, 0.0, 0.0, 0.0]
   }

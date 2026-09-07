@@ -29,17 +29,20 @@ BorderSurface {
     { id: "grounded_wave", name: "Baseline Wave", category: "wave", icon: "\uf012" },
     { id: "wave", name: "Waveform", category: "wave", icon: "\uf21e" },
     { id: "sine", name: "Sine Wave", category: "wave", icon: "\uf1d8" },
+    { id: "mirror", name: "Mirror", category: "wave", icon: "\uf042" },
 
     // Synth & Retro
     { id: "retro", name: "Retro Synth", category: "retro", icon: "\uf185" },
     { id: "matrix", name: "Matrix", category: "retro", icon: "\uf108" },
     { id: "terrain", name: "Terrain", category: "retro", icon: "\uf06e" },
+    { id: "village", name: "Clair de Lune", category: "retro", icon: "󰽡" },
     { id: "binary", name: "Binary", category: "retro", icon: "\uf120" },
     { id: "mosaic", name: "Mosaic", category: "retro", icon: "\uf009" },
 
     // Particles & Nature
     { id: "butterfly", name: "Butterfly", category: "particle", icon: "\uf1d8" },
     { id: "scatter", name: "Scatter", category: "particle", icon: "\uf005" },
+    { id: "rain", name: "Rain", category: "particle", icon: "\uf0e9" },
 
     // 3D & Vector
     { id: "plasma", name: "Liquid Plasma (2D)", category: "3d", icon: "\uf043" },

@@ -1,58 +1,116 @@
-// Peaks — vis_classic_peak.go: physics-based falling caps
+// Peaks — exact cliamp vis_classic_peak.go: exponentially smoothed bar bodies with
+// peak caps that launch on a rise, hang at the apex, then fall under gravity
 .pragma library
 .import "helpers.js" as H
 
+var GRAVITY = 9.5
+var LAUNCH_BASE = 0.8
+var LAUNCH_GAIN = 1.4
+var LAUNCH_MAX = 1.7
+var APEX_HOLD = 0.08
+var MAX_HEIGHT = 1.0
+var EPSILON = 0.01
+var RISE_RATE = 34.0
+var FALL_RATE = 10.0
+var BAR_W = 1      // characters per bar
+var BAR_GAP = 1    // characters between bars
+var TICK = 1 / 60  // tickClassicPeak: the dt fallback when elapsed time is unusable
+
+function colsForWidth(cols) {
+  return Math.max(1, Math.floor((cols + BAR_GAP) / (BAR_W + BAR_GAP)))
+}
+
+function step(current, target, dt) {
+  return current + (target - current) * (1 - Math.exp(-(target > current ? RISE_RATE : FALL_RATE) * dt))
+}
+
+function onEnter(state) {
+  state.peakBar = null
+  state.peakPos = null
+  state.peakVel = null
+  state.peakHold = null
+  state.peakLast = 0
+}
+
 function render(ctx, d) {
-  var bands = d.bands, h = d.height, count = d.count, barW = d.barW, gap = d.gap
+  var w = d.width, h = d.height
+  var charW = 6
+  var bars = colsForWidth(Math.floor(w / charW))
+  if (bars < 1 || h < 1) return
+
+  var levels = H.resampleBandsLinear(d.bands, bars)
   var s = d.state
-  if (!s.peakPos || s.peakPos.length !== count) {
-    s.peakPos = new Array(count).fill(0)
-    s.peakVel = new Array(count).fill(0)
-    s.peakHold = new Array(count).fill(0)
+  if (!s.peakBar || s.peakBar.length !== bars) {
+    s.peakBar = levels.slice()
+    s.peakPos = levels.slice()
+    s.peakVel = new Array(bars).fill(0)
+    s.peakHold = new Array(bars).fill(0)
+    s.peakLast = 0
   }
-  var peakPos = s.peakPos, peakVel = s.peakVel, peakHold = s.peakHold
-  var dt = 0.016, gravity = 9.5, launchBase = 0.8, launchGain = 1.4, launchMax = 1.7, apexHold = 0.08
-  var levels = new Array(count), heights = new Array(count)
-  for (var p = 0; p < count; p++) {
-    var level = levels[p] = d.playing ? (bands[p] || 0) : 0
-    heights[p] = Math.round(level * h)
-    if (peakVel[p] === 0 && peakPos[p] <= level + 0.01) {
-      if (level > peakPos[p]) {
-        var delta = level - peakPos[p]
-        peakPos[p] = level
-        peakVel[p] = Math.min(launchMax, launchBase + launchGain * delta)
-        peakHold[p] = 0
-      }
-    }
-    if (peakHold[p] > 0) {
-      peakHold[p] = Math.max(0, peakHold[p] - dt)
-    } else {
-      var prevVel = peakVel[p]
-      peakPos[p] += peakVel[p] * dt
-      peakVel[p] -= gravity * dt
-      if (peakPos[p] > 1.0) peakPos[p] = 1.0
-      if (prevVel > 0 && peakVel[p] <= 0 && peakPos[p] > level + 0.01) {
-        peakVel[p] = 0
-        peakHold[p] = apexHold
-      }
-      if (peakPos[p] <= level) {
-        peakPos[p] = level
-        peakVel[p] = 0
-        peakHold[p] = 0
-      }
+  var barPos = s.peakBar, peakPos = s.peakPos, peakVel = s.peakVel, peakHold = s.peakHold
+
+  // Go integrates against wall-clock elapsed time, clamping a long gap (pause, sleep,
+  // stalled frame) down to a single frame rather than one huge step.
+  var now = Date.now()
+  var dt = s.peakLast > 0 ? (now - s.peakLast) / 1000.0 : TICK
+  if (dt <= 0 || dt > 10 * TICK) dt = TICK
+  s.peakLast = now
+
+  var i
+  // sync: a landed cap relaunches when the band rises past it.
+  for (i = 0; i < bars; i++) {
+    if (peakVel[i] === 0 && peakPos[i] <= barPos[i] + EPSILON && levels[i] > peakPos[i]) {
+      peakVel[i] = Math.min(LAUNCH_MAX, LAUNCH_BASE + LAUNCH_GAIN * (levels[i] - peakPos[i]))
+      peakPos[i] = levels[i]
+      peakHold[i] = 0
     }
   }
-  // Rows outer, bars inner: the colour depends only on the row, so all 24 bars share one
-  // fillStyle assignment per row instead of one per pixel.
-  var ramp = H.specRamp(d, h)
+
+  // advance: ease the body toward the band, then integrate the cap.
+  for (i = 0; i < bars; i++) {
+    barPos[i] = step(barPos[i], levels[i], dt)
+
+    if (peakHold[i] > 0) {
+      peakHold[i] = Math.max(0, peakHold[i] - dt)
+      if (peakHold[i] > 0) continue
+    }
+
+    var prevVel = peakVel[i]
+    peakPos[i] += peakVel[i] * dt
+    peakVel[i] -= GRAVITY * dt
+    if (peakPos[i] > MAX_HEIGHT) peakPos[i] = MAX_HEIGHT
+
+    if (prevVel > 0 && peakVel[i] <= 0 && peakPos[i] > barPos[i] + EPSILON) {
+      peakVel[i] = 0
+      peakHold[i] = APEX_HOLD
+      continue
+    }
+    if (peakPos[i] <= barPos[i]) {
+      peakPos[i] = barPos[i]
+      peakVel[i] = 0
+      peakHold[i] = 0
+    }
+  }
+
+  var tiers = H.specTiers(d)
+  var barPx = charW * BAR_W
+  var stepPx = charW * (BAR_W + BAR_GAP)
+
+  // Rows outer, bars inner: the tier depends only on the row, so every bar shares one
+  // fillStyle assignment per row instead of one per bar.
   for (var y = 0; y < h; y++) {
-    ctx.fillStyle = ramp[y]
-    for (var b = 0; b < count; b++) {
-      if (heights[b] > y) ctx.fillRect(b * (barW + gap), h - 1 - y, barW, 1)
+    ctx.fillStyle = tiers[H.specTag(y / h)]
+    for (var b = 0; b < bars; b++) {
+      if (barPos[b] * h > y) ctx.fillRect(b * stepPx, h - 1 - y, barPx, 1)
     }
   }
-  ctx.fillStyle = H.rgba(d.foreground, 0.95)
-  for (var c = 0; c < count; c++) {
-    if (peakPos[c] > levels[c] + 0.01) ctx.fillRect(c * (barW + gap), h - Math.round(peakPos[c] * h), barW, 2)
+
+  // A cap only shows once it clears the body by half a rendering unit.
+  var minGap = Math.max(EPSILON, 0.5 / h)
+  for (var c = 0; c < bars; c++) {
+    if (peakPos[c] <= barPos[c] + minGap) continue
+    var capNorm = Math.min(MAX_HEIGHT, peakPos[c])
+    ctx.fillStyle = tiers[H.specTag(capNorm)]
+    ctx.fillRect(c * stepPx, Math.max(0, Math.min(h - 2, h - Math.round(capNorm * h))), barPx, 2)
   }
 }

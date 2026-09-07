@@ -69,7 +69,7 @@ menu_run_action_style() {
     style_launcher) hyprshell rofi/run-after-close.sh -- hyprshell rofi/rofi-launch.sh -s ;;
     style_theme) hyprshell rofi/run-after-close.sh -- hyprshell theme/theme.select.sh ;;
     style_wallpaper) hyprshell rofi/run-after-close.sh -- hyprshell wallpaper select --global ;;
-    style_color_mode) hyprshell rofi/run-after-close.sh -- hyprshell color-mode.sh -m ;;
+    style_color_mode) hyprshell rofi/run-after-close.sh -- hyprshell theme/color-mode -m ;;
     style_bar_layout_*)
       layout_name="${action_id#style_bar_layout_}"
       [[ "${layout_name}" =~ ^[a-z0-9_-]+$ ]] || return 1

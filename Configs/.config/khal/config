@@ -8,6 +8,11 @@
 path = ~/.calendars/*
 type = discover
 
+[[holidays]]
+path = ~/.local/share/khal/calendars/holidays/
+color = dark green
+readonly = True
+
 [default]
 default_calendar = personal
 

@@ -1,23 +1,90 @@
 [
-  { "id": "datetime", "props": { "showDate": true } },
+  {
+    "id": "datetime",
+    "props": {
+      "showDate": true
+    }
+  },
   "terminal",
-  { "id": "forecast", "props": { "showMinMax": true, "showUnit": false } },
+  {
+    "id": "forecast",
+    "props": {
+      "showMinMax": true,
+      "showUnit": false
+    }
+  },
   "submap",
   "spacer",
-  { "id": "workspaces", "props": { "activeOnly": false } },
+  {
+    "id": "workspaces",
+    "props": {
+      "activeOnly": false
+    }
+  },
   "spacer",
   {
     "id": "mediaplayer",
-    "props": { "iconMode": false, "randomizeProgressShape": true, "showWhenIdle": true }
+    "props": {
+      "iconMode": false,
+      "randomizeProgressShape": true,
+      "showWhenIdle": true
+    }
   },
-  { "id": "audio", "props": { "reverse": true, "sliderFirst": true } },
-  { "id": "eyecare", "props": { "reverse": true, "sliderFirst": true } },
-  { "id": "capture", "props": { "reverse": true, "showCliphist": true } },
-  { "id": "bluetooth", "props": { "showReadout": true, "reverse": true } },
-  { "id": "wifi", "props": { "showReadout": true, "showVpn": true } },
-  { "id": "appearance", "props": { "reverse": true } },
+  {
+    "id": "audio",
+    "props": {
+      "reverse": true,
+      "sliderFirst": true
+    }
+  },
+  {
+    "id": "eyecare",
+    "props": {
+      "reverse": true,
+      "sliderFirst": true
+    }
+  },
+  {
+    "id": "capture",
+    "props": {
+      "reverse": true,
+      "showCliphist": true
+    }
+  },
+  {
+    "id": "bluetooth",
+    "props": {
+      "showReadout": true,
+      "reverse": true
+    }
+  },
+  {
+    "id": "wifi",
+    "props": {
+      "showReadout": true,
+      "showVpn": true
+    }
+  },
+  {
+    "id": "appearance",
+    "props": {
+      "reverse": true
+    }
+  },
   "privacy",
-  { "id": "notification-group", "props": { "reverse": true, "badge": "none" } },
+  "tasks",
+  {
+    "id": "notification-group",
+    "props": {
+      "reverse": true,
+      "badge": "none"
+    }
+  },
   "power",
-  { "id": "updates", "props": { "showAgents": false } }
+  {
+    "id": "updates",
+    "props": {
+      "showAgents": false
+    }
+  }
 ]

@@ -125,6 +125,30 @@ function specColor(d, norm, alpha) {
   return mixColor(d.accent, d.foreground, (level - 0.5) * 2, alpha === undefined ? 0.9 : alpha)
 }
 
+// specTiers — the three spectrum tiers as cliamp paints them: ANSI bright green,
+// yellow and red (styles.go SpectrumLow/Mid/High), indexed by the tier tag a
+// visualizer assigns. Falls back to the accent when a slot is absent.
+function specTiers(d) {
+  var c = d.colors || []
+  return [rgba(c[10] || d.accent, 1), rgba(c[11] || d.accent, 1), rgba(c[9] || d.foreground, 1)]
+}
+
+// specTag — cliamp's row colour tier (visualizer.go specTag): a hard three-way split
+// on normalised height, not a gradient. specWrap tags every rendered row with it.
+function specTag(norm) {
+  return norm >= 0.6 ? 2 : norm >= 0.3 ? 1 : 0
+}
+
+// specTierRamp — one tier colour per pixel row, built once per frame. Drop-in for
+// specRamp wherever a visualizer is reproducing specWrap rather than a gradient.
+function specTierRamp(d, height) {
+  var tiers = specTiers(d)
+  var steps = Math.max(1, Math.ceil(height)) + 1
+  var out = new Array(steps)
+  for (var i = 0; i < steps; i++) out[i] = tiers[specTag(i / height)]
+  return out
+}
+
 // specRamp — one specColor per pixel row, built once per frame. Every per-pixel
 // visualizer asks for a colour that varies only with the row, and each specColor parses
 // two hex strings and builds an rgba() string, so calling it per pixel costs ~50x what

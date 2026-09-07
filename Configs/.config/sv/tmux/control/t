@@ -1,0 +1,6 @@
+#!/bin/sh
+# runsv runs this before sending TERM, so the server is still alive and the
+# resurrect state can actually be saved. Exiting non-zero is required: exit 0
+# would tell runsv to skip the TERM.
+"$HOME/.config/tmux/scripts/tmux-resurrect-save-safe" quiet 2>/dev/null || true
+exit 1

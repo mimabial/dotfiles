@@ -140,7 +140,6 @@ local startup = {
     vars.get("start.LID_INHIBITOR"),
     vars.get("start.IDLE_MANAGER"),
     vars.get("start.ZSH_ZCOMPDUMP"),
-    vars.get("start.TMUX_SERVER"),
     vars.get("start.AUTH_DIALOGUE"),
     vars.get("start.WALLPAPER"),
     vars.get("start.QUICKSHELL"),

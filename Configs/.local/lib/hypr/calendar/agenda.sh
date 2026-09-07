@@ -13,7 +13,12 @@ Usage: hyprshell calendar/agenda --day YYYY-MM-DD
        hyprshell calendar/agenda --month YYYY-MM
 
   --day    Events for one day:   {"day":…,"events":[{start,end,title,location,allDay}]}
-  --month  Event count per day:  {"month":…,"days":{"YYYY-MM-DD":n}}
+  --week   Seven days from START, each with its full event list:
+             {"week":START,"days":{"YYYY-MM-DD":[{start,end,title,…}]}}
+  --month  Per day, which calendars have something on it, split by whether it
+           is an all-day event or a timed one — a holiday marks the day, an
+           appointment sits in it:
+             {"month":…,"days":{"YYYY-MM-DD":{"allDay":[cal],"timed":[cal]}}}
   --add    Create an event on --day, then print that day's events:
              --add --day YYYY-MM-DD --title TEXT
                    [--start HH:MM] [--end HH:MM] [--end-day YYYY-MM-DD]
@@ -28,15 +33,37 @@ Usage: hyprshell calendar/agenda --day YYYY-MM-DD
                     RRULE and VALARM survive an edit round trip.
   --delete UID      Remove the event with that UID, then print the day again.
                     khal has no non-interactive delete, so the vdir file is
-                    removed directly.
+                    removed directly. A read-only calendar is refused.
+  --todos           Open todos as JSON: {"todos":[{id,summary,due,…}]}
+  --todos-all       The same, including completed ones
+  --todo-add        Create a todo, then print the list again:
+                      --todo-add --title TEXT [--day YYYY-MM-DD] [--time HH:MM]
+                      [--category TAG]... [--priority high|medium|low|none]
+                      [--calendar LIST]
+  --todo-done ID    Complete the todo with that todoman id
+  --todo-open ID    Reopen a completed todo. todoman has no undo, so the
+                    VTODO is edited directly: the id is resolved to a file
+                    through todoman's own cache, then COMPLETED,
+                    PERCENT-COMPLETE and STATUS are undone.
+  --todo-delete ID  Remove it
+  --calendars       Emit the calendar table khal resolves its config to,
+                    plus the LOCATION values already used in writable calendars:
+                    {"default":NAME,"calendars":{NAME:{path,color,readonly}},
+                     "locations":[TEXT]}
 
 Reads whatever khal is configured to read (~/.calendars by default). Point
 vdirsyncer at the same vdir to have CalDAV accounts show up here.
+
+Events are filtered through $XDG_CONFIG_HOME/khal/filters.json when it exists:
+{"<calendar>": "<regex>"} keeps only the events of that calendar whose title
+matches. A subscribed feed can be a dozen events a day, which would otherwise
+be the whole agenda.
 USAGE
 }
 
 day=""
 month=""
+week=""
 add=0
 delete_uid=""
 show_uid=""
@@ -49,6 +76,18 @@ end_day=""
 alarm=""
 repeat=""
 calendar=""
+calendars_mode=0
+priority=""
+due_time=""
+declare -a categories=()
+todos_mode=0
+todos_all=0
+todo_add=0
+todo_done=""
+todo_delete=""
+todo_open=""
+table=""
+filters="${KHAL_FILTERS:-${XDG_CONFIG_HOME:-$HOME/.config}/khal/filters.json}"
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -58,6 +97,10 @@ while [ $# -gt 0 ]; do
       ;;
     --month)
       month="${2:-}"
+      shift 2 || true
+      ;;
+    --week)
+      week="${2:-}"
       shift 2 || true
       ;;
     --add)
@@ -108,6 +151,47 @@ while [ $# -gt 0 ]; do
       calendar="${2:-}"
       shift 2 || true
       ;;
+    --calendars)
+      calendars_mode=1
+      shift
+      ;;
+    --priority)
+      priority="${2:-}"
+      shift 2 || true
+      ;;
+    --time)
+      due_time="${2:-}"
+      shift 2 || true
+      ;;
+    --category)
+      [[ -z "${2:-}" ]] || categories+=("${2}")
+      shift 2 || true
+      ;;
+    --todos)
+      todos_mode=1
+      shift
+      ;;
+    --todos-all)
+      todos_mode=1
+      todos_all=1
+      shift
+      ;;
+    --todo-add)
+      todo_add=1
+      shift
+      ;;
+    --todo-done)
+      todo_done="${2:-}"
+      shift 2 || true
+      ;;
+    --todo-delete)
+      todo_delete="${2:-}"
+      shift 2 || true
+      ;;
+    --todo-open)
+      todo_open="${2:-}"
+      shift 2 || true
+      ;;
     -h | --help)
       usage
       exit 0
@@ -119,9 +203,209 @@ while [ $# -gt 0 ]; do
   esac
 done
 
+khal_calendars() {
+  python3 - <<'PY' 2>/dev/null || printf '{"default":"","calendars":{},"locations":[]}\n'
+import json
+import os
+
+from khal.settings import get_config
+
+MAX_FILES = 5000
+MAX_LOCATIONS = 50
+UNESCAPE = ((r"\n", " "), (r"\N", " "), (r"\,", ","), (r"\;", ";"), (r"\\", "\\"))
+
+
+def locations(paths):
+    """LOCATION values already used, most frequent first."""
+    seen = {}
+    budget = MAX_FILES
+    for path in paths:
+        try:
+            names = sorted(os.listdir(path))
+        except OSError:
+            continue
+        for name in names:
+            if budget <= 0:
+                break
+            if not name.endswith(".ics"):
+                continue
+            budget -= 1
+            try:
+                with open(os.path.join(path, name), encoding="utf-8", errors="replace") as handle:
+                    for line in handle:
+                        if not line.startswith("LOCATION"):
+                            continue
+                        value = line.rstrip("\r\n").split(":", 1)[-1].strip()
+                        for old, new in UNESCAPE:
+                            value = value.replace(old, new)
+                        value = " ".join(value.split())
+                        if value:
+                            seen[value] = seen.get(value, 0) + 1
+            except OSError:
+                continue
+    ranked = sorted(seen.items(), key=lambda pair: (-pair[1], pair[0].lower()))
+    return [value for value, _ in ranked[:MAX_LOCATIONS]]
+
+
+config = get_config()
+calendars = {
+    name: {
+        "path": values.get("path") or "",
+        "color": values.get("color") or "",
+        "readonly": bool(values.get("readonly")),
+    }
+    for name, values in config["calendars"].items()
+}
+print(json.dumps({
+    "default": config["default"].get("default_calendar") or "",
+    "calendars": calendars,
+    "locations": locations(
+        values["path"] for values in calendars.values()
+        if values["path"] and not values["readonly"]
+    ),
+}))
+PY
+}
+
+khal_table() {
+  [[ -n "${table}" ]] || table="$(khal_calendars)"
+  printf '%s' "${table}"
+}
+
+find_ics() {
+  [[ -n "${1:-}" ]] || return 0
+  local -a roots=()
+  mapfile -t roots < <(khal_table | jq -r '.calendars[].path | select(. != "")')
+  [[ "${#roots[@]}" -gt 0 ]] || roots=("${CALENDAR_VDIR:-$HOME/.calendars}")
+  grep -rlF --include='*.ics' "UID:$1" "${roots[@]}" 2>/dev/null
+}
+
+read_filters() {
+  if [[ -r "${filters}" ]] && jq -e 'type == "object"' "${filters}" >/dev/null 2>&1; then
+    jq -c . "${filters}"
+  else
+    printf '{}\n'
+  fi
+}
+
+apply_filters() {
+  jq -c --argjson filters "$(read_filters)" '
+    map(select(
+      ($filters[(.calendar // "")] // "") as $re
+      | $re == "" or (try ((.title // "") | test($re)) catch true)
+    ))'
+}
+
+todo_cli() {
+  command -v todo >/dev/null 2>&1
+}
+
+emit_todos() {
+  local -a args=(--porcelain list)
+  [[ "${todos_all}" -eq 0 ]] || args+=(--status ANY)
+  todo "${args[@]}" 2>/dev/null |
+    jq -c '{todos: sort_by([.completed, (.due // 99999999999), (if (.priority // 0) == 0 then 10 else .priority end), (.summary | ascii_downcase)])}' ||
+    printf '{"todos":[]}\n'
+}
+
+# The cache is todoman's own id->file map; it is read, never written.
+todo_file() {
+  python3 - "$1" <<'TODOPY' 2>/dev/null
+import os, sqlite3, sys
+
+cache = os.path.join(
+    os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache")),
+    "todoman", "cache.sqlite3")
+try:
+    con = sqlite3.connect(f"file:{cache}?mode=ro", uri=True)
+    row = con.execute(
+        "SELECT file_path, uid FROM todos WHERE id = ?", (sys.argv[1],)).fetchone()
+except sqlite3.Error:
+    raise SystemExit(1)
+if not row or not row[0]:
+    raise SystemExit(1)
+path, uid = row
+# a cached path can be stale, so it only counts if the file still holds the
+# uid the cache expects
+try:
+    with open(path, encoding="utf-8", errors="replace") as handle:
+        if f"UID:{uid}" not in handle.read():
+            raise SystemExit(1)
+except OSError:
+    raise SystemExit(1)
+print(path)
+TODOPY
+}
+
+reopen_todo() {
+  local file tmp
+  file="$(todo_file "$1")" || return 1
+  [[ -n "${file}" ]] || return 1
+  tmp="$(mktemp)" || return 1
+  awk '
+    { sub(/\r$/, "") }
+    /^COMPLETED[;:]/ { next }
+    /^PERCENT-COMPLETE[;:]/ { next }
+    /^STATUS[;:]/ { print "STATUS:NEEDS-ACTION"; next }
+    { print }
+  ' "${file}" >"${tmp}" || { rm -f "${tmp}"; return 1; }
+  mv -- "${tmp}" "${file}" || { rm -f "${tmp}"; return 1; }
+}
+
+if [[ "${todos_mode}" -eq 1 ]] || [[ "${todo_add}" -eq 1 ]] ||
+  [[ -n "${todo_done}" ]] || [[ -n "${todo_delete}" ]] || [[ -n "${todo_open}" ]]; then
+  if ! todo_cli; then
+    printf '{"todos":[],"unavailable":true}\n'
+    exit 0
+  fi
+  if [[ -n "${todo_delete}" ]]; then
+    todo delete --yes "${todo_delete}" >/dev/null 2>&1 ||
+      { jq -n --arg id "${todo_delete}" '{todos: [], error: ("could not delete " + $id)}'; exit 1; }
+  fi
+  if [[ -n "${todo_open}" ]]; then
+    reopen_todo "${todo_open}" ||
+      { jq -n --arg id "${todo_open}" '{todos: [], error: ("could not reopen " + $id)}'; exit 1; }
+  fi
+  if [[ -n "${todo_done}" ]]; then
+    todo done "${todo_done}" >/dev/null 2>&1 ||
+      { jq -n --arg id "${todo_done}" '{todos: [], error: ("could not complete " + $id)}'; exit 1; }
+  fi
+  if [[ "${todo_add}" -eq 1 ]]; then
+    [[ -n "${title}" ]] || { usage >&2; exit 1; }
+    declare -a new_todo=(new)
+    [[ -z "${calendar}" ]] || new_todo+=(--list "${calendar}")
+    if [[ -n "${day}" ]]; then
+      if [[ -n "${due_time}" ]]; then
+        new_todo+=(--due "${day} ${due_time}")
+      else
+        new_todo+=(--due "${day}")
+      fi
+    fi
+    [[ -z "${priority}" ]] || new_todo+=(--priority "${priority}")
+    for tag in "${categories[@]+"${categories[@]}"}"; do
+      new_todo+=(-c "${tag}")
+    done
+    new_todo+=("${title}")
+    todo "${new_todo[@]}" >/dev/null 2>&1 ||
+      { printf '{"todos":[],"error":"could not create the todo"}\n'; exit 1; }
+  fi
+  emit_todos
+  exit 0
+fi
+
+if [[ "${calendars_mode}" -eq 1 ]] || [[ -n "${show_uid}" ]] ||
+  [[ -n "${delete_uid}" ]] || [[ "${add}" -eq 1 ]]; then
+  table="$(khal_calendars)"
+fi
+
+if [[ "${calendars_mode}" -eq 1 ]]; then
+  khal_table
+  exit 0
+fi
+
 # khal exposes neither recurrence nor alarms, so the file is read directly
 if [[ -n "${show_uid}" ]]; then
-  file="$(grep -rlF --include='*.ics' "UID:${show_uid}" "${CALENDAR_VDIR:-$HOME/.calendars}" 2>/dev/null | head -1)"
+  file="$(find_ics "${show_uid}" | head -1 || true)"
   if [[ -z "${file}" ]]; then
     printf '{"error":"event not found"}\n'
     exit 1
@@ -150,7 +434,11 @@ if [[ -n "${show_uid}" ]]; then
   exit 0
 fi
 
-if [[ -z "${day}" && -z "${month}" ]] || [[ -n "${day}" && -n "${month}" ]]; then
+selected=0
+[[ -z "${day}" ]] || selected=$((selected + 1))
+[[ -z "${month}" ]] || selected=$((selected + 1))
+[[ -z "${week}" ]] || selected=$((selected + 1))
+if [[ "${selected}" -ne 1 ]]; then
   usage >&2
   exit 1
 fi
@@ -170,6 +458,8 @@ fi
 if ! command -v khal >/dev/null 2>&1; then
   if [[ -n "${day}" ]]; then
     printf '{"day":"%s","events":[],"unavailable":true}\n' "${day}"
+  elif [[ -n "${week}" ]]; then
+    printf '{"week":"%s","days":{},"unavailable":true}\n' "${week}"
   else
     printf '{"month":"%s","days":{},"unavailable":true}\n' "${month}"
   fi
@@ -182,7 +472,21 @@ khal_range() {
   khal list \
     --json start-date --json start-time --json end-time \
     --json title --json location --json all-day --json description --json uid \
-    "${start}" "${span}" 2>/dev/null | jq -s 'add // []'
+    --json calendar \
+    "${start}" "${span}" 2>/dev/null | jq -s 'add // []' | apply_filters
+}
+
+readonly_owner() {
+  khal_table | jq -r --arg dir "$1" '
+    .calendars | to_entries
+    | map(select(.value.readonly and ((.value.path | sub("/+$"; "")) == $dir)))
+    | (.[0].key // "")'
+}
+
+refuse_readonly() {
+  jq -n --arg day "${day}" --arg name "$1" \
+    '{day: $day, events: [], error: ($name + " is read-only")}'
+  exit 1
 }
 
 if [[ -n "${delete_uid}" ]]; then
@@ -190,8 +494,10 @@ if [[ -n "${delete_uid}" ]]; then
   removed=0
   while IFS= read -r file; do
     [[ -n "${file}" ]] || continue
+    owner="$(readonly_owner "${file%/*}")"
+    [[ -z "${owner}" ]] || refuse_readonly "${owner}"
     rm -f -- "${file}" && removed=1
-  done < <(grep -rlF --include='*.ics' "UID:${delete_uid}" "${CALENDAR_VDIR:-$HOME/.calendars}" 2>/dev/null)
+  done < <(find_ics "${delete_uid}")
   if [[ "${removed}" -eq 0 ]]; then
     printf '{"day":"%s","events":[],"error":"event not found"}\n' "${day}"
     exit 1
@@ -201,7 +507,16 @@ fi
 if [[ "${add}" -eq 1 ]]; then
   # khal takes the summary as the trailing words, so it goes last and unquoted
   # pieces before it must all parse as dates, times or a timezone.
-  [[ -n "${calendar}" ]] || calendar="$(khal printcalendars 2>/dev/null | head -1)"
+  if [[ -n "${calendar}" ]]; then
+    [[ "$(khal_table | jq -r --arg name "${calendar}" '.calendars[$name].readonly // false')" == "false" ]] ||
+      refuse_readonly "${calendar}"
+  else
+    calendar="$(khal_table | jq -r '
+      .calendars as $all
+      | (.default // "") as $preferred
+      | if $all[$preferred].readonly == false then $preferred
+        else ($all | to_entries | map(select(.value.readonly | not)) | (.[0].key // "")) end')"
+  fi
   declare -a new_args=(new)
   [[ -n "${calendar}" ]] && new_args+=(-a "${calendar}")
   [[ -n "${location}" ]] && new_args+=(-l "${location}")
@@ -226,7 +541,29 @@ if [[ "${add}" -eq 1 ]]; then
   fi
 fi
 
-if [[ -n "${day}" ]]; then
+if [[ -n "${week}" ]]; then
+  khal_range "${week}" "7d" | jq --arg week "${week}" '{
+    week: $week,
+    days: (
+      map({
+        date: ."start-date",
+        event: {
+          start: (."start-time" // ""),
+          end: (."end-time" // ""),
+          title: (.title // ""),
+          location: (.location // ""),
+          description: (.description // ""),
+          uid: (.uid // ""),
+          calendar: (.calendar // ""),
+          allDay: ((."all-day" // "") == "True")
+        }
+      })
+      | group_by(.date)
+      | map({key: .[0].date, value: map(.event)})
+      | from_entries
+    )
+  }'
+elif [[ -n "${day}" ]]; then
   khal_range "${day}" "1d" | jq --arg day "${day}" '{
     day: $day,
     events: map({
@@ -236,6 +573,7 @@ if [[ -n "${day}" ]]; then
       location: (.location // ""),
       description: (.description // ""),
       uid: (.uid // ""),
+      calendar: (.calendar // ""),
       allDay: ((."all-day" // "") == "True")
     })
   }'
@@ -246,6 +584,21 @@ else
   }
   khal_range "${month}-01" "${last_day}d" | jq --arg month "${month}" '{
     month: $month,
-    days: (map(."start-date") | group_by(.) | map({key: .[0], value: length}) | from_entries)
+    days: (
+      map({
+        date: ."start-date",
+        calendar: (.calendar // ""),
+        allDay: ((."all-day" // "") == "True")
+      })
+      | group_by(.date)
+      | map({
+        key: .[0].date,
+        value: {
+          allDay: (map(select(.allDay) | .calendar) | unique),
+          timed: (map(select(.allDay | not) | .calendar) | unique)
+        }
+      })
+      | from_entries
+    )
   }'
 fi

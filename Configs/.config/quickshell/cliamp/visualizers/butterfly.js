@@ -4,7 +4,7 @@
 
 function render(ctx, d) {
   var bands = d.bands, w = d.width, h = d.height, count = d.count, frame = d.frame
-  var cx = w / 2, ramp = H.specRamp(d, h)
+  var cx = w / 2, ramp = H.specTierRamp(d, h)
   for (var y = 0; y < h; y++) {
     var bandF = y / Math.max(1, h - 1) * (count - 1)
     var bi = Math.floor(bandF)
@@ -26,7 +26,7 @@ function render(ctx, d) {
       }
     }
     if (energy > 0.05) {
-      ctx.fillStyle = d.accent
+      ctx.fillStyle = ramp[y]
       ctx.fillRect(cx, y, 1, 1)
       if (cx > 0) ctx.fillRect(cx - 1, y, 1, 1)
     }

@@ -2,6 +2,28 @@
 .pragma library
 .import "helpers.js" as H
 
+// Range axis: near edge and span, shared by addEcho and the graduation labels so the
+// two can never disagree about what a given row means.
+var RANGE_NEAR = 0.05
+var RANGE_SPAN = 0.90
+
+// Geometric interpolation into band_edges_hz, which spectrum.py builds with geomspace.
+function bandHz(edges, bandIndex) {
+  if (!edges || edges.length < 2) return 0
+  var i = Math.max(0, Math.min(edges.length - 2, Math.floor(bandIndex)))
+  var frac = Math.max(0, Math.min(1, bandIndex - i))
+  var lo = Number(edges[i]) || 0, hi = Number(edges[i + 1]) || 0
+  if (lo <= 0 || hi <= 0) return 0
+  return lo * Math.pow(hi / lo, frac)
+}
+
+function hzLabel(hz) {
+  if (hz <= 0) return ""
+  if (hz >= 10000) return Math.round(hz / 1000) + "k"
+  if (hz >= 1000) return (hz / 1000).toFixed(1) + "k"
+  return String(Math.round(hz))
+}
+
 function clamp(value, low, high) {
   return Math.max(low, Math.min(high, Number(value || 0)))
 }
@@ -23,7 +45,7 @@ function addEcho(s, band, bandCount, strength, stereo, dbFloor) {
   var distributed = (s.crtSequence * 0.61803398875 + frequency * 0.29) % 1
   var bearing = clamp(distributed * 0.88 + pan * 0.12, 0.02, 0.98)
   s.crtSequence++
-  var range = 0.20 + Math.pow(frequency, 0.72) * 0.70
+  var range = RANGE_NEAR + frequency * RANGE_SPAN
   for (var index = 0; index < s.crtEchoes.length; index++) {
     var existing = s.crtEchoes[index]
     if (Math.abs(existing.bearing - bearing) < 0.04 && Math.abs(existing.range - range) < 0.07) {
@@ -93,17 +115,54 @@ function render(ctx, d) {
   // Phosphor raster and a rectangular bearing/range graticule.
   ctx.fillStyle = H.rgba(d.surface, 0.32)
   for (var scanY = 0; scanY < h; scanY += 2) ctx.fillRect(0, scanY, w, 1)
-  ctx.strokeStyle = H.rgba(d.accent, 0.16); ctx.lineWidth = 1
-  ctx.beginPath()
-  for (var column = 0; column <= 12; column++) {
-    var gridX = scopeLeft + scopeWidth * column / 12
-    ctx.moveTo(gridX, scopeTop); ctx.lineTo(gridX, scopeBottom)
-  }
+  ctx.lineWidth = 1
+
+  // Both families are filled on whole pixels rather than stroked: a 1px stroke on an
+  // integer coordinate straddles two columns at half intensity, which washed the dotted
+  // bearing lines out to a 2-level smear.
+
+  // Range rings: the axis a target's position is exact in, so they carry the weight.
+  ctx.fillStyle = H.rgba(d.accent, 0.26)
   for (var row = 0; row <= 4; row++) {
-    var gridY = scopeTop + scopeHeight * row / 4
-    ctx.moveTo(scopeLeft, gridY); ctx.lineTo(scopeRight, gridY)
+    ctx.fillRect(scopeLeft, Math.round(scopeTop + scopeHeight * row / 4), scopeWidth, 1)
+  }
+
+  // Bearing lines: dots on a quarter duty cycle, so they stay lighter than the rings
+  // even though each dot is crisper than an antialiased stroke.
+  ctx.fillStyle = H.rgba(d.accent, 0.20)
+  for (var column = 0; column <= 12; column++) {
+    var gridX = Math.round(scopeLeft + scopeWidth * column / 12)
+    for (var dot = scopeTop; dot < scopeBottom; dot += 4) ctx.fillRect(gridX, dot, 1, 1)
+  }
+
+  // Graduations. Bearing ticks hang from the top edge, clear of the range labels.
+  ctx.strokeStyle = H.rgba(d.accent, 0.38)
+  ctx.beginPath()
+  for (var tick = 0; tick <= 12; tick++) {
+    var tickX = scopeLeft + scopeWidth * tick / 12
+    ctx.moveTo(tickX, scopeTop); ctx.lineTo(tickX, scopeTop + (tick % 6 === 0 ? 4 : 2))
   }
   ctx.stroke()
+
+  ctx.font = "7px monospace"
+  ctx.textBaseline = "top"
+  ctx.fillStyle = H.rgba(d.accent, 0.42)
+  ctx.textAlign = "left";   ctx.fillText("L", scopeLeft + 1, scopeTop + 5)
+  ctx.textAlign = "center"; ctx.fillText("C", scopeLeft + scopeWidth / 2, scopeTop + 5)
+  ctx.textAlign = "right";  ctx.fillText("R", scopeRight - 1, scopeTop + 5)
+
+  // Range rings carry the frequency they stand for, read back through the same mapping.
+  // Under the ring, not above it, or the top one collides with the L bearing label.
+  ctx.textAlign = "left"
+  ctx.textBaseline = "top"
+  ctx.fillStyle = H.rgba(d.accent, 0.34)
+  for (var ring = 1; ring <= 3; ring++) {
+    var ringRange = 1 - ring / 4
+    var ringBand = (ringRange - RANGE_NEAR) / RANGE_SPAN * Math.max(1, bands.length - 1)
+    var label = hzLabel(bandHz(d.bandEdges, ringBand + 0.5))
+    if (label === "") continue
+    ctx.fillText(label, scopeLeft + 2, scopeTop + scopeHeight * ring / 4 + 1)
+  }
 
   // One strong onset creates a target; bass is near, treble is far.
   var bestBand = -1, bestScore = 0, bestRise = 0, bestLevel = 0
@@ -154,8 +213,12 @@ function render(ctx, d) {
     var alpha = fade * echo.lit
     ctx.strokeStyle = H.rgba(d.accent, 0.20 + alpha * 0.64)
     ctx.lineWidth = 1 + echo.strength * 1.2
-    ctx.beginPath(); ctx.moveTo(echoX - 2.5 - echo.strength * 2, echoY)
-    ctx.lineTo(echoX + 2.5 + echo.strength * 2, echoY); ctx.stroke()
+    // A square flare keeps target expansion visually balanced on both axes.
+    var arm = 2.5 + echo.strength * 2
+    ctx.beginPath()
+    ctx.moveTo(echoX - arm, echoY); ctx.lineTo(echoX + arm, echoY)
+    ctx.moveTo(echoX, echoY - arm); ctx.lineTo(echoX, echoY + arm)
+    ctx.stroke()
     ctx.fillStyle = H.mixColor(d.accent, d.foreground, 0.20 + echo.strength * 0.48,
       0.24 + alpha * 0.72)
     ctx.beginPath(); ctx.arc(echoX, echoY, 0.8 + echo.strength * 1.4,

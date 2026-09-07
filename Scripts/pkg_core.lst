@@ -128,6 +128,7 @@ neovim                                                # configured editor
 nwg-displays                                          # monitor management utility
 fzf                                                   # command-line fuzzy finder
 mpv                                                   # recording/media playback helper
+mpv-mpris                                             # MPRIS bridge for the cliamp player
 loupe                                                 # image viewer
 haruna                                                # video player
 zathura                                               # document viewer

@@ -14,8 +14,8 @@ BluetoothButton 1.0 BluetoothButton.qml
 BluetoothPopup 1.0 BluetoothPopup.qml
 BookmarkEditor 1.0 BookmarkEditor.qml
 BookmarkImport 1.0 BookmarkImport.qml
-Bookmarks 1.0 Bookmarks.qml
 BookmarkStore 1.0 BookmarkStore.qml
+Bookmarks 1.0 Bookmarks.qml
 BrightnessSlider 1.0 BrightnessSlider.qml
 BrowserPicker 1.0 BrowserPicker.qml
 CaffeinePopup 1.0 CaffeinePopup.qml
@@ -46,6 +46,7 @@ NotificationButton 1.0 NotificationButton.qml
 NotificationEntry 1.0 NotificationEntry.qml
 NotificationPopup 1.0 NotificationPopup.qml
 PopupCard 1.0 PopupCard.qml
+PopupField 1.0 PopupField.qml
 PopupHero 1.0 PopupHero.qml
 PopupHost 1.0 PopupHost.qml
 PopupNumberField 1.0 PopupNumberField.qml
@@ -64,12 +65,6 @@ ReloadToast 1.0 ReloadToast.qml
 ScreenRecordPopup 1.0 ScreenRecordPopup.qml
 ScreenshotPopup 1.0 ScreenshotPopup.qml
 ScriptButton 1.0 ScriptButton.qml
-singleton Wallpaper 1.0 Wallpaper.qml
-singleton Media 1.0 Media.qml
-singleton Backlight 1.0 Backlight.qml
-singleton Style 1.0 Style.qml
-singleton Weather 1.0 Weather.qml
-singleton Removable 1.0 Removable.qml
 StackedReadout 1.0 StackedReadout.qml
 StartButton 1.0 StartButton.qml
 StartMenuFlyout 1.0 StartMenuFlyout.qml
@@ -79,6 +74,7 @@ StartPopup 1.0 StartPopup.qml
 SubmapButton 1.0 SubmapButton.qml
 SudokuPopup 1.0 SudokuPopup.qml
 SysinfoPopup 1.0 SysinfoPopup.qml
+TasksPopup 1.0 TasksPopup.qml
 Theme 1.0 Theme.qml
 ToggleSwitch 1.0 ToggleSwitch.qml
 TopBar 1.0 TopBar.qml
@@ -96,3 +92,9 @@ WinBar 1.0 WinBar.qml
 WindowList 1.0 WindowList.qml
 WorkspacePopup 1.0 WorkspacePopup.qml
 Workspaces 1.0 Workspaces.qml
+singleton Backlight 1.0 Backlight.qml
+singleton Media 1.0 Media.qml
+singleton Removable 1.0 Removable.qml
+singleton Style 1.0 Style.qml
+singleton Wallpaper 1.0 Wallpaper.qml
+singleton Weather 1.0 Weather.qml
