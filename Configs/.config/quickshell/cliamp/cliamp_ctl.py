@@ -5,10 +5,12 @@ import os
 import subprocess
 import json
 import socket
+import fcntl
 import time
 import re
 import signal
 import shutil
+import shlex
 import hashlib
 import concurrent.futures
 import urllib.request
@@ -31,6 +33,7 @@ except Exception:
     pass
 
 SOCK_PATH = os.path.join(RUN_DIR, "mpv.sock")
+START_LOCK = os.path.join(RUN_DIR, "mpv.lock")
 STREAM_FIFO = os.path.join(RUN_DIR, "stream.fifo")
 STREAM_PID_FILE = os.path.join(RUN_DIR, "stream_ytdlp.pid")
 SPECTRUM_PID_FILE = os.path.join(RUN_DIR, "spectrum.pid")
@@ -208,6 +211,11 @@ def save_tracked_proc(pid_file, pid, signature=None):
             pass
     except Exception:
         pass
+
+def launch_worker(command, pid_file="", signature=None, output=""):
+    worker = [sys.executable, os.path.abspath(__file__), "_worker", pid_file, json.dumps(signature), output, *command]
+    dispatch = f"hl.dsp.exec_cmd({json.dumps(shlex.join(worker), ensure_ascii=False)})"
+    subprocess.run(["hyprctl", "dispatch", dispatch], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
 
 def read_queue():
     if os.path.exists(QUEUE_PATH):
@@ -502,8 +510,13 @@ def load_mpv(url, mode, title):
 def is_mpv_running(timeout=0.2):
     if not os.path.exists(SOCK_PATH):
         return False
-    res = send_mpv_cmd(["get_property", "idle-active"], timeout=timeout)
-    return res is not None and res.get("error") == "success"
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as peer:
+            peer.settimeout(timeout)
+            peer.connect(SOCK_PATH)
+        return True
+    except OSError:
+        return False
 
 def write_spectrum_target(selectors=None):
     values = []
@@ -540,8 +553,7 @@ def start_spectrum_daemon(selectors=None):
             pass
     try:
         spec_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "spectrum.py")
-        proc = subprocess.Popen(["python3", spec_script], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
-        save_tracked_proc(SPECTRUM_PID_FILE, proc.pid, signature="spectrum.py")
+        launch_worker([sys.executable, spec_script], SPECTRUM_PID_FILE, "spectrum.py")
     except Exception:
         pass
 
@@ -549,7 +561,10 @@ def stop_spectrum_daemon():
     terminate_tracked_pid(SPECTRUM_PID_FILE, expected_signature="spectrum.py")
 
 def start_mpv_daemon():
-    if not is_mpv_running():
+    with open(START_LOCK, "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        if is_mpv_running():
+            return
         if os.path.exists(SOCK_PATH):
             try:
                 os.remove(SOCK_PATH)
@@ -571,7 +586,7 @@ def start_mpv_daemon():
             "--demuxer-max-bytes=10M",
             "--demuxer-readahead-secs=30"
         ]
-        subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+        launch_worker(cmd)
         for _ in range(30):
             time.sleep(0.05)
             if is_mpv_running(timeout=0.1):
@@ -1543,16 +1558,8 @@ def stream_youtube(url):
     except Exception:
         pass
 
-    read_fd = os.open(STREAM_FIFO, os.O_RDONLY | os.O_NONBLOCK)
-    write_fd = os.open(STREAM_FIFO, os.O_WRONLY)
-    os.close(read_fd)
-    proc = subprocess.Popen(
-        ["yt-dlp", "--no-warnings", "-f", "18/best", "-o", "-", "--", url],
-        stdout=os.fdopen(write_fd, "wb"),
-        stderr=subprocess.DEVNULL,
-        start_new_session=True
-    )
-    save_tracked_proc(STREAM_PID_FILE, proc.pid, signature=["yt-dlp", STREAM_FIFO])
+    command = ["yt-dlp", "--no-warnings", "-f", "18/best", "-o", "-", "--", url]
+    launch_worker(command, STREAM_PID_FILE, ["yt-dlp", STREAM_FIFO], STREAM_FIFO)
 
 def resolve_track_url(url, title=None, artist=None):
     """Resolves any track item (Spotify URL, query string, or local path) to a playable URL and metadata."""
@@ -1647,7 +1654,14 @@ if __name__ == "__main__":
         sys.exit(0)
 
     action = sys.argv[1]
-    if action == "status":
+    if action == "_worker":
+        pid_file, signature, output, command = sys.argv[2], json.loads(sys.argv[3]), sys.argv[4], sys.argv[5:]
+        if pid_file:
+            save_tracked_proc(pid_file, os.getpid(), signature)
+        if output:
+            os.dup2(os.open(output, os.O_WRONLY), 1)
+        os.execvp(command[0], command)
+    elif action == "status":
         print(json.dumps(get_status()))
     elif action == "history":
         lim = int(sys.argv[2]) if len(sys.argv) > 2 else 30

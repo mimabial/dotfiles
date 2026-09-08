@@ -14,19 +14,19 @@ builtin_box_drawing = true
 size = 14.17
 
 [font.normal]
-family = "FantasqueSansM Nerd Font"
+family = "IosevkaTermSlab Nerd Font"
 style = "Regular"
 
 [font.bold]
-family = "FantasqueSansM Nerd Font"
+family = "IosevkaTermSlab Nerd Font"
 style = "Bold"
 
 [font.italic]
-family = "FantasqueSansM Nerd Font"
+family = "IosevkaTermSlab Nerd Font"
 style = "Italic"
 
 [font.bold_italic]
-family = "FantasqueSansM Nerd Font"
+family = "IosevkaTermSlab Nerd Font"
 style = "Bold Italic"
 
 [font.offset]

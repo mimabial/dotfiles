@@ -74,7 +74,7 @@ function render(ctx, d) {
   var surfaceL = H.hsl(d.surface).l
 
   // Omaramp's alpha pulse is optional; movement and swelling remain audio-reactive either way.
-  var swell = 1.0 + bass * 0.4 + beat * 0.3
+  var swell = 1.25 + bass * 0.25 + beat * 0.20
   var sway = 1.0 + bass * 0.5 + beat * 0.4
   var alpha = d.backgroundPulse ? Math.min(0.85, 0.45 + beat * 0.25 + bass * 0.15) : ALPHA
   var midAlpha = d.backgroundPulse ? alpha * 0.35 : MID_ALPHA
@@ -91,8 +91,8 @@ function render(ctx, d) {
     var ry = bl.ry * h * swell
     if (rx <= 0 || ry <= 0) continue
 
-    var bx = (bl.cx + Math.sin(t * bl.drift + i * 1.5) * 0.12 * sway) * w
-    var by = (bl.cy + Math.cos(t * bl.drift * 0.8 + i * 2.0) * 0.15 * sway) * h
+    var bx = (bl.cx + Math.sin(t * bl.drift + i * 1.5) * 0.025 * sway) * w
+    var by = (bl.cy + Math.cos(t * bl.drift * 0.8 + i * 2.0) * 0.04 * sway) * h
 
     // A unit-circle gradient under a scale transform, so rx and ry describe an ellipse
     // instead of collapsing into whichever of the two is larger. The fill covers the
