@@ -212,7 +212,7 @@ def save_tracked_proc(pid_file, pid, signature=None):
     except Exception:
         pass
 
-def launch_worker(command, pid_file="", signature=None, output=""):
+def launch_hyprland_worker(command, pid_file="", signature=None, output=""):
     worker = [sys.executable, os.path.abspath(__file__), "_worker", pid_file, json.dumps(signature), output, *command]
     dispatch = f"hl.dsp.exec_cmd({json.dumps(shlex.join(worker), ensure_ascii=False)})"
     subprocess.run(["hyprctl", "dispatch", dispatch], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
@@ -553,7 +553,7 @@ def start_spectrum_daemon(selectors=None):
             pass
     try:
         spec_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "spectrum.py")
-        launch_worker([sys.executable, spec_script], SPECTRUM_PID_FILE, "spectrum.py")
+        launch_hyprland_worker([sys.executable, spec_script], SPECTRUM_PID_FILE, "spectrum.py")
     except Exception:
         pass
 
@@ -586,7 +586,7 @@ def start_mpv_daemon():
             "--demuxer-max-bytes=10M",
             "--demuxer-readahead-secs=30"
         ]
-        launch_worker(cmd)
+        launch_hyprland_worker(cmd)
         for _ in range(30):
             time.sleep(0.05)
             if is_mpv_running(timeout=0.1):
@@ -1559,7 +1559,7 @@ def stream_youtube(url):
         pass
 
     command = ["yt-dlp", "--no-warnings", "-f", "18/best", "-o", "-", "--", url]
-    launch_worker(command, STREAM_PID_FILE, ["yt-dlp", STREAM_FIFO], STREAM_FIFO)
+    launch_hyprland_worker(command, STREAM_PID_FILE, ["yt-dlp", STREAM_FIFO], STREAM_FIFO)
 
 def resolve_track_url(url, title=None, artist=None):
     """Resolves any track item (Spotify URL, query string, or local path) to a playable URL and metadata."""
