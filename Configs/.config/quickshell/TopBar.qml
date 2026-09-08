@@ -46,20 +46,17 @@ PanelWindow {
     WlrLayershell.keyboardFocus: !popupOpen ? WlrKeyboardFocus.None
         : exclusivePhase ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
     onPopupOpenChanged: {
-        if (!popupOpen) return
-        exclusivePhase = true
-        shell.focusPriming = true
-        focusPrime.restart()
-        focusSettle.restart()
+        const prime = popupOpen && shell.popupCenteredName === shell.popupName
+        exclusivePhase = prime
+        shell.focusPriming = prime
+        if (prime) focusPrime.restart()
     }
     // the compositor focuses this surface, not the popup's own window
     Item {
         anchors.fill: parent; focus: true
         Keys.onPressed: event => { if (root.shell.popupCard) event.accepted = root.shell.popupCard.handleKey(event) }
     }
-    Timer { id: focusPrime; interval: 150; onTriggered: root.exclusivePhase = false }
-    // the grab settles a little after the mode drops back
-    Timer { id: focusSettle; interval: 450; onTriggered: root.shell.focusPriming = false }
+    Timer { id: focusPrime; interval: 150; onTriggered: { root.exclusivePhase = false; root.shell.focusPriming = false } }
 
     Component { id: mod_menu; StartButton { shell: root.shell; popupEnabled: root.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_taskbar; WindowList { shell: root.shell; allWorkspaces: true; framed: true; Layout.fillHeight: true } }

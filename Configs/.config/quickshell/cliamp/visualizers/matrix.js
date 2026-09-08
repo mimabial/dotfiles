@@ -30,7 +30,8 @@ function render(ctx, d) {
   var cols = H.resampleBandsLinear(bands, numCols)
   var glyphs = "0123456789ABCDEFλπΣΩ#%*+~=<>:?ｦｱｳｴｵｶｷｹｺｻｼｽｾｿﾀﾂﾃﾅﾆﾇﾈﾊﾋﾎﾏﾐﾑﾒﾓﾔﾕﾗﾘﾜ"
 
-  var headHot = H.rgba(d.foreground, 1), headCool = H.mixColor(d.foreground, d.accent, 0.4, 1)
+  var c2 = (d.colors || [])[2] || d.foreground
+  var headHot = H.rgba(c2, 1), headCool = H.mixColor(c2, d.accent, 0.4, 1)
 
   ctx.save()
   ctx.font = "bold 9px monospace"
@@ -68,7 +69,7 @@ function render(ctx, d) {
         ctx.fillStyle = energy > 0.4 ? headHot : headCool
       } else {
         var alpha = (1.0 - (l / drop.length)) * (0.35 + energy * 0.65)
-        if (l === 1) ctx.fillStyle = H.mixColor(d.accent, d.foreground, 0.4, alpha.toFixed(2))
+        if (l === 1) ctx.fillStyle = H.mixColor(d.accent, c2, 0.4, alpha.toFixed(2))
         else ctx.fillStyle = H.rgba(d.accent, alpha.toFixed(2))
       }
 

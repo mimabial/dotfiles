@@ -320,14 +320,26 @@ local function summon_app(class, workspace, command)
 end
 
 bind(mod, "E", "[Launcher|Apps] file explorer", summon_app("org.kde.dolphin", "special:explorer", explorer))
-exec(
+bind(
 	mod .. " SHIFT",
+	"E",
+	"[Workspaces] move window to explorer special workspace",
+	hl.dsp.window.move({ workspace = "special:explorer" })
+)
+exec(
+	mod .. " ALT",
 	"E",
 	"[Launcher|Apps] file explorer in current directory",
 	explorer .. [[ "$(hyprshell terminal-cwd.sh)"]]
 )
 bind(mod, "B", "[Launcher|Apps] web browser", summon_app("firefox", "special:browser", browser))
-exec(mod .. " SHIFT", "B", "[Launcher|Apps] private browser", "hyprshell browser.sh --private")
+bind(
+	mod .. " SHIFT",
+	"B",
+	"[Workspaces] move window to browser special workspace",
+	hl.dsp.window.move({ workspace = "special:browser" })
+)
+exec(mod .. " ALT", "B", "[Launcher|Apps] private browser", "hyprshell browser.sh --private")
 exec(mod, "C", "[Launcher|Apps] text editor", terminal .. " -e " .. editor)
 
 exec(mod, "D", "[Launcher|Menus] application finder", "hyprshell rofi-launch.sh d")

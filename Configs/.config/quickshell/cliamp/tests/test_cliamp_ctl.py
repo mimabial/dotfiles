@@ -8,6 +8,14 @@ import cliamp_ctl as cliamp
 
 
 class QueueMetadataTests(unittest.TestCase):
+    @patch.object(cliamp, "play_next_in_queue", return_value={"success": True})
+    @patch.object(cliamp, "reconcile_queue", return_value=[{"url": "/music/next.opus"}])
+    @patch.object(cliamp, "send_mpv_cmd", side_effect=[{"data": False}, {"data": True}])
+    @patch.object(cliamp, "start_mpv_daemon")
+    def test_play_at_eof_uses_queue(self, _start, _send, queue, play_next):
+        self.assertEqual(cliamp.resume_playback(), {"success": True})
+        play_next.assert_called_once_with(queue.return_value)
+
     @patch.object(cliamp, "send_mpv_cmd")
     def test_title_is_file_local(self, send):
         cliamp.load_mpv("/music/next.opus", "append", "Next")

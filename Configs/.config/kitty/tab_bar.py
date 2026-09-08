@@ -371,7 +371,7 @@ def draw_tab(
 ) -> int:
     layout_name = getattr(tab, "layout_name", "unknown")
     _draw_icon(screen, index, layout_name)
-    _draw_left_status(
+    end = _draw_left_status(
         draw_data,
         screen,
         tab,
@@ -386,4 +386,4 @@ def draw_tab(
         is_last,
     )
 
-    return screen.cursor.x
+    return end

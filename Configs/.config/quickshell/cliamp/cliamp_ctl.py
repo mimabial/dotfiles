@@ -307,8 +307,8 @@ def reconcile_queue():
         break
     return q
 
-def play_next_in_queue():
-    q = reconcile_queue()
+def play_next_in_queue(q=None):
+    q = reconcile_queue() if q is None else q
     if q:
         next_track = q.pop(0)
         save_queue(q)
@@ -1612,11 +1612,31 @@ def play_item(url, title=None, artist=None):
             stream_target = STREAM_FIFO
 
     load_mpv(stream_target, "replace", final_title)
+    for queued in read_queue():
+        target = queued.get("target") or queued.get("url")
+        if target:
+            load_mpv(target, "append", queued.get("title"))
     if final_title:
         import threading
         threading.Thread(target=fetch_lyrics, args=(final_title, final_artist, real_url), daemon=True).start()
     send_mpv_cmd(["set_property", "pause", False])
     return {"success": True}
+
+def resume_playback(toggle=False):
+    start_mpv_daemon()
+    needs_track = any((send_mpv_cmd(["get_property", prop]) or {}).get("data") is True
+                      for prop in ("idle-active", "eof-reached"))
+    if not needs_track:
+        return send_mpv_cmd(["cycle", "pause"] if toggle else ["set_property", "pause", False])
+    queue = reconcile_queue()
+    if queue:
+        return play_next_in_queue(queue)
+    current = read_now_playing()
+    if current.get("url"):
+        return play_item(current["url"], current.get("title"), current.get("artist"))
+    recent = parse_history(1)
+    recent = recent[0] if recent else {}
+    return play_item(recent["path"], recent.get("title"), recent.get("artist")) if recent.get("path") else {"success": False}
 
 def queue_item(url, title=None, artist=None):
     real_url, final_title, final_artist = resolve_track_url(url, title, artist)
@@ -1709,43 +1729,13 @@ if __name__ == "__main__":
             a = sys.argv[4] if len(sys.argv) > 4 else ""
             print(json.dumps(play_item(url, t, a)))
         else:
-            start_mpv_daemon()
-            idle_res = send_mpv_cmd(["get_property", "idle-active"])
-            if idle_res and idle_res.get("data") is True:
-                q = read_queue()
-                if q:
-                    play_next_in_queue()
-                else:
-                    np = read_now_playing()
-                    if np.get("url"):
-                        play_item(np.get("url"), np.get("title"), np.get("artist"))
-                    else:
-                        hist = parse_history(1)
-                        if hist and hist[0].get("path"):
-                            play_item(hist[0].get("path"), hist[0].get("title"), hist[0].get("artist"))
-            else:
-                send_mpv_cmd(["set_property", "pause", False])
+            resume_playback()
             print(json.dumps({"success": True}))
     elif action == "pause":
         send_mpv_cmd(["set_property", "pause", True])
         print(json.dumps({"success": True}))
     elif action == "toggle":
-        start_mpv_daemon()
-        idle_res = send_mpv_cmd(["get_property", "idle-active"])
-        if idle_res and idle_res.get("data") is True:
-            q = read_queue()
-            if q:
-                play_next_in_queue()
-            else:
-                np = read_now_playing()
-                if np.get("url"):
-                    play_item(np.get("url"), np.get("title"), np.get("artist"))
-                else:
-                    hist = parse_history(1)
-                    if hist and hist[0].get("path"):
-                        play_item(hist[0].get("path"), hist[0].get("title"), hist[0].get("artist"))
-        else:
-            send_mpv_cmd(["cycle", "pause"])
+        resume_playback(True)
         print(json.dumps({"success": True}))
     elif action == "start_spectrum":
         start_spectrum_daemon(sys.argv[2:])

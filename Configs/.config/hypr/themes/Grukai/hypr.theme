@@ -5,9 +5,12 @@ $COLOR_SCHEME = prefer-dark
 $NVIM_SCHEME = miasma
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = true
+
+$CURSOR_THEME = oldSys
 # $CURSOR_THEME = buuf-cursor-original
-$CURSOR_THEME = MeguminCursor
-$CURSOR_SIZE = 34
+# $CURSOR_THEME = MeguminCursor
+$CURSOR_SIZE = 30
+
 $FONT = IosevkaTermSlab Nerd Font
 $BAR_FONT = IosevkaTermSlab Nerd Font
 $MENU_FONT = IosevkaTermSlab Nerd Font

@@ -45,9 +45,11 @@ xkbcli how-to-type --layout fr '<char>'
 | `Super + Return` | terminal, in the current directory |
 | `Super + Shift + Return` | the alternate terminal, same directory |
 | `Super + E` | summon the file manager |
-| `Super + Shift + E` | file manager in the current directory |
+| `Super + Shift + E` | move window to the file manager's special workspace |
+| `Super + Alt + E` | file manager in the current directory |
 | `Super + B` | summon the browser |
-| `Super + Shift + B` | private browser |
+| `Super + Shift + B` | move window to the browser's special workspace |
+| `Super + Alt + B` | private browser |
 | `Super + C` | editor |
 | `Super + D` | application finder |
 | `Super + Shift + D` | window switcher |
