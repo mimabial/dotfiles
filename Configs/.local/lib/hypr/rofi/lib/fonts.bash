@@ -57,12 +57,10 @@ rofi_effective_font_name() {
   local requested_font="${1:-}"
   local font_name="${requested_font}"
   if [[ -z "${font_name}" ]]; then
-    # font-apply keeps Rofi synchronized with the layered Hypr font setting.
-    font_name="$(rofi_config_font_name 2>/dev/null || true)"
-  fi
-  if [[ -z "${font_name}" ]]; then
+    # Layers preserve user override -> theme -> default precedence.
     font_name="$(hypr_config_value_from_layers "MENU_FONT" || true)"
     [[ -n "${font_name}" ]] || font_name="$(hypr_config_value_from_layers "FONT" || true)"
+    [[ -n "${font_name}" ]] || font_name="$(rofi_config_font_name 2>/dev/null || true)"
   fi
   font_name=${font_name:-monospace}
   printf '%s\n' "${font_name}"
