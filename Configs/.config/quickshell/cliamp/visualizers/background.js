@@ -8,7 +8,7 @@
 // Blobs take their hue straight from the theme's terminal palette rather than from
 // anything synthesised, and three rules keep the result a nebula rather than mud:
 //
-// 1. Ordered by cx along a coherent slice of the palette (pink -> mauve -> accent ->
+// 1. Ordered by cx along a coherent slice of the palette (success -> c2 -> accent ->
 //    blue -> teal), so horizontally adjacent blobs are adjacent in hue and blend into
 //    one sweep. Picking colours from around the whole wheel puts clashes side by side.
 // 2. Lightness is a bounded step away from the player's own surface, in whichever
@@ -22,7 +22,7 @@
 // color is an index into d.colors; -1 means accent and -2 means success.
 var BLOBS = [
   { cx: 0.15, cy: 0.35, rx: 0.30, ry: 0.70, color: -2, weight: 0.85, drift: 1.0 },
-  { cx: 0.30, cy: 0.70, rx: 0.22, ry: 0.55, color: 5,  weight: 0.80, drift: -1.1 },
+  { cx: 0.30, cy: 0.70, rx: 0.22, ry: 0.55, color: 2,  weight: 0.80, drift: -1.1 },
   { cx: 0.50, cy: 0.50, rx: 0.35, ry: 0.80, color: -1, weight: 1.00, drift: 1.3 },
   { cx: 0.72, cy: 0.30, rx: 0.25, ry: 0.60, color: 4,  weight: 0.90, drift: 0.9 },
   { cx: 0.85, cy: 0.60, rx: 0.28, ry: 0.65, color: 6,  weight: 0.85, drift: -0.7 }
@@ -56,7 +56,7 @@ function tint(color, surfaceL, weight) {
 
 function accentTint(accent, palette, surfaceL, weight) {
   var src = H.hsl(accent)
-  var left = palette[5], right = palette[4]
+  var left = palette[2], right = palette[4]
   if (src.s === 0 || !left || !right) return tint(accent, surfaceL, weight)
   var lh = H.hsl(left).h
   var mid = lh + arcDelta(lh, H.hsl(right).h) / 2

@@ -23,7 +23,7 @@ selection_background #404040
 selection_foreground #BFBFBF
 
 # The basic colors
-foreground              #FFDD33
+foreground              #FFFFFF
 background              #181818
 selection_foreground    #181818
 selection_background    #FADA16
@@ -45,9 +45,9 @@ wayland_titlebar_color system
 macos_titlebar_color system
 
 # Tab bar colors
-active_tab_foreground   #2CF6B3
-active_tab_background   #181818
-inactive_tab_foreground #232323
+active_tab_foreground   #FFDD33
+active_tab_background   #E6E6E6
+inactive_tab_foreground #1F2229
 inactive_tab_background #FADA16
 tab_bar_background      #564873
 

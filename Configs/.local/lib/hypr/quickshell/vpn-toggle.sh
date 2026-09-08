@@ -31,7 +31,7 @@ fi
 
 mullvad_status_line="$(mullvad_status_line "$mullvad_status")"
 
-if [[ "${mullvad_status_line}" == connected* ]]; then
+if [[ "${mullvad_status_line}" == connected* || "${mullvad_status_line}" == blocked* || "${mullvad_status_line}" == error* ]]; then
   mullvad disconnect >/dev/null
 else
   if provider_have_command nmcli && provider_have_command jq; then

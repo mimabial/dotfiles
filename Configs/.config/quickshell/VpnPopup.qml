@@ -25,6 +25,7 @@ PopupCard {
     readonly property bool connected: viewStatus.state === "connected"
     readonly property bool busy: backend === "networkmanager" ? nmActionProc.running : pendingAction !== "" || ["connecting", "disconnecting"].includes(String(status.state))
     readonly property bool blocked: backend === "mullvad" && (status.state === "blocked" || status.lockedDown === true)
+    readonly property bool disconnectable: connected || backend === "mullvad" && status.state === "blocked"
     readonly property var features: viewStatus.features || []
     readonly property string notice: backend === "networkmanager" ? nmError : actionError || settingsError || statusError
 
@@ -150,7 +151,7 @@ PopupCard {
             return
         }
         if (busy || actionProc.running) return
-        actionError = ""; pendingAction = connected ? "disconnecting" : "connecting"
+        actionError = ""; pendingAction = disconnectable ? "disconnecting" : "connecting"
         actionProc.running = true
     }
     function setSetting(name, enabled) {
@@ -185,7 +186,7 @@ PopupCard {
         const key = String(event.text || "").toLowerCase()
         if (key === "/" && backend === "mullvad" && countries.length) { settingsOpen = false; browsing = "countries"; return true }
         if (key === "r") { refresh(true); return true }
-        if (key === "d") { if (connected) toggle(); return true }
+        if (key === "d") { if (disconnectable) toggle(); return true }
         return defaultKey(event)
     }
 
@@ -474,8 +475,8 @@ PopupCard {
             PopupSeparator { shell: root.shell }
             PopupRow {
                 width: parent.width; shell: root.shell
-                icon: root.connected ? "󰳌" : "󱦛"
-                title: root.busy ? root.label(root.state) + "…" : root.connected ? "Disconnect" : root.backend === "networkmanager" && root.nmProfiles.length > 1 ? "Select a profile" : "Connect"
+                icon: root.disconnectable ? "󰳌" : "󱦛"
+                title: root.busy ? root.label(root.state) + "…" : root.disconnectable ? "Disconnect" : root.backend === "networkmanager" && root.nmProfiles.length > 1 ? "Select a profile" : "Connect"
                 detail: root.viewStatus.relay ? String(root.viewStatus.relay) : ""
                 active: root.connected
                 enabled: !root.busy && (root.backend === "mullvad" || root.connected || root.nmProfiles.length === 1)
