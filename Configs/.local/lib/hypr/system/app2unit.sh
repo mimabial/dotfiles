@@ -5,15 +5,12 @@ N='
 OIFS=$IFS
 RSEP=$(printf '%b' '\036')
 USEP=$(printf '%b' '\037')
+PSEP=$(printf '%b' '\035')
 TERMINAL_HANDLER=tui-terminal-exec
 SELF_NAME=${0##*/}
 APP2UNIT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)
-# Single source of truth for the Qt theme env normalized onto launched apps.
 APP2UNIT_QT_ENV_FILE="$(dirname -- "$APP2UNIT_DIR")/core/qt-session.env"
 
-# Treat non-zero exit status from simple commands as an error
-# Treat unset variables as errors when performing parameter expansion
-# Disable pathname expansion
 set -euf
 
 shcat() {
@@ -180,9 +177,7 @@ help() {
 }
 
 error() {
-	# Print messages to stderr, send notification (only first arg) if stderr is not interactive
 	printf '%s\n' "$@" >&2
-	# if dunstify is installed and stderr is not a terminal, also send notification
 	if [ ! -t 2 ] && command -v dunstify >/dev/null; then
 		dunstify -u critical -i error -a "${SELF_NAME}" "Error" "$1"
 	fi
@@ -199,10 +194,8 @@ check_bool() {
 	esac
 }
 
-# Utility function to print debug messages to stderr (or not)
 if check_bool "${DEBUG-0}"; then
 	debug() {
-		# print each arg at new line, prefix each printed line with 'D: '
 		while IFS='' read -r debug_line; do
 			printf 'D: %s\n' "$debug_line"
 		done <<-EOF >&2
@@ -330,7 +323,6 @@ resolve_executable_ref() {
 }
 
 parse_main_arg() {
-	# fills some of global variables depending on main arg $1
 	MAIN_ARG=$1
 	reset_main_arg_state
 
@@ -406,9 +398,6 @@ get_assoc() {
 }
 
 gen_unit_id() {
-	# generate Unit ID based on Entry ID or exec name if UNIT_ID is not already set
-	# sets UNIT_ID
-
 	if [ -z "$UNIT_ID" ]; then
 		if [ -z "$UNIT_APP_SUBSTRING" ] && [ -n "${ENTRY_ID}" ]; then
 			UNIT_APP_SUBSTRING=${ENTRY_ID%.desktop}
@@ -422,10 +411,9 @@ gen_unit_id() {
 		else
 			UNIT_DESKTOP_SUBSTRING=NoDesktop
 		fi
-		# escape substrings if needed
 		case "${UNIT_DESKTOP_SUBSTRING}${UNIT_APP_SUBSTRING}" in
 		*[!a-zA-Z:_.]*)
-			# prepend a character to shield potential . from being first
+			# Prefixing prevents systemd-escape from treating a leading dot specially.
 			read -r UNIT_DESKTOP_SUBSTRING UNIT_APP_SUBSTRING <<-EOL
 				$(systemd-escape "A$UNIT_DESKTOP_SUBSTRING" "A$UNIT_APP_SUBSTRING")
 			EOL
@@ -482,7 +470,6 @@ randomize_unit_id() {
 	NEW_RANDOM_STRING=$(random_string)
 	debug "new random string: $NEW_RANDOM_STRING"
 	UNIT_ID=${UNIT_ID%"${RANDOM_STRING}.${UNIT_TYPE}"}${NEW_RANDOM_STRING}.${UNIT_TYPE}
-	#"
 	RANDOM_STRING=${NEW_RANDOM_STRING}
 }
 
@@ -527,9 +514,7 @@ systemd_apply_unit_type_args() {
 	esac
 }
 
-# Direct-exec fallback used when no systemd user manager is present (e.g. runit
-# on Artix). Receives the clean command argv, honors TEST_MODE / working dir /
-# output silencing, then detaches via setsid so the app outlives the launcher.
+# Preserve launch semantics and detach when systemd is unavailable.
 app2unit_exec_without_systemd() {
 	case "$TEST_MODE" in
 	true)
@@ -543,13 +528,12 @@ app2unit_exec_without_systemd() {
 		cd "$ENTRY_WORKDIR" 2>/dev/null || true
 	fi
 
-	# Normalize the Qt theme env directly on the child (no systemd to carry it).
 	if [ -r "$APP2UNIT_QT_ENV_FILE" ]; then
 		while IFS= read -r app2unit_qt_line || [ -n "$app2unit_qt_line" ]; do
 			case "$app2unit_qt_line" in
 			'' | \#*) continue ;;
 			esac
-			export "$app2unit_qt_line"
+			export "${app2unit_qt_line?}"
 		done <"$APP2UNIT_QT_ENV_FILE"
 	fi
 
@@ -566,8 +550,6 @@ app2unit_exec_without_systemd() {
 }
 
 systemd_run() {
-	# wrapper for systemd-run
-	# Without a systemd user manager (e.g. runit/Artix), exec the command directly.
 	if [ ! -d /run/systemd/system ] || ! command -v systemd-run >/dev/null 2>&1; then
 		app2unit_exec_without_systemd "$@"
 		return $?
@@ -591,11 +573,7 @@ systemd_run() {
 		--collect \
 		-- "$@"
 
-	# Normalize the Qt platform theme/style for every launched app. --setenv
-	# reaches both scope and service units regardless of the env they would
-	# inherit, so a stale value (e.g. QT_QPA_PLATFORMTHEME=gtk3) in the session
-	# env can't leak through. Values come from core/qt-session.env, never echoed
-	# from the (possibly stale) current env.
+	# Override stale session Qt variables for both scopes and services.
 	if [ -r "$APP2UNIT_QT_ENV_FILE" ]; then
 		while IFS= read -r app2unit_qt_line || [ -n "$app2unit_qt_line" ]; do
 			case "$app2unit_qt_line" in
@@ -606,7 +584,6 @@ systemd_run() {
 	fi
 
 	if [ "$PART_OF_GST" = "true" ]; then
-		# prepend graphical session dependency/ordering args
 		set -- \
 			--property=After=graphical-session.target \
 			--property=PartOf=graphical-session.target \
@@ -614,7 +591,6 @@ systemd_run() {
 	fi
 
 	if [ -n "$ENTRY_WORKDIR" ]; then
-		# prepend requested Path or samedir
 		set -- "--working-directory=${ENTRY_WORKDIR}" "$@"
 	else
 		set -- --same-dir "$@"
@@ -849,6 +825,13 @@ initialize_state() {
 	ENTRY_URL=''
 	ENTRY_COMMENT=''
 	ENTRY_NAME=''
+	ENTRY_LCOMMENT=''
+	ENTRY_LNAME=''
+	ENTRY_NAME_ACTION=''
+	ENTRY_LNAME_ACTION=''
+	ENTRY_LCOMMENT_RANK=0
+	ENTRY_LNAME_RANK=0
+	ENTRY_LNAME_ACTION_RANK=0
 	ENTRY_ICON=''
 	ENTRY_WORKDIR=''
 	UNIT_DESCRIPTION=''
@@ -879,9 +862,7 @@ initialize_state() {
 	OPENER_MODE=false
 	CAPTURE_TERMINAL_ARGS=false
 	RANDOM_STRING=
-	LCODE=${LANGUAGE:-"$LANG"}
-	LCODE=${LCODE%_*}
-	LCODE=${LCODE:-NOLCODE}
+	de_initialize_locale
 }
 
 configure_unit_slice_choices() {

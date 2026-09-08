@@ -82,7 +82,17 @@ PopupCard {
   // for it rather than replace it
   property var pendingCmds: []
   property bool queueReloadPending: false
-  property bool currentLiked: false
+  // Liked state for every row is read off the Liked playlist, so a row costs no
+  // process of its own; overrides carry the optimistic flip until the write lands.
+  readonly property bool currentLiked: root.isLiked(root.currentUrl, root.currentTrack, root.currentArtist)
+  readonly property var likedIndex: {
+    const index = ({})
+    for (const pl of root.playlistsList)
+      if (pl.name === "Liked")
+        for (const track of pl.tracks || []) index[root.likeKey(track.url, track.title, track.artist)] = true
+    return index
+  }
+  property var likedOverrides: ({})
   property bool _likeDirty: false
   // mpd-mpris owns org.mpris.MediaPlayer2.mpd whenever mpd runs, so the derived
   // context would send every queue read to mpd and hide what "+" just wrote.
@@ -191,7 +201,6 @@ PopupCard {
       recentProc.running = true
     }
     if (trackChanged && root.open && root.selectedTab === "queue") root.loadQueue()
-    if (trackChanged) root.refreshLiked()
     if (trackChanged && root.open) root.startSpectrum()
     if (trackChanged && playerComp.lyricsVisible && playerComp.lyricsTrack !== newTrack)
       playerComp.fetchLyrics()
@@ -238,7 +247,6 @@ PopupCard {
       loadPlaylists()
       loadQueue()
       loadFiles(root.filesPath)
-      refreshLiked()
       startSpectrum()
     } else {
       stopSpectrum()
@@ -523,6 +531,13 @@ PopupCard {
     root.urlInputText = ""
   }
 
+  // A row that is showing the live track toggles it, the way playQueueItem does for
+  // the queue. Without this the pause glyph reloads the track instead of pausing it.
+  function playOrToggle(current, url, title, artist) {
+    if (current && root.playbackState !== "stopped") root.togglePlayback()
+    else if (url) root.playUrl(url, title, artist)
+  }
+
   function queueUrl(url, title, artist) {
     if (!url || !url.trim()) return
     root.queueOverride = "cliamp"
@@ -642,19 +657,28 @@ PopupCard {
     if (!historyProc.running) historyProc.running = true
   }
 
-  function toggleLiked() {
-    if (!root.currentUrl && root.currentTrack === "No track loaded") return
-    root.currentLiked = !root.currentLiked
-    root._likeDirty = true
-    runCmd(["toggle_liked", root.currentUrl || "", root.currentTrack, root.currentArtist])
-    Qt.callLater(loadPlaylists)
+  // Mirrors liked_key() in cliamp_ctl.py: a real target identifies the song, and the
+  // title/artist pair stands in for search strings that never resolved to a url.
+  function likeKey(url, title, artist) {
+    const target = String(url || "").trim()
+    return target ? "url:" + target
+      : "meta:" + String(title || "").trim().toLowerCase() + "::" + String(artist || "").trim().toLowerCase()
   }
 
-  function refreshLiked() {
-    if (likedProc.running) return
-    likedProc.command = ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", ""),
-      "liked", root.currentUrl || "", root.currentTrack, root.currentArtist]
-    likedProc.running = true
+  function isLiked(url, title, artist) {
+    const key = root.likeKey(url, title, artist)
+    return key in root.likedOverrides ? root.likedOverrides[key] : root.likedIndex[key] === true
+  }
+
+  function toggleLiked() { root.toggleLikeFor(root.currentUrl, root.currentTrack, root.currentArtist) }
+
+  function toggleLikeFor(url, title, artist) {
+    if (!String(url || "").trim() && (!title || title === "No track loaded")) return
+    const overrides = Object.assign({}, root.likedOverrides)
+    overrides[root.likeKey(url, title, artist)] = !root.isLiked(url, title, artist)
+    root.likedOverrides = overrides
+    root._likeDirty = true
+    runCmd(["toggle_liked", url || "", title || "", artist || ""])
   }
 
   function loadPlaylists() {
@@ -739,7 +763,7 @@ PopupCard {
           root.currentUrl = newUrl
           root.artPath = String(data.art_path || "")
           if (trackChanged && root.open && root.selectedTab === "queue") root.loadQueue()
-          if (trackChanged) { root.refreshLiked(); if (root.open) root.loadHistory() }
+          if (trackChanged && root.open) root.loadHistory()
           if (trackChanged && playerComp.lyricsVisible && playerComp.lyricsTrack !== newTrack) {
             playerComp.fetchLyrics()
           }
@@ -811,17 +835,6 @@ PopupCard {
   }
 
   Process {
-    id: likedProc
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        try { root.currentLiked = JSON.parse(text || "{}").liked === true }
-        catch (e) { root.currentLiked = false }
-      }
-    }
-  }
-
-  Process {
     id: searchProc
     stdout: StdioCollector {
       waitForEnd: true
@@ -858,6 +871,8 @@ PopupCard {
       onStreamFinished: {
         try { root.playlistsList = JSON.parse(text || "[]") }
         catch (e) { root.playlistsList = [] }
+        // a reload that raced a still-pending toggle would drop its optimistic flip
+        if (!root._likeDirty) root.likedOverrides = ({})
       }
     }
   }
@@ -895,7 +910,7 @@ PopupCard {
       }
       if (root._likeDirty) {
         root._likeDirty = false
-        root.refreshLiked()
+        root.loadPlaylists()
       }
       root.loadingVid = ""
       root.refresh()
@@ -1057,8 +1072,7 @@ PopupCard {
     function playUrl(url: string) { root.playUrl(url) }
   }
 
-  // Detached strip above the card, in the reserved header space, so showing
-  // or hiding it never resizes the window or moves the player.
+  // Detached strip opposite the bar; visibility never moves the player.
   header: BorderSurface {
     visible: root.resumeVisible
     anchors.left: parent.left

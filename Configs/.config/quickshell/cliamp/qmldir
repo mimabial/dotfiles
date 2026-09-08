@@ -1,5 +1,6 @@
 EqPicker 1.0 EqPicker.qml
 Player 1.0 Player.qml
+RowLike 1.0 RowLike.qml
 TrackList 1.0 TrackList.qml
 Transport 1.0 Transport.qml
 VisPicker 1.0 VisPicker.qml

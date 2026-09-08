@@ -7,6 +7,7 @@ rofi_picker_bootstrap || exit 1
 rofi_picker_hypr_dir_vars glyph_dir cache_dir
 glyph_data="${glyph_dir}/glyph.db"
 recent_data="${cache_dir}/landing/show_glyph.recent"
+GLYPH_HINT='<span size="x-small">[←↑→↓] Navigate · [Enter] Copy · [Esc] Close</span>'
 
 refresh_recent_entries() {
   local target_file="$1"
@@ -60,6 +61,7 @@ setup_rofi_config() {
   # a cell stacks glyph, prefix and the name split over two lines, across six
   # reserved rows (~6.5em) against the ~2.1em a plain row costs
   local glyph_row_em=6.5
+  local glyph_chrome_em=9.4
   # Tiles are budgeted in em, and em is line height -- not proportional to point
   # size across fonts (JetBrainsMono 15 is 27px where Miracode 15 is 22px), so
   # the grid has to divide the real pixel budget, not font_scale.
@@ -67,13 +69,14 @@ setup_rofi_config() {
   em_px="$(rofi_length_em_to_px 1 "${font_name}" "${font_scale}" 2>/dev/null || true)"
   [[ "${em_px}" =~ ^[0-9]+$ ]] && ((em_px > 0)) || em_px=$((font_scale * 3 / 2))
 
-  # fill 85% of the monitor, less the theme's chrome (7.3em tall, 2em wide)
+  # fill 85% of the monitor, less the theme's input, footer and outer padding
   local calc_cols="" calc_lines=""
   read -r calc_cols calc_lines <<<"$(
-    awk -v w="${logical_width}" -v h="${logical_height}" -v e="${em_px}" -v r="${glyph_row_em}" '
+    awk -v w="${logical_width}" -v h="${logical_height}" -v e="${em_px}" \
+      -v r="${glyph_row_em}" -v chrome="${glyph_chrome_em}" '
       BEGIN {
         c = int((w * 0.85 - 2 * e) / (r * 1.25 * e))
-        l = int((h * 0.85 - 7.3 * e) / (r * e))
+        l = int((h * 0.85 - chrome * e) / (r * e))
         printf "%d %d\n", (c < 6 ? 6 : (c > 20 ? 20 : c)), (l < 3 ? 3 : (l > 8 ? 8 : l))
       }'
   )"
@@ -90,7 +93,7 @@ setup_rofi_config() {
   glyph_window_width="${ROFI_GLYPH_WIDTH_EM:-${default_width}}"
   [[ "${glyph_window_width}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || glyph_window_width=${default_width}
   local glyph_window_height_em=""
-  glyph_window_height_em="$(rofi_picker_listview_height_em "${glyph_lines}" "${glyph_row_em}")"
+  glyph_window_height_em="$(rofi_picker_listview_height_em "${glyph_lines}" "${glyph_row_em}" "${glyph_chrome_em}")"
   rofi_picker_compute_window_geometry \
     rofi_position glyph_window_theme \
     "${font_name}" "${font_scale}" \
@@ -105,10 +108,12 @@ setup_rofi_config() {
     -markup-rows
     -sep '\0'
     -eh 6
+    -mesg "${GLYPH_HINT}"
     -theme "$(rofi_resolve_theme "${ROFI_GLYPH_STYLE:-clipboard}")"
     -theme-str "entry { placeholder: \"   Glyph\";} ${rofi_position}"
     -theme-str "${font_override}"
     -theme-str "listview {flow: horizontal; fixed-columns: true;} element {padding: 0.25em 0.5em;} element-text {horizontal-align: 0.5;}"
+    -theme-str 'mainbox {children: [ "wallbox", "listbox", "message" ];} listview {scrollbar: true; spacing: 5px;} scrollbar {handle-width: 4px; handle-color: @separator; handle-rounded-corners: false; background-color: @background; border-color: @border;} message {enabled: true; margin: 12px 0px 0px 0px; padding: 0px; border: 0px solid; border-radius: 0px; border-color: @border; background-color: transparent; text-color: @separator;} textbox {padding: 6px; border: 0px solid; border-radius: 8px; border-color: @border; background-color: transparent; text-color: inherit; vertical-align: 0.5; horizontal-align: 0.5;}'
     -theme-str "${glyph_window_theme}"
     -theme-str "${r_override}"
   )

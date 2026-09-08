@@ -14,19 +14,19 @@ builtin_box_drawing = true
 size = 14.17
 
 [font.normal]
-family = "UbuntuMono Nerd Font"
+family = "Lilex Nerd Font"
 style = "Regular"
 
 [font.bold]
-family = "UbuntuMono Nerd Font"
+family = "Lilex Nerd Font"
 style = "Bold"
 
 [font.italic]
-family = "UbuntuMono Nerd Font"
+family = "Lilex Nerd Font"
 style = "Italic"
 
 [font.bold_italic]
-family = "UbuntuMono Nerd Font"
+family = "Lilex Nerd Font"
 style = "Bold Italic"
 
 [font.offset]

@@ -1,15 +1,6 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
 
-# Shared desktop-theme sync helpers.
-#
-# This library is the single owner for desktop-facing theme writes:
-#   - GTK, cursor resource files
-#   - GNOME dconf theme state
-#   - portal restarts after GTK/dconf changes
-#
-# Callers should source runtime/init.bash and load state/system modules first.
-
 if ! declare -F hypr_hash_cache_runtime_file >/dev/null 2>&1; then
   # shellcheck source=/dev/null
   source "${LIB_DIR:-$HOME/.local/lib}/hypr/core/hash-cache.sh" || return 1 2>/dev/null || exit 1
@@ -18,29 +9,26 @@ fi
 theme_desktop_ini_write_batch() {
   local config_file="$1"
   shift
-  local entry=""
-  local group=""
-  local rest=""
-  local key=""
-  local value=""
+  local entry="" rest=""
 
-  for entry in "$@"; do
-    group="${entry%%:*}"
-    rest="${entry#*:}"
-    key="${rest%%=*}"
-    value="${rest#*=}"
-    ini_write "${config_file}" "${group}" "${key}" "${value}" || return 1
-  done
+  {
+    for entry in "$@"; do
+      rest="${entry#*:}"
+      printf '%s\t%s\t%s\n' "${entry%%:*}" "${rest%%=*}" "${rest#*=}"
+    done
+  } | ini_write_multi "${config_file}"
 }
 
 theme_desktop_write_generated_file() {
   local target_file="$1"
   local target_dir=""
+  local target_name=""
   local tmp_file=""
 
-  target_dir="$(dirname "${target_file}")"
+  target_dir="${target_file%/*}"
+  target_name="${target_file##*/}"
   mkdir -p "${target_dir}" || return 1
-  tmp_file="$(mktemp "${target_dir}/.$(basename "${target_file}").XXXXXX")" || return 1
+  tmp_file="$(mktemp "${target_dir}/.${target_name}.XXXXXX")" || return 1
   cat >"${tmp_file}" || {
     rm -f -- "${tmp_file}"
     return 1
@@ -54,37 +42,13 @@ theme_desktop_write_generated_file() {
   mv -f -- "${tmp_file}" "${target_file}"
 }
 
-# With a theme palette the pack's theme.meta is authoritative for icon/cursor,
-# above env-theme and userfonts; wallpaper mode leaves them to the layered
-# resolution. The shared layer parser agrees with hyq on this flat generated
-# file and avoids the subprocess.
-theme_desktop_load_theme_meta_values() {
-  local theme_conf="${HYPR_THEME_METADATA_FILE:-${HYPR_CONFIG_HOME}/themes/theme.meta}"
-  local -A theme_meta_values=()
-
-  [[ "${selected_color_source:-theme}" == "theme" ]] || return 0
-  [[ -r "${theme_conf}" ]] || return 0
-
-  hypr_config_parse_layer_file "${theme_conf}" theme_meta_values
-  [[ -n "${theme_meta_values[ICON_THEME]-}" ]] && ICON_THEME="${theme_meta_values[ICON_THEME]}"
-  [[ -n "${theme_meta_values[CURSOR_THEME]-}" ]] && CURSOR_THEME="${theme_meta_values[CURSOR_THEME]}"
-  [[ -n "${theme_meta_values[CURSOR_SIZE]-}" ]] && CURSOR_SIZE="${theme_meta_values[CURSOR_SIZE]}"
-  return 0
-}
-
-# Look & Feel stores manual cursor choices in the same per-theme Lua block as
-# compositor overrides. The generated vars.set form is understood by the
-# shared layer parser, so desktop-facing cursor settings and Hyprland keep one
-# source of truth.
 theme_desktop_load_looknfeel_cursor_values() {
   local theme_slug=""
   local override_file=""
   local -A looknfeel_values=()
 
   [[ -n "${HYPR_THEME:-}" ]] || return 0
-  theme_slug="$(LC_ALL=C printf '%s' "${HYPR_THEME}" \
-    | LC_ALL=C tr '[:upper:]' '[:lower:]' \
-    | LC_ALL=C sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//')"
+  theme_slug="$(LC_ALL=C sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//' <<<"${HYPR_THEME,,}")"
   [[ -n "${theme_slug}" ]] || theme_slug="default"
   override_file="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/looknfeel.d/${theme_slug}.${resolved_color_variant:-dark}.lua"
 
@@ -112,57 +76,8 @@ declare -ga theme_desktop_layered_vars=(
   FONT_HINTING
 )
 
-theme_desktop_base_state_hash() {
-  local env_theme_file="${HYPR_CONFIG_HOME}/env-theme"
-  local env_theme_hash=""
-  local pipeline_hash=""
-
-  pipeline_hash="$(hypr_hash_cache_digest_files "${BASH_SOURCE[0]}")"
-  [[ -f "${env_theme_file}" ]] && env_theme_hash="$(hypr_hash_cache_digest_files "${env_theme_file}")"
-
-  hypr_hash_cache_digest_strings \
-    "pipeline=${pipeline_hash}" \
-    "env_theme=${env_theme_hash}" \
-    "config_signature=$(hypr_config_file_signature "$@")"
-}
-
-theme_desktop_lv_value() {
-  local lv_name="theme_desktop_lv_$1"
-  printf '%s' "${!lv_name-}"
-}
-
-theme_desktop_write_base_snapshot() {
-  local snapshot_file="$1"
-  local snapshot_tmp=""
-  local layer_var=""
-
-  snapshot_tmp="$(mktemp "${snapshot_file}.tmp.XXXXXX")" || return 1
-  {
-    for layer_var in "${theme_desktop_layered_vars[@]}"; do
-      printf '%s=%q\n' "${layer_var}" "${!layer_var-}"
-    done
-    for layer_var in "${theme_desktop_layered_vars[@]}"; do
-      printf 'theme_desktop_lv_%s=%q\n' "${layer_var}" "$(theme_desktop_lv_value "${layer_var}")"
-    done
-  } >"${snapshot_tmp}" || {
-    rm -f "${snapshot_tmp}"
-    return 1
-  }
-  mv -f "${snapshot_tmp}" "${snapshot_file}"
-}
-
-# The layers other than theme.meta are a pure function of the digested
-# files, so their resolution is snapshotted under the runtime dir until a
-# config edit (or --regen) invalidates it. theme.meta sits between userfonts
-# and variables in precedence but changes on every theme switch, so it is
-# merged live instead: the snapshot keeps the above-theme.meta values in the
-# variables themselves and the variables.meta fallbacks in
-# theme_desktop_lv_*.
 theme_desktop_resolve_base_values() {
   local env_theme_file="${HYPR_CONFIG_HOME}/env-theme"
-  local hash_file=""
-  local snapshot_file=""
-  local base_hash=""
   local layer_var=""
   local layer_value=""
   local -a layer_files=()
@@ -170,60 +85,28 @@ theme_desktop_resolve_base_values() {
   local -A variables_values=()
   local -A theme_meta_values=()
 
-  # Positional order contract documented on hypr_config_layer_files:
-  # [0] userfonts.lua, [1] themes/theme.meta, [2] variables.meta.
   mapfile -t layer_files < <(hypr_config_layer_files)
-
-  if hash_file="$(hypr_hash_cache_runtime_file "theme-desktop-base.hash")"; then
-    snapshot_file="${hash_file%.hash}.env"
-    base_hash="$(theme_desktop_base_state_hash "${layer_files[0]}" "${layer_files[2]}")" || base_hash=""
-  fi
-
-  if [[ -n "${base_hash}" && -r "${snapshot_file}" ]] \
-    && hypr_hash_cache_is_current "${hash_file}" "${base_hash}"; then
-    # shellcheck source=/dev/null
-    source "${snapshot_file}"
-  else
-    # Ambient values would leak into the snapshot; resolve from files only.
-    # Set-empty rather than unset: consumers run under set -u and expect
-    # every layered variable defined.
-    for layer_var in "${theme_desktop_layered_vars[@]}"; do
-      printf -v "${layer_var}" '%s' ""
-    done
-
-    # shellcheck source=/dev/null
-    [[ -f "${env_theme_file}" ]] && source "${env_theme_file}"
-
-    hypr_config_parse_layer_file "${layer_files[0]}" userfonts_values
-    for layer_var in "${theme_desktop_layered_vars[@]}"; do
-      [[ -n "${!layer_var-}" ]] && continue
-      layer_value="${userfonts_values[${layer_var}]-}"
-      [[ -n "${layer_value}" ]] && printf -v "${layer_var}" '%s' "${layer_value}"
-    done
-
-    hypr_config_parse_layer_file "${layer_files[2]}" variables_values
-    for layer_var in "${theme_desktop_layered_vars[@]}"; do
-      printf -v "theme_desktop_lv_${layer_var}" '%s' "${variables_values[${layer_var}]-}"
-    done
-
-    if [[ -n "${base_hash}" && -n "${snapshot_file}" ]]; then
-      theme_desktop_write_base_snapshot "${snapshot_file}" \
-        && hypr_hash_cache_store "${hash_file}" "${base_hash}" 2>/dev/null \
-        || true
-    fi
-  fi
-
+  for layer_var in "${theme_desktop_layered_vars[@]}"; do printf -v "${layer_var}" %s ""; done
+  # shellcheck source=/dev/null
+  [[ -f "${env_theme_file}" ]] && source "${env_theme_file}"
+  hypr_config_parse_layer_file "${layer_files[0]}" userfonts_values
   hypr_config_parse_layer_file "${layer_files[1]}" theme_meta_values
+  hypr_config_parse_layer_file "${layer_files[2]}" variables_values
   for layer_var in "${theme_desktop_layered_vars[@]}"; do
     [[ -n "${!layer_var-}" ]] && continue
-    layer_value="${theme_meta_values[${layer_var}]-}"
-    [[ -z "${layer_value}" ]] && layer_value="$(theme_desktop_lv_value "${layer_var}")"
+    layer_value="${userfonts_values[${layer_var}]-}"
+    [[ -n "${layer_value}" ]] || layer_value="${theme_meta_values[${layer_var}]-}"
+    [[ -n "${layer_value}" ]] || layer_value="${variables_values[${layer_var}]-}"
     [[ -n "${layer_value}" ]] && printf -v "${layer_var}" '%s' "${layer_value}"
   done
 
-  # Last resort, below every layer: variables.meta normally supplies these, so
-  # this only covers a missing or unreadable shared layer. Applying them any
-  # earlier makes the merge loops above skip the var as already-set.
+  if [[ "${selected_color_source:-theme}" == "theme" ]]; then
+    for layer_var in ICON_THEME CURSOR_THEME CURSOR_SIZE; do
+      layer_value="${theme_meta_values[${layer_var}]-}"
+      [[ -n "${layer_value}" ]] && printf -v "${layer_var}" %s "${layer_value}"
+    done
+  fi
+
   FONT="${FONT:-Cantarell}"
   FONT_SIZE="${FONT_SIZE:-10}"
   DOCUMENT_FONT="${DOCUMENT_FONT:-Cantarell}"
@@ -251,7 +134,6 @@ theme_desktop_resolve_values() {
 
   COLOR_SCHEME="prefer-${resolved_color_variant}"
   theme_desktop_resolve_base_values
-  theme_desktop_load_theme_meta_values
   theme_desktop_load_looknfeel_cursor_values
 
   if [[ "${revert_colors:-0}" -eq 1 ]] \
@@ -297,16 +179,22 @@ theme_desktop_update_xcursor_resource() {
   local file="$1"
   local create="${2:-false}"
 
-  if [[ -f "${file}" ]]; then
-    sed -i \
-      -e "/^Xcursor\\.theme:/c\\Xcursor.theme: ${CURSOR_THEME}" \
-      -e "/^Xcursor\\.size:/c\\Xcursor.size: ${CURSOR_SIZE}" \
-      "${file}"
-    grep -q "^Xcursor\\.theme:" "${file}" || echo "Xcursor.theme: ${CURSOR_THEME}" >>"${file}"
-    grep -q "^Xcursor\\.size:" "${file}" || echo "Xcursor.size: ${CURSOR_SIZE}" >>"${file}"
-  elif [[ "${create}" == "true" ]]; then
-    printf 'Xcursor.theme: %s\nXcursor.size: %s\n' "${CURSOR_THEME}" "${CURSOR_SIZE}" >"${file}"
+  if [[ ! -f "${file}" ]]; then
+    [[ "${create}" == "true" ]] || return 0
+    printf 'Xcursor.theme: %s\nXcursor.size: %s\n' "${CURSOR_THEME}" "${CURSOR_SIZE}" |
+      theme_desktop_write_generated_file "${file}"
+    return
   fi
+
+  awk -v theme="${CURSOR_THEME}" -v size="${CURSOR_SIZE}" '
+    /^Xcursor\.theme:/ { if (!seen_theme++) print "Xcursor.theme: " theme; next }
+    /^Xcursor\.size:/ { if (!seen_size++) print "Xcursor.size: " size; next }
+    { print }
+    END {
+      if (!seen_theme) print "Xcursor.theme: " theme
+      if (!seen_size) print "Xcursor.size: " size
+    }
+  ' "${file}" | theme_desktop_write_generated_file "${file}"
 }
 
 theme_desktop_export_cursor_environment() {
@@ -331,27 +219,21 @@ theme_desktop_export_cursor_environment() {
       print_log -sec "theme" -warn "cursor" "failed to update UWSM cursor environment"
   fi
 
-  # No systemctl set-environment here: --systemd below already writes the
-  # systemd user manager's environment as well as the DBus activation one.
-  if command -v dbus-update-activation-environment >/dev/null 2>&1; then
-    if [[ -d /run/systemd/system ]]; then
-      dbus-update-activation-environment --systemd \
-        XCURSOR_THEME XCURSOR_SIZE HYPRCURSOR_THEME HYPRCURSOR_SIZE XCURSOR_PATH >/dev/null 2>&1 ||
-        print_log -sec "theme" -warn "cursor" "failed to update DBus cursor environment"
-    else
-      dbus-update-activation-environment \
-        XCURSOR_THEME XCURSOR_SIZE HYPRCURSOR_THEME HYPRCURSOR_SIZE XCURSOR_PATH >/dev/null 2>&1 ||
-        print_log -sec "theme" -warn "cursor" "failed to update DBus cursor environment"
-    fi
-  fi
+  theme_desktop_export_activation_env cursor \
+    XCURSOR_THEME XCURSOR_SIZE HYPRCURSOR_THEME HYPRCURSOR_SIZE XCURSOR_PATH
 }
 
-# Re-assert the canonical Qt theme env onto the DBus activation environment (and
-# the systemd --user manager where there is one), so DBus-activated apps stop
-# inheriting a stale value (e.g. QT_QPA_PLATFORMTHEME=gtk3) seeded earlier in the
-# session. Values are read from core/qt-session.env and pushed as explicit
-# KEY=VALUE pairs — the current process env (which may carry the leak) is never
-# propagated. Runs at startup-sync and on every theme apply.
+theme_desktop_export_activation_env() {
+  local name="$1"
+  local -a flags=()
+  shift
+
+  command -v dbus-update-activation-environment >/dev/null 2>&1 || return 0
+  [[ -d /run/systemd/system ]] && flags=(--systemd)
+  dbus-update-activation-environment "${flags[@]}" "$@" >/dev/null 2>&1 ||
+    print_log -sec "theme" -warn "${name}" "failed to update activation environment"
+}
+
 theme_desktop_export_session_qt_env() {
   local qt_env_file="${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/qt-session.env"
   [[ -r "${qt_env_file}" ]] || return 0
@@ -364,17 +246,7 @@ theme_desktop_export_session_qt_env() {
   done <"${qt_env_file}"
   [[ ${#qt_pairs[@]} -gt 0 ]] || return 0
 
-  # As above: --systemd covers the systemd user manager, so no separate
-  # systemctl set-environment call is needed.
-  if command -v dbus-update-activation-environment >/dev/null 2>&1; then
-    if [[ -d /run/systemd/system ]]; then
-      dbus-update-activation-environment --systemd "${qt_pairs[@]}" >/dev/null 2>&1 ||
-        print_log -sec "theme" -warn "qt-env" "failed to update DBus Qt environment"
-    else
-      dbus-update-activation-environment "${qt_pairs[@]}" >/dev/null 2>&1 ||
-        print_log -sec "theme" -warn "qt-env" "failed to update DBus Qt environment"
-    fi
-  fi
+  theme_desktop_export_activation_env qt-env "${qt_pairs[@]}"
 }
 
 theme_desktop_resolve_instance_signature() {
@@ -419,29 +291,8 @@ theme_desktop_kvantum_output_theme_name() {
   printf '%s' "pywal16"
 }
 
-# render/_shell.py owns the pack -> shell rule for both languages.
 theme_desktop_kvantum_shell_dir() {
   HYPR_THEME="${HYPR_THEME:-}" python3 "${LIB_DIR}/hypr/render/_shell.py" 2>/dev/null
-}
-
-theme_desktop_kvantum_shell_hash() {
-  local installer="${LIB_DIR}/hypr/theme/lib/install_kvantum_theme.py"
-  local roles="${LIB_DIR}/hypr/render/_roles.py"
-  local shell_dir=""
-  local -a input_files=()
-
-  shell_dir="$(theme_desktop_kvantum_shell_dir)"
-  [[ -n "${shell_dir}" && -d "${shell_dir}" ]] || {
-    printf ''
-    return 0
-  }
-
-  input_files+=("${shell_dir}/shell.svg" "${shell_dir}/shell.kvconfig")
-  [[ -f "${shell_dir}/shell.map" ]] && input_files+=("${shell_dir}/shell.map")
-  [[ -f "${installer}" ]] && input_files+=("${installer}")
-  [[ -f "${roles}" ]] && input_files+=("${roles}")
-
-  hypr_hash_cache_digest_files "${input_files[@]}"
 }
 
 theme_desktop_install_kvantum_theme() {
@@ -468,21 +319,21 @@ theme_desktop_install_kvantum_theme() {
     python3 "${installer}" || return 1
 }
 
-theme_desktop_install_kde_color_scheme() {
-  local source_file="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/render/qtct/Pywal.colors"
-  local target_file="${XDG_DATA_HOME:-$HOME/.local/share}/color-schemes/Pywal.colors"
-  local target_dir=""
-
+theme_desktop_install_file() {
+  local source_file="$1"
+  local target_file="$2"
   [[ -f "${source_file}" ]] || return 0
-
-  target_dir="$(dirname "${target_file}")"
-  mkdir -p "${target_dir}" || return 1
-
+  mkdir -p "${target_file%/*}" || return 1
   if [[ -f "${target_file}" ]] && cmp -s "${source_file}" "${target_file}"; then
     return 0
   fi
-
   cp -f -- "${source_file}" "${target_file}"
+}
+
+theme_desktop_install_kde_color_scheme() {
+  theme_desktop_install_file \
+    "${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/render/qtct/Pywal.colors" \
+    "${XDG_DATA_HOME:-$HOME/.local/share}/color-schemes/Pywal.colors"
 }
 
 theme_desktop_install_kdeglobals_color_sections() {
@@ -528,20 +379,9 @@ theme_desktop_install_kdeglobals_color_sections() {
 }
 
 theme_desktop_install_qtct_color_scheme() {
-  local source_file="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/render/qtct/pywal16.conf"
-  local target_file="${XDG_CONFIG_HOME}/qt6ct/colors/pywal16.conf"
-  local target_dir=""
-
-  [[ -f "${source_file}" ]] || return 0
-
-  target_dir="$(dirname "${target_file}")"
-  mkdir -p "${target_dir}" || return 1
-
-  if [[ -f "${target_file}" ]] && cmp -s "${source_file}" "${target_file}"; then
-    return 0
-  fi
-
-  cp -f -- "${source_file}" "${target_file}"
+  theme_desktop_install_file \
+    "${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/render/qtct/pywal16.conf" \
+    "${XDG_CONFIG_HOME}/qt6ct/colors/pywal16.conf"
 }
 
 theme_desktop_configure_qt_kde_bridge() {
@@ -549,8 +389,7 @@ theme_desktop_configure_qt_kde_bridge() {
   local base_px=12 base_pt=10 text_size=""
   local ui_size="10.00" fixed_size="10.00"
 
-  # qt6ct owns the app font while QT_QPA_PLATFORMTHEME=qt6ct, so this file has to
-  # use the same exact px-to-point conversion as Quickshell and the terminals.
+  # Match Quickshell's px-to-point conversion.
   text_size="$(state_get TEXT_SIZE "${base_px}" 2>/dev/null || true)"
   if [[ ${text_size} =~ ^[0-9]+$ ]]; then
     ui_size="$(awk -v size="${text_size}" -v pt="${base_pt}" -v base="${base_px}" \
@@ -561,7 +400,7 @@ theme_desktop_configure_qt_kde_bridge() {
   local qt6ct_general_font="${FONT},${ui_size},-1,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0"
   local qt6ct_fixed_font="${MONOSPACE_FONT},${fixed_size},-1,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0"
 
-  theme_desktop_write_generated_file "${XDG_CONFIG_HOME}/Kvantum/kvantum.kvconfig" <<EOF
+  theme_desktop_write_generated_file "${XDG_CONFIG_HOME}/Kvantum/kvantum.kvconfig" <<EOF || return 1
 [General]
 theme=${RESOLVED_KVANTUM_THEME}
 EOF
@@ -570,12 +409,12 @@ EOF
     "General:ColorScheme=${RESOLVED_KDE_COLOR_SCHEME}" \
     "Icons:Theme=${ICON_THEME}" \
     "KDE:widgetStyle=${RESOLVED_KDE_WIDGET_STYLE:-kvantum}" \
-    "UiSettings:ColorScheme=${RESOLVED_KDE_COLOR_SCHEME}"
+    "UiSettings:ColorScheme=${RESOLVED_KDE_COLOR_SCHEME}" || return 1
 
   theme_desktop_ini_write_batch "${XDG_CONFIG_HOME}/kdedefaults/kdeglobals" \
     "General:ColorScheme=${RESOLVED_KDE_COLOR_SCHEME}" \
     "Icons:Theme=${ICON_THEME}" \
-    "KDE:widgetStyle=${RESOLVED_KDE_WIDGET_STYLE:-kvantum}"
+    "KDE:widgetStyle=${RESOLVED_KDE_WIDGET_STYLE:-kvantum}" || return 1
 
   if [[ "${RESOLVED_KDE_COLOR_SCHEME:-}" == "Pywal" ]]; then
     theme_desktop_install_kdeglobals_color_sections "${XDG_CONFIG_HOME}/kdeglobals" || return 1
@@ -603,7 +442,7 @@ theme_desktop_write_gtk4_settings() {
   local prefer_dark="$1"
   local gtk3_font="$2"
   local gtk3_font_size="$3"
-  mkdir -p "${XDG_CONFIG_HOME}/gtk-4.0"
+  mkdir -p "${XDG_CONFIG_HOME}/gtk-4.0" || return 1
   theme_desktop_ini_write_batch "${XDG_CONFIG_HOME}/gtk-4.0/settings.ini" \
     "Settings:gtk-theme-name=${RESOLVED_GTK_THEME}" \
     "Settings:gtk-icon-theme-name=${ICON_THEME}" \
@@ -685,9 +524,9 @@ theme_desktop_configure_gtk() {
   gtk3_font_size="${GTK3_FONT_SIZE:-${FONT_SIZE}}"
   [[ "${COLOR_SCHEME}" == "prefer-dark" ]] && prefer_dark=1
 
-  mkdir -p "${XDG_CONFIG_HOME}/gtk-3.0" "${XDG_CONFIG_HOME}/xsettingsd"
+  mkdir -p "${XDG_CONFIG_HOME}/gtk-3.0" "${XDG_CONFIG_HOME}/xsettingsd" || return 1
   theme_desktop_write_gtk3_css || return 1
-  theme_desktop_write_generated_file "${gtkrc_file}" <<EOF
+  theme_desktop_write_generated_file "${gtkrc_file}" <<EOF || return 1
 # Generated by hypr theme desktop sync.
 include "${HOME}/.gtkrc-2.0.mime"
 gtk-theme-name="${RESOLVED_GTK_THEME}"
@@ -714,19 +553,19 @@ EOF
     "Settings:gtk-cursor-theme-name=${CURSOR_THEME}" \
     "Settings:gtk-cursor-theme-size=${CURSOR_SIZE}" \
     "Settings:gtk-font-name=${gtk3_font} ${gtk3_font_size}" \
-    "Settings:gtk-application-prefer-dark-theme=${prefer_dark}"
+    "Settings:gtk-application-prefer-dark-theme=${prefer_dark}" || return 1
 
   theme_desktop_write_gtk4_settings "${prefer_dark}" "${gtk3_font}" "${gtk3_font_size}" || return 1
   theme_desktop_write_gtk4_css || return 1
 
-  if pkg_installed flatpak; then
+  if command -v flatpak >/dev/null 2>&1; then
     flatpak \
       --user override \
       --filesystem="${HOME}/.icons" \
       --filesystem="${XDG_DATA_HOME:-$HOME/.local/share}/icons" \
       --env=GTK_THEME="${RESOLVED_GTK_THEME}" \
-      --env=ICON_THEME="${ICON_THEME}"
-    flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo >/dev/null 2>&1 &
+      --env=ICON_THEME="${ICON_THEME}" ||
+      print_log -sec "theme" -warn flatpak "override failed"
   fi
 
   theme_desktop_write_generated_file "${xsettingsd_file}" <<EOF
@@ -747,7 +586,7 @@ EOF
 }
 
 theme_desktop_configure_xcursor_resources() {
-  theme_desktop_update_xcursor_resource "${HOME}/.Xresources" true
+  theme_desktop_update_xcursor_resource "${HOME}/.Xresources" true || return 1
   theme_desktop_update_xcursor_resource "${HOME}/.Xdefaults"
 }
 
@@ -790,25 +629,18 @@ EOF
 theme_desktop_write_dconf_content() {
   local dconf_file="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/dconf"
   local dconf_tmp=""
-  local new_content=""
-  local new_hash=""
-  local old_hash=""
 
   mkdir -p "$(dirname "${dconf_file}")"
-  new_content="$(theme_desktop_dconf_payload)"
-  new_hash="$(printf '%s\n' "${new_content}" | md5sum | cut -d' ' -f1)"
-  [[ -f "${dconf_file}" ]] && old_hash="$(md5sum "${dconf_file}" 2>/dev/null | cut -d' ' -f1)"
-
-  if [[ "${new_hash}" == "${old_hash}" ]]; then
-    print_log -sec "dconf" -stat "skip" "unchanged"
-    return 0
-  fi
-
   dconf_tmp="$(mktemp "${dconf_file}.tmp.XXXXXX")" || return 1
-  printf '%s\n' "${new_content}" >"${dconf_tmp}" || {
+  theme_desktop_dconf_payload >"${dconf_tmp}" || {
     rm -f "${dconf_tmp}"
     return 1
   }
+  if [[ -f "${dconf_file}" ]] && cmp -s "${dconf_tmp}" "${dconf_file}"; then
+    rm -f "${dconf_tmp}"
+    print_log -sec "dconf" -stat "skip" "unchanged"
+    return 0
+  fi
 
   if dconf load -f / <"${dconf_tmp}" >/dev/null 2>&1; then
     mv -f "${dconf_tmp}" "${dconf_file}"
@@ -820,18 +652,14 @@ theme_desktop_write_dconf_content() {
   fi
 }
 
-# Keyed off the persisted hash of the written sink, not an in-process flag, so
-# the restart can run in whichever process gets there — phase A writes the sink,
-# the phase-D runtime_desktop job pays the ~225ms restart off the critical path.
-# The hash only advances on a successful restart, so a cancelled envelope leaves
-# the work for the next apply.
 theme_desktop_restart_portal_backends_if_needed() {
   local portal_reset_script="${LIB_DIR}/hypr/system/reset-xdg-portal.sh"
   local dconf_file="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/dconf"
   local current_hash="" synced_hash=""
 
   [[ -x "${portal_reset_script}" ]] || return 0
-  current_hash="$(md5sum "${dconf_file}" 2>/dev/null | cut -d' ' -f1)"
+  current_hash="$(md5sum "${dconf_file}" 2>/dev/null || true)"
+  current_hash="${current_hash%% *}"
   [[ -n "${current_hash}" ]] || return 0
   synced_hash="$(state_get "portal_dconf_hash" "" 2>/dev/null || true)"
   [[ "${current_hash}" == "${synced_hash}" ]] && return 0
@@ -850,31 +678,30 @@ theme_desktop_prepare_state() {
 
 theme_desktop_static_state_hash() {
   local flatpak_installed=0
-  local kvantum_shell_hash=""
-  local pipeline_hash=""
   local active_palette="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/active-palette.json"
-  local active_palette_hash=""
   local pywal_colors="${XDG_CACHE_HOME:-$HOME/.cache}/wal/colors.json"
-  local pywal_hash=""
   local qtct_kde_colors="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/render/qtct/Pywal.colors"
   local qtct_qt6_colors="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/render/qtct/pywal16.conf"
-  local qtct_hash=""
-  local -a qtct_files=()
-  local -a pipeline_files=(
+  local shell_dir=""
+  local source_file=""
+  local source_hash=""
+  local -a source_files=(
     "${BASH_SOURCE[0]}"
+    "${LIB_DIR}/hypr/render/_shell.py"
+    "${LIB_DIR}/hypr/render/_roles.py"
+    "${LIB_DIR}/hypr/theme/lib/install_kvantum_theme.py"
   )
 
-  pkg_installed flatpak && flatpak_installed=1
-  pipeline_hash="$(hypr_hash_cache_digest_files "${pipeline_files[@]}")"
-  [[ -f "${active_palette}" ]] && active_palette_hash="$(hypr_hash_cache_digest_files "${active_palette}")"
-  [[ -f "${pywal_colors}" ]] && pywal_hash="$(hypr_hash_cache_digest_files "${pywal_colors}")"
-  [[ -f "${qtct_kde_colors}" ]] && qtct_files+=("${qtct_kde_colors}")
-  [[ -f "${qtct_qt6_colors}" ]] && qtct_files+=("${qtct_qt6_colors}")
-  [[ ${#qtct_files[@]} -gt 0 ]] && qtct_hash="$(hypr_hash_cache_digest_files "${qtct_files[@]}")"
-  kvantum_shell_hash="$(theme_desktop_kvantum_shell_hash)"
+  command -v flatpak >/dev/null 2>&1 && flatpak_installed=1
+  shell_dir="$(theme_desktop_kvantum_shell_dir)"
+  for source_file in "${active_palette}" "${pywal_colors}" "${qtct_kde_colors}" \
+    "${qtct_qt6_colors}" "${shell_dir}/shell.svg" "${shell_dir}/shell.kvconfig" "${shell_dir}/shell.map"; do
+    [[ -f "${source_file}" ]] && source_files+=("${source_file}")
+  done
+  source_hash="$(hypr_hash_cache_digest_files "${source_files[@]}")" || return 1
 
   hypr_hash_cache_digest_strings \
-    "pipeline_hash=${pipeline_hash}" \
+    "source_hash=${source_hash}" \
     "gtk_theme=${RESOLVED_GTK_THEME}" \
     "icon_theme=${ICON_THEME}" \
     "cursor_theme=${CURSOR_THEME}" \
@@ -890,12 +717,8 @@ theme_desktop_static_state_hash() {
     "font_antialiasing=${FONT_ANTIALIASING}" \
     "font_hinting=${FONT_HINTING}" \
     "kvantum_theme=${RESOLVED_KVANTUM_THEME}" \
-    "kvantum_shell_hash=${kvantum_shell_hash}" \
     "kde_color_scheme=${RESOLVED_KDE_COLOR_SCHEME}" \
     "kde_widget_style=${RESOLVED_KDE_WIDGET_STYLE:-kvantum}" \
-    "active_palette=${active_palette_hash}" \
-    "pywal_colors=${pywal_hash}" \
-    "qtct_colors=${qtct_hash}" \
     "flatpak_installed=${flatpak_installed}"
 }
 
@@ -914,6 +737,7 @@ theme_desktop_static_targets_ready() {
     "${XDG_CONFIG_HOME}/gtk-3.0/gtk.css"
     "${XDG_CONFIG_HOME}/gtk-3.0/settings.ini"
     "${XDG_CONFIG_HOME}/gtk-4.0/settings.ini"
+    "${XDG_CONFIG_HOME}/gtk-4.0/gtk.css"
     "${XDG_CONFIG_HOME}/xsettingsd/xsettingsd.conf"
     "${HOME}/.Xresources"
   )
@@ -936,7 +760,7 @@ theme_desktop_static_targets_ready() {
 theme_desktop_apply_runtime_resolved() {
   theme_desktop_export_cursor_environment
   theme_desktop_export_session_qt_env
-  theme_desktop_write_dconf_content
+  theme_desktop_write_dconf_content || return 1
   theme_desktop_restart_portal_backends_if_needed
   if [[ "${THEME_DESKTOP_SYNC_LOG_DCONF:-1}" -eq 1 ]]; then
     print_log -sec "dconf" -stat "Loaded dconf settings" "::"
@@ -948,13 +772,13 @@ theme_desktop_apply_runtime_resolved() {
 }
 
 theme_desktop_apply_static_resolved() {
-  theme_desktop_install_kvantum_theme
-  theme_desktop_install_kde_color_scheme
-  theme_desktop_install_qtct_color_scheme
-  theme_desktop_configure_qt_kde_bridge
-  theme_desktop_ini_write_batch "${XDG_DATA_HOME}/icons/default/index.theme" "Icon Theme:Inherits=${CURSOR_THEME}"
-  theme_desktop_ini_write_batch "${HOME}/.icons/default/index.theme" "Icon Theme:Inherits=${CURSOR_THEME}"
-  theme_desktop_configure_gtk
+  theme_desktop_install_kvantum_theme || return 1
+  theme_desktop_install_kde_color_scheme || return 1
+  theme_desktop_install_qtct_color_scheme || return 1
+  theme_desktop_configure_qt_kde_bridge || return 1
+  theme_desktop_ini_write_batch "${XDG_DATA_HOME}/icons/default/index.theme" "Icon Theme:Inherits=${CURSOR_THEME}" || return 1
+  theme_desktop_ini_write_batch "${HOME}/.icons/default/index.theme" "Icon Theme:Inherits=${CURSOR_THEME}" || return 1
+  theme_desktop_configure_gtk || return 1
   theme_desktop_configure_xcursor_resources
 }
 
@@ -978,19 +802,19 @@ theme_desktop_apply_static_resolved_if_needed() {
 }
 
 theme_desktop_sync_runtime() {
-  theme_desktop_prepare_state
-  theme_desktop_apply_runtime_resolved
+  theme_desktop_prepare_state || return 1
+  theme_desktop_apply_runtime_resolved || return 1
   theme_desktop_set_cursor_async
 }
 
 theme_desktop_sync_static() {
-  theme_desktop_prepare_state
+  theme_desktop_prepare_state || return 1
   theme_desktop_apply_static_resolved_if_needed
 }
 
 theme_desktop_sync_full() {
-  theme_desktop_prepare_state
-  theme_desktop_apply_static_resolved_if_needed
-  theme_desktop_apply_runtime_resolved
+  theme_desktop_prepare_state || return 1
+  theme_desktop_apply_static_resolved_if_needed || return 1
+  theme_desktop_apply_runtime_resolved || return 1
   theme_desktop_apply_cursor_theme
 }

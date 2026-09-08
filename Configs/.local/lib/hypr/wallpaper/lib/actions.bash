@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
 
-# Apply/set wallpaper links and trigger cache/color pipelines.
-
 wallpaper_prepare_notification_payload() {
   local wallpaper_path="${selected_wallpaper_path:-${wallList[setIndex]:-}}"
-  local wallpaper_hash="${wallHash[setIndex]:-}"
+  local wallpaper_hash=""
+  [[ -z "${wallpaper_path}" ]] || wallpaper_hash="${wallHashByPath["${wallpaper_path}"]:-}"
 
   if [[ -z "${wallpaper_path}" && -e "${active_wallpaper_link}" ]]; then
     wallpaper_path="$(wallpaper_resolve_path "${active_wallpaper_link}")"
@@ -18,7 +17,7 @@ wallpaper_prepare_notification_payload() {
   if [[ -z "${selected_thumbnail:-}" && -n "${wallpaper_path}" ]]; then
     if [[ -z "${wallpaper_hash}" ]]; then
       wallpaper_hash="$(set_hash "${wallpaper_path}" 2>/dev/null || true)"
-      [[ -n "${wallpaper_hash}" ]] && wallHash[setIndex]="${wallpaper_hash}"
+      [[ -n "${wallpaper_hash}" ]] && wallHashByPath["${wallpaper_path}"]="${wallpaper_hash}"
     fi
     [[ -n "${wallpaper_hash}" ]] && selected_thumbnail="${WALLPAPER_THUMB_DIR}/${wallpaper_hash}.sqre"
   fi
@@ -128,25 +127,28 @@ wallpaper_background_post_apply() {
   {
     wallpaper_enqueue_cache_jobs -w "${wallpaper_path}" || true
     [[ "${apply_colors}" -eq 1 ]] && wallpaper_run_color_refresh "${wallpaper_path}"
-  } 202>&- &
+  } 202>&- 204>&- 205>&- &
 }
 
 wallpaper_ensure_hash() {
-  [[ -n "${wallList[setIndex]:-}" ]] || return 1
-  [[ -n "${wallHash[setIndex]:-}" ]] || wallHash[setIndex]="$(set_hash "${wallList[setIndex]}")"
-  [[ -n "${wallHash[setIndex]:-}" ]]
+  local path="${wallList[setIndex]:-}"
+  [[ -n "${path}" ]] || return 1
+  [[ -n "${wallHashByPath["${path}"]:-}" ]] || wallHashByPath["${path}"]="$(set_hash "${path}")"
+  [[ -n "${wallHashByPath["${path}"]:-}" ]]
 }
 
 wallpaper_refresh_thumbnail_links() {
+  local hash=""
   if ! wallpaper_ensure_hash; then
     print_log -warn "wallpaper" "missing hash for ${wallList[setIndex]:-unknown}"
     return 1
   fi
 
-  ln -fs "${WALLPAPER_THUMB_DIR}/${wallHash[setIndex]}.sqre" "${current_square_thumbnail_link}"
-  ln -fs "${WALLPAPER_THUMB_DIR}/${wallHash[setIndex]}.thmb" "${current_thumbnail_link}"
-  ln -fs "${WALLPAPER_THUMB_DIR}/${wallHash[setIndex]}.blur" "${current_blur_thumbnail_link}"
-  ln -fs "${WALLPAPER_THUMB_DIR}/${wallHash[setIndex]}.quad" "${current_quad_thumbnail_link}"
+  hash="${wallHashByPath["${wallList[setIndex]}"]}"
+  ln -fs "${WALLPAPER_THUMB_DIR}/${hash}.sqre" "${current_square_thumbnail_link}"
+  ln -fs "${WALLPAPER_THUMB_DIR}/${hash}.thmb" "${current_thumbnail_link}"
+  ln -fs "${WALLPAPER_THUMB_DIR}/${hash}.blur" "${current_blur_thumbnail_link}"
+  ln -fs "${WALLPAPER_THUMB_DIR}/${hash}.quad" "${current_quad_thumbnail_link}"
 }
 
 apply_selected_wallpaper() {

@@ -320,7 +320,7 @@ Column {
           MouseArea {
             id: sRowMouse
             anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-            onClicked: { if (modelData.url) root.p.playUrl(modelData.url, modelData.title, modelData.artist) }
+            onClicked: root.p.playOrToggle(sRow.isCurrent, modelData.url, modelData.title, modelData.artist)
           }
 
           Row {
@@ -380,13 +380,13 @@ Column {
                 z: 2
                 visible: root.p.loadingVid !== modelData.url
                 anchors.verticalCenter: parent.verticalCenter
-                text: sRow.isCurrent && root.p.isPlaying ? "\uf04c" : "\uf04b"
+                text: sRow.isCurrent && root.p.isPlaying ? "\uead1" : "\ueb2c"
                 color: sRow.isCurrent ? Color.accent : (sPlayMouse.containsMouse ? Color.accent : root.p.dim)
                 font.family: root.p.fontFamily; font.pixelSize: Style.font.caption * Style.iconScale(text)
                 MouseArea {
                   id: sPlayMouse
                   anchors.fill: parent; anchors.margins: -4; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                  onClicked: { if (modelData.url) root.p.playUrl(modelData.url, modelData.title, modelData.artist) }
+                  onClicked: root.p.playOrToggle(sRow.isCurrent, modelData.url, modelData.title, modelData.artist)
                 }
               }
 
@@ -394,7 +394,7 @@ Column {
               Text {
                 z: 2
                 anchors.verticalCenter: parent.verticalCenter
-                text: "\uf067"
+                text: "\uea60"
                 color: sQueueMouse.containsMouse ? Color.accent : root.p.dim
                 font.family: root.p.fontFamily; font.pixelSize: Style.font.caption
                 MouseArea {
@@ -403,6 +403,8 @@ Column {
                   onClicked: root.p.queueUrl(modelData.url, modelData.title, modelData.artist)
                 }
               }
+
+              RowLike { p: root.p; url: sRow.modelData.url || ""; title: sRow.modelData.title || ""; artist: sRow.modelData.artist || "" }
 
               // Duration
               Text {
@@ -443,7 +445,7 @@ Column {
               MouseArea {
                 id: hRowMouse
                 anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                onClicked: { if (modelData.path) root.p.playUrl(modelData.path, modelData.title, modelData.artist) }
+                onClicked: root.p.playOrToggle(hRow.isCurrent, modelData.path, modelData.title, modelData.artist)
               }
 
               Row {
@@ -503,13 +505,13 @@ Column {
                     z: 2
                     visible: root.p.loadingVid !== modelData.path
                     anchors.verticalCenter: parent.verticalCenter
-                    text: hRow.isCurrent && root.p.isPlaying ? "\uf04c" : "\uf04b"
+                    text: hRow.isCurrent && root.p.isPlaying ? "\uead1" : "\ueb2c"
                     color: hRow.isCurrent ? Color.accent : (hPlayMouse.containsMouse ? Color.accent : root.p.dim)
                     font.family: root.p.fontFamily; font.pixelSize: Style.font.caption * Style.iconScale(text)
                     MouseArea {
                       id: hPlayMouse
                       anchors.fill: parent; anchors.margins: -4; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                      onClicked: { if (modelData.path) root.p.playUrl(modelData.path, modelData.title, modelData.artist) }
+                      onClicked: root.p.playOrToggle(hRow.isCurrent, modelData.path, modelData.title, modelData.artist)
                     }
                   }
 
@@ -517,7 +519,7 @@ Column {
                   Text {
                     z: 2
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "\uf067"
+                    text: "\uea60"
                     color: hQueueMouse.containsMouse ? Color.accent : root.p.dim
                     font.family: root.p.fontFamily; font.pixelSize: Style.font.caption
                     MouseArea {
@@ -526,6 +528,8 @@ Column {
                       onClicked: root.p.queueUrl(modelData.path, modelData.title, modelData.artist)
                     }
                   }
+
+                  RowLike { p: root.p; url: hRow.modelData.path || ""; title: hRow.modelData.title || ""; artist: hRow.modelData.artist || "" }
 
                   // Duration
                   Text {
@@ -693,6 +697,8 @@ Column {
                     onClicked: root.p.removeFromQueue(modelData.queueIndex === undefined ? index : modelData.queueIndex)
                   }
                 }
+
+                RowLike { p: root.p; url: qRow.modelData.url || ""; title: qRow.modelData.title || ""; artist: qRow.modelData.artist || "" }
               }
             }
           }
@@ -817,7 +823,7 @@ Column {
               MouseArea {
                 id: plTrackRowMouse
                 anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                onClicked: root.p.playUrl(modelData.url, modelData.title, modelData.artist)
+                onClicked: root.p.playOrToggle(plTrackRow.isCurrent, modelData.url, modelData.title, modelData.artist)
               }
 
               Row {
@@ -835,7 +841,7 @@ Column {
                 // Play icon
                 Text {
                   id: plPlay; anchors.verticalCenter: parent.verticalCenter
-                  text: plTrackRow.isCurrent && root.p.isPlaying ? "\uf04c" : "\uf04b"
+                  text: plTrackRow.isCurrent && root.p.isPlaying ? "\uead1" : "\ueb2c"
                   color: plTrackRow.isCurrent ? Color.accent : (plTrackRowMouse.containsMouse ? Color.accent : root.p.dim)
                   font.family: root.p.fontFamily; font.pixelSize: Style.font.caption * 0.8 * Style.iconScale(text)
                 }
@@ -864,7 +870,7 @@ Column {
                   Text {
                     z: 2
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "\uf067"
+                    text: "\uea60"
                     color: plQueueMouse.containsMouse ? Color.accent : root.p.dim
                     font.family: root.p.fontFamily; font.pixelSize: Style.font.caption
                     MouseArea {
@@ -874,10 +880,12 @@ Column {
                     }
                   }
 
+                  RowLike { p: root.p; url: plTrackRow.modelData.url || ""; title: plTrackRow.modelData.title || ""; artist: plTrackRow.modelData.artist || "" }
+
                   // Duration
                   Text {
                     visible: text !== ""; anchors.verticalCenter: parent.verticalCenter
-                    text: modelData.duration || ""
+                    text: modelData.plays ? modelData.plays + "×" : modelData.duration || ""
                     color: root.p.dim; font.family: root.p.fontFamily; font.pixelSize: Style.font.caption
                   }
                 }
@@ -937,7 +945,7 @@ Column {
 
                 Text {
                   id: plIcon; width: Style.space(9); anchors.verticalCenter: parent.verticalCenter
-                  text: modelData.name === "Liked" ? "\uf004" : modelData.system ? "\uf017" : "\uf0ca"
+                  text: modelData.name === "Liked" ? "\uf004" : modelData.name === "Most Played" ? "\uf091" : modelData.system ? "\uf017" : "\uf0ca"
                   color: Color.accent; font.family: root.p.fontFamily; font.pixelSize: Style.font.caption
                 }
 
@@ -1070,7 +1078,7 @@ Column {
               anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
               onClicked: {
                 if (fRow.isDir) root.p.loadFiles(modelData.rel)
-                else root.p.playUrl(modelData.url, modelData.title, modelData.artist)
+                else root.p.playOrToggle(fRow.isCurrent, modelData.url, modelData.title, modelData.artist)
               }
             }
 
@@ -1120,7 +1128,7 @@ Column {
                 Text {
                   z: 2
                   anchors.verticalCenter: parent.verticalCenter
-                  text: fRow.isCurrent && root.p.isPlaying ? "\uf04c" : "\uf04b"
+                  text: fRow.isCurrent && root.p.isPlaying ? "\uead1" : "\ueb2c"
                   color: fRow.isCurrent ? Color.accent : (fPlayMouse.containsMouse ? Color.accent : root.p.dim)
                   font.family: root.p.fontFamily; font.pixelSize: Style.font.caption * Style.iconScale(text)
                   MouseArea {
@@ -1128,7 +1136,7 @@ Column {
                     anchors.fill: parent; anchors.margins: -4; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                     onClicked: {
                       if (fRow.isDir) root.p.playDir(modelData.rel)
-                      else root.p.playUrl(modelData.url, modelData.title, modelData.artist)
+                      else root.p.playOrToggle(fRow.isCurrent, modelData.url, modelData.title, modelData.artist)
                     }
                   }
                 }
@@ -1137,7 +1145,7 @@ Column {
                 Text {
                   z: 2
                   anchors.verticalCenter: parent.verticalCenter
-                  text: "\uf067"
+                  text: "\uea60"
                   color: fQueueMouse.containsMouse ? Color.accent : root.p.dim
                   font.family: root.p.fontFamily; font.pixelSize: Style.font.caption
                   MouseArea {
@@ -1148,6 +1156,11 @@ Column {
                       else root.p.queueUrl(modelData.url, modelData.title, modelData.artist)
                     }
                   }
+                }
+
+                RowLike {
+                  visible: !fRow.isDir
+                  p: root.p; url: fRow.modelData.url || ""; title: fRow.modelData.title || ""; artist: fRow.modelData.artist || ""
                 }
               }
             }

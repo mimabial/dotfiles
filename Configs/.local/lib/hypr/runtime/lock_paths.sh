@@ -25,6 +25,7 @@ declare -grA HYPR_LOCK_NAMES=(
   [theme_phase_d_theme_files]="theme-phase-d-theme-files.lock"
   [theme_phase_d_desktop]="theme-phase-d-desktop.lock"
   [wallpaper_cache]="wallpaper-cache.lock"
+  [wallpaper_catalog]="wallpaper-catalog.lock"
   [wallpaper_inventory]="wallpaper-inventory.lock"
   [wallpaper_switch]="wallpaper-switch.lock"
   [wallpaper_awww]="wallpaper-awww.lock"

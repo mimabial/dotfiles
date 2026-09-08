@@ -60,9 +60,6 @@ wallpaper_catalog_prepare_runtime() {
   fi
 
   Wall_Hashmap_Cached "${wallPathArray[@]}" || return 1
-  # The trailing && is opportunistic; without an explicit return the function
-  # would propagate the test's exit code (1) when ensure_thumbs=0, which is
-  # the normal path.
   [[ "${ensure_thumbs}" -eq 1 ]] && Wall_Ensure_Thumbs "sqre"
   return 0
 }
@@ -104,26 +101,21 @@ wallpaper_catalog_print_cached_json_if_current() {
 
 wallpaper_catalog_build_json() {
   local cache_home="$1"
-  local wall_list_json=""
-  local wall_hash_json=""
-
-  wall_list_json=$(printf '%s\n' "${wallList[@]}" | jq -R . | jq -s .)
-  wall_hash_json=$(printf '%s\n' "${wallHash[@]}" | jq -R . | jq -s .)
-
-  jq -n --argjson wallList "${wall_list_json}" --argjson wallHash "${wall_hash_json}" --arg cacheHome "${cache_home}" '
-        [range(0; $wallList | length) as $i |
+  local path=""
+  for path in "${wallList[@]}"; do printf '%s\0%s\0' "${path}" "${wallHashByPath["${path}"]}"; done |
+    jq -Rs --arg cacheHome "${cache_home}" '
+        split("\u0000") as $catalog | [range(0; $catalog | length - 1; 2) as $i |
             {
-                path: $wallList[$i],
-                hash: $wallHash[$i],
-                basename: ($wallList[$i] | split("/") | last),
-                thmb: "\($cacheHome)/thumbs/\($wallHash[$i]).thmb",
-                sqre: "\($cacheHome)/thumbs/\($wallHash[$i]).sqre",
-                blur: "\($cacheHome)/thumbs/\($wallHash[$i]).blur",
-                quad: "\($cacheHome)/thumbs/\($wallHash[$i]).quad",
-                rofi_sqre: "\($wallList[$i] | split("/") | last):::\($wallList[$i]):::\($cacheHome)/thumbs/\($wallHash[$i]).sqre\u0000icon\u001f\($cacheHome)/thumbs/\($wallHash[$i]).sqre",
-                rofi_thmb: "\($wallList[$i] | split("/") | last):::\($wallList[$i]):::\($cacheHome)/thumbs/\($wallHash[$i]).thmb\u0000icon\u001f\($cacheHome)/thumbs/\($wallHash[$i]).thmb",
-                rofi_blur: "\($wallList[$i] | split("/") | last):::\($wallList[$i]):::\($cacheHome)/thumbs/\($wallHash[$i]).blur\u0000icon\u001f\($cacheHome)/thumbs/\($wallHash[$i]).blur",
-                rofi_quad: "\($wallList[$i] | split("/") | last):::\($wallList[$i]):::\($cacheHome)/thumbs/\($wallHash[$i]).quad\u0000icon\u001f\($cacheHome)/thumbs/\($wallHash[$i]).quad"
+                path: $catalog[$i], hash: $catalog[$i + 1],
+                basename: ($catalog[$i] | split("/") | last),
+                thmb: "\($cacheHome)/thumbs/\($catalog[$i + 1]).thmb",
+                sqre: "\($cacheHome)/thumbs/\($catalog[$i + 1]).sqre",
+                blur: "\($cacheHome)/thumbs/\($catalog[$i + 1]).blur",
+                quad: "\($cacheHome)/thumbs/\($catalog[$i + 1]).quad",
+                rofi_sqre: "\($catalog[$i] | split("/") | last):::\($catalog[$i]):::\($cacheHome)/thumbs/\($catalog[$i + 1]).sqre\u0000icon\u001f\($cacheHome)/thumbs/\($catalog[$i + 1]).sqre",
+                rofi_thmb: "\($catalog[$i] | split("/") | last):::\($catalog[$i]):::\($cacheHome)/thumbs/\($catalog[$i + 1]).thmb\u0000icon\u001f\($cacheHome)/thumbs/\($catalog[$i + 1]).thmb",
+                rofi_blur: "\($catalog[$i] | split("/") | last):::\($catalog[$i]):::\($cacheHome)/thumbs/\($catalog[$i + 1]).blur\u0000icon\u001f\($cacheHome)/thumbs/\($catalog[$i + 1]).blur",
+                rofi_quad: "\($catalog[$i] | split("/") | last):::\($catalog[$i]):::\($cacheHome)/thumbs/\($catalog[$i + 1]).quad\u0000icon\u001f\($cacheHome)/thumbs/\($catalog[$i + 1]).quad"
             }
         ]
     '
@@ -132,27 +124,16 @@ wallpaper_catalog_build_json() {
 wallpaper_catalog_emit_and_cache_json() {
   local cache_home="$1"
   local json_cache="$2"
-  local json_tmp=""
+  [[ -n "${json_cache}" ]] || { wallpaper_catalog_build_json "${cache_home}"; return; }
 
-  if [[ -n "${json_cache}" ]]; then
-    mkdir -p "$(dirname "${json_cache}")"
-    json_tmp="${json_cache}.tmp"
-  fi
-
-  wallpaper_catalog_build_json "${cache_home}" | {
-    if [[ -n "${json_tmp}" ]]; then
-      tee "${json_tmp}"
-    else
-      cat
-    fi
-  }
-
-  if [[ -n "${json_tmp}" && -f "${json_tmp}" ]]; then
-    mv -f "${json_tmp}" "${json_cache}"
-  fi
+  local json_tmp="${json_cache}.tmp"
+  mkdir -p "$(dirname "${json_cache}")"
+  wallpaper_catalog_build_json "${cache_home}" >"${json_tmp}" || { rm -f "${json_tmp}"; return 1; }
+  mv -f "${json_tmp}" "${json_cache}"
+  cat "${json_cache}"
 }
 
-Wall_Json() {
+Wall_Json() (
   local ensure_thumbs=0
   local cache_home=""
   local cache_file=""
@@ -164,6 +145,7 @@ Wall_Json() {
     shift
   fi
 
+  wallpaper_catalog_lock || exit 1
   wallpaper_catalog_prepare_runtime "${ensure_thumbs}" || prepare_status=$?
   if ((prepare_status != 0)); then
     [[ "${prepare_status}" -eq 2 ]] && exit 0
@@ -173,7 +155,7 @@ Wall_Json() {
 
   wallpaper_catalog_print_cached_json_if_current "${json_cache}" "${cache_file}" && return 0
   wallpaper_catalog_emit_and_cache_json "${cache_home}" "${json_cache}"
-}
+)
 
 wallpaper_select_monitor_geometry() {
   local mon_x_res=""

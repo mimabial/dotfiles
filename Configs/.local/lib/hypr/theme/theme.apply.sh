@@ -1,9 +1,4 @@
 #!/usr/bin/env bash
-#
-# Subsystem inputs:
-#   thmWall              - populated by core/wallpaper.catalog.sh:get_themes
-#   selected_color_source - loaded by hypr_runtime_load_state from staterc
-#   selected_color_mode  - loaded by hypr_runtime_load_state from staterc
 : "${thmWall-}" "${selected_color_source-}" "${selected_color_mode-}"
 
 set -euo pipefail
@@ -15,36 +10,20 @@ source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
 hypr_runtime_require state system wallpaper_catalog || exit 1
 hypr_runtime_load_state || exit 1
 
-theme_apply_desktop_sync_lib="${LIB_DIR}/hypr/theme/lib/desktop.sync.bash"
-theme_apply_color_apply_lib="${LIB_DIR}/hypr/theme/color.apply.sh"
-theme_apply_phase_d_lib="${LIB_DIR}/hypr/theme/lib/apply.phase_d.bash"
-
-if [[ ! -r "${theme_apply_desktop_sync_lib}" ]]; then
-  print_log -sec "theme.apply" -err "source" "missing ${theme_apply_desktop_sync_lib}"
-  exit 1
-fi
-# shellcheck source=/dev/null
-source "${theme_apply_desktop_sync_lib}" || exit 1
-
-if [[ ! -r "${theme_apply_color_apply_lib}" ]]; then
-  print_log -sec "theme.apply" -err "source" "missing ${theme_apply_color_apply_lib}"
-  exit 1
-fi
-# shellcheck source=/dev/null
-source "${theme_apply_color_apply_lib}" || exit 1
-
-if [[ ! -r "${theme_apply_phase_d_lib}" ]]; then
-  print_log -sec "theme.apply" -err "source" "missing ${theme_apply_phase_d_lib}"
-  exit 1
-fi
-# shellcheck source=/dev/null
-source "${theme_apply_phase_d_lib}" || exit 1
-
-# shellcheck source=/dev/null
-source "${LIB_DIR}/hypr/theme/pairs.sh" || exit 1
-
-# shellcheck source=/dev/null
-source "${LIB_DIR}/hypr/fonts/font.sync.lib.bash" || exit 1
+for theme_apply_lib in \
+  "${LIB_DIR}/hypr/theme/lib/desktop.sync.bash" \
+  "${LIB_DIR}/hypr/theme/color.apply.sh" \
+  "${LIB_DIR}/hypr/theme/lib/apply.phase_d.bash" \
+  "${LIB_DIR}/hypr/theme/pairs.sh" \
+  "${LIB_DIR}/hypr/fonts/font.sync.lib.bash"; do
+  [[ -r "${theme_apply_lib}" ]] || {
+    print_log -sec "theme.apply" -err "source" "missing ${theme_apply_lib}"
+    exit 1
+  }
+  # shellcheck source=/dev/null
+  source "${theme_apply_lib}" || exit 1
+done
+unset theme_apply_lib
 
 THEME_UPDATE_LOCK="$(hypr_lock_path theme_update)"
 
@@ -67,7 +46,8 @@ theme_apply_timing_enabled() {
 }
 
 theme_apply_now_ms() {
-  date +%s%3N
+  local now="${EPOCHREALTIME/./}"
+  printf '%s\n' "${now:0:13}"
 }
 
 theme_apply_log_timing() {
@@ -110,25 +90,27 @@ theme_apply_elapsed_label() {
 
 theme_apply_acquire_update_lock() {
   [[ "${theme_apply_lock_owned}" -eq 1 ]] && return 0
-  exec {theme_apply_lock_fd}>"${THEME_UPDATE_LOCK}"
-  flock "${theme_apply_lock_fd}"
+  exec {theme_apply_lock_fd}>"${THEME_UPDATE_LOCK}" || return 1
+  flock "${theme_apply_lock_fd}" || {
+    exec {theme_apply_lock_fd}>&-
+    theme_apply_lock_fd=""
+    return 1
+  }
   theme_apply_lock_owned=1
 }
 
 theme_apply_release_update_lock() {
-  local exit_code="${1:-0}"
-  [[ "${theme_apply_lock_owned}" -eq 1 ]] || return "${exit_code}"
+  [[ "${theme_apply_lock_owned}" -eq 1 ]] || return 0
   flock -u "${theme_apply_lock_fd}" 2>/dev/null || true
   exec {theme_apply_lock_fd}>&-
   theme_apply_lock_fd=""
   theme_apply_lock_owned=0
-  return "${exit_code}"
 }
 
 theme_apply_cleanup() {
   local exit_code="${1:-$?}"
 
-  theme_apply_release_update_lock "${exit_code}"
+  theme_apply_release_update_lock || true
   if [[ -n "${theme_apply_job_log_dir}" && -d "${theme_apply_job_log_dir}" ]]; then
     if [[ "${exit_code}" -eq 0 && "${theme_apply_job_failed}" -eq 0 && "${theme_apply_preserve_job_logs}" -eq 0 ]]; then
       rm -rf -- "${theme_apply_job_log_dir}"
@@ -155,9 +137,9 @@ theme_apply_commit_theme_metadata() {
   mkdir -p "$(dirname "${live_file}")" || return 1
 
   if [[ -f "${live_file}" ]] && cmp -s "${staged_file}" "${live_file}"; then
-    rm -f -- "${staged_file}"
+    rm -f -- "${staged_file}" || return 1
   else
-    mv -f -- "${staged_file}" "${live_file}"
+    mv -f -- "${staged_file}" "${live_file}" || return 1
   fi
 
   HYPR_THEME_METADATA_FILE="${live_file}"
@@ -190,11 +172,6 @@ theme_apply_write_dunst_runtime() {
   local r="${LIB_DIR}/hypr/render/dunst.py"
   [[ -x "${r}" ]] || return 1
   "${r}"
-}
-
-# render/dunst.py reloads dunst itself once it has written dunstrc.
-theme_apply_reload_dunst_runtime() {
-  return 0
 }
 
 theme_apply_prepare_job_log_dir() {
@@ -266,28 +243,6 @@ theme_apply_start_job() {
   theme_apply_job_pids+=("$!")
 }
 
-theme_apply_start_detached_job() {
-  local name="$1"
-  local fn="$2"
-  shift 2
-
-  (
-    trap '' HUP
-    local start_ms=""
-    local end_ms=""
-    local rc=0
-
-    start_ms="$(theme_apply_now_ms)"
-    "${fn}" "$@"
-    rc=$?
-    end_ms="$(theme_apply_now_ms)"
-    theme_apply_log_timing "job:${name}" "$((end_ms - start_ms))" "${rc}"
-    exit 0
-  ) >/dev/null 2>&1 &
-
-  disown "$!" 2>/dev/null || true
-}
-
 theme_apply_log_job_failure() {
   local name="$1"
   local log_file="$2"
@@ -325,7 +280,7 @@ theme_apply_wait_jobs() {
     wait "${pid}"
     rc=$?
 
-    if [[ -f "${status_file}" ]]; then
+    if theme_apply_timing_enabled && [[ -f "${status_file}" ]]; then
       duration_ms="$(awk -F= '$1 == "duration_ms" {print $2; exit}' "${status_file}")"
       [[ -n "${duration_ms}" ]] || duration_ms="0"
     fi
@@ -343,8 +298,6 @@ theme_apply_wait_jobs() {
   return "${failed}"
 }
 
-# Runs after metadata_commit, so the layer cascade already resolves the new
-# pack's $TERMINAL_FONT; a userfonts.lua pin still shadows it.
 theme_apply_job_terminal() {
   local terminal_font=""
 
@@ -371,10 +324,6 @@ theme_apply_resolve_current_wallpaper() {
       print_log -sec "theme.apply" -err "wallpaper" "failed to resolve ${wallpaper_link}"
       return 1
     }
-}
-
-theme_apply_prepare_common_state() {
-  theme_apply_acquire_update_lock || return 1
 }
 
 theme_apply_display_wallpaper() {
@@ -414,18 +363,14 @@ theme_apply_notify_wallpaper_detached() {
 }
 
 theme_apply_sync_theme_color_variant() {
-  # Theme palettes decide light/dark. Mirror the palette's
-  # "background" mode (dark|light) into color_variant so phase-D desktop.sync
-  # (which derives color-scheme from the variant, not the theme's $COLOR_SCHEME)
-  # doesn't reuse the previous theme's stale value and hand libadwaita apps the
-  # wrong scheme (e.g. a light theme rendering dark).
+  # Keep phase-D's desktop color scheme aligned with the applied palette.
   local palette="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/active-palette.json"
   command -v jq >/dev/null 2>&1 || return 0
   [[ -r "${palette}" ]] || return 0
   local mode=""
   mode="$(jq -r '.background // empty' "${palette}" 2>/dev/null || true)"
   [[ "${mode}" =~ ^(dark|light)$ ]] || return 0
-  state_set "BACKGROUND_MODE" "${mode}" "staterc" 2>/dev/null || true
+  state_set "BACKGROUND_MODE" "${mode}" "staterc" 2>/dev/null || return 1
   state_set_color_variant "${mode}"
 }
 
@@ -453,32 +398,27 @@ theme_apply_run_color_sync() {
   if [[ "${selected_color_source}" == "theme" ]]; then
     HYPR_THEME_DEFER_CLIENTS=1 "${hypr_theme_cmd}" apply "${hypr_theme_args[@]}" "${HYPR_THEME}"
     local apply_rc=$?
+    [[ "${apply_rc}" -eq 0 ]] || return "${apply_rc}"
     theme_apply_sync_theme_color_variant
-    return "${apply_rc}"
+    return
   fi
 
   variant="$(theme_polarity "${HYPR_THEME}")"
 
-  state_set "BACKGROUND_MODE" "${variant}" "staterc"
-  state_set_color_variant "${variant}"
+  state_set "BACKGROUND_MODE" "${variant}" "staterc" || return 1
+  state_set_color_variant "${variant}" || return 1
 
   HYPR_THEME_DEFER_CLIENTS=1 "${hypr_theme_cmd}" wallpaper "${hypr_theme_args[@]}" --variant "${variant}" "${wallpaper_path}"
 }
 
 theme_apply_job_desktop() {
-  if theme_apply_prepare_desktop_state; then
-    theme_desktop_write_dconf_content || true
-  fi
+  theme_apply_prepare_desktop_state || return 1
+  theme_desktop_write_dconf_content
 }
 
 theme_apply_job_dunst() {
   theme_apply_write_dunst_runtime || {
     print_log -sec "theme.apply" -warn "dunst" "write failed"
-    return 1
-  }
-
-  theme_apply_reload_dunst_runtime || {
-    print_log -sec "theme.apply" -warn "dunst" "reload failed"
     return 1
   }
 }
@@ -530,7 +470,7 @@ else
 fi
 
 theme_apply_timed_call "generation" theme_apply_next_generation || exit 1
-theme_apply_timed_call "prepare_common_state" theme_apply_prepare_common_state || exit 1
+theme_apply_timed_call "lock" theme_apply_acquire_update_lock || exit 1
 theme_apply_timed_call "metadata_commit" theme_apply_commit_theme_metadata || exit 1
 theme_apply_timed_call "color_sync" theme_apply_run_color_sync "${wallpaper_path}" || exit 1
 theme_apply_prepare_job_log_dir || exit 1
@@ -538,10 +478,9 @@ theme_apply_reset_jobs
 theme_apply_start_job "${theme_apply_job_log_dir}" "wallpaper_display" best_effort theme_apply_display_wallpaper || true
 theme_apply_start_job "${theme_apply_job_log_dir}" "desktop" required theme_apply_job_desktop || exit 1
 theme_apply_start_job "${theme_apply_job_log_dir}" "terminal" required theme_apply_job_terminal || exit 1
-theme_apply_start_detached_job "dunst" theme_apply_job_dunst || true
+theme_apply_start_job "${theme_apply_job_log_dir}" "dunst" best_effort theme_apply_job_dunst || true
 theme_apply_wait_jobs "${theme_apply_job_log_dir}" || theme_apply_required_rc=$?
 theme_apply_timed_call "envelope_launch" theme_apply_start_envelope || true
 [[ -z "${theme_apply_required_rc:-}" ]] || exit "${theme_apply_required_rc}"
-# After the wait barrier: the toast promises the switch lock is free again,
-# so it must not appear while jobs still hold up the exit.
+theme_apply_release_update_lock
 theme_apply_notify_wallpaper_detached || true

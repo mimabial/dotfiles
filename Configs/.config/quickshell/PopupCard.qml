@@ -11,9 +11,7 @@ PopupWindow {
     property int contentWidth: Style.px(380)
     property int contentHeight: holder.childrenRect.height + padding * 2
     property int margin: Style.popupGap
-    // Strip kept above the card for a detached header. Reserved whether or not
-    // the header draws anything: the anchor centres the window on its bar button,
-    // so a height that changes would slide the card itself.
+    // Reserve detached headers opposite the bar so they never create a bar gap.
     property int headerHeight: 0
     property int padding: Style.popupPadding
     property color background: shell.role("bg", "#0c1021")
@@ -144,7 +142,8 @@ PopupWindow {
     Rectangle {
         id: card
         anchors.fill: parent
-        anchors.topMargin: root.headerHeight
+        anchors.topMargin: root.position === "top" ? 0 : root.headerHeight
+        anchors.bottomMargin: root.position === "top" ? root.headerHeight : 0
         opacity: root.open ? 1 : 0
         Behavior on opacity { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
         color: root.shell.alpha(root.background, root.surfaceOpacity)
@@ -163,7 +162,7 @@ PopupWindow {
         id: headerHolder
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.top: parent.top
+        y: root.position === "top" ? root.height - height : 0
         height: root.headerHeight
         opacity: card.opacity
     }

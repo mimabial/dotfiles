@@ -1,22 +1,4 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2154
-#
-# wallcache.daemon.sh
-# Queue-based wallpaper thumbnail cache worker with hash deduplication.
-#
-# Goals:
-#   - Deduplicate queued jobs by wallpaper content hash
-#   - Batch queued jobs into one wallpaper.cache.sh invocation
-#   - Keep one daemon process per user session
-#   - Wake on enqueue notification (event-driven idle wait)
-#
-# Usage:
-#   wallcache.daemon.sh --enqueue -w /path/to/wall.jpg [-w ...]
-#   wallcache.daemon.sh --enqueue -t "Theme Name"
-#   wallcache.daemon.sh --start
-#   wallcache.daemon.sh --stop
-#   wallcache.daemon.sh --status
-#
 
 set -euo pipefail
 
@@ -142,7 +124,6 @@ queue_wallpaper() {
   job_pending="${QUEUE_PENDING_DIR}/${job_name}"
   job_running="${QUEUE_RUNNING_DIR}/${job_name}"
 
-  # Hash-level dedup: skip if pending or currently processing.
   [[ -e "${job_pending}" ]] && return 0
   [[ -e "${job_running}" ]] && return 0
 
@@ -151,9 +132,9 @@ queue_wallpaper() {
     rm -f "${tmp_job}" 2>/dev/null
     return 1
   }
-  if ! mv -n "${tmp_job}" "${job_pending}" 2>/dev/null; then
-    rm -f "${tmp_job}" 2>/dev/null
-  fi
+  mv -n "${tmp_job}" "${job_pending}" 2>/dev/null || true
+  rm -f "${tmp_job}" 2>/dev/null
+  [[ -e "${job_running}" ]] && rm -f "${job_pending}" 2>/dev/null
 }
 
 queue_theme() {
@@ -332,9 +313,9 @@ Environment:
 EOF
 }
 
-mode="enqueue"
-declare -a enqueue_walls=()
-declare -a enqueue_themes=()
+wallcache_main() {
+local mode="enqueue" wall="" theme="" theme_dir=""
+local -a enqueue_walls=() enqueue_themes=()
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -392,7 +373,6 @@ case "${mode}" in
         notify_daemon >/dev/null 2>&1 || true
       fi
     else
-      # Fallback: daemon unavailable, call cache script directly (best effort).
       if [[ -x "${CACHE_SCRIPT}" ]]; then
         declare -a fallback_args=()
         wall=""
@@ -415,3 +395,6 @@ case "${mode}" in
     fi
     ;;
 esac
+}
+
+[[ "${BASH_SOURCE[0]}" != "$0" ]] || wallcache_main "$@"

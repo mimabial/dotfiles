@@ -11,11 +11,10 @@ once. Runs in the foreground until the user-visible apps have been updated.
 
 ```
 theme_apply_next_generation        increment + cancel previous phase-D units
-theme_apply_prepare_common_state   acquire theme_update lock
+theme_apply_acquire_update_lock    acquire theme_update lock
 theme_apply_commit_theme_metadata  promote staged theme metadata and generate native Lua
 theme_apply_run_color_sync         color-sync.sh: pywal16 + colors-shell.sh
-theme_apply_start_job (3x)         wallpaper, desktop (dconf sink), kitty
-theme_apply_start_detached_job     dunst
+theme_apply_start_job (4x)         wallpaper, desktop (dconf sink), kitty, dunst
 theme_apply_wait_jobs              block on all foreground jobs
 theme_apply_start_envelope         fork phase D after wallpaper submission
 ```
@@ -26,13 +25,12 @@ the sync. That single reload picks up both generated Lua files, so phase A no
 longer issues a reload of its own — a second reload would drop whatever submap
 the user is in.
 
-Desktop and Kitty are required; wallpaper is best-effort. All three run in
-parallel, and the detached envelope starts only after wallpaper submission.
+Desktop and Kitty are required; wallpaper and Dunst are best-effort. All four
+run in parallel, and the detached envelope starts only after their wait barrier.
 The desktop job writes the dconf icon sink (gsettings); restarting the portal
 backends is left to phase D's `runtime_desktop` job, which reaches the same
 `theme_desktop_restart_portal_backends_if_needed` and fires when the sink's
-hash differs from `portal_dconf_hash` in state. Dunst is the one best-effort
-detached job. The main wait is here; the user sees their desktop restyled once
+hash differs from `portal_dconf_hash` in state. The main wait is here; the user sees their desktop restyled once
 `theme_apply_wait_jobs` returns.
 
 ## Phase D — detached envelope (lib/apply.phase_d.bash)
@@ -111,7 +109,7 @@ the `--theme-envelope` dispatch:
 
 ## What lives where
 
-- `theme.apply.sh` — phase A orchestration, lock + metadata, the 3
+- `theme.apply.sh` — phase A orchestration, lock + metadata, the 4
   foreground jobs, shared primitives (timing, generation counter, job
   pool, wallpaper display, restart/start helpers, desktop-state prep)
 - `lib/apply.phase_d.bash` — envelope start, envelope CLI

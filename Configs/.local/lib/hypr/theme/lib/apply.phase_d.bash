@@ -1,31 +1,6 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by theme.apply.sh.
-#
-# apply.phase_d.bash — phase-D infrastructure and best-effort jobs.
-#
-# Phase model:
-#   Phase A (foreground, in theme.apply.sh): color-sync runs, theme metadata
-#   commits, submits the wallpaper display, runs hyprctl reload, then a small
-#   required job pool updates the immediately visible clients. Dunst and
-#   Firefox refreshes are detached best-effort jobs.
-#   Phase A holds the theme-update lock end-to-end and is the path the user
-#   waits on.
-#
-#   Phase D (this file): everything best-effort that should not block the
-#   foreground. Runs in a detached systemd-run user-slice unit, or in a setsid
-#   session where there is no systemd user manager, so it survives the
-#   foreground exiting and can be cancelled by a newer theme apply.
-#   Each phase-D job short-circuits via theme_apply_generation_is_current if
-#   a newer generation has started.
-#
-# Subprocess re-entry: theme.apply.sh re-execs itself with --theme-envelope
-# inside that unit or session. That subprocess sources this file and dispatches
-# theme_apply_run_envelope_cli, which bootstraps color.finalize.sh and runs
-# the phase-D job pool.
-#
-# Subsystem inputs (set by theme.apply.sh entrypoint):
-#   theme_apply_generation, theme_apply_phase_d_log_dir, theme_apply_quiet,
-#   theme_apply_preserve_job_logs, selected_color_source, selected_color_mode, thmWall
+# Architecture: ../PHASES.md
 
 : "${theme_apply_generation-}" "${theme_apply_quiet-}" \
   "${theme_apply_preserve_job_logs-}" \
@@ -49,10 +24,7 @@ theme_apply_phase_d_unit_dir() {
   printf '%s/theme.apply.phase-d.units\n' "${runtime_dir}"
 }
 
-# A handle is either a systemd unit name or "pid:<pid>" from the detached
-# envelope, whose setsid session makes the pid its own process group — so the
-# negative signal reaches its jobs and wallpaper child the way stopping the
-# unit reaches its cgroup.
+# Detached handles use pid:<session-leader>; unit handles name a cgroup.
 theme_apply_cancel_phase_d_handle() {
   local handle="$1"
 
@@ -84,7 +56,7 @@ theme_apply_cancel_previous_phase_d_jobs() {
     base="${handle_file##*/}"
     generation="${base%%-*}"
     [[ "${generation}" == "${theme_apply_generation}" ]] && continue
-    handle="$(cat -- "${handle_file}" 2>/dev/null || true)"
+    IFS= read -r handle <"${handle_file}" || handle=""
     rm -f -- "${handle_file}"
     theme_apply_cancel_phase_d_handle "${handle}"
   done < <(find "${unit_dir}" -maxdepth 1 -type f -name '*.unit' -print0 2>/dev/null)
@@ -149,9 +121,7 @@ theme_apply_start_envelope() {
 
   unit_name="hyprshell-theme-${theme_apply_generation}.service"
   local -a envelope_env=()
-  # systemd-run --user starts with a clean env; forward the regen/cache flags
-  # the user passed to theme.switch.sh so the envelope sees them and
-  # apply_static_resolved_if_needed can honor --regen/--no-cache.
+  # Forward cache flags into systemd-run's clean environment.
   [[ -n "${FORCE_COLOR_REGEN:-}" ]] && envelope_env+=(-E "FORCE_COLOR_REGEN=${FORCE_COLOR_REGEN}")
   [[ -n "${HYPR_WAL_CACHE_ENABLE:-}" ]] && envelope_env+=(-E "HYPR_WAL_CACHE_ENABLE=${HYPR_WAL_CACHE_ENABLE}")
   if systemd-run --user --quiet --no-block --collect \
@@ -172,12 +142,7 @@ theme_apply_start_envelope() {
   theme_apply_start_envelope_detached "${log_file}" "${envelope_cmd[@]}"
 }
 
-# No systemd user manager (runit), or systemd-run refused: run the envelope in
-# its own session so it outlives the foreground. The envelope writes its own
-# "pid:" handle, so cancellation does not depend on which pid setsid leaves
-# behind; until it does, the per-job generation check is what stops the work —
-# the same pair the unit path leans on, minus the cgroup. nice/ionice stand in
-# for the unit's reduced CPU/IO weight.
+# A separate session survives the foreground and gives cancellation a process group.
 theme_apply_start_envelope_detached() {
   local log_file="$1"
   shift
@@ -232,9 +197,7 @@ theme_apply_run_envelope_cli() {
   done
 
   [[ -n "${log_dir}" ]] || return 1
-  # setsid made this process its own session leader, so its pid is the group a
-  # newer generation signals. Written here rather than by the parent: the pid
-  # setsid reports back depends on whether it had to fork.
+  # setsid may fork, so only the envelope knows the process-group id.
   if [[ "${detached}" -eq 1 && -n "${unit_file}" ]]; then
     printf 'pid:%s\n' "$$" >"${unit_file}" 2>/dev/null || true
   fi
@@ -246,9 +209,6 @@ theme_apply_run_envelope_cli() {
 
   wallpaper_log="${log_dir}/wallpaper.log"
 
-  # Wallpaper maintenance runs inside this cgroup; if the unit is stopped,
-  # both the wallpaper child and the phase-d jobs die together. The visible
-  # backend submit already happened in phase A.
   theme_apply_envelope_launch_wallpaper "${wallpaper_log}" &
   wallpaper_pid=$!
 
@@ -276,10 +236,7 @@ theme_apply_envelope_launch_wallpaper() {
     WALLPAPER_SKIP_POST_APPLY=1
     WALLPAPER_SKIP_PRECACHE=1
   )
-  # WALLPAPER_SKIP_HYPRLOCK_BACKGROUND is intentionally NOT set: we want
-  # the wallpaper resume to refresh the hyprlock background itself, right
-  # after it updates the wall.set symlink. WALLPAPER_SKIP_BACKEND_APPLY keeps
-  # this maintenance pass from submitting a second late visible transition.
+  # Resume refreshes hyprlock; skip only the already-submitted visible transition.
 
   if [[ -n "${wallpaper_log}" ]]; then
     env "${wallpaper_env[@]}" "${LIB_DIR}/hypr/wallpaper.sh" "${wallpaper_args[@]}" \
@@ -314,28 +271,29 @@ theme_apply_phase_d_bootstrap() {
 
 theme_apply_phase_d_run_jobs() {
   local job_log_dir="$1"
+  local desktop_ready=0
 
   [[ -n "${job_log_dir}" && -d "${job_log_dir}" ]] || return 1
+  if theme_apply_prepare_desktop_state; then
+    desktop_ready=1
+  else
+    print_log -sec "theme.apply" -warn "desktop" "state resolution failed"
+  fi
   theme_apply_reset_jobs
-  theme_apply_start_job "${job_log_dir}" "secondary_updates" best_effort theme_apply_job_secondary_updates || true
-  theme_apply_start_job "${job_log_dir}" "static_desktop" best_effort theme_apply_job_static_desktop || true
-  theme_apply_start_job "${job_log_dir}" "tmux" best_effort theme_apply_job_tmux || true
-  theme_apply_start_job "${job_log_dir}" "rmpc" best_effort theme_apply_job_rmpc || true
-  theme_apply_start_job "${job_log_dir}" "nvim" best_effort theme_apply_job_nvim || true
-  theme_apply_start_job "${job_log_dir}" "runtime_desktop" best_effort theme_apply_job_runtime_desktop || true
-  theme_apply_start_job "${job_log_dir}" "backend_wallpaper_links" best_effort theme_apply_job_backend_wallpaper_links || true
-  theme_apply_start_job "${job_log_dir}" "wallpaper_thumbs" best_effort theme_apply_job_wallpaper_thumbs || true
-  # hyprlock_background is intentionally absent: the wallpaper resume in
-  # this same envelope handles it (see envelope_launch_wallpaper above).
-  # Running it as a parallel job raced with the wallpaper symlink update.
+  theme_apply_start_phase_d_job "${job_log_dir}" secondary_updates theme_apply_secondary_updates
+  [[ "${desktop_ready}" -eq 0 ]] || theme_apply_start_phase_d_job "${job_log_dir}" static_desktop theme_apply_run_static_desktop_sync
+  theme_apply_start_phase_d_job "${job_log_dir}" tmux reload_live_theme_client tmux
+  theme_apply_start_phase_d_job "${job_log_dir}" rmpc reload_live_theme_client rmpc
+  theme_apply_start_phase_d_job "${job_log_dir}" nvim theme_apply_sync_nvim_theme
+  [[ "${desktop_ready}" -eq 0 ]] || theme_apply_start_phase_d_job "${job_log_dir}" runtime_desktop theme_apply_sync_runtime_desktop_state "${theme_apply_quiet}"
+  theme_apply_start_phase_d_job "${job_log_dir}" backend_wallpaper_links theme_apply_sync_backend_wallpaper_links
+  theme_apply_start_phase_d_job "${job_log_dir}" wallpaper_thumbs theme_apply_enqueue_wallpaper_thumbs
   theme_apply_wait_jobs "${job_log_dir}" || true
 
   theme_apply_phase_d_quickshell_icon_sync || true
 }
 
-# Quickshell resolves icons through qt6ct, which reads its conf once at process
-# start — an ipc reload keeps the stale theme, only a process restart works.
-# A stopped Quickshell stays stopped.
+# qt6ct caches icons at process start; leave a stopped Quickshell stopped.
 theme_apply_phase_d_quickshell_icon_sync() {
   theme_apply_generation_is_current || return 0
 
@@ -363,8 +321,6 @@ theme_apply_phase_d_quickshell_icon_sync() {
 theme_apply_sync_runtime_desktop_state() {
   local quiet="${1:-false}"
 
-  theme_apply_prepare_desktop_state || return 1
-
   if [[ "${quiet}" == "true" ]]; then
     if (
       THEME_DESKTOP_SYNC_LOG_DCONF=0 theme_desktop_apply_runtime_resolved && theme_desktop_apply_cursor_theme
@@ -379,7 +335,7 @@ theme_apply_sync_runtime_desktop_state() {
 }
 
 theme_apply_run_static_desktop_sync() {
-  theme_apply_prepare_desktop_state && theme_desktop_apply_static_resolved_if_needed
+  theme_desktop_apply_static_resolved_if_needed
 }
 
 theme_apply_sync_nvim_theme() {
@@ -394,8 +350,6 @@ theme_apply_enqueue_wallpaper_thumbs() {
   local queue_script=""
   local cache_script=""
 
-  # get_themes is idempotent and populates thmWall; call it unconditionally so
-  # we are not at the mercy of caller scope under set -u.
   get_themes
 
   for wall in "${thmWall[@]}"; do
@@ -429,50 +383,19 @@ theme_apply_sync_backend_wallpaper_links() {
   done < <(find -H "${WALLPAPER_CURRENT_DIR}" -maxdepth 1 -type l -name "*.png" -print0)
 }
 
-theme_apply_job_nvim() {
+theme_apply_run_if_current() {
   theme_apply_generation_is_current || return 0
-  theme_apply_sync_nvim_theme
+  "$@"
 }
 
-theme_apply_job_tmux() {
-  theme_apply_generation_is_current || return 0
-  reload_live_theme_client tmux
+theme_apply_start_phase_d_job() {
+  local job_log_dir="$1" name="$2"
+  shift 2
+  theme_apply_start_job "${job_log_dir}" "${name}" best_effort theme_apply_run_if_current "$@" || true
 }
 
-theme_apply_job_rmpc() {
-  theme_apply_generation_is_current || return 0
-  reload_live_theme_client rmpc
-}
-
-theme_apply_job_runtime_desktop() {
-  theme_apply_generation_is_current || return 0
-  theme_apply_sync_runtime_desktop_state "${theme_apply_quiet}" || {
-    print_log -sec "theme.apply" -warn "desktop" "runtime sync failed"
-    return 1
-  }
-}
-
-theme_apply_job_static_desktop() {
-  theme_apply_generation_is_current || return 0
-  theme_apply_run_static_desktop_sync || {
-    print_log -sec "theme.apply" -warn "desktop" "static sync failed"
-    return 1
-  }
-}
-
-theme_apply_job_secondary_updates() {
-  theme_apply_generation_is_current || return 0
+theme_apply_secondary_updates() {
   color_finalize_source_generated_colors || return 1
   color_finalize_export_icon_theme || return 1
   ASYNC_POST_UPDATES=1 post_updates >/dev/null 2>&1 || true
-}
-
-theme_apply_job_backend_wallpaper_links() {
-  theme_apply_generation_is_current || return 0
-  theme_apply_sync_backend_wallpaper_links
-}
-
-theme_apply_job_wallpaper_thumbs() {
-  theme_apply_generation_is_current || return 0
-  theme_apply_enqueue_wallpaper_thumbs
 }

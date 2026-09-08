@@ -4,6 +4,7 @@
 N=$'\n'
 RSEP=$(printf '%b' '\036')
 USEP=$(printf '%b' '\037')
+PSEP=$'\035'
 
 desktop_entry_exec_debug() {
   :
@@ -44,9 +45,7 @@ source "${HYPR_SYSTEM_DIR}/app2unit.desktop.sh"
 
 desktop_entry_exec_reset_state() {
   OIFS=$IFS
-  LCODE=${LANGUAGE:-${LANG:-}}
-  LCODE=${LCODE%_*}
-  LCODE=${LCODE:-NOLCODE}
+  de_initialize_locale
 
   ENTRY_ID=""
   ENTRY_ACTION=""
@@ -54,6 +53,14 @@ desktop_entry_exec_reset_state() {
   ENTRY_TYPE=""
   ENTRY_URL=""
   ENTRY_NAME=""
+  ENTRY_COMMENT=""
+  ENTRY_LNAME=""
+  ENTRY_LCOMMENT=""
+  ENTRY_NAME_ACTION=""
+  ENTRY_LNAME_ACTION=""
+  ENTRY_LNAME_RANK=0
+  ENTRY_LCOMMENT_RANK=0
+  ENTRY_LNAME_ACTION_RANK=0
   ENTRY_ICON=""
   ENTRY_WORKDIR=""
   EXEC_NAME=""

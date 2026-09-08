@@ -59,6 +59,9 @@ local function submap_leader(name, modifiers, key, body)
 	hl.define_submap(name, function()
 		body()
 		hl.bind("ESCAPE", hl.dsp.submap("reset"), { description = "[" .. name .. "] exit" })
+		-- Unclaimed keys end the mode, so a stray press cannot leave it live while
+		-- its bare-letter binds fire window actions. Modmask 0: chords pass through.
+		hl.bind("catchall", hl.dsp.submap("reset"), { description = HIDDEN_MARKER .. name .. " exit on unbound key" })
 	end)
 end
 

@@ -1,19 +1,53 @@
 #!/usr/bin/env sh
-# Desktop entry parsing helpers for app2unit.
+# Function aliases isolate POSIX-shell IFS mutations.
 make_paths() {
-	# constructs normalized APPLICATIONS_DIRS
 	IFS=':'
 	APPLICATIONS_DIRS=''
-	# Populate list of directories to search for entries in, in descending order of preference
 	for dir in ${XDG_DATA_HOME:-${HOME}/.local/share}${IFS}${XDG_DATA_DIRS:-/usr/local/share:/usr/share}; do
-		# Normalise base path and append the data subdirectory with a trailing '/'
 		APPLICATIONS_DIRS=${APPLICATIONS_DIRS:+${APPLICATIONS_DIRS}${IFS}}${dir%/}/applications/
 	done
 }
 alias make_paths='IFS= make_paths'
 
+de_initialize_locale() {
+	de_locale=${LC_ALL:-${LC_MESSAGES:-${LANG:-C}}}
+	LCODES=
+	case "$de_locale" in '' | C | POSIX | C.*) return 0 ;; esac
+	de_locale_modifier=
+	case "$de_locale" in *@*) de_locale_modifier=@${de_locale#*@} ;; esac
+	de_locale_base=${de_locale%%.*}
+	de_locale_base=${de_locale_base%%@*}
+	de_locale_language=${de_locale_base%%_*}
+	LCODES=${de_locale_base}${de_locale_modifier}
+	[ -z "$de_locale_modifier" ] || LCODES=${LCODES}:${de_locale_base}
+	if [ "$de_locale_base" != "$de_locale_language" ]; then
+		[ -z "$de_locale_modifier" ] || LCODES=${LCODES}:${de_locale_language}${de_locale_modifier}
+		LCODES=${LCODES}:${de_locale_language}
+	fi
+}
+
+de_locale_key_rank() {
+	DE_LOCALE_RANK=4
+	IFS=:
+	for de_locale_code in $LCODES; do
+		[ "$1" = "$2[$de_locale_code]" ] && { IFS=$OIFS; return 0; }
+		DE_LOCALE_RANK=$((DE_LOCALE_RANK - 1))
+	done
+	IFS=$OIFS
+	DE_LOCALE_RANK=0
+}
+
 find_entry() {
 	ENTRY_ID=$1
+	validate_entry_id "$ENTRY_ID" || {
+		error "Invalid Entry ID '$ENTRY_ID'!"
+		return 1
+	}
+	IFS=:
+	for directory in $APPLICATIONS_DIRS; do
+		entry_path=${directory}${ENTRY_ID}
+		[ ! -f "$entry_path" ] || { printf '%s' "$entry_path"; return 0; }
+	done
 	IFS=$OIFS
 	set --
 	IFS=':'
@@ -111,14 +145,12 @@ de_expand_escape_sequence() {
 }
 
 de_expand_str() {
-	# expands \s, \n, \t, \r, \\
 	# https://specifications.freedesktop.org/desktop-entry-spec/latest/value-types.html
-	# writes result to global $EXPANDED_STR in place to avoid $() expansion newline issues
+	# EXPANDED_STR preserves trailing newlines that command substitution would strip.
 	debug "expander received: $1"
 	EXPANDED_STR=
 	exp_remainder=$1
 	while [ -n "$exp_remainder" ]; do
-		# left is substring of remainder before the first encountered backslash
 		exp_left=${exp_remainder%%\\*}
 
 		EXPANDED_STR=${EXPANDED_STR}${exp_left}
@@ -127,12 +159,10 @@ de_expand_str() {
 		case "$exp_left" in
 		"$exp_remainder")
 			debug "expander ended: $EXPANDED_STR"
-			# no more backslashes left
 			break
 			;;
 		esac
 
-		# remove left substring and backslash from remainder
 		exp_remainder=${exp_remainder#"$exp_left"\\}
 		de_expand_escape_sequence
 	done
@@ -222,23 +252,18 @@ de_tokenizer_handle_char() {
 }
 
 de_tokenize_exec() {
-	# Shell-based DE Exec string tokenizer.
 	# https://specifications.freedesktop.org/desktop-entry-spec/latest/exec-variables.html
-	# Fills global EXEC_USEP var with $USEP-separated command array in place to avoid $() expansion newline issues
+	# EXEC_USEP preserves argument boundaries without non-POSIX arrays.
 	debug "tokenizer received: $1"
 	EXEC_USEP=
 	tok_remainder=$1
 	tok_quoted=0
 	tok_in_space=0
 	while [ -n "$tok_remainder" ]; do
-		# left is substring of remainder before the first encountered special char
 		tok_left=${tok_remainder%%[[:space:]\"\`\$\\\'\>\<\~\|\&\;\*\?\#\(\)]*}
-
-		# left should be safe to append right away
 		EXEC_USEP=${EXEC_USEP}${tok_left}
 		debug "tokenizer appended: >$tok_left<"
 
-		# end of the line
 		case "$tok_remainder" in
 		"$tok_left")
 			debug "tokenizer is out of special chars"
@@ -246,7 +271,6 @@ de_tokenize_exec() {
 			;;
 		esac
 
-		# isolate special char
 		tok_remainder=${tok_remainder#"$tok_left"}
 		de_tokenizer_pop_char
 
@@ -302,15 +326,63 @@ de_inject_apply_args() {
 	esac
 }
 
-de_inject_optional_replaced_field() {
-	if [ -n "$3" ]; then
-		de_exec_append_replaced_arg "$1" "$2" "$3"
-	else
-		debug "injector removed '$1'"
-	fi
+de_inject_replace_arg() {
+	de_replace_str "$DE_INJECT_ARG" "$1" "$2"
+	DE_INJECT_ARG=$DE_REPLACED_STR
+}
+
+de_inject_prepare_arg() {
+	DE_INJECT_ARG=$1
+	DE_INJECT_FILE_FIELD=
+	de_inject_replace_arg '%%' "$PSEP"
+	de_inject_scan=$DE_INJECT_ARG
+	while case "$de_inject_scan" in *'%'[fFuU]*) true ;; *) false ;; esac; do
+		de_inject_left=${de_inject_scan%%'%'[fFuU]*}
+		de_inject_scan=${de_inject_scan#"$de_inject_left"}
+		de_inject_right=${de_inject_scan#??}
+		[ -z "$DE_INJECT_FILE_FIELD" ] || {
+			error "${ENTRY_ID}: Encountered more than one %[fFuU] field!"
+			return 1
+		}
+		DE_INJECT_FILE_FIELD=${de_inject_scan%"$de_inject_right"}
+		de_inject_scan=$de_inject_right
+	done
+	case "$DE_INJECT_FILE_FIELD" in
+	%F | %U)
+		[ "$DE_INJECT_ARG" = "$DE_INJECT_FILE_FIELD" ] || {
+			error "${ENTRY_ID}: Encountered non-standalone field '$DE_INJECT_FILE_FIELD'"
+			return 1
+		}
+		;;
+	esac
+	case "$DE_INJECT_ARG" in
+	*'%i'*)
+		[ "$DE_INJECT_ARG" = '%i' ] || {
+			error "${ENTRY_ID}: Encountered non-standalone field '%i'"
+			return 1
+		}
+		;;
+	esac
+	de_inject_check=$DE_INJECT_ARG
+	for de_inject_code in f F u U i c k d D n N v m; do
+		de_replace_str "$de_inject_check" "%$de_inject_code" ''
+		de_inject_check=$DE_REPLACED_STR
+	done
+	case "$de_inject_check" in
+	*%*)
+		error "${ENTRY_ID}: unknown % field in argument '$1'"
+		return 1
+		;;
+	esac
+	de_inject_replace_arg %c "${ENTRY_LNAME:-$ENTRY_NAME}"
+	de_inject_replace_arg %k "$DE_ENTRY_PATH"
+	for de_inject_code in d D n N v m; do de_inject_replace_arg "%$de_inject_code" ''; done
 }
 
 de_inject_file_field() {
+	de_inject_exec_field=$1
+	de_inject_exec_arg=$2
+	shift 2
 	case "$DE_INJECT_FILE_FIELD_SEEN" in
 	true)
 		error "${ENTRY_ID}: Encountered more than one %[fFuU] field!"
@@ -319,69 +391,55 @@ de_inject_file_field() {
 	esac
 	DE_INJECT_FILE_FIELD_SEEN=true
 
-	if [ "$#" -eq "1" ]; then
-		debug "injector removed '$1'"
+	if [ "$#" -eq 0 ]; then
+		debug "injector removed '$de_inject_exec_arg'"
 		return 0
 	fi
 
-	de_inject_exec_field=$1
-	shift
 	case "$de_inject_exec_field" in
-	*[!%]'%F'* | *'%F'?* | *[!%]'%U'* | *'%U'?*)
-		error "${ENTRY_ID}: Encountered non-standalone field '$de_inject_exec_field'"
-		return 1
+	%f)
+		de_inject_apply_args expand false "$de_inject_exec_arg" %f "$@"
 		;;
-	*[!%]'%f'* | '%f'*)
-		de_inject_apply_args expand false "$de_inject_exec_field" "%f" "$@"
-		;;
-	'%F')
+	%F)
 		de_inject_apply_args append false '' '' "$@"
 		;;
-	*[!%]'%u'* | '%u'*)
-		de_inject_apply_args expand true "$de_inject_exec_field" "%u" "$@"
+	%u)
+		de_inject_apply_args expand true "$de_inject_exec_arg" %u "$@"
 		;;
-	'%U')
+	%U)
 		de_inject_apply_args append true '' '' "$@"
-		;;
-	*)
-		error "${ENTRY_ID}: not implemented '$de_inject_exec_field'"
-		return 1
 		;;
 	esac
 }
 
 de_inject_fields() {
-	# Operates on argument array and $EXEC_RSEP_USEP from entry
-	# modifies $EXEC_RSEP_USEP according to args/fields
-	# no arguments, erase fields from $EXEC_RSEP_USEP
+	# POSIX sh has no arrays, so argument and command separators stay encoded.
 	DE_EXEC_USEP_TMP=''
 	DE_INJECT_FILE_FIELD_SEEN=false
 	DE_EXEC_ITER_USEP_TMP=''
 	IFS=$USEP
 	for de_inject_arg in $EXEC_RSEP_USEP; do
-		case "$de_inject_arg" in
-		*[!%]'%'[fFuU]* | '%'[fFuU]*)
-			de_inject_file_field "$de_inject_arg" "$@" || return 1
-			;;
-		*[!%]'%i'* | '%i'*)
-			de_inject_optional_replaced_field "$de_inject_arg" "%i" "$ENTRY_ICON"
-			;;
-		*[!%]'%c'* | '%c'*)
-			de_exec_append_replaced_arg "$de_inject_arg" "%c" "$ENTRY_NAME"
-			;;
-		*[!%]%%* | %%*)
-			de_exec_append_replaced_arg "$de_inject_arg" "%%" "%"
-			;;
-		*%?* | *[!%]%)
-			error "${ENTRY_ID}: unknown % field in argument '${de_inject_arg}'"
-			return 1
+		de_inject_prepare_arg "$de_inject_arg" || { IFS=$OIFS; return 1; }
+		case "$DE_INJECT_ARG" in
+		%i)
+			if [ -n "$ENTRY_ICON" ]; then
+				de_exec_append_arg --icon
+				de_exec_append_arg "$ENTRY_ICON"
+			fi
 			;;
 		*)
-			debug "injector keeped: '$de_inject_arg'"
-			de_exec_append_arg "$de_inject_arg"
+			if [ -n "$DE_INJECT_FILE_FIELD" ]; then
+				de_inject_file_field "$DE_INJECT_FILE_FIELD" "$DE_INJECT_ARG" "$@" || { IFS=$OIFS; return 1; }
+			elif [ -n "$DE_INJECT_ARG" ]; then
+				de_exec_append_arg "$DE_INJECT_ARG"
+			fi
 			;;
 		esac
 	done
+	de_replace_str "$DE_EXEC_USEP_TMP" "$PSEP" %
+	DE_EXEC_USEP_TMP=$DE_REPLACED_STR
+	de_replace_str "$DE_EXEC_ITER_USEP_TMP" "$PSEP" %
+	DE_EXEC_ITER_USEP_TMP=$DE_REPLACED_STR
 	de_exec_finalize_iterations
 	IFS=$OIFS
 }
@@ -393,11 +451,6 @@ de_exec_append_arg() {
 de_exec_resolve_replaced_arg() {
 	de_replace_str "$1" "$2" "$3"
 	debug "injector replacing '$2': '$1' -> '$DE_REPLACED_STR'"
-}
-
-de_exec_append_replaced_arg() {
-	de_exec_resolve_replaced_arg "$@"
-	de_exec_append_arg "$DE_REPLACED_STR"
 }
 
 de_exec_append_iter_arg() {
@@ -565,11 +618,19 @@ de_parse_name_key() {
 	false_true_Name)
 		ENTRY_NAME_ACTION=$DE_CAPTURED_VALUE
 		;;
-	true_false_"Name[${LCODE}]")
-		ENTRY_LNAME=$DE_CAPTURED_VALUE
+	true_false_Name\[*\])
+		de_locale_key_rank "$1" Name
+		if [ "$DE_LOCALE_RANK" -gt "$ENTRY_LNAME_RANK" ]; then
+			ENTRY_LNAME=$DE_CAPTURED_VALUE
+			ENTRY_LNAME_RANK=$DE_LOCALE_RANK
+		fi
 		;;
-	false_true_"Name[${LCODE}]")
-		ENTRY_LNAME_ACTION=$DE_CAPTURED_VALUE
+	false_true_Name\[*\])
+		de_locale_key_rank "$1" Name
+		if [ "$DE_LOCALE_RANK" -gt "$ENTRY_LNAME_ACTION_RANK" ]; then
+			ENTRY_LNAME_ACTION=$DE_CAPTURED_VALUE
+			ENTRY_LNAME_ACTION_RANK=$DE_LOCALE_RANK
+		fi
 		;;
 	*)
 		debug "discarded '$1' '$2'"
@@ -580,8 +641,14 @@ de_parse_name_key() {
 de_parse_generic_name_key() {
 	de_capture_expanded_value "$1" "$2"
 	case "$1" in
-	"GenericName[${LCODE}]") ENTRY_LCOMMENT=$DE_CAPTURED_VALUE ;;
 	GenericName) ENTRY_COMMENT=$DE_CAPTURED_VALUE ;;
+	GenericName\[*\])
+		de_locale_key_rank "$1" GenericName
+		if [ "$DE_LOCALE_RANK" -gt "$ENTRY_LCOMMENT_RANK" ]; then
+			ENTRY_LCOMMENT=$DE_CAPTURED_VALUE
+			ENTRY_LCOMMENT_RANK=$DE_LOCALE_RANK
+		fi
+		;;
 	esac
 }
 
@@ -596,7 +663,6 @@ de_parse_icon_key() {
 }
 
 parse_entry_key() {
-	# set global vars or fail entry
 	de_validate_action_key_context "$1" "$6" || return 1
 
 	case "$1" in
@@ -606,15 +672,13 @@ parse_entry_key() {
 	Hidden) de_parse_hidden_key "$2" ;;
 	Exec) de_parse_exec_key "$4" "$6" "$2" ;;
 	URL) de_parse_url_key "$2" ;;
-	"Name[${LCODE}]" | Name) de_parse_name_key "$1" "$2" "$5" "$6" ;;
-	"GenericName[${LCODE}]" | GenericName) de_parse_generic_name_key "$1" "$2" ;;
+	Name | Name\[*\]) de_parse_name_key "$1" "$2" "$5" "$6" ;;
+	GenericName | GenericName\[*\]) de_parse_generic_name_key "$1" "$2" ;;
 	Icon) de_parse_icon_key "$2" "$5" "$6" ;;
 	Path) de_parse_path_key "$2" ;;
 	Terminal) de_parse_terminal_key "$2" ;;
 	esac
-	# By default unrecognised keys, empty lines and comments get ignored
 }
-# Mask IFS within function to allow temporary changes
 alias parse_entry_key='IFS= parse_entry_key'
 
 de_validate_requested_action() {
@@ -703,7 +767,6 @@ read_entry_path() {
 			DE_READ_EXEC=false
 			;;
 		esac
-		# By default empty lines and comments get ignored
 	done <"$DE_ENTRY_PATH"
 
 	de_validate_requested_action || return 1
@@ -715,56 +778,44 @@ random_string() {
 }
 
 validate_entry_id() {
-
 	case "$1" in
-	# invalid characters or degrees of emptiness
-	*[!a-zA-Z0-9_.-]* | *[!a-zA-Z0-9_.-] | [!a-zA-Z0-9_.-]* | [!a-zA-Z0-9_.-] | '' | .desktop)
-		debug "string not valid as Entry ID: '$1'"
-		return 1
-		;;
-	# all that left with .desktop
-	*.desktop) return 0 ;;
-	# and without
-	*)
-		debug "string not valid as Entry ID '$1'"
-		return 1
+	?*.desktop)
+		case "$1" in *[!a-zA-Z0-9_.-]*) ;; *) return 0 ;; esac
 		;;
 	esac
+	debug "string not valid as Entry ID '$1'"
+	return 1
 }
 
 validate_action_id() {
-
 	case "$1" in
-	# empty is ok
 	'') return 0 ;;
-	# invalid characters
-	*[!a-zA-Z0-9-]* | *[!a-zA-Z0-9-] | [!a-zA-Z0-9-]* | [!a-zA-Z0-9-])
+	*[!a-zA-Z0-9-]*)
 		debug "string not valid as Action ID: '$1'"
 		return 1
 		;;
-	# all that left
 	*) return 0 ;;
 	esac
 }
 
-urlencode() {
+urlencode() (
+	LC_ALL=C
 	de_urlencode_string=$1
 	case "$de_urlencode_string" in
-	# assuming already url
-	*[a-zA-Z0-9_-]://*)
-		echo "$de_urlencode_string"
-		return
+	[a-zA-Z]*:*)
+		de_urlencode_scheme=${de_urlencode_string%%:*}
+		case "$de_urlencode_scheme" in
+		*[!a-zA-Z0-9+.-]*) ;;
+		*) printf '%s' "$de_urlencode_string"; return ;;
+		esac
 		;;
-	# assuming absolute path
 	/*) true ;;
-	# assuming relative path
 	*) de_urlencode_string=$(pwd)/$de_urlencode_string ;;
 	esac
 
 	printf '%s' 'file://'
 
 	case "$de_urlencode_string" in
-	# if contains extra chars, encode
 	*[!._~0-9A-Za-z/-]*)
 		while [ -n "$de_urlencode_string" ]; do
 			de_urlencode_right=${de_urlencode_string#?}
@@ -772,11 +823,11 @@ urlencode() {
 			debug "urlencode string $de_urlencode_string" "urlencode right $de_urlencode_right" "urlencode char $de_urlencode_char"
 			case $de_urlencode_char in
 			[._~0-9A-Za-z/-]) printf '%s' "$de_urlencode_char" ;;
-			*) printf '%%%02x' "'$de_urlencode_char" ;;
+			*) printf '%%%02X' "'$de_urlencode_char" ;;
 			esac
 			de_urlencode_string=$de_urlencode_right
 		done
 		;;
 	*) printf '%s' "$de_urlencode_string" ;;
 	esac
-}
+)

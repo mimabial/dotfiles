@@ -1,14 +1,28 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
 
-# Build wallpaper lists/hashes with lightweight caching.
-
 wallpaper_catalog_hash_command() {
   local hash_cmd="${HYPR_HASH_COMMAND:-sha1sum}"
   if ! command -v "${hash_cmd}" >/dev/null 2>&1; then
     hash_cmd="sha1sum"
   fi
   printf '%s\n' "${hash_cmd}"
+}
+
+wallpaper_catalog_lock() {
+  local lock_file=""
+  lock_file="$(hypr_lock_path wallpaper_catalog)" || return 1
+  exec 204>"${lock_file}" || return 1
+  flock 204
+}
+
+wallpaper_catalog_unlock() {
+  flock -u 204 2>/dev/null || true
+  exec 204>&-
+}
+
+wallpaper_catalog_replace_if_changed() {
+  if cmp -s "$1" "$2"; then rm -f "$1"; else mv -f "$1" "$2"; fi
 }
 
 wallpaper_catalog_write_meta() {
@@ -21,7 +35,6 @@ wallpaper_catalog_write_meta() {
   local src="" resolved="" ext=""
 
   {
-    printf 'created=%s\n' "$(date +%s)"
     for src in "${sources_ref[@]}"; do
       [[ -n "${src}" && -e "${src}" ]] || continue
       resolved="$(wallpaper_resolve_path "${src}")"
@@ -32,7 +45,8 @@ wallpaper_catalog_write_meta() {
       [[ -n "${ext}" ]] || continue
       printf 'ext=%s\n' "${ext}"
     done
-  } >"${meta_tmp}" && mv -f "${meta_tmp}" "${cache_meta_file}"
+  } >"${meta_tmp}"
+  wallpaper_catalog_replace_if_changed "${meta_tmp}" "${cache_meta_file}"
 }
 
 wallpaper_catalog_load_index() {
@@ -85,9 +99,9 @@ wallpaper_catalog_write_runtime_cache() {
   : >"${tmp_cache}"
   for i in "${!list_ref[@]}"; do
     wall_meta="$(stat -c '%Y\t%s' -- "${list_ref[i]}" 2>/dev/null)" || continue
-    printf '%s\t%s\t%s\n' "${hash_ref[i]}" "${wall_meta}" "${list_ref[i]}" >>"${tmp_cache}"
+    printf '%s\t%s\t%s\n' "${hash_ref["${list_ref[i]}"]}" "${wall_meta}" "${list_ref[i]}" >>"${tmp_cache}"
   done
-  mv -f "${tmp_cache}" "${cache_file}"
+  wallpaper_catalog_replace_if_changed "${tmp_cache}" "${cache_file}"
 }
 
 Wall_Hashmap_Cached_into() {
@@ -130,29 +144,42 @@ Wall_Hashmap_Cached_into() {
   while IFS=$'\t' read -r -d '' wall_mtime wall_size wall_file; do
     wall_meta="${wall_mtime}"$'\t'"${wall_size}"
     wall_hash="$(wallpaper_catalog_hash_for_file "${wall_file}" "${wall_meta}" "${hash_cmd}" cache_hash cache_meta)"
-    hash_ref+=("${wall_hash}")
+    hash_ref["${wall_file}"]="${wall_hash}"
     list_ref+=("${wall_file}")
     printf '%s\t%s\t%s\n' "${wall_hash}" "${wall_meta}" "${wall_file}"
   done < <(
     find -H "${wall_sources[@]}" -type f -regextype posix-extended \
       -iregex ".*\\.(${regex_ext})$" ! -path "*/logo/*" \
-      -printf '%Ts\t%s\t%p\0' 2>/dev/null | sort -z -t$'\t' -k3
+      -printf '%T@\t%s\t%p\0' 2>/dev/null | sort -z -t$'\t' -k3
   ) >"${tmp_cache}"
 
   if [[ ${#list_ref[@]} -eq 0 ]]; then
+    local -a fallback_hash=() fallback_list=()
     rm -f "${tmp_cache}"
-    get_hashmap_into "${hash_name}" "${list_name}" "${wall_sources[@]}" || return 1
+    get_hashmap_into fallback_hash fallback_list "${wall_sources[@]}" || return 1
+    list_ref=("${fallback_list[@]}")
+    for i in "${!list_ref[@]}"; do hash_ref["${list_ref[i]}"]="${fallback_hash[i]}"; done
     wallpaper_catalog_write_runtime_cache "${cache_file}" "${hash_name}" "${list_name}"
     return 0
   fi
 
-  mv -f "${tmp_cache}" "${cache_file}"
+  wallpaper_catalog_replace_if_changed "${tmp_cache}" "${cache_file}"
 }
 
 Wall_Hashmap_Cached() {
-  wallHash=()
+  wallHashByPath=()
   wallList=()
-  Wall_Hashmap_Cached_into wallHash wallList "$@"
+  Wall_Hashmap_Cached_into wallHashByPath wallList "$@"
+}
+
+wallpaper_catalog_load_file() {
+  local path="" hash=""
+  path="$(wallpaper_resolve_path "$1")"
+  [[ -f "${path}" ]] || return 1
+  hash="$(set_hash "${path}")" || return 1
+  wallList=("${path}")
+  wallHashByPath=(["${path}"]="${hash}")
+  setIndex=0
 }
 
 Wall_List_into() {
@@ -189,16 +216,12 @@ Wall_List_into() {
 }
 
 Wall_List() {
-  wallHash=()
+  wallHashByPath=()
   wallList=()
   Wall_List_into wallList "$@"
 }
 
 Wall_Hash() {
-  # Method to load wallpapers in hashmaps and fix broken links per theme.
-  # Skip if already loaded (avoid redundant get_hashmap calls).
-  local repair_link=0
-  [[ "${1:-}" == "--repair-link" ]] && repair_link=1
   [[ ${#wallList[@]} -gt 0 ]] && return 0
 
   setIndex=0
@@ -210,12 +233,5 @@ Wall_Hash() {
   if ! Wall_List "${wallPathArray[@]}"; then
     print_log -err "wallpaper" "No compatible wallpapers found in theme paths"
     exit 1
-  fi
-
-  local resolved_set=""
-  resolved_set="$(wallpaper_resolve_path "${active_wallpaper_link}")"
-  if [[ "${repair_link}" -eq 1 ]] && [[ ! -e "${resolved_set}" ]]; then
-    echo "fixing link :: ${active_wallpaper_link}"
-    ln -fs "${wallList[setIndex]}" "${active_wallpaper_link}"
   fi
 }

@@ -92,7 +92,7 @@ QtObject {
     // Icon glyphs from the text font disagree on ink height — in Lekton the play
     // triangle is 0.810 em against the plus's 0.750 and the pause's 0.692 — so the
     // same pixelSize renders them at visibly different sizes. Measure the live face
-    // and scale the odd ones onto the plus, which is the anchor in every row.
+    // and scale the odd ones onto the plus, the 0.750-em anchor.
     readonly property TextMetrics inkPlus: TextMetrics { font.family: root.fontFamily; font.pixelSize: 200; text: "\uf067" }
     readonly property TextMetrics inkPlay: TextMetrics { font.family: root.fontFamily; font.pixelSize: 200; text: "\uf04b" }
     readonly property TextMetrics inkPause: TextMetrics { font.family: root.fontFamily; font.pixelSize: 200; text: "\uf04c" }

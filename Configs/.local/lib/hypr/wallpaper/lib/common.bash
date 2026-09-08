@@ -143,7 +143,7 @@ wallpaper_enqueue_cache_jobs() {
 
   if [[ -x "${queue_script}" ]]; then
     if [[ "${run_in_background}" -eq 1 ]]; then
-      run_low_prio "${queue_script}" --enqueue "$@" &>/dev/null &
+      run_low_prio "${queue_script}" --enqueue "$@" 202>&- 204>&- 205>&- &>/dev/null &
     else
       run_low_prio "${queue_script}" --enqueue "$@" &>/dev/null
     fi
@@ -152,7 +152,7 @@ wallpaper_enqueue_cache_jobs() {
 
   if [[ -x "${cache_script}" ]]; then
     if [[ "${run_in_background}" -eq 1 ]]; then
-      run_low_prio "${cache_script}" "$@" &>/dev/null &
+      run_low_prio "${cache_script}" "$@" 202>&- 204>&- 205>&- &>/dev/null &
     else
       run_low_prio "${cache_script}" "$@" &>/dev/null
     fi

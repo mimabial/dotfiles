@@ -153,15 +153,16 @@ rofi_picker_save_recent_entry() {
   fi
 }
 
-# Measured on the clipboard theme: a listview row costs ~2.09em and the chrome
-# (input bar + mainbox/listview padding) ~7.18em. Rounded up, so the window is
-# never shorter than the rows rofi draws into it.
+# Measured on the clipboard theme: a listview row costs ~2.09em and the base
+# chrome ~7.18em. Callers with extra chrome (such as a footer) may override it.
 rofi_picker_listview_height_em() {
   local lines="$1"
   local row_em="${2:-2.1}"
+  local chrome_em="${3:-7.3}"
 
   [[ "${lines}" =~ ^[0-9]+$ ]] || return 1
-  awk -v lines="${lines}" -v row="${row_em}" 'BEGIN { printf "%.1f\n", (lines * row) + 7.3 }'
+  awk -v lines="${lines}" -v row="${row_em}" -v chrome="${chrome_em}" \
+    'BEGIN { printf "%.1f\n", (lines * row) + chrome }'
 }
 
 rofi_picker_compute_window_geometry() {

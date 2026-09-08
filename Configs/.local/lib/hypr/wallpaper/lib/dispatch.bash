@@ -1,96 +1,32 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
-#
-# dispatch.bash - Action policy and the action handler for wallpaper.sh.
-#
-# wallpaper_resolve_action_profile maps each action (set in
-# wallpaper_setter_flag by the parsers) to five booleans + a refresh mode.
-# Adding a new action means adding a row here as well as a branch in
-# handle_wallpaper_action.
-#
-# Subsystem inputs (set by wallpaper.sh entrypoint or its parser):
-#   wallpaper_setter_flag, wallpaper_path, wallpaper_backend,
-#   wallpaper_output, wallpaper_notify_body, wallpaper_notifications_disabled,
-#   set_as_global, wallList, wallHash, setIndex,
-#   selected_wallpaper, selected_wallpaper_path, selected_thumbnail
-# Subsystem outputs (consumed by wallpaper.sh and the other lib modules):
-#   wallpaper_lock_acquired, active_wallpaper_link, current_wallpaper_link,
-#   current_square_thumbnail_link, current_thumbnail_link,
-#   current_blur_thumbnail_link, current_quad_thumbnail_link
-: "${wallpaper_setter_flag-}" "${wallpaper_path-}" "${wallpaper_backend-}" \
-  "${wallpaper_output-}" "${wallpaper_notify_body-}" \
-  "${wallpaper_notifications_disabled-}" "${set_as_global-}" \
-  "${wallList-}" "${wallHash-}" "${setIndex-}" \
-  "${selected_wallpaper_path-}" \
-  "${wallpaper_lock_acquired-}" "${active_wallpaper_link-}" \
-  "${current_wallpaper_link-}" "${current_square_thumbnail_link-}" \
-  "${current_thumbnail_link-}" "${current_blur_thumbnail_link-}" \
-  "${current_quad_thumbnail_link-}"
 
-# Initialize default. Action profile resolution overrides; --wait-lock
-# forces it to 1; the env value seeds it for callers that want to opt in
-# from outside (theme apply phase D).
-wallpaper_wait_for_lock="${WALLPAPER_WAIT_FOR_LOCK:-0}"
+declare -gA WALLPAPER_ACTIONS=(
+  [n]="wallpaper_action_next 1 1 1 1 async"
+  [p]="wallpaper_action_previous 1 1 1 1 async"
+  [r]="wallpaper_action_random 1 1 1 1 async"
+  [s]="wallpaper_action_set 1 1 1 1 none"
+  [resume]="wallpaper_action_resume 1 1 1 1 async"
+  [display]="wallpaper_action_display 1 1 1 0 none"
+  [notify]="wallpaper_action_notify 0 0 0 1 none"
+  [select]="wallpaper_action_select 1 1 0 1 async"
+  [start]="wallpaper_action_start 1 1 0 0 async"
+  [link]="wallpaper_action_link 1 1 1 0 async"
+  [g]="wallpaper_action_get 0 0 0 0 none"
+  [o]="wallpaper_action_output 0 0 0 0 none"
+  [clean]="wallpaper_action_clean 0 0 0 0 none"
+  [json]="wallpaper_action_json 0 0 0 0 none"
+)
 
 wallpaper_resolve_action_profile() {
-  wallpaper_action_wait_by_default=0
-  wallpaper_action_requires_lock=0
-  wallpaper_action_requires_backend=1
-  wallpaper_action_notify=0
-  wallpaper_inventory_refresh_mode="none"
-
-  case "${wallpaper_setter_flag:-}" in
-    n | p | r)
-      wallpaper_action_wait_by_default=1
-      wallpaper_action_requires_lock=1
-      wallpaper_action_notify=1
-      wallpaper_inventory_refresh_mode="async"
-      ;;
-    s)
-      wallpaper_action_wait_by_default=1
-      wallpaper_action_requires_lock=1
-      wallpaper_action_notify=1
-      ;;
-    resume)
-      wallpaper_action_wait_by_default=1
-      wallpaper_action_requires_lock=1
-      wallpaper_action_notify=1
-      wallpaper_inventory_refresh_mode="async"
-      ;;
-    display)
-      wallpaper_action_wait_by_default=1
-      wallpaper_action_requires_lock=1
-      ;;
-    notify)
-      wallpaper_action_requires_backend=0
-      wallpaper_action_notify=1
-      ;;
-    select)
-      wallpaper_action_wait_by_default=1
-      wallpaper_action_requires_lock=1
-      wallpaper_action_requires_backend=0
-      wallpaper_action_notify=1
-      wallpaper_inventory_refresh_mode="async"
-      ;;
-    start)
-      wallpaper_action_wait_by_default=1
-      wallpaper_action_requires_lock=1
-      wallpaper_action_requires_backend=0
-      wallpaper_inventory_refresh_mode="async"
-      ;;
-    link)
-      wallpaper_action_wait_by_default=1
-      wallpaper_action_requires_lock=1
-      wallpaper_inventory_refresh_mode="async"
-      ;;
-    g | o | clean)
-      wallpaper_action_requires_backend=0
-      ;;
-    "") ;;
-    *)
-      wallpaper_inventory_refresh_mode="sync"
-      ;;
-  esac
+  local profile="${WALLPAPER_ACTIONS[${wallpaper_setter_flag}]-}"
+  [[ -n "${profile}" ]] || {
+    print_log -err "wallpaper" "Unknown action: ${wallpaper_setter_flag}"
+    return 1
+  }
+  read -r wallpaper_action_handler wallpaper_action_wait_by_default \
+    wallpaper_action_requires_lock wallpaper_action_requires_backend \
+    wallpaper_action_notify wallpaper_inventory_refresh_mode <<<"${profile}"
   if [[ "${wallpaper_wait_for_lock}" -ne 1 ]] && [[ "${wallpaper_action_wait_by_default}" -eq 1 ]]; then
     wallpaper_wait_for_lock=1
   fi
@@ -250,11 +186,7 @@ wallpaper_notify_emit() {
 }
 
 wallpaper_refresh_inventory_if_needed() {
-  case "${wallpaper_inventory_refresh_mode}" in
-    async) wallpaper_refresh_inventory_and_prune_async ;;
-    sync) wallpaper_refresh_inventory_and_prune ;;
-    *) return 0 ;;
-  esac
+  [[ "${wallpaper_inventory_refresh_mode}" != async ]] || wallpaper_refresh_inventory_and_prune_async
 }
 
 random_wallpaper_index() {
@@ -285,12 +217,6 @@ require_wallpaper_backend() {
   fi
 }
 
-repair_active_wallpaper_link_if_needed() {
-  if [[ -z "${wallpaper_setter_flag}" ]] && [[ ! -e "${active_wallpaper_link}" ]]; then
-    Wall_Hash --repair-link
-  fi
-}
-
 wallpaper_select_current_or_first() {
   local missing_message="$1"
   local current_wallpaper=""
@@ -310,89 +236,54 @@ wallpaper_select_current_or_first() {
 }
 
 handle_wallpaper_action() {
-  [[ -n "${wallpaper_setter_flag}" ]] || return 0
-
   export WALLPAPER_SET_FLAG="${wallpaper_setter_flag}"
-  case "${wallpaper_setter_flag}" in
-    n)
-      Wall_Hash
-      select_adjacent_wallpaper n
-      ;;
-    p)
-      Wall_Hash
-      select_adjacent_wallpaper p
-      ;;
-    r)
-      Wall_Hash
-      setIndex="$(random_wallpaper_index "${#wallList[@]}")" || exit 1
-      apply_selected_wallpaper "${wallList[setIndex]}"
-      ;;
-    s)
-      if [[ -z "${wallpaper_path}" ]] || [[ ! -f "${wallpaper_path}" ]]; then
-        print_log -err "wallpaper" "Wallpaper not found: ${wallpaper_path}"
-        exit 1
-      fi
-      get_hashmap "${wallpaper_path}" || exit 1
-      apply_selected_wallpaper
-      ;;
-    resume)
-      wallpaper_select_current_or_first "wall.set not in current theme, using first wallpaper"
-      apply_selected_wallpaper
-      ;;
-    display)
-      if [[ ! -e "${active_wallpaper_link}" ]]; then
-        print_log -err "wallpaper" "Wallpaper not found: ${active_wallpaper_link}"
-        exit 1
-      fi
-      if [[ "${set_as_global}" == "true" ]]; then
-        ln -fs "$(wallpaper_resolve_path "${active_wallpaper_link}")" "${current_wallpaper_link}"
-      fi
-      ;;
-    notify)
-      wallpaper_select_current_or_first "wall.set not in current theme, using first wallpaper for notification"
-      wallpaper_prepare_notification_payload
-      wallpaper_notify_result
-      exit 0
-      ;;
-    start)
-      local current_wallpaper=""
-
-      if [[ ! -e "${active_wallpaper_link}" ]]; then
-        print_log -err "wallpaper" "No current wallpaper found: ${active_wallpaper_link}"
-        exit 1
-      fi
-
-      export WALLPAPER_RELOAD_ALL=0 PYWAL_STARTUP=1
-      current_wallpaper="$(realpath "${active_wallpaper_link}")"
-      get_hashmap "${current_wallpaper}" || exit 1
-      apply_selected_wallpaper
-      ;;
-    g)
-      if [[ ! -e "${active_wallpaper_link}" ]]; then
-        print_log -err "wallpaper" "Wallpaper not found: ${active_wallpaper_link}"
-        exit 1
-      fi
-      realpath "${active_wallpaper_link}"
-      exit 0
-      ;;
-    o)
-      [[ -n "${wallpaper_output}" ]] || return 0
-      print_log -sec "wallpaper" "Current wallpaper copied to: ${wallpaper_output}"
-      cp -f "${active_wallpaper_link}" "${wallpaper_output}"
-      ;;
-    clean)
-      Wall_Clean_Thumbs
-      exit 0
-      ;;
-    select)
-      Wall_Select
-      get_hashmap "${selected_wallpaper_path}" || exit 1
-      apply_selected_wallpaper
-      ;;
-    link)
-      Wall_Hash
-      apply_selected_wallpaper
-      exit 0
-      ;;
-  esac
+  "${wallpaper_action_handler}"
 }
+
+wallpaper_action_next() { Wall_Hash; select_adjacent_wallpaper n; }
+wallpaper_action_previous() { Wall_Hash; select_adjacent_wallpaper p; }
+wallpaper_action_random() {
+  Wall_Hash
+  setIndex="$(random_wallpaper_index "${#wallList[@]}")" || exit 1
+  apply_selected_wallpaper "${wallList[setIndex]}"
+}
+wallpaper_action_set() {
+  [[ -f "${wallpaper_path}" ]] || { print_log -err "wallpaper" "Wallpaper not found: ${wallpaper_path}"; exit 1; }
+  wallpaper_catalog_load_file "${wallpaper_path}" || exit 1
+  apply_selected_wallpaper
+}
+wallpaper_action_resume() {
+  wallpaper_select_current_or_first "wall.set not in current theme, using first wallpaper"
+  apply_selected_wallpaper
+}
+wallpaper_action_display() {
+  [[ -e "${active_wallpaper_link}" ]] || { print_log -err "wallpaper" "Wallpaper not found: ${active_wallpaper_link}"; exit 1; }
+  [[ "${set_as_global}" != true ]] || ln -fs "$(wallpaper_resolve_path "${active_wallpaper_link}")" "${current_wallpaper_link}"
+}
+wallpaper_action_notify() {
+  wallpaper_select_current_or_first "wall.set not in current theme, using first wallpaper for notification"
+  wallpaper_prepare_notification_payload
+  wallpaper_notify_result
+  exit 0
+}
+wallpaper_action_start() {
+  local current_wallpaper=""
+  [[ -e "${active_wallpaper_link}" ]] || { print_log -err "wallpaper" "No current wallpaper found: ${active_wallpaper_link}"; exit 1; }
+  export WALLPAPER_RELOAD_ALL=0 PYWAL_STARTUP=1
+  current_wallpaper="$(realpath "${active_wallpaper_link}")"
+  wallpaper_catalog_load_file "${current_wallpaper}" || exit 1
+  apply_selected_wallpaper
+}
+wallpaper_action_get() {
+  [[ -e "${active_wallpaper_link}" ]] || { print_log -err "wallpaper" "Wallpaper not found: ${active_wallpaper_link}"; exit 1; }
+  realpath "${active_wallpaper_link}"
+  exit 0
+}
+wallpaper_action_output() {
+  print_log -sec "wallpaper" "Current wallpaper copied to: ${wallpaper_output}"
+  cp -f "${active_wallpaper_link}" "${wallpaper_output}"
+}
+wallpaper_action_clean() { Wall_Clean_Thumbs; exit 0; }
+wallpaper_action_select() { Wall_Select; wallpaper_catalog_load_file "${selected_wallpaper_path}" || exit 1; apply_selected_wallpaper; }
+wallpaper_action_link() { Wall_Hash; apply_selected_wallpaper; exit 0; }
+wallpaper_action_json() { Wall_Json; exit 0; }

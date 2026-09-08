@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
 
-# Thumbnail/cache maintenance helpers for wallpaper flows.
-
 wallInventoryList=()
-wallInventoryHash=()
+declare -A wallInventoryHash=()
 
 wallpaper_prune_sources_array() {
   local out_name="$1"
@@ -73,26 +71,23 @@ wallpaper_inventory_signature() {
 wallpaper_load_inventory_catalog() {
   local -a wall_sources=()
   local -a inventory_list=()
-  local -a inventory_hash=()
+  local -A inventory_hash=()
+  local src=""
 
   wallpaper_prune_sources_array wall_sources || return 1
 
-  exec 204>"$(hypr_lock_path wallpaper_cache)"
-  if ! flock -n 204; then
-    flock 204
-  fi
+  wallpaper_catalog_lock || return 1
 
   if ! Wall_Hashmap_Cached_into inventory_hash inventory_list "${wall_sources[@]}"; then
-    flock -u 204 2>/dev/null
-    exec 204>&-
+    wallpaper_catalog_unlock
     return 1
   fi
 
   wallInventoryList=("${inventory_list[@]}")
-  wallInventoryHash=("${inventory_hash[@]}")
+  wallInventoryHash=()
+  for src in "${!inventory_hash[@]}"; do wallInventoryHash["${src}"]="${inventory_hash["${src}"]}"; done
 
-  flock -u 204 2>/dev/null
-  exec 204>&-
+  wallpaper_catalog_unlock
 
   [[ ${#wallInventoryList[@]} -gt 0 ]]
 }
@@ -112,12 +107,11 @@ wallpaper_collect_valid_thumb_hashes() {
 wallpaper_collect_valid_png_hashes() {
   local out_name="$1"
   local -n out_ref="${out_name}"
-  local wallpaper_hash cached_thumb png_hash
-  local i
+  local wallpaper_path wallpaper_hash cached_thumb png_hash
 
   out_ref=()
-  for i in "${!wallInventoryList[@]}"; do
-    wallpaper_hash="${wallInventoryHash[i]}"
+  for wallpaper_path in "${wallInventoryList[@]}"; do
+    wallpaper_hash="${wallInventoryHash["${wallpaper_path}"]}"
     [[ -n "${wallpaper_hash}" ]] || continue
     cached_thumb="${WALLPAPER_VIDEO_DIR}/${wallpaper_hash}.png"
     if [[ -f "${cached_thumb}" ]]; then
@@ -233,7 +227,7 @@ wallpaper_refresh_inventory_and_prune_locked() {
       return 0
     }
     WALLPAPER_INVENTORY_REFRESHED=1
-    wallpaper_prune_loaded_inventory &
+    wallpaper_prune_loaded_inventory 202>&- 204>&- 205>&- &
     return 0
   fi
 
@@ -243,20 +237,7 @@ wallpaper_refresh_inventory_and_prune_locked() {
   [[ -n "${current_signature}" ]] && printf '%s\n' "${current_signature}" >"${signature_file}"
   WALLPAPER_INVENTORY_REFRESHED=1
 
-  # Prune stale caches in background so it doesn't block the UI
-  wallpaper_prune_loaded_inventory &
-}
-
-wallpaper_refresh_inventory_and_prune() {
-  local lock_file=""
-  lock_file="$(wallpaper_inventory_lock_file)"
-  mkdir -p "$(dirname "${lock_file}")"
-
-  exec 205>"${lock_file}"
-  flock 205
-  wallpaper_refresh_inventory_and_prune_locked
-  flock -u 205 2>/dev/null
-  exec 205>&-
+  wallpaper_prune_loaded_inventory 202>&- 204>&- 205>&- &
 }
 
 wallpaper_refresh_inventory_and_prune_async() {
@@ -267,6 +248,7 @@ wallpaper_refresh_inventory_and_prune_async() {
   mkdir -p "$(dirname "${lock_file}")"
 
   (
+    exec 202>&-
     exec 205>"${lock_file}"
     flock -n 205 || exit 0
     wallpaper_refresh_inventory_and_prune_locked
@@ -280,18 +262,18 @@ Wall_Ensure_Thumbs() {
   [[ -z "${ext}" ]] && ext="sqre"
 
   local -a missing_walls=()
-  local thumb hash i wall
+  local thumb hash wall
 
-  for i in "${!wallList[@]}"; do
-    hash="${wallHash[i]}"
+  for wall in "${wallList[@]}"; do
+    hash="${wallHashByPath["${wall}"]:-}"
     if [[ -z "${hash}" ]]; then
-      hash="$(set_hash "${wallList[i]}")"
-      wallHash[i]="${hash}"
+      hash="$(set_hash "${wall}")"
+      wallHashByPath["${wall}"]="${hash}"
     fi
     [[ -n "${hash}" ]] || continue
 
     thumb="${WALLPAPER_THUMB_DIR}/${hash}.${ext}"
-    [[ -e "${thumb}" ]] || missing_walls+=("${wallList[i]}")
+    [[ -e "${thumb}" ]] || missing_walls+=("${wall}")
   done
 
   if ((${#missing_walls[@]} > 0)); then
@@ -319,7 +301,7 @@ Wall_Precache_Thumbs() {
   cache_script="$(wallpaper_cache_script)"
 
   if [[ -x "${queue_script}" ]]; then
-    run_low_prio "${queue_script}" --enqueue -t "${theme_name}" &>/dev/null &
+    run_low_prio "${queue_script}" --enqueue -t "${theme_name}" 202>&- 204>&- 205>&- &>/dev/null &
     return 0
   fi
 
@@ -332,7 +314,7 @@ Wall_Precache_Thumbs() {
         export WALLPAPER_MAGICK_THREADS="${WALLPAPER_PRECACHE_THREADS}"
       fi
       run_low_prio "${cache_script}" -t "${theme_name}" &>/dev/null
-    ) &
+    ) 202>&- 204>&- 205>&- &
   fi
 }
 
@@ -378,7 +360,7 @@ Wall_Prune_Hashmap_Caches() {
       fi
 
       if [[ "${ttl}" -gt 0 ]]; then
-        mtime="$(stat -c %Y "${meta}" 2>/dev/null || stat -c %Y "${file}" 2>/dev/null || echo 0)"
+        mtime="$(stat -c %X "${meta}" 2>/dev/null || stat -c %Y "${file}" 2>/dev/null || echo 0)"
         [[ "${mtime}" =~ ^[0-9]+$ ]] || mtime=0
         age=$((now - mtime))
         if (( age > ttl )); then

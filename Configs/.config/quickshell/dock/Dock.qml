@@ -205,16 +205,9 @@ Item {
     Item {
       id: iconBox
       anchors.fill: parent
-      // Only the floor side reserves room for the running indicators.
-      anchors.bottomMargin: (item.running && root.edge === "bottom") ? Style.space(5) : 0
-      anchors.topMargin: (item.running && root.edge === "top") ? Style.space(5) : 0
-      anchors.leftMargin: (item.running && root.edge === "left") ? Style.space(5) : 0
-      anchors.rightMargin: (item.running && root.edge === "right") ? Style.space(5) : 0
 
       scale: area.pressed ? 0.92 : 1.0
-      transformOrigin: root.edge === "bottom" ? Item.Bottom
-        : root.edge === "top" ? Item.Top
-        : root.edge === "left" ? Item.Left : Item.Right
+      transformOrigin: root.floorTransformOrigin
       Behavior on scale { NumberAnimation { duration: 90; easing.type: Easing.OutQuad } }
 
       transform: Translate {
@@ -639,10 +632,8 @@ Item {
     property string glyph: ""
     property string tooltip: ""
     property color glyphColor: root.dockForeground
-    // Sized against the art an app icon actually draws, not the slot, so the
-    // button reads at the same weight as the icons beside it. A Nerd Font glyph
-    // covers less of its em box than an icon covers its bounds, hence > 1.
-    property real glyphSize: root.baseIconArt * 0.72
+    // The padded icon box compensates for glyph metrics; this sets optical weight.
+    property real glyphSize: root.iconSize * 0.62
     signal pressed()
     signal middleClicked()
     signal wheelScrolled(int dir)
@@ -665,11 +656,16 @@ Item {
 
     Text {
       anchors.centerIn: parent
+      width: root.iconSize
+      height: root.iconSize
       text: btn.glyph
       textFormat: Text.PlainText
+      horizontalAlignment: Text.AlignHCenter
+      verticalAlignment: Text.AlignVCenter
       font.family: Style.font.family
       font.pixelSize: btn.glyphSize
       color: area.containsMouse ? Color.accent : btn.glyphColor
+      transformOrigin: root.floorTransformOrigin
       scale: btn.magnifyScale * (area.pressed ? 0.92 : 1.0)
       Behavior on color { ColorAnimation { duration: 120 } }
     }
@@ -704,6 +700,17 @@ Item {
       hovered: area.containsMouse
       x: root.tipX(btn.width, width)
       y: root.tipY(btn.height, height)
+    }
+  }
+
+  component DockSeparator: Item {
+    width: root.vertical ? root.iconSlot : root.separatorWidth
+    height: root.vertical ? root.separatorWidth : root.iconSlot
+    Rectangle {
+      anchors.centerIn: parent
+      width: root.vertical ? root.iconSize * 0.7 : root.separatorWidth
+      height: root.vertical ? root.separatorWidth : root.iconSize * 0.7
+      color: Util.alpha(root.dockForeground, 0.25)
     }
   }
 
@@ -1044,6 +1051,7 @@ Item {
         width: root.iconSize
         height: root.iconSize
         anchors.centerIn: parent
+        transformOrigin: root.floorTransformOrigin
         scale: fitem.magnifyScale
 
         Image {
@@ -1193,6 +1201,8 @@ Item {
   // indicators line it, and a launch bounce lifts away from it. awaySign turns
   // the bounce's own negative magnitude into that outward direction.
   readonly property int awaySign: (root.edge === "bottom" || root.edge === "right") ? 1 : -1
+  readonly property int floorTransformOrigin: root.edge === "bottom" ? Item.Bottom
+    : root.edge === "top" ? Item.Top : root.edge === "left" ? Item.Left : Item.Right
 
   // A hover bubble hangs off the slot's non-floor side, centred on the main axis.
   function tipX(hostWidth, tipWidth, gap) {
@@ -1362,13 +1372,16 @@ Item {
   // Width arithmetic total: hidden (fully-tiled) entries occupy zero width,
   // so the row-width and gap math must count only visible icons.
   readonly property int visibleSlotTotal: root.appsSlots + root.pinnedSection.length + root.visibleRunningCount + root.folderSlots
+  readonly property int appsSeparatorCount: root.appsSlots > 0 && root.visibleSlotTotal + root.tileCount > root.appsSlots ? 1 : 0
   readonly property int elementTotal: root.visibleSlotTotal
+    + root.appsSeparatorCount
     + (root.hasSeparator ? 1 : 0)
     + (root.hasFolderSeparator ? 1 : 0)
     + (root.hasLeftTileSeparator ? 1 : 0)
     + (root.hasTiles ? root.tileCount : 0)
 
   readonly property real baseRowWidth: root.visibleSlotTotal * root.iconSlot
+    + root.appsSeparatorCount * root.separatorWidth
     + (root.hasSeparator ? root.separatorWidth : 0)
     + (root.hasFolderSeparator ? root.separatorWidth : 0)
     + (root.hasLeftTileSeparator ? root.separatorWidth : 0)
@@ -3720,7 +3733,7 @@ Item {
           id: appsButton
           visible: root.showAppsButton
           homeCenter: root.slotHomeCenter(0, 0, false)
-          glyph: "\uf36d"
+          glyph: ""
           glyphColor: root.dockForeground
           tooltip: "Applications"
           onPressed: { if (root.shell) root.shell.togglePopup(root.startPopupName) }
@@ -3730,6 +3743,8 @@ Item {
             root.openDockSettingsMenu(cx, cy)
           }
         }
+
+        DockSeparator { visible: root.appsSeparatorCount > 0 }
 
         Repeater {
           id: pinnedRepeater
@@ -3741,7 +3756,8 @@ Item {
             running: modelData.running
             windows: modelData.windows
             windowList: modelData.windowList
-            homeCenter: root.slotHomeCenter(root.appsSlots + index, root.appsSlots + index, false)
+            homeCenter: root.slotHomeCenter(root.appsSlots + root.appsSeparatorCount + index,
+                                            root.appsSlots + index, root.appsSeparatorCount)
             pinned: true
             active: modelData.appId === root.activeId
             onActivateRequested: function(aid) { root.activate(aid) }
@@ -3792,18 +3808,7 @@ Item {
           }
         }
 
-        // Divider between pinned apps and the minimized-tile section.
-        Item {
-          visible: root.hasLeftTileSeparator
-          width: root.vertical ? root.iconSlot : root.separatorWidth
-          height: root.vertical ? root.separatorWidth : root.iconSlot
-          Rectangle {
-            anchors.centerIn: parent
-            width: root.vertical ? root.iconSize * 0.7 : root.separatorWidth
-            height: root.vertical ? root.separatorWidth : root.iconSize * 0.7
-            color: Util.alpha(root.dockForeground, 0.25)
-          }
-        }
+        DockSeparator { visible: root.hasLeftTileSeparator }
 
         // ------------------------------------------ minimized window tiles
         // macOS-style section: every parked window shows up as a small live
@@ -3828,9 +3833,9 @@ Item {
             // Same magnify contract as DockItem/DockFolderItem: wave grows the
             // layout slot; zoom scales the visual stack in place (tileVisual).
             readonly property real homeCenter: root.slotHomeCenter(
-              root.appsSlots + root.pinnedSection.length + (root.hasLeftTileSeparator ? 1 : 0) + index,
+              root.appsSlots + root.appsSeparatorCount + root.pinnedSection.length + (root.hasLeftTileSeparator ? 1 : 0) + index,
               root.appsSlots + root.pinnedSection.length + index,
-              0,
+              root.appsSeparatorCount,
               (root.hasLeftTileSeparator ? root.separatorWidth : 0) + index * root.tileMainSize + (root.tileMainSize - root.iconSlot) / 2)
             property real magnifyScale: {
               if (root.waveHover) return root.magnifyScaleAt(tile.homeCenter)
@@ -4073,20 +4078,7 @@ Item {
           }
         }
 
-        // Wrapped: a Grid positions its children itself, so the rule has to be
-        // centred inside a plain slot rather than anchored to the spine.
-        Item {
-          id: separator
-          visible: root.hasSeparator
-          width: root.vertical ? root.iconSlot : root.separatorWidth
-          height: root.vertical ? root.separatorWidth : root.iconSlot
-          Rectangle {
-            anchors.centerIn: parent
-            width: root.vertical ? root.iconSize * 0.7 : root.separatorWidth
-            height: root.vertical ? root.separatorWidth : root.iconSize * 0.7
-            color: Util.alpha(root.dockForeground, 0.25)
-          }
-        }
+        DockSeparator { visible: root.hasSeparator }
 
         Repeater {
           model: root.runningSection
@@ -4102,9 +4094,9 @@ Item {
             // hidden (fully-tiled) entry occupies zero width in the Row.
             readonly property int visibleIdx: root.visibleRunningSlotBefore(index)
             homeCenter: root.slotHomeCenter(
-              root.appsSlots + root.pinnedSection.length + (root.hasLeftTileSeparator ? 1 : 0) + (root.hasSeparator ? 1 : 0) + root.tileElements + visibleIdx,
+              root.appsSlots + root.appsSeparatorCount + root.pinnedSection.length + (root.hasLeftTileSeparator ? 1 : 0) + (root.hasSeparator ? 1 : 0) + root.tileElements + visibleIdx,
               root.appsSlots + root.pinnedSection.length + visibleIdx,
-              root.hasSeparator,
+              root.appsSeparatorCount + (root.hasSeparator ? 1 : 0),
               root.tilesFixedWidth)
             pinned: false
             active: modelData.appId === root.activeId
@@ -4133,20 +4125,7 @@ Item {
           }
         }
 
-        // Wrapped: a Grid positions its children itself, so the rule has to be
-        // centred inside a plain slot rather than anchored to the spine.
-        Item {
-          id: folderSeparator
-          visible: root.hasFolderSeparator
-          width: root.vertical ? root.iconSlot : root.separatorWidth
-          height: root.vertical ? root.separatorWidth : root.iconSlot
-          Rectangle {
-            anchors.centerIn: parent
-            width: root.vertical ? root.iconSize * 0.7 : root.separatorWidth
-            height: root.vertical ? root.separatorWidth : root.iconSize * 0.7
-            color: Util.alpha(root.dockForeground, 0.25)
-          }
-        }
+        DockSeparator { visible: root.hasFolderSeparator }
 
         Repeater {
           id: foldersRepeater
@@ -4156,9 +4135,9 @@ Item {
             name: modelData.name || "Folder"
             icon: modelData.icon || DockModel.folderIconFor(modelData.path, "")
             homeCenter: root.slotHomeCenter(
-              root.appsSlots + root.pinnedSection.length + (root.hasLeftTileSeparator ? 1 : 0) + (root.hasSeparator ? 1 : 0) + root.tileElements + root.visibleRunningCount + (root.hasFolderSeparator ? 1 : 0) + index,
+              root.appsSlots + root.appsSeparatorCount + root.pinnedSection.length + (root.hasLeftTileSeparator ? 1 : 0) + (root.hasSeparator ? 1 : 0) + root.tileElements + root.visibleRunningCount + (root.hasFolderSeparator ? 1 : 0) + index,
               root.appsSlots + root.pinnedSection.length + root.visibleRunningCount + index,
-              (root.hasSeparator ? 1 : 0) + (root.hasFolderSeparator ? 1 : 0),
+              root.appsSeparatorCount + (root.hasSeparator ? 1 : 0) + (root.hasFolderSeparator ? 1 : 0),
               root.tilesFixedWidth)
             onOpenStackRequested: function(fpath, fname, cx, cy) {
               root.openFolderStack(fpath, fname, cx)

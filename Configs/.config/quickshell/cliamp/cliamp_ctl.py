@@ -47,6 +47,7 @@ HISTORY_PATH = os.path.expanduser("~/.config/cliamp/history.toml")
 # append-only, and parse_history reads all of it on every call, so cap the file
 HISTORY_MAX_BYTES = 96 * 1024
 HISTORY_KEEP = 400
+HISTORY_PLAYLIST_LIMIT = 99
 NOW_PLAYING_PATH = os.path.join(CACHE_DIR, "now_playing.json")
 QUEUE_PATH = os.path.join(CACHE_DIR, "queue.json")
 EXTERNAL_QUEUE_CACHE_PATH = os.path.join(CACHE_DIR, "external_queue.json")
@@ -623,49 +624,57 @@ def record_history(title, artist, url, dur):
     except Exception:
         pass
 
-def parse_history(limit=500):
-    if not os.path.exists(HISTORY_PATH):
+def read_history():
+    if not tomllib or not os.path.exists(HISTORY_PATH):
         return []
     try:
-        if tomllib:
-            with open(HISTORY_PATH, "rb") as f:
-                data = tomllib.load(f)
-            entries = []
-            seen_keys = set()
-            for item in reversed(data.get("entry", [])):
-                title = str(item.get("title") or "").strip()
-                path = str(item.get("path") or "").strip()
-                artist = str(item.get("artist") or "").strip()
-                if title or path:
-                    # If this is a local file path, check if it still exists on disk
-                    if path and not path.startswith(("http://", "https://", "yt:", "spotify:")):
-                        expanded = os.path.expanduser(path)
-                        if os.path.isabs(expanded) and not os.path.exists(expanded):
-                            # File was deleted/moved from disk, prune from recents list
-                            continue
-
-                    m = re.search(r"(?:v=|youtu\.be/)([0-9A-Za-z_-]{11})", path)
-                    if m:
-                        vid_id = m.group(1)
-                        dedup_key = f"yt:{vid_id}"
-                        thumb = os.path.join(AUDIO_CACHE_DIR, f"{vid_id}.jpg")
-                        if os.path.exists(thumb):
-                            item["thumb"] = thumb
-                    elif path:
-                        dedup_key = f"path:{path}"
-                    else:
-                        dedup_key = f"meta:{title.lower()}::{artist.lower()}"
-
-                    if dedup_key in seen_keys:
-                        continue
-                    seen_keys.add(dedup_key)
-                    entries.append(item)
-                if len(entries) >= limit:
-                    break
-            return attach_covers(entries, budget=1.5, key="path")
+        with open(HISTORY_PATH, "rb") as f:
+            return tomllib.load(f).get("entry", [])
     except Exception:
-        pass
-    return []
+        return []
+
+def history_key(item):
+    title = str(item.get("title") or "").strip()
+    path = str(item.get("path") or "").strip()
+    artist = str(item.get("artist") or "").strip()
+    if not (title or path):
+        return None
+    if path and not path.startswith(("http://", "https://", "yt:", "spotify:")):
+        expanded = os.path.expanduser(path)
+        if os.path.isabs(expanded) and not os.path.exists(expanded):
+            return None
+    match = re.search(r"(?:v=|youtu\.be/)([0-9A-Za-z_-]{11})", path)
+    return f"yt:{match.group(1)}" if match else f"path:{path}" if path else f"meta:{title.lower()}::{artist.lower()}"
+
+def unique_history(items, limit):
+    tracks, seen = [], set()
+    for item in reversed(items):
+        key = history_key(item)
+        if key and key not in seen:
+            seen.add(key)
+            tracks.append(item)
+        if len(tracks) >= limit:
+            break
+    return tracks
+
+def parse_history(limit=500):
+    entries = unique_history(read_history(), limit)
+    for item in entries:
+        match = re.search(r"(?:v=|youtu\.be/)([0-9A-Za-z_-]{11})", str(item.get("path") or ""))
+        thumb = os.path.join(AUDIO_CACHE_DIR, f"{match.group(1)}.jpg") if match else ""
+        if thumb and os.path.exists(thumb):
+            item["thumb"] = thumb
+    return attach_covers(entries, budget=1.5, key="path")
+
+def most_played(items, limit=HISTORY_PLAYLIST_LIMIT):
+    ranked = {}
+    for item in reversed(items):
+        key = history_key(item)
+        if key:
+            ranked.setdefault(key, [0, len(ranked), item])[0] += 1
+    tracks = sorted(ranked.values(), key=lambda value: (-value[0], value[1]))[:limit]
+    return [dict(item, url=item.get("path") or f"{item.get('title', '')} {item.get('artist', '')}", plays=count)
+            for count, _, item in tracks]
 
 PLAYLISTS_FILE = os.path.join(CACHE_DIR, "playlists.json")
 
@@ -1693,7 +1702,10 @@ if __name__ == "__main__":
     elif action == "playlists":
         custom = parse_playlists()
         liked = read_liked()
-        result = [{"name": "Recently Played", "count": len(parse_history(500)), "system": True},
+        history = read_history()
+        popular = most_played(history)
+        result = [{"name": "Recently Played", "count": len(unique_history(history, HISTORY_PLAYLIST_LIMIT)), "system": True},
+                  {"name": "Most Played", "count": len(popular), "tracks": popular, "system": True},
                   {"name": LIKED_NAME, "count": len(liked), "tracks": liked, "system": True}]
         for pl in custom:
             result.append({"name": pl.get("name", "Untitled"), "count": len(pl.get("tracks", [])), "tracks": pl.get("tracks", [])})
