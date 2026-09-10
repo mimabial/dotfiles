@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
-#
-# color.targets.sh - Materialize theme target files and wallpaper-mode cleanup
-
 rewrite_if_changed() {
   local source_file="$1"
   local target_file="$2"

@@ -1,57 +1,5 @@
 #!/usr/bin/env bash
-#|---/ /+------------------------------+---/ /|#
-#|--/ /-| Script to patch custom theme |--/ /-|#
-#|-/ /--| kRHYME7                      |-/ /--|#
-#|/ /---+------------------------------+/ /---|#
-
-print_prompt() {
-    [[ "${verbose}" == "false" ]] && return 0
-    while (("$#")); do
-        case "$1" in
-        -r)
-            echo -ne "\e[31m$2\e[0m"
-            shift 2
-            ;; # Red
-        -g)
-            echo -ne "\e[32m$2\e[0m"
-            shift 2
-            ;; # Green
-        -y)
-            echo -ne "\e[33m$2\e[0m"
-            shift 2
-            ;; # Yellow
-        -b)
-            echo -ne "\e[34m$2\e[0m"
-            shift 2
-            ;; # Blue
-        -m)
-            echo -ne "\e[35m$2\e[0m"
-            shift 2
-            ;; # Magenta
-        -c)
-            echo -ne "\e[36m$2\e[0m"
-            shift 2
-            ;; # Cyan
-        -w)
-            echo -ne "\e[37m$2\e[0m"
-            shift 2
-            ;; # White
-        -n)
-            echo -ne "\e[96m$2\e[0m"
-            shift 2
-            ;; # Neon
-        *)
-            echo -ne "$1"
-            shift
-            ;;
-        esac
-    done
-    echo ""
-}
-
 scrDir=$(dirname "$(realpath "$0")")
-# shellcheck disable=SC1091
-# if [ $? -ne 0 ]; then
 if ! source "${scrDir}/global_fn.sh"; then
     echo "Error: unable to source global_fn.sh..."
     exit 1
@@ -60,7 +8,10 @@ fi
 verbose="${4}"
 set +e
 
-# error function
+print_prompt() {
+    [[ "${verbose}" == false ]] || print_log "$@"
+}
+
 ask_help() {
     cat <<HELP
 Usage:
@@ -95,16 +46,6 @@ if [[ -z $1 || -z $2 ]]; then
     exit 1
 fi
 
-wallbashDirs=(
-    "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/wallbash"
-    "${XDG_DATA_HOME:-$HOME/.local/share}/hypr/wallbash"
-    "${XDG_DATA_HOME}/wallbash"
-    "${XDG_DATA_HOME}/hypr/wallbash"
-    "/usr/local/share/hypr/wallbash"
-    "/usr/share/hypr/wallbash"
-)
-
-# set parameters
 Fav_Theme="$1"
 
 if [ -d "$2" ]; then
@@ -157,49 +98,21 @@ print_prompt "Patching" -g " --// ${Fav_Theme} //-- " "from " -b "${Theme_Dir}\n
 Fav_Theme_Dir="${Theme_Dir}/Configs/.config/hypr/themes/${Fav_Theme}"
 [ ! -d "${Fav_Theme_Dir}" ] && print_prompt -r "[ERROR] " "'${Fav_Theme_Dir}'" -y " Do not Exist" && exit 1
 
-# config=$(find "${dcolDir}" -type f -name "*.dcol" | awk -v favTheme="${Fav_Theme}" -F 'theme/' '{gsub(/\.dcol$/, ".theme"); print ".config/hypr/themes/" favTheme "/" $2}')
-config=$(find "${wallbashDirs[@]}" -type f -path "*/theme*" -name "*.dcol" 2>/dev/null | awk '!seen[substr($0, match($0, /[^/]+$/))]++' | awk -v favTheme="${Fav_Theme}" -F 'theme/' '{gsub(/\.dcol$/, ".theme"); print ".config/hypr/themes/" favTheme "/" $2}')
-restore_list=""
-
-while IFS= read -r fileCheck; do
-    if [[ -e "${Theme_Dir}/Configs/${fileCheck}" ]]; then
-        print_prompt -g "[found] " "${fileCheck}"
-        fileBase=$(basename "${fileCheck}")
-        fileDir=$(dirname "${fileCheck}")
-        restore_list+="Y|Y|\${HOME}/${fileDir}|${fileBase}|hyprland\n"
-    else
-        print_prompt -y "[warn] " "${fileCheck} --> do not exist in ${Theme_Dir}/Configs/"
-    fi
-done <<<"$config"
-if [ -f "${Fav_Theme_Dir}/theme.dcol" ]; then
-    print_prompt -n "[note] " "found theme.dcol to override wallpaper dominant colors"
-    restore_list+="Y|Y|\${HOME}/.config/hypr/themes/${Fav_Theme}|theme.dcol|hyprland\n"
-fi
+restore_list="S|\${HOME}/.config/hypr/themes/${Fav_Theme}|.|hyprland\n"
 readonly restore_list
 
-# Get Wallpapers
-wallpapers=$(
-    find "${Fav_Theme_Dir}" -type f \( -iname "*.gif" -o -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) ! -path "*/logo/*"
-)
-wpCount="$(wc -l <<<"${wallpapers}")"
-{ [ -z "${wallpapers}" ] && print_prompt -r "[ERROR] " "No wallpapers found" && exit_flag=true; } || { readonly wallpapers && print_prompt -g "\n[OK] " "wallpapers :: [count] ${wpCount} (.gif+.jpg+.jpeg+.png)"; }
+wallpaper="$(find "${Fav_Theme_Dir}" -type f \( -iname '*.gif' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' \) ! -path '*/logo/*' -print -quit)"
+[[ -n "$wallpaper" ]] || {
+    print_prompt -r "[ERROR] " "No wallpapers found"
+    exit 1
+}
 
-# Get logos
-if [ -d "${Fav_Theme_Dir}/logo" ]; then
-    logos=$(find "${Fav_Theme_Dir}/logo" -type f \( -iname "*.gif" -o -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \))
-    logosCount="$(wc -l <<<"${logos}")"
-    { [ -z "${logos}" ] && print_prompt -y "[warn] " "No logos found"; } || { readonly logos && print_prompt -g "[OK] " "logos :: [count] ${logosCount}\n"; }
-fi
-
-# parse thoroughly 😁
 check_tars() {
     local trVal
     local inVal="${1}"
     local gsLow
     local gsVal
     gsLow=$(echo "${inVal}" | tr '[:upper:]' '[:lower:]')
-    # Use hyprland variables that are set in the hypr.theme file
-    # Using case we can have a predictable output
     gsVal="$(
         case "${gsLow}" in
         gtk)
@@ -230,18 +143,17 @@ check_tars() {
             grep "^[[:space:]]*\$NOTIFICATION[-_]FONT\s*=" "${Fav_Theme_Dir}/hypr.theme" | cut -d '=' -f2 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
             ;;
 
-        *) # fallback to older method
+        *)
             awk -F"[\"']" '/^[[:space:]]*exec[[:space:]]*=[[:space:]]*gsettings[[:space:]]*set[[:space:]]*org.gnome.desktop.interface[[:space:]]*'"${gsLow}"'-theme[[:space:]]*/ {last=$2} END {print last}' "${Fav_Theme_Dir}/hypr.theme"
             ;;
         esac
     )"
 
-    # fallback to older method
     gsVal=${gsVal:-$(awk -F"[\"']" '/^[[:space:]]*exec[[:space:]]*=[[:space:]]*gsettings[[:space:]]*set[[:space:]]*org.gnome.desktop.interface[[:space:]]*'"${gsLow}"'-theme[[:space:]]*/ {last=$2} END {print last}' "${Fav_Theme_Dir}/hypr.theme")}
 
     if [ -n "${gsVal}" ]; then
 
-        if [[ "${gsVal}" =~ ^\$\{?[A-Za-z_][A-Za-z0-9_]*\}?$ ]]; then # check is a variable is set into a variable eg $FONT=$DOCUMENT_FONT
+        if [[ "${gsVal}" =~ ^\$\{?[A-Za-z_][A-Za-z0-9_]*\}?$ ]]; then
             print_prompt -y "[warn] " "Variable ${gsVal} detected,be sure ${gsVal} is set in hypr.theme, skipping check"
         else
             print_prompt -g "[OK] " "hypr.theme :: [${gsLow}]" -b " ${gsVal}"
@@ -267,7 +179,6 @@ check_tars Menu-Font
 check_tars Notification-Font
 print_prompt "" && [[ "${exit_flag}" = true ]] && exit 1
 
-# extract arcs
 declare -A archive_map=(
     ["Gtk"]="${HOME}/.local/share/themes"
     ["Icon"]="${HOME}/.local/share/icons"
@@ -313,38 +224,16 @@ for prefix in "${!archive_map[@]}"; do
 
 done
 
-confDir=${XDG_CONFIG_HOME:-"$HOME/.config"}
-
-# populate wallpaper
-Fav_Theme_Walls="${confDir}/hypr/themes/${Fav_Theme}/wallpapers"
-[ ! -d "${Fav_Theme_Walls}" ] && mkdir -p "${Fav_Theme_Walls}"
-while IFS= read -r walls; do
-    cp -f "${walls}" "${Fav_Theme_Walls}"
-done <<<"${wallpapers}"
-
-# populate logos
-Fav_Theme_Logos="${confDir}/hypr/themes/${Fav_Theme}/logo"
-if [ -n "${logos}" ]; then
-    [ ! -d "${Fav_Theme_Logos}" ] && mkdir -p "${Fav_Theme_Logos}"
-    while IFS= read -r logo; do
-        if [ -f "${logo}" ]; then
-            cp -f "${logo}" "${Fav_Theme_Logos}"
-        else
-            print_prompt -y "[warn] " "${logo} --> do not exist"
-        fi
-    done <<<"${logos}"
-fi
-
-# restore configs with theme override
-echo -en "${restore_list}" >"${Theme_Dir}/restore_cfg.lst"
-print_prompt -g "\n[exec] " "restore_cfg.sh \"${Theme_Dir}/restore_cfg.lst\" \"${Theme_Dir}/Configs\" \"${Fav_Theme}\"\n"
-"${scrDir}/restore_cfg.sh" "${Theme_Dir}/restore_cfg.lst" "${Theme_Dir}/Configs" "${Fav_Theme}" &>/dev/null
+printf '%b' "${restore_list}" >"${Theme_Dir}/restore_cfg.psv"
+print_prompt -g "\n[exec] " "restore_cfg.sh \"${Theme_Dir}/restore_cfg.psv\" \"${Theme_Dir}/Configs\" \"${Fav_Theme}\"\n"
+"${scrDir}/restore_cfg.sh" "${Theme_Dir}/restore_cfg.psv" "${Theme_Dir}/Configs" "${Fav_Theme}" &>/dev/null
 if [ "${3}" != "--skipcaching" ]; then
-    "$HOME/.local/lib/hypr/swwwallcache.sh" -t "${Fav_Theme}"
     if command -v hyprshell >/dev/null 2>&1; then
-        hyprshell theme.switch.sh
+        hyprshell wallpaper/wallpaper.cache -f
+        hyprshell theme/theme.switch -q
     else
-        "$HOME/.local/lib/hypr/theme/theme.switch.sh"
+        "$HOME/.local/lib/hypr/wallpaper/wallpaper.cache.sh" -f
+        "$HOME/.local/lib/hypr/theme/theme.switch.sh" -q
     fi
 fi
 

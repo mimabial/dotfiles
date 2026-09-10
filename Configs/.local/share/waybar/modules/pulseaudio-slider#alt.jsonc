@@ -1,7 +1,0 @@
-{
-  "pulseaudio/slider#alt": {
-    "min": 0,
-    "max": 140,
-    "orientation": "vertical"
-  }
-}

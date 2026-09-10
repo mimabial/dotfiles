@@ -1,11 +1,4 @@
 #!/usr/bin/env bash
-#
-# brightness-control.sh — Adjust display brightness with optional dunst notification.
-#
-# Usage: brightness-control.sh <i|d> [step]
-#
-# Depends on: brightnessctl, dunstify, controls/lib/brightness.common.bash, runtime/init.bash
-#
 set -u
 
 LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
@@ -23,8 +16,7 @@ readonly BRIGHTNESS_LOW_THRESHOLD=10
 readonly BRIGHTNESS_VERY_LOW_THRESHOLD=1
 
 usage() {
-  local cmd
-  cmd="$(basename "$0")"
+  local cmd="${0##*/}"
   cat <<EOF
 Usage: ${cmd} <action> [step]
 
@@ -38,12 +30,10 @@ Examples:
 EOF
 }
 
-current_brightness() {
-  brightnessctl -m | awk -F, 'NR==1 { gsub(/%/, "", $4); print $4 + 0 }'
-}
-
-brightness_device() {
-  brightnessctl info | awk -F"'" '/Device/ { print $2; exit }'
+brightness_percent() {
+  local _device _class _raw percent _max
+  IFS=, read -r _device _class _raw percent _max <<<"$1"
+  printf '%s\n' "$((10#${percent%%%}))"
 }
 
 notify_unavailable() {
@@ -54,41 +44,39 @@ notify_unavailable() {
 
 notify_brightness() {
   local notify_enabled="$1"
-  local brightness=""
-  local device_name=""
+  local info="" device_name="" _class _raw percent _max brightness=""
   local angle=0
   local icon=""
   local bar=""
   local icon_dir=""
 
   is_true "${notify_enabled}" || return 0
+  command -v dunstify >/dev/null 2>&1 || return 0
 
-  brightness="$(current_brightness)"
-  device_name="$(brightness_device)"
+  info="$(brightnessctl -m 2>/dev/null)" || return 0
+  IFS=, read -r device_name _class _raw percent _max <<<"${info}"
+  brightness="$((10#${percent%%%}))"
   angle=$((((brightness + 2) / 5) * 5))
   ((angle < 0)) && angle=0
   ((angle > 100)) && angle=100
 
   icon_dir="${ICONS_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/icons}"
   icon="${icon_dir}/Pywal16-Icon/media/knob-${angle}.svg"
-  bar="$(printf '%*s' $((brightness / BRIGHTNESS_BAR_DIVISOR)) '' | tr ' ' '.')"
+  printf -v bar '%*s' "$((brightness / BRIGHTNESS_BAR_DIVISOR))" ''
+  bar="${bar// /.}"
 
   dunstify -a "Brightness control" -r "${BRIGHTNESS_NOTIFY_REPLACE_ID}" -t "${BRIGHTNESS_NOTIFY_TIMEOUT_MS}" \
     -e -i "${icon}" "${brightness}${bar}" "${device_name}"
 }
 
 apply_increase() {
-  local step="$1"
-  local current
-  current="$(current_brightness)"
+  local step="$1" current="$2"
   ((current < BRIGHTNESS_LOW_THRESHOLD)) && step=1
   brightnessctl set +"${step}%" >/dev/null
 }
 
 apply_decrease() {
-  local step="$1"
-  local current
-  current="$(current_brightness)"
+  local step="$1" current="$2"
   ((current <= BRIGHTNESS_LOW_THRESHOLD)) && step=1
   if ((current <= BRIGHTNESS_VERY_LOW_THRESHOLD)); then
     brightnessctl set "${step}%" >/dev/null
@@ -102,11 +90,13 @@ main() {
   local default_step="${BRIGHTNESS_STEPS:-5}"
   local action="${1:-}"
   local step="${2:-${default_step}}"
+  local info="" current=""
 
-  if ! brightness_control_enabled; then
+  if ! require_cmd brightnessctl || ! info="$(brightnessctl -m 2>/dev/null)"; then
     notify_unavailable
     return 0
   fi
+  current="$(brightness_percent "${info}")"
 
   if [[ ! "${step}" =~ ^[0-9]+$ ]]; then
     print_log -sec "brightness" -err "step" "Invalid step: ${step}"
@@ -116,11 +106,11 @@ main() {
 
   case "${action}" in
     i | -i)
-      apply_increase "${step}"
+      apply_increase "${step}" "${current}"
       notify_brightness "${notify_enabled}"
       ;;
     d | -d)
-      apply_decrease "${step}"
+      apply_decrease "${step}" "${current}"
       notify_brightness "${notify_enabled}"
       ;;
     *)

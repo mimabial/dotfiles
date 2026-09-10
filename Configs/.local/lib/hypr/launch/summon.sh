@@ -1,11 +1,4 @@
 #!/usr/bin/env bash
-#
-# summon.sh — Move a matching window to the current/empty workspace and apply optional geometry; spawn it if missing.
-#
-# Usage: hyprshell launch/summon.sh [options] <window-pattern> -- <command> [args...]
-#
-# Depends on: hyprctl, setsid, launch/window.common.bash, runtime/init.bash (for print_log)
-#
 set -euo pipefail
 
 LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
@@ -156,8 +149,7 @@ launch_compute_target_position() {
   printf '%s\t%s\n' "${target_x}" "${target_y}"
 }
 
-#? Splits the resize/clamp half of the geometry pipeline from the position half.
-#? Re-reads window state after each mutation so the caller sees the post-resize size.
+# Re-read window state after each resize so positioning uses the clamped size.
 launch_apply_window_size() {
   local window_address="$1"
   local width_spec="$2"

@@ -1,12 +1,4 @@
 #!/usr/bin/env bash
-#
-# webapp.sh — Launch a URL as a Chromium-style PWA window via the configured chromium-family browser; falls back to chromium if unsupported.
-#
-# Usage: webapp.sh <url> [browser-args...]
-#
-# Depends on: xdg-settings, setsid, uwsm-app, ${HYPR_LIB_DIR}/system/desktop-entry.exec.bash
-#
-
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/system/desktop-entry.exec.bash"
 

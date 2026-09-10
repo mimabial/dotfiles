@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# Self-check for the fftab-bridge media stack. Auto-fixes what needs no user
-# (native-messaging manifest, Firefox pref via user.js) and notifies whatever
-# remains. Silent no-op when everything is healthy. Hooked at session start.
 set -euo pipefail
 
 # Per-host opt-out: export FFTAB_ENSURE_DISABLE=1 in env-overrides.

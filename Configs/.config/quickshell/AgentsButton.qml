@@ -2,8 +2,6 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// Bar entry for AI coding subscriptions. Strictly a display: hyprshell
-// system/agent-usage emits one record per agent and this draws what appears.
 BarButton {
     id: root
     property bool popupEnabled: true

@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# Shared helpers for live Hyprland monitor management scripts.
-# Sourced by system/monitor-*.sh entrypoints.
-
 monitor_state_dir() {
   printf '%s\n' "${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}"
 }

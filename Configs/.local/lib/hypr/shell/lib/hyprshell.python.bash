@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
 
-# Python environment and pypr/pip helpers for hyprshell.
-
 python_initialized() {
   python "${LIB_DIR}/hypr/pyutils/pip_env.py" rebuild
 }

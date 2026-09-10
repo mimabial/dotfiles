@@ -131,7 +131,6 @@ class Daemon:
         self.monitors: list[dict] = []
         self.refresh_monitors()
 
-    # ---- state -------------------------------------------------------
     @property
     def unmanaged(self) -> bool:
         return bool(self.state.get("unmanaged", False))
@@ -150,7 +149,6 @@ class Daemon:
         except (RuntimeError, OSError, ValueError):
             self.monitors = []
 
-    # ---- documents ---------------------------------------------------
     def status_document(self) -> dict:
         stored = profiles.load_all()
         ranked = profiles.rank(self.monitors, stored)
@@ -257,7 +255,6 @@ class Daemon:
             "suggested_profile": suggested,
         }
 
-    # ---- transport ---------------------------------------------------
     def broadcast(self) -> None:
         frame = json.dumps(
             {
@@ -275,7 +272,6 @@ class Daemon:
                 except OSError:
                     self.clients.remove(client)
 
-    # ---- profile application ----------------------------------------
     def activate(self, profile: dict, remember: bool = True) -> None:
         render.apply(profile)
         if remember:
@@ -304,7 +300,6 @@ class Daemon:
             self.activate(profile)
             log("applied profile: %s" % match["name"])
 
-    # ---- preview transactions ---------------------------------------
     def start_preview(self, params: dict) -> dict:
         if self.preview:
             raise ValueError("A display preview is already running")
@@ -355,7 +350,6 @@ class Daemon:
                 self.preview = None
             self.broadcast()
 
-    # ---- dispatch ----------------------------------------------------
     def handle(self, method: str, params: dict, client: socket.socket):
         if method in ("subscribe", "status"):
             if method == "subscribe":
@@ -465,7 +459,6 @@ class Daemon:
         if notify:
             self.broadcast()
 
-    # ---- background loops --------------------------------------------
     def watch_hyprland(self) -> None:
         """Re-evaluate profiles when displays come and go."""
         while True:

@@ -1,11 +1,4 @@
 #!/usr/bin/env bash
-#
-# agent-hub.sh — Focus or launch the Agent Hub TUI.
-#
-# Usage: agent-hub.sh
-#
-# Depends on: hyprshell launch/{focus,terminal-present}.sh, agent-tui
-#
 set -euo pipefail
 
 # shellcheck source=/dev/null

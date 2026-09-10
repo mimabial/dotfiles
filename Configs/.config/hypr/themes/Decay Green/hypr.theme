@@ -8,12 +8,12 @@ $NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME = capitaine-cursors-light
 $CURSOR_SIZE = 30
-$FONT = 3270 Nerd Font
-$BAR_FONT = 3270 Nerd Font Mono
-$MENU_FONT = 3270 Nerd Font Mono
-$MONOSPACE_FONT = 3270 Nerd Font Mono
-$TERMINAL_FONT = 3270 Nerd Font Mono
-$NOTIFICATION_FONT = 3270 Nerd Font Mono
+$FONT = EnvyCodeR Nerd Font
+$BAR_FONT = EnvyCodeR Nerd Font
+$MENU_FONT = EnvyCodeR Nerd Font
+$MONOSPACE_FONT = EnvyCodeR Nerd Font
+$TERMINAL_FONT = EnvyCodeR Nerd Font
+$NOTIFICATION_FONT = EnvyCodeR Nerd Font
 
 # Theme variables above are the primary inputs used by theme.switch.sh.
 

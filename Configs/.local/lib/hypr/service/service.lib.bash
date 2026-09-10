@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
 
-# Shared helpers for hypr service scripts.
-
 HYPR_SERVICE_LIB_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly HYPR_SERVICE_LIB_DIR
 

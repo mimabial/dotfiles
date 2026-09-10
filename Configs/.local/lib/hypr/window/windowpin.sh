@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-# Toggle to pop-out a tile to stay fixed on a display basis.
-
 set -euo pipefail
 
 HYPR_LIB_ROOT="${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}"

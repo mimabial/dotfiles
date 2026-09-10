@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-"""
-hyq - Hyprland configuration query tool
-A Python implementation with full hyprlang parsing support
-"""
+"""Query values from Hyprland configuration files."""
 
 import argparse
 import glob as globlib
@@ -11,22 +8,19 @@ import logging
 import os
 import re
 import sys
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 logger = logging.getLogger("hyq")
 
 
 class HyprlangParser:
-    """Parser for Hyprland configuration files"""
-
-    def __init__(self, follow_source: bool = False, config_dir: Optional[str] = None):
-        self.variables: Dict[str, str] = {}
-        self.config: Dict[str, Any] = {}
+    def __init__(self, follow_source: bool = False, config_dir: str | None = None):
+        self.variables: dict[str, str] = {}
+        self.config: dict[str, Any] = {}
         self.follow_source = follow_source
         self.config_dir = config_dir or os.getcwd()
 
     def normalize_path(self, path: str) -> str:
-        """Normalize and expand path"""
         path = path.strip().strip('"').strip("'")
 
         if path.startswith("~"):
@@ -39,14 +33,12 @@ class HyprlangParser:
 
         return path
 
-    def resolve_glob(self, pattern: str) -> List[str]:
-        """Resolve glob pattern"""
+    def resolve_glob(self, pattern: str) -> list[str]:
         pattern = self.normalize_path(pattern)
         matches = globlib.glob(pattern)
         return sorted(matches)
 
     def resolve_variable(self, value: str, depth: int = 0, max_depth: int = 10) -> str:
-        """Recursively resolve variable references"""
         if depth >= max_depth:
             return value
 
@@ -61,8 +53,6 @@ class HyprlangParser:
         return re.sub(pattern, replacer, value)
 
     def strip_comment(self, line: str) -> str:
-        """Remove comments from line"""
-        # Find # that's not inside quotes
         in_quotes = False
         quote_char = None
         for i, char in enumerate(line):
@@ -77,7 +67,6 @@ class HyprlangParser:
         return line
 
     def parse_value(self, value_str: str) -> Any:
-        """Parse a value string into appropriate type"""
         value_str = value_str.strip()
 
         if (value_str.startswith('"') and value_str.endswith('"')) or (
@@ -90,7 +79,7 @@ class HyprlangParser:
         if value_str.lower() in ("false", "no", "off"):
             return False
 
-        if value_str.startswith("0x") or value_str.startswith("0X"):
+        if value_str.startswith(("0x", "0X")):
             try:
                 return int(value_str, 16)
             except ValueError:
@@ -106,14 +95,9 @@ class HyprlangParser:
         except ValueError:
             pass
 
-        rgb_match = re.match(r"rgba?\((.*?)\)", value_str)
-        if rgb_match:
-            return value_str
-
         return value_str
 
-    def set_nested_value(self, keys: List[str], value: Any):
-        """Set a value in nested dictionary"""
+    def set_nested_value(self, keys: list[str], value: Any):
         current = self.config
         for key in keys[:-1]:
             if key not in current:
@@ -141,14 +125,12 @@ class HyprlangParser:
         current[final_key] = self.merge_repeated_values(current[final_key], value)
 
     @staticmethod
-    def merge_repeated_values(existing: Any, new_value: Any) -> List[Any]:
-        """Accumulate repeated directives like bind= and windowrule=."""
+    def merge_repeated_values(existing: Any, new_value: Any) -> list[Any]:
         if isinstance(existing, list):
             return [*existing, new_value]
         return [existing, new_value]
 
-    def get_nested_value(self, keys: List[str]) -> Optional[Any]:
-        """Get a value from nested dictionary"""
+    def get_nested_value(self, keys: list[str]) -> Any | None:
         current = self.config
         for key in keys[:-1]:
             if key not in current:
@@ -166,8 +148,7 @@ class HyprlangParser:
             return value["_value"]
         return value
 
-    def parse_file(self, filepath: str, context_stack: Optional[List[str]] = None):
-        """Parse a configuration file"""
+    def parse_file(self, filepath: str, context_stack: list[str] | None = None):
         if context_stack is None:
             context_stack = []
 
@@ -256,8 +237,7 @@ class HyprlangParser:
 
         self.config_dir = old_config_dir
 
-    def query(self, query_str: str) -> Optional[Any]:
-        """Query a configuration value"""
+    def query(self, query_str: str) -> Any | None:
         if query_str.startswith("$"):
             var_name = query_str[1:]
             if var_name in self.variables:
@@ -269,15 +249,12 @@ class HyprlangParser:
 
 
 class SchemaLoader:
-    """Load and apply schema defaults"""
-
     def __init__(self, schema_path: str):
         self.schema_path = schema_path
         self.schema = None
         self.load_schema()
 
     def load_schema(self):
-        """Load schema from JSON file"""
         if not os.path.exists(self.schema_path):
             logger.error(f"Schema file not found: {self.schema_path}")
             return
@@ -289,8 +266,7 @@ class SchemaLoader:
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse schema JSON: {e}")
 
-    def get_default(self, key: str) -> Optional[Any]:
-        """Get default value for a key from schema"""
+    def get_default(self, key: str) -> Any | None:
         if not self.schema or "hyprlang_schema" not in self.schema:
             return None
 
@@ -301,8 +277,7 @@ class SchemaLoader:
                     return data["default"]
         return None
 
-    def get_type(self, key: str) -> Optional[str]:
-        """Get expected type for a key from schema"""
+    def get_type(self, key: str) -> str | None:
         if not self.schema or "hyprlang_schema" not in self.schema:
             return None
 
@@ -313,7 +288,6 @@ class SchemaLoader:
 
 
 def infer_scalar_type(value: Any) -> str:
-    """Infer type name from a scalar value"""
     if value is None:
         return "NULL"
     elif isinstance(value, bool):
@@ -323,7 +297,7 @@ def infer_scalar_type(value: Any) -> str:
     elif isinstance(value, float):
         return "FLOAT"
     elif isinstance(value, str):
-        if value.startswith("rgb") or value.startswith("0x") or value.startswith("#"):
+        if value.startswith(("rgb", "0x", "#")):
             return "COLOR"
         return "STRING"
     else:
@@ -331,7 +305,6 @@ def infer_scalar_type(value: Any) -> str:
 
 
 def infer_type(value: Any) -> str:
-    """Infer type name from a scalar value or repeated directive list"""
     if isinstance(value, list):
         item_types = {infer_scalar_type(item) for item in value}
         item_types.discard("NULL")
@@ -344,19 +317,16 @@ def infer_type(value: Any) -> str:
 
 
 def normalize_type(type_str: str) -> str:
-    """Normalize type string for comparison"""
     return type_str.upper().replace("_", "").replace("-", "")
 
 
 def stringify_value(value: Any) -> str:
-    """Convert a query result into plain-text output"""
     if isinstance(value, list):
         return "\n".join(stringify_value(item) for item in value)
     return str(value)
 
 
 def escape_env_value(value: str) -> str:
-    """Escape a string for the simple KEY="value" env export format"""
     value = value.replace("\\", "\\\\")
     value = value.replace('"', '\\"')
     value = value.replace("$", "\\$")
@@ -366,7 +336,6 @@ def escape_env_value(value: str) -> str:
 
 
 def matches_regex(value: str, pattern: str) -> bool:
-    """Check if value matches regex pattern"""
     try:
         return bool(re.match(pattern, value))
     except re.error:
@@ -374,8 +343,7 @@ def matches_regex(value: str, pattern: str) -> bool:
         return False
 
 
-def filter_value(value: Any, predicate) -> Optional[Any]:
-    """Filter a scalar or repeated directive list with a predicate"""
+def filter_value(value: Any, predicate) -> Any | None:
     if isinstance(value, list):
         filtered = [item for item in value if predicate(item)]
         if not filtered:
@@ -386,29 +354,20 @@ def filter_value(value: Any, predicate) -> Optional[Any]:
     return value if predicate(value) else None
 
 
-def parse_query_input(query_str: str) -> Tuple[str, Optional[str], Optional[str]]:
-    """
-    Parse query string in format: query[expectedType][expectedRegex]
-    Returns: (query, expected_type, expected_regex)
-    """
+def parse_query_input(query_str: str) -> tuple[str, str | None, str | None]:
+    """Split query[expectedType][expectedRegex]."""
     match = re.match(r"^([^\[]+)(?:\[([^\]]*)\])?(?:\[([^\]]*)\])?", query_str)
     if not match:
         return query_str, None, None
 
-    query = match.group(1)
-    expected_type = match.group(2) if match.group(2) else None
-    expected_regex = match.group(3) if match.group(3) else None
-
-    return query, expected_type, expected_regex
+    return match.group(1), match.group(2) or None, match.group(3) or None
 
 
 def process_query(
     parser: HyprlangParser,
-    schema: Optional[SchemaLoader],
+    schema: SchemaLoader | None,
     query_str: str,
-    allow_missing: bool,
-) -> Dict[str, Any]:
-    """Process a single query and return result"""
+) -> dict[str, Any]:
     query, expected_type, expected_regex = parse_query_input(query_str)
 
     value = parser.query(query)
@@ -438,42 +397,35 @@ def process_query(
     return {"key": query, "value": value, "type": infer_type(value), "flags": []}
 
 
-def export_json(results: List[Dict[str, Any]]):
-    """Export results as JSON"""
-    output = []
-    for result in results:
-        output.append(
-            {
-                "key": result["key"],
-                "val": result["value"],
-                "type": result["type"],
-                "flags": result["flags"],
-            }
-        )
+def export_json(results: list[dict[str, Any]]):
+    output = [
+        {
+            "key": result["key"],
+            "val": result["value"],
+            "type": result["type"],
+            "flags": result["flags"],
+        }
+        for result in results
+    ]
     print(json.dumps(output, indent=2))
 
 
-def export_env(results: List[Dict[str, Any]], queries: List[str]):
-    """Export results as environment variables"""
-    for i, result in enumerate(results):
-        query = queries[i]
-
-        if query.startswith("$"):
-            query = query[1:]
+def export_env(results: list[dict[str, Any]], queries: list[str]):
+    for result, raw_query in zip(results, queries):
+        query = raw_query.removeprefix("$")
 
         query = re.sub(r"\[.*?\]", "", query)
 
         env_key = query.replace(":", "_").replace("-", "_")
 
-        is_dynamic = queries[i].startswith("$")
+        is_dynamic = raw_query.startswith("$")
         prefix = "__" if is_dynamic else "_"
 
         env_value = escape_env_value(stringify_value(result["value"]))
         print(f'{prefix}{env_key}="{env_value}"')
 
 
-def export_plain(results: List[Dict[str, Any]], delimiter: str):
-    """Export results as plain text with delimiter"""
+def export_plain(results: list[dict[str, Any]], delimiter: str):
     values = [
         stringify_value(r["value"]) if r["type"] != "NULL" else "" for r in results
     ]
@@ -499,10 +451,6 @@ def main():
     parser.add_argument(
         "--allow-missing", action="store_true", help="Allow missing values"
     )
-    parser.add_argument(
-        "--get-defaults", action="store_true", help="Get default keys from schema"
-    )
-    parser.add_argument("--strict", action="store_true", help="Enable strict mode")
     parser.add_argument(
         "--export", choices=["json", "env"], help="Export format: json or env"
     )
@@ -531,17 +479,12 @@ def main():
         )
         return 1
 
-    schema = None
-    if args.schema:
-        schema = SchemaLoader(args.schema)
+    schema = SchemaLoader(args.schema) if args.schema else None
 
     hypr_parser = HyprlangParser(follow_source=args.source)
     hypr_parser.parse_file(config_file)
 
-    results = []
-    for query in args.queries:
-        result = process_query(hypr_parser, schema, query, args.allow_missing)
-        results.append(result)
+    results = [process_query(hypr_parser, schema, query) for query in args.queries]
 
     if args.export == "json":
         export_json(results)
@@ -550,8 +493,7 @@ def main():
     else:
         export_plain(results, args.delimiter)
 
-    null_count = sum(1 for r in results if r["type"] == "NULL")
-    return 1 if null_count > 0 and not args.allow_missing else 0
+    return int(not args.allow_missing and any(r["type"] == "NULL" for r in results))
 
 
 if __name__ == "__main__":

@@ -1,7 +1,4 @@
 #!/usr/bin/env python3
-# Renderer: GIMP gimp.css (palette-derived @define-color overrides for GIMP's Default theme).
-# Output: ~/.cache/hypr/render/gimp/gimp.css
-
 import hashlib
 import json
 import os

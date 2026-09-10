@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# Screen recording with gpu-screen-recorder
-# Supports desktop/mic audio, webcam overlay, auto 4K cap, preview thumbnails
-
 set -euo pipefail
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1

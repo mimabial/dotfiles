@@ -1,13 +1,14 @@
 $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 
-$ICON_THEME = Nordic-darker
+$ICON_THEME = Papirus-bluegrey-dark
 $COLOR_SCHEME = prefer-dark
 $NVIM_SCHEME = nord
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
-$CURSOR_THEME = Nordzy-cursors-white
-$CURSOR_SIZE = 26
+$CURSOR_THEME = Sunity-cursors-white
+$CURSOR_SIZE = 30
+
 $FONT = Lilex Nerd Font
 $BAR_FONT = Lilex Nerd Font
 $MENU_FONT = Lilex Nerd Font

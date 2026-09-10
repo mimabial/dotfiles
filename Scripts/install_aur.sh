@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-#|---/ /+-------------------------------------------+---/ /|#
-#|--/ /-| Script to install aur helper, yay or paru |--/ /-|#
-#|/ /---+-------------------------------------------+/ /---|#
 
 scrDir=$(dirname "$(realpath "$0")")
 # shellcheck disable=SC1091

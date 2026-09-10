@@ -107,7 +107,6 @@ def send(
             _print_fallback(summary, body, app_name)
             return
 
-    # Run in daemon thread so it doesn't block main thread
     thread = threading.Thread(target=_send_in_background, daemon=True)
     thread.start()
 

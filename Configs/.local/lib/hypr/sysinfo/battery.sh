@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# A simple script to display a battery icon
-
 set -euo pipefail
 
 usage() {
@@ -22,38 +20,23 @@ if [[ "${1-}" == "-h" || "${1-}" == "--help" ]]; then
     exit 0
 fi
 
-total_capacity=0
-battery_count=0
-
-battery_path=""
+total_capacity=0 battery_count=0 battery_path=
 for bat in /sys/class/power_supply/BAT*; do
-    if [[ -d "$bat" ]]; then
-        battery_path="$bat"
-        break
-    fi
+    [[ -r $bat/capacity && -r $bat/status ]] || continue
+    [[ -n $battery_path ]] || battery_path=$bat
+    total_capacity=$((total_capacity + $(<"$bat/capacity")))
+    ((++battery_count))
 done
-
-for capacity in /sys/class/power_supply/BAT*/capacity; do
-    if [[ -f "$capacity" ]]; then
-        total_capacity=$((total_capacity + $(<"$capacity")))
-        battery_count=$((battery_count + 1))
-    fi
-done
-
-if ((battery_count == 0)); then
-    exit 0
-fi
+((battery_count)) || exit 0
 
 average_capacity=$((total_capacity / battery_count))
 index=$((average_capacity / 10))
 
-# Define icons for charging, discharging, and status
-# Charging icons from 0% to 100% (last icons repeated to fill 11 levels)
 charging_icons=("󰂆 " "󰂇 " "󰂈 " "󰂉 " "󰂊 " "󰂋 " "󰂋 " "󰂋 " "󰂋 " "󰂋 " "󰂅 ") 
 discharging_icons=("󰂎" "󰁺" "󰁻" "󰁼" "󰁽" "󰁾" "󰁿" "󰂀" "󰂁" "󰂂" "󰁹")
-status_icons=("" "X" "󰂇") # Add appropriate icons for different statuses
+status_icons=("" "X" "󰂇")
 
-battery_status=$(cat "$battery_path/status")
+battery_status=$(<"$battery_path/status")
 
 formats=("$@")
 
@@ -95,7 +78,6 @@ output_format() {
     esac
 }
 
-# Output the information based on provided format options
 if [ ${#formats[@]} -eq 0 ]; then
     output_format "icon"
 else

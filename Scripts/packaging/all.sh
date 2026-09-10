@@ -21,7 +21,7 @@ archive_install_pkg_list() {
 trap archive_install_pkg_list EXIT
 
 cp "${scrDir}/pkg_core.lst" "${scrDir}/install_pkg.lst"
-echo -e "\n#user packages" >>"${scrDir}/install_pkg.lst"
+printf '\n#user packages\n' >>"${scrDir}/install_pkg.lst"
 
 if [ -n "${custom_pkg}" ]; then
     cat "${custom_pkg}" >>"${scrDir}/install_pkg.lst"

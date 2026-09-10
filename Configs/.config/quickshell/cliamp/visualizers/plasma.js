@@ -36,7 +36,6 @@ function render(ctx, d) {
   var dt = Math.min(0.12, Math.max(0.001, (now - st.plasmaLast) / 1000))
   st.plasmaLast = now
 
-  // Resting state when paused or quiet
   if (!isPlaying || rawEnergy < 0.005) {
     st.plasmaBands = []
     ctx.strokeStyle = H.rgba(d.dim, 0.35)
@@ -48,7 +47,6 @@ function render(ctx, d) {
     return
   }
 
-  // 1. Temporally and spatially smoothed acoustic frequency extraction.
   var smoothBands = smoothSpectrum(st, bands, dt)
   var bass = H.bandAvg(smoothBands, 0, 7)
   var mids = H.bandAvg(smoothBands, 7, 16)
@@ -56,7 +54,6 @@ function render(ctx, d) {
   var totalEnergy = bass * 0.50 + mids * 0.35 + highs * 0.15
   var beatDrop = d.beatDrop || 0
 
-  // 2. Controlled Acoustic Pacing (Calm, organic motion that speeds up on energy bursts)
   // Integrated, not frame * speed -- see siriwave.js. Rate is rad/s.
   st.plasmaPhase += (0.234 + totalEnergy * 0.422 + beatDrop * 0.351) * dt
   var phase = st.plasmaPhase
@@ -74,7 +71,6 @@ function render(ctx, d) {
     return Math.max(0.0, 1.0 - d2 * d2)
   }
 
-  // 3. Fluid Harmonic Silk Layers
   // Three adjacent palette hues, same reasoning as siriwave.
   var pal = d.colors || []
   var layers = [
@@ -98,7 +94,6 @@ function render(ctx, d) {
       points.push({ x: x, y: midY - waveVal })
     }
 
-    // Under-fill gradient with smooth fade
     ctx.beginPath()
     ctx.moveTo(0, midY)
     for (var point = 0; point < points.length; point++) ctx.lineTo(points[point].x, points[point].y)
@@ -113,7 +108,6 @@ function render(ctx, d) {
     ctx.fillStyle = grad
     ctx.fill()
 
-    // Glowing Silk Surface Line
     ctx.beginPath()
     for (var surface = 0; surface < points.length; surface++) {
       if (surface === 0) ctx.moveTo(points[surface].x, points[surface].y)

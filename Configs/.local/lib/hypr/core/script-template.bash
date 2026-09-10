@@ -1,12 +1,7 @@
 #!/usr/bin/env bash
-#
 # <name>.sh — <one-line purpose>
-#
-# Usage:
-#   <name>.sh [-flag] <arg>
-#
+# Usage: <name>.sh [-flag] <arg>
 # Depends on: <runtime modules + external commands>
-#
 set -euo pipefail
 
 LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
@@ -16,7 +11,7 @@ hypr_runtime_require state notify || exit 1
 
 usage() {
   cat <<EOF
-Usage: $(basename "$0") [options]
+Usage: ${0##*/} [options]
 
 Options:
   -h, --help    Show this help
@@ -34,6 +29,7 @@ main() {
         ;;
       --)
         shift
+        arg="${1:-}"
         break
         ;;
       -*)
@@ -43,10 +39,9 @@ main() {
         ;;
       *)
         arg="$1"
-        shift
         ;;
     esac
-    shift || true
+    shift
   done
 
   [[ -n "${arg}" ]] || {

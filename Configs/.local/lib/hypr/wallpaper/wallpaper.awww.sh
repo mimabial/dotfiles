@@ -1,11 +1,8 @@
 #!/usr/bin/env bash
-# Wallpaper backend adapter for the awww runtime wallpaper daemon.
-
 set -euo pipefail
 
 selected_wall="${1:-"${WALLPAPER_CURRENT_DIR:-${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/wallpaper/current}/wall.set"}"
 
-# Use flock for robust locking (releases automatically on exit/crash)
 LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 
 # shellcheck disable=SC1090

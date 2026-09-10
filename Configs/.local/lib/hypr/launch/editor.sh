@@ -1,11 +1,4 @@
 #!/usr/bin/env bash
-#
-# editor.sh — Launch $EDITOR; wrap TUI editors in a terminal, GUI editors directly.
-#
-# Usage: editor.sh [files...]
-#
-# Depends on: setsid, uwsm-app, tui-terminal-exec, $EDITOR (default nvim)
-#
 set -euo pipefail
 
 # shellcheck source=/dev/null

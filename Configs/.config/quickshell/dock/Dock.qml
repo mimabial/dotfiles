@@ -17,7 +17,6 @@ import "DockModel.js" as DockModel
 Item {
   id: root
 
-  // ----------------------------------------------------- inline components
 
   // Hover bubble with a dwell delay, so sweeping the pointer across the dock
   // does not flash a label for every icon it passes.
@@ -123,7 +122,6 @@ Item {
 
     readonly property bool urgent: {
       if (!root.showUrgentHint) return false
-      // Foreground Suppression Rule: An app currently focused in the foreground suppresses urgency bounce
       if (item.active || item.isFocused) return false
       if (item.appId && root.urgentMap[item.appId]) return true
       var list = item.windowList || []
@@ -376,7 +374,6 @@ Item {
               item.selectedWindowIdx = (item.selectedWindowIdx + dir + wins.length) % wins.length
             }
 
-            // If context menu is open for this app, synchronize its selection
             if (root.contextAppId === item.appId) {
               try { appContextMenuColumn.selectedWindowIdx = item.selectedWindowIdx } catch (e) {}
               return
@@ -442,7 +439,6 @@ Item {
         } else if (mouse.button === Qt.MiddleButton) {
           item.newWindowRequested(item.appId)
         } else if (mouse.button === Qt.LeftButton) {
-          // If context menu is open for this app:
           if (root.contextAppId === item.appId) {
             var chosenIdx = item.selectedWindowIdx
             try {
@@ -463,7 +459,6 @@ Item {
             return
           }
 
-          // If a specific window was selected via scroll wheel in tooltip:
           if (item.selectedWindowIdx >= 0 && item.tooltipWindows && item.selectedWindowIdx < item.tooltipWindows.length) {
             var chosenWin = item.tooltipWindows[item.selectedWindowIdx]
             if (chosenWin && chosenWin.address) {
@@ -774,7 +769,6 @@ Item {
         height: crow.markWidth
         anchors.verticalCenter: parent.verticalCenter
 
-        // Window Dot (if isWindowRow)
         Rectangle {
           visible: crow.isWindowRow
           width: Style.space(6)
@@ -790,7 +784,6 @@ Item {
           border.width: 1
         }
 
-        // Standard Glyph / Checkmark (if not isWindowRow)
         Text {
           visible: !crow.isWindowRow
           anchors.fill: parent
@@ -1092,7 +1085,6 @@ Item {
       }
     }
 
-    // Active stack open indicator dot
     Rectangle {
       visible: fitem.isOpen
       readonly property real floorGap: Style.space(1)
@@ -1140,14 +1132,12 @@ Item {
     }
   }
 
-  // -------------------------------------------------- shell integration
 
   property var shell: null
 
   readonly property string dockPath: Quickshell.env("HOME") + "/.config/quickshell/dock/pins.json"
   readonly property string configPath: Quickshell.env("HOME") + "/.config/quickshell/dock/settings.json"
 
-  // ------------------------------------------------- edge and axis
 
   // The edge, transparency and blur the dock uses when it is not following the
   // bar. Linked, all three come from the bar instead, and toggling either side
@@ -1246,7 +1236,6 @@ Item {
 
   readonly property AppLibrary appLibrary: AppLibrary { }
 
-  // ------------------------------------------------- magnification
 
   // Raised cosine falloff, the curve Juan Pablo Zamora derived for this effect:
   //   size = min + ((1 - cos t) / 2) * (max - min)
@@ -1422,7 +1411,6 @@ Item {
     return 1 + (root.magnifyPeak - 1) * root.magnifyAt(homeCenter)
   }
 
-  // ------------------------------------------------- contrast
 
   // The bar foreground is tuned for the bar's own background. A custom dock
   // colour can land on the same side of the scale — a light theme's dark text
@@ -1466,7 +1454,6 @@ Item {
     return cardIsLight ? "#12100f" : "#f2efec"
   }
 
-  // ------------------------------------------------- sizing
 
   property int configuredIconSize: 0
   readonly property int iconSize: root.configuredIconSize > 0
@@ -1474,7 +1461,6 @@ Item {
     : Math.max(28, Math.round(Style.bar.sizeHorizontal * 0.9))
   readonly property int iconSlot: root.iconSize + Style.space(10)
 
-  // ------------------------------------------------- model
 
   property var pinnedIds: []
   property var appRows: []
@@ -1616,13 +1602,11 @@ Item {
   property var launchPending: ({})
   readonly property int launchTimeout: 12000
 
-  // ------------------------------------------------- drag reorder state
 
   property string dragAppId: ""
   property string dropBeforeId: ""
   property real dropIndicatorX: 0
 
-  // ------------------------------------------------- context menu
 
   property string contextAppId: ""
   property string contextName: ""
@@ -1633,7 +1617,6 @@ Item {
   property real contextAnchor: 0
   property real contextY: 0
 
-  // ------------------------------------------------- folder stacks state
 
   property var pinnedFolders: []
   property string activeStackFolder: ""
@@ -1644,7 +1627,6 @@ Item {
   property string contextFolderPath: ""
   property string contextFolderName: ""
 
-  // ------------------------------------------------- configuration options
 
   property bool autohide: true
   property bool intelligentAutohide: true
@@ -1694,7 +1676,6 @@ Item {
   property int tooltipDelay: 450
   property string settingsSubmenu: ""
 
-  // ------------------------------------------------- autohide state
 
   property bool dockVisible: false
   readonly property int revealHeight: 6
@@ -1861,7 +1842,6 @@ Item {
       var winRight = at[0] + sz[0]
       var winBottom = at[1] + sz[1]
 
-      // 2D Axis-Aligned Bounding Box (AABB) intersection check with dock area
       var intersectsX = (winRight >= dockLeft) && (winLeft <= dockRight)
       var intersectsY = (winBottom >= dockTop) && (winTop <= dockBottom)
 
@@ -1955,7 +1935,6 @@ Item {
   }
 
   function syncVisibility() {
-    // Mode 1: Always Show
     if (!root.autohide) {
       hideTimer.stop()
       revealTimer.stop()
@@ -1967,7 +1946,6 @@ Item {
       || root.contextAppId !== "" || root.dragAppId !== "" || root.activeStackFolder !== ""
       || root.startPopupOpen
 
-    // Hovered, Context Menu Open, or Dragging: keep visible
     if (isHovered) {
       hideTimer.stop()
       if (root.dockVisible) revealTimer.stop()
@@ -1977,14 +1955,12 @@ Item {
 
     revealTimer.stop()
 
-    // Mode 3: Intelligent Autohide without window overlap -> stay visible on empty desktop
     if (root.intelligentAutohide && !root.windowsOverlapDock) {
       hideTimer.stop()
       root.dockVisible = true
       return
     }
 
-    // Standard Autohide OR Intelligent Autohide with overlapping window -> hide after delay
     if (root.dockVisible) {
       hideTimer.restart()
     }
@@ -2006,7 +1982,6 @@ Item {
     }
   }
 
-  // ------------------------------------------------- file views
 
   FileView {
     id: configFile
@@ -2071,7 +2046,6 @@ Item {
     }
   }
 
-  // ------------------------------------------------- reactive event connections
 
   Connections {
     target: Color
@@ -2161,18 +2135,15 @@ Item {
         if (rawAddr.slice(0, 2) === "0x" || rawAddr.slice(0, 2) === "0X") rawAddr = rawAddr.slice(2)
         var fullAddr = "0x" + rawAddr
 
-        // Foreground Suppression Rule: If the window is ALREADY active and focused, suppress urgency
         var activeAddr = root.windowAddress(root.hyprToplevelFor(ToplevelManager.activeToplevel))
         if (activeAddr && activeAddr === fullAddr) {
           return
         }
 
-        // Suppress initial window startup / opening urgency
         if (root.recentOpenedWindowAddrs && root.recentOpenedWindowAddrs[fullAddr] && Date.now() < root.recentOpenedWindowAddrs[fullAddr]) {
           return
         }
 
-        // Suppress if the app was recently launched by user
         var allEntries = root.pinnedSection.concat(root.runningSection)
         for (var e = 0; e < allEntries.length; e++) {
           var entry = allEntries[e]
@@ -2254,7 +2225,6 @@ Item {
   }
   onPinnedIdsChanged: root.refreshDock()
 
-  // ------------------------------------------------- functions
 
   function loadPinned() {
     root.pinnedIds = DockModel.parsePinned(dockFile.text())
@@ -2430,7 +2400,6 @@ Item {
     if (top) root.focusToplevel(top, appId)
   }
 
-  // ------------------------------------------------- window plumbing
 
   function hyprToplevelFor(toplevel) {
     if (!toplevel || !Hyprland.toplevels) return null
@@ -2898,7 +2867,6 @@ Item {
       if (rawAddr) normAddr = "0x" + rawAddr
     }
 
-    // Direct address deletion if present
     if (normAddr && map[normAddr]) {
       delete map[normAddr]
       changed = true
@@ -2907,7 +2875,6 @@ Item {
     var allEntries = root.pinnedSection.concat(root.runningSection)
     var targetEntries = []
 
-    // Find entries matching address or appId
     for (var i = 0; i < allEntries.length; i++) {
       var entry = allEntries[i]
       if (!entry) continue
@@ -2933,7 +2900,6 @@ Item {
       }
     }
 
-    // Direct raw appId deletion
     if (appId) {
       var rawId = DockModel.stripDesktop(appId)
       var normId = DockModel.normalizeId(appId)
@@ -2942,7 +2908,6 @@ Item {
       if (normId && map[normId]) { delete map[normId]; changed = true }
     }
 
-    // Delete keys for matched entries
     for (var t = 0; t < targetEntries.length; t++) {
       var tEntry = targetEntries[t]
       var tId = tEntry.appId || tEntry.id
@@ -2959,7 +2924,6 @@ Item {
       }
     }
 
-    // Also check if any remaining key in map matches appId via DockModel.isAppMatch
     if (appId) {
       for (var mKey in map) {
         if (mKey.slice(0, 2) !== "0x" && DockModel.isAppMatch(mKey, appId)) {
@@ -2990,7 +2954,6 @@ Item {
     return dropped ? next : map
   }
 
-  // ------------------------------------------------- external keybind hooks
   // Bindable from keybindings.lua, e.g.
   //   exec(mod, "M", "[Window Management] minimize to dock",
   //        "quickshell ipc call dock minimizeActive")
@@ -3020,7 +2983,6 @@ Item {
     }
   }
 
-  // ------------------------------------------------- launch feedback
 
   function launchApp(appId, entry) {
     var target = entry || root.entryForId(appId)
@@ -3107,8 +3069,6 @@ Item {
     configFile.setText(JSON.stringify(conf, null, 2))
   }
 
-  // ------------------------------------------------- what a click means
-  //
   // A left click says "give me this app". Everything below is decided from live
   // state only — which windows exist, which are parked, whether the focus is
   // already inside the app — so there is nothing to remember and nothing to go
@@ -3142,7 +3102,6 @@ Item {
     var focusedIdx = root.focusedIndex(visible)
 
 
-    // Check if this application has any urgent windows or is currently bouncing
     var hadUrgency = false
     var urgentWin = null
     for (var u = 0; u < visible.length; u++) {
@@ -3164,17 +3123,14 @@ Item {
       }
     }
 
-    // Clear urgency map entries for this application immediately on click
     if (root.urgentMap[appId]) hadUrgency = true
     root.clearUrgentApp(appId, "")
 
-    // If an urgent window is parked/minimized: restore it directly to its origin workspace
     if (urgentParked) {
       root.restoreWindow(urgentParked.address || urgentParked, appId)
       return
     }
 
-    // If this app was urgent and not yet focused on screen, focus or restore directly without minimizing
     if (hadUrgency && focusedIdx < 0) {
       if (urgentWin && urgentWin.address) {
         root.focusWindowByAddress(urgentWin.address, appId)
@@ -3190,10 +3146,8 @@ Item {
     }
 
 
-    // 1. If an active window of this application is currently focused
     if (focusedIdx >= 0) {
       if (hadUrgency) {
-        // Attention Priority Rule: Clicking an urgent app acknowledges attention and keeps the app in front without minimizing.
         return
       }
 
@@ -3209,7 +3163,6 @@ Item {
         }
         return
       }
-      // If minimize is disabled ("off"), cycle through visible windows
       if (visible.length > 1) {
         var next = root.stepWindow(visible, 1)
         if (next && next.address) root.focusWindowByAddress(next.address, appId)
@@ -3218,7 +3171,6 @@ Item {
       return
     }
 
-    // 2. Nothing focused: bring a visible window of this app forward
     // (preferring current workspace, then recent, then first). Restoring
     // minimized windows is the preview tiles' job — icon clicks never do it.
     if (visible.length > 0) {
@@ -3368,7 +3320,6 @@ Item {
     root.syncVisibility()
   }
 
-  // ------------------------------------------------- minimized tile context
   property var contextTileWins: []
   property string contextTileAppId: ""
   property string contextTileName: ""
@@ -3377,7 +3328,6 @@ Item {
   function openTileContext(wins, appId, cx) {
     root.contextTileWins = wins || []
     root.contextTileAppId = appId || ""
-    // Resolve display name from desktop entries
     var deskEntry = DockModel.entryFor(root.appRows, appId)
     if (!deskEntry && typeof DesktopEntries !== "undefined" && DesktopEntries)
       deskEntry = DesktopEntries.heuristicLookup(appId) || DesktopEntries.byId(appId)
@@ -3494,7 +3444,6 @@ Item {
     return Math.min(Math.max(widest, 220), Style.space(280))
   }
 
-  // ------------------------------------------------- panel window
 
   // Back to a low threshold now that nothing paints outside the card: it only
   // has to clear the empty room the panel reserves for its popups, so even the
@@ -3602,7 +3551,6 @@ Item {
       }
     }
 
-    // Global dismiss area - catches clicks outside context menu or folder stack
     Item {
       id: globalDismiss
       width: (root.contextAppId !== "" || root.activeStackFolder !== "") ? dockWindow.width : 0
@@ -3633,7 +3581,6 @@ Item {
       }
     }
 
-    // ------------------------------------------------------------ dock card
 
     // Upstream sat the card on a blurred black drop shadow. Its inner rectangle
     // covered the card exactly, so it darkened the glass from behind — the card
@@ -3692,7 +3639,6 @@ Item {
       width: row.implicitWidth + contentLeftInset + contentRightInset
       height: row.implicitHeight + contentTopInset + contentBottomInset
 
-      // Click on card padding dismisses context menu
       MouseArea {
         id: cardArea
         anchors.fill: parent
@@ -3810,7 +3756,6 @@ Item {
 
         DockSeparator { visible: root.hasLeftTileSeparator }
 
-        // ------------------------------------------ minimized window tiles
         // macOS-style section: every parked window shows up as a small live
         // preview tile. Click a tile to bring that exact window back.
         Repeater {
@@ -4149,7 +4094,6 @@ Item {
         }
       }
 
-      // Drop indicator line
       Rectangle {
         visible: root.dragAppId !== ""
         x: root.dropIndicatorX
@@ -4162,7 +4106,6 @@ Item {
       }
     }
 
-    // ------------------------------------------------------------ Folder Stack Popover
     BorderSurface {
       id: folderStackPopover
       visible: root.activeStackFolder !== "" && root.dockVisible
@@ -4261,7 +4204,6 @@ Item {
       }
     }
 
-    // ------------------------------------------------------------ context menu
 
     BorderSurface {
       id: contextMenu
@@ -4302,12 +4244,10 @@ Item {
         anchors.bottom: parent.bottom
         anchors.bottomMargin: contextMenu.contentBottomInset
 
-        // Dock Settings Menu (right-click on the leftmost apps button)
         Column {
           spacing: Style.space(1)
           visible: root.contextAppId === "__dock_settings__"
 
-          // 1. Main Categories Page (Minimalist & Categorized)
           Column {
             spacing: Style.space(2)
             visible: root.settingsSubmenu === ""
@@ -4348,7 +4288,6 @@ Item {
             }
           }
 
-          // Folders & Stacks Category Page
           Column {
             spacing: Style.space(1)
             visible: root.settingsSubmenu === "folders"
@@ -4425,7 +4364,6 @@ Item {
             }
           }
 
-          // Folders & Stacks > Folder Color Page
           Column {
             spacing: Style.space(1)
             visible: root.settingsSubmenu === "folder_color"
@@ -4514,7 +4452,6 @@ Item {
             }
           }
 
-          // Position Category Page
           Column {
             spacing: Style.space(1)
             visible: root.settingsSubmenu === "position"
@@ -4563,7 +4500,6 @@ Item {
             }
           }
 
-          // 2. Appearance Category Page
           Column {
             spacing: Style.space(1)
             visible: root.settingsSubmenu === "appearance"
@@ -4609,7 +4545,6 @@ Item {
             }
           }
 
-          // 3. Behavior & Windows Category Page
           Column {
             spacing: Style.space(1)
             visible: root.settingsSubmenu === "behavior"
@@ -4650,7 +4585,6 @@ Item {
             }
           }
 
-          // 4. Effects & Animations Category Page
           Column {
             spacing: Style.space(1)
             visible: root.settingsSubmenu === "effects"
@@ -4708,7 +4642,6 @@ Item {
             }
           }
 
-          // Hover Effect Page
           Column {
             spacing: Style.space(1)
             visible: root.settingsSubmenu === "hover"
@@ -4743,7 +4676,6 @@ Item {
             }
           }
 
-          // 5. Size & Spacing Category Page
           Column {
             spacing: Style.space(1)
             visible: root.settingsSubmenu === "size_spacing"
@@ -4770,7 +4702,6 @@ Item {
             }
           }
 
-          // 6. Autohide Submenu Page
           Column {
             spacing: Style.space(1)
             visible: root.settingsSubmenu === "autohide"
@@ -4805,7 +4736,6 @@ Item {
             }
           }
 
-          // 7. Minimize Mode Submenu Page
           Column {
             spacing: Style.space(1)
             visible: root.settingsSubmenu === "minimize"
@@ -4849,7 +4779,6 @@ Item {
             }
           }
 
-          // Urgent Sound Alert Submenu Page
           Column {
             spacing: Style.space(1)
             visible: root.settingsSubmenu === "urgent_sound"
@@ -4914,7 +4843,6 @@ Item {
             }
           }
 
-          // 8. Shape Submenu Page
           Column {
             spacing: Style.space(1)
             visible: root.settingsSubmenu === "shape"
@@ -4955,7 +4883,6 @@ Item {
             }
           }
 
-          // 9. Background Color Submenu Page
           Column {
             spacing: Style.space(1)
             visible: root.settingsSubmenu === "color"
@@ -5047,7 +4974,6 @@ Item {
             }
           }
 
-          // 10. Background Opacity Submenu Page
           Column {
             spacing: Style.space(1)
             visible: root.settingsSubmenu === "opacity"
@@ -5100,7 +5026,6 @@ Item {
             }
           }
 
-          // 11. Icon Size Submenu Page
           Column {
             spacing: Style.space(1)
             visible: root.settingsSubmenu === "size"
@@ -5141,7 +5066,6 @@ Item {
             }
           }
 
-          // 12. Icon Spacing Submenu Page
           Column {
             spacing: Style.space(1)
             visible: root.settingsSubmenu === "spacing"
@@ -5177,7 +5101,6 @@ Item {
           }
         }
 
-        // Folder Context Menu
         Column {
           spacing: Style.space(2)
           visible: root.contextAppId === "__folder_context__"
@@ -5215,7 +5138,6 @@ Item {
           }
         }
 
-        // Minimized Window Tile Context Menu
         Column {
           spacing: Style.space(2)
           visible: root.contextAppId === "__tile_context__"
@@ -5263,7 +5185,6 @@ Item {
           }
         }
 
-        // Regular App Context Menu
         Item {
           id: appContextMenuWrapper
           visible: root.contextAppId !== "" && root.contextAppId !== "__dock_settings__" && root.contextAppId !== "__folder_context__" && root.contextAppId !== "__tile_context__"
@@ -5279,7 +5200,6 @@ Item {
 
             property int selectedWindowIdx: -1
 
-            // 1. Multi-window / Active Window instance list
             Column {
               id: windowListSection
               spacing: Style.space(1)
@@ -5313,7 +5233,6 @@ Item {
               MenuDivider {}
             }
 
-            // 2. Native Desktop Actions / Jump List
             Column {
               spacing: Style.space(1)
               visible: root.contextDesktopActions.length > 0
@@ -5332,7 +5251,6 @@ Item {
               MenuDivider {}
             }
 
-            // Fallback Default Action Row when no custom desktop actions exist
             ContextRow {
               text: root.contextWindows > 0 ? "New Window" : "Launch"
               visible: root.contextDesktopActions.length === 0
@@ -5342,7 +5260,6 @@ Item {
               }
             }
 
-            // 3. Window & Dock Management
             ContextRow {
               text: "Minimize Window"
               // Upstream showed this only for apps with more than one window,
@@ -5386,7 +5303,6 @@ Item {
             }
           }
 
-          // Wheel-scroll overlay to cycle window selection
           MouseArea {
             anchors.fill: parent
             z: 10

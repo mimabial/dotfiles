@@ -1,13 +1,5 @@
 #!/usr/bin/env bash
-#
-# tui-terminal-exec — Launch a command in a TUI terminal with optional Hyprland metadata.
-#
-# Usage: tui-terminal-exec [--hypr-profile NAME] [--hypr-size WIDTH HEIGHT] [--hypr-cells COLUMNS ROWS] [--app-id ID] [--title TITLE] -- <command> [args...]
-#
-# WIDTH and HEIGHT each take pixels (900), percent of the usable area (55%)
-# or cells (40c), independently of one another.
-# Depends on: terminal emulator, launch/window.common.bash (hyprctl, jq)
-#
+# Launch a command in a TUI terminal with optional Hyprland metadata.
 set -euo pipefail
 
 TERMINAL_TUI="${TERMINAL_TUI:-kitty}"
@@ -25,18 +17,29 @@ terminal_args=()
 terminal_launch=()
 
 usage() {
-  printf 'Usage: %s [--hypr-profile NAME] [--hypr-size WIDTH HEIGHT] [--hypr-cells COLUMNS ROWS] [--app-id ID] [--title TITLE] [--] [command [args...]]\n' "$(basename "$0")"
+  printf 'Usage: %s [--hypr-profile NAME] [--hypr-size WIDTH HEIGHT] [--hypr-cells COLUMNS ROWS] [--app-id ID] [--title TITLE] [--] [command [args...]]\n' "${0##*/}"
   printf 'WIDTH and HEIGHT each accept pixels (900), percent (55%%) or cells (40c).\n'
 }
 
 require_option_args() {
-  local option_name="$1"
-  local required_argc="$2"
+  local option_name="$1" required_argc="$2" available_argc="$3"
 
-  [[ "$#" -ge "${required_argc}" ]] && return 0
+  ((available_argc >= required_argc)) && return 0
   printf 'Missing argument for %s\n' "${option_name}" >&2
   usage >&2
   exit 2
+}
+
+set_geometry_pair() {
+  local option="$1" pair="$2" suffix="${3:-}"
+
+  [[ "${pair}" == *,* && -n "${pair%%,*}" && -n "${pair#*,}" ]] || {
+    printf 'Expected %s=WIDTH,HEIGHT\n' "${option}" >&2
+    usage >&2
+    exit 2
+  }
+  hypr_width="${pair%%,*}${suffix}"
+  hypr_height="${pair#*,}${suffix}"
 }
 
 parse_args() {
@@ -47,40 +50,26 @@ parse_args() {
         shift
         ;;
       --hypr-profile)
-        require_option_args "$1" 2 "$@"
+        require_option_args "$1" 2 "$#"
         hypr_profile="$2"
         shift 2
         ;;
       --hypr-cells)
-        require_option_args "$1" 3 "$@"
+        require_option_args "$1" 3 "$#"
         hypr_width="$2c"
         hypr_height="$3c"
         shift 3
         ;;
       --hypr-cells=*)
-        hypr_width="${1#--hypr-cells=}"
-        hypr_height="${hypr_width#*,}c"
-        hypr_width="${hypr_width%%,*}c"
+        set_geometry_pair --hypr-cells "${1#*=}" c
         shift
         ;;
       --hypr-size=*)
-        hypr_width="${1#--hypr-size=}"
-        if [[ "${hypr_width}" != *,* ]]; then
-          printf 'Expected --hypr-size=WIDTH,HEIGHT\n' >&2
-          usage >&2
-          exit 2
-        fi
-        hypr_height="${hypr_width#*,}"
-        hypr_width="${hypr_width%%,*}"
-        [[ -n "${hypr_width}" && -n "${hypr_height}" ]] || {
-          printf 'Expected --hypr-size=WIDTH,HEIGHT\n' >&2
-          usage >&2
-          exit 2
-        }
+        set_geometry_pair --hypr-size "${1#*=}"
         shift
         ;;
       --hypr-size)
-        require_option_args "$1" 3 "$@"
+        require_option_args "$1" 3 "$#"
         hypr_width="$2"
         hypr_height="$3"
         shift 3
@@ -90,7 +79,7 @@ parse_args() {
         shift
         ;;
       --app-id)
-        require_option_args "$1" 2 "$@"
+        require_option_args "$1" 2 "$#"
         app_id="$2"
         shift 2
         ;;
@@ -99,7 +88,7 @@ parse_args() {
         shift
         ;;
       --title)
-        require_option_args "$1" 2 "$@"
+        require_option_args "$1" 2 "$#"
         title="$2"
         shift 2
         ;;
@@ -147,9 +136,13 @@ validate_geometry() {
       return 1
     }
   done
-  # an explicit size is exact, so it stands in for the profile rather than
-  # being overwritten by it
   hypr_profile=""
+}
+
+load_window_lib() {
+  declare -F "$1" >/dev/null 2>&1 && return
+  # shellcheck source=/dev/null
+  source "${HYPR_LIB_ROOT}/launch/window.common.bash"
 }
 
 apply_geometry_profile() {
@@ -168,10 +161,7 @@ apply_geometry_profile() {
       ;;
   esac
 
-  if ! declare -F launch_resolve_geometry_profile >/dev/null 2>&1; then
-    # shellcheck source=/dev/null
-    source "${HYPR_LIB_ROOT}/launch/window.common.bash" || return 1
-  fi
+  load_window_lib launch_resolve_geometry_profile || return 1
   IFS=$'\t' read -r hypr_width hypr_height \
     <<<"$(launch_resolve_geometry_profile "${profile_name}")" || return 1
 }
@@ -181,16 +171,8 @@ resolve_percentages() {
 
   local mon_w mon_h ignored
 
-  # A percentage is of the area a window can actually occupy. The raw monitor
-  # size counts the bar's reserved strip and the edge gaps, so "100%" asked for
-  # a window taller than the screen and the compositor centred the overflow --
-  # half of it under the bar, half off the bottom edge.
-  # launch_monitor_usable_geometry subtracts both, and is what the geometry
-  # profiles already resolve against, so the two paths agree.
-  if ! declare -F launch_monitor_usable_geometry >/dev/null 2>&1; then
-    # shellcheck source=/dev/null
-    source "${HYPR_LIB_ROOT}/launch/window.common.bash" || return 1
-  fi
+  # Percentages use usable geometry, excluding reserved areas and edge gaps.
+  load_window_lib launch_monitor_usable_geometry || return 1
   IFS=$'\t' read -r mon_w mon_h ignored ignored ignored ignored \
     <<<"$(launch_monitor_usable_geometry)" || return 1
 
@@ -200,10 +182,10 @@ resolve_percentages() {
   }
 
   if [[ "${hypr_width}" == *% ]]; then
-    hypr_width=$(( ${hypr_width%\%} * mon_w / 100 ))
+    hypr_width=$((${hypr_width%\%} * mon_w / 100))
   fi
   if [[ "${hypr_height}" == *% ]]; then
-    hypr_height=$(( ${hypr_height%\%} * mon_h / 100 ))
+    hypr_height=$((${hypr_height%\%} * mon_h / 100))
   fi
 }
 
@@ -230,10 +212,7 @@ build_terminal_command() {
       [[ -n "${app_id}" ]] && terminal_launch+=("--app-id=${app_id}")
       [[ -n "${title}" ]] && terminal_launch+=("--title=${title}")
       if [[ -n "${hypr_width}" && -n "${hypr_height}" ]]; then
-        # Hyprland size rules are inert on the lua config engine, so the kitty
-        # window is sized directly. kitty reads the c suffix per dimension,
-        # which lets a fixed-shape TUI pin its rows in cells while the width
-        # stays a share of the monitor.
+        # Lua size rules are inert; kitty accepts pixels and per-axis cell suffixes.
         terminal_launch+=(-o "remember_window_size=no" -o "initial_window_width=${hypr_width}" -o "initial_window_height=${hypr_height}")
       fi
       terminal_launch+=("${cmd[@]}")
@@ -254,7 +233,7 @@ build_terminal_command() {
 
 terminal_desktop_path() {
   local terminal_name="${TERMINAL_TUI##*/}"
-  local candidate=""
+  local candidate="" app_dir=""
   local -a app_dirs=(
     "${XDG_DATA_HOME:-$HOME/.local/share}/applications"
     "/usr/local/share/applications"
@@ -265,7 +244,6 @@ terminal_desktop_path() {
     "${terminal_name}.desktop" \
     "org.${terminal_name}.${terminal_name}.desktop" \
     "org.${terminal_name}.desktop"; do
-    local app_dir=""
     for app_dir in "${app_dirs[@]}"; do
       [[ -f "${app_dir}/${candidate}" ]] || continue
       printf '%s\n' "${app_dir}/${candidate}"
@@ -280,7 +258,7 @@ print_terminal_target() {
   local desktop_path=""
   local joined_cmd=""
 
-  build_terminal_command
+  ((print_cmd == 0)) || build_terminal_command
 
   if [[ "${print_path}" -eq 1 ]]; then
     desktop_path="$(terminal_desktop_path)" || return 1

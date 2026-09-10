@@ -12,7 +12,7 @@ SYNC_MANIFEST_FILE="${DOTFILES_SYNC_MANIFEST:-${XDG_CONFIG_HOME:-$HOME/.config}/
 
 usage() {
   cat <<USAGE
-Usage: $(basename "$0") <command> [args]
+Usage: ${0##*/} <command> [args]
 Commands:
   show                Print the selected host profile
   list                List available host profiles from dotfiles
@@ -138,7 +138,7 @@ apply_target() {
 
   if [[ "${rel}" == ".config/hypr/gpu.lua" ]] && ! path_exists "${src}"; then
     nested_src="$(find "${host_dir}/.config/hypr" -mindepth 2 -maxdepth 2 \
-      \( -type f -o -type l \) -name "$(basename -- "${rel}")" -print -quit 2>/dev/null || true)"
+      \( -type f -o -type l \) -name "${rel##*/}" -print -quit 2>/dev/null || true)"
     if [[ -n "${nested_src}" ]] && path_exists "${nested_src}"; then
       src="${nested_src}"
     fi
@@ -213,7 +213,7 @@ case "${command_name}" in
     profile_dir "${profile}"
     ;;
   set)
-    [[ $# -ge 1 ]] || die "Usage: $(basename "$0") set <profile>"
+    [[ $# -ge 1 ]] || die "Usage: ${0##*/} set <profile>"
     profile="$1"
     set_profile "${profile}"
     if [[ "${2:-}" == "--apply" ]]; then

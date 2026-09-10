@@ -1,7 +1,4 @@
 #!/usr/bin/env python3
-# Renderer: dunst dunstrc (palette overlay + Hyprland-derived layout + category rules).
-# Writes ~/.config/dunst/dunstrc and reloads dunst.
-
 import hashlib
 import json
 import os
@@ -707,7 +704,6 @@ def main():
         BASE_CONF.read_text() if BASE_CONF.is_file() else "[global]\n    monitor = 0\n"
     )
     content = render_config(base, colors, layout, font)
-    # Write to both render cache + live dunstrc (dunst reads dunstrc directly)
     for target in (OUT_FILE, DUNST_CONF):
         atomic_write(target, content)
     atomic_write(ROLES_FILE, render_roles(colors))

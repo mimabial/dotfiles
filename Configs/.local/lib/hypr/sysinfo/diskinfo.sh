@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Disk usage as bar JSON, with structured rows for the Quickshell panel.
 set -euo pipefail
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash"
@@ -25,7 +24,6 @@ sep=$'\r'
 [[ "${HYPR_SYSINFO_ALT:-0}" == "1" ]] && sep=" "
 icon="<span size='12.5pt'>󰋊</span>"
 
-# every real filesystem gets a row; the bar still tracks one mountpoint
 rows="$(df -B1 --output=target,size,used,pcent -x tmpfs -x devtmpfs -x efivarfs \
   -x squashfs -x overlay 2>/dev/null \
   | awk 'NR > 1 { gsub("%", "", $4); print $1 "\t" $2 "\t" $3 "\t" $4 }' \

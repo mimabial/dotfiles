@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# Non-interactive Nerd Font removal helpers.
-
 set -euo pipefail
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1

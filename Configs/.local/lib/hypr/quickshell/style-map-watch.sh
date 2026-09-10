@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# Regenerate the quickshell style maps whenever a layout, style or QML file changes.
-
 source "${HOME}/.local/lib/hypr/runtime/init.bash"
 hypr_help_guard "Usage: style-map-watch.sh [--once] [--interval SECONDS]
 

@@ -15,8 +15,6 @@ Emit CPU usage, temperature, and clock speed as bar JSON." "$@"
 cpuinfo_file="${XDG_RUNTIME_DIR:-/tmp}/hypr-$UID-processors"
 
 load_cpu_cache() {
-  # Same file path declared at the top of the script — read AND write must
-  # agree, otherwise cached values never survive a poll.
   [[ -f "${cpuinfo_file}" ]] && source "${cpuinfo_file}"
   return 0
 }
@@ -27,9 +25,6 @@ cache_cpu_value() {
   echo "${key}=\"${value}\"" >>"${cpuinfo_file}"
 }
 
-# ${VAR:-} fallbacks below: on first run nothing has populated the cache, so
-# the bare ${VAR} would crash under set -u. The `-n` test then sees empty and
-# falls through to compute + cache.
 initialize_cpu_metadata() {
   [[ -n "${CPUINFO_MODEL:-}" ]] || {
     CPUINFO_MODEL=$(lscpu | awk -F': ' '/Model name/ {gsub(/^ *| *$| CPU.*/,"",$2); print $2}')
@@ -42,19 +37,19 @@ initialize_cpu_metadata() {
   }
 }
 
+read_cpu_stat() {
+  local -n busy_out=$1 idle_out=$2
+  local cpu user nice system idle iowait irq softirq
+  read -r cpu user nice system idle iowait irq softirq _ </proc/stat
+  busy_out=$((user + nice + system + iowait + irq + softirq))
+  idle_out=$idle
+}
+
 initialize_cpu_stats() {
-  local stat_file
-  stat_file=$(head -1 /proc/stat)
-
-  [[ -n "${CPUINFO_PREV_STAT:-}" ]] || {
-    CPUINFO_PREV_STAT=$(awk '{print $2+$3+$4+$6+$7+$8 }' <<<"${stat_file}")
-    cache_cpu_value "CPUINFO_PREV_STAT" "${CPUINFO_PREV_STAT}"
-  }
-
-  [[ -n "${CPUINFO_PREV_IDLE:-}" ]] || {
-    CPUINFO_PREV_IDLE=$(awk '{print $5 }' <<<"${stat_file}")
-    cache_cpu_value "CPUINFO_PREV_IDLE" "${CPUINFO_PREV_IDLE}"
-  }
+  [[ -n "${CPUINFO_PREV_STAT:-}" && -n "${CPUINFO_PREV_IDLE:-}" ]] && return
+  read_cpu_stat CPUINFO_PREV_STAT CPUINFO_PREV_IDLE
+  cache_cpu_value "CPUINFO_PREV_STAT" "${CPUINFO_PREV_STAT}"
+  cache_cpu_value "CPUINFO_PREV_IDLE" "${CPUINFO_PREV_IDLE}"
 }
 
 init_query() {
@@ -80,20 +75,14 @@ update_cpu_stats_cache() {
 }
 
 get_utilization() {
-  local stat_file=""
-  local curr_stat=0
-  local curr_idle=0
-  local diff_stat=0
-  local diff_idle=0
-
-  stat_file=$(head -1 /proc/stat)
-  curr_stat=$(awk '{print $2+$3+$4+$6+$7+$8 }' <<<"${stat_file}")
-  curr_idle=$(awk '{print $5 }' <<<"${stat_file}")
+  local curr_stat=0 curr_idle=0 diff_stat diff_idle total
+  read_cpu_stat curr_stat curr_idle
   diff_stat=$((curr_stat - CPUINFO_PREV_STAT))
   diff_idle=$((curr_idle - CPUINFO_PREV_IDLE))
 
   update_cpu_stats_cache "${curr_stat}" "${curr_idle}"
-  awk -v stat="${diff_stat}" -v idle="${diff_idle}" 'BEGIN {printf "%.0f", (stat/(stat+idle))*100}'
+  total=$((diff_stat + diff_idle))
+  ((total > 0)) && printf '%d\n' "$(((diff_stat * 100 + total / 2) / total))" || printf '0\n'
 }
 
 read_cpu_temperatures() {
@@ -147,8 +136,6 @@ print join("\n", @lines);
 
 resolve_temperature_value() {
   local cpu_temps="$1"
-  # ${temperature:-} — a caller may set this from elsewhere, but on the
-  # standard polling path it isn't pre-populated.
   if [[ -n "${temperature:-}" ]]; then
     printf '%s\n' "${temperature}"
     return
@@ -214,8 +201,6 @@ emit_cpu_json() {
   formatted_util=$(printf "%02d" "${util_int}")
   local sep=$'\r'
   [[ "${HYPR_SYSINFO_ALT:-0}" == "1" ]] && sep=" "
-  # rows repeats the tooltip's figures as label/value pairs so the quickshell
-  # panel does not have to parse markup
   local rows
   rows="$(jq -n -c \
     --arg model "${CPUINFO_MODEL}" \

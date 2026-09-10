@@ -52,6 +52,7 @@
     "padding": [0.0, 0.0, 0.0, 0.0]
   },
   "vpn": {
+    "fontSize": 12.0,
     "margin": [0.0, 6.0, 0.0, 6.0],
     "padding": [0.0, 0.0, 0.0, 0.0]
   },
@@ -65,18 +66,6 @@
     "padding": [0.0, 0.0, 0.0, 0.0]
   },
   "backlight": {
-    "margin": [0.0, 6.0, 0.0, 6.0],
-    "padding": [0.0, 0.0, 0.0, 0.0]
-  },
-  "power-profiles-daemon": {
-    "margin": [0.0, 6.0, 0.0, 6.0],
-    "padding": [0.0, 0.0, 0.0, 0.0]
-  },
-  "power-profiles-daemon.power-saver": {
-    "margin": [0.0, 6.0, 0.0, 6.0],
-    "padding": [0.0, 0.0, 0.0, 0.0]
-  },
-  "power-profiles-daemon.performance": {
     "margin": [0.0, 6.0, 0.0, 6.0],
     "padding": [0.0, 0.0, 0.0, 0.0]
   },
@@ -100,6 +89,15 @@
   },
   "clock.time-alt": {
     "margin": [0.0, 8.0, 0.0, 8.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "tasks": {
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0],
+    "hover": { "fill": null, "content": ["hvr_fg", 1.0] }
+  },
+  "notification": {
+    "margin": [0.0, 6.0, 0.0, 6.0],
     "padding": [0.0, 0.0, 0.0, 0.0]
   },
   "appearance": {
@@ -135,7 +133,6 @@
     "iconLine": 0.0,
     "iconPadRight": 0.0,
     "iconSize": 14.0,
-    "content": ["fg", 1.0],
     "margin": [0.0, 6.0, 0.0, 6.0],
     "padding": [0.0, 0.0, 0.0, 0.0]
   },
@@ -144,7 +141,6 @@
     "iconLine": 0.0,
     "iconPadRight": 2.0,
     "iconSize": 14.0,
-    "content": ["fg", 1.0],
     "margin": [0.0, 6.0, 0.0, 6.0],
     "padding": [0.0, 0.0, 0.0, 0.0]
   },
@@ -153,7 +149,6 @@
     "iconLine": 0.0,
     "iconPadRight": 2.0,
     "iconSize": 10.0,
-    "content": ["fg", 1.0],
     "margin": [0.0, 6.0, 0.0, 6.0],
     "padding": [0.0, 0.0, 0.0, 0.0]
   },
@@ -162,7 +157,29 @@
     "iconLine": 0.0,
     "iconPadRight": 0.0,
     "iconSize": 11.0,
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "fanspeedinfo": {
+    "gap": 0.0,
+    "iconLine": 0.0,
+    "iconPadRight": 6.0,
+    "iconSize": 12.0,
     "content": ["fg", 1.0],
+    "margin": [0.0, 26.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0],
+    "hover": { "fill": null, "content": ["hvr_fg", 1.0] }
+  },
+  "power-profiles-daemon": {
+    "fontSize": 13.0,
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "power-profiles-daemon.power-saver": {
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "power-profiles-daemon.performance": {
     "margin": [0.0, 6.0, 0.0, 6.0],
     "padding": [0.0, 0.0, 0.0, 0.0]
   }

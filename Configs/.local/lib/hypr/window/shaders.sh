@@ -68,9 +68,7 @@ list_shader_names() {
   hypr_stateful_choice_list_names "frag" "${shaders_user_dir}" "${shaders_shared_dir}" "neutral"
 }
 
-# Same shape as util/workflows.sh --list, so one parser serves every pipeline.
-# Shaders carry no icon or description, so those fields are empty rather than
-# absent. "neutral" is prepended on the same condition select_shader uses.
+# Keep workflow-compatible tab-separated fields, including empty metadata.
 list_shaders() {
   local name=""
   {

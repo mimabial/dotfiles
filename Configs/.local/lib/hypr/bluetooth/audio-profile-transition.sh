@@ -3,8 +3,6 @@
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
 
-# Safely change a card profile while preserving endpoint and stream state.
-
 card=${1:-}
 profile=${2:-}
 
@@ -15,7 +13,6 @@ fi
 
 set -o pipefail
 
-# Serialize endpoint recreation across popup instances.
 profile_lock=${XDG_RUNTIME_DIR:-/tmp}/hypr-audio-mutation-${UID}.lock
 exec 8>>"$profile_lock" || {
   echo "Could not open the audio mutation lock" >&2

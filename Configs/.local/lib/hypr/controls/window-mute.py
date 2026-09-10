@@ -7,19 +7,17 @@ import json
 import os
 import subprocess
 import sys
+from contextlib import suppress
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT_DIR)
 
-import pyutils.pip_env as pip_env
-
-pip_env.ensure_managed_interpreter()
-
-from pyutils.hyprctl import batch_json
 import pyutils.wrapper.libnotify as notify
 import pyutils.xdg_base_dirs as xdg
+from pyutils.hyprctl import batch_json
 
 APP_NAME = "Volume control"
 NOTIFY_ID = 18
@@ -88,6 +86,9 @@ def _list_sink_inputs_pulsectl() -> list[SinkInput]:
 
 def _pulse_connect() -> Any:
     try:
+        from pyutils import pip_env
+
+        pip_env.ensure_managed_interpreter()
         pulsectl = pip_env.v_import("pulsectl")
     except Exception:
         return None
@@ -99,10 +100,8 @@ def _pulse_connect() -> Any:
 
 
 def _pulse_close(pulse: Any) -> None:
-    try:
+    with suppress(Exception):
         pulse.close()
-    except Exception:
-        pass
 
 
 def _mute_sink_inputs(sink_ids: list[int], want_mute: bool) -> tuple[int, int]:
@@ -114,6 +113,7 @@ def _mute_sink_inputs(sink_ids: list[int], want_mute: bool) -> tuple[int, int]:
         for sink_id in sink_ids:
             result = subprocess.run(
                 ["pactl", "set-sink-input-mute", str(sink_id), mute_arg],
+                check=False,
                 capture_output=True,
                 timeout=3,
             )
@@ -159,7 +159,7 @@ def _read_proc_stat(pid: int, cache: dict[int, tuple[int, str] | None]) -> tuple
         return cache[pid]
 
     try:
-        data = open(f"/proc/{pid}/stat", encoding="utf-8", errors="ignore").read()
+        data = Path(f"/proc/{pid}/stat").read_text(encoding="utf-8", errors="ignore")
         right = data.rindex(")")
         cache[pid] = (int(data[right + 2 :].split()[1]), data[data.find("(") + 1 : right])
     except (OSError, ValueError, IndexError):
@@ -223,12 +223,10 @@ def _find_sink_ids(
     title_normalized = _normalize(title)
     for sink in sink_inputs:
         properties = sink.properties
-        if class_lower and any(
+        if (class_lower and any(
             class_lower in str(properties.get(key, "")).lower()
             for key in ("application.name", "application.id", "application.process.binary")
-        ):
-            ids.append(sink.index)
-        elif title_normalized and title_normalized in _normalize(str(properties.get("media.name", ""))):
+        )) or (title_normalized and title_normalized in _normalize(str(properties.get("media.name", "")))):
             ids.append(sink.index)
     if ids:
         return ids
@@ -332,7 +330,8 @@ def main() -> int:
         print(f"No sink input for focused window: {app_class}", file=sys.stderr)
         return 1
 
-    selected = [sink for sink in sink_inputs if sink.index in set(sink_ids)]
+    selected_ids = set(sink_ids)
+    selected = [sink for sink in sink_inputs if sink.index in selected_ids]
     want_mute = not all(sink.muted for sink in selected)
     state = "Muted" if want_mute else "Unmuted"
     icon = _icon_path(ICON_MUTED if want_mute else ICON_UNMUTED)

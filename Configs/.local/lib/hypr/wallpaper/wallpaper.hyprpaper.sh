@@ -1,8 +1,4 @@
 #!/usr/bin/env bash
-# A wallpaper backend adapter for hyprpaper
-# * Notes
-# For future backends, this can be used as a base, just
-# change the hyprctl commands for the desired backend's commands
 
 set -euo pipefail
 
@@ -16,17 +12,16 @@ selected_wall="${1:-${WALLPAPER_CURRENT_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/hyp
 [ -z "${selected_wall}" ] && echo "No input wallpaper" && exit 1
 selected_wall="$(wallpaper_resolve_path "${selected_wall}")"
 
-#? hyprlock do not support videos, so we need to convert them to images
-if file --mime-type -b "${selected_wall}" | grep -q '^video/'; then
+mime_type="$(file --mime-type -b "$selected_wall" 2>/dev/null || true)"
+if [[ "$mime_type" == video/* ]]; then
   print_log -sec "wallpaper" -stat "converting video" "$selected_wall"
   mkdir -p "${WALLPAPER_VIDEO_DIR}"
-  cached_thumb="${WALLPAPER_VIDEO_DIR}/$(${HYPR_HASH_COMMAND:-sha1sum} "${selected_wall}" | cut -d' ' -f1).png"
+  wall_hash="$(${HYPR_HASH_COMMAND:-sha1sum} "$selected_wall")"
+  cached_thumb="${WALLPAPER_VIDEO_DIR}/${wall_hash%% *}.png"
   extract_thumbnail "${selected_wall}" "${cached_thumb}"
   selected_wall="${cached_thumb}"
 fi
 
-# ? Setting wallpaper using hyprctl IPC!
-# https://wiki.hypr.land/Hypr-Ecosystem/hyprpaper/#the-reload-keyword
 if ! hyprctl hyprpaper reload ",${selected_wall}" >/dev/null 2>&1; then
   if ! hypr_svc_user start hyprpaper; then
     command -v hyprpaper >/dev/null 2>&1 || {

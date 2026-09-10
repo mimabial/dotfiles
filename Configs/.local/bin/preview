@@ -5,7 +5,6 @@ set -euo pipefail
 source "${HOME}/.local/bin/.common.bash"
 
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/preview"
-mkdir -p "${CACHE_DIR}"
 
 usage() {
   cat <<'EOF'
@@ -154,9 +153,11 @@ preview_image() {
 
 preview_pdf() {
   local path="$1"
-  local cache_base=""
+  local cache_base="" digest=""
 
-  cache_base="${CACHE_DIR}/$(printf '%s' "${path}" | sha256sum | awk '{print $1}')"
+  [[ -d "${CACHE_DIR}" ]] || mkdir -p "${CACHE_DIR}"
+  digest="$(printf '%s' "${path}" | sha256sum)"
+  cache_base="${CACHE_DIR}/${digest%% *}"
   if [[ ! -f "${cache_base}.png" || "${path}" -nt "${cache_base}.png" ]]; then
     pdftoppm -png -f 1 -singlefile "${path}" "${cache_base}" >/dev/null 2>&1 || return 1
   fi

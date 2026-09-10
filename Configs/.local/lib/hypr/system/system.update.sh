@@ -11,22 +11,16 @@ hypr_runtime_require system || exit 1
 # shellcheck source=/dev/null
 source "${BASH_SOURCE[0]%/*}/pm.updates.lib.sh"
 
-# long by default: the bar panel offers an explicit re-check for when it matters
 cache_ttl="${HYPR_UPDATE_CACHE_TTL:-21600}"
 
 hypr_help_guard "Usage: hyprshell system/system.update [up|--run-upgrade|--refresh]
 Report pending updates as bar JSON; 'up' opens an upgrade terminal.
-Repeat calls inside ${cache_ttl:-900}s reuse the cached report; --refresh forces a re-check." "$@"
+Repeat calls inside ${cache_ttl}s reuse the cached report; --refresh forces a re-check." "$@"
 
-if aur_helper="$(get_aur_helper)"; then
-  :
-else
-  aur_helper=""
-fi
 runtime_dir="${XDG_RUNTIME_DIR:-/tmp}/hypr"
-temp_file="${runtime_dir}/update_info"
 cache_file="${runtime_dir}/update_status.json"
 temp_db=""
+aur_helper=""
 declare -a system_update_errors=()
 
 system_update_cleanup_temp_db() {
@@ -48,7 +42,6 @@ normalize_count() {
   [[ "${1:-0}" =~ ^[0-9]+$ ]] && printf '%s\n' "${1:-0}" || printf '0\n'
 }
 
-# Epoch of the last full -Syu, or 0 when the log says nothing.
 last_full_upgrade_ts() {
   local line=""
 
@@ -96,36 +89,16 @@ capture_update_list() {
 }
 
 read_update_info() {
-  official=0
-  aur=0
-  flatpak=0
-
-  [[ -f "$temp_file" ]] || return 1
-
-  while IFS="=" read -r key value; do
-    case "$key" in
-      OFFICIAL_UPDATES) official="$value" ;;
-      AUR_UPDATES) aur="$value" ;;
-      FLATPAK_UPDATES) flatpak="$value" ;;
-    esac
-  done <"$temp_file"
-
-  official="$(normalize_count "$official")"
-  aur="$(normalize_count "$aur")"
-  flatpak="$(normalize_count "$flatpak")"
-}
-
-write_update_info() {
-  mkdir -p "$runtime_dir"
-  cat >"$temp_file" <<EOF
-OFFICIAL_UPDATES=$1
-AUR_UPDATES=$2
-FLATPAK_UPDATES=$3
-EOF
+  IFS=$'\t' read -r official aur flatpak < <(
+    jq -r '[.packages.pacman, .packages.aur, .packages.flatpak] | map(length) | @tsv' "${cache_file}"
+  )
+  official="$(normalize_count "${official}")"
+  aur="$(normalize_count "${aur}")"
+  flatpak="$(normalize_count "${flatpak}")"
 }
 
 require_update_info() {
-  [[ -f "$temp_file" ]] && return 0
+  [[ -s "${cache_file}" ]] && jq -e '.packages | type == "object"' "${cache_file}" >/dev/null 2>&1 && return 0
   echo "No upgrade info found. Please run the script without parameters first."
   return 1
 }
@@ -134,8 +107,7 @@ keep_awake_owned=0
 report_refreshed=0
 upgrade_lock_fd=""
 
-# Pacman's own db.lck only catches the second transaction, and never the flatpak
-# leg, so the whole upgrade runs under one lock.
+# Cover the entire upgrade, not only pacman's transaction.
 acquire_upgrade_lock() {
   local lock_file=""
 
@@ -151,7 +123,8 @@ require_free_space() {
   local required="${HYPR_UPDATE_MIN_FREE_BYTES:-$((2 * 1024 * 1024 * 1024))}"
   local available=""
 
-  available="$(df --output=avail --block-size=1 /var/cache/pacman/pkg 2>/dev/null | tail -n 1 | tr -d '[:space:]')"
+  available="$(df --output=avail --block-size=1 /var/cache/pacman/pkg 2>/dev/null | tail -n 1)"
+  available="${available//[[:space:]]/}"
   [[ "${available}" =~ ^[0-9]+$ ]] || return 0
   ((available >= required)) && return 0
 
@@ -163,8 +136,7 @@ require_free_space() {
 prune_package_cache() {
   command -v paccache >/dev/null 2>&1 || return 0
 
-  # The cache is the only offline downgrade path, so keep two. Pruning before the
-  # upgrade is what leaves the running version with a spare.
+  # Keep the running package and one fallback for offline downgrades.
   echo "Pruning package cache"
   sudo paccache -rk2 || echo "Could not prune the package cache." >&2
 }
@@ -179,13 +151,12 @@ refresh_keyring() {
     return 0
   fi
 
-  # -Sy alone is a partial upgrade; the full -Syu below is what settles it.
+  # Safe only because the full -Syu immediately follows.
   echo "Refreshing Arch signing keys"
   sudo pacman -Sy --noconfirm archlinux-keyring
 }
 
-# Hypridle would otherwise lock or suspend mid-transaction. A keep-awake the user
-# set is theirs; only what this run turned on gets restored.
+# Restore keep-awake only when this run enabled it.
 inhibit_idle() {
   idle_manual_enabled && return 0
   idle_set_manual 1 || return 0
@@ -217,14 +188,15 @@ review_orphans() {
 }
 
 kernel_replaced() {
-  local kernel="" found=0
+  local kernel="" current="" found=0
+  current="$(uname -r)"
 
   for kernel in /usr/lib/modules/*/vmlinuz; do
     [[ -f "${kernel}" ]] || continue
     pacman -Qo "${kernel}" >/dev/null 2>&1 || continue
     found=1
     kernel="${kernel%/vmlinuz}"
-    [[ "${kernel##*/}" == "$(uname -r)" ]] && return 1
+    [[ "${kernel##*/}" == "${current}" ]] && return 1
   done
 
   ((found))
@@ -233,7 +205,7 @@ kernel_replaced() {
 compositor_replaced() {
   local pid=""
 
-  pid="$(pgrep -x Hyprland 2>/dev/null | head -n 1)"
+  pid="$(pgrep -xo Hyprland 2>/dev/null || true)"
   [[ -n "${pid}" ]] || return 1
   [[ "$(readlink "/proc/${pid}/exe" 2>/dev/null || true)" == *"(deleted)"* ]]
 }
@@ -256,13 +228,10 @@ prompt_restart() {
   read -r -p "Reboot now? [y/N] " reply || reply=""
   [[ "${reply}" =~ ^[Yy] ]] || return 0
 
-  # A confirmed reboot never returns to the EXIT trap.
   release_idle
   exec hyprshell system/powerctl.sh reboot
 }
 
-# Re-check in place rather than dropping the cache: the bar watches this file, so
-# one authoritative check here beats every bar instance racing to run its own.
 refresh_report() {
   echo
   echo "Re-checking updates"
@@ -314,6 +283,15 @@ if [[ "${1:-}" == "up" ]]; then
   exec hyprshell launch/terminal-present.sh --hypr-profile dialog --app-id "org.tui.SystemUpdate" --title "System Update" -- hyprshell system/system.update.sh --run-upgrade
 fi
 
+if [[ "${1:-}" != "--refresh" && "${1:-}" != "--run-upgrade" ]] && [[ -s "${cache_file}" ]] \
+  && (($(date +%s) - $(stat -c %Y "${cache_file}" 2>/dev/null || echo 0) < cache_ttl)) \
+  && jq -e . >/dev/null 2>&1 <"${cache_file}"; then
+  cat "${cache_file}"
+  exit 0
+fi
+
+aur_helper="$(get_aur_helper 2>/dev/null || true)"
+
 if [[ "${1:-}" == "--run-upgrade" ]]; then
   hypr_runtime_require state || exit 1
   # shellcheck source=/dev/null
@@ -321,13 +299,6 @@ if [[ "${1:-}" == "--run-upgrade" ]]; then
   acquire_upgrade_lock || exit 1
   run_updates
   exit $?
-fi
-
-if [[ "${1:-}" != "--refresh" ]] && [[ -s "${cache_file}" ]] \
-  && (($(date +%s) - $(stat -c %Y "${cache_file}" 2>/dev/null || echo 0) < cache_ttl)) \
-  && jq -e . >/dev/null 2>&1 <"${cache_file}"; then
-  cat "${cache_file}"
-  exit 0
 fi
 
 # Quickshell SIGKILLs this provider on reload, so the traps below never run and
@@ -420,7 +391,7 @@ build_tooltip() {
 
   append_tooltip_section "PACMAN" "$(format_package_updates "$ofc_list")"
   append_tooltip_section "AUR" "$(format_package_updates "$aur_list")"
-  append_tooltip_section "FLATPAK" "$(format_flatpak_updates)"
+  append_tooltip_section "FLATPAK" "${flatpak_updates-}"
   append_tooltip_section "CHECK ERRORS" "$(format_check_errors)"
 
   printf '%s' "${title}"
@@ -440,15 +411,13 @@ packages_json() {
 }
 
 flatpak_json() {
-  local body
-  body="$(format_flatpak_updates)"
   jq -R -s -c 'split("\n")
     | map(select(length > 0)
       | sub("^ +"; "")
       | (split("  ") | map(select(length > 0)))
       | select(length > 0)
       | {name: .[0], from: ((.[1] // "") | split(" \u2192 ") | .[0] // ""),
-         to: ((.[1] // "") | split(" \u2192 ") | .[1] // "")})' <<<"${body}"
+         to: ((.[1] // "") | split(" \u2192 ") | .[1] // "")})' <<<"${flatpak_updates-}"
 }
 
 errors_json() {
@@ -457,12 +426,9 @@ errors_json() {
   jq -R -s -c 'split("\n") | map(select(length > 0))' <<<"${list}"
 }
 
-# Facts for the panel's idle state, gathered only on a real check: the payload
-# they ride in is what gets cached.
 system_facts_json() {
-  local line upgraded=0
-  line="$(tac /var/log/pacman.log 2>/dev/null | grep -m1 'starting full system upgrade' || true)"
-  [[ "${line}" =~ ^\[([^]]+)\] ]] && upgraded="$(date -d "${BASH_REMATCH[1]}" +%s 2>/dev/null || echo 0)"
+  local upgraded=""
+  upgraded="$(last_full_upgrade_ts)"
   jq -cn --argjson checked "$(date +%s)" \
     --argjson installed "$(pacman -Qq 2>/dev/null | wc -l)" \
     --argjson upgraded "${upgraded}" \
@@ -485,11 +451,13 @@ print_bar_json() {
   mkdir -p "${runtime_dir}"
   local tmp
   tmp="$(mktemp "${cache_file}.XXXXXX")"
-  printf '%s\n' "${payload}" >"${tmp}" && mv -f "${tmp}" "${cache_file}" || rm -f "${tmp}"
+  if ! printf '%s\n' "${payload}" >"${tmp}" || ! mv -f "${tmp}" "${cache_file}"; then
+    rm -f "${tmp}"
+  fi
   printf '%s\n' "${payload}"
 }
 
-write_update_info "$ofc" "$aur" "$fpk"
+flatpak_updates="$(format_flatpak_updates)"
 if [[ "${#system_update_errors[@]}" -gt 0 && "$upd" -eq 0 ]]; then
   print_bar_json "" "$(build_tooltip)" "error"
 elif [[ "${#system_update_errors[@]}" -gt 0 ]]; then

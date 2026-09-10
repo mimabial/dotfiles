@@ -1,11 +1,5 @@
 #!/usr/bin/env bash
-#
-# hyprshell — Bootstrap the Hypr shell environment and dispatch commands.
-#
-# Usage: hyprshell <command> [args...]
-# Depends on: hypr runtime init and shell libraries
-#
-# Sourceable bootstrap; strict mode is owned by the caller or dispatched script.
+# Sourceable Hypr environment and command dispatcher.
 
 resolve_executable_path() {
   local candidate="${EXECUTABLE:-hyprshell}"
@@ -18,14 +12,13 @@ resolve_executable_path() {
   command -v "${candidate}" 2>/dev/null || printf '%s\n' "${candidate}"
 }
 
-if [[ -z "${BASH_SOURCE[0]}" ]]; then
-  EXECUTABLE="${0}"
-else
-  EXECUTABLE="${BASH_SOURCE[0]}"
-fi
+EXECUTABLE="${BASH_SOURCE[0]:-$0}"
 
-BIN_DIR="$(dirname "$(resolve_executable_path)")"
+executable_path="$(resolve_executable_path)"
+BIN_DIR="${executable_path%/*}"
+[[ "$BIN_DIR" != "$executable_path" ]] || BIN_DIR=.
 LIB_DIR="$(realpath "${BIN_DIR}/../lib")"
+unset executable_path
 runtime_init="${LIB_DIR}/hypr/runtime/init.bash"
 
 [[ -r "${runtime_init}" ]] || {
@@ -140,13 +133,13 @@ case "${1:-}" in
   --help | help | -h)
     USAGE
     ;;
-  list | --list-script)
+  "" | list | --list-script)
     list_script
     ;;
   --list-script-path)
     list_script_path
     ;;
-  --completions)
+  completions | --completions)
     shift
     hyprshell_load_completion_helpers || exit 1
     generate_completions "${1:-}"

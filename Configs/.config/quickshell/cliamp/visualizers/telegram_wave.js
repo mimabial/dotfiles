@@ -9,7 +9,6 @@ function render(ctx, d) {
   var beatDrop = d.beatDrop || 0
   var midY = h / 2.0
 
-  // 56 rounded capsule pills
   var numPills = 56
   var resampled = H.resampleBandsLinear(bands, numPills)
 
@@ -20,11 +19,9 @@ function render(ctx, d) {
   var actualW = numPills * pillW + (numPills - 1) * gap
   var startX = margin + (totalDrawW - actualW) / 2.0
 
-  // Draw 56 fully-filled vibrant micro-capsule pills
   for (var i = 0; i < numPills; i++) {
     var px = startX + i * (pillW + gap)
 
-    // Dynamic amplitude profile envelope
     var env = Math.sin((i / numPills) * Math.PI)
     var shapeVal = 0.18 + env * 0.48 + Math.sin(i * 0.85 + 0.3) * 0.14
     var energy = isPlaying ? (resampled[i] || 0) : 0.0
@@ -34,7 +31,6 @@ function render(ctx, d) {
     var py = midY - (pillH / 2.0)
     var r = pillW / 2.0
 
-    // Full radiant gradient fill with white luminous core
     var grad = ctx.createLinearGradient(0, py, 0, py + pillH)
     grad.addColorStop(0, H.rgba(d.foreground, 0.98))
     grad.addColorStop(0.25, H.mixColor(d.accent, d.foreground, 0.35, 0.95))

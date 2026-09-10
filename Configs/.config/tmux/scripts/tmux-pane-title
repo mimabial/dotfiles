@@ -1,117 +1,86 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-plain_output=0
-
-if [[ "${1:-}" == "--plain" ]]; then
-  plain_output=1
-  shift
-fi
-
+plain=0
+if [[ ${1:-} == --plain ]]; then plain=1; shift; fi
 cmd="${1:-}"
 tty="${2:-}"
 pane_title="${3:-}"
-script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
-process_name_script="${script_dir}/tmux-process-name"
 
-trim_whitespace() {
-  local value="${1:-}"
-
+trim() {
+  local value="${1:-}" max="${2:-18}"
   value="${value#"${value%%[![:space:]]*}"}"
   value="${value%"${value##*[![:space:]]}"}"
-  printf '%s\n' "${value}"
+  ((${#value} <= max)) && printf '%s\n' "$value" || printf '%s\n' "${value:0:max}"
 }
 
-trim_label() {
-  local value="${1:-}"
-  local max_len="${2:-18}"
+resolve_process() {
+  local tty="$1" fallback="$2" record proc args script
+  [[ -n $tty ]] || { printf '%s\n' "${fallback:-shell}"; return; }
+  record="$(ps -t "$tty" -o stat= -o comm= -o args= 2>/dev/null | awk '
+    {
+      stat=$1; comm=$2; $1=$2=""; sub(/^[[:space:]]+/, "")
+      row=comm sprintf("%c", 28) $0
+      last=row
+      if (stat ~ /^[^TXZ ]*\+/) { found=1; print row; exit }
+    }
+    END { if (!found && last != "") print last }
+  ')"
+  IFS=$'\034' read -r proc args <<< "$record"
+  proc="${proc##*/}"
+  [[ -n $proc || -n $args ]] || { printf '%s\n' "${fallback:-shell}"; return; }
 
-  if ((${#value} <= max_len)); then
-    printf '%s\n' "${value}"
+  if [[ $args =~ (^|[[:space:]/])(codex|claude|anthropic|aider)([[:space:]]|$) ]]; then
+    printf '%s\n' "${BASH_REMATCH[2]}"
+  elif [[ $args =~ (^|[[:space:]])(g?(view|n?vim?x?)(diff)?)([[:space:]]|$) ]]; then
+    printf 'nvim\n'
+  elif [[ $proc == node && $args =~ node([[:space:]]+[^[:space:]-][^[:space:]]*) ]]; then
+    script="${BASH_REMATCH[1]}"
+    script="$(trim "$script")"
+    script="$(basename "$script" .js 2>/dev/null || printf '%s' "$script")"
+    case "$script" in npm | npx | yarn | pnpm | bun) printf '%s\n' "$script" ;; *) trim "$script" ;; esac
+  elif [[ $proc =~ ^python || $proc == uv ]]; then
+    if [[ $args =~ python[^[:space:]]*[[:space:]]+-m[[:space:]]+([^[:space:]]+) ]]; then
+      trim "${BASH_REMATCH[1]}"
+    elif [[ $args =~ (^|[[:space:]])([^[:space:]]+\.py)([[:space:]]|$) ]]; then
+      script="$(basename "${BASH_REMATCH[2]}" .py 2>/dev/null || printf '%s' "${BASH_REMATCH[2]}")"
+      trim "$script"
+    else
+      printf 'python\n'
+    fi
+  elif [[ $proc =~ ^(bash|zsh|sh|fish)$ && $args =~ ${proc}[[:space:]]+([^[:space:]-][^[:space:]]*) ]]; then
+    script="$(basename "${BASH_REMATCH[1]}" 2>/dev/null || printf '%s' "${BASH_REMATCH[1]}")"
+    script="${script%.sh}"; script="${script%.bash}"; script="${script%.zsh}"
+    if [[ $script =~ ^(\.|config|rc|profile)$ || -z $script ]]; then trim "$proc"; else trim "$script"; fi
+  elif [[ $proc =~ ^(ssh|mosh)$ && $args =~ ${proc}[[:space:]]+([^[:space:]]+@)?([^[:space:]]+) ]]; then
+    printf '%s:%s\n' "$proc" "$(trim "${BASH_REMATCH[2]}" 14)"
+  elif [[ $args =~ /nix/store/[^/]+/bin/([^[:space:]]+) ]]; then
+    trim "${BASH_REMATCH[1]}"
   else
-    printf '%s\n' "${value:0:max_len}"
+    trim "${proc:-${fallback:-shell}}"
   fi
 }
 
-print_label() {
-  local icon="${1:-}"
-  local label="${2:-shell}"
-
-  if ((plain_output)); then
-    printf '%s\n' "${label}"
-  else
-    printf '%s %s\n' " ${icon}" "${label} "
-  fi
-}
-
-if [[ -x "${process_name_script}" ]]; then
-  resolved_cmd="$("${process_name_script}" "${tty}" "${cmd}" 2>/dev/null || true)"
-  [[ -n "${resolved_cmd}" ]] && cmd="${resolved_cmd}"
-fi
+resolved="$(resolve_process "$tty" "$cmd" 2>/dev/null || true)"
+[[ -n $resolved ]] && cmd="$resolved"
 
 case "$cmd" in
   codex | claude | anthropic | aider)
-    icon="󰚩"
-    label="$(trim_whitespace "${pane_title}")"
-    [[ -n "${label}" ]] || label="$cmd"
-    label="$(trim_label "${label}" 24)"
-    ;;
-  nvim | vim | vi | view)
-    icon=""
-    label="nvim"
-    ;;
-  zsh | bash | fish | sh)
-    icon=""
-    label="$cmd"
-    ;;
-  ssh:* | mosh:*)
-    icon="󰣀"
-    label="${cmd#*:}"
-    ;;
-  ssh | mosh)
-    icon="󰣀"
-    label="$cmd"
-    ;;
-  lazygit | git)
-    icon="󰊢"
-    label="$cmd"
-    ;;
-  ranger | yazi | lf)
-    icon=""
-    label="$cmd"
-    ;;
-  htop | btop | top)
-    icon="󰓅"
-    label="$cmd"
-    ;;
-  pytest | python | python3 | ipython)
-    icon=""
-    label="$cmd"
-    ;;
-  node | nodejs | npm | pnpm | yarn | bun | vite | next | deno | astro | tsx)
-    icon=""
-    label="$cmd"
-    ;;
-  cargo | rustc)
-    icon=""
-    label="$cmd"
-    ;;
-  docker | docker-compose | podman)
-    icon=""
-    label="$cmd"
-    ;;
-  tmux)
-    icon=""
-    label="$cmd"
-    ;;
-  "")
-    icon=""
-    label="shell"
-    ;;
-  *)
-    icon=""
-    label="$cmd"
-    ;;
+    icon=󰚩; label="$(trim "$pane_title")"; label="${label:-$cmd}"; label="$(trim "$label" 24)" ;;
+  nvim | vim | vi | view) icon=; label=nvim ;;
+  zsh | bash | fish | sh) icon=; label="$cmd" ;;
+  ssh:* | mosh:*) icon=󰣀; label="${cmd#*:}" ;;
+  ssh | mosh) icon=󰣀; label="$cmd" ;;
+  lazygit | git) icon=󰊢; label="$cmd" ;;
+  ranger | yazi | lf) icon=; label="$cmd" ;;
+  htop | btop | top) icon=󰓅; label="$cmd" ;;
+  pytest | python | python3 | ipython) icon=; label="$cmd" ;;
+  node | nodejs | npm | pnpm | yarn | bun | vite | next | deno | astro | tsx) icon=; label="$cmd" ;;
+  cargo | rustc) icon=; label="$cmd" ;;
+  docker | docker-compose | podman) icon=; label="$cmd" ;;
+  tmux) icon=; label="$cmd" ;;
+  '') icon=; label=shell ;;
+  *) icon=; label="$cmd" ;;
 esac
 
-print_label "${icon}" "${label}"
+((plain)) && printf '%s\n' "$label" || printf ' %s %s \n' "$icon" "$label"

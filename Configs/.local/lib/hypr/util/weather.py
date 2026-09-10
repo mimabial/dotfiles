@@ -8,7 +8,6 @@ import tempfile
 import time
 from datetime import datetime
 
-# Add the parent hypr lib directory to path so we can import pyutils
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
 import pyutils.pip_env as pip_env
@@ -21,7 +20,6 @@ try:
 except ImportError:
     requests = None
 
-# Cache for weather codes loaded from JSON
 _WEATHER_CODES_CACHE = None
 
 
@@ -36,7 +34,6 @@ def _load_weather_codes():
         with open(json_file, "r", encoding="utf-8") as f:
             _WEATHER_CODES_CACHE = json.load(f)
     except Exception:
-        # Fallback if JSON file can't be loaded
         _WEATHER_CODES_CACHE = {"default": "󰖐"}
 
     return _WEATHER_CODES_CACHE
@@ -50,7 +47,7 @@ def get_weather_icon_from_code(weather_code):
 
 CACHE_DIR = os.path.join(os.getenv("HOME"), ".cache/wttr")
 WEATHER_DATA_CACHE = os.path.join(CACHE_DIR, "weather_data.json")
-CACHE_EXPIRY = 3600  # 1 hour in seconds
+CACHE_EXPIRY = 3600
 
 
 def is_cache_valid():
@@ -543,47 +540,40 @@ show_location = os.getenv("WEATHER_SHOW_LOCATION", "False").lower() in (
     "t",
     "y",
     "yes",
-)  # True or False     (default: False)
+)
 show_today_details = os.getenv("WEATHER_SHOW_TODAY_DETAILS", "True").lower() in (
     "true",
     "1",
     "t",
     "y",
     "yes",
-)  # True or False     (default: True)
-get_location = os.getenv("WEATHER_LOCATION", "").replace(
-    " ", "_"
-)  # Name of the location to get the weather from (default: '')
+)
+get_location = os.getenv("WEATHER_LOCATION", "").replace(" ", "_")
 allow_auto_geolocation = env_flag("WEATHER_ALLOW_AUTO_GEOLOCATION", False)
 
-# Prefer explicit theme coordinates when WEATHER_LOCATION is unset.
 if not get_location:
     get_location = resolve_theme_coordinates().replace(" ", "_")
 
 cached_city, cached_country = read_location_cache()
 
-# a picked coordinate has no name of its own; the label recorded with it wins
 pinned_label = os.getenv("WEATHER_LOCATION_LABEL", "").strip()
 if pinned_label:
     label_city, _, label_country = pinned_label.partition(", ")
     cached_city, cached_country = label_city, label_country or cached_country
 
-# If no explicit location is set, try to read from cached location
 if not get_location and cached_city:
     get_location = cached_city.replace(" ", "_")
 
-# Optional network geolocation fallback
 if not get_location and allow_auto_geolocation and requests is not None:
     try:
         response = requests.get("https://ipinfo.io", timeout=3)
         data = response.json()
-        loc = data.get("loc")  # e.g., "48.8566,2.3522"
+        loc = data.get("loc")
         city = data.get("city")
         get_location = (loc or city or "").replace(" ", "_")
     except Exception:
         get_location = ""
 
-# Final fallback to Paris if all else fails
 if not get_location:
     get_location = "Paris"
 
@@ -595,7 +585,6 @@ if windspeed_unit not in ("km/h", "mph"):
     windspeed_unit = "km/h"
 
 if args.search:
-    # a picker needs the coordinates plus enough to tell the matches apart
     print(json.dumps([
         {
             "name": place.get("name", ""),

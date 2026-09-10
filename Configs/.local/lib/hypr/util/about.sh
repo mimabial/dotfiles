@@ -1,9 +1,4 @@
 #!/usr/bin/env bash
-#
-# about.sh — Open the about document for this config.
-#
-# Depends on: glow (falls back to bat, less, then cat)
-#
 
 set -euo pipefail
 

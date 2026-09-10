@@ -1,15 +1,4 @@
 #!/usr/bin/env bash
-# Emit one display-ready JSON usage record per AI coding subscription, as a
-# JSON array. Mirrors omarchy-agent-usage-update's contract: each collector
-# prints one record, adding an agent is adding a collector.
-#
-# Collecting is slow (it scans the agents' local state), so producer and
-# display are split the way omarchy splits them: --write refreshes a cache
-# file and the bar watches that file, rather than blocking on a scan.
-#
-# Collectors are looked up on PATH first, then in ~/omarchy/ if that reference
-# checkout is present. Emits [] when none are installed, so callers can treat
-# "no agents" and "no collectors" the same way.
 set -euo pipefail
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash"
@@ -26,20 +15,12 @@ Cache: \${HYPR_CACHE_HOME:-~/.cache/hypr}/agents/usage.json" "$@"
 
 readonly AGENTS=(claude codex)
 readonly COLLECTOR_DIR="${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/system"
-readonly FALLBACK_DIR="${HOME}/omarchy/bin"
 readonly CACHE_DIR="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/agents"
 readonly CACHE_FILE="${CACHE_DIR}/usage.json"
 
 collector_for() {
-  local name="omarchy-agent-usage-$1"
-  local live_collector="${COLLECTOR_DIR}/agent-usage-$1.py"
-  if [[ -x "${live_collector}" ]]; then
-    printf '%s\n' "${live_collector}"
-  elif command -v "${name}" >/dev/null 2>&1; then
-    command -v "${name}"
-  elif [[ -x "${FALLBACK_DIR}/${name}" ]]; then
-    printf '%s\n' "${FALLBACK_DIR}/${name}"
-  fi
+  local collector="${COLLECTOR_DIR}/agent-usage-$1.py"
+  [[ -x "${collector}" ]] && printf '%s\n' "${collector}"
 }
 
 write=0
@@ -59,9 +40,7 @@ scratch="$(mktemp -d "${TMPDIR:-/tmp}/agent-usage.XXXXXX")"
 cleanup_paths=("${scratch}")
 trap 'rm -rf "${cleanup_paths[@]}"' EXIT
 
-# Each collector spends nearly all of its wall time waiting on a network or RPC
-# probe, and they share no state, so they run concurrently. Output slots are
-# numbered rather than named after the agent: the name comes from argv.
+# Collectors are independent and network-bound, so run them concurrently.
 collector_args=()
 ((force)) && collector_args+=(--force)
 
@@ -75,15 +54,10 @@ for agent in "${wanted[@]}"; do
   pids+=("$!")
 done
 
-# Reaped in launch order, so the record order stays stable regardless of which
-# collector finishes first.
 records=()
 for index in "${!pids[@]}"; do
-  # A collector killed by a signal makes the shell announce the job on our own
-  # stderr, which the sequential form never had to suppress.
   wait "${pids[index]}" 2>/dev/null || true
   record="$(<"${slots[index]}")"
-  # A collector with nothing to report exits quietly rather than emitting a stub.
   [[ -n "${record}" ]] && jq -e . >/dev/null 2>&1 <<<"${record}" && records+=("${record}")
 done
 
@@ -98,8 +72,8 @@ if ((write)); then
   tmp="$(mktemp "${CACHE_FILE}.XXXXXX")"
   cleanup_paths+=("${tmp}")
   printf '%s\n' "${payload}" >"${tmp}"
-  mv -f "${tmp}" "${CACHE_FILE}"          # atomic, so the watcher never sees a partial file
-  print_log -sec "agent-usage" -stat "cached" "$(jq -r 'length' <<<"${payload}") record(s)"
+  mv -f "${tmp}" "${CACHE_FILE}"
+  print_log -sec "agent-usage" -stat "cached" "${#records[@]} record(s)"
 else
   printf '%s\n' "${payload}"
 fi

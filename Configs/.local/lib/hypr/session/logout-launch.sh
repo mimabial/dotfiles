@@ -91,7 +91,6 @@ if [ -n "${wal_background}" ]; then
   fi
 fi
 
-# Theme palettes detect the color-scheme set in hypr.theme and fall back if nothing is parsed.
 if [ -z "${BtnCol}" ]; then
   if [[ "${selected_color_source:-theme}" == "theme" ]]; then
     HYPR_THEME_DIR="${HYPR_THEME_DIR:-${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}}"

@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-# Renderer: KDE KColorScheme + qt6ct palette generated from shared Qt roles.
-
 import hashlib
 import json
 import os

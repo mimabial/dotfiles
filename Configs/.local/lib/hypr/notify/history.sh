@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# Everything the notification panel draws in one payload: dunst's live pause
-# state and counts, plus the archive (notify/archive) that outlives dunst's
-# 20-entry ring.
 set -euo pipefail
 
 # shellcheck source=/dev/null
@@ -14,9 +11,7 @@ limit="${1:-200}"
 [[ "${limit}" =~ ^[0-9]+$ ]] || limit=200
 
 archive_cmd="${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/notify/archive.sh"
-entries="$("${archive_cmd}" list "${limit}" 2>/dev/null || printf '[]')"
-unread="$("${archive_cmd}" unread 2>/dev/null | jq -r '.unread // 0' 2>/dev/null || echo 0)"
-seen="$("${archive_cmd}" seen 2>/dev/null | jq -r '.seen // 0' 2>/dev/null || echo 0)"
+snapshot="$("${archive_cmd}" snapshot "${limit}" 2>/dev/null || printf '{"entries":[],"unread":0,"seen":0}')"
 
 paused=false
 waiting=0
@@ -25,17 +20,18 @@ displayed=0
 if command -v dunstctl >/dev/null 2>&1; then
   [[ "$(dunstctl is-paused 2>/dev/null)" == "true" ]] && paused=true
   counts="$(dunstctl count 2>/dev/null || true)"
-  field() { sed -n "s/^[[:space:]]*$1:[[:space:]]*//p" <<<"${counts}" | head -n 1; }
-  waiting="$(field Waiting)"
-  displayed="$(field 'Currently displayed')"
+  while IFS=: read -r key value; do
+    case "${key}" in
+      *Waiting) waiting="${value}" ;;
+      *"Currently displayed") displayed="${value}" ;;
+    esac
+  done <<<"${counts}"
 fi
 
 jq -cn \
   --argjson paused "${paused}" \
   --argjson waiting "${waiting:-0}" \
   --argjson displayed "${displayed:-0}" \
-  --argjson unread "${unread:-0}" \
-  --argjson seen "${seen:-0}" \
-  --argjson entries "${entries}" \
+  --argjson archive "${snapshot}" \
   '{paused: $paused, waiting: $waiting, displayed: $displayed,
-    unread: $unread, seen: $seen, entries: $entries}'
+    unread: $archive.unread, seen: $archive.seen, entries: $archive.entries}'

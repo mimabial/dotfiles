@@ -1,10 +1,4 @@
 #!/usr/bin/env bash
-#
-# qr.sh — Decode a QR code from a selected screen region.
-#
-# Usage: qr.sh
-# Depends on: slurp, grim, zbarimg, wl-copy
-#
 set -euo pipefail
 
 hypr_lib="${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}"

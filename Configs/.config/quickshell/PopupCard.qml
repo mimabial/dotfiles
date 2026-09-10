@@ -40,7 +40,6 @@ PopupWindow {
 
     Component.onCompleted: if (anchorItem && anchorItem.popupCards !== undefined) anchorItem.popupCards = anchorItem.popupCards.concat(root)
 
-    // ---- keyboard cursor over the panel's rows -------------------------------
     // Rows opt in with `navigable`; the card walks its own content rather than
     // asking each panel to maintain a list.
     property int cursorIndex: -1

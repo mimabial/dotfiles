@@ -535,7 +535,6 @@ def expand_meta_data(binds_data):
                 "key_display": bind["key_display"],
             }
 
-    # Second pass: update binds with submap keys
     for bind in binds_data:
         submap = bind.get("submap", "")
         mod_display = bind["mod_display"]

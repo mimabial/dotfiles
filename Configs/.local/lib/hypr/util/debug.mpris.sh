@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-# Debug script for MPRIS metadata
-
 set -euo pipefail
 
 # shellcheck source=/dev/null

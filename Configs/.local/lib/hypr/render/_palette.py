@@ -1,12 +1,4 @@
 #!/usr/bin/env python3
-# _palette.py
-#   --theme <pack-name>       theme mode: derive palette from pack's kitty.theme
-#   --wallpaper <image-path>  wallpaper mode: invoke pywal16, read its colors.json
-#   --variant dark|light      wallpaper color variant
-#   --out <path>              output JSON path (default: ~/.local/state/hypr/active-palette.json)
-#
-# Writes the active palette as JSON; atomic move into place.
-
 import argparse
 import json
 import os

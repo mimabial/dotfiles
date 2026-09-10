@@ -1,40 +1,16 @@
 import QtQuick
 import qs.Commons
 
-// Bare on/off switch: a track with a sliding knob and no label. This is the
-// switch `Toggle` parks at the end of its labeled row, factored out so panel
-// headers and other compact controls render the identical thing.
-//
-// The caller owns the value: bind `checked` to real state and flip it in
-// response to `toggled()`. Services that already track a desired state
-// optimistically (see the Tailscale service's `_desired`) get an instant knob
-// throw for free, because `checked` is already the optimistic value.
-//
-// `busy` marks an operation in flight and swallows further clicks, but leaves
-// hover, cursor, and tooltips alone so the control does not flicker every time
-// a background refresh runs.
-//
-// The cursor is a ring drawn outside the track rather than a state on the
-// track itself: themes give normal chrome a stronger border than hover-cursor
-// (0.4 vs 0.25 by default), which is right for controls that are borderless at
-// rest but would make a bordered track go *fainter* under the cursor. On the
-// panel background the ring reads immediately. `cursorRing` follows
-// `interactive` — a switch whose surrounding row owns the click owns the
-// cursor too.
-//
-// `rounded` auto-detects from Style.cornerRadius so the switch follows the
-// same corner treatment as the other inputs.
+// The caller owns `checked`; `busy` only blocks input. A separate cursor ring
+// avoids weakening the track's normal border under hover/focus.
 Item {
   id: root
 
   property bool checked: false
   property bool busy: false
 
-  // Off when the surrounding row owns the click, as in `Toggle`.
   property bool interactive: true
 
-  // Panel-cursor flag. Same role as Button.hasCursor: panels with their own
-  // keyboard cursor bind this to drive the highlight separately from hover.
   property bool hasCursor: false
 
   property bool cursorRing: interactive

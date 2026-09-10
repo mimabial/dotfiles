@@ -1,5 +1,3 @@
-# PHP-family installers.
-
 dev_env_php_enable_xdebug() {
   sudo sed -i \
     -e 's/^;zend_extension=xdebug.so/zend_extension=xdebug.so/' \

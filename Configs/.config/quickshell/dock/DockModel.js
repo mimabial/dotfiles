@@ -187,7 +187,6 @@ function entryFor(appRows, appId) {
   if (!want || !appRows) return null
   var wantLower = want.toLowerCase()
 
-  // 1. Exact ID match
   for (var i = 0; i < appRows.length; i++) {
     var row = appRows[i]
     var entry = row && row.entry
@@ -195,7 +194,7 @@ function entryFor(appRows, appId) {
     if (stripDesktop(entry.id) === want || stripDesktop(entry.id).toLowerCase() === wantLower) return entry
   }
 
-  // 2. Multi-token candidate match (e.g. chrome-x.com__-Default -> X.desktop, org.localsend.localsend_app -> localsend.desktop)
+  // Candidate tokens bridge webapp/profile suffixes and desktop IDs.
   var wantCands = getCandidates(want)
   for (var i = 0; i < appRows.length; i++) {
     var entry = appRows[i] && appRows[i].entry
@@ -209,7 +208,6 @@ function entryFor(appRows, appId) {
     }
   }
 
-  // 3. Webapp Exec URL Match (if entry.exec contains candidate domain or URL)
   for (var i = 0; i < appRows.length; i++) {
     var entry = appRows[i] && appRows[i].entry
     if (!entry) continue
@@ -222,7 +220,6 @@ function entryFor(appRows, appId) {
     }
   }
 
-  // 4. GenericName / Substring match
   for (var i = 0; i < appRows.length; i++) {
     var entry = appRows[i] && appRows[i].entry
     if (!entry) continue

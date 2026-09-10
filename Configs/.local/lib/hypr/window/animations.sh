@@ -36,10 +36,7 @@ list_animation_names() {
   hypr_stateful_choice_list_names "lua" "${animations_user_dir}" "${animations_shared_dir}" "disable" "theme"
 }
 
-# Same shape as util/workflows.sh --list, so one parser serves every pipeline.
-# Animations carry no icon or description, so those fields are empty rather than
-# absent. "disable" is prepended for the same reason select_animation does it: the
-# listing helper skips it, but it is a selectable value.
+# Keep workflow-compatible tab-separated fields, including empty metadata.
 list_animations() {
   local name=""
   {

@@ -2,13 +2,13 @@
 # Sourced module; strict mode is owned by the entrypoint.
 
 find_wallpapers() {
-  local wallSource="$1"
+  local wall_source="$1"
   shift
   local -a supported_files=("$@")
   local -a find_args=()
-  local ext=""
+  local error_file errors ext
 
-  if [[ -z "${wallSource}" ]]; then
+  if [[ -z "${wall_source}" ]]; then
     print_log -err "ERROR: wallSource is empty"
     return 1
   fi
@@ -18,21 +18,21 @@ find_wallpapers() {
     return 1
   fi
 
-  # Build find arguments safely using arrays (no eval needed).
-  find_args=(-H "${wallSource}" -type f \( -iname "*.${supported_files[0]}")
+  find_args=(-H "${wall_source}" -type f \( -iname "*.${supported_files[0]}")
 
   for ext in "${supported_files[@]:1}"; do
     find_args+=(-o -iname "*.${ext}")
   done
-  find_args+=(\) ! -path "*/logo/*" -exec "${HYPR_HASH_COMMAND}" {} +)
+  find_args+=(\) ! -path "*/logo/*" -exec "${HYPR_HASH_COMMAND:-xxh64sum}" {} +)
 
   [[ "${LOG_LEVEL:-}" == "debug" ]] && print_log -g "DEBUG:" -b "Running find with args:" "${find_args[*]}"
 
-  local tmpfile error_output
-  tmpfile=$(mktemp)
-  find "${find_args[@]}" 2>"$tmpfile" | sort -k2
-  error_output=$(<"$tmpfile") && rm -f "$tmpfile"
-  [[ -n "${error_output}" ]] && print_log -err "ERROR:" -b "found an error: " -r "${error_output}" -y " skipping..."
+  error_file=$(mktemp) || return 1
+  find "${find_args[@]}" 2>"${error_file}" | LC_ALL=C sort -k2 || :
+  errors=$(<"${error_file}")
+  rm -f -- "${error_file}"
+  [[ -z "${errors}" ]] || print_log -err "ERROR:" -b "found an error: " -r "${errors}" -y " skipping..."
+  return 0
 }
 
 get_hashmap_into() {
@@ -43,16 +43,12 @@ get_hashmap_into() {
   local -n list_ref="${list_name}"
   local -a wall_sources=("$@")
   local -a missing_sources=()
-  local wallSource=""
-  local hashMap=""
-  local hash=""
-  local image=""
+  local wall_source hash_map hash image
 
   hash_ref=()
   list_ref=()
   ((${#wall_sources[@]} > 0)) || return 1
 
-  # Initialize supported file extensions (safe: no eval needed)
   local -a supported_files=(
     "gif"
     "jpg"
@@ -64,31 +60,33 @@ get_hashmap_into() {
     supported_files=("${WALLPAPER_OVERRIDE_FILETYPES[@]}")
   fi
 
-  for wallSource in "${wall_sources[@]}"; do
+  for wall_source in "${wall_sources[@]}"; do
 
-    [[ "${LOG_LEVEL:-}" == "debug" ]] && print_log -g "DEBUG:" -b "wallpaper source path:" "${wallSource}"
+    [[ "${LOG_LEVEL:-}" == "debug" ]] && print_log -g "DEBUG:" -b "wallpaper source path:" "${wall_source}"
 
-    [[ -z "${wallSource}" ]] && continue
-    wallSource="$(realpath "${wallSource}")"
+    [[ -z "${wall_source}" ]] && continue
+    [[ -e "${wall_source}" ]] || {
+      print_log -err "ERROR:" -b "wallpaper source does not exist:" "${wall_source}" -y " skipping..."
+      continue
+    }
+    wall_source="$(realpath -- "${wall_source}")" || continue
 
-    [[ -e "${wallSource}" ]] || {
-      print_log -err "ERROR:" -b "wallpaper source does not exist:" "${wallSource}" -y " skipping..."
+    [[ "${LOG_LEVEL:-}" == "debug" ]] && print_log -g "DEBUG:" -b "wallSource path:" "${wall_source}"
+
+    hash_map=$(find_wallpapers "${wall_source}" "${supported_files[@]}") || {
+      missing_sources+=("${wall_source}")
       continue
     }
 
-    [[ "${LOG_LEVEL:-}" == "debug" ]] && print_log -g "DEBUG:" -b "wallSource path:" "${wallSource}"
-
-    hashMap=$(find_wallpapers "${wallSource}" "${supported_files[@]}")
-
-    if [[ -z "${hashMap}" ]]; then
-      missing_sources+=("${wallSource}")
+    if [[ -z "${hash_map}" ]]; then
+      missing_sources+=("${wall_source}")
       continue
     fi
 
     while read -r hash image; do
       hash_ref+=("${hash}")
       list_ref+=("${image}")
-    done <<<"${hashMap}"
+    done <<<"${hash_map}"
   done
 
   if ((${#missing_sources[@]} > 0)); then
@@ -102,57 +100,45 @@ get_hashmap() {
   get_hashmap_into wallHash wallList "$@"
 }
 
-# Populate sorted theme metadata from `$HYPR_CONFIG_HOME/themes` and repair
-# broken `wall.set` links when a theme still has valid wallpapers.
-# shellcheck disable=SC2120
+# Repair broken wall.set links while collecting sorted theme metadata.
 get_themes() {
   thmList=()
   thmWall=()
-  local -a theme_dirs=()
-  local thmDir=""
-  local realWallPath=""
-  local wallLinkTarget=""
+  local -a theme_dirs=() theme_wall_hash=() theme_wall_list=()
+  local theme_dir real_wall_path wall_link_target
 
   mapfile -t theme_dirs < <(find -H "${HYPR_CONFIG_HOME}/themes" -mindepth 1 -maxdepth 1 -type d | LC_ALL=C sort)
 
-  for thmDir in "${theme_dirs[@]}"; do
-    wallLinkTarget="$(readlink "${thmDir}/wall.set" 2>/dev/null || true)"
-    if [[ -n "${wallLinkTarget}" ]]; then
-      if [[ "${wallLinkTarget}" = /* ]]; then
-        realWallPath="${wallLinkTarget}"
+  for theme_dir in "${theme_dirs[@]}"; do
+    wall_link_target="$(readlink "${theme_dir}/wall.set" 2>/dev/null || true)"
+    if [[ -n "${wall_link_target}" ]]; then
+      if [[ "${wall_link_target}" = /* ]]; then
+        real_wall_path="${wall_link_target}"
       else
-        realWallPath="${thmDir}/${wallLinkTarget}"
+        real_wall_path="${theme_dir}/${wall_link_target}"
       fi
     else
-      realWallPath=""
+      real_wall_path=""
     fi
 
-    if [ ! -e "${realWallPath}" ]; then
-      local -a theme_wall_hash=()
-      local -a theme_wall_list=()
-      get_hashmap_into theme_wall_hash theme_wall_list "${thmDir}" || continue
-      echo "fixing link :: ${thmDir}/wall.set"
-      ln -fs "${theme_wall_list[0]}" "${thmDir}/wall.set"
-      realWallPath="${theme_wall_list[0]}"
+    if [[ ! -e "${real_wall_path}" ]]; then
+      get_hashmap_into theme_wall_hash theme_wall_list "${theme_dir}" || continue
+      printf 'fixing link :: %s/wall.set\n' "${theme_dir}"
+      ln -fs "${theme_wall_list[0]}" "${theme_dir}/wall.set"
+      real_wall_path="${theme_wall_list[0]}"
     fi
 
-    thmList+=("${thmDir##*/}")
-    thmWall+=("${realWallPath}")
+    thmList+=("${theme_dir##*/}")
+    thmWall+=("${real_wall_path}")
   done
 }
 
-# Print the configured hash for a readable image file.
 set_hash() {
-  local hashImage="${1}"
+  local hash_image="${1}" output
 
-  if [[ -z "${hashImage}" ]]; then
-    return 1
-  fi
-  if [[ ! -r "${hashImage}" ]]; then
-    return 1
-  fi
-
-  "${HYPR_HASH_COMMAND}" "${hashImage}" | awk '{print $1}'
+  [[ -r "${hash_image}" ]] || return 1
+  output="$("${HYPR_HASH_COMMAND:-xxh64sum}" "${hash_image}")" || return 1
+  printf '%s\n' "${output%% *}"
 }
 
 # Populate an assoc array (by name) with content hashes for the given files,
@@ -165,16 +151,15 @@ wall_hash_map_into() {
   local -A file_meta=()
   local -a stat_lines=()
   local -a missing=()
-  local cache_dir=""
-  local cache_file=""
-  local append=""
-  local line="" hash="" mtime="" size="" path=""
+  local cache_dir="" cache_file="" hash_command="${HYPR_HASH_COMMAND:-xxh64sum}"
+  local cache_tmp cache_value line hash mtime size path
+  local cache_dirty=0
 
   map_ref=()
   (($# > 0)) || return 0
 
   cache_dir="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/hash-cache"
-  cache_file="${cache_dir}/wall.${HYPR_HASH_COMMAND:-xxh64sum}.tsv"
+  cache_file="${cache_dir}/wall.${hash_command##*/}.tsv"
 
   if [[ -r "${cache_file}" ]]; then
     while IFS=$'\t' read -r hash mtime size path; do
@@ -183,12 +168,9 @@ wall_hash_map_into() {
     done <"${cache_file}"
   fi
 
-  mapfile -t stat_lines < <(stat -c '%Y %s %n' -- "$@" 2>/dev/null)
+  mapfile -t stat_lines < <(stat -c $'%y\t%s\t%n' -- "$@" 2>/dev/null)
   for line in "${stat_lines[@]}"; do
-    mtime="${line%% *}"
-    line="${line#* }"
-    size="${line%% *}"
-    path="${line#* }"
+    IFS=$'\t' read -r mtime size path <<<"${line}"
     [[ -n "${path}" && -z "${file_meta[${path}]:-}" ]] || continue
     file_meta["${path}"]="${mtime}"$'\t'"${size}"
     if [[ "${cached[${path}]:-}" == "${mtime}"$'\t'"${size}"$'\t'* ]]; then
@@ -203,13 +185,21 @@ wall_hash_map_into() {
   while read -r hash path; do
     [[ -n "${hash}" && -n "${path}" ]] || continue
     map_ref["${path}"]="${hash}"
-    append+="${hash}"$'\t'"${file_meta[${path}]}"$'\t'"${path}"$'\n'
-  done < <("${HYPR_HASH_COMMAND:-xxh64sum}" "${missing[@]}" 2>/dev/null)
+    cached["${path}"]="${file_meta[${path}]}"$'\t'"${hash}"
+    cache_dirty=1
+  done < <("${hash_command}" "${missing[@]}" 2>/dev/null)
 
-  if [[ -n "${append}" ]]; then
-    mkdir -p "${cache_dir}" 2>/dev/null || return 0
-    printf '%s' "${append}" >>"${cache_file}"
-  fi
+  ((cache_dirty)) || return 0
+  mkdir -p "${cache_dir}" 2>/dev/null || return 0
+  cache_tmp="$(mktemp "${cache_file}.XXXXXX")" || return 0
+  for path in "${!cached[@]}"; do
+    [[ -e "${path}" ]] || continue
+    cache_value="${cached[${path}]}"
+    IFS=$'\t' read -r mtime size hash <<<"${cache_value}"
+    [[ -n "${mtime}" && -n "${size}" && -n "${hash}" ]] || continue
+    printf '%s\t%s\t%s\t%s\n' "${hash}" "${mtime}" "${size}" "${path}"
+  done >"${cache_tmp}"
+  mv -f -- "${cache_tmp}" "${cache_file}" 2>/dev/null || rm -f -- "${cache_tmp}"
 }
 
 # Extract a thumbnail image for a video file with ffmpeg.

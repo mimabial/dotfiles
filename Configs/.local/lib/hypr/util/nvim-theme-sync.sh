@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# Sync theme changes to all running Neovim instances
-
 set -euo pipefail
 
 # shellcheck source=/dev/null
@@ -58,8 +56,6 @@ for socket in "${runtime_dir}"/nvim.*.0; do
     continue
   fi
 
-  # Send command to reload theme and force UI redraw.
-  # The redraw! ensures UI updates even when Neovim is unfocused.
   if ! timeout --kill-after="${remote_kill_after}" "${remote_timeout}" \
     nvim --server "${socket}" --remote-send "${remote_cmd}" >/dev/null 2>&1; then
     log_warn "failed to sync nvim theme: ${socket} (pid ${pid})"

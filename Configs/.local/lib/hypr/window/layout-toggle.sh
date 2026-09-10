@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-# Cycle the global tiled layout. Delegates to util/window-layout.sh, which owns the
-# layout list and persists the choice in window-layout.lua. This used to set a
-# per-workspace rule, but those are runtime-only and any config reload discards them.
+# Per-workspace layout rules disappear on reload, so persist the global layout.
 
 set -euo pipefail
 

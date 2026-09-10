@@ -1,12 +1,4 @@
 #!/usr/bin/env bash
-#
-# tui.sh — Launch a command in the TUI terminal profile, deriving an app-id from the command if not supplied.
-#
-# Usage: tui.sh [--app-id ID] [--title TITLE] -- <command>
-#
-# Depends on: setsid, uwsm-app, tui-terminal-exec
-#
-
 usage() {
   cat <<EOF
 Usage: $(basename "$0") [--app-id ID] [--title TITLE] -- <command>

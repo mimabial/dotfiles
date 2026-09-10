@@ -1,11 +1,4 @@
 #!/usr/bin/env bash
-#
-# brightness-idle.sh — Save/restore screen brightness around idle dimming.
-#
-# Usage: brightness-idle.sh <dim|restore>
-#
-# Depends on: brightnessctl, controls/lib/brightness.common.bash, runtime/init.bash
-#
 set -euo pipefail
 
 LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
@@ -17,9 +10,7 @@ source "${HYPR_LIB_DIR}/controls/lib/brightness.common.bash"
 readonly BRIGHTNESS_DIM_PERCENT=1
 
 usage() {
-  cat <<EOF
-Usage: $(basename "$0") <dim|restore>
-EOF
+  printf 'Usage: %s <dim|restore>\n' "${0##*/}"
 }
 
 read_current_brightness_raw() {

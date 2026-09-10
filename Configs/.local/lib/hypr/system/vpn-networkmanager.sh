@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# NetworkManager VPN profiles and actions for the Quickshell VPN popup.
 set -euo pipefail
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash"

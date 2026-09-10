@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
-# Shared hyprlock asset/image helpers.
 resolve_magick_limits() {
   local cores mem_avail_kb mem_avail_mb
   local magick_mem_mb magick_map_mb magick_threads
@@ -61,10 +60,9 @@ fn_background() {
   bg_tmp="$(mktemp "${WALLPAPER_CURRENT_DIR}/.wall.set.tmp.XXXXXX.png")" || return 1
 
   mime="$(file --mime-type -b "${wp}" 2>/dev/null || true)"
-  # `|| true`: grep -c returns 1 when no matches, which under set -e+pipefail
-  # would otherwise kill the script. We want is_video=0 in that case.
-  is_video=$(grep -c '^video/' <<<"${mime}" || true)
-  if [ "${is_video}" -eq 1 ]; then
+  is_video=0
+  [[ $mime == video/* ]] && is_video=1
+  if ((is_video)); then
     print_log -sec "wallpaper" -stat "converting video" "${wp}"
     mkdir -p "${WALLPAPER_VIDEO_DIR}"
     cached_thumb="${WALLPAPER_VIDEO_DIR}/$(${HYPR_HASH_COMMAND:-sha1sum} "${wp}" | cut -d' ' -f1).png"
@@ -83,7 +81,6 @@ fn_background() {
     return 0
   fi
 
-  # Convert synchronously to ensure hyprlock has a complete image (hyprlock expects PNG)
   mkdir -p "${WALLPAPER_CACHE_DIR}/png_cache"
   if [[ "${mime}" == "image/png" ]]; then
     cp -f "${wp}" "${bg_tmp}" || {
@@ -132,8 +129,6 @@ colorize_fallback_icon() {
 
   source "$color_file"
 
-  # Apply colorization - tint the icon while preserving detail
-  # Modulate reduces saturation and colorize adds a stronger tint
   magick "${MAGICK_LIMITS[@]}" "$source_icon" \
     -modulate 100,60,100 \
     -fill "${color4:-#458588}" -colorize 60% \
@@ -185,7 +180,6 @@ fn_profile() {
     fi
   fi
 
-  # Ensure profile image exists so layouts don't show a blank avatar
   if [[ ! -f "${profile_png}" ]]; then
     colorize_fallback_icon "${profile_png}"
   fi

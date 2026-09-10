@@ -3,8 +3,6 @@
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
 
-# List available PipeWire/PulseAudio card profiles as JSON.
-
 set -o pipefail
 
 timeout --kill-after=1s 2 pactl -f json list cards 2>/dev/null | jq -c '

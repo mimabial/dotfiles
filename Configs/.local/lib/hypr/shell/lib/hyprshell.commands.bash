@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
 
-# Core command helpers for hyprshell.
-
 hyprshell_builtin_commands() {
   printf '%s\n' \
     "--help" "help" "-h" \
@@ -10,8 +8,8 @@ hyprshell_builtin_commands() {
     "--version" "version" "-v" \
     "--release-notes" "release-notes" \
     "list" "--list-script" "--list-script-path" \
-    "--completions" \
-    "pyinit" "init" "lock-session" "logout" "pip" "pypr" "app"
+    "--completions" "completions" \
+    "pyinit" "init" "--init" "lock-session" "logout" "pip" "pypr" "app" "resolve"
 }
 
 initialized() {
@@ -31,7 +29,7 @@ EOT
 
 USAGE() {
   cat <<EOT
-Usage: $(basename "$0") [command]
+Usage: ${0##*/} [command]
 Commands:
   --help, help, -h              : Display this help message
   -r, reload                    : Reload Hyprland Environment
@@ -47,6 +45,28 @@ Available commands:
 $(list_script)
 
 EOT
+}
+
+get_version() {
+  local repo="${HYPR_DOTFILES_DIR:-$HOME/dotfiles}" version branch
+
+  version="$(git -C "$repo" describe --tags --always 2>/dev/null)" || {
+    printf 'Version unavailable\n' >&2
+    return 1
+  }
+  branch="$(git -C "$repo" branch --show-current 2>/dev/null || true)"
+  printf 'HyDE %s (%s)\n' "$version" "${branch:-detached}"
+}
+
+get_release_notes() {
+  local repo="${HYPR_DOTFILES_DIR:-$HOME/dotfiles}" tag notes
+
+  tag="$(git -C "$repo" describe --tags --abbrev=0 2>/dev/null)" || {
+    printf 'No release tags found\n'
+    return 0
+  }
+  notes="$(git -C "$repo" log --format='• %s' "$tag"..HEAD)" || return 1
+  printf 'Changes since %s:\n%s\n' "$tag" "${notes:-No commits since last release}"
 }
 
 hyprreload() {
@@ -65,7 +85,6 @@ hyprlogout() {
 }
 
 lock_session() {
-  # lock-session checks the screen-saver DBus service first.
   if busctl --user list | grep -q "org.freedesktop.ScreenSaver"; then
     echo "Using org.freedesktop.ScreenSaver for locking"
     loginctl lock-session

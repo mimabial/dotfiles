@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-# Renderer: temperature -> colour ramp for the sysinfo widgets.
-# Emits the thresholds sysinfo/lib/temp-color.bash and sysinfo/sensorsinfo.py
-# read, so the ramp follows the palette instead of a hardcoded scale.
-
 import hashlib
 import json
 import math

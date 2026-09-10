@@ -9,7 +9,6 @@ function render(ctx, d) {
   // Go tags each cell by priority: wave > sun > grid, mapped to high/mid/low.
   var tiers = H.specTiers(d)
 
-  // Striped sun semicircle
   var sunR = horizon * 0.85
   ctx.fillStyle = tiers[1]
   for (var sy = 0; sy < horizon; sy++) {
@@ -23,7 +22,6 @@ function render(ctx, d) {
     ctx.fillRect(cx - halfW, sy, halfW * 2, 1)
   }
 
-  // Perspective grid — vertical lines converging to vanishing point
   ctx.strokeStyle = tiers[0]
   ctx.lineWidth = 1
   var numV = 18
@@ -33,7 +31,6 @@ function render(ctx, d) {
     ctx.lineTo(vi * w / numV, h)
     ctx.stroke()
   }
-  // Horizontal lines scrolling toward viewer
   var scroll = (frame * 0.08) % 1.0
   var numH = 10
   for (var hi = 0; hi < numH; hi++) {
@@ -48,7 +45,6 @@ function render(ctx, d) {
     }
   }
 
-  // Audio wave at horizon — cosine-interpolated FFT bands
   ctx.strokeStyle = H.rgba(d.foreground, 1)
   ctx.lineWidth = 2
   ctx.beginPath()

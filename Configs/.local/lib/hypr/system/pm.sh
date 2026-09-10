@@ -106,11 +106,12 @@ aur_helper() {
 }
 
 selected_pm() {
+  local helper=""
   if [[ -n "${FORCE_PM}" ]]; then
     has "${FORCE_PM}" || die "package manager not found: ${FORCE_PM}"
     printf '%s\n' "${FORCE_PM}"
-  elif aur_helper >/dev/null; then
-    aur_helper
+  elif helper="$(aur_helper)"; then
+    printf '%s\n' "${helper}"
   else
     printf 'pacman\n'
   fi
@@ -175,9 +176,7 @@ fzf_pick() {
 }
 
 aur_names() {
-  local helper=""
-  helper="$(aur_helper)" || die "no AUR helper found; install yay or paru"
-  case "${helper}" in
+  case "$1" in
     yay) yay -Pc | awk '{ print $1 }' ;;
     paru) paru -Slq aur ;;
   esac
@@ -196,7 +195,7 @@ install_aur_interactive() {
   local -a selected=()
   helper="$(aur_helper)" || die "no AUR helper found; install yay or paru"
   mapfile -t selected < <(
-    aur_names |
+    aur_names "${helper}" |
       fzf_pick \
         "${helper} -Sii --aur -- {1}" \
         green \

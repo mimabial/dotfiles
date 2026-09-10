@@ -12,7 +12,6 @@ import signal
 import shutil
 import shlex
 import hashlib
-import concurrent.futures
 import urllib.request
 import urllib.parse
 try:
@@ -52,6 +51,10 @@ NOW_PLAYING_PATH = os.path.join(CACHE_DIR, "now_playing.json")
 QUEUE_PATH = os.path.join(CACHE_DIR, "queue.json")
 EXTERNAL_QUEUE_CACHE_PATH = os.path.join(CACHE_DIR, "external_queue.json")
 STREAM_CACHE_PATH = os.path.join(CACHE_DIR, "stream_cache.json")
+
+def unlink(path):
+    try: os.remove(path)
+    except OSError: pass
 
 def get_cached_stream_url(url):
     if not url or not os.path.exists(STREAM_CACHE_PATH):
@@ -127,17 +130,14 @@ def verify_process_identity(pid, expected_signature, expected_starttime):
     if not os.path.isdir(proc_dir):
         return False
     try:
-        # 1. Check process ownership
         stat = os.stat(proc_dir)
         if stat.st_uid != os.getuid():
             return False
 
-        # 2. Strictly check starttime to guarantee PID has not been recycled
         cur_starttime = get_process_starttime(pid)
         if cur_starttime is None or cur_starttime != expected_starttime:
             return False
 
-        # 3. Check cmdline signature
         cmdline_file = os.path.join(proc_dir, "cmdline")
         with open(cmdline_file, "rb") as f:
             raw_cmdline = f.read().decode("utf-8", errors="replace")
@@ -163,7 +163,6 @@ def terminate_tracked_pid(pid_file, expected_signature):
         with open(pid_file, "r", encoding="utf-8") as f:
             content = f.read().strip()
 
-        # Strictly require JSON record containing bound starttime — reject legacy numeric formats
         if not content.startswith("{"):
             return
 
@@ -188,10 +187,7 @@ def terminate_tracked_pid(pid_file, expected_signature):
     except Exception:
         pass
     finally:
-        try:
-            os.remove(pid_file)
-        except Exception:
-            pass
+        unlink(pid_file)
 
 def save_tracked_proc(pid_file, pid, signature=None):
     """Record spawned process PID, starttime, and signature with owner-only 0o600 permissions."""
@@ -217,6 +213,12 @@ def launch_hyprland_worker(command, pid_file="", signature=None, output=""):
     worker = [sys.executable, os.path.abspath(__file__), "_worker", pid_file, json.dumps(signature), output, *command]
     dispatch = f"hl.dsp.exec_cmd({json.dumps(shlex.join(worker), ensure_ascii=False)})"
     subprocess.run(["hyprctl", "dispatch", dispatch], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+
+def launch_prefetch(kind, *args):
+    try:
+        launch_hyprland_worker([sys.executable, os.path.abspath(__file__), "_prefetch", kind, *map(str, args)])
+    except Exception:
+        pass
 
 def read_queue():
     if os.path.exists(QUEUE_PATH):
@@ -326,38 +328,47 @@ def cover_path(track):
     key = hashlib.sha1(f"{os.path.realpath(track)}:{int(stat.st_mtime)}".encode("utf-8")).hexdigest()
     return os.path.join(COVER_CACHE_DIR, key + ".jpg")
 
-def extract_cover(track):
-    dest = cover_path(track)
-    if not dest:
-        return ""
-    if os.path.exists(dest):
-        return dest
-    try:
-        os.makedirs(COVER_CACHE_DIR, mode=0o700, exist_ok=True)
-        subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", track, "-an", "-vframes", "1",
-                        "-vf", "scale=96:-1", dest], capture_output=True, timeout=6.0)
-    except Exception:
-        pass
-    return dest if os.path.exists(dest) else ""
-
 def attach_covers(tracks, budget=2.5, key="url"):
-    """Fill in "thumb" for local tracks. Cached art costs nothing; a cold file
-    costs one ffmpeg call, so the pass is parallel and time-boxed — anything that
-    misses the budget is already extracting and lands on the next listing."""
+    """Attach cached art and extract cold covers in parallel within budget."""
     local = [t for t in tracks if t.get(key) and os.path.isfile(t[key])]
     if not local or not shutil.which("ffmpeg"):
         return tracks
+    os.makedirs(COVER_CACHE_DIR, mode=0o700, exist_ok=True)
+    cold = []
+    for track in local:
+        dest = cover_path(track[key])
+        track["thumb"] = dest if dest and os.path.exists(dest) else ""
+        if dest and not track["thumb"]:
+            cold.append((track, dest))
     deadline = time.monotonic() + budget
-    pool = concurrent.futures.ThreadPoolExecutor(max_workers=8)
-    try:
-        pending = {pool.submit(extract_cover, t[key]): t for t in local}
-        for future, track in pending.items():
+    pending, index = [], 0
+    while (index < len(cold) or pending) and time.monotonic() < deadline:
+        while index < len(cold) and len(pending) < 8:
+            track, dest = cold[index]
+            index += 1
             try:
-                track["thumb"] = future.result(timeout=max(0.0, deadline - time.monotonic())) or ""
-            except Exception:
-                track["thumb"] = ""
-    finally:
-        pool.shutdown(wait=False, cancel_futures=True)
+                command = ["ffmpeg", "-v", "error", "-y", "-i", track[key], "-an", "-vframes", "1", "-vf", "scale=96:-1", dest]
+                pending.append((subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL), track, dest))
+            except OSError:
+                pass
+        active = []
+        for process, track, dest in pending:
+            if process.poll() is None:
+                active.append((process, track, dest))
+            elif process.returncode == 0 and os.path.exists(dest):
+                track["thumb"] = dest
+            else:
+                unlink(dest)
+        pending = active
+        if pending:
+            time.sleep(min(0.02, max(0, deadline - time.monotonic())))
+    for process, _, dest in pending:
+        try:
+            process.kill()
+        except OSError:
+            pass
+        process.wait()
+        unlink(dest)
     return tracks
 
 def dir_tracks(rel="", limit=500):
@@ -486,24 +497,31 @@ def read_now_playing():
     except Exception:
         return {}
 
-def send_mpv_cmd(cmd_list, timeout=1.0):
-    if not os.path.exists(SOCK_PATH):
-        return None
+def send_mpv_cmds(commands, timeout=1.0):
+    responses = [None] * len(commands)
+    if not commands or not os.path.exists(SOCK_PATH):
+        return responses
     try:
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.settimeout(timeout)
-        s.connect(SOCK_PATH)
-        payload = json.dumps({"command": cmd_list}) + "\n"
-        s.sendall(payload.encode("utf-8"))
-        res = s.recv(4096).decode("utf-8")
-        s.close()
-        for line in res.splitlines():
-            line = line.strip()
-            if line:
-                return json.loads(line)
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as peer:
+            peer.settimeout(timeout)
+            peer.connect(SOCK_PATH)
+            payload = "".join(json.dumps({"command": command, "request_id": index}, separators=(",", ":")) + "\n"
+                              for index, command in enumerate(commands))
+            peer.sendall(payload.encode())
+            with peer.makefile("rb") as stream:
+                remaining = len(commands)
+                while remaining:
+                    response = json.loads(stream.readline())
+                    request_id = response.get("request_id")
+                    if isinstance(request_id, int) and 0 <= request_id < len(commands) and responses[request_id] is None:
+                        responses[request_id] = response
+                        remaining -= 1
     except Exception:
-        return None
-    return None
+        pass
+    return responses
+
+def send_mpv_cmd(cmd_list, timeout=1.0):
+    return send_mpv_cmds([cmd_list], timeout)[0]
 
 def load_mpv(url, mode, title):
     return send_mpv_cmd(["loadfile", url, mode, -1, {"force-media-title": title or ""}])
@@ -531,10 +549,7 @@ def write_spectrum_target(selectors=None):
             json.dump({"selectors": values or ["cliamp", "mpv"]}, target, separators=(",", ":"))
         os.replace(temporary, SPECTRUM_TARGET_FILE)
     except (OSError, TypeError):
-        try:
-            os.remove(temporary)
-        except OSError:
-            pass
+        unlink(temporary)
 
 def start_spectrum_daemon(selectors=None):
     write_spectrum_target(selectors)
@@ -567,10 +582,7 @@ def start_mpv_daemon():
         if is_mpv_running():
             return
         if os.path.exists(SOCK_PATH):
-            try:
-                os.remove(SOCK_PATH)
-            except Exception:
-                pass
+            unlink(SOCK_PATH)
         cmd = [
             "mpv",
             "--no-video",
@@ -802,7 +814,6 @@ def import_playlist(url, custom_name=None):
     tracks = []
     pl_name = (custom_name or "").strip()
 
-    # 1. YouTube Playlist
     if "list=" in url or "youtube.com" in url or "youtu.be" in url:
         try:
             if not pl_name:
@@ -814,7 +825,6 @@ def import_playlist(url, custom_name=None):
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    # 2. Spotify Playlist / Album
     elif "spotify.com" in url:
         try:
             embed_url = url
@@ -1020,21 +1030,17 @@ def apply_audio_fx(preset_name=None, loudnorm=None, spatial=None):
     
     save_audio_fx(cur)
 
-    # Build libavfilter chain
     filters = []
-    
-    # 1. 10-band EQ
+
     eq_preset = cur.get("eq", "Flat")
     if eq_preset != "Flat" and eq_preset in EQ_PRESETS:
         gains = EQ_PRESETS[eq_preset]
         eq_parts = [f"equalizer=f={f}:width_type=o:width=1:gain={g}" for f, g in zip(EQ_FREQS, gains)]
         filters.extend(eq_parts)
 
-    # 2. 3D Spatial Stereo Widener (binaural audio stage)
     if cur.get("spatial"):
         filters.append("extrastereo=m=1.6")
 
-    # 3. Dynamic Loudness Normalizer (EBU R128 anti-earblast)
     if cur.get("loudnorm"):
         filters.append("dynaudnorm=f=150:g=15:m=10.0:p=0.95")
 
@@ -1050,8 +1056,8 @@ def set_eq(preset_name):
     return apply_audio_fx(preset_name=preset_name)
 
 def get_status():
-    cur_eq = get_current_eq()
     if not is_mpv_running():
+        cur_eq = get_current_eq()
         return {
             "running": False,
             "state": "stopped",
@@ -1074,23 +1080,17 @@ def get_status():
         }
 
     try:
-        reconcile_queue()
-        np = read_now_playing()
-        pos_res = send_mpv_cmd(["get_property", "time-pos"])
-        dur_res = send_mpv_cmd(["get_property", "duration"])
-        pause_res = send_mpv_cmd(["get_property", "pause"])
-        title_res = send_mpv_cmd(["get_property", "media-title"])
-        vol_res = send_mpv_cmd(["get_property", "volume"])
-        speed_res = send_mpv_cmd(["get_property", "speed"])
-        idle_res = send_mpv_cmd(["get_property", "idle-active"])
+        queue = reconcile_queue()
+        properties = ("time-pos", "duration", "pause", "media-title", "volume", "speed", "idle-active")
+        pos_res, dur_res, pause_res, title_res, vol_res, speed_res, idle_res = send_mpv_cmds(
+            [["get_property", name] for name in properties])
 
         is_idle = idle_res.get("data") is True if idle_res else False
         is_paused = pause_res.get("data") is True if pause_res else False
 
         if is_idle:
-            q = read_queue()
-            if q:
-                play_next_in_queue()
+            if queue:
+                play_next_in_queue(queue)
                 return get_status()
             state = "stopped"
         elif is_paused:
@@ -1107,7 +1107,6 @@ def get_status():
         if raw_title and ("&rqh=" in raw_title or "videoplayback?" in raw_title or raw_title.startswith("mp4&")):
             raw_title = ""
         
-        # Extract title and artist with highest fidelity from now_playing or mpv media-title
         if np.get("title") and not ("&rqh=" in np["title"] or np["title"].startswith("mp4&")):
             track = np["title"]
             artist = np.get("artist", "")
@@ -1119,7 +1118,6 @@ def get_status():
             track = raw_title or np.get("title") or "No track loaded"
             artist = np.get("artist", "")
 
-        # Extract album art / thumbnail
         art_path = ""
         np_url = np.get("url", "")
         if np_url:
@@ -1131,13 +1129,6 @@ def get_status():
                     art_path = thumb_f
                 else:
                     art_path = f"https://img.youtube.com/vi/{vid_id}/mqdefault.jpg"
-                    import threading
-                    def _dl_th(v, p):
-                        try:
-                            urllib.request.urlretrieve(f"https://img.youtube.com/vi/{v}/mqdefault.jpg", p)
-                        except Exception:
-                            pass
-                    threading.Thread(target=_dl_th, args=(vid_id, thumb_f), daemon=True).start()
             elif os.path.isabs(os.path.expanduser(np_url)) and os.path.exists(os.path.expanduser(np_url)):
                 folder = os.path.dirname(os.path.expanduser(np_url))
                 for cover_name in ("cover.jpg", "cover.png", "folder.jpg", "folder.png", "album.jpg", "art.jpg"):
@@ -1149,10 +1140,8 @@ def get_status():
         vol_data = vol_res.get("data") if vol_res else None
         vol = int(vol_data) if vol_data is not None else 80
 
-        if state == "playing" and cur_s > 0 and int(cur_s) % 10 == 0:
-            np = read_now_playing()
-            if np.get("url"):
-                save_now_playing(track, artist, np.get("url", ""), int(cur_s))
+        if state == "playing" and np.get("url") and abs(int(cur_s) - int(np.get("pos") or 0)) >= 10:
+            save_now_playing(track, artist, np["url"], int(cur_s))
 
         resume = {"title": np.get("title", ""), "artist": np.get("artist", ""), "url": np.get("url", ""), "pos": np.get("pos", 0)} if np.get("url") else None
         cur_fx = get_audio_fx()
@@ -1173,7 +1162,7 @@ def get_status():
             "speed": round(float(speed_res.get("data") or 1.0), 2) if speed_res else 1.0,
             "shuffle": False,
             "repeat": "all",
-            "queue_count": len(read_queue()),
+            "queue_count": len(queue),
             "eq": cur_fx.get("eq", "Flat"),
             "audio_fx": cur_fx,
             "vis_mode": get_vis_mode(),
@@ -1282,7 +1271,6 @@ def search_tracks(query, limit=10):
 
     results = []
 
-    # 1. Local library scan (MUSIC_DIR) using fd / fallback
     ext_list = list(AUDIO_EXTS)
     found_local = []
     if shutil.which("fd") and os.path.isdir(MUSIC_DIR):
@@ -1299,26 +1287,21 @@ def search_tracks(query, limit=10):
         except Exception:
             pass
 
-    # Fallback walk if fd is missing or found nothing
-    if not found_local:
-        candidate_dirs = [MUSIC_DIR]
+    if not found_local and os.path.isdir(MUSIC_DIR):
         exts = tuple("." + e for e in ext_list)
-        for cdir in candidate_dirs:
-            if not os.path.isdir(cdir):
-                continue
-            try:
-                for root, _, files in os.walk(cdir):
-                    for f in files:
-                        if f.lower().endswith(exts) and q.lower() in f.lower():
-                            full_path = os.path.join(root, f)
-                            if full_path not in found_local:
-                                found_local.append(full_path)
-                            if len(found_local) >= limit:
-                                break
-                    if len(found_local) >= limit:
-                        break
-            except Exception:
-                pass
+        try:
+            for root, _, files in os.walk(MUSIC_DIR):
+                for f in files:
+                    if f.lower().endswith(exts) and q.lower() in f.lower():
+                        full_path = os.path.join(root, f)
+                        if full_path not in found_local:
+                            found_local.append(full_path)
+                        if len(found_local) >= limit:
+                            break
+                if len(found_local) >= limit:
+                    break
+        except Exception:
+            pass
 
     for full_path in found_local[:limit]:
         name = os.path.splitext(os.path.basename(full_path))[0]
@@ -1337,13 +1320,11 @@ def search_tracks(query, limit=10):
 
     attach_covers(results, budget=1.0)
 
-    # 2. Spotify track URL resolver
     if "spotify.com/track/" in q:
         spot = resolve_spotify_url(q)
         if spot and spot.get("query"):
             q = spot["query"]
 
-    # 3. Fast YouTube online search (InnerTube API -> yt-dlp fallback)
     remaining = limit - len(results)
     if remaining > 0:
         yt_results = search_youtube_innertube(q, remaining)
@@ -1376,12 +1357,11 @@ def search_tracks(query, limit=10):
                 pass
         results.extend(yt_results)
 
-    # Async prefetch direct stream URLs for top results in background so clicks are instantaneous
-    import threading
+    # Detached workers survive this short-lived search process.
     for item in results[:2]:
         u = item.get("url", "")
         if is_youtube_url(u) and not get_cached_stream_url(u):
-            threading.Thread(target=resolve_youtube_stream_url, args=(u,), daemon=True).start()
+            launch_prefetch("stream", u)
 
     return results
 
@@ -1444,7 +1424,6 @@ def fetch_lyrics(title, artist, url=""):
     if key in LYRICS_CACHE:
         return LYRICS_CACHE[key]
 
-    import hashlib
     h = hashlib.sha256(key.encode("utf-8")).hexdigest()[:16]
     disk_cache = os.path.join(LYRICS_DIR, f"{h}.json")
     if os.path.exists(disk_cache):
@@ -1459,7 +1438,6 @@ def fetch_lyrics(title, artist, url=""):
             pass
 
     try:
-        # Strip video/audio metadata tags
         clean_t = re.sub(r"(?i)\s*[\(\[](?:official|music|video|audio|lyrics?|4k|hd|remaster(?:ed)?|lyric video|visualizer|hq|clip|explicit).*?[\)\]]", "", raw_t)
         clean_t = re.sub(r"\s*[\(\[].*?[\)\]]", "", clean_t).strip()
         clean_a = raw_a
@@ -1506,13 +1484,18 @@ def save_youtube_meta(url, title, artist):
                 json.dump({"title": title or "", "artist": artist or ""}, f)
         except Exception:
             pass
-        # Fetch thumbnail (mqdefault.jpg = 320x180, good quality for small UI)
         thumb_f = os.path.join(AUDIO_CACHE_DIR, f"{vid_id}.jpg")
         if not os.path.exists(thumb_f):
-            try:
-                urllib.request.urlretrieve(f"https://img.youtube.com/vi/{vid_id}/mqdefault.jpg", thumb_f)
-            except Exception:
-                pass
+            launch_prefetch("thumb", vid_id, thumb_f)
+
+def download_thumbnail(vid_id, dest):
+    temporary = dest + ".tmp"
+    try:
+        with urllib.request.urlopen(f"https://img.youtube.com/vi/{vid_id}/mqdefault.jpg", timeout=5) as source, open(temporary, "wb") as target:
+            shutil.copyfileobj(source, target)
+        os.replace(temporary, dest)
+    except Exception:
+        unlink(temporary)
 
 def resolve_youtube_stream_url(url):
     """Resolve direct HTTPS stream URL for YouTube audio with 4-hour caching for instantaneous playback."""
@@ -1626,8 +1609,7 @@ def play_item(url, title=None, artist=None):
         if target:
             load_mpv(target, "append", queued.get("title"))
     if final_title:
-        import threading
-        threading.Thread(target=fetch_lyrics, args=(final_title, final_artist, real_url), daemon=True).start()
+        launch_prefetch("lyrics", final_title, final_artist, real_url)
     send_mpv_cmd(["set_property", "pause", False])
     return {"success": True}
 
@@ -1671,10 +1653,7 @@ def stop_daemon():
     terminate_tracked_pid(SPECTRUM_PID_FILE, expected_signature="spectrum.py")
     if os.path.exists(SOCK_PATH):
         send_mpv_cmd(["quit"])
-        try:
-            os.remove(SOCK_PATH)
-        except Exception:
-            pass
+        unlink(SOCK_PATH)
     return {"success": True}
 
 if __name__ == "__main__":
@@ -1690,6 +1669,14 @@ if __name__ == "__main__":
         if output:
             os.dup2(os.open(output, os.O_WRONLY), 1)
         os.execvp(command[0], command)
+    elif action == "_prefetch":
+        kind, args = sys.argv[2], sys.argv[3:]
+        if kind == "stream" and args:
+            resolve_youtube_stream_url(args[0])
+        elif kind == "lyrics":
+            fetch_lyrics(*(args + ["", "", ""])[:3])
+        elif kind == "thumb" and len(args) == 2:
+            download_thumbnail(*args)
     elif action == "status":
         print(json.dumps(get_status()))
     elif action == "history":

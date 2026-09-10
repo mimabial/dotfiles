@@ -55,6 +55,11 @@ def format_fan_speed_multiline(fan_rpm):
     return icon + "\n" + f"{thousands}".rjust(2, " ") + "." + f"\n{remainder:03d}"
 
 
+def format_fan_speed_horizontal(fan_rpm):
+    """Format fan speed as an icon followed by its full RPM value."""
+    return f"<span size='12pt'>\ue27e</span>\n{fan_rpm}"
+
+
 def get_current_fan_index(total_fans):
     """Get current fan index from file."""
     if os.path.exists(FAN_INDEX_FILE):
@@ -112,7 +117,7 @@ def reset():
 def generate_output(fans):
     """Generate status-bar JSON output."""
     if not fans:
-        output = {"text": "N/A", "tooltip": "No fans detected"}
+        output = {"text": "N/A", "alt": "N/A", "tooltip": "No fans detected"}
     else:
         current_index = get_current_fan_index(len(fans))
         current_fan = fans[current_index]
@@ -141,6 +146,7 @@ def generate_output(fans):
             choices.append({"id": str(i), "label": label, "active": i == current_index})
         output = {
             "text": text,
+            "alt": format_fan_speed_horizontal(fan_rpm),
             "tooltip": tooltip,
             "title": "Fan",
             "rows": rows,

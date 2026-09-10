@@ -29,8 +29,7 @@ toggle_existing_monitor() {
 
   address="$(
     hyprctl -j clients 2>/dev/null \
-      | jq -r '.[] | select(.class == "org.tui.Sysmonitor") | .address' \
-      | head -n1
+      | jq -r 'first(.[] | select(.class == "org.tui.Sysmonitor") | .address) // empty'
   )"
   [[ -n "${address}" ]] || return 1
 

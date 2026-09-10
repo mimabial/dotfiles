@@ -78,7 +78,6 @@ def normalize_jsonc(content):
 
     cleaned = "".join(no_comments)
 
-    # Strip trailing commas before } or ]
     result = []
     in_string = False
     escaped = False

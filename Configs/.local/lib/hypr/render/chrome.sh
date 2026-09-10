@@ -1,8 +1,4 @@
 #!/usr/bin/env bash
-# Renderer: chromium theme (manifest.json + ntp background image).
-# Output: ~/.cache/hypr/render/chrome/Pywal16-chrome-theme/{manifest.json,images/}
-# User loads this directory as an unpacked extension in Chrome.
-
 set -euo pipefail
 PALETTE_ARG="${1:-}"
 . "$(dirname "$0")/_lib.sh"

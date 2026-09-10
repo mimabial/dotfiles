@@ -154,25 +154,13 @@ rofi_font_text_extents_px() {
   printf '%s %s\n' "${width_px}" "${height_px}"
 }
 
-# Right-align a trailing glyph across the rows that ask for one. Reads
-# "<flag>\t<label>" lines and re-emits the labels alone, padding flagged ones so
-# the glyph lands in a single column. target_px is the width of the text column
-# the rows will be drawn in; the glyph goes to its right edge, falling back to
-# the widest label when the rows are what sets that width. The pad is whole
-# spaces, so the column is exact only to one space advance -- negligible in a
-# mono face, and the alternative is a per-row rofi widget, which dmenu has not.
+# Aligns flagged row suffixes using the same Pango metrics Rofi renders with.
 rofi_font_align_trailing() {
-  local font_name="$1"
-  local font_scale="$2"
-  local glyph="$3"
-  local target_px="${4:-0}"
+  local font_name="$1" font_scale="$2" glyph="$3" target_px="${4:-0}"
   local rows="" digest="" cache_dir="" cache_file="" aligned=""
 
-  [[ -n "${font_name}" && -n "${glyph}" ]] || return 1
-  rofi_positive_decimal "${font_scale}" || return 1
+  [[ -n "${font_name}${glyph}" ]] && rofi_positive_decimal "${font_scale}" || return 1
   [[ "${target_px}" =~ ^[0-9]+$ ]] || target_px=0
-  command -v python3 >/dev/null 2>&1 || return 1
-
   rows="$(cat)"
   [[ -n "${rows}" ]] || return 1
 
@@ -180,18 +168,13 @@ rofi_font_align_trailing() {
   cache_dir="${XDG_RUNTIME_DIR:-/tmp}/hypr/rofi-trailing-align"
   cache_file="${cache_dir}/${digest%% *}"
   if [[ -s "${cache_file}" ]]; then
-    aligned="$(<"${cache_file}")"
-    printf '%s\n' "${aligned}"
+    printf '%s\n' "$(<"${cache_file}")"
     return 0
   fi
 
-  aligned="$(
-    printf '%s\n' "${rows}" |
-      FONT_DESC="${font_name} ${font_scale}" GLYPH="${glyph}" TARGET_PX="${target_px}" \
-        PYTHONIOENCODING=utf-8 python3 "${ROFI_PANGO_MEASURE}" align
-  )" || return 1
+  aligned="$(printf '%s\n' "${rows}" | FONT_DESC="${font_name} ${font_scale}" GLYPH="${glyph}" \
+    TARGET_PX="${target_px}" PYTHONIOENCODING=utf-8 python3 "${ROFI_PANGO_MEASURE}" align)" || return 1
   [[ -n "${aligned}" ]] || return 1
-
   mkdir -p "${cache_dir}" 2>/dev/null && printf '%s\n' "${aligned}" >"${cache_file}" 2>/dev/null
   printf '%s\n' "${aligned}"
 }

@@ -54,14 +54,16 @@ end
 -- The leader is tagged with SUBMAP_MARKER because the Lua plugin reports every
 -- bind as dispatcher "__lua"; keybinds_hint pairs inner binds back to the key
 -- that enters them via this description, not via hyprctl's dispatcher field.
-local function submap_leader(name, modifiers, key, body)
+local function submap_leader(name, modifiers, key, body, exit_on_unbound)
 	bind(modifiers, key, SUBMAP_MARKER .. name, hl.dsp.submap(name))
 	hl.define_submap(name, function()
 		body()
 		hl.bind("ESCAPE", hl.dsp.submap("reset"), { description = "[" .. name .. "] exit" })
-		-- Unclaimed keys end the mode, so a stray press cannot leave it live while
-		-- its bare-letter binds fire window actions. Modmask 0: chords pass through.
-		hl.bind("catchall", hl.dsp.submap("reset"), { description = HIDDEN_MARKER .. name .. " exit on unbound key" })
+		-- By default, unclaimed keys end the mode so a stray press cannot leave it
+		-- live while bare-letter binds fire window actions. Modmask 0: chords pass through.
+		if exit_on_unbound ~= false then
+			hl.bind("catchall", hl.dsp.submap("reset"), { description = HIDDEN_MARKER .. name .. " exit on unbound key" })
+		end
 	end)
 end
 
@@ -73,8 +75,7 @@ local function run_action(action)
 	end
 end
 
--- Leaves the submap before acting: inner binds are bare keys, so staying would
--- swallow the keystrokes rofi needs. bind_actions keeps the bare dispatcher so
+-- Submap actions are one-shot. bind_actions keeps the bare dispatcher so
 -- keybinds_hint can run the action without entering the submap.
 local function submap_action(key, description, dispatcher)
 	bind_actions[description] = dispatcher
@@ -88,24 +89,10 @@ local function submap_exec(key, description, command)
 	submap_action(key, description, hl.dsp.exec_cmd(command))
 end
 
-local function submap_stay_action(key, description, dispatcher, options)
-	options = options or {}
-	options.description = description
+local function theming_cycle(key, description, command)
+	local dispatcher = hl.dsp.exec_cmd(command)
 	bind_actions[description] = dispatcher
-	hl.bind(key, dispatcher, options)
-end
-
-local function submap_stay_exec(key, description, command)
-	submap_stay_action(key, description, hl.dsp.exec_cmd(command))
-end
-
--- Stays in the submap, for repeat actions that never open a picker.
-local function submap_repeat_action(key, description, dispatcher)
-	submap_stay_action(key, description, dispatcher, { repeating = true })
-end
-
-local function submap_cycle(key, description, command)
-	submap_repeat_action(key, description, hl.dsp.exec_cmd(command))
+	hl.bind(key, dispatcher, { description = description, repeating = true })
 end
 
 local function layout_action(layout, action)
@@ -414,224 +401,224 @@ exec(
 exec(mod, "K", "[Utilities] switch keyboard layout", "hyprshell keyboard-switch.sh", { locked = true })
 
 submap_leader("window", mod, "W", function()
-	submap_repeat_action("LEFT", "[Window Mode|Focus] focus left", hl.dsp.focus({ direction = "left" }))
-	submap_repeat_action("RIGHT", "[Window Mode|Focus] focus right", hl.dsp.focus({ direction = "right" }))
-	submap_repeat_action("UP", "[Window Mode|Focus] focus up", hl.dsp.focus({ direction = "up" }))
-	submap_repeat_action("DOWN", "[Window Mode|Focus] focus down", hl.dsp.focus({ direction = "down" }))
+	submap_action("LEFT", "[Window Mode|Focus] focus left", hl.dsp.focus({ direction = "left" }))
+	submap_action("RIGHT", "[Window Mode|Focus] focus right", hl.dsp.focus({ direction = "right" }))
+	submap_action("UP", "[Window Mode|Focus] focus up", hl.dsp.focus({ direction = "up" }))
+	submap_action("DOWN", "[Window Mode|Focus] focus down", hl.dsp.focus({ direction = "down" }))
 
-	submap_repeat_action("SHIFT + LEFT", "[Window Mode|Move] move left", move_window("left", -30, 0))
-	submap_repeat_action("SHIFT + RIGHT", "[Window Mode|Move] move right", move_window("right", 30, 0))
-	submap_repeat_action("SHIFT + UP", "[Window Mode|Move] move up", move_window("up", 0, -30))
-	submap_repeat_action("SHIFT + DOWN", "[Window Mode|Move] move down", move_window("down", 0, 30))
+	submap_action("SHIFT + LEFT", "[Window Mode|Move] move left", move_window("left", -30, 0))
+	submap_action("SHIFT + RIGHT", "[Window Mode|Move] move right", move_window("right", 30, 0))
+	submap_action("SHIFT + UP", "[Window Mode|Move] move up", move_window("up", 0, -30))
+	submap_action("SHIFT + DOWN", "[Window Mode|Move] move down", move_window("down", 0, 30))
 
-	submap_repeat_action("CTRL + LEFT", "[Window Mode|Resize] shrink width", resize_window(-30, 0))
-	submap_repeat_action("CTRL + RIGHT", "[Window Mode|Resize] grow width", resize_window(30, 0))
-	submap_repeat_action("CTRL + UP", "[Window Mode|Resize] shrink height", resize_window(0, -30))
-	submap_repeat_action("CTRL + DOWN", "[Window Mode|Resize] grow height", resize_window(0, 30))
+	submap_action("CTRL + LEFT", "[Window Mode|Resize] shrink width", resize_window(-30, 0))
+	submap_action("CTRL + RIGHT", "[Window Mode|Resize] grow width", resize_window(30, 0))
+	submap_action("CTRL + UP", "[Window Mode|Resize] shrink height", resize_window(0, -30))
+	submap_action("CTRL + DOWN", "[Window Mode|Resize] grow height", resize_window(0, 30))
 
-	submap_stay_action("F", "[Window Mode|State] toggle floating", toggle_floating)
-	submap_stay_action(
+	submap_action("F", "[Window Mode|State] toggle floating", toggle_floating)
+	submap_action(
 		"M",
 		"[Window Mode|State] toggle maximize",
 		hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle" })
 	)
-	submap_stay_action("G", "[Window Mode|State] toggle group", hl.dsp.group.toggle())
-	submap_stay_exec("P", "[Window Mode|State] toggle pin", "hyprshell window/windowpin.sh")
+	submap_action("G", "[Window Mode|State] toggle group", hl.dsp.group.toggle())
+	submap_exec("P", "[Window Mode|State] toggle pin", "hyprshell window/windowpin.sh")
 
 	for workspace = 1, 10 do
 		local code = workspace_code(workspace)
-		submap_stay_action(
+		submap_action(
 			code,
 			"[Window Mode|Workspace] go to workspace " .. workspace,
 			hl.dsp.focus({ workspace = workspace })
 		)
-		submap_stay_action(
+		submap_action(
 			"SHIFT + " .. code,
 			"[Window Mode|Workspace] move window to workspace " .. workspace,
 			hl.dsp.window.move({ workspace = workspace })
 		)
-		submap_stay_action(
+		submap_action(
 			"ALT + " .. code,
 			"[Window Mode|Workspace] move window silently to workspace " .. workspace,
 			hl.dsp.window.move({ workspace = workspace, follow = false })
 		)
 	end
 
-	submap_stay_exec("T", "[Window Mode|Layout] cycle global layout", "hyprshell window/layout-toggle.sh")
-	submap_stay_action(
+	submap_exec("T", "[Window Mode|Layout] cycle global layout", "hyprshell window/layout-toggle.sh")
+	submap_action(
 		"S",
 		"[Window Mode|Dwindle] toggle window split",
 		layout_action("dwindle", hl.dsp.layout("togglesplit"))
 	)
-	submap_repeat_action(
+	submap_action(
 		"H",
 		"[Window Mode|Scrolling] previous column",
 		layout_action("scrolling", hl.dsp.layout("move -col"))
 	)
-	submap_repeat_action(
+	submap_action(
 		"L",
 		"[Window Mode|Scrolling] next column",
 		layout_action("scrolling", hl.dsp.layout("move +col"))
 	)
-	submap_repeat_action(
+	submap_action(
 		"SHIFT + H",
 		"[Window Mode|Scrolling] swap column left",
 		layout_action("scrolling", hl.dsp.layout("swapcol l"))
 	)
-	submap_repeat_action(
+	submap_action(
 		"SHIFT + L",
 		"[Window Mode|Scrolling] swap column right",
 		layout_action("scrolling", hl.dsp.layout("swapcol r"))
 	)
-	submap_repeat_action(
+	submap_action(
 		"C",
 		"[Window Mode|Scrolling] focus previous column",
 		layout_action("scrolling", hl.dsp.layout("focus -col"))
 	)
-	submap_repeat_action(
+	submap_action(
 		"SHIFT + C",
 		"[Window Mode|Scrolling] focus next column",
 		layout_action("scrolling", hl.dsp.layout("focus +col"))
 	)
-	submap_repeat_action(
+	submap_action(
 		"E",
 		"[Window Mode|Scrolling] shrink column",
 		layout_action("scrolling", hl.dsp.layout("colresize -conf"))
 	)
-	submap_repeat_action(
+	submap_action(
 		"SHIFT + E",
 		"[Window Mode|Scrolling] grow column",
 		layout_action("scrolling", hl.dsp.layout("colresize +conf"))
 	)
-	submap_stay_action(
+	submap_action(
 		"X",
 		"[Window Mode|Scrolling] expand column",
 		layout_action("scrolling", hl.dsp.layout("colresize expand"))
 	)
-	submap_stay_action(
+	submap_action(
 		"V",
 		"[Window Mode|Scrolling] promote window",
 		layout_action("scrolling", hl.dsp.layout("promote"))
 	)
-	submap_stay_action(
+	submap_action(
 		"B",
 		"[Window Mode|Scrolling] consume into column",
 		layout_action("scrolling", hl.dsp.layout("consume"))
 	)
-	submap_stay_action(
+	submap_action(
 		"SHIFT + B",
 		"[Window Mode|Scrolling] expel from column",
 		layout_action("scrolling", hl.dsp.layout("expel"))
 	)
-	submap_stay_action(
+	submap_action(
 		"I",
 		"[Window Mode|Scrolling] fit column into view",
 		layout_action("scrolling", hl.dsp.layout("fit_into_view"))
 	)
 
-	submap_stay_action(
+	submap_action(
 		"SHIFT + S",
 		"[Window Mode|Dwindle] swap split",
 		layout_action("dwindle", hl.dsp.layout("swapsplit"))
 	)
-	submap_stay_action(
+	submap_action(
 		"R",
 		"[Window Mode|Dwindle] rotate split",
 		layout_action("dwindle", hl.dsp.layout("rotatesplit"))
 	)
-	submap_stay_action(
+	submap_action(
 		"SHIFT + R",
 		"[Window Mode|Dwindle] move to root",
 		layout_action("dwindle", hl.dsp.layout("movetoroot"))
 	)
-	submap_repeat_action(
+	submap_action(
 		"D",
 		"[Window Mode|Dwindle] shrink parent split",
 		layout_action("dwindle", hl.dsp.layout("splitratio -0.05"))
 	)
-	submap_repeat_action(
+	submap_action(
 		"SHIFT + D",
 		"[Window Mode|Dwindle] grow parent split",
 		layout_action("dwindle", hl.dsp.layout("splitratio +0.05"))
 	)
 
-	submap_stay_action(
+	submap_action(
 		"W",
 		"[Window Mode|Master] focus master",
 		layout_action("master", hl.dsp.layout("focusmaster"))
 	)
-	submap_stay_action(
+	submap_action(
 		"SHIFT + W",
 		"[Window Mode|Master] swap with master",
 		layout_action("master", hl.dsp.layout("swapwithmaster"))
 	)
-	submap_repeat_action(
+	submap_action(
 		"N",
 		"[Window Mode|Master] focus next",
 		layout_action("master", hl.dsp.layout("cyclenext"))
 	)
-	submap_repeat_action(
+	submap_action(
 		"SHIFT + N",
 		"[Window Mode|Master] focus previous",
 		layout_action("master", hl.dsp.layout("cycleprev"))
 	)
-	submap_repeat_action(
+	submap_action(
 		"J",
 		"[Window Mode|Master] swap next",
 		layout_action("master", hl.dsp.layout("swapnext"))
 	)
-	submap_repeat_action(
+	submap_action(
 		"SHIFT + J",
 		"[Window Mode|Master] swap previous",
 		layout_action("master", hl.dsp.layout("swapprev"))
 	)
-	submap_stay_action(
+	submap_action(
 		"A",
 		"[Window Mode|Master] add master",
 		layout_action("master", hl.dsp.layout("addmaster"))
 	)
-	submap_stay_action(
+	submap_action(
 		"SHIFT + A",
 		"[Window Mode|Master] remove master",
 		layout_action("master", hl.dsp.layout("removemaster"))
 	)
-	submap_stay_action(
+	submap_action(
 		"O",
 		"[Window Mode|Master] cycle orientation",
 		layout_action("master", hl.dsp.layout("orientationcycle"))
 	)
-	submap_stay_action(
+	submap_action(
 		"SHIFT + O",
 		"[Window Mode|Master] center orientation",
 		layout_action("master", hl.dsp.layout("orientationcenter"))
 	)
-	submap_repeat_action(
+	submap_action(
 		"K",
 		"[Window Mode|Master] roll next",
 		layout_action("master", hl.dsp.layout("rollnext"))
 	)
-	submap_repeat_action(
+	submap_action(
 		"SHIFT + K",
 		"[Window Mode|Master] roll previous",
 		layout_action("master", hl.dsp.layout("rollprev"))
 	)
-	submap_repeat_action(
+	submap_action(
 		"Z",
 		"[Window Mode|Master] shrink master",
 		layout_action("master", hl.dsp.layout("mfact -0.05"))
 	)
-	submap_repeat_action(
+	submap_action(
 		"SHIFT + Z",
 		"[Window Mode|Master] grow master",
 		layout_action("master", hl.dsp.layout("mfact +0.05"))
 	)
 
-	submap_repeat_action(
+	submap_action(
 		"Y",
 		"[Window Mode|Monocle] focus next",
 		layout_action("monocle", hl.dsp.layout("cyclenext"))
 	)
-	submap_repeat_action(
+	submap_action(
 		"SHIFT + Y",
 		"[Window Mode|Monocle] focus previous",
 		layout_action("monocle", hl.dsp.layout("cycleprev"))
@@ -640,10 +627,10 @@ end)
 
 -- Theming: arrows cycle and stay, letters pick and leave.
 submap_leader("theming", mod, "T", function()
-	submap_cycle("RIGHT", "[Theming] next theme", "hyprshell theme.switch.sh -n --quiet")
-	submap_cycle("LEFT", "[Theming] previous theme", "hyprshell theme.switch.sh -p --quiet")
-	submap_cycle("DOWN", "[Theming] next wallpaper", "hyprshell wallpaper next --global")
-	submap_cycle("UP", "[Theming] previous wallpaper", "hyprshell wallpaper previous --global")
+	theming_cycle("RIGHT", "[Theming] next theme", "hyprshell theme.switch.sh -n --quiet")
+	theming_cycle("LEFT", "[Theming] previous theme", "hyprshell theme.switch.sh -p --quiet")
+	theming_cycle("DOWN", "[Theming] next wallpaper", "hyprshell wallpaper next --global")
+	theming_cycle("UP", "[Theming] previous wallpaper", "hyprshell wallpaper previous --global")
 	submap_exec("T", "[Theming] select theme", "hyprshell rofi/run-after-close.sh -- hyprshell theme.select.sh")
 	submap_exec("SHIFT + T", "[Theming] reapply theme", "hyprshell theme.switch.sh --quiet")
 	submap_exec(
@@ -659,22 +646,22 @@ submap_leader("theming", mod, "T", function()
 		"hyprshell rofi/run-after-close.sh -- hyprshell quickshell/layout select"
 	)
 	submap_exec("SHIFT + B", "[Theming] reload bar", "quickshell ipc call bar reload")
-	submap_cycle("C", "[Theming] cycle bar layout", "hyprshell quickshell/layout next")
-	submap_cycle("SHIFT + C", "[Theming] cycle bar layout backward", "hyprshell quickshell/layout previous")
-	submap_cycle("H", "[Theming] toggle bar", "hyprshell quickshell/visibility toggle")
+	submap_exec("C", "[Theming] cycle bar layout", "hyprshell quickshell/layout next")
+	submap_exec("SHIFT + C", "[Theming] cycle bar layout backward", "hyprshell quickshell/layout previous")
+	submap_exec("H", "[Theming] toggle bar", "hyprshell quickshell/visibility toggle")
 	submap_exec("V", "[Theming] look and feel", "hyprshell window/looknfeel.sh")
 	submap_exec("M", "[Theming] color mode", "pkill -x rofi || hyprshell theme/color-mode -m")
 	submap_exec("R", "[Theming] select rofi theme", "hyprshell rofi/run-after-close.sh -- hyprshell theme.select.sh -s")
 	submap_exec("L", "[Theming] select launcher style", "hyprshell rofi-launch.sh -s")
 	-- the number row keeps working, so a theme can be judged on another workspace
 	for workspace = 1, 10 do
-		submap_stay_action(
+		submap_action(
 			chord(mod, workspace_code(workspace)),
 			HIDDEN_MARKER .. "go to workspace " .. workspace,
 			hl.dsp.focus({ workspace = workspace })
 		)
 	end
-end)
+end, false)
 
 submap_leader("open", mod, "O", function()
 	submap_exec("F", "[Open] File finder", "pkill -x rofi || hyprshell launch/file-finder.sh")
@@ -764,8 +751,8 @@ submap_leader("utilities", mod, "U", function()
 	submap_exec("F", "[System] windows mode", "hyprshell util/workflow-toggle.sh windows")
 	submap_exec("W", "[System] select workflow", "pkill -x rofi || hyprshell workflows --select")
 	submap_exec("O", "[System] audio output switcher", "hyprshell controls/volume-control.sh -t")
-	submap_cycle("S", "[System] cycle monitor scale", "hyprshell system/monitor-scale.sh")
-	submap_cycle("SHIFT + S", "[System] cycle monitor scale backward", "hyprshell system/monitor-scale.sh --reverse")
+	submap_exec("S", "[System] cycle monitor scale", "hyprshell system/monitor-scale.sh")
+	submap_exec("SHIFT + S", "[System] cycle monitor scale backward", "hyprshell system/monitor-scale.sh --reverse")
 	submap_exec("D", "[System] toggle laptop display", "hyprshell system/monitor-internal.sh toggle")
 	submap_exec("M", "[System] toggle mirroring", "hyprshell system/monitor-mirror.sh toggle")
 end)

@@ -1,5 +1,3 @@
-# Ruby and Rails installer.
-
 dev_env_configure_ruby_tooling() {
   mise settings add idiomatic_version_file_enable_tools ruby
   mise settings add ruby.compile false

@@ -1,8 +1,4 @@
 #!/usr/bin/env bash
-# Retrieve stored WiFi password from NetworkManager
-# Usage: wifi-pass [options] [SSID]
-#
-
 set -euo pipefail
 
 quiet=false

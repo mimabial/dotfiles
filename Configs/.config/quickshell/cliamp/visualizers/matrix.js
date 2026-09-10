@@ -13,7 +13,6 @@ function render(ctx, d) {
   var numRows = Math.floor(h / charH)
   if (numCols < 1 || numRows < 1) return
 
-  // Initialize persistent column drop state
   if (!state.matrixDrops || state.matrixDrops.length !== numCols) {
     state.matrixDrops = []
     for (var i = 0; i < numCols; i++) {
@@ -26,7 +25,6 @@ function render(ctx, d) {
     }
   }
 
-  // Resample frequency bands to match matrix columns
   var cols = H.resampleBandsLinear(bands, numCols)
   var glyphs = "0123456789ABCDEFλπΣΩ#%*+~=<>:?ｦｱｳｴｵｶｷｹｺｻｼｽｾｿﾀﾂﾃﾅﾆﾇﾈﾊﾋﾎﾏﾐﾑﾒﾓﾔﾕﾗﾘﾜ"
 
@@ -43,7 +41,6 @@ function render(ctx, d) {
     var drop = state.matrixDrops[c]
     var cx = c * charW + charW / 2
 
-    // Smooth speed modulation with audio energy
     var currentSpeed = drop.speed * (1.0 + energy * 1.3)
     drop.y += currentSpeed
     if (drop.y - drop.length > numRows) {
@@ -61,7 +58,6 @@ function render(ctx, d) {
 
       var cy = row * charH + charH / 2
 
-      // Smooth glyph drift
       var gIdx = (drop.glyphSeed + row * 17 + Math.floor(frame / 16)) % glyphs.length
       var ch = glyphs[gIdx]
 

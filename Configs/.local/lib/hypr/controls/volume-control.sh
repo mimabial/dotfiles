@@ -1,24 +1,12 @@
 #!/usr/bin/env bash
-#
-# volume-control.sh — Adjust sink/source/player volume, toggle mute, switch sinks.
-#
-# Usage:
-#   volume-control.sh -o {i|d|m} [step]   # Default sink: increase / decrease / toggle mute
-#   volume-control.sh -i {i|d|m} [step]   # Default source (microphone)
-#   volume-control.sh -p PLAYER {i|d|m} [step]
-#   volume-control.sh -s                  # Select output sink via rofi
-#   volume-control.sh -t                  # Toggle to next output sink
-#   volume-control.sh --set-default ID NAME # Set output and move app streams
-#   volume-control.sh -q ...              # Quiet (no notification)
-#   volume-control.sh --limits             # Print the default sink's dB range as JSON
-#
-# Depends on: wpctl, pactl, pw-dump, jq, dunstify, playerctl (for -p), rofi (for -s)
-#
 set -u
 
 print_volume_limits() {
   local sink="" fields="" api="" card="" port="" control="PCM" file="" data=""
-  command -v pactl >/dev/null && command -v jq >/dev/null || { printf '{"minimum":-60,"maximum":0,"step":1,"backend":"software"}\n'; return; }
+  if ! command -v pactl >/dev/null || ! command -v jq >/dev/null; then
+    printf '{"minimum":-60,"maximum":0,"step":1,"backend":"software"}\n'
+    return
+  fi
   sink="$(pactl get-default-sink 2>/dev/null || true)"
   fields="$(pactl --format=json list sinks 2>/dev/null | jq -r --arg sink "${sink}" '.[] | select(.name == $sink) | [(.properties["device.api"] // ""), (.properties["alsa.card"] // ""), (.active_port // "")] | @tsv' | head -1)"
   IFS=$'\t' read -r api card port <<< "${fields}"
@@ -88,9 +76,7 @@ require_commands() {
 }
 
 get_default_sink_label() {
-  wpctl inspect @DEFAULT_AUDIO_SINK@ 2>/dev/null \
-    | grep -oP 'node.description = "\K[^"]+' \
-    | head -1
+  wpctl inspect @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk -F'"' '/node.description = / { print $2; exit }'
 }
 
 get_default_sink_id() {
@@ -148,20 +134,6 @@ sink_is_muted() {
   wpctl get-volume "${target}" 2>/dev/null | grep -q "MUTED"
 }
 
-clamp_angle() {
-  local angle="$1"
-  ((angle < 0)) && angle=0
-  ((angle > 100)) && angle=100
-  printf '%s\n' "${angle}"
-}
-
-quantize_angle() {
-  local volume_pct="$1"
-  local q="${VOLUME_ANGLE_QUANTIZATION_DEG}"
-  local angle=$(((volume_pct + (q / 2)) / q * q))
-  clamp_angle "${angle}"
-}
-
 icons_media_dir() {
   printf '%s/Pywal16-Icon/media\n' "${ICONS_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/icons}"
 }
@@ -175,9 +147,11 @@ notify_volume() {
   local bar=""
 
   is_true "${notify_enabled}" || return 0
-  angle="$(quantize_angle "${volume_pct}")"
+  angle=$(((volume_pct + VOLUME_ANGLE_QUANTIZATION_DEG / 2) / VOLUME_ANGLE_QUANTIZATION_DEG * VOLUME_ANGLE_QUANTIZATION_DEG))
+  ((angle > 100)) && angle=100
   icon="$(icons_media_dir)/knob-${angle}.svg"
-  bar="$(printf '%*s' $((volume_pct / VOLUME_BAR_DIVISOR)) '' | tr ' ' '.')"
+  printf -v bar '%*s' "$((volume_pct / VOLUME_BAR_DIVISOR))" ''
+  bar="${bar// /.}"
   dunstify -a "Volume control" -r "${VOLUME_NOTIFY_REPLACE_ID}" -t "${VOLUME_NOTIFY_TIMEOUT_MS}" \
     -e -i "${icon}" "${volume_pct}${bar}" "${label}"
 }
@@ -223,7 +197,9 @@ apply_player_delta() {
   local player_name="$1"
   local delta="$2"
   local step="$3"
-  playerctl_cmd "${player_name}" volume "$(awk -v s="${step}" 'BEGIN { print s / 100 }')${delta}"
+  local amount="" value=$((10#${step}))
+  printf -v amount '%d.%02d' "$((value / 100))" "$((value % 100))"
+  playerctl_cmd "${player_name}" volume "${amount}${delta}"
 }
 
 toggle_sink_mute() {
@@ -241,10 +217,11 @@ toggle_source_mute() {
 
 toggle_player_mute() {
   local player_name="$1"
+  local safe_name="${player_name//\//_}"
   local volume_file=""
   local current_volume=""
 
-  volume_file="${TMPDIR:-/tmp}/$(basename "$0")_last_volume_${player_name:-all}"
+  volume_file="${TMPDIR:-/tmp}/${0##*/}_last_volume_${safe_name:-all}"
   current_volume="$(playerctl_cmd "${player_name}" volume | awk '{ printf "%.2f", $0 }')"
 
   if [[ "${current_volume}" != "0.00" ]]; then
@@ -312,10 +289,7 @@ select_output_via_rofi() {
   local choice=""
   local font_override=""
 
-  require_cmd rofi || {
-    print_log -sec "volume" -err "missing" "rofi is required for output selection"
-    return 1
-  }
+  require_commands rofi pw-dump jq wpctl pactl dunstify || return 1
 
   # sourced here, not at the top: the volume keys are the hot path and never
   # reach rofi. The size is resolved per launch; without it the menu falls back
@@ -336,6 +310,7 @@ toggle_output_to_next_sink() {
   local next_id=""
   local next_desc=""
 
+  require_commands pw-dump jq wpctl pactl dunstify || return 1
   current_id="$(get_default_sink_id)"
   next_line="$(audio_sink_id_at_offset "${current_id}" 1)" || return 1
   next_id="${next_line%%$'\t'*}"
@@ -397,13 +372,12 @@ run_action() {
 }
 
 main() {
-  require_commands wpctl pw-dump jq dunstify pactl || return 1
-
   if [[ "${1:-}" == "--set-default" ]]; then
     [[ -n "${2:-}" && -n "${3:-}" ]] || {
-      printf 'Usage: %s --set-default ID NAME\n' "$(basename "$0")" >&2
+      printf 'Usage: %s --set-default ID NAME\n' "${0##*/}" >&2
       return 2
     }
+    require_commands wpctl pactl dunstify || return 1
     set_default_output "$2" "$3"
     return
   fi
@@ -463,6 +437,15 @@ main() {
     usage >&2
     return 2
   }
+
+  case "${device_kind}" in
+    sink) require_commands wpctl || return 1 ;;
+    source) require_commands pactl || return 1 ;;
+    player) require_commands playerctl || return 1 ;;
+  esac
+  if is_true "${notify_enabled}"; then
+    require_commands dunstify || return 1
+  fi
 
   action="${1:-}"
   step="${2:-${default_step}}"

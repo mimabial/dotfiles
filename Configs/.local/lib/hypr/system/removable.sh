@@ -1,10 +1,4 @@
 #!/usr/bin/env bash
-#
-# removable.sh — Removable media state and actions, the udiskie tray job.
-#
-# Usage: removable.sh [--report|--bar|--mount DEV|--unmount DEV|--eject DEV]
-# Depends on: lsblk, jq, udisksctl
-#
 set -euo pipefail
 
 usage() {

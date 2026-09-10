@@ -1,13 +1,5 @@
 #!/usr/bin/env bash
-#
-# gaps-toggle.sh — Toggle window gaps between the configured size and none.
-#
-# Runtime-only, like every other hl.config() applied live: a config reload
-# restores whatever the theme and looknfeel layers set, which is the intended
-# escape hatch rather than a bug.
-#
-# Depends on: hyprctl, jq
-#
+# A config reload intentionally restores the theme's gaps.
 
 set -euo pipefail
 
@@ -52,8 +44,7 @@ case "${1:-toggle}" in
 esac
 
 if [[ "${want}" == "off" ]]; then
-  # Only record a restore point when there is something to restore, so a second
-  # "off" cannot overwrite the real values with zeroes.
+  # Do not let repeated "off" calls replace the restore point with zeroes.
   if ((current_in != 0 || current_out != 0)); then
     state_set HYPR_GAPS_SAVED_IN "${current_in}"
     state_set HYPR_GAPS_SAVED_OUT "${current_out}"

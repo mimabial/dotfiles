@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# Memory usage as bar JSON. `rows` carries the same figures already broken
-# into label/value pairs, so the quickshell panel renders them without having
-# to parse the tooltip markup.
 set -euo pipefail
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash"
@@ -30,7 +27,10 @@ percent=0
 swap_percent=0
 ((swap_total_kb > 0)) && swap_percent=$(((swap_used_kb * 100 + swap_total_kb / 2) / swap_total_kb))
 
-gb() { awk -v kb="${1:-0}" 'BEGIN { printf "%.1f GB", kb / 1048576 }'; }
+gb() {
+  local tenths=$(((${1:-0} * 10 + 524288) / 1048576))
+  printf '%d.%d GB' "$((tenths / 10))" "$((tenths % 10))"
+}
 
 sep=$'\r'
 [[ "${HYPR_SYSINFO_ALT:-0}" == "1" ]] && sep=" "

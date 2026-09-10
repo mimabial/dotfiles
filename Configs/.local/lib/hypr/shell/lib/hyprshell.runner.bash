@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
 
-# Script discovery and execution helpers for hyprshell.
-
 run_lib_script() {
   local rel_path="$1"
   shift

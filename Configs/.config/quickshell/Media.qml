@@ -105,7 +105,6 @@ Singleton {
         select(player)
         return true
     }
-    // all three from Material Design so the states share an optical box
     function icon(player) {
         if (!player) return "󰓛"
         return player.playbackState === MprisPlaybackState.Playing ? "󰼛"

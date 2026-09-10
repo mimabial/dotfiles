@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# Terminal color preview for pywal16
-#
 # Subsystem inputs (sourced from ~/.cache/wal/colors-shell.sh below):
 #   background, foreground, cursor, color0..color15
 : "${background-}" "${foreground-}" "${cursor-}"

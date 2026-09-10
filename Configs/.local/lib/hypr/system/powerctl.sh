@@ -1,12 +1,4 @@
 #!/usr/bin/env bash
-#
-# powerctl.sh — Power off or reboot, after clearing wake-required state and closing windows.
-#
-# Usage:
-#   powerctl.sh <shutdown|poweroff|reboot>
-#
-# Depends on: hyprshell, and systemctl or loginctl
-#
 set -euo pipefail
 
 usage() {

@@ -3,14 +3,6 @@
 # Subsystem inputs (populated by core/wallpaper.catalog.sh:get_themes):
 #   thmList
 : "${thmList-}"
-#
-# theme.switch.sh — Theme switching orchestrator.
-#
-# Usage:
-#   theme.switch.sh -s "Theme Name"   # Switch to specific theme
-#   theme.switch.sh -n                # Switch to next theme
-#   theme.switch.sh -p                # Switch to previous theme
-#
 set -euo pipefail
 
 LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"

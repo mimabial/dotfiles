@@ -24,7 +24,6 @@ PopupCard {
   readonly property color surface: shell.role("bg", shell.background)
   readonly property string fontFamily: shell.fontFamily
 
-  // ---- State
   property bool isRunning: false
   property string playbackState: "stopped"
   readonly property bool isPlaying: playbackState === "playing"
@@ -125,7 +124,6 @@ PopupCard {
     "plasma", "osc_warp", "crt_scanline", "cyber_tunnel"
   ]
 
-  // Visualizer state
   property var visBands: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
   property var visBandsRaw: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
   property var visBandsStereo: ({ "left": [], "right": [] })
@@ -239,8 +237,6 @@ PopupCard {
 
   onOpenChanged: {
     if (open) {
-      // Pre-warm mpv so it's ready before the user clicks a song.
-      // This eliminates cold-start delay after reboot.
       if (!root.externalMedia && !root.isRunning) warmupProc.running = true
       if (!root.syncMpris()) root.refresh()
       loadHistory()
@@ -258,7 +254,6 @@ PopupCard {
     }
   }
 
-  // ---- Lifecycle
   Component.onCompleted: {
     Commons.Style.shell = root.shell
     Commons.Color.shell = root.shell
@@ -329,7 +324,6 @@ PopupCard {
     return root.defaultKey(event)
   }
 
-  // ---- Actions
   function refresh() {
     if (statusProc.running || actionProc.running) return
     root._statusGen = root._commandGen
@@ -711,7 +705,6 @@ PopupCard {
     liveProc.running = true
   }
 
-  // ---- Processes
   Process {
     id: mprisPositionProc
     property string source: ""
@@ -936,8 +929,7 @@ PopupCard {
     onTriggered: root.refresh()
   }
 
-  // Silently pre-warms the mpv daemon when the panel opens.
-  // Runs start_daemon which is a no-op if mpv is already running.
+  // Avoids the first post-reboot play paying mpv's startup cost.
   Process {
     id: warmupProc
     command: ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", ""), "start_daemon"]
@@ -948,7 +940,6 @@ PopupCard {
     id: spectrumProc
   }
 
-  // Poll timer
   Timer {
     id: pollTimer
     interval: 500
@@ -1055,7 +1046,6 @@ PopupCard {
   // passive, so rows and tabs still get their own click.
   TapHandler { gesturePolicy: TapHandler.DragThreshold; onTapped: trackList.urlInput.focus = false }
 
-  // IPC
   IpcHandler {
     target: "cliamp"
     function open() { root.showPopup() }
@@ -1072,7 +1062,6 @@ PopupCard {
     function playUrl(url: string) { root.playUrl(url) }
   }
 
-  // Detached strip opposite the bar; visibility never moves the player.
   header: BorderSurface {
     visible: root.resumeVisible
     anchors.left: parent.left
@@ -1149,7 +1138,6 @@ PopupCard {
 
         TrackList { id: trackList; p: root; visible: !playerComp.lyricsVisible && !root.visPickerOpen && !root.eqPickerOpen }
 
-        // Visualizer Picker (Lazy loaded on demand)
         Loader {
           visible: root.visPickerOpen
           active: root.visPickerOpen
@@ -1158,7 +1146,6 @@ PopupCard {
           onLoaded: { if (item) item.p = root }
         }
 
-        // Equalizer Profile Picker (Lazy loaded on demand)
         Loader {
           visible: root.eqPickerOpen
           active: root.eqPickerOpen
@@ -1167,7 +1154,6 @@ PopupCard {
           onLoaded: { if (item) item.p = root }
         }
 
-        // Lyrics view — replaces track list when toggled
         Item {
           visible: playerComp.lyricsVisible
           width: parent.width
@@ -1207,7 +1193,6 @@ PopupCard {
                 }
               }
 
-              // Close icon pushed to top far right
               Item {
                 id: closeLyricsBtn
                 anchors.right: parent.right

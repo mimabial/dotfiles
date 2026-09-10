@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 
-#! REQUIRED ROOT
 execName="$0 $*"
-rootOpts=("--install" "--purge" "--revert" "fresh") #? List Of Flags that needs to be in sudo
 vertL="$(printf '=%.0s' $(seq 1 "$(tput cols)"))"
 
 box_me() {
@@ -21,12 +19,6 @@ check_Root() {
     fi
 }
 
-check_Ping() {
-    if ! ping -q -c 1 -W 1 8.8.8.8 >/dev/null; then
-        box_me "Error: No internet connection."
-        exit 1
-    fi
-}
 write_ChaoticAUR() {
     is_ChaoticAUR=$(
         grep "chaotic-aur" /etc/pacman.conf >/dev/null 2>&1
@@ -166,7 +158,7 @@ revertAUR() {
 
     echo -e "Do you wish to reinstall your old Chaotic-AUR packages from AUR?\nThe following packages will be affected:\n$to_be_Reverted_AUR"
     echo -n "Proceed? [Y/n] "
-    read ans
+    read -r ans
 
     if [ "$ans" == "n" ] || [ "$ans" == "N" ]; then
         box_me "Aborting..."
@@ -174,7 +166,7 @@ revertAUR() {
     fi
 
     for chaoticPackage in $to_be_Reverted_AUR; do
-        convertedPackage="$(echo "$chaoticPackage" | sed 's/chaotic-aur/aur/')"
+        convertedPackage="${chaoticPackage/chaotic-aur/aur}"
 
         if [ "$(pacman -Qs "$convertedPackage")" == "$convertedPackage" ]; then
             box_me "Reinstalling $convertedPackage..."
@@ -215,7 +207,7 @@ HyDE is not affiliated with Chaotic AUR.
 
 CHAOS
 
-    read -p "Type 'yes' to continue [default] No : " add_chaotic
+    read -r -p "Type 'yes' to continue [default] No : " add_chaotic
     if [ ! "${add_chaotic}" == "yes" ]; then
         echo -e "$(tput setaf 1) Skipping Chaotic AUR$(tput sgr0)"
         exit 0
@@ -227,20 +219,16 @@ if ! command -v pacman >/dev/null 2>&1; then
     exit 1
 fi
 
-for option in "${rootOpts[@]}"; do
-    if [ "$1" == "$option" ]; then
-        check_Ping
-        check_Root
-        break
-    fi
-done
+case "${1:-}" in
+--install | --uninstall | --revert) check_Root ;;
+esac
 
 case "$1" in
 --install)
     if [ "$2" == "fresh" ]; then fresh; fi
     if check_Integrity >/dev/null; then
         echo "Chaotic AUR already installed. Would you like a reinstall? [y/N]"
-        read ans
+        read -r ans
         if [ "$ans" != "Y" ] && [ "$ans" != "y" ]; then
             echo "Chaotic AUR: Operation Cancelled."
             exit 0

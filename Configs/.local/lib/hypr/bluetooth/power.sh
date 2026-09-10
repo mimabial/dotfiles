@@ -1,9 +1,4 @@
 #!/usr/bin/env bash
-#
-# power.sh — Turn Bluetooth on or off through rfkill when available.
-#
-# Usage: hyprshell bluetooth/power {on|off|toggle|is-on}
-#
 set -euo pipefail
 
 # shellcheck source=/dev/null

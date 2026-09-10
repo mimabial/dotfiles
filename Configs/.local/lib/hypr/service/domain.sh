@@ -1,19 +1,4 @@
 #!/usr/bin/env bash
-# Unified refresh/restore handler for a single domain with post-actions.
-# Replaces the individual refresh-<domain>.sh and restore-<domain>.sh scripts.
-#
-# Usage:
-#   hyprshell service/domain.sh refresh <domain> [options]
-#   hyprshell service/domain.sh restore <domain> [options]
-#
-# Domains: hypr-config, hypr-state, hyprlock, hypridle, rofi
-#
-# Options:
-#   -n, --dry-run          preview without changing files
-#   -q, --quiet            suppress per-entry status lines
-#   --diff / --no-diff     show/hide unified diffs
-#   --backup-label <name>  override backup folder suffix
-
 set -euo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"

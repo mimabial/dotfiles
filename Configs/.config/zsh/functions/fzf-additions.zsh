@@ -1,11 +1,7 @@
-# Additional fzf workflows to complement existing fzf.zsh
-# These add git, process, and preview-only functionality
-
 if ! command -v "fzf" &>/dev/null; then
     return 0
 fi
 
-# Fuzzy git branch switcher
 fzgb() {
     if ! git rev-parse --git-dir > /dev/null 2>&1; then
         echo "Not a git repository"
@@ -27,7 +23,6 @@ fzgb() {
     fi
 }
 
-# Fuzzy git add (stage files)
 fzga() {
     if ! git rev-parse --git-dir > /dev/null 2>&1; then
         echo "Not a git repository"
@@ -48,7 +43,6 @@ fzga() {
     fi
 }
 
-# Fuzzy git log browser
 fzgl() {
     if ! git rev-parse --git-dir > /dev/null 2>&1; then
         echo "Not a git repository"
@@ -64,7 +58,6 @@ fzgl() {
         --header 'Browse commits | Enter: View full commit | Ctrl-/: Toggle preview'
 }
 
-# Fuzzy process killer
 fzkill() {
     local pid
     pid=$(ps -ef | sed 1d | fzf --multi --height 60% --reverse \
@@ -79,7 +72,6 @@ fzkill() {
     fi
 }
 
-# Fuzzy view (preview-only, no editing)
 fzv() {
     local file
     if command -v "fd" &>/dev/null; then
@@ -107,7 +99,6 @@ fzv() {
     fi
 }
 
-# Fuzzy directory jump with zoxide integration
 if command -v "zoxide" &>/dev/null; then
     fzj() {
         local dir
@@ -124,12 +115,11 @@ if command -v "zoxide" &>/dev/null; then
     }
 fi
 
-# Fuzzy environment variable viewer
 fzenv() {
     env | sort | \
     fzf --height 60% --reverse \
         --preview 'echo {}' \
         --preview-window down:3:wrap \
-        --bind 'ctrl-y:execute-silent(echo {} | cut -d= -f2 | xargs echo -n | pbcopy || xclip -selection clipboard)' \
+        --bind "ctrl-y:execute-silent(printf %s {} | cut -d= -f2- | '$HOME/.config/tmux/scripts/tmux-copy')" \
         --header 'Environment variables | Ctrl-Y: Copy value'
 }

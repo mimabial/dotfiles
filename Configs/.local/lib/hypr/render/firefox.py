@@ -1,9 +1,4 @@
 #!/usr/bin/env python3
-# Renderer: Firefox userChrome.css across all profiles.
-# Substitutes ~/.config/wal/templates/firefox-userChrome.css against the active
-# palette + derived firefox roles. Then injects (between markers) into each
-# profile's chrome/userChrome.css and ensures user.js enables custom chrome.
-
 import configparser
 import hashlib
 import json
@@ -146,7 +141,6 @@ def inject_marker(profile: Path, snippet: str):
     target = chrome_dir / "userChrome.css"
     existing = ""
     if target.is_file():
-        # Strip prior marker block
         keep = []
         skip = False
         for line in target.read_text().splitlines():
@@ -181,7 +175,6 @@ def main():
     if not PALETTE.is_file():
         sys.exit(f"render/firefox: missing {PALETTE}")
     if not TEMPLATE.is_file():
-        # No template = nothing to do (legitimately optional)
         return
     if not FIREFOX_ROOT.is_dir():
         return

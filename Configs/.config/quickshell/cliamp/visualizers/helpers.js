@@ -1,7 +1,5 @@
-// Shared helpers for all visualizers — ported from  visualizer.go
 .pragma library
 
-// scatterHash — deterministic per-dot hash for stable particle patterns
 function scatterHash(band, row, col, frame) {
   var f = Math.floor((frame + row * 3 + col) / 3)
   var h = (band * 7919 + row * 6271 + col * 3037 + f * 104729) & 0xFFFFFFFF
@@ -17,7 +15,6 @@ function shade(color, light) {
   return hueShift(color, 0, undefined, light)
 }
 
-// sampleBandLinear — linear interpolation between band values
 function sampleBandLinear(bands, pos) {
   if (bands.length === 0) return 0
   if (bands.length === 1) return bands[0]
@@ -29,7 +26,6 @@ function sampleBandLinear(bands, pos) {
   return bands[idx] * (1 - frac) + bands[idx + 1] * frac
 }
 
-// resampleBandsLinear — resample bands to N columns
 function resampleBandsLinear(bands, totalCols) {
   if (totalCols <= 0 || bands.length === 0) return []
   if (bands.length === totalCols) return bands.slice()
@@ -46,7 +42,6 @@ function resampleBandsLinear(bands, totalCols) {
   return out
 }
 
-// bandAvg — mean of bands[lo:hi]
 function bandAvg(b, lo, hi) {
   if (lo < 0) lo = 0
   if (hi > b.length) hi = b.length

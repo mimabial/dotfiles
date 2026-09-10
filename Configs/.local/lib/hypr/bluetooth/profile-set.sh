@@ -3,8 +3,6 @@
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
 
-# Set a connected Bluetooth device's preferred audio mode.
-
 address=${1:-}
 profile=${2:-}
 
@@ -45,4 +43,3 @@ wait "$profile_set_pid" || profile_set_status=$?
 profile_set_pid=
 trap - INT TERM HUP
 (( profile_set_status == 0 )) || exit "$profile_set_status"
-

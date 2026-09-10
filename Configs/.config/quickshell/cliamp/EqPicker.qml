@@ -3,7 +3,6 @@ import QtQuick.Controls
 import qs.Commons
 import qs.Ui
 
-// Equalizer & Audio Profile Selector
 BorderSurface {
   id: root
   property var p  // Panel root
@@ -31,7 +30,6 @@ BorderSurface {
     anchors.margins: Style.space(8)
     spacing: Style.space(6)
 
-    // Header
     Row {
       width: parent.width
       spacing: Style.space(6)
@@ -64,7 +62,6 @@ BorderSurface {
       }
     }
 
-    // Audio FX toggles: Normalizer & 3D Spatial Audio
     Row {
       width: parent.width
       spacing: Style.space(6)
@@ -142,7 +139,6 @@ BorderSurface {
       }
     }
 
-    // Scrollable preset list
     Flickable {
       width: parent.width
       height: parent.height - Style.space(56)

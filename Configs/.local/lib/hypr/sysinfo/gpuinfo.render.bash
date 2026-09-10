@@ -1,96 +1,67 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
-# GPU render and bucket helpers.
 # shellcheck source=/dev/null
 source "${BASH_SOURCE[0]%/*}/lib/temp-color.bash"
 # shellcheck source=/dev/null
 source "${BASH_SOURCE[0]%/*}/lib/map-floor.bash"
 
-# Keep icon levels stable near thresholds.
 is_number() {
   [[ "$1" =~ ^-?[0-9]+([.][0-9]+)?$ ]]
 }
 
 update_state_var() {
-  local key="$1"
-  local value="$2"
+  local key="$1" value="$2" line found=false
 
   [[ -z "${key}" ]] && return
-  if grep -q "^${key}=" "${gpuinfo_file}"; then
-    sed -i "s/^${key}=.*/${key}=${value}/" "${gpuinfo_file}"
+  while IFS= read -r line; do
+    [[ "$line" == "$key="* ]] || continue
+    found=true
+    break
+  done <"$gpuinfo_file"
+  if "$found"; then
+    sed -i "s/^${key}=.*/${key}=${value}/" "$gpuinfo_file"
   else
-    echo "${key}=${value}" >>"${gpuinfo_file}"
+    printf '%s=%s\n' "$key" "$value" >>"$gpuinfo_file"
   fi
 }
 
 hysteresis_bucket() {
-  local value="$1"
-  local prev="$2"
-  local high="$3"
-  local mid="$4"
-  local low="$5"
-  local hyst="$6"
-  local val raw next threshold
+  local value="$1" prev="$2" high="$3" mid="$4" low="$5" hyst="$6"
+  local val raw=0 next threshold
 
-  if [[ -z "${value}" ]] || ! is_number "${value}"; then
-    if [[ "${prev}" =~ ^[0-3]$ ]]; then
-      echo "${prev}"
-    else
-      echo ""
-    fi
+  if [[ -z "$value" ]] || ! is_number "$value"; then
+    [[ "$prev" =~ ^[0-3]$ ]] && printf '%s\n' "$prev"
     return
   fi
-
   val="${value%%.*}"
-  if ((val >= high)); then
-    raw=3
-  elif ((val >= mid)); then
-    raw=2
-  elif ((val >= low)); then
-    raw=1
-  else
-    raw=0
-  fi
-
-  if [[ -z "${prev}" ]] || [[ ! "${prev}" =~ ^[0-3]$ ]]; then
-    echo "${raw}"
+  ((val >= low)) && raw=1
+  ((val >= mid)) && raw=2
+  ((val >= high)) && raw=3
+  if [[ ! "$prev" =~ ^[0-3]$ || ! "$hyst" =~ ^[0-9]+$ ]] || ((hyst <= 0)); then
+    printf '%s\n' "$raw"
     return
   fi
 
-  if [[ -z "${hyst}" ]] || [[ ! "${hyst}" =~ ^[0-9]+$ ]] || [[ "${hyst}" -le 0 ]]; then
-    echo "${raw}"
-    return
-  fi
-
-  next="${prev}"
-  threshold="${low}"
-
+  next="$prev"
   if ((raw > prev)); then
-    case "${raw}" in
-      1) threshold="${low}" ;;
-      2) threshold="${mid}" ;;
-      3) threshold="${high}" ;;
+    case "$raw" in
+      1) threshold="$low" ;;
+      2) threshold="$mid" ;;
+      3) threshold="$high" ;;
     esac
-    if ((val >= threshold + hyst)); then
-      next="${raw}"
-    fi
+    ((val >= threshold + hyst)) && next="$raw"
   elif ((raw < prev)); then
-    case "${prev}" in
-      1) threshold="${low}" ;;
-      2) threshold="${mid}" ;;
-      3) threshold="${high}" ;;
+    case "$prev" in
+      1) threshold="$low" ;;
+      2) threshold="$mid" ;;
+      3) threshold="$high" ;;
     esac
-    if ((val < threshold - hyst)); then
-      next="${raw}"
-    fi
+    ((val < threshold - hyst)) && next="$raw"
   else
-    next="${raw}"
+    next="$raw"
   fi
-
-  echo "${next}"
+  printf '%s\n' "$next"
 }
 
-# Try to read Intel utilization from intel_gpu_top JSON output.
 intel_gpu_top_util() {
   command -v intel_gpu_top &>/dev/null || return 1
 
@@ -124,24 +95,15 @@ intel_gpu_top_util() {
 }
 
 resolve_bucket_icon() {
-  local value="$1"
-  local prev="$2"
-  local high="$3"
-  local mid="$4"
-  local low="$5"
-  local hyst="$6"
-  local state_key="$7"
-  local fallback_map="$8"
+  local value="$1" prev="$2" high="$3" mid="$4" low="$5" hyst="$6"
+  local state_key="$7" fallback_map="$8" bucket icon
   shift 8
   local -a icons=("$@")
-  local bucket=""
-  local icon=""
 
   bucket=$(hysteresis_bucket "${value}" "${prev}" "${high}" "${mid}" "${low}" "${hyst}")
   if [[ -n "${bucket}" ]]; then
-    icon="${icons[${bucket}]}"
     update_state_var "${state_key}" "${bucket}"
-    printf '%s\n' "${icon}"
+    printf '%s\n' "${icons[${bucket}]}"
     return 0
   fi
 
@@ -155,11 +117,9 @@ resolve_bucket_icon() {
 }
 
 vendor_thermo_icon() {
-  if [[ "${GPUINFO_NVIDIA_ENABLE}" -eq 1 ]]; then
+  if ((GPUINFO_NVIDIA_ENABLE || GPUINFO_AMD_ENABLE)); then
     printf '%s\n' '󰾲'
-  elif [[ "${GPUINFO_AMD_ENABLE}" -eq 1 ]]; then
-    printf '%s\n' '󰾲'
-  elif [[ "${GPUINFO_INTEL_ENABLE}" -eq 1 ]]; then
+  elif ((GPUINFO_INTEL_ENABLE)); then
     printf '%s\n' '󰢮'
   else
     printf '%s\n' '󰍺'
@@ -193,9 +153,6 @@ build_tooltip() {
   tooltip="$primary_gpu
 $thermo Temperature: ${temperature}°C"
 
-  # ${VAR:-} fallbacks for optional metrics — each is populated by only some
-  # of the GPU paths (general_query / nvidia_GPU / amd_GPU / intel_GPU), so a
-  # bare ${VAR} crashes under set -u when the active path didn't set it.
   if [[ -n "${utilization:-}" ]]; then
     append_tooltip_line "$speed Utilization: ${utilization}%"
   fi
@@ -211,9 +168,6 @@ $thermo Temperature: ${temperature}°C"
     fi
     append_tooltip_line "${line}"
   fi
-  # ${VAR:-} for optional metrics: power_discharge is set only on battery,
-  # fan_speed only by AMD/sensors paths, gpu_error only by nvidia-smi failure.
-  # Without the fallback they crash under set -u on the other paths.
   if [[ -n "${power_discharge:-}" ]] && [[ "${power_discharge}" != "0" ]]; then
     append_tooltip_line " Power Discharge: ${power_discharge} W"
   fi
@@ -227,18 +181,13 @@ $thermo Temperature: ${temperature}°C"
 
 format_utilization_text() {
   if [[ -n "${utilization}" && "${utilization}" != "N/A" ]]; then
-    # Cap module text at 99 so a 3-digit reading doesn't break the bar's
-    # fixed-width slot. The tooltip (build_tooltip) still shows the raw
-    # value, so 100% is visible there.
+    # Keep the bar at two digits; the tooltip retains the raw value.
     local util_int="${utilization%%.*}"
     [[ "${util_int}" =~ ^[0-9]+$ ]] && ((util_int > 99)) && util_int=99
     printf '%02d󱉸\n' "${util_int}"
     return 0
   fi
 
-  # No reading available (e.g. nvidia-smi failed and there's no sysfs util
-  # counter for this GPU). Print "--" so the module stays visually
-  # populated and the user can see they're on a backend without data.
   printf -- '--󱉸\n'
 }
 
@@ -255,8 +204,6 @@ generate_json() {
   local util_icons=("󰾆" "󰾅" "󰓅" "")
   local temp_icons=("" "" "" "")
 
-  # Bucket vars are persisted in gpuinfo_file across runs but unset on first
-  # invocation; ${VAR:-} keeps that path safe under set -u.
   speed="$(resolve_bucket_icon "${utilization}" "${GPUINFO_UTIL_BUCKET:-}" "${util_high}" "${util_mid}" "${util_low}" "${util_hyst}" "GPUINFO_UTIL_BUCKET" "${util_lv}" "${util_icons[@]}")"
   thermo="$(resolve_bucket_icon "${temperature}" "${GPUINFO_TEMP_BUCKET:-}" "${temp_high}" "${temp_mid}" "${temp_low}" "${temp_hyst}" "GPUINFO_TEMP_BUCKET" "${temp_lv}" "${temp_icons[@]}")"
   temp_color=$(get_temp_color "${temperature}")
@@ -274,47 +221,35 @@ generate_json() {
     clock="${current_clock_speed}/${max_clock_speed} MHz"
   fi
 
-  # every metric below is optional per vendor path; empty rows are dropped
-  local rows
-  rows="$(jq -n -c \
-    --arg model "${primary_gpu:-}" \
-    --arg util "${utilization:+${utilization}%}" \
-    --arg temp "${temperature:+${temperature}°C}" \
-    --arg clock "${clock}" \
-    --arg power "${power_usage:+${power_usage} W}" \
-    '[{label: "Model", value: $model},
-      {label: "Utilization", value: $util},
-      {label: "Temperature", value: $temp},
-      {label: "Clock", value: $clock},
-      {label: "Power", value: $power}] | map(select(.value != ""))')"
-
-  # both cards are listed so the panel can switch between them; the state file
-  # names them as GPUINFO_<VENDOR>_ENABLE
-  # read the enable flags straight from the cache: GPUINFO_AVAILABLE is only
-  # written lazily by toggle(), so a freshly queried cache has none
-  local choices="[]" entry vendor name
-  local enabled
-  enabled="$(grep "_ENABLE=1" "${gpuinfo_file}" | cut -d '=' -f 1 | tr -d '#')"
-  if [[ -n "${enabled}" ]]; then
-    choices="$(for entry in ${enabled}; do
-      vendor="${entry#GPUINFO_}"
-      vendor="${vendor%_ENABLE}"
-      name="GPUINFO_${vendor}_GPU"
-      printf '%s\t%s\t%s\n' "${vendor,,}" "${!name:-${vendor,,}}" \
-        "$([[ "${entry}" == "${GPUINFO_PRIORITY:-}" ]] && echo true || echo false)"
-    done | jq -R -s -c 'split("\n") | map(select(length > 0) | split("\t"))
-                        | map({id: .[0], label: .[1], active: (.[2] == "true")})')"
-    [[ -n "${choices}" ]] || choices="[]"
-  fi
+  local line entry vendor name choices=""
+  while IFS= read -r line; do
+    entry="${line#\#}"
+    [[ "$entry" == GPUINFO_*_ENABLE=1 ]] || continue
+    entry="${entry%=1}"
+    vendor="${entry#GPUINFO_}"
+    vendor="${vendor%_ENABLE}"
+    name="GPUINFO_${vendor}_GPU"
+    choices+="${vendor,,}"$'\t'"${!name:-${vendor,,}}"$'\t'
+    [[ "$entry" == "${GPUINFO_PRIORITY:-}" ]] && choices+=true || choices+=false
+    choices+=$'\n'
+  done <"$gpuinfo_file"
 
   jq -n -c \
-    --argjson choices "${choices}" \
     --arg icon "$icon_text" \
     --arg util "${formatted_util}" \
     --arg tooltip "$tooltip" \
     --arg sep "$sep" \
-    --arg title "GPU" \
-    --argjson rows "${rows}" \
-    '{text: ($icon + $sep + $util), tooltip: $tooltip, title: $title,
-      rows: $rows, choices: $choices}'
+    --arg model "${primary_gpu:-}" \
+    --arg usage "${utilization:+${utilization}%}" \
+    --arg temp "${temperature:+${temperature}°C}" \
+    --arg clock "$clock" \
+    --arg power "${power_usage:+${power_usage} W}" \
+    --arg choices "$choices" '
+      [{label:"Model",value:$model},{label:"Utilization",value:$usage},
+       {label:"Temperature",value:$temp},{label:"Clock",value:$clock},
+       {label:"Power",value:$power}] | map(select(.value != "")) as $rows
+      | ($choices | split("\n") | map(select(length > 0) | split("\t") |
+          {id:.[0], label:.[1], active:(.[2] == "true")})) as $choices
+      | {text:($icon + $sep + $util), tooltip:$tooltip, title:"GPU",
+         rows:$rows, choices:$choices}'
 }

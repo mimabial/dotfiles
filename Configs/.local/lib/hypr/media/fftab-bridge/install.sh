@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Wire the fftab-bridge native-messaging host into Firefox for this machine.
 set -euo pipefail
 
 bridge_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

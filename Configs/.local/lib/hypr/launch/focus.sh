@@ -1,11 +1,4 @@
 #!/usr/bin/env bash
-#
-# focus.sh — Focus an existing window matching a pattern; if none, exec the launch command.
-#
-# Usage: hyprshell launch/focus.sh <window-pattern> -- <command> [args...]
-#
-# Depends on: hyprctl, launch/window.common.bash
-#
 set -euo pipefail
 
 SCRIPT_DIR="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"

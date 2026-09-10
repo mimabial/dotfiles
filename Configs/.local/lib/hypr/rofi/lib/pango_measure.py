@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Pango text measurements for the rofi geometry helpers.
 
-One entry point for the three measurements rofi/lib/fonts.bash needs, so the
+One entry point for the measurements rofi/lib/fonts.bash needs, so the
 gi/Pango import is paid once per measurement instead of once per heredoc.
 Every mode reads the font from FONT_DESC and exits 1 when it cannot measure,
 which is what the bash callers treat as "fall back to the estimate".
@@ -72,31 +72,19 @@ def mode_align(description):
         layout.set_text(text, -1)
         return layout.get_pixel_size()[0]
 
-    rows = []
-    for line in sys.stdin.read().splitlines():
-        flag, _, label = line.partition("\t")
-        rows.append((flag == "1", label))
-
+    rows = [(flag == "1", label) for flag, _, label in
+            (line.partition("\t") for line in sys.stdin.read().splitlines())]
     space = width(" ")
     if not rows or space <= 0:
         sys.exit(1)
 
     glyph_width = width(glyph)
-    # two spaces of breathing room past the widest label, when the rows themselves
-    # are what the column is measured from
     edge = max(width(label) for _, label in rows) + 2 * space + glyph_width
-    # Reaching a wider target costs whole spaces, and the division floors twice
-    # over: a target landing mid-space would round labels of differing length to
-    # columns one space apart, and a row as wide as the column rofi hands it is
-    # elided -- taking the glyph with it.
     target = int(os.environ.get("TARGET_PX", "0") or 0)
     edge += max(0, (target - edge) // space) * space
-
     for flagged, label in rows:
-        if not flagged:
-            print(label)
-            continue
-        print(label + " " * max(1, round((edge - glyph_width - width(label)) / space)) + glyph)
+        print(label + " " * max(1, round((edge - glyph_width - width(label)) / space)) + glyph
+              if flagged else label)
 
 
 MODES = {"height": mode_height, "extents": mode_extents, "align": mode_align}

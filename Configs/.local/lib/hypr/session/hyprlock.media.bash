@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
-# Shared hyprlock MPRIS/media helpers.
-
 mpris_icon() {
   local player=${1:-default}
   declare -A player_dict=(

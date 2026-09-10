@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
 
-# Shared font-sync helpers.
-#
 # Callers may source runtime/init.bash first, but these helpers also lazily
 # load it when they need layered config access.
 

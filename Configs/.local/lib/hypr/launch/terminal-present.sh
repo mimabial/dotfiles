@@ -1,12 +1,4 @@
 #!/usr/bin/env bash
-#
-# terminal-present.sh — Run a command in a TUI terminal; for non-interactive commands, hold the terminal open until keypress.
-#
-# Usage: terminal-present.sh [--app-id ID] [--title TITLE] [--hypr-profile PROFILE] [--hypr-cells COLUMNS ROWS] [--hypr-size WIDTH HEIGHT] -- <command>
-#
-# Depends on: setsid, uwsm-app, tui-terminal-exec, bash
-#
-
 usage() {
   cat <<EOF
 Usage: $(basename "$0") [--app-id ID] [--title TITLE] [--hypr-profile PROFILE] [--hypr-cells COLUMNS ROWS] [--hypr-size WIDTH HEIGHT] -- <command>

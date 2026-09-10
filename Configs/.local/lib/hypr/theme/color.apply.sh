@@ -1,18 +1,5 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
-#
-# color.apply.sh - Apply generated colors to applications
-#
-# OVERVIEW:
-#   Reload live applications after generated theme outputs are ready.
-#
-# USAGE:
-#   source color.apply.sh
-#
-# DEPENDENCIES:
-#   - print_log function from core/notify.sh
-
-# Signal or live-reload running applications so they pick up fresh theme files.
 reload_live_theme_client() {
   local client="$1"
   local rmpc_reload="${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/theme/lib/rmpc.reload.bash"

@@ -1,8 +1,0 @@
-{
-  "custom/hyprmenu": {
-    "justify": "center",
-    "format": "󰍜",
-    "tooltip": false,
-    "on-click": "pkill -x rofi || hyprshell menutree"
-  }
-}

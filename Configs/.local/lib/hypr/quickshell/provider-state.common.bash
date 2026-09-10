@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
-#
-# Cheap state reader for Quickshell providers.
-
 quickshell_state_init() {
   if [[ "${HYPR_SHELL_INIT:-0}" -ne 1 ]]; then
     if ! eval "$(hyprshell init 2>/dev/null)"; then

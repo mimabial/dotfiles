@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
 
-# Help text + JSON and rofi selection helpers.
-
 if ! declare -F rofi_effective_font_scale >/dev/null 2>&1; then
   # shellcheck source=/dev/null
   source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/rofi/rofi.lib.bash"

@@ -1,5 +1,3 @@
-# Elixir-family installers.
-
 dev_env_install_elixir_runtime() {
   dev_env_install_with_mise "Elixir" erlang@latest elixir@latest
   mise x elixir -- mix local.hex --force

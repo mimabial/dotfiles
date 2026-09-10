@@ -1,12 +1,4 @@
 #!/usr/bin/env bash
-#
-# browser.sh — Launch the default web browser; passes --private through as the browser-specific private-mode flag.
-#
-# Usage: browser.sh [--private] [browser-args...]
-#
-# Depends on: xdg-settings, setsid, uwsm-app, ${HYPR_LIB_DIR}/system/desktop-entry.exec.bash
-#
-
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
 

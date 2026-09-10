@@ -3,8 +3,6 @@
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
 
-# Update a Bluetooth device property and report actionable failures.
-
 set -uo pipefail
 export LC_ALL=C
 

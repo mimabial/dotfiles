@@ -1,21 +1,12 @@
 import QtQuick
 import QtQuick.Layouts
-import Quickshell
-import Quickshell.Hyprland
-import Quickshell.Wayland
 import "modules"
 
-PanelWindow {
+BarSurface {
     id: root
-    required property var shell
     property bool sidebar: shell.layoutName === "sidebar"
     property bool onLeft: shell.layoutName === "left" || shell.layoutName === "sidebar"
-    property bool active: shell.mode === "main" && !shell.userHidden
-    // one bar exists per screen, and each popup installs its own focus grab;
-    // if two bars open a popup at once the grabs cancel each other, so only
-    // the bar on the focused monitor owns them
-    readonly property bool popupsAllowed: active && (!Hyprland.focusedMonitor
-        || !screen || Hyprland.focusedMonitor.name === screen.name)
+    active: shell.mode === "main" && !shell.userHidden
     anchors.top: true
     anchors.bottom: true
     anchors.left: onLeft
@@ -27,30 +18,6 @@ PanelWindow {
     readonly property var layout: shell.barLayout
     readonly property var section: shell.style.box(".modules-left")
     implicitWidth: mainColumn.implicitWidth + section.margin[1] + section.margin[3] + section.padding[1] + section.padding[3]
-    color: shell.barColor
-    exclusionMode: active ? ExclusionMode.Auto : ExclusionMode.Ignore
-    WlrLayershell.namespace: "hypr-shell-bar"
-    WlrLayershell.layer: WlrLayer.Top
-    readonly property bool popupOpen: shell.popupName !== "" && popupsAllowed
-    property bool exclusivePhase: false
-    // Only the priming phase takes Exclusive. Holding it while a text field has
-    // focus pins the compositor to this surface, and the focus grab never sees the
-    // click outside, so the popup cannot be dismissed by clicking away.
-    WlrLayershell.keyboardFocus: !popupOpen ? WlrKeyboardFocus.None
-        : exclusivePhase ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
-    onPopupOpenChanged: {
-        const prime = popupOpen && shell.popupCenteredName === shell.popupName
-        exclusivePhase = prime
-        shell.focusPriming = prime
-        if (prime) focusPrime.restart()
-    }
-    // the compositor focuses this surface, not the popup's own window
-    Item {
-        anchors.fill: parent; focus: true
-        Keys.onPressed: event => { if (root.shell.popupCard) event.accepted = root.shell.popupCard.handleKey(event) }
-    }
-    Timer { id: focusPrime; interval: 150; onTriggered: { root.exclusivePhase = false; root.shell.focusPriming = false } }
-
     Component { id: mod_menu; StartButton { shell: root.shell; popupEnabled: root.popupsAllowed; Layout.fillWidth: true } }
     Component { id: mod_taskbar; WindowList { shell: root.shell; Layout.fillWidth: true } }
     Component { id: mod_tray; Tray { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }

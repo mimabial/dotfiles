@@ -1,10 +1,4 @@
 #!/usr/bin/env bash
-#
-# printers.sh — CUPS queue state and actions for the bar.
-#
-# Usage: printers.sh [--report|--bar|--enable P|--disable P|--default P|--cancel ID|--cancel-all|--web]
-# Depends on: lpstat, jq; cupsenable/cupsdisable/cancel/lpoptions for the actions
-#
 set -euo pipefail
 
 usage() {

@@ -1,11 +1,4 @@
 #!/usr/bin/env bash
-#
-# looknfeel.sh — Focus or launch the Look & Feel TUI.
-#
-# Usage: looknfeel.sh
-#
-# Depends on: hyprshell launch/{focus,tui}.sh, python3
-#
 set -euo pipefail
 
 # shellcheck source=/dev/null

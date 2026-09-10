@@ -1,35 +1,16 @@
 #!/usr/bin/env bash
-#|---/ /+-----------------------------------+---/ /|#
-#|--/ /-| Script to install flatpaks (user) |--/ /-|#
-#|/ /---+-----------------------------------+/ /---|#
 
-baseDir=$(dirname "$(realpath "$0")")
-scrDir=$(dirname "$(dirname "$(realpath "$0")")")
+set -e
+baseDir="$(dirname "$(realpath "$0")")"
+mapfile -t flats < <(sed 's/#.*//; s/[[:space:]]//g; /^$/d' "${baseDir}/custom_flat.lst")
+((${#flats[@]})) || exit 0
 
-source "${scrDir}/global_fn.sh"
-if [ $? -ne 0 ]; then
-    echo "Error: unable to source global_fn.sh..."
-    exit 1
-fi
+flatpak install --user -y flathub "${flats[@]}"
+flatpak remove --user -y --unused
 
-if ! pkg_installed flatpak; then
-    sudo pacman -S flatpak
-fi
-
-flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-flats=$(awk -F '#' '{print $1}' "${baseDir}/custom_flat.lst" | sed 's/ //g' | xargs)
-
-flatpak install --user -y flathub ${flats}
-flatpak remove --unused
-
-gtkTheme=$(gsettings get org.gnome.desktop.interface gtk-theme | sed "s/'//g")
-gtkIcon=$(gsettings get org.gnome.desktop.interface icon-theme | sed "s/'//g")
-
-flatpak --user override --filesystem=~/.themes
-flatpak --user override --filesystem=~/.icons
-
-flatpak --user override --filesystem=~/.local/share/themes
-flatpak --user override --filesystem=~/.local/share/icons
-
-flatpak --user override --env=GTK_THEME=${gtkTheme}
-flatpak --user override --env=ICON_THEME=${gtkIcon}
+gtkTheme="$(gsettings get org.gnome.desktop.interface gtk-theme | tr -d "'")"
+gtkIcon="$(gsettings get org.gnome.desktop.interface icon-theme | tr -d "'")"
+for path in "$HOME/.themes" "$HOME/.icons" "$HOME/.local/share/themes" "$HOME/.local/share/icons"; do
+    flatpak override --user --filesystem="$path"
+done
+flatpak override --user --env="GTK_THEME=${gtkTheme}" --env="ICON_THEME=${gtkIcon}"

@@ -114,7 +114,6 @@ PopupCard {
             status: root.providerSummary
         }
 
-        // Subscription switch — only when more than one agent reports usage.
         Row {
             visible: root.records.length > 1
             width: parent.width; spacing: Style.xs

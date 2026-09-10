@@ -3,7 +3,6 @@ import QtQuick.Controls
 import qs.Commons
 import qs.Ui
 
-// Search input + tabs + scrollable track list
 Column {
   id: root
   property var p  // Panel root
@@ -61,7 +60,6 @@ Column {
     root.queueFocusPending = false
   }
 
-  // Search / URL Input Bar
   BorderSurface {
     id: searchBox
     width: parent.width
@@ -137,12 +135,10 @@ Column {
     }
   }
 
-  // Styled Pill Tabs + Daemon Status
   Row {
     width: parent.width
     spacing: Style.space(4)
 
-    // Search Tab Pill
     BorderSurface {
       visible: root.p.selectedTab === "search" || root.p.searchResults.length > 0 || root.p.isSearching
       implicitHeight: Style.space(22)
@@ -166,7 +162,6 @@ Column {
       }
     }
 
-    // Recents Tab Pill
     BorderSurface {
       implicitHeight: Style.space(22)
       implicitWidth: recentsTabText.implicitWidth + Style.space(14)
@@ -189,7 +184,6 @@ Column {
       }
     }
 
-    // Queue Tab Pill
     BorderSurface {
       implicitHeight: Style.space(22)
       implicitWidth: queueTabText.implicitWidth + Style.space(14)
@@ -212,7 +206,6 @@ Column {
       }
     }
 
-    // Playlists Tab Pill
     BorderSurface {
       implicitHeight: Style.space(22)
       implicitWidth: plTabText.implicitWidth + Style.space(14)
@@ -235,7 +228,6 @@ Column {
       }
     }
 
-    // Files Tab Pill
     BorderSurface {
       implicitHeight: Style.space(22)
       implicitWidth: filesTabText.implicitWidth + Style.space(14)
@@ -260,7 +252,6 @@ Column {
 
     Item { width: Style.space(4) }
 
-    // Daemon status icon
     PanelActionButton {
       iconText: "\uf011"
       tooltipText: root.p.isRunning ? "Stop background daemon" : "Daemon idle"
@@ -270,7 +261,6 @@ Column {
     }
   }
 
-  // Scrollable Track / Playlist Container
   Flickable {
     id: trackViewport
     width: parent.width
@@ -288,9 +278,6 @@ Column {
       width: parent.width
       spacing: Style.space(3)
 
-      // ==========================================
-      // SEARCH TAB CONTENT
-      // ==========================================
       Item {
         visible: root.p.selectedTab === "search" && root.p.isSearching
         width: parent.width; implicitHeight: Style.space(40)
@@ -326,7 +313,6 @@ Column {
           Row {
             anchors.fill: parent; anchors.margins: Style.space(4); spacing: Style.space(6)
 
-            // Thumbnail
             BorderSurface {
               id: sThumb; width: Style.space(24); height: Style.space(24); radius: Style.space(3)
               color: root.p.surface; borderSpec: Border.none()
@@ -345,7 +331,6 @@ Column {
               }
             }
 
-            // Title & Artist
             Column {
               width: parent.width - sThumb.width - sTail.width - parent.spacing * 2
               anchors.verticalCenter: parent.verticalCenter; spacing: 1
@@ -367,7 +352,6 @@ Column {
             }
 
             Row { id: sTail; z: 2; spacing: parent.spacing; anchors.verticalCenter: parent.verticalCenter
-              // Loading icon
               Text {
                 visible: root.p.loadingVid === modelData.url
                 anchors.verticalCenter: parent.verticalCenter
@@ -375,7 +359,6 @@ Column {
                 RotationAnimator on rotation { running: visible; from: 0; to: 360; duration: 1000; loops: Animation.Infinite }
               }
 
-              // Play button
               Text {
                 z: 2
                 visible: root.p.loadingVid !== modelData.url
@@ -390,7 +373,6 @@ Column {
                 }
               }
 
-              // Add to Queue button
               Text {
                 z: 2
                 anchors.verticalCenter: parent.verticalCenter
@@ -406,7 +388,6 @@ Column {
 
               RowLike { p: root.p; url: sRow.modelData.url || ""; title: sRow.modelData.title || ""; artist: sRow.modelData.artist || "" }
 
-              // Duration
               Text {
                 visible: text !== ""; anchors.verticalCenter: parent.verticalCenter
                 text: modelData.duration || ""
@@ -417,9 +398,6 @@ Column {
         }
       }
 
-      // ==========================================
-      // RECENTS TAB CONTENT
-      // ==========================================
       Repeater {
         model: root.p.selectedTab === "history" ? root.p.historyGroups : []
         delegate: Column {
@@ -451,7 +429,6 @@ Column {
               Row {
                 anchors.fill: parent; anchors.margins: Style.space(4); spacing: Style.space(6)
 
-                // Thumbnail
                 BorderSurface {
                   id: hThumb; width: Style.space(24); height: Style.space(24); radius: Style.space(3)
                   color: root.p.surface; borderSpec: Border.none()
@@ -470,7 +447,6 @@ Column {
                   }
                 }
 
-                // Title & Artist
                 Column {
                   width: parent.width - hThumb.width - hTail.width - parent.spacing * 2
                   anchors.verticalCenter: parent.verticalCenter; spacing: 1
@@ -492,7 +468,6 @@ Column {
                 }
 
                 Row { id: hTail; z: 2; spacing: parent.spacing; anchors.verticalCenter: parent.verticalCenter
-                  // Loading icon
                   Text {
                     visible: root.p.loadingVid === modelData.path
                     anchors.verticalCenter: parent.verticalCenter
@@ -500,7 +475,6 @@ Column {
                     RotationAnimator on rotation { running: visible; from: 0; to: 360; duration: 1000; loops: Animation.Infinite }
                   }
 
-                  // Play button
                   Text {
                     z: 2
                     visible: root.p.loadingVid !== modelData.path
@@ -515,7 +489,6 @@ Column {
                     }
                   }
 
-                  // Add to Queue button
                   Text {
                     z: 2
                     anchors.verticalCenter: parent.verticalCenter
@@ -531,7 +504,6 @@ Column {
 
                   RowLike { p: root.p; url: hRow.modelData.path || ""; title: hRow.modelData.title || ""; artist: hRow.modelData.artist || "" }
 
-                  // Duration
                   Text {
                     visible: text !== ""; anchors.verticalCenter: parent.verticalCenter
                     text: {
@@ -548,15 +520,11 @@ Column {
         }
       }
 
-      // ==========================================
-      // QUEUE TAB CONTENT
-      // ==========================================
       Column {
         visible: root.p.selectedTab === "queue"
         width: parent.width
         spacing: Style.space(4)
 
-        // Queue Header Bar
         BorderSurface {
           visible: root.p.queueList && root.p.queueList.length > 0
           width: parent.width; implicitHeight: Style.space(28); radius: Style.cornerRadius
@@ -595,7 +563,6 @@ Column {
           }
         }
 
-        // Empty state
         Text {
           visible: !root.p.queueList || root.p.queueList.length === 0
           text: root.p.queueSource === "mpd" ? "MPD queue is empty"
@@ -605,7 +572,6 @@ Column {
           horizontalAlignment: Text.AlignHCenter; width: parent.width
         }
 
-        // Queued tracks
         Repeater {
           id: queueRepeater
           model: root.p.selectedTab === "queue" ? root.p.queueList : []
@@ -638,7 +604,6 @@ Column {
                 font.pixelSize: Style.font.caption * 0.8
               }
 
-              // Thumbnail
               BorderSurface {
                 id: qThumb; width: Style.space(24); height: Style.space(24); radius: Style.space(3)
                 color: root.p.surface; borderSpec: Border.none()
@@ -657,7 +622,6 @@ Column {
                 }
               }
 
-              // Title & Artist
               Column {
                 width: parent.width - qIdx.width - qThumb.width - qTail.width - parent.spacing * 3; anchors.verticalCenter: parent.verticalCenter; spacing: 1
 
@@ -678,7 +642,6 @@ Column {
               }
 
               Row { id: qTail; z: 2; spacing: parent.spacing; anchors.verticalCenter: parent.verticalCenter
-                // Remove button
                 BorderSurface {
                   z: 2
                   visible: root.p.queueSource === "cliamp" && !qRow.isCurrent
@@ -705,23 +668,16 @@ Column {
         }
       }
 
-      // ==========================================
-      // PLAYLISTS TAB CONTENT
-      // ==========================================
       Column {
         visible: root.p.selectedTab === "playlists"
         width: parent.width
         spacing: Style.space(6)
 
-        // ----------------------------------------------------
-        // SUBVIEW 1: ACTIVE PLAYLIST TRACKS BROWSER
-        // ----------------------------------------------------
         Column {
           visible: root.p.activePlaylist !== null
           width: parent.width
           spacing: Style.space(4)
 
-          // Header Card with Back, Title, Play All, Delete
           BorderSurface {
             width: parent.width; implicitHeight: Style.space(32); radius: Style.cornerRadius
             color: Color.popups.background
@@ -730,7 +686,6 @@ Column {
             Row {
               anchors.fill: parent; anchors.margins: Style.space(6); spacing: Style.space(8)
 
-              // Back button
               BorderSurface {
                 width: Style.space(22); height: Style.space(20); radius: Style.cornerRadius
                 color: backMouse.containsMouse ? root.p.shell.hoverFill(1) : root.p.shell.alpha(root.p.foreground, 0.06)
@@ -748,7 +703,6 @@ Column {
                 }
               }
 
-              // Title + Count
               Text {
                 width: parent.width - Style.space(130)
                 anchors.verticalCenter: parent.verticalCenter
@@ -758,7 +712,6 @@ Column {
                 elide: Text.ElideRight
               }
 
-              // Play All Button
               BorderSurface {
                 implicitHeight: Style.space(20)
                 implicitWidth: playAllText.implicitWidth + Style.space(10)
@@ -779,7 +732,6 @@ Column {
                 }
               }
 
-              // Delete button
               BorderSurface {
                 visible: root.p.activePlaylist && !root.p.activePlaylist.system
                 width: Style.space(20); height: Style.space(20); radius: Style.cornerRadius
@@ -800,7 +752,6 @@ Column {
             }
           }
 
-          // Empty playlist notice
           Text {
             visible: root.p.activePlaylist && (!root.p.activePlaylist.tracks || root.p.activePlaylist.tracks.length === 0)
             text: "No tracks found in this playlist"
@@ -808,7 +759,6 @@ Column {
             horizontalAlignment: Text.AlignHCenter; width: parent.width
           }
 
-          // Individual tracks inside active playlist
           Repeater {
             model: (root.p.activePlaylist && root.p.activePlaylist.tracks) ? root.p.activePlaylist.tracks : []
             delegate: BorderSurface {
@@ -829,7 +779,6 @@ Column {
               Row {
                 anchors.fill: parent; anchors.margins: Style.space(4); spacing: Style.space(6)
 
-                // Track Number
                 Text {
                   id: plIdx; width: Style.space(18); horizontalAlignment: Text.AlignRight
                   anchors.verticalCenter: parent.verticalCenter
@@ -838,7 +787,6 @@ Column {
                   font.family: root.p.fontFamily; font.pixelSize: Style.font.caption * 0.8
                 }
 
-                // Play icon
                 Text {
                   id: plPlay; anchors.verticalCenter: parent.verticalCenter
                   text: plTrackRow.isCurrent && root.p.isPlaying ? "\uead1" : "\ueb2c"
@@ -846,7 +794,6 @@ Column {
                   font.family: root.p.fontFamily; font.pixelSize: Style.font.caption * 0.8 * Style.iconScale(text)
                 }
 
-                // Title & Artist
                 Column {
                   width: parent.width - plIdx.width - plPlay.width - plTail.width - parent.spacing * 3; anchors.verticalCenter: parent.verticalCenter; spacing: 1
                   Text {
@@ -866,7 +813,6 @@ Column {
                 }
 
                 Row { id: plTail; z: 2; spacing: parent.spacing; anchors.verticalCenter: parent.verticalCenter
-                  // Add to Queue Button
                   Text {
                     z: 2
                     anchors.verticalCenter: parent.verticalCenter
@@ -882,7 +828,6 @@ Column {
 
                   RowLike { p: root.p; url: plTrackRow.modelData.url || ""; title: plTrackRow.modelData.title || ""; artist: plTrackRow.modelData.artist || "" }
 
-                  // Duration
                   Text {
                     visible: text !== ""; anchors.verticalCenter: parent.verticalCenter
                     text: modelData.plays ? modelData.plays + "×" : modelData.duration || ""
@@ -894,15 +839,11 @@ Column {
           }
         }
 
-        // ----------------------------------------------------
-        // SUBVIEW 2: PLAYLISTS OVERVIEW & IMPORT BAR
-        // ----------------------------------------------------
         Column {
           visible: root.p.activePlaylist === null
           width: parent.width
           spacing: Style.space(4)
 
-          // Importing status banner
           BorderSurface {
             visible: root.p.isImportingPl
             width: parent.width; implicitHeight: Style.space(28); radius: Style.cornerRadius
@@ -916,14 +857,12 @@ Column {
             }
           }
 
-          // Import error notice
           Text {
             visible: root.p.plImportError !== ""
             text: root.p.plImportError
             color: root.p.urgent; font.family: root.p.fontFamily; font.pixelSize: Style.font.caption
           }
 
-          // List of Playlists
           Repeater {
             model: root.p.playlistsList
             delegate: BorderSurface {
@@ -933,7 +872,6 @@ Column {
               color: plCardMouse.containsMouse ? Style.hoverFillFor(root.p.foreground, Color.accent) : Color.popups.background
               borderSpec: Border.controlSpec("normal", root.p.foreground, Color.accent)
 
-              // Main row click opens playlist
               MouseArea {
                 id: plCardMouse
                 anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
@@ -964,7 +902,6 @@ Column {
                 }
 
                 Row { id: plsTail; z: 2; spacing: parent.spacing; anchors.verticalCenter: parent.verticalCenter
-                  // Quick Play All button
                   BorderSurface {
                     z: 2
                     width: Style.space(22); height: Style.space(22); radius: Style.cornerRadius
@@ -990,7 +927,6 @@ Column {
                     }
                   }
 
-                  // Delete playlist button
                   BorderSurface {
                     z: 2
                     visible: !modelData.system
@@ -1016,9 +952,6 @@ Column {
         }
       }
 
-      // ==========================================
-      // FILES TAB CONTENT
-      // ==========================================
       Column {
         visible: root.p.selectedTab === "files"
         width: parent.width

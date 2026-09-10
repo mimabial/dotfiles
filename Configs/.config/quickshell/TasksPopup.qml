@@ -639,7 +639,7 @@ PopupCard {
 
                             Text {
                                 anchors.verticalCenter: parent.verticalCenter
-                                width: taskRow.confirming ? implicitWidth : Style.px(20)
+                                width: taskRow.confirming ? Math.ceil(contentWidth) : Style.px(20)
                                 horizontalAlignment: Text.AlignHCenter
                                 text: taskRow.confirming ? "Delete" : "\u{f0a7a}"
                                 color: root.shell.alpha(root.shell.role("error", root.shell.foreground),

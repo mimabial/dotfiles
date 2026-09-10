@@ -22,11 +22,9 @@ def is_venv_valid(venv_path):
     python_exe = os.path.join(venv_path, "bin", "python")
     pyvenv_cfg = os.path.join(venv_path, "pyvenv.cfg")
 
-    # 1.- Must have its own python file and it must be executable
     if not (os.path.isfile(python_exe) and os.access(python_exe, os.X_OK)):
         return False
 
-    # 2.- Python inside venv must be able to import pip
     try:
         res = subprocess.run(
             [python_exe, "-c", "import pip"],
@@ -39,7 +37,6 @@ def is_venv_valid(venv_path):
     except Exception:
         return False
 
-    # 3.- Python version used to create the venv must match current one
     if os.path.exists(pyvenv_cfg):
         try:
             with open(pyvenv_cfg, "r") as f:
@@ -231,14 +228,12 @@ def rebuild_venv(venv_path=None, requirements_file=None):
                 f"Failed to install requirements:\n{result.stderr or result.stdout}",
                 urgency="critical",
             )
-            # Don't re-raise; stop rebuild early after notifying the user
             return
         else:
             short = _short_summary(result.stdout, result.stderr)
             if short:
                 notify.send("PIP", short)
 
-    # Upgrade all installed packages (list outdated and upgrade)
     result = subprocess.run(
         [pip_executable, "list", "--outdated", "--format=json"],
         capture_output=True,
@@ -282,7 +277,6 @@ def rebuild_venv(venv_path=None, requirements_file=None):
                 f"Failed to upgrade packages:\n{res2.stderr or res2.stdout}",
                 urgency="critical",
             )
-            # Don't re-raise; notify and exit rebuild
             return
         else:
             short2 = _short_summary(res2.stdout, res2.stderr)
@@ -383,5 +377,4 @@ def hypr(args):
 if __name__ == "__main__":
     hypr(sys.argv[1:])
 
-# Call get_venv_path() to set up the virtual environment path
 sys.path.insert(0, get_venv_path())

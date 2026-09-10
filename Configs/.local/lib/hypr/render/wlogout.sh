@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Output: ~/.cache/hypr/render/wlogout/colors.css
 set -euo pipefail
 PALETTE_ARG="${1:-}"
 . "$(dirname "$0")/_lib.sh"

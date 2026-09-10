@@ -7,7 +7,8 @@ rofi_picker_bootstrap || exit 1
 rofi_picker_hypr_dir_vars glyph_dir cache_dir
 glyph_data="${glyph_dir}/glyph.db"
 recent_data="${cache_dir}/landing/show_glyph.recent"
-GLYPH_HINT='<span size="x-small">[←↑→↓] Navigate · [Enter] Copy · [Esc] Close</span>'
+GLYPH_HINT='<span size="x-small">[←↑→↓] Navigate · [Enter] Copy Glyph · [Alt+N] Copy Name · [Esc] Close</span>'
+GLYPH_EXIT_COPY_NAME=10
 
 refresh_recent_entries() {
   local target_file="$1"
@@ -108,7 +109,6 @@ setup_rofi_config() {
     -markup-rows
     -sep '\0'
     -eh 6
-    -mesg "${GLYPH_HINT}"
     -theme "$(rofi_resolve_theme "${ROFI_GLYPH_STYLE:-clipboard}")"
     -theme-str "entry { placeholder: \"   Glyph\";} ${rofi_position}"
     -theme-str "${font_override}"
@@ -152,9 +152,12 @@ get_glyph_selection() {
     esac
   fi
 
-  rofi_picker_run_indexed raw_line "${temp_data}" "${run_args[@]}"
+  run_args+=(-kb-custom-1 "Alt+n" -mesg "${GLYPH_HINT}")
+  local rofi_exit=0
+  rofi_picker_run_indexed raw_line "${temp_data}" "${run_args[@]}" || rofi_exit=$?
   rm -f "${temp_data}"
   printf "%s" "${raw_line}"
+  return "${rofi_exit}"
 }
 
 parse_arguments() {
@@ -171,6 +174,8 @@ HELP
 }
 
 main() {
+  local data_glyph=""
+  local rofi_exit=0
   local sel_glyph=""
   local sel_label=""
 
@@ -179,12 +184,23 @@ main() {
 
   setup_rofi_config
 
-  data_glyph=$(get_glyph_selection)
+  if data_glyph="$(get_glyph_selection)"; then
+    :
+  else
+    rofi_exit=$?
+  fi
 
   [[ -z "${data_glyph}" ]] && exit 0
   sel_glyph=$(printf "%s" "${data_glyph}" | cut -d$'\t' -f1 | xargs)
   sel_label=$(printf "%s" "${data_glyph}" | cut -d$'\t' -f2 | xargs)
 
+  if ((rofi_exit == GLYPH_EXIT_COPY_NAME)); then
+    [[ -n "${sel_label}" ]] && wl-copy "${sel_label}"
+    save_recent_entry "${sel_glyph}"$'\t'"${sel_label:-${sel_glyph}}"
+    exit 0
+  fi
+
+  ((rofi_exit == 0)) || exit 0
   if [[ -n "${sel_glyph}" ]]; then
     wl-copy "${sel_glyph}"
     save_recent_entry "${sel_glyph}"$'\t'"${sel_label:-${sel_glyph}}"

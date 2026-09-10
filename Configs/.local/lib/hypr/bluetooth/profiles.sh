@@ -3,8 +3,6 @@
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
 
-# List connected Bluetooth audio modes and codecs as JSON.
-
 if (( $# != 0 )); then
   echo "Usage: profiles.sh" >&2
   exit 1

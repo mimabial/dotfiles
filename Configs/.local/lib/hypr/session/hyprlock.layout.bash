@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
-# Shared hyprlock layout/runtime helpers.
 find_filepath() {
   local filename="${1:-default}"
   local search_name="${filename%.conf}.conf"
@@ -278,7 +277,6 @@ CONF
 }
 
 fn_select() {
-  # List available .conf files from user overrides first, then shared stock.
   local layout_items
   local -A seen_layouts=()
   local layout_dir layout_path layout_name

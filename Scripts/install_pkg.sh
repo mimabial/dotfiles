@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2154
 # shellcheck disable=SC1091
-#|---/ /+----------------------------------------+---/ /|#
-#|--/ /-| Script to install pkgs from input list |--/ /-|#
-#|/ /---+----------------------------------------+/ /---|#
 
 scrDir=$(dirname "$(realpath "$0")")
 if ! source "${scrDir}/global_fn.sh"; then
@@ -19,18 +16,19 @@ chk_list "aurhlpr" "${aurList[@]}"
 listPkg="${1:-"${scrDir}/pkg_core.lst"}"
 archPkg=()
 aurhPkg=()
-ofs=$IFS
-IFS='|'
+declare -A manifestPkg=()
 
-#-----------------------------#
-# remove blacklisted packages #
-#-----------------------------#
 if [ -f "${scrDir}/pkg_black.lst" ]; then
     grep -v -f <(grep -v '^#' "${scrDir}/pkg_black.lst" | sed 's/#.*//;s/ //g;/^$/d') <(sed 's/#.*//' "${scrDir}/install_pkg.lst") >"${scrDir}/install_pkg_filtered.lst"
     mv "${scrDir}/install_pkg_filtered.lst" "${scrDir}/install_pkg.lst"
 fi
 
-while read -r pkg deps; do
+while IFS='|' read -r pkg _; do
+    pkg="${pkg// /}"
+    [[ -n "$pkg" ]] && manifestPkg["$pkg"]=1
+done < <(cut -d '#' -f 1 "${listPkg}")
+
+while IFS='|' read -r pkg deps; do
     pkg="${pkg// /}"
     if [ -z "${pkg}" ]; then
         continue
@@ -38,18 +36,14 @@ while read -r pkg deps; do
 
     if [ -n "${deps}" ]; then
         deps="${deps%"${deps##*[![:space:]]}"}"
-        while read -r cdep; do
-            pass=$(cut -d '#' -f 1 "${listPkg}" | awk -F '|' -v chk="${cdep}" '{if($1 == chk) {print 1;exit}}')
-            if [ -z "${pass}" ]; then
-                if pkg_installed "${cdep}"; then
-                    pass=1
-                else
-                    break
-                fi
-            fi
-        done < <(xargs -n1 <<<"${deps}")
-
-        if [[ ${pass} -ne 1 ]]; then
+        pass=1
+        for cdep in ${deps}; do
+            [[ -n "${manifestPkg[$cdep]:-}" ]] || pkg_installed "$cdep" || {
+                pass=0
+                break
+            }
+        done
+        if [[ "$pass" -ne 1 ]]; then
             print_log -warn "missing" "dependency [ ${deps} ] for ${pkg}..."
             continue
         fi
@@ -69,12 +63,10 @@ while read -r pkg deps; do
     fi
 done < <(cut -d '#' -f 1 "${listPkg}")
 
-IFS=${ofs}
-
 install_packages() {
     local -n pkg_array=$1
     local pkg_type=$2
-    local install_cmd=$3
+    shift 2
 
     if [[ ${#pkg_array[@]} -gt 0 ]]; then
         print_log -b "[install] " "$pkg_type packages..."
@@ -83,12 +75,12 @@ install_packages() {
                 print_log -b "[pkg] " "${pkg}"
             done
         else
-            $install_cmd ${use_default:+"$use_default"} -S "${pkg_array[@]}"
+            "$@" ${use_default:+"$use_default"} -S "${pkg_array[@]}"
         fi
     fi
 }
 
 echo ""
-install_packages archPkg "arch" "sudo pacman"
+install_packages archPkg "arch" sudo pacman
 echo ""
 install_packages aurhPkg "aur" "${aurhlpr}"

@@ -1,51 +1,16 @@
 import QtQuick
 import QtQuick.Layouts
-import Quickshell
-import Quickshell.Hyprland
-import Quickshell.Wayland
 import "modules"
 
-PanelWindow {
+BarSurface {
     id: root
-    required property var shell
     readonly property var section: shell.style.box(".modules-left")
     readonly property var layout: shell.barLayout
     readonly property var registry: ({"menu": mod_menu, "taskbar": mod_taskbar, "workspace-weather": mod_workspace_weather, "workspaces": mod_workspaces, "mediaplayer": mod_mediaplayer, "tray": mod_tray, "language": mod_language, "datetime": mod_datetime, "converter": mod_converter, "sudoku": mod_sudoku, "submap": mod_submap})
-    property bool active: shell.mode === "winbar" && !shell.userHidden
-    // only the focused monitor's instance may own a panel: two focus grabs
-    // cancel each other, which reads as the popup refusing to open
-    readonly property bool popupsAllowed: active && (!Hyprland.focusedMonitor
-        || !screen || Hyprland.focusedMonitor.name === screen.name)
+    active: shell.mode === "winbar" && !shell.userHidden
     anchors.left: true; anchors.right: true; anchors.bottom: true
     margins.bottom: active ? 0 : -implicitHeight
     implicitHeight: Math.max(leftRow.implicitHeight, centerWorkspaces.implicitHeight, rightRow.implicitHeight)
-    color: shell.barColor
-    exclusionMode: active ? ExclusionMode.Auto : ExclusionMode.Ignore
-    WlrLayershell.namespace: "hypr-shell-bar"
-    WlrLayershell.layer: WlrLayer.Top
-    readonly property bool popupOpen: shell.popupName !== "" && popupsAllowed
-    property bool exclusivePhase: false
-    // a click routes focus into an xdg-popup by itself; a panel summoned by
-    // keybind does not, so prime Exclusive briefly then fall back — an
-    // exclusive surface swallows pointer events on every monitor
-    // Only the priming phase takes Exclusive. Holding it while a text field has
-    // focus pins the compositor to this surface, and the focus grab never sees the
-    // click outside, so the popup cannot be dismissed by clicking away.
-    WlrLayershell.keyboardFocus: !popupOpen ? WlrKeyboardFocus.None
-        : exclusivePhase ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
-    onPopupOpenChanged: {
-        const prime = popupOpen && shell.popupCenteredName === shell.popupName
-        exclusivePhase = prime
-        shell.focusPriming = prime
-        if (prime) focusPrime.restart()
-    }
-    // the compositor focuses this surface, not the popup's own window
-    Item {
-        anchors.fill: parent; focus: true
-        Keys.onPressed: event => { if (root.shell.popupCard) event.accepted = root.shell.popupCard.handleKey(event) }
-    }
-    Timer { id: focusPrime; interval: 150; onTriggered: { root.exclusivePhase = false; root.shell.focusPriming = false } }
-
     Component { id: mod_menu; StartButton { shell: root.shell; popupEnabled: root.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_taskbar; WindowList { shell: root.shell; Layout.fillHeight: true } }
     Component { id: mod_workspace_weather; BarGroup {

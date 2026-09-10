@@ -22,7 +22,6 @@ function render(ctx, d) {
   var beatDrop = d.beatDrop || 0
   var midY = h / 2.0
 
-  // 60 thermal intensity bars
   var numBars = 60
   var resampled = H.resampleBandsLinear(bands, numBars)
 
@@ -36,19 +35,16 @@ function render(ctx, d) {
   for (var i = 0; i < numBars; i++) {
     var bx = startX + i * (barW + gap)
 
-    // Track dynamic profile envelope
     var env = Math.sin((i / numBars) * Math.PI)
     var shapeVal = 0.16 + env * 0.48 + Math.sin(i * 0.75 + 0.3) * 0.14
     var energy = isPlaying ? (resampled[i] || 0) : 0.0
     var kick = (i >= 2 && i <= 14) ? (beatDrop * 0.26) : 0.0
 
-    // Thermal energy intensity (0.0 to 1.0)
     var intensity = Math.min(1.0, shapeVal * 0.38 + energy * 0.62 + kick)
     var barH = Math.max(barW, intensity * (h * 0.86))
     var by = midY - (barH / 2.0)
     var r = Math.min(barW / 2.0, 1.5)
 
-    // Full thermal radiant gradient from top to bottom across all bars
     var grad = ctx.createLinearGradient(0, by, 0, by + barH)
     grad.addColorStop(0, heatColor(d, intensity + 0.25, 0.98))
     grad.addColorStop(0.5, heatColor(d, intensity, 0.92))

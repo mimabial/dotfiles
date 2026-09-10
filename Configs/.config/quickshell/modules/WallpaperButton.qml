@@ -1,8 +1,6 @@
 import QtQuick
 import ".."
 
-// Auto-wallpaper button. The glyph carries accent while the rotation runs, so
-// the bar shows automation state without a reading of its own.
 BarButton {
     id: root
     property bool popupsAllowed: true
@@ -17,7 +15,6 @@ BarButton {
     onClicked: button => button === Qt.LeftButton ? root.shell.togglePopup("wallpaper")
         : button === Qt.RightButton ? Wallpaper.setEnabled(!Wallpaper.enabled)
         : Wallpaper.applyNext()
-    // steps the catalog through hyprshell, which the service re-anchors onto
     onWheeled: delta => {
         root.shell.run(["hyprshell", "wallpaper", delta > 0 ? "next" : "previous", "--global"])
         Wallpaper.nudge()

@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
 
-# Shared selection helpers for screenshot tooling.
-
 capture_start_freeze() {
   local freeze_pid="" ready=0
 

@@ -1,10 +1,4 @@
 #!/usr/bin/env bash
-# Shared package-update queries for pm.sh (count/list-updates CLI) and
-# system.update.sh bar provider. Each runs one source's query and writes its
-# raw update lines to stdout; callers own exit-handling, labelling and format.
-# checkupdates exits 2 when there are no updates -- both callers already treat
-# 1/2 as "no updates", so these pass the exit code through unchanged.
-
 pm_updates_repo_cmd() {
   local db="${1:-}"
   [[ -n "${db}" ]] || return 2
@@ -21,8 +15,6 @@ pm_updates_flatpak_cmd() {
   flatpak remote-ls --updates --columns=application,version,branch
 }
 
-# Count non-blank update lines from stdin. Serves the CLI (pipe the combined
-# list in) and the widget (here-string a single source's captured list).
 pm_updates_count() {
   awk 'NF { count++ } END { print count + 0 }'
 }

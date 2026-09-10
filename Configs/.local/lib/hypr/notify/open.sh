@@ -1,12 +1,5 @@
 #!/usr/bin/env bash
-# What a click on an archived notification does.
-#
-# Never what the notification asked for. A notification arrives carrying a
-# command chosen by whoever sent it, and anything on this machine can send one;
-# keeping that command and running it later is an attacker's command waiting for
-# a click. The store keeps no command at all, so a click gets one of two things:
-# the picture, which has to be a file the store itself copied in, or focus on the
-# window of the app that sent it.
+# Archived actions never execute sender-provided commands.
 set -euo pipefail
 
 # shellcheck source=/dev/null
@@ -44,9 +37,10 @@ entry="$(jq -Rc --arg key "${key}" \
   'fromjson? | select(.key == $key)' <"${archive}" | head -n 1)"
 [[ -n "${entry}" ]] || exit 0
 
-preview="$(jq -r '.preview // ""' <<<"${entry}")"
-app="$(jq -r '.app // ""' <<<"${entry}")"
-desktop="$(jq -r '.desktop // ""' <<<"${entry}")"
+mapfile -t fields < <(jq -r '.preview // "", .app // "", .desktop // ""' <<<"${entry}")
+preview="${fields[0]:-}"
+app="${fields[1]:-}"
+desktop="${fields[2]:-}"
 
 # The path has to be one the store wrote, not one the entry merely claims.
 if ((focus_only == 0)) && [[ -n "${preview}" && "${preview}" == "${images}/"* && -f "${preview}" ]]; then

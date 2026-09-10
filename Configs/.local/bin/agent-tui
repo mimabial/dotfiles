@@ -29,45 +29,24 @@ TOKEN_FIELDS = (
     "cacheReadInputTokens",
 )
 
-# Palette and geometry follow window/lib/looknfeel_tui.py so the two terminal
-# surfaces read as one. The gauge is the exception: that TUI still spaces its
-# rows a blank line apart, while these sit on consecutive lines, where a
-# full-cell block fuses neighbouring bars into one slab. Colours stay the terminal's: render/kitty.sh
-# writes the active palette into the 16 ANSI slots, so use_default_colors()
-# plus those slots tracks the theme with nothing plumbed in.
+# The rendered terminal ANSI slots keep this palette theme-aware.
 PAIR_ACCENT = 1
 PAIR_DIM = 2
 PAIR_ERROR = 3
 PAIR_BAR = 4
 
-# Right-aligned in a fixed field so a value crossing 9 to 10 does not shorten
-# the gauge beside it.
 VALUE_WIDTH = 5
-# The reset column, right-aligned to the same edge as the token values in the
-# sections below it: reset_x is width - 12, so 10 ends where "{:>8}" at
-# width - 10 does.
 RESET_WIDTH = 10
-# Ticks that turn a limit gauge into a ruler: one segment per hour of the
-# 5-hour window, one per day of the weekly one, so a partial bar can be read as
-# "three hours in" without a scale printed beside it.
+TOKEN_VALUE_WIDTH = 8
+RIGHT_MARGIN = 2
 WINDOW_DIVISIONS = {"hourly": 5, "weekly": 7}
-# The row the tab strip is drawn on, and the only one a click can hit.
 TAB_ROW = 2
-# The heading row. A blank row under the tab strip separates the tabs from the
-# record they select.
 HEAD_ROW = TAB_ROW + 2
-# The smallest terminal the dashboard will draw in. Also the floor --rows
-# reports, so a launcher sizing to content cannot land on the refusal screen.
 MIN_ROWS = 24
 MIN_COLS = 72
-# Extra rows a section gap may absorb when the pane is taller than the content.
-# Without this the slack all piles up under the last row as one dead block.
+MIN_LABEL_WIDTH = 16
+MAX_LABEL_WIDTH = 24
 SECTION_GAP_MAX = 1
-# The hub refreshes itself when what it finds is older than this. It used to
-# free-ride on a 15 minute Timer inside the bar's AgentsButton, which only runs
-# on the layouts that instantiate it -- so on any other layout nothing refreshed
-# at all. The producer is hyprshell system/agent-usage; both surfaces are
-# consumers, and neither should depend on the other having been drawn.
 STALE_AFTER = 900
 HINT = "\u2190\u2192 agent   Enter launch   d default   s set default   r refresh   q close"
 
@@ -93,12 +72,13 @@ def load_records():
 
 def window_kind(limit):
     label = str(limit.get("label") or limit.get("title") or "").lower()
+    compact_label = label.replace(" ", "")
     if "week" in label or "day" in label:
         return "weekly"
     if (
         "hour" in label
         or "session" in label
-        or any(f"{n}h" in label.replace(" ", "") for n in range(1, 25))
+        or any(f"{n}h" in compact_label for n in range(1, 25))
     ):
         return "hourly"
     return ""
@@ -113,14 +93,7 @@ def parse_time(value):
 
 
 def limit_percent(limit):
-    """A window's last reported usage. -1 when unknown.
-
-    Deliberately not zeroed once resetsAt has passed. A cached percent outlives
-    the window it describes — the collectors reuse a probe for a short while, so
-    a record can be minutes older than its own reset — and the last real reading
-    says more than a zero no collector has confirmed. Every display reader goes
-    through here, so the summary line and the bar below it cannot disagree.
-    """
+    """Return the last reading, retaining stale values until a collector updates them."""
     try:
         return float(limit.get("percent", -1))
     except (TypeError, ValueError):
@@ -133,12 +106,7 @@ def limit_expired(limit):
 
 
 def window_usage(record, kind, fresh=False):
-    """Highest usage among the record's windows of `kind`. -1 when unknown.
-
-    `fresh` zeroes a window whose reset has passed. Only recommendation() wants
-    that: the capacity really has come back, and steering away from an agent
-    that just reset is a worse error than showing a stale number.
-    """
+    """Return peak usage; fresh treats expired windows as reset for recommendations."""
     highest = -1.0
     for limit in record.get("limits") or []:
         percent = 0.0 if (fresh and limit_expired(limit)) else limit_percent(limit)
@@ -207,8 +175,7 @@ def content_height(record, title_gap=1):
         len(record.get("recentDays") or []),
         len(model_totals(record)[:5]),
     )
-    # Header block through the blank line under it, then per section a title
-    # line, a blank under it, and its rows; one blank between sections.
+    # Header, section titles/rows/gaps, footer rule, and hint.
     total = HEAD_ROW + 3
     for index, count in enumerate(sections):
         total += 1 if index else 0
@@ -219,7 +186,6 @@ def content_height(record, title_gap=1):
 
 
 def required_rows(records, spare=2):
-    """Rows the tallest record needs, for a launcher sizing the window."""
     needed = max((content_height(record) for record in records), default=0)
     return max(MIN_ROWS, needed + spare)
 
@@ -227,15 +193,11 @@ def required_rows(records, spare=2):
 def progress(value, width, divisions=1):
     width = max(1, width)
     fraction = max(0.0, min(1.0, float(value)))
-    # Each gap costs a cell, so the bar keeps the width it was given and the
-    # column its right edge lands on. Too narrow to divide, and it stays whole.
     divisions = max(1, divisions)
     cells = width - (divisions - 1)
     if cells < divisions * 2:
         divisions, cells = 1, width
     used = round(cells * fraction)
-    # A nonzero value must not render as an empty track: against a peak three
-    # orders of magnitude larger it rounds to zero cells and reads as no usage.
     if fraction > 0:
         used = max(1, used)
     segments = []
@@ -269,7 +231,7 @@ def snapshot(records, selected_id=""):
         percent = max(0.0, min(1.0, limit_percent(limit)))
         reset = resets_in(limit.get("resetsAt"))
         lines.append(
-            f"{str(limit.get('label', 'Limit')):22} "
+            f"{limit.get('label', 'Limit')!s:22} "
             f"[{progress(percent, 28, WINDOW_DIVISIONS.get(window_kind(limit), 1))}] "
             f"{percent:>4.0%}  resets in {reset}"
         )
@@ -279,7 +241,7 @@ def snapshot(records, selected_id=""):
     for day in days:
         value = int(day.get("messageCount") or 0)
         lines.append(
-            f"{str(day.get('date', '')):12} [{progress(value / peak if peak else 0, 28)}] {compact(value):>7}"
+            f"{day.get('date', '')!s:12} [{progress(value / peak if peak else 0, 28)}] {compact(value):>7}"
         )
     lines += ["", "TOKENS BY MODEL"]
     models = model_totals(selected)[:5]
@@ -303,10 +265,8 @@ class Dashboard:
         self.message_until = 0.0
         self.last_mtime = self.cache_mtime()
         self.default_agent = self.read_default_agent()
+        self.agent_paths = {command: shutil.which(command) for _, command, _ in AGENTS.values()}
         self.configure_screen()
-        # Not forced: opening the hub is not a person asking for fresh numbers,
-        # so the collectors' own reuse windows still apply and a redundant open
-        # costs almost nothing.
         if not self.records or self.cache_age() > STALE_AFTER:
             self.refresh(force=False)
 
@@ -314,9 +274,7 @@ class Dashboard:
         curses.curs_set(0)
         self.screen.timeout(250)
         self.screen.keypad(True)
-        # Tabs are clickable. mouseinterval(0) reports the press immediately
-        # rather than waiting out the click-detection window, and costs nothing
-        # here because nothing distinguishes a click from a drag.
+        # Avoid curses' click-delay because this UI does not distinguish drags.
         curses.mousemask(curses.BUTTON1_PRESSED | curses.BUTTON1_CLICKED)
         curses.mouseinterval(0)
         if curses.has_colors():
@@ -375,8 +333,12 @@ class Dashboard:
             self.note(f"Could not refresh: {error}", error=True)
 
     def poll(self):
+        status = None
+        if self.refresh_process and self.refresh_process.poll() is not None:
+            status = self.refresh_process.returncode
+            self.refresh_process = None
         mtime = self.cache_mtime()
-        if mtime != self.last_mtime:
+        if mtime != self.last_mtime or status == 0:
             current_id = self.current().get("id") if self.current() else ""
             self.records = load_records()
             self.selected = next(
@@ -388,17 +350,13 @@ class Dashboard:
                 0,
             )
             self.last_mtime = mtime
-        if self.refresh_process and self.refresh_process.poll() is not None:
-            status = self.refresh_process.returncode
-            self.refresh_process = None
-            self.records = load_records()
+        if status is not None:
             self.note(
                 "Usage refreshed" if status == 0 else "Usage refresh failed",
                 error=status != 0,
             )
 
     def click(self):
-        """Select the tab under the pointer, if the click landed on one."""
         try:
             _, x, y, _, _ = curses.getmouse()
         except curses.error:
@@ -477,18 +435,17 @@ class Dashboard:
             pass
 
     def section(self, y, title, title_gap=1):
-        """Draw the title rule and return the first row line, title_gap blanks below."""
         self.put(y, 1, title, curses.color_pair(PAIR_ACCENT) | curses.A_BOLD)
         self.put(y, 2 + len(title), "\u2500" * 200, curses.color_pair(PAIR_DIM))
         return y + 1 + title_gap
 
     def hint(self):
-        installed = "   ".join(
+        installed = [
             f"{key} {name}"
             for name, command, key in AGENTS.values()
-            if shutil.which(command)
-        )
-        return HINT + ("   " + installed if installed else "")
+            if self.agent_paths[command]
+        ]
+        return HINT + ("   " + "   ".join(installed) if installed else "")
 
     def draw(self):
         self.screen.erase()
@@ -532,7 +489,6 @@ class Dashboard:
                 marker = " [default]"
                 self.put(TAB_ROW, x + span, marker, dim)
                 span += len(marker)
-            # Where this tab landed, so a click on it can be mapped back.
             self.tab_spans.append((x, span, index))
             x += span + 2
 
@@ -567,17 +523,11 @@ class Dashboard:
             )
 
         label_x = 3
-        # 16 is the floor that keeps "Session (5-hour)" whole at the minimum
-        # terminal size; the cap stops it eating the gauge on a wide one.
-        label_width = max(16, min(24, width // 4))
+        label_width = max(MIN_LABEL_WIDTH, min(MAX_LABEL_WIDTH, width // 4))
         bar_x = label_x + label_width + 2
         bottom = height - 2
 
-        # Measured across every agent, not just the selected one: they differ in
-        # content height, and sizing to the current record would reflow the whole
-        # dashboard on Tab. The blank under each section title is the only
-        # density left to give up, so the smallest supported terminal drops it
-        # rather than losing a section off the bottom.
+        # Size against every tab so switching agents does not reflow the layout.
         def tallest(title_gap):
             return max(
                 (content_height(item, title_gap) for item in self.records),
@@ -589,19 +539,16 @@ class Dashboard:
         if needed > height:
             title_gap = 0
             needed = tallest(title_gap)
-        # Spend the leftover on the three section gaps instead of leaving it as
-        # one hole under the last row.
         gap = 1 + min(SECTION_GAP_MAX, max(0, height - needed) // 3)
 
         y = self.section(HEAD_ROW + 2 + gap, "LIMITS", title_gap)
-        reset_x = width - 12
+        reset_x = width - RIGHT_MARGIN - RESET_WIDTH
         percent_x = reset_x - VALUE_WIDTH
         limit_width = max(8, percent_x - bar_x - 2)
         for limit in record.get("limits") or []:
             if y >= bottom:
                 break
             percent = max(0.0, min(1.0, limit_percent(limit)))
-            # Only a limit about to bite earns the error colour; the rest stay accent.
             gauge = curses.color_pair(PAIR_ERROR) if percent >= 0.9 else accent
             self.put(y, label_x, str(limit.get("label") or "Limit"), 0, label_width)
             divisions = WINDOW_DIVISIONS.get(window_kind(limit), 1)
@@ -614,13 +561,13 @@ class Dashboard:
             )
             y += 1
 
-        value_x = width - 10
+        value_x = width - RIGHT_MARGIN - TOKEN_VALUE_WIDTH
         chart_width = max(8, value_x - bar_x - 2)
 
         y = self.section(y + gap, "TOKENS BY DAY", title_gap)
         days = record.get("recentDays") or []
         peak = max((int(day.get("messageCount") or 0) for day in days), default=0)
-        today = datetime.now().strftime("%Y-%m-%d")
+        today = datetime.now().astimezone().strftime("%Y-%m-%d")
         for day in days:
             if y >= bottom:
                 break
@@ -672,9 +619,7 @@ class Dashboard:
             self.poll()
             self.draw()
             key = self.screen.getch()
-            # Not ESC: ncurses cannot tell a bare Escape from the first byte of
-            # an escape sequence, so it holds it for ESCDELAY (1s by default)
-            # and closing looked like a hang.
+            # Bare Escape waits for ESCDELAY because it prefixes key sequences.
             if key == ord("q"):
                 return
             if key == curses.KEY_MOUSE:

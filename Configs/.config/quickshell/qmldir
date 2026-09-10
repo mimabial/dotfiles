@@ -7,6 +7,7 @@ BarButton 1.0 BarButton.qml
 BarGroup 1.0 BarGroup.qml
 BarLayoutPopup 1.0 BarLayoutPopup.qml
 BarSection 1.0 BarSection.qml
+BarSurface 1.0 BarSurface.qml
 BarSlider 1.0 BarSlider.qml
 BarTooltip 1.0 BarTooltip.qml
 BatteryButton 1.0 BatteryButton.qml

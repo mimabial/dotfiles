@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
 
-# Print usage text and exit 0 when -h/--help appears before a `--` terminator.
-# Usage: hypr_help_guard "<usage text>" "$@"
 hypr_help_guard() {
   local usage_text="${1:-}"
   shift || true
@@ -18,11 +15,6 @@ hypr_help_guard() {
     esac
   done
 }
-
-# --- Init-system abstraction (systemd / runit) -----------------------------
-# Lets the same config drive a systemd user session or a runit (Artix) one.
-# Detection is cached per-process in HYPR_INIT_SYSTEM. Override for testing by
-# exporting HYPR_INIT_SYSTEM=systemd|runit|other before invoking.
 
 hypr_init_system() {
   if [[ -n "${HYPR_INIT_SYSTEM:-}" ]]; then
@@ -41,21 +33,16 @@ hypr_init_system() {
   printf '%s\n' "${detected}"
 }
 
-# Directory holding per-user runit service definitions.
 hypr_user_sv_dir() {
   printf '%s\n' "${HYPR_USER_SV_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/sv}"
 }
 
-# svc_user <start|stop|restart|is-active|reset-failed> <service-name>
-# Dispatches a user-service lifecycle op to the active init system. The name is
-# given without a suffix; the systemd path appends .service, the runit path uses
-# it as the sv service directory name. Returns success best-effort; is-active
-# returns the real running state. No supervisor -> lifecycle ops are no-ops.
 hypr_svc_user() {
   local action="${1:-}" name="${2:-}"
   [[ -n "${action}" && -n "${name}" ]] || return 2
 
-  case "$(hypr_init_system)" in
+  hypr_init_system >/dev/null
+  case "$HYPR_INIT_SYSTEM" in
     systemd)
       local unit="${name%.service}.service"
       case "${action}" in
@@ -63,7 +50,9 @@ hypr_svc_user() {
         stop)      systemctl --user stop "${unit}" >/dev/null 2>&1 ;;
         restart)   systemctl --user restart "${unit}" >/dev/null 2>&1 ;;
         is-active) systemctl --user is-active --quiet "${unit}" >/dev/null 2>&1 ;;
-        # Clears start-limit-hit, which otherwise refuses every later activation.
+        status)    systemctl --user status "${unit}" --no-pager ;;
+        enable)    systemctl --user enable "${unit}" ;;
+        disable)   systemctl --user disable "${unit}" ;;
         reset-failed) systemctl --user reset-failed "${unit}" >/dev/null 2>&1 ;;
         *) return 2 ;;
       esac
@@ -72,30 +61,31 @@ hypr_svc_user() {
       command -v sv >/dev/null 2>&1 || return 1
       local svc="${name%.service}"
       local sv_dir; sv_dir="$(hypr_user_sv_dir)"
+      local svc_dir="${sv_dir}/${svc}"
       case "${action}" in
         start)     SVDIR="${sv_dir}" sv up "${svc}" >/dev/null 2>&1 ;;
         stop)      SVDIR="${sv_dir}" sv down "${svc}" >/dev/null 2>&1 ;;
         restart)   SVDIR="${sv_dir}" sv restart "${svc}" >/dev/null 2>&1 ;;
         is-active) SVDIR="${sv_dir}" sv status "${svc}" 2>/dev/null | grep -q '^run:' ;;
+        status)    SVDIR="${sv_dir}" sv status "${svc}" ;;
+        enable)    [[ -d "${svc_dir}" ]] && rm -f -- "${svc_dir}/down" ;;
+        disable)   [[ -d "${svc_dir}" ]] && : >"${svc_dir}/down" ;;
         reset-failed) return 0 ;;
         *) return 2 ;;
       esac
       ;;
     *)
-      [[ "${action}" == "is-active" ]] && return 1
-      return 0
+      case "$action" in is-active | status | enable | disable) return 1 ;; *) return 0 ;; esac
       ;;
   esac
 }
 
-# svc_user_signal <service-name> <SIGNAL>
-# Sends a signal to a running user service (e.g. USR2 to reload). Maps the
-# common signals to runit's sv control subcommands.
 hypr_svc_user_signal() {
   local name="${1:-}" sig="${2:-}"
   [[ -n "${name}" && -n "${sig}" ]] || return 2
 
-  case "$(hypr_init_system)" in
+  hypr_init_system >/dev/null
+  case "$HYPR_INIT_SYSTEM" in
     systemd)
       systemctl --user kill --signal="${sig}" "${name%.service}.service" >/dev/null 2>&1
       ;;
@@ -119,7 +109,6 @@ hypr_svc_user_signal() {
   esac
 }
 
-# Native Hyprland 0.55 Lua IPC helpers.
 hypr_lua_quote() {
   jq -Rn --arg value "${1:-}" '$value'
 }
@@ -150,7 +139,7 @@ hypr_lua_apply() {
 }
 
 hypr_user_uid() {
-  printf '%s\n' "${UID:-$(id -u)}"
+  printf '%s\n' "$UID"
 }
 
 hypr_user_pgrep() {
@@ -174,13 +163,13 @@ hypr_runtime_root_dir() {
 
   user_uid="$(hypr_user_uid)" || return 1
   runtime_dir="${XDG_RUNTIME_DIR:-/run/user/${user_uid}}"
-  if [[ -n "${runtime_dir}" ]] && mkdir -p "${runtime_dir}" 2>/dev/null; then
+  if [[ -n "${runtime_dir}" ]] && { [[ -d "$runtime_dir" ]] || mkdir -p "$runtime_dir" 2>/dev/null; }; then
     printf '%s\n' "${runtime_dir}"
     return 0
   fi
 
   fallback_dir="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/runtime"
-  mkdir -p "${fallback_dir}" || return 1
+  [[ -d "$fallback_dir" ]] || mkdir -p "$fallback_dir" || return 1
   printf '%s\n' "${fallback_dir}"
 }
 
@@ -212,7 +201,6 @@ hypr_core_file() {
   elif [[ -f "${user_file}" ]]; then
     printf '%s\n' "${user_file}"
   else
-    # Prefer shared path as canonical target for new writes/read attempts.
     printf '%s\n' "${shared_file}"
   fi
 }
@@ -241,14 +229,6 @@ declare -gA HYPR_CONFIG_LAYER_CACHE=()
 declare -g HYPR_CONFIG_LAYER_CACHE_KEY=""
 declare -g HYPR_CONFIG_LAYER_CACHE_READY=0
 
-hypr_trim_whitespace() {
-  local value="$1"
-
-  value="${value#"${value%%[![:space:]]*}"}"
-  value="${value%"${value##*[![:space:]]}"}"
-  printf '%s' "${value}"
-}
-
 hypr_config_file_signature_line() {
   local file_path="$1"
 
@@ -259,6 +239,7 @@ hypr_config_file_signature_line() {
   fi
 }
 
+# shellcheck disable=SC2120
 hypr_config_file_signature() {
   local file_path=""
 
@@ -274,8 +255,6 @@ hypr_config_file_signature() {
   done < <(hypr_config_layer_files)
 }
 
-# Existing keys are kept, so calling this per file in layer order preserves
-# first-definition-wins.
 hypr_config_parse_layer_file() {
   local file_path="$1"
   local -n layer_values_ref="$2"
@@ -306,13 +285,15 @@ hypr_config_parse_layer_file() {
 
     lhs="${raw_line%%=*}"
     rhs="${raw_line#*=}"
-    lhs="$(hypr_trim_whitespace "${lhs}")"
+    lhs="${lhs#"${lhs%%[![:space:]]*}"}"
+    lhs="${lhs%"${lhs##*[![:space:]]}"}"
     [[ "${lhs}" == \$* ]] || continue
     variable_key="${lhs#\$}"
     [[ -n "${variable_key}" ]] || continue
 
     rhs="${rhs%%#*}"
-    rhs="$(hypr_trim_whitespace "${rhs}")"
+    rhs="${rhs#"${rhs%%[![:space:]]*}"}"
+    rhs="${rhs%"${rhs##*[![:space:]]}"}"
     rhs="${rhs%\'}"
     rhs="${rhs#\'}"
     rhs="${rhs%\"}"
@@ -331,6 +312,7 @@ hypr_config_layer_cache_load() {
   local cache_key=""
   local file_path=""
 
+  # shellcheck disable=SC2119
   cache_key="$(hypr_config_file_signature)"
   if [[ "${HYPR_CONFIG_LAYER_CACHE_READY:-0}" -eq 1 && "${HYPR_CONFIG_LAYER_CACHE_KEY:-}" == "${cache_key}" ]]; then
     return 0
@@ -418,22 +400,20 @@ hypr_monitor_geometry() {
           else
             map(select(.name == $selector))[0]
           end
-        ) as $monitor
-        | select($monitor != null)
+        ) as $monitor | select($monitor != null)
+        | (($monitor.scale // 1) | if . > 0 then . else 1 end) as $scale
         | [
-            ($monitor.x // 0),
-            ($monitor.y // 0),
-            ($monitor.width // 0),
-            ($monitor.height // 0),
-            ($monitor.scale // 1),
+            ((($monitor.x // 0) / $scale | trunc) + 0),
+            ((($monitor.y // 0) / $scale | trunc) + 0),
+            ((($monitor.width // 0) / $scale | trunc) + 0),
+            ((($monitor.height // 0) / $scale | trunc) + 0),
             ($monitor.reserved[0] // 0),
             ($monitor.reserved[1] // 0),
             ($monitor.reserved[2] // 0),
             ($monitor.reserved[3] // 0)
           ]
         | @tsv
-      ' \
-    | awk -F '\t' '{ scale = ($5 > 0 ? $5 : 1); printf "%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n", $1 / scale, $2 / scale, $3 / scale, $4 / scale, $6, $7, $8, $9 }'
+      '
 }
 
 hypr_focused_monitor_geometry() {
@@ -462,7 +442,7 @@ hypr_window_edge_padding_px() {
 }
 
 hypr_lua_string() {
-  jq -Rn --arg value "${1-}" '$value'
+  hypr_lua_quote "${1-}"
 }
 
 hypr_compact_path() {

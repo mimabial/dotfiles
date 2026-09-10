@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
 
-# Shared helper functions for wallpaper modules.
-
 run_low_prio() {
   local nice_level="${WALLPAPER_NICE_LEVEL:-10}"
   [[ "${nice_level}" =~ ^-?[0-9]+$ ]] || nice_level=10

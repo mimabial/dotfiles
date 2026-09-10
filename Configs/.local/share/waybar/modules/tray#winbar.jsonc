@@ -1,7 +1,0 @@
-{
-  "tray#winbar": {
-    "icon-size": 16,
-    "spacing": 6,
-    "tooltip": false
-  }
-}

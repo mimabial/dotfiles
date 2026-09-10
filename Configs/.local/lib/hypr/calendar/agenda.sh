@@ -1,10 +1,4 @@
 #!/usr/bin/env bash
-#
-# agenda.sh — Emit calendar events as JSON for the shell's clock panel.
-#
-# Usage: agenda.sh --day YYYY-MM-DD | --month YYYY-MM
-# Depends on: khal, jq
-#
 set -euo pipefail
 
 usage() {
@@ -367,7 +361,7 @@ if [[ "${todos_mode}" -eq 1 ]] || [[ "${todo_add}" -eq 1 ]] ||
       { jq -n --arg id "${todo_open}" '{todos: [], error: ("could not reopen " + $id)}'; exit 1; }
   fi
   if [[ -n "${todo_done}" ]]; then
-    todo done "${todo_done}" >/dev/null 2>&1 ||
+    todo "done" "${todo_done}" >/dev/null 2>&1 ||
       { jq -n --arg id "${todo_done}" '{todos: [], error: ("could not complete " + $id)}'; exit 1; }
   fi
   if [[ "${todo_add}" -eq 1 ]]; then

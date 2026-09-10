@@ -1,16 +1,32 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
-# Vendor-specific GPU probe helpers.
+
+read_value() {
+  local -n result="$1"
+  IFS= read -r result <"$2"
+}
+
+read_scaled() {
+  local value
+  read_value value "$2" || return
+  printf -v "$1" '%d' "$((value / $3))"
+}
+
+read_microwatts() {
+  local value tenths
+  read_value value "$2" || return
+  tenths=$(((value + 50000) / 100000))
+  printf -v "$1" '%d.%d' "$((tenths / 10))" "$((tenths % 10))"
+}
 
 preferred_gpu_vendor() {
   if [[ "${GPUINFO_NVIDIA_ENABLE}" -eq 1 ]]; then
-    gpu_addr="${NVIDIA_ADDR}"
+    gpu_addr="${NVIDIA_ADDR:-}"
     vendor="nvidia"
   elif [[ "${GPUINFO_AMD_ENABLE}" -eq 1 ]]; then
-    gpu_addr="${AMD_ADDR}"
+    gpu_addr="${AMD_ADDR:-}"
     vendor="amd"
   elif [[ "${GPUINFO_INTEL_ENABLE}" -eq 1 ]]; then
-    gpu_addr="${INTEL_ADDR}"
+    gpu_addr="${INTEL_ADDR:-}"
     vendor="intel"
   else
     gpu_addr=""
@@ -70,10 +86,10 @@ read_hwmon_temperature() {
     [[ -f "${temp_file}" ]] || continue
     temp_label_file="${temp_file/_input/_label}"
     temp_label=""
-    [[ -f "${temp_label_file}" ]] && temp_label=$(cat "${temp_label_file}" 2>/dev/null)
+    [[ -f "${temp_label_file}" ]] && read_value temp_label "${temp_label_file}" || true
 
     if [[ "${temp_label}" == "edge" ]] || [[ -z "${temperature}" ]]; then
-      temperature=$(awk '{print int($1/1000)}' "${temp_file}" 2>/dev/null)
+      read_scaled temperature "${temp_file}" 1000 || true
       [[ -n "${temperature}" && "${temp_label}" == "edge" ]] && return 0
     fi
   done
@@ -85,7 +101,7 @@ read_hwmon_fan() {
 
   for fan_file in "${hwmon}"/fan*_input; do
     [[ -f "${fan_file}" ]] || continue
-    fan_speed=$(cat "${fan_file}" 2>/dev/null)
+    read_value fan_speed "${fan_file}" || true
     [[ -n "${fan_speed}" ]] && return 0
   done
 }
@@ -94,15 +110,15 @@ read_hwmon_power() {
   local hwmon="$1"
 
   if [[ -f "${hwmon}/power1_average" ]]; then
-    power_usage=$(awk '{printf "%.1f", $1/1000000}' "${hwmon}/power1_average" 2>/dev/null)
+    read_microwatts power_usage "${hwmon}/power1_average" || true
   elif [[ -f "${hwmon}/power1_input" ]]; then
-    power_usage=$(awk '{printf "%.1f", $1/1000000}' "${hwmon}/power1_input" 2>/dev/null)
+    read_microwatts power_usage "${hwmon}/power1_input" || true
   fi
 
   if [[ -f "${hwmon}/power1_cap" ]]; then
-    power_limit=$(awk '{printf "%.1f", $1/1000000}' "${hwmon}/power1_cap" 2>/dev/null)
+    read_microwatts power_limit "${hwmon}/power1_cap" || true
   elif [[ -f "${hwmon}/power1_cap_max" ]]; then
-    power_limit=$(awk '{printf "%.1f", $1/1000000}' "${hwmon}/power1_cap_max" 2>/dev/null)
+    read_microwatts power_limit "${hwmon}/power1_cap_max" || true
   fi
 }
 
@@ -125,12 +141,12 @@ read_intel_utilization() {
 
 read_intel_clocks() {
   if [[ -f "${card_path}/gt_cur_freq_mhz" ]]; then
-    current_clock_speed=$(cat "${card_path}/gt_cur_freq_mhz" 2>/dev/null)
+    read_value current_clock_speed "${card_path}/gt_cur_freq_mhz" || true
   fi
   if [[ -f "${card_path}/gt_max_freq_mhz" ]]; then
-    max_clock_speed=$(cat "${card_path}/gt_max_freq_mhz" 2>/dev/null)
+    read_value max_clock_speed "${card_path}/gt_max_freq_mhz" || true
   elif [[ -f "${card_path}/gt_RP0_freq_mhz" ]]; then
-    max_clock_speed=$(cat "${card_path}/gt_RP0_freq_mhz" 2>/dev/null)
+    read_value max_clock_speed "${card_path}/gt_RP0_freq_mhz" || true
   fi
 }
 
@@ -149,7 +165,7 @@ read_intel_metrics() {
 
 read_amd_utilization() {
   if [[ -f "${card_path}/device/gpu_busy_percent" ]]; then
-    utilization=$(cat "${card_path}/device/gpu_busy_percent" 2>/dev/null)
+    read_value utilization "${card_path}/device/gpu_busy_percent" || true
   fi
 }
 
@@ -157,8 +173,9 @@ read_amd_clocks_from_pp_dpm() {
   local pp_dpm_sclk="${card_path}/device/pp_dpm_sclk"
   [[ -f "${pp_dpm_sclk}" ]] || return 1
 
-  current_clock_speed=$(grep '\*' "${pp_dpm_sclk}" 2>/dev/null | awk '{print $2}' | sed 's/Mhz//')
-  max_clock_speed=$(tail -n1 "${pp_dpm_sclk}" 2>/dev/null | awk '{print $2}' | sed 's/Mhz//')
+  read -r current_clock_speed max_clock_speed < <(
+    awk '{max=$2; if (/\*/) current=$2} END {gsub(/Mhz/, "", current); gsub(/Mhz/, "", max); print current, max}' "${pp_dpm_sclk}"
+  )
 }
 
 read_amd_clocks_from_hwmon() {
@@ -167,10 +184,10 @@ read_amd_clocks_from_hwmon() {
 
   for hwmon in "${hwmon_path}"/hwmon*; do
     if [[ -f "${hwmon}/freq1_input" ]]; then
-      current_clock_speed=$(awk '{print int($1/1000000)}' "${hwmon}/freq1_input" 2>/dev/null)
+      read_scaled current_clock_speed "${hwmon}/freq1_input" 1000000 || true
     fi
     if [[ -f "${hwmon}/freq1_max" ]]; then
-      max_clock_speed=$(awk '{print int($1/1000000)}' "${hwmon}/freq1_max" 2>/dev/null)
+      read_scaled max_clock_speed "${hwmon}/freq1_max" 1000000 || true
     fi
   done
 }
@@ -193,13 +210,13 @@ read_battery_discharge() {
   local file="" current="" voltage=""
 
   for file in /sys/class/power_supply/BAT*/power_now; do
-    [[ -f "${file}" ]] && power_discharge=$(awk '{printf "%.1f", $1*10^-6}' "${file}" 2>/dev/null) && return 0
+    [[ -f "${file}" ]] && read_microwatts power_discharge "${file}" && return 0
   done
 
   for file in /sys/class/power_supply/BAT*/current_now; do
     if [[ -f "${file}" ]]; then
-      current=$(cat "${file}" 2>/dev/null)
-      voltage=$(cat "${file/current_now/voltage_now}" 2>/dev/null)
+      read_value current "${file}" || true
+      read_value voltage "${file/current_now/voltage_now}" || true
       if [[ -n "${current}" && -n "${voltage}" ]]; then
         power_discharge=$(awk -v c="${current}" -v v="${voltage}" 'BEGIN {printf "%.1f", (c*v)/10^12}')
         return 0
@@ -209,19 +226,12 @@ read_battery_discharge() {
 }
 
 ensure_utilization_fallback() {
-  [[ -z "${utilization}" ]] || return 0
-  if [[ -f "${card_path}/power/rc6_residency_ms" ]]; then
-    utilization="N/A"
-  else
-    utilization="N/A"
-  fi
+  [[ -n "${utilization}" ]] || utilization="N/A"
 }
 
 normalize_metric_output() {
   [[ "${temperature}" == "N/A" ]] && temperature=""
   [[ "${utilization}" == "N/A" ]] && utilization=""
-  # Tests that don't fire return 1; under set -e the whole call chain
-  # (general_query → intel_GPU → main) treats that as failure.
   return 0
 }
 
@@ -255,15 +265,15 @@ intel_GPU() {
 nvidia_GPU() {
   primary_gpu="NVIDIA ${GPUINFO_NVIDIA_GPU}"
   gpu_error=""
-  if [[ -z "${NVIDIA_ADDR}" ]]; then
-    NVIDIA_ADDR=$(lspci -nn | grep -Ei "(VGA|3D)" | grep -m 1 "10de" | awk '{print $1}')
+  if [[ -z "${NVIDIA_ADDR:-}" ]]; then
+    NVIDIA_ADDR=$(lspci -nn | awk 'toupper($0) ~ /(VGA|3D)/ && tolower($0) ~ /\[10de:/ {print $1; exit}')
   fi
   if [[ "${GPUINFO_NVIDIA_GPU}" == "Linux" ]]; then
     general_query
     return
   fi
   if ${tired} && [[ -n "${NVIDIA_ADDR}" ]]; then
-    is_suspend="$(cat /sys/bus/pci/devices/0000:"${NVIDIA_ADDR}"/power/runtime_status)"
+    read_value is_suspend "/sys/bus/pci/devices/0000:${NVIDIA_ADDR}/power/runtime_status" || is_suspend=""
     if [[ ${is_suspend} == *"suspend"* ]]; then
       printf '{"text":"󰤂", "tooltip":"%s ⏾ Suspended mode"}' "${primary_gpu}"
       exit

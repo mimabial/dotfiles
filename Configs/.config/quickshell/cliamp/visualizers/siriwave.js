@@ -8,14 +8,12 @@ function render(ctx, d) {
   var isPlaying = d.playing
   var midY = h / 2.0
 
-  // 1. Audio Energy (Smooth Low-Pass Averages)
   var bass = H.bandAvg(bands, 0, 5)
   var mids = H.bandAvg(bands, 5, 14)
   var highs = H.bandAvg(bands, 14, 24)
   var totalEnergy = bass * 0.5 + mids * 0.35 + highs * 0.15
   var beatDrop = d.beatDrop || 0
 
-  // If paused or completely silent, draw a clean resting flat line
   if (!isPlaying || totalEnergy < 0.005) {
     ctx.strokeStyle = H.rgba(d.dim, 0.35)
     ctx.lineWidth = 1.0
@@ -26,7 +24,6 @@ function render(ctx, d) {
     return
   }
 
-  // 2. Safe Peak Amplitude Envelope (Guarantees NO cropping/clipping on top or bottom)
   var maxSafeAmp = h * 0.36
   var bassAmp = Math.min(maxSafeAmp, (h * 0.08) + (bass * (h * 0.24)) + (beatDrop * (h * 0.08)))
   var midsAmp = Math.min(maxSafeAmp * 0.9, (h * 0.06) + (mids * (h * 0.22)))
@@ -49,7 +46,6 @@ function render(ctx, d) {
     return Math.pow(4.0 / (4.0 + x4), 4.0)
   }
 
-  // 3. Theme-derived ribbons (pure harmonic sine curves with zero jagged noise)
   // Bass, mids and highs take three adjacent hues from the theme's own palette
   // (pink / accent / blue) rather than rotations synthesised off the accent.
   var pal = d.colors || []
@@ -59,7 +55,6 @@ function render(ctx, d) {
     { from: pal[4] || d.dim,    to: d.foreground, mix: 0.10, alpha: 0.45, freq: 2.15, speed: 1.5,  phaseOff: 2.8, amp: highsAmp }
   ]
 
-  // Render 3 fluid harmonic color curves
   for (var c = 0; c < ribbons.length; c++) {
     var rb = ribbons[c]
     var curPhase = phase * rb.speed + rb.phaseOff
@@ -72,7 +67,6 @@ function render(ctx, d) {
     ctx.beginPath()
     ctx.moveTo(0, midY)
 
-    // Top smooth curve
     for (var i = 0; i <= w; i += 2) {
       var xNorm = (i / w) * 4.0 - 2.0 // Domain [-2, 2]
       var att = globalAttenuation(xNorm)
@@ -80,7 +74,6 @@ function render(ctx, d) {
       ctx.lineTo(i, midY - disp)
     }
 
-    // Bottom mirror curve (subtle reflection)
     for (var j = w; j >= 0; j -= 2) {
       var xNormB = (j / w) * 4.0 - 2.0
       var attB = globalAttenuation(xNormB)
@@ -92,7 +85,6 @@ function render(ctx, d) {
     ctx.fill()
   }
 
-  // 4. Primary theme-foreground support line
   ctx.strokeStyle = H.rgba(d.foreground, 0.95)
   ctx.lineWidth = 2.0
   ctx.beginPath()

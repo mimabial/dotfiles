@@ -36,7 +36,6 @@ import "visualizers/cyber_tunnel.js" as VisCyberTunnel
 import "visualizers/background.js" as VisBackground
 import "visualizers/helpers.js" as VisTheme
 
-// HUD header + visualizer canvas + seek bar
 Item {
   id: root
   property var p  // Panel root
@@ -261,7 +260,6 @@ Item {
       anchors.centerIn: parent
       spacing: Style.space(6)
 
-      // Brand + LED Timer
       Item {
         width: parent.width
         implicitHeight: Style.space(18)
@@ -357,7 +355,6 @@ Item {
         }
       }
 
-      // Now Playing Info (Thumbnail + Title + Artist)
       Row {
         width: parent.width
         spacing: Style.space(8)
@@ -494,7 +491,6 @@ Item {
         }
       }
 
-      // Visualizer Canvas Frame
       BorderSurface {
         width: parent.width
         height: Style.space(52)
@@ -591,7 +587,6 @@ Item {
         }
       }
 
-      // Waveform Scrubber (SoundCloud / WaveformScrubber style with dual-color played tint and playhead needle)
       Item {
         id: seekBar
         width: parent.width
@@ -647,7 +642,6 @@ Item {
               ctx.fill()
             }
 
-            // Playhead Cursor Needle
             if (root.p.totalSecs > 0) {
               var curX = Math.max(1, Math.min(width - 1, playX))
               ctx.fillStyle = VisTheme.rgba(root.p.foreground, 1)
@@ -658,7 +652,6 @@ Item {
           }
         }
 
-        // Hover time tooltip
         Text {
           visible: seekBar.hoverSecs >= 0 && root.p.totalSecs > 0
           text: {
@@ -677,7 +670,6 @@ Item {
           }
         }
 
-        // Draggable seek area
         MouseArea {
           id: seekMouse
           anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor

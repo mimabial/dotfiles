@@ -281,7 +281,6 @@ def main():
     args = parser.parse_args()
 
     while True:
-        # Use sensors library if available, else fallback to subprocess
         try:
             import sensors
 
@@ -296,7 +295,6 @@ def main():
                     sensors_data[chip_name][label] = value
             result_sensors = type("Result", (), {"stdout": json.dumps(sensors_data)})()
         except ImportError:
-            # Fallback to subprocess if python-sensors is not available
             result_sensors = subprocess.run(
                 ["sensors", "-j"],
                 stdout=subprocess.PIPE,

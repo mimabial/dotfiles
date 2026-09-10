@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
-# hypr-theme: orchestrator for the new render/ pipeline.
 
 set -euo pipefail
 
-RENDER_DIR="${HOME}/.local/lib/hypr/render"
+RENDER_DIR="${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/render"
 PALETTE="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/active-palette.json"
 
 usage() {
@@ -27,9 +26,9 @@ usage_error() {
 
 cmd="${1:-}"
 [[ -n "${cmd}" ]] || usage_error
-shift || true
+shift
+[[ "$cmd" == --help || "$cmd" == -h ]] && { usage; exit 0; }
 
-# Parse flags interleaved with positional args.
 positional=()
 variant="${HYPR_COLOR_VARIANT:-dark}"
 while (($#)); do
@@ -52,15 +51,11 @@ while (($#)); do
   shift
 done
 
-# state_set (and print_log, which color.apply.sh needs) come from the shared
-# runtime. Loaded after parsing so usage/--help stays free of it.
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_require state || exit 1
 
 write_hypr_theme_state() {
-  # Update HYPR_THEME in staterc so other consumers (bar providers, shell vars,
-  # theme.switch.sh re-runs, etc.) see the same theme that the palette belongs to.
   local theme="$1"
 
   [[ -n "${theme}" ]] || return 0
@@ -88,18 +83,20 @@ resolve_palette() {
 
 run_renderers() {
   local -a renderers=()
-  while IFS= read -r r; do renderers+=("$r"); done < <(
+  mapfile -t renderers < <(
     find "${RENDER_DIR}" -maxdepth 1 -type f -executable \
       \( -name '*.sh' -o -name '*.py' \) \
       ! -name '_*' \
-      | sort
+      | LC_ALL=C sort
   )
-  [[ ${#renderers[@]} -gt 0 ]] || { echo "hypr-theme: no renderers in ${RENDER_DIR}" >&2; return 0; }
+  ((${#renderers[@]})) || { echo "hypr-theme: no renderers in ${RENDER_DIR}" >&2; return 0; }
 
   local -a pids=() names=()
   local -i failed=0
+  local r name
   for r in "${renderers[@]}"; do
-    local name; name="$(basename "$r" | sed 's/\.[^.]*$//')"
+    name="${r##*/}"
+    name="${name%.*}"
     "$r" "${PALETTE}" &
     pids+=($!)
     names+=("$name")
@@ -150,10 +147,6 @@ case "${cmd}" in
     run_renderers || render_failed=1
     reload_clients
     exit "${render_failed}"
-    ;;
-  --help|-h)
-    usage
-    exit 0
     ;;
   *)
     usage_error

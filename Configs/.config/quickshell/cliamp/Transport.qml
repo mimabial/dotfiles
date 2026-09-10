@@ -3,7 +3,6 @@ import QtQuick
 import qs.Commons
 import qs.Ui
 
-// Transport controls + volume slider
 Row {
   id: root
   property var p  // Panel root
@@ -11,7 +10,6 @@ Row {
   width: parent ? parent.width : 0
   spacing: Style.space(6)
 
-  // Shuffle toggle
   PanelActionButton {
     iconText: "\uf074"; tooltipText: "Shuffle: " + (root.p.shuffleMode ? "ON" : "OFF")
     foreground: root.p.shuffleMode ? Color.accent : root.p.dim
@@ -20,7 +18,6 @@ Row {
     onClicked: root.p.toggleShuffle()
   }
 
-  // Previous Track
   PanelActionButton {
     iconText: "\uf048"; tooltipText: "Previous Track"
     foreground: root.p.foreground; hoverColor: Color.accent; fontFamily: root.p.fontFamily
@@ -28,7 +25,6 @@ Row {
     onClicked: root.p.prevTrack()
   }
 
-  // Play / Pause
   PanelActionButton {
     iconText: root.p.isPlaying ? "\uf04c" : "\uf04b"
     tooltipText: root.p.isPlaying ? "Pause" : "Play"
@@ -38,7 +34,6 @@ Row {
     onClicked: root.p.togglePlayback()
   }
 
-  // Next Track
   PanelActionButton {
     iconText: "\uf051"; tooltipText: "Next Track"
     foreground: root.p.foreground; hoverColor: Color.accent; fontFamily: root.p.fontFamily
@@ -46,7 +41,6 @@ Row {
     onClicked: root.p.nextTrack()
   }
 
-  // Repeat Mode
   PanelActionButton {
     iconText: "\uf01e"; tooltipText: "Repeat: " + root.p.repeatMode.toUpperCase()
     foreground: root.p.repeatMode !== "off" ? Color.accent : root.p.dim
@@ -55,7 +49,6 @@ Row {
     onClicked: root.p.cycleRepeat()
   }
 
-  // Stop Playback
   PanelActionButton {
     iconText: "\uf04d"; tooltipText: "Stop Playback"
     foreground: root.p.foreground; hoverColor: root.p.urgent; fontFamily: root.p.fontFamily
@@ -63,7 +56,6 @@ Row {
     onClicked: root.p.stop()
   }
 
-  // Like / Unlike the current track
   PanelActionButton {
     iconText: root.p.currentLiked ? "\uf004" : "\uf08a"
     tooltipText: root.p.currentLiked ? "Remove from Liked" : "Add to Liked"
@@ -75,7 +67,6 @@ Row {
 
   Item { width: Style.space(4) }
 
-  // Volume Section
   Row {
     anchors.verticalCenter: parent.verticalCenter
     spacing: Style.space(5)

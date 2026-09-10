@@ -1,10 +1,4 @@
 #!/usr/bin/env bash
-#
-# screenshot.sh — Capture screenshots and OCR from the Hyprland session.
-#
-# Usage: screenshot.sh [mode] [destination]
-# Depends on: hyprshell, grimblast, satty, slurp, grim, wl-copy
-#
 set -euo pipefail
 
 hypr_lib="${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}"
@@ -178,7 +172,6 @@ manual_area_screenshot() {
   capture_then_annotate grimblast_capture "${grimblast_args[@]}" save area "${temp_screenshot}"
 }
 
-# Smart screenshot with frozen screen and smart detection
 smart_screenshot() {
   local destination="$1"
   local rectangles=""
@@ -351,10 +344,10 @@ case "${mode}" in
   m) # print focused monitor
     take_screenshot "output"
     ;;
-  ocr | text) #? 󱉶 Extract text from a screenshot
+  ocr | text)
     ocr_screenshot "${2:-area}" "${3:-clipboard}"
     ;;
-  ocr-area | text-area | sc) #? 󱉶 Extract text from selected area
+  ocr-area | text-area | sc)
     ocr_screenshot "area" "${2:-clipboard}"
     ;;
   ocr-smart | text-smart)

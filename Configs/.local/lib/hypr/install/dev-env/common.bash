@@ -1,5 +1,3 @@
-# Shared helpers for development environment installers.
-
 dev_env_usage_list() {
   printf '%s\n' \
     ruby node bun deno go laravel symfony php python elixir phoenix rust java zig ocaml dotnet clojure scala

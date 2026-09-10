@@ -27,17 +27,10 @@ Item {
     }
     readonly property var defaultAnimationDurations: ({ original: 190, fade: 400, zoom: 320, slide: 320 })
     readonly property var animationTimings: {
-        var configuredTimings = root.pluginEntry && root.pluginEntry.animationTimings
+        var configured = root.pluginEntry && root.pluginEntry.animationTimings
             && typeof root.pluginEntry.animationTimings === "object"
             ? root.pluginEntry.animationTimings
-            : null;
-        var configuredDurations = root.pluginEntry && root.pluginEntry.animationDurations
-            && typeof root.pluginEntry.animationDurations === "object"
-            ? root.pluginEntry.animationDurations
-            : null;
-        var configured = configuredTimings || configuredDurations || {};
-        var legacyRaw = root.pluginEntry ? root.pluginEntry.animationDuration : undefined;
-        var legacy = legacyRaw === null || legacyRaw === undefined ? NaN : Number(legacyRaw);
+            : {};
         function timingFor(style) {
             var raw = configured[style];
             var isObject = raw !== null && raw !== undefined && typeof raw === "object";
@@ -45,10 +38,6 @@ Item {
             var separate = isObject && raw.separate === true;
             var inValue = isObject ? Number(raw["in"]) : scalar;
             var outValue = isObject ? Number(raw["out"]) : scalar;
-            if (!isFinite(inValue) && isFinite(legacy))
-                inValue = legacy;
-            if (!isFinite(outValue) && isFinite(legacy))
-                outValue = legacy;
             if (!isFinite(inValue))
                 inValue = root.defaultAnimationDurations[style];
             if (!isFinite(outValue))

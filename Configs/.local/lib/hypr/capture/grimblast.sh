@@ -1,17 +1,4 @@
 #!/usr/bin/env bash
-## Grimblast: a helper for screenshots within hyprland
-## Requirements:
-##  - `grim`: screenshot utility for wayland
-##  - `slurp`: to select an area
-##  - `hyprctl`: to read properties of current window (provided by Hyprland)
-##  - `hyprpicker`: to freeze the screen when selecting area
-##  - `wl-copy`: clipboard utility (provided by wl-clipboard)
-##  - `jq`: json utility to parse hyprctl output
-##  - `dunstify`: to show notifications (provided by dunst)
-## Those are needed to be installed, if unsure, run `grimblast check`
-##
-## See `man 1 grimblast` or `grimblast usage` for further details.
-
 ## Author: Misterio (https://github.com/misterio77)
 
 ## This tool is based on grimshot, with swaymsg commands replaced by their
@@ -20,7 +7,6 @@
 
 set -euo pipefail
 
-# Check whether another instance is running
 cache_home="${XDG_CACHE_HOME:-$HOME/.cache}"
 runtime_dir="${XDG_RUNTIME_DIR:-$cache_home}"
 mkdir -p "${runtime_dir}"
@@ -313,7 +299,6 @@ elif [[ "$SUBJECT" == "area" ]]; then
     GEOM=$(capture_visible_workspace_rectangles | slurp "${_slurp_args[@]}")
     capture_stop_freeze "${FREEZE_PID:-}"
 
-    # Check if user exited slurp without selecting the area
     if [[ -z "$GEOM" ]]; then
       kill_hyprpicker
       exit 1

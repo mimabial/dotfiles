@@ -40,23 +40,17 @@ state_resolve_color_mode() {
 }
 
 export_hypr_config() {
-  # Reload runtime state into the current shell.
-  # Use this after state changes, in a fresh shell, or when array variables
-  # need to be populated locally (bash does not export arrays).
+  local state_root="${STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}"
+  local user_conf_state="${STATE_RC:-${state_root}/staterc}"
+  local user_conf="${STATE_ENV_OVERRIDES:-${state_root}/env-overrides}"
 
-  local user_conf_state=""
-  local user_conf=""
-  user_conf_state="$(state_rc_file)"
-  user_conf="$(state_env_overrides_file)"
-
-  [ -f "${user_conf_state}" ] && source "${user_conf_state}"
-  [ -f "${user_conf}" ] && source "${user_conf}"
+  [[ -f "${user_conf_state}" ]] && source "${user_conf_state}"
+  [[ -f "${user_conf}" ]] && source "${user_conf}"
   refresh_hypr_runtime_state
   return $?
 }
 
 refresh_hypr_runtime_state() {
-  # Keep derived theme/runtime paths in sync after reloading state.
   selected_color_source="$(state_resolve_color_source "${selected_color_source:-}" "${selected_color_mode:-}")"
   selected_color_mode="$(state_resolve_color_mode "${selected_color_mode:-}" "${BACKGROUND_MODE:-}")"
 
@@ -71,11 +65,6 @@ refresh_hypr_runtime_state() {
 
   HYPR_THEME_DIR="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}"
   if [[ ! -d "${HYPR_THEME_DIR}" ]]; then
-    # The saved theme references a directory that no longer exists (renamed,
-    # moved, or deleted). Warn but keep going: the theme menu and recovery
-    # paths must still run so the user can pick a new theme. Consumers that
-    # require a valid theme dir (color.plan.sh, theme.switch.sh) do their own
-    # check and surface their own error.
     if declare -F print_log >/dev/null 2>&1; then
       print_log -sec "theme" -warn "state" "theme dir missing: ${HYPR_THEME}"
     else
@@ -96,177 +85,85 @@ refresh_hypr_instance_signature() {
   [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" && -S "${runtime_dir}/${HYPRLAND_INSTANCE_SIGNATURE}/.socket.sock" ]] && return 0
   unset HYPRLAND_INSTANCE_SIGNATURE
 
-  while IFS= read -r -d '' candidate_path; do
+  for candidate_path in "${runtime_dir}"/*; do
+    [[ -d "${candidate_path}" && ! -L "${candidate_path}" && "${candidate_path##*/}" != wallcache ]] || continue
     [[ -S "${candidate_path}/.socket.sock" ]] || continue
     candidate="${candidate_path##*/}"
     candidate_count=$((candidate_count + 1))
     HYPRLAND_INSTANCE_SIGNATURE="${candidate}"
     [[ "${candidate_count}" -gt 1 ]] && break
-  done < <(
-    find "${runtime_dir}" -mindepth 1 -maxdepth 1 -type d ! -name wallcache -print0 2>/dev/null
-  )
+  done
 
   if [[ "${candidate_count}" -ne 1 ]]; then
     unset HYPRLAND_INSTANCE_SIGNATURE
   fi
 }
 
-# UNIFIED STATE MANAGEMENT
-# All state is stored as scalar key=value entries in these files:
-#   - staterc:        User/runtime state (HYPR_THEME, selected_color_mode, etc.)
-#   - env-overrides:  Exported environment overrides
-#   - color_variant:  Current resolved dark/light variant
-#
-# Readers are lock-free. Writes use tmp+mv under flock, so readers see either
-# the previous complete file or the next complete file; concurrent writers may
-# still make a single read observe old values until the in-process cache refreshes.
-#
-# Use these functions for consistent state access across all scripts:
-#   state_get  - Read a state variable
-#   state_set  - Write a state variable (atomic)
-#   state_get_color_variant - Read the resolved dark/light variant
-#   state_set_color_variant - Write the resolved dark/light variant
-
-declare -gA HYPR_STATE_CACHE_VALUES=()
-declare -g HYPR_STATE_CACHE_SIGNATURE=""
-declare -g HYPR_STATE_CACHE_READY=0
+# Readers are lock-free; writers replace complete files under a shared lock.
 
 state_dir() {
   printf '%s\n' "${STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}"
 }
 
 state_rc_file() {
-  printf '%s\n' "${STATE_RC:-$(state_dir)/staterc}"
+  printf '%s\n' "${STATE_RC:-${STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/staterc}"
 }
 
 state_env_overrides_file() {
-  printf '%s\n' "${STATE_ENV_OVERRIDES:-$(state_dir)/env-overrides}"
+  printf '%s\n' "${STATE_ENV_OVERRIDES:-${STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/env-overrides}"
 }
 
 state_color_variant_file() {
-  printf '%s\n' "${STATE_COLOR_VARIANT:-$(state_dir)/color_variant}"
+  printf '%s\n' "${STATE_COLOR_VARIANT:-${STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/color_variant}"
 }
 
 state_decode_raw_value() {
-  local raw_value="${1-}"
+  local out_name="$1" decoded="${2-}"
 
-  if [[ "${raw_value}" == \(* ]]; then
-    if declare -F print_log >/dev/null 2>&1; then
-      print_log -sec "state" -warn "state_get" "array syntax is unsupported"
-    fi
-    return 1
-  fi
-
-  if [[ ${#raw_value} -ge 2 && "${raw_value:0:1}" == '"' && "${raw_value:${#raw_value}-1:1}" == '"' ]]; then
-    raw_value="${raw_value:1:${#raw_value}-2}"
-    raw_value="${raw_value//\\\"/\"}"
-    raw_value="${raw_value//\\\$/\$}"
-    raw_value="${raw_value//\\\`/\`}"
-    raw_value="${raw_value//\\\\/\\}"
-    printf '%s' "${raw_value}"
+  if [[ ${#decoded} -ge 2 && "${decoded:0:1}" == '"' && "${decoded:${#decoded}-1:1}" == '"' ]]; then
+    decoded="${decoded:1:${#decoded}-2}"
+    decoded="${decoded//\\\"/\"}"
+    decoded="${decoded//\\\$/\$}"
+    decoded="${decoded//\\\`/\`}"
+    decoded="${decoded//\\\\/\\}"
+    printf -v "${out_name}" '%s' "${decoded}"
     return 0
   fi
 
-  if [[ ${#raw_value} -ge 2 && "${raw_value:0:1}" == "'" && "${raw_value:${#raw_value}-1:1}" == "'" ]]; then
-    printf '%s' "${raw_value:1:${#raw_value}-2}"
+  if [[ ${#decoded} -ge 2 && "${decoded:0:1}" == "'" && "${decoded:${#decoded}-1:1}" == "'" ]]; then
+    printf -v "${out_name}" '%s' "${decoded:1:${#decoded}-2}"
     return 0
   fi
 
-  printf '%s' "${raw_value}"
+  printf -v "${out_name}" '%s' "${decoded}"
 }
 
-state_file_signature() {
-  local state_file="$1"
-
-  if [[ -e "${state_file}" || -L "${state_file}" ]]; then
-    stat -Lc '%n:%y:%s:%i' -- "${state_file}" 2>/dev/null || printf '%s:unreadable\n' "${state_file}"
-  else
-    printf '%s:missing\n' "${state_file}"
-  fi
-}
-
-state_parse_cache_file() {
-  local state_file="$1"
-  local line=""
-  local stripped=""
-  local raw_name=""
-  local raw_value=""
-  local value=""
-
-  [[ -f "${state_file}" ]] || return 0
-
-  while IFS= read -r line || [[ -n "${line}" ]]; do
-    stripped="${line#"${line%%[![:space:]]*}"}"
-    [[ -n "${stripped}" ]] || continue
-    [[ "${stripped}" == \#* ]] && continue
-
-    if [[ "${stripped}" =~ ^export[[:space:]]+([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
-      raw_name="${BASH_REMATCH[1]}"
-      raw_value="${BASH_REMATCH[2]}"
-    elif [[ "${stripped}" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
-      raw_name="${BASH_REMATCH[1]}"
-      raw_value="${BASH_REMATCH[2]}"
-    else
-      continue
-    fi
-
-    [[ "${raw_name}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || continue
-    [[ -v "HYPR_STATE_CACHE_VALUES[${raw_name}]" ]] && continue
-    # Arrays are valid shell state for sourced environments, but this scalar
-    # cache cannot represent them. Skip without warning so unrelated array
-    # entries do not make every state_get call noisy.
-    [[ "${raw_value}" == \(* ]] && continue
-    value="$(state_decode_raw_value "${raw_value}")" || continue
-    HYPR_STATE_CACHE_VALUES["${raw_name}"]="${value}"
-  done < "${state_file}"
-}
-
-state_cache_load() {
-  local state_rc=""
-  local env_overrides_file=""
-  local signature=""
-
-  state_rc="$(state_rc_file)"
-  env_overrides_file="$(state_env_overrides_file)"
-  signature="$(
-    state_file_signature "${state_rc}"
-    state_file_signature "${env_overrides_file}"
-  )"
-
-  if [[ "${HYPR_STATE_CACHE_READY:-0}" -eq 1 && "${HYPR_STATE_CACHE_SIGNATURE:-}" == "${signature}" ]]; then
-    return 0
-  fi
-
-  HYPR_STATE_CACHE_VALUES=()
-  state_parse_cache_file "${state_rc}"
-  state_parse_cache_file "${env_overrides_file}"
-  HYPR_STATE_CACHE_SIGNATURE="${signature}"
-  HYPR_STATE_CACHE_READY=1
-}
-
-state_cache_invalidate() {
-  HYPR_STATE_CACHE_VALUES=()
-  HYPR_STATE_CACHE_SIGNATURE=""
-  HYPR_STATE_CACHE_READY=0
-}
-
-# Get a state variable value
-# Usage: state_get VARIABLE_NAME [default_value]
-# Checks: staterc, env-overrides, then returns default
 state_get() {
-  local var_name="$1"
+  local var_name="${1:-}"
   local default_value="${2:-}"
+  local state_root="${STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}"
+  local state_file="" line="" stripped="" raw_value="" value=""
 
   if [[ -z "${var_name}" || ! "${var_name}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
     printf '%s\n' "${default_value}"
     return 1
   fi
 
-  if state_cache_load && [[ -v "HYPR_STATE_CACHE_VALUES[${var_name}]" ]]; then
-    printf '%s\n' "${HYPR_STATE_CACHE_VALUES[${var_name}]}"
-  else
-    printf '%s\n' "${default_value}"
-  fi
+  for state_file in \
+    "${STATE_RC:-${state_root}/staterc}" \
+    "${STATE_ENV_OVERRIDES:-${state_root}/env-overrides}"; do
+    [[ -f "${state_file}" ]] || continue
+    while IFS= read -r line || [[ -n "${line}" ]]; do
+      stripped="${line#"${line%%[![:space:]]*}"}"
+      [[ "${stripped}" =~ ^(export[[:space:]]+)?${var_name}=(.*)$ ]] || continue
+      raw_value="${BASH_REMATCH[2]}"
+      [[ "${raw_value}" == \(* ]] && continue
+      state_decode_raw_value value "${raw_value}"
+      printf '%s\n' "${value}"
+      return 0
+    done < "${state_file}"
+  done
+  printf '%s\n' "${default_value}"
 }
 
 state_target_file() {
@@ -278,29 +175,17 @@ state_target_file() {
   esac
 }
 
-# Name is derived from the file's basename alone so that
-# theme/auto_theme_support.py:state_lock_file() lands on the same lock; the
-# daemon and every state_set write the same three files.
-state_lock_name() {
-  local lock_target="$1"
-  local lock_label="${lock_target##*/}"
-
-  lock_label="${lock_label//[^A-Za-z0-9._-]/_}"
-  printf 'state-%s.lock\n' "${lock_label:-state}"
-}
-
 state_acquire_lock() {
   local lock_target="$1"
   local fd_name="$2"
   local -n fd_ref="${fd_name}"
   local lock_timeout="${STATE_LOCK_TIMEOUT:-5}"
-  local lock_dir=""
-  local lock_name=""
-  local lock_file=""
+  local lock_dir="" lock_label="${lock_target##*/}" lock_file=""
 
-  lock_name="$(state_lock_name "${lock_target}")" || return 1
+  # auto_theme_support.py derives the same basename-only lock key.
+  lock_label="${lock_label//[^A-Za-z0-9._-]/_}"
   lock_dir="$(hypr_runtime_subdir hypr)" || return 1
-  lock_file="${lock_dir}/${lock_name}"
+  lock_file="${lock_dir}/state-${lock_label:-state}.lock"
 
   if ! exec {fd_ref}>"${lock_file}"; then
     print_log -sec "state" -err "state_set" "failed to open lock ${lock_file}"
@@ -320,7 +205,6 @@ state_release_lock() {
   local -n fd_ref="${fd_name}"
 
   [[ -n "${fd_ref:-}" ]] || return 0
-  flock -u "${fd_ref}" 2>/dev/null || true
   exec {fd_ref}>&-
   fd_ref=""
 }
@@ -343,7 +227,7 @@ state_write_color_variant_file() {
 }
 
 state_quote_value() {
-  local value="${1-}"
+  local out_name="$1" value="${2-}"
 
   if [[ "${value}" == *$'\n'* || "${value}" == *$'\r'* ]]; then
     print_log -sec "state" -err "state_set" "state values must be single-line"
@@ -354,7 +238,7 @@ state_quote_value() {
   value="${value//\"/\\\"}"
   value="${value//\$/\\$}"
   value="${value//\`/\\\`}"
-  printf '"%s"' "${value}"
+  printf -v "${out_name}" '"%s"' "${value}"
 }
 
 state_write_key_value_file() {
@@ -362,36 +246,31 @@ state_write_key_value_file() {
   local target_file="$2"
   local var_name="$3"
   local var_value="$4"
-  local tmp_file=""
-  local var_escaped=""
-  local value_prefix=""
-  local quoted_value=""
+  local tmp_file="" source_file="${state_file}" value_prefix="" quoted_value="" line="" candidate=""
 
-  [[ -n "${var_name}" ]] || {
-    print_log -sec "state" -err "state_set" "variable name required"
+  [[ "${var_name}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || {
+    print_log -sec "state" -err "state_set" "invalid variable name '${var_name}'"
     return 1
   }
 
-  touch "${state_file}" || {
-    print_log -sec "state" -err "state_set" "failed to access ${state_file}"
-    return 1
-  }
-  var_escaped="$(printf "%s" "${var_name}" | sed 's/[][\\.^$*+?()|{}]/\\&/g')"
   [[ "${target_file}" == "env-overrides" ]] && value_prefix="export "
-  quoted_value="$(state_quote_value "${var_value}")" || return 1
+  state_quote_value quoted_value "${var_value}" || return 1
   tmp_file="$(mktemp "${state_file}.tmp.XXXXXX")" || {
     print_log -sec "state" -err "state_set" "failed to allocate temp file for ${var_name}"
     return 1
   }
 
-  # Unique tmp names accumulate if the process dies mid-write, so the subshell
-  # carries its own trap; the parent's EXIT trap must stay untouched.
+  [[ -f "${source_file}" ]] || source_file=/dev/null
   if (
     trap 'rm -f "${tmp_file}" 2>/dev/null' EXIT HUP INT TERM
-    {
-      grep -Ev "^(export[[:space:]]+)?${var_escaped}=" "${state_file}" 2>/dev/null || true
-      printf '%s%s=%s\n' "${value_prefix}" "${var_name}" "${quoted_value}"
-    } >"${tmp_file}"
+    while IFS= read -r line || [[ -n "${line}" ]]; do
+      candidate="${line#"${line%%[![:space:]]*}"}"
+      if [[ "${candidate}" =~ ^export[[:space:]]+ ]]; then
+        candidate="${candidate:${#BASH_REMATCH[0]}}"
+      fi
+      [[ "${candidate}" == "${var_name}="* ]] || printf '%s\n' "${line}"
+    done <"${source_file}" >"${tmp_file}"
+    printf '%s%s=%s\n' "${value_prefix}" "${var_name}" "${quoted_value}" >>"${tmp_file}"
     mv -f "${tmp_file}" "${state_file}"
   ); then
     return 0
@@ -402,49 +281,41 @@ state_write_key_value_file() {
   return 1
 }
 
-# Set a state variable (atomic write to prevent race conditions)
-# Usage: state_set VARIABLE_NAME value [file]
-# file: "staterc" (default), "env-overrides", or "color_variant"
 state_set() {
   local var_name="$1"
   local var_value="$2"
   local target_file="${3:-staterc}"
   local state_file=""
-  local lock_fd=""
-  local rc=0
+  local lock_fd="" state_parent="" rc=0
 
   state_file="$(state_target_file "${target_file}")"
-  mkdir -p "$(dirname "${state_file}")" || return 1
+  state_parent="${state_file%/*}"
+  [[ "${state_parent}" != "${state_file}" ]] || state_parent=.
+  mkdir -p "${state_parent}" || return 1
   state_acquire_lock "${state_file}" lock_fd || return 1
 
   if [[ "${target_file}" == "color_variant" ]]; then
     state_write_color_variant_file "${state_file}" "${var_value}" || rc=$?
-    [[ "${rc}" -eq 0 ]] && state_cache_invalidate
-    state_release_lock lock_fd
-    return "${rc}"
+  else
+    state_write_key_value_file "${state_file}" "${target_file}" "${var_name}" "${var_value}" || rc=$?
   fi
-
-  state_write_key_value_file "${state_file}" "${target_file}" "${var_name}" "${var_value}" || rc=$?
-  [[ "${rc}" -eq 0 ]] && state_cache_invalidate
   state_release_lock lock_fd
   return "${rc}"
 }
 
-# Get the current resolved dark/light variant
-# Returns: dark, light, or empty
 state_get_color_variant() {
-  local color_variant_file=""
-  color_variant_file="$(state_color_variant_file)"
+  local state_root="${STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}"
+  local color_variant_file="${STATE_COLOR_VARIANT:-${state_root}/color_variant}" value=""
 
   if [[ -f "${color_variant_file}" ]]; then
-    cat "${color_variant_file}" 2>/dev/null
+    [[ -r "${color_variant_file}" ]] || return 1
+    IFS= read -r value <"${color_variant_file}" || true
+    printf '%s\n' "${value}"
   else
-    echo "dark" # Default
+    printf 'dark\n'
   fi
 }
 
-# Set the current resolved dark/light variant
-# Usage: state_set_color_variant dark|light
 state_set_color_variant() {
   local color_variant="$1"
   if [[ ! "${color_variant}" =~ ^(dark|light)$ ]]; then

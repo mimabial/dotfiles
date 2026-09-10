@@ -1,142 +1,96 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
-# GPU detection and state-toggle helpers.
-detect() { # Auto detect Gpu used by Hyprland(declared using env = AQ_DRM_DEVICES) Sophisticated?
-  card=$(echo "${AQ_DRM_DEVICES}" | cut -d':' -f1 | cut -d'/' -f4)
 
-  # shellcheck disable=SC2010
-  slot_number=$(ls -l /dev/dri/by-path/ | grep "${card}" | awk -F'pci-0000:|-card' '{print $2}')
-  vendor_id=$(lspci -nn -s "${slot_number}")
-  declare -A vendors=(["10de"]="nvidia" ["8086"]="intel" ["1002"]="amd")
-  for vendor in "${!vendors[@]}"; do
-    if [[ ${vendor_id} == *"${vendor}"* ]]; then
-      initGPU="${vendors[${vendor}]}"
-      break
-    fi
+gpu_pci_record() {
+  awk -v id="$1" -v prefix="$2" '
+    toupper($0) ~ "(VGA|3D)" && tolower($0) ~ "\\[" tolower(id) ":" {
+      addr=$1; name=$0; sub("^.*" prefix " ", "", name)
+      gsub(/ *\[[^]]*\]/, "", name); gsub(/ *\([^)]*\)/, "", name)
+      print addr "\t" name; exit
+    }' <<<"$3"
+}
+
+detect() {
+  local device="${AQ_DRM_DEVICES%%:*}" card link slot vendor_id initGPU=""
+  local -A vendors=([10de]=nvidia [8086]=intel [1002]=amd)
+  card="${device##*/}"
+
+  for link in /dev/dri/by-path/*-card; do
+    [[ -L "$link" && "$(readlink "$link")" == *"/$card" ]] || continue
+    slot="${link##*/pci-0000:}"
+    slot="${slot%-card}"
+    break
   done
-  if [[ -n ${initGPU} ]]; then
-    $0 --use "${initGPU}" --startup
-  fi
+  vendor_id=$(lspci -nn -s "${slot:-}" 2>/dev/null) || return
+  for vendor in "${!vendors[@]}"; do
+    [[ "$vendor_id" == *"$vendor"* ]] && initGPU="${vendors[$vendor]}" && break
+  done
+  [[ -n "$initGPU" ]] && "$0" --use "$initGPU" --startup
 }
 
 query() {
-  GPUINFO_NVIDIA_ENABLE=0 GPUINFO_AMD_ENABLE=0 GPUINFO_INTEL_ENABLE=0
-  touch "${gpuinfo_file}"
+  local pci nvidia_smi_output="" nvidia_pci_name=""
+  local NVIDIA_ADDR="" AMD_ADDR="" INTEL_ADDR=""
+  local GPUINFO_NVIDIA_GPU="" GPUINFO_AMD_GPU="" GPUINFO_INTEL_GPU=""
+  local GPUINFO_NVIDIA_ENABLE=0 GPUINFO_AMD_ENABLE=0 GPUINFO_INTEL_ENABLE=0
+  pci=$(lspci -nn 2>/dev/null || true)
+  IFS=$'\t' read -r NVIDIA_ADDR nvidia_pci_name < <(gpu_pci_record 10de 'NVIDIA Corporation' "$pci") || true
+  IFS=$'\t' read -r AMD_ADDR GPUINFO_AMD_GPU < <(gpu_pci_record 1002 'Advanced Micro Devices, Inc.' "$pci") || true
+  IFS=$'\t' read -r INTEL_ADDR GPUINFO_INTEL_GPU < <(gpu_pci_record 8086 'Intel Corporation' "$pci") || true
 
-  if lsmod | grep -q 'nouveau'; then
-    echo "GPUINFO_NVIDIA_GPU=\"Linux\"" >>"${gpuinfo_file}" #? Incase If nouveau is installed
-    echo "GPUINFO_NVIDIA_ENABLE=1 # Using nouveau an open-source nvidia driver" >>"${gpuinfo_file}"
-  elif command -v nvidia-smi &>/dev/null; then
-    local nvidia_smi_output=""
-    if nvidia_smi_output=$(nvidia-smi --query-gpu=gpu_name --format=csv,noheader,nounits 2>&1); then
-      GPUINFO_NVIDIA_GPU=$(printf '%s\n' "${nvidia_smi_output}" | head -n 1)
-    else
-      GPUINFO_NVIDIA_GPU=""
-    fi
-    if [[ -n "${GPUINFO_NVIDIA_GPU}" ]]; then                                                                                               # Check for NVIDIA GPU
-      if [[ "${GPUINFO_NVIDIA_GPU}" == *"NVIDIA-SMI has failed"* ]] || [[ "${GPUINFO_NVIDIA_GPU}" == *"Failed to initialize NVML"* ]]; then #? Second Layer for dGPU
-        echo "GPUINFO_NVIDIA_ENABLE=0 # NVIDIA-SMI has failed" >>"${gpuinfo_file}"
-      else
-        # `|| true` rescues set -euo pipefail: lspci formatting can differ
-        # from the nvidia-smi name (e.g. "Max-Q Design" suffix), in which
-        # case the inner grep returns 1 and the whole substitution would
-        # otherwise kill the script. Empty NVIDIA_ADDR is acceptable —
-        # downstream code falls back to lspci-only detection.
-        NVIDIA_ADDR=$(lspci | grep -Ei "VGA|3D" | grep -i "${GPUINFO_NVIDIA_GPU/NVIDIA /}" | cut -d' ' -f1 || true)
-        {
-          echo "NVIDIA_ADDR=\"${NVIDIA_ADDR}\""
-          echo "GPUINFO_NVIDIA_GPU=\"${GPUINFO_NVIDIA_GPU/NVIDIA /}\""
-          echo "GPUINFO_NVIDIA_ENABLE=1"
-        } >>"${gpuinfo_file}"
-      fi
+  if lsmod | grep -q nouveau; then
+    GPUINFO_NVIDIA_GPU=Linux
+    GPUINFO_NVIDIA_ENABLE=1
+  elif command -v nvidia-smi &>/dev/null &&
+    nvidia_smi_output=$(nvidia-smi --query-gpu=gpu_name --format=csv,noheader,nounits 2>&1); then
+    GPUINFO_NVIDIA_GPU="${nvidia_smi_output%%$'\n'*}"
+    GPUINFO_NVIDIA_GPU="${GPUINFO_NVIDIA_GPU#NVIDIA }"
+    if [[ -n "$GPUINFO_NVIDIA_GPU" && "$GPUINFO_NVIDIA_GPU" != *'NVIDIA-SMI has failed'* && "$GPUINFO_NVIDIA_GPU" != *'Failed to initialize NVML'* ]]; then
+      GPUINFO_NVIDIA_ENABLE=1
     fi
   fi
-
-  if ! grep -q "GPUINFO_NVIDIA_ENABLE=1" "${gpuinfo_file}"; then
-    local nvidia_line=""
-    nvidia_line=$(lspci -nn | grep -Ei "(VGA|3D)" | grep -m 1 "10de" || true)
-    if [[ -n "${nvidia_line}" ]]; then
-      NVIDIA_ADDR=$(echo "${nvidia_line}" | awk '{print $1}')
-      local nvidia_name=""
-      nvidia_name=$(echo "${nvidia_line}" | sed -n 's/.*\[\(.*\)\].*/\1/p')
-      if [[ -z "${nvidia_name}" ]]; then
-        nvidia_name=$(echo "${nvidia_line}" | sed -n 's/.*NVIDIA Corporation //p' | sed 's/ *\[[^]]*\]//; s/ *([^)]*)//')
-      fi
-      {
-        echo "NVIDIA_ADDR=\"${NVIDIA_ADDR}\""
-        echo "GPUINFO_NVIDIA_GPU=\"${nvidia_name}\""
-        echo "GPUINFO_NVIDIA_ENABLE=1 # NVIDIA detected via lspci"
-      } >>"${gpuinfo_file}"
-    fi
+  if (( ! GPUINFO_NVIDIA_ENABLE )) && [[ -n "$NVIDIA_ADDR" ]]; then
+    GPUINFO_NVIDIA_GPU="$nvidia_pci_name"
+    GPUINFO_NVIDIA_ENABLE=1
   fi
+  [[ -n "$AMD_ADDR" ]] && GPUINFO_AMD_ENABLE=1
+  [[ -n "$INTEL_ADDR" ]] && GPUINFO_INTEL_ENABLE=1
 
-  if lspci -nn | grep -E "(VGA|3D)" | grep -iq "1002"; then
-    GPUINFO_AMD_GPU="$(lspci -nn | grep -Ei "VGA|3D" | grep -m 1 "1002" | awk -F'Advanced Micro Devices, Inc. ' '{gsub(/ *\[[^\]]*\]/,""); gsub(/ *\([^)]*\)/,""); print $2}')"
-    # `|| true` rescues set -euo pipefail; same trap as the NVIDIA path above.
-    AMD_ADDR=$(lspci | grep -Ei "VGA|3D" | grep -i "${GPUINFO_AMD_GPU}" | cut -d' ' -f1 || true)
-    {
-      echo "AMD_ADDR=\"${AMD_ADDR}\""
-      echo "GPUINFO_AMD_ENABLE=1" # Check for Amd GPU
-      echo "GPUINFO_AMD_GPU=\"${GPUINFO_AMD_GPU}\""
-    } >>"${gpuinfo_file}"
-  fi
-
-  if lspci -nn | grep -E "(VGA|3D)" | grep -iq "8086"; then
-    GPUINFO_INTEL_GPU="$(lspci -nn | grep -Ei "VGA|3D" | grep -m 1 "8086" | awk -F'Intel Corporation ' '{gsub(/ *\[[^\]]*\]/,""); gsub(/ *\([^)]*\)/,""); print $2}')"
-    # `|| true` rescues set -euo pipefail; same trap as the NVIDIA path above.
-    INTEL_ADDR=$(lspci | grep -Ei "VGA|3D" | grep -i "${GPUINFO_INTEL_GPU}" | cut -d' ' -f1 || true)
-    {
-      echo "INTEL_ADDR=\"${INTEL_ADDR}\""
-      echo "GPUINFO_INTEL_ENABLE=1" # Check for Intel GPU
-      echo "GPUINFO_INTEL_GPU=\"${GPUINFO_INTEL_GPU}\""
-    } >>"${gpuinfo_file}"
-  fi
-
-  if ! grep -q "GPUINFO_PRIORITY=" "${gpuinfo_file}" && [[ -n "${AQ_DRM_DEVICES}" ]]; then
+  touch "$gpuinfo_file"
+  {
+    (( GPUINFO_NVIDIA_ENABLE )) && printf 'NVIDIA_ADDR=%q\nGPUINFO_NVIDIA_GPU=%q\nGPUINFO_NVIDIA_ENABLE=1\n' "$NVIDIA_ADDR" "$GPUINFO_NVIDIA_GPU"
+    (( GPUINFO_AMD_ENABLE )) && printf 'AMD_ADDR=%q\nGPUINFO_AMD_ENABLE=1\nGPUINFO_AMD_GPU=%q\n' "$AMD_ADDR" "$GPUINFO_AMD_GPU"
+    (( GPUINFO_INTEL_ENABLE )) && printf 'INTEL_ADDR=%q\nGPUINFO_INTEL_ENABLE=1\nGPUINFO_INTEL_GPU=%q\n' "$INTEL_ADDR" "$GPUINFO_INTEL_GPU"
+  } >>"$gpuinfo_file"
+  if ! grep -q '^GPUINFO_PRIORITY=' "$gpuinfo_file" && [[ -n "$AQ_DRM_DEVICES" ]]; then
     trap detect EXIT
   fi
-
 }
 
 toggle() {
-  # ${1:-} keeps the no-arg cycle path (--toggle) safe under set -u.
+  local line entry current_index=0 index
+  local -a anchor=()
+  while IFS= read -r line; do
+    entry="${line#\#}"
+    [[ "$entry" == GPUINFO_*_ENABLE=1 ]] && anchor+=("${entry%=1}")
+  done <"$gpuinfo_file"
+
   if [[ -n "${1:-}" ]]; then
     NEXT_PRIORITY="GPUINFO_${1^^}_ENABLE"
-    if ! grep -q "${NEXT_PRIORITY}=1" "${gpuinfo_file}"; then
-      echo Error: "${NEXT_PRIORITY}" not found in "${gpuinfo_file}"
-    fi
+    [[ " ${anchor[*]} " == *" $NEXT_PRIORITY "* ]] || { printf 'Error: %s not found in %s\n' "$NEXT_PRIORITY" "$gpuinfo_file" >&2; return 1; }
   else
-    if ! grep -q "GPUINFO_AVAILABLE=" "${gpuinfo_file}"; then
-      GPUINFO_AVAILABLE=$(grep "_ENABLE=1" "${gpuinfo_file}" | cut -d '=' -f 1 | tr '\n' ' ' | tr -d '#')
-      echo "" >>"${gpuinfo_file}"
-      echo "GPUINFO_AVAILABLE=\"${GPUINFO_AVAILABLE[*]}\"" >>"${gpuinfo_file}"
+    ((${#anchor[@]})) || { printf 'Error: no GPU found\n' >&2; return 1; }
+    if [[ -z "${GPUINFO_AVAILABLE:-}" ]]; then
+      printf 'GPUINFO_AVAILABLE=%q\n' "${anchor[*]}" >>"$gpuinfo_file"
     fi
-
-    if ! grep -q "GPUINFO_PRIORITY=" "${gpuinfo_file}"; then
-      GPUINFO_AVAILABLE=$(grep "GPUINFO_AVAILABLE=" "${gpuinfo_file}" | cut -d'=' -f 2)
-      initGPU=$(echo "${GPUINFO_AVAILABLE}" | cut -d ' ' -f 1)
-      echo "GPUINFO_PRIORITY=${initGPU}" >>"${gpuinfo_file}"
-    fi
-    mapfile -t anchor < <(grep "_ENABLE=1" "${gpuinfo_file}" | cut -d '=' -f 1)
-    GPUINFO_PRIORITY=$(grep "GPUINFO_PRIORITY=" "${gpuinfo_file}" | cut -d'=' -f 2) # Get the current GPUINFO_PRIORITY from the file
-    # Find the index of the current GPUINFO_PRIORITY in the anchor array.
-    # Default to 0 so a stale priority that no longer matches any enabled
-    # GPU still rotates instead of crashing under set -u.
-    local current_index=0
+    GPUINFO_PRIORITY="${GPUINFO_PRIORITY:-${anchor[0]}}"
     for index in "${!anchor[@]}"; do
-      if [[ "${anchor[${index}]}" = "${GPUINFO_PRIORITY}" ]]; then
-        current_index=${index}
-      fi
+      [[ "${anchor[$index]}" == "$GPUINFO_PRIORITY" ]] && current_index=$index
     done
-    next_index=$(((current_index + 1) % ${#anchor[@]}))
-    NEXT_PRIORITY=${anchor[${next_index}]#\#}
+    NEXT_PRIORITY="${anchor[$(((current_index + 1) % ${#anchor[@]}))]}"
   fi
 
-  # Set the next GPUINFO_PRIORITY and remove the '#' character
-  sed -i 's/^\(GPUINFO_NVIDIA_ENABLE=1\|GPUINFO_AMD_ENABLE=1\|GPUINFO_INTEL_ENABLE=1\)/#\1/' "${gpuinfo_file}" # Comment out all the gpu flags in the file
-  sed -i "s/^#${NEXT_PRIORITY}/${NEXT_PRIORITY}/" "${gpuinfo_file}"                                            # Uncomment the next GPUINFO_PRIORITY in the file
-  sed -i "s/GPUINFO_PRIORITY=${GPUINFO_PRIORITY}/GPUINFO_PRIORITY=${NEXT_PRIORITY}/" "${gpuinfo_file}"         # Update the GPUINFO_PRIORITY in the file
-
-  # survive the reboot that wipes the cache
-  gpu_state_lib && state_set GPUINFO_PRIORITY "${NEXT_PRIORITY}" >/dev/null 2>&1
+  sed -i -e 's/^\(GPUINFO_NVIDIA_ENABLE=1\|GPUINFO_AMD_ENABLE=1\|GPUINFO_INTEL_ENABLE=1\)/#\1/' \
+    -e "s/^#$NEXT_PRIORITY/$NEXT_PRIORITY/" "$gpuinfo_file"
+  update_state_var GPUINFO_PRIORITY "$NEXT_PRIORITY"
+  gpu_state_lib && state_set GPUINFO_PRIORITY "$NEXT_PRIORITY" >/dev/null 2>&1
 }

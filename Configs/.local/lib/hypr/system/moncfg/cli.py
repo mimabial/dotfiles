@@ -7,7 +7,7 @@ import os
 import socket
 import sys
 
-from . import VERSION, daemon, hypr, profiles, render, workspaces
+from . import VERSION, daemon, hypr, profiles, render
 
 BUILD = "moncfg, in-tree"
 HYPR_CONFIG = os.path.expanduser(
@@ -120,7 +120,7 @@ def cmd_status(_args) -> int:
     document = reply["result"]
     active = (document.get("active_profile") or {}).get("name", "(none)")
     recommended = (document.get("recommended_profile") or {}).get("name", "(none)")
-    print(f"daemon      running")
+    print("daemon      running")
     print(f"managed     {'no' if document['daemon'].get('unmanaged') else 'yes'}")
     print(f"active      {active}")
     print(f"recommended {recommended}")

@@ -27,12 +27,7 @@ case "${1:-}" in
     ;;
 esac
 
-# Use the same runtime-init pattern as the other entrypoints. Sourcing
-# hyprshell from $(command -v hyprshell) only works when the script is
-# invoked through the hyprshell wrapper (or the user's PATH happens to
-# include ~/.local/bin); the theme.apply phase-D envelope runs under
-# systemd-run --user with neither, so this script needs to bootstrap
-# directly via runtime/init.bash like wallpaper.sh and theme.switch.sh do.
+# Theme renders can invoke this without hyprshell on PATH.
 # shellcheck source=/dev/null
 source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
 hypr_runtime_require state system notify wallpaper_catalog || exit 1

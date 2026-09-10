@@ -124,8 +124,8 @@ cannot reach a submap leader while locked. Closing the lid locks and suspends.
 ## The eight submaps
 
 Rather than stacking a third and fourth modifier onto every key, each domain gets
-its own namespace. Press the leader and every key is bare until you press
-`Escape`.
+its own namespace. Press the leader, then press one bare key to run an action and
+leave the submap. `Escape` leaves without acting.
 
 | leader | submap |
 | ------ | ------ |
@@ -138,9 +138,8 @@ its own namespace. Press the leader and every key is bare until you press
 | `Super + H` | hints — live cheatsheets |
 | `Super + U` | utilities — display, audio, toggles |
 
-Anything that opens rofi leaves the submap first, because bare keys would
-otherwise swallow the input rofi is waiting for. Anything repeatable — focus,
-move, resize, cycling a wallpaper — stays in, so you can hold the key down.
+Every action leaves its submap first. The four theming arrows are the exception:
+they stay active and repeat so you can quickly audition themes and wallpapers.
 
 ### Theming — `Super + T`
 
@@ -182,10 +181,9 @@ the bar · `H` toggle the bar · `F` select font · `Shift + F` install a Nerd F
 
 ### Window — `Super + W`
 
-Arrows focus, `Shift + Arrow` moves, `Ctrl + Arrow` resizes, all repeating.
+Arrows focus, `Shift + Arrow` moves, `Ctrl + Arrow` resizes.
 `F` float · `M` maximize · `G` group · `P` pin · `T` cycle the global layout.
-Workspace keys work here too, so you can move a window and reposition it without
-leaving.
+Workspace keys work here too.
 
 Then the per-layout keys, which only fire in the layout they belong to:
 

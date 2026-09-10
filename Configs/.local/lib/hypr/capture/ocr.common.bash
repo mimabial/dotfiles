@@ -1,35 +1,32 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
-# The OCR engine shared by capture/screenshot.sh and rofi/cliphist.sh. Nothing
-# here notifies: the two callers have different notification surfaces, so they
-# read HYPR_OCR_ERROR and report it themselves.
+# Callers own notifications; recoverable details use HYPR_OCR_ERROR.
 
 HYPR_OCR_ERROR=""
 HYPR_OCR_TEMP_IMAGE=""
 
-# The configured languages, into the named array. SCREENSHOT_OCR_LANGS is the
-# documented knob and accepts "eng+fra" or "eng,fra";
-# SCREENSHOT_OCR_TESSERACT_LANGUAGES overrides it with a pre-split array.
 hypr_ocr_languages_into() {
   local -n languages_ref="$1"
-  local raw=""
+  local raw="" language=""
+  local -a unique=()
+  local -A seen=()
 
   if [[ "$(declare -p SCREENSHOT_OCR_TESSERACT_LANGUAGES 2>/dev/null)" == "declare -a"* ]]; then
     languages_ref=("${SCREENSHOT_OCR_TESSERACT_LANGUAGES[@]}")
   else
     raw="${SCREENSHOT_OCR_LANGS:-${OMARCHY_OCR_LANGS:-eng}}"
     raw="${raw//[+,]/ }"
-    # shellcheck disable=SC2206
-    languages_ref=(${raw})
+    read -r -a languages_ref <<<"${raw}"
   fi
 
-  mapfile -t languages_ref < <(printf '%s\n' "${languages_ref[@]:-}" | awk 'NF && !seen[$0]++')
-  ((${#languages_ref[@]} > 0)) || languages_ref=("eng")
+  for language in "${languages_ref[@]:-}"; do
+    [[ -n "${language}" && -z "${seen[${language}]:-}" ]] || continue
+    seen["${language}"]=1
+    unique+=("${language}")
+  done
+  languages_ref=("${unique[@]:-eng}")
 }
 
-# Resolve and validate in one step. Asking tesseract what it can load beats
-# probing for distro packages: it is the thing that has to succeed, and it holds
-# for language data installed by any means.
 hypr_ocr_prepare_languages() {
   local -n prepared_ref="$1"
   local installed="" language="" missing=""
@@ -41,10 +38,14 @@ hypr_ocr_prepare_languages() {
   fi
 
   hypr_ocr_languages_into prepared_ref
-  installed="$(tesseract --list-langs 2>/dev/null | tail -n +2)"
+  if ! installed="$(tesseract --list-langs 2>/dev/null)"; then
+    HYPR_OCR_ERROR="failed to list tesseract languages"
+    return 1
+  fi
+  installed="${installed#*$'\n'}"
 
   for language in "${prepared_ref[@]}"; do
-    grep -Fxq "${language}" <<<"${installed}" || missing+="${missing:+, }${language}"
+    [[ $'\n'"${installed}"$'\n' == *$'\n'"${language}"$'\n'* ]] || missing+="${missing:+, }${language}"
   done
 
   if [[ -n "${missing}" ]]; then
@@ -53,14 +54,12 @@ hypr_ocr_prepare_languages() {
   fi
 }
 
-# "eng+fra" for tesseract -l, from the array named by $1.
 hypr_ocr_language_argument() {
   local -n languages_ref="$1"
   local IFS=+
   printf '%s' "${languages_ref[*]}"
 }
 
-# The multi-line "Languages used" body both callers show in their notification.
 hypr_ocr_language_summary() {
   local -n languages_ref="$1"
   local language body="Languages used"
@@ -71,18 +70,8 @@ hypr_ocr_language_summary() {
   printf '%s' "${body}"
 }
 
-# Sets the named variable to the path to hand tesseract: a preprocessed copy
-# when that succeeds, otherwise the input untouched. Any copy it makes is also
-# recorded in HYPR_OCR_TEMP_IMAGE for the caller to clean up -- which is why the
-# result comes back by name and not on stdout, since a command substitution
-# would strand that path in the subshell.
-#
-# The profile picks the pipeline, and the two are not interchangeable:
-#   screen  crisp screen captures at a known scale -- a light touch, because
-#           binarising anti-aliased UI text loses strokes.
-#   image   arbitrary clipboard images of unknown provenance and scale -- more
-#           upscaling and a hard threshold, which is what makes low-quality or
-#           photographed text legible.
+# Returns the image path by name so temporary-file state stays in the caller.
+# Screen captures use lighter preprocessing than arbitrary clipboard images.
 hypr_ocr_preprocess() {
   local -n image_ref="$1"
   local input="$2"
@@ -110,7 +99,10 @@ hypr_ocr_preprocess() {
       ;;
   esac
 
-  HYPR_OCR_TEMP_IMAGE="$(mktemp -t hypr_ocr_XXXXXX.png)"
+  if ! HYPR_OCR_TEMP_IMAGE="$(mktemp -t hypr_ocr_XXXXXX.png)"; then
+    HYPR_OCR_ERROR="failed to create a preprocessing image"
+    return 0
+  fi
   if magick "${input}" "${pipeline[@]}" "${HYPR_OCR_TEMP_IMAGE}" 2>/dev/null; then
     image_ref="${HYPR_OCR_TEMP_IMAGE}"
     return 0
@@ -121,13 +113,11 @@ hypr_ocr_preprocess() {
   HYPR_OCR_ERROR="image preprocessing failed, using the original image"
 }
 
-# Recognized text on stdout. The tuning knobs apply to both callers.
 hypr_ocr_recognize() {
   local image="$1"
   local languages="$2"
 
-  HYPR_OCR_ERROR=""
-  if ! tesseract \
+  tesseract \
     "${image}" \
     stdout \
     --oem "${SCREENSHOT_OCR_OEM:-1}" \
@@ -135,8 +125,5 @@ hypr_ocr_recognize() {
     --dpi "${SCREENSHOT_OCR_DPI:-300}" \
     -l "${languages}" \
     -c preserve_interword_spaces=1 \
-    2>/dev/null; then
-    HYPR_OCR_ERROR="text recognition failed"
-    return 1
-  fi
+    2>/dev/null
 }

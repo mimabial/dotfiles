@@ -2,7 +2,7 @@
 
 Arch Linux + Hyprland desktop configuration, originally derived from HyDE and maintained here as a mirror of the persistent parts of the running setup.
 
-The bar is Quickshell (`Configs/.config/quickshell/`). Waybar is disabled and kept only as legacy reference and as a provider output format.
+The bar is Quickshell (`Configs/.config/quickshell/`). Script providers use a compact JSON output format.
 
 The running desktop uses files under `$HOME` such as:
 
@@ -207,7 +207,7 @@ Theme packs live under `Configs/.config/hypr/themes/`.
 | Tundra | A soothing, pastel tundra theme |
 | Vintage Gallery | Cream light theme with slate-blue foreground |
 
-The desktop rebuilds generated theme outputs for Hyprland, Quickshell, Rofi, Dunst, Kitty, Alacritty, tmux, GTK, Qt/Kvantum, Hyprlock, `rmpc`, and the legacy Waybar tree.
+The desktop rebuilds generated theme outputs for Hyprland, Quickshell, Rofi, Dunst, Kitty, Alacritty, tmux, GTK, Qt/Kvantum, Hyprlock, and `rmpc`.
 
 ## Notes
 

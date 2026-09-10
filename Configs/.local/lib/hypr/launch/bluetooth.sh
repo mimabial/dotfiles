@@ -1,11 +1,4 @@
 #!/usr/bin/env bash
-#
-# bluetooth.sh — Unblock bluetooth and focus/launch the bluetui TUI.
-#
-# Usage: bluetooth.sh
-#
-# Depends on: rfkill, hyprshell launch/{focus,tui}.sh, bluetui
-#
 set -euo pipefail
 
 # shellcheck source=/dev/null

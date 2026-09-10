@@ -40,9 +40,9 @@ global namespace — see the hotkeys chapter for the full set.
 ## Window mode
 
 `Super + W` drops you into a submap where every key is bare. Arrows focus,
-`Shift + Arrow` moves, `Ctrl + Arrow` resizes, and you can hold them down because
-those binds repeat. `F` floats, `M` maximizes, `G` groups, `P` pins. `Escape`
-leaves.
+`Shift + Arrow` moves, and `Ctrl + Arrow` resizes. Each action leaves the submap;
+`Escape` leaves without acting. `F` floats, `M` maximizes, `G` groups, and `P`
+pins.
 
 This is where the layout-specific keys live too. In scrolling you get `H` and `L`
 for the previous and next column, `B` to consume a window into the current

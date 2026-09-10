@@ -1,9 +1,5 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
-#
-# color.finalize.sh - Source generated colors and apply the remaining
-# synchronous theme metadata updates.
-#
 # Subsystem inputs:
 #   selected_color_source - active palette policy
 : "${selected_color_source-}"

@@ -5,7 +5,6 @@ import sys
 import re
 import os
 
-# Add the parent hypr lib directory to path so we can import pyutils
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 import pyutils.logger as logger
@@ -27,7 +26,7 @@ def parse_json(json_data, query, skip_comments, raw_output):
             for key in keys:
                 key = key[0] or key[1]
                 if isinstance(data, list):
-                    key = int(key)  # Convert to int if accessing a list index
+                    key = int(key)
                 data = data[key]
             result = data
         if raw_output and isinstance(result, str):

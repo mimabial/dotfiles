@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
 
-# Shell completion generators for hyprshell.
-
 declare -ga HYPR_COMPLETION_BUILTINS=()
 
 completion_builtin_commands() {

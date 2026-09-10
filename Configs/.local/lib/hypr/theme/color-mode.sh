@@ -1,13 +1,4 @@
 #!/usr/bin/env bash
-# Requires bash 4+ for dynamic exec {fd}> lock descriptors.
-#
-# color-mode.sh - Color mode controller for theme/wallpaper color policy.
-#
-# Handles:
-#   - interactive menu / next / previous / explicit mode selection
-#   - selected_color_source and selected_color_mode state updates
-#   - auto-theme daemon start/stop coordination
-
 set -euo pipefail
 
 # shellcheck source=/dev/null

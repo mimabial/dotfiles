@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-# Install Steam with proper multilib support
 set -euo pipefail
 
 # shellcheck source=/dev/null

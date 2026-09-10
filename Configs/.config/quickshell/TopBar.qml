@@ -1,16 +1,12 @@
 import QtQuick
 import QtQuick.Layouts
-import Quickshell
-import Quickshell.Hyprland
-import Quickshell.Wayland
 import "modules"
 
-PanelWindow {
+BarSurface {
     id: root
-    required property var shell
     readonly property var section: shell.style.box(".modules-left")
     readonly property var layout: shell.barLayout
-    readonly property var registry: ({"menu": mod_menu, "taskbar": mod_taskbar, "mediaplayer": mod_mediaplayer, "cpu": mod_cpu, "gpu": mod_gpu, "memory": mod_memory, "disk": mod_disk, "datetime": mod_datetime, "indicators": mod_indicators, "language": mod_language, "updates": mod_updates, "converter": mod_converter, "sudoku": mod_sudoku, "workspaces": mod_workspaces, "weather": mod_weather, "submap": mod_submap, "audio": mod_audio, "bluetooth": mod_bluetooth, "vpn": mod_vpn, "wifi": mod_wifi, "volume": mod_volume, "display": mod_display, "powerprofile": mod_powerprofile, "powerbutton": mod_powerbutton, "monitor": mod_monitor, "capture": mod_capture, "notification-group": mod_notification_group, "privacy": mod_privacy, "tray": mod_tray, "connectivity": mod_connectivity, "appearance": mod_appearance, "power": mod_power})
+    readonly property var registry: ({"menu": mod_menu, "taskbar": mod_taskbar, "mediaplayer": mod_mediaplayer, "cpu": mod_cpu, "gpu": mod_gpu, "memory": mod_memory, "disk": mod_disk, "fan": mod_fan, "datetime": mod_datetime, "indicators": mod_indicators, "language": mod_language, "updates": mod_updates, "converter": mod_converter, "sudoku": mod_sudoku, "workspaces": mod_workspaces, "weather": mod_weather, "submap": mod_submap, "audio": mod_audio, "bluetooth": mod_bluetooth, "vpn": mod_vpn, "wifi": mod_wifi, "volume": mod_volume, "display": mod_display, "powerprofile": mod_powerprofile, "powerbutton": mod_powerbutton, "monitor": mod_monitor, "capture": mod_capture, "notification-group": mod_notification_group, "notification": mod_notification, "tasks": mod_tasks, "privacy": mod_privacy, "tray": mod_tray, "connectivity": mod_connectivity, "appearance": mod_appearance, "power": mod_power})
     readonly property var centerModules: layout.center || []
     readonly property int centerAnchorIndex: moduleIndex(centerModules, String(layout.centerAnchor || ""))
     readonly property var centerBeforeModules: centerAnchorIndex < 0 ? [] : centerModules.slice(0, centerAnchorIndex)
@@ -23,41 +19,10 @@ PanelWindow {
         }
         return -1
     }
-    property bool active: shell.mode === "top" && !shell.userHidden
-    // only the focused monitor's instance may own a panel: two focus grabs
-    // cancel each other, which reads as the popup refusing to open
-    readonly property bool popupsAllowed: active && (!Hyprland.focusedMonitor
-        || !screen || Hyprland.focusedMonitor.name === screen.name)
+    active: shell.mode === "top" && !shell.userHidden
     anchors.left: true; anchors.right: true; anchors.top: true
     margins.top: active ? 0 : -implicitHeight
     implicitHeight: Math.max(leftRow.implicitHeight, centerFallback.implicitHeight, centerBefore.implicitHeight, centerAnchor.implicitHeight, centerAfter.implicitHeight, rightRow.implicitHeight)
-    color: shell.barColor
-    exclusionMode: active ? ExclusionMode.Auto : ExclusionMode.Ignore
-    WlrLayershell.namespace: "hypr-shell-bar"
-    WlrLayershell.layer: WlrLayer.Top
-    readonly property bool popupOpen: shell.popupName !== "" && popupsAllowed
-    property bool exclusivePhase: false
-    // a click routes focus into an xdg-popup by itself; a panel summoned by
-    // keybind does not, so prime Exclusive briefly then fall back — an
-    // exclusive surface swallows pointer events on every monitor
-    // Only the priming phase takes Exclusive. Holding it while a text field has
-    // focus pins the compositor to this surface, and the focus grab never sees the
-    // click outside, so the popup cannot be dismissed by clicking away.
-    WlrLayershell.keyboardFocus: !popupOpen ? WlrKeyboardFocus.None
-        : exclusivePhase ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
-    onPopupOpenChanged: {
-        const prime = popupOpen && shell.popupCenteredName === shell.popupName
-        exclusivePhase = prime
-        shell.focusPriming = prime
-        if (prime) focusPrime.restart()
-    }
-    // the compositor focuses this surface, not the popup's own window
-    Item {
-        anchors.fill: parent; focus: true
-        Keys.onPressed: event => { if (root.shell.popupCard) event.accepted = root.shell.popupCard.handleKey(event) }
-    }
-    Timer { id: focusPrime; interval: 150; onTriggered: { root.exclusivePhase = false; root.shell.focusPriming = false } }
-
     Component { id: mod_menu; StartButton { shell: root.shell; popupEnabled: root.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_taskbar; WindowList { shell: root.shell; allWorkspaces: true; framed: true; Layout.fillHeight: true } }
     Component { id: mod_mediaplayer; MediaButton { shell: root.shell; Layout.fillHeight: true; popupEnabled: root.popupsAllowed } }
@@ -65,6 +30,7 @@ PanelWindow {
     Component { id: mod_gpu; GpuReadout { shell: root.shell; popupsAllowed: root.popupsAllowed; vertical: false; Layout.fillHeight: true } }
     Component { id: mod_memory; MemoryReadout { shell: root.shell; popupsAllowed: root.popupsAllowed; vertical: false; Layout.fillHeight: true } }
     Component { id: mod_disk; DiskReadout { shell: root.shell; popupsAllowed: root.popupsAllowed; vertical: false; Layout.fillHeight: true } }
+    Component { id: mod_fan; FanReadout { shell: root.shell; popupsAllowed: root.popupsAllowed; vertical: false; Layout.fillHeight: true } }
     Component { id: mod_datetime; ClockButton { shell: root.shell; kind: "top"; css: "clock.time-alt"; Layout.fillHeight: true; textColor: root.shell.accent; popupEnabled: root.popupsAllowed } }
     Component { id: mod_indicators; IndicatorsGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_language; LanguageButton { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillHeight: true } }
@@ -98,6 +64,8 @@ PanelWindow {
         shell: root.shell; popupsAllowed: root.popupsAllowed
         vertical: false; reverse: true; Layout.fillHeight: true
     } }
+    Component { id: mod_notification; NotificationButton { shell: root.shell; popupEnabled: root.popupsAllowed; Layout.fillHeight: true } }
+    Component { id: mod_tasks; TasksButton { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_privacy; PrivacyButton { shell: root.shell; Layout.fillHeight: true } }
     Component { id: mod_tray; Tray { shell: root.shell; framed: true; popupsAllowed: root.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_connectivity; ConnectivityGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; vertical: false; Layout.fillHeight: true } }

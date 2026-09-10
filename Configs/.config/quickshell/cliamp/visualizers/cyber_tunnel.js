@@ -34,7 +34,6 @@ function render(ctx, d) {
   var numSides = 8
   var rotBase = frame * 0.005
 
-  // 1. Draw Longitudinal Rails to Center Vanishing Point (Bounded safely inside box)
   ctx.lineWidth = 0.8
   ctx.strokeStyle = H.rgba(d.accent, 0.20)
 
@@ -49,7 +48,6 @@ function render(ctx, d) {
     ctx.stroke()
   }
 
-  // 2. Draw Moving Concentric Perspective Rings
   for (var i = 0; i < ringCount; i++) {
     var z = ((i / ringCount) + st.tunnelDepth) % 1.0
     var scale = Math.pow(z, 2.0)
@@ -80,7 +78,6 @@ function render(ctx, d) {
     ctx.stroke()
   }
 
-  // 3. Central Event Horizon Core
   var coreR = Math.max(2.5, (h * 0.06) * (1.0 + bass * 0.6 + beatDrop * 0.4))
   var coreGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreR * 2.0)
   coreGrad.addColorStop(0, H.rgba(d.foreground, (0.80 + beatDrop * 0.2).toFixed(2)))

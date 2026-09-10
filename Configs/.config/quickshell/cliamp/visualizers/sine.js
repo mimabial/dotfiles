@@ -14,7 +14,6 @@ function render(ctx, d) {
   var totalEnergy = bass * 0.5 + mids * 0.35 + highs * 0.15
   var beatDrop = d.beatDrop || 0
 
-  // Serene flat line when quiet / paused
   if (!isPlaying || totalEnergy < 0.005) {
     ctx.strokeStyle = H.rgba(d.dim, 0.35)
     ctx.lineWidth = 1.0
@@ -29,7 +28,6 @@ function render(ctx, d) {
   var t = frame * 0.08
 
   // Standing Wave Harmonic Series: y(x,t) = sum( A_n * sin(n * pi * x / w) * cos(omega_n * t) )
-  // This physically vibrates and resonates vertically in place like a real acoustic string/membrane!
   var harmonics = [
     { n: 1, omega: 1.0, amp: Math.min(maxSafe, (h * 0.06) + bass * (h * 0.26) + beatDrop * (h * 0.08)) },
     { n: 2, omega: 1.8, amp: Math.min(maxSafe * 0.75, (h * 0.04) + mids * (h * 0.20)) },
@@ -37,7 +35,6 @@ function render(ctx, d) {
     { n: 4, omega: 3.9, amp: Math.min(maxSafe * 0.35, (h * 0.02) + highs * (h * 0.10)) }
   ]
 
-  // 1. Draw Phosphor Ambient Glow Underfill
   ctx.beginPath()
   ctx.moveTo(0, midY)
   for (var x = 0; x <= w; x += 2) {
@@ -54,7 +51,6 @@ function render(ctx, d) {
   ctx.fillStyle = H.rgba(d.accent, 0.12)
   ctx.fill()
 
-  // 2. Secondary Harmonic String (Upper Octave Vibration)
   ctx.lineWidth = 1.2
   ctx.strokeStyle = H.rgba(d.accent, 0.45)
   ctx.beginPath()
@@ -68,7 +64,6 @@ function render(ctx, d) {
   }
   ctx.stroke()
 
-  // 3. Primary Resonating String (Composite Standing Wave)
   ctx.lineWidth = 2.2
   ctx.strokeStyle = H.rgba(d.accent, 0.95)
   ctx.beginPath()
@@ -85,7 +80,6 @@ function render(ctx, d) {
   }
   ctx.stroke()
 
-  // 4. Glowing centerline trace
   ctx.lineWidth = 1.0
   ctx.strokeStyle = H.rgba(d.foreground, 0.90)
   ctx.beginPath()

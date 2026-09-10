@@ -1,13 +1,8 @@
-# FZF wrapper functions for enhanced file/directory navigation
-# Dependencies: fzf (required), ripgrep/bat (optional for enhanced features)
 # NOTE: _fuzzy_search_cmd_history requires fzf shell integration
-#       Source fzf's shell setup: source /usr/share/fzf/key-bindings.zsh (or similar)
 
-# Track if we've already warned about missing dependencies
 typeset -g _FZF_WARNED_RG=0
 typeset -g _FZF_WARNED_BAT=0
 
-# Shared exclusion patterns for all search functions
 typeset -ga _FZF_EXCLUDE_DIRS=(
     'BraveSoftware'
     'History'
@@ -56,7 +51,6 @@ typeset -ga _FZF_EXCLUDE_FILES=(
     '.zsh_history'
 )
 
-# Exclude symlinks that point back into the current tree to avoid duplicates.
 typeset -g _FZF_SYMLINK_EXCLUDE_PWD=""
 typeset -ga _FZF_SYMLINK_EXCLUDE_PATHS=()
 typeset -g _FZF_SYMLINK_EXCLUDE_RG=""
@@ -139,16 +133,10 @@ _refresh_symlink_excludes() {
         return
     fi
 
-    local has_symlink
-    has_symlink=$(find "$root" -maxdepth "$maxdepth" -type l -print -quit 2>/dev/null)
-    if [[ -z "$has_symlink" ]]; then
-        return
-    fi
-
     local sym target rel
     while IFS= read -r sym; do
         target=$(readlink -f -- "$sym" 2>/dev/null) || continue
-        if [[ "$target" == "$root"* ]]; then
+        if [[ "$target" == "$root" || "$target" == "$root/"* ]]; then
             rel="${sym#$root/}"
             [[ "$rel" == "$sym" ]] && continue
             _FZF_SYMLINK_EXCLUDE_PATHS+=("$rel")
@@ -218,19 +206,6 @@ _parse_fzf_scope_args() {
     _FZF_SEARCH_DEPTH="$depth"
 }
 
-# Generate find exclusion arguments: returns "-name .git -prune -o -name node_modules -prune -o ..."
-_get_find_excludes() {
-    local result=""
-    for dir in "${_FZF_EXCLUDE_DIRS[@]}"; do
-        result+=" -name $dir -prune -o"
-    done
-    for file in "${_FZF_EXCLUDE_FILES[@]}"; do
-        result+=" ! -name '$file'"
-    done
-    echo "$result"
-}
-
-# Generate ripgrep glob patterns: returns "--glob='!.git/' --glob='!node_modules/' ..."
 _get_rg_globs() {
     local result=""
     for dir in "${_FZF_EXCLUDE_DIRS[@]}"; do
@@ -242,7 +217,6 @@ _get_rg_globs() {
     echo "$result"
 }
 
-# Generate grep path exclusions: returns "-not -path '*/.git/*' -not -path '*/node_modules/*' ..."
 _get_grep_excludes() {
     local result=""
     for dir in "${_FZF_EXCLUDE_DIRS[@]}"; do
@@ -255,31 +229,11 @@ _get_grep_excludes() {
 }
 
 _check_dependencies() {
-    local missing=()
-    
-    if ! command -v "fzf" &>/dev/null; then
-        echo "ERROR: fzf is required but not installed"
-        echo "Install: brew install fzf  OR  apt install fzf"
-        return 1
-    fi
-    
-    if ! command -v "rg" &>/dev/null && [[ $_FZF_WARNED_RG -eq 0 ]]; then
-        missing+=("ripgrep (rg)")
-        _FZF_WARNED_RG=1
-    fi
-    
-    if ! command -v "bat" &>/dev/null && [[ $_FZF_WARNED_BAT -eq 0 ]]; then
-        missing+=("bat")
-        _FZF_WARNED_BAT=1
-    fi
-    
-    if [[ ${#missing[@]} -gt 0 ]]; then
-        echo "⚠  Optional dependencies missing: ${(j:, :)missing}"
-        echo "   Install for better experience:"
-        [[ " ${missing[@]} " =~ " ripgrep (rg) " ]] && echo "   • ripgrep: brew install ripgrep  OR  apt install ripgrep"
-        [[ " ${missing[@]} " =~ " bat " ]] && echo "   • bat: brew install bat  OR  apt install bat"
-        echo ""
-    fi
+    (( $+commands[fzf] )) || { print -u2 'fzf is not installed'; return 1; }
+    local -a missing
+    (( $+commands[rg] || _FZF_WARNED_RG )) || { missing+=(rg); _FZF_WARNED_RG=1; }
+    (( $+commands[bat] || _FZF_WARNED_BAT )) || { missing+=(bat); _FZF_WARNED_BAT=1; }
+    (( ${#missing} )) && print -u2 "Optional fzf helpers missing: ${(j:, :)missing}"
 }
 
 _fuzzy_edit_search_content() {
@@ -300,7 +254,6 @@ _fuzzy_edit_search_content() {
     local fzf_preview_window="$(_fzf_preview_window_for "$fzf_mode" dynamic)"
     
     if command -v "rg" &>/dev/null; then
-        # Dynamic ripgrep search - re-runs on every keystroke
         selected_result=$(
             cd "$search_root" || exit 1
             fzf \
@@ -321,7 +274,6 @@ _fuzzy_edit_search_content() {
                 --header "Dynamic Search | Enter: Edit | Ctrl-O: View"
         )
     else
-        # Dynamic grep fallback
         selected_result=$(
             cd "$search_root" || exit 1
             fzf \
@@ -394,21 +346,16 @@ _fuzzy_change_directory() {
     local find_symlink_excludes="$_FZF_SYMLINK_EXCLUDE_FIND"
     local -a fd_symlink_excludes=("${_FZF_SYMLINK_EXCLUDE_FD[@]}")
 
-    # Build exclusion pattern for directories only (just the name tests, no -prune yet)
     local exclude_pattern=""
     for dir in "${_FZF_EXCLUDE_DIRS[@]}"; do
         exclude_pattern+=" -o -name '$dir'"
     done
-    # Remove leading " -o"
     exclude_pattern="${exclude_pattern# -o }"
 
     if [[ -n "$initial_query" ]]; then
         fzf_options+=("--query=$initial_query")
     fi
 
-    # Use find with explicit hidden directory support
-    # \( -name X -o -name Y ... \) groups all dir names to exclude
-    # -prune skips them, -o means "otherwise", -type d -print shows all other directories (including hidden)
     if command -v "fd" &>/dev/null; then
         local -a fd_args
         fd_args=(--type d --hidden --follow --color=never --max-depth "$max_depth")
@@ -550,14 +497,12 @@ _fuzzy_search_cmd_history() {
   local ret=$?
   if [ -n "$selected" ]; then
     if [[ -n "$WIDGET" ]]; then
-      # Called as ZLE widget - update current buffer
       if [[ $(__fzf_exec_awk '{print $1; exit}' <<< "$selected") =~ ^[1-9][0-9]* ]]; then
         zle vi-fetch-history -n $MATCH
       else
         LBUFFER="$selected"
       fi
     else
-      # Called as regular command - push to next prompt using print -z
       local cmd=$(echo "$selected" | sed -E 's/^[[:space:]]*[0-9]+\*?[[:space:]]+//')
       print -z "$cmd"
     fi
@@ -565,9 +510,7 @@ _fuzzy_search_cmd_history() {
   return $ret
 }
 
-# Register as ZLE widget so it can modify the command line
 zle -N _fuzzy_search_cmd_history
-# Bind to Ctrl+X R for fuzzy command history
 bindkey '^Xr' _fuzzy_search_cmd_history
 
 unalias ff fs fS fj fh fd 2>/dev/null

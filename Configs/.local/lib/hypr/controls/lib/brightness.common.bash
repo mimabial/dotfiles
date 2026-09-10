@@ -15,20 +15,11 @@ normalize_brightness_mode() {
   esac
 }
 
-brightnessctl_supported() {
-  require_cmd brightnessctl || return 1
-  brightnessctl info >/dev/null 2>&1
-}
-
-brightness_control_enabled() {
-  brightnessctl_supported
-}
-
 brightness_idle_enabled() {
   local mode
   mode="$(normalize_brightness_mode "${HYPR_IDLE_DIM:-auto}")"
   [[ "${mode}" != off ]] || return 1
-  brightnessctl_supported
+  require_cmd brightnessctl && brightnessctl -m >/dev/null 2>&1
 }
 
 brightness_unavailable_reason() {

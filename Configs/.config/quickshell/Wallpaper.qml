@@ -3,24 +3,14 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// Auto-wallpaper service: the active theme's wallpaper set, the current pick,
-// and a rotation that advances on a schedule. Ported from the omarchy plugin
-// dizziee.auto-wallpaper, whose Service.qml and Schedule.js fold into one
-// singleton here — this shell already keeps its shared services that way
-// (Media, Weather, Backlight), and a singleton is built once per process, so
-// the schedule cannot run twice on a two-monitor setup the way a per-screen
-// module would.
-//
-// Catalog, current selection and apply all go through `hyprshell wallpaper`,
-// which owns the wallpaper lock, the thumbnail cache and the colour pipeline.
-// Nothing here touches a wallpaper backend directly.
+// A singleton prevents duplicate schedules on multi-monitor configurations.
+// All mutations go through the locked `hyprshell wallpaper` pipeline.
 Singleton {
     id: root
 
     readonly property string configPath: Quickshell.env("HOME") + "/.local/state/quickshell/auto-wallpaper.json"
     readonly property var intervalSteps: [5, 10, 15, 30, 45, 60, 90, 120, 180, 240, 360, 480, 720, 1440]
 
-    // ---- persisted config ---------------------------------------------------
     property bool loaded: false
     property bool enabled: true
     property int intervalMinutes: 30
@@ -32,7 +22,6 @@ Singleton {
     property string cycleTheme: ""
     readonly property bool shuffle: root.mode === "shuffle"
 
-    // ---- live state ---------------------------------------------------------
     property string themeName: ""
     // set once the theme has actually been read; a first sighting is startup,
     // not a theme change, and must not reset the schedule on every bar reload
@@ -47,7 +36,6 @@ Singleton {
     property string lastError: ""
     property string lastAction: ""
 
-    // ---- naming and labels --------------------------------------------------
     function wallpaperName(path) {
         const base = String(path || "").split("/").pop().replace(/\.[^.]+$/, "")
         if (!base) return "Unknown"
@@ -75,7 +63,6 @@ Singleton {
     // hold spaces because the theme name does ("Catppuccin Mocha")
     function fileUrl(path) { return "file://" + String(path).split("/").map(encodeURIComponent).join("/") }
 
-    // ---- config -------------------------------------------------------------
     function normalize(raw) {
         const source = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {}
         const minutes = Math.floor(Number(source.intervalMinutes))
@@ -122,7 +109,6 @@ Singleton {
         root.applyConfig(text)
     }
 
-    // ---- rotation -----------------------------------------------------------
     function shuffled(values) {
         const list = values.slice()
         for (let i = list.length - 1; i > 0; i--) {
@@ -153,8 +139,9 @@ Singleton {
             const step = at >= 0 ? (at + 1) % list.length : 0
             return {path: list[step], cycle: [], cycleIndex: 0, changed: list[step] !== root.current}
         }
-        const order = root.cycleValid(list) ? root.cycle.slice() : root.shuffled(list)
-        const at = root.cycleValid(list) ? (root.cycleIndex || 0) : (root.current ? order.indexOf(root.current) : -1)
+        const valid = root.cycleValid(list)
+        const order = valid ? root.cycle.slice() : root.shuffled(list)
+        const at = valid ? (root.cycleIndex || 0) : (root.current ? order.indexOf(root.current) : -1)
         const step = (at + 1) % order.length
         return {path: order[step], cycle: order, cycleIndex: step, changed: order[step] !== root.current}
     }
@@ -166,7 +153,6 @@ Singleton {
         return Math.ceil(Math.max(1, root.intervalMinutes * 60000 - root.elapsed()) / 60000)
     }
 
-    // ---- actions ------------------------------------------------------------
     function setEnabled(value) {
         root.save({enabled: value === true})
         if (value === true) Qt.callLater(root.applyNext)
@@ -240,8 +226,7 @@ Singleton {
         root.refresh(true)
     }
 
-    // ---- catalog ------------------------------------------------------------
-    // Cheap by default: `wallpaper json` only reads the catalog and takes no
+    // `wallpaper json` only reads the catalog and takes no
     // wallpaper lock. Thumbnail generation is deferred to a panel open, so a
     // module sitting closed in the bar costs nothing.
     function refresh(ensureThumbs) {
@@ -323,8 +308,6 @@ Singleton {
         repeat: true
         onTriggered: root.reconcile()
     }
-    // the popup itself opens through the shell's own handler:
-    //   quickshell ipc call bar popup wallpaper
     property IpcHandler ipc: IpcHandler {
         target: "wallpaper"
         function next(): void { root.applyNext() }

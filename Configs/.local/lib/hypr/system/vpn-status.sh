@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Structured VPN state and settings for the Quickshell popup.
 set -euo pipefail
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash"

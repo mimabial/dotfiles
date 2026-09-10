@@ -1,302 +1,168 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2154
-# shellcheck disable=SC1091
-#|---/ /+--------------------------------+---/ /|#
-#|--/ /-| Script to restore hyde configs |--/ /-|#
-#|/ /---+--------------------------------+/ /---|#
+
+# shellcheck disable=SC2034
+log_section=deploy
+scrDir="$(dirname "$(realpath "$0")")"
+source "${scrDir}/global_fn.sh" || exit 1
+flg_DryRun=${flg_DryRun:-0}
 
 expand_home_path() {
-    local path="$1"
-    path="${path//'${HOME}'/${HOME}}"
-    path="${path//\$HOME/${HOME}}"
-    printf '%s\n' "${path}"
+    local value="$1"
+    value="${value//'${HOME}'/${HOME}}"
+    printf '%s\n' "${value//\$HOME/${HOME}}"
 }
 
-deploy_list() {
+ensure_dir() {
+    [[ -d "$1" || "$flg_DryRun" -eq 1 ]] || mkdir -p "$1"
+}
 
-    while read -r lst; do
+dependencies_ready() {
+    local package
+    for package in $1; do
+        pkg_installed "$package" || return 1
+    done
+}
 
-        if [ "$(awk -F '|' '{print NF}' <<<"${lst}")" -ne 5 ]; then
-            continue
+apply_item() {
+    local mode="$1" parent="$2" item="$3"
+    local rel="${parent#"$HOME"}" target="${parent}/${item}"
+    local source="${CfgDir}${rel}/${item}" backup="${BkpDir}${rel}"
+
+    if [[ "$mode" == T ]]; then
+        ensure_dir "$backup"
+        if [[ ! -e "$target" ]]; then
+            print_log -y "[trash]" -b " :: " "Target missing: ${target}"
+        elif [[ "$flg_DryRun" -eq 1 ]]; then
+            print_log -y "[dry-run]" -b " :: " "Would trash ${target} --> ${backup}"
+        elif mv "$target" "$backup"; then
+            print_log -r "[trash]" -b " :: " "${target} --> ${backup}"
+        else
+            print_log -r "[error]" -b " :: " "Failed to move ${target} to ${backup}"
         fi
-        # Skip lines that start with '#' or any space followed by '#'
-        if [[ "${lst}" =~ ^[[:space:]]*# ]]; then
-            continue
+        return
+    fi
+
+    if [[ "$mode" != B && ! -e "$source" ]]; then
+        print_log -y "[skip]" -b " no source :: " "$source"
+        return
+    fi
+
+    ensure_dir "$parent"
+    if [[ ! -e "$target" ]]; then
+        if [[ "$mode" != B ]]; then
+            [[ "$flg_DryRun" -eq 1 ]] || cp -r "$source" "$parent"
+            print_log -y "[populate]" -b " :: " "${target} <-- ${source}"
         fi
+        return
+    fi
 
-        ovrWrte=$(awk -F '|' '{print $1}' <<<"${lst}")
-        bkpFlag=$(awk -F '|' '{print $2}' <<<"${lst}")
-        pth=$(awk -F '|' '{print $3}' <<<"${lst}")
-        pth="$(expand_home_path "${pth}")"
-        cfg=$(awk -F '|' '{print $4}' <<<"${lst}")
-        pkg=$(awk -F '|' '{print $5}' <<<"${lst}")
-
-        if [[ -n "${pkg// }" ]]; then
-            while read -r pkg_chk; do
-                if ! pkg_installed "${pkg_chk}"; then
-                    echo -e "\033[0;33m[skip]\033[0m ${pth}/${cfg} as dependency ${pkg_chk} is not installed..."
-                    continue 2
-                fi
-            done < <(echo "${pkg}" | xargs -n 1)
+    ensure_dir "$backup"
+    case "$mode" in
+    B)
+        [[ "$flg_DryRun" -eq 1 ]] || cp -r "$target" "$backup"
+        print_log -g "[backup]" -b " :: " "${target} --> ${backup}"
+        ;;
+    O)
+        if [[ "$flg_DryRun" -ne 1 ]]; then
+            mv "$target" "$backup"
+            cp -r "$source" "$parent"
         fi
-
-        echo "${cfg}" | xargs -n 1 | while read -r cfg_chk; do
-            if [[ -z "${pth}" ]]; then continue; fi
-            tgt="${pth/#$HOME/}"
-
-            if { [ -d "${pth}/${cfg_chk}" ] || [ -f "${pth}/${cfg_chk}" ]; } && [ "${bkpFlag}" == "Y" ]; then
-
-                if [ ! -d "${BkpDir}${tgt}" ]; then
-                    [[ ${flg_DryRun} -ne 1 ]] && mkdir -p "${BkpDir}${tgt}"
-                fi
-
-                if [ "${ovrWrte}" == "Y" ]; then
-                    [[ ${flg_DryRun} -ne 1 ]] && mv "${pth}/${cfg_chk}" "${BkpDir}${tgt}"
-                else
-
-                    [[ ${flg_DryRun} -ne 1 ]] && cp -r "${pth}/${cfg_chk}" "${BkpDir}${tgt}"
-                fi
-                echo -e "\033[0;34m[backup]\033[0m ${pth}/${cfg_chk} --> ${BkpDir}${tgt}..."
-            fi
-
-            if [ ! -d "${pth}" ]; then
-                [[ ${flg_DryRun} -ne 1 ]] && mkdir -p "${pth}"
-            fi
-
-            if [ ! -f "${pth}/${cfg_chk}" ]; then
-                [[ ${flg_DryRun} -ne 1 ]] && cp -r "${CfgDir}${tgt}/${cfg_chk}" "${pth}"
-                echo -e "\033[0;32m[restore]\033[0m ${pth} <-- ${CfgDir}${tgt}/${cfg_chk}..."
-            elif [ "${ovrWrte}" == "Y" ]; then
-                [[ ${flg_DryRun} -ne 1 ]] && cp -r "${CfgDir}${tgt}/${cfg_chk}" "${pth}"
-                echo -e "\033[0;33m[overwrite]\033[0m ${pth} <-- ${CfgDir}${tgt}/${cfg_chk}..."
-            else
-                echo -e "\033[0;33m[preserve]\033[0m Skipping ${pth}/${cfg_chk} to preserve user setting..."
-            fi
-        done
-
-    done <<<"$(cat "${CfgLst}")"
+        print_log -r "[backup + overwrite]" -b " :: " "${target} <-- ${source}"
+        ;;
+    S)
+        if [[ "$flg_DryRun" -ne 1 ]]; then
+            cp -r "$target" "$backup"
+            cp -rf "$source" "$parent"
+        fi
+        print_log -y "[backup + sync]" -b " :: " "${target} <-- ${source}"
+        ;;
+    P)
+        if [[ "$flg_DryRun" -ne 1 ]]; then
+            cp -r "$target" "$backup"
+            cp -rn "$source" "$parent"
+        fi
+        print_log -g "[backup + preserve]" -b " :: " "$target"
+        ;;
+    esac
 }
 
 deploy_psv() {
-    print_log -g "[file extension]" -b " :: " "File: ${CfgLst}"
-    while read -r lst; do
-
-        # Skip lines that do not have exactly 4 columns
-        if [ "$(awk -F '|' '{print NF}' <<<"${lst}")" -ne 4 ]; then
-            if [[ "${lst}" =~ ^\  ]]; then
-                echo ""
-                print_log -b "${lst}"
-            fi
+    local row mode parent items packages item
+    while IFS= read -r row || [[ -n "$row" ]]; do
+        if [[ "$row" != *'|'* ]]; then
+            [[ "$row" == \ * ]] && {
+                echo
+                print_log -b "$row"
+            }
             continue
         fi
-        # Skip lines that start with '#' or any space followed by '#'
-        if [[ "${lst}" =~ ^[[:space:]]*# ]]; then
+        IFS='|' read -r mode parent items packages <<<"$row"
+        [[ -n "$mode" && "$mode" != \#* ]] || continue
+        parent="$(expand_home_path "$parent")"
+        if [[ "$mode" == I ]]; then
+            print_log -r "[ignore] :: " "${parent}/${items}"
             continue
         fi
-
-        ctlFlag=$(awk -F '|' '{print $1}' <<<"${lst}")
-        pth=$(awk -F '|' '{print $2}' <<<"${lst}")
-        pth="$(expand_home_path "${pth}")"
-        cfg=$(awk -F '|' '{print $3}' <<<"${lst}")
-        pkg=$(awk -F '|' '{print $4}' <<<"${lst}")
-
-        # Check if ctlFlag is not one of the values 'O', 'R', 'B', 'S', or 'P'
-        if [[ "${ctlFlag}" = "I" ]]; then
-            print_log -r "[ignore] :: " "${pth}/${cfg}"
-            continue 2
+        [[ "$mode" == B || "$mode" == O || "$mode" == P || "$mode" == S || "$mode" == T ]] || {
+            print_log -r "[error] :: " "Unknown mode '${mode}'"
+            continue
+        }
+        if [[ -n "${packages// /}" ]] && ! dependencies_ready "$packages"; then
+            print_log -y "[skip] " -r missing -b " :: " "${parent}/${items}"
+            continue
         fi
-
-        # Start a loop that reads each line from the output of the command enclosed within the process substitution '< <(...)'
-        if [[ -n "${pkg// }" ]]; then
-            while read -r pkg_chk; do
-
-                # Call the function pkg_installed with the argument pkg_chk. If the function returns false (the package is not installed), then...
-                if ! pkg_installed "${pkg_chk}"; then
-                    # Print a message stating that the current configuration is being skipped because a dependency is not installed
-                    print_log -y "[skip] " -r "missing" -b " :: " -y "missing dependency" -g " '${pkg_chk}'" -r " --> " "${pth}/${cfg}"
-                    # Skip the rest of the current loop iteration and proceed to the next iteration
-                    continue 2
-                fi
-            done < <(echo "${pkg}" | xargs -n 1)
-        fi
-
-        # Pipe the value of cfg to xargs, which splits it into separate arguments based on spaces, and then pipe the output to a while loop
-        echo "${cfg}" | xargs -n 1 | while read -r cfg_chk; do
-
-            # Check if the variable pth is empty, if it is, skip the current iteration
-            if [[ -z "${pth}" ]]; then continue; fi
-
-            # Remove the HOME directory from the beginning of the path stored in pth and store the result in tgt
-            tgt="${pth//${HOME}/}"
-            crnt_cfg="${pth}/${cfg_chk}"
-
-            # Handle Trash Cleanup
-            if [ "${ctlFlag}" = "T" ]; then
-                # For Trash flag, act solely on the target's existence
-                [[ ! -d "${BkpDir}${tgt}" ]] && [[ ${flg_DryRun} -ne 1 ]] && mkdir -p "${BkpDir}${tgt}"
-                if [ -e "${crnt_cfg}" ]; then
-                    if [ "${flg_DryRun}" -ne 1 ]; then
-                        if mv "${crnt_cfg}" "${BkpDir}${tgt}"; then
-                            print_log -r "[trash]" -b " :: " "${crnt_cfg} --> ${BkpDir}${tgt}"
-                        else
-                            print_log -r "[error]" -b " :: " "Failed to move ${crnt_cfg} to ${BkpDir}${tgt}"
-                        fi
-                    else
-                        print_log -y "[dry-run]" -b " :: " "Would trash ${crnt_cfg} --> ${BkpDir}${tgt}"
-                    fi
-                else
-                    print_log -y "[trash]" -b " :: " "Target missing, nothing to move: ${crnt_cfg}"
-                fi
-                # Skip further processing for Trash
-                continue
-            fi
-            
-
-
-            if [ ! -e "${CfgDir}${tgt}/${cfg_chk}" ] && [ "${ctlFlag}" != "B" ]; then
-                echo "Source: ${CfgDir}${tgt}/${cfg_chk} does not exist, skipping..."
-                print_log -y "[skip]" -b "no source" "${CfgDir}${tgt}/${cfg_chk} does not exist"
-                continue
-            fi
-
-            [[ ! -d "${pth}" ]] && [[ ${flg_DryRun} -ne 1 ]] && mkdir -p "${pth}"
-
-            if [ -e "${crnt_cfg}" ]; then
-                # echo "Files exist: ${crnt_cfg}"
-                # Check if the directory specified by BkpDir and tgt exists, if it doesn't, create it
-                [[ ! -d "${BkpDir}${tgt}" ]] && [[ ${flg_DryRun} -ne 1 ]] && mkdir -p "${BkpDir}${tgt}"
-
-                case "${ctlFlag}" in
-                "B") # Backup only
-                    [ "${flg_DryRun}" -ne 1 ] && cp -r "${pth}/${cfg_chk}" "${BkpDir}${tgt}"
-                    print_log -g "[copy backup]" -b " :: " "${pth}/${cfg_chk} --> ${BkpDir}${tgt}..."
-                    ;;
-                "O") # Overwrite
-                    [ "${flg_DryRun}" -ne 1 ] && mv "${pth}/${cfg_chk}" "${BkpDir}${tgt}"
-                    [ "${flg_DryRun}" -ne 1 ] && cp -r "${CfgDir}${tgt}/${cfg_chk}" "${pth}"
-                    print_log -r "[move to backup]" " > " -r "[overwrite]" -b " :: " "${pth}" -r " <-- " "${CfgDir}${tgt}/${cfg_chk}"
-                    ;;
-                "S") # Sync
-                    [ "${flg_DryRun}" -ne 1 ] && cp -r "${pth}/${cfg_chk}" "${BkpDir}${tgt}"
-                    [ "${flg_DryRun}" -ne 1 ] && cp -rf "${CfgDir}${tgt}/${cfg_chk}" "${pth}"
-                    print_log -g "[copy to backup]" " > " -y "[sync]" -b " :: " "${pth}" -r " <--  " "${CfgDir}${tgt}/${cfg_chk}"
-                    ;;
-                "P") # Preserve
-                    [ "${flg_DryRun}" -ne 1 ] && cp -r "${pth}/${cfg_chk}" "${BkpDir}${tgt}"
-                    if [ "${flg_DryRun}" -ne 1 ] && cp -rn "${CfgDir}${tgt}/${cfg_chk}" "${pth}" 2>/dev/null; then
-                        print_log -g "[copy to backup]" " > " -y "[populate]" -b " :: " "${pth}${tgt}/${cfg_chk}"
-                    else
-                        print_log -g "[copy to backup]" " > " -y "[preserved]" -b " :: " "${pth}" + 208 " <--  " "${CfgDir}${tgt}/${cfg_chk}"
-                    fi
-                    ;;
-                esac
-            else
-                if [ "${ctlFlag}" != "B" ]; then
-                    [ "${flg_DryRun}" -ne 1 ] && cp -r "${CfgDir}${tgt}/${cfg_chk}" "${pth}"
-                    print_log -y "[*populate*]" -b " :: " "${pth}" -r " <--  " "${CfgDir}${tgt}/${cfg_chk}"
-                fi
-            fi
-
+        for item in $items; do
+            [[ -n "$parent" ]] && apply_item "$mode" "$parent" "$item"
         done
-
-    done <"${1}"
+    done <"$CfgLst"
 }
 
 hyprland_hook() {
-
-    local template_config="${CfgDir}/.config/hypr/hyprland.lua"
-    local hyprland_default_config="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprland.lua"
-    if [[ ! -f "${template_config}" ]]; then
-        print_log -r "[error] :: " "Template missing: ${template_config}"
+    local source="${CfgDir}/.config/hypr/hyprland.lua"
+    local target="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprland.lua"
+    local backup="${BkpDir}/.config/hypr"
+    [[ -f "$source" ]] || {
+        print_log -r "[error] :: " "Template missing: ${source}"
         return 1
+    }
+    [[ ! -f "$target" ]] || ! grep -Eq '^local core = require\("core"\)' "$target" || return 0
+    ensure_dir "${target%/*}"
+    ensure_dir "$backup"
+    if [[ "$flg_DryRun" -ne 1 ]]; then
+        [[ ! -f "$target" ]] || cp -f "$target" "$backup/hyprland.lua"
+        cp -f "$source" "$target"
     fi
-
-    if [[ ! -f "${hyprland_default_config}" ]]; then
-        mkdir -p "$(dirname "${hyprland_default_config}")" "${BkpDir}/.config/hypr"
-        [[ ${flg_DryRun} -ne 1 ]] && cp -f "${template_config}" "${hyprland_default_config}"
-        print_log -g "[restore] :: " "${template_config} to ${hyprland_default_config}"
-        return 0
-    fi
-
-    if grep -Eq '^local core = require\("core"\)' "${hyprland_default_config}"; then
-        return 0
-    fi
-
-    mkdir -p "$(dirname "${hyprland_default_config}")" "${BkpDir}/.config/hypr"
-    print_log -g "[hook] " -b "hyprland :: " "No recognized wrapper marker in ${hyprland_default_config}, restoring template..."
-
-    if [[ ${flg_DryRun} -ne 1 && -f "${hyprland_default_config}" ]]; then
-        cp -f "${hyprland_default_config}" "${BkpDir}/.config/hypr/hyprland.lua"
-    fi
-
-    print_log -r "[backup] :: " "${hyprland_default_config} to ${BkpDir}/.config/hypr/hyprland.lua"
-    [[ ${flg_DryRun} -ne 1 ]] && cp -f "${template_config}" "${hyprland_default_config}"
-    print_log -g "[restore] :: " "${template_config} to ${hyprland_default_config}"
+    print_log -g "[restore] :: " "${source} --> ${target}"
 }
 
-# shellcheck disable=SC2034
-log_section="deploy"
-flg_DryRun=${flg_DryRun:-0}
-
-scrDir=$(dirname "$(realpath "$0")")
-if ! source "${scrDir}/global_fn.sh"; then
-    echo "Error: unable to source global_fn.sh..."
-    exit 1
-fi
-
-[ -f "${scrDir}/restore_cfg.psv" ] && defaultLst="restore_cfg.psv"
-[ -f "${scrDir}/restore_cfg.json" ] && defaultLst="restore_cfg.json"
-[ -f "${scrDir}/${USER}-restore_cfg.psv" ] && defaultLst="$USER-restore_cfg.psv"
-
-CfgLst="${1:-"${scrDir}/${defaultLst}"}"
+default_list="${scrDir}/${USER}-restore_cfg.psv"
+[[ -f "$default_list" ]] || default_list="${scrDir}/restore_cfg.psv"
+CfgLst="${1:-$default_list}"
 CfgDir="${2:-${cloneDir}/Configs}"
 ThemeOverride="${3:-}"
-
-if [ ! -f "${CfgLst}" ] || [ ! -d "${CfgDir}" ]; then
-    echo "ERROR: '${CfgLst}' or '${CfgDir}' does not exist..."
+[[ -f "$CfgLst" && -d "$CfgDir" ]] || {
+    echo "ERROR: '${CfgLst}' or '${CfgDir}' does not exist" >&2
     exit 1
-fi
+}
 
 BkpDir="${HOME}/.config/cfg_backups/$(date +'%y%m%d_%Hh%Mm%Ss')${ThemeOverride}"
-
-if [ -d "${BkpDir}" ]; then
-    echo "ERROR: ${BkpDir} exists!"
+[[ ! -d "$BkpDir" ]] || {
+    echo "ERROR: ${BkpDir} exists" >&2
     exit 1
-else
-    [[ ${flg_DryRun} -ne 1 ]] && mkdir -p "${BkpDir}"
-fi
+}
+ensure_dir "$BkpDir"
 
-file_extension="${CfgLst##*.}"
-echo ""
-print_log -g "[file extension]" -b " :: " "${file_extension}"
-case "${file_extension}" in
-"lst")
-    deploy_list "${CfgLst}"
-    ;;
-"psv")
-    deploy_psv "${CfgLst}"
-    ;;
-json)
-    deploy_json "${CfgLst}"
-    ;;
-esac
-echo ""
-
+print_log -g "[manifest]" -b " :: " "$CfgLst"
+deploy_psv
+echo
 hyprland_hook
 
-if [ "${flg_DryRun}" -ne 1 ]; then
+if [[ "$flg_DryRun" -ne 1 ]]; then
     print_log -g "[python env]" -b " :: " "Rebuilding Hypr Python environment..."
-    if command -v hyprshell >/dev/null 2>&1; then
-        hyprshell pyinit
-    else
-        "${HOME}/.local/bin/hyprshell" pyinit
-    fi
-
-    print_log -g "[version]" -b " :: " "saving version info..."
+    "${HOME}/.local/bin/hyprshell" pyinit
+    print_log -g "[version]" -b " :: " "Saving version info..."
     "${scrDir}/version.sh" --cache || echo "Failed to save version info."
-
     state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/hypr"
-    mkdir -p "${state_dir}"
-    clone_dir=$(git rev-parse --show-toplevel 2>/dev/null || echo "${HOME}/dotfiles")
-    [[ -f ${clone_dir}/CHANGELOG.md ]] && cp -f "${clone_dir}/CHANGELOG.md" "${state_dir}/CHANGELOG.md"
+    mkdir -p "$state_dir"
+    [[ -f "${cloneDir}/CHANGELOG.md" ]] && cp -f "${cloneDir}/CHANGELOG.md" "$state_dir/CHANGELOG.md"
 fi

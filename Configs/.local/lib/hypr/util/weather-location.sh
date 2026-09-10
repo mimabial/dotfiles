@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# Persist the weather location and refetch. weather.py reads WEATHER_LOCATION
-# from staterc, so the choice survives a restart; clearing it falls back to the
-# theme coordinates or the cached city as before.
 set -euo pipefail
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash"
@@ -32,6 +29,5 @@ case "${1:-}" in
     ;;
 esac
 
-# the cache is keyed to the old place, so drop it before refetching
 rm -f "${HOME}/.cache/wttr/weather_data.json"
 WEATHER_LOCATION="$(state_get WEATHER_LOCATION)" hyprshell weather --force >/dev/null 2>&1 || true

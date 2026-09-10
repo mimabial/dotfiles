@@ -1,11 +1,4 @@
 #!/usr/bin/env bash
-#
-# file-finder.sh — Open the fzf fuzzy-edit file finder rooted at the focused terminal's CWD (falling back to $HOME).
-#
-# Usage: file-finder.sh
-#
-# Depends on: hyprshell terminal-cwd.sh, hyprshell launch/tui.sh, zsh, ${XDG_CONFIG_HOME}/zsh/functions/fzf.zsh
-#
 set -euo pipefail
 
 # shellcheck source=/dev/null

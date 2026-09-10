@@ -1,13 +1,4 @@
 #!/usr/bin/env bash
-#
-# lock-screen.sh — Lock the screen via $LOCKSCREEN under a systemd scope unit.
-#
-# Usage:
-#   lock-screen.sh [lockscreen-args...]
-#   lock-screen.sh --get          # Print configured lockscreen command
-#
-# Depends on: app2unit.sh, ${LOCKSCREEN:-hyprlock}
-#
 
 LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 # shellcheck source=/dev/null
@@ -25,8 +16,7 @@ case "${1:-}" in
     ;;
 esac
 
-#? Run the lockscreen under a systemd scope unit so an unlocked-but-still-running
-#? hyprlock process doesn't survive as a zombie.
+# Prevent an unlocked hyprlock process from surviving outside its scope.
 scope_unit=(-u "lockscreen.scope")
 
 app2unit="${HYPR_LIB_DIR}/system/app2unit.sh"

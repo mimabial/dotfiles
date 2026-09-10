@@ -1,9 +1,4 @@
 #!/usr/bin/env python3
-# Renderer: Pywal16-Gtk theme (gtk-3.0/gtk.css + gtk-4.0/gtk.css + index.theme).
-# Substitutes pywal-style {placeholders} in ~/.config/wal/templates/colors-gtk[34].css
-# against the active palette, scales border-radius to Hyprland's decoration:rounding,
-# writes the theme directly to ~/.local/share/themes/Pywal16-Gtk/.
-
 import hashlib
 import json
 import os
@@ -138,13 +133,11 @@ def main():
         out = f"/* Hyprland border radius: {radius}px */\n\n{content}"
         out_path = OUT_DIR / out_subdir / "gtk.css"
         atomic_write(out_path, out)
-        # gtk-dark.css symlink for the dark-variant lookup path
         dark_link = OUT_DIR / out_subdir / "gtk-dark.css"
         if dark_link.is_symlink() or dark_link.exists():
             dark_link.unlink()
         dark_link.symlink_to("gtk.css")
 
-    # index.theme metadata (idempotent if already correct)
     index = OUT_DIR / "index.theme"
     if not index.is_file():
         atomic_write(index, """[Desktop Entry]
@@ -163,7 +156,6 @@ ButtonLayout=close,minimize,maximize:menu
 
     cache_store(APP, h)
 
-    # Best-effort: poke xsettingsd if present
     try:
         subprocess.run(["pkill", "-HUP", "-x", "xsettingsd"], check=False,
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

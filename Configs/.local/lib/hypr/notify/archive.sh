@@ -1,14 +1,5 @@
 #!/usr/bin/env bash
-# The store behind the notification panel.
-#
-# dunst keeps 20 notifications in memory (history_length) and drops the rest,
-# and the whole ring dies with the daemon. The [notification_archive] rule in
-# dunst.conf runs `add` for every notification as it is displayed; this copies
-# it out, with any picture it carried, and keeps it until retention says
-# otherwise.
-#
-# Every subcommand prints JSON, including failures, so nothing that goes wrong
-# reaches the panel as a parse error.
+# Persistent notification store. Every command emits JSON for panel callers.
 set -euo pipefail
 
 # shellcheck source=/dev/null
@@ -48,8 +39,6 @@ archive="${store}/archive.jsonl"
 images="${store}/images"
 seen_file="${store}/seen"
 
-# Everything here is a record of what you were sent, so none of it is readable
-# by anyone else on the machine.
 ensure_store() {
   mkdir -p "${images}"
   chmod 700 "${store}" "${images}" 2>/dev/null || true
@@ -58,7 +47,6 @@ ensure_store() {
   chmod 600 "${archive}" "${seen_file}" 2>/dev/null || true
 }
 
-# The lock is taken in a subshell so a descriptor is never held past one call.
 with_lock() {
   local lock_file=""
   lock_file="$(hypr_lock_path notify_archive 2>/dev/null)" || lock_file="${store}/.lock"
@@ -70,14 +58,9 @@ with_lock() {
 }
 
 setting() { state_get "$1" "$2" 2>/dev/null || printf '%s\n' "$2"; }
-now_ms() { printf '%s' "$(($(date +%s%N) / 1000000))"; }
+now_ms() { date +%s%3N; }
 
-# dunst resolves DUNST_ICON_PATH to an absolute path either way: a themed name
-# lands under an icon theme root, a path the sender chose does not. That
-# boundary separates the sending app's icon from the picture the notification is
-# about — a screenshot, album art, a wallpaper thumbnail — and only the second is
-# worth copying, because the sender's file can move or be deleted while a themed
-# icon is package-owned and stays put.
+# Package-owned theme icons stay valid; copy only sender-owned pictures.
 is_themed_icon() {
   local path="$1" root=""
   for root in \
@@ -90,13 +73,12 @@ is_themed_icon() {
   return 1
 }
 
-# Only files that really are images come into the store, and the copy is named
-# by content so the same picture arriving twice is kept once.
 copy_image() {
-  local src="$1" mime="" ext="" hash="" dest=""
+  local src="$1" size="" mime="" ext="" hash="" dest=""
 
   [[ -f "${src}" && -r "${src}" ]] || return 1
-  (($(stat -c %s -- "${src}" 2>/dev/null || echo 0) <= 12582912)) || return 1
+  size="$(stat -c %s -- "${src}" 2>/dev/null)" || return 1
+  ((size <= 12582912)) || return 1
   mime="$(file --brief --mime-type -- "${src}" 2>/dev/null || true)"
   [[ "${mime}" == image/* ]] || return 1
 
@@ -109,14 +91,13 @@ copy_image() {
     *) ext="img" ;;
   esac
 
-  hash="$("${HYPR_HASH_COMMAND:-xxh64sum}" <"${src}" 2>/dev/null | awk '{print $1}')"
+  hash="$("${HYPR_HASH_COMMAND:-xxh64sum}" <"${src}" 2>/dev/null)"
+  hash="${hash%%[[:space:]]*}"
   [[ -n "${hash}" ]] || return 1
 
   dest="${images}/${hash}.${ext}"
   if [[ ! -f "${dest}" ]]; then
-    # A screenshot or wallpaper arrives at full size, and the panel shows it a
-    # few hundred pixels wide. Scaling on the way in is the difference between
-    # megabytes an entry and kilobytes; `>` means a small icon is left alone.
+    # Shrink large previews on ingestion; `>` leaves small images untouched.
     if [[ "${ext}" != "svg" ]] && command -v magick >/dev/null 2>&1; then
       magick "${src}" -auto-orient -resize '640x640>' -strip "${dest}" 2>/dev/null \
         || cp -- "${src}" "${dest}" 2>/dev/null || return 1
@@ -128,10 +109,6 @@ copy_image() {
   printf '%s\n' "${dest}"
 }
 
-# dunst cannot express these itself: an empty `script` in a rule is dropped
-# rather than clearing an earlier one, and its regexes are POSIX (no negative
-# lookahead), so the apps and tags dunst is told to keep out of history are
-# named here instead. Transient notifications are excluded by the rule itself.
 is_skipped() {
   local app="$1" tag="$2" entry=""
   local -a skip=()
@@ -156,6 +133,7 @@ cmd_add() {
 
   [[ -n "${summary}${body}" ]] || return 0
   is_skipped "${app}" "${tag}" && return 0
+  ensure_store
 
   if [[ -n "${source_icon}" && -f "${source_icon}" ]]; then
     if is_themed_icon "${source_icon}"; then
@@ -170,7 +148,6 @@ cmd_add() {
   [[ "${id}" =~ ^[0-9]+$ ]] || id=0
   key="${stamp}-${id}"
 
-  ensure_store
   with_lock append_entry \
     "${key}" "${stamp}" "${app}" "${summary}" "${body}" \
     "${urgency}" "${category}" "${desktop}" "${icon}" "${preview}"
@@ -187,10 +164,8 @@ append_entry() {
   prune_locked
 }
 
-# Reads all go through `fromjson?`: one malformed line is dropped rather than
-# taking the whole archive down with it.
 prune_locked() {
-  local cutoff="" keep_days="" max_items="" before="" after="" tmp=""
+  local cutoff="" keep_days="" max_items="" before="" after="" oldest="" tmp=""
 
   keep_days="$(setting NOTIFY_KEEP_DAYS 30)"
   max_items="$(setting NOTIFY_MAX_ITEMS 1000)"
@@ -199,6 +174,10 @@ prune_locked() {
   cutoff=$(($(now_ms) - keep_days * 86400000))
 
   before="$(wc -l <"${archive}" 2>/dev/null || echo 0)"
+  if ((before <= max_items)); then
+    oldest="$(jq -Rnr 'first(inputs | fromjson? | .ts) // 0' <"${archive}")"
+    [[ "${oldest}" =~ ^[0-9]+$ ]] && ((oldest >= cutoff)) && return 0
+  fi
   tmp="${archive}.tmp"
   jq -Rnr --argjson cutoff "${cutoff}" --argjson max "${max_items}" \
     '[inputs | fromjson? | select(.ts >= $cutoff)] | .[-$max:] | .[] | tojson' \
@@ -214,16 +193,15 @@ prune_locked() {
   return 0
 }
 
-# Pictures outlive the entry that named them otherwise; a themed icon path is
-# never inside the store, so it simply matches nothing here.
 sweep_images() {
-  local kept="" file=""
-  kept="$(jq -Rnr '[inputs | fromjson? | .icon, .preview]
-                   | .[] | select(type == "string" and . != "")' \
-    <"${archive}" | sort -u)"
+  local file=""
+  local -A kept=()
+  while IFS= read -r file; do
+    kept["${file}"]=1
+  done < <(jq -Rnr 'inputs | fromjson? | .icon, .preview | select(type == "string" and . != "")' <"${archive}")
   for file in "${images}"/*; do
     [[ -f "${file}" ]] || continue
-    grep -qxF -- "${file}" <<<"${kept}" || rm -f -- "${file}"
+    [[ -v 'kept[$file]' ]] || rm -f -- "${file}"
   done
 }
 
@@ -295,6 +273,16 @@ cmd_unread() {
       '[inputs | fromjson? | select(.ts > $seen)] | length' <"${archive}")"
 }
 
+cmd_snapshot() {
+  local limit="${1:-200}" seen=""
+  [[ "${limit}" =~ ^[0-9]+$ ]] || limit=200
+  ensure_store
+  seen="$(read_seen)"
+  jq -Rcn --argjson limit "${limit}" --argjson seen "${seen}" \
+    '[inputs | fromjson?] | {seen: $seen, unread: ([.[] | select(.ts > $seen)] | length), entries: (reverse | .[:$limit])}' \
+    <"${archive}" 2>/dev/null || printf '{"seen":0,"unread":0,"entries":[]}\n'
+}
+
 case "${1:-}" in
   add)
     shift
@@ -319,6 +307,10 @@ case "${1:-}" in
   unread)
     shift
     cmd_unread
+    ;;
+  snapshot)
+    shift
+    cmd_snapshot "${1:-200}"
     ;;
   prune)
     shift

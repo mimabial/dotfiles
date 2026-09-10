@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Where .lrc files live. Sourced by the rmpc fetch hook and mirrored in Python
 # by lyrics_paths.py.
 #

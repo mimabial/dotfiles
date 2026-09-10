@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-#|---/ /+-------------------------------------+---/ /|#
-#|--/ /-| Script to apply pre install configs |--/ /-|#
-#|/ /---+-------------------------------------+/ /---|#
 
 scrDir=$(dirname "$(realpath "$0")")
 # shellcheck disable=SC1091
@@ -12,7 +9,6 @@ fi
 
 flg_DryRun=${flg_DryRun:-0}
 
-# bootloader selection
 use_limine=false
 if [[ "${USE_LIMINE:-}" == "true" ]]; then
     use_limine=true
@@ -24,7 +20,6 @@ elif pkg_installed limine; then
     use_limine=true
 fi
 
-# grub
 if [ "${use_limine}" = true ]; then
     print_log -sec "bootloader" -stat "skip" "limine selected; skipping grub/systemd-boot tweaks..."
 elif pkg_installed grub && [ -f /boot/grub/grub.cfg ]; then
@@ -34,9 +29,8 @@ elif pkg_installed grub && [ -f /boot/grub/grub.cfg ]; then
         [ "${flg_DryRun}" -eq 1 ] || sudo cp /etc/default/grub /etc/default/grub.hyde.bkp
         [ "${flg_DryRun}" -eq 1 ] || sudo cp /boot/grub/grub.cfg /boot/grub/grub.hyde.bkp
 
-        # Only if the nvidia installation doesn't skip
         if nvidia_detect; then
-            if [ ${flg_Nvidia} -eq 1 ]; then
+            if [ "${flg_Nvidia}" -eq 1 ]; then
                 print_log -g "[bootloader] " -b "configure :: " "nvidia detected, adding nvidia_drm.modeset=1 to boot option..."
                 gcld=$(grep "^GRUB_CMDLINE_LINUX_DEFAULT=" "/etc/default/grub" | cut -d'"' -f2 | sed 's/\b nvidia_drm.modeset=.\b//g')
                 [ "${flg_DryRun}" -eq 1 ] || sudo sed -i "/^GRUB_CMDLINE_LINUX_DEFAULT=/c\GRUB_CMDLINE_LINUX_DEFAULT=\"${gcld} nvidia_drm.modeset=1\"" /etc/default/grub
@@ -79,7 +73,6 @@ elif pkg_installed grub && [ -f /boot/grub/grub.cfg ]; then
     fi
 fi
 
-# systemd-boot
 if [ "${use_limine}" != true ] && pkg_installed systemd && nvidia_detect && [ "$(bootctl status 2>/dev/null | awk '{if ($1 == "Product:") print $2}')" == "systemd-boot" ]; then
     print_log -sec "bootloader" -stat "detected" "systemd-boot"
 
@@ -96,8 +89,6 @@ if [ "${use_limine}" != true ] && pkg_installed systemd && nvidia_detect && [ "$
         print_log -y "[bootloader] " -stat "skipped" "systemd-boot is already configured..."
     fi
 fi
-
-# pacman
 
 if [ -f /etc/pacman.conf ] && [ ! -f /etc/pacman.conf.hyde.bkp ]; then
     print_log -g "[PACMAN] " -b "modify :: " "adding extra spice to pacman..."

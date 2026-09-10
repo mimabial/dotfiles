@@ -1,14 +1,8 @@
 #!/usr/bin/env bash
-#
-# places.sh — Look a place up by name, for the clock panel's location field.
-#
-# Usage: places.sh <query>
-#
 # Sends the query to Photon (photon.komoot.io), an OpenStreetMap geocoder built
 # for type-ahead and needing no API key. Anything typed into the location field
 # therefore leaves the machine. Set CALENDAR_PLACES=0 to turn the lookup off;
 # the panel then falls back to the locations already used in your calendars.
-#
 set -euo pipefail
 
 query="${1:-}"

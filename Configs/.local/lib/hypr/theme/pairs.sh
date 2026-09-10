@@ -1,14 +1,6 @@
 #!/usr/bin/env bash
-#
-# theme/pairs.sh — light/dark theme polarity + pairing resolver.
-#
-# Sourceable library (defines theme_polarity/theme_pair_for) and CLI:
-#   hyprshell theme/pairs --polarity <theme>
-#   hyprshell theme/pairs --pair-for <theme> <dark|light>
-#
 # Polarity comes from each theme's $COLOR_SCHEME (prefer-light => light, else
 # dark). Pairs and defaults come from themes/theme-pairs.conf.
-#
 # No top-level `set` on purpose: this file is sourced into scripts that own
 # their own shell options.
 

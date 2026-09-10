@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-# Caffeine/keep-awake status provider for Quickshell.
-
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -9,27 +7,14 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${script_dir}/../session/idle.state.sh"
 
 manual_on=0
-audio_on=0
 audio_enabled=1
-
-if idle_manual_enabled; then
-  manual_on=1
-fi
-
-if ! idle_audio_enabled; then
-  audio_enabled=0
-fi
-
 audio_playing=0
-if command -v playerctl >/dev/null 2>&1; then
-  if playerctl -a status 2>/dev/null | grep -q '^Playing$'; then
-    audio_playing=1
-  fi
+idle_manual_enabled && manual_on=1
+idle_audio_enabled || audio_enabled=0
+if command -v playerctl >/dev/null 2>&1 && playerctl -a status 2>/dev/null | grep -q '^Playing$'; then
+  audio_playing=1
 fi
-
-if [[ "${audio_enabled}" -eq 1 && "${audio_playing}" -eq 1 ]]; then
-  audio_on=1
-fi
+audio_on=$((audio_enabled && audio_playing))
 
 if [[ "${manual_on}" -eq 1 || "${audio_on}" -eq 1 ]]; then
   icon="\udb80\udd76"
@@ -45,62 +30,32 @@ else
   alt_text="deactivated"
 fi
 
-if [[ "${manual_on}" -eq 1 ]]; then
-  manual_label="On"
-else
-  manual_label="Off"
+manual_labels=("Off" "On")
+manual_label=${manual_labels[manual_on]}
+audio_label=Idle
+((audio_on)) && audio_label=Playing
+((audio_enabled)) || audio_label=Disabled
+audio_status_label=Idle
+if ((audio_playing)); then
+  audio_status_label=Playing
+  ((audio_enabled)) || audio_status_label="Playing (ignored)"
 fi
 
-if [[ "${audio_on}" -eq 1 ]]; then
-  audio_label="Playing"
-else
-  audio_label="Idle"
-  if [[ "${audio_enabled}" -eq 0 ]]; then
-    audio_label="Disabled"
-  fi
-fi
-
-audio_status_label="Idle"
-if [[ "${audio_playing}" -eq 1 ]]; then
-  audio_status_label="Playing"
-  if [[ "${audio_enabled}" -eq 0 ]]; then
-    audio_status_label="Playing (ignored)"
-  fi
-fi
-
-reasons=()
-if [[ "${manual_on}" -eq 1 ]]; then
-  reasons+=("Manual")
-fi
-if [[ "${audio_on}" -eq 1 ]]; then
-  reasons+=("Audio")
-fi
-if [[ "${#reasons[@]}" -gt 0 ]]; then
-  reason_label=""
-  for reason in "${reasons[@]}"; do
-    if [[ -n "${reason_label}" ]]; then
-      reason_label="${reason_label}, "
-    fi
-    reason_label="${reason_label}${reason}"
-  done
-else
-  reason_label="None"
-fi
+case "${manual_on}${audio_on}" in
+  10) reason_label=Manual ;;
+  01) reason_label=Audio ;;
+  11) reason_label="Manual, Audio" ;;
+  *) reason_label=None ;;
+esac
 
 class_extra=""
-if [[ "${manual_on}" -eq 1 ]]; then
-  class_extra="${class_extra} manual"
-fi
-if [[ "${audio_on}" -eq 1 ]]; then
-  class_extra="${class_extra} audio"
-fi
+((manual_on)) && class_extra+=" manual"
+((audio_on)) && class_extra+=" audio"
 
 tooltip="<span foreground='${header_color}'>${icon} ${header_text}</span>\nManual: ${manual_label}\nAudio Toggle: ${audio_label}\nAudio Status: ${audio_status_label}\nReason: ${reason_label}"
 
-# The extra flags carry popup state alongside the button presentation.
+bools=(false true)
 printf '{"text": "%s", "tooltip": "%s", "class": "%s%s", "alt": "%s", "manual": %s, "audioEnabled": %s, "playing": %s, "reason": "%s"}' \
   "${icon}" "${tooltip}" "${class_name}" "${class_extra}" "${alt_text}" \
-  "$([[ ${manual_on} -eq 1 ]] && echo true || echo false)" \
-  "$([[ ${audio_enabled} -eq 1 ]] && echo true || echo false)" \
-  "$([[ ${audio_playing} -eq 1 ]] && echo true || echo false)" \
+  "${bools[manual_on]}" "${bools[audio_enabled]}" "${bools[audio_playing]}" \
   "${reason_label}"

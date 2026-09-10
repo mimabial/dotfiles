@@ -1,8 +1,0 @@
-{
-  "clock#datetime-winbar": {
-    "justify": "center",
-    "format": "{:%H:%M\n%d|%m}",
-    "tooltip-format": "<span>{calendar}</span>",
-    "interval": 60
-  }
-}

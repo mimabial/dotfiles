@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-#|---/ /+--------------------------------------+---/ /|#
-#|--/ /-| Script to apply post install configs |--/ /-|#
-#|/ /---+--------------------------------------+/ /---|#
 
 scrDir=$(dirname "$(realpath "$0")")
 # shellcheck disable=SC1091
@@ -13,7 +10,6 @@ fi
 cloneDir="${cloneDir:-$CLONE_DIR}"
 flg_DryRun=${flg_DryRun:-0}
 
-# dolphin
 if pkg_installed dolphin && pkg_installed xdg-utils; then
     print_log -c "[FILEMANAGER] " -b "detected :: " "dolphin"
     xdg-mime default org.kde.dolphin.desktop inode/directory
@@ -24,11 +20,9 @@ else
     print_log -y "[FILEMANAGER]" -b " :: " "Setting $(xdg-mime query default "inode/directory") as default file explorer..."
 fi
 
-# shell
 "${scrDir}/restore_shl.sh"
 
-# flatpak
-if ! pkg_installed flatpak; then
+if pkg_installed flatpak; then
     echo ""
     print_log -g "[FLATPAK]" -b " list :: " "flatpak application"
     awk -F '#' '$1 != "" {print "["++count"]", $1}' "${scrDir}/extra/custom_flat.lst"
@@ -37,11 +31,11 @@ if ! pkg_installed flatpak; then
 
     if [ "${fpkopt}" = "y" ]; then
         print_log -g "[FLATPAK]" -b " install :: " "flatpaks"
-        [ ${flg_DryRun} -eq 1 ] || "${scrDir}/extra/install_fpk.sh"
+        [ "${flg_DryRun}" -eq 1 ] || "${scrDir}/extra/install_fpk.sh"
     else
         print_log -y "[FLATPAK]" -b " skip :: " "flatpak installation"
     fi
 
 else
-    print_log -y "[FLATPAK]" -b " :: " "flatpak is already installed"
+    print_log -y "[FLATPAK]" -b " :: " "flatpak is not installed; skipping apps"
 fi

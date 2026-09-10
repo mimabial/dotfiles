@@ -1,5 +1,0 @@
-@import "./alt.css";
-
-window#waybar {
-  background: alpha(@bg, 0.4);
-}

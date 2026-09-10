@@ -3,14 +3,12 @@ import QtQuick.Controls
 import qs.Commons
 import qs.Ui
 
-// Visualizer style selector with instant categorized picking
 BorderSurface {
   id: root
   property var p  // Panel root
   property string selectedCategory: "all"
 
   readonly property var allModes: [
-    // Classic & VU
     { id: "bars", name: "Bars", category: "classic", icon: "\uf080" },
     { id: "classic_led", name: "Classic LED", category: "classic", icon: "\uf111" },
     { id: "peaks", name: "Peaks", category: "classic", icon: "\uf012" },
@@ -19,7 +17,6 @@ BorderSurface {
     { id: "correlation", name: "Correlation", category: "classic", icon: "\uf07e" },
     { id: "ascii", name: "ASCII", category: "classic", icon: "\uf121" },
 
-    // Waves & Scopes
     { id: "siriwave", name: "Siri Wave", category: "wave", icon: "\uf179" },
     { id: "soundcloud_wave", name: "SoundCloud Wave", category: "wave", icon: "\uf1be" },
     { id: "telegram_wave", name: "Telegram Wave", category: "wave", icon: "\uf130" },
@@ -31,19 +28,16 @@ BorderSurface {
     { id: "sine", name: "Sine Wave", category: "wave", icon: "\uf1d8" },
     { id: "mirror", name: "Mirror", category: "wave", icon: "\uf042" },
 
-    // Synth & Retro
     { id: "retro", name: "Retro Synth", category: "retro", icon: "\uf185" },
     { id: "matrix", name: "Matrix", category: "retro", icon: "\uf108" },
     { id: "terrain", name: "Terrain", category: "retro", icon: "\uf06e" },
     { id: "binary", name: "Binary", category: "retro", icon: "\uf120" },
     { id: "mosaic", name: "Mosaic", category: "retro", icon: "\uf009" },
 
-    // Particles & Nature
     { id: "butterfly", name: "Butterfly", category: "particle", icon: "\uf1d8" },
     { id: "scatter", name: "Scatter", category: "particle", icon: "\uf005" },
     { id: "rain", name: "Rain", category: "particle", icon: "\uf0e9" },
 
-    // 3D & Vector
     { id: "plasma", name: "Liquid Plasma (2D)", category: "3d", icon: "\uf043" },
     { id: "osc_warp", name: "Oscilloscope Warp", category: "3d", icon: "\uf1fe" },
     { id: "crt_scanline", name: "CRT Radar Scope", category: "3d", icon: "\uf26c" },
@@ -70,7 +64,6 @@ BorderSurface {
     anchors.margins: Style.space(8)
     spacing: Style.space(6)
 
-    // Header with title and close button
     Row {
       width: parent.width
       spacing: Style.space(6)
@@ -163,7 +156,6 @@ BorderSurface {
       }
     }
 
-    // Category Tabs
     Row {
       width: parent.width
       spacing: Style.space(4)
@@ -204,7 +196,6 @@ BorderSurface {
       }
     }
 
-    // Modes Grid / Flow inside Flickable
     Flickable {
       width: parent.width
       height: parent.height - Style.space(46)

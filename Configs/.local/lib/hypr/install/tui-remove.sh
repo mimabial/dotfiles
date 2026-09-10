@@ -32,7 +32,6 @@ if [ "$#" -eq 0 ]; then
     exit 1
   fi
 else
-  # Use array to preserve spaces in app names
   APP_NAMES=("$@")
 fi
 

@@ -7,7 +7,20 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import cliamp_ctl as cliamp
 
 
-class QueueMetadataTests(unittest.TestCase):
+class CliampTests(unittest.TestCase):
+    @patch.object(cliamp, "read_now_playing", return_value={"title": "Track", "artist": "Artist", "url": "", "pos": 12})
+    @patch.object(cliamp, "reconcile_queue", return_value=[])
+    @patch.object(cliamp, "is_mpv_running", return_value=True)
+    @patch.object(cliamp, "send_mpv_cmds")
+    def test_status_batches_properties(self, send, _running, _queue, _playing):
+        send.return_value = [{"data": value} for value in (12, 120, False, "Track", 80, 1, False)]
+
+        status = cliamp.get_status()
+
+        self.assertEqual(status["state"], "playing")
+        send.assert_called_once_with([["get_property", name] for name in
+            ("time-pos", "duration", "pause", "media-title", "volume", "speed", "idle-active")])
+
     @patch.object(cliamp, "play_next_in_queue", return_value={"success": True})
     @patch.object(cliamp, "reconcile_queue", return_value=[{"url": "/music/next.opus"}])
     @patch.object(cliamp, "send_mpv_cmd", side_effect=[{"data": False}, {"data": True}])

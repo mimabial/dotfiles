@@ -6,6 +6,8 @@ StackedReadout {
     property bool popupsAllowed: true
     css: "fanspeedinfo"
     command: ["hyprshell", "sysinfo/fanspeedinfo"]; interval: 10000
+    useAlt: !root.vertical
+    tooltip: root.vertical ? root.output.tooltip || "" : ""
     textColor: root.shell.role("c7", root.shell.foreground)
     onClicked: button => {
         if (button !== Qt.RightButton) return root.shell.togglePopup("fan")

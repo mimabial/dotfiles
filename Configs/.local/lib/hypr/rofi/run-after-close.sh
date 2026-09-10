@@ -1,9 +1,4 @@
 #!/usr/bin/env bash
-#
-# run-after-close.sh - Close rofi before running a command.
-#
-# Usage: run-after-close.sh -- <command> [args...]
-
 set -euo pipefail
 
 ROFI_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"

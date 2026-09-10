@@ -65,6 +65,7 @@ rofi_picker_run_indexed() {
   local data_file="$2"
   shift 2
   local selection_index=""
+  local rofi_exit=0
 
   # DATA_FILE holds "glyph<TAB>label" rows. Collapse each to one display column
   # (1:1 per-line), let rofi return a 0-based index, then map it back to the
@@ -85,15 +86,16 @@ rofi_picker_run_indexed() {
       {print $1 (l == "" ? "" : " " l)}
     ' "${data_file}" |
       rofi -dmenu -format 'i' "$@"
-  )"
+  )" || rofi_exit=$?
 
   if [[ -z "${selection_index}" ]]; then
     printf -v "${out_line_var}" '%s' ""
-    return
+    return "${rofi_exit}"
   fi
 
   printf -v "${out_line_var}" '%s' \
     "$(rofi_picker_index_to_line "${data_file}" "${selection_index}")"
+  return "${rofi_exit}"
 }
 
 rofi_picker_ensure_data_file() {

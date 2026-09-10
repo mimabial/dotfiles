@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-#|---/ /+----------------------------------+---/ /|#
-#|--/ /-| Bootloader install (Limine)     |--/ /-|#
-#|/ /---+----------------------------------+/ /---|#
 
 scrDir=$(dirname "$(realpath "$0")")
 # shellcheck disable=SC1091
@@ -56,7 +53,6 @@ if [ "${uefi}" = true ]; then
     ensure_pkg efibootmgr
 fi
 
-# Detect ESP mountpoint (prefer /efi, then /boot/efi, then /boot)
 esp_mount=""
 for cand in /efi /boot/efi /boot; do
     if findmnt -no TARGET "${cand}" >/dev/null 2>&1; then
@@ -145,7 +141,6 @@ else
     config_path="${boot_limine_path}/limine.conf"
 fi
 
-# Pacman hook to redeploy limine on upgrade
 hook_contents="[Trigger]
 Operation = Install
 Operation = Upgrade
@@ -164,7 +159,6 @@ else
     print_log -y "[dry-run] " -b "hook" "/etc/pacman.d/hooks/99-limine.hook"
 fi
 
-# Build limine.conf
 kernel_params=$(cat /proc/cmdline | sed -E 's/(^| )BOOT_IMAGE=[^ ]+//g' | xargs || true)
 
 kernels=()
@@ -206,16 +200,11 @@ for img in "${kernels[@]}"; do
 
 done
 
-# Add Windows entry if detected on the ESP
 windows_efi_path="${esp_mount}/EFI/Microsoft/Boot/bootmgfw.efi"
 if [ -f "${windows_efi_path}" ]; then
     config_contents+="\n/Windows\n"
     config_contents+="    protocol: efi\n"
-    if [ "${BOOTLOADER_REMOVABLE}" = "true" ]; then
-        config_contents+="    path: boot():/EFI/Microsoft/Boot/bootmgfw.efi\n"
-    else
-        config_contents+="    path: boot():/EFI/Microsoft/Boot/bootmgfw.efi\n"
-    fi
+    config_contents+="    path: boot():/EFI/Microsoft/Boot/bootmgfw.efi\n"
 fi
 
 if [ "${flg_DryRun}" -ne 1 ]; then
