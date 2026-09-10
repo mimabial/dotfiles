@@ -34,7 +34,7 @@ BarGroup {
         ColorModePopup { anchorItem: colorButton; shell: root.shell; popupEnabled: root.popupsAllowed }
     } }
     Component { id: barLayoutSlot; BarButton {
-        id: barButton; shell: root.shell; css: "barlayout-button"; text: root.shell.barLayoutIcon(root.shell.layoutName)
+        id: barButton; shell: root.shell; css: "barlayout-button"; text: root.shell.barLayoutIcon()
         textColor: root.shell.store.barTransparent ? root.shell.accent : root.shell.foreground
         onClicked: button => button === Qt.LeftButton ? root.shell.togglePopup("barlayout")
             : button === Qt.RightButton ? root.shell.toggleBarTransparency()

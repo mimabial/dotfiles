@@ -3,174 +3,124 @@ import QtQuick
 import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
+import "StartMenuModel.js" as StartMenuModel
 
 PopupCard {
     id: root
     popupName: "start"
+    wantsKeyboard: true
     contentWidth: Style.px(620)
-    contentHeight: startColumn.implicitHeight + padding * 2
+    contentHeight: layoutColumn.implicitHeight + padding * 2
 
-    property string filter: ""
-    property int selectedIndex: 0
-    readonly property bool searching: filter.trim() !== ""
-    // everything in the column that is not the pane, so the pane can take what
-    // is left of the screen instead of pushing the card off it
-    readonly property int chromeHeight: Style.px(30) + Style.sm + padding * 2
-    readonly property int usableHeight: root.maxHeight - root.chromeHeight
-    readonly property int menuColumnHeight: placesCol.implicitHeight + paneSep.height
+    property string searchQuery: ""
+    property int selectedEntryIndex: 0
+    readonly property bool searchActive: searchQuery.trim() !== ""
+    readonly property int fixedContentHeight: Style.px(30) + Style.sm + padding * 2
+    readonly property int availableContentHeight: root.maxHeight - root.fixedContentHeight
+    readonly property int desiredBrowseHeight: placesColumn.implicitHeight + paneSeparator.height
         + Style.sm * 2 + menuPane.contentHeight
 
     // What Hyprland leaves a tiled window on this monitor, so the card lines up
     // with the windows behind it instead of picking a size of its own. The
     // monitor's reserved area, not the bar's own height: a dock or any other
     // exclusive-zone surface takes its cut of the same budget.
-    property int reservedVertical: 0
-    property int gapsVertical: 0
-    property int borderSize: 0
-    readonly property int windowHeight: root.anchorWindow && root.anchorWindow.screen
-        ? root.anchorWindow.screen.height - root.reservedVertical - root.gapsVertical
-            - root.borderSize * 2
+    property int reservedScreenHeight: 0
+    property int outerGapHeight: 0
+    property int windowBorderWidth: 0
+    readonly property int tiledWindowHeight: root.anchorWindow && root.anchorWindow.screen
+        ? root.anchorWindow.screen.height - root.reservedScreenHeight - root.outerGapHeight
+            - root.windowBorderWidth * 2
         : root.maxHeight
-    readonly property int paneHeight: Math.min(root.usableHeight,
-        Math.max(Math.round(root.usableHeight * 0.35),
-            Math.min(root.windowHeight - root.chromeHeight, root.menuColumnHeight)))
+    readonly property int contentPaneHeight: Math.min(root.availableContentHeight,
+        Math.max(Math.round(root.availableContentHeight * 0.35),
+            Math.min(root.tiledWindowHeight - root.fixedContentHeight, root.desiredBrowseHeight)))
 
-    readonly property var allApps: {
-        const out = []
-        const all = DesktopEntries.applications.values
-        for (let i = 0; i < all.length; ++i) {
-            const app = all[i]
-            if (!app || app.noDisplay) continue
-            out.push(app)
-        }
-        out.sort((a, b) => a.name.localeCompare(b.name))
-        return out
-    }
+    readonly property var availableApplications: StartMenuModel.applications(DesktopEntries.applications.values)
 
-    property var pinIds: []
-    readonly property var pinnedApps: {
+    property var pinnedApplicationIds: []
+    readonly property var pinnedApplications: {
         const out = []
-        for (const id of pinIds) {
+        for (const id of pinnedApplicationIds) {
             const app = DesktopEntries.byId(id)
             if (app) out.push(app)
         }
         return out
     }
-    function togglePin(app) {
-        const ids = pinIds.slice()
+    function toggleApplicationPin(app) {
+        const ids = pinnedApplicationIds.slice()
         const at = ids.indexOf(app.id)
         if (at >= 0) ids.splice(at, 1); else ids.push(app.id)
-        pinIds = ids
-        pinsFile.setText(JSON.stringify(ids, null, 2) + "\n")
+        pinnedApplicationIds = ids
+        pinsConfigFile.setText(JSON.stringify(ids, null, 2) + "\n")
     }
 
     // XDG-derived defaults stay live; places.json only records what the user
     // added on top and which defaults they removed
-    property var xdgPlaces: []
-    property var addedPlaces: []
-    property var hiddenPlaces: []
-    readonly property var places: {
-        const out = []
-        for (const place of xdgPlaces)
-            if (hiddenPlaces.indexOf(place.path) < 0) out.push(place)
-        return out.concat(addedPlaces)
-    }
+    property var defaultPlaces: []
+    property var customPlaces: []
+    property var hiddenDefaultPaths: []
+    readonly property var places: StartMenuModel.places(defaultPlaces, hiddenDefaultPaths, customPlaces)
 
-    property bool addingPlace: false
-    property string placeError: ""
+    property bool placeEditorOpen: false
+    property string placeEditorError: ""
 
-    function savePlaces() {
-        placesFile.setText(JSON.stringify({added: addedPlaces, hidden: hiddenPlaces}, null, 2) + "\n")
+    function savePlacePreferences() {
+        placesConfigFile.setText(JSON.stringify({added: customPlaces, hidden: hiddenDefaultPaths}, null, 2) + "\n")
     }
-    function expandPath(raw) {
-        let path = raw.replace(/^~(?=\/|$)/, shell.home)
-        if (path.indexOf("/") !== 0) path = shell.home + "/" + path
-        return path.length > 1 ? path.replace(/\/+$/, "") : path
-    }
-    function beginAddPlace() {
-        placeError = ""
+    function openPlaceEditor() {
+        placeEditorError = ""
         placeField.text = ""
-        addingPlace = true
+        placeEditorOpen = true
         placeField.forceActiveFocus()
     }
-    function cancelAddPlace() {
-        addingPlace = false
-        placeError = ""
+    function closePlaceEditor() {
+        placeEditorOpen = false
+        placeEditorError = ""
         placeField.text = ""
         searchField.forceActiveFocus()
     }
-    function commitPlace() {
+    function validatePlaceInput() {
         const raw = placeField.text.trim()
-        if (raw === "") { cancelAddPlace(); return }
-        placeCheck.candidate = expandPath(raw)
-        placeCheck.running = true
+        if (raw === "") { closePlaceEditor(); return }
+        directoryValidationProcess.candidate = StartMenuModel.resolvePath(raw, shell.home)
+        directoryValidationProcess.running = true
     }
-    function acceptPlace(path) {
-        const hides = hiddenPlaces.slice()
+    function addPlace(path) {
+        const hides = hiddenDefaultPaths.slice()
         const at = hides.indexOf(path)
         if (at >= 0) hides.splice(at, 1)
-        const adds = addedPlaces.slice()
-        if (!xdgPlaces.some(p => p.path === path) && !adds.some(p => p.path === path))
+        const adds = customPlaces.slice()
+        if (!defaultPlaces.some(p => p.path === path) && !adds.some(p => p.path === path))
             adds.push({icon: "\u{f024b}", label: path.split("/").pop() || path, path: path})
-        hiddenPlaces = hides
-        addedPlaces = adds
-        savePlaces()
-        cancelAddPlace()
+        hiddenDefaultPaths = hides
+        customPlaces = adds
+        savePlacePreferences()
+        closePlaceEditor()
     }
     // a default is remembered as hidden so it stays gone; an added one just goes
     function removePlace(place) {
-        const adds = addedPlaces.slice()
+        const adds = customPlaces.slice()
         const at = adds.findIndex(p => p.path === place.path)
-        if (at >= 0) { adds.splice(at, 1); addedPlaces = adds }
-        else if (hiddenPlaces.indexOf(place.path) < 0)
-            hiddenPlaces = hiddenPlaces.concat([place.path])
-        savePlaces()
+        if (at >= 0) { adds.splice(at, 1); customPlaces = adds }
+        else if (hiddenDefaultPaths.indexOf(place.path) < 0)
+            hiddenDefaultPaths = hiddenDefaultPaths.concat([place.path])
+        savePlacePreferences()
     }
 
     property var menus: ({})
 
-    function labelIcon(label) { const m = label.match(/^(\S+)\s{2,}/); return m ? m[1] : "" }
-    function labelText(label) { const m = label.match(/^\S+\s{2,}(.*)$/); return m ? m[1] : label }
-    function flattenMenu(menuId, prefix, out, seen) {
-        const menu = menus[menuId]
-        if (!menu || seen.indexOf(menuId) >= 0) return out
-        seen.push(menuId)
-        for (const item of menu.items) {
-            if (!item.searchable) continue
-            const path = prefix === "" ? labelText(item.label) : prefix + " › " + labelText(item.label)
-            if (item.kind === "submenu") flattenMenu(item.target, path, out, seen)
-            else out.push({icon: labelIcon(item.label), path: path, target: item.target})
-        }
-        return out
-    }
-
-    readonly property var results: {
-        if (!searching) return []
-        const needle = filter.trim().toLowerCase()
-        const out = []
-        for (const app of allApps) {
-            const hay = (app.name + " " + app.genericName + " " + app.comment + " " + app.keywords).toLowerCase()
-            if (hay.indexOf(needle) >= 0) out.push({type: "app", app: app})
-        }
-        for (const entry of flattenMenu("main", "", [], [])) {
-            if (entry.path.toLowerCase().indexOf(needle) >= 0) out.push({type: "action", entry: entry})
-        }
-        for (const place of places) {
-            if (place.label.toLowerCase().indexOf(needle) >= 0) out.push({type: "place", place: place})
-        }
-        return out
-    }
-    readonly property var cursorModel: searching ? results : allApps
+    readonly property var searchResults: StartMenuModel.search(searchQuery, availableApplications, menus, places)
+    readonly property var selectableEntries: searchActive ? searchResults : availableApplications
 
 
-    function runAction(target) {
+    function runMenuAction(target) {
         shell.run(["hyprshell", "rofi/menutree", "--action", target])
         shell.closePopup()
     }
-    function activate(item) {
+    function activateEntry(item) {
         if (!item) return
         if (item.type === "action") {
-            runAction(item.entry.target)
+            runMenuAction(item.entry.target)
             return
         }
         if (item.type === "place") {
@@ -182,43 +132,61 @@ PopupCard {
         app.execute()
         shell.closePopup()
     }
-    function secondaryAction(item) {
+    function activateSecondaryEntry(item) {
         if (!item) return
-        if (item.type === "app") togglePin(item.app)
+        if (item.type === "app") toggleApplicationPin(item.app)
         else if (item.type === "place") removePlace(item.place)
-        else activate(item)
+        else activateEntry(item)
     }
-    function moveCursor(step) {
-        if (cursorModel.length === 0) return
-        selectedIndex = Math.max(0, Math.min(cursorModel.length - 1, selectedIndex + step))
-        const list = searching ? resultList : appList
-        list.positionViewAtIndex(selectedIndex, ListView.Contain)
+    function moveSelection(step) {
+        if (selectableEntries.length === 0) return
+        selectedEntryIndex = Math.max(0, Math.min(selectableEntries.length - 1, selectedEntryIndex + step))
+        const list = searchActive ? searchResultList : applicationList
+        list.positionViewAtIndex(selectedEntryIndex, ListView.Contain)
+    }
+    function typeKey(event, field) {
+        if (event.key === Qt.Key_Backspace) { field.text = field.text.slice(0, -1); return true }
+        if (event.text && event.text.length === 1 && event.text >= " "
+                && !(event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier))) {
+            field.text += event.text; return true
+        }
+        return false
+    }
+    function handleKey(event) {
+        if (placeEditorOpen) {
+            if (event.key === Qt.Key_Escape) { closePlaceEditor(); return true }
+            if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) { validatePlaceInput(); return true }
+            return typeKey(event, placeField)
+        }
+        if (event.key === Qt.Key_Down || event.key === Qt.Key_Up) { moveSelection(event.key === Qt.Key_Down ? 1 : -1); return true }
+        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) { activateEntry(selectableEntries[selectedEntryIndex]); return true }
+        return typeKey(event, searchField) || defaultKey(event)
     }
     onOpenChanged: {
         searchField.text = ""
-        selectedIndex = 0
-        addingPlace = false
-        placeError = ""
+        selectedEntryIndex = 0
+        placeEditorOpen = false
+        placeEditorError = ""
         placeField.text = ""
         menuPane.reset()
         if (open) {
             searchField.forceActiveFocus()
-            menuProc.running = true
-            geometryProc.running = true
+            menuTreeProcess.running = true
+            windowGeometryProcess.running = true
         }
     }
-    onFilterChanged: selectedIndex = 0
+    onSearchQueryChanged: selectedEntryIndex = 0
 
-    property FileView pinsFile: FileView {
+    property FileView pinsConfigFile: FileView {
         path: root.shell.home + "/.config/quickshell/pins.json"
         watchChanges: true
         printErrors: false
         onFileChanged: reload()
         onLoaded: {
-            try { root.pinIds = JSON.parse(String(text())) } catch (error) { root.pinIds = [] }
+            try { root.pinnedApplicationIds = JSON.parse(String(text())) } catch (error) { root.pinnedApplicationIds = [] }
         }
     }
-    property FileView userDirsFile: FileView {
+    property FileView xdgUserDirectoriesFile: FileView {
         path: root.shell.home + "/.config/user-dirs.dirs"
         printErrors: false
         onLoaded: {
@@ -234,10 +202,10 @@ PopupCard {
                 if (!dir || !icons[key] || dir === root.shell.home || dir === root.shell.home + "/") continue
                 out.push({icon: icons[key], label: dir.split("/").pop(), path: dir})
             }
-            root.xdgPlaces = out
+            root.defaultPlaces = out
         }
     }
-    property FileView placesFile: FileView {
+    property FileView placesConfigFile: FileView {
         path: root.shell.home + "/.config/quickshell/places.json"
         watchChanges: true
         printErrors: false
@@ -245,21 +213,21 @@ PopupCard {
         onLoaded: {
             try {
                 const data = JSON.parse(String(text()))
-                root.addedPlaces = Array.isArray(data.added) ? data.added : []
-                root.hiddenPlaces = Array.isArray(data.hidden) ? data.hidden : []
-            } catch (error) { root.addedPlaces = []; root.hiddenPlaces = [] }
+                root.customPlaces = Array.isArray(data.added) ? data.added : []
+                root.hiddenDefaultPaths = Array.isArray(data.hidden) ? data.hidden : []
+            } catch (error) { root.customPlaces = []; root.hiddenDefaultPaths = [] }
         }
     }
-    property Process placeCheck: Process {
+    property Process directoryValidationProcess: Process {
         property string candidate: ""
         command: ["test", "-d", candidate]
-        onExited: code => code === 0 ? root.acceptPlace(candidate)
-            : root.placeError = "Not a directory"
+        onExited: code => code === 0 ? root.addPlace(candidate)
+            : root.placeEditorError = "Not a directory"
     }
     // --batch emits one blank-line separated chunk per command, and a failed one
     // is a bare non-JSON line, so each chunk is parsed on its own and dispatched
     // on its shape rather than on its position
-    function loadGeometry(raw) {
+    function applyWindowGeometry(raw) {
         const screen = root.anchorWindow ? root.anchorWindow.screen : null
         for (const chunk of String(raw).split(/\n\s*\n/)) {
             const text = chunk.trim()
@@ -270,25 +238,25 @@ PopupCard {
                 for (const monitor of data) {
                     if (!screen || monitor.name !== screen.name) continue
                     if (Array.isArray(monitor.reserved) && monitor.reserved.length === 4)
-                        root.reservedVertical = monitor.reserved[1] + monitor.reserved[3]
+                        root.reservedScreenHeight = monitor.reserved[1] + monitor.reserved[3]
                 }
             } else if (data.option === "general:gaps_out" && typeof data.css === "string") {
                 const edges = data.css.trim().split(/\s+/).map(Number)
                 if (edges.length === 4 && edges.every(n => !isNaN(n)))
-                    root.gapsVertical = edges[0] + edges[2]
+                    root.outerGapHeight = edges[0] + edges[2]
             } else if (data.option === "general:border_size" && typeof data.int === "number") {
-                root.borderSize = data.int
+                root.windowBorderWidth = data.int
             }
         }
     }
-    property Process geometryProc: Process {
+    property Process windowGeometryProcess: Process {
         running: true
         command: ["hyprctl", "-j", "--batch",
             "getoption general:gaps_out ; getoption general:border_size ; monitors"]
-        stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.loadGeometry(text) }
+        stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.applyWindowGeometry(text) }
     }
 
-    property Process menuProc: Process {
+    property Process menuTreeProcess: Process {
         command: ["hyprshell", "rofi/menutree", "--dump-json"]
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: {
             try { root.menus = JSON.parse(text) } catch (error) {}
@@ -302,32 +270,32 @@ PopupCard {
     // leave/enter gap when the pointer crosses between the two surfaces
     readonly property bool menuChainHovered: menuPane.hovered
         || flyout.hovered || flyout2.hovered || flyout3.hovered || flyout4.hovered
-    onMenuChainHoveredChanged: if (root.menuChainHovered) root.flyoutClose.stop(); else root.flyoutClose.restart()
-    property Timer flyoutClose: Timer { interval: 10; onTriggered: if (!root.menuChainHovered) menuPane.reset() }
+    onMenuChainHoveredChanged: if (root.menuChainHovered) root.menuCloseDelay.stop(); else root.menuCloseDelay.restart()
+    property Timer menuCloseDelay: Timer { interval: 10; onTriggered: if (!root.menuChainHovered) menuPane.reset() }
 
     property StartMenuFlyout flyout: StartMenuFlyout {
         shell: root.shell; menus: root.menus; openLeft: root.position === "right"
         menuId: menuPane.openSubId; anchorItem: menuPane.openRow
-        onActionTriggered: target => root.runAction(target)
+        onActionTriggered: target => root.runMenuAction(target)
     }
     property StartMenuFlyout flyout2: StartMenuFlyout {
         shell: root.shell; menus: root.menus; openLeft: root.position === "right"
         menuId: root.flyout.openSubId; anchorItem: root.flyout.openRow
-        onActionTriggered: target => root.runAction(target)
+        onActionTriggered: target => root.runMenuAction(target)
     }
     property StartMenuFlyout flyout3: StartMenuFlyout {
         shell: root.shell; menus: root.menus; openLeft: root.position === "right"
         menuId: root.flyout2.openSubId; anchorItem: root.flyout2.openRow
-        onActionTriggered: target => root.runAction(target)
+        onActionTriggered: target => root.runMenuAction(target)
     }
     property StartMenuFlyout flyout4: StartMenuFlyout {
         shell: root.shell; menus: root.menus; openLeft: root.position === "right"
         menuId: root.flyout3.openSubId; anchorItem: root.flyout3.openRow
-        onActionTriggered: target => root.runAction(target)
+        onActionTriggered: target => root.runMenuAction(target)
     }
 
     Column {
-        id: startColumn
+        id: layoutColumn
         anchors.left: parent.left; anchors.right: parent.right; spacing: Style.sm
 
         Rectangle {
@@ -353,35 +321,35 @@ PopupCard {
                 color: root.shell.foreground
                 font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
                 background: null
-                onTextChanged: root.filter = text
-                Keys.onDownPressed: root.moveCursor(1)
-                Keys.onUpPressed: root.moveCursor(-1)
-                Keys.onReturnPressed: root.activate(root.cursorModel[root.selectedIndex])
-                Keys.onEnterPressed: root.activate(root.cursorModel[root.selectedIndex])
+                onTextChanged: root.searchQuery = text
+                Keys.onDownPressed: root.moveSelection(1)
+                Keys.onUpPressed: root.moveSelection(-1)
+                Keys.onReturnPressed: root.activateEntry(root.selectableEntries[root.selectedEntryIndex])
+                Keys.onEnterPressed: root.activateEntry(root.selectableEntries[root.selectedEntryIndex])
             }
             Text {
                 id: countText
                 anchors.right: parent.right; anchors.rightMargin: Style.controlPaddingX
                 anchors.verticalCenter: parent.verticalCenter
-                text: root.cursorModel.length
+                text: root.selectableEntries.length
                 color: root.shell.alpha(root.shell.foreground, .4)
                 font.family: root.shell.fontFamily; font.pixelSize: Style.caption
             }
         }
 
         ListView {
-            id: resultList
-            visible: root.searching
-            width: parent.width; height: root.paneHeight
+            id: searchResultList
+            visible: root.searchActive
+            width: parent.width; height: root.contentPaneHeight
             clip: true; spacing: 2
-            model: root.results
+            model: root.searchResults
             readonly property bool overflowing: contentHeight > height
             ScrollBar.vertical: PopupScrollBar { shell: root.shell }
             delegate: PopupRow {
                 required property var modelData
                 required property int index
-                width: resultList.width; shell: root.shell
-                rightInset: resultList.overflowing ? Style.md : 0
+                width: searchResultList.width; shell: root.shell
+                rightInset: searchResultList.overflowing ? Style.md : 0
                 iconSource: modelData.type === "app" ? Quickshell.iconPath(modelData.app.icon, true) : ""
                 icon: modelData.type === "action" ? modelData.entry.icon
                     : modelData.type === "place" ? modelData.place.icon : ""
@@ -389,15 +357,15 @@ PopupCard {
                     : modelData.type === "action" ? modelData.entry.path : modelData.place.label
                 detail: modelData.type === "app" ? (modelData.app.genericName || modelData.app.comment)
                     : modelData.type === "place" ? modelData.place.path : ""
-                value: modelData.type === "app" && root.pinIds.indexOf(modelData.app.id) >= 0 ? "\u{f0403}" : ""
-                cursored: index === root.selectedIndex
+                value: modelData.type === "app" && root.pinnedApplicationIds.indexOf(modelData.app.id) >= 0 ? "\u{f0403}" : ""
+                cursored: index === root.selectedEntryIndex
                 onClicked: button => button === Qt.RightButton
-                    ? root.secondaryAction(modelData) : root.activate(modelData)
+                    ? root.activateSecondaryEntry(modelData) : root.activateEntry(modelData)
             }
         }
 
         Row {
-            visible: !root.searching
+            visible: !root.searchActive
             width: parent.width
             spacing: Style.sectionGap
             // the narrow places/menu column sits away from the bar, so the apps
@@ -405,48 +373,48 @@ PopupCard {
             layoutDirection: root.position === "right" ? Qt.RightToLeft : Qt.LeftToRight
 
             Column {
-                width: parent.width - rightPane.width - parent.spacing
+                width: parent.width - placesAndMenuPane.width - parent.spacing
                 spacing: Style.sm
                 StartPinnedGrid {
                     id: pinnedGrid
                     width: parent.width
                     shell: root.shell
-                    apps: root.pinnedApps
-                    onLaunched: app => root.activate(app)
-                    onUnpinned: app => root.togglePin(app)
+                    apps: root.pinnedApplications
+                    onLaunched: app => root.activateEntry(app)
+                    onUnpinned: app => root.toggleApplicationPin(app)
                 }
                 PopupSection { id: appsHeader; shell: root.shell; text: "ALL APPS" }
                 ListView {
-                    id: appList
+                    id: applicationList
                     width: parent.width
-                    height: root.paneHeight - appsHeader.height - Style.sm
+                    height: root.contentPaneHeight - appsHeader.height - Style.sm
                         - (pinnedGrid.visible ? pinnedGrid.height + Style.sm : 0)
                     clip: true; spacing: 2
-                    model: root.allApps
+                    model: root.availableApplications
                     readonly property bool overflowing: contentHeight > height
                     ScrollBar.vertical: PopupScrollBar { shell: root.shell }
                     delegate: PopupRow {
                         required property var modelData
                         required property int index
-                        width: appList.width; shell: root.shell
-                        rightInset: appList.overflowing ? Style.md : 0
+                        width: applicationList.width; shell: root.shell
+                        rightInset: applicationList.overflowing ? Style.md : 0
                         iconSource: Quickshell.iconPath(modelData.icon, true)
                         title: modelData.name
                         detail: modelData.genericName || modelData.comment
-                        value: root.pinIds.indexOf(modelData.id) >= 0 ? "\u{f0403}" : ""
-                        cursored: index === root.selectedIndex
+                        value: root.pinnedApplicationIds.indexOf(modelData.id) >= 0 ? "\u{f0403}" : ""
+                        cursored: index === root.selectedEntryIndex
                         onClicked: button => button === Qt.RightButton
-                            ? root.togglePin(modelData) : root.activate(modelData)
+                            ? root.toggleApplicationPin(modelData) : root.activateEntry(modelData)
                     }
                 }
             }
 
             Column {
-                id: rightPane
+                id: placesAndMenuPane
                 width: Style.px(216)
                 spacing: Style.sm
                 Column {
-                    id: placesCol
+                    id: placesColumn
                     width: parent.width
                     spacing: Style.xxs
                     PopupSection { shell: root.shell; text: "PLACES" }
@@ -454,34 +422,33 @@ PopupCard {
                         model: root.places
                         PopupRow {
                             required property var modelData
-                            width: placesCol.width; shell: root.shell
+                            width: placesColumn.width; shell: root.shell
                             implicitHeight: Style.px(24)
                             icon: modelData.icon
                             title: modelData.label
-                            // right-click removes; the glyph is the only hint it does
                             value: hovered ? "\u{f0156}" : ""
                             valueColor: root.shell.role("error", root.shell.foreground)
                             onClicked: button => button === Qt.RightButton
                                 ? root.removePlace(modelData)
-                                : root.activate({type: "place", place: modelData})
+                                : root.activateEntry({type: "place", place: modelData})
                         }
                     }
                     PopupRow {
-                        visible: !root.addingPlace
-                        width: placesCol.width; shell: root.shell
+                        visible: !root.placeEditorOpen
+                        width: placesColumn.width; shell: root.shell
                         implicitHeight: Style.px(24)
                         icon: "\u{f0415}"
                         iconColor: root.shell.alpha(root.shell.foreground, .55)
                         title: "Add place…"
                         titleColor: root.shell.alpha(root.shell.foreground, .55)
-                        onClicked: root.beginAddPlace()
+                        onClicked: root.openPlaceEditor()
                     }
                     Rectangle {
-                        visible: root.addingPlace
-                        width: placesCol.width; height: Style.px(24)
+                        visible: root.placeEditorOpen
+                        width: placesColumn.width; height: Style.px(24)
                         radius: root.shell.rounding
                         color: root.shell.alpha(root.shell.foreground, .06)
-                        border.color: root.placeError !== ""
+                        border.color: root.placeEditorError !== ""
                             ? root.shell.role("error", root.shell.foreground)
                             : root.shell.alpha(root.shell.role("br", root.shell.foreground), .3)
                         TextField {
@@ -495,29 +462,29 @@ PopupCard {
                             color: root.shell.foreground
                             font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
                             background: null
-                            onTextChanged: root.placeError = ""
-                            Keys.onReturnPressed: root.commitPlace()
-                            Keys.onEnterPressed: root.commitPlace()
-                            Keys.onEscapePressed: root.cancelAddPlace()
+                            onTextChanged: root.placeEditorError = ""
+                            Keys.onReturnPressed: root.validatePlaceInput()
+                            Keys.onEnterPressed: root.validatePlaceInput()
+                            Keys.onEscapePressed: root.closePlaceEditor()
                         }
                     }
                     Text {
-                        visible: root.placeError !== ""
-                        width: placesCol.width
-                        text: root.placeError
+                        visible: root.placeEditorError !== ""
+                        width: placesColumn.width
+                        text: root.placeEditorError
                         color: root.shell.role("error", root.shell.foreground)
                         font.family: root.shell.fontFamily; font.pixelSize: Style.caption
                         elide: Text.ElideRight
                     }
                 }
-                PopupSeparator { id: paneSep; shell: root.shell }
+                PopupSeparator { id: paneSeparator; shell: root.shell }
                 StartMenuPane {
                     id: menuPane
                     width: parent.width
                     shell: root.shell
                     menus: root.menus
-                    totalHeight: root.paneHeight - placesCol.height - paneSep.height - Style.sm * 2
-                    onAction: target => root.runAction(target)
+                    totalHeight: root.contentPaneHeight - placesColumn.height - paneSeparator.height - Style.sm * 2
+                    onAction: target => root.runMenuAction(target)
                 }
             }
         }

@@ -43,7 +43,7 @@ Scope {
     PanelWindow {
         id: win
         visible: root.shown
-        anchors.top: root.shell.mode !== "top"; anchors.bottom: root.shell.mode === "top"
+        anchors.top: root.shell.barEdge !== "top"; anchors.bottom: root.shell.barEdge === "top"
         margins.top: Style.xxxl; margins.bottom: Style.xxxl
         implicitWidth: root.failed
             ? Math.min(Style.px(520), win.screen ? Math.round(win.screen.width * 0.5) : Style.px(520))

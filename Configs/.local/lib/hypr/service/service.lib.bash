@@ -235,29 +235,6 @@ hypr_service_layer_target_path() {
   esac
 }
 
-hypr_service_apply_entry() {
-  local kind="$1"
-  local source_path="$2"
-  local target_path="$3"
-  local rel_path="$4"
-  local mode="$5"
-  local backup_policy="$6"
-  local show_diff="${7:-1}"
-  local quiet="${8:-0}"
-
-  case "${kind}" in
-    file)
-      hypr_service_apply_file "${source_path}" "${target_path}" "${rel_path}" "${mode}" "${backup_policy}" "${show_diff}" "${quiet}"
-      ;;
-    tree)
-      hypr_service_apply_tree "${source_path}" "${target_path}" "${rel_path}" "${mode}" "${backup_policy}" "${quiet}"
-      ;;
-    *)
-      hypr_service_die "Unsupported kind: ${kind} (${rel_path})"
-      ;;
-  esac
-}
-
 hypr_service_apply_file() {
   local source_path="$1"
   local target_path="$2"
@@ -474,72 +451,40 @@ hypr_service_manifest_entries() {
   done < "${manifest_path}"
 }
 
-hypr_service_refresh_manifest_domains() {
-  local show_diff="$1"
-  local quiet="$2"
-  shift 2
+hypr_service_apply_manifest_entry() {
+  local operation="$1" show_diff="$2" quiet="$3" entry="$4"
+  local domain layer kind mode backup rel_path source_path target_path
 
-  local manifest_path domain layer kind mode backup rel_path matched=0
-  manifest_path="$(hypr_service_manifest_path)"
-  if [[ -z "${HYPR_SERVICE_BACKUP_LABEL:-}" ]]; then
-    HYPR_SERVICE_BACKUP_LABEL="${1:-refresh}"
+  IFS='|' read -r domain layer kind mode backup rel_path <<<"${entry}"
+  source_path="$(hypr_service_layer_source_path "${layer}" "${rel_path}")"
+  target_path="$(hypr_service_layer_target_path "${layer}" "${rel_path}")"
+
+  if [[ "${operation}" == "restore" ]]; then
+    backup="always"
+    [[ "${kind}" == "file" ]] && mode="overwrite" || mode="sync"
   fi
-  export HYPR_SERVICE_BACKUP_LABEL
-  unset HYPR_SERVICE_BACKUP_ROOT
 
-  while IFS='|' read -r domain layer kind mode backup rel_path; do
-    matched=1
-    hypr_service_apply_entry \
-      "${kind}" \
-      "$(hypr_service_layer_source_path "${layer}" "${rel_path}")" \
-      "$(hypr_service_layer_target_path "${layer}" "${rel_path}")" \
-      "${rel_path}" \
-      "${mode}" \
-      "${backup}" \
-      "${show_diff}" \
-      "${quiet}"
-  done < <(hypr_service_manifest_entries "${manifest_path}" "$@")
-
-  [[ "${matched}" -eq 1 ]] || hypr_service_die "No manifest entries matched: $*"
+  case "${kind}" in
+    file) hypr_service_apply_file "${source_path}" "${target_path}" "${rel_path}" "${mode}" "${backup}" "${show_diff}" "${quiet}" ;;
+    tree) hypr_service_apply_tree "${source_path}" "${target_path}" "${rel_path}" "${mode}" "${backup}" "${quiet}" ;;
+    *) hypr_service_die "Unsupported ${operation} kind: ${kind} (${rel_path})" ;;
+  esac
 }
 
-hypr_service_restore_manifest_domains() {
-  local show_diff="$1"
-  local quiet="$2"
-  shift 2
+hypr_service_apply_manifest_domains() {
+  local operation="$1" show_diff="$2" quiet="$3"
+  shift 3
+  local manifest_path entry matched=0
 
-  local manifest_path domain layer kind mode backup rel_path matched=0
+  hypr_service_validate_mode "${operation}" || hypr_service_die "Unsupported operation: ${operation}"
   manifest_path="$(hypr_service_manifest_path)"
-  if [[ -z "${HYPR_SERVICE_BACKUP_LABEL:-}" ]]; then
-    HYPR_SERVICE_BACKUP_LABEL="${1:-restore}"
-  fi
+  HYPR_SERVICE_BACKUP_LABEL="${HYPR_SERVICE_BACKUP_LABEL:-${1:-${operation}}}"
   export HYPR_SERVICE_BACKUP_LABEL
   unset HYPR_SERVICE_BACKUP_ROOT
 
-  while IFS='|' read -r domain layer kind mode backup rel_path; do
+  while IFS= read -r entry; do
     matched=1
-    case "${kind}" in
-      file)
-        mode="overwrite"
-        backup="always"
-        ;;
-      tree)
-        mode="sync"
-        backup="always"
-        ;;
-      *)
-        hypr_service_die "Unsupported restore kind: ${kind}"
-        ;;
-    esac
-    hypr_service_apply_entry \
-      "${kind}" \
-      "$(hypr_service_layer_source_path "${layer}" "${rel_path}")" \
-      "$(hypr_service_layer_target_path "${layer}" "${rel_path}")" \
-      "${rel_path}" \
-      "${mode}" \
-      "${backup}" \
-      "${show_diff}" \
-      "${quiet}"
+    hypr_service_apply_manifest_entry "${operation}" "${show_diff}" "${quiet}" "${entry}"
   done < <(hypr_service_manifest_entries "${manifest_path}" "$@")
 
   [[ "${matched}" -eq 1 ]] || hypr_service_die "No manifest entries matched: $*"

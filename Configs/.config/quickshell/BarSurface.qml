@@ -11,21 +11,22 @@ PanelWindow {
     readonly property bool popupsAllowed: active && (!Hyprland.focusedMonitor
         || !screen || Hyprland.focusedMonitor.name === screen.name)
     readonly property bool popupOpen: shell.popupName !== "" && popupsAllowed
+    readonly property bool popupNeedsFocus: popupOpen && (shell.popupCenteredName === shell.popupName
+        || shell.popupCard && shell.popupCard.wantsKeyboard)
     property bool exclusivePhase: false
 
     color: shell.barColor
     exclusionMode: active ? ExclusionMode.Auto : ExclusionMode.Ignore
     WlrLayershell.namespace: "hypr-shell-bar"
     WlrLayershell.layer: WlrLayer.Top
-    // Keybind-opened popups need a brief Exclusive grab; holding it swallows outside clicks.
+    // Prime focus briefly; holding Exclusive would swallow outside clicks.
     WlrLayershell.keyboardFocus: !popupOpen ? WlrKeyboardFocus.None
         : exclusivePhase ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
 
-    onPopupOpenChanged: {
-        const prime = popupOpen && shell.popupCenteredName === shell.popupName
-        exclusivePhase = prime
-        shell.focusPriming = prime
-        if (prime) focusPrime.restart()
+    onPopupNeedsFocusChanged: {
+        exclusivePhase = popupNeedsFocus
+        shell.focusPriming = popupNeedsFocus
+        if (popupNeedsFocus) focusPrime.restart()
     }
 
     Item {

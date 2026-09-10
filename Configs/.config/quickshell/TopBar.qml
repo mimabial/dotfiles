@@ -6,6 +6,7 @@ BarSurface {
     id: root
     readonly property var section: shell.style.box(".modules-left")
     readonly property var layout: shell.barLayout
+    readonly property bool onTop: shell.barEdge === "top"
     readonly property var registry: ({"menu": mod_menu, "taskbar": mod_taskbar, "mediaplayer": mod_mediaplayer, "cpu": mod_cpu, "gpu": mod_gpu, "memory": mod_memory, "disk": mod_disk, "fan": mod_fan, "datetime": mod_datetime, "indicators": mod_indicators, "language": mod_language, "updates": mod_updates, "converter": mod_converter, "sudoku": mod_sudoku, "workspaces": mod_workspaces, "weather": mod_weather, "submap": mod_submap, "audio": mod_audio, "bluetooth": mod_bluetooth, "vpn": mod_vpn, "wifi": mod_wifi, "volume": mod_volume, "display": mod_display, "powerprofile": mod_powerprofile, "powerbutton": mod_powerbutton, "monitor": mod_monitor, "capture": mod_capture, "notification-group": mod_notification_group, "notification": mod_notification, "tasks": mod_tasks, "privacy": mod_privacy, "tray": mod_tray, "connectivity": mod_connectivity, "appearance": mod_appearance, "power": mod_power})
     readonly property var centerModules: layout.center || []
     readonly property int centerAnchorIndex: moduleIndex(centerModules, String(layout.centerAnchor || ""))
@@ -19,9 +20,10 @@ BarSurface {
         }
         return -1
     }
-    active: shell.mode === "top" && !shell.userHidden
-    anchors.left: true; anchors.right: true; anchors.top: true
-    margins.top: active ? 0 : -implicitHeight
+    active: shell.mode === "horizontal" && !shell.userHidden
+    anchors.left: true; anchors.right: true; anchors.top: onTop; anchors.bottom: !onTop
+    margins.top: onTop ? (active ? 0 : -implicitHeight) : 0
+    margins.bottom: onTop ? 0 : (active ? 0 : -implicitHeight)
     implicitHeight: Math.max(leftRow.implicitHeight, centerFallback.implicitHeight, centerBefore.implicitHeight, centerAnchor.implicitHeight, centerAfter.implicitHeight, rightRow.implicitHeight)
     Component { id: mod_menu; StartButton { shell: root.shell; popupEnabled: root.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_taskbar; WindowList { shell: root.shell; allWorkspaces: true; framed: true; Layout.fillHeight: true } }
@@ -37,7 +39,7 @@ BarSurface {
     Component { id: mod_updates; UpdatesButton { shell: root.shell; popupEnabled: root.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_converter; ConverterButton { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_sudoku; SudokuButton { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillHeight: true } }
-    Component { id: mod_workspaces; Workspaces { shell: root.shell; activeOnly: true; numerals: "roman"; popupEnabled: root.popupsAllowed; Layout.fillHeight: true } }
+    Component { id: mod_workspaces; Workspaces { shell: root.shell; activeOnly: true; popupEnabled: root.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_weather; BarButton { id: weatherButton; shell: root.shell; css: "weather"; text: Weather.output.text; Layout.fillHeight: true; onClicked: root.shell.togglePopup("weather"); WeatherPopup { anchorItem: weatherButton; shell: root.shell; popupEnabled: root.popupsAllowed } } }
     Component { id: mod_submap; SubmapButton { shell: root.shell; alt: true; Layout.fillHeight: true; baseColor: root.shell.alpha(root.shell.role("br", root.shell.foreground), .7) } }
     Component { id: mod_audio; AudioGroup { shell: root.shell; vertical: false; Layout.fillHeight: true; popupsAllowed: root.popupsAllowed } }

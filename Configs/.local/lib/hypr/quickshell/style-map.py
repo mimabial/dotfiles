@@ -12,8 +12,7 @@ from pathlib import Path
 CONFIG = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "quickshell"
 CACHE = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "hypr/quickshell/style-map"
 
-# shell.qml picks the bar by layout name; everything not top/winbar is MainBar
-BARS = {"top": "TopBar", "winbar": "WinBar"}
+BARS = {"vertical": "MainBar", "horizontal": "TopBar", "winbar": "WinBar"}
 
 # BarButton reads these from the style box, so a QML assignment shadows the rule
 PINNABLE = ("fill", "outline", "fontWeight", "textColor")
@@ -248,14 +247,14 @@ def registry(bar, index):
 
 def modules_of(layout):
     data = json.loads((CONFIG / "layouts" / f"{layout}.json").read_text())
-    entries = data if isinstance(data, list) else [m for key in ("left", "center", "right")
-                                                   for m in data.get(key, [])]
+    entries = [m for key in ("modules", "left", "center", "right") for m in data.get(key, [])]
     return [(e, {}) if isinstance(e, str) else (e.get("id", ""), e.get("props") or {})
             for e in entries]
 
 
 def render(layout, index):
-    bar = BARS.get(layout, "MainBar")
+    data = json.loads((CONFIG / "layouts" / f"{layout}.json").read_text())
+    bar = BARS[data["panel"]]
     table, inline, bar_blocks = registry(bar, index)
     lines = [f"{bar}", ""]
     used = set()

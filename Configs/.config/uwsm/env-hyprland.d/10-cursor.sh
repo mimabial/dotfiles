@@ -1,15 +1,18 @@
-#!/usr/bin/env sh
+HYPR_THEME_CONF="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/theme.meta"
 
 hypr_cursor_value() {
-  var_name="$1"
-  file="$2"
-
-  sed -n "s/^[[:space:]]*\\\$${var_name}[[:space:]]*=[[:space:]]*//p" "$file" 2>/dev/null |
-    tail -n 1 |
-    sed "s/[[:space:]]*#.*$//; s/^[[:space:]]*//; s/[[:space:]]*$//; s/^['\"]//; s/['\"]$//"
+  awk -v name="$1" '
+    $0 ~ "^[[:space:]]*[$]" name "[[:space:]]*=" {
+      value = $0
+      sub(/^[^=]*=[[:space:]]*/, "", value)
+      sub(/[[:space:]]*#.*/, "", value)
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+      sub(/^["\047]/, "", value)
+      sub(/["\047]$/, "", value)
+    }
+    END { print value }
+  ' "$2" 2>/dev/null
 }
-
-HYPR_THEME_CONF="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/theme.meta"
 
 if [ -r "$HYPR_THEME_CONF" ]; then
   _hypr_cursor_theme="$(hypr_cursor_value CURSOR_THEME "$HYPR_THEME_CONF")"

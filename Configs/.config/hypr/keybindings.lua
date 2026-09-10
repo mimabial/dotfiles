@@ -62,7 +62,11 @@ local function submap_leader(name, modifiers, key, body, exit_on_unbound)
 		-- By default, unclaimed keys end the mode so a stray press cannot leave it
 		-- live while bare-letter binds fire window actions. Modmask 0: chords pass through.
 		if exit_on_unbound ~= false then
-			hl.bind("catchall", hl.dsp.submap("reset"), { description = HIDDEN_MARKER .. name .. " exit on unbound key" })
+			hl.bind(
+				"catchall",
+				hl.dsp.submap("reset"),
+				{ description = HIDDEN_MARKER .. name .. " exit on unbound key" }
+			)
 		end
 	end)
 end
@@ -119,8 +123,7 @@ local function usable_area(monitor)
 
 	local reserved = monitor.reserved
 	local border = hl.get_config("general:border_size") or 0
-	return width - reserved.left - reserved.right - 2 * border,
-		height - reserved.top - reserved.bottom - 2 * border
+	return width - reserved.left - reserved.right - 2 * border, height - reserved.top - reserved.bottom - 2 * border
 end
 
 -- Hyprland only sometimes restores a window's pre-tile floating size, so one tiled
@@ -190,12 +193,7 @@ bind(
 	"[Window Management] toggle fullscreen",
 	hl.dsp.window.fullscreen({ mode = "fullscreen", action = "toggle" })
 )
-bind(
-	mod,
-	"M",
-	"[Window Management] toggle maximize",
-	hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle" })
-)
+bind(mod, "M", "[Window Management] toggle floating", toggle_floating)
 exec(mod, "P", "[Window Management] toggle pin", "hyprshell window/windowpin.sh")
 bind(mod, "G", "[Window Management] toggle group", hl.dsp.group.toggle())
 bind(mod .. " SHIFT", "F", "[Window Management] toggle floating", toggle_floating)
@@ -455,11 +453,7 @@ submap_leader("window", mod, "W", function()
 		"[Window Mode|Scrolling] previous column",
 		layout_action("scrolling", hl.dsp.layout("move -col"))
 	)
-	submap_action(
-		"L",
-		"[Window Mode|Scrolling] next column",
-		layout_action("scrolling", hl.dsp.layout("move +col"))
-	)
+	submap_action("L", "[Window Mode|Scrolling] next column", layout_action("scrolling", hl.dsp.layout("move +col")))
 	submap_action(
 		"SHIFT + H",
 		"[Window Mode|Scrolling] swap column left",
@@ -495,11 +489,7 @@ submap_leader("window", mod, "W", function()
 		"[Window Mode|Scrolling] expand column",
 		layout_action("scrolling", hl.dsp.layout("colresize expand"))
 	)
-	submap_action(
-		"V",
-		"[Window Mode|Scrolling] promote window",
-		layout_action("scrolling", hl.dsp.layout("promote"))
-	)
+	submap_action("V", "[Window Mode|Scrolling] promote window", layout_action("scrolling", hl.dsp.layout("promote")))
 	submap_action(
 		"B",
 		"[Window Mode|Scrolling] consume into column",
@@ -516,16 +506,8 @@ submap_leader("window", mod, "W", function()
 		layout_action("scrolling", hl.dsp.layout("fit_into_view"))
 	)
 
-	submap_action(
-		"SHIFT + S",
-		"[Window Mode|Dwindle] swap split",
-		layout_action("dwindle", hl.dsp.layout("swapsplit"))
-	)
-	submap_action(
-		"R",
-		"[Window Mode|Dwindle] rotate split",
-		layout_action("dwindle", hl.dsp.layout("rotatesplit"))
-	)
+	submap_action("SHIFT + S", "[Window Mode|Dwindle] swap split", layout_action("dwindle", hl.dsp.layout("swapsplit")))
+	submap_action("R", "[Window Mode|Dwindle] rotate split", layout_action("dwindle", hl.dsp.layout("rotatesplit")))
 	submap_action(
 		"SHIFT + R",
 		"[Window Mode|Dwindle] move to root",
@@ -542,41 +524,21 @@ submap_leader("window", mod, "W", function()
 		layout_action("dwindle", hl.dsp.layout("splitratio +0.05"))
 	)
 
-	submap_action(
-		"W",
-		"[Window Mode|Master] focus master",
-		layout_action("master", hl.dsp.layout("focusmaster"))
-	)
+	submap_action("W", "[Window Mode|Master] focus master", layout_action("master", hl.dsp.layout("focusmaster")))
 	submap_action(
 		"SHIFT + W",
 		"[Window Mode|Master] swap with master",
 		layout_action("master", hl.dsp.layout("swapwithmaster"))
 	)
-	submap_action(
-		"N",
-		"[Window Mode|Master] focus next",
-		layout_action("master", hl.dsp.layout("cyclenext"))
-	)
+	submap_action("N", "[Window Mode|Master] focus next", layout_action("master", hl.dsp.layout("cyclenext")))
 	submap_action(
 		"SHIFT + N",
 		"[Window Mode|Master] focus previous",
 		layout_action("master", hl.dsp.layout("cycleprev"))
 	)
-	submap_action(
-		"J",
-		"[Window Mode|Master] swap next",
-		layout_action("master", hl.dsp.layout("swapnext"))
-	)
-	submap_action(
-		"SHIFT + J",
-		"[Window Mode|Master] swap previous",
-		layout_action("master", hl.dsp.layout("swapprev"))
-	)
-	submap_action(
-		"A",
-		"[Window Mode|Master] add master",
-		layout_action("master", hl.dsp.layout("addmaster"))
-	)
+	submap_action("J", "[Window Mode|Master] swap next", layout_action("master", hl.dsp.layout("swapnext")))
+	submap_action("SHIFT + J", "[Window Mode|Master] swap previous", layout_action("master", hl.dsp.layout("swapprev")))
+	submap_action("A", "[Window Mode|Master] add master", layout_action("master", hl.dsp.layout("addmaster")))
 	submap_action(
 		"SHIFT + A",
 		"[Window Mode|Master] remove master",
@@ -592,32 +554,16 @@ submap_leader("window", mod, "W", function()
 		"[Window Mode|Master] center orientation",
 		layout_action("master", hl.dsp.layout("orientationcenter"))
 	)
-	submap_action(
-		"K",
-		"[Window Mode|Master] roll next",
-		layout_action("master", hl.dsp.layout("rollnext"))
-	)
-	submap_action(
-		"SHIFT + K",
-		"[Window Mode|Master] roll previous",
-		layout_action("master", hl.dsp.layout("rollprev"))
-	)
-	submap_action(
-		"Z",
-		"[Window Mode|Master] shrink master",
-		layout_action("master", hl.dsp.layout("mfact -0.05"))
-	)
+	submap_action("K", "[Window Mode|Master] roll next", layout_action("master", hl.dsp.layout("rollnext")))
+	submap_action("SHIFT + K", "[Window Mode|Master] roll previous", layout_action("master", hl.dsp.layout("rollprev")))
+	submap_action("Z", "[Window Mode|Master] shrink master", layout_action("master", hl.dsp.layout("mfact -0.05")))
 	submap_action(
 		"SHIFT + Z",
 		"[Window Mode|Master] grow master",
 		layout_action("master", hl.dsp.layout("mfact +0.05"))
 	)
 
-	submap_action(
-		"Y",
-		"[Window Mode|Monocle] focus next",
-		layout_action("monocle", hl.dsp.layout("cyclenext"))
-	)
+	submap_action("Y", "[Window Mode|Monocle] focus next", layout_action("monocle", hl.dsp.layout("cyclenext")))
 	submap_action(
 		"SHIFT + Y",
 		"[Window Mode|Monocle] focus previous",
@@ -639,7 +585,11 @@ submap_leader("theming", mod, "T", function()
 		"hyprshell rofi/run-after-close.sh -- hyprshell wallpaper select --global"
 	)
 	submap_exec("F", "[Theming] select font", "pkill -x rofi || hyprshell rofi/menutree --action style_font")
-	submap_exec("SHIFT + F", "[Theming] install Nerd Font", "pkill -x rofi || hyprshell rofi/menutree --action install_font")
+	submap_exec(
+		"SHIFT + F",
+		"[Theming] install Nerd Font",
+		"pkill -x rofi || hyprshell rofi/menutree --action install_font"
+	)
 	submap_exec(
 		"B",
 		"[Theming] select bar layout",
@@ -677,6 +627,11 @@ submap_leader("open", mod, "O", function()
 		"hyprshell launch/summon.sh --empty-workspace-if-occupied class:signal -- signal-desktop"
 	)
 	submap_exec("V", "[Open] Bitwarden", "hyprshell launch/summon.sh --align center bitwarden -- bitwarden-desktop")
+	submap_exec(
+		"W",
+		"[Open] LibreOffice Writer",
+		"hyprshell launch/summon.sh class:libreoffice-writer -- libreoffice --writer"
+	)
 	submap_exec("G", "[Open] Gimp", "hyprshell launch/summon.sh --empty-workspace-if-occupied gimp -- gimp")
 	submap_exec("E", "[Open] Elisa", "hyprshell launch/summon.sh --empty-workspace-if-occupied class:elisa -- elisa")
 	submap_exec("M", "[Open] Mullvad VPN", "hyprshell launch/summon.sh class:mullvad-vpn -- mullvad-vpn")

@@ -39,7 +39,7 @@ VALUE_WIDTH = 5
 RESET_WIDTH = 10
 TOKEN_VALUE_WIDTH = 8
 RIGHT_MARGIN = 2
-WINDOW_DIVISIONS = {"hourly": 5, "weekly": 7}
+USAGE_BAR_SEGMENTS = {"hourly": 5, "weekly": 7}
 TAB_ROW = 2
 HEAD_ROW = TAB_ROW + 2
 MIN_ROWS = 24
@@ -47,7 +47,7 @@ MIN_COLS = 72
 MIN_LABEL_WIDTH = 16
 MAX_LABEL_WIDTH = 24
 SECTION_GAP_MAX = 1
-STALE_AFTER = 900
+CACHE_MAX_AGE_SECONDS = 900
 HINT = "\u2190\u2192 agent   Enter launch   d default   s set default   r refresh   q close"
 
 
@@ -55,9 +55,9 @@ def init_colors():
     curses.start_color()
     curses.use_default_colors()
     accent = curses.COLOR_BLUE
-    dim = 8 if curses.COLORS >= 16 else curses.COLOR_WHITE
+    dim_color_index = 8 if curses.COLORS >= 16 else curses.COLOR_WHITE
     curses.init_pair(PAIR_ACCENT, accent, -1)
-    curses.init_pair(PAIR_DIM, dim, -1)
+    curses.init_pair(PAIR_DIM, dim_color_index, -1)
     curses.init_pair(PAIR_ERROR, curses.COLOR_RED, -1)
     curses.init_pair(PAIR_BAR, curses.COLOR_CYAN, -1)
 
@@ -120,12 +120,13 @@ def recommendation(records):
     for record in records:
         hourly = window_usage(record, "hourly", fresh=True)
         weekly = window_usage(record, "weekly", fresh=True)
-        known = int(hourly >= 0) + int(weekly >= 0)
-        if not known:
+        known_windows = int(hourly >= 0) + int(weekly >= 0)
+        if not known_windows:
             continue
         pressure = max(hourly, weekly)
         total = max(0, hourly) + max(0, weekly)
-        candidate = (pressure + 2 - known, total, record, hourly, weekly)
+        coverage_penalty = 2 - known_windows
+        candidate = (pressure + coverage_penalty, total, record, hourly, weekly)
         if best is None or candidate[:2] < best[:2]:
             best = candidate
     return best
@@ -232,7 +233,7 @@ def snapshot(records, selected_id=""):
         reset = resets_in(limit.get("resetsAt"))
         lines.append(
             f"{limit.get('label', 'Limit')!s:22} "
-            f"[{progress(percent, 28, WINDOW_DIVISIONS.get(window_kind(limit), 1))}] "
+            f"[{progress(percent, 28, USAGE_BAR_SEGMENTS.get(window_kind(limit), 1))}] "
             f"{percent:>4.0%}  resets in {reset}"
         )
     lines += ["", "TOKENS BY DAY"]
@@ -267,7 +268,7 @@ class Dashboard:
         self.default_agent = self.read_default_agent()
         self.agent_paths = {command: shutil.which(command) for _, command, _ in AGENTS.values()}
         self.configure_screen()
-        if not self.records or self.cache_age() > STALE_AFTER:
+        if not self.records or self.cache_age() > CACHE_MAX_AGE_SECONDS:
             self.refresh(force=False)
 
     def configure_screen(self):
@@ -551,7 +552,7 @@ class Dashboard:
             percent = max(0.0, min(1.0, limit_percent(limit)))
             gauge = curses.color_pair(PAIR_ERROR) if percent >= 0.9 else accent
             self.put(y, label_x, str(limit.get("label") or "Limit"), 0, label_width)
-            divisions = WINDOW_DIVISIONS.get(window_kind(limit), 1)
+            divisions = USAGE_BAR_SEGMENTS.get(window_kind(limit), 1)
             self.put(y, bar_x, progress(percent, limit_width, divisions), gauge)
             self.put(
                 y, percent_x, f"{percent:.0%}".rjust(VALUE_WIDTH), gauge | curses.A_BOLD

@@ -22,7 +22,7 @@ BarGroup {
         command: root.showUnit ? ["hyprshell", "weather"] : ["hyprshell", "weather", "--no-unit"]
         // c2 unless a style file names a colour; setting it on "weather" itself
         // would also repaint minmax/sunrise/sunset, which inherit that key
-        textColor: weatherButton.box.content !== undefined ? weatherButton.boxColor("content")
+        textColor: weatherButton.box.content !== undefined ? weatherButton.styleColor("content")
             : root.shell.role("c2", root.shell.foreground)
         onClicked: root.shell.togglePopup("weather")
         WeatherPopup { anchorItem: weatherButton; shell: root.shell; popupEnabled: root.popupsAllowed }

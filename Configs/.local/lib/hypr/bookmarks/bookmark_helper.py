@@ -5,24 +5,20 @@ from __future__ import annotations
 
 import base64
 import configparser
-import errno
 import html
 import ipaddress
 import json
 import math
 import os
 import re
-import selectors
 import shutil
 import signal
 import socket
 import sqlite3
 import ssl
-import stat
 import subprocess
 import sys
 import tempfile
-import time
 import uuid
 from datetime import datetime
 from html.parser import HTMLParser
@@ -30,6 +26,15 @@ from http.client import HTTPConnection, HTTPException, HTTPSConnection
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote, unquote, urljoin, urlsplit, urlunsplit
+
+from bounded_io import (
+    BoundedOutputError,
+    atomic_write,
+    existing_regular_mode,
+    read_limited_bytes,
+    read_limited_text,
+    run_bounded_process,
+)
 
 MAX_HTML = 1_000_000
 MAX_ICON_INPUT = 256_000
@@ -64,196 +69,6 @@ MAX_ENRICHMENT_OUTPUT = 256 * 1024
 BACKUP_LIMIT = 10
 USER_AGENT = "Hypr Bookmarks/1.0"
 SETTINGS_VERSION = 1
-
-
-class BoundedOutputError(ValueError):
-    """A child process exceeded its declared output budget."""
-
-
-def run_bounded_process(
-    command: list[str],
-    *,
-    output_limit: int,
-    timeout: float,
-    input_data: bytes | None = None,
-    env: dict[str, str] | None = None,
-) -> subprocess.CompletedProcess[bytes]:
-    """Capture stdout without allowing a child to fill unbounded memory."""
-    if output_limit < 0 or timeout <= 0:
-        raise ValueError("Process limits must be positive")
-
-    input_stream = None
-    process: subprocess.Popen[bytes] | None = None
-    selector = selectors.DefaultSelector()
-    output = bytearray()
-    try:
-        if input_data is not None:
-            input_stream = tempfile.TemporaryFile()
-            input_stream.write(input_data)
-            input_stream.seek(0)
-
-        deadline = time.monotonic() + timeout
-        process = subprocess.Popen(
-            command,
-            stdin=input_stream if input_stream is not None else subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            env=env,
-            start_new_session=True,
-        )
-        if process.stdout is None:
-            raise OSError("Could not capture process output")
-        selector.register(process.stdout, selectors.EVENT_READ)
-
-        while True:
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                raise subprocess.TimeoutExpired(command, timeout)
-            events = selector.select(remaining)
-            if not events:
-                raise subprocess.TimeoutExpired(command, timeout)
-            chunk = os.read(
-                process.stdout.fileno(),
-                min(64 * 1024, output_limit + 1 - len(output)),
-            )
-            if not chunk:
-                break
-            output.extend(chunk)
-            if len(output) > output_limit:
-                raise BoundedOutputError("Process output is too large")
-
-        remaining = deadline - time.monotonic()
-        if remaining <= 0:
-            raise subprocess.TimeoutExpired(command, timeout)
-        return_code = process.wait(timeout=remaining)
-        return subprocess.CompletedProcess(command, return_code, bytes(output), None)
-    finally:
-        selector.close()
-        if process is not None:
-            if process.stdout is not None:
-                process.stdout.close()
-            if process.poll() is None:
-                try:
-                    os.killpg(process.pid, signal.SIGTERM)
-                except ProcessLookupError:
-                    pass
-                try:
-                    process.wait(timeout=0.25)
-                except subprocess.TimeoutExpired:
-                    try:
-                        os.killpg(process.pid, signal.SIGKILL)
-                    except ProcessLookupError:
-                        pass
-                    process.wait()
-        if input_stream is not None:
-            input_stream.close()
-
-
-def read_limited_bytes(
-    path: Path,
-    limit: int,
-    description: str,
-    *,
-    follow_symlinks: bool = True,
-) -> bytes:
-    """Read one descriptor-validated regular file without blocking on special files."""
-    flags = os.O_RDONLY | os.O_CLOEXEC | os.O_NONBLOCK
-    if not follow_symlinks:
-        if not hasattr(os, "O_NOFOLLOW"):
-            raise OSError("This platform cannot safely open fixed bookmark paths")
-        flags |= os.O_NOFOLLOW
-
-    try:
-        descriptor = os.open(path, flags)
-    except OSError as error:
-        if not follow_symlinks and error.errno == errno.ELOOP:
-            raise ValueError(f"{description} path is not a regular file") from error
-        raise
-
-    try:
-        info = os.fstat(descriptor)
-        if not stat.S_ISREG(info.st_mode):
-            raise ValueError(f"{description} path is not a regular file")
-        if info.st_size > limit:
-            raise ValueError(f"{description} is too large")
-        with os.fdopen(descriptor, "rb") as stream:
-            descriptor = -1
-            raw = stream.read(limit + 1)
-    finally:
-        if descriptor >= 0:
-            os.close(descriptor)
-
-    if len(raw) > limit:
-        raise ValueError(f"{description} is too large")
-    return raw
-
-
-def read_limited_text(
-    path: Path,
-    limit: int,
-    description: str,
-    *,
-    follow_symlinks: bool = True,
-) -> str:
-    """Read one bounded regular file as UTF-8 text."""
-    raw = read_limited_bytes(
-        path,
-        limit,
-        description,
-        follow_symlinks=follow_symlinks,
-    )
-    return raw.decode("utf-8", errors="replace")
-
-
-def existing_regular_mode(path: Path, description: str, default: int) -> int:
-    """Return a fixed path's mode without following symlinks or special files."""
-    try:
-        info = path.lstat()
-    except FileNotFoundError:
-        return default
-    if not stat.S_ISREG(info.st_mode):
-        raise ValueError(f"{description} path is not a regular file")
-    return stat.S_IMODE(info.st_mode)
-
-
-def _atomic_write_text(path: Path, value: str, mode: int) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    descriptor, temporary_name = tempfile.mkstemp(
-        prefix=path.name + ".tmp-", dir=path.parent
-    )
-    temporary = Path(temporary_name)
-    try:
-        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
-            stream.write(value)
-            stream.flush()
-            os.fsync(stream.fileno())
-        temporary.chmod(mode)
-        os.replace(temporary, path)
-    finally:
-        try:
-            temporary.unlink()
-        except FileNotFoundError:
-            pass
-
-
-def _atomic_write_bytes(path: Path, value: bytes, mode: int) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    descriptor, temporary_name = tempfile.mkstemp(
-        prefix=path.name + ".tmp-", dir=path.parent
-    )
-    temporary = Path(temporary_name)
-    try:
-        with os.fdopen(descriptor, "wb") as stream:
-            stream.write(value)
-            stream.flush()
-            os.fsync(stream.fileno())
-        temporary.chmod(mode)
-        os.replace(temporary, path)
-    finally:
-        try:
-            temporary.unlink()
-        except FileNotFoundError:
-            pass
 
 
 def read_settings(settings_path: str) -> dict[str, Any]:
@@ -297,7 +112,7 @@ def write_settings(settings_path: str, settings: dict[str, Any]) -> None:
         ensure_ascii=False,
         separators=(",", ":"),
     ) + "\n"
-    _atomic_write_text(path, value, mode)
+    atomic_write(path, value, mode)
 
 
 def network_enrichment_operation(operation: str, settings_path: str) -> dict[str, Any]:
@@ -845,7 +660,7 @@ def save_store(path: str) -> dict[str, Any]:
 
     destination = Path(path)
     mode = existing_regular_mode(destination, "Bookmarks store", 0o600)
-    _atomic_write_text(destination, text, mode)
+    atomic_write(destination, text, mode)
     return {"ok": True}
 
 
@@ -1119,7 +934,7 @@ def sync_firefox(
             ensure_ascii=False,
             indent=2,
         ) + "\n"
-        _atomic_write_text(destination, document, mode)
+        atomic_write(destination, document, mode)
 
     return {
         "ok": True,
@@ -1167,7 +982,7 @@ def create_store_backup(store_path: str, keep: int = BACKUP_LIMIT) -> dict[str, 
         counter += 1
         destination = Path(str(source) + f".backup-{stamp}-{counter}")
 
-    _atomic_write_bytes(destination, contents, 0o600)
+    atomic_write(destination, contents, 0o600)
 
     pattern = source.name + ".backup-*"
     backups = sorted(
@@ -1633,6 +1448,57 @@ def copy_url_to_clipboard(value: str) -> dict[str, Any]:
     return {"ok": True, "url": url}
 
 
+def clipboard_bookmark_with_metadata(
+    store_path: str, settings_path: str
+) -> dict[str, Any]:
+    settings = read_settings(settings_path)
+    return clipboard_bookmark(
+        store_path,
+        enrich_from_web=settings["networkEnrichment"] is True,
+        settings_path=settings_path,
+    )
+
+
+def enrich_stdin_url(settings_path: str) -> dict[str, Any]:
+    if read_settings(settings_path)["networkEnrichment"] is not True:
+        raise ValueError("Web enrichment is disabled")
+    raw_url = sys.stdin.buffer.read(MAX_URL_LENGTH * 4 + 1)
+    if len(raw_url) > MAX_URL_LENGTH * 4:
+        raise ValueError("Web enrichment URL is too large")
+    return enrich_url_from_web(raw_url.decode("utf-8"))
+
+
+COMMANDS = {
+    "import": (("FILE", "STORE"), import_bookmarks),
+    "firefox-import": (("PLACES_DB", "STORE"), import_firefox),
+    "firefox-sync": (("STORE",), sync_discovered_firefox),
+    "store-load": (("STORE",), load_store),
+    "store-save": (("STORE",), save_store),
+    "clipboard": (("STORE",), clipboard_bookmark),
+    "clipboard-enrich": (("STORE", "SETTINGS"), clipboard_bookmark_with_metadata),
+    "enrich-url": (("SETTINGS",), enrich_stdin_url),
+    "copy": (("URL",), copy_url_to_clipboard),
+    "browsers": ((), discover_browsers),
+    "backup": (("STORE",), create_store_backup),
+    "network-enrichment": (("{status|enable|disable}", "SETTINGS"), network_enrichment_operation),
+}
+
+USAGE = "usage: bookmark_helper.py " + " | ".join(
+    " ".join((action, *argument_names))
+    for action, (argument_names, _handler) in COMMANDS.items()
+)
+
+
+def dispatch(argv: list[str]) -> dict[str, Any]:
+    if not argv or argv[0] not in COMMANDS:
+        raise ValueError(USAGE)
+    action, *arguments = argv
+    argument_names, handler = COMMANDS[action]
+    if len(arguments) != len(argument_names):
+        raise ValueError(USAGE)
+    return handler(*arguments)
+
+
 def main() -> int:
     # Quickshell terminates helpers when a transient dialog closes. Raising
     # SystemExit lets active bounded subprocesses run their cleanup blocks and
@@ -1640,53 +1506,8 @@ def main() -> int:
     signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(128 + signum))
     signal.signal(signal.SIGINT, lambda signum, frame: sys.exit(128 + signum))
     try:
-        action = sys.argv[1]
-        if action == "import" and len(sys.argv) == 4:
-            result = import_bookmarks(sys.argv[2], sys.argv[3])
-        elif action == "firefox-import" and len(sys.argv) == 4:
-            result = import_firefox(sys.argv[2], sys.argv[3])
-        elif action == "firefox-sync" and len(sys.argv) == 3:
-            result = sync_discovered_firefox(sys.argv[2])
-        elif action == "store-load" and len(sys.argv) == 3:
-            result = load_store(sys.argv[2])
-        elif action == "store-save" and len(sys.argv) == 3:
-            result = save_store(sys.argv[2])
-        elif action == "clipboard" and len(sys.argv) == 3:
-            result = clipboard_bookmark(sys.argv[2], enrich_from_web=False)
-        elif action == "clipboard-enrich" and len(sys.argv) == 4:
-            settings = read_settings(sys.argv[3])
-            result = clipboard_bookmark(
-                sys.argv[2],
-                enrich_from_web=settings["networkEnrichment"] is True,
-                settings_path=sys.argv[3],
-            )
-        elif action == "enrich-url" and len(sys.argv) == 3:
-            settings = read_settings(sys.argv[2])
-            if settings["networkEnrichment"] is not True:
-                raise ValueError("Web enrichment is disabled")
-            raw_url = sys.stdin.buffer.read(MAX_URL_LENGTH * 4 + 1)
-            if len(raw_url) > MAX_URL_LENGTH * 4:
-                raise ValueError("Web enrichment URL is too large")
-            result = enrich_url_from_web(raw_url.decode("utf-8"))
-        elif action == "copy" and len(sys.argv) == 3:
-            result = copy_url_to_clipboard(sys.argv[2])
-        elif action == "browsers" and len(sys.argv) == 2:
-            result = discover_browsers()
-        elif action == "backup" and len(sys.argv) == 3:
-            result = create_store_backup(sys.argv[2])
-        elif action == "network-enrichment" and len(sys.argv) == 4:
-            result = network_enrichment_operation(sys.argv[2], sys.argv[3])
-        else:
-            raise ValueError(
-                "usage: bookmark_helper.py import FILE STORE | "
-                "firefox-import PLACES_DB STORE | clipboard STORE | "
-                "firefox-sync STORE | "
-                "clipboard-enrich STORE SETTINGS | copy URL | "
-                "enrich-url SETTINGS < URL | "
-                "store-load STORE | store-save STORE | browsers | backup STORE | "
-                "network-enrichment {status|enable|disable} SETTINGS"
-            )
-    except (IndexError, OSError, TypeError, ValueError, json.JSONDecodeError) as error:
+        result = dispatch(sys.argv[1:])
+    except (IndexError, KeyError, OSError, TypeError, ValueError, json.JSONDecodeError) as error:
         result = {"ok": False, "error": str(error) or "Bookmark operation failed"}
     print(json.dumps(result, ensure_ascii=False, separators=(",", ":")))
     return 0 if result.get("ok") else 1

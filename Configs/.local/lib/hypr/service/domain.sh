@@ -64,10 +64,7 @@ fi
 hypr_service_init
 hypr_service_apply_cli_env
 
-case "${action}" in
-  refresh) hypr_service_refresh_manifest_domains "${hypr_service_cli_show_diff}" "${hypr_service_cli_quiet}" "${domain}" ;;
-  restore) hypr_service_restore_manifest_domains "${hypr_service_cli_show_diff}" "${hypr_service_cli_quiet}" "${domain}" ;;
-esac
+hypr_service_apply_manifest_domains "${action}" "${hypr_service_cli_show_diff}" "${hypr_service_cli_quiet}" "${domain}"
 
 case "${domain}" in
   hypr-config|hypr-state)

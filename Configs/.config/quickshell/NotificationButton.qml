@@ -35,7 +35,7 @@ ScriptButton {
     visible: activeOnly ? paused : text !== ""
     textColor: marked && badge === "highlight"
         ? shell.role("accent", shell.foreground)
-        : box.content !== undefined ? boxColor("content")
+        : box.content !== undefined ? styleColor("content")
         : active ? shell.role("act_fg", shell.foreground) : shell.foreground
     // opening the panel moves the watermark, so re-read rather than waiting out
     // the poll to notice the badge should be gone
@@ -53,16 +53,16 @@ ScriptButton {
     // a derived type's children stack above the base's, so these sit over the bell
     Rectangle {
         visible: root.marked && root.badge === "dot"
-        x: root.labelRect.x + root.labelRect.width - width + root.badgeOffsetX
-        y: root.labelRect.y + root.badgeOffsetY
+        x: root.paintedLabelBounds.x + root.paintedLabelBounds.width - width + root.badgeOffsetX
+        y: root.paintedLabelBounds.y + root.badgeOffsetY
         width: Style.px(root.badgeSize); height: width
         radius: width / 2
         color: root.shell.role("accent", root.shell.foreground)
     }
     Text {
         visible: root.marked && root.badge === "count"
-        x: root.labelRect.x + root.labelRect.width - paintedWidth + root.badgeOffsetX
-        y: root.labelRect.y + root.badgeOffsetY
+        x: root.paintedLabelBounds.x + root.paintedLabelBounds.width - paintedWidth + root.badgeOffsetX
+        y: root.paintedLabelBounds.y + root.badgeOffsetY
         text: root.countGlyph
         color: root.shell.role("accent", root.shell.foreground)
         font.family: root.shell.iconGlyphFont

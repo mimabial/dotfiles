@@ -20,7 +20,9 @@ fi
 
 if [[ "${RMPC_PREPARE_FORCE:-0}" == "1" ||
   ! -f "${snapshot_path}" ||
-  "${target_theme_path}" -nt "${snapshot_path}" ]]; then
+  "${config_path}" -nt "${snapshot_path}" ||
+  "${target_theme_path}" -nt "${snapshot_path}" ||
+  "${prepare_configs}" -nt "${snapshot_path}" ]]; then
   python3 "${prepare_configs}"
 fi
 
@@ -36,4 +38,4 @@ if [[ "${RMPC_APPLY_FORCE:-0}" != "1" ]]; then
   [[ "${current_theme}" != "${target_theme}" ]] || exit 0
 fi
 
-cp "${snapshot_path}" "${config_path}"
+cp -p "${snapshot_path}" "${config_path}"

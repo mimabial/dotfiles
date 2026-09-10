@@ -21,7 +21,8 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from autotag import SUPPORTED, VORBIS, existing, read_tags  # noqa: E402
+from audio_tags import SUPPORTED, VORBIS, read_tags  # noqa: E402
+from autotag_identity import existing  # noqa: E402
 
 from mutagen import MutagenError  # noqa: E402
 

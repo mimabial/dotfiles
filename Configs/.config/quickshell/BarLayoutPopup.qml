@@ -24,7 +24,7 @@ PopupCard {
             model: root.layouts
             PopupRow {
                 required property string modelData
-                width: layoutColumn.width; shell: root.shell; icon: root.shell.barLayoutIcon(modelData); title: root.title(modelData)
+                width: layoutColumn.width; shell: root.shell; icon: ""; title: root.title(modelData)
                 detail: active ? "Active" : "Switch to this layout"
                 active: root.shell.layoutName === modelData
                 onClicked: { root.shell.closePopup(); root.shell.run(["hyprshell", "quickshell/layout", "set", modelData]) }

@@ -16,6 +16,7 @@ RowLayout {
             Layout.fillHeight: true
             visible: !item ? true : item.shown !== undefined ? item.shown : item.text !== undefined ? String(item.text) !== "" : true
             sourceComponent: root.registry[moduleId] || null
+            Component.onCompleted: if (!root.registry[moduleId]) console.warn("unknown bar module: " + moduleId)
             onLoaded: if (moduleProps) for (const key in moduleProps) item[key] = moduleProps[key]
         }
     }

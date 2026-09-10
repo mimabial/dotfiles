@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Launch a command in a TUI terminal with optional Hyprland metadata.
 set -euo pipefail
 
 TERMINAL_TUI="${TERMINAL_TUI:-kitty}"
@@ -9,9 +8,9 @@ hypr_width=""
 hypr_height=""
 app_id=""
 title=""
-print_path=0
-print_cmd=0
-print_cmd_sep=$'\037'
+print_executable_path=0
+print_command=0
+print_command_separator=$'\037'
 cmd=()
 terminal_args=()
 terminal_launch=()
@@ -93,16 +92,16 @@ parse_args() {
         shift 2
         ;;
       --print-path)
-        print_path=1
+        print_executable_path=1
         shift
         ;;
       --print-cmd)
-        print_cmd=1
+        print_command=1
         shift
         ;;
       --print-cmd=*)
-        print_cmd=1
-        print_cmd_sep="$(printf '%b' "${1#--print-cmd=}")"
+        print_command=1
+        print_command_separator="$(printf '%b' "${1#--print-cmd=}")"
         shift
         ;;
       -h | --help)
@@ -256,20 +255,20 @@ terminal_desktop_path() {
 
 print_terminal_target() {
   local desktop_path=""
-  local joined_cmd=""
+  local joined_command=""
 
-  ((print_cmd == 0)) || build_terminal_command
+  ((print_command == 0)) || build_terminal_command
 
-  if [[ "${print_path}" -eq 1 ]]; then
+  if [[ "${print_executable_path}" -eq 1 ]]; then
     desktop_path="$(terminal_desktop_path)" || return 1
     printf '%s' "${desktop_path}"
   fi
 
-  if [[ "${print_cmd}" -eq 1 ]]; then
-    ((print_path == 1)) && printf '\n'
+  if [[ "${print_command}" -eq 1 ]]; then
+    ((print_executable_path == 1)) && printf '\n'
     if ((${#terminal_launch[@]} > 0)); then
-      printf -v joined_cmd "%s${print_cmd_sep}" "${terminal_launch[@]}"
-      printf '%s' "${joined_cmd%"${print_cmd_sep}"}"
+      printf -v joined_command "%s${print_command_separator}" "${terminal_launch[@]}"
+      printf '%s' "${joined_command%"${print_command_separator}"}"
     fi
   fi
 }
@@ -286,7 +285,7 @@ main() {
   apply_geometry_profile || return 2
   resolve_percentages || return 2
 
-  if [[ "${print_path}" -eq 1 || "${print_cmd}" -eq 1 ]]; then
+  if [[ "${print_executable_path}" -eq 1 || "${print_command}" -eq 1 ]]; then
     print_terminal_target
     return $?
   fi

@@ -21,7 +21,7 @@ files=("${layout_dir}"/*.json)
 mapfile -t layouts < <(printf '%s\n' "${files[@]}" | sed -E 's!.*/!!;s/\.json$//' | sort -u)
 action="${1:-next}"
 [[ "${action}" == list ]] && { printf '%s\n' "${layouts[@]}"; exit; }
-current="$(state_get QUICKSHELL_LAYOUT_NAME main)" step=1 i=0
+current="$(state_get QUICKSHELL_LAYOUT_NAME right)" step=1 i=0
 if [[ "${action}" == select ]]; then
   hypr_runtime_require rofi
   # geometry.bash carries the font, border and opacity overrides; without them

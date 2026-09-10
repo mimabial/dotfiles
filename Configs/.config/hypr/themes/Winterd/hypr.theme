@@ -1,0 +1,46 @@
+$HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
+
+$ICON_THEME = Tela-blue-light
+$COLOR_SCHEME = prefer-light
+$NVIM_BACKGROUND = light
+$NVIM_TRANSPARENCY = false
+
+$CURSOR_THEME = GoogleDot-Blue
+$CURSOR_SIZE = 30
+$FONT = IosevkaTerm Nerd Font
+$BAR_FONT = IosevkaTerm Nerd Font
+$MENU_FONT = IosevkaTerm Nerd Font
+$MONOSPACE_FONT = IosevkaTerm Nerd Font
+$TERMINAL_FONT = IosevkaTerm Nerd Font
+$NOTIFICATION_FONT = IosevkaTerm Nerd Font Mono
+
+general {
+    gaps_in = 4
+    gaps_out = 8
+    border_size = 2
+    col.active_border = rgba(509beeff)
+    col.inactive_border = rgba(c1c1c1d9)
+    layout = dwindle
+    resize_on_border = true
+}
+
+group {
+    col.border_active = rgba(509beeff)
+    col.border_inactive = rgba(c1c1c1d9)
+    col.border_locked_active = rgba(295fb0ff)
+    col.border_locked_inactive = rgba(c1c1c1d9)
+}
+
+decoration {
+    rounding = 4
+    shadow:enabled = false
+
+    blur {
+        enabled = yes
+        size = 6
+        passes = 4
+        new_optimizations = on
+        ignore_opacity = on
+        xray = false
+    }
+}

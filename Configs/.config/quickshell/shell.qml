@@ -10,7 +10,7 @@ ShellRoot {
     property string home: Quickshell.env("HOME")
     property string workflow: "default"
     property string themeName: ""
-    property string layoutName: "main"
+    property string layoutName: "right"
     property string sunsetEnabled: ""
     property bool keepAwakeManual: false
     property bool keepAwakeAudio: true
@@ -18,13 +18,13 @@ ShellRoot {
     property int indicatorRefreshSerial: 0
     property bool powerProfileRestorePending: false
     property bool stateReady: false
-    property string mode: workflow === "gaming" ? "hidden" : layoutName === "top" ? "top" : layoutName === "winbar" ? "winbar" : "main"
+    property string mode: workflow === "gaming" ? "hidden" : String(barLayout.panel || "")
     property bool userHidden: false
     property string popupName: ""
-    property var barLayout: []
-    readonly property var barModules: (Array.isArray(barLayout) ? barLayout : Object.keys(barLayout || {}).reduce((all, key) => Array.isArray(barLayout[key]) ? all.concat(barLayout[key]) : all, [])).map(item => typeof item === "string" ? item : String(item.id || ""))
-    readonly property bool dateModuleVisible: !userHidden && (barModules.includes("date") || barModules.includes("datetime") && (mode === "winbar" ? store.winbarClock % 4 < 3 : mode === "top" ? [0, 1, 4, 5, 6, 7].includes(store.topClock % 8) : store.mainClock % 4 === 2))
-    readonly property bool clockModuleVisible: !userHidden && barModules.includes("datetime") && (mode === "winbar" || mode === "top" ? store.topClock % 8 !== 6 : store.mainClock % 4 !== 2)
+    property var barLayout: ({})
+    readonly property var barModules: ["modules", "left", "center", "right"].reduce((all, key) => all.concat(Array.isArray(barLayout[key]) ? barLayout[key] : []), []).map(item => typeof item === "string" ? item : String(item.id || ""))
+    readonly property bool dateModuleVisible: !userHidden && (barModules.includes("date") || barModules.includes("datetime") && (mode === "winbar" ? store.winbarClock % 4 < 3 : mode === "horizontal" ? [0, 1, 4, 5, 6, 7].includes(store.topClock % 8) : store.mainClock % 4 === 2))
+    readonly property bool clockModuleVisible: !userHidden && barModules.includes("datetime") && (mode === "winbar" || mode === "horizontal" ? store.topClock % 8 !== 6 : store.mainClock % 4 !== 2)
     readonly property string timeVisibility: Quickshell.processId + " " + Number(dateModuleVisible) + " " + Number(clockModuleVisible) + "\n"
     property real volumeLimit: 1
     property real volumeMinDb: -60
@@ -97,15 +97,9 @@ ShellRoot {
     // unscaled: the card's frame has to read as the same weight as the frames on
     // the windows behind it, and Hyprland draws those in raw pixels
     readonly property real borderWidth: style.border
-    readonly property real moduleRadius: layoutName === "winbar" ? 0 : rounding
-    // Which screen edge the active layout puts the bar on. One source: popups
-    // and tooltips anchor against it, and the dock derives its own edge from it.
-    // It used to be spelled out separately in each of those, and the copy that
-    // forgot "alt" put the dock on the wrong side.
-    readonly property string barEdge: ["main", "alt"].includes(layoutName) ? "right"
-        : ["left", "sidebar"].includes(layoutName) ? "left"
-        : layoutName === "top" ? "top" : "bottom"
-    readonly property real barOpacity: workflow === "powersaver" ? 1 : workflow === "windows" ? .5 : ["top", "winbar"].includes(layoutName) ? .4 : .6
+    readonly property real moduleRadius: mode === "winbar" ? 0 : rounding
+    readonly property string barEdge: String(barLayout.edge || "right")
+    readonly property real barOpacity: workflow === "powersaver" ? 1 : workflow === "windows" ? .5 : mode === "vertical" ? .6 : .4
     readonly property color barColor: store.barTransparent ? "transparent" : alpha(background, barOpacity)
     property SystemClock clock: SystemClock { precision: SystemClock.Minutes }
     readonly property alias store: persistent
@@ -198,8 +192,14 @@ ShellRoot {
     function closePopup() { popupName = "" }
     function toggleBarTransparency() { store.barTransparent = !store.barTransparent }
     function toggleBarBlur() { store.barBlur = !store.barBlur }
-    function barLayoutIcon(name) { return ({winbar:"", top:"", left:"", sidebar:"", main:"", alt:""})[name] || "" }
-    function loadBarLayout(raw) { try { barLayout = JSON.parse(raw) } catch (error) { barLayout = [] } }
+    function barLayoutIcon() { return ({top:"", bottom:"", left:"", right:""})[barEdge] || "" }
+    function loadBarLayout(raw) {
+        try {
+            const data = JSON.parse(raw), edges = data.panel === "vertical" ? ["left", "right"] : ["top", "bottom"]
+            if (!["vertical", "horizontal", "winbar"].includes(data.panel) || !edges.includes(data.edge)) throw new Error("invalid panel or edge")
+            barLayout = data
+        } catch (error) { console.warn("layout " + layoutName + ": " + error); barLayout = ({}) }
+    }
     function loadState(raw) {
         const text = String(raw)
         const modeMatch = text.match(/(?:^|\n)HYPR_WORKFLOW=["']?([^"'\n]+)/)
@@ -210,7 +210,7 @@ ShellRoot {
         const keepAwakeAudioMatch = text.match(/(?:^|\n)HYPR_KEEP_AWAKE_AUDIO=["']?([^"'\n]+)/)
         workflow = modeMatch ? modeMatch[1].trim() : "default"
         themeName = themeMatch ? themeMatch[1].trim() : ""
-        layoutName = layoutMatch ? layoutMatch[1].trim() : "main"
+        layoutName = layoutMatch ? layoutMatch[1].trim() : "right"
         sunsetEnabled = sunsetMatch ? sunsetMatch[1].trim() : ""
         keepAwakeManual = keepAwakeMatch ? keepAwakeMatch[1].trim() === "1" : false
         keepAwakeAudio = keepAwakeAudioMatch ? keepAwakeAudioMatch[1].trim() !== "0" : true
@@ -314,7 +314,7 @@ ShellRoot {
     LayerBlur { surface: "hypr-shell-bar"; enabled: shellRoot.store.barBlur; ignoreAlpha: 0.1 }
 
     onModeChanged: closePopup()
-    onLayoutNameChanged: { barLayout = []; layoutFile.reload() }
+    onLayoutNameChanged: { barLayout = ({}); layoutFile.reload() }
     onUserHiddenChanged: if (userHidden) closePopup()
     onTimeVisibilityChanged: timeVisibilityWrite.restart()
     Component.onCompleted: restorePowerProfile()
@@ -354,7 +354,7 @@ ShellRoot {
         function raise(): string { return Media.raisePlayer() ? "ok" : "unhandled" }
     }
     Variants {
-        model: shellRoot.stateReady && shellRoot.mode === "main" ? Quickshell.screens : []
+        model: shellRoot.stateReady && shellRoot.mode === "vertical" ? Quickshell.screens : []
         delegate: Component { MainBar { required property var modelData; shell: shellRoot; screen: modelData } }
     }
     Variants {
@@ -362,7 +362,7 @@ ShellRoot {
         delegate: Component { WinBar { required property var modelData; shell: shellRoot; screen: modelData } }
     }
     Variants {
-        model: shellRoot.stateReady && shellRoot.mode === "top" ? Quickshell.screens : []
+        model: shellRoot.stateReady && shellRoot.mode === "horizontal" ? Quickshell.screens : []
         delegate: Component { TopBar { required property var modelData; shell: shellRoot; screen: modelData } }
     }
 }

@@ -25,19 +25,47 @@ import sqlite3
 import subprocess
 import sys
 import time
-import unicodedata
 from collections import Counter
-from difflib import SequenceMatcher
 from pathlib import Path
+from typing import NamedTuple
 
 import requests
 from mutagen import MutagenError
 from mutagen.easyid3 import EasyID3
 from mutagen.flac import FLAC, Picture
 from mutagen.id3 import APIC, ID3, ID3NoHeaderError
-from mutagen.mp3 import MP3
 from mutagen.oggopus import OggOpus
 
+from audio_tags import SUPPORTED, VORBIS, read_tags
+from autotag_identity import (
+    CREDIT_NAME_SIMILARITY,
+    CREDIT_RECOVERY_TITLE_SIMILARITY,
+    MIN_ARTIST_SIMILARITY,
+    MIN_TITLE_SIMILARITY,
+    album_agrees,
+    album_context,
+    album_similarity,
+    artist_agrees,
+    candidate_agrees,
+    credit_similarity,
+    derive_candidates,
+    drop_redundant_feat,
+    existing,
+    first_artist_fallbacks,
+    folder_hints,
+    match_score,
+    missing_credit_names,
+    normalize,
+    parse_filename,
+    primary_artist,
+    search_variants,
+    same_script,
+    similarity,
+    split_featured_title as split_featured_title,
+    strip_release_suffix,
+    title_similarity,
+    track_identity,
+)
 from lyrics_paths import music_library_dir
 from title_cleanup import clean_title
 from ytdlp_config import ytdlp_auth_args
@@ -70,12 +98,6 @@ CACHE_COMMIT_BATCH = 64
 # MusicBrainz scores matches 0-100; below this a hit is usually a different song.
 MUSICBRAINZ_MIN_SCORE = 90
 
-# Independent of the weighted score. Measured: worst true 0.51, best false 0.44.
-# Not raisable to 0.60: correct pairs like "ru. & Magixx"/"ru." also score 0.50.
-MIN_TITLE_SIMILARITY = 0.50
-MIN_ARTIST_SIMILARITY = 0.50
-MIN_ALBUM_SIMILARITY = 0.60
-
 PROVIDERS = ("deezer", "itunes", "musicbrainz")
 # iTunes leads as the only provider returning a genre; it costs ~5.4s to Deezer's ~0.3s.
 DEFAULT_PROVIDER_ORDER = "itunes,deezer,musicbrainz"
@@ -89,9 +111,6 @@ ARTWORK_SIZE = "600x600bb.jpg"
 # Carried alongside the tags but never written as one.
 NON_TAG_FIELDS = {"artwork_url", "_preserved_credits"}
 
-SUPPORTED = {".mp3", ".opus", ".flac"}
-# Opus and FLAC both carry Vorbis comments, which are conventionally uppercase.
-VORBIS = {".opus", ".flac"}
 FIELDS = ("title", "artist", "album", "albumartist", "tracknumber", "date")
 
 
@@ -297,38 +316,6 @@ def fingerprint(path: Path) -> tuple[int, str]:
     return int(data["duration"]), data["fingerprint"]
 
 
-def parse_filename(path: Path) -> tuple[str, str]:
-    """Best-effort '<artist> - <title>' split, with track numbers stripped."""
-    stem = re.sub(r"^\s*\d{1,3}\s*[-._)]\s*", "", path.stem)
-    if " - " in stem:
-        artist, _, title = stem.partition(" - ")
-        return artist.strip(), title.strip()
-    return "", stem.strip()
-
-
-def read_tags(path: Path):
-    suffix = path.suffix.lower()
-    if suffix == ".opus":
-        return OggOpus(path)
-    if suffix == ".flac":
-        return FLAC(path)
-    try:
-        return EasyID3(path)
-    except ID3NoHeaderError:
-        audio = MP3(path)
-        audio.add_tags()
-        return EasyID3(path)
-
-
-def existing(tags, key: str) -> str:
-    value = tags.get(key) or tags.get(key.upper())
-    if not value:
-        return ""
-    if isinstance(value, list):
-        return str(value[0]).strip()
-    return str(value).strip()
-
-
 def pick_release(recording: dict, album: str = "") -> dict:
     """Prefer an album over singles/compilations, then the earliest release."""
     groups = recording.get("releasegroups") or []
@@ -417,118 +404,9 @@ def from_acoustid(
     raise Unidentified("no acoustid match above threshold")
 
 
-def normalize(value: str) -> list[str]:
-    folded = unicodedata.normalize("NFKD", value.lower())
-    folded = "".join(c for c in folded if not unicodedata.combining(c))
-    folded = re.sub(r"\b(?:feat|ft|featuring|with)\b", " ", folded)
-    folded = re.sub(r"[^0-9a-z]+", " ", folded)
-    return folded.split()
-
-
-def similarity(left: str, right: str) -> float:
-    """Token overlap and sequence ratio, whichever is kinder. Credits differ in
-    separators far more often than in content ("A, B" vs "A & B")."""
-    a, b = normalize(left), normalize(right)
-    if not a or not b:
-        return 0.0
-    overlap = len(set(a) & set(b)) / len(set(a) | set(b))
-    ratio = SequenceMatcher(None, " ".join(a), " ".join(b)).ratio()
-    return max(overlap, ratio)
-
-
-def has_non_latin(text: str) -> bool:
-    return any(c.isalpha() and ord(c) > 0x24F for c in text)
-
-
-def same_script(left: str, right: str) -> bool:
-    return has_non_latin(left) == has_non_latin(right)
-
-
-def artist_agrees(candidate: str, artist: str) -> bool:
-    """Credits differ by separators and extra features, not by spelling, so a real
-    match shares at least one word. Character similarity alone rates unrelated
-    short names highly ("BAYLI" vs "Valiant" scores 0.50 on no shared word)."""
-    if not artist:
-        return True
-    # Single characters are not evidence: "Ost [G]" and "Potato-g" share only "g".
-    shared = {t for t in set(normalize(candidate)) & set(normalize(artist)) if len(t) > 1}
-    if not shared:
-        return False
-    return similarity(candidate, artist) >= MIN_ARTIST_SIMILARITY
-
-
-def title_similarity(candidate: str, title: str) -> float:
-    candidate_base, _, _ = track_identity("", candidate)
-    title_base, _, _ = track_identity("", title)
-    return similarity(candidate_base, title_base)
-
-
-def credit_similarity(
-    cand_artist: str,
-    cand_title: str,
-    artist: str,
-    title: str,
-) -> float:
-    _, candidate_credit, _ = track_identity(cand_artist, cand_title)
-    _, wanted_credit, _ = track_identity(artist, title)
-    return similarity(candidate_credit, wanted_credit)
-
-
-def candidate_agrees(
-    cand_artist: str,
-    cand_title: str,
-    artist: str,
-    title: str,
-) -> bool:
-    """Match title identity separately from credits.
-
-    Providers disagree on whether a featured artist belongs in the title or the
-    artist credit. An explicit local feature must still be present somewhere in
-    the provider result; otherwise a solo recording can steal the match.
-    """
-    _, candidate_credit, _ = track_identity(cand_artist, cand_title)
-    _, wanted_credit, wanted_features = track_identity(artist, title)
-    if title_similarity(cand_title, title) < MIN_TITLE_SIMILARITY:
-        return False
-    if not artist_agrees(candidate_credit, wanted_credit):
-        return False
-    return not wanted_features or credit_contains(candidate_credit, wanted_features)
-
-
-def match_score(cand_artist: str, cand_title: str, artist: str, title: str) -> float:
-    title_score = title_similarity(cand_title, title)
-    if not artist:
-        return title_score
-    return 0.6 * title_score + 0.4 * credit_similarity(
-        cand_artist, cand_title, artist, title
-    )
-
-
-def strip_release_suffix(album: str) -> str:
-    return re.sub(r"\s*-\s*(?:Single|EP)\s*$", "", album, flags=re.I).strip()
-
-
-def album_similarity(candidate: str, album: str) -> float:
-    return similarity(strip_release_suffix(candidate), strip_release_suffix(album))
-
-
-def album_agrees(candidate: str, album: str) -> bool:
-    return not album or album_similarity(candidate, album) >= MIN_ALBUM_SIMILARITY
-
-
 ITUNES_COMPILATION = re.compile(
     r"\((?:dj\s+mix|mixed)\)|\bgreatest\s+hits\b|\bcompilation\b|\bnow\s+that'?s\b", re.I
 )
-
-
-def primary_artist(album_artist: str, artist: str) -> str:
-    """The name a release belongs to, so players do not file every collaboration
-    as its own artist. Providers name it outright; otherwise the credit leads
-    with it."""
-    if album_artist:
-        return album_artist
-    lead = re.split(r"\s*(?:,|&|;|\bfeat\.?\b|\bft\.?\b|\bwith\b)\s*", artist, maxsplit=1)[0]
-    return lead.strip()
 
 
 def itunes_is_compilation(item: dict) -> bool:
@@ -752,92 +630,6 @@ def from_deezer(
     return meta
 
 
-BRACKETED_FEATURE = re.compile(
-    r"\s*[\(\[]\s*(?:feat\.?|ft\.?|featuring|with)\s+"
-    r"(?P<who>[^)\]]+?)\s*[\)\]]",
-    re.IGNORECASE,
-)
-TRAILING_FEATURE = re.compile(
-    r"\s+(?:feat\.?|ft\.?|featuring)\s+(?P<who>.+?)\s*$",
-    re.IGNORECASE,
-)
-
-
-def split_featured_title(title: str) -> tuple[str, str]:
-    """Return a base title and credits carried by feature annotations."""
-    featured = []
-
-    def remove(match: re.Match) -> str:
-        who = match.group("who").strip()
-        if who:
-            featured.append(who)
-        return ""
-
-    base = BRACKETED_FEATURE.sub(remove, clean_title(title))
-    base = TRAILING_FEATURE.sub(remove, base)
-    base = re.sub(r"\s{2,}", " ", base).strip(" -–—")
-    return base, ", ".join(featured)
-
-
-def credit_contains(credit: str, wanted: str) -> bool:
-    wanted_tokens = set(normalize(wanted))
-    return bool(wanted_tokens) and wanted_tokens <= set(normalize(credit))
-
-
-def combine_credits(artist: str, featured: str) -> str:
-    artist = artist.strip()
-    featured = featured.strip()
-    if not featured or credit_contains(artist, featured):
-        return artist
-    return ", ".join(value for value in (artist, featured) if value)
-
-
-def track_identity(artist: str, title: str) -> tuple[str, str, str]:
-    """Canonical fields used only for lookup; original metadata remains intact."""
-    base_title, featured = split_featured_title(title)
-    return base_title, combine_credits(artist, featured), featured
-
-
-_CREDIT_SEPARATOR = re.compile(
-    r"\s*(?:,|&|;|\bfeat(?:uring)?\b\.?|\bft\b\.?|\bwith\b)\s*",
-    re.IGNORECASE,
-)
-CREDIT_NAME_SIMILARITY = 0.90
-CREDIT_RECOVERY_TITLE_SIMILARITY = 0.80
-
-
-def credit_names(artist: str, title: str = "") -> list[str]:
-    """Return distinct credited names while keeping names containing 'and' whole."""
-    _, combined_credit, _ = track_identity(artist, title)
-    names: list[str] = []
-    for raw_name in _CREDIT_SEPARATOR.split(combined_credit):
-        name = raw_name.strip()
-        if not name:
-            continue
-        if any(similarity(name, present) >= CREDIT_NAME_SIMILARITY for present in names):
-            continue
-        names.append(name)
-    return names
-
-
-def missing_credit_names(
-    current_artist: str,
-    current_title: str,
-    proposed_artist: str,
-    proposed_title: str,
-) -> list[str]:
-    """Return local credits absent from the complete proposed artist/title pair."""
-    proposed_names = credit_names(proposed_artist, proposed_title)
-    return [
-        name
-        for name in credit_names(current_artist, current_title)
-        if not any(
-            similarity(name, proposed) >= CREDIT_NAME_SIMILARITY
-            for proposed in proposed_names
-        )
-    ]
-
-
 def youtube_credit_metadata(url: str, timeout: int = 45) -> dict[str, str]:
     """Read structured track credits from a YouTube URL without downloading it."""
     if not re.match(r"^https?://(?:www\.|music\.)?(?:youtube\.com|youtu\.be)/", url, re.I):
@@ -930,36 +722,6 @@ def recovered_youtube_artist(path: Path, tags) -> str:
             "YouTube purl does not verify: " + ", ".join(unverified)
         )
     return source_credit
-
-
-def search_variants(artist: str, title: str) -> list[tuple[str, str]]:
-    """Search both common provider layouts for a featured credit."""
-    cleaned = clean_title(title)
-    base_title, combined_credit, _ = track_identity(artist, cleaned)
-    variants = [(artist.strip(), cleaned), (combined_credit, base_title)]
-    seen = set()
-    unique = []
-    for query_artist, query_title in variants:
-        key = (query_artist.casefold(), query_title.casefold())
-        if query_title and key not in seen:
-            seen.add(key)
-            unique.append((query_artist, query_title))
-    return unique
-
-
-def drop_redundant_feat(title: str, artist: str) -> str:
-    """YouTube Music credits featured artists in the artist field and again inside
-    the official title. Drop the second copy only when the first already names
-    them: on a plain upload the feat is the only record of the collaborator."""
-    if not artist:
-        return title
-
-    def prune(match: re.Match) -> str:
-        return "" if credit_contains(artist, match.group("who")) else match.group(0)
-
-    tidied = BRACKETED_FEATURE.sub(prune, title)
-    tidied = TRAILING_FEATURE.sub(prune, tidied)
-    return re.sub(r"\s{2,}", " ", tidied).strip()
 
 
 def escape_lucene(value: str) -> str:
@@ -1240,126 +1002,6 @@ def tidy_title(path: Path, dry_run: bool, tags=None) -> str:
     return tidied
 
 
-def split_leading_artist(title: str, artist: str) -> str:
-    """YouTube titles repeat the artist ("Chidinma - Fallen in Love")."""
-    if " - " not in title:
-        return title
-    left, _, right = title.partition(" - ")
-    if right and (not artist or similarity(left, artist) >= 0.5):
-        return right.strip()
-    return title
-
-
-# A bucket never names an artist: [G]'s children are artists, [C]'s are releases.
-BUCKET_ARTISTS = re.compile(r"\s*\[g\]\s*$", re.I)
-BUCKET_ALBUMS = re.compile(r"\s*\[c\]\s*$", re.I)
-
-
-def bucket_index(parts: tuple[str, ...]) -> int:
-    for i in range(len(parts) - 1, -1, -1):
-        if BUCKET_ARTISTS.search(parts[i]) or BUCKET_ALBUMS.search(parts[i]):
-            return i
-    return -1
-
-
-def folder_hints(path: Path, root: Path) -> tuple[str, str]:
-    """One directory below the root names the artist; two or more name the album,
-    with the artist directly above it. Below a bucket the same shape applies to
-    whatever the bucket declares its children to be."""
-    try:
-        parts = path.relative_to(root).parts[:-1]
-    except ValueError:
-        return "", ""
-    if not parts:
-        return "", ""
-
-    at = bucket_index(parts)
-    if at >= 0:
-        inner = parts[at + 1:]
-        if not inner:
-            return "", ""
-        if BUCKET_ALBUMS.search(parts[at]):
-            return "", inner[-1]
-        return inner[0], (inner[-1] if len(inner) > 1 else "")
-
-    if len(parts) == 1:
-        return parts[0], ""
-    return parts[-2], parts[-1]
-
-
-def album_context(path: Path, tags, root: Path) -> tuple[str, tuple]:
-    """Return the intended album and a stable grouping key.
-
-    A library directory is authoritative over a per-track single/compilation tag.
-    Existing tags remain the fallback for loose files and external scan roots.
-    """
-    dir_artist, dir_album = folder_hints(path, root)
-    album = dir_album or existing(tags, "album")
-    if not album:
-        return "", ()
-    owner = (
-        dir_artist
-        or existing(tags, "albumartist")
-        or primary_artist("", existing(tags, "artist"))
-    )
-    return album, (tuple(normalize(owner)), tuple(normalize(album)))
-
-
-def candidate_key(artist: str, title: str) -> tuple[tuple[str, ...], tuple[str, ...]]:
-    base_title, combined_credit, _ = track_identity(artist, title)
-    return (
-        tuple(normalize(combined_credit)) or (combined_credit.casefold().strip(),),
-        tuple(normalize(base_title)) or (base_title.casefold().strip(),),
-    )
-
-
-def derive_candidates(path: Path, tags, root: Path) -> list[tuple[str, str]]:
-    """Filename first: for ripped video these tags hold the uploader and the full
-    video title, while the filename is already "<artist> - <title>"."""
-    file_artist, file_title = parse_filename(path)
-    tag_artist = existing(tags, "artist")
-    tag_title = existing(tags, "title")
-
-    dir_artist, _ = folder_hints(path, root)
-
-    candidates = []
-    if file_artist and file_title:
-        candidates.append((file_artist, file_title))
-    if tag_title:
-        candidates.append((tag_artist, split_leading_artist(tag_title, tag_artist)))
-    if file_title and not file_artist:
-        # A candidate with no artist skips the artist gate, so prefer the directory.
-        if dir_artist:
-            candidates.append((dir_artist, file_title))
-        if tag_artist or not dir_artist:
-            candidates.append((tag_artist, file_title))
-
-    seen = set()
-    unique = []
-    for artist, title in candidates:
-        keyed = candidate_key(artist, title)
-        if title and keyed not in seen:
-            seen.add(keyed)
-            unique.append((artist.strip(), title.strip()))
-    return unique
-
-
-def first_artist_fallbacks(
-    candidates: list[tuple[str, str]],
-) -> list[tuple[str, str]]:
-    """Keep the full identity authoritative, but provide a lean search identity
-    when YouTube flattens performers, writers and producers into one artist list."""
-    seen = {candidate_key(artist, title) for artist, title in candidates}
-    fallbacks = []
-    for artist, title in candidates:
-        first_artist = primary_artist("", artist)
-        keyed = candidate_key(first_artist, title)
-        if first_artist and keyed not in seen:
-            seen.add(keyed)
-            fallbacks.append((first_artist, title))
-    return fallbacks
-
-
 def resolution_cache_key(
     path: Path,
     candidates: list[tuple[str, str]],
@@ -1424,6 +1066,21 @@ def cache_resolution(
         {"identified": True, "metadata": cached_metadata},
         CACHE_SUCCESS_TTL,
     )
+
+
+class SearchContext(NamedTuple):
+    album: str
+    single_release: bool
+    tags: object
+    failures: dict[str, list[str]]
+
+
+class AlbumArtworkGroup(NamedTuple):
+    album: str
+    paths: list[Path]
+    roots: dict[Path, Path]
+    metadata: dict[Path, dict]
+    urls: list[str]
 
 
 class Resolver:
@@ -1500,13 +1157,14 @@ class Resolver:
                 raise
             return None
 
-    def _lookup_candidate(self, provider: str, artist: str, title: str, album: str,
-                          single_release: bool, tags, failures: dict) -> dict | None:
+    def _lookup_candidate(
+        self, provider: str, artist: str, title: str, context: SearchContext
+    ) -> dict | None:
         try:
-            return self.lookup(provider, artist, title, album)
+            return self.lookup(provider, artist, title, context.album)
         except Unidentified as exc:
-            if not single_release or not self.args.fallback:
-                failures.setdefault(str(exc), []).append(provider)
+            if not context.single_release or not self.args.fallback:
+                context.failures.setdefault(str(exc), []).append(provider)
                 return None
 
         # A single whose album tag repeats its title can be delisted under that
@@ -1515,22 +1173,23 @@ class Resolver:
         try:
             metadata = self.lookup(provider, artist, title, "")
         except Unidentified as relaxed_exc:
-            failures.setdefault(str(relaxed_exc), []).append(provider)
+            context.failures.setdefault(str(relaxed_exc), []).append(provider)
             return None
 
         metadata.update(
-            title=existing(tags, "title") or metadata.get("title", ""),
-            artist=existing(tags, "artist") or metadata.get("artist", ""),
-            album=album,
-            date=existing(tags, "date"),
-            tracknumber=existing(tags, "tracknumber") or "1/1",
+            title=existing(context.tags, "title") or metadata.get("title", ""),
+            artist=existing(context.tags, "artist") or metadata.get("artist", ""),
+            album=context.album,
+            date=existing(context.tags, "date"),
+            tracknumber=existing(context.tags, "tracknumber") or "1/1",
             artwork_url="",
         )
         metadata.pop("musicbrainz_releasegroupid", None)
         return metadata
 
-    def _search_tier(self, candidates: list, exact: bool, album: str,
-                     single_release: bool, tags, failures: dict) -> dict | None:
+    def _search_tier(
+        self, candidates: list, exact: bool, context: SearchContext
+    ) -> dict | None:
         """The tier's match: the first one when the credits are exact, else the
         best-scoring across providers."""
         best = None
@@ -1538,7 +1197,7 @@ class Resolver:
         for provider in self.args.provider_order:
             for artist, title in candidates:
                 metadata = self._lookup_candidate(
-                    provider, artist, title, album, single_release, tags, failures
+                    provider, artist, title, context
                 )
                 if metadata is None:
                     continue
@@ -1614,15 +1273,13 @@ class Resolver:
 
         # Exhaust exact credits across every provider before relaxing to the first
         # artist. This keeps a broad iTunes result from beating an exact Deezer match.
-        failures: dict[str, list[str]] = {}
+        context = SearchContext(album, single_release, tags, {})
         for tier_index, candidate_tier in enumerate(candidate_tiers):
-            metadata = self._search_tier(
-                candidate_tier, tier_index == 0, album, single_release, tags, failures
-            )
+            metadata = self._search_tier(candidate_tier, tier_index == 0, context)
             if metadata is not None:
                 return self._identified(cache_key, metadata)
 
-        reason = self._failure_reason(candidate_tiers, failures)
+        reason = self._failure_reason(candidate_tiers, context.failures)
         self._remember(cache_key, {"identified": False, "reason": reason}, CACHE_MISS_TTL)
         raise Unidentified(reason)
 
@@ -1826,52 +1483,56 @@ def embed_track_artwork(path: Path, meta: dict, written: dict) -> None:
         written["artwork"] = f"{len(image.content) // 1024}KB"
 
 
-def apply_album_artwork(group: dict, resolver: Resolver) -> int:
+def apply_album_artwork(group: AlbumArtworkGroup, resolver: Resolver) -> int:
     """One catalog cover across an album's tracks. Returns the failure count."""
     args = resolver.args
-    artwork_url = Counter(group["urls"]).most_common(1)[0][0]
-    paths = group["paths"]
+    artwork_url = Counter(group.urls).most_common(1)[0][0]
 
     if args.dry_run:
         name = artwork_url.rsplit("/", 1)[-1]
-        print(f"-- {group['album']}: artwork={name!r} for {len(paths)} file(s)", flush=True)
+        print(f"-- {group.album}: artwork={name!r} for {len(group.paths)} file(s)", flush=True)
         return 0
 
     try:
         image = HTTP_SESSION.get(artwork_url, timeout=20)
         image.raise_for_status()
     except requests.RequestException as exc:
-        print(f"!! {group['album']}: artwork download failed: {exc}", file=sys.stderr)
+        print(f"!! {group.album}: artwork download failed: {exc}", file=sys.stderr)
         return 1
 
     failed = 0
     updated = 0
     unchanged = 0
-    for path in paths:
+    for path in group.paths:
         try:
             if embedded_artwork(path) == image.content:
                 unchanged += 1
             else:
                 embed_artwork(path, image.content)
                 updated += 1
-            metadata = group["metadata"].get(path)
+            metadata = group.metadata.get(path)
             if metadata is not None:
                 cache_resolution(
-                    resolver.cache, path, group["roots"][path], read_tags(path), args,
+                    resolver.cache, path, group.roots[path], read_tags(path), args,
                     bool(resolver.key), metadata,
                 )
         except (MutagenError, OSError) as exc:
             print(f"!! {path.name}: artwork failed: {exc}", file=sys.stderr)
             failed += 1
     print(
-        f"ART {group['album']}: one cover -> "
+        f"ART {group.album}: one cover -> "
         f"{updated} updated, {unchanged} already correct",
         flush=True,
     )
     return failed
 
 
-def tag_file(path: Path, root: Path, resolver: Resolver, album_artwork_groups: dict) -> str:
+def tag_file(
+    path: Path,
+    root: Path,
+    resolver: Resolver,
+    album_artwork_groups: dict[tuple, AlbumArtworkGroup],
+) -> str:
     """Tag one file. Returns "written", "skipped" (already complete) or "reported"
     (dry run), and raises the same exceptions the providers and mutagen do.
     """
@@ -1884,10 +1545,10 @@ def tag_file(path: Path, root: Path, resolver: Resolver, album_artwork_groups: d
     if args.artwork and replace_artwork and album_key:
         artwork_group = album_artwork_groups.setdefault(
             album_key,
-            {"album": album, "paths": [], "roots": {}, "metadata": {}, "urls": []},
+            AlbumArtworkGroup(album, [], {}, {}, []),
         )
-        artwork_group["paths"].append(path)
-        artwork_group["roots"][path] = root
+        artwork_group.paths.append(path)
+        artwork_group.roots[path] = root
 
     tidied = tidy_title(path, args.dry_run, tags)
     if tidied:
@@ -1910,9 +1571,9 @@ def tag_file(path: Path, root: Path, resolver: Resolver, album_artwork_groups: d
         )
 
     if artwork_group is not None:
-        artwork_group["metadata"][path] = meta
+        artwork_group.metadata[path] = meta
         if meta.get("artwork_url") and album_agrees(meta.get("album", ""), album):
-            artwork_group["urls"].append(meta["artwork_url"])
+            artwork_group.urls.append(meta["artwork_url"])
 
     if args.dry_run:
         report_dry_run(path, tags, meta, args, artwork_group is not None)
@@ -1979,7 +1640,7 @@ def main() -> int:
 
     failed = 0
     complete = 0
-    album_artwork_groups: dict[tuple, dict] = {}
+    album_artwork_groups: dict[tuple, AlbumArtworkGroup] = {}
 
     for path, root in files:
         try:
@@ -1997,7 +1658,7 @@ def main() -> int:
 
     if args.artwork and replacing_artwork(args):
         for group in album_artwork_groups.values():
-            if group["urls"]:
+            if group.urls:
                 failed += apply_album_artwork(group, resolver)
 
     if complete:

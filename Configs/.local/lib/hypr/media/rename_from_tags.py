@@ -20,18 +20,17 @@ from pathlib import Path
 
 from mutagen import MutagenError
 
-from autotag import (
+from audio_tags import SUPPORTED, read_tags
+from autotag_identity import (
     MIN_ALBUM_SIMILARITY,
-    SUPPORTED,
-    clean_title,
     drop_redundant_feat,
     existing,
     missing_credit_names,
     parse_filename,
-    read_tags,
     similarity,
     split_leading_artist,
 )
+from title_cleanup import clean_title
 from media_move import (
     MoveError,
     apply_move_plan,

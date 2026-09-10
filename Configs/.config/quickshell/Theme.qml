@@ -4,7 +4,7 @@ import Quickshell.Io
 QtObject {
     id: root
     required property string home
-    property string layout: "main"
+    property string layout: "right"
     property var theme: ({ rounding: 0, borderSize: 0, palette: {} })
     property var baseRules: ({})
     property var overrides: ({})
@@ -63,6 +63,7 @@ QtObject {
         path: root.home + "/.config/quickshell/styles/" + root.layout + ".json"
         watchChanges: true
         printErrors: false
+        onPathChanged: { root.overrides = ({}); reload() }
         onFileChanged: reload()
         onLoaded: {
             try { root.overrides = JSON.parse(text()) }

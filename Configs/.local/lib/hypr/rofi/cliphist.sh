@@ -1,24 +1,32 @@
 #!/usr/bin/env bash
 
-# pressing the keybind again dismisses an open menu. Actions re-exec this script
-# to switch views, so they must not take that path — it would kill the UI they
-# are about to draw and exit.
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
+hypr_runtime_require system || exit 1
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
+source "${script_dir}/cliphist.store.bash" || exit 1
+favorites_file="$(cliphist_favorites_path)"
+
+if [[ "${1:-}" == --panel-* ]]; then
+  # shellcheck source=/dev/null
+  source "${script_dir}/cliphist.panel.bash" || exit 1
+  cliphist_panel_dispatch "${favorites_file}" "$@"
+  exit $?
+fi
+
+# Pressing the keybind again dismisses an open menu. Actions re-exec this script
+# to switch views, so they must not take that path.
 if [[ -z "${CLIPHIST_REENTRY:-}" ]]; then
   pkill -u "$USER" rofi && exit 0
 fi
 export CLIPHIST_REENTRY=1
 
-source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
-hypr_runtime_require system rofi || exit 1
+hypr_runtime_require rofi || exit 1
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/capture/ocr.common.bash" || exit 1
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
-script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
-cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}"
-favorites_file="${cache_dir}/landing/cliphist_favorites"
-[ -f "$HOME/.cliphist_favorites" ] && favorites_file="$HOME/.cliphist_favorites"
 cliphist_style="${ROFI_CLIPHIST_STYLE:-clipboard}"
 cliphist_style="$(rofi_resolve_theme "${cliphist_style}")"
 del_mode=false
@@ -417,8 +425,6 @@ view_favorites() {
 }
 
 add_to_favorites() {
-  mkdir -p "$(dirname "$favorites_file")"
-
   local item
   item=$( (
     printf '%s\t%s\n' "${action_back}" "Back"
@@ -440,12 +446,12 @@ add_to_favorites() {
     local encoded_item
     encoded_item=$(echo "$full_item" | base64 -w 0)
 
-    if [ -f "$favorites_file" ] && grep -Fxq "$encoded_item" "$favorites_file"; then
-      dunstify -t 3000 -i "edit-paste" "Item is already in favorites."
-    else
-      echo "$encoded_item" >>"$favorites_file"
-      dunstify -t 3000 -i "edit-paste" "Added to favorites."
-    fi
+    cliphist_favorite_add_encoded "${favorites_file}" "${encoded_item}"
+    case "$?" in
+      0) dunstify -t 3000 -i "edit-paste" "Added to favorites." ;;
+      2) dunstify -t 3000 -i "edit-paste" "Item is already in favorites." ;;
+      *) dunstify -t 3000 -i "dialog-error" "Error: Failed to update favorites." ;;
+    esac
   fi
 }
 
@@ -473,33 +479,11 @@ delete_from_favorites() {
     if [ -n "$index" ]; then
       local selected_encoded_favorite="${favorites[$((index - 1))]}"
 
-      if [ "$(wc -l <"$favorites_file")" -eq 1 ]; then
-        : >"$favorites_file"
+      if cliphist_favorite_remove_encoded "${favorites_file}" "${selected_encoded_favorite}"; then
+        dunstify -t 3000 -i "edit-delete" "Item removed from favorites."
       else
-        local favorites_tmp
-        favorites_tmp="$(mktemp "$(dirname "${favorites_file}")/.cliphist_favorites.XXXXXX")"
-        if grep -vF -x "$selected_encoded_favorite" "$favorites_file" >"${favorites_tmp}"; then
-          mv "${favorites_tmp}" "$favorites_file" || {
-            rm -f "${favorites_tmp}"
-            dunstify -t 3000 -i "dialog-error" "Error: Failed to update favorites."
-            return
-          }
-        else
-          local grep_status=$?
-          if [ "${grep_status}" -eq 1 ]; then
-            mv "${favorites_tmp}" "$favorites_file" || {
-              rm -f "${favorites_tmp}"
-              dunstify -t 3000 -i "dialog-error" "Error: Failed to update favorites."
-              return
-            }
-          else
-            rm -f "${favorites_tmp}"
-            dunstify -t 3000 -i "dialog-error" "Error: Failed to filter favorites."
-            return
-          fi
-        fi
+        dunstify -t 3000 -i "dialog-error" "Error: Failed to update favorites."
       fi
-      dunstify -t 3000 -i "edit-delete" "Item removed from favorites."
     else
       dunstify -t 3000 -i "dialog-error" "Error: Selected favorite not found."
     fi
@@ -722,71 +706,6 @@ qr_image_entry() {
   rm -f "${image_path}"
 }
 
-# Non-interactive API for the quickshell panel: the favourites store lives here,
-# so the panel asks this script rather than reimplementing base64 line handling.
-panel_json() {
-  local favorites_json="[]"
-  if [ -f "$favorites_file" ] && [ -s "$favorites_file" ]; then
-    favorites_json="$(
-      while IFS= read -r encoded; do
-        [ -n "$encoded" ] || continue
-        printf '%s' "$encoded" | base64 --decode 2>/dev/null | tr '\n' ' '
-        printf '\n'
-      done <"$favorites_file" | jq -R -s 'split("\n") | map(select(length > 0)) |
-        to_entries | map({index: (.key + 1), text: .value})'
-    )"
-  fi
-
-  cliphist list | jq -R -s --argjson favorites "$favorites_json" '
-    split("\n") | map(select(length > 0)) | map(split("\t") | {
-      id: .[0],
-      preview: (.[1:] | join("\t"))
-    }) | map(. + {image: (.preview | test("\\[\\[ binary data"))})
-    | {entries: ., favorites: $favorites}'
-}
-
-panel_copy_id() {
-  local id="$1"
-  [ -n "$id" ] || return 1
-  printf '%s\t' "$id" | cliphist decode | wl-copy
-  # the watcher re-stores it at the top, so drop the stale row
-  printf '%s\t' "$id" | cliphist delete
-  # the panel closes as this runs; give the compositor a moment to hand focus
-  # back before typing into whatever was underneath
-  sleep "${CLIPHIST_PASTE_DELAY:-0.2}"
-  paste_string
-}
-
-panel_delete_id() {
-  local id="$1"
-  [ -n "$id" ] || return 1
-  printf '%s\t' "$id" | cliphist delete
-}
-
-panel_fav_add_id() {
-  local id="$1"
-  [ -n "$id" ] || return 1
-  local encoded
-  encoded="$(printf '%s\t' "$id" | cliphist decode | base64 -w 0)"
-  mkdir -p "$(dirname "$favorites_file")"
-  if [ -f "$favorites_file" ] && grep -Fxq "$encoded" "$favorites_file"; then
-    return 0
-  fi
-  printf '%s\n' "$encoded" >>"$favorites_file"
-}
-
-panel_fav_remove_index() {
-  local index="$1"
-  [ -n "$index" ] && [ -f "$favorites_file" ] || return 1
-  sed -i "${index}d" "$favorites_file"
-}
-
-panel_fav_copy_index() {
-  local index="$1"
-  [ -n "$index" ] && [ -f "$favorites_file" ] || return 1
-  sed -n "${index}p" "$favorites_file" | base64 --decode | wl-copy
-}
-
 show_help() {
   local exit_code="${1:-0}"
   cat <<EOF
@@ -857,24 +776,6 @@ main() {
       ;;
     -w | --wipe | "Clear History")
       clear_history
-      ;;
-    --panel-json)
-      panel_json
-      ;;
-    --panel-copy)
-      panel_copy_id "$2"
-      ;;
-    --panel-delete)
-      panel_delete_id "$2"
-      ;;
-    --panel-fav-add)
-      panel_fav_add_id "$2"
-      ;;
-    --panel-fav-remove)
-      panel_fav_remove_index "$2"
-      ;;
-    --panel-fav-copy)
-      panel_fav_copy_index "$2"
       ;;
     "")
       exit 0

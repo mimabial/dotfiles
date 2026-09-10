@@ -1,12 +1,8 @@
 #!/usr/bin/env sh
 
-sticker=$(rmpc sticker get "$FILE" "playCount" | jq -r '.value')
+sticker="$(rmpc sticker get "$FILE" playCount | jq -r '.value')"
 if [ -z "$sticker" ]; then
-    rmpc sticker set "$FILE" "playCount" "1"
-else
-    rmpc sticker set "$FILE" "playCount" "$((sticker + 1))"
+  sticker=0
 fi
-
-# Call notify script to show song change notification
-SCRIPT_DIR="$(dirname "$0")"
-"$SCRIPT_DIR/notify"
+rmpc sticker set "$FILE" playCount "$((sticker + 1))"
+"$(dirname "$0")/notify"

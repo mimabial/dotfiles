@@ -1,0 +1,27 @@
+background = "#f3f3f3"
+foreground = "#3f3f3f"
+cursor-color = "#3f3f3f"
+cursor-text = "#f3f3f3"
+selection-foreground = "#3f3f3f"
+selection-background = "#bbddff"
+
+colors = [
+  "#3f3f3f",
+  "#295fb0",
+  "#509be8",
+  "#295fb0",
+  "#509bee",
+  "#70aae5",
+  "#bbddff",
+  "#c1c1c1",
+  "#3f3f3f",
+  "#509bee",
+  "#70aae5",
+  "#70aae5",
+  "#509bee",
+  "#295fb0",
+  "#bbddff",
+  "#e6e6e6",
+]
+
+kvantum-shell = "flat"

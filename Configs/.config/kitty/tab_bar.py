@@ -1,13 +1,11 @@
-"""Custom Kitty tab bar with pywal16-aware color integration."""
-# pylint: disable=C0111,E0401,E0611
-# type: ignore
-# pyright: reportMissingImports=false
+"""Custom Kitty tab bar with live theme colors."""
 
+# pyright: reportMissingImports=false
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-# Kitty modules are only available at runtime when loaded by kitty
 try:
     from kitty.fast_data_types import Screen
     from kitty.tab_bar import (
@@ -21,369 +19,195 @@ try:
     )
     from kitty.utils import color_as_int
 except ImportError:
-    Screen = Any  # type: ignore
-    DrawData = Any  # type: ignore
-    ExtraData = Any  # type: ignore
-    Formatter = Any  # type: ignore
-    TabBarData = Any  # type: ignore
+    Screen = DrawData = ExtraData = Formatter = TabBarData = Any  # type: ignore
 
-    def as_rgb(x: int) -> int:  # type: ignore
-        return x
+    def as_rgb(value: int) -> int:  # type: ignore
+        return value
 
     def draw_attributed_string(*args: Any) -> None:  # type: ignore
         pass
 
-    def color_as_int(x: Any) -> int:  # type: ignore
+    def color_as_int(value: Any) -> int:  # type: ignore
         return 0
 
     def get_boss() -> Any:  # type: ignore
         return None
 
 
-ICON = " 󱚠 TERM "
 RIGHT_MARGIN = 1
-
-THEME_CONFIG_PATH = Path.home() / ".config" / "kitty" / "theme.generated.conf"
-COLORS_CONFIG_PATH = Path.home() / ".config" / "kitty" / "colors.conf"
-QS_STATUS_PATH = Path.home() / ".local" / "state" / "quickshell" / "time-visibility"
-
-# Track file modification time
-_last_mtime = None
-_colors_last_mtime = None
-_qs_status_mtime = None
-_qs_status = (0, False, False)
-
-FALLBACK_COLORS = {
-    "icon_fg": "#dcd7ba",
-    "icon_bg": "#1f1f28",
-    "bat_text": "#727169",
-    "clock": "#6a9589",
-    "separator": "#727169",
-    "utc": "#727169",
-    "inactive_tab_fg": "#727169",
-    "active_tab_fg": "#c8c093",
-    "inactive_tab_bg": "#1f1f28",
-    "active_tab_bg": "#1f1f28",
+CONFIG_HOME = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+STATE_HOME = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
+COLOR_FILES = (
+    CONFIG_HOME / "kitty/theme.generated.conf",
+    CONFIG_HOME / "kitty/colors.conf",
+)
+QS_STATUS_PATH = STATE_HOME / "quickshell/time-visibility"
+COLOR_MAP = {
+    "icon_fg": ("foreground", "#dcd7ba"),
+    "icon_bg": ("background", "#1f1f28"),
+    "separator": ("color8", "#727169"),
+    "utc": ("color8", "#727169"),
+    "inactive_tab_fg": ("inactive_tab_foreground", "#727169"),
+    "active_tab_fg": ("active_tab_foreground", "#c8c093"),
 }
 
 
-def load_theme_colors():
-    """Load colors from kitty's generated theme file with fallback to colors.conf and defaults."""
-    colors = FALLBACK_COLORS.copy()
-    theme_colors = {}
-
-    # Try loading from the generated theme file first
-    if THEME_CONFIG_PATH.exists() and THEME_CONFIG_PATH.stat().st_size > 0:
-        try:
-            with open(THEME_CONFIG_PATH, "r") as f:
-                for line in f:
-                    line = line.strip()
-                    if line and not line.startswith("#"):
-                        parts = line.split()
-                        if len(parts) >= 2:
-                            theme_colors[parts[0]] = parts[1]
-        except (OSError, ValueError):
-            pass
-
-    # Fallback to colors.conf if the generated theme file is empty or missing colors
-    if not theme_colors and COLORS_CONFIG_PATH.exists():
-        try:
-            with open(COLORS_CONFIG_PATH, "r") as f:
-                for line in f:
-                    line = line.strip()
-                    if line and not line.startswith("#"):
-                        parts = line.split()
-                        if len(parts) >= 2:
-                            theme_colors[parts[0]] = parts[1]
-        except (OSError, ValueError):
-            pass
-
-    # Map theme colors to our usage
-    if theme_colors:
-        color_mapping = {
-            "icon_fg": theme_colors.get("foreground", colors["icon_fg"]),
-            "icon_bg": theme_colors.get("background", colors["icon_bg"]),
-            "bat_text": theme_colors.get("color8", colors["bat_text"]),
-            "clock": theme_colors.get("color6", colors["clock"]),
-            "separator": theme_colors.get("color8", colors["separator"]),
-            "utc": theme_colors.get("color8", colors["utc"]),
-            "inactive_tab_fg": theme_colors.get(
-                "inactive_tab_foreground", colors["inactive_tab_fg"]
-            ),
-            "active_tab_fg": theme_colors.get(
-                "active_tab_foreground", colors["active_tab_fg"]
-            ),
-            "inactive_tab_bg": theme_colors.get(
-                "inactive_tab_background", colors["inactive_tab_bg"]
-            ),
-            "active_tab_bg": theme_colors.get(
-                "active_tab_background", colors["active_tab_bg"]
-            ),
-        }
-        colors.update(color_mapping)
-
-    return colors
-
-
-def hex_to_rgb_int(hex_color):
-    """Convert hex color to RGB integer."""
-    if hex_color.startswith("#"):
-        hex_color = hex_color[1:]
-    return int(hex_color, 16)
-
-
-# Load colors dynamically
-_colors = load_theme_colors()
-icon_fg = as_rgb(hex_to_rgb_int(_colors["icon_fg"]))  # type: ignore
-icon_bg = as_rgb(hex_to_rgb_int(_colors["icon_bg"]))  # type: ignore
-bat_text_color = as_rgb(hex_to_rgb_int(_colors["bat_text"]))  # type: ignore
-clock_color = as_rgb(hex_to_rgb_int(_colors["clock"]))  # type: ignore
-sep_color = as_rgb(hex_to_rgb_int(_colors["separator"]))  # type: ignore
-utc_color = as_rgb(hex_to_rgb_int(_colors["utc"]))  # type: ignore
-inactive_tab_fg = as_rgb(hex_to_rgb_int(_colors["inactive_tab_fg"]))  # type: ignore
-active_tab_fg = as_rgb(hex_to_rgb_int(_colors["active_tab_fg"]))  # type: ignore
-inactive_tab_bg = as_rgb(hex_to_rgb_int(_colors["inactive_tab_bg"]))  # type: ignore
-active_tab_bg = as_rgb(hex_to_rgb_int(_colors["active_tab_bg"]))  # type: ignore
-
-
-def refresh_colors():
-    """Refresh colors from kitty's generated theme or pywal16 colors if the source files changed."""
-    global \
-        icon_fg, \
-        icon_bg, \
-        bat_text_color, \
-        clock_color, \
-        sep_color, \
-        utc_color, \
-        inactive_tab_fg, \
-        active_tab_fg, \
-        inactive_tab_bg, \
-        active_tab_bg, \
-        _last_mtime, \
-        _colors_last_mtime
-
+def _mtime(path: Path) -> int:
     try:
-        current_theme_mtime = (
-            THEME_CONFIG_PATH.stat().st_mtime if THEME_CONFIG_PATH.exists() else None
-        )
-        current_colors_mtime = (
-            COLORS_CONFIG_PATH.stat().st_mtime if COLORS_CONFIG_PATH.exists() else None
-        )
-
-        # Only reload if either file has changed
-        if (
-            current_theme_mtime != _last_mtime
-            or current_colors_mtime != _colors_last_mtime
-        ):
-            _last_mtime = current_theme_mtime
-            _colors_last_mtime = current_colors_mtime
-
-            colors = load_theme_colors()
-            icon_fg = as_rgb(hex_to_rgb_int(colors["icon_fg"]))  # type: ignore
-            icon_bg = as_rgb(hex_to_rgb_int(colors["icon_bg"]))  # type: ignore
-            bat_text_color = as_rgb(hex_to_rgb_int(colors["bat_text"]))  # type: ignore
-            clock_color = as_rgb(hex_to_rgb_int(colors["clock"]))  # type: ignore
-            sep_color = as_rgb(hex_to_rgb_int(colors["separator"]))  # type: ignore
-            utc_color = as_rgb(hex_to_rgb_int(colors["utc"]))  # type: ignore
-            inactive_tab_fg = as_rgb(hex_to_rgb_int(colors["inactive_tab_fg"]))  # type: ignore
-            active_tab_fg = as_rgb(hex_to_rgb_int(colors["active_tab_fg"]))  # type: ignore
-            inactive_tab_bg = as_rgb(hex_to_rgb_int(colors["inactive_tab_bg"]))  # type: ignore
-            active_tab_bg = as_rgb(hex_to_rgb_int(colors["active_tab_bg"]))  # type: ignore
-    except (OSError, ValueError):
-        pass
+        return path.stat().st_mtime_ns
+    except OSError:
+        return 0
 
 
-def calc_draw_spaces(*args) -> int:
-    length = 0
-    for i in args:
-        if not isinstance(i, str):
-            i = str(i)
-        length += len(i)
-    return length
+def _load_colors() -> dict[str, int]:
+    raw: dict[str, str] = {}
+    for path in COLOR_FILES:
+        try:
+            raw = {
+                parts[0]: parts[1]
+                for line in path.read_text().splitlines()
+                if line and not line.lstrip().startswith("#")
+                and len(parts := line.split()) >= 2
+            }
+        except OSError:
+            continue
+        if raw:
+            break
+    return {
+        name: as_rgb(int(raw.get(source, fallback).lstrip("#"), 16))
+        for name, (source, fallback) in COLOR_MAP.items()
+    }
+
+
+_colors = _load_colors()
+_color_mtimes = tuple(map(_mtime, COLOR_FILES))
+_qs_status_mtime = 0
+_qs_status = (0, False, False)
+
+
+def _refresh_colors() -> None:
+    global _colors, _color_mtimes
+    mtimes = tuple(map(_mtime, COLOR_FILES))
+    if mtimes != _color_mtimes:
+        _color_mtimes = mtimes
+        try:
+            _colors = _load_colors()
+        except ValueError:
+            pass
 
 
 def _active_window_bg() -> int:
-    """Live background of the focused window (tracks OSC 11), falling back to the theme icon_bg."""
     try:
         window = get_boss().active_window
         if window is not None:
             return as_rgb(color_as_int(window.screen.color_profile.default_bg))
     except Exception:
         pass
-    return icon_bg
+    return _colors["icon_bg"]
 
 
-def _quickshell_visibility():
+def _quickshell_visibility() -> tuple[bool, bool]:
     global _qs_status_mtime, _qs_status
     try:
         mtime = QS_STATUS_PATH.stat().st_mtime_ns
         if mtime != _qs_status_mtime:
             pid, date, clock = QS_STATUS_PATH.read_text().split()
             _qs_status_mtime, _qs_status = mtime, (int(pid), date == "1", clock == "1")
-        return (
-            _qs_status[1:]
-            if (Path("/proc") / str(_qs_status[0])).exists()
-            else (False, False)
-        )
+        return _qs_status[1:] if Path(f"/proc/{_qs_status[0]}").exists() else (False, False)
     except (OSError, ValueError):
         return False, False
 
 
-def _draw_icon(screen: Screen, index: int, layout_name: str) -> int:
+def _draw_icon(screen: Screen, index: int, layout: str) -> None:
     if index != 1:
-        return 0
-
+        return
     fg, bg = screen.cursor.fg, screen.cursor.bg
-    screen.cursor.fg = icon_fg
+    screen.cursor.fg = _colors["icon_fg"]
     screen.cursor.bg = _active_window_bg()
     screen.cursor.italic = False
     screen.cursor.bold = True
-
-    icon_text = f" 󱚠 {layout_name.upper()} "  # -- alt:   󱚠
-    screen.draw(icon_text)
-
+    text = f" 󱚠 {layout.upper()} "
+    screen.draw(text)
     screen.cursor.fg, screen.cursor.bg = fg, bg
-    screen.cursor.x = len(icon_text)
-    return screen.cursor.x
+    screen.cursor.x = len(text)
 
 
-def _draw_left_status(
-    draw_data: DrawData,  # type: ignore
+def _draw_tab(
+    draw_data: DrawData,
     screen: Screen,
-    tab: TabBarData,  # type: ignore
+    tab: TabBarData,
     before: int,
     max_title_length: int,
     index: int,
     is_last: bool,
-    extra_data: ExtraData,  # type: ignore
 ) -> int:
-    # Refresh colors before drawing
-    refresh_colors()
-
     if draw_data.leading_spaces:  # type: ignore
         screen.draw(" " * draw_data.leading_spaces)  # type: ignore
-
-    # Save original colors
-    orig_fg = screen.cursor.fg
-    orig_bg = screen.cursor.bg
-
-    # Set tab colors based on active/inactive state
-    if tab.is_active:  # type: ignore
-        screen.cursor.fg = active_tab_fg
-        screen.cursor.bg = 0
-        screen.cursor.italic = True
-    else:
-        screen.cursor.fg = inactive_tab_fg
-        screen.cursor.bg = 0
-
-    # Draw icon
-    if tab.is_active:  # type: ignore
-        screen.draw("  ")
-    else:
-        screen.draw("  ")
-
-    # Draw index and title
+    fg, bg = screen.cursor.fg, screen.cursor.bg
+    screen.cursor.fg = _colors["active_tab_fg" if tab.is_active else "inactive_tab_fg"]  # type: ignore
+    screen.cursor.bg = 0
+    screen.cursor.italic = tab.is_active  # type: ignore
+    screen.draw("  " if tab.is_active else "  ")  # type: ignore
     title = tab.title  # type: ignore
-    if len(title) > 25:
-        title_display = f"{title[:6]}…{title[-6:]}"
-    else:
-        title_display = title
-
-    screen.draw(f"{index}:{title_display}")
-
-    # Add stack indicator if needed
-    if hasattr(tab, "layout_name") and tab.layout_name == "stack":  # type: ignore
+    screen.draw(f"{index}:{title[:6]}…{title[-6:]}" if len(title) > 25 else f"{index}:{title}")
+    if getattr(tab, "layout_name", "") == "stack":
         screen.draw(" []")
-
     screen.draw(" ")
 
-    trailing_spaces = min(max_title_length - 1, draw_data.trailing_spaces)  # type: ignore
-    max_title_length -= trailing_spaces
-    extra = screen.cursor.x - before - max_title_length
+    trailing = min(max_title_length - 1, draw_data.trailing_spaces)  # type: ignore
+    extra = screen.cursor.x - before - (max_title_length - trailing)
     if extra > 0:
         screen.cursor.x -= extra + 1
         screen.draw("…")
-    if trailing_spaces:
-        screen.draw(" " * trailing_spaces)
+    if trailing:
+        screen.draw(" " * trailing)
     end = screen.cursor.x
     screen.cursor.bold = screen.cursor.italic = False
     screen.cursor.fg = 0
     if not is_last:
         screen.cursor.bg = as_rgb(color_as_int(draw_data.inactive_bg))  # type: ignore
         screen.draw(draw_data.sep)  # type: ignore
-    screen.cursor.bg = 0
-
-    # Restore original colors
-    screen.cursor.fg = orig_fg
-    screen.cursor.bg = orig_bg
+    screen.cursor.fg, screen.cursor.bg = fg, bg
     return end
 
 
-def _draw_right_status(screen: Screen, is_last: bool) -> int:
+def _draw_right_status(screen: Screen, is_last: bool) -> None:
     if not is_last:
-        return 0
-
+        return
     draw_attributed_string(Formatter.reset, screen)  # type: ignore
-
-    separator = " "  # alt: ⋮
-    clock = datetime.now().strftime("%H:%M")
-    qs_date, qs_clock = _quickshell_visibility()
-    date = datetime.now().strftime(" %a,%b.%d " if qs_clock else "(%a,%b.%d)")
+    now = datetime.now()
+    hide_date, hide_clock = _quickshell_visibility()
     cells = []
+    if not hide_clock:
+        cells.append((_colors["icon_fg"], now.strftime("%H:%M")))
+    if not hide_clock and not hide_date:
+        cells.append((_colors["separator"], " "))
+    if not hide_date:
+        cells.append((_colors["utc"], now.strftime(" %a,%b.%d " if hide_clock else "(%a,%b.%d)")))
 
-    if not qs_clock:
-        cells.append((icon_fg, clock))
-    if not qs_clock and not qs_date:
-        cells.append((sep_color, separator))
-    if not qs_date:
-        cells.append((utc_color, date))
-
-    right_status_length = RIGHT_MARGIN
-    for cell in cells:
-        right_status_length += len(str(cell[1]))
-
-    draw_spaces = screen.columns - screen.cursor.x - right_status_length
-
-    if draw_spaces > 0:
-        screen.draw(" " * draw_spaces)
-
-    screen.cursor.fg = 0
-    for color, status in cells:
+    length = RIGHT_MARGIN + sum(len(text) for _, text in cells)
+    spaces = screen.columns - screen.cursor.x - length
+    if spaces > 0:
+        screen.draw(" " * spaces)
+    for color, text in cells:
         screen.cursor.fg = color
-        screen.draw(status)
-    screen.cursor.bg = 0
-
-    if screen.columns - screen.cursor.x > right_status_length:
-        screen.cursor.x = screen.columns - right_status_length
-
-    return screen.cursor.x
+        screen.draw(text)
+    screen.cursor.fg = screen.cursor.bg = 0
 
 
 def draw_tab(
-    draw_data: DrawData,  # type: ignore
+    draw_data: DrawData,
     screen: Screen,
-    tab: TabBarData,  # type: ignore
+    tab: TabBarData,
     before: int,
     max_title_length: int,
     index: int,
     is_last: bool,
-    extra_data: ExtraData,  # type: ignore
+    extra_data: ExtraData,
 ) -> int:
-    layout_name = getattr(tab, "layout_name", "unknown")
-    _draw_icon(screen, index, layout_name)
-    end = _draw_left_status(
-        draw_data,
-        screen,
-        tab,
-        before,
-        max_title_length,
-        index,
-        is_last,
-        extra_data,
-    )
-    _draw_right_status(
-        screen,
-        is_last,
-    )
-
+    if index == 1:
+        _refresh_colors()
+    _draw_icon(screen, index, getattr(tab, "layout_name", "unknown"))
+    end = _draw_tab(draw_data, screen, tab, before, max_title_length, index, is_last)
+    _draw_right_status(screen, is_last)
     return end

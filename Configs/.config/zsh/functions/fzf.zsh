@@ -234,6 +234,7 @@ _check_dependencies() {
     (( $+commands[rg] || _FZF_WARNED_RG )) || { missing+=(rg); _FZF_WARNED_RG=1; }
     (( $+commands[bat] || _FZF_WARNED_BAT )) || { missing+=(bat); _FZF_WARNED_BAT=1; }
     (( ${#missing} )) && print -u2 "Optional fzf helpers missing: ${(j:, :)missing}"
+    return 0
 }
 
 _fuzzy_edit_search_content() {

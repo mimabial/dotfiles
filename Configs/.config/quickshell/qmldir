@@ -23,6 +23,8 @@ CaffeinePopup 1.0 CaffeinePopup.qml
 CliphistPopup 1.0 CliphistPopup.qml
 ClockButton 1.0 ClockButton.qml
 ClockPopup 1.0 ClockPopup.qml
+ClockAgendaPane 1.0 ClockAgendaPane.qml
+ClockNavButton 1.0 ClockNavButton.qml
 ClockworkPage 1.0 ClockworkPage.qml
 ClockworkState 1.0 ClockworkState.qml
 ColorModePopup 1.0 ColorModePopup.qml

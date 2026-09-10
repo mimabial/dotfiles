@@ -1,4 +1,7 @@
-[
+{
+  "panel": "vertical",
+  "edge": "left",
+  "modules": [
   {
     "id": "datetime",
     "props": {
@@ -87,4 +90,5 @@
       "showAgents": false
     }
   }
-]
+  ]
+}

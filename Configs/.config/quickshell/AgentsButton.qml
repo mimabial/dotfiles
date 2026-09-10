@@ -23,8 +23,8 @@ BarButton {
     // `alarm` is the style's channel for the >=90% state; both states fall back
     // to their own role when the rule leaves them out.
     textColor: alarming
-        ? (box.alarm !== undefined ? boxColor("alarm") : shell.role("error", shell.foreground))
-        : box.content !== undefined ? boxColor("content")
+        ? (box.alarm !== undefined ? styleColor("alarm") : shell.role("error", shell.foreground))
+        : box.content !== undefined ? styleColor("content")
         : shell.role("c9", shell.foreground)
     onClicked: shell.togglePopup("agents")
 

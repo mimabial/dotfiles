@@ -1,27 +1,19 @@
-#!/usr/bin/env sh
-
 # Qt uses Wayland with X11 fallback. qt6ct provides the generic Qt6 palette
 # bridge, while Kvantum provides the widget style.
 QT_QPA_PLATFORMTHEME=qt6ct
 QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-wayland;xcb}"
 QT_STYLE_OVERRIDE="${QT_STYLE_OVERRIDE:-kvantum}"
 
-# # Hyprland Environment Variables
-MOZ_ENABLE_WAYLAND="${MOZ_ENABLE_WAYLAND:-1}"                        # Enable Wayland for Firefox
-GDK_SCALE="${GDK_SCALE:-1}"                                          # Set GDK scale to 1, for Xwayland on HiDPI displays
-ELECTRON_OZONE_PLATFORM_HINT="${ELECTRON_OZONE_PLATFORM_HINT:-auto}" # Set Electron Ozone Platform Hint to auto, for Electron apps on Wayland
+MOZ_ENABLE_WAYLAND="${MOZ_ENABLE_WAYLAND:-1}"
+GDK_SCALE="${GDK_SCALE:-1}"
+ELECTRON_OZONE_PLATFORM_HINT="${ELECTRON_OZONE_PLATFORM_HINT:-auto}"
 
 # Let Hyprland select hyprland.lua; discard stale values inherited from shells.
 unset HYPRLAND_CONFIG
-HYPRLAND_NO_SD_NOTIFY=1 # If systemd, disables the sd_notify calls.
-HYPRLAND_NO_SD_VARS=1   # Disables management of variables in systemd and dbus activation environments.
+# UWSM owns readiness and the activation environment.
+HYPRLAND_NO_SD_NOTIFY=1
+HYPRLAND_NO_SD_VARS=1
 
 export ELECTRON_OZONE_PLATFORM_HINT GDK_SCALE MOZ_ENABLE_WAYLAND \
   QT_QPA_PLATFORM QT_QPA_PLATFORMTHEME QT_STYLE_OVERRIDE \
   HYPRLAND_NO_SD_NOTIFY HYPRLAND_NO_SD_VARS
-
-# TODO Set this if some toolkit are not working properly. // To set create a 'toolkit.sh' file in the 'env-hyprland.d' folder. and add the following line to it:
-#? Toolkit Backend Variables - https://wiki.hyprland.org/Configuring/Environment-variables/#toolkit-backend-variables
-# export GDK_BACKEND="${GDK_BACKEND:-wayland,x11,*}"       # GTK: Use wayland if available. If not: try x11, then any other GDK backend.
-# export SDL_VIDEODRIVER="${SDL_VIDEODRIVER:-wayland}" # Run SDL2 applications on Wayland. Remove or set to x11 if games that provide older versions of SDL cause compatibility issues
-# export CLUTTER_BACKEND="${CLUTTER_BACKEND:-wayland}" # Clutter package already has wayland enabled, this variable will force Clutter applications to try and use the Wayland backend

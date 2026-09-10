@@ -9,7 +9,7 @@ PopupWindow {
     required property string popupName
     property bool popupEnabled: true
     property int contentWidth: Style.px(380)
-    property int contentHeight: holder.childrenRect.height + padding * 2
+    property int contentHeight: contentHost.childrenRect.height + padding * 2
     property int margin: Style.popupGap
     // Reserve detached headers opposite the bar so they never create a bar gap.
     property int headerHeight: 0
@@ -25,11 +25,11 @@ PopupWindow {
     readonly property bool centered: shell.popupCenteredName === root.popupName
     property string position: shell.barEdge
     // Keep controllers/timers beside visual content. Item.data accepts both
-    // QObjects and Items; visual entries still become holder.children.
-    default property alias content: holder.data
-    property alias header: headerHolder.data
+    // QObjects and Items; visual entries still become contentHost.children.
+    default property alias content: contentHost.data
+    property alias header: headerHost.data
 
-    visible: open || card.opacity > 0
+    visible: open || cardSurface.opacity > 0
     color: "transparent"
     // the card never outgrows the screen it is anchored on; a panel that sizes
     // itself from content reads maxHeight to shrink its own panes first
@@ -44,22 +44,22 @@ PopupWindow {
     // asking each panel to maintain a list.
     property int cursorIndex: -1
     property var navigableRows: []
-    onCursorIndexChanged: syncCursor()
+    onCursorIndexChanged: syncKeyboardCursor()
 
-    function collectRows(item, found) {
+    function collectNavigableRows(item, found) {
         for (const child of item.children) {
             if (!child.visible) continue
             if (child.navigable === true) found.push(child)
-            if (child.children) collectRows(child, found)
+            if (child.children) collectNavigableRows(child, found)
         }
         return found
     }
     function rebuildRows() {
-        navigableRows = collectRows(holder, [])
+        navigableRows = collectNavigableRows(contentHost, [])
         if (cursorIndex >= navigableRows.length) cursorIndex = navigableRows.length - 1
-        syncCursor()
+        syncKeyboardCursor()
     }
-    function syncCursor() {
+    function syncKeyboardCursor() {
         for (let i = 0; i < navigableRows.length; i++)
             navigableRows[i].cursored = (i === cursorIndex)
     }
@@ -79,15 +79,15 @@ PopupWindow {
         if (cursorIndex >= 0 && cursorIndex < navigableRows.length)
             navigableRows[cursorIndex].clicked(Qt.LeftButton)
     }
-    function resumeKeyboard() { cardFocus.forceActiveFocus() }
+    function resumeKeyboard() { keyboardFocusScope.forceActiveFocus() }
     function clearCursor() {
         cursorIndex = -1
-        syncCursor()
+        syncKeyboardCursor()
     }
     onOpenChanged: if (!open) clearCursor()
 
     property bool wantsKeyboard: false
-    property Binding cardRef: Binding { target: root.shell; property: "popupCard"; value: root; when: root.open }
+    property Binding activeCardBinding: Binding { target: root.shell; property: "popupCard"; value: root; when: root.open }
 
     // The bar and focusable popup content both route here. Derived cards
     // override handleKey and fall back to this.
@@ -139,7 +139,7 @@ PopupWindow {
         }
     }
     Rectangle {
-        id: card
+        id: cardSurface
         anchors.fill: parent
         anchors.topMargin: root.position === "top" ? 0 : root.headerHeight
         anchors.bottomMargin: root.position === "top" ? root.headerHeight : 0
@@ -150,19 +150,19 @@ PopupWindow {
         border.width: root.shell.borderWidth
         radius: root.shell.rounding
         FocusScope {
-            id: cardFocus
+            id: keyboardFocusScope
             anchors.fill: parent; anchors.margins: root.padding
             focus: root.open
             Keys.onPressed: event => event.accepted = root.handleKey(event)
-            Item { id: holder; anchors.fill: parent }
+            Item { id: contentHost; anchors.fill: parent }
         }
     }
     Item {
-        id: headerHolder
+        id: headerHost
         anchors.left: parent.left
         anchors.right: parent.right
         y: root.position === "top" ? root.height - height : 0
         height: root.headerHeight
-        opacity: card.opacity
+        opacity: cardSurface.opacity
     }
 }

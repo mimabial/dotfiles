@@ -28,7 +28,7 @@ BarButton {
     }
     textColor: root.dueCount > 0
         ? root.specColor(root.dueBox.content, root.shell.role("c3", root.shell.foreground))
-        : root.box.content !== undefined ? root.boxColor("content")
+        : root.box.content !== undefined ? root.styleColor("content")
         : root.shell.foreground
     onClicked: { root.loaded = true; root.shell.togglePopup("tasks") }
 

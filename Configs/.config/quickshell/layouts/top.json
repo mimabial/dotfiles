@@ -1,4 +1,6 @@
 {
+  "panel": "horizontal",
+  "edge": "top",
   "left": [
     { "id": "workspaces", "props": { "compactStyle": true } },
     {

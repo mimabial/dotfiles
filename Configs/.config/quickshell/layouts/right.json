@@ -1,4 +1,7 @@
-[
+{
+  "panel": "vertical",
+  "edge": "right",
+  "modules": [
   { "id": "datetime", "props": { "showDate": true, "alwaysOpen": false } },
   { "id": "forecast", "props": { "showUnit": false, "showMinMax": true, "showSunrise": true, "showSunset": true, "alwaysOpen": false } },
   "spacer",
@@ -13,4 +16,5 @@
   "notification",
   { "id": "power", "props": { "showLogout": false } },
   "connectivity"
-]
+  ]
+}

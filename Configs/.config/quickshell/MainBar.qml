@@ -4,9 +4,8 @@ import "modules"
 
 BarSurface {
     id: root
-    property bool sidebar: shell.layoutName === "sidebar"
-    property bool onLeft: shell.layoutName === "left" || shell.layoutName === "sidebar"
-    active: shell.mode === "main" && !shell.userHidden
+    readonly property bool onLeft: shell.barEdge === "left"
+    active: shell.mode === "vertical" && !shell.userHidden
     anchors.top: true
     anchors.bottom: true
     anchors.left: onLeft
@@ -15,13 +14,13 @@ BarSurface {
     margins.right: onLeft ? 0 : (active ? 0 : -implicitWidth)
     // composition is data: reordering the bar is editing layouts/<name>.json
     readonly property var registry: ({"menu": mod_menu, "taskbar": mod_taskbar, "tray": mod_tray, "updates": mod_updates, "agents": mod_agents, "gpu": mod_gpu, "cpu": mod_cpu, "memory": mod_memory, "disk": mod_disk, "fan": mod_fan, "minmax": mod_minmax, "wifi": mod_wifi, "speed": mod_speed, "bluetooth": mod_bluetooth, "vpn": mod_vpn, "printers": mod_printers, "disks": mod_disks, "connectivity": mod_connectivity, "barlayout": mod_barlayout, "colormode": mod_colormode, "appearance": mod_appearance, "converter": mod_converter, "tools": mod_tools, "sudoku": mod_sudoku, "datetime": mod_datetime, "date": mod_date, "eyecare": mod_eyecare, "forecast": mod_forecast, "info": mod_info, "info-drawer": mod_info_drawer, "gamemode": mod_gamemode, "mediaplayer": mod_mediaplayer, "notification-group": mod_notification_group, "notification": mod_notification, "power": mod_power, "privacy": mod_privacy, "capture": mod_capture, "screenshot": mod_screenshot, "screenrecord": mod_screenrecord, "terminal": mod_terminal, "audio": mod_audio, "submap": mod_submap, "tasks": mod_tasks, "workspaces": mod_workspaces})
-    readonly property var layout: shell.barLayout
+    readonly property var layout: shell.barLayout.modules || []
     readonly property var section: shell.style.box(".modules-left")
     implicitWidth: mainColumn.implicitWidth + section.margin[1] + section.margin[3] + section.padding[1] + section.padding[3]
     Component { id: mod_menu; StartButton { shell: root.shell; popupEnabled: root.popupsAllowed; Layout.fillWidth: true } }
     Component { id: mod_taskbar; WindowList { shell: root.shell; Layout.fillWidth: true } }
     Component { id: mod_tray; Tray { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
-    Component { id: mod_notification_group; NotificationGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; reverse: root.shell.layoutName === "main"; Layout.fillWidth: true } }
+    Component { id: mod_notification_group; NotificationGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; reverse: !root.onLeft; Layout.fillWidth: true } }
     Component { id: mod_notification; NotificationButton { shell: root.shell; popupEnabled: root.popupsAllowed; Layout.fillWidth: true } }
     Component { id: mod_capture; CaptureGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
     Component { id: mod_screenshot; ScreenshotButton { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
@@ -44,7 +43,7 @@ BarSurface {
     Component { id: mod_forecast; ForecastGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
     Component { id: mod_tasks; TasksButton { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
     Component { id: mod_gamemode; GamemodeGroup { shell: root.shell; Layout.fillWidth: true } }
-    Component { id: mod_info; InfoGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; single: root.shell.layoutName === "main"; Layout.fillWidth: true } }
+    Component { id: mod_info; InfoGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; single: !root.onLeft; Layout.fillWidth: true } }
     Component { id: mod_info_drawer; InfoDrawerGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
     Component { id: mod_updates; UpdatesGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
     Component { id: mod_agents; UpdatesGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; agentsFirst: true; Layout.fillWidth: true } }
@@ -83,6 +82,7 @@ BarSurface {
                     : item.text !== undefined ? String(item.text) !== ""
                     : true
                 sourceComponent: moduleId === "spacer" ? null : root.registry[moduleId] || null
+                Component.onCompleted: if (moduleId !== "spacer" && !root.registry[moduleId]) console.warn("unknown bar module: " + moduleId)
                 onLoaded: {
                     if (!moduleProps || !item) return
                     for (const key in moduleProps) item[key] = moduleProps[key]

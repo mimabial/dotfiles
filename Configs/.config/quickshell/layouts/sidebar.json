@@ -1,4 +1,7 @@
-[
+{
+  "panel": "vertical",
+  "edge": "left",
+  "modules": [
   "workspaces",
   {
     "id": "taskbar",
@@ -19,4 +22,5 @@
     }
   },
   "menu"
-]
+  ]
+}

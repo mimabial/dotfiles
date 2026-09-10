@@ -56,13 +56,6 @@ fi
 hypr_service_init
 hypr_service_apply_cli_env
 
-case "${mode}" in
-  refresh)
-    hypr_service_refresh_manifest_domains "${hypr_service_cli_show_diff}" "${hypr_service_cli_quiet}" "${hypr_service_cli_args[@]}"
-    ;;
-  restore)
-    hypr_service_restore_manifest_domains "${hypr_service_cli_show_diff}" "${hypr_service_cli_quiet}" "${hypr_service_cli_args[@]}"
-    ;;
-esac
+hypr_service_apply_manifest_domains "${mode}" "${hypr_service_cli_show_diff}" "${hypr_service_cli_quiet}" "${hypr_service_cli_args[@]}"
 
 hypr_service_maybe_report_backup_root

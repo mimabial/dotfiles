@@ -40,23 +40,29 @@ call.
 
 | name | panel | edge | purpose |
 | --- | --- | --- | --- |
-| `main` | `MainBar` | right | primary vertical layout |
-| `left` | `MainBar` | left | full vertical controls layout |
-| `sidebar` | `MainBar` | left | taskbar/workspace sidebar |
-| `top` | `TopBar` | top | three-section horizontal bar |
-| `winbar` | `WinBar` | bottom | compact three-section bar |
+| `right` | `vertical` | right | primary vertical layout |
+| `left` | `vertical` | left | full vertical controls layout |
+| `sidebar` | `vertical` | left | taskbar/workspace sidebar |
+| `top` | `horizontal` | top | three-section horizontal bar |
+| `bottom` | `horizontal` | bottom | three-section horizontal bar |
+| `winbar` | `winbar` | bottom | compact three-section bar |
 
 The dock in `dock/` is not a layout: it is a separate bottom-edge panel that
 runs alongside whichever bar layout is active, the way `expose/` does. See
 `dock/README.md`.
 
-`main`, `left`, and `sidebar` are ordered arrays. `top` and `winbar` contain
-`left`, `center`, and `right` arrays. An entry may be a module id or
-`{"id":"audio","props":{"reverse":false}}`; `"spacer"` consumes remaining
-space. A top layout may set `centerAnchor` to pin one center module to the exact
-screen center; entries before and after it flank that anchor. Keep
-layout-specific composition in JSON rather than adding layout-name conditions
-to components.
+Each layout declares `panel` and `edge`; names have no special behavior.
+`vertical` accepts left/right edges and a `modules` array. `horizontal` and
+`winbar` accept top/bottom edges and `left`, `center`, and `right` arrays. An
+entry may be a module id or `{"id":"audio","props":{"reverse":false}}`;
+`"spacer"` consumes remaining vertical space. A horizontal layout may set
+`centerAnchor` to pin one center module to the exact screen center; entries
+before and after it flank that anchor. Keep layout-specific composition in JSON
+rather than adding layout-name conditions to components.
+
+To add a layout, copy the closest JSON file, rename it, set its `panel` and
+`edge`, edit its module arrays, and optionally add `styles/<name>.json`. Validate
+with `jq empty layouts/<name>.json`, then run `hyprshell quickshell/layout set <name>`.
 
 ## Where to edit
 
@@ -77,9 +83,9 @@ its `css` key and its children by their own keys.
 
 `mediaplayer` takes `showWhenIdle: true`, which keeps a placeholder glyph
 (`idleIcon`, default `\uf001`) in the bar when no player is running —
-otherwise the module collapses to nothing, the `ScriptButton` on an empty
-provider line in `main`/`alt` and `MediaButton` on a null `Media.player` in
-`top`/`winbar`.
+otherwise the module collapses to nothing: `ScriptButton` on an empty provider
+line in a vertical panel, or `MediaButton` on a null `Media.player` in a
+horizontal panel.
 
 `notification` and `notification-group` take a `badge` prop for the unread
 marker: `"dot"`, `"count"`, `"highlight"` (recolour the glyph instead), or

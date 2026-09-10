@@ -1,19 +1,19 @@
 #!/bin/sh
-# Export compositor sockets before starting the per-user runit supervisor.
-
 set -u
 
 runtime="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 
-i=0
+socket_wait_attempts=100
+socket_wait_interval=0.1
+attempt=0
 hypr_socket=""
-while [ "$i" -lt 100 ]; do
-	for s in "$runtime"/hypr/*/.socket.sock; do
-		[ -S "$s" ] && { hypr_socket="$s"; break; }
+while [ "$attempt" -lt "$socket_wait_attempts" ]; do
+	for socket_path in "$runtime"/hypr/*/.socket.sock; do
+		[ -S "$socket_path" ] && { hypr_socket="$socket_path"; break; }
 	done
 	[ -n "$hypr_socket" ] && break
-	i=$((i + 1))
-	sleep 0.1
+	attempt=$((attempt + 1))
+	sleep "$socket_wait_interval"
 done
 
 if [ -n "$hypr_socket" ]; then
@@ -22,9 +22,9 @@ if [ -n "$hypr_socket" ]; then
 	export HYPRLAND_INSTANCE_SIGNATURE
 fi
 
-for w in "$runtime"/wayland-*; do
-	if [ -S "$w" ] && [ -e "$w.lock" ]; then
-		WAYLAND_DISPLAY=${w##*/}
+for wayland_socket in "$runtime"/wayland-*; do
+	if [ -S "$wayland_socket" ] && [ -e "$wayland_socket.lock" ]; then
+		WAYLAND_DISPLAY=${wayland_socket##*/}
 		export WAYLAND_DISPLAY
 		break
 	fi

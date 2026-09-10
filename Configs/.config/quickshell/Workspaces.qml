@@ -11,14 +11,18 @@ Item {
     property bool activeOnly: false
     property bool hideActive: false
     property bool popupEnabled: false
-    // Fixed-width numeric pills with a dot on the focused one, as opposed to
-    // the symbol sets `numerals` selects.
     property bool compactStyle: false
-    property string numerals: vertical ? "hindi" : "kanji"
+    property string numerals: "standard"
+    readonly property var numeralSets: ({
+        standard: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20"],
+        hindi: ["१", "२", "३", "४", "५", "६", "७", "८", "९", "१०", "११", "१२", "१३", "१४", "१५", "१६", "१७", "१८", "१९", "२०"],
+        kanji: ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十", "十一", "十二", "十三", "十四", "十五", "十六", "十七", "十八", "十九", "二十"],
+        roman: ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX", "XX"]
+    })
     readonly property real trailingGap: compactStyle && !vertical ? 1.5 : 0
     // no frame is painted here, so box.border reserves nothing
-    readonly property real spanX: box.margin[1] + box.margin[3] + box.padding[1] + box.padding[3]
-    readonly property real spanY: box.margin[0] + box.margin[2] + box.padding[0] + box.padding[2]
+    readonly property real horizontalInsets: box.margin[1] + box.margin[3] + box.padding[1] + box.padding[3]
+    readonly property real verticalInsets: box.margin[0] + box.margin[2] + box.padding[0] + box.padding[2]
 
     // This Hyprland evaluates a dispatch as Lua, where a legacy dispatcher
     // string is a syntax error ("workspace 2" -> ')' expected near '2'), so the
@@ -31,8 +35,8 @@ Item {
             ? 'hl.dsp.focus({ workspace = "' + target + '" })'
             : "workspace " + target)
     }
-    implicitWidth: grid.implicitWidth + spanX + trailingGap
-    implicitHeight: grid.implicitHeight + spanY
+    implicitWidth: grid.implicitWidth + horizontalInsets + trailingGap
+    implicitHeight: grid.implicitHeight + verticalInsets
 
     function workspace(id) {
         const values = Hyprland.workspaces.values
@@ -40,12 +44,7 @@ Item {
             if (values[i].id === id) return values[i]
         return null
     }
-    function symbol(id) {
-        const hindi = ["१", "२", "३", "४", "५", "६", "७", "८", "९", "१०", "११", "१२", "१३", "१४", "१५", "१६", "१७", "१८", "१९", "२०"]
-        const kanji = ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十", "十一", "十二", "十三", "十四", "十五", "十六", "十七", "十八", "十九", "二十"]
-        const roman = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX", "XX"]
-        return ({ hindi, kanji, roman }[numerals] || kanji)[id - 1]
-    }
+    function symbol(id) { return (numeralSets[numerals] || numeralSets.standard)[id - 1] }
 
     GridLayout {
         id: grid
@@ -64,6 +63,7 @@ Item {
             delegate: BarButton {
                 required property int index
                 property var ws: root.workspace(index + 1)
+                readonly property string numeral: root.symbol(index + 1)
                 readonly property bool focused: ws !== null && ws.focused
                 readonly property bool occupied: ws !== null && ws.toplevels.values.length > 0
                 property bool shown: root.compactStyle
@@ -73,12 +73,12 @@ Item {
                 css: focused ? "#workspaces button.active" : "#workspaces button"
                 Layout.fillWidth: root.vertical
                 Layout.fillHeight: !root.vertical
-                fixedWidth: root.compactStyle && !root.vertical ? Style.px(20) : 0
-                text: root.compactStyle ? focused ? "󱓻" : index === 9 ? "0" : String(index + 1) : root.symbol(index + 1)
+                fixedWidth: root.compactStyle && !root.vertical ? Style.px(20 + Math.max(0, numeral.length - 1) * 7) : 0
+                text: root.compactStyle && focused ? "󱓻" : numeral
                 active: root.vertical && focused
                 fontSize: Style.fontPx(box.fontSize)
                 fontWeight: !root.compactStyle && ((ws && ws.urgent) || (root.activeOnly && root.numerals !== "roman")) ? Font.Bold : Font.Normal
-                textColor: root.compactStyle ? root.shell.foreground : ws && ws.urgent ? root.shell.role("warning", root.shell.foreground) : box.content !== undefined ? boxColor("content") : root.vertical ? (active ? root.shell.role("act_fg", root.shell.foreground) : root.shell.foreground) : root.shell.alpha(root.shell.role(hovered || root.activeOnly && root.numerals === "roman" ? "hvr_br" : root.activeOnly ? "act_br" : "br", root.shell.foreground), root.activeOnly && root.numerals === "roman" ? .7 : root.activeOnly || hovered ? .8 : .2)
+                textColor: root.compactStyle ? root.shell.foreground : ws && ws.urgent ? root.shell.role("warning", root.shell.foreground) : box.content !== undefined ? styleColor("content") : root.vertical ? (active ? root.shell.role("act_fg", root.shell.foreground) : root.shell.foreground) : root.shell.alpha(root.shell.role(hovered || root.activeOnly && root.numerals === "roman" ? "hvr_br" : root.activeOnly ? "act_br" : "br", root.shell.foreground), root.activeOnly && root.numerals === "roman" ? .7 : root.activeOnly || hovered ? .8 : .2)
                 opacity: root.compactStyle && !occupied && !focused ? .5 : 1
                 visible: shown
                 onClicked: button => {

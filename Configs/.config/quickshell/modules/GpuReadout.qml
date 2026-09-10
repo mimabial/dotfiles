@@ -7,7 +7,7 @@ StackedReadout {
     css: "gpuinfo"
     tooltip: ""
     command: ["hyprshell", "gpuinfo"]; interval: 60000
-    textColor: root.box.content !== undefined ? root.boxColor("content")
+    textColor: root.box.content !== undefined ? root.styleColor("content")
         : root.shell.role("c7", root.shell.foreground)
     onClicked: button => {
         if (button !== Qt.RightButton) return root.shell.togglePopup("gpu")

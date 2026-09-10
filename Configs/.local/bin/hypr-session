@@ -1,6 +1,4 @@
 #!/bin/sh
-# Direct Hyprland session entrypoint for non-uwsm hosts.
-
 set -eu
 
 usage() {
@@ -41,8 +39,8 @@ export XDG_SESSION_DESKTOP=Hyprland
 export XDG_SESSION_TYPE=wayland
 
 export APP2UNIT_SLICES="${APP2UNIT_SLICES:-a=app-graphical.slice b=background-graphical.slice s=session-graphical.slice}"
-for f in "$XDG_CONFIG_HOME"/uwsm/env.d/*.sh "$XDG_CONFIG_HOME"/uwsm/env-hyprland.d/*.sh; do
-	[ -r "$f" ] && . "$f"
+for env_file in "$XDG_CONFIG_HOME"/uwsm/env.d/*.sh "$XDG_CONFIG_HOME"/uwsm/env-hyprland.d/*.sh; do
+	[ -r "$env_file" ] && . "$env_file"
 done
 
 if command -v runsvdir >/dev/null 2>&1 && [ ! -d /run/systemd/system ]; then

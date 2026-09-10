@@ -265,9 +265,6 @@ generate_conf() {
   source_conf="$(hypr_compact_path "${hyprlock_conf}")"
 
   cat <<CONF >"${target_file}"
-#! █░█ █▄█ █▀█ █▀█ █░░ █▀█ █▀▀ █▄▀
-#! █▀█ ░█░ █▀▀ █▀▄ █▄▄ █▄█ █▄▄ █░█
-
 $(hyprlock_managed_conf_comments)
 
 \$LAYOUT_PATH=${layout_path}

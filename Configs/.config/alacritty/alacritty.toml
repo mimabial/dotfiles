@@ -11,22 +11,22 @@ program = "/bin/zsh"
 
 [font]
 builtin_box_drawing = true
-size = 14.17
+size = 15.00
 
 [font.normal]
-family = "SpaceMono Nerd Font"
+family = "MonaspiceAr Nerd Font"
 style = "Regular"
 
 [font.bold]
-family = "SpaceMono Nerd Font"
+family = "MonaspiceAr Nerd Font"
 style = "Bold"
 
 [font.italic]
-family = "SpaceMono Nerd Font"
+family = "MonaspiceAr Nerd Font"
 style = "Italic"
 
 [font.bold_italic]
-family = "SpaceMono Nerd Font"
+family = "MonaspiceAr Nerd Font"
 style = "Bold Italic"
 
 [font.offset]

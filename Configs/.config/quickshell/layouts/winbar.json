@@ -1,4 +1,6 @@
 {
+  "panel": "winbar",
+  "edge": "bottom",
   "left": ["menu", "taskbar", "workspace-weather", "submap"],
   "center": ["workspaces"],
   "right": [

@@ -6,11 +6,23 @@ config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
 rmpc_lib="${config_home}/rmpc/lib"
 themes_dir="${config_home}/rmpc/themes"
 rmpc_bin="/usr/bin/rmpc"
+resize_src="${rmpc_lib}/onresize.c"
+resize_bin="${XDG_DATA_HOME:-$HOME/.local/share}/rmpc/bin/rmpc-onresize"
 
 # shellcheck source=/dev/null
 source "${rmpc_lib}/theme-size.bash"
 
-"${rmpc_lib}/apply_theme" --prepare
+if [[ ! -x "$resize_bin" || "$resize_src" -nt "$resize_bin" ]] &&
+  compiler="$(command -v "${CC:-cc}")"; then
+  mkdir -p "${resize_bin%/*}"
+  resize_tmp="$(mktemp "${resize_bin}.XXXXXX")"
+  trap 'rm -f "$resize_tmp"' EXIT
+  if "$compiler" -O2 -s "$resize_src" -o "$resize_tmp"; then
+    mv -f "$resize_tmp" "$resize_bin"
+  fi
+  rm -f "$resize_tmp"
+  trap - EXIT
+fi
 
 theme_name="pywal16-big"
 if [[ "${HYPR_SUMMON_EXPECTED_FLOAT:-}" != "false" ]]; then
@@ -24,6 +36,5 @@ if [[ "${HYPR_SUMMON_EXPECTED_FLOAT:-}" != "false" ]]; then
   fi
 fi
 theme_path="${themes_dir}/${theme_name}.ron"
-
 "${rmpc_lib}/apply_theme" "${theme_name}" "${theme_path}"
 exec "${rmpc_bin}" --theme "${theme_path}" "$@"

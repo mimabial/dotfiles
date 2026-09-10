@@ -9,7 +9,7 @@ BarGroup {
     shell: root.shell; css: "barlayout"; Layout.fillWidth: true
     holdOpen: ["barlayout", "desktop"].includes(root.shell.popupName)
     primary: Component { BarButton {
-        id: barButton; Layout.fillWidth: true; shell: root.shell; css: "barlayout-button"; text: root.shell.barLayoutIcon(root.shell.layoutName)
+        id: barButton; Layout.fillWidth: true; shell: root.shell; css: "barlayout-button"; text: root.shell.barLayoutIcon()
         textColor: root.shell.store.barTransparent ? root.shell.accent : root.shell.foreground
         onClicked: button => button === Qt.LeftButton ? root.shell.togglePopup("barlayout") : button === Qt.RightButton ? root.shell.toggleBarTransparency() : root.shell.run(["hyprshell", "quickshell/layout", "next"])
         BarLayoutPopup { anchorItem: barButton; shell: root.shell; popupEnabled: root.popupsAllowed }

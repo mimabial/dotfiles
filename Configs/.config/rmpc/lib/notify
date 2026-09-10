@@ -1,15 +1,7 @@
 #!/usr/bin/env sh
 
-TMP_DIR="/tmp/rmpc"
-mkdir -p "$TMP_DIR"
-
-ALBUM_ART_PATH="$TMP_DIR/notification_cover"
-DEFAULT_ALBUM_ART_PATH="$TMP_DIR/default_album_art.jpg"
-
-# fetch album art
-if ! rmpc albumart --output "$ALBUM_ART_PATH"; then
-  ALBUM_ART_PATH="$DEFAULT_ALBUM_ART_PATH"
-fi
-
-# send notification
-notify-send -i "$ALBUM_ART_PATH" "$TITLE" "$ARTIST"
+tmp_dir=/tmp/rmpc
+mkdir -p "$tmp_dir"
+art="$tmp_dir/notification_cover"
+rmpc albumart --output "$art" || art="$tmp_dir/default_album_art.jpg"
+notify-send -i "$art" "$TITLE" "$ARTIST"
