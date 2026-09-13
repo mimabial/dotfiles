@@ -15,7 +15,10 @@ menu_register_all() {
   menu_add_item main "  Gaming" submenu gaming
   menu_add_item main "󰝚  Media" submenu media
   menu_add_item main "  Learn" submenu learn
-  menu_add_item main "󱊨  Trigger" submenu trigger
+  menu_add_item main "󰞅  Insert" submenu trigger_insert
+  menu_add_item main "  Capture" submenu trigger_capture
+  menu_add_item main "󰕍  Share" submenu trigger_share
+  menu_add_item main "󰔎  Toggle" submenu trigger_toggle
   menu_add_item main "󰢵  Style" submenu style
   menu_add_item main "  Setup" submenu setup
   menu_add_item main "󰉉  Install" submenu install
@@ -61,7 +64,10 @@ menu_open_argument() {
         *media* | *music*) menu_show_menu media ;;
         *bookmark*) menu_run_action main_bookmarks ;;
         *learn*) menu_show_menu learn ;;
-        *trigger*) menu_show_menu trigger ;;
+        *insert*) menu_show_menu trigger_insert ;;
+        *capture*) menu_show_menu trigger_capture ;;
+        *share*) menu_show_menu trigger_share ;;
+        *toggle*) menu_show_menu trigger_toggle ;;
         *style*) menu_show_menu style ;;
         *theme*) menu_run_action style_theme ;;
         *wallpaper*) menu_run_action style_wallpaper ;;

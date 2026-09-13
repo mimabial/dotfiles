@@ -2,6 +2,10 @@
 """Monitor profile daemon for Hyprland."""
 import sys
 
+if sys.argv[1:] in (["-h"], ["--help"]):
+    print("Usage: hyprmoncfgd\nRun the monitor profile daemon in the foreground.")
+    raise SystemExit(0)
+
 sys.path.insert(0, __file__.rsplit("/.local/", 1)[0] + "/.local/lib/hypr/system")
 
 from moncfg.daemon import main

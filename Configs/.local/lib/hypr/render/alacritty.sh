@@ -4,18 +4,12 @@ PALETTE_ARG="${1:-}"
 . "$(dirname "$0")/_lib.sh"
 render_init alacritty colors.toml
 
-hash="$(render_input_hash)"
-render_should_skip "${hash}" && exit 0
-
-tmp="$(render_temp)"
-trap 'rm -f "${tmp}"' EXIT
+render_begin
 
 if [[ -n "${PACK_OVERRIDE}" ]]; then
   render_emit_pack_override "${tmp}"
 else
-  mapfile -t C < <(jq -r '.bg, .fg, (.colors[])' "${PALETTE}")
-  bg="${C[0]}" fg="${C[1]}"
-  c=("${C[@]:2}")
+  render_read_palette
   cat > "${tmp}" <<EOF
 [colors.primary]
 background = "${bg}"

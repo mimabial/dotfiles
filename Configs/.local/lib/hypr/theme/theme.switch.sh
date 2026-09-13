@@ -1,8 +1,4 @@
 #!/usr/bin/env bash
-#
-# Subsystem inputs (populated by core/wallpaper.catalog.sh:get_themes):
-#   thmList
-: "${thmList-}"
 set -euo pipefail
 
 LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
@@ -93,33 +89,20 @@ sanitize_hypr_theme() {
 
 select_adjacent_theme() {
   local direction="$1"
-  local found=false
-  local i=""
 
   if [[ ! "${direction}" =~ ^[np]$ ]]; then
     print_log -sec "theme" -err "select_adjacent_theme" "invalid direction '${direction}' (expected 'n' or 'p')"
     return 1
   fi
 
-  for i in "${!thmList[@]}"; do
-    if [[ "${thmList[i]}" == "${HYPR_THEME}" ]]; then
-      found=true
-      if [[ "${direction}" == "n" ]]; then
-        setIndex=$(((i + 1) % ${#thmList[@]}))
-      else
-        setIndex=$((i - 1))
-        [[ ${setIndex} -lt 0 ]] && setIndex=$((${#thmList[@]} - 1))
-      fi
-      themeSet="${thmList[setIndex]}"
-      break
-    fi
-  done
-
-  if [[ "${found}" != true ]]; then
+  local index=""
+  if index="$(catalog_index_of thmList "${HYPR_THEME}")"; then
+    setIndex="$(catalog_adjacent_index "${index}" "${direction}" "${#thmList[@]}")" || return 1
+  else
     print_log -sec "theme" -warn "select_adjacent_theme" "current theme '${HYPR_THEME}' not found in theme list"
     setIndex=0
-    themeSet="${thmList[0]}"
   fi
+  themeSet="${thmList[setIndex]}"
 }
 
 theme_notify_finish() {
@@ -187,6 +170,7 @@ theme_switch_cache_args=()
 theme_switch_usage() {
   cat <<EOF
 Usage: $(basename "${0}") [options]
+Switch the active theme pack: step to the next or previous, or set one by name.
 
 Options:
   -n, --next              Set next theme

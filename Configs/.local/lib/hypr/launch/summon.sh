@@ -247,6 +247,8 @@ launch_apply_window_geometry() {
 }
 
 main() {
+  [[ "${1:-}" == -h || "${1:-}" == --help ]] && { usage; return; }
+
   local use_empty_workspace=0
   local float_if_occupied=0
   local force_tiled=0

@@ -14,19 +14,19 @@ builtin_box_drawing = true
 size = 15.00
 
 [font.normal]
-family = "MonaspiceAr Nerd Font"
+family = "MonaspiceKr Nerd Font"
 style = "Regular"
 
 [font.bold]
-family = "MonaspiceAr Nerd Font"
+family = "MonaspiceKr Nerd Font"
 style = "Bold"
 
 [font.italic]
-family = "MonaspiceAr Nerd Font"
+family = "MonaspiceKr Nerd Font"
 style = "Italic"
 
 [font.bold_italic]
-family = "MonaspiceAr Nerd Font"
+family = "MonaspiceKr Nerd Font"
 style = "Bold Italic"
 
 [font.offset]

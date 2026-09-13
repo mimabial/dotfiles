@@ -182,6 +182,7 @@ rofi_build_standard_menu_args() {
 
   opacity_override="$(rofi_active_opacity_override)"
   [[ -n "${opacity_override}" ]] && rofi_menu_args_ref+=(-theme-str "${opacity_override}")
+  return 0
 }
 
 rofi_theme_width_multiplier_override() {
@@ -289,7 +290,7 @@ rofi_active_opacity_override() {
   opacity="$(rofi_option_json decoration:active_opacity | jq -r '.float // empty' 2>/dev/null || true)"
   [[ "${opacity}" =~ ^[0-9]+([.][0-9]+)?$ ]] || return 0
   opacity_milli="$(rofi_decimal_milli "${opacity}")" || return 0
-  alpha_value=$((((opacity_milli * 255) + 1000) / 2000))
+  alpha_value=$((((opacity_milli * 255) + ROFI_MILLI / 2) / ROFI_MILLI))
   ((alpha_value > 255)) && alpha_value=255
   ((alpha_value < 0)) && alpha_value=0
   printf -v hex_alpha '%02X' "${alpha_value}"

@@ -1,5 +1,13 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
+
+# Rofi window geometry is budgeted in em but specified in px. font_scale is the
+# scale in tenths (TEXT_SIZE 12 -> 10), so one em is approximated at twice it.
+# rofi_font_text_height_px measures the real value when the font is known.
+ROFI_EM_PX_PER_SCALE=2
+
+# Mouse-driven dmenu selection: hovering highlights, primary click accepts.
+ROFI_MOUSE_SELECT_ARGS=(-sync -no-custom -hover-select -me-select-entry "" -me-accept-entry MousePrimary)
 # Picker helpers: CLI arg parsing, rasi arg list, indexed dmenu run, recent-entry
 # file ops, window geometry.
 # External deps: print_log (core/common); get_rofi_pos (core/common); rofi.

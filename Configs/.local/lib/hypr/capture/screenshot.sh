@@ -7,7 +7,7 @@ source "${hypr_lib}/capture/capture.select.bash"
 # shellcheck source=/dev/null
 source "${hypr_lib}/capture/ocr.common.bash"
 
-USAGE() {
+usage() {
   cat <<USAGE
 
 	Usage: $(basename "$0") [option] [destination]
@@ -366,7 +366,7 @@ case "${mode}" in
     if [[ -z "${mode}" ]]; then
       smart_screenshot "${smart_destination}"
     else
-      USAGE
+      usage
     fi
     ;;
 esac

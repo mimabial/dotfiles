@@ -8,7 +8,9 @@ MENU_WINDOW_THEME_CACHE="${MENU_WINDOW_THEME_CACHE:-}"
 MENU_FONT_SCALE_CACHE="${MENU_FONT_SCALE_CACHE:-}"
 MENU_FONT_NAME_CACHE="${MENU_FONT_NAME_CACHE:-}"
 MENU_WIDTH_OVERRIDE_CACHE="${MENU_WIDTH_OVERRIDE_CACHE:-}"
-MENU_SUBMENU_GLYPH="${MENU_SUBMENU_GLYPH:-›}"
+MENU_SUBMENU_GLYPH_1="${MENU_SUBMENU_GLYPH_1:-󰅂}"
+MENU_SUBMENU_GLYPH_2="${MENU_SUBMENU_GLYPH_2:-󰄾}"
+MENU_SUBMENU_GLYPH_3="${MENU_SUBMENU_GLYPH_3:-󰶻}"
 MENU_NAV_HINT="${MENU_NAV_HINT:-<span size=\"x-small\">  ← Back · → Open 
 [Tab] Search · [Esc] Close</span>}"
 MENU_COPY_HINT="${MENU_COPY_HINT:-<span size=\"x-small\">[Enter] Apply · [Alt+C] Copy</span>}"
@@ -45,6 +47,7 @@ declare -gA HYPR_MENU_PARENTS=()
 declare -gA HYPR_MENU_KINDS=()
 declare -gA HYPR_MENU_TARGETS=()
 declare -gA HYPR_MENU_SEARCHABLE=()
+declare -gA HYPR_MENU_DEPTHS=()
 declare -ga HYPR_MENU_ACTION_HANDLERS=()
 
 menu_exit_or_show() {
@@ -350,22 +353,52 @@ menu_register_action_handler() {
   HYPR_MENU_ACTION_HANDLERS+=("$1")
 }
 
+menu_descendant_depth() {
+  local menu_id="$1" label="" key="" target="" item_depth=0 depth=0
+
+  [[ -v HYPR_MENU_DEPTHS["${menu_id}"] ]] && return 0
+  while IFS= read -r label; do
+    [[ -n "${label}" ]] || continue
+    key="${menu_id}${MENU_ITEM_KEY_SEP}${label}"
+    if [[ "${HYPR_MENU_KINDS["${key}"]}" == "submenu" ]]; then
+      target="${HYPR_MENU_TARGETS["${key}"]}"
+      menu_descendant_depth "${target}"
+      item_depth=$((HYPR_MENU_DEPTHS["${target}"] + 1))
+    else
+      item_depth=1
+    fi
+    ((item_depth > depth)) && depth="${item_depth}"
+  done <<<"${HYPR_MENU_ITEMS["${menu_id}"]:-}"
+  HYPR_MENU_DEPTHS["${menu_id}"]="${depth}"
+}
+
+menu_submenu_glyph() {
+  case "$1" in
+    1) printf '%s' "${MENU_SUBMENU_GLYPH_1}" ;;
+    2) printf '%s' "${MENU_SUBMENU_GLYPH_2}" ;;
+    *) printf '%s' "${MENU_SUBMENU_GLYPH_3}" ;;
+  esac
+}
+
 menu_render_options() {
-  local menu_id="$1" out_name="$2" label="" key="" output="" flagged="" aligned=""
+  local menu_id="$1" out_name="$2" label="" key="" target="" glyph="" output="" flagged="" aligned=""
 
   while IFS= read -r label; do
     [[ -n "${label}" ]] || continue
     key="${menu_id}${MENU_ITEM_KEY_SEP}${label}"
     output+="${label}"$'\n'
     if [[ "${HYPR_MENU_KINDS["${key}"]}" == "submenu" ]]; then
-      flagged+="1"$'\t'"${label}"$'\n'
+      target="${HYPR_MENU_TARGETS["${key}"]}"
+      menu_descendant_depth "${target}"
+      glyph="$(menu_submenu_glyph "${HYPR_MENU_DEPTHS["${target}"]}")"
+      flagged+="1"$'\t'"${label}"$'\t'"${glyph}"$'\n'
     else
-      flagged+="0"$'\t'"${label}"$'\n'
+      flagged+="0"$'\t'"${label}"$'\t'$'\n'
     fi
   done <<<"${HYPR_MENU_ITEMS["${menu_id}"]:-}"
 
   aligned="$(printf '%s' "${flagged}" | rofi_font_align_trailing \
-    "${MENU_FONT_NAME_CACHE}" "${MENU_FONT_SCALE_CACHE}" "${MENU_SUBMENU_GLYPH}" \
+    "${MENU_FONT_NAME_CACHE}" "${MENU_FONT_SCALE_CACHE}" "${MENU_SUBMENU_GLYPH_1}" \
     "$(menu_text_column_px)" 2>/dev/null || true)"
   if [[ -z "${aligned}" ]]; then
     aligned="${output%$'\n'}"
@@ -374,12 +407,14 @@ menu_render_options() {
 }
 
 menu_lookup_selection() {
-  local menu_id="$1" selection="$2" out_kind_name="$3" out_target_name="$4" key=""
+  local menu_id="$1" selection="$2" out_kind_name="$3" out_target_name="$4" key="" glyph=""
 
-  if [[ "${selection}" == *"${MENU_SUBMENU_GLYPH}" ]]; then
-    selection="${selection%"${MENU_SUBMENU_GLYPH}"}"
+  for glyph in "${MENU_SUBMENU_GLYPH_1}" "${MENU_SUBMENU_GLYPH_2}" "${MENU_SUBMENU_GLYPH_3}"; do
+    [[ "${selection}" == *"${glyph}" ]] || continue
+    selection="${selection%"${glyph}"}"
     selection="${selection%"${selection##*[![:space:]]}"}"
-  fi
+    break
+  done
   key="${menu_id}${MENU_ITEM_KEY_SEP}${selection}"
   [[ -v HYPR_MENU_KINDS["${key}"] ]] || return 1
   printf -v "${out_kind_name}" '%s' "${HYPR_MENU_KINDS["${key}"]}"
@@ -460,21 +495,27 @@ menu_show_menu() {
 }
 
 menu_dump_json() {
-  local menu_id="" label="" key=""
+  local menu_id="" label="" key="" target="" chevron=""
 
   for menu_id in "${!HYPR_MENU_PROMPTS[@]}"; do
     while IFS= read -r label; do
       [[ -n "${label}" ]] || continue
       key="${menu_id}${MENU_ITEM_KEY_SEP}${label}"
-      printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+      target="${HYPR_MENU_TARGETS["${key}"]}"
+      chevron=""
+      if [[ "${HYPR_MENU_KINDS["${key}"]}" == "submenu" ]]; then
+        menu_descendant_depth "${target}"
+        chevron="$(menu_submenu_glyph "${HYPR_MENU_DEPTHS["${target}"]}")"
+      fi
+      printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
         "${menu_id}" "${HYPR_MENU_PROMPTS["${menu_id}"]}" "${HYPR_MENU_PARENTS["${menu_id}"]:-}" \
-        "${label}" "${HYPR_MENU_KINDS["${key}"]}" "${HYPR_MENU_TARGETS["${key}"]}" \
-        "${HYPR_MENU_SEARCHABLE["${key}"]}"
+        "${label}" "${HYPR_MENU_KINDS["${key}"]}" "${target}" \
+        "${HYPR_MENU_SEARCHABLE["${key}"]}" "${chevron}"
     done <<<"${HYPR_MENU_ITEMS["${menu_id}"]:-}"
   done | jq -Rs '
     split("\n") | map(select(length > 0) | split("\t"))
     | reduce .[] as $r ({}; .[$r[0]] = ((.[$r[0]] // {prompt: $r[1], parent: $r[2], items: []})
-        | .items += [{label: $r[3], kind: $r[4], target: $r[5], searchable: ($r[6] != "0")}]))'
+        | .items += [{label: $r[3], kind: $r[4], target: $r[5], searchable: ($r[6] != "0"), chevron: $r[7]}]))'
 }
 
 menu_collect_subtree() {

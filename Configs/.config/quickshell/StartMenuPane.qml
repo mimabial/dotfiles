@@ -51,8 +51,9 @@ Column {
             rightInset: root.overflowing ? Style.md : 0
             icon: root.labelIcon(modelData.label)
             title: root.labelText(modelData.label)
+            valueWidth: Style.px(18)
             active: modelData.kind === "submenu" && root.openSubId === modelData.target
-            value: modelData.kind === "submenu" ? "❯" : ""
+            value: modelData.chevron
             onHoveredChanged: {
                 if (!hovered) return
                 if (modelData.kind === "submenu") { root.openSubId = modelData.target; root.openRow = row }

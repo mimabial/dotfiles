@@ -7,6 +7,27 @@
 
 set -euo pipefail
 
+grimblast_usage() {
+  cat <<'EOF'
+Usage:
+  grimblast [--notify] [--openfile] [--cursor] [--freeze] [--wait N] [--scale <scale>] [--geometry "X,Y WxH"] (copy|save|copysave|edit) [active|screen|output|area] [FILE|-]
+  grimblast check
+  grimblast usage
+
+Commands:
+  copy: Copy the screenshot data into the clipboard.
+  save: Save the screenshot data to a file.
+  copysave: Copy and save the screenshot data.
+  edit: Open the screenshot in the configured editor.
+  check: Verify required tools.
+  usage: Show this message.
+
+Targets: active, screen, output, or area.
+EOF
+}
+
+[[ "${1:-}" == -h || "${1:-}" == --help ]] && { grimblast_usage; exit; }
+
 cache_home="${XDG_CACHE_HOME:-$HOME/.cache}"
 runtime_dir="${XDG_RUNTIME_DIR:-$cache_home}"
 mkdir -p "${runtime_dir}"
@@ -122,29 +143,6 @@ ACTION=${1:-usage}
 SUBJECT=${2:-screen}
 FILE=${3:-$(get_target_directory)/$(date -Ins).png}
 FILE_EDITOR=${3:-$(tmp_editor_directory)/$(date -Ins).png}
-
-grimblast_usage() {
-  cat <<'EOF'
-Usage:
-  grimblast [--notify] [--openfile] [--cursor] [--freeze] [--wait N] [--scale <scale>] [--geometry "X,Y WxH"] (copy|save|copysave|edit) [active|screen|output|area] [FILE|-]
-  grimblast check
-  grimblast usage
-
-Commands:
-  copy: Copy the screenshot data into the clipboard.
-  save: Save the screenshot to a regular file or '-' to pipe to STDOUT.
-  copysave: Combine the previous 2 options.
-  edit: Open screenshot in the image editor of your choice (default is gimp). See man page for info.
-  check: Verify if required tools are installed and exit.
-  usage: Show this message and exit.
-
-Targets:
-  active: Currently active window.
-  screen: All visible outputs.
-  output: Currently active output.
-  area: Manually select a region or window.
-EOF
-}
 
 case "${ACTION}" in
   save | copy | edit | copysave | check | usage) ;;

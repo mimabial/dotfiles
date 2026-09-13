@@ -95,10 +95,11 @@ PopupWindow {
                     width: flyColumn.width; shell: root.shell
                     icon: root.labelIcon(modelData.label)
                     title: root.labelText(modelData.label)
+                    valueWidth: Style.px(18)
                     selected: root.selectedTarget(modelData.target)
                     active: modelData.kind === "submenu" ? root.openSubId === modelData.target : selected
                     color: row.highlight
-                    value: modelData.kind === "submenu" ? "❯" : selected ? "✓" : ""
+                    value: modelData.chevron || (selected ? "✓" : "")
                     onHoveredChanged: {
                         if (!hovered) return
                         if (modelData.kind === "submenu") { root.openSubId = modelData.target; root.openRow = row }

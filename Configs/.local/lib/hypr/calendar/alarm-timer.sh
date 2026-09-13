@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -u
 
+usage() { printf 'Usage: %s {list|add KIND EPOCH [LABEL]|cancel ID|restore}\n' "${0##*/}"; }
+[[ "${1:-}" == -h || "${1:-}" == --help ]] && { usage; exit; }
+
 state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell"
 state="${state_dir}/timers.json"
 self="$(readlink -f "${BASH_SOURCE[0]}")"
@@ -69,5 +72,5 @@ case "${1:-list}" in
       write_state 'map(if .id == $id then .backend=$backend | .ref=$ref else . end)' --arg id "${id}" --arg backend "${backend}" --arg ref "${ref}"
     done < <(jq -c '.[]' "${state}")
     ;;
-  *) printf 'Usage: %s {list|add KIND EPOCH [LABEL]|cancel ID|restore}\n' "${0##*/}" >&2; exit 2 ;;
+  *) usage >&2; exit 2 ;;
 esac

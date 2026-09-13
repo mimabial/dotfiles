@@ -167,7 +167,8 @@ mpris_thumb() {
 
 convert_length() {
   local length=$1
-  local seconds=$((length / 1000000))
+  local microseconds_per_second=1000000
+  local seconds=$((length / microseconds_per_second))
   local minutes=$((seconds / 60))
   local remaining_seconds=$((seconds % 60))
   printf "%d:%02d\n" "${minutes}" "${remaining_seconds}"

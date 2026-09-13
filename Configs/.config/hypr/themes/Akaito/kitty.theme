@@ -1,17 +1,17 @@
 $HOME/.config/kitty/theme.conf
 
-background #f3e4cb
+background #dfd2c4
 foreground #4d2e1a
 cursor #4d2e1a
-cursor_text_color #f3e4cb
+cursor_text_color #dfd2c4
 selection_foreground #4d2e1a
 selection_background #a32f1a
 
 active_tab_foreground #a32f1a
 inactive_tab_foreground #4d2e1a
-tab_bar_background #f3e4cb
+tab_bar_background #dfd2c4
 
-color0 #f3e4cb
+color0 #dfd2c4
 color1 #a4373c
 color2 #a46d2d
 color3 #a8611f

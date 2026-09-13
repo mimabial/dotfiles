@@ -85,7 +85,10 @@ BarSurface {
                 Component.onCompleted: if (moduleId !== "spacer" && !root.registry[moduleId]) console.warn("unknown bar module: " + moduleId)
                 onLoaded: {
                     if (!moduleProps || !item) return
-                    for (const key in moduleProps) item[key] = moduleProps[key]
+                    for (const key in moduleProps) {
+                        if (!(key in item)) console.warn("unknown bar module prop: " + moduleId + "." + key)
+                        item[key] = moduleProps[key]
+                    }
                 }
             }
         }

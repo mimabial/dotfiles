@@ -588,6 +588,7 @@ def main():
   }
   record.update(stats)
   record.update(rpc)
+  record["limitsObservedAt"] = round(time.time() * 1000)
   print(json.dumps(record, separators=(",", ":")))
 
 

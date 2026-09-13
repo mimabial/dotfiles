@@ -61,7 +61,6 @@ def format_fan_speed_horizontal(fan_rpm):
 
 
 def get_current_fan_index(total_fans):
-    """Get current fan index from file."""
     if os.path.exists(FAN_INDEX_FILE):
         try:
             with open(FAN_INDEX_FILE, "r") as f:
@@ -73,13 +72,11 @@ def get_current_fan_index(total_fans):
 
 
 def save_fan_index(index):
-    """Save current fan index to file."""
     with open(FAN_INDEX_FILE, "w") as f:
         f.write(str(index))
 
 
 def toggle_fan(fans):
-    """Cycle to next fan."""
     if not fans:
         print("No fans available to toggle")
         return

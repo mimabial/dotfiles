@@ -1,0 +1,26 @@
+background = "#fdf6ee"
+foreground = "#22211d"
+cursor-color = "#22211d"
+cursor-text = "#fdf6ee"
+selection-foreground = "#fdf6ee"
+selection-background = "#85b34c"
+kvantum-shell = "materia"
+
+colors = [
+  "#7a6550",
+  "#df2b0d",
+  "#29472a",
+  "#8a6c3e",
+  "#5e8e28",
+  "#28473f",
+  "#3d6b52",
+  "#24201d",
+  "#a09080",
+  "#e03c20",
+  "#1b2e1c",
+  "#6b5237",
+  "#496c1e",
+  "#28463c",
+  "#4a6b4d",
+  "#22211d",
+]

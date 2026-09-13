@@ -16,6 +16,8 @@ main() {
   local window_address=""
   local launch_cmd=()
 
+  [[ "${1:-}" == -h || "${1:-}" == --help ]] && { usage; return; }
+
   if [[ "$#" -lt 3 ]] || [[ "$2" != "--" ]]; then
     usage >&2
     return 2

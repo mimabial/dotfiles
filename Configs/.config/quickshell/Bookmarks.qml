@@ -1,9 +1,9 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
-import Quickshell.Io
 import "Commons" as Commons
 import "Ui" as Ui
+import "BookmarkModel.js" as BookmarkModel
 
 Item {
   id: root
@@ -53,26 +53,27 @@ Item {
 
   readonly property var keywordAction:
     root.opened && root.viewMode === 0
-      ? root.resolveKeywordAction(root.query)
+      ? BookmarkModel.keywordAction(store.bookmarks, root.query)
       : null
 
   readonly property var filteredBookmarks:
     root.opened && root.viewMode === 0
-      ? root.bookmarksForQuery(root.query)
+      ? BookmarkModel.filteredBookmarks(store.bookmarks, root.query, root.keywordAction,
+          store)
       : []
 
   readonly property var allTags:
-    root.opened && root.viewMode === 1 ? root.collectTags() : []
+    root.opened && root.viewMode === 1 ? BookmarkModel.tags(store.bookmarks) : []
 
   readonly property var filteredTags:
-    root.opened && root.viewMode === 1 ? root.tagsForQuery(root.tagQuery) : []
+    root.opened && root.viewMode === 1 ? BookmarkModel.matchingTags(root.allTags, root.tagQuery) : []
 
   readonly property var allKeywords:
-    root.opened && root.viewMode === 2 ? root.collectKeywords() : []
+    root.opened && root.viewMode === 2 ? BookmarkModel.keywords(store.bookmarks) : []
 
   readonly property var filteredKeywords:
     root.opened && root.viewMode === 2
-      ? root.keywordsForQuery(root.keywordQuery)
+      ? BookmarkModel.matchingKeywords(root.allKeywords, root.keywordQuery)
       : []
 
   readonly property var activeResults:
@@ -117,162 +118,16 @@ Item {
       store.flushUsage()
       return
     }
-    if (firefoxSyncProcess.running)
+    if (bookmarkBackend.firefoxSyncProcess.running)
       return
     root.firefoxSyncPending = false
     root.firefoxSyncResponse = null
     root.statusMessage = "Syncing Firefox…"
-    firefoxSyncProcess.command = [
+    bookmarkBackend.firefoxSyncProcess.command = [
       "python3", root.helperPath,
       "firefox-sync", store.dataPath
     ]
-    firefoxSyncProcess.running = true
-  }
-
-  function resolveKeywordAction(value) {
-    var input = String(value || "").trim()
-    var space = input.search(/\s/)
-    if (space < 1)
-      return null
-    var keyword = input.substring(0, space).toLowerCase()
-    var terms = input.substring(space).trim()
-    if (!terms)
-      return null
-    for (var i = 0; i < store.bookmarks.length; i++) {
-      var bookmark = store.bookmarks[i]
-      var template = String(bookmark.url || "")
-      if (String(bookmark.keyword || "").toLowerCase() === keyword
-          && (template.indexOf("%s") !== -1
-              || template.indexOf("%S") !== -1
-              || template.indexOf("{searchTerms}") !== -1)) {
-        return {bookmark: bookmark, terms: terms}
-      }
-    }
-    return null
-  }
-
-  function resolvedUrl(bookmark) {
-    if (!root.keywordAction || root.keywordAction.bookmark.id !== bookmark.id)
-      return bookmark.url
-    var terms = root.keywordAction.terms
-    var encoded = encodeURIComponent(terms)
-    return String(bookmark.url)
-      .replace(/%s/g, encoded)
-      .replace(/%S/g, terms)
-      .replace(/\{searchTerms\}/g, encoded)
-  }
-
-  function displayTitle(bookmark) {
-    var title = String(bookmark && bookmark.title || "").trim()
-    if (title)
-      return title
-    var match = String(bookmark && bookmark.url || "").match(/^https?:\/\/([^\/?#]+)/i)
-    return match ? match[1] : String(bookmark && bookmark.url || "")
-  }
-
-  function isParameterized(bookmark) {
-    var url = String(bookmark && bookmark.url || "")
-    return url.indexOf("%s") !== -1
-      || url.indexOf("%S") !== -1
-      || url.indexOf("{searchTerms}") !== -1
-  }
-
-  function collectTags() {
-    var byName = {}
-    var items = []
-
-    for (var i = 0; i < store.bookmarks.length; i++) {
-      var tags = store.bookmarks[i].tags || []
-      var seenOnBookmark = {}
-      for (var j = 0; j < tags.length; j++) {
-        var name = String(tags[j] || "").trim()
-        var key = name.toLowerCase()
-        if (!key || seenOnBookmark[key])
-          continue
-        seenOnBookmark[key] = true
-        if (byName[key]) {
-          byName[key].count += 1
-        } else {
-          var item = {tag: name, count: 1}
-          byName[key] = item
-          items.push(item)
-        }
-      }
-    }
-
-    items.sort(function(first, second) {
-      if (first.count !== second.count)
-        return second.count - first.count
-      return first.tag.toLowerCase().localeCompare(second.tag.toLowerCase())
-    })
-    return items
-  }
-
-  function tagsForQuery(value) {
-    var search = String(value || "").trim().toLowerCase()
-    if (!search)
-      return root.allTags
-
-    var prefix = []
-    var substring = []
-    for (var i = 0; i < root.allTags.length; i++) {
-      var item = root.allTags[i]
-      var tag = item.tag.toLowerCase()
-      if (tag.indexOf(search) === 0)
-        prefix.push(item)
-      else if (tag.indexOf(search) !== -1)
-        substring.push(item)
-    }
-    return prefix.concat(substring)
-  }
-
-  function collectKeywords() {
-    var seen = {}
-    var items = []
-
-    for (var i = 0; i < store.bookmarks.length; i++) {
-      var bookmark = store.bookmarks[i]
-      var keyword = String(bookmark.keyword || "").trim()
-      var key = keyword.toLowerCase()
-      if (!key || seen[key])
-        continue
-      seen[key] = true
-      items.push({
-        keyword: keyword,
-        bookmark: bookmark,
-        parameterized: root.isParameterized(bookmark)
-      })
-    }
-
-    items.sort(function(first, second) {
-      return first.keyword.toLowerCase().localeCompare(
-        second.keyword.toLowerCase()
-      )
-    })
-    return items
-  }
-
-  function keywordsForQuery(value) {
-    var search = String(value || "").trim().toLowerCase()
-    if (!search)
-      return root.allKeywords
-
-    var prefix = []
-    var substring = []
-    for (var i = 0; i < root.allKeywords.length; i++) {
-      var item = root.allKeywords[i]
-      var keyword = item.keyword.toLowerCase()
-      var searchable = (
-        item.keyword + " "
-        + root.displayTitle(item.bookmark) + " "
-        + item.bookmark.url
-      ).toLowerCase()
-      if (keyword.indexOf(search) === 0)
-        prefix.push(item)
-      else if (searchable.indexOf(search) !== -1)
-        substring.push(item)
-    }
-    return prefix.concat(substring)
+    bookmarkBackend.firefoxSyncProcess.running = true
   }
 
   function currentQuery() {
@@ -341,136 +196,6 @@ Item {
     bookmarkList.positionViewAtBeginning()
   }
 
-  function parseSearch(value) {
-    var input = String(value || "").trim().toLowerCase()
-    var source = input ? input.split(/\s+/) : []
-    var normalTokens = []
-    var tagTokens = []
-    for (var i = 0; i < source.length; i++) {
-      if (source[i].charAt(0) === "#")
-        tagTokens.push(source[i].substring(1))
-      else
-        normalTokens.push(source[i])
-    }
-    return {
-      normalTokens: normalTokens,
-      tagTokens: tagTokens,
-      normalSearch: normalTokens.join(" ")
-    }
-  }
-
-  function tagPrefixMatch(bookmark, prefix) {
-    for (var i = 0; i < bookmark.tags.length; i++) {
-      if (String(bookmark.tags[i]).toLowerCase().indexOf(prefix) === 0)
-        return true
-    }
-    return false
-  }
-
-  function searchRelevance(bookmark, search, tokens, tagTokens) {
-    var title = String(bookmark.title || "").toLowerCase()
-    var keyword = String(bookmark.keyword || "").toLowerCase()
-    var url = String(bookmark.url || "").toLowerCase()
-    var score = 0
-
-    if (search) {
-      if (keyword === search)
-        score += 500
-      if (title === search)
-        score += 450
-      else if (title.indexOf(search) === 0)
-        score += 300
-      if (keyword && keyword.indexOf(search) === 0)
-        score += 280
-      if (url.indexOf(search) !== -1)
-        score += 100
-    }
-
-    for (var i = 0; i < tokens.length; i++) {
-      if (title.indexOf(tokens[i]) === 0)
-        score += 30
-      else if (title.indexOf(tokens[i]) !== -1)
-        score += 20
-      if (keyword === tokens[i])
-        score += 25
-    }
-
-    for (var j = 0; j < tagTokens.length; j++) {
-      if (!tagTokens[j])
-        continue
-      for (var k = 0; k < bookmark.tags.length; k++) {
-        var tag = String(bookmark.tags[k]).toLowerCase()
-        if (tag === tagTokens[j]) {
-          score += 90
-          break
-        }
-        if (tag.indexOf(tagTokens[j]) === 0) {
-          score += 45
-          break
-        }
-      }
-    }
-    return score
-  }
-
-  function bookmarksForQuery(value) {
-    if (root.keywordAction)
-      return [root.keywordAction.bookmark]
-
-    var parsed = root.parseSearch(value)
-    var search = parsed.normalSearch
-    var tokens = parsed.normalTokens
-    var tagTokens = parsed.tagTokens
-    var now = Date.now()
-    var ranked = []
-
-    for (var i = 0; i < store.bookmarks.length; i++) {
-      var bookmark = store.bookmarks[i]
-      var searchable = (
-        String(bookmark.title || "") + " "
-        + bookmark.url + " "
-        + bookmark.tags.join(" ") + " "
-        + String(bookmark.keyword || "")
-      ).toLowerCase()
-      var matches = true
-
-      for (var j = 0; j < tokens.length; j++) {
-        if (searchable.indexOf(tokens[j]) === -1) {
-          matches = false
-          break
-        }
-      }
-      for (var k = 0; matches && k < tagTokens.length; k++) {
-        if (!root.tagPrefixMatch(bookmark, tagTokens[k]))
-          matches = false
-      }
-      if (!matches)
-        continue
-
-      ranked.push({
-        bookmark: bookmark,
-        relevance: search || tagTokens.length
-          ? root.searchRelevance(bookmark, search, tokens, tagTokens)
-          : 0,
-        usage: store.usageScoreAt(bookmark, now),
-        originalIndex: i
-      })
-    }
-
-    ranked.sort(function(first, second) {
-      if (first.relevance !== second.relevance)
-        return second.relevance - first.relevance
-      if (Math.abs(first.usage - second.usage) > 0.0000001)
-        return second.usage - first.usage
-      return first.originalIndex - second.originalIndex
-    })
-
-    var results = []
-    for (var resultIndex = 0; resultIndex < ranked.length; resultIndex++)
-      results.push(ranked[resultIndex].bookmark)
-    return results
-  }
-
   onActiveResultsChanged: {
     root.selectedIndex = Math.max(
       0,
@@ -491,7 +216,7 @@ Item {
     root.deleteTarget = null
     root.fileDialogOpen = false
     root.statusMessage = ""
-    root.quickAddCanceled = quickAddProcess.running
+    root.quickAddCanceled = bookmarkBackend.quickAddProcess.running
     root.browserTarget = null
     root.copyTargetTitle = ""
     root.networkDialogOpen = false
@@ -509,13 +234,13 @@ Item {
   }
 
   function close() {
-    statusTimer.stop()
-    if (importPickerProcess.running)
-      importPickerProcess.running = false
+    bookmarkBackend.statusTimer.stop()
+    if (bookmarkBackend.importPickerProcess.running)
+      bookmarkBackend.importPickerProcess.running = false
     root.fileDialogOpen = false
-    if (quickAddProcess.running) {
+    if (bookmarkBackend.quickAddProcess.running) {
       root.quickAddCanceled = true
-      quickAddProcess.running = false
+      bookmarkBackend.quickAddProcess.running = false
     } else {
       root.quickAdding = false
     }
@@ -722,7 +447,7 @@ Item {
     if (!bookmark)
       return
 
-    var url = root.resolvedUrl(bookmark)
+    var url = BookmarkModel.resolvedUrl(bookmark, root.keywordAction)
     var command
 
     if (browser && browser.desktopPath) {
@@ -752,7 +477,7 @@ Item {
     if (!bookmark)
       return
     root.browserTarget = bookmark
-    browserPicker.openFor(root.displayTitle(bookmark))
+    browserPicker.openFor(BookmarkModel.title(bookmark))
   }
 
   function activateCurrent(openInNewWindow, append) {
@@ -764,29 +489,29 @@ Item {
 
   function showStatus(message) {
     root.statusMessage = message
-    statusTimer.restart()
+    bookmarkBackend.statusTimer.restart()
   }
 
   function copySelectedUrl() {
     var bookmark = root.selectedBookmark()
-    if (!bookmark || copyProcess.running)
+    if (!bookmark || bookmarkBackend.copyProcess.running)
       return
-    root.copyTargetTitle = root.displayTitle(bookmark)
-    copyProcess.command = [
-      "python3", root.helperPath, "copy", root.resolvedUrl(bookmark)
+    root.copyTargetTitle = BookmarkModel.title(bookmark)
+    bookmarkBackend.copyProcess.command = [
+      "python3", root.helperPath, "copy", BookmarkModel.resolvedUrl(bookmark, root.keywordAction)
     ]
-    copyProcess.running = true
+    bookmarkBackend.copyProcess.running = true
   }
 
   function refreshNetworkSetting() {
-    if (!store.storageReady || networkStatusProcess.running)
+    if (!store.storageReady || bookmarkBackend.networkStatusProcess.running)
       return
     root.networkSettingStateReady = false
-    networkStatusProcess.command = [
+    bookmarkBackend.networkStatusProcess.command = [
       "python3", root.helperPath,
       "network-enrichment", "status", root.settingsPath
     ]
-    networkStatusProcess.running = true
+    bookmarkBackend.networkStatusProcess.running = true
   }
 
   function quickAddFromClipboard() {
@@ -807,9 +532,9 @@ Item {
     ]
     if (root.networkEnrichmentEnabled)
       clipboardCommand.push(root.settingsPath)
-    quickAddProcess.command = clipboardCommand
-    quickAddProcess.running = false
-    quickAddProcess.running = true
+    bookmarkBackend.quickAddProcess.command = clipboardCommand
+    bookmarkBackend.quickAddProcess.running = false
+    bookmarkBackend.quickAddProcess.running = true
   }
 
   function openNetworkSettings() {
@@ -831,23 +556,23 @@ Item {
   }
 
   function requestNetworkSetting(enabled) {
-    if (networkSettingProcess.running)
+    if (bookmarkBackend.networkSettingProcess.running)
       return
     root.networkSettingOperation = enabled ? "enable" : "disable"
     networkDialog.errorMessage = ""
-    networkSettingProcess.command = [
+    bookmarkBackend.networkSettingProcess.command = [
       "python3", root.helperPath,
       "network-enrichment", root.networkSettingOperation,
       root.settingsPath
     ]
-    networkSettingProcess.running = true
+    bookmarkBackend.networkSettingProcess.running = true
   }
 
   function openImportPicker() {
     if (!root.mutationAvailable(true))
       return
     root.fileDialogOpen = true
-    importPickerProcess.command = [
+    bookmarkBackend.importPickerProcess.command = [
       "zenity",
       "--file-selection",
       "--title=Import bookmarks",
@@ -855,8 +580,8 @@ Item {
       "--file-filter=Bookmark files | *.html *.htm *.json",
       "--file-filter=All files | *"
     ]
-    importPickerProcess.running = false
-    importPickerProcess.running = true
+    bookmarkBackend.importPickerProcess.running = false
+    bookmarkBackend.importPickerProcess.running = true
   }
 
   function finishImport(items) {
@@ -880,257 +605,11 @@ Item {
     root.refocusList()
   }
 
-  Timer {
-    id: statusTimer
-    interval: 5000
-    repeat: false
-    onTriggered: root.statusMessage = ""
-  }
-
-  Process {
-    id: quickAddProcess
-    running: false
-    command: ["true"]
-
-    onStarted: {
-      root.quickAddResult = null
-      root.quickAddResponseError = ""
-    }
-
-    stdout: SplitParser {
-      onRead: function(data) {
-        try {
-          var output = String(data || "")
-          if (output.length > root.maxQuickAddOutputCharacters)
-            throw new Error("Clipboard helper returned too much data")
-          root.quickAddResult = JSON.parse(output)
-        } catch (exception) {
-          root.quickAddResponseError = String(
-            exception.message || "Could not add clipboard bookmark"
-          )
-        }
-      }
-    }
-
-    onExited: function(exitCode) {
-      root.quickAdding = false
-      if (root.quickAddCanceled) {
-        root.quickAddCanceled = false
-        root.quickAddResult = null
-        root.quickAddResponseError = ""
-        return
-      }
-      var result = root.quickAddResult
-      var responseError = root.quickAddResponseError
-      root.quickAddResult = null
-      root.quickAddResponseError = ""
-      if (result) {
-        if (exitCode !== 0 || !result.ok) {
-          root.showStatus(String(result.error || "Could not add clipboard bookmark"))
-        } else if (result.duplicate) {
-          root.viewMode = 0
-          root.query = ""
-          root.selectBookmarkById(result.id)
-          root.showStatus("That URL is already bookmarked")
-        } else {
-          editor.openForClipboard(result.item)
-        }
-      } else {
-        root.showStatus(responseError || "Could not add clipboard bookmark")
-      }
-      root.refocusList()
-    }
-
-    onRunningChanged: {
-      if (!running && root.quickAdding) {
-        var canceled = root.quickAddCanceled
-        root.quickAdding = false
-        root.quickAddCanceled = false
-        root.quickAddResult = null
-        root.quickAddResponseError = ""
-        if (!canceled && root.opened) {
-          root.showStatus("Could not start the clipboard helper")
-          root.refocusList()
-        }
-      }
-    }
-  }
-
-  Process {
-    id: copyProcess
-    running: false
-    command: ["true"]
-
-    onStarted: root.copyResponse = null
-
-    stdout: SplitParser {
-      onRead: function(data) {
-        try {
-          root.copyResponse = root.parseSmallHelperResponse(data)
-        } catch (exception) {
-          root.copyResponse = {ok: false, error: "Could not copy URL"}
-        }
-      }
-    }
-
-    onExited: function(exitCode) {
-      var message = "Copied " + root.copyTargetTitle + " URL"
-      var result = root.copyResponse
-      root.copyResponse = null
-      if (!result || exitCode !== 0 || !result.ok)
-        message = String(result && result.error || "Could not copy URL")
-      root.copyTargetTitle = ""
-      if (root.opened) {
-        root.showStatus(message)
-        root.refocusList()
-      }
-    }
-
-    onRunningChanged: {
-      if (!running && root.copyTargetTitle) {
-        root.copyResponse = null
-        root.copyTargetTitle = ""
-        if (root.opened) {
-          root.showStatus("Could not start the clipboard helper")
-          root.refocusList()
-        }
-      }
-    }
-  }
-
-  Process {
-    id: networkStatusProcess
-    running: false
-    command: ["true"]
-
-    onStarted: root.networkStatusResponse = null
-
-    stdout: SplitParser {
-      onRead: function(data) {
-        try {
-          root.networkStatusResponse = root.parseSmallHelperResponse(data)
-        } catch (exception) {
-          root.networkStatusResponse = {
-            ok: false,
-            error: "Could not inspect web-details preference"
-          }
-        }
-      }
-    }
-
-    onExited: function(exitCode) {
-      var result = root.networkStatusResponse
-      root.networkStatusResponse = null
-      if (result && exitCode === 0 && result.ok) {
-        root.networkEnrichmentEnabled = result.enabled === true
-        root.networkSettingStateReady = true
-      } else {
-        root.networkEnrichmentEnabled = false
-        root.networkSettingStateReady = false
-        if (root.opened)
-          root.showStatus(String(result && result.error || "Could not inspect web-details preference"))
-      }
-    }
-  }
-  Process {
-    id: networkSettingProcess
-    running: false
-    command: ["true"]
-
-    onStarted: root.networkSettingResponse = null
-
-    stdout: SplitParser {
-      onRead: function(data) {
-        try {
-          root.networkSettingResponse = root.parseSmallHelperResponse(data)
-        } catch (exception) {
-          root.networkSettingResponse = {
-            ok: false,
-            error: "Could not save web-details preference"
-          }
-        }
-      }
-    }
-
-    onExited: function(exitCode) {
-      try {
-        var result = root.networkSettingResponse
-        root.networkSettingResponse = null
-        if (!result)
-          throw new Error("Could not save web-details preference")
-        if (exitCode !== 0 || !result.ok)
-          throw new Error(String(result.error || "Could not save web-details preference"))
-        root.networkEnrichmentEnabled = result.enabled === true
-        root.networkSettingStateReady = true
-        root.networkDialogOpen = false
-        if (root.opened) {
-          root.showStatus(
-            root.networkEnrichmentEnabled
-              ? "Web details enabled for future pasted URLs"
-              : "Web details disabled · pasting will not access the network"
-          )
-          if (editor.opened)
-            editor.refocus()
-          else
-            root.refocusList()
-        }
-      } catch (exception) {
-        networkDialog.errorMessage = String(
-          exception.message || "Could not save web-details preference"
-        )
-      }
-      root.networkSettingOperation = ""
-    }
-
-    onRunningChanged: {
-      if (!running && root.networkSettingOperation) {
-        root.networkSettingResponse = null
-        root.networkSettingOperation = ""
-        networkDialog.errorMessage = "Could not start the settings helper"
-      }
-    }
-  }
-
-  Process {
-    id: importPickerProcess
-    running: false
-    command: ["true"]
-
-    onStarted: root.importPickerPath = ""
-
-    stdout: SplitParser {
-      onRead: function(data) {
-        var path = String(data || "").trim()
-        root.importPickerPath = path.length <= 4096 ? path : ""
-      }
-    }
-
-    onExited: function(exitCode) {
-      root.fileDialogOpen = false
-      var path = root.importPickerPath
-      root.importPickerPath = ""
-      if (exitCode === 0 && path)
-        importer.begin(path)
-      else {
-        root.refocusList()
-      }
-    }
-
-    onRunningChanged: {
-      if (!running && root.fileDialogOpen) {
-        root.importPickerPath = ""
-        root.fileDialogOpen = false
-        if (root.opened) {
-          root.showStatus("Could not open import picker · install Zenity")
-          root.refocusList()
-        }
-      }
-    }
-  }
+  BookmarkBackend { id: bookmarkBackend; controller: root; store: store; editor: editor; importer: importer; networkDialog: networkDialog }
 
   BookmarkStore {
     id: store
-    externallyBusy: firefoxSyncProcess.running
+    externallyBusy: bookmarkBackend.firefoxSyncProcess.running
     onStorageReadyChanged: {
       if (storageReady) {
         root.refreshNetworkSetting()
@@ -1148,47 +627,6 @@ Item {
     }
   }
 
-  Process {
-    id: firefoxSyncProcess
-    running: false
-    command: ["true"]
-
-    stdout: SplitParser {
-      onRead: function(data) {
-        try {
-          root.firefoxSyncResponse = root.parseSmallHelperResponse(data)
-        } catch (exception) {
-          root.firefoxSyncResponse = {
-            ok: false,
-            error: "Invalid Firefox sync response"
-          }
-        }
-      }
-    }
-
-    onExited: function(exitCode) {
-      var response = root.firefoxSyncResponse
-      root.firefoxSyncResponse = null
-      if (exitCode !== 0 || !response || !response.ok) {
-        root.showStatus(
-          "Firefox sync failed"
-          + (response && response.error ? " · " + response.error : "")
-        )
-        return
-      }
-      var stats = response.stats || ({})
-      var changes = Number(stats.changed || 0)
-      root.showStatus(
-        changes
-          ? "Firefox synced · "
-            + Number(stats.new || 0) + " added · "
-            + Number(stats.updated || 0) + " updated · "
-            + Number(stats.removed || 0) + " removed"
-          : "Firefox bookmarks are up to date"
-      )
-      store.reload()
-    }
-  }
 
   PopupCard {
     id: popup
@@ -1558,7 +996,7 @@ Item {
                   width: parent.width
                   text:
                     row.bookmarkMode
-                      ? root.displayTitle(row.bookmark)
+                      ? BookmarkModel.title(row.bookmark)
                       : row.tagMode
                         ? "#" + row.modelData.tag
                         : row.modelData.keyword
@@ -1588,7 +1026,7 @@ Item {
                       ? row.modelData.count
                         + (row.modelData.count === 1 ? " bookmark" : " bookmarks")
                       : row.keywordMode
-                        ? root.displayTitle(row.bookmark)
+                        ? BookmarkModel.title(row.bookmark)
                           + (
                             row.modelData.parameterized
                               ? "  ·  accepts search terms"
@@ -1826,7 +1264,7 @@ Item {
         anchors.fill: parent
         opened: root.networkDialogOpen
         webEnabled: root.networkEnrichmentEnabled
-        busy: networkSettingProcess.running
+        busy: bookmarkBackend.networkSettingProcess.running
         background: Commons.Color.menu.background
         foreground: Commons.Color.menu.text
         scrim: Commons.Util.alpha(Commons.Color.menu.background, 0.76)

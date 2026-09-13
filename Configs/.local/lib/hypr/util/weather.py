@@ -24,7 +24,6 @@ _WEATHER_CODES_CACHE = None
 
 
 def _load_weather_codes():
-    """Load weather codes from JSON file"""
     global _WEATHER_CODES_CACHE
     if _WEATHER_CODES_CACHE is not None:
         return _WEATHER_CODES_CACHE
@@ -62,7 +61,6 @@ def is_cache_valid():
 
 
 def load_cache():
-    """Load weather data from cache"""
     try:
         with open(WEATHER_DATA_CACHE, "r", encoding="utf-8") as f:
             return json.load(f)

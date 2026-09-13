@@ -35,6 +35,36 @@ find_wallpapers() {
   return 0
 }
 
+# Generic catalog list operations, shared by the wallpaper and theme pickers.
+catalog_index_of() {
+  local list_name="$1"
+  local target="$2"
+  local -n list_ref="${list_name}"
+  local i=""
+
+  for i in "${!list_ref[@]}"; do
+    if [[ "${target}" == "${list_ref[i]}" ]]; then
+      printf '%s\n' "${i}"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+catalog_adjacent_index() {
+  local index="$1"
+  local direction="$2"
+  local count="$3"
+
+  ((count > 0)) || return 1
+  case "${direction}" in
+    n) printf '%s\n' $(((index + 1) % count)) ;;
+    p) printf '%s\n' $(((index - 1 + count) % count)) ;;
+    *) return 1 ;;
+  esac
+}
+
 get_hashmap_into() {
   local hash_name="$1"
   local list_name="$2"

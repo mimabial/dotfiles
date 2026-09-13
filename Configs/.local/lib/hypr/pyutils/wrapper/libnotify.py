@@ -12,7 +12,6 @@ DEFAULT_URGENCY = "normal"
 
 
 def _is_gui_available():
-    """Check if a GUI environment is available."""
     return (
         os.environ.get("DISPLAY") is not None
         or os.environ.get("WAYLAND_DISPLAY") is not None
@@ -22,7 +21,6 @@ def _is_gui_available():
 
 
 def _has_dunstify():
-    """Check if dunstify is available."""
     return shutil.which("dunstify") is not None
 
 
@@ -100,7 +98,6 @@ def send(
         command.append(body)
 
     def _send_in_background():
-        """Send notification in background thread."""
         try:
             run(command, check=True, timeout=3, capture_output=True)
         except (CalledProcessError, TimeoutExpired, FileNotFoundError):

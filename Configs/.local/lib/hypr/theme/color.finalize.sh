@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
-# Subsystem inputs:
-#   selected_color_source - active palette policy
-: "${selected_color_source-}"
 
 _safe_hyq_get() {
   local hyq_output="$1"

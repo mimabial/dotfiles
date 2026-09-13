@@ -1,0 +1,45 @@
+$HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
+
+$ICON_THEME = Tela-blue-light
+$COLOR_SCHEME = prefer-light
+$NVIM_BACKGROUND = light
+$NVIM_TRANSPARENCY = false
+$CURSOR_THEME = Adwaita
+$CURSOR_SIZE = 30
+$FONT = CommitMono Nerd Font
+$BAR_FONT = CommitMono Nerd Font
+$MENU_FONT = CommitMono Nerd Font
+$MONOSPACE_FONT = CommitMono Nerd Font
+$TERMINAL_FONT = CommitMono Nerd Font
+$NOTIFICATION_FONT = CommitMono Nerd Font Mono
+
+general {
+    gaps_in = 4
+    gaps_out = 8
+    border_size = 2
+    col.active_border = rgba(205EA6ff)
+    col.inactive_border = rgba(6F6E69cc)
+    layout = dwindle
+    resize_on_border = true
+}
+
+group {
+    col.border_active = rgba(205EA6ff)
+    col.border_inactive = rgba(6F6E69cc)
+    col.border_locked_active = rgba(4385BEff)
+    col.border_locked_inactive = rgba(6F6E69cc)
+}
+
+decoration {
+    rounding = 4
+    shadow:enabled = false
+
+    blur {
+        enabled = yes
+        size = 6
+        passes = 4
+        new_optimizations = on
+        ignore_opacity = on
+        xray = false
+    }
+}

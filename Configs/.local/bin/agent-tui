@@ -11,6 +11,39 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
+from typing import Any, NamedTuple, TypedDict
+
+
+class UsageRecord(TypedDict, total=False):
+    id: str
+    name: str
+    tierLabel: str
+    usageStatusText: str
+    updatedAt: str
+    limits: list[dict[str, Any]]
+    recentDays: list[dict[str, Any]]
+    modelUsage: dict[str, dict[str, int]]
+
+
+class AgentSpec(NamedTuple):
+    name: str
+    command: str
+    shortcut: str
+
+
+class DashboardLayout(NamedTuple):
+    width: int
+    bottom: int
+    label_x: int
+    label_width: int
+    bar_x: int
+    value_x: int
+    chart_width: int
+    title_gap: int
+    section_gap: int
+    accent: int
+    dim: int
+
 
 cache_root = Path(
     os.environ.get("HYPR_CACHE_HOME")
@@ -18,9 +51,9 @@ cache_root = Path(
 )
 CACHE_FILE = cache_root / "agents" / "usage.json"
 AGENTS = {
-    "claude": ("Claude Code", "claude", "c"),
-    "codex": ("Codex", "codex", "x"),
-    "opencode": ("OpenCode", "opencode", "o"),
+    "claude": AgentSpec("Claude Code", "claude", "c"),
+    "codex": AgentSpec("Codex", "codex", "x"),
+    "opencode": AgentSpec("OpenCode", "opencode", "o"),
 }
 TOKEN_FIELDS = (
     "inputTokens",
@@ -62,10 +95,14 @@ def init_colors():
     curses.init_pair(PAIR_BAR, curses.COLOR_CYAN, -1)
 
 
-def load_records():
+def load_records() -> list[UsageRecord]:
     try:
         value = json.loads(CACHE_FILE.read_text())
-        return value if isinstance(value, list) else []
+        return (
+            [record for record in value if isinstance(record, dict)]
+            if isinstance(value, list)
+            else []
+        )
     except (OSError, json.JSONDecodeError):
         return []
 
@@ -115,8 +152,9 @@ def window_usage(record, kind, fresh=False):
     return highest
 
 
-def recommendation(records):
-    best = None
+def recommendation(records: list[UsageRecord]) -> UsageRecord | None:
+    best_key = None
+    best_record = None
     for record in records:
         hourly = window_usage(record, "hourly", fresh=True)
         weekly = window_usage(record, "weekly", fresh=True)
@@ -126,10 +164,10 @@ def recommendation(records):
         pressure = max(hourly, weekly)
         total = max(0, hourly) + max(0, weekly)
         coverage_penalty = 2 - known_windows
-        candidate = (pressure + coverage_penalty, total, record, hourly, weekly)
-        if best is None or candidate[:2] < best[:2]:
-            best = candidate
-    return best
+        candidate_key = (pressure + coverage_penalty, total)
+        if best_key is None or candidate_key < best_key:
+            best_key, best_record = candidate_key, record
+    return best_record
 
 
 def compact(value):
@@ -225,7 +263,7 @@ def snapshot(records, selected_id=""):
     ]
     if chosen:
         lines.append(
-            f"Recommended  {chosen[2].get('name', chosen[2].get('id', 'Agent'))} \u00b7 {usage_summary(chosen[2])}"
+            f"Recommended  {chosen.get('name', chosen.get('id', 'Agent'))} \u00b7 {usage_summary(chosen)}"
         )
     lines += ["", "LIMITS"]
     for limit in selected.get("limits") or []:
@@ -266,7 +304,9 @@ class Dashboard:
         self.message_until = 0.0
         self.last_mtime = self.cache_mtime()
         self.default_agent = self.read_default_agent()
-        self.agent_paths = {command: shutil.which(command) for _, command, _ in AGENTS.values()}
+        self.agent_paths = {
+            spec.command: shutil.which(spec.command) for spec in AGENTS.values()
+        }
         self.configure_screen()
         if not self.records or self.cache_age() > CACHE_MAX_AGE_SECONDS:
             self.refresh(force=False)
@@ -380,8 +420,8 @@ class Dashboard:
         if not agent_id:
             self.note("No default agent is configured", error=True)
             return
-        if not spec or not shutil.which(spec[1]):
-            self.note(f"{spec[0] if spec else agent_id} is not installed", error=True)
+        if not spec or not shutil.which(spec.command):
+            self.note(f"{spec.name if spec else agent_id} is not installed", error=True)
             return
         try:
             subprocess.Popen(
@@ -391,24 +431,24 @@ class Dashboard:
                     "--app-id",
                     f"org.agent.{agent_id.title()}",
                     "--title",
-                    spec[0],
+                    spec.name,
                     "--",
-                    spec[1],
+                    spec.command,
                 ],
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 start_new_session=True,
             )
-            self.note(f"Opening {spec[0]}")
+            self.note(f"Opening {spec.name}")
         except OSError as error:
-            self.note(f"Could not launch {spec[0]}: {error}", error=True)
+            self.note(f"Could not launch {spec.name}: {error}", error=True)
 
     def set_default(self):
         record = self.current()
         agent_id = str(record.get("id", "")) if record else ""
         spec = AGENTS.get(agent_id)
-        if not spec or not shutil.which(spec[1]):
+        if not spec or not shutil.which(spec.command):
             self.note("The selected provider cannot be set as an agent", error=True)
             return
         result = subprocess.run(
@@ -419,7 +459,7 @@ class Dashboard:
         )
         if result.returncode == 0:
             self.default_agent = agent_id
-            self.note(f"Default agent set to {spec[0]}")
+            self.note(f"Default agent set to {spec.name}")
         else:
             self.note("Could not update the default agent", error=True)
 
@@ -442,31 +482,13 @@ class Dashboard:
 
     def hint(self):
         installed = [
-            f"{key} {name}"
-            for name, command, key in AGENTS.values()
-            if self.agent_paths[command]
+            f"{spec.shortcut} {spec.name}"
+            for spec in AGENTS.values()
+            if self.agent_paths[spec.command]
         ]
         return HINT + ("   " + "   ".join(installed) if installed else "")
 
-    def draw(self):
-        self.screen.erase()
-        height, width = self.screen.getmaxyx()
-        accent = curses.color_pair(PAIR_ACCENT)
-        dim = curses.color_pair(PAIR_DIM)
-
-        if height < MIN_ROWS or width < MIN_COLS:
-            self.put(
-                0,
-                1,
-                f"Agent Hub needs at least {MIN_COLS} columns x {MIN_ROWS} rows.",
-                curses.color_pair(PAIR_ERROR) | curses.A_BOLD,
-            )
-            self.put(2, 1, f"Current terminal: {width} x {height}", dim)
-            self.put(height - 1, 1, "q close", dim)
-            self.screen.refresh()
-            return
-
-        record = self.current()
+    def draw_header(self, record, width, accent, dim):
         self.put(0, 1, "Agent Hub", accent | curses.A_BOLD)
         updated = ""
         if record and record.get("updatedAt"):
@@ -476,7 +498,6 @@ class Dashboard:
         self.put(0, max(14, width - len(updated) - 2), updated, dim)
         self.put(1, 1, "\u2500" * (width - 2), dim)
 
-        chosen = recommendation(self.records)
         x = 1
         self.tab_spans = []
         for index, item in enumerate(self.records):
@@ -494,6 +515,124 @@ class Dashboard:
             x += span + 2
 
         if not record:
+            return
+
+        tier = str(record.get("tierLabel") or record.get("usageStatusText") or "")
+        heading = " \u00b7 ".join(
+            part
+            for part in (str(record.get("name", "Agent")), tier, usage_summary(record))
+            if part
+        )
+        self.put(HEAD_ROW, 1, heading, curses.A_BOLD)
+        chosen = recommendation(self.records)
+        if chosen:
+            name = chosen.get("name", chosen.get("id", "Agent"))
+            self.put(
+                HEAD_ROW + 1,
+                1,
+                f"Recommended  {name} \u00b7 {usage_summary(chosen)}",
+                curses.color_pair(PAIR_BAR),
+            )
+
+    def section_spacing(self, height):
+        title_gap = 1
+        needed = max(
+            (content_height(item, title_gap) for item in self.records), default=0
+        )
+        if needed > height:
+            title_gap = 0
+            needed = max(
+                (content_height(item, title_gap) for item in self.records), default=0
+            )
+        return title_gap, 1 + min(SECTION_GAP_MAX, max(0, height - needed) // 3)
+
+    def draw_limits(self, record, y, layout):
+        y = self.section(y, "LIMITS", layout.title_gap)
+        reset_x = layout.width - RIGHT_MARGIN - RESET_WIDTH
+        percent_x = reset_x - VALUE_WIDTH
+        limit_width = max(8, percent_x - layout.bar_x - 2)
+        for limit in record.get("limits") or []:
+            if y >= layout.bottom:
+                break
+            percent = max(0.0, min(1.0, limit_percent(limit)))
+            gauge = curses.color_pair(PAIR_ERROR) if percent >= 0.9 else layout.accent
+            self.put(
+                y,
+                layout.label_x,
+                str(limit.get("label") or "Limit"),
+                0,
+                layout.label_width,
+            )
+            divisions = USAGE_BAR_SEGMENTS.get(window_kind(limit), 1)
+            self.put(y, layout.bar_x, progress(percent, limit_width, divisions), gauge)
+            self.put(
+                y, percent_x, f"{percent:.0%}".rjust(VALUE_WIDTH), gauge | curses.A_BOLD
+            )
+            self.put(
+                y,
+                reset_x,
+                resets_in(limit.get("resetsAt")).rjust(RESET_WIDTH),
+                layout.dim,
+            )
+            y += 1
+        return y
+
+    @staticmethod
+    def day_chart_rows(record, dim):
+        today = datetime.now().astimezone().strftime("%Y-%m-%d")
+        rows = []
+        for day in record.get("recentDays") or []:
+            value = int(day.get("messageCount") or 0)
+            date = str(day.get("date") or "")
+            try:
+                label = (
+                    "Today"
+                    if date == today
+                    else datetime.fromisoformat(date).strftime("%a")
+                )
+            except ValueError:
+                label = date[-5:]
+            live = curses.A_BOLD if date == today else 0
+            rows.append((label, value, live, live or dim))
+        return rows
+
+    def draw_chart(self, y, title, rows, layout):
+        y = self.section(y, title, layout.title_gap)
+        peak = max((value for _, value, _, _ in rows), default=0)
+        for label, value, label_attr, value_attr in rows:
+            if y >= layout.bottom:
+                break
+            self.put(y, layout.label_x, label, label_attr, layout.label_width)
+            self.put(
+                y,
+                layout.bar_x,
+                progress(value / peak if peak else 0, layout.chart_width),
+                layout.accent,
+            )
+            self.put(y, layout.value_x, f"{compact(value):>8}", value_attr)
+            y += 1
+        return y
+
+    def draw(self):
+        self.screen.erase()
+        height, width = self.screen.getmaxyx()
+        accent, dim = curses.color_pair(PAIR_ACCENT), curses.color_pair(PAIR_DIM)
+
+        if height < MIN_ROWS or width < MIN_COLS:
+            self.put(
+                0,
+                1,
+                f"Agent Hub needs at least {MIN_COLS} columns x {MIN_ROWS} rows.",
+                curses.color_pair(PAIR_ERROR) | curses.A_BOLD,
+            )
+            self.put(2, 1, f"Current terminal: {width} x {height}", dim)
+            self.put(height - 1, 1, "q close", dim)
+            self.screen.refresh()
+            return
+
+        record = self.current()
+        self.draw_header(record, width, accent, dim)
+        if not record:
             self.put(4, 1, "No AI coding subscription data found.", curses.A_BOLD)
             self.put(
                 6,
@@ -507,102 +646,40 @@ class Dashboard:
             self.screen.refresh()
             return
 
-        tier = str(record.get("tierLabel") or record.get("usageStatusText") or "")
-        heading = " \u00b7 ".join(
-            part
-            for part in (str(record.get("name", "Agent")), tier, usage_summary(record))
-            if part
-        )
-        self.put(HEAD_ROW, 1, heading, curses.A_BOLD)
-        if chosen:
-            name = chosen[2].get("name", chosen[2].get("id", "Agent"))
-            self.put(
-                HEAD_ROW + 1,
-                1,
-                f"Recommended  {name} \u00b7 {usage_summary(chosen[2])}",
-                curses.color_pair(PAIR_BAR),
-            )
-
         label_x = 3
         label_width = max(MIN_LABEL_WIDTH, min(MAX_LABEL_WIDTH, width // 4))
         bar_x = label_x + label_width + 2
-        bottom = height - 2
-
-        # Size against every tab so switching agents does not reflow the layout.
-        def tallest(title_gap):
-            return max(
-                (content_height(item, title_gap) for item in self.records),
-                default=0,
-            )
-
-        title_gap = 1
-        needed = tallest(title_gap)
-        if needed > height:
-            title_gap = 0
-            needed = tallest(title_gap)
-        gap = 1 + min(SECTION_GAP_MAX, max(0, height - needed) // 3)
-
-        y = self.section(HEAD_ROW + 2 + gap, "LIMITS", title_gap)
-        reset_x = width - RIGHT_MARGIN - RESET_WIDTH
-        percent_x = reset_x - VALUE_WIDTH
-        limit_width = max(8, percent_x - bar_x - 2)
-        for limit in record.get("limits") or []:
-            if y >= bottom:
-                break
-            percent = max(0.0, min(1.0, limit_percent(limit)))
-            gauge = curses.color_pair(PAIR_ERROR) if percent >= 0.9 else accent
-            self.put(y, label_x, str(limit.get("label") or "Limit"), 0, label_width)
-            divisions = USAGE_BAR_SEGMENTS.get(window_kind(limit), 1)
-            self.put(y, bar_x, progress(percent, limit_width, divisions), gauge)
-            self.put(
-                y, percent_x, f"{percent:.0%}".rjust(VALUE_WIDTH), gauge | curses.A_BOLD
-            )
-            self.put(
-                y, reset_x, resets_in(limit.get("resetsAt")).rjust(RESET_WIDTH), dim
-            )
-            y += 1
-
+        title_gap, gap = self.section_spacing(height)
         value_x = width - RIGHT_MARGIN - TOKEN_VALUE_WIDTH
         chart_width = max(8, value_x - bar_x - 2)
-
-        y = self.section(y + gap, "TOKENS BY DAY", title_gap)
-        days = record.get("recentDays") or []
-        peak = max((int(day.get("messageCount") or 0) for day in days), default=0)
-        today = datetime.now().astimezone().strftime("%Y-%m-%d")
-        for day in days:
-            if y >= bottom:
-                break
-            value = int(day.get("messageCount") or 0)
-            date = str(day.get("date") or "")
-            try:
-                label = (
-                    "Today"
-                    if date == today
-                    else datetime.fromisoformat(date).strftime("%a")
-                )
-            except ValueError:
-                label = date[-5:]
-            live = curses.A_BOLD if date == today else 0
-            self.put(y, label_x, label, live, label_width)
-            self.put(
-                y, bar_x, progress(value / peak if peak else 0, chart_width), accent
+        layout = DashboardLayout(
+            width,
+            height - 2,
+            label_x,
+            label_width,
+            bar_x,
+            value_x,
+            chart_width,
+            title_gap,
+            gap,
+            accent,
+            dim,
+        )
+        y = self.draw_limits(record, HEAD_ROW + 2 + layout.section_gap, layout)
+        y = self.draw_chart(
+            y + layout.section_gap,
+            "TOKENS BY DAY",
+            self.day_chart_rows(record, dim),
+            layout,
+        )
+        if y + layout.section_gap + layout.title_gap + 1 < layout.bottom:
+            model_rows = [
+                (name, value, 0, curses.A_BOLD)
+                for name, value in model_totals(record)[:5]
+            ]
+            self.draw_chart(
+                y + layout.section_gap, "TOKENS BY MODEL", model_rows, layout
             )
-            self.put(y, value_x, f"{compact(value):>8}", live or dim)
-            y += 1
-
-        if y + gap + title_gap + 1 < bottom:
-            y = self.section(y + gap, "TOKENS BY MODEL", title_gap)
-            models = model_totals(record)[:5]
-            peak = models[0][1] if models else 0
-            for name, value in models:
-                if y >= bottom:
-                    break
-                self.put(y, label_x, name, 0, label_width)
-                self.put(
-                    y, bar_x, progress(value / peak if peak else 0, chart_width), accent
-                )
-                self.put(y, value_x, f"{compact(value):>8}", curses.A_BOLD)
-                y += 1
 
         self.draw_footer(height, width)
         self.screen.refresh()
@@ -615,39 +692,56 @@ class Dashboard:
             return
         self.put(height - 1, 1, self.hint(), curses.color_pair(PAIR_DIM))
 
+    def move_selection(self, offset):
+        if self.records:
+            self.selected = (self.selected + offset) % len(self.records)
+
+    def launch_current(self):
+        record = self.current()
+        if record:
+            self.launch(str(record.get("id", "")))
+
+    def launch_shortcut(self, key):
+        agent_id = next(
+            (
+                agent_id
+                for agent_id, spec in AGENTS.items()
+                if key == ord(spec.shortcut)
+            ),
+            "",
+        )
+        if agent_id:
+            self.launch(agent_id)
+
+    def handle_key(self, key):
+        if key == ord("q"):
+            return False
+        if key == curses.KEY_MOUSE:
+            self.click()
+        elif key in (curses.KEY_RIGHT, ord("l"), 9):
+            self.move_selection(1)
+        elif key in (curses.KEY_LEFT, ord("h"), curses.KEY_BTAB):
+            self.move_selection(-1)
+        elif ord("1") <= key <= ord("9") and key - ord("1") < len(self.records):
+            self.selected = key - ord("1")
+        elif key in (10, 13, ord("a")):
+            self.launch_current()
+        elif key == ord("d"):
+            self.launch(self.default_agent)
+        elif key == ord("s"):
+            self.set_default()
+        elif key == ord("r"):
+            self.refresh()
+        else:
+            self.launch_shortcut(key)
+        return True
+
     def run(self):
         while True:
             self.poll()
             self.draw()
-            key = self.screen.getch()
-            # Bare Escape waits for ESCDELAY because it prefixes key sequences.
-            if key == ord("q"):
+            if not self.handle_key(self.screen.getch()):
                 return
-            if key == curses.KEY_MOUSE:
-                self.click()
-            elif key in (curses.KEY_RIGHT, ord("l"), 9):
-                if self.records:
-                    self.selected = (self.selected + 1) % len(self.records)
-            elif key in (curses.KEY_LEFT, ord("h"), curses.KEY_BTAB):
-                if self.records:
-                    self.selected = (self.selected - 1) % len(self.records)
-            elif ord("1") <= key <= ord("9") and key - ord("1") < len(self.records):
-                self.selected = key - ord("1")
-            elif key in (10, 13, ord("a")):
-                record = self.current()
-                if record:
-                    self.launch(str(record.get("id", "")))
-            elif key == ord("d"):
-                self.launch(self.default_agent)
-            elif key == ord("s"):
-                self.set_default()
-            elif key == ord("r"):
-                self.refresh()
-            else:
-                for agent_id, (_, _, shortcut) in AGENTS.items():
-                    if key == ord(shortcut):
-                        self.launch(agent_id)
-                        break
 
 
 def main():

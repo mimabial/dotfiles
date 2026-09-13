@@ -143,7 +143,6 @@ def destroy_venv(venv_path):
 
 
 def install_dependencies(venv_path, requirements_file):
-    """Install dependencies in the virtual environment."""
     if not os.path.exists(venv_path):
         create_venv(venv_path, requirements_file)
     else:
@@ -154,7 +153,6 @@ def install_dependencies(venv_path, requirements_file):
 
 
 def install_package(venv_path, package):
-    """Install a single package in the virtual environment."""
     if os.path.exists(venv_path) and not is_venv_valid(venv_path):
         notify.send(
             "PIP",
@@ -173,7 +171,6 @@ def install_package(venv_path, package):
 
 
 def uninstall_package(venv_path, package):
-    """Uninstall a single package from the virtual environment."""
     pip_executable = os.path.join(venv_path, "bin", "pip")
     result = subprocess.run(
         [pip_executable, "uninstall", "-y", package],

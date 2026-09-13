@@ -235,6 +235,27 @@ hypr_service_layer_target_path() {
   esac
 }
 
+# The parser writes its results into these; both entrypoints start from here.
+hypr_service_reset_cli_state() {
+  declare -g mode=""
+  declare -ga forwarded_args=()
+  declare -ga hypr_service_cli_args=()
+  declare -g hypr_service_cli_show_diff=0
+  declare -g hypr_service_cli_quiet=0
+  declare -g hypr_service_cli_backup_label=""
+}
+
+hypr_service_should_back_up() {
+  local backup_policy="$1"
+  local kind="$2"
+
+  case "${backup_policy}" in
+    always | changed) return 0 ;;
+    never) return 1 ;;
+    *) hypr_service_die "Unsupported backup policy for ${kind}: ${backup_policy}" ;;
+  esac
+}
+
 hypr_service_apply_file() {
   local source_path="$1"
   local target_path="$2"
@@ -269,11 +290,9 @@ hypr_service_apply_file() {
       fi
       if hypr_service_is_dry_run; then
         if [[ "${target_exists}" -eq 1 ]]; then
-          case "${backup_policy}" in
-            always | changed) hypr_service_report "${quiet}" 'Would back up: %s\n' "${target_path}" ;;
-            never) ;;
-            *) hypr_service_die "Unsupported backup policy for file: ${backup_policy}" ;;
-          esac
+          if hypr_service_should_back_up "${backup_policy}" file; then
+            hypr_service_report "${quiet}" 'Would back up: %s\n' "${target_path}"
+          fi
           hypr_service_report "${quiet}" 'Would overwrite: %s\n' "${target_path}"
           hypr_service_report_diff "${show_diff}" "${rel_path}" "${target_path}" "${source_path}"
         else
@@ -282,14 +301,10 @@ hypr_service_apply_file() {
         return 0
       fi
       if [[ "${target_exists}" -eq 1 ]]; then
-        case "${backup_policy}" in
-          always | changed)
-            hypr_service_backup_target "${target_path}"
-            backup_path="$(hypr_service_backup_root)$(hypr_service_target_relpath "${target_path}")"
-            ;;
-          never) ;;
-          *) hypr_service_die "Unsupported backup policy for file: ${backup_policy}" ;;
-        esac
+        if hypr_service_should_back_up "${backup_policy}" file; then
+          hypr_service_backup_target "${target_path}"
+          backup_path="$(hypr_service_backup_root)$(hypr_service_target_relpath "${target_path}")"
+        fi
       fi
       cp -a "${source_path}" "${target_path}"
       if [[ "${target_exists}" -eq 1 ]]; then
@@ -345,22 +360,18 @@ hypr_service_apply_tree() {
       fi
       if hypr_service_is_dry_run; then
         if [[ "${target_exists}" -eq 1 ]]; then
-          case "${backup_policy}" in
-            always | changed) hypr_service_report "${quiet}" 'Would back up: %s/\n' "${target_dir}" ;;
-            never) ;;
-            *) hypr_service_die "Unsupported backup policy for tree: ${backup_policy}" ;;
-          esac
+          if hypr_service_should_back_up "${backup_policy}" tree; then
+            hypr_service_report "${quiet}" 'Would back up: %s/\n' "${target_dir}"
+          fi
         fi
         hypr_service_report "${quiet}" 'Would sync: %s/\n' "${target_dir}"
         hypr_service_report "${quiet}" '%s\n' "${sync_plan}"
         return 0
       fi
       if [[ "${target_exists}" -eq 1 ]]; then
-        case "${backup_policy}" in
-          always | changed) hypr_service_backup_target "${target_dir}" ;;
-          never) ;;
-          *) hypr_service_die "Unsupported backup policy for tree: ${backup_policy}" ;;
-        esac
+        if hypr_service_should_back_up "${backup_policy}" tree; then
+          hypr_service_backup_target "${target_dir}"
+        fi
       fi
       mkdir -p "${target_dir}"
       rsync -a --delete "${source_dir}/" "${target_dir}/" || hypr_service_die "Failed to sync directory ${rel_path}"

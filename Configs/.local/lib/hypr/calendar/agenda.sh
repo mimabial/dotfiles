@@ -535,41 +535,33 @@ if [[ "${add}" -eq 1 ]]; then
   fi
 fi
 
+# khal's own keys are hyphenated and inconsistently present; the day and week
+# views must expose exactly the same event shape.
+KHAL_EVENT_JQ='def khal_event: {
+  start: (."start-time" // ""),
+  end: (."end-time" // ""),
+  title: (.title // ""),
+  location: (.location // ""),
+  description: (.description // ""),
+  uid: (.uid // ""),
+  calendar: (.calendar // ""),
+  allDay: ((."all-day" // "") == "True")
+};'
+
 if [[ -n "${week}" ]]; then
-  khal_range "${week}" "7d" | jq --arg week "${week}" '{
+  khal_range "${week}" "7d" | jq --arg week "${week}" "${KHAL_EVENT_JQ}"'{
     week: $week,
     days: (
-      map({
-        date: ."start-date",
-        event: {
-          start: (."start-time" // ""),
-          end: (."end-time" // ""),
-          title: (.title // ""),
-          location: (.location // ""),
-          description: (.description // ""),
-          uid: (.uid // ""),
-          calendar: (.calendar // ""),
-          allDay: ((."all-day" // "") == "True")
-        }
-      })
+      map({date: ."start-date", event: khal_event})
       | group_by(.date)
       | map({key: .[0].date, value: map(.event)})
       | from_entries
     )
   }'
 elif [[ -n "${day}" ]]; then
-  khal_range "${day}" "1d" | jq --arg day "${day}" '{
+  khal_range "${day}" "1d" | jq --arg day "${day}" "${KHAL_EVENT_JQ}"'{
     day: $day,
-    events: map({
-      start: (."start-time" // ""),
-      end: (."end-time" // ""),
-      title: (.title // ""),
-      location: (.location // ""),
-      description: (.description // ""),
-      uid: (.uid // ""),
-      calendar: (.calendar // ""),
-      allDay: ((."all-day" // "") == "True")
-    })
+    events: map(khal_event)
   }'
 else
   last_day="$(date -d "${month}-01 +1 month -1 day" +%d 2>/dev/null)" || {

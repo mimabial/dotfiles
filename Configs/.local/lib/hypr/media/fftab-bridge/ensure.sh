@@ -1,5 +1,13 @@
 #!/usr/bin/env bash
+# shellcheck source=/dev/null
+. "$(dirname "${BASH_SOURCE[0]}")/manifest.bash"
 set -euo pipefail
+
+bridge_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ "${1:-}" == "--help" ]]; then
+  printf 'Usage: %s [--help]\n\nSign an extension update:\n  cd %s/extension\n  web-ext sign --channel unlisted --api-key <issuer> --api-secret <secret>\n\nGet credentials from addons.mozilla.org/developers → Tools → Manage API Keys,\nthen install the new XPI from web-ext-artifacts/.\n' "$0" "${bridge_dir}"
+  exit 0
+fi
 
 # Per-host opt-out: export FFTAB_ENSURE_DISABLE=1 in env-overrides.
 env_overrides="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/env-overrides"
@@ -8,7 +16,6 @@ if [[ -n "${FFTAB_ENSURE_DISABLE:-}" ]] ||
   exit 0
 fi
 
-bridge_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 host_path="${bridge_dir}/host/fftab_host.py"
 manifest="${HOME}/.mozilla/native-messaging-hosts/fftab_bridge.json"
 ext_id="fftab-bridge@hypr.local"
@@ -25,16 +32,7 @@ EOF
 
 [[ -x "${host_path}" ]] || chmod +x "${host_path}" 2>/dev/null || issues+=("host not executable: ${host_path}")
 if ! grep -qsF "\"path\": \"${host_path}\"" "${manifest}"; then
-  mkdir -p "$(dirname "${manifest}")"
-  cat >"${manifest}" <<EOF2
-{
-  "name": "fftab_bridge",
-  "description": "MPRIS bridge: one player per Firefox media tab",
-  "path": "${host_path}",
-  "type": "stdio",
-  "allowed_extensions": ["${ext_id}"]
-}
-EOF2
+  fftab_write_manifest "${manifest}" "${host_path}" "${ext_id}"
 fi
 
 profiles_ini="${HOME}/.mozilla/firefox/profiles.ini"
@@ -69,12 +67,12 @@ if [[ -n "${profile}" && -d "${HOME}/.mozilla/firefox/${profile}" ]]; then
     done
   fi
   if [[ -z "${installed_version}" ]]; then
-    issues+=("extension not installed — open in Firefox: ${signed_xpi:-<no current signed xpi found; see README>}")
+    issues+=("extension not installed — open in Firefox: ${signed_xpi:-<no signed XPI; run ${bridge_dir}/ensure.sh --help>}")
   elif [[ -n "${source_version}" && "${installed_version}" != "${source_version}" ]]; then
     if [[ -n "${signed_xpi}" ]]; then
       issues+=("extension ${installed_version} is outdated — install ${source_version}: ${signed_xpi}")
     else
-      issues+=("extension ${installed_version} is outdated — source ${source_version} needs AMO signing; see README")
+      issues+=("extension ${installed_version} is outdated — source ${source_version} needs signing; run ${bridge_dir}/ensure.sh --help")
     fi
   fi
 else

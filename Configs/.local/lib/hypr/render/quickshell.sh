@@ -34,17 +34,8 @@ if [[ -n "${PACK_OVERRIDE}" ]]; then
 fi
 
 if [[ -z "${palette}" ]]; then
-  palette="$(jq -c '
-    .colors as $c | {
-      bg: .bg, fg: .fg, br: $c[5],
-      alt_bg: $c[6], alt_fg: $c[3], alt_br: $c[11],
-      fg_selected: $c[4],
-      act_bg: $c[8], act_fg: $c[7], act_br: $c[13],
-      hvr_bg: .bg, hvr_fg: .fg, hvr_br: $c[12],
-      accent: $c[12], info: $c[6], warning: $c[3], error: $c[1], success: $c[2],
-      background: .bg, foreground: .fg
-    } + ([range(0; 16)] | map({key: ("c" + tostring), value: $c[.]}) | from_entries)
-  ' "${PALETTE}")"
+  palette="$(jq -c "${RENDER_PALETTE_ROLES_JQ} + {background: .bg, foreground: .fg}\
+    ${RENDER_PALETTE_NUMBERED_JQ}" "${PALETTE}")"
 fi
 
 [[ "$(jq -r 'length' <<<"${palette}")" -gt 0 ]] || {

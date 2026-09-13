@@ -3,11 +3,21 @@ set -euo pipefail
 
 cache_dir="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/render-hashes"
 
+usage() {
+  cat <<EOF
+Usage: render-cache <hit?|store|clear> <key> [<hash>]
+  hit?  <key> <hash>   exit 0 if cache valid
+  store <key> <hash>   record hash
+  clear <key>          delete cached hash
+EOF
+}
+
 cmd="${1:-}"
 key="${2:-}"
 hash="${3:-}"
 
 case "${cmd}" in
+  -h|--help) usage ;;
   hit?|hit)
     [[ -n "${key}" ]] || { echo "render-cache hit?: missing <key>" >&2; exit 2; }
     [[ "${HYPR_FORCE_REGEN:-0}" -eq 1 ]] && exit 1
@@ -29,12 +39,7 @@ case "${cmd}" in
     rm -f "${cache_dir}/${key}"
     ;;
   *)
-    cat >&2 <<EOF
-usage: render-cache <hit?|store|clear> <key> [<hash>]
-  hit?  <key> <hash>   exit 0 if cache valid
-  store <key> <hash>   record hash
-  clear <key>          delete cached hash
-EOF
+    usage >&2
     exit 2
     ;;
 esac

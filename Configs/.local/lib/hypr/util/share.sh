@@ -3,8 +3,10 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: hyprshell util/share.sh [clipboard|file|folder|receive] [paths...]" >&2
+  echo "Usage: hyprshell util/share.sh [clipboard|file|folder|receive] [paths...]"
 }
+
+[[ "${1:-}" == -h || "${1:-}" == --help ]] && { usage; exit; }
 
 share_notify_error() {
   dunstify -t 3000 -i "dialog-error" "LocalSend" "$1"
@@ -58,7 +60,7 @@ pick_paths() {
 }
 
 [[ "$#" -gt 0 ]] || {
-  usage
+  usage >&2
   exit 1
 }
 
@@ -101,7 +103,7 @@ case "${MODE}" in
     fi
     ;;
   *)
-    usage
+    usage >&2
     exit 1
     ;;
 esac

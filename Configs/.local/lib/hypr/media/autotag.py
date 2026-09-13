@@ -27,7 +27,7 @@ import sys
 import time
 from collections import Counter
 from pathlib import Path
-from typing import NamedTuple
+from typing import NamedTuple, TypedDict
 
 import requests
 from mutagen import MutagenError
@@ -69,6 +69,25 @@ from autotag_identity import (
 from lyrics_paths import music_library_dir
 from title_cleanup import clean_title
 from ytdlp_config import ytdlp_auth_args
+
+
+class TrackTags(TypedDict, total=False):
+    """Every key a provider may return. No provider returns all of them:
+    artwork_url is iTunes-only, musicbrainz_* come from AcoustID/MusicBrainz,
+    and _preserved_credits is added later by prepare_metadata."""
+
+    title: str
+    artist: str
+    albumartist: str
+    album: str
+    date: str
+    tracknumber: str
+    genre: str
+    artwork_url: str
+    musicbrainz_trackid: str
+    musicbrainz_releasegroupid: str
+    _preserved_credits: str
+
 
 ACOUSTID_ENDPOINT = "https://api.acoustid.org/v2/lookup"
 MUSICBRAINZ_ENDPOINT = "https://musicbrainz.org/ws/2/recording"
@@ -340,7 +359,7 @@ def from_acoustid(
     min_score: float,
     candidates: list[tuple[str, str]] | None = None,
     album: str = "",
-) -> dict:
+) -> TrackTags:
     duration, fp = fingerprint(path)
     response = http_get(
         ACOUSTID_ENDPOINT,
@@ -426,7 +445,7 @@ def from_itunes(
     limiter: RateLimiter,
     threshold: float,
     album: str = "",
-) -> dict:
+) -> TrackTags:
     if not title:
         raise Unidentified("no title to search with")
 
@@ -545,7 +564,7 @@ def from_deezer(
     limiter: RateLimiter,
     threshold: float,
     album: str = "",
-) -> dict:
+) -> TrackTags:
     if not title:
         raise Unidentified("no title to search with")
     if _deezer_blocked:
@@ -787,7 +806,7 @@ def from_musicbrainz(
     title: str,
     limiter: RateLimiter,
     album: str = "",
-) -> dict:
+) -> TrackTags:
     if not title:
         raise Unidentified("no title to search with")
 

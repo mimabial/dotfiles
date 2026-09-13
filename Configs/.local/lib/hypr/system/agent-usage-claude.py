@@ -758,6 +758,7 @@ def collect_limits(access_token: str, expires_at_ms: int) -> dict[str, Any]:
   probe_cache = cache_root() / "claude-limits.json"
   cached = read_fresh_json(probe_cache, float("inf")) or {}
   fallback = usable_cached_limits(cached)
+  result["limitsObservedAt"] = number(cached.get("fetchedAtMs"))
 
   if access_token == "":
     result["limits"] = fallback
@@ -782,7 +783,8 @@ def collect_limits(access_token: str, expires_at_ms: int) -> dict[str, Any]:
   probe = probe_limits(access_token)
   if probe["ok"]:
     result["limits"] = probe["limits"]
-    write_json(probe_cache, {"fetchedAtMs": round(time.time() * 1000), "limits": probe["limits"]})
+    result["limitsObservedAt"] = round(time.time() * 1000)
+    write_json(probe_cache, {"fetchedAtMs": result["limitsObservedAt"], "limits": probe["limits"]})
     return result
 
   if probe.get("transport"):
@@ -836,6 +838,7 @@ def main() -> int:
     "usageStatusText": limits["usageStatusText"],
     "authHelpText": limits["authHelpText"],
     "limits": limits["limits"],
+    "limitsObservedAt": limits["limitsObservedAt"],
   }
   if limits.get("retryAdvised"):
     record["retryAdvised"] = True

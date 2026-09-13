@@ -8,31 +8,21 @@ PopupCard {
 
     property var records: []
     property int selected: 0
+    property string recommendationId: ""
     signal select(int index)
 
+    readonly property int blockingHorizonMs: 5 * 3600000
+    readonly property int staleAfterMs: 40 * 60000
+    readonly property real switchMargin: 0.05
+
     readonly property var provider: records.length ? records[Math.min(selected, records.length - 1)] : null
-    // Prefer the subscription whose tightest quota window has the least use.
-    // The sum breaks ties, so both the rolling session and weekly allowances
-    // affect the answer. Model-scoped limits count too: the busiest matching
-    // window is the one that can stop work first.
-    readonly property var recommendation: {
-        let best = null
-        for (const record of records) {
-            const hourly = root.windowUsage(record, "hourly")
-            const weekly = root.windowUsage(record, "weekly")
-            const known = (hourly >= 0 ? 1 : 0) + (weekly >= 0 ? 1 : 0)
-            if (known === 0) continue
-            const pressure = Math.max(hourly, weekly)
-            const total = Math.max(0, hourly) + Math.max(0, weekly)
-            const score = pressure + (2 - known)
-            if (!best || score < best.score || (score === best.score && total < best.total))
-                best = { record: record, hourly: hourly, weekly: weekly, score: score, total: total }
-        }
-        return best
-    }
-    readonly property string recommendationId: recommendation ? String(recommendation.record.id || "") : ""
-    readonly property string providerSummary: provider ? usageSummary({ hourly: windowUsage(provider, "hourly"), weekly: windowUsage(provider, "weekly") })
-        || String(provider.usageStatusText || provider.tierLabel || "") : ""
+    readonly property bool telemetryStale: records.some(record =>
+        Date.now() - (Number(record.limitsObservedAt) || 0) > staleAfterMs)
+    readonly property var candidate: records.map(rank).reduce((best, scored) =>
+        scored && (!best || better(scored, best, 0)) ? scored : best, null)
+
+    readonly property string providerSummary: provider
+        ? usageSummary(provider) || String(provider.usageStatusText || provider.tierLabel || "") : ""
     readonly property var limits: provider && provider.limits ? provider.limits : []
     readonly property var days: provider && provider.recentDays ? provider.recentDays : []
     readonly property real busiestDay: {
@@ -66,28 +56,31 @@ PopupCard {
         if (n >= 1e3) return (n / 1e3).toFixed(1) + "K"
         return String(Math.round(n))
     }
-    function windowKind(limit) {
-        const label = String(limit && (limit.label || limit.title) || "").toLowerCase()
-        if (label.includes("week") || label.includes("day")) return "weekly"
-        if (label.includes("hour") || label.includes("session") || /\d+\s*h\b/.test(label)) return "hourly"
-        return ""
-    }
-    function windowUsage(record, kind) {
-        let highest = -1
-        for (const limit of (record && record.limits || [])) {
+    function rank(record) {
+        const now = Date.now()
+        let pressure = -1, load = 0, blockedFor = 0
+        for (const limit of (record.limits || [])) {
             const reset = Date.parse(limit.resetsAt)
-            const expired = !isNaN(reset) && reset <= root.shell.clock.date.getTime()
-            const percent = expired ? 0 : Number(limit.percent)
-            if (windowKind(limit) === kind && percent >= 0)
-                highest = Math.max(highest, Math.min(1, percent))
+            const clearsIn = isNaN(reset) ? root.blockingHorizonMs : Math.max(0, reset - now)
+            const used = clearsIn > 0 ? Math.min(1, Number(limit.percent)) : 0
+            if (!(used >= 0)) continue
+            pressure = Math.max(pressure, used * Math.min(1, clearsIn / root.blockingHorizonMs))
+            load += used
+            if (used >= 1) blockedFor = Math.max(blockedFor, clearsIn)
         }
-        return highest
+        return pressure < 0 ? null : { record: record, blockedFor: blockedFor, pressure: pressure, load: load }
     }
-    function usageSummary(choice) {
-        if (!choice) return ""
+    function better(a, b, margin) {
+        if (a.blockedFor !== b.blockedFor) return a.blockedFor < b.blockedFor
+        if (a.pressure !== b.pressure) return a.pressure + margin < b.pressure
+        return a.load + margin < b.load
+    }
+    function limitName(limit) { return String(limit.label).replace(/\s*\(.*\)\s*$/, "") }
+    function usageSummary(record) {
         const parts = []
-        if (choice.hourly >= 0) parts.push(Math.round(choice.hourly * 100) + "% 5h used")
-        if (choice.weekly >= 0) parts.push(Math.round(choice.weekly * 100) + "% weekly used")
+        for (const limit of (record && record.limits || []))
+            if (Number(limit.percent) >= 0)
+                parts.push(Math.round(Number(limit.percent) * 100) + "% " + limitName(limit))
         return parts.join("  ·  ")
     }
     function resetsIn(iso) {
@@ -98,10 +91,17 @@ PopupCard {
         if (minutes >= 60) return Math.floor(minutes / 60) + "h " + minutes % 60 + "m"
         return minutes + "m"
     }
+    onCandidateChanged: {
+        if (!candidate) return
+        const held = recommendationId ? records.find(record => String(record.id) === recommendationId) : null
+        const heldRank = held ? rank(held) : null
+        if (heldRank && (telemetryStale || !better(candidate, heldRank, switchMargin))) return
+        recommendationId = String(candidate.record.id || "")
+    }
     onRecommendationIdChanged: {
-        if (recommendationId === "") return
-        shell.run(["hyprshell", "system/agent-recommendation", recommendationId,
-            String(recommendation.record.name || recommendationId), usageSummary(recommendation)])
+        const record = records.find(entry => String(entry.id) === recommendationId)
+        if (record) shell.run(["hyprshell", "system/agent-recommendation", recommendationId,
+            String(record.name || recommendationId), usageSummary(record)])
     }
 
     Column {
@@ -124,7 +124,7 @@ PopupCard {
                     shell: root.shell
                     implicitWidth: (agentsColumn.width - Style.xs * (root.records.length - 1)) / root.records.length
                     implicitHeight: Style.controlHeight
-                    text: modelData.name + (root.recommendation && root.recommendation.record.id === modelData.id ? "  *" : "")
+                    text: modelData.name + (root.recommendationId === String(modelData.id) ? "  *" : "")
                     fontSize: Style.bodySmall
                     active: index === root.selected; radius: shell.rounding
                     fill: active ? shell.alpha(shell.role("act_bg", shell.accent), .3) : "transparent"
@@ -147,7 +147,7 @@ PopupCard {
                     Row {
                         width: parent.width
                         Text {
-                            text: String(modelData.label).replace(/\s*\(.*\)\s*$/, ""); color: root.shell.foreground
+                            text: root.limitName(modelData); color: root.shell.foreground
                             font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
                         }
                         Item { width: Math.max(0, parent.width - parent.children[0].implicitWidth - parent.children[2].implicitWidth); height: 1 }
@@ -169,9 +169,10 @@ PopupCard {
                         }
                     }
                     Text {
-                        visible: text !== ""
+                        readonly property string untilReset: root.open ? root.resetsIn(modelData.resetsAt) : ""
+                        visible: untilReset !== ""
                         width: parent.width
-                        text: root.resetsIn(modelData.resetsAt) ? "Resets in " + root.resetsIn(modelData.resetsAt) : ""
+                        text: "Resets in " + untilReset
                         color: root.shell.alpha(root.shell.foreground, .55)
                         font.family: root.shell.fontFamily; font.pixelSize: Style.caption
                     }
@@ -263,9 +264,9 @@ PopupCard {
         }
 
         Text {
-            visible: root.records.length > 1 && root.recommendation !== null
+            visible: root.records.length > 1 && root.recommendationId !== ""
             width: parent.width
-            text: "* Recommended based on 5-hour and weekly limits"
+            text: "* Recommended from current limits and reset times"
             horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap
             color: root.shell.alpha(root.shell.foreground, .55)
             font.family: root.shell.fontFamily; font.pixelSize: Style.caption

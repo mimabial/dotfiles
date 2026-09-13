@@ -79,11 +79,11 @@ textbox-prompt-colon {
     enabled:                     true;
     expand:                      false;
     str:                         "";
-    padding:                     8px 12px;
+    padding:                     6px 12px;
     text-color:                  @separator;
     border-radius:               @element-border-radius;
     background-color:            @background-alpha;
-    border-color:            @accent;
+    border-color:                @accent;
 }
 
 prompt {

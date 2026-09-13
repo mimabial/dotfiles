@@ -8,11 +8,11 @@ BarButton {
     property var records: []
     property int selected: 0
     readonly property var provider: records.length ? records[Math.min(selected, records.length - 1)] : null
+    readonly property var alarmRecord: records.find(record => String(record.id) === panel.recommendationId) || provider
     readonly property var headline: {
         let best = null
-        for (const record of records)
-            for (const limit of (record.limits || []))
-                if (Number(limit.percent) >= 0 && (!best || Number(limit.percent) > Number(best.percent))) best = limit
+        for (const limit of (alarmRecord && alarmRecord.limits || []))
+            if (Number(limit.percent) >= 0 && (!best || Number(limit.percent) > Number(best.percent))) best = limit
         return best
     }
     readonly property bool alarming: headline !== null && Number(headline.percent) >= 0.9

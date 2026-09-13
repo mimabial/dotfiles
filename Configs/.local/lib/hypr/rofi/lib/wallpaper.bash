@@ -4,6 +4,7 @@
 
 # The window tracks the wallpaper's aspect ratio, so a 16:9 wallpaper gives a
 # 16:9 window. Themes that show no wallpaper use a fixed 16:9 instead.
+ROFI_MILLION=1000000
 ROFI_WALLPAPER_FIXED_RATIO_MILLION=1777778
 
 # Themes whose window sits against the bar and therefore has to give back the
@@ -109,7 +110,7 @@ rofi_wallpaper_ratio_million() {
   command -v magick >/dev/null 2>&1 || return 1
   read -r img_w img_h < <(magick identify -format "%w %h" "${wall_image}" 2>/dev/null || true)
   [[ "${img_w}" =~ ^[0-9]+$ && "${img_h}" =~ ^[1-9][0-9]*$ ]] || return 1
-  printf '%s\n' "$((((img_w * 1000000) + (img_h / 2)) / img_h))"
+  printf '%s\n' "$((((img_w * ROFI_MILLION) + (img_h / 2)) / img_h))"
 }
 
 # The gap and corner radius on both sides, which the window may not grow into.
@@ -147,9 +148,9 @@ rofi_wallpaper_width_override() {
 
   # Round half away from zero; the shell truncates toward it.
   if ((theme_height_milli * ratio_million >= 0)); then
-    width_milli=$((((theme_height_milli * ratio_million) + 500000) / 1000000))
+    width_milli=$((((theme_height_milli * ratio_million) + ROFI_MILLION / 2) / ROFI_MILLION))
   else
-    width_milli=$((((theme_height_milli * ratio_million) - 500000) / 1000000))
+    width_milli=$((((theme_height_milli * ratio_million) - ROFI_MILLION / 2) / ROFI_MILLION))
   fi
 
   monitor_width_logical="$(rofi_wallpaper_monitor_width_logical)" || return 1

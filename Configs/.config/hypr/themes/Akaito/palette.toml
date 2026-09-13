@@ -1,12 +1,12 @@
-background = "#f3e4cb"
+background = "#dfd2c4"
 foreground = "#4d2e1a"
 cursor-color = "#4d2e1a"
-cursor-text = "#f3e4cb"
+cursor-text = "#dfd2c4"
 selection-foreground = "#4d2e1a"
 selection-background = "#a32f1a"
 
 colors = [
-  "#f3e4cb",
+  "#dfd2c4",
   "#a4373c",
   "#a46d2d",
   "#a8611f",

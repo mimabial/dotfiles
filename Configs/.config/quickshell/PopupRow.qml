@@ -10,6 +10,7 @@ Rectangle {
     property string title: ""
     property string detail: ""
     property string value: ""
+    property real valueWidth: 0
     property color titleColor: shell.foreground
     property color detailColor: shell.alpha(shell.foreground, .55)
     property color valueColor: shell.alpha(shell.foreground, .7)
@@ -75,7 +76,7 @@ Rectangle {
             }
             Text { visible: text !== ""; width: parent.width; text: root.detail; color: root.detailColor; font.family: root.shell.fontFamily; font.pixelSize: Style.caption; elide: Text.ElideRight }
         }
-        Text { id: valueText; visible: text !== ""; anchors.verticalCenter: parent.verticalCenter; text: root.value; color: root.valueColor; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
+        Text { id: valueText; visible: text !== ""; width: root.valueWidth > 0 ? root.valueWidth : implicitWidth; anchors.verticalCenter: parent.verticalCenter; text: root.value; color: root.valueColor; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
     }
     MouseArea { id: mouse; anchors.fill: parent; enabled: root.enabled && root.interactive; hoverEnabled: root.interactive; acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton; onClicked: event => root.clicked(event.button) }
 }

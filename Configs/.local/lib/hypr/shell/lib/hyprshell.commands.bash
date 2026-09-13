@@ -27,7 +27,7 @@ hypr_runtime_bootstrap || return 1 2>/dev/null || exit 1
 EOT
 }
 
-USAGE() {
+usage() {
   cat <<EOT
 Usage: ${0##*/} [command]
 Commands:

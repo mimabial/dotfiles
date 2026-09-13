@@ -1,2 +1,11 @@
 AppLibrary 1.0 AppLibrary.qml
 Dock 1.0 Dock.qml
+DockContextMenu 1.0 DockContextMenu.qml
+DockMenuRow 1.0 DockMenuRow.qml
+DockMenuDivider 1.0 DockMenuDivider.qml
+HoverTooltip 1.0 HoverTooltip.qml
+DockItem 1.0 DockItem.qml
+DockIconButton 1.0 DockIconButton.qml
+DockSeparator 1.0 DockSeparator.qml
+FileStackRow 1.0 FileStackRow.qml
+DockFolderItem 1.0 DockFolderItem.qml

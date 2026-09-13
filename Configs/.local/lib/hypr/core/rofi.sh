@@ -164,8 +164,10 @@ rofi_default_window_size() {
   local font_scale="${ROFI_SCALE:-10}"
 
   if [[ "${width_ref}" -eq 0 && "${height_ref}" -eq 0 ]]; then
-    width_ref=$((23 * font_scale * 2))
-    height_ref=$((30 * font_scale * 2))
+    local default_width_em=23
+    local default_height_em=30
+    width_ref=$((default_width_em * font_scale * ROFI_EM_PX_PER_SCALE))
+    height_ref=$((default_height_em * font_scale * ROFI_EM_PX_PER_SCALE))
   fi
 }
 
@@ -184,13 +186,15 @@ rofi_scale_milli() {
     done
 
     if [[ "${whole_part}" != "0" || "${fraction_part}" != "000" ]]; then
-      printf '%s\n' $((10#${whole_part} * 1000 + 10#${fraction_part:-000}))
+      printf '%s\n' $((10#${whole_part} * ROFI_MILLI + 10#${fraction_part:-000}))
       return 0
     fi
   fi
 
   printf '1000\n'
 }
+
+ROFI_MILLI=1000
 
 rofi_scaled_divide() {
   local value="${1:-0}"
@@ -201,7 +205,7 @@ rofi_scaled_divide() {
 
   [[ "${value}" =~ ^-?[0-9]+$ ]] || value=0
   scale_milli="$(rofi_scale_milli "${scale}")"
-  result=$((value * 1000 / scale_milli))
+  result=$((value * ROFI_MILLI / scale_milli))
 
   if [[ -n "${min_value}" ]] && [[ "${result}" -lt "${min_value}" ]]; then
     result="${min_value}"

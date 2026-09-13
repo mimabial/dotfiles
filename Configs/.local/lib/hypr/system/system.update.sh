@@ -120,16 +120,16 @@ acquire_upgrade_lock() {
 }
 
 require_free_space() {
-  local required="${HYPR_UPDATE_MIN_FREE_BYTES:-$((2 * 1024 * 1024 * 1024))}"
-  local available=""
+  local required_bytes="${HYPR_UPDATE_MIN_FREE_BYTES:-$((2 * 1024 * 1024 * 1024))}"
+  local available_bytes=""
 
-  available="$(df --output=avail --block-size=1 /var/cache/pacman/pkg 2>/dev/null | tail -n 1)"
-  available="${available//[[:space:]]/}"
-  [[ "${available}" =~ ^[0-9]+$ ]] || return 0
-  ((available >= required)) && return 0
+  available_bytes="$(df --output=avail --block-size=1 /var/cache/pacman/pkg 2>/dev/null | tail -n 1)"
+  available_bytes="${available_bytes//[[:space:]]/}"
+  [[ "${available_bytes}" =~ ^[0-9]+$ ]] || return 0
+  ((available_bytes >= required_bytes)) && return 0
 
   printf 'Only %s free where packages are cached; an upgrade needs at least %s.\n' \
-    "$(numfmt --to=iec "${available}")" "$(numfmt --to=iec "${required}")" >&2
+    "$(numfmt --to=iec "${available_bytes}")" "$(numfmt --to=iec "${required_bytes}")" >&2
   return 1
 }
 
@@ -143,11 +143,11 @@ prune_package_cache() {
 
 # Keys on disk can predate the signatures of packages pulled after a long gap.
 refresh_keyring() {
-  local max_age=$((30 * 86400))
+  local max_age_seconds=$((30 * 86400))
   local last_upgrade=0
 
   last_upgrade="$(last_full_upgrade_ts)"
-  if ((last_upgrade > 0)) && (($(date +%s) - last_upgrade < max_age)); then
+  if ((last_upgrade > 0)) && (($(date +%s) - last_upgrade < max_age_seconds)); then
     return 0
   fi
 

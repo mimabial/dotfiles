@@ -28,10 +28,23 @@ NON_ALPHANUM_PATTERN = re.compile(r"[^\w\d]+")
 NON_ALPHANUM_PATTERN_END = re.compile(r"[^\w\d]+$")
 NON_ALPHANUM_PATTERN_START = re.compile(r"^[^\w\d]+")
 ALPHANUM_PATTERN = re.compile(r"[\w\d]+")
+MARK_PRESERVING_KEYS = frozenset(
+    {
+        "TAB",
+        "LEFT_CONTROL",
+        "RIGHT_CONTROL",
+        "LEFT_ALT",
+        "RIGHT_ALT",
+        "LEFT_SHIFT",
+        "RIGHT_SHIFT",
+        "LEFT_SUPER",
+        "RIGHT_SUPER",
+    }
+)
 
 
 def call_remote_control(args: list[str]) -> None:
-    subprocess.run(["kitty", "@", *args], capture_output=True)
+    subprocess.run(["kitty", "@", *args], capture_output=True, check=False)
 
 
 def reindex(
@@ -117,18 +130,7 @@ class Search(Handler):
         if (
             self.text_marked
             and key_event.type == EventType.PRESS
-            and key_event.key
-            not in [
-                "TAB",
-                "LEFT_CONTROL",
-                "RIGHT_CONTROL",
-                "LEFT_ALT",
-                "RIGHT_ALT",
-                "LEFT_SHIFT",
-                "RIGHT_SHIFT",
-                "LEFT_SUPER",
-                "RIGHT_SUPER",
-            ]
+            and key_event.key not in MARK_PRESERVING_KEYS
         ):
             self.text_marked = False
             self.refresh()
@@ -137,131 +139,117 @@ class Search(Handler):
             self.refresh()
             return
 
-        if key_event.matches("ctrl+u"):
-            self.line_edit.clear()
-            self.refresh()
-        elif key_event.matches("ctrl+a"):
-            self.line_edit.home()
-            self.refresh()
-        elif key_event.matches("ctrl+e"):
-            self.line_edit.end()
-            self.refresh()
-        elif key_event.matches("ctrl+backspace") or key_event.matches("ctrl+w"):
-            before, _ = self.line_edit.split_at_cursor()
-
-            try:
-                start, _ = reindex(before, SPACE_PATTERN_END, right=True)
-            except ValueError:
-                start = -1
-
-            try:
-                space = before[:start].rindex(" ")
-            except ValueError:
-                space = 0
-            self.line_edit.backspace(len(before) - space)
-            self.refresh()
-        elif key_event.matches("ctrl+left") or key_event.matches("ctrl+b"):
-            before, _ = self.line_edit.split_at_cursor()
-            try:
-                start, _ = reindex(before, SPACE_PATTERN_END, right=True)
-            except ValueError:
-                start = -1
-
-            try:
-                space = before[:start].rindex(" ")
-            except ValueError:
-                space = 0
-            self.line_edit.left(len(before) - space)
-            self.refresh()
-        elif key_event.matches("ctrl+right") or key_event.matches("ctrl+f"):
-            _, after = self.line_edit.split_at_cursor()
-            try:
-                _, end = reindex(after, SPACE_PATTERN_START)
-            except ValueError:
-                end = 0
-
-            try:
-                space = after[end:].index(" ") + 1
-            except ValueError:
-                space = len(after)
-            self.line_edit.right(space)
-            self.refresh()
-        elif key_event.matches("alt+backspace") or key_event.matches("alt+w"):
-            before, _ = self.line_edit.split_at_cursor()
-
-            try:
-                start, _ = reindex(before, NON_ALPHANUM_PATTERN_END, right=True)
-            except ValueError:
-                start = -1
-            else:
-                self.line_edit.backspace(len(before) - start)
-                self.refresh()
+        actions = (
+            (("ctrl+u",), self.clear_input),
+            (("ctrl+a",), self.home),
+            (("ctrl+e",), self.end),
+            (("ctrl+backspace", "ctrl+w"), self.delete_space_word),
+            (("ctrl+left", "ctrl+b"), self.move_space_word_left),
+            (("ctrl+right", "ctrl+f"), self.move_space_word_right),
+            (("alt+backspace", "alt+w"), self.delete_word),
+            (("alt+left", "alt+b"), self.move_word_left),
+            (("alt+right", "alt+f"), self.move_word_right),
+            (("tab",), self.toggle_mode),
+            (("up",), self.previous_match),
+            (("down",), self.next_match),
+            (("enter",), lambda: self.quit(0)),
+            (("esc",), lambda: self.quit(1)),
+        )
+        for shortcuts, action in actions:
+            if any(key_event.matches(shortcut) for shortcut in shortcuts):
+                action()
                 return
 
+    def edit(self, action: str, count: int | None = None) -> None:
+        method = getattr(self.line_edit, action)
+        method() if count is None else method(count)
+        self.refresh()
+
+    def clear_input(self) -> None:
+        self.edit("clear")
+
+    def home(self) -> None:
+        self.edit("home")
+
+    def end(self) -> None:
+        self.edit("end")
+
+    def toggle_mode(self) -> None:
+        self.switch_mode()
+        self.refresh()
+
+    def space_word_left_length(self) -> int:
+        before, _ = self.line_edit.split_at_cursor()
+        try:
+            start, _ = reindex(before, SPACE_PATTERN_END, right=True)
+        except ValueError:
+            start = -1
+        try:
+            space = before[:start].rindex(" ")
+        except ValueError:
+            space = 0
+        return len(before) - space
+
+    def move_space_word_left(self) -> None:
+        self.edit("left", self.space_word_left_length())
+
+    def delete_space_word(self) -> None:
+        self.edit("backspace", self.space_word_left_length())
+
+    def move_space_word_right(self) -> None:
+        _, after = self.line_edit.split_at_cursor()
+        try:
+            _, end = reindex(after, SPACE_PATTERN_START)
+        except ValueError:
+            end = 0
+        try:
+            distance = after[end:].index(" ") + 1
+        except ValueError:
+            distance = len(after)
+        self.edit("right", distance)
+
+    def word_left_length(self) -> int:
+        before, _ = self.line_edit.split_at_cursor()
+        try:
+            start, _ = reindex(before, NON_ALPHANUM_PATTERN_END, right=True)
+        except ValueError:
             try:
                 start, _ = reindex(before, NON_ALPHANUM_PATTERN, right=True)
             except ValueError:
-                self.line_edit.backspace(len(before))
-                self.refresh()
-                return
+                return len(before)
+            return len(before) - start - 1
+        return len(before) - start
 
-            self.line_edit.backspace(len(before) - (start + 1))
-            self.refresh()
-        elif key_event.matches("alt+left") or key_event.matches("alt+b"):
-            before, _ = self.line_edit.split_at_cursor()
+    def move_word_left(self) -> None:
+        self.edit("left", self.word_left_length())
 
-            try:
-                start, _ = reindex(before, NON_ALPHANUM_PATTERN_END, right=True)
-            except ValueError:
-                start = -1
-            else:
-                self.line_edit.left(len(before) - start)
-                self.refresh()
-                return
+    def delete_word(self) -> None:
+        self.edit("backspace", self.word_left_length())
 
-            try:
-                start, _ = reindex(before, NON_ALPHANUM_PATTERN, right=True)
-            except ValueError:
-                self.line_edit.left(len(before))
-                self.refresh()
-                return
-
-            self.line_edit.left(len(before) - (start + 1))
-            self.refresh()
-        elif key_event.matches("alt+right") or key_event.matches("alt+f"):
-            _, after = self.line_edit.split_at_cursor()
-
-            try:
-                _, end = reindex(after, NON_ALPHANUM_PATTERN_START)
-            except ValueError:
-                end = 0
-            else:
-                self.line_edit.right(end)
-                self.refresh()
-                return
-
+    def move_word_right(self) -> None:
+        _, after = self.line_edit.split_at_cursor()
+        try:
+            _, end = reindex(after, NON_ALPHANUM_PATTERN_START)
+        except ValueError:
             try:
                 _, end = reindex(after, NON_ALPHANUM_PATTERN)
             except ValueError:
-                self.line_edit.right(len(after))
-                self.refresh()
-                return
+                end = len(after)
+            else:
+                end -= 1
+        self.edit("right", end)
 
-            self.line_edit.right(end - 1)
-            self.refresh()
-        elif key_event.matches("tab"):
-            self.switch_mode()
-            self.refresh()
-        elif key_event.matches("up"):
-            for match_arg in self.match_args():
-                call_remote_control(["kitten", match_arg, str(SCROLLMARK_FILE)])
-        elif key_event.matches("down"):
-            for match_arg in self.match_args():
-                call_remote_control(["kitten", match_arg, str(SCROLLMARK_FILE), "next"])
-        elif key_event.matches("enter"):
-            self.quit(0)
-        elif key_event.matches("esc"):
-            self.quit(1)
+    def scroll_match(self, direction: str = "") -> None:
+        for match_arg in self.match_args():
+            call_remote_control(
+                ["kitten", match_arg, str(SCROLLMARK_FILE), *([direction] if direction else [])]
+            )
+
+    def previous_match(self) -> None:
+        self.scroll_match()
+
+    def next_match(self) -> None:
+        self.scroll_match("next")
 
     def on_interrupt(self) -> None:
         self.quit(1)
@@ -317,7 +305,7 @@ def main(args: list[str]) -> None:
     window_id = int(args[1])
     window_ids = [window_id]
     if len(args) > 2 and args[2] == "--all-windows":
-        ls_output = run(["kitty", "@", "ls"], stdout=PIPE)
+        ls_output = run(["kitty", "@", "ls"], stdout=PIPE, check=False)
         ls_json = json.loads(ls_output.stdout.decode())
         current_tab = None
         for os_window in ls_json:

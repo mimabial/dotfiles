@@ -1,6 +1,8 @@
 #!/bin/sh
 set -u
 
+case "${1:-}" in -h|--help) printf 'Usage: %s\nRun the Hyprland user-service directory.\n' "${0##*/}"; exit ;; esac
+
 runtime="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 
 socket_wait_attempts=100

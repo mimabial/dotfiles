@@ -5,7 +5,7 @@ hypr_lib="${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}"
 # shellcheck source=/dev/null
 source "${hypr_lib}/capture/capture.select.bash"
 
-USAGE() {
+usage() {
   cat <<USAGE
 
 	Usage: $(basename "$0")
@@ -31,12 +31,12 @@ qr_notify() {
 
 case "${1:-}" in
   -h | --help)
-    USAGE
+    usage
     exit 0
     ;;
   "") ;;
   *)
-    USAGE >&2
+    usage >&2
     exit 1
     ;;
 esac

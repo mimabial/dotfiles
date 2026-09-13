@@ -97,7 +97,7 @@ emoji_style_menu_args() {
   args_ref=()
   case "${style_type}" in
     2 | grid)
-      args_ref+=(-theme-str "listview {columns: ${EMOJI_GRID_COLUMNS};}")
+      args_ref+=(-theme-str "listview {columns: ${EMOJI_GRID_COLUMNS}; flow: horizontal; fixed-columns: true;}")
       ;;
   esac
 }

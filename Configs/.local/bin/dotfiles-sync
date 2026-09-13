@@ -5,8 +5,7 @@
 set -euo pipefail
 
 DOTFILES_DIR="${DOTFILES_DIR:-$HOME/dotfiles/Configs}"
-DRY_RUN=false
-LIST_ONLY=false
+SYNC_MODE="apply"
 HOST_PROFILE_STATE_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/host-profile"
 DEFAULT_SYNC_MANIFEST_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/dotfiles-sync.conf"
 if [[ -n "${DOTFILES_SYNC_MANIFEST:-}" ]]; then
@@ -32,32 +31,23 @@ Options:
 USAGE
 }
 
-while [[ $# -gt 0 ]]; do
-  case "${1}" in
-    --dry-run) DRY_RUN=true ;;
-    --list) LIST_ONLY=true ;;
-    --manifest)
-      [[ $# -ge 2 ]] || {
-        echo "--manifest requires a file path" >&2
-        usage >&2
-        exit 1
-      }
-      SYNC_MANIFEST_SOURCE="${2}"
-      PRUNE_HOST_ORPHANS=false
-      shift
-      ;;
-    -h | --help)
-      usage
-      exit 0
-      ;;
-    *)
-      echo "Unknown option: ${1}" >&2
-      usage >&2
-      exit 1
-      ;;
-  esac
-  shift
-done
+parse_args() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --dry-run) SYNC_MODE="dry-run" ;;
+      --list) SYNC_MODE="list" ;;
+      --manifest)
+        [[ $# -ge 2 ]] || { echo "--manifest requires a file path" >&2; usage >&2; exit 1; }
+        SYNC_MANIFEST_SOURCE="$2"
+        PRUNE_HOST_ORPHANS=false
+        shift
+        ;;
+      -h | --help) usage; exit 0 ;;
+      *) echo "Unknown option: $1" >&2; usage >&2; exit 1 ;;
+    esac
+    shift
+  done
+}
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -179,7 +169,7 @@ run_rsync_transfer() {
   local output=""
   local -a rsync_args=("$@")
 
-  if $DRY_RUN; then
+  if [[ "${SYNC_MODE}" == "dry-run" ]]; then
     rsync_args+=(--dry-run --itemize-changes)
     if ! output=$(rsync "${rsync_args[@]}" 2>&1); then
       if [[ "${log_failures}" == true ]]; then
@@ -302,7 +292,7 @@ remove_path() {
   local name="$2"
   local rel_dest="${dest#"${DOTFILES_DIR}"/}"
 
-  if $LIST_ONLY; then
+  if [[ "${SYNC_MODE}" == "list" ]]; then
     echo "PLAN ABSENT ${dest}"
     return
   fi
@@ -311,7 +301,7 @@ remove_path() {
     return
   fi
 
-  if $DRY_RUN; then
+  if [[ "${SYNC_MODE}" == "dry-run" ]]; then
     emit_preview_result "${name}" "*deleting   ${rel_dest}"
     return
   fi
@@ -347,9 +337,9 @@ purge_orphaned_host_files() {
     rel_path="${host_entry#"${host_root}/"}"
     [[ -z "${managed_paths["${rel_path}"]+managed}" ]] || continue
 
-    if $LIST_ONLY; then
+    if [[ "${SYNC_MODE}" == "list" ]]; then
       printf 'PLAN ABSENT %s\n' "${host_entry}"
-    elif $DRY_RUN; then
+    elif [[ "${SYNC_MODE}" == "dry-run" ]]; then
       emit_preview_result "orphaned host file ${rel_path}" \
         "*deleting   ${host_entry#"${DOTFILES_DIR}/"}"
     else
@@ -358,7 +348,7 @@ purge_orphaned_host_files() {
     fi
   done < <(find -P "${host_root}" -mindepth 1 ! -type d -print0)
 
-  if ! $LIST_ONLY && ! $DRY_RUN; then
+  if [[ "${SYNC_MODE}" == "apply" ]]; then
     while IFS= read -r -d '' host_dir; do
       rmdir -- "${host_dir}" 2>/dev/null || true
     done < <(find -P "${host_root}" -depth -mindepth 1 -type d -empty -print0)
@@ -394,11 +384,11 @@ sync_host_profile_files() {
     remove_path "${DOTFILES_DIR}/${rel_path}" "root host file ${rel_path}"
   done
 
-  if $LIST_ONLY; then
-    log_info "Planning host profile mappings (${profile})..."
-  else
-    log_info "Syncing host profile '${profile}'..."
-  fi
+  case "${SYNC_MODE}" in
+    list) log_info "Planning host profile mappings (${profile})..." ;;
+    dry-run) log_info "Previewing host profile '${profile}'..." ;;
+    apply) log_info "Syncing host profile '${profile}'..." ;;
+  esac
 
   for rel_path in "${host_paths[@]}"; do
     copy_path file "${HOME}/${rel_path}" "${host_root}/${rel_path}" "hosts/${profile}/${rel_path}"
@@ -421,9 +411,9 @@ create_dirs() {
   )
 
   for dir in "${dirs[@]}"; do
-    if $LIST_ONLY; then
+    if [[ "${SYNC_MODE}" == "list" ]]; then
       echo "PLAN DIR    $dir"
-    elif $DRY_RUN; then
+    elif [[ "${SYNC_MODE}" == "dry-run" ]]; then
       echo "Would create: $dir"
     else
       mkdir -p "$dir"
@@ -431,88 +421,85 @@ create_dirs() {
   done
 }
 
-copy_path() {
-  local kind="$1"
-  local src="$2"
-  local dest="$3"
-  local name="$4"
-  shift 4
-  local extra_excludes=("$@")
-  local exclude_pattern=""
+plan_copy_path() {
+  local kind="$1" src="$2" dest="$3"
+  shift 3
   local exclude_preview=""
-  local transfer_output=""
-  local -a rsync_args=(-a --mkpath)
 
-  if $LIST_ONLY; then
-    if [[ "${kind}" == "dir" ]] && ((${#extra_excludes[@]})); then
-      exclude_preview="$(printf '%s, ' "${extra_excludes[@]}")"
-      exclude_preview="${exclude_preview%, }"
-      echo "PLAN DIR    $src -> $dest (exclude: $exclude_preview)"
-    else
-      printf 'PLAN %-6s %s -> %s\n' "${kind^^}" "$src" "$dest"
-    fi
-    return
+  if [[ "${kind}" == "dir" ]] && (($#)); then
+    exclude_preview="$(printf '%s, ' "$@")"
+    printf 'PLAN DIR    %s -> %s (exclude: %s)\n' "$src" "$dest" "${exclude_preview%, }"
+  else
+    printf 'PLAN %-6s %s -> %s\n' "${kind^^}" "$src" "$dest"
   fi
+}
 
-  if [[ "${kind}" == "dir" ]]; then
-    if [[ ! -e "$src" ]]; then
-      log_warn "Skipping $name (not found: $src)"
-      return
-    fi
+sync_directory_path() {
+  local src="$1" dest="$2" name="$3" exclude_pattern transfer_output=""
+  shift 3
+  local -a rsync_args=(-a --mkpath --delete --delete-excluded \
+    --exclude='.git' --exclude='__pycache__' --exclude='.ruff_cache' --exclude='*.pyc' \
+    --exclude='node_modules' --exclude='.cache' --exclude='lazy-lock.json')
 
-    if [[ -d "$src" ]]; then
-      rsync_args+=(
-        --delete
-        --delete-excluded
-        --exclude='.git'
-        --exclude='__pycache__'
-        --exclude='.ruff_cache'
-        --exclude='*.pyc'
-        --exclude='node_modules'
-        --exclude='.cache'
-        --exclude='lazy-lock.json'
-      )
-      for exclude_pattern in "${extra_excludes[@]}"; do
-        rsync_args+=(--exclude="$exclude_pattern")
-      done
-      run_rsync_transfer "$name" true transfer_output "${rsync_args[@]}" "$src"/ "$dest"/
-      normalize_changed_symlinks_from_rsync_output "$src" "$dest" "$transfer_output"
-      emit_apply_result "$name" "$transfer_output"
-      return
-    fi
+  for exclude_pattern in "$@"; do
+    rsync_args+=(--exclude="${exclude_pattern}")
+  done
+  run_rsync_transfer "$name" true transfer_output "${rsync_args[@]}" "$src"/ "$dest"/
+  [[ "${SYNC_MODE}" == "dry-run" ]] && return
+  normalize_changed_symlinks_from_rsync_output "$src" "$dest" "$transfer_output"
+  emit_apply_result "$name" "$transfer_output"
+}
 
-    kind="file"
+remove_stale_destination() {
+  local src="$1" dest="$2" name="$3"
+
+  if [[ ! -e "$dest" && ! -L "$dest" ]]; then
+    log_warn "Skipping $name (not found: $src)"
+  elif [[ "${SYNC_MODE}" == "dry-run" ]]; then
+    emit_preview_result "$name" "*deleting   $(basename "$dest")"
+  else
+    rm -rf -- "$dest"
+    log_success "Removed stale $name"
   fi
+}
 
-  if [[ ! -e "$src" && ! -L "$src" ]]; then
-    if [[ -e "$dest" || -L "$dest" ]]; then
-      if $DRY_RUN; then
-        emit_preview_result "$name" "*deleting   $(basename "$dest")"
-      else
-        rm -rf -- "$dest"
-        log_success "Removed stale $name"
-      fi
-    else
-      log_warn "Skipping $name (not found: $src)"
-    fi
-    return
-  fi
+sync_file_path() {
+  local src="$1" dest="$2" name="$3" transfer_output=""
 
   if [[ -d "$dest" && ! -L "$dest" ]]; then
-    if $DRY_RUN; then
+    if [[ "${SYNC_MODE}" == "dry-run" ]]; then
       emit_preview_result "$name" $'*deleting   '"$(basename "$dest")"$'\n>f+++++++++ '"$(basename "$dest")"
       return
     fi
     rm -rf -- "$dest"
   fi
 
-  if run_rsync_transfer "$name" false transfer_output "${rsync_args[@]}" "$src" "$dest"; then
-    normalize_synced_internal_symlinks "$src" "$dest"
-    emit_apply_result "$name" "$transfer_output"
-    return 0
-  fi
+  run_rsync_transfer "$name" false transfer_output -a --mkpath "$src" "$dest" || return
+  [[ "${SYNC_MODE}" == "dry-run" ]] && return
+  normalize_synced_internal_symlinks "$src" "$dest"
+  emit_apply_result "$name" "$transfer_output"
+}
 
-  return 1
+copy_path() {
+  local kind="$1" src="$2" dest="$3" name="$4"
+  shift 4
+
+  if [[ "${SYNC_MODE}" == "list" ]]; then
+    plan_copy_path "$kind" "$src" "$dest" "$@"
+    return
+  fi
+  if [[ "$kind" == "dir" ]]; then
+    [[ -e "$src" ]] || { log_warn "Skipping $name (not found: $src)"; return; }
+    if [[ -d "$src" ]]; then
+      sync_directory_path "$src" "$dest" "$name" "$@"
+      return
+    fi
+  fi
+  if [[ ! -e "$src" && ! -L "$src" ]]; then
+    remove_stale_destination "$src" "$dest" "$name"
+    return
+  fi
+  sync_file_path "$src" "$dest" "$name"
 }
 
 sync_manifest_mappings() {
@@ -552,61 +539,54 @@ sync_manifest_mappings() {
   done
 }
 
-echo "========================================="
-echo "  Dotfiles Sync"
-echo "========================================="
-echo "Target: $DOTFILES_DIR"
-if ACTIVE_HOST_PROFILE="$(get_host_profile)"; then
-  echo "Host profile: ${ACTIVE_HOST_PROFILE}"
-else
-  ACTIVE_HOST_PROFILE=""
-  echo "Host profile: (not set)"
-fi
-$DRY_RUN && echo "(DRY RUN - no changes will be made)"
-$LIST_ONLY && echo "(LIST MODE - plan only, no checks or filesystem writes)"
-echo
+sync_manifest_section() {
+  local section="$1" label="${HOME}/$2"
+  case "${SYNC_MODE}" in
+    list) log_info "Planning ${label} mappings..." ;;
+    dry-run) log_info "Previewing ${label}..." ;;
+    apply) log_info "Syncing ${label}..." ;;
+  esac
+  sync_manifest_mappings "${section}"
+}
 
-if ! $LIST_ONLY; then
-  require_rsync
-fi
-require_sync_manifest
-load_sync_manifest
+main() {
+  parse_args "$@"
+  printf '=========================================\n  Dotfiles Sync\n=========================================\nTarget: %s\n' "$DOTFILES_DIR"
+  if ACTIVE_HOST_PROFILE="$(get_host_profile)"; then
+    echo "Host profile: ${ACTIVE_HOST_PROFILE}"
+  else
+    ACTIVE_HOST_PROFILE=""
+    echo "Host profile: (not set)"
+  fi
+  case "${SYNC_MODE}" in
+    dry-run) echo "(DRY RUN - no changes will be made)" ;;
+    list) echo "(LIST MODE - plan only, no checks or filesystem writes)" ;;
+  esac
+  echo
 
-if $LIST_ONLY; then
-  log_info "Planning directory structure..."
-else
-  log_info "Creating directory structure..."
-fi
-create_dirs
-echo
+  [[ "${SYNC_MODE}" == "list" ]] || require_rsync
+  require_sync_manifest
+  load_sync_manifest
 
-if $LIST_ONLY; then
-  log_info "Planning ~/.config mappings..."
-else
-  log_info "Syncing ~/.config..."
-fi
+  case "${SYNC_MODE}" in
+    list) log_info "Planning directory structure..." ;;
+    dry-run) log_info "Previewing directory structure..." ;;
+    apply) log_info "Creating directory structure..." ;;
+  esac
+  create_dirs
+  echo
+  sync_manifest_section config '.config'
+  sync_host_profile_files
+  echo
+  sync_manifest_section local '.local'
 
-sync_manifest_mappings config
-sync_host_profile_files
+  printf '\n=========================================\n'
+  case "${SYNC_MODE}" in
+    list) echo "List complete." ;;
+    dry-run) echo "Dry run complete. Run without --dry-run to apply." ;;
+    apply) log_success "Dotfiles sync complete!"; echo "Location: $DOTFILES_DIR" ;;
+  esac
+  echo "========================================="
+}
 
-echo
-
-if $LIST_ONLY; then
-  log_info "Planning ~/.local mappings..."
-else
-  log_info "Syncing ~/.local..."
-fi
-
-sync_manifest_mappings local
-
-echo
-echo "========================================="
-if $LIST_ONLY; then
-  echo "List complete."
-elif $DRY_RUN; then
-  echo "Dry run complete. Run without --dry-run to apply."
-else
-  log_success "Dotfiles sync complete!"
-  echo "Location: $DOTFILES_DIR"
-fi
-echo "========================================="
+main "$@"

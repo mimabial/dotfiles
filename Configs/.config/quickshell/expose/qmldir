@@ -1,3 +1,10 @@
 Overview 1.0 Overview.qml
+OverviewIpc 1.0 OverviewIpc.qml
 SettingsView 1.0 SettingsView.qml
+SettingSlider 1.0 SettingSlider.qml
+SettingChoices 1.0 SettingChoices.qml
+DisplayModeChoices 1.0 DisplayModeChoices.qml
+SettingsCategoryButton 1.0 SettingsCategoryButton.qml
+SettingToggle 1.0 SettingToggle.qml
+DialogButton 1.0 DialogButton.qml
 WindowCard 1.0 WindowCard.qml

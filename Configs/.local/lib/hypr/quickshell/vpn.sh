@@ -127,6 +127,24 @@ handle_missing_mullvad_provider() {
   vpn_info="<b>Mullvad VPN Error</b>\nConfigured provider unavailable"
 }
 
+# Geolocation is a network round trip, so it is only attempted when the caller
+# allows it; without it the tooltip falls back to the interface name alone.
+vpn_mark_connected() {
+  local label="$1"
+  local gip_data=""
+
+  has_vpn_client=true
+  vpn_state="connected"
+  if [[ "${allow_auto_geolocation}" == true ]] && provider_have_command curl; then
+    gip_data="$(fetch_ipinfo)"
+  fi
+  if [[ -n "${gip_data}" ]]; then
+    vpn_info="$(render_geolocated_info "${label}" "${gip_data}")"
+  else
+    vpn_info="$(render_basic_info "${label}")"
+  fi
+}
+
 check_wireguard() {
   local iface_glob=""
   local iface=""
@@ -139,16 +157,7 @@ check_wireguard() {
   for iface_glob in "${wireguard_globs[@]}"; do
     for iface in /proc/sys/net/ipv4/conf/${iface_glob}; do
       [[ -d "$iface" ]] || continue
-      has_vpn_client=true
-      vpn_state="connected"
-      if [[ "${allow_auto_geolocation}" == true ]] && provider_have_command curl; then
-        gip_data="$(fetch_ipinfo)"
-      fi
-      if [[ -n "$gip_data" ]]; then
-        vpn_info="$(render_geolocated_info "WireGuard VPN" "$gip_data")"
-      else
-        vpn_info="$(render_basic_info "WireGuard VPN")"
-      fi
+      vpn_mark_connected "WireGuard VPN"
       shopt -u nullglob
       return 0
     done
@@ -165,16 +174,7 @@ check_openvpn() {
 
   for iface_name in "${openvpn_ifaces[@]}"; do
     [[ -d "/proc/sys/net/ipv4/conf/${iface_name}" ]] || continue
-    has_vpn_client=true
-    vpn_state="connected"
-    if [[ "${allow_auto_geolocation}" == true ]] && provider_have_command curl; then
-      gip_data="$(fetch_ipinfo)"
-    fi
-    if [[ -n "$gip_data" ]]; then
-      vpn_info="$(render_geolocated_info "OpenVPN" "$gip_data")"
-    else
-      vpn_info="$(render_basic_info "OpenVPN")"
-    fi
+    vpn_mark_connected "OpenVPN"
     return 0
   done
 }

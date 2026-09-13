@@ -259,7 +259,8 @@ setup_rofi_config() {
     rofi_position cliphist_window_theme \
     "${font_name}" "${font_scale}" \
     "${cliphist_window_width_em}" "${cliphist_window_height_em}" \
-    $((cliphist_window_width_em * font_scale * 2)) $((cliphist_window_height_em * font_scale * 2))
+    $((cliphist_window_width_em * font_scale * ROFI_EM_PX_PER_SCALE)) \
+    $((cliphist_window_height_em * font_scale * ROFI_EM_PX_PER_SCALE))
 }
 
 prepare_favorites_for_display() {
@@ -321,6 +322,18 @@ secret_label() {
   return 0
 }
 
+# The selection is re-copied so it becomes the most recent entry, which leaves a
+# stale duplicate in the store to delete.
+cliphist_paste_selection() {
+  if ! printf '%s\n' "${selected_item}" | check_content; then
+    paste_string "${@}"
+    exit 0
+  fi
+  process_selections <<<"${selected_item}" | wl-copy
+  paste_string "${@}"
+  printf '%s\t' "${selected_item}" | cliphist delete
+}
+
 show_history() {
   local selected_item
   selected_item=$( (
@@ -331,14 +344,7 @@ show_history() {
 
   [ -n "${selected_item}" ] || exit 0
 
-  if printf '%s\n' "${selected_item}" | check_content; then
-    process_selections <<<"${selected_item}" | wl-copy
-    paste_string "${@}"
-    printf '%s\t' "${selected_item}" | cliphist delete
-  else
-    paste_string "${@}"
-    exit 0
-  fi
+  cliphist_paste_selection "${@}"
 }
 
 show_image_history() {
@@ -368,14 +374,7 @@ show_image_history() {
     return
   fi
 
-  if printf '%s\n' "${selected_item}" | check_content; then
-    process_selections <<<"${selected_item}" | wl-copy
-    paste_string "${@}"
-    printf '%s\t' "${selected_item}" | cliphist delete
-  else
-    paste_string "${@}"
-    exit 0
-  fi
+  cliphist_paste_selection "${@}"
 }
 
 delete_items() {

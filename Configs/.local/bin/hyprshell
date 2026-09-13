@@ -131,9 +131,12 @@ case "${1:-}" in
     get_version
     ;;
   --help | help | -h)
-    USAGE
+    usage
     ;;
-  "" | list | --list-script)
+  "" | list)
+    list_script_described
+    ;;
+  --list-script)
     list_script
     ;;
   --list-script-path)

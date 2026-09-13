@@ -121,11 +121,11 @@ esac
 
 GPUINFO_NVIDIA_ENABLE=${GPUINFO_NVIDIA_ENABLE:-0} GPUINFO_INTEL_ENABLE=${GPUINFO_INTEL_ENABLE:-0} GPUINFO_AMD_ENABLE=${GPUINFO_AMD_ENABLE:-0}
 if [[ "${GPUINFO_NVIDIA_ENABLE}" -eq 1 ]]; then
-  nvidia_GPU
+  query_nvidia_gpu
 elif [[ "${GPUINFO_AMD_ENABLE}" -eq 1 ]]; then
-  amd_GPU
+  query_amd_gpu
 elif [[ "${GPUINFO_INTEL_ENABLE}" -eq 1 ]]; then
-  intel_GPU
+  query_intel_gpu
 else
   primary_gpu="Not found"
   general_query

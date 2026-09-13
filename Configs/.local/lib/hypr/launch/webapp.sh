@@ -8,6 +8,8 @@ Usage: $(basename "$0") <url> [browser-args...]
 EOF
 }
 
+[[ "${1:-}" == -h || "${1:-}" == --help ]] && { usage; exit; }
+
 [[ -n "${1:-}" ]] || {
   usage >&2
   exit 2

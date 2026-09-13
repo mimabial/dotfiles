@@ -92,6 +92,8 @@ main() {
   local step="${2:-${default_step}}"
   local info="" current=""
 
+  [[ "${action}" == -h || "${action}" == --help ]] && { usage; return; }
+
   if ! require_cmd brightnessctl || ! info="$(brightnessctl -m 2>/dev/null)"; then
     notify_unavailable
     return 0

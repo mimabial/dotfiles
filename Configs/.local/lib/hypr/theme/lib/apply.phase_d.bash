@@ -2,10 +2,6 @@
 # Sourced module; strict mode is owned by theme.apply.sh.
 # Architecture: ../PHASES.md
 
-: "${theme_apply_generation-}" "${theme_apply_quiet-}" \
-  "${theme_apply_preserve_job_logs-}" \
-  "${selected_color_source-}" "${selected_color_mode-}" "${thmWall-}"
-
 theme_apply_phase_d_log_dir=""
 
 theme_apply_phase_d_prepare_log_dir() {

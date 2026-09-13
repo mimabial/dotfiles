@@ -110,7 +110,7 @@ if [[ ! -d "$OUTPUT_DIR" ]]; then
   }
 fi
 
-USAGE() {
+usage() {
   cat <<'USAGE'
 
 Usage: hyprshell screenrecord [option]
@@ -566,10 +566,15 @@ screenrecord_toggle_flow() {
 }
 
 show_status() {
+  local had_state=false
+  [[ -f "$RECORDING_FILE" ]] && had_state=true
+
   if is_recording_active; then
     echo '{"text": "󰑋", "class": "recording", "tooltip": "Recording (click to stop)"}'
   else
-    [[ -f "$RECORDING_FILE" ]] && rm -f "$RECORDING_FILE"
+    rm -f "$RECORDING_FILE"
+    # a stale file means the bar was last told "recording" and nothing else will correct it
+    [[ "$had_state" == true ]] && screenrecord_refresh_bar
     echo '{"text": "󰑋", "class": "idle", "tooltip": "Start recording"}'
   fi
 }
@@ -591,7 +596,7 @@ for arg in "$@"; do
     --toggle) ACTION="toggle" ;;
     --quit) ACTION="quit" ;;
     --status) ACTION="status" ;;
-    --help) USAGE; exit 0 ;;
+    --help) usage; exit 0 ;;
     --audio|--with-desktop-audio) DESKTOP_AUDIO=true ;;
     --with-microphone-audio) MICROPHONE_AUDIO=true ;;
     --with-webcam) WEBCAM=true ;;

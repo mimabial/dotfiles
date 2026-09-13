@@ -2,6 +2,29 @@
 # Shared helpers for render/<app>.sh
 # Source as: . "$(dirname "$0")/_lib.sh" ; render_init <app> <output-basename> [<pack-override-basename>]
 
+# The role names every renderer resolves a palette to, as two jq fragments so a
+# caller can splice its own aliases between them and still emit the same key
+# order in one jq invocation.
+RENDER_PALETTE_ROLES_JQ='
+  .colors as $c | {
+    bg: .bg, fg: .fg, br: $c[5],
+    alt_bg: $c[6], alt_fg: $c[3], alt_br: $c[11],
+    fg_selected: $c[4],
+    act_bg: $c[8], act_fg: $c[7], act_br: $c[13],
+    hvr_bg: .bg, hvr_fg: .fg, hvr_br: $c[12],
+    accent: $c[12], info: $c[6], warning: $c[3], error: $c[1], success: $c[2]
+  }'
+RENDER_PALETTE_NUMBERED_JQ='
+  + ([range(0; 16)] | map({key: ("c" + tostring), value: $c[.]}) | from_entries)'
+
+# bg, fg and the sixteen numbered colours as c[0..15].
+render_read_palette() {
+  local -a raw=()
+  mapfile -t raw < <(jq -r '.bg, .fg, (.colors[])' "${PALETTE}")
+  bg="${raw[0]}" fg="${raw[1]}"
+  c=("${raw[@]:2}")
+}
+
 render_palette_file() {
   printf '%s\n' "${1:-${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/active-palette.json}"
 }
@@ -30,6 +53,15 @@ render_init() {
   fi
 
   RENDERER_SOURCE="${BASH_SOURCE[1]:-${BASH_SOURCE[0]}}"
+}
+
+# Exits the renderer outright when its inputs are unchanged; otherwise opens the
+# temp file the caller writes to and arms its cleanup. Sets hash and tmp.
+render_begin() {
+  hash="$(render_input_hash)"
+  render_should_skip "${hash}" && exit 0
+  tmp="$(render_temp)"
+  trap 'rm -f "${tmp}"' EXIT
 }
 
 render_input_hash() {

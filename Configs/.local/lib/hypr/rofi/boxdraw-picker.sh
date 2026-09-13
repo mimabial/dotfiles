@@ -41,22 +41,23 @@ setup_rofi_config() {
 
   # same coupling as the glyph picker: columns shrink as the font grows and the
   # width follows them down, so floor the window at three quarters of the screen
-  local default_width=$((boxdraw_columns * 14))
+  local default_width_em=$((boxdraw_columns * 14))
   local em_px=""
   em_px="$(rofi_length_em_to_px 1 "${font_name}" "${font_scale}" 2>/dev/null || true)"
   if [[ "${em_px}" =~ ^[0-9]+$ ]] && ((em_px > 0)); then
     local screen_em=$((logical_width * 3 / 4 / em_px))
-    ((screen_em > default_width)) && default_width=${screen_em}
+    ((screen_em > default_width_em)) && default_width_em=${screen_em}
   fi
-  boxdraw_window_width="${ROFI_BOXDRAW_WIDTH_EM:-${default_width}}"
-  [[ "${boxdraw_window_width}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || boxdraw_window_width=${default_width}
+  boxdraw_window_width="${ROFI_BOXDRAW_WIDTH_EM:-${default_width_em}}"
+  [[ "${boxdraw_window_width}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || boxdraw_window_width=${default_width_em}
   local boxdraw_window_height_em=""
   boxdraw_window_height_em="$(rofi_picker_listview_height_em "${boxdraw_lines}")"
   rofi_picker_compute_window_geometry \
     rofi_position boxdraw_window_theme \
     "${font_name}" "${font_scale}" \
     "${boxdraw_window_width}" "${boxdraw_window_height_em}" \
-    $((default_width * font_scale * 2)) $(((boxdraw_lines * 2 + 8) * font_scale * 2))
+    $((default_width_em * font_scale * ROFI_EM_PX_PER_SCALE)) \
+    $(((boxdraw_lines * 2 + 8) * font_scale * ROFI_EM_PX_PER_SCALE))
 }
 
 get_boxdraw_selection() {
@@ -92,7 +93,7 @@ get_boxdraw_selection() {
     case ${style_type} in
       2 | grid)
         run_args=(-i "${ROFI_BOXDRAW_ARGS[@]/-multi-select/}" -display-columns 1 \
-          -theme-str "listview {columns: ${boxdraw_columns}; lines: ${boxdraw_lines};}" \
+          -theme-str "listview {columns: ${boxdraw_columns}; lines: ${boxdraw_lines}; flow: horizontal; fixed-columns: true;}" \
           -theme-str "entry { placeholder: \" 󰇟 Box Drawing\";} ${rofi_position} ${r_override}" \
           -theme-str "${font_override}" \
           -theme-str "${size_override}" \
@@ -174,7 +175,7 @@ show_category_menu() {
     2 | grid)
       category_rofi_args+=(
         -display-column-separator " "
-        -theme-str "listview {columns: 12;}"
+        -theme-str "listview {columns: 12; flow: horizontal; fixed-columns: true;}"
       )
       ;;
     1 | list)
@@ -226,7 +227,6 @@ main() {
     wl-copy "${selected_char}"
     save_recent_entry "${data_boxdraw}"
 
-    # Only paste if BOXDRAW_AUTO_PASTE is not set to 0
     if [[ "${BOXDRAW_AUTO_PASTE:-1}" != "0" ]]; then
       paste_string "${@}"
     fi

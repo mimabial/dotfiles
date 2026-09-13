@@ -371,7 +371,22 @@ run_action() {
   esac
 }
 
+require_device_commands() {
+  local device_kind="$1"
+  local notify_enabled="$2"
+
+  case "${device_kind}" in
+    sink) require_commands wpctl || return 1 ;;
+    source) require_commands pactl || return 1 ;;
+    player) require_commands playerctl || return 1 ;;
+  esac
+  is_true "${notify_enabled}" || return 0
+  require_commands dunstify
+}
+
 main() {
+  [[ "${1:-}" == -h || "${1:-}" == --help ]] && { usage; return; }
+
   if [[ "${1:-}" == "--set-default" ]]; then
     [[ -n "${2:-}" && -n "${3:-}" ]] || {
       printf 'Usage: %s --set-default ID NAME\n' "${0##*/}" >&2
@@ -438,14 +453,7 @@ main() {
     return 2
   }
 
-  case "${device_kind}" in
-    sink) require_commands wpctl || return 1 ;;
-    source) require_commands pactl || return 1 ;;
-    player) require_commands playerctl || return 1 ;;
-  esac
-  if is_true "${notify_enabled}"; then
-    require_commands dunstify || return 1
-  fi
+  require_device_commands "${device_kind}" "${notify_enabled}" || return 1
 
   action="${1:-}"
   step="${2:-${default_step}}"
@@ -456,18 +464,16 @@ main() {
         print_log -sec "volume" -err "step" "Invalid step: ${step}"
         return 2
       }
-      run_action "${device_kind}" "${target}" "${player_name}" "${action}" "${step}" \
-        "${boost_enabled}" "${notify_enabled}" "${label}"
       ;;
-    m)
-      run_action "${device_kind}" "${target}" "${player_name}" "${action}" "${step}" \
-        "${boost_enabled}" "${notify_enabled}" "${label}"
-      ;;
+    m) ;;
     *)
       usage >&2
       return 2
       ;;
   esac
+
+  run_action "${device_kind}" "${target}" "${player_name}" "${action}" "${step}" \
+    "${boost_enabled}" "${notify_enabled}" "${label}"
 }
 
 main "$@"

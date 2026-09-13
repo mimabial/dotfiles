@@ -15,543 +15,16 @@ Item {
         { label: "Down", value: "down" }
     ]
 
-    component SettingSlider: Item {
-        id: settingSlider
-        property real from: 0
-        property real to: 100
-        property real value: 0
-        property real stepSize: 1
-        property string suffix: ""
-        signal edited(real nextValue)
-        signal committed(real nextValue)
-        implicitWidth: Style.space(280)
-        implicitHeight: Style.space(32)
-        activeFocusOnTab: true
-        readonly property real span: Math.max(0.000001, to - from)
-        readonly property real normalizedValue: Math.max(0, Math.min(1, (value - from) / span))
 
-        function valueAt(position) {
-            var availableWidth = Math.max(1, sliderTrackArea.width - sliderHandle.width);
-            var normalized = Math.max(0, Math.min(1, (position - sliderHandle.width / 2) / availableWidth));
-            var raw = settingSlider.from + normalized * settingSlider.span;
-            if (settingSlider.stepSize <= 0)
-                return raw;
-            var stepped = settingSlider.from + Math.round((raw - settingSlider.from) / settingSlider.stepSize) * settingSlider.stepSize;
-            return Math.max(settingSlider.from, Math.min(settingSlider.to, stepped));
-        }
 
-        function commitKeyboardValue(nextValue) {
-            var next = Math.max(settingSlider.from, Math.min(settingSlider.to, nextValue));
-            settingSlider.edited(next);
-            settingSlider.committed(next);
-        }
 
-        Keys.onPressed: function (event) {
-            if (settingsView.controller.handleSettingsNavigation(event))
-                return;
-            if (event.key === Qt.Key_Left)
-                settingSlider.commitKeyboardValue(settingSlider.value - settingSlider.stepSize);
-            else if (event.key === Qt.Key_Right)
-                settingSlider.commitKeyboardValue(settingSlider.value + settingSlider.stepSize);
-            else if (event.key === Qt.Key_Home)
-                settingSlider.commitKeyboardValue(settingSlider.from);
-            else if (event.key === Qt.Key_End)
-                settingSlider.commitKeyboardValue(settingSlider.to);
-            else {
-                event.accepted = false;
-                return;
-            }
-            event.accepted = true;
-        }
-
-        RowLayout {
-            anchors.fill: parent
-            spacing: Style.spacing.md
-
-            Item {
-                id: sliderTrackArea
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-
-                Rectangle {
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    height: Math.max(1, Style.normalBorderWidth)
-                    color: Color.menu.border
-                }
-
-                Rectangle {
-                    anchors.left: parent.left
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: parent.width * settingSlider.normalizedValue
-                    height: Math.max(2, Style.focusBorderWidth)
-                    color: Color.accent
-                }
-
-                Rectangle {
-                    id: sliderHandle
-                    width: Style.space(12)
-                    height: width
-                    x: Math.round((parent.width - width) * settingSlider.normalizedValue)
-                    anchors.verticalCenter: parent.verticalCenter
-                    color: Color.accent
-                    border.color: Color.background
-                    border.width: Math.max(1, Style.normalBorderWidth)
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onPressed: function (mouse) {
-                        settingSlider.forceActiveFocus();
-                        settingSlider.edited(settingSlider.valueAt(mouse.x));
-                    }
-                    onPositionChanged: function (mouse) {
-                        if (pressed)
-                            settingSlider.edited(settingSlider.valueAt(mouse.x));
-                    }
-                    onReleased: function (mouse) {
-                        settingSlider.committed(settingSlider.valueAt(mouse.x));
-                    }
-                }
-            }
-
-            Text {
-                Layout.preferredWidth: Style.space(52)
-                horizontalAlignment: Text.AlignRight
-                text: Math.round(settingSlider.value) + settingSlider.suffix
-                textFormat: Text.PlainText
-                color: settingSlider.activeFocus ? Color.accent : Color.menu.text
-                font.family: Style.font.menuFamily
-                font.pixelSize: Style.font.caption
-                font.bold: settingSlider.activeFocus
-            }
-        }
-    }
-
-    component SettingChoices: RowLayout {
-        id: settingChoices
-        property var options: []
-        property string value: ""
-        signal chosen(string nextValue)
-        spacing: Style.spacing.lg
-        activeFocusOnTab: true
-
-        // Arrows stop at either end; Space/Enter cycle through every option.
-        function chooseOffset(offset, wrap) {
-            var count = settingChoices.options.length;
-            if (!count)
-                return;
-            var current = 0;
-            for (var index = 0; index < count; index++)
-                if (String(settingChoices.options[index].value) === settingChoices.value)
-                    current = index;
-            var next = wrap
-                ? (current + offset + count) % count
-                : Math.max(0, Math.min(count - 1, current + offset));
-            if (next !== current)
-                settingChoices.chosen(String(settingChoices.options[next].value));
-        }
-
-        Keys.onPressed: function (event) {
-            if (settingsView.controller.handleSettingsNavigation(event))
-                return;
-            if (event.key === Qt.Key_Left)
-                settingChoices.chooseOffset(-1, false);
-            else if (event.key === Qt.Key_Right)
-                settingChoices.chooseOffset(1, false);
-            else if (event.key === Qt.Key_Space || event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
-                settingChoices.chooseOffset(1, true);
-            else {
-                event.accepted = false;
-                return;
-            }
-            event.accepted = true;
-        }
-
-        Repeater {
-            model: settingChoices.options
-
-            delegate: Item {
-                id: choice
-                required property var modelData
-                readonly property bool selected: String(modelData.value) === settingChoices.value
-                Layout.preferredWidth: choiceLabel.implicitWidth
-                Layout.preferredHeight: Style.space(28)
-
-                Text {
-                    id: choiceLabel
-                    anchors.centerIn: parent
-                    text: String(choice.modelData.label)
-                    textFormat: Text.PlainText
-                    color: choice.selected && settingChoices.activeFocus ? Color.accent : Color.menu.text
-                    opacity: choice.selected ? 1 : 0.45
-                    font.family: Style.font.menuFamily
-                    font.pixelSize: Style.font.caption
-                    font.bold: choice.selected
-                }
-
-                Rectangle {
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.bottom: parent.bottom
-                    height: Math.max(2, Style.focusBorderWidth)
-                    visible: choice.selected
-                    color: Color.accent
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        settingChoices.forceActiveFocus();
-                        settingChoices.chosen(String(choice.modelData.value));
-                    }
-                }
-            }
-        }
-    }
-
-    component DisplayModeChoices: RowLayout {
-        id: displayModeChoices
-        property string value: "mirrored"
-        signal chosen(string nextValue)
-        readonly property var options: [
-            {
-                label: "Same overview",
-                description: "Show all windows together on the selected display",
-                value: "mirrored"
-            },
-            {
-                label: "Per monitor",
-                description: "Show only the selected display's windows",
-                value: "per-monitor"
-            }
-        ]
-        spacing: 0
-        activeFocusOnTab: true
-
-        function choose(index) {
-            var next = Math.max(0, Math.min(displayModeChoices.options.length - 1, index));
-            var value = String(displayModeChoices.options[next].value);
-            if (value !== displayModeChoices.value)
-                displayModeChoices.chosen(value);
-        }
-
-        Keys.onPressed: function (event) {
-            if (settingsView.controller.handleSettingsNavigation(event))
-                return;
-            var current = displayModeChoices.value === "per-monitor" ? 1 : 0;
-            if (event.key === Qt.Key_Left)
-                displayModeChoices.choose(current - 1);
-            else if (event.key === Qt.Key_Right)
-                displayModeChoices.choose(current + 1);
-            else if (event.key === Qt.Key_Space || event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
-                displayModeChoices.choose(1 - current);
-            else {
-                event.accepted = false;
-                return;
-            }
-            event.accepted = true;
-        }
-
-        Repeater {
-            model: displayModeChoices.options
-
-            delegate: Rectangle {
-                id: displayModeChoice
-                required property var modelData
-                readonly property bool selected: String(modelData.value) === displayModeChoices.value
-                Layout.fillWidth: true
-                Layout.preferredHeight: Style.space(64)
-                color: "transparent"
-                border.color: displayModeChoices.activeFocus && selected ? Color.accent : Color.menu.border
-                border.width: Math.max(1, Style.normalBorderWidth)
-
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.margins: Style.spacing.md
-                    spacing: Style.spacing.xs
-
-                    Text {
-                        Layout.fillWidth: true
-                        text: String(displayModeChoice.modelData.label)
-                        textFormat: Text.PlainText
-                        color: Color.menu.text
-                        opacity: displayModeChoice.selected ? 1 : 0.6
-                        font.family: Style.font.menuFamily
-                        font.pixelSize: Style.font.body
-                        font.bold: displayModeChoice.selected
-                    }
-
-                    Text {
-                        Layout.fillWidth: true
-                        text: String(displayModeChoice.modelData.description)
-                        textFormat: Text.PlainText
-                        color: Color.menu.text
-                        opacity: 0.45
-                        font.family: Style.font.menuFamily
-                        font.pixelSize: Style.font.caption
-                        wrapMode: Text.Wrap
-                    }
-                }
-
-                Rectangle {
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.bottom: parent.bottom
-                    height: Math.max(2, Style.focusBorderWidth)
-                    visible: displayModeChoice.selected
-                    color: Color.accent
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        displayModeChoices.forceActiveFocus();
-                        displayModeChoices.chosen(String(displayModeChoice.modelData.value));
-                    }
-                }
-            }
-        }
-    }
-
-    component SettingsCategoryButton: Item {
-        id: categoryButton
-        property int categoryIndex: 0
-        property int categoryCount: 1
-        property string label: ""
-        property bool selected: false
-        property bool horizontal: false
-        property bool hovered: false
-        signal chosen(int nextIndex)
-        implicitWidth: Style.space(horizontal ? 140 : 200)
-        implicitHeight: Style.space(horizontal ? 52 : 48)
-        activeFocusOnTab: selected
-
-        signal entered()
-
-        function choose(nextIndex) {
-            categoryButton.chosen(Math.max(0, Math.min(categoryButton.categoryCount - 1, nextIndex)));
-        }
-
-        // The sidebar is a list: arrows along its axis pick a section, the
-        // arrow pointing at the content (or Enter/Space) moves focus into it.
-        Keys.onPressed: function (event) {
-            if (settingsView.controller.handleSettingsTab(event))
-                return;
-            var previousKey = categoryButton.horizontal ? Qt.Key_Left : Qt.Key_Up;
-            var nextKey = categoryButton.horizontal ? Qt.Key_Right : Qt.Key_Down;
-            var enterKey = categoryButton.horizontal ? Qt.Key_Down : Qt.Key_Right;
-            if (event.key === previousKey)
-                categoryButton.choose(categoryButton.categoryIndex - 1);
-            else if (event.key === nextKey)
-                categoryButton.choose(categoryButton.categoryIndex + 1);
-            else if (event.key === Qt.Key_Home)
-                categoryButton.choose(0);
-            else if (event.key === Qt.Key_End)
-                categoryButton.choose(categoryButton.categoryCount - 1);
-            else if (event.key === enterKey
-                    || event.key === Qt.Key_Space
-                    || event.key === Qt.Key_Return
-                    || event.key === Qt.Key_Enter)
-                categoryButton.entered();
-            else {
-                event.accepted = false;
-                return;
-            }
-            event.accepted = true;
-        }
-
-        Rectangle {
-            anchors.fill: parent
-            color: Color.accent
-            opacity: categoryButton.selected ? 0.07 : (categoryButton.hovered ? 0.035 : 0)
-        }
-
-        Rectangle {
-            anchors.left: parent.left
-            anchors.bottom: parent.bottom
-            width: categoryButton.horizontal ? parent.width : Math.max(2, Style.focusBorderWidth)
-            height: categoryButton.horizontal ? Math.max(2, Style.focusBorderWidth) : parent.height
-            visible: categoryButton.selected
-            color: Color.accent
-        }
-
-        RowLayout {
-            anchors.fill: parent
-            anchors.leftMargin: Style.space(categoryButton.horizontal ? 8 : 18)
-            anchors.rightMargin: Style.space(categoryButton.horizontal ? 8 : 18)
-            spacing: Style.spacing.md
-
-            Text {
-                Layout.preferredWidth: Style.space(18)
-                text: String(categoryButton.categoryIndex + 1)
-                textFormat: Text.PlainText
-                horizontalAlignment: Text.AlignHCenter
-                color: categoryButton.selected ? Color.accent : Color.menu.text
-                opacity: categoryButton.selected || categoryButton.hovered ? 1 : 0.45
-                font.family: Style.font.menuFamily
-                font.pixelSize: Style.font.caption
-                font.bold: categoryButton.selected
-            }
-
-            Text {
-                Layout.fillWidth: true
-                text: categoryButton.label
-                textFormat: Text.PlainText
-                horizontalAlignment: Text.AlignLeft
-                color: Color.menu.text
-                opacity: categoryButton.selected || categoryButton.hovered ? 1 : 0.55
-                font.family: Style.font.menuFamily
-                font.pixelSize: Style.font.bodySmall
-                font.bold: categoryButton.selected
-                elide: Text.ElideRight
-            }
-
-        }
-
-        Rectangle {
-            anchors.fill: parent
-            anchors.margins: Style.space(2)
-            color: "transparent"
-            border.color: categoryButton.activeFocus ? Color.accent : "transparent"
-            border.width: categoryButton.activeFocus ? Math.max(2, Style.focusBorderWidth) : 0
-        }
-
-        MouseArea {
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onEntered: categoryButton.hovered = true
-            onExited: categoryButton.hovered = false
-            onPressed: categoryButton.forceActiveFocus()
-            onClicked: categoryButton.choose(categoryButton.categoryIndex)
-        }
-    }
 
     component SettingsDivider: Rectangle {
         implicitHeight: Math.max(1, Style.normalBorderWidth)
         color: Color.menu.border
     }
 
-    component SettingToggle: Item {
-        id: settingToggle
-        property bool checked: false
-        signal toggled(bool checked)
-        implicitWidth: Style.space(72)
-        implicitHeight: Style.space(28)
-        activeFocusOnTab: true
 
-        Keys.onPressed: function (event) {
-            if (settingsView.controller.handleSettingsNavigation(event))
-                return;
-            if (event.key !== Qt.Key_Space && event.key !== Qt.Key_Return && event.key !== Qt.Key_Enter) {
-                event.accepted = false;
-                return;
-            }
-            settingToggle.toggled(!settingToggle.checked);
-            event.accepted = true;
-        }
-
-        Text {
-            anchors.left: parent.left
-            anchors.verticalCenter: parent.verticalCenter
-            text: settingToggle.checked ? "On" : "Off"
-            textFormat: Text.PlainText
-            color: Color.menu.text
-            opacity: settingToggle.checked ? 1 : 0.45
-            font.family: Style.font.menuFamily
-            font.pixelSize: Style.font.caption
-        }
-
-        Rectangle {
-            anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-            width: Style.space(30)
-            height: Style.space(14)
-            color: "transparent"
-            border.color: settingToggle.checked ? Color.accent : Color.menu.border
-            border.width: Math.max(1, Style.normalBorderWidth)
-
-            Rectangle {
-                width: Style.space(10)
-                height: width
-                anchors.verticalCenter: parent.verticalCenter
-                x: settingToggle.checked ? parent.width - width - Style.space(2) : Style.space(2)
-                color: settingToggle.checked ? Color.accent : Color.menu.text
-                opacity: settingToggle.checked ? 1 : 0.45
-                Behavior on x { NumberAnimation { duration: 100 } }
-            }
-        }
-
-        Rectangle {
-            anchors.fill: parent
-            anchors.margins: -Style.space(4)
-            visible: settingToggle.activeFocus
-            color: "transparent"
-            border.color: Color.accent
-            border.width: Math.max(2, Style.focusBorderWidth)
-        }
-
-        MouseArea {
-            anchors.fill: parent
-            cursorShape: Qt.PointingHandCursor
-            onPressed: settingToggle.forceActiveFocus()
-            onClicked: settingToggle.toggled(!settingToggle.checked)
-        }
-    }
-
-    component DialogButton: Rectangle {
-        id: dialogButton
-        property string label: ""
-        property bool destructive: false
-        property bool hovered: false
-        signal clicked()
-        implicitWidth: buttonLabel.implicitWidth + Style.space(28)
-        implicitHeight: Style.space(36)
-        activeFocusOnTab: true
-        color: "transparent"
-        border.color: enabled && (activeFocus || hovered || destructive) ? Color.accent : Color.menu.border
-        border.width: activeFocus ? Math.max(2, Style.focusBorderWidth) : Math.max(1, Style.normalBorderWidth)
-        opacity: enabled ? 1 : 0.38
-
-        Keys.onPressed: function (event) {
-            if (settingsView.controller.handleSettingsNavigation(event))
-                return;
-            if (!enabled || (event.key !== Qt.Key_Space && event.key !== Qt.Key_Return && event.key !== Qt.Key_Enter)) {
-                event.accepted = false;
-                return;
-            }
-            dialogButton.clicked();
-            event.accepted = true;
-        }
-
-        Text {
-            id: buttonLabel
-            anchors.centerIn: parent
-            text: dialogButton.label
-            textFormat: Text.PlainText
-            color: Color.menu.text
-            font.family: Style.font.menuFamily
-            font.pixelSize: Style.font.bodySmall
-            font.bold: dialogButton.destructive
-        }
-
-        MouseArea {
-            anchors.fill: parent
-            enabled: dialogButton.enabled
-            hoverEnabled: true
-            cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-            onEntered: dialogButton.hovered = true
-            onExited: dialogButton.hovered = false
-            onPressed: dialogButton.forceActiveFocus()
-            onClicked: dialogButton.clicked()
-        }
-    }
 
     anchors.fill: parent
 
@@ -743,6 +216,7 @@ Item {
                             ]
 
                             delegate: SettingsCategoryButton {
+                                controller: settingsView.controller
                                 required property int index
                                 required property var modelData
                                 Layout.fillWidth: true
@@ -827,6 +301,7 @@ Item {
                                     font.pixelSize: Style.font.body
                                 }
                                 SettingSlider {
+                                    controller: settingsView.controller
                                     id: backgroundBlurSlider
                                     Layout.fillWidth: true
                                     from: 0
@@ -855,6 +330,7 @@ Item {
                                     font.pixelSize: Style.font.body
                                 }
                                 SettingSlider {
+                                    controller: settingsView.controller
                                     id: backgroundDimSlider
                                     Layout.fillWidth: true
                                     from: 0
@@ -883,6 +359,7 @@ Item {
                                 }
                                 Item { Layout.fillWidth: true }
                                 SettingToggle {
+                                    controller: settingsView.controller
                                     id: bottomTextToggle
                                     checked: settingsView.controller.showFooter
                                     onToggled: function (checked) {
@@ -948,6 +425,7 @@ Item {
                                 }
                                 Item { Layout.fillWidth: true }
                                 SettingToggle {
+                                    controller: settingsView.controller
                                     id: hotCornerToggle
                                     checked: settingsView.controller.hotCornerEnabled
                                     onToggled: function (checked) { settingsView.controller.setHotCornerEnabled(checked); }
@@ -969,6 +447,7 @@ Item {
                                 }
                                 Item { Layout.fillWidth: true }
                                 SettingChoices {
+                                    controller: settingsView.controller
                                     id: hotCornerPositionChoices
                                     value: settingsView.controller.hotCornerPosition
                                     options: [
@@ -1036,6 +515,7 @@ Item {
                                 }
                                 Item { Layout.fillWidth: true }
                                 SettingChoices {
+                                    controller: settingsView.controller
                                     id: previewPlacementChoices
                                     value: settingsView.controller.previewPlacement
                                     options: [
@@ -1061,6 +541,7 @@ Item {
                                 }
                                 Item { Layout.fillWidth: true }
                                 SettingChoices {
+                                    controller: settingsView.controller
                                     id: windowFooterChoices
                                     value: settingsView.controller.windowFooterStyle
                                     spacing: Style.spacing.md
@@ -1088,6 +569,7 @@ Item {
                                 }
                                 Item { Layout.fillWidth: true }
                                 SettingToggle {
+                                    controller: settingsView.controller
                                     id: movePointerToggle
                                     checked: settingsView.controller.moveCursorToWindow
                                     onToggled: function (checked) { settingsView.controller.setMoveCursorToWindow(checked); }
@@ -1108,6 +590,7 @@ Item {
                                     font.pixelSize: Style.font.body
                                 }
                                 DisplayModeChoices {
+                                    controller: settingsView.controller
                                     id: displayModeChoicesControl
                                     Layout.fillWidth: true
                                     value: settingsView.controller.multiMonitorMode
@@ -1159,6 +642,7 @@ Item {
                                 }
 
                                 DialogButton {
+                                    controller: settingsView.controller
                                     id: motionAnimateButton
                                     label: "Animate"
                                     onClicked: settingsView.controller.previewAnimation()
@@ -1181,6 +665,7 @@ Item {
                                 }
                                 Item { Layout.fillWidth: true }
                                 SettingChoices {
+                                    controller: settingsView.controller
                                     id: animationStyleChoices
                                     value: settingsView.controller.animationStyle
                                     options: [
@@ -1212,6 +697,7 @@ Item {
                                 }
                                 Item { Layout.fillWidth: true }
                                 SettingChoices {
+                                    controller: settingsView.controller
                                     id: slideDirectionChoices
                                     value: String(settingsView.controller.slideDirection["in"])
                                     options: settingsView.slideDirectionOptions
@@ -1233,6 +719,7 @@ Item {
                                 }
                                 Item { Layout.fillWidth: true }
                                 SettingChoices {
+                                    controller: settingsView.controller
                                     id: slideDirectionInChoices
                                     value: String(settingsView.controller.slideDirection["in"])
                                     options: settingsView.slideDirectionOptions
@@ -1259,6 +746,7 @@ Item {
                                 }
                                 Item { Layout.fillWidth: true }
                                 SettingChoices {
+                                    controller: settingsView.controller
                                     id: slideDirectionOutChoices
                                     value: String(settingsView.controller.slideDirection["out"])
                                     options: settingsView.slideDirectionOptions
@@ -1284,6 +772,7 @@ Item {
                                     font.pixelSize: Style.font.body
                                 }
                                 SettingSlider {
+                                    controller: settingsView.controller
                                     id: animationSpeedSlider
                                     Layout.fillWidth: true
                                     from: 100
@@ -1318,6 +807,7 @@ Item {
                                     font.pixelSize: Style.font.body
                                 }
                                 SettingSlider {
+                                    controller: settingsView.controller
                                     id: animationInSlider
                                     Layout.fillWidth: true
                                     from: 100
@@ -1355,6 +845,7 @@ Item {
                                     font.pixelSize: Style.font.body
                                 }
                                 SettingSlider {
+                                    controller: settingsView.controller
                                     id: animationOutSlider
                                     Layout.fillWidth: true
                                     from: 100
@@ -1388,6 +879,7 @@ Item {
                                 }
                                 Item { Layout.fillWidth: true }
                                 SettingToggle {
+                                    controller: settingsView.controller
                                     id: animationSameSpeedToggle
                                     checked: !settingsView.controller.animationTimingFor(settingsView.controller.animationStyle).separate
                                     onToggled: function (checked) {
@@ -1609,12 +1101,14 @@ Item {
                     Item { Layout.fillWidth: true }
 
                     DialogButton {
+                        controller: settingsView.controller
                         id: footerHideCancelButton
                         label: "Cancel"
                         onClicked: settingsView.controller.closeFooterHideConfirmation()
                     }
 
                     DialogButton {
+                        controller: settingsView.controller
                         id: footerHideConfirmButton
                         label: "Hide bottom text"
                         destructive: true

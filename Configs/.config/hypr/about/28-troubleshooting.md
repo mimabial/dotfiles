@@ -121,9 +121,6 @@ file.
 | file | covers |
 | ---- | ------ |
 | `~/.config/quickshell/README.md` | bar layouts, styling, popups |
-| `~/.config/quickshell/monitor/README.md` | the display editor |
-| `~/.config/quickshell/dock/README.md` | the dock |
-| `~/.config/quickshell/expose/README.md` | Exposé |
 | `~/.local/lib/hypr/window/LOOKNFEEL.md` | the look-and-feel TUI |
 | `~/.local/lib/hypr/theme/PHASES.md` | theme phases and cancellation |
 | `~/dotfiles/README.md` | install, restore, the full theme list |

@@ -26,8 +26,7 @@ rgb() {
   printf '%d, %d, %d' "0x${h:0:2}" "0x${h:2:2}" "0x${h:4:2}"
 }
 
-mapfile -t C < <(jq -r '.bg, .fg, (.colors[])' "${PALETTE}")
-c=("${C[@]:2}")
+render_read_palette
 background="$(rgb "${c[0]}")"
 foreground="$(rgb "${c[15]}")"
 accent="$(rgb "${c[4]}")"

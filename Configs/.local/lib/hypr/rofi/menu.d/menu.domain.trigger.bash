@@ -60,12 +60,6 @@ trigger_spawn_detached() {
 }
 
 menu_register_domain_trigger() {
-  menu_define trigger "Trigger"
-  menu_add_item trigger "󰞅  Insert" submenu trigger_insert
-  menu_add_item trigger "  Capture" submenu trigger_capture
-  menu_add_item trigger "󰕍  Share" submenu trigger_share
-  menu_add_item trigger "󰔎  Toggle" submenu trigger_toggle
-
   menu_define trigger_insert "Insert"
   menu_add_item trigger_insert "  Emoji" action trigger_insert_emoji
   menu_add_item trigger_insert "  Glyph" action trigger_insert_glyph

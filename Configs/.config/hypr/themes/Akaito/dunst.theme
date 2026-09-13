@@ -2,9 +2,9 @@ $HOME/.config/dunst/theme.conf
 
 @define-color fg-primary #4d2e1a;
 @define-color fg-secondary #4d2e1a;
-@define-color bg-primary #f3e4cb;
-@define-color bg-secondary #f3e4cb;
-@define-color bg-tertiary #f3e4cb;
+@define-color bg-primary #dfd2c4;
+@define-color bg-secondary #dfd2c4;
+@define-color bg-tertiary #dfd2c4;
 @define-color accent-red #a4373c;
 @define-color accent-green #a46d2d;
 @define-color accent-yellow #a8611f;

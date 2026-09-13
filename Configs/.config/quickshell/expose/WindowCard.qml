@@ -39,7 +39,7 @@ Rectangle {
     // animates toward the origin nor flies back in from it.
     readonly property var packedRectSource: inLayout ? card.windowLayout[slot] : null
     property var packedRect: Qt.rect(0, 0, 1, 1)
-    readonly property var previewRect: card.controller.previewRectFor(modelData, packedRect, card.layoutAreaWidth, card.layoutAreaHeight, Style.spacing.sm, card.controller.windowFooterHeight)
+    readonly property var previewRect: WindowModel.previewRect(modelData, packedRect, card.layoutAreaWidth, card.layoutAreaHeight, Style.spacing.sm, card.controller.windowFooterHeight, card.controller.previewPlacement)
     readonly property var layoutRect: previewed ? previewRect : packedRect
 
     onPackedRectSourceChanged: {

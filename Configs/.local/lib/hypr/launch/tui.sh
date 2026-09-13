@@ -5,6 +5,8 @@ Usage: $(basename "$0") [--app-id ID] [--title TITLE] -- <command>
 EOF
 }
 
+[[ "${1:-}" == -h || "${1:-}" == --help ]] && { usage; exit; }
+
 app_id=""
 title=""
 cmd=()

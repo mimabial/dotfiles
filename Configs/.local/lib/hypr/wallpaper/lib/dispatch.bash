@@ -219,17 +219,15 @@ require_wallpaper_backend() {
 
 wallpaper_select_current_or_first() {
   local missing_message="$1"
-  local current_wallpaper=""
-  local i=""
+  local current_wallpaper="" index=""
 
-  Wall_Hash
+  wallpaper_ensure_catalog
   current_wallpaper="$(wallpaper_resolve_path "${active_wallpaper_link}")"
-  for i in "${!wallList[@]}"; do
-    if [[ "${current_wallpaper}" == "${wallList[i]}" ]]; then
-      setIndex=$i
-      return 0
-    fi
-  done
+
+  if index="$(catalog_index_of wallList "${current_wallpaper}")"; then
+    setIndex="${index}"
+    return 0
+  fi
 
   setIndex=0
   print_log -sec "wallpaper" -warn "${missing_message}"
@@ -240,12 +238,12 @@ handle_wallpaper_action() {
   "${wallpaper_action_handler}"
 }
 
-wallpaper_action_next() { Wall_Hash; select_adjacent_wallpaper n; }
-wallpaper_action_previous() { Wall_Hash; select_adjacent_wallpaper p; }
+wallpaper_action_next() { wallpaper_ensure_catalog; select_adjacent_wallpaper n; }
+wallpaper_action_previous() { wallpaper_ensure_catalog; select_adjacent_wallpaper p; }
 wallpaper_action_random() {
-  Wall_Hash
+  wallpaper_ensure_catalog
   setIndex="$(random_wallpaper_index "${#wallList[@]}")" || exit 1
-  apply_selected_wallpaper "${wallList[setIndex]}"
+  apply_selected_wallpaper
 }
 wallpaper_action_set() {
   [[ -f "${wallpaper_path}" ]] || { print_log -err "wallpaper" "Wallpaper not found: ${wallpaper_path}"; exit 1; }
@@ -262,7 +260,7 @@ wallpaper_action_display() {
 }
 wallpaper_action_notify() {
   wallpaper_select_current_or_first "wall.set not in current theme, using first wallpaper for notification"
-  wallpaper_prepare_notification_payload
+  wallpaper_prepare_notification_payload "$(wallpaper_selected_path)"
   wallpaper_notify_result
   exit 0
 }
@@ -283,7 +281,7 @@ wallpaper_action_output() {
   print_log -sec "wallpaper" "Current wallpaper copied to: ${wallpaper_output}"
   cp -f "${active_wallpaper_link}" "${wallpaper_output}"
 }
-wallpaper_action_clean() { Wall_Clean_Thumbs; exit 0; }
-wallpaper_action_select() { Wall_Select; wallpaper_catalog_load_file "${selected_wallpaper_path}" || exit 1; apply_selected_wallpaper; }
-wallpaper_action_link() { Wall_Hash; apply_selected_wallpaper; exit 0; }
-wallpaper_action_json() { Wall_Json; exit 0; }
+wallpaper_action_clean() { wallpaper_clean_thumbs; exit 0; }
+wallpaper_action_select() { wallpaper_pick; wallpaper_catalog_load_file "${selected_wallpaper_path}" || exit 1; apply_selected_wallpaper; }
+wallpaper_action_link() { wallpaper_ensure_catalog; apply_selected_wallpaper; exit 0; }
+wallpaper_action_json() { wallpaper_json; exit 0; }

@@ -78,7 +78,7 @@ wallpaper_load_inventory_catalog() {
 
   wallpaper_catalog_lock || return 1
 
-  if ! Wall_Hashmap_Cached_into inventory_hash inventory_list "${wall_sources[@]}"; then
+  if ! wallpaper_hashmap_cached_into inventory_hash inventory_list "${wall_sources[@]}"; then
     wallpaper_catalog_unlock
     return 1
   fi
@@ -123,71 +123,59 @@ wallpaper_collect_valid_png_hashes() {
   done
 }
 
-wallpaper_prune_thumb_cache() {
+# Deletes every file in dir whose name carries a hash the caller no longer holds.
+# The pattern must capture the hash as group 1.
+wallpaper_prune_unreferenced() {
   local hashset_name="$1"
+  local dir="$2"
+  local name_pattern="$3"
+  local label="$4"
   local -n valid_hashes_ref="${hashset_name}"
+  local removed=0
+  local file="" base=""
+
+  [[ -d "${dir}" ]] || return 0
+
+  while IFS= read -r -d '' file; do
+    base="${file##*/}"
+    [[ "${base}" =~ ${name_pattern} ]] || continue
+    [[ -z "${valid_hashes_ref["${BASH_REMATCH[1]}"]-}" ]] || continue
+    rm -f -- "${file}"
+    removed=$((removed + 1))
+  done < <(find -H "${dir}" -maxdepth 1 -type f -print0 2>/dev/null)
+
+  ((removed > 0)) || return 0
+  print_log -sec "wallpaper" -stat "clean" "Removed ${removed} ${label}"
+}
+
+wallpaper_prune_thumb_cache() {
   local thumb_dir="${WALLPAPER_THUMB_DIR}"
   local cache_home="${HYPR_CACHE_HOME}"
-  local removed=0
-  local file base hash
 
   [[ -z "${cache_home}" ]] && cache_home="${XDG_CACHE_HOME:-$HOME/.cache}/hypr"
   [[ -z "${thumb_dir}" ]] && thumb_dir="${cache_home}/wallpaper/thumbs"
-  [[ -d "${thumb_dir}" ]] || return 0
-
-  while IFS= read -r -d '' file; do
-    base="${file##*/}"
-    if [[ "${base}" =~ ^\.?([0-9a-fA-F]+)\.(thmb|sqre|blur|quad)(\.png)?$ ]]; then
-      hash="${BASH_REMATCH[1]}"
-      if [[ -z "${valid_hashes_ref["${hash}"]-}" ]]; then
-        rm -f -- "${file}"
-        removed=$((removed + 1))
-      fi
-    fi
-  done < <(find -H "${thumb_dir}" -maxdepth 1 -type f -print0 2>/dev/null)
-
-  if [[ "${removed}" -gt 0 ]]; then
-    print_log -sec "wallpaper" -stat "clean" "Removed ${removed} stale thumbs"
-  fi
+  wallpaper_prune_unreferenced "$1" "${thumb_dir}" \
+    '^\.?([0-9a-fA-F]+)\.(thmb|sqre|blur|quad)(\.png)?$' "stale thumbs"
 }
 
 wallpaper_prune_png_cache() {
-  local hashset_name="$1"
-  local -n valid_hashes_ref="${hashset_name}"
-  local png_cache_dir="${WALLPAPER_CACHE_DIR}/png_cache"
-  local removed=0
-  local file base hash
-
-  [[ -d "${png_cache_dir}" ]] || return 0
-
-  while IFS= read -r -d '' file; do
-    base="${file##*/}"
-    if [[ "${base}" =~ ^([0-9a-fA-F]+)\.png$ ]]; then
-      hash="${BASH_REMATCH[1]}"
-      if [[ -z "${valid_hashes_ref["${hash}"]-}" ]]; then
-        rm -f -- "${file}"
-        removed=$((removed + 1))
-      fi
-    fi
-  done < <(find -H "${png_cache_dir}" -maxdepth 1 -type f -print0 2>/dev/null)
-
-  if [[ "${removed}" -gt 0 ]]; then
-    print_log -sec "wallpaper" -stat "clean" "Removed ${removed} stale png_cache entries"
-  fi
+  wallpaper_prune_unreferenced "$1" "${WALLPAPER_CACHE_DIR}/png_cache" \
+    '^([0-9a-fA-F]+)\.png$' "stale png_cache entries"
 }
 
 # awww's client re-reads its whole cache dir on every `img`, so a switch pays for
 # cache size; keep the newest entries under a byte budget.
 wallpaper_prune_awww_cache() {
-  local budget="${WALLPAPER_AWWW_CACHE_MB:-64}"
+  local budget_mb="${WALLPAPER_AWWW_CACHE_MB:-64}"
+  local bytes_per_mib=1048576
   local dir
 
-  [[ "${budget}" =~ ^[0-9]+$ ]] || budget=64
+  [[ "${budget_mb}" =~ ^[0-9]+$ ]] || budget_mb=64
   for dir in "${XDG_CACHE_HOME:-$HOME/.cache}"/awww/*/; do
     [[ -d "${dir}" ]] || continue
     find "${dir}" -maxdepth 1 -type f -printf '%T@\t%s\t%p\0' 2>/dev/null \
       | sort -zrn \
-      | awk -v RS='\0' -v ORS='\0' -F'\t' -v b=$((budget * 1048576)) '{t += $2} t > b {print $3}' \
+      | awk -v RS='\0' -v ORS='\0' -F'\t' -v b=$((budget_mb * bytes_per_mib)) '{t += $2} t > b {print $3}' \
       | xargs -0r rm -f --
   done
 }
@@ -202,7 +190,7 @@ wallpaper_prune_loaded_inventory() {
   wallpaper_collect_valid_thumb_hashes valid_thumb_hashes
   wallpaper_collect_valid_png_hashes valid_png_hashes
   wallpaper_prune_thumb_cache valid_thumb_hashes
-  Wall_Prune_Hashmap_Caches
+  wallpaper_prune_hashmap_caches
   wallpaper_prune_png_cache valid_png_hashes
 }
 
@@ -257,7 +245,7 @@ wallpaper_refresh_inventory_and_prune_async() {
   ) &
 }
 
-Wall_Ensure_Thumbs() {
+wallpaper_ensure_thumbs() {
   local ext="${1}"
   [[ -z "${ext}" ]] && ext="sqre"
 
@@ -285,7 +273,7 @@ Wall_Ensure_Thumbs() {
   fi
 }
 
-Wall_Precache_Thumbs() {
+wallpaper_precache_thumbs() {
   local theme_name="${HYPR_THEME}"
 
   [[ "${WALLPAPER_SKIP_PRECACHE:-0}" -eq 1 ]] && return 0
@@ -318,14 +306,14 @@ Wall_Precache_Thumbs() {
   fi
 }
 
-Wall_Clean_Thumbs() {
+wallpaper_clean_thumbs() {
   local -A valid_thumb_hashes=()
   wallpaper_load_inventory_catalog || return 0
   wallpaper_collect_valid_thumb_hashes valid_thumb_hashes
   wallpaper_prune_thumb_cache valid_thumb_hashes
 }
 
-Wall_Prune_Hashmap_Caches() {
+wallpaper_prune_hashmap_caches() {
   local cache_root=""
   cache_root="$(wallpaper_cache_root)"
 

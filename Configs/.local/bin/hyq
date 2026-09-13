@@ -11,6 +11,10 @@ import sys
 from typing import Any
 
 logger = logging.getLogger("hyq")
+VARIABLE_ASSIGNMENT = re.compile(r"\$([A-Za-z_][A-Za-z0-9_-]*)\s*=\s*(.+)")
+SOURCE_DIRECTIVE = re.compile(r"source\s*=\s*(.+)")
+SECTION_START = re.compile(r"([A-Za-z_][A-Za-z0-9_-]*(?:\[[^\]]+\])?)\s*\{")
+KEY_ASSIGNMENT = re.compile(r"([A-Za-z_][A-Za-z0-9_:-]*)\s*=\s*(.+)")
 
 
 class HyprlangParser:
@@ -148,94 +152,64 @@ class HyprlangParser:
             return value["_value"]
         return value
 
-    def parse_file(self, filepath: str, context_stack: list[str] | None = None):
-        if context_stack is None:
-            context_stack = []
-
-        filepath = self.normalize_path(filepath)
-
-        if not os.path.exists(filepath):
-            logger.error(f"File not found: {filepath}")
-            return
-
-        logger.debug(f"Parsing file: {filepath}")
-
-        old_config_dir = self.config_dir
-        self.config_dir = os.path.dirname(filepath)
-
-        with open(filepath, "r") as f:
-            lines = f.readlines()
-
+    def logical_lines(self, filepath: str):
+        with open(filepath) as config_file:
+            lines = config_file.readlines()
         i = 0
         while i < len(lines):
-            line = lines[i]
+            line = self.strip_comment(lines[i]).strip()
             i += 1
-
-            line = self.strip_comment(line)
-            line = line.strip()
-
             if not line:
                 continue
-
             while line.endswith("\\") and i < len(lines):
                 line = line[:-1] + " " + self.strip_comment(lines[i]).strip()
                 i += 1
+            yield line
 
-            var_match = re.match(r"\$([A-Za-z_][A-Za-z0-9_-]*)\s*=\s*(.+)", line)
-            if var_match:
-                var_name = var_match.group(1)
-                var_value = var_match.group(2).strip()
-                var_value = self.resolve_variable(var_value)
-                self.variables[var_name] = var_value
-                logger.debug(f"Variable: ${var_name} = {var_value}")
-                continue
+    def follow_sources(self, value: str, context_stack: list[str]):
+        source_path = self.resolve_variable(value.strip())
+        for source_file in self.resolve_glob(source_path):
+            if os.path.isfile(source_file):
+                logger.debug("Following source: %s", source_file)
+                self.parse_file(source_file, context_stack.copy())
 
-            source_match = re.match(r"source\s*=\s*(.+)", line)
-            if source_match and self.follow_source:
-                source_path = source_match.group(1).strip()
-                source_path = self.resolve_variable(source_path)
+    def parse_line(self, line: str, context_stack: list[str]):
+        if match := VARIABLE_ASSIGNMENT.match(line):
+            name = match.group(1)
+            self.variables[name] = self.resolve_variable(match.group(2).strip())
+            logger.debug("Variable: $%s = %s", name, self.variables[name])
+        elif self.follow_source and (match := SOURCE_DIRECTIVE.match(line)):
+            self.follow_sources(match.group(1), context_stack)
+        elif match := SECTION_START.match(line):
+            context_stack.append(re.sub(r"\[.*?\]", "", match.group(1)))
+            logger.debug("Entering section: %s", ":".join(context_stack))
+        elif line == "}":
+            if context_stack:
+                context_stack.pop()
+                logger.debug(
+                    "Exiting section, now at: %s", ":".join(context_stack) or "root"
+                )
+        elif match := KEY_ASSIGNMENT.match(line):
+            full_path = [*context_stack, match.group(1)]
+            value = self.parse_value(self.resolve_variable(match.group(2).strip()))
+            self.set_nested_value(full_path, value)
+            logger.debug("Config: %s = %s", ":".join(full_path), value)
 
-                source_files = self.resolve_glob(source_path)
-                for src_file in source_files:
-                    if os.path.isfile(src_file):
-                        logger.debug(f"Following source: {src_file}")
-                        self.parse_file(src_file, context_stack[:])
-                continue
+    def parse_file(self, filepath: str, context_stack: list[str] | None = None):
+        filepath = self.normalize_path(filepath)
+        if not os.path.exists(filepath):
+            logger.error("File not found: %s", filepath)
+            return
 
-            section_match = re.match(
-                r"([A-Za-z_][A-Za-z0-9_-]*(?:\[[^\]]+\])?)\s*\{", line
-            )
-            if section_match:
-                section_name = section_match.group(1)
-                section_name = re.sub(r"\[.*?\]", "", section_name)
-                context_stack.append(section_name)
-                logger.debug(f"Entering section: {':'.join(context_stack)}")
-                continue
-
-            if line == "}":
-                if context_stack:
-                    context_stack.pop()
-                    logger.debug(
-                        f"Exiting section, now at: {':'.join(context_stack) or 'root'}"
-                    )
-                continue
-
-            kv_match = re.match(r"([A-Za-z_][A-Za-z0-9_:-]*)\s*=\s*(.+)", line)
-            if kv_match:
-                key = kv_match.group(1)
-                value_str = kv_match.group(2).strip()
-
-                value_str = self.resolve_variable(value_str)
-
-                value = self.parse_value(value_str)
-
-                full_path = context_stack + [key]
-                self.set_nested_value(full_path, value)
-
-                logger.debug(f"Config: {':'.join(full_path)} = {value}")
-                continue
-
-        self.config_dir = old_config_dir
+        logger.debug("Parsing file: %s", filepath)
+        context_stack = context_stack or []
+        previous_config_dir = self.config_dir
+        self.config_dir = os.path.dirname(filepath)
+        try:
+            for line in self.logical_lines(filepath):
+                self.parse_line(line, context_stack)
+        finally:
+            self.config_dir = previous_config_dir
 
     def query(self, query_str: str) -> Any | None:
         if query_str.startswith("$"):
@@ -250,41 +224,28 @@ class HyprlangParser:
 
 class SchemaLoader:
     def __init__(self, schema_path: str):
-        self.schema_path = schema_path
-        self.schema = None
-        self.load_schema()
-
-    def load_schema(self):
-        if not os.path.exists(self.schema_path):
-            logger.error(f"Schema file not found: {self.schema_path}")
+        self.defaults: dict[str, Any] = {}
+        if not os.path.exists(schema_path):
+            logger.error("Schema file not found: %s", schema_path)
             return
 
         try:
-            with open(self.schema_path, "r") as f:
-                self.schema = json.load(f)
-            logger.debug(f"Loaded schema from {self.schema_path}")
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse schema JSON: {e}")
+            with open(schema_path) as schema_file:
+                schema = json.load(schema_file)
+            options = (
+                schema.get("hyprlang_schema", []) if isinstance(schema, dict) else []
+            )
+            self.defaults = {
+                option["value"]: option["data"]["default"]
+                for option in options
+                if "value" in option and "default" in option.get("data", {})
+            }
+            logger.debug("Loaded schema from %s", schema_path)
+        except json.JSONDecodeError as error:
+            logger.error("Failed to parse schema JSON: %s", error)
 
     def get_default(self, key: str) -> Any | None:
-        if not self.schema or "hyprlang_schema" not in self.schema:
-            return None
-
-        for option in self.schema["hyprlang_schema"]:
-            if option.get("value") == key:
-                data = option.get("data", {})
-                if "default" in data:
-                    return data["default"]
-        return None
-
-    def get_type(self, key: str) -> str | None:
-        if not self.schema or "hyprlang_schema" not in self.schema:
-            return None
-
-        for option in self.schema["hyprlang_schema"]:
-            if option.get("value") == key:
-                return option.get("type")
-        return None
+        return self.defaults.get(key)
 
 
 def infer_scalar_type(value: Any) -> str:
@@ -434,7 +395,25 @@ def export_plain(results: list[dict[str, Any]], delimiter: str):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="hyq - A configuration parser for hypr* config files",
+        description="Query hyprlang .conf/.meta files. "
+        "Does not parse the Lua compositor config.",
+        epilog="""query syntax:
+  section:key[TYPE][REGEX]   nested key, optionally filtered
+  $VARIABLE                  hyprlang variable, recursively resolved
+  TYPE  keeps list items inferred as BOOL INT FLOAT COLOR STRING CUSTOM
+  REGEX keeps list items matching it
+
+A repeated key yields a list, printed one item per line; --delimiter joins the
+results of separate -Q flags, not the items within one.
+Exit status is 1 if any query resolved to nothing, unless --allow-missing.
+
+examples:
+  hyq -Q '$CURSOR_THEME' ~/.config/hypr/themes/theme.meta
+  hyq -Q general:lock_cmd ~/.config/hypr/hypridle.conf
+  hyq -Q 'listener:on-timeout[][loginctl]' ~/.config/hypr/hypridle.conf
+  hyq -Q '$FONT' -Q '$CURSOR_SIZE' -D' | ' ~/.config/hypr/themes/theme.meta
+  hyq -s -Q background:path ~/.config/hypr/hyprlock.conf
+""",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 

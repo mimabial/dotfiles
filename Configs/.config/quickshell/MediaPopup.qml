@@ -5,6 +5,7 @@ import Quickshell.Services.Mpris
 import qs.Commons as Commons
 import qs.Ui
 import "cliamp"
+import "MediaModel.js" as MediaModel
 
 PopupCard {
   id: root
@@ -55,28 +56,16 @@ PopupCard {
   property int _preMuteVol: 80
 
   property var historyList: []
-  // played_at is UTC, so the local day has to come from Date, not a string split.
-  // The list is already newest-first, so a run of equal labels is a group.
-  readonly property var historyGroups: {
-    const key = d => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
-    const today = key(new Date()), groups = []
-    for (const item of root.historyList) {
-      const when = new Date(item.played_at || 0)
-      const days = Math.round((today - key(when)) / 86400000)
-      const label = days <= 0 ? "Today" : days === 1 ? "Yesterday"
-        : days < 7 ? when.toLocaleDateString(Qt.locale(), "dddd")
-        : when.toLocaleDateString(Qt.locale(), "d MMMM")
-      if (!groups.length || groups[groups.length - 1].label !== label) groups.push({ label: label, items: [] })
-      groups[groups.length - 1].items.push(item)
-    }
-    return groups
-  }
+  readonly property var historyGroups: MediaModel.historyGroups(root.historyList, Qt.locale())
   property var playlistsList: []
   property var queueItems: []
   property string queueSource: "cliamp"
   // a binding, not a snapshot: displayQueue folds in live playback state, so the
   // list has to re-render when that state lands rather than only on a queue read
-  readonly property var queueList: root.displayQueue(root.queueSource, root.queueItems)
+  readonly property var queueList: MediaModel.displayQueue(root.queueSource, root.queueItems, {
+    state: root.playbackState, title: root.currentTrack, artist: root.currentArtist,
+    url: root.currentUrl, art: root.artPath
+  })
   // one Process backs runCmd, so a command issued alongside another has to wait
   // for it rather than replace it
   property var pendingCmds: []
@@ -88,7 +77,7 @@ PopupCard {
     const index = ({})
     for (const pl of root.playlistsList)
       if (pl.name === "Liked")
-        for (const track of pl.tracks || []) index[root.likeKey(track.url, track.title, track.artist)] = true
+        for (const track of pl.tracks || []) index[MediaModel.likeKey(track.url, track.title, track.artist)] = true
     return index
   }
   property var likedOverrides: ({})
@@ -153,19 +142,12 @@ PopupCard {
   property string plImportError: ""
   readonly property var mprisPlayer: {
     const candidate = Media.player
-    return candidate && !root.isCliampPlayer(candidate) ? candidate : null
+    return candidate && !MediaModel.isCliampPlayer(candidate) ? candidate : null
   }
   readonly property bool externalMedia: mprisPlayer !== null
 
-  function isCliampPlayer(candidate) {
-    const key = candidate ? String(candidate.dbusName || candidate.identity || "").toLowerCase() : ""
-    return key.includes(".mpv.cliamp") || key === "cliamp"
-  }
-
   function artSource(path) {
-    const value = String(path || "").replace("/hqdefault.jpg", "/mqdefault.jpg")
-    return value.indexOf("http://") === 0 || value.indexOf("https://") === 0 || value.indexOf("file://") === 0
-      ? value : (value ? "file://" + value : "")
+    return MediaModel.artSource(path)
   }
 
   function syncMpris() {
@@ -330,106 +312,21 @@ PopupCard {
     statusProc.running = true
   }
 
-  function togglePlayback() {
-    const p = root.mprisPlayer
-    if (p) {
-      if (p.isPlaying && p.canPause) p.pause()
-      else if (!p.isPlaying && p.canPlay) p.play()
-      else if (p.canTogglePlaying) p.togglePlaying()
-      Media.select(p)
-      root.syncMpris()
-      return
-    }
-    root.playbackState = (root.playbackState === "playing") ? "paused" : "playing"
-    runCmd(["toggle"])
-  }
-  function play() {
-    const p = root.mprisPlayer
-    if (p) { if (p.canPlay) p.play(); Media.select(p); root.syncMpris(); return }
-    root.playbackState = "playing"
-    runCmd(["play"])
-  }
-  function pause() {
-    const p = root.mprisPlayer
-    if (p) { if (p.canPause) p.pause(); Media.select(p); root.syncMpris(); return }
-    root.playbackState = "paused"
-    runCmd(["pause"])
-  }
-  function stop() {
-    const p = root.mprisPlayer
-    if (p) { if (p.canControl) p.stop(); Media.select(p); root.syncMpris(); return }
-    root.playbackState = "stopped"
-    runCmd(["stop"])
-  }
-  function nextTrack() {
-    const p = root.mprisPlayer
-    if (p) { if (p.canGoNext) p.next(); Media.select(p); return }
-    runCmd(["next"])
-  }
-  function prevTrack() {
-    const p = root.mprisPlayer
-    if (p) { if (p.canGoPrevious) p.previous(); Media.select(p); return }
-    runCmd(["prev"])
-  }
-  function toggleShuffle() {
-    const p = root.mprisPlayer
-    if (p) { if (p.shuffleSupported) p.shuffle = !p.shuffle; return }
-    runCmd(["shuffle"])
-  }
-  function cycleRepeat() {
-    const p = root.mprisPlayer
-    if (p) {
-      if (p.loopSupported) p.loopState = p.loopState === MprisLoopState.None
-        ? MprisLoopState.Track : p.loopState === MprisLoopState.Track
-          ? MprisLoopState.Playlist : MprisLoopState.None
-      return
-    }
-    runCmd(["repeat"])
-  }
+  MediaControls { id: mediaControls; controller: root; media: Media }
 
-  function adjustVolume(delta) {
-    setVolume(Math.max(0, Math.min(100, root.volumePct + delta)))
-  }
-
-  function setVolume(pct) {
-    root.volumePct = pct
-    const p = root.mprisPlayer
-    if (p) { if (p.volumeSupported) p.volume = pct / 100; return }
-    liveCmd(["volume_pct", String(pct)])
-  }
-
-  function toggleMute() {
-    if (root.volumePct > 0) {
-      root._preMuteVol = root.volumePct
-      setVolume(0)
-    } else {
-      var target = (root._preMuteVol && root._preMuteVol > 0) ? root._preMuteVol : 80
-      setVolume(target)
-    }
-  }
-
-  function seekTo(sec) {
-    const p = root.mprisPlayer
-    if (p) {
-      if (p.canSeek && p.positionSupported) {
-        p.position = sec
-        root.applyMprisPosition(sec)
-      }
-      return
-    }
-    liveCmd(["seek", String(sec)])
-  }
-  function cycleSpeed() {
-    var speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0]
-    var cur = root.playbackSpeed
-    var idx = 0
-    for (var i = 0; i < speeds.length; i++) { if (Math.abs(speeds[i] - cur) < 0.05) { idx = i; break } }
-    var next = speeds[(idx + 1) % speeds.length]
-    root.playbackSpeed = next
-    const p = root.mprisPlayer
-    if (p) { p.rate = Math.max(p.minRate, Math.min(p.maxRate, next)); return }
-    runCmd(["speed", String(next)])
-  }
+  function togglePlayback() { mediaControls.togglePlayback() }
+  function play() { mediaControls.play() }
+  function pause() { mediaControls.pause() }
+  function stop() { mediaControls.stop() }
+  function nextTrack() { mediaControls.nextTrack() }
+  function prevTrack() { mediaControls.prevTrack() }
+  function toggleShuffle() { mediaControls.toggleShuffle() }
+  function cycleRepeat() { mediaControls.cycleRepeat() }
+  function adjustVolume(delta) { mediaControls.adjustVolume(delta) }
+  function setVolume(percent) { mediaControls.setVolume(percent) }
+  function toggleMute() { mediaControls.toggleMute() }
+  function seekTo(seconds) { mediaControls.seekTo(seconds) }
+  function cycleSpeed() { mediaControls.cycleSpeed() }
   function setEq(preset) {
     root.eqText = preset
     runCmd(["set_eq", preset])
@@ -552,12 +449,7 @@ PopupCard {
   }
 
   function queueContext() {
-    if (root.queueOverride) return root.queueOverride
-    const p = root.mprisPlayer
-    const key = p ? String(p.dbusName || p.identity || "").toLowerCase() : ""
-    if (key.indexOf("mpd") !== -1) return "mpd"
-    const url = p ? String((p.metadata || ({ }))["xesam:url"] || "") : ""
-    return url.indexOf("list=") !== -1 && (url.indexOf("youtube.com/") !== -1 || url.indexOf("youtu.be/") !== -1) ? url : ""
+    return MediaModel.queueContext(root.queueOverride, root.mprisPlayer)
   }
 
   function loadFiles(rel) {
@@ -575,13 +467,6 @@ PopupCard {
     // dropping the reload leaves the panel showing rows the store no longer has
     if (queueProc.running) { root.queueReloadPending = true; return }
     startQueueLoad()
-  }
-
-  function displayQueue(source, items) {
-    const queue = (items || []).map((item, index) => Object.assign({ queueIndex: index }, item))
-    if (source !== "cliamp" || root.playbackState === "stopped" || root.currentTrack === "No track loaded") return queue
-    return [{ current: true, queueIndex: -1, url: root.currentUrl, title: root.currentTrack,
-      artist: root.currentArtist, thumb: root.artPath }].concat(queue)
   }
 
   function playQueueItem(item, index) {
@@ -653,14 +538,8 @@ PopupCard {
 
   // Mirrors liked_key() in cliamp_ctl.py: a real target identifies the song, and the
   // title/artist pair stands in for search strings that never resolved to a url.
-  function likeKey(url, title, artist) {
-    const target = String(url || "").trim()
-    return target ? "url:" + target
-      : "meta:" + String(title || "").trim().toLowerCase() + "::" + String(artist || "").trim().toLowerCase()
-  }
-
   function isLiked(url, title, artist) {
-    const key = root.likeKey(url, title, artist)
+    const key = MediaModel.likeKey(url, title, artist)
     return key in root.likedOverrides ? root.likedOverrides[key] : root.likedIndex[key] === true
   }
 
@@ -669,7 +548,7 @@ PopupCard {
   function toggleLikeFor(url, title, artist) {
     if (!String(url || "").trim() && (!title || title === "No track loaded")) return
     const overrides = Object.assign({}, root.likedOverrides)
-    overrides[root.likeKey(url, title, artist)] = !root.isLiked(url, title, artist)
+    overrides[MediaModel.likeKey(url, title, artist)] = !root.isLiked(url, title, artist)
     root.likedOverrides = overrides
     root._likeDirty = true
     runCmd(["toggle_liked", url || "", title || "", artist || ""])

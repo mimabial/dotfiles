@@ -48,8 +48,7 @@ call.
 | `winbar` | `winbar` | bottom | compact three-section bar |
 
 The dock in `dock/` is not a layout: it is a separate bottom-edge panel that
-runs alongside whichever bar layout is active, the way `expose/` does. See
-`dock/README.md`.
+runs alongside whichever bar layout is active, the way `expose/` does.
 
 Each layout declares `panel` and `edge`; names have no special behavior.
 `vertical` accepts left/right edges and a `modules` array. `horizontal` and

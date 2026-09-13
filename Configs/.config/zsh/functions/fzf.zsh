@@ -461,7 +461,7 @@ _fuzzy_edit_search_file() {
         if command -v "$EDITOR" &>/dev/null; then
             "$EDITOR" "$selected_file"
         else
-            echo "EDITOR is not specified. using vim.  (you can export EDITOR in ~/.zshrc)"
+            echo "EDITOR is not specified. using nvim.  (you can export EDITOR in $ZDOTDIR/.zshrc)"
             nvim "$selected_file"
         fi
     else

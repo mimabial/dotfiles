@@ -3,7 +3,10 @@ set -euo pipefail
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash"
 
 usage() {
-  printf 'usage: %s [list|select|next|previous|set NAME]\n' "$0"
+  cat <<EOF
+Usage: $0 [list|select|next|previous|set NAME]
+Show or change the active Quickshell bar layout.
+EOF
 }
 
 case "${1:-}" in

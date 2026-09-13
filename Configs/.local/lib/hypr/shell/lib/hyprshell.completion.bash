@@ -3,22 +3,6 @@
 
 declare -ga HYPR_COMPLETION_BUILTINS=()
 
-completion_builtin_commands() {
-  if declare -F hyprshell_builtin_commands >/dev/null 2>&1; then
-    hyprshell_builtin_commands
-    return 0
-  fi
-
-  printf '%s\n' \
-    "--help" "help" "-h" \
-    "-r" "reload" \
-    "--version" "version" "-v" \
-    "--release-notes" "release-notes" \
-    "--list-script" "--list-script-path" \
-    "--completions" \
-    "pyinit" "init" "lock-session" "logout" "pip" "pypr" "app"
-}
-
 completion_join_space() {
   local -n values_ref="$1"
   printf '%s' "${values_ref[*]}"
@@ -34,7 +18,7 @@ completion_quote_zsh_array() {
 }
 
 get_completion_data() {
-  mapfile -t HYPR_COMPLETION_BUILTINS < <(completion_builtin_commands)
+  mapfile -t HYPR_COMPLETION_BUILTINS < <(hyprshell_builtin_commands)
 }
 
 gen_bash_completion() {

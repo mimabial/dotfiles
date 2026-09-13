@@ -25,6 +25,7 @@ workflow_locked() {
 show_help() {
   cat <<HELP
 Usage: $0 [OPTIONS]
+Switch the active workflow profile, or report the one the bar should show.
 
 Options:
     --select | -S       Select a workflow from the available options

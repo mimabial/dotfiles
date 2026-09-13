@@ -237,6 +237,68 @@ function windowAddress(handle) {
   return "0x" + value
 }
 
+function luaString(value) {
+  return String(value == null ? "" : value).replace(/\\/g, "\\\\").replace(/"/g, '\\"')
+}
+
+function windowByAddress(windows, address, isParked) {
+  if (!address) return null
+  for (var i = 0; i < windows.length; i++) {
+    var window = windows[i]
+    if (window && window.address === address) return isParked(window) ? null : window
+  }
+  return null
+}
+
+function windowsByParkedState(windows, isParked, parked) {
+  var result = []
+  for (var i = 0; i < windows.length; i++)
+    if (windows[i] && isParked(windows[i]) === parked) result.push(windows[i])
+  return result
+}
+
+function focusedIndex(windows, activeAddress) {
+  if (!activeAddress) return -1
+  for (var i = 0; i < windows.length; i++)
+    if (windows[i] && windows[i].address === activeAddress) return i
+  return -1
+}
+
+function windowOnWorkspace(windows, workspaceOf, workspaceId, workspaceName) {
+  for (var i = 0; i < windows.length; i++) {
+    var workspace = workspaceOf(windows[i])
+    if (windows[i] && (workspace === String(workspaceId) || workspace === workspaceName)) return windows[i]
+  }
+  return null
+}
+
+function stepWindow(windows, direction, activeAddress) {
+  if (windows.length < 2) return windows[0] || null
+  var step = direction < 0 ? -1 : 1, at = focusedIndex(windows, activeAddress)
+  return at < 0 ? windows[step > 0 ? 0 : windows.length - 1]
+    : windows[(at + step + windows.length) % windows.length]
+}
+
+function oldestWindow(windows, timestamps) {
+  if (windows.length < 2) return windows[0] || null
+  var oldest = windows[0], oldestAt = timestamps[oldest.address] || 0
+  for (var i = 1; i < windows.length; i++) {
+    var parkedAt = timestamps[windows[i].address] || 0
+    if (parkedAt < oldestAt) {
+      oldest = windows[i]
+      oldestAt = parkedAt
+    }
+  }
+  return oldest
+}
+
+function workspaceLabel(name) {
+  var value = String(name || "")
+  if (value.indexOf("special:") !== 0) return value
+  var suffix = value.slice(8)
+  return suffix ? suffix.charAt(0).toUpperCase() : ""
+}
+
 // isMinimizedWs: predicate over a workspace name. Each parked window gets its
 // own special workspace, so there is no single name to compare against.
 function buildEntries(pinnedIds, toplevels, appRows, appLibrary, hyprFor, isMinimizedWs, minimizedOrigins) {

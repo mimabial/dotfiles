@@ -1,8 +1,4 @@
 #!/usr/bin/env bash
-#
-# Subsystem inputs (populated by core/wallpaper.catalog.sh:get_themes):
-#   thmList, thmWall
-: "${thmList-}" "${thmWall-}"
 
 LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 
@@ -206,11 +202,7 @@ show_style_selector() {
 
   selection="$(
     list_style_menu_entries | rofi -dmenu -i \
-      -sync \
-      -no-custom \
-      -hover-select \
-      -me-select-entry "" \
-      -me-accept-entry MousePrimary \
+      "${ROFI_MOUSE_SELECT_ARGS[@]}" \
       -theme "$(rofi_resolve_theme "${ROFI_THEME_MENU_STYLE:-theme_select}")" \
       -theme-str "${font_override}" \
       -theme-str "${layout_override}" \
@@ -276,8 +268,10 @@ resolve_theme_selector_style() {
       "${THEME_SELECTOR_PREVIEW_ICON_OFFSET}"
   )
 
-  elm_width=$(((16 + 12) * font_scale * 2))
-  elm_height=$(((16 + 4) * font_scale * 2))
+  local elm_width_em=$((16 + 12))
+  local elm_height_em=$((16 + 4))
+  elm_width=$((elm_width_em * font_scale * ROFI_EM_PX_PER_SCALE))
+  elm_height=$((elm_height_em * font_scale * ROFI_EM_PX_PER_SCALE))
 
   case "${theme_style}" in
     2 | quad)
@@ -337,11 +331,7 @@ show_theme_selector() {
 
   selection="$(
     theme_menu_entries "${thmb_extn}" | rofi -dmenu -i \
-      -sync \
-      -no-custom \
-      -hover-select \
-      -me-select-entry "" \
-      -me-accept-entry MousePrimary \
+      "${ROFI_MOUSE_SELECT_ARGS[@]}" \
       -theme "$(rofi_resolve_theme "${rofi_theme_name}")" \
       -theme-str "${font_override}" \
       -theme-str "${layout_override}" \

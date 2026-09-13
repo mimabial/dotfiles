@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
 # Fixed-point milli arithmetic used by font, geometry, and wallpaper helpers.
+ROFI_MILLI=1000
 
 rofi_decimal_milli() {
   local value="${1:-0}"
@@ -18,7 +19,7 @@ rofi_decimal_milli() {
     fraction="${fraction:0:3}"
   fi
 
-  milli=$((10#${whole} * 1000 + 10#${fraction}))
+  milli=$((10#${whole} * ROFI_MILLI + 10#${fraction}))
   [[ -n "${sign}" ]] && milli=$((-milli))
   printf '%s\n' "${milli}"
 }
@@ -49,9 +50,9 @@ rofi_mul_milli() {
 
   product=$((left_milli * right_milli))
   if ((product >= 0)); then
-    printf '%s\n' $(((product + 500) / 1000))
+    printf '%s\n' $(((product + ROFI_MILLI / 2) / ROFI_MILLI))
   else
-    printf '%s\n' $(((product - 500) / 1000))
+    printf '%s\n' $(((product - ROFI_MILLI / 2) / ROFI_MILLI))
   fi
 }
 
@@ -66,7 +67,7 @@ rofi_divide_milli() {
   ((divisor_milli != 0)) || return 1
 
   abs_divisor=$((divisor_milli < 0 ? -divisor_milli : divisor_milli))
-  scaled_dividend=$((dividend_milli * 1000))
+  scaled_dividend=$((dividend_milli * ROFI_MILLI))
   if ((scaled_dividend >= 0)); then
     printf '%s\n' $(((scaled_dividend + (abs_divisor / 2)) / divisor_milli))
   else

@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-: "${thmWall-}" "${selected_color_source-}" "${selected_color_mode-}"
 
 set -euo pipefail
 

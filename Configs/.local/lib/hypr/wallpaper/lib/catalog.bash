@@ -104,7 +104,7 @@ wallpaper_catalog_write_runtime_cache() {
   wallpaper_catalog_replace_if_changed "${tmp_cache}" "${cache_file}"
 }
 
-Wall_Hashmap_Cached_into() {
+wallpaper_hashmap_cached_into() {
   local hash_name="$1"
   local list_name="$2"
   shift 2
@@ -166,10 +166,10 @@ Wall_Hashmap_Cached_into() {
   wallpaper_catalog_replace_if_changed "${tmp_cache}" "${cache_file}"
 }
 
-Wall_Hashmap_Cached() {
+wallpaper_hashmap_cached() {
   wallHashByPath=()
   wallList=()
-  Wall_Hashmap_Cached_into wallHashByPath wallList "$@"
+  wallpaper_hashmap_cached_into wallHashByPath wallList "$@"
 }
 
 wallpaper_catalog_load_file() {
@@ -182,7 +182,7 @@ wallpaper_catalog_load_file() {
   setIndex=0
 }
 
-Wall_List_into() {
+wallpaper_list_into() {
   local list_name="$1"
   shift
   local -n list_ref="${list_name}"
@@ -215,13 +215,13 @@ Wall_List_into() {
   [[ ${#list_ref[@]} -gt 0 ]]
 }
 
-Wall_List() {
+wallpaper_list() {
   wallHashByPath=()
   wallList=()
-  Wall_List_into wallList "$@"
+  wallpaper_list_into wallList "$@"
 }
 
-Wall_Hash() {
+wallpaper_ensure_catalog() {
   [[ ${#wallList[@]} -gt 0 ]] && return 0
 
   setIndex=0
@@ -230,7 +230,7 @@ Wall_Hash() {
     exit 1
   fi
 
-  if ! Wall_List "${wallPathArray[@]}"; then
+  if ! wallpaper_list "${wallPathArray[@]}"; then
     print_log -err "wallpaper" "No compatible wallpapers found in theme paths"
     exit 1
   fi

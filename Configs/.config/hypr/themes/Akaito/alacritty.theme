@@ -1,11 +1,11 @@
 $HOME/.config/alacritty/theme.toml
 
 [colors.primary]
-background = "#f3e4cb"
+background = "#dfd2c4"
 foreground = "#4d2e1a"
 
 [colors.cursor]
-text = "#f3e4cb"
+text = "#dfd2c4"
 cursor = "#4d2e1a"
 
 [colors.selection]
@@ -13,7 +13,7 @@ text = "#4d2e1a"
 background = "#a32f1a"
 
 [colors.normal]
-black = "#f3e4cb"
+black = "#dfd2c4"
 red = "#a4373c"
 green = "#a46d2d"
 yellow = "#a8611f"

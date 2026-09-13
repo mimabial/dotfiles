@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+[[ "${1:-}" == -h || "${1:-}" == --help ]] && { printf 'Usage: %s COMMAND [ARG...]\n' "${0##*/}"; exit; }
+[[ $# -gt 0 ]] || { printf 'Usage: %s COMMAND [ARG...]\n' "${0##*/}" >&2; exit 2; }
 exec env __NV_PRIME_RENDER_OFFLOAD=1 \
   __GLX_VENDOR_LIBRARY_NAME=nvidia \
   __VK_LAYER_NV_optimus=NVIDIA_only \

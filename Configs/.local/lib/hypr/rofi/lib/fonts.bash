@@ -88,7 +88,7 @@ rofi_length_em_to_px() {
   em_milli="$(rofi_decimal_milli "${em_value}")" || return 1
   font_milli="$(rofi_decimal_milli "${font_px}")" || return 1
   px_milli="$(rofi_mul_milli "${em_milli}" "${font_milli}")" || return 1
-  printf '%s\n' $(((px_milli + 500) / 1000))
+  printf '%s\n' $(((px_milli + ROFI_MILLI / 2) / ROFI_MILLI))
 }
 
 rofi_font_text_height_px() {

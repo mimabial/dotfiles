@@ -28,7 +28,7 @@ undocking sort themselves out.
 There is a graphical display editor — a standalone Quickshell panel, not part of
 the bar. Drag monitors around a canvas to set their relative positions, change
 resolution, scale, refresh rate and rotation, and see the result before you
-commit it. It has its own `README.md` and its own `settings.json`.
+commit it.
 
 ## Quick toggles
 

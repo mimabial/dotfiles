@@ -27,8 +27,10 @@ percent=0
 swap_percent=0
 ((swap_total_kb > 0)) && swap_percent=$(((swap_used_kb * 100 + swap_total_kb / 2) / swap_total_kb))
 
+KIB_PER_GIB=1048576
+
 gb() {
-  local tenths=$(((${1:-0} * 10 + 524288) / 1048576))
+  local tenths=$(((${1:-0} * 10 + KIB_PER_GIB / 2) / KIB_PER_GIB))
   printf '%d.%d GB' "$((tenths / 10))" "$((tenths % 10))"
 }
 

@@ -72,18 +72,22 @@ def mode_align(description):
         layout.set_text(text, -1)
         return layout.get_pixel_size()[0]
 
-    rows = [(flag == "1", label) for flag, _, label in
-            (line.partition("\t") for line in sys.stdin.read().splitlines())]
+    rows = []
+    for line in sys.stdin.read().splitlines():
+        fields = line.split("\t", 2)
+        if len(fields) < 2:
+            continue
+        rows.append((fields[0] == "1", fields[1], fields[2] if len(fields) > 2 and fields[2] else glyph))
     space = width(" ")
     if not rows or space <= 0:
         sys.exit(1)
 
-    glyph_width = width(glyph)
-    edge = max(width(label) for _, label in rows) + 2 * space + glyph_width
+    glyph_width = max((width(row_glyph) for flagged, _, row_glyph in rows if flagged), default=width(glyph))
+    edge = max(width(label) for _, label, _ in rows) + 2 * space + glyph_width
     target = int(os.environ.get("TARGET_PX", "0") or 0)
     edge += max(0, (target - edge) // space) * space
-    for flagged, label in rows:
-        print(label + " " * max(1, round((edge - glyph_width - width(label)) / space)) + glyph
+    for flagged, label, row_glyph in rows:
+        print(label + " " * max(1, round((edge - glyph_width - width(label)) / space)) + row_glyph
               if flagged else label)
 
 

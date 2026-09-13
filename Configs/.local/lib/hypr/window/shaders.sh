@@ -18,6 +18,7 @@ compiled_shader_file="${shaders_cache_dir}/compiled.cache.glsl"
 show_help() {
   cat <<HELP
 Usage: $0 [OPTIONS]
+Select, set or reload the active screen shader.
 
 Options:
     --select | -S       Select a shader from the available options

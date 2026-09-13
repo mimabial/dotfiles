@@ -48,7 +48,7 @@ main() {
   wallpaper_refresh_inventory_if_needed
   handle_wallpaper_action
   wallpaper_apply_backend
-  Wall_Precache_Thumbs
+  wallpaper_precache_thumbs
   wallpaper_notify_result
 }
 

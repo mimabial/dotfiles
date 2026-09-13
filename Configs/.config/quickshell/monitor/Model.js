@@ -1,3 +1,18 @@
+function emptyDocument() {
+  return { profiles: [], monitors: [], daemon: { running: false } }
+}
+
+function emptyProfile() {
+  return { outputs: [], workspaces: {} }
+}
+
+function emptyEditorDocument() {
+  return {
+    profile: emptyProfile(), profiles: [], displays: [], workspace_plan: [],
+    profile_workspace_plans: {}
+  }
+}
+
 function parseEnvelope(raw) {
   try {
     var value = JSON.parse(String(raw || ""))

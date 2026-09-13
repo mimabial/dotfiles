@@ -9,6 +9,7 @@ fi
 show_help() {
   cat <<EOT
 Usage: $(basename "$0") <command> [options]
+Set, rotate, cache and pick the desktop wallpaper.
 
 Commands:
     json                      List wallpapers in JSON format
@@ -57,8 +58,8 @@ wallpaper_catalog_prepare_runtime() {
     return 2
   fi
 
-  Wall_Hashmap_Cached "${wallPathArray[@]}" || return 1
-  [[ "${ensure_thumbs}" -eq 1 ]] && Wall_Ensure_Thumbs "sqre"
+  wallpaper_hashmap_cached "${wallPathArray[@]}" || return 1
+  [[ "${ensure_thumbs}" -eq 1 ]] && wallpaper_ensure_thumbs "sqre"
   return 0
 }
 
@@ -131,7 +132,7 @@ wallpaper_catalog_emit_and_cache_json() {
   cat "${json_cache}"
 }
 
-Wall_Json() (
+wallpaper_json() (
   local ensure_thumbs=0
   local cache_home=""
   local cache_file=""
@@ -168,8 +169,8 @@ wallpaper_select_monitor_geometry() {
 wallpaper_select_theme_override() {
   local font_scale="$1"
   local font_name="$2"
-  local mon_x_res=""
-  local mon_y_res=""
+  local mon_x_res_px=""
+  local mon_y_res_px=""
   local border_radius=0
   local elem_border=0
   local elm_width=0
@@ -177,6 +178,7 @@ wallpaper_select_theme_override() {
   local col_count=0
   local icon_em=33
   local max_icon_em=0
+  local row_chrome_em=7
   local em_px=""
   local em_px_milli=""
   local mon_scale_milli=1000
@@ -185,9 +187,9 @@ wallpaper_select_theme_override() {
   border_radius="${HYPR_RUNTIME_BORDER_RADIUS:-${HYPR_BORDER_RADIUS:-0}}"
   [[ "${border_radius}" =~ ^[0-9]+$ ]] || border_radius=0
   elem_border=$((border_radius * 2))
-  read -r mon_x_res mon_y_res < <(wallpaper_select_monitor_geometry)
+  read -r mon_x_res_px mon_y_res_px < <(wallpaper_select_monitor_geometry)
   elm_width=$(((16 + 8 + 5) * font_scale))
-  max_avail=$((mon_x_res - (4 * font_scale)))
+  max_avail=$((mon_x_res_px - (4 * font_scale)))
   col_count=$((max_avail / elm_width))
 
   scale_json="$(hyprctl monitors -j 2>/dev/null | jq -r '[.[] | select(.focused==true)][0].scale // 1' 2>/dev/null)"
@@ -212,7 +214,7 @@ wallpaper_select_theme_override() {
   em_px="$(rofi_font_text_height_px "${font_name}" "${font_scale}" 2>/dev/null || true)"
   em_px_milli="$(rofi_decimal_milli "${em_px}" 2>/dev/null || true)"
   if [[ "${em_px_milli}" =~ ^[1-9][0-9]*$ ]]; then
-    max_icon_em=$(((mon_y_res * 1000 / em_px_milli) - 7))
+    max_icon_em=$(((mon_y_res_px * ROFI_MILLI / em_px_milli) - row_chrome_em))
     if ((max_icon_em >= 8)) && ((icon_em > max_icon_em)); then
       icon_em="${max_icon_em}"
     fi
@@ -287,12 +289,12 @@ wallpaper_rofi_entries() {
   jq -r '.[] | "\(.basename):::\(.path):::\(.sqre)\u0000icon\u001f\(.sqre)"' "${wall_json_file}"
 }
 
-Wall_Select() {
+wallpaper_pick() {
   local font_scale="" font_name="" selected_entry="" wall_json_file="" selected_row="" rofi_status=0
   wall_json_file="$(mktemp)"
   font_scale="$(rofi_effective_font_scale "${ROFI_WALLPAPER_SCALE}")"
   font_name="$(rofi_effective_font_name "${ROFI_WALLPAPER_FONT:-$ROFI_FONT}")"
-  Wall_Json --ensure-thumbs >"${wall_json_file}"
+  wallpaper_json --ensure-thumbs >"${wall_json_file}"
   selected_row="$(wallpaper_selected_row "${wall_json_file}")"
   local -a rofi_args
   wallpaper_select_rofi_args "${font_scale}" "${font_name}" "${selected_row}"

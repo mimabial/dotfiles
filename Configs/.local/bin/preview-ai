@@ -9,9 +9,6 @@ SPLIT_PERCENT="${PREVIEW_AI_SPLIT_PERCENT:-45}"
 POPUP_WIDTH="${PREVIEW_AI_POPUP_WIDTH:-80%}"
 POPUP_HEIGHT="${PREVIEW_AI_POPUP_HEIGHT:-80%}"
 PREVIEW_BIN="${PREVIEW_BIN:-$HOME/.local/bin/preview}"
-AUTO_CLOSE_AFTER=""
-USE_POPUP=0
-FORCE_INTERACTIVE=0
 
 usage() {
   cat <<'EOF'
@@ -44,21 +41,21 @@ shell_join() {
 }
 
 current_window_target() {
-  tmux display-message -p -t "${CALLER_PANE}" '#{session_name}:#{window_index}'
+  tmux display-message -p -t "$1" '#{session_name}:#{window_index}'
 }
 
 current_pane_path() {
-  tmux display-message -p -t "${CALLER_PANE}" '#{pane_current_path}'
+  tmux display-message -p -t "$1" '#{pane_current_path}'
 }
 
 find_preview_pane() {
-  tmux list-panes -t "$(current_window_target)" -F "#{pane_id}\t#{pane_title}" 2>/dev/null \
+  tmux list-panes -t "$(current_window_target "$1")" -F "#{pane_id}\t#{pane_title}" 2>/dev/null \
     | awk -F '\t' -v title="${PREVIEW_TITLE}" '$2 == title { print $1; exit }'
 }
 
 cleanup_preview_pane() {
-  local pane_id="${1:-}"
-  [[ -n "${pane_id}" && "${pane_id}" != "${CALLER_PANE}" ]] || return 0
+  local caller_pane="$1" pane_id="${2:-}"
+  [[ -n "${pane_id}" && "${pane_id}" != "${caller_pane}" ]] || return 0
   tmux kill-pane -t "${pane_id}" >/dev/null 2>&1 || true
 }
 
@@ -94,12 +91,13 @@ detect_type() {
 }
 
 repo_kind() {
-  if have jj && (cd "${START_DIR}" && jj root >/dev/null 2>&1); then
+  local start_dir="$1"
+  if have jj && (cd "${start_dir}" && jj root >/dev/null 2>&1); then
     printf 'jj\n'
     return 0
   fi
 
-  if have git && (cd "${START_DIR}" && git rev-parse --is-inside-work-tree >/dev/null 2>&1); then
+  if have git && (cd "${start_dir}" && git rev-parse --is-inside-work-tree >/dev/null 2>&1); then
     printf 'git\n'
     return 0
   fi
@@ -108,139 +106,111 @@ repo_kind() {
 }
 
 payload_path() {
-  local suffix="${1}"
-  printf '%s/payload.%s\n' "${RUNTIME_DIR}" "${suffix}"
+  printf '%s/payload.%s\n' "$1" "$2"
 }
 
 preview_existing_path() {
-  local path="${1}"
-  COMMAND="$(shell_join "${PREVIEW_BIN}" "${path}")"
+  shell_join "${PREVIEW_BIN}" "$1"
 }
 
 preview_inline_content() {
-  local suffix="$1"
-  shift
+  local runtime_dir="$1" suffix="$2"
+  shift 2
   local path=""
 
-  path="$(payload_path "${suffix}")"
+  path="$(payload_path "${runtime_dir}" "${suffix}")"
   printf '%s\n' "$*" > "${path}"
   preview_existing_path "${path}"
 }
 
 build_diff_command() {
-  local mode="$1"
-  shift
-  local repo=""
-  local joined_args=""
-  local diff_file=""
+  local mode="$1" start_dir="$2" runtime_dir="$3"
+  shift 3
+  local repo joined_args diff_file=""
 
-  repo="$(repo_kind)"
+  repo="$(repo_kind "${start_dir}")"
   [[ "${repo}" != "none" ]] || die "preview-ai diff requires a git or jj repo"
   joined_args="$(shell_join "$@")"
 
-  case "${repo}" in
-    jj)
-      if [[ "${mode}" == "interactive" ]]; then
-        diff_file="${RUNTIME_DIR}/diff.patch"
-        COMMAND="cd $(shell_join "${START_DIR}") && env PAGER=cat jj diff ${joined_args} > $(shell_join "${diff_file}") && nvim -R '+setlocal ft=diff nomodifiable' $(shell_join "${diff_file}")"
-        INTERACTIVE=1
-      else
-        COMMAND="cd $(shell_join "${START_DIR}") && env PAGER=cat jj diff ${joined_args}"
-      fi
+  case "${repo}:${mode}" in
+    jj:interactive)
+      diff_file="${runtime_dir}/diff.patch"
+      printf "cd %s && env PAGER=cat jj diff %s > %s && nvim -R '+setlocal ft=diff nomodifiable' %s\n" \
+        "$(shell_join "${start_dir}")" "${joined_args}" "$(shell_join "${diff_file}")" "$(shell_join "${diff_file}")"
       ;;
-    git)
-      if [[ "${mode}" == "interactive" ]]; then
-        diff_file="${RUNTIME_DIR}/diff.patch"
-        COMMAND="cd $(shell_join "${START_DIR}") && git --no-pager diff --no-ext-diff ${joined_args} > $(shell_join "${diff_file}") && nvim -R '+setlocal ft=diff nomodifiable' $(shell_join "${diff_file}")"
-        INTERACTIVE=1
-      else
-        COMMAND="cd $(shell_join "${START_DIR}") && git --no-pager diff --color=always --no-ext-diff ${joined_args}"
-      fi
+    jj:plain)
+      printf 'cd %s && env PAGER=cat jj diff %s\n' "$(shell_join "${start_dir}")" "${joined_args}"
+      ;;
+    git:interactive)
+      diff_file="${runtime_dir}/diff.patch"
+      printf "cd %s && git --no-pager diff --no-ext-diff %s > %s && nvim -R '+setlocal ft=diff nomodifiable' %s\n" \
+        "$(shell_join "${start_dir}")" "${joined_args}" "$(shell_join "${diff_file}")" "$(shell_join "${diff_file}")"
+      ;;
+    git:plain)
+      printf 'cd %s && git --no-pager diff --color=always --no-ext-diff %s\n' "$(shell_join "${start_dir}")" "${joined_args}"
       ;;
   esac
 }
 
 build_log_command() {
-  local repo=""
-  local joined_args=""
+  local start_dir="$1" repo joined_args
+  shift
 
-  repo="$(repo_kind)"
+  repo="$(repo_kind "${start_dir}")"
   [[ "${repo}" != "none" ]] || die "preview-ai log requires a git or jj repo"
   joined_args="$(shell_join "$@")"
 
   case "${repo}" in
-    jj)
-      COMMAND="cd $(shell_join "${START_DIR}") && env PAGER=cat jj log ${joined_args}"
-      ;;
-    git)
-      COMMAND="cd $(shell_join "${START_DIR}") && git --no-pager log --decorate --graph --oneline ${joined_args}"
-      ;;
+    jj) printf 'cd %s && env PAGER=cat jj log %s\n' "$(shell_join "${start_dir}")" "${joined_args}" ;;
+    git) printf 'cd %s && git --no-pager log --decorate --graph --oneline %s\n' "$(shell_join "${start_dir}")" "${joined_args}" ;;
   esac
 }
 
 build_command() {
-  local type="$1"
-  shift || true
-  local expanded=""
+  local -n command_result="$1" interactive_result="$2"
+  local type="$3" force_interactive="$4" start_dir="$5" runtime_dir="$6"
+  shift 6
+  local expanded suffix
 
-  COMMAND=""
-  INTERACTIVE="${FORCE_INTERACTIVE}"
+  command_result=""
+  interactive_result="${force_interactive}"
 
   case "${type}" in
     file|image)
       [[ $# -ge 1 ]] || die "missing path"
-      expanded="$(expand_path "$1")"
-      preview_existing_path "${expanded}"
+      command_result="$(preview_existing_path "$(expand_path "$1")")"
       ;;
-    json)
+    json|markdown|text)
       if [[ $# -eq 1 ]]; then
         expanded="$(expand_path "$1")"
         if [[ -e "${expanded}" || -L "${expanded}" ]]; then
-          preview_existing_path "${expanded}"
+          command_result="$(preview_existing_path "${expanded}")"
           return 0
         fi
       fi
-      preview_inline_content "json" "$@"
-      ;;
-    markdown)
-      if [[ $# -eq 1 ]]; then
-        expanded="$(expand_path "$1")"
-        if [[ -e "${expanded}" || -L "${expanded}" ]]; then
-          preview_existing_path "${expanded}"
-          return 0
-        fi
-      fi
-      preview_inline_content "md" "$@"
-      ;;
-    text)
-      if [[ $# -eq 1 ]]; then
-        expanded="$(expand_path "$1")"
-        if [[ -e "${expanded}" || -L "${expanded}" ]]; then
-          preview_existing_path "${expanded}"
-          return 0
-        fi
-      fi
-      preview_inline_content "txt" "$@"
+      case "${type}" in json) suffix=json ;; markdown) suffix=md ;; text) suffix=txt ;; esac
+      command_result="$(preview_inline_content "${runtime_dir}" "${suffix}" "$@")"
       ;;
     diff)
-      build_diff_command "plain" "$@"
+      command_result="$(build_diff_command plain "${start_dir}" "${runtime_dir}" "$@")"
       ;;
     codediff)
-      build_diff_command "interactive" "$@"
+      interactive_result=1
+      command_result="$(build_diff_command interactive "${start_dir}" "${runtime_dir}" "$@")"
       ;;
     log)
-      build_log_command "$@"
+      command_result="$(build_log_command "${start_dir}" "$@")"
       ;;
     cmd)
       [[ $# -ge 1 ]] || die "missing command"
       if [[ "${1}" == cmd:* ]]; then
-        COMMAND="${1#cmd:}"
+        command_result="${1#cmd:}"
         shift
         if [[ $# -gt 0 ]]; then
-          COMMAND+=" $(shell_join "$@")"
+          command_result+=" $(shell_join "$@")"
         fi
       else
-        COMMAND="$*"
+        command_result="$*"
       fi
       ;;
     *)
@@ -250,24 +220,24 @@ build_command() {
 }
 
 create_runner() {
-  local runner="${RUNTIME_DIR}/run"
-  local runtime_dir_q=""
+  local command="$1" interactive="$2" runtime_dir="$3" auto_close_after="$4"
+  local runner="${runtime_dir}/run" runtime_dir_q=""
 
-  printf -v runtime_dir_q '%q' "${RUNTIME_DIR}"
+  printf -v runtime_dir_q '%q' "${runtime_dir}"
 
   cat > "${runner}" <<EOF
 #!/usr/bin/env bash
 set -uo pipefail
 trap "rm -rf -- ${runtime_dir_q}" EXIT
 set +e
-${COMMAND}
+${command}
 status=\$?
 set -e
-if [[ ${INTERACTIVE} -eq 0 ]]; then
+if [[ ${interactive} -eq 0 ]]; then
   echo
-  if [[ -n "${AUTO_CLOSE_AFTER}" ]]; then
-    printf '[Closing in %ss. Press any key to keep open]' "${AUTO_CLOSE_AFTER}"
-    if read -r -t "${AUTO_CLOSE_AFTER}" -n 1 </dev/tty 2>/dev/null; then
+  if [[ -n "${auto_close_after}" ]]; then
+    printf '[Closing in %ss. Press any key to keep open]' "${auto_close_after}"
+    if read -r -t "${auto_close_after}" -n 1 </dev/tty 2>/dev/null; then
       echo
       printf '[Press any key to close]'
       read -r -n 1 </dev/tty || true
@@ -285,17 +255,16 @@ EOF
 }
 
 create_preview_target() {
-  local runner="$1"
-  local existing=""
+  local runner="$1" caller_pane="$2" start_dir="$3" use_popup="$4" existing
 
-  existing="$(find_preview_pane || true)"
-  cleanup_preview_pane "${existing}"
+  existing="$(find_preview_pane "${caller_pane}" || true)"
+  cleanup_preview_pane "${caller_pane}" "${existing}"
 
-  if (( USE_POPUP )); then
+  if (( use_popup )); then
     tmux display-popup \
       -E \
       -T "${PREVIEW_TITLE}" \
-      -d "${START_DIR}" \
+      -d "${start_dir}" \
       -w "${POPUP_WIDTH}" \
       -h "${POPUP_HEIGHT}" \
       "${runner}"
@@ -303,14 +272,14 @@ create_preview_target() {
   fi
 
   local new_pane=""
-  new_pane="$(tmux split-window -h -p "${SPLIT_PERCENT}" -t "${CALLER_PANE}" -c "${START_DIR}" -PF '#{pane_id}' "${runner}")"
+  new_pane="$(tmux split-window -h -p "${SPLIT_PERCENT}" -t "${caller_pane}" -c "${start_dir}" -PF '#{pane_id}' "${runner}")"
   tmux select-pane -t "${new_pane}" -T "${PREVIEW_TITLE}"
-  tmux select-pane -t "${CALLER_PANE}"
+  tmux select-pane -t "${caller_pane}"
 }
 
 main() {
-  local type="auto"
-  local runner=""
+  local type="auto" use_popup=0 force_interactive=0 auto_close_after=""
+  local caller_pane start_dir runtime_dir command runner interactive
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -319,16 +288,16 @@ main() {
         exit 0
         ;;
       --float|--popup)
-        USE_POPUP=1
+        use_popup=1
         shift
         ;;
       --interactive)
-        FORCE_INTERACTIVE=1
+        force_interactive=1
         shift
         ;;
       --auto-close-after)
-        AUTO_CLOSE_AFTER="${2:-}"
-        [[ "${AUTO_CLOSE_AFTER}" =~ ^[0-9]+$ ]] || die "auto-close must be an integer"
+        auto_close_after="${2:-}"
+        [[ "${auto_close_after}" =~ ^[0-9]+$ ]] || die "auto-close must be an integer"
         shift 2
         ;;
       -*)
@@ -344,9 +313,9 @@ main() {
   [[ -x "${PREVIEW_BIN}" ]] || die "missing preview script: ${PREVIEW_BIN}"
   [[ $# -gt 0 ]] || die "missing content"
 
-  CALLER_PANE="${TMUX_PANE:-$(tmux display-message -p '#{pane_id}')}"
-  START_DIR="$(current_pane_path)"
-  RUNTIME_DIR="$(mktemp -d "${XDG_RUNTIME_DIR:-/tmp}/preview-ai.XXXXXX")"
+  caller_pane="${TMUX_PANE:-$(tmux display-message -p '#{pane_id}')}"
+  start_dir="$(current_pane_path "${caller_pane}")"
+  runtime_dir="$(mktemp -d "${XDG_RUNTIME_DIR:-/tmp}/preview-ai.XXXXXX")"
 
   type="${1:-auto}"
   shift || true
@@ -358,9 +327,9 @@ main() {
     type="$(detect_type "${type}")"
   fi
 
-  build_command "${type}" "$@"
-  runner="$(create_runner)"
-  create_preview_target "${runner}"
+  build_command command interactive "${type}" "${force_interactive}" "${start_dir}" "${runtime_dir}" "$@"
+  runner="$(create_runner "${command}" "${interactive}" "${runtime_dir}" "${auto_close_after}")"
+  create_preview_target "${runner}" "${caller_pane}" "${start_dir}" "${use_popup}"
 }
 
 main "$@"

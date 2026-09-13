@@ -14,6 +14,7 @@ BatteryButton 1.0 BatteryButton.qml
 BluetoothButton 1.0 BluetoothButton.qml
 BluetoothPopup 1.0 BluetoothPopup.qml
 BookmarkEditor 1.0 BookmarkEditor.qml
+BookmarkBackend 1.0 BookmarkBackend.qml
 BookmarkImport 1.0 BookmarkImport.qml
 BookmarkStore 1.0 BookmarkStore.qml
 Bookmarks 1.0 Bookmarks.qml
@@ -39,6 +40,7 @@ LayerBlur 1.0 LayerBlur.qml
 LogoutButton 1.0 LogoutButton.qml
 MainBar 1.0 MainBar.qml
 MediaButton 1.0 MediaButton.qml
+MediaControls 1.0 MediaControls.qml
 MediaPopup 1.0 MediaPopup.qml
 MicrophoneButton 1.0 MicrophoneButton.qml
 ModuleEdge 1.0 ModuleEdge.qml

@@ -188,7 +188,10 @@ build_uwsm_command() {
   [[ -z "$silent" ]] || command+=(-S "$silent")
   $part && command+=(-p After=graphical-session.target -p PartOf=graphical-session.target)
   local var
-  for var in "${qt_vars[@]}"; do command+=(-p "Environment=$var"); done
+  # Scope units have no exec context, so systemd rejects Environment= there.
+  for var in "${qt_vars[@]}"; do
+    if [[ "$type" == service ]]; then command+=(-p "Environment=$var"); else export "${var?}"; fi
+  done
   command+=(-- "${args[@]}")
 }
 

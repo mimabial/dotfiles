@@ -3,17 +3,6 @@ set -euo pipefail
 
 TERMINAL_TUI="${TERMINAL_TUI:-kitty}"
 HYPR_LIB_ROOT="${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}"
-hypr_profile=""
-hypr_width=""
-hypr_height=""
-app_id=""
-title=""
-print_executable_path=0
-print_command=0
-print_command_separator=$'\037'
-cmd=()
-terminal_args=()
-terminal_launch=()
 
 usage() {
   printf 'Usage: %s [--hypr-profile NAME] [--hypr-size WIDTH HEIGHT] [--hypr-cells COLUMNS ROWS] [--app-id ID] [--title TITLE] [--] [command [args...]]\n' "${0##*/}"
@@ -30,78 +19,83 @@ require_option_args() {
 }
 
 set_geometry_pair() {
-  local option="$1" pair="$2" suffix="${3:-}"
+  local -n geometry_options="$1"
+  local option="$2" pair="$3" suffix="${4:-}"
 
   [[ "${pair}" == *,* && -n "${pair%%,*}" && -n "${pair#*,}" ]] || {
     printf 'Expected %s=WIDTH,HEIGHT\n' "${option}" >&2
     usage >&2
     exit 2
   }
-  hypr_width="${pair%%,*}${suffix}"
-  hypr_height="${pair#*,}${suffix}"
+  geometry_options[width]="${pair%%,*}${suffix}"
+  geometry_options[height]="${pair#*,}${suffix}"
 }
 
 parse_args() {
+  local -n parsed_options="$1" parsed_terminal_args="$2" parsed_command="$3"
+  local decoded_separator=""
+  shift 3
   while [[ "$#" -gt 0 ]]; do
     case "$1" in
       --hypr-profile=*)
-        hypr_profile="${1#--hypr-profile=}"
+        parsed_options[profile]="${1#--hypr-profile=}"
         shift
         ;;
       --hypr-profile)
         require_option_args "$1" 2 "$#"
-        hypr_profile="$2"
+        parsed_options[profile]="$2"
         shift 2
         ;;
       --hypr-cells)
         require_option_args "$1" 3 "$#"
-        hypr_width="$2c"
-        hypr_height="$3c"
+        parsed_options[width]="$2c"
+        parsed_options[height]="$3c"
         shift 3
         ;;
       --hypr-cells=*)
-        set_geometry_pair --hypr-cells "${1#*=}" c
+        set_geometry_pair parsed_options --hypr-cells "${1#*=}" c
         shift
         ;;
       --hypr-size=*)
-        set_geometry_pair --hypr-size "${1#*=}"
+        set_geometry_pair parsed_options --hypr-size "${1#*=}"
         shift
         ;;
       --hypr-size)
         require_option_args "$1" 3 "$#"
-        hypr_width="$2"
-        hypr_height="$3"
+        parsed_options[width]="$2"
+        parsed_options[height]="$3"
         shift 3
         ;;
       --app-id=*)
-        app_id="${1#--app-id=}"
+        parsed_options[app_id]="${1#--app-id=}"
         shift
         ;;
       --app-id)
         require_option_args "$1" 2 "$#"
-        app_id="$2"
+        parsed_options[app_id]="$2"
         shift 2
         ;;
       --title=*)
-        title="${1#--title=}"
+        parsed_options[title]="${1#--title=}"
         shift
         ;;
       --title)
         require_option_args "$1" 2 "$#"
-        title="$2"
+        parsed_options[title]="$2"
         shift 2
         ;;
       --print-path)
-        print_executable_path=1
+        parsed_options[print_path]=1
         shift
         ;;
       --print-cmd)
-        print_command=1
+        parsed_options[print_command]=1
         shift
         ;;
       --print-cmd=*)
-        print_command=1
-        print_command_separator="$(printf '%b' "${1#--print-cmd=}")"
+        parsed_options[print_command]=1
+        printf -v decoded_separator '%b' "${1#--print-cmd=}"
+        parsed_options[separator]="${decoded_separator}"
         shift
         ;;
       -h | --help)
@@ -110,15 +104,15 @@ parse_args() {
         ;;
       --)
         shift
-        cmd=("$@")
+        parsed_command=("$@")
         break
         ;;
       -*)
-        terminal_args+=("$1")
+        parsed_terminal_args+=("$1")
         shift
         ;;
       *)
-        cmd=("$@")
+        parsed_command=("$@")
         break
         ;;
     esac
@@ -126,16 +120,17 @@ parse_args() {
 }
 
 validate_geometry() {
+  local -n geometry_options="$1"
   local value=""
 
-  [[ -n "${hypr_width}${hypr_height}" ]] || return 0
-  for value in "${hypr_width}" "${hypr_height}"; do
+  [[ -n "${geometry_options[width]}${geometry_options[height]}" ]] || return 0
+  for value in "${geometry_options[width]}" "${geometry_options[height]}"; do
     [[ "${value}" =~ ^[1-9][0-9]*[c%]?$ ]] || {
       printf 'Expected a size in pixels (900), percent (55%%) or cells (40c): %s\n' "${value}" >&2
       return 1
     }
   done
-  hypr_profile=""
+  geometry_options[profile]=""
 }
 
 load_window_lib() {
@@ -145,28 +140,32 @@ load_window_lib() {
 }
 
 apply_geometry_profile() {
-  local profile_name=""
+  local -n geometry_options="$1"
+  local profile_name="" resolved_width="" resolved_height=""
 
-  case "${hypr_profile}" in
+  case "${geometry_options[profile]}" in
     "")
       return 0
       ;;
     tui) profile_name="standard" ;;
     dialog) profile_name="compact" ;;
-    overlay | compact | standard | large) profile_name="${hypr_profile}" ;;
+    overlay | compact | standard | large) profile_name="${geometry_options[profile]}" ;;
     *)
-      printf 'Unknown hypr profile: %s\n' "${hypr_profile}" >&2
+      printf 'Unknown hypr profile: %s\n' "${geometry_options[profile]}" >&2
       return 1
       ;;
   esac
 
   load_window_lib launch_resolve_geometry_profile || return 1
-  IFS=$'\t' read -r hypr_width hypr_height \
+  IFS=$'\t' read -r resolved_width resolved_height \
     <<<"$(launch_resolve_geometry_profile "${profile_name}")" || return 1
+  geometry_options[width]="${resolved_width}"
+  geometry_options[height]="${resolved_height}"
 }
 
 resolve_percentages() {
-  [[ "${hypr_width}" == *% || "${hypr_height}" == *% ]] || return 0
+  local -n geometry_options="$1"
+  [[ "${geometry_options[width]}" == *% || "${geometry_options[height]}" == *% ]] || return 0
 
   local mon_w mon_h ignored
 
@@ -180,52 +179,54 @@ resolve_percentages() {
     return 1
   }
 
-  if [[ "${hypr_width}" == *% ]]; then
-    hypr_width=$((${hypr_width%\%} * mon_w / 100))
+  if [[ "${geometry_options[width]}" == *% ]]; then
+    geometry_options[width]=$((${geometry_options[width]%\%} * mon_w / 100))
   fi
-  if [[ "${hypr_height}" == *% ]]; then
-    hypr_height=$((${hypr_height%\%} * mon_h / 100))
+  if [[ "${geometry_options[height]}" == *% ]]; then
+    geometry_options[height]=$((${geometry_options[height]%\%} * mon_h / 100))
   fi
 }
 
 validate_exec_command() {
-  ((${#cmd[@]} > 0)) || return 0
+  local -n command_ref="$1"
+  ((${#command_ref[@]} > 0)) || return 0
 
-  if [[ "${cmd[0]}" == */* ]]; then
-    [[ -x "${cmd[0]}" ]] && return 0
-  elif command -v "${cmd[0]}" >/dev/null 2>&1; then
+  if [[ "${command_ref[0]}" == */* ]]; then
+    [[ -x "${command_ref[0]}" ]] && return 0
+  elif command -v "${command_ref[0]}" >/dev/null 2>&1; then
     return 0
   fi
 
-  printf 'Command not found: %s\n' "${cmd[0]}" >&2
+  printf 'Command not found: %s\n' "${command_ref[0]}" >&2
   return 127
 }
 
 build_terminal_command() {
+  local -n launch_options="$1" extra_terminal_args="$2" command_ref="$3" launch_ref="$4"
   local terminal_name="${TERMINAL_TUI##*/}"
 
-  terminal_launch=("${TERMINAL_TUI}" "${terminal_args[@]}")
+  launch_ref=("${TERMINAL_TUI}" "${extra_terminal_args[@]}")
 
   case "${terminal_name}" in
     kitty)
-      [[ -n "${app_id}" ]] && terminal_launch+=("--app-id=${app_id}")
-      [[ -n "${title}" ]] && terminal_launch+=("--title=${title}")
-      if [[ -n "${hypr_width}" && -n "${hypr_height}" ]]; then
+      [[ -n "${launch_options[app_id]}" ]] && launch_ref+=("--app-id=${launch_options[app_id]}")
+      [[ -n "${launch_options[title]}" ]] && launch_ref+=("--title=${launch_options[title]}")
+      if [[ -n "${launch_options[width]}" && -n "${launch_options[height]}" ]]; then
         # Lua size rules are inert; kitty accepts pixels and per-axis cell suffixes.
-        terminal_launch+=(-o "remember_window_size=no" -o "initial_window_width=${hypr_width}" -o "initial_window_height=${hypr_height}")
+        launch_ref+=(-o "remember_window_size=no" -o "initial_window_width=${launch_options[width]}" -o "initial_window_height=${launch_options[height]}")
       fi
-      terminal_launch+=("${cmd[@]}")
+      launch_ref+=("${command_ref[@]}")
       ;;
     alacritty)
-      [[ -n "${app_id}" ]] && terminal_launch+=(--class "${app_id}")
-      [[ -n "${title}" ]] && terminal_launch+=(--title "${title}")
-      ((${#cmd[@]} > 0)) && terminal_launch+=(-e "${cmd[@]}")
+      [[ -n "${launch_options[app_id]}" ]] && launch_ref+=(--class "${launch_options[app_id]}")
+      [[ -n "${launch_options[title]}" ]] && launch_ref+=(--title "${launch_options[title]}")
+      ((${#command_ref[@]} > 0)) && launch_ref+=(-e "${command_ref[@]}")
       ;;
     *)
-      if [[ -n "${app_id}" || -n "${title}" ]]; then
+      if [[ -n "${launch_options[app_id]}" || -n "${launch_options[title]}" ]]; then
         printf 'WARN: terminal backend %s does not support app-id/title metadata\n' "${terminal_name}" >&2
       fi
-      terminal_launch+=("${cmd[@]}")
+      launch_ref+=("${command_ref[@]}")
       ;;
   esac
 }
@@ -254,49 +255,51 @@ terminal_desktop_path() {
 }
 
 print_terminal_target() {
-  local desktop_path=""
-  local joined_command=""
+  local -n print_options="$1" launch_ref="$2"
+  local desktop_path="" joined_command=""
 
-  ((print_command == 0)) || build_terminal_command
-
-  if [[ "${print_executable_path}" -eq 1 ]]; then
+  if [[ "${print_options[print_path]}" -eq 1 ]]; then
     desktop_path="$(terminal_desktop_path)" || return 1
     printf '%s' "${desktop_path}"
   fi
 
-  if [[ "${print_command}" -eq 1 ]]; then
-    ((print_executable_path == 1)) && printf '\n'
-    if ((${#terminal_launch[@]} > 0)); then
-      printf -v joined_command "%s${print_command_separator}" "${terminal_launch[@]}"
-      printf '%s' "${joined_command%"${print_command_separator}"}"
+  if [[ "${print_options[print_command]}" -eq 1 ]]; then
+    ((print_options[print_path] == 1)) && printf '\n'
+    if ((${#launch_ref[@]} > 0)); then
+      printf -v joined_command "%s${print_options[separator]}" "${launch_ref[@]}"
+      printf '%s' "${joined_command%"${print_options[separator]}"}"
     fi
   fi
 }
 
 terminate_child() {
-  kill -TERM "${terminal_pid}" 2>/dev/null || true
+  kill -TERM "$1" 2>/dev/null || true
 }
 
 main() {
-  local exit_code=0
+  local -A options=([profile]="" [width]="" [height]="" [app_id]="" [title]="" \
+    [print_path]=0 [print_command]=0 [separator]=$'\037')
+  local -a terminal_args=() command=() launch_command=()
+  local terminal_pid exit_code=0
 
-  parse_args "$@"
-  validate_geometry || return 2
-  apply_geometry_profile || return 2
-  resolve_percentages || return 2
+  parse_args options terminal_args command "$@"
+  validate_geometry options || return 2
+  apply_geometry_profile options || return 2
+  resolve_percentages options || return 2
 
-  if [[ "${print_executable_path}" -eq 1 || "${print_command}" -eq 1 ]]; then
-    print_terminal_target
+  if ((options[print_path] == 1 || options[print_command] == 1)); then
+    ((options[print_command] == 0)) || build_terminal_command options terminal_args command launch_command
+    print_terminal_target options launch_command
     return $?
   fi
 
-  validate_exec_command || return $?
-  build_terminal_command
+  validate_exec_command command || return $?
+  build_terminal_command options terminal_args command launch_command
 
-  "${terminal_launch[@]}" &
+  "${launch_command[@]}" &
   terminal_pid=$!
 
-  trap terminate_child INT TERM HUP
+  trap 'terminate_child "${terminal_pid}"' INT TERM HUP
   wait "${terminal_pid}" || exit_code=$?
 
   return "${exit_code}"

@@ -4,11 +4,7 @@ PALETTE_ARG="${1:-}"
 . "$(dirname "$0")/_lib.sh"
 render_init hyprlock colors.conf
 
-hash="$(render_input_hash)"
-render_should_skip "${hash}" && exit 0
-
-tmp="$(render_temp)"
-trap 'rm -f "${tmp}"' EXIT
+render_begin
 
 PALETTE="${PALETTE}" python3 - > "${tmp}" <<'PY'
 import json, os

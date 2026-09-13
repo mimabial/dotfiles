@@ -166,12 +166,13 @@ append_entry() {
 
 prune_locked() {
   local cutoff="" keep_days="" max_items="" before="" after="" oldest="" tmp=""
+  local ms_per_day=86400000
 
   keep_days="$(setting NOTIFY_KEEP_DAYS 30)"
   max_items="$(setting NOTIFY_MAX_ITEMS 1000)"
   [[ "${keep_days}" =~ ^[0-9]+$ ]] || keep_days=30
   [[ "${max_items}" =~ ^[0-9]+$ ]] && ((max_items > 0)) || max_items=1000
-  cutoff=$(($(now_ms) - keep_days * 86400000))
+  cutoff=$(($(now_ms) - keep_days * ms_per_day))
 
   before="$(wc -l <"${archive}" 2>/dev/null || echo 0)"
   if ((before <= max_items)); then

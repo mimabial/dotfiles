@@ -4,11 +4,7 @@ PALETTE_ARG="${1:-}"
 . "$(dirname "$0")/_lib.sh"
 render_init rofi colors.rasi
 
-hash="$(render_input_hash)"
-render_should_skip "${hash}" && exit 0
-
-tmp="$(render_temp)"
-trap 'rm -f "${tmp}"' EXIT
+render_begin
 
 if [[ -n "${PACK_OVERRIDE}" ]]; then
   render_emit_pack_override "${tmp}"

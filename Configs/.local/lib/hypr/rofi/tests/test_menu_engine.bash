@@ -18,20 +18,25 @@ menu_add_item branch Deep submenu deep
 menu_add_item deep Leaf action leaf
 
 rofi_font_align_trailing() {
-  local glyph="$3" flag="" label=""
-  while IFS=$'\t' read -r flag label; do
-    [[ "${flag}" == 1 ]] && printf '%s   %s\n' "${label}" "${glyph}" || printf '%s\n' "${label}"
+  local default_glyph="$3" flag="" label="" glyph=""
+  while IFS=$'\t' read -r flag label glyph; do
+    [[ "${flag}" == 1 ]] && printf '%s   %s\n' "${label}" "${glyph:-${default_glyph}}" || printf '%s\n' "${label}"
   done
 }
 options=""
 menu_render_options main options
-assert_eq $'Plain\nSub   ›\nHidden' "${options}" 'rendered menu'
+assert_eq $'Plain\nSub   󰄾\nHidden' "${options}" 'rendered menu'
 
 kind="" target=""
-menu_lookup_selection main 'Sub ›' kind target
+menu_lookup_selection main 'Sub 󰄾' kind target
 assert_eq submenu "${kind}" 'submenu kind'
 assert_eq branch "${target}" 'submenu target'
 [[ "${HYPR_MENU_PARENTS[branch]}" == main ]] || fail 'submenu parent'
+menu_descendant_depth branch
+assert_eq 2 "${HYPR_MENU_DEPTHS[branch]}" 'submenu descendant depth'
+assert_eq '󰅂' "$(menu_submenu_glyph 1)" 'one-level submenu glyph'
+assert_eq '󰄾' "$(menu_submenu_glyph 2)" 'two-level submenu glyph'
+assert_eq '󰶻' "$(menu_submenu_glyph 3)" 'three-level submenu glyph'
 menu_add_item main Plain action duplicate 2>/dev/null && fail 'duplicate label accepted'
 menu_add_item main Bad invalid bad 2>/dev/null && fail 'invalid item accepted'
 
@@ -60,6 +65,7 @@ assert_eq 780079 "${bytes}" 'Rofi NUL option marker'
 json="$(menu_dump_json)"
 assert_eq special "$(jq -r '.branch.items[0].target' <<<"${json}")" 'JSON target'
 assert_eq false "$(jq -r '.main.items[] | select(.label == "Hidden") | .searchable' <<<"${json}")" 'JSON search flag'
+assert_eq '󰄾' "$(jq -r '.main.items[] | select(.target == "branch") | .chevron' <<<"${json}")" 'JSON submenu chevron'
 
 ACTION=""
 handler_miss() { return 1; }

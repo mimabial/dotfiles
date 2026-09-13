@@ -113,7 +113,7 @@ setup_rofi_config() {
     -theme-str "entry { placeholder: \"   Glyph\";} ${rofi_position}"
     -theme-str "${font_override}"
     -theme-str "listview {flow: horizontal; fixed-columns: true;} element {padding: 0.25em 0.5em;} element-text {horizontal-align: 0.5;}"
-    -theme-str 'mainbox {children: [ "wallbox", "listbox", "message" ];} listview {scrollbar: true; spacing: 5px;} scrollbar {handle-width: 4px; handle-color: @separator; handle-rounded-corners: false; background-color: @background; border-color: @border;} message {enabled: true; margin: 12px 0px 0px 0px; padding: 0px; border: 0px solid; border-radius: 0px; border-color: @border; background-color: transparent; text-color: @separator;} textbox {padding: 6px; border: 0px solid; border-radius: 8px; border-color: @border; background-color: transparent; text-color: inherit; vertical-align: 0.5; horizontal-align: 0.5;}'
+    -theme-str 'mainbox {children: [ "wallbox", "listbox", "message" ];} listview {scrollbar: false; spacing: 5px;} message {enabled: true; margin: 12px 0px 0px 0px; padding: 0px; border: 0px solid; border-radius: 0px; border-color: @border; background-color: transparent; text-color: @separator;} textbox {padding: 6px; border: 0px solid; border-radius: 8px; border-color: @border; background-color: transparent; text-color: inherit; vertical-align: 0.5; horizontal-align: 0.5;}'
     -theme-str "${glyph_window_theme}"
     -theme-str "${r_override}"
   )
@@ -146,7 +146,7 @@ get_glyph_selection() {
         run_args=("${rofi_args[@]}" -theme-str "listview {lines: ${glyph_lines};}" -no-custom)
         ;;
       *)
-        run_args=("${rofi_args[@]/-multi-select/}" \
+        run_args=("${rofi_args[@]/-multi-select/}"
           -theme-str "listview {columns: ${glyph_columns}; lines: ${glyph_lines};}" -no-custom)
         ;;
     esac
@@ -162,14 +162,15 @@ get_glyph_selection() {
 
 parse_arguments() {
   local usage_text
-  usage_text="$(cat <<'HELP'
+  usage_text="$(
+    cat <<'HELP'
 Usage:
 --style [1 | 2]         Change Glyph picker style
                         Add 'glyph_style=[1|2]' variable in config
                             1 = list
                             2 = grid (default)
 HELP
-)"
+  )"
   rofi_picker_parse_style_args glyph_style use_rofile "2" "${usage_text}" "$@"
 }
 

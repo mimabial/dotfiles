@@ -438,18 +438,25 @@ general="${qt6ct_general_font}"
 EOF
 }
 
-theme_desktop_write_gtk4_settings() {
-  local prefer_dark="$1"
-  local gtk3_font="$2"
-  local gtk3_font_size="$3"
-  mkdir -p "${XDG_CONFIG_HOME}/gtk-4.0" || return 1
-  theme_desktop_ini_write_batch "${XDG_CONFIG_HOME}/gtk-4.0/settings.ini" \
+# GTK3 and GTK4 take the same key set; only the file differs.
+theme_desktop_write_gtk_settings() {
+  local settings_file="$1"
+  local prefer_dark="$2"
+  local gtk3_font="$3"
+  local gtk3_font_size="$4"
+
+  mkdir -p "${settings_file%/*}" || return 1
+  theme_desktop_ini_write_batch "${settings_file}" \
     "Settings:gtk-theme-name=${RESOLVED_GTK_THEME}" \
     "Settings:gtk-icon-theme-name=${ICON_THEME}" \
     "Settings:gtk-cursor-theme-name=${CURSOR_THEME}" \
     "Settings:gtk-cursor-theme-size=${CURSOR_SIZE}" \
     "Settings:gtk-font-name=${gtk3_font} ${gtk3_font_size}" \
     "Settings:gtk-application-prefer-dark-theme=${prefer_dark}"
+}
+
+theme_desktop_write_gtk4_settings() {
+  theme_desktop_write_gtk_settings "${XDG_CONFIG_HOME}/gtk-4.0/settings.ini" "$@"
 }
 
 theme_desktop_write_gtk3_css() {
@@ -547,13 +554,8 @@ gtk-xft-hintstyle="hintfull"
 gtk-xft-rgba="rgb"
 EOF
 
-  theme_desktop_ini_write_batch "${XDG_CONFIG_HOME}/gtk-3.0/settings.ini" \
-    "Settings:gtk-theme-name=${RESOLVED_GTK_THEME}" \
-    "Settings:gtk-icon-theme-name=${ICON_THEME}" \
-    "Settings:gtk-cursor-theme-name=${CURSOR_THEME}" \
-    "Settings:gtk-cursor-theme-size=${CURSOR_SIZE}" \
-    "Settings:gtk-font-name=${gtk3_font} ${gtk3_font_size}" \
-    "Settings:gtk-application-prefer-dark-theme=${prefer_dark}" || return 1
+  theme_desktop_write_gtk_settings "${XDG_CONFIG_HOME}/gtk-3.0/settings.ini" \
+    "${prefer_dark}" "${gtk3_font}" "${gtk3_font_size}" || return 1
 
   theme_desktop_write_gtk4_settings "${prefer_dark}" "${gtk3_font}" "${gtk3_font_size}" || return 1
   theme_desktop_write_gtk4_css || return 1

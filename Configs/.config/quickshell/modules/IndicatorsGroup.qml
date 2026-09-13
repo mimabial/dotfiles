@@ -27,7 +27,7 @@ RowLayout {
     ScreenRecordButton {
         id: recorder
         shell: root.shell; popupsAllowed: root.popupsAllowed
-        activeOnly: true; polling: false; Layout.fillHeight: true
+        activeOnly: true; Layout.fillHeight: true
     }
     CaffeineButton {
         id: caffeine

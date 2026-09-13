@@ -4,15 +4,7 @@ resolve_magick_limits() {
   local cores mem_avail_kb mem_avail_mb
   local magick_mem_mb magick_map_mb magick_threads
 
-  cores="$(nproc --all 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)"
-  [[ "${cores}" =~ ^[0-9]+$ ]] || cores=1
-
-  mem_avail_kb="$(awk '/MemAvailable/ {print $2; exit}' /proc/meminfo 2>/dev/null)"
-  if [[ -z "${mem_avail_kb}" ]]; then
-    mem_avail_kb="$(awk '/MemTotal/ {print $2; exit}' /proc/meminfo 2>/dev/null)"
-  fi
-  [[ "${mem_avail_kb}" =~ ^[0-9]+$ ]] || mem_avail_kb=0
-  mem_avail_mb=$((mem_avail_kb / 1024))
+  hypr_read_host_capacity
 
   magick_mem_mb="${WALLPAPER_MAGICK_MEM_MB:-}"
   [[ "${magick_mem_mb}" =~ ^[0-9]+$ ]] || magick_mem_mb=""

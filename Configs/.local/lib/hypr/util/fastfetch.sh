@@ -37,7 +37,7 @@ WALLPAPER_CURRENT_DIR="${WALLPAPER_CURRENT_DIR:-${HYPR_CACHE_HOME}/wallpaper/cur
 distro_logo=${iconDir}/Pywal16-Icon/distro/${LOGO:-}
 image_dirs=()
 
-USAGE() {
+usage() {
   cat <<USAGE
 Usage: fastfetch [commands] [options]
 
@@ -272,7 +272,7 @@ case "$1" in
     fastfetch_select_logo
     ;;
   help|--help|-h)
-    USAGE
+    usage
     ;;
   *)
     clear

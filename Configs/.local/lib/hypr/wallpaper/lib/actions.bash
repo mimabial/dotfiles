@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
 
+# The catalog entry the pipeline is acting on. This is the one place that reads
+# the catalog; every step below takes the resolved path instead.
+wallpaper_selected_path() {
+  printf '%s\n' "${wallList[setIndex]:-}"
+}
+
 wallpaper_prepare_notification_payload() {
-  local wallpaper_path="${selected_wallpaper_path:-${wallList[setIndex]:-}}"
+  local wallpaper_path="${selected_wallpaper_path:-${1:-}}"
   local wallpaper_hash=""
   [[ -z "${wallpaper_path}" ]] || wallpaper_hash="${wallHashByPath["${wallpaper_path}"]:-}"
 
@@ -74,10 +80,11 @@ wallpaper_resolve_color_variant() {
 }
 
 wallpaper_link_selected() {
-  local wallpaper_path="${wallList[setIndex]}"
+  local wallpaper_path="$1"
+
   ln -fs "${wallpaper_path}" "${active_wallpaper_link}"
   ln -fs "${wallpaper_path}" "${current_wallpaper_link}"
-  wallpaper_prepare_notification_payload
+  wallpaper_prepare_notification_payload "${wallpaper_path}"
 }
 
 wallpaper_refresh_hyprlock_background() {
@@ -130,21 +137,27 @@ wallpaper_background_post_apply() {
   } 202>&- 204>&- 205>&- &
 }
 
+# Fills in the hash for path if the map does not already hold one.
 wallpaper_ensure_hash() {
-  local path="${wallList[setIndex]:-}"
+  local hashmap_name="$1"
+  local path="$2"
+  local -n hash_ref="${hashmap_name}"
+
   [[ -n "${path}" ]] || return 1
-  [[ -n "${wallHashByPath["${path}"]:-}" ]] || wallHashByPath["${path}"]="$(set_hash "${path}")"
-  [[ -n "${wallHashByPath["${path}"]:-}" ]]
+  [[ -n "${hash_ref["${path}"]:-}" ]] || hash_ref["${path}"]="$(set_hash "${path}")"
+  [[ -n "${hash_ref["${path}"]:-}" ]]
 }
 
 wallpaper_refresh_thumbnail_links() {
+  local wallpaper_path="$1"
   local hash=""
-  if ! wallpaper_ensure_hash; then
-    print_log -warn "wallpaper" "missing hash for ${wallList[setIndex]:-unknown}"
+
+  if ! wallpaper_ensure_hash wallHashByPath "${wallpaper_path}"; then
+    print_log -warn "wallpaper" "missing hash for ${wallpaper_path:-unknown}"
     return 1
   fi
 
-  hash="${wallHashByPath["${wallList[setIndex]}"]}"
+  hash="${wallHashByPath["${wallpaper_path}"]}"
   ln -fs "${WALLPAPER_THUMB_DIR}/${hash}.sqre" "${current_square_thumbnail_link}"
   ln -fs "${WALLPAPER_THUMB_DIR}/${hash}.thmb" "${current_thumbnail_link}"
   ln -fs "${WALLPAPER_THUMB_DIR}/${hash}.blur" "${current_blur_thumbnail_link}"
@@ -160,37 +173,28 @@ apply_selected_wallpaper() {
     print_log -sec "wallpaper" "Reloading themes and wallpapers"
   fi
 
-  wallpaper_link_selected
-  wallpaper_path="${wallList[setIndex]}"
+  wallpaper_path="$(wallpaper_selected_path)"
+  wallpaper_link_selected "${wallpaper_path}"
   wallpaper_refresh_hyprlock_background
   [[ "${set_as_global}" == "true" ]] || return 0
 
   print_log -sec "wallpaper" "Setting Wallpaper as global"
   wallpaper_background_post_apply "${apply_colors}" "${wallpaper_path}"
-  wallpaper_refresh_thumbnail_links
+  wallpaper_refresh_thumbnail_links "${wallpaper_path}"
 }
 
 select_adjacent_wallpaper() {
-  local current_wallpaper found
-  found=false
+  local direction="$1"
+  local current_wallpaper="" index=""
+
   current_wallpaper="$(wallpaper_resolve_path "${active_wallpaper_link}")"
 
-  for i in "${!wallList[@]}"; do
-    if [[ "${current_wallpaper}" == "${wallList[i]}" ]]; then
-      found=true
-      if [[ "${1}" == "n" ]]; then
-        setIndex=$(((i + 1) % ${#wallList[@]}))
-      elif [[ "${1}" == "p" ]]; then
-        setIndex=$(((i - 1 + ${#wallList[@]}) % ${#wallList[@]}))
-      fi
-      break
-    fi
-  done
-
-  if [[ "${found}" != true ]]; then
+  if index="$(catalog_index_of wallList "${current_wallpaper}")"; then
+    setIndex="$(catalog_adjacent_index "${index}" "${direction}" "${#wallList[@]}")" || return 1
+  else
     setIndex=0
     print_log -sec "wallpaper" -warn "Current wallpaper not in theme list, resetting to first"
   fi
 
-  apply_selected_wallpaper "${wallList[setIndex]}"
+  apply_selected_wallpaper
 }

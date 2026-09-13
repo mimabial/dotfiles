@@ -47,15 +47,7 @@ resolve_cache_limits() {
   local reserve_mb per_job_mb mem_budget_mb jobs_by_mem jobs_default cache_jobs
   local magick_mem_mb magick_map_mb magick_threads
 
-  cores="$(nproc --all 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)"
-  [[ "${cores}" =~ ^[0-9]+$ ]] || cores=1
-
-  mem_avail_kb="$(awk '/MemAvailable/ {print $2; exit}' /proc/meminfo 2>/dev/null)"
-  if [[ -z "${mem_avail_kb}" ]]; then
-    mem_avail_kb="$(awk '/MemTotal/ {print $2; exit}' /proc/meminfo 2>/dev/null)"
-  fi
-  [[ "${mem_avail_kb}" =~ ^[0-9]+$ ]] || mem_avail_kb=0
-  mem_avail_mb=$((mem_avail_kb / 1024))
+  hypr_read_host_capacity
 
   reserve_mb="${WALLPAPER_CACHE_RESERVE_MB:-2048}"
   per_job_mb="${WALLPAPER_CACHE_JOB_MB:-1200}"

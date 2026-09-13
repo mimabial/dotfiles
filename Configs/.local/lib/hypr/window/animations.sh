@@ -16,6 +16,7 @@ animations_state_file="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/
 show_help() {
   cat <<HELP
 Usage: $0 [OPTIONS]
+Select, set or reload the active Hyprland animation preset.
 
 Options:
     --select | -S       Select an animation from the available options

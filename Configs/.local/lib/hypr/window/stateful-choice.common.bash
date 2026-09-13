@@ -78,7 +78,8 @@ hypr_stateful_choice_select() {
     rofi_picker_compute_window_geometry \
       position window_theme "${font_name}" "${font_scale}" \
       "${width_em}" "${height_em}" \
-      $((width_em * font_scale * 2)) $((height_em * font_scale * 2))
+      $((width_em * font_scale * ROFI_EM_PX_PER_SCALE)) \
+      $((height_em * font_scale * ROFI_EM_PX_PER_SCALE))
   fi
 
   rofi_build_standard_menu_args rofi_args "${title}" "${prompt}" "${icon}" "${scale}" "${font}" \

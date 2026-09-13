@@ -20,7 +20,7 @@ window {
     spacing:                     0em;
     padding:                     0em;
     border-color:                @border;
-    background-color:            @background;
+    background-color:            @background-alpha;
 }
 mainbox {
     enabled:                     true;

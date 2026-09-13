@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+[[ "${1:-}" == -h || "${1:-}" == --help ]] && { printf 'Usage: %s\nWrite explicitly installed packages to ~/installed_packages.txt.\n' "${0##*/}"; exit; }
+
 output_file="${HOME}/installed_packages.txt"
 
 {

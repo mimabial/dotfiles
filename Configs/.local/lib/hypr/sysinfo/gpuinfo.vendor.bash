@@ -11,10 +11,12 @@ read_scaled() {
   printf -v "$1" '%d' "$((value / $3))"
 }
 
+MICROWATTS_PER_DECIWATT=100000
+
 read_microwatts() {
   local value tenths
   read_value value "$2" || return
-  tenths=$(((value + 50000) / 100000))
+  tenths=$(((value + MICROWATTS_PER_DECIWATT / 2) / MICROWATTS_PER_DECIWATT))
   printf -v "$1" '%d.%d' "$((tenths / 10))" "$((tenths % 10))"
 }
 
@@ -257,12 +259,12 @@ general_query() {
   normalize_metric_output
 }
 
-intel_GPU() {
+query_intel_gpu() {
   primary_gpu="Intel ${GPUINFO_INTEL_GPU}"
   general_query
 }
 
-nvidia_GPU() {
+query_nvidia_gpu() {
   primary_gpu="NVIDIA ${GPUINFO_NVIDIA_GPU}"
   gpu_error=""
   if [[ -z "${NVIDIA_ADDR:-}" ]]; then
@@ -298,7 +300,7 @@ nvidia_GPU() {
   power_limit="${gpu_data[5]// /}"
 }
 
-amd_GPU() {
+query_amd_gpu() {
   primary_gpu="AMD ${GPUINFO_AMD_GPU}"
   amd_output=$(python3 "${script_dir}/amdgpu.py")
   if [[ ! ${amd_output} == *"No AMD GPUs detected."* ]] && [[ ! ${amd_output} == *"Unknown query failure"* ]]; then

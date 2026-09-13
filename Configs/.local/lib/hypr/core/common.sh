@@ -1,5 +1,18 @@
 #!/usr/bin/env bash
 
+# Sets cores and mem_avail_kb/mem_avail_mb for callers sizing parallel work.
+# MemAvailable is absent on very old kernels, hence the MemTotal fallback.
+hypr_read_host_capacity() {
+  cores="$(nproc --all 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)"
+  [[ "${cores}" =~ ^[0-9]+$ ]] || cores=1
+
+  mem_avail_kb="$(awk '/MemAvailable/ {print $2; exit}' /proc/meminfo 2>/dev/null)"
+  [[ -n "${mem_avail_kb}" ]] \
+    || mem_avail_kb="$(awk '/MemTotal/ {print $2; exit}' /proc/meminfo 2>/dev/null)"
+  [[ "${mem_avail_kb}" =~ ^[0-9]+$ ]] || mem_avail_kb=0
+  mem_avail_mb=$((mem_avail_kb / 1024))
+}
+
 hypr_help_guard() {
   local usage_text="${1:-}"
   shift || true

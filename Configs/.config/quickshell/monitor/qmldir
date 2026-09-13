@@ -1,8 +1,15 @@
 module qs.monitor
 BrightnessControl 1.0 BrightnessControl.qml
 DisplayCanvas 1.0 DisplayCanvas.qml
+DisplayBackend 1.0 DisplayBackend.qml
+DisplayBrightnessBackend 1.0 DisplayBrightnessBackend.qml
 EditorPane 1.0 EditorPane.qml
 DisplayPanel 1.0 DisplayPanel.qml
 DisplayPreviewGuard 1.0 DisplayPreviewGuard.qml
+DisplayView 1.0 DisplayView.qml
 KeyboardHelp 1.0 KeyboardHelp.qml
 PanelDropdown 1.0 PanelDropdown.qml
+InfoRow 1.0 InfoRow.qml
+DecimalField 1.0 DecimalField.qml
+ActionRow 1.0 ActionRow.qml
+ProfileWorkspaceInfoRow 1.0 ProfileWorkspaceInfoRow.qml

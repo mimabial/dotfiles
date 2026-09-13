@@ -2,8 +2,8 @@ $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 
 $ICON_THEME = Tela-red
 $COLOR_SCHEME = prefer-light
-$NVIM_SCHEME = aether
-$NVIM_VARIANT = akaito
+# $NVIM_SCHEME = aether
+# $NVIM_VARIANT = akaito
 $NVIM_BACKGROUND = light
 $NVIM_TRANSPARENCY = false
 $CURSOR_THEME = OpenZone_Fire
@@ -31,6 +31,14 @@ decoration {
     active_opacity = 1.98
     inactive_opacity = 1.92
     fullscreen_opacity = 1.0
+    blur {
+        enabled = yes
+        size = 3
+        passes = 3
+        new_optimizations = on
+        ignore_opacity = on
+        xray = false
+    }
     shadow {
       enabled = yes
       render_power = 4

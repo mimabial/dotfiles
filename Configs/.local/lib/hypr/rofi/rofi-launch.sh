@@ -65,12 +65,12 @@ launcher_style_menu_override() {
   local hypr_border=""
   local elem_border=0
   local icon_border=0
-  local mon_x_res=1920
-  local mon_y_res=1080
-  local elm_width=0
-  local elm_height=0
-  local max_avail_x=0
-  local max_avail_y=0
+  local mon_x_res_px=1920
+  local mon_y_res_px=1080
+  local elm_width_px=0
+  local elm_height_px=0
+  local max_avail_x_px=0
+  local max_avail_y_px=0
   local col_count=0
   local row_count=0
 
@@ -83,15 +83,15 @@ launcher_style_menu_override() {
   icon_border=$((elem_border - 5))
   [[ "${icon_border}" -lt 0 ]] && icon_border=0
 
-  read -r mon_x_res mon_y_res < <(rofi_focused_monitor_logical_size)
-  mon_x_res=${mon_x_res:-1920}
-  mon_y_res=${mon_y_res:-1080}
-  elm_width=$((preview_image_size * hidpi_scale))
-  elm_height=$((preview_image_size * hidpi_scale))
-  max_avail_x=$((mon_x_res - (8 * font_scale)))
-  max_avail_y=$((mon_y_res - (16 * font_scale)))
-  col_count=$((max_avail_x / elm_width))
-  row_count=$((max_avail_y / elm_height))
+  read -r mon_x_res_px mon_y_res_px < <(rofi_focused_monitor_logical_size)
+  mon_x_res_px=${mon_x_res_px:-1920}
+  mon_y_res_px=${mon_y_res_px:-1080}
+  elm_width_px=$((preview_image_size * hidpi_scale))
+  elm_height_px=$((preview_image_size * hidpi_scale))
+  max_avail_x_px=$((mon_x_res_px - (8 * font_scale)))
+  max_avail_y_px=$((mon_y_res_px - (16 * font_scale)))
+  col_count=$((max_avail_x_px / elm_width_px))
+  row_count=$((max_avail_y_px / elm_height_px))
   [[ "${col_count}" -lt 2 ]] && col_count=2
   [[ "${col_count}" -gt 5 ]] && col_count=5
   [[ "${row_count}" -lt 2 ]] && row_count=2
@@ -140,11 +140,7 @@ launcher_style_select() {
 
   selected_style="$(
     list_launcher_styles | rofi -dmenu -i \
-      -sync \
-      -no-custom \
-      -hover-select \
-      -me-select-entry "" \
-      -me-accept-entry MousePrimary \
+      "${ROFI_MOUSE_SELECT_ARGS[@]}" \
       -theme "$(rofi_resolve_theme "${ROFI_SELECT_STYLE:-theme_select}")" \
       -theme-str "${font_override}" \
       -theme-str "${r_override}" \
