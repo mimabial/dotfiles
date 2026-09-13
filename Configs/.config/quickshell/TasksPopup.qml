@@ -9,13 +9,24 @@ PopupCard {
     contentWidth: Style.px(420)
     contentHeight: Math.max(tasksColumn.implicitHeight,
         showHelp ? helpColumn.implicitHeight : 0) + padding * 2
+    wantsKeyboard: true
 
     property var todos: []
     property bool unavailable: false
     property string view: "today"
     property int cursor: 0
     property string pendingDelete: ""
+    property Item confirmingRow: null
+    property Item editingRow: null
     property bool showHelp: false
+    property string editingId: ""
+    property var taskOrder: []
+    onShowHelpChanged: if (open) leaveAdd()
+
+    function leaveAdd() {
+        addField.focus = false
+        taskKeys.forceActiveFocus()
+    }
 
     readonly property var views: ["today", "overdue", "all", "done"]
     property string categoryFilter: ""
@@ -37,6 +48,17 @@ PopupCard {
         return (item.categories || []).some(tag => String(tag) === activeFilter)
     }
 
+    function taskKey(item) { return String(item.uid || (item.list + ":" + item.id)) }
+    function ordered(items) {
+        const rank = ({})
+        for (let index = 0; index < taskOrder.length; index++) rank[String(taskOrder[index])] = index
+        return items.slice().sort((left, right) => {
+            const a = rank[taskKey(left)], b = rank[taskKey(right)]
+            return a === undefined ? (b === undefined ? 0 : 1) : (b === undefined ? -1 : a - b)
+        })
+    }
+    readonly property var orderedTodos: ordered(todos)
+
     function startOfToday() {
         const now = new Date()
         return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
@@ -52,12 +74,12 @@ PopupCard {
         const due = dueMillis(item)
         return due >= startOfToday() && due < startOfToday() + 86400000
     }
-    readonly property var open_: todos.filter(item => item.completed !== true)
+    readonly property var open_: orderedTodos.filter(item => item.completed !== true)
     readonly property var listed: {
-        const base = view === "done" ? todos.filter(item => item.completed === true)
+        const base = view === "done" ? orderedTodos.filter(item => item.completed === true)
             : view === "all" ? open_
             : view === "overdue" ? open_.filter(item => isOverdue(item))
-            : open_.filter(item => isOverdue(item) || isToday(item))
+            : open_.filter(item => isOverdue(item) || isToday(item) || dueMillis(item) < 0)
         return base.filter(item => matchesFilter(item))
     }
     readonly property var sections: {
@@ -73,14 +95,25 @@ PopupCard {
         if (view === "overdue") { push("OVERDUE", rows); return out }
         push("OVERDUE", rows.filter(item => isOverdue(item)))
         push("TODAY", rows.filter(item => isToday(item)))
-        if (view === "all") {
+        if (view === "all")
             push("LATER", rows.filter(item => !isOverdue(item) && !isToday(item)
                 && dueMillis(item) >= 0))
-            push("NO DATE", rows.filter(item => dueMillis(item) < 0))
-        }
+        push("CARRIED", rows.filter(item => dueMillis(item) < 0 && Number(item.carries || 0) > 0))
+        push("NO DATE", rows.filter(item => dueMillis(item) < 0 && Number(item.carries || 0) === 0))
         return out
     }
     readonly property int dueCount: open_.filter(item => isOverdue(item) || isToday(item)).length
+
+    function priorityIndex(item) {
+        const priority = Number(item.priority || 0)
+        return priority >= 1 && priority <= 4 ? 3 : priority === 5 ? 2 : priority >= 6 ? 1 : 0
+    }
+    function priorityName(item) { return ["none", "low", "medium", "high"][priorityIndex(item)] }
+    function shiftPriority(item, delta) {
+        const next = Math.max(0, Math.min(3, priorityIndex(item) + delta))
+        if (next !== priorityIndex(item))
+            run(["--todo-edit", String(item.id), "--priority", ["none", "low", "medium", "high"][next]])
+    }
 
     // iCalendar runs 1 (highest) to 9; 5 is the middle and 0 means unset
     function priorityColor(item) {
@@ -108,6 +141,84 @@ PopupCard {
             date.getFullYear() === new Date().getFullYear() ? "d MMM" : "d MMM yyyy")
         return day + time
     }
+    function taskMeta(item) {
+        const parts = []
+        const priority = priorityName(item)
+        if (priority !== "none") parts.push(priority)
+        if (item.completed === true) {
+            const completed = completedLabel(item)
+            if (completed !== "") parts.push(completed)
+            const due = dueLabel(item)
+            if (due !== "") parts.push("due " + due)
+        } else {
+            const due = dueLabel(item)
+            if (due !== "") parts.push(due)
+        }
+        if (Number(item.carries || 0) > 0) parts.push("↻" + item.carries + " carried")
+        return parts.join("  ·  ")
+    }
+
+    readonly property date now: shell.clock.date
+    function dayKey(date) { return Qt.formatDate(date, "yyyy-MM-dd") }
+    readonly property string todayKey: dayKey(now)
+    readonly property var stats: {
+        const start = startOfToday(), end = start + 86400000
+        let done = 0, total = 0
+        for (const item of orderedTodos) {
+            const due = dueMillis(item)
+            const completed = Number(item.completed_at || 0) * 1000
+            if ((!item.completed && (due < 0 || due < end))
+                    || (due >= start && due < end)
+                    || (completed >= start && completed < end)) {
+                total++
+                if (item.completed) done++
+            }
+        }
+        return { done: done, total: total, ratio: total > 0 ? done / total : 0 }
+    }
+    readonly property real dayFraction: {
+        const hour = now.getHours() + now.getMinutes() / 60
+        return Math.max(0, Math.min(1, (hour - 8) / 14))
+    }
+    readonly property var mood: {
+        const moods = {
+            idle: { label: "Idle", tagline: "Give the day a shape.", smile: .2, eyes: "flat", brow: 0, sweat: 0, sparkle: 0, wavy: false, urgency: 0 },
+            done: { label: "Relaxed", tagline: "Done and dusted.", smile: 1, eyes: "happy", brow: 0, sweat: 0, sparkle: 2, wavy: false, urgency: 0 },
+            easy: { label: "Easy", tagline: "Comfortably ahead.", smile: .8, eyes: "happy", brow: 0, sweat: 0, sparkle: 0, wavy: false, urgency: .1 },
+            focused: { label: "Focused", tagline: "Steady as it goes.", smile: .3, eyes: "open", brow: .2, sweat: 0, sparkle: 0, wavy: false, urgency: .3 },
+            worried: { label: "Worried", tagline: "The day is getting on.", smile: -.4, eyes: "open", brow: .65, sweat: 1, sparkle: 0, wavy: false, urgency: .62 },
+            stressed: { label: "Stressed", tagline: "Pick one and start it.", smile: -.9, eyes: "wide", brow: 1, sweat: 2, sparkle: 0, wavy: true, urgency: 1 }
+        }
+        if (stats.total === 0) return moods.idle
+        if (stats.done === stats.total) return moods.done
+        const gap = dayFraction - stats.ratio
+        return gap < .15 ? moods.easy : gap < .35 ? moods.focused : gap < .6 ? moods.worried : moods.stressed
+    }
+    readonly property var completionsByDay: {
+        const counts = ({})
+        for (const item of todos) if (Number(item.completed_at || 0) > 0) {
+            const key = dayKey(new Date(Number(item.completed_at) * 1000))
+            counts[key] = (counts[key] || 0) + 1
+        }
+        return counts
+    }
+    readonly property var history: {
+        const days = [], date = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        for (let offset = 13; offset >= 0; offset--) {
+            const day = new Date(date); day.setDate(day.getDate() - offset)
+            days.push({ key: dayKey(day), count: completionsByDay[dayKey(day)] || 0 })
+        }
+        return days
+    }
+    readonly property int historyMax: Math.max(1, ...history.map(day => day.count))
+    readonly property int streak: {
+        const day = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        if (!completionsByDay[dayKey(day)]) day.setDate(day.getDate() - 1)
+        let count = 0
+        while (completionsByDay[dayKey(day)]) { count++; day.setDate(day.getDate() - 1) }
+        return count
+    }
+    readonly property int completedRetained: todos.filter(item => item.completed === true).length
 
     readonly property var weekdayNames: ["sunday", "monday", "tuesday", "wednesday",
         "thursday", "friday", "saturday"]
@@ -245,6 +356,7 @@ PopupCard {
     // that was just ticked off would vanish instead of moving to DONE
     function run(args) {
         pendingDelete = ""
+        editingId = ""
         readProc.running = false
         readProc.command = ["hyprshell", "calendar/agenda"].concat(args).concat(["--todos-all"])
         readProc.running = true
@@ -272,6 +384,18 @@ PopupCard {
         }
         run(["--todo-delete", String(item.id)])
     }
+    function beginEdit(item) {
+        pendingDelete = ""
+        leaveAdd()
+        editingId = taskKey(item)
+    }
+    function finishEdit(item, value, commit) {
+        if (editingId !== taskKey(item)) return
+        editingId = ""
+        const summary = String(value).trim()
+        if (commit && summary !== "" && summary !== String(item.summary))
+            run(["--todo-edit", String(item.id), "--title", summary])
+    }
     function move(delta) {
         if (listed.length === 0) return
         cursor = Math.max(0, Math.min(listed.length - 1, cursor + delta))
@@ -281,12 +405,74 @@ PopupCard {
         const at = views.indexOf(view)
         view = views[(at + delta + views.length) % views.length]
     }
+    function sectionPosition(item) {
+        const key = taskKey(item)
+        for (const section of sections)
+            for (let index = 0; index < section.items.length; index++)
+                if (taskKey(section.items[index]) === key) return { section: section, index: index }
+        return null
+    }
+    function canReorder(item, delta) {
+        const position = sectionPosition(item)
+        return position && position.index + delta >= 0
+            && position.index + delta < position.section.items.length
+    }
+    function reorder(item, delta) {
+        const position = sectionPosition(item)
+        if (!position || !canReorder(item, delta)) return
+        const target = position.section.items[position.index + delta]
+        const keys = orderedTodos.map(todo => taskKey(todo))
+        const from = keys.indexOf(taskKey(item)), to = keys.indexOf(taskKey(target))
+        const swap = keys[from]; keys[from] = keys[to]; keys[to] = swap
+        taskOrder = keys
+        orderFile.setText(JSON.stringify(keys) + "\n")
+        cursor = position.section.offset + position.index + delta
+        pendingDelete = ""
+    }
+    function handleKey(event) {
+        if (addField.activeFocus || editingId !== "") return false
+        const item = listed[cursor]
+        switch (event.key) {
+        case Qt.Key_Down: move(1); break
+        case Qt.Key_Up: move(-1); break
+        case Qt.Key_J:
+            if (event.modifiers & Qt.ShiftModifier) { if (item) reorder(item, 1) }
+            else move(1)
+            break
+        case Qt.Key_K:
+            if (event.modifiers & Qt.ShiftModifier) { if (item) reorder(item, -1) }
+            else move(-1)
+            break
+        case Qt.Key_Tab: cycleView(1); break
+        case Qt.Key_Backtab: cycleView(-1); break
+        case Qt.Key_T: view = "today"; break
+        case Qt.Key_O: view = "overdue"; break
+        case Qt.Key_A: view = "all"; break
+        case Qt.Key_D: view = "done"; break
+        case Qt.Key_R: refresh(); break
+        case Qt.Key_Question: showHelp = !showHelp; break
+        case Qt.Key_Q: addField.forceActiveFocus(); break
+        case Qt.Key_E: if (item) beginEdit(item); break
+        case Qt.Key_Left: case Qt.Key_H: if (item) shiftPriority(item, 1); break
+        case Qt.Key_Right: case Qt.Key_L: if (item) shiftPriority(item, -1); break
+        case Qt.Key_Space: case Qt.Key_Return: case Qt.Key_Enter: if (item) toggle(item); break
+        case Qt.Key_X: if (item) remove(item); break
+        case Qt.Key_Escape:
+            if (showHelp) { showHelp = false; break }
+            if (pendingDelete !== "") { pendingDelete = ""; break }
+            return defaultKey(event)
+        default: return false
+        }
+        return true
+    }
 
     onViewChanged: { cursor = 0; pendingDelete = "" }
     onCategoryFilterChanged: { cursor = 0; pendingDelete = "" }
     onOpenChanged: {
         if (!open) {
+            addField.focus = false
             pendingDelete = ""
+            editingId = ""
             showHelp = false
             return
         }
@@ -294,7 +480,7 @@ PopupCard {
         cursor = 0
         categoryFilter = ""
         refresh()
-        taskKeys.forceActiveFocus()
+        leaveAdd()
     }
 
     property Process readProc: Process {
@@ -305,6 +491,17 @@ PopupCard {
             root.unavailable = payload.unavailable === true
             if (root.cursor >= root.listed.length) root.cursor = Math.max(0, root.listed.length - 1)
         } }
+    }
+    property FileView orderFile: FileView {
+        path: root.shell.home + "/.local/state/quickshell/task-order.json"
+        watchChanges: true; printErrors: false; atomicWrites: true
+        onLoaded: {
+            try {
+                const saved = JSON.parse(text())
+                root.taskOrder = Array.isArray(saved) ? saved.map(value => String(value)) : []
+            } catch (error) { root.taskOrder = [] }
+        }
+        onFileChanged: reload()
     }
     property Timer poll: Timer {
         interval: 120000; running: root.open; repeat: true
@@ -330,6 +527,27 @@ PopupCard {
             color: root.shell.alpha(root.shell.foreground, .7)
             font.family: root.shell.fontFamily; font.pixelSize: Style.caption
         }
+    }
+
+    component TaskAction: Text {
+        id: action
+        required property string glyph
+        property string hint: ""
+        property color tone: root.shell.foreground
+        signal triggered(int button)
+        anchors.verticalCenter: parent.verticalCenter
+        width: Style.px(18)
+        text: glyph; horizontalAlignment: Text.AlignHCenter
+        color: root.shell.alpha(tone, actionArea.containsMouse ? 1 : .58)
+        font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
+        MouseArea {
+            id: actionArea
+            anchors.fill: parent; anchors.margins: -Style.xs
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
+            hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+            onClicked: mouse => action.triggered(mouse.button)
+        }
+        BarTooltip { shell: root.shell; anchorItem: action; text: action.hint; hovered: actionArea.containsMouse }
     }
 
     component ViewTab: Rectangle {
@@ -362,34 +580,36 @@ PopupCard {
         anchors.fill: parent
         focus: true
 
-        Keys.onPressed: event => {
-            if (addField.activeFocus) return
-            switch (event.key) {
-            case Qt.Key_Down: case Qt.Key_J: root.move(1); break
-            case Qt.Key_Up: case Qt.Key_K: root.move(-1); break
-            case Qt.Key_Tab: root.cycleView(1); break
-            case Qt.Key_Backtab: root.cycleView(-1); break
-            case Qt.Key_T: root.view = "today"; break
-            case Qt.Key_O: root.view = "overdue"; break
-            case Qt.Key_A: root.view = "all"; break
-            case Qt.Key_D: root.view = "done"; break
-            case Qt.Key_R: root.refresh(); break
-            case Qt.Key_Question: root.showHelp = !root.showHelp; break
-            case Qt.Key_Q: addField.forceActiveFocus(); break
-            case Qt.Key_Space:
-                if (root.listed[root.cursor]) root.toggle(root.listed[root.cursor])
-                break
-            case Qt.Key_X:
-                if (root.listed[root.cursor]) root.remove(root.listed[root.cursor])
-                break
-            case Qt.Key_Escape:
-                if (root.showHelp) { root.showHelp = false; break }
-                if (root.pendingDelete !== "") { root.pendingDelete = ""; break }
-                return
-            default: return
+        TapHandler {
+            acceptedButtons: Qt.LeftButton
+            onTapped: eventPoint => {
+                if (root.editingRow) {
+                    const editPoint = root.editingRow.mapFromItem(taskKeys,
+                        eventPoint.position.x, eventPoint.position.y)
+                    if (editPoint.x < 0 || editPoint.y < 0
+                            || editPoint.x > root.editingRow.width
+                            || editPoint.y > root.editingRow.height)
+                        root.editingRow.finish(true)
+                }
+                if (addField.activeFocus) {
+                    const fieldPoint = addField.mapFromItem(taskKeys,
+                        eventPoint.position.x, eventPoint.position.y)
+                    if (fieldPoint.x < 0 || fieldPoint.y < 0
+                            || fieldPoint.x > addField.width
+                            || fieldPoint.y > addField.height)
+                        root.leaveAdd()
+                }
+                if (root.pendingDelete === "" || !root.confirmingRow) return
+                const point = root.confirmingRow.mapFromItem(taskKeys,
+                    eventPoint.position.x, eventPoint.position.y)
+                if (point.x < 0 || point.y < 0
+                        || point.x > root.confirmingRow.width
+                        || point.y > root.confirmingRow.height)
+                    root.pendingDelete = ""
             }
-            event.accepted = true
         }
+
+        Keys.onPressed: event => event.accepted = root.handleKey(event)
 
         Column {
             id: tasksColumn
@@ -399,26 +619,85 @@ PopupCard {
             visible: opacity > 0
 
             Item {
+                id: hero
                 width: parent.width
-                height: hero.implicitHeight
-                PopupHero {
-                    id: hero
-                    shell: root.shell; icon: "\u{f0132}"; title: "Tasks"
-                    status: root.unavailable ? "todoman is not installed"
-                        : root.dueCount === 0 ? "nothing due"
-                        : root.view.toUpperCase() + "  ·  " + root.listed.length
-                            + (root.listed.length === 1 ? " task" : " tasks")
+                height: Style.px(54)
+                TasksMascot {
+                    id: heroMascot
+                    anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
+                    anchors.verticalCenterOffset: -Style.xxs
+                    width: parent.height; height: width
+                    cornerRadius: root.shell.rounding
+                    baseColor: root.shell.foreground
+                    alertColor: root.shell.role("error", root.shell.foreground)
+                    urgency: root.mood.urgency; smile: root.mood.smile; eyes: root.mood.eyes
+                    brow: root.mood.brow; sweat: root.mood.sweat
+                    sparkle: root.mood.sparkle; wavy: root.mood.wavy
+                    animated: root.open
                 }
                 Text {
-                    anchors.right: parent.right; anchors.top: parent.top
-                    text: "\u{f0625}"
-                    color: root.shell.alpha(root.shell.foreground, helpArea.containsMouse ? .9 : .45)
-                    font.family: root.shell.fontFamily; font.pixelSize: Style.body
-                    MouseArea {
-                        id: helpArea
-                        anchors.fill: parent; anchors.margins: -6
-                        hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                        onClicked: root.showHelp = !root.showHelp
+                    id: heroCount
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: root.stats.total > 0 ? root.stats.done + "/" + root.stats.total : "–"
+                    color: root.shell.alpha(root.shell.foreground, .5)
+                    font.family: root.shell.fontFamily; font.pixelSize: Style.heroIcon; font.bold: true
+                }
+                Column {
+                    anchors.left: heroMascot.right; anchors.leftMargin: Style.xxxl
+                    anchors.right: heroCount.left; anchors.rightMargin: Style.xl
+                    anchors.verticalCenter: parent.verticalCenter; spacing: Style.xxs
+                    Text {
+                        width: parent.width; text: Qt.formatDate(root.now, "dddd d MMMM"); elide: Text.ElideRight
+                        color: root.shell.foreground; font.family: root.shell.fontFamily
+                        font.pixelSize: Style.title; font.bold: true
+                    }
+                    Text {
+                        width: parent.width; elide: Text.ElideRight
+                        text: root.unavailable ? "TODOMAN IS NOT INSTALLED" : root.mood.label.toUpperCase()
+                        color: heroMascot.inkColor; font.family: root.shell.fontFamily
+                        font.pixelSize: Style.caption; font.bold: true; font.letterSpacing: 1.2
+                    }
+                    Text {
+                        width: parent.width; text: root.mood.tagline; elide: Text.ElideRight
+                        color: root.shell.alpha(root.shell.foreground, .5)
+                        font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                    }
+                }
+            }
+
+            Column {
+                width: parent.width; spacing: Style.xs
+                Item {
+                    width: parent.width; height: Style.px(9)
+                    Rectangle { id: progressTrack; anchors.fill: parent; radius: Math.min(height / 2, root.shell.rounding); color: root.shell.alpha(root.shell.foreground, .12) }
+                    Rectangle {
+                        anchors.left: parent.left; height: parent.height; radius: Math.min(height / 2, root.shell.rounding)
+                        width: Math.max(root.stats.done > 0 ? height : 0, parent.width * root.stats.ratio)
+                        color: heroMascot.inkColor
+                        Behavior on width { NumberAnimation { duration: 340; easing.type: Easing.OutCubic } }
+                    }
+                    Rectangle {
+                        visible: root.stats.total > 0 && root.stats.done < root.stats.total
+                        width: Math.max(1, Style.xxs); height: parent.height + Style.sm
+                        anchors.verticalCenter: parent.verticalCenter
+                        x: Math.min(parent.width - width, Math.round(parent.width * root.dayFraction))
+                        color: root.shell.foreground; opacity: .85
+                    }
+                }
+                Item {
+                    width: parent.width; height: progressDone.implicitHeight
+                    Text {
+                        id: progressDone; anchors.left: parent.left
+                        text: root.stats.total > 0 ? Math.round(root.stats.ratio * 100) + "% of today done" : "Nothing planned yet"
+                        color: root.shell.alpha(root.shell.foreground, .42)
+                        font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                    }
+                    Text {
+                        anchors.right: parent.right
+                        text: Math.round(root.dayFraction * 100) + "% of the workday gone"
+                        color: root.shell.alpha(root.shell.foreground, .42)
+                        font.family: root.shell.fontFamily; font.pixelSize: Style.caption
                     }
                 }
             }
@@ -434,8 +713,8 @@ PopupCard {
                     shell: root.shell
                     height: Style.px(32)
                     anchors.left: parent.left
-                    anchors.right: addButton.left
-                    anchors.rightMargin: Style.sm
+                    anchors.right: parent.right
+                    rightPadding: Style.controlPaddingX + Style.px(20) + Style.sm
                     placeholderText: "Add a task… (friday 5pm, +work, p1)"
                     function submit() {
                         const parsed = root.parseQuickAdd(addField.text)
@@ -451,7 +730,15 @@ PopupCard {
                     onSubmitted: addField.submit()
                     Keys.onReturnPressed: addField.submit()
                     Keys.onEnterPressed: addField.submit()
-                    Keys.onEscapePressed: taskKeys.forceActiveFocus()
+                    Keys.onPressed: event => {
+                        if (event.key === Qt.Key_Escape) root.leaveAdd()
+                        else if (event.key === Qt.Key_Tab) root.cycleView(1)
+                        else if (event.key === Qt.Key_Backtab) root.cycleView(-1)
+                        else if (event.key === Qt.Key_Question || event.text === "?")
+                            root.showHelp = true
+                        else return
+                        event.accepted = true
+                    }
                 }
                 Text {
                     id: addButton
@@ -528,6 +815,7 @@ PopupCard {
                     : root.view === "overdue" ? "Nothing overdue" : "Nothing to do"
                 color: root.shell.alpha(root.shell.foreground, .35)
                 font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
+                topPadding: Style.rowGap
             }
 
             Column {
@@ -559,8 +847,22 @@ PopupCard {
                         readonly property bool selected: taskRow.flatIndex === root.cursor
                         readonly property bool done: taskRow.modelData.completed === true
                         readonly property bool confirming: root.pendingDelete === String(taskRow.modelData.id)
+                        readonly property bool editing: root.editingId === root.taskKey(taskRow.modelData)
+                        function finish(commit) { root.finishEdit(taskRow.modelData, rowEditor.text, commit) }
+                        onConfirmingChanged: {
+                            if (taskRow.confirming) root.confirmingRow = taskRow
+                            else if (root.confirmingRow === taskRow) root.confirmingRow = null
+                        }
+                        onEditingChanged: {
+                            if (taskRow.editing) root.editingRow = taskRow
+                            else {
+                                rowEditor.focus = false
+                                if (root.editingRow === taskRow) root.editingRow = null
+                                if (root.open) taskKeys.forceActiveFocus()
+                            }
+                        }
                         width: section.width
-                        height: rowText.implicitHeight + Style.px(18)
+                        height: (taskRow.editing ? rowEditor.height : rowText.implicitHeight) + Style.px(18)
                         radius: root.shell.rounding
                         color: taskRow.confirming
                             ? root.shell.alpha(root.shell.role("error", root.shell.foreground), .18)
@@ -570,11 +872,15 @@ PopupCard {
                         HoverHandler { id: rowHover }
                         MouseArea {
                             anchors.fill: parent
+                            enabled: !taskRow.editing
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: {
+                            onClicked: mouse => {
                                 root.pendingDelete = ""
                                 root.cursor = taskRow.flatIndex
+                                if (mouse.button === Qt.RightButton) root.beginEdit(taskRow.modelData)
                             }
+                            onDoubleClicked: root.beginEdit(taskRow.modelData)
                         }
 
                         Rectangle {
@@ -595,6 +901,7 @@ PopupCard {
                             font.family: root.shell.fontFamily; font.pixelSize: Style.body
                             MouseArea {
                                 anchors.fill: parent; anchors.margins: -4
+                                enabled: !taskRow.editing
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: root.toggle(taskRow.modelData)
                             }
@@ -605,6 +912,7 @@ PopupCard {
                             anchors.left: rowCheck.right; anchors.leftMargin: Style.sm
                             anchors.right: rowBin.left; anchors.rightMargin: Style.sm
                             anchors.top: parent.top; anchors.topMargin: Style.px(8)
+                            visible: !taskRow.editing
                             spacing: 2
                             Text {
                                 width: parent.width
@@ -616,17 +924,31 @@ PopupCard {
                             }
                             Text {
                                 visible: text !== ""
-                                text: taskRow.done
-                                    ? [root.completedLabel(taskRow.modelData),
-                                        root.dueLabel(taskRow.modelData) === "" ? ""
-                                            : "due " + root.dueLabel(taskRow.modelData)]
-                                        .filter(part => part !== "").join("  ·  ")
-                                    : root.dueLabel(taskRow.modelData)
-                                color: root.isOverdue(taskRow.modelData) && !taskRow.done
+                                text: root.taskMeta(taskRow.modelData)
+                                color: (root.isOverdue(taskRow.modelData) && !taskRow.done)
+                                        || Number(taskRow.modelData.carries || 0) >= 3
                                     ? root.shell.role("error", root.shell.foreground)
                                     : root.shell.alpha(root.shell.foreground, .4)
                                 font.family: root.shell.fontFamily; font.pixelSize: Style.caption
                             }
+                        }
+
+                        PopupField {
+                            id: rowEditor
+                            shell: root.shell
+                            visible: taskRow.editing
+                            anchors.left: rowCheck.right; anchors.leftMargin: Style.sm
+                            anchors.right: rowBin.left; anchors.rightMargin: Style.sm
+                            anchors.top: parent.top; anchors.topMargin: Style.px(8)
+                            height: Style.controlHeight
+                            onVisibleChanged: if (visible) {
+                                text = String(taskRow.modelData.summary)
+                                Qt.callLater(() => { rowEditor.forceActiveFocus(); rowEditor.selectAll() })
+                            }
+                            Keys.onReturnPressed: event => { taskRow.finish(true); event.accepted = true }
+                            Keys.onEnterPressed: event => { taskRow.finish(true); event.accepted = true }
+                            Keys.onEscapePressed: event => { taskRow.finish(false); event.accepted = true }
+                            onActiveFocusChanged: if (!activeFocus && taskRow.editing) taskRow.finish(true)
                         }
 
                         Row {
@@ -634,8 +956,31 @@ PopupCard {
                             anchors.right: parent.right
                             anchors.rightMargin: Style.controlPaddingX
                             anchors.verticalCenter: parent.verticalCenter
-                            visible: rowHover.hovered || taskRow.confirming
+                            visible: (rowHover.hovered || taskRow.confirming) && !taskRow.editing
                             spacing: Style.sm
+
+                            TaskAction {
+                                visible: !taskRow.confirming && root.canReorder(taskRow.modelData, -1)
+                                glyph: "↑"; hint: "Move up (Shift+K)"
+                                onTriggered: root.reorder(taskRow.modelData, -1)
+                            }
+                            TaskAction {
+                                visible: !taskRow.confirming && root.canReorder(taskRow.modelData, 1)
+                                glyph: "↓"; hint: "Move down (Shift+J)"
+                                onTriggered: root.reorder(taskRow.modelData, 1)
+                            }
+                            TaskAction {
+                                visible: !taskRow.confirming && !taskRow.done && root.priorityIndex(taskRow.modelData) < 3
+                                glyph: "▴"; hint: "Raise priority (H)"
+                                tone: root.priorityColor(taskRow.modelData)
+                                onTriggered: root.shiftPriority(taskRow.modelData, 1)
+                            }
+                            TaskAction {
+                                visible: !taskRow.confirming && !taskRow.done && root.priorityIndex(taskRow.modelData) > 0
+                                glyph: "▾"; hint: "Lower priority (L)"
+                                tone: root.priorityColor(taskRow.modelData)
+                                onTriggered: root.shiftPriority(taskRow.modelData, -1)
+                            }
 
                             Text {
                                 anchors.verticalCenter: parent.verticalCenter
@@ -647,7 +992,13 @@ PopupCard {
                                 font.family: root.shell.fontFamily
                                 font.pixelSize: taskRow.confirming ? Style.caption : Style.bodySmall
                                 font.bold: taskRow.confirming
-                                font.underline: taskRow.confirming && binArea.containsMouse
+                                Rectangle {
+                                    anchors.top: parent.bottom; anchors.topMargin: Style.xxs
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    width: Math.ceil(parent.contentWidth); height: 1
+                                    visible: taskRow.confirming && binArea.containsMouse
+                                    color: parent.color
+                                }
                                 MouseArea {
                                     id: binArea
                                     anchors.fill: parent; anchors.margins: -4
@@ -661,7 +1012,13 @@ PopupCard {
                                 text: "Cancel"
                                 color: root.shell.alpha(root.shell.foreground, cancelArea.containsMouse ? .9 : .5)
                                 font.family: root.shell.fontFamily; font.pixelSize: Style.caption
-                                font.underline: cancelArea.containsMouse
+                                Rectangle {
+                                    anchors.top: parent.bottom; anchors.topMargin: Style.xxs
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    width: Math.ceil(parent.contentWidth); height: 1
+                                    visible: cancelArea.containsMouse
+                                    color: parent.color
+                                }
                                 MouseArea {
                                     id: cancelArea
                                     anchors.fill: parent; anchors.margins: -4
@@ -676,12 +1033,71 @@ PopupCard {
                 }
             }
 
+            PopupSeparator { visible: !root.unavailable; shell: root.shell }
+            Column {
+                width: parent.width; spacing: Style.sm
+                visible: !root.unavailable
+                Text {
+                    text: "COMPLETED · LAST 14 DAYS"
+                    color: root.shell.alpha(root.shell.foreground, .45)
+                    font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                    font.letterSpacing: 1; font.bold: true
+                }
+                Row {
+                    id: historyBars
+                    width: parent.width; height: Style.px(26); spacing: Style.xs
+                    Repeater {
+                        model: root.history
+                        Item {
+                            required property var modelData
+                            width: (historyBars.width - historyBars.spacing * 13) / 14
+                            height: historyBars.height
+                            Rectangle {
+                                anchors.fill: parent; radius: Math.min(width / 3, root.shell.rounding)
+                                color: root.shell.alpha(root.shell.foreground, .08)
+                                border.width: parent.modelData.key === root.todayKey ? 1 : 0
+                                border.color: root.shell.alpha(root.shell.foreground, .55)
+                            }
+                            Rectangle {
+                                anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
+                                height: Math.round(parent.height * parent.modelData.count / root.historyMax)
+                                radius: Math.min(width / 3, root.shell.rounding)
+                                color: root.shell.alpha(root.shell.foreground, .7)
+                            }
+                        }
+                    }
+                }
+                Item {
+                    width: parent.width; height: historyCaption.implicitHeight
+                    Text {
+                        id: historyCaption; anchors.left: parent.left
+                        text: root.streak > 0 ? root.streak + " day streak" : "No streak yet"
+                        color: root.shell.alpha(root.shell.foreground, .42)
+                        font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                    }
+                    Text {
+                        anchors.right: parent.right
+                        text: root.completedRetained + " of " + root.todos.length + " retained complete"
+                        color: root.shell.alpha(root.shell.foreground, .42)
+                        font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                    }
+                }
+            }
+
             Text {
                 width: parent.width
                 visible: !root.unavailable
-                text: "?  shortcuts     j k  move     space  done / undo     q  add     t o a d  views"
+                textFormat: Text.RichText
+                text: "<a href=\"help\" style=\"text-decoration:none\">?</a>&nbsp; help"
+                    + "&nbsp;&nbsp;&nbsp; j k&nbsp; move&nbsp;&nbsp;&nbsp; J K&nbsp; reorder"
+                    + "&nbsp;&nbsp;&nbsp; space&nbsp; done&nbsp;&nbsp;&nbsp; e&nbsp; edit"
+                    + "&nbsp;&nbsp;&nbsp; h&nbsp;l&nbsp;priority&nbsp;&nbsp;&nbsp; q&nbsp; add"
+                linkColor: root.shell.role("act_br", root.shell.accent)
+                onLinkActivated: link => { if (link === "help") root.showHelp = true }
                 color: root.shell.alpha(root.shell.foreground, .3)
                 font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                topPadding: Style.sectionGap
+                wrapMode: Text.WordWrap
                 horizontalAlignment: Text.AlignHCenter
             }
         }
@@ -701,7 +1117,11 @@ PopupCard {
             PopupSeparator { shell: root.shell }
 
             HelpRow { keys: "j k  ↑ ↓"; action: "Move through the list" }
+            HelpRow { keys: "J K"; action: "Move a task down or up" }
             HelpRow { keys: "space"; action: "Complete — or reopen a done one" }
+            HelpRow { keys: "enter"; action: "Complete — or reopen a done one" }
+            HelpRow { keys: "e"; action: "Edit the selected task" }
+            HelpRow { keys: "h l  ← →"; action: "Raise or lower priority" }
             HelpRow { keys: "x  x"; action: "Delete — twice to confirm, esc to cancel" }
             HelpRow { keys: "q"; action: "Jump to the add box" }
             HelpRow { keys: "t o a d"; action: "Today · Overdue · All · Done" }

@@ -187,6 +187,9 @@ alarm/timer/stopwatch popup where configured as the timer clock.
 - Alarm/timer and stopwatch state lives under `~/.local/state/quickshell/` and is
   restored by `calendar/alarm-timer.sh`; do not move scheduling into QML timers
   that disappear on reload.
+- Tasks remain VTODOs owned by `todoman`. The popup keeps only display order in
+  `task-order.json`; `calendar/agenda.sh --todos` advances undated carry counts
+  under a lock and emits the once-daily carry notification signal.
 - Bar and dock share `store.barTransparent` and `store.barBlur`. While the dock
   is linked it renders from those and writes back to them, so a toggle from
   either surface moves both; `LayerBlur` turns each surface's blur into a named

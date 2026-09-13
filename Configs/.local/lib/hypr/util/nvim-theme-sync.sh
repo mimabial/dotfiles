@@ -7,8 +7,6 @@ source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || ex
 hypr_help_guard "Usage: hyprshell util/nvim-theme-sync
 Reload the active theme in every running Neovim instance via its RPC socket." "$@"
 
-theme_file="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/theme.meta"
-
 log_dir="${XDG_CACHE_HOME:-$HOME/.cache}/hypr"
 log_file="${log_dir}/nvim-theme-sync.log"
 mkdir -p "${log_dir}"
@@ -20,13 +18,13 @@ log_warn() {
 runtime_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 remote_timeout="${NVIM_THEME_SYNC_TIMEOUT:-2s}"
 remote_kill_after="${NVIM_THEME_SYNC_KILL_AFTER:-1s}"
-remote_cmd='<Cmd>lua package.loaded["lib.theme_manager"]=nil; for name in pairs(package.loaded) do if name:match("^plugins%.themes%.definitions%.") then package.loaded[name]=nil end end; local manager=require("lib.theme_manager"); manager.apply_system_theme(manager.load_themes())<CR><Cmd>redraw!<CR>'
+remote_cmd='<Cmd>lua if vim.g.neocode_theme_sync then require("lib.theme_manager").sync(true); vim.cmd("redraw!") end<CR>'
 
 shopt -s nullglob
 for socket in "${runtime_dir}"/nvim.*.0; do
-  [ -S "${socket}" ] || continue
+  [[ -S "${socket}" ]] || continue
 
-  base="$(basename "${socket}")"
+  base="${socket##*/}"
   pid=""
   if [[ "${base}" =~ ^nvim\.([0-9]+)\..* ]]; then
     pid="${BASH_REMATCH[1]}"
@@ -43,15 +41,21 @@ for socket in "${runtime_dir}"/nvim.*.0; do
     continue
   fi
 
-  comm="$(ps -p "${pid}" -o comm= 2>/dev/null | tr -d ' ')"
+  comm=""
+  [[ -r "/proc/${pid}/comm" ]] && IFS= read -r comm <"/proc/${pid}/comm" || true
   if [[ -z "${comm}" || "${comm}" != nvim* ]]; then
     log_warn "remove stale socket: ${socket} (pid ${pid} not nvim: ${comm:-unknown})"
     rm -f "${socket}"
     continue
   fi
 
-  args="$(ps -p "${pid}" -o args= 2>/dev/null)"
-  if [[ "${args}" =~ --headless ]] || [[ "${args}" =~ (^|[[:space:]])-es([[:space:]]|$) ]] || [[ "${args}" =~ (^|[[:space:]])-Es([[:space:]]|$) ]]; then
+  argv=()
+  mapfile -d '' -t argv <"/proc/${pid}/cmdline" 2>/dev/null || true
+  headless=0
+  for arg in "${argv[@]}"; do
+    [[ "${arg}" =~ ^(--headless|-[Ee]s)$ ]] && headless=1 && break
+  done
+  if [[ "${headless}" -eq 1 ]]; then
     log_warn "skip headless nvim: ${socket} (pid ${pid})"
     continue
   fi

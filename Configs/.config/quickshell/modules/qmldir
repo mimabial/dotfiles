@@ -40,5 +40,6 @@ ToolsGroup 1.0 ToolsGroup.qml
 UpdatesGroup 1.0 UpdatesGroup.qml
 VpnButton 1.0 VpnButton.qml
 WallpaperButton 1.0 WallpaperButton.qml
+WebcamButton 1.0 WebcamButton.qml
 WifiGroup 1.0 WifiGroup.qml
 WindowLayoutButton 1.0 WindowLayoutButton.qml

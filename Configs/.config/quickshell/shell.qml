@@ -130,6 +130,7 @@ ShellRoot {
         property bool clockworkSound: true
         property string clockworkBreakColor: "#a6e3a1"
         property string bluetoothAudioPolicies: "{}"
+        property string webcamDevice: ""
     }
 
     ClockworkState { id: clockworkState; shell: shellRoot }

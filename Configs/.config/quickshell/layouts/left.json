@@ -54,6 +54,7 @@
       "showCliphist": true
     }
   },
+  "webcam",
   {
     "id": "bluetooth",
     "props": {

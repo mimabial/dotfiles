@@ -4,7 +4,7 @@ import QtQuick
 Item {
     id: root
     required property var shell
-    // One module, two presentations: the original countdown or Omarchy MPRIS controls.
+    // "compact" is the remaining-time countdown, "mpris" the transport controls.
     property string appearance: "compact"
     property bool popupEnabled: true
     property bool vertical: false

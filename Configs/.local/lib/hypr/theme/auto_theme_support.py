@@ -26,12 +26,10 @@ except ImportError:
 
 _xdg_config = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
 _xdg_state = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
-_xdg_cache = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
 _tmpdir = Path(os.environ.get("TMPDIR", "/tmp"))
 
 CONFIG_FILE = _xdg_config / "hypr/auto_theme.conf"
 STATE_FILE = _xdg_state / "hypr/auto_theme_state.json"
-NVIM_SETTINGS = _xdg_cache / "nvim/theme_settings.json"
 TMPDIR_PATH = _tmpdir
 STATE_LOCATION_ENV_KEYS = {
     "AUTO_THEME_LATITUDE": "latitude",
@@ -47,7 +45,6 @@ DEFAULT_CONFIG = {
     "check_interval_seconds": 60,
     "sun_offset_minutes": 30,
     "control_hyprland": True,
-    "control_nvim": True,
     "manual_override_duration": 120,
 }
 

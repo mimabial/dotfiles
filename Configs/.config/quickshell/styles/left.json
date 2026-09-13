@@ -166,6 +166,16 @@
       "content": ["hvr_fg", 1.0]
     }
   },
+  "webcam": {
+    "border": 1.0,
+    "outline": ["br", 0.2],
+    "margin": [2.0, 2.0, 2.0, 2.0],
+    "padding": [2.0, 0.0, 2.0, 0.0],
+    "hover": {
+      "fill": null,
+      "content": ["hvr_fg", 1.0]
+    }
+  },
   "notification-group": {
     "border": 0.0,
     "margin": [0.0, 0.0, 0.0, 0.0],

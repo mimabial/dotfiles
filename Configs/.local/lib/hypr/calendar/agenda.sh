@@ -39,6 +39,7 @@ Usage: hyprshell calendar/agenda --day YYYY-MM-DD
                     VTODO is edited directly: the id is resolved to a file
                     through todoman's own cache, then COMPLETED,
                     PERCENT-COMPLETE and STATUS are undone.
+  --todo-edit ID    Update --title and/or --priority on an existing todo
   --todo-delete ID  Remove it
   --calendars       Emit the calendar table khal resolves its config to,
                     plus the LOCATION values already used in writable calendars:
@@ -80,8 +81,10 @@ todo_add=0
 todo_done=""
 todo_delete=""
 todo_open=""
+todo_edit=""
 table=""
 filters="${KHAL_FILTERS:-${XDG_CONFIG_HOME:-$HOME/.config}/khal/filters.json}"
+carry_state="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/task-carries.json"
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -184,6 +187,10 @@ while [ $# -gt 0 ]; do
       ;;
     --todo-open)
       todo_open="${2:-}"
+      shift 2 || true
+      ;;
+    --todo-edit)
+      todo_edit="${2:-}"
       shift 2 || true
       ;;
     -h | --help)
@@ -297,9 +304,73 @@ todo_cli() {
 emit_todos() {
   local -a args=(--porcelain list)
   [[ "${todos_all}" -eq 0 ]] || args+=(--status ANY)
-  todo "${args[@]}" 2>/dev/null |
-    jq -c '{todos: sort_by([.completed, (.due // 99999999999), (if (.priority // 0) == 0 then 10 else .priority end), (.summary | ascii_downcase)])}' ||
-    printf '{"todos":[]}\n'
+  mkdir -p "${carry_state%/*}"
+  (
+    flock -x 9
+    python3 - "${XDG_CACHE_HOME:-$HOME/.cache}/todoman/cache.sqlite3" \
+      "${carry_state}" "$((1 - todos_all))" 3< <(todo "${args[@]}" 2>/dev/null) <<'TODOPY'
+import datetime, json, os, sqlite3, sys, tempfile
+
+cache, state_path, mutate = sys.argv[1], sys.argv[2], sys.argv[3] == "1"
+try:
+    todos = json.load(os.fdopen(3))
+except (OSError, ValueError):
+    print('{"todos":[]}')
+    raise SystemExit
+
+uids = {}
+try:
+    with sqlite3.connect(f"file:{cache}?mode=ro", uri=True) as con:
+        uids = dict(con.execute("SELECT id, uid FROM todos"))
+except sqlite3.Error:
+    pass
+for item in todos:
+    item["uid"] = str(uids.get(item.get("id"), "id:" + str(item.get("id", ""))))
+
+try:
+    with open(state_path, encoding="utf-8") as handle:
+        state = json.load(handle)
+except (OSError, ValueError):
+    state = {}
+today = datetime.date.today().isoformat()
+old_items = state.get("items", {}) if isinstance(state.get("items"), dict) else {}
+notice = 0
+
+if mutate:
+    rolled = bool(state.get("day")) and state["day"] < today
+    next_items = {}
+    for item in todos:
+        if item.get("completed") or item.get("due") is not None:
+            continue
+        uid = item["uid"]
+        saved = old_items.get(uid, {})
+        carries = max(0, int(saved.get("carries", 0) or 0))
+        if rolled and saved:
+            carries += 1
+            notice += 1
+        next_items[uid] = {"firstSeen": saved.get("firstSeen", today), "carries": carries}
+    next_state = {"day": today, "items": next_items}
+    if next_state != state:
+        fd, tmp = tempfile.mkstemp(dir=os.path.dirname(state_path))
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                json.dump(next_state, handle, separators=(",", ":"))
+                handle.write("\n")
+            os.replace(tmp, state_path)
+        finally:
+            if os.path.exists(tmp):
+                os.unlink(tmp)
+    state = next_state
+
+items = state.get("items", {})
+for item in todos:
+    item["carries"] = int(items.get(item["uid"], {}).get("carries", 0) or 0)
+todos.sort(key=lambda item: (
+    bool(item.get("completed")), item.get("due") if item.get("due") is not None else 99999999999,
+    item.get("priority") or 10, str(item.get("summary", "")).lower()))
+print(json.dumps({"todos": todos, "carryNotice": notice}, separators=(",", ":")))
+TODOPY
+  ) 9>"${carry_state}.lock" || printf '{"todos":[]}\n'
 }
 
 # The cache is todoman's own id->file map; it is read, never written.
@@ -346,8 +417,40 @@ reopen_todo() {
   mv -- "${tmp}" "${file}" || { rm -f "${tmp}"; return 1; }
 }
 
+edit_todo() {
+  local file
+  file="$(todo_file "$1")" || return 1
+  python3 - "${file}" "${title}" "${priority}" <<'TODOPY'
+import datetime, os, sys, tempfile
+from icalendar import Calendar
+from icalendar.prop import vDDDTypes
+
+path, summary, priority = sys.argv[1:]
+with open(path, "rb") as handle:
+    calendar = Calendar.from_ical(handle.read())
+task = calendar.walk("VTODO")[0]
+if summary:
+    task["SUMMARY"] = summary
+if priority:
+    task["PRIORITY"] = {"none": 0, "low": 9, "medium": 5, "high": 1}[priority]
+now = vDDDTypes(datetime.datetime.now(datetime.timezone.utc))
+task["DTSTAMP"], task["LAST-MODIFIED"] = now, now
+task["SEQUENCE"] = int(task.get("SEQUENCE", 0)) + 1
+fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path))
+try:
+    with os.fdopen(fd, "wb") as handle:
+        handle.write(calendar.to_ical())
+    os.chmod(tmp, os.stat(path).st_mode)
+    os.replace(tmp, path)
+finally:
+    if os.path.exists(tmp):
+        os.unlink(tmp)
+TODOPY
+}
+
 if [[ "${todos_mode}" -eq 1 ]] || [[ "${todo_add}" -eq 1 ]] ||
-  [[ -n "${todo_done}" ]] || [[ -n "${todo_delete}" ]] || [[ -n "${todo_open}" ]]; then
+  [[ -n "${todo_done}" ]] || [[ -n "${todo_delete}" ]] || [[ -n "${todo_open}" ]] ||
+  [[ -n "${todo_edit}" ]]; then
   if ! todo_cli; then
     printf '{"todos":[],"unavailable":true}\n'
     exit 0
@@ -363,6 +466,14 @@ if [[ "${todos_mode}" -eq 1 ]] || [[ "${todo_add}" -eq 1 ]] ||
   if [[ -n "${todo_done}" ]]; then
     todo "done" "${todo_done}" >/dev/null 2>&1 ||
       { jq -n --arg id "${todo_done}" '{todos: [], error: ("could not complete " + $id)}'; exit 1; }
+  fi
+  if [[ -n "${todo_edit}" ]]; then
+    [[ -z "${priority}" || "${priority}" =~ ^(none|low|medium|high)$ ]] ||
+      { printf '{"todos":[],"error":"invalid priority"}\n'; exit 1; }
+    [[ -n "${title}" || -n "${priority}" ]] ||
+      { printf '{"todos":[],"error":"an edit needs a title or priority"}\n'; exit 1; }
+    edit_todo "${todo_edit}" ||
+      { jq -n --arg id "${todo_edit}" '{todos: [], error: ("could not edit " + $id)}'; exit 1; }
   fi
   if [[ "${todo_add}" -eq 1 ]]; then
     [[ -n "${title}" ]] || { usage >&2; exit 1; }

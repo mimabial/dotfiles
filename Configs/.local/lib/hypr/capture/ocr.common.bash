@@ -14,7 +14,7 @@ hypr_ocr_languages_into() {
   if [[ "$(declare -p SCREENSHOT_OCR_TESSERACT_LANGUAGES 2>/dev/null)" == "declare -a"* ]]; then
     languages_ref=("${SCREENSHOT_OCR_TESSERACT_LANGUAGES[@]}")
   else
-    raw="${SCREENSHOT_OCR_LANGS:-${OMARCHY_OCR_LANGS:-eng}}"
+    raw="${SCREENSHOT_OCR_LANGS:-eng}"
     raw="${raw//[+,]/ }"
     read -r -a languages_ref <<<"${raw}"
   fi

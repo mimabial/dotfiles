@@ -40,7 +40,7 @@ def expand_path(value: str) -> Path:
 
 
 def cache_root() -> Path:
-  root = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "omarchy" / "agent-usage"
+  root = Path(os.environ.get("XDG_CACHE_HOME") or (Path.home() / ".cache")) / "hypr" / "agents"
   root.mkdir(parents=True, exist_ok=True)
   return root
 

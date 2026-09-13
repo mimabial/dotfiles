@@ -19,6 +19,7 @@ theme_switch_previous_color_mode="${selected_color_mode:-}"
 theme_switch_state_updated=0
 theme_switch_auto_mode_changed=0
 theme_switch_metadata_file=""
+theme_switch_nvim_mapping=""
 THEME_SWITCH_NOTIFY_ID="${THEME_SWITCH_NOTIFY_ID:-94}"
 THEME_SWITCH_NOTIFY_STACK_TAG="${THEME_SWITCH_NOTIFY_STACK_TAG:-theme-switch}"
 
@@ -181,6 +182,8 @@ Options:
       --force-regenerate  Alias for --regen
       --no-cache          Bypass cache reads and writes
       --from-auto         Preserve auto mode for scheduler-driven switches
+      --nvim SCHEME[:VARIANT]
+                          Persist the active pack's Neovim mapping
 EOF
 }
 
@@ -220,6 +223,11 @@ parse_theme_switch_args() {
       --from-auto)
         theme_switch_from_auto=1
         ;;
+      --nvim)
+        shift
+        [[ -n "${1:-}" ]] || { theme_switch_usage >&2; exit 1; }
+        theme_switch_nvim_mapping="$1"
+        ;;
       -h | --help)
         theme_switch_usage
         exit 0
@@ -231,6 +239,27 @@ parse_theme_switch_args() {
     esac
     shift
   done
+}
+
+update_nvim_mapping() {
+  [[ -n "${theme_switch_nvim_mapping}" ]] || return 0
+  local file="${HYPR_THEME_DIR}/hypr.theme"
+  local scheme="${theme_switch_nvim_mapping%%:*}"
+  local variant="" tmp=""
+  [[ "${theme_switch_nvim_mapping}" == *:* ]] && variant="${theme_switch_nvim_mapping#*:}"
+  [[ "${scheme}" =~ ^[[:alnum:]_.-]+$ && ( -z "${variant}" || "${variant}" =~ ^[[:alnum:]_.-]+$ ) ]] || return 1
+  [[ -s "${file}" ]] || return 1
+
+  tmp="$(mktemp "${file}.tmp.XXXXXX")" || return 1
+  if awk -v scheme="${scheme}" -v variant="${variant}" '
+    NR == 1 { print; print "$NVIM_SCHEME = " scheme; if (variant != "") print "$NVIM_VARIANT = " variant; next }
+    /^[[:space:]]*\$NVIM_(SCHEME|VARIANT)[[:space:]]*=/ { next }
+    { print }
+  ' "${file}" >"${tmp}" && chmod --reference="${file}" "${tmp}" && mv -f -- "${tmp}" "${file}"; then
+    return 0
+  fi
+  rm -f -- "${tmp}"
+  return 1
 }
 
 resolve_theme_selection() {
@@ -289,6 +318,7 @@ main() {
   resolve_theme_selection
   theme_switch_reconcile_color_mode
   set_active_theme
+  update_nvim_mapping || exit 1
   prepare_active_theme_config || exit 1
   [[ "${quiet}" == "true" ]] && theme_apply_cmd+=(--quiet)
   theme_apply_cmd+=("${theme_switch_cache_args[@]}")

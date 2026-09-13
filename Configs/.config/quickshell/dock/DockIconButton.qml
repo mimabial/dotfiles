@@ -9,8 +9,11 @@ Item {
   property string glyph: ""
   property string tooltip: ""
   property color glyphColor: btn.dock.dockForeground
-  // The padded icon box compensates for glyph metrics; this sets optical weight.
-  property real glyphSize: btn.dock.iconSize * 0.62
+  property real glyphSize: {
+    const bounds = glyphMetrics.tightBoundingRect
+    const extent = Math.max(bounds.width, bounds.height)
+    return extent > 0 ? btn.dock.baseIconArt * 200 / extent : btn.dock.baseIconArt
+  }
   signal pressed()
   signal middleClicked()
   signal wheelScrolled(int dir)
@@ -31,6 +34,13 @@ Item {
   width: btn.dock.vertical ? btn.dock.iconSlot : btn.slotMain
   height: btn.dock.vertical ? btn.slotMain : btn.dock.iconSlot
 
+  TextMetrics {
+    id: glyphMetrics
+    font.family: btn.dock.shell ? btn.dock.shell.iconGlyphFont : Style.font.family
+    font.pixelSize: 200
+    text: btn.glyph
+  }
+
   Text {
     anchors.centerIn: parent
     width: btn.dock.iconSize
@@ -39,7 +49,7 @@ Item {
     textFormat: Text.PlainText
     horizontalAlignment: Text.AlignHCenter
     verticalAlignment: Text.AlignVCenter
-    font.family: Style.font.family
+    font.family: btn.dock.shell ? btn.dock.shell.iconGlyphFont : Style.font.family
     font.pixelSize: btn.glyphSize
     color: area.containsMouse ? Color.accent : btn.glyphColor
     transformOrigin: btn.dock.floorTransformOrigin

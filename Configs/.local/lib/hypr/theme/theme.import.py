@@ -18,11 +18,13 @@ import tempfile
 import tomllib
 from pathlib import Path
 
-CONFIG_HOME = Path(os.environ.get("HYPR_CONFIG_HOME", os.path.expanduser("~/.config/hypr")))
+XDG_CONFIG_HOME = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")).expanduser()
+CONFIG_HOME = Path(os.environ.get("HYPR_CONFIG_HOME", XDG_CONFIG_HOME / "hypr")).expanduser()
 THEMES_DIR = CONFIG_HOME / "themes"
 THEME_META = THEMES_DIR / "theme.meta"
 HYPR_LIB = Path(__file__).resolve().parents[1]
-NVIM_DEFS = Path.home() / "neocode" / "lua" / "plugins" / "themes" / "definitions"
+NVIM_CONFIG = Path(os.environ.get("NVIM_CONFIG_DIR", XDG_CONFIG_HOME / os.environ.get("NVIM_APPNAME", "nvim")))
+NVIM_DEFS = NVIM_CONFIG.expanduser() / "lua" / "plugins" / "themes" / "definitions"
 ICON_ROOTS = (
     Path(os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))) / "icons",
     Path.home() / ".icons",
@@ -87,9 +89,11 @@ def nvim_scheme_has_background(name, mode):
     """Snapshots fall back to their first capture and force its background, so a
     scheme with no capture for this polarity would render the wrong one."""
     data = NVIM_DEFS / "data" / f"{name}.lua"
-    if not data.is_file():
-        return True
-    return f'background = "{mode}"' in data.read_text()
+    if data.is_file():
+        return f'background = "{mode}"' in data.read_text()
+    definition = (NVIM_DEFS / f"{name}.lua").read_text()
+    fixed = re.search(r'^\s*background\s*=\s*"(dark|light)"', definition, re.MULTILINE)
+    return not fixed or fixed.group(1) == mode
 
 
 def is_light(hex_color):

@@ -16,6 +16,7 @@
 - Do not add new code smells. Fix nearby existing ones when you touch the area.
 - Prefer existing helpers and shared libraries over one-off logic.
 - Keep config and helper scripts fast, efficient, and low in line count.
+- Prefer self-documenting names and structure; comments should explain only non-obvious reasoning.
 - Do not take screenshots unless they are necessary for the task.
 - Do not add comments that do not clarify non-obvious behavior.
 - If syntax, flags, config keys, or API details are uncertain, verify them with local help, man pages, or official docs before changing files.

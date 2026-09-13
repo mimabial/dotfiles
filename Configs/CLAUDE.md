@@ -9,6 +9,9 @@ Guidance for Claude Code when working in this home directory.
 - Read the existing implementation first and follow local patterns unless there is a strong reason not to.
 - If you are unsure about syntax, flags, config keys, or API details, verify them with local help, man pages, or official documentation before editing.
 - Verify the changed path before considering the task done.
+- Keep code fast and efficient: no redundant processes, polling, or eager loading. Batch work and load on demand.
+- Keep the line count low: build on existing primitives and prefer the smaller correct design, including when porting.
+- Write self-documenting code: names and structure carry the meaning; a comment only states reasoning the code cannot.
 
 ## Critical Safety Rules
 

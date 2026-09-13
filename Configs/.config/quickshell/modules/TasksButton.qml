@@ -43,6 +43,10 @@ BarButton {
             let payload = ({})
             try { payload = JSON.parse(text) || ({}) } catch (error) { payload = ({}) }
             const todos = payload.todos || []
+            const carried = Number(payload.carryNotice || 0)
+            if (carried > 0)
+                root.shell.run(["notify-send", "-a", "Tasks", "Tasks carried over",
+                    carried + (carried === 1 ? " undated task is still open" : " undated tasks are still open")])
             const now = Date.now()
             const cutoff = new Date(new Date().getFullYear(), new Date().getMonth(),
                 new Date().getDate() + 1).getTime()

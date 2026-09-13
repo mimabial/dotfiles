@@ -21,7 +21,6 @@ from pyutils.lock_paths import runtime_lock_path
 from auto_theme_support import (
     ASTRAL_AVAILABLE,
     CONFIG_FILE,
-    NVIM_SETTINGS,
     STATE_FILE,
     TMPDIR_PATH,
     active_palette_file,
@@ -192,8 +191,6 @@ class AutoThemeDaemon:
     def _apply_mode(self, mode: Literal["light", "dark"], reason: str):
         if mode == self.state["current_mode"]:
             if self._is_auto_mode():
-                if self.config["control_nvim"]:
-                    self._reconcile_nvim(mode)
                 if self.config["control_hyprland"]:
                     current_color_variant = read_color_variant_file()
                     staterc_values = read_staterc()
@@ -212,29 +209,8 @@ class AutoThemeDaemon:
             print("Auto mode inactive, skipping target updates")
             return
 
-        if self.config["control_nvim"]:
-            self._apply_nvim(mode)
         if self.config["control_hyprland"]:
             self._apply_hyprland(mode)
-
-    def _reconcile_nvim(self, mode: Literal["light", "dark"]):
-        try:
-            if NVIM_SETTINGS.exists():
-                settings = json.loads(NVIM_SETTINGS.read_text())
-                if settings.get("background") == mode:
-                    return
-        except Exception:
-            pass
-        self._apply_nvim(mode)
-
-    def _apply_nvim(self, mode: Literal["light", "dark"]):
-        try:
-            settings = json.loads(NVIM_SETTINGS.read_text()) if NVIM_SETTINGS.exists() else {}
-            settings["background"] = mode
-            NVIM_SETTINGS.parent.mkdir(parents=True, exist_ok=True)
-            NVIM_SETTINGS.write_text(json.dumps(settings))
-        except Exception as exc:
-            print(f"Warning: Failed to update Neovim: {exc}")
 
     def _pair_theme_for(self, current_theme: Optional[str], mode: str) -> Optional[str]:
         hyprshell = resolve_hyprshell()

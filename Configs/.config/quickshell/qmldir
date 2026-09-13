@@ -80,6 +80,7 @@ SubmapButton 1.0 SubmapButton.qml
 SudokuPopup 1.0 SudokuPopup.qml
 SysinfoPopup 1.0 SysinfoPopup.qml
 TasksPopup 1.0 TasksPopup.qml
+TasksMascot 1.0 TasksMascot.qml
 Theme 1.0 Theme.qml
 ToggleSwitch 1.0 ToggleSwitch.qml
 TopBar 1.0 TopBar.qml
@@ -92,6 +93,7 @@ VolumeSlider 1.0 VolumeSlider.qml
 VpnPopup 1.0 VpnPopup.qml
 WallpaperPopup 1.0 WallpaperPopup.qml
 WeatherPopup 1.0 WeatherPopup.qml
+WebcamPanel 1.0 WebcamPanel.qml
 WifiQrPopup 1.0 WifiQrPopup.qml
 WinBar 1.0 WinBar.qml
 WindowList 1.0 WindowList.qml

@@ -72,10 +72,10 @@ Item {
         }
         background: Rectangle {
             implicitWidth: Style.px(100); implicitHeight: Style.trackHeight
-            x: parent.leftPadding; y: parent.topPadding + parent.availableHeight / 2 - height / 2
-            width: parent.availableWidth; height: Style.trackHeight; radius: Style.trackHeight / 2
+            x: slider.leftPadding; y: slider.topPadding + slider.availableHeight / 2 - height / 2
+            width: slider.availableWidth; height: Style.trackHeight; radius: Style.trackHeight / 2
             color: root.shell.alpha(root.shell.foreground, .14)
-            Rectangle { width: parent.width * (parent.parent.value / parent.parent.to); height: parent.height; radius: parent.radius; color: root.shell.role("act_br", root.shell.accent) }
+            Rectangle { width: parent.width * slider.visualPosition; height: parent.height; radius: parent.radius; color: root.shell.role("act_br", root.shell.accent) }
             // notches in the card colour, so a stepped slider reads as segments
             Repeater {
                 model: root.tickCount > 1 ? root.tickCount : 0
@@ -88,6 +88,6 @@ Item {
                 }
             }
         }
-        handle: Rectangle { implicitWidth: Style.knobSize; implicitHeight: Style.knobSize; x: parent.leftPadding + parent.visualPosition * (parent.availableWidth - width); y: parent.topPadding + parent.availableHeight / 2 - height / 2; width: Style.knobSize; height: Style.knobSize; radius: Style.knobSize / 2; color: root.shell.foreground }
+        handle: Rectangle { implicitWidth: Style.knobSize; implicitHeight: Style.knobSize; x: slider.leftPadding + slider.visualPosition * (slider.availableWidth - width); y: slider.topPadding + slider.availableHeight / 2 - height / 2; width: Style.knobSize; height: Style.knobSize; radius: Style.knobSize / 2; color: root.shell.foreground }
     }
 }

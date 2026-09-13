@@ -349,7 +349,7 @@ def scan_native_codex_sessions():
 
 
 def cache_root():
-  root = Path(os.environ.get("XDG_CACHE_HOME") or (Path.home() / ".cache")) / "omarchy" / "agent-usage"
+  root = Path(os.environ.get("XDG_CACHE_HOME") or (Path.home() / ".cache")) / "hypr" / "agents"
   root.mkdir(parents=True, exist_ok=True)
   return root
 

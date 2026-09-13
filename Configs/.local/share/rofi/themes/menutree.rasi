@@ -1,15 +1,12 @@
 /**
- * Omarchy Menu Theme
- *
- * Clean dmenu theme for omarchy system menus
- * Uses pywal16-generated colors and system fonts
+ * Menu tree theme for rofi/menutree.sh
  **/
 
 /*****----- Global Properties -----*****/
 @import "~/.config/rofi/colors.rasi"
 
 * {
-    /* Border settings - dynamically set from omarchy-launch-rofi */
+    /* rofi/menu.engine.bash overrides the prompt and selection radius per launch */
     element-border-radius:       8px;
     window-border-radius:        12px;
 }

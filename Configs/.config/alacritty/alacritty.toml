@@ -14,19 +14,19 @@ builtin_box_drawing = true
 size = 15.00
 
 [font.normal]
-family = "MonaspiceKr Nerd Font"
+family = "IosevkaTerm Nerd Font"
 style = "Regular"
 
 [font.bold]
-family = "MonaspiceKr Nerd Font"
+family = "IosevkaTerm Nerd Font"
 style = "Bold"
 
 [font.italic]
-family = "MonaspiceKr Nerd Font"
+family = "IosevkaTerm Nerd Font"
 style = "Italic"
 
 [font.bold_italic]
-family = "MonaspiceKr Nerd Font"
+family = "IosevkaTerm Nerd Font"
 style = "Bold Italic"
 
 [font.offset]
