@@ -7,7 +7,7 @@ PopupCard {
     id: root
     popupName: "disks"
     contentWidth: Style.px(410)
-    contentHeight: scroll.height + padding * 2
+    contentHeight: contentColumn.implicitHeight + padding * 2
 
     property string editingKey: ""
     property string nicknameDraft: ""
@@ -65,10 +65,20 @@ PopupCard {
             width: scroll.width
             spacing: Style.sm
 
-            PopupHero {
-                shell: root.shell
-                title: "Removable drives"
-                status: Model.plain(Removable.summary)
+            PopupSection { shell: root.shell; text: "REMOVABLE"; value: Removable.devices.length || "" }
+            Text {
+                visible: Removable.loaded && !Removable.present
+                width: parent.width; text: "Nothing plugged in"
+                horizontalAlignment: Text.AlignHCenter
+                color: root.shell.alpha(root.shell.foreground, .5)
+                font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
+            }
+            Text {
+                visible: !Removable.loaded
+                width: parent.width; text: "Looking for drives…"
+                horizontalAlignment: Text.AlignHCenter
+                color: root.shell.alpha(root.shell.foreground, .5)
+                font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
             }
 
             Row {
@@ -77,8 +87,8 @@ PopupCard {
                 PopupRow {
                     width: (parent.width - parent.spacing) / 2
                     shell: root.shell; icon: Model.GLYPH_REFRESH
-                    title: Removable.refreshing ? "Scanning…" : "Rescan"
-                    centerTitle: true; enabled: !Removable.refreshing
+                    title: "Rescan"
+                    centerTitle: true
                     onClicked: Removable.rescan()
                 }
                 PopupRow {
@@ -119,9 +129,6 @@ PopupCard {
                 onClicked: Removable.forceUnmountBlocked()
             }
 
-            PopupSeparator { visible: Removable.devices.length > 0; shell: root.shell }
-            PopupSection { visible: Removable.devices.length > 0; shell: root.shell; text: "DRIVES"; value: Removable.devices.length }
-
             Repeater {
                 model: Removable.devices
                 DeviceCard {
@@ -154,19 +161,19 @@ PopupCard {
                 }
             }
 
-            Text {
-                visible: Removable.loaded && !Removable.present
-                width: parent.width; text: "Nothing plugged in"
-                horizontalAlignment: Text.AlignHCenter
-                color: root.shell.alpha(root.shell.foreground, .5)
-                font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
+            PopupSeparator { shell: root.shell }
+            PopupSection { shell: root.shell; text: "UDISKIE" }
+            SettingRow {
+                width: parent.width
+                label: "Automount"; detail: "Mount removable media on plug-in"
+                checked: Removable.automount
+                onToggled: Removable.toggleAutomount()
             }
-            Text {
-                visible: !Removable.loaded
-                width: parent.width; text: "Looking for drives…"
-                horizontalAlignment: Text.AlignHCenter
-                color: root.shell.alpha(root.shell.foreground, .5)
-                font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
+            SettingRow {
+                width: parent.width
+                label: "Notifications"; detail: "Announce mounts and removals"
+                checked: Removable.notificationsEnabled
+                onToggled: Removable.setNotifications(!Removable.notificationsEnabled)
             }
         }
     }
@@ -271,9 +278,10 @@ PopupCard {
                 }
             }
             DiskAction {
-                visible: volumeRow.volume.mounted
+                visible: volumeRow.volume.mounted || Model.isMountable(volumeRow.volume)
                 glyph: Model.GLYPH_FOLDER; hint: "Open in file manager"
-                onTriggered: { Removable.openVolume(volumeRow.volume); root.shell.closePopup() }
+                enabled: volumeRow.volume.mounted || !Removable.busy
+                onTriggered: root.activateVolume(volumeRow.volume)
             }
             DiskAction {
                 visible: volumeRow.volume.mounted || Model.isMountable(volumeRow.volume) || volumeRow.volume.encrypted
@@ -309,6 +317,40 @@ PopupCard {
             hint: portableRow.entry.mounted ? "Unmount" : "Mount"
             enabled: !Removable.busy
             onTriggered: Removable.togglePortable(portableRow.entry)
+        }
+    }
+
+    component SettingRow: Item {
+        id: settingRow
+        required property string label
+        required property string detail
+        required property bool checked
+        signal toggled
+        height: Math.max(settingText.implicitHeight, settingSwitch.implicitHeight)
+        Column {
+            id: settingText
+            anchors.left: parent.left; anchors.right: settingSwitch.left
+            anchors.rightMargin: Style.sm
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 1
+            Text {
+                width: parent.width; text: settingRow.label
+                color: root.shell.foreground
+                font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
+            }
+            Text {
+                width: parent.width; text: settingRow.detail; elide: Text.ElideRight
+                color: root.shell.alpha(root.shell.foreground, .45)
+                font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+            }
+        }
+        ToggleSwitch {
+            id: settingSwitch
+            shell: root.shell
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            checked: settingRow.checked
+            onToggled: settingRow.toggled()
         }
     }
 

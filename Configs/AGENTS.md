@@ -79,7 +79,7 @@
 - Zsh changes: run `zsh -n` on touched functions and completions.
 - Hyprland config changes: run `hyprctl configerrors` before reload.
 - Theme pipeline changes: exercise `hyprshell theme.switch.sh -s "<Theme Name>"` or `hyprshell wallpaper next --global` and inspect generated outputs.
-- Quickshell QML changes: run `/usr/lib/qt6/bin/qmllint -I /usr/lib/qt6/qml -I ~/.config/quickshell -I ~/.cache/qmllint` on touched files — never bare `qmllint`, which is the qt5 build and exits 0 without resolving types — then reload the bar and inspect new log output; validate layout/style JSON with `jq empty`. See CLAUDE.md "Verification Expectations" for the `pragma ComponentBehavior: Bound` and delegate rules.
+- Quickshell QML changes: run `/usr/lib/qt6/bin/qmllint -I /usr/lib/qt6/qml -I ~/.config/quickshell -I ~/.cache/qmllint` on touched files — never bare `qmllint`, which is the qt5 build and exits 0 without resolving types — then let the file watcher's reload land and inspect new log output — force `quickshell ipc call bar reload` only when no `Configuration Loaded` appeared, since a second reload ~1s after the watcher's crashes Quickshell; validate layout/style JSON with `jq empty`. See CLAUDE.md "Verification Expectations" for the `pragma ComponentBehavior: Bound` and delegate rules.
 - Waybar changes: only verify Waybar when explicitly working on or re-enabling the legacy bar.
 - Notification changes: prefer dry runs or non-destructive test paths.
 

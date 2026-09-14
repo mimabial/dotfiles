@@ -16,9 +16,9 @@ Singleton {
     property var blockers: []
     property var store: ({version: 1, drives: {}})
     property bool loaded: false
-    property bool refreshing: false
     property bool watchClosely: false
-    property bool notificationsEnabled: true
+    readonly property bool notificationsEnabled: store.notify !== false
+    property bool automount: true
     property string busyPath: ""
     property string busyAction: ""
     property string pendingEjectPath: ""
@@ -49,16 +49,11 @@ Singleton {
     readonly property string barGlyph: devices.length ? devices[0].glyph
         : portables.length ? Model.portableGlyph(portables[0])
         : supportHint ? Model.GLYPH_ALERT : Model.GLYPH_USB
-    readonly property string summary: anyBusy
-        ? (Model.formatRate(totalWriteRate) ? "Writing " + Model.formatRate(totalWriteRate) + " — do not remove" : "Busy — do not remove")
-        : devices.length ? Model.summary(devices)
-        : portables.length ? portables.length + (portables.length === 1 ? " portable device" : " portable devices")
-        : supportHint || "No removable media"
 
     readonly property string storePath: Quickshell.env("HOME") + "/.local/state/hypr/removable-drives.json"
 
     function refresh() {
-        if (!lsblkProc.running) { refreshing = true; lsblkProc.running = true }
+        if (!lsblkProc.running) lsblkProc.running = true
         if (!mountsProc.running) mountsProc.running = true
     }
 
@@ -87,14 +82,12 @@ Singleton {
         try { next = Model.applyStore(Model.parse(raw), store) }
         catch (error) {
             lastError = "Could not read removable drives"
-            refreshing = false
             return
         }
         const diff = Model.deviceDiff(_previousDevices, next)
         devices = next
         _previousDevices = next
         loaded = true
-        refreshing = false
         if (_seenSnapshot) announceChanges(diff)
         _seenSnapshot = true
         if (_openAfterPath) {
@@ -272,6 +265,12 @@ Singleton {
         devices = Model.applyStore(devices.slice(), store)
     }
 
+    function setNotifications(enabled) {
+        store = Model.withNotify(store, enabled)
+        storeFile.setText(JSON.stringify(store, null, 2) + "\n")
+    }
+    function toggleAutomount() { Quickshell.execDetached(["hyprshell", "system/removable", "--automount", "toggle"]) }
+
     function refreshPortables() {
         if (!gioProc.running) gioProc.running = true
         if (!supportProc.running) supportProc.running = true
@@ -296,7 +295,7 @@ Singleton {
         id: lsblkProc
         command: ["lsblk", "-J", "-b", "-o", "NAME,PATH,LABEL,PARTLABEL,FSTYPE,SIZE,FSSIZE,FSAVAIL,FSUSED,MOUNTPOINT,MOUNTPOINTS,RM,HOTPLUG,TYPE,TRAN,VENDOR,MODEL,UUID,SERIAL"]
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.applySnapshot(text) }
-        onExited: code => { root.refreshing = false; if (code !== 0) root.lastError = "lsblk failed" }
+        onExited: code => { if (code !== 0) root.lastError = "lsblk failed" }
     }
     Process { id: statsProc; stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.applyStats(text) } }
     Process { id: mountsProc; command: ["cat", "/proc/mounts"]; stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.mountFlags = Model.parseMountFlags(text) } }
@@ -345,6 +344,13 @@ Singleton {
         onLoaded: root.applyStore(text())
         onFileChanged: reload()
         onLoadFailed: root.applyStore("")
+    }
+    FileView {
+        path: (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/udiskie/config.yml"
+        watchChanges: true; printErrors: false
+        onLoaded: root.automount = !/^\s*automount:\s*false\b/m.test(text())
+        onFileChanged: reload()
+        onLoadFailed: root.automount = true
     }
 
     Timer { id: actionSettle; interval: 700; onTriggered: root.refresh() }

@@ -16,7 +16,7 @@ var GLYPH_UNMOUNT = codepoint(0xF011D)
 var GLYPH_LOCKED = codepoint(0xF033E)
 var GLYPH_ALERT = codepoint(0xF0028)
 var GLYPH_REFRESH = codepoint(0xF0450)
-var GLYPH_PHONE = codepoint(0xF011C)
+var GLYPH_PHONE = codepoint(0xF09A7)
 var GLYPH_CAMERA = codepoint(0xF0100)
 var GLYPH_PENCIL = codepoint(0xF03EB)
 var GLYPH_COPY = codepoint(0xF018F)
@@ -140,13 +140,6 @@ function volumeMeta(volume, readOnly) {
         else if (volume.fstype) parts.push("Not mountable")
     }
     return parts.filter(Boolean).join(" · ")
-}
-
-function summary(devices) {
-    if (!devices || devices.length === 0) return "No removable drives"
-    let mounted = 0
-    for (let i = 0; i < devices.length; ++i) mounted += devices[i].mountedCount
-    return devices.length + (devices.length === 1 ? " drive" : " drives") + " · " + mounted + " mounted"
 }
 
 function mountedVolumes(devices) {
@@ -279,7 +272,7 @@ function applyStore(devices, store) {
 }
 
 function withNickname(store, device, nickname) {
-    const next = {version: 1, drives: {}}, source = store && store.drives ? store.drives : {}
+    const next = {version: 1, drives: {}, notify: !(store && store.notify === false)}, source = store && store.drives ? store.drives : {}
     for (const key in source) next.drives[key] = Object.assign({}, source[key])
     const key = driveKey(device), value = clean(nickname), entry = Object.assign({}, next.drives[key] || {})
     if (value) entry.nickname = value; else delete entry.nickname
@@ -287,11 +280,13 @@ function withNickname(store, device, nickname) {
     return next
 }
 
+function withNotify(store, enabled) { return Object.assign({}, store, {notify: enabled === true}) }
+
 function parseStore(raw) {
     try {
         const parsed = JSON.parse(String(raw || "").trim() || "{}")
-        return {version: 1, drives: parsed && parsed.drives || {}}
-    } catch (error) { return {version: 1, drives: {}} }
+        return {version: 1, drives: parsed && parsed.drives || {}, notify: !(parsed && parsed.notify === false)}
+    } catch (error) { return {version: 1, drives: {}, notify: true} }
 }
 
 function isPortableType(value) { return /MTP|GPhoto2|Afc/i.test(exact(value)) }

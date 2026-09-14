@@ -98,6 +98,12 @@
     "padding": [0.0, 0.0, 0.0, 0.0],
     "hover": { "fill": null, "outline": ["hvr_br", 0.55], "content": ["hvr_fg", 1.0] }
   },
+  "github.notifications": {
+    "fill": null,
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0],
+    "hover": { "fill": null, "outline": ["hvr_br", 0.55], "content": ["hvr_fg", 1.0] }
+  },
   "appearance": {
     "margin": [0.0, 0.0, 0.0, 0.0],
     "padding": [0.0, 0.0, 0.0, 0.0]

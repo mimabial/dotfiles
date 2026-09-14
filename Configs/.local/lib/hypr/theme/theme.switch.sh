@@ -6,30 +6,36 @@ LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 # shellcheck source=/dev/null
 source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
 hypr_runtime_require state system wallpaper_catalog || exit 1
-hypr_runtime_load_state || exit 1
 
 # shellcheck source=/dev/null
 source "${LIB_DIR}/hypr/theme/pairs.sh" || exit 1
 
-[ -z "${HYPR_THEME}" ] && echo "ERROR: unable to detect theme" && exit 1
-get_themes
+THEME_SWITCH_LOCK="$(hypr_lock_path theme_switch)"
+exec 201>"${THEME_SWITCH_LOCK}"
+if ! flock -n 201; then
+  for theme_switch_arg in "$@"; do
+    [[ "${theme_switch_arg}" == "--from-auto" ]] || continue
+    print_log -sec "theme.switch" -stat "drop" "A newer theme operation is already in progress"
+    exit 0
+  done
+  unset theme_switch_arg
+  print_log -sec "theme.switch" -stat "wait" "Another theme operation is in progress"
+  flock 201
+fi
 
+hypr_runtime_load_state || exit 1
+[[ -n "${HYPR_THEME}" ]] || { echo "ERROR: unable to detect theme"; exit 1; }
+get_themes
 theme_switch_previous_theme="${HYPR_THEME:-}"
 theme_switch_previous_color_mode="${selected_color_mode:-}"
 theme_switch_state_updated=0
 theme_switch_auto_mode_changed=0
 theme_switch_metadata_file=""
 theme_switch_nvim_mapping=""
+theme_switch_nvim_background=""
+theme_switch_nvim_transparency=""
 THEME_SWITCH_NOTIFY_ID="${THEME_SWITCH_NOTIFY_ID:-94}"
 THEME_SWITCH_NOTIFY_STACK_TAG="${THEME_SWITCH_NOTIFY_STACK_TAG:-theme-switch}"
-
-THEME_SWITCH_LOCK="$(hypr_lock_path theme_switch)"
-
-exec 201>"${THEME_SWITCH_LOCK}"
-! flock -n 201 && {
-  print_log -sec "theme.switch" -stat "drop" "Another theme operation is already in progress"
-  exit 0
-}
 
 sanitize_hypr_theme() {
   local input_file="$1"
@@ -184,6 +190,8 @@ Options:
       --from-auto         Preserve auto mode for scheduler-driven switches
       --nvim SCHEME[:VARIANT]
                           Persist the active pack's Neovim mapping
+      --nvim-background MODE
+      --nvim-transparency BOOL
 EOF
 }
 
@@ -228,6 +236,14 @@ parse_theme_switch_args() {
         [[ -n "${1:-}" ]] || { theme_switch_usage >&2; exit 1; }
         theme_switch_nvim_mapping="$1"
         ;;
+      --nvim-background)
+        shift
+        theme_switch_nvim_background="${1:-}"
+        ;;
+      --nvim-transparency)
+        shift
+        theme_switch_nvim_transparency="${1:-}"
+        ;;
       -h | --help)
         theme_switch_usage
         exit 0
@@ -248,12 +264,23 @@ update_nvim_mapping() {
   local variant="" tmp=""
   [[ "${theme_switch_nvim_mapping}" == *:* ]] && variant="${theme_switch_nvim_mapping#*:}"
   [[ "${scheme}" =~ ^[[:alnum:]_.-]+$ && ( -z "${variant}" || "${variant}" =~ ^[[:alnum:]_.-]+$ ) ]] || return 1
+  [[ -z "${theme_switch_nvim_background}" || "${theme_switch_nvim_background}" =~ ^(dark|light)$ ]] || return 1
+  [[ -z "${theme_switch_nvim_transparency}" || "${theme_switch_nvim_transparency}" =~ ^(true|false)$ ]] || return 1
   [[ -s "${file}" ]] || return 1
 
   tmp="$(mktemp "${file}.tmp.XXXXXX")" || return 1
-  if awk -v scheme="${scheme}" -v variant="${variant}" '
-    NR == 1 { print; print "$NVIM_SCHEME = " scheme; if (variant != "") print "$NVIM_VARIANT = " variant; next }
+  if awk -v scheme="${scheme}" -v variant="${variant}" \
+    -v background="${theme_switch_nvim_background}" -v transparency="${theme_switch_nvim_transparency}" '
+    NR == 1 {
+      print; print "$NVIM_SCHEME = " scheme
+      if (variant != "") print "$NVIM_VARIANT = " variant
+      if (background != "") print "$NVIM_BACKGROUND = " background
+      if (transparency != "") print "$NVIM_TRANSPARENCY = " transparency
+      next
+    }
     /^[[:space:]]*\$NVIM_(SCHEME|VARIANT)[[:space:]]*=/ { next }
+    background != "" && /^[[:space:]]*\$NVIM_BACKGROUND[[:space:]]*=/ { next }
+    transparency != "" && /^[[:space:]]*\$NVIM_TRANSPARENCY[[:space:]]*=/ { next }
     { print }
   ' "${file}" >"${tmp}" && chmod --reference="${file}" "${tmp}" && mv -f -- "${tmp}" "${file}"; then
     return 0
@@ -315,6 +342,10 @@ main() {
   local -a theme_apply_cmd=("${LIB_DIR}/hypr/theme/theme.apply.sh")
 
   parse_theme_switch_args "$@"
+  if [[ "${theme_switch_from_auto}" -eq 1 && "${selected_color_mode:-}" != 1 ]]; then
+    print_log -sec "theme.switch" -stat "skip" "Auto mode is no longer active"
+    return 0
+  fi
   resolve_theme_selection
   theme_switch_reconcile_color_mode
   set_active_theme

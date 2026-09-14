@@ -18,6 +18,7 @@ EyecareGroup 1.0 EyecareGroup.qml
 FanReadout 1.0 FanReadout.qml
 ForecastGroup 1.0 ForecastGroup.qml
 GamemodeGroup 1.0 GamemodeGroup.qml
+GithubButton 1.0 GithubButton.qml
 GpuReadout 1.0 GpuReadout.qml
 HyprsunsetButton 1.0 HyprsunsetButton.qml
 IndicatorsGroup 1.0 IndicatorsGroup.qml

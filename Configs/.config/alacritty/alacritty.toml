@@ -6,27 +6,27 @@ working_directory = "None"
 [terminal]
 
 [terminal.shell]
-args = ["-l", "-c", "exec tmux new-session -A -s M"]
+# args = ["-l", "-c", "exec tmux new-session -A -s M"]
 program = "/bin/zsh"
 
 [font]
 builtin_box_drawing = true
-size = 15.00
+size = 16.67
 
 [font.normal]
-family = "IosevkaTerm Nerd Font"
+family = "M+1Code Nerd Font"
 style = "Regular"
 
 [font.bold]
-family = "IosevkaTerm Nerd Font"
+family = "M+1Code Nerd Font"
 style = "Bold"
 
 [font.italic]
-family = "IosevkaTerm Nerd Font"
+family = "M+1Code Nerd Font"
 style = "Italic"
 
 [font.bold_italic]
-family = "IosevkaTerm Nerd Font"
+family = "M+1Code Nerd Font"
 style = "Bold Italic"
 
 [font.offset]

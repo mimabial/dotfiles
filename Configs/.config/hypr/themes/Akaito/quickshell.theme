@@ -1,5 +1,5 @@
 {
-  "bg": "#dfd2c4",
+  "bg": "#faf9f5",
   "fg": "#4d2e1a",
   "br": "#9c3521",
   "alt_bg": "#755833",
@@ -8,7 +8,7 @@
   "act_bg": "#9f8253",
   "act_fg": "#080503",
   "act_br": "#de553a",
-  "hvr_bg": "#dfd2c4",
+  "hvr_bg": "#e6e5e1",
   "hvr_fg": "#4d2e1a",
   "hvr_br": "#e84d31",
   "c0": "#dfd2c4",
@@ -32,7 +32,7 @@
   "warning": "#a8611f",
   "error": "#a4373c",
   "success": "#a46d2d",
-  "background": "#dfd2c4",
+  "background": "#faf9f5",
   "foreground": "#4d2e1a",
   "fg_selected": "#a32f1a"
 }

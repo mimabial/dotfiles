@@ -56,6 +56,12 @@
   },
   "webcam",
   {
+    "id": "disks",
+    "props": {
+      "showWhenIdle": true
+    }
+  },
+  {
     "id": "bluetooth",
     "props": {
       "showReadout": true,

@@ -2,10 +2,10 @@ $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 
 $ICON_THEME = Tela-red
 $COLOR_SCHEME = prefer-light
-# $NVIM_SCHEME = aether
-# $NVIM_VARIANT = akaito
-$NVIM_BACKGROUND = light
-$NVIM_TRANSPARENCY = false
+$NVIM_SCHEME = token
+# $NVIM_VARIANT = classic
+# $NVIM_BACKGROUND = light
+# $NVIM_TRANSPARENCY = true
 $CURSOR_THEME = OpenZone_Fire
 $CURSOR_SIZE = 30
 $FONT = M+1Code Nerd Font
@@ -17,9 +17,9 @@ $NOTIFICATION_FONT = M+1Code Nerd Font Mono
 
 general {
     col.active_border = rgb(a32f1a) rgba(13131dee) 45deg
-    border_size = 2
-    gaps_in = 3
-    gaps_out = 5
+    border_size = 3
+    gaps_in = 4
+    gaps_out = 9
 }
 
 group {
@@ -28,13 +28,13 @@ group {
 
 decoration {
     rounding = 5
-    active_opacity = 1.98
-    inactive_opacity = 1.92
+    active_opacity = 0.9
+    inactive_opacity = 0.8
     fullscreen_opacity = 1.0
     blur {
         enabled = yes
-        size = 3
-        passes = 3
+        size = 4
+        passes = 4
         new_optimizations = on
         ignore_opacity = on
         xray = false

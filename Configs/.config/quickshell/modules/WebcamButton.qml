@@ -9,7 +9,6 @@ BarButton {
     property bool recheckPending: false
     css: "webcam"
     text: inUse ? "\u{f0100}" : "\u{f0d5d}"
-    tooltip: "<b>Webcam</b>\n" + (inUse ? "In use" : "Idle")
     onClicked: shell.togglePopup("webcam")
 
     function checkHolders() {

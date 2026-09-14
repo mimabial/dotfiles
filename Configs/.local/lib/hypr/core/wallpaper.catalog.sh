@@ -84,6 +84,7 @@ get_hashmap_into() {
     "jpg"
     "jpeg"
     "png"
+    "webp"
     "${WALLPAPER_FILETYPES[@]}"
   )
   if (( ${#WALLPAPER_OVERRIDE_FILETYPES[@]} > 0 )); then

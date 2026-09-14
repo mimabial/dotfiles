@@ -15,27 +15,21 @@ check() {
 
 print_json() {
   local text="$1"
-  local tooltip="$2"
-  local class_name="$3"
+  local class_name="$2"
 
   text="${text//\"/\\\"}"
-  tooltip="${tooltip//\"/\\\"}"
-  tooltip="${tooltip//$'\n'/\\n}"
   class_name="${class_name//\"/\\\"}"
 
   if [ -n "$class_name" ]; then
-    printf '{"text":"%s","tooltip":"%s","class":"%s"}\n' "$text" "$tooltip" "$class_name"
+    printf '{"text":"%s","class":"%s"}\n' "$text" "$class_name"
   else
-    printf '{"text":"%s","tooltip":"%s"}\n' "$text" "$tooltip"
+    printf '{"text":"%s"}\n' "$text"
   fi
 }
 
 print_fatal_error() {
-  local message="$1"
-  local tooltip
-  tooltip="<b>GitHub Notifications</b>"
-  tooltip+=$'\n'"Error: $message"
-  print_json "󰅙" "$tooltip" "error"
+  printf 'GitHub Notifications: %s\n' "$1" >&2
+  print_json "󰅙" "error"
   exit 0
 }
 
@@ -101,7 +95,7 @@ is_nonfatal_alert_unavailable() {
   message_lc="$(printf '%s' "$raw_message" | tr '[:upper:]' '[:lower:]')"
 
   case "$message_lc" in
-    *"disabled for this repository"* | *"must be enabled for this repository"* | *"secret scanning is disabled"* | *"advanced security must be enabled"* | *"dependabot alerts are disabled"*)
+    *"disabled for this repository"* | *"not enabled for this repository"* | *"must be enabled for this repository"* | *"secret scanning is disabled"* | *"advanced security must be enabled"* | *"dependabot alerts are disabled"*)
       return 0
       ;;
   esac
@@ -115,7 +109,8 @@ github_get_code() {
   local headers_file="$4"
 
   # a bar provider must return: without these a stalled connection hangs the
-  # module forever, and the button renders as empty text
+  # module forever, and the button renders as empty text. A failed transfer
+  # still prints 000 for the caller; its exit status would abort under set -e.
   curl -sS -L \
     --connect-timeout "${GITHUB_CONNECT_TIMEOUT:-5}" \
     --max-time "${GITHUB_MAX_TIME:-10}" \
@@ -125,7 +120,11 @@ github_get_code() {
     -D "$headers_file" \
     -o "$body_file" \
     -w '%{http_code}' \
-    "$url"
+    "$url" || true
+}
+
+next_page_url() {
+  sed -n 's/^[Ll]ink:.*<\([^>]*\)>; rel="next".*/\1/p' "$1" | tr -d '\r' | tail -n 1
 }
 
 security_cache_is_fresh() {
@@ -288,21 +287,27 @@ collect_repo_alert_type() {
   local failures_var="$7"
   local first_error_var="$8"
   local fallback="$9"
-  local body_file headers_file http_code alert_count message
+  local body_file headers_file http_code page_count message
+  local url="$GITHUB_API/repos/$repo/$endpoint?state=open&per_page=100"
+  local alert_count=0
 
   body_file="$(mktemp)"
   headers_file="$(mktemp)"
-  http_code="$(github_get_code "$ALERTS_TOKEN" "$GITHUB_API/repos/$repo/$endpoint?state=open&per_page=100" "$body_file" "$headers_file")"
+  while [ -n "$url" ]; do
+    http_code="$(github_get_code "$ALERTS_TOKEN" "$url" "$body_file" "$headers_file")"
+    [ "$http_code" = 200 ] || break
+    page_count="$(jq 'if type == "array" then length else 0 end' "$body_file" 2>/dev/null)" || page_count=0
+    alert_count=$((alert_count + page_count))
+    url="$(next_page_url "$headers_file")"
+  done
+
+  if [ "$alert_count" -gt 0 ]; then
+    printf -v "${count_var}" '%s' "$(( ${!count_var} + alert_count ))"
+    printf -v "${details_var}" '%s' "${!details_var}"$'\n'"    ${repo_name}: ${alert_count}"
+  fi
 
   case "$http_code" in
-    200)
-      alert_count="$(jq -r 'if type == "array" then length else 0 end' "$body_file" 2>/dev/null)"
-      if [ -n "$alert_count" ] && [[ "$alert_count" =~ ^[0-9]+$ ]] && [ "$alert_count" -gt 0 ]; then
-        printf -v "${count_var}" '%s' "$(( ${!count_var} + alert_count ))"
-        printf -v "${details_var}" '%s' "${!details_var}"$'\n'"    ${repo_name}: ${alert_count}"
-      fi
-      ;;
-    404 | 410) ;;
+    200 | 404 | 410) ;;
     403)
       message="$(api_message "$body_file" "Forbidden")"
       if ! is_nonfatal_alert_unavailable "$message"; then
@@ -383,13 +388,18 @@ collect_github_inbox_state() {
     if [ -n "$notif_context" ]; then
       notif_issue+=$'\n'"${notif_context}"
     fi
-  else
-    notif_count="$(jq -r 'if type == "array" then length else -1 end' "$notif_body" 2>/dev/null)"
-    if [ -z "$notif_count" ] || ! [[ "$notif_count" =~ ^[0-9]+$ ]] || [ "$notif_count" -lt 0 ]; then
-      notif_available=0
-      notif_count=0
-      notif_issue="notifications endpoint: Unexpected response type"
-    fi
+  elif ! { read -r notif_count && read -r notif_items; } < <(jq -c '
+    select(type == "array") | length, map({
+      id, title: .subject.title, type: .subject.type,
+      repo: .repository.full_name, reason: (.reason // "" | gsub("_"; " ")),
+      url: (.repository.html_url as $home | .subject.url // "" |
+        if test("^https://api\\.github\\.com/repos/[^/]+/[^/]+/(pulls|issues|commits|discussions)/[0-9a-f]+$")
+        then sub("api\\.github\\.com/repos"; "github.com") | sub("/pulls/"; "/pull/") | sub("/commits/"; "/commit/")
+        else $home end)
+    })' "$notif_body" 2>/dev/null); then
+    notif_available=0
+    notif_count=0
+    notif_issue="notifications endpoint: Unexpected response type"
   fi
   rm -f "$notif_body" "$notif_headers"
 }
@@ -487,44 +497,44 @@ collect_github_security_state() {
   [ "$security_from_cache" -eq 1 ] || finalize_live_security_summary
 }
 
-build_github_notifications_tooltip() {
-  local tooltip
-  tooltip="<b>GitHub Notifications</b>"
-  if [ "$notif_available" -eq 1 ]; then
-    tooltip+=$'\n'" Inbox: ${notif_count}"
-  else
-    tooltip+=$'\n'" Inbox: unavailable"
-  fi
+collect_github_review_requests() {
+  local body headers code
 
-  if [ "$security_available" -eq 1 ]; then
-    tooltip+=$'\n'" Security: ${security_count}"
-    tooltip+=$'\n'"  Dependabot: ${dependabot_count}"
-    tooltip+=$'\n'"  Code scanning: ${code_scanning_count}"
-    tooltip+=$'\n'"  Secret scanning: ${secret_scanning_count}"
-    [ -n "$dependabot_details" ] && tooltip+=$'\n'"  Dependabot repos:${dependabot_details}"
-    [ -n "$code_scanning_details" ] && tooltip+=$'\n'"  Code scanning repos:${code_scanning_details}"
-    [ -n "$secret_scanning_details" ] && tooltip+=$'\n'"  Secret scanning repos:${secret_scanning_details}"
-  else
-    tooltip+=$'\n'" Security: unavailable"
+  review_items="[]"
+  review_issue=""
+  body="$(mktemp)"
+  headers="$(mktemp)"
+  code="$(github_get_code "$NOTIF_TOKEN" "$GITHUB_API/search/issues?q=is%3Aopen+is%3Apr+review-requested%3A%40me+draft%3Afalse+archived%3Afalse&per_page=50" "$body" "$headers")"
+  if [ "$code" != 200 ] || ! review_items="$(jq -ce '[.items[] | {title, url: .html_url, repo: (.repository_url | sub(".*/repos/"; ""))}]' "$body" 2>/dev/null)"; then
+    review_items="[]"
+    review_issue="review requests: $(api_message "$body" "Failed to search review requests") (HTTP ${code})"
   fi
-
-  if [ -n "$notif_issue" ] || [ -n "$security_issue" ] || [ -n "$security_note" ]; then
-    tooltip+=$'\n'" Issues:"
-    [ -n "$notif_issue" ] && tooltip+=$'\n'"  ${notif_issue}"
-    [ -n "$security_issue" ] && tooltip+=$'\n'"  ${security_issue}"
-    [ -n "$security_note" ] && tooltip+=$'\n'"  ${security_note}"
-  fi
-
-  printf '%s' "$tooltip"
+  rm -f "$body" "$headers"
 }
 
-# Same collected state as the tooltip, but structured, so a panel can lay it
-# out instead of parsing a pango blob.
+mark_github_notifications_read() {
+  local id code failed=0
+
+  for id in "$@"; do
+    code="$(curl -sS -X PATCH --connect-timeout "${GITHUB_CONNECT_TIMEOUT:-5}" --max-time "${GITHUB_MAX_TIME:-10}" \
+      -H "Authorization: Bearer ${NOTIF_TOKEN}" -o /dev/null -w '%{http_code}' \
+      "$GITHUB_API/notifications/threads/$id" || true)"
+    case "$code" in
+      205 | 304) ;;
+      *) failed=1 ;;
+    esac
+  done
+  return "$failed"
+}
+
 emit_github_notifications_report() {
   jq -n \
     --arg notif_available "${notif_available:-0}" \
     --arg notif_count "${notif_count:-0}" \
     --arg notif_issue "${notif_issue:-}" \
+    --argjson notif_items "${notif_items:-[]}" \
+    --argjson review_items "${review_items:-[]}" \
+    --arg review_issue "${review_issue:-}" \
     --arg security_available "${security_available:-0}" \
     --arg security_count "${security_count:-0}" \
     --arg dependabot_count "${dependabot_count:-0}" \
@@ -545,7 +555,12 @@ emit_github_notifications_report() {
       inbox: {
         available: ($notif_available == "1"),
         count: ($notif_count | num),
-        issue: $notif_issue
+        issue: $notif_issue,
+        items: $notif_items
+      },
+      reviews: {
+        items: $review_items,
+        issue: $review_issue
       },
       security: {
         available: ($security_available == "1"),
@@ -565,26 +580,23 @@ emit_github_notifications_report() {
 }
 
 emit_github_notifications_status() {
-  local tooltip
-  tooltip="$(build_github_notifications_tooltip)"
-
   if [ "$notif_available" -eq 0 ] && [ "$security_available" -eq 0 ]; then
-    print_json "󰅙" "$tooltip" "error"
+    print_json "󰅙" "error"
     return 0
   fi
 
   if [ "$notif_available" -eq 0 ] || [ "$security_available" -eq 0 ] || [ -n "$notif_issue" ] || [ -n "$security_note" ] || [ -n "$security_issue" ]; then
-    print_json "󰀪" "$tooltip" "degraded"
+    print_json "󰀪" "degraded"
     return 0
   fi
 
   if [ "$notif_count" -gt 0 ] && [ "$security_count" -gt 0 ]; then
-    print_json "" "$tooltip" "inbox-security"
+    print_json "" "inbox-security"
   elif [ "$notif_count" -gt 0 ]; then
-    print_json "" "$tooltip" "inbox"
+    print_json "" "inbox"
   elif [ "$security_count" -gt 0 ]; then
-    print_json "" "$tooltip" "security"
+    print_json "" "security"
   else
-    print_json "" "$tooltip"
+    print_json ""
   fi
 }

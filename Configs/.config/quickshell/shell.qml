@@ -163,6 +163,7 @@ ShellRoot {
     // click outside
     property bool focusPriming: false
     property var popupCard: null
+    property var mediaPopup: null
     function run(command) { Quickshell.execDetached(command) }
     function refreshIndicators(target) {
         indicatorRefreshTarget = String(target || "all")
@@ -353,6 +354,21 @@ ShellRoot {
         function previous(): string { return Media.previous() ? "ok" : "unhandled" }
         function next(): string { return Media.next() ? "ok" : "unhandled" }
         function raise(): string { return Media.raisePlayer() ? "ok" : "unhandled" }
+    }
+    IpcHandler {
+        target: "cliamp"
+        function open(): void { shellRoot.mediaPopup?.showPopup() }
+        function close(): void { shellRoot.mediaPopup?.hidePopup() }
+        function show(): void { shellRoot.mediaPopup?.showPopup() }
+        function hide(): void { shellRoot.mediaPopup?.hidePopup() }
+        function toggle(): void { shellRoot.mediaPopup?.togglePopup() }
+        function refresh(): void { shellRoot.mediaPopup?.refresh() }
+        function play(): void { shellRoot.mediaPopup?.play() }
+        function pause(): void { shellRoot.mediaPopup?.pause() }
+        function stop(): void { shellRoot.mediaPopup?.stop() }
+        function next(): void { shellRoot.mediaPopup?.nextTrack() }
+        function prev(): void { shellRoot.mediaPopup?.prevTrack() }
+        function playUrl(url: string): void { shellRoot.mediaPopup?.playUrl(url) }
     }
     Variants {
         model: shellRoot.stateReady && shellRoot.mode === "vertical" ? Quickshell.screens : []

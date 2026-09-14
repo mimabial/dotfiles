@@ -24,7 +24,7 @@
   },
   "terminal": {
     "fill": null,
-    "padding": [2.0, 0.0, 2.0, 0.0],
+    "padding": [0.0, 0.0, 0.0, 0.0],
     "margin": [2.0, 2.0, 2.0, 2.0]
   },
   "weather.minmax": {
@@ -56,30 +56,30 @@
     }
   },
   "microphone": {
-    "padding": [2.0, 0.0, 2.0, 0.0],
+    "padding": [0.0, 0.0, 0.0, 0.0],
     "outline": ["br", 0.2]
   },
   "microphone.muted": {
-    "padding": [2.0, 0.0, 2.0, 0.0],
+    "padding": [0.0, 0.0, 0.0, 0.0],
     "outline": ["br", 0.2]
   },
   "eyecare": {
     "margin": [0.0, 0.0, 0.0, 0.0]
   },
   "backlight": {
-    "padding": [2.0, 0.0, 2.0, 0.0],
+    "padding": [0.0, 0.0, 0.0, 0.0],
     "outline": ["br", 0.2]
   },
   "hyprsunset": {
-    "padding": [2.0, 0.0, 2.0, 0.0],
+    "padding": [0.0, 0.0, 0.0, 0.0],
     "outline": ["br", 0.2]
   },
   "caffeine": {
-    "padding": [2.0, 0.0, 2.0, 0.0],
+    "padding": [0.0, 0.0, 0.0, 0.0],
     "outline": ["br", 0.2]
   },
   "privacy": {
-    "padding": [2.0, 0.0, 2.0, 0.0]
+    "padding": [0.0, 0.0, 0.0, 0.0]
   },
   "audio": {
     "margin": [0.0, 0.0, 2.0, 0.0]
@@ -88,16 +88,16 @@
     "fontSize": 16.0,
     "border": 1.0,
     "outline": ["br", 0.2],
-    "padding": [2.0, 0.0, 2.0, 0.0]
+    "padding": [0.0, 0.0, 0.0, 0.0]
   },
   "volume.headphone": {
     "fontSize": 15.0,
     "outline": ["br", 0.2],
-    "padding": [2.0, 0.0, 2.0, 0.0]
+    "padding": [0.0, 0.0, 0.0, 0.0]
   },
   "volume.headphone.muted": {
     "fontSize": 15.0,
-    "padding": [2.0, 0.0, 2.0, 0.0]
+    "padding": [0.0, 0.0, 0.0, 0.0]
   },
   "capture": {
     "outline": ["br", 0.2],
@@ -107,20 +107,20 @@
     "border": 0.0,
     "outline": null,
     "margin": [0.0, 0.0, 0.0, 0.0],
-    "padding": [2.0, 0.0, 2.0, 0.0]
+    "padding": [0.0, 0.0, 0.0, 0.0]
   },
   "screenshot": {
     "border": 0.0,
     "outline": null,
     "margin": [0.0, 0.0, 0.0, 0.0],
-    "padding": [2.0, 0.0, 2.0, 0.0]
+    "padding": [0.0, 0.0, 0.0, 0.0]
   },
   "bluetooth": {
     "margin": [0.0, 0.0, 0.0, 0.0]
   },
   "bluetooth-button": {
     "margin": [4.0, 2.0, 2.0, 2.0],
-    "padding": [2.0, 0.0, 2.0, 0.0],
+    "padding": [0.0, 0.0, 0.0, 0.0],
     "outline": ["br", 0.2]
   },
   "bluetooth-button.status": {
@@ -132,7 +132,7 @@
     "margin": [0.0, 0.0, 0.0, 0.0]
   },
   "wifimenu": {
-    "padding": [2.0, 0.0, 2.0, 0.0],
+    "padding": [0.0, 0.0, 0.0, 0.0],
     "outline": ["br", 0.2]
   },
   "network.speed": {
@@ -145,7 +145,7 @@
     }
   },
   "vpn": {
-    "padding": [2.0, 0.0, 2.0, 0.0],
+    "padding": [0.0, 0.0, 0.0, 0.0],
     "outline": ["br", 0.2]
   },
   "appearance-group": {
@@ -153,14 +153,11 @@
     "outline": ["br", 0.2],
     "margin": [2.0, 2.0, 2.0, 2.0]
   },
-  "tasks.due": {
-    "content": ["fg", 1.0]
-  },
   "tasks": {
     "border": 1.0,
     "outline": ["br", 0.2],
     "margin": [2.0, 2.0, 2.0, 2.0],
-    "padding": [2.0, 0.0, 2.0, 0.0],
+    "padding": [0.0, 0.0, 0.0, 0.0],
     "hover": {
       "fill": null,
       "content": ["hvr_fg", 1.0]
@@ -170,7 +167,7 @@
     "border": 1.0,
     "outline": ["br", 0.2],
     "margin": [2.0, 2.0, 2.0, 2.0],
-    "padding": [2.0, 0.0, 2.0, 0.0],
+    "padding": [0.0, 0.0, 0.0, 0.0],
     "hover": {
       "fill": null,
       "content": ["hvr_fg", 1.0]
@@ -187,7 +184,7 @@
     "badgeOffsetY": -5,
     "border": 1.0,
     "outline": ["br", 0.2],
-    "padding": [2.0, 0.0, 2.0, 0.0]
+    "padding": [0.0, 0.0, 0.0, 0.0]
   },
   "updates-agents": {
     "border": 1.0,
@@ -205,7 +202,7 @@
       "content": ["hvr_fg", 1.0]
     },
     "margin": [0.0, 0.0, 4.0, 0.0],
-    "padding": [2.0, 0.0, 2.0, 0.0]
+    "padding": [0.0, 0.0, 0.0, 0.0]
   },
   "agents": {
     "content": ["fg", 1.0],
@@ -230,10 +227,12 @@
     "outline": ["alt_br", 0.3],
     "fill": null,
     "margin": [2.0, 2.0, 4.0, 2.0],
-    "padding": [2.0, 0.0, 2.0, 0.0]
+    "padding": [0.0, 0.0, 0.0, 0.0]
   },
   "removable": {
-    "padding": [2.0, 0.0, 2.0, 0.0]
+    "fontSize": 16.0,
+    "outline": ["br", 0.2],
+    "padding": [0.0, 0.0, 0.0, 0.0]
   },
   "colorpicker": {
     "border": 1.0,

@@ -7,6 +7,8 @@ source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
 hypr_runtime_require state system rofi wallpaper_catalog || exit 1
 hypr_runtime_load_state || exit 1
 source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/rofi/rofi.lib.bash"
+source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/wallpaper/lib/common.bash"
+source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/theme/pairs.sh"
 
 theme_select_notify() {
   local icon_path="$1"
@@ -291,13 +293,43 @@ resolve_theme_selector_style() {
   esac
 }
 
+# One find over every theme dir; %H names the theme each match belongs to.
+theme_wallpaper_counts_into() {
+  local -n counts_ref="$1"
+  local -a exts=() match=()
+  local ext start
+
+  wallpaper_supported_files_array exts
+  for ext in "${exts[@]}"; do
+    match+=(-o -iname "*.${ext}")
+  done
+
+  while IFS= read -r start; do
+    counts_ref["${start##*/}"]=$((${counts_ref["${start##*/}"]:-0} + 1))
+  done < <(find -H "${thmList[@]/#/${HYPR_CONFIG_HOME}/themes/}" -type f \( "${match[@]:1}" \) ! -path '*/logo/*' -printf '%H\n' 2>/dev/null)
+}
+
 theme_menu_entries() {
   local ext="$1"
-  local i=0
+  local -A polarity=() wall_count=()
+  local i=0 name subtitle count
+  local show_count="${ROFI_THEME_WALLPAPER_COUNT:-0}"
+
+  theme_polarities_into polarity "${thmList[@]}"
+  [[ "${show_count}" == "1" ]] && theme_wallpaper_counts_into wall_count
 
   while ((i < ${#thmList[@]})); do
-    printf '%s\x00icon\x1f%s/%s.%s\n' \
-      "${thmList[$i]}" \
+    name="${thmList[$i]}"
+    subtitle="${polarity[${name}]^}"
+    if [[ "${show_count}" == "1" ]]; then
+      count="${wall_count[${name}]:-0}"
+      subtitle+="&#10;${count} wallpaper"
+      ((count == 1)) || subtitle+="s"
+    fi
+    printf '%s\x00display\x1f%s&#10;<span size="small" alpha="70%%">%s</span>\x1ficon\x1f%s/%s.%s\n' \
+      "${name}" \
+      "${name//&/\&amp;}" \
+      "${subtitle}" \
       "${WALLPAPER_THUMB_DIR}" \
       "${THEME_WALL_HASHES[${thmWall[$i]}]:-}" \
       "${ext}"
@@ -330,7 +362,7 @@ show_theme_selector() {
   ensure_theme_thumbs "${thmb_extn}"
 
   selection="$(
-    theme_menu_entries "${thmb_extn}" | rofi -dmenu -i \
+    theme_menu_entries "${thmb_extn}" | rofi -dmenu -i -markup-rows \
       "${ROFI_MOUSE_SELECT_ARGS[@]}" \
       -theme "$(rofi_resolve_theme "${rofi_theme_name}")" \
       -theme-str "${font_override}" \

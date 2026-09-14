@@ -186,9 +186,11 @@ renderer-owned basenames instead of materializing them (its skip list is literal
 Each `<app>.theme` is written in that app's own config syntax, so the renderer can mostly
 pass it through — `kitty.theme` is kitty conf, `rofi.theme` is rasi, and
 **`quickshell.theme` is a flat JSON `{role: "#hex"}` object**, matching the `theme.json`
-the renderer emits. The roles are the ones `shell.qml`'s `role()` reads (`bg`, `fg`, `br`,
-`accent`, `act_*`, `alt_*`, `hvr_*`, `c0`–`c15`, `info`/`warning`/`error`/`success`, plus
-`background`, `foreground`, `fg_selected`). A pack override that is missing or unparseable
+the renderer emits. The roles `shell.qml`'s `role()` reads are `bg`, `fg`, `br`,
+`accent`, `act_*`, `alt_*`, `hvr_*`, `c0`–`c15`, `info`/`warning`/`error`/`success`.
+`background`, `foreground` and `fg_selected` are also emitted but nothing in the bar reads
+them — `shell.background`/`shell.foreground` are QML properties over `role("bg")`/`role("fg")`,
+not those keys. A pack override that is missing or unparseable
 falls through to the palette-derived defaults rather than failing the render, so both
 paths yield the same key set.
 
@@ -413,7 +415,11 @@ cd ~/dotfiles && ./update.sh
 
 Quickshell layout, style, state, theme, and font files are watched in place.
 Source QML normally triggers Quickshell's own reload; use the IPC command for a
-verification run. Popup-only errors may appear only after opening the affected
+verification run only when that reload did not happen (an edit to an imported `.js`
+alone did not trigger it here). **Never stack a forced reload on the watcher's:** two
+reloads ~1s apart destroy an engine still creating delegates, and Quickshell segfaults
+in `QQmlDelegateModel` teardown — every one of the 32 crashes since Sep 5 was two or
+three reloads 1–4s apart. Wait for `Configuration Loaded` before forcing another. Popup-only errors may appear only after opening the affected
 popup.
 
 `bar reload` is `Quickshell.reload(false)` — a **soft** reload that reuses the
@@ -574,7 +580,7 @@ checked once, and the result stands.
   - Lint cannot prove a delegate works: it only sees the file. A view whose model is empty at reload renders nothing, so a broken delegate leaves a clean log. Exercise it with data — instantiate the component against a mock model through `quickshell -p <a throwaway .qml inside the config dir>` (the config root must be the real one, or `qs.*` will not resolve) and diff the warnings against the same run on the pre-change file. A bare Qt harness is the opposite: `qmlscene`/`qml` must run the throwaway from **outside** the config dir, since the implicit same-directory import drags in every type there and dies on `module "Quickshell" plugin "quickshell-coreplugin" not found`. Use that for probes needing no `qs.*` (plain QML semantics, property checks).
   - **Qt swallows QML console output unless you ask for it:** `QT_ASSUME_STDERR_HAS_CONSOLE=1 QT_FORCE_STDERR_LOGGING=1 QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmlscene <file>`. Without those, `console.log`/`print` produce nothing at all and the run just looks silent; `QT_LOGGING_RULES="*.debug=true"` does not fix it.
   - `Repeater` only creates **Items**. For non-Item delegates (a `Process`, say) use `Instantiator` — a `Repeater` silently creates nothing.
-  - Lint is not the real check. Reload and read the log: `quickshell ipc call bar reload`, then `journalctl --user --since "10 seconds ago" | grep -iE 'WARN|ERROR|TypeError' | grep -v font.db`. The `OpenType support missing` lines are constant background noise.
+  - Lint is not the real check. Let the watcher's reload land (or force `quickshell ipc call bar reload` only if no `Configuration Loaded` appeared — see "Reload Behavior"), then read the log: `journalctl --user --since "10 seconds ago" | grep -iE 'WARN|ERROR|TypeError' | grep -v font.db`. The `OpenType support missing` lines are constant background noise.
 - For Quickshell layout/style changes: validate JSON with `jq empty` and verify the active layout live.
 - For wlogout color changes: run `render/wlogout.sh`, then open the menu with `hyprshell logout-launch.sh 2`.
 - For notification changes: prefer dry runs or non-destructive test paths when testing stateful behavior.

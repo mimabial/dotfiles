@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import fcntl
 import hashlib
 import json
 import os
@@ -12,8 +13,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _common import atomic_write, cache_hit, cache_store
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from pyutils.hyprctl import batch_json
 from pyutils.bar_position import bar_position
+from pyutils.hyprctl import batch_json
+from pyutils.lock_paths import runtime_lock_path
 from pyutils.shell_env import load_shell_assignments
 
 PALETTE = Path(
@@ -680,7 +682,7 @@ def render_roles(colors):
     )
 
 
-def main():
+def render():
     if not PALETTE.is_file():
         sys.exit(f"render/dunst: missing {PALETTE}")
     CONF_DIR.mkdir(parents=True, exist_ok=True)
@@ -710,6 +712,13 @@ def main():
 
     cache_store(APP, cache_key)
     reload_dunst()
+
+
+def main():
+    lock_file = runtime_lock_path("dunst_render")
+    with lock_file.open("a+") as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        render()
 
 
 if __name__ == "__main__":

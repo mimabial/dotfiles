@@ -13,14 +13,32 @@ _PAIRS_DEFAULT_LIGHT=""
 _PAIRS_LOADED=0
 
 theme_polarity() {
-  local theme="${1:-}"
-  local file="${_PAIRS_THEMES_DIR}/${theme}/hypr.theme"
-  local scheme=""
-  [[ -n "${theme}" && -r "${file}" ]] || { echo "dark"; return 0; }
-  scheme="$(grep -m1 -E '^[[:space:]]*\$COLOR_SCHEME[[:space:]]*=' "${file}" 2>/dev/null | sed -E 's/.*=[[:space:]]*//')" || scheme=""
-  scheme="${scheme%%[[:space:]]*}"
-  [[ "${scheme}" == "prefer-light" ]] && { echo "light"; return 0; }
-  echo "dark"
+  local -A polarity=()
+  [[ -n "${1:-}" ]] || { echo "dark"; return 0; }
+  theme_polarities_into polarity "$1"
+  echo "${polarity[$1]}"
+}
+
+# theme_polarities_into <assoc> <theme...>
+# One grep over every theme's first $COLOR_SCHEME line.
+theme_polarities_into() {
+  local -n polarity_ref="$1"
+  shift
+  local theme line
+  local light_re='=[[:space:]]*prefer-light([[:space:]][^=]*)?$'
+  local -a files=()
+
+  (($#)) || return 0
+  for theme in "$@"; do
+    polarity_ref["${theme}"]="dark"
+    files+=("${_PAIRS_THEMES_DIR}/${theme}/hypr.theme")
+  done
+
+  while IFS= read -r line; do
+    line="${line#"${_PAIRS_THEMES_DIR}/"}"
+    [[ "${line}" =~ ${light_re} ]] || continue
+    polarity_ref["${line%%/hypr.theme:*}"]="light"
+  done < <(grep -H -m1 -E '^[[:space:]]*\$COLOR_SCHEME[[:space:]]*=' "${files[@]}" 2>/dev/null)
 }
 
 _pairs_trim() {

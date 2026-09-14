@@ -47,7 +47,7 @@ wallpaper_supported_files_array() {
   local out_name="${1}"
   local -n out_ref="${out_name}"
 
-  out_ref=("gif" "jpg" "jpeg" "png" "${WALLPAPER_FILETYPES[@]}")
+  out_ref=("gif" "jpg" "jpeg" "png" "webp" "${WALLPAPER_FILETYPES[@]}")
   if [[ ${#WALLPAPER_OVERRIDE_FILETYPES[@]} -gt 0 ]]; then
     out_ref=("${WALLPAPER_OVERRIDE_FILETYPES[@]}")
   fi
@@ -67,7 +67,7 @@ wallpaper_extensions_regex() {
     fi
   done
 
-  [[ -z "${regex_ext}" ]] && regex_ext="gif|jpg|jpeg|png"
+  [[ -z "${regex_ext}" ]] && regex_ext="gif|jpg|jpeg|png|webp"
   printf '%s\n' "${regex_ext}"
 }
 
@@ -114,14 +114,12 @@ wallpaper_theme_sources() {
 }
 
 wallpaper_queue_script() {
-  local lib_dir="${LIB_DIR}"
-  [[ -z "${lib_dir}" ]] && lib_dir="${HOME}/.local/lib"
+  local lib_dir="${LIB_DIR:-$HOME/.local/lib}"
   printf '%s\n' "${lib_dir}/hypr/wallpaper/wallcache.daemon.sh"
 }
 
 wallpaper_cache_script() {
-  local lib_dir="${LIB_DIR}"
-  [[ -z "${lib_dir}" ]] && lib_dir="${HOME}/.local/lib"
+  local lib_dir="${LIB_DIR:-$HOME/.local/lib}"
   printf '%s\n' "${lib_dir}/hypr/wallpaper/wallpaper.cache.sh"
 }
 

@@ -239,6 +239,7 @@ PopupCard {
   Component.onCompleted: {
     Commons.Style.shell = root.shell
     Commons.Color.shell = root.shell
+    root.shell.mediaPopup = root
     refresh()
     loadPlaylists()
     loadHistory()
@@ -924,22 +925,6 @@ PopupCard {
   // shortcut in handleKey stays swallowed by it. DragThreshold keeps the grab
   // passive, so rows and tabs still get their own click.
   TapHandler { gesturePolicy: TapHandler.DragThreshold; onTapped: trackList.urlInput.focus = false }
-
-  IpcHandler {
-    target: "cliamp"
-    function open() { root.showPopup() }
-    function close() { root.hidePopup() }
-    function show() { root.showPopup() }
-    function hide() { root.hidePopup() }
-    function toggle() { root.togglePopup() }
-    function refresh() { root.refresh() }
-    function play() { root.play() }
-    function pause() { root.pause() }
-    function stop() { root.stop() }
-    function next() { root.nextTrack() }
-    function prev() { root.prevTrack() }
-    function playUrl(url: string) { root.playUrl(url) }
-  }
 
   header: BorderSurface {
     visible: root.resumeVisible

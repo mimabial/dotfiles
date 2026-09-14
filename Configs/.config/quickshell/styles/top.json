@@ -99,6 +99,12 @@
     "padding": [0.0, 0.0, 0.0, 0.0],
     "hover": { "fill": null, "outline": null, "content": ["hvr_fg", 1.0] }
   },
+  "github.notifications": {
+    "fill": null,
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0],
+    "hover": { "fill": null, "outline": null, "content": ["hvr_fg", 1.0] }
+  },
   "appearance": {
     "margin": [0.0, 0.0, 0.0, 0.0],
     "padding": [0.0, 0.0, 0.0, 0.0]
@@ -167,6 +173,10 @@
     "margin": [0.0, 26.0, 0.0, 6.0],
     "padding": [0.0, 0.0, 0.0, 0.0],
     "hover": { "fill": null, "content": ["hvr_fg", 1.0] }
+  },
+  "removable": {
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
   },
   "power-profiles-daemon": {
     "fontSize": 13.0,

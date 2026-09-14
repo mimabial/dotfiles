@@ -1,13 +1,13 @@
 $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
+$NVIM_SCHEME = ashen
+$NVIM_BACKGROUND = dark
+$NVIM_TRANSPARENCY = false
 $ICON_THEME = Tela-red-dark
 $CURSOR_THEME = Skyrim-by-ru5tyshark-cursors
 $CURSOR_SIZE = 40
 # $CURSOR_THEME = taiga-cursor
 # $CURSOR_SIZE = 30
 $COLOR_SCHEME = prefer-dark
-$NVIM_SCHEME = ashen
-$NVIM_BACKGROUND = dark
-$NVIM_TRANSPARENCY = false
 $FONT = IosevkaTerm Nerd Font
 $BAR_FONT = IosevkaTerm Nerd Font
 $MENU_FONT = IosevkaTerm Nerd Font

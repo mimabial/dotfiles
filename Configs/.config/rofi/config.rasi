@@ -83,7 +83,7 @@ configuration {
 
 	/*---------- Misc setting ----------*/
 	terminal: "rofi-sensible-terminal";
-	font: "MonaspiceAr Nerd Font 15";
+	font: "MonaspiceAr Nerd Font 16";
 	sort: false;
 	threads: 0;
 	click-to-exit: true;

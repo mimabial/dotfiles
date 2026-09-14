@@ -16,5 +16,5 @@ hl.config({
 
 hl.on("hyprland.start", function()
     hl.exec_cmd("hyprshell gaming/gamemode-hook reconcile")
-    hl.exec_cmd("hyprshell system/start-if-vpn.sh --timeout 90 --workspace 10 -- qbittorrent")
+    hl.exec_cmd("hyprshell system/start-if-vpn.sh --timeout 90 --workspace special -- qbittorrent")
 end)

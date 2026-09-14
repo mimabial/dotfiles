@@ -18,9 +18,6 @@ BarButton {
     active: awake
     visible: !activeOnly || awake
     text: shell.keepAwakeManual ? "󰅶" : audioHolding ? "󰎆" : "󰛊"
-    tooltip: "<b>Caffeine</b>\n" + (shell.keepAwakeManual ? "Manual hold"
-        : audioHolding ? "Held by audio playback" : "Idle allowed")
-        + "\nLeft: Settings\nRight: Toggle manual hold"
     onClicked: button => button === Qt.RightButton
         ? shell.run(["hyprshell", "session/toggle-keep-awake.sh"])
         : shell.togglePopup("caffeine")

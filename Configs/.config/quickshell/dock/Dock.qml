@@ -515,7 +515,7 @@ Item {
   property bool autohide: true
   property bool intelligentAutohide: true
   property bool showAppsButton: true
-  readonly property var distroGlyphs: ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]
+  readonly property var distroGlyphs: ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]
   property int distroGlyphIndex: 0
   property bool showTooltips: true
   property bool showMinimizedTiles: true

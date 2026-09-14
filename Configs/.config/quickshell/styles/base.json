@@ -595,6 +595,6 @@
     }
   },
   "tasks.due": {
-    "content": ["c3", 1.0]
+    "content": ["accent", 1.0]
   }
 }

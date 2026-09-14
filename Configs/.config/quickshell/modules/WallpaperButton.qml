@@ -6,7 +6,6 @@ BarButton {
     property bool popupsAllowed: true
     css: "wallpaper"
     text: "󰸉"
-    tooltip: "Switch wallpaper\nLeft: Panel\nMiddle: Next now\nRight: Pause or resume\nWheel: Step the theme's wallpapers"
     // accent means the rotation is running; plain foreground means it is paused
     textColor: Wallpaper.lastError !== "" ? shell.role("error", shell.foreground)
         : Wallpaper.enabled ? shell.accent : shell.foreground

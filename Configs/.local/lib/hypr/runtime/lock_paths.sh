@@ -24,6 +24,7 @@ declare -grA HYPR_LOCK_NAMES=(
   [theme_phase_d_gimp]="theme-phase-d-gimp.lock"
   [theme_phase_d_theme_files]="theme-phase-d-theme-files.lock"
   [theme_phase_d_desktop]="theme-phase-d-desktop.lock"
+  [dunst_render]="dunst-render.lock"
   [wallpaper_cache]="wallpaper-cache.lock"
   [wallpaper_catalog]="wallpaper-catalog.lock"
   [wallpaper_inventory]="wallpaper-inventory.lock"

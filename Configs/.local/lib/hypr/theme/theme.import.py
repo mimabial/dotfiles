@@ -32,12 +32,18 @@ ICON_ROOTS = (
 )
 
 # Mirrors the extensions core/wallpaper.catalog.sh treats as wallpapers.
-WALL_SUFFIXES = (".gif", ".jpg", ".jpeg", ".png")
+WALL_SUFFIXES = (".gif", ".jpg", ".jpeg", ".png", ".webp")
 ANSI_ORDER = ("black", "red", "green", "yellow", "blue", "magenta", "cyan", "white")
+OMARCHY_ANSI = (
+    "background", "red", "green", "yellow", "blue", "magenta", "cyan", "foreground",
+    "muted", "bright_red", "bright_green", "bright_yellow", "bright_blue", "bright_magenta",
+    "bright_cyan", "bright_foreground",
+)
 WALL_LINK = "wall.set"
 KEEP_BLOCKS = ("general", "group", "decoration")
 HEADER = "$HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta"
 KVANTUM_SHELLS = ("flat", "materia", "pill")
+NVIM_ALIASES = {"catppuccin-nvim": ("catppuccin", ""), "nordfox": ("nord", "")}
 
 HEX_RX = re.compile(r"^#[0-9a-fA-F]{6}$")
 VAR_RX = re.compile(r"^\s*\$([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$")
@@ -94,6 +100,23 @@ def nvim_scheme_has_background(name, mode):
     definition = (NVIM_DEFS / f"{name}.lua").read_text()
     fixed = re.search(r'^\s*background\s*=\s*"(dark|light)"', definition, re.MULTILINE)
     return not fixed or fixed.group(1) == mode
+
+
+def map_nvim_scheme(name):
+    if nvim_scheme_installed(name):
+        return name, ""
+    if name in NVIM_ALIASES:
+        return NVIM_ALIASES[name]
+    for definition in NVIM_DEFS.glob("*.lua"):
+        scheme = definition.stem
+        prefix = f"{scheme}-"
+        if not name.startswith(prefix):
+            continue
+        variant = name[len(prefix) :]
+        block = re.search(r"variants\s*=\s*{([^}]*)}", definition.read_text(), re.DOTALL)
+        if block and variant in re.findall(r'"([^"]+)"', block.group(1)):
+            return scheme, variant
+    return "", ""
 
 
 def is_light(hex_color):
@@ -186,7 +209,7 @@ def build_palette(data, kvantum):
 
     background = hex_value("background")
     foreground = hex_value("foreground")
-    colors = [hex_value(f"color{i}") for i in range(16)]
+    colors = [hex_value(f"color{i}") or hex_value(name) for i, name in enumerate(OMARCHY_ANSI)]
 
     missing = [name for name, value in (("background", background), ("foreground", foreground)) if not value]
     missing += [f"color{i}" for i, color in enumerate(colors) if not color]
@@ -196,10 +219,10 @@ def build_palette(data, kvantum):
     fields = [
         ("background", background),
         ("foreground", foreground),
-        ("cursor-color", hex_value("cursor") or foreground),
+        ("cursor-color", hex_value("cursor") or hex_value("bright_foreground") or foreground),
         ("cursor-text", hex_value("cursor_text") or background),
-        ("selection-foreground", hex_value("selection_foreground") or background),
-        ("selection-background", hex_value("selection_background") or hex_value("accent") or colors[4]),
+        ("selection-foreground", hex_value("selection_foreground") or hex_value("bright_foreground") or foreground),
+        ("selection-background", hex_value("selection_background") or hex_value("selection") or hex_value("accent") or colors[4]),
     ]
     lines = [f'{key} = "{value}"' for key, value in fields]
     if kvantum:
@@ -308,22 +331,26 @@ def resolve_cursor(override_theme, override_size):
 
 def resolve_nvim_scheme(src, override, mode):
     if override:
-        if not nvim_scheme_installed(override):
+        scheme, variant = map_nvim_scheme(override)
+        scheme = scheme or override
+        if not nvim_scheme_installed(scheme):
             warn(f"--nvim '{override}' has no definition in {NVIM_DEFS}; writing it anyway")
-        elif not nvim_scheme_has_background(override, mode):
+        elif not nvim_scheme_has_background(scheme, mode):
             warn(f"--nvim '{override}' has no {mode} capture; writing it anyway")
-        return override
+        return scheme, variant
 
     upstream = source_nvim_scheme(src)
     if not upstream:
         warn("source ships no neovim colorscheme; omitting $NVIM_SCHEME")
-    elif not nvim_scheme_installed(upstream):
+        return "", ""
+    scheme, variant = map_nvim_scheme(upstream)
+    if not scheme:
         warn(f"nvim colorscheme '{upstream}' has no definition in {NVIM_DEFS}; omitting $NVIM_SCHEME")
-    elif not nvim_scheme_has_background(upstream, mode):
+    elif not nvim_scheme_has_background(scheme, mode):
         warn(f"nvim colorscheme '{upstream}' has no {mode} capture; omitting $NVIM_SCHEME")
     else:
-        return upstream
-    return ""
+        return scheme, variant
+    return "", ""
 
 
 def collect_wallpapers(src):
@@ -424,10 +451,12 @@ def main():
         mode = resolve_mode(src, data, background)
 
         cursor_theme, cursor_size = resolve_cursor(args.cursor, args.size)
+        nvim_scheme, nvim_variant = resolve_nvim_scheme(src, args.nvim, mode)
         header_vars = {
             "ICON_THEME": resolve_icon_theme(src, args.icons),
             "COLOR_SCHEME": f"prefer-{mode}",
-            "NVIM_SCHEME": resolve_nvim_scheme(src, args.nvim, mode),
+            "NVIM_SCHEME": nvim_scheme,
+            "NVIM_VARIANT": nvim_variant,
             "NVIM_BACKGROUND": mode,
             "NVIM_TRANSPARENCY": "false",
             "CURSOR_THEME": cursor_theme,

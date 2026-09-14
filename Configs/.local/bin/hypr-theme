@@ -55,6 +55,17 @@ done
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_require state || exit 1
 
+COLOR_GEN_LOCK="$(hypr_lock_path color_gen)"
+exec {COLOR_GEN_LOCK_FD}>"${COLOR_GEN_LOCK}"
+flock "${COLOR_GEN_LOCK_FD}"
+
+if [[ "${cmd}" == "wallpaper" && "${HYPR_THEME_REQUIRE_CURRENT_WALLPAPER:-0}" == 1 ]]; then
+  current_wall="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wallpaper/current/wall.set"
+  target_wall="${positional[0]:-}"
+  [[ -e "${current_wall}" && -e "${target_wall}" ]] || exit 0
+  [[ "$(readlink -f -- "${current_wall}")" == "$(readlink -f -- "${target_wall}")" ]] || exit 0
+fi
+
 write_hypr_theme_state() {
   local theme="$1"
 

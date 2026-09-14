@@ -15,7 +15,7 @@ hl.window_rule({["name"] = "lua:windowrules:25", ["match"] = {["class"] = "^(dro
 hl.window_rule({["name"] = "lua:windowrules:27", ["match"] = {["class"] = "^(org\\.kde\\.haruna)$", ["initial_title"] = "^Haruna$"}, ["fullscreen"] = true})
 hl.window_rule({["name"] = "lua:windowrules:28", ["match"] = {["class"] = "^(org\\.kde\\.haruna)$"}, ["float"] = true})
 hl.window_rule({["name"] = "lua:windowrules:30", ["match"] = {["class"] = "^(firefox)$"}, ["opacity"] = "0.90 override 0.90 override 1"})
-hl.window_rule({["name"] = "lua:windowrules:32", ["match"] = {["class"] = "^(kitty)$"}, ["opacity"] = "0.80 override 0.80 override 1"})
+hl.window_rule({["name"] = "lua:windowrules:32", ["match"] = {["class"] = "^(kitty|org\\.tui\\..*)$"}, ["opacity"] = "0.80 override 0.80 override 1"})
 hl.window_rule({["name"] = "lua:windowrules:33", ["match"] = {["class"] = "^(Alacritty)$"}, ["opacity"] = "0.80 override 0.80 override 1"})
 hl.window_rule({["name"] = "lua:windowrules:34", ["match"] = {["class"] = "^(org\\.kde\\.dolphin)$"}, ["opacity"] = "0.80 override 0.80 override 1"})
 hl.window_rule({["name"] = "lua:windowrules:35", ["match"] = {["class"] = "^(org\\.kde\\.ark)$"}, ["opacity"] = "0.80 override 0.80 override 1"})
@@ -94,40 +94,4 @@ hl.on("window.open", function(win)
   local mon = win.monitor
   if not profile or not mon then return end
   hl.exec_cmd("hyprshell window/apply-profile " .. profile .. " " .. win.address .. " " .. tostring(mon.id))
-end)
-
-local mullvad_workspace_rule = hl.window_rule({["name"] = "mullvad-startup-workspace", ["match"] = {["class"] = "^(mullvad-vpn)$"}, ["workspace"] = "10 silent"})
-mullvad_workspace_rule:set_enabled(false)
-
-local mullvad_startup_pending = false
-local mullvad_startup_timer = nil
-
-local function end_mullvad_startup()
-  mullvad_startup_pending = false
-  mullvad_workspace_rule:set_enabled(false)
-end
-
-hl.on("hyprland.start", function()
-  mullvad_startup_pending = true
-  mullvad_workspace_rule:set_enabled(true)
-  -- Held in a local so the timer object outlives this closure and still fires.
-  mullvad_startup_timer = hl.timer(end_mullvad_startup, {timeout = 120000, type = "oneshot"})
-end)
-
-hl.on("window.open", function(win)
-  if not win or win.class ~= "mullvad-vpn" then return end
-  if not mullvad_startup_pending then return end
-  end_mullvad_startup()
-  local mon = win.monitor
-  if not mon then return end
-  local sz = win.size or {}
-  local ww = sz.x or sz[1]
-  local wh = sz.y or sz[2]
-  if not ww or not wh then return end
-  local scale = mon.scale or 1
-  local mw = mon.width / scale
-  local mh = mon.height / scale
-  local x = math.floor(mw * 0.75 - ww / 2)
-  local y = math.floor((mh - wh) / 2)
-  hl.dispatch(hl.dsp.window.move({x = x, y = y, relative = false, window = "address:" .. win.address}))
 end)

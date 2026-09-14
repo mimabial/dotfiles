@@ -122,7 +122,8 @@ wallpaper_run_color_refresh() {
     theme_name="$(state_get "HYPR_THEME" "" 2>/dev/null || true)"
   fi
 
-  HYPR_THEME="${theme_name}" run_low_prio "${hypr_theme_cmd}" wallpaper --variant "${variant}" "${wallpaper_path}" &>/dev/null
+  HYPR_THEME="${theme_name}" HYPR_THEME_REQUIRE_CURRENT_WALLPAPER=1 \
+    run_low_prio "${hypr_theme_cmd}" wallpaper --variant "${variant}" "${wallpaper_path}" &>/dev/null
 }
 
 wallpaper_background_post_apply() {
