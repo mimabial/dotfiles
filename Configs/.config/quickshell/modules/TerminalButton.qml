@@ -5,5 +5,5 @@ BarButton {
     id: root
     css: "terminal"
     text: ""
-    onClicked: button => shell.run([button === Qt.RightButton ? "alacritty" : "kitty"])
+    onClicked: button => shell.run([button === Qt.RightButton ? "kitty" : "foot"])
 }

@@ -103,9 +103,9 @@ set_terminal_size() {
     pkill -USR1 -x kitty 2>/dev/null || true
   fi
 
-  if [[ -f "${XDG_CONFIG_HOME:-$HOME/.config}/alacritty/alacritty.toml" ]]; then
-    sed -i -E "s/^size[[:space:]]*=.*/size = ${pt}/" \
-      "${XDG_CONFIG_HOME:-$HOME/.config}/alacritty/alacritty.toml"
+  if [[ -f "${XDG_CONFIG_HOME:-$HOME/.config}/foot/foot.ini" ]]; then
+    sed -i -E "s/^(font=[^:]*:size=)[0-9.]+/\1${pt}/" \
+      "${XDG_CONFIG_HOME:-$HOME/.config}/foot/foot.ini"
   fi
 }
 

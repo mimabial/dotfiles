@@ -76,9 +76,7 @@ menu_register_domain_setup() {
   setup_add_default_item setup_default_browser "${default_browser}" zen "󰖟  Zen" setup_default_browser_zen zen-browser
 
   menu_define setup_default_terminal "Default Terminal"
-  setup_add_default_item setup_default_terminal "${default_terminal}" alacritty "  Alacritty" setup_default_terminal_alacritty alacritty
   setup_add_default_item setup_default_terminal "${default_terminal}" foot "  Foot" setup_default_terminal_foot foot
-  setup_add_default_item setup_default_terminal "${default_terminal}" ghostty "  Ghostty" setup_default_terminal_ghostty ghostty
   setup_add_default_item setup_default_terminal "${default_terminal}" kitty "  Kitty" setup_default_terminal_kitty kitty
 
   menu_define setup_default_editor "Default Editor"

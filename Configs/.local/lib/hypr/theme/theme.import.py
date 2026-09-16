@@ -323,7 +323,7 @@ def resolve_icon_theme(src, override):
 
 def resolve_cursor(override_theme, override_size):
     cursor = override_theme or theme_meta_var("CURSOR_THEME")
-    size = override_size or theme_meta_var("CURSOR_SIZE") or "24"
+    size = override_size or theme_meta_var("CURSOR_SIZE") or "30"
     if override_theme and not cursor_installed(override_theme):
         warn(f"--cursor '{override_theme}' is not installed; writing it anyway")
     return cursor, size

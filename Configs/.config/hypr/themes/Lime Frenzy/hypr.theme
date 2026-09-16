@@ -8,7 +8,7 @@ $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME = Gruvbox-Retro
-$CURSOR_SIZE = 28
+$CURSOR_SIZE = 30
 $FONT = Monoid Nerd Font
 $BAR_FONT = Monoid Nerd Font
 $MENU_FONT = Monoid Nerd Font

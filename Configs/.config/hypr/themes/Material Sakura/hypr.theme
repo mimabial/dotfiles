@@ -8,7 +8,7 @@ $NVIM_BACKGROUND = light
 $NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME = BreezeX-Dark
-$CURSOR_SIZE = 28
+$CURSOR_SIZE = 30
 $FONT = RobotoMono Nerd Font
 $BAR_FONT = RobotoMono Nerd Font
 $MENU_FONT = RobotoMono Nerd Font

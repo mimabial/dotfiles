@@ -7,7 +7,7 @@ $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME = Colloid-cursors
-$CURSOR_SIZE = 28
+$CURSOR_SIZE = 30
 $FONT = Terminess Nerd Font
 $BAR_FONT = Terminess Nerd Font
 $MENU_FONT = Terminess Nerd Font

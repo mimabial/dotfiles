@@ -116,11 +116,13 @@ python-colorthief                                     # pywal16 wallpaper palett
 firefox                                               # browser
 chromium                                              # Chromium-family webapp fallback
 kitty                                                 # terminal
-alacritty                                             # secondary terminal
+foot                                                  # secondary terminal
 tmux                                                  # terminal multiplexer
 lazygit                                               # git TUI
 lazydocker                                            # docker TUI
-dolphin                                               # KDE file manager
+thunar                                                # file manager
+tumbler                                               # thumbnails for thunar and gthumb
+gvfs-mtp                                              # phone/MTP devices in thunar
 ark                                                   # KDE file archiver
 unzip                                                 # extracting zip files
 vim                                                   # terminal text editor
@@ -129,7 +131,7 @@ nwg-displays                                          # monitor management utili
 fzf                                                   # command-line fuzzy finder
 mpv                                                   # recording/media playback helper
 mpv-mpris                                             # MPRIS bridge for the cliamp player
-loupe                                                 # image viewer
+gthumb                                                # image viewer
 haruna                                                # video player
 zathura                                               # document viewer
 zathura-pdf-mupdf                                     # zathura PDF rendering backend

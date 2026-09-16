@@ -16,7 +16,7 @@ Usage: $(basename "$0") --[option]
 Overrides: ${XDG_STATE_HOME}/hypr/env-overrides
     SYSMONITOR_EXECUTE="htop"
     SYSMONITOR_COMMANDS=("nvtop")  # Extra fallbacks
-    SYSMONITOR_TERMINAL="kitty"
+    SYSMONITOR_TERMINAL="foot"
 
 This script launches the system monitor application.
     It will launch the first available system monitor
@@ -58,7 +58,7 @@ select_monitor_command() {
 
 launch_monitor() {
   local sysMon="$1"
-  local term="${SYSMONITOR_TERMINAL:-${TERMINAL_TUI:-${TERMINAL:-kitty}}}"
+  local term="${SYSMONITOR_TERMINAL:-${TERMINAL_TUI:-${TERMINAL:-foot}}}"
 
   TERMINAL_TUI="${term}" \
     exec "${LIB_DIR:-$HOME/.local/lib}/hypr/launch/tui.sh" \

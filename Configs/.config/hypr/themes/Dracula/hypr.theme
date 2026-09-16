@@ -7,8 +7,8 @@ $NVIM_VARIANT = default
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
-$CURSOR_THEME = Dracula-cursors
-$CURSOR_SIZE = 29
+$CURSOR_THEME = Dracula-Left
+$CURSOR_SIZE = 31
 $FONT = FiraCode Nerd Font
 $BAR_FONT = FiraCode Nerd Font
 $MENU_FONT = FiraCode Nerd Font

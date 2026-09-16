@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 import hashlib
 import json
+import math
 import os
 import re
 import shutil
 import subprocess
 import sys
+import tempfile
+import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -14,70 +18,96 @@ from _common import atomic_write, cache_hit, cache_store
 PALETTE = Path(sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] else
                os.environ.get("HYPR_STATE_HOME",
                               os.path.expanduser("~/.local/state/hypr")) + "/active-palette.json")
-TEMPLATES = Path(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config"))) / "wal" / "templates"
 OUT_DIR = Path(os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))) / "themes" / "Pywal16-Gtk"
-ASSETS = Path(__file__).resolve().parent / "assets"
+THEMES = Path(__file__).resolve().parent / "gtk-themes"
+GTK_VERSIONS = ("3.0", "4.0")
 
 APP = "gtk"
 
-BORDER_RADIUS_FULL = re.compile(r"border-radius:\s*([0-9]+)px")
-BORDER_RADIUS_QUAD = re.compile(r"border-radius:\s*([0-9]+)px\s+([0-9]+)px\s+([0-9]+)px\s+([0-9]+)px")
-
-# Materia ships its scale knobs and selection-mode checkboxes as pre-rendered
-# @1x/@2x rasters, whose colours -gtk-scaled() cannot tint. Repoint them at the
-# vendored symbolic SVGs so -gtk-recolor() picks up the palette instead; SVG
-# scales natively, so the @2x half of each pair goes away.
-SCALED_PNG = re.compile(r"-gtk-scaled\(\s*url\('assets/([\w-]+)-dark\.png'\),\s*"
-                        r"url\('assets/\1-dark@2\.png'\)\s*\)")
-SCALED_SVG = re.compile(r"-gtk-scaled\(\s*-gtk-recolor\(url\('assets/scalable/([\w-]+)\.svg'\)\),\s*"
-                        r"-gtk-recolor\(url\('assets/scalable/\1@2\.svg'\)\)\s*\)")
-
-# The selection-mode tick sits on top of a thumbnail, so it cannot be a hole in
-# the box. It carries class="success", which this palette entry colours.
-SELECTIONMODE_PALETTE = """
-.view.content-view.check:not(list):checked,
-.content-view .tile check:not(list):checked {{
-  -gtk-icon-palette: success {bg};
-}}
-"""
-
-class _KeepMissing(dict):
-    def __missing__(self, key):
-        return "{" + key + "}"
-
-def substitute(template: str, vars_: dict) -> str:
-    # Templates use Python str.format syntax: {name} is a placeholder, {{/}} are literal braces.
-    return template.format_map(_KeepMissing(vars_))
-
-def scale_radius(content: str, r: int) -> str:
-    if r <= 0:
-        return content
-    def scale_one(px: int) -> int:
-        # Mirror wal.gtk.sh's awk table: 12 -> 2r, 6 -> r, etc.
-        table = {14: r*7//3, 12: r*2, 10: r*5//3, 9: r + r//2, 8: r*4//3,
-                 7: r*7//6,  6: r,    5: r*5//6,  4: r*2//3,    3: r//2,
-                 2: r//3,    1: r//6}
-        return table.get(px, px)
-    def sub_quad(m):
-        a, b, c, d = (int(m.group(i)) for i in (1, 2, 3, 4))
-        return f"border-radius: {scale_one(a)}px {scale_one(b)}px {scale_one(c)}px {scale_one(d)}px"
-    content = BORDER_RADIUS_QUAD.sub(sub_quad, content)
-    def sub_one(m):
-        return f"border-radius: {scale_one(int(m.group(1)))}px"
-    content = BORDER_RADIUS_FULL.sub(sub_one, content)
-    return content
-
-def use_symbolic_assets(content: str) -> str:
-    # GTK3 only recolours icons whose filename ends in -symbolic.svg; renaming
-    # them silently drops the tint and paints the SVG's own black fill.
-    content = SCALED_PNG.sub(r"-gtk-recolor(url('assets/scalable/\1-symbolic.svg'))", content)
-    return SCALED_SVG.sub(r"-gtk-recolor(url('assets/scalable/\1.svg'))", content)
+# Sweet is vendored untouched; gtk-themes/sweet.patch carries every local change.
+SWEET = THEMES / "sweet"
+STYLESHEETS = {"dark": "gtk-{gtk}/gtk-dark.scss", "light": "gtk-{gtk}/gtk.scss"}
+SHEETS = ("src/gtk3/gtk3-assets.svg", "src/gtk3/gtk3-assets-dark.svg")
+# Named gradient or stop in Sweet's SVGs -> the theme value it takes.
+GRADIENTS = {"color-accent": "$selected_bg_color", "color-cyan": "$hypr-cyan", "color-on-accent": "$selected_fg_color",
+             "color-box": "hypr-surface(#40424C, $hypr-window)", "color-switch-from": "$orange", "color-switch-to": "$yellow"}
+SVG = "{http://www.w3.org/2000/svg}"
+INKSCAPE_LABEL = "{http://www.inkscape.org/namespaces/inkscape}label"
+TRANSLATE = re.compile(r"translate\((-?[\d.]+)[ ,]*(-?[\d.]*)\)")
+# gdk-pixbuf only recognises an unprefixed <svg> root as an SVG image.
+ET.register_namespace("", SVG[1:-1])
 
 
-def install_assets(subdir: str) -> None:
-    src = ASSETS / subdir
-    if src.is_dir():
-        shutil.copytree(src, OUT_DIR / subdir / "assets", dirs_exist_ok=True)
+def sass_palette(p: dict, radius: int) -> str:
+    ink_dark, ink_light = (p["fg"], p["bg"]) if p["background"] == "light" else (p["bg"], p["fg"])
+    colors = p["colors"]
+    values = {"bg": p["bg"], "fg": p["fg"], "ink-dark": ink_dark, "ink-light": ink_light, "accent": colors[4],
+              "red": colors[1], "green": colors[2], "yellow": colors[3], "purple": colors[5], "cyan": colors[6],
+              "radius": f"{radius}px"}
+    return "".join(f"$hypr-{name}: {value};\n" for name, value in values.items())
+
+
+def sassc(source: str) -> str:
+    run = subprocess.run(["sassc", "--stdin", "-M", "-t", "expanded", "-I", str(THEMES)],
+                         input=source, capture_output=True, text=True)
+    if run.returncode:
+        sys.exit(f"render/gtk: sassc: {run.stderr.strip()}")
+    return run.stdout
+
+
+def compile_theme(source: Path, palette: str, variant: str) -> tuple[dict, dict]:
+    # Gradients are evaluated in Sweet's own scope, as a rule trailing the first stylesheet that is split off again.
+    sources = [f'{palette}@import "{source / STYLESHEETS[variant].format(gtk=gtk)}";\n' for gtk in GTK_VERSIONS]
+    sources[0] += "hypr-gradients {" + "".join(f"{name}: {value};" for name, value in GRADIENTS.items()) + "}"
+    with ThreadPoolExecutor() as pool:
+        stylesheets = list(pool.map(sassc, sources))
+    stylesheets[0], _, probed = stylesheets[0].partition("hypr-gradients {")
+    return dict(zip(GTK_VERSIONS, stylesheets)), dict(re.findall(r"([\w-]+): ([^;]+);", probed))
+
+
+def recolor(root: ET.Element, colors: dict) -> None:
+    nodes = {node.get("id"): node for node in root.iter()}
+    for name in colors.keys() & nodes.keys():
+        for stop in nodes[name].iter(f"{SVG}stop"):
+            stop.set("stop-color", colors[name])
+
+
+def render_sheet(svg: Path, colors: dict, names: set, destination: Path) -> None:
+    import gi
+    gi.require_version("Rsvg", "2.0")
+    from gi.repository import Rsvg
+    import cairo
+
+    root = ET.parse(svg).getroot()
+    recolor(root, colors)
+    parents = {child: parent for parent in root.iter() for child in parent}
+    handle = Rsvg.Handle.new_from_data(ET.tostring(root))
+    _, sheet_width, sheet_height = handle.get_intrinsic_size_in_pixels()
+    sheet, whole_sheet = Rsvg.Rectangle(), {}
+    # Each asset is the whole sheet cropped to a hidden "Baseplate" rect, named by the icon-name text beside it.
+    for layer in root.iter(f"{SVG}g"):
+        if not layer.get(INKSCAPE_LABEL, "").startswith("Baseplate"):
+            continue
+        name = "".join(next(text for text in layer.iter(f"{SVG}text") if text.get(INKSCAPE_LABEL) == "icon-name").itertext()).strip()
+        if name not in names:
+            continue
+        rect = next(layer.iter(f"{SVG}rect"))
+        x, y, node = float(rect.get("x", 0)), float(rect.get("y", 0)), rect
+        while node is not None:
+            if shift := TRANSLATE.fullmatch(node.get("transform", "")):
+                x, y = x + float(shift[1]), y + float(shift[2] or 0)
+            node = parents.get(node)
+        for scale, suffix in ((1, ""), (2, "@2")):
+            if scale not in whole_sheet:
+                sheet.width, sheet.height = sheet_width * scale, sheet_height * scale
+                whole_sheet[scale] = cairo.ImageSurface(cairo.FORMAT_ARGB32, math.ceil(sheet.width), math.ceil(sheet.height))
+                handle.render_document(cairo.Context(whole_sheet[scale]), sheet)
+            surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, math.ceil(float(rect.get("width")) * scale),
+                                         math.ceil(float(rect.get("height")) * scale))
+            context = cairo.Context(surface)
+            context.set_source_surface(whole_sheet[scale], -x * scale, -y * scale)
+            context.paint()
+            surface.write_to_png(str(destination / f"{name}{suffix}.png"))
 
 
 def hypr_border_radius() -> int:
@@ -92,51 +122,51 @@ def main():
     if not PALETTE.is_file():
         sys.exit(f"render/gtk: missing {PALETTE}")
     p = json.loads(PALETTE.read_text())
-
-    vars_ = {"background": p["bg"], "foreground": p["fg"]}
-    for i, c in enumerate(p["colors"]):
-        vars_[f"color{i}"] = c
-    if "cursor" in p:
-        vars_["cursor"] = p["cursor"]
-
     radius = hypr_border_radius()
 
     hasher = hashlib.sha256()
     hasher.update(PALETTE.read_bytes())
-    for t in ("colors-gtk3.css", "colors-gtk4.css"):
-        tp = TEMPLATES / t
-        if tp.is_file(): hasher.update(tp.read_bytes())
     hasher.update(str(radius).encode())
     hasher.update(Path(__file__).read_bytes())
-    for a in sorted(ASSETS.rglob("*.svg")):
-        hasher.update(str(a.relative_to(ASSETS)).encode())
-        hasher.update(a.read_bytes())
+    hasher.update(str(max(f.stat().st_mtime_ns for f in THEMES.rglob("*"))).encode())
     h = hasher.hexdigest()[:16]
 
-    if (cache_hit(APP, h)
-            and all((OUT_DIR / d / "gtk.css").exists() for d in ("gtk-3.0", "gtk-4.0"))
-            and all((OUT_DIR / d / "assets" / "scalable").is_dir() for d in ("gtk-3.0", "gtk-4.0"))):
+    if cache_hit(APP, h) and all((OUT_DIR / f"gtk-{gtk}" / "gtk.css").exists() for gtk in GTK_VERSIONS):
         return
 
-    for template_name, out_subdir in (("colors-gtk3.css", "gtk-3.0"), ("colors-gtk4.css", "gtk-4.0")):
-        tp = TEMPLATES / template_name
-        if not tp.is_file():
-            print(f"render/gtk: missing template {tp}", file=sys.stderr)
-            continue
-        content = tp.read_text()
-        content = substitute(content, vars_)
-        content = scale_radius(content, radius)
-        content = use_symbolic_assets(content)
-        if out_subdir == "gtk-3.0":
-            content += SELECTIONMODE_PALETTE.format(bg=p["bg"])
-        install_assets(out_subdir)
-        out = f"/* Hyprland border radius: {radius}px */\n\n{content}"
-        out_path = OUT_DIR / out_subdir / "gtk.css"
-        atomic_write(out_path, out)
-        dark_link = OUT_DIR / out_subdir / "gtk-dark.css"
+    with tempfile.TemporaryDirectory() as build:
+        source = Path(build) / "sweet"
+        shutil.copytree(SWEET, source)
+        subprocess.run(["patch", "--batch", "--silent", "-p1", "-d", source, "-i", THEMES / "sweet.patch"], check=True)
+        css, colors = compile_theme(source, sass_palette(p, radius), "light" if p["background"] == "light" else "dark")
+
+        shutil.rmtree(OUT_DIR / "assets", ignore_errors=True)
+        shutil.copytree(source / "assets", OUT_DIR / "assets")
+        for image in (OUT_DIR / "assets").glob("*.svg"):
+            text = image.read_text()
+            if any(f'id="{name}"' in text for name in colors):
+                tree = ET.parse(image)
+                recolor(tree.getroot(), colors)
+                tree.write(image)
+        names = set(re.findall(r'url\("\.\./assets/([\w-]+?)(?:@2)?\.png"\)', "".join(css.values())))
+        for sheet in SHEETS:
+            render_sheet(source / sheet, colors, names, OUT_DIR / "assets")
+
+    for gtk, content in css.items():
+        out_path = OUT_DIR / f"gtk-{gtk}" / "gtk.css"
+        atomic_write(out_path, content)
+        dark_link = out_path.with_name("gtk-dark.css")
         if dark_link.is_symlink() or dark_link.exists():
             dark_link.unlink()
         dark_link.symlink_to("gtk.css")
+
+    # Each build switches desktop sync to this folder's other name, the only change that makes GTK 3 reload it.
+    alias = OUT_DIR.with_name(f"{OUT_DIR.name}-Alt")
+    if not alias.is_symlink():
+        alias.symlink_to(OUT_DIR.name)
+    name_file = OUT_DIR / "theme-name"
+    previous = name_file.read_text().strip() if name_file.is_file() else OUT_DIR.name
+    atomic_write(name_file, f"{OUT_DIR.name if previous == alias.name else alias.name}\n")
 
     index = OUT_DIR / "index.theme"
     if not index.is_file():
@@ -155,12 +185,6 @@ ButtonLayout=close,minimize,maximize:menu
 """)
 
     cache_store(APP, h)
-
-    try:
-        subprocess.run(["pkill", "-HUP", "-x", "xsettingsd"], check=False,
-                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    except FileNotFoundError:
-        pass
 
 if __name__ == "__main__":
     main()

@@ -17,7 +17,7 @@ SEARCH_ROOTS=(
   "${XDG_CONFIG_HOME:-$HOME/.config}/dunst"
   "${XDG_CONFIG_HOME:-$HOME/.config}/wlogout"
   "${XDG_CONFIG_HOME:-$HOME/.config}/kitty"
-  "${XDG_CONFIG_HOME:-$HOME/.config}/alacritty"
+  "${XDG_CONFIG_HOME:-$HOME/.config}/foot"
   "${XDG_CONFIG_HOME:-$HOME/.config}/fontconfig"
   "${XDG_CONFIG_HOME:-$HOME/.config}/gtk-3.0"
   "${XDG_CONFIG_HOME:-$HOME/.config}/gtk-4.0"
@@ -305,7 +305,7 @@ reference_scope() {
       "${config_home}/dunst/"* | \
       "${config_home}/wlogout/"* | \
       "${config_home}/kitty/"* | \
-      "${config_home}/alacritty/"* | \
+      "${config_home}/foot/"* | \
       "${config_home}/qutebrowser/"* | \
       "${config_home}/satty/"*)
       printf 'active\n'

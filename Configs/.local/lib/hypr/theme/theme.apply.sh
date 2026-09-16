@@ -303,7 +303,7 @@ theme_apply_job_terminal() {
   terminal_font="$(font_sync_resolve_font_value terminal 2>/dev/null || true)"
   if [[ -n "${terminal_font}" ]]; then
     font_sync_apply_kitty_family "${terminal_font}" || true
-    font_sync_apply_alacritty_family "${terminal_font}" || true
+    font_sync_apply_foot_family "${terminal_font}" || true
   fi
 
   reload_live_theme_client kitty

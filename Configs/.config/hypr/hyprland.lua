@@ -41,7 +41,7 @@ runtime.load(state_home .. "/hypr/looknfeel.lua", true)
 -- Resolve the cursor after Look & Feel so its per-theme CURSOR_* variables feed
 -- the same compositor path as the theme pack's defaults.
 local cursor_theme = vars.get("CURSOR_THEME", "Bibata-Modern-Ice")
-local cursor_size = vars.get("CURSOR_SIZE", "24")
+local cursor_size = vars.get("CURSOR_SIZE", "30")
 hl.env("XCURSOR_THEME", cursor_theme, true)
 hl.env("XCURSOR_SIZE", cursor_size, true)
 hl.env("HYPRCURSOR_THEME", cursor_theme, true)

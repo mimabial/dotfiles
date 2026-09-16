@@ -8,7 +8,7 @@ $NVIM_BACKGROUND = light
 $NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME = BreezeX-Dark
-$CURSOR_SIZE = 28
+$CURSOR_SIZE = 30
 $FONT = iMWritingDuo Nerd Font
 $BAR_FONT = iMWritingDuo Nerd Font
 $MENU_FONT = iMWritingDuo Nerd Font

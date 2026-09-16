@@ -7,7 +7,7 @@ S|${HOME}/.config|hypr|hyprland
 S|${HOME}/.config|uwsm|uwsm
 S|${HOME}/.config|systemd|systemd
 S|${HOME}/.config|sv|
-S|${HOME}/.config|menus autostart xdg-terminals.list|
+S|${HOME}/.config|menus autostart xdg-terminals.list mimeapps.list|
 
  Desktop 
 S|${HOME}/.config|quickshell|quickshell
@@ -16,7 +16,7 @@ S|${HOME}/.config|wlogout|wlogout
 
  Terminals & Shell 
 S|${HOME}/.config|kitty|kitty
-S|${HOME}/.config|alacritty|alacritty
+S|${HOME}/.config|foot|foot
 S|${HOME}/.config|tmux|tmux
 S|${HOME}/.config|zsh|zsh
 S|${HOME}|.zshenv|zsh
@@ -36,7 +36,7 @@ S|${HOME}/.config|satty|satty
 S|${HOME}/.config|khal|khal
 S|${HOME}/.config|udiskie|udiskie
 S|${HOME}/.config|gamemode.ini|gamemode
-S|${HOME}/.config|baloofilerc|
+S|${HOME}/.config|baloofilerc kdeglobals|
 S|${HOME}|.npmrc|
 
  Theming 
@@ -49,7 +49,8 @@ S|${HOME}/.config|qt6ct|qt6ct
 S|${HOME}/.config|wal|python-pywal16
 
  File Manager 
-S|${HOME}/.config|dolphinrc kdeglobals|dolphin
+S|${HOME}/.config|Thunar|thunar
+S|${HOME}/.config/xfce4/xfconf/xfce-perchannel-xml|thunar.xml|thunar
 
  Local data 
 S|${HOME}/.local|bin lib|hyprland

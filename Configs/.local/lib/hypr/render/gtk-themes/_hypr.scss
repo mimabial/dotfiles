@@ -1,0 +1,18 @@
+// render/gtk.py defines the $hypr-* palette values before compiling a theme.
+
+// Keeps the theme's lightness step away from its window colour.
+@function hypr-surface($color, $window) {
+  $lightness: lightness($hypr-bg) + lightness($color) - lightness($window);
+  @return change-color($hypr-bg, $lightness: max(0%, min(100%, $lightness)), $alpha: alpha($color));
+}
+
+// Keeps the theme's contrast position between its window and text colours.
+@function hypr-text($color, $window, $text) {
+  $position: (lightness($color) - lightness($window)) / (lightness($text) - lightness($window));
+  @return mix($hypr-fg, $hypr-bg, max(0%, min(100%, percentage($position))));
+}
+
+// The W3C AERT brightness threshold, applied to the palette's inks.
+@function hypr-on($color) {
+  @return if((red($color) * 299 + green($color) * 587 + blue($color) * 114) / 1000 >= 156, $hypr-ink-dark, $hypr-ink-light);
+}

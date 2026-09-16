@@ -3,7 +3,6 @@
 __pycache__/
 .DS_Store
 # Configs/ generated files (mirror of above)
-Configs/.config/alacritty/colors.toml
 Configs/.config/cava/config
 Configs/.config/hypr/hyprlock/colors.conf
 Configs/.config/hypr/themes/colors.lua

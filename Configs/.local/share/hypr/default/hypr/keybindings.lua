@@ -1,9 +1,9 @@
 local vars = require("vars")
 
 local mod = vars.get("mainMod", "SUPER")
-local terminal = vars.get("TERMINAL", "kitty")
-local terminal2 = vars.get("TERMINAL2", "alacritty")
-local explorer = vars.get("EXPLORER", "dolphin")
+local terminal = vars.get("TERMINAL", "foot")
+local terminal2 = vars.get("TERMINAL2", "foot")
+local explorer = vars.get("EXPLORER", "thunar")
 local browser = vars.get("BROWSER", "firefox")
 local editor = vars.get("EDITOR", "nvim")
 local bind_actions = {__probe = hl.dsp.no_op()}

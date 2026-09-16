@@ -3,7 +3,7 @@ $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 $COLOR_SCHEME = prefer-dark
 $ICON_THEME = Fluent-dark
 $CURSOR_THEME = Fluent-dark-cursors
-$CURSOR_SIZE = 22
+$CURSOR_SIZE = 30
 $FONT = MonaspiceRn Nerd Font
 $BAR_FONT = MonaspiceRn Nerd Font
 $MENU_FONT = MonaspiceRn Nerd Font

@@ -6,6 +6,7 @@ $NVIM_BACKGROUND = light
 $NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME = GoogleDot-Blue
+$CURSOR_SIZE = 30
 $FONT = MonaspiceXe Nerd Font
 $BAR_FONT = MonaspiceXe Nerd Font
 $MENU_FONT = MonaspiceXe Nerd Font

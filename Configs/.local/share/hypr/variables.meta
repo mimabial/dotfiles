@@ -4,10 +4,10 @@ $scrPath=$HOME/.local/lib/hypr # set scripts path
 $mainMod = SUPER # windows key
 $BROWSER = firefox
 $EDITOR = nvim
-$EXPLORER = dolphin
-$TERMINAL = kitty
-$TERMINAL2 = alacritty
-$TERMINAL_TUI = kitty  # Terminal for TUI apps (btop, ranger, lazygit, etc)
+$EXPLORER = thunar
+$TERMINAL = foot
+$TERMINAL2 = foot
+$TERMINAL_TUI = foot  # Terminal for TUI apps (btop, ranger, lazygit, etc)
 $LOCKSCREEN = hyprlock
 
 # // █░░ ▄▀█ █░█ █▄░█ █▀▀ █░█

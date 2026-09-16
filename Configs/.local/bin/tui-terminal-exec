@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-TERMINAL_TUI="${TERMINAL_TUI:-kitty}"
+TERMINAL_TUI="${TERMINAL_TUI:-foot}"
 HYPR_LIB_ROOT="${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}"
 
 usage() {
@@ -217,10 +217,10 @@ build_terminal_command() {
       fi
       launch_ref+=("${command_ref[@]}")
       ;;
-    alacritty)
-      [[ -n "${launch_options[app_id]}" ]] && launch_ref+=(--class "${launch_options[app_id]}")
-      [[ -n "${launch_options[title]}" ]] && launch_ref+=(--title "${launch_options[title]}")
-      ((${#command_ref[@]} > 0)) && launch_ref+=(-e "${command_ref[@]}")
+    foot)
+      [[ -n "${launch_options[app_id]}" ]] && launch_ref+=("--app-id=${launch_options[app_id]}")
+      [[ -n "${launch_options[title]}" ]] && launch_ref+=("--title=${launch_options[title]}")
+      launch_ref+=("${command_ref[@]}")
       ;;
     *)
       if [[ -n "${launch_options[app_id]}" || -n "${launch_options[title]}" ]]; then

@@ -11,7 +11,7 @@ Kanagawa Wave/
 ├── kitty.theme         # optional per-app overrides
 ├── rofi.theme
 ├── quickshell.theme
-├── alacritty.theme
+├── foot.theme
 ├── dunst.theme
 ├── hypr.theme
 └── tmux.theme

@@ -69,14 +69,14 @@ font_sync_apply_kitty_family() {
   sed -i "s|^font_family .*|font_family ${escaped}|g" "${kitty_conf}"
 }
 
-font_sync_apply_alacritty_family() {
+font_sync_apply_foot_family() {
   local font="$1"
-  local alacritty_conf="${XDG_CONFIG_HOME:-$HOME/.config}/alacritty/alacritty.toml"
+  local foot_conf="${XDG_CONFIG_HOME:-$HOME/.config}/foot/foot.ini"
   local escaped=""
 
   [[ -n "${font}" ]] || return 1
-  [[ -f "${alacritty_conf}" ]] || return 1
+  [[ -f "${foot_conf}" ]] || return 1
   font_sync_ensure_sed_escape || return 1
   escaped="$(sed_escape_replacement "${font}")"
-  sed -i "s|family = \".*\"|family = \"${escaped}\"|g" "${alacritty_conf}"
+  sed -i "s|^font=[^:]*|font=${escaped}|" "${foot_conf}"
 }

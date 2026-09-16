@@ -81,11 +81,7 @@ paste_string() {
   local ignored_class=""
   local -a ignored_classes=(
     kitty
-    org.kde.konsole
-    terminator
-    XTerm
-    Alacritty
-    xterm-256color
+    foot
   )
 
   [[ -t 1 ]] && return 0

@@ -15,7 +15,7 @@
     mdp_write_timeout_ms: 5000,
     rewind_to_start_sec: None,
     keep_stage_on_song_change: true,
-    theme: Some("pywal16-small"),
+    theme: Some("pywal16-big"),
     album_art: (
       method: Auto,
       order: EmbeddedFirst,
@@ -158,109 +158,117 @@
     directories_sort: SortFormat(group_by_type: true, reverse: false),
 
     components: {
-      "custom_song_table_header": Split(
-        borders: "TOP",
-        size: "100%",
-        direction: Horizontal, panes: [
-          (
-            size: "100%",
-            pane: Pane(Property(
-              content: [
-                (kind: Property(Status(Elapsed)), style: (fg: "#4d2e1a")),
-                (kind: Text("/"), style: (fg: "#9f8253")),
-                (kind: Property(Status(Duration)), style: (fg: "#4d2e1a")),
-              ], align: Center,
-            )),
-          ),
-      ]),
+        "custom-header": Split(direction: Horizontal, panes: [
+            (size: "33%", pane: Split(direction: Vertical, panes: [
+                (size: "100%", pane: Pane(Property(content: [
+                    (kind: Text(" "), style: (fg: "#78824b", modifiers: "Bold")),
+                    (kind: Property(Status(StateV2(playing_label: " Playing", paused_label: " Paused", stopped_label: " Stopped"))), style: (fg: "#c2c2b0", modifiers: "Italic")),
+                    (kind: Text(" "), style: (fg: "#78824b", modifiers: "Bold")),
+                    (kind: Property(Widget(ScanStatus)), style: (fg: "#c2c2b0", modifiers: "Bold"))
+                ], align: Left))
+                ),
+                (size: "100%", pane: Pane(Property(content: [
+                    (kind: Text(" "), style: (fg: "#78824b", modifiers: "Bold")),
+                    (kind: Property(Status(Elapsed)),style: (fg: "#c2c2b0")),
+                    (kind: Text(" / "),style: (fg: "#78824b", modifiers: "Bold")),
+                    (kind: Property(Status(Duration)),style: (fg: "#c2c2b0")),
+                ], align: Left))),
+                (size: "100%", pane: Pane(Property(content: [
+                    (kind: Text(" "), style: (fg: "#78824b", modifiers: "Bold")),
+                    (kind: Text("( "),style: (fg: "#78824b", modifiers: "Bold")),
+                    (kind: Property(Status(Bitrate)),default: (kind: Text(" ")),style: (fg: "#c2c2b0")),
+                    (kind: Text(" kbps"),style: (fg: "#78824b")),
+                    (kind: Text(" )"),style: (fg: "#78824b", modifiers: "Bold")),
+                ], align: Left))
+                ),
+            ])
+            ),
+
+            (size: "34%", pane: Split(direction: Vertical, panes: [
+                (size: "100%", pane: Pane(Property(content: [
+                    (kind: Property(Song(Title)), style: (fg: "#c2c2b0",modifiers: "Bold"),
+                        default: (kind: Property(Song(Filename)), style: (fg: "#c2c2b0",modifiers: "Bold")))
+                ], align: Center))
+                ),
+                (size: "100%", pane: Pane(Property(content: [
+                    (kind: Property(Song(Artist)), style: (fg: "#c9a554"),
+                        default: (kind: Text("Unknown Artist"), style: (fg: "#c9a554"))),
+                ], align: Center))),
+                (size: "100%", pane: Pane(Property(content: [
+                    (kind: Property(Song(Album)),style: (fg: "#78824b" ),
+                        default: (kind: Text("Unknown Album"), style: (fg: "#78824b")))
+                ], align: Center))
+                ),
+            ])
+            ),
+
+            (size: "33%", pane: Split(direction: Vertical, panes: [
+                (size: "100%", pane: Pane(Property(content: [
+                    (kind: Text("Volume: "), style: (fg: "#78824b", modifiers: "Bold")),
+                    (kind: Property(Status(Volume)), style: (fg: "#c2c2b0")),
+                    (kind: Text("% "), style: (fg: "#78824b", modifiers: "Bold"))
+                ], align: Right))
+                ),
+                (size: "100%", pane: Pane(Property(content: [
+                    (kind: Property(Status(QueueLength())),style: (fg: "#c2c2b0")),
+                    (kind: Text(" 󰴍 | "),style: (fg: "#78824b", modifiers: "Bold")),
+                    (kind: Property(Status(QueueTimeTotal(separator: ":"))),style: (fg: "#c2c2b0")),
+                    (kind: Text(" 󱎫 "),style: (fg: "#78824b", modifiers: "Bold")),
+                ], align: Right))),
+                (size: "100%", pane: Pane(Property(content: [
+                    (kind: Property(Status(RepeatV2(on_label: "Repeat ", off_label: "Repeat ",
+                                    on_style: (fg: "#c2c2b0", modifiers: "Bold"), off_style: (fg: "#666666", modifiers: "Bold"))))),
+                    (kind: Text(" | "),style: (fg: "#78824b", modifiers: "Bold")),
+                    (kind: Property(Status(RandomV2(on_label: "Random  ", off_label: "Random  ",
+                                    on_style: (fg: "#c2c2b0", modifiers: "Bold"), off_style: (fg: "#666666", modifiers: "Bold"))))),
+                ], align: Right))
+                ),
+            ])
+            ),
+        ])
     },
 
     tabs: [
-        (
-          name: " Queue",
-          pane: Split(
-            size: "100%",
-            direction: Vertical,
-            panes: [
-              (
-                size: "2",
-                pane: Component("custom_song_table_header"),
+        (name: " Home", pane: Split(direction: Horizontal, panes: [
+              (size: "80%", borders: "NONE", pane: Split(direction: Vertical,panes: [
+                          (size: "100%", borders: "ALL", pane: Pane(Queue)),
+                      ])
               ),
-              (
-                size: "100%",
-                pane: Pane(Queue),
+              (size: "20%", borders: "NONE", pane: Split(direction: Vertical, panes: [
+                          (size: "50%", borders: "TOP", pane: Pane(Lyrics)),
+                          (size: "50%", borders: "BOTTOM", pane: Pane(AlbumArt)),
+                      ])
               ),
+          ])
+        ),
+        (name: "󱏒 Files", pane: Split(direction: Horizontal,panes: [
+                    (size: "100%", borders: "ALL", pane: Pane(Directories)),
+                ])
+        ),
+        (name: "󰲹 Playlists", pane: Split(direction: Horizontal, panes: [
+                    (size: "100%", borders: "ALL", pane: Pane(Playlists)),
+                ])
+        ),
 
-            ]
-          )
+        (name: "󱝠 Genre", pane: Split(direction: Horizontal, panes: [
+                    (size: "100%", borders: "ALL", pane: Pane(Browser(root_tag: "genre", separator: ";"))),
+                ])
         ),
-        (
-          name: "󱏒 Files",
-          pane: Split(
-            size: "100%",
-            direction: Vertical,
-            panes: [
-              (
-                size: "2",
-                pane: Component("custom_song_table_header"),
-              ),
-              (
-                size: "100%",
-                pane: Pane(Directories),
-              ),
-            ]
-          )
+        (name: "󰥩 Search", pane: Split(direction: Horizontal, panes: [
+                    (size: "100%", borders: "ALL", pane: Pane(Search)),
+                ])
         ),
-        (
-          name: " Lyrics",
-          pane: Split(
-            size: "100%",
-            direction: Vertical,
-            panes: [
-              (
-                size: "2",
-                pane: Component("custom_song_table_header"),
-              ),
-              (
-                size: "100%",
-                pane: Pane(Lyrics),
-              ),
-            ]
-          )
+        (name: "󰳩 Artists", pane: Split(direction: Horizontal, panes: [
+                    (size: "100%", borders: "ALL", pane: Pane(Artists)),
+                ])
         ),
-        (
-          name: "󰥩 Search",
-          pane: Split(
-            size: "100%",
-            direction: Vertical,
-            panes: [
-              (
-                size: "2",
-                pane: Component("custom_song_table_header"),
-              ),
-              (
-                size: "100%",
-                pane: Pane(Search),
-              ),
-            ]
-          )
+        (name: "󰀥 Albums", pane: Split(direction: Horizontal, panes: [
+                    (size: "100%", borders: "ALL", pane: Pane(Albums)),
+                ])
         ),
-        (
-          name: "󰲹 PlayLists",
-          pane: Split(
-            size: "100%",
-            direction: Vertical,
-            panes: [
-              (
-                size: "2",
-                pane: Component("custom_song_table_header"),
-              ),
-              (
-                size: "100%",
-                pane: Pane(Playlists),
-              ),
-            ]
-          )
+        (name: "󰳩 Album Artists", pane: Split(direction: Horizontal, panes: [
+                    (size: "100%", borders: "ALL", pane: Pane(AlbumArtists)),
+                ])
         ),
     ],
 

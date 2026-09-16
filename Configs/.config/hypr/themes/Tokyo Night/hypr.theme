@@ -7,7 +7,7 @@ $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME=Emo
-$CURSOR_SIZE=24
+$CURSOR_SIZE=30
 $FONT = JetBrainsMono Nerd Font
 $BAR_FONT = JetBrainsMono Nerd Font
 $MENU_FONT = JetBrainsMono Nerd Font

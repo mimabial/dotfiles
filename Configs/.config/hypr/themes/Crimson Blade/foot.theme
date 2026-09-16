@@ -1,0 +1,23 @@
+$HOME/.config/foot/theme.ini
+[colors-dark]
+background=0c0b16
+foreground=eceffd
+cursor=eceffd fdcd5e
+selection-foreground=eceffd
+selection-background=525fb8
+regular0=03063c
+regular1=c60049
+regular2=abf157
+regular3=fdcd5e
+regular4=525fb8
+regular5=976f81
+regular6=968662
+regular7=eceffc
+bright0=6c5a30
+bright1=d94a8a
+bright2=daffa8
+bright3=fee6a8
+bright4=b1bdf9
+bright5=fda4cc
+bright6=a4bc86
+bright7=f6ffec

@@ -155,7 +155,10 @@ theme_desktop_resolve_values() {
     ln -snf "${pack_dir}" "${HOME}/.themes/${resolved_gtk}" || true
   elif [[ -f "${pywal_gtk_dir}/gtk-3.0/gtk.css" || -f "${pywal_gtk_dir}/gtk-4.0/gtk.css" ]]; then
     resolved_gtk="Pywal16-Gtk"
+    # render/gtk.py alternates two names for this folder on every build; GTK 3 reloads a theme only when its name changes.
+    [[ -s "${pywal_gtk_dir}/theme-name" ]] && read -r resolved_gtk <"${pywal_gtk_dir}/theme-name" || true
   fi
+  [[ -d "${HOME}/.themes" ]] && find "${HOME}/.themes" -maxdepth 1 -lname "${HYPR_CONFIG_HOME}/themes/*" ! -name "${resolved_gtk}" -delete || true
 
   RESOLVED_GTK_THEME="${resolved_gtk}"
   RESOLVED_KVANTUM_THEME="$(theme_desktop_kvantum_output_theme_name)"
@@ -167,7 +170,8 @@ theme_desktop_resolve_values() {
   else
     RESOLVED_KDE_COLOR_SCHEME="KvGnomeDark"
   fi
-  RESOLVED_KDE_WIDGET_STYLE="kvantum"
+  # Kvantum caches generated SVG colors for the process lifetime; Breeze follows KDE palette notifications.
+  RESOLVED_KDE_WIDGET_STYLE="Breeze"
 
   export ICON_THEME COLOR_SCHEME CURSOR_THEME CURSOR_SIZE TERMINAL \
     FONT FONT_SIZE DOCUMENT_FONT DOCUMENT_FONT_SIZE MONOSPACE_FONT \
@@ -384,6 +388,26 @@ theme_desktop_install_qtct_color_scheme() {
     "${XDG_CONFIG_HOME}/qt6ct/colors/pywal16.conf"
 }
 
+theme_desktop_notify_kde_palette_changed() {
+  command -v dbus-send >/dev/null 2>&1 || return 0
+  dbus-send --session --type=signal \
+    /KGlobalSettings org.kde.KGlobalSettings.notifyChange int32:0 int32:0 \
+    >/dev/null 2>&1 \
+    || print_log -sec "theme" -warn "kde" "palette notification failed"
+}
+
+theme_desktop_notify_kde_icons_changed() {
+  local group=""
+
+  command -v dbus-send >/dev/null 2>&1 || return 0
+  for group in {0..5}; do
+    dbus-send --session --type=signal \
+      /KIconLoader org.kde.KIconLoader.iconChanged "int32:${group}" \
+      >/dev/null 2>&1 \
+      || print_log -sec "theme" -warn "kde" "icon notification failed for group ${group}"
+  done
+}
+
 theme_desktop_configure_qt_kde_bridge() {
   local qt6ct_color_scheme="${XDG_CONFIG_HOME}/qt6ct/colors/pywal16.conf"
   local base_px=12 base_pt=10 text_size=""
@@ -405,16 +429,17 @@ theme_desktop_configure_qt_kde_bridge() {
 theme=${RESOLVED_KVANTUM_THEME}
 EOF
 
+  # A global per-window scheme makes KColorSchemeManager ignore system palette changes.
   theme_desktop_ini_write_batch "${XDG_CONFIG_HOME}/kdeglobals" \
     "General:ColorScheme=${RESOLVED_KDE_COLOR_SCHEME}" \
     "Icons:Theme=${ICON_THEME}" \
-    "KDE:widgetStyle=${RESOLVED_KDE_WIDGET_STYLE:-kvantum}" \
-    "UiSettings:ColorScheme=${RESOLVED_KDE_COLOR_SCHEME}" || return 1
+    "KDE:widgetStyle=${RESOLVED_KDE_WIDGET_STYLE:-Breeze}" \
+    "UiSettings:ColorScheme=" || return 1
 
   theme_desktop_ini_write_batch "${XDG_CONFIG_HOME}/kdedefaults/kdeglobals" \
     "General:ColorScheme=${RESOLVED_KDE_COLOR_SCHEME}" \
     "Icons:Theme=${ICON_THEME}" \
-    "KDE:widgetStyle=${RESOLVED_KDE_WIDGET_STYLE:-kvantum}" || return 1
+    "KDE:widgetStyle=${RESOLVED_KDE_WIDGET_STYLE:-Breeze}" || return 1
 
   if [[ "${RESOLVED_KDE_COLOR_SCHEME:-}" == "Pywal" ]]; then
     theme_desktop_install_kdeglobals_color_sections "${XDG_CONFIG_HOME}/kdeglobals" || return 1
@@ -427,7 +452,7 @@ color_scheme_path=${qt6ct_color_scheme}
 custom_palette=true
 icon_theme=${ICON_THEME}
 standard_dialogs=default
-style=${RESOLVED_KDE_WIDGET_STYLE:-kvantum}
+style=${RESOLVED_KDE_WIDGET_STYLE:-Breeze}
 
 [Interface]
 stylesheets=@Invalid()
@@ -481,7 +506,7 @@ theme_desktop_write_gtk4_css() {
   local theme_gtk4_css=""
 
   case "${RESOLVED_GTK_THEME}" in
-    Pywal16-Gtk)
+    Pywal16-Gtk | Pywal16-Gtk-Alt)
       theme_gtk4_css="${XDG_DATA_HOME:-$HOME/.local/share}/themes/Pywal16-Gtk/gtk-4.0/gtk.css"
       ;;
     Adwaita|"")
@@ -585,6 +610,12 @@ Xft/Hinting 1
 Xft/HintStyle "hintfull"
 Xft/RGBA "rgb"
 EOF
+}
+
+theme_desktop_notify_gtk_theme_changed() {
+  if command -v pkill >/dev/null 2>&1; then
+    pkill -HUP -x xsettingsd >/dev/null 2>&1 || true
+  fi
 }
 
 theme_desktop_configure_xcursor_resources() {
@@ -720,7 +751,7 @@ theme_desktop_static_state_hash() {
     "font_hinting=${FONT_HINTING}" \
     "kvantum_theme=${RESOLVED_KVANTUM_THEME}" \
     "kde_color_scheme=${RESOLVED_KDE_COLOR_SCHEME}" \
-    "kde_widget_style=${RESOLVED_KDE_WIDGET_STYLE:-kvantum}" \
+    "kde_widget_style=${RESOLVED_KDE_WIDGET_STYLE:-Breeze}" \
     "flatpak_installed=${flatpak_installed}"
 }
 
@@ -781,7 +812,10 @@ theme_desktop_apply_static_resolved() {
   theme_desktop_ini_write_batch "${XDG_DATA_HOME}/icons/default/index.theme" "Icon Theme:Inherits=${CURSOR_THEME}" || return 1
   theme_desktop_ini_write_batch "${HOME}/.icons/default/index.theme" "Icon Theme:Inherits=${CURSOR_THEME}" || return 1
   theme_desktop_configure_gtk || return 1
-  theme_desktop_configure_xcursor_resources
+  theme_desktop_configure_xcursor_resources || return 1
+  theme_desktop_notify_gtk_theme_changed
+  theme_desktop_notify_kde_palette_changed
+  theme_desktop_notify_kde_icons_changed
 }
 
 theme_desktop_apply_static_resolved_if_needed() {

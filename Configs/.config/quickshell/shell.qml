@@ -63,7 +63,7 @@ ShellRoot {
     readonly property string iconFont: iconFontOverride || iconFonts[fontFamily]
         || (Qt.fontFamilies().includes(fontFamily + " Mono") ? fontFamily : "CaskaydiaCove Nerd Font")
     // hypr's vars.lua owns the terminal choice; this is only the pre-load default
-    property string terminal: "kitty"
+    property string terminal: "foot"
     // Nerd Font ships double-width icon glyphs with a single-cell advance, and Qt
     // centres on the advance, so the ink hangs off to the right. The Mono faces
     // squeeze them into one cell, making ink and advance agree.
