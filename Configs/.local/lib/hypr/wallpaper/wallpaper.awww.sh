@@ -9,11 +9,11 @@ LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 source "${LIB_DIR}/hypr/runtime/lock_paths.sh"
 
 AWWW_LOCK="$(hypr_lock_path wallpaper_awww)"
-exec 203>"${AWWW_LOCK}"
-if ! flock -n 203; then
+exec {awww_lock_fd}>"${AWWW_LOCK}"
+if ! flock -n "${awww_lock_fd}"; then
   if [[ "${WALLPAPER_WAIT_FOR_LOCK:-0}" -eq 1 ]]; then
     echo "Another awww wallpaper operation is already in progress, waiting..."
-    flock 203
+    flock "${awww_lock_fd}"
   else
     echo "Another awww wallpaper operation in progress, skipping..."
     exit 0
@@ -21,7 +21,7 @@ if ! flock -n 203; then
 fi
 wallpaper_awww_release_lock() {
   local exit_code="${1:-$?}"
-  flock -u 203 2>/dev/null || true
+  flock -u "${awww_lock_fd}" 2>/dev/null || true
   return "${exit_code}"
 }
 trap 'wallpaper_awww_release_lock "$?"' EXIT
@@ -30,18 +30,12 @@ trap 'wallpaper_awww_release_lock "$?"' EXIT
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/runtime/init.bash" || exit 1
 hypr_runtime_require wallpaper_catalog || exit 1
 
-wait_for_wallpaper_daemon() {
-  local attempt=0
-  local max_attempts=40
+wallpaper_daemon_socket() {
+  printf '%s\n' "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/${WAYLAND_DISPLAY:-}-awww-daemon.sock"
+}
 
-  while (( attempt < max_attempts )); do
-    if "${wallpaper_client_cmd}" query >/dev/null 2>&1; then
-      return 0
-    fi
-    sleep 0.05
-    ((attempt++))
-  done
-  return 1
+wait_for_wallpaper_daemon() {
+  hypr_wait_for_path 2 "$(wallpaper_daemon_socket)" && "${wallpaper_client_cmd}" query >/dev/null 2>&1
 }
 
 cleanup_stale_wallpaper_socket() {
@@ -51,7 +45,7 @@ cleanup_stale_wallpaper_socket() {
   [[ -n "${WAYLAND_DISPLAY:-}" ]] || return 0
   pgrep -x "${wallpaper_daemon_cmd}" >/dev/null 2>&1 && return 0
 
-  socket_path="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/${WAYLAND_DISPLAY}-awww-daemon.sock"
+  socket_path="$(wallpaper_daemon_socket)"
   [[ -S "${socket_path}" ]] || return 0
   rm -f -- "${socket_path}"
 }
@@ -76,9 +70,7 @@ resolve_wallpaper_backend() {
 ensure_wallpaper_daemon() {
   "${wallpaper_client_cmd}" query >/dev/null 2>&1 && return 0
   cleanup_stale_wallpaper_socket
-  "${wallpaper_daemon_cmd}" "${wallpaper_daemon_args[@]}" 200>&- 201>&- 202>&- 203>&- &
-  disown
-  wait_for_wallpaper_daemon && return 0
+  hyprshell app -t service -- "${wallpaper_daemon_cmd}" "${wallpaper_daemon_args[@]}" && wait_for_wallpaper_daemon && return 0
   print_log -sec "${wallpaper_backend_log}" -err "daemon did not become ready"
   return 1
 }

@@ -28,7 +28,7 @@ BarButton {
     // subscribes this button to `quickshell ipc call indicators refresh <name>`,
     // so a state change pushes one run instead of a timer discovering it later
     property string indicator: ""
-    function refresh(delay) { refreshDelay.interval = delay || 0; refreshDelay.restart() }
+    function refresh() { refreshDelay.restart() }
     onRefreshKeyChanged: refresh()
 
     Connections {
@@ -52,5 +52,5 @@ BarButton {
         interval: root.interval; running: root.polling || root.streaming; repeat: true; triggeredOnStart: true
         onTriggered: if (!process.running) process.running = true
     }
-    Timer { id: refreshDelay; onTriggered: if (!process.running) process.running = true }
+    Timer { id: refreshDelay; interval: 0; onTriggered: if (!process.running) process.running = true }
 }

@@ -25,7 +25,7 @@ SEARCH_ROOTS=(
   "${XDG_CONFIG_HOME:-$HOME/.config}/nvim"
   "${XDG_CONFIG_HOME:-$HOME/.config}/tmux"
   "${XDG_CONFIG_HOME:-$HOME/.config}/wal"
-  "${XDG_CONFIG_HOME:-$HOME/.config}/satty"
+  "${XDG_CONFIG_HOME:-$HOME/.config}/swappy"
   "${LIB_DIR:-$HOME/.local/lib}/hypr"
 )
 SEARCH_GLOBS=(
@@ -307,7 +307,7 @@ reference_scope() {
       "${config_home}/kitty/"* | \
       "${config_home}/foot/"* | \
       "${config_home}/qutebrowser/"* | \
-      "${config_home}/satty/"*)
+      "${config_home}/swappy/"*)
       printf 'active\n'
       ;;
     "${config_home}/hypr/themes/"* | \

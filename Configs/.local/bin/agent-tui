@@ -755,14 +755,14 @@ def main():
         "--agent", default="", help="provider id to select with --snapshot"
     )
     parser.add_argument(
-        "--rows",
+        "--size",
         action="store_true",
-        help="print the terminal rows the cached data needs, for the launcher",
+        help="print the terminal columns and rows needed by the launcher",
     )
     args = parser.parse_args()
     records = load_records()
-    if args.rows:
-        print(required_rows(records))
+    if args.size:
+        print(MIN_COLS, required_rows(records))
         return
     if args.snapshot:
         print(snapshot(records, args.agent))

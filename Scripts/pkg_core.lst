@@ -42,7 +42,7 @@ wlogout                                               # logout menu
 grim                                                  # screenshot tool
 hyprpicker                                            # color picker
 slurp                                                 # region select for screenshot/screenshare
-satty                                                 # screenshot annotation
+swappy                                                # screenshot annotation
 cliphist                                              # clipboard manager
 wl-clip-persist                                       # keep Wayland clipboard after programs close
 wl-clipboard                                          # Wayland clipboard utilities
@@ -120,9 +120,7 @@ foot                                                  # secondary terminal
 tmux                                                  # terminal multiplexer
 lazygit                                               # git TUI
 lazydocker                                            # docker TUI
-thunar                                                # file manager
-tumbler                                               # thumbnails for thunar and gthumb
-gvfs-mtp                                              # phone/MTP devices in thunar
+dolphin                                               # file manager
 ark                                                   # KDE file archiver
 unzip                                                 # extracting zip files
 vim                                                   # terminal text editor
@@ -131,7 +129,7 @@ nwg-displays                                          # monitor management utili
 fzf                                                   # command-line fuzzy finder
 mpv                                                   # recording/media playback helper
 mpv-mpris                                             # MPRIS bridge for the cliamp player
-gthumb                                                # image viewer
+gwenview                                              # image viewer
 haruna                                                # video player
 zathura                                               # document viewer
 zathura-pdf-mupdf                                     # zathura PDF rendering backend

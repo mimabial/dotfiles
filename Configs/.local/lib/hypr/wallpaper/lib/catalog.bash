@@ -12,13 +12,13 @@ wallpaper_catalog_hash_command() {
 wallpaper_catalog_lock() {
   local lock_file=""
   lock_file="$(hypr_lock_path wallpaper_catalog)" || return 1
-  exec 204>"${lock_file}" || return 1
-  flock 204
+  exec {wallpaper_catalog_lock_fd}>"${lock_file}" || return 1
+  flock "${wallpaper_catalog_lock_fd}"
 }
 
 wallpaper_catalog_unlock() {
-  flock -u 204 2>/dev/null || true
-  exec 204>&-
+  flock -u "${wallpaper_catalog_lock_fd}" 2>/dev/null || true
+  exec {wallpaper_catalog_lock_fd}>&-
 }
 
 wallpaper_catalog_replace_if_changed() {

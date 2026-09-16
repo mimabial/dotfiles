@@ -39,9 +39,8 @@ PopupCard {
         if (webcam) command.push("--with-webcam")
         shell.run(command)
         shell.closePopup()
-        settle.restart()
     }
-    function stop() { shell.run(["hyprshell", "screenrecord", "--quit"]); settle.restart() }
+    function stop() { shell.run(["hyprshell", "screenrecord", "--quit"], root.refresh) }
 
     onOpenChanged: if (open) refresh()
 
@@ -52,7 +51,6 @@ PopupCard {
             catch (error) { root.report = ({}) }
         } }
     }
-    property Timer settle: Timer { interval: 700; onTriggered: root.refresh() }
     property Timer poll: Timer { interval: 3000; running: root.open; repeat: true; onTriggered: root.refresh() }
 
     property FileView store: FileView {

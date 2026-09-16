@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import os
 import socket
+import subprocess
 import threading
 import time
 
@@ -316,13 +317,15 @@ class Daemon:
         transaction = {
             "id": "preview-%d" % int(time.time() * 1000),
             "deadline": _iso(time.time() + timeout),
-            "expires": time.time() + timeout,
             "save_on_commit": bool(params.get("save_on_commit", False)),
             "profile": profile,
             "previous": previous,
         }
         self.preview = transaction
         self.activate(profile, remember=False)
+        expiry = threading.Timer(timeout, self.expire_preview, (transaction["id"],))
+        expiry.daemon = True
+        expiry.start()
         return {"id": transaction["id"], "deadline": transaction["deadline"]}
 
     def finish_preview(self, transaction_id: str, keep: bool, save: bool) -> dict:
@@ -342,13 +345,12 @@ class Daemon:
         self.refresh_monitors()
         return {"transaction_id": transaction["id"], "kept": keep}
 
-    def expire_previews(self) -> None:
-        if self.preview and time.time() >= self.preview["expires"]:
-            try:
-                self.finish_preview(self.preview["id"], keep=False, save=False)
-            except ValueError:
-                self.preview = None
-            self.broadcast()
+    def expire_preview(self, transaction_id: str) -> None:
+        with self.lock:
+            if not self.preview or self.preview["id"] != transaction_id:
+                return
+            self.finish_preview(transaction_id, keep=False, save=False)
+        self.broadcast()
 
     def handle(self, method: str, params: dict, client: socket.socket):
         if method in ("subscribe", "status"):
@@ -464,31 +466,27 @@ class Daemon:
         while True:
             try:
                 for event, _payload in hypr.events():
-                    if event in ("monitoradded", "monitorremoved", "monitoraddedv2"):
-                        time.sleep(0.4)  # let Hyprland settle before reading state
-                        self.auto_switch()
-                        self.refresh_monitors()
+                    if event in ("monitoraddedv2", "monitorremovedv2"):
+                        with self.lock:
+                            self.auto_switch()
+                            self.refresh_monitors()
                         self.broadcast()
             except (OSError, RuntimeError):
                 time.sleep(2)
 
-    def tick(self) -> None:
-        lid = hypr.lid_closed()
-        counter = 0
-        while True:
-            time.sleep(0.5)
-            with self.lock:
-                self.expire_previews()
-            counter += 1
-            if counter % 4:
+    def watch_lid(self) -> None:
+        """Re-evaluate profiles when logind reports the lid opening or closing."""
+        logind = subprocess.Popen(
+            ["gdbus", "monitor", "--system", "--dest", "org.freedesktop.login1",
+             "--object-path", "/org/freedesktop/login1"],
+            stdout=subprocess.PIPE, text=True)
+        for line in logind.stdout:
+            if "'LidClosed'" not in line:
                 continue
-            current = hypr.lid_closed()
-            if current != lid:
-                lid = current
-                log("lid state: %s" % ("closed" if current else "open"))
-                with self.lock:
-                    self.auto_switch()
-                self.broadcast()
+            log("lid state: %s" % ("closed" if hypr.lid_closed() else "open"))
+            with self.lock:
+                self.auto_switch()
+            self.broadcast()
 
     def run(self) -> None:
         if os.path.exists(SOCKET_PATH):
@@ -499,7 +497,7 @@ class Daemon:
         server.listen(8)
 
         log("starting daemon")
-        for target in (self.watch_hyprland, self.tick):
+        for target in (self.watch_hyprland, self.watch_lid):
             threading.Thread(target=target, daemon=True).start()
         log("lid state: %s" % ("closed" if hypr.lid_closed() else "open"))
         self.auto_switch()

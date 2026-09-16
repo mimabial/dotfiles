@@ -32,11 +32,11 @@ fi
 mullvad_status_line="$(mullvad_status_line "$mullvad_status")"
 
 if [[ "${mullvad_status_line}" == connected* || "${mullvad_status_line}" == blocked* || "${mullvad_status_line}" == error* ]]; then
-  mullvad disconnect >/dev/null
+  mullvad disconnect --wait >/dev/null
 else
   if provider_have_command nmcli && provider_have_command jq; then
     uuid="$(hyprshell system/vpn-networkmanager 2>/dev/null | jq -r '.active.uuid // empty')"
     [[ -z $uuid ]] || hyprshell system/vpn-networkmanager --disconnect "$uuid"
   fi
-  mullvad connect >/dev/null
+  mullvad connect --wait >/dev/null
 fi

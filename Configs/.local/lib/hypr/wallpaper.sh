@@ -12,13 +12,11 @@ declare -ga wallList=()
 declare -ga wallPathArray=()
 
 wallpaper_started_ms="$(date +%s%3N)"
-wallpaper_lock_acquired=0
+wallpaper_lock_fd=""
 
 wallpaper_release_lock() {
   local exit_code="${1:-$?}"
-  if [[ "${wallpaper_lock_acquired}" -eq 1 ]]; then
-    flock -u 202 2>/dev/null || true
-  fi
+  [[ -z "${wallpaper_lock_fd}" ]] || flock -u "${wallpaper_lock_fd}" 2>/dev/null || true
   return "${exit_code}"
 }
 trap 'wallpaper_release_lock "$?"' EXIT

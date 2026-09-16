@@ -26,7 +26,6 @@ cliphist_panel_copy() {
   [[ "${id}" =~ ^[0-9]+$ ]] || return 1
   printf '%s\t' "${id}" | cliphist decode | wl-copy
   printf '%s\t' "${id}" | cliphist delete
-  sleep "${CLIPHIST_PASTE_DELAY:-0.2}"
   paste_string
 }
 

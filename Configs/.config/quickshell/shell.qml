@@ -164,7 +164,13 @@ ShellRoot {
     property bool focusPriming: false
     property var popupCard: null
     property var mediaPopup: null
-    function run(command) { Quickshell.execDetached(command) }
+    function run(command, onExited) {
+        if (!onExited) return Quickshell.execDetached(command)
+        const process = exitWatcher.createObject(shellRoot, { command: ["setsid", "-fw"].concat(command) })
+        process.exited.connect(() => { onExited(); process.destroy() })
+        process.running = true
+    }
+    Component { id: exitWatcher; Process {} }
     function refreshIndicators(target) {
         indicatorRefreshTarget = String(target || "all")
         ++indicatorRefreshSerial

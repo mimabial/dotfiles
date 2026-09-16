@@ -80,37 +80,6 @@ launch_read_window_info() {
     | head -n1
 }
 
-launch_wait_for_window_info_stable() {
-  local window_address="$1"
-  local attempts="${2:-30}"
-  local stable_reads_required="${3:-3}"
-  local info=""
-  local last_info=""
-  local stable_reads=0
-
-  while ((attempts > 0)); do
-    info="$(launch_read_window_info "${window_address}")"
-    [[ -n "${info}" ]] || return 1
-
-    if [[ "${info}" == "${last_info}" ]]; then
-      stable_reads=$((stable_reads + 1))
-      if ((stable_reads >= stable_reads_required)); then
-        printf '%s\n' "${info}"
-        return 0
-      fi
-    else
-      last_info="${info}"
-      stable_reads=1
-    fi
-
-    sleep 0.05
-    attempts=$((attempts - 1))
-  done
-
-  [[ -n "${last_info}" ]] || return 1
-  printf '%s\n' "${last_info}"
-}
-
 launch_focused_workspace_name() {
   hyprctl activeworkspace -j | jq -r '.name // empty'
 }
@@ -294,22 +263,13 @@ launch_window_edge_padding_px() {
   hypr_window_edge_padding_px
 }
 
-launch_wait_for_window_address() {
-  local window_pattern="$1"
-  local attempts="${2:-${HYPR_LAUNCH_WAIT_ATTEMPTS:-400}}"
+launch_print_window_address() {
   local address=""
+  address="$(launch_resolve_window_address "$1")"
+  [[ -n "${address}" ]] && printf '%s\n' "${address}"
+}
 
-  [[ "${attempts}" =~ ^[0-9]+$ ]] || attempts=400
-
-  while ((attempts > 0)); do
-    address="$(launch_resolve_window_address "$window_pattern")"
-    [[ -n "${address}" ]] && {
-      printf '%s\n' "${address}"
-      return 0
-    }
-    sleep 0.05
-    attempts=$((attempts - 1))
-  done
-
-  return 1
+launch_wait_for_window_address() {
+  launch_source_core_common || return 1
+  hypr_wait_for 20 '@(openwindow|windowtitlev2)>>*' launch_print_window_address "$1"
 }

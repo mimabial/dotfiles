@@ -14,7 +14,7 @@ BarSlider {
 
     Timer {
         id: apply; interval: 50
-        onTriggered: { root.shell.run(["brightnessctl", "set", root.pending + "%"]); Backlight.nudge() }
+        onTriggered: root.shell.run(["brightnessctl", "set", root.pending + "%"], Backlight.refresh)
     }
     // hand control back as soon as the singleton agrees with what we asked for
     Connections {

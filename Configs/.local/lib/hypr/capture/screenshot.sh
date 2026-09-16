@@ -72,14 +72,10 @@ esac
 save_dir="${save_dir_arg:-${XDG_SCREENSHOTS_DIR:-$XDG_PICTURES_DIR/Screenshots}}"
 save_file=$(date +'%y%m%d_%Hh%Mm%Ss_screenshot.png')
 save_text_file=$(date +'%y%m%d_%Hh%Mm%Ss_ocr.txt')
-annotation_tool="satty"
+annotation_tool="swappy"
 annotation_args=(
-  "--filename" "${temp_screenshot}"
-  "--output-filename" "${save_dir}/${save_file}"
-  "--copy-command" "wl-copy"
-  "--actions-on-enter" "save-to-clipboard"
-  "--save-after-copy"
-  "--resize" "smart"
+  "--file" "${temp_screenshot}"
+  "--output-file" "${save_dir}/${save_file}"
 )
 
 mkdir -p "$save_dir"

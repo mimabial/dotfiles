@@ -168,13 +168,6 @@ start_daemon() {
   [[ -x "${CACHE_SCRIPT}" ]] || return 1
 
   (nohup bash "$0" --run </dev/null >/dev/null 2>&1 &)
-
-  local _i
-  for _i in {1..20}; do
-    daemon_running && return 0
-    sleep 0.05
-  done
-  return 1
 }
 
 stop_daemon() {
@@ -209,8 +202,8 @@ run_daemon() {
   ensure_queue_dirs
   [[ -x "${CACHE_SCRIPT}" ]] || exit 1
 
-  exec 206>"${QUEUE_LOCK_FILE}"
-  flock -n 206 || exit 0
+  exec {queue_lock_fd}>"${QUEUE_LOCK_FILE}"
+  flock -n "${queue_lock_fd}" || exit 0
 
   printf '%s\n' "$$" >"${QUEUE_PID_FILE}"
   trap 'DAEMON_WOKE=1; [[ -n "${DAEMON_SLEEP_PID}" ]] && kill "${DAEMON_SLEEP_PID}" 2>/dev/null || true' USR1
@@ -288,7 +281,7 @@ wallcache_daemon_cleanup() {
   [[ -n "${DAEMON_SLEEP_PID}" ]] && kill "${DAEMON_SLEEP_PID}" 2>/dev/null || true
   wallcache_recover_running_jobs
   rm -f "${QUEUE_PID_FILE}" 2>/dev/null || true
-  flock -u 206 2>/dev/null || true
+  flock -u "${queue_lock_fd}" 2>/dev/null || true
   return "${exit_code}"
 }
 
@@ -362,37 +355,13 @@ case "${mode}" in
     ;;
   enqueue)
     ensure_queue_dirs
-    if start_daemon >/dev/null 2>&1; then
-      for theme in "${enqueue_themes[@]}"; do
-        queue_theme "${theme}" || true
-      done
-      for wall in "${enqueue_walls[@]}"; do
-        queue_wallpaper "${wall}" || true
-      done
-      if (( ${#enqueue_themes[@]} > 0 || ${#enqueue_walls[@]} > 0 )); then
-        notify_daemon >/dev/null 2>&1 || true
-      fi
-    else
-      if [[ -x "${CACHE_SCRIPT}" ]]; then
-        declare -a fallback_args=()
-        wall=""
-        for theme in "${enqueue_themes[@]}"; do
-          theme_dir="${theme}"
-          if [[ ! -d "${theme_dir}" ]] && [[ -d "$(dirname "${HYPR_THEME_DIR}")/${theme}" ]]; then
-            theme_dir="$(dirname "${HYPR_THEME_DIR}")/${theme}"
-          fi
-          if [[ -d "${theme_dir}" ]] && get_hashmap "${theme_dir}"; then
-            for wall in "${wallList[@]}"; do
-              fallback_args+=(-w "${wall}")
-            done
-          fi
-        done
-        for wall in "${enqueue_walls[@]}"; do
-          fallback_args+=(-w "${wall}")
-        done
-        ((${#fallback_args[@]} > 0)) && "${CACHE_SCRIPT}" "${fallback_args[@]}" &>/dev/null &
-      fi
-    fi
+    for theme in "${enqueue_themes[@]}"; do
+      queue_theme "${theme}" || true
+    done
+    for wall in "${enqueue_walls[@]}"; do
+      queue_wallpaper "${wall}" || true
+    done
+    notify_daemon >/dev/null 2>&1 || start_daemon >/dev/null 2>&1
     ;;
 esac
 }

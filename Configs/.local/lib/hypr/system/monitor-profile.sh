@@ -19,14 +19,7 @@ start_daemon() {
   command -v hyprmoncfgd >/dev/null 2>&1 || return 1
   service_active && return 0
   mkdir -p "${log_dir}"
-  setsid -f hyprmoncfgd >>"${log_dir}/hyprmoncfgd.log" 2>&1
-
-  local attempt
-  for attempt in {1..20}; do
-    service_active && return 0
-    sleep 0.05
-  done
-  return 1
+  hyprshell app -t service -- hyprmoncfgd >>"${log_dir}/hyprmoncfgd.log" 2>&1
 }
 
 case "${1:-}" in
@@ -39,11 +32,7 @@ case "${1:-}" in
     hyprmoncfg unmanage
     ;;
   restart)
-    pkill -TERM -x hyprmoncfgd 2>/dev/null || true
-    for attempt in {1..20}; do
-      service_active || break
-      sleep 0.05
-    done
+    pkill -TERM -x hyprmoncfgd && timeout 1 pidwait -x hyprmoncfgd || true
     start_daemon
     ;;
   service-enabled) service_enabled ;;

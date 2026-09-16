@@ -196,7 +196,9 @@ build_uwsm_command() {
 }
 
 run_direct() {
-  local redirect_out=false redirect_err=false
+  local redirect_out=false redirect_err=false detach=() var fd
+  [[ "$type" == service ]] && detach=(--fork)
+  for fd in /proc/self/fd/*; do fd=${fd##*/}; ((fd > 2)) && exec {fd}>&-; done
   case "$silent" in out) redirect_out=true ;; err) redirect_err=true ;; both) redirect_out=true; redirect_err=true ;; esac
   for var in "${qt_vars[@]}"; do export "${var?}"; done
   $redirect_out && exec 1>/dev/null
@@ -204,7 +206,7 @@ run_direct() {
   if [[ "${args[0]}" == *.desktop || "${args[0]}" == *.desktop:* ]]; then
     exec python3 "$system_dir/desktop-entry.py" run "${args[@]}"
   fi
-  command -v setsid >/dev/null 2>&1 && exec setsid -- "${args[@]}"
+  command -v setsid >/dev/null 2>&1 && exec setsid "${detach[@]}" -- "${args[@]}"
   exec "${args[@]}"
 }
 

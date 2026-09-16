@@ -4,9 +4,8 @@ $scrPath=$HOME/.local/lib/hypr # set scripts path
 $mainMod = SUPER # windows key
 $BROWSER = firefox
 $EDITOR = nvim
-$EXPLORER = thunar
+$EXPLORER = dolphin
 $TERMINAL = foot
-$TERMINAL2 = foot
 $TERMINAL_TUI = foot  # Terminal for TUI apps (btop, ranger, lazygit, etc)
 $LOCKSCREEN = hyprlock
 

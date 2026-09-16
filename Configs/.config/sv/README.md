@@ -39,15 +39,13 @@ firing a `Type=oneshot`, and runit supervises long-running processes only — an
 
 The services need the graphical-session environment (`WAYLAND_DISPLAY`,
 `HYPRLAND_INSTANCE_SIGNATURE`, `XDG_*`). Without systemd there is no
-import-environment step, so `~/.local/bin/hypr-runsvdir` waits for the Hyprland
-and Wayland sockets, exports what it finds, sets `SVDIR`, and execs `runsvdir`.
-`~/.local/bin/hypr-session` starts it in the background, guarded on the host
-actually being init-free:
+import-environment step, so Hyprland starts the supervisor itself and the
+services inherit its environment. `start.USER_SUPERVISOR` in
+`~/.config/hypr/vars.lua` runs `~/.local/bin/hypr-runsvdir` (sets `SVDIR`, execs
+`runsvdir`), guarded on the host actually being init-free:
 
 ```sh
-if command -v runsvdir >/dev/null 2>&1 && [ ! -d /run/systemd/system ]; then
-	"$HOME/.local/bin/hypr-runsvdir" &
-fi
+command -v runsvdir >/dev/null && [ ! -d /run/systemd/system ] && exec hypr-runsvdir
 ```
 
 Then control individual services with `SVDIR` set:

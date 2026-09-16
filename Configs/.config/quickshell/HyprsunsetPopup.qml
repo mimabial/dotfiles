@@ -19,14 +19,10 @@ PopupCard {
     function apply(mode, value) {
         const set = Math.round(value)
         report = Object.assign({}, report, mode === "temp" ? { temperature: set } : { gamma: set })
-        shell.run(["hyprshell", "hyprsunset", "--cm", mode, "-s", String(set), "-q"])
-        settle.restart()
+        shell.run(["hyprshell", "hyprsunset", "--cm", mode, "-s", String(set), "-q"], root.refresh)
     }
     function refresh() { if (!readProc.running) readProc.running = true }
-    function toggle() {
-        shell.run(["hyprshell", "hyprsunset", "-t", "-q"])
-        settle.restart()
-    }
+    function toggle() { shell.run(["hyprshell", "hyprsunset", "-t", "-q"], root.refresh) }
 
     onOpenChanged: if (open) refresh()
 
@@ -37,7 +33,6 @@ PopupCard {
             catch (error) { root.report = ({}) }
         } }
     }
-    property Timer settle: Timer { interval: 400; onTriggered: root.refresh() }
     property Timer poll: Timer { interval: 5000; running: root.open; repeat: true; triggeredOnStart: true; onTriggered: root.refresh() }
 
     Column {

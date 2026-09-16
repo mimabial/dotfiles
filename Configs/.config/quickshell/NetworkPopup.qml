@@ -18,8 +18,7 @@ PopupCard {
     function setAutoconnect(enabled) {
         const uuid = String(root.status.uuid || "")
         if (uuid === "") return
-        root.shell.run(["nmcli", "connection", "modify", uuid, "connection.autoconnect", enabled ? "yes" : "no"])
-        autoconnectSettle.restart()
+        root.shell.run(["nmcli", "connection", "modify", uuid, "connection.autoconnect", enabled ? "yes" : "no"], root.refreshStatus)
     }
 
     function activate(network) {
@@ -80,8 +79,6 @@ PopupCard {
         } }
     }
     property Timer statusTimer: Timer { interval: 5000; running: root.open; repeat: true; onTriggered: root.refreshStatus() }
-    // nmcli writes the profile asynchronously; re-read once it has landed
-    property Timer autoconnectSettle: Timer { interval: 600; onTriggered: root.refreshStatus() }
 
     component InfoPair: Row {
         property string label: ""

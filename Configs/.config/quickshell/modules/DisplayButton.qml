@@ -13,8 +13,7 @@ BarButton {
     radius: shell.moduleRadius
     onClicked: shell.togglePopup("monitor")
     onWheeled: delta => {
-        shell.run(["hyprshell", "brightness-control.sh", delta > 0 ? "i" : "d"])
-        Backlight.nudge()
+        shell.run(["hyprshell", "brightness-control.sh", delta > 0 ? "i" : "d"], Backlight.refresh)
     }
 
     // 153KB of QML for a panel that is only ever seen after a click. Loading it

@@ -11,8 +11,8 @@ hypr_runtime_require state system wallpaper_catalog || exit 1
 source "${LIB_DIR}/hypr/theme/pairs.sh" || exit 1
 
 THEME_SWITCH_LOCK="$(hypr_lock_path theme_switch)"
-exec 201>"${THEME_SWITCH_LOCK}"
-if ! flock -n 201; then
+exec {theme_switch_lock_fd}>"${THEME_SWITCH_LOCK}"
+if ! flock -n "${theme_switch_lock_fd}"; then
   for theme_switch_arg in "$@"; do
     [[ "${theme_switch_arg}" == "--from-auto" ]] || continue
     print_log -sec "theme.switch" -stat "drop" "A newer theme operation is already in progress"
@@ -20,7 +20,7 @@ if ! flock -n 201; then
   done
   unset theme_switch_arg
   print_log -sec "theme.switch" -stat "wait" "Another theme operation is in progress"
-  flock 201
+  flock "${theme_switch_lock_fd}"
 fi
 
 hypr_runtime_load_state || exit 1
@@ -163,7 +163,7 @@ cleanup_theme_switch() {
   fi
   [[ -n "${theme_switch_metadata_file}" && -e "${theme_switch_metadata_file}" ]] && rm -f -- "${theme_switch_metadata_file}"
   theme_notify_finish "${exit_code}"
-  flock -u 201 2>/dev/null || true
+  flock -u "${theme_switch_lock_fd}" 2>/dev/null || true
   return "${exit_code}"
 }
 trap 'cleanup_theme_switch "$?"' EXIT

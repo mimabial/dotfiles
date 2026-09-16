@@ -1,0 +1,52 @@
+[Crop]
+CropAdvancedSettingsEnabled=true
+
+[General]
+FullScreenBackground=FullScreenBackground::Image
+LastUsedVersion=210800
+SideBarPage=operations
+
+[ImageView]
+AlphaBackgroundColor=0,0,0
+AlphaBackgroundMode=AbstractImageView::AlphaBackgroundSolid
+NavigationEndNotification=NavigationEndNotification::NeverWarn
+ThumbnailSplitterSizes=512,146
+
+[MainWindow]
+MenuBar=Disabled
+
+[Recent Files]
+File1[$e]=$HOME/Pictures/The-Wallpaper-Collection/黑猫的野望壁纸包/040b0f32606ca45c70ef3df18c8f17687c4ae7ca.JPG
+File10[$e]=$HOME/.config/hypr/themes/Kanagawa Wave/wallpapers/wallhaven-4gvrq3.jpg
+File2[$e]=$HOME/Pictures/The-Wallpaper-Collection/2025 Wallpaper/0_original.jpg
+File3[$e]=$HOME/Pictures/The-Wallpaper-Collection/2025 Wallpaper/2DB27EA1-95B8-4AE7-B46A-2AA455401665.jpg
+File4[$e]=$HOME/Pictures/images/3squares.png
+File5[$e]=$HOME/Pictures/wallhaven-mllqym.png
+File6[$e]=$HOME/Pictures/wallhaven-859z1j.png
+File7[$e]=$HOME/Downloads/11a8533d526e143a1d055a569bb44350.jpg
+File8[$e]=$HOME/Pictures/wallhaven-0pqz34.jpg
+File9[$e]=$HOME/Pictures/wallhaven-2yvywx.png
+Name1[$e]=040b0f32606ca45c70ef3df18c8f17687c4ae7ca.JPG
+Name10[$e]=wallhaven-4gvrq3.jpg
+Name2[$e]=0_original.jpg
+Name3[$e]=2DB27EA1-95B8-4AE7-B46A-2AA455401665.jpg
+Name4[$e]=3squares.png
+Name5[$e]=wallhaven-mllqym.png
+Name6[$e]=wallhaven-859z1j.png
+Name7[$e]=11a8533d526e143a1d055a569bb44350.jpg
+Name8[$e]=wallhaven-0pqz34.jpg
+Name9[$e]=wallhaven-2yvywx.png
+
+[SideBar]
+InformationSplitterSizes=231,244
+IsVisible ViewMode=true
+SideBarSplitterSizes=321,617
+
+[StatusBar]
+IsVisible BrowseMode=false
+IsVisible ViewMode=false
+
+[ThumbnailView]
+ListVideos=false
+ThumbnailSize=572
+WrapAfterLast=false

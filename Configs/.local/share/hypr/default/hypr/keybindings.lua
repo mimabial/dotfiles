@@ -2,8 +2,7 @@ local vars = require("vars")
 
 local mod = vars.get("mainMod", "SUPER")
 local terminal = vars.get("TERMINAL", "foot")
-local terminal2 = vars.get("TERMINAL2", "foot")
-local explorer = vars.get("EXPLORER", "thunar")
+local explorer = vars.get("EXPLORER", "dolphin")
 local browser = vars.get("BROWSER", "firefox")
 local editor = vars.get("EDITOR", "nvim")
 local bind_actions = {__probe = hl.dsp.no_op()}
@@ -84,7 +83,7 @@ exec(mod, "I", "[Window Management] toggle keep awake", "hyprshell session/toggl
 
 -- Applications and launchers
 exec(mod, "RETURN", "[Launcher|Apps] terminal in current directory", terminal .. [[ --working-directory "$(hyprshell terminal-cwd.sh)"]])
-exec(mod .. " SHIFT", "RETURN", "[Launcher|Apps] alternate terminal in current directory", terminal2 .. [[ --working-directory "$(hyprshell terminal-cwd.sh)"]])
+exec(mod .. " SHIFT", "RETURN", "[Launcher|Apps] tmux session", terminal .. [[ --working-directory "$(hyprshell terminal-cwd.sh)" tmux new-session -A -s M]])
 exec(mod .. " ALT", "RETURN", "[Launcher|Apps] dropdown terminal", "hyprshell window/dropdown-terminal")
 exec(mod, "D", "[Launcher|Apps] file explorer", explorer)
 exec(mod .. " SHIFT", "D", "[Launcher|Apps] file explorer in current directory", explorer .. [[ "$(hyprshell terminal-cwd.sh)"]])

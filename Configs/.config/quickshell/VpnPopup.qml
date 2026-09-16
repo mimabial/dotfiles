@@ -206,7 +206,11 @@ PopupCard {
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.applyNmStatus(text) }
     }
     property Timer poll: Timer { interval: 5000; running: root.open; repeat: true; onTriggered: root.refresh() }
-    property Timer settle: Timer { interval: 1200; repeat: false; onTriggered: root.refresh() }
+    property Process tunnelTransitions: Process {
+        command: ["mullvad", "status", "listen"]
+        running: root.open && root.backend === "mullvad" && root.status.provider === "mullvad"
+        stdout: SplitParser { onRead: root.refresh() }
+    }
     property Process relayProc: Process {
         command: ["hyprshell", "system/vpn-relays"]
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: {
@@ -221,7 +225,7 @@ PopupCard {
         onExited: (code, status) => {
             root.pendingAction = ""
             if (code !== 0) root.actionError = String(actionStderr.text).trim() || "VPN action failed"
-            root.settle.restart()
+            root.refresh()
         }
     }
     property Process nmActionProc: Process {
@@ -229,7 +233,7 @@ PopupCard {
         onExited: (code, status) => {
             root.nmPending = ""
             if (code !== 0) root.nmError = String(nmActionStderr.text).trim() || "NetworkManager action failed"
-            root.settle.restart()
+            root.refresh()
         }
     }
     property Process locationProc: Process {
@@ -243,7 +247,7 @@ PopupCard {
                     : ({kind: "country", country: args[0]})
                 root.relays = ({countries: root.countries, current: here})
             } else root.actionError = String(locationStderr.text).trim() || "Could not change location"
-            root.settle.restart()
+            root.refresh()
         }
     }
     property Process settingsProc: Process {

@@ -11,8 +11,7 @@ StackedReadout {
         : root.shell.role("c7", root.shell.foreground)
     onClicked: button => {
         if (button !== Qt.RightButton) return root.shell.togglePopup("gpu")
-        root.shell.run(["hyprshell", "gpuinfo", "--toggle"])
-        root.refresh(300)
+        root.shell.run(["hyprshell", "gpuinfo", "--toggle"], root.refresh)
     }
     SysinfoPopup { popupName: "gpu"; anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed; command: ["hyprshell", "gpuinfo"]; switchCommand: ["hyprshell", "gpuinfo", "--use"] }
 }

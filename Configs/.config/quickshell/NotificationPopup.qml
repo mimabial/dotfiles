@@ -34,15 +34,8 @@ PopupCard {
     property double seenMark: -1
 
     function refresh() { if (!historyProc.running) historyProc.running = true }
-    function act(command) {
-        shell.run(command)
-        settle.restart()
-    }
-    function store(args) {
-        const process = actionComponent.createObject(root)
-        process.command = ["hyprshell", "notify/archive"].concat(args)
-        process.running = true
-    }
+    function act(command) { shell.run(command, root.refresh) }
+    function store(args) { shell.run(["hyprshell", "notify/archive"].concat(args), root.refresh) }
     function markSeen() { store(["seen", String(Date.now())]) }
 
     function startSearch() { searching = true }
@@ -105,13 +98,11 @@ PopupCard {
         for (let i = 0; i < rows.count; i++)
             if (rows.get(i).key === key) { rows.remove(i); break }
         store(["remove", key])
-        settle.restart()
     }
     function clearAll() {
         rows.clear()
         store(["clear"])
         clearArmed = false
-        settle.restart()
     }
 
     function handleKey(event) {
@@ -162,8 +153,6 @@ PopupCard {
             }
         } }
     }
-    property Component actionComponent: Component { Process { onExited: destroy() } }
-    property Timer settle: Timer { interval: 350; onTriggered: root.refresh() }
     property Timer poll: Timer { interval: 4000; running: root.open; repeat: true; onTriggered: root.refresh() }
 
     // an inline header action, labelled by its own tooltip rather than a legend

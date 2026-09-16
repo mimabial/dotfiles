@@ -10,21 +10,11 @@ powered() {
   timeout 2s bluetoothctl show 2>/dev/null | grep -q 'Powered: yes'
 }
 
-wait_powered() {
-  local deadline=$((SECONDS + 3))
-  until powered; do
-    (( SECONDS < deadline )) || return 1
-    sleep 0.2
-  done
-}
-
 power_on() {
   if rfkill list bluetooth >/dev/null 2>&1; then
     rfkill unblock bluetooth
   fi
-  powered && return 0
-  timeout 5s bluetoothctl power on >/dev/null
-  wait_powered
+  powered || timeout 5s bluetoothctl power on >/dev/null
 }
 
 power_off() {

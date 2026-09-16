@@ -22,12 +22,6 @@ Singleton {
         Math.floor(percent / Math.floor(100 / icons.length)))]
 
     function refresh() { if (device !== "") value.reload() }
-    // something changed brightness out-of-process; give the write a moment to
-    // land before reading back
-    function nudge() { settle.restart() }
-
-    property Timer settle: Timer { interval: 150; onTriggered: root.refresh() }
-
     property Process probe: Process {
         running: true
         command: ["brightnessctl", "-m"]

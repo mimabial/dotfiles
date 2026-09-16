@@ -1,60 +1,13 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
 
-trigger_rofi_layers_present() {
-  local layers_json=""
-
-  if ! layers_json="$(hyprctl -j layers 2>/dev/null)"; then
-    return 2
-  fi
-
-  if ! jq -e '
-    to_entries
-    | any(
-        (.value.levels // {})
-        | .[]?[]?
-        | select((.namespace? // "") == "rofi")
-      )
-  ' <<<"${layers_json}" >/dev/null 2>&1; then
-    return 1
-  fi
-
-  return 0
-}
-
-trigger_wait_for_rofi_layers_gone() {
-  local deadline=0
-  local empty_polls=0
-
-  deadline=$((SECONDS + 3))
-
-  while ((SECONDS < deadline)); do
-    if trigger_rofi_layers_present; then
-      empty_polls=0
-    else
-      case "$?" in
-        1)
-          ((empty_polls += 1))
-          if ((empty_polls >= 2)); then
-            return 0
-          fi
-          ;;
-        *)
-          empty_polls=0
-          ;;
-      esac
-    fi
-
-    sleep 0.03
-  done
-
-  return 1
+trigger_rofi_gone() {
+  ! hypr_layer_mapped rofi
 }
 
 trigger_spawn_detached() {
   (
-    pkill -u "${UID:-$(id -u)}" -x rofi >/dev/null 2>&1 || true
-    trigger_wait_for_rofi_layers_gone
+    pkill -u "${UID}" -x rofi >/dev/null 2>&1 && hypr_wait_for 3 'closelayer>>rofi' trigger_rofi_gone
     exec "$@"
   ) >/dev/null 2>&1 </dev/null &
 }

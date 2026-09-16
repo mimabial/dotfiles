@@ -29,8 +29,7 @@ PopupCard {
             try { root.report = JSON.parse(text) || ({}) } catch (error) { root.report = ({}) }
         } }
     }
-    property Process actProc: Process { onExited: settle.restart() }
-    property Timer settle: Timer { interval: 500; onTriggered: root.refresh() }
+    property Process actProc: Process { onExited: root.refresh() }
     property Timer poll: Timer { interval: 5000; running: root.open; repeat: true; onTriggered: root.refresh() }
 
     Column {

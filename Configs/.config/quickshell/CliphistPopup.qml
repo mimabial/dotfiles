@@ -75,10 +75,8 @@ PopupCard {
     }
     function refresh() { if (!listProc.running) listProc.running = true }
     function act(args, close) {
-        const process = actionComponent.createObject(root)
-        process.command = ["hyprshell", "cliphist"].concat(args)
-        process.running = true
         if (close) shell.closePopup()
+        shell.run(["hyprshell", "cliphist"].concat(args), root.refresh)
     }
     function copyRow(row) { act([row.favorite ? "--panel-fav-copy" : "--panel-copy", String(row.key)], true) }
     function deleteRow(row) {
@@ -109,7 +107,6 @@ PopupCard {
             } catch (error) { root.entries = []; root.favorites = [] }
         } }
     }
-    property Component actionComponent: Component { Process { onExited: { root.refresh(); destroy() } } }
 
     component Tab: Rectangle {
         required property string label

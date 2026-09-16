@@ -16,18 +16,16 @@ esac
 
 hyprshell util/state.sh clear 're*-required'
 
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.sh"
+
+no_clients_left() {
+  local count=""
+  count="$(hyprctl clients -j 2>/dev/null | jq length 2>/dev/null)" || return 0
+  [[ "${count}" == 0 ]]
+}
+
 # Best-effort: powering off must not hinge on the compositor being reachable.
-if hyprshell window/close-all.sh; then
-  waited=0
-  while [[ "${waited}" -lt 40 ]]; do
-    remaining="$(hyprctl clients -j 2>/dev/null | jq -r 'length' 2>/dev/null || true)"
-    if [[ ! "${remaining}" =~ ^[0-9]+$ || "${remaining}" == 0 ]]; then
-      break
-    fi
-    sleep 0.25
-    waited=$((waited + 1))
-  done
-fi
+hyprshell window/close-all.sh && hypr_wait_for 10 'closewindow>>*' no_clients_left || true
 
 # elogind (Artix) offers the same verbs through loginctl; both route the request
 # through the session manager, so neither needs sudo.

@@ -2,7 +2,7 @@
 # Foreground tmux server for a supervisor (systemd unit or runit run script).
 # `tmux -D` keeps the server in the foreground so the supervisor signals it
 # directly and no kill-server is needed on stop, but it forbids a command, so
-# the default session is created by a helper once the socket is up.
+# the default session comes from the startup config instead.
 
 case "${1:-}" in
 -h | --help)
@@ -18,14 +18,7 @@ if tmux has-session 2>/dev/null; then
 	exec tmux wait-for tmux-server-supervised
 fi
 
-(
-	i=0
-	while [ "$i" -lt 50 ]; do
-		tmux has-session 2>/dev/null && exit 0
-		tmux new-session -d 2>/dev/null && exit 0
-		i=$((i + 1))
-		sleep 0.1
-	done
-) &
-
-exec tmux -D
+exec tmux -D -f /dev/stdin <<EOF
+source-file -q /etc/tmux.conf ~/.tmux.conf "${XDG_CONFIG_HOME:-$HOME/.config}/tmux/tmux.conf"
+new-session -d
+EOF

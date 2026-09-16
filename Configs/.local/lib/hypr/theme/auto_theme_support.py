@@ -5,7 +5,6 @@ import os
 import shutil
 import sys
 import tempfile
-import time
 from contextlib import contextmanager
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -181,20 +180,12 @@ def atomic_write_text(path: Path, content: str) -> None:
 
 
 @contextmanager
-def held_state_lock(target_file: str, timeout: float = 5.0):
+def held_state_lock(target_file: str):
     lock_file = state_lock_file(target_file)
     lock_file.parent.mkdir(parents=True, exist_ok=True)
     fd = os.open(lock_file, os.O_RDWR | os.O_CREAT, 0o644)
-    deadline = time.monotonic() + timeout
     try:
-        while True:
-            try:
-                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                break
-            except BlockingIOError:
-                if time.monotonic() >= deadline:
-                    raise TimeoutError(f"Timed out waiting for state lock {lock_file}")
-                time.sleep(0.05)
+        fcntl.flock(fd, fcntl.LOCK_EX)
         yield
     finally:
         try:

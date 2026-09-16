@@ -234,9 +234,6 @@ Singleton {
         if (!catalogProc.running) catalogProc.running = true
     }
     function updateCurrent() { if (!currentProc.running) currentProc.running = true }
-    // something outside changed the wallpaper; give the link time to land
-    // before reading it back
-    function nudge() { settle.restart() }
     function loadCatalog(code, out, error) {
         if (code !== 0) { root.lastError = String(error || "Could not list wallpapers").trim(); catalogRetry.restart(); return }
         let list = []
@@ -297,7 +294,6 @@ Singleton {
         stderr: StdioCollector { id: setErr; waitForEnd: true }
         onExited: code => root.finishSwitch(code, setErr.text)
     }
-    property Timer settle: Timer { interval: 1500; onTriggered: root.updateCurrent() }
     // a failed listing leaves entries stale, and nothing else would ever relist
     property Timer catalogRetry: Timer { interval: 30000; onTriggered: root.refresh() }
     // in-memory check; reconcile spawns a process only when a change is really

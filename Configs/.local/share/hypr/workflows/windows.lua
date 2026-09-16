@@ -45,6 +45,6 @@ hl.window_rule({
 })
 hl.window_rule({
 	["name"] = "lua:workflow:windows:37",
-	["match"] = { ["class"] = "^(thunar)$" },
+	["match"] = { ["class"] = "^(org\\.kde\\.dolphin)$" },
 	["opacity"] = "0.98 override 0.9 override",
 })

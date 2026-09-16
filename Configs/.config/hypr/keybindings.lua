@@ -2,8 +2,7 @@ local vars = require("vars")
 
 local mod = vars.get("mainMod", "SUPER")
 local terminal = vars.get("TERMINAL", "foot")
-local terminal2 = vars.get("TERMINAL2", "foot")
-local explorer = vars.get("EXPLORER", "thunar")
+local explorer = vars.get("EXPLORER", "dolphin")
 local browser = vars.get("BROWSER", "firefox")
 local editor = vars.get("EDITOR", "nvim")
 local bind_actions = { __probe = hl.dsp.no_op() }
@@ -34,6 +33,12 @@ end
 
 local function exec(modifiers, key, description, command, options)
 	bind(modifiers, key, description, hl.dsp.exec_cmd(command), options)
+end
+
+-- Long-lived apps need their own unit: in the compositor's, oomd kills Hyprland
+-- for their memory and their stop jobs stall the next login.
+local function app(command)
+	return "hyprshell app -- " .. command
 end
 
 -- Submaps give each domain its own key namespace, so no bind needs punctuation.
@@ -269,13 +274,13 @@ exec(
 	mod,
 	"RETURN",
 	"[Launcher|Apps] terminal in current directory",
-	terminal .. [[ --working-directory "$(hyprshell terminal-cwd.sh)"]]
+	app(terminal .. [[ --working-directory "$(hyprshell terminal-cwd.sh)"]])
 )
 exec(
 	mod .. " SHIFT",
 	"RETURN",
-	"[Launcher|Apps] alternate terminal in current directory",
-	terminal2 .. [[ --working-directory "$(hyprshell terminal-cwd.sh)"]]
+	"[Launcher|Apps] tmux session",
+	app(terminal .. [[ --working-directory "$(hyprshell terminal-cwd.sh)" tmux new-session -A -s M]])
 )
 -- Focus the existing window if there is one -- hl.dsp.focus pulls in a hidden
 -- special workspace as well as a regular one -- otherwise spawn it on its workspace.
@@ -299,7 +304,7 @@ local function summon_app(class, workspace, command)
 				return
 			end
 		end
-		hl.dispatch(hl.dsp.exec_cmd("[workspace " .. workspace .. "] " .. command))
+		hl.dispatch(hl.dsp.exec_cmd("[workspace " .. workspace .. "] " .. app(command)))
 		-- Spawning onto a scratchpad does not reveal it, so the first press would look inert.
 		if scratchpad and not (shown and shown.name == workspace) then
 			hl.dispatch(hl.dsp.workspace.toggle_special(scratchpad))
@@ -307,7 +312,7 @@ local function summon_app(class, workspace, command)
 	end
 end
 
-bind(mod, "E", "[Launcher|Apps] file explorer", summon_app("thunar", "special:explorer", explorer))
+bind(mod, "E", "[Launcher|Apps] file explorer", summon_app("org.kde.dolphin", "special:explorer", explorer))
 bind(
 	mod .. " SHIFT",
 	"E",
@@ -318,7 +323,7 @@ exec(
 	mod .. " ALT",
 	"E",
 	"[Launcher|Apps] file explorer in current directory",
-	explorer .. [[ "$(hyprshell terminal-cwd.sh)"]]
+	app(explorer .. [[ "$(hyprshell terminal-cwd.sh)"]])
 )
 bind(mod, "B", "[Launcher|Apps] web browser", summon_app("firefox", "special:browser", browser))
 bind(
@@ -328,7 +333,7 @@ bind(
 	hl.dsp.window.move({ workspace = "special:browser" })
 )
 exec(mod .. " ALT", "B", "[Launcher|Apps] private browser", "hyprshell browser.sh --private")
-exec(mod, "C", "[Launcher|Apps] text editor", terminal .. " -e " .. editor)
+exec(mod, "C", "[Launcher|Apps] text editor", app(terminal .. " -e " .. editor))
 
 exec(mod, "D", "[Launcher|Menus] application finder", "hyprshell rofi-launch.sh d")
 exec(mod .. " SHIFT", "D", "[Launcher|Menus] window switcher", "hyprshell rofi-launch.sh w")

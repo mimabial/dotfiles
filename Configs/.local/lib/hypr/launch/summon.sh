@@ -46,15 +46,6 @@ launch_geometry_requested() {
   [[ -n "${1:-}" || -n "${2:-}" || -n "${3:-}" ]]
 }
 
-launch_window_geometry_state() {
-  local window_address="$1"
-  local window_info=""
-
-  window_info="$(launch_wait_for_window_info_stable "${window_address}")"
-  [[ -n "${window_info}" ]] || return 1
-  printf '%s\n' "${window_info}"
-}
-
 launch_target_window_size() {
   local current_width="$1"
   local current_height="$2"
@@ -168,19 +159,19 @@ launch_apply_window_size() {
   local clamped_height=""
 
   IFS=$'\t' read -r current_width current_height is_floating _workspace_name \
-    < <(launch_window_geometry_state "${window_address}") || return 1
+    < <(launch_read_window_info "${window_address}") || return 1
   IFS=$'\t' read -r target_width target_height \
     < <(launch_target_window_size "${current_width}" "${current_height}" "${width_spec}" "${height_spec}" \
       "${padded_width}" "${padded_height}") || return 1
 
   launch_ensure_window_floating "${window_address}" "${is_floating}" || return 1
   IFS=$'\t' read -r current_width current_height is_floating _workspace_name \
-    < <(launch_window_geometry_state "${window_address}") || return 1
+    < <(launch_read_window_info "${window_address}") || return 1
 
   if [[ -n "${width_spec}" || -n "${height_spec}" ]]; then
     launch_resize_window_exact "${window_address}" "${target_width}" "${target_height}" || return 1
     IFS=$'\t' read -r current_width current_height is_floating _workspace_name \
-      < <(launch_window_geometry_state "${window_address}") || return 1
+      < <(launch_read_window_info "${window_address}") || return 1
   fi
 
   if ((current_width > usable_width || current_height > usable_height)); then
@@ -188,7 +179,7 @@ launch_apply_window_size() {
       < <(launch_clamp_window_size_to_usable_area "${current_width}" "${current_height}" "${usable_width}" "${usable_height}") || return 1
     launch_resize_window_exact "${window_address}" "${clamped_width}" "${clamped_height}" || return 1
     IFS=$'\t' read -r current_width current_height is_floating _workspace_name \
-      < <(launch_window_geometry_state "${window_address}") || return 1
+      < <(launch_read_window_info "${window_address}") || return 1
   fi
 
   printf '%s\t%s\n' "${current_width}" "${current_height}"
@@ -323,7 +314,7 @@ main() {
   [[ -n "${target_workspace}" ]] || return 1
 
   if [[ -z "${window_address}" ]]; then
-    setsid "${launch_cmd[@]}" >/dev/null 2>&1 &
+    setsid hyprshell app -- "${launch_cmd[@]}" >/dev/null 2>&1 &
     window_address="$(launch_wait_for_window_address "${window_pattern}")"
     [[ -n "${window_address}" ]] || return 1
   fi

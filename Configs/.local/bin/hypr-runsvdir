@@ -3,34 +3,5 @@ set -u
 
 case "${1:-}" in -h|--help) printf 'Usage: %s\nRun the Hyprland user-service directory.\n' "${0##*/}"; exit ;; esac
 
-runtime="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
-
-socket_wait_attempts=100
-socket_wait_interval=0.1
-attempt=0
-hypr_socket=""
-while [ "$attempt" -lt "$socket_wait_attempts" ]; do
-	for socket_path in "$runtime"/hypr/*/.socket.sock; do
-		[ -S "$socket_path" ] && { hypr_socket="$socket_path"; break; }
-	done
-	[ -n "$hypr_socket" ] && break
-	attempt=$((attempt + 1))
-	sleep "$socket_wait_interval"
-done
-
-if [ -n "$hypr_socket" ]; then
-	sig_dir=${hypr_socket%/*}
-	HYPRLAND_INSTANCE_SIGNATURE=${sig_dir##*/}
-	export HYPRLAND_INSTANCE_SIGNATURE
-fi
-
-for wayland_socket in "$runtime"/wayland-*; do
-	if [ -S "$wayland_socket" ] && [ -e "$wayland_socket.lock" ]; then
-		WAYLAND_DISPLAY=${wayland_socket##*/}
-		export WAYLAND_DISPLAY
-		break
-	fi
-done
-
 export SVDIR="${SVDIR:-${HYPR_USER_SV_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/sv}}"
 exec runsvdir "$SVDIR"

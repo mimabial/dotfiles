@@ -17,7 +17,7 @@ language module, so change it through the bar popup or
 
 ## Why this shapes the whole config
 
-`resolve_binds_by_sym = true` is set in `userprefs.lua`. It means Hyprland
+`resolve_binds_by_sym = true` is set in `core.lua`. It means Hyprland
 resolves keybindings against the **active layout's level-1 keysym**, with
 modifiers zeroed.
 

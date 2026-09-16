@@ -6,8 +6,7 @@ usage() {
 Usage: hypr-session
 
 Launch Hyprland without uwsm: ensure a session dbus, export the environment,
-source the uwsm env.d files, start the runit user supervisor on runit hosts,
-then exec the compositor. Takes no options.
+source the uwsm env.d files, then exec the compositor. Takes no options.
 USAGE
 }
 
@@ -42,9 +41,5 @@ export APP2UNIT_SLICES="${APP2UNIT_SLICES:-a=app-graphical.slice b=background-gr
 for env_file in "$XDG_CONFIG_HOME"/uwsm/env.d/*.sh "$XDG_CONFIG_HOME"/uwsm/env-hyprland.d/*.sh; do
 	[ -r "$env_file" ] && . "$env_file"
 done
-
-if command -v runsvdir >/dev/null 2>&1 && [ ! -d /run/systemd/system ]; then
-	"$HOME/.local/bin/hypr-runsvdir" &
-fi
 
 exec Hyprland

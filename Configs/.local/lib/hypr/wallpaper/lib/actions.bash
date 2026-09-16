@@ -97,7 +97,7 @@ wallpaper_refresh_hyprlock_background() {
   # the refresh is safe — the subprocess resolves the correct path.
   local hyprlock_script="${LIB_DIR}/hypr/session/hyprlock.sh"
   [[ -x "${hyprlock_script}" ]] || return 0
-  run_low_prio "${hyprlock_script}" --background 202>&- &
+  run_detached run_low_prio "${hyprlock_script}" --background
 }
 
 wallpaper_run_color_refresh() {
@@ -127,15 +127,13 @@ wallpaper_run_color_refresh() {
 }
 
 wallpaper_background_post_apply() {
-  local apply_colors="$1"
-  local wallpaper_path="$2"
-
   [[ "${WALLPAPER_SKIP_POST_APPLY:-0}" -eq 1 ]] && return 0
+  run_detached wallpaper_post_apply "$@"
+}
 
-  {
-    wallpaper_enqueue_cache_jobs -w "${wallpaper_path}" || true
-    [[ "${apply_colors}" -eq 1 ]] && wallpaper_run_color_refresh "${wallpaper_path}"
-  } 202>&- 204>&- 205>&- &
+wallpaper_post_apply() {
+  wallpaper_enqueue_cache_jobs -w "$2" || true
+  [[ "$1" -eq 1 ]] && wallpaper_run_color_refresh "$2"
 }
 
 # Fills in the hash for path if the map does not already hold one.

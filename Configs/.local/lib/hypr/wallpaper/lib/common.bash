@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
 
+run_detached() {
+  (
+    for fd in /proc/self/fd/*; do fd=${fd##*/}; ((fd <= 2)) || exec {fd}>&-; done
+    "$@"
+  ) &
+}
+
 run_low_prio() {
   local nice_level="${WALLPAPER_NICE_LEVEL:-10}"
   [[ "${nice_level}" =~ ^-?[0-9]+$ ]] || nice_level=10
@@ -139,7 +146,7 @@ wallpaper_enqueue_cache_jobs() {
 
   if [[ -x "${queue_script}" ]]; then
     if [[ "${run_in_background}" -eq 1 ]]; then
-      run_low_prio "${queue_script}" --enqueue "$@" 202>&- 204>&- 205>&- &>/dev/null &
+      run_detached run_low_prio "${queue_script}" --enqueue "$@" &>/dev/null
     else
       run_low_prio "${queue_script}" --enqueue "$@" &>/dev/null
     fi
@@ -148,7 +155,7 @@ wallpaper_enqueue_cache_jobs() {
 
   if [[ -x "${cache_script}" ]]; then
     if [[ "${run_in_background}" -eq 1 ]]; then
-      run_low_prio "${cache_script}" "$@" 202>&- 204>&- 205>&- &>/dev/null &
+      run_detached run_low_prio "${cache_script}" "$@" &>/dev/null
     else
       run_low_prio "${cache_script}" "$@" &>/dev/null
     fi

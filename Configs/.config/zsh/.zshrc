@@ -107,6 +107,12 @@ autoload -Uz add-zsh-hook
 _cursor_beam_preexec() { echo -ne '\e[5 q'; }
 add-zsh-hook preexec _cursor_beam_preexec
 
+# The first prompt races the compositor's startup resize, so its end-of-line
+# padding lands at the wrong width; nothing has been printed yet to guard.
+unsetopt PROMPT_SP
+_prompt_sp_restore() { setopt PROMPT_SP; add-zsh-hook -d preexec _prompt_sp_restore; }
+add-zsh-hook preexec _prompt_sp_restore
+
 export KEYTIMEOUT=1
 
 typeset -gU path PATH

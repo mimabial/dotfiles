@@ -12,8 +12,7 @@ StackedReadout {
         : root.shell.role("c7", root.shell.foreground)
     onClicked: button => {
         if (button !== Qt.RightButton) return root.shell.togglePopup("fan")
-        root.shell.run(["hyprshell", "sysinfo/fanspeedinfo", "--toggle"])
-        root.refresh(300)
+        root.shell.run(["hyprshell", "sysinfo/fanspeedinfo", "--toggle"], root.refresh)
     }
     SysinfoPopup {
         popupName: "fan"; anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed

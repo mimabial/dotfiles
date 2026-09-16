@@ -429,7 +429,6 @@ PopupCard {
             root.loadVisibleMonth()
         } }
     }
-    property Timer agendaRefreshDelay: Timer { interval: 400; onTriggered: { root.loadSelectedDay(); root.loadVisibleMonth() } }
 
     onSelectedDateChanged: { closeEventPanels(); loadSelectedDay() }
     onVisibleMonthChanged: loadVisibleMonth()

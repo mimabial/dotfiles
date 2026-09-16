@@ -37,19 +37,17 @@ wallpaper_acquire_lock_if_needed() {
 
   local wallpaper_lock=""
   wallpaper_lock="$(hypr_lock_path wallpaper_switch)"
-  exec 202>"${wallpaper_lock}"
+  exec {wallpaper_lock_fd}>"${wallpaper_lock}"
 
-  if ! flock -n 202; then
+  if ! flock -n "${wallpaper_lock_fd}"; then
     if [[ "${wallpaper_wait_for_lock}" -eq 1 ]]; then
       print_log -sec "wallpaper" -stat "wait" "Another wallpaper operation is already in progress"
-      flock 202
+      flock "${wallpaper_lock_fd}"
     else
       print_log -sec "wallpaper" -stat "drop" "Another wallpaper operation is already in progress"
       exit 0
     fi
   fi
-
-  wallpaper_lock_acquired=1
 }
 
 wallpaper_set_paths() {

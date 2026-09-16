@@ -462,7 +462,7 @@ For simple changes, edit files in `~/.config/`:
 
 ### Pattern 2: Keybinding Changes
 
-Keybindings live in `keybindings.lua` (Lua, not `.conf`). The file defines local helpers over `hl.bind`: `bind(mods, key, description, dispatcher, opts)` and `exec(mods, key, description, command, opts)` (dispatchers come from `hl.dsp.*`, e.g. `hl.dsp.window.fullscreen({...})`, `hl.dsp.exec_cmd(cmd)`).
+Keybindings live in `keybindings.lua` (Lua, not `.conf`). The file defines local helpers over `hl.bind`: `bind(mods, key, description, dispatcher, opts)` and `exec(mods, key, description, command, opts)` (dispatchers come from `hl.dsp.*`, e.g. `hl.dsp.window.fullscreen({...})`, `hl.dsp.exec_cmd(cmd)`). Wrap a long-lived app's command in `app(cmd)` (`hyprshell app --`) so it gets its own unit instead of living in `wayland-wm@hyprland.desktop.service`, where systemd-oomd bills its memory to Hyprland.
 
 **The convention — follow it, do not add exceptions:**
 
@@ -475,7 +475,7 @@ Keybindings live in `keybindings.lua` (Lua, not `.conf`). The file defines local
 
 Function, XF86, mouse and `Print` keys are a hardware class and sit outside the convention.
 
-**Never bind punctuation.** `input:resolve_binds_by_sym = true` (`userprefs.lua`) resolves binds against the **active layout's level-1 keysym** with modifiers zeroed. AZERTY puts `.` `/` `[` `]` above level 1, so those binds are silently unreachable in the `fr` layout — not remapped, just dead. Letters always exist at level 1 in both layouts, so use letters and submaps. Verify a new bind with `xkbcli how-to-type --layout fr '<char>'`.
+**Never bind punctuation.** `input:resolve_binds_by_sym = true` (`core.lua`) resolves binds against the **active layout's level-1 keysym** with modifiers zeroed. AZERTY puts `.` `/` `[` `]` above level 1, so those binds are silently unreachable in the `fr` layout — not remapped, just dead. Letters always exist at level 1 in both layouts, so use letters and submaps. Verify a new bind with `xkbcli how-to-type --layout fr '<char>'`.
 
 **Submaps** give each domain its own key namespace (`hl.define_submap(name, fn)`). Eight leaders: `mod+W` window, `mod+T` theming, `mod+O` open, `mod+J` terminal, `mod+R` capture, `mod+I` insert, `mod+H` hints, `mod+U` utilities. Helpers:
 

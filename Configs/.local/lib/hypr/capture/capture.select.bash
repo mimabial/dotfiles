@@ -1,21 +1,16 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
 
+declare -F hypr_wait_for >/dev/null || source "${BASH_SOURCE[0]%/*}/../core/common.sh"
+
 capture_start_freeze() {
-  local freeze_pid="" ready=0
+  local freeze_pid=""
 
   if command -v hyprpicker >/dev/null 2>&1; then
     hyprpicker -r -z >/dev/null 2>&1 &
     freeze_pid=$!
-    for _ in {1..20}; do
-      if hyprctl -j layers 2>/dev/null | jq -e '[.. | objects | .namespace?] | any(. == "hyprpicker")' >/dev/null; then
-        ready=1
-        break
-      fi
-      kill -0 "${freeze_pid}" 2>/dev/null || break
-      sleep 0.01
-    done
-    ((ready)) || { kill "${freeze_pid}" 2>/dev/null || true; freeze_pid=""; }
+    hypr_wait_for 1 'openlayer>>hyprpicker' hypr_layer_mapped hyprpicker \
+      || { kill "${freeze_pid}" 2>/dev/null || true; freeze_pid=""; }
   fi
 
   printf '%s\n' "${freeze_pid}"

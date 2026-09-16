@@ -13,15 +13,14 @@ ScriptButton {
     Component.onCompleted: refresh()
     onClicked: button => {
         if (button !== Qt.RightButton) return root.shell.togglePopup("language")
-        root.shell.run(["hyprshell", "util/keyboard-switch.sh"])
-        root.refresh(300)
+        root.shell.run(["hyprshell", "util/keyboard-switch.sh"], root.refresh)
     }
     Connections {
         target: Hyprland
         function onRawEvent(event) {
             if (!event || !event.name) return
             const name = String(event.name)
-            if (name.indexOf("activelayout") !== -1 || name === "configreloaded") root.refresh(50)
+            if (name.indexOf("activelayout") !== -1 || name === "configreloaded") root.refresh()
         }
     }
     Timer {

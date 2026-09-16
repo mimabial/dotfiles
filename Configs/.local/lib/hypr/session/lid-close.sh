@@ -17,18 +17,15 @@ mkdir -p "${HYPR_RUNTIME_DIR}"
 exec {close_fd}>"${HYPR_RUNTIME_DIR}/lid-close.lock"
 flock -n "${close_fd}" || exit 0
 log="$(mktemp "${HYPR_RUNTIME_DIR}/lid-lock.XXXXXX")"
-had_lock=0 ready=0
-hypr_user_pgrep -x hyprlock >/dev/null 2>&1 && had_lock=1
+locked_marker='onLockLocked called'
+hypr_user_pgrep -x hyprlock >/dev/null 2>&1 && locked_marker+='|onLockFinished called'
 hyprlock --immediate-render --no-fade-in {close_fd}>&- >"${log}" 2>&1 &
-lock_pid=$!
-for _ in {1..100}; do
-  grep -q 'onLockLocked called' "${log}" && { ready=1; break; }
-  ((had_lock)) && grep -q 'onLockFinished called' "${log}" && { ready=1; break; }
-  kill -0 "${lock_pid}" 2>/dev/null || break
-  sleep 0.05
-done
+exec {lock_output}< <(exec tail -n +1 -f --pid="$!" "${log}")
+lock_output_reader=$!
+timeout 5 grep -qEm1 "${locked_marker}" <&"${lock_output}" && locked=1 || locked=0
+kill "${lock_output_reader}" 2>/dev/null || true
 rm -f -- "${log}"
-((ready)) || { notify_send_safe -u critical 'Suspend cancelled' 'Hyprland did not confirm the screen lock'; exit 1; }
+((locked)) || { notify_send_safe -u critical 'Suspend cancelled' 'Hyprland did not confirm the screen lock'; exit 1; }
 
 [[ "${suspend}" -eq 1 ]] || exit 0
 if ! exec {inhibitor_fd}<"${HYPR_RUNTIME_DIR}/lid-inhibitor" || flock -n "${inhibitor_fd}"; then

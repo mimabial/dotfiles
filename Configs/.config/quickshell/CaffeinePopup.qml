@@ -17,7 +17,7 @@ PopupCard {
     readonly property string reason: String(report.reason || "None")
 
     function refresh() { if (!readProc.running) readProc.running = true }
-    function toggle(script) { shell.run(["hyprshell", script]); settle.restart() }
+    function toggle(script) { shell.run(["hyprshell", script], root.refresh) }
 
     onOpenChanged: if (open) refresh()
 
@@ -28,7 +28,6 @@ PopupCard {
             catch (error) { root.report = ({}) }
         } }
     }
-    property Timer settle: Timer { interval: 400; onTriggered: root.refresh() }
     property Timer poll: Timer { interval: 3000; running: root.open; repeat: true; triggeredOnStart: true; onTriggered: root.refresh() }
 
     Column {

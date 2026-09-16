@@ -57,7 +57,12 @@ Singleton {
         if (!mountsProc.running) mountsProc.running = true
     }
 
-    function rescan() { refresh(); refreshPortables() }
+    property bool rescanQueued: false
+    function rescan() {
+        if (lsblkProc.running || gioProc.running) { rescanQueued = true; return }
+        refresh(); refreshPortables()
+    }
+    function rescanIfQueued() { if (rescanQueued) { rescanQueued = false; Qt.callLater(rescan) } }
     function deviceByPath(path) { return devices.find(device => device.path === String(path)) || null }
     function volumeByPath(path) {
         for (let d = 0; d < devices.length; ++d)
@@ -295,7 +300,7 @@ Singleton {
         id: lsblkProc
         command: ["lsblk", "-J", "-b", "-o", "NAME,PATH,LABEL,PARTLABEL,FSTYPE,SIZE,FSSIZE,FSAVAIL,FSUSED,MOUNTPOINT,MOUNTPOINTS,RM,HOTPLUG,TYPE,TRAN,VENDOR,MODEL,UUID,SERIAL"]
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.applySnapshot(text) }
-        onExited: code => { if (code !== 0) root.lastError = "lsblk failed" }
+        onExited: code => { if (code !== 0) root.lastError = "lsblk failed"; root.rescanIfQueued() }
     }
     Process { id: statsProc; stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.applyStats(text) } }
     Process { id: mountsProc; command: ["cat", "/proc/mounts"]; stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.mountFlags = Model.parseMountFlags(text) } }
@@ -320,11 +325,15 @@ Singleton {
                 if (/busy/i.test(root.lastError)) root.probeBlockers(root.mountedPathsFor(path))
             }
             root._actionExpectedRemovals = []
-            actionSettle.restart()
+            root.refresh()
             if (action === "mount-portable" || action === "unmount-portable") root.refreshPortables()
         }
     }
-    Process { id: gioProc; command: ["gio", "mount", "-li"]; stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.portables = Model.parseGioMounts(text) } }
+    Process {
+        id: gioProc; command: ["gio", "mount", "-li"]; onExited: root.rescanIfQueued()
+        stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.portables = Model.parseGioMounts(text) }
+    }
+    Process { command: ["gio", "mount", "-o"]; running: true; stdout: SplitParser { onRead: root.rescan() } }
     Process {
         id: supportProc
         command: ["bash", "-c", "for f in /usr/share/gvfs/mounts/*.mount; do [ -e \"$f\" ] || continue; echo backend $(basename \"$f\" .mount); done; for d in /sys/bus/usb/devices/*/; do [ -r \"$d/idVendor\" ] || continue; v=$(cat \"$d/idVendor\" 2>/dev/null); [ \"$v\" = 1d6b ] && continue; cls=; for i in \"$d\"*:*/bInterfaceClass; do [ -r \"$i\" ] && cls=\"$cls,$(cat \"$i\" 2>/dev/null)\"; done; echo usb \"$v$cls\" \"$(cat \"$d/product\" 2>/dev/null)\"; done"]
@@ -334,7 +343,7 @@ Singleton {
         id: monitorProc
         command: ["stdbuf", "-oL", "udevadm", "monitor", "--udev", "--subsystem-match=block", "--subsystem-match=usb"]
         running: true
-        stdout: SplitParser { onRead: line => { if (/(add|remove|change|bind|unbind)/.test(String(line))) udevSettle.restart() } }
+        stdout: SplitParser { onRead: line => { if (/(add|remove|change|bind|unbind)/.test(String(line))) root.rescan() } }
         onExited: monitorRestart.restart()
     }
 
@@ -353,9 +362,6 @@ Singleton {
         onLoadFailed: root.automount = true
     }
 
-    Timer { id: actionSettle; interval: 700; onTriggered: root.refresh() }
-    Timer { id: udevSettle; interval: 350; onTriggered: { root.refresh(); root.refreshPortables(); portableSettle.restart() } }
-    Timer { id: portableSettle; interval: 2500; onTriggered: root.refreshPortables() }
     Timer { id: monitorRestart; interval: 3000; onTriggered: if (!monitorProc.running) monitorProc.running = true }
     Timer { interval: 1000; running: root.devices.length > 0; repeat: true; triggeredOnStart: true; onTriggered: root.sampleActivity() }
     Timer { interval: 8000; running: root.watchClosely; repeat: true; onTriggered: root.rescan() }

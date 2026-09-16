@@ -48,7 +48,7 @@ PopupCard {
         onExited: {
             if (root.queued.length > 0) root.sendMarks()
             else {
-                if (root.anchorItem && root.anchorItem.refresh) root.anchorItem.refresh(50)
+                if (root.anchorItem && root.anchorItem.refresh) root.anchorItem.refresh()
                 root.refresh()
             }
         }

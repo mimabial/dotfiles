@@ -163,11 +163,10 @@ PopupCard {
     function pick(place) {
         const label = place.name + (place.country ? ", " + place.country : "")
         shell.run(["hyprshell", "util/weather-location", "--pin",
-                   place.latitude + "," + place.longitude, label])
+                   place.latitude + "," + place.longitude, label], root.readOverride)
         suggestions = []
         cityField.text = ""
         searching = false
-        overrideSettle.restart()
     }
 
     property Process searchProc: Process {
@@ -201,8 +200,6 @@ PopupCard {
         if (override !== "") cityField.selectAll()
     }
 
-    property Timer overrideSettle: Timer { interval: 900; onTriggered: root.readOverride() }
-
     // the reading itself comes from the Weather singleton's file watch; this
     // only needs to learn whether a city is pinned
     onOpenChanged: {
@@ -216,8 +213,7 @@ PopupCard {
     }
 
     function setLocation(name) {
-        shell.run(["hyprshell", "util/weather-location", name])
-        overrideSettle.restart()
+        shell.run(["hyprshell", "util/weather-location", name], root.readOverride)
         // the singleton watches the cache file, so it picks the new place up
         // on its own once the fetch lands
     }

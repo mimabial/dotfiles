@@ -215,7 +215,7 @@ wallpaper_refresh_inventory_and_prune_locked() {
       return 0
     }
     WALLPAPER_INVENTORY_REFRESHED=1
-    wallpaper_prune_loaded_inventory 202>&- 204>&- 205>&- &
+    run_detached wallpaper_prune_loaded_inventory
     return 0
   fi
 
@@ -225,7 +225,7 @@ wallpaper_refresh_inventory_and_prune_locked() {
   [[ -n "${current_signature}" ]] && printf '%s\n' "${current_signature}" >"${signature_file}"
   WALLPAPER_INVENTORY_REFRESHED=1
 
-  wallpaper_prune_loaded_inventory 202>&- 204>&- 205>&- &
+  run_detached wallpaper_prune_loaded_inventory
 }
 
 wallpaper_refresh_inventory_and_prune_async() {
@@ -235,14 +235,14 @@ wallpaper_refresh_inventory_and_prune_async() {
   lock_file="$(wallpaper_inventory_lock_file)"
   mkdir -p "$(dirname "${lock_file}")"
 
-  (
-    exec 202>&-
-    exec 205>"${lock_file}"
-    flock -n 205 || exit 0
-    wallpaper_refresh_inventory_and_prune_locked
-    flock -u 205 2>/dev/null
-    exec 205>&-
-  ) &
+  run_detached wallpaper_refresh_inventory_and_prune_exclusive "${lock_file}"
+}
+
+wallpaper_refresh_inventory_and_prune_exclusive() {
+  local inventory_lock_fd
+  exec {inventory_lock_fd}>"$1"
+  flock -n "${inventory_lock_fd}" || return 0
+  wallpaper_refresh_inventory_and_prune_locked
 }
 
 wallpaper_ensure_thumbs() {
@@ -289,20 +289,14 @@ wallpaper_precache_thumbs() {
   cache_script="$(wallpaper_cache_script)"
 
   if [[ -x "${queue_script}" ]]; then
-    run_low_prio "${queue_script}" --enqueue -t "${theme_name}" 202>&- 204>&- 205>&- &>/dev/null &
+    run_detached run_low_prio "${queue_script}" --enqueue -t "${theme_name}" &>/dev/null
     return 0
   fi
 
   if [[ -x "${cache_script}" ]]; then
-    (
-      if [[ "${WALLPAPER_PRECACHE_JOBS:-}" =~ ^[0-9]+$ ]] && (( WALLPAPER_PRECACHE_JOBS > 0 )); then
-        export WALLPAPER_CACHE_JOBS="${WALLPAPER_PRECACHE_JOBS}"
-      fi
-      if [[ "${WALLPAPER_PRECACHE_THREADS:-}" =~ ^[0-9]+$ ]] && (( WALLPAPER_PRECACHE_THREADS > 0 )); then
-        export WALLPAPER_MAGICK_THREADS="${WALLPAPER_PRECACHE_THREADS}"
-      fi
-      run_low_prio "${cache_script}" -t "${theme_name}" &>/dev/null
-    ) 202>&- 204>&- 205>&- &
+    [[ "${WALLPAPER_PRECACHE_JOBS:-}" =~ ^[1-9][0-9]*$ ]] && local -x WALLPAPER_CACHE_JOBS="${WALLPAPER_PRECACHE_JOBS}"
+    [[ "${WALLPAPER_PRECACHE_THREADS:-}" =~ ^[1-9][0-9]*$ ]] && local -x WALLPAPER_MAGICK_THREADS="${WALLPAPER_PRECACHE_THREADS}"
+    run_detached run_low_prio "${cache_script}" -t "${theme_name}" &>/dev/null
   fi
 }
 

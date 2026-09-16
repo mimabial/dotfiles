@@ -200,7 +200,7 @@ PopupCard {
             root.busy = false
             if (code === 0 && root.acceptReport(actionStdout.text)) {
                 root.showMain(successMessage)
-                if (root.anchorItem && root.anchorItem.refresh) root.anchorItem.refresh(50)
+                if (root.anchorItem && root.anchorItem.refresh) root.anchorItem.refresh()
                 return
             }
             root.statusError = true

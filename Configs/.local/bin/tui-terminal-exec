@@ -220,6 +220,12 @@ build_terminal_command() {
     foot)
       [[ -n "${launch_options[app_id]}" ]] && launch_ref+=("--app-id=${launch_options[app_id]}")
       [[ -n "${launch_options[title]}" ]] && launch_ref+=("--title=${launch_options[title]}")
+      case "${launch_options[width]}:${launch_options[height]}" in
+        :) ;;
+        *c:*c) launch_ref+=(-W "${launch_options[width]%c}x${launch_options[height]%c}") ;;
+        *c:* | *:*c) printf 'foot requires width and height in the same unit\n' >&2; return 2 ;;
+        *) launch_ref+=(-w "${launch_options[width]}x${launch_options[height]}") ;;
+      esac
       launch_ref+=("${command_ref[@]}")
       ;;
     *)

@@ -22,16 +22,14 @@ invalid_inputs=0
 
 setup_cache_lock() {
   WALLPAPER_CACHE_LOCK="$(hypr_lock_path wallpaper_cache)"
-  exec 204>"${WALLPAPER_CACHE_LOCK}"
-  if ! flock -n 204; then
-    flock 204
-  fi
+  exec {wallpaper_cache_lock_fd}>"${WALLPAPER_CACHE_LOCK}"
+  flock "${wallpaper_cache_lock_fd}"
   trap 'wallcache_release_lock "$?"' EXIT
 }
 
 wallcache_release_lock() {
   local exit_code="${1:-$?}"
-  flock -u 204 2>/dev/null || true
+  flock -u "${wallpaper_cache_lock_fd}" 2>/dev/null || true
   return "${exit_code}"
 }
 

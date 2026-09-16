@@ -15,10 +15,10 @@ hl.config({
         active_opacity = 0.90,
         inactive_opacity = 0.75,
         fullscreen_opacity = 1,
-        blur = {special = false},
+        blur = {special = false, popups = true},
     },
     animations = {enabled = true},
-    input = {accel_profile = "flat", numlock_by_default = true},
+    input = {accel_profile = "flat", numlock_by_default = true, resolve_binds_by_sym = true},
     dwindle = {preserve_split = true},
     master = {new_status = "master"},
     scrolling = {column_width = 0.5},
@@ -29,6 +29,8 @@ hl.config({
         force_default_wallpaper = 0,
         anr_missed_pings = 5,
         allow_session_lock_restore = true,
+        mouse_move_enables_dpms = true,
+        key_press_enables_dpms = true,
     },
     xwayland = {force_zero_scaling = true},
     general = {snap = {enabled = true}},
@@ -128,6 +130,7 @@ hl.exec_cmd("mkdir -p '" .. (vars.get("XDG_RUNTIME_DIR") or "") .. "/hypr' '" ..
 
 local startup = {
     "dbus-update-activation-environment --systemd --all",
+    vars.get("start.USER_SUPERVISOR"),
     vars.get("start.DBUS_SHARE_PICKER"),
     vars.get("start.SYSTEMD_SHARE_PICKER"),
     vars.get("start.XDG_PORTAL_RESET"),
@@ -145,7 +148,7 @@ local startup = {
     vars.get("start.QUICKSHELL"),
     vars.get("start.STYLE_MAP"),
     vars.get("start.NOTIFICATIONS"),
-    "xsettingsd",
+    "hyprshell app -t service xsettingsd",
     vars.get("start.TEXT_CLIPBOARD"),
     vars.get("start.IMAGE_CLIPBOARD"),
     vars.get("start.CLIPBOARD_PERSIST"),
@@ -155,6 +158,8 @@ local startup = {
     vars.get("start.BATTERY_NOTIFY"),
     "hyprshell theme/desktop.sync",
     vars.get("start.FFTAB_BRIDGE"),
+    vars.get("start.GAMEMODE"),
+    vars.get("start.TORRENT"),
 }
 
 hl.on("hyprland.start", function()

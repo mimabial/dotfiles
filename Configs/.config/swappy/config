@@ -1,0 +1,12 @@
+[Default]
+save_dir=$HOME/Pictures/Screenshots
+save_filename_format=%y%m%d_%Hh%Mm%Ss_screenshot.png
+show_panel=true
+line_size=5
+text_size=20
+text_font=Roboto Bold
+paint_mode=brush
+early_exit=true
+fill_shape=false
+auto_save=false
+custom_color=rgba(220,20,60,1)

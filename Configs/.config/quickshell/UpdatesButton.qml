@@ -41,7 +41,7 @@ ScriptButton {
     // when it exits rather than guessing at how long it took
     property Process recheckProc: Process {
         command: ["hyprshell", "system/system.update.sh", "--refresh"]
-        onRunningChanged: if (!running) root.refresh(0)
+        onRunningChanged: if (!running) root.refresh()
     }
 
     UpdatesPopup {

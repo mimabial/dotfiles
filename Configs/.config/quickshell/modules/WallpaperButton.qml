@@ -15,8 +15,7 @@ BarButton {
         : button === Qt.RightButton ? Wallpaper.setEnabled(!Wallpaper.enabled)
         : Wallpaper.applyNext()
     onWheeled: delta => {
-        root.shell.run(["hyprshell", "wallpaper", delta > 0 ? "next" : "previous", "--global"])
-        Wallpaper.nudge()
+        root.shell.run(["hyprshell", "wallpaper", delta > 0 ? "next" : "previous", "--global"], Wallpaper.updateCurrent)
     }
 
     WallpaperPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed }

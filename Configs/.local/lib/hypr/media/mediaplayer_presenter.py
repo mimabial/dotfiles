@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
+import socket
 import subprocess
 import time
 from pathlib import Path
@@ -104,17 +106,26 @@ def raise_mpris_player(player: str) -> bool:
     return proc.returncode == 0
 
 
-def wait_for_window(
-    player: str,
-    desktop_entry: str,
-    attempts: int = 30,
-) -> dict | None:
-    for _attempt in range(attempts):
+def wait_for_window(player: str, desktop_entry: str, timeout: float = 3.0) -> dict | None:
+    deadline = time.monotonic() + timeout
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as events:
+        try:
+            events.connect(os.path.join(
+                os.environ["XDG_RUNTIME_DIR"], "hypr", os.environ["HYPRLAND_INSTANCE_SIGNATURE"], ".socket2.sock"))
+        except (KeyError, OSError):
+            return matching_window(player, desktop_entry)
         window = matching_window(player, desktop_entry)
-        if window is not None:
-            return window
-        time.sleep(0.1)
-    return None
+        while window is None and (remaining := deadline - time.monotonic()) > 0:
+            events.settimeout(remaining)
+            try:
+                chunk = events.recv(4096)
+            except TimeoutError:
+                break
+            if not chunk:
+                break
+            if b"openwindow>>" in chunk:
+                window = matching_window(player, desktop_entry)
+    return window
 
 
 def launch_spec(

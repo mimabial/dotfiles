@@ -32,7 +32,7 @@ S|${HOME}/.config|mpd|mpd
 S|${HOME}/.config|xsettingsd|xsettingsd
 S|${HOME}/.config|yt-dlp|yt-dlp
 S|${HOME}/.config|vim|vim
-S|${HOME}/.config|satty|satty
+S|${HOME}/.config|swappy|swappy
 S|${HOME}/.config|khal|khal
 S|${HOME}/.config|udiskie|udiskie
 S|${HOME}/.config|gamemode.ini|gamemode
@@ -49,8 +49,8 @@ S|${HOME}/.config|qt6ct|qt6ct
 S|${HOME}/.config|wal|python-pywal16
 
  File Manager 
-S|${HOME}/.config|Thunar|thunar
-S|${HOME}/.config/xfce4/xfconf/xfce-perchannel-xml|thunar.xml|thunar
+S|${HOME}/.config|dolphinrc|dolphin
+S|${HOME}/.config|gwenviewrc|gwenview
 
  Local data 
 S|${HOME}/.local|bin lib|hyprland

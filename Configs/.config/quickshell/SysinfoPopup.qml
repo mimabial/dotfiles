@@ -19,11 +19,12 @@ PopupCard {
 
     function refresh() { if (!statProc.running) statProc.running = true }
     function switchTo(id) {
-        shell.run(root.switchCommand.concat([id]))
-        settle.restart()
         // the bar module is on its own long poll; nudge it so the glyph does
         // not lag the panel by up to a minute
-        if (anchorItem && anchorItem.refresh) anchorItem.refresh(1500)
+        shell.run(root.switchCommand.concat([id]), () => {
+            root.refresh()
+            if (root.anchorItem && root.anchorItem.refresh) root.anchorItem.refresh()
+        })
     }
 
     onOpenChanged: if (open) refresh()
@@ -35,7 +36,6 @@ PopupCard {
             catch (error) { root.report = ({}) }
         } }
     }
-    property Timer settle: Timer { interval: 1200; onTriggered: root.refresh() }
     property Timer poll: Timer {
         interval: root.pollInterval; running: root.open; repeat: true
         onTriggered: root.refresh()
