@@ -2,6 +2,7 @@
   "panel": "horizontal",
   "edge": "bottom",
   "left": [
+    "menu",
     { "id": "workspaces", "props": { "compactStyle": true, "numerals": "standard" } },
     {
       "id": "mediaplayer",

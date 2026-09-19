@@ -161,7 +161,6 @@ theme_desktop_resolve_values() {
   [[ -d "${HOME}/.themes" ]] && find "${HOME}/.themes" -maxdepth 1 -lname "${HYPR_CONFIG_HOME}/themes/*" ! -name "${resolved_gtk}" -delete || true
 
   RESOLVED_GTK_THEME="${resolved_gtk}"
-  RESOLVED_KVANTUM_THEME="$(theme_desktop_kvantum_output_theme_name)"
 
   if [[ -f "${XDG_DATA_HOME:-$HOME/.local/share}/color-schemes/Pywal.colors" ]]; then
     RESOLVED_KDE_COLOR_SCHEME="Pywal"
@@ -170,13 +169,12 @@ theme_desktop_resolve_values() {
   else
     RESOLVED_KDE_COLOR_SCHEME="KvGnomeDark"
   fi
-  # Kvantum caches generated SVG colors for the process lifetime; Breeze follows KDE palette notifications.
-  RESOLVED_KDE_WIDGET_STYLE="Breeze"
+  RESOLVED_QT_STYLE="Breeze"
 
   export ICON_THEME COLOR_SCHEME CURSOR_THEME CURSOR_SIZE TERMINAL \
     FONT FONT_SIZE DOCUMENT_FONT DOCUMENT_FONT_SIZE MONOSPACE_FONT \
     MONOSPACE_FONT_SIZE BUTTON_LAYOUT FONT_ANTIALIASING FONT_HINTING \
-    RESOLVED_KVANTUM_THEME RESOLVED_KDE_COLOR_SCHEME RESOLVED_KDE_WIDGET_STYLE
+    RESOLVED_KDE_COLOR_SCHEME RESOLVED_QT_STYLE
 }
 
 theme_desktop_update_xcursor_resource() {
@@ -291,47 +289,11 @@ theme_desktop_set_cursor_async() {
     hyprctl setcursor "${CURSOR_THEME}" "${CURSOR_SIZE}" >/dev/null 2>&1 &
 }
 
-theme_desktop_kvantum_output_theme_name() {
-  printf '%s' "pywal16"
-}
-
-theme_desktop_kvantum_shell_dir() {
-  HYPR_THEME="${HYPR_THEME:-}" python3 "${LIB_DIR}/hypr/render/_shell.py" 2>/dev/null
-}
-
-theme_desktop_install_kvantum_theme() {
-  local installer="${LIB_DIR}/hypr/theme/lib/install_kvantum_theme.py"
-  local active_palette="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/active-palette.json"
-  local kvantum_theme=""
-  local dest_dir=""
-  local shell_dir=""
-
-  shell_dir="$(theme_desktop_kvantum_shell_dir)"
-  [[ -f "${shell_dir}/shell.svg" && -f "${shell_dir}/shell.kvconfig" ]] || return 0
-
-  kvantum_theme="$(theme_desktop_kvantum_output_theme_name)"
-  dest_dir="${XDG_CONFIG_HOME}/Kvantum/${kvantum_theme}"
-
-  mkdir -p "${dest_dir}" || return 1
-  cp -f "${shell_dir}/shell.svg" "${dest_dir}/${kvantum_theme}.svg" || return 1
-  cp -f "${shell_dir}/shell.kvconfig" "${dest_dir}/${kvantum_theme}.kvconfig" || return 1
-
-  ACTIVE_PALETTE_JSON="${active_palette}" \
-    HYPR_THEME="${HYPR_THEME:-}" \
-    SVG_PATH="${dest_dir}/${kvantum_theme}.svg" \
-    KVCONFIG_PATH="${dest_dir}/${kvantum_theme}.kvconfig" \
-    python3 "${installer}" || return 1
-}
-
 theme_desktop_install_file() {
   local source_file="$1"
   local target_file="$2"
   [[ -f "${source_file}" ]] || return 0
-  mkdir -p "${target_file%/*}" || return 1
-  if [[ -f "${target_file}" ]] && cmp -s "${source_file}" "${target_file}"; then
-    return 0
-  fi
-  cp -f -- "${source_file}" "${target_file}"
+  theme_desktop_write_generated_file "${target_file}" <"${source_file}"
 }
 
 theme_desktop_install_kde_color_scheme() {
@@ -382,18 +344,20 @@ theme_desktop_install_kdeglobals_color_sections() {
   printf '%s' "${records}" | ini_write_multi "${target_file}" || return 1
 }
 
-theme_desktop_install_qtct_color_scheme() {
-  theme_desktop_install_file \
-    "${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/render/qtct/pywal16.conf" \
-    "${XDG_CONFIG_HOME}/qt6ct/colors/pywal16.conf"
-}
-
 theme_desktop_notify_kde_palette_changed() {
   command -v dbus-send >/dev/null 2>&1 || return 0
   dbus-send --session --type=signal \
     /KGlobalSettings org.kde.KGlobalSettings.notifyChange int32:0 int32:0 \
     >/dev/null 2>&1 \
     || print_log -sec "theme" -warn "kde" "palette notification failed"
+}
+
+theme_desktop_notify_kde_fonts_changed() {
+  command -v dbus-send >/dev/null 2>&1 || return 0
+  dbus-send --session --type=signal \
+    /KDEPlatformTheme org.kde.KDEPlatformTheme.refreshFonts \
+    >/dev/null 2>&1 \
+    || print_log -sec "theme" -warn "kde" "font notification failed"
 }
 
 theme_desktop_notify_kde_icons_changed() {
@@ -408,59 +372,46 @@ theme_desktop_notify_kde_icons_changed() {
   done
 }
 
-theme_desktop_configure_qt_kde_bridge() {
-  local qt6ct_color_scheme="${XDG_CONFIG_HOME}/qt6ct/colors/pywal16.conf"
-  local base_px=12 base_pt=10 text_size=""
-  local ui_size="10.00" fixed_size="10.00"
+# Match Quickshell's px-to-point conversion.
+theme_desktop_kde_font_entries() {
+  local -n font_entries_ref="$1"
+  local text_size="" ui_size="10.00" small_size="8.00" regular="-1,5,400,0,0,0,0,0,0,0,0,0,0,1"
 
-  # Match Quickshell's px-to-point conversion.
-  text_size="$(state_get TEXT_SIZE "${base_px}" 2>/dev/null || true)"
+  text_size="$(state_get TEXT_SIZE 12 2>/dev/null || true)"
   if [[ ${text_size} =~ ^[0-9]+$ ]]; then
-    ui_size="$(awk -v size="${text_size}" -v pt="${base_pt}" -v base="${base_px}" \
-      'BEGIN { printf "%.2f", size * pt / base }')"
-    fixed_size="${ui_size}"
+    read -r ui_size small_size < <(awk -v px="${text_size}" 'BEGIN { printf "%.2f %.2f\n", px * 10 / 12, px * 8 / 12 }')
   fi
+  font_entries_ref=(
+    "General:font=${FONT},${ui_size},${regular}"
+    "General:menuFont=${FONT},${ui_size},${regular}"
+    "General:toolBarFont=${FONT},${ui_size},${regular}"
+    "General:fixed=${MONOSPACE_FONT},${ui_size},${regular}"
+    "General:smallestReadableFont=${FONT},${small_size},${regular}"
+    "WM:activeFont=${FONT},${ui_size},${regular}"
+  )
+}
 
-  local qt6ct_general_font="${FONT},${ui_size},-1,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0"
-  local qt6ct_fixed_font="${MONOSPACE_FONT},${fixed_size},-1,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0"
-
-  theme_desktop_write_generated_file "${XDG_CONFIG_HOME}/Kvantum/kvantum.kvconfig" <<EOF || return 1
-[General]
-theme=${RESOLVED_KVANTUM_THEME}
-EOF
+theme_desktop_configure_qt_kde_bridge() {
+  local -a font_entries=()
+  theme_desktop_kde_font_entries font_entries
 
   # A global per-window scheme makes KColorSchemeManager ignore system palette changes.
   theme_desktop_ini_write_batch "${XDG_CONFIG_HOME}/kdeglobals" \
     "General:ColorScheme=${RESOLVED_KDE_COLOR_SCHEME}" \
     "Icons:Theme=${ICON_THEME}" \
-    "KDE:widgetStyle=${RESOLVED_KDE_WIDGET_STYLE:-Breeze}" \
-    "UiSettings:ColorScheme=" || return 1
+    "KDE:widgetStyle=${RESOLVED_QT_STYLE}" \
+    "UiSettings:ColorScheme=" \
+    "${font_entries[@]}" || return 1
 
   theme_desktop_ini_write_batch "${XDG_CONFIG_HOME}/kdedefaults/kdeglobals" \
     "General:ColorScheme=${RESOLVED_KDE_COLOR_SCHEME}" \
     "Icons:Theme=${ICON_THEME}" \
-    "KDE:widgetStyle=${RESOLVED_KDE_WIDGET_STYLE:-Breeze}" || return 1
+    "KDE:widgetStyle=${RESOLVED_QT_STYLE}" || return 1
 
   if [[ "${RESOLVED_KDE_COLOR_SCHEME:-}" == "Pywal" ]]; then
     theme_desktop_install_kdeglobals_color_sections "${XDG_CONFIG_HOME}/kdeglobals" || return 1
     theme_desktop_install_kdeglobals_color_sections "${XDG_CONFIG_HOME}/kdedefaults/kdeglobals" || return 1
   fi
-
-  theme_desktop_write_generated_file "${XDG_CONFIG_HOME}/qt6ct/qt6ct.conf" <<EOF
-[Appearance]
-color_scheme_path=${qt6ct_color_scheme}
-custom_palette=true
-icon_theme=${ICON_THEME}
-standard_dialogs=default
-style=${RESOLVED_KDE_WIDGET_STYLE:-Breeze}
-
-[Interface]
-stylesheets=@Invalid()
-
-[Fonts]
-fixed="${qt6ct_fixed_font}"
-general="${qt6ct_general_font}"
-EOF
 }
 
 # GTK3 and GTK4 take the same key set; only the file differs.
@@ -714,21 +665,12 @@ theme_desktop_static_state_hash() {
   local active_palette="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/active-palette.json"
   local pywal_colors="${XDG_CACHE_HOME:-$HOME/.cache}/wal/colors.json"
   local qtct_kde_colors="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/render/qtct/Pywal.colors"
-  local qtct_qt6_colors="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/render/qtct/pywal16.conf"
-  local shell_dir=""
   local source_file=""
   local source_hash=""
-  local -a source_files=(
-    "${BASH_SOURCE[0]}"
-    "${LIB_DIR}/hypr/render/_shell.py"
-    "${LIB_DIR}/hypr/render/_roles.py"
-    "${LIB_DIR}/hypr/theme/lib/install_kvantum_theme.py"
-  )
+  local -a source_files=("${BASH_SOURCE[0]}")
 
   command -v flatpak >/dev/null 2>&1 && flatpak_installed=1
-  shell_dir="$(theme_desktop_kvantum_shell_dir)"
-  for source_file in "${active_palette}" "${pywal_colors}" "${qtct_kde_colors}" \
-    "${qtct_qt6_colors}" "${shell_dir}/shell.svg" "${shell_dir}/shell.kvconfig" "${shell_dir}/shell.map"; do
+  for source_file in "${active_palette}" "${pywal_colors}" "${qtct_kde_colors}"; do
     [[ -f "${source_file}" ]] && source_files+=("${source_file}")
   done
   source_hash="$(hypr_hash_cache_digest_files "${source_files[@]}")" || return 1
@@ -749,19 +691,14 @@ theme_desktop_static_state_hash() {
     "button_layout=${BUTTON_LAYOUT}" \
     "font_antialiasing=${FONT_ANTIALIASING}" \
     "font_hinting=${FONT_HINTING}" \
-    "kvantum_theme=${RESOLVED_KVANTUM_THEME}" \
     "kde_color_scheme=${RESOLVED_KDE_COLOR_SCHEME}" \
-    "kde_widget_style=${RESOLVED_KDE_WIDGET_STYLE:-Breeze}" \
+    "qt_style=${RESOLVED_QT_STYLE}" \
     "flatpak_installed=${flatpak_installed}"
 }
 
 theme_desktop_static_targets_ready() {
   local required_target=""
-  local kvantum_theme=""
   local -a required_targets=(
-    "${XDG_CONFIG_HOME}/Kvantum/kvantum.kvconfig"
-    "${XDG_CONFIG_HOME}/qt6ct/qt6ct.conf"
-    "${XDG_CONFIG_HOME}/qt6ct/colors/pywal16.conf"
     "${XDG_CONFIG_HOME}/kdeglobals"
     "${XDG_CONFIG_HOME}/kdedefaults/kdeglobals"
     "${XDG_DATA_HOME}/icons/default/index.theme"
@@ -778,12 +715,6 @@ theme_desktop_static_targets_ready() {
   if [[ "${RESOLVED_KDE_COLOR_SCHEME:-}" == "Pywal" ]]; then
     required_targets+=("${XDG_DATA_HOME:-$HOME/.local/share}/color-schemes/Pywal.colors")
   fi
-
-  kvantum_theme="$(theme_desktop_kvantum_output_theme_name)"
-  required_targets+=(
-    "${XDG_CONFIG_HOME}/Kvantum/${kvantum_theme}/${kvantum_theme}.svg"
-    "${XDG_CONFIG_HOME}/Kvantum/${kvantum_theme}/${kvantum_theme}.kvconfig"
-  )
 
   for required_target in "${required_targets[@]}"; do
     [[ -e "${required_target}" ]] || return 1
@@ -805,17 +736,17 @@ theme_desktop_apply_runtime_resolved() {
 }
 
 theme_desktop_apply_static_resolved() {
-  theme_desktop_install_kvantum_theme || return 1
   theme_desktop_install_kde_color_scheme || return 1
-  theme_desktop_install_qtct_color_scheme || return 1
   theme_desktop_configure_qt_kde_bridge || return 1
   theme_desktop_ini_write_batch "${XDG_DATA_HOME}/icons/default/index.theme" "Icon Theme:Inherits=${CURSOR_THEME}" || return 1
   theme_desktop_ini_write_batch "${HOME}/.icons/default/index.theme" "Icon Theme:Inherits=${CURSOR_THEME}" || return 1
   theme_desktop_configure_gtk || return 1
   theme_desktop_configure_xcursor_resources || return 1
   theme_desktop_notify_gtk_theme_changed
-  theme_desktop_notify_kde_palette_changed
+  # Dolphin re-renders its cached icons only on a palette change, so the icon theme must switch first.
   theme_desktop_notify_kde_icons_changed
+  theme_desktop_notify_kde_palette_changed
+  theme_desktop_notify_kde_fonts_changed
 }
 
 theme_desktop_apply_static_resolved_if_needed() {

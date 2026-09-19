@@ -264,7 +264,7 @@ PopupCard {
             id: entryList
             width: parent.width
             height: Math.max(0, parent.height - y)
-            spacing: Style.px(2)
+            spacing: Style.sm
             clip: true
             model: rows
             currentIndex: root.cursorIndex

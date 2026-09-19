@@ -10,7 +10,6 @@ font_override=""
 r_override=""
 rofi_position=""
 emoji_window_theme=""
-_rofi_opacity=""
 rofi_picker_hypr_dir_vars emoji_dir cache_dir
 emoji_data="${emoji_dir}/emoji.db"
 emoji_categories_dir="${emoji_dir}/emoji-categories"
@@ -63,7 +62,7 @@ setup_rofi_config() {
   local font_scale
   local font_name
   rofi_prepare_standard_context \
-    font_scale font_name font_override r_override _rofi_opacity \
+    font_scale font_name font_override r_override \
     "${ROFI_EMOJI_SCALE:-}" "${ROFI_EMOJI_FONT:-${ROFI_FONT:-}}" wallbox same
 
   # 17em per column keeps labels readable, so the grid's column count drives the
@@ -87,7 +86,6 @@ emoji_menu_base_opts() {
 
   opts_ref=(-no-config -no-default-config -theme "${theme_name}")
   [[ -n "${emoji_window_theme:-}" ]] && opts_ref+=("-theme-str" "${emoji_window_theme}")
-  [[ -n "${_rofi_opacity:-}" ]] && opts_ref+=("-theme-str" "${_rofi_opacity}")
 }
 
 emoji_style_menu_args() {
@@ -110,7 +108,7 @@ emoji_clipboard_dmenu() {
     -theme-str "entry { placeholder: \"${placeholder}\";} ${rofi_position} ${r_override}" \
     -theme-str "${font_override}" \
     -theme-str "${emoji_window_theme}" \
-    -theme "$(rofi_resolve_theme clipboard)" -theme-str "${_rofi_opacity}"
+    -theme "$(rofi_resolve_theme clipboard)"
 }
 
 emoji_extract_skin_tone_modifier() {

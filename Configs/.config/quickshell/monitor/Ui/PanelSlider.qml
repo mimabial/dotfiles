@@ -135,7 +135,6 @@ Item {
       if (mouse.button !== Qt.LeftButton) return
       root.dragging = false
       root.released(root.liveValue)
-      root.liveValue = root.value
     }
     onWheel: function(wheel) {
       var delta = wheel.angleDelta.y > 0 ? root.step : -root.step

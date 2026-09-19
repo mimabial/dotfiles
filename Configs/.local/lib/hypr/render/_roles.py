@@ -1,4 +1,4 @@
-"""Shared Qt palette role resolution for render/*.py and install_kvantum_theme.py.
+"""Shared Qt palette role resolution for render/*.py.
 
 Theme mode is source-first: Qt/KDE roles come from the pack's
 kvconfig.theme [GeneralColors] and colors.map. Wallpaper mode keeps generated
@@ -104,12 +104,10 @@ def _resolve_shared_roles(source, bg, fg, colors):
     )
     return {
         "accent": accent,
-        "inactive_accent": source.color("inactive.highlight.color") or accent,
         "link": source.role("link.color", "color4", colors, fg),
         "link_visited": source.role("link.visited.color", "color5", colors, fg),
         "hover": colors.get("color12", accent),
         "highlight_text": highlight_text,
-        "inactive_highlight_text": highlight_text,
     }
 
 
@@ -123,7 +121,6 @@ def _resolve_roles(bg, fg, colors, is_dark):
         min(pair, key=lambda color: abs(luminance(color) - luminance(bg))) if pair else bg
     )
     return {
-        "normal_surface": normal_surface,
         "window_surface": bg,
         "base_surface": bg,
         "alternate_surface": None,
@@ -134,12 +131,6 @@ def _resolve_roles(bg, fg, colors, is_dark):
         "button_text": fg,
         "disabled_text": shade(fg, 0.18 * (-1 if is_dark else 1)),
         "tooltip_text": fg,
-        "bright_text": "#ffffff" if is_dark else "#000000",
-        "light": None,
-        "mid_light": None,
-        "dark": None,
-        "mid": None,
-        "shadow": None,
     }
 
 
@@ -156,22 +147,21 @@ def palette_to_pywal(palette):
 class QtRoles:
     """Resolved Qt palette roles from the active palette + the shell's kvconfig.
 
-    The palette is the only colour authority. The shell contributes geometry and,
-    through its colours.map, which of its literals stands for which palette role.
+    The palette is the only colour authority. The shell's colours.map says which
+    of its kvconfig literals stands for which palette role.
     """
 
     def __init__(self, *, pywal, kvconfig_path=None, colors_map_path=None):
-        self._general = _parse_general_colors(kvconfig_path)
-
         bg = pywal["special"]["background"]
         fg = pywal["special"]["foreground"]
         self.colors = pywal["colors"]
         palette_full = {**self.colors, "background": bg, "foreground": fg}
-        self.substitutions = _load_colors_map(colors_map_path, palette_full)
-        source = _RoleSource(self._general, self.substitutions)
+        source = _RoleSource(
+            _parse_general_colors(kvconfig_path),
+            _load_colors_map(colors_map_path, palette_full),
+        )
 
         self.bg = bg
-        self.fg = fg
         self.is_dark = luminance(bg) < 0.5
         resolved = _resolve_shared_roles(source, bg, fg, self.colors)
         resolved.update(_resolve_roles(bg, fg, self.colors, self.is_dark))

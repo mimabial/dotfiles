@@ -4,10 +4,19 @@ PALETTE_ARG="${1:-}"
 . "$(dirname "$0")/_lib.sh"
 render_init hyprlock colors.conf
 
-render_begin
+font="$("$(dirname "$0")/../fonts/font-get.sh" bar 2>/dev/null || true)"
+hash="$(
+  {
+    render_input_hash
+    printf 'font:%s\n' "${font}"
+  } | { xxh64sum 2>/dev/null || md5sum; } | awk '{print $1}'
+)"
+render_should_skip "${hash}" && exit 0
+tmp="$(render_temp)"
+trap 'rm -f "${tmp}"' EXIT
 
-PALETTE="${PALETTE}" python3 - > "${tmp}" <<'PY'
-import json, os
+FONT="${font}" PALETTE="${PALETTE}" python3 - > "${tmp}" <<'PY'
+import colorsys, json, os
 p = json.load(open(os.environ["PALETTE"]))
 def rgb(h):
     h = h.lstrip("#")
@@ -39,6 +48,31 @@ print()
 for short, key in (("background", "bg"), ("foreground", "fg")):
     r, g, b = rgb(p[key])
     print(f"${short}_alpha = rgba({r:02x}{g:02x}{b:02x}{ALPHA})")
+
+print()
+print("# Hex per slot, for Pango markup")
+for i, c in enumerate(p["colors"]):
+    print(f"$c{i}.hex = {c.lstrip('#').lower()}")
+for short in ("bg", "fg"):
+    print(f"${short}.hex = {p[short].lstrip('#').lower()}")
+print()
+# HyDE wallbash names: groups sorted dark to light, accents on wallbash's lightness ladder.
+LADDER = (0.24, 0.32, 0.39, 0.45, 0.52, 0.62, 0.75, 0.80, 0.90)
+if p.get("mode") == "light":
+    LADDER = LADDER[::-1]
+def wallbash(name, rgb3):
+    r, g, b = rgb3
+    print(f"${name} = {r:02X}{g:02X}{b:02X}")
+    print(f"${name}_rgba = rgba({r},{g},{b},0.9)")
+for n, seed in enumerate((p["bg"], p["colors"][8], p["colors"][4], p["colors"][5]), 1):
+    seed_rgb = rgb(seed)
+    h, l, s = colorsys.rgb_to_hls(*(v / 255 for v in seed_rgb))
+    wallbash(f"primary_{n}", seed_rgb)
+    wallbash(f"text_{n}", rgb(p["fg"] if l < 0.5 else p["bg"]))
+    for m, level in enumerate(LADDER, 1):
+        wallbash(f"p{n}_accent_{m}", tuple(round(v * 255) for v in colorsys.hls_to_rgb(h, level, s)))
+if os.environ.get("FONT"):
+    print(f"\n$font = {os.environ['FONT']}")
 PY
 
 render_commit "${tmp}" "${hash}"

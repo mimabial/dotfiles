@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
 # Border metrics, window/container radius overrides, standard menu builders,
-# width-multiplier override, theme window height, opacity override.
+# width-multiplier override, theme window height, the rofi wrapper's shared background.
 # External deps: hypr_border_metrics_into, get_rofi_pos (core/common); rofi_resolve_theme (core/rofi.sh).
 
 rofi_default_border_metrics() {
@@ -120,11 +120,10 @@ rofi_prepare_standard_context() {
   local out_font_name="$2"
   local out_font_override_name="$3"
   local out_window_theme_name="$4"
-  local out_opacity_name="$5"
-  local requested_scale="${6:-}"
-  local requested_font="${7:-}"
-  local container_name="${8:-wallbox}"
-  local elem_mode="${9:-same}"
+  local requested_scale="${5:-}"
+  local requested_font="${6:-}"
+  local container_name="${7:-wallbox}"
+  local elem_mode="${8:-same}"
   # prefixed so a caller naming an out-variable after one of these (font_override,
   # window_theme, ...) does not have its own local shadowed by ours: printf -v
   # would then write to this frame and the caller would come back empty
@@ -132,20 +131,17 @@ rofi_prepare_standard_context() {
   local _ctx_font=""
   local _ctx_font_override=""
   local _ctx_window_theme=""
-  local _ctx_opacity=""
 
   rofi_hypr_snapshot
   _ctx_scale="$(rofi_effective_font_scale "${requested_scale}")"
   _ctx_font="$(rofi_effective_font_name "${requested_font}")"
   _ctx_font_override="$(rofi_font_override "${_ctx_font}" "${_ctx_scale}")"
   _ctx_window_theme="$(rofi_standard_window_theme "${container_name}" "${elem_mode}")"
-  _ctx_opacity="$(rofi_active_opacity_override)"
 
   printf -v "${out_scale_name}" '%s' "${_ctx_scale}"
   printf -v "${out_font_name}" '%s' "${_ctx_font}"
   printf -v "${out_font_override_name}" '%s' "${_ctx_font_override}"
   printf -v "${out_window_theme_name}" '%s' "${_ctx_window_theme}"
-  printf -v "${out_opacity_name}" '%s' "${_ctx_opacity}"
 }
 
 rofi_build_standard_menu_args() {
@@ -158,7 +154,7 @@ rofi_build_standard_menu_args() {
   local container_name="${7:-wallbox}"
   local elem_mode="${8:-same}"
   local position_override="${9:-}"
-  local font_scale font_name opacity_override
+  local font_scale font_name
 
   local -n rofi_menu_args_ref="${out_name}"
   rofi_menu_args_ref=()
@@ -179,9 +175,6 @@ rofi_build_standard_menu_args() {
 
   [[ -n "${placeholder}" ]] && rofi_menu_args_ref+=(-theme-str "entry { placeholder: \"${placeholder}\"; }")
   [[ -n "${position_override}" ]] && rofi_menu_args_ref+=(-theme-str "${position_override}")
-
-  opacity_override="$(rofi_active_opacity_override)"
-  [[ -n "${opacity_override}" ]] && rofi_menu_args_ref+=(-theme-str "${opacity_override}")
   return 0
 }
 
@@ -279,27 +272,20 @@ rofi_theme_window_height_px() {
   return 1
 }
 
-rofi_active_opacity_override() {
-  local opacity=""
-  local opacity_milli=0
-  local alpha_value=0
-  local bg_color=""
-  local hex_alpha=""
-  local palette_file="${XDG_STATE_HOME:-${HOME}/.local/state}/hypr/active-palette.json"
+rofi_background_theme() {
+  local colors="" base_rgb="" base_alpha=0 opacity_milli=0
 
-  opacity="$(rofi_option_json decoration:active_opacity | jq -r '.float // empty' 2>/dev/null || true)"
-  [[ "${opacity}" =~ ^[0-9]+([.][0-9]+)?$ ]] || return 0
-  opacity_milli="$(rofi_decimal_milli "${opacity}")" || return 0
-  alpha_value=$((((opacity_milli * 255) + ROFI_MILLI / 2) / ROFI_MILLI))
-  ((alpha_value > 255)) && alpha_value=255
-  ((alpha_value < 0)) && alpha_value=0
-  printf -v hex_alpha '%02X' "${alpha_value}"
-  [[ "${hex_alpha}" == "FF" ]] && return 0
-  if [[ -r "${palette_file}" ]]; then
-    bg_color="$(jq -r '.bg // empty' "${palette_file}" 2>/dev/null)"
-  fi
-  [[ "${bg_color}" =~ ^#[0-9a-fA-F]{6}$ ]] || bg_color="#000000"
-  printf 'window { transparency: "real"; background-color: %s%s; }\n' "${bg_color}" "${hex_alpha}"
+  read -rd '' colors <"$(rofi_user_dir)/colors.rasi" || true
+  [[ "${colors}" =~ background-alpha:[[:space:]]*(#[[:xdigit:]]{6})([[:xdigit:]]{2}) ]] || return 0
+  base_rgb="${BASH_REMATCH[1]}"
+  base_alpha=$((16#${BASH_REMATCH[2]}))
+  [[ "$(rofi_option_json decoration:active_opacity)" =~ \"float\":[[:space:]]*([0-9.]+) ]] || return 0
+  opacity_milli="$(rofi_decimal_milli "${BASH_REMATCH[1]}")" || return 0
+  printf '* { background-alpha: %s%02X; }\n' "${base_rgb}" $(((base_alpha * opacity_milli + ROFI_MILLI / 2) / ROFI_MILLI))
+}
+
+rofi() {
+  command rofi -theme-str "$(rofi_background_theme)" "$@"
 }
 
 # Cheatsheet geometry: a wide list sized to the monitor and the entry count, in

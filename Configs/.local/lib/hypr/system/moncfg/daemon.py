@@ -6,6 +6,7 @@ protocol_version 1; the panel silently drops frames that do not.
 from __future__ import annotations
 
 import json
+import math
 import os
 import socket
 import subprocess
@@ -22,6 +23,7 @@ PROTOCOL_VERSION = 1
 # Fields the panel edits but that are derived from `mode`, so they are
 # recomputed rather than written straight through.
 DERIVED = ("width", "height", "refresh")
+DIRECTIVES = ("output_key", "snap_distance", "snap_beside")
 
 
 def log(message: str) -> None:
@@ -66,6 +68,23 @@ def apply_mode(output: dict) -> None:
         pass
 
 
+def logical_size(output: dict) -> tuple[int, int]:
+    """Layout positions are in scaled pixels, and a quarter turn swaps the axes."""
+    scale = float(output.get("scale") or 1)
+    width, height = (max(1, round(output.get(side, 1) / scale)) for side in ("width", "height"))
+    return (height, width) if int(output.get("transform", 0)) % 2 else (width, height)
+
+
+def placed(profile: dict) -> list[dict]:
+    """Outputs that take their own spot in the layout; a mirror shares its source's."""
+    return [o for o in profile.get("outputs", []) if o.get("enabled", True) and not o.get("mirror_of")]
+
+
+def centre(output: dict) -> tuple[float, float]:
+    width, height = logical_size(output)
+    return output.get("x", 0) + width / 2, output.get("y", 0) + height / 2
+
+
 def snap(profile: dict, key: str, distance: float) -> None:
     """Pull an output's edges onto a neighbour's when they land within tolerance."""
     if distance <= 0:
@@ -73,28 +92,44 @@ def snap(profile: dict, key: str, distance: float) -> None:
     target = next((o for o in profile.get("outputs", []) if o.get("key") == key), None)
     if not target:
         return
-    others = [
-        o
-        for o in profile.get("outputs", [])
-        if o.get("key") != key and o.get("enabled", True)
-    ]
-    for axis, size in (("x", "width"), ("y", "height")):
+    others = [o for o in placed(profile) if o.get("key") != key]
+    for axis, index in (("x", 0), ("y", 1)):
+        size = logical_size(target)[index]
         start = target.get(axis, 0)
-        end = start + target.get(size, 0)
+        end = start + size
         candidates = []
         for other in others:
             other_start = other.get(axis, 0)
-            other_end = other_start + other.get(size, 0)
+            other_end = other_start + logical_size(other)[index]
             candidates += [
                 (abs(start - other_start), other_start),
                 (abs(start - other_end), other_end),
-                (abs(end - other_start), other_start - target.get(size, 0)),
-                (abs(end - other_end), other_end - target.get(size, 0)),
+                (abs(end - other_start), other_start - size),
+                (abs(end - other_end), other_end - size),
             ]
         if candidates:
             delta, value = min(candidates, key=lambda item: item[0])
             if delta <= distance:
                 target[axis] = int(value)
+
+
+def snap_beside(profile: dict, key: str, direction: str) -> None:
+    """Put an output flush against its nearest neighbour, centred along the shared edge."""
+    outputs = placed(profile)
+    target = next((o for o in outputs if o.get("key") == key), None)
+    anchors = [o for o in outputs if o is not target]
+    if not target or not anchors:
+        raise ValueError("No other enabled display is available for snapping.")
+    anchor = min(anchors, key=lambda o: math.dist(centre(o), centre(target)))
+    (width, height), (anchor_width, anchor_height) = logical_size(target), logical_size(anchor)
+    x, y = anchor.get("x", 0), anchor.get("y", 0)
+    centred_x, centred_y = x + (anchor_width - width) // 2, y + (anchor_height - height) // 2
+    target["x"], target["y"] = {
+        "left": (x - width, centred_y),
+        "right": (x + anchor_width, centred_y),
+        "up": (centred_x, y - height),
+        "down": (centred_x, y + anchor_height),
+    }[direction]
 
 
 def edit_profile(profile: dict, edit: dict) -> dict:
@@ -113,13 +148,14 @@ def edit_profile(profile: dict, edit: dict) -> dict:
         return draft
 
     for field, value in edit.items():
-        if field in ("output_key", "snap_distance") or field in DERIVED:
-            continue
-        output[field] = value
+        if field not in DIRECTIVES + DERIVED:
+            output[field] = value
     if "mode" in edit:
         apply_mode(output)
     if edit.get("snap_distance"):
         snap(draft, key, float(edit["snap_distance"]))
+    if edit.get("snap_beside"):
+        snap_beside(draft, key, edit["snap_beside"])
     return draft
 
 
@@ -166,6 +202,8 @@ class Daemon:
         daemon: dict = {"running": True}
         if self.unmanaged:
             daemon["unmanaged"] = True
+        if not self.auto:
+            daemon["profile_override"] = active
         if self.preview:
             daemon["preview"] = {
                 "transaction_id": self.preview["id"],
@@ -191,8 +229,7 @@ class Daemon:
             }
         return document
 
-    @staticmethod
-    def monitor_entry(monitor: dict) -> dict:
+    def monitor_entry(self, monitor: dict) -> dict:
         scale = monitor.get("scale", 1) or 1
         entry = {
             "name": monitor.get("name", ""),
@@ -215,8 +252,9 @@ class Daemon:
             "x": int(monitor.get("x", 0)),
             "y": int(monitor.get("y", 0)),
         }
-        if monitor.get("mirrorOf", "none") != "none":
-            entry["mirror_of"] = monitor.get("mirrorOf", "")
+        source = hypr.mirror_source(monitor, self.monitors)
+        if source:
+            entry["mirror_of"] = source.get("name", "")
         return entry
 
     def display_entry(self, monitor: dict) -> dict:
@@ -225,6 +263,7 @@ class Daemon:
             "key": hypr.monitor_key(monitor),
             "name": monitor.get("name", ""),
             "description": monitor.get("description", ""),
+            "serial": monitor.get("serial", ""),
             "available_modes": monitor.get("availableModes", []),
             "scale_options": scales,
             "physical_width": int(monitor.get("physicalWidth", 0)),
@@ -383,6 +422,16 @@ class Daemon:
             if self.state.get("active_profile") == name:
                 self.set_state(active_profile="")
             return {"deleted": name}, True
+
+        if method == "apply":
+            if self.preview:
+                raise ValueError("Keep or revert the running display preview first")
+            name = str(params.get("profile_name", ""))
+            profile = profiles.by_name(name)
+            if not profile:
+                raise ValueError("No saved profile called %s" % name)
+            self.activate(profile)
+            return {"applied": name}, True
 
         if method == "preview":
             return self.start_preview(params), True

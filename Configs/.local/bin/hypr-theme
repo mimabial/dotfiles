@@ -137,6 +137,7 @@ reload_clients() {
   fi
 
   reload_live_theme_client kitty
+  reload_live_theme_client foot
   reload_live_theme_client rmpc
   reload_live_theme_client tmux
 

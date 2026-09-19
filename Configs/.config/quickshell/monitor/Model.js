@@ -317,71 +317,6 @@ function cycleOptionValue(options, currentValue, delta) {
   return String(selected && typeof selected === "object" ? selected.value : selected)
 }
 
-// Match the TUI's Alt+arrow placement: use the nearest enabled, non-mirrored
-// output as the anchor, put the selected output flush beside it, and center it
-// on the other axis.
-function snapOutputPosition(profile, selectedKey, direction) {
-  var outputs = profile && profile.outputs instanceof Array ? profile.outputs : []
-  var selectedIndex = -1
-  for (var i = 0; i < outputs.length; i++) {
-    if (String((outputs[i] || {}).key || "") === String(selectedKey || "")) {
-      selectedIndex = i
-      break
-    }
-  }
-  if (selectedIndex < 0) return null
-
-  var selected = outputs[selectedIndex] || {}
-  if (selected.enabled === false || mirrorTarget(selected) !== "") return null
-  var selectedSize = outputLogicalSize(selected)
-  var selectedCenterX = Number(selected.x || 0) * 2 + selectedSize.width
-  var selectedCenterY = Number(selected.y || 0) * 2 + selectedSize.height
-  var anchor = null
-  var nearestDistance = Infinity
-
-  for (var j = 0; j < outputs.length; j++) {
-    var candidate = outputs[j] || {}
-    if (j === selectedIndex || candidate.enabled === false || mirrorTarget(candidate) !== "") continue
-    var candidateSize = outputLogicalSize(candidate)
-    var dx = selectedCenterX - (Number(candidate.x || 0) * 2 + candidateSize.width)
-    var dy = selectedCenterY - (Number(candidate.y || 0) * 2 + candidateSize.height)
-    var distance = dx * dx + dy * dy
-    if (distance < nearestDistance) {
-      nearestDistance = distance
-      anchor = { output: candidate, size: candidateSize }
-    }
-  }
-  if (!anchor) return null
-
-  var anchorX = Number(anchor.output.x || 0)
-  var anchorY = Number(anchor.output.y || 0)
-  if (direction === "left") {
-    return {
-      x: anchorX - selectedSize.width,
-      y: anchorY + Math.trunc((anchor.size.height - selectedSize.height) / 2)
-    }
-  }
-  if (direction === "right") {
-    return {
-      x: anchorX + anchor.size.width,
-      y: anchorY + Math.trunc((anchor.size.height - selectedSize.height) / 2)
-    }
-  }
-  if (direction === "up") {
-    return {
-      x: anchorX + Math.trunc((anchor.size.width - selectedSize.width) / 2),
-      y: anchorY - selectedSize.height
-    }
-  }
-  if (direction === "down") {
-    return {
-      x: anchorX + Math.trunc((anchor.size.width - selectedSize.width) / 2),
-      y: anchorY + anchor.size.height
-    }
-  }
-  return null
-}
-
 function outputName(profile, key) {
   var output = outputByKey(profile, key)
   return output ? String(output.name || key || "Display") : String(key || "Display")
@@ -864,7 +799,6 @@ if (typeof module !== "undefined") {
     adjacentOutputKey: adjacentOutputKey,
     adjacentProfileName: adjacentProfileName,
     cycleOptionValue: cycleOptionValue,
-    snapOutputPosition: snapOutputPosition,
     outputName: outputName,
     outputDisplayLabel: outputDisplayLabel,
     clampBrightness: clampBrightness,

@@ -21,7 +21,6 @@ SEARCH_ROOTS=(
   "${XDG_CONFIG_HOME:-$HOME/.config}/fontconfig"
   "${XDG_CONFIG_HOME:-$HOME/.config}/gtk-3.0"
   "${XDG_CONFIG_HOME:-$HOME/.config}/gtk-4.0"
-  "${XDG_CONFIG_HOME:-$HOME/.config}/Kvantum"
   "${XDG_CONFIG_HOME:-$HOME/.config}/nvim"
   "${XDG_CONFIG_HOME:-$HOME/.config}/tmux"
   "${XDG_CONFIG_HOME:-$HOME/.config}/wal"

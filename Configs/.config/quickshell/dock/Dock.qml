@@ -515,8 +515,6 @@ Item {
   property bool autohide: true
   property bool intelligentAutohide: true
   property bool showAppsButton: true
-  readonly property var distroGlyphs: ["", "", "󰕈", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]
-  property int distroGlyphIndex: 0
   property bool showTooltips: true
   property bool showMinimizedTiles: true
   // "zoom" grows only the icon under the pointer and leaves the layout alone —
@@ -862,7 +860,7 @@ Item {
   }
   onWindowsOverlapDockChanged: root.syncVisibility()
   onDockVisibleChanged: {
-    if (root.dockVisible) root.distroGlyphIndex = (root.distroGlyphIndex + 1) % root.distroGlyphs.length
+    if (root.dockVisible && root.shell) root.shell.cycleDistroGlyph()
     if (!root.dockVisible) {
       root.closeContext()
       root.closeFolderStack()
@@ -2517,7 +2515,7 @@ Item {
           id: appsButton
           visible: root.showAppsButton
           homeCenter: root.slotHomeCenter(0, 0, false)
-          glyph: root.distroGlyphs[root.distroGlyphIndex]
+          glyph: root.shell ? root.shell.distroGlyph : ""
           glyphColor: root.dockForeground
           tooltip: "Applications"
           onPressed: { if (root.shell) root.shell.togglePopup(root.startPopupName) }

@@ -203,7 +203,7 @@ alarm/timer/stopwatch popup where configured as the timer clock.
 | role | files |
 | --- | --- |
 | entry and shared state | `shell.qml`, `Style.qml`, `Theme.qml` |
-| standalone panels | `dock/`, `expose/` |
+| standalone panels | `dock/`, `expose/`, `lockview/` (hyprlock layout explorer) |
 | layer blur | `LayerBlur.qml` |
 | panels | `MainBar.qml`, `TopBar.qml`, `WinBar.qml`, `BarSection.qml` |
 | primitives | `BarButton.qml`, `ScriptButton.qml`, `DrawerGroup.qml`, `ModuleEdge.qml`, `Popup*.qml` |

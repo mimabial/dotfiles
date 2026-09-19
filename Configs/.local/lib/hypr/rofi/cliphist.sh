@@ -201,7 +201,6 @@ run_rofi() {
   )
 
   [[ -n "${cliphist_window_theme:-}" ]] && rofi_args+=(-theme-str "${cliphist_window_theme}")
-  [[ -n "${_rofi_opacity:-}" ]] && rofi_args+=(-theme-str "${_rofi_opacity}")
   rofi_args+=(
     -kb-custom-1 "Alt+c"
     -kb-custom-2 "Alt+d"
@@ -249,7 +248,7 @@ setup_rofi_config() {
   local font_name=""
 
   rofi_prepare_standard_context \
-    font_scale font_name font_override r_override _rofi_opacity \
+    font_scale font_name font_override r_override \
     "${ROFI_CLIPHIST_SCALE:-}" "${ROFI_CLIPHIST_FONT:-${ROFI_FONT:-}}" wallbox same
 
   [[ "${cliphist_window_width_em}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || cliphist_window_width_em="36"

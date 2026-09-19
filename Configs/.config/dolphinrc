@@ -6,6 +6,9 @@ ShowStatusBar=FullWidth
 Version=202
 ViewPropsTimestamp=2026,9,16,11,36,4.159
 
+[IconsMode]
+PreviewSize=256
+
 [KFileDialog Settings]
 Places Icons Auto-resize=false
 Places Icons Static Size=48
@@ -13,8 +16,16 @@ Places Icons Static Size=48
 [MainWindow]
 MenuBar=Disabled
 
+[MainWindow][Toolbar mainToolBar]
+IconSize=32
+ToolButtonStyle=IconOnly
+
 [PlacesPanel]
 IconSize=48
 
 [PreviewSettings]
 Plugins=appimagethumbnail,audiothumbnail,glycin-heif,comicbookthumbnail,cursorthumbnail,djvuthumbnail,ebookthumbnail,exrthumbnail,fontthumbnail,imagethumbnail,glycin-image-rs,jpegthumbnail,glycin-jxl,kraorathumbnail,windowsexethumbnail,windowsimagethumbnail,opendocumentthumbnail,glycin-svg,svgthumbnail,ffmpegthumbs
+
+[Toolbar mainToolBar]
+IconSize=32
+ToolButtonStyle=IconOnly

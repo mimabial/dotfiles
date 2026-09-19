@@ -18,7 +18,7 @@ setup_rofi_config() {
   local font_name
   local logical_width logical_height
   rofi_prepare_standard_context \
-    font_scale font_name font_override r_override _rofi_opacity \
+    font_scale font_name font_override r_override \
     "${ROFI_BOXDRAW_SCALE:-}" "${ROFI_BOXDRAW_FONT:-${ROFI_FONT:-}}" wallbox same
 
   read -r logical_width logical_height <<<"$(rofi_focused_monitor_logical_size)"
@@ -98,7 +98,7 @@ get_boxdraw_selection() {
           -theme-str "${font_override}" \
           -theme-str "${size_override}" \
           -theme-str "${boxdraw_window_theme}" \
-          -theme "$(rofi_resolve_theme "${ROFI_BOXDRAW_STYLE:-clipboard}")" -theme-str "${_rofi_opacity}" \
+          -theme "$(rofi_resolve_theme "${ROFI_BOXDRAW_STYLE:-clipboard}")" \
           -no-custom)
         ;;
       1 | list)
@@ -106,7 +106,7 @@ get_boxdraw_selection() {
           -theme-str "entry { placeholder: \"  Box Drawing\";} ${rofi_position} ${r_override}" \
           -theme-str "${font_override}" \
           -theme-str "${boxdraw_window_theme}" \
-          -theme "$(rofi_resolve_theme "${ROFI_BOXDRAW_STYLE:-clipboard}")" -theme-str "${_rofi_opacity}" \
+          -theme "$(rofi_resolve_theme "${ROFI_BOXDRAW_STYLE:-clipboard}")" \
           -no-custom)
         ;;
       *)
@@ -114,7 +114,7 @@ get_boxdraw_selection() {
           -theme-str "entry { placeholder: \" 📐 Box Drawing\";} ${rofi_position} ${r_override}" \
           -theme-str "${font_override}" \
           -theme-str "${boxdraw_window_theme}" \
-          -theme "$(rofi_resolve_theme "${style_type:-${ROFI_BOXDRAW_STYLE:-clipboard}}")" -theme-str "${_rofi_opacity}" \
+          -theme "$(rofi_resolve_theme "${style_type:-${ROFI_BOXDRAW_STYLE:-clipboard}}")" \
           -no-custom)
         ;;
     esac
@@ -189,7 +189,7 @@ show_category_menu() {
     "${category_rofi_args[@]}" \
     -theme-str "entry { placeholder: \"📂 ${category}\";} ${rofi_position} ${r_override}" \
     -theme-str "${font_override}" \
-    -theme "$(rofi_resolve_theme "${theme_name}")" -theme-str "${_rofi_opacity}" \
+    -theme "$(rofi_resolve_theme "${theme_name}")" \
     -no-custom <"${temp_category}")
 
   rm -f "${temp_category}"

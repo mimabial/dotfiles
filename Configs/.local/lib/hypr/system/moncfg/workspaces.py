@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 
-def _target_keys(profile: dict) -> list[str]:
+def target_keys(profile: dict) -> list[str]:
     settings = profile.get("workspaces", {}) or {}
     enabled = [
         o.get("key", "")
@@ -21,7 +21,7 @@ def _output_name(profile: dict, key: str) -> str:
 
 def plan(profile: dict) -> list[dict]:
     """One row per enabled output. Empty workspace lists when the planner is off."""
-    keys = _target_keys(profile)
+    keys = target_keys(profile)
     rows = {key: [] for key in keys}
     settings = profile.get("workspaces", {}) or {}
 

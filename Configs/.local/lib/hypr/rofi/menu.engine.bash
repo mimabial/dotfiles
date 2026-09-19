@@ -244,7 +244,7 @@ menu() {
   case "${row_mode}" in "" | detail) ;; *) printf 'menu: invalid row mode: %s\n' "${row_mode}" >&2; return 2 ;; esac
 
   local options_rendered="" measured_rows="" width_override="" selected_row=""
-  local opacity_override="" user_name="${USER:-user}" lines_per_row=1
+  local user_name="${USER:-user}" lines_per_row=1
   local -a rofi_args=()
 
   menu_ensure_border_metrics
@@ -270,9 +270,6 @@ menu() {
     rofi_args+=(-sep "${MENU_ROW_SEP}" -eh 2 -markup-rows -no-custom -format i)
     rofi_args+=("-theme-str" "listview {require-input: true;}")
   fi
-
-  opacity_override="$(rofi_active_opacity_override)"
-  [[ -n "${opacity_override}" ]] && rofi_args+=("-theme-str" "${opacity_override}")
 
   menu_preselect_row selected_row "${options_rendered}" "${preselect}"
   [[ -n "${selected_row}" ]] && rofi_args+=("-selected-row" "${selected_row}")

@@ -26,21 +26,32 @@ Rectangle {
     signal removeRequested
 
     readonly property bool critical: urgency === "CRITICAL"
-    readonly property bool hasIcon: iconPath !== "" && iconImage.status === Image.Ready
-    readonly property bool hasPreview: showPreview && previewPath !== ""
-        && previewImage.status === Image.Ready
-    // an app that shipped no icon still gets a slot, so the left edge of the
-    // list does not move from row to row
+    readonly property string avatarPath: showPreview && previewPath !== ""
+        ? previewPath : iconPath
+    readonly property bool hasAvatar: avatarPath !== "" && avatarImage.status === Image.Ready
     readonly property string initial: app === "" ? "?" : app.charAt(0).toUpperCase()
+    readonly property color sourceColor: {
+        const name = app.toLowerCase()
+        if (["vesktop", "discord", "webcord", "vencord"].some(part => name.includes(part)))
+            return "#e0574a"
+        if (["sable", "element", "cinny"].some(part => name.includes(part)))
+            return "#a78bfa"
+        if (name.includes("slack")) return "#4a9d7f"
+        if (name.includes("telegram")) return "#5aa7d6"
+        if (name.includes("signal")) return "#5b8ce0"
+        if (name.includes("thunderbird")) return "#d4a35c"
+        if (name.includes("spotify")) return "#6fbf73"
+        return Qt.darker(shell.foreground, 1.4)
+    }
 
     readonly property string when: {
         if (timestamp <= 0) return ""
-        // the day this landed on is the section header's job, so a row only
-        // ever has to say where in that day it was
         const seconds = Math.max(0, Math.floor((now - timestamp) / 1000))
         if (seconds < 60) return "now"
         if (seconds < 3600) return Math.floor(seconds / 60) + "m"
-        return Qt.formatDateTime(new Date(timestamp), "HH:mm")
+        if (seconds < 86400) return Math.floor(seconds / 3600) + "h"
+        if (seconds < 604800) return Math.floor(seconds / 86400) + "d"
+        return Qt.formatDateTime(new Date(timestamp), "MMM d")
     }
 
     // paths reach QML as plain absolute paths; a space or a '#' in one would
@@ -51,7 +62,7 @@ Rectangle {
     }
 
     width: ListView.view ? ListView.view.width : implicitWidth
-    implicitHeight: layout.implicitHeight + Style.controlPaddingY * 2
+    implicitHeight: content.implicitHeight + Style.controlPaddingX
     radius: root.shell.rounding
     color: root.cursored || rowArea.containsMouse ? root.shell.hoverFill(2) : "transparent"
     border.width: root.cursored ? 1 : 0
@@ -69,132 +80,109 @@ Rectangle {
             : root.clicked(event.button)
     }
 
-    Row {
-        id: layout
+    Item {
+        id: content
         anchors.left: parent.left; anchors.right: parent.right
         anchors.leftMargin: Style.controlPaddingX; anchors.rightMargin: Style.controlPaddingX
         anchors.verticalCenter: parent.verticalCenter
-        spacing: Style.controlPaddingX
+        implicitHeight: textColumn.implicitHeight
 
-        Item {
-            id: iconSlot
-            width: Style.px(22); height: Style.px(22)
+        Rectangle {
+            id: sourceRule
+            anchors.left: parent.left
+            anchors.top: parent.top; anchors.bottom: parent.bottom
+            width: Style.xxs
+            radius: width / 2
+            color: root.sourceColor
+            opacity: root.unread ? 1 : .35
+        }
+
+        Column {
+            id: textColumn
+            anchors.left: sourceRule.right; anchors.leftMargin: Style.controlPaddingX
+            anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
+            spacing: Style.px(1)
 
-            Rectangle {
-                anchors.fill: parent
-                visible: !root.hasIcon
-                radius: width / 2
-                color: root.shell.alpha(root.shell.foreground, .12)
+            Item {
+                width: parent.width
+                implicitHeight: Math.max(sourceLabel.implicitHeight, Style.px(13))
+
+                Item {
+                    id: avatar
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: Style.px(13); height: Style.px(13)
+
+                    Text {
+                        anchors.centerIn: parent
+                        visible: !root.hasAvatar
+                        text: root.initial
+                        color: root.critical
+                            ? root.shell.role("error", root.shell.foreground)
+                            : root.sourceColor
+                        font.family: root.shell.fontFamily
+                        font.pixelSize: Style.caption
+                        font.bold: true
+                    }
+                    Image {
+                        id: avatarImage
+                        anchors.fill: parent
+                        visible: root.hasAvatar
+                        source: root.fileUrl(root.avatarPath)
+                        fillMode: Image.PreserveAspectFit
+                        sourceSize.width: width * 2; sourceSize.height: height * 2
+                        asynchronous: true
+                        smooth: true
+                    }
+                }
+
                 Text {
-                    anchors.centerIn: parent
-                    text: root.initial
-                    color: root.shell.alpha(root.shell.foreground, .7)
+                    id: sourceLabel
+                    anchors.left: avatar.right; anchors.leftMargin: Style.md
+                    anchors.right: timeLabel.left; anchors.rightMargin: Style.lg
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: root.app
+                    color: root.sourceColor
                     font.family: root.shell.fontFamily
                     font.pixelSize: Style.caption
                     font.bold: true
+                    elide: Text.ElideRight
+                }
+
+                Text {
+                    id: timeLabel
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: root.when
+                    color: Qt.darker(root.shell.foreground, 1.5)
+                    font.family: root.shell.fontFamily
+                    font.pixelSize: Style.caption
                 }
             }
-            Image {
-                id: iconImage
-                anchors.fill: parent
-                source: root.fileUrl(root.iconPath)
-                fillMode: Image.PreserveAspectFit
-                sourceSize.width: width * 2; sourceSize.height: height * 2
-                asynchronous: true
-                visible: root.hasIcon
-            }
-        }
-
-        Column {
-            width: parent.width - iconSlot.width - stamp.width - parent.spacing * 2
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: 1
 
             Text {
+                visible: root.summary !== ""
                 width: parent.width
-                text: root.summary !== "" ? root.summary : root.app
-                elide: Text.ElideRight
-                color: root.critical
-                    ? root.shell.role("error", root.shell.foreground)
-                    : root.shell.foreground
+                text: root.summary
+                color: root.shell.foreground
                 font.family: root.shell.fontFamily
-                font.pixelSize: Style.bodySmall
+                font.pixelSize: Style.body
                 font.bold: root.unread
+                elide: Text.ElideRight
             }
+
             Text {
-                visible: root.showBody && text !== ""
+                visible: root.showBody && root.body !== ""
                 width: parent.width
                 text: root.body
-                wrapMode: Text.Wrap
+                textFormat: Text.PlainText
+                color: Qt.darker(root.shell.foreground, 1.5)
+                font.family: root.shell.fontFamily
+                font.pixelSize: Style.bodySmall
+                wrapMode: Text.WordWrap
                 maximumLineCount: 2
                 elide: Text.ElideRight
-                color: root.shell.alpha(root.shell.foreground, .55)
-                font.family: root.shell.fontFamily
-                font.pixelSize: Style.caption
-            }
-            Item {
-                visible: root.hasPreview
-                width: parent.width
-                height: visible ? Style.px(68) : 0
-                Image {
-                    id: previewImage
-                    anchors.left: parent.left
-                    anchors.top: parent.top; anchors.topMargin: Style.xs
-                    width: Math.min(parent.width, Style.px(112))
-                    height: Style.px(68) - Style.xs
-                    source: root.showPreview ? root.fileUrl(root.previewPath) : ""
-                    fillMode: Image.PreserveAspectCrop
-                    sourceSize.width: width * 2; sourceSize.height: height * 2
-                    asynchronous: true
-                    clip: true
-                }
-            }
-        }
-
-        Column {
-            id: stamp
-            width: Math.max(age.implicitWidth, Style.px(26))
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: Style.xxs
-
-            Text {
-                id: age
-                anchors.right: parent.right
-                text: root.when
-                color: root.shell.alpha(root.shell.foreground, .45)
-                font.family: root.shell.fontFamily
-                font.pixelSize: Style.caption
-                visible: !removeArea.containsMouse && !rowArea.containsMouse
-            }
-            Rectangle {
-                id: removeButton
-                anchors.right: parent.right
-                width: Style.px(20); height: Style.px(20)
-                radius: root.shell.rounding
-                visible: rowArea.containsMouse || removeArea.containsMouse || root.cursored
-                color: removeArea.containsMouse ? root.shell.hoverFill(3) : "transparent"
-                Text {
-                    anchors.centerIn: parent
-                    text: "\u{f0156}"
-                    color: root.shell.alpha(root.shell.foreground, removeArea.containsMouse ? 1 : .6)
-                    font.family: root.shell.fontFamily
-                    font.pixelSize: Style.bodySmall
-                }
-                MouseArea {
-                    id: removeArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: root.removeRequested()
-                }
-            }
-            Rectangle {
-                anchors.right: parent.right
-                width: Style.px(6); height: Style.px(6)
-                radius: width / 2
-                visible: root.unread && !removeButton.visible
-                color: root.shell.role("accent", root.shell.foreground)
             }
         }
     }

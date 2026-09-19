@@ -72,7 +72,9 @@ Panel {
   property string brightnessSetConnector: ""
   property string pendingBrightnessConnector: ""
   readonly property var textSizes: [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
-  readonly property int textSizeIndex: Math.max(0, root.textSizes.indexOf(Style.textSize))
+  property int pendingTextSize: -1
+  readonly property int effectiveTextSize: pendingTextSize < 0 ? Style.textSize : pendingTextSize
+  readonly property int textSizeIndex: Math.max(0, root.textSizes.indexOf(effectiveTextSize))
 
   readonly property var monitorSummaries: document && document.monitors instanceof Array ? document.monitors : []
   readonly property var layoutDisplays: root.daemonPreview && root.daemonPreview.profile
@@ -339,7 +341,9 @@ Panel {
 
   function setTextSize(index) {
     var bounded = Math.max(0, Math.min(root.textSizes.length - 1, Math.round(index)))
-    shell.run(["hyprshell", "system/text-size", String(root.textSizes[bounded])])
+    var size = root.textSizes[bounded]
+    root.pendingTextSize = size === Style.textSize ? -1 : size
+    shell.run(["hyprshell", "system/text-size", String(size)])
   }
 
   function startBrightnessSet(connector, percent) {
@@ -565,12 +569,7 @@ Panel {
 
   function snapSelectedOutput(direction) {
     if (!root.managedChecked || root.editPending || root.previewTransaction !== "") return
-    var position = Model.snapOutputPosition(root.draftProfile, root.selectedOutputKey, direction)
-    if (!position) {
-      root.lastError = "No other enabled display is available for snapping."
-      return
-    }
-    root.editOutput({ x: position.x, y: position.y })
+    root.editOutput({ snap_beside: direction })
   }
 
   function cycleLayoutKeyboardPane(direction) {
@@ -1194,6 +1193,13 @@ Panel {
     function onRequestFinished(success, message) {
       root.previewPending = false
       if (!success && String(message || "") !== "") root.lastError = String(message)
+    }
+  }
+
+  Connections {
+    target: Style
+    function onTextSizeChanged() {
+      if (Style.textSize === root.pendingTextSize) root.pendingTextSize = -1
     }
   }
 

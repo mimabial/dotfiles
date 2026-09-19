@@ -54,7 +54,7 @@ setup_rofi_config() {
   local font_name
   local logical_width logical_height
   rofi_prepare_standard_context \
-    font_scale font_name font_override r_override _rofi_opacity \
+    font_scale font_name font_override r_override \
     "${ROFI_GLYPH_SCALE:-}" "${ROFI_GLYPH_FONT:-${ROFI_FONT:-}}" wallbox same
 
   read -r logical_width logical_height <<<"$(rofi_focused_monitor_logical_size)"
@@ -117,8 +117,6 @@ setup_rofi_config() {
     -theme-str "${glyph_window_theme}"
     -theme-str "${r_override}"
   )
-
-  [[ -n "${_rofi_opacity:-}" ]] && rofi_args+=("-theme-str" "${_rofi_opacity}")
 }
 
 get_glyph_selection() {

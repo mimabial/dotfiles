@@ -29,11 +29,11 @@ Item {
                 id: window
                 required property var modelData
                 readonly property bool active: modelData.activated
+                visible: !!modelData.wayland && !(modelData.workspace && modelData.workspace.name.startsWith("special:"))
                 readonly property var box: root.shell.style.box(active ? "#taskbar button.active" : "#taskbar button")
                 property var entry: null
                 function act(button) {
                     const target = modelData.wayland, address = String((modelData.lastIpcObject || {}).address || "")
-                    if (!target) return
                     if (button === Qt.LeftButton && address) Quickshell.execDetached(["hyprctl", "eval", "local w=hl.get_config('cursor.no_warps');hl.config({cursor={no_warps=true}});hl.exec_scheduled_prop_refresh_immediately();hl.dispatch(hl.dsp.focus({window='address:" + address + "'}));hl.config({cursor={no_warps=w}})"])
                     else if (button === Qt.LeftButton) target.activate()
                     else if (button === Qt.MiddleButton) target.close()

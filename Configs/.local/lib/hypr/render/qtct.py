@@ -22,20 +22,11 @@ OUT_DIR = (
     / "qtct"
 )
 KDE_FILE = OUT_DIR / "Pywal.colors"
-QTCT_FILE = OUT_DIR / "pywal16.conf"
 
 
 def rgb(color):
     red, green, blue = hex_to_rgb(color)
     return f"{red},{green},{blue}"
-
-
-def argb(color, alpha="ff"):
-    return f"#{alpha}{color.lstrip('#').lower()}"
-
-
-def qtct_line(values):
-    return ", ".join(argb(color) for color in values)
 
 
 def renderer_hash(shell_kvconfig, shell_colors_map):
@@ -115,7 +106,7 @@ def kde_sections(roles):
             **shared,
         },
         "Colors:Header": {
-            "BackgroundNormal": rgb(roles.button_surface),
+            "BackgroundNormal": rgb(roles.window_surface),
             "BackgroundAlternate": rgb(alternate_surface),
             "ForegroundNormal": rgb(roles.button_text),
             **shared,
@@ -178,63 +169,6 @@ def render_kde(roles):
     return "".join(lines)
 
 
-def qt_palettes(roles):
-    direction = 1 if roles.is_dark else -1
-    alternate_surface = roles.alternate_surface or shade(roles.bg, 0.06 * direction)
-    light = roles.light or shade(roles.button_surface, 0.35)
-    mid_light = roles.mid_light or shade(roles.button_surface, 0.18)
-    dark = roles.dark or shade(roles.button_surface, -0.35)
-    mid = roles.mid or shade(roles.button_surface, -0.18)
-    shadow = roles.shadow or shade(roles.bg, -0.60)
-
-    # QPalette role order used by qtct: WindowText, Button, Light, Midlight,
-    # Dark, Mid, Text, BrightText, ButtonText, Base, Window, Shadow, Highlight,
-    # HighlightedText, Link, LinkVisited, AlternateBase, NoRole, ToolTipBase,
-    # ToolTipText, PlaceholderText.
-    active = [
-        roles.window_text,
-        roles.button_surface,
-        light,
-        mid_light,
-        dark,
-        mid,
-        roles.text,
-        roles.bright_text,
-        roles.button_text,
-        roles.base_surface,
-        roles.window_surface,
-        shadow,
-        roles.accent,
-        roles.highlight_text,
-        roles.link,
-        roles.link_visited,
-        alternate_surface,
-        roles.text,
-        roles.tooltip_surface,
-        roles.tooltip_text,
-        roles.disabled_text,
-    ]
-    disabled = active.copy()
-    for index in (0, 6, 7, 8, 13, 14, 15, 17, 19, 20):
-        disabled[index] = roles.disabled_text
-    inactive = active.copy()
-    for index in (0, 6, 8, 17, 19, 20):
-        inactive[index] = roles.disabled_text
-    inactive[12] = roles.inactive_accent
-    inactive[13] = roles.inactive_highlight_text
-    return active, disabled, inactive
-
-
-def render_qtct(roles):
-    active, disabled, inactive = qt_palettes(roles)
-    return (
-        "[ColorScheme]\n"
-        f"active_colors={qtct_line(active[:-1])}, {argb(active[-1], '80')}\n"
-        f"disabled_colors={qtct_line(disabled[:-1])}, {argb(disabled[-1], '80')}\n"
-        f"inactive_colors={qtct_line(inactive[:-1])}, {argb(inactive[-1], '80')}\n"
-    )
-
-
 def main():
     if not PALETTE.is_file():
         print(f"render/qtct: missing {PALETTE}", file=sys.stderr)
@@ -242,14 +176,13 @@ def main():
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
     palette = json.loads(PALETTE.read_text())
-    _svg, shell_kvconfig, shell_colors_map = shell_files(palette)
+    shell_kvconfig, shell_colors_map = shell_files(palette)
     cache_key = renderer_hash(shell_kvconfig, shell_colors_map)
-    if cache_hit("qtct", cache_key) and KDE_FILE.exists() and QTCT_FILE.exists():
+    if cache_hit("qtct", cache_key) and KDE_FILE.exists():
         return
 
     roles = resolve_roles(palette, shell_kvconfig, shell_colors_map)
     atomic_write(KDE_FILE, render_kde(roles))
-    atomic_write(QTCT_FILE, render_qtct(roles))
     cache_store("qtct", cache_key)
 
 

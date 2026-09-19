@@ -1,6 +1,6 @@
 $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 
-$ICON_THEME = Beauty-yellow-dark
+$ICON_THEME = Tela-red-dark
 $COLOR_SCHEME = prefer-dark
 $NVIM_SCHEME = aether
 $NVIM_BACKGROUND = dark

@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
-# Resolve which Kvantum shell a theme pack uses.
-#
-# Shared by render/qtct.py, theme/lib/install_kvantum_theme.py and (via the CLI
-# form) theme/lib/desktop.sync.bash, so the pack -> shell rule has exactly one
-# implementation. Underscore-prefixed, so hypr-theme's renderer scan skips it.
+# Resolve which shell a theme pack uses.
+# Underscore-prefixed, so hypr-theme's renderer scan skips it.
 
 import os
 import sys
@@ -50,11 +47,7 @@ def shell_dir(palette=None):
 
 
 def shell_files(palette=None):
-    """(svg, kvconfig, map), each None when absent."""
+    """(kvconfig, map), each None when absent."""
     base = shell_dir(palette)
-    paths = (base / "shell.svg", base / "shell.kvconfig", base / "shell.map")
+    paths = (base / "shell.kvconfig", base / "shell.map")
     return tuple(path if path.is_file() else None for path in paths)
-
-
-if __name__ == "__main__":
-    print(shell_dir())

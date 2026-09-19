@@ -94,7 +94,6 @@ rofi_standard_window_theme() { printf 'window{}'; }
 rofi_font_text_extents_px() { cat >/dev/null; printf '100 10'; }
 rofi_focused_monitor_logical_size() { printf '1000 800'; }
 rofi_font_override() { printf 'font{}'; }
-rofi_active_opacity_override() { :; }
 rofi_resolve_theme() { printf 'menutree.rasi'; }
 rofi() { cat >/dev/null; printf 'Picked'; return 7; }
 set +e

@@ -33,8 +33,7 @@ gtk_font_pt() {
 }
 
 term_pt_for() {
-  local anchor="${2:-$BASE_PT}" scaled
-  scaled=$((($1 * anchor * 100 + BASE_PX / 2) / BASE_PX))
+  local scaled=$((($1 * BASE_PT * 100 + BASE_PX / 2) / BASE_PX))
   printf '%d.%02d' "$((scaled / 100))" "$((scaled % 100))"
 }
 
@@ -56,33 +55,15 @@ factor_for() {
     'BEGIN { printf "%.4f", int(font * size / base + 0.5) / font }'
 }
 
-# Qt ignores the GTK factor; keep KDE and qt5ct/qt6ct point sizes aligned.
+# Qt ignores the GTK factor.
 set_qt_fonts() {
-  local size="$1" family="" mono=""
-  command -v kwriteconfig6 >/dev/null 2>&1 || return 0
-  family="$(hypr_config_value_from_layers FONT 2>/dev/null || true)"
-  mono="$(hypr_config_value_from_layers MONOSPACE_FONT 2>/dev/null || true)"
-  [[ -n "${family}" ]] || family="Cantarell"
-  [[ -n "${mono}" ]] || mono="monospace"
-
-  local ui="" fixed="" small=""
-  ui="$(term_pt_for "${size}")"
-  fixed="${ui}"
-  small="$(term_pt_for "${size}" 8)"
-  local key=""
-  for key in font menuFont toolBarFont; do
-    kwriteconfig6 --file kdeglobals --group General --key "${key}" "${family},${ui},-1,5,400,0,0,0,0,0"
-  done
-  kwriteconfig6 --file kdeglobals --group General --key fixed "${mono},${fixed},-1,5,400,0,0,0,0,0"
-  kwriteconfig6 --file kdeglobals --group General --key smallestReadableFont "${family},${small},-1,5,400,0,0,0,0,0"
-  kwriteconfig6 --file kdeglobals --group WM --key activeFont "${family},${ui},-1,5,400,0,0,0,0,0"
-
-  local tail="-1,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0" conf="" flavour=""
-  for flavour in qt6ct qt5ct; do
-    conf="${XDG_CONFIG_HOME:-$HOME/.config}/${flavour}/${flavour}.conf"
-    [[ -f "${conf}" ]] || continue
-    sed -i -E "s|^general=\".*\"|general=\"${family},${ui},${tail}\"|; s|^fixed=\".*\"|fixed=\"${mono},${fixed},${tail}\"|" "${conf}"
-  done
+  local -a font_entries=()
+  hypr_runtime_require system
+  source "${HYPR_LIB_DIR}/theme/lib/desktop.sync.bash"
+  theme_desktop_resolve_base_values
+  theme_desktop_kde_font_entries font_entries
+  theme_desktop_ini_write_batch "${XDG_CONFIG_HOME:-$HOME/.config}/kdeglobals" "${font_entries[@]}"
+  theme_desktop_notify_kde_fonts_changed
 }
 
 # Font families belong to fonts/font-sync.sh.
@@ -109,6 +90,19 @@ set_terminal_size() {
   fi
 }
 
+resize_running_foot() {
+  local delta="$1" key="KP_Add" address="" pid="" comm=""
+  ((delta != 0)) || return 0
+  ((delta > 0)) || { key="KP_Subtract"; delta=$((-delta)); }
+
+  while IFS=$'\t' read -r address pid; do
+    [[ ${address} =~ ^0x[0-9a-f]+$ && ${pid} =~ ^[0-9]+$ ]] || continue
+    IFS= read -r comm <"/proc/${pid}/comm" || continue
+    [[ ${comm} == "foot" || ${comm} == "footclient" ]] || continue
+    hyprctl eval "for _=1,${delta} do hl.dispatch(hl.dsp.send_shortcut({mods=\"CTRL\", key=\"${key}\", window=\"address:${address}\"})) end; return \"ok\"" >/dev/null 2>&1 || true
+  done < <(hyprctl clients -j 2>/dev/null | jq -r '.[] | [.address, .pid] | @tsv')
+}
+
 current_size() {
   local size
   size="$(state_get TEXT_SIZE "" 2>/dev/null || true)"
@@ -124,22 +118,38 @@ report() {
   printf 'terminal    %spt\n' "${pt}"
   printf 'rofi        %spt\n' "$(rofi_pt_for "${size}")"
   printf 'dunst       %spt\n' "$(dunst_pt_now)"
-  printf 'kde ui      %spt\n' "${pt}"
+  printf 'qt ui       %spt\n' "${pt}"
 }
 
 apply() {
-  local size="$1"
+  local requested="$1" previous="" size="" applied="" lock_file="" applied_file="" lock_fd=""
 
-  if [[ ! ${size} =~ ^[0-9]+$ ]] || ((size < MIN || size > MAX)); then
+  if [[ ! ${requested} =~ ^[0-9]+$ ]] || ((requested < MIN || requested > MAX)); then
     printf 'text-size: size must be an integer between %s and %s\n' "${MIN}" "${MAX}" >&2
     exit 1
   fi
 
-  state_set TEXT_SIZE "${size}"
+  previous="$(current_size)"
+  # Publish before waiting so every waiter applies the newest requested value.
+  state_set TEXT_SIZE "${requested}"
+  lock_file="$(hypr_runtime_subdir hypr)/text-size.lock"
+  applied_file="${lock_file%.lock}.foot"
+  exec {lock_fd}>"${lock_file}"
+  flock -w 10 "${lock_fd}" || {
+    printf 'text-size: timed out waiting for another update\n' >&2
+    exit 1
+  }
+  size="$(current_size)"
+  applied="${previous}"
+  [[ -r ${applied_file} ]] && IFS= read -r applied <"${applied_file}"
+  [[ ${applied} =~ ^[0-9]+$ ]] || applied="${size}"
+
   gsettings set "${GKEY_SCHEMA}" "${GKEY_NAME}" "$(factor_for "${size}")" 2>/dev/null || true
   set_terminal_size "$(term_pt_for "${size}")"
+  resize_running_foot "$((size - applied))"
+  printf '%s\n' "${size}" >"${applied_file}"
   set_rofi_size "$(rofi_pt_for "${size}")"
-  set_qt_fonts "${size}"
+  set_qt_fonts
   hyprshell render/dunst.py >/dev/null 2>&1 || true
   print_log -sec "text-size" -stat "applied" "${size}px"
 }

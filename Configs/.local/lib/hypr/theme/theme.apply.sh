@@ -307,6 +307,7 @@ theme_apply_job_terminal() {
   fi
 
   reload_live_theme_client kitty
+  reload_live_theme_client foot
 }
 
 theme_apply_resolve_current_wallpaper() {

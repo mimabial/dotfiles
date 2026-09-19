@@ -190,24 +190,18 @@ ensure_hyprlock_conf() {
   print_log -sec "hyprlock" -stat "repaired" "$(hypr_compact_path "${target_file}")"
 }
 
-append_label_to_file() {
-  local file="${1}"
-  local valign=""
-
-  for valign in top bottom center; do
-    cat <<EOF >>"${file}"
+append_preview_marker() {
+  cat <<'EOF' >>"${1}"
 label {
-  text = PREVIEW! Press a key or swipe to exit.
-  color = \$foreground
-  font_size = 50
-  position = 0, 0
+  text = preview · any key exits
+  color = $foreground_alpha
+  font_size = 11
+  position = 0, -12
   halign = center
-  valign = ${valign}
-  zindex = 6
+  valign = top
+  zindex = 10
 }
-
 EOF
-  done
 }
 
 hyprlock_managed_conf_comments() {
@@ -236,19 +230,9 @@ layout_test() {
   runtime_dir="$(hypr_runtime_subdir hypr)" || exit 1
   temp_path="${runtime_dir}/hyprlock-test.conf"
   generate_conf "${hyprlock_conf_path}" "${temp_path}"
-  append_label_to_file "${temp_path}"
+  append_preview_marker "${temp_path}"
   "${HYPR_LIB_DIR}/system/app2unit.sh" -S both -u "${HYPRLOCK_SCOPE_NAME}" -t scope -- hyprlock --no-fade-in --immediate-render --grace 99999999 -c "${temp_path}"
   rm -f "${temp_path}"
-}
-
-rofi_test_preview() {
-  local hyprlock_conf_name="${*:-${1}}"
-  local unit_name="${XDG_SESSION_DESKTOP:-unknown}-lockscreen-preview.scope"
-  check_and_sanitize_process "${unit_name}"
-  send_ephemeral_notif "hypr-hyprlock-preview" "Hyprlock layout: ${hyprlock_conf_name}" "Please swipe, press a key or click to exit." \
-    -i "system-lock-screen" -t 3000 \
-    -r 9
-  "${HYPR_LIB_DIR}/system/app2unit.sh" -S both -u "${unit_name}" -t scope -- session/hyprlock.sh --test "${hyprlock_conf_name}"
 }
 
 generate_conf() {
@@ -274,52 +258,21 @@ CONF
 }
 
 fn_select() {
-  local layout_items
-  local -A seen_layouts=()
-  local layout_dir layout_path layout_name
-  local -a rofi_args
-  for layout_dir in "${HYPRLOCK_USER_DIR}" "${HYPRLOCK_SHARED_DIR}"; do
-    [[ -d "${layout_dir}" ]] || continue
-    while IFS= read -r -d '' layout_path; do
-      layout_name="$(basename "${layout_path}" .conf)"
-      [[ "${layout_name}" == "theme" || "${layout_name}" == "colors" ]] && continue
-      [[ -n "${seen_layouts[${layout_name}]:-}" ]] && continue
-      seen_layouts["${layout_name}"]=1
-      layout_items+="${layout_name}"$'\n'
-    done < <(find -L "${layout_dir}" -maxdepth 1 -type f -name '*.conf' -print0 | sort -z)
-  done
+  quickshell ipc call lockview open >/dev/null 2>&1 && return 0
+  send_ephemeral_notif "hypr-hyprlock-error" -t 3000 -i "system-lock-screen" "Hyprlock layout" "Quickshell is not running"
+  return 1
+}
 
-  if [ -z "$layout_items" ]; then
-    send_ephemeral_notif "hypr-hyprlock-error" -t 3000 -i "preferences-desktop-display" "Error" "No .conf files found in ${HYPRLOCK_USER_DIR} or ${HYPRLOCK_SHARED_DIR}"
-    exit 1
-  fi
-
-  rofi_build_standard_menu_args \
-    rofi_args \
-    "Select hyprlock layout" \
-    "  Hyprlock Layout" \
-    "${ROFI_HYPRLOCK_STYLE:-clipboard}" \
-    "${ROFI_HYPRLOCK_SCALE:-}" \
-    "${ROFI_HYPRLOCK_FONT:-${ROFI_FONT:-}}"
-  rofi_args+=(
-    -select "${HYPRLOCK_LAYOUT}"
-    -on-selection-changed "hyprshell session/hyprlock.sh --test-preview  \"{entry}\""
-  )
-
-  selected_layout=$(awk -F/ '{print $NF}' <<<"$layout_items" \
-    | rofi "${rofi_args[@]}")
-
-  if [ -z "$selected_layout" ]; then
-    echo "No selection made"
-    exit 0
-  fi
-
-  state_set "HYPRLOCK_LAYOUT" "${selected_layout}" "staterc"
+fn_apply() {
+  local layout_name="${1}"
   local hyprlock_conf_path
-  hyprlock_conf_path=$(find_filepath "${selected_layout}")
-  generate_conf "$hyprlock_conf_path"
-  "${HYPR_LIB_DIR}/system/font.sh" resolve "$hyprlock_conf_path"
+  hyprlock_conf_path="$(find_filepath "${layout_name}")" || {
+    print_log -sec "hyprlock" -stat "Error" "Layout ${layout_name} not found."
+    return 1
+  }
+  state_set "HYPRLOCK_LAYOUT" "${layout_name}" "staterc"
+  generate_conf "${hyprlock_conf_path}"
+  "${HYPR_LIB_DIR}/system/font.sh" resolve "${hyprlock_conf_path}"
   fn_profile
-
-  send_ephemeral_notif "hypr-hyprlock-layout" -t 2000 -i "system-lock-screen" "Hyprlock layout" "${selected_layout}"
+  send_ephemeral_notif "hypr-hyprlock-layout" -t 2000 -i "system-lock-screen" "Hyprlock layout" "${layout_name}"
 }

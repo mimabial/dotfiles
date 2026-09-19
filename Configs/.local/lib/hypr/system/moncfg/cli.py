@@ -15,6 +15,17 @@ HYPR_CONFIG = os.path.expanduser(
 )
 
 
+def frame(method: str, params: dict | None = None) -> bytes:
+    message = {
+        "type": "request",
+        "protocol_version": daemon.PROTOCOL_VERSION,
+        "id": "cli",
+        "method": method,
+        "params": params or {},
+    }
+    return (json.dumps(message) + "\n").encode()
+
+
 def request(method: str, params: dict | None = None, timeout: float = 4.0) -> dict | None:
     """Ask the daemon, or return None when it is not listening."""
     try:
@@ -24,14 +35,7 @@ def request(method: str, params: dict | None = None, timeout: float = 4.0) -> di
     except OSError:
         return None
     try:
-        frame = {
-            "type": "request",
-            "protocol_version": daemon.PROTOCOL_VERSION,
-            "id": "cli",
-            "method": method,
-            "params": params or {},
-        }
-        conn.sendall((json.dumps(frame) + "\n").encode())
+        conn.sendall(frame(method, params))
         buffer = b""
         while b"\n" not in buffer:
             chunk = conn.recv(65536)
@@ -143,9 +147,12 @@ def cmd_apply(args) -> int:
     if not profile:
         print(f"No saved profile called {args.name}", file=sys.stderr)
         return 1
-    reply = request("preview", {"profile_name": args.name, "timeout_seconds": 0})
+    reply = request("apply", {"profile_name": args.name})
     if reply is None:
         render.apply(profile)
+    elif "error" in reply:
+        print(reply["error"]["message"], file=sys.stderr)
+        return 1
     print(f"Applied profile {args.name}")
     return 0
 
@@ -176,6 +183,12 @@ def cmd_unmanage(_args) -> int:
     return _set_managed(True)
 
 
+def cmd_tui(_args) -> int:
+    from .tui import run  # Textual loads only when the editor opens.
+
+    return run()
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="hyprmoncfg", description="Monitor profile manager for Hyprland")
     parser.add_argument("-v", "--version", action="store_true", help="show version information")
@@ -189,6 +202,7 @@ def build_parser() -> argparse.ArgumentParser:
         ("status", cmd_status, "Show current profile and daemon status"),
         ("manage", cmd_manage, "Let hyprmoncfg manage monitor configuration"),
         ("unmanage", cmd_unmanage, "Hand monitor configuration back to Hyprland"),
+        ("tui", cmd_tui, "Launch the interactive terminal editor (the default)"),
     ):
         sub.add_parser(name, help=help_text).set_defaults(handler=handler)
 
@@ -209,8 +223,4 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if getattr(args, "version", False):
         return cmd_version(args)
-    handler = getattr(args, "handler", None)
-    if handler is None:
-        parser.print_help()
-        return 0
-    return handler(args)
+    return getattr(args, "handler", cmd_tui)(args)

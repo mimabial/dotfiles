@@ -85,7 +85,7 @@ if ((json)); then
 fi
 
 rofi_prepare_standard_context \
-  font_scale font_name launcher_font_override window_override launcher_opacity_override \
+  font_scale font_name launcher_font_override window_override \
   "${ROFI_GAMELAUNCHER_SCALE:-}" "${ROFI_GAMELAUNCHER_FONT:-${ROFI_FONT:-}}" listview same
 
 launcher_style_override=""
@@ -94,7 +94,6 @@ case "${style}" in
   steam_deck | gamelauncher_5 | 5)
     launcher_style_override="$(steam_deck_theme_override)"
     launcher_rofi_args=(-show-icons)
-    launcher_opacity_override=""
     ;;
 esac
 
@@ -108,8 +107,7 @@ selection="$(
       -config "$(rofi_resolve_theme "${style}")" \
       -theme-str "${launcher_font_override}" \
       -theme-str "${window_override}" \
-      ${launcher_style_override:+-theme-str "${launcher_style_override}"} \
-      ${launcher_opacity_override:+-theme-str "${launcher_opacity_override}"}
+      ${launcher_style_override:+-theme-str "${launcher_style_override}"}
 )"
 
 [[ -n "${selection}" ]] || exit 0

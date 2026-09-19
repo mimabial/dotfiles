@@ -233,11 +233,9 @@ wallpaper_select_rofi_args() {
   local selected_row="$3"
   local font_override=""
   local r_override=""
-  local opacity_override=""
 
   font_override="$(rofi_font_override "${font_name}" "${font_scale}")"
   r_override="$(wallpaper_select_theme_override "${font_scale}" "${font_name}")"
-  opacity_override="$(rofi_active_opacity_override)"
 
   rofi_args=(
     -dmenu -i
@@ -255,7 +253,6 @@ wallpaper_select_rofi_args() {
     -theme-str "listview { show-icons: true; }"
     -theme "${ROFI_WALLPAPER_STYLE:-wallpaper}"
   )
-  [[ -n "${opacity_override}" ]] && rofi_args+=(-theme-str "${opacity_override}")
   [[ -n "${selected_row}" ]] && rofi_args+=(-selected-row "${selected_row}")
 }
 

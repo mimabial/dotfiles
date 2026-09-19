@@ -65,15 +65,15 @@ arguments:
   --length           - Returns MPRIS song length (MM:SS)
   --profile          - Generates the profile picture
   --art              - Prints the path to the mpris art
-  --select      -S   - Selects the hyprlock layout
+  --select      -S   - Opens the hyprlock layout explorer
+  --apply NAME       - Applies the hyprlock layout NAME
+  --test NAME        - Locks with layout NAME as a dismissable preview
   --repair           - Repairs the managed hyprlock.conf wrapper
   --help       -h    - Displays this help message
 EOF
 }
 
 source_hyprlock_modules() {
-  # shellcheck source=/dev/null
-  source "${HYPR_LIB_DIR}/rofi/rofi.lib.bash"
   MAGICK_LIMITS=()
   # shellcheck source=/dev/null
   source "${HYPR_LIB_DIR}/session/hyprlock.assets.bash"
@@ -115,8 +115,8 @@ handle_hyprlock_action() {
     --test)
       layout_test "$2"
       ;;
-    --test-preview)
-      rofi_test_preview "$2"
+    --apply)
+      fn_apply "$2"
       ;;
     select|-S|--select)
       fn_select
@@ -158,7 +158,7 @@ handle_hyprlock_action() {
 }
 
 parse_and_dispatch_args() {
-  local longopts="select,repair,background,profile,title,artist,source,status,length,update-art,art,help,test:,test-preview:"
+  local longopts="select,repair,background,profile,title,artist,source,status,length,update-art,art,help,test:,apply:"
   local parsed=""
 
   parsed=$(getopt --options Shb --longoptions "$longopts" --name "$0" -- "$@") || exit 2
@@ -166,7 +166,7 @@ parse_and_dispatch_args() {
 
   while true; do
     case "$1" in
-      --test|--test-preview)
+      --test|--apply)
         handle_hyprlock_action "$1" "$2"
         exit 0
         ;;

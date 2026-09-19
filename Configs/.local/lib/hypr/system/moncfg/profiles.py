@@ -38,8 +38,8 @@ def bitdepth(monitor: dict) -> int:
     return 10 if "2101010" in str(monitor.get("currentFormat", "")) else 8
 
 
-def output_from_monitor(monitor: dict) -> dict:
-    key = hypr.monitor_key(monitor)
+def output_from_monitor(monitor: dict, monitors: list[dict]) -> dict:
+    key, source = hypr.monitor_key(monitor), hypr.mirror_source(monitor, monitors)
     return {
         "key": key,
         "match_key": key,
@@ -65,13 +65,13 @@ def output_from_monitor(monitor: dict) -> dict:
         "sdr_min_luminance": monitor.get("sdrMinLuminance", 0.2),
         "sdr_max_luminance": monitor.get("sdrMaxLuminance", 80),
         "min_luminance": 0,
-        "mirror_of": "" if monitor.get("mirrorOf", "none") == "none" else monitor.get("mirrorOf", ""),
+        "mirror_of": hypr.monitor_key(source) if source else "",
     }
 
 
 def capture(name: str, monitors: list[dict] | None = None) -> dict:
     monitors = hypr.monitors() if monitors is None else monitors
-    outputs = [output_from_monitor(m) for m in monitors]
+    outputs = [output_from_monitor(m, monitors) for m in monitors]
     stamp = _now()
     return {
         "name": name,

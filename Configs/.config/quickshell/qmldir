@@ -11,7 +11,6 @@ BarSurface 1.0 BarSurface.qml
 BarSlider 1.0 BarSlider.qml
 BarTooltip 1.0 BarTooltip.qml
 BatteryButton 1.0 BatteryButton.qml
-BluetoothButton 1.0 BluetoothButton.qml
 BluetoothPopup 1.0 BluetoothPopup.qml
 BookmarkEditor 1.0 BookmarkEditor.qml
 BookmarkBackend 1.0 BookmarkBackend.qml
@@ -44,7 +43,6 @@ MediaControls 1.0 MediaControls.qml
 MediaPopup 1.0 MediaPopup.qml
 MicrophoneButton 1.0 MicrophoneButton.qml
 ModuleEdge 1.0 ModuleEdge.qml
-NetworkButton 1.0 NetworkButton.qml
 NetworkEnrichmentDialog 1.0 NetworkEnrichmentDialog.qml
 NetworkPopup 1.0 NetworkPopup.qml
 NotificationButton 1.0 NotificationButton.qml

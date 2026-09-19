@@ -26,7 +26,7 @@ def _lua_value(value) -> str:
     return '"%s"' % str(value).replace('"', '\\"')
 
 
-def _fields(output: dict) -> list[tuple[str, object]]:
+def _fields(output: dict, outputs: list[dict]) -> list[tuple[str, object]]:
     if not output.get("enabled", True):
         return [("output", _selector(output)), ("disabled", True)]
 
@@ -41,7 +41,10 @@ def _fields(output: dict) -> list[tuple[str, object]]:
     if output.get("transform"):
         fields.append(("transform", int(output["transform"])))
     if output.get("mirror_of"):
-        fields.append(("mirror", output["mirror_of"]))
+        source = next((o for o in outputs if o.get("key") == output["mirror_of"]), None)
+        fields.append(("mirror", _selector(source) if source else output["mirror_of"]))
+    if "vrr" in output:
+        fields.append(("vrr", int(output["vrr"])))
     if int(output.get("bitdepth", 8)) == 10:
         fields.append(("bitdepth", 10))
     if str(output.get("cm", "srgb")) not in ("", "srgb"):
@@ -58,7 +61,7 @@ def _fields(output: dict) -> list[tuple[str, object]]:
 def to_lua(profile: dict) -> str:
     blocks = []
     for output in profile.get("outputs", []):
-        body = "\n".join(f"  {k} = {_lua_value(v)}," for k, v in _fields(output))
+        body = "\n".join(f"  {k} = {_lua_value(v)}," for k, v in _fields(output, profile["outputs"]))
         blocks.append("hl.monitor({\n%s\n})" % body)
     return HEADER + "\n\n" + "\n".join(blocks) + "\n"
 
@@ -68,7 +71,7 @@ def to_conf(profile: dict) -> str:
     for output in profile.get("outputs", []):
         body = "\n".join(
             "  %s = %s" % (k, "true" if v is True else "false" if v is False else v)
-            for k, v in _fields(output)
+            for k, v in _fields(output, profile["outputs"])
         )
         blocks.append("monitorv2 {\n%s\n}" % body)
     return CONF_HEADER + "\n\n" + "\n".join(blocks) + "\n"

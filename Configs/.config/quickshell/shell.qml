@@ -2,12 +2,14 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Hyprland
 import Quickshell.Services.Mpris
 import Quickshell.Services.UPower
 
 ShellRoot {
     id: shellRoot
     property string home: Quickshell.env("HOME")
+    property string lockviewScreen: ""
     property string workflow: "default"
     property string themeName: ""
     property string layoutName: "right"
@@ -21,6 +23,9 @@ ShellRoot {
     property string mode: workflow === "gaming" ? "hidden" : String(barLayout.panel || "")
     property bool userHidden: false
     property string popupName: ""
+    readonly property var distroGlyphs: ["", "", "󰕈", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]
+    property int distroGlyphIndex: 0
+    readonly property string distroGlyph: distroGlyphs[distroGlyphIndex]
     property var barLayout: ({})
     readonly property var barModules: ["modules", "left", "center", "right"].reduce((all, key) => all.concat(Array.isArray(barLayout[key]) ? barLayout[key] : []), []).map(item => typeof item === "string" ? item : String(item.id || ""))
     readonly property bool dateModuleVisible: !userHidden && (barModules.includes("date") || barModules.includes("datetime") && (mode === "winbar" ? store.winbarClock % 4 < 3 : mode === "horizontal" ? [0, 1, 4, 5, 6, 7].includes(store.topClock % 8) : store.mainClock % 4 === 2))
@@ -136,6 +141,7 @@ ShellRoot {
     ClockworkState { id: clockworkState; shell: shellRoot }
 
     function alpha(color, opacity) { return Qt.rgba(color.r, color.g, color.b, opacity) }
+    function cycleDistroGlyph() { distroGlyphIndex = (distroGlyphIndex + 1) % distroGlyphs.length }
     function loadExposeConfig(raw) {
         try {
             const value = JSON.parse(String(raw))
@@ -315,6 +321,12 @@ ShellRoot {
         asynchronous: true
         Component.onCompleted: monitorPreviewGuardLoader.setSource(Qt.resolvedUrl("monitor/DisplayPreviewGuard.qml"), { shell: shellRoot })
     }
+    Loader {
+        id: lockviewLoader
+        asynchronous: true
+        active: shellRoot.lockviewScreen !== ""
+        Component.onCompleted: lockviewLoader.setSource(Qt.resolvedUrl("lockview/LockView.qml"), { shell: shellRoot })
+    }
     // A popup is an xdg child of the bar's layer surface, so a blur rule on that
     // surface blurs the popup's whole area too — well past the bar. The
     // threshold confines it to what is actually painted: the bar at barOpacity
@@ -375,6 +387,13 @@ ShellRoot {
         function next(): void { shellRoot.mediaPopup?.nextTrack() }
         function prev(): void { shellRoot.mediaPopup?.prevTrack() }
         function playUrl(url: string): void { shellRoot.mediaPopup?.playUrl(url) }
+    }
+    IpcHandler {
+        id: lockviewIpc
+        target: "lockview"
+        function open(): void { shellRoot.lockviewScreen = Hyprland.focusedMonitor?.name ?? Quickshell.screens[0].name }
+        function close(): void { shellRoot.lockviewScreen = "" }
+        function toggle(): void { if (shellRoot.lockviewScreen) lockviewIpc.close(); else lockviewIpc.open() }
     }
     Variants {
         model: shellRoot.stateReady && shellRoot.mode === "vertical" ? Quickshell.screens : []

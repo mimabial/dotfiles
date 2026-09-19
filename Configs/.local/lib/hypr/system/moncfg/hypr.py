@@ -49,21 +49,30 @@ def monitor_key(monitor: dict) -> str:
     return output_key(monitor.get("make", ""), monitor.get("model", ""), monitor.get("name", ""))
 
 
+def mirror_source(monitor: dict, monitors: list[dict]) -> dict | None:
+    """Hyprland reports the mirrored display by id, which is not stable enough to store."""
+    return next((m for m in monitors if str(m.get("id")) == str(monitor.get("mirrorOf"))), None)
+
+
 def mode_string(width: int, height: int, refresh: float) -> str:
     return f"{int(width)}x{int(height)}@{float(refresh):.2f}Hz"
 
 
-def lid_closed() -> bool:
-    """False when there is no lid at all, so desktops behave as always-open."""
+def lid_state() -> str:
+    """Empty when there is no lid at all, so desktops behave as always-open."""
     import glob
 
     for path in glob.glob("/proc/acpi/button/lid/*/state"):
         try:
             with open(path, encoding="utf-8") as handle:
-                return "closed" in handle.read().lower()
+                return "closed" if "closed" in handle.read().lower() else "open"
         except OSError:
             continue
-    return False
+    return ""
+
+
+def lid_closed() -> bool:
+    return lid_state() == "closed"
 
 
 def is_internal(monitor: dict) -> bool:

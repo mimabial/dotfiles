@@ -8,6 +8,24 @@ reload_live_theme_client() {
     kitty)
       pkill -SIGUSR1 -x kitty 2>/dev/null || true
       ;;
+    foot)
+      # foot never re-reads its config; running windows only take colors as escape sequences.
+      local -a ptys=()
+      mapfile -t ptys < <(ps -o tty= --ppid "$(pgrep -d, -x foot)" 2>/dev/null)
+      ((${#ptys[@]})) || return 0
+      awk -F= '
+        function osc(code, hex) { printf "\033]%s;#%s\033\\", code, hex }
+        /^\[/ { dark = $0 == "[colors-dark]"; next }
+        !dark { next }
+        $1 ~ /^regular[0-7]$/ { osc("4;" substr($1, 8), $2) }
+        $1 ~ /^bright[0-7]$/ { osc("4;" substr($1, 7) + 8, $2) }
+        $1 == "foreground" { osc(10, $2) }
+        $1 == "background" { osc(11, $2) }
+        $1 == "cursor" { split($2, cursor, " "); osc(12, cursor[2]) }
+        $1 == "selection-background" { osc(17, $2) }
+        $1 == "selection-foreground" { osc(19, $2) }
+      ' "${XDG_CACHE_HOME:-$HOME/.cache}/hypr/render/foot/colors.ini" | tee "${ptys[@]/#//dev/}" >/dev/null || true
+      ;;
     tmux)
       if command -v tmux &>/dev/null; then
         tmux source-file "${XDG_CONFIG_HOME:-$HOME/.config}/tmux/colors.conf" 2>/dev/null || true

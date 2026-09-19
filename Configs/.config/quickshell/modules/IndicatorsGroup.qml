@@ -14,7 +14,11 @@ RowLayout {
     // each button subscribes to the refresh bus itself through its `indicator`
     NotificationButton {
         id: dnd
-        shell: root.shell; popupEnabled: root.popupsAllowed
+        shell: root.shell
+        // Two owners create competing focus grabs and immediately dismiss both.
+        popupEnabled: root.popupsAllowed
+            && !root.shell.barModules.includes("notification")
+            && !root.shell.barModules.includes("notification-group")
         indicator: "dnd"
         activeOnly: true; polling: false; Layout.fillHeight: true
         Component.onCompleted: dnd.refresh()

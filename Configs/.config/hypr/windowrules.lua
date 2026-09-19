@@ -82,6 +82,7 @@ hl.layer_rule({["name"] = "lua:windowrules:108", ["match"] = {["namespace"] = "n
 hl.layer_rule({["name"] = "lua:windowrules:109", ["match"] = {["namespace"] = "logout_dialog"}, ["blur"] = true})
 hl.window_rule({["name"] = "lua:windowrules:112", ["match"] = {["class"] = "^(org\\.tui\\..*|org\\.font\\..*|lazygit|lazydocker)$"}, ["float"] = true})
 hl.window_rule({["name"] = "lua:windowrules:113", ["match"] = {["class"] = "^(org\\.tui\\..*|org\\.font\\..*|lazygit|lazydocker)$"}, ["center"] = true})
+hl.window_rule({["name"] = "lockview-float", ["match"] = {["class"] = "^(org\\.quickshell)$", ["title"] = "^(Lock Layouts)$"}, ["float"] = true})
 
 local open_profiles = {
   ["org.gnome.SimpleScan"] = "standard",

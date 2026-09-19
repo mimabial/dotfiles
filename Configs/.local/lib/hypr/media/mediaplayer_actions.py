@@ -81,7 +81,6 @@ font_scale=""
 font_name=""
 font_override=""
 r_override=""
-_rofi_opacity=""
 rofi_position=""
 media_window_theme=""
 
@@ -92,7 +91,7 @@ media_height_em="${ROFI_MEDIAPLAYER_MENU_HEIGHT_EM:-${measured_height_em}}"
 [[ "${media_height_em}" =~ ^[0-9]+([.][0-9]+)?$ ]] || media_height_em="${measured_height_em}"
 
 rofi_prepare_standard_context \
-  font_scale font_name font_override r_override _rofi_opacity \
+  font_scale font_name font_override r_override \
   "${ROFI_MEDIAPLAYER_MENU_SCALE:-${ROFI_MENU_SCALE:-}}" \
   "${ROFI_MEDIAPLAYER_MENU_FONT:-${ROFI_MENU_FONT:-${ROFI_FONT:-}}}" \
   listview same
@@ -128,8 +127,6 @@ rofi_args=(
   -theme-str "${font_override}"
   -theme-str "${media_window_theme}"
 )
-[[ -n "${_rofi_opacity:-}" ]] && rofi_args+=(-theme-str "${_rofi_opacity}")
-
 rofi "${rofi_args[@]}"
 """
 

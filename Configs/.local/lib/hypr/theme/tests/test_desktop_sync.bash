@@ -5,9 +5,9 @@ THEME_DIR="$(cd -- "${BASH_SOURCE[0]%/*}/.." && pwd -P)"
 LIB_DIR="${THEME_DIR%/hypr/theme}"
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf -- "${tmp_dir}"' EXIT
-export XDG_CONFIG_HOME="${tmp_dir}/config" XDG_DATA_HOME="${tmp_dir}/data"
+export XDG_CONFIG_HOME="${tmp_dir}/config" XDG_DATA_HOME="${tmp_dir}/data" XDG_STATE_HOME="${tmp_dir}/state"
 export XDG_CACHE_HOME="${tmp_dir}/cache" HYPR_CONFIG_HOME="${XDG_CONFIG_HOME}/hypr"
-export HYPR_CACHE_HOME="${XDG_CACHE_HOME}/hypr" HYPR_STATE_HOME="${tmp_dir}/state"
+export HYPR_CACHE_HOME="${XDG_CACHE_HOME}/hypr" HYPR_DATA_HOME="${XDG_DATA_HOME}/hypr" HYPR_STATE_HOME="${XDG_STATE_HOME}/hypr"
 mkdir -p "${HYPR_CONFIG_HOME}/themes" "${XDG_DATA_HOME}/hypr"
 
 source "${LIB_DIR}/hypr/core/state.sh"
@@ -69,25 +69,26 @@ FONT='Test Sans'
 MONOSPACE_FONT='Test Mono'
 ICON_THEME='Test Icons'
 RESOLVED_KDE_COLOR_SCHEME='KvGnome'
-RESOLVED_KDE_WIDGET_STYLE='Breeze'
-RESOLVED_KVANTUM_THEME='test-kvantum'
+RESOLVED_QT_STYLE='Breeze'
 theme_desktop_configure_qt_kde_bridge
 ui_scheme="$(awk '/^\[UiSettings\]$/ { found=1; next } /^\[/ { found=0 } found && /^ColorScheme=/ { print; exit }' "${XDG_CONFIG_HOME}/kdeglobals")"
 check "${ui_scheme}" 'ColorScheme=' system-kde-scheme
 kde_style="$(awk '/^\[KDE\]$/ { found=1; next } /^\[/ { found=0 } found && /^widgetStyle=/ { print; exit }' "${XDG_CONFIG_HOME}/kdeglobals")"
 check "${kde_style}" 'widgetStyle=Breeze' live-kde-style
-qt_style="$(awk '/^\[Appearance\]$/ { found=1; next } /^\[/ { found=0 } found && /^style=/ { print; exit }' "${XDG_CONFIG_HOME}/qt6ct/qt6ct.conf")"
-check "${qt_style}" 'style=Breeze' qtct-style
+kde_font="$(awk '/^\[General\]$/ { found=1; next } /^\[/ { found=0 } found && /^font=/ { print; exit }' "${XDG_CONFIG_HOME}/kdeglobals")"
+check "${kde_font}" 'font=Test Sans,10.00,-1,5,400,0,0,0,0,0,0,0,0,0,0,1' kde-font
 
 notifications=()
 # shellcheck disable=SC2329
 dbus-send() { notifications+=("$*"); }
 theme_desktop_notify_kde_palette_changed
+theme_desktop_notify_kde_fonts_changed
 theme_desktop_notify_kde_icons_changed
-check "${#notifications[@]}" 7 kde-notification-count
+check "${#notifications[@]}" 8 kde-notification-count
 check "${notifications[0]}" '--session --type=signal /KGlobalSettings org.kde.KGlobalSettings.notifyChange int32:0 int32:0' kde-palette-notification
+check "${notifications[1]}" '--session --type=signal /KDEPlatformTheme org.kde.KDEPlatformTheme.refreshFonts' kde-font-notification
 for group in {0..5}; do
-  check "${notifications[$((group + 1))]}" "--session --type=signal /KIconLoader org.kde.KIconLoader.iconChanged int32:${group}" "kde-icon-notification-${group}"
+  check "${notifications[$((group + 2))]}" "--session --type=signal /KIconLoader org.kde.KIconLoader.iconChanged int32:${group}" "kde-icon-notification-${group}"
 done
 unset -f dbus-send
 
@@ -110,8 +111,8 @@ check "${gtk_notifications[*]}" 'pkill -HUP -x xsettingsd' xsettings-reload-only
 unset -f gsettings pkill
 
 marker="${tmp_dir}/continued"
-theme_desktop_install_kvantum_theme() { return 1; }
-theme_desktop_install_kde_color_scheme() { touch "${marker}"; }
+theme_desktop_install_kde_color_scheme() { return 1; }
+theme_desktop_configure_qt_kde_bridge() { touch "${marker}"; }
 if theme_desktop_apply_static_resolved; then
   printf 'failed: static error was masked\n' >&2
   exit 1

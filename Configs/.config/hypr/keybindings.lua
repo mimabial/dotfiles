@@ -98,7 +98,7 @@ local function submap_exec(key, description, command)
 	submap_action(key, description, hl.dsp.exec_cmd(command))
 end
 
-local function theming_cycle(key, description, command)
+local function submap_cycle(key, description, command)
 	local dispatcher = hl.dsp.exec_cmd(command)
 	bind_actions[description] = dispatcher
 	hl.bind(key, dispatcher, { description = description, repeating = true })
@@ -198,7 +198,12 @@ bind(
 	"[Window Management] toggle fullscreen",
 	hl.dsp.window.fullscreen({ mode = "fullscreen", action = "toggle" })
 )
-bind(mod, "M", "[Window Management] toggle floating", toggle_floating)
+bind(
+	mod,
+	"M",
+	"[Window Management] toggle maximize",
+	hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle" })
+)
 exec(mod, "P", "[Window Management] toggle pin", "hyprshell window/windowpin.sh")
 bind(mod, "G", "[Window Management] toggle group", hl.dsp.group.toggle())
 bind(mod .. " SHIFT", "F", "[Window Management] toggle floating", toggle_floating)
@@ -447,7 +452,7 @@ submap_leader("window", mod, "W", function()
 		)
 	end
 
-	submap_exec("T", "[Window Mode|Layout] cycle global layout", "hyprshell window/layout-toggle.sh")
+	submap_cycle("T", "[Window Mode|Layout] cycle global layout", "hyprshell window/layout-toggle.sh")
 	submap_action(
 		"S",
 		"[Window Mode|Dwindle] toggle window split",
@@ -578,10 +583,10 @@ end)
 
 -- Theming: arrows cycle and stay, letters pick and leave.
 submap_leader("theming", mod, "T", function()
-	theming_cycle("RIGHT", "[Theming] next theme", "hyprshell theme.switch.sh -n --quiet")
-	theming_cycle("LEFT", "[Theming] previous theme", "hyprshell theme.switch.sh -p --quiet")
-	theming_cycle("DOWN", "[Theming] next wallpaper", "hyprshell wallpaper next --global")
-	theming_cycle("UP", "[Theming] previous wallpaper", "hyprshell wallpaper previous --global")
+	submap_cycle("RIGHT", "[Theming] next theme", "hyprshell theme.switch.sh -n --quiet")
+	submap_cycle("LEFT", "[Theming] previous theme", "hyprshell theme.switch.sh -p --quiet")
+	submap_cycle("DOWN", "[Theming] next wallpaper", "hyprshell wallpaper next --global")
+	submap_cycle("UP", "[Theming] previous wallpaper", "hyprshell wallpaper previous --global")
 	submap_exec("T", "[Theming] select theme", "hyprshell rofi/run-after-close.sh -- hyprshell theme.select.sh")
 	submap_exec("SHIFT + T", "[Theming] reapply theme", "hyprshell theme.switch.sh --quiet")
 	submap_exec(
@@ -605,9 +610,16 @@ submap_leader("theming", mod, "T", function()
 	submap_exec("SHIFT + C", "[Theming] cycle bar layout backward", "hyprshell quickshell/layout previous")
 	submap_exec("H", "[Theming] toggle bar", "hyprshell quickshell/visibility toggle")
 	submap_exec("V", "[Theming] look and feel", "hyprshell window/looknfeel.sh")
+	submap_exec(
+		"A",
+		"[Theming] select animation",
+		"hyprshell rofi/run-after-close.sh -- hyprshell animations.sh --select"
+	)
+	submap_exec("S", "[Theming] select shader", "hyprshell rofi/run-after-close.sh -- hyprshell shaders.sh --select")
 	submap_exec("M", "[Theming] color mode", "pkill -x rofi || hyprshell theme/color-mode -m")
 	submap_exec("R", "[Theming] select rofi theme", "hyprshell rofi/run-after-close.sh -- hyprshell theme.select.sh -s")
 	submap_exec("L", "[Theming] select launcher style", "hyprshell rofi-launch.sh -s")
+	submap_exec("K", "[Theming] select lock layout", "quickshell ipc call lockview open")
 	-- the number row keeps working, so a theme can be judged on another workspace
 	for workspace = 1, 10 do
 		submap_action(
@@ -620,6 +632,7 @@ end, false)
 
 submap_leader("open", mod, "O", function()
 	submap_exec("F", "[Open] File finder", "pkill -x rofi || hyprshell launch/file-finder.sh")
+	submap_exec("B", "[Open] Bookmarks", "quickshell ipc call bar bookmarks")
 	submap_exec("L", "[Open] Game launcher", "hyprshell gaming/launcher.sh")
 	submap_exec(
 		"SHIFT + L",
@@ -650,10 +663,10 @@ end)
 -- Every org.tui.* app opens the same way: focus its window if one exists, else
 -- launch it in the TUI terminal profile. Agent Hub is the exception and keeps
 -- its own entrypoint, because the profile leaves it too few rows.
-local function tui_app(key, name, app_id, command)
+local function tui_app(key, name, app_id, command, category)
 	submap_exec(
 		key,
-		"[Terminal] " .. name,
+		"[" .. (category or "Terminal") .. "] " .. name,
 		"hyprshell launch/focus.sh "
 			.. app_id
 			.. " -- hyprshell launch/tui.sh --app-id "
@@ -673,6 +686,8 @@ submap_leader("terminal", mod, "J", function()
 	tui_app("W", "Impala", "org.tui.Impala", "impala")
 	tui_app("V", "Wiremix", "org.tui.Wiremix", "wiremix")
 	tui_app("U", "Dua", "org.tui.Dua", "dua i")
+	tui_app("C", "Calculator", "org.tui.Calc", "hyprshell util/calc-tui.py")
+	submap_exec("L", "[Terminal] Look and feel", "hyprshell window/looknfeel.sh")
 	submap_exec("T", "[Terminal] Dropdown terminal", "hyprshell window/dropdown-terminal")
 	submap_exec(
 		"R",
@@ -715,6 +730,7 @@ submap_leader("utilities", mod, "U", function()
 	submap_exec("SHIFT + S", "[System] cycle monitor scale backward", "hyprshell system/monitor-scale.sh --reverse")
 	submap_exec("D", "[System] toggle laptop display", "hyprshell system/monitor-internal.sh toggle")
 	submap_exec("M", "[System] toggle mirroring", "hyprshell system/monitor-mirror.sh toggle")
+	tui_app("L", "Display layout", "org.tui.Displays", "hyprmoncfg", "System")
 end)
 
 -- Workspaces

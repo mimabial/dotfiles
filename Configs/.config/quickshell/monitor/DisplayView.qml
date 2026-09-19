@@ -259,7 +259,7 @@ KeyboardPanel {
               id: textSizeValue
               textFormat: Text.PlainText
               anchors.right: parent.right
-              text: Style.textSize + " px"
+              text: panel.controller.effectiveTextSize + " px"
               color: panel.controller.foreground
               font.family: panel.controller.fontFamily
               font.pixelSize: Style.font.bodySmall

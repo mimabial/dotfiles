@@ -102,6 +102,11 @@ sync_ui_fonts() {
   append_updated 'Rofi launcher'
 }
 
+sync_hyprlock_font() {
+  "${LIB_DIR}/hypr/render/hyprlock.sh" >/dev/null 2>&1 || return 0
+  append_updated 'Hyprlock font'
+}
+
 sync_desktop_ui_fonts() {
   local desktop_sync_script="${LIB_DIR}/hypr/theme/desktop.sync.sh"
 
@@ -144,6 +149,7 @@ apply_terminal_fonts
 apply_theme_terminal_overlays
 apply_fontconfig_alias
 sync_ui_fonts
+sync_hyprlock_font
 sync_desktop_ui_fonts
 refresh_font_cache
 show_summary
