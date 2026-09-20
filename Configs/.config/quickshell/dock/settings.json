@@ -22,12 +22,7 @@
   "urgentSoundName": "bell",
   "revealDelay": 160,
   "tooltipDelay": 450,
-  "pinnedFolders": [
-    {
-      "path": "~/Downloads",
-      "name": "Downloads",
-      "icon": "folder-download"
-    }
-  ],
+  "appGroups": [],
+  "pinnedFolders": [],
   "clickToMinimize": true
 }

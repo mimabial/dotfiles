@@ -37,8 +37,7 @@ BarGroup {
         WifiQrPopup { anchorItem: wifiButton; shell: root.shell; popupEnabled: root.popupsAllowed }
     } }
     Component { id: vpnSlot; VpnButton { shell: root.shell; popupsAllowed: root.popupsAllowed } }
-    Component { id: speedSlot; ScriptButton {
-        shell: root.shell; css: "network.speed"; tooltip: ""
-        command: ["hyprshell", "sysinfo/network-speed"]; interval: 3000
+    Component { id: speedSlot; SpeedButton {
+        shell: root.shell; popupsAllowed: root.popupsAllowed; vertical: root.vertical
     } }
 }

@@ -290,6 +290,7 @@
   },
   "network.speed": {
     "border": 1.5,
+    "content": ["fg", 0.5],
     "hover": {
       "fill": null,
       "content": ["hvr_fg", 1.0],

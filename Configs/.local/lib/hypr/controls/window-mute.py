@@ -24,7 +24,6 @@ NOTIFY_ID = 18
 ICON_THEME_DIR = "Pywal16-Icon"
 ICON_MUTED = "media/muted-speaker.svg"
 ICON_UNMUTED = "media/unmuted-speaker.svg"
-ICON_INFO = "wallbash.svg"
 
 
 @dataclass(slots=True)
@@ -324,7 +323,7 @@ def main() -> int:
         _notify(
             "No audio stream for focused window",
             body=label,
-            icon=_icon_path(ICON_INFO),
+            icon=_icon_path(ICON_MUTED),
             timeout=1200,
         )
         print(f"No sink input for focused window: {app_class}", file=sys.stderr)
@@ -341,7 +340,7 @@ def main() -> int:
         _notify(
             f"Failed to set {state.lower()}",
             body=f"{label} (stream {failed_id})",
-            icon=_icon_path(ICON_INFO),
+            icon=_icon_path(ICON_MUTED),
             timeout=1200,
         )
         print(f"Failed to set sink input {failed_id} to {state.lower()}.", file=sys.stderr)

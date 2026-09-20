@@ -42,10 +42,11 @@ class HyprlangParser:
         if depth >= max_depth:
             return value
 
-        pattern = r"\$\{?([A-Za-z_][A-Za-z0-9_.-]*)\}?"
+        # A braced reference must close, or ${USER:0:1} would be read as ${USER.
+        pattern = r"\$\{([A-Za-z_][A-Za-z0-9_.-]*)\}|\$([A-Za-z_][A-Za-z0-9_.-]*)"
 
         def replacer(match):
-            var_name, rest = match.group(1), ""
+            var_name, rest = match.group(1) or match.group(2), ""
             if var_name not in self.variables and "." in var_name:
                 var_name, dot, tail = var_name.partition(".")
                 rest = dot + tail
@@ -60,8 +61,12 @@ class HyprlangParser:
     def strip_comment(self, line: str) -> str:
         in_quotes = False
         quote_char = None
-        for i, char in enumerate(line):
-            if char in ('"', "'") and (i == 0 or line[i - 1] != "\\"):
+        i = -1
+        while (i := i + 1) < len(line):
+            char = line[i]
+            if line.startswith("##", i):
+                i += 1
+            elif char in ('"', "'") and (i == 0 or line[i - 1] != "\\"):
                 if not in_quotes:
                     in_quotes = True
                     quote_char = char
@@ -196,7 +201,7 @@ class HyprlangParser:
                 )
         elif match := KEY_ASSIGNMENT.match(line):
             key, raw = match.group(1), match.group(2).strip()
-            resolved = self.resolve_variable(raw)
+            resolved = self.resolve_variable(raw).replace("##", "#")
             if len(context_stack) == 1:
                 self.blocks[-1]["keys"][key] = resolved
             if raw:

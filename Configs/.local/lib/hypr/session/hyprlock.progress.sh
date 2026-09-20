@@ -5,8 +5,9 @@ set -uo pipefail
 played="${1:-ffffff}" rest="${2:-ffffff}" cells=10
 cache="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/hypr/hyprlock-progress"
 
-player=spotify
-[[ "$(playerctl -p "${player}" status 2>/dev/null)" =~ ^(Playing|Paused)$ ]] || player="$(playerctl -l 2>/dev/null | head -n 1)"
+# shellcheck source=/dev/null
+source "${LIB_DIR:-$HOME/.local/lib}/hypr/session/hyprlock.media.bash"
+player="$(mpris_default_player)"
 [[ -n "${player}" ]] || { rm -f "${cache}"; exit 0; }
 IFS=';' read -r status position length track < <(playerctl -p "${player}" metadata \
   --format '{{status}};{{position}};{{mpris:length}};{{mpris:trackid}}' 2>/dev/null)

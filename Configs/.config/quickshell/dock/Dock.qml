@@ -18,6 +18,7 @@ Item {
 
   property var shell: null
   property alias contextSelectedWindowIdx: contextMenu.selectedWindowIdx
+  property alias dockCardItem: dockCard
 
   readonly property string dockPath: Quickshell.env("HOME") + "/.config/quickshell/dock/pins.json"
   readonly property string configPath: Quickshell.env("HOME") + "/.config/quickshell/dock/settings.json"
@@ -180,11 +181,14 @@ Item {
   }
   // Pinned-group | running divider. Sits after the tile section when tiles
   // exist, so it doubles as the right tile divider.
-  readonly property bool hasSeparator: root.pinnedSection.length > 0 && root.visibleRunningCount > 0
+  readonly property int groupSlots: root.appGroups.length
+  readonly property bool hasSeparator: (root.pinnedSection.length > 0 || root.groupSlots > 0 || root.hasTiles)
+    && root.visibleRunningCount > 0
   readonly property real gapWidth: Style.space(root.itemSpacing)
   readonly property real separatorWidth: Style.space(1)
   readonly property int folderSlots: root.pinnedFolders ? root.pinnedFolders.length : 0
-  readonly property bool hasFolderSeparator: root.folderSlots > 0 && (root.pinnedSection.length > 0 || root.visibleRunningCount > 0)
+  readonly property bool hasFolderSeparator: root.folderSlots > 0
+    && (root.pinnedSection.length > 0 || root.groupSlots > 0 || root.hasTiles || root.visibleRunningCount > 0)
 
   // Minimized-window preview tiles (macOS-style section on the dock's right).
   // In minimizeMode "all", a parked app's windows compress into ONE stacked
@@ -240,11 +244,12 @@ Item {
   }
   readonly property bool hasTiles: root.tileCount > 0
   // Left tile divider (pinned|tiles) renders only when pins precede the tiles.
-  readonly property bool hasLeftTileSeparator: root.hasTiles && root.pinnedSection.length > 0
+  readonly property bool hasLeftTileSeparator: root.hasTiles && (root.pinnedSection.length > 0 || root.groupSlots > 0)
 
   // Width arithmetic total: hidden (fully-tiled) entries occupy zero width,
   // so the row-width and gap math must count only visible icons.
-  readonly property int visibleSlotTotal: root.appsSlots + root.pinnedSection.length + root.visibleRunningCount + root.folderSlots
+  readonly property int visibleSlotTotal: root.appsSlots + root.pinnedSection.length + root.groupSlots
+    + root.visibleRunningCount + root.folderSlots
   readonly property int appsSeparatorCount: root.appsSlots > 0 && root.visibleSlotTotal + root.tileCount > root.appsSlots ? 1 : 0
   readonly property int elementTotal: root.visibleSlotTotal
     + root.appsSeparatorCount
@@ -356,12 +361,13 @@ Item {
   property string _minimizedSig: ""
   readonly property var pinnedSection: root.dockModel.pinned || []
   readonly property var runningSection: root.dockModel.running || []
+  readonly property var groupedSection: root.dockModel.grouped || []
 
   function refreshDock() {
     root.dockModel = DockModel.buildEntries(root.pinnedIds,
                                             (ToplevelManager.toplevels ? ToplevelManager.toplevels.values : []),
                                             root.appRows, root.appLibrary, root.hyprToplevelFor,
-                                            root.isMinimizedWorkspace, root.minimizedOrigins)
+                                            root.isMinimizedWorkspace, root.minimizedOrigins, root.appGroups)
     root.rescanMinimizedWindows()
     root.pruneLaunching()
     root.pruneWindowState()
@@ -489,7 +495,11 @@ Item {
 
   property string dragAppId: ""
   property string dropBeforeId: ""
-  property real dropIndicatorX: 0
+  property string dropTargetAppId: ""
+  property string dropTargetGroupId: ""
+  property string dragSourceGroupId: ""
+  property bool dropIntoPins: false
+  property real dropIndicatorMain: 0
 
 
   property string contextAppId: ""
@@ -510,6 +520,14 @@ Item {
   property real activeStackAnchor: 0
   property string contextFolderPath: ""
   property string contextFolderName: ""
+
+  property var appGroups: []
+  property string activeAppGroupId: ""
+  property var activeAppGroupData: null
+  property real activeAppGroupAnchor: 0
+  property var contextAppGroupData: null
+  property bool appGroupEditing: false
+  property bool appGroupFocusPriming: false
 
 
   property bool autohide: true
@@ -570,6 +588,12 @@ Item {
     id: hideTimer
     interval: 350
     onTriggered: root.dockVisible = false
+  }
+
+  Timer {
+    id: appGroupFocusTimer
+    interval: 150
+    onTriggered: root.appGroupFocusPriming = false
   }
 
   // Dwell on the screen edge before revealing, so a pointer travelling to the
@@ -786,7 +810,9 @@ Item {
   readonly property bool pointerOverDock: (cardHover && cardHover.hovered)
     || contextMenu.hovered
     || (stackHover && stackHover.hovered)
+    || appGroupPopup.hovered
   readonly property bool anyPanelOpen: root.contextAppId !== "" || root.activeStackFolder !== ""
+    || root.activeAppGroupId !== ""
   readonly property string startPopupName: "dockstart"
   readonly property bool startPopupOpen: root.shell ? root.shell.popupName === root.startPopupName : false
 
@@ -797,10 +823,11 @@ Item {
   // A menu or popover is anchored to the slot that opened it, so moving onto a
   // different slot strands it beside a neighbour it has nothing to do with.
   // Dragging is exempt: the pointer crosses every slot on its way.
-  function slotEntered(menuOwner, stackOwner) {
+  function slotEntered(menuOwner, stackOwner, groupOwner) {
     if (root.dragAppId !== "") return
     if (root.contextAppId !== "" && root.contextAppId !== menuOwner) root.closeContext()
     if (root.activeStackFolder !== "" && root.activeStackFolder !== stackOwner) root.closeFolderStack()
+    if (root.activeAppGroupId !== "" && root.activeAppGroupId !== groupOwner) root.closeAppGroup()
   }
 
   function syncPanelDismiss() {
@@ -815,6 +842,7 @@ Item {
       if (root.pointerOverDock || root.dragAppId !== "") return
       if (root.contextAppId !== "") root.closeContext()
       if (root.activeStackFolder !== "") root.closeFolderStack()
+      if (root.activeAppGroupId !== "") root.closeAppGroup()
     }
   }
 
@@ -828,6 +856,7 @@ Item {
 
     var isHovered = (cardHover && cardHover.hovered) || (revealHover && revealHover.hovered)
       || root.contextAppId !== "" || root.dragAppId !== "" || root.activeStackFolder !== ""
+      || root.activeAppGroupId !== ""
       || root.startPopupOpen
 
     if (isHovered) {
@@ -852,6 +881,12 @@ Item {
 
   onContextAppIdChanged: root.syncVisibility()
   onActiveStackFolderChanged: root.syncVisibility()
+  onActiveAppGroupIdChanged: root.syncVisibility()
+  onAppGroupEditingChanged: {
+    root.appGroupFocusPriming = root.appGroupEditing
+    if (root.appGroupEditing) appGroupFocusTimer.restart()
+    else appGroupFocusTimer.stop()
+  }
   onDragAppIdChanged: root.syncVisibility()
   onAutohideChanged: root.syncVisibility()
   onIntelligentAutohideChanged: {
@@ -864,6 +899,7 @@ Item {
     if (!root.dockVisible) {
       root.closeContext()
       root.closeFolderStack()
+      root.closeAppGroup()
     }
   }
 
@@ -1109,6 +1145,7 @@ Item {
     root.rescanApps()
   }
   onPinnedIdsChanged: root.refreshDock()
+  onAppGroupsChanged: root.refreshDock()
 
 
   function loadPinned() {
@@ -1169,6 +1206,7 @@ Item {
     root.tooltipDelay = parsed && typeof parsed.tooltipDelay === "number"
       ? Math.max(0, Math.min(5000, Math.round(parsed.tooltipDelay)))
       : 450
+    root.appGroups = parsed && Array.isArray(parsed.appGroups) ? parsed.appGroups : []
     if (parsed && Array.isArray(parsed.pinnedFolders)) {
       root.pinnedFolders = parsed.pinnedFolders
     } else {
@@ -1902,6 +1940,7 @@ Item {
     conf.urgentSoundName = root.urgentSoundName
     conf.revealDelay = root.revealDelay
     conf.tooltipDelay = root.tooltipDelay
+    conf.appGroups = root.appGroups
     conf.pinnedFolders = root.pinnedFolders
     configFile.setText(JSON.stringify(conf, null, 2))
   }
@@ -2059,6 +2098,10 @@ Item {
       if (root.runningSection[i].appId === appId || DockModel.isAppMatch(root.runningSection[i].appId, appId))
         return root.runningSection[i]
     }
+    for (i = 0; i < root.groupedSection.length; i++) {
+      if (root.groupedSection[i].appId === appId || DockModel.isAppMatch(root.groupedSection[i].appId, appId))
+        return root.groupedSection[i]
+    }
     return null
   }
 
@@ -2099,7 +2142,7 @@ Item {
   }
 
   function syncContextWindows() {
-    if (!root.contextAppId || root.contextAppId === "__dock_settings__" || root.contextAppId === "__folder_context__") return
+    if (!root.contextAppId || root.contextAppId.indexOf("__") === 0) return
     var entry = root.entryForId(root.contextAppId)
     var wins = entry && entry.windowList ? entry.windowList : []
     if (wins.length === 0) {
@@ -2261,6 +2304,194 @@ Item {
     root.saveConfig()
   }
 
+  function appGroup(groupId) {
+    for (var i = 0; i < root.appGroups.length; i++)
+      if (root.appGroups[i] && root.appGroups[i].id === groupId) return root.appGroups[i]
+    return null
+  }
+
+  function openAppGroup(group, anchor) {
+    if (!group || root.activeAppGroupId === group.id) {
+      root.closeAppGroup()
+      return
+    }
+    root.closeContext()
+    root.closeFolderStack()
+    root.activeAppGroupId = group.id
+    root.activeAppGroupData = group
+    root.activeAppGroupAnchor = anchor
+  }
+
+  function closeAppGroup() {
+    root.activeAppGroupId = ""
+    root.activeAppGroupData = null
+    root.appGroupEditing = false
+  }
+
+  function openAppGroupContext(group, anchor) {
+    root.closeContext()
+    root.closeFolderStack()
+    root.closeAppGroup()
+    root.contextAppGroupData = group
+    root.contextAnchor = anchor
+    root.contextAppId = "__app_group_context__"
+  }
+
+  function createAppGroup(appIds, name) {
+    var apps = []
+    for (var i = 0; i < appIds.length; i++) {
+      var id = DockModel.normalizeId(appIds[i])
+      if (id && apps.indexOf(id) < 0) apps.push(id)
+    }
+    if (apps.length < 2) return
+    root.appGroups = root.appGroups.concat([{
+      id: "group_" + Date.now(),
+      name: name || "Applications",
+      apps: apps
+    }])
+    root.setPinned(root.pinnedIds.filter(function(id) { return apps.indexOf(DockModel.normalizeId(id)) < 0 }))
+    root.saveConfig()
+  }
+
+  function createAppGroupFromRunning() {
+    var entries = root.pinnedSection.concat(root.runningSection)
+    var apps = []
+    for (var i = 0; i < entries.length; i++)
+      if (entries[i] && entries[i].running && apps.indexOf(entries[i].appId) < 0) apps.push(entries[i].appId)
+    root.createAppGroup(apps, "Group " + (root.appGroups.length + 1))
+  }
+
+  function addAppToGroup(groupId, appId) {
+    var id = DockModel.normalizeId(appId)
+    root.appGroups = root.appGroups.map(function(group) {
+      if (!group || group.id !== groupId) return group
+      var apps = DockModel.toArray(group.apps)
+      if (apps.indexOf(id) < 0) apps.push(id)
+      return Object.assign({}, group, { apps: apps })
+    })
+    root.setPinned(root.pinnedIds.filter(function(pin) { return !DockModel.isAppMatch(pin, id) }))
+    root.saveConfig()
+  }
+
+  function removeAppFromGroup(groupId, appId, pinRemoved) {
+    var groups = [], pins = root.pinnedIds.slice(), remaining = []
+    for (var i = 0; i < root.appGroups.length; i++) {
+      var group = root.appGroups[i]
+      if (!group || group.id !== groupId) {
+        groups.push(group)
+        continue
+      }
+      remaining = DockModel.toArray(group.apps).filter(function(id) { return !DockModel.isAppMatch(id, appId) })
+      if (remaining.length > 1) groups.push(Object.assign({}, group, { apps: remaining }))
+      else if (remaining.length === 1 && pins.indexOf(remaining[0]) < 0) pins.push(remaining[0])
+    }
+    if (pinRemoved && pins.indexOf(appId) < 0) pins.push(appId)
+    root.appGroups = groups
+    root.setPinned(pins)
+    root.saveConfig()
+    var active = root.appGroup(groupId)
+    if (active) root.activeAppGroupData = active
+    else root.closeAppGroup()
+  }
+
+  function ungroupAppGroup(groupId) {
+    var group = root.appGroup(groupId)
+    if (!group) return
+    var pins = root.pinnedIds.slice(), apps = DockModel.toArray(group.apps)
+    for (var i = 0; i < apps.length; i++) if (pins.indexOf(apps[i]) < 0) pins.push(apps[i])
+    root.appGroups = root.appGroups.filter(function(item) { return item && item.id !== groupId })
+    root.setPinned(pins)
+    root.saveConfig()
+    root.closeAppGroup()
+  }
+
+  function renameAppGroup(groupId, name) {
+    var clean = String(name || "").trim()
+    if (!clean) return
+    root.appGroups = root.appGroups.map(function(group) {
+      return group && group.id === groupId ? Object.assign({}, group, { name: clean }) : group
+    })
+    root.activeAppGroupData = root.appGroup(groupId)
+    root.saveConfig()
+  }
+
+  function itemMainBounds(item) {
+    var point = item.mapToItem(dockCard, 0, 0)
+    return { start: root.vertical ? point.y : point.x, size: root.vertical ? item.height : item.width }
+  }
+
+  function updateDragTarget(appId, main) {
+    root.dropBeforeId = ""
+    root.dropTargetAppId = ""
+    root.dropTargetGroupId = ""
+    root.dropIntoPins = false
+
+    for (var g = 0; g < appGroupsRepeater.count; g++) {
+      var groupItem = appGroupsRepeater.itemAt(g)
+      if (!groupItem || !groupItem.visible) continue
+      var groupBounds = root.itemMainBounds(groupItem)
+      if (Math.abs(main - groupBounds.start - groupBounds.size / 2) < groupBounds.size * 0.45) {
+        root.dropTargetGroupId = root.appGroups[g].id
+        return
+      }
+    }
+
+    var count = pinnedRepeater.count
+    for (var i = 0; i < count; i++) {
+      var item = pinnedRepeater.itemAt(i)
+      var pinnedId = root.pinnedSection[i].appId
+      if (!item || !item.visible || DockModel.isAppMatch(pinnedId, appId)) continue
+      var bounds = root.itemMainBounds(item)
+      if (Math.abs(main - bounds.start - bounds.size / 2) < bounds.size * 0.36) {
+        root.dropTargetAppId = pinnedId
+        return
+      }
+    }
+    if (count === 0) return
+
+    var first = root.itemMainBounds(pinnedRepeater.itemAt(0))
+    var last = root.itemMainBounds(pinnedRepeater.itemAt(count - 1))
+    root.dropIntoPins = main >= first.start - root.gapWidth && main <= last.start + last.size + root.gapWidth
+    if (!root.dropIntoPins && root.pinnedIds.indexOf(appId) < 0 && root.dragSourceGroupId === "") return
+
+    for (var p = 0; p < count; p++) {
+      var pin = pinnedRepeater.itemAt(p)
+      var pinBounds = root.itemMainBounds(pin)
+      if (main < pinBounds.start + pinBounds.size / 2) {
+        root.dropBeforeId = root.pinnedSection[p].appId
+        root.dropIndicatorMain = pinBounds.start - Style.space(1)
+        return
+      }
+    }
+    root.dropIndicatorMain = last.start + last.size + Style.space(1)
+  }
+
+  function finishDrag() {
+    var appId = root.dragAppId
+    var sourceGroup = root.dragSourceGroupId
+    var targetGroup = root.dropTargetGroupId
+    var targetApp = root.dropTargetAppId
+    var before = root.dropBeforeId
+    var pinHere = root.dropIntoPins
+
+    root.dragAppId = ""
+    root.dragSourceGroupId = ""
+    root.dropTargetGroupId = ""
+    root.dropTargetAppId = ""
+    root.dropBeforeId = ""
+    root.dropIntoPins = false
+    if (!appId || (sourceGroup && sourceGroup === targetGroup)) return
+
+    if (sourceGroup) root.removeAppFromGroup(sourceGroup, appId, false)
+    if (targetGroup) root.addAppToGroup(targetGroup, appId)
+    else if (targetApp) root.createAppGroup([targetApp, appId], "Applications")
+    else if (pinHere || root.pinnedIds.indexOf(appId) >= 0 || sourceGroup) {
+      var pins = root.pinnedIds.slice()
+      if (pins.indexOf(appId) < 0) pins.push(appId)
+      root.setPinned(DockModel.reorderPinned(pins, appId, before))
+    }
+  }
+
   // Widest piece of content in the open menu. Only implicit widths are read, so
   // feeding the result back into every row cannot loop.
   function menuContentWidth(item) {
@@ -2291,7 +2522,8 @@ Item {
     color: "transparent"
     WlrLayershell.namespace: "hypr-shell-dock"
     WlrLayershell.layer: WlrLayer.Top
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: !root.appGroupEditing ? WlrKeyboardFocus.None
+      : root.appGroupFocusPriming ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
     exclusionMode: (!root.autohide) ? ExclusionMode.Normal : ExclusionMode.Ignore
     exclusiveZone: (!root.autohide)
       ? Math.round((root.vertical ? dockCard.width : dockCard.height) + Style.gapsOut * 2)
@@ -2320,6 +2552,7 @@ Item {
       regions: [
         Region { item: contextMenu },
         Region { item: folderStackPopover },
+        Region { item: appGroupPopup },
         Region { item: revealStrip },
         Region { item: globalDismiss }
       ]
@@ -2387,8 +2620,8 @@ Item {
 
     Item {
       id: globalDismiss
-      width: (root.contextAppId !== "" || root.activeStackFolder !== "") ? dockWindow.width : 0
-      height: (root.contextAppId !== "" || root.activeStackFolder !== "") ? dockWindow.height : 0
+      width: root.anyPanelOpen ? dockWindow.width : 0
+      height: root.anyPanelOpen ? dockWindow.height : 0
       MouseArea {
         anchors.fill: parent
         z: -1
@@ -2404,13 +2637,10 @@ Item {
           if (root.activeStackFolder !== "") {
             root.closeFolderStack()
           }
+          if (root.activeAppGroupId !== "") root.closeAppGroup()
         }
         onReleased: function(mouse) {
-          if (root.dragAppId !== "") {
-            root.dragAppId = ""
-            root.dropBeforeId = ""
-            root.syncVisibility()
-          }
+          if (root.dragAppId !== "") root.finishDrag()
         }
       }
     }
@@ -2480,11 +2710,7 @@ Item {
         acceptedButtons: Qt.LeftButton
         onClicked: if (root.contextAppId !== "") root.closeContext()
         onReleased: {
-          if (root.dragAppId !== "") {
-            root.dragAppId = ""
-            root.dropBeforeId = ""
-            root.syncVisibility()
-          }
+          if (root.dragAppId !== "") root.finishDrag()
         }
       }
 
@@ -2551,46 +2777,32 @@ Item {
             onMenuRequested: function(aid, cx, cy) { root.openContext(aid, cx, cy) }
             onWheelScrolled: function(aid, dir) { root.cycleApp(aid, dir) }
             onDragStarted: function(aid) {
-              root.dragAppId = aid
-              root.dropBeforeId = ""
+              dock.dragAppId = aid
+              dock.dragSourceGroupId = ""
+              dock.dropBeforeId = ""
+              dock.dropTargetAppId = ""
+              dock.dropTargetGroupId = ""
             }
-            onDragMoved: function(aid, mx) {
-              root.dropBeforeId = ""
-              var count = pinnedRepeater.count
-              var found = false
-              for (var i = 0; i < count; i++) {
-                var child = pinnedRepeater.itemAt(i)
-                if (!child || !child.visible) continue
-                var childGlobalX = row.x + child.x
-                var childCenter = childGlobalX + child.width / 2
-                if (mx < childCenter) {
-                  root.dropBeforeId = child.appId
-                  root.dropIndicatorX = childGlobalX - Style.space(1)
-                  found = true
-                  break
-                }
-              }
-              if (!found && count > 0) {
-                for (var j = count - 1; j >= 0; j--) {
-                  var lastChild = pinnedRepeater.itemAt(j)
-                  if (lastChild && lastChild.visible) {
-                    root.dropBeforeId = ""
-                    root.dropIndicatorX = row.x + lastChild.x + lastChild.width + Style.space(1)
-                    break
-                  }
-                }
-              }
-            }
-            onDragDropped: function(aid) {
-              var dragId = root.dragAppId
-              var beforeId = root.dropBeforeId
-              root.dragAppId = ""
-              root.dropBeforeId = ""
-              if (dragId !== "") {
-                root.setPinned(DockModel.reorderPinned(root.pinnedIds, dragId, beforeId))
-              }
-              root.syncVisibility()
-            }
+            onDragMoved: function(aid, main) { dock.updateDragTarget(aid, main) }
+            onDragDropped: function(aid) { dock.finishDrag() }
+          }
+        }
+
+        Repeater {
+          id: appGroupsRepeater
+          model: root.appGroups.map(function(group) {
+            return { group: group, dock: root, content: dockWindow.contentItem }
+          })
+          delegate: DockAppGroupItem {
+            required property var modelData
+            required property int index
+            dock: modelData.dock
+            dockContent: modelData.content
+            groupData: modelData.group
+            homeCenter: dock.slotHomeCenter(
+              dock.appsSlots + dock.appsSeparatorCount + dock.pinnedSection.length + index,
+              dock.appsSlots + dock.pinnedSection.length + index,
+              dock.appsSeparatorCount)
           }
         }
 
@@ -2618,8 +2830,8 @@ Item {
             // Same magnify contract as DockItem/DockFolderItem: wave grows the
             // layout slot; zoom scales the visual stack in place (tileVisual).
             readonly property real homeCenter: root.slotHomeCenter(
-              root.appsSlots + root.appsSeparatorCount + root.pinnedSection.length + (root.hasLeftTileSeparator ? 1 : 0) + index,
-              root.appsSlots + root.pinnedSection.length + index,
+              root.appsSlots + root.appsSeparatorCount + root.pinnedSection.length + root.groupSlots + (root.hasLeftTileSeparator ? 1 : 0) + index,
+              root.appsSlots + root.pinnedSection.length + root.groupSlots + index,
               root.appsSeparatorCount,
               (root.hasLeftTileSeparator ? root.separatorWidth : 0) + index * root.tileMainSize + (root.tileMainSize - root.iconSlot) / 2)
             property real magnifyScale: {
@@ -2883,8 +3095,8 @@ Item {
             // hidden (fully-tiled) entry occupies zero width in the Row.
             readonly property int visibleIdx: root.visibleRunningSlotBefore(index)
             homeCenter: root.slotHomeCenter(
-              root.appsSlots + root.appsSeparatorCount + root.pinnedSection.length + (root.hasLeftTileSeparator ? 1 : 0) + (root.hasSeparator ? 1 : 0) + root.tileElements + visibleIdx,
-              root.appsSlots + root.pinnedSection.length + visibleIdx,
+              root.appsSlots + root.appsSeparatorCount + root.pinnedSection.length + root.groupSlots + (root.hasLeftTileSeparator ? 1 : 0) + (root.hasSeparator ? 1 : 0) + root.tileElements + visibleIdx,
+              root.appsSlots + root.pinnedSection.length + root.groupSlots + visibleIdx,
               root.appsSeparatorCount + (root.hasSeparator ? 1 : 0),
               root.tilesFixedWidth)
             pinned: false
@@ -2893,6 +3105,12 @@ Item {
             onNewWindowRequested: function(aid) { root.launchApp(aid, null) }
             onMenuRequested: function(aid, cx, cy) { root.openContext(aid, cx, cy) }
             onWheelScrolled: function(aid, dir) { root.cycleApp(aid, dir) }
+            onDragStarted: function(aid) {
+              dock.dragAppId = aid
+              dock.dragSourceGroupId = ""
+            }
+            onDragMoved: function(aid, main) { dock.updateDragTarget(aid, main) }
+            onDragDropped: function(aid) { dock.finishDrag() }
 
             // When an unpinned app has ALL its windows minimized and tiles are
             // showing, the tile section already represents it — hide the icon
@@ -2928,8 +3146,8 @@ Item {
             name: modelData.name || "Folder"
             icon: modelData.icon || DockModel.folderIconFor(modelData.path, "")
             homeCenter: root.slotHomeCenter(
-              root.appsSlots + root.appsSeparatorCount + root.pinnedSection.length + (root.hasLeftTileSeparator ? 1 : 0) + (root.hasSeparator ? 1 : 0) + root.tileElements + root.visibleRunningCount + (root.hasFolderSeparator ? 1 : 0) + index,
-              root.appsSlots + root.pinnedSection.length + root.visibleRunningCount + index,
+              root.appsSlots + root.appsSeparatorCount + root.pinnedSection.length + root.groupSlots + (root.hasLeftTileSeparator ? 1 : 0) + (root.hasSeparator ? 1 : 0) + root.tileElements + root.visibleRunningCount + (root.hasFolderSeparator ? 1 : 0) + index,
+              root.appsSlots + root.pinnedSection.length + root.groupSlots + root.visibleRunningCount + index,
               root.appsSeparatorCount + (root.hasSeparator ? 1 : 0) + (root.hasFolderSeparator ? 1 : 0),
               root.tilesFixedWidth)
             onOpenStackRequested: function(fpath, fname, cx, cy) {
@@ -2943,15 +3161,21 @@ Item {
       }
 
       Rectangle {
-        visible: root.dragAppId !== ""
-        x: root.dropIndicatorX
-        anchors.verticalCenter: row.verticalCenter
-        width: Style.space(2)
-        height: root.iconSize + Style.space(4)
+        visible: root.dragAppId !== "" && root.dropIntoPins
+          && root.dropTargetAppId === "" && root.dropTargetGroupId === ""
+        x: root.vertical ? row.x + (row.width - width) / 2 : root.dropIndicatorMain
+        y: root.vertical ? root.dropIndicatorMain : row.y + (row.height - height) / 2
+        width: root.vertical ? root.iconSize + Style.space(4) : Style.space(2)
+        height: root.vertical ? Style.space(2) : root.iconSize + Style.space(4)
         radius: 1
         color: Color.bar.active
         z: 10
       }
+    }
+
+    AppGroupPopup {
+      id: appGroupPopup
+      dock: root
     }
 
     BorderSurface {

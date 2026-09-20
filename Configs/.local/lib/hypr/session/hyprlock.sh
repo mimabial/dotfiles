@@ -5,23 +5,23 @@ set -euo pipefail
 LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 
 queue_art_update() {
-  local dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/hypr" lock fd now last=0
+  local dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/hypr" lock fd path last=0
   [[ -d "${dir}" ]] || mkdir -m 700 "${dir}" || return
   lock="${dir}/hyprlock-art.lock"
   exec {fd}>"${lock}" && flock -n "${fd}" || return 0
-  [[ -r "${lock}.stamp" ]] && read -r last <"${lock}.stamp"
-  [[ "${last}" =~ ^[0-9]+$ ]] || last=0
-  now="$(date +%s)"
-  ((now - last > 2)) || return 0
-  printf '%s\n' "${now}" >"${lock}.stamp"
+  read -r last 2>/dev/null <"${lock}.stamp" || last=0
+  ((EPOCHSECONDS - last > 2)) || return 0
+  printf '%s\n' "${EPOCHSECONDS}" >"${lock}.stamp"
   exec {fd}>&-
-  "${BASH_SOURCE[0]}" --update-art >/dev/null 2>&1 &
+  # hyprlock reads a label's pipe until every holder closes it, background work included
+  ( for path in /proc/self/fd/*; do fd="${path##*/}"; ((fd < 3)) || exec {fd}>&-; done
+    exec "${BASH_SOURCE[0]}" --update-art ) >/dev/null 2>&1 &
 }
 
 case "${1:-}" in
   --mpris|--title|--artist|--source|--status|--length)
     source "${LIB_DIR}/hypr/session/hyprlock.media.bash"
-    [[ "$1" == --source ]] && queue_art_update
+    queue_art_update  # most layouts never ask for --source; this self-rate-limits
     "fn_${1#--}" "${2:-}"
     exit
     ;;
@@ -63,6 +63,11 @@ arguments:
   --source           - Returns MPRIS player icon
   --status           - Returns MPRIS play/pause status icon
   --length           - Returns MPRIS song length (MM:SS)
+  --play-pause       - Toggles playback on the player the lock screen shows
+  --next             - Skips to the next track on that player
+  --previous         - Skips to the previous track on that player
+  --rewind           - Seeks 10 seconds back on that player
+  --forward          - Seeks 10 seconds ahead on that player
   --profile          - Generates the profile picture
   --art              - Prints the path to the mpris art
   --select      -S   - Opens the hyprlock layout explorer
@@ -145,6 +150,9 @@ handle_hyprlock_action() {
     --length)
       fn_length
       ;;
+    --play-pause|--next|--previous|--rewind|--forward)
+      fn_control "${1#--}"
+      ;;
     --update-art)
       fn_update_art
       ;;
@@ -158,7 +166,7 @@ handle_hyprlock_action() {
 }
 
 parse_and_dispatch_args() {
-  local longopts="select,repair,background,profile,title,artist,source,status,length,update-art,art,help,test:,apply:"
+  local longopts="select,repair,background,profile,title,artist,source,status,length,play-pause,next,previous,rewind,forward,update-art,art,help,test:,apply:"
   local parsed=""
 
   parsed=$(getopt --options Shb --longoptions "$longopts" --name "$0" -- "$@") || exit 2
@@ -170,7 +178,7 @@ parse_and_dispatch_args() {
         handle_hyprlock_action "$1" "$2"
         exit 0
         ;;
-      select|-S|--select|repair|--repair|background|--background|-b|profile|--profile|--title|--artist|--source|--status|--length|--update-art|art|--art|help|--help|-h)
+      select|-S|--select|repair|--repair|background|--background|-b|profile|--profile|--title|--artist|--source|--status|--length|--play-pause|--next|--previous|--rewind|--forward|--update-art|art|--art|help|--help|-h)
         handle_hyprlock_action "$1"
         exit 0
         ;;

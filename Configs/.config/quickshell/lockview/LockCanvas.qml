@@ -7,17 +7,22 @@ Item {
     required property var layout
     required property var cmdText
     required property string screenName
+    required property real nativeWidth
+    required property real nativeHeight
+    readonly property real scaleX: width / nativeWidth
+    readonly property real scaleY: height / nativeHeight
+    readonly property real scaleFactor: Math.min(scaleX, scaleY)
     clip: true
 
     function xy(value) {
-        return Qt.point(value.xp ? value.x / 100 * canvas.width : value.x,
-                        value.yp ? value.y / 100 * canvas.height : value.y)
+        return Qt.point(value.xp ? value.x / 100 * canvas.width : value.x * canvas.scaleX,
+                        value.yp ? value.y / 100 * canvas.height : value.y * canvas.scaleY)
     }
     function radius(w, h, rounding, thickness) {
         const half = Math.min(w, h) / 2
         if (rounding === -1)
             return half
-        return rounding === 0 ? 0 : Math.max(0, Math.min(rounding + thickness, half))
+        return rounding === 0 ? 0 : Math.max(0, Math.min(rounding * canvas.scaleFactor + thickness, half))
     }
     // Port of hyprlock's IWidget::posFromHVAlign, whose origin is bottom-left.
     function place(spec, w, h) {
@@ -35,13 +40,26 @@ Item {
         else if (spec.valign === "bottom") y -= ry
         return Qt.point(x, canvas.height - y - h)
     }
+    // Qt rich text ignores Pango's span attributes; carry over the size and colour ones.
+    function qtMarkup(text) {
+        return text.replace(/<span\b([^>]*)>/g, (tag, attrs) => {
+            const css = []
+            const size = /\bsize="(\d+)"/.exec(attrs)
+            if (size)
+                css.push("font-size:" + Math.max(1, Number(size[1]) / 1024 * 4 / 3 * canvas.scaleFactor).toFixed(1) + "px")
+            const colour = /\b(?:foreground|color)=["'](#[0-9A-Fa-f]{6})/.exec(attrs)
+            if (colour)
+                css.push("color:" + colour[1])
+            return css.length ? '<span style="' + css.join(";") + '">' : "<span>"
+        })
+    }
     function label(value) {
         const shown = typeof value === "string" ? value : (canvas.cmdText[value.cmd] ?? "")
-        return shown.replace(/\n/g, "<br>")
+        return canvas.qtMarkup(shown).replace(/\n/g, "<br>")
     }
     // pango sizes are points rendered at 96 dpi
     function fontPx(points) {
-        return Math.round(points * 4 / 3)
+        return Math.max(1, Math.round(points * 4 / 3 * canvas.scaleFactor))
     }
 
     Repeater {
@@ -66,7 +84,7 @@ Item {
                 shadowHorizontalOffset: 0
                 shadowVerticalOffset: 0
                 shadowBlur: 1
-                blurMax: Math.min(64, widget.spec.shadow_size * Math.pow(2, widget.spec.shadow_passes))
+                blurMax: Math.max(1, Math.round(Math.min(64, widget.spec.shadow_size * Math.pow(2, widget.spec.shadow_passes)) * canvas.scaleFactor))
             }
 
             Loader {
@@ -84,6 +102,7 @@ Item {
                     Image {
                         anchors.fill: parent
                         source: widget.spec.path ? "file://" + widget.spec.path : ""
+                        sourceSize: Qt.size(Math.ceil(width), Math.ceil(height))
                         fillMode: Image.PreserveAspectCrop
                         asynchronous: true
                         cache: false
@@ -91,7 +110,7 @@ Item {
                         layer.effect: MultiEffect {
                             blurEnabled: true
                             blur: 1
-                            blurMax: Math.min(64, widget.spec.blur_size * Math.pow(2, widget.spec.blur_passes))
+                            blurMax: Math.max(1, Math.round(Math.min(64, widget.spec.blur_size * Math.pow(2, widget.spec.blur_passes)) * canvas.scaleFactor))
                             brightness: widget.spec.brightness - 1
                             contrast: widget.spec.contrast - 1
                         }
@@ -118,17 +137,21 @@ Item {
             Component {
                 id: imageBody
                 Rectangle {
+                    readonly property real borderSize: widget.spec.border_size * canvas.scaleFactor
                     readonly property real fit: pic.implicitWidth > 0
-                        ? widget.spec.size / Math.min(pic.implicitWidth, pic.implicitHeight) : 0
+                        ? widget.spec.size * canvas.scaleFactor / Math.min(pic.implicitWidth, pic.implicitHeight) : 0
                     visible: pic.status === Image.Ready
-                    width: pic.implicitWidth * fit + 2 * widget.spec.border_size
-                    height: pic.implicitHeight * fit + 2 * widget.spec.border_size
-                    radius: canvas.radius(width, height, widget.spec.rounding, widget.spec.border_size)
-                    color: widget.spec.border_size > 0 ? widget.spec.border_color : "transparent"
+                    width: pic.implicitWidth * fit + 2 * borderSize
+                    height: pic.implicitHeight * fit + 2 * borderSize
+                    radius: canvas.radius(width, height, widget.spec.rounding, borderSize)
+                    // hyprlock draws the border as a ring; a fill would show through a transparent image.
+                    color: "transparent"
+                    border.width: borderSize
+                    border.color: widget.spec.border_color
                     Image {
                         id: pic
                         anchors.fill: parent
-                        anchors.margins: widget.spec.border_size
+                        anchors.margins: parent.borderSize
                         source: widget.spec.path ? "file://" + widget.spec.path : ""
                         asynchronous: true
                         cache: false
@@ -156,11 +179,12 @@ Item {
                 id: shapeBody
                 Rectangle {
                     readonly property point inner: canvas.xy(widget.spec.size)
-                    width: inner.x + 2 * widget.spec.border_size
-                    height: inner.y + 2 * widget.spec.border_size
-                    radius: canvas.radius(width, height, widget.spec.rounding, widget.spec.border_size)
+                    readonly property real borderSize: widget.spec.border_size * canvas.scaleFactor
+                    width: inner.x + 2 * borderSize
+                    height: inner.y + 2 * borderSize
+                    radius: canvas.radius(width, height, widget.spec.rounding, borderSize)
                     color: widget.spec.xray ? "transparent" : widget.spec.color
-                    border.width: widget.spec.border_size
+                    border.width: borderSize
                     border.color: widget.spec.border_color
                 }
             }
@@ -170,7 +194,7 @@ Item {
                 Item {
                     id: field
                     readonly property point box: canvas.xy(widget.spec.size)
-                    readonly property real ring: widget.spec.outline_thickness
+                    readonly property real ring: widget.spec.outline_thickness * canvas.scaleFactor
                     width: box.x
                     height: box.y
                     Rectangle {
@@ -195,7 +219,7 @@ Item {
                         font.family: widget.spec.font_family.family
                         font.weight: widget.spec.font_family.weight
                         font.italic: widget.spec.font_family.italic
-                        font.pixelSize: canvas.fontPx(Math.round(field.height * widget.spec.dots_size * 0.5) * 2)
+                        font.pixelSize: Math.max(1, Math.round(field.height / 3))
                     }
                 }
             }

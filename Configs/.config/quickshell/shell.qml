@@ -104,6 +104,7 @@ ShellRoot {
     readonly property real borderWidth: style.border
     readonly property real moduleRadius: mode === "winbar" ? 0 : rounding
     readonly property string barEdge: String(barLayout.edge || "right")
+    property real barFloatGap: Style.popupGap
     readonly property real barOpacity: workflow === "powersaver" ? 1 : workflow === "windows" ? .5 : mode === "vertical" ? .6 : .4
     readonly property color barColor: store.barTransparent ? "transparent" : alpha(background, barOpacity)
     property SystemClock clock: SystemClock { precision: SystemClock.Minutes }
@@ -124,6 +125,7 @@ ShellRoot {
         property int winbarClock: 0
         property bool barTransparent: false
         property bool barBlur: true
+        property bool barFloating: false
         property string sudokuDifficulty: "easy"
         property int sudokuBestEasy: 0
         property int sudokuBestMedium: 0
@@ -206,6 +208,9 @@ ShellRoot {
     function closePopup() { popupName = "" }
     function toggleBarTransparency() { store.barTransparent = !store.barTransparent }
     function toggleBarBlur() { store.barBlur = !store.barBlur }
+    function toggleBarFloating() { store.barFloating = !store.barFloating }
+    function refreshBarFloatGap() { if (!barGapProbe.running) barGapProbe.running = true }
+    function loadBarFloatGap(raw) { try { const gap = parseFloat(String(JSON.parse(raw).css || "").trim().split(/\s+/)[0]); if (isFinite(gap)) barFloatGap = Math.max(0, gap) } catch (error) {} }
     function barLayoutIcon() { return ({top:"", bottom:"", left:"", right:""})[barEdge] || "" }
     function loadBarLayout(raw) {
         try {
@@ -288,6 +293,7 @@ ShellRoot {
     Timer { id: timeVisibilityWrite; interval: 0; running: true; onTriggered: timeVisibilityFile.setText(shellRoot.timeVisibility) }
     Timer { interval: 1000; repeat: true; running: shellRoot.activeEntries.length > 0; triggeredOnStart: true; onTriggered: shellRoot.timerNowMs = Date.now() }
     Process { id: volumeRangeProbe; command: [shellRoot.home + "/.local/lib/hypr/controls/volume-control.sh", "--limits"]; stdout: StdioCollector { waitForEnd: true; onStreamFinished: shellRoot.loadVolumeRange(text) } }
+    Process { id: barGapProbe; command: ["hyprctl", "-j", "getoption", "general:gaps_out"]; stdout: StdioCollector { waitForEnd: true; onStreamFinished: shellRoot.loadBarFloatGap(text) } }
     Process {
         id: powerProfileRestore
         onExited: {
@@ -337,11 +343,15 @@ ShellRoot {
     onLayoutNameChanged: { barLayout = ({}); layoutFile.reload() }
     onUserHiddenChanged: if (userHidden) closePopup()
     onTimeVisibilityChanged: timeVisibilityWrite.restart()
-    Component.onCompleted: restorePowerProfile()
+    Component.onCompleted: { restorePowerProfile(); refreshBarFloatGap() }
 
     Connections {
         target: UPower
         function onOnBatteryChanged() { shellRoot.restorePowerProfile() }
+    }
+    Connections {
+        target: Hyprland
+        function onRawEvent(event) { if (event && event.name === "configreloaded") shellRoot.refreshBarFloatGap() }
     }
 
     IpcHandler {
@@ -359,6 +369,8 @@ ShellRoot {
         function bookmarks(): void { shellRoot.togglePopup("bookmarks", true) }
         function transparency(): void { shellRoot.toggleBarTransparency() }
         function blur(): void { shellRoot.toggleBarBlur() }
+        function floating(): void { shellRoot.toggleBarFloating() }
+        function floatingState(): string { return JSON.stringify({ enabled: shellRoot.store.barFloating, gap: shellRoot.barFloatGap }) }
         function popupName(): string { return shellRoot.popupName }
     }
     IpcHandler {

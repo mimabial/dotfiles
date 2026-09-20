@@ -301,13 +301,28 @@ function workspaceLabel(name) {
 
 // isMinimizedWs: predicate over a workspace name. Each parked window gets its
 // own special workspace, so there is no single name to compare against.
-function buildEntries(pinnedIds, toplevels, appRows, appLibrary, hyprFor, isMinimizedWs, minimizedOrigins) {
+function buildEntries(pinnedIds, toplevels, appRows, appLibrary, hyprFor, isMinimizedWs, minimizedOrigins, appGroups) {
   var pinned = Array.isArray(pinnedIds) ? pinnedIds : []
   var list = toArray(toplevels)
   var isMinWs = typeof isMinimizedWs === "function"
     ? isMinimizedWs
     : function (name) { return name === "special:minimized" }
   var minOrigins = minimizedOrigins || {}
+  var groupedIds = []
+  var groups = toArray(appGroups)
+  for (var g = 0; g < groups.length; g++) {
+    var apps = toArray(groups[g] && groups[g].apps)
+    for (var a = 0; a < apps.length; a++) {
+      var groupedId = stripDesktop(apps[a])
+      if (groupedId && groupedIds.indexOf(groupedId) < 0) groupedIds.push(groupedId)
+    }
+  }
+
+  function isGrouped(appId) {
+    for (var i = 0; i < groupedIds.length; i++)
+      if (isAppMatch(appId, groupedIds[i])) return true
+    return false
+  }
 
   var runningIds = []
   var winMap = {}
@@ -382,7 +397,7 @@ function buildEntries(pinnedIds, toplevels, appRows, appLibrary, hyprFor, isMini
 
   for (j = 0; j < pinned.length; j++) {
     var pid = stripDesktop(pinned[j])
-    if (!pid || seen[pid]) continue
+    if (!pid || seen[pid] || isGrouped(pid)) continue
     seen[pid] = true
     var wins = getWindowsFor(pid)
     pinnedOut.push({
@@ -406,7 +421,7 @@ function buildEntries(pinnedIds, toplevels, appRows, appLibrary, hyprFor, isMini
         break
       }
     }
-    if (alreadyPinned || seen[rid]) continue
+    if (alreadyPinned || isGrouped(rid) || seen[rid]) continue
     seen[rid] = true
     var wins = winMap[rid] || []
     runningOut.push({
@@ -420,7 +435,22 @@ function buildEntries(pinnedIds, toplevels, appRows, appLibrary, hyprFor, isMini
   }
   enrich(runningOut)
 
-  return { pinned: pinnedOut, running: runningOut }
+  var groupedOut = []
+  for (j = 0; j < groupedIds.length; j++) {
+    var gid = groupedIds[j]
+    var groupedWindows = getWindowsFor(gid)
+    if (groupedWindows.length > 0) groupedOut.push({
+      id: gid,
+      appId: gid,
+      pinned: false,
+      running: true,
+      windows: groupedWindows.length,
+      windowList: groupedWindows
+    })
+  }
+  enrich(groupedOut)
+
+  return { pinned: pinnedOut, running: runningOut, grouped: groupedOut }
 }
 
 // True when the list has at least one window and every one of them is parked

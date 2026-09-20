@@ -49,6 +49,10 @@ call.
 
 The dock in `dock/` is not a layout: it is a separate bottom-edge panel that
 runs alongside whichever bar layout is active, the way `expose/` does.
+Its app groups are virtual collections in `dock/settings.json` (`appGroups`),
+not filesystem folders. Drag one app onto another to create a group, drag onto
+an existing group to add it, or use Dock Settings → App Groups. A group
+auto-dissolves when one app remains.
 
 Each layout declares `panel` and `edge`; names have no special behavior.
 `vertical` accepts left/right edges and a `modules` array. `horizontal` and
@@ -193,7 +197,8 @@ alarm/timer/stopwatch popup where configured as the timer clock.
 - Bar and dock share `store.barTransparent` and `store.barBlur`. While the dock
   is linked it renders from those and writes back to them, so a toggle from
   either surface moves both; `LayerBlur` turns each surface's blur into a named
-  Hyprland layer rule and re-applies it after a compositor config reload.
+  Hyprland layer rule and re-applies it after a compositor config reload. The
+  bar's independent `barFloating` option follows Hyprland's live `gaps_out`.
 - Taskbar focus is address-based. Its helper temporarily suppresses Hyprland
   cursor warps only for taskbar activation and restores the prior setting in the
   same compositor call; do not add an arbitrary delay.

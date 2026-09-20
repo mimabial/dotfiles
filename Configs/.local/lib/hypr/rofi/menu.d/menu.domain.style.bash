@@ -25,6 +25,7 @@ menu_register_domain_style() {
   menu_add_item style_bar "󰍜  Layout" submenu style_bar_layout
   menu_add_item style_bar "󰂵  Transparency" action style_bar_transparency
   menu_add_item style_bar "󰐷  Blur" action style_bar_blur
+  menu_add_item style_bar "󰹞  Floating" action style_bar_floating
 
   menu_define style_dock "Dock"
   menu_add_item style_dock "󰄶  Position" submenu style_dock_position
@@ -77,6 +78,7 @@ menu_run_action_style() {
       ;;
     style_bar_transparency) quickshell ipc --any-display call bar transparency ;;
     style_bar_blur) quickshell ipc --any-display call bar blur ;;
+    style_bar_floating) quickshell ipc --any-display call bar floating ;;
     style_dock_transparency) quickshell ipc --any-display call dock transparency ;;
     style_dock_blur) quickshell ipc --any-display call dock blur ;;
     style_dock_position_link) quickshell ipc --any-display call dock link ;;

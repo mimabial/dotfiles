@@ -10,8 +10,9 @@ BarSurface {
     anchors.bottom: true
     anchors.left: onLeft
     anchors.right: !onLeft
-    margins.left: onLeft ? (active ? 0 : -implicitWidth) : 0
-    margins.right: onLeft ? 0 : (active ? 0 : -implicitWidth)
+    margins.top: floatMargin("top"); margins.bottom: floatMargin("bottom")
+    margins.left: onLeft ? (active ? floatMargin("left") : -implicitWidth) : floatMargin("left")
+    margins.right: onLeft ? floatMargin("right") : (active ? floatMargin("right") : -implicitWidth)
     // composition is data: reordering the bar is editing layouts/<name>.json
     readonly property var registry: ({"menu": mod_menu, "taskbar": mod_taskbar, "tray": mod_tray, "updates": mod_updates, "agents": mod_agents, "gpu": mod_gpu, "cpu": mod_cpu, "memory": mod_memory, "disk": mod_disk, "fan": mod_fan, "minmax": mod_minmax, "wifi": mod_wifi, "speed": mod_speed, "bluetooth": mod_bluetooth, "vpn": mod_vpn, "printers": mod_printers, "disks": mod_disks, "connectivity": mod_connectivity, "barlayout": mod_barlayout, "colormode": mod_colormode, "appearance": mod_appearance, "converter": mod_converter, "tools": mod_tools, "sudoku": mod_sudoku, "datetime": mod_datetime, "date": mod_date, "eyecare": mod_eyecare, "forecast": mod_forecast, "info": mod_info, "info-drawer": mod_info_drawer, "gamemode": mod_gamemode, "mediaplayer": mod_mediaplayer, "notification-group": mod_notification_group, "notification": mod_notification, "power": mod_power, "privacy": mod_privacy, "capture": mod_capture, "screenshot": mod_screenshot, "screenrecord": mod_screenrecord, "webcam": mod_webcam, "terminal": mod_terminal, "audio": mod_audio, "submap": mod_submap, "tasks": mod_tasks, "workspaces": mod_workspaces})
     readonly property var layout: shell.barLayout.modules || []

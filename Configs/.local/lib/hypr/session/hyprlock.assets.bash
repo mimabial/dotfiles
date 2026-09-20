@@ -112,18 +112,21 @@ ensure_face_icon_png() {
 colorize_fallback_icon() {
   local output_path="$1"
   local source_icon="$XDG_DATA_HOME/icons/Pywal16-Icon/hypr.png"
-
   local color_file="${XDG_CACHE_HOME:-$HOME/.cache}/wal/colors-shell.sh"
-  if [ ! -f "$color_file" ]; then
-    cp "$source_icon" "$output_path"
-    return
+  local -a tint=()
+
+  if [ -f "$color_file" ]; then
+    source "$color_file"
+    tint=(-modulate 100,60,100 -fill "${color4:-#458588}" -colorize 60%)
   fi
 
-  source "$color_file"
-
+  # The icon's dark disc is halved in opacity so the wallpaper shows through it, and
+  # it is centred on a square as wide as the icon's diagonal, so a round frame never clips it.
   magick "${MAGICK_LIMITS[@]}" "$source_icon" \
-    -modulate 100,60,100 \
-    -fill "${color4:-#458588}" -colorize 60% \
+    -alpha set -fuzz 10% -fill 'rgba(23,41,108,0.5)' -opaque '#17296C' \
+    "${tint[@]}" \
+    -background none -gravity center \
+    -extent '%[fx:ceil(hypot(w,h))]x%[fx:ceil(hypot(w,h))]' \
     "$output_path"
 }
 

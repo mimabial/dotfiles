@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
+SEEK_SECONDS=10
 mpris_icon() {
   local player=${1:-default}
   declare -A player_dict=(
     ["default"]=""
     ["spotify"]=""
     ["firefox"]=""
+    ["fftab"]=""  # the browser bridge names a player per tab
     ["vlc"]="嗢"
     ["google-chrome"]=""
     ["opera"]=""
@@ -19,13 +21,25 @@ mpris_icon() {
       return
     fi
   done
-  echo ""
+  echo "${player_dict[default]}"
 }
 
+# playerctl lists alphabetically, so only the status can pick the player that sounds.
 mpris_default_player() {
-  local first=""
-  IFS= read -r first < <(playerctl --list-all 2>/dev/null)
-  printf '%s' "${first}"
+  local -a names=() statuses=()
+  mapfile -t names < <(playerctl --list-all 2>/dev/null)
+  mapfile -t statuses < <(playerctl -a status 2>/dev/null)
+  local index="" paused=""
+  for index in "${!names[@]}"; do
+    case "${statuses[index]:-}" in
+      Playing)
+        printf '%s' "${names[index]}"
+        return
+        ;;
+      Paused) [[ -n ${paused} ]] || paused="${names[index]}" ;;
+    esac
+  done
+  printf '%s' "${paused:-${names[0]:-}}"
 }
 
 mpris_player_status() {
@@ -230,6 +244,17 @@ fn_status() {
     Playing) echo "▶" ;;
     Paused) echo "⏸" ;;
     *) echo "" ;;
+  esac
+}
+
+fn_control() {
+  local player=""
+  player="$(mpris_default_player)"
+  [[ -n "${player}" ]] || return 0
+  case "$1" in
+    rewind) playerctl -p "${player}" position "${SEEK_SECONDS}-" ;;
+    forward) playerctl -p "${player}" position "${SEEK_SECONDS}+" ;;
+    *) playerctl -p "${player}" "$1" ;;
   esac
 }
 

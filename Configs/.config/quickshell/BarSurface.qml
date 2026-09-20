@@ -14,14 +14,21 @@ PanelWindow {
     readonly property bool popupNeedsFocus: popupOpen && (shell.popupCenteredName === shell.popupName
         || shell.popupCard && shell.popupCard.wantsKeyboard)
     property bool exclusivePhase: false
+    function floatMargin(edge) {
+        const inner = ({ top: "bottom", bottom: "top", left: "right", right: "left" })[shell.barEdge]
+        return shell.store.barFloating && edge !== inner ? shell.barFloatGap : 0
+    }
 
-    color: shell.barColor
+    color: "transparent"
+    surfaceFormat.opaque: false
     exclusionMode: active ? ExclusionMode.Auto : ExclusionMode.Ignore
     WlrLayershell.namespace: "hypr-shell-bar"
     WlrLayershell.layer: WlrLayer.Top
     // Prime focus briefly; holding Exclusive would swallow outside clicks.
     WlrLayershell.keyboardFocus: !popupOpen ? WlrKeyboardFocus.None
         : exclusivePhase ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
+
+    Rectangle { anchors.fill: parent; color: root.shell.barColor; radius: root.shell.store.barFloating ? root.shell.rounding : 0 }
 
     onPopupNeedsFocusChanged: {
         exclusivePhase = popupNeedsFocus

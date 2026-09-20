@@ -322,7 +322,7 @@ Item {
     }
 
     onPressed: function(mouse) {
-      if (mouse.button === Qt.LeftButton && item.pinned) {
+      if (mouse.button === Qt.LeftButton && (item.pinned || item.running)) {
         item.dragStartMain = item.dock.vertical ? mouse.y : mouse.x
         item.isDragging = false
         item._dragJustEnded = false
@@ -330,7 +330,7 @@ Item {
     }
 
     onPositionChanged: function(mouse) {
-      if (area.pressed && mouse.buttons & Qt.LeftButton && item.pinned) {
+      if (area.pressed && mouse.buttons & Qt.LeftButton && (item.pinned || item.running)) {
         var main = item.dock.vertical ? mouse.y : mouse.x
         var dist = Math.abs(main - item.dragStartMain)
         if (!item.isDragging && dist > 8) {

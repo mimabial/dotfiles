@@ -10,8 +10,9 @@ BarSurface {
     readonly property var registry: ({"menu": mod_menu, "taskbar": mod_taskbar, "workspace-weather": mod_workspace_weather, "workspaces": mod_workspaces, "mediaplayer": mod_mediaplayer, "tray": mod_tray, "language": mod_language, "datetime": mod_datetime, "converter": mod_converter, "sudoku": mod_sudoku, "submap": mod_submap})
     active: shell.mode === "winbar" && !shell.userHidden
     anchors.left: true; anchors.right: true; anchors.top: onTop; anchors.bottom: !onTop
-    margins.top: onTop ? (active ? 0 : -implicitHeight) : 0
-    margins.bottom: onTop ? 0 : (active ? 0 : -implicitHeight)
+    margins.left: floatMargin("left"); margins.right: floatMargin("right")
+    margins.top: onTop ? (active ? floatMargin("top") : -implicitHeight) : floatMargin("top")
+    margins.bottom: onTop ? floatMargin("bottom") : (active ? floatMargin("bottom") : -implicitHeight)
     implicitHeight: Math.max(leftRow.implicitHeight, centerWorkspaces.implicitHeight, rightRow.implicitHeight)
     Component { id: mod_menu; StartButton { shell: root.shell; popupEnabled: root.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_taskbar; WindowList { shell: root.shell; Layout.fillHeight: true } }

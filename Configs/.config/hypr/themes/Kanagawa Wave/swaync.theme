@@ -1,4 +1,4 @@
-$HOME/.config/swaync/theme.css|${scrDir}/wallbashswaync.sh
+$HOME/.config/swaync/theme.css
 @define-color bar-bg #1f1f28;   
 @define-color main-bg #2a2a37;  
 @define-color main-fg #dcd7ba;  

@@ -5,18 +5,26 @@ PALETTE_ARG="${1:-}"
 render_init hyprlock colors.conf
 
 font="$("$(dirname "$0")/../fonts/font-get.sh" bar 2>/dev/null || true)"
+# Doubled: lock screen panels dwarf a window, so the theme's radius reads as square.
+rounding="$(sed -nE 's/.*runtime\.config\("decoration\.rounding", *([0-9]+)\).*/\1/p' \
+  "${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}/themes/theme.lua" 2>/dev/null | head -n1 || true)"
+rounding="$((${rounding:-0} * 2))"
+layout_dirs=("${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}/hyprlock"
+  "${HYPR_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/hypr}/hyprlock")
+tones="$(grep -rhoE --include='*.conf' '\$tone\.c[1-6]\.[0-9]+\.[0-9]+' "${layout_dirs[@]}" 2>/dev/null | sort -u | tr '\n' ' ' || true)"
+placeholders="$(grep -rhoE --include='*.conf' '<span size="\$ph\.[0-9]+\.[0-9]+\.[0-9a-f]+">.*</span>' "${layout_dirs[@]}" 2>/dev/null | sort -u || true)"
 hash="$(
   {
     render_input_hash
-    printf 'font:%s\n' "${font}"
+    printf 'font:%s\nrounding:%s\ntones:%s\nplaceholders:%s\n' "${font}" "${rounding}" "${tones}" "${placeholders}"
   } | { xxh64sum 2>/dev/null || md5sum; } | awk '{print $1}'
 )"
 render_should_skip "${hash}" && exit 0
 tmp="$(render_temp)"
 trap 'rm -f "${tmp}"' EXIT
 
-FONT="${font}" PALETTE="${PALETTE}" python3 - > "${tmp}" <<'PY'
-import colorsys, json, os
+FONT="${font}" ROUNDING="${rounding}" TONES="${tones}" PLACEHOLDERS="${placeholders}" PALETTE="${PALETTE}" python3 - > "${tmp}" <<'PY'
+import colorsys, json, math, os, re
 p = json.load(open(os.environ["PALETTE"]))
 def rgb(h):
     h = h.lstrip("#")
@@ -56,23 +64,88 @@ for i, c in enumerate(p["colors"]):
 for short in ("bg", "fg"):
     print(f"${short}.hex = {p[short].lstrip('#').lower()}")
 print()
-# HyDE wallbash names: groups sorted dark to light, accents on wallbash's lightness ladder.
+# Compatibility palette for ported layouts, with groups sorted dark to light.
 LADDER = (0.24, 0.32, 0.39, 0.45, 0.52, 0.62, 0.75, 0.80, 0.90)
 if p.get("mode") == "light":
     LADDER = LADDER[::-1]
-def wallbash(name, rgb3):
+def emit_color(name, rgb3):
     r, g, b = rgb3
     print(f"${name} = {r:02X}{g:02X}{b:02X}")
     print(f"${name}_rgba = rgba({r},{g},{b},0.9)")
 for n, seed in enumerate((p["bg"], p["colors"][8], p["colors"][4], p["colors"][5]), 1):
     seed_rgb = rgb(seed)
     h, l, s = colorsys.rgb_to_hls(*(v / 255 for v in seed_rgb))
-    wallbash(f"primary_{n}", seed_rgb)
-    wallbash(f"text_{n}", rgb(p["fg"] if l < 0.5 else p["bg"]))
+    emit_color(f"primary_{n}", seed_rgb)
+    emit_color(f"text_{n}", rgb(p["fg"] if l < 0.5 else p["bg"]))
     for m, level in enumerate(LADDER, 1):
-        wallbash(f"p{n}_accent_{m}", tuple(round(v * 255) for v in colorsys.hls_to_rgb(h, level, s)))
+        emit_color(f"p{n}_accent_{m}", tuple(round(v * 255) for v in colorsys.hls_to_rgb(h, level, s)))
+    r, g, b = seed_rgb
+    print(f"$primary_{n + 4}_rgba = rgba({r},{g},{b},0.5)")
+
+# Tones layouts reference as $tone.cN.L.C: slot N's hue at OKLab lightness L/100 and
+# chroma C/1000, never more colourful than the slot itself, clipped into sRGB.
+def oklab(rgb3):
+    lin = [c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4 for c in (v / 255 for v in rgb3)]
+    l, m, s = (math.copysign(abs(x) ** (1 / 3), x) for x in (
+        0.4122214708 * lin[0] + 0.5363325363 * lin[1] + 0.0514459929 * lin[2],
+        0.2119034982 * lin[0] + 0.6806995451 * lin[1] + 0.1073969566 * lin[2],
+        0.0883024619 * lin[0] + 0.2817188376 * lin[1] + 0.6299787005 * lin[2]))
+    return (0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+            1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+            0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s)
+def linear_rgb(lightness, a, b):
+    l, m, s = ((lightness + x * a + y * b) ** 3 for x, y in (
+        (0.3963377774, 0.2158037573), (-0.1055613458, -0.0638541728), (-0.0894841775, -1.2914855480)))
+    return (4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+            -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+            -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s)
+def tone(slot_rgb, lightness, chroma):
+    _, a, b = oklab(slot_rgb)
+    angle, chroma = math.atan2(b, a), min(chroma, math.hypot(a, b))
+    inside = lambda c: all(-1e-4 <= v <= 1 + 1e-4 for v in linear_rgb(lightness, c * math.cos(angle), c * math.sin(angle)))
+    low, high = 0.0, chroma
+    if not inside(high):
+        for _ in range(24):
+            mid = (low + high) / 2
+            low, high = (mid, high) if inside(mid) else (low, mid)
+        chroma = low
+    lin = linear_rgb(lightness, chroma * math.cos(angle), chroma * math.sin(angle))
+    return tuple(round(255 * min(1, max(0, 12.92 * v if v <= 0.0031308 else 1.055 * v ** (1 / 2.4) - 0.055))) for v in lin)
+tones = os.environ.get("TONES", "").split()
+if tones:
+    print("\n# Tones used by layouts")
+for name in tones:
+    _, index, lightness, chroma = name.lstrip("$").split(".")
+    r, g, b = tone(rgb(p["colors"][int(index[1:])]), int(lightness) / 100, int(chroma) / 1000)
+    print(f"{name}.r = {r}\n{name}.g = {g}\n{name}.b = {b}\n{name}.hex = {r:02x}{g:02x}{b:02x}")
+
+# Placeholders cannot run commands, so each <span size="$ph.WIDTH.PT.ID"> gets the
+# largest size, up to PT, at which its text fits WIDTH in the current font.
+placeholders = [m.groups() for m in re.finditer(r'<span size="\$(ph\.(\d+)\.(\d+)\.[0-9a-f]+)">(.*)</span>',
+                                                os.environ.get("PLACEHOLDERS", ""))]
+if placeholders:
+    import gi
+    gi.require_version("Pango", "1.0")
+    gi.require_version("PangoCairo", "1.0")
+    import cairo
+    from gi.repository import Pango, PangoCairo
+    context = PangoCairo.create_context(cairo.Context(cairo.ImageSurface(cairo.FORMAT_ARGB32, 1, 1)))
+    def width(markup, size):
+        layout = Pango.Layout.new(context)
+        layout.set_font_description(Pango.FontDescription.from_string(os.environ.get("FONT") or "Sans"))
+        layout.set_markup(f'<span size="{size}">{markup}</span>', -1)
+        return layout.get_pixel_size()[0]
+    print("\n# Placeholder sizes that fit their input field")
+    for name, room, points, text in dict.fromkeys(placeholders):
+        # Colours do not change width, and they may hold variables Pango cannot parse.
+        plain = re.sub(r"<span\b[^>]*>", "<span>", text.replace("##", "#"))
+        size = int(points) * 1024
+        while size > 1024 and width(plain, size) > int(room):
+            size = int(size * 0.98)
+        print(f"${name} = {size}")
 if os.environ.get("FONT"):
     print(f"\n$font = {os.environ['FONT']}")
+print(f"$rounding = {os.environ['ROUNDING']}")
 PY
 
 render_commit "${tmp}" "${hash}"

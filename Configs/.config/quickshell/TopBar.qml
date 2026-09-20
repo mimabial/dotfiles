@@ -7,7 +7,7 @@ BarSurface {
     readonly property var section: shell.style.box(".modules-left")
     readonly property var layout: shell.barLayout
     readonly property bool onTop: shell.barEdge === "top"
-    readonly property var registry: ({"menu": mod_menu, "taskbar": mod_taskbar, "mediaplayer": mod_mediaplayer, "cpu": mod_cpu, "gpu": mod_gpu, "memory": mod_memory, "disk": mod_disk, "disks": mod_disks, "fan": mod_fan, "datetime": mod_datetime, "indicators": mod_indicators, "language": mod_language, "updates": mod_updates, "converter": mod_converter, "sudoku": mod_sudoku, "workspaces": mod_workspaces, "weather": mod_weather, "submap": mod_submap, "audio": mod_audio, "bluetooth": mod_bluetooth, "vpn": mod_vpn, "wifi": mod_wifi, "volume": mod_volume, "display": mod_display, "powerprofile": mod_powerprofile, "powerbutton": mod_powerbutton, "monitor": mod_monitor, "capture": mod_capture, "notification-group": mod_notification_group, "notification": mod_notification, "github": mod_github, "tasks": mod_tasks, "privacy": mod_privacy, "tray": mod_tray, "connectivity": mod_connectivity, "appearance": mod_appearance, "power": mod_power})
+    readonly property var registry: ({"menu": mod_menu, "taskbar": mod_taskbar, "mediaplayer": mod_mediaplayer, "cpu": mod_cpu, "gpu": mod_gpu, "memory": mod_memory, "disk": mod_disk, "disks": mod_disks, "fan": mod_fan, "datetime": mod_datetime, "indicators": mod_indicators, "language": mod_language, "updates": mod_updates, "converter": mod_converter, "sudoku": mod_sudoku, "workspaces": mod_workspaces, "weather": mod_weather, "submap": mod_submap, "audio": mod_audio, "bluetooth": mod_bluetooth, "vpn": mod_vpn, "wifi": mod_wifi, "speed": mod_speed, "volume": mod_volume, "display": mod_display, "powerprofile": mod_powerprofile, "powerbutton": mod_powerbutton, "monitor": mod_monitor, "capture": mod_capture, "notification-group": mod_notification_group, "notification": mod_notification, "github": mod_github, "tasks": mod_tasks, "privacy": mod_privacy, "tray": mod_tray, "connectivity": mod_connectivity, "appearance": mod_appearance, "power": mod_power})
     readonly property var centerModules: layout.center || []
     readonly property int centerAnchorIndex: moduleIndex(centerModules, String(layout.centerAnchor || ""))
     readonly property var centerBeforeModules: centerAnchorIndex < 0 ? [] : centerModules.slice(0, centerAnchorIndex)
@@ -22,8 +22,9 @@ BarSurface {
     }
     active: shell.mode === "horizontal" && !shell.userHidden
     anchors.left: true; anchors.right: true; anchors.top: onTop; anchors.bottom: !onTop
-    margins.top: onTop ? (active ? 0 : -implicitHeight) : 0
-    margins.bottom: onTop ? 0 : (active ? 0 : -implicitHeight)
+    margins.left: floatMargin("left"); margins.right: floatMargin("right")
+    margins.top: onTop ? (active ? floatMargin("top") : -implicitHeight) : floatMargin("top")
+    margins.bottom: onTop ? floatMargin("bottom") : (active ? floatMargin("bottom") : -implicitHeight)
     implicitHeight: Math.max(leftRow.implicitHeight, centerFallback.implicitHeight, centerBefore.implicitHeight, centerAnchor.implicitHeight, centerAfter.implicitHeight, rightRow.implicitHeight)
     Component { id: mod_menu; StartButton { shell: root.shell; popupEnabled: root.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_taskbar; WindowList { shell: root.shell; allWorkspaces: true; framed: true; Layout.fillHeight: true } }
@@ -47,6 +48,7 @@ BarSurface {
     Component { id: mod_bluetooth; BluetoothGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; vertical: false; Layout.fillHeight: true } }
     Component { id: mod_vpn; VpnButton { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_wifi; WifiGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; vertical: false; Layout.fillHeight: true } }
+    Component { id: mod_speed; SpeedButton { shell: root.shell; popupsAllowed: root.popupsAllowed; vertical: false; Layout.fillHeight: true } }
     Component { id: mod_volume; AudioButton { shell: root.shell; popupEnabled: root.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_display; DisplayButton { shell: root.shell; popupEnabled: root.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_powerprofile; PowerProfileButton { shell: root.shell; popupEnabled: root.popupsAllowed; Layout.fillHeight: true } }

@@ -89,8 +89,45 @@ BorderSurface {
         }
 
         ContextRow {
+          text: "App Groups ›"
+          onTriggered: contextMenu.dock.settingsSubmenu = "app_groups"
+        }
+
+        ContextRow {
           text: "Position: " + contextMenu.dock.edgeLabel(contextMenu.dock.edge) + (contextMenu.dock.linkToBar ? " (linked)" : "") + " ›"
           onTriggered: contextMenu.dock.settingsSubmenu = "position"
+        }
+      }
+
+      Column {
+        spacing: Style.space(1)
+        visible: contextMenu.dock.settingsSubmenu === "app_groups"
+
+        ContextRow {
+          text: "‹ Back"
+          textColor: Color.bar.active
+          onTriggered: contextMenu.dock.settingsSubmenu = ""
+        }
+        ContextRow { text: "App Groups"; isHeader: true }
+        ContextRow {
+          text: "+ Group Running Apps"
+          textColor: Color.bar.active
+          onTriggered: {
+            contextMenu.dock.createAppGroupFromRunning()
+            contextMenu.dock.closeContext()
+          }
+        }
+        MenuDivider { visible: contextMenu.dock.appGroups.length > 0 }
+        Repeater {
+          model: contextMenu.dock.appGroups.map(function(group) {
+            return { group: group, dock: contextMenu.dock }
+          })
+          delegate: ContextRow {
+            required property var modelData
+            text: "Ungroup " + String(modelData.group.name || "Applications")
+            danger: true
+            onTriggered: modelData.dock.ungroupAppGroup(modelData.group.id)
+          }
         }
       }
 
@@ -991,9 +1028,38 @@ BorderSurface {
       }
     }
 
+    Column {
+      spacing: Style.space(2)
+      visible: contextMenu.dock.contextAppId === "__app_group_context__"
+
+      ContextRow {
+        text: contextMenu.dock.contextAppGroupData
+          ? String(contextMenu.dock.contextAppGroupData.name || "Applications") : "Applications"
+        isHeader: true
+      }
+      ContextRow {
+        text: "Open Group"
+        onTriggered: {
+          var group = contextMenu.dock.contextAppGroupData
+          var anchor = contextMenu.dock.contextAnchor
+          contextMenu.dock.closeContext()
+          contextMenu.dock.openAppGroup(group, anchor)
+        }
+      }
+      MenuDivider {}
+      ContextRow {
+        text: "Ungroup"
+        danger: true
+        onTriggered: {
+          contextMenu.dock.ungroupAppGroup(contextMenu.dock.contextAppGroupData.id)
+          contextMenu.dock.closeContext()
+        }
+      }
+    }
+
     Item {
       id: appContextMenuWrapper
-      visible: contextMenu.dock.contextAppId !== "" && contextMenu.dock.contextAppId !== "__dock_settings__" && contextMenu.dock.contextAppId !== "__folder_context__" && contextMenu.dock.contextAppId !== "__tile_context__"
+      visible: contextMenu.dock.contextAppId !== "" && contextMenu.dock.contextAppId.indexOf("__") !== 0
       implicitWidth: appContextMenuColumn.implicitWidth
       implicitHeight: appContextMenuColumn.implicitHeight
       width: contextMenu.rowWidth > 0 ? contextMenu.rowWidth : implicitWidth

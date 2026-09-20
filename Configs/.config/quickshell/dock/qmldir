@@ -9,3 +9,5 @@ DockIconButton 1.0 DockIconButton.qml
 DockSeparator 1.0 DockSeparator.qml
 FileStackRow 1.0 FileStackRow.qml
 DockFolderItem 1.0 DockFolderItem.qml
+DockAppGroupItem 1.0 DockAppGroupItem.qml
+AppGroupPopup 1.0 AppGroupPopup.qml

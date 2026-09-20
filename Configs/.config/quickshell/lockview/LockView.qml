@@ -11,6 +11,7 @@ Item {
     property var cmdText: ({})
     property int current: 0
     property bool full: false
+    property bool stale: false
 
     readonly property color background: Color.menu.background
     readonly property color foreground: Color.menu.text
@@ -46,6 +47,12 @@ Item {
         if (root.selected)
             Quickshell.execDetached(root.script("--test"))
     }
+    function refresh() {
+        if (helper.running)
+            root.stale = true
+        else
+            helper.running = true
+    }
     function targetScreen() {
         const screens = Quickshell.screens
         for (let i = 0; i < screens.length; ++i)
@@ -60,18 +67,61 @@ Item {
     }
 
     Process {
+        id: helper
         running: true
         command: [root.shell.home + "/.local/lib/hypr/session/hyprlock.preview.py"]
         stdout: SplitParser {
             onRead: line => {
                 const message = JSON.parse(line)
                 if (message.kind === "layouts") {
+                    const keep = root.layouts[root.current]?.name
                     root.layouts = message.layouts
-                    root.current = Math.max(0, message.layouts.findIndex(layout => layout.active))
+                    const index = message.layouts.findIndex(layout => keep ? layout.name === keep : layout.active)
+                    root.current = Math.max(0, index)
                 } else {
                     root.cmdText = Object.assign({}, root.cmdText, { [message.cmd]: message.text })
                 }
             }
+        }
+        // A re-port rewrites every layout at once; one more run after this one covers them all.
+        onExited: {
+            if (root.stale) {
+                root.stale = false
+                helper.running = true
+            }
+        }
+    }
+
+    // Anything the preview is built from: the layouts, the palette, the shared
+    // variables every layout is parsed against, and the helper's own code.
+    component Watch: FileView {
+        required property var owner
+        watchChanges: true
+        printErrors: false
+        onFileChanged: {
+            reload()
+            owner.refresh()
+        }
+    }
+
+    Instantiator {
+        model: root.layouts
+        delegate: Watch {
+            required property var modelData
+            owner: root
+            path: modelData.path
+        }
+    }
+
+    Instantiator {
+        model: [root.shell.home + "/.config/hypr/hyprlock/colors.conf",
+                root.shell.home + "/.local/share/hypr/hyprlock.conf",
+                root.shell.home + "/.local/lib/hypr/session/hyprlock.preview.py",
+                root.shell.home + "/.local/lib/hypr/pyutils/hyprlang.py"]
+        delegate: Watch {
+            required property string modelData
+            owner: root
+            path: modelData
         }
     }
 
@@ -110,6 +160,7 @@ Item {
                 case Qt.Key_Space: root.full = !root.full; break
                 case Qt.Key_Return: case Qt.Key_Enter: root.apply(); break
                 case Qt.Key_T: root.test(); break
+                case Qt.Key_R: root.refresh(); break
                 case Qt.Key_Escape:
                     if (root.full) root.full = false
                     else root.close()
@@ -226,10 +277,9 @@ Item {
                             anchors.margins: frame.border.width
                             clip: true
                             LockCanvas {
-                                width: window.canvasWidth
-                                height: window.canvasHeight
-                                scale: (frame.width - frame.border.width * 2) / window.canvasWidth
-                                transformOrigin: Item.TopLeft
+                                anchors.fill: parent
+                                nativeWidth: window.canvasWidth
+                                nativeHeight: window.canvasHeight
                                 layout: cell.modelData
                                 cmdText: root.cmdText
                                 screenName: window.monitor.name
@@ -406,12 +456,10 @@ Item {
                     border.color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.2)
                     clip: true
                     LockCanvas {
-                        x: 1
-                        y: 1
-                        width: window.canvasWidth
-                        height: window.canvasHeight
-                        scale: (parent.width - 2) / window.canvasWidth
-                        transformOrigin: Item.TopLeft
+                        anchors.fill: parent
+                        anchors.margins: 1
+                        nativeWidth: window.canvasWidth
+                        nativeHeight: window.canvasHeight
                         layout: root.selected
                         cmdText: root.cmdText
                         screenName: window.monitor.name
@@ -448,7 +496,7 @@ Item {
                 Text {
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "Arrows: browse   Space: preview   Enter: select   T: test   Esc: close"
+                    text: "Arrows: browse   Space: preview   Enter: select   T: test   R: reload   Esc: close"
                     color: root.muted
                     font.family: root.fontFamily
                     font.pixelSize: Style.font.bodySmall
@@ -471,10 +519,10 @@ Item {
                 LockCanvas {
                     x: (fullView.width - window.canvasWidth * fullView.fit) / 2
                     y: (fullView.height - window.canvasHeight * fullView.fit) / 2
-                    width: window.canvasWidth
-                    height: window.canvasHeight
-                    scale: fullView.fit
-                    transformOrigin: Item.TopLeft
+                    width: window.canvasWidth * fullView.fit
+                    height: window.canvasHeight * fullView.fit
+                    nativeWidth: window.canvasWidth
+                    nativeHeight: window.canvasHeight
                     layout: root.selected
                     cmdText: root.cmdText
                     screenName: window.monitor.name

@@ -25,23 +25,16 @@
   ],
   "right": [
     "memory",
-    "disk",
     "gpu",
     "cpu",
-    "fan",
+    "powerprofile",
     "volume",
     "display",
     "bluetooth",
     "vpn",
+    "speed",
     "wifi",
     "tasks",
-    "github",
-    {
-      "id": "notification",
-      "props": {
-        "badge": "none"
-      }
-    },
     {
       "id": "appearance",
       "props": {
@@ -49,6 +42,12 @@
         "reverse": true
       }
     },
-    "powerprofile"
+    "github",
+    {
+      "id": "notification",
+      "props": {
+        "badge": "none"
+      }
+    }
   ]
 }

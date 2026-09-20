@@ -16,6 +16,12 @@ case "${1:-}" in
     ;;
 esac
 
+# A hyprlock that outlived its lock keeps the scope name taken, wedging every later lock.
+if [[ "$(hyprctl locked 2>/dev/null)" == false ]] && stale="$(hypr_user_pgrep -x "${lockscreen}" | head -n1)" && [[ -n "${stale}" ]]; then
+  hypr_user_pkill -9 -x "${lockscreen}"
+  tail -f --pid="${stale}" /dev/null 2>/dev/null
+fi
+
 # Prevent an unlocked hyprlock process from surviving outside its scope.
 scope_unit=(-u "lockscreen.scope")
 
