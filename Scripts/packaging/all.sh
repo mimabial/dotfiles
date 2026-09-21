@@ -11,7 +11,7 @@ flg_Nvidia=${flg_Nvidia:-1}
 custom_pkg="${1:-${custom_pkg:-}}"
 
 archive_install_pkg_list() {
-    local log_dir="${cacheDir}/logs/${HYDE_LOG:-manual}"
+    local log_dir="${cacheDir}/logs/${DOTFILES_LOG:-manual}"
     if [ -f "${scrDir}/install_pkg.lst" ]; then
         mkdir -p "${log_dir}"
         mv -f "${scrDir}/install_pkg.lst" "${log_dir}/install_pkg.lst"
@@ -43,7 +43,7 @@ if nvidia_detect; then
 fi
 
 if ! grep -q "^#user packages" "${scrDir}/install_pkg.lst"; then
-    print_log -sec "pkg" -crit "No user packages found..." "Log file at ${cacheDir}/logs/${HYDE_LOG:-manual}/install.sh"
+    print_log -sec "pkg" -crit "No user packages found..." "Log file at ${cacheDir}/logs/${DOTFILES_LOG:-manual}/install.sh"
     exit 1
 fi
 

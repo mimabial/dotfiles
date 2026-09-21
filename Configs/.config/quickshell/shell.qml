@@ -1,10 +1,12 @@
+pragma ComponentBehavior: Bound
+
 //@ pragma UseQApplication
 import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
-import Quickshell.Services.Mpris
 import Quickshell.Services.UPower
+import qs.systemstats
 
 ShellRoot {
     id: shellRoot
@@ -42,6 +44,7 @@ ShellRoot {
     readonly property var activeTimers: activeEntries.filter(item => item.kind === "timer")
     readonly property var activeAlarms: activeEntries.filter(item => item.kind === "alarm")
     readonly property alias clockwork: clockworkState
+    readonly property alias systemStats: systemStatsService
     readonly property var monitorPreviewCoordinator: monitorPreviewGuardLoader.item
     property Theme style: Theme { home: shellRoot.home; layout: shellRoot.layoutName }
     readonly property var palette: style.palette
@@ -141,6 +144,7 @@ ShellRoot {
     }
 
     ClockworkState { id: clockworkState; shell: shellRoot }
+    SystemStatsService { id: systemStatsService; shell: shellRoot }
 
     function alpha(color, opacity) { return Qt.rgba(color.r, color.g, color.b, opacity) }
     function cycleDistroGlyph() { distroGlyphIndex = (distroGlyphIndex + 1) % distroGlyphs.length }
@@ -296,7 +300,7 @@ ShellRoot {
     Process { id: barGapProbe; command: ["hyprctl", "-j", "getoption", "general:gaps_out"]; stdout: StdioCollector { waitForEnd: true; onStreamFinished: shellRoot.loadBarFloatGap(text) } }
     Process {
         id: powerProfileRestore
-        onExited: {
+        onRunningChanged: if (!running) {
             if (shellRoot.powerProfileRestorePending) {
                 shellRoot.powerProfileRestorePending = false
                 shellRoot.restorePowerProfile()

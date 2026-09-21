@@ -24,15 +24,12 @@
     "weather"
   ],
   "right": [
-    "memory",
-    "gpu",
-    "cpu",
+    "systemstats",
     "powerprofile",
     "volume",
     "display",
     "bluetooth",
     "vpn",
-    "speed",
     "wifi",
     "tasks",
     {

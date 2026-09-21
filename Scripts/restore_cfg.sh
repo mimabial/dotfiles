@@ -160,8 +160,6 @@ hyprland_hook
 if [[ "$flg_DryRun" -ne 1 ]]; then
     print_log -g "[python env]" -b " :: " "Rebuilding Hypr Python environment..."
     "${HOME}/.local/bin/hyprshell" pyinit
-    print_log -g "[version]" -b " :: " "Saving version info..."
-    "${scrDir}/version.sh" --cache || echo "Failed to save version info."
     state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/hypr"
     mkdir -p "$state_dir"
     [[ -f "${cloneDir}/CHANGELOG.md" ]] && cp -f "${cloneDir}/CHANGELOG.md" "$state_dir/CHANGELOG.md"

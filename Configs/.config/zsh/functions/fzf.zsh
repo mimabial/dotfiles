@@ -6,7 +6,6 @@ typeset -g _FZF_WARNED_BAT=0
 typeset -ga _FZF_EXCLUDE_DIRS=(
     'BraveSoftware'
     'History'
-    'HyDE'
     'Pictures'
     'Signal'
     'Trash'

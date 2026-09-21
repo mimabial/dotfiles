@@ -1,6 +1,5 @@
 /**
  * Game launcher: Steam Deck style.
- * Adapted from HyDE's steam_deck.rasi for this config's rofi color roles.
  */
 
 configuration {

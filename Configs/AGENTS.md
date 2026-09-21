@@ -5,9 +5,7 @@
 - This home directory is the live system.
 - Active config lives under `~/.config/`, `~/.local/bin/`, `~/.local/lib/`, `~/.local/share/`, and `~/.local/state/`.
 - Do not treat `~/dotfiles/` as the source of truth for persisted config changes.
-- Cloned repos are not the active config unless explicitly requested. In particular:
-  - `~/HyDE/`
-  - `~/omarchy/`
+- Cloned repos such as `~/omarchy/` are not the active config unless explicitly requested.
 - Other repos in `$HOME` are separate projects. Ignore them unless the task explicitly targets them.
 
 ## Core Working Rules
@@ -106,6 +104,6 @@ git diff --stat
 
 ## Home Directory Boundaries
 
-- `~/HyDE/` and `~/omarchy/` are references, not the active config.
+- `~/omarchy/` is a reference, not the active config.
 - `~/bema-django/`, `~/bema-java/`, `~/bema-next/`, and `~/LyricaV2/` are separate projects.
 - If the task is about "my config", start from the live config paths, not the reference repos.

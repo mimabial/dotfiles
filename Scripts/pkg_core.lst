@@ -38,6 +38,7 @@ quickshell                                            # QtQuick shell toolkit â€
 awww                                                  # wallpaper daemon/backend
 dunst                                                 # notification daemon
 hyprlock                                              # lock screen
+hypridle                                              # idle daemon
 wlogout                                               # logout menu
 grim                                                  # screenshot tool
 hyprpicker                                            # color picker
@@ -173,6 +174,3 @@ lutris                                                # Lutris launcher integrat
 steam                                                 # Steam launcher/catalog integration
 ttf-liberation                                        # Steam font dependency
 lib32-fontconfig                                      # Steam/Proton font discovery
-
-# --------------------------------------------------- // HyDE
-hypridle                                              # idle daemon

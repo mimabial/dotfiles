@@ -1,13 +1,16 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import "modules"
+import qs.systemstats
 
 BarSurface {
     id: root
     readonly property var section: shell.style.box(".modules-left")
     readonly property var layout: shell.barLayout
     readonly property bool onTop: shell.barEdge === "top"
-    readonly property var registry: ({"menu": mod_menu, "taskbar": mod_taskbar, "workspace-weather": mod_workspace_weather, "workspaces": mod_workspaces, "mediaplayer": mod_mediaplayer, "tray": mod_tray, "language": mod_language, "datetime": mod_datetime, "converter": mod_converter, "sudoku": mod_sudoku, "submap": mod_submap})
+    readonly property var registry: ({"menu": mod_menu, "taskbar": mod_taskbar, "workspace-weather": mod_workspace_weather, "workspaces": mod_workspaces, "mediaplayer": mod_mediaplayer, "systemstats": mod_systemstats, "tray": mod_tray, "language": mod_language, "datetime": mod_datetime, "converter": mod_converter, "sudoku": mod_sudoku, "submap": mod_submap})
     active: shell.mode === "winbar" && !shell.userHidden
     anchors.left: true; anchors.right: true; anchors.top: onTop; anchors.bottom: !onTop
     margins.left: floatMargin("left"); margins.right: floatMargin("right")
@@ -26,6 +29,7 @@ BarSurface {
     } }
     Component { id: mod_workspaces; Workspaces { shell: root.shell; hideActive: true; Layout.fillHeight: true } }
     Component { id: mod_mediaplayer; MediaButton { shell: root.shell; Layout.fillHeight: true; popupEnabled: root.popupsAllowed } }
+    Component { id: mod_systemstats; SystemStats { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_tray; BarGroup {
         shell: root.shell; css: "tray-group"; vertical: false; Layout.fillHeight: true; reverse: true
         holdOpen: ["cpu", "gpu", "memory", "disk"].includes(root.shell.popupName)

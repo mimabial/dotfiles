@@ -22,4 +22,5 @@ QtObject {
     property int rowPaddingX
     property int labelGap
     property int panelPadding
+    property int popupPadding
 }

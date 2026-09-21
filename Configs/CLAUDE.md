@@ -61,7 +61,7 @@ Two unrelated manifests exist; do not treat them as interchangeable:
 - The live system is this home directory.
 - Active config lives under `~/.config/`, `~/.local/bin/`, `~/.local/lib/`, `~/.local/share/`, and `~/.local/state/`.
 - Do not treat `~/dotfiles/` as the source of truth for persisted config changes.
-- Do not treat cloned repos as the active config. `~/HyDE/` and `~/omarchy/` are reference repos only unless explicitly requested.
+- Do not treat cloned repos as the active config. `~/omarchy/` is a reference repo only unless explicitly requested.
 - Other repos in `$HOME` are unrelated projects. Ignore them unless the task explicitly targets them.
 
 ## Collaboration Style
@@ -594,6 +594,6 @@ checked once, and the result stands.
 
 ## Home Directory Boundaries
 
-- `~/HyDE/` and `~/omarchy/` are reference repos, not active config.
+- `~/omarchy/` is a reference repo, not active config.
 - `~/bema-django/`, `~/bema-java/`, `~/bema-next/`, and `~/LyricaV2/` are separate projects.
 - If the task is about "my config", work on the live config paths first, not the reference repos.

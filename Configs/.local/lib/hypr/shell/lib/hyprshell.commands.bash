@@ -55,7 +55,7 @@ get_version() {
     return 1
   }
   branch="$(git -C "$repo" branch --show-current 2>/dev/null || true)"
-  printf 'HyDE %s (%s)\n' "$version" "${branch:-detached}"
+  printf 'dotfiles %s (%s)\n' "$version" "${branch:-detached}"
 }
 
 get_release_notes() {

@@ -1,13 +1,16 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import "modules"
+import qs.systemstats
 
 BarSurface {
     id: root
     readonly property var section: shell.style.box(".modules-left")
     readonly property var layout: shell.barLayout
     readonly property bool onTop: shell.barEdge === "top"
-    readonly property var registry: ({"menu": mod_menu, "taskbar": mod_taskbar, "mediaplayer": mod_mediaplayer, "cpu": mod_cpu, "gpu": mod_gpu, "memory": mod_memory, "disk": mod_disk, "disks": mod_disks, "fan": mod_fan, "datetime": mod_datetime, "indicators": mod_indicators, "language": mod_language, "updates": mod_updates, "converter": mod_converter, "sudoku": mod_sudoku, "workspaces": mod_workspaces, "weather": mod_weather, "submap": mod_submap, "audio": mod_audio, "bluetooth": mod_bluetooth, "vpn": mod_vpn, "wifi": mod_wifi, "speed": mod_speed, "volume": mod_volume, "display": mod_display, "powerprofile": mod_powerprofile, "powerbutton": mod_powerbutton, "monitor": mod_monitor, "capture": mod_capture, "notification-group": mod_notification_group, "notification": mod_notification, "github": mod_github, "tasks": mod_tasks, "privacy": mod_privacy, "tray": mod_tray, "connectivity": mod_connectivity, "appearance": mod_appearance, "power": mod_power})
+    readonly property var registry: ({"menu": mod_menu, "taskbar": mod_taskbar, "mediaplayer": mod_mediaplayer, "systemstats": mod_systemstats, "cpu": mod_cpu, "gpu": mod_gpu, "memory": mod_memory, "disk": mod_disk, "disks": mod_disks, "fan": mod_fan, "datetime": mod_datetime, "indicators": mod_indicators, "language": mod_language, "updates": mod_updates, "converter": mod_converter, "sudoku": mod_sudoku, "workspaces": mod_workspaces, "weather": mod_weather, "submap": mod_submap, "audio": mod_audio, "bluetooth": mod_bluetooth, "vpn": mod_vpn, "wifi": mod_wifi, "speed": mod_speed, "volume": mod_volume, "display": mod_display, "powerprofile": mod_powerprofile, "powerbutton": mod_powerbutton, "monitor": mod_monitor, "capture": mod_capture, "notification-group": mod_notification_group, "notification": mod_notification, "github": mod_github, "tasks": mod_tasks, "privacy": mod_privacy, "tray": mod_tray, "connectivity": mod_connectivity, "appearance": mod_appearance, "power": mod_power})
     readonly property var centerModules: layout.center || []
     readonly property int centerAnchorIndex: moduleIndex(centerModules, String(layout.centerAnchor || ""))
     readonly property var centerBeforeModules: centerAnchorIndex < 0 ? [] : centerModules.slice(0, centerAnchorIndex)
@@ -29,6 +32,7 @@ BarSurface {
     Component { id: mod_menu; StartButton { shell: root.shell; popupEnabled: root.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_taskbar; WindowList { shell: root.shell; allWorkspaces: true; framed: true; Layout.fillHeight: true } }
     Component { id: mod_mediaplayer; MediaButton { shell: root.shell; Layout.fillHeight: true; popupEnabled: root.popupsAllowed } }
+    Component { id: mod_systemstats; SystemStats { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_cpu; CpuReadout { shell: root.shell; popupsAllowed: root.popupsAllowed; vertical: false; Layout.fillHeight: true } }
     Component { id: mod_gpu; GpuReadout { shell: root.shell; popupsAllowed: root.popupsAllowed; vertical: false; Layout.fillHeight: true } }
     Component { id: mod_memory; MemoryReadout { shell: root.shell; popupsAllowed: root.popupsAllowed; vertical: false; Layout.fillHeight: true } }

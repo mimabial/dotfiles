@@ -10,9 +10,15 @@ BorderSurface {
     property bool bordered: false
     property color foreground: Commons.Color.foreground
     property color accent: Commons.Color.accent
+    property string fontFamily: Commons.Style.font.menuFamily
+    property real fontSize: Commons.Style.font.caption
+    property real horizontalPadding: Commons.Style.space(10)
+    property real verticalPadding: Commons.Style.space(6)
     signal clicked()
 
     activeFocusOnTab: focusable
+    implicitWidth: label.implicitWidth + horizontalPadding * 2
+    implicitHeight: label.implicitHeight + verticalPadding * 2
     radius: Commons.Style.cornerRadius
     color: selected || mouse.containsMouse || activeFocus
         ? Commons.Util.alpha(accent, selected ? 0.24 : 0.14)
@@ -26,11 +32,12 @@ BorderSurface {
     Keys.onSpacePressed: root.clicked()
 
     Text {
+        id: label
         anchors.centerIn: parent
         text: root.text
         color: root.selected ? root.accent : root.foreground
-        font.family: Commons.Style.font.menuFamily
-        font.pixelSize: Commons.Style.font.caption
+        font.family: root.fontFamily
+        font.pixelSize: root.fontSize
     }
 
     MouseArea {

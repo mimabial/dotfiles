@@ -15,6 +15,10 @@ QtObject {
         Quickshell.execDetached(["bash", "-lc", command])
     }
 
+    function execArgv(argv) {
+        Quickshell.execDetached(argv)
+    }
+
     function editsFilter(event, text) {
         if (!text || (event.modifiers & (Qt.AltModifier | Qt.MetaModifier))) return false
         if (event.key === Qt.Key_U) return event.modifiers === Qt.ControlModifier

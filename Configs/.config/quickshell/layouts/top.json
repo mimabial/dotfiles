@@ -24,15 +24,11 @@
     "weather"
   ],
   "right": [
-    "memory",
-    "gpu",
-    "cpu",
     "powerprofile",
     "volume",
     "display",
     "bluetooth",
     "vpn",
-    "speed",
     "wifi",
     "tasks",
     {
@@ -48,6 +44,7 @@
       "props": {
         "badge": "none"
       }
-    }
+    },
+    "systemstats"
   ]
 }

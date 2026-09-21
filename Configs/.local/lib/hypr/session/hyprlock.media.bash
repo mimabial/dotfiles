@@ -146,7 +146,11 @@ mpris_thumb() {
     fi
   fi
 
-  if ! magick "${MAGICK_LIMITS[@]}" "${art_tmp}" -quality 50 "png:${png_tmp}" 2>/dev/null; then
+  # Layouts frame the art in a square; thumbnails arrive letterboxed, so drop the
+  # bars and centre-crop to fill it.
+  if ! magick "${MAGICK_LIMITS[@]}" "${art_tmp}" -fuzz 8% -trim +repage \
+    -gravity center -extent '%[fx:min(w,h)]x%[fx:min(w,h)]' \
+    -quality 50 "png:${png_tmp}" 2>/dev/null; then
     mpris_cleanup_temps "${art_tmp}" "${png_tmp}" "${blurred_tmp}" "${link_tmp}"
     return 1
   fi

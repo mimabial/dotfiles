@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-scrDir="${HYDE_SCRIPTS_DIR:-$(dirname "$(realpath "${BASH_SOURCE[0]}")")}"
+scrDir="${DOTFILES_SCRIPTS_DIR:-$(dirname "$(realpath "${BASH_SOURCE[0]}")")}"
 cloneDir="${CLONE_DIR:-$(dirname "${scrDir}")}"
 confDir="${XDG_CONFIG_HOME:-$HOME/.config}"
 cacheDir="${XDG_CACHE_HOME:-$HOME/.cache}/hypr"
@@ -9,7 +9,7 @@ aurList=(yay paru)
 shlList=(zsh fish)
 pacmanCmd=${cloneDir}/Configs/.local/lib/hypr/system/pm.sh
 
-export HYDE_SCRIPTS_DIR="${scrDir}"
+export DOTFILES_SCRIPTS_DIR="${scrDir}"
 export cloneDir
 export confDir
 export cacheDir
@@ -56,7 +56,7 @@ prompt_timer() {
 }
 print_log() {
     local executable="${0##*/}"
-    local logFile="${cacheDir}/logs/${HYDE_LOG}/${executable}.log"
+    local logFile="${cacheDir}/logs/${DOTFILES_LOG}/${executable}.log"
     mkdir -p "$(dirname "${logFile}")"
     local section=${log_section:-}
     {
@@ -126,7 +126,7 @@ print_log() {
             esac
         done
         echo ""
-    } | if [ -n "${HYDE_LOG}" ]; then
+    } | if [ -n "${DOTFILES_LOG}" ]; then
         tee >(sed 's/\x1b\[[0-9;]*m//g' >>"${logFile}")
     else
         cat
@@ -134,7 +134,7 @@ print_log() {
 }
 
 step_log_file() {
-    local log_name="${HYDE_LOG:-manual}"
+    local log_name="${DOTFILES_LOG:-manual}"
     printf '%s/logs/%s/install.steps.log\n' "${cacheDir}" "${log_name}"
 }
 

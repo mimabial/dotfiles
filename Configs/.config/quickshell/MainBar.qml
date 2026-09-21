@@ -1,6 +1,9 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import "modules"
+import qs.systemstats
 
 BarSurface {
     id: root
@@ -14,9 +17,14 @@ BarSurface {
     margins.left: onLeft ? (active ? floatMargin("left") : -implicitWidth) : floatMargin("left")
     margins.right: onLeft ? floatMargin("right") : (active ? floatMargin("right") : -implicitWidth)
     // composition is data: reordering the bar is editing layouts/<name>.json
-    readonly property var registry: ({"menu": mod_menu, "taskbar": mod_taskbar, "tray": mod_tray, "updates": mod_updates, "agents": mod_agents, "gpu": mod_gpu, "cpu": mod_cpu, "memory": mod_memory, "disk": mod_disk, "fan": mod_fan, "minmax": mod_minmax, "wifi": mod_wifi, "speed": mod_speed, "bluetooth": mod_bluetooth, "vpn": mod_vpn, "printers": mod_printers, "disks": mod_disks, "connectivity": mod_connectivity, "barlayout": mod_barlayout, "colormode": mod_colormode, "appearance": mod_appearance, "converter": mod_converter, "tools": mod_tools, "sudoku": mod_sudoku, "datetime": mod_datetime, "date": mod_date, "eyecare": mod_eyecare, "forecast": mod_forecast, "info": mod_info, "info-drawer": mod_info_drawer, "gamemode": mod_gamemode, "mediaplayer": mod_mediaplayer, "notification-group": mod_notification_group, "notification": mod_notification, "power": mod_power, "privacy": mod_privacy, "capture": mod_capture, "screenshot": mod_screenshot, "screenrecord": mod_screenrecord, "webcam": mod_webcam, "terminal": mod_terminal, "audio": mod_audio, "submap": mod_submap, "tasks": mod_tasks, "workspaces": mod_workspaces})
+    readonly property var registry: ({"menu": mod_menu, "taskbar": mod_taskbar, "tray": mod_tray, "updates": mod_updates, "agents": mod_agents, "systemstats": mod_systemstats, "gpu": mod_gpu, "cpu": mod_cpu, "memory": mod_memory, "disk": mod_disk, "fan": mod_fan, "minmax": mod_minmax, "wifi": mod_wifi, "speed": mod_speed, "bluetooth": mod_bluetooth, "vpn": mod_vpn, "printers": mod_printers, "disks": mod_disks, "connectivity": mod_connectivity, "barlayout": mod_barlayout, "colormode": mod_colormode, "appearance": mod_appearance, "converter": mod_converter, "tools": mod_tools, "sudoku": mod_sudoku, "datetime": mod_datetime, "date": mod_date, "eyecare": mod_eyecare, "forecast": mod_forecast, "info": mod_info, "info-drawer": mod_info_drawer, "gamemode": mod_gamemode, "mediaplayer": mod_mediaplayer, "notification-group": mod_notification_group, "notification": mod_notification, "power": mod_power, "privacy": mod_privacy, "capture": mod_capture, "screenshot": mod_screenshot, "screenrecord": mod_screenrecord, "webcam": mod_webcam, "terminal": mod_terminal, "audio": mod_audio, "submap": mod_submap, "tasks": mod_tasks, "workspaces": mod_workspaces})
     readonly property var layout: shell.barLayout.modules || []
     readonly property var section: shell.style.box(".modules-left")
+    function moduleVisible(module: var): bool {
+        if (!module) return true
+        if ("shown" in module) return module.shown
+        return !("text" in module) || String(module.text) !== ""
+    }
     implicitWidth: mainColumn.implicitWidth + section.margin[1] + section.margin[3] + section.padding[1] + section.padding[3]
     Component { id: mod_menu; StartButton { shell: root.shell; popupEnabled: root.popupsAllowed; Layout.fillWidth: true } }
     Component { id: mod_taskbar; WindowList { shell: root.shell; Layout.fillWidth: true } }
@@ -49,6 +57,7 @@ BarSurface {
     Component { id: mod_info_drawer; InfoDrawerGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
     Component { id: mod_updates; UpdatesGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
     Component { id: mod_agents; UpdatesGroup { shell: root.shell; popupsAllowed: root.popupsAllowed; agentsFirst: true; Layout.fillWidth: true } }
+    Component { id: mod_systemstats; SystemStats { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
     Component { id: mod_gpu; GpuReadout { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
     Component { id: mod_cpu; CpuReadout { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
     Component { id: mod_memory; MemoryReadout { shell: root.shell; popupsAllowed: root.popupsAllowed; Layout.fillWidth: true } }
@@ -79,10 +88,7 @@ BarSurface {
                 Layout.fillWidth: moduleId !== "date"
                 Layout.alignment: moduleId === "date" ? Qt.AlignHCenter : 0
                 Layout.fillHeight: moduleId === "spacer"
-                visible: moduleId === "spacer" || !item ? true
-                    : item.shown !== undefined ? item.shown
-                    : item.text !== undefined ? String(item.text) !== ""
-                    : true
+                visible: moduleId === "spacer" || root.moduleVisible(item)
                 sourceComponent: moduleId === "spacer" ? null : root.registry[moduleId] || null
                 Component.onCompleted: if (moduleId !== "spacer" && !root.registry[moduleId]) console.warn("unknown bar module: " + moduleId)
                 onLoaded: {

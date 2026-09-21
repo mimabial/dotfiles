@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert the supported HyDE Hyprlang fragment subset to native Hyprland Lua."""
+"""Convert the supported Hyprlang fragment subset to native Hyprland Lua."""
 
 from __future__ import annotations
 

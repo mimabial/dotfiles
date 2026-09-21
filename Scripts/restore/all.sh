@@ -61,6 +61,6 @@ fi
 
 run_step "restore configs" "${scrDir}/restore_cfg.sh"
 run_step "restore host layer" restore_host_layer
+run_step "restore host system config" "${scrDir}/restore/host-system.sh"
 run_step "seed hypr state" seed_hypr_state
-run_step "restore themes" "${scrDir}/restore_thm.sh"
 run_step "refresh generated outputs" refresh_generated_outputs

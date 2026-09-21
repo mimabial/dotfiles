@@ -14,7 +14,6 @@ flg_Service=0
 flg_DryRun=0
 flg_Shell=0
 flg_Nvidia=1
-flg_ThemeInstall=1
 flg_Lint=0
 
 usage() {
@@ -26,7 +25,6 @@ Usage: $0 [options] [custom-package-list]
             s : enable system [s]ervices
             n : ignore/[n]o [n]vidia actions (-irsn to ignore nvidia)
             h : re-evaluate S[h]ell
-            m : no the[m]e reinstallations
             t : [t]est run without executing (-irst to dry run all)
             l : [l]int package manifests and exit
 
@@ -50,7 +48,7 @@ run_package_lint() {
     run_step "lint package manifests" "${scrDir}/packaging/lint.sh" "${lint_args[@]}"
 }
 
-while getopts idrstmnhl RunStep; do
+while getopts idrstnhl RunStep; do
     case "${RunStep}" in
     i) flg_Install=1 ;;
     d)
@@ -68,7 +66,6 @@ while getopts idrstmnhl RunStep; do
         print_log -r "[shell] " -b "Reevaluate :: " "shell options"
         ;;
     t) flg_DryRun=1 ;;
-    m) flg_ThemeInstall=0 ;;
     l) flg_Lint=1 ;;
     *)
         usage
@@ -80,8 +77,8 @@ done
 shift $((OPTIND - 1))
 custom_pkg="${1:-}"
 
-HYDE_LOG="$(date +'%y%m%d_%Hh%Mm%Ss')"
-export flg_DryRun flg_Nvidia flg_Shell flg_Install flg_Restore flg_Service flg_ThemeInstall HYDE_LOG custom_pkg
+DOTFILES_LOG="$(date +'%y%m%d_%Hh%Mm%Ss')"
+export flg_DryRun flg_Nvidia flg_Shell flg_Install flg_Restore flg_Service DOTFILES_LOG custom_pkg
 
 if [ "${flg_DryRun}" -eq 1 ]; then
     print_log -n "[test-run] " -b "enabled :: " "Testing without executing"
@@ -130,7 +127,7 @@ if [ "${flg_Install}" -eq 1 ]; then
     print_log -g "Installation" " :: " "COMPLETED!"
 fi
 
-print_log -b "Log" " :: " -y "View logs at ${cacheDir}/logs/${HYDE_LOG}"
+print_log -b "Log" " :: " -y "View logs at ${cacheDir}/logs/${DOTFILES_LOG}"
 
 if has_action && [ "${flg_DryRun}" -ne 1 ]; then
     if [[ -z "${HYPRLAND_CONFIG:-}" || ! -f "${HYPRLAND_CONFIG}" ]]; then
@@ -138,7 +135,7 @@ if has_action && [ "${flg_DryRun}" -ne 1 ]; then
         print_log -warn "Please reboot the system to apply new changes."
     fi
 
-    print_log -stat "HyDE" "It is not recommended to use newly installed or upgraded HyDE without rebooting the system. Do you want to reboot the system? (y/N)"
+    print_log -stat "reboot" "It is not recommended to use a newly installed or upgraded setup without rebooting the system. Do you want to reboot the system? (y/N)"
     read -r answer
 
     if [[ "${answer}" == [Yy] ]]; then

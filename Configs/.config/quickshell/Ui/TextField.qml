@@ -7,6 +7,7 @@ TextField {
 
     property color foreground: Commons.Color.foreground
     property color accent: Commons.Color.accent
+    property real verticalPadding: Commons.Style.space(7)
 
     font.family: Commons.Style.font.menuFamily
     font.pixelSize: Commons.Style.font.body
@@ -16,8 +17,8 @@ TextField {
     placeholderTextColor: Commons.Util.alpha(foreground, 0.52)
     leftPadding: Commons.Style.space(10)
     rightPadding: Commons.Style.space(10)
-    topPadding: Commons.Style.space(7)
-    bottomPadding: Commons.Style.space(7)
+    topPadding: verticalPadding
+    bottomPadding: verticalPadding
 
     background: Rectangle {
         color: root.activeFocus || root.hovered ? Commons.Util.alpha(root.accent, 0.10) : "transparent"

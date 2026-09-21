@@ -1,6 +1,9 @@
 [Crop]
 CropAdvancedSettingsEnabled=true
 
+[FullScreen]
+FullScreenModeActive=true
+
 [General]
 FullScreenBackground=FullScreenBackground::Image
 LastUsedVersion=210800
@@ -16,31 +19,31 @@ ThumbnailSplitterSizes=512,146
 MenuBar=Disabled
 
 [Recent Files]
-File1[$e]=$HOME/Pictures/The-Wallpaper-Collection/黑猫的野望壁纸包/040b0f32606ca45c70ef3df18c8f17687c4ae7ca.JPG
-File10[$e]=$HOME/.config/hypr/themes/Kanagawa Wave/wallpapers/wallhaven-4gvrq3.jpg
-File2[$e]=$HOME/Pictures/The-Wallpaper-Collection/2025 Wallpaper/0_original.jpg
-File3[$e]=$HOME/Pictures/The-Wallpaper-Collection/2025 Wallpaper/2DB27EA1-95B8-4AE7-B46A-2AA455401665.jpg
-File4[$e]=$HOME/Pictures/images/3squares.png
-File5[$e]=$HOME/Pictures/wallhaven-mllqym.png
-File6[$e]=$HOME/Pictures/wallhaven-859z1j.png
-File7[$e]=$HOME/Downloads/11a8533d526e143a1d055a569bb44350.jpg
-File8[$e]=$HOME/Pictures/wallhaven-0pqz34.jpg
-File9[$e]=$HOME/Pictures/wallhaven-2yvywx.png
-Name1[$e]=040b0f32606ca45c70ef3df18c8f17687c4ae7ca.JPG
-Name10[$e]=wallhaven-4gvrq3.jpg
-Name2[$e]=0_original.jpg
-Name3[$e]=2DB27EA1-95B8-4AE7-B46A-2AA455401665.jpg
-Name4[$e]=3squares.png
-Name5[$e]=wallhaven-mllqym.png
-Name6[$e]=wallhaven-859z1j.png
-Name7[$e]=11a8533d526e143a1d055a569bb44350.jpg
-Name8[$e]=wallhaven-0pqz34.jpg
-Name9[$e]=wallhaven-2yvywx.png
+File1[$e]=$HOME/Pictures/wallhaven-0pqz34.jpg
+File10[$e]=$HOME/Downloads/ac5be5e9b9751a8312ea7ce319e9b00e.jpg
+File2[$e]=$HOME/Pictures/wallhaven-2yvywx.png
+File3[$e]=$HOME/.config/hypr/themes/Kanagawa Wave/wallpapers/wallhaven-4gvrq3.jpg
+File4[$e]=$HOME/Downloads/IMG_8749.jpg
+File5[$e]=$HOME/Downloads/1cece2ff13379b9a7f85918d902e6a3f.jpg
+File6[$e]=$HOME/Downloads/11a8533d526e143a1d055a569bb44350.jpg
+File7[$e]=$HOME/Downloads/3587e7e93261032e4a14df1d2178d362.jpg
+File8[$e]=$HOME/Downloads/872190ba65d1b2be618b3db0ea986bb6.jpg
+File9[$e]=$HOME/Downloads/aa66ffdfdf4841b51ee81a8b45aa92b5.jpg
+Name1[$e]=wallhaven-0pqz34.jpg
+Name10[$e]=ac5be5e9b9751a8312ea7ce319e9b00e.jpg
+Name2[$e]=wallhaven-2yvywx.png
+Name3[$e]=wallhaven-4gvrq3.jpg
+Name4[$e]=IMG_8749.jpg
+Name5[$e]=1cece2ff13379b9a7f85918d902e6a3f.jpg
+Name6[$e]=11a8533d526e143a1d055a569bb44350.jpg
+Name7[$e]=3587e7e93261032e4a14df1d2178d362.jpg
+Name8[$e]=872190ba65d1b2be618b3db0ea986bb6.jpg
+Name9[$e]=aa66ffdfdf4841b51ee81a8b45aa92b5.jpg
 
 [SideBar]
 InformationSplitterSizes=231,244
 IsVisible ViewMode=true
-SideBarSplitterSizes=321,617
+SideBarSplitterSizes=321,1598
 
 [StatusBar]
 IsVisible BrowseMode=false

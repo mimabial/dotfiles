@@ -17,6 +17,7 @@ QtObject {
     readonly property real barOpacity: root.shell ? Number(root.shell.barOpacity) : 1
     readonly property real popupSurfaceOpacity: Active.Style.popupSurfaceOpacity
     readonly property real popupBorderOpacity: Active.Style.popupBorderOpacity
+    readonly property int hoverDuration: Active.Style.hoverDuration
 
     readonly property int normalBorderWidth: Math.max(1, Active.Style.px(1))
     readonly property int hoverBorderWidth: normalBorderWidth
@@ -60,6 +61,10 @@ QtObject {
         return Active.Style.px(Number(value))
     }
 
+    function spaceReal(value) {
+        return Number(value) * Active.Style.uiScale
+    }
+
     readonly property StyleSpacing spacing: StyleSpacing {
         hairline: Math.max(1, Active.Style.px(1))
         xxs: Active.Style.xxs
@@ -80,6 +85,7 @@ QtObject {
         rowPaddingX: Active.Style.controlPaddingX
         labelGap: Active.Style.xs
         panelPadding: Active.Style.popupPadding
+        popupPadding: Active.Style.popupPadding
     }
 
     // This config sizes its bars from their content, so there is no fixed bar
@@ -87,6 +93,8 @@ QtObject {
     // TEXT_SIZE, which is what consumers of sizeHorizontal actually want.
     readonly property StyleBar bar: StyleBar {
         sizeHorizontal: Active.Style.controlHeight
+        iconSlot: Active.Style.controlHeight
+        iconFont: Active.Style.title + 3
     }
 
     // Icon glyphs from the text font disagree on ink height — in Lekton the play

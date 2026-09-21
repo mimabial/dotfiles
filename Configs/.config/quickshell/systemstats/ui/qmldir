@@ -1,0 +1,24 @@
+module qs.systemstats.ui
+BarReadout 1.0 BarReadout.qml
+BatteryPage 1.0 BatteryPage.qml
+BigStat 1.0 BigStat.qml
+Card 1.0 Card.qml
+CardHeader 1.0 CardHeader.qml
+CpuPage 1.0 CpuPage.qml
+GpuPage 1.0 GpuPage.qml
+DisksPage 1.0 DisksPage.qml
+HistoryGraph 1.0 HistoryGraph.qml
+Legend 1.0 Legend.qml
+Measure 1.0 Measure.qml
+MemoryPage 1.0 MemoryPage.qml
+MiniRing 1.0 MiniRing.qml
+MirrorGraph 1.0 MirrorGraph.qml
+ModuleTabs 1.0 ModuleTabs.qml
+NetworkPage 1.0 NetworkPage.qml
+ProcessList 1.0 ProcessList.qml
+RingGauge 1.0 RingGauge.qml
+SectionTitle 1.0 SectionTitle.qml
+SensorsPage 1.0 SensorsPage.qml
+SettingsPage 1.0 SettingsPage.qml
+StackLabel 1.0 StackLabel.qml
+StatRow 1.0 StatRow.qml

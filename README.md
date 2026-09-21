@@ -1,6 +1,6 @@
 # rifle's dotfiles
 
-Arch Linux + Hyprland desktop configuration, originally derived from HyDE and maintained here as a mirror of the persistent parts of the running setup.
+Arch Linux + Hyprland desktop configuration, maintained here as a mirror of the persistent parts of the running setup.
 
 The bar is Quickshell (`Configs/.config/quickshell/`). Script providers use a compact JSON output format.
 
@@ -120,7 +120,6 @@ Supported `Scripts/install.sh` flags:
 | `-r` | Restore config files |
 | `-s` | Enable / restore services |
 | `-t` | Dry-run mode |
-| `-m` | Skip theme reinstallations |
 | `-n` | Skip NVIDIA-specific actions |
 | `-h` | Re-evaluate shell handling |
 | `-l` | Lint package manifests and exit |
@@ -216,7 +215,6 @@ The desktop rebuilds generated theme outputs for Hyprland, Quickshell, Rofi, Dun
 
 ## Credits
 
-- [HyDE](https://github.com/HyDE-Project/HyDE) for the original base and installer model
 - [Hyprland](https://hyprland.org/) for the compositor
 - [pywal16](https://github.com/eylles/pywal16) for wallpaper-derived palette generation
 - [app2unit](https://github.com/Vladimir-csp/app2unit) for launching desktop entries as systemd user units (bundled)
