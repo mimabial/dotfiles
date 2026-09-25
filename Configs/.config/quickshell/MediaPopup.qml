@@ -208,8 +208,9 @@ PopupCard {
       return
     }
     mprisPositionProc.source = service
-    mprisPositionProc.command = ["busctl", "--user", "--json=short", "get-property", service,
-      "/org/mpris/MediaPlayer2", "org.mpris.MediaPlayer2.Player", "Position"]
+    mprisPositionProc.command = ["dbus-send", "--session", "--print-reply=literal", "--dest=" + service,
+      "/org/mpris/MediaPlayer2", "org.freedesktop.DBus.Properties.Get",
+      "string:org.mpris.MediaPlayer2.Player", "string:Position"]
     mprisPositionProc.running = true
   }
 
@@ -614,12 +615,9 @@ PopupCard {
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
-        try {
-          const data = JSON.parse(text || "{}")
-          const p = root.mprisPlayer
-          if (p && String(p.dbusName || "") === mprisPositionProc.source)
-            root.applyMprisPosition(Number(data.data) / 1000000)
-        } catch (error) {}
+        const p = root.mprisPlayer
+        if (p && String(p.dbusName || "") === mprisPositionProc.source)
+          root.applyMprisPosition(parseInt(text.split("int64")[1]) / 1000000)
       }
     }
   }

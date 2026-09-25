@@ -1,22 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+udisks() { gdbus call --system --dest org.freedesktop.UDisks2 --timeout "$1" --object-path "$2" --method "org.freedesktop.$3" "${@:4}"; }
+quote() { local text="${1//\\/\\\\}"; printf "'%s'" "${text//\'/\\\'}"; }
+object_path() { local path="/${1#*/}"; printf '%s' "${path%%\'*}"; }
+
 action="${1:-}" device="${2:-}" identity="${3:-}" type="${4:-}" label="${5:-}" zero="${6:-0}"
 [[ "$device" == /dev/* && -b "$device" ]] || { echo 'Drive is no longer present' >&2; exit 1; }
+object="$(object_path "$(udisks 25 /org/freedesktop/UDisks2/Manager UDisks2.Manager.ResolveDevice "{'path': <$(quote "$device")>}" '{}')")"
+[[ "$object" == /org/freedesktop/UDisks2/block_devices/* ]] || { echo 'udisks cannot find this drive' >&2; exit 1; }
 if [[ "$action" == health ]]; then
-  raw="$(busctl call org.freedesktop.UDisks2 /org/freedesktop/UDisks2/Manager org.freedesktop.UDisks2.Manager ResolveDevice 'a{sv}a{sv}' 1 path s "$device" 0)"
-  object="/${raw#*/}"; object="${object%?}"
-  raw="$(busctl get-property org.freedesktop.UDisks2 "$object" org.freedesktop.UDisks2.Block Drive)"
-  drive="/${raw#*/}"; drive="${drive%?}"
+  drive="$(object_path "$(udisks 25 "$object" DBus.Properties.Get org.freedesktop.UDisks2.Block Drive)")"
   [[ "$drive" == /org/freedesktop/UDisks2/drives/* ]] || exit 1
-  busctl --timeout=30 call org.freedesktop.UDisks2 "$drive" org.freedesktop.UDisks2.Drive.Ata SmartUpdate 'a{sv}' 1 nowakeup b true >/dev/null 2>&1 || true
-  busctl --timeout=30 call org.freedesktop.UDisks2 "$drive" org.freedesktop.UDisks2.NVMe.Controller SmartUpdate 'a{sv}' 0 >/dev/null 2>&1 || true
-  for spec in 'Ata SmartUpdated' 'Ata SmartFailing' 'Ata SmartTemperature' 'Ata SmartPowerOnSeconds' 'Ata SmartNumBadSectors' 'NVMe.Controller SmartUpdated' 'NVMe.Controller SmartCriticalWarning' 'NVMe.Controller SmartTemperature' 'NVMe.Controller SmartPowerOnHours'; do
-    read -r interface property <<<"$spec"
-    [[ "$interface" == Ata ]] && interface=org.freedesktop.UDisks2.Drive.Ata || interface=org.freedesktop.UDisks2.NVMe.Controller
-    value="$(busctl get-property org.freedesktop.UDisks2 "$drive" "$interface" "$property" 2>/dev/null)" || continue
-    printf '%s %s\n' "$property" "$value"
-  done
+  udisks 30 "$drive" UDisks2.Drive.Ata.SmartUpdate "{'nowakeup': <true>}" >/dev/null 2>&1 || true
+  udisks 30 "$drive" UDisks2.NVMe.Controller.SmartUpdate '{}' >/dev/null 2>&1 || true
+  udisks 25 "$drive" DBus.Properties.GetAll org.freedesktop.UDisks2.Drive.Ata 2>/dev/null || true
+  udisks 25 "$drive" DBus.Properties.GetAll org.freedesktop.UDisks2.NVMe.Controller 2>/dev/null || true
   exit
 fi
 disk="$device"
@@ -36,10 +35,6 @@ case "$identity" in
   serial:*) current="$(lsblk -dn -o SERIAL "$disk" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"; [[ -n "$current" && "$current" == "${identity#serial:}" ]] ;;
   *) false ;;
 esac || { echo 'Drive identity changed; rescan before trying again' >&2; exit 1; }
-
-raw="$(busctl call org.freedesktop.UDisks2 /org/freedesktop/UDisks2/Manager org.freedesktop.UDisks2.Manager ResolveDevice 'a{sv}a{sv}' 1 path s "$device" 0)"
-object="/${raw#*/}"; object="${object%?}"
-[[ "$object" == /org/freedesktop/UDisks2/block_devices/* ]] || { echo 'udisks cannot find this drive' >&2; exit 1; }
 
 if [[ "$action" == trash ]]; then
   mountpoint="$(lsblk -dn -o MOUNTPOINT "$device" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
@@ -64,29 +59,29 @@ if [[ "$action" == format ]]; then
   fi
   layers="$(jq -r '[.blockdevices[] | .children[]? | .. | objects | .type? // empty] | any(. != "part")' <<<"$mount_tree")" || exit 1
   [[ "$layers" != true ]] || { echo 'Lock or detach active volume layers before formatting' >&2; exit 1; }
-  count=1; set -- take-ownership b true
-  if [[ -n "$label" ]]; then count=$((count + 1)); set -- "$@" label s "$label"; fi
-  if [[ "$zero" == 1 && "$device" != "$disk" ]]; then count=$((count + 1)); set -- "$@" erase s zero; fi
+  options="'take-ownership': <true>"
+  if [[ -n "$label" ]]; then options+=", 'label': <$(quote "$label")>"; fi
+  if [[ "$zero" == 1 && "$device" != "$disk" ]]; then options+=", 'erase': <'zero'>"; fi
   if [[ "$device" == "$disk" ]]; then
     [[ "$type" == ext4 || "$type" == btrfs ]] && partition_type='' || partition_type=ebd0a0a2-b9e5-4433-87c0-68b6b72699c7
     if [[ "$zero" == 1 ]]; then
-      busctl --timeout=86400 call org.freedesktop.UDisks2 "$object" org.freedesktop.UDisks2.Block Format 'sa{sv}' empty 1 erase s zero
+      udisks 86400 "$object" UDisks2.Block.Format "'empty'" "{'erase': <'zero'>}"
     fi
-    busctl --timeout=120 call org.freedesktop.UDisks2 "$object" org.freedesktop.UDisks2.Block Format 'sa{sv}' gpt 0
-    busctl --timeout=86400 call org.freedesktop.UDisks2 "$object" org.freedesktop.UDisks2.PartitionTable CreatePartitionAndFormat 'ttssa{sv}sa{sv}' 1048576 0 "$partition_type" '' 0 "$type" "$count" "$@"
+    udisks 120 "$object" UDisks2.Block.Format "'gpt'" '{}'
+    udisks 86400 "$object" UDisks2.PartitionTable.CreatePartitionAndFormat 1048576 0 "'$partition_type'" "''" '{}' "'$type'" "{$options}"
     exit
   fi
-  busctl --timeout=86400 call org.freedesktop.UDisks2 "$object" org.freedesktop.UDisks2.Block Format 'sa{sv}' "$type" "$count" "$@"
+  udisks 86400 "$object" UDisks2.Block.Format "'$type'" "{$options}"
   exit
 fi
 
 if [[ "$action" == ntfsfix ]]; then
   [[ "$(lsblk -dn -o FSTYPE "$device" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')" == ntfs ]] || { echo 'This is not an NTFS volume' >&2; exit 1; }
   [[ -z "$(lsblk -dn -o MOUNTPOINT "$device" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')" ]] || { echo 'Unmount before repairing NTFS' >&2; exit 1; }
-  verdict="$(busctl --timeout=86400 call org.freedesktop.UDisks2 "$object" org.freedesktop.UDisks2.Filesystem Check 'a{sv}' 0)" || verdict='b false'
-  if [[ "$verdict" != 'b true' ]]; then
-    repair="$(busctl --timeout=86400 call org.freedesktop.UDisks2 "$object" org.freedesktop.UDisks2.Filesystem Repair 'a{sv}' 0)"
-    [[ "$repair" == 'b true' ]] || { echo 'NTFS repair did not finish cleanly' >&2; exit 1; }
+  verdict="$(udisks 86400 "$object" UDisks2.Filesystem.Check '{}')" || verdict='(false,)'
+  if [[ "$verdict" != '(true,)' ]]; then
+    repair="$(udisks 86400 "$object" UDisks2.Filesystem.Repair '{}')"
+    [[ "$repair" == '(true,)' ]] || { echo 'NTFS repair did not finish cleanly' >&2; exit 1; }
   fi
   exit
 fi
@@ -98,9 +93,9 @@ remount=(udisksctl mount --no-user-interaction -b "$device")
 [[ ",$mount_options," == *,ro,* ]] && remount+=(-o ro)
 result=0
 case "$action" in
-  label) busctl --timeout=120 call org.freedesktop.UDisks2 "$object" org.freedesktop.UDisks2.Filesystem SetLabel 'sa{sv}' "$label" 0 || result=$? ;;
-  check) busctl --timeout=86400 call org.freedesktop.UDisks2 "$object" org.freedesktop.UDisks2.Filesystem Check 'a{sv}' 0 || result=$? ;;
-  repair) busctl --timeout=86400 call org.freedesktop.UDisks2 "$object" org.freedesktop.UDisks2.Filesystem Repair 'a{sv}' 0 || result=$? ;;
+  label) udisks 120 "$object" UDisks2.Filesystem.SetLabel "$(quote "$label")" '{}' || result=$? ;;
+  check) udisks 86400 "$object" UDisks2.Filesystem.Check '{}' || result=$? ;;
+  repair) udisks 86400 "$object" UDisks2.Filesystem.Repair '{}' || result=$? ;;
 esac
 if [[ -n "$mount_options" ]] && ! "${remount[@]}" >/dev/null; then
   echo 'Filesystem action completed, but the volume could not be remounted' >&2

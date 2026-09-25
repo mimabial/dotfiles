@@ -24,24 +24,24 @@ case "$property" in
       exit 1
     fi
     bluez_property=Alias
-    signature=s
+    signature=string
     wire_value=$value
     ;;
   trusted)
     bluez_property=Trusted
-    signature=b
+    signature=boolean
     ;;
   blocked)
     bluez_property=Blocked
-    signature=b
+    signature=boolean
     ;;
   wakeAllowed)
     bluez_property=WakeAllowed
-    signature=b
+    signature=boolean
     ;;
 esac
 
-if [[ $signature == b ]]; then
+if [[ $signature == boolean ]]; then
   case "${value,,}" in
     true|1|yes|on) wire_value=true ;;
     false|0|no|off) wire_value=false ;;
@@ -52,19 +52,7 @@ if [[ $signature == b ]]; then
   esac
 fi
 
-output=
-status=0
-output=$(timeout --kill-after=2s 5s busctl set-property \
-  org.bluez "$device_path" org.bluez.Device1 \
-  "$bluez_property" "$signature" "$wire_value" 2>&1) || status=$?
-if (( status == 0 )); then
-  exit 0
-fi
-
-if (( status == 124 || status == 137 )); then
-  echo "Changing the Bluetooth device setting timed out." >&2
-  exit 1
-fi
+output=$(hypr_dbus_set system org.bluez "$device_path" org.bluez.Device1 "$bluez_property" "$signature" "$wire_value" 2>&1) && exit 0
 
 lower=${output,,}
 case "$lower" in

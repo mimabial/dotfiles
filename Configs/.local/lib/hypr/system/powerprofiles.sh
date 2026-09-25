@@ -11,18 +11,8 @@ Manual changes are locked while GameMode is active."
 hypr_help_guard "${usage}" "$@"
 
 list_profiles() {
-  busctl --system get-property org.freedesktop.UPower.PowerProfiles /org/freedesktop/UPower/PowerProfiles org.freedesktop.UPower.PowerProfiles Profiles |
-    grep -oP '"Profile" s "\K[^"]+'
-}
-
-gamemode_active() {
-  [[ "$(busctl --user get-property com.feralinteractive.GameMode /com/feralinteractive/GameMode com.feralinteractive.GameMode ClientCount 2>/dev/null)" =~ ^i[[:space:]]+[1-9][0-9]*$ ]]
-}
-
-active_profile() {
-  local type profile
-  read -r type profile < <(busctl --system get-property org.freedesktop.UPower.PowerProfiles /org/freedesktop/UPower/PowerProfiles org.freedesktop.UPower.PowerProfiles ActiveProfile)
-  printf '%s\n' "${profile//\"/}"
+  dbus-send --system --print-reply=literal --dest=org.freedesktop.UPower.PowerProfiles /org/freedesktop/UPower/PowerProfiles org.freedesktop.DBus.Properties.Get string:org.freedesktop.UPower.PowerProfiles string:Profiles |
+    grep -oP '^\s*Profile\s+variant\s+\K\S+'
 }
 
 profile_available() {
@@ -36,7 +26,7 @@ profile_available() {
 }
 
 power_source() {
-  if [[ "$(busctl --system get-property org.freedesktop.UPower /org/freedesktop/UPower org.freedesktop.UPower OnBattery 2>/dev/null)" == "b true" ]]; then
+  if hypr_on_battery; then
     printf 'battery\n'
   else
     printf 'ac\n'
@@ -64,7 +54,7 @@ set_profile() {
   local profile="$1"
   local notify_lock="${2:-1}"
 
-  if gamemode_active; then
+  if hypr_gamemode_active; then
     if [[ "${notify_lock}" == 1 ]]; then
       notify_send_safe -a hyprshell "Power profile locked" "GameMode is driving the CPU governor until the game exits." || true
     fi
@@ -74,7 +64,7 @@ set_profile() {
     printf 'Power profile is not available: %s\n' "${profile}" >&2
     return 1
   }
-  busctl --system set-property org.freedesktop.UPower.PowerProfiles /org/freedesktop/UPower/PowerProfiles org.freedesktop.UPower.PowerProfiles ActiveProfile s "${profile}"
+  hypr_set_power_profile "${profile}"
 }
 
 set_and_remember_profile() {
@@ -88,7 +78,7 @@ restore_profile() {
   local state_file=""
   local profile=""
 
-  gamemode_active && return 0
+  hypr_gamemode_active && return 0
   source="$(power_source)"
   state_file="$(profile_state_file "${source}")"
   [[ -r "${state_file}" ]] && read -r profile <"${state_file}"
@@ -101,7 +91,7 @@ restore_profile() {
     fi
   fi
 
-  [[ "$(active_profile)" == "${profile}" ]] || set_profile "${profile}" 0
+  [[ "$(hypr_power_profile)" == "${profile}" ]] || set_profile "${profile}" 0
 }
 
 case "${1:-}" in
@@ -110,7 +100,7 @@ case "${1:-}" in
   --cycle)
     mapfile -t profiles < <(list_profiles)
     ((${#profiles[@]})) || exit 0
-    current="$(active_profile)"
+    current="$(hypr_power_profile)"
     for i in "${!profiles[@]}"; do
       [[ "${profiles[i]}" == "${current}" ]] || continue
       set_and_remember_profile "${profiles[(i + 1) % ${#profiles[@]}]}"

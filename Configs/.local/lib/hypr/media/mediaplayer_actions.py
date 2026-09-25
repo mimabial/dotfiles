@@ -8,7 +8,9 @@ import sys
 import time
 from pathlib import Path
 
-from mediaplayer_presenter import show_player
+from gi.repository import GLib
+
+from mediaplayer_presenter import mpris_call, show_player
 
 
 ACTIONS = {
@@ -255,25 +257,9 @@ def cycle_player(step: int) -> int:
 
 
 def fetch_interface_properties(player: str, interface: str) -> dict:
-    """Return all interface properties via a single busctl GetAll call.
-    Output shape: {prop_name: {"type": str, "data": value}, ...}."""
-    service = f"org.mpris.MediaPlayer2.{player}"
-    proc = subprocess.run(
-        [
-            "busctl", "--user", "--json=short", "call",
-            service,
-            "/org/mpris/MediaPlayer2",
-            "org.freedesktop.DBus.Properties",
-            "GetAll", "s", interface,
-        ],
-        text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-        check=False,
-    )
-    if proc.returncode != 0 or not proc.stdout.strip():
-        return {}
     try:
-        return json.loads(proc.stdout)["data"][0]
-    except (json.JSONDecodeError, KeyError, IndexError, TypeError):
+        return mpris_call(player, "org.freedesktop.DBus.Properties", "GetAll", GLib.Variant("(s)", (interface,)))[0]
+    except GLib.Error:
         return {}
 
 
@@ -285,29 +271,19 @@ def fetch_root_properties(player: str) -> dict:
     return fetch_interface_properties(player, "org.mpris.MediaPlayer2")
 
 
-def _prop_value(props: dict, name: str):
-    entry = props.get(name)
-    return entry.get("data") if isinstance(entry, dict) else None
-
-
 def _prop_bool(props: dict, name: str) -> bool | None:
-    value = _prop_value(props, name)
+    value = props.get(name)
     return value if isinstance(value, bool) else None
 
 
 def _prop_string(props: dict, name: str) -> str | None:
-    value = _prop_value(props, name)
+    value = props.get(name)
     return value if isinstance(value, str) else None
 
 
 def _metadata_string(props: dict, name: str) -> str:
-    metadata = _prop_value(props, "Metadata")
-    if not isinstance(metadata, dict):
-        return ""
-    entry = metadata.get(name)
-    if not isinstance(entry, dict):
-        return ""
-    value = entry.get("data")
+    metadata = props.get("Metadata")
+    value = metadata.get(name) if isinstance(metadata, dict) else None
     return value if isinstance(value, str) else ""
 
 
@@ -321,7 +297,7 @@ def action_supported(props: dict, action: str) -> bool:
         return _prop_bool(props, capability) is not False
     prop = PROPERTY_BY_ACTION.get(action)
     if prop:
-        return _prop_value(props, prop) is not None
+        return prop in props
     return True
 
 

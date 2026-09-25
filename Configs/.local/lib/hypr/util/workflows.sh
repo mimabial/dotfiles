@@ -19,8 +19,8 @@ workflow_previous_name="$(state_get "HYPR_WORKFLOW" "default")"
 workflow_locked() {
   local owner=""
   [[ "${HYPR_WORKFLOW_UNLOCK:-0}" == 1 ]] && return 1
-  [[ "$(busctl --user get-property com.feralinteractive.GameMode /com/feralinteractive/GameMode com.feralinteractive.GameMode ClientCount 2>/dev/null)" =~ ^i[[:space:]]+[1-9][0-9]*$ ]] && owner=gaming
-  [[ -z "${owner}" && "${HYPR_PROFILE_WORKFLOW_LOCK:-1}" != 0 && "$(powerprofilesctl get 2>/dev/null)" == power-saver ]] && owner=powersaver
+  hypr_gamemode_active && owner=gaming
+  [[ -z "${owner}" && "${HYPR_PROFILE_WORKFLOW_LOCK:-1}" != 0 && "$(hypr_power_profile)" == power-saver ]] && owner=powersaver
   [[ -n "${owner}" && "${1:-}" != "${owner}" ]]
 }
 

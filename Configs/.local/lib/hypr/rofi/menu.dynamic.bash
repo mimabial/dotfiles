@@ -140,7 +140,7 @@ show_font_menu() {
 show_setup_power_profile_menu() {
   local profile=""
 
-  profile="$(menu "Power Profile" "$(hyprshell system/powerprofiles.sh)" --select "$(busctl --system get-property org.freedesktop.UPower.PowerProfiles /org/freedesktop/UPower/PowerProfiles org.freedesktop.UPower.PowerProfiles ActiveProfile 2>/dev/null | awk -F'"' '{print $2}')")"
+  profile="$(menu "Power Profile" "$(hyprshell system/powerprofiles.sh)" --select "$(hypr_power_profile)")"
   if [[ -z "${profile}" || "${profile}" == "CNCLD" ]]; then
     menu_exit_or_show setup
     return 0

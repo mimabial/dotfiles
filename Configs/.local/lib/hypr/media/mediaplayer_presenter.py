@@ -11,6 +11,8 @@ import subprocess
 import time
 from pathlib import Path
 
+from gi.repository import Gio, GLib
+
 
 PLAYER_ALIASES = {
     "elisa": ("elisa", "org.kde.elisa"),
@@ -90,20 +92,19 @@ def focus_empty_workspace() -> bool:
     return proc.returncode == 0
 
 
+def mpris_call(player: str, interface: str, method: str, args: GLib.Variant | None = None) -> tuple:
+    return Gio.bus_get_sync(Gio.BusType.SESSION).call_sync(
+        f"org.mpris.MediaPlayer2.{player}", "/org/mpris/MediaPlayer2", interface, method,
+        args, None, Gio.DBusCallFlags.NONE, -1, None,
+    ).unpack()
+
+
 def raise_mpris_player(player: str) -> bool:
-    service = f"org.mpris.MediaPlayer2.{player}"
-    proc = command(
-        [
-            "busctl",
-            "--user",
-            "call",
-            service,
-            "/org/mpris/MediaPlayer2",
-            "org.mpris.MediaPlayer2",
-            "Raise",
-        ]
-    )
-    return proc.returncode == 0
+    try:
+        mpris_call(player, "org.mpris.MediaPlayer2", "Raise")
+    except GLib.Error:
+        return False
+    return True
 
 
 def wait_for_window(player: str, desktop_entry: str, timeout: float = 3.0) -> dict | None:

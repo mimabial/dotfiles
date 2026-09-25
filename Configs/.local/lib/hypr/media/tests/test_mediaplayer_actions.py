@@ -30,11 +30,11 @@ class MediaPlayerMenuTests(unittest.TestCase):
     @patch(
         "mediaplayer_actions.fetch_player_properties",
         return_value={
-            "PlaybackStatus": {"data": "Playing"},
-            "CanPlay": {"data": True},
-            "CanPause": {"data": True},
-            "CanGoNext": {"data": False},
-            "CanGoPrevious": {"data": False},
+            "PlaybackStatus": "Playing",
+            "CanPlay": True,
+            "CanPause": True,
+            "CanGoNext": False,
+            "CanGoPrevious": False,
         },
     )
     def test_menu_puts_show_player_first(self, _properties, _status):
@@ -95,18 +95,14 @@ class MediaPlayerMenuTests(unittest.TestCase):
     @patch(
         "mediaplayer_actions.fetch_root_properties",
         return_value={
-            "DesktopEntry": {"data": "org.kde.elisa"},
-            "CanRaise": {"data": True},
+            "DesktopEntry": "org.kde.elisa",
+            "CanRaise": True,
         },
     )
     @patch(
         "mediaplayer_actions.fetch_player_properties",
         return_value={
-            "Metadata": {
-                "data": {
-                    "xesam:url": {"data": "file:///music/song.opus"},
-                }
-            }
+            "Metadata": {"xesam:url": "file:///music/song.opus"}
         },
     )
     @patch("mediaplayer_actions.resolve_player", return_value="elisa")

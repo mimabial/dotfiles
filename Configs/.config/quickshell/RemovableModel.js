@@ -169,18 +169,15 @@ function validLabel(type, label) {
 }
 
 function parseHealth(raw) {
-    const data = {}, lines = String(raw).split("\n")
-    for (const line of lines) {
-        const match = line.match(/^(Smart\w+)\s+\w+\s+(.+)$/)
-        if (match) data[match[1]] = match[2]
-    }
+    const data = {}, property = /'(Smart\w+)': <(?:@?\w+ )?([^>]*)>/g
+    for (let match; (match = property.exec(raw));) data[match[1]] = match[2]
     if (!Object.keys(data).length || Number(data.SmartUpdated || 0) === 0)
         return {state: "unavailable", text: "SMART unavailable via UDisks", temperature: ""}
     const temperature = Number(data.SmartTemperature)
     const kelvin = isFinite(temperature) && temperature > 0 ? Math.round((temperature - 273.15) * 10) / 10 + "°C" : ""
     const bad = Number(data.SmartNumBadSectors || 0)
-    const critical = Number((data.SmartCriticalWarning || "0").split(" ")[0])
-    const condition = data.SmartFailing === "true" || critical > 0 ? "Failing" : bad > 0 ? bad + " bad sectors" : "Healthy"
+    const critical = (data.SmartCriticalWarning || "[]") !== "[]"
+    const condition = data.SmartFailing === "true" || critical ? "Failing" : bad > 0 ? bad + " bad sectors" : "Healthy"
     const hours = Number(data.SmartPowerOnHours || 0) || Math.floor(Number(data.SmartPowerOnSeconds || 0) / 3600)
     return {state: condition === "Failing" ? "failing" : bad > 0 ? "warning" : "healthy",
         text: [condition, hours > 0 ? hours + " h" : ""].filter(Boolean).join(" · "), temperature: kelvin}

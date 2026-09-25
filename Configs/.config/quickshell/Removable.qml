@@ -474,11 +474,11 @@ Singleton {
             if (code === 0) {
                 root.actionStatus = root._successMessage
                 if (action === "check") {
-                    const verdict = /^b (true|false)/.exec(root._stdout.trim())
+                    const verdict = /^\((true|false),\)/.exec(root._stdout.trim())
                     root.checkedVolume = {path: path, uuid: (root.volumeByPath(path) || {}).uuid || "", verdict: verdict ? verdict[1] === "true" : null}
                     root.actionStatus = verdict ? (verdict[1] === "true" ? "No filesystem errors found" : "Filesystem errors found; repair is available") : "Check returned no verdict"
                 } else if (action === "repair") {
-                    const verdict = /^b (true|false)/.exec(root._stdout.trim())
+                    const verdict = /^\((true|false),\)/.exec(root._stdout.trim())
                     root.actionStatus = verdict && verdict[1] === "true" ? "Filesystem repaired" : "Repair did not finish cleanly"
                     root.checkedVolume = null
                 }

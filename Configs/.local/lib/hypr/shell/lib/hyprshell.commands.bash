@@ -85,7 +85,7 @@ hyprlogout() {
 }
 
 lock_session() {
-  if busctl --user list | grep -q "org.freedesktop.ScreenSaver"; then
+  if [[ "$(dbus-send --session --print-reply=literal --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.NameHasOwner string:org.freedesktop.ScreenSaver)" == *true ]]; then
     echo "Using org.freedesktop.ScreenSaver for locking"
     loginctl lock-session
   else

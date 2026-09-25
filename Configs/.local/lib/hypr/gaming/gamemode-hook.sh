@@ -21,10 +21,6 @@ workflow_set() {
   fi
 }
 
-gamemode_active() {
-  [[ "$(busctl --user get-property com.feralinteractive.GameMode /com/feralinteractive/GameMode com.feralinteractive.GameMode ClientCount 2>/dev/null)" =~ ^i[[:space:]]+[1-9][0-9]*$ ]]
-}
-
 enter_gaming_workflow() {
   local current_workflow
   current_workflow="$(state_get HYPR_WORKFLOW default 2>/dev/null || printf 'default\n')"
@@ -51,7 +47,7 @@ case "${action}" in
   start) enter_gaming_workflow ;;
   end) restore_previous_workflow ;;
   reconcile)
-    if gamemode_active; then
+    if hypr_gamemode_active; then
       [[ -s "${previous_workflow_file}" ]] || enter_gaming_workflow
     else
       restore_previous_workflow
