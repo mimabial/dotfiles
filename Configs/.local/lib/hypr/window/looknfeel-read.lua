@@ -15,25 +15,25 @@
 -- Nothing is applied: every stub only records. Exits non-zero with the Lua
 -- error on stderr if the chunk does not load or run.
 
-local out = {}
+local output_records = {}
 
-local function clean(s)
-    return (tostring(s):gsub("\t", " "):gsub("\n", " "))
+local function sanitize_field(value)
+    return (tostring(value):gsub("\t", " "):gsub("\n", " "))
 end
 
-local function emit(...)
-    local parts = {}
-    for i, v in ipairs({ ... }) do parts[i] = clean(v) end
-    out[#out + 1] = table.concat(parts, "\t")
+local function emit_record(...)
+    local fields = {}
+    for index, value in ipairs({ ... }) do fields[index] = sanitize_field(value) end
+    output_records[#output_records + 1] = table.concat(fields, "\t")
 end
 
-local function walk(t, prefix)
-    for k, v in pairs(t) do
-        local path = prefix == "" and tostring(k) or (prefix .. ":" .. tostring(k))
-        if type(v) == "table" then
-            walk(v, path)
+local function emit_config_entries(config, prefix)
+    for key, value in pairs(config) do
+        local path = prefix == "" and tostring(key) or (prefix .. ":" .. tostring(key))
+        if type(value) == "table" then
+            emit_config_entries(value, path)
         else
-            emit("k", path, type(v), v)
+            emit_record("k", path, type(value), value)
         end
     end
 end
@@ -41,10 +41,10 @@ end
 local function noop() end
 
 hl = {
-    config = function(t) walk(t, "") end,
-    animation = function(t)
-        emit("a", t.leaf or "", t.enabled ~= false, t.speed or "",
-            t.bezier or "", t.style or "")
+    config = function(config) emit_config_entries(config, "") end,
+    animation = function(animation)
+        emit_record("a", animation.leaf or "", animation.enabled ~= false, animation.speed or "",
+            animation.bezier or "", animation.style or "")
     end,
     curve = noop,
     window_rule = noop,
@@ -66,13 +66,13 @@ local run_file
 local stubs = {
     runtime = {
         config = function(path, value)
-            emit("k", (tostring(path):gsub("%.", ":")), type(value), value)
+            emit_record("k", (tostring(path):gsub("%.", ":")), type(value), value)
         end,
         load = function(path) run_file(path, true) end,
     },
     vars = {
         set = function(name, value)
-            emit("v", name, type(value), value)
+            emit_record("v", name, type(value), value)
         end,
         get = function(_, fallback) return fallback or "" end,
     },
@@ -83,15 +83,15 @@ require = function(name)
     return stubs[name] or real_require(name)
 end
 
-local function run(source, name)
-    local chunk, loadErr = load(source, name, "t")
+local function run_chunk(source, name)
+    local chunk, load_error = load(source, name, "t")
     if not chunk then
-        io.stderr:write(tostring(loadErr))
+        io.stderr:write(tostring(load_error))
         os.exit(1)
     end
-    local ok, runErr = pcall(chunk)
+    local ok, execution_error = pcall(chunk)
     if not ok then
-        io.stderr:write(tostring(runErr))
+        io.stderr:write(tostring(execution_error))
         os.exit(1)
     end
 end
@@ -105,13 +105,13 @@ run_file = function(path, optional)
     end
     local source = file:read("a")
     file:close()
-    run(source, path)
+    run_chunk(source, path)
 end
 
 if arg[1] == "-e" then
-    run(arg[2] or "", "looknfeel-block")
+    run_chunk(arg[2] or "", "looknfeel-block")
 else
     run_file(arg[1], false)
 end
 
-print(table.concat(out, "\n"))
+print(table.concat(output_records, "\n"))

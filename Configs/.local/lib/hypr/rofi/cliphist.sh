@@ -29,7 +29,7 @@ source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
 
 cliphist_style="${ROFI_CLIPHIST_STYLE:-clipboard}"
 cliphist_style="$(rofi_resolve_theme "${cliphist_style}")"
-del_mode=false
+delete_mode=false
 action_delete="__action__:delete"
 action_wipe="__action__:wipe"
 action_copy="__action__:copy"
@@ -128,22 +128,21 @@ resolve_image_entry() {
 
 process_selections() {
   local first_action=""
+  local output="" selected_line="" decoded_line="" selection_index=0
+  local -a selected_lines=()
 
-  if [ true != "${del_mode}" ]; then
-    mapfile -t lines #! Not POSIX compliant
-    total_lines=${#lines[@]}
-    first_action="$(cliphist_action_id "${lines[0]:-}")"
+  if [[ "${delete_mode}" != true ]]; then
+    mapfile -t selected_lines
+    first_action="$(cliphist_action_id "${selected_lines[0]:-}")"
 
     if cliphist_dispatch_action "${first_action}"; then
       return
     fi
 
-    local output=""
-    for ((i = 0; i < total_lines; i++)); do
-      local line="${lines[$i]}"
-      local decoded_line
-      decoded_line="$(printf '%s\t' "$line" | cliphist decode)"
-      if [ $i -lt $((total_lines - 1)) ]; then
+    for ((selection_index = 0; selection_index < ${#selected_lines[@]}; selection_index++)); do
+      selected_line="${selected_lines[selection_index]}"
+      decoded_line="$(printf '%s\t' "${selected_line}" | cliphist decode)"
+      if ((selection_index < ${#selected_lines[@]} - 1)); then
         printf -v output '%s%s\n' "$output" "$decoded_line"
       else
         printf -v output '%s%s' "$output" "$decoded_line"
@@ -151,22 +150,22 @@ process_selections() {
     done
     echo -n "$output"
   else
-    while IFS= read -r line; do
-      case "$(cliphist_action_id "${line}")" in
+    while IFS= read -r selected_line; do
+      case "$(cliphist_action_id "${selected_line}")" in
         "${action_wipe}")
           cliphist_dispatch_action "${action_wipe}"
           break
           ;;
         "${action_back}")
-          del_mode=false
+          delete_mode=false
           cliphist_dispatch_action "${action_back}"
           break
           ;;
         "")
           ;;
         *)
-          cliphist delete <<<"${line}"
-          dunstify -t 3000 -i "edit-delete" "Deleted" "${line}"
+          cliphist delete <<<"${selected_line}"
+          dunstify -t 3000 -i "edit-delete" "Deleted" "${selected_line}"
           ;;
       esac
     done
@@ -174,18 +173,19 @@ process_selections() {
   fi
 }
 
-check_content() {
+copy_binary_selection_if_present() {
   local line
   read -r line
   if [[ ${line} == *"[[ binary data"* ]]; then
     cliphist decode <<<"$line" | wl-copy
-    local img_idx
-    img_idx=$(awk -F '\t' '{print $1}' <<<"$line")
-    local temp_preview="${XDG_RUNTIME_DIR}/hypr/pastebin-preview_${img_idx}"
-    wl-paste >"${temp_preview}"
-    dunstify -a "Pastebin:" "Preview: ${img_idx}" -i "${temp_preview}" -t 2000
-    return 1
+    local image_entry_id
+    image_entry_id=$(awk -F '\t' '{print $1}' <<<"$line")
+    local preview_file="${XDG_RUNTIME_DIR}/hypr/pastebin-preview_${image_entry_id}"
+    wl-paste >"${preview_file}"
+    dunstify -a "Pastebin:" "Preview: ${image_entry_id}" -i "${preview_file}" -t 2000
+    return 0
   fi
+  return 1
 }
 
 run_rofi() {
@@ -195,7 +195,7 @@ run_rofi() {
     -dmenu
     -theme-str "entry { placeholder: \"${placeholder}\";}"
     -theme-str "${font_override}"
-    -theme-str "${r_override}"
+    -theme-str "${window_override}"
     -theme-str "${rofi_position}"
     -theme "${cliphist_style}"
   )
@@ -216,7 +216,7 @@ run_rofi() {
   )
 
   local rofi_output=""
-  rofi_output="$(rofi "${rofi_args[@]}" "$@")"
+  rofi_output="$(rofi_with_background_theme "${rofi_args[@]}" "$@")"
   local rofi_status=$?
 
   if ((rofi_status == 0)); then
@@ -248,7 +248,7 @@ setup_rofi_config() {
   local font_name=""
 
   rofi_prepare_standard_context \
-    font_scale font_name font_override r_override \
+    font_scale font_name font_override window_override \
     "${ROFI_CLIPHIST_SCALE:-}" "${ROFI_CLIPHIST_FONT:-${ROFI_FONT:-}}" wallbox same
 
   [[ "${cliphist_window_width_em}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || cliphist_window_width_em="36"
@@ -324,7 +324,9 @@ secret_label() {
 # The selection is re-copied so it becomes the most recent entry, which leaves a
 # stale duplicate in the store to delete.
 cliphist_paste_selection() {
-  if ! printf '%s\n' "${selected_item}" | check_content; then
+  local selected_item="$1"
+  shift
+  if printf '%s\n' "${selected_item}" | copy_binary_selection_if_present; then
     paste_string "${@}"
     exit 0
   fi
@@ -343,7 +345,7 @@ show_history() {
 
   [ -n "${selected_item}" ] || exit 0
 
-  cliphist_paste_selection "${@}"
+  cliphist_paste_selection "${selected_item}" "${@}"
 }
 
 show_image_history() {
@@ -373,11 +375,11 @@ show_image_history() {
     return
   fi
 
-  cliphist_paste_selection "${@}"
+  cliphist_paste_selection "${selected_item}" "${@}"
 }
 
 delete_items() {
-  export del_mode=true
+  export delete_mode=true
   local selected_items
   selected_items=$( (
     printf '%s\t%s\n' "${action_back}" "Back"
@@ -588,7 +590,7 @@ ocr_image_entry() {
     return 1
   fi
 
-  hypr_ocr_preprocess ocr_image "${image_path}" image
+  hypr_ocr_preprocess_into ocr_image "${image_path}" image
 
   if ! tesseract_output="$(hypr_ocr_recognize "${ocr_image}" "$(hypr_ocr_language_argument tesseract_languages)")"; then
     rm -f "${image_path}" "${HYPR_OCR_TEMP_IMAGE}"
@@ -644,10 +646,10 @@ expand_entry() {
 
   choice="$(printf '%s\n' "${text}" \
     | fold -s -w "${ROFI_CLIPHIST_EXPAND_WIDTH:-100}" \
-    | rofi -dmenu -i -p " 🔍 Entry" \
+    | rofi_with_background_theme -dmenu -i -p " 🔍 Entry" \
         -theme "${cliphist_style}" \
         -theme-str "${font_override}" \
-        -theme-str "${r_override}" \
+        -theme-str "${window_override}" \
         -theme-str "${rofi_position}" || true)"
   [[ -n "${choice}" ]] && printf '%s' "${text}" | wl-copy
 

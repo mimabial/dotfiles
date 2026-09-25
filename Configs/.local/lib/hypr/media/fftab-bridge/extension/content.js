@@ -7,15 +7,15 @@
       canGoPrevious: false,
     };
 
-  const pick = (requirePlaying) => {
-    const els = [...document.querySelectorAll("video, audio")];
-    if (!els.length) return null;
-    const playing = els.find((el) => !el.paused && !el.ended);
+  const pickMediaElement = (requirePlaying) => {
+    const mediaElements = [...document.querySelectorAll("video, audio")];
+    if (!mediaElements.length) return null;
+    const playing = mediaElements.find((element) => !element.paused && !element.ended);
     if (playing || requirePlaying) return playing || null;
-    return els.sort((a, b) => (b.duration || 0) - (a.duration || 0))[0];
+    return mediaElements.sort((a, b) => (b.duration || 0) - (a.duration || 0))[0];
   };
 
-  const state = () => {
+  const currentMediaState = () => {
     if (!media) return null;
     return {
       title: document.title || location.hostname,
@@ -29,47 +29,47 @@
     };
   };
 
-  const report = (evt) => {
-    const s = state();
-    if (!s) return;
+  const reportMediaState = (eventName) => {
+    const mediaState = currentMediaState();
+    if (!mediaState) return;
     browser.runtime
-      .sendMessage({ type: "update", state: s, event: evt || "" })
+      .sendMessage({ type: "update", state: mediaState, event: eventName || "" })
       .catch(() => {});
   };
 
-  const attach = (el) => {
-    if (media === el) return;
-    media = el;
-    report("attach");
+  const attachMediaElement = (element) => {
+    if (media === element) return;
+    media = element;
+    reportMediaState("attach");
   };
 
   // Firefox only autostarts muted, so muted-on-play means trailer, not track.
-  const worthAttaching = (el) => !el.muted;
+  const worthAttaching = (element) => !element.muted;
 
   // Going quiet is the signal; background.js prunes 20s after the last report.
-  const release = () => {
+  const releaseMediaElement = () => {
     media = null;
   };
 
-  const rescan = (requirePlaying) => {
-    const el = pick(requirePlaying);
+  const rescanMediaElements = (requirePlaying) => {
+    const element = pickMediaElement(requirePlaying);
     // A command means the user asked for this tab, so honour it even when muted.
-    if (el && (!requirePlaying || worthAttaching(el))) attach(el);
+    if (element && (!requirePlaying || worthAttaching(element))) attachMediaElement(element);
   };
 
-  for (const evt of ["play", "pause", "seeked", "ratechange", "durationchange", "ended"]) {
+  for (const eventName of ["play", "pause", "seeked", "ratechange", "durationchange", "ended"]) {
     document.addEventListener(
-      evt,
-      (e) => {
-        if (!(e.target instanceof HTMLMediaElement)) return;
-        if (evt === "play" && worthAttaching(e.target)) attach(e.target);
-        if (e.target !== media) return;
-        if (evt === "ended" && !pick(true)) {
-          report(evt);
-          release();
+      eventName,
+      (event) => {
+        if (!(event.target instanceof HTMLMediaElement)) return;
+        if (eventName === "play" && worthAttaching(event.target)) attachMediaElement(event.target);
+        if (event.target !== media) return;
+        if (eventName === "ended" && !pickMediaElement(true)) {
+          reportMediaState(eventName);
+          releaseMediaElement();
           return;
         }
-        report(evt);
+        reportMediaState(eventName);
       },
       true
     );
@@ -79,16 +79,16 @@
   setInterval(() => {
     if (!media) return;
     if (!media.isConnected) {
-      release();
-      rescan(true);
+      releaseMediaElement();
+      rescanMediaElements(true);
       return;
     }
-    report("tick");
+    reportMediaState("tick");
   }, 5000);
 
   browser.runtime.onMessage.addListener((msg) => {
     if (!msg || msg.type !== "command") return;
-    if (!media) rescan();
+    if (!media) rescanMediaElements();
     if (!media) return;
     switch (msg.command) {
       case "play":
@@ -121,5 +121,5 @@
     }
   });
 
-  rescan(true);
+  rescanMediaElements(true);
 })();

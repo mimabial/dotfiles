@@ -315,7 +315,10 @@ class Daemon:
     def activate(self, profile: dict, remember: bool = True) -> None:
         render.apply(profile)
         if remember:
-            self.set_state(active_profile=profile.get("name", ""))
+            self.set_state(
+                active_profile=profile.get("name", ""),
+                applied_workspaces=profile.get("workspaces", {}),
+            )
 
     def available_monitors(self) -> list[dict]:
         """A closed lid takes the internal panel out of the running, unless it is
@@ -353,6 +356,8 @@ class Daemon:
         # The rollback target is live state, not the stored profile: whatever is
         # on screen now is what the user gets back if they do nothing.
         previous = profiles.capture("__previous__", self.monitors)
+        active = profiles.by_name(str(self.state.get("active_profile", "")))
+        previous["workspaces"] = self.state.get("applied_workspaces", (active or {}).get("workspaces", {}))
         transaction = {
             "id": "preview-%d" % int(time.time() * 1000),
             "deadline": _iso(time.time() + timeout),
@@ -377,8 +382,7 @@ class Daemon:
             profile = transaction["profile"]
             if save and profile.get("name"):
                 profiles.save(profile)
-            self.set_state(active_profile=profile.get("name", ""))
-            render.apply(profile)
+            self.activate(profile)
         else:
             render.apply(transaction["previous"])
         self.refresh_monitors()

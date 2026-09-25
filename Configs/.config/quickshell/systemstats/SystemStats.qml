@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls
+import Quickshell
 import Quickshell.Io
 import qs
 import qs.Commons
@@ -13,7 +14,9 @@ Item {
 
   required property var shell
   property bool popupsAllowed: true
-  property var settings: ({})
+  property var settingsStore: ({})
+  readonly property string settingsOrientation: shell.barLayout.panel === "vertical" ? "vertical" : "horizontal"
+  readonly property var settings: settingsStore[settingsOrientation] || Model.SETTINGS
   property string currentTab: "cpu"
   property bool processesExpanded: false
   property string processQuery: ""
@@ -22,6 +25,12 @@ Item {
   property bool fullHeld: false
 
   readonly property var service: shell.systemStats
+  readonly property var box: shell.style.box("systemstats")
+  readonly property real topInset: box.margin[0] + box.padding[0]
+  readonly property real rightInset: box.margin[1] + box.padding[1]
+  readonly property real bottomInset: box.margin[2] + box.padding[2]
+  readonly property real leftInset: box.margin[3] + box.padding[3]
+  readonly property var monitorCommands: ({ gpu: "nvtop", disks: "dua i " + shell.home })
   readonly property bool vertical: shell.mode === "vertical"
   readonly property int barSize: Style.bar.sizeHorizontal
   readonly property int graphWidth: Math.round(Model.clamp(Model.settingValue(settings, "graphWidth"), 16, 120))
@@ -35,13 +44,13 @@ Item {
     return (module !== "gpu" || hasGpu) && (module !== "battery" || hasBattery)
   })
   readonly property var moduleTabs: Model.panelTabs(hasGpu, hasBattery, Model.settingValue(settings, "tabs"))
-  readonly property var panelTabs: moduleTabs.concat(["settings"])
+  readonly property var panelTabs: moduleTabs.concat(["alerts", "settings"])
   readonly property string disksSource: String(Model.settingValue(settings, "disksSource") || "all")
   readonly property string barSensors: String(Model.settingValue(settings, "barSensors") || "cpu")
   readonly property string barLabels: String(Model.settingValue(settings, "barLabels")).toLowerCase() === "icon" ? "icon" : "text"
   readonly property bool opened: panel.open
-  implicitWidth: readouts.implicitWidth + Style.space(2)
-  implicitHeight: vertical ? readouts.implicitHeight : barSize
+  implicitWidth: vertical ? barSize : inlineReadouts.width + leftInset + rightInset + Style.space(2)
+  implicitHeight: (vertical && overflowReadouts.height > 0 ? overflowReadouts.height : barSize) + topInset + bottomInset
 
   function mergeSettings(value) {
     var merged = {}
@@ -51,27 +60,29 @@ Item {
   }
 
   function loadSettings(raw) {
-    try { settings = mergeSettings(JSON.parse(String(raw))) }
-    catch (error) { console.warn("systemstats settings: " + error); settings = mergeSettings(null) }
+    try {
+      var data = JSON.parse(String(raw))
+      var legacy = data.vertical || data.horizontal ? null : data
+      settingsStore = { vertical: mergeSettings(data.vertical || legacy), horizontal: mergeSettings(data.horizontal || legacy) }
+    } catch (error) { console.warn("systemstats settings: " + error); settingsStore = ({}) }
   }
 
-  function persist(key, value) {
-    var next = mergeSettings(settings)
-    next[key] = value
-    settings = next
+  function saveSettings(current) {
+    var next = { vertical: settingsStore.vertical || mergeSettings(null), horizontal: settingsStore.horizontal || mergeSettings(null) }
+    next[settingsOrientation] = current
+    settingsStore = next
     settingsFile.setText(JSON.stringify(next, null, 2) + "\n")
   }
 
-  function resetSettings() {
-    settings = mergeSettings(null)
-    settingsFile.setText(JSON.stringify(settings, null, 2) + "\n")
+  function persist(key, value) {
+    var current = Object.assign({}, settings)
+    current[key] = value
+    saveSettings(current)
   }
+
+  function resetSettings() { saveSettings(mergeSettings(null)) }
 
   function styleFor(module) { return Model.moduleStyle(settings, module) }
-
-  function toggleGpu() {
-    shell.run(["hyprshell", "gpuinfo", "--toggle"], function() { service.refreshGpu() })
-  }
 
   function showTab(id) {
     var tab = Model.tabFor(id)
@@ -133,6 +144,7 @@ Item {
     if (event.key === Qt.Key_Down || text === "j") { scrollBy(1); return true }
     if (text === "r") { if (publicIpEnabled) service.requestPublicIp(true); return true }
     if (text === "s" || text === ",") { showTab("settings"); return true }
+    if (text === "a") { showTab("alerts"); return true }
     if (text === "/") { focusSearch(); return true }
     var digit = parseInt(text, 10)
     if (digit >= 1 && digit <= moduleTabs.length) { showTab(moduleTabs[digit - 1]); return true }
@@ -163,34 +175,79 @@ Item {
     onFileChanged: reload()
   }
 
-  Grid {
-    id: readouts
-    anchors.centerIn: parent
-    columns: root.vertical ? 1 : Math.max(1, root.barModules.length)
-    rows: root.vertical ? Math.max(1, root.barModules.length) : 1
+  Component {
+    id: readoutsComponent
+    Grid {
+      columns: root.vertical ? 1 : Math.max(1, root.barModules.length)
+      rows: root.vertical ? Math.max(1, root.barModules.length) : 1
+      horizontalItemAlignment: root.vertical ? Grid.AlignLeft : Grid.AlignHCenter
 
-    Repeater {
-      model: root.barModules.length ? root.barModules : ["cpu"]
-      delegate: UI.BarReadout {
-        required property var modelData
-        shell: root.shell
-        vertical: root.vertical
-        barSize: root.barSize
-        module: String(modelData)
-        service: root.service
-        mode: root.styleFor(module)
-        graphWidth: root.graphWidth
-        temperatureUnit: root.temperatureUnit
-        colorTemperatureIcons: root.colorTemperatureIcons
-        disksSource: root.disksSource
-        barSensors: root.barSensors
-        labelMode: root.barLabels
-        onActivated: function(id, button) {
-          if (button === Qt.LeftButton) root.toggleModule(id)
-          else if (button === Qt.RightButton) id === "gpu" ? root.toggleGpu() : root.shell.run(["hyprshell", "util/sysmon-launch"])
-          else if (button === Qt.MiddleButton && root.publicIpEnabled) root.service.requestPublicIp(true)
+      Repeater {
+        model: root.barModules.length ? root.barModules : ["cpu"]
+        delegate: UI.BarReadout {
+          required property var modelData
+          shell: root.shell
+          box: root.shell.style.box("systemstats." + modelData)
+          vertical: root.vertical
+          barSize: root.barSize
+          module: String(modelData)
+          service: root.service
+          mode: root.styleFor(module)
+          graphWidth: root.graphWidth
+          temperatureUnit: root.temperatureUnit
+          colorTemperatureIcons: root.colorTemperatureIcons
+          disksSource: root.disksSource
+          barSensors: root.barSensors
+          labelMode: root.barLabels
+          onActivated: function(id, button) {
+            if (button === Qt.LeftButton) root.toggleModule(id)
+            else if (button === Qt.RightButton && id !== "network") root.shell.run(["hyprshell", "util/sysmon-launch"].concat(id in root.monitorCommands ? ["-e", root.monitorCommands[id]] : []))
+            else if (button === Qt.MiddleButton && root.publicIpEnabled) root.service.requestPublicIp(true)
+          }
         }
       }
+    }
+  }
+
+  Loader {
+    id: inlineReadouts
+    active: !root.vertical
+    sourceComponent: readoutsComponent
+    anchors.horizontalCenter: parent.horizontalCenter
+    anchors.horizontalCenterOffset: (root.leftInset - root.rightInset) / 2
+    anchors.verticalCenter: parent.verticalCenter
+    anchors.verticalCenterOffset: (root.topInset - root.bottomInset) / 2
+  }
+
+  // The bar's layer surface clips at its edge, so vertical data needs its own surface.
+  PopupWindow {
+    id: overhang
+    readonly property var anchorWindow: root.QsWindow.window
+    visible: root.vertical && !root.shell.userHidden
+    color: "transparent"
+    implicitWidth: Math.max(root.width, overflowReadouts.width + root.leftInset + root.rightInset + Style.space(2))
+    implicitHeight: root.height
+    anchor {
+      window: overhang.anchorWindow
+      adjustment: PopupAdjustment.Slide
+      edges: Edges.Top | Edges.Left
+      gravity: Edges.Bottom | Edges.Right
+      rect.width: 1; rect.height: 1
+      onAnchoring: {
+        if (!overhang.anchorWindow) return
+        const point = overhang.anchorWindow.contentItem.mapFromItem(root, 0, 0)
+        anchor.rect.x = Math.round(point.x)
+        anchor.rect.y = Math.round(point.y)
+      }
+    }
+    Loader {
+      id: overflowReadouts
+      active: root.vertical
+      sourceComponent: readoutsComponent
+      anchors.left: parent.left
+      anchors.leftMargin: root.leftInset
+      anchors.verticalCenter: parent.verticalCenter
+      anchors.verticalCenterOffset: (root.topInset - root.bottomInset) / 2
     }
   }
 
@@ -200,6 +257,7 @@ Item {
     shell: root.shell
     popupName: "systemstats"
     popupEnabled: root.popupsAllowed
+    extraGrabWindows: root.vertical ? [overhang] : []
     wantsKeyboard: true
     contentWidth: Math.max(Style.space(500), Math.ceil(tabs.spelledWidth) + padding * 2)
     contentHeight: Style.space(680)
@@ -211,7 +269,7 @@ Item {
       anchors.top: parent.top
       anchors.left: parent.left
       anchors.right: parent.right
-      tabs: root.moduleTabs
+      tabs: root.moduleTabs.concat(["alerts"])
       settingsTab: "settings"
       current: root.currentTab
       foreground: root.shell.foreground
@@ -270,7 +328,6 @@ Item {
   Component.onCompleted: {
     Color.shell = root.shell
     Style.shell = root.shell
-    settings = mergeSettings(settings)
     pushSettings()
     service.registerInstance(root)
   }

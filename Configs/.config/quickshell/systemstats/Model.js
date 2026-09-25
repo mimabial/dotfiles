@@ -11,10 +11,34 @@ var MODULES = [
   { id: "network", icon: "󰛳", short: "NET", label: "Network", page: "NetworkPage.qml", graph: true,  ring: false },
   { id: "sensors", icon: "󰔏", short: "SEN", label: "Sensors", page: "SensorsPage.qml", graph: false, ring: false },
   { id: "battery", icon: "󰁹", short: "BAT", label: "Battery", page: "BatteryPage.qml", graph: false, ring: true },
+  { id: "alerts", icon: "󰀦", short: "ALT", label: "Alerts", page: "AlertsPage.qml", graph: false },
   { id: "settings", icon: "󰒓", short: "SET", label: "Settings", page: "SettingsPage.qml", graph: false }
 ]
 
 var PANEL_TABS = ["cpu", "gpu", "memory", "disks", "network", "sensors", "battery"]
+
+var ALERTS = [
+  { id: "cpuUsage", label: "CPU usage", threshold: 90, step: 5, min: 5, max: 100, unit: "%" },
+  { id: "cpuTemp", label: "CPU temperature", threshold: 90, step: 5, min: 40, max: 110, unit: "°C" },
+  { id: "gpuTemp", label: "GPU temperature", threshold: 85, step: 5, min: 40, max: 110, unit: "°C" },
+  { id: "memory", label: "Memory usage", threshold: 90, step: 5, min: 5, max: 100, unit: "%" },
+  { id: "driveHealth", label: "Drive SMART health", unit: "" }
+]
+
+function alertDef(id) {
+  for (var i = 0; i < ALERTS.length; i++) if (ALERTS[i].id === id) return ALERTS[i]
+  return null
+}
+
+function nextAlertState(previous, above, now) {
+  var old = previous || { count: 0, active: false, last: 0 }
+  if (!above) return { count: 0, active: false, last: old.last || 0, fire: false }
+  if (old.active) return { count: old.count, active: true, last: old.last || 0, fire: false }
+  var count = old.count + 1
+  if (count < 3) return { count: count, active: false, last: old.last || 0, fire: false }
+  var fire = now - (old.last || 0) >= 300000
+  return { count: count, active: true, last: fire ? now : old.last || 0, fire: fire }
+}
 
 // Every user-tunable key with its default. Per-module bar styles live in
 // "<module>Style" and fall back to "style" when empty.

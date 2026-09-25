@@ -644,7 +644,8 @@ submap_leader("open", mod, "O", function()
 		"[Open] Signal",
 		"hyprshell launch/summon.sh --empty-workspace-if-occupied class:signal -- signal-desktop"
 	)
-	submap_exec("V", "[Open] Bitwarden", "hyprshell launch/summon.sh --align center bitwarden -- bitwarden-desktop")
+	submap_exec("V", "[Open] Bitwarden vault", "quickshell ipc call bar popup bitwarden")
+	submap_exec("SHIFT + V", "[Open] Bitwarden desktop", "hyprshell launch/summon.sh --align center bitwarden -- bitwarden-desktop")
 	submap_exec(
 		"W",
 		"[Open] LibreOffice Writer",
@@ -687,6 +688,7 @@ submap_leader("terminal", mod, "J", function()
 	tui_app("V", "Wiremix", "org.tui.Wiremix", "wiremix")
 	tui_app("U", "Dua", "org.tui.Dua", "dua i")
 	tui_app("C", "Calculator", "org.tui.Calc", "hyprshell util/calc-tui.py")
+	tui_app("D", "Display layout", "org.tui.Displays", "hyprmoncfg")
 	submap_exec("L", "[Terminal] Look and feel", "hyprshell window/looknfeel.sh")
 	submap_exec("T", "[Terminal] Dropdown terminal", "hyprshell window/dropdown-terminal")
 	submap_exec(

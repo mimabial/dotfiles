@@ -1,39 +1,4 @@
 {
-  "cpuinfo": {
-    "border": 1.2,
-    "edge": { "color": ["c7", 0.4], "left": false, "right": false, "top": false },
-    "hover": { "fill": null, "content": ["hvr_fg", 1.0] },
-    "margin": [2.0, 0.0, 2.0, 0.0]
-  },
-  "fanspeedinfo": {
-    "border": 1.2,
-    "edge": { "color": ["c7", 0.4], "left": false, "right": false, "top": false },
-    "fontWeight": 700,
-    "hover": { "fill": null, "content": ["hvr_fg", 1.0] },
-    "justify": "right",
-    "margin": [2.0, 0.0, 2.0, 0.0],
-    "padding": [0.0, 2.0, 0.0, 2.0]
-  },
-  "gpuinfo": {
-    "border": 1.2,
-    "edge": { "color": ["c7", 0.4], "left": false, "right": false, "top": false },
-    "hover": { "fill": null, "content": ["hvr_fg", 1.0] },
-    "margin": [2.0, 0.0, 2.0, 0.0]
-  },
-  "mediaplayer": { "edge": { "color": ["hvr_br", 0.7], "left": true } },
-  "weather": { "hover": { "fill": null, "content": ["hvr_fg", 1.0] } },
-  "disk": {
-    "border": 1.2,
-    "edge": { "color": ["c7", 0.4], "left": false, "right": false, "top": false },
-    "hover": { "fill": null, "content": ["hvr_fg", 1.0] },
-    "margin": [2.0, 0.0, 2.0, 0.0]
-  },
-  "memory": {
-    "border": 1.2,
-    "edge": { "color": ["c7", 0.4], "left": false, "right": false, "top": false },
-    "hover": { "fill": null, "content": ["hvr_fg", 1.0] },
-    "margin": [2.0, 0.0, 2.0, 0.0]
-  },
   "workspaces": { "margin": [4.0, 2.0, 4.0, 2.0] },
   "#workspaces button.active": {
     "border": 0,
@@ -43,7 +8,7 @@
     "padding": [8.0, 0.0, 8.0, 0.0],
     "outline": ["act_br", 0.0]
   },
-  "taskbar": { "margin": [0.0, 0.0, 0.0, 0.0], "iconSize": 34 },
+  "taskbar": { "margin": [0.0, 0.0, 0.0, 0.0], "iconSize": 30 },
   "#taskbar button": {
     "border": 2,
     "fill": ["bg", 0.1],
@@ -53,20 +18,11 @@
     "padding": [4.0, 3.0, 4.0, 3.0]
   },
   "#taskbar button.active": { "outline": ["act_br", 0.1], "fill": null },
-  "network.speed": { "hover": { "fill": null, "outline": null, "content": ["hvr_fg", 1.0] } },
   "tray": {
     "border": 1.5,
-    "margin": [2.0, 2.0, 2.0, 2.0],
+    "margin": [0.0, 0.0, 14.0, 0.0],
     "outline": ["alt_br", 0.0],
-    "iconSize": 30,
+    "iconSize": 24,
     "iconSpacing": 10
-  },
-  "hyprmenu": {
-    "border": 1.0,
-    "fill": null,
-    "hover": { "fill": null, "outline": ["hvr_br", 0.2], "content": ["fg"] },
-    "margin": [2.0, 2.0, 2.0, 2.0],
-    "outline": ["br", 0.0],
-    "padding": [4.0, 0.0, 4.0, 0.0]
   }
 }

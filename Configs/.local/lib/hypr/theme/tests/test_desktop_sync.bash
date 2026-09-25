@@ -38,6 +38,8 @@ check "${ICON_THEME}" 'Env Icons' wallpaper-precedence
   ln -s "${HYPR_CONFIG_HOME}/themes/Old" "${HOME}/.themes/Old"
   ln -s "${tmp_dir}/foreign" "${HOME}/.themes/Foreign"
   theme_desktop_resolve_values
+  [[ -L "${HOME}/.themes/Old" && ! -e "${HOME}/.themes/New-Pack" ]] || { printf 'failed: resolution changed gtk links\n' >&2; exit 1; }
+  theme_desktop_prepare_state
   links=("${HOME}/.themes"/*)
   check "${RESOLVED_GTK_THEME}:${links[*]##*/}" 'New-Pack:Foreign New-Pack' gtk-theme-link-prune
 )

@@ -52,13 +52,13 @@ def steam_roots() -> list[Path]:
                 roots.append(path)
 
     seen: set[Path] = set()
-    out: list[Path] = []
+    steamapp_dirs: list[Path] = []
     for root in roots:
         steamapps = (root / "steamapps").resolve()
         if steamapps.is_dir() and steamapps not in seen:
             seen.add(steamapps)
-            out.append(steamapps)
-    return out
+            steamapp_dirs.append(steamapps)
+    return steamapp_dirs
 
 
 def acf_value(text: str, key: str) -> str:
@@ -127,13 +127,13 @@ def lutris_db_paths() -> list[Path]:
     ]
     found = [path for path in candidates if path.is_file()]
     if found:
-        return sorted(set(found), key=lambda p: p.stat().st_mtime, reverse=True)
+        return sorted(set(found), key=lambda path: path.stat().st_mtime, reverse=True)
 
     scan_roots = [data_home / "lutris", Path.home() / ".var/app/net.lutris.Lutris/data/lutris"]
     for root in scan_roots:
         if root.is_dir():
             found.extend(path for path in root.rglob("*.db") if path.is_file())
-    return sorted(set(found), key=lambda p: p.stat().st_mtime, reverse=True)
+    return sorted(set(found), key=lambda path: path.stat().st_mtime, reverse=True)
 
 
 def table_columns(cursor: sqlite3.Cursor, table: str) -> set[str]:

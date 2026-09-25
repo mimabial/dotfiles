@@ -42,10 +42,10 @@ theme_polarities_into() {
 }
 
 _pairs_trim() {
-  local s="$1"
-  s="${s#"${s%%[![:space:]]*}"}"
-  s="${s%"${s##*[![:space:]]}"}"
-  printf '%s' "${s}"
+  local value="$1"
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+  printf '%s' "${value}"
 }
 
 _pairs_load() {
@@ -53,19 +53,19 @@ _pairs_load() {
   _PAIRS_LOADED=1
   [[ -r "${_PAIRS_FILE}" ]] || return 0
 
-  local line key val
+  local line key value
   while IFS= read -r line || [[ -n "${line}" ]]; do
     line="${line%%#*}"
     [[ "${line}" == *=* ]] || continue
     key="$(_pairs_trim "${line%%=*}")"
-    val="$(_pairs_trim "${line#*=}")"
-    [[ -n "${key}" && -n "${val}" ]] || continue
+    value="$(_pairs_trim "${line#*=}")"
+    [[ -n "${key}" && -n "${value}" ]] || continue
     case "${key}" in
-      default-dark) _PAIRS_DEFAULT_DARK="${val}" ;;
-      default-light) _PAIRS_DEFAULT_LIGHT="${val}" ;;
+      default-dark) _PAIRS_DEFAULT_DARK="${value}" ;;
+      default-light) _PAIRS_DEFAULT_LIGHT="${value}" ;;
       *)
-        _PAIRS_MAP["${key}"]="${val}"
-        _PAIRS_MAP["${val}"]="${key}"
+        _PAIRS_MAP["${key}"]="${value}"
+        _PAIRS_MAP["${value}"]="${key}"
         ;;
     esac
   done <"${_PAIRS_FILE}"
@@ -78,21 +78,21 @@ _pairs_load() {
 theme_pair_for() {
   local theme="${1:-}"
   local target="${2:-}"
-  local cand="" def=""
+  local paired_theme="" default_theme=""
 
   [[ "${target}" =~ ^(dark|light)$ ]] || { echo "${theme}"; return 1; }
   [[ "$(theme_polarity "${theme}")" == "${target}" ]] && { echo "${theme}"; return 0; }
 
   _pairs_load
-  cand="${_PAIRS_MAP[${theme}]:-}"
-  if [[ -n "${cand}" && "$(theme_polarity "${cand}")" == "${target}" ]]; then
-    echo "${cand}"
+  paired_theme="${_PAIRS_MAP[${theme}]:-}"
+  if [[ -n "${paired_theme}" && "$(theme_polarity "${paired_theme}")" == "${target}" ]]; then
+    echo "${paired_theme}"
     return 0
   fi
 
-  [[ "${target}" == "light" ]] && def="${_PAIRS_DEFAULT_LIGHT}" || def="${_PAIRS_DEFAULT_DARK}"
-  if [[ -n "${def}" ]]; then
-    echo "${def}"
+  [[ "${target}" == "light" ]] && default_theme="${_PAIRS_DEFAULT_LIGHT}" || default_theme="${_PAIRS_DEFAULT_DARK}"
+  if [[ -n "${default_theme}" ]]; then
+    echo "${default_theme}"
     return 0
   fi
 

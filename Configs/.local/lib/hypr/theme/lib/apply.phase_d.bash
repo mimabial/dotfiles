@@ -342,13 +342,14 @@ theme_apply_sync_nvim_theme() {
 
 theme_apply_enqueue_wallpaper_thumbs() {
   local -a cache_args=()
+  local -a theme_names=() theme_wallpapers=()
   local wall=""
   local queue_script=""
   local cache_script=""
 
-  get_themes
+  theme_catalog_load_and_repair_links_into theme_names theme_wallpapers
 
-  for wall in "${thmWall[@]}"; do
+  for wall in "${theme_wallpapers[@]}"; do
     [[ -n "${wall}" ]] || continue
     [[ -r "${wall}" ]] || continue
     cache_args+=(-w "${wall}")

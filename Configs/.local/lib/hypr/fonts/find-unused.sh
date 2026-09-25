@@ -177,28 +177,19 @@ summarize_families() {
 
 family_aliases() {
   local family="$1"
-  local normalized compact
+  local normalized compact alias key
   declare -A seen_aliases=()
-  local -a aliases=()
-
-  add_alias() {
-    local alias="$1"
-    local key
-    [[ -n "$alias" ]] || return
-    key=$(printf '%s' "$alias" | tr '[:upper:]' '[:lower:]')
-    [[ -n "${seen_aliases[$key]:-}" ]] && return
-    seen_aliases[$key]=1
-    aliases+=("$alias")
-  }
 
   normalized=$(normalize_name "$family")
   compact=$(printf '%s' "$family" | tr -d '[:space:]-_/')
 
-  add_alias "$family"
-  add_alias "$compact"
-  add_alias "$normalized"
-
-  printf '%s\n' "${aliases[@]}"
+  for alias in "$family" "$compact" "$normalized"; do
+    [[ -n "$alias" ]] || continue
+    key="${alias,,}"
+    [[ -n "${seen_aliases[$key]:-}" ]] && continue
+    seen_aliases["$key"]=1
+    printf '%s\n' "$alias"
+  done
 }
 
 classify_match_kind() {

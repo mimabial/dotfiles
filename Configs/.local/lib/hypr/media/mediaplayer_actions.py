@@ -80,7 +80,7 @@ menu_lines="${MEDIA_MENU_LINES:-5}"
 font_scale=""
 font_name=""
 font_override=""
-r_override=""
+window_override=""
 rofi_position=""
 media_window_theme=""
 
@@ -91,7 +91,7 @@ media_height_em="${ROFI_MEDIAPLAYER_MENU_HEIGHT_EM:-${measured_height_em}}"
 [[ "${media_height_em}" =~ ^[0-9]+([.][0-9]+)?$ ]] || media_height_em="${measured_height_em}"
 
 rofi_prepare_standard_context \
-  font_scale font_name font_override r_override \
+  font_scale font_name font_override window_override \
   "${ROFI_MEDIAPLAYER_MENU_SCALE:-${ROFI_MENU_SCALE:-}}" \
   "${ROFI_MEDIAPLAYER_MENU_FONT:-${ROFI_MENU_FONT:-${ROFI_FONT:-}}}" \
   listview same
@@ -123,7 +123,7 @@ rofi_args=(
   -me-accept-entry MousePrimary
   -p "${prompt}"
   -theme "$(rofi_resolve_theme "${theme_ref}")"
-  -theme-str "entry { placeholder: \"${placeholder}\"; } listview { lines: ${menu_lines}; } ${rofi_position} ${r_override}"
+  -theme-str "entry { placeholder: \"${placeholder}\"; } listview { lines: ${menu_lines}; } ${rofi_position} ${window_override}"
   -theme-str "${font_override}"
   -theme-str "${media_window_theme}"
 )
@@ -131,7 +131,7 @@ rofi "${rofi_args[@]}"
 """
 
 
-def state_path() -> Path:
+def active_player_state_path() -> Path:
     if os.environ.get("HYPR_STATE_HOME"):
         return Path(os.environ["HYPR_STATE_HOME"]) / "mediaplayer.json"
     xdg_state = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
@@ -143,7 +143,7 @@ def write_active_player_state(player_name: str) -> None:
         return
     if read_active_player_state() == player_name:
         return
-    path = state_path()
+    path = active_player_state_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(f".tmp.{os.getpid()}")
     try:
@@ -158,13 +158,13 @@ def write_active_player_state(player_name: str) -> None:
 
 def read_active_player_state() -> str:
     try:
-        data = json.loads(state_path().read_text())
+        data = json.loads(active_player_state_path().read_text())
     except (FileNotFoundError, OSError, json.JSONDecodeError):
         return ""
     return str(data.get("player") or "")
 
 
-def command_output(args: list[str]) -> tuple[int, str]:
+def run_playerctl_command(args: list[str]) -> tuple[int, str]:
     proc = subprocess.run(
         args,
         text=True,
@@ -176,7 +176,7 @@ def command_output(args: list[str]) -> tuple[int, str]:
 
 
 def available_players() -> list[str]:
-    code, output = command_output(["playerctl", "-l"])
+    code, output = run_playerctl_command(["playerctl", "-l"])
     if code != 0 or not output:
         return []
     players = [line.strip() for line in output.splitlines() if line.strip()]
@@ -191,7 +191,7 @@ def available_players() -> list[str]:
 
 
 def player_status(player: str) -> str:
-    _, output = command_output(["playerctl", "-p", player, "status"])
+    _, output = run_playerctl_command(["playerctl", "-p", player, "status"])
     return output
 
 

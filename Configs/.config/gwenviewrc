@@ -1,8 +1,8 @@
 [Crop]
 CropAdvancedSettingsEnabled=true
-
-[FullScreen]
-FullScreenModeActive=true
+CropRatioHeight=9
+CropRatioIndex=5
+CropRatioWidth=16
 
 [General]
 FullScreenBackground=FullScreenBackground::Image
@@ -19,31 +19,31 @@ ThumbnailSplitterSizes=512,146
 MenuBar=Disabled
 
 [Recent Files]
-File1[$e]=$HOME/Pictures/wallhaven-0pqz34.jpg
-File10[$e]=$HOME/Downloads/ac5be5e9b9751a8312ea7ce319e9b00e.jpg
-File2[$e]=$HOME/Pictures/wallhaven-2yvywx.png
-File3[$e]=$HOME/.config/hypr/themes/Kanagawa Wave/wallpapers/wallhaven-4gvrq3.jpg
-File4[$e]=$HOME/Downloads/IMG_8749.jpg
-File5[$e]=$HOME/Downloads/1cece2ff13379b9a7f85918d902e6a3f.jpg
-File6[$e]=$HOME/Downloads/11a8533d526e143a1d055a569bb44350.jpg
-File7[$e]=$HOME/Downloads/3587e7e93261032e4a14df1d2178d362.jpg
-File8[$e]=$HOME/Downloads/872190ba65d1b2be618b3db0ea986bb6.jpg
-File9[$e]=$HOME/Downloads/aa66ffdfdf4841b51ee81a8b45aa92b5.jpg
-Name1[$e]=wallhaven-0pqz34.jpg
-Name10[$e]=ac5be5e9b9751a8312ea7ce319e9b00e.jpg
-Name2[$e]=wallhaven-2yvywx.png
-Name3[$e]=wallhaven-4gvrq3.jpg
-Name4[$e]=IMG_8749.jpg
-Name5[$e]=1cece2ff13379b9a7f85918d902e6a3f.jpg
-Name6[$e]=11a8533d526e143a1d055a569bb44350.jpg
-Name7[$e]=3587e7e93261032e4a14df1d2178d362.jpg
-Name8[$e]=872190ba65d1b2be618b3db0ea986bb6.jpg
-Name9[$e]=aa66ffdfdf4841b51ee81a8b45aa92b5.jpg
+File1[$e]=$HOME/Downloads/872190ba65d1b2be618b3db0ea986bb6.jpg
+File10[$e]=$HOME/Pictures/wallhaven-575xz3.jpg
+File2[$e]=$HOME/Downloads/aa66ffdfdf4841b51ee81a8b45aa92b5.jpg
+File3[$e]=$HOME/Downloads/ac5be5e9b9751a8312ea7ce319e9b00e.jpg
+File4[$e]=$HOME/.config/hypr/themes/Snow/wallpapers/3-dothash-light.jpg
+File5[$e]=$HOME/.config/hypr/themes/Snow/wallpapers/2-snow.jpg
+File6[$e]=$HOME/.config/hypr/themes/Ayu Mirage/wallpapers/wallhaven-5g8w27.jpg
+File7[$e]=$HOME/.config/hypr/themes/Decay Green/wallpapers/a_woman_standing_in_front_of_a_window.jpg
+File8[$e]=$HOME/Pictures/wallhaven-lygzop.png
+File9[$e]=$HOME/Pictures/wallhaven-qrp3yr.jpg
+Name1[$e]=872190ba65d1b2be618b3db0ea986bb6.jpg
+Name10[$e]=wallhaven-575xz3.jpg
+Name2[$e]=aa66ffdfdf4841b51ee81a8b45aa92b5.jpg
+Name3[$e]=ac5be5e9b9751a8312ea7ce319e9b00e.jpg
+Name4[$e]=3-dothash-light.jpg
+Name5[$e]=2-snow.jpg
+Name6[$e]=wallhaven-5g8w27.jpg
+Name7[$e]=a_woman_standing_in_front_of_a_window.jpg
+Name8[$e]=wallhaven-lygzop.png
+Name9[$e]=wallhaven-qrp3yr.jpg
 
 [SideBar]
 InformationSplitterSizes=231,244
 IsVisible ViewMode=true
-SideBarSplitterSizes=321,1598
+SideBarSplitterSizes=345,1075
 
 [StatusBar]
 IsVisible BrowseMode=false

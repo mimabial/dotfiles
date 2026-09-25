@@ -1,0 +1,9 @@
+{
+  "enabled": {
+    "cpuTemp": true,
+    "gpuTemp": true,
+    "memory": true,
+    "cpuUsage": false
+  },
+  "thresholds": {}
+}

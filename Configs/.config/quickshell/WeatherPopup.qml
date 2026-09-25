@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import Quickshell.Io
@@ -21,13 +22,13 @@ PopupCard {
     readonly property string hourlyLabel: selectedDay < 0 || selectedDay >= days.length ? "HOURLY"
         : selectedDay === 0 ? "TODAY"
         : Qt.formatDate(new Date(days[selectedDay].date + "T12:00:00"), "ddd").toUpperCase()
-    property int forecastTab: 0
-    readonly property var cards: forecastTab === 0 ? hours : days
+    property string forecastView: "hourly"
+    readonly property var cards: forecastView === "hourly" ? hours : days
     // the keyboard cursor over the strip; -1 until an arrow key claims one
     property int cardIndex: -1
     function showHours(day) {
         selectedDay = day
-        forecastTab = 0
+        forecastView = "hourly"
         cardIndex = -1
         forecast.positionViewAtBeginning()
     }
@@ -35,7 +36,7 @@ PopupCard {
         // coming back out of a day, land the cursor on the day we drilled into
         const from = selectedDay
         selectedDay = -1
-        forecastTab = 1
+        forecastView = "daily"
         cardIndex = from
         forecast.positionViewAtBeginning()
         if (from >= 0) Qt.callLater(() => forecast.positionViewAtIndex(from, ListView.Contain))
@@ -53,12 +54,12 @@ PopupCard {
     // DAILY is the parent level and HOURLY the child, so Down drills into the
     // selected day and Up backs out of whichever hourly view is showing
     function drillIn() {
-        if (forecastTab !== 1) return false
+        if (forecastView !== "daily") return false
         showHours(cardIndex < 0 ? 0 : cardIndex)
         return true
     }
     function drillOut() {
-        if (forecastTab !== 0) return false
+        if (forecastView !== "hourly") return false
         showDays()
         return true
     }
@@ -93,9 +94,8 @@ PopupCard {
         return defaultKey(event)
     }
     // the producer reports both unit systems, so switching needs no refetch
-    // -1 = never chosen, so fall back to where the reading is from
-    property int unitChoice: -1
-    readonly property bool imperial: unitChoice >= 0 ? unitChoice === 1 : localeImperial
+    property string unitPreference: "auto"
+    readonly property bool imperial: unitPreference === "auto" ? localeImperial : unitPreference === "imperial"
     readonly property bool localeImperial: {
         const country = String(value(Weather.data.nearest_area
             ? Weather.data.nearest_area[0].country : null, "")).toLowerCase()
@@ -112,16 +112,16 @@ PopupCard {
     function temp(source, key) { return (source && source[key + (imperial ? "F" : "C")]) || "--" }
     function wind() { return (conditions[imperial ? "windspeedMiles" : "windspeedKmph"] || "--") + windUnit }
     function toggleUnits() {
-        unitChoice = imperial ? 0 : 1
-        store.setText(JSON.stringify({imperial: unitChoice === 1}))
+        unitPreference = imperial ? "metric" : "imperial"
+        store.setText(JSON.stringify({imperial: unitPreference === "imperial"}))
     }
 
     property FileView store: FileView {
         path: root.shell.home + "/.local/state/quickshell/weather.json"
         printErrors: false
         onLoaded: {
-            try { root.unitChoice = JSON.parse(text()).imperial === true ? 1 : 0 }
-            catch (error) { root.unitChoice = -1 }
+            try { root.unitPreference = JSON.parse(text()).imperial === true ? "imperial" : "metric" }
+            catch (error) { root.unitPreference = "auto" }
         }
     }
 
@@ -204,7 +204,7 @@ PopupCard {
     // only needs to learn whether a city is pinned
     onOpenChanged: {
         if (open) readOverride()
-        else { searching = false; cityField.text = ""; selectedDay = -1; cardIndex = -1; forecastTab = 0 }
+        else { searching = false; cityField.text = ""; selectedDay = -1; cardIndex = -1; forecastView = "hourly" }
     }
 
     property Process overrideProc: Process {
@@ -222,9 +222,9 @@ PopupCard {
     function location() { const area = Weather.data.nearest_area; return area && area.length ? value(area[0].areaName, "") + ", " + value(area[0].country, "") : "" }
 
     component ForecastTab: BarButton {
-        required property int tab
+        required property string view
         active: false; radius: shell.rounding; fill: "transparent"; outline: "transparent"
-        textColor: root.forecastTab === tab ? shell.accent : shell.alpha(shell.foreground, .6)
+        textColor: root.forecastView === view ? shell.accent : shell.alpha(shell.foreground, .6)
     }
 
     component ForecastArrow: Text {
@@ -396,8 +396,8 @@ PopupCard {
         PopupSeparator { shell: root.shell }
         Row {
             width: parent.width; spacing: Style.sm
-            ForecastTab { width: (parent.width - parent.spacing) / 2; height: Style.controlHeight; shell: root.shell; tab: 0; text: root.hourlyLabel; onClicked: root.showHours(-1) }
-            ForecastTab { width: (parent.width - parent.spacing) / 2; height: Style.controlHeight; shell: root.shell; tab: 1; text: "DAILY"; onClicked: root.showDays() }
+            ForecastTab { width: (parent.width - parent.spacing) / 2; height: Style.controlHeight; shell: root.shell; view: "hourly"; text: root.hourlyLabel; onClicked: root.showHours(-1) }
+            ForecastTab { width: (parent.width - parent.spacing) / 2; height: Style.controlHeight; shell: root.shell; view: "daily"; text: "DAILY"; onClicked: root.showDays() }
         }
         Item {
             width: parent.width; height: Style.px(88)
@@ -424,24 +424,24 @@ PopupCard {
                         anchors.centerIn: parent; spacing: Style.xxs
                         Text {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            text: root.forecastTab === 1
-                                ? (index === 0 ? "TODAY" : Qt.formatDate(new Date(modelData.date + "T12:00:00"), "ddd").toUpperCase())
-                                : (root.selectedDay < 0 && index === 0 ? "NOW" : Qt.formatTime(new Date(modelData.time), "HH:mm"))
+                            text: root.forecastView === "daily"
+                                ? (forecastCard.index === 0 ? "TODAY" : Qt.formatDate(new Date(forecastCard.modelData.date + "T12:00:00"), "ddd").toUpperCase())
+                                : (root.selectedDay < 0 && forecastCard.index === 0 ? "NOW" : Qt.formatTime(new Date(forecastCard.modelData.time), "HH:mm"))
                             color: root.shell.alpha(root.shell.foreground, .5)
                             font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: true
                         }
-                        Text { anchors.horizontalCenter: parent.horizontalCenter; text: modelData.icon || "󰖐"; color: root.shell.role("c2", root.shell.foreground); font.family: root.shell.fontFamily; font.pixelSize: Style.display }
+                        Text { anchors.horizontalCenter: parent.horizontalCenter; text: forecastCard.modelData.icon || "󰖐"; color: root.shell.role("c2", root.shell.foreground); font.family: root.shell.fontFamily; font.pixelSize: Style.display }
                         Text {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            text: root.forecastTab === 0 ? root.temp(modelData, "temp") + "\u00b0"
-                                : root.temp(modelData, "maxtemp") + "\u00b0 | " + root.temp(modelData, "mintemp") + "\u00b0"
+                            text: root.forecastView === "hourly" ? root.temp(forecastCard.modelData, "temp") + "\u00b0"
+                                : root.temp(forecastCard.modelData, "maxtemp") + "\u00b0 | " + root.temp(forecastCard.modelData, "mintemp") + "\u00b0"
                             color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
                         }
-                        Text { anchors.horizontalCenter: parent.horizontalCenter; text: "󱢋 " + (modelData.chanceofrain || "0") + "%"; color: root.shell.alpha(root.shell.foreground, .55); font.family: root.shell.fontFamily; font.pixelSize: Style.caption }
+                        Text { anchors.horizontalCenter: parent.horizontalCenter; text: "󱢋 " + (forecastCard.modelData.chanceofrain || "0") + "%"; color: root.shell.alpha(root.shell.foreground, .55); font.family: root.shell.fontFamily; font.pixelSize: Style.caption }
                     }
                     MouseArea {
                         id: dayMouse; anchors.fill: parent
-                        enabled: root.forecastTab === 1
+                        enabled: root.forecastView === "daily"
                         hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                         onClicked: root.showHours(forecastCard.index)
                     }

@@ -15,13 +15,13 @@ EOF
   exit 2
 }
 
-browser="$(xdg-settings get default-web-browser)"
-case "${browser}" in
+browser_desktop_id="$(xdg-settings get default-web-browser)"
+case "${browser_desktop_id}" in
   google-chrome* | brave-browser* | microsoft-edge* | opera* | vivaldi* | helium-browser*) ;;
-  *) browser="chromium.desktop" ;;
+  *) browser_desktop_id="chromium.desktop" ;;
 esac
 
-desktop_entry_exec_resolve "${browser}" || exit 1
+desktop_entry_exec_resolve "${browser_desktop_id}" || exit 1
 
 [[ -z "${DESKTOP_ENTRY_WORKDIR}" ]] || cd "${DESKTOP_ENTRY_WORKDIR}" || exit 1
 

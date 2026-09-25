@@ -1,6 +1,8 @@
 $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
+
 $ICON_THEME = Tela-green-dark
 $COLOR_SCHEME = prefer-dark
+
 $NVIM_SCHEME = decay
 $NVIM_VARIANT = decayce
 $NVIM_BACKGROUND = dark
@@ -8,12 +10,13 @@ $NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME = capitaine-cursors-light
 $CURSOR_SIZE = 30
-$FONT = EnvyCodeR Nerd Font
-$BAR_FONT = EnvyCodeR Nerd Font
-$MENU_FONT = EnvyCodeR Nerd Font
-$MONOSPACE_FONT = EnvyCodeR Nerd Font
-$TERMINAL_FONT = EnvyCodeR Nerd Font
-$NOTIFICATION_FONT = EnvyCodeR Nerd Font
+
+$FONT = Terminess Nerd Font
+$BAR_FONT = Terminess Nerd Font
+$MENU_FONT = Terminess Nerd Font
+$MONOSPACE_FONT = Terminess Nerd Font
+$TERMINAL_FONT = Terminess Nerd Font
+$NOTIFICATION_FONT = Terminess Nerd Font Mono
 
 # Theme variables above are the primary inputs used by theme.switch.sh.
 

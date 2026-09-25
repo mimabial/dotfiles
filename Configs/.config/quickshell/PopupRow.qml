@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import Quickshell.Widgets
 
@@ -25,6 +27,8 @@ Rectangle {
     property bool selected: false
     // for rows that are a bare label, with no icon or value to align against
     property bool centerTitle: false
+    // pills after the title: [{text, color}]
+    property var badges: []
     signal clicked(int button)
     implicitHeight: Math.max(Style.popupRowHeight, textColumn.implicitHeight + Style.controlPaddingY * 2)
     readonly property color highlight: selected ? shell.hoverEdge(.85)
@@ -48,29 +52,47 @@ Rectangle {
             id: textColumn
             width: parent.width - (iconText.visible ? iconText.width + parent.spacing : 0) - (iconImage.visible ? iconImage.width + parent.spacing : 0) - (valueText.visible ? valueText.width + parent.spacing : 0)
             anchors.verticalCenter: parent.verticalCenter; spacing: 1
-            Item {
-                id: titleClip
-                width: parent.width; height: titleText.implicitHeight
-                clip: true
-                readonly property real overflow: Math.max(0, titleText.implicitWidth - width)
-                readonly property int scrollDuration: Math.max(600, overflow * 34)
-                // elide is what the row shows at rest; hovering reads the rest of it
-                readonly property bool scrolling: root.hovered && overflow > 0
-                onScrollingChanged: if (!scrolling) titleText.x = 0
-                Text {
-                    id: titleText
-                    width: titleClip.scrolling ? implicitWidth : titleClip.width
-                    text: root.title; color: root.titleColor
-                    font.family: root.shell.fontFamily; font.pixelSize: Style.subtitle; font.bold: root.active
-                    elide: titleClip.scrolling ? Text.ElideNone : Text.ElideRight
-                    horizontalAlignment: root.centerTitle ? Text.AlignHCenter : Text.AlignLeft
-                    SequentialAnimation on x {
-                        running: titleClip.scrolling
-                        loops: Animation.Infinite
-                        PauseAnimation { duration: 650 }
-                        NumberAnimation { to: -titleClip.overflow; duration: titleClip.scrollDuration; easing.type: Easing.InOutQuad }
-                        PauseAnimation { duration: 650 }
-                        NumberAnimation { to: 0; duration: titleClip.scrollDuration; easing.type: Easing.InOutQuad }
+            Row {
+                width: parent.width; spacing: Style.xs
+                Item {
+                    id: titleClip
+                    width: root.badges.length ? Math.min(titleText.implicitWidth, parent.width - badgeRow.width - parent.spacing) : parent.width
+                    height: titleText.implicitHeight
+                    clip: true
+                    readonly property real overflow: Math.max(0, titleText.implicitWidth - width)
+                    readonly property int scrollDuration: Math.max(600, overflow * 34)
+                    // elide is what the row shows at rest; hovering reads the rest of it
+                    readonly property bool scrolling: root.hovered && overflow > 0
+                    onScrollingChanged: if (!scrolling) titleText.x = 0
+                    Text {
+                        id: titleText
+                        width: titleClip.scrolling ? implicitWidth : titleClip.width
+                        text: root.title; color: root.titleColor
+                        font.family: root.shell.fontFamily; font.pixelSize: Style.subtitle; font.bold: root.active
+                        elide: titleClip.scrolling ? Text.ElideNone : Text.ElideRight
+                        horizontalAlignment: root.centerTitle ? Text.AlignHCenter : Text.AlignLeft
+                        SequentialAnimation on x {
+                            running: titleClip.scrolling
+                            loops: Animation.Infinite
+                            PauseAnimation { duration: 650 }
+                            NumberAnimation { to: -titleClip.overflow; duration: titleClip.scrollDuration; easing.type: Easing.InOutQuad }
+                            PauseAnimation { duration: 650 }
+                            NumberAnimation { to: 0; duration: titleClip.scrollDuration; easing.type: Easing.InOutQuad }
+                        }
+                    }
+                }
+                Row {
+                    id: badgeRow
+                    anchors.verticalCenter: parent.verticalCenter; spacing: Style.xs
+                    Repeater {
+                        model: root.badges
+                        Rectangle {
+                            id: badgeTag
+                            required property var modelData
+                            width: badgeText.implicitWidth + Style.px(10); height: badgeText.implicitHeight + Style.px(3)
+                            radius: root.shell.rounding; color: root.shell.alpha(badgeTag.modelData.color, .14)
+                            Text { id: badgeText; anchors.centerIn: parent; text: badgeTag.modelData.text; color: badgeTag.modelData.color; font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: true }
+                        }
                     }
                 }
             }

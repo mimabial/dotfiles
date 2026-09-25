@@ -4,16 +4,28 @@ import Quickshell.Services.Pipewire
 
 PopupCard {
     id: root
-    popupName: "audio"
+    property bool microphoneMode: false
+    popupName: microphoneMode ? "microphone" : "audio"
     contentWidth: Style.px(380)
     contentHeight: audioColumn.implicitHeight + padding * 2
     readonly property var sink: Pipewire.defaultAudioSink
     readonly property var source: Pipewire.defaultAudioSource
+    readonly property var activeNode: microphoneMode ? source : sink
     readonly property var nodes: Pipewire.nodes.values
     readonly property var outputs: nodes.filter(node => node && node.isSink && !node.isStream && node.audio)
-    readonly property var streams: nodes.filter(node => node && node.isSink && node.isStream && node.audio)
+    readonly property var playbacks: nodes.filter(node => node && node.isStream && !node.isSink && node.audio)
+    readonly property var recordings: nodes.filter(node => node && node.isStream && node.isSink && node.audio)
     readonly property var inputs: nodes.filter(node => node && !node.isSink && !node.isStream && node.audio)
     function name(node) { return node ? node.description || node.nickname || node.name || "Audio device" : "Unavailable" }
+    function target(stream) {
+        const link = Pipewire.linkGroups.values.find(group => stream.isSink ? group.target === stream : group.source === stream)
+        return link ? (stream.isSink ? link.source : link.target) : null
+    }
+    function route(stream, device) {
+        const command = ["pw-metadata", "-n", "default", "--", String(stream.id), "target.object", device ? device.name : "-1"]
+        if (!device) command.push("Spa:Id")
+        root.shell.run(command)
+    }
     function volumeAction(device, action) { root.shell.run(["hyprshell", "volume-control.sh", "-" + device, action]) }
     function adjustCursor(direction) {
         rebuildRows()
@@ -24,8 +36,8 @@ PopupCard {
                 return true
             }
         }
-        if (root.sink) {
-            volumeAction("o", direction > 0 ? "i" : "d")
+        if (root.activeNode) {
+            volumeAction(root.microphoneMode ? "i" : "o", direction > 0 ? "i" : "d")
             return true
         }
         return false
@@ -39,8 +51,8 @@ PopupCard {
         case Qt.Key_L:
         case Qt.Key_Right: return adjustCursor(1)
         case Qt.Key_Space: activateCursor(); return true
-        case Qt.Key_M: if (root.sink) volumeAction("o", "m"); return true
-        case Qt.Key_I: if (root.source) volumeAction("i", "m"); return true
+        case Qt.Key_M: if (root.activeNode) volumeAction(root.microphoneMode ? "i" : "o", "m"); return true
+        case Qt.Key_I: if (root.microphoneMode && root.source) volumeAction("i", "m"); return true
         }
         return defaultKey(event)
     }
@@ -52,37 +64,74 @@ PopupCard {
         for (const [floor, name] of steps) if (Math.round(audio.volume * 100) >= floor) return name
         return "silenced"
     }
-    property PwObjectTracker tracker: PwObjectTracker { objects: root.nodes.filter(node => node && node.audio) }
+    function microphoneStatus() { return !root.source ? "unavailable" : root.source.audio.muted ? "muted" : root.recordings.length ? "in use" : "ready" }
+    property PwObjectTracker tracker: PwObjectTracker { objects: root.open ? (root.microphoneMode ? root.inputs.concat(root.recordings) : root.outputs.concat(root.playbacks)) : [] }
+
+    component StreamControl: Column {
+        id: control
+        required property var stream
+        property bool recording: false
+        readonly property var devices: recording ? root.inputs : root.outputs
+        width: ListView.view.width
+        spacing: Style.xs
+        PopupRow {
+            width: parent.width; shell: root.shell
+            icon: control.stream.audio.muted ? "󰝟" : control.recording ? "󰍬" : "󰕾"
+            title: root.name(control.stream)
+            detail: (control.recording ? "Recording from " : "Playing on ") + root.name(root.target(control.stream))
+            value: Math.round(control.stream.audio.volume * 100) + "%"
+            onClicked: control.stream.audio.muted = !control.stream.audio.muted
+        }
+        PopupSlider {
+            width: parent.width; shell: root.shell; keyboardEnabled: true
+            label: control.recording ? "Capture gain" : "App volume"
+            value: control.stream.audio.volume
+            onChanged: value => control.stream.audio.volume = value
+        }
+        PopupSelect {
+            id: routeSelect
+            width: parent.width; shell: root.shell
+            choices: [{label: "Route to device…"}, {label: "Follow default"}].concat(control.devices.map(device => ({label: root.name(device)})))
+            onActivated: index => {
+                if (index > 0) root.route(control.stream, index === 1 ? null : control.devices[index - 2])
+                routeSelect.currentIndex = 0
+            }
+        }
+    }
 
     Column {
         id: audioColumn
         anchors.fill: parent; spacing: Style.px(14)
-        PopupHero { shell: root.shell; title: "Audio"; status: root.volumeName() }
+        PopupHero { shell: root.shell; title: root.microphoneMode ? "Microphone" : "Audio"; status: root.microphoneMode ? root.microphoneStatus() : root.volumeName() }
         PopupSeparator { shell: root.shell }
-        PopupRow { width: parent.width; shell: root.shell; icon: root.sink && root.sink.audio && root.sink.audio.muted ? "󰝟" : "󰕾"; title: root.name(root.sink); detail: "Output"; value: root.sink && root.sink.audio ? Math.round(root.sink.audio.volume * 100) + "%" : ""; active: root.sink && root.sink.audio && !root.sink.audio.muted; onClicked: if (root.sink) root.volumeAction("o", "m") }
-        PopupSlider { width: parent.width; shell: root.shell; label: "Output volume"; keyboardEnabled: root.sink !== null; keyboardAdjustsExternally: true; value: root.sink && root.sink.audio ? root.sink.audio.volume : 0; maximum: root.shell.volumeLimit; onChanged: value => { if (root.sink && root.sink.audio) root.sink.audio.volume = value }; onKeyboardAdjusted: direction => root.volumeAction("o", direction > 0 ? "i" : "d") }
-        PopupSlider { width: parent.width; shell: root.shell; label: "Volume limit"; keyboardEnabled: true; value: root.shell.volumeToDb(root.shell.volumeLimit); valueText: (value > 0 ? "+" : "") + value.toFixed(2).replace(/\.?0+$/, "") + " dB"; minimum: root.shell.volumeMinDb; maximum: root.shell.volumeMaxDb; step: root.shell.volumeStepDb; onChanged: value => root.shell.setVolumeLimit(root.shell.dbToVolume(value), false); onReleased: value => root.shell.setVolumeLimit(root.shell.dbToVolume(value), true) }
-        PopupRow { visible: root.source !== null; width: parent.width; shell: root.shell; icon: root.source && root.source.audio && root.source.audio.muted ? "󰍭" : "󰍬"; title: root.name(root.source); detail: "Microphone"; value: root.source && root.source.audio ? Math.round(root.source.audio.volume * 100) + "%" : ""; active: root.source && root.source.audio && !root.source.audio.muted; onClicked: if (root.source) root.volumeAction("i", "m") }
-        PopupSlider { visible: root.source !== null; width: parent.width; shell: root.shell; label: "Input volume"; keyboardEnabled: true; keyboardAdjustsExternally: true; value: root.source && root.source.audio ? root.source.audio.volume : 0; onChanged: value => { if (root.source && root.source.audio) root.source.audio.volume = value }; onKeyboardAdjusted: direction => root.volumeAction("i", direction > 0 ? "i" : "d") }
+        PopupRow { visible: !root.microphoneMode; width: parent.width; shell: root.shell; icon: root.sink && root.sink.audio && root.sink.audio.muted ? "󰝟" : "󰕾"; title: root.name(root.sink); detail: "Output"; value: root.sink && root.sink.audio ? Math.round(root.sink.audio.volume * 100) + "%" : ""; active: root.sink && root.sink.audio && !root.sink.audio.muted; onClicked: if (root.sink) root.volumeAction("o", "m") }
+        PopupSlider { visible: !root.microphoneMode; width: parent.width; shell: root.shell; label: "Output volume"; keyboardEnabled: root.sink !== null; keyboardAdjustsExternally: true; value: root.sink && root.sink.audio ? root.sink.audio.volume : 0; maximum: root.shell.volumeLimit; onChanged: value => { if (root.sink && root.sink.audio) root.sink.audio.volume = value }; onKeyboardAdjusted: direction => root.volumeAction("o", direction > 0 ? "i" : "d") }
+        PopupSlider { visible: !root.microphoneMode; width: parent.width; shell: root.shell; label: "Volume limit"; keyboardEnabled: true; value: root.shell.volumeToDb(root.shell.volumeLimit); valueText: (value > 0 ? "+" : "") + value.toFixed(2).replace(/\.?0+$/, "") + " dB"; minimum: root.shell.volumeMinDb; maximum: root.shell.volumeMaxDb; step: root.shell.volumeStepDb; onChanged: value => root.shell.setVolumeLimit(root.shell.dbToVolume(value), false); onReleased: value => root.shell.setVolumeLimit(root.shell.dbToVolume(value), true) }
+        PopupRow { visible: root.microphoneMode && root.source !== null; width: parent.width; shell: root.shell; icon: root.source && root.source.audio && root.source.audio.muted ? "󰍭" : "󰍬"; title: root.name(root.source); detail: "Microphone"; value: root.source && root.source.audio ? Math.round(root.source.audio.volume * 100) + "%" : ""; active: root.source && root.source.audio && !root.source.audio.muted; onClicked: if (root.source) root.volumeAction("i", "m") }
+        PopupSlider { visible: root.microphoneMode && root.source !== null; width: parent.width; shell: root.shell; label: "Input volume"; keyboardEnabled: true; keyboardAdjustsExternally: true; value: root.source && root.source.audio ? root.source.audio.volume : 0; onChanged: value => { if (root.source && root.source.audio) root.source.audio.volume = value }; onKeyboardAdjusted: direction => root.volumeAction("i", direction > 0 ? "i" : "d") }
         PopupSeparator { shell: root.shell }
-        PopupSection { shell: root.shell; text: "OUTPUT DEVICE" }
+        PopupSection { visible: !root.microphoneMode; shell: root.shell; text: "OUTPUT DEVICE" }
         ListView {
-            width: parent.width; height: Math.min(contentHeight, Style.px(85)); spacing: Style.px(4); clip: true; model: root.outputs
+            visible: !root.microphoneMode; width: parent.width; height: Math.min(contentHeight, Style.px(85)); spacing: Style.px(4); clip: true; model: root.microphoneMode ? [] : root.outputs
             delegate: PopupRow { required property var modelData; width: ListView.view.width; shell: root.shell; icon: "󰓃"; title: root.name(modelData); detail: modelData === root.sink ? "Default" : ""; active: modelData === root.sink; onClicked: Pipewire.preferredDefaultAudioSink = modelData }
         }
-        PopupSeparator { visible: root.inputs.length > 0; shell: root.shell }
-        PopupSection { visible: root.inputs.length > 0; shell: root.shell; text: "INPUT DEVICE" }
+        PopupSection { visible: root.microphoneMode && root.inputs.length > 0; shell: root.shell; text: "INPUT DEVICE" }
         ListView {
-            visible: root.inputs.length > 0
-            width: parent.width; height: Math.min(contentHeight, Style.px(85)); spacing: Style.px(4); clip: true; model: root.inputs
+            visible: root.microphoneMode && root.inputs.length > 0
+            width: parent.width; height: Math.min(contentHeight, Style.px(85)); spacing: Style.px(4); clip: true; model: root.microphoneMode ? root.inputs : []
             delegate: PopupRow { required property var modelData; width: ListView.view.width; shell: root.shell; icon: "󰍬"; title: root.name(modelData); detail: modelData === root.source ? "Default" : ""; active: modelData === root.source; onClicked: Pipewire.preferredDefaultAudioSource = modelData }
         }
-        PopupSeparator { shell: root.shell }
-        PopupSection { visible: root.streams.length > 0; shell: root.shell; text: "APPLICATIONS" }
+        PopupSeparator { visible: root.microphoneMode ? root.recordings.length > 0 : root.playbacks.length > 0; shell: root.shell }
+        PopupSection { visible: !root.microphoneMode && root.playbacks.length > 0; shell: root.shell; text: "PLAYBACK APPLICATIONS" }
         ListView {
-            visible: root.streams.length > 0; width: parent.width; height: Math.min(contentHeight, Style.px(88)); spacing: Style.px(4); clip: true; model: root.streams
-            delegate: PopupSlider { required property var modelData; width: ListView.view.width; shell: root.shell; keyboardEnabled: true; label: root.name(modelData); value: modelData.audio.volume; onChanged: value => modelData.audio.volume = value }
+            visible: !root.microphoneMode && root.playbacks.length > 0; width: parent.width; height: Math.min(contentHeight, Style.px(150)); spacing: Style.sm; clip: true; model: root.microphoneMode ? [] : root.playbacks
+            delegate: StreamControl { required property var modelData; stream: modelData }
         }
-        Text { width: parent.width; text: "j/k navigate  ·  h/l adjust  ·  m output mute  ·  i mic mute"; color: root.shell.alpha(root.shell.foreground, .45); font.family: root.shell.fontFamily; font.pixelSize: Style.caption; horizontalAlignment: Text.AlignHCenter }
+        PopupSection { visible: root.microphoneMode && root.recordings.length > 0; shell: root.shell; text: "RECORDING APPLICATIONS" }
+        ListView {
+            visible: root.microphoneMode && root.recordings.length > 0; width: parent.width; height: Math.min(contentHeight, Style.px(150)); spacing: Style.sm; clip: true; model: root.microphoneMode ? root.recordings : []
+            delegate: StreamControl { required property var modelData; stream: modelData; recording: true }
+        }
+        Text { width: parent.width; text: "j/k navigate  ·  h/l adjust  ·  m mute"; color: root.shell.alpha(root.shell.foreground, .45); font.family: root.shell.fontFamily; font.pixelSize: Style.caption; horizontalAlignment: Text.AlignHCenter }
     }
 }

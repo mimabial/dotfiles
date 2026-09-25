@@ -73,7 +73,7 @@ font_scale="$(rofi_effective_font_scale "${ROFI_KEYBIND_HINT_SCALE:-}")"
 font_name="$(rofi_effective_font_name "${ROFI_KEYBIND_HINT_FONT:-${ROFI_FONT:-}}")"
 
 # same geometry and overrides as keybinds_hint, so the cheatsheets match
-printf '%s\n' "${rows}" | rofi -dmenu -i -no-custom -no-show-icons -p " ${app}" \
+printf '%s\n' "${rows}" | rofi_with_background_theme -dmenu -i -no-custom -no-show-icons -p " ${app}" \
   -theme "$(rofi_resolve_theme "${ROFI_KEYBIND_HINT_STYLE:-clipboard}")" \
   -theme-str "entry { placeholder: \"  Keybindings\"; }" \
   -theme-str "$(rofi_font_override "${font_name}" "${font_scale}")" \

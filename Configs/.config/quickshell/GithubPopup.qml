@@ -8,6 +8,7 @@ PopupCard {
     id: root
     popupName: "github"
     contentWidth: Style.px(340)
+    signal moduleRefreshRequested()
 
     property var report: ({})
     readonly property var inbox: report.inbox || ({})
@@ -48,7 +49,7 @@ PopupCard {
         onExited: {
             if (root.queued.length > 0) root.sendMarks()
             else {
-                if (root.anchorItem && root.anchorItem.refresh) root.anchorItem.refresh()
+                root.moduleRefreshRequested()
                 root.refresh()
             }
         }

@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell.Io
 import "Commons" as Commons
@@ -234,13 +235,14 @@ Item {
         model: root.result && root.result.items ? root.result.items.slice(0, 5) : []
 
         delegate: Column {
+          id: previewBookmark
           required property var modelData
           width: ListView.view.width
           spacing: Commons.Style.spacing.xs
 
           Text {
             width: parent.width
-            text: modelData.title || modelData.url
+            text: previewBookmark.modelData.title || previewBookmark.modelData.url
             textFormat: Text.PlainText
             color: Commons.Color.menu.selectedText
             font.family: Commons.Style.font.menuFamily
@@ -250,7 +252,7 @@ Item {
 
           Text {
             width: parent.width
-            text: modelData.url
+            text: previewBookmark.modelData.url
             textFormat: Text.PlainText
             color: Commons.Color.menu.selectedText
             opacity: 0.56

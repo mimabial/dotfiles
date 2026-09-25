@@ -4,7 +4,7 @@ import Quickshell.Io
 QtObject {
     id: root
     required property string home
-    property string layout: "right"
+    property string styleName: "sidebar"
     property var theme: ({ rounding: 0, borderSize: 0, palette: {} })
     property var baseRules: ({})
     property var overrides: ({})
@@ -19,18 +19,15 @@ QtObject {
         justify: "center"
     })
 
-    // a rule inherits its dotted parent then the "" root, so a file states only
-    // what it changes; the chain is flattened once per load, never per lookup.
-    // the layout's own "" lands above every base rule, so it overrides rather
-    // than being buried under them: fallback < base"" < base[key] < over"" < over[key]
     function box(name) { const key = String(name || ""); return rules[key] || (key.includes(".") ? box(key.slice(0, key.lastIndexOf("."))) : rules[""] || fallback) }
     function resolve(base, over) {
         const out = {}, root = merge(fallback, base[""] || {})
-        const build = key => key in out ? out[key] : (out[key] = merge(merge(merge(
-            key.includes(".") ? build(key.slice(0, key.lastIndexOf("."))) : root,
-            base[key] || {}), over[""] || {}), over[key] || {}))
-        for (const key in base) build(key)
-        for (const key in over) build(key)
+        const build = key => {
+            if (key in out) return out[key]
+            let rule = merge(key.includes(".") ? build(key.slice(0, key.lastIndexOf("."))) : root, base[key] || {})
+            return out[key] = merge(merge(rule, over[""] || {}), over[key] || {})
+        }
+        for (const layer of [base, over]) for (const key in layer) build(key)
         return out
     }
     function merge(base, over) {
@@ -60,14 +57,14 @@ QtObject {
         }
     }
     property FileView styleFile: FileView {
-        path: root.home + "/.config/quickshell/styles/" + root.layout + ".json"
+        path: root.home + "/.config/quickshell/styles/" + root.styleName + ".json"
         watchChanges: true
         printErrors: false
         onPathChanged: { root.overrides = ({}); reload() }
         onFileChanged: reload()
         onLoaded: {
             try { root.overrides = JSON.parse(text()) }
-            catch (error) { console.warn("style " + root.layout + ": " + error) }
+            catch (error) { console.warn("style " + root.styleName + ": " + error) }
         }
     }
 }

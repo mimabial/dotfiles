@@ -109,13 +109,13 @@ select_shader() {
   [[ -n "${selected_shader}" ]] || exit 0
   selected_shader="$(normalize_shader_name "${selected_shader}")"
 
-  hypr_stateful_choice_apply "HYPR_SHADER" "${selected_shader}" "hypr-shader" "Shader selected" write_shader_state
+  hypr_stateful_choice_apply "HYPR_SHADER" "${selected_shader}" "hypr-shader" "Shader selected" compile_and_activate_shader
 }
 
 reload_shader() {
   local shader_name
   shader_name="$(normalize_shader_name "$(state_get "HYPR_SHADER" "neutral")")"
-  hypr_stateful_choice_apply "HYPR_SHADER" "${shader_name}" "hypr-shader" "Shader reloaded" write_shader_state
+  hypr_stateful_choice_apply "HYPR_SHADER" "${shader_name}" "hypr-shader" "Shader reloaded" compile_and_activate_shader
 }
 
 set_shader() {
@@ -127,10 +127,10 @@ set_shader() {
     return 1
   }
 
-  hypr_stateful_choice_apply "HYPR_SHADER" "${shader_name}" "hypr-shader" "Shader selected" write_shader_state
+  hypr_stateful_choice_apply "HYPR_SHADER" "${shader_name}" "hypr-shader" "Shader selected" compile_and_activate_shader
 }
 
-concat_shader_files() {
+write_compiled_shader_from_files() {
   local files=("$@")
   local version_directive=""
   local main_frag_file="${files[-1]}"
@@ -157,7 +157,7 @@ concat_shader_files() {
   done
 }
 
-parse_includes_and_update() {
+compile_and_activate_shader() {
   local selected_shader
   selected_shader="$(normalize_shader_name "${1}")"
   local resolved_shader_path
@@ -192,17 +192,13 @@ parse_includes_and_update() {
   fi
 
   files+=("${resolved_shader_path}")
-  concat_shader_files "${files[@]}"
+  write_compiled_shader_from_files "${files[@]}"
 
   hypr_stateful_choice_write_lua "${shaders_state_file}" \
     --config decoration.screen_shader "${compiled_shader_file}" \
     "SCREEN_SHADER=${selected_shader}" \
     "SCREEN_SHADER_PATH=${resolved_shader_path}" \
     "SCREEN_SHADER_COMPILED=${compiled_shader_file}"
-}
-
-write_shader_state() {
-  parse_includes_and_update "$1"
 }
 
 if [[ -z "${*}" ]]; then

@@ -13,7 +13,8 @@ python_activate() {
   else
     printf "Warning: Python virtual environment not found at %s\n" "${python_env}"
     printf "You may need to run 'hyprshell pyinit' to set it up.\n"
-    python_initialized
+    python_initialized || return 1
+    source "${python_env}"
   fi
 }
 

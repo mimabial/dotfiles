@@ -89,36 +89,10 @@ source_hyprlock_modules() {
   resolve_magick_limits
 }
 
-ensure_background_png() {
-  if [[ ! -f "${WALLPAPER_CURRENT_DIR}/wall.set.png" ]] || ! file -b "${WALLPAPER_CURRENT_DIR}/wall.set.png" 2>/dev/null | grep -q '^PNG'; then
-    fn_background || true
-  fi
-}
-
-refresh_mpris_fallbacks() {
-  local thumb="${HYPR_CACHE_HOME}/landing/mpris"
-  set_mpris_blurred_empty "${thumb}.blurred.png"
-}
-
-lock_bitwarden_if_running() {
-  hypr_user_pgrep -x "bitwarden" >/dev/null || return 0
-  bitwarden-desktop --lock &
-}
-
-run_default_lock() {
-  ensure_hyprlock_conf
-  ensure_background_png
-  refresh_mpris_fallbacks
-  fn_profile
-  check_and_sanitize_process
-  lock_bitwarden_if_running
-  "${HYPR_LIB_DIR}/system/app2unit.sh" -u "${HYPRLOCK_SCOPE_NAME}" -t scope -- hyprlock
-}
-
 handle_hyprlock_action() {
   case "$1" in
     --test)
-      layout_test "$2"
+      preview_hyprlock_layout "$2"
       ;;
     --apply)
       fn_apply "$2"
@@ -198,9 +172,5 @@ ensure_xdg_dirs
 setup_hyprlock_paths
 source_hyprlock_modules
 
-if [[ $# -eq 0 ]]; then
-  run_default_lock
-  exit 0
-fi
-
+[[ $# -gt 0 ]] || set -- --help
 parse_and_dispatch_args "$@"

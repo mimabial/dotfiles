@@ -1,17 +1,20 @@
+pragma ComponentBehavior: Bound
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Wayland
 import qs.Commons
+import qs.Ui as Ui
 import "IconResolver.js" as IconResolver
 import "WindowModel.js" as WindowModel
 
 Item {
     id: root
 
-    property var shell: null
+    required property var shell
     readonly property string pluginDir: Quickshell.env("HOME") + "/.config/quickshell/expose"
     readonly property var pluginEntry: root.shell ? root.shell.exposeConfig : null
     readonly property string previewPlacement: root.pluginEntry && root.pluginEntry.previewPlacement === "centered" ? "centered" : "in-place"
@@ -99,6 +102,9 @@ Item {
     }
     readonly property bool hotCornerOnTop: root.hotCornerPosition.indexOf("top-") === 0
     readonly property bool hotCornerOnLeft: root.hotCornerPosition.indexOf("-left") !== -1
+    readonly property int hotCornerDelay: Math.max(0, Math.min(1000, Number(root.pluginEntry && root.pluginEntry.hotCornerDelay) || 0))
+    readonly property string initialWorkspaceScope: root.pluginEntry && root.pluginEntry.initialWorkspaceScope === "current" ? "current" : "all"
+    readonly property string workspaceLabelStyle: root.pluginEntry && root.pluginEntry.workspaceLabelStyle === "slot" ? "slot" : "full"
     // Reach farther along both screen edges than into the desktop. Fast flings
     // are easier to catch without stealing a large square from the bar below.
     readonly property int hotCornerReach: Style.space(48)
@@ -111,6 +117,7 @@ Item {
     property bool opened: false
     property bool surfaceMounted: false
     property bool hotCornerArmed: true
+    property string pendingHotCornerScreen: ""
     property string filterText: ""
     property string workspaceScope: "all"
     property int selectedIndex: 0
@@ -129,6 +136,8 @@ Item {
     property real animationOutDurationPreview: -1
     property real backgroundBlurPreview: -1
     property real backgroundDimPreview: -1
+    property real hotCornerDelayPreview: -1
+    readonly property int effectiveHotCornerDelay: root.hotCornerDelayPreview >= 0 ? Math.round(root.hotCornerDelayPreview) : root.hotCornerDelay
     readonly property real effectiveBackgroundBlur: root.backgroundBlurPreview >= 0 ? root.backgroundBlurPreview : root.backgroundBlur
     readonly property real effectiveBackgroundDim: root.backgroundDimPreview >= 0 ? root.backgroundDimPreview : root.backgroundDim
     readonly property int previewAnimationDuration: root.previewSlowMotion || root.previewNavigationSlowMotion ? 4000 : 190
@@ -136,8 +145,7 @@ Item {
     readonly property int previewAnimationEasing: root.previewNavigationSlowMotion ? Easing.InOutCubic : Easing.OutQuart
     property bool backgroundBlurPrimed: false
     property bool backgroundBlurFailed: false
-    // 0 idle, 1 restoring the desktop blur while the surface is transparent.
-    property int backgroundBlurReleasePhase: 0
+    property bool restoringDesktopBlur: false
     property real motionProgress: 0
     property real motionTarget: 0
     // Cards bind to this instead of motionProgress so the animation only
@@ -216,12 +224,13 @@ Item {
     }
 
     function open(payload) {
-        var blurRestoreInFlight = root.backgroundBlurReleasePhase === 1 && backgroundBlurSession.running;
+        hotCornerTimer.stop();
+        var blurRestoreInFlight = root.restoringDesktopBlur && backgroundBlurSession.running;
         if (!blurRestoreInFlight)
-            root.backgroundBlurReleasePhase = 0;
+            root.restoringDesktopBlur = false;
         root.closeSettings();
         root.filterText = "";
-        root.workspaceScope = "all";
+        root.workspaceScope = root.initialWorkspaceScope;
         if (root.surfaceMounted) {
             if (blurRestoreInFlight) {
                 root.openingPending = true;
@@ -266,7 +275,7 @@ Item {
         root.hoveredIndex = -1;
         root.clearPreview();
         root.opened = false;
-        if (root.backgroundBlurReleasePhase > 0)
+        if (root.restoringDesktopBlur)
             return;
         if (root.surfaceMounted) {
             root.animateMotionTo(0);
@@ -276,7 +285,7 @@ Item {
         root.motionTarget = 0;
         root.motionProgress = 0;
         root.backgroundBlurPrimed = false;
-        root.backgroundBlurReleasePhase = 0;
+        root.restoringDesktopBlur = false;
         backgroundBlurSession.running = false;
         root.clearOverviewScreen();
     }
@@ -369,7 +378,7 @@ Item {
         }
         backgroundBlurUpdate.stop();
         if (backgroundBlurSession.running) {
-            root.backgroundBlurReleasePhase = 1;
+            root.restoringDesktopBlur = true;
             root.backgroundBlurPrimed = false;
             backgroundBlurSession.write("close\n");
             return;
@@ -381,12 +390,20 @@ Item {
         root.surfaceMounted = false;
         root.backgroundBlurPrimed = false;
         root.clearOverviewScreen();
-        root.backgroundBlurReleasePhase = 0;
+        root.restoringDesktopBlur = false;
     }
 
     function updatePluginSetting(name, value) {
         if (root.shell && typeof root.shell.updateExposeSetting === "function")
             root.shell.updateExposeSetting(name, value);
+    }
+
+    function resetSettings() {
+        root.clearAnimationTimingPreview();
+        root.backgroundBlurPreview = -1;
+        root.backgroundDimPreview = -1;
+        root.hotCornerDelayPreview = -1;
+        root.shell?.resetExposeSettings();
     }
 
     function setPreviewPlacement(value) {
@@ -556,6 +573,7 @@ Item {
         root.clearAnimationTimingPreview();
         root.backgroundBlurPreview = -1;
         root.backgroundDimPreview = -1;
+        root.hotCornerDelayPreview = -1;
         root.settingsCategoryIndex = 0;
         root.settingsOpen = true;
         Qt.callLater(function () {
@@ -571,6 +589,7 @@ Item {
         root.clearAnimationTimingPreview();
         root.backgroundBlurPreview = -1;
         root.backgroundDimPreview = -1;
+        root.hotCornerDelayPreview = -1;
         if (restoreKeyboardFocus)
             Qt.callLater(function () {
                 if (root.opened)
@@ -597,6 +616,28 @@ Item {
         var position = positions.indexOf(value) !== -1 ? value : "top-left";
         if (position !== root.hotCornerPosition)
             root.updatePluginSetting("hotCornerPosition", position);
+    }
+
+    function setHotCornerDelay(value) {
+        var numeric = Number(value);
+        if (!isFinite(numeric))
+            return root.hotCornerDelay;
+        var next = Math.max(0, Math.min(1000, Math.round(numeric)));
+        if (next !== root.hotCornerDelay)
+            root.updatePluginSetting("hotCornerDelay", next);
+        return next;
+    }
+
+    function setInitialWorkspaceScope(value) {
+        var next = value === "current" ? "current" : "all";
+        if (next !== root.initialWorkspaceScope)
+            root.updatePluginSetting("initialWorkspaceScope", next);
+    }
+
+    function setWorkspaceLabelStyle(value) {
+        var next = value === "slot" ? "slot" : "full";
+        if (next !== root.workspaceLabelStyle)
+            root.updatePluginSetting("workspaceLabelStyle", next);
     }
 
     function setMoveCursorToWindow(enabled) {
@@ -644,12 +685,23 @@ Item {
     function triggerHotCorner(screenName) {
         if (!root.hotCornerEnabled || !root.hotCornerArmed)
             return;
+        root.pendingHotCornerScreen = String(screenName || "");
+        if (root.hotCornerDelay > 0) {
+            hotCornerTimer.restart();
+            return;
+        }
+        root.activateHotCorner();
+    }
+
+    function activateHotCorner() {
+        if (!root.hotCornerEnabled || !root.hotCornerArmed)
+            return;
         root.hotCornerArmed = false;
         if (root.opened || root.openingPending) {
             root.dismiss();
             return;
         }
-        var name = String(screenName || "");
+        var name = root.pendingHotCornerScreen;
         if (name) {
             root.overviewScreenPinned = true;
             root.overviewScreenName = name;
@@ -663,11 +715,13 @@ Item {
     }
 
     function scheduleHotCornerRearm() {
+        hotCornerTimer.stop();
         hotCornerRearm.restart();
     }
 
     onHotCornerEnabledChanged: {
         if (!root.hotCornerEnabled) {
+            hotCornerTimer.stop();
             hotCornerRearm.stop();
             root.hotCornerArmed = true;
         }
@@ -907,7 +961,14 @@ Item {
     }
 
     function workspaceName(top) {
-        return WindowModel.workspaceName(top);
+        return root.formatWorkspaceLabel(WindowModel.workspaceName(top));
+    }
+
+    function formatWorkspaceLabel(name) {
+        var label = String(name || "—");
+        var slot = root.workspaceLabelStyle === "slot" && label.indexOf("special:") !== 0
+            ? label.match(/^.+:(\d+)$/) : null;
+        return slot ? slot[1] : label;
     }
 
     function workspaceLabel(top) {
@@ -938,7 +999,7 @@ Item {
         var workspace = root.workspaceForScreen(screenName);
         if (!workspace)
             return "—";
-        return String(workspace.name || workspace.id || "—");
+        return root.formatWorkspaceLabel(workspace.name || workspace.id || "—");
     }
 
     function workspaceScopeLabelForScreen(screenName) {
@@ -1247,6 +1308,12 @@ Item {
     }
 
     Timer {
+        id: hotCornerTimer
+        interval: root.hotCornerDelay
+        onTriggered: if (root.hotCornerHovered()) root.activateHotCorner()
+    }
+
+    Timer {
         id: hotCornerRearm
         interval: 100
         onTriggered: {
@@ -1270,8 +1337,8 @@ Item {
                 if (!isFinite(applied))
                     return;
                 if (applied < 0) {
-                    if (root.backgroundBlurReleasePhase > 0) {
-                        root.backgroundBlurReleasePhase = 0;
+                    if (root.restoringDesktopBlur) {
+                        root.restoringDesktopBlur = false;
                         backgroundBlurSession.running = false;
                         if (root.surfaceMounted) {
                             root.surfaceMounted = false;
@@ -1288,8 +1355,8 @@ Item {
                     root.prepareOpenSurface();
                     return;
                 }
-                if (applied === 0 && root.backgroundBlurReleasePhase === 1) {
-                    root.backgroundBlurReleasePhase = 0;
+                if (applied === 0 && root.restoringDesktopBlur) {
+                    root.restoringDesktopBlur = false;
                     if (root.openingPending) {
                         root.lastRequestedBlur = root.requestedBackgroundBlur();
                         root.writeBackgroundBlur(root.lastRequestedBlur);
@@ -1300,17 +1367,17 @@ Item {
                     return;
                 }
                 if (root.openingPending) {
-                    root.backgroundBlurReleasePhase = 0;
+                    root.restoringDesktopBlur = false;
                     root.backgroundBlurPrimed = true;
                     root.prepareOpenSurface();
                 }
             }
         }
-        onExited: function (exitCode, exitStatus) {
+        onExited: function() {
             root.backgroundBlurPrimed = false;
             root.lastRequestedBlur = -1;
-            if (root.backgroundBlurReleasePhase > 0) {
-                root.backgroundBlurReleasePhase = 0;
+            if (root.restoringDesktopBlur) {
+                root.restoringDesktopBlur = false;
                 if (root.surfaceMounted) {
                     root.surfaceMounted = false;
                     root.clearOverviewScreen();
@@ -1389,6 +1456,7 @@ Item {
         model: root.hotCornerEnabled && !root.surfaceMounted ? Quickshell.screens : []
 
         PanelWindow {
+            id: hotCornerWindow
             required property var modelData
             screen: modelData
             visible: true
@@ -1427,7 +1495,7 @@ Item {
                 anchors.fill: parent
                 onTop: root.hotCornerOnTop
                 onLeft: root.hotCornerOnLeft
-                onEntered: root.triggerHotCorner(String(modelData.name || ""))
+                onEntered: root.triggerHotCorner(String(hotCornerWindow.modelData.name || ""))
                 onExited: root.scheduleHotCornerRearm()
             }
         }
@@ -1493,25 +1561,25 @@ Item {
             readonly property string screenScopeLabel: root.workspaceScopeLabelForScreen(String(modelData.name || ""))
 
             function focusSettingsCategory() {
-                var settings = settingsLayerLoader.item;
+                var settings = settingsLayerLoader.item as SettingsView;
                 if (settings)
                     settings.focusSettingsCategory();
             }
 
             function moveSettingsFocus(forward, wrap) {
-                var settings = settingsLayerLoader.item;
+                var settings = settingsLayerLoader.item as SettingsView;
                 if (settings)
                     settings.moveSettingsFocus(forward, wrap);
             }
 
             function focusFirstSettingsControl() {
-                var settings = settingsLayerLoader.item;
+                var settings = settingsLayerLoader.item as SettingsView;
                 if (settings)
                     settings.focusFirstSettingsControl();
             }
 
             function moveFooterConfirmationFocus(forward, wrap) {
-                var settings = settingsLayerLoader.item;
+                var settings = settingsLayerLoader.item as SettingsView;
                 if (settings)
                     settings.moveFooterConfirmationFocus(forward, wrap);
             }
@@ -1554,7 +1622,7 @@ Item {
                     if (root.settingsOpen
                             && !root.footerHideConfirmationOpen
                             && event.key >= Qt.Key_1
-                            && event.key <= Qt.Key_4) {
+                            && event.key <= Qt.Key_6) {
                         root.settingsCategoryIndex = event.key - Qt.Key_1;
                         Qt.callLater(overviewWindow.focusSettingsCategory);
                         event.accepted = true;
@@ -1580,15 +1648,23 @@ Item {
                     anchors.margins: Style.spacing.sm
                     spacing: Style.spacing.md
 
-                    Rectangle {
+                    Ui.BorderSurface {
                         id: searchBar
                         Layout.alignment: Qt.AlignHCenter
                         Layout.preferredWidth: Math.min(Style.space(760), overviewWindow.width - Style.space(48))
                         Layout.preferredHeight: Style.space(48)
                         radius: Style.cornerRadius
-                        color: Color.menu.background
-                        border.color: root.filterText ? Color.menu.selectedText : Color.menu.border
-                        border.width: Math.max(1, Style.normalBorderWidth)
+                        color: "transparent"
+                        borderSpec: Border.flat(filterHover.hovered || filterField.activeFocus || root.filterText
+                            ? Color.menu.selectedText : Color.menu.border, Style.normalBorderWidth)
+
+                        HoverHandler { id: filterHover }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.IBeamCursor
+                            onClicked: filterField.forceActiveFocus()
+                        }
 
                         RowLayout {
                             anchors.fill: parent
@@ -1596,21 +1672,36 @@ Item {
                             anchors.rightMargin: Style.spacing.xl
                             spacing: Style.spacing.md
                             Text {
-                                text: "⌕"
+                                text: "󰍉"
                                 textFormat: Text.PlainText
                                 color: Color.menu.text
+                                opacity: 0.55
                                 font.family: Style.font.menuFamily
                                 font.pixelSize: Style.font.heading
                             }
-                            Text {
+                            TextField {
+                                id: filterField
                                 Layout.fillWidth: true
-                                text: root.filterText || "Type to filter windows…"
-                                textFormat: Text.PlainText
+                                Layout.fillHeight: true
+                                text: root.filterText
+                                placeholderText: "Type to filter windows…"
                                 color: Color.menu.text
-                                opacity: root.filterText ? 1 : 0.6
+                                opacity: text ? 1 : 0.6
                                 font.family: Style.font.menuFamily
                                 font.pixelSize: Style.font.heading
-                                elide: Text.ElideRight
+                                verticalAlignment: TextInput.AlignVCenter
+                                selectByMouse: true
+                                background: null
+                                leftPadding: 0
+                                rightPadding: 0
+                                onTextEdited: root.setFilter(text)
+                                Keys.priority: Keys.BeforeItem
+                                Keys.onPressed: function(event) {
+                                    if ([Qt.Key_Escape, Qt.Key_Tab, Qt.Key_Up, Qt.Key_Down, Qt.Key_Return, Qt.Key_Enter].indexOf(event.key) >= 0)
+                                        root.handleKey(event, overviewArea.windowLayout);
+                                    else
+                                        event.accepted = false;
+                                }
                             }
                             Text {
                                 text: overviewWindow.screenToplevels.length + " windows"
@@ -1640,13 +1731,11 @@ Item {
                                 elide: Text.ElideRight
                             }
 
-                            Rectangle {
+                            ThemedControl {
                                 Layout.preferredWidth: Style.space(34)
                                 Layout.preferredHeight: Style.space(24)
                                 radius: Math.max(2, Style.cornerRadius - Style.spacing.sm)
                                 color: "transparent"
-                                border.color: Color.menu.border
-                                border.width: Math.max(1, Style.normalBorderWidth)
 
                                 Text {
                                     anchors.centerIn: parent
@@ -1733,8 +1822,7 @@ Item {
                             property bool hovered: false
                             text: "Settings"
                             textFormat: Text.PlainText
-                            color: settingsControl.hovered ? Color.menu.selectedText : Color.menu.text
-                            opacity: settingsControl.hovered ? 1 : 0.7
+                            color: settingsControl.hovered ? Style.hoverStateColor(Color.menu.text, Color.accent) : Color.menu.text
                             font.family: Style.font.menuFamily
                             font.pixelSize: Style.font.bodySmall
                             font.bold: true

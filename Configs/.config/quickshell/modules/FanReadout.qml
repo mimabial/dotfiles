@@ -4,7 +4,7 @@ import ".."
 StackedReadout {
     id: root
     property bool popupsAllowed: true
-    css: "fanspeedinfo"
+    css: "fan"
     command: ["hyprshell", "sysinfo/fanspeedinfo"]; interval: 10000
     useAlt: !root.vertical
     tooltip: root.vertical ? root.output.tooltip || "" : ""
@@ -18,5 +18,6 @@ StackedReadout {
         popupName: "fan"; anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed
         command: ["hyprshell", "sysinfo/fanspeedinfo"]
         switchCommand: ["hyprshell", "sysinfo/fanspeedinfo", "--use"]
+        onModuleRefreshRequested: root.refresh()
     }
 }

@@ -16,7 +16,7 @@ from gi.repository import GLib, Playerctl
 from mediaplayer_actions import (
     player_name_matches,
     read_active_player_state,
-    state_path,
+    active_player_state_path,
     write_active_player_state,
 )
 from mediaplayer_browser import (
@@ -33,7 +33,7 @@ from mediaplayer_policy import (
 from mediaplayer_ui import (
     create_tooltip_text,
     emit_json_output,
-    escape,
+    escape_markup_text,
     format_artist_track,
     format_live_multiple_lines,
     format_live_single_line,
@@ -83,7 +83,7 @@ def start_poll_timer(manager) -> None:
 
 def cached_active_player_state() -> str:
     try:
-        mtime = state_path().stat().st_mtime
+        mtime = active_player_state_path().stat().st_mtime
     except OSError:
         STATE.active_player_mtime = -1.0
         STATE.active_player_value = ""
@@ -169,7 +169,7 @@ def emit_standby(player_name: str = "") -> None:
     text = STATE.ui_config.standby_text if STATE.ui_config else " MPlayer"
     emit_json_output(
         {
-            "text": escape(text),
+            "text": escape_markup_text(text),
             "class": ["stopped", player_name] if player_name else "nothing-playing",
             "alt": format_state_icon("Stopped") if STATE.icon_mode else "",
             "tooltip": "",
@@ -256,7 +256,7 @@ def emit_playback(playback: ResolvedPlayback) -> None:
     )
 
 
-def write_output(player) -> None:
+def emit_player_state(player) -> None:
     if player is None:
         emit_standby()
         return
@@ -276,12 +276,12 @@ def on_playback_changed(player, status, manager):
         set_player(manager, player)
         return
     if is_current_player(player):
-        write_output(player)
+        emit_player_state(player)
 
 
 def on_metadata(player, metadata, manager):
     if is_current_player(player):
-        write_output(player)
+        emit_player_state(player)
 
 
 def on_seeked(player, position, manager):
@@ -292,7 +292,7 @@ def on_seeked(player, position, manager):
     except Exception:
         seek_seconds = None
     STATE.playback.record_seek(seek_seconds, time.monotonic())
-    write_output(player)
+    emit_player_state(player)
 
 
 def on_player_appeared(manager, player, selected_players=None):
@@ -353,7 +353,7 @@ def timer_tick(manager):
         STATE.current_player
         and STATE.current_player.props.status == "Playing"
     ):
-        write_output(STATE.current_player)
+        emit_player_state(STATE.current_player)
     return True
 
 
@@ -365,7 +365,7 @@ def set_player(manager, player):
         STATE.current_player_name = player_state_name(player)
         manager.move_player_to_top(player)
         write_active_player_state(STATE.current_player_name)
-    write_output(player)
+    emit_player_state(player)
 
 
 def signal_handler(received_signal, frame):
@@ -411,14 +411,14 @@ def run(arguments):
     )
 
     manager = Playerctl.PlayerManager()
-    players, choose = resolve_players(arguments, manager)
+    players, restrict_to_selected_players = resolve_players(arguments, manager)
 
     loop = GLib.MainLoop()
     STATE.main_loop = loop
 
     manager.connect(
         "name-appeared",
-        lambda *args: on_player_appeared(*args, players if choose else None),
+        lambda *args: on_player_appeared(*args, players if restrict_to_selected_players else None),
     )
     manager.connect("player-vanished", lambda *args: on_player_vanished(*args, loop))
 
@@ -426,16 +426,16 @@ def run(arguments):
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGPIPE, signal_handler)
 
-    found = []
+    managed_players = []
     for player in manager.props.player_names:
         if not any(player_name_matches(player.name, name) for name in players):
             continue
-        found.append(init_player(manager, player))
+        managed_players.append(init_player(manager, player))
 
-    if found:
-        set_player(manager, preferred_player(found))
+    if managed_players:
+        set_player(manager, preferred_player(managed_players))
     else:
-        write_output(STATE.current_player)
+        emit_player_state(STATE.current_player)
 
     if manager.props.players:
         start_poll_timer(manager)

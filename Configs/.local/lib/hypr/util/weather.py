@@ -32,7 +32,7 @@ def _load_weather_codes():
     try:
         with open(json_file, "r", encoding="utf-8") as f:
             _WEATHER_CODES_CACHE = json.load(f)
-    except Exception:
+    except (OSError, json.JSONDecodeError):
         _WEATHER_CODES_CACHE = {"default": "󰖐"}
 
     return _WEATHER_CODES_CACHE
@@ -150,6 +150,8 @@ def geocode_candidates(name, count=5):
     """Places matching a name. Open-Meteo only accepts coordinates, so a name
     has to be resolved first, and ambiguous names ("Springfield") need the
     caller to choose."""
+    if requests is None:
+        return []
     try:
         response = requests.get(
             OPEN_METEO_GEOCODE_URL,
@@ -405,8 +407,8 @@ def load_env_file(filepath):
     try:
         for key, value in load_shell_assignments(filepath).items():
             os.environ[key] = value
-    except Exception:
-        pass  # shhh
+    except (OSError, UnicodeError):
+        pass
 
 
 def env_flag(name, default=False):
@@ -426,38 +428,38 @@ def resolve_theme_coordinates():
     return f"{latitude},{longitude}"
 
 
-def get_weather_icon(weatherinstance):
-    return get_weather_icon_from_code(weatherinstance["weatherCode"])
+def get_weather_icon(condition):
+    return get_weather_icon_from_code(condition["weatherCode"])
 
 
-def get_description(weatherinstance):
-    return weatherinstance["weatherDesc"][0]["value"]
+def get_description(condition):
+    return condition["weatherDesc"][0]["value"]
 
 
-def get_temperature(weatherinstance):
+def get_temperature(condition):
     if temp_unit == "c":
-        return weatherinstance["temp_C"] + "°C"
+        return condition["temp_C"] + "°C"
 
-    return weatherinstance["temp_F"] + "°F"
+    return condition["temp_F"] + "°F"
 
 
-def get_feels_like(weatherinstance):
+def get_feels_like(condition):
     if temp_unit == "c":
-        return weatherinstance["FeelsLikeC"] + "°C"
+        return condition["FeelsLikeC"] + "°C"
 
-    return weatherinstance["FeelsLikeF"] + "°F"
+    return condition["FeelsLikeF"] + "°F"
 
 
-def get_wind_value(weatherinstance):
+def get_wind_value(condition):
     if windspeed_unit == "km/h":
-        return weatherinstance["windspeedKmph"]
+        return condition["windspeedKmph"]
 
-    return weatherinstance["windspeedMiles"]
+    return condition["windspeedMiles"]
 
 
-def get_wind_speed(weatherinstance):
+def get_wind_speed(condition):
     unit = "Km/h" if windspeed_unit == "km/h" else "Mph"
-    return get_wind_value(weatherinstance) + unit
+    return get_wind_value(condition) + unit
 
 
 def get_max_temp(day):
@@ -634,7 +636,7 @@ if args.minmax:
     data["text"] = f"{max_temp}{field_sep}{min_temp}"
     if not args.temps_only:
         max_rain_chance = min(
-            max(int(hour.get("chanceofrain", 0)) for hour in today["hourly"]), 99
+            max((int(hour.get("chanceofrain", 0)) for hour in today["hourly"]), default=0), 99
         )
         data["text"] += f"{field_sep}{max_rain_chance:2d}󱢋{field_sep}{get_wind_value(current_weather)}"
 elif args.sunrise:

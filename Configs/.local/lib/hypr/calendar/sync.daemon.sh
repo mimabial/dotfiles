@@ -8,10 +8,10 @@ set -euo pipefail
 # Output is left unredirected so failures land in the service log; a failed tick
 # is tolerated because the first one after login can beat Radicale to the port.
 
-INTERVAL="${CALDAV_SYNC_INTERVAL:-900}"
-[[ "${INTERVAL}" =~ ^[0-9]+$ ]] && ((INTERVAL > 0)) || INTERVAL=900
+SYNC_INTERVAL_SECONDS="${CALDAV_SYNC_INTERVAL:-900}"
+[[ "${SYNC_INTERVAL_SECONDS}" =~ ^[0-9]+$ ]] && ((SYNC_INTERVAL_SECONDS > 0)) || SYNC_INTERVAL_SECONDS=900
 
 while :; do
   vdirsyncer sync personal || true
-  sleep "${INTERVAL}"
+  sleep "${SYNC_INTERVAL_SECONDS}"
 done

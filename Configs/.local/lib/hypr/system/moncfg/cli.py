@@ -150,6 +150,9 @@ def cmd_apply(args) -> int:
     reply = request("apply", {"profile_name": args.name})
     if reply is None:
         render.apply(profile)
+        state = daemon._load_state()
+        state.update(active_profile=args.name, applied_workspaces=profile.get("workspaces", {}))
+        daemon._save_state(state)
     elif "error" in reply:
         print(reply["error"]["message"], file=sys.stderr)
         return 1

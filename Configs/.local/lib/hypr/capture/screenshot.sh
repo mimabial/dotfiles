@@ -189,7 +189,7 @@ window_screenshot() {
   capture_selected_geometry "${selection}" "annotate"
 }
 
-take_screenshot() {
+capture_mode_then_annotate() {
   local mode="$1"
   shift
   local extra_args=("$@")
@@ -217,7 +217,7 @@ ocr_screenshot() {
   }
   tesseract_languages_body="$(hypr_ocr_language_summary tesseract_languages)"
 
-  hypr_ocr_preprocess ocr_image "${temp_screenshot}" screen
+  hypr_ocr_preprocess_into ocr_image "${temp_screenshot}" screen
   [[ -z "${HYPR_OCR_ERROR}" ]] || screenshot_notify 5000 "dialog-warning" "OCR: ${HYPR_OCR_ERROR}"
 
   if ! tesseract_output="$(hypr_ocr_recognize "${ocr_image}" "$(hypr_ocr_language_argument tesseract_languages)")"; then
@@ -230,7 +230,7 @@ ocr_screenshot() {
     return 1
   fi
 
-  ocr_emit_text "${destination}" "${tesseract_output}" "${text_file}" || return 1
+  deliver_ocr_text "${destination}" "${tesseract_output}" "${text_file}" || return 1
   ocr_notify_success "${destination}" "${text_file}" "${#tesseract_output}" "${tesseract_languages_body}"
 }
 
@@ -267,7 +267,7 @@ ocr_capture_subject() {
   esac
 }
 
-ocr_emit_text() {
+deliver_ocr_text() {
   local destination="$1"
   local text="$2"
   local text_file="$3"
@@ -323,7 +323,7 @@ trap 'cleanup_temp_screenshot "$?"' EXIT
 
 case "${mode}" in
   p) # print all outputs
-    take_screenshot "screen"
+    capture_mode_then_annotate "screen"
     ;;
   smart) # smart selection with wayfreeze and auto window detection
     smart_screenshot "${smart_destination}"
@@ -338,7 +338,7 @@ case "${mode}" in
     window_screenshot
     ;;
   m) # print focused monitor
-    take_screenshot "output"
+    capture_mode_then_annotate "output"
     ;;
   ocr | text)
     ocr_screenshot "${2:-area}" "${3:-clipboard}"

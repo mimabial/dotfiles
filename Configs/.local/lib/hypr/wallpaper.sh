@@ -7,9 +7,9 @@ source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
 hypr_runtime_require state rofi wallpaper_catalog || exit 1
 hypr_runtime_load_state || exit 1
 
-declare -gA wallHashByPath=()
-declare -ga wallList=()
-declare -ga wallPathArray=()
+declare -gA wallpaper_hash_by_path=()
+declare -ga wallpaper_paths=()
+declare -ga wallpaper_source_paths=()
 
 wallpaper_started_ms="$(date +%s%3N)"
 wallpaper_lock_fd=""

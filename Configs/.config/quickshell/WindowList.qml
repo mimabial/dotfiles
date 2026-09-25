@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Hyprland
@@ -61,7 +62,7 @@ Item {
                     border.color: root.framed || window.active ? window.boxColor("outline", "outline", root.shell.foreground) : "transparent"
                     border.width: taskEdge.replacesOutline ? 0 : border.color.a > 0 ? window.box.border : 0
                 }
-                ModuleEdge { id: taskEdge; shell: root.shell; hovered: mouse.containsMouse; active: window.active }
+                ModuleEdge { id: taskEdge; shell: root.shell; host: window; hovered: mouse.containsMouse; active: window.active }
                 Rectangle {
                     anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
                     height: 2
@@ -79,9 +80,9 @@ Item {
                     hoverEnabled: true
                     onClicked: event => window.act(event.button)
                 }
-                BarTooltip { anchorItem: window; shell: root.shell; text: modelData.title; hovered: mouse.containsMouse }
+                BarTooltip { anchorItem: window; shell: root.shell; text: window.modelData.title; hovered: mouse.containsMouse }
             }
         }
     }
-    ModuleEdge { shell: root.shell }
+    ModuleEdge { shell: root.shell; host: root }
 }

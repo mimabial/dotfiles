@@ -106,18 +106,18 @@ wallpaper_catalog_json_file() {
 }
 
 wallpaper_theme_sources() {
-  wallPathArray=()
+  wallpaper_source_paths=()
   [[ -d "${HYPR_THEME_DIR}" ]] || return 1
 
   if [[ -d "${HYPR_THEME_DIR}/wallpapers" ]]; then
-    wallPathArray=("${HYPR_THEME_DIR}/wallpapers")
+    wallpaper_source_paths=("${HYPR_THEME_DIR}/wallpapers")
   elif [[ -d "${HYPR_THEME_DIR}/wallpaper" ]]; then
-    wallPathArray=("${HYPR_THEME_DIR}/wallpaper")
+    wallpaper_source_paths=("${HYPR_THEME_DIR}/wallpaper")
   else
-    wallPathArray=("${HYPR_THEME_DIR}")
+    wallpaper_source_paths=("${HYPR_THEME_DIR}")
   fi
 
-  wallPathArray+=("${WALLPAPER_CUSTOM_PATHS[@]}")
+  wallpaper_source_paths+=("${WALLPAPER_CUSTOM_PATHS[@]}")
 }
 
 wallpaper_queue_script() {

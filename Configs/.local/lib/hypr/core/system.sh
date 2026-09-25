@@ -125,25 +125,24 @@ ini_write() {
     return 0
   fi
 
-  ini_write_multi "${config_file}" "${group}" "${key}" "${value}"
+  ini_write_fallback "${config_file}" "${group}" "${key}" "${value}"
 }
 
-# Reads group<TAB>key<TAB>value records; direct arguments serve ini_write's fallback.
-# Direct batch calls bypass KConfig cascade and immutability handling.
-ini_write_multi() {
+ini_write_fallback() { ini_write_rewrite "$1" /dev/null single "$2" "$3" "$4"; }
+
+# Batch records bypass KConfig cascade and immutability handling.
+ini_write_records() { ini_write_rewrite "$1" /dev/stdin records; }
+
+ini_write_rewrite() {
   local config_file="${1}"
-  local config_dir="" tmp_file="" records_file=/dev/stdin single=0
-  local ini_group="${2:-}" ini_key="${3:-}" ini_value="${4:-}"
+  local records_file="$2" write_mode="$3" ini_group="${4:-}" ini_key="${5:-}" ini_value="${6:-}"
+  local config_dir="" tmp_file=""
 
   [[ -z "${config_file}" ]] && return 1
   config_dir="${config_file%/*}"
   [[ "${config_dir}" != "${config_file}" ]] || config_dir=.
 
-  if (($# > 1)); then
-    [[ -n "${ini_group}" && -n "${ini_key}" ]] || return 1
-    records_file=/dev/null
-    single=1
-  fi
+  [[ "${write_mode}" != single || (-n "${ini_group}" && -n "${ini_key}") ]] || return 1
 
   if [[ ! -f "${config_file}" ]]; then
     mkdir -p "${config_dir}" || return 1
@@ -152,7 +151,7 @@ ini_write_multi() {
 
   tmp_file="$(mktemp "${config_dir}/.ini-write.XXXXXX")" || return 1
 
-  INI_SINGLE="${single}" INI_GROUP="${ini_group}" INI_KEY="${ini_key}" INI_VALUE="${ini_value}" awk -F'\t' '
+  INI_WRITE_MODE="${write_mode}" INI_GROUP="${ini_group}" INI_KEY="${ini_key}" INI_VALUE="${ini_value}" awk -F'\t' '
     function queue(sec, key, value) {
       if (!((sec, key) in pending)) keys[sec, ++key_count[sec]] = key
       if (!(sec in group_seen)) group_order[++group_total] = sec
@@ -169,7 +168,7 @@ ini_write_multi() {
       }
     }
     BEGIN {
-      if (ENVIRON["INI_SINGLE"] == "1")
+      if (ENVIRON["INI_WRITE_MODE"] == "single")
         queue(ENVIRON["INI_GROUP"], ENVIRON["INI_KEY"], ENVIRON["INI_VALUE"])
     }
     FILENAME == ARGV[1] {

@@ -91,6 +91,7 @@ current_idx="$(
 
 select_scale() {
   local selected=""
+  local window_width="${ROFI_MONITOR_SCALE_WIDTH:-22em}" window_height="${ROFI_MONITOR_SCALE_HEIGHT:-24em}"
   local -a rofi_args=()
 
   if ! command -v rofi >/dev/null 2>&1; then
@@ -110,15 +111,15 @@ select_scale() {
     "${ROFI_MONITOR_SCALE_SCALE:-}" \
     "${ROFI_MONITOR_SCALE_FONT:-${ROFI_FONT:-}}" \
     "listview" \
-    "same"
+    "same" "" "${window_width}" "${window_height}"
   rofi_args+=(
     -no-show-icons
     -selected-row "${current_idx}"
-    -theme-str "window { width: ${ROFI_MONITOR_SCALE_WIDTH:-22em}; height: ${ROFI_MONITOR_SCALE_HEIGHT:-24em}; } listview { lines: ${ROFI_MONITOR_SCALE_LINES:-7}; }"
+    -theme-str "listview { lines: ${ROFI_MONITOR_SCALE_LINES:-7}; }"
   )
 
   selected="$(
-    printf '%sx\n' "${scales[@]}" | rofi "${rofi_args[@]}"
+    printf '%sx\n' "${scales[@]}" | rofi_with_background_theme "${rofi_args[@]}"
   )" || return 0
   [[ -n "${selected}" ]] || return 0
   selected="${selected%x}"

@@ -13,6 +13,7 @@ BarButton {
     // overhang the drawn glyph does not have
     TextMetrics { id: iconMetrics; font.family: root.usesIconFont ? root.shell.iconGlyphFont : root.shell.fontFamily; font.pixelSize: root.renderedFontSize; font.weight: root.fontWeight; text: root.text }
     textOffsetX: iconMetrics.advanceWidth / 2 - iconMetrics.tightBoundingRect.x - iconMetrics.tightBoundingRect.width / 2
+    textRotation: root.shell.mode === "vertical" ? -90 : 0
     radius: shell.moduleRadius
     fill: framed ? root.styleColor("fill") : "transparent"
     // pulseaudio format-icons, in their declared order: a matching port wins
@@ -63,9 +64,10 @@ BarButton {
     }
     // only changes when something is physically plugged in
     Timer { interval: 3000; running: true; repeat: true; triggeredOnStart: true; onTriggered: root.probePort() }
-    readonly property string volumeIcon: !root.sink ? "" : root.sink.audio.volume < .34 ? ""
+    readonly property bool zeroVolume: root.sink ? Math.round(root.sink.audio.volume * 100) === 0 : false
+    readonly property string volumeIcon: !root.sink || root.zeroVolume ? "" : root.sink.audio.volume < .34 ? ""
         : root.sink.audio.volume < .67 ? "" : ""
-    text: !root.sink ? "󰖁" : root.muted ? root.mutedPortIcon || "" : root.portIcon || root.volumeIcon
+    text: !root.sink ? "󰖁" : root.muted ? root.mutedPortIcon || "" : root.zeroVolume ? root.volumeIcon : root.portIcon || root.volumeIcon
     tooltip: !root.sink ? "No output device"
         : "Volume level: " + Math.round(root.sink.audio.volume * 100) + "%" + (root.portKey ? " " + root.portKey : "")
             + "\nUsing: " + (root.sink.description || root.sink.nickname || root.sink.name)

@@ -26,26 +26,26 @@ def is_venv_valid(venv_path):
         return False
 
     try:
-        res = subprocess.run(
+        pip_import = subprocess.run(
             [python_exe, "-c", "import pip"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             timeout=5,
         )
-        if res.returncode != 0:
+        if pip_import.returncode != 0:
             return False
     except Exception:
         return False
 
     if os.path.exists(pyvenv_cfg):
         try:
-            with open(pyvenv_cfg, "r") as f:
-                for line in f:
+            with open(pyvenv_cfg, "r") as config_file:
+                for line in config_file:
                     key, sep, value = line.partition("=")
                     if sep and key.strip() == "version":
                         venv_version = value.strip()
-                        cur_version = f"{sys.version_info.major}.{sys.version_info.minor}"
-                        if not venv_version.startswith(cur_version):
+                        current_python_version = f"{sys.version_info.major}.{sys.version_info.minor}"
+                        if not venv_version.startswith(current_python_version):
                             return False
         except Exception:
             return False
@@ -58,8 +58,8 @@ def hypr_venv_path():
     return os.path.join(xdg_base_dirs.xdg_state_home(), "hypr", "pip_env")
 
 
-def get_venv_path():
-    """Set up the virtual environment path and modify sys.path."""
+def activate_managed_venv_path():
+    """Add the managed environment to sys.path and return its path."""
     venv_path = hypr_venv_path()
     site_packages_path = os.path.join(
         venv_path,
@@ -114,11 +114,11 @@ def create_venv(venv_path, requirements_file=None):
         subprocess.run([sys.executable, "-m", "venv", venv_path], check=True)
         pip_executable = os.path.join(venv_path, "bin", "pip")
         if requirements_file and os.path.exists(requirements_file):
-            with open(requirements_file, "r") as f:
+            with open(requirements_file, "r") as requirements_input:
                 list_requirements = "\n".join(
                     [
                         f"📦 {line.strip()}"
-                        for line in f
+                        for line in requirements_input
                         if line.strip() and not line.startswith("#")
                     ]
                 )
@@ -198,9 +198,9 @@ def rebuild_venv(venv_path=None, requirements_file=None):
 
     def _short_summary(stdout: str, stderr: str) -> str:
         if stderr:
-            for sline in stderr.splitlines():
-                if sline.strip():
-                    return sline.strip()
+            for error_line in stderr.splitlines():
+                if error_line.strip():
+                    return error_line.strip()
         req_lines = [
             line
             for line in stdout.splitlines()
@@ -208,9 +208,9 @@ def rebuild_venv(venv_path=None, requirements_file=None):
         ]
         if req_lines:
             return f"{len(req_lines)} requirements already satisfied"
-        for sline in stdout.splitlines():
-            if sline.startswith("Successfully installed"):
-                return sline.strip()
+        for output_line in stdout.splitlines():
+            if output_line.startswith("Successfully installed"):
+                return output_line.strip()
         return ""
 
     if requirements_file and os.path.exists(requirements_file):
@@ -227,9 +227,9 @@ def rebuild_venv(venv_path=None, requirements_file=None):
             )
             return
         else:
-            short = _short_summary(result.stdout, result.stderr)
-            if short:
-                notify.send("PIP", short)
+            summary = _short_summary(result.stdout, result.stderr)
+            if summary:
+                notify.send("PIP", summary)
 
     result = subprocess.run(
         [pip_executable, "list", "--outdated", "--format=json"],
@@ -250,42 +250,42 @@ def rebuild_venv(venv_path=None, requirements_file=None):
         outdated_packages = json.loads(result.stdout) if result.stdout.strip() else []
         # Keep the venv's bootstrap pip paired with the system Python.
         # Self-upgrading pip while it is running can leave a partial install.
-        outdated = [
+        packages_to_upgrade = [
             pkg["name"]
             for pkg in outdated_packages
             if pkg["name"].lower() != "pip"
         ]
-    except (json.JSONDecodeError, KeyError) as e:
+    except (json.JSONDecodeError, KeyError) as error:
         notify.send(
             "PIP",
-            f"Failed to parse outdated packages: {e}",
+            f"Failed to parse outdated packages: {error}",
             urgency="critical",
         )
         return
-    if outdated:
-        res2 = subprocess.run(
-            [pip_executable, "install", "--upgrade", "-q"] + outdated,
+    if packages_to_upgrade:
+        upgrade_result = subprocess.run(
+            [pip_executable, "install", "--upgrade", "-q"] + packages_to_upgrade,
             capture_output=True,
             text=True,
         )
-        if res2.returncode != 0:
+        if upgrade_result.returncode != 0:
             notify.send(
                 "PIP",
-                f"Failed to upgrade packages:\n{res2.stderr or res2.stdout}",
+                f"Failed to upgrade packages:\n{upgrade_result.stderr or upgrade_result.stdout}",
                 urgency="critical",
             )
             return
         else:
-            short2 = _short_summary(res2.stdout, res2.stderr)
-            if short2:
-                notify.send("PIP", short2)
+            summary = _short_summary(upgrade_result.stdout, upgrade_result.stderr)
+            if summary:
+                notify.send("PIP", summary)
 
     notify.send("PIP", "✅ Virtual environment rebuilt and packages updated.")
 
 
 def v_import(module_name):
     """Import a module from the managed venv without installing it."""
-    venv_path = get_venv_path()
+    venv_path = activate_managed_venv_path()
     sys.path.insert(0, venv_path)
     try:
         module = importlib.import_module(module_name)
@@ -339,7 +339,7 @@ def main(args):
 
     args = parser.parse_args(args)
 
-    venv_path = get_venv_path()
+    venv_path = activate_managed_venv_path()
     requirements_file = os.path.join(
         xdg_base_dirs.user_lib_dir(), "hypr", "pyutils", "requirements.txt"
     )
@@ -374,4 +374,4 @@ def hypr(args):
 if __name__ == "__main__":
     hypr(sys.argv[1:])
 
-sys.path.insert(0, get_venv_path())
+sys.path.insert(0, activate_managed_venv_path())

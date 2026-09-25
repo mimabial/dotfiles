@@ -1,0 +1,47 @@
+{
+  "panel": "horizontal",
+  "style": "horizontal",
+  "left": [
+    { "id": "workspaces", "props": { "compactStyle": true } },
+    {
+      "id": "mediaplayer",
+      "props": {
+        "appearance": "mpris",
+        "fillAvailableWidth": true,
+        "showControls": false,
+        "showArtist": true,
+        "randomizeProgressShape": true,
+        "showWhenIdle": true
+      }
+    }
+  ],
+  "centerAnchor": "datetime",
+  "center": [
+    "submap",
+    "caffeine",
+    "datetime",
+    { "id": "updates", "props": { "hideWhenCurrent": false } },
+    "weather"
+  ],
+  "right": [
+    "systemstats",
+    "volume",
+    "microphone",
+    "display",
+    { "id": "bluetooth", "props": { "showReadout": true } },
+    "vpn",
+    "wifi",
+    "tasks",
+    {
+      "id": "appearance",
+      "props": {
+        "alwaysOpen": false,
+        "reverse": true
+      }
+    },
+    { "id": "notifications", "props": { "showBadge": true } },
+    "bitwarden",
+    "powerprofile",
+    { "id": "removable", "props": { "showBadge": true } }
+  ]
+}

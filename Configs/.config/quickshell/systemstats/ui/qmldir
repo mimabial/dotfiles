@@ -1,4 +1,5 @@
 module qs.systemstats.ui
+AlertsPage 1.0 AlertsPage.qml
 BarReadout 1.0 BarReadout.qml
 BatteryPage 1.0 BatteryPage.qml
 BigStat 1.0 BigStat.qml

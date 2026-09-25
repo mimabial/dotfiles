@@ -118,5 +118,5 @@ Item {
         }
     }
     HoverHandler { id: hover }
-    ModuleEdge { id: drawerEdge; shell: root.shell; hovered: hover.hovered }
+    ModuleEdge { id: drawerEdge; shell: root.shell; host: root; hovered: hover.hovered }
 }

@@ -3,7 +3,6 @@
 
 BACK_TO_EXIT="${BACK_TO_EXIT:-false}"
 MENU_BORDER_RADIUS="${MENU_BORDER_RADIUS:-}"
-MENU_ELEMENT_RADIUS="${MENU_ELEMENT_RADIUS:-}"
 MENU_WINDOW_THEME_CACHE="${MENU_WINDOW_THEME_CACHE:-}"
 MENU_FONT_SCALE_CACHE="${MENU_FONT_SCALE_CACHE:-}"
 MENU_FONT_NAME_CACHE="${MENU_FONT_NAME_CACHE:-}"
@@ -20,7 +19,8 @@ MENU_MULTI_BALLOT_ON="${MENU_MULTI_BALLOT_ON:-■}"
 MENU_MULTI_BALLOT_OFF="${MENU_MULTI_BALLOT_OFF:-□}"
 
 # Pixel costs from menutree.rasi.
-MENU_CONTENT_CHROME_PX=73
+MENU_CONTENT_INNER_CHROME_PX=69
+MENU_WINDOW_BORDER_PX=2
 MENU_VERTICAL_CHROME_PX=75
 MENU_ROW_CHROME_PX=25
 MENU_FOOTER_CHROME_PX=24
@@ -42,7 +42,7 @@ MENU_SEARCH_GUARD_ROW=$'​\n​'
 
 declare -gA HYPR_MENU_PROMPTS=()
 declare -gA HYPR_MENU_DEFAULTS=()
-declare -gA HYPR_MENU_ITEMS=()
+declare -gA HYPR_MENU_LABELS=()
 declare -gA HYPR_MENU_PARENTS=()
 declare -gA HYPR_MENU_KINDS=()
 declare -gA HYPR_MENU_TARGETS=()
@@ -63,6 +63,12 @@ menu_metrics_cache_init() {
   [[ -n "${MENU_WIDTH_OVERRIDE_CACHE}" ]] || MENU_WIDTH_OVERRIDE_CACHE="$(
     rofi_theme_width_multiplier_override menutree "${ROFI_MENU_WIDTH_MULTIPLIER:-1}" 295px 2>/dev/null || true
   )"
+  [[ "${MENU_BORDER_RADIUS}" =~ ^[0-9]+$ ]] ||
+    MENU_BORDER_RADIUS="$(rofi_default_border_radius 2)"
+  [[ -n "${MENU_WINDOW_THEME_CACHE}" ]] ||
+    MENU_WINDOW_THEME_CACHE="$(rofi_standard_window_theme "listview" "same")"
+  [[ "${MENU_WINDOW_THEME_CACHE}" =~ border:([0-9]+)px ]] && MENU_WINDOW_BORDER_PX="${BASH_REMATCH[1]}"
+  MENU_CONTENT_CHROME_PX=$((MENU_CONTENT_INNER_CHROME_PX + 2 * MENU_WINDOW_BORDER_PX))
 }
 
 menu_text_column_px() {
@@ -124,18 +130,9 @@ menu_content_theme_override() {
   printf '\n'
 }
 
-menu_ensure_border_metrics() {
-  [[ "${MENU_BORDER_RADIUS}" =~ ^[0-9]+$ ]] ||
-    MENU_BORDER_RADIUS="$(rofi_default_border_radius 2)"
-  MENU_ELEMENT_RADIUS="${MENU_BORDER_RADIUS}"
-
-  [[ -n "${MENU_WINDOW_THEME_CACHE}" ]] ||
-    MENU_WINDOW_THEME_CACHE="$(rofi_standard_window_theme "listview" "same")"
-}
-
 menu_measured_rows() {
   local out_name="$1" options_rendered="$2" nav_keys="$3" row_mode="$4"
-  local ballot="" result="" rest="" row=""
+  local ballot="" result="" row=""
 
   if [[ "${nav_keys}" == "multi" ]]; then
     ballot="${MENU_MULTI_BALLOT_ON} "
@@ -148,13 +145,10 @@ menu_measured_rows() {
     return 0
   fi
 
-  rest="${options_rendered}"
-  while [[ -n "${rest}" ]]; do
-    row="${rest%%"${MENU_ROW_SEP}"*}"
+  [[ -n "${options_rendered}" ]] || { printf -v "${out_name}" '%s' ''; return 0; }
+  while IFS= read -r -d "${MENU_ROW_SEP}" row; do
     result+="${row%%"${MENU_ROW_OPT}"*}"$'\n'
-    [[ "${rest}" == *"${MENU_ROW_SEP}"* ]] || break
-    rest="${rest#*"${MENU_ROW_SEP}"}"
-  done
+  done <<<"${options_rendered%"${MENU_ROW_SEP}"}${MENU_ROW_SEP}"
   printf -v "${out_name}" '%s' "${result}"
 }
 
@@ -204,7 +198,7 @@ menu_run_rofi() {
   stderr_file="$(mktemp "${XDG_RUNTIME_DIR:-/tmp}/rofi-menu.XXXXXX" 2>/dev/null || true)"
   [[ -n "${stderr_file}" ]] && stderr_target="${stderr_file}"
   selection="$(menu_emit_options "${options_rendered}" "${row_mode}" |
-    rofi -dmenu -i -no-show-icons -p "${prompt}" -theme "$(rofi_resolve_theme menutree)" "$@" \
+    rofi_with_background_theme -dmenu -i -no-show-icons -p "${prompt}" -theme "$(rofi_resolve_theme menutree)" "$@" \
       2>"${stderr_target}")"
   exit_code=$?
 
@@ -247,7 +241,6 @@ menu() {
   local user_name="${USER:-user}" lines_per_row=1
   local -a rofi_args=()
 
-  menu_ensure_border_metrics
   menu_metrics_cache_init
 
   printf -v options_rendered '%b' "${options}"
@@ -259,9 +252,9 @@ menu() {
 
   rofi_args+=("-theme-str" "$(rofi_font_override "${MENU_FONT_NAME_CACHE}" "${MENU_FONT_SCALE_CACHE}")")
   rofi_args+=("-theme-str" "${MENU_WINDOW_THEME_CACHE}")
-  rofi_args+=("-theme-str" "textbox-prompt-colon {border-radius: ${MENU_ELEMENT_RADIUS}px; str: \"${prompt}\";}")
+  rofi_args+=("-theme-str" "textbox-prompt-colon {border-radius: ${MENU_BORDER_RADIUS}px; str: \"${prompt}\";}")
   rofi_args+=("-theme-str" "entry {placeholder: \"Hello ${user_name^}!\";}")
-  rofi_args+=("-theme-str" "element selected.normal {border-radius: ${MENU_ELEMENT_RADIUS}px;}")
+  rofi_args+=("-theme-str" "element selected.normal {border-radius: ${MENU_BORDER_RADIUS}px;}")
   [[ -n "${width_override}" ]] && rofi_args+=("-theme-str" "${width_override}")
 
   menu_append_nav_args rofi_args "${nav_keys}"
@@ -326,7 +319,7 @@ menu_define() {
   [[ -n "${menu_id}" && "${menu_id}" != *"${MENU_ITEM_KEY_SEP}"* ]] || return 2
   HYPR_MENU_PROMPTS["${menu_id}"]="${prompt}"
   HYPR_MENU_DEFAULTS["${menu_id}"]="${default}"
-  : "${HYPR_MENU_ITEMS["${menu_id}"]:=}"
+  : "${HYPR_MENU_LABELS["${menu_id}"]:=}"
 }
 
 menu_add_item() {
@@ -336,7 +329,7 @@ menu_add_item() {
   [[ -n "${menu_id}" && -n "${label}" && -n "${target}" && "${menu_id}${label}" != *"${MENU_ITEM_KEY_SEP}"* &&
     "${label}" != *$'\n'* && ! -v HYPR_MENU_KINDS["${key}"] ]] || return 2
   case "${kind}:${searchable}" in action:0 | action:1 | submenu:0 | submenu:1) ;; *) return 2 ;; esac
-  HYPR_MENU_ITEMS["${menu_id}"]+="${HYPR_MENU_ITEMS["${menu_id}"]:+$'\n'}${label}"
+  HYPR_MENU_LABELS["${menu_id}"]+="${HYPR_MENU_LABELS["${menu_id}"]:+$'\n'}${label}"
   HYPR_MENU_KINDS["${key}"]="${kind}"
   HYPR_MENU_TARGETS["${key}"]="${target}"
   HYPR_MENU_SEARCHABLE["${key}"]="${searchable}"
@@ -365,7 +358,7 @@ menu_descendant_depth() {
       item_depth=1
     fi
     ((item_depth > depth)) && depth="${item_depth}"
-  done <<<"${HYPR_MENU_ITEMS["${menu_id}"]:-}"
+  done <<<"${HYPR_MENU_LABELS["${menu_id}"]:-}"
   HYPR_MENU_DEPTHS["${menu_id}"]="${depth}"
 }
 
@@ -392,7 +385,7 @@ menu_render_options() {
     else
       flagged+="0"$'\t'"${label}"$'\t'$'\n'
     fi
-  done <<<"${HYPR_MENU_ITEMS["${menu_id}"]:-}"
+  done <<<"${HYPR_MENU_LABELS["${menu_id}"]:-}"
 
   aligned="$(printf '%s' "${flagged}" | rofi_font_align_trailing \
     "${MENU_FONT_NAME_CACHE}" "${MENU_FONT_SCALE_CACHE}" "${MENU_SUBMENU_GLYPH_1}" \
@@ -508,18 +501,18 @@ menu_dump_json() {
         "${menu_id}" "${HYPR_MENU_PROMPTS["${menu_id}"]}" "${HYPR_MENU_PARENTS["${menu_id}"]:-}" \
         "${label}" "${HYPR_MENU_KINDS["${key}"]}" "${target}" \
         "${HYPR_MENU_SEARCHABLE["${key}"]}" "${chevron}"
-    done <<<"${HYPR_MENU_ITEMS["${menu_id}"]:-}"
+    done <<<"${HYPR_MENU_LABELS["${menu_id}"]:-}"
   done | jq -Rs '
     split("\n") | map(select(length > 0) | split("\t"))
     | reduce .[] as $r ({}; .[$r[0]] = ((.[$r[0]] // {prompt: $r[1], parent: $r[2], items: []})
         | .items += [{label: $r[3], kind: $r[4], target: $r[5], searchable: ($r[6] != "0"), chevron: $r[7]}]))'
 }
 
-menu_collect_subtree() {
+menu_collect_search_rows() {
   local menu_id="$1" path="$6" depth="${7:-0}"
   local label="" key="" kind="" target="" next_path=""
   local label_markup="" path_display="${path}" path_markup="" row=""
-  local -n direct_rows_ref="$2" deeper_rows_ref="$3" direct_targets_ref="$4" deeper_targets_ref="$5"
+  local -n direct_rows_ref="$2" deeper_rows_ref="$3" direct_item_keys_ref="$4" deeper_item_keys_ref="$5"
 
   if ((depth > 0)); then
     path_display="${path#* › }"
@@ -545,10 +538,10 @@ menu_collect_subtree() {
     row+=$'\n'"<span size=\"small\" alpha=\"55%\">${path_markup}</span>"
     if ((depth > 0)); then
       deeper_rows_ref+=("${row}")
-      deeper_targets_ref+=("${kind}"$'\t'"${target}")
+      deeper_item_keys_ref+=("${key}")
     else
       direct_rows_ref+=("${row}")
-      direct_targets_ref+=("${kind}"$'\t'"${target}")
+      direct_item_keys_ref+=("${key}")
     fi
 
     [[ "${kind}" == "submenu" ]] || continue
@@ -556,19 +549,30 @@ menu_collect_subtree() {
     if [[ "${label}" =~ ^[^\ -~][[:space:]]+(.+)$ ]]; then
       next_path="${BASH_REMATCH[1]}"
     fi
-    menu_collect_subtree "${target}" "$2" "$3" "$4" "$5" "${path} › ${next_path}" $((depth + 1))
-  done <<<"${HYPR_MENU_ITEMS["${menu_id}"]:-}"
+    menu_collect_search_rows "${target}" "$2" "$3" "$4" "$5" "${path} › ${next_path}" $((depth + 1))
+  done <<<"${HYPR_MENU_LABELS["${menu_id}"]:-}"
+}
+
+menu_dispatch_search_item() {
+  local item_key="$1"
+  local kind="${HYPR_MENU_KINDS["${item_key}"]}"
+  local target="${HYPR_MENU_TARGETS["${item_key}"]}"
+
+  case "${kind}" in
+    submenu) menu_show_menu "${target}" ;;
+    action) menu_run_action "${target}" ;;
+  esac
 }
 
 menu_show_search() {
   local menu_id="${1:-main}"
   local root_name="${HYPR_MENU_PROMPTS["${menu_id}"]:-${menu_id}}"
-  local -a direct_rows=() deeper_rows=() direct_targets=() deeper_targets=() rows=() row_targets=()
-  local options="" record="" selection="" kind="" target=""
+  local -a direct_rows=() deeper_rows=() direct_item_keys=() deeper_item_keys=() rows=() row_item_keys=()
+  local options="" item_key="" selection=""
   local rofi_exit=0
 
   menu_metrics_cache_init
-  menu_collect_subtree "${menu_id}" direct_rows deeper_rows direct_targets deeper_targets "${root_name}" 0
+  menu_collect_search_rows "${menu_id}" direct_rows deeper_rows direct_item_keys deeper_item_keys "${root_name}" 0
 
   if ((${#direct_rows[@]} + ${#deeper_rows[@]} == 0)); then
     menu_exit_or_show "${menu_id}"
@@ -576,9 +580,8 @@ menu_show_search() {
   fi
 
   rows=("${MENU_SEARCH_GUARD_ROW}" "${direct_rows[@]}" "${deeper_rows[@]}")
-  row_targets=("" "${direct_targets[@]}" "${deeper_targets[@]}")
-  local IFS="${MENU_ROW_SEP}"
-  options="${rows[*]}"
+  row_item_keys=("" "${direct_item_keys[@]}" "${deeper_item_keys[@]}")
+  options="$(IFS="${MENU_ROW_SEP}"; printf '%s' "${rows[*]}")"
 
   selection="$(menu "Search" "${options}" --rows detail)"
   rofi_exit=$?
@@ -590,20 +593,11 @@ menu_show_search() {
     return 0
   fi
 
-  record="${row_targets[selection]:-}"
-  if [[ -z "${record}" ]]; then
+  item_key="${row_item_keys[selection]:-}"
+  if [[ -z "${item_key}" ]]; then
     menu_exit_or_show "${menu_id}"
     return 0
   fi
 
-  kind="${record%%$'\t'*}"
-  target="${record#*$'\t'}"
-  case "${kind}" in
-    submenu)
-      menu_show_menu "${target}"
-      ;;
-    action)
-      menu_run_action "${target}"
-      ;;
-  esac
+  menu_dispatch_search_item "${item_key}"
 }

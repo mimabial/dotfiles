@@ -40,19 +40,30 @@ assert_eq '󰶻' "$(menu_submenu_glyph 3)" 'three-level submenu glyph'
 menu_add_item main Plain action duplicate 2>/dev/null && fail 'duplicate label accepted'
 menu_add_item main Bad invalid bad 2>/dev/null && fail 'invalid item accepted'
 
-declare -a direct_rows=() deeper_rows=() direct_targets=() deeper_targets=()
-menu_collect_subtree main direct_rows deeper_rows direct_targets deeper_targets Root 0
+declare -a direct_rows=() deeper_rows=() direct_item_keys=() deeper_item_keys=()
+menu_collect_search_rows main direct_rows deeper_rows direct_item_keys deeper_item_keys Root 0
 assert_eq 2 "${#direct_rows[@]}" 'direct row count'
 assert_eq 3 "${#deeper_rows[@]}" 'deeper row count'
-assert_eq $'submenu\tbranch' "${direct_targets[1]}" 'direct target'
-assert_eq $'action\tspecial' "${deeper_targets[0]}" 'deeper target'
+assert_eq "main${MENU_ITEM_KEY_SEP}Sub" "${direct_item_keys[1]}" 'direct item key'
+assert_eq "branch${MENU_ITEM_KEY_SEP}A&B <One>" "${deeper_item_keys[0]}" 'deeper item key'
 assert_has "${direct_rows[0]}" $'display\x1fPlain\n<span size="small" alpha="55%">Root</span>' 'direct row'
 assert_has "${deeper_rows[0]}" 'A&amp;B &lt;One&gt;' 'escaped label'
 assert_has "${deeper_rows[0]}" '>Sub</span>' 'deeper path'
 
+search_ifs="$(
+  menu_metrics_cache_init() { :; }
+  menu() { printf '%s' "${#IFS}" >&2; return 1; }
+  menu_show_search main 2>&1
+)"
+assert_eq 3 "${search_ifs}" 'search preserves default field separators'
+
 measured=""
 menu_measured_rows measured "${direct_rows[0]}${MENU_ROW_SEP}${deeper_rows[0]}" '' detail
 assert_eq $'Plain\nA&B <One>\n' "${measured}" 'detail measurement rows'
+menu_measured_rows measured "Plain${MENU_ROW_SEP}" '' detail
+assert_eq $'Plain\n' "${measured}" 'detail trailing separator'
+menu_measured_rows measured '' '' detail
+assert_eq '' "${measured}" 'empty detail rows'
 menu_measured_rows measured $'One\nTwo' multi ''
 assert_eq $'■ One\n■ Two' "${measured}" 'multi measurement rows'
 selected=""
@@ -74,6 +85,10 @@ menu_register_action_handler handler_miss
 menu_register_action_handler handler_hit
 menu_run_action run
 assert_eq run "${ACTION}" 'action handler'
+ACTION=""
+menu_add_item main Run action run
+menu_dispatch_search_item "main${MENU_ITEM_KEY_SEP}Run"
+assert_eq run "${ACTION}" 'search action handler'
 menu_run_action missing && fail 'unknown action accepted'
 
 declare -a CAPTURED=()
@@ -90,12 +105,12 @@ rofi_effective_font_scale() { printf '10'; }
 rofi_effective_font_name() { printf 'Mono'; }
 rofi_theme_width_multiplier_override() { printf 'window { width: 295px; }'; }
 rofi_default_border_radius() { printf '2'; }
-rofi_standard_window_theme() { printf 'window{}'; }
-rofi_font_text_extents_px() { cat >/dev/null; printf '100 10'; }
-rofi_focused_monitor_logical_size() { printf '1000 800'; }
+rofi_standard_window_theme() { printf 'window{border:3px;}'; }
+rofi_font_text_extents_px() { cat >/dev/null; printf '425 10'; }
+rofi_focused_monitor_logical_size() { printf '1920 1080'; }
 rofi_font_override() { printf 'font{}'; }
 rofi_resolve_theme() { printf 'menutree.rasi'; }
-rofi() { cat >/dev/null; printf 'Picked'; return 7; }
+rofi_with_background_theme() { cat >/dev/null; printf 'Picked'; return 7; }
 set +e
 rofi_output="$(menu_run_rofi Prompt Rows '')"
 rofi_exit=$?
@@ -106,6 +121,12 @@ declare -a MENU_RUN_ARGS=()
 menu_run_rofi() { MENU_RUN_ARGS=("$@"); }
 MENU_FONT_SCALE_CACHE="" MENU_FONT_NAME_CACHE="" MENU_WIDTH_OVERRIDE_CACHE=""
 MENU_BORDER_RADIUS="" MENU_WINDOW_THEME_CACHE=""
+menu_metrics_cache_init
+assert_eq 220 "$(menu_text_column_px)" 'text column excludes the applied window border'
+assert_has "$(menu_content_theme_override Rows 2)" 'width: 500px;' 'search width fits the widest label'
+rofi_focused_monitor_logical_size() { printf '800 600'; }
+assert_has "$(menu_content_theme_override Rows 2)" 'width: 480px;' 'search monitor cap'
+rofi_focused_monitor_logical_size() { printf '1920 1080'; }
 menu Prompt $'One\nTwo' --select Two --nav tree >/dev/null
 run_args="$(IFS='|'; printf '|%s|' "${MENU_RUN_ARGS[*]}")"
 assert_has "${run_args}" '|-selected-row|1|' 'menu preselection argument'

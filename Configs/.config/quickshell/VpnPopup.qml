@@ -265,6 +265,7 @@ PopupCard {
     property Timer copiedTimer: Timer { interval: 1400; onTriggered: root.ipCopied = false }
 
     component InfoPair: Item {
+        id: infoPair
         property string label: ""
         property string value: ""
         property bool interactive: false
@@ -273,11 +274,11 @@ PopupCard {
         width: parent.width; height: pair.implicitHeight
         Row {
             id: pair; width: parent.width; spacing: Style.lg
-            Text { id: pairLabel; text: parent.parent.label; color: root.shell.alpha(root.shell.foreground, .6); font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
+            Text { id: pairLabel; text: infoPair.label; color: root.shell.alpha(root.shell.foreground, .6); font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
             Item { width: Math.max(0, parent.width - pairLabel.implicitWidth - pairValue.implicitWidth - parent.spacing * 2); height: 1 }
-            Text { id: pairValue; text: parent.parent.value; color: pairMouse.containsMouse ? root.shell.accent : root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
+            Text { id: pairValue; text: infoPair.value; color: pairMouse.containsMouse ? root.shell.accent : root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
         }
-        MouseArea { id: pairMouse; anchors.fill: parent; enabled: parent.interactive; hoverEnabled: enabled; cursorShape: Qt.PointingHandCursor; onClicked: parent.clicked() }
+        MouseArea { id: pairMouse; anchors.fill: parent; enabled: infoPair.interactive; hoverEnabled: enabled; cursorShape: Qt.PointingHandCursor; onClicked: infoPair.clicked() }
     }
 
     component SettingRow: Item {

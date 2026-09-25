@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
@@ -157,7 +158,7 @@ BorderSurface {
           text: "+ Add Custom Folder..."
           textColor: Color.bar.active
           onTriggered: {
-            customFolderPickerProc.running = true
+            contextMenu.dock.pickCustomFolder()
             contextMenu.dock.closeContext()
           }
         }
@@ -1087,15 +1088,18 @@ BorderSurface {
           Repeater {
             model: contextMenu.dock.contextWindowList
             delegate: ContextRow {
-              text: contextMenu.dock.windowRowLabel(modelData)
+              id: windowAction
+              required property var modelData
+              required property int index
+              text: contextMenu.dock.windowRowLabel(windowAction.modelData)
               isWindowRow: true
-              winFocused: contextMenu.dock.isWindowFocused(modelData)
-              winParked: contextMenu.dock.isWindowParked(modelData)
-              checked: appContextMenuColumn.selectedWindowIdx === index
+              winFocused: contextMenu.dock.isWindowFocused(windowAction.modelData)
+              winParked: contextMenu.dock.isWindowParked(windowAction.modelData)
+              checked: appContextMenuColumn.selectedWindowIdx === windowAction.index
 
               onTriggered: {
-                if (modelData && modelData.address) {
-                  contextMenu.dock.focusWindowByAddress(modelData.address, contextMenu.dock.contextAppId)
+                if (windowAction.modelData && windowAction.modelData.address) {
+                  contextMenu.dock.focusWindowByAddress(windowAction.modelData.address, contextMenu.dock.contextAppId)
                 }
                 contextMenu.dock.closeContext()
               }
@@ -1112,9 +1116,11 @@ BorderSurface {
           Repeater {
             model: contextMenu.dock.contextDesktopActions
             delegate: ContextRow {
-              text: modelData.name || modelData.id
+              id: desktopAction
+              required property var modelData
+              text: desktopAction.modelData.name || desktopAction.modelData.id
               onTriggered: {
-                contextMenu.dock.launchDesktopAction(modelData, contextMenu.dock.contextName)
+                contextMenu.dock.launchDesktopAction(desktopAction.modelData, contextMenu.dock.contextName)
                 contextMenu.dock.closeContext()
               }
             }

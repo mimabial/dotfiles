@@ -111,9 +111,9 @@ fastfetch_select_logo_ui() {
       font_args=(-theme-str "$(rofi_font_override "$(rofi_effective_font_name)" "$(rofi_effective_font_scale)")")
     fi
     if [[ -n "${current_label}" ]]; then
-      selected_label="$(printf '%s\n' "${labels[@]}" | rofi -dmenu -i -p "Fastfetch logo" "${font_args[@]}" -select "${current_label}")"
+      selected_label="$(printf '%s\n' "${labels[@]}" | rofi_with_background_theme -dmenu -i -p "Fastfetch logo" "${font_args[@]}" -select "${current_label}")"
     else
-      selected_label="$(printf '%s\n' "${labels[@]}" | rofi -dmenu -i -p "Fastfetch logo" "${font_args[@]}")"
+      selected_label="$(printf '%s\n' "${labels[@]}" | rofi_with_background_theme -dmenu -i -p "Fastfetch logo" "${font_args[@]}")"
     fi
   elif command -v fzf >/dev/null 2>&1; then
     selected_label="$(printf '%s\n' "${labels[@]}" | fzf --prompt="Fastfetch logo > " --reverse --select-1 --query="${current_label}")"

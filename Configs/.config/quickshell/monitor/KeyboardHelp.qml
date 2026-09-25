@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import qs.Commons
 import "Ui"
@@ -115,6 +116,7 @@ Item {
         model: root.groups
 
         Column {
+          id: bindingGroup
           required property var modelData
           width: helpContent.width
           spacing: Style.space(4)
@@ -129,7 +131,7 @@ Item {
           }
 
           Repeater {
-            model: modelData.bindings || []
+            model: bindingGroup.modelData.bindings || []
 
             Row {
               required property var modelData

@@ -8,8 +8,8 @@ source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash" || exit 1
 
 backend="all"
 style="${ROFI_GAMELAUNCHER_STYLE:-steam_deck}"
-json=0
-catalog="${LIB_DIR}/hypr/gaming/lib/game_catalog.py"
+emit_json=0
+game_catalog_script="${LIB_DIR}/hypr/gaming/lib/game_catalog.py"
 
 steam_deck_theme_override() {
   local source_image="${HOME}/.local/share/rofi/assets/steamdeck_holographic.png"
@@ -58,7 +58,7 @@ while (($# > 0)); do
       shift 2
       ;;
     --json)
-      json=1
+      emit_json=1
       shift
       ;;
     --help | -h)
@@ -80,8 +80,8 @@ case "${backend}" in
     ;;
 esac
 
-if ((json)); then
-  exec python3 "${catalog}" --backend "${backend}" --json
+if ((emit_json)); then
+  exec python3 "${game_catalog_script}" --backend "${backend}" --json
 fi
 
 rofi_prepare_standard_context \
@@ -98,8 +98,8 @@ case "${style}" in
 esac
 
 selection="$(
-  python3 "${catalog}" --backend "${backend}" --rofi \
-    | rofi -dmenu -i -markup-rows \
+  python3 "${game_catalog_script}" --backend "${backend}" --rofi \
+    | rofi_with_background_theme -dmenu -i -markup-rows \
       "${launcher_rofi_args[@]}" \
       -p Games \
       -display-columns 1 \
@@ -111,7 +111,7 @@ selection="$(
 )"
 
 [[ -n "${selection}" ]] || exit 0
-key="${selection#*$'\t'}"
-[[ -n "${key}" ]] || exit 0
+selected_game_key="${selection#*$'\t'}"
+[[ -n "${selected_game_key}" ]] || exit 0
 
-exec python3 "${catalog}" --backend "${backend}" --launch "${key}"
+exec python3 "${game_catalog_script}" --backend "${backend}" --launch "${selected_game_key}"

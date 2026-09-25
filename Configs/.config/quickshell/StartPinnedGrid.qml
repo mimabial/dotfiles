@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Widgets
@@ -20,6 +21,7 @@ Column {
         Repeater {
             model: root.apps
             Rectangle {
+                id: pinnedApp
                 required property var modelData
                 readonly property bool hovered: tileMouse.containsMouse
                 width: Math.floor((root.width - Style.lg * 3) / 4)
@@ -35,12 +37,12 @@ Column {
                     IconImage {
                         anchors.horizontalCenter: parent.horizontalCenter
                         implicitWidth: 28; implicitHeight: 28
-                        source: Quickshell.iconPath(modelData.icon, true)
+                        source: Quickshell.iconPath(pinnedApp.modelData.icon, true)
                     }
                     Text {
                         width: parent.width
                         horizontalAlignment: Text.AlignHCenter
-                        text: modelData.name
+                        text: pinnedApp.modelData.name
                         elide: Text.ElideRight
                         color: root.shell.foreground
                         font.family: root.shell.fontFamily
@@ -53,7 +55,7 @@ Column {
                     hoverEnabled: true
                     acceptedButtons: Qt.LeftButton | Qt.RightButton
                     onClicked: event => event.button === Qt.RightButton
-                        ? root.unpinned(modelData) : root.launched(modelData)
+                        ? root.unpinned(pinnedApp.modelData) : root.launched(pinnedApp.modelData)
                 }
             }
         }

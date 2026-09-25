@@ -14,35 +14,35 @@ pick() {
   rofi_build_standard_menu_args rofi_args "${prompt}" "${prompt}" "$(rofi_resolve_theme clipboard)"
   # cancel is an empty selection, not a failure; without this rofi's exit 1
   # trips set -e before the caller can check
-  rofi "${rofi_args[@]}" -no-custom -no-show-icons || true
+  rofi_with_background_theme "${rofi_args[@]}" -no-custom -no-show-icons || true
 }
 
-declare -A servers=()
-scan_prefixes() {
-  local env entry prefix loader uuid
-  servers=()
-  for env in /proc/[0-9]*/environ; do
-    prefix="" loader="" uuid=""
-    while IFS= read -r -d '' entry; do
-      case "${entry}" in
-        WINEPREFIX=*) prefix="${entry#*=}" ;;
-        WINELOADER=*) loader="${entry#*=}" ;;
-        LUTRIS_GAME_UUID=*) uuid="${entry#*=}" ;;
+declare -A wine_servers_by_prefix=()
+scan_active_wine_prefixes() {
+  local environment_file environment_entry wine_prefix wine_loader lutris_uuid
+  wine_servers_by_prefix=()
+  for environment_file in /proc/[0-9]*/environ; do
+    wine_prefix="" wine_loader="" lutris_uuid=""
+    while IFS= read -r -d '' environment_entry; do
+      case "${environment_entry}" in
+        WINEPREFIX=*) wine_prefix="${environment_entry#*=}" ;;
+        WINELOADER=*) wine_loader="${environment_entry#*=}" ;;
+        LUTRIS_GAME_UUID=*) lutris_uuid="${environment_entry#*=}" ;;
       esac
-    done 2>/dev/null <"${env}" || true
-    [[ -n "${prefix}" && -n "${loader}" ]] || continue
-    case "${loader}" in
+    done 2>/dev/null <"${environment_file}" || true
+    [[ -n "${wine_prefix}" && -n "${wine_loader}" ]] || continue
+    case "${wine_loader}" in
       "${XDG_DATA_HOME}/lutris/runners/wine/"*) ;;
-      "${XDG_DATA_HOME}/Steam/compatibilitytools.d/"*) [[ -n "${uuid}" ]] || continue ;;
+      "${XDG_DATA_HOME}/Steam/compatibilitytools.d/"*) [[ -n "${lutris_uuid}" ]] || continue ;;
       *) continue ;;
     esac
-    servers["${prefix}"]="${loader%/*}/wineserver"
+    wine_servers_by_prefix["${wine_prefix}"]="${wine_loader%/*}/wineserver"
   done
 }
 
 (($# == 0)) || exit 2
-scan_prefixes
-prefixes=("${!servers[@]}")
+scan_active_wine_prefixes
+prefixes=("${!wine_servers_by_prefix[@]}")
 
 if ((${#prefixes[@]} == 0)); then
   notify_send_safe -a hyprshell "Lutris Wine" "No active Wine prefix found." || true
@@ -57,7 +57,7 @@ fi
 label="${prefix##*/}"
 choice="$(printf 'Cancel\nStop\n' | pick "Stop ${label}?")"
 [[ "${choice}" == Stop ]] || exit
-server="${servers[${prefix}]}"
+server="${wine_servers_by_prefix[${prefix}]}"
 if [[ ! -x "${server}" ]] || ! WINEPREFIX="${prefix}" "${server}" -k -w; then
   notify_send_safe -u critical -a hyprshell "Lutris Wine" "Could not stop ${label}." || true
   exit 1

@@ -24,7 +24,7 @@ neither one can bury the other.
 floating window sized for it:
 
 `H` htop · `N` nvtop · `U` dua · `R` rmpc · `V` wiremix · `B` bluetui ·
-`W` impala · `A` the Agent Hub
+`W` impala · `D` display layout · `A` the Agent Hub
 
 These do not open in a tiled window and fight your layout. They are launched
 through `launch/tui.sh` under a `tui` window profile with an `org.tui.*` app-id,

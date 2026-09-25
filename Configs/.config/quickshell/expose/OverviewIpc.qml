@@ -102,6 +102,21 @@ Scope {
         root.controller.setHotCornerPosition(position);
         return position;
     }
+    function hotCornerDelay(value: real): string {
+        return String(root.controller.setHotCornerDelay(value));
+    }
+    function initialWorkspaceScope(scope: string): string {
+        if (scope !== "all" && scope !== "current")
+            return "expected all or current";
+        root.controller.setInitialWorkspaceScope(scope);
+        return scope;
+    }
+    function workspaceLabelStyle(style: string): string {
+        if (style !== "full" && style !== "slot")
+            return "expected full or slot";
+        root.controller.setWorkspaceLabelStyle(style);
+        return style;
+    }
     function moveCursorToWindow(mode: string): string {
         if (mode !== "on" && mode !== "off")
             return "expected on or off";

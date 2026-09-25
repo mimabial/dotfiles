@@ -13,7 +13,8 @@ Item {
   property bool popupEnabled: true
   readonly property bool opened: popup.open
   property string query: ""
-  property int viewMode: 0
+  property string viewMode: "bookmarks"
+  readonly property var viewOrder: ["bookmarks", "tags", "keywords"]
   property string tagQuery: ""
   property string keywordQuery: ""
   property int selectedIndex: 0
@@ -52,50 +53,50 @@ Item {
   }
 
   readonly property var keywordAction:
-    root.opened && root.viewMode === 0
+    root.opened && root.viewMode === "bookmarks"
       ? BookmarkModel.keywordAction(store.bookmarks, root.query)
       : null
 
   readonly property var filteredBookmarks:
-    root.opened && root.viewMode === 0
+    root.opened && root.viewMode === "bookmarks"
       ? BookmarkModel.filteredBookmarks(store.bookmarks, root.query, root.keywordAction,
           store)
       : []
 
   readonly property var allTags:
-    root.opened && root.viewMode === 1 ? BookmarkModel.tags(store.bookmarks) : []
+    root.opened && root.viewMode === "tags" ? BookmarkModel.tags(store.bookmarks) : []
 
   readonly property var filteredTags:
-    root.opened && root.viewMode === 1 ? BookmarkModel.matchingTags(root.allTags, root.tagQuery) : []
+    root.opened && root.viewMode === "tags" ? BookmarkModel.matchingTags(root.allTags, root.tagQuery) : []
 
   readonly property var allKeywords:
-    root.opened && root.viewMode === 2 ? BookmarkModel.keywords(store.bookmarks) : []
+    root.opened && root.viewMode === "keywords" ? BookmarkModel.keywords(store.bookmarks) : []
 
   readonly property var filteredKeywords:
-    root.opened && root.viewMode === 2
+    root.opened && root.viewMode === "keywords"
       ? BookmarkModel.matchingKeywords(root.allKeywords, root.keywordQuery)
       : []
 
   readonly property var activeResults:
     !root.opened
       ? []
-      : root.viewMode === 1
+      : root.viewMode === "tags"
       ? root.filteredTags
-      : root.viewMode === 2
+      : root.viewMode === "keywords"
         ? root.filteredKeywords
         : root.filteredBookmarks
 
   readonly property int activeTotal:
-    root.viewMode === 1
+    root.viewMode === "tags"
       ? root.allTags.length
-      : root.viewMode === 2
+      : root.viewMode === "keywords"
         ? root.allKeywords.length
         : store.bookmarks.length
 
   readonly property string viewName:
-    root.viewMode === 1
+    root.viewMode === "tags"
       ? "Tags"
-      : root.viewMode === 2
+      : root.viewMode === "keywords"
         ? "Keywords"
         : "Bookmarks"
 
@@ -131,32 +132,34 @@ Item {
   }
 
   function currentQuery() {
-    if (root.viewMode === 1)
+    if (root.viewMode === "tags")
       return root.tagQuery
-    if (root.viewMode === 2)
+    if (root.viewMode === "keywords")
       return root.keywordQuery
     return root.query
   }
 
   function setCurrentQuery(value) {
-    if (root.viewMode === 1)
+    if (root.viewMode === "tags")
       root.tagQuery = value
-    else if (root.viewMode === 2)
+    else if (root.viewMode === "keywords")
       root.keywordQuery = value
     else
       root.query = value
   }
 
   function modePlaceholder() {
-    if (root.viewMode === 1)
+    if (root.viewMode === "tags")
       return "Search tags…"
-    if (root.viewMode === 2)
+    if (root.viewMode === "keywords")
       return "Search keywords…"
     return "Search bookmarks…"
   }
 
   function cycleView(amount) {
-    root.viewMode = ((root.viewMode + amount) % 3 + 3) % 3
+    const views = root.viewOrder
+    const nextIndex = (views.indexOf(root.viewMode) + amount + views.length) % views.length
+    root.viewMode = views[nextIndex]
     root.selectedIndex = 0
     bookmarkList.positionViewAtBeginning()
   }
@@ -173,10 +176,10 @@ Item {
 
   function applyPickerSelection(append) {
     var item = root.selectedResult()
-    if (!item || root.viewMode === 0)
+    if (!item || root.viewMode === "bookmarks")
       return
 
-    var token = root.viewMode === 1
+    var token = root.viewMode === "tags"
       ? "#" + item.tag
       : item.keyword
     var previous = root.query.trim()
@@ -184,14 +187,14 @@ Item {
       ? previous + " " + token
       : token
 
-    if (!append && root.viewMode === 2 && item.parameterized)
+    if (!append && root.viewMode === "keywords" && item.parameterized)
       root.query += " "
 
-    if (root.viewMode === 1)
+    if (root.viewMode === "tags")
       root.tagQuery = ""
     else
       root.keywordQuery = ""
-    root.viewMode = 0
+    root.viewMode = "bookmarks"
     root.selectedIndex = 0
     bookmarkList.positionViewAtBeginning()
   }
@@ -208,7 +211,7 @@ Item {
 
   function open(payloadJson) {
     root.query = ""
-    root.viewMode = 0
+    root.viewMode = "bookmarks"
     root.tagQuery = ""
     root.keywordQuery = ""
     root.selectedIndex = 0
@@ -249,7 +252,7 @@ Item {
     if (root.shell.popupName === "bookmarks")
       root.shell.closePopup()
     root.query = ""
-    root.viewMode = 0
+    root.viewMode = "bookmarks"
     root.tagQuery = ""
     root.keywordQuery = ""
     root.deleteConfirmOpen = false
@@ -277,7 +280,7 @@ Item {
   }
 
   function selectedBookmark() {
-    if (root.viewMode !== 0)
+    if (root.viewMode !== "bookmarks")
       return null
 
     if (
@@ -382,7 +385,7 @@ Item {
     }
 
     editor.close()
-    root.viewMode = 0
+    root.viewMode = "bookmarks"
     root.query = ""
     root.selectBookmarkById(selectedId)
     root.refocusList()
@@ -481,7 +484,7 @@ Item {
   }
 
   function activateCurrent(openInNewWindow, append) {
-    if (root.viewMode === 0)
+    if (root.viewMode === "bookmarks")
       root.activateSelected(openInNewWindow)
     else
       root.applyPickerSelection(append)
@@ -591,7 +594,7 @@ Item {
       root.refocusList()
       return
     }
-    root.viewMode = 0
+    root.viewMode = "bookmarks"
     root.query = ""
     root.selectedIndex = 0
     if (outcome.added || outcome.updated) {
@@ -679,7 +682,7 @@ Item {
           if (
             event.key === Qt.Key_Tab
             && event.modifiers === Qt.ControlModifier
-            && root.viewMode === 0
+            && root.viewMode === "bookmarks"
           ) {
             root.openBrowserPicker()
             event.accepted = true
@@ -703,7 +706,7 @@ Item {
           } else if (
             event.key === Qt.Key_C
             && event.modifiers === Qt.ControlModifier
-            && root.viewMode === 0
+            && root.viewMode === "bookmarks"
           ) {
             root.copySelectedUrl()
             event.accepted = true
@@ -734,20 +737,20 @@ Item {
           } else if (
             event.key === Qt.Key_E
             && event.modifiers === Qt.ControlModifier
-            && root.viewMode === 0
+            && root.viewMode === "bookmarks"
           ) {
             root.beginEdit()
             event.accepted = true
           } else if (
             event.key === Qt.Key_T
             && event.modifiers === Qt.ControlModifier
-            && root.viewMode === 0
+            && root.viewMode === "bookmarks"
           ) {
             root.activateSelected(true)
             event.accepted = true
           } else if (
             event.key === Qt.Key_Delete
-            && root.viewMode === 0
+            && root.viewMode === "bookmarks"
           ) {
             root.requestDelete()
             event.accepted = true
@@ -755,8 +758,8 @@ Item {
             if (root.currentQuery()) {
               root.setCurrentQuery("")
               root.selectedIndex = 0
-            } else if (root.viewMode !== 0) {
-              root.viewMode = 0
+            } else if (root.viewMode !== "bookmarks") {
+              root.viewMode = "bookmarks"
               root.selectedIndex = 0
             } else {
               root.dismiss()
@@ -775,7 +778,7 @@ Item {
           ) {
             root.activateCurrent(
               false,
-              root.viewMode !== 0
+              root.viewMode !== "bookmarks"
                 && (event.modifiers & Qt.ControlModifier) !== 0
             )
             event.accepted = true
@@ -889,13 +892,13 @@ Item {
                 row.index === root.selectedIndex
 
               readonly property bool bookmarkMode:
-                root.viewMode === 0
+                root.viewMode === "bookmarks"
 
               readonly property bool tagMode:
-                root.viewMode === 1
+                root.viewMode === "tags"
 
               readonly property bool keywordMode:
-                root.viewMode === 2
+                root.viewMode === "keywords"
 
               readonly property var bookmark:
                 row.bookmarkMode
@@ -1084,9 +1087,9 @@ Item {
               text:
                 store.error
                   ? ""
-                  : root.viewMode === 1
+                  : root.viewMode === "tags"
                     ? "#"
-                    : root.viewMode === 2
+                    : root.viewMode === "keywords"
                       ? "K"
                       : ""
               color:
@@ -1107,9 +1110,9 @@ Item {
                   ? store.error
                   : root.currentQuery()
                     ? "No matching " + root.viewName.toLowerCase()
-                    : root.viewMode === 1
+                    : root.viewMode === "tags"
                       ? "No tags yet"
-                      : root.viewMode === 2
+                      : root.viewMode === "keywords"
                         ? "No keywords yet"
                         : "No bookmarks yet"
               textFormat: Text.PlainText
@@ -1137,9 +1140,9 @@ Item {
                 ? "Saving…"
                 : root.statusMessage
                   ? root.statusMessage
-                  : root.viewMode === 1
+                  : root.viewMode === "tags"
                     ? "Enter Set  Ctrl+Enter Append  ↑↓ Select\nTab Keywords  Shift+Tab Bookmarks"
-                    : root.viewMode === 2
+                    : root.viewMode === "keywords"
                       ? "Enter Set  Ctrl+Enter Append  ↑↓ Select\nTab Bookmarks  Shift+Tab Tags"
                       : "Enter Open  Ctrl+C Copy  Ctrl+T Window  Ctrl+Tab Browser\nTab Tags  Ctrl+V Paste  Ctrl+I Import  Ctrl+N Add  Ctrl+E Edit  Ctrl+, Web"
           textFormat: Text.PlainText

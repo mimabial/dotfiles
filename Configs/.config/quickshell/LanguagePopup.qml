@@ -11,6 +11,7 @@ PopupCard {
     popupName: "language"
     contentWidth: Style.px(390)
     contentHeight: panelColumn.implicitHeight + padding * 2
+    signal moduleRefreshRequested()
 
     property var report: ({})
     property var catalog: ({layouts: [], shortcuts: []})
@@ -200,7 +201,7 @@ PopupCard {
             root.busy = false
             if (code === 0 && root.acceptReport(actionStdout.text)) {
                 root.showMain(successMessage)
-                if (root.anchorItem && root.anchorItem.refresh) root.anchorItem.refresh()
+                root.moduleRefreshRequested()
                 return
             }
             root.statusError = true

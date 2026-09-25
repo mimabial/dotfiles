@@ -1,98 +1,342 @@
 -- Native Hyprland window and layer rules.
 local window_profiles = require("window_profiles")
 
-hl.window_rule({["name"] = "lua:windowrules:12", ["match"] = {["class"] = "^(.*haruna.*)$"}, ["idle_inhibit"] = "fullscreen"})
-hl.window_rule({["name"] = "lua:windowrules:13", ["match"] = {["class"] = "^(.*firefox.*)$|^(.*chromium.*)$"}, ["idle_inhibit"] = "fullscreen"})
-hl.window_rule({["name"] = "center-new-floating-windows", ["match"] = {["float"] = true}, ["center"] = true})
-hl.window_rule({["name"] = "lua:windowrules:16", ["match"] = {["title"] = "^([Pp]icture[-\\s]?[Ii]n[-\\s]?[Pp]icture)(.*)$"}, ["tag"] = "+picture-in-picture"})
-hl.window_rule({["name"] = "lua:windowrules:17", ["match"] = {["tag"] = "picture-in-picture"}, ["float"] = true})
-hl.window_rule({["name"] = "lua:windowrules:18", ["match"] = {["tag"] = "picture-in-picture"}, ["keep_aspect_ratio"] = true})
-hl.window_rule({["name"] = "lua:windowrules:19", ["match"] = {["tag"] = "picture-in-picture"}, ["move"] = "73% 72%"})
-hl.window_rule({["name"] = "lua:windowrules:20", ["match"] = {["tag"] = "picture-in-picture"}, ["size"] = window_profiles.rule_size("overlay")})
-hl.window_rule({["name"] = "lua:windowrules:21", ["match"] = {["tag"] = "picture-in-picture"}, ["pin"] = true})
-hl.window_rule({["name"] = "lua:windowrules:24", ["match"] = {["class"] = "^(dropdown-terminal)$"}, ["float"] = true})
-hl.window_rule({["name"] = "lua:windowrules:25", ["match"] = {["class"] = "^(dropdown-terminal)$"}, ["opacity"] = "0.80 override 0.80 override 1"})
-hl.window_rule({["name"] = "lua:windowrules:27", ["match"] = {["class"] = "^(org\\.kde\\.haruna)$", ["initial_title"] = "^Haruna$"}, ["fullscreen"] = true})
-hl.window_rule({["name"] = "lua:windowrules:28", ["match"] = {["class"] = "^(org\\.kde\\.haruna)$"}, ["float"] = true})
-hl.window_rule({["name"] = "lua:windowrules:30", ["match"] = {["class"] = "^(firefox)$"}, ["opacity"] = "0.90 override 0.90 override 1"})
-hl.window_rule({["name"] = "lua:windowrules:32", ["match"] = {["class"] = "^(kitty|org\\.tui\\..*)$"}, ["opacity"] = "0.80 override 0.80 override 1"})
-hl.window_rule({["name"] = "lua:windowrules:33", ["match"] = {["class"] = "^(foot)$"}, ["opacity"] = "0.80 override 0.80 override 1"})
-hl.window_rule({["name"] = "lua:windowrules:34", ["match"] = {["class"] = "^(org\\.kde\\.dolphin)$"}, ["opacity"] = "0.80 override 0.80 override 1"})
-hl.window_rule({["name"] = "lua:windowrules:35", ["match"] = {["class"] = "^(org\\.kde\\.ark)$"}, ["opacity"] = "0.80 override 0.80 override 1"})
-hl.window_rule({["name"] = "lua:windowrules:36", ["match"] = {["class"] = "^(org\\.qbittorrent\\.qBittorrent)$"}, ["opacity"] = "0.80 override 0.80 override 1"})
-hl.window_rule({["name"] = "lua:windowrules:37", ["match"] = {["class"] = "^(nwg-look)$"}, ["opacity"] = "0.80 override 0.80 override 1"})
-hl.window_rule({["name"] = "lua:windowrules:38", ["match"] = {["class"] = "^(nwg-displays)$"}, ["opacity"] = "0.80 override 0.80 override 1"})
-hl.window_rule({["name"] = "lua:windowrules:39", ["match"] = {["class"] = "^(kvantummanager)$"}, ["opacity"] = "0.80 override 0.80 override 1"})
-hl.window_rule({["name"] = "lua:windowrules:40", ["match"] = {["class"] = "^(.*pavucontrol.*)$"}, ["opacity"] = "0.80 override 0.70 override 1"})
-hl.window_rule({["name"] = "pavucontrol-float", ["match"] = {["class"] = "^(.*pavucontrol.*)$"}, ["float"] = true})
-hl.window_rule({["name"] = "lua:windowrules:41", ["match"] = {["class"] = "^(blueman-manager)$"}, ["opacity"] = "0.80 override 0.70 override 1"})
-hl.window_rule({["name"] = "lua:windowrules:42", ["match"] = {["class"] = "^(nm-applet)$"}, ["opacity"] = "0.80 override 0.70 override 1"})
-hl.window_rule({["name"] = "lua:windowrules:43", ["match"] = {["class"] = "^(nm-connection-editor)$"}, ["opacity"] = "0.80 override 0.70 override 1"})
-hl.window_rule({["name"] = "lua:windowrules:44", ["match"] = {["class"] = "^(org\\.kde\\.polkit-kde-authentication-agent-1)$"}, ["opacity"] = "0.80 override 0.70 override 1"})
-hl.window_rule({["name"] = "lua:windowrules:45", ["match"] = {["class"] = "^(polkit-gnome-authentication-agent-1)$"}, ["opacity"] = "0.80 override 0.70 override 1"})
-hl.window_rule({["name"] = "lua:windowrules:46", ["match"] = {["class"] = "^(org\\.freedesktop\\.impl\\.portal\\.desktop\\.gtk)$"}, ["opacity"] = "0.80 override 0.70 override 1"})
-hl.window_rule({["name"] = "lua:windowrules:47", ["match"] = {["class"] = "^(org\\.freedesktop\\.impl\\.portal\\.desktop\\.hyprland)$"}, ["opacity"] = "0.80 override 0.70 override 1"})
-hl.window_rule({["name"] = "lua:windowrules:49", ["match"] = {["class"] = "^(gimp)$", ["initial_title"] = "^GNU Image Manipulation Program$"}, ["fullscreen"] = true})
-hl.window_rule({["name"] = "lua:windowrules:51", ["match"] = {["class"] = "^(com\\.github\\.tchx84\\.Flatseal)$"}, ["opacity"] = "0.80 0.80"})
-hl.window_rule({["name"] = "lua:windowrules:52", ["match"] = {["class"] = "^(net\\.davidotek\\.pupgui2)$"}, ["opacity"] = "0.80 0.80"})
-hl.window_rule({["name"] = "lua:windowrules:54", ["match"] = {["class"] = "^(signal)$"}, ["opacity"] = "0.80 0.80"})
-hl.window_rule({["name"] = "lua:windowrules:55", ["match"] = {["class"] = "^(org\\.pwmt\\.zathura)$"}, ["opacity"] = "0.80 0.80"})
-hl.window_rule({["name"] = "lua:windowrules:56", ["match"] = {["class"] = "^([Bb]itwarden)$"}, ["opacity"] = "0.80 0.80"})
-hl.window_rule({["name"] = "lua:windowrules:57", ["match"] = {["class"] = "^(chromium)$"}, ["opacity"] = "0.90 0.90"})
-hl.window_rule({["name"] = "lua:windowrules:58", ["match"] = {["class"] = "^(io\\.github\\.spacingbat3\\.webcord)$"}, ["opacity"] = "0.80 0.80"})
-hl.window_rule({["name"] = "simple-scan-opacity", ["match"] = {["class"] = "^(org\\.gnome\\.SimpleScan|simple-scan)$"}, ["opacity"] = "0.80 0.80"})
-hl.window_rule({["name"] = "lua:windowrules:60", ["match"] = {["class"] = "^(com\\.github\\.huluti\\.Curtail)$"}, ["opacity"] = "0.80 0.80"})
-hl.window_rule({["name"] = "lua:windowrules:61", ["match"] = {["class"] = "^(com\\.github\\.jeromerobert\\.pdfarranger)$"}, ["opacity"] = "0.80 0.80"})
-hl.window_rule({["name"] = "lua:windowrules:62", ["match"] = {["class"] = "^(swappy)$"}, ["opacity"] = "0.80 0.80"})
-hl.window_rule({["name"] = "lua:windowrules:64", ["match"] = {["class"] = "^(org\\.kde\\.gwenview)$"}, ["suppress_event"] = "fullscreen"})
-hl.window_rule({["name"] = "lua:windowrules:65", ["match"] = {["class"] = "^(org\\.kde\\.gwenview)$", ["modal"] = false}, ["fullscreen"] = true})
-hl.window_rule({["name"] = "lua:windowrules:66", ["match"] = {["class"] = "^([Ll]ibreoffice(-writer|-calc|-impress|-draw|-base|-math|-startcenter)?)$", ["modal"] = false}, ["workspace"] = "empty"})
-hl.window_rule({["name"] = "lua:windowrules:67", ["match"] = {["class"] = "^(qalculate-gtk)$"}, ["float"] = true})
-hl.window_rule({["name"] = "lua:windowrules:69", ["match"] = {["class"] = "^(blueman-manager)$"}, ["float"] = true})
-hl.window_rule({["name"] = "lua:windowrules:70", ["match"] = {["class"] = "^(com\\.github\\.rafostar\\.Clapper)$"}, ["float"] = true})
-hl.window_rule({["name"] = "lua:windowrules:71", ["match"] = {["class"] = "^(app\\.drey\\.Warp)$"}, ["float"] = true})
-hl.window_rule({["name"] = "lua:windowrules:72", ["match"] = {["class"] = "^(net\\.davidotek\\.pupgui2)$"}, ["float"] = true})
-hl.window_rule({["name"] = "lua:windowrules:73", ["match"] = {["class"] = "^(yad)$"}, ["float"] = true})
-hl.window_rule({["name"] = "lua:windowrules:74", ["match"] = {["class"] = "^(io\\.github\\.alainm23\\.planify)$"}, ["float"] = true})
-hl.window_rule({["name"] = "lua:windowrules:75", ["match"] = {["class"] = "^(io\\.gitlab\\.theevilskeleton\\.Upscaler)$"}, ["float"] = true})
-hl.window_rule({["name"] = "lua:windowrules:76", ["match"] = {["class"] = "^(com\\.github\\.unrud\\.VideoDownloader)$"}, ["float"] = true})
-hl.window_rule({["name"] = "lua:windowrules:77", ["match"] = {["class"] = "^(io\\.gitlab\\.adhami3310\\.Impression)$"}, ["float"] = true})
-hl.window_rule({["name"] = "lua:windowrules:78", ["match"] = {["class"] = "^(org\\.kde\\.partitionmanager)$"}, ["float"] = true})
-hl.window_rule({["name"] = "ark-float", ["match"] = {["class"] = "^(org\\.kde\\.ark)$"}, ["float"] = true})
-hl.window_rule({["name"] = "qbittorrent-child-float", ["match"] = {["class"] = "^(org\\.qbittorrent\\.qBittorrent)$", ["initial_title"] = "negative:^(qBittorrent.*)?$"}, ["float"] = true, ["center"] = true})
-hl.window_rule({["name"] = "lua:windowrules:82", ["match"] = {["class"] = "^(com\\.transmissionbt\\.transmission|transmission-gtk).*$", ["title"] = "^Transmission$"}, ["float"] = false})
-hl.window_rule({["name"] = "lua:windowrules:83", ["match"] = {["class"] = "^(com\\.transmissionbt\\.transmission|transmission-gtk).*$", ["title"] = "^Transmission Preferences$"}, ["float"] = false})
-hl.window_rule({["name"] = "lua:windowrules:84", ["match"] = {["class"] = "^(xdg-desktop-portal-gtk)$"}, ["float"] = true})
-hl.window_rule({["name"] = "lua:windowrules:85", ["match"] = {["class"] = "^(xdg-desktop-portal-gtk)$"}, ["center"] = true})
-hl.window_rule({["name"] = "lua:windowrules:86", ["match"] = {["class"] = "^(hyprland-share-picker)$"}, ["float"] = true})
-hl.window_rule({["name"] = "lua:windowrules:87", ["match"] = {["class"] = "^(hyprland-share-picker)$"}, ["center"] = true})
-hl.window_rule({["name"] = "lua:windowrules:90", ["match"] = {["class"] = "^([Bb]itwarden)$"}, ["float"] = true})
-hl.window_rule({["name"] = "simple-scan-float", ["match"] = {["class"] = "^(org\\.gnome\\.SimpleScan|simple-scan)$"}, ["float"] = true})
-hl.window_rule({["name"] = "lua:windowrules:92", ["match"] = {["class"] = "^(swappy)$"}, ["float"] = true})
-hl.window_rule({["name"] = "lua:windowrules:93", ["match"] = {["class"] = "^(swappy)$"}, ["center"] = true})
-hl.window_rule({["name"] = "lua:windowrules:94", ["match"] = {["class"] = "^(localsend)$"}, ["float"] = true})
-hl.window_rule({["name"] = "lua:windowrules:95", ["match"] = {["class"] = "^(localsend)$"}, ["center"] = true})
-hl.window_rule({["name"] = "lua:windowrules:96", ["match"] = {["class"] = "^(nwg-displays)$"}, ["float"] = true})
-hl.window_rule({["name"] = "lua:windowrules:97", ["match"] = {["class"] = "^(org\\.kde\\.keditfiletype)$"}, ["float"] = true})
-hl.window_rule({["name"] = "lua:windowrules:100", ["match"] = {["class"] = "^(.*jetbrains.*)$", ["title"] = "^(win[0-9]+)$"}, ["no_initial_focus"] = true})
-hl.layer_rule({["name"] = "lua:windowrules:105", ["match"] = {["namespace"] = "rofi"}, ["blur"] = true})
-hl.layer_rule({["name"] = "lua:windowrules:106", ["match"] = {["namespace"] = "rofi"}, ["ignore_alpha"] = 0})
-hl.layer_rule({["name"] = "lua:windowrules:107", ["match"] = {["namespace"] = "notifications"}, ["blur"] = true})
-hl.layer_rule({["name"] = "lua:windowrules:108", ["match"] = {["namespace"] = "notifications"}, ["ignore_alpha"] = 0})
-hl.layer_rule({["name"] = "lua:windowrules:109", ["match"] = {["namespace"] = "logout_dialog"}, ["blur"] = true})
-hl.window_rule({["name"] = "lua:windowrules:112", ["match"] = {["class"] = "^(org\\.tui\\..*|org\\.font\\..*|lazygit|lazydocker)$"}, ["float"] = true})
-hl.window_rule({["name"] = "lua:windowrules:113", ["match"] = {["class"] = "^(org\\.tui\\..*|org\\.font\\..*|lazygit|lazydocker)$"}, ["center"] = true})
-hl.window_rule({["name"] = "lockview-float", ["match"] = {["class"] = "^(org\\.quickshell)$", ["title"] = "^(Lock Layouts)$"}, ["float"] = true})
+hl.window_rule({
+	["name"] = "lua:windowrules:12",
+	["match"] = { ["class"] = "^(.*haruna.*)$" },
+	["idle_inhibit"] = "fullscreen",
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:13",
+	["match"] = { ["class"] = "^(.*firefox.*)$|^(.*chromium.*)$" },
+	["idle_inhibit"] = "fullscreen",
+})
+hl.window_rule({ ["name"] = "center-new-floating-windows", ["match"] = { ["float"] = true }, ["center"] = true })
+hl.window_rule({
+	["name"] = "lua:windowrules:16",
+	["match"] = { ["title"] = "^([Pp]icture[-\\s]?[Ii]n[-\\s]?[Pp]icture)(.*)$" },
+	["tag"] = "+picture-in-picture",
+})
+hl.window_rule({ ["name"] = "lua:windowrules:17", ["match"] = { ["tag"] = "picture-in-picture" }, ["float"] = true })
+hl.window_rule({
+	["name"] = "lua:windowrules:18",
+	["match"] = { ["tag"] = "picture-in-picture" },
+	["keep_aspect_ratio"] = true,
+})
+hl.window_rule({ ["name"] = "lua:windowrules:19", ["match"] = { ["tag"] = "picture-in-picture" }, ["move"] = "73% 72%" })
+hl.window_rule({
+	["name"] = "lua:windowrules:20",
+	["match"] = { ["tag"] = "picture-in-picture" },
+	["size"] = window_profiles.rule_size("overlay"),
+})
+hl.window_rule({ ["name"] = "lua:windowrules:21", ["match"] = { ["tag"] = "picture-in-picture" }, ["pin"] = true })
+hl.window_rule({ ["name"] = "lua:windowrules:24", ["match"] = { ["class"] = "^(dropdown-terminal)$" }, ["float"] = true })
+hl.window_rule({
+	["name"] = "lua:windowrules:25",
+	["match"] = { ["class"] = "^(dropdown-terminal)$" },
+	["opacity"] = "0.80 override 0.80 override 1",
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:27",
+	["match"] = { ["class"] = "^(org\\.kde\\.haruna)$", ["initial_title"] = "^Haruna$" },
+	["fullscreen"] = true,
+})
+hl.window_rule({ ["name"] = "lua:windowrules:28", ["match"] = { ["class"] = "^(org\\.kde\\.haruna)$" }, ["float"] = true })
+hl.window_rule({
+	["name"] = "lua:windowrules:30",
+	["match"] = { ["class"] = "^(firefox)$" },
+	["opacity"] = "0.90 override 0.90 override 1",
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:32",
+	["match"] = { ["class"] = "^(kitty|org\\.tui\\..*)$" },
+	["opacity"] = "0.80 override 0.80 override 1",
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:33",
+	["match"] = { ["class"] = "^(foot)$" },
+	["opacity"] = "0.80 override 0.80 override 1",
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:34",
+	["match"] = { ["class"] = "^(org\\.kde\\.dolphin)$" },
+	["opacity"] = "0.80 override 0.80 override 1",
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:35",
+	["match"] = { ["class"] = "^(org\\.kde\\.ark)$" },
+	["opacity"] = "0.80 override 0.80 override 1",
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:36",
+	["match"] = { ["class"] = "^(org\\.qbittorrent\\.qBittorrent)$" },
+	["opacity"] = "0.80 override 0.80 override 1",
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:37",
+	["match"] = { ["class"] = "^(nwg-look)$" },
+	["opacity"] = "0.80 override 0.80 override 1",
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:38",
+	["match"] = { ["class"] = "^(nwg-displays)$" },
+	["opacity"] = "0.80 override 0.80 override 1",
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:39",
+	["match"] = { ["class"] = "^(kvantummanager)$" },
+	["opacity"] = "0.80 override 0.80 override 1",
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:40",
+	["match"] = { ["class"] = "^(.*pavucontrol.*)$" },
+	["opacity"] = "0.80 override 0.70 override 1",
+})
+hl.window_rule({ ["name"] = "pavucontrol-float", ["match"] = { ["class"] = "^(.*pavucontrol.*)$" }, ["float"] = true })
+hl.window_rule({
+	["name"] = "lua:windowrules:41",
+	["match"] = { ["class"] = "^(blueman-manager)$" },
+	["opacity"] = "0.80 override 0.70 override 1",
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:42",
+	["match"] = { ["class"] = "^(nm-applet)$" },
+	["opacity"] = "0.80 override 0.70 override 1",
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:43",
+	["match"] = { ["class"] = "^(nm-connection-editor)$" },
+	["opacity"] = "0.80 override 0.70 override 1",
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:44",
+	["match"] = { ["class"] = "^(org\\.kde\\.polkit-kde-authentication-agent-1)$" },
+	["opacity"] = "0.80 override 0.70 override 1",
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:45",
+	["match"] = { ["class"] = "^(polkit-gnome-authentication-agent-1)$" },
+	["opacity"] = "0.80 override 0.70 override 1",
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:46",
+	["match"] = { ["class"] = "^(org\\.freedesktop\\.impl\\.portal\\.desktop\\.gtk)$" },
+	["opacity"] = "0.80 override 0.70 override 1",
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:47",
+	["match"] = { ["class"] = "^(org\\.freedesktop\\.impl\\.portal\\.desktop\\.hyprland)$" },
+	["opacity"] = "0.80 override 0.70 override 1",
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:49",
+	["match"] = { ["class"] = "^(gimp)$", ["initial_title"] = "^GNU Image Manipulation Program$" },
+	["fullscreen"] = true,
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:51",
+	["match"] = { ["class"] = "^(com\\.github\\.tchx84\\.Flatseal)$" },
+	["opacity"] = "0.80 0.80",
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:52",
+	["match"] = { ["class"] = "^(net\\.davidotek\\.pupgui2)$" },
+	["opacity"] = "0.80 0.80",
+})
+hl.window_rule({ ["name"] = "lua:windowrules:54", ["match"] = { ["class"] = "^(signal)$" }, ["opacity"] = "0.80 0.80" })
+hl.window_rule({
+	["name"] = "lua:windowrules:55",
+	["match"] = { ["class"] = "^(org\\.pwmt\\.zathura)$" },
+	["opacity"] = "0.80 0.80",
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:56",
+	["match"] = { ["class"] = "^([Bb]itwarden)$" },
+	["opacity"] = "0.80 0.80",
+	["no_screen_share"] = true,
+})
+hl.window_rule({ ["name"] = "lua:windowrules:57", ["match"] = { ["class"] = "^(chromium)$" }, ["opacity"] = "0.90 0.90" })
+hl.window_rule({
+	["name"] = "lua:windowrules:58",
+	["match"] = { ["class"] = "^(io\\.github\\.spacingbat3\\.webcord)$" },
+	["opacity"] = "0.80 0.80",
+})
+hl.window_rule({
+	["name"] = "simple-scan-opacity",
+	["match"] = { ["class"] = "^(org\\.gnome\\.SimpleScan|simple-scan)$" },
+	["opacity"] = "0.80 0.80",
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:60",
+	["match"] = { ["class"] = "^(com\\.github\\.huluti\\.Curtail)$" },
+	["opacity"] = "0.80 0.80",
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:61",
+	["match"] = { ["class"] = "^(com\\.github\\.jeromerobert\\.pdfarranger)$" },
+	["opacity"] = "0.80 0.80",
+})
+hl.window_rule({ ["name"] = "lua:windowrules:62", ["match"] = { ["class"] = "^(swappy)$" }, ["opacity"] = "0.80 0.80" })
+hl.window_rule({
+	["name"] = "lua:windowrules:64",
+	["match"] = { ["class"] = "^(org\\.kde\\.gwenview)$" },
+	["suppress_event"] = "fullscreen",
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:65",
+	["match"] = { ["class"] = "^(org\\.kde\\.gwenview)$", ["modal"] = false },
+	["fullscreen"] = true,
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:66",
+	["match"] = {
+		["class"] = "^([Ll]ibreoffice(-writer|-calc|-impress|-draw|-base|-math|-startcenter)?)$",
+		["modal"] = false,
+	},
+	["workspace"] = "empty",
+})
+hl.window_rule({ ["name"] = "lua:windowrules:67", ["match"] = { ["class"] = "^(qalculate-gtk)$" }, ["float"] = true })
+hl.window_rule({ ["name"] = "lua:windowrules:69", ["match"] = { ["class"] = "^(blueman-manager)$" }, ["float"] = true })
+hl.window_rule({
+	["name"] = "lua:windowrules:70",
+	["match"] = { ["class"] = "^(com\\.github\\.rafostar\\.Clapper)$" },
+	["float"] = true,
+})
+hl.window_rule({ ["name"] = "lua:windowrules:71", ["match"] = { ["class"] = "^(app\\.drey\\.Warp)$" }, ["float"] = true })
+hl.window_rule({
+	["name"] = "lua:windowrules:72",
+	["match"] = { ["class"] = "^(net\\.davidotek\\.pupgui2)$" },
+	["float"] = true,
+})
+hl.window_rule({ ["name"] = "lua:windowrules:73", ["match"] = { ["class"] = "^(yad)$" }, ["float"] = true })
+hl.window_rule({
+	["name"] = "lua:windowrules:74",
+	["match"] = { ["class"] = "^(io\\.github\\.alainm23\\.planify)$" },
+	["float"] = true,
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:75",
+	["match"] = { ["class"] = "^(io\\.gitlab\\.theevilskeleton\\.Upscaler)$" },
+	["float"] = true,
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:76",
+	["match"] = { ["class"] = "^(com\\.github\\.unrud\\.VideoDownloader)$" },
+	["float"] = true,
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:77",
+	["match"] = { ["class"] = "^(io\\.gitlab\\.adhami3310\\.Impression)$" },
+	["float"] = true,
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:78",
+	["match"] = { ["class"] = "^(org\\.kde\\.partitionmanager)$" },
+	["float"] = true,
+})
+hl.window_rule({ ["name"] = "ark-float", ["match"] = { ["class"] = "^(org\\.kde\\.ark)$" }, ["float"] = true })
+hl.window_rule({
+	["name"] = "qbittorrent-child-float",
+	["match"] = { ["class"] = "^(org\\.qbittorrent\\.qBittorrent)$", ["initial_title"] = "negative:^(qBittorrent.*)?$" },
+	["float"] = true,
+	["center"] = true,
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:82",
+	["match"] = {
+		["class"] = "^(com\\.transmissionbt\\.transmission|transmission-gtk).*$",
+		["title"] = "^Transmission$",
+	},
+	["float"] = false,
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:83",
+	["match"] = {
+		["class"] = "^(com\\.transmissionbt\\.transmission|transmission-gtk).*$",
+		["title"] = "^Transmission Preferences$",
+	},
+	["float"] = false,
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:84",
+	["match"] = { ["class"] = "^(xdg-desktop-portal-gtk)$" },
+	["float"] = true,
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:85",
+	["match"] = { ["class"] = "^(xdg-desktop-portal-gtk)$" },
+	["center"] = true,
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:86",
+	["match"] = { ["class"] = "^(hyprland-share-picker)$" },
+	["float"] = true,
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:87",
+	["match"] = { ["class"] = "^(hyprland-share-picker)$" },
+	["center"] = true,
+})
+hl.window_rule({ ["name"] = "lua:windowrules:90", ["match"] = { ["class"] = "^([Bb]itwarden)$" }, ["float"] = true })
+hl.window_rule({
+	["name"] = "simple-scan-float",
+	["match"] = { ["class"] = "^(org\\.gnome\\.SimpleScan|simple-scan)$" },
+	["float"] = true,
+})
+hl.window_rule({ ["name"] = "lua:windowrules:92", ["match"] = { ["class"] = "^(swappy)$" }, ["float"] = true })
+hl.window_rule({ ["name"] = "lua:windowrules:93", ["match"] = { ["class"] = "^(swappy)$" }, ["center"] = true })
+hl.window_rule({ ["name"] = "lua:windowrules:94", ["match"] = { ["class"] = "^(localsend)$" }, ["float"] = true })
+hl.window_rule({ ["name"] = "lua:windowrules:95", ["match"] = { ["class"] = "^(localsend)$" }, ["center"] = true })
+hl.window_rule({ ["name"] = "lua:windowrules:96", ["match"] = { ["class"] = "^(nwg-displays)$" }, ["float"] = true })
+hl.window_rule({
+	["name"] = "lua:windowrules:97",
+	["match"] = { ["class"] = "^(org\\.kde\\.keditfiletype)$" },
+	["float"] = true,
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:100",
+	["match"] = { ["class"] = "^(.*jetbrains.*)$", ["title"] = "^(win[0-9]+)$" },
+	["no_initial_focus"] = true,
+})
+hl.layer_rule({ ["name"] = "lua:windowrules:105", ["match"] = { ["namespace"] = "rofi" }, ["blur"] = true })
+hl.layer_rule({ ["name"] = "lua:windowrules:106", ["match"] = { ["namespace"] = "rofi" }, ["ignore_alpha"] = 0 })
+hl.layer_rule({ ["name"] = "lua:windowrules:107", ["match"] = { ["namespace"] = "notifications" }, ["blur"] = true })
+hl.layer_rule({ ["name"] = "lua:windowrules:108", ["match"] = { ["namespace"] = "notifications" }, ["ignore_alpha"] = 0 })
+hl.layer_rule({ ["name"] = "lua:windowrules:109", ["match"] = { ["namespace"] = "logout_dialog" }, ["blur"] = true })
+hl.layer_rule({
+	["name"] = "bitwarden-popup-private",
+	["match"] = { ["namespace"] = "hypr-shell-bitwarden" },
+	["no_screen_share"] = true,
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:112",
+	["match"] = { ["class"] = "^(org\\.tui\\..*|org\\.font\\..*|lazygit|lazydocker)$" },
+	["float"] = true,
+})
+hl.window_rule({
+	["name"] = "lua:windowrules:113",
+	["match"] = { ["class"] = "^(org\\.tui\\..*|org\\.font\\..*|lazygit|lazydocker)$" },
+	["center"] = true,
+})
+hl.window_rule({
+	["name"] = "lockview-float",
+	["match"] = { ["class"] = "^(org\\.quickshell)$", ["title"] = "^(Lock Layouts)$" },
+	["float"] = true,
+})
 
 local open_profiles = {
-  ["org.gnome.SimpleScan"] = "standard",
-  ["simple-scan"] = "standard",
+	["org.gnome.SimpleScan"] = "standard",
+	["simple-scan"] = "standard",
 }
 
 hl.on("window.open", function(win)
-  if not win then return end
-  local profile = open_profiles[win.class]
-  local mon = win.monitor
-  if not profile or not mon then return end
-  hl.exec_cmd("hyprshell window/apply-profile " .. profile .. " " .. win.address .. " " .. tostring(mon.id))
+	if not win then
+		return
+	end
+	local profile = open_profiles[win.class]
+	local mon = win.monitor
+	if not profile or not mon then
+		return
+	end
+	hl.exec_cmd("hyprshell window/apply-profile " .. profile .. " " .. win.address .. " " .. tostring(mon.id))
 end)

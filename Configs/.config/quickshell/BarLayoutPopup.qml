@@ -17,9 +17,9 @@ PopupCard {
         id: layoutColumn
         anchors.left: parent.left; anchors.right: parent.right; spacing: Style.xs
         PopupSection { shell: root.shell; text: "BAR" }
-        PopupRow { width: parent.width; shell: root.shell; icon: "󰂵"; title: "Transparent background"; detail: active ? "Enabled" : "Disabled"; active: root.shell.store.barTransparent; onClicked: root.shell.toggleBarTransparency() }
-        PopupRow { width: parent.width; shell: root.shell; icon: "󰽙"; title: "Background blur"; detail: active ? "Enabled" : "Disabled"; active: root.shell.store.barBlur; onClicked: root.shell.toggleBarBlur() }
-        PopupRow { width: parent.width; shell: root.shell; icon: "󰹞"; title: "Floating bar"; detail: active ? root.shell.barFloatGap + " px gap" : "Disabled"; active: root.shell.store.barFloating; onClicked: root.shell.toggleBarFloating() }
+        PopupRow { width: parent.width; shell: root.shell; icon: "󰂵"; title: "Transparent background"; detail: active ? "Enabled" : "Disabled"; active: root.shell.prefs.barTransparent; onClicked: root.shell.toggleBarTransparency() }
+        PopupRow { width: parent.width; shell: root.shell; icon: "󰽙"; title: "Background blur"; detail: active ? "Enabled" : "Disabled"; active: root.shell.prefs.barBlur; onClicked: root.shell.toggleBarBlur() }
+        PopupRow { width: parent.width; shell: root.shell; icon: "󰹞"; title: "Floating bar"; detail: active ? root.shell.barFloatGap + " px gap" : "Disabled"; active: root.shell.prefs.barFloating; onClicked: root.shell.toggleBarFloating() }
         PopupSeparator { shell: root.shell }
         PopupSection { shell: root.shell; text: "LAYOUT" }
         Repeater {

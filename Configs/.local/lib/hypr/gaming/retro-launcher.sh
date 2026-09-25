@@ -15,7 +15,7 @@ pick() {
   local -a rofi_args=()
 
   rofi_build_standard_menu_args rofi_args "${prompt}" "${prompt}" "$(rofi_resolve_theme clipboard)"
-  printf '%s\n' "${options}" | rofi "${rofi_args[@]}" -no-custom -no-show-icons
+  printf '%s\n' "${options}" | rofi_with_background_theme "${rofi_args[@]}" -no-custom -no-show-icons
 }
 
 remove_launcher() {

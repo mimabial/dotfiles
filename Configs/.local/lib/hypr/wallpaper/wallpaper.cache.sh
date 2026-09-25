@@ -15,9 +15,10 @@ hypr_runtime_require state wallpaper_catalog || exit 1
 hypr_runtime_load_state || exit 1
 export WALLPAPER_THUMB_DIR
 
-cacheIn=""
-mode=""
+cache_source_dir=""
+cache_build_mode=""
 wall_inputs=()
+declare -a wallpaper_hashes=() wallpaper_paths=() wallpaper_sources=()
 invalid_inputs=0
 
 setup_cache_lock() {
@@ -34,7 +35,7 @@ wallcache_release_lock() {
 }
 
 prepare_cache_dirs() {
-  [[ -d "${HYPR_THEME_DIR}" ]] && cacheIn="${HYPR_THEME_DIR}" || exit 1
+  [[ -d "${HYPR_THEME_DIR}" ]] && cache_source_dir="${HYPR_THEME_DIR}" || exit 1
   [[ -d "${WALLPAPER_THUMB_DIR}" ]] || mkdir -p "${WALLPAPER_THUMB_DIR}"
   [[ -d "${HYPR_CACHE_HOME}/landing" ]] || mkdir -p "${HYPR_CACHE_HOME}/landing"
   [[ -d "${HYPR_CACHE_HOME}/wal" ]] || mkdir -p "${HYPR_CACHE_HOME}/wal"
@@ -118,30 +119,30 @@ wallpaper_is_video() {
 }
 
 ensure_video_still_frame() {
-  local x_hash="$1"
-  local x_wall="$2"
+  local wallpaper_hash="$1"
+  local wallpaper_path="$2"
   local force="$3"
   local temp_image=""
 
-  if ! wallpaper_is_video "${x_wall}"; then
-    printf '%s\n' "${x_wall}"
+  if ! wallpaper_is_video "${wallpaper_path}"; then
+    printf '%s\n' "${wallpaper_path}"
     return 0
   fi
 
   if [[ "${force}" -ne 1 ]] && \
-    [[ -e "${WALLPAPER_THUMB_DIR}/${x_hash}.thmb" ]] && \
-    [[ -e "${WALLPAPER_THUMB_DIR}/${x_hash}.sqre" ]] && \
-    [[ -e "${WALLPAPER_THUMB_DIR}/${x_hash}.blur" ]] && \
-    [[ -e "${WALLPAPER_THUMB_DIR}/${x_hash}.quad" ]]; then
-    printf '%s\n' "${x_wall}"
+    [[ -e "${WALLPAPER_THUMB_DIR}/${wallpaper_hash}.thmb" ]] && \
+    [[ -e "${WALLPAPER_THUMB_DIR}/${wallpaper_hash}.sqre" ]] && \
+    [[ -e "${WALLPAPER_THUMB_DIR}/${wallpaper_hash}.blur" ]] && \
+    [[ -e "${WALLPAPER_THUMB_DIR}/${wallpaper_hash}.quad" ]]; then
+    printf '%s\n' "${wallpaper_path}"
     return 0
   fi
 
-  temp_image="${TMPDIR:-/tmp}/${x_hash}.png"
+  temp_image="${TMPDIR:-/tmp}/${wallpaper_hash}.png"
   if [[ "${force}" -ne 1 ]]; then
     send_ephemeral_notif "hypr-wallpaper-cache" -a "Wallpaper cache" -t 2000 "Extracting thumbnail from video wallpaper..."
   fi
-  extract_thumbnail "${x_wall}" "${temp_image}"
+  extract_thumbnail "${wallpaper_path}" "${temp_image}"
   printf '%s\n' "${temp_image}"
 }
 
@@ -150,104 +151,110 @@ square_thumb_path() {
 }
 
 write_main_thumb() {
-  local x_hash="$1"
+  local wallpaper_hash="$1"
   local source_image="$2"
   local -a magick_args=("$@")
   magick_args=("${magick_args[@]:2}")
-  local tmp_thmb="${WALLPAPER_THUMB_DIR}/.${x_hash}.thmb.png"
+  local temporary_thumbnail="${WALLPAPER_THUMB_DIR}/.${wallpaper_hash}.thmb.png"
 
-  { magick "${magick_args[@]}" "${source_image}"[0] -strip -resize 1000 -gravity center -extent 1000 -quality 90 "png:${tmp_thmb}" &&
-    mv -f "${tmp_thmb}" "${WALLPAPER_THUMB_DIR}/${x_hash}.thmb"; } || rm -f "${tmp_thmb}"
+  { magick "${magick_args[@]}" "${source_image}"[0] -strip -resize 1000 -gravity center -extent 1000 -quality 90 "png:${temporary_thumbnail}" &&
+    mv -f "${temporary_thumbnail}" "${WALLPAPER_THUMB_DIR}/${wallpaper_hash}.thmb"; } || {
+    rm -f "${temporary_thumbnail}"
+    return 1
+  }
 }
 
 write_square_thumb() {
-  local x_hash="$1"
+  local wallpaper_hash="$1"
   local source_image="$2"
   local -a magick_args=("$@")
   magick_args=("${magick_args[@]:2}")
 
-  magick "${magick_args[@]}" "${source_image}"[0] -strip -thumbnail 500x500^ -gravity center -extent 500x500 "${WALLPAPER_THUMB_DIR}/${x_hash}.sqre.png" &&
-    mv "${WALLPAPER_THUMB_DIR}/${x_hash}.sqre.png" "$(square_thumb_path "${x_hash}")"
+  magick "${magick_args[@]}" "${source_image}"[0] -strip -thumbnail 500x500^ -gravity center -extent 500x500 "${WALLPAPER_THUMB_DIR}/${wallpaper_hash}.sqre.png" &&
+    mv "${WALLPAPER_THUMB_DIR}/${wallpaper_hash}.sqre.png" "$(square_thumb_path "${wallpaper_hash}")"
 }
 
 write_blur_thumb() {
-  local x_hash="$1"
+  local wallpaper_hash="$1"
   local source_image="$2"
   local -a magick_args=("$@")
   magick_args=("${magick_args[@]:2}")
-  local tmp_blur="${WALLPAPER_THUMB_DIR}/.${x_hash}.blur.png"
+  local temporary_blur="${WALLPAPER_THUMB_DIR}/.${wallpaper_hash}.blur.png"
 
-  { magick "${magick_args[@]}" "${source_image}"[0] -strip -scale 10% -blur 0x3 -resize 100% "png:${tmp_blur}" &&
-    mv -f "${tmp_blur}" "${WALLPAPER_THUMB_DIR}/${x_hash}.blur"; } || rm -f "${tmp_blur}"
+  { magick "${magick_args[@]}" "${source_image}"[0] -strip -scale 10% -blur 0x3 -resize 100% "png:${temporary_blur}" &&
+    mv -f "${temporary_blur}" "${WALLPAPER_THUMB_DIR}/${wallpaper_hash}.blur"; } || {
+    rm -f "${temporary_blur}"
+    return 1
+  }
 }
 
 write_quad_thumb() {
-  local x_hash="$1"
+  local wallpaper_hash="$1"
   local style="$2"
   shift 2
   local -a magick_args=("$@")
 
   if [[ "${style}" == "force" ]]; then
-    magick "${magick_args[@]}" "$(square_thumb_path "${x_hash}")" \
+    magick "${magick_args[@]}" "$(square_thumb_path "${wallpaper_hash}")" \
       \( -size 500x500 xc:white -fill "rgba(0,0,0,0.7)" -draw "polygon 400,500 500,500 500,0 450,0" -fill black -draw "polygon 500,500 500,0 450,500" \) \
-      -alpha Off -compose CopyOpacity -composite "${WALLPAPER_THUMB_DIR}/${x_hash}.quad.png" &&
-      mv "${WALLPAPER_THUMB_DIR}/${x_hash}.quad.png" "${WALLPAPER_THUMB_DIR}/${x_hash}.quad"
+      -alpha Off -compose CopyOpacity -composite "${WALLPAPER_THUMB_DIR}/${wallpaper_hash}.quad.png" &&
+      mv "${WALLPAPER_THUMB_DIR}/${wallpaper_hash}.quad.png" "${WALLPAPER_THUMB_DIR}/${wallpaper_hash}.quad"
     return 0
   fi
 
-  magick "${magick_args[@]}" "$(square_thumb_path "${x_hash}")" \
+  magick "${magick_args[@]}" "$(square_thumb_path "${wallpaper_hash}")" \
     \( -size 500x500 xc:white -fill "rgba(0,0,0,0.7)" -draw "rectangle 400,0 500,500" -fill black -draw "rectangle 450,0 500,500" \) \
-    -alpha Off -compose CopyOpacity -composite "${WALLPAPER_THUMB_DIR}/${x_hash}.quad.png" &&
-    mv "${WALLPAPER_THUMB_DIR}/${x_hash}.quad.png" "${WALLPAPER_THUMB_DIR}/${x_hash}.quad"
+    -alpha Off -compose CopyOpacity -composite "${WALLPAPER_THUMB_DIR}/${wallpaper_hash}.quad.png" &&
+    mv "${WALLPAPER_THUMB_DIR}/${wallpaper_hash}.quad.png" "${WALLPAPER_THUMB_DIR}/${wallpaper_hash}.quad"
 }
 
 cache_missing_outputs() {
-  local x_hash="$1"
+  local wallpaper_hash="$1"
   local source_image="$2"
   local -a magick_args=("$@")
   magick_args=("${magick_args[@]:2}")
 
-  if [ ! -e "${WALLPAPER_THUMB_DIR}/${x_hash}.thmb" ]; then
-    write_main_thumb "${x_hash}" "${source_image}" "${magick_args[@]}"
+  if [ ! -e "${WALLPAPER_THUMB_DIR}/${wallpaper_hash}.thmb" ]; then
+    write_main_thumb "${wallpaper_hash}" "${source_image}" "${magick_args[@]}"
   fi
-  if [ ! -e "$(square_thumb_path "${x_hash}")" ]; then
-    write_square_thumb "${x_hash}" "${source_image}" "${magick_args[@]}"
+  if [ ! -e "$(square_thumb_path "${wallpaper_hash}")" ]; then
+    write_square_thumb "${wallpaper_hash}" "${source_image}" "${magick_args[@]}"
   fi
-  if [ ! -e "${WALLPAPER_THUMB_DIR}/${x_hash}.blur" ]; then
-    write_blur_thumb "${x_hash}" "${source_image}" "${magick_args[@]}"
+  if [ ! -e "${WALLPAPER_THUMB_DIR}/${wallpaper_hash}.blur" ]; then
+    write_blur_thumb "${wallpaper_hash}" "${source_image}" "${magick_args[@]}"
   fi
-  if [ ! -e "${WALLPAPER_THUMB_DIR}/${x_hash}.quad" ]; then
-    write_quad_thumb "${x_hash}" "normal" "${magick_args[@]}"
+  if [ ! -e "${WALLPAPER_THUMB_DIR}/${wallpaper_hash}.quad" ]; then
+    write_quad_thumb "${wallpaper_hash}" "normal" "${magick_args[@]}"
   fi
 }
 
 cache_all_outputs() {
-  local x_hash="$1"
+  local wallpaper_hash="$1"
   local source_image="$2"
   local -a magick_args=("$@")
   magick_args=("${magick_args[@]:2}")
 
-  write_main_thumb "${x_hash}" "${source_image}" "${magick_args[@]}"
-  write_square_thumb "${x_hash}" "${source_image}" "${magick_args[@]}"
-  write_blur_thumb "${x_hash}" "${source_image}" "${magick_args[@]}"
-  write_quad_thumb "${x_hash}" "force" "${magick_args[@]}"
+  write_main_thumb "${wallpaper_hash}" "${source_image}" "${magick_args[@]}"
+  write_square_thumb "${wallpaper_hash}" "${source_image}" "${magick_args[@]}"
+  write_blur_thumb "${wallpaper_hash}" "${source_image}" "${magick_args[@]}"
+  write_quad_thumb "${wallpaper_hash}" "force" "${magick_args[@]}"
 }
 
 build_wallcache() {
-  local x_hash="$1"
-  local x_wall="$2"
+  local wallpaper_hash="$1"
+  local wallpaper_path="$2"
   local force="${3:-0}"
   local source_image="" temp_image=""
   local -a magick_args=()
 
   mapfile -d '' -t magick_args < <(magick_limit_args)
-  source_image="$(ensure_video_still_frame "${x_hash}" "${x_wall}" "${force}")"
-  [[ "${source_image}" == "${x_wall}" ]] || temp_image="${source_image}"
+  source_image="$(ensure_video_still_frame "${wallpaper_hash}" "${wallpaper_path}" "${force}")"
+  [[ "${source_image}" == "${wallpaper_path}" ]] || temp_image="${source_image}"
 
   if [[ "${force}" -eq 1 ]]; then
-    cache_all_outputs "${x_hash}" "${source_image}" "${magick_args[@]}"
+    cache_all_outputs "${wallpaper_hash}" "${source_image}" "${magick_args[@]}"
   else
-    cache_missing_outputs "${x_hash}" "${source_image}" "${magick_args[@]}"
+    cache_missing_outputs "${wallpaper_hash}" "${source_image}" "${magick_args[@]}"
   fi
 
   [[ -n "${temp_image}" ]] && rm -f "${temp_image}"
@@ -300,15 +307,15 @@ parse_options() {
         wall_inputs+=("$(realpath "${OPTARG}")")
         ;;
       t)
-        cacheIn="$(dirname "${HYPR_THEME_DIR}")/${OPTARG}"
-        if [ ! -d "${cacheIn}" ]; then
+        cache_source_dir="$(dirname "${HYPR_THEME_DIR}")/${OPTARG}"
+        if [ ! -d "${cache_source_dir}" ]; then
           echo "Error: Input theme \"${OPTARG}\" not found!"
           exit 1
         fi
         ;;
       f)
-        cacheIn="$(dirname "${HYPR_THEME_DIR}")"
-        mode="_force"
+        cache_source_dir="$(dirname "${HYPR_THEME_DIR}")"
+        cache_build_mode="_force"
         ;;
       *)
         echo "... invalid option ..."
@@ -324,19 +331,18 @@ parse_options() {
 
 load_explicit_wallpapers() {
   local wall_input=""
-  wallHash=()
-  wallList=()
+  wallpaper_hashes=()
+  wallpaper_paths=()
 
   for wall_input in "${wall_inputs[@]}"; do
-    wallHash+=("$("${HYPR_HASH_COMMAND:-sha1sum}" "${wall_input}" | awk '{print $1}')")
-    wallList+=("${wall_input}")
+    wallpaper_hashes+=("$("${HYPR_HASH_COMMAND:-sha1sum}" "${wall_input}" | awk '{print $1}')")
+    wallpaper_paths+=("${wall_input}")
   done
 }
 
 load_catalog_wallpapers() {
-  wallPathArray=("${cacheIn}")
-  wallPathArray+=("${WALLPAPER_CUSTOM_PATHS[@]}")
-  get_hashmap "${wallPathArray[@]}"
+  wallpaper_sources=("${cache_source_dir}" "${WALLPAPER_CUSTOM_PATHS[@]}")
+  wallpaper_scan_hashes_into wallpaper_hashes wallpaper_paths "${wallpaper_sources[@]}"
 }
 
 load_wallpaper_targets() {
@@ -355,10 +361,10 @@ log_cache_limits() {
 
 run_cache_jobs() {
   local script_path=""
-  [[ ${#wallList[@]} -eq 0 ]] && exit 0
+  [[ ${#wallpaper_paths[@]} -eq 0 ]] && exit 0
   script_path="$(realpath "${BASH_SOURCE[0]}")" || exit 1
   parallel --bar --link --jobs "${WALLPAPER_CACHE_JOBS}" \
-    "${script_path}" --build"${mode}" '{1}' '{2}' ::: "${wallHash[@]}" ::: "${wallList[@]}"
+    "${script_path}" --build"${cache_build_mode}" '{1}' '{2}' ::: "${wallpaper_hashes[@]}" ::: "${wallpaper_paths[@]}"
 }
 
 dispatch_internal_job() {

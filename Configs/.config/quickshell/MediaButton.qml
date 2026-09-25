@@ -10,6 +10,7 @@ Item {
     property bool vertical: false
     property int albumArtSize: 18
     property int maxLabelWidth: 300
+    property bool fillAvailableWidth: false
     property bool showControls: true
     property bool controlsRight: false
     property bool showArtist: true
@@ -20,34 +21,48 @@ Item {
     property string idleIcon: "\uf001"
     readonly property bool mprisAppearance: appearance === "mpris"
     readonly property var player: Media.player
+    readonly property Item compactItem: compactLoader.item as Item
     readonly property bool hasPlayer: player !== null
     // the placeholder is a plain glyph, so the transport row only stands in for a live player
     readonly property bool mprisView: mprisAppearance && hasPlayer
     readonly property bool shown: hasPlayer || showWhenIdle
     readonly property int artSize: Math.max(Style.px(12), Style.px(albumArtSize))
+    readonly property int fixedWidth: (showControls ? transport.implicitWidth + contents.spacing : 0)
+        + artSize + metadata.spacing + Style.px(12)
     readonly property string displayText: showArtist && Media.artist && Media.title
         ? Media.artist + " — " + Media.title : Media.title || Media.artist
 
     visible: shown
     implicitWidth: !shown ? 0 : mprisView
-        ? (vertical ? artSize : contents.implicitWidth + Style.px(12))
-        : compactLoader.item ? compactLoader.item.implicitWidth : 0
+        ? (vertical ? artSize : fillAvailableWidth ? fixedWidth : contents.implicitWidth + Style.px(12))
+        : root.compactItem ? root.compactItem.implicitWidth : 0
     implicitHeight: !shown ? 0 : mprisView
         ? Math.max(artSize, contents.implicitHeight)
-        : compactLoader.item ? compactLoader.item.implicitHeight : 0
+        : root.compactItem ? root.compactItem.implicitHeight : 0
 
     Behavior on implicitWidth { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
 
     function wheel(delta) { if (delta > 0) Media.previous(); else if (delta < 0) Media.next() }
     function metadataClick(button) {
         if (button === Qt.MiddleButton) Media.previous()
-        else if (button === Qt.RightButton) Media.next()
+        else if (button === Qt.RightButton) Media.playPause()
         else shell.togglePopup("media")
+    }
+
+    MouseArea {
+        anchors.fill: parent
+        acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
+        cursorShape: Qt.PointingHandCursor
+        onClicked: event => root.metadataClick(event.button)
+        onWheel: event => root.wheel(event.angleDelta.y)
     }
 
     Loader {
         id: compactLoader
-        anchors.centerIn: parent
+        anchors.verticalCenter: parent.verticalCenter
+        width: root.compactItem ? root.compactItem.implicitWidth : 0
+        // swapping left/horizontalCenter anchors after creation briefly sets both, which pins width to 0
+        x: root.fillAvailableWidth ? 0 : (root.width - width) / 2
         active: !root.mprisView
         sourceComponent: compactView
     }
@@ -55,6 +70,7 @@ Item {
         id: compactView
         BarButton {
             shell: root.shell
+            opensPopup: true
             css: "mediaplayer"
             textColor: shell.alpha(shell.role("act_fg", shell.foreground), .7)
             text: root.player ? Media.icon(root.player) + "  " + Media.remaining(root.player)
@@ -65,16 +81,18 @@ Item {
         }
     }
 
-    MediaPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled; randomizeProgressShape: root.randomizeProgressShape }
+    MediaPopup { anchorItem: root.fillAvailableWidth ? (root.mprisView ? contents : compactLoader) : root; shell: root.shell; popupEnabled: root.popupEnabled; randomizeProgressShape: root.randomizeProgressShape }
 
     Row {
         id: contents
-        anchors.centerIn: parent
+        anchors.verticalCenter: parent.verticalCenter
+        x: root.fillAvailableWidth ? 0 : (root.width - width) / 2
         spacing: Style.px(4)
         layoutDirection: root.controlsRight ? Qt.RightToLeft : Qt.LeftToRight
         visible: root.mprisView
 
         Row {
+            id: transport
             spacing: Style.px(4); layoutDirection: Qt.LeftToRight; visible: root.showControls
             TransportButton { iconText: "󰒮"; enabled: !!(root.player && root.player.canGoPrevious); visible: !root.vertical; onTriggered: Media.previous() }
             TransportButton {
@@ -86,6 +104,7 @@ Item {
         }
 
         Row {
+          id: metadata
           spacing: Style.px(4); layoutDirection: Qt.LeftToRight; visible: !root.vertical
           Item {
             id: artContainer
@@ -120,7 +139,8 @@ Item {
 
           Item {
             id: labelClip
-            width: Math.min(Style.px(root.maxLabelWidth), label.implicitWidth)
+            width: Math.min(label.implicitWidth, root.fillAvailableWidth
+                ? Math.max(0, root.width - root.fixedWidth) : Style.px(root.maxLabelWidth))
             height: Math.max(root.artSize, label.implicitHeight)
             anchors.verticalCenter: parent.verticalCenter
             visible: !root.vertical && root.displayText !== ""
@@ -130,7 +150,7 @@ Item {
                 id: label
                 anchors.left: parent.left; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
                 text: root.displayText; color: root.shell.foreground
-                opacity: root.player && root.player.isPlaying ? .92 : .58
+                opacity: root.player && root.player.isPlaying ? .9 : .5
                 font.family: root.shell.fontFamily; font.pixelSize: Style.body
                 elide: Text.ElideRight
                 Behavior on opacity { NumberAnimation { duration: 140 } }

@@ -189,9 +189,9 @@ def main():
     hasher.update(TEMPLATE.read_bytes())
     hasher.update(Path(__file__).read_bytes())
     for p in profiles: hasher.update(str(p).encode())
-    h = hasher.hexdigest()[:16]
+    digest = hasher.hexdigest()[:16]
 
-    if cache_hit(APP, h) and OUT_FILE.exists() and all(
+    if cache_hit(APP, digest) and OUT_FILE.exists() and all(
             (p / "chrome" / "userChrome.css").exists() for p in profiles):
         return
 
@@ -201,7 +201,7 @@ def main():
         inject_marker(p, rendered)
         ensure_pref(p)
 
-    cache_store(APP, h)
+    cache_store(APP, digest)
 
 if __name__ == "__main__":
     main()

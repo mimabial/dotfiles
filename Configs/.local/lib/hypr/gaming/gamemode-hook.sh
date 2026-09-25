@@ -7,7 +7,7 @@ source "${LIB_DIR:-$HOME/.local/lib}/hypr/runtime/init.bash" || exit 1
 hypr_runtime_require state || exit 1
 
 state_dir="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/gaming"
-previous_file="${state_dir}/gamemode-previous-workflow"
+previous_workflow_file="${state_dir}/gamemode-previous-workflow"
 workflows_script="${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/util/workflows.sh"
 mkdir -p "${state_dir}" || exit 1
 exec {lock_fd}>"${state_dir}/gamemode-hook.lock" || exit 1
@@ -25,36 +25,36 @@ gamemode_active() {
   [[ "$(busctl --user get-property com.feralinteractive.GameMode /com/feralinteractive/GameMode com.feralinteractive.GameMode ClientCount 2>/dev/null)" =~ ^i[[:space:]]+[1-9][0-9]*$ ]]
 }
 
-start_mode() {
-  local current
-  current="$(state_get HYPR_WORKFLOW default 2>/dev/null || printf 'default\n')"
-  if [[ "${current}" == gaming ]]; then
-    [[ -s "${previous_file}" ]] || printf 'default\n' >"${previous_file}"
+enter_gaming_workflow() {
+  local current_workflow
+  current_workflow="$(state_get HYPR_WORKFLOW default 2>/dev/null || printf 'default\n')"
+  if [[ "${current_workflow}" == gaming ]]; then
+    [[ -s "${previous_workflow_file}" ]] || printf 'default\n' >"${previous_workflow_file}"
     return
   fi
-  printf '%s\n' "${current}" >"${previous_file}"
+  printf '%s\n' "${current_workflow}" >"${previous_workflow_file}"
   workflow_set gaming
 }
 
-end_mode() {
-  local current previous=default
-  current="$(state_get HYPR_WORKFLOW default 2>/dev/null || printf 'default\n')"
-  if [[ "${current}" == gaming ]]; then
-    [[ ! -s "${previous_file}" ]] || read -r previous <"${previous_file}"
-    [[ -n "${previous}" ]] || previous=default
-    workflow_set "${previous}" || return
+restore_previous_workflow() {
+  local current_workflow previous_workflow=default
+  current_workflow="$(state_get HYPR_WORKFLOW default 2>/dev/null || printf 'default\n')"
+  if [[ "${current_workflow}" == gaming ]]; then
+    [[ ! -s "${previous_workflow_file}" ]] || read -r previous_workflow <"${previous_workflow_file}"
+    [[ -n "${previous_workflow}" ]] || previous_workflow=default
+    workflow_set "${previous_workflow}" || return
   fi
-  rm -f "${previous_file}"
+  rm -f "${previous_workflow_file}"
 }
 
 case "${action}" in
-  start) start_mode ;;
-  end) end_mode ;;
+  start) enter_gaming_workflow ;;
+  end) restore_previous_workflow ;;
   reconcile)
     if gamemode_active; then
-      [[ -s "${previous_file}" ]] || start_mode
+      [[ -s "${previous_workflow_file}" ]] || enter_gaming_workflow
     else
-      end_mode
+      restore_previous_workflow
     fi
     ;;
   *)

@@ -3,6 +3,7 @@ set -euo pipefail
 
 TERMINAL_TUI="${TERMINAL_TUI:-foot}"
 HYPR_LIB_ROOT="${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}"
+DEFAULT_PRINT_COMMAND_SEPARATOR=$'\037'
 
 usage() {
   printf 'Usage: %s [--hypr-profile NAME] [--hypr-size WIDTH HEIGHT] [--hypr-cells COLUMNS ROWS] [--app-id ID] [--title TITLE] [--] [command [args...]]\n' "${0##*/}"
@@ -167,23 +168,23 @@ resolve_percentages() {
   local -n geometry_options="$1"
   [[ "${geometry_options[width]}" == *% || "${geometry_options[height]}" == *% ]] || return 0
 
-  local mon_w mon_h ignored
+  local padded_width padded_height remaining_geometry
 
   # Percentages use usable geometry, excluding reserved areas and edge gaps.
   load_window_lib launch_monitor_usable_geometry || return 1
-  IFS=$'\t' read -r mon_w mon_h ignored ignored ignored ignored \
+  IFS=$'\t' read -r padded_width padded_height remaining_geometry \
     <<<"$(launch_monitor_usable_geometry)" || return 1
 
-  [[ "${mon_w}" =~ ^[0-9]+$ && "${mon_h}" =~ ^[0-9]+$ ]] || {
+  [[ "${padded_width}" =~ ^[0-9]+$ && "${padded_height}" =~ ^[0-9]+$ ]] || {
     printf 'Cannot determine usable monitor area for percentage geometry\n' >&2
     return 1
   }
 
   if [[ "${geometry_options[width]}" == *% ]]; then
-    geometry_options[width]=$((${geometry_options[width]%\%} * mon_w / 100))
+    geometry_options[width]=$((${geometry_options[width]%\%} * padded_width / 100))
   fi
   if [[ "${geometry_options[height]}" == *% ]]; then
-    geometry_options[height]=$((${geometry_options[height]%\%} * mon_h / 100))
+    geometry_options[height]=$((${geometry_options[height]%\%} * padded_height / 100))
   fi
 }
 
@@ -284,7 +285,7 @@ terminate_child() {
 
 main() {
   local -A options=([profile]="" [width]="" [height]="" [app_id]="" [title]="" \
-    [print_path]=0 [print_command]=0 [separator]=$'\037')
+    [print_path]=0 [print_command]=0 [separator]="${DEFAULT_PRINT_COMMAND_SEPARATOR}")
   local -a terminal_args=() command=() launch_command=()
   local terminal_pid exit_code=0
 

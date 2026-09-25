@@ -20,5 +20,5 @@ Item {
         Rectangle { width: parent.width * Math.max(0, Math.min(1, (root.value - root.from) / (root.to - root.from))); height: parent.height; color: root.shell.alpha(root.shell.role("c11", root.shell.accent), .3) }
     }
     MouseArea { anchors.fill: parent; onPressed: event => root.move(event.x); onPositionChanged: event => { if (pressed) root.move(event.x) } }
-    ModuleEdge { shell: root.shell }
+    ModuleEdge { shell: root.shell; host: root }
 }

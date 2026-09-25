@@ -17,27 +17,27 @@ fi
 
 [ -n "${1:-}" ] && wlogout_style="${1}"
 wlogout_style=${wlogout_style:-${WLOGOUT_STYLE:-}}
-wl_layout="${XDG_CONFIG_HOME:-$HOME/.config}/wlogout/layout_${wlogout_style}"
-wl_template="${XDG_CONFIG_HOME:-$HOME/.config}/wlogout/style_${wlogout_style}.css"
+wlogout_layout="${XDG_CONFIG_HOME:-$HOME/.config}/wlogout/layout_${wlogout_style}"
+wlogout_style_template="${XDG_CONFIG_HOME:-$HOME/.config}/wlogout/style_${wlogout_style}.css"
 echo "wlogout_style: ${wlogout_style}"
-echo "wl_layout: ${wl_layout}"
-echo "wl_template: ${wl_template}"
+echo "wlogout_layout: ${wlogout_layout}"
+echo "wlogout_style_template: ${wlogout_style_template}"
 
-if [ ! -f "${wl_layout}" ] || [ ! -f "${wl_template}" ]; then
+if [ ! -f "${wlogout_layout}" ] || [ ! -f "${wlogout_style_template}" ]; then
   echo "ERROR: Config ${wlogout_style} not found..."
   wlogout_style=1
-  wl_layout="${XDG_CONFIG_HOME:-$HOME/.config}/wlogout/layout_${wlogout_style}"
-  wl_template="${XDG_CONFIG_HOME:-$HOME/.config}/wlogout/style_${wlogout_style}.css"
+  wlogout_layout="${XDG_CONFIG_HOME:-$HOME/.config}/wlogout/layout_${wlogout_style}"
+  wlogout_style_template="${XDG_CONFIG_HOME:-$HOME/.config}/wlogout/style_${wlogout_style}.css"
 fi
 
 # Treat scale as fixed-point tenths so multi-decimal values like 1.25
 # stay in the same sizing range as the existing 1.0/1.5/2.0 behavior.
-read -r x_mon y_mon hypr_scale_tenths < <(
+read -r monitor_width monitor_height hypr_scale_tenths < <(
   hyprctl -j monitors \
     | jq -r 'first(.[] | select(.focused == true) | "\(.width) \(.height) \((.scale * 10 | round))") // empty'
 )
-x_mon="${x_mon:-1920}"
-y_mon="${y_mon:-1080}"
+monitor_width="${monitor_width:-1920}"
+monitor_height="${monitor_height:-1080}"
 hypr_scale_tenths="${hypr_scale_tenths:-10}"
 [[ "${hypr_scale_tenths}" =~ ^[0-9]+$ ]] || hypr_scale_tenths=10
 (( hypr_scale_tenths > 0 )) || hypr_scale_tenths=10
@@ -46,19 +46,19 @@ logical_pct_divisor=$((hypr_scale_tenths * 10))
 case "${wlogout_style}" in
   1)
     wl_columns=6
-    export mgn=$((y_mon * 28 / logical_pct_divisor))
-    export hvr=$((y_mon * 23 / logical_pct_divisor))
+    export mgn=$((monitor_height * 28 / logical_pct_divisor))
+    export hvr=$((monitor_height * 23 / logical_pct_divisor))
     ;;
   2)
     wl_columns=2
-    export x_mgn=$((x_mon * 35 / logical_pct_divisor))
-    export y_mgn=$((y_mon * 25 / logical_pct_divisor))
-    export x_hvr=$((x_mon * 32 / logical_pct_divisor))
-    export y_hvr=$((y_mon * 20 / logical_pct_divisor))
+    export x_mgn=$((monitor_width * 35 / logical_pct_divisor))
+    export y_mgn=$((monitor_height * 25 / logical_pct_divisor))
+    export x_hvr=$((monitor_width * 32 / logical_pct_divisor))
+    export y_hvr=$((monitor_height * 20 / logical_pct_divisor))
     ;;
 esac
 
-export fntSize=$((y_mon * 2 / logical_pct_divisor))
+export fntSize=$((monitor_height * 2 / logical_pct_divisor))
 
 WALLPAPER_CURRENT_DIR="${WALLPAPER_CURRENT_DIR:-${HYPR_CACHE_HOME}/wallpaper/current}"
 resolved_color_variant="${resolved_color_variant:-dark}"
@@ -107,6 +107,6 @@ hypr_border="${HYPR_RUNTIME_BORDER_RADIUS:-${HYPR_BORDER_RADIUS:-10}}"
 export active_rad=$((hypr_border * 5))
 export button_rad=$((hypr_border * 8))
 
-wl_style="$(envsubst <"${wl_template}")"
+wlogout_css="$(envsubst <"${wlogout_style_template}")"
 
-wlogout -b "${wl_columns}" -c 0 -r 0 -m 0 --layout "${wl_layout}" --css <(echo "${wl_style}") --protocol layer-shell
+wlogout -b "${wl_columns}" -c 0 -r 0 -m 0 --layout "${wlogout_layout}" --css <(echo "${wlogout_css}") --protocol layer-shell

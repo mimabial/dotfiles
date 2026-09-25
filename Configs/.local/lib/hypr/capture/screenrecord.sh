@@ -22,7 +22,6 @@ SCREENRECORD_SESSION_NAME="${HYPRLAND_INSTANCE_SIGNATURE:-default}"
 SCREENRECORD_SESSION_NAME="${SCREENRECORD_SESSION_NAME//[^A-Za-z0-9._-]/_}"
 RECORDING_FILE="${SCREENRECORD_RUNTIME_DIR}/screenrecord-${SCREENRECORD_SESSION_NAME}.state"
 SCREENRECORD_LOG_FILE="${SCREENRECORD_RUNTIME_DIR}/screenrecord-${SCREENRECORD_SESSION_NAME}.log"
-SCREENRECORD_MONITORS_JSON=""
 
 screenrecord_notify() {
   local summary="$1"
@@ -82,11 +81,7 @@ screenrecord_refresh_bar() {
 }
 
 screenrecord_monitors_json() {
-  if [[ -z "${SCREENRECORD_MONITORS_JSON}" ]]; then
-    SCREENRECORD_MONITORS_JSON="$(hyprctl monitors -j 2>/dev/null || printf '[]')"
-  fi
-
-  printf '%s\n' "${SCREENRECORD_MONITORS_JSON}"
+  hyprctl monitors -j 2>/dev/null || printf '[]\n'
 }
 
 screenrecord_focused_monitor_value() {
@@ -207,15 +202,9 @@ cleanup_webcam() {
   screenrecord_signal_matching TERM -f "WebcamOverlay"
 }
 
-# the bar holds no timer while idle, so a transition has to be pushed to it
-notify_indicators() {
-  command -v quickshell >/dev/null 2>&1 || return 0
-  quickshell ipc call indicators refresh screenrecord >/dev/null 2>&1 || true
-}
-
-write_recording_state() {
+write_recording_state_and_refresh_bar() {
   printf '%s:::%s\n' "$1" "$2" >"$RECORDING_FILE"
-  notify_indicators
+  screenrecord_refresh_bar
 }
 
 read_recording_state() {
@@ -247,10 +236,10 @@ clear_recording_state_if_matches() {
   current_state="$(<"$RECORDING_FILE")"
   [[ "${current_state}" == "${expected_state}" ]] || return 0
   rm -f "$RECORDING_FILE"
-  notify_indicators
+  screenrecord_refresh_bar
 }
 
-default_resolution() {
+screenrecord_default_resolution() {
   local width height
   read -r width height < <(screenrecord_focused_monitor_value '"\(.width) \(.height)"')
   width="${width:-0}"
@@ -262,7 +251,7 @@ default_resolution() {
   fi
 }
 
-workspace_windows() {
+active_workspace_window_rectangles() {
   hyprctl --batch -j "activeworkspace;clients" \
     | jq -sr '
         .[0].id as $ws
@@ -272,13 +261,13 @@ workspace_windows() {
       '
 }
 
-select_window() {
+select_window_rectangle() {
   local result_file
   result_file=$(mktemp)
   trap 'rm -f "$result_file"' RETURN
 
   while true; do
-    workspace_windows | slurp 2>/dev/null >"$result_file" &
+    active_workspace_window_rectangles | slurp 2>/dev/null >"$result_file" &
     local slurp_pid=$!
 
     # Watch Hyprland socket for workspace changes, kill slurp to restart
@@ -364,7 +353,7 @@ screenrecord_window_args() {
   local win_geom=""
   local win_formatted=""
 
-  win_geom=$(select_window) || {
+  win_geom=$(select_window_rectangle) || {
     screenrecord_notify "Window selection cancelled"
     return 1
   }
@@ -429,7 +418,7 @@ screenrecord_capture_args() {
 start_recording() {
   local filename=""
   local audio_args=()
-  local resolution="${RESOLUTION:-$(default_resolution)}"
+  local resolution="${RESOLUTION:-$(screenrecord_default_resolution)}"
   local -a rec_args=()
 
   filename="$OUTPUT_DIR/screenrecord-$(date +'%Y-%m-%d_%H-%M-%S').mp4"
@@ -446,7 +435,7 @@ start_recording() {
   kill -0 "$pid" 2>/dev/null || return 1
   disown "$pid" 2>/dev/null || true
 
-  write_recording_state "$pid" "$filename"
+  write_recording_state_and_refresh_bar "$pid" "$filename"
   screenrecord_refresh_bar
   if [[ "$USE_WINDOW" == true || "$USE_REGION" == true || "$USE_SMART" == true || "$USE_OUTPUT" == true ]]; then
     screenrecord_notify "Recording started" "" "media-record" "normal" "3000" "screenrec"
@@ -545,7 +534,7 @@ notify_recording_saved() {
   rm -f "$preview"
 }
 
-is_recording_active() {
+screenrecord_cleanup_state_and_check_active() {
   local recording_pid=""
   local recording_path=""
 
@@ -558,18 +547,18 @@ is_recording_active() {
 }
 
 screenrecord_toggle_flow() {
-  if is_recording_active; then
+  if screenrecord_cleanup_state_and_check_active; then
     stop_recording
   else
     screenrecord_start_flow
   fi
 }
 
-show_status() {
+emit_screenrecord_status_json() {
   local had_state=false
   [[ -f "$RECORDING_FILE" ]] && had_state=true
 
-  if is_recording_active; then
+  if screenrecord_cleanup_state_and_check_active; then
     echo '{"text": "󰑋", "class": "recording", "tooltip": "Recording (click to stop)"}'
   else
     rm -f "$RECORDING_FILE"
@@ -624,7 +613,7 @@ case "${ACTION:-}" in
     stop_recording
     ;;
   status)
-    show_status
+    emit_screenrecord_status_json
     ;;
   "")
     screenrecord_toggle_flow

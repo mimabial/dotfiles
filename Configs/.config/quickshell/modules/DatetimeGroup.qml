@@ -19,14 +19,8 @@ BarGroup {
         shell: root.shell; kind: "main"; css: "clock.time"
         timerPopup: true; popupEnabled: root.popupsAllowed
     } }
-    Component { id: dateSlot; BarButton {
-        id: dateButton
-        shell: root.shell; css: "clock.date"
-        // right-click swaps the written month for a numeric one
-        text: Qt.formatDate(root.shell.clock.date, root.shell.store.mainDateNumeric ? root.dateFormatAlt : root.dateFormat)
-        onClicked: button => button === Qt.RightButton
-            ? root.shell.store.mainDateNumeric = !root.shell.store.mainDateNumeric
-            : root.shell.togglePopup("clock")
-        ClockPopup { anchorItem: dateButton; shell: root.shell; popupEnabled: root.popupsAllowed }
+    Component { id: dateSlot; DateButton {
+        shell: root.shell; popupEnabled: root.popupsAllowed
+        dateFormat: root.dateFormat; dateFormatAlt: root.dateFormatAlt
     } }
 }

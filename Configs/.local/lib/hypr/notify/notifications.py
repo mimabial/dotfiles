@@ -31,9 +31,9 @@ except GLib.Error:
     BUS = None
 
 
-def _run(cmd):
+def _run_dunstctl(command):
     return subprocess.run(
-        cmd,
+        command,
         check=True,
         capture_output=True,
         text=True,
@@ -51,7 +51,7 @@ def _status_error(message):
 
 
 # every query rides the one connection: no dunstctl shell, no dbus-send, no fork.
-def _call(iface, method, params=None):
+def _call_dunst_dbus(iface, method, params=None):
     return BUS.call_sync(
         DUNST_DEST, DUNST_PATH, iface, method, params, None,
         Gio.DBusCallFlags.NONE, 2000, None,
@@ -59,7 +59,7 @@ def _call(iface, method, params=None):
 
 
 def _get_dunst_properties():
-    props = _call(PROPS_IFACE, "GetAll", GLib.Variant("(s)", (DUNST_IFACE,)))
+    props = _call_dunst_dbus(PROPS_IFACE, "GetAll", GLib.Variant("(s)", (DUNST_IFACE,)))
     return (
         bool(props["paused"]),
         int(props["waitingLength"]),
@@ -69,7 +69,7 @@ def _get_dunst_properties():
 
 
 def _get_history_items():
-    return list(_call(DUNST_IFACE, "NotificationListHistory"))
+    return list(_call_dunst_dbus(DUNST_IFACE, "NotificationListHistory"))
 
 
 def _extract_field(item, key):
@@ -160,7 +160,7 @@ def get_dunst_status():
 
 
 def toggle_dnd():
-    _run(["dunstctl", "set-paused", "toggle"])
+    _run_dunstctl(["dunstctl", "set-paused", "toggle"])
     if shutil.which("quickshell"):
         subprocess.run(
             ["quickshell", "ipc", "call", "indicators", "refresh", "dnd"],

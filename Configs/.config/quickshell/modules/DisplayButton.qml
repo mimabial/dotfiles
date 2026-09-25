@@ -4,7 +4,8 @@ import ".."
 BarButton {
     id: root
     property bool popupEnabled: true
-    css: "backlight"
+    opensPopup: true
+    css: "display"
     text: Backlight.icon
     readonly property var displayPanel: displayPanelLoader.item
     tooltip: root.displayPanel && root.displayPanel.activeProfile
@@ -25,9 +26,10 @@ BarButton {
         active: displayPanelLoader.everOpened
         asynchronous: true
         visible: false
+        Component.onCompleted: if (root.shell.popupName === "monitor") displayPanelLoader.everOpened = true
         onActiveChanged: if (displayPanelLoader.active && String(displayPanelLoader.source) === "")
             displayPanelLoader.setSource(Qt.resolvedUrl("../monitor/DisplayPanel.qml"),
-                { anchorItem: root, shell: root.shell, bar: root.shell })
+                { anchorItem: root, shell: root.shell })
         Connections {
             target: root.shell
             function onPopupNameChanged() {

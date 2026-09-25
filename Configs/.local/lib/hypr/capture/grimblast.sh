@@ -52,11 +52,7 @@ get_target_directory() {
   echo "${XDG_SCREENSHOTS_DIR:-${XDG_PICTURES_DIR:-$HOME}}"
 }
 
-tmp_editor_directory() {
-  printf '%s\n' "${TMPDIR:-/tmp}"
-}
-
-ensure_editor() {
+initialize_editor_command() {
   : "${GRIMBLAST_EDITOR:=gimp}"
 }
 
@@ -142,7 +138,7 @@ set -- "${pos[@]:-}"
 ACTION=${1:-usage}
 SUBJECT=${2:-screen}
 FILE=${3:-$(get_target_directory)/$(date -Ins).png}
-FILE_EDITOR=${3:-$(tmp_editor_directory)/$(date -Ins).png}
+FILE_EDITOR=${3:-${TMPDIR:-/tmp}/$(date -Ins).png}
 
 case "${ACTION}" in
   save | copy | edit | copysave | check | usage) ;;
@@ -167,7 +163,7 @@ notify_ok() {
   notify "$@"
 }
 
-notify_open() {
+notify_with_open_folder_action() {
   local action=""
 
   if [[ "$OPENFILE_NOTIFICATION" == "no" ]]; then
@@ -237,7 +233,7 @@ take_screenshot() {
   fi
 }
 
-wait_delay() {
+wait_requested_delay() {
   if [[ "$WAIT" != "no" ]]; then
     sleep "$WAIT"
   fi
@@ -259,7 +255,7 @@ if [[ "$ACTION" == "check" ]]; then
   check_required_command dunstify
   exit
 elif [[ "$SUBJECT" == "active" ]]; then
-  wait_delay
+  wait_requested_delay
   mapfile -t FOCUSED_FIELDS < <(
     hyprctl activewindow -j \
       | jq -r '"\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])", (.class // "Window")'
@@ -268,11 +264,11 @@ elif [[ "$SUBJECT" == "active" ]]; then
   APP_ID="${FOCUSED_FIELDS[1]:-Window}"
   WHAT="$APP_ID window"
 elif [[ "$SUBJECT" == "screen" ]]; then
-  wait_delay
+  wait_requested_delay
   GEOM=""
   WHAT="Screen"
 elif [[ "$SUBJECT" == "output" ]]; then
-  wait_delay
+  wait_requested_delay
   GEOM=""
   OUTPUT=$(hyprctl monitors -j | jq -r '.[] | select(.focused == true) | .name')
   WHAT="$OUTPUT"
@@ -303,7 +299,7 @@ elif [[ "$SUBJECT" == "area" ]]; then
     fi
   fi
   WHAT="Area"
-  wait_delay
+  wait_requested_delay
 elif [[ "$SUBJECT" == "window" ]]; then
   die "Subject 'window' is now included in 'area'"
 else
@@ -318,13 +314,13 @@ elif [[ "$ACTION" == "save" ]]; then
     TITLE="Screenshot of $SUBJECT"
     MESSAGE=$(basename "$FILE")
     kill_hyprpicker
-    notify_open "$TITLE" "$MESSAGE" -i "$FILE"
+    notify_with_open_folder_action "$TITLE" "$MESSAGE" -i "$FILE"
     echo "$FILE"
   else
     notify_error "Error taking screenshot with grim"
   fi
 elif [[ "$ACTION" == "edit" ]]; then
-  ensure_editor
+  initialize_editor_command
   if take_screenshot "$FILE_EDITOR" "$GEOM" "$OUTPUT"; then
     TITLE="Screenshot of $SUBJECT"
     MESSAGE="Open screenshot in image editor"

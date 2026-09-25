@@ -156,7 +156,7 @@ wallpaper_hashmap_cached_into() {
   if [[ ${#list_ref[@]} -eq 0 ]]; then
     local -a fallback_hash=() fallback_list=()
     rm -f "${tmp_cache}"
-    get_hashmap_into fallback_hash fallback_list "${wall_sources[@]}" || return 1
+    wallpaper_scan_hashes_into fallback_hash fallback_list "${wall_sources[@]}" || return 1
     list_ref=("${fallback_list[@]}")
     for i in "${!list_ref[@]}"; do hash_ref["${list_ref[i]}"]="${fallback_hash[i]}"; done
     wallpaper_catalog_write_runtime_cache "${cache_file}" "${hash_name}" "${list_name}"
@@ -167,19 +167,19 @@ wallpaper_hashmap_cached_into() {
 }
 
 wallpaper_hashmap_cached() {
-  wallHashByPath=()
-  wallList=()
-  wallpaper_hashmap_cached_into wallHashByPath wallList "$@"
+  wallpaper_hash_by_path=()
+  wallpaper_paths=()
+  wallpaper_hashmap_cached_into wallpaper_hash_by_path wallpaper_paths "$@"
 }
 
 wallpaper_catalog_load_file() {
   local path="" hash=""
   path="$(wallpaper_resolve_path "$1")"
   [[ -f "${path}" ]] || return 1
-  hash="$(set_hash "${path}")" || return 1
-  wallList=("${path}")
-  wallHashByPath=(["${path}"]="${hash}")
-  setIndex=0
+  hash="$(wallpaper_file_hash "${path}")" || return 1
+  wallpaper_paths=("${path}")
+  wallpaper_hash_by_path=(["${path}"]="${hash}")
+  selected_wallpaper_index=0
 }
 
 wallpaper_list_into() {
@@ -216,21 +216,21 @@ wallpaper_list_into() {
 }
 
 wallpaper_list() {
-  wallHashByPath=()
-  wallList=()
-  wallpaper_list_into wallList "$@"
+  wallpaper_hash_by_path=()
+  wallpaper_paths=()
+  wallpaper_list_into wallpaper_paths "$@"
 }
 
 wallpaper_ensure_catalog() {
-  [[ ${#wallList[@]} -gt 0 ]] && return 0
+  [[ ${#wallpaper_paths[@]} -gt 0 ]] && return 0
 
-  setIndex=0
+  selected_wallpaper_index=0
   if ! wallpaper_theme_sources; then
     print_log -err "wallpaper" "\"${HYPR_THEME_DIR}\" does not exist"
     exit 1
   fi
 
-  if ! wallpaper_list "${wallPathArray[@]}"; then
+  if ! wallpaper_list "${wallpaper_source_paths[@]}"; then
     print_log -err "wallpaper" "No compatible wallpapers found in theme paths"
     exit 1
   fi

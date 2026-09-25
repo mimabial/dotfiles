@@ -48,15 +48,15 @@ root = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "
 if not menu_from or not menu_to or not root.exists():
     raise SystemExit(0)
 
-needle = f"\"{menu_from} "
-repl = f"\"{menu_to} "
+previous_font = f"\"{menu_from} "
+replacement_font = f"\"{menu_to} "
 
 for path in root.rglob("*.rasi"):
     try:
         original = path.read_text(encoding="utf-8")
     except Exception:
         continue
-    updated = original.replace(needle, repl)
+    updated = original.replace(previous_font, replacement_font)
     if updated != original:
         path.write_text(updated, encoding="utf-8")
 PY
@@ -91,15 +91,15 @@ for path in root.rglob("*.rasi"):
     except Exception:
         continue
 
-    def repl(m: re.Match) -> str:
-        family = m.group(2).strip()
+    def replace_font_family(match: re.Match) -> str:
+        family = match.group(2).strip()
         family_lower = family.lower()
-        if any(tok in family_lower for tok in exclude_tokens):
-            return m.group(0)
-        size = m.group(4)
-        return f'{m.group(1)}{rofi_to}{m.group(3)}{size}{m.group(5)}'
+        if any(token in family_lower for token in exclude_tokens):
+            return match.group(0)
+        size = match.group(4)
+        return f'{match.group(1)}{rofi_to}{match.group(3)}{size}{match.group(5)}'
 
-    updated = pattern.sub(repl, original)
+    updated = pattern.sub(replace_font_family, original)
     if updated != original:
         path.write_text(updated, encoding="utf-8")
 PY

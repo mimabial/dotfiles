@@ -2,7 +2,7 @@
 # Sourced module; strict mode is owned by the entrypoint.
 # Border metrics, window/container radius overrides, standard menu builders,
 # width-multiplier override, theme window height, the rofi wrapper's shared background.
-# External deps: hypr_border_metrics_into, get_rofi_pos (core/common); rofi_resolve_theme (core/rofi.sh).
+# External deps: hypr_border_metrics_into, rofi_window_position_theme (core/rofi.sh); rofi_resolve_theme (core/rofi.sh).
 
 rofi_default_border_metrics() {
   local fallback_border="${1:-0}"
@@ -144,6 +144,27 @@ rofi_prepare_standard_context() {
   printf -v "${out_window_theme_name}" '%s' "${_ctx_window_theme}"
 }
 
+rofi_window_position_for_size() {
+  local width="$1" height="$2" font_name="$3" font_scale="$4"
+  local em_px width_px height_px
+
+  em_px="$(rofi_font_text_height_px "${font_name}" "${font_scale}" 2>/dev/null || true)"
+  [[ "${em_px}" =~ ^[0-9]+([.][0-9]+)?$ ]] || { rofi_window_position_theme; return; }
+  read -r width_px height_px < <(awk -v width="${width}" -v height="${height}" -v em="${em_px}" '
+    function pixels(value) {
+      if (value ~ /^[0-9]+([.][0-9]+)?px$/) return int(value + 0.5)
+      if (value ~ /^[0-9]+([.][0-9]+)?em$/) return int(value * em + 0.5)
+      return 0
+    }
+    BEGIN { print pixels(width), pixels(height) }
+  ')
+  if ((width_px > 0 && height_px > 0)); then
+    rofi_window_position_theme "${width_px}" "${height_px}"
+  else
+    rofi_window_position_theme
+  fi
+}
+
 rofi_build_standard_menu_args() {
   local out_name="$1"
   local prompt="$2"
@@ -154,6 +175,7 @@ rofi_build_standard_menu_args() {
   local container_name="${7:-wallbox}"
   local elem_mode="${8:-same}"
   local position_override="${9:-}"
+  local window_width="${10:-}" window_height="${11:-}"
   local font_scale font_name
 
   local -n rofi_menu_args_ref="${out_name}"
@@ -162,7 +184,13 @@ rofi_build_standard_menu_args() {
   rofi_hypr_snapshot
   font_scale="$(rofi_effective_font_scale "${requested_scale}")"
   font_name="$(rofi_effective_font_name "${requested_font}")"
-  [[ -n "${position_override}" ]] || position_override="$(get_rofi_pos)"
+  if [[ -z "${position_override}" ]]; then
+    if [[ -n "${window_width}" && -n "${window_height}" ]]; then
+      position_override="$(rofi_window_position_for_size "${window_width}" "${window_height}" "${font_name}" "${font_scale}")"
+    else
+      position_override="$(rofi_window_position_theme)"
+    fi
+  fi
 
   rofi_menu_args_ref+=(
     -dmenu
@@ -173,6 +201,7 @@ rofi_build_standard_menu_args() {
     -theme-str "$(rofi_standard_window_theme "${container_name}" "${elem_mode}")"
   )
 
+  [[ -n "${window_width}" && -n "${window_height}" ]] && rofi_menu_args_ref+=(-theme-str "window { width: ${window_width}; height: ${window_height}; }")
   [[ -n "${placeholder}" ]] && rofi_menu_args_ref+=(-theme-str "entry { placeholder: \"${placeholder}\"; }")
   [[ -n "${position_override}" ]] && rofi_menu_args_ref+=(-theme-str "${position_override}")
   return 0
@@ -284,7 +313,7 @@ rofi_background_theme() {
   printf '* { background-alpha: %s%02X; }\n' "${base_rgb}" $(((base_alpha * opacity_milli + ROFI_MILLI / 2) / ROFI_MILLI))
 }
 
-rofi() {
+rofi_with_background_theme() {
   command rofi -theme-str "$(rofi_background_theme)" "$@"
 }
 
@@ -322,5 +351,5 @@ rofi_cheatsheet_layout_override() {
   [[ "${height_px}" =~ ^[0-9]+$ ]] || height_px=420
 
   printf 'window { width: %sem; height: %sem; } listview { lines: %s; } %s\n' \
-    "${width}" "${height}" "${lines}" "$(get_rofi_pos "${width_px}" "${height_px}")"
+    "${width}" "${height}" "${lines}" "$(rofi_window_position_theme "${width_px}" "${height_px}")"
 }

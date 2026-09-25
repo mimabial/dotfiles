@@ -54,12 +54,6 @@ hypr_service_file_changed() {
 hypr_service_tree_itemized_output() {
   local source_dir="$1"
   local target_dir="$2"
-  local parent_dir
-
-  parent_dir="${target_dir%/*}"
-  [[ "${parent_dir}" != "${target_dir}" ]] || parent_dir="."
-
-  mkdir -p "${parent_dir}" || hypr_service_die "Failed to create parent directory for ${target_dir}"
   rsync -ani --delete "${source_dir}/" "${target_dir}/" || hypr_service_die "Failed to compare directory ${source_dir} -> ${target_dir}"
 }
 
@@ -107,40 +101,38 @@ hypr_service_die() {
   exit 1
 }
 
-# shellcheck disable=SC2034 # Parser outputs are read by service entrypoints.
 hypr_service_parse_refresh_args() {
-  hypr_service_cli_show_diff=0
-  hypr_service_cli_quiet=0
-  hypr_service_cli_dry_run=0
-  hypr_service_cli_backup_label=""
-  hypr_service_cli_args=()
+  local -n options_ref="$1" args_ref="$2"
+  shift 2
+  options_ref=([show_diff]=0 [quiet]=0 [dry_run]=0 [backup_label]="")
+  args_ref=()
 
   while (($#)); do
     case "$1" in
       -h | --help)
-        hypr_service_cli_args+=("$1")
+        args_ref+=("$1")
         ;;
       -q | --quiet)
-        hypr_service_cli_quiet=1
+        options_ref[quiet]=1
         ;;
       -n | --dry-run)
-        hypr_service_cli_dry_run=1
+        options_ref[dry_run]=1
         ;;
       --diff)
-        hypr_service_cli_show_diff=1
+        options_ref[show_diff]=1
         ;;
       --no-diff)
-        hypr_service_cli_show_diff=0
+        options_ref[show_diff]=0
         ;;
       --backup-label)
         shift
         [[ "$#" -gt 0 ]] || hypr_service_die "Missing value for --backup-label"
-        hypr_service_cli_backup_label="$1"
+        options_ref[backup_label]="$1"
         ;;
       --)
         shift
         while (($#)); do
-          hypr_service_cli_args+=("$1")
+          args_ref+=("$1")
           shift
         done
         break
@@ -149,7 +141,7 @@ hypr_service_parse_refresh_args() {
         hypr_service_die "Unknown option: $1"
         ;;
       *)
-        hypr_service_cli_args+=("$1")
+        args_ref+=("$1")
         ;;
     esac
     shift
@@ -195,9 +187,9 @@ hypr_service_validate_mode() {
 }
 
 hypr_service_apply_cli_env() {
-  export HYPR_SERVICE_DRY_RUN="${hypr_service_cli_dry_run:-0}"
-  if [[ -n "${hypr_service_cli_backup_label:-}" ]]; then
-    export HYPR_SERVICE_BACKUP_LABEL="${hypr_service_cli_backup_label}"
+  export HYPR_SERVICE_DRY_RUN="$1"
+  if [[ -n "$2" ]]; then
+    export HYPR_SERVICE_BACKUP_LABEL="$2"
   else
     unset HYPR_SERVICE_BACKUP_LABEL
   fi
@@ -235,16 +227,6 @@ hypr_service_layer_target_path() {
   esac
 }
 
-# The parser writes its results into these; both entrypoints start from here.
-hypr_service_reset_cli_state() {
-  declare -g mode=""
-  declare -ga forwarded_args=()
-  declare -ga hypr_service_cli_args=()
-  declare -g hypr_service_cli_show_diff=0
-  declare -g hypr_service_cli_quiet=0
-  declare -g hypr_service_cli_backup_label=""
-}
-
 hypr_service_should_back_up() {
   local backup_policy="$1"
   local kind="$2"
@@ -267,7 +249,6 @@ hypr_service_apply_file() {
   local target_exists=0
   local backup_path=""
   [[ "${mode}" == "trash" ]] || [[ -f "${source_path}" ]] || hypr_service_die "No template found for ${rel_path}: ${source_path}"
-  mkdir -p "$(dirname "${target_path}")"
   [[ -e "${target_path}" || -L "${target_path}" ]] && target_exists=1
 
   case "${mode}" in
@@ -280,6 +261,7 @@ hypr_service_apply_file() {
         hypr_service_report "${quiet}" 'Would populate: %s\n' "${target_path}"
         return 0
       fi
+      mkdir -p "$(dirname "${target_path}")"
       cp -a "${source_path}" "${target_path}"
       hypr_service_report "${quiet}" 'Populated: %s\n' "${target_path}"
       ;;
@@ -306,6 +288,7 @@ hypr_service_apply_file() {
           backup_path="$(hypr_service_backup_root)$(hypr_service_target_relpath "${target_path}")"
         fi
       fi
+      mkdir -p "$(dirname "${target_path}")"
       cp -a "${source_path}" "${target_path}"
       if [[ "${target_exists}" -eq 1 ]]; then
         hypr_service_report "${quiet}" 'Overwritten: %s\n' "${target_path}"
@@ -429,6 +412,15 @@ hypr_service_refresh_config() {
     changed \
     "${show_diff}" \
     "${quiet}"
+}
+
+hypr_service_restore_config() {
+  local rel_path="$1"
+  hypr_service_is_safe_relpath "${rel_path}" || hypr_service_die "Invalid config path: ${rel_path}"
+  hypr_service_apply_file \
+    "$(hypr_service_layer_source_path config "${rel_path}")" \
+    "$(hypr_service_layer_target_path config "${rel_path}")" \
+    "${rel_path}" overwrite always "${2:-1}" "${3:-0}"
 }
 
 hypr_service_manifest_entries() {

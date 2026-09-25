@@ -11,15 +11,16 @@ hypr_help_guard "Usage: hyprshell install/fido2 [--remove]
 Set up (or remove) FIDO2 hardware-key authentication for PAM." "$@"
 
 check_fido2_hardware() {
-  tokens=$(fido2-token -L 2>/dev/null)
-  if [ -z "$tokens" ]; then
+  local detected_tokens=""
+  detected_tokens="$(fido2-token -L 2>/dev/null)"
+  if [[ -z "${detected_tokens}" ]]; then
     print_error "\nNo FIDO2 device detected. Please plug it in (you may need to unlock it as well)."
     return 1
   fi
   return 0
 }
 
-setup_pam_config() {
+setup_fido2_pam() {
   setup_pam_module \
     "FIDO2" \
     "pam_u2f.so" \
@@ -27,16 +28,16 @@ setup_pam_config() {
     "auth      sufficient pam_u2f.so cue authfile=/etc/fido2/fido2"
 }
 
-remove_pam_config() {
+remove_fido2_pam() {
   remove_pam_module "FIDO2" "pam_u2f.so" 'pam_u2f\.so'
 }
 
 if [[ "--remove" == "${1:-}" ]]; then
   print_success "Removing FIDO2 device from authentication.\n"
 
-  remove_pam_config
+  remove_fido2_pam
 
-  if [ -d /etc/fido2 ]; then
+  if [[ -d /etc/fido2 ]]; then
     print_info "Removing FIDO2 configuration..."
     sudo rm -rf /etc/fido2
   fi
@@ -55,7 +56,7 @@ else
     exit 1
   fi
 
-  if [ ! -f /etc/fido2/fido2 ]; then
+  if [[ ! -f /etc/fido2/fido2 ]]; then
     sudo mkdir -p /etc/fido2
     print_success "\nLet's setup your device by confirming on the device now."
     print_info "Touch your FIDO2 key when it lights up...\n"
@@ -71,7 +72,7 @@ else
     print_info "FIDO2 device already registered."
   fi
 
-  setup_pam_config
+  setup_fido2_pam
 
   print_info "\nTesting FIDO2 authentication with sudo..."
   print_info "Touch your FIDO2 key when prompted.\n"

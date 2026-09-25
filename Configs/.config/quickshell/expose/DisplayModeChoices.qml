@@ -50,17 +50,18 @@ RowLayout {
     Repeater {
         model: displayModeChoices.options
 
-        delegate: Rectangle {
+        delegate: ThemedControl {
             id: displayModeChoice
             required property var modelData
-            readonly property bool selected: String(modelData.value) === displayModeChoices.value
+            selected: String(modelData.value) === displayModeChoices.value
+            focused: displayModeChoices.activeFocus && selected
+            hovered: displayModeMouse.containsMouse
+            pressed: displayModeMouse.pressed
             Layout.fillWidth: true
-            Layout.preferredHeight: Style.space(64)
-            color: "transparent"
-            border.color: displayModeChoices.activeFocus && selected ? Color.accent : Color.menu.border
-            border.width: Math.max(1, Style.normalBorderWidth)
+            Layout.preferredHeight: displayModeText.implicitHeight + Style.spacing.md * 2
 
             ColumnLayout {
+                id: displayModeText
                 anchors.fill: parent
                 anchors.margins: Style.spacing.md
                 spacing: Style.spacing.xs
@@ -69,8 +70,7 @@ RowLayout {
                     Layout.fillWidth: true
                     text: String(displayModeChoice.modelData.label)
                     textFormat: Text.PlainText
-                    color: Color.menu.text
-                    opacity: displayModeChoice.selected ? 1 : 0.6
+                    color: displayModeChoice.stateColor
                     font.family: Style.font.menuFamily
                     font.pixelSize: Style.font.body
                     font.bold: displayModeChoice.selected
@@ -88,17 +88,10 @@ RowLayout {
                 }
             }
 
-            Rectangle {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.bottom: parent.bottom
-                height: Math.max(2, Style.focusBorderWidth)
-                visible: displayModeChoice.selected
-                color: Color.accent
-            }
-
             MouseArea {
+                id: displayModeMouse
                 anchors.fill: parent
+                hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
                     displayModeChoices.forceActiveFocus();

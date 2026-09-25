@@ -18,7 +18,7 @@ BarButton {
     readonly property bool alarming: headline !== null && Number(headline.percent) >= 0.9
 
     css: "agents"
-    visible: records.length > 0
+    readonly property bool shown: records.length > 0
     text: "󱚣"
     // `alarm` is the style's channel for the >=90% state; both states fall back
     // to their own role when the rule leaves them out.
@@ -28,7 +28,13 @@ BarButton {
         : shell.role("c9", shell.foreground)
     onClicked: shell.togglePopup("agents")
 
-    function refresh() { if (!collect.running) collect.running = true }
+    function refresh(force) {
+        if (collect.running) return
+        collect.command = force
+            ? ["hyprshell", "system/agent-usage", "--write", "--force"]
+            : ["hyprshell", "system/agent-usage", "--write"]
+        collect.running = true
+    }
 
     // Display half: paint from the cache immediately, and repaint when the
     // producer rewrites it. Never blocks on a collector.
@@ -51,5 +57,6 @@ BarButton {
         anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled
         records: root.records; selected: root.selected
         onSelect: index => root.selected = index
+        onRefreshRequested: root.refresh(true)
     }
 }

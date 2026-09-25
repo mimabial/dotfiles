@@ -2,6 +2,7 @@ MenuBar=Disabled
 
 [General]
 OpenExternallyCalledFolderInNewTab=true
+ShowSelectionToggle=false
 ShowStatusBar=FullWidth
 Version=202
 ViewPropsTimestamp=2026,9,16,11,36,4.159

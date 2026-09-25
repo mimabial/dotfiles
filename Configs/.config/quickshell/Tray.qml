@@ -71,7 +71,7 @@ Item {
             }
         }
     }
-    ModuleEdge { id: trayEdge; shell: root.shell }
+    ModuleEdge { id: trayEdge; shell: root.shell; host: root }
     TrayMenu {
         shell: root.shell
         anchorItem: root.menuAnchor ? root.menuAnchor : root

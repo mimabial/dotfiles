@@ -1410,7 +1410,7 @@ def read_local_lrc(path):
     except Exception:
         return ""
 
-def fetch_lyrics(title, artist, url=""):
+def fetch_lyrics(title, artist, url="", refresh=False):
     raw_t = (title or "").strip()
     raw_a = (artist or "").strip()
     if not raw_t or raw_t in ("CLIamp", "cliamp_stream", "No track loaded"):
@@ -1421,12 +1421,12 @@ def fetch_lyrics(title, artist, url=""):
         return {"synced": local, "plain": "", "source": "lrc"}
 
     key = raw_t.lower() + "|" + raw_a.lower()
-    if key in LYRICS_CACHE:
+    if not refresh and key in LYRICS_CACHE:
         return LYRICS_CACHE[key]
 
     h = hashlib.sha256(key.encode("utf-8")).hexdigest()[:16]
     disk_cache = os.path.join(LYRICS_DIR, f"{h}.json")
-    if os.path.exists(disk_cache):
+    if not refresh and os.path.exists(disk_cache):
         try:
             with open(disk_cache, "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -1454,7 +1454,7 @@ def fetch_lyrics(title, artist, url=""):
             if LYRICS_LIB not in sys.path:
                 sys.path.insert(0, LYRICS_LIB)
             from lyrics_provider import fetch_lyrics as provider_fetch
-            text = provider_fetch(clean_a, clean_t) or ""
+            text = provider_fetch(clean_a, clean_t, refresh_cache=refresh) or ""
         except Exception:
             text = ""
         synced = bool(re.search(r"^\[\d+:\d+", text, re.M))
@@ -1822,7 +1822,7 @@ if __name__ == "__main__":
         t = sys.argv[2] if len(sys.argv) > 2 else ""
         a = sys.argv[3] if len(sys.argv) > 3 else ""
         u = sys.argv[4] if len(sys.argv) > 4 else ""
-        print(json.dumps(fetch_lyrics(t, a, u)))
+        print(json.dumps(fetch_lyrics(t, a, u, "--refresh" in sys.argv[5:])))
     elif action == "resume_info":
         np = read_now_playing()
         print(json.dumps({"title": np.get("title", ""), "artist": np.get("artist", ""), "url": np.get("url", ""), "pos": np.get("pos", 0)}))

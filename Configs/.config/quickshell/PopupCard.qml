@@ -31,14 +31,39 @@ PopupWindow {
 
     visible: open || cardSurface.opacity > 0
     color: "transparent"
-    // the card never outgrows the screen it is anchored on; a panel that sizes
-    // itself from content reads maxHeight to shrink its own panes first
-    readonly property int maxHeight: anchorWindow && anchorWindow.screen
-        ? anchorWindow.screen.height - margin * 2 : contentHeight
+    // The window keeps one height and the card moves inside it: a popup resized
+    // under a still pointer leaves Qt with stale surface coordinates until the
+    // next motion, so the following click lands on whatever used to sit there.
+    property int placements: 0
+    readonly property var span: {
+        const screen = placements >= 0 && anchorWindow ? anchorWindow.screen : null
+        if (!screen || !anchorItem) return {top: 0, height: cardHeight, anchor: 0}
+        const origin = windowOrigin(), itemTop = origin.y + anchorWindow.contentItem.mapFromItem(anchorItem, 0, 0).y
+        const top = !centered && position === "top" ? itemTop + anchorItem.height + margin : margin
+        const bottom = !centered && position === "bottom" ? itemTop - margin : screen.height - margin
+        return {top: top, height: bottom - top, anchor: itemTop + anchorItem.height / 2 - top}
+    }
+    // a panel that sizes itself from content reads maxHeight to shrink its own panes first
+    readonly property int maxHeight: span.height
+    readonly property int cardHeight: Math.min(contentHeight, maxHeight - headerHeight) + headerHeight
+    readonly property int cardY: centered ? (height - cardHeight) / 2
+        : position === "top" ? 0
+        : position === "bottom" ? height - cardHeight
+        : Math.max(0, Math.min(height - cardHeight, span.anchor - cardHeight / 2))
     implicitWidth: contentWidth
-    implicitHeight: Math.min(contentHeight, maxHeight - headerHeight) + headerHeight
+    implicitHeight: anchorWindow && anchorWindow.screen ? maxHeight : cardHeight
+    mask: Region { item: card }
 
-    Component.onCompleted: if (anchorItem && anchorItem.popupCards !== undefined) anchorItem.popupCards = anchorItem.popupCards.concat(root)
+    function windowOrigin() {
+        const screen = anchorWindow.screen, anchors = anchorWindow.anchors
+        return Qt.point(anchors.left ? 0 : anchors.right ? screen.width - anchorWindow.width : (screen.width - anchorWindow.width) / 2,
+            anchors.top ? 0 : anchors.bottom ? screen.height - anchorWindow.height : (screen.height - anchorWindow.height) / 2)
+    }
+
+    Component.onCompleted: {
+        const hostButton = anchorItem as BarButton
+        if (hostButton) hostButton.popupCards = hostButton.popupCards.concat(root)
+    }
 
     // Rows opt in with `navigable`; the card walks its own content rather than
     // asking each panel to maintain a list.
@@ -84,7 +109,7 @@ PopupWindow {
         cursorIndex = -1
         syncKeyboardCursor()
     }
-    onOpenChanged: if (!open) clearCursor()
+    onOpenChanged: if (open) ++placements; else clearCursor()
 
     property bool wantsKeyboard: false
     property Binding activeCardBinding: Binding { target: root.shell; property: "popupCard"; value: root; when: root.open }
@@ -115,54 +140,47 @@ PopupWindow {
         gravity: Edges.Bottom | Edges.Right
         rect.width: 1; rect.height: 1
         onAnchoring: {
-            if (!root.anchorItem || !root.anchorWindow) return
-            if (root.centered) {
-                // a layer surface has no x/y of its own; the compositor derives it
-                // from the anchors, so redo that to express screen coordinates in
-                // window ones. Margins are zero whenever popups are allowed
-                const screen = root.anchorWindow.screen
-                if (!screen) return
-                const anchors = root.anchorWindow.anchors
-                const originX = anchors.left ? 0 : anchors.right ? screen.width - root.anchorWindow.width : (screen.width - root.anchorWindow.width) / 2
-                const originY = anchors.top ? 0 : anchors.bottom ? screen.height - root.anchorWindow.height : (screen.height - root.anchorWindow.height) / 2
-                anchor.rect.x = Math.round((screen.width - root.width) / 2 - originX)
-                anchor.rect.y = Math.round((screen.height - root.height) / 2 - originY)
-                return
-            }
+            if (!root.anchorItem || !root.anchorWindow || !root.anchorWindow.screen) return
+            // a layer surface has no x/y of its own; the compositor derives it
+            // from the anchors, so redo that to express screen coordinates in window ones
+            const origin = root.windowOrigin()
             let x = root.anchorItem.width / 2 - root.width / 2
-            let y = root.anchorItem.height + root.margin
-            if (root.position === "bottom") y = -root.height - root.margin
-            else if (root.position === "left") { x = root.anchorItem.width + root.margin; y = root.anchorItem.height / 2 - root.height / 2 }
-            else if (root.position === "right") { x = -root.width - root.margin; y = root.anchorItem.height / 2 - root.height / 2 }
-            const point = root.anchorWindow.contentItem.mapFromItem(root.anchorItem, x, y)
-            anchor.rect.x = Math.round(point.x); anchor.rect.y = Math.round(point.y)
-        }
-    }
-    Rectangle {
-        id: cardSurface
-        anchors.fill: parent
-        anchors.topMargin: root.position === "top" ? 0 : root.headerHeight
-        anchors.bottomMargin: root.position === "top" ? root.headerHeight : 0
-        opacity: root.open ? 1 : 0
-        Behavior on opacity { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
-        color: root.shell.alpha(root.background, root.surfaceOpacity)
-        border.color: root.shell.alpha(root.borderColor, root.borderOpacity)
-        border.width: root.shell.borderWidth
-        radius: root.shell.rounding
-        FocusScope {
-            id: keyboardFocusScope
-            anchors.fill: parent; anchors.margins: root.padding
-            focus: root.open
-            Keys.onPressed: event => event.accepted = root.handleKey(event)
-            Item { id: contentHost; anchors.fill: parent }
+            if (root.position === "left") x = root.anchorItem.width + root.margin
+            else if (root.position === "right") x = -root.width - root.margin
+            anchor.rect.x = Math.round(root.centered ? (root.anchorWindow.screen.width - root.width) / 2 - origin.x
+                : root.anchorWindow.contentItem.mapFromItem(root.anchorItem, x, 0).x)
+            anchor.rect.y = Math.round(root.span.top - origin.y)
         }
     }
     Item {
-        id: headerHost
-        anchors.left: parent.left
-        anchors.right: parent.right
-        y: root.position === "top" ? root.height - height : 0
-        height: root.headerHeight
-        opacity: cardSurface.opacity
+        id: card
+        y: root.cardY; width: parent.width; height: root.cardHeight
+        Rectangle {
+            id: cardSurface
+            anchors.fill: parent
+            anchors.topMargin: root.position === "top" ? 0 : root.headerHeight
+            anchors.bottomMargin: root.position === "top" ? root.headerHeight : 0
+            opacity: root.open ? 1 : 0
+            Behavior on opacity { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+            color: root.shell.alpha(root.background, root.surfaceOpacity)
+            border.color: root.shell.alpha(root.borderColor, root.borderOpacity)
+            border.width: root.shell.borderWidth
+            radius: root.shell.rounding
+            FocusScope {
+                id: keyboardFocusScope
+                anchors.fill: parent; anchors.margins: root.padding
+                focus: root.open
+                Keys.onPressed: event => event.accepted = root.handleKey(event)
+                Item { id: contentHost; anchors.fill: parent }
+            }
+        }
+        Item {
+            id: headerHost
+            anchors.left: parent.left
+            anchors.right: parent.right
+            y: root.position === "top" ? parent.height - height : 0
+            height: root.headerHeight
+            opacity: cardSurface.opacity
+        }
     }
 }

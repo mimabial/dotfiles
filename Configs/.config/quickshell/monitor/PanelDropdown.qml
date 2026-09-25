@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import qs.Commons
@@ -234,6 +235,7 @@ Item {
       }
 
       delegate: Rectangle {
+        id: option
         required property var modelData
         required property int index
         width: optionList.width
@@ -249,8 +251,8 @@ Item {
           anchors.verticalCenter: parent.verticalCenter
           anchors.leftMargin: Style.spacing.controlPaddingX
           anchors.rightMargin: Style.spacing.controlPaddingX
-          text: root.optionLabel(modelData)
-          color: index === optionList.currentIndex
+          text: root.optionLabel(option.modelData)
+          color: option.index === optionList.currentIndex
             ? Style.hoverStateColor(root.foreground, root.accent)
             : root.foreground
           font.family: root.fontFamily

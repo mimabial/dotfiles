@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import "../Commons" as Commons
 
@@ -72,6 +73,7 @@ Item {
                 Repeater {
                     model: [root.cancelText, root.confirmText]
                     delegate: Button {
+                        id: choiceButton
                         required property int index
                         required property string modelData
                         width: Commons.Style.space(88)
@@ -85,8 +87,8 @@ Item {
                         MouseArea {
                             anchors.fill: parent
                             hoverEnabled: true
-                            onEntered: root.selectedIndex = index
-                            onClicked: index === 0 ? root.canceled() : root.confirmed()
+                            onEntered: root.selectedIndex = choiceButton.index
+                            onClicked: choiceButton.index === 0 ? root.canceled() : root.confirmed()
                         }
                     }
                 }

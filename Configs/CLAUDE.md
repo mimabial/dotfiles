@@ -429,9 +429,10 @@ popup.
 `bar reload` is `Quickshell.reload(false)` — a **soft** reload that reuses the
 running engine and keeps existing instances, so it does not reliably pick up a
 changed `vars.lua` value or a re-evaluated `font.family`. It also keeps serving the
-first-compiled version of a file loaded by URL through a `Loader` (`lockview/LockView.qml`):
-after editing one, neither the watcher's reload nor `bar reload` picks it up, and
-`quickshell ipc call bar reloadHard` does. When a change appears
+first-compiled version of a file loaded by URL through a `Loader` (`lockview/LockView.qml`)
+or through a relative directory import (`import "ui" as UI` → `systemstats/ui/BarReadout.qml`,
+whose edits do not even trigger the watcher): neither the watcher's reload nor `bar reload`
+picks it up, and `quickshell ipc call bar reloadHard` does. When a change appears
 to do nothing, restart the process before concluding the change was wrong. A
 newly installed font always needs a real process restart: Qt builds its font
 database once per process, and no reload rebuilds it.

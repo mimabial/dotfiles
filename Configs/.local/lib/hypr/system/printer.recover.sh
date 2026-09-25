@@ -2,8 +2,6 @@
 
 set -euo pipefail
 
-set -eo pipefail
-
 if [[ "${HYPR_SHELL_INIT:-0}" -ne 1 ]] && command -v hyprshell >/dev/null 2>&1; then
   set +u
   eval "$(hyprshell init)"

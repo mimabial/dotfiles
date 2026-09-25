@@ -128,7 +128,7 @@ launcher_style_select() {
   local font_name=""
   local font_override=""
   local current_style=""
-  local r_override=""
+  local menu_window_override=""
   local selected_style=""
   local preview_asset=""
 
@@ -136,14 +136,14 @@ launcher_style_select() {
   font_name="$(rofi_effective_font_name "${ROFI_SELECT_FONT:-${ROFI_LAUNCH_FONT:-$ROFI_FONT}}")"
   font_override="$(rofi_font_override "${font_name}" "${font_scale}")"
   current_style="$(rofi_normalize_launcher_style "${ROFI_LAUNCH_STYLE:-style_1}")"
-  r_override="$(launcher_style_menu_override "${font_scale}")"
+  menu_window_override="$(launcher_style_menu_override "${font_scale}")"
 
   selected_style="$(
-    list_launcher_styles | rofi -dmenu -i \
+    list_launcher_styles | rofi_with_background_theme -dmenu -i \
       "${ROFI_MOUSE_SELECT_ARGS[@]}" \
       -theme "$(rofi_resolve_theme "${ROFI_SELECT_STYLE:-theme_select}")" \
       -theme-str "${font_override}" \
-      -theme-str "${r_override}" \
+      -theme-str "${menu_window_override}" \
       -select "${current_style}"
   )"
 
@@ -153,30 +153,30 @@ launcher_style_select() {
   launcher_style_notification "${selected_style}" "${preview_asset}"
 }
 
+configure_drun_mode() {
+  rofi_mode="drun"
+  rofi_config="$(resolve_rofi_launcher_theme "${ROFI_LAUNCH_DRUN_STYLE:-${ROFI_LAUNCH_STYLE:-style_1}}")"
+  rofi_args+=("${ROFI_LAUNCH_DRUN_ARGS[@]:-}" "-run-command" "$(launcher_run_command)")
+}
+
 configure_mode() {
   local action="${1:-}"
   rofi_args=(-show-icons -me-select-entry "" -me-accept-entry MousePrimary)
 
-  configure_drun_mode() {
-    r_mode="drun"
-    rofi_config="$(resolve_rofi_launcher_theme "${ROFI_LAUNCH_DRUN_STYLE:-${ROFI_LAUNCH_STYLE:-style_1}}")"
-    rofi_args+=("${ROFI_LAUNCH_DRUN_ARGS[@]:-}" "-run-command" "$(launcher_run_command)")
-  }
-
   case "${action}" in
     d | --drun | "") configure_drun_mode ;;
     w | --window)
-      r_mode="window"
+      rofi_mode="window"
       rofi_config="$(resolve_rofi_launcher_theme "${ROFI_LAUNCH_WINDOW_STYLE:-${ROFI_LAUNCH_STYLE:-style_1}}")"
       rofi_args+=("${ROFI_LAUNCH_WINDOW_ARGS[@]:-}")
       ;;
     f | --filebrowser)
-      r_mode="filebrowser"
+      rofi_mode="filebrowser"
       rofi_config="$(resolve_rofi_launcher_theme "${ROFI_LAUNCH_FILEBROWSER_STYLE:-${ROFI_LAUNCH_STYLE:-style_1}}")"
       rofi_args+=("${ROFI_LAUNCH_FILEBROWSER_ARGS[@]:-}")
       ;;
     r | --run)
-      r_mode="run"
+      rofi_mode="run"
       rofi_config="$(resolve_rofi_launcher_theme "${ROFI_LAUNCH_RUN_STYLE:-${ROFI_LAUNCH_STYLE:-style_1}}")"
       rofi_args+=("-run-command" "$(launcher_run_command)" "${ROFI_LAUNCH_RUN_ARGS[@]:-}")
       ;;
@@ -207,6 +207,7 @@ build_runtime_overrides() {
   local font_override=""
   local icon_override=""
   local window_override=""
+  local -a width_args=()
 
   window_override="$(rofi_window_override "${rofi_config}")"
   font_override="$(rofi_font_override "${font_name}" "${font_scale}")"
@@ -231,7 +232,7 @@ launch_rofi() {
   font_scale="$(rofi_effective_font_scale "${ROFI_LAUNCH_SCALE}")"
   font_name="$(rofi_effective_font_name "${ROFI_LAUNCH_FONT:-$ROFI_FONT}")"
   build_runtime_overrides "${font_scale}" "${font_name}"
-  rofi -show "${r_mode}" "${rofi_args[@]}" &
+  rofi_with_background_theme -show "${rofi_mode}" "${rofi_args[@]}" &
   disown
 }
 

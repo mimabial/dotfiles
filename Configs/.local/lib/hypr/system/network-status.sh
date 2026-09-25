@@ -14,8 +14,9 @@ probe="1.1.1.1"
 [[ "${1:-}" == "--probe" && -n "${2:-}" ]] && probe="$2"
 
 # The interface that actually carries the default route, not the first one up.
-iface="$(ip route get "${probe}" 2>/dev/null | awk '{ for (i = 1; i <= NF; i++) if ($i == "dev") { print $(i + 1); exit } }')"
-gateway="$(ip route get "${probe}" 2>/dev/null | awk '{ for (i = 1; i <= NF; i++) if ($i == "via") { print $(i + 1); exit } }')"
+route_details="$(ip route get "${probe}" 2>/dev/null || true)"
+iface="$(awk '{ for (i = 1; i <= NF; i++) if ($i == "dev") { print $(i + 1); exit } }' <<<"${route_details}")"
+gateway="$(awk '{ for (i = 1; i <= NF; i++) if ($i == "via") { print $(i + 1); exit } }' <<<"${route_details}")"
 address="$(ip -o -4 addr show dev "${iface}" 2>/dev/null | awk '{ print $4; exit }')"
 
 dns_json='[]'

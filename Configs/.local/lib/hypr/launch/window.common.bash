@@ -242,14 +242,14 @@ launch_resolve_geometry_profile() {
   local basis=""
   local base_width=""
   local base_height=""
-  local ignored=""
+  local ignored_x="" ignored_y="" ignored_rest=""
 
   IFS=$'\t' read -r width_spec height_spec basis <<<"$(launch_geometry_profile_specs "${profile_name}")" || return 1
   if [[ "${basis}" == "usable" ]]; then
-    IFS=$'\t' read -r base_width base_height ignored ignored ignored ignored \
+    IFS=$'\t' read -r base_width base_height ignored_x ignored_y ignored_rest \
       <<<"$(launch_monitor_usable_geometry "${monitor_selector}")" || return 1
   else
-    IFS=$'\t' read -r ignored ignored base_width base_height ignored ignored ignored ignored \
+    IFS=$'\t' read -r ignored_x ignored_y base_width base_height ignored_rest \
       <<<"$(launch_monitor_geometry "${monitor_selector}")" || return 1
   fi
 

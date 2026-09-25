@@ -21,10 +21,11 @@ hypr_runtime_require state
 layout_dir="${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/layouts"
 shopt -s nullglob
 files=("${layout_dir}"/*.json)
+(( ${#files[@]} )) || { printf 'no bar layouts found in %s\n' "${layout_dir}" >&2; exit 1; }
 mapfile -t layouts < <(printf '%s\n' "${files[@]}" | sed -E 's!.*/!!;s/\.json$//' | sort -u)
 action="${1:-next}"
 [[ "${action}" == list ]] && { printf '%s\n' "${layouts[@]}"; exit; }
-current="$(state_get QUICKSHELL_LAYOUT_NAME right)" step=1 i=0
+current="$(state_get QUICKSHELL_LAYOUT_NAME sidebar)" step=1 i=0
 if [[ "${action}" == select ]]; then
   hypr_runtime_require rofi
   # geometry.bash carries the font, border and opacity overrides; without them
@@ -33,10 +34,10 @@ if [[ "${action}" == select ]]; then
   source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
   rofi_args=()
   rofi_build_standard_menu_args rofi_args 'Bar layout' 'Bar layout' "$(rofi_resolve_theme clipboard)"
-  # the theme carries no window width, so rofi sizes this five-item list to
+  # the theme carries no window width, so rofi sizes this list to
   # whatever it likes; em keeps the clamp tracking the font
   rofi_args+=(-theme-str "window { width: 20em; } listview { lines: ${#layouts[@]}; }")
-  target="$(printf '%s\n' "${layouts[@]}" | rofi "${rofi_args[@]}" -no-custom -no-show-icons -select "${current}")" || exit 0
+  target="$(printf '%s\n' "${layouts[@]}" | rofi_with_background_theme "${rofi_args[@]}" -no-custom -no-show-icons -select "${current}")" || exit 0
   [[ -n "${target}" ]] || exit 0
 elif [[ "${action}" == set ]]; then
   target="${2:-}"

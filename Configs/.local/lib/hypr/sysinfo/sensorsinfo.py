@@ -78,9 +78,10 @@ def get_current_page(total_pages):
     if total_pages <= 0:
         return 0
     if PAGE_FILE.exists():
-        with PAGE_FILE.open("r", encoding="utf-8") as f:
-            page = int(f.read().strip())
-            return page % total_pages
+        try:
+            return int(PAGE_FILE.read_text(encoding="utf-8").strip()) % total_pages
+        except (OSError, ValueError):
+            pass
     return 0
 
 
@@ -158,9 +159,9 @@ def get_temp_color(temp, crit=100):
     return f"{temp}°C"
 
 
-def get_sensor_data(result_sensors, page=0):
+def get_sensor_data(sensors_json, page=0):
     try:
-        sensors_data = json.loads(result_sensors.stdout)
+        sensors_data = json.loads(sensors_json)
     except json.JSONDecodeError:
         print("Error: Failed to decode JSON from sensors output")
         return {
@@ -281,28 +282,11 @@ def main():
     args = parser.parse_args()
 
     while True:
-        try:
-            import sensors
-
-            sensors.init()
-            sensors_data = {}
-            for chip in sensors.iter_detected_chips():
-                chip_name = str(chip)
-                sensors_data[chip_name] = {}
-                for feature in chip:
-                    label = feature.label
-                    value = feature.get_value()
-                    sensors_data[chip_name][label] = value
-            result_sensors = type("Result", (), {"stdout": json.dumps(sensors_data)})()
-        except ImportError:
-            result_sensors = subprocess.run(
-                ["sensors", "-j"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.DEVNULL,
-                text=True,
-                check=True,
-            )
-        sensors_data = json.loads(result_sensors.stdout)
+        sensors_json = subprocess.run(
+            ["sensors", "-j"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            text=True, check=True
+        ).stdout
+        sensors_data = json.loads(sensors_json)
         devices = list(sensors_data.keys())
         total_pages = (len(devices) + PAGE_SIZE - 1) // PAGE_SIZE
 
@@ -312,7 +296,7 @@ def main():
         elif total_pages > 0 and args.prev:
             page = (page - 1 + total_pages) % total_pages
         save_current_page(page)
-        sensor_info = get_sensor_data(result_sensors, page)
+        sensor_info = get_sensor_data(sensors_json, page)
         print(json.dumps(sensor_info, separators=(",", ":")))
         sys.stdout.flush()
         if args.interval <= 0:

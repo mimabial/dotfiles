@@ -4,13 +4,13 @@
 # The catalog entry the pipeline is acting on. This is the one place that reads
 # the catalog; every step below takes the resolved path instead.
 wallpaper_selected_path() {
-  printf '%s\n' "${wallList[setIndex]:-}"
+  printf '%s\n' "${wallpaper_paths[selected_wallpaper_index]:-}"
 }
 
 wallpaper_prepare_notification_payload() {
   local wallpaper_path="${selected_wallpaper_path:-${1:-}}"
   local wallpaper_hash=""
-  [[ -z "${wallpaper_path}" ]] || wallpaper_hash="${wallHashByPath["${wallpaper_path}"]:-}"
+  [[ -z "${wallpaper_path}" ]] || wallpaper_hash="${wallpaper_hash_by_path["${wallpaper_path}"]:-}"
 
   if [[ -z "${wallpaper_path}" && -e "${active_wallpaper_link}" ]]; then
     wallpaper_path="$(wallpaper_resolve_path "${active_wallpaper_link}")"
@@ -22,8 +22,8 @@ wallpaper_prepare_notification_payload() {
 
   if [[ -z "${selected_thumbnail:-}" && -n "${wallpaper_path}" ]]; then
     if [[ -z "${wallpaper_hash}" ]]; then
-      wallpaper_hash="$(set_hash "${wallpaper_path}" 2>/dev/null || true)"
-      [[ -n "${wallpaper_hash}" ]] && wallHashByPath["${wallpaper_path}"]="${wallpaper_hash}"
+      wallpaper_hash="$(wallpaper_file_hash "${wallpaper_path}" 2>/dev/null || true)"
+      [[ -n "${wallpaper_hash}" ]] && wallpaper_hash_by_path["${wallpaper_path}"]="${wallpaper_hash}"
     fi
     [[ -n "${wallpaper_hash}" ]] && selected_thumbnail="${WALLPAPER_THUMB_DIR}/${wallpaper_hash}.sqre"
   fi
@@ -143,7 +143,7 @@ wallpaper_ensure_hash() {
   local -n hash_ref="${hashmap_name}"
 
   [[ -n "${path}" ]] || return 1
-  [[ -n "${hash_ref["${path}"]:-}" ]] || hash_ref["${path}"]="$(set_hash "${path}")"
+  [[ -n "${hash_ref["${path}"]:-}" ]] || hash_ref["${path}"]="$(wallpaper_file_hash "${path}")"
   [[ -n "${hash_ref["${path}"]:-}" ]]
 }
 
@@ -151,12 +151,12 @@ wallpaper_refresh_thumbnail_links() {
   local wallpaper_path="$1"
   local hash=""
 
-  if ! wallpaper_ensure_hash wallHashByPath "${wallpaper_path}"; then
+  if ! wallpaper_ensure_hash wallpaper_hash_by_path "${wallpaper_path}"; then
     print_log -warn "wallpaper" "missing hash for ${wallpaper_path:-unknown}"
     return 1
   fi
 
-  hash="${wallHashByPath["${wallpaper_path}"]}"
+  hash="${wallpaper_hash_by_path["${wallpaper_path}"]}"
   ln -fs "${WALLPAPER_THUMB_DIR}/${hash}.sqre" "${current_square_thumbnail_link}"
   ln -fs "${WALLPAPER_THUMB_DIR}/${hash}.thmb" "${current_thumbnail_link}"
   ln -fs "${WALLPAPER_THUMB_DIR}/${hash}.blur" "${current_blur_thumbnail_link}"
@@ -188,10 +188,10 @@ select_adjacent_wallpaper() {
 
   current_wallpaper="$(wallpaper_resolve_path "${active_wallpaper_link}")"
 
-  if index="$(catalog_index_of wallList "${current_wallpaper}")"; then
-    setIndex="$(catalog_adjacent_index "${index}" "${direction}" "${#wallList[@]}")" || return 1
+  if index="$(catalog_index_of wallpaper_paths "${current_wallpaper}")"; then
+    selected_wallpaper_index="$(catalog_adjacent_index "${index}" "${direction}" "${#wallpaper_paths[@]}")" || return 1
   else
-    setIndex=0
+    selected_wallpaper_index=0
     print_log -sec "wallpaper" -warn "Current wallpaper not in theme list, resetting to first"
   fi
 

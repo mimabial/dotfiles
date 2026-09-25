@@ -165,6 +165,7 @@ hypr_wait_for() {
   listener=$!
   shift 2
   until "$@" && status=0; do
+    # shellcheck disable=SC2053 # event_glob is a pattern.
     while read -r -u "${events}" event && [[ "${event}" != ${event_glob} ]]; do :; done
     [[ -n "${event}" ]] || break
   done
@@ -200,6 +201,13 @@ hypr_user_pkill() {
 
   user_uid="$(hypr_user_uid)" || return 1
   pkill -u "${user_uid}" "$@"
+}
+
+# Bitwarden desktop has no lock command and locks only on a ScreenSaver D-Bus signal
+# nothing here emits, so quitting it is its lock.
+hypr_lock_password_managers() {
+  quickshell ipc call bitwarden screenLocked </dev/null >/dev/null 2>&1 &
+  hypr_user_pkill -f '^/usr/lib/electron[0-9]*/electron /usr/lib/bitwarden/app\.asar' || true
 }
 
 hypr_runtime_root_dir() {

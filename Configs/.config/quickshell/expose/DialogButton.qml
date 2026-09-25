@@ -2,19 +2,17 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.Commons
 
-Rectangle {
+ThemedControl {
     id: dialogButton
     required property var controller
     property string label: ""
     property bool destructive: false
-    property bool hovered: false
     signal clicked()
-    implicitWidth: buttonLabel.implicitWidth + Style.space(28)
-    implicitHeight: Style.space(36)
+    implicitWidth: buttonLabel.implicitWidth + Style.spacing.controlPaddingX * 2
+    implicitHeight: Math.max(Style.spacing.controlHeight, buttonLabel.implicitHeight + Style.spacing.controlPaddingY * 2)
     activeFocusOnTab: true
-    color: "transparent"
-    border.color: enabled && (activeFocus || hovered || destructive) ? Color.accent : Color.menu.border
-    border.width: activeFocus ? Math.max(2, Style.focusBorderWidth) : Math.max(1, Style.normalBorderWidth)
+    focused: activeFocus
+    pressed: buttonMouse.pressed
     opacity: enabled ? 1 : 0.38
 
     Keys.onPressed: function (event) {
@@ -33,13 +31,14 @@ Rectangle {
         anchors.centerIn: parent
         text: dialogButton.label
         textFormat: Text.PlainText
-        color: Color.menu.text
+        color: dialogButton.destructive ? Color.urgent : dialogButton.stateColor
         font.family: Style.font.menuFamily
         font.pixelSize: Style.font.bodySmall
         font.bold: dialogButton.destructive
     }
 
     MouseArea {
+        id: buttonMouse
         anchors.fill: parent
         enabled: dialogButton.enabled
         hoverEnabled: true

@@ -3,7 +3,7 @@ import QtQuick
 BarButton {
     id: root
     property bool popupEnabled: true
-    css: "powermenu"
+    css: "powerbutton"
     text: "󰨚"
     active: shell.popupName === "powermenu"
     onClicked: shell.togglePopup("powermenu")

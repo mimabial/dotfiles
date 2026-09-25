@@ -9,11 +9,11 @@ REPOS_CACHE="${XDG_CACHE_HOME}/github/repos.list"
 SECURITY_CACHE="${XDG_CACHE_HOME}/github/security-summary.json"
 GITHUB_API="https://api.github.com"
 
-check() {
+command_available() {
   command -v "$1" >/dev/null 2>&1
 }
 
-print_json() {
+emit_bar_status_json() {
   local text="$1"
   local class_name="$2"
 
@@ -29,7 +29,7 @@ print_json() {
 
 print_fatal_error() {
   printf 'GitHub Notifications: %s\n' "$1" >&2
-  print_json "󰅙" "error"
+  emit_bar_status_json "" "error"
   exit 0
 }
 
@@ -128,12 +128,12 @@ next_page_url() {
 }
 
 security_cache_is_fresh() {
-  local raw="${GITHUB_SECURITY_CACHE_TTL_MINUTES:-240}"
+  local ttl_minutes="${GITHUB_SECURITY_CACHE_TTL_MINUTES:-240}"
   local ttl_seconds=""
   local now mtime
 
-  [[ "$raw" =~ ^[0-9]+$ ]] || raw=240
-  ttl_seconds=$((raw * 60))
+  [[ "$ttl_minutes" =~ ^[0-9]+$ ]] || ttl_minutes=240
+  ttl_seconds=$((ttl_minutes * 60))
   [ "$ttl_seconds" -gt 0 ] || return 1
   [ -s "$SECURITY_CACHE" ] || return 1
 
@@ -323,7 +323,7 @@ collect_repo_alert_type() {
 }
 
 ensure_github_notification_deps() {
-  if ! check curl || ! check jq; then
+  if ! command_available curl || ! command_available jq; then
     print_fatal_error "Missing curl or jq"
   fi
 }
@@ -581,22 +581,22 @@ emit_github_notifications_report() {
 
 emit_github_notifications_status() {
   if [ "$notif_available" -eq 0 ] && [ "$security_available" -eq 0 ]; then
-    print_json "󰅙" "error"
+    emit_bar_status_json "" "error"
     return 0
   fi
 
   if [ "$notif_available" -eq 0 ] || [ "$security_available" -eq 0 ] || [ -n "$notif_issue" ] || [ -n "$security_note" ] || [ -n "$security_issue" ]; then
-    print_json "󰀪" "degraded"
+    emit_bar_status_json "" "degraded"
     return 0
   fi
 
   if [ "$notif_count" -gt 0 ] && [ "$security_count" -gt 0 ]; then
-    print_json "" "inbox-security"
+    emit_bar_status_json "" "inbox-security"
   elif [ "$notif_count" -gt 0 ]; then
-    print_json "" "inbox"
+    emit_bar_status_json "" "inbox"
   elif [ "$security_count" -gt 0 ]; then
-    print_json "" "security"
+    emit_bar_status_json "" "security"
   else
-    print_json ""
+    emit_bar_status_json ""
   fi
 }

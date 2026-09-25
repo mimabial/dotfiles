@@ -13,66 +13,67 @@ regenerate the menu entry from the current theme list." "$@"
 
 hypr_runtime_require state wallpaper_catalog || exit 1
 hypr_runtime_load_state || exit 1
-scrPath="$(realpath "$0")"
-kmenuPath="${XDG_DATA_HOME:-$HOME/.local/share}/kio/servicemenus"
-kmenuDesk="${kmenuPath}/hyprwallpaper.desktop"
-tgtPath="$(dirname "${HYPR_THEME_DIR}")"
-setTheme=""
-setWall=""
-get_themes
+script_path="$(realpath "$0")"
+service_menu_dir="${XDG_DATA_HOME:-$HOME/.local/share}/kio/servicemenus"
+service_menu_file="${service_menu_dir}/hyprwallpaper.desktop"
+themes_dir="$(dirname "${HYPR_THEME_DIR}")"
+selected_theme=""
+selected_wallpaper=""
+declare -a theme_names=() theme_wallpapers=()
+theme_catalog_load_and_repair_links_into theme_names theme_wallpapers
 
 while getopts "t:w:" option; do
   case $option in
 
-    t) # Set theme
-      for x in "${!thmList[@]}"; do
-        if [ "${thmList[x]}" == "$OPTARG" ]; then
-          setTheme="${thmList[x]}"
+    t)
+      for theme_index in "${!theme_names[@]}"; do
+        if [[ "${theme_names[theme_index]}" == "$OPTARG" ]]; then
+          selected_theme="${theme_names[theme_index]}"
           break
         fi
       done
-      [ -z "${setTheme}" ] && echo "Error: '$OPTARG' theme not available..." && exit 1
+      [[ -n "${selected_theme}" ]] || { echo "Error: '$OPTARG' theme not available..."; exit 1; }
       ;;
 
-    w) # Set wallpaper
-      if [ -f "$OPTARG" ] && file --mime-type "$OPTARG" | grep -q 'image/'; then
-        setWall="$OPTARG"
+    w)
+      if [[ -f "$OPTARG" ]] && file --mime-type "$OPTARG" | grep -q 'image/'; then
+        selected_wallpaper="$OPTARG"
       else
         echo "Error: '$OPTARG' is not an image file..."
         exit 1
       fi
       ;;
 
-    *) # Refresh menu
-      unset setTheme
-      unset setWall
+    *)
+      selected_theme=""
+      selected_wallpaper=""
       ;;
 
   esac
 done
 
-if [[ -n "${setTheme}" && -n "${setWall}" ]]; then
+if [[ -n "${selected_theme}" && -n "${selected_wallpaper}" ]]; then
   theme_hashes=()
   theme_walls=()
 
-  inwallHash="$(set_hash "${setWall}")"
-  get_hashmap_into theme_hashes theme_walls "${tgtPath}/${setTheme}"
-  if [[ "${theme_hashes[*]}" == *"${inwallHash}"* ]]; then
-    send_ephemeral_notif "hypr-wallpaper-kde-error" -a "Wallpaper" -i "${WALLPAPER_THUMB_DIR}/${inwallHash}.sqre" -t 3000 "Error" "Hash matched in ${setTheme}"
+  incoming_wallpaper_hash="$(wallpaper_file_hash "${selected_wallpaper}")"
+  wallpaper_scan_hashes_into theme_hashes theme_walls "${themes_dir}/${selected_theme}"
+  if [[ " ${theme_hashes[*]} " == *" ${incoming_wallpaper_hash} "* ]]; then
+    send_ephemeral_notif "hypr-wallpaper-kde-error" -a "Wallpaper" -i "${WALLPAPER_THUMB_DIR}/${incoming_wallpaper_hash}.sqre" -t 3000 "Error" "Hash matched in ${selected_theme}"
     exit 0
   fi
 
-  cp "${setWall}" "${tgtPath}/${setTheme}/wallpapers"
-  ln -fs "${tgtPath}/${setTheme}/wallpapers/$(basename "${setWall}")" "${tgtPath}/${setTheme}/wall.set"
+  cp "${selected_wallpaper}" "${themes_dir}/${selected_theme}/wallpapers"
+  ln -fs "${themes_dir}/${selected_theme}/wallpapers/$(basename "${selected_wallpaper}")" "${themes_dir}/${selected_theme}/wall.set"
 
-  "${LIB_DIR}/hypr/theme/theme.switch.sh" -s "${setTheme}"
-  send_ephemeral_notif "hypr-wallpaper-kde" -a "Wallpaper" -i "${WALLPAPER_THUMB_DIR}/${inwallHash}.sqre" -t 2000 "Wallpaper set in ${setTheme}"
+  "${LIB_DIR}/hypr/theme/theme.switch.sh" -s "${selected_theme}"
+  send_ephemeral_notif "hypr-wallpaper-kde" -a "Wallpaper" -i "${WALLPAPER_THUMB_DIR}/${incoming_wallpaper_hash}.sqre" -t 2000 "Wallpaper set in ${selected_theme}"
 
 else
 
-  echo -e "[Desktop Entry]\nType=Service\nMimeType=image/png;image/jpeg;image/jpg;image/gif\nActions=Menu-Refresh$(printf ";%s" "${thmList[@]}")\nX-KDE-Submenu=Set As Wallpaper...\n\n[Desktop Action Menu-Refresh]\nName=.: Refresh List :.\nExec=${scrPath}" >"${kmenuDesk}"
-  for i in "${!thmList[@]}"; do
-    echo -e "\n[Desktop Action ${thmList[i]}]\nName=${thmList[i]}\nExec=${scrPath} -t \"${thmList[i]}\" -w %u" >>"${kmenuDesk}"
+  echo -e "[Desktop Entry]\nType=Service\nMimeType=image/png;image/jpeg;image/jpg;image/gif\nActions=Menu-Refresh$(printf ";%s" "${theme_names[@]}")\nX-KDE-Submenu=Set As Wallpaper...\n\n[Desktop Action Menu-Refresh]\nName=.: Refresh List :.\nExec=${script_path}" >"${service_menu_file}"
+  for theme_index in "${!theme_names[@]}"; do
+    echo -e "\n[Desktop Action ${theme_names[theme_index]}]\nName=${theme_names[theme_index]}\nExec=${script_path} -t \"${theme_names[theme_index]}\" -w %u" >>"${service_menu_file}"
   done
 
 fi

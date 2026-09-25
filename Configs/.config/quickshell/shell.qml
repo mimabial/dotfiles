@@ -7,6 +7,7 @@ import Quickshell.Io
 import Quickshell.Hyprland
 import Quickshell.Services.UPower
 import qs.systemstats
+import "ClockFormats.js" as ClockFormats
 
 ShellRoot {
     id: shellRoot
@@ -14,10 +15,13 @@ ShellRoot {
     property string lockviewScreen: ""
     property string workflow: "default"
     property string themeName: ""
-    property string layoutName: "right"
+    property string layoutName: "sidebar"
     property string sunsetEnabled: ""
     property bool keepAwakeManual: false
     property bool keepAwakeAudio: true
+    property bool keepAwakeFullscreen: false
+    property bool caffeineFullscreenActive: false
+    property bool caffeineGameActive: false
     property string indicatorRefreshTarget: "all"
     property int indicatorRefreshSerial: 0
     property bool powerProfileRestorePending: false
@@ -29,9 +33,12 @@ ShellRoot {
     property int distroGlyphIndex: 0
     readonly property string distroGlyph: distroGlyphs[distroGlyphIndex]
     property var barLayout: ({})
+    property var layoutData: ({})
     readonly property var barModules: ["modules", "left", "center", "right"].reduce((all, key) => all.concat(Array.isArray(barLayout[key]) ? barLayout[key] : []), []).map(item => typeof item === "string" ? item : String(item.id || ""))
-    readonly property bool dateModuleVisible: !userHidden && (barModules.includes("date") || barModules.includes("datetime") && (mode === "winbar" ? store.winbarClock % 4 < 3 : mode === "horizontal" ? [0, 1, 4, 5, 6, 7].includes(store.topClock % 8) : store.mainClock % 4 === 2))
-    readonly property bool clockModuleVisible: !userHidden && barModules.includes("datetime") && (mode === "winbar" || mode === "horizontal" ? store.topClock % 8 !== 6 : store.mainClock % 4 !== 2)
+    readonly property string clockKind: mode === "winbar" ? "winbar" : mode === "horizontal" ? "top" : "main"
+    readonly property var selectedClockFormat: ClockFormats.selected(clockKind, prefs[clockKind + "Clock"])
+    readonly property bool dateModuleVisible: !userHidden && (barModules.includes("date") || barModules.includes("datetime") && selectedClockFormat.hasDate)
+    readonly property bool clockModuleVisible: !userHidden && barModules.includes("datetime") && selectedClockFormat.hasTime
     readonly property string timeVisibility: Quickshell.processId + " " + Number(dateModuleVisible) + " " + Number(clockModuleVisible) + "\n"
     property real volumeLimit: 1
     property real volumeMinDb: -60
@@ -44,9 +51,10 @@ ShellRoot {
     readonly property var activeTimers: activeEntries.filter(item => item.kind === "timer")
     readonly property var activeAlarms: activeEntries.filter(item => item.kind === "alarm")
     readonly property alias clockwork: clockworkState
+    readonly property alias bitwarden: bitwardenVault
     readonly property alias systemStats: systemStatsService
     readonly property var monitorPreviewCoordinator: monitorPreviewGuardLoader.item
-    property Theme style: Theme { home: shellRoot.home; layout: shellRoot.layoutName }
+    property Theme style: Theme { home: shellRoot.home; styleName: String(shellRoot.barLayout.style || shellRoot.layoutName) }
     readonly property var palette: style.palette
     readonly property color background: role("bg", "#1f2430")
     readonly property color foreground: role("fg", "#ffffff")
@@ -60,10 +68,10 @@ ShellRoot {
     readonly property string fontFamily: userFont || themeFont || baseFont
     // a theme font carrying no Nerd Font glyphs needs a companion face for icons,
     // or they resolve through fontconfig to whatever proportional face it picks.
-    // Miracode is Monocraft's vector reinterpretation, so Monocraft's icons share
-    // its skeleton and cell width. Any font not listed keeps the default.
+    // The companion must match the theme font's cell width (Monoid and Miracode
+    // are both 0.667em). Any font not listed keeps the default.
     readonly property var iconFonts: ({
-        "Miracode": "Monocraft"
+        "Miracode": "Monoid Nerd Font"
     })
     property string iconFontOverride: ""
     // a patched theme font already has the glyphs, and its own Mono twin matches
@@ -106,29 +114,41 @@ ShellRoot {
     // the windows behind it, and Hyprland draws those in raw pixels
     readonly property real borderWidth: style.border
     readonly property real moduleRadius: mode === "winbar" ? 0 : rounding
-    readonly property string barEdge: String(barLayout.edge || "right")
+    readonly property string barEdge: String(barLayout.edge || "left")
     property real barFloatGap: Style.popupGap
     readonly property real barOpacity: workflow === "powersaver" ? 1 : workflow === "windows" ? .5 : mode === "vertical" ? .6 : .4
-    readonly property color barColor: store.barTransparent ? "transparent" : alpha(background, barOpacity)
+    readonly property color barColor: prefs.barTransparent ? "transparent" : alpha(background, barOpacity)
     property SystemClock clock: SystemClock { precision: SystemClock.Minutes }
     readonly property alias store: persistent
+    readonly property alias prefs: prefsAdapter
+    FileView {
+        path: shellRoot.home + "/.local/state/quickshell/bar.json"
+        blockLoading: true
+        printErrors: false
+        onAdapterUpdated: writeAdapter()
+        JsonAdapter {
+            id: prefsAdapter
+            property int topClock: 2
+            property int mainClock: 3
+            property bool mainDateNumeric: false
+            property int winbarClock: 0
+            property bool barTransparent: false
+            property bool barBlur: true
+            property bool barFloating: false
+        }
+    }
     readonly property var exposeDefaults: ({
         previewPlacement: "in-place", windowFooterStyle: "floating",
         animationStyle: "original", animationTimings: ({}), slideDirection: ({}),
         backgroundBlur: 4, backgroundDim: 6, hotCornerEnabled: true,
-        hotCornerPosition: "top-left", moveCursorToWindow: true,
+        hotCornerPosition: "top-left", hotCornerDelay: 0,
+        initialWorkspaceScope: "all", workspaceLabelStyle: "full",
+        moveCursorToWindow: true,
         multiMonitorMode: "mirrored", showFooter: true
     })
     property var exposeConfig: Object.assign({}, exposeDefaults)
     PersistentProperties {
         id: persistent
-        property int topClock: 2
-        property int mainClock: 3
-        property bool mainDateNumeric: false
-        property int winbarClock: 0
-        property bool barTransparent: false
-        property bool barBlur: true
-        property bool barFloating: false
         property string sudokuDifficulty: "easy"
         property int sudokuBestEasy: 0
         property int sudokuBestMedium: 0
@@ -141,12 +161,16 @@ ShellRoot {
         property string clockworkBreakColor: "#a6e3a1"
         property string bluetoothAudioPolicies: "{}"
         property string webcamDevice: ""
+        property int lyricsDelayTenths: 0
+        property int lyricsFontStep: 0
     }
 
     ClockworkState { id: clockworkState; shell: shellRoot }
+    Bitwarden { id: bitwardenVault; shell: shellRoot }
     SystemStatsService { id: systemStatsService; shell: shellRoot }
 
     function alpha(color, opacity) { return Qt.rgba(color.r, color.g, color.b, opacity) }
+    function styleColor(spec, fallback) { return !spec ? fallback : Array.isArray(spec) ? alpha(role(spec[0], fallback), spec[1]) : role(spec, fallback) }
     function cycleDistroGlyph() { distroGlyphIndex = (distroGlyphIndex + 1) % distroGlyphs.length }
     function loadExposeConfig(raw) {
         try {
@@ -164,11 +188,17 @@ ShellRoot {
         exposeConfig = next
         exposeSettingsFile.setText(JSON.stringify(next, null, 2) + "\n")
     }
+    function resetExposeSettings() {
+        exposeConfig = Object.assign({}, exposeDefaults)
+        exposeSettingsFile.setText(JSON.stringify(exposeConfig, null, 2) + "\n")
+    }
     function mediaColor(output) {
-        const classes = output && output.class ? [].concat(output.class) : [], map = { firefox: "c3", elisa: "c4", mpd: "c2", spotify: "c2", chromium: "c1", chrome: "c1", brave: "c1", vlc: "c5", mpv: "c5" }
+        const classes = output && output.class ? [].concat(output.class) : []
+        const playerRoles = { firefox: "c3", elisa: "c4", mpd: "c2", spotify: "c2", chromium: "c1", chrome: "c1", brave: "c1", vlc: "c5", mpv: "c5" }
         if (classes.includes("nothing-playing")) return alpha(role("c8", foreground), .4)
         if (classes.includes("stopped")) return alpha(role("c8", foreground), .6)
-        const player = classes.find(name => map[name]); return alpha(role(map[player] || "accent", accent), player ? .85 : .7)
+        const player = classes.find(name => playerRoles[name])
+        return alpha(role(playerRoles[player] || "accent", accent), player ? .85 : .7)
     }
     // true while a bar is priming keyboard focus for a freshly opened panel;
     // the focus grab clears during that transition and must not be read as a
@@ -198,9 +228,20 @@ ShellRoot {
     // PipeWire exposes PulseAudio's cubic scalar: dB = 60 log10(volume).
     function volumeToDb(value) { return 60 * Math.log10(value) }
     function dbToVolume(value) { return Math.pow(10, value / 60) }
-    function setVolumeLimit(value, persist) { volumeLimit = Math.max(dbToVolume(volumeMinDb), Math.min(dbToVolume(volumeMaxDb), value)); if (persist) volumeLimitFile.setText(volumeLimit.toFixed(6) + "\n") }
+    function setVolumeLimit(value, persist) {
+        volumeLimit = Math.max(dbToVolume(volumeMinDb), Math.min(dbToVolume(volumeMaxDb), value))
+        if (persist) volumeLimitFile.setText(volumeLimit.toFixed(6) + "\n")
+    }
     function refreshVolumeRange() { if (!volumeRangeProbe.running) volumeRangeProbe.running = true }
-    function loadVolumeRange(raw) { try { const range = JSON.parse(raw), min = Number(range.minimum), max = Number(range.maximum), step = Number(range.step); if (isFinite(min) && isFinite(max) && isFinite(step) && min < max && step > 0) { volumeMinDb = min; volumeMaxDb = max; volumeStepDb = step; setVolumeLimit(volumeLimit, true) } } catch (error) {} }
+    function loadVolumeRange(raw) {
+        try {
+            const range = JSON.parse(raw)
+            const minimum = Number(range.minimum), maximum = Number(range.maximum), step = Number(range.step)
+            if (!isFinite(minimum) || !isFinite(maximum) || !isFinite(step) || minimum >= maximum || step <= 0) return
+            volumeMinDb = minimum; volumeMaxDb = maximum; volumeStepDb = step
+            setVolumeLimit(volumeLimit, true)
+        } catch (error) {}
+    }
     function duration(seconds) { const minutes = Math.round(seconds / 60); return minutes > 59 ? Math.floor(minutes / 60) + "h " + minutes % 60 + "m" : minutes + "m" }
     function profileName(profile) { return PowerProfile.toString(profile).replace(/([a-z])([A-Z])/g, "$1 $2") }
     function loadTimers(raw) { try { timerItems = JSON.parse(raw) || [] } catch (error) { timerItems = [] } }
@@ -210,18 +251,40 @@ ShellRoot {
     property string popupCenteredName: ""
     function togglePopup(name, centered) { popupCenteredName = centered === true ? name : ""; popupName = popupName === name ? "" : name }
     function closePopup() { popupName = "" }
-    function toggleBarTransparency() { store.barTransparent = !store.barTransparent }
-    function toggleBarBlur() { store.barBlur = !store.barBlur }
-    function toggleBarFloating() { store.barFloating = !store.barFloating }
+    function toggleBarTransparency() { prefs.barTransparent = !prefs.barTransparent }
+    function toggleBarBlur() { prefs.barBlur = !prefs.barBlur }
+    function toggleBarFloating() { prefs.barFloating = !prefs.barFloating }
     function refreshBarFloatGap() { if (!barGapProbe.running) barGapProbe.running = true }
-    function loadBarFloatGap(raw) { try { const gap = parseFloat(String(JSON.parse(raw).css || "").trim().split(/\s+/)[0]); if (isFinite(gap)) barFloatGap = Math.max(0, gap) } catch (error) {} }
-    function barLayoutIcon() { return ({top:"", bottom:"", left:"", right:""})[barEdge] || "" }
+    function loadBarFloatGap(raw) {
+        try {
+            const firstCssValue = String(JSON.parse(raw).css || "").trim().split(/\s+/)[0]
+            const gap = parseFloat(firstCssValue)
+            if (isFinite(gap)) barFloatGap = Math.max(0, gap)
+        } catch (error) {}
+    }
+    function barLayoutIcon() { return ({top:"", bottom:"", left:""})[barEdge] || "" }
+    function setBarLayout(data) {
+        const edges = data.panel === "vertical" ? ["left"] : ["top", "bottom"]
+        if (!["vertical", "horizontal", "winbar"].includes(data.panel) || !edges.includes(data.edge)) throw new Error("invalid panel or edge")
+        barLayout = data
+    }
     function loadBarLayout(raw) {
         try {
-            const data = JSON.parse(raw), edges = data.panel === "vertical" ? ["left", "right"] : ["top", "bottom"]
-            if (!["vertical", "horizontal", "winbar"].includes(data.panel) || !edges.includes(data.edge)) throw new Error("invalid panel or edge")
-            barLayout = data
+            layoutData = JSON.parse(raw)
+            if (layoutData.extends) { barLayout = ({}); sharedLayoutFile.reload() }
+            else setBarLayout(layoutData)
         } catch (error) { console.warn("layout " + layoutName + ": " + error); barLayout = ({}) }
+    }
+    function loadSharedLayout(raw) {
+        if (!layoutData.extends) return
+        try {
+            const merged = Object.assign({}, JSON.parse(raw), layoutData)
+            for (const section of ["left", "center", "right"])
+                if (Array.isArray(layoutData[section + "Prepend"]))
+                    merged[section] = layoutData[section + "Prepend"].concat(merged[section] || [])
+            setBarLayout(merged)
+        }
+        catch (error) { console.warn("layout " + layoutName + ": " + error); barLayout = ({}) }
     }
     function loadState(raw) {
         const text = String(raw)
@@ -231,13 +294,20 @@ ShellRoot {
         const sunsetMatch = text.match(/(?:^|\n)HYPRSUNSET_ENABLED=["']?([^"'\n]+)/)
         const keepAwakeMatch = text.match(/(?:^|\n)HYPR_KEEP_AWAKE=["']?([^"'\n]+)/)
         const keepAwakeAudioMatch = text.match(/(?:^|\n)HYPR_KEEP_AWAKE_AUDIO=["']?([^"'\n]+)/)
+        const keepAwakeFullscreenMatch = text.match(/(?:^|\n)HYPR_KEEP_AWAKE_FULLSCREEN=["']?([^"'\n]+)/)
         workflow = modeMatch ? modeMatch[1].trim() : "default"
         themeName = themeMatch ? themeMatch[1].trim() : ""
-        layoutName = layoutMatch ? layoutMatch[1].trim() : "right"
+        layoutName = layoutMatch ? layoutMatch[1].trim() : "sidebar"
         sunsetEnabled = sunsetMatch ? sunsetMatch[1].trim() : ""
         keepAwakeManual = keepAwakeMatch ? keepAwakeMatch[1].trim() === "1" : false
         keepAwakeAudio = keepAwakeAudioMatch ? keepAwakeAudioMatch[1].trim() !== "0" : true
+        keepAwakeFullscreen = keepAwakeFullscreenMatch ? keepAwakeFullscreenMatch[1].trim() === "1" : false
         stateReady = true
+    }
+    function loadCaffeineWindowState(raw) {
+        const state = String(raw).trim().split(/\s+/)
+        caffeineFullscreenActive = state[0] === "1"
+        caffeineGameActive = state[1] === "1"
     }
     function color(value) {
         if (typeof value !== "string") return value
@@ -273,7 +343,9 @@ ShellRoot {
         onLoaded: shellRoot.loadState(text())
         onFileChanged: reload()
     }
+    FileView { path: Quickshell.env("XDG_RUNTIME_DIR") + "/hypr/caffeine-windows"; watchChanges: true; printErrors: false; onLoaded: shellRoot.loadCaffeineWindowState(text()); onFileChanged: reload() }
     FileView { id: layoutFile; path: shellRoot.home + "/.config/quickshell/layouts/" + shellRoot.layoutName + ".json"; watchChanges: true; printErrors: false; onPathChanged: reload(); onLoaded: shellRoot.loadBarLayout(text()); onFileChanged: reload() }
+    FileView { id: sharedLayoutFile; path: shellRoot.layoutData.extends ? shellRoot.home + "/.config/quickshell/layouts/shared/" + shellRoot.layoutData.extends + ".json" : ""; watchChanges: true; printErrors: false; onLoaded: shellRoot.loadSharedLayout(text()); onFileChanged: reload() }
     FileView {
         id: baseFontFile
         path: shellRoot.home + "/.config/hypr/vars.lua"
@@ -341,10 +413,10 @@ ShellRoot {
     // surface blurs the popup's whole area too — well past the bar. The
     // threshold confines it to what is actually painted: the bar at barOpacity
     // and the popup card at its own, but not the empty margin around either.
-    LayerBlur { surface: "hypr-shell-bar"; enabled: shellRoot.store.barBlur; ignoreAlpha: 0.1 }
+    LayerBlur { surface: "hypr-shell-bar"; enabled: shellRoot.prefs.barBlur; ignoreAlpha: 0.1 }
 
     onModeChanged: closePopup()
-    onLayoutNameChanged: { barLayout = ({}); layoutFile.reload() }
+    onLayoutNameChanged: { layoutData = ({}); barLayout = ({}); layoutFile.reload() }
     onUserHiddenChanged: if (userHidden) closePopup()
     onTimeVisibilityChanged: timeVisibilityWrite.restart()
     Component.onCompleted: { restorePowerProfile(); refreshBarFloatGap() }
@@ -374,7 +446,7 @@ ShellRoot {
         function transparency(): void { shellRoot.toggleBarTransparency() }
         function blur(): void { shellRoot.toggleBarBlur() }
         function floating(): void { shellRoot.toggleBarFloating() }
-        function floatingState(): string { return JSON.stringify({ enabled: shellRoot.store.barFloating, gap: shellRoot.barFloatGap }) }
+        function floatingState(): string { return JSON.stringify({ enabled: shellRoot.prefs.barFloating, gap: shellRoot.barFloatGap }) }
         function popupName(): string { return shellRoot.popupName }
     }
     IpcHandler {
@@ -396,6 +468,7 @@ ShellRoot {
         function show(): void { shellRoot.mediaPopup?.showPopup() }
         function hide(): void { shellRoot.mediaPopup?.hidePopup() }
         function toggle(): void { shellRoot.mediaPopup?.togglePopup() }
+        function lyrics(): void { shellRoot.mediaPopup?.showLyrics() }
         function refresh(): void { shellRoot.mediaPopup?.refresh() }
         function play(): void { shellRoot.mediaPopup?.play() }
         function pause(): void { shellRoot.mediaPopup?.pause() }
@@ -416,11 +489,7 @@ ShellRoot {
         delegate: Component { MainBar { required property var modelData; shell: shellRoot; screen: modelData } }
     }
     Variants {
-        model: shellRoot.stateReady && shellRoot.mode === "winbar" ? Quickshell.screens : []
-        delegate: Component { WinBar { required property var modelData; shell: shellRoot; screen: modelData } }
-    }
-    Variants {
-        model: shellRoot.stateReady && shellRoot.mode === "horizontal" ? Quickshell.screens : []
-        delegate: Component { TopBar { required property var modelData; shell: shellRoot; screen: modelData } }
+        model: shellRoot.stateReady && (shellRoot.mode === "horizontal" || shellRoot.mode === "winbar") ? Quickshell.screens : []
+        delegate: Component { HorizontalBar { required property var modelData; shell: shellRoot; screen: modelData } }
     }
 }

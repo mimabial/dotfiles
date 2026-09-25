@@ -49,16 +49,17 @@ PopupCard {
             anchors.horizontalCenter: parent.horizontalCenter
             width: Style.px(212); height: Style.px(212); color: "#ffffff"; radius: 2
             Grid {
+                id: qrGrid
                 anchors.centerIn: parent
                 readonly property int size: root.rows.length
                 readonly property real module: 212 / Math.max(1, size)
                 columns: size
                 Repeater {
-                    model: parent.size * parent.size
+                    model: qrGrid.size * qrGrid.size
                     Rectangle {
                         required property int index
-                        width: parent.module; height: parent.module
-                        color: root.rows[Math.floor(index / parent.size)].charAt(index % parent.size) === "1"
+                        width: qrGrid.module; height: qrGrid.module
+                        color: root.rows[Math.floor(index / qrGrid.size)].charAt(index % qrGrid.size) === "1"
                             ? "#111111" : "transparent"
                     }
                 }

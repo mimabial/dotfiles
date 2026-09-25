@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import qs.Commons
@@ -5,7 +6,7 @@ import qs.Ui
 
 BorderSurface {
   id: root
-  property var p  // Panel root
+  property var controller: null
   property string selectedCategory: "all"
 
   readonly property var allModes: [
@@ -71,37 +72,37 @@ BorderSurface {
       Text {
         anchors.verticalCenter: parent.verticalCenter
         text: "\uf0d0"
-        color: Color.accent; font.family: root.p ? root.p.fontFamily : "sans-serif"; font.pixelSize: Style.font.caption
+        color: Color.accent; font.family: root.controller ? root.controller.fontFamily : "sans-serif"; font.pixelSize: Style.font.caption
       }
 
       Text {
         width: parent.width - Style.space(54) - bgToggle.width - pulseToggle.width - Style.space(6)
         anchors.verticalCenter: parent.verticalCenter
         text: "Visualizer Styles (" + root.allModes.length + ")"
-        color: root.p ? root.p.foreground : Color.foreground
-        font.family: root.p ? root.p.fontFamily : "sans-serif"
+        color: root.controller ? root.controller.foreground : Color.foreground
+        font.family: root.controller ? root.controller.fontFamily : "sans-serif"
         font.pixelSize: Style.font.caption; font.bold: true
       }
 
       Rectangle {
         id: bgToggle
-        readonly property bool active: root.p ? root.p.visBackground : false
+        readonly property bool active: root.controller ? root.controller.visBackground : false
         anchors.verticalCenter: parent.verticalCenter
         width: bgLabel.implicitWidth + Style.space(10); height: Style.space(17)
         radius: Style.space(4)
         color: active ? Color.menu.selectedBackground
-          : (bgMouse.containsMouse ? (root.p ? root.p.shell.hoverFill(1) : Color.menu.selectedBackground) : "transparent")
+          : (bgMouse.containsMouse ? (root.controller ? root.controller.shell.hoverFill(1) : Color.menu.selectedBackground) : "transparent")
         border.width: 1
         border.color: active ? Color.menu.selectedBorder
-          : (root.p ? root.p.shell.alpha(root.p.shell.role("br", root.p.foreground), 0.25) : Color.popups.border)
+          : (root.controller ? root.controller.shell.alpha(root.controller.shell.role("br", root.controller.foreground), 0.25) : Color.popups.border)
 
         Text {
           id: bgLabel
           anchors.centerIn: parent
           text: "\uf043 BG"
           color: bgToggle.active ? Color.menu.selectedText
-            : (bgMouse.containsMouse ? Color.accent : (root.p ? root.p.dim : Color.foreground))
-          font.family: root.p ? root.p.fontFamily : "sans-serif"
+            : (bgMouse.containsMouse ? Color.accent : (root.controller ? root.controller.dim : Color.foreground))
+          font.family: root.controller ? root.controller.fontFamily : "sans-serif"
           font.pixelSize: Style.font.caption * 0.8
           font.bold: bgToggle.active
         }
@@ -109,29 +110,29 @@ BorderSurface {
         MouseArea {
           id: bgMouse
           anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-          onClicked: if (root.p) root.p.setVisBackground(!root.p.visBackground)
+          onClicked: if (root.controller) root.controller.setVisBackground(!root.controller.visBackground)
         }
       }
 
       Rectangle {
         id: pulseToggle
-        readonly property bool active: root.p ? root.p.visBackgroundPulse : false
+        readonly property bool active: root.controller ? root.controller.visBackgroundPulse : false
         anchors.verticalCenter: parent.verticalCenter
         width: pulseLabel.implicitWidth + Style.space(10); height: Style.space(17)
         radius: Style.space(4)
         color: active ? Color.menu.selectedBackground
-          : (pulseMouse.containsMouse ? (root.p ? root.p.shell.hoverFill(1) : Color.menu.selectedBackground) : "transparent")
+          : (pulseMouse.containsMouse ? (root.controller ? root.controller.shell.hoverFill(1) : Color.menu.selectedBackground) : "transparent")
         border.width: 1
         border.color: active ? Color.menu.selectedBorder
-          : (root.p ? root.p.shell.alpha(root.p.shell.role("br", root.p.foreground), 0.25) : Color.popups.border)
+          : (root.controller ? root.controller.shell.alpha(root.controller.shell.role("br", root.controller.foreground), 0.25) : Color.popups.border)
 
         Text {
           id: pulseLabel
           anchors.centerIn: parent
           text: "\uf0e7 PULSE"
           color: pulseToggle.active ? Color.menu.selectedText
-            : (pulseMouse.containsMouse ? Color.accent : (root.p ? root.p.dim : Color.foreground))
-          font.family: root.p ? root.p.fontFamily : "sans-serif"
+            : (pulseMouse.containsMouse ? Color.accent : (root.controller ? root.controller.dim : Color.foreground))
+          font.family: root.controller ? root.controller.fontFamily : "sans-serif"
           font.pixelSize: Style.font.caption * 0.8
           font.bold: pulseToggle.active
         }
@@ -139,19 +140,19 @@ BorderSurface {
         MouseArea {
           id: pulseMouse
           anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-          onClicked: if (root.p) root.p.setVisBackgroundPulse(!root.p.visBackgroundPulse)
+          onClicked: if (root.controller) root.controller.setVisBackgroundPulse(!root.controller.visBackgroundPulse)
         }
       }
 
       Text {
         anchors.verticalCenter: parent.verticalCenter
         text: "\uf00d"
-        color: closePickerMouse.containsMouse ? Color.accent : (root.p ? root.p.dim : Color.foreground)
-        font.family: root.p ? root.p.fontFamily : "sans-serif"; font.pixelSize: Style.font.caption
+        color: closePickerMouse.containsMouse ? Color.accent : (root.controller ? root.controller.dim : Color.foreground)
+        font.family: root.controller ? root.controller.fontFamily : "sans-serif"; font.pixelSize: Style.font.caption
         MouseArea {
           id: closePickerMouse
           anchors.fill: parent; cursorShape: Qt.PointingHandCursor; hoverEnabled: true
-          onClicked: if (root.p) root.p.visPickerOpen = false
+          onClicked: if (root.controller) root.controller.visPickerOpen = false
         }
       }
     }
@@ -176,21 +177,21 @@ BorderSurface {
           width: tabLabel.implicitWidth + Style.space(10); height: Style.space(18)
           radius: Style.space(9)
           color: isSelected ? Color.menu.selectedBackground
-            : (tabMouse.containsMouse ? (root.p ? root.p.shell.hoverFill(1) : Color.menu.selectedBackground) : "transparent")
+            : (tabMouse.containsMouse ? (root.controller ? root.controller.shell.hoverFill(1) : Color.menu.selectedBackground) : "transparent")
 
           Text {
             id: tabLabel
             anchors.centerIn: parent
-            text: modelData.label
-            color: tabPill.isSelected ? Color.menu.selectedText : (root.p ? root.p.foreground : Color.foreground)
-            font.family: root.p ? root.p.fontFamily : "sans-serif"
+            text: tabPill.modelData.label
+            color: tabPill.isSelected ? Color.menu.selectedText : (root.controller ? root.controller.foreground : Color.foreground)
+            font.family: root.controller ? root.controller.fontFamily : "sans-serif"
             font.pixelSize: Style.font.caption * 0.85
             font.bold: tabPill.isSelected
           }
 
           MouseArea {
             id: tabMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-            onClicked: root.selectedCategory = modelData.id
+            onClicked: root.selectedCategory = tabPill.modelData.id
           }
         }
       }
@@ -213,17 +214,17 @@ BorderSurface {
           delegate: Rectangle {
             required property var modelData
             id: chip
-            readonly property bool isActive: root.p && root.p.visMode === modelData.id
+            readonly property bool isActive: root.controller && root.controller.visMode === modelData.id
             width: chipContent.implicitWidth + Style.space(12)
             height: Style.space(22)
             radius: Style.space(4)
             color: isActive ? Color.menu.selectedBackground
-              : (chipMouse.containsMouse ? (root.p ? root.p.shell.hoverFill(1) : Color.menu.selectedBackground)
-                : (root.p ? root.p.shell.alpha(root.p.surface, 0.8) : Color.popups.background))
+              : (chipMouse.containsMouse ? (root.controller ? root.controller.shell.hoverFill(1) : Color.menu.selectedBackground)
+                : (root.controller ? root.controller.shell.alpha(root.controller.surface, 0.8) : Color.popups.background))
             border.width: 1
             border.color: isActive ? Color.menu.selectedBorder
               : (chipMouse.containsMouse ? Color.menu.selectedBorder
-                : (root.p ? root.p.shell.alpha(root.p.shell.role("br", root.p.foreground), 0.25) : Color.popups.border))
+                : (root.controller ? root.controller.shell.alpha(root.controller.shell.role("br", root.controller.foreground), 0.25) : Color.popups.border))
 
             Row {
               id: chipContent
@@ -231,19 +232,19 @@ BorderSurface {
               spacing: Style.space(4)
 
               Text {
-                text: modelData.icon
+                text: chip.modelData.icon
                 color: chip.isActive ? Color.menu.selectedText
-                  : (chipMouse.containsMouse ? Color.accent : (root.p ? root.p.dim : Color.foreground))
-                font.family: root.p ? root.p.fontFamily : "sans-serif"
+                  : (chipMouse.containsMouse ? Color.accent : (root.controller ? root.controller.dim : Color.foreground))
+                font.family: root.controller ? root.controller.fontFamily : "sans-serif"
                 font.pixelSize: Style.font.caption * 0.8
                 anchors.verticalCenter: parent.verticalCenter
               }
 
               Text {
-                text: modelData.name
+                text: chip.modelData.name
                 color: chip.isActive ? Color.menu.selectedText
-                  : (chipMouse.containsMouse ? Color.accent : (root.p ? root.p.foreground : Color.foreground))
-                font.family: root.p ? root.p.fontFamily : "sans-serif"
+                  : (chipMouse.containsMouse ? Color.accent : (root.controller ? root.controller.foreground : Color.foreground))
+                font.family: root.controller ? root.controller.fontFamily : "sans-serif"
                 font.pixelSize: Style.font.caption * 0.85
                 font.bold: chip.isActive
                 anchors.verticalCenter: parent.verticalCenter
@@ -254,8 +255,8 @@ BorderSurface {
               id: chipMouse
               anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
               onClicked: {
-                if (root.p) {
-                  root.p.setVisMode(modelData.id)
+                if (root.controller) {
+                  root.controller.setVisMode(chip.modelData.id)
                 }
               }
             }

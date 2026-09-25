@@ -88,7 +88,7 @@ hypr_stateful_choice_select() {
   [[ -n "${current}" ]] && rofi_args+=(-select "${current}")
   rofi_args+=("$@")
 
-  selected_ref="$(printf '%s\n' "${items}" | sed '/^$/d' | rofi "${rofi_args[@]}")"
+  selected_ref="$(printf '%s\n' "${items}" | sed '/^$/d' | rofi_with_background_theme "${rofi_args[@]}")"
 }
 
 # hypr_stateful_choice_write_lua <out-file> [--load <path>] [--config <key> <value>] <NAME=VALUE>...

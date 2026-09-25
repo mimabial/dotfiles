@@ -5,7 +5,7 @@ ScriptButton {
     id: root
     property bool popupsAllowed: true
     property bool vertical: true
-    css: "network.speed"; tooltip: ""
+    css: "speed"; tooltip: ""
     command: root.vertical
         ? ["hyprshell", "sysinfo/network-speed"]
         : ["hyprshell", "sysinfo/network-speed", "--alt"]

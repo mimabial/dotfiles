@@ -8,9 +8,10 @@ readonly -a TEXT_SIZES=(9 10 11 12 13 14 15 16 17 18 19 20)
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash"
 
-hypr_help_guard "Usage: hyprshell system/text-size [size|reset]
+hypr_help_guard "Usage: hyprshell system/text-size [size|--select|reset]
   (no args)   print current desktop text sizes
   <size>      set text size in px (9-20) across the desktop
+  --select    choose a size in rofi
   --list      print available sizes
   reset       restore 12px / 1.0 / 10pt defaults" "$@"
 
@@ -109,6 +110,41 @@ current_size() {
   [[ ${size} =~ ^[0-9]+$ ]] && printf '%s\n' "${size}" || printf '%s\n' "${BASE_PX}"
 }
 
+select_size() {
+  local selected="" current="" index=$((BASE_PX - MIN)) i
+  local window_width="${ROFI_TEXT_SIZE_WIDTH:-22em}" window_height="${ROFI_TEXT_SIZE_HEIGHT:-32em}"
+  local -a rofi_args=()
+
+  command -v rofi >/dev/null 2>&1 || { printf 'text-size: rofi not found\n' >&2; return 1; }
+  hypr_runtime_require rofi
+  # shellcheck source=/dev/null
+  source "${HYPR_LIB_DIR}/rofi/rofi.lib.bash"
+
+  current="$(current_size)"
+  for i in "${!TEXT_SIZES[@]}"; do
+    [[ "${TEXT_SIZES[i]}" == "${current}" ]] && { index="${i}"; break; }
+  done
+
+  rofi_build_standard_menu_args \
+    rofi_args \
+    "Text Size" \
+    "Desktop text size" \
+    "${ROFI_TEXT_SIZE_STYLE:-clipboard}" \
+    "${ROFI_TEXT_SIZE_SCALE:-}" \
+    "${ROFI_TEXT_SIZE_FONT:-${ROFI_FONT:-}}" \
+    "listview" \
+    "same" "" "${window_width}" "${window_height}"
+  rofi_args+=(
+    -no-show-icons
+    -no-custom
+    -selected-row "${index}"
+    -theme-str "listview { lines: ${ROFI_TEXT_SIZE_LINES:-12}; }"
+  )
+
+  selected="$(printf '%spx\n' "${TEXT_SIZES[@]}" | rofi_with_background_theme "${rofi_args[@]}")" || return 0
+  [[ -n "${selected}" ]] && printf '%s\n' "${selected%px}"
+}
+
 report() {
   local size pt
   size="$(current_size)"
@@ -156,6 +192,11 @@ apply() {
 
 case "${1-}" in
   "") report ;;
+  --select)
+    selected_size="$(select_size)"
+    [[ -n "${selected_size}" ]] || exit 0
+    apply "${selected_size}"
+    ;;
   reset) apply "${BASE_PX}" ;;
   *) apply "$1" ;;
 esac

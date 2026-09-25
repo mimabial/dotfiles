@@ -9,7 +9,7 @@ PopupCard {
     contentWidth: Style.px(430)
     contentHeight: Style.px(520)
 
-    property int tabIndex: 0
+    property string selectedTab: "units"
     property int categoryIndex: 0
     property int fromIndex: 0
     property int toIndex: 1
@@ -19,7 +19,7 @@ PopupCard {
     property string rateError: ""
     property bool ratesLoading: false
     readonly property var category: categories[categoryIndex] || ({units: []})
-    readonly property var choices: tabIndex === 0 ? category.units : currencies
+    readonly property var choices: selectedTab === "units" ? category.units : currencies
     readonly property var fromUnit: choices[fromIndex] || null
     readonly property var toUnit: choices[toIndex] || null
     readonly property real amount: Number(String(amountField.text).replace(",", "."))
@@ -41,17 +41,17 @@ PopupCard {
             currencies = payload.currencies || []; rateDate = payload.date || ""; rateError = payload.error || ""
         } catch (error) { currencies = []; rateError = "Currency rates unavailable" }
         ratesLoading = false
-        if (tabIndex === 1) resetUnits()
+        if (selectedTab === "currency") resetUnits()
     }
     function ensureRates() {
         if (currencies.length || ratesProc.running) return
         ratesLoading = true; rateError = ""; ratesProc.running = true
     }
-    function selectTab(index) { tabIndex = index; resetUnits(); if (index === 1) ensureRates() }
+    function selectTab(tab) { selectedTab = tab; resetUnits(); if (tab === "currency") ensureRates() }
     onCategoryIndexChanged: resetUnits()
     onOpenChanged: if (open) {
         if (!categories.length && !unitsProc.running) unitsProc.running = true
-        if (tabIndex === 1) ensureRates()
+        if (selectedTab === "currency") ensureRates()
         amountField.forceActiveFocus(); amountField.selectAll()
     }
 
@@ -69,9 +69,9 @@ PopupCard {
         font.pixelSize: Style.caption; font.bold: true; font.letterSpacing: 1
     }
     component TabButton: BarButton {
-        required property int tab
+        required property string tab
         active: false; radius: shell.rounding; fill: "transparent"; outline: "transparent"
-        textColor: root.tabIndex === tab ? shell.accent : shell.alpha(shell.foreground, .6)
+        textColor: root.selectedTab === tab ? shell.accent : shell.alpha(shell.foreground, .6)
     }
 
     Column {
@@ -79,13 +79,13 @@ PopupCard {
         anchors.fill: parent; spacing: Style.md
         PopupHero {
             shell: root.shell; title: "Converter"
-            status: root.tabIndex === 0 ? root.category.label || "units"
+            status: root.selectedTab === "units" ? root.category.label || "units"
                 : root.ratesLoading ? "loading rates" : root.rateError || (root.rateDate ? "ECB · " + root.rateDate : "currency")
         }
         Row {
             width: parent.width; spacing: Style.sm
-            TabButton { width: (parent.width - parent.spacing) / 2; height: Style.controlHeight; shell: root.shell; text: "UNIT"; tab: 0; onClicked: root.selectTab(tab) }
-            TabButton { width: (parent.width - parent.spacing) / 2; height: Style.controlHeight; shell: root.shell; text: "CURRENCY"; tab: 1; onClicked: root.selectTab(tab) }
+            TabButton { width: (parent.width - parent.spacing) / 2; height: Style.controlHeight; shell: root.shell; text: "UNIT"; tab: "units"; onClicked: root.selectTab(tab) }
+            TabButton { width: (parent.width - parent.spacing) / 2; height: Style.controlHeight; shell: root.shell; text: "CURRENCY"; tab: "currency"; onClicked: root.selectTab(tab) }
         }
         Column {
             width: parent.width; spacing: Style.xxs
@@ -104,7 +104,7 @@ PopupCard {
             }
         }
         Column {
-            visible: root.tabIndex === 0
+            visible: root.selectedTab === "units"
             width: parent.width; spacing: Style.xxs
             FieldLabel { text: "CATEGORY" }
             PopupSelect { width: parent.width; shell: root.shell; choices: root.categories; selectedIndex: root.categoryIndex; onActivated: index => root.categoryIndex = index }
@@ -143,7 +143,7 @@ PopupCard {
         }
         Text {
             width: parent.width
-            text: root.tabIndex === 1 ? "ECB reference rates · click the result to copy" : root.category.label === "Volume" ? "US customary liquid measures · click the result to copy" : "Click the result to copy"
+            text: root.selectedTab === "currency" ? "ECB reference rates · click the result to copy" : root.category.label === "Volume" ? "US customary liquid measures · click the result to copy" : "Click the result to copy"
             color: root.shell.alpha(root.shell.foreground, .4); font.family: root.shell.fontFamily
             font.pixelSize: Style.caption; horizontalAlignment: Text.AlignHCenter
         }

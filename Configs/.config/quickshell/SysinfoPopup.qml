@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell.Io
 
@@ -13,6 +14,7 @@ PopupCard {
     // rotates the producer's selection; the panel only offers it when the
     // script reports more than one choice
     property list<string> switchCommand: []
+    signal moduleRefreshRequested()
     property var report: ({})
     readonly property var rows: report.rows || []
     readonly property var choices: report.choices || []
@@ -23,7 +25,7 @@ PopupCard {
         // not lag the panel by up to a minute
         shell.run(root.switchCommand.concat([id]), () => {
             root.refresh()
-            if (root.anchorItem && root.anchorItem.refresh) root.anchorItem.refresh()
+            root.moduleRefreshRequested()
         })
     }
 
@@ -74,17 +76,18 @@ PopupCard {
         Repeater {
             model: root.rows
             Row {
+                id: reportRow
                 required property var modelData
                 width: sysinfoColumn.width; spacing: Style.lg
                 Text {
                     id: rowLabel
-                    text: modelData.label
+                    text: reportRow.modelData.label
                     color: root.shell.alpha(root.shell.foreground, .6)
                     font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
                 }
                 Text {
                     width: Math.max(0, parent.width - rowLabel.implicitWidth - parent.spacing)
-                    text: modelData.value
+                    text: reportRow.modelData.value
                     horizontalAlignment: Text.AlignRight
                     wrapMode: Text.WordWrap
                     color: root.shell.foreground

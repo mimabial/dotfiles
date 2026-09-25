@@ -53,7 +53,8 @@ BASE_PX = 12
 # A face carrying no Nerd Font glyphs makes fontconfig pick the fallback per
 # glyph, so a notification body lands in some unrelated proportional font.
 # Miracode is Monocraft's vector reinterpretation and inherits its cell width,
-# but none of its icons. quickshell/shell.qml carries the same map for the bar.
+# but none of its icons. quickshell/shell.qml borrows only icons, so its map
+# can name a different face.
 GLYPH_COMPANIONS = {"Miracode": "Monocraft"}
 STATE_FILE = Path(os.environ.get("HYPR_STATE_HOME", Path.home() / ".local/state/hypr")) / "staterc"
 
@@ -89,10 +90,10 @@ class DunstFont:
         return f"    font = {self.name} {self.size}" if self.name else ""
 
 
-def first(*vals):
-    for v in vals:
-        if v:
-            return v
+def first_nonempty(*values):
+    for value in values:
+        if value:
+            return value
     return ""
 
 
@@ -245,7 +246,7 @@ def load_dunst_template(variant, bg, fg, colors):
     return merged
 
 
-def ensure_base():
+def ensure_base_dunst_config():
     if BASE_CONF.is_file():
         return
     CONF_DIR.mkdir(parents=True, exist_ok=True)
@@ -327,41 +328,41 @@ def resolve_colors(palette):
     def role(name, fallback):
         return overrides.get(name) or template.get(name) or fallback
 
-    bg_primary = role("bg-primary", first(bg, colors[0], "#1e1e2e"))
+    bg_primary = role("bg-primary", first_nonempty(bg, colors[0], "#1e1e2e"))
     bg_secondary = role("bg-secondary", bg_primary)
     bg_tertiary = role("bg-tertiary", bg_primary)
-    fg_primary = role("fg-primary", first(fg, colors[15], "#f8f8f2"))
+    fg_primary = role("fg-primary", first_nonempty(fg, colors[15], "#f8f8f2"))
     fg_secondary = role("fg-secondary", fg_primary)
-    border_primary = role("border-primary", first(colors[4], colors[12], "#6272a4"))
+    border_primary = role("border-primary", first_nonempty(colors[4], colors[12], "#6272a4"))
     border_secondary = role(
-        "border-secondary", first(colors[8], border_primary, "#44475a")
+        "border-secondary", first_nonempty(colors[8], border_primary, "#44475a")
     )
-    accent_red = role("accent-red", first(colors[1], colors[9], "#ff5555"))
+    accent_red = role("accent-red", first_nonempty(colors[1], colors[9], "#ff5555"))
     accent_green = role(
         "accent-green",
-        first(colors[2], colors[10], border_primary, "#50fa7b"),
+        first_nonempty(colors[2], colors[10], border_primary, "#50fa7b"),
     )
     accent_yellow = role(
         "accent-yellow",
-        first(colors[3], colors[11], border_primary, "#f1fa8c"),
+        first_nonempty(colors[3], colors[11], border_primary, "#f1fa8c"),
     )
     accent_blue = role(
         "accent-blue",
-        first(colors[4], colors[12], border_primary, "#8be9fd"),
+        first_nonempty(colors[4], colors[12], border_primary, "#8be9fd"),
     )
     accent_purple = role(
         "accent-purple",
-        first(colors[5], colors[13], accent_blue, "#bd93f9"),
+        first_nonempty(colors[5], colors[13], accent_blue, "#bd93f9"),
     )
     accent_aqua = role(
         "accent-aqua",
-        first(colors[6], colors[14], accent_blue, "#8be9fd"),
+        first_nonempty(colors[6], colors[14], accent_blue, "#8be9fd"),
     )
     accent_orange = role(
         "accent-orange",
-        first(colors[11], colors[3], accent_red, "#ffb86c"),
+        first_nonempty(colors[11], colors[3], accent_red, "#ffb86c"),
     )
-    gray = role("gray", first(colors[8], border_secondary, "#6272a4"))
+    gray = role("gray", first_nonempty(colors[8], border_secondary, "#6272a4"))
 
     bg_critical = role("bg-critical", bg_primary)
     fg_critical = role("fg-critical", fg_primary)
@@ -501,7 +502,7 @@ def resolve_layout():
 
 
 def resolve_icon_theme():
-    icon_theme = first(
+    icon_theme = first_nonempty(
         os.environ.get("ICON_THEME"),
         os.environ.get("GTK_ICON"),
         read_theme_var("ICON_THEME"),
@@ -525,7 +526,7 @@ def resolve_icon_theme():
 
 
 def resolve_font():
-    notification_font = first(
+    notification_font = first_nonempty(
         os.environ.get("NOTIFICATION_FONT"),
         read_layer_var("NOTIFICATION_FONT"),
         read_layer_var("FONT"),
@@ -687,7 +688,7 @@ def render():
         sys.exit(f"render/dunst: missing {PALETTE}")
     CONF_DIR.mkdir(parents=True, exist_ok=True)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    ensure_base()
+    ensure_base_dunst_config()
 
     palette = json.loads(PALETTE.read_text())
     pack, variant, colors = resolve_colors(palette)

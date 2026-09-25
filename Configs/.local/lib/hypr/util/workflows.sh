@@ -8,6 +8,8 @@ refresh_hypr_instance_signature
 export HYPRLAND_INSTANCE_SIGNATURE
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/window/stateful-choice.common.bash"
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/util/workflow.presentation.bash"
 
 workflows_user_dir="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}/workflows"
 workflows_shared_dir="${HYPR_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/hypr}/workflows"
@@ -30,6 +32,7 @@ Switch the active workflow profile, or report the one the bar should show.
 Options:
     --select | -S       Select a workflow from the available options
     --set               Set the given workflow
+    --reconcile         Restore the active workflow's runtime side effects
     --list              List selectable workflows as name, icon and description
     --bar               Get workflow info for the active bar
     --help   | -h       Show this help message
@@ -71,7 +74,7 @@ apply_quickshell_workflow() {
   local last_applied
 
   layout="$(get_workflow_quickshell_layout "${current_workflow_path}")"
-  current_layout_name="$(state_get "QUICKSHELL_LAYOUT_NAME" "right")"
+  current_layout_name="$(state_get "QUICKSHELL_LAYOUT_NAME" "sidebar")"
   saved_layout="$(state_get "WORKFLOW_QUICKSHELL_PREV_LAYOUT" "")"
   last_applied="$(state_get "WORKFLOW_QUICKSHELL_LAST_APPLIED_LAYOUT" "")"
 
@@ -199,10 +202,16 @@ apply_workflow_update() {
     [[ "${current_workflow}" == "${notification_rule%%_*}" ]] && notification_state=enable || notification_state=disable
     dunstctl rule "${notification_rule}" "${notification_state}" >/dev/null 2>&1 || true
   done
+  if [[ "${workflow_previous_name}" == presentation && "${current_workflow}" != presentation ]]; then
+    restore_presentation_side_effects
+  fi
   write_workflow_state
   sync_workflow_flags
   hyprctl reload config-only -q
   apply_quickshell_workflow
+  if [[ "${workflow_previous_name}" != presentation && "${current_workflow}" == presentation ]]; then
+    apply_presentation_side_effects
+  fi
 }
 
 handle_bar() {
@@ -216,7 +225,7 @@ if [[ -z "${*}" ]]; then
   exit 1
 fi
 
-LONG_OPTS="select,set:,list,bar,help"
+LONG_OPTS="select,set:,reconcile,list,bar,help"
 SHORT_OPTS="Sh"
 PARSED=$(getopt --options "${SHORT_OPTS}" --longoptions "${LONG_OPTS}" --name "$0" -- "$@") || exit 2
 eval set -- "${PARSED}"
@@ -241,6 +250,10 @@ while true; do
       workflow_locked "$2" && exit 1
       state_set "HYPR_WORKFLOW" "$2" "staterc"
       apply_workflow_update
+      exit 0
+      ;;
+    --reconcile)
+      reconcile_workflow_side_effects
       exit 0
       ;;
     --help | -h)

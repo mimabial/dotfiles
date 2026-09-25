@@ -2,12 +2,12 @@
 # Sourced module; strict mode is owned by the entrypoint.
 
 nerd_font_display_name_from_package() {
-  local pkg="$1"
+  local package_name="$1"
   local display=""
 
-  display="$(printf '%s\n' "${pkg}" | sed -E 's/^(ttf-|otf-)//; s/-(nerd|nerdfonts)$//' | sed 's/-/ /g')"
+  display="$(printf '%s\n' "${package_name}" | sed -E 's/^(ttf-|otf-)//; s/-(nerd|nerdfonts)$//' | sed 's/-/ /g')"
   display="$(printf '%s\n' "${display}" | awk '{for (i = 1; i <= NF; i++) $i = toupper(substr($i,1,1)) substr($i,2); print}')"
-  [[ -n "${display}" ]] || display="${pkg}"
+  [[ -n "${display}" ]] || display="${package_name}"
   printf '%s\n' "${display}"
 }
 
@@ -26,7 +26,7 @@ nerd_font_populate_metadata_labels() {
   local out_map_name="$1"
   shift
   local -a packages=("$@")
-  local pkg=""
+  local package_name=""
   local description=""
   local label=""
 
@@ -34,12 +34,12 @@ nerd_font_populate_metadata_labels() {
 
   [[ "${#packages[@]}" -gt 0 ]] || return 0
 
-  while IFS=$'\t' read -r pkg description; do
-    [[ -n "${pkg}" ]] || continue
+  while IFS=$'\t' read -r package_name description; do
+    [[ -n "${package_name}" ]] || continue
     label="$(nerd_font_metadata_display_name "${description}" || true)"
     [[ -n "${label}" ]] || continue
     # shellcheck disable=SC2034 # Nameref output assigned for the caller.
-    metadata_label_map_ref["${pkg}"]="${label}"
+    metadata_label_map_ref["${package_name}"]="${label}"
   done < <(
     pacman -Si -- "${packages[@]}" 2>/dev/null |
       awk '
@@ -62,7 +62,7 @@ nerd_font_menu_build() {
   local out_labels_name="$2"
   local out_map_name="$3"
   local package_list=""
-  local pkg=""
+  local package_name=""
   local label=""
   local -a packages=()
   local -A seen_labels=()
@@ -91,17 +91,17 @@ nerd_font_menu_build() {
   mapfile -t packages < <(printf '%s\n' "${package_list}" | sed '/^$/d')
   nerd_font_populate_metadata_labels metadata_labels "${packages[@]}"
 
-  while IFS= read -r pkg; do
-    [[ -n "${pkg}" ]] || continue
-    label="${metadata_labels["${pkg}"]:-}"
-    [[ -n "${label}" ]] || label="$(nerd_font_display_name_from_package "${pkg}")"
+  while IFS= read -r package_name; do
+    [[ -n "${package_name}" ]] || continue
+    label="${metadata_labels["${package_name}"]:-}"
+    [[ -n "${label}" ]] || label="$(nerd_font_display_name_from_package "${package_name}")"
     if [[ -n "${seen_labels["${label}"]:-}" ]]; then
-      label="${label} [${pkg}]"
+      label="${label} [${package_name}]"
     fi
     seen_labels["${label}"]=1
     font_menu_labels_ref+=("${label}")
     # shellcheck disable=SC2034 # Associative-array output assigned for the caller.
-    font_menu_package_map_ref["${label}"]="${pkg}"
+    font_menu_package_map_ref["${label}"]="${package_name}"
   done <<<"${package_list}"
 }
 

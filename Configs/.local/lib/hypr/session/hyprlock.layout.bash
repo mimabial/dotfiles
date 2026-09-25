@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
-find_filepath() {
+find_hyprlock_layout_file() {
   local filename="${1:-default}"
   local search_name="${filename%.conf}.conf"
   local candidate extra_dir
@@ -33,7 +33,7 @@ find_filepath() {
   return 1
 }
 
-check_and_sanitize_process() {
+stop_running_hyprlock() {
   local unit_name="${1:-${HYPRLOCK_SCOPE_NAME}}"
   if systemctl --user is-active "${unit_name}" >/dev/null 2>&1; then
     systemctl --user stop "${unit_name}" >/dev/null 2>&1
@@ -174,7 +174,7 @@ hyprlock_resolve_active_layout() {
   fi
   layout_name="${layout_name:-${HYPRLOCK_LAYOUT:-default}}"
 
-  find_filepath "${layout_name}" || find_filepath "default"
+  find_hyprlock_layout_file "${layout_name}" || find_hyprlock_layout_file "default"
 }
 
 ensure_hyprlock_conf() {
@@ -186,7 +186,7 @@ ensure_hyprlock_conf() {
   fi
 
   layout_path="$(hyprlock_resolve_active_layout "${target_file}")" || return 1
-  generate_conf "${layout_path}" "${target_file}"
+  write_hyprlock_config "${layout_path}" "${target_file}"
   print_log -sec "hyprlock" -stat "repaired" "$(hypr_compact_path "${target_file}")"
 }
 
@@ -216,26 +216,26 @@ hyprlock_managed_conf_comments() {
 EOF
 }
 
-layout_test() {
+preview_hyprlock_layout() {
   print_log -sec "hyprlock" -stat "Test" "Please swipe,press a key or click to exit."
-  local hyprlock_conf_name="${*:-${1}}"
-  check_and_sanitize_process
-  hyprlock_conf_path=$(find_filepath "${hyprlock_conf_name}")
-  if [ -z "${hyprlock_conf_path}" ]; then
-    print_log -sec "hyprlock" -stat "Error" "Layout ${hyprlock_conf_name} not found."
+  local layout_name="${1:-default}" layout_path=""
+  stop_running_hyprlock
+  layout_path="$(find_hyprlock_layout_file "${layout_name}" || true)"
+  if [[ -z "${layout_path}" ]]; then
+    print_log -sec "hyprlock" -stat "Error" "Layout ${layout_name} not found."
     exit 1
   fi
   local runtime_dir=""
   local temp_path=""
   runtime_dir="$(hypr_runtime_subdir hypr)" || exit 1
   temp_path="${runtime_dir}/hyprlock-test.conf"
-  generate_conf "${hyprlock_conf_path}" "${temp_path}"
+  write_hyprlock_config "${layout_path}" "${temp_path}"
   append_preview_marker "${temp_path}"
   "${HYPR_LIB_DIR}/system/app2unit.sh" -S both -u "${HYPRLOCK_SCOPE_NAME}" -t scope -- hyprlock --no-fade-in --immediate-render --grace 99999999 -c "${temp_path}"
   rm -f "${temp_path}"
 }
 
-generate_conf() {
+write_hyprlock_config() {
   local path="${1:-${HYPRLOCK_SHARED_DIR}/default.conf}"
   local target_file="${2:-${HYPR_CONFIG_HOME}/hyprlock.conf}"
   local hyprlock_conf="${HYPR_DATA_HOME:-${XDG_DATA_HOME}/hypr}/hyprlock.conf"
@@ -265,14 +265,14 @@ fn_select() {
 
 fn_apply() {
   local layout_name="${1}"
-  local hyprlock_conf_path
-  hyprlock_conf_path="$(find_filepath "${layout_name}")" || {
+  local layout_path
+  layout_path="$(find_hyprlock_layout_file "${layout_name}")" || {
     print_log -sec "hyprlock" -stat "Error" "Layout ${layout_name} not found."
     return 1
   }
   state_set "HYPRLOCK_LAYOUT" "${layout_name}" "staterc"
-  generate_conf "${hyprlock_conf_path}"
-  "${HYPR_LIB_DIR}/system/font.sh" resolve "${hyprlock_conf_path}"
+  write_hyprlock_config "${layout_path}"
+  "${HYPR_LIB_DIR}/system/font.sh" resolve "${layout_path}"
   fn_profile
   send_ephemeral_notif "hypr-hyprlock-layout" -t 2000 -i "system-lock-screen" "Hyprlock layout" "${layout_name}"
 }

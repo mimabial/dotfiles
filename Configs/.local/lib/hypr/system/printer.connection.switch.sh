@@ -2,8 +2,6 @@
 
 set -euo pipefail
 
-set -eo pipefail
-
 if [[ "${HYPR_SHELL_INIT:-0}" -ne 1 ]] && command -v hyprshell >/dev/null 2>&1; then
   set +u
   eval "$(hyprshell init)"
@@ -98,7 +96,7 @@ read_state_uri() {
 
 pick_transport_uri() {
   local target_transport="$1"
-  local hint="${3:-}"
+  local hint="${2:-}"
   local preferred=""
   local fallback=""
   local normalized_uri=""

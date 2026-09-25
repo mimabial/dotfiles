@@ -16,7 +16,7 @@ theme_desktop_ini_write_batch() {
       rest="${entry#*:}"
       printf '%s\t%s\t%s\n' "${entry%%:*}" "${rest%%=*}" "${rest#*=}"
     done
-  } | ini_write_multi "${config_file}"
+  } | ini_write_records "${config_file}"
 }
 
 theme_desktop_write_generated_file() {
@@ -151,14 +151,11 @@ theme_desktop_resolve_values() {
   local pywal_gtk_dir="${XDG_DATA_HOME:-$HOME/.local/share}/themes/Pywal16-Gtk"
   if [[ -n "${HYPR_THEME:-}" && (-d "${pack_dir}/gtk-3.0" || -d "${pack_dir}/gtk-4.0") ]]; then
     resolved_gtk="${HYPR_THEME// /-}"
-    mkdir -p "${HOME}/.themes"
-    ln -snf "${pack_dir}" "${HOME}/.themes/${resolved_gtk}" || true
   elif [[ -f "${pywal_gtk_dir}/gtk-3.0/gtk.css" || -f "${pywal_gtk_dir}/gtk-4.0/gtk.css" ]]; then
     resolved_gtk="Pywal16-Gtk"
     # render/gtk.py alternates two names for this folder on every build; GTK 3 reloads a theme only when its name changes.
     [[ -s "${pywal_gtk_dir}/theme-name" ]] && read -r resolved_gtk <"${pywal_gtk_dir}/theme-name" || true
   fi
-  [[ -d "${HOME}/.themes" ]] && find "${HOME}/.themes" -maxdepth 1 -lname "${HYPR_CONFIG_HOME}/themes/*" ! -name "${resolved_gtk}" -delete || true
 
   RESOLVED_GTK_THEME="${resolved_gtk}"
 
@@ -175,6 +172,16 @@ theme_desktop_resolve_values() {
     FONT FONT_SIZE DOCUMENT_FONT DOCUMENT_FONT_SIZE MONOSPACE_FONT \
     MONOSPACE_FONT_SIZE BUTTON_LAYOUT FONT_ANTIALIASING FONT_HINTING \
     RESOLVED_KDE_COLOR_SCHEME RESOLVED_QT_STYLE
+}
+
+theme_desktop_sync_gtk_theme_links() {
+  local pack_dir="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME:-}"
+
+  if [[ -n "${HYPR_THEME:-}" && (-d "${pack_dir}/gtk-3.0" || -d "${pack_dir}/gtk-4.0") ]]; then
+    mkdir -p "${HOME}/.themes"
+    ln -snf "${pack_dir}" "${HOME}/.themes/${RESOLVED_GTK_THEME}" || true
+  fi
+  [[ -d "${HOME}/.themes" ]] && find "${HOME}/.themes" -maxdepth 1 -lname "${HYPR_CONFIG_HOME}/themes/*" ! -name "${RESOLVED_GTK_THEME}" -delete || true
 }
 
 theme_desktop_update_xcursor_resource() {
@@ -341,7 +348,7 @@ theme_desktop_install_kdeglobals_color_sections() {
 
   [[ -n "${records}" ]] || return 0
 
-  printf '%s' "${records}" | ini_write_multi "${target_file}" || return 1
+  printf '%s' "${records}" | ini_write_records "${target_file}" || return 1
 }
 
 theme_desktop_notify_kde_palette_changed() {
@@ -657,7 +664,8 @@ theme_desktop_restart_portal_backends_if_needed() {
 }
 
 theme_desktop_prepare_state() {
-  theme_desktop_resolve_values
+  theme_desktop_resolve_values || return 1
+  theme_desktop_sync_gtk_theme_links
 }
 
 theme_desktop_static_state_hash() {

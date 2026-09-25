@@ -30,7 +30,9 @@ Domains:
 USAGE
 }
 
-hypr_service_reset_cli_state
+mode=""
+declare -a forwarded_args=() cli_args=()
+declare -A cli_options=()
 
 hypr_service_parse_mode_cli usage mode forwarded_args "$@"
 hypr_service_validate_mode "${mode}" || {
@@ -38,19 +40,19 @@ hypr_service_validate_mode "${mode}" || {
   exit 1
 }
 
-hypr_service_parse_refresh_args "${forwarded_args[@]}"
-[[ "${#hypr_service_cli_args[@]}" -gt 0 ]] || {
+hypr_service_parse_refresh_args cli_options cli_args "${forwarded_args[@]}"
+[[ "${#cli_args[@]}" -gt 0 ]] || {
   usage
   exit 1
 }
 
-if [[ "${mode}" == "restore" && -z "${hypr_service_cli_backup_label}" ]]; then
-  hypr_service_cli_backup_label="restore"
+if [[ "${mode}" == "restore" && -z "${cli_options[backup_label]}" ]]; then
+  cli_options[backup_label]="restore"
 fi
 
 hypr_service_init
-hypr_service_apply_cli_env
+hypr_service_apply_cli_env "${cli_options[dry_run]}" "${cli_options[backup_label]}"
 
-hypr_service_apply_manifest_domains "${mode}" "${hypr_service_cli_show_diff}" "${hypr_service_cli_quiet}" "${hypr_service_cli_args[@]}"
+hypr_service_apply_manifest_domains "${mode}" "${cli_options[show_diff]}" "${cli_options[quiet]}" "${cli_args[@]}"
 
 hypr_service_maybe_report_backup_root

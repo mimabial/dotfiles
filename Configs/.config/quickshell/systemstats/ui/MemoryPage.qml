@@ -25,6 +25,7 @@ Column {
   readonly property color warn: service ? service.warn : Color.urgent
   readonly property color danger: service ? service.danger : Color.urgent
   readonly property color track: Util.alpha(foreground, 0.16)
+  readonly property color reclaimable: Util.alpha(s2, 0.35)
 
   readonly property var mem: snap.mem || ({})
   readonly property var procs: snap.procs || null
@@ -89,7 +90,7 @@ Column {
           segments: [
             { value: Model.num(root.mem.apps) / root.total, color: root.s1 },
             { value: Model.num(root.mem.shared) / root.total, color: root.s3 },
-            { value: Model.num(root.mem.cached) / root.total, color: root.s2 }
+            { value: Model.num(root.mem.cached) / root.total, color: root.reclaimable }
           ]
           valueText: String(Math.round(root.usedPercent))
           unitText: "%"
@@ -117,7 +118,7 @@ Column {
 
     StatRow {
       label: "Cached"
-      dot: root.s2
+      dot: root.reclaimable
       value: root.part(root.mem.cached).value
       unit: root.part(root.mem.cached).unit
       foreground: root.foreground

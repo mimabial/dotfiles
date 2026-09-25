@@ -7,6 +7,7 @@ BarButton {
     id: root
     property bool popupsAllowed: true
     property bool loaded: false
+    opensPopup: true
     property int dueCount: 0
     property bool notifyOnDue: true
     // ids already announced, so a task is not re-notified every scan

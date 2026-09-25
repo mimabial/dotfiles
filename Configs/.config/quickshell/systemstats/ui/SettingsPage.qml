@@ -26,7 +26,7 @@ Column {
     var out = []
     for (var i = 0; i < Model.MODULES.length; i++) {
       var id = Model.MODULES[i].id
-      if (id === "settings") continue
+      if (id === "settings" || id === "alerts") continue
       if (id === "gpu" && !hasGpu) continue
       if (id === "battery" && !hasBattery) continue
       out.push(id)

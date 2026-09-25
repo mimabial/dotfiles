@@ -5,64 +5,64 @@ import qs.Ui
 
 Row {
   id: root
-  property var p  // Panel root
+  required property var controller
 
   width: parent ? parent.width : 0
   spacing: Style.space(6)
 
   PanelActionButton {
-    iconText: "\uf074"; tooltipText: "Shuffle: " + (root.p.shuffleMode ? "ON" : "OFF")
-    foreground: root.p.shuffleMode ? Color.accent : root.p.dim
-    hoverColor: Color.accent; fontFamily: root.p.fontFamily
+    iconText: "\uf074"; tooltipText: "Shuffle: " + (root.controller.shuffleMode ? "ON" : "OFF")
+    foreground: root.controller.shuffleMode ? Color.accent : root.controller.dim
+    hoverColor: Color.accent; fontFamily: root.controller.fontFamily
     anchors.verticalCenter: parent.verticalCenter
-    onClicked: root.p.toggleShuffle()
+    onClicked: root.controller.toggleShuffle()
   }
 
   PanelActionButton {
     iconText: "\uf048"; tooltipText: "Previous Track"
-    foreground: root.p.foreground; hoverColor: Color.accent; fontFamily: root.p.fontFamily
+    foreground: root.controller.foreground; hoverColor: Color.accent; fontFamily: root.controller.fontFamily
     anchors.verticalCenter: parent.verticalCenter
-    onClicked: root.p.prevTrack()
+    onClicked: root.controller.prevTrack()
   }
 
   PanelActionButton {
-    iconText: root.p.isPlaying ? "\uf04c" : "\uf04b"
-    tooltipText: root.p.isPlaying ? "Pause" : "Play"
-    foreground: root.p.isPlaying ? Color.accent : root.p.foreground
-    hoverColor: Color.accent; fontFamily: root.p.fontFamily
+    iconText: root.controller.isPlaying ? "\uf04c" : "\uf04b"
+    tooltipText: root.controller.isPlaying ? "Pause" : "Play"
+    foreground: root.controller.isPlaying ? Color.accent : root.controller.foreground
+    hoverColor: Color.accent; fontFamily: root.controller.fontFamily
     anchors.verticalCenter: parent.verticalCenter
-    onClicked: root.p.togglePlayback()
+    onClicked: root.controller.togglePlayback()
   }
 
   PanelActionButton {
     iconText: "\uf051"; tooltipText: "Next Track"
-    foreground: root.p.foreground; hoverColor: Color.accent; fontFamily: root.p.fontFamily
+    foreground: root.controller.foreground; hoverColor: Color.accent; fontFamily: root.controller.fontFamily
     anchors.verticalCenter: parent.verticalCenter
-    onClicked: root.p.nextTrack()
+    onClicked: root.controller.nextTrack()
   }
 
   PanelActionButton {
-    iconText: "\uf01e"; tooltipText: "Repeat: " + root.p.repeatMode.toUpperCase()
-    foreground: root.p.repeatMode !== "off" ? Color.accent : root.p.dim
-    hoverColor: Color.accent; fontFamily: root.p.fontFamily
+    iconText: "\uf01e"; tooltipText: "Repeat: " + root.controller.repeatMode.toUpperCase()
+    foreground: root.controller.repeatMode !== "off" ? Color.accent : root.controller.dim
+    hoverColor: Color.accent; fontFamily: root.controller.fontFamily
     anchors.verticalCenter: parent.verticalCenter
-    onClicked: root.p.cycleRepeat()
+    onClicked: root.controller.cycleRepeat()
   }
 
   PanelActionButton {
     iconText: "\uf04d"; tooltipText: "Stop Playback"
-    foreground: root.p.foreground; hoverColor: root.p.urgent; fontFamily: root.p.fontFamily
+    foreground: root.controller.foreground; hoverColor: root.controller.urgent; fontFamily: root.controller.fontFamily
     anchors.verticalCenter: parent.verticalCenter
-    onClicked: root.p.stop()
+    onClicked: root.controller.stop()
   }
 
   PanelActionButton {
-    iconText: root.p.currentLiked ? "\uf004" : "\uf08a"
-    tooltipText: root.p.currentLiked ? "Remove from Liked" : "Add to Liked"
-    foreground: root.p.currentLiked ? root.p.urgent : root.p.dim
-    hoverColor: root.p.urgent; fontFamily: root.p.fontFamily
+    iconText: root.controller.currentLiked ? "\uf004" : "\uf08a"
+    tooltipText: root.controller.currentLiked ? "Remove from Liked" : "Add to Liked"
+    foreground: root.controller.currentLiked ? root.controller.urgent : root.controller.dim
+    hoverColor: root.controller.urgent; fontFamily: root.controller.fontFamily
     anchors.verticalCenter: parent.verticalCenter
-    onClicked: root.p.toggleLiked()
+    onClicked: root.controller.toggleLiked()
   }
 
   Item { width: Style.space(4) }
@@ -73,12 +73,13 @@ Row {
 
     Text {
       anchors.verticalCenter: parent.verticalCenter
-      text: root.p.volumePct === 0 ? "\uf026" : (root.p.volumePct < 50 ? "\uf027" : "\uf028")
-      color: root.p.volumePct === 0 ? root.p.urgent : (volIconMouse.containsMouse ? Color.accent : root.p.dim)
-      font.family: root.p.fontFamily; font.pixelSize: Style.font.caption
+      width: Style.space(22); horizontalAlignment: Text.AlignHCenter
+      text: root.controller.volumePct === 0 ? "\uf026" : (root.controller.volumePct < 50 ? "\uf027" : "\uf028")
+      color: root.controller.volumePct === 0 ? root.controller.urgent : (volIconMouse.containsMouse ? Color.accent : root.controller.dim)
+      font.family: root.controller.fontFamily; font.pixelSize: Style.font.caption
       MouseArea {
         id: volIconMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-        onClicked: root.p.toggleMute()
+        onClicked: root.controller.toggleMute()
       }
     }
 
@@ -89,10 +90,10 @@ Row {
       Rectangle {
         anchors.verticalCenter: parent.verticalCenter
         width: parent.width; height: Style.space(4); radius: Style.space(2)
-        color: root.p.shell.alpha(root.p.shell.role("br", root.p.foreground), 0.25)
+        color: root.controller.shell.alpha(root.controller.shell.role("br", root.controller.foreground), 0.25)
 
         Rectangle {
-          width: Math.max(Style.space(2), parent.width * (root.p.volumePct / 100.0))
+          width: Math.max(Style.space(2), parent.width * (root.controller.volumePct / 100.0))
           height: parent.height; radius: Style.space(2); color: Color.accent
         }
       }
@@ -100,10 +101,10 @@ Row {
       MouseArea {
         anchors.fill: parent; cursorShape: Qt.PointingHandCursor
         onPositionChanged: function(mouse) {
-          if (pressed) root.p.setVolume(Math.max(0, Math.min(100, Math.round((mouse.x / width) * 100))))
+          if (pressed) root.controller.setVolume(Math.max(0, Math.min(100, Math.round((mouse.x / width) * 100))))
         }
         onClicked: function(mouse) {
-          root.p.setVolume(Math.max(0, Math.min(100, Math.round((mouse.x / width) * 100))))
+          root.controller.setVolume(Math.max(0, Math.min(100, Math.round((mouse.x / width) * 100))))
         }
       }
     }

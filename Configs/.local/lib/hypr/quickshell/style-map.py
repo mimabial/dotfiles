@@ -7,12 +7,16 @@ import json
 import os
 import re
 import sys
+from collections import namedtuple
+from functools import cache
 from pathlib import Path
 
 CONFIG = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "quickshell"
 CACHE = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "hypr/quickshell/style-map"
 
-BARS = {"vertical": "MainBar", "horizontal": "TopBar", "winbar": "WinBar"}
+BARS = {"vertical": "MainBar", "horizontal": "HorizontalBar", "winbar": "HorizontalBar"}
+InlineComponent = namedtuple("InlineComponent", "child css variants pins body")
+EMPTY_INLINE_COMPONENT = InlineComponent(None, None, (), (), "")
 
 # BarButton reads these from the style box, so a QML assignment shadows the rule
 PINNABLE = ("fill", "outline", "fontWeight", "textColor")
@@ -33,7 +37,7 @@ def every_css_literal(index):
     """Every key any component asks for, however deeply nested."""
     keys = set()
     for path in index.values():
-        text = read(path)
+        text = read_qml_cached(path)
         for expr in re.findall(r'\bcss:\s*([^\n;]+)', text):
             keys.update(re.findall(r'"([^"]*)"', expr))
         keys |= box_keys(text)
@@ -45,10 +49,9 @@ def qml_index():
     return {path.stem: path for path in files}
 
 
-def read(path, _cache={}):
-    if path not in _cache:
-        _cache[path] = path.read_text(encoding="utf-8")
-    return _cache[path]
+@cache
+def read_qml_cached(path):
+    return path.read_text(encoding="utf-8")
 
 
 def brace_block(text, open_index):
@@ -108,7 +111,7 @@ def css_keys(expr, text):
     return base, variants
 
 
-def pinned(body):
+def assigned_style_properties(body):
     """Assigned properties only — a `property color outline:` declaration is not one."""
     found = []
     for prop in PINNABLE:
@@ -121,7 +124,7 @@ def pinned(body):
     return found
 
 
-def gates(text):
+def slot_gate_properties(text):
     """slot id -> the layout prop that has to be set for it to exist."""
     found = {}
     # `.concat(root.p ? [slot] : [])` — present only when p is set
@@ -159,7 +162,7 @@ def slot_order(text):
     return list(dict.fromkeys(order))
 
 
-def nested(body, source, blocks, index):
+def collect_nested_style_slots(body, source, blocks, index):
     """Slots of a group nested in another slot; it names siblings of the outer group."""
     inner = []
     for name in slot_order(body):
@@ -169,7 +172,7 @@ def nested(body, source, blocks, index):
         base, variants = css_keys(css_expr(child), child)
         child_type = inner_type(child)
         if base is None and child_type in index:
-            child_text = read(index[child_type])
+            child_text = read_qml_cached(index[child_type])
             base, variants = css_keys(css_expr(child_text), child_text)
             if base is None:
                 boxed = box_keys(child_text)
@@ -177,22 +180,22 @@ def nested(body, source, blocks, index):
                 variants = sorted(boxed - {base}) if base else []
         if base:
             inner.append({"css": base, "variants": variants, "gate": None, "default": True,
-                          "pinned": [(prop, source) for prop in pinned(child)],
+                          "pinned": [(prop, source) for prop in assigned_style_properties(child)],
                           "type": inner_type(child), "children": []})
     return inner
 
 
-def walk(type_name, index, depth=0, seen=()):
+def collect_component_style_hierarchy(type_name, index, depth=0, seen=()):
     """(group css, group variants, [slot dicts]) for a component type."""
     path = index.get(type_name)
     if path is None or depth > 4 or type_name in seen:
         return None, [], []
-    text = read(path)
+    text = read_qml_cached(path)
     blocks = block_map(text)
     first = text.find("Component")
     head = text if first < 0 else text[:first]
     group_css, group_variants = css_keys(css_expr(head), text)
-    gating, slots = gates(text), []
+    gating, slots = slot_gate_properties(text), []
     for name in slot_order(text) or list(blocks):
         body = blocks.get(name)
         if body is None:
@@ -201,14 +204,14 @@ def walk(type_name, index, depth=0, seen=()):
         base, variants = css_keys(css_expr(body), text)
         children = []
         if base is None and child_type in index:
-            base, variants, children = walk(child_type, index, depth + 1, seen + (type_name,))
-        marks = [(prop, path.name) for prop in pinned(body)]
+            base, variants, children = collect_component_style_hierarchy(child_type, index, depth + 1, seen + (type_name,))
+        marks = [(prop, path.name) for prop in assigned_style_properties(body)]
         if child_type in index and child_type not in BASE_TYPES:
             already = [prop for prop, _ in marks]
             marks += [(prop, index[child_type].name)
-                      for prop in pinned(read(index[child_type])) if prop not in already]
+                      for prop in assigned_style_properties(read_qml_cached(index[child_type])) if prop not in already]
         if not children:
-            children = nested(body, path.name, blocks, index)
+            children = collect_nested_style_slots(body, path.name, blocks, index)
         gate = gating.get(name)
         if base or children:
             slots.append({"css": base, "variants": variants, "gate": gate, "pinned": marks,
@@ -232,30 +235,45 @@ def walk(type_name, index, depth=0, seen=()):
     return group_css, group_variants, unique
 
 
-def registry(bar, index):
-    text = read(index[bar])
+def bar_component_registry(panel, index):
+    text = read_qml_cached(index["BarModules"])
     match = re.search(r'registry:\s*\(\{(.+?)\}\)', text, re.S)
-    pairs = re.findall(r'"([^"]+)"\s*:\s*(\w+)', match.group(1)) if match else []
+    pairs = {}
+    primary_mode = panel if panel in ("vertical", "winbar") else None
+    for key, expression in re.findall(r'"([^"]+)"\s*:\s*([^,}\n]+)', match.group(1) if match else ""):
+        choices = re.findall(r'\bmod_\w+\b', expression)
+        if choices:
+            condition = re.match(r'\s*(vertical|winbar)\s*\?', expression)
+            pairs[key] = choices[0 if condition and condition.group(1) == primary_mode else -1]
     inline = {}
     for names, body in components(text):
         child = inner_type(body)
         base, variants = css_keys(css_expr(body), text)
         for name in names:
-            inline.setdefault(name, (child, base, variants, pinned(body), body))
-    return dict(pairs), inline, block_map(text)
+            inline.setdefault(name, InlineComponent(child, base, variants, assigned_style_properties(body), body))
+    return pairs, inline, block_map(text)
+
+
+@cache
+def layout_data(layout):
+    data = json.loads((CONFIG / "layouts" / f"{layout}.json").read_text())
+    if data.get("extends"):
+        shared = json.loads((CONFIG / "layouts" / "shared" / f"{data['extends']}.json").read_text())
+        data = {**shared, **data}
+    return data
 
 
 def modules_of(layout):
-    data = json.loads((CONFIG / "layouts" / f"{layout}.json").read_text())
+    data = layout_data(layout)
     entries = [m for key in ("modules", "left", "center", "right") for m in data.get(key, [])]
     return [(e, {}) if isinstance(e, str) else (e.get("id", ""), e.get("props") or {})
             for e in entries]
 
 
-def render(layout, index):
-    data = json.loads((CONFIG / "layouts" / f"{layout}.json").read_text())
+def render_layout_style_map(layout, index):
+    data = layout_data(layout)
     bar = BARS[data["panel"]]
-    table, inline, bar_blocks = registry(bar, index)
+    table, inline, bar_blocks = bar_component_registry(data["panel"], index)
     lines = [f"{bar}", ""]
     used = set()
 
@@ -267,17 +285,21 @@ def render(layout, index):
         if module_id == "spacer":
             continue
         component = table.get(module_id)
-        child, base, variants, marks, body = inline.get(component, (None, None, [], [], ""))
-        group_css, slots = base, []
-        marks = [(prop, f"{bar}.qml") for prop in marks]
+        inline_component = inline.get(component, EMPTY_INLINE_COMPONENT)
+        child = inline_component.child
+        base = inline_component.css
+        variants = inline_component.variants
+        body = inline_component.body
+        group_css = base
+        marks = [(prop, "BarModules.qml") for prop in inline_component.pins]
         # a group declared inline in the bar file keeps its slots there too
-        slots = nested(body, f"{bar}.qml", bar_blocks, index)
+        slots = collect_nested_style_slots(body, "BarModules.qml", bar_blocks, index)
         if child in index:
-            group_css, child_variants, walked = walk(child, index, seen=(bar,))
+            group_css, child_variants, walked = collect_component_style_hierarchy(child, index, seen=(bar,))
             slots = walked or slots
             if group_css is None and not slots:
                 # a module whose css sits on a delegate rather than at the root
-                child_text = read(index[child])
+                child_text = read_qml_cached(index[child])
                 group_css, child_variants = css_keys(css_expr(child_text), child_text)
             group_css = group_css or base
             variants = variants or child_variants
@@ -285,7 +307,7 @@ def render(layout, index):
             if not slots and child not in BASE_TYPES:
                 already = [prop for prop, _ in marks]
                 marks += [(prop, index[child].name)
-                          for prop in pinned(read(index[child])) if prop not in already]
+                          for prop in assigned_style_properties(read_qml_cached(index[child])) if prop not in already]
         head = f"{module_id}  →  {group_css}" if group_css and group_css != module_id else module_id
         if child in index and child not in BASE_TYPES:
             head += f"   ({index[child].relative_to(CONFIG)})"
@@ -353,7 +375,7 @@ def main():
         out.mkdir(parents=True, exist_ok=True)
     for layout in names:
         try:
-            body = render(layout, index)
+            body = render_layout_style_map(layout, index)
         except Exception as error:  # a half-saved json must not kill the watcher
             print(f"style-map: {layout}: {error}", file=sys.stderr)
             continue

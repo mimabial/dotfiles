@@ -6,28 +6,28 @@ set -euo pipefail
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/runtime/init.bash" || exit 1
 hypr_runtime_require state || exit 1
 hypr_runtime_load_state || exit 1
-dock=${BATTERY_NOTIFY_DOCK:-false}
+dock_mode_enabled=${BATTERY_NOTIFY_DOCK:-false}
 
-config_info() {
+print_battery_notification_config() {
   cat <<EOF
 
 Set BATTERY_NOTIFY_* overrides in '$XDG_STATE_HOME/hypr/env-overrides'.
 
       STATUS      THRESHOLD    INTERVAL
-      Full        $battery_full_threshold          $notify Minutes
-      Critical    $battery_critical_threshold           $timer Seconds then '$execute_critical'
-      Low         $battery_low_threshold           $interval Percent    then '$execute_low'
-      Unplug      $unplug_charger_threshold          $interval Percent   then '$execute_unplug'
+      Full        $battery_full_threshold          $full_notification_interval_minutes Minutes
+      Critical    $battery_critical_threshold           $critical_countdown_seconds Seconds then '$execute_critical'
+      Low         $battery_low_threshold           $notification_percentage_step Percent    then '$execute_low'
+      Unplug      $unplug_charger_threshold          $notification_percentage_step Percent   then '$execute_unplug'
 
       Command on Charging: $execute_charging
       Command on Discharging: $execute_discharging
-      Dock Mode: $dock (Will not notify on status change) 
+      Dock Mode: $dock_mode_enabled (Will not notify on status change) 
 
 
 EOF
 }
 
-is_laptop() {
+exit_when_battery_missing() {
   if grep -q "Battery" /sys/class/power_supply/BAT*/type; then
     return 0
   else
@@ -35,7 +35,7 @@ is_laptop() {
     exit 0
   fi
 }
-is_laptop
+exit_when_battery_missing
 print_verbose_state() {
   if $verbose; then
     cat <<VERBOSE
@@ -90,26 +90,26 @@ run_configured_command() {
   esac
 }
 
-notify_thresholds() {
-  if [[ "$battery_percentage" -ge "$unplug_charger_threshold" ]] && [[ "$battery_status" != "Discharging" ]] && [[ "$battery_status" != "Full" ]] && (((battery_percentage - last_notified_percentage) >= interval)); then
-    printf -v steps '%03d' "$(((battery_percentage + 5) / 10 * 10))"
-    if $verbose; then echo "Prompt:UNPLUG: $unplug_charger_threshold $battery_status $battery_percentage $steps"; fi
-    dunstify -a "Power" -t 5000 -r 5 -u "CRITICAL" -i "battery-${steps:-100}-charging" "Battery Charged" "Battery is at $battery_percentage%. You can unplug the charger"
+notify_battery_thresholds() {
+  if [[ "$battery_percentage" -ge "$unplug_charger_threshold" ]] && [[ "$battery_status" != "Discharging" ]] && [[ "$battery_status" != "Full" ]] && (((battery_percentage - last_notified_percentage) >= notification_percentage_step)); then
+    printf -v battery_icon_level '%03d' "$(((battery_percentage + 5) / 10 * 10))"
+    if $verbose; then echo "Prompt:UNPLUG: $unplug_charger_threshold $battery_status $battery_percentage $battery_icon_level"; fi
+    dunstify -a "Power" -t 5000 -r 5 -u "CRITICAL" -i "battery-${battery_icon_level:-100}-charging" "Battery Charged" "Battery is at $battery_percentage%. You can unplug the charger"
     last_notified_percentage=$battery_percentage
   elif [[ "$battery_percentage" -le "$battery_critical_threshold" ]]; then
-    count=$((timer > 60 ? timer : 60))
-    while [ $count -gt 0 ] && [[ $battery_status == "Discharging"* ]]; do
+    seconds_remaining=$((critical_countdown_seconds > 60 ? critical_countdown_seconds : 60))
+    while [ $seconds_remaining -gt 0 ] && [[ $battery_status == "Discharging"* ]]; do
       for battery in /sys/class/power_supply/BAT*; do battery_status=$(<"$battery/status"); done
       if [[ $battery_status != "Discharging" ]]; then break; fi
-      dunstify -a "Power" -t 0 -r 5 -u "CRITICAL" -i "xfce4-battery-critical" "Battery Critically Low" "$battery_percentage% is critically low. Device will execute $execute_critical in $((count / 60)):$((count % 60)) ."
-      count=$((count - 1))
+      dunstify -a "Power" -t 0 -r 5 -u "CRITICAL" -i "xfce4-battery-critical" "Battery Critically Low" "$battery_percentage% is critically low. Device will execute $execute_critical in $((seconds_remaining / 60)):$((seconds_remaining % 60)) ."
+      seconds_remaining=$((seconds_remaining - 1))
       sleep 1
     done
-    [ $count -eq 0 ] && run_critical_action
-  elif [[ "$battery_percentage" -le "$battery_low_threshold" ]] && [[ "$battery_status" == "Discharging" ]] && (((last_notified_percentage - battery_percentage) >= interval)); then
-    printf -v steps '%d' "$(((battery_percentage + 5) / 10 * 10))"
+    [ $seconds_remaining -eq 0 ] && run_critical_action
+  elif [[ "$battery_percentage" -le "$battery_low_threshold" ]] && [[ "$battery_status" == "Discharging" ]] && (((last_notified_percentage - battery_percentage) >= notification_percentage_step)); then
+    printf -v battery_icon_level '%d' "$(((battery_percentage + 5) / 10 * 10))"
     if $verbose; then echo "Prompt:LOW: $battery_low_threshold $battery_status $battery_percentage"; fi
-    dunstify -a "Power" -t 0 -r 5 -u "CRITICAL" -i "battery-level-${steps:-10}-symbolic" "Battery Low" "Battery is at $battery_percentage%. Connect the charger."
+    dunstify -a "Power" -t 0 -r 5 -u "CRITICAL" -i "battery-level-${battery_icon_level:-10}-symbolic" "Battery Low" "Battery is at $battery_percentage%. Connect the charger."
     last_notified_percentage=$battery_percentage
   fi
 }
@@ -118,7 +118,7 @@ run_critical_action() {
   run_configured_command "${execute_critical}" background
 }
 
-resolve_battery_status() {
+handle_battery_status_transition() {
   if [[ $battery_percentage -ge $battery_full_threshold ]] && [[ "$battery_status" != *"Discharging"* ]]; then
     echo "Full and $battery_status"
     battery_status="Full"
@@ -126,38 +126,37 @@ resolve_battery_status() {
   case "$battery_status" in
     "Discharging")
       if $verbose; then echo "Case:$battery_status Level: $battery_percentage"; fi
-      if [[ "$prev_status" != "Discharging" ]] || [[ "$prev_status" == "Full" ]]; then
-        prev_status=$battery_status
+      if [[ "$previous_notified_status" != "Discharging" ]] || [[ "$previous_notified_status" == "Full" ]]; then
+        previous_notified_status=$battery_status
         urgency=NORMAL
         [[ $battery_percentage -le $battery_low_threshold ]] && urgency=CRITICAL
-        printf -v steps '%d' "$(((battery_percentage + 5) / 10 * 10))"
-        dunstify -a "Power" -t 3000 -r 5 -u "${urgency:-normal}" -i "battery-level-${steps:-10}-symbolic" "Charger Plug Out" "Battery is at $battery_percentage%."
+        printf -v battery_icon_level '%d' "$(((battery_percentage + 5) / 10 * 10))"
+        dunstify -a "Power" -t 3000 -r 5 -u "${urgency:-normal}" -i "battery-level-${battery_icon_level:-10}-symbolic" "Charger Plug Out" "Battery is at $battery_percentage%."
         run_configured_command "${execute_discharging}"
       fi
-      notify_thresholds
+      notify_battery_thresholds
       ;;
     "Not"* | "Charging")
       if $verbose; then echo "Case:$battery_status Level: $battery_percentage"; fi
-      if [[ "$prev_status" == "Discharging" ]] || [[ "$prev_status" == "Not"* ]]; then
-        prev_status=$battery_status
-        count=$((timer > 60 ? timer : 60))
+      if [[ "$previous_notified_status" == "Discharging" ]] || [[ "$previous_notified_status" == "Not"* ]]; then
+        previous_notified_status=$battery_status
         urgency=NORMAL
         [[ $battery_percentage -ge $unplug_charger_threshold ]] && urgency=CRITICAL
-        printf -v steps '%03d' "$(((battery_percentage + 5) / 10 * 10))"
-        dunstify -a "Power" -t 3000 -r 5 -u "${urgency:-normal}" -i "battery-${steps:-100}-charging" "Charger Plug In" "Battery is at $battery_percentage%."
+        printf -v battery_icon_level '%03d' "$(((battery_percentage + 5) / 10 * 10))"
+        dunstify -a "Power" -t 3000 -r 5 -u "${urgency:-normal}" -i "battery-${battery_icon_level:-100}-charging" "Charger Plug In" "Battery is at $battery_percentage%."
         run_configured_command "${execute_charging}"
       fi
-      notify_thresholds
+      notify_battery_thresholds
       ;;
     "Full")
       if $verbose; then echo "Case:$battery_status Level: $battery_percentage"; fi
       if [[ $battery_status != "Discharging" ]]; then
         local now
         now=$(date +%s)
-        if [[ "$prev_status" == *"harging"* ]] || ((now - last_full_notify_ts >= $((notify * 60)))); then
+        if [[ "$previous_notified_status" == *"harging"* ]] || ((now - last_full_notification_time >= $((full_notification_interval_minutes * 60)))); then
           dunstify -a "Power" -t 5000 -r 5 -u "CRITICAL" -i "battery-full-charging-symbolic" "Battery Full" "Please unplug your Charger"
-          prev_status=$battery_status
-          last_full_notify_ts=$now
+          previous_notified_status=$battery_status
+          last_full_notification_time=$now
           run_configured_command "${execute_charging}"
         fi
       fi
@@ -167,7 +166,7 @@ resolve_battery_status() {
         echo "Status: '==>> \"${battery_status}\" <<==' Script on Fallback mode,Unknown power supply status.Please copy this line and raise an issue to the Github Repo.Also run 'ls ${TMPDIR:-/tmp}/battery.notify' to see the list of lock files.*"
         touch "${TMPDIR:-/tmp}/battery.notify.status.fallback.$battery_status-$$"
       fi
-      notify_thresholds
+      notify_battery_thresholds
       ;;
   esac
 }
@@ -201,7 +200,7 @@ get_battery_percentage() {
   fi
 }
 
-get_battery_info() {
+refresh_battery_state() {
   total_percentage=0 battery_count=0
   for battery in /sys/class/power_supply/BAT*; do
     [[ -r "$battery/status" ]] || continue
@@ -220,14 +219,14 @@ get_battery_info() {
   battery_percentage=$((total_percentage / battery_count))
 }
 
-handle_status_change() {
-  get_battery_info
+process_battery_state_change() {
+  refresh_battery_state
 
   if [ "$battery_status" != "$last_battery_status" ] || [ "$battery_percentage" != "$last_battery_percentage" ]; then
     last_battery_status=$battery_status
     last_battery_percentage=$battery_percentage
     print_verbose_state
-    notify_thresholds
+    notify_battery_thresholds
 
     if [[ "$battery_percentage" -le "$battery_low_threshold" ]]; then
       run_configured_command "${execute_low}"
@@ -235,7 +234,7 @@ handle_status_change() {
     if [[ "$battery_percentage" -ge "$unplug_charger_threshold" ]]; then
       run_configured_command "${execute_unplug}"
     fi
-    if ! $dock; then resolve_battery_status; fi
+    if ! $dock_mode_enabled; then handle_battery_status_transition; fi
   fi
 }
 
@@ -243,9 +242,9 @@ battery_full_threshold=${BATTERY_NOTIFY_THRESHOLD_FULL:-100}
 battery_critical_threshold=${BATTERY_NOTIFY_THRESHOLD_CRITICAL:-5}
 unplug_charger_threshold=${BATTERY_NOTIFY_THRESHOLD_UNPLUG:-80}
 battery_low_threshold=${BATTERY_NOTIFY_THRESHOLD_LOW:-20}
-timer=${BATTERY_NOTIFY_TIMER:-120}
-notify=${BATTERY_NOTIFY_NOTIFY:-1140}
-interval=${BATTERY_NOTIFY_INTERVAL:-5}
+critical_countdown_seconds=${BATTERY_NOTIFY_TIMER:-120}
+full_notification_interval_minutes=${BATTERY_NOTIFY_NOTIFY:-1140}
+notification_percentage_step=${BATTERY_NOTIFY_INTERVAL:-5}
 execute_critical=${BATTERY_NOTIFY_EXECUTE_CRITICAL:-"hyprshell session/suspend.sh"}
 execute_low=${BATTERY_NOTIFY_EXECUTE_LOW:-}
 execute_unplug=${BATTERY_NOTIFY_EXECUTE_UNPLUG:-}
@@ -255,24 +254,24 @@ execute_discharging=${BATTERY_NOTIFY_EXECUTE_DISCHARGING:-}
 main() {
   trap 'find "${TMPDIR:-/tmp}" -maxdepth 1 -type f -name "battery.notify.status.fallback.*-$$" -delete 2>/dev/null || true' EXIT
 
-  config_info
+  print_battery_notification_config
   if $verbose; then
     for line in "Verbose Mode is ON..." "" "" "" ""; do echo "${line}"; done
   fi
-  get_battery_info
+  refresh_battery_state
   last_notified_percentage=$battery_percentage
-  prev_status=$battery_status
-  last_full_notify_ts=0
+  previous_notified_status=$battery_status
+  last_full_notification_time=0
   local battery_path=""
   battery_path="$(upower -e | grep battery || true)"
   [[ -n "${battery_path}" ]] || return 0
-  dbus-monitor --system "type='signal',interface='org.freedesktop.DBus.Properties',path='${battery_path}'" 2>/dev/null | while read -r battery_status_change; do handle_status_change; done
+  dbus-monitor --system "type='signal',interface='org.freedesktop.DBus.Properties',path='${battery_path}'" 2>/dev/null | while read -r property_change_signal; do process_battery_state_change; done
 }
 
 verbose=false
 case "${1:-}" in
   -i | --info)
-    config_info
+    print_battery_notification_config
     exit 0
     ;;
   -v | --verbose)
@@ -290,18 +289,18 @@ HELP
     ;;
 esac
 
-check_range() {
+warn_if_outside_range() {
   local value=$1 min=$2 max=$3 label=$4
   [[ $value =~ ^[0-9]+$ ]] && ((value >= min && value <= max)) ||
     printf '%s WARNING: %s must be %s - %s.\n' "$value" "$label" "$min" "$max" >&2
 }
 
-check_range "$battery_full_threshold" 50 100 "Full Threshold"
-check_range "$battery_critical_threshold" 2 50 "Critical Threshold"
-check_range "$battery_low_threshold" 10 80 "Low Threshold"
-check_range "$unplug_charger_threshold" 40 100 "Unplug Threshold"
-check_range "$timer" 60 1000 "Timer"
-check_range "$notify" 1 1140 "Notify"
-check_range "$interval" 1 10 "Interval"
+warn_if_outside_range "$battery_full_threshold" 50 100 "Full Threshold"
+warn_if_outside_range "$battery_critical_threshold" 2 50 "Critical Threshold"
+warn_if_outside_range "$battery_low_threshold" 10 80 "Low Threshold"
+warn_if_outside_range "$unplug_charger_threshold" 40 100 "Unplug Threshold"
+warn_if_outside_range "$critical_countdown_seconds" 60 1000 "Timer"
+warn_if_outside_range "$full_notification_interval_minutes" 1 1140 "Notify"
+warn_if_outside_range "$notification_percentage_step" 1 10 "Interval"
 
 main

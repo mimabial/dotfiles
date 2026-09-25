@@ -121,7 +121,7 @@ def hypr_border_radius() -> int:
 def main():
     if not PALETTE.is_file():
         sys.exit(f"render/gtk: missing {PALETTE}")
-    p = json.loads(PALETTE.read_text())
+    palette = json.loads(PALETTE.read_text())
     radius = hypr_border_radius()
 
     hasher = hashlib.sha256()
@@ -129,30 +129,30 @@ def main():
     hasher.update(str(radius).encode())
     hasher.update(Path(__file__).read_bytes())
     hasher.update(str(max(f.stat().st_mtime_ns for f in THEMES.rglob("*"))).encode())
-    h = hasher.hexdigest()[:16]
+    digest = hasher.hexdigest()[:16]
 
-    if cache_hit(APP, h) and all((OUT_DIR / f"gtk-{gtk}" / "gtk.css").exists() for gtk in GTK_VERSIONS):
+    if cache_hit(APP, digest) and all((OUT_DIR / f"gtk-{gtk}" / "gtk.css").exists() for gtk in GTK_VERSIONS):
         return
 
     with tempfile.TemporaryDirectory() as build:
         source = Path(build) / "sweet"
         shutil.copytree(SWEET, source)
         subprocess.run(["patch", "--batch", "--silent", "-p1", "-d", source, "-i", THEMES / "sweet.patch"], check=True)
-        css, colors = compile_theme(source, sass_palette(p, radius), "light" if p["background"] == "light" else "dark")
+        stylesheets, gradient_colors = compile_theme(source, sass_palette(palette, radius), "light" if palette["background"] == "light" else "dark")
 
         shutil.rmtree(OUT_DIR / "assets", ignore_errors=True)
         shutil.copytree(source / "assets", OUT_DIR / "assets")
         for image in (OUT_DIR / "assets").glob("*.svg"):
             text = image.read_text()
-            if any(f'id="{name}"' in text for name in colors):
+            if any(f'id="{name}"' in text for name in gradient_colors):
                 tree = ET.parse(image)
-                recolor(tree.getroot(), colors)
+                recolor(tree.getroot(), gradient_colors)
                 tree.write(image)
-        names = set(re.findall(r'url\("\.\./assets/([\w-]+?)(?:@2)?\.png"\)', "".join(css.values())))
+        asset_names = set(re.findall(r'url\("\.\./assets/([\w-]+?)(?:@2)?\.png"\)', "".join(stylesheets.values())))
         for sheet in SHEETS:
-            render_sheet(source / sheet, colors, names, OUT_DIR / "assets")
+            render_sheet(source / sheet, gradient_colors, asset_names, OUT_DIR / "assets")
 
-    for gtk, content in css.items():
+    for gtk, content in stylesheets.items():
         out_path = OUT_DIR / f"gtk-{gtk}" / "gtk.css"
         atomic_write(out_path, content)
         dark_link = out_path.with_name("gtk-dark.css")
@@ -184,7 +184,7 @@ CursorTheme=Adwaita
 ButtonLayout=close,minimize,maximize:menu
 """)
 
-    cache_store(APP, h)
+    cache_store(APP, digest)
 
 if __name__ == "__main__":
     main()

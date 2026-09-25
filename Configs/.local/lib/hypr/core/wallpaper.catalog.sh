@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
 
-find_wallpapers() {
+wallpaper_find_hashes_and_paths() {
   local wall_source="$1"
   shift
   local -a supported_files=("$@")
@@ -9,7 +9,7 @@ find_wallpapers() {
   local error_file errors ext
 
   if [[ -z "${wall_source}" ]]; then
-    print_log -err "ERROR: wallSource is empty"
+    print_log -err "ERROR: wallpaper source is empty"
     return 1
   fi
 
@@ -65,7 +65,7 @@ catalog_adjacent_index() {
   esac
 }
 
-get_hashmap_into() {
+wallpaper_scan_hashes_into() {
   local hash_name="$1"
   local list_name="$2"
   shift 2
@@ -73,7 +73,7 @@ get_hashmap_into() {
   local -n list_ref="${list_name}"
   local -a wall_sources=("$@")
   local -a missing_sources=()
-  local wall_source hash_map hash image
+  local wall_source hashed_paths hash image
 
   hash_ref=()
   list_ref=()
@@ -102,14 +102,14 @@ get_hashmap_into() {
     }
     wall_source="$(realpath -- "${wall_source}")" || continue
 
-    [[ "${LOG_LEVEL:-}" == "debug" ]] && print_log -g "DEBUG:" -b "wallSource path:" "${wall_source}"
+    [[ "${LOG_LEVEL:-}" == "debug" ]] && print_log -g "DEBUG:" -b "wallpaper source path:" "${wall_source}"
 
-    hash_map=$(find_wallpapers "${wall_source}" "${supported_files[@]}") || {
+    hashed_paths=$(wallpaper_find_hashes_and_paths "${wall_source}" "${supported_files[@]}") || {
       missing_sources+=("${wall_source}")
       continue
     }
 
-    if [[ -z "${hash_map}" ]]; then
+    if [[ -z "${hashed_paths}" ]]; then
       missing_sources+=("${wall_source}")
       continue
     fi
@@ -117,7 +117,7 @@ get_hashmap_into() {
     while read -r hash image; do
       hash_ref+=("${hash}")
       list_ref+=("${image}")
-    done <<<"${hash_map}"
+    done <<<"${hashed_paths}"
   done
 
   if ((${#missing_sources[@]} > 0)); then
@@ -127,14 +127,10 @@ get_hashmap_into() {
   ((${#list_ref[@]} > 0))
 }
 
-get_hashmap() {
-  get_hashmap_into wallHash wallList "$@"
-}
-
-# Repair broken wall.set links while collecting sorted theme metadata.
-get_themes() {
-  thmList=()
-  thmWall=()
+theme_catalog_load_and_repair_links_into() {
+  local -n theme_names_ref="$1" theme_wallpapers_ref="$2"
+  theme_names_ref=()
+  theme_wallpapers_ref=()
   local -a theme_dirs=() theme_wall_hash=() theme_wall_list=()
   local theme_dir real_wall_path wall_link_target
 
@@ -153,18 +149,18 @@ get_themes() {
     fi
 
     if [[ ! -e "${real_wall_path}" ]]; then
-      get_hashmap_into theme_wall_hash theme_wall_list "${theme_dir}" || continue
+      wallpaper_scan_hashes_into theme_wall_hash theme_wall_list "${theme_dir}" || continue
       printf 'fixing link :: %s/wall.set\n' "${theme_dir}"
       ln -fs "${theme_wall_list[0]}" "${theme_dir}/wall.set"
       real_wall_path="${theme_wall_list[0]}"
     fi
 
-    thmList+=("${theme_dir##*/}")
-    thmWall+=("${real_wall_path}")
+    theme_names_ref+=("${theme_dir##*/}")
+    theme_wallpapers_ref+=("${real_wall_path}")
   done
 }
 
-set_hash() {
+wallpaper_file_hash() {
   local hash_image="${1}" output
 
   [[ -r "${hash_image}" ]] || return 1
@@ -174,7 +170,7 @@ set_hash() {
 
 # Populate an assoc array (by name) with content hashes for the given files,
 # via a persistent mtime/size-keyed cache; only changed files are re-hashed.
-wall_hash_map_into() {
+wallpaper_cached_file_hashes_into() {
   local map_name="$1"
   shift
   local -n map_ref="${map_name}"

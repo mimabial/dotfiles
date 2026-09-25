@@ -214,7 +214,7 @@ rofi_scaled_divide() {
   printf '%s\n' "${result}"
 }
 
-get_rofi_pos() {
+rofi_window_position_theme() {
   local window_width="${1:-0}"
   local window_height="${2:-0}"
   local monitor_line=""

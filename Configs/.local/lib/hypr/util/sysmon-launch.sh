@@ -11,7 +11,7 @@ show_help() {
   cat <<HELP
 Usage: $(basename "$0") --[option]
     -h, --help      Display this help and exit
-    -e, --execute   Explicit command to execute
+    -e, --execute   Explicit command to execute, arguments included ("dua i")
 
 Overrides: ${XDG_STATE_HOME}/hypr/env-overrides
     SYSMONITOR_EXECUTE="htop"
@@ -37,18 +37,18 @@ toggle_existing_monitor() {
 }
 
 select_monitor_command() {
-  local -a pkgChk=("htop" "btop" "top")
-  local sysMon=""
+  local -a monitor_candidates=("htop" "btop" "top")
+  local candidate=""
 
-  [[ -n "${SYSMONITOR_COMMANDS+set}" ]] && pkgChk+=("${SYSMONITOR_COMMANDS[@]}")
+  [[ -n "${SYSMONITOR_COMMANDS+set}" ]] && monitor_candidates+=("${SYSMONITOR_COMMANDS[@]}")
   if [[ -n "${SYSMONITOR_EXECUTE:-}" ]]; then
-    pkgChk=("${SYSMONITOR_EXECUTE}" "${pkgChk[@]}")
+    monitor_candidates=("${SYSMONITOR_EXECUTE}" "${monitor_candidates[@]}")
   fi
 
-  for sysMon in "${pkgChk[@]}"; do
-    [[ -n "${sysMon}" ]] || continue
-    if pkg_installed "${sysMon}"; then
-      printf '%s\n' "${sysMon}"
+  for candidate in "${monitor_candidates[@]}"; do
+    [[ -n "${candidate}" ]] || continue
+    if pkg_installed "${candidate%% *}"; then
+      printf '%s\n' "${candidate}"
       return 0
     fi
   done
@@ -57,14 +57,15 @@ select_monitor_command() {
 }
 
 launch_monitor() {
-  local sysMon="$1"
-  local term="${SYSMONITOR_TERMINAL:-${TERMINAL_TUI:-${TERMINAL:-foot}}}"
+  local -a monitor_argv=()
+  read -ra monitor_argv <<<"$1"
+  local terminal_command="${SYSMONITOR_TERMINAL:-${TERMINAL_TUI:-${TERMINAL:-foot}}}"
 
-  TERMINAL_TUI="${term}" \
+  TERMINAL_TUI="${terminal_command}" \
     exec "${LIB_DIR:-$HOME/.local/lib}/hypr/launch/tui.sh" \
       --app-id org.tui.Sysmonitor \
       --title "System Monitor" \
-      -- "${sysMon}"
+      -- "${monitor_argv[@]}"
 }
 
 case "${1:-}" in
@@ -95,5 +96,5 @@ esac
 
 toggle_existing_monitor && exit 0
 
-sysMon="$(select_monitor_command)" || exit 1
-launch_monitor "${sysMon}"
+monitor_command="$(select_monitor_command)" || exit 1
+launch_monitor "${monitor_command}"

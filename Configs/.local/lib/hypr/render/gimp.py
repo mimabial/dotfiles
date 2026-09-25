@@ -46,15 +46,15 @@ def main():
         sys.exit(f"render/gimp: missing {PALETTE}")
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    p = json.loads(PALETTE.read_text())
-    bg, fg = p["bg"], p["fg"]
+    palette = json.loads(PALETTE.read_text())
+    bg, fg = palette["bg"], palette["fg"]
 
     hasher = hashlib.sha256()
     hasher.update(PALETTE.read_bytes())
     hasher.update(Path(__file__).read_bytes())
-    h = hasher.hexdigest()[:16]
+    digest = hasher.hexdigest()[:16]
 
-    if cache_hit(APP, h) and OUT_FILE.exists():
+    if cache_hit(APP, digest) and OUT_FILE.exists():
         return
 
     is_dark = luminance(bg) < 0.5
@@ -100,7 +100,7 @@ def main():
 
     atomic_write(OUT_FILE, css)
 
-    cache_store(APP, h)
+    cache_store(APP, digest)
 
 if __name__ == "__main__":
     main()

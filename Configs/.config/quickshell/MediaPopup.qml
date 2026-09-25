@@ -157,7 +157,7 @@ PopupCard {
     const newTrack = String(p.trackTitle || "No track loaded")
     const newArtist = Media.displayArtist(p)
     const newUrl = String(metadata["xesam:url"] || "")
-    const trackChanged = newTrack !== root.currentTrack || newUrl !== root.currentUrl
+    const trackChanged = newTrack !== root.currentTrack || newArtist !== root.currentArtist || newUrl !== root.currentUrl
     root.isRunning = true
     root.playbackState = p.playbackState === MprisPlaybackState.Playing ? "playing"
       : p.playbackState === MprisPlaybackState.Paused ? "paused" : "stopped"
@@ -175,14 +175,15 @@ PopupCard {
     if (trackChanged || !p.positionSupported) root.applyMprisPosition(0)
     root.requestMprisPosition()
     root.resumeVisible = false
-    if (trackChanged && newTrack !== "No track loaded") {
+    const localPath = newUrl.startsWith("file://") ? decodeURIComponent(newUrl.slice(7)) : ""
+    if (trackChanged && localPath && newTrack !== "No track loaded") {
       recentProc.command = ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", ""),
-        "remember", newTrack, newArtist, newUrl || (newTrack + " " + newArtist)]
+        "remember", newTrack, newArtist, localPath]
       recentProc.running = true
     }
     if (trackChanged && root.open && root.selectedTab === "queue") root.loadQueue()
     if (trackChanged && root.open) root.startSpectrum()
-    if (trackChanged && playerComp.lyricsVisible && playerComp.lyricsTrack !== newTrack)
+    if (trackChanged && playerComp.lyricsVisible && playerComp.lyricsTrackKey !== playerComp.lyricsKey())
       playerComp.fetchLyrics()
     if (playerComp.lyricsVisible) playerComp.updateLyricsPosition(root.curSecs)
     return true
@@ -273,6 +274,10 @@ PopupCard {
 
   function showPopup() { root.shell.popupName = "media" }
   function hidePopup() { root.shell.closePopup() }
+  function showLyrics() {
+    if (!playerComp.lyricsVisible) playerComp.toggleLyrics()
+    root.showPopup()
+  }
   function togglePopup() {
     if (root.open) root.hidePopup()
     else root.showPopup()
@@ -345,6 +350,24 @@ PopupCard {
     root.visPickerOpen = pane === "vis"
     root.eqPickerOpen = pane === "eq"
     playerComp.lyricsVisible = pane === "lyrics"
+  }
+  function lyricsAction(action) {
+    const store = root.shell.store
+    if (action === "refresh") return playerComp.fetchLyrics(true)
+    if (action === "close") return playerComp.toggleLyrics()
+    if (action === "follow") {
+      playerComp.lyricsFollowing = true
+      lyricsList.positionViewAtIndex(Math.max(0, playerComp.lyricsCurrentIdx),
+        playerComp.lyricsCurrentIdx < 0 ? ListView.Beginning : ListView.Center)
+      return
+    }
+    if (action === "smaller" || action === "larger") {
+      store.lyricsFontStep = Math.max(-2, Math.min(4, store.lyricsFontStep + (action === "larger" ? 1 : -1)))
+      return
+    }
+    store.lyricsDelayTenths = action === "reset" ? 0
+      : Math.max(-50, Math.min(50, store.lyricsDelayTenths + (action === "later" ? 5 : -5)))
+    playerComp.updateLyricsPosition(root.curSecs)
   }
   function setVisBackground(enabled) {
     root.visBackground = enabled
@@ -629,15 +652,16 @@ PopupCard {
           root.isRunning = data.running === true
           if (fresh) root.playbackState = data.state || "stopped"
           var newTrack = String(data.track || "No track loaded")
+          var newArtist = String(data.artist || "")
           var newUrl = String(data.url || "")
-          var trackChanged = (newTrack !== root.currentTrack) || (newUrl !== root.currentUrl)
+          var trackChanged = (newTrack !== root.currentTrack) || (newArtist !== root.currentArtist) || (newUrl !== root.currentUrl)
           root.currentTrack = newTrack
-          root.currentArtist = String(data.artist || "")
+          root.currentArtist = newArtist
           root.currentUrl = newUrl
           root.artPath = String(data.art_path || "")
           if (trackChanged && root.open && root.selectedTab === "queue") root.loadQueue()
           if (trackChanged && root.open) root.loadHistory()
-          if (trackChanged && playerComp.lyricsVisible && playerComp.lyricsTrack !== newTrack) {
+          if (trackChanged && playerComp.lyricsVisible && playerComp.lyricsTrackKey !== playerComp.lyricsKey()) {
             playerComp.fetchLyrics()
           }
           root.timeCurrent = String(data.time_current || "00:00")
@@ -760,7 +784,7 @@ PopupCard {
           var res = JSON.parse(text || "{}")
           if (res.success) {
             root.plImportError = ""
-            loadPlaylists()
+            root.loadPlaylists()
           } else {
             root.plImportError = res.error || "Failed to import playlist"
           }
@@ -787,7 +811,7 @@ PopupCard {
       }
       root.loadingVid = ""
       root.refresh()
-      if (root.open) loadQueue()
+      if (root.open) root.loadQueue()
       // On cold start (first play after reboot) mpv needs 1-4s to boot + buffer.
       // Poll again at 1s and 3.5s so the UI catches the playing state.
       coldStartTimer.restart()
@@ -994,20 +1018,20 @@ PopupCard {
         topPadding: Commons.Style.space(12)
         bottomPadding: Commons.Style.space(8)
 
-        Player { id: playerComp; p: root }
+        Player { id: playerComp; controller: root }
 
-        Transport { p: root }
+        Transport { controller: root }
 
         PanelSeparator { foreground: root.foreground }
 
-        TrackList { id: trackList; p: root; visible: !playerComp.lyricsVisible && !root.visPickerOpen && !root.eqPickerOpen }
+        TrackList { id: trackList; controller: root; visible: !playerComp.lyricsVisible && !root.visPickerOpen && !root.eqPickerOpen }
 
         Loader {
           visible: root.visPickerOpen
           active: root.visPickerOpen
           width: parent.width
           source: "cliamp/VisPicker.qml"
-          onLoaded: { if (item) item.p = root }
+          onLoaded: { if (item) item.controller = root }
         }
 
         Loader {
@@ -1015,7 +1039,7 @@ PopupCard {
           active: root.eqPickerOpen
           width: parent.width
           source: "cliamp/EqPicker.qml"
-          onLoaded: { if (item) item.p = root }
+          onLoaded: { if (item) item.controller = root }
         }
 
         Item {
@@ -1033,22 +1057,26 @@ PopupCard {
               id: lyricsHeader
               anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
               anchors.margins: Commons.Style.space(8)
-              implicitHeight: Commons.Style.space(20)
+              height: Math.max(Commons.Style.space(24), lyricsActions.implicitHeight)
 
-              Row {
+              Item {
                 anchors.left: parent.left
-                anchors.right: closeLyricsBtn.left
-                anchors.rightMargin: Commons.Style.space(8)
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: Commons.Style.space(6)
+                anchors.right: lyricsActions.left
+                anchors.rightMargin: Commons.Style.space(4)
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
 
                 Text {
+                  id: lyricsGlyph
+                  anchors.left: parent.left
                   anchors.verticalCenter: parent.verticalCenter
                   text: "\uf10d"
                   color: Commons.Color.accent; font.family: root.fontFamily; font.pixelSize: Commons.Style.font.caption
                 }
                 Text {
-                  width: parent.width - Commons.Style.space(24)
+                  anchors.left: lyricsGlyph.right
+                  anchors.right: parent.right
+                  anchors.leftMargin: Commons.Style.space(6)
                   anchors.verticalCenter: parent.verticalCenter
                   textFormat: Text.PlainText
                   text: "Lyrics — " + (root.currentTrack || "No track")
@@ -1057,35 +1085,43 @@ PopupCard {
                 }
               }
 
-              Item {
-                id: closeLyricsBtn
+              Row {
+                id: lyricsActions
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
-                width: Commons.Style.space(20); height: Commons.Style.space(20)
-
-                Text {
-                  anchors.centerIn: parent
-                  text: "\uf00d"
-                  color: closeLyricsMouse.containsMouse ? Commons.Color.accent : root.dim
-                  font.family: root.fontFamily; font.pixelSize: Commons.Style.font.caption
+                PanelActionButton { iconText: "\uf021"; tooltipText: "Refresh lyrics"; enabled: !playerComp.lyricsLoading; onClicked: root.lyricsAction("refresh") }
+                PanelActionButton { iconText: "−"; tooltipText: "Show lyrics 0.5s earlier"; enabled: playerComp.lyricsTimed && root.shell.store.lyricsDelayTenths > -50; onClicked: root.lyricsAction("earlier") }
+                PanelActionButton {
+                  iconText: (root.shell.store.lyricsDelayTenths > 0 ? "+" : "") + (root.shell.store.lyricsDelayTenths / 10).toFixed(1) + "s"
+                  tooltipText: "Reset lyric timing"
+                  implicitWidth: Commons.Style.space(40)
+                  enabled: playerComp.lyricsTimed && root.shell.store.lyricsDelayTenths !== 0
+                  onClicked: root.lyricsAction("reset")
                 }
-                MouseArea {
-                  id: closeLyricsMouse
-                  anchors.fill: parent; cursorShape: Qt.PointingHandCursor; hoverEnabled: true
-                  onClicked: playerComp.toggleLyrics()
+                PanelActionButton { iconText: "+"; tooltipText: "Show lyrics 0.5s later"; enabled: playerComp.lyricsTimed && root.shell.store.lyricsDelayTenths < 50; onClicked: root.lyricsAction("later") }
+                PanelActionButton { iconText: "A−"; tooltipText: "Smaller lyrics"; enabled: root.shell.store.lyricsFontStep > -2; onClicked: root.lyricsAction("smaller") }
+                PanelActionButton { iconText: "A+"; tooltipText: "Larger lyrics"; enabled: root.shell.store.lyricsFontStep < 4; onClicked: root.lyricsAction("larger") }
+                PanelActionButton {
+                  iconText: "\uf05b"; tooltipText: playerComp.lyricsFollowing ? "Following lyrics" : "Resume following"
+                  foreground: playerComp.lyricsFollowing ? Commons.Color.accent : root.dim
+                  enabled: playerComp.lyricsLines.length > 0
+                  onClicked: root.lyricsAction("follow")
                 }
+                PanelActionButton { iconText: "\uf00d"; tooltipText: "Close lyrics"; onClicked: root.lyricsAction("close") }
               }
             }
 
             Text {
               visible: playerComp.lyricsLines.length === 0
               anchors.centerIn: parent
-              text: "No synced lyrics available"
+              text: playerComp.lyricsLoading ? "Looking up lyrics…" : "No lyrics available"
               color: root.dim; font.family: root.fontFamily; font.pixelSize: Commons.Style.font.caption
             }
 
             ListView {
               id: lyricsList
+              readonly property var popup: root
+              readonly property var player: playerComp
               visible: playerComp.lyricsLines.length > 0
               anchors.top: lyricsHeader.bottom
               anchors.bottom: parent.bottom
@@ -1096,50 +1132,25 @@ PopupCard {
               model: playerComp.lyricsLines
               spacing: Commons.Style.space(6)
               boundsBehavior: Flickable.StopAtBounds
+              onMovementStarted: playerComp.lyricsFollowing = false
+              WheelHandler {
+                blocking: false
+                acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                onWheel: playerComp.lyricsFollowing = false
+              }
+              onVisibleChanged: if (visible && playerComp.lyricsFollowing)
+                positionViewAtIndex(Math.max(0, playerComp.lyricsCurrentIdx), ListView.Center)
 
               Connections {
                 target: playerComp
                 function onLyricsCurrentIdxChanged() {
-                  if (playerComp.lyricsCurrentIdx >= 0 && playerComp.lyricsCurrentIdx < playerComp.lyricsLines.length) {
-                    lyricsList.positionViewAtIndex(playerComp.lyricsCurrentIdx, ListView.Center)
-                  }
+                  if (playerComp.lyricsFollowing && playerComp.lyricsLines.length)
+                    lyricsList.positionViewAtIndex(Math.max(0, playerComp.lyricsCurrentIdx),
+                      playerComp.lyricsCurrentIdx < 0 ? ListView.Beginning : ListView.Center)
                 }
               }
 
-              delegate: Item {
-                required property var modelData
-                required property int index
-                readonly property bool isCurrent: index === playerComp.lyricsCurrentIdx
-                readonly property bool isPast: playerComp.lyricsCurrentIdx >= 0 && index < playerComp.lyricsCurrentIdx
-                width: lyricsList.width
-                implicitHeight: lyricText.implicitHeight + Commons.Style.space(4)
-
-                MouseArea {
-                  anchors.fill: parent
-                  hoverEnabled: true
-                  cursorShape: modelData.time >= 0 ? Qt.PointingHandCursor : Qt.ArrowCursor
-                  onClicked: {
-                    if (modelData.time >= 0) {
-                      root.seekTo(modelData.time)
-                    }
-                  }
-                }
-
-                Text {
-                  id: lyricText
-                  anchors.left: parent.left
-                  anchors.right: parent.right
-                  horizontalAlignment: Text.AlignHCenter
-                  wrapMode: Text.Wrap
-                  textFormat: Text.PlainText
-                  text: modelData.text || "♪"
-                  color: isCurrent ? root.dynamicAccent : root.shell.alpha(root.foreground, isPast ? 0.28 : 0.65)
-                  font.family: root.fontFamily
-                  font.pixelSize: isCurrent ? Commons.Style.font.body : Commons.Style.font.caption
-                  font.bold: isCurrent
-                  Behavior on color { ColorAnimation { duration: 250 } }
-                }
-              }
+              delegate: LyricsLine { view: ListView.view }
             }
           }
         }

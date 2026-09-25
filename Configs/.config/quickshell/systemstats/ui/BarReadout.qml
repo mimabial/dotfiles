@@ -4,8 +4,7 @@ import QtQuick
 import qs.Commons
 import "../Model.js" as Model
 
-// One module's compact readout in the bar: glyph, a live mini graph, and a
-// figure.
+// One module's compact readout: horizontal graph/figure or vertical label/figure.
 Item {
   id: root
 
@@ -13,7 +12,9 @@ Item {
   property bool vertical: false
   property int barSize: Style.bar.sizeHorizontal
   property string fontFamily: shell.fontFamily
-  property color foreground: shell.foreground
+  required property var box
+  readonly property real iconSize: Style.fontPx(box.fontSize) * shell.iconFontScale
+  readonly property color foreground: shell.styleColor(box.content, shell.foreground)
   property real horizontalMargin
   property real fixedWidth
   property real fixedHeight
@@ -36,8 +37,8 @@ Item {
   signal pressed(int button)
 
   readonly property real scaledHorizontalMargin: Style.spaceReal(horizontalMargin)
-  implicitWidth: fixedWidth > 0 ? fixedWidth : (vertical ? barSize : content.implicitWidth + scaledHorizontalMargin * 2)
-  implicitHeight: fixedHeight > 0 ? fixedHeight : barSize
+  implicitWidth: fixedWidth > 0 ? fixedWidth : Math.max(vertical ? barSize : 0, content.implicitWidth + scaledHorizontalMargin * 2)
+  implicitHeight: fixedHeight > 0 ? fixedHeight : vertical ? Math.max(barSize, content.implicitHeight + Style.space(8)) : barSize
   visible: hasVisualContent
 
   readonly property var snap: service ? service.snapshot : ({})
@@ -48,7 +49,7 @@ Item {
   readonly property bool graphable: def.graph === true
   readonly property bool showGraph: !vertical && graphable && (mode === "both" || mode === "graph")
   readonly property bool showRing: !vertical && ringable && (mode === "ring" || mode === "ring-text")
-  readonly property bool showText: !vertical && (mode === "both" || mode === "text" || mode === "ring-text" || (!graphable && !ringable))
+  readonly property bool showText: vertical || mode === "both" || mode === "text" || mode === "ring-text" || (!graphable && !ringable)
   readonly property bool twoLine: module === "network" || (module === "disks" && !showRing)
   readonly property bool hovered: pointer.containsMouse
   readonly property color contentColor: hovered ? shell.role("hvr_fg", foreground) : foreground
@@ -103,8 +104,10 @@ Item {
 
   function temperatureColor(celsius, critical) {
     if (!colorTemperatureIcons || !service) return foreground
-    return Model.temperatureColor(service.temperatureRamp, celsius, critical, foreground)
+    return Qt.alpha(Model.temperatureColor(service.temperatureRamp, celsius, critical, foreground), foreground.a)
   }
+
+  function rateLabel(prefix, value) { return prefix + " " + Model.compactRate(value) }
 
   // Sensors: one glyph + figure per selected sensor that exists right now.
   readonly property var sensorReadings: {
@@ -137,20 +140,20 @@ Item {
       case "gpu": return gpu && gpu.util !== null && isFinite(Number(gpu.util)) ? Model.percentText(gpu.util) : "—"
       case "memory": return Model.percentText(memPercent)
       case "battery": return battery ? Model.percentText(battery.percent) : "—"
-      case "network": return "↑ " + Model.compactRate(net.tx)
-      case "disks": return showRing ? Model.percentText(ringValue * 100) : "R " + Model.compactRate(diskRead)
+      case "network": return rateLabel("↑", net.tx)
+      case "disks": return showRing ? Model.percentText(ringValue * 100) : rateLabel("R", diskRead)
     }
     return ""
   }
 
   readonly property string secondaryText: {
     if (!ready) return "…"
-    if (module === "network") return "↓ " + Model.compactRate(net.rx)
-    if (module === "disks") return showRing ? "" : "W " + Model.compactRate(diskWrite)
+    if (module === "network") return rateLabel("↓", net.rx)
+    if (module === "disks") return showRing ? "" : rateLabel("W", diskWrite)
     return ""
   }
 
-  // Widest string each figure can take, so the readout never jitters.
+  // Reserve a stable minimum width; larger live values may extend past it.
   readonly property string reserveText: {
     switch (module) {
       case "network":
@@ -162,22 +165,28 @@ Item {
   labelVisible: false
   hasVisualContent: true
   text: def.icon
-  horizontalMargin: 5
+  horizontalMargin: vertical ? 1 : 5
   fixedWidth: vertical ? -1 : content.implicitWidth + scaledHorizontalMargin * 2
-  fixedHeight: vertical ? Style.bar.iconSlot : -1
+  fixedHeight: -1
   onPressed: function(button) { root.activated(root.module, button) }
 
   TextMetrics {
     id: reserve
     font.family: root.fontFamily
-    font.pixelSize: root.twoLine ? Style.font.caption : Style.font.body
+    font.pixelSize: root.vertical || root.twoLine ? Style.font.caption : Style.font.body
     text: root.reserveText
   }
 
-  Row {
+  Grid {
     id: content
-    anchors.centerIn: parent
-    spacing: Style.space(4)
+    anchors.left: root.vertical ? parent.left : undefined
+    anchors.horizontalCenter: root.vertical ? undefined : parent.horizontalCenter
+    anchors.verticalCenter: parent.verticalCenter
+    columns: root.vertical ? 1 : 0
+    rows: root.vertical ? 0 : 1
+    spacing: root.vertical ? Style.space(2) : Style.space(4)
+    horizontalItemAlignment: root.vertical ? Grid.AlignLeft : Grid.AlignHCenter
+    verticalItemAlignment: Grid.AlignVCenter
 
     // Every module but sensors: one label, then graph and/or figure.
     Text {
@@ -185,40 +194,46 @@ Item {
       textFormat: Text.PlainText
       text: root.glyph
       color: root.glyphColor
-      font.family: root.fontFamily
-      font.pixelSize: Style.bar.iconFont
+      font.family: root.shell.iconGlyphFont
+      font.pixelSize: root.iconSize
       renderType: Text.NativeRendering
-      anchors.verticalCenter: parent.verticalCenter
     }
 
     StackLabel {
-      visible: root.module !== "sensors" && root.labelMode === "text"
+      visible: root.module !== "sensors" && root.labelMode === "text" && !root.vertical
       text: root.def.short || root.def.label
       color: root.metricColor
       fontFamily: root.fontFamily
       letterSize: Style.spaceReal(10)
       maxHeight: root.barSize - Style.space(3)
-      anchors.verticalCenter: parent.verticalCenter
+    }
+
+    Text {
+      visible: root.module !== "sensors" && root.labelMode === "text" && root.vertical
+      textFormat: Text.PlainText
+      text: root.def.short || root.def.label
+      color: root.metricColor
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.caption
+      font.bold: true
+      renderType: Text.NativeRendering
     }
 
     Loader {
       active: root.showGraph && root.module !== "sensors"
       visible: active
-      anchors.verticalCenter: parent.verticalCenter
       sourceComponent: root.twoLine ? mirrorGraph : historyGraph
     }
 
     Loader {
       active: root.showRing
       visible: active
-      anchors.verticalCenter: parent.verticalCenter
       sourceComponent: ringGauge
     }
 
     Loader {
       active: root.showText && root.module !== "sensors"
       visible: active
-      anchors.verticalCenter: parent.verticalCenter
       sourceComponent: root.twoLine ? twoLineText : singleText
     }
 
@@ -226,34 +241,46 @@ Item {
     Repeater {
       model: root.module === "sensors" ? root.sensorReadings.length : 0
 
-      delegate: Row {
+      delegate: Grid {
         id: sensorPair
         required property int index
         readonly property var reading: root.sensorReadings[index] || ({})
         readonly property color readingColor: root.hovered ? root.contentColor : reading.kind === "temp"
           ? root.temperatureColor(reading.celsius, reading.critical) : root.foreground
-        spacing: Style.space(3)
-        anchors.verticalCenter: parent ? parent.verticalCenter : undefined
+        columns: root.vertical ? 1 : 0
+        rows: root.vertical ? 0 : 1
+        spacing: root.vertical ? Style.space(2) : Style.space(3)
+        horizontalItemAlignment: root.vertical ? Grid.AlignLeft : Grid.AlignHCenter
+        verticalItemAlignment: Grid.AlignVCenter
 
         Text {
           visible: root.labelMode !== "text"
           textFormat: Text.PlainText
           text: sensorPair.reading.icon || "󰔏"
           color: sensorPair.readingColor
-          font.family: root.fontFamily
-          font.pixelSize: Style.bar.iconFont
+          font.family: root.shell.iconGlyphFont
+          font.pixelSize: root.iconSize
           renderType: Text.NativeRendering
-          anchors.verticalCenter: parent.verticalCenter
         }
 
         StackLabel {
-          visible: root.labelMode === "text"
+          visible: root.labelMode === "text" && !root.vertical
           text: sensorPair.reading.short || "TMP"
           color: sensorPair.readingColor
           fontFamily: root.fontFamily
           letterSize: Style.spaceReal(10)
           maxHeight: root.barSize - Style.space(3)
-          anchors.verticalCenter: parent.verticalCenter
+        }
+
+        Text {
+          visible: root.labelMode === "text" && root.vertical
+          textFormat: Text.PlainText
+          text: sensorPair.reading.short || "TMP"
+          color: sensorPair.readingColor
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
+          font.bold: true
+          renderType: Text.NativeRendering
         }
 
         TextMetrics {
@@ -265,15 +292,13 @@ Item {
 
         Text {
           textFormat: Text.PlainText
-          visible: !root.vertical
-          width: Math.ceil(sensorReserve.advanceWidth)
-          horizontalAlignment: Text.AlignRight
+          width: root.vertical ? Math.max(Math.ceil(sensorReserve.advanceWidth), implicitWidth) : Math.ceil(sensorReserve.advanceWidth)
+          horizontalAlignment: root.vertical ? Text.AlignLeft : Text.AlignRight
           text: root.ready ? String(sensorPair.reading.text || "") + String(sensorPair.reading.unit === "°" ? "°" : "") : "…"
           color: sensorPair.readingColor
           font.family: root.fontFamily
           font.pixelSize: Style.font.body
           renderType: Text.NativeRendering
-          anchors.verticalCenter: parent.verticalCenter
         }
       }
     }
@@ -331,12 +356,12 @@ Item {
 
     Text {
       textFormat: Text.PlainText
-      width: Math.ceil(reserve.advanceWidth)
-      horizontalAlignment: Text.AlignRight
+      width: root.vertical ? Math.max(Math.ceil(reserve.advanceWidth), implicitWidth) : Math.ceil(reserve.advanceWidth)
+      horizontalAlignment: root.vertical ? Text.AlignLeft : Text.AlignRight
       text: root.primaryText
       color: root.metricColor
       font.family: root.fontFamily
-      font.pixelSize: Style.font.body
+      font.pixelSize: root.vertical ? Style.font.caption : Style.font.body
       renderType: Text.NativeRendering
     }
   }
@@ -349,7 +374,8 @@ Item {
 
       Text {
         textFormat: Text.PlainText
-        width: Math.ceil(reserve.advanceWidth)
+        width: root.vertical ? Math.max(Math.ceil(reserve.advanceWidth), implicitWidth) : Math.ceil(reserve.advanceWidth)
+        horizontalAlignment: Text.AlignLeft
         text: root.primaryText
         color: root.contentColor
         font.family: root.fontFamily
@@ -360,7 +386,8 @@ Item {
 
       Text {
         textFormat: Text.PlainText
-        width: Math.ceil(reserve.advanceWidth)
+        width: root.vertical ? Math.max(Math.ceil(reserve.advanceWidth), implicitWidth) : Math.ceil(reserve.advanceWidth)
+        horizontalAlignment: Text.AlignLeft
         text: root.secondaryText
         color: root.contentColor
         font.family: root.fontFamily

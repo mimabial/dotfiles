@@ -1,6 +1,4 @@
-# AUTO-GENERATED — do not edit.
-# Rewritten in full by: hyprshell system/removable --automount
-# Only the keys below are managed; anything else added here is lost.
+# Quickshell's Removable service mounts on plug-in so per-drive read-only applies.
 program_options:
-  automount: true
+  automount: false
   notify: false

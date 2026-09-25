@@ -6,6 +6,7 @@ ScriptButton {
     css: "updates"
     tooltip: ""
     command: ["hyprshell", "system/system.update.sh"]
+    indicator: "updates"
     interval: 86400000
     fallback: ""
     property bool popupEnabled: true

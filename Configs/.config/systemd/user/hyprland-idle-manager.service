@@ -1,5 +1,5 @@
 [Unit]
-Description=Hyprland idle manager (manual keep-awake + audio playing)
+Description=Hyprland idle manager (manual, audio, fullscreen, and game keep-awake)
 After=graphical-session.target
 PartOf=graphical-session.target
 ConditionEnvironment=WAYLAND_DISPLAY

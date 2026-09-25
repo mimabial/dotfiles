@@ -95,7 +95,7 @@ os_pretty_name() {
   awk -F'=' '/^PRETTY_NAME=/ {gsub(/"/,"",$2); print $2; exit}' /etc/os-release
 }
 
-mpris_thumb() {
+refresh_mpris_artwork() {
   local player=${1:-""}
   local thumb="${HYPR_CACHE_HOME}/landing/mpris"
   local art_url=""
@@ -183,7 +183,7 @@ mpris_thumb() {
   return 0
 }
 
-convert_length() {
+format_mpris_length() {
   local length=$1
   local microseconds_per_second=1000000
   local seconds=$((length / microseconds_per_second))
@@ -192,7 +192,7 @@ convert_length() {
   printf "%d:%02d\n" "${minutes}" "${remaining_seconds}"
 }
 
-truncate_with_ellipsis() {
+truncate_mpris_title() {
   local value="$1"
   local max_length="${2:-40}"
 
@@ -209,7 +209,7 @@ fn_title() {
 
   title="$(mpris_active_player_value "${player}" "{{xesam:title}}" || true)"
   if [[ -n "${title}" ]]; then
-    truncate_with_ellipsis "${title}"
+    truncate_mpris_title "${title}"
   else
     echo "${USER^}"
   fi
@@ -268,7 +268,7 @@ fn_length() {
 
   length="$(mpris_active_player_value "${player}" "{{mpris:length}}" || true)"
   if [[ -n "${length}" ]]; then
-    convert_length "${length}"
+    format_mpris_length "${length}"
   fi
 }
 
@@ -291,7 +291,7 @@ fn_update_art() {
 
   player_status="$(mpris_player_status "${player}" || true)"
   if mpris_player_active "${player_status}"; then
-    if mpris_thumb "${player}"; then
+    if refresh_mpris_artwork "${player}"; then
       return 0
     fi
   fi

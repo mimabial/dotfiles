@@ -13,7 +13,7 @@ have() {
 expand_path() {
   local value="${1:-}"
   if [[ "${value}" == \~/* ]]; then
-    printf '%s\n' "${HOME}/${value#~/}"
+    printf '%s\n' "${HOME}/${value#\~/}"
   else
     printf '%s\n' "${value}"
   fi

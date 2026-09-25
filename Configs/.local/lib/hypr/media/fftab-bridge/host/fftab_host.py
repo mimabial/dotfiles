@@ -133,7 +133,7 @@ class TabPlayer:
             None,
             None,
         )
-        self.reg_ids = [
+        self.registration_ids = [
             self.conn.register_object(
                 OBJ_PATH, iface, self._on_method_call, self._on_get_property, self._on_set_property
             )
@@ -209,29 +209,29 @@ class TabPlayer:
         if self.owner_id:
             Gio.bus_unown_name(self.owner_id)
             self.owner_id = 0
-        for rid in self.reg_ids:
-            self.conn.unregister_object(rid)
-        self.reg_ids = []
+        for registration_id in self.registration_ids:
+            self.conn.unregister_object(registration_id)
+        self.registration_ids = []
         self.conn.close(None, None, None)
 
     def _metadata(self, state=None) -> GLib.Variant:
-        s = state or self.state
-        meta = {
+        media_state = state or self.state
+        metadata = {
             "mpris:trackid": GLib.Variant(
                 "o", f"/org/mpris/MediaPlayer2/fftab/t{self.tab_id}"
             ),
             "xesam:title": GLib.Variant(
-                "s", clean_web_title(s["title"]) or s["title"]
+                "s", clean_web_title(media_state["title"]) or media_state["title"]
             ),
-            "xesam:url": GLib.Variant("s", s["url"]),
-            "xesam:artist": GLib.Variant("as", [s["site"]] if s["site"] else []),
+            "xesam:url": GLib.Variant("s", media_state["url"]),
+            "xesam:artist": GLib.Variant("as", [media_state["site"]] if media_state["site"] else []),
         }
-        art_url = artwork_url(s["url"])
+        art_url = artwork_url(media_state["url"])
         if art_url:
-            meta["mpris:artUrl"] = GLib.Variant("s", art_url)
-        if s["duration"] > 0:
-            meta["mpris:length"] = GLib.Variant("x", int(s["duration"] * 1e6))
-        return GLib.Variant("a{sv}", meta)
+            metadata["mpris:artUrl"] = GLib.Variant("s", art_url)
+        if media_state["duration"] > 0:
+            metadata["mpris:length"] = GLib.Variant("x", int(media_state["duration"] * 1e6))
+        return GLib.Variant("a{sv}", metadata)
 
     def _on_get_property(self, conn, sender, path, iface, prop):
         if iface == ROOT_IFACE:
@@ -284,7 +284,7 @@ class TabPlayer:
 players: dict[int, TabPlayer] = {}
 
 
-def dispatch(msg: dict) -> bool:
+def dispatch_extension_message(msg: dict) -> bool:
     try:
         tab_id = int(msg.get("tabId", -1))
         if tab_id < 0:
@@ -305,27 +305,27 @@ def dispatch(msg: dict) -> bool:
     return False
 
 
-def stdin_reader(loop: GLib.MainLoop) -> None:
-    stdin = sys.stdin.buffer
+def read_extension_messages(loop: GLib.MainLoop) -> None:
+    extension_input = sys.stdin.buffer
     while True:
-        header = stdin.read(4)
+        header = extension_input.read(4)
         if len(header) < 4:
             break
         (length,) = struct.unpack("<I", header)
-        data = stdin.read(length)
+        data = extension_input.read(length)
         if len(data) < length:
             break
         try:
             msg = json.loads(data)
         except json.JSONDecodeError:
             continue
-        GLib.idle_add(dispatch, msg)
+        GLib.idle_add(dispatch_extension_message, msg)
     GLib.idle_add(loop.quit)
 
 
 def main() -> None:
     loop = GLib.MainLoop()
-    threading.Thread(target=stdin_reader, args=(loop,), daemon=True).start()
+    threading.Thread(target=read_extension_messages, args=(loop,), daemon=True).start()
     try:
         loop.run()
     finally:

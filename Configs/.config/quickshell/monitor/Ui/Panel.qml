@@ -1,13 +1,10 @@
 import QtQuick
 import Quickshell.Io
-import qs.Commons
 
 Item {
   id: root
   required property var shell
   property Item anchorItem: null
-  property QtObject bar: null
-  property string moduleName: ""
   property string popupName: "monitor"
   property var settings: ({})
   property string ipcTarget: ""
@@ -15,14 +12,12 @@ Item {
   property bool popoutSwitching: false
   property bool popoutSwitchClosing: false
   readonly property bool opened: shell && shell.popupName === popupName
-  readonly property color barForeground: bar ? bar.foreground : Color.foreground
   function showPopup() { if (root.shell) root.shell.togglePopup(root.popupName) }
   function hidePopup() { if (root.shell && root.opened) root.shell.closePopup() }
   function open() { root.showPopup() }
   function close() { root.hidePopup() }
   function closeForPopoutSwitch() { close() }
   function toggle() { opened ? close() : open() }
-  function switchPanel(direction) { return false }
   function setting(name, fallback) {
     var value = settings ? settings[name] : undefined
     return value === undefined || value === null ? fallback : value

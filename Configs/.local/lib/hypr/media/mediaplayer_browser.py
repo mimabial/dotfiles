@@ -9,7 +9,7 @@ from urllib.parse import parse_qs, urlparse
 
 from ytdlp_config import ytdlp_auth_args
 
-_ytdlp_inflight = {}
+_media_info_probes_inflight = {}
 _ytdlp_timeout_seconds = 20.0
 _youtube_page_timeout_seconds = 2.5
 _current_track_media_info = {"media_url": "", "info": None}
@@ -85,7 +85,7 @@ def _parse_ytdlp_duration(stdout: str) -> float | None:
 
 
 @dataclass(frozen=True)
-class YtDlpMediaInfo:
+class YoutubeMediaInfo:
     duration_seconds: float | None = None
     live_status: str = ""
 
@@ -94,11 +94,11 @@ class YtDlpMediaInfo:
         return self.live_status == "is_live"
 
 
-def _parse_ytdlp_media_info(stdout: str) -> YtDlpMediaInfo:
+def _parse_ytdlp_media_info(stdout: str) -> YoutubeMediaInfo:
     lines = [line.strip() for line in stdout.splitlines()]
     live_status = lines[0] if lines else ""
     duration_seconds = _parse_ytdlp_duration("\n".join(lines[1:]))
-    return YtDlpMediaInfo(duration_seconds=duration_seconds, live_status=live_status)
+    return YoutubeMediaInfo(duration_seconds=duration_seconds, live_status=live_status)
 
 
 def _extract_initial_player_response(html: str) -> dict | None:
@@ -136,14 +136,14 @@ def _find_boolean_field(value, field: str) -> bool | None:
     return None
 
 
-def _parse_youtube_watch_page_media_info(html: str) -> YtDlpMediaInfo:
+def _parse_youtube_watch_page_media_info(html: str) -> YoutubeMediaInfo:
     response = _extract_initial_player_response(html)
     if response is None:
-        return YtDlpMediaInfo()
+        return YoutubeMediaInfo()
 
     is_live_now = _find_boolean_field(response, "isLiveNow")
     if is_live_now is True:
-        return YtDlpMediaInfo(live_status="is_live")
+        return YoutubeMediaInfo(live_status="is_live")
 
     video_details = response.get("videoDetails")
     if not isinstance(video_details, dict):
@@ -163,12 +163,12 @@ def _parse_youtube_watch_page_media_info(html: str) -> YtDlpMediaInfo:
         or is_live_now is False
         or is_live_content is False
     ):
-        return YtDlpMediaInfo(
+        return YoutubeMediaInfo(
             duration_seconds=duration_seconds,
             live_status="not_live",
         )
 
-    return YtDlpMediaInfo()
+    return YoutubeMediaInfo()
 
 
 def _build_youtube_watch_page_probe_command(url: str) -> list[str] | None:
@@ -215,7 +215,7 @@ def _build_ytdlp_probe_command(url: str) -> list[str] | None:
 
 
 def _start_media_info_probe_command(url: str, command: list[str], kind: str) -> None:
-    if url in _ytdlp_inflight:
+    if url in _media_info_probes_inflight:
         return
 
     try:
@@ -228,7 +228,7 @@ def _start_media_info_probe_command(url: str, command: list[str], kind: str) -> 
     except Exception:
         return
 
-    _ytdlp_inflight[url] = {
+    _media_info_probes_inflight[url] = {
         "process": process,
         "started_at": time.time(),
         "kind": kind,
@@ -236,7 +236,7 @@ def _start_media_info_probe_command(url: str, command: list[str], kind: str) -> 
 
 
 def _start_ytdlp_fallback_probe(url: str) -> None:
-    if url in _ytdlp_inflight:
+    if url in _media_info_probes_inflight:
         return
 
     command = _build_ytdlp_probe_command(url)
@@ -245,8 +245,8 @@ def _start_ytdlp_fallback_probe(url: str) -> None:
     _start_media_info_probe_command(url, command, "ytdlp")
 
 
-def _start_ytdlp_media_info_probe(url: str) -> None:
-    if url in _ytdlp_inflight:
+def _start_youtube_media_info_probe(url: str) -> None:
+    if url in _media_info_probes_inflight:
         return
 
     command = _build_youtube_watch_page_probe_command(url)
@@ -256,8 +256,8 @@ def _start_ytdlp_media_info_probe(url: str) -> None:
     _start_ytdlp_fallback_probe(url)
 
 
-def _poll_ytdlp_media_info_probe(url: str) -> YtDlpMediaInfo | None:
-    probe = _ytdlp_inflight.get(url)
+def _poll_youtube_media_info_probe(url: str) -> YoutubeMediaInfo | None:
+    probe = _media_info_probes_inflight.get(url)
     if not probe:
         return None
 
@@ -275,7 +275,7 @@ def _poll_ytdlp_media_info_probe(url: str) -> YtDlpMediaInfo | None:
                 process.kill()
             except Exception:
                 pass
-            _ytdlp_inflight.pop(url, None)
+            _media_info_probes_inflight.pop(url, None)
             if probe_kind == "page":
                 _start_ytdlp_fallback_probe(url)
         return None
@@ -286,7 +286,7 @@ def _poll_ytdlp_media_info_probe(url: str) -> YtDlpMediaInfo | None:
     except Exception:
         pass
 
-    _ytdlp_inflight.pop(url, None)
+    _media_info_probes_inflight.pop(url, None)
     if probe_kind == "page":
         page_info = _parse_youtube_watch_page_media_info(stdout)
         if page_info.duration_seconds is not None or page_info.live_status:
@@ -295,42 +295,42 @@ def _poll_ytdlp_media_info_probe(url: str) -> YtDlpMediaInfo | None:
         return None
     if process.returncode == 0:
         return _parse_ytdlp_media_info(stdout)
-    return YtDlpMediaInfo()
+    return YoutubeMediaInfo()
 
 
 def _reuse_last_media_info(
     same_track_as_last: bool,
     last_duration_seconds: float,
     last_live_status: str,
-) -> YtDlpMediaInfo | None:
+) -> YoutubeMediaInfo | None:
     if not same_track_as_last:
         return None
     if last_live_status == "is_live":
-        return YtDlpMediaInfo(live_status="is_live")
+        return YoutubeMediaInfo(live_status="is_live")
     if last_duration_seconds > 0:
-        return YtDlpMediaInfo(
+        return YoutubeMediaInfo(
             duration_seconds=last_duration_seconds,
             live_status="not_live",
         )
     return None
 
 
-def get_ytdlp_media_info(
+def resolve_youtube_media_info(
     url: str,
     *,
     same_track_as_last: bool = False,
     last_duration_seconds: float = 0.0,
     last_live_status: str = "",
-) -> YtDlpMediaInfo:
+) -> YoutubeMediaInfo:
     global _current_track_media_info
     if not is_youtube_url(url):
-        return YtDlpMediaInfo()
+        return YoutubeMediaInfo()
     url = canonicalize_youtube_url(url)
 
     current_track_info = _current_track_media_info.get("info")
     if (
         _current_track_media_info.get("media_url") == url
-        and isinstance(current_track_info, YtDlpMediaInfo)
+        and isinstance(current_track_info, YoutubeMediaInfo)
         and (
             current_track_info.duration_seconds is not None
             or current_track_info.live_status
@@ -346,19 +346,19 @@ def get_ytdlp_media_info(
     if reused_info is not None:
         return reused_info
 
-    completed_probe = _poll_ytdlp_media_info_probe(url)
+    completed_probe = _poll_youtube_media_info_probe(url)
     if completed_probe is not None:
         if completed_probe.duration_seconds is not None or completed_probe.live_status:
             _current_track_media_info = {"media_url": url, "info": completed_probe}
         return completed_probe
 
-    if url in _ytdlp_inflight:
-        return YtDlpMediaInfo()
+    if url in _media_info_probes_inflight:
+        return YoutubeMediaInfo()
 
     if _current_track_media_info.get("media_url") != url:
         _current_track_media_info = {"media_url": url, "info": None}
-    _start_ytdlp_media_info_probe(url)
-    return YtDlpMediaInfo()
+    _start_youtube_media_info_probe(url)
+    return YoutubeMediaInfo()
 
 
 def youtube_position_is_untrusted(

@@ -51,9 +51,9 @@ selection="$(capture_select_geometry "" -d)" || exit 0
 
 # Decode QR codes only. Leaving the other symbologies enabled lets dense screen
 # content false-positive as an EAN or Code 39 barcode and take over the clipboard.
-result="$(grim -g "${selection}" - 2>/dev/null | zbarimg -q --raw -Sdisable -Sqrcode.enable - 2>/dev/null)" || result=""
+decoded_qr_value="$(grim -g "${selection}" - 2>/dev/null | zbarimg -q --raw -Sdisable -Sqrcode.enable - 2>/dev/null)" || decoded_qr_value=""
 
-if [[ -z "${result}" ]]; then
+if [[ -z "${decoded_qr_value}" ]]; then
   qr_notify critical "No QR code found" "Select a region containing a QR code"
   exit 1
 fi
@@ -61,5 +61,5 @@ fi
 # The value never gets printed or put in the notification: that would leak it to
 # the journal and to the notification history. --sensitive keeps it out of
 # clipboard history too. Pasting still works.
-printf '%s' "${result}" | wl-copy --sensitive
+printf '%s' "${decoded_qr_value}" | wl-copy --sensitive
 qr_notify normal "QR code copied to clipboard"

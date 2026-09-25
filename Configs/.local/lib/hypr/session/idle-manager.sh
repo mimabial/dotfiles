@@ -6,27 +6,23 @@ IDLE_UNIT="hyprland-hypridle.service"
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=/dev/null
 source "${script_dir}/idle.state.sh"
+WINDOW_STATE_FILE="$(idle_window_state_file)"
 WATCHDOG_INTERVAL="${HYPR_IDLE_MANAGER_WATCHDOG:-60}"
 PLAYER_FOLLOW_RETRY="${HYPR_IDLE_MANAGER_PLAYER_RETRY:-2}"
+HYPRLAND_FOLLOW_RETRY="${HYPR_IDLE_MANAGER_HYPRLAND_RETRY:-2}"
 
 [[ "${WATCHDOG_INTERVAL}" =~ ^[0-9]+$ ]] || WATCHDOG_INTERVAL=60
 [[ "${PLAYER_FOLLOW_RETRY}" =~ ^[0-9]+$ ]] || PLAYER_FOLLOW_RETRY=2
+[[ "${HYPRLAND_FOLLOW_RETRY}" =~ ^[0-9]+$ ]] || HYPRLAND_FOLLOW_RETRY=2
 (( WATCHDOG_INTERVAL < 1 )) && WATCHDOG_INTERVAL=60
 (( PLAYER_FOLLOW_RETRY < 1 )) && PLAYER_FOLLOW_RETRY=2
+(( HYPRLAND_FOLLOW_RETRY < 1 )) && HYPRLAND_FOLLOW_RETRY=2
 
 WAKE_SLEEP_PID=""
 declare -a WATCHER_PIDS=()
 
 systemd_user_ok() {
   systemctl --user is-active default.target >/dev/null 2>&1
-}
-
-manual_active() {
-  idle_manual_enabled
-}
-
-audio_enabled() {
-  idle_audio_enabled
 }
 
 audio_playing() {
@@ -71,6 +67,15 @@ stop_hypridle() {
 }
 
 last_mode=""
+last_window_activity=""
+
+publish_window_activity() {
+  local activity="${1} ${2}"
+  [[ "${activity}" == "${last_window_activity}" ]] && return
+  printf '%s\n' "${activity}" >"${WINDOW_STATE_FILE}.tmp"
+  mv -f "${WINDOW_STATE_FILE}.tmp" "${WINDOW_STATE_FILE}"
+  last_window_activity="${activity}"
+}
 
 apply_mode_transition() {
   case "$1" in
@@ -91,19 +96,21 @@ enforce_mode_state() {
 }
 
 reconcile_mode() {
-  manual_on=0
-  audio_on=0
-  if manual_active; then
+  local manual_on=0 audio_on=0 window_on=0 fullscreen_active=0 game_active=0 desired_mode=idle
+  if idle_manual_enabled; then
     manual_on=1
   fi
-  if audio_enabled && audio_playing; then
+  if idle_audio_enabled && audio_playing; then
     audio_on=1
   fi
+  if idle_fullscreen_enabled; then
+    read -r fullscreen_active game_active < <(idle_window_activity) || true
+    ((fullscreen_active || game_active)) && window_on=1
+  fi
+  publish_window_activity "${fullscreen_active}" "${game_active}"
 
-  if [[ "${manual_on}" -eq 1 || "${audio_on}" -eq 1 ]]; then
+  if [[ "${manual_on}" -eq 1 || "${audio_on}" -eq 1 || "${window_on}" -eq 1 ]]; then
     desired_mode="inhibit"
-  else
-    desired_mode="idle"
   fi
 
   if [[ "${desired_mode}" != "${last_mode}" ]]; then
@@ -153,6 +160,30 @@ watch_player_events() {
   WATCHER_PIDS+=("$!")
 }
 
+watch_hyprland_events() {
+  command -v nc >/dev/null 2>&1 || return 0
+  (
+    set +e
+    while :; do
+      socket_path="${XDG_RUNTIME_DIR:-/run/user/${UID}}/hypr/${HYPRLAND_INSTANCE_SIGNATURE:-}/.socket2.sock"
+      if [[ ! -S "${socket_path}" ]]; then
+        refresh_hypr_instance_signature
+        sleep "${HYPRLAND_FOLLOW_RETRY}"
+        continue
+      fi
+      nc -U "${socket_path}" 2>/dev/null | while IFS= read -r event; do
+        case "${event}" in
+          fullscreen\>\>* | openwindow\>\>* | closewindow\>\>* | movewindow\>\>* | movewindowv2\>\>* | workspace\>\>* | workspacev2\>\>* | focusedmon\>\>* | focusedmonv2\>\>* | changefloatingmode\>\>* | monitoradded\>\>* | monitoraddedv2\>\>* | monitorremoved\>\>* | monitorremovedv2\>\>*)
+            kill -USR1 "$$" 2>/dev/null || true
+            ;;
+        esac
+      done
+      sleep "${HYPRLAND_FOLLOW_RETRY}"
+    done
+  ) &
+  WATCHER_PIDS+=("$!")
+}
+
 cleanup() {
   local exit_code="${1:-$?}"
   if [[ -n "${WAKE_SLEEP_PID}" ]]; then
@@ -172,6 +203,7 @@ trap 'cleanup "$?"' EXIT
 mkdir -p "$(state_dir)"
 watch_state_files
 watch_player_events
+watch_hyprland_events
 
 reconcile_mode
 while :; do

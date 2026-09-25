@@ -69,6 +69,7 @@ MAX_ENRICHMENT_OUTPUT = 256 * 1024
 BACKUP_LIMIT = 10
 USER_AGENT = "Hypr Bookmarks/1.0"
 SETTINGS_VERSION = 1
+LEGACY_FIREFOX_UUID_HEX = re.compile(r"[0-9a-f]{32}\Z")
 
 
 def read_settings(settings_path: str) -> dict[str, Any]:
@@ -376,7 +377,7 @@ def stored_png_data_url(value: Any) -> str:
         raw = base64.b64decode(match.group(1), validate=True)
     except (ValueError, TypeError):
         return ""
-    source = image_input(raw)
+    source = validated_image_format_and_dimensions(raw)
     if (
         len(raw) > MAX_ICON_OUTPUT
         or source is None
@@ -440,7 +441,7 @@ def webp_dimensions(raw: bytes) -> tuple[int, int] | None:
     return None
 
 
-def image_input(raw: bytes) -> tuple[str, int, int] | None:
+def validated_image_format_and_dimensions(raw: bytes) -> tuple[str, int, int] | None:
     """Return an allowlisted ImageMagick coder and header dimensions."""
     result: tuple[str, int, int] | None = None
     if (
@@ -488,10 +489,10 @@ def image_input(raw: bytes) -> tuple[str, int, int] | None:
     return result
 
 
-def png_data_url(raw: bytes) -> str:
+def image_to_png_data_url(raw: bytes) -> str:
     if not raw or len(raw) > MAX_ICON_INPUT:
         return ""
-    source = image_input(raw)
+    source = validated_image_format_and_dimensions(raw)
     if source is None:
         return ""
     coder, _, _ = source
@@ -529,7 +530,7 @@ def png_data_url(raw: bytes) -> str:
     return "data:image/png;base64," + base64.b64encode(output).decode("ascii")
 
 
-def embedded_icon(value: Any) -> str:
+def embedded_icon_to_png_data_url(value: Any) -> str:
     value = str(value or "").strip()
     encoded_limit = ((MAX_ICON_INPUT + 2) // 3) * 4 + 4
     if len(value) > encoded_limit + 256:
@@ -556,7 +557,7 @@ def embedded_icon(value: Any) -> str:
             raw,
             flags=re.I | re.S,
         )
-    return png_data_url(raw)
+    return image_to_png_data_url(raw)
 
 
 class BookmarkHTMLParser(HTMLParser):
@@ -597,7 +598,7 @@ class BookmarkHTMLParser(HTMLParser):
         self._title = []
 
 
-def read_store(path: str) -> list[dict[str, Any]]:
+def read_store_items(path: str) -> list[dict[str, Any]]:
     store_path = Path(path)
     try:
         raw = read_limited_text(
@@ -622,9 +623,9 @@ def read_store(path: str) -> list[dict[str, Any]]:
     return source
 
 
-def load_store(path: str) -> dict[str, Any]:
+def load_store_document(path: str) -> dict[str, Any]:
     """Return a byte- and count-bounded store document for the QML process."""
-    source = read_store(path)
+    source = read_store_items(path)
     bookmarks: list[dict[str, Any]] = []
     invalid = 0
     for raw_item in source:
@@ -646,7 +647,7 @@ def load_store(path: str) -> dict[str, Any]:
     }
 
 
-def save_store(path: str) -> dict[str, Any]:
+def save_store_from_stdin(path: str) -> dict[str, Any]:
     """Atomically save one bounded store document received over stdin."""
     raw = sys.stdin.buffer.read(MAX_STORE_BYTES + 1)
     if len(raw) > MAX_STORE_BYTES:
@@ -678,7 +679,7 @@ def normalize_item(
     if len(title) > MAX_TITLE_LENGTH:
         return None
     if icon_policy == "external":
-        favicon = embedded_icon(item.get("iconSource") or item.get("favicon"))
+        favicon = embedded_icon_to_png_data_url(item.get("iconSource") or item.get("favicon"))
     elif icon_policy == "none":
         favicon = ""
     elif icon_policy == "stored":
@@ -709,7 +710,7 @@ def normalize_item(
     }
 
 
-def import_bookmarks(source_arg: str, store_path: str) -> dict[str, Any]:
+def prepare_bookmark_import(source_arg: str, store_path: str) -> dict[str, Any]:
     if source_arg.startswith("file:"):
         parsed = urlsplit(source_arg)
         source_arg = unquote(parsed.path)
@@ -741,7 +742,7 @@ def import_bookmarks(source_arg: str, store_path: str) -> dict[str, Any]:
     if len(source_items) > MAX_BOOKMARKS:
         raise ValueError(f"Bookmark file contains more than {MAX_BOOKMARKS} entries")
 
-    existing = {canonical_url(item.get("url")): item for item in read_store(store_path)}
+    existing = {canonical_url(item.get("url")): item for item in read_store_items(store_path)}
     result: list[dict[str, Any]] = []
     positions: dict[str, int] = {}
     rejected = 0
@@ -838,6 +839,11 @@ def firefox_databases() -> list[Path]:
     )[:32]
 
 
+def is_untagged_legacy_firefox_entry(identifier: str, has_tagged_firefox: bool) -> bool:
+    # Old Firefox imports used uuid4 hex IDs; local QML entries use hyphenated IDs.
+    return not has_tagged_firefox and LEGACY_FIREFOX_UUID_HEX.fullmatch(identifier) is not None
+
+
 def sync_firefox(
     store_path: str,
     sources: list[Path],
@@ -867,8 +873,8 @@ def sync_firefox(
         item["source"] = "firefox"
         firefox_items[key] = item
 
-    existing_items = read_store(store_path)
-    tagged_store = any(
+    existing_items = read_store_items(store_path)
+    has_tagged_firefox = any(
         isinstance(item, dict) and item.get("source") == "firefox"
         for item in existing_items
     )
@@ -893,11 +899,9 @@ def sync_firefox(
         if key in known:
             raise ValueError("Bookmarks store contains duplicate URLs")
 
-        legacy_firefox = (
-            not tagged_store
-            and re.fullmatch(r"[0-9a-f]{32}", identifier) is not None
+        firefox_owned = item["source"] == "firefox" or is_untagged_legacy_firefox_entry(
+            identifier, has_tagged_firefox
         )
-        firefox_owned = item["source"] == "firefox" or legacy_firefox
         incoming = firefox_items.get(key)
         if firefox_owned and incoming is None:
             removed += 1
@@ -925,7 +929,7 @@ def sync_firefox(
     changed = added + updated + removed + tagged
     backup_path = ""
     if changed:
-        backup = create_store_backup(store_path)
+        backup = create_and_prune_store_backups(store_path)
         backup_path = str(backup.get("backup", ""))
         destination = Path(store_path)
         mode = existing_regular_mode(destination, "Bookmarks store", 0o600)
@@ -962,7 +966,7 @@ def sync_discovered_firefox(store_path: str) -> dict[str, Any]:
     return sync_firefox(store_path, firefox_databases())
 
 
-def create_store_backup(store_path: str, keep: int = BACKUP_LIMIT) -> dict[str, Any]:
+def create_and_prune_store_backups(store_path: str, keep: int = BACKUP_LIMIT) -> dict[str, Any]:
     source = Path(store_path)
     try:
         contents = read_limited_bytes(
@@ -1190,7 +1194,7 @@ def _request_from_address(
         connection.close()
 
 
-def fetch_bytes(
+def fetch_public_http_bytes(
     url: str,
     limit: int,
     accept: str,
@@ -1298,7 +1302,7 @@ def enrich_url_from_web(url: str) -> dict[str, Any]:
     title = hostname
     favicon = ""
     try:
-        raw, final_url, content_type = fetch_bytes(
+        raw, final_url, content_type = fetch_public_http_bytes(
             url, MAX_HTML, "text/html,application/xhtml+xml"
         )
         if (
@@ -1333,14 +1337,14 @@ def enrich_url_from_web(url: str) -> dict[str, Any]:
                     continue
                 seen_icons.add(key)
                 try:
-                    icon_raw, _, _ = fetch_bytes(
+                    icon_raw, _, _ = fetch_public_http_bytes(
                         icon_url,
                         MAX_ICON_INPUT,
                         "image/*",
                         timeout=3,
                         redirect_origin=final_url,
                     )
-                    favicon = png_data_url(icon_raw)
+                    favicon = image_to_png_data_url(icon_raw)
                     if favicon:
                         break
                 except (OSError, ValueError):
@@ -1380,7 +1384,7 @@ def _run_web_enrichment(url: str, settings_path: str) -> tuple[str, str]:
     return title, stored_png_data_url(result.get("favicon"))
 
 
-def clipboard_bookmark(
+def prepare_bookmark_from_clipboard(
     store_path: str,
     enrich_from_web: bool = False,
     settings_path: str = "",
@@ -1402,7 +1406,7 @@ def clipboard_bookmark(
         return {"ok": False, "error": "Clipboard must contain exactly one HTTP(S) URL"}
 
     key = canonical_url(url)
-    for item in read_store(store_path):
+    for item in read_store_items(store_path):
         if canonical_url(item.get("url")) == key:
             return {"ok": True, "duplicate": True, "id": str(item.get("id") or ""), "url": url}
 
@@ -1448,11 +1452,11 @@ def copy_url_to_clipboard(value: str) -> dict[str, Any]:
     return {"ok": True, "url": url}
 
 
-def clipboard_bookmark_with_metadata(
+def prepare_bookmark_from_clipboard_with_metadata(
     store_path: str, settings_path: str
 ) -> dict[str, Any]:
     settings = read_settings(settings_path)
-    return clipboard_bookmark(
+    return prepare_bookmark_from_clipboard(
         store_path,
         enrich_from_web=settings["networkEnrichment"] is True,
         settings_path=settings_path,
@@ -1469,17 +1473,17 @@ def enrich_stdin_url(settings_path: str) -> dict[str, Any]:
 
 
 COMMANDS = {
-    "import": (("FILE", "STORE"), import_bookmarks),
+    "import": (("FILE", "STORE"), prepare_bookmark_import),
     "firefox-import": (("PLACES_DB", "STORE"), import_firefox),
     "firefox-sync": (("STORE",), sync_discovered_firefox),
-    "store-load": (("STORE",), load_store),
-    "store-save": (("STORE",), save_store),
-    "clipboard": (("STORE",), clipboard_bookmark),
-    "clipboard-enrich": (("STORE", "SETTINGS"), clipboard_bookmark_with_metadata),
+    "store-load": (("STORE",), load_store_document),
+    "store-save": (("STORE",), save_store_from_stdin),
+    "clipboard": (("STORE",), prepare_bookmark_from_clipboard),
+    "clipboard-enrich": (("STORE", "SETTINGS"), prepare_bookmark_from_clipboard_with_metadata),
     "enrich-url": (("SETTINGS",), enrich_stdin_url),
     "copy": (("URL",), copy_url_to_clipboard),
     "browsers": ((), discover_browsers),
-    "backup": (("STORE",), create_store_backup),
+    "backup": (("STORE",), create_and_prune_store_backups),
     "network-enrichment": (("{status|enable|disable}", "SETTINGS"), network_enrichment_operation),
 }
 

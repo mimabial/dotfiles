@@ -6,7 +6,8 @@ import QtQuick
 Item {
     id: root
     required property var shell
-    readonly property var box: parent && parent.box ? parent.box : null
+    required property var host
+    readonly property var box: host && host.box ? host.box : null
     readonly property var spec: box && box.edge ? box.edge : null
     readonly property bool replacesOutline: spec !== null && !box.outline
     readonly property bool edgeTop: spec ? spec.top === true : false
@@ -22,7 +23,7 @@ Item {
         return shell.alpha(shell.role(paint[0], shell.foreground), paint[1])
     }
     readonly property real thickness: box && box.border > 0 ? box.border : 1
-    readonly property real radius: spec && spec.radius !== undefined ? spec.radius : parent.radius !== undefined ? parent.radius : shell.moduleRadius
+    readonly property real radius: spec && spec.radius !== undefined ? spec.radius : host.radius !== undefined ? host.radius : shell.moduleRadius
     readonly property var segments: {
         const c = Math.min(Math.max(radius, thickness), width / 2, height / 2)
         const t = edgeTop ? c : 0, b = edgeBottom ? c : 0

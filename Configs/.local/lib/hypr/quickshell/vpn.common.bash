@@ -15,10 +15,6 @@ vpn_load_env() {
   export QUICKSHELL_VPN_PROVIDER QUICKSHELL_VPN_ALLOW_AUTO_GEOLOCATION QUICKSHELL_VPN_AUTO_RECONNECT
 }
 
-provider_have_command() {
-  quickshell_provider_have_command "$1"
-}
-
 vpn_env_flag() {
   case "${1:-}" in
     true | TRUE | yes | YES | on | ON | 1 | y | Y | t | T) return 0 ;;

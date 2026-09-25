@@ -50,9 +50,8 @@ export PYTHONPYCACHEPREFIX="${PYTHONPYCACHEPREFIX:-${HYPR_CACHE_HOME}/pycache}" 
 declare -p WALLPAPER_FILETYPES >/dev/null 2>&1 || declare -ga WALLPAPER_FILETYPES=()
 declare -p WALLPAPER_OVERRIDE_FILETYPES >/dev/null 2>&1 || declare -ga WALLPAPER_OVERRIDE_FILETYPES=()
 declare -p WALLPAPER_CUSTOM_PATHS >/dev/null 2>&1 || declare -ga WALLPAPER_CUSTOM_PATHS=()
-declare -p wallHash >/dev/null 2>&1 || declare -ga wallHash=()
-declare -p wallList >/dev/null 2>&1 || declare -ga wallList=()
-declare -p wallPathArray >/dev/null 2>&1 || declare -ga wallPathArray=()
+declare -p wallpaper_paths >/dev/null 2>&1 || declare -ga wallpaper_paths=()
+declare -p wallpaper_source_paths >/dev/null 2>&1 || declare -ga wallpaper_source_paths=()
 
 for _hypr_runtime_core in \
   "${HYPR_LIB_DIR}/core/notify.sh" \

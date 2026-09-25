@@ -82,14 +82,14 @@ INSTALLED PACKAGES
 $({ pacman -Qqe | xargs -r expac -S '%n %v (%r)' 2>/dev/null; comm -13 <(pacman -Sql | sort) <(pacman -Qqe | sort) | xargs -r expac -Q '%n %v (AUR)'; } | sort)
 EOF
 
-OPTIONS=("View log" "Save in current directory")
+debug_actions=("View log" "Save in current directory")
 if ping -c 1 8.8.8.8 >/dev/null 2>&1; then
-  OPTIONS=("Upload redacted log" "${OPTIONS[@]}")
+  debug_actions=("Upload redacted log" "${debug_actions[@]}")
 fi
 
-ACTION=$(printf '%s\n' "${OPTIONS[@]}" | fzf --prompt="Select action > " --height=5 --reverse)
+selected_action=$(printf '%s\n' "${debug_actions[@]}" | fzf --prompt="Select action > " --height=5 --reverse)
 
-case "$ACTION" in
+case "$selected_action" in
   "Upload redacted log")
     if ! confirm_upload; then
       echo "Upload cancelled."
@@ -99,12 +99,11 @@ case "$ACTION" in
     trap 'cleanup_redacted_log "$?"' EXIT
     redact_debug_log "${LOG_FILE}" "${redacted_log}"
     echo "Uploading redacted debug log to 0x0.st..."
-    URL=$(curl --fail --silent --show-error -F "file=@${redacted_log}" -Fexpires=24 https://0x0.st)
-    if [ $? -eq 0 ] && [ -n "$URL" ]; then
+    if upload_url=$(curl --fail --silent --show-error -F "file=@${redacted_log}" -Fexpires=24 https://0x0.st) && [[ -n "${upload_url}" ]]; then
       echo "✓ Log uploaded successfully!"
       echo "Share this URL:"
       echo ""
-      echo "  $URL"
+      echo "  $upload_url"
       echo ""
       echo "This link will expire in 24 hours."
     else

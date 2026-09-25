@@ -46,25 +46,11 @@
     "margin": [2.0, 2.0, 2.0, 2.0],
     "outline": ["c10", 0.9]
   },
-  "clock.datetime-winbar": {
-    "fontWeight": 700,
-    "padding": [3.0, 0.0, 3.0, 0.0],
-    "hover": {
-      "fill": null
-    }
-  },
   "clock.time": {
     "margin": [2.0, 2.0, 2.0, 2.0],
     "hover": {
       "fill": null,
       "content": ["hvr_fg", 1.0]
-    }
-  },
-  "clock.time-alt": {
-    "fontWeight": 400,
-    "padding": [3.0, 0.0, 3.0, 0.0],
-    "hover": {
-      "fill": null
     }
   },
   "agents": {
@@ -73,7 +59,7 @@
       "content": ["hvr_fg", 1.0]
     }
   },
-  "bluetooth-button": {
+  "bluetooth": {
     "border": 1.0,
     "fill": ["bg", 0.1],
     "hover": {
@@ -83,10 +69,6 @@
     },
     "outline": ["br", 0.3],
     "margin": [2.0, 2.0, 2.0, 2.0]
-  },
-  "bluetooth-button.status": {
-    "border": 0.0,
-    "outline": null
   },
   "caffeine": {
     "content": ["fg", 0.5],
@@ -137,7 +119,7 @@
       "content": ["hvr_fg", 1.0]
     }
   },
-  "gpuinfo": {
+  "gpu": {
     "content": ["fg", 0.5],
     "fontWeight": 400,
     "gap": 6.0,
@@ -154,7 +136,7 @@
       "color": ["c7", 0.4]
     }
   },
-  "cpuinfo": {
+  "cpu": {
     "content": ["fg", 0.5],
     "fontWeight": 400,
     "gap": 6.0,
@@ -203,14 +185,12 @@
       "color": ["c7", 0.3]
     }
   },
-  "fanspeedinfo": {
+  "fan": {
     "content": ["fg", 0.5],
     "iconLine": 8.5,
     "iconPadRight": 4.0
   },
-  "notification": {
-    "badgeOffsetX": 4,
-    "badgeOffsetY": 4,
+  "notifications": {
     "border": 1.0,
     "fill": ["bg", 0.1],
     "outline": ["br", 0.3],
@@ -221,7 +201,7 @@
     },
     "margin": [2.0, 2.0, 2.0, 2.0]
   },
-  "github.notifications": {
+  "github": {
     "border": 1.0,
     "outline": ["br", 0.3],
     "hover": {
@@ -240,7 +220,7 @@
     },
     "padding": [2.0, 2.0, 2.0, 2.0]
   },
-  "hyprmenu": {
+  "menu": {
     "fill": ["alt_bg", 0.3],
     "outline": ["alt_br", 0.3],
     "content": ["alt_fg", 1.0],
@@ -269,12 +249,6 @@
     },
     "margin": [1.0, 0.0, 1.0, 0.0]
   },
-  "gamemode-separator": {
-    "fontWeight": 400,
-    "hover": {
-      "fill": null
-    }
-  },
   "mediaplayer": {
     "border": 0.0,
     "hover": {
@@ -288,7 +262,7 @@
       "radius": 0
     }
   },
-  "network.speed": {
+  "speed": {
     "border": 1.5,
     "content": ["fg", 0.5],
     "hover": {
@@ -353,6 +327,17 @@
       "content": ["hvr_fg", 1.0]
     }
   },
+  "bitwarden": {
+    "border": 1.0,
+    "fill": ["bg", 0.1],
+    "hover": {
+      "fill": null,
+      "outline": ["hvr_br", 0.6],
+      "content": ["hvr_fg", 1.0]
+    },
+    "outline": ["br", 0.3],
+    "margin": [2.0, 2.0, 2.0, 2.0]
+  },
   "vpn": {
     "border": 1.0,
     "fill": ["bg", 0.1],
@@ -410,7 +395,7 @@
     "justify": "right",
     "margin": [2.0, 3.0, 2.0, 3.0]
   },
-  "wifimenu": {
+  "wifi": {
     "border": 1.0,
     "fill": ["bg", 0.1],
     "hover": {
@@ -445,18 +430,9 @@
     "margin": [3.0, 0.0, 3.0, 0.0]
   },
 
-  "info": {
-    "padding": [0.0, 2.0, 0.0, 2.0]
-  },
   "networkmanagement": {
     "border": 1.0,
     "margin": [3.0, 2.0, 3.0, 2.0]
-  },
-  "notification-group": {
-    "border": 1.0,
-    "margin": [3.0, 2.0, 3.0, 2.0],
-    "fill": ["bg", 0.1],
-    "outline": ["br", 0.3]
   },
   "privacy": {
     "outline": ["c12", 0.3],
@@ -496,7 +472,7 @@
   "microphone.muted": {
     "outline": ["br", 0.3]
   },
-  "backlight": {
+  "display": {
     "fill": ["bg", 0.1],
     "border": 1.0,
     "outline": ["br", 0.3],
@@ -514,17 +490,6 @@
     "border": 1.0,
     "minHeight": 4.0,
     "minWidth": 30.0
-  },
-  "capture": {
-    "border": 1.0,
-    "margin": [2.0, 2.0, 2.0, 2.0],
-    "fill": ["bg", 0.1],
-    "outline": ["br", 0.3]
-  },
-  "capture-group": {
-    "border": 1.0,
-    "fill": ["bg", 0.1],
-    "outline": ["br", 0.3]
   },
   "taskbar": {
     "iconSize": 18.0,
@@ -545,19 +510,14 @@
   "powerconsumption": {
     "margin": [2.0, 2.0, 2.0, 2.0]
   },
-  "power": {
-    "border": 1.0,
-    "padding": [1.0, 1.0, 1.0, 1.0],
-    "margin": [2.0, 2.0, 2.0, 2.0]
-  },
-  "powermenu": {
+  "powerbutton": {
     "hover": {
       "fill": null,
       "outline": ["hvr_br", 0.6],
       "content": ["hvr_fg", 1.0]
     }
   },
-  "power-profiles-daemon": {
+  "powerprofile": {
     "border": 1.0,
     "outline": ["alt_br", 0.3],
     "hover": {
@@ -571,12 +531,6 @@
       "content": ["hvr_fg", 1.0]
     },
     "margin": [2.0, 2.0, 2.0, 2.0]
-  },
-  "connectivity": {
-    "border": 1.0,
-    "margin": [2.0, 2.0, 2.0, 2.0],
-    "fill": ["bg", 0.1],
-    "outline": ["br", 0.3]
   },
   "printers": {
     "margin": [2.0, 2.0, 2.0, 2.0],

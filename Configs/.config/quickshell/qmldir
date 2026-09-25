@@ -6,11 +6,15 @@ AudioPopup 1.0 AudioPopup.qml
 BarButton 1.0 BarButton.qml
 BarGroup 1.0 BarGroup.qml
 BarLayoutPopup 1.0 BarLayoutPopup.qml
+BarModuleLoader 1.0 BarModuleLoader.qml
+BarModules 1.0 BarModules.qml
 BarSection 1.0 BarSection.qml
 BarSurface 1.0 BarSurface.qml
 BarSlider 1.0 BarSlider.qml
 BarTooltip 1.0 BarTooltip.qml
 BatteryButton 1.0 BatteryButton.qml
+Bitwarden 1.0 Bitwarden.qml
+BitwardenPopup 1.0 BitwardenPopup.qml
 BluetoothPopup 1.0 BluetoothPopup.qml
 BookmarkEditor 1.0 BookmarkEditor.qml
 BookmarkBackend 1.0 BookmarkBackend.qml
@@ -27,12 +31,14 @@ ClockAgendaPane 1.0 ClockAgendaPane.qml
 ClockNavButton 1.0 ClockNavButton.qml
 ClockworkPage 1.0 ClockworkPage.qml
 ClockworkState 1.0 ClockworkState.qml
+DateButton 1.0 DateButton.qml
 ColorModePopup 1.0 ColorModePopup.qml
 ColorPickerPopup 1.0 ColorPickerPopup.qml
 ConverterPopup 1.0 ConverterPopup.qml
 DesktopPopup 1.0 DesktopPopup.qml
 DisksPopup 1.0 DisksPopup.qml
 GithubPopup 1.0 GithubPopup.qml
+GamePopup 1.0 GamePopup.qml
 HyprsunsetPopup 1.0 HyprsunsetPopup.qml
 LanguagePopup 1.0 LanguagePopup.qml
 LayerBlur 1.0 LayerBlur.qml
@@ -59,6 +65,7 @@ PopupSection 1.0 PopupSection.qml
 PopupSelect 1.0 PopupSelect.qml
 PopupSeparator 1.0 PopupSeparator.qml
 PopupSlider 1.0 PopupSlider.qml
+PopupToggleRow 1.0 PopupToggleRow.qml
 PowerMenuPopup 1.0 PowerMenuPopup.qml
 PowerPopup 1.0 PowerPopup.qml
 PowerProfileButton 1.0 PowerProfileButton.qml
@@ -81,7 +88,7 @@ TasksPopup 1.0 TasksPopup.qml
 TasksMascot 1.0 TasksMascot.qml
 Theme 1.0 Theme.qml
 ToggleSwitch 1.0 ToggleSwitch.qml
-TopBar 1.0 TopBar.qml
+HorizontalBar 1.0 HorizontalBar.qml
 Tray 1.0 Tray.qml
 TrayFlyout 1.0 TrayFlyout.qml
 TrayMenu 1.0 TrayMenu.qml
@@ -93,7 +100,6 @@ WallpaperPopup 1.0 WallpaperPopup.qml
 WeatherPopup 1.0 WeatherPopup.qml
 WebcamPanel 1.0 WebcamPanel.qml
 WifiQrPopup 1.0 WifiQrPopup.qml
-WinBar 1.0 WinBar.qml
 WindowList 1.0 WindowList.qml
 WorkspacePopup 1.0 WorkspacePopup.qml
 Workspaces 1.0 Workspaces.qml

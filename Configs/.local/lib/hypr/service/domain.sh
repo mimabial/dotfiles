@@ -48,33 +48,30 @@ case "${domain}" in
   *) hypr_service_die "Unknown domain: ${domain}" ;;
 esac
 
-declare -a hypr_service_cli_args=()
-hypr_service_cli_show_diff=0
-hypr_service_cli_quiet=0
-hypr_service_cli_dry_run=0
-hypr_service_cli_backup_label=""
+declare -A cli_options=()
+declare -a cli_args=()
 
-hypr_service_parse_refresh_args "$@"
-[[ "${#hypr_service_cli_args[@]}" -eq 0 ]] || hypr_service_die "domain.sh does not take extra positional arguments."
+hypr_service_parse_refresh_args cli_options cli_args "$@"
+[[ "${#cli_args[@]}" -eq 0 ]] || hypr_service_die "domain.sh does not take extra positional arguments."
 
 if [[ "${action}" == "restore" ]]; then
-  [[ -n "${hypr_service_cli_backup_label}" ]] || hypr_service_cli_backup_label="restore-${domain}"
+  [[ -n "${cli_options[backup_label]}" ]] || cli_options[backup_label]="restore-${domain}"
 fi
 
 hypr_service_init
-hypr_service_apply_cli_env
+hypr_service_apply_cli_env "${cli_options[dry_run]}" "${cli_options[backup_label]}"
 
-hypr_service_apply_manifest_domains "${action}" "${hypr_service_cli_show_diff}" "${hypr_service_cli_quiet}" "${domain}"
+hypr_service_apply_manifest_domains "${action}" "${cli_options[show_diff]}" "${cli_options[quiet]}" "${domain}"
 
 case "${domain}" in
   hypr-config|hypr-state)
-    [[ "${hypr_service_cli_dry_run}" -ne 0 ]] || hyprctl reload >/dev/null 2>&1 || true
+    [[ "${cli_options[dry_run]}" -ne 0 ]] || hyprctl reload >/dev/null 2>&1 || true
     ;;
   hypridle)
-    [[ "${hypr_service_cli_dry_run}" -ne 0 ]] || hypr_svc_user restart hyprland-hypridle || true
+    [[ "${cli_options[dry_run]}" -ne 0 ]] || hypr_svc_user restart hyprland-hypridle || true
     ;;
   rofi)
-    [[ "${hypr_service_cli_dry_run}" -ne 0 ]] || pkill -x rofi >/dev/null 2>&1 || true
+    [[ "${cli_options[dry_run]}" -ne 0 ]] || pkill -x rofi >/dev/null 2>&1 || true
     ;;
 esac
 

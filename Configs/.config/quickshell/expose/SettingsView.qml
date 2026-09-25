@@ -2,12 +2,16 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import qs.Commons
+import qs.Ui as Ui
 
 Item {
     id: settingsView
 
     required property var controller
     required property var hostWindow
+    readonly property var categories: ["Appearance", "Windows", "Window labels", "Workspaces", "Hot corner", "Motion"]
+    readonly property int navigationColumns: settingsDialog.narrow ? (settingsDialog.width < Style.space(540) ? 2 : 3) : 1
+    readonly property int navigationRows: Math.ceil(categories.length / navigationColumns)
     readonly property var slideDirectionOptions: [
         { label: "Left", value: "left" },
         { label: "Right", value: "right" },
@@ -15,16 +19,144 @@ Item {
         { label: "Down", value: "down" }
     ]
 
-
-
-
-
     component SettingsDivider: Rectangle {
-        implicitHeight: Math.max(1, Style.normalBorderWidth)
+        property bool vertical: false
         color: Color.menu.border
+        implicitWidth: vertical ? Style.normalBorderWidth : 0
+        implicitHeight: vertical ? 0 : Style.normalBorderWidth
     }
 
+    component SettingRow: ColumnLayout {
+        id: settingRow
+        default property alias controls: rowControls.data
+        property string label: ""
+        property string description: ""
+        property bool stacked: settingsDialog.narrow
+        objectName: "settingRow"
+        Layout.fillWidth: true
+        spacing: Style.spacing.sm
+        opacity: enabled ? 1 : 0.45
 
+        SettingsDivider { Layout.fillWidth: true }
+
+        GridLayout {
+            Layout.fillWidth: true
+            Layout.topMargin: Style.spacing.sm
+            columns: settingRow.stacked ? 1 : 2
+            columnSpacing: Style.spacing.md
+            rowSpacing: Style.spacing.sm
+
+            Text {
+                Layout.fillWidth: true
+                Layout.preferredWidth: settingRow.stacked ? -1 : Style.space(180)
+                text: settingRow.label
+                textFormat: Text.PlainText
+                color: Color.menu.text
+                font.family: Style.font.menuFamily
+                font.pixelSize: Style.font.body
+                wrapMode: Text.WordWrap
+            }
+
+            RowLayout {
+                id: rowControls
+                Layout.fillWidth: true
+                Layout.preferredWidth: Style.space(320)
+                spacing: 0
+            }
+        }
+
+        Text {
+            Layout.fillWidth: true
+            text: settingRow.description
+            textFormat: Text.PlainText
+            color: Color.menu.text
+            opacity: 0.65
+            font.family: Style.font.menuFamily
+            font.pixelSize: Style.font.caption
+            wrapMode: Text.WordWrap
+        }
+    }
+
+    component SettingsPage: Flickable {
+        id: settingsPage
+        default property alias settings: pageColumn.data
+        property int categoryIndex: 0
+        property string title: ""
+        anchors.fill: parent
+        anchors.margins: Style.space(settingsDialog.narrow ? 20 : 28)
+        visible: settingsView.controller.settingsCategoryIndex === categoryIndex
+        enabled: visible
+        clip: true
+        contentWidth: width
+        contentHeight: pageColumn.implicitHeight
+        flickableDirection: Flickable.VerticalFlick
+        boundsBehavior: Flickable.StopAtBounds
+
+        function reveal(item) {
+            var row = item;
+            while (row.parent && row.parent !== settingsPage.contentItem && row.objectName !== "settingRow")
+                row = row.parent;
+            var top = row.mapToItem(settingsPage.contentItem, 0, 0).y;
+            var bottom = top + row.height;
+            if (top < contentY || row.height > height)
+                contentY = Math.max(0, top);
+            else if (bottom > contentY + height)
+                contentY = Math.min(Math.max(0, contentHeight - height), bottom - height);
+        }
+
+        Rectangle {
+            parent: settingsPage
+            anchors.right: parent.right
+            width: Style.space(2)
+            height: settingsPage.height * settingsPage.visibleArea.heightRatio
+            y: settingsPage.height * settingsPage.visibleArea.yPosition
+            color: Color.menu.text
+            opacity: 0.35
+            visible: settingsPage.contentHeight > settingsPage.height
+        }
+
+        ColumnLayout {
+            id: pageColumn
+            width: settingsPage.width - Style.spacing.md
+            spacing: Style.spacing.lg
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: Style.spacing.xs
+
+                Text {
+                    Layout.fillWidth: true
+                    text: settingsView.categories[settingsPage.categoryIndex]
+                    textFormat: Text.PlainText
+                    color: Color.accent
+                    font.family: Style.font.menuFamily
+                    font.pixelSize: Style.font.caption
+                    font.bold: true
+                    font.capitalization: Font.AllUppercase
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    text: settingsPage.title
+                    textFormat: Text.PlainText
+                    color: Color.menu.text
+                    font.family: Style.font.menuFamily
+                    font.pixelSize: Style.font.heading
+                    font.bold: true
+                    wrapMode: Text.WordWrap
+                }
+            }
+        }
+    }
+
+    function revealSettingsItem(item) {
+        for (var parent = item.parent; parent; parent = parent.parent) {
+            if (parent instanceof Flickable) {
+                parent.reveal(item);
+                return;
+            }
+        }
+    }
 
     anchors.fill: parent
 
@@ -40,39 +172,15 @@ Item {
 
     function settingsFocusItems() {
         var categoryButton = settingsCategoryRepeater.itemAt(settingsView.controller.settingsCategoryIndex);
-        if (settingsView.controller.settingsCategoryIndex === 0)
-            return settingsView.availableFocusItems([
-                categoryButton,
-                backgroundBlurSlider,
-                backgroundDimSlider,
-                bottomTextToggle
-            ]);
-        if (settingsView.controller.settingsCategoryIndex === 1)
-            return settingsView.availableFocusItems([
-                categoryButton,
-                hotCornerToggle,
-                hotCornerPositionChoices
-            ]);
-        if (settingsView.controller.settingsCategoryIndex === 2)
-            return settingsView.availableFocusItems([
-                categoryButton,
-                previewPlacementChoices,
-                windowFooterChoices,
-                movePointerToggle,
-                displayModeChoicesControl
-            ]);
-        return settingsView.availableFocusItems([
-            categoryButton,
-            motionAnimateButton,
-            animationStyleChoices,
-            slideDirectionChoices,
-            slideDirectionInChoices,
-            slideDirectionOutChoices,
-            animationSpeedSlider,
-            animationInSlider,
-            animationOutSlider,
-            animationSameSpeedToggle
-        ]);
+        var controls = [
+            [backgroundBlurSlider, backgroundDimSlider, bottomTextToggle],
+            [previewPlacementChoices, movePointerToggle],
+            [windowFooterChoices, workspaceLabelStyleChoices],
+            [initialWorkspaceScopeChoices, displayModeChoicesControl],
+            [hotCornerToggle, hotCornerPositionChoices, hotCornerDelaySlider],
+            [motionAnimateButton, animationStyleChoices, animationSameSpeedToggle, slideDirectionChoices, slideDirectionInChoices, slideDirectionOutChoices, animationSpeedSlider, animationInSlider, animationOutSlider]
+        ];
+        return settingsView.availableFocusItems([categoryButton].concat(controls[settingsView.controller.settingsCategoryIndex] || [], [resetDefaultsButton]));
     }
 
     function footerConfirmationFocusItems() {
@@ -103,6 +211,7 @@ Item {
         if (nextIndex < 0 || nextIndex >= items.length)
             return;
         settingsView.controller.focusSettingsItem(items[nextIndex]);
+        settingsView.revealSettingsItem(items[nextIndex]);
     }
 
     function focusSettingsCategory() {
@@ -117,8 +226,10 @@ Item {
 
     function focusFirstSettingsControl() {
         var items = settingsView.settingsFocusItems();
-        if (items.length > 1)
+        if (items.length > 1) {
             settingsView.controller.focusSettingsItem(items[1]);
+            settingsView.revealSettingsItem(items[1]);
+        }
     }
 
     function moveFooterConfirmationFocus(forward, wrap) {
@@ -130,7 +241,7 @@ Item {
         onClicked: settingsView.controller.closeSettings()
     }
 
-    Rectangle {
+    Ui.BorderSurface {
         id: settingsDialog
         readonly property bool narrow: width < Style.space(760)
         anchors.centerIn: parent
@@ -138,8 +249,7 @@ Item {
         height: Math.min(Style.space(narrow ? 720 : 640), parent.height - Style.space(80))
         radius: Style.cornerRadius
         color: Color.menu.background
-        border.color: Color.menu.border
-        border.width: Math.max(1, Style.normalBorderWidth)
+        borderSpec: Border.flat(Color.menu.border, Style.normalBorderWidth)
         enabled: !settingsView.controller.footerHideConfirmationOpen
 
         MouseArea {
@@ -173,7 +283,8 @@ Item {
                     Item { Layout.fillWidth: true }
 
                     Text {
-                        text: "1-4 section   ↑↓ move   ←→ adjust   Esc close"
+                        visible: !settingsDialog.narrow
+                        text: "1–6 section   ↑↓ move   ←→ adjust   Esc close"
                         textFormat: Text.PlainText
                         color: Color.menu.text
                         opacity: 0.5
@@ -196,24 +307,19 @@ Item {
                     Layout.fillWidth: settingsDialog.narrow
                     Layout.fillHeight: !settingsDialog.narrow
                     Layout.preferredWidth: settingsDialog.narrow ? 0 : Style.space(218)
-                    Layout.preferredHeight: settingsDialog.narrow ? Style.space(54) : 0
+                    Layout.preferredHeight: settingsDialog.narrow ? Style.space(52) * settingsView.navigationRows : 0
 
                     GridLayout {
                         anchors.top: parent.top
                         anchors.left: parent.left
                         anchors.right: parent.right
-                        columns: settingsDialog.narrow ? 4 : 1
+                        columns: settingsView.navigationColumns
                         columnSpacing: 0
                         rowSpacing: 0
 
                         Repeater {
                             id: settingsCategoryRepeater
-                            model: [
-                                "Appearance",
-                                "Hot corner",
-                                "Windows",
-                                "Motion"
-                            ]
+                            model: settingsView.categories
 
                             delegate: SettingsCategoryButton {
                                 controller: settingsView.controller
@@ -226,6 +332,7 @@ Item {
                                 label: String(modelData)
                                 selected: settingsView.controller.settingsCategoryIndex === index
                                 horizontal: settingsDialog.narrow
+                                navigationColumns: settingsView.navigationColumns
                                 onChosen: function (nextIndex) {
                                     settingsView.controller.settingsCategoryIndex = nextIndex;
                                     var nextButton = settingsCategoryRepeater.itemAt(nextIndex);
@@ -237,12 +344,12 @@ Item {
                         }
                     }
 
-                    Rectangle {
+                    SettingsDivider {
                         anchors.right: parent.right
                         anchors.bottom: parent.bottom
-                        width: settingsDialog.narrow ? parent.width : Math.max(1, Style.normalBorderWidth)
-                        height: settingsDialog.narrow ? Math.max(1, Style.normalBorderWidth) : parent.height
-                        color: Color.menu.border
+                        vertical: !settingsDialog.narrow
+                        width: vertical ? implicitWidth : parent.width
+                        height: vertical ? parent.height : implicitHeight
                     }
                 }
 
@@ -252,645 +359,419 @@ Item {
                     Layout.fillHeight: true
                     clip: true
 
-                    Item {
-                        anchors.fill: parent
-                        anchors.margins: Style.space(settingsDialog.narrow ? 20 : 28)
-                        visible: settingsView.controller.settingsCategoryIndex === 0
-                        enabled: visible
+                    SettingsPage {
+                        categoryIndex: 0
+                        title: "Backdrop and bottom text"
 
-                        ColumnLayout {
-                            anchors.fill: parent
-                            spacing: Style.spacing.md
+                        SettingRow {
+                            label: "Background blur"
+                            description: "Soften the desktop behind the overview. Set to 0 for no blur."
 
-                            ColumnLayout {
+                            SettingSlider {
+                                controller: settingsView.controller
+                                id: backgroundBlurSlider
                                 Layout.fillWidth: true
-                                spacing: Style.spacing.xs
-
-                                Text {
-                                    text: "Appearance"
-                                    textFormat: Text.PlainText
-                                    color: Color.accent
-                                    font.family: Style.font.menuFamily
-                                    font.pixelSize: Style.font.caption
-                                    font.bold: true
-                                    font.capitalization: Font.AllUppercase
-                                }
-
-                                Text {
-                                    text: "Backdrop and footer"
-                                    textFormat: Text.PlainText
-                                    color: Color.menu.text
-                                    font.family: Style.font.menuFamily
-                                    font.pixelSize: Style.font.heading
-                                    font.bold: true
+                                from: 0
+                                to: 20
+                                value: settingsView.controller.effectiveBackgroundBlur
+                                suffix: " px"
+                                onEdited: function (value) { settingsView.controller.backgroundBlurPreview = value; }
+                                onCommitted: function (value) {
+                                    settingsView.controller.backgroundBlurPreview = Math.round(value);
+                                    settingsView.controller.setBackgroundBlur(value);
                                 }
                             }
+                        }
 
-                            Item { Layout.preferredHeight: Style.spacing.sm }
-                            SettingsDivider { Layout.fillWidth: true }
+                        SettingRow {
+                            label: "Background dim"
+                            description: "Darken the desktop behind the overview. Higher values make it darker."
 
-                            RowLayout {
+                            SettingSlider {
+                                controller: settingsView.controller
+                                id: backgroundDimSlider
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: Style.space(48)
-                                Text {
-                                    Layout.preferredWidth: Style.space(120)
-                                    text: "Blur"
-                                    textFormat: Text.PlainText
-                                    color: Color.menu.text
-                                    font.family: Style.font.menuFamily
-                                    font.pixelSize: Style.font.body
-                                }
-                                SettingSlider {
-                                    controller: settingsView.controller
-                                    id: backgroundBlurSlider
-                                    Layout.fillWidth: true
-                                    from: 0
-                                    to: 20
-                                    value: settingsView.controller.effectiveBackgroundBlur
-                                    suffix: " px"
-                                    onEdited: function (value) { settingsView.controller.backgroundBlurPreview = value; }
-                                    onCommitted: function (value) {
-                                        settingsView.controller.backgroundBlurPreview = Math.round(value);
-                                        settingsView.controller.setBackgroundBlur(value);
-                                    }
+                                from: 0
+                                to: 90
+                                value: settingsView.controller.effectiveBackgroundDim
+                                suffix: "%"
+                                onEdited: function (value) { settingsView.controller.backgroundDimPreview = value; }
+                                onCommitted: function (value) {
+                                    settingsView.controller.backgroundDimPreview = Math.round(value);
+                                    settingsView.controller.setBackgroundDim(value);
                                 }
                             }
+                        }
 
-                            SettingsDivider { Layout.fillWidth: true }
+                        SettingRow {
+                            label: "Bottom text"
+                            description: "Show keyboard hints and the Settings link below the grid. Hiding it requires confirmation."
 
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: Style.space(48)
-                                Text {
-                                    Layout.preferredWidth: Style.space(120)
-                                    text: "Dim"
-                                    textFormat: Text.PlainText
-                                    color: Color.menu.text
-                                    font.family: Style.font.menuFamily
-                                    font.pixelSize: Style.font.body
-                                }
-                                SettingSlider {
-                                    controller: settingsView.controller
-                                    id: backgroundDimSlider
-                                    Layout.fillWidth: true
-                                    from: 0
-                                    to: 90
-                                    value: settingsView.controller.effectiveBackgroundDim
-                                    suffix: "%"
-                                    onEdited: function (value) { settingsView.controller.backgroundDimPreview = value; }
-                                    onCommitted: function (value) {
-                                        settingsView.controller.backgroundDimPreview = Math.round(value);
-                                        settingsView.controller.setBackgroundDim(value);
-                                    }
+                            Item { Layout.fillWidth: true }
+
+                            SettingToggle {
+                                controller: settingsView.controller
+                                id: bottomTextToggle
+                                checked: settingsView.controller.showFooter
+                                onToggled: function (checked) {
+                                    if (checked)
+                                        settingsView.controller.updatePluginSetting("showFooter", true);
+                                    else
+                                        settingsView.controller.requestFooterHide();
                                 }
                             }
-
-                            SettingsDivider { Layout.fillWidth: true }
-
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: Style.space(48)
-                                Text {
-                                    text: "Bottom text"
-                                    textFormat: Text.PlainText
-                                    color: Color.menu.text
-                                    font.family: Style.font.menuFamily
-                                    font.pixelSize: Style.font.body
-                                }
-                                Item { Layout.fillWidth: true }
-                                SettingToggle {
-                                    controller: settingsView.controller
-                                    id: bottomTextToggle
-                                    checked: settingsView.controller.showFooter
-                                    onToggled: function (checked) {
-                                        if (checked)
-                                            settingsView.controller.updatePluginSetting("showFooter", true);
-                                        else
-                                            settingsView.controller.requestFooterHide();
-                                    }
-                                }
-                            }
-
-                            SettingsDivider { Layout.fillWidth: true }
-                            Item { Layout.fillHeight: true }
                         }
                     }
 
-                    Item {
-                        anchors.fill: parent
-                        anchors.margins: Style.space(settingsDialog.narrow ? 20 : 28)
-                        visible: settingsView.controller.settingsCategoryIndex === 1
-                        enabled: visible
+                    SettingsPage {
+                        categoryIndex: 1
+                        title: "Quick Look and activation"
 
-                        ColumnLayout {
-                            anchors.fill: parent
-                            spacing: Style.spacing.md
+                        SettingRow {
+                            label: "Quick Look position"
+                            description: "When you press Space, enlarge the preview near its card or at the center of the display."
 
-                            ColumnLayout {
+                            SettingChoices {
+                                controller: settingsView.controller
+                                id: previewPlacementChoices
                                 Layout.fillWidth: true
-                                spacing: Style.spacing.xs
-
-                                Text {
-                                    text: "Hot corner"
-                                    textFormat: Text.PlainText
-                                    color: Color.accent
-                                    font.family: Style.font.menuFamily
-                                    font.pixelSize: Style.font.caption
-                                    font.bold: true
-                                    font.capitalization: Font.AllUppercase
-                                }
-
-                                Text {
-                                    text: "Overview activation"
-                                    textFormat: Text.PlainText
-                                    color: Color.menu.text
-                                    font.family: Style.font.menuFamily
-                                    font.pixelSize: Style.font.heading
-                                    font.bold: true
-                                }
+                                value: settingsView.controller.previewPlacement
+                                options: [
+                                    { label: "In place", value: "in-place" },
+                                    { label: "Centered", value: "centered" }
+                                ]
+                                onChosen: function (value) { settingsView.controller.setPreviewPlacement(value); }
                             }
+                        }
 
-                            Item { Layout.preferredHeight: Style.spacing.sm }
-                            SettingsDivider { Layout.fillWidth: true }
+                        SettingRow {
+                            label: "Move pointer to window"
+                            description: "Move the pointer to the window you activate from the overview."
 
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: Style.space(48)
-                                Text {
-                                    text: "Enabled"
-                                    textFormat: Text.PlainText
-                                    color: Color.menu.text
-                                    font.family: Style.font.menuFamily
-                                    font.pixelSize: Style.font.body
-                                }
-                                Item { Layout.fillWidth: true }
-                                SettingToggle {
-                                    controller: settingsView.controller
-                                    id: hotCornerToggle
-                                    checked: settingsView.controller.hotCornerEnabled
-                                    onToggled: function (checked) { settingsView.controller.setHotCornerEnabled(checked); }
-                                }
+                            Item { Layout.fillWidth: true }
+
+                            SettingToggle {
+                                controller: settingsView.controller
+                                id: movePointerToggle
+                                checked: settingsView.controller.moveCursorToWindow
+                                onToggled: function (checked) { settingsView.controller.setMoveCursorToWindow(checked); }
                             }
-
-                            SettingsDivider { Layout.fillWidth: true }
-
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: Style.space(48)
-                                Text {
-                                    Layout.preferredWidth: Style.space(120)
-                                    text: "Position"
-                                    textFormat: Text.PlainText
-                                    color: Color.menu.text
-                                    font.family: Style.font.menuFamily
-                                    font.pixelSize: Style.font.body
-                                }
-                                Item { Layout.fillWidth: true }
-                                SettingChoices {
-                                    controller: settingsView.controller
-                                    id: hotCornerPositionChoices
-                                    value: settingsView.controller.hotCornerPosition
-                                    options: [
-                                        { label: "TL", value: "top-left" },
-                                        { label: "TR", value: "top-right" },
-                                        { label: "BL", value: "bottom-left" },
-                                        { label: "BR", value: "bottom-right" }
-                                    ]
-                                    onChosen: function (value) { settingsView.controller.setHotCornerPosition(value); }
-                                }
-                            }
-
-                            SettingsDivider { Layout.fillWidth: true }
-                            Item { Layout.fillHeight: true }
                         }
                     }
 
-                    Item {
-                        anchors.fill: parent
-                        anchors.margins: Style.space(settingsDialog.narrow ? 20 : 28)
-                        visible: settingsView.controller.settingsCategoryIndex === 2
-                        enabled: visible
+                    SettingsPage {
+                        categoryIndex: 2
+                        title: "Titles and workspace names"
 
-                        ColumnLayout {
-                            anchors.fill: parent
-                            spacing: Style.spacing.md
+                        SettingRow {
+                            label: "Window labels"
+                            description: "Choose how the app, title, and workspace label sit around each preview."
 
-                            ColumnLayout {
+                            SettingChoices {
+                                controller: settingsView.controller
+                                id: windowFooterChoices
                                 Layout.fillWidth: true
-                                spacing: Style.spacing.xs
-
-                                Text {
-                                    text: "Windows"
-                                    textFormat: Text.PlainText
-                                    color: Color.accent
-                                    font.family: Style.font.menuFamily
-                                    font.pixelSize: Style.font.caption
-                                    font.bold: true
-                                    font.capitalization: Font.AllUppercase
-                                }
-
-                                Text {
-                                    text: "Window behavior"
-                                    textFormat: Text.PlainText
-                                    color: Color.menu.text
-                                    font.family: Style.font.menuFamily
-                                    font.pixelSize: Style.font.heading
-                                    font.bold: true
-                                }
+                                value: settingsView.controller.windowFooterStyle
+                                spacing: Style.spacing.md
+                                options: [
+                                    { label: "Floating", value: "floating" },
+                                    { label: "Rail", value: "integrated" },
+                                    { label: "Overlay", value: "overlay" },
+                                    { label: "Centered", value: "centered" }
+                                ]
+                                onChosen: function (value) { settingsView.controller.setWindowFooterStyle(value); }
                             }
+                        }
 
-                            Item { Layout.preferredHeight: Style.spacing.sm }
-                            SettingsDivider { Layout.fillWidth: true }
+                        SettingRow {
+                            label: "Workspace names"
+                            description: "Slot only shortens names such as “Monitor:3” to “3”. Other names stay unchanged."
 
-                            RowLayout {
+                            SettingChoices {
+                                controller: settingsView.controller
+                                id: workspaceLabelStyleChoices
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: Style.space(48)
-                                Text {
-                                    Layout.preferredWidth: Style.space(120)
-                                    text: "Preview"
-                                    textFormat: Text.PlainText
-                                    color: Color.menu.text
-                                    font.family: Style.font.menuFamily
-                                    font.pixelSize: Style.font.body
-                                }
-                                Item { Layout.fillWidth: true }
-                                SettingChoices {
-                                    controller: settingsView.controller
-                                    id: previewPlacementChoices
-                                    value: settingsView.controller.previewPlacement
-                                    options: [
-                                        { label: "In place", value: "in-place" },
-                                        { label: "Centered", value: "centered" }
-                                    ]
-                                    onChosen: function (value) { settingsView.controller.setPreviewPlacement(value); }
-                                }
+                                value: settingsView.controller.workspaceLabelStyle
+                                options: [
+                                    { label: "Full", value: "full" },
+                                    { label: "Slot only", value: "slot" }
+                                ]
+                                onChosen: function (value) { settingsView.controller.setWorkspaceLabelStyle(value); }
                             }
-
-                            SettingsDivider { Layout.fillWidth: true }
-
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: Style.space(48)
-                                Text {
-                                    Layout.preferredWidth: Style.space(120)
-                                    text: "Labels"
-                                    textFormat: Text.PlainText
-                                    color: Color.menu.text
-                                    font.family: Style.font.menuFamily
-                                    font.pixelSize: Style.font.body
-                                }
-                                Item { Layout.fillWidth: true }
-                                SettingChoices {
-                                    controller: settingsView.controller
-                                    id: windowFooterChoices
-                                    value: settingsView.controller.windowFooterStyle
-                                    spacing: Style.spacing.md
-                                    options: [
-                                        { label: "Floating", value: "floating" },
-                                        { label: "Rail", value: "integrated" },
-                                        { label: "Overlay", value: "overlay" },
-                                        { label: "Centered", value: "centered" }
-                                    ]
-                                    onChosen: function (value) { settingsView.controller.setWindowFooterStyle(value); }
-                                }
-                            }
-
-                            SettingsDivider { Layout.fillWidth: true }
-
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: Style.space(48)
-                                Text {
-                                    text: "Move pointer"
-                                    textFormat: Text.PlainText
-                                    color: Color.menu.text
-                                    font.family: Style.font.menuFamily
-                                    font.pixelSize: Style.font.body
-                                }
-                                Item { Layout.fillWidth: true }
-                                SettingToggle {
-                                    controller: settingsView.controller
-                                    id: movePointerToggle
-                                    checked: settingsView.controller.moveCursorToWindow
-                                    onToggled: function (checked) { settingsView.controller.setMoveCursorToWindow(checked); }
-                                }
-                            }
-
-                            SettingsDivider { Layout.fillWidth: true }
-
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: Style.space(76)
-                                Text {
-                                    Layout.preferredWidth: Style.space(120)
-                                    text: "Displays"
-                                    textFormat: Text.PlainText
-                                    color: Color.menu.text
-                                    font.family: Style.font.menuFamily
-                                    font.pixelSize: Style.font.body
-                                }
-                                DisplayModeChoices {
-                                    controller: settingsView.controller
-                                    id: displayModeChoicesControl
-                                    Layout.fillWidth: true
-                                    value: settingsView.controller.multiMonitorMode
-                                    onChosen: function (value) { settingsView.controller.setMultiMonitorMode(value); }
-                                }
-                            }
-
-                            SettingsDivider { Layout.fillWidth: true }
-                            Item { Layout.fillHeight: true }
                         }
                     }
 
-                    Item {
-                        anchors.fill: parent
-                        anchors.margins: Style.space(settingsDialog.narrow ? 20 : 28)
-                        visible: settingsView.controller.settingsCategoryIndex === 3
-                        enabled: visible
+                    SettingsPage {
+                        categoryIndex: 3
+                        title: "Which windows you see"
 
-                        ColumnLayout {
-                            anchors.fill: parent
-                            spacing: Style.spacing.md
+                        SettingRow {
+                            label: "Open with"
+                            description: "Choose which workspaces are shown when Exposé opens. Press Tab in the overview to switch."
 
-                            RowLayout {
+                            SettingChoices {
+                                controller: settingsView.controller
+                                id: initialWorkspaceScopeChoices
                                 Layout.fillWidth: true
-                                spacing: Style.spacing.lg
+                                value: settingsView.controller.initialWorkspaceScope
+                                options: [
+                                    { label: "All workspaces", value: "all" },
+                                    { label: "Current", value: "current" }
+                                ]
+                                onChosen: function (value) { settingsView.controller.setInitialWorkspaceScope(value); }
+                            }
+                        }
 
-                                ColumnLayout {
-                                    Layout.fillWidth: true
-                                    spacing: Style.spacing.xs
+                        SettingRow {
+                            label: "Windows to include"
+                            description: "The grid stays on the display where Exposé opened. With This display and Current, use the workspace active on that display."
+                            stacked: true
 
-                                    Text {
-                                        text: "Motion"
-                                        textFormat: Text.PlainText
-                                        color: Color.accent
-                                        font.family: Style.font.menuFamily
-                                        font.pixelSize: Style.font.caption
-                                        font.bold: true
-                                        font.capitalization: Font.AllUppercase
-                                    }
+                            DisplayModeChoices {
+                                controller: settingsView.controller
+                                id: displayModeChoicesControl
+                                Layout.fillWidth: true
+                                value: settingsView.controller.multiMonitorMode
+                                onChosen: function (value) { settingsView.controller.setMultiMonitorMode(value); }
+                            }
+                        }
+                    }
 
-                                    Text {
-                                        text: "Overview transition"
-                                        textFormat: Text.PlainText
-                                        color: Color.menu.text
-                                        font.family: Style.font.menuFamily
-                                        font.pixelSize: Style.font.heading
-                                        font.bold: true
-                                    }
-                                }
+                    SettingsPage {
+                        categoryIndex: 4
+                        title: "Activate from a corner"
 
-                                DialogButton {
-                                    controller: settingsView.controller
-                                    id: motionAnimateButton
-                                    label: "Animate"
-                                    onClicked: settingsView.controller.previewAnimation()
+                        SettingRow {
+                            label: "Enable hot corner"
+                            description: "Open or close Exposé by moving the pointer into the chosen corner."
+
+                            Item { Layout.fillWidth: true }
+
+                            SettingToggle {
+                                controller: settingsView.controller
+                                id: hotCornerToggle
+                                checked: settingsView.controller.hotCornerEnabled
+                                onToggled: function (checked) { settingsView.controller.setHotCornerEnabled(checked); }
+                            }
+                        }
+
+                        SettingRow {
+                            label: "Corner"
+                            description: "Choose the corner that activates Exposé. Avoid using the same corner in another hot-corner plugin."
+                            enabled: settingsView.controller.hotCornerEnabled
+
+                            SettingChoices {
+                                controller: settingsView.controller
+                                id: hotCornerPositionChoices
+                                Layout.fillWidth: true
+                                value: settingsView.controller.hotCornerPosition
+                                options: [
+                                    { label: "Top left", value: "top-left" },
+                                    { label: "Top right", value: "top-right" },
+                                    { label: "Bottom left", value: "bottom-left" },
+                                    { label: "Bottom right", value: "bottom-right" }
+                                ]
+                                onChosen: function (value) { settingsView.controller.setHotCornerPosition(value); }
+                            }
+                        }
+
+
+                        SettingRow {
+                            label: "Activation delay"
+                            description: "How long the pointer must stay in the corner. Set to 0 for instant activation."
+                            enabled: settingsView.controller.hotCornerEnabled
+
+                            SettingSlider {
+                                controller: settingsView.controller
+                                id: hotCornerDelaySlider
+                                Layout.fillWidth: true
+                                from: 0
+                                to: 1000
+                                stepSize: 25
+                                value: settingsView.controller.effectiveHotCornerDelay
+                                suffix: " ms"
+                                onEdited: function (value) { settingsView.controller.hotCornerDelayPreview = value; }
+                                onCommitted: function (value) {
+                                    settingsView.controller.hotCornerDelayPreview = settingsView.controller.setHotCornerDelay(value);
                                 }
                             }
+                        }
+                    }
 
-                            Item { Layout.preferredHeight: Style.spacing.sm }
-                            SettingsDivider { Layout.fillWidth: true }
+                    SettingsPage {
+                        categoryIndex: 5
+                        title: "Opening and closing"
 
-                            RowLayout {
+                        DialogButton {
+                            controller: settingsView.controller
+                            id: motionAnimateButton
+                            Layout.alignment: Qt.AlignRight
+                            label: "Preview animation"
+                            onClicked: settingsView.controller.previewAnimation()
+                        }
+
+                        SettingRow {
+                            label: "Animation style"
+                            description: "Choose how the overview opens and closes. Each style remembers its own timing."
+
+                            SettingChoices {
+                                controller: settingsView.controller
+                                id: animationStyleChoices
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: Style.space(48)
-                                Text {
-                                    Layout.preferredWidth: Style.space(120)
-                                    text: "Style"
-                                    textFormat: Text.PlainText
-                                    color: Color.menu.text
-                                    font.family: Style.font.menuFamily
-                                    font.pixelSize: Style.font.body
-                                }
-                                Item { Layout.fillWidth: true }
-                                SettingChoices {
-                                    controller: settingsView.controller
-                                    id: animationStyleChoices
-                                    value: settingsView.controller.animationStyle
-                                    options: [
-                                        { label: "Original", value: "original" },
-                                        { label: "Fade", value: "fade" },
-                                        { label: "Zoom", value: "zoom" },
-                                        { label: "Slide", value: "slide" }
-                                    ]
-                                    onChosen: function (value) {
-                                        settingsView.controller.clearAnimationTimingPreview();
-                                        settingsView.controller.setAnimationStyle(value);
-                                    }
+                                value: settingsView.controller.animationStyle
+                                options: [
+                                    { label: "Original", value: "original" },
+                                    { label: "Fade", value: "fade" },
+                                    { label: "Zoom", value: "zoom" },
+                                    { label: "Slide", value: "slide" }
+                                ]
+                                onChosen: function (value) {
+                                    settingsView.controller.clearAnimationTimingPreview();
+                                    settingsView.controller.setAnimationStyle(value);
                                 }
                             }
+                        }
 
-                            SettingsDivider { Layout.fillWidth: true }
+                        SettingRow {
+                            label: "Same opening and closing"
+                            description: "Use the same duration for both transitions. For Slide, this also links their directions."
 
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: Style.space(48)
-                                visible: settingsView.controller.animationStyle === "slide" && !settingsView.controller.animationTimingFor("slide").separate
-                                Text {
-                                    Layout.preferredWidth: Style.space(120)
-                                    text: "Direction"
-                                    textFormat: Text.PlainText
-                                    color: Color.menu.text
-                                    font.family: Style.font.menuFamily
-                                    font.pixelSize: Style.font.body
-                                }
-                                Item { Layout.fillWidth: true }
-                                SettingChoices {
-                                    controller: settingsView.controller
-                                    id: slideDirectionChoices
-                                    value: String(settingsView.controller.slideDirection["in"])
-                                    options: settingsView.slideDirectionOptions
-                                    onChosen: function (value) { settingsView.controller.setSlideDirection(value); }
+                            Item { Layout.fillWidth: true }
+
+                            SettingToggle {
+                                controller: settingsView.controller
+                                id: animationSameSpeedToggle
+                                checked: !settingsView.controller.animationTimingFor(settingsView.controller.animationStyle).separate
+                                onToggled: function (checked) {
+                                    settingsView.controller.clearAnimationTimingPreview();
+                                    settingsView.controller.setAnimationTimingSeparate(settingsView.controller.animationStyle, !checked);
                                 }
                             }
+                        }
 
-                            RowLayout {
+                        SettingRow {
+                            label: "Slide edge"
+                            description: "The edge the overview slides in from and out to."
+                            visible: settingsView.controller.animationStyle === "slide" && !settingsView.controller.animationTimingFor(settingsView.controller.animationStyle).separate
+
+                            SettingChoices {
+                                controller: settingsView.controller
+                                id: slideDirectionChoices
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: Style.space(48)
-                                visible: settingsView.controller.animationStyle === "slide" && settingsView.controller.animationTimingFor("slide").separate
-                                Text {
-                                    Layout.preferredWidth: Style.space(120)
-                                    text: "In from"
-                                    textFormat: Text.PlainText
-                                    color: Color.menu.text
-                                    font.family: Style.font.menuFamily
-                                    font.pixelSize: Style.font.body
+                                value: String(settingsView.controller.slideDirection["in"])
+                                options: settingsView.slideDirectionOptions
+                                onChosen: function (value) { settingsView.controller.setSlideDirection(value); }
+                            }
+                        }
+
+                        SettingRow {
+                            label: "Slide in from"
+                            description: "The edge the overview enters from when opening."
+                            visible: settingsView.controller.animationStyle === "slide" && settingsView.controller.animationTimingFor(settingsView.controller.animationStyle).separate
+
+                            SettingChoices {
+                                controller: settingsView.controller
+                                id: slideDirectionInChoices
+                                Layout.fillWidth: true
+                                value: String(settingsView.controller.slideDirection["in"])
+                                options: settingsView.slideDirectionOptions
+                                onChosen: function (value) { settingsView.controller.setSlideDirectionIn(value); }
+                            }
+                        }
+
+                        SettingRow {
+                            label: "Slide out to"
+                            description: "The edge the overview leaves through when closing."
+                            visible: settingsView.controller.animationStyle === "slide" && settingsView.controller.animationTimingFor(settingsView.controller.animationStyle).separate
+
+                            SettingChoices {
+                                controller: settingsView.controller
+                                id: slideDirectionOutChoices
+                                Layout.fillWidth: true
+                                value: String(settingsView.controller.slideDirection["out"])
+                                options: settingsView.slideDirectionOptions
+                                onChosen: function (value) { settingsView.controller.setSlideDirectionOut(value); }
+                            }
+                        }
+
+                        SettingRow {
+                            label: "Duration"
+                            description: "Time for each transition. Lower values are faster; higher values are slower."
+                            visible: !settingsView.controller.animationTimingFor(settingsView.controller.animationStyle).separate
+
+                            SettingSlider {
+                                controller: settingsView.controller
+                                id: animationSpeedSlider
+                                Layout.fillWidth: true
+                                from: 100
+                                to: 800
+                                stepSize: 10
+                                value: settingsView.controller.animationInDurationFor(settingsView.controller.animationStyle)
+                                suffix: " ms"
+                                onEdited: function (value) {
+                                    settingsView.controller.animationDurationPreviewStyle = settingsView.controller.animationStyle;
+                                    settingsView.controller.animationInDurationPreview = value;
+                                    settingsView.controller.animationOutDurationPreview = value;
                                 }
-                                Item { Layout.fillWidth: true }
-                                SettingChoices {
-                                    controller: settingsView.controller
-                                    id: slideDirectionInChoices
-                                    value: String(settingsView.controller.slideDirection["in"])
-                                    options: settingsView.slideDirectionOptions
-                                    onChosen: function (value) { settingsView.controller.setSlideDirectionIn(value); }
+                                onCommitted: function (value) {
+                                    var next = settingsView.controller.setAnimationDuration(settingsView.controller.animationStyle, value);
+                                    settingsView.controller.animationDurationPreviewStyle = settingsView.controller.animationStyle;
+                                    settingsView.controller.animationInDurationPreview = next;
+                                    settingsView.controller.animationOutDurationPreview = next;
                                 }
                             }
+                        }
 
-                            SettingsDivider {
-                                Layout.fillWidth: true
-                                visible: settingsView.controller.animationStyle === "slide" && settingsView.controller.animationTimingFor("slide").separate
-                            }
+                        SettingRow {
+                            label: "Opening duration"
+                            description: "Time taken to open the overview. Lower values are faster."
+                            visible: settingsView.controller.animationTimingFor(settingsView.controller.animationStyle).separate
 
-                            RowLayout {
+                            SettingSlider {
+                                controller: settingsView.controller
+                                id: animationInSlider
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: Style.space(48)
-                                visible: settingsView.controller.animationStyle === "slide" && settingsView.controller.animationTimingFor("slide").separate
-                                Text {
-                                    Layout.preferredWidth: Style.space(120)
-                                    text: "Out to"
-                                    textFormat: Text.PlainText
-                                    color: Color.menu.text
-                                    font.family: Style.font.menuFamily
-                                    font.pixelSize: Style.font.body
+                                from: 100
+                                to: 800
+                                stepSize: 10
+                                value: settingsView.controller.animationInDurationFor(settingsView.controller.animationStyle)
+                                suffix: " ms"
+                                onEdited: function (value) {
+                                    settingsView.controller.animationDurationPreviewStyle = settingsView.controller.animationStyle;
+                                    settingsView.controller.animationInDurationPreview = value;
                                 }
-                                Item { Layout.fillWidth: true }
-                                SettingChoices {
-                                    controller: settingsView.controller
-                                    id: slideDirectionOutChoices
-                                    value: String(settingsView.controller.slideDirection["out"])
-                                    options: settingsView.slideDirectionOptions
-                                    onChosen: function (value) { settingsView.controller.setSlideDirectionOut(value); }
-                                }
-                            }
-
-                            SettingsDivider {
-                                Layout.fillWidth: true
-                                visible: settingsView.controller.animationStyle === "slide"
-                            }
-
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: Style.space(48)
-                                visible: !settingsView.controller.animationTimingFor(settingsView.controller.animationStyle).separate
-                                Text {
-                                    Layout.preferredWidth: Style.space(120)
-                                    text: "Speed"
-                                    textFormat: Text.PlainText
-                                    color: Color.menu.text
-                                    font.family: Style.font.menuFamily
-                                    font.pixelSize: Style.font.body
-                                }
-                                SettingSlider {
-                                    controller: settingsView.controller
-                                    id: animationSpeedSlider
-                                    Layout.fillWidth: true
-                                    from: 100
-                                    to: 800
-                                    stepSize: 10
-                                    value: settingsView.controller.animationInDurationFor(settingsView.controller.animationStyle)
-                                    suffix: " ms"
-                                    onEdited: function (value) {
-                                        settingsView.controller.animationDurationPreviewStyle = settingsView.controller.animationStyle;
-                                        settingsView.controller.animationInDurationPreview = value;
-                                        settingsView.controller.animationOutDurationPreview = value;
-                                    }
-                                    onCommitted: function (value) {
-                                        var next = settingsView.controller.setAnimationDuration(settingsView.controller.animationStyle, value);
-                                        settingsView.controller.animationDurationPreviewStyle = settingsView.controller.animationStyle;
-                                        settingsView.controller.animationInDurationPreview = next;
-                                        settingsView.controller.animationOutDurationPreview = next;
-                                    }
+                                onCommitted: function (value) {
+                                    var next = settingsView.controller.setAnimationDurationIn(settingsView.controller.animationStyle, value);
+                                    settingsView.controller.animationDurationPreviewStyle = settingsView.controller.animationStyle;
+                                    settingsView.controller.animationInDurationPreview = next;
                                 }
                             }
+                        }
 
-                            RowLayout {
+                        SettingRow {
+                            label: "Closing duration"
+                            description: "Time taken to close the overview. Lower values are faster."
+                            visible: settingsView.controller.animationTimingFor(settingsView.controller.animationStyle).separate
+
+                            SettingSlider {
+                                controller: settingsView.controller
+                                id: animationOutSlider
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: Style.space(48)
-                                visible: settingsView.controller.animationTimingFor(settingsView.controller.animationStyle).separate
-                                Text {
-                                    Layout.preferredWidth: Style.space(120)
-                                    text: "In"
-                                    textFormat: Text.PlainText
-                                    color: Color.menu.text
-                                    font.family: Style.font.menuFamily
-                                    font.pixelSize: Style.font.body
+                                from: 100
+                                to: 800
+                                stepSize: 10
+                                value: settingsView.controller.animationOutDurationFor(settingsView.controller.animationStyle)
+                                suffix: " ms"
+                                onEdited: function (value) {
+                                    settingsView.controller.animationDurationPreviewStyle = settingsView.controller.animationStyle;
+                                    settingsView.controller.animationOutDurationPreview = value;
                                 }
-                                SettingSlider {
-                                    controller: settingsView.controller
-                                    id: animationInSlider
-                                    Layout.fillWidth: true
-                                    from: 100
-                                    to: 800
-                                    stepSize: 10
-                                    value: settingsView.controller.animationInDurationFor(settingsView.controller.animationStyle)
-                                    suffix: " ms"
-                                    onEdited: function (value) {
-                                        settingsView.controller.animationDurationPreviewStyle = settingsView.controller.animationStyle;
-                                        settingsView.controller.animationInDurationPreview = value;
-                                    }
-                                    onCommitted: function (value) {
-                                        var next = settingsView.controller.setAnimationDurationIn(settingsView.controller.animationStyle, value);
-                                        settingsView.controller.animationDurationPreviewStyle = settingsView.controller.animationStyle;
-                                        settingsView.controller.animationInDurationPreview = next;
-                                    }
+                                onCommitted: function (value) {
+                                    var next = settingsView.controller.setAnimationDurationOut(settingsView.controller.animationStyle, value);
+                                    settingsView.controller.animationDurationPreviewStyle = settingsView.controller.animationStyle;
+                                    settingsView.controller.animationOutDurationPreview = next;
                                 }
                             }
-
-                            SettingsDivider {
-                                Layout.fillWidth: true
-                                visible: settingsView.controller.animationTimingFor(settingsView.controller.animationStyle).separate
-                            }
-
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: Style.space(48)
-                                visible: settingsView.controller.animationTimingFor(settingsView.controller.animationStyle).separate
-                                Text {
-                                    Layout.preferredWidth: Style.space(120)
-                                    text: "Out"
-                                    textFormat: Text.PlainText
-                                    color: Color.menu.text
-                                    font.family: Style.font.menuFamily
-                                    font.pixelSize: Style.font.body
-                                }
-                                SettingSlider {
-                                    controller: settingsView.controller
-                                    id: animationOutSlider
-                                    Layout.fillWidth: true
-                                    from: 100
-                                    to: 800
-                                    stepSize: 10
-                                    value: settingsView.controller.animationOutDurationFor(settingsView.controller.animationStyle)
-                                    suffix: " ms"
-                                    onEdited: function (value) {
-                                        settingsView.controller.animationDurationPreviewStyle = settingsView.controller.animationStyle;
-                                        settingsView.controller.animationOutDurationPreview = value;
-                                    }
-                                    onCommitted: function (value) {
-                                        var next = settingsView.controller.setAnimationDurationOut(settingsView.controller.animationStyle, value);
-                                        settingsView.controller.animationDurationPreviewStyle = settingsView.controller.animationStyle;
-                                        settingsView.controller.animationOutDurationPreview = next;
-                                    }
-                                }
-                            }
-
-                            SettingsDivider { Layout.fillWidth: true }
-
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: Style.space(48)
-                                Text {
-                                    text: "Same in and out"
-                                    textFormat: Text.PlainText
-                                    color: Color.menu.text
-                                    font.family: Style.font.menuFamily
-                                    font.pixelSize: Style.font.body
-                                }
-                                Item { Layout.fillWidth: true }
-                                SettingToggle {
-                                    controller: settingsView.controller
-                                    id: animationSameSpeedToggle
-                                    checked: !settingsView.controller.animationTimingFor(settingsView.controller.animationStyle).separate
-                                    onToggled: function (checked) {
-                                        settingsView.controller.clearAnimationTimingPreview();
-                                        settingsView.controller.setAnimationTimingSeparate(settingsView.controller.animationStyle, !checked);
-                                    }
-                                }
-                            }
-
-                            SettingsDivider { Layout.fillWidth: true }
-                            Item { Layout.fillHeight: true }
                         }
                     }
                 }
@@ -919,9 +800,16 @@ Item {
 
                     Item { Layout.fillWidth: true }
 
+                    DialogButton {
+                        id: resetDefaultsButton
+                        controller: settingsView.controller
+                        label: "Reset to defaults"
+                        onClicked: settingsView.controller.resetSettings()
+                    }
+
                     Text {
                         visible: !settingsDialog.narrow
-                        text: "1–4 category   Tab controls"
+                        text: "1–6 category   Tab controls"
                         textFormat: Text.PlainText
                         color: Color.menu.text
                         opacity: 0.45
@@ -962,19 +850,17 @@ Item {
 
         Rectangle {
             anchors.fill: parent
-            color: "black"
-            opacity: 0.72
+            color: Color.menu.scrim
         }
 
-        Rectangle {
+        Ui.BorderSurface {
             id: footerHideDialog
             anchors.centerIn: parent
             width: Math.min(Style.space(560), parent.width - Style.space(80))
             height: Math.min(parent.height - Style.space(80), footerHideContent.implicitHeight + Style.space(56))
             radius: Style.cornerRadius
             color: Color.menu.background
-            border.color: Color.menu.border
-            border.width: Math.max(1, Style.normalBorderWidth)
+            borderSpec: Border.flat(Color.menu.border, Style.normalBorderWidth)
 
             MouseArea {
                 anchors.fill: parent
@@ -1007,12 +893,9 @@ Item {
                     font.pixelSize: Style.font.body
                 }
 
-                Rectangle {
+                ThemedControl {
                     Layout.fillWidth: true
                     Layout.preferredHeight: recoveryText.implicitHeight + Style.space(24)
-                    color: Color.background
-                    border.color: Color.menu.border
-                    border.width: Math.max(1, Style.normalBorderWidth)
 
                     Text {
                         id: recoveryText
@@ -1050,23 +933,19 @@ Item {
                         anchors.fill: parent
                         spacing: Style.spacing.md
 
-                        Rectangle {
+                        ThemedControl {
+                            id: acknowledgementBox
                             Layout.preferredWidth: Style.space(18)
                             Layout.preferredHeight: Style.space(18)
-                            color: settingsView.controller.footerHideAcknowledged ? Color.accent : "transparent"
-                            border.color: footerHideAcknowledgement.activeFocus || settingsView.controller.footerHideAcknowledged
-                                ? Color.accent
-                                : Color.menu.border
-                            border.width: footerHideAcknowledgement.activeFocus
-                                ? Math.max(2, Style.focusBorderWidth)
-                                : Math.max(1, Style.normalBorderWidth)
+                            selected: settingsView.controller.footerHideAcknowledged
+                            focused: footerHideAcknowledgement.activeFocus
 
                             Text {
                                 anchors.centerIn: parent
                                 visible: settingsView.controller.footerHideAcknowledged
                                 text: "✓"
                                 textFormat: Text.PlainText
-                                color: Color.background
+                                color: acknowledgementBox.stateColor
                                 font.family: Style.font.menuFamily
                                 font.pixelSize: Style.font.caption
                                 font.bold: true
@@ -1076,7 +955,7 @@ Item {
                         Text {
                             id: acknowledgementText
                             Layout.fillWidth: true
-                            text: "I understand that closing Settings while it is hidden requires the IPC command above."
+                            text: "I understand how to restore Settings with the IPC command."
                             textFormat: Text.PlainText
                             wrapMode: Text.WordWrap
                             color: Color.menu.text

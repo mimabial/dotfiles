@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import "Commons" as Commons
 import "Ui" as Ui
@@ -151,6 +152,7 @@ Item {
                 : ["Keep off", "Enable anyway"]
 
               Ui.BorderSurface {
+                id: decision
                 required property int index
                 required property string modelData
 
@@ -168,7 +170,7 @@ Item {
 
                 Text {
                   anchors.centerIn: parent
-                  text: modelData
+                  text: decision.modelData
                   textFormat: Text.PlainText
                   color: parent.selected ? root.selectedText : root.foreground
                   font.family: root.fontFamily
@@ -180,9 +182,9 @@ Item {
                   enabled: !root.busy
                   hoverEnabled: true
                   cursorShape: Qt.PointingHandCursor
-                  onEntered: root.selectedIndex = index
+                  onEntered: root.selectedIndex = decision.index
                   onClicked: {
-                    if (index === 0)
+                    if (decision.index === 0)
                       root.canceled()
                     else
                       root.settingRequested(!root.webEnabled)

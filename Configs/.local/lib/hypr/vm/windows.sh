@@ -526,7 +526,7 @@ case "${1:-}" in
     remove_windows
     ;;
   launch|start)
-    launch_windows "$2"
+    launch_windows "${2:-}"
     ;;
   stop|down)
     stop_windows

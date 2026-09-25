@@ -2,7 +2,7 @@
 from dataclasses import dataclass, field, replace
 
 from mediaplayer_browser import (
-    get_ytdlp_media_info,
+    resolve_youtube_media_info,
     is_youtube_url,
     youtube_position_is_untrusted,
 )
@@ -144,7 +144,7 @@ def resolve_metadata_duration(
 ) -> MediaMetadata:
     same_track_as_last = snapshot.same_track_as(last_metadata)
     last_duration_seconds = max(0.0, last_metadata.duration_seconds)
-    ytdlp_info = get_ytdlp_media_info(
+    ytdlp_info = resolve_youtube_media_info(
         snapshot.media_url,
         same_track_as_last=same_track_as_last,
         last_duration_seconds=last_duration_seconds,

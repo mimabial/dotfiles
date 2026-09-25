@@ -117,7 +117,7 @@ colorize_fallback_icon() {
 
   if [ -f "$color_file" ]; then
     source "$color_file"
-    tint=(-modulate 100,60,100 -fill "${color4:-#458588}" -colorize 60%)
+    tint=(-modulate '100,60,100' -fill "${color4:-#458588}" -colorize 60%)
   fi
 
   # The icon's dark disc is halved in opacity so the wallpaper shows through it, and

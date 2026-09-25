@@ -55,7 +55,7 @@ fi
 # PipeWire's PulseAudio compatibility layer may omit the legacy top-level
 # `card` field from sink/source JSON. `device.name` is the stable association in
 # that schema, while native PulseAudio still exposes the numeric card index.
-read_endpoints() {
+read_audio_endpoints_json() {
   local kind=$1
   local payload
 
@@ -64,7 +64,7 @@ read_endpoints() {
   printf '%s\n' "$payload"
 }
 
-read_active_profile() {
+read_card_active_profile() {
   local payload
 
   payload=$(timeout --kill-after=1s 2 pactl -f json list cards 2>/dev/null) || return 1
@@ -113,11 +113,11 @@ project_endpoint_states() {
   " <<<"$payload"
 }
 
-old_sinks_payload=$(read_endpoints sinks) || {
+old_sinks_payload=$(read_audio_endpoints_json sinks) || {
   echo "Could not read the current audio outputs" >&2
   exit 1
 }
-old_sources_payload=$(read_endpoints sources) || {
+old_sources_payload=$(read_audio_endpoints_json sources) || {
   echo "Could not read the current audio inputs" >&2
   exit 1
 }
@@ -137,7 +137,7 @@ old_sink_inputs=()
 old_sink_input_mutes=()
 old_sink_input_serials=()
 if (( ${#old_sinks[@]} > 0 )); then
-  sink_inputs_payload=$(read_endpoints sink-inputs) || {
+  sink_inputs_payload=$(read_audio_endpoints_json sink-inputs) || {
     echo "Could not read the current audio streams" >&2
     exit 1
   }
@@ -190,7 +190,7 @@ restore_old_state() {
   local failed=false
 
   if (( ${#old_sink_inputs[@]} > 0 )); then
-    current_sink_inputs=$(read_endpoints sink-inputs) || return 1
+    current_sink_inputs=$(read_audio_endpoints_json sink-inputs) || return 1
     for (( input = 0; input < ${#old_sink_inputs[@]}; input++ )); do
       # Already-muted streams were never changed during preparation.
       [[ ${old_sink_input_mutes[$input]} == false ]] || continue
@@ -224,7 +224,7 @@ restore_old_state() {
   [[ $failed == false ]]
 }
 
-merge_first_states() {
+merge_first_seen_endpoint_states() {
   jq -cn --argjson seen "$1" --argjson current "$2" '
     def endpoint_key:
       if .serial != "" then "serial:" + .serial
@@ -358,7 +358,7 @@ rollback_profile() {
     # A timed-out client can still have delivered the request. If the card is
     # already back on the old profile, continue with endpoint restoration;
     # otherwise this rollback genuinely failed.
-    rollback_active_profile=$(read_active_profile) || rollback_active_profile=
+    rollback_active_profile=$(read_card_active_profile) || rollback_active_profile=
     [[ $rollback_active_profile == "$active_profile" ]] || return 1
   fi
 
@@ -366,16 +366,16 @@ rollback_profile() {
   expected_old_sources=$(jq 'length' <<<"$old_source_states") || return 1
   rollback_deadline=$(( $(date +%s%3N) + 2500 ))
   for (( rollback_attempt = 0; rollback_attempt < 40; rollback_attempt++ )); do
-    rollback_sink_payload=$(read_endpoints sinks) || rollback_sink_payload='[]'
-    rollback_source_payload=$(read_endpoints sources) || rollback_source_payload='[]'
+    rollback_sink_payload=$(read_audio_endpoints_json sinks) || rollback_sink_payload='[]'
+    rollback_source_payload=$(read_audio_endpoints_json sources) || rollback_source_payload='[]'
     rollback_sink_states=$(project_endpoint_states \
       "$rollback_sink_payload" "$endpoint_filter") || rollback_sink_states='[]'
     rollback_source_states=$(project_endpoint_states \
       "$rollback_source_payload" "$source_filter") || rollback_source_states='[]'
-    rollback_active_profile=$(read_active_profile) || rollback_active_profile=
-    first_rollback_sink_states=$(merge_first_states \
+    rollback_active_profile=$(read_card_active_profile) || rollback_active_profile=
+    first_rollback_sink_states=$(merge_first_seen_endpoint_states \
       "$first_rollback_sink_states" "$rollback_sink_states") || return 1
-    first_rollback_source_states=$(merge_first_states \
+    first_rollback_source_states=$(merge_first_seen_endpoint_states \
       "$first_rollback_source_states" "$rollback_source_states") || return 1
 
     mute_new_endpoints sink "$rollback_sink_states" muted_rollback_sinks || return 1
@@ -479,19 +479,19 @@ stable_ready_ticks=0
 
 wait_deadline=$(( $(date +%s%3N) + 2500 ))
 for (( attempt = 0; attempt < 40; attempt++ )); do
-  new_sinks_payload=$(read_endpoints sinks) || new_sinks_payload='[]'
-  new_sources_payload=$(read_endpoints sources) || new_sources_payload='[]'
+  new_sinks_payload=$(read_audio_endpoints_json sinks) || new_sinks_payload='[]'
+  new_sources_payload=$(read_audio_endpoints_json sources) || new_sources_payload='[]'
   new_sink_states=$(project_endpoint_states "$new_sinks_payload" "$endpoint_filter") \
     || new_sink_states='[]'
   new_source_states=$(project_endpoint_states "$new_sources_payload" "$source_filter") \
     || new_source_states='[]'
-  reported_profile=$(read_active_profile) || reported_profile=
-  if ! first_new_sink_states=$(merge_first_states \
+  reported_profile=$(read_card_active_profile) || reported_profile=
+  if ! first_new_sink_states=$(merge_first_seen_endpoint_states \
       "$first_new_sink_states" "$new_sink_states"); then
     transition_error="Could not track the new audio output state"
     break
   fi
-  if ! first_new_source_states=$(merge_first_states \
+  if ! first_new_source_states=$(merge_first_seen_endpoint_states \
       "$first_new_source_states" "$new_source_states"); then
     transition_error="Could not track the new audio input state"
     break

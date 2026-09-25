@@ -1,0 +1,245 @@
+{
+  "": {
+    "fontSize": 12.0,
+    "outline": null,
+    "fill": null,
+    "hover": { "outline": null, "fill": null }
+  },
+  "#workspaces button": {
+    "hover": { "fill": null, "outline": null, "content": ["hvr_fg", 1.0] }
+  },
+  "caffeine": {
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "menu": {
+    "fontWeight": 700,
+    "margin": [0.0, 8.0, 0.0, 10.0],
+    "hover": { "outline": null, "content": ["hvr_fg", 1.0] },
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "hyprsunset": { "margin": [4.0, 2.0, 4.0, 2.0] },
+  "keybindhint": { "margin": [0.0, 6.0, 0.0, 6.0], "padding": [0.0, 0.0, 0.0, 0.0] },
+  "screenrecord": {
+    "hover": { "fill": null, "outline": ["hvr_br", 0.55], "content": ["hvr_fg", 1.0] }
+  },
+  "submap": { "fontWeight": 400, "margin": [4.0, 7.0, 4.0, 7.0] },
+  "updates": {
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "vpn": {
+    "fontSize": 12.0,
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "weather": {
+    "hover": { "fill": null, "content": ["hvr_fg", 1.0] },
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "wifi": {
+    "margin": [0.0, 4.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "display": {
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "privacy": { "margin": [2.0, 3.0, 2.0, 3.0] },
+  "volume": {
+    "fontSize": 16.0,
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "volume.headphone": {
+    "fontSize": 12.0
+  },
+  "workspaces": { "margin": [0.0, 0.0, 0.0, 0.0] },
+  "#workspaces button.active": {
+    "border": 0.0,
+    "fill": null,
+    "hover": { "fill": null, "outline": null, "content": ["fg", 1.0] },
+    "margin": [0.0, 0.0, 0.0, 0.0],
+    "outline": null,
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "tasks": {
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0],
+    "hover": { "fill": null, "content": ["hvr_fg", 1.0] }
+  },
+  "appearance": {
+    "margin": [0.0, 0.0, 0.0, 0.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "wallpaper": {
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "colormode": {
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "barlayout-button": {
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "desktop-group": {
+    "margin": [0.0, 0.0, 0.0, 0.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "window-layout": {
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "workflows": {
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "cpu": {
+    "gap": 3.0,
+    "iconLine": 0.0,
+    "iconPadRight": 0.0,
+    "iconSize": 14.0,
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "gpu": {
+    "gap": 3.0,
+    "iconLine": 0.0,
+    "iconPadRight": 2.0,
+    "iconSize": 14.0,
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "memory": {
+    "gap": 3.0,
+    "iconLine": 0.0,
+    "iconPadRight": 2.0,
+    "iconSize": 10.0,
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "disk": {
+    "gap": 3.0,
+    "iconLine": 0.0,
+    "iconPadRight": 0.0,
+    "iconSize": 11.0,
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "speed": {
+    "border": 0.0,
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "fan": {
+    "gap": 0.0,
+    "iconLine": 0.0,
+    "iconPadRight": 6.0,
+    "iconSize": 12.0,
+    "margin": [0.0, 26.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0],
+    "hover": { "fill": null, "content": ["hvr_fg", 1.0] }
+  },
+  "powerprofile.power-saver": {
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "powerprofile.performance": {
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "mediaplayer": {
+    "border": 2.0,
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0],
+    "edge": {
+      "left": false,
+      "color": ["c6", 0.5]
+    },
+    "hover": { "outline": ["c6", 0.5], "content": ["hvr_fg", 1.0] }
+  },
+  "bluetooth": {
+    "badgeContent": ["accent", 0.5],
+    "badgeSize": 7.0,
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "bluetooth.off": {
+    "fontSize": 11.0,
+    "padding": [0.0, -2.0, 0.0, 2.0]
+  },
+  "bluetooth.on": {
+    "fontSize": 10.0
+  },
+  "bluetooth.connected": {
+    "fontSize": 12.0,
+    "padding": [0.0, 2.0, 0.0, 0.0]
+  },
+  "powerbutton": {
+    "fontSize": 13,
+    "outline": null,
+    "hover": { "fill": null, "content": ["hvr_fg", 1.0] },
+    "margin": [0.0, 12.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "bitwarden": {
+    "fontSize": 14.0,
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "systemstats": { "content": ["fg", 0.5] },
+  "games": { "fontSize": 16, "margin": [0, 6, 0, 6] },
+  "systemstats.cpu": { "fontSize": 14 },
+  "systemstats.gpu": { "fontSize": 16.5 },
+  "systemstats.memory": { "fontSize": 13.5 },
+  "systemstats.network": { "fontSize": 13.5 },
+  "systemstats.disks": { "fontSize": 11 },
+  "microphone": {
+    "fontSize": 11.0,
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "microphone.muted": {
+    "fontSize": 11.0,
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "datetime": {
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0],
+    "hover": { "fill": null, "content": ["hvr_fg", 1.0] }
+  },
+  "notifications": {
+    "badgeContent": ["accent", 0.5],
+    "badgeSize": 7.0,
+    "fill": null,
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0],
+    "hover": { "fill": null, "outline": null, "content": ["hvr_fg", 1.0] }
+  },
+  "github": {
+    "fontSize": 14.0,
+    "fill": null,
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0],
+    "hover": { "fill": null, "outline": null, "content": ["hvr_fg", 1.0] }
+  },
+  "printers": { "margin": [0.0, 6.0, 0.0, 6.0], "padding": [0.0, 0.0, 0.0, 0.0] },
+  "colorpicker": { "margin": [0.0, 6.0, 0.0, 6.0], "padding": [0.0, 0.0, 0.0, 0.0] },
+  "removable": {
+    "badgeContent": ["accent", 0.5],
+    "fontSize": 14.0,
+    "badgeSize": 7.0,
+    "badgeOffsetY": 3.0,
+    "margin": [0.0, 12.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  },
+  "powerprofile": {
+    "fontSize": 14.0,
+    "margin": [0.0, 6.0, 0.0, 6.0],
+    "padding": [0.0, 0.0, 0.0, 0.0]
+  }
+}

@@ -42,7 +42,7 @@ class LibraryIndex:
     by_basename: dict[str, list[LrcEntry]]
     active_paths: set[Path]
 
-    def available(
+    def available_lyrics_entries(
         self,
         entries: list[LrcEntry],
         current_key: str,
@@ -156,7 +156,7 @@ def build_library_index(
     )
 
 
-def _same(left: str, right: str) -> bool:
+def _same_nonempty_metadata_value(left: str, right: str) -> bool:
     return bool(left.strip()) and left.strip().casefold() == right.strip().casefold()
 
 
@@ -164,9 +164,9 @@ def _metadata_matches(entry: LrcEntry, metadata: dict) -> bool:
     artist = str(metadata.get("artist") or "")
     title = str(metadata.get("title") or "")
     album = str(metadata.get("album") or "")
-    if not (_same(entry.artist, artist) and _same(entry.title, title)):
+    if not (_same_nonempty_metadata_value(entry.artist, artist) and _same_nonempty_metadata_value(entry.title, title)):
         return False
-    return not entry.album or not album or _same(entry.album, album)
+    return not entry.album or not album or _same_nonempty_metadata_value(entry.album, album)
 
 
 def find_relink_candidate(
@@ -181,13 +181,13 @@ def find_relink_candidate(
     )
     metadata_matches = [
         entry
-        for entry in index.available(
+        for entry in index.available_lyrics_entries(
             index.by_metadata.get(metadata_key, []),
             current_key,
         )
         if _metadata_matches(entry, metadata)
     ]
-    basename_matches = index.available(
+    basename_matches = index.available_lyrics_entries(
         index.by_basename.get(audio_file.stem.casefold(), []),
         current_key,
     )

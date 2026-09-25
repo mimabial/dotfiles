@@ -18,9 +18,21 @@ var GLYPH_ALERT = codepoint(0xF0028)
 var GLYPH_REFRESH = codepoint(0xF0450)
 var GLYPH_PHONE = codepoint(0xF09A7)
 var GLYPH_CAMERA = codepoint(0xF0100)
-var GLYPH_PENCIL = codepoint(0xF03EB)
 var GLYPH_COPY = codepoint(0xF018F)
 var GLYPH_READONLY = codepoint(0xF0250)
+var GLYPH_TERMINAL = codepoint(0xF018D)
+var GLYPH_PIE = codepoint(0xF0127)
+var GLYPH_SERVER = codepoint(0xF048B)
+var GLYPH_WRENCH = codepoint(0xF05B7)
+var GLYPH_COG = codepoint(0xF0493)
+var GLYPH_HEALTHY = codepoint(0xF05E0)
+var GLYPH_THERMOMETER = codepoint(0xF050F)
+var GLYPH_STETHOSCOPE = codepoint(0xF04D9)
+var GLYPH_TAG = codepoint(0xF04F9)
+var GLYPH_ERASER = codepoint(0xF01FE)
+var GLYPH_DOTS = codepoint(0xF01D8)
+var GLYPH_CHEVRON_DOWN = codepoint(0xF0140)
+var GLYPH_CHEVRON_UP = codepoint(0xF0143)
 
 var UNMOUNTABLE = ["swap", "LVM2_member", "linux_raid_member", "zfs_member", "ddf_raid_member", "isw_raid_member"]
 var SYSTEM_MOUNTS = ["/", "/boot", "/boot/efi", "/efi", "/home", "/var", "/usr", "/nix", "/nix/store", "[SWAP]"]
@@ -48,11 +60,12 @@ function formatFsType(value) {
     return names[fs] || fs.toUpperCase()
 }
 
-function isVirtual(name) { return /^(zram|loop|ram|dm-|md|sr|fd)/.test(exact(name)) }
-function isCandidateDisk(node) { return !!node && node.type === "disk" && !isVirtual(node.name) && (node.rm === true || node.hotplug === true) }
+function isVirtual(node) { return node.fstype !== "swap" && node.mountpoint !== "[SWAP]" && /^(zram|loop|ram|dm-|md|sr|fd)/.test(exact(node.name)) }
+function isCandidateDisk(node) { return !!node && node.type === "disk" && !isVirtual(node) && (node.rm === true || node.hotplug === true) }
 
 function holdsSystemMount(node) {
     if (!node) return false
+    if (node.fstype === "swap") return true
     if (SYSTEM_MOUNTS.includes(exact(node.mountpoint))) return true
     const mounts = node.mountpoints || []
     for (let i = 0; i < mounts.length; ++i)
@@ -69,6 +82,7 @@ function deviceGlyph(device) {
 }
 
 function deviceTitle(node) {
+    if (/^zram/.test(exact(node.name))) return "Compressed Swap (" + clean(node.name) + ")"
     const vendor = clean(node.vendor), model = clean(node.model)
     if (vendor && model.toLowerCase().indexOf(vendor.toLowerCase()) < 0) return clean(vendor + " " + model)
     return model || vendor || clean(node.name)
@@ -86,9 +100,10 @@ function buildVolume(part, index) {
     return {
         path: exact(part.path), fsPath: exact(fsNode.path), name: exact(part.name),
         uuid: exact(fsNode.uuid) || exact(part.uuid), index: index,
-        label: label, title: label || clean(part.name), fstype: fstype,
+        label: label, title: fstype === "swap" ? "Swap (" + clean(part.name) + ")" : label || clean(part.name), fstype: fstype,
         fstypeLabel: formatFsType(fstype), sizeBytes: Number(part.size || 0),
         mountpoint: mountpoint, mounted: mountpoint !== "", encrypted: encrypted,
+        isSystem: holdsSystemMount(part) || holdsSystemMount(fsNode),
         unlocked: encrypted && holder !== null, fsavail: Number(fsNode.fsavail || 0),
         fssize: Number(fsNode.fssize || 0), fsused: Number(fsNode.fsused || 0)
     }
@@ -104,32 +119,34 @@ function buildDevice(node) {
     for (let i = 0; i < children.length; ++i)
         if (children[i] && ["part", "crypt"].includes(children[i].type)) parts.push(children[i])
     if (parts.length === 0) {
-        if (clean(node.fstype) || exact(node.mountpoint)) volumes.push(buildVolume(node, 1))
+        volumes.push(buildVolume(node, 1))
     } else {
         for (let i = 0; i < parts.length; ++i) volumes.push(buildVolume(parts[i], i + 1))
     }
-    return {
-        path: exact(node.path), name: exact(node.name), serial: exact(node.serial),
-        title: deviceTitle(node), nickname: "", deviceName: deviceTitle(node), key: "",
+    const device = {
+        path: exact(node.path), name: exact(node.name), serial: exact(node.serial), title: deviceTitle(node),
         glyph: deviceGlyph(node), tran: clean(node.tran), sizeBytes: Number(node.size || 0),
         sizeText: formatBytes(node.size), volumes: volumes,
-        mountedCount: volumes.filter(volume => volume.mounted).length
+        mountedCount: volumes.filter(volume => volume.mounted).length,
+        isSystem: holdsSystemMount(node), removable: isCandidateDisk(node)
     }
+    device.key = driveKey(device)
+    return device
 }
 
 function parse(raw) {
     const parsed = JSON.parse(String(raw || "{}")), devices = []
     const nodes = parsed.blockdevices || []
     for (let i = 0; i < nodes.length; ++i)
-        if (isCandidateDisk(nodes[i]) && !holdsSystemMount(nodes[i])) devices.push(buildDevice(nodes[i]))
+        if (nodes[i].type === "disk" && !isVirtual(nodes[i])) devices.push(buildDevice(nodes[i]))
     return devices
 }
 
 function volumeMeta(volume, readOnly) {
     if (!volume) return ""
+    if (volume.fstype === "swap") return formatBytes(volume.sizeBytes) + (volume.mounted ? " · Active swap" : " · Inactive swap")
     if (volume.encrypted && !volume.unlocked) return "Encrypted · " + formatBytes(volume.sizeBytes)
     const parts = []
-    if (volume.fstypeLabel) parts.push(volume.fstypeLabel)
     if (volume.mounted) {
         if (readOnly) parts.push("Read-only")
         parts.push(volume.fsavail > 0 ? formatBytes(volume.fsavail) + " free" : formatBytes(volume.sizeBytes))
@@ -140,6 +157,43 @@ function volumeMeta(volume, readOnly) {
         else if (volume.fstype) parts.push("Not mountable")
     }
     return parts.filter(Boolean).join(" · ")
+}
+
+function usedFraction(volume) {
+    return volume && volume.fssize > 0 ? Math.max(0, Math.min(1, volume.fsused / volume.fssize)) : 0
+}
+
+function validLabel(type, label) {
+    const limits = {vfat: 11, exfat: 11, ntfs: 128, ext4: 16, btrfs: 256}
+    return label.length <= (limits[type] || 0) && (type !== "vfat" || !/["*\/:<>?\\|]/.test(label))
+}
+
+function parseHealth(raw) {
+    const data = {}, lines = String(raw).split("\n")
+    for (const line of lines) {
+        const match = line.match(/^(Smart\w+)\s+\w+\s+(.+)$/)
+        if (match) data[match[1]] = match[2]
+    }
+    if (!Object.keys(data).length || Number(data.SmartUpdated || 0) === 0)
+        return {state: "unavailable", text: "SMART unavailable via UDisks", temperature: ""}
+    const temperature = Number(data.SmartTemperature)
+    const kelvin = isFinite(temperature) && temperature > 0 ? Math.round((temperature - 273.15) * 10) / 10 + "°C" : ""
+    const bad = Number(data.SmartNumBadSectors || 0)
+    const critical = Number((data.SmartCriticalWarning || "0").split(" ")[0])
+    const condition = data.SmartFailing === "true" || critical > 0 ? "Failing" : bad > 0 ? bad + " bad sectors" : "Healthy"
+    const hours = Number(data.SmartPowerOnHours || 0) || Math.floor(Number(data.SmartPowerOnSeconds || 0) / 3600)
+    return {state: condition === "Failing" ? "failing" : bad > 0 ? "warning" : "healthy",
+        text: [condition, hours > 0 ? hours + " h" : ""].filter(Boolean).join(" · "), temperature: kelvin}
+}
+
+function healthVerdict(health) { return health && /^(healthy|warning|failing)$/.test(health.state) ? health.state : "unsupported" }
+
+function parseNetworkMounts(raw) {
+    let filesystems
+    try { filesystems = JSON.parse(raw).filesystems || [] } catch (error) { return [] }
+    return filesystems.filter(item => /^(nfs4?|cifs|smb3?|sshfs|fuse\.(sshfs|rclone|davfs|s3fs|gcsfuse)|davfs2?|afpfs|ceph)$/.test(item.fstype || ""))
+        .map(item => ({mountpoint: item.target, source: item.source, fstype: item.fstype,
+            readOnly: (item.options || "").split(",").includes("ro")}))
 }
 
 function mountedVolumes(devices) {
@@ -261,32 +315,45 @@ function driveKey(device) {
     return "model:" + clean(device.title) + ":" + device.sizeBytes
 }
 
-function applyStore(devices, store) {
-    const saved = store && store.drives ? store.drives : {}
-    for (let i = 0; i < devices.length; ++i) {
-        const key = driveKey(devices[i]), entry = saved[key] || {}, nickname = clean(entry.nickname)
-        devices[i].key = key; devices[i].deviceName = devices[i].title; devices[i].nickname = nickname
-        if (nickname) devices[i].title = nickname
-    }
-    return devices
+function withDriveSetting(store, device, name, value) {
+    const drives = Object.assign({}, store.drives || {}), key = driveKey(device), entry = Object.assign({}, drives[key] || {})
+    if (value === null || value === "") delete entry[name]; else entry[name] = value
+    if (Object.keys(entry).length) drives[key] = entry; else delete drives[key]
+    return Object.assign({}, store, {drives: drives})
 }
 
-function withNickname(store, device, nickname) {
-    const next = {version: 1, drives: {}, notify: !(store && store.notify === false)}, source = store && store.drives ? store.drives : {}
-    for (const key in source) next.drives[key] = Object.assign({}, source[key])
-    const key = driveKey(device), value = clean(nickname), entry = Object.assign({}, next.drives[key] || {})
-    if (value) entry.nickname = value; else delete entry.nickname
-    if (Object.keys(entry).length) next.drives[key] = entry; else delete next.drives[key]
-    return next
-}
-
-function withNotify(store, enabled) { return Object.assign({}, store, {notify: enabled === true}) }
+function driveSetting(store, device, name) { return (store.drives || {})[driveKey(device)]?.[name] }
 
 function parseStore(raw) {
     try {
         const parsed = JSON.parse(String(raw || "").trim() || "{}")
-        return {version: 1, drives: parsed && parsed.drives || {}, notify: !(parsed && parsed.notify === false)}
-    } catch (error) { return {version: 1, drives: {}, notify: true} }
+        const drives = parsed && typeof parsed.drives === "object" && !Array.isArray(parsed.drives) ? parsed.drives : {}
+        for (const key in drives) {
+            const entry = drives[key]
+            if (!entry || typeof entry !== "object" || Array.isArray(entry)) { delete drives[key]; continue }
+            if (entry.readOnly !== undefined) entry.readOnly = entry.readOnly !== false
+            if (entry.autoOpen !== true && entry.autoOpen !== false) delete entry.autoOpen
+        }
+        return Object.assign({showSystem: true}, parsed, {version: 1, drives: drives})
+    } catch (error) { return {version: 1, drives: {}, showSystem: true} }
+}
+
+function hookName(key) { return exact(key).replace(/[^\w.-]/g, "_") }
+
+function parseHookProgress(raw) {
+    const state = {active: true, percent: -1, status: ""}
+    for (const line of String(raw || "").split("\n")) {
+        const match = line.match(/^\s*(?:(\w+)=)?(.*?)\s*$/), key = match[1] || "percent", value = match[2]
+        if (key === "exit" || key === "done" && value === "1") state.active = false
+        else if (key === "status") state.status = plain(value).slice(0, 120)
+        else if (key === "percent" && value !== "" && isFinite(value)) state.percent = Math.max(0, Math.min(100, Math.floor(Number(value))))
+    }
+    return state
+}
+
+function hookLabel(state) {
+    if (!state || !state.active) return ""
+    return (state.status || "Running connect hook") + (state.percent >= 0 ? " · " + state.percent + "%" : "")
 }
 
 function isPortableType(value) { return /MTP|GPhoto2|Afc/i.test(exact(value)) }

@@ -14,6 +14,7 @@ BarButton {
     property string fallback: ""
     property bool useAlt: false
     property var refreshKey
+    property bool refreshPending: false
     property var output: ({ text: "", tooltip: "" })
     readonly property string raw: String((useAlt ? output.alt : output.text) || icons[output.alt] || fallback || "")
     // Only go through rich text when the payload actually carries pango markup.
@@ -28,7 +29,10 @@ BarButton {
     // subscribes this button to `quickshell ipc call indicators refresh <name>`,
     // so a state change pushes one run instead of a timer discovering it later
     property string indicator: ""
-    function refresh() { refreshDelay.restart() }
+    function refresh() {
+        if (process.running) refreshPending = true
+        else refreshDelay.restart()
+    }
     onRefreshKeyChanged: refresh()
 
     Connections {
@@ -42,6 +46,10 @@ BarButton {
         id: process
         command: root.command
         environment: root.processEnvironment
+        onRunningChanged: if (!running && root.refreshPending) {
+            root.refreshPending = false
+            root.refresh()
+        }
         stdout: SplitParser { onRead: line => {
             // some modules (bluetooth --status) emit bare text, not json
             try { root.output = JSON.parse(line) }

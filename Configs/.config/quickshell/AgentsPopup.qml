@@ -1,36 +1,46 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 
 PopupCard {
     id: root
     popupName: "agents"
     contentWidth: Style.px(380)
-    contentHeight: agentsColumn.implicitHeight + padding * 2
+    contentHeight: agentsViewport.height + hintHeight + padding * 2
 
     property var records: []
     property int selected: 0
+    property string expandedProviderId: ""
     property string recommendationId: ""
     signal select(int index)
+    signal refreshRequested()
 
     readonly property int blockingHorizonMs: 5 * 3600000
     readonly property int staleAfterMs: 40 * 60000
+    readonly property int viewportHeight: Style.px(520)
+    readonly property int hintHeight: Style.px(24)
     readonly property real switchMargin: 0.05
 
     readonly property var provider: records.length ? records[Math.min(selected, records.length - 1)] : null
-    readonly property bool telemetryStale: records.some(record =>
-        Date.now() - (Number(record.limitsObservedAt) || 0) > staleAfterMs)
-    readonly property var candidate: records.map(rank).reduce((best, scored) =>
+    readonly property bool selectedRecommended: provider !== null && String(provider.id) === recommendationId
+    readonly property bool isOpenCode: provider !== null && provider.id === "opencode"
+    readonly property var providerUsage: isOpenCode ? provider.providerUsage || [] : []
+    readonly property bool telemetryStale: records.some(record => record.id !== "opencode" &&
+        (record.limits || []).length && Date.now() - (Number(record.limitsObservedAt) || 0) > staleAfterMs)
+    readonly property var candidate: records.filter(record => record.id !== "opencode").map(rank).reduce((best, scored) =>
         scored && (!best || better(scored, best, 0)) ? scored : best, null)
 
     readonly property string providerSummary: provider
-        ? usageSummary(provider) || String(provider.usageStatusText || provider.tierLabel || "") : ""
+        ? (isOpenCode ? String(provider.usageStatusText || "")
+            : usageSummary(provider) || String(provider.usageStatusText || provider.tierLabel || "")) : ""
     readonly property var limits: provider && provider.limits ? provider.limits : []
     readonly property var days: provider && provider.recentDays ? provider.recentDays : []
+    readonly property real recentTotal: days.reduce((total, day) => total + (Number(day.messageCount) || 0), 0)
+    readonly property real providerWeekTotal: providerUsage.reduce((total, entry) => total + (Number(entry.tokensWeek) || 0), 0)
     readonly property real busiestDay: {
         let peak = 0
         for (const day of days) peak = Math.max(peak, Number(day.messageCount) || 0)
         return peak
     }
-    // modelUsage is keyed by model; each entry splits input/output/cache.
     readonly property var models: {
         const usage = provider && provider.modelUsage ? provider.modelUsage : ({})
         const out = []
@@ -38,7 +48,7 @@ PopupCard {
             const entry = usage[name] || ({})
             out.push({
                 name: name,
-                total: (Number(entry.inputTokens) || 0) + (Number(entry.outputTokens) || 0)
+                total: (Number(entry.totalTokens) || 0) + (Number(entry.inputTokens) || 0) + (Number(entry.outputTokens) || 0)
                     + (Number(entry.cacheCreationInputTokens) || 0) + (Number(entry.cacheReadInputTokens) || 0)
             })
         }
@@ -47,7 +57,6 @@ PopupCard {
     }
     readonly property real heaviestModel: models.length ? models[0].total : 0
     readonly property string todayDate: Qt.formatDate(shell.clock.date, "yyyy-MM-dd")
-    readonly property int dayLabelWidth: Style.px(40)
 
     function compact(value) {
         const n = Number(value) || 0
@@ -91,6 +100,10 @@ PopupCard {
         if (minutes >= 60) return Math.floor(minutes / 60) + "h " + minutes % 60 + "m"
         return minutes + "m"
     }
+    function handleKey(event) {
+        if (event.key === Qt.Key_R) { refreshRequested(); return true }
+        return defaultKey(event)
+    }
     onCandidateChanged: {
         if (!candidate) return
         const held = recommendationId ? records.find(record => String(record.id) === recommendationId) : null
@@ -104,9 +117,18 @@ PopupCard {
             String(record.name || recommendationId), usageSummary(record)])
     }
 
-    Column {
-        id: agentsColumn
-        anchors.left: parent.left; anchors.right: parent.right; spacing: Style.sectionGap
+    Flickable {
+        id: agentsViewport
+        width: parent.width
+        height: Math.max(0, Math.min(root.viewportHeight,
+            root.anchorWindow ? root.maxHeight - root.padding * 2 : root.viewportHeight) - root.hintHeight)
+        contentHeight: agentsColumn.implicitHeight
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+
+        Column {
+            id: agentsColumn
+            width: agentsViewport.width; spacing: Style.sectionGap
 
         PopupHero {
             shell: root.shell
@@ -138,21 +160,26 @@ PopupCard {
             visible: root.limits.length > 0
             width: parent.width; spacing: Style.md
             PopupSeparator { shell: root.shell }
-            PopupSection { shell: root.shell; text: "LIMITS" }
+            PopupSection { shell: root.shell; text: root.isOpenCode ? "GO LIMITS" : "LIMITS" }
             Repeater {
                 model: root.limits
                 Column {
+                    id: limitRow
                     required property var modelData
                     width: agentsColumn.width; spacing: Style.md
                     Row {
                         width: parent.width
                         Text {
-                            text: root.limitName(modelData); color: root.shell.foreground
+                            id: limitName
+                            text: root.limitName(limitRow.modelData) + (root.isOpenCode && Number(limitRow.modelData.limitDollars) > 0
+                                ? " · $" + Number(limitRow.modelData.limitDollars).toFixed(0) : "")
+                            color: root.shell.foreground
                             font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
                         }
-                        Item { width: Math.max(0, parent.width - parent.children[0].implicitWidth - parent.children[2].implicitWidth); height: 1 }
+                        Item { width: Math.max(0, parent.width - limitName.implicitWidth - limitPercent.implicitWidth); height: 1 }
                         Text {
-                            text: Math.round(Number(modelData.percent) * 100) + "%"
+                            id: limitPercent
+                            text: Math.round(Number(limitRow.modelData.percent) * 100) + "%"
                             color: root.shell.alpha(root.shell.foreground, .65)
                             font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
                         }
@@ -161,15 +188,15 @@ PopupCard {
                         width: parent.width; height: Style.trackHeight; radius: Style.trackHeight / 2
                         color: root.shell.alpha(root.shell.foreground, .12)
                         Rectangle {
-                            width: parent.width * Math.max(0, Math.min(1, Number(modelData.percent)))
+                            width: parent.width * Math.max(0, Math.min(1, Number(limitRow.modelData.percent)))
                             height: parent.height; radius: parent.radius
-                            color: Number(modelData.percent) >= 0.9
+                            color: Number(limitRow.modelData.percent) >= 0.9
                                 ? root.shell.role("error", root.shell.accent)
                                 : root.shell.role("act_br", root.shell.accent)
                         }
                     }
                     Text {
-                        readonly property string untilReset: root.open ? root.resetsIn(modelData.resetsAt) : ""
+                        readonly property string untilReset: root.open ? root.resetsIn(limitRow.modelData.resetsAt) : ""
                         visible: untilReset !== ""
                         width: parent.width
                         text: "Resets in " + untilReset
@@ -181,51 +208,111 @@ PopupCard {
         }
 
         Column {
-            visible: root.days.length > 0
-            width: parent.width; spacing: Style.xs
+            visible: root.providerUsage.length > 0
+            width: parent.width; spacing: Style.md
             PopupSeparator { shell: root.shell }
-            PopupSection { shell: root.shell; text: "TOKENS BY DAY" }
+            PopupSection { shell: root.shell; text: "PROVIDERS" }
             Repeater {
-                model: root.days
-                Row {
-                    required property var modelData
-                    readonly property bool today: String(modelData.date) === root.todayDate
-                    width: agentsColumn.width; spacing: Style.lg
-                    Text {
-                        width: root.dayLabelWidth
-                        text: today ? "Today" : Qt.formatDate(new Date(String(modelData.date) + "T00:00:00"), "ddd")
-                        color: root.shell.alpha(root.shell.foreground, today ? .9 : .55)
-                        font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: today
+                model: root.providerUsage
+                delegate: ProviderUsageRow { popup: root; width: agentsColumn.width }
+            }
+        }
+
+        Text {
+            visible: root.isOpenCode && !!root.provider.goStatus
+            width: parent.width; text: root.provider ? String(root.provider.goStatus || "") : ""
+            color: root.shell.alpha(root.shell.foreground, .55)
+            font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+        }
+
+        Column {
+            visible: root.days.length > 0
+            width: parent.width; spacing: Style.md
+            PopupSeparator { shell: root.shell }
+            PopupSection { shell: root.shell; text: "RECENT USAGE · " + root.compact(root.recentTotal) + " TOKENS" }
+            Canvas {
+                id: recentChart
+                width: agentsColumn.width; height: Style.px(72)
+                antialiasing: true
+                readonly property var values: root.days.map(day => Number(day.messageCount) || 0)
+                readonly property color lineColor: root.shell.foreground
+                readonly property color peakColor: root.shell.role("act_br", root.shell.accent)
+                onValuesChanged: requestPaint()
+                onLineColorChanged: requestPaint()
+                onPeakColorChanged: requestPaint()
+                onWidthChanged: requestPaint()
+                onPaint: {
+                    const ctx = getContext("2d")
+                    ctx.clearRect(0, 0, width, height)
+                    const n = values.length
+                    if (!n) return
+                    const pad = Style.md, base = height - Style.xs
+                    const peak = Math.max(1, root.busiestDay)
+                    const peakIndex = values.indexOf(root.busiestDay)
+                    const x = i => pad + i * (width - 2 * pad) / Math.max(1, n - 1)
+                    const y = i => base - Style.sm - values[i] / peak * (base - Style.lg * 2)
+                    function trace() {
+                        ctx.beginPath()
+                        ctx.moveTo(x(0), y(0))
+                        for (let i = 1; i < n; i++)
+                            ctx.quadraticCurveTo(x(i - 1), y(i - 1), (x(i - 1) + x(i)) / 2, (y(i - 1) + y(i)) / 2)
+                        ctx.lineTo(x(n - 1), y(n - 1))
                     }
-                    Rectangle {
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: parent.width - root.dayLabelWidth - Style.px(56) - Style.lg * 2; height: Style.trackHeight
-                        radius: Style.trackHeight / 2; color: root.shell.alpha(root.shell.foreground, .1)
-                        Rectangle {
-                            width: root.busiestDay > 0 ? parent.width * (Number(modelData.messageCount) / root.busiestDay) : 0
-                            height: parent.height; radius: parent.radius
-                            color: root.shell.alpha(root.shell.role("act_br", root.shell.accent), today ? 1 : .55)
+                    trace()
+                    ctx.lineTo(x(n - 1), base)
+                    ctx.lineTo(x(0), base)
+                    ctx.closePath()
+                    const fill = ctx.createLinearGradient(0, 0, 0, base)
+                    fill.addColorStop(0, Qt.rgba(lineColor.r, lineColor.g, lineColor.b, .25))
+                    fill.addColorStop(1, Qt.rgba(lineColor.r, lineColor.g, lineColor.b, 0))
+                    ctx.fillStyle = fill
+                    ctx.fill()
+                    trace()
+                    ctx.strokeStyle = lineColor
+                    ctx.lineWidth = Style.px(2)
+                    ctx.stroke()
+                    for (let i = 0; i < n; i++) {
+                        ctx.beginPath()
+                        ctx.arc(x(i), y(i), i === peakIndex && root.busiestDay > 0 ? Style.sm : Style.xs, 0, 2 * Math.PI)
+                        ctx.fillStyle = i === peakIndex && root.busiestDay > 0 ? peakColor : lineColor
+                        ctx.fill()
+                    }
+                }
+            }
+            Row {
+                width: parent.width
+                Repeater {
+                    model: root.days
+                    Column {
+                        required property var modelData
+                        readonly property bool today: String(modelData.date) === root.todayDate
+                        width: agentsColumn.width / root.days.length; spacing: Style.xs
+                        Text {
+                            width: parent.width; horizontalAlignment: Text.AlignHCenter
+                            text: Qt.formatDate(new Date(String(modelData.date) + "T00:00:00"), "ddd")
+                            color: root.shell.alpha(root.shell.foreground, today ? .9 : .55)
+                            font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: today
                         }
-                    }
-                    Text {
-                        width: Style.px(56); horizontalAlignment: Text.AlignRight
-                        text: root.compact(modelData.messageCount)
-                        color: root.shell.alpha(root.shell.foreground, today ? .9 : .55)
-                        font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: today
+                        Text {
+                            width: parent.width; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight
+                            text: root.compact(modelData.messageCount)
+                            color: root.shell.alpha(root.shell.foreground, today ? .9 : .55)
+                            font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: today
+                        }
                     }
                 }
             }
         }
 
         Column {
-            visible: root.models.length > 0
+            visible: !root.isOpenCode && root.models.length > 0
             width: parent.width; spacing: Style.md
             PopupSeparator { shell: root.shell }
             PopupSection { shell: root.shell; text: "TOKENS BY MODEL" }
             Repeater {
                 model: root.models.slice(0, 5)
                 Item {
-                    id: modelRow
+                    id: tokenModelRow
                     required property var modelData
                     width: agentsColumn.width
                     implicitHeight: modelName.implicitHeight + Style.lg
@@ -237,14 +324,14 @@ PopupCard {
                     Rectangle {
                         anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
                         width: root.heaviestModel > 0
-                            ? parent.width * Math.min(1, modelRow.modelData.total / root.heaviestModel)
+                            ? parent.width * Math.min(1, tokenModelRow.modelData.total / root.heaviestModel)
                             : 0
                         radius: root.shell.rounding
                         color: root.shell.alpha(root.shell.foreground, .14)
                     }
                     Text {
                         id: modelName
-                        text: modelRow.modelData.name; elide: Text.ElideRight
+                        text: tokenModelRow.modelData.name; elide: Text.ElideRight
                         color: root.shell.foreground
                         font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
                         anchors.left: parent.left; anchors.leftMargin: Style.lg
@@ -253,7 +340,7 @@ PopupCard {
                     }
                     Text {
                         id: modelTokens
-                        text: root.compact(modelRow.modelData.total)
+                        text: root.compact(tokenModelRow.modelData.total)
                         color: root.shell.alpha(root.shell.foreground, .65)
                         font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall; font.bold: true
                         anchors.right: parent.right; anchors.rightMargin: Style.lg
@@ -263,13 +350,141 @@ PopupCard {
             }
         }
 
-        Text {
-            visible: root.records.length > 1 && root.recommendationId !== ""
+        }
+    }
+
+    Text {
+        y: agentsViewport.height + (root.hintHeight - implicitHeight) / 2
+        width: parent.width
+        text: "R refresh" + (root.records.length > 1 && root.selectedRecommended
+            ? "  ·  * Recommended" : "")
+        horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap
+        color: root.shell.alpha(root.shell.foreground, .55)
+        font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+    }
+
+    component ProviderUsageRow: Column {
+        id: row
+        required property var popup
+        required property var modelData
+        readonly property bool expanded: popup.expandedProviderId === String(modelData.id)
+        spacing: Style.xs
+        Rectangle {
+            width: row.width; height: summary.implicitHeight + Style.md * 2
+            radius: row.popup.shell.rounding
+            color: hit.containsMouse || row.expanded
+                ? row.popup.shell.alpha(row.popup.shell.foreground, .08) : "transparent"
+            Column {
+                id: summary
+                x: Style.md; y: Style.md; width: parent.width - Style.md * 2
+                spacing: Style.xs
+                Row {
+                    width: parent.width; spacing: Style.sm
+                    Text {
+                        id: arrow
+                        width: Style.px(12); text: row.expanded ? "▾" : "▸"
+                        color: row.popup.shell.foreground
+                        font.family: row.popup.shell.fontFamily; font.pixelSize: Style.bodySmall
+                    }
+                    Text {
+                        width: Math.max(0, parent.width - arrow.width - costLabel.implicitWidth - Style.sm * 2)
+                        text: row.modelData.id; elide: Text.ElideRight
+                        color: row.popup.shell.foreground
+                        font.family: row.popup.shell.fontFamily; font.pixelSize: Style.bodySmall; font.bold: true
+                    }
+                    Text {
+                        id: costLabel
+                        text: "$" + Number(row.modelData.costWeek).toFixed(2) + " / 7d"
+                        color: row.popup.shell.foreground
+                        font.family: row.popup.shell.fontFamily; font.pixelSize: Style.caption
+                    }
+                }
+                Text {
+                    text: row.popup.compact(row.modelData.tokensWeek) + " tokens · 7d  ·  "
+                        + row.popup.compact(row.modelData.tokensMonth) + " · 30d  ·  $"
+                        + Number(row.modelData.costMonth).toFixed(2)
+                    width: parent.width; elide: Text.ElideRight
+                    color: row.popup.shell.alpha(row.popup.shell.foreground, .55)
+                    font.family: row.popup.shell.fontFamily; font.pixelSize: Style.caption
+                }
+                Rectangle {
+                    width: parent.width; height: Style.trackHeight; radius: height / 2
+                    color: row.popup.shell.alpha(row.popup.shell.foreground, .12)
+                    Rectangle {
+                        width: parent.width * Math.min(1, (Number(row.modelData.tokensWeek) || 0)
+                            / Math.max(1, row.popup.providerWeekTotal))
+                        height: parent.height; radius: parent.radius
+                        color: row.popup.shell.role("act_br", row.popup.shell.accent)
+                    }
+                }
+            }
+            MouseArea {
+                id: hit
+                anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                onClicked: row.popup.expandedProviderId = row.expanded ? "" : String(row.modelData.id)
+            }
+        }
+        Column {
+            visible: row.expanded
+            width: row.width; spacing: Style.sm
+            Row {
+                width: parent.width
+                Repeater {
+                    model: row.popup.days.map(day => Qt.formatDate(new Date(String(day.date) + "T00:00:00"), "ddd"))
+                    Text {
+                        required property string modelData
+                        width: row.width / 7; text: modelData
+                        horizontalAlignment: Text.AlignHCenter
+                        color: row.popup.shell.alpha(row.popup.shell.foreground, .55)
+                        font.family: row.popup.shell.fontFamily; font.pixelSize: Style.caption
+                    }
+                }
+            }
+            Repeater {
+                model: row.expanded ? row.modelData.models || [] : []
+                delegate: ProviderModelRow { popup: row.popup; width: row.width }
+            }
+            Text {
+                visible: !(row.modelData.models || []).length
+                text: "No model usage in the last 7 days"
+                color: row.popup.shell.alpha(row.popup.shell.foreground, .55)
+                font.family: row.popup.shell.fontFamily; font.pixelSize: Style.caption
+            }
+        }
+    }
+
+    component ProviderModelRow: Column {
+        id: modelRow
+        required property var popup
+        required property var modelData
+        spacing: Style.xs
+        Row {
+            width: parent.width; spacing: Style.md
+            Text {
+                width: Math.max(0, parent.width - modelTotal.implicitWidth - Style.md)
+                text: modelRow.modelData.name; elide: Text.ElideRight
+                color: modelRow.popup.shell.foreground
+                font.family: modelRow.popup.shell.fontFamily; font.pixelSize: Style.caption
+            }
+            Text {
+                id: modelTotal
+                text: modelRow.popup.compact(modelRow.modelData.tokensWeek)
+                color: modelRow.popup.shell.alpha(modelRow.popup.shell.foreground, .65)
+                font.family: modelRow.popup.shell.fontFamily; font.pixelSize: Style.caption
+            }
+        }
+        Row {
             width: parent.width
-            text: "* Recommended from current limits and reset times"
-            horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap
-            color: root.shell.alpha(root.shell.foreground, .55)
-            font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+            Repeater {
+                model: (modelRow.modelData.daily || []).map(value => value > 0 ? modelRow.popup.compact(value) : "·")
+                Text {
+                    required property string modelData
+                    width: modelRow.width / 7; text: modelData
+                    horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight
+                    color: modelRow.popup.shell.alpha(modelRow.popup.shell.foreground, modelData === "·" ? .4 : .8)
+                    font.family: modelRow.popup.shell.fontFamily; font.pixelSize: Style.caption
+                }
+            }
         }
     }
 }

@@ -18,7 +18,7 @@ check_fingerprint_hardware() {
   return 0
 }
 
-setup_pam_config() {
+setup_fingerprint_pam() {
   setup_pam_module \
     "fingerprint" \
     "pam_fprintd.so" \
@@ -26,14 +26,14 @@ setup_pam_config() {
     "auth      sufficient pam_fprintd.so"
 }
 
-remove_pam_config() {
+remove_fingerprint_pam() {
   remove_pam_module "fingerprint" "pam_fprintd.so" 'pam_fprintd\.so'
 }
 
 if [[ "--remove" == "${1:-}" ]]; then
   print_success "Removing fingerprint scanner from authentication.\n"
 
-  remove_pam_config
+  remove_fingerprint_pam
 
   print_info "Removing fingerprint packages..."
   hyprshell pm --noconfirm remove fprintd
@@ -49,7 +49,7 @@ else
     exit 1
   fi
 
-  setup_pam_config
+  setup_fingerprint_pam
 
   print_success "\nLet's setup your right index finger as the first fingerprint."
   print_info "Keep moving the finger around on sensor until the process completes.\n"

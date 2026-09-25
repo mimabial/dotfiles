@@ -55,7 +55,7 @@ from autotag_identity import (
     folder_hints,
     match_score,
     missing_credit_names,
-    normalize,
+    normalize_identity_tokens,
     parse_filename,
     primary_artist,
     search_variants,
@@ -324,15 +324,15 @@ def http_get(url: str, params: dict, limiter: RateLimiter, attempts: int = 4):
 
 
 def fingerprint(path: Path) -> tuple[int, str]:
-    proc = subprocess.run(
+    process = subprocess.run(
         ["fpcalc", "-json", str(path)],
         capture_output=True,
         text=True,
     )
-    if proc.returncode != 0:
-        raise Unidentified(f"fpcalc failed: {proc.stderr.strip()}")
-    data = json.loads(proc.stdout)
-    return int(data["duration"]), data["fingerprint"]
+    if process.returncode != 0:
+        raise Unidentified(f"fpcalc failed: {process.stderr.strip()}")
+    fingerprint_data = json.loads(process.stdout)
+    return int(fingerprint_data["duration"]), fingerprint_data["fingerprint"]
 
 
 def pick_release(recording: dict, album: str = "") -> dict:
@@ -360,13 +360,13 @@ def from_acoustid(
     candidates: list[tuple[str, str]] | None = None,
     album: str = "",
 ) -> TrackTags:
-    duration, fp = fingerprint(path)
+    duration, fingerprint_data = fingerprint(path)
     response = http_get(
         ACOUSTID_ENDPOINT,
         {
             "client": key,
             "duration": duration,
-            "fingerprint": fp,
+            "fingerprint": fingerprint_data,
             # requests encodes spaces as the `+` separators expected by the
             # AcoustID API. Literal plus signs become `%2B` and suppress the
             # requested recording metadata.
@@ -628,11 +628,11 @@ def from_deezer(
             detail = f"{rejected:.2f}, failed title/artist gate"
         raise Unidentified(f"deezer best match too weak ({detail})")
 
-    dz_artist = (best.get("artist") or {}).get("name", "")
+    deezer_artist = (best.get("artist") or {}).get("name", "")
     meta = {
         "title": best.get("title", ""),
-        "artist": dz_artist,
-        "albumartist": primary_artist("", dz_artist),
+        "artist": deezer_artist,
+        "albumartist": primary_artist("", deezer_artist),
         "album": strip_release_suffix((best.get("album") or {}).get("title", "")),
         "artwork_url": (best.get("album") or {}).get("cover_big", ""),
     }
@@ -940,13 +940,13 @@ def write_tags(path: Path, meta: dict, force: bool, tags=None) -> dict:
     if tags is None:
         tags = read_tags(path)
     is_vorbis = path.suffix.lower() in VORBIS
-    valid = None if is_vorbis else set(EasyID3.valid_keys.keys())
+    valid_tag_keys = None if is_vorbis else set(EasyID3.valid_keys.keys())
 
     written = {}
     for field, value in meta.items():
         if not value or field in NON_TAG_FIELDS:
             continue
-        if valid is not None and field not in valid:
+        if valid_tag_keys is not None and field not in valid_tag_keys:
             continue
         if not force and existing(tags, field):
             continue
@@ -1029,12 +1029,12 @@ def resolution_cache_key(
     has_acoustid_key: bool,
     album: str = "",
 ) -> str:
-    stat = path.stat()
+    file_stat = path.stat()
     payload = {
         "version": CACHE_VERSION,
         "path": str(path.absolute()),
-        "size": stat.st_size,
-        "mtime_ns": stat.st_mtime_ns,
+        "size": file_stat.st_size,
+        "mtime_ns": file_stat.st_mtime_ns,
         "candidates": candidates,
         "first_artist_fallbacks": fallback_candidates,
         "album": album,
@@ -1044,7 +1044,7 @@ def resolution_cache_key(
         "fallback": args.fallback,
         "min_similarity": args.min_similarity,
     }
-    if album and any(normalize(album) == normalize(title) for _, title in candidates):
+    if album and any(normalize_identity_tokens(album) == normalize_identity_tokens(title) for _, title in candidates):
         payload["single_reissue"] = True
     encoded = json.dumps(
         payload,
@@ -1110,11 +1110,11 @@ class Resolver:
     resolution call.
     """
 
-    def __init__(self, args, limiters: dict, key: str = "",
+    def __init__(self, args, limiters: dict, acoustid_key: str = "",
                  cache: ResolutionCache | None = None, refresh_cache: bool = False):
         self.args = args
         self.limiters = limiters
-        self.key = key
+        self.acoustid_key = acoustid_key
         self.cache = cache
         self.refresh_cache = refresh_cache
 
@@ -1131,15 +1131,15 @@ class Resolver:
             artist, title, self.limiters["musicbrainz"], album=requested_album
         )
 
-    def _remember(self, cache_key: str, payload: dict, ttl) -> None:
+    def _cache_result(self, cache_key: str, payload: dict, ttl) -> None:
         if self.cache is not None:
             self.cache.put(cache_key, payload, ttl)
 
-    def _identified(self, cache_key: str, metadata: dict) -> dict:
-        self._remember(cache_key, {"identified": True, "metadata": metadata}, CACHE_SUCCESS_TTL)
+    def _cache_identified_metadata(self, cache_key: str, metadata: dict) -> dict:
+        self._cache_result(cache_key, {"identified": True, "metadata": metadata}, CACHE_SUCCESS_TTL)
         return metadata
 
-    def _cached(self, cache_key: str) -> dict | None:
+    def _read_cached_resolution(self, cache_key: str) -> dict | None:
         """Cached metadata, or None when the lookup has to actually run.
 
         A cached miss raises, the same as a fresh one would.
@@ -1157,11 +1157,11 @@ class Resolver:
                           fallback_candidates: list, album: str) -> dict | None:
         """AcoustID metadata, or None when it missed and a text search may follow."""
         try:
-            return self._identified(
+            return self._cache_identified_metadata(
                 cache_key,
                 from_acoustid(
                     path,
-                    self.key,
+                    self.acoustid_key,
                     self.limiters["acoustid"],
                     self.args.min_score,
                     candidates + (fallback_candidates if self.args.fallback else []),
@@ -1170,7 +1170,7 @@ class Resolver:
             )
         except Unidentified as exc:
             if not self.args.fallback:
-                self._remember(
+                self._cache_result(
                     cache_key, {"identified": False, "reason": str(exc)}, CACHE_MISS_TTL
                 )
                 raise
@@ -1256,21 +1256,21 @@ class Resolver:
         single_release = bool(
             album
             and not folder_hints(path, root)[1]
-            and normalize(album) == normalize(existing(tags, "title"))
+            and normalize_identity_tokens(album) == normalize_identity_tokens(existing(tags, "title"))
         )
         cache_key = (
             resolution_cache_key(
-                path, candidates, fallback_candidates, self.args, bool(self.key), album
+                path, candidates, fallback_candidates, self.args, bool(self.acoustid_key), album
             )
             if self.cache is not None
             else ""
         )
 
-        cached = self._cached(cache_key)
+        cached = self._read_cached_resolution(cache_key)
         if cached is not None:
             return cached
 
-        if self.key and not self.args.no_fingerprint:
+        if self.acoustid_key and not self.args.no_fingerprint:
             metadata = self._from_fingerprint(
                 path, cache_key, candidates, fallback_candidates, album
             )
@@ -1296,10 +1296,10 @@ class Resolver:
         for tier_index, candidate_tier in enumerate(candidate_tiers):
             metadata = self._search_tier(candidate_tier, tier_index == 0, context)
             if metadata is not None:
-                return self._identified(cache_key, metadata)
+                return self._cache_identified_metadata(cache_key, metadata)
 
         reason = self._failure_reason(candidate_tiers, context.failures)
-        self._remember(cache_key, {"identified": False, "reason": reason}, CACHE_MISS_TTL)
+        self._cache_result(cache_key, {"identified": False, "reason": reason}, CACHE_MISS_TTL)
         raise Unidentified(reason)
 
 def collect(paths: list[str], wanted: set[str]) -> list[tuple[Path, Path]]:
@@ -1533,7 +1533,7 @@ def apply_album_artwork(group: AlbumArtworkGroup, resolver: Resolver) -> int:
             if metadata is not None:
                 cache_resolution(
                     resolver.cache, path, group.roots[path], read_tags(path), args,
-                    bool(resolver.key), metadata,
+                    bool(resolver.acoustid_key), metadata,
                 )
         except (MutagenError, OSError) as exc:
             print(f"!! {path.name}: artwork failed: {exc}", file=sys.stderr)
@@ -1611,7 +1611,7 @@ def tag_file(
     # Tag/artwork writes change the file signature used by the cache.
     # Alias the same result under the new signature for the next scan.
     if resolver.cache is not None and written:
-        cache_resolution(resolver.cache, path, root, tags, args, bool(resolver.key), meta)
+        cache_resolution(resolver.cache, path, root, tags, args, bool(resolver.acoustid_key), meta)
 
     identity = f"{meta.get('artist') or '?'} - {meta.get('title') or '?'}"
     if written:

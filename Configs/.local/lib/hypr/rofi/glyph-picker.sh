@@ -54,7 +54,7 @@ setup_rofi_config() {
   local font_name
   local logical_width logical_height
   rofi_prepare_standard_context \
-    font_scale font_name font_override r_override \
+    font_scale font_name font_override window_override \
     "${ROFI_GLYPH_SCALE:-}" "${ROFI_GLYPH_FONT:-${ROFI_FONT:-}}" wallbox same
 
   read -r logical_width logical_height <<<"$(rofi_focused_monitor_logical_size)"
@@ -115,7 +115,7 @@ setup_rofi_config() {
     -theme-str "listview {flow: horizontal; fixed-columns: true;} element {padding: 0.25em 0.5em;} element-text {horizontal-align: 0.5;}"
     -theme-str 'mainbox {children: [ "wallbox", "listbox", "message" ];} listview {scrollbar: false; spacing: 5px;} message {enabled: true; margin: 12px 0px 0px 0px; padding: 0px; border: 0px solid; border-radius: 0px; border-color: @border; background-color: transparent; text-color: @separator;} textbox {padding: 6px; border: 0px solid; border-radius: 8px; border-color: @border; background-color: transparent; text-color: inherit; vertical-align: 0.5; horizontal-align: 0.5;}'
     -theme-str "${glyph_window_theme}"
-    -theme-str "${r_override}"
+    -theme-str "${window_override}"
   )
 }
 

@@ -19,9 +19,8 @@ source "${LIB_DIR}/hypr/theme/color.targets.sh"
 source "${LIB_DIR}/hypr/fonts/font.sync.lib.bash"
 
 FONT_NAME="${1:-}"
-UPDATED=()
+UPDATED_CONFIGS=()
 GENERAL_FONT=""
-DOCUMENT_FONT=""
 MONOSPACE_FONT=""
 MENU_FONT=""
 TERMINAL_FONT=""
@@ -29,20 +28,18 @@ XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 FONTCONFIG_FILE="${XDG_CONFIG_HOME}/fontconfig/fonts.conf"
 
 append_updated() {
-  UPDATED+=("$1")
+  UPDATED_CONFIGS+=("$1")
 }
 
 resolve_font_targets() {
   local general_font=""
 
   general_font="$(hypr_config_value_from_layers 'FONT' 2>/dev/null || true)"
-  DOCUMENT_FONT="$(hypr_config_value_from_layers 'DOCUMENT_FONT' 2>/dev/null || true)"
   MONOSPACE_FONT="$(hypr_config_value_from_layers 'MONOSPACE_FONT' 2>/dev/null || true)"
   MENU_FONT="$(hypr_config_value_from_layers 'MENU_FONT' 2>/dev/null || true)"
   TERMINAL_FONT="$(hypr_config_value_from_layers 'TERMINAL_FONT' 2>/dev/null || true)"
 
   GENERAL_FONT="${general_font:-${FONT_NAME:-sans-serif}}"
-  DOCUMENT_FONT="${DOCUMENT_FONT:-${GENERAL_FONT}}"
   MONOSPACE_FONT="${MONOSPACE_FONT:-${FONT_NAME:-monospace}}"
   MENU_FONT="${MENU_FONT:-${GENERAL_FONT:-${MONOSPACE_FONT}}}"
   TERMINAL_FONT="${TERMINAL_FONT:-${MONOSPACE_FONT}}"
@@ -129,13 +126,13 @@ refresh_font_cache() {
 show_summary() {
   printf 'UI font set to: %s\n' "${GENERAL_FONT}"
   printf 'Monospace font set to: %s\n\n' "${MONOSPACE_FONT}"
-  if [[ ${#UPDATED[@]} -eq 0 ]]; then
+  if [[ ${#UPDATED_CONFIGS[@]} -eq 0 ]]; then
     printf 'No consumer configs were updated.\n'
     return 0
   fi
 
   printf 'Updated configurations:\n'
-  printf '  • %s\n' "${UPDATED[@]}"
+  printf '  • %s\n' "${UPDATED_CONFIGS[@]}"
 }
 
 notify_user() {

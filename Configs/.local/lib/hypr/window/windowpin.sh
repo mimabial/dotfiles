@@ -15,10 +15,10 @@ resolve_active_window() {
 }
 
 unpin_window() {
-  local addr="$1"
+  local window_address="$1"
   local window_lua=""
 
-  window_lua="$(hypr_lua_quote "address:${addr}")"
+  window_lua="$(hypr_lua_quote "address:${window_address}")"
 
   hypr_lua_batch \
     "hl.dsp.window.pin({window=${window_lua}, action=\"toggle\"})" \
@@ -27,17 +27,17 @@ unpin_window() {
 }
 
 pin_window() {
-  local addr="$1"
-  local pip_width=1
-  local pip_height=1
+  local window_address="$1"
+  local target_width=1
+  local target_height=1
   local window_lua=""
 
-  IFS=$'\t' read -r pip_width pip_height <<<"$(launch_resolve_geometry_profile standard)" || return 1
-  window_lua="$(hypr_lua_quote "address:${addr}")"
+  IFS=$'\t' read -r target_width target_height <<<"$(launch_resolve_geometry_profile standard)" || return 1
+  window_lua="$(hypr_lua_quote "address:${window_address}")"
 
   hypr_lua_batch \
     "hl.dsp.window.float({window=${window_lua}, action=\"toggle\"})" \
-    "hl.dsp.window.resize({x=${pip_width}, y=${pip_height}, exact=true, window=${window_lua}})" \
+    "hl.dsp.window.resize({x=${target_width}, y=${target_height}, exact=true, window=${window_lua}})" \
     "hl.dsp.window.center({window=${window_lua}, respect_reserved=true})" \
     "hl.dsp.window.pin({window=${window_lua}, action=\"toggle\"})" \
     "hl.dsp.window.alter_zorder({window=${window_lua}, mode=\"top\"})" \
@@ -47,21 +47,21 @@ pin_window() {
 main() {
   local active=""
   local pinned=""
-  local addr=""
+  local window_address=""
 
   active="$(resolve_active_window)"
   pinned="$(jq '.pinned' <<<"${active}")"
-  addr="$(jq -r '.address' <<<"${active}")"
+  window_address="$(jq -r '.address' <<<"${active}")"
 
-  [ -z "${addr}" ] && {
+  [ -z "${window_address}" ] && {
     echo "No active window"
     return 0
   }
 
   if [ "${pinned}" = "true" ]; then
-    unpin_window "${addr}"
+    unpin_window "${window_address}"
   else
-    pin_window "${addr}"
+    pin_window "${window_address}"
   fi
 }
 

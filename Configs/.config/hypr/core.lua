@@ -147,6 +147,7 @@ local startup = {
     vars.get("start.QUICKSHELL"),
     vars.get("start.STYLE_MAP"),
     vars.get("start.NOTIFICATIONS"),
+    vars.get("start.WORKFLOW_RECONCILE"),
     "hyprshell app -t service xsettingsd",
     vars.get("start.TEXT_CLIPBOARD"),
     vars.get("start.IMAGE_CLIPBOARD"),

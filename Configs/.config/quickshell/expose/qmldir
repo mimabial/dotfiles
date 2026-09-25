@@ -1,5 +1,6 @@
 Overview 1.0 Overview.qml
 OverviewIpc 1.0 OverviewIpc.qml
+ThemedControl 1.0 ThemedControl.qml
 SettingsView 1.0 SettingsView.qml
 SettingSlider 1.0 SettingSlider.qml
 SettingChoices 1.0 SettingChoices.qml

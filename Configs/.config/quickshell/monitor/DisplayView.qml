@@ -34,8 +34,8 @@ KeyboardPanel {
   property alias profileNameField: profileNameInput
   property alias profileExecField: profileExecInput
   anchorItem: panel.controller.anchorItem
-  owner: panel.controller.barIdentity
-  bar: panel.controller.bar
+  owner: panel.controller
+  shell: panel.controller.shell
   open: panel.controller.opened
   centerOnBar: false
   focusTarget: keyCatcher
@@ -162,7 +162,6 @@ KeyboardPanel {
     }
     onTabRequested: function(direction) {
       if (panel.controller.expanded) panel.controller.handleExpandedTab(direction)
-      else panel.controller.switchPanel(direction)
     }
     onTextKey: function(text) { if (panel.controller.expanded) panel.controller.handleExpandedText(text) }
 
@@ -222,7 +221,7 @@ KeyboardPanel {
         BrightnessControl {
           visible: panel.controller.brightnessConnector !== ""
           width: parent.width
-          bar: panel.controller.bar
+          shell: panel.controller.shell
           connector: panel.controller.brightnessConnector
           displayLabel: panel.controller.brightnessDisplayLabel
           value: panel.controller.brightnessPercent
@@ -233,10 +232,7 @@ KeyboardPanel {
           accent: Color.accent
           fontFamily: panel.controller.fontFamily
           onPreviewed: function(value) { panel.controller.previewBrightness(value) }
-          onCommitted: function(value) {
-            brightnessRuntime.setDebounce.stop()
-            panel.controller.setBrightness(value)
-          }
+          onCommitted: function(value) { panel.controller.setBrightness(value) }
         }
 
         Column {
@@ -269,7 +265,7 @@ KeyboardPanel {
 
           PanelSlider {
             width: parent.width
-            bar: panel.controller.bar
+            shell: panel.controller.shell
             minimum: 0
             maximum: panel.controller.textSizes.length - 1
             value: panel.controller.textSizeIndex
@@ -315,7 +311,7 @@ KeyboardPanel {
           model: panel.controller.actionRows
 
           ActionRow {
-            controller: root
+            controller: panel.controller
             required property var modelData
             required property int index
             width: parent.width
@@ -794,45 +790,45 @@ KeyboardPanel {
                 spacing: Style.space(3)
 
                 InfoRow {
-                  controller: root
+                  controller: panel.controller
                   label: "Connector"
                   value: panel.controller.selectedOutput ? String(panel.controller.selectedOutput.name || "—") : "—"
                 }
                 InfoRow {
-                  controller: root
+                  controller: panel.controller
                   label: "Type"
                   value: Model.displayType(panel.controller.selectedOutputMetadata, panel.controller.selectedOutput)
                 }
                 InfoRow {
-                  controller: root
+                  controller: panel.controller
                   label: "Model"
                   value: panel.controller.selectedOutput ? Model.displayModelLabel(panel.controller.selectedOutput, false) : "—"
                 }
                 InfoRow {
-                  controller: root
+                  controller: panel.controller
                   label: "Serial"
                   value: panel.controller.selectedOutput && String(panel.controller.selectedOutput.serial || "").trim() !== ""
                     ? String(panel.controller.selectedOutput.serial) : "(none)"
                 }
                 InfoRow {
-                  controller: root
+                  controller: panel.controller
                   label: "Layout px"
                   value: panel.controller.selectedOutput
                     ? Model.outputLogicalSize(panel.controller.selectedOutput).width + " × " + Model.outputLogicalSize(panel.controller.selectedOutput).height
                     : "—"
                 }
                 InfoRow {
-                  controller: root
+                  controller: panel.controller
                   label: "Workspace"
                   value: String(panel.controller.selectedOutputMetadata.workspace || "(none)")
                 }
                 InfoRow {
-                  controller: root
+                  controller: panel.controller
                   label: "DPMS"
                   value: Model.onOff(panel.controller.selectedOutputMetadata.dpms === true)
                 }
                 InfoRow {
-                  controller: root
+                  controller: panel.controller
                   visible: Number(panel.controller.selectedOutputMetadata.physical_width || 0) > 0
                   label: "Panel mm"
                   value: Number(panel.controller.selectedOutputMetadata.physical_width || 0)
@@ -858,7 +854,7 @@ KeyboardPanel {
                 options: panel.controller.inspectorOptions
                 value: panel.controller.inspectorPage
                 foreground: panel.controller.foreground
-                background: panel.controller.bar ? panel.controller.bar.background : Color.background
+                background: panel.controller.shell.background
                 accent: Color.accent
                 fontFamily: panel.controller.fontFamily
                 fontSize: Style.font.caption
@@ -879,7 +875,7 @@ KeyboardPanel {
                 BrightnessControl {
                   visible: panel.controller.brightnessConnector !== ""
                   width: parent.width
-                  bar: panel.controller.bar
+                  shell: panel.controller.shell
                   connector: panel.controller.brightnessConnector
                   displayLabel: panel.controller.brightnessDisplayLabel
                   value: panel.controller.brightnessPercent
@@ -890,10 +886,7 @@ KeyboardPanel {
                   accent: Color.accent
                   fontFamily: panel.controller.fontFamily
                   onPreviewed: function(value) { panel.controller.previewBrightness(value) }
-                  onCommitted: function(value) {
-                    brightnessRuntime.setDebounce.stop()
-                    panel.controller.setBrightness(value)
-                  }
+                  onCommitted: function(value) { panel.controller.setBrightness(value) }
                 }
 
                 PanelSeparator {
@@ -911,7 +904,7 @@ KeyboardPanel {
                   enabled: panel.controller.managedChecked && !!panel.controller.selectedOutput && !panel.controller.editPending
                     && (checked ? Model.enabledOutputCount(panel.controller.draftProfile) > 1 : true)
                   opacity: panel.controller.managedChecked ? 1.0 : panel.controller.unmanagedOpacity
-                  hasCursor: panel.controller.inspectorHasCursor(0)
+                  hasCursor: panel.controller.inspectorHasCursor("enabled")
                   foreground: panel.controller.foreground
                   fontFamily: panel.controller.fontFamily
                   onClicked: panel.controller.editOutput({ enabled: !checked })
@@ -934,7 +927,7 @@ KeyboardPanel {
                     options: Model.modeOptions(panel.controller.editorDocument.displays, panel.controller.selectedOutputKey)
                     value: panel.controller.selectedOutput ? Model.outputMode(panel.controller.selectedOutput) : ""
                     enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor(1)
+                    hasCursor: panel.controller.inspectorHasCursor("mode")
                     foreground: panel.controller.foreground
                     fontFamily: panel.controller.fontFamily
                     onChanged: function(value) { panel.controller.editOutput({ mode: value }) }
@@ -950,7 +943,7 @@ KeyboardPanel {
                       panel.controller.selectedOutput ? panel.controller.selectedOutput.scale : 1)
                     value: panel.controller.selectedOutput ? Model.formatScale(panel.controller.selectedOutput.scale) : "1"
                     enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor(2)
+                    hasCursor: panel.controller.inspectorHasCursor("scale")
                     foreground: panel.controller.foreground
                     fontFamily: panel.controller.fontFamily
                     onChanged: function(value) { panel.controller.editOutput({ scale: Number(value) }) }
@@ -965,7 +958,7 @@ KeyboardPanel {
                     options: panel.controller.vrrOptions
                     value: panel.controller.selectedOutput ? String(panel.controller.selectedOutput.vrr || 0) : "0"
                     enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor(5)
+                    hasCursor: panel.controller.inspectorHasCursor("vrr")
                     foreground: panel.controller.foreground
                     fontFamily: panel.controller.fontFamily
                     onChanged: function(value) { panel.controller.editOutput({ vrr: Number(value) }) }
@@ -980,7 +973,7 @@ KeyboardPanel {
                     options: panel.controller.transformOptions
                     value: panel.controller.selectedOutput ? String(panel.controller.selectedOutput.transform || 0) : "0"
                     enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor(6)
+                    hasCursor: panel.controller.inspectorHasCursor("rotation")
                     foreground: panel.controller.foreground
                     fontFamily: panel.controller.fontFamily
                     onChanged: function(value) { panel.controller.editOutput({ transform: Number(value) }) }
@@ -995,7 +988,7 @@ KeyboardPanel {
                     to: 20000
                     value: panel.controller.selectedOutput ? Number(panel.controller.selectedOutput.x || 0) : 0
                     enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor(7)
+                    hasCursor: panel.controller.inspectorHasCursor("positionX")
                     foreground: panel.controller.foreground
                     fontFamily: panel.controller.fontFamily
                     onModified: function(value) {
@@ -1013,7 +1006,7 @@ KeyboardPanel {
                     to: 20000
                     value: panel.controller.selectedOutput ? Number(panel.controller.selectedOutput.y || 0) : 0
                     enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor(8)
+                    hasCursor: panel.controller.inspectorHasCursor("positionY")
                     foreground: panel.controller.foreground
                     fontFamily: panel.controller.fontFamily
                     onModified: function(value) {
@@ -1032,7 +1025,7 @@ KeyboardPanel {
                   options: Model.mirrorOptions(panel.controller.draftProfile, panel.controller.selectedOutputKey)
                   value: panel.controller.selectedOutput ? String(panel.controller.selectedOutput.mirror_of || "") : ""
                   enabled: panel.controller.managedChecked && !!panel.controller.selectedOutput && !panel.controller.editPending
-                  hasCursor: panel.controller.inspectorHasCursor(9)
+                  hasCursor: panel.controller.inspectorHasCursor("mirror")
                   opacity: panel.controller.managedChecked ? 1.0 : panel.controller.unmanagedOpacity
                   foreground: panel.controller.foreground
                   fontFamily: panel.controller.fontFamily
@@ -1065,7 +1058,7 @@ KeyboardPanel {
                     options: panel.controller.bitdepthOptions
                     value: panel.controller.selectedOutput ? String(panel.controller.selectedOutput.bitdepth || 8) : "8"
                     enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor(3)
+                    hasCursor: panel.controller.inspectorHasCursor("bitdepth")
                     foreground: panel.controller.foreground
                     fontFamily: panel.controller.fontFamily
                     onChanged: function(value) { panel.controller.editOutput({ bitdepth: Number(value) }) }
@@ -1081,14 +1074,14 @@ KeyboardPanel {
                     value: panel.controller.selectedOutput && String(panel.controller.selectedOutput.cm || "") !== ""
                       ? String(panel.controller.selectedOutput.cm) : "srgb"
                     enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor(4)
+                    hasCursor: panel.controller.inspectorHasCursor("colorManagement")
                     foreground: panel.controller.foreground
                     fontFamily: panel.controller.fontFamily
                     onChanged: function(value) { panel.controller.editOutput({ cm: value }) }
                   }
 
                   DecimalField {
-                    controller: root
+                    controller: panel.controller
                     keyTarget: keyCatcher
                     id: sdrBrightnessField
                     width: parent.cellWidth
@@ -1096,12 +1089,12 @@ KeyboardPanel {
                     value: panel.controller.selectedOutput ? Number(panel.controller.selectedOutput.sdr_brightness || 0) : 0
                     decimals: 2
                     enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor(10)
+                    hasCursor: panel.controller.inspectorHasCursor("sdrBrightness")
                     onModified: function(value) { panel.controller.editOutput({ sdr_brightness: value }) }
                   }
 
                   DecimalField {
-                    controller: root
+                    controller: panel.controller
                     keyTarget: keyCatcher
                     id: sdrSaturationField
                     width: parent.cellWidth
@@ -1109,12 +1102,12 @@ KeyboardPanel {
                     value: panel.controller.selectedOutput ? Number(panel.controller.selectedOutput.sdr_saturation || 0) : 0
                     decimals: 2
                     enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor(11)
+                    hasCursor: panel.controller.inspectorHasCursor("sdrSaturation")
                     onModified: function(value) { panel.controller.editOutput({ sdr_saturation: value }) }
                   }
 
                   DecimalField {
-                    controller: root
+                    controller: panel.controller
                     keyTarget: keyCatcher
                     id: sdrMinLuminanceField
                     width: parent.cellWidth
@@ -1122,12 +1115,12 @@ KeyboardPanel {
                     value: panel.controller.selectedOutput ? Number(panel.controller.selectedOutput.sdr_min_luminance || 0) : 0
                     decimals: 3
                     enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor(12)
+                    hasCursor: panel.controller.inspectorHasCursor("sdrMinLuminance")
                     onModified: function(value) { panel.controller.editOutput({ sdr_min_luminance: value }) }
                   }
 
                   DecimalField {
-                    controller: root
+                    controller: panel.controller
                     keyTarget: keyCatcher
                     id: sdrMaxLuminanceField
                     width: parent.cellWidth
@@ -1135,7 +1128,7 @@ KeyboardPanel {
                     value: panel.controller.selectedOutput ? Number(panel.controller.selectedOutput.sdr_max_luminance || 0) : 0
                     decimals: 0
                     enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor(13)
+                    hasCursor: panel.controller.inspectorHasCursor("sdrMaxLuminance")
                     onModified: function(value) { panel.controller.editOutput({ sdr_max_luminance: Math.round(value) }) }
                   }
 
@@ -1153,14 +1146,14 @@ KeyboardPanel {
                     value: panel.controller.selectedOutput && String(panel.controller.selectedOutput.sdr_eotf || "") !== ""
                       ? String(panel.controller.selectedOutput.sdr_eotf) : "default"
                     enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor(14)
+                    hasCursor: panel.controller.inspectorHasCursor("sdrCurve")
                     foreground: panel.controller.foreground
                     fontFamily: panel.controller.fontFamily
                     onChanged: function(value) { panel.controller.editOutput({ sdr_eotf: value }) }
                   }
 
                   DecimalField {
-                    controller: root
+                    controller: panel.controller
                     keyTarget: keyCatcher
                     id: minLuminanceField
                     width: parent.cellWidth
@@ -1168,12 +1161,12 @@ KeyboardPanel {
                     value: panel.controller.selectedOutput ? Number(panel.controller.selectedOutput.min_luminance || 0) : 0
                     decimals: 3
                     enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor(15)
+                    hasCursor: panel.controller.inspectorHasCursor("minLuminance")
                     onModified: function(value) { panel.controller.editOutput({ min_luminance: value }) }
                   }
 
                   DecimalField {
-                    controller: root
+                    controller: panel.controller
                     keyTarget: keyCatcher
                     id: maxLuminanceField
                     width: parent.cellWidth
@@ -1181,12 +1174,12 @@ KeyboardPanel {
                     value: panel.controller.selectedOutput ? Number(panel.controller.selectedOutput.max_luminance || 0) : 0
                     decimals: 0
                     enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor(16)
+                    hasCursor: panel.controller.inspectorHasCursor("maxLuminance")
                     onModified: function(value) { panel.controller.editOutput({ max_luminance: Math.round(value) }) }
                   }
 
                   DecimalField {
-                    controller: root
+                    controller: panel.controller
                     keyTarget: keyCatcher
                     id: maxAvgLuminanceField
                     width: parent.cellWidth
@@ -1194,7 +1187,7 @@ KeyboardPanel {
                     value: panel.controller.selectedOutput ? Number(panel.controller.selectedOutput.max_avg_luminance || 0) : 0
                     decimals: 0
                     enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor(17)
+                    hasCursor: panel.controller.inspectorHasCursor("maxAverageLuminance")
                     onModified: function(value) { panel.controller.editOutput({ max_avg_luminance: Math.round(value) }) }
                   }
 
@@ -1207,7 +1200,7 @@ KeyboardPanel {
                     options: panel.controller.triStateOptions
                     value: panel.controller.selectedOutput ? String(panel.controller.selectedOutput.supports_wide_color || 0) : "0"
                     enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor(18)
+                    hasCursor: panel.controller.inspectorHasCursor("forceWideColor")
                     foreground: panel.controller.foreground
                     fontFamily: panel.controller.fontFamily
                     onChanged: function(value) { panel.controller.editOutput({ supports_wide_color: Number(value) }) }
@@ -1222,7 +1215,7 @@ KeyboardPanel {
                     options: panel.controller.triStateOptions
                     value: panel.controller.selectedOutput ? String(panel.controller.selectedOutput.supports_hdr || 0) : "0"
                     enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor(19)
+                    hasCursor: panel.controller.inspectorHasCursor("forceHdr")
                     foreground: panel.controller.foreground
                     fontFamily: panel.controller.fontFamily
                     onChanged: function(value) { panel.controller.editOutput({ supports_hdr: Number(value) }) }
@@ -1245,7 +1238,7 @@ KeyboardPanel {
                     text: panel.controller.selectedOutput ? String(panel.controller.selectedOutput.icc || "") : ""
                     placeholderText: "None — enter an absolute profile path"
                     enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor(20)
+                    hasCursor: panel.controller.inspectorHasCursor("iccProfile")
                     foreground: panel.controller.foreground
                     onEditingFinished: {
                       var returnToKeyboard = activeFocus
@@ -1352,7 +1345,7 @@ KeyboardPanel {
                       anchors.verticalCenter: parent.verticalCenter
                       width: parent.width - profileMatchText.width - Style.space(8)
                       text: (profileRow.modelData.active ? "›  " : "   ") + String(profileRow.modelData.name || "Profile")
-                      color: profileRow.modelData.active || parent.parent.selected ? panel.controller.foreground : panel.controller.dim
+                      color: profileRow.modelData.active || profileRow.selected ? panel.controller.foreground : panel.controller.dim
                       font.family: panel.controller.fontFamily
                       font.pixelSize: Style.font.bodySmall
                       font.bold: profileRow.modelData.active
@@ -1411,18 +1404,18 @@ KeyboardPanel {
                 spacing: Style.space(4)
 
                 InfoRow {
-                  controller: root
+                  controller: panel.controller
                   label: "Name"
                   value: panel.controller.selectedSavedProfile ? String(panel.controller.selectedSavedProfile.name || "—") : "—"
                   valueBold: true
                 }
                 InfoRow {
-                  controller: root
+                  controller: panel.controller
                   label: "Updated"
                   value: panel.controller.selectedSavedProfile ? Model.profileUpdatedLabel(panel.controller.selectedSavedProfile.updated_at) : "—"
                 }
                 InfoRow {
-                  controller: root
+                  controller: panel.controller
                   label: "Match"
                   value: panel.controller.selectedSavedSummary ? Model.profileMatchLabel(panel.controller.selectedSavedSummary) : "—"
                   valueAccent: !!panel.controller.selectedSavedSummary
@@ -1433,7 +1426,7 @@ KeyboardPanel {
                   model: panel.controller.selectedSavedMatchReasons
 
                   InfoRow {
-                    controller: root
+                    controller: panel.controller
                     required property var modelData
                     label: ""
                     value: String(modelData.value || "")
@@ -1441,7 +1434,7 @@ KeyboardPanel {
                 }
 
                 InfoRow {
-                  controller: root
+                  controller: panel.controller
                   label: "Displays"
                   value: panel.controller.selectedSavedSummary
                     ? Number(panel.controller.selectedSavedSummary.output_count || 0) + " saved · "
@@ -1453,7 +1446,7 @@ KeyboardPanel {
                   model: panel.controller.selectedSavedHiddenRows
 
                   InfoRow {
-                    controller: root
+                    controller: panel.controller
                     required property var modelData
                     label: String(modelData.label || "")
                     value: String(modelData.value || "")
@@ -1461,7 +1454,7 @@ KeyboardPanel {
                 }
 
                 InfoRow {
-                  controller: root
+                  controller: panel.controller
                   label: "Exec"
                   value: panel.controller.selectedSavedProfile && String(panel.controller.selectedSavedProfile.exec || "").trim() !== ""
                     ? String(panel.controller.selectedSavedProfile.exec) : "(not set)"
@@ -1471,7 +1464,7 @@ KeyboardPanel {
                   model: panel.controller.selectedSavedWorkspaceRows
 
                   ProfileWorkspaceInfoRow {
-                    controller: root
+                    controller: panel.controller
                     required property var modelData
                     required property int index
                     label: index === 0 ? "Workspaces" : ""
@@ -1481,7 +1474,7 @@ KeyboardPanel {
                 }
 
                 InfoRow {
-                  controller: root
+                  controller: panel.controller
                   visible: panel.controller.selectedSavedWorkspaceRows.length === 0
                   label: "Workspaces"
                   value: "(not managed)"
@@ -1818,7 +1811,7 @@ KeyboardPanel {
                   model: panel.controller.workspaceRows
 
                   InfoRow {
-                    controller: root
+                    controller: panel.controller
                     required property var modelData
                     label: String(modelData.name || "Display")
                     value: String(modelData.workspaces || "—")
@@ -1994,7 +1987,7 @@ KeyboardPanel {
       visible: panel.controller.keyboardHelpOpen
       page: panel.controller.activePage
       foreground: panel.controller.foreground
-      background: panel.controller.bar ? panel.controller.bar.background : Color.background
+      background: panel.controller.shell.background
       accent: Color.accent
       fontFamily: panel.controller.fontFamily
       onCloseRequested: panel.controller.keyboardHelpOpen = false
@@ -2019,7 +2012,7 @@ KeyboardPanel {
         anchors.centerIn: parent
         width: Math.min(parent.width - Style.space(48), Style.space(660))
         height: execContent.implicitHeight + Style.space(30)
-        color: panel.controller.bar ? panel.controller.bar.background : Color.background
+        color: panel.controller.shell.background
         borderSpec: Border.controlSpec("focus", panel.controller.foreground, Color.accent)
         radius: Style.cornerRadius
 

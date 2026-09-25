@@ -24,6 +24,33 @@ idle_audio_enabled() {
   [[ "$(state_get "HYPR_KEEP_AWAKE_AUDIO" "1")" != "0" ]]
 }
 
+idle_fullscreen_enabled() {
+  [[ "$(state_get "HYPR_KEEP_AWAKE_FULLSCREEN" "0")" == "1" ]]
+}
+
+idle_window_activity() {
+  command -v hyprctl >/dev/null 2>&1 && command -v jq >/dev/null 2>&1 || return 1
+  hyprctl --batch -j 'clients;monitors' 2>/dev/null | jq -rse '
+    (.[0] // []) as $clients | (.[1] // []) as $monitors |
+    def visible($c): any($monitors[]?;
+      .activeWorkspace.id == $c.workspace.id
+      or ((.specialWorkspace.id // 0) != 0 and .specialWorkspace.id == $c.workspace.id));
+    def covers($c): any($monitors[]?;
+      .id == $c.monitor
+      and (($c.at[0] - .x) | fabs) <= 2 and (($c.at[1] - .y) | fabs) <= 2
+      and $c.size[0] >= ((if ((.transform // 0) % 2) == 1 then .height else .width end) / (.scale // 1)) - 2
+      and $c.size[1] >= ((if ((.transform // 0) % 2) == 1 then .width else .height end) / (.scale // 1)) - 2);
+    [any($monitors[]?; .fullscreenClient != null),
+     any($clients[]?; . as $c | $c.mapped == true and ($c.hidden | not)
+       and (($c.fullscreen // 0) == 0) and visible($c)
+       and ((($c.class // "") | test("^steam_app_[0-9]+$")) or covers($c)))]
+    | map(if . then 1 else 0 end) | @tsv'
+}
+
+idle_window_state_file() {
+  printf '%s/caffeine-windows\n' "$(hypr_runtime_subdir hypr)"
+}
+
 idle_set_manual() {
   local value="${1:-0}"
   state_set "HYPR_KEEP_AWAKE" "${value}" "staterc"
@@ -32,6 +59,11 @@ idle_set_manual() {
 idle_set_audio() {
   local value="${1:-1}"
   state_set "HYPR_KEEP_AWAKE_AUDIO" "${value}" "staterc"
+}
+
+idle_set_fullscreen() {
+  local value="${1:-0}"
+  state_set "HYPR_KEEP_AWAKE_FULLSCREEN" "${value}" "staterc"
 }
 
 idle_notify() {

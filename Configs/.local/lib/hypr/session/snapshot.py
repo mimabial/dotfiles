@@ -143,7 +143,7 @@ def desktop_dirs() -> list[Path]:
     return dirs
 
 
-def desktop_cache() -> dict[str, str]:
+def desktop_launch_commands() -> dict[str, str]:
     cache: dict[str, str] = {}
     for app_dir in reversed(desktop_dirs()):
         if not app_dir.is_dir():
@@ -247,7 +247,7 @@ def code_project(title: str) -> str | None:
     return None
 
 
-def code_folder_cache() -> dict[str, str]:
+def code_project_folders() -> dict[str, str]:
     folders: dict[str, str] = {}
     for config_dir in CODE_CONFIG_DIRS:
         storage = Path.home() / ".config" / config_dir / "User/workspaceStorage"
@@ -286,7 +286,7 @@ def enrich_client(client: dict, folder_cache: dict[str, str]) -> None:
             client["_p_folder"] = folder
 
 
-def ws_target(workspace: dict) -> str:
+def workspace_dispatch_target(workspace: dict) -> str:
     name = str(workspace.get("name") or "")
     ws_id = workspace.get("id")
     if name.startswith("special:"):
@@ -298,8 +298,8 @@ def ws_target(workspace: dict) -> str:
     return "1"
 
 
-def window_rules(client: dict) -> list[str]:
-    rules = [f"workspace {ws_target(client.get('workspace') or {})} silent"]
+def window_restore_rules(client: dict) -> list[str]:
+    rules = [f"workspace {workspace_dispatch_target(client.get('workspace') or {})} silent"]
     if client.get("floating"):
         rules.append("float")
         size = client.get("size") or [0, 0]
@@ -336,13 +336,13 @@ def launch_client(client: dict) -> None:
     command = restore_command(client)
     if not command:
         return
-    rules = "; ".join(window_rules(client))
+    rules = "; ".join(window_restore_rules(client))
     hypr_dispatch(f"hl.dsp.exec_raw({lua_quote(f'[{rules}] {command}')})")
 
 
-def reposition(addr: str, saved: dict) -> None:
+def restore_live_window_position(addr: str, saved: dict) -> None:
     window = lua_quote(f"address:{addr}")
-    workspace = lua_quote(ws_target(saved.get("workspace") or {}))
+    workspace = lua_quote(workspace_dispatch_target(saved.get("workspace") or {}))
     expressions = [f"hl.dsp.window.move({{workspace={workspace}, window={window}, silent=true}})"]
     if saved.get("floating"):
         size = saved.get("size") or [0, 0]
@@ -361,7 +361,7 @@ def reposition(addr: str, saved: dict) -> None:
     hypr_dispatch(*expressions)
 
 
-def live_match(saved: dict, live: dict) -> bool:
+def live_window_matches_snapshot(saved: dict, live: dict) -> bool:
     initial_class = str(saved.get("initialClass") or "").lower()
     if initial_class == "kitty" and saved.get("_p_cwd"):
         live_cwd = kitty_shell_cwd(int(live.get("pid") or 0))
@@ -374,8 +374,8 @@ def live_match(saved: dict, live: dict) -> bool:
 
 def save_session(name: str, verbose: bool) -> None:
     clients, workspaces, monitors = batch_json("clients", "workspaces", "monitors")
-    desktops = desktop_cache()
-    folders = code_folder_cache()
+    desktops = desktop_launch_commands()
+    folders = code_project_folders()
 
     swallowed = {c.get("swallowing") for c in clients if c.get("swallowing") not in (None, "", "0x0")}
     seen_pids: set[int] = set()
@@ -456,15 +456,15 @@ def restore_session(name: str, force: bool, dry_run: bool) -> None:
         if not force:
             for live in live_by_class.get(initial_class, []):
                 addr = str(live.get("address") or "")
-                if addr and addr not in used and live_match(saved, live):
+                if addr and addr not in used and live_window_matches_snapshot(saved, live):
                     target = live
                     break
         if target:
             addr = str(target.get("address") or "")
             if dry_run:
-                print(f"move {initial_class} {addr} -> {ws_target(saved.get('workspace') or {})}")
+                print(f"move {initial_class} {addr} -> {workspace_dispatch_target(saved.get('workspace') or {})}")
             else:
-                reposition(addr, saved)
+                restore_live_window_position(addr, saved)
             used.add(addr)
             moved += 1
             continue

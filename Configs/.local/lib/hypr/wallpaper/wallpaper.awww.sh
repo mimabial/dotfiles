@@ -50,7 +50,7 @@ cleanup_stale_wallpaper_socket() {
   rm -f -- "${socket_path}"
 }
 
-resolve_wallpaper_backend() {
+initialize_wallpaper_backend() {
   command -v awww >/dev/null 2>&1 || {
     print_log -sec "wallpaper" -err "backend missing (expected awww)"
     return 1
@@ -75,7 +75,7 @@ ensure_wallpaper_daemon() {
   return 1
 }
 
-resolve_wallpaper_backend || exit 1
+initialize_wallpaper_backend || exit 1
 
 wallpaper_transition_type="${AWWW_TRANSITION:-fade}"
 wallpaper_transition_duration="${AWWW_TRANSITION_DURATION:-0.25}"

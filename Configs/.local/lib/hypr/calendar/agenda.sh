@@ -82,9 +82,9 @@ todo_done=""
 todo_delete=""
 todo_open=""
 todo_edit=""
-table=""
-filters="${KHAL_FILTERS:-${XDG_CONFIG_HOME:-$HOME/.config}/khal/filters.json}"
-carry_state="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/task-carries.json"
+calendar_table_cache=""
+calendar_title_filters_file="${KHAL_FILTERS:-${XDG_CONFIG_HOME:-$HOME/.config}/khal/filters.json}"
+todo_carry_state_file="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/task-carries.json"
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -204,7 +204,7 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-khal_calendars() {
+read_khal_calendar_table() {
   python3 - <<'PY' 2>/dev/null || printf '{"default":"","calendars":{},"locations":[]}\n'
 import json
 import os
@@ -268,47 +268,47 @@ print(json.dumps({
 PY
 }
 
-khal_table() {
-  [[ -n "${table}" ]] || table="$(khal_calendars)"
-  printf '%s' "${table}"
+cached_khal_calendar_table() {
+  [[ -n "${calendar_table_cache}" ]] || calendar_table_cache="$(read_khal_calendar_table)"
+  printf '%s' "${calendar_table_cache}"
 }
 
-find_ics() {
+find_event_files_by_uid() {
   [[ -n "${1:-}" ]] || return 0
   local -a roots=()
-  mapfile -t roots < <(khal_table | jq -r '.calendars[].path | select(. != "")')
+  mapfile -t roots < <(cached_khal_calendar_table | jq -r '.calendars[].path | select(. != "")')
   [[ "${#roots[@]}" -gt 0 ]] || roots=("${CALENDAR_VDIR:-$HOME/.calendars}")
   grep -rlF --include='*.ics' "UID:$1" "${roots[@]}" 2>/dev/null
 }
 
-read_filters() {
-  if [[ -r "${filters}" ]] && jq -e 'type == "object"' "${filters}" >/dev/null 2>&1; then
-    jq -c . "${filters}"
+read_calendar_title_filters() {
+  if [[ -r "${calendar_title_filters_file}" ]] && jq -e 'type == "object"' "${calendar_title_filters_file}" >/dev/null 2>&1; then
+    jq -c . "${calendar_title_filters_file}"
   else
     printf '{}\n'
   fi
 }
 
-apply_filters() {
-  jq -c --argjson filters "$(read_filters)" '
+filter_events_by_calendar_title() {
+  jq -c --argjson filters "$(read_calendar_title_filters)" '
     map(select(
       ($filters[(.calendar // "")] // "") as $re
       | $re == "" or (try ((.title // "") | test($re)) catch true)
     ))'
 }
 
-todo_cli() {
+todoman_available() {
   command -v todo >/dev/null 2>&1
 }
 
-emit_todos() {
+update_carry_state_and_emit_todos() {
   local -a args=(--porcelain list)
   [[ "${todos_all}" -eq 0 ]] || args+=(--status ANY)
-  mkdir -p "${carry_state%/*}"
+  mkdir -p "${todo_carry_state_file%/*}"
   (
     flock -x 9
     python3 - "${XDG_CACHE_HOME:-$HOME/.cache}/todoman/cache.sqlite3" \
-      "${carry_state}" "$((1 - todos_all))" 3< <(todo "${args[@]}" 2>/dev/null) <<'TODOPY'
+      "${todo_carry_state_file}" "$((1 - todos_all))" 3< <(todo "${args[@]}" 2>/dev/null) <<'TODOPY'
 import datetime, json, os, sqlite3, sys, tempfile
 
 cache, state_path, mutate = sys.argv[1], sys.argv[2], sys.argv[3] == "1"
@@ -370,11 +370,11 @@ todos.sort(key=lambda item: (
     item.get("priority") or 10, str(item.get("summary", "")).lower()))
 print(json.dumps({"todos": todos, "carryNotice": notice}, separators=(",", ":")))
 TODOPY
-  ) 9>"${carry_state}.lock" || printf '{"todos":[]}\n'
+  ) 9>"${todo_carry_state_file}.lock" || printf '{"todos":[]}\n'
 }
 
 # The cache is todoman's own id->file map; it is read, never written.
-todo_file() {
+resolve_todo_file_by_id() {
   python3 - "$1" <<'TODOPY' 2>/dev/null
 import os, sqlite3, sys
 
@@ -404,7 +404,7 @@ TODOPY
 
 reopen_todo() {
   local file tmp
-  file="$(todo_file "$1")" || return 1
+  file="$(resolve_todo_file_by_id "$1")" || return 1
   [[ -n "${file}" ]] || return 1
   tmp="$(mktemp)" || return 1
   awk '
@@ -419,7 +419,7 @@ reopen_todo() {
 
 edit_todo() {
   local file
-  file="$(todo_file "$1")" || return 1
+  file="$(resolve_todo_file_by_id "$1")" || return 1
   python3 - "${file}" "${title}" "${priority}" <<'TODOPY'
 import datetime, os, sys, tempfile
 from icalendar import Calendar
@@ -451,7 +451,7 @@ TODOPY
 if [[ "${todos_mode}" -eq 1 ]] || [[ "${todo_add}" -eq 1 ]] ||
   [[ -n "${todo_done}" ]] || [[ -n "${todo_delete}" ]] || [[ -n "${todo_open}" ]] ||
   [[ -n "${todo_edit}" ]]; then
-  if ! todo_cli; then
+  if ! todoman_available; then
     printf '{"todos":[],"unavailable":true}\n'
     exit 0
   fi
@@ -494,23 +494,23 @@ if [[ "${todos_mode}" -eq 1 ]] || [[ "${todo_add}" -eq 1 ]] ||
     todo "${new_todo[@]}" >/dev/null 2>&1 ||
       { printf '{"todos":[],"error":"could not create the todo"}\n'; exit 1; }
   fi
-  emit_todos
+  update_carry_state_and_emit_todos
   exit 0
 fi
 
 if [[ "${calendars_mode}" -eq 1 ]] || [[ -n "${show_uid}" ]] ||
   [[ -n "${delete_uid}" ]] || [[ "${add}" -eq 1 ]]; then
-  table="$(khal_calendars)"
+  calendar_table_cache="$(read_khal_calendar_table)"
 fi
 
 if [[ "${calendars_mode}" -eq 1 ]]; then
-  khal_table
+  cached_khal_calendar_table
   exit 0
 fi
 
 # khal exposes neither recurrence nor alarms, so the file is read directly
 if [[ -n "${show_uid}" ]]; then
-  file="$(find_ics "${show_uid}" | head -1 || true)"
+  file="$(find_event_files_by_uid "${show_uid}" | head -1 || true)"
   if [[ -z "${file}" ]]; then
     printf '{"error":"event not found"}\n'
     exit 1
@@ -572,23 +572,23 @@ if ! command -v khal >/dev/null 2>&1; then
 fi
 
 # khal prints one JSON array per day in the range, so the lines get merged.
-khal_range() {
+read_filtered_khal_events() {
   local start="$1" span="$2"
   khal list \
     --json start-date --json start-time --json end-time \
     --json title --json location --json all-day --json description --json uid \
     --json calendar \
-    "${start}" "${span}" 2>/dev/null | jq -s 'add // []' | apply_filters
+    "${start}" "${span}" 2>/dev/null | jq -s 'add // []' | filter_events_by_calendar_title
 }
 
-readonly_owner() {
-  khal_table | jq -r --arg dir "$1" '
+readonly_calendar_for_directory() {
+  cached_khal_calendar_table | jq -r --arg dir "$1" '
     .calendars | to_entries
     | map(select(.value.readonly and ((.value.path | sub("/+$"; "")) == $dir)))
     | (.[0].key // "")'
 }
 
-refuse_readonly() {
+exit_with_readonly_calendar_error() {
   jq -n --arg day "${day}" --arg name "$1" \
     '{day: $day, events: [], error: ($name + " is read-only")}'
   exit 1
@@ -599,10 +599,10 @@ if [[ -n "${delete_uid}" ]]; then
   removed=0
   while IFS= read -r file; do
     [[ -n "${file}" ]] || continue
-    owner="$(readonly_owner "${file%/*}")"
-    [[ -z "${owner}" ]] || refuse_readonly "${owner}"
+    owner="$(readonly_calendar_for_directory "${file%/*}")"
+    [[ -z "${owner}" ]] || exit_with_readonly_calendar_error "${owner}"
     rm -f -- "${file}" && removed=1
-  done < <(find_ics "${delete_uid}")
+  done < <(find_event_files_by_uid "${delete_uid}")
   if [[ "${removed}" -eq 0 ]]; then
     printf '{"day":"%s","events":[],"error":"event not found"}\n' "${day}"
     exit 1
@@ -613,10 +613,10 @@ if [[ "${add}" -eq 1 ]]; then
   # khal takes the summary as the trailing words, so it goes last and unquoted
   # pieces before it must all parse as dates, times or a timezone.
   if [[ -n "${calendar}" ]]; then
-    [[ "$(khal_table | jq -r --arg name "${calendar}" '.calendars[$name].readonly // false')" == "false" ]] ||
-      refuse_readonly "${calendar}"
+    [[ "$(cached_khal_calendar_table | jq -r --arg name "${calendar}" '.calendars[$name].readonly // false')" == "false" ]] ||
+      exit_with_readonly_calendar_error "${calendar}"
   else
-    calendar="$(khal_table | jq -r '
+    calendar="$(cached_khal_calendar_table | jq -r '
       .calendars as $all
       | (.default // "") as $preferred
       | if $all[$preferred].readonly == false then $preferred
@@ -660,7 +660,7 @@ KHAL_EVENT_JQ='def khal_event: {
 };'
 
 if [[ -n "${week}" ]]; then
-  khal_range "${week}" "7d" | jq --arg week "${week}" "${KHAL_EVENT_JQ}"'{
+  read_filtered_khal_events "${week}" "7d" | jq --arg week "${week}" "${KHAL_EVENT_JQ}"'{
     week: $week,
     days: (
       map({date: ."start-date", event: khal_event})
@@ -670,7 +670,7 @@ if [[ -n "${week}" ]]; then
     )
   }'
 elif [[ -n "${day}" ]]; then
-  khal_range "${day}" "1d" | jq --arg day "${day}" "${KHAL_EVENT_JQ}"'{
+  read_filtered_khal_events "${day}" "1d" | jq --arg day "${day}" "${KHAL_EVENT_JQ}"'{
     day: $day,
     events: map(khal_event)
   }'
@@ -679,7 +679,7 @@ else
     usage >&2
     exit 1
   }
-  khal_range "${month}-01" "${last_day}d" | jq --arg month "${month}" '{
+  read_filtered_khal_events "${month}-01" "${last_day}d" | jq --arg month "${month}" '{
     month: $month,
     days: (
       map({

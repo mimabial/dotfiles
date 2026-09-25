@@ -13,7 +13,7 @@ LAYOUT_DIR = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / 
 
 
 def bar_position():
-    """Return the edge the bar sits on: left, right, top or bottom."""
+    """Return the edge the bar sits on: left, top or bottom."""
     try:
         layout = load_shell_assignments(STATE_FILE).get("QUICKSHELL_LAYOUT_NAME", "")
     except OSError:
@@ -21,5 +21,5 @@ def bar_position():
     try:
         edge = json.loads((LAYOUT_DIR / f"{layout}.json").read_text())["edge"]
     except (OSError, KeyError, TypeError, ValueError):
-        edge = "right"
-    return edge if edge in {"left", "right", "top", "bottom"} else "right"
+        edge = "left"
+    return edge if edge in {"left", "top", "bottom"} else "left"

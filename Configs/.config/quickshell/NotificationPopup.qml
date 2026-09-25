@@ -27,7 +27,6 @@ PopupCard {
 
     property string filter: ""
     property bool searching: false
-    property bool clearArmed: false
     property double now: Date.now()
     // what counted as unread when the panel was opened; the rows stay marked
     // while it is open, rather than clearing themselves out from under the eye
@@ -102,7 +101,6 @@ PopupCard {
     function clearAll() {
         rows.clear()
         store(["clear"])
-        clearArmed = false
     }
 
     function handleKey(event) {
@@ -129,7 +127,6 @@ PopupCard {
     onOpenChanged: {
         if (!open) {
             endSearch()
-            clearArmed = false
             seenMark = -1
             return
         }
@@ -207,7 +204,7 @@ PopupCard {
                     onTriggered: root.searching ? root.endSearch() : root.startSearch()
                 }
                 HeaderAction {
-                    glyph: root.paused ? "\u{f11cf}" : "\u{f009a}"
+                    glyph: root.paused ? "\u{f009b}" : "\u{f009a}"
                     hint: root.paused ? "Allow notifications" : "Silence notifications"
                     glyphColor: root.paused ? root.shell.accent : root.shell.foreground
                     onTriggered: root.act(["hyprshell", "notify/notifications", "--toggle"])
@@ -219,11 +216,8 @@ PopupCard {
                 }
                 HeaderAction {
                     glyph: "\u{f0a7a}"
-                    hint: root.clearArmed ? "Click again to empty the archive" : "Clear the archive"
-                    glyphColor: root.clearArmed
-                        ? root.shell.role("error", root.shell.foreground)
-                        : root.shell.foreground
-                    onTriggered: root.clearArmed ? root.clearAll() : (root.clearArmed = true)
+                    hint: "Clear the archive"
+                    onTriggered: root.clearAll()
                 }
             }
         }

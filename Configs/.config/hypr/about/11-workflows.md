@@ -3,13 +3,18 @@
 A workflow is a named set of tradeoffs applied in one keystroke. `Super + U` then
 `W` picks one.
 
-There are five. Three you choose:
+There are six. Four you choose:
 
 **default** — no workflow configuration. The theme and your look-and-feel
 overrides decide everything.
 
 **editing** — opaque application windows. Transparency is lovely until you are
 judging contrast in an image, at which point it is actively lying to you.
+
+**presentation** — keeps the machine awake, pauses notifications, disables the
+night light, and removes transparency and distracting effects. When you leave,
+it restores only the runtime settings it changed; manual changes made while the
+workflow is active are left alone.
 
 **windows** — a window-focused workspace: the scrolling layout, the winbar bar
 layout, effects disabled.
@@ -46,6 +51,7 @@ turns that half off while leaving GameMode's half in place.
 hyprshell util/workflows --list
 hyprshell util/workflows --select
 hyprshell util/workflows --set windows
+hyprshell util/workflows --set presentation
 ```
 
 `--list` prints name, icon and description, which is also what the bar module

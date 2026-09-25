@@ -8,7 +8,7 @@ Item {
     property bool checked: false
     signal toggled(bool checked)
     implicitWidth: Style.space(72)
-    implicitHeight: Style.space(28)
+    implicitHeight: Style.spacing.controlHeight
     activeFocusOnTab: true
 
     Keys.onPressed: function (event) {
@@ -28,38 +28,35 @@ Item {
         text: settingToggle.checked ? "On" : "Off"
         textFormat: Text.PlainText
         color: Color.menu.text
-        opacity: settingToggle.checked ? 1 : 0.45
         font.family: Style.font.menuFamily
         font.pixelSize: Style.font.caption
     }
 
-    Rectangle {
+    ThemedControl {
+        id: toggleTrack
+        selected: settingToggle.checked
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
         width: Style.space(30)
         height: Style.space(14)
-        color: "transparent"
-        border.color: settingToggle.checked ? Color.accent : Color.menu.border
-        border.width: Math.max(1, Style.normalBorderWidth)
 
         Rectangle {
             width: Style.space(10)
             height: width
             anchors.verticalCenter: parent.verticalCenter
             x: settingToggle.checked ? parent.width - width - Style.space(2) : Style.space(2)
-            color: settingToggle.checked ? Color.accent : Color.menu.text
-            opacity: settingToggle.checked ? 1 : 0.45
+            color: toggleTrack.stateColor
+            radius: Math.min(Style.cornerRadius, height / 2)
             Behavior on x { NumberAnimation { duration: 100 } }
         }
     }
 
-    Rectangle {
+    ThemedControl {
         anchors.fill: parent
         anchors.margins: -Style.space(4)
         visible: settingToggle.activeFocus
+        focused: true
         color: "transparent"
-        border.color: Color.accent
-        border.width: Math.max(2, Style.focusBorderWidth)
     }
 
     MouseArea {

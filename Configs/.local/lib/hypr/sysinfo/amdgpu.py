@@ -5,12 +5,9 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
-import pyutils.logger as logger
 import pyutils.pip_env as pip_env
 
 pip_env.ensure_managed_interpreter()
-
-logger = logger.get_logger()
 
 try:
     pyamdgpuinfo = pip_env.v_import("pyamdgpuinfo")
@@ -57,9 +54,9 @@ def main():
         print("Unknown query failure: missing optional dependency 'pyamdgpuinfo'")
         return
 
-    n_devices = pyamdgpuinfo.detect_gpus()
+    gpu_count = pyamdgpuinfo.detect_gpus()
     
-    if n_devices == 0:
+    if gpu_count == 0:
         print("No AMD GPUs detected.")
         return
     

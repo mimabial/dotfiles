@@ -3,16 +3,16 @@ import QtQuick
 import QtQuick.Layouts
 import qs.Commons
 
-RowLayout {
+Flow {
     id: settingChoices
     required property var controller
     property var options: []
     property string value: ""
     signal chosen(string nextValue)
-    spacing: Style.spacing.lg
+    spacing: Style.spacing.md
+    Layout.minimumWidth: 0
     activeFocusOnTab: true
 
-    // Arrows stop at either end; Space/Enter cycle through every option.
     function chooseOffset(offset, wrap) {
         var count = settingChoices.options.length;
         if (!count)
@@ -47,36 +47,31 @@ RowLayout {
     Repeater {
         model: settingChoices.options
 
-        delegate: Item {
+        delegate: ThemedControl {
             id: choice
             required property var modelData
-            readonly property bool selected: String(modelData.value) === settingChoices.value
-            Layout.preferredWidth: choiceLabel.implicitWidth
-            Layout.preferredHeight: Style.space(28)
+            selected: String(modelData.value) === settingChoices.value
+            focused: settingChoices.activeFocus && selected
+            hovered: choiceMouse.containsMouse
+            pressed: choiceMouse.pressed
+            width: choiceLabel.implicitWidth + Style.spacing.controlPaddingX * 2
+            height: Math.max(Style.spacing.controlHeight, choiceLabel.implicitHeight + Style.spacing.controlPaddingY * 2)
 
             Text {
                 id: choiceLabel
                 anchors.centerIn: parent
                 text: String(choice.modelData.label)
                 textFormat: Text.PlainText
-                color: choice.selected && settingChoices.activeFocus ? Color.accent : Color.menu.text
-                opacity: choice.selected ? 1 : 0.45
+                color: choice.stateColor
                 font.family: Style.font.menuFamily
                 font.pixelSize: Style.font.caption
                 font.bold: choice.selected
             }
 
-            Rectangle {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.bottom: parent.bottom
-                height: Math.max(2, Style.focusBorderWidth)
-                visible: choice.selected
-                color: Color.accent
-            }
-
             MouseArea {
+                id: choiceMouse
                 anchors.fill: parent
+                hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
                     settingChoices.forceActiveFocus();

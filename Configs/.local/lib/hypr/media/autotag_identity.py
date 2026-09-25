@@ -56,7 +56,7 @@ def existing(tags, key: str) -> str:
     return str(value[0] if isinstance(value, list) else value).strip()
 
 
-def normalize(value: str) -> list[str]:
+def normalize_identity_tokens(value: str) -> list[str]:
     folded = unicodedata.normalize("NFKD", value.lower())
     folded = "".join(c for c in folded if not unicodedata.combining(c))
     folded = re.sub(r"\b(?:feat|ft|featuring|with)\b", " ", folded)
@@ -65,7 +65,7 @@ def normalize(value: str) -> list[str]:
 
 def similarity(left: str, right: str) -> float:
     """Compare normalized token overlap and sequence order."""
-    left_tokens, right_tokens = normalize(left), normalize(right)
+    left_tokens, right_tokens = normalize_identity_tokens(left), normalize_identity_tokens(right)
     if not left_tokens or not right_tokens:
         return 0.0
     left_set, right_set = set(left_tokens), set(right_tokens)
@@ -99,8 +99,8 @@ def split_featured_title(title: str) -> tuple[str, str]:
 
 
 def credit_contains(credit: str, wanted: str) -> bool:
-    wanted_tokens = set(normalize(wanted))
-    return bool(wanted_tokens) and wanted_tokens <= set(normalize(credit))
+    wanted_tokens = set(normalize_identity_tokens(wanted))
+    return bool(wanted_tokens) and wanted_tokens <= set(normalize_identity_tokens(credit))
 
 
 def combine_credits(artist: str, featured: str) -> str:
@@ -134,7 +134,7 @@ def artist_agrees(candidate: str, artist: str) -> bool:
         return True
     shared = {
         token
-        for token in set(normalize(candidate)) & set(normalize(artist))
+        for token in set(normalize_identity_tokens(candidate)) & set(normalize_identity_tokens(artist))
         if len(token) > 1
     }
     return bool(shared) and similarity(candidate, artist) >= MIN_ARTIST_SIMILARITY
@@ -293,14 +293,14 @@ def album_context(path: Path, tags, root: Path) -> tuple[str, tuple]:
         or existing(tags, "albumartist")
         or primary_artist("", existing(tags, "artist"))
     )
-    return album, (tuple(normalize(owner)), tuple(normalize(album)))
+    return album, (tuple(normalize_identity_tokens(owner)), tuple(normalize_identity_tokens(album)))
 
 
 def candidate_key(artist: str, title: str) -> tuple[tuple[str, ...], tuple[str, ...]]:
     base_title, combined_credit, _ = track_identity(artist, title)
     return (
-        tuple(normalize(combined_credit)) or (combined_credit.casefold().strip(),),
-        tuple(normalize(base_title)) or (base_title.casefold().strip(),),
+        tuple(normalize_identity_tokens(combined_credit)) or (combined_credit.casefold().strip(),),
+        tuple(normalize_identity_tokens(base_title)) or (base_title.casefold().strip(),),
     )
 
 

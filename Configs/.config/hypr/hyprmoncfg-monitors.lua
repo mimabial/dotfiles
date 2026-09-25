@@ -8,3 +8,25 @@ hl.monitor({
   sdr_min_luminance = 0.2,
   sdr_max_luminance = 80,
 })
+hl.workspace_rule({
+  workspace = "1",
+  monitor = "desc:BOE 0x07D8",
+  default = true,
+  persistent = true,
+})
+hl.workspace_rule({
+  workspace = "2",
+  monitor = "desc:BOE 0x07D8",
+})
+hl.workspace_rule({
+  workspace = "3",
+  monitor = "desc:BOE 0x07D8",
+})
+hl.workspace_rule({
+  workspace = "4",
+  monitor = "desc:BOE 0x07D8",
+})
+hl.workspace_rule({
+  workspace = "5",
+  monitor = "desc:BOE 0x07D8",
+})

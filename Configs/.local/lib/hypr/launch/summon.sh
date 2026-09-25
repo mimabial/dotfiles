@@ -250,7 +250,7 @@ main() {
   local window_pattern=""
   local target_workspace=""
   local window_address=""
-  local snapshot=""
+  local hypr_snapshot_json=""
   local clients_json=""
   local workspace_has_other_window="false"
   local launch_cmd=()
@@ -285,9 +285,9 @@ main() {
     return 2
   }
 
-  snapshot="$(hyprctl --batch -j 'activeworkspace;clients;monitors all' | jq -sc '.')"
-  clients_json="$(jq -c '.[1] // []' <<<"${snapshot}")"
-  HYPR_MONITORS_JSON_CACHE="$(jq -c '.[2] // []' <<<"${snapshot}")"
+  hypr_snapshot_json="$(hyprctl --batch -j 'activeworkspace;clients;monitors all' | jq -sc '.')"
+  clients_json="$(jq -c '.[1] // []' <<<"${hypr_snapshot_json}")"
+  HYPR_MONITORS_JSON_CACHE="$(jq -c '.[2] // []' <<<"${hypr_snapshot_json}")"
   HYPR_MONITORS_JSON_CACHE_READY=1
 
   if [[ -n "${geometry_profile}" ]]; then
@@ -307,10 +307,10 @@ main() {
   window_address="$(launch_resolve_window_address "${window_pattern}" "${clients_json}")"
   if ((float_if_occupied == 1)); then
     IFS=$'\t' read -r _ workspace_has_other_window \
-      < <(launch_active_workspace_occupancy "${window_address}" "${snapshot}") || return 1
+      < <(launch_active_workspace_occupancy "${window_address}" "${hypr_snapshot_json}") || return 1
     export HYPR_SUMMON_EXPECTED_FLOAT="${workspace_has_other_window}"
   fi
-  target_workspace="$(launch_prepare_target_workspace "${use_empty_workspace}" "${window_address}" "${snapshot}")"
+  target_workspace="$(launch_prepare_target_workspace "${use_empty_workspace}" "${window_address}" "${hypr_snapshot_json}")"
   [[ -n "${target_workspace}" ]] || return 1
 
   if [[ -z "${window_address}" ]]; then

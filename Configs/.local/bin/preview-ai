@@ -49,7 +49,7 @@ current_pane_path() {
 }
 
 find_preview_pane() {
-  tmux list-panes -t "$(current_window_target "$1")" -F "#{pane_id}\t#{pane_title}" 2>/dev/null \
+  tmux list-panes -t "$(current_window_target "$1")" -F $'#{pane_id}\t#{pane_title}' 2>/dev/null \
     | awk -F '\t' -v title="${PREVIEW_TITLE}" '$2 == title { print $1; exit }'
 }
 
@@ -59,7 +59,7 @@ cleanup_preview_pane() {
   tmux kill-pane -t "${pane_id}" >/dev/null 2>&1 || true
 }
 
-detect_type() {
+detect_preview_type() {
   local input="${1:-}"
   local expanded=""
   local base_path=""
@@ -73,13 +73,23 @@ detect_type() {
       expanded="$(expand_path "${input}")"
       if [[ -e "${expanded}" || -L "${expanded}" ]]; then
         printf 'file\n'
-      elif [[ "${expanded}" =~ ^(.+):([0-9]+)(:([0-9]+))?$ ]]; then
+        return 0
+      fi
+      if [[ "${expanded}" =~ ^(.+):([0-9]+):([0-9]+)$ ]]; then
         base_path="${BASH_REMATCH[1]}"
         if [[ -e "${base_path}" || -L "${base_path}" ]]; then
           printf 'file\n'
           return 0
         fi
-      elif [[ "${input}" == \{* || "${input}" == \[* ]]; then
+      fi
+      if [[ "${expanded}" =~ ^(.+):([0-9]+)$ ]]; then
+        base_path="${BASH_REMATCH[1]}"
+        if [[ -e "${base_path}" || -L "${base_path}" ]]; then
+          printf 'file\n'
+          return 0
+        fi
+      fi
+      if [[ "${input}" == \{* || "${input}" == \[* ]]; then
         printf 'json\n'
       elif [[ "${input}" == \#* || "${input}" == $'---'* ]]; then
         printf 'markdown\n'
@@ -109,18 +119,18 @@ payload_path() {
   printf '%s/payload.%s\n' "$1" "$2"
 }
 
-preview_existing_path() {
+preview_command_for_path() {
   shell_join "${PREVIEW_BIN}" "$1"
 }
 
-preview_inline_content() {
+prepare_inline_preview_command() {
   local runtime_dir="$1" suffix="$2"
   shift 2
   local path=""
 
   path="$(payload_path "${runtime_dir}" "${suffix}")"
   printf '%s\n' "$*" > "${path}"
-  preview_existing_path "${path}"
+  preview_command_for_path "${path}"
 }
 
 build_diff_command() {
@@ -166,30 +176,30 @@ build_log_command() {
   esac
 }
 
-build_command() {
+prepare_preview_command() {
   local -n command_result="$1" interactive_result="$2"
-  local type="$3" force_interactive="$4" start_dir="$5" runtime_dir="$6"
+  local preview_type="$3" force_interactive="$4" start_dir="$5" runtime_dir="$6"
   shift 6
   local expanded suffix
 
   command_result=""
   interactive_result="${force_interactive}"
 
-  case "${type}" in
+  case "${preview_type}" in
     file|image)
       [[ $# -ge 1 ]] || die "missing path"
-      command_result="$(preview_existing_path "$(expand_path "$1")")"
+      command_result="$(preview_command_for_path "$(expand_path "$1")")"
       ;;
     json|markdown|text)
       if [[ $# -eq 1 ]]; then
         expanded="$(expand_path "$1")"
         if [[ -e "${expanded}" || -L "${expanded}" ]]; then
-          command_result="$(preview_existing_path "${expanded}")"
+          command_result="$(preview_command_for_path "${expanded}")"
           return 0
         fi
       fi
-      case "${type}" in json) suffix=json ;; markdown) suffix=md ;; text) suffix=txt ;; esac
-      command_result="$(preview_inline_content "${runtime_dir}" "${suffix}" "$@")"
+      case "${preview_type}" in json) suffix=json ;; markdown) suffix=md ;; text) suffix=txt ;; esac
+      command_result="$(prepare_inline_preview_command "${runtime_dir}" "${suffix}" "$@")"
       ;;
     diff)
       command_result="$(build_diff_command plain "${start_dir}" "${runtime_dir}" "$@")"
@@ -214,25 +224,23 @@ build_command() {
       fi
       ;;
     *)
-      die "unknown type: ${type}"
+      die "unknown type: ${preview_type}"
       ;;
   esac
 }
 
-create_runner() {
-  local command="$1" interactive="$2" runtime_dir="$3" auto_close_after="$4"
-  local runner="${runtime_dir}/run" runtime_dir_q=""
+write_preview_runner() {
+  local shell_command="$1" interactive="$2" runtime_dir="$3" auto_close_after="$4"
+  local runner_path="${runtime_dir}/run" quoted_runtime_dir=""
 
-  printf -v runtime_dir_q '%q' "${runtime_dir}"
+  printf -v quoted_runtime_dir '%q' "${runtime_dir}"
 
-  cat > "${runner}" <<EOF
+  cat > "${runner_path}" <<EOF
 #!/usr/bin/env bash
 set -uo pipefail
-trap "rm -rf -- ${runtime_dir_q}" EXIT
-set +e
-${command}
-status=\$?
-set -e
+trap "rm -rf -- ${quoted_runtime_dir}" EXIT
+${shell_command}
+exit_status=\$?
 if [[ ${interactive} -eq 0 ]]; then
   echo
   if [[ -n "${auto_close_after}" ]]; then
@@ -247,14 +255,14 @@ if [[ ${interactive} -eq 0 ]]; then
     read -r -n 1 </dev/tty || true
   fi
 fi
-exit "\$status"
+exit "\$exit_status"
 EOF
 
-  chmod +x "${runner}"
-  printf '%s\n' "${runner}"
+  chmod +x "${runner_path}"
+  printf '%s\n' "${runner_path}"
 }
 
-create_preview_target() {
+open_preview_target() {
   local runner="$1" caller_pane="$2" start_dir="$3" use_popup="$4" existing
 
   existing="$(find_preview_pane "${caller_pane}" || true)"
@@ -278,8 +286,8 @@ create_preview_target() {
 }
 
 main() {
-  local type="auto" use_popup=0 force_interactive=0 auto_close_after=""
-  local caller_pane start_dir runtime_dir command runner interactive
+  local preview_type use_popup=0 force_interactive=0 auto_close_after=""
+  local caller_pane start_dir runtime_dir shell_command runner_path interactive
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -317,19 +325,16 @@ main() {
   start_dir="$(current_pane_path "${caller_pane}")"
   runtime_dir="$(mktemp -d "${XDG_RUNTIME_DIR:-/tmp}/preview-ai.XXXXXX")"
 
-  type="${1:-auto}"
-  shift || true
+  case "$1" in
+    auto) shift; preview_type="$(detect_preview_type "${1:-}")" ;;
+    file|image|json|markdown|text|diff|codediff|log|cmd)
+      preview_type="$1"; shift ;;
+    *) preview_type="$(detect_preview_type "$1")" ;;
+  esac
 
-  if [[ "${type}" == "auto" ]]; then
-    type="$(detect_type "${1:-}")"
-  elif [[ ! "${type}" =~ ^(file|image|json|markdown|text|diff|codediff|log|cmd)$ ]]; then
-    set -- "${type}" "$@"
-    type="$(detect_type "${type}")"
-  fi
-
-  build_command command interactive "${type}" "${force_interactive}" "${start_dir}" "${runtime_dir}" "$@"
-  runner="$(create_runner "${command}" "${interactive}" "${runtime_dir}" "${auto_close_after}")"
-  create_preview_target "${runner}" "${caller_pane}" "${start_dir}" "${use_popup}"
+  prepare_preview_command shell_command interactive "${preview_type}" "${force_interactive}" "${start_dir}" "${runtime_dir}" "$@"
+  runner_path="$(write_preview_runner "${shell_command}" "${interactive}" "${runtime_dir}" "${auto_close_after}")"
+  open_preview_target "${runner_path}" "${caller_pane}" "${start_dir}" "${use_popup}"
 }
 
 main "$@"

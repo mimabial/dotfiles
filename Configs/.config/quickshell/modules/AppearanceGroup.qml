@@ -9,7 +9,7 @@ import ".."
 BarGroup {
     id: root
     property bool popupsAllowed: true
-    shell: root.shell; css: "appearance-group"
+    shell: root.shell; css: "appearance"
     Layout.fillWidth: root.vertical; Layout.fillHeight: !root.vertical
     holdOpen: ["wallpaper", "colormode", "colorpicker", "barlayout", "desktop"].includes(root.shell.popupName)
     // BarGroup's `reverse` only flips a drawer while it grows; an always-open
@@ -35,7 +35,7 @@ BarGroup {
     } }
     Component { id: barLayoutSlot; BarButton {
         id: barButton; shell: root.shell; css: "barlayout-button"; text: root.shell.barLayoutIcon()
-        textColor: root.shell.store.barTransparent ? root.shell.accent : root.shell.foreground
+        textColor: root.shell.prefs.barTransparent ? root.shell.accent : root.shell.foreground
         onClicked: button => button === Qt.LeftButton ? root.shell.togglePopup("barlayout")
             : button === Qt.RightButton ? root.shell.toggleBarTransparency()
             : root.shell.run(["hyprshell", "quickshell/layout", "next"])
@@ -43,7 +43,7 @@ BarGroup {
     } }
     Component { id: windowLayoutSlot; WindowLayoutButton { shell: root.shell; popupsAllowed: root.popupsAllowed } }
     Component { id: workflowsSlot; ScriptButton {
-        shell: root.shell; css: "workflows"
+        shell: root.shell; css: "workflows"; opensPopup: true
         command: ["hyprshell", "util/workflows", "--bar"]; interval: 86400000; refreshKey: root.shell.workflow
         onClicked: root.shell.togglePopup("desktop")
     } }

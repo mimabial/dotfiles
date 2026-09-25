@@ -12,6 +12,7 @@ Item {
     property bool hideActive: false
     property bool popupEnabled: false
     property bool compactStyle: false
+    property bool fixedCompactSlots: true
     property string numerals: "standard"
     readonly property var numeralSets: ({
         standard: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20"],
@@ -66,10 +67,11 @@ Item {
                 readonly property string numeral: root.symbol(index + 1)
                 readonly property bool focused: ws !== null && ws.focused
                 readonly property bool occupied: ws !== null && ws.toplevels.values.length > 0
-                property bool shown: root.compactStyle
+                property bool shown: root.compactStyle && root.fixedCompactSlots
                     ? index < 5 || index < 10 && ws !== null
                     : ws !== null && (!root.activeOnly || ws.focused) && (!root.hideActive || !ws.focused)
                 shell: root.shell
+                opensPopup: true
                 css: focused ? "#workspaces button.active" : "#workspaces button"
                 Layout.fillWidth: root.vertical
                 Layout.fillHeight: !root.vertical
@@ -92,6 +94,6 @@ Item {
         }
     }
 
-    ModuleEdge { shell: root.shell }
+    ModuleEdge { shell: root.shell; host: root }
     WorkspacePopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled }
 }

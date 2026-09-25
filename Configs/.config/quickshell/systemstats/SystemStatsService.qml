@@ -1,5 +1,7 @@
 import QtQuick
+import Quickshell
 import Quickshell.Io
+import qs
 import "Model.js" as Model
 
 // One sampler process per shell, shared by every bar instance on every
@@ -26,6 +28,12 @@ Item {
   property var instances: []
   property var temperatureRamp: Model.FALLBACK_TEMPERATURE_RAMP
   property bool destroying: false
+  property var alertConfig: ({ enabled: {}, thresholds: {} })
+  property var alertEvents: []
+  property bool alertsReady: false
+  property bool alertDetailHeld: false
+  property var alertStates: ({})
+  property var driveLevels: ({})
 
   readonly property var themeColors: ({
     red: shell.role("c1", shell.urgent),
@@ -99,6 +107,181 @@ Item {
     root.seq = Number(data.seq) || 0
     root.ready = true
     root.samplerError = Array.isArray(data.errors) && data.errors.length > 0 ? data.errors.join("; ") : ""
+    root.evaluateMetricAlerts(data)
+  }
+
+  function loadAlertConfig(raw) {
+    var previouslyEnabled = alertConfig.enabled
+    try {
+      var parsed = JSON.parse(String(raw))
+      alertConfig = {
+        enabled: parsed.enabled && typeof parsed.enabled === "object" ? parsed.enabled : {},
+        thresholds: parsed.thresholds && typeof parsed.thresholds === "object" ? parsed.thresholds : {}
+      }
+    } catch (error) { alertConfig = ({ enabled: {}, thresholds: {} }) }
+    var states = Object.assign({}, alertStates)
+    for (var i = 0; i < Model.ALERTS.length; i++) {
+      var key = Model.ALERTS[i].id
+      if ((previouslyEnabled[key] === true) !== alertEnabled(key)) {
+        delete states[key]
+        if (key === "driveHealth") driveLevels = ({})
+      }
+    }
+    alertStates = states
+    alertsReady = true
+    syncAlertSources()
+  }
+
+  function alertEnabled(key) { return alertConfig.enabled[key] === true }
+
+  function alertThreshold(key) {
+    var def = Model.alertDef(key)
+    if (!def || def.threshold === undefined) return 0
+    return Model.clamp(alertConfig.thresholds[key] === undefined ? def.threshold : alertConfig.thresholds[key], def.min, def.max)
+  }
+
+  function saveAlertConfig(next) {
+    alertConfig = next
+    alertConfigFile.setText(JSON.stringify(next, null, 2) + "\n")
+    syncAlertSources()
+  }
+
+  function setAlertEnabled(key, enabled) {
+    if (!Model.alertDef(key)) return
+    var flags = Object.assign({}, alertConfig.enabled)
+    flags[key] = enabled === true
+    var states = Object.assign({}, alertStates)
+    delete states[key]
+    alertStates = states
+    if (key === "driveHealth") driveLevels = ({})
+    saveAlertConfig({ enabled: flags, thresholds: alertConfig.thresholds })
+  }
+
+  function setAlertThreshold(key, value) {
+    var def = Model.alertDef(key)
+    if (!def || def.threshold === undefined) return
+    var thresholds = Object.assign({}, alertConfig.thresholds)
+    thresholds[key] = Model.clamp(value, def.min, def.max)
+    var states = Object.assign({}, alertStates)
+    delete states[key]
+    alertStates = states
+    saveAlertConfig({ enabled: alertConfig.enabled, thresholds: thresholds })
+  }
+
+  function syncAlertSources() {
+    if (!alertsReady) return
+    var needsProcesses = alertEnabled("cpuUsage") || alertEnabled("cpuTemp") || alertEnabled("gpuTemp") || alertEnabled("memory")
+    if (needsProcesses !== alertDetailHeld) {
+      alertDetailHeld = needsProcesses
+      if (needsProcesses) acquireDetail()
+      else releaseDetail()
+    }
+    Removable.healthAlertsEnabled = alertEnabled("driveHealth")
+    if (Removable.healthAlertsEnabled) evaluateDriveHealth()
+  }
+
+  function alertValue(data, key) {
+    var cpu = data.cpu || {}, gpu = data.gpu || {}, mem = data.mem || {}
+    if (key === "cpuUsage") return cpu.total
+    if (key === "cpuTemp") return cpu.temp
+    if (key === "gpuTemp") return gpu.temp
+    if (key === "memory") return mem.total > 0 ? mem.used / mem.total * 100 : null
+    return null
+  }
+
+  function contextLines(data, drive) {
+    var cpu = data.cpu || {}, gpu = data.gpu || {}, mem = data.mem || {}, procs = data.procs || {}
+    var lines = []
+    if (isFinite(Number(cpu.total)) && cpu.total !== null) lines.push("CPU " + Math.round(cpu.total) + "%")
+    if (isFinite(Number(cpu.temp)) && cpu.temp !== null) lines.push("CPU temp " + Math.round(cpu.temp) + "°C")
+    if (isFinite(Number(gpu.util)) && gpu.util !== null) lines.push("GPU " + Math.round(gpu.util) + "%")
+    if (isFinite(Number(gpu.temp)) && gpu.temp !== null) lines.push("GPU temp " + Math.round(gpu.temp) + "°C")
+    if (mem.total > 0) lines.push("Memory " + Math.round(mem.used / mem.total * 100) + "%")
+    if (Array.isArray(procs.cpu) && procs.cpu.length) lines.push("Top CPU: " + procs.cpu[0].name + " " + Math.round(procs.cpu[0].cpu) + "%")
+    if (Array.isArray(procs.mem) && procs.mem.length) lines.push("Top memory: " + procs.mem[0].name + " " + Model.bytesText(procs.mem[0].mem))
+    if (drive) lines.push("Drive: " + drive.title + " · " + drive.health.text + (drive.health.temperature ? " · " + drive.health.temperature : ""))
+    return lines
+  }
+
+  function fireAlert(key, title, message, data, drive) {
+    var event = { at: Date.now(), key: key, title: title, message: message, context: contextLines(data || {}, drive) }
+    alertEvents = [event].concat(alertEvents).slice(0, 20)
+    alertLogFile.setText(JSON.stringify(alertEvents, null, 2) + "\n")
+    var urgency = key === "cpuTemp" || key === "gpuTemp" || key === "driveHealth" ? "critical" : "normal"
+    Quickshell.execDetached(["notify-send", "-a", "System stats", "-u", urgency, title, message])
+  }
+
+  function clearAlertEvents() {
+    alertEvents = []
+    alertLogFile.setText("[]\n")
+  }
+
+  function evaluateMetricAlerts(data) {
+    if (!alertsReady) return
+    var now = Date.now(), states = Object.assign({}, alertStates)
+    for (var i = 0; i < Model.ALERTS.length; i++) {
+      var def = Model.ALERTS[i]
+      if (def.id === "driveHealth" || !alertEnabled(def.id)) continue
+      var value = alertValue(data, def.id)
+      var valid = value !== null && value !== undefined && isFinite(Number(value))
+      var state = Model.nextAlertState(states[def.id], valid && Number(value) >= alertThreshold(def.id), now)
+      states[def.id] = state
+      if (state.fire) {
+        var reading = Math.round(Number(value)) + def.unit
+        var message = reading + " reached the " + alertThreshold(def.id) + def.unit + " limit"
+        var top = data.procs && (def.id === "memory" ? data.procs.mem : data.procs.cpu)
+        if (Array.isArray(top) && top.length) message += " · top process: " + top[0].name
+        fireAlert(def.id, def.label, message, data, null)
+      }
+    }
+    alertStates = states
+  }
+
+  function evaluateDriveHealth() {
+    if (!alertsReady || !alertEnabled("driveHealth")) return
+    var seen = Object.assign({}, driveLevels)
+    var devices = Removable.devices.concat(Removable.systemDevices)
+    for (var i = 0; i < devices.length; i++) {
+      var device = devices[i], health = Removable.healthFor(device)
+      if (!health || health.state === "unavailable") continue
+      var level = health.state === "failing" ? 2 : health.state === "warning" ? 1 : 0
+      var key = Removable.healthKey(device)
+      if (level > (seen[key] || 0)) {
+        fireAlert("driveHealth", device.title + " drive health", health.text, snapshot,
+          { title: device.title, health: health })
+      }
+      seen[key] = level
+    }
+    driveLevels = seen
+  }
+
+  onAlertConfigChanged: syncAlertSources()
+
+  Connections {
+    target: Removable
+    function onHealthChanged() { root.evaluateDriveHealth() }
+  }
+
+  FileView {
+    id: alertConfigFile
+    path: root.shell.home + "/.config/quickshell/systemstats/alerts.json"
+    watchChanges: true; printErrors: false; atomicWrites: true
+    onLoaded: root.loadAlertConfig(text())
+    onFileChanged: reload()
+    onLoadFailed: root.loadAlertConfig("")
+  }
+
+  FileView {
+    id: alertLogFile
+    path: root.shell.home + "/.local/state/hypr/systemstats-alerts.json"
+    watchChanges: true; printErrors: false; atomicWrites: true
+    onLoaded: {
+      try {
+        var parsed = JSON.parse(text())
+        root.alertEvents = Array.isArray(parsed) ? parsed.slice(0, 20) : []
+      } catch (error) { root.alertEvents = [] }
+    }
+    onFileChanged: reload()
   }
 
   function send(text) {
@@ -140,8 +323,6 @@ Item {
     if (sampler.running) send("pubip")
     else publicIpPending = true
   }
-
-  function refreshGpu() { send("gpu") }
 
   function selectGpu(vendor) {
     var kind = String(vendor || "").toLowerCase()

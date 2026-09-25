@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 
 PopupCard {
@@ -15,9 +17,9 @@ PopupCard {
     readonly property var errors: report && report.errors ? report.errors : []
     readonly property var groups: {
         const out = []
-        for (const source of [["PACMAN", "pacman"], ["AUR", "aur"], ["FLATPAK", "flatpak"]]) {
+        for (const source of [["Pacman", "pacman"], ["AUR", "aur"], ["Flatpak", "flatpak"]]) {
             const items = packages[source[1]] || []
-            if (items.length) out.push({ label: source[0], items: items })
+            if (items.length) out.push({ label: source[0], source: source[1], items: items })
         }
         return out
     }
@@ -74,31 +76,41 @@ PopupCard {
         Repeater {
             model: root.groups
             Column {
+                id: groupColumn
                 required property var modelData
                 width: updatesColumn.width; spacing: Style.xs
                 PopupSeparator { shell: root.shell }
-                PopupSection { shell: root.shell; text: modelData.label; value: modelData.items.length }
+                PopupSection { shell: root.shell; text: groupColumn.modelData.label.toUpperCase(); value: groupColumn.modelData.items.length }
                 ListView {
                     width: parent.width
                     height: Math.min(contentHeight, Style.px(168))
                     clip: true; spacing: Style.xxs
-                    model: modelData.items
+                    model: groupColumn.modelData.items
                     delegate: Row {
+                        id: packageRow
                         required property var modelData
                         width: ListView.view.width; spacing: Style.lg
                         Text {
                             id: name
                             width: parent.width - version.implicitWidth - Style.lg
-                            text: modelData.name; elide: Text.ElideRight
+                            text: packageRow.modelData.name; elide: Text.ElideRight
                             color: root.shell.foreground
                             font.family: root.shell.fontFamily; font.pixelSize: Style.caption
                         }
                         Text {
                             id: version
-                            text: modelData.from + " → " + modelData.to
+                            text: packageRow.modelData.from + " → " + packageRow.modelData.to
                             color: root.shell.alpha(root.shell.foreground, .55)
                             font.family: root.shell.fontFamily; font.pixelSize: Style.caption
                         }
+                    }
+                }
+                PopupRow {
+                    width: parent.width; shell: root.shell
+                    icon: ""; title: "Update " + groupColumn.modelData.label; detail: "Opens a terminal"
+                    onClicked: {
+                        root.shell.closePopup()
+                        root.shell.run(["hyprshell", "system/system.update.sh", "up", groupColumn.modelData.source])
                     }
                 }
             }
@@ -126,7 +138,7 @@ PopupCard {
             PopupSeparator { shell: root.shell }
             PopupRow {
                 width: parent.width; shell: root.shell
-                icon: ""; title: "Run upgrade"; detail: "Opens a terminal"
+                icon: ""; title: "Run all upgrades"; detail: "Opens a terminal"
                 onClicked: {
                     root.shell.closePopup()
                     root.shell.run(["hyprshell", "system/system.update.sh", "up"])

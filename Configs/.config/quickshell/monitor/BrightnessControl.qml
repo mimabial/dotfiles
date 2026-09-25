@@ -5,7 +5,7 @@ import "Ui"
 Column {
   id: root
 
-  property var bar: null
+  property var shell: null
   property string connector: ""
   property string displayLabel: ""
   property int value: 1
@@ -73,7 +73,7 @@ Column {
     PanelSlider {
       id: brightnessSlider
       visible: root.available
-      bar: root.bar
+      shell: root.shell
       anchors.fill: parent
       anchors.leftMargin: Style.space(6)
       anchors.rightMargin: Style.space(6)

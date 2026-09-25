@@ -1,7 +1,6 @@
 # Hotkeys
 
-There are 269 binds here, and none of them are arbitrary. Two rules generate
-almost all of them.
+Two rules generate almost all of these binds.
 
 ## The modifier convention
 
@@ -157,7 +156,7 @@ the bar · `H` toggle the bar · `F` select font · `Shift + F` install a Nerd F
 ### Terminal — `Super + J`
 
 `T` dropdown terminal · `A` Agent Hub · `H` htop · `N` nvtop · `U` dua ·
-`R` rmpc · `V` wiremix · `B` bluetui · `W` impala
+`R` rmpc · `V` wiremix · `B` bluetui · `W` impala · `D` display layout
 
 ### Capture — `Super + R`
 

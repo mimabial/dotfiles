@@ -203,7 +203,7 @@ def strip_modifiers(key):
     return " + ".join(parts)
 
 
-def map_codeDisplay(keycode, key):
+def display_keycode(keycode, key):
     if keycode:
         return CODE_DISPLAY_MAP.get(keycode, key)
     # Binds declared as "code:N" arrive with keycode 0 and the literal chord in
@@ -213,7 +213,7 @@ def map_codeDisplay(keycode, key):
     )
 
 
-def map_modDisplay(modmask):
+def display_modifiers(modmask):
     modkey_map = {
         64: "SUPER",
         32: "HYPER",
@@ -231,7 +231,7 @@ def map_modDisplay(modmask):
     return " ".join(mod_display) if mod_display else "None"
 
 
-def map_keyDisplay(key):
+def display_key_name(key):
     """Map key_display to a more descriptive term."""
     key_map = {
         "edge:r:d": "Touch right edge downwards",
@@ -416,9 +416,7 @@ def generate_dmenu(binds):
         keys = [mod_display] if mod_display else []
         if key_display:
             keys.append(key_display)
-        formatted_keys = (
-            " + ".join(keys).removeprefix(" + ").removesuffix(" + ")
-        )  # remove leading and trailing " + " WARN: not working in python <3.9
+        formatted_keys = " + ".join(keys)
         action = bind["description"]
         header1 = bind.get("header1", "")
         header2 = bind.get("header2", "")
@@ -475,35 +473,33 @@ def generate_rofi(binds):
             f"{displayed_rofi_keys} ::: {dispatcher} ::: {arg} ::: {repeated} ::: {meta_data}"
         )
 
-        def format_group(headers, level=0, parent_meta_data=""):
-            nonlocal rofi_str
-            if level == 0:
-                prefix = ""
-            elif level == 1:
-                prefix = ""
+    def format_group(headers, level=0, parent_meta_data=""):
+        nonlocal rofi_str
+        if level == 0:
+            prefix = ""
+        elif level == 1:
+            prefix = ""
+        else:
+            prefix = " " * (level - 1) + ""
+
+        suffix = f"[{parent_meta_data}]" if parent_meta_data else ""
+
+        for header, subgroups in headers.items():
+            current_meta_data = f"{header}{suffix}".strip(" <")
+            if header:
+                rofi_str += f"{prefix} {header}  {suffix:>20} ::: ::: {current_meta_data}\n"
+            if isinstance(subgroups, dict):
+                format_group(subgroups, level + 1, current_meta_data)
             else:
-                prefix = " " * (level - 1) + ""
-
-            suffix = f"[{parent_meta_data}]" if parent_meta_data else ""
-
-            for header, subgroups in headers.items():
-                current_meta_data = f"{header}{suffix}".strip(" <")
-                if header:
-                    rofi_str += (
-                        f"{prefix} {header}  {suffix:>20} ::: ::: {current_meta_data}\n"
-                    )
-                if isinstance(subgroups, dict):
-                    format_group(subgroups, level + 1, current_meta_data)
-                else:
-                    for binding in subgroups:
-                        rofi_str += f"{binding} ::: ::: {current_meta_data}\n"
-                    rofi_str += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ::: ::: {current_meta_data}\n"
+                for binding in subgroups:
+                    rofi_str += f"{binding} ::: ::: {current_meta_data}\n"
+                rofi_str += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ::: ::: {current_meta_data}\n"
 
     format_group(groups)
     return rofi_str
 
 
-def expand_meta_data(binds_data):
+def annotate_bindings_with_display_metadata(binds_data):
     submap_keys = {}
 
     for bind in binds_data:
@@ -517,9 +513,9 @@ def expand_meta_data(binds_data):
             bind.update(
                 {"header1": "Misc", "header2": "", "header3": "", "header4": ""}
             )
-        bind["key"] = strip_modifiers(map_codeDisplay(bind["keycode"], bind["key"]))
-        bind["key_display"] = map_keyDisplay(bind["key"])
-        bind["mod_display"] = map_modDisplay(bind["modmask"])
+        bind["key"] = strip_modifiers(display_keycode(bind["keycode"], bind["key"]))
+        bind["key_display"] = display_key_name(bind["key"])
+        bind["mod_display"] = display_modifiers(bind["modmask"])
 
         # Handle submaps. The Lua config plugin routes every bind through its own
         # handler, so hyprctl reports dispatcher "__lua" and never "submap"; a
@@ -546,9 +542,7 @@ def expand_meta_data(binds_data):
         keys = [mod_display] if mod_display else []
         if key_display:
             keys.append(key_display)
-        formatted_keys = (
-            " + ".join(keys).removeprefix(" + ").removesuffix(" + ")
-        )  # remove leading and trailing " + " WARN: not working in python <3.9
+        formatted_keys = " + ".join(keys)
 
         if submap in submap_keys:
             submap_mod_display = submap_keys[submap]["mod_display"]
@@ -586,12 +580,12 @@ if __name__ == "__main__":
     args = parser.parse_args()
     binds_data = get_hyprctl_binds()
     if binds_data:
-        expand_meta_data(binds_data)
+        annotate_bindings_with_display_metadata(binds_data)
         if args.submap:
             binds_data = [b for b in binds_data if b.get("submap") == args.submap]
         if args.show_unbind:
             duplicated_binds = find_duplicated_binds(binds_data)
-            for (mod_display, key_display), binds in duplicated_binds.items():
+            for (_submap, mod_display, key_display) in duplicated_binds:
                 print(f"unbind = {mod_display} , {key_display}")
         elif args.format == "json":
             print(json.dumps(binds_data, indent=4))

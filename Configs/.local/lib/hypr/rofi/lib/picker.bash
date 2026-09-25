@@ -10,7 +10,7 @@ ROFI_EM_PX_PER_SCALE=2
 ROFI_MOUSE_SELECT_ARGS=(-sync -no-custom -hover-select -me-select-entry "" -me-accept-entry MousePrimary)
 # Picker helpers: CLI arg parsing, rasi arg list, indexed dmenu run, recent-entry
 # file ops, window geometry.
-# External deps: print_log (core/common); get_rofi_pos (core/common); rofi.
+# External deps: print_log (core/common); rofi_window_position_theme (core/rofi.sh); rofi_with_background_theme (geometry.bash).
 
 rofi_picker_parse_style_args() {
   local out_style_name="$1"
@@ -93,7 +93,7 @@ rofi_picker_run_indexed() {
       s {printf "<span size=\"220%%\">%s</span>\n%s\n%s\n%s%c", e($1), e(substr(l, 1, n)), e(u ? substr(t, 1, u) : t), e(u ? substr(t, u + 1) : ""), 0; next}
       {print $1 (l == "" ? "" : " " l)}
     ' "${data_file}" |
-      rofi -dmenu -format 'i' "$@"
+      rofi_with_background_theme -dmenu -format 'i' "$@"
   )" || rofi_exit=$?
 
   if [[ -z "${selection_index}" ]]; then
@@ -194,6 +194,6 @@ rofi_picker_compute_window_geometry() {
   height_px="$(rofi_length_em_to_px "${height_em}" "${font_name}" "${font_scale}" 2>/dev/null || true)"
   [[ "${height_px}" =~ ^[0-9]+$ ]] || height_px="${fallback_height_px}"
 
-  printf -v "${out_position_name}" '%s' "$(get_rofi_pos "${width_px}" "${height_px}")"
+  printf -v "${out_position_name}" '%s' "$(rofi_window_position_theme "${width_px}" "${height_px}")"
   printf -v "${out_theme_name}" '%s' "window { width: ${width_px}px; height: ${height_px}px; }"
 }

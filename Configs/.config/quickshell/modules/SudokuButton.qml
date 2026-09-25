@@ -6,6 +6,7 @@ BarButton {
     id: root
     property bool popupsAllowed: true
     property bool loaded: false
+    opensPopup: true
     css: "sudoku"; text: "󱇙"; tooltip: "Sudoku"
     active: root.shell.popupName === "sudoku"
     onClicked: { root.loaded = true; root.shell.togglePopup("sudoku") }

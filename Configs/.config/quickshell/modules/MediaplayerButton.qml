@@ -16,7 +16,9 @@ ScriptButton {
     // alone. One instance either way, so only one daemon runs
     shell: mediaButton.shell; css: "mediaplayer"; Layout.fillWidth: true; useAlt: true
     command: iconMode ? ["hyprshell", "mediaplayer.py", "--icon"] : ["hyprshell", "mediaplayer.py"]
-    interval: 5000; textColor: mediaButton.shell.mediaColor(output); tooltip: ""
+    interval: 5000; tooltip: ""
+    textColor: mediaButton.box.content !== undefined ? mediaButton.styleColor("content")
+        : mediaButton.shell.alpha(mediaButton.shell.mediaColor(output), .4)
     text: mediaButton.showWhenIdle && mediaButton.rendered === "" ? mediaButton.idleIcon : mediaButton.rendered
     onClicked: button => button === Qt.RightButton ? mediaButton.shell.run(["hyprshell", "mediaplayer.py", "--action", "play-pause"]) : mediaButton.shell.togglePopup("media")
     onWheeled: delta => mediaButton.shell.run(["hyprshell", "mediaplayer.py", "--action", delta > 0 ? "cycle-next" : "cycle-previous"])

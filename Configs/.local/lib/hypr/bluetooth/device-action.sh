@@ -19,7 +19,7 @@ fi
 active_control_pid=
 active_output_file=
 
-cleanup() {
+cleanup_control_output_file() {
   [[ -z $active_output_file ]] || rm -f -- "$active_output_file"
 }
 
@@ -32,7 +32,7 @@ cancel_active_control() {
   exit 130
 }
 
-trap cleanup EXIT
+trap cleanup_control_output_file EXIT
 trap cancel_active_control INT TERM
 
 strip_terminal_codes() {
@@ -101,7 +101,7 @@ failure_message() {
   esac
 }
 
-run_control() {
+run_bluetoothctl_action() {
   local phase=$1
   local seconds=$2
   shift 2
@@ -175,31 +175,31 @@ ensure_not_blocked() {
 trust_device() {
   # Trust is a convenience for future incoming reconnects, not a condition for
   # completing the user's immediate pair/connect request.
-  run_control trust 5 trust "$address" >/dev/null 2>&1 || true
+  run_bluetoothctl_action trust 5 trust "$address" >/dev/null 2>&1 || true
 }
 
 case "$action" in
   pair)
     ensure_powered || exit 1
     ensure_not_blocked || exit 1
-    run_control pair 20 pair "$address" || exit 1
+    run_bluetoothctl_action pair 20 pair "$address" || exit 1
     trust_device
-    run_control connect 20 connect "$address" || exit 1
+    run_bluetoothctl_action connect 20 connect "$address" || exit 1
     ;;
   connect)
     ensure_powered || exit 1
     ensure_not_blocked || exit 1
-    run_control connect 20 connect "$address" || exit 1
+    run_bluetoothctl_action connect 20 connect "$address" || exit 1
     trust_device
     ;;
   disconnect)
-    run_control disconnect 10 disconnect "$address" || exit 1
+    run_bluetoothctl_action disconnect 10 disconnect "$address" || exit 1
     ;;
   forget)
     # Removal is authoritative and also tears down a live connection. Do not
     # power the radio on just to remove cached bonding data, and do not make a
     # misbehaving device's failed disconnect prevent it being forgotten.
-    run_control disconnect 10 disconnect "$address" >/dev/null 2>&1 || true
-    run_control remove 10 remove "$address" || exit 1
+    run_bluetoothctl_action disconnect 10 disconnect "$address" >/dev/null 2>&1 || true
+    run_bluetoothctl_action remove 10 remove "$address" || exit 1
     ;;
 esac

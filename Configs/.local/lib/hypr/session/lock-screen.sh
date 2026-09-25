@@ -16,6 +16,8 @@ case "${1:-}" in
     ;;
 esac
 
+hypr_lock_password_managers
+
 # A hyprlock that outlived its lock keeps the scope name taken, wedging every later lock.
 if [[ "$(hyprctl locked 2>/dev/null)" == false ]] && stale="$(hypr_user_pgrep -x "${lockscreen}" | head -n1)" && [[ -n "${stale}" ]]; then
   hypr_user_pkill -9 -x "${lockscreen}"
@@ -25,12 +27,5 @@ fi
 # Prevent an unlocked hyprlock process from surviving outside its scope.
 scope_unit=(-u "lockscreen.scope")
 
-app2unit="${HYPR_LIB_DIR}/system/app2unit.sh"
-wrapper="$(command -v "${lockscreen}.sh" 2>/dev/null || true)"
-if [[ -n "${wrapper}" ]]; then
-  printf 'Executing %s wrapper: %s\n' "${lockscreen}" "${wrapper}"
-  exec "${app2unit}" "${scope_unit[@]}" -- "${wrapper}" "$@"
-else
-  printf 'Executing %s\n' "${lockscreen}"
-  exec "${app2unit}" "${scope_unit[@]}" -- "${lockscreen}" "$@"
-fi
+printf 'Executing %s\n' "${lockscreen}"
+exec "${HYPR_LIB_DIR}/system/app2unit.sh" "${scope_unit[@]}" -- "${lockscreen}" "$@"

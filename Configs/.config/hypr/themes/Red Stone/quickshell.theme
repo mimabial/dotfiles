@@ -29,9 +29,9 @@
   "c15": "#dfd2c4",
   "accent": "#D87C4A",
   "info": "#7fa09e",
-  "warning": "#4A8B8B",
+  "warning": "#d4896b",
   "error": "#c15959",
-  "success": "#d4896b",
+  "success": "#4A8B8B",
   "background": "#121212",
   "foreground": "#F5F5DC",
   "fg_selected": "#3A6E6E"

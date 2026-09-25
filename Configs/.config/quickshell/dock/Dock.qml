@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Effects
 import Quickshell
@@ -16,7 +17,7 @@ Item {
   component ContextRow: DockMenuRow { menuWidth: folderStackPopover.rowWidth }
   component MenuDivider: DockMenuDivider { menuWidth: folderStackPopover.rowWidth }
 
-  property var shell: null
+  required property var shell
   property alias contextSelectedWindowIdx: contextMenu.selectedWindowIdx
   property alias dockCardItem: dockCard
 
@@ -32,7 +33,7 @@ Item {
   property bool dockBlur: true
   property bool linkToBar: true
 
-  readonly property var barStore: (root.shell && root.shell.store) ? root.shell.store : null
+  readonly property var barStore: (root.shell && root.shell.prefs) ? root.shell.prefs : null
   readonly property bool linked: root.linkToBar && root.barStore !== null
   readonly property bool transparent: root.linked ? root.barStore.barTransparent === true : root.dockTransparent
   readonly property bool blurred: root.linked ? root.barStore.barBlur === true : root.dockBlur
@@ -65,7 +66,7 @@ Item {
   // opposite one so the two never share a side.
   readonly property string barEdge: root.shell ? String(root.shell.barEdge) : "top"
   readonly property string edge: root.linkToBar
-    ? ({ top: "bottom", bottom: "top", left: "right", right: "left" })[root.barEdge]
+    ? ({ top: "bottom", bottom: "top", left: "right" })[root.barEdge]
     : root.dockEdge
   // Main axis is the one icons march along; cross axis is the card's thickness.
   readonly property bool vertical: root.edge === "left" || root.edge === "right"
@@ -272,13 +273,12 @@ Item {
     - (root.baseRowWidth + root.cardMainInsetStart + root.cardMainInsetEnd)) / 2
     + root.cardMainInsetStart
 
-  function slotHomeCenter(elementIndex, slotsBefore, sepCount, extraLeftWidth) {
-    var seps = (typeof sepCount === "number") ? sepCount : (sepCount ? 1 : 0)
+  function slotHomeCenter(elementIndex, iconSlotsBefore, separatorCount, extraWidth) {
     return root.baseRowStart
       + elementIndex * root.gapWidth
-      + slotsBefore * root.iconSlot
-      + seps * root.separatorWidth
-      + (extraLeftWidth || 0)
+      + iconSlotsBefore * root.iconSlot
+      + separatorCount * root.separatorWidth
+      + (extraWidth || 0)
       + root.iconSlot / 2
   }
 
@@ -288,6 +288,37 @@ Item {
     ? (root.hasLeftTileSeparator ? root.separatorWidth : 0) + root.tileCount * root.tileMainSize
     : 0
   readonly property int tileElements: root.hasTiles ? root.tileCount : 0
+
+  function pinnedHomeCenter(index) {
+    var iconsBefore = root.appsSlots + index
+    return root.slotHomeCenter(iconsBefore + root.appsSeparatorCount, iconsBefore, root.appsSeparatorCount)
+  }
+  function groupHomeCenter(index) {
+    var iconsBefore = root.appsSlots + root.pinnedSection.length + index
+    return root.slotHomeCenter(iconsBefore + root.appsSeparatorCount, iconsBefore, root.appsSeparatorCount)
+  }
+  function tileHomeCenter(index) {
+    var iconsBefore = root.appsSlots + root.pinnedSection.length + root.groupSlots + index
+    var leftSeparator = root.hasLeftTileSeparator ? 1 : 0
+    var tileWidthOffset = leftSeparator * root.separatorWidth + index * root.tileMainSize
+      + (root.tileMainSize - root.iconSlot) / 2
+    return root.slotHomeCenter(iconsBefore + root.appsSeparatorCount + leftSeparator,
+      iconsBefore, root.appsSeparatorCount, tileWidthOffset)
+  }
+  function runningHomeCenter(index) {
+    var iconsBefore = root.appsSlots + root.pinnedSection.length + root.groupSlots
+      + root.visibleRunningSlotBefore(index)
+    var separators = root.appsSeparatorCount + (root.hasSeparator ? 1 : 0)
+    return root.slotHomeCenter(iconsBefore + separators + (root.hasLeftTileSeparator ? 1 : 0) + root.tileElements,
+      iconsBefore, separators, root.tilesFixedWidth)
+  }
+  function folderHomeCenter(index) {
+    var iconsBefore = root.appsSlots + root.pinnedSection.length + root.groupSlots
+      + root.visibleRunningCount + index
+    var separators = root.appsSeparatorCount + (root.hasSeparator ? 1 : 0) + (root.hasFolderSeparator ? 1 : 0)
+    return root.slotHomeCenter(iconsBefore + separators + (root.hasLeftTileSeparator ? 1 : 0) + root.tileElements,
+      iconsBefore, separators, root.tilesFixedWidth)
+  }
 
   function magnifyAt(homeCenter) {
     if (!root.waveHover) return 0
@@ -765,7 +796,7 @@ Item {
   Process {
     id: folderStackScanner
     property string targetFolder: ""
-    command: ["python3", "-c", "import os, json, time, sys\nfolder = os.path.expanduser(sys.argv[1]) if len(sys.argv) > 1 else ''\nif not folder or not os.path.exists(folder):\n    print(json.dumps({'count':0,'items':[],'folder':folder}))\n    sys.exit(0)\nentries = []\ntry:\n    for entry in os.scandir(folder):\n        try:\n            if entry.name.startswith('.'):\n                continue\n            stat = entry.stat()\n            is_dir = entry.is_dir()\n            size_bytes = stat.st_size if not is_dir else 0\n            if size_bytes < 1024:\n                size_str = f'{size_bytes} B'\n            elif size_bytes < 1024 * 1024:\n                size_str = f'{size_bytes / 1024:.1f} KB'\n            elif size_bytes < 1024 * 1024 * 1024:\n                size_str = f'{size_bytes / (1024 * 1024):.1f} MB'\n            else:\n                size_str = f'{size_bytes / (1024 * 1024 * 1024):.1f} GB'\n            diff = time.time() - stat.st_mtime\n            if diff < 60:\n                time_str = 'Just now'\n            elif diff < 3600:\n                time_str = f'{int(diff // 60)}m ago'\n            elif diff < 86400:\n                time_str = f'{int(diff // 3600)}h ago'\n            else:\n                time_str = f'{int(diff // 86400)}d ago'\n            ext = os.path.splitext(entry.name)[1].lower()\n            is_img = ext in ['.png', '.jpg', '.jpeg', '.webp', '.svg', '.gif']\n            if is_dir:\n                icon = 'folder'\n            elif is_img:\n                icon = 'image-x-generic'\n            elif ext in ['.mp4', '.mkv', '.webm', '.mov', '.avi']:\n                icon = 'video-x-generic'\n            elif ext in ['.mp3', '.flac', '.wav', '.ogg', '.m4a']:\n                icon = 'audio-x-generic'\n            elif ext in ['.zip', '.tar', '.gz', '.xz', '.7z', '.rar']:\n                icon = 'package-x-generic'\n            elif ext in ['.pdf']:\n                icon = 'application-pdf'\n            elif ext in ['.txt', '.md', '.json', '.qml', '.py', '.cpp', '.js', '.lua', '.rs', '.go', '.html', '.css']:\n                icon = 'text-x-generic'\n            else:\n                icon = 'application-x-executable'\n            entries.append({'name': entry.name, 'path': entry.path, 'isDir': is_dir, 'isImage': is_img, 'size': size_str, 'time': time_str, 'mtime': stat.st_mtime, 'icon': icon})\n        except Exception:\n            pass\nexcept Exception:\n    pass\nentries.sort(key=lambda x: x['mtime'], reverse=True)\nprint(json.dumps({'count': len(entries), 'items': entries[:16], 'folder': folder}))\n", folderStackScanner.targetFolder]
+    command: ["python3", Quickshell.env("HOME") + "/.local/lib/hypr/quickshell/dock-folders.py", "scan", folderStackScanner.targetFolder]
     running: false
     stdout: StdioCollector {
       onStreamFinished: {
@@ -787,9 +818,11 @@ Item {
     }
   }
 
+  function pickCustomFolder() { if (!customFolderPickerProc.running) customFolderPickerProc.running = true }
+
   Process {
     id: customFolderPickerProc
-    command: ["python3", "-c", "import gi\ngi.require_version('Gtk', '3.0')\nfrom gi.repository import Gtk\ndialog = Gtk.FileChooserDialog(title='Select Folder to Pin to Dock', action=Gtk.FileChooserAction.SELECT_FOLDER)\ndialog.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OPEN, Gtk.ResponseType.OK)\nres = dialog.run()\nif res == Gtk.ResponseType.OK:\n    print(dialog.get_filename())\ndialog.destroy()\n"]
+    command: ["python3", Quickshell.env("HOME") + "/.local/lib/hypr/quickshell/dock-folders.py", "pick"]
     running: false
     stdout: StdioCollector {
       onStreamFinished: {
@@ -2740,7 +2773,7 @@ Item {
           card: dockCard
           id: appsButton
           visible: root.showAppsButton
-          homeCenter: root.slotHomeCenter(0, 0, false)
+          homeCenter: root.slotHomeCenter(0, 0, 0)
           glyph: root.shell ? root.shell.distroGlyph : ""
           glyphColor: root.dockForeground
           tooltip: "Applications"
@@ -2768,8 +2801,7 @@ Item {
             running: modelData.running
             windows: modelData.windows
             windowList: modelData.windowList
-            homeCenter: root.slotHomeCenter(root.appsSlots + root.appsSeparatorCount + index,
-                                            root.appsSlots + index, root.appsSeparatorCount)
+            homeCenter: root.pinnedHomeCenter(index)
             pinned: true
             active: modelData.appId === root.activeId
             onActivateRequested: function(aid) { root.activate(aid) }
@@ -2799,10 +2831,7 @@ Item {
             dock: modelData.dock
             dockContent: modelData.content
             groupData: modelData.group
-            homeCenter: dock.slotHomeCenter(
-              dock.appsSlots + dock.appsSeparatorCount + dock.pinnedSection.length + index,
-              dock.appsSlots + dock.pinnedSection.length + index,
-              dock.appsSeparatorCount)
+            homeCenter: dock.groupHomeCenter(index)
           }
         }
 
@@ -2816,6 +2845,8 @@ Item {
 
           delegate: Item {
             id: tile
+            required property var modelData
+            required property int index
             readonly property bool isGroup: modelData.type === "group"
             readonly property var win: isGroup ? modelData.windows[0] : modelData.win
             readonly property var groupWins: isGroup ? modelData.windows : [modelData.win]
@@ -2829,11 +2860,7 @@ Item {
 
             // Same magnify contract as DockItem/DockFolderItem: wave grows the
             // layout slot; zoom scales the visual stack in place (tileVisual).
-            readonly property real homeCenter: root.slotHomeCenter(
-              root.appsSlots + root.appsSeparatorCount + root.pinnedSection.length + root.groupSlots + (root.hasLeftTileSeparator ? 1 : 0) + index,
-              root.appsSlots + root.pinnedSection.length + root.groupSlots + index,
-              root.appsSeparatorCount,
-              (root.hasLeftTileSeparator ? root.separatorWidth : 0) + index * root.tileMainSize + (root.tileMainSize - root.iconSlot) / 2)
+            readonly property real homeCenter: root.tileHomeCenter(index)
             property real magnifyScale: {
               if (root.waveHover) return root.magnifyScaleAt(tile.homeCenter)
               if (root.hoverEffect === "off") return 1
@@ -3093,12 +3120,7 @@ Item {
             windowList: modelData.windowList
             // Wave geometry must count only icons that actually render — a
             // hidden (fully-tiled) entry occupies zero width in the Row.
-            readonly property int visibleIdx: root.visibleRunningSlotBefore(index)
-            homeCenter: root.slotHomeCenter(
-              root.appsSlots + root.appsSeparatorCount + root.pinnedSection.length + root.groupSlots + (root.hasLeftTileSeparator ? 1 : 0) + (root.hasSeparator ? 1 : 0) + root.tileElements + visibleIdx,
-              root.appsSlots + root.pinnedSection.length + root.groupSlots + visibleIdx,
-              root.appsSeparatorCount + (root.hasSeparator ? 1 : 0),
-              root.tilesFixedWidth)
+            homeCenter: root.runningHomeCenter(index)
             pinned: false
             active: modelData.appId === root.activeId
             onActivateRequested: function(aid) { root.activate(aid) }
@@ -3145,11 +3167,7 @@ Item {
             folderPath: modelData.path
             name: modelData.name || "Folder"
             icon: modelData.icon || DockModel.folderIconFor(modelData.path, "")
-            homeCenter: root.slotHomeCenter(
-              root.appsSlots + root.appsSeparatorCount + root.pinnedSection.length + root.groupSlots + (root.hasLeftTileSeparator ? 1 : 0) + (root.hasSeparator ? 1 : 0) + root.tileElements + root.visibleRunningCount + (root.hasFolderSeparator ? 1 : 0) + index,
-              root.appsSlots + root.pinnedSection.length + root.groupSlots + root.visibleRunningCount + index,
-              root.appsSeparatorCount + (root.hasSeparator ? 1 : 0) + (root.hasFolderSeparator ? 1 : 0),
-              root.tilesFixedWidth)
+            homeCenter: root.folderHomeCenter(index)
             onOpenStackRequested: function(fpath, fname, cx, cy) {
               root.openFolderStack(fpath, fname, cx)
             }

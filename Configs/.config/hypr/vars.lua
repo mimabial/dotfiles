@@ -28,6 +28,7 @@ local values = {
     ["start.STYLE_MAP"] = "hyprshell app -t service -- hyprshell quickshell/style-map-watch",
     ["start.WALLPAPER"] = "hyprshell app -u hyprland-wallpaper.service -t service -- hyprshell wallpaper start --global",
     ["start.NOTIFICATIONS"] = "hyprshell app -t service dunst",
+    ["start.WORKFLOW_RECONCILE"] = "hyprshell util/workflows --reconcile",
     ["start.TEXT_CLIPBOARD"] = "hyprshell app -t service wl-paste --type text --watch cliphist store",
     ["start.IMAGE_CLIPBOARD"] = "hyprshell app -t service wl-paste --type image --watch cliphist store",
     ["start.CLIPBOARD_PERSIST"] = "hyprshell app -t service wl-clip-persist --clipboard regular",

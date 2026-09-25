@@ -78,7 +78,7 @@ case "${1:---report}" in
         text: (if (.printers | length) == 0 then ""
                elif .stopped > 0 then "󰐬"
                elif .pending > 0 then "󱊖"
-               else "󰐪" end),
+               else "󱞆" end),
         class: (if (.printers | length) == 0 then "empty"
                 elif .stopped > 0 then "stopped"
                 elif .pending > 0 then "printing"

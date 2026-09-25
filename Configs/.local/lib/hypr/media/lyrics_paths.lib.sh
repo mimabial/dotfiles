@@ -1,4 +1,4 @@
-# shellcheck shell=bash
+# shellcheck shell=sh
 # Where .lrc files live. Sourced by the rmpc fetch hook and mirrored in Python
 # by lyrics_paths.py.
 #
@@ -18,7 +18,7 @@ MUSIC_LIBRARY_ROOT="${XDG_MUSIC_DIR:-$HOME/Music}"
 LYRICS_HIDDEN_DIR="${MUSIC_LIBRARY_ROOT}/.lyrics"
 
 # lyrics_lrc_path <path> -> the .lrc that belongs to it
-lyrics_lrc_path() {
+lyrics_lrc_path() (
   lyrics_target="$1"
   [ -n "$lyrics_target" ] || return 1
 
@@ -30,4 +30,4 @@ lyrics_lrc_path() {
   esac
 
   printf '%s.lrc' "${lyrics_target%.*}"
-}
+)

@@ -9,11 +9,11 @@ hypr_help_guard "Usage: hyprshell system/agent-usage [--write] [--force] [agent.
   --force     rescan local usage now, for a person who asked rather than for a
               periodic refresh. The limits probe keeps its own short window,
               which is what stops repeat presses hitting a server rate limit.
-  <agent>     limit collection to the named agents (claude, codex)
+  <agent>     limit collection to the named agents (claude, codex, opencode)
 
 Cache: \${HYPR_CACHE_HOME:-~/.cache/hypr}/agents/usage.json" "$@"
 
-readonly AGENTS=(claude codex)
+readonly AGENTS=(claude codex opencode)
 readonly COLLECTOR_DIR="${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/system"
 readonly CACHE_DIR="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/agents"
 readonly CACHE_FILE="${CACHE_DIR}/usage.json"
@@ -34,7 +34,8 @@ for arg in "$@"; do
     *) wanted+=("${arg}") ;;
   esac
 done
-[[ ${#wanted[@]} -eq 0 ]] && wanted=("${AGENTS[@]}")
+partial=${#wanted[@]}
+((partial)) || wanted=("${AGENTS[@]}")
 
 scratch="$(mktemp -d "${TMPDIR:-/tmp}/agent-usage.XXXXXX")"
 cleanup_paths=("${scratch}")
@@ -69,6 +70,9 @@ fi
 
 if ((write)); then
   mkdir -p "${CACHE_DIR}"
+  ((partial)) && payload="$(jq -c --argjson fresh "${payload}" \
+    '. as $cached | INDEX($fresh[]; .id) as $by_id | map($by_id[.id] // .) + [$fresh[] | select(.id as $id | $cached | all(.id != $id))]' \
+    "${CACHE_FILE}" 2>/dev/null || printf '%s' "${payload}")"
   tmp="$(mktemp "${CACHE_FILE}.XXXXXX")"
   cleanup_paths+=("${tmp}")
   printf '%s\n' "${payload}" >"${tmp}"

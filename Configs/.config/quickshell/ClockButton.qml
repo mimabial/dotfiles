@@ -1,4 +1,5 @@
 import QtQuick
+import "ClockFormats.js" as ClockFormats
 
 BarButton {
     id: root
@@ -9,11 +10,9 @@ BarButton {
     readonly property int timingSeconds: shell.activeTimers.length ? Math.max(0, Number(shell.activeTimers[0].epoch) - shell.timerNow) : 0
     readonly property string timingText: shell.activeTimers.length ? statusText(timingSeconds)
         : shell.clockwork.active ? verticalTime(shell.clockwork.barTimeText) : statusText(timingSeconds)
-    readonly property var formats: kind === "main" ? ["HH\n—\nmm", "h\n—\nmm\nAP", "dd\nMMM\n''yy", "HH\nmm"]
-        : kind === "winbar" ? ["HH:mm\ndd|MM", "dd|MM\nHH:mm", "ddd dd\nHH:mm", "HH:mm"]
-        : ["dddd HH:mm", "dddd h:mm AP", "HH:mm", "h:mm AP", "ddd d MMM HH:mm", "ddd d MMM h:mm AP", "d MMMM yyyy", "yyyy-MM-dd HH:mm", "ddd,d HH:mm"]
-    readonly property int index: shell.store[kind + "Clock"] % formats.length
-    text: timing ? timingText : Qt.formatDateTime(shell.clock.date, timerPopup ? "HH\nmm" : formats[index])
+    readonly property var formats: ClockFormats.forKind(kind)
+    readonly property var selectedFormat: ClockFormats.selected(kind, shell.prefs[kind + "Clock"])
+    text: timing ? timingText : Qt.formatDateTime(shell.clock.date, timerPopup ? "HH\nmm" : selectedFormat.pattern)
     smoothTextColor: !timing
     textColor: timerPopup ? timing ? shell.alpha(shell.role("c3", shell.accent), blink.phase) : shell.accent : shell.foreground
     SequentialAnimation {
@@ -28,7 +27,7 @@ BarButton {
     }
     onClicked: button => {
         if (timerPopup && button !== Qt.MiddleButton) shell.togglePopup("timer")
-        else if (button === Qt.RightButton) shell.store[kind + "Clock"] = (shell.store[kind + "Clock"] + 1) % formats.length
+        else if (button === Qt.RightButton) shell.prefs[kind + "Clock"] = (shell.prefs[kind + "Clock"] + 1) % formats.length
         else if (button === Qt.MiddleButton) {
             shell.closePopup()
             shell.run(["hyprshell", "launch/tui", "--app-id", "org.tui.timezone", "--title", "Timezone", "--", "hyprshell", "system/timezone"])

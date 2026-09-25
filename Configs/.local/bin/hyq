@@ -7,15 +7,17 @@ import logging
 import os
 import re
 import sys
+from pathlib import Path
 from typing import Any
 
-sys.path.insert(0, __file__.rsplit("/.local/", 1)[0] + "/.local/lib/hypr")
+HYPR_LIB_DIR = Path(__file__).resolve().parent.parent / "lib/hypr"
+sys.path.insert(0, str(HYPR_LIB_DIR))
 from pyutils.hyprlang import HyprlangParser  # noqa: E402
 
 logger = logging.getLogger("hyq")
 
 
-class SchemaLoader:
+class SchemaDefaults:
     def __init__(self, schema_path: str):
         self.defaults: dict[str, Any] = {}
         if not os.path.exists(schema_path):
@@ -89,11 +91,11 @@ def escape_env_value(value: str) -> str:
     return value
 
 
-def matches_regex(value: str, pattern: str) -> bool:
+def regex_matches_start(value: str, pattern: str) -> bool:
     try:
         return bool(re.match(pattern, value))
     except re.error:
-        logger.error(f"Invalid regex pattern: {pattern}")
+        logger.error("Invalid regex pattern: %s", pattern)
         return False
 
 
@@ -110,7 +112,7 @@ def filter_value(value: Any, predicate) -> Any | None:
 
 def parse_query_input(query_str: str) -> tuple[str, str | None, str | None]:
     """Split query[expectedType][expectedRegex]."""
-    match = re.match(r"^([^\[]+)(?:\[([^\]]*)\])?(?:\[([^\]]*)\])?", query_str)
+    match = re.fullmatch(r"([^\[]+)(?:\[([^\]]*)\])?(?:\[([^\]]*)\])?", query_str)
     if not match:
         return query_str, None, None
 
@@ -119,7 +121,7 @@ def parse_query_input(query_str: str) -> tuple[str, str | None, str | None]:
 
 def process_query(
     parser: HyprlangParser,
-    schema: SchemaLoader | None,
+    schema: SchemaDefaults | None,
     query_str: str,
 ) -> dict[str, Any]:
     query, expected_type, expected_regex = parse_query_input(query_str)
@@ -143,7 +145,7 @@ def process_query(
 
     if expected_regex:
         value = filter_value(
-            value, lambda item: matches_regex(stringify_value(item), expected_regex)
+            value, lambda item: regex_matches_start(stringify_value(item), expected_regex)
         )
         if value is None:
             return {"key": query, "value": "", "type": "NULL", "flags": []}
@@ -251,7 +253,7 @@ examples:
         )
         return 1
 
-    schema = SchemaLoader(args.schema) if args.schema else None
+    schema = SchemaDefaults(args.schema) if args.schema else None
 
     hypr_parser = HyprlangParser(follow_source=args.source)
     hypr_parser.parse_file(config_file)

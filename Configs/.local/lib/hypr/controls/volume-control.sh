@@ -2,30 +2,30 @@
 set -u
 
 print_volume_limits() {
-  local sink="" fields="" api="" card="" port="" control="PCM" file="" data=""
+  local sink="" sink_fields="" device_api="" card_index="" active_port="" mixer_control="PCM" codec_file="" capabilities=""
   if ! command -v pactl >/dev/null || ! command -v jq >/dev/null; then
     printf '{"minimum":-60,"maximum":0,"step":1,"backend":"software"}\n'
     return
   fi
   sink="$(pactl get-default-sink 2>/dev/null || true)"
-  fields="$(pactl --format=json list sinks 2>/dev/null | jq -r --arg sink "${sink}" '.[] | select(.name == $sink) | [(.properties["device.api"] // ""), (.properties["alsa.card"] // ""), (.active_port // "")] | @tsv' | head -1)"
-  IFS=$'\t' read -r api card port <<< "${fields}"
-  [[ "${api}" == "alsa" && "${card}" =~ ^[0-9]+$ ]] || { printf '{"minimum":-60,"maximum":0,"step":1,"backend":"software"}\n'; return; }
-  case "${port,,}" in *headphone*|*headset*) control="Headphone" ;; *speaker*) control="Speaker" ;; *lineout*|*line-out*) control="Line Out" ;; esac
-  for file in /proc/asound/card"${card}"/codec#*; do
-    [[ -r "${file}" ]] || continue
-    data="$(awk -v wanted="${control} Playback Volume" '/Control: name=/ { volume=/Playback Volume/; exact=index($0, "name=\"" wanted "\"") } volume && /Amp-Out caps:/ { if (exact) { print; found=1; exit } if (!fallback) fallback=$0; volume=0 } END { if (!found && fallback) print fallback }' "${file}")"
-    [[ -n "${data}" ]] && break
+  sink_fields="$(pactl --format=json list sinks 2>/dev/null | jq -r --arg sink "${sink}" '.[] | select(.name == $sink) | [(.properties["device.api"] // ""), (.properties["alsa.card"] // ""), (.active_port // "")] | @tsv' | head -1)"
+  IFS=$'\t' read -r device_api card_index active_port <<< "${sink_fields}"
+  [[ "${device_api}" == "alsa" && "${card_index}" =~ ^[0-9]+$ ]] || { printf '{"minimum":-60,"maximum":0,"step":1,"backend":"software"}\n'; return; }
+  case "${active_port,,}" in *headphone*|*headset*) mixer_control="Headphone" ;; *speaker*) mixer_control="Speaker" ;; *lineout*|*line-out*) mixer_control="Line Out" ;; esac
+  for codec_file in /proc/asound/card"${card_index}"/codec#*; do
+    [[ -r "${codec_file}" ]] || continue
+    capabilities="$(awk -v wanted="${mixer_control} Playback Volume" '/Control: name=/ { volume=/Playback Volume/; exact=index($0, "name=\"" wanted "\"") } volume && /Amp-Out caps:/ { if (exact) { print; found=1; exit } if (!fallback) fallback=$0; volume=0 } END { if (!found && fallback) print fallback }' "${codec_file}")"
+    [[ -n "${capabilities}" ]] && break
   done
-  if [[ "${data}" =~ ofs=0x([[:xdigit:]]+),[[:space:]]+nsteps=0x([[:xdigit:]]+),[[:space:]]+stepsize=0x([[:xdigit:]]+) ]]; then
-    local offset=$((16#${BASH_REMATCH[1]})) steps=$((16#${BASH_REMATCH[2]})) size=$((16#${BASH_REMATCH[3]}))
-    awk -v o="${offset}" -v n="${steps}" -v s="${size}" 'BEGIN { s=(s+1)/4; printf "{\"minimum\":%.2f,\"maximum\":%.2f,\"step\":%.2f,\"backend\":\"alsa\"}\n", -o*s, (n-o)*s, s }'
+  if [[ "${capabilities}" =~ ofs=0x([[:xdigit:]]+),[[:space:]]+nsteps=0x([[:xdigit:]]+),[[:space:]]+stepsize=0x([[:xdigit:]]+) ]]; then
+    local offset=$((16#${BASH_REMATCH[1]})) steps=$((16#${BASH_REMATCH[2]})) step_size=$((16#${BASH_REMATCH[3]}))
+    awk -v offset="${offset}" -v steps="${steps}" -v step_size="${step_size}" 'BEGIN { step_db=(step_size+1)/4; printf "{\"minimum\":%.2f,\"maximum\":%.2f,\"step\":%.2f,\"backend\":\"alsa\"}\n", -offset*step_db, (steps-offset)*step_db, step_db }'
     return
   fi
-  file="/proc/asound/card${card}/usbmixer"
-  [[ -r "${file}" ]] && data="$(awk -v wanted="${control} Playback Volume" '/Control: name=/ { volume=/Playback Volume/; exact=index($0, "name=\"" wanted "\"") } volume && /Volume:.*dBmin=/ { if (exact) { print; found=1; exit } if (!fallback) fallback=$0; volume=0 } END { if (!found && fallback) print fallback }' "${file}")"
-  if [[ "${data}" =~ dBmin=(-?[0-9]+),[[:space:]]*dBmax=(-?[0-9]+) ]]; then
-    awk -v min="${BASH_REMATCH[1]}" -v max="${BASH_REMATCH[2]}" 'BEGIN { printf "{\"minimum\":%.2f,\"maximum\":%.2f,\"step\":1,\"backend\":\"alsa\"}\n", min/100, max/100 }'
+  codec_file="/proc/asound/card${card_index}/usbmixer"
+  [[ -r "${codec_file}" ]] && capabilities="$(awk -v wanted="${mixer_control} Playback Volume" '/Control: name=/ { volume=/Playback Volume/; exact=index($0, "name=\"" wanted "\"") } volume && /Volume:.*dBmin=/ { if (exact) { print; found=1; exit } if (!fallback) fallback=$0; volume=0 } END { if (!found && fallback) print fallback }' "${codec_file}")"
+  if [[ "${capabilities}" =~ dBmin=(-?[0-9]+),[[:space:]]*dBmax=(-?[0-9]+) ]]; then
+    awk -v minimum="${BASH_REMATCH[1]}" -v maximum="${BASH_REMATCH[2]}" 'BEGIN { printf "{\"minimum\":%.2f,\"maximum\":%.2f,\"step\":1,\"backend\":\"alsa\"}\n", minimum/100, maximum/100 }'
   else
     printf '{"minimum":-60,"maximum":0,"step":1,"backend":"software"}\n'
   fi
@@ -299,7 +299,7 @@ select_output_via_rofi() {
   font_override="$(rofi_font_override "$(rofi_effective_font_name)" "$(rofi_effective_font_scale)")"
 
   choice="$(list_sinks_tsv | cut -f2 | awk 'NF' | sort -u |
-    rofi -dmenu -theme "notification" -p "Audio Output" -theme-str "${font_override}")" || return 0
+    rofi_with_background_theme -dmenu -theme "notification" -p "Audio Output" -theme-str "${font_override}")" || return 0
   [[ -n "${choice}" ]] || return 0
   set_output_by_description "${choice}"
 }

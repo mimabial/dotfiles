@@ -252,11 +252,11 @@ wallpaper_ensure_thumbs() {
   local -a missing_walls=()
   local thumb hash wall
 
-  for wall in "${wallList[@]}"; do
-    hash="${wallHashByPath["${wall}"]:-}"
+  for wall in "${wallpaper_paths[@]}"; do
+    hash="${wallpaper_hash_by_path["${wall}"]:-}"
     if [[ -z "${hash}" ]]; then
-      hash="$(set_hash "${wall}")"
-      wallHashByPath["${wall}"]="${hash}"
+      hash="$(wallpaper_file_hash "${wall}")"
+      wallpaper_hash_by_path["${wall}"]="${hash}"
     fi
     [[ -n "${hash}" ]] || continue
 

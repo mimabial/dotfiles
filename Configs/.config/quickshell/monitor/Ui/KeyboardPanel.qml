@@ -6,7 +6,7 @@ import qs.Commons
 PopupWindow {
   id: root
   required property Item anchorItem
-  required property QtObject bar
+  required property var shell
   property var owner: null
   property int margin: Style.gapsOut
   property int padding: Style.spacing.panelPadding
@@ -19,10 +19,10 @@ PopupWindow {
   property bool popoutSwitchClosing: false
   property Item focusTarget: null
   property bool focusSettling: false
-  default property alias contentItem: contentHolder.data
+  default property alias panelContent: contentHolder.data
   readonly property var anchorWindow: anchorItem ? anchorItem.QsWindow.window : null
-  readonly property bool centered: bar && owner
-    && bar.popupCenteredName === owner.popupName
+  readonly property bool centered: shell && owner
+    && shell.popupCenteredName === owner.popupName
 
   function close() {
     if (owner && "close" in owner) owner.close()
@@ -66,7 +66,7 @@ PopupWindow {
   }
 
   HyprlandFocusGrab {
-    active: root.open && !root.focusSettling && !(root.bar && root.bar.focusPriming)
+    active: root.open && !root.focusSettling && !(root.shell && root.shell.focusPriming)
     windows: root.anchorWindow ? [root, root.anchorWindow] : [root]
     onCleared: root.close()
   }
@@ -94,10 +94,9 @@ PopupWindow {
       }
       var x = root.anchorItem.width / 2 - root.width / 2
       var y = root.anchorItem.height + root.margin
-      var edge = root.bar && root.bar.barEdge ? root.bar.barEdge : "top"
+      var edge = root.shell && root.shell.barEdge ? root.shell.barEdge : "top"
       if (edge === "bottom") y = -root.height - root.margin
       else if (edge === "left") { x = root.anchorItem.width + root.margin; y = root.anchorItem.height / 2 - root.height / 2 }
-      else if (edge === "right") { x = -root.width - root.margin; y = root.anchorItem.height / 2 - root.height / 2 }
       var point = root.anchorWindow.contentItem.mapFromItem(root.anchorItem, x, y)
       anchor.rect.x = Math.round(point.x)
       anchor.rect.y = Math.round(point.y)

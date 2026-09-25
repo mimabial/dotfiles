@@ -18,11 +18,11 @@ fi
 
 host_path="${bridge_dir}/host/fftab_host.py"
 manifest="${HOME}/.mozilla/native-messaging-hosts/fftab_bridge.json"
-ext_id="fftab-bridge@hypr.local"
+extension_id="fftab-bridge@hypr.local"
 issues=()
 
-for bin in playerctl jq yt-dlp unzip; do
-  command -v "${bin}" >/dev/null 2>&1 || issues+=("missing binary: ${bin} (in pkg_core.lst)")
+for command_name in playerctl jq yt-dlp unzip; do
+  command -v "${command_name}" >/dev/null 2>&1 || issues+=("missing binary: ${command_name} (in pkg_core.lst)")
 done
 python3 - <<'EOF' >/dev/null 2>&1 || issues+=("missing GI bindings: python-gobject + playerctl (in pkg_core.lst)")
 import gi
@@ -32,26 +32,26 @@ EOF
 
 [[ -x "${host_path}" ]] || chmod +x "${host_path}" 2>/dev/null || issues+=("host not executable: ${host_path}")
 if ! grep -qsF "\"path\": \"${host_path}\"" "${manifest}"; then
-  fftab_write_manifest "${manifest}" "${host_path}" "${ext_id}"
+  fftab_write_manifest "${manifest}" "${host_path}" "${extension_id}"
 fi
 
 profiles_ini="${HOME}/.mozilla/firefox/profiles.ini"
-profile=""
+profile_name=""
 if [[ -r "${profiles_ini}" ]]; then
-  profile="$(awk -F= '/^\[Install/{f=1} f && /^Default=/{print $2; exit}' "${profiles_ini}")"
+  profile_name="$(awk -F= '/^\[Install/{f=1} f && /^Default=/{print $2; exit}' "${profiles_ini}")"
 fi
-if [[ -n "${profile}" && -d "${HOME}/.mozilla/firefox/${profile}" ]]; then
-  profile_dir="${HOME}/.mozilla/firefox/${profile}"
-  userjs="${profile_dir}/user.js"
-  if ! grep -qsF 'media.hardwaremediakeys.enabled' "${userjs}"; then
-    printf 'user_pref("media.hardwaremediakeys.enabled", false);\n' >>"${userjs}"
+if [[ -n "${profile_name}" && -d "${HOME}/.mozilla/firefox/${profile_name}" ]]; then
+  profile_dir="${HOME}/.mozilla/firefox/${profile_name}"
+  user_js_file="${profile_dir}/user.js"
+  if ! grep -qsF 'media.hardwaremediakeys.enabled' "${user_js_file}"; then
+    printf 'user_pref("media.hardwaremediakeys.enabled", false);\n' >>"${user_js_file}"
     grep -qsF '"media.hardwaremediakeys.enabled", false' "${profile_dir}/prefs.js" ||
       issues+=("Firefox pref set via user.js — restart Firefox to apply")
   fi
   extension_manifest="${bridge_dir}/extension/manifest.json"
   source_version="$(jq -r '.version // empty' "${extension_manifest}" 2>/dev/null || true)"
   installed_version="$(
-    jq -r --arg id "${ext_id}" \
+    jq -r --arg id "${extension_id}" \
       '.addons[] | select(.id == $id) | .version' \
       "${profile_dir}/extensions.json" 2>/dev/null | head -1
   )"

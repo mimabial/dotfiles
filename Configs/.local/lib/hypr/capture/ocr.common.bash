@@ -72,7 +72,7 @@ hypr_ocr_language_summary() {
 
 # Returns the image path by name so temporary-file state stays in the caller.
 # Screen captures use lighter preprocessing than arbitrary clipboard images.
-hypr_ocr_preprocess() {
+hypr_ocr_preprocess_into() {
   local -n image_ref="$1"
   local input="$2"
   local profile="${3:-screen}"

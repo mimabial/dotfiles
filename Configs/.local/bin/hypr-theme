@@ -104,11 +104,11 @@ run_renderers() {
 
   local -a pids=() names=()
   local -i failed=0
-  local r name
-  for r in "${renderers[@]}"; do
-    name="${r##*/}"
+  local renderer name
+  for renderer in "${renderers[@]}"; do
+    name="${renderer##*/}"
     name="${name%.*}"
-    "$r" "${PALETTE}" &
+    "$renderer" "${PALETTE}" &
     pids+=($!)
     names+=("$name")
   done
@@ -116,7 +116,7 @@ run_renderers() {
   for i in "${!pids[@]}"; do
     if ! wait "${pids[$i]}"; then
       echo "hypr-theme: ${names[$i]} failed" >&2
-      ((failed++))
+      ((++failed))
     fi
   done
   return "${failed}"

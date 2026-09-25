@@ -472,24 +472,29 @@ def _cached_local_stats(max_age):
     return stats
 
 
-def rpc_request(proc, request_id, method, params=None, timeout=8):
+def rpc_request(proc, pending, request_id, method, params=None, timeout=8):
   payload = {"id": request_id, "method": method, "params": params or {}}
-  proc.stdin.write(json.dumps(payload) + "\n")
+  proc.stdin.write((json.dumps(payload) + "\n").encode())
   proc.stdin.flush()
-  deadline = time.time() + timeout
-  while time.time() < deadline:
-    ready, _, _ = select.select([proc.stdout], [], [], 0.25)
-    if not ready:
+  deadline = time.monotonic() + timeout
+  while time.monotonic() < deadline:
+    line_end = pending.find(b"\n")
+    if line_end >= 0:
+      line = bytes(pending[:line_end])
+      del pending[:line_end + 1]
+      try:
+        message = json.loads(line)
+      except Exception:
+        continue
+      if message.get("id") == request_id:
+        return message
       continue
-    line = proc.stdout.readline()
-    if not line:
-      break
-    try:
-      message = json.loads(line)
-    except Exception:
-      continue
-    if message.get("id") == request_id:
-      return message
+    ready, _, _ = select.select([proc.stdout], [], [], max(0, min(0.25, deadline - time.monotonic())))
+    if ready:
+      chunk = os.read(proc.stdout.fileno(), 4096)
+      if not chunk:
+        break
+      pending.extend(chunk)
   raise TimeoutError(method)
 
 
@@ -530,7 +535,6 @@ def fetch_codex_rpc():
       stdin=subprocess.PIPE,
       stdout=subprocess.PIPE,
       stderr=subprocess.DEVNULL,
-      text=True,
       env=ENV,
     )
   except Exception as exc:
@@ -539,11 +543,12 @@ def fetch_codex_rpc():
     return result
 
   try:
-    rpc_request(proc, 1, "initialize", {"clientInfo": {"name": "hypr-agent-usage", "version": "1"}}, timeout=8)
-    proc.stdin.write(json.dumps({"method": "initialized", "params": {}}) + "\n")
+    pending = bytearray()
+    rpc_request(proc, pending, 1, "initialize", {"clientInfo": {"name": "hypr-agent-usage", "version": "1"}}, timeout=8)
+    proc.stdin.write((json.dumps({"method": "initialized", "params": {}}) + "\n").encode())
     proc.stdin.flush()
-    account_msg = rpc_request(proc, 2, "account/read", timeout=4)
-    limits_msg = rpc_request(proc, 3, "account/rateLimits/read", timeout=4)
+    account_msg = rpc_request(proc, pending, 2, "account/read", timeout=4)
+    limits_msg = rpc_request(proc, pending, 3, "account/rateLimits/read", timeout=4)
 
     account = (account_msg.get("result") or {}).get("account") or {}
     limits = (limits_msg.get("result") or {}).get("rateLimits") or {}

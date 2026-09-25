@@ -84,8 +84,8 @@ theme_selector_scaled_radii() {
 
 theme_selector_grid_counts() {
   local font_scale="$1"
-  local elm_width="$2"
-  local elm_height="$3"
+  local element_width="$2"
+  local element_height="$3"
   local horizontal_padding="$4"
   local vertical_padding="$5"
   local min_columns="${6:-}"
@@ -102,8 +102,9 @@ theme_selector_grid_counts() {
   read -r _ mon_x_res mon_y_res < <(theme_selector_monitor_metrics)
   max_avail_x=$((mon_x_res - (horizontal_padding * font_scale)))
   max_avail_y=$((mon_y_res - (vertical_padding * font_scale)))
-  col_count=$((max_avail_x / elm_width))
-  row_count=$((max_avail_y / elm_height))
+  ((element_width > 0 && element_height > 0)) || return 1
+  col_count=$((max_avail_x / element_width))
+  row_count=$((max_avail_y / element_height))
 
   if [[ -n "${min_columns}" ]] && ((col_count < min_columns)); then
     col_count="${min_columns}"
@@ -145,8 +146,8 @@ build_style_menu_override() {
   local col_count=0
   local row_count=0
 
-  [[ "${preview_image_size}" =~ ^[0-9]+$ ]] || preview_image_size=192
-  [[ "${hidpi_scale}" =~ ^[0-9]+$ ]] || hidpi_scale=2
+  [[ "${preview_image_size}" =~ ^[1-9][0-9]*$ ]] || preview_image_size=192
+  [[ "${hidpi_scale}" =~ ^[1-9][0-9]*$ ]] || hidpi_scale=2
   [[ "${theme_menu_icon_size}" =~ ^[0-9]+$ ]] || theme_menu_icon_size=20
   theme_border_radius="$(theme_selector_border_radius)"
 
@@ -203,7 +204,7 @@ show_style_selector() {
   layout_override="$(build_style_menu_override "${font_scale}")"
 
   selection="$(
-    list_style_menu_entries | rofi -dmenu -i \
+    list_style_menu_entries | rofi_with_background_theme -dmenu -i \
       "${ROFI_MOUSE_SELECT_ARGS[@]}" \
       -theme "$(rofi_resolve_theme "${ROFI_THEME_MENU_STYLE:-theme_select}")" \
       -theme-str "${font_override}" \
@@ -228,7 +229,7 @@ ensure_theme_thumbs() {
   local thumb=""
   local queue_script="${LIB_DIR}/hypr/wallpaper/wallcache.daemon.sh"
 
-  for wall in "${thmWall[@]}"; do
+  for wall in "${theme_wallpapers[@]}"; do
     [[ -n "${wall}" && -r "${wall}" ]] || continue
     hash="${THEME_WALL_HASHES[${wall}]:-}"
     [[ -n "${hash}" ]] || continue
@@ -250,45 +251,49 @@ ensure_theme_thumbs() {
   fi
 }
 
-resolve_theme_selector_style() {
-  local font_scale="$1"
+resolve_theme_selector_style_into() {
+  local -n thumbnail_ref="$1" rofi_theme_ref="$2" layout_ref="$3"
+  local font_scale="$4"
   local theme_style="${ROFI_THEME_STYLE:-$(get_hypr_conf "ROFI_THEME_STYLE")}"
   local theme_border_radius=0
-  local elem_border=0
+  local element_border=0
   local icon_border=0
-  local elm_width=0
-  local elm_height=0
-  local col_count=0
-  local row_count=0
+  local element_width=0
+  local element_height=0
+  local columns=0
+  local rows=0
 
   [[ -n "${theme_style}" ]] || theme_style=1
   theme_border_radius="$(theme_selector_border_radius)"
-  IFS=$'\t' read -r elem_border icon_border < <(
+  IFS=$'\t' read -r element_border icon_border < <(
     theme_selector_scaled_radii \
       "${theme_border_radius}" \
       "${THEME_SELECTOR_PREVIEW_RADIUS_MULTIPLIER}" \
       "${THEME_SELECTOR_PREVIEW_ICON_OFFSET}"
   )
 
-  local elm_width_em=$((16 + 12))
-  local elm_height_em=$((16 + 4))
-  elm_width=$((elm_width_em * font_scale * ROFI_EM_PX_PER_SCALE))
-  elm_height=$((elm_height_em * font_scale * ROFI_EM_PX_PER_SCALE))
+  local element_width_em=$((16 + 12))
+  local element_height_em=$((16 + 4))
+  element_width=$((element_width_em * font_scale * ROFI_EM_PX_PER_SCALE))
+  element_height=$((element_height_em * font_scale * ROFI_EM_PX_PER_SCALE))
+  rofi_theme_ref=selector
 
   case "${theme_style}" in
     2 | quad)
-      read -r col_count row_count < <(
-        theme_selector_grid_counts "${font_scale}" "${elm_width}" "${elm_height}" 8 16 "" "" 2 4
+      thumbnail_ref=quad
+      read -r columns rows < <(
+        theme_selector_grid_counts "${font_scale}" "${element_width}" "${element_height}" 8 16 "" "" 2 4
       )
-      printf 'quad\nselector\nwindow{width:100%%;height:100%%;fullscreen:true;background-color:#00000003;}\nlistview{columns:%d;lines:%d;cycle:true;}\nelement{border-radius:%dpx;background-color:@background-alpha;}\nelement-icon{size:16em;border-radius:%dpx 0px 0px %dpx;}\n' \
-        "${col_count}" "${row_count}" "${elem_border}" "${icon_border}" "${icon_border}"
+      printf -v layout_ref 'window{width:100%%;height:100%%;fullscreen:true;background-color:#00000003;}\nlistview{columns:%d;lines:%d;cycle:true;}\nelement{border-radius:%dpx;background-color:@background-alpha;}\nelement-icon{size:16em;border-radius:%dpx 0px 0px %dpx;}' \
+        "${columns}" "${rows}" "${element_border}" "${icon_border}" "${icon_border}"
       ;;
     *)
-      read -r col_count row_count < <(
-        theme_selector_grid_counts "${font_scale}" "${elm_width}" "${elm_height}" 8 16 2 "" 2 4
+      thumbnail_ref=sqre
+      read -r columns rows < <(
+        theme_selector_grid_counts "${font_scale}" "${element_width}" "${element_height}" 8 16 2 "" 2 4
       )
-      printf 'sqre\nselector\nwindow{width:100%%;height:100%%;fullscreen:true;border-radius:%dpx;}\nlistview{columns:%d;lines:%d;cycle:true;spacing:2.5em;padding:1.5em;}\nelement{border-radius:%dpx;padding:0.5em;}\nelement-icon{size:15.5em;border-radius:%dpx;}\n' \
-        "${theme_border_radius}" "${col_count}" "${row_count}" "${elem_border}" "${elem_border}"
+      printf -v layout_ref 'window{width:100%%;height:100%%;fullscreen:true;border-radius:%dpx;}\nlistview{columns:%d;lines:%d;cycle:true;spacing:2.5em;padding:1.5em;}\nelement{border-radius:%dpx;padding:0.5em;}\nelement-icon{size:15.5em;border-radius:%dpx;}' \
+        "${theme_border_radius}" "${columns}" "${rows}" "${element_border}" "${element_border}"
       ;;
   esac
 }
@@ -299,6 +304,7 @@ theme_wallpaper_counts_into() {
   local -a exts=() match=()
   local ext start
 
+  ((${#theme_names[@]})) || return 0
   wallpaper_supported_files_array exts
   for ext in "${exts[@]}"; do
     match+=(-o -iname "*.${ext}")
@@ -306,7 +312,7 @@ theme_wallpaper_counts_into() {
 
   while IFS= read -r start; do
     counts_ref["${start##*/}"]=$((${counts_ref["${start##*/}"]:-0} + 1))
-  done < <(find -H "${thmList[@]/#/${HYPR_CONFIG_HOME}/themes/}" -type f \( "${match[@]:1}" \) ! -path '*/logo/*' -printf '%H\n' 2>/dev/null)
+  done < <(find -H "${theme_names[@]/#/${HYPR_CONFIG_HOME}/themes/}" -type f \( "${match[@]:1}" \) ! -path '*/logo/*' -printf '%H\n' 2>/dev/null)
 }
 
 theme_menu_entries() {
@@ -315,11 +321,11 @@ theme_menu_entries() {
   local i=0 name subtitle count
   local show_count="${ROFI_THEME_WALLPAPER_COUNT:-0}"
 
-  theme_polarities_into polarity "${thmList[@]}"
+  theme_polarities_into polarity "${theme_names[@]}"
   [[ "${show_count}" == "1" ]] && theme_wallpaper_counts_into wall_count
 
-  while ((i < ${#thmList[@]})); do
-    name="${thmList[$i]}"
+  while ((i < ${#theme_names[@]})); do
+    name="${theme_names[$i]}"
     subtitle="${polarity[${name}]^}"
     if [[ "${show_count}" == "1" ]]; then
       count="${wall_count[${name}]:-0}"
@@ -331,7 +337,7 @@ theme_menu_entries() {
       "${name//&/\&amp;}" \
       "${subtitle}" \
       "${WALLPAPER_THUMB_DIR}" \
-      "${THEME_WALL_HASHES[${thmWall[$i]}]:-}" \
+      "${THEME_WALL_HASHES[${theme_wallpapers[$i]}]:-}" \
       "${ext}"
     i=$((i + 1))
   done
@@ -341,28 +347,25 @@ show_theme_selector() {
   local font_scale=""
   local font_name=""
   local font_override=""
-  local thmb_extn=""
+  local thumbnail_extension=""
   local rofi_theme_name=""
   local layout_override=""
   local selection=""
-  local -a selector_data=()
+  local -a theme_names=() theme_wallpapers=()
 
   theme_selector_monitor_metrics >/dev/null
   font_scale="$(rofi_effective_font_scale "${ROFI_THEME_SCALE}")"
   font_name="$(rofi_effective_font_name "${ROFI_THEME_FONT:-$ROFI_FONT}")"
   font_override="$(rofi_font_override "${font_name}" "${font_scale}")"
-  mapfile -t selector_data < <(resolve_theme_selector_style "${font_scale}")
-  thmb_extn="${selector_data[0]}"
-  rofi_theme_name="${selector_data[1]}"
-  layout_override="$(printf '%s\n' "${selector_data[@]:2}")"
+  resolve_theme_selector_style_into thumbnail_extension rofi_theme_name layout_override "${font_scale}"
 
-  get_themes
+  theme_catalog_load_and_repair_links_into theme_names theme_wallpapers
   local -A THEME_WALL_HASHES=()
-  wall_hash_map_into THEME_WALL_HASHES "${thmWall[@]}"
-  ensure_theme_thumbs "${thmb_extn}"
+  wallpaper_cached_file_hashes_into THEME_WALL_HASHES "${theme_wallpapers[@]}"
+  ensure_theme_thumbs "${thumbnail_extension}"
 
   selection="$(
-    theme_menu_entries "${thmb_extn}" | rofi -dmenu -i -markup-rows \
+    theme_menu_entries "${thumbnail_extension}" | rofi_with_background_theme -dmenu -i -markup-rows \
       "${ROFI_MOUSE_SELECT_ARGS[@]}" \
       -theme "$(rofi_resolve_theme "${rofi_theme_name}")" \
       -theme-str "${font_override}" \

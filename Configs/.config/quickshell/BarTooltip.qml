@@ -35,7 +35,6 @@ PopupWindow {
             let y = root.anchorItem.height + 6
             if (root.edge === "bottom") y = -root.height - 6
             else if (root.edge === "left") { x = root.anchorItem.width + 6; y = root.anchorItem.height / 2 - root.height / 2 }
-            else if (root.edge === "right") { x = -root.width - 6; y = root.anchorItem.height / 2 - root.height / 2 }
             const point = root.anchorWindow.contentItem.mapFromItem(root.anchorItem, x, y)
             anchor.rect.x = Math.round(point.x); anchor.rect.y = Math.round(point.y)
         }

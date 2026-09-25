@@ -10,10 +10,11 @@ Item {
     property bool keyboardEnabled: false
     readonly property bool navigable: keyboardEnabled && enabled
     property bool cursored: false
-    // every PopupCard anchored here registers itself; a module tooltips only
-    // while its panels are closed
+    // PopupCards anchored here register themselves; opensPopup covers lazy
+    // panels and panels anchored to a parent or sibling instead.
+    property bool opensPopup: false
     property var popupCards: []
-    readonly property bool hasPopup: root.popupCards.some(card => card.open)
+    readonly property bool hasPopup: root.opensPopup || root.popupCards.length > 0
     property bool active: false
     readonly property string labelText: text.replace(/<[^>]*>/g, "")
     // Match the icon ranges themselves rather than "holds no Latin": the old
@@ -28,6 +29,7 @@ Item {
     property int fontWeight: box.fontWeight
     property int textFormat: Text.AutoText
     property real textOffsetX: 0
+    property real textRotation: 0
     property real fixedWidth: 0
     readonly property int textAlignment: box.justify === "right" ? Text.AlignRight
         : box.justify === "left" ? Text.AlignLeft : Text.AlignHCenter
@@ -40,6 +42,8 @@ Item {
     property color cornerOutline: "transparent"
     property color textColor: box.content !== undefined ? styleColor("content") : active ? shell.role("act_fg", shell.foreground) : shell.foreground
     property var hoverOverride: null
+    // drawn as an exponent past the glyph's top-right; countGlyph() fills it
+    property string badgeText: ""
     property bool smoothTextColor: true
     signal clicked(int button)
     signal wheeled(int delta)
@@ -51,6 +55,9 @@ Item {
             ? shell.alpha(shell.role(spec[0], shell.foreground), spec[1])
             : shell.role(spec, shell.foreground)
     }
+
+    // md-numeric_<n> runs contiguously from 0; md-numeric_9_plus draws at half height, so 9+ is md-numeric_9 + md-plus_thick
+    function countGlyph(count) { return count > 9 ? "\u{f0b42}\u{f11ec}" : String.fromCodePoint(0xf0b39 + count) }
 
     // Hover rules override only declared channels; unstyled buttons get a subtle fallback.
     function interactiveColor(key, fallback) {
@@ -103,15 +110,25 @@ Item {
         font.pixelSize: root.renderedFontSize
         font.weight: root.fontWeight
         transform: Translate { x: root.textOffsetX }
+        rotation: root.textRotation
         textFormat: root.textFormat
         horizontalAlignment: root.textAlignment
         verticalAlignment: Text.AlignVCenter
         elide: Text.ElideRight
         text: root.text
     }
+    Text {
+        visible: root.badgeText !== ""
+        x: root.paintedLabelBounds.x + root.paintedLabelBounds.width + (root.box.badgeOffsetX || 0)
+        y: root.paintedLabelBounds.y + (root.box.badgeOffsetY || 0)
+        text: root.badgeText
+        color: root.box.badgeContent === undefined ? label.color : root.styleColor("badgeContent")
+        font.family: root.shell.iconGlyphFont
+        font.pixelSize: Style.px(root.box.badgeSize || 9)
+    }
     Rectangle { anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right; anchors.leftMargin: 8; anchors.rightMargin: 2; height: 1; visible: root.cornerOutline.a > 0; color: root.cornerOutline }
     Rectangle { anchors.top: parent.top; anchors.right: parent.right; anchors.bottom: parent.bottom; anchors.rightMargin: 2; anchors.bottomMargin: 8; width: 1; visible: root.cornerOutline.a > 0; color: root.cornerOutline }
-    ModuleEdge { id: edge; shell: root.shell; hovered: root.hovered; active: root.active }
+    ModuleEdge { id: edge; shell: root.shell; host: root; hovered: root.hovered; active: root.active }
     MouseArea {
         id: mouse
         // a derived type's children stack above the base's, and a rich-text Text

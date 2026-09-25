@@ -6,7 +6,7 @@ tooltip}` JSON shape that `ScriptButton` reads.
 The implementation separates three concerns:
 
 - `layouts/`: which modules appear and in what order
-- `styles/`: shared style rules plus per-layout overrides
+- `styles/`: base rules and named bar styles
 - QML: module behavior, drawers, popups, and data plumbing
 
 ## Flow
@@ -15,11 +15,11 @@ The implementation separates three concerns:
 ~/.local/state/hypr/staterc  QUICKSHELL_LAYOUT_NAME=<layout>
              │
              ▼
-          shell.qml ── layouts/<layout>.json
-             │        styles/base.json + styles/<layout>.json
+          shell.qml ── layouts/<layout>.json [── layouts/shared/<base>.json]
+             │        styles/base.json + styles/<style>.json
              │        ~/.cache/hypr/render/quickshell/theme.json
              ▼
- MainBar.qml | TopBar.qml | WinBar.qml ── module registry ── QML component
+ MainBar.qml | HorizontalBar.qml ── BarModules.qml ── QML component
 ```
 
 Use the layout helper instead of editing state directly:
@@ -29,7 +29,7 @@ hyprshell quickshell/layout list
 hyprshell quickshell/layout select
 hyprshell quickshell/layout next
 hyprshell quickshell/layout previous
-hyprshell quickshell/layout set left
+hyprshell quickshell/layout set sidebar
 ```
 
 It discovers layouts from `layouts/*.json` and writes state through the locked
@@ -40,8 +40,6 @@ call.
 
 | name | panel | edge | purpose |
 | --- | --- | --- | --- |
-| `right` | `vertical` | right | primary vertical layout |
-| `left` | `vertical` | left | full vertical controls layout |
 | `sidebar` | `vertical` | left | taskbar/workspace sidebar |
 | `top` | `horizontal` | top | three-section horizontal bar |
 | `bottom` | `horizontal` | bottom | three-section horizontal bar |
@@ -54,35 +52,42 @@ not filesystem folders. Drag one app onto another to create a group, drag onto
 an existing group to add it, or use Dock Settings → App Groups. A group
 auto-dissolves when one app remains.
 
-Each layout declares `panel` and `edge`; names have no special behavior.
-`vertical` accepts left/right edges and a `modules` array. `horizontal` and
+Each resolved layout has a `panel` and `edge`; names have no special behavior.
+`top` and `bottom` extend `layouts/shared/horizontal.json` and set only their
+edge, so edits to its modules affect both bars.
+An extending layout can prepend modules to a section with `leftPrepend`,
+`centerPrepend`, or `rightPrepend`; `top` uses this for its Games button.
+`vertical` accepts the left edge and a `modules` array. `horizontal` and
 `winbar` accept top/bottom edges and `left`, `center`, and `right` arrays. An
 entry may be a module id or `{"id":"audio","props":{"reverse":false}}`;
-`"spacer"` consumes remaining vertical space. A horizontal layout may set
+`"spacer"` consumes remaining space: vertical bars fill height; in a horizontal
+`left` or `right` array it stretches that section to the center. A horizontal layout may set
 `centerAnchor` to pin one center module to the exact screen center; entries
 before and after it flank that anchor. Keep layout-specific composition in JSON
 rather than adding layout-name conditions to components.
 
-To add a layout, copy the closest JSON file, rename it, set its `panel` and
-`edge`, edit its module arrays, and optionally add `styles/<name>.json`. Validate
-with `jq empty layouts/<name>.json`, then run `hyprshell quickshell/layout set <name>`.
+To add a layout, copy the closest JSON file and set its `edge`. A full layout
+defines `panel` and module arrays; one with `extends` inherits them from
+`layouts/shared/`. Set `style` to an existing style or add `styles/<name>.json`.
+Validate with `jq empty layouts/<name>.json`, then run
+`hyprshell quickshell/layout set <name>`.
 
 ## Where to edit
 
 | goal | edit |
 | --- | --- |
-| reorder, add, or remove modules | `layouts/<layout>.json` |
+| reorder, add, or remove an existing module | `layouts/shared/horizontal.json` for top/bottom; otherwise `layouts/<layout>.json` |
 | change per-layout module properties | that module entry's `props` |
 | change shared appearance | `styles/base.json` |
-| override one layout | `styles/<layout>.json` |
+| change a named bar style | `styles/<style>.json` |
 | change module behavior | the relevant root or `modules/*Module.qml` file |
-| add a module | component, its directory's `qmldir`, panel registry, layout entry, and style key |
+| add a new module | component, its directory's `qmldir`, `BarModules.qml`, and a layout entry; style rules only if needed |
 | change a popup | the matching `*Popup.qml` |
 | change provider output | the existing helper under `~/.local/lib/hypr/` |
 
-Composed modules such as `audio`, `power`, `eyecare`, `screen`, `wifi`, `notification`,
-`updates`, `barlayout`, and `colormode` own drawers. Style the drawer frame by
-its `css` key and its children by their own keys.
+Composed modules such as `appearance`, `datetime`, and `forecast` own
+drawers. Style the drawer frame by its `css` key and its children by their own
+keys.
 
 `mediaplayer` takes `showWhenIdle: true`, which keeps a placeholder glyph
 (`idleIcon`, default `\uf001`) in the bar when no player is running —
@@ -90,14 +95,13 @@ otherwise the module collapses to nothing: `ScriptButton` on an empty provider
 line in a vertical panel, or `MediaButton` on a null `Media.player` in a
 horizontal panel.
 
-`notification` and `notification-group` take a `badge` prop for the unread
-marker: `"dot"`, `"count"`, `"highlight"` (recolour the glyph instead), or
-`"none"` to disable it. `updates` and `agents` take `showAgents: false`, which
-drops the agents slot and leaves the group as the updates button alone.
+`notifications` takes `showBadge: true` to show the unread count. `bluetooth`
+takes `showReadout: true` for its connected-device count.
 
 ## Styling
 
-`Theme.qml` recursively merges `styles/base.json`, then the active layout file.
+`Theme.qml` recursively merges `styles/base.json` with the layout's named style.
+When `style` is omitted, it uses the layout name as the style name.
 QML properties override the merged rule only where runtime behavior requires it.
 Static appearance belongs in JSON.
 
@@ -106,6 +110,12 @@ Rules are keyed by a component's `css` value. Common fields are `margin`,
 `fill`, `outline`, `content`, `hover`, and `edge`. Hover uses the same
 `fill`/`outline`/`content` channels. Colors use a palette role or
 `[role, opacity]`; `null` paints nothing.
+
+Use the layout module id as the style key for a single button or readout.
+Grouped modules style their children separately: for example, `forecast` contains
+`weather`, `weather.minmax`, and `weather.sunrise`, while `datetime` contains
+`clock.time` and `clock.date`. A dotted key names a child or state, and inherits
+from its prefix. These are JSON style rules, despite the QML property name `css`.
 
 Important geometry rules:
 
@@ -124,13 +134,12 @@ Important geometry rules:
   `volume.headphone` and then `volume`.
 - `agents` takes an extra `alarm` channel, used instead of `content` once a
   provider limit reaches 90%; unset, it paints the `error` role.
-- `notification` takes `badgeOffsetX` and `badgeOffsetY`, moving the unread badge
-  off the glyph's top-right corner; positive pushes it right and down. The badge
-  tracks the glyph, not the module frame, so it stays put as the bar widens.
-  `badgeSize` sizes it: the dot's diameter in `"dot"` mode, the glyph's em in
-  `"count"` mode, defaulting to 6 and 13. Because a rule inherits its base entry,
-  set it in the layout file that picks that `badge` mode rather than in
-  `base.json`, where one value would reach both.
+- A button's count badge (`BarButton.badgeText`, used by `notifications`,
+  `bluetooth`, and `removable`) is an `md-numeric_<n>` glyph (`9+` past nine)
+  drawn as an exponent past the glyph's top-right. `badgeContent` sets its
+  colour and opacity; otherwise it follows the glyph. `badgeSize` sets its px size (default 9);
+  `badgeOffsetX`/`badgeOffsetY` nudge it, positive right and down. It tracks the
+  glyph, not the module frame, so it stays put as the bar widens.
 
 ## Drawers and popups
 
@@ -154,6 +163,8 @@ alarm/timer/stopwatch popup where configured as the timer clock.
 
 ## Cross-component contracts
 
+- `session/idle-manager.sh` writes `$XDG_RUNTIME_DIR/hypr/caffeine-windows`
+  as `fullscreen game`; `shell.qml` watches it so the bar shares the manager's classifier.
 - `shell.qml` writes `~/.local/state/quickshell/time-visibility`; Kitty's
   `tab_bar.py` reads it to hide its own date and/or clock only while the matching
   Quickshell module is visible.
@@ -163,7 +174,9 @@ alarm/timer/stopwatch popup where configured as the timer clock.
   terminal views. Each surface triggers its own refresh: the TUI on open when
   the cache is older than its `STALE_AFTER`, `AgentsButton` on a 15 minute
   Timer. That Timer only runs on layouts that instantiate the button, so it is
-  not a refresh path anything else may rely on.
+  not a refresh path anything else may rely on. Pressing R in the popup forces
+  a local rescan. The OpenCode tab reads provider
+  tokens and cost from `opencode.db`; its Go limits appear when a Go key is available.
 - Audio limits are expressed in dB. `controls/volume-control.sh --limits` probes
   the active backend and supplies portable minimum, maximum, and step values;
   QML converts between dB and PipeWire/PulseAudio's cubic scalar.
@@ -188,6 +201,13 @@ alarm/timer/stopwatch popup where configured as the timer clock.
   URL or the FIFO for YouTube, the file path otherwise). `reconcile_queue()`
   matches on it to drop entries mpv advanced into by itself, which is what keeps
   the visible queue and the playlist from disagreeing.
+- The Bitwarden vault (`Bitwarden.qml`, one per shell) keeps its session key in
+  `$XDG_RUNTIME_DIR/bitwarden-session` and any armed quick-unlock secret in
+  `$XDG_RUNTIME_DIR/bitwarden-unlock`, so neither outlives the login. The terminal
+  login writes the session file itself, then calls `quickshell ipc call bitwarden
+  reload`. `session/lock-screen.sh` and `session/lid-close.sh` call
+  `hypr_lock_password_managers` (`core/common.sh`), whose `bitwarden screenLocked`
+  is the only way the vault learns the screen locked.
 - Alarm/timer and stopwatch state lives under `~/.local/state/quickshell/` and is
   restored by `calendar/alarm-timer.sh`; do not move scheduling into QML timers
   that disappear on reload.
@@ -210,7 +230,7 @@ alarm/timer/stopwatch popup where configured as the timer clock.
 | entry and shared state | `shell.qml`, `Style.qml`, `Theme.qml` |
 | standalone panels | `dock/`, `expose/`, `lockview/` (hyprlock layout explorer) |
 | layer blur | `LayerBlur.qml` |
-| panels | `MainBar.qml`, `TopBar.qml`, `WinBar.qml`, `BarSection.qml` |
+| panels | `MainBar.qml`, `HorizontalBar.qml`, `BarSection.qml`, `BarModuleLoader.qml` |
 | primitives | `BarButton.qml`, `ScriptButton.qml`, `DrawerGroup.qml`, `ModuleEdge.qml`, `Popup*.qml` |
 | modules | root `*Button.qml`/service components and `modules/*Module.qml` |
 | popups | `*Popup.qml` and menu/flyout helpers |

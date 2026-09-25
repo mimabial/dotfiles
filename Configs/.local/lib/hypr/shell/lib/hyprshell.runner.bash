@@ -16,13 +16,14 @@ run_lib_script() {
 
 collect_script_dirs() {
   local scripts_path="${1:-${HYPR_SCRIPTS_PATH:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr/scripts:${LIB_DIR}/hypr}}"
-  IFS=':' read -ra RAW_DIRS <<<"${scripts_path}"
+  local -a raw_dirs=()
+  IFS=':' read -ra raw_dirs <<<"${scripts_path}"
 
   declare -A seen_dirs=()
   SCRIPT_DIRS=()
 
   local dir
-  for dir in "${RAW_DIRS[@]}"; do
+  for dir in "${raw_dirs[@]}"; do
     [[ -z "${dir}" ]] && continue
     [[ -n "${seen_dirs[${dir}]:-}" ]] && continue
     seen_dirs["${dir}"]=1
@@ -237,6 +238,7 @@ print_ambiguous_command_error() {
   local command_name="$1"
   local candidate=""
   local target_path=""
+  local dir=""
 
   printf 'Ambiguous command: %s\n' "${command_name}" >&2
   printf 'Use one of:\n' >&2

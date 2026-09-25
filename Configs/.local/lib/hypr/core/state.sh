@@ -41,11 +41,11 @@ state_resolve_color_mode() {
 
 export_hypr_config() {
   local state_root="${STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}"
-  local user_conf_state="${STATE_RC:-${state_root}/staterc}"
-  local user_conf="${STATE_ENV_OVERRIDES:-${state_root}/env-overrides}"
+  local state_rc_path="${STATE_RC:-${state_root}/staterc}"
+  local env_overrides_path="${STATE_ENV_OVERRIDES:-${state_root}/env-overrides}"
 
-  [[ -f "${user_conf_state}" ]] && source "${user_conf_state}"
-  [[ -f "${user_conf}" ]] && source "${user_conf}"
+  [[ -f "${state_rc_path}" ]] && source "${state_rc_path}"
+  [[ -f "${env_overrides_path}" ]] && source "${env_overrides_path}"
   refresh_hypr_runtime_state
   return $?
 }
@@ -243,7 +243,7 @@ state_quote_value() {
 
 state_write_key_value_file() {
   local state_file="$1"
-  local target_file="$2"
+  local target_kind="$2"
   local var_name="$3"
   local var_value="$4"
   local tmp_file="" source_file="${state_file}" value_prefix="" quoted_value="" line="" candidate=""
@@ -253,7 +253,7 @@ state_write_key_value_file() {
     return 1
   }
 
-  [[ "${target_file}" == "env-overrides" ]] && value_prefix="export "
+  [[ "${target_kind}" == "env-overrides" ]] && value_prefix="export "
   state_quote_value quoted_value "${var_value}" || return 1
   tmp_file="$(mktemp "${state_file}.tmp.XXXXXX")" || {
     print_log -sec "state" -err "state_set" "failed to allocate temp file for ${var_name}"
@@ -284,20 +284,20 @@ state_write_key_value_file() {
 state_set() {
   local var_name="$1"
   local var_value="$2"
-  local target_file="${3:-staterc}"
+  local target_kind="${3:-staterc}"
   local state_file=""
   local lock_fd="" state_parent="" rc=0
 
-  state_file="$(state_target_file "${target_file}")"
+  state_file="$(state_target_file "${target_kind}")"
   state_parent="${state_file%/*}"
   [[ "${state_parent}" != "${state_file}" ]] || state_parent=.
   mkdir -p "${state_parent}" || return 1
   state_acquire_lock "${state_file}" lock_fd || return 1
 
-  if [[ "${target_file}" == "color_variant" ]]; then
+  if [[ "${target_kind}" == "color_variant" ]]; then
     state_write_color_variant_file "${state_file}" "${var_value}" || rc=$?
   else
-    state_write_key_value_file "${state_file}" "${target_file}" "${var_name}" "${var_value}" || rc=$?
+    state_write_key_value_file "${state_file}" "${target_kind}" "${var_name}" "${var_value}" || rc=$?
   fi
   state_release_lock lock_fd
   return "${rc}"

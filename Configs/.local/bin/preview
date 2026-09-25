@@ -203,26 +203,32 @@ preview_certificate() {
   fi
 }
 
-resolved_target=""
-resolved_line=0
-
 resolve_target() {
-  local raw expanded base_path
+  local -n target_result="$1" line_result="$2"
+  local expanded base_path
 
-  raw="${1:-}"
-  expanded="$(expand_path "${raw}")"
-  resolved_target="${expanded}"
-  resolved_line=0
+  expanded="$(expand_path "${3:-}")"
+  target_result="${expanded}"
+  line_result=0
 
   if [[ -e "${expanded}" || -L "${expanded}" ]]; then
     return 0
   fi
 
-  if [[ "${expanded}" =~ ^(.+):([0-9]+)(:([0-9]+))?$ ]]; then
+  if [[ "${expanded}" =~ ^(.+):([0-9]+):([0-9]+)$ ]]; then
     base_path="${BASH_REMATCH[1]}"
     if [[ -e "${base_path}" || -L "${base_path}" ]]; then
-      resolved_target="${base_path}"
-      resolved_line="${BASH_REMATCH[2]}"
+      target_result="${base_path}"
+      line_result="${BASH_REMATCH[2]}"
+      return 0
+    fi
+  fi
+
+  if [[ "${expanded}" =~ ^(.+):([0-9]+)$ ]]; then
+    base_path="${BASH_REMATCH[1]}"
+    if [[ -e "${base_path}" || -L "${base_path}" ]]; then
+      target_result="${base_path}"
+      line_result="${BASH_REMATCH[2]}"
       return 0
     fi
   fi
@@ -231,7 +237,7 @@ resolve_target() {
 }
 
 main() {
-  local input mime=""
+  local input target line=0 mime=""
 
   case "${1:-}" in
     -h|--help)
@@ -250,58 +256,58 @@ main() {
   esac
 
   input="${1}"
-  resolve_target "${input}" || die "path not found: ${input}"
+  resolve_target target line "${input}" || die "path not found: ${input}"
 
-  if [[ -d "${resolved_target}" ]]; then
-    preview_directory "${resolved_target}"
+  if [[ -d "${target}" ]]; then
+    preview_directory "${target}"
     exit 0
   fi
 
-  if [[ -L "${resolved_target}" && ! -e "${resolved_target}" ]]; then
-    preview_symlink "${resolved_target}"
+  if [[ -L "${target}" && ! -e "${target}" ]]; then
+    preview_symlink "${target}"
     exit 0
   fi
 
-  mime="$(file --brief --dereference --mime-type -- "${resolved_target}" 2>/dev/null || true)"
+  mime="$(file --brief --dereference --mime-type -- "${target}" 2>/dev/null || true)"
 
-  case "${resolved_target}" in
+  case "${target}" in
     *.zip|*.jar|*.war|*.ear|*.oxt|*.tar|*.tar.gz|*.tgz|*.tar.bz2|*.tbz2|*.tar.xz|*.txz|*.iso)
-      preview_archive "${resolved_target}"
+      preview_archive "${target}"
       exit 0
       ;;
     *.crt|*.cer|*.pem)
-      preview_certificate "${resolved_target}"
+      preview_certificate "${target}"
       exit 0
       ;;
   esac
 
   case "${mime}" in
     inode/symlink)
-      preview_symlink "${resolved_target}"
+      preview_symlink "${target}"
       ;;
     text/*|application/json|application/xml|application/x-shellscript|application/yaml|application/x-yaml)
-      preview_text "${resolved_target}" "${resolved_line}"
+      preview_text "${target}" "${line}"
       ;;
     image/*)
-      preview_image "${resolved_target}"
+      preview_image "${target}"
       ;;
     application/pdf)
-      preview_pdf "${resolved_target}" || file --brief --dereference -- "${resolved_target}"
+      preview_pdf "${target}" || file --brief --dereference -- "${target}"
       ;;
     application/x-executable|application/x-pie-executable|application/x-sharedlib|application/x-object)
-      preview_binary "${resolved_target}"
+      preview_binary "${target}"
       ;;
     application/x-x509-ca-cert|application/pkix-cert)
-      preview_certificate "${resolved_target}"
+      preview_certificate "${target}"
       ;;
     audio/*|video/*)
-      file --brief --dereference -- "${resolved_target}"
+      file --brief --dereference -- "${target}"
       ;;
     *)
-      if grep -Iq . "${resolved_target}" 2>/dev/null; then
-        preview_text "${resolved_target}" "${resolved_line}"
+      if grep -Iq . "${target}" 2>/dev/null; then
+        preview_text "${target}" "${line}"
       else
-        file --brief --dereference -- "${resolved_target}"
+        file --brief --dereference -- "${target}"
       fi
       ;;
   esac

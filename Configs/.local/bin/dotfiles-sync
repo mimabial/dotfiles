@@ -162,39 +162,21 @@ emit_apply_result() {
 }
 
 run_rsync_transfer() {
-  local name="$1"
-  local log_failures="${2:-true}"
-  local output_var="${3:-}"
-  shift 3
-  local output=""
+  local -n transfer_output_ref="$1"
+  local name="$2" action="Sync"
+  shift 2
   local -a rsync_args=("$@")
 
   if [[ "${SYNC_MODE}" == "dry-run" ]]; then
-    rsync_args+=(--dry-run --itemize-changes)
-    if ! output=$(rsync "${rsync_args[@]}" 2>&1); then
-      if [[ "${log_failures}" == true ]]; then
-        log_error "Preview failed for $name"
-        printf '%s\n' "$output" >&2
-      fi
-      return 1
-    fi
-    emit_preview_result "$name" "$output"
-    return 0
+    rsync_args+=(--dry-run)
+    action="Preview"
   fi
 
   rsync_args+=(--itemize-changes)
-  if ! output=$(rsync "${rsync_args[@]}" 2>&1); then
-    if [[ "${log_failures}" == true ]]; then
-      log_error "Sync failed for $name"
-      printf '%s\n' "$output" >&2
-    fi
+  if ! transfer_output_ref=$(rsync "${rsync_args[@]}" 2>&1); then
+    log_error "${action} failed for $name" >&2
+    printf '%s\n' "$transfer_output_ref" >&2
     return 1
-  fi
-
-  if [[ -n "${output_var}" ]]; then
-    printf -v "${output_var}" '%s' "$output"
-  else
-    emit_apply_result "$name" "$output"
   fi
 }
 
@@ -287,7 +269,7 @@ get_host_profile() {
   printf '%s\n' "${profile}"
 }
 
-remove_path() {
+remove_managed_path() {
   local dest="$1"
   local name="$2"
   local rel_dest="${dest#"${DOTFILES_DIR}"/}"
@@ -381,7 +363,7 @@ sync_host_profile_files() {
   fi
 
   for rel_path in "${host_paths[@]}"; do
-    remove_path "${DOTFILES_DIR}/${rel_path}" "root host file ${rel_path}"
+    remove_managed_path "${DOTFILES_DIR}/${rel_path}" "root host file ${rel_path}"
   done
 
   case "${SYNC_MODE}" in
@@ -391,7 +373,7 @@ sync_host_profile_files() {
   esac
 
   for rel_path in "${host_paths[@]}"; do
-    copy_path file "${HOME}/${rel_path}" "${host_root}/${rel_path}" "hosts/${profile}/${rel_path}"
+    sync_mapped_path file "${HOME}/${rel_path}" "${host_root}/${rel_path}" "hosts/${profile}/${rel_path}"
   done
 
   if $PRUNE_HOST_ORPHANS; then
@@ -444,8 +426,11 @@ sync_directory_path() {
   for exclude_pattern in "$@"; do
     rsync_args+=(--exclude="${exclude_pattern}")
   done
-  run_rsync_transfer "$name" true transfer_output "${rsync_args[@]}" "$src"/ "$dest"/
-  [[ "${SYNC_MODE}" == "dry-run" ]] && return
+  run_rsync_transfer transfer_output "$name" "${rsync_args[@]}" "$src"/ "$dest"/ || return
+  if [[ "${SYNC_MODE}" == "dry-run" ]]; then
+    emit_preview_result "$name" "$transfer_output"
+    return
+  fi
   normalize_changed_symlinks_from_rsync_output "$src" "$dest" "$transfer_output"
   emit_apply_result "$name" "$transfer_output"
 }
@@ -474,13 +459,16 @@ sync_file_path() {
     rm -rf -- "$dest"
   fi
 
-  run_rsync_transfer "$name" false transfer_output -a --mkpath "$src" "$dest" || return
-  [[ "${SYNC_MODE}" == "dry-run" ]] && return
+  run_rsync_transfer transfer_output "$name" -a --mkpath "$src" "$dest" || return
+  if [[ "${SYNC_MODE}" == "dry-run" ]]; then
+    emit_preview_result "$name" "$transfer_output"
+    return
+  fi
   normalize_synced_internal_symlinks "$src" "$dest"
   emit_apply_result "$name" "$transfer_output"
 }
 
-copy_path() {
+sync_mapped_path() {
   local kind="$1" src="$2" dest="$3" name="$4"
   shift 4
 
@@ -528,10 +516,10 @@ sync_manifest_mappings() {
 
     case "${kind}" in
       dir)
-        copy_path dir "${HOME}/${rel_path}" "${DOTFILES_DIR}/${rel_path}" "${rel_path}" "${extra_excludes[@]}"
+        sync_mapped_path dir "${HOME}/${rel_path}" "${DOTFILES_DIR}/${rel_path}" "${rel_path}" "${extra_excludes[@]}"
         ;;
       file)
-        copy_path file "${HOME}/${rel_path}" "${DOTFILES_DIR}/${rel_path}" "${rel_path}"
+        sync_mapped_path file "${HOME}/${rel_path}" "${DOTFILES_DIR}/${rel_path}" "${rel_path}"
         ;;
       host)
         ;;

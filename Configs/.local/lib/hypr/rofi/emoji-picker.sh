@@ -7,7 +7,7 @@ rofi_picker_bootstrap || exit 1
 emoji_dir=""
 cache_dir=""
 font_override=""
-r_override=""
+window_override=""
 rofi_position=""
 emoji_window_theme=""
 rofi_picker_hypr_dir_vars emoji_dir cache_dir
@@ -62,7 +62,7 @@ setup_rofi_config() {
   local font_scale
   local font_name
   rofi_prepare_standard_context \
-    font_scale font_name font_override r_override \
+    font_scale font_name font_override window_override \
     "${ROFI_EMOJI_SCALE:-}" "${ROFI_EMOJI_FONT:-${ROFI_FONT:-}}" wallbox same
 
   # 17em per column keeps labels readable, so the grid's column count drives the
@@ -104,8 +104,8 @@ emoji_clipboard_dmenu() {
   local prompt="$1"
   local placeholder="$2"
 
-  rofi -dmenu -i -p "${prompt}" -no-show-icons \
-    -theme-str "entry { placeholder: \"${placeholder}\";} ${rofi_position} ${r_override}" \
+  rofi_with_background_theme -dmenu -i -p "${prompt}" -no-show-icons \
+    -theme-str "entry { placeholder: \"${placeholder}\";} ${rofi_position} ${window_override}" \
     -theme-str "${font_override}" \
     -theme-str "${emoji_window_theme}" \
     -theme "$(rofi_resolve_theme clipboard)"
@@ -199,7 +199,7 @@ emoji_rofi_selection_index() {
 
   if [[ -n ${use_rofile} ]]; then
     rofi_picker_rasi_args rofi_config_args "${use_rofile}" "${rofi_position}"
-    rofi -dmenu -i -format 'i' "$@" "${rofi_config_args[@]}" \
+    rofi_with_background_theme -dmenu -i -format 'i' "$@" "${rofi_config_args[@]}" \
       -no-show-icons \
       -theme-str "${emoji_window_theme}" \
       -theme-str "${EMOJI_ICONLESS_THEME_STR}" \
@@ -208,10 +208,10 @@ emoji_rofi_selection_index() {
     return 0
   fi
 
-  rofi -dmenu -i -format 'i' "$@" \
+  rofi_with_background_theme -dmenu -i -format 'i' "$@" \
     -no-show-icons \
     -theme-str "${EMOJI_ICONLESS_THEME_STR}" \
-    -theme-str "entry { placeholder: \" 󰞅 Emoji\";} ${rofi_position} ${r_override}" \
+    -theme-str "entry { placeholder: \" 󰞅 Emoji\";} ${rofi_position} ${window_override}" \
     -theme-str "${font_override}" \
     -theme-str "${emoji_window_theme}" \
     -no-custom <"${display_file}"
@@ -455,10 +455,10 @@ show_category_menu() {
   local style_menu_args=()
   emoji_category_menu_args "${style_type}" rofi_base_opts style_menu_args
 
-  selected=$(rofi -dmenu -i "${style_menu_args[@]}" \
+  selected=$(rofi_with_background_theme -dmenu -i "${style_menu_args[@]}" \
     -no-show-icons "${rofi_base_opts[@]}" \
     -theme-str "${EMOJI_ICONLESS_THEME_STR}" \
-    -theme-str "entry { placeholder: \"📂 ${category}\";} ${rofi_position} ${r_override}" \
+    -theme-str "entry { placeholder: \"📂 ${category}\";} ${rofi_position} ${window_override}" \
     -theme-str "${font_override}" \
     -no-custom <"${temp_category}")
 

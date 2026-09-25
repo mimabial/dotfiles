@@ -493,7 +493,6 @@ PopupCard {
     Row {
         anchors.fill: parent
         spacing: root.paneGap
-        layoutDirection: root.position === "right" ? Qt.RightToLeft : Qt.LeftToRight
 
     Column {
         id: calendar

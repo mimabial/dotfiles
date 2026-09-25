@@ -57,7 +57,7 @@ def to_hex(lab):
         max(0, min(255, round(_linear_to_srgb(c) * 255))) for c in channels)
 
 
-def half(thresholds, fg, anchor):
+def interpolate_temperature_half(thresholds, fg, anchor):
     # Interpolating in OkLab, not sRGB: a straight sRGB path between two hues
     # dips through a desaturated middle, which would flatten the mid bands.
     a, b = to_oklab(fg), to_oklab(anchor)
@@ -66,7 +66,7 @@ def half(thresholds, fg, anchor):
             for i, t in enumerate(thresholds)}
 
 
-def is_hex(value):
+def has_hex_color_shape(value):
     return isinstance(value, str) and len(value) == 7 and value[0] == "#"
 
 
@@ -77,25 +77,25 @@ def main():
     colors = palette.get("colors") or []
     fg, hot, cold = palette.get("fg"), colors[1] if len(colors) > 1 else None, \
         colors[4] if len(colors) > 4 else None
-    if not all(is_hex(c) for c in (fg, hot, cold)):
+    if not all(has_hex_color_shape(color) for color in (fg, hot, cold)):
         sys.exit(f"render/{APP}: palette lacks fg, colors[1] or colors[4]")
 
     hasher = hashlib.sha256()
     hasher.update(PALETTE.read_bytes())
     hasher.update(Path(__file__).read_bytes())
-    h = hasher.hexdigest()[:16]
-    if cache_hit(APP, h) and OUT.is_file():
+    digest = hasher.hexdigest()[:16]
+    if cache_hit(APP, digest) and OUT.is_file():
         return
 
     # Each half runs from the theme's own text colour at the neutral band to the
     # palette's red (hot) or blue (cold) at the extreme, so the ends are colours
     # the theme already declares rather than a scale imposed on it.
-    ramp = half(HOT, fg, hot)
-    ramp.update(half(COLD, fg, cold))
+    ramp = interpolate_temperature_half(HOT, fg, hot)
+    ramp.update(interpolate_temperature_half(COLD, fg, cold))
     ramp[NEUTRAL] = ""
 
     atomic_write(OUT, "".join(f"{t}|{ramp[t]}\n" for t in sorted(ramp, reverse=True)))
-    cache_store(APP, h)
+    cache_store(APP, digest)
 
 
 if __name__ == "__main__":

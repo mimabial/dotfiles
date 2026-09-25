@@ -52,13 +52,13 @@ EOT
 
 wallpaper_catalog_prepare_runtime() {
   local ensure_thumbs="${1:-0}"
-  setIndex=0
+  selected_wallpaper_index=0
   if ! wallpaper_theme_sources; then
     echo "ERROR: \"${HYPR_THEME_DIR}\" does not exist"
     return 2
   fi
 
-  wallpaper_hashmap_cached "${wallPathArray[@]}" || return 1
+  wallpaper_hashmap_cached "${wallpaper_source_paths[@]}" || return 1
   [[ "${ensure_thumbs}" -eq 1 ]] && wallpaper_ensure_thumbs "sqre"
   return 0
 }
@@ -72,8 +72,8 @@ wallpaper_catalog_cache_paths() {
   local resolved_json_cache=""
 
   resolved_cache_home="$(wallpaper_cache_root)"
-  resolved_cache_file="$(wallpaper_hashmap_cache_file "${wallPathArray[@]}" 2>/dev/null || true)"
-  resolved_json_cache="$(wallpaper_catalog_json_file "${wallPathArray[@]}" 2>/dev/null || true)"
+  resolved_cache_file="$(wallpaper_hashmap_cache_file "${wallpaper_source_paths[@]}" 2>/dev/null || true)"
+  resolved_json_cache="$(wallpaper_catalog_json_file "${wallpaper_source_paths[@]}" 2>/dev/null || true)"
 
   printf -v "${out_cache_home_name}" '%s' "${resolved_cache_home}"
   printf -v "${out_cache_file_name}" '%s' "${resolved_cache_file}"
@@ -101,7 +101,7 @@ wallpaper_catalog_print_cached_json_if_current() {
 wallpaper_catalog_build_json() {
   local cache_home="$1"
   local path=""
-  for path in "${wallList[@]}"; do printf '%s\0%s\0' "${path}" "${wallHashByPath["${path}"]}"; done |
+  for path in "${wallpaper_paths[@]}"; do printf '%s\0%s\0' "${path}" "${wallpaper_hash_by_path["${path}"]}"; done |
     jq -Rs --arg cacheHome "${cache_home}" '
         split("\u0000") as $catalog | [range(0; $catalog | length - 1; 2) as $i |
             {
@@ -169,13 +169,13 @@ wallpaper_select_monitor_geometry() {
 wallpaper_select_theme_override() {
   local font_scale="$1"
   local font_name="$2"
-  local mon_x_res_px=""
-  local mon_y_res_px=""
+  local monitor_width_px=""
+  local monitor_height_px=""
   local border_radius=0
-  local elem_border=0
-  local elm_width=0
-  local max_avail=0
-  local col_count=0
+  local element_border=0
+  local element_width=0
+  local available_width=0
+  local column_count=0
   local icon_em=33
   local max_icon_em=0
   local row_chrome_em=7
@@ -186,11 +186,13 @@ wallpaper_select_theme_override() {
 
   border_radius="${HYPR_RUNTIME_BORDER_RADIUS:-${HYPR_BORDER_RADIUS:-0}}"
   [[ "${border_radius}" =~ ^[0-9]+$ ]] || border_radius=0
-  elem_border=$((border_radius * 2))
-  read -r mon_x_res_px mon_y_res_px < <(wallpaper_select_monitor_geometry)
-  elm_width=$(((16 + 8 + 5) * font_scale))
-  max_avail=$((mon_x_res_px - (4 * font_scale)))
-  col_count=$((max_avail / elm_width))
+  [[ "${font_scale}" =~ ^[1-9][0-9]*$ ]] || font_scale=1
+  element_border=$((border_radius * 2))
+  read -r monitor_width_px monitor_height_px < <(wallpaper_select_monitor_geometry)
+  element_width=$(((16 + 8 + 5) * font_scale))
+  available_width=$((monitor_width_px - (4 * font_scale)))
+  column_count=$((available_width / element_width))
+  ((column_count > 0)) || column_count=1
 
   scale_json="$(hyprctl monitors -j 2>/dev/null | jq -r '[.[] | select(.focused==true)][0].scale // 1' 2>/dev/null)"
   [[ "${scale_json}" =~ ^[0-9]+([.][0-9]+)?$ ]] && mon_scale_milli="$(rofi_decimal_milli "${scale_json}")"
@@ -214,16 +216,16 @@ wallpaper_select_theme_override() {
   em_px="$(rofi_font_text_height_px "${font_name}" "${font_scale}" 2>/dev/null || true)"
   em_px_milli="$(rofi_decimal_milli "${em_px}" 2>/dev/null || true)"
   if [[ "${em_px_milli}" =~ ^[1-9][0-9]*$ ]]; then
-    max_icon_em=$(((mon_y_res_px * ROFI_MILLI / em_px_milli) - row_chrome_em))
+    max_icon_em=$(((monitor_height_px * ROFI_MILLI / em_px_milli) - row_chrome_em))
     if ((max_icon_em >= 8)) && ((icon_em > max_icon_em)); then
       icon_em="${max_icon_em}"
     fi
   fi
 
   cat <<EOF
-listview{columns:${col_count};}
+listview{columns:${column_count};}
 element-icon{size:${icon_em}em;}
-element{border-radius:${elem_border}px;}
+element{border-radius:${element_border}px;}
 EOF
 }
 
@@ -261,7 +263,7 @@ wallpaper_selected_row() {
   local current_hash=""
 
   [[ -e "${active_wallpaper_link}" ]] || return 0
-  current_hash="$(set_hash "${active_wallpaper_link}")"
+  current_hash="$(wallpaper_file_hash "${active_wallpaper_link}")"
   [[ -n "${current_hash}" ]] || return 0
   jq -r --arg hash "${current_hash}" '[.[].hash] | index($hash) // empty' "${wall_json_file}"
 }
@@ -296,7 +298,7 @@ wallpaper_pick() {
   local -a rofi_args
   wallpaper_select_rofi_args "${font_scale}" "${font_name}" "${selected_row}"
 
-  selected_entry="$(wallpaper_rofi_entries "${wall_json_file}" | rofi "${rofi_args[@]}")" || rofi_status=$?
+  selected_entry="$(wallpaper_rofi_entries "${wall_json_file}" | rofi_with_background_theme "${rofi_args[@]}")" || rofi_status=$?
 
   if ((rofi_status != 0)) && [[ -z "${selected_entry}" ]]; then
     rm -f "${wall_json_file}"

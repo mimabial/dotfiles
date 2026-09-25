@@ -34,8 +34,8 @@ test_actions() (
 test_json() (
   LIB_DIR="${WALLPAPER_DIR%/hypr/wallpaper}"
   source "${WALLPAPER_DIR}/lib/ui.bash"
-  wallList=("/tmp/a b.jpg" "/tmp/東京.png")
-  declare -A wallHashByPath=(["${wallList[0]}"]=abc ["${wallList[1]}"]=def)
+  wallpaper_paths=("/tmp/a b.jpg" "/tmp/東京.png")
+  declare -A wallpaper_hash_by_path=(["${wallpaper_paths[0]}"]=abc ["${wallpaper_paths[1]}"]=def)
   wallpaper_catalog_build_json /tmp |
     jq -e 'length == 2 and .[0].hash == "abc" and .[1].hash == "def"' >/dev/null
 )
@@ -61,12 +61,12 @@ test_queue() (
 test_index_helpers() (
   source "${WALLPAPER_DIR%/wallpaper}/core/wallpaper.catalog.sh"
   source "${WALLPAPER_DIR}/lib/catalog.bash"
-  local -a wallList=(/w/a.jpg "/w/b c.png" /w/東京.jpg)
+  local -a wallpaper_paths=(/w/a.jpg "/w/b c.png" /w/東京.jpg)
 
-  [[ "$(catalog_index_of wallList /w/a.jpg)" == 0 ]]
-  [[ "$(catalog_index_of wallList "/w/b c.png")" == 1 ]]
-  [[ "$(catalog_index_of wallList /w/東京.jpg)" == 2 ]]
-  refute catalog_index_of wallList /w/missing.jpg
+  [[ "$(catalog_index_of wallpaper_paths /w/a.jpg)" == 0 ]]
+  [[ "$(catalog_index_of wallpaper_paths "/w/b c.png")" == 1 ]]
+  [[ "$(catalog_index_of wallpaper_paths /w/東京.jpg)" == 2 ]]
+  refute catalog_index_of wallpaper_paths /w/missing.jpg
 
   local -a empty=()
   refute catalog_index_of empty /w/a.jpg
@@ -90,27 +90,27 @@ test_select_adjacent() (
   # stubs must follow the sources, or the libraries redefine them
   print_log() { :; }
   wallpaper_resolve_path() { printf '%s\n' "${current_link_target}"; }
-  apply_selected_wallpaper() { applied="${wallList[setIndex]}"; }
+  apply_selected_wallpaper() { applied="${wallpaper_paths[selected_wallpaper_index]}"; }
 
-  local active_wallpaper_link=/unused applied="" setIndex=0 current_link_target=""
-  local -a wallList=(/w/a.jpg /w/b.jpg /w/c.jpg)
+  local active_wallpaper_link=/unused applied="" selected_wallpaper_index=0 current_link_target=""
+  local -a wallpaper_paths=(/w/a.jpg /w/b.jpg /w/c.jpg)
 
   current_link_target=/w/b.jpg
   select_adjacent_wallpaper n
-  [[ "${setIndex}:${applied}" == 2:/w/c.jpg ]]
+  [[ "${selected_wallpaper_index}:${applied}" == 2:/w/c.jpg ]]
 
   current_link_target=/w/c.jpg
   select_adjacent_wallpaper n
-  [[ "${setIndex}:${applied}" == 0:/w/a.jpg ]]
+  [[ "${selected_wallpaper_index}:${applied}" == 0:/w/a.jpg ]]
 
   current_link_target=/w/a.jpg
   select_adjacent_wallpaper p
-  [[ "${setIndex}:${applied}" == 2:/w/c.jpg ]]
+  [[ "${selected_wallpaper_index}:${applied}" == 2:/w/c.jpg ]]
 
   # unknown current wallpaper falls back to the first entry
   current_link_target=/w/gone.jpg
   select_adjacent_wallpaper n
-  [[ "${setIndex}:${applied}" == 0:/w/a.jpg ]]
+  [[ "${selected_wallpaper_index}:${applied}" == 0:/w/a.jpg ]]
 )
 
 test_parser
@@ -149,19 +149,19 @@ test_selected_path_is_the_only_catalog_read() (
   source "${WALLPAPER_DIR%/wallpaper}/core/wallpaper.catalog.sh"
   source "${WALLPAPER_DIR}/lib/catalog.bash"
   source "${WALLPAPER_DIR}/lib/actions.bash"
-  local -a wallList=(/w/a.jpg /w/b.jpg /w/c.jpg)
-  local setIndex=1
+  local -a wallpaper_paths=(/w/a.jpg /w/b.jpg /w/c.jpg)
+  local selected_wallpaper_index=1
   [[ "$(wallpaper_selected_path)" == /w/b.jpg ]]
-  setIndex=2
+  selected_wallpaper_index=2
   [[ "$(wallpaper_selected_path)" == /w/c.jpg ]]
   # an empty catalog yields nothing rather than failing
-  local -a empty=(); wallList=("${empty[@]}"); setIndex=0
+  local -a empty=(); wallpaper_paths=("${empty[@]}"); selected_wallpaper_index=0
   [[ -z "$(wallpaper_selected_path)" ]]
 )
 
 test_ensure_hash_names_the_map_it_writes() (
   source "${WALLPAPER_DIR}/lib/actions.bash"
-  set_hash() { printf 'hash-of-%s\n' "${1##*/}"; }
+  wallpaper_file_hash() { printf 'hash-of-%s\n' "${1##*/}"; }
   local -A hashes=()
 
   wallpaper_ensure_hash hashes /w/a.jpg
@@ -189,7 +189,7 @@ test_link_selected_uses_the_path_it_is_given() (
   : >"${dir}/chosen.png"
 
   # deliberately disagrees with the catalog: the argument must win
-  local -a wallList=(/w/ignored.jpg); local setIndex=0
+  local -a wallpaper_paths=(/w/ignored.jpg); local selected_wallpaper_index=0
   wallpaper_link_selected "${dir}/chosen.png"
 
   [[ "$(readlink "${active_wallpaper_link}")" == "${dir}/chosen.png" ]]
@@ -197,6 +197,21 @@ test_link_selected_uses_the_path_it_is_given() (
   [[ "${payload_arg}" == "${dir}/chosen.png" ]]
 )
 
+test_theme_catalog_repairs_wall_link() (
+  source "${WALLPAPER_DIR%/wallpaper}/core/wallpaper.catalog.sh"
+  local temp_dir wall
+  local -a theme_names=() theme_wallpapers=() WALLPAPER_FILETYPES=() WALLPAPER_OVERRIDE_FILETYPES=()
+  temp_dir="$(mktemp -d)"; trap 'rm -rf -- "${temp_dir}"' EXIT
+  HYPR_CONFIG_HOME="${temp_dir}/config" HYPR_HASH_COMMAND=sha1sum
+  wall="${HYPR_CONFIG_HOME}/themes/Pack/wallpapers/wall.jpg"
+  mkdir -p "${wall%/*}"
+  printf 'image\n' >"${wall}"
+  theme_catalog_load_and_repair_links_into theme_names theme_wallpapers
+  [[ "${theme_names[*]}" == Pack && "${theme_wallpapers[0]}" == "${wall}" ]]
+  [[ "$(readlink "${HYPR_CONFIG_HOME}/themes/Pack/wall.set")" == "${wall}" ]]
+)
+
 test_selected_path_is_the_only_catalog_read
 test_ensure_hash_names_the_map_it_writes
 test_link_selected_uses_the_path_it_is_given
+test_theme_catalog_repairs_wall_link

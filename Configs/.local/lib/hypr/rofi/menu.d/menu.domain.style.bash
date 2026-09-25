@@ -20,6 +20,7 @@ menu_register_domain_style() {
   menu_add_item style "󰩨  Theme Menu Style" action style_theme_menu
   menu_add_item style "󰀻  Launcher Style" action style_launcher
   menu_add_item style "  Font" action style_font
+  menu_add_item style "  Text Size" action style_text_size
 
   menu_define style_bar "Bar"
   menu_add_item style_bar "󰍜  Layout" submenu style_bar_layout
@@ -100,6 +101,7 @@ menu_run_action_style() {
       quickshell ipc --any-display call expose hotCorner on >/dev/null
       ;;
     style_animations) hyprshell rofi/run-after-close.sh -- hyprshell animations.sh --select ;;
+    style_text_size) hyprshell rofi/run-after-close.sh -- hyprshell system/text-size.sh --select ;;
     style_lock_layout) hyprshell rofi/run-after-close.sh -- hyprshell session/hyprlock.sh --select ;;
     style_workflow) hyprshell rofi/run-after-close.sh -- hyprshell util/workflows.sh --select ;;
     *) return 1 ;;

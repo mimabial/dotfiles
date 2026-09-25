@@ -47,7 +47,6 @@ daemon_running() {
   if [[ -n "${pid}" ]] && kill -0 "${pid}" 2>/dev/null; then
     return 0
   fi
-  [[ -f "${QUEUE_PID_FILE}" ]] && rm -f "${QUEUE_PID_FILE}"
   return 1
 }
 
@@ -116,7 +115,7 @@ queue_wallpaper() {
   )"
   [[ -f "${resolved}" ]] || return 1
 
-  hash="$(set_hash "${resolved}" 2>/dev/null)" || return 1
+  hash="$(wallpaper_file_hash "${resolved}" 2>/dev/null)" || return 1
   [[ -n "${hash}" ]] || return 1
   thumb_is_ready "${hash}" && return 0
 
@@ -153,7 +152,7 @@ queue_theme() {
     return 1
   fi
 
-  if ! get_hashmap_into theme_hashes theme_walls "${theme_dir}"; then
+  if ! wallpaper_scan_hashes_into theme_hashes theme_walls "${theme_dir}"; then
     return 0
   fi
 

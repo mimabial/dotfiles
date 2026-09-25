@@ -7,15 +7,15 @@ set -euo pipefail
 
 query="${1:-}"
 
-empty() {
+emit_empty_places_and_exit() {
   printf '[]\n'
   exit 0
 }
 
-[[ "${CALENDAR_PLACES:-1}" != "0" ]] || empty
-[[ "${#query}" -ge 3 ]] || empty
-command -v curl >/dev/null 2>&1 || empty
-command -v jq >/dev/null 2>&1 || empty
+[[ "${CALENDAR_PLACES:-1}" != "0" ]] || emit_empty_places_and_exit
+[[ "${#query}" -ge 3 ]] || emit_empty_places_and_exit
+command -v curl >/dev/null 2>&1 || emit_empty_places_and_exit
+command -v jq >/dev/null 2>&1 || emit_empty_places_and_exit
 
 lang="${LANG%%_*}"
 case "${lang}" in
@@ -33,9 +33,9 @@ response="$(
     --data-urlencode "lang=${lang}" \
     -A "hyprshell-calendar-places" \
     https://photon.komoot.io/api/ 2>/dev/null | head -c 262144
-)" || empty
+)" || emit_empty_places_and_exit
 
-[[ -n "${response}" ]] || empty
+[[ -n "${response}" ]] || emit_empty_places_and_exit
 
 printf '%s' "${response}" | jq -c '
   def parts:
@@ -52,4 +52,4 @@ printf '%s' "${response}" | jq -c '
   | map(select(. != "") | .[0:120])
   | dedupe
   | .[0:6]
-' 2>/dev/null || empty
+' 2>/dev/null || emit_empty_places_and_exit

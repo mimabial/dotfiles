@@ -29,7 +29,7 @@ EOF
 }
 
 require_jq() {
-  provider_have_command jq || emit_state "error" "󰩠" "Error: jq is not installed"
+  quickshell_provider_have_command jq || emit_state "error" "󰩠" "Error: jq is not installed"
 }
 
 load_ipinfo_token() {
@@ -52,8 +52,8 @@ fetch_ipinfo() {
 
 render_geolocated_info() {
   local title="$1"
-  local gip_data="$2"
-  echo "$gip_data" | jq -r "\"<b>${title}</b>\\nIP: \" + .ip + \"\\n\" + .city + \", \" + .region + \", \" + .country"
+  local ipinfo_json="$2"
+  echo "$ipinfo_json" | jq -r "\"<b>${title}</b>\\nIP: \" + .ip + \"\\n\" + .city + \", \" + .region + \", \" + .country"
 }
 
 render_basic_info() {
@@ -65,7 +65,7 @@ render_basic_info() {
   fi
 }
 
-check_mullvad() {
+update_vpn_state_from_mullvad() {
   local mullvad_status=""
   local mullvad_status_line=""
   local relay=""
@@ -73,7 +73,7 @@ check_mullvad() {
   local ipv4=""
 
   [[ "${vpn_provider}" == auto || "${vpn_provider}" == mullvad ]] || return 0
-  provider_have_command mullvad || return 0
+  quickshell_provider_have_command mullvad || return 0
 
   has_vpn_client=true
   if ! mullvad_status="$(mullvad_status)"; then
@@ -131,24 +131,23 @@ handle_missing_mullvad_provider() {
 # allows it; without it the tooltip falls back to the interface name alone.
 vpn_mark_connected() {
   local label="$1"
-  local gip_data=""
+  local ipinfo_json=""
 
   has_vpn_client=true
   vpn_state="connected"
-  if [[ "${allow_auto_geolocation}" == true ]] && provider_have_command curl; then
-    gip_data="$(fetch_ipinfo)"
+  if [[ "${allow_auto_geolocation}" == true ]] && quickshell_provider_have_command curl; then
+    ipinfo_json="$(fetch_ipinfo)"
   fi
-  if [[ -n "${gip_data}" ]]; then
-    vpn_info="$(render_geolocated_info "${label}" "${gip_data}")"
+  if [[ -n "${ipinfo_json}" ]]; then
+    vpn_info="$(render_geolocated_info "${label}" "${ipinfo_json}")"
   else
     vpn_info="$(render_basic_info "${label}")"
   fi
 }
 
-check_wireguard() {
+update_vpn_state_from_wireguard() {
   local iface_glob=""
   local iface=""
-  local gip_data=""
 
   [[ "${vpn_state}" != "connected" && "${vpn_state}" != "connecting" ]] || return 0
   [[ "${vpn_provider}" == auto || "${vpn_provider}" == wireguard ]] || return 0
@@ -165,9 +164,8 @@ check_wireguard() {
   shopt -u nullglob
 }
 
-check_openvpn() {
+update_vpn_state_from_openvpn() {
   local iface_name=""
-  local gip_data=""
 
   [[ "${vpn_state}" != "connected" && "${vpn_state}" != "connecting" ]] || return 0
   [[ "${vpn_provider}" == auto || "${vpn_provider}" == openvpn ]] || return 0
@@ -197,10 +195,10 @@ emit_vpn_state() {
 
 # Keep the last state only for optional Mullvad auto-reconnect. Mullvad owns its
 # notifications; custom action notifications belong to NetworkManager.
-check_health_transition() {
+record_vpn_state_and_reconnect_if_needed() {
   local runtime_dir="${HYPR_RUNTIME_DIR:-}"
   local state_file=""
-  local prev_state=""
+  local previous_state=""
 
   if [[ -z "${runtime_dir}" ]]; then
     if [[ -n "${XDG_RUNTIME_DIR:-}" ]]; then
@@ -213,13 +211,13 @@ check_health_transition() {
   [[ -w "${runtime_dir}" ]] || return 0
   state_file="${runtime_dir}/quickshell-vpn-last"
 
-  [[ -f "${state_file}" ]] && prev_state="$(<"${state_file}")"
+  [[ -f "${state_file}" ]] && previous_state="$(<"${state_file}")"
   printf '%s\n' "${vpn_state}" >"${state_file}" || true
 
-  case "${prev_state}:${vpn_state}" in
+  case "${previous_state}:${vpn_state}" in
     connected:disconnected | connected:error | connected:none)
       if vpn_env_flag "${QUICKSHELL_VPN_AUTO_RECONNECT:-false}" \
-        && provider_have_command mullvad; then
+        && quickshell_provider_have_command mullvad; then
         mullvad connect >/dev/null 2>&1 || true
       fi
       ;;
@@ -233,9 +231,9 @@ esac
 require_jq
 load_ipinfo_token
 enable_geolocation_if_allowed
-check_mullvad
+update_vpn_state_from_mullvad
 handle_missing_mullvad_provider
-check_wireguard
-check_openvpn
-check_health_transition
+update_vpn_state_from_wireguard
+update_vpn_state_from_openvpn
+record_vpn_state_and_reconnect_if_needed
 emit_vpn_state

@@ -22,7 +22,7 @@ prompt_required_value() {
   printf '%s\n' "${value}"
 }
 
-resolve_icon_path() {
+download_or_resolve_icon_path() {
   local icon_ref="$1"
   local app_id="$2"
   mkdir -p "$ICON_DIR"
@@ -79,7 +79,7 @@ fi
 APP_ID="$(desktop_entry_safe_id "$APP_NAME")"
 DESKTOP_FILE="${DESKTOP_DIR}/${APP_ID}.desktop"
 LAUNCHER_PATH="${LAUNCHER_DIR}/${APP_ID}"
-ICON_PATH="$(resolve_icon_path "$ICON_REF" "$APP_ID")" || exit 1
+ICON_PATH="$(download_or_resolve_icon_path "$ICON_REF" "$APP_ID")" || exit 1
 
 build_webapp_launcher_argv || exit 1
 desktop_entry_write_exec_launcher "$LAUNCHER_PATH" "${WEBAPP_LAUNCHER_ARGV[@]}"

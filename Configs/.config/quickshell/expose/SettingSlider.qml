@@ -14,7 +14,7 @@ Item {
     signal edited(real nextValue)
     signal committed(real nextValue)
     implicitWidth: Style.space(280)
-    implicitHeight: Style.space(32)
+    implicitHeight: Style.spacing.controlHeight
     activeFocusOnTab: true
     readonly property real span: Math.max(0.000001, to - from)
     readonly property real normalizedValue: Math.max(0, Math.min(1, (value - from) / span))
@@ -66,7 +66,7 @@ Item {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
-                height: Math.max(1, Style.normalBorderWidth)
+                height: Style.space(2)
                 color: Color.menu.border
             }
 
@@ -74,22 +74,24 @@ Item {
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
                 width: parent.width * settingSlider.normalizedValue
-                height: Math.max(2, Style.focusBorderWidth)
+                height: Style.space(3)
                 color: Color.accent
             }
 
-            Rectangle {
+            ThemedControl {
                 id: sliderHandle
                 width: Style.space(12)
                 height: width
                 x: Math.round((parent.width - width) * settingSlider.normalizedValue)
                 anchors.verticalCenter: parent.verticalCenter
-                color: Color.accent
-                border.color: Color.background
-                border.width: Math.max(1, Style.normalBorderWidth)
+                focused: settingSlider.activeFocus
+                hovered: sliderMouse.containsMouse
+                pressed: sliderMouse.pressed
+                color: stateColor
             }
 
             MouseArea {
+                id: sliderMouse
                 anchors.fill: parent
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
@@ -112,7 +114,7 @@ Item {
             horizontalAlignment: Text.AlignRight
             text: Math.round(settingSlider.value) + settingSlider.suffix
             textFormat: Text.PlainText
-            color: settingSlider.activeFocus ? Color.accent : Color.menu.text
+            color: sliderHandle.stateColor
             font.family: Style.font.menuFamily
             font.pixelSize: Style.font.caption
             font.bold: settingSlider.activeFocus

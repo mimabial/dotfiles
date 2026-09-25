@@ -108,13 +108,13 @@ is_cache_valid() {
   [ "$time_diff" -lt "$EXPIRY_TIME" ] && [ -s "$WEATHER_CACHE" ]
 }
 
-read_location_cache() {
+update_location_from_cache() {
   [[ -f "$LOCATION_CACHE" ]] || return 0
   country=$(grep "^COUNTRY=" "$LOCATION_CACHE" 2>/dev/null | cut -d'=' -f2-)
   city=$(grep "^CITY=" "$LOCATION_CACHE" 2>/dev/null | cut -d'=' -f2-)
 }
 
-resolve_weather_location() {
+update_weather_location_from_config_cache_or_lookup() {
   local rc=0
 
   if [ -n "${WEATHER_LOCATION:-}" ]; then
@@ -132,12 +132,12 @@ resolve_weather_location() {
   fi
 
   if [ -z "$location" ]; then
-    read_location_cache
+    update_location_from_cache
     [ -n "$city" ] && location="$city"
   fi
 
   if [ -z "$location" ] && env_flag "${WEATHER_ALLOW_AUTO_GEOLOCATION:-false}"; then
-    load_geolocated_location
+    fetch_and_set_geolocated_location
   fi
 
   if [ -n "$location" ]; then
@@ -150,7 +150,7 @@ resolve_weather_location() {
   fi
 }
 
-load_geolocated_location() {
+fetch_and_set_geolocated_location() {
   local ipinfo_json=""
   local IFS=$'\t'
 
@@ -168,7 +168,7 @@ fetch_weather_json() {
   curl -fsS --max-time 5 "https://wttr.in/${location}?format=j1" 2>/dev/null
 }
 
-format_temperature() {
+format_temperature_field() {
   if [ -n "$temp" ]; then
     if [[ "$temp" == -* || "$temp" == +* ]]; then
       temp="${temp}°C"
@@ -178,7 +178,7 @@ format_temperature() {
   fi
 }
 
-parse_json_weather() {
+update_weather_fields_from_json() {
   local weather_json="$1"
   local parsed_city="" parsed_country=""
   local IFS=$'\t'
@@ -198,23 +198,23 @@ parse_json_weather() {
   if [ -z "$country" ]; then
     country="${parsed_country}"
   fi
-  format_temperature
+  format_temperature_field
 }
 
-parse_simple_weather() {
+fetch_weather_fields_from_simple_response() {
   local weather=""
   weather=$(curl -fsS --max-time 5 "https://wttr.in/${location}?format=%c|%C|%f" 2>/dev/null)
   IFS='|' read -r code desc temp <<<"$weather"
 }
 
-fetch_weather_data() {
+update_weather_fields() {
   local weather_json=""
 
   weather_json="$(fetch_weather_json)"
   if command -v jq >/dev/null 2>&1 && [ -n "$weather_json" ]; then
-    parse_json_weather "$weather_json"
+    update_weather_fields_from_json "$weather_json"
   else
-    parse_simple_weather
+    fetch_weather_fields_from_simple_response
   fi
   icon=$(get_nerd_icon "$code")
 }
@@ -237,8 +237,8 @@ EOF
 }
 
 refresh_cache() {
-  resolve_weather_location
-  fetch_weather_data
+  update_weather_location_from_config_cache_or_lookup
+  update_weather_fields
 
   if [ -z "$code" ] || [ -z "$desc" ] || [ -z "$temp" ]; then
     echo "Error: Failed to fetch weather data" >&2
@@ -250,7 +250,7 @@ refresh_cache() {
   write_weather_cache
 }
 
-get_var() {
+read_cached_weather_or_location_value() {
   local var="$1"
   local value=""
 
@@ -298,7 +298,7 @@ print_output() {
   fi
 
   for var in "${VARS[@]}"; do
-    output+=("$(get_var "$var")")
+    output+=("$(read_cached_weather_or_location_value "$var")")
   done
   echo "${output[*]}"
 }

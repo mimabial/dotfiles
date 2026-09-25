@@ -29,5 +29,5 @@ ScriptButton {
         repeat: true
         onTriggered: root.refresh()
     }
-    LanguagePopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed }
+    LanguagePopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed; onModuleRefreshRequested: root.refresh() }
 }

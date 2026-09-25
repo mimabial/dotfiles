@@ -656,6 +656,9 @@ class MonitorEditor(App):
     def action_show_tab(self, tab: str) -> None:
         self.switcher.current = tab
         {"layout": self.canvas, "profiles": self.profile_list, "workspaces": self.workspace_list}[tab].focus()
+        if tab == "profiles":
+            self.saved = {p["name"]: p for p in profiles.load_all()}
+            self.show_profile()
         self.tab_line.refresh()
 
     def action_next_pane(self) -> None:

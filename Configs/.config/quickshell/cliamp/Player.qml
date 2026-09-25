@@ -38,7 +38,7 @@ import "visualizers/helpers.js" as VisTheme
 
 Item {
   id: root
-  property var p  // Panel root
+  required property var controller
 
   width: parent ? parent.width : 0
   implicitHeight: hud.implicitHeight + Style.space(12)
@@ -46,14 +46,17 @@ Item {
   property bool lyricsVisible: false
   property var lyricsLines: []
   property int lyricsCurrentIdx: -1
-  property string lyricsTrack: ""
+  property string lyricsTrackKey: ""
+  property bool lyricsFollowing: true
+  property bool lyricsLoading: false
+  readonly property bool lyricsTimed: lyricsLines.some(line => line.time >= 0)
 
   property real beatDropPulse: 0.0
   property real _bassAvg: 0.0
   property double _lastDropTime: 0
   property double _lastBeatTime: 0
-  readonly property var scrubberShape: makeScrubberShape(root.p
-    ? root.p.currentUrl + "\0" + root.p.currentArtist + "\0" + root.p.currentTrack : "")
+  readonly property var scrubberShape: makeScrubberShape(root.controller
+    ? root.controller.currentUrl + "\0" + root.controller.currentArtist + "\0" + root.controller.currentTrack : "")
 
   function makeScrubberShape(key) {
     var seed = 2166136261, values = [], level = 0.5
@@ -72,8 +75,8 @@ Item {
   readonly property real _pulseTau: 0.334
 
   function updateBeatDrop() {
-    var bands = root.p ? root.p.visBandsRaw : null
-    if (!bands || bands.length < 3 || !root.p.isPlaying) {
+    var bands = root.controller ? root.controller.visBandsRaw : null
+    if (!bands || bands.length < 3 || !root.controller.isPlaying) {
       beatDropPulse = 0.0
       _lastBeatTime = 0
       return
@@ -98,18 +101,26 @@ Item {
   }
 
   function toggleLyrics() {
-    root.p.showPane(lyricsVisible ? "" : "lyrics")
-    if (lyricsVisible && (lyricsLines.length === 0 || lyricsTrack !== root.p.currentTrack)) {
+    const opening = !lyricsVisible
+    if (opening) lyricsFollowing = true
+    root.controller.showPane(opening ? "lyrics" : "")
+    if (opening && (lyricsLines.length === 0 || lyricsTrackKey !== lyricsKey())) {
       fetchLyrics()
     }
   }
 
-  function fetchLyrics() {
+  function lyricsKey() {
+    return root.controller.currentTrack + "\0" + root.controller.currentArtist + "\0" + root.controller.currentUrl
+  }
+
+  function fetchLyrics(refresh) {
     lyricsLines = []
     lyricsCurrentIdx = -1
-    lyricsTrack = root.p.currentTrack
+    lyricsTrackKey = lyricsKey()
+    lyricsFollowing = true
+    lyricsLoading = true
     lyricsProc.running = false
-    lyricsProc.command = ["python3", Qt.resolvedUrl("cliamp_ctl.py").toString().replace("file://", ""), "lyrics", root.p.currentTrack, root.p.currentArtist, root.p.currentUrl]
+    lyricsProc.command = ["python3", Qt.resolvedUrl("cliamp_ctl.py").toString().replace("file://", ""), "lyrics", root.controller.currentTrack, root.controller.currentArtist, root.controller.currentUrl].concat(refresh ? ["--refresh"] : [])
     lyricsProc.running = true
   }
 
@@ -146,22 +157,19 @@ Item {
     }
     lines.sort(function(a, b) { return a.time - b.time })
     lyricsLines = lines
-    updateLyricsPosition(root.p.curSecs)
+    updateLyricsPosition(root.controller.curSecs)
   }
 
   function updateLyricsPosition(sec) {
     if (!lyricsVisible || !lyricsLines || !lyricsLines.length) return
-    var idx = -1
-    for (var i = 0; i < lyricsLines.length; i++) {
-      if (lyricsLines[i].time >= 0 && lyricsLines[i].time <= (sec + 0.10)) {
-        idx = i
-      } else if (lyricsLines[i].time > (sec + 0.10)) {
-        break
-      }
+    var low = 0, high = lyricsLines.length
+    const time = sec - root.controller.shell.store.lyricsDelayTenths / 10 + 0.10
+    while (low < high) {
+      const middle = (low + high) >> 1
+      if (lyricsLines[middle].time <= time) low = middle + 1
+      else high = middle
     }
-    if (idx !== lyricsCurrentIdx) {
-      lyricsCurrentIdx = idx
-    }
+    lyricsCurrentIdx = low > 0 && lyricsLines[low - 1].time >= 0 ? low - 1 : -1
   }
 
   readonly property var _renderers: ({
@@ -206,17 +214,17 @@ Item {
   // dim is foreground at 55% alpha, and helpers.js reads RGB only. Flatten it against
   // the surface here or dim and foreground reach the visualizers as the same colour,
   // which collapses specColor's ramp into a palindrome.
-  readonly property color visDim: root.p ? Qt.rgba(
-    root.p.surface.r + (root.p.dim.r - root.p.surface.r) * root.p.dim.a,
-    root.p.surface.g + (root.p.dim.g - root.p.surface.g) * root.p.dim.a,
-    root.p.surface.b + (root.p.dim.b - root.p.surface.b) * root.p.dim.a, 1.0) : "#808080"
+  readonly property color visDim: root.controller ? Qt.rgba(
+    root.controller.surface.r + (root.controller.dim.r - root.controller.surface.r) * root.controller.dim.a,
+    root.controller.surface.g + (root.controller.dim.g - root.controller.surface.g) * root.controller.dim.a,
+    root.controller.surface.b + (root.controller.dim.b - root.controller.surface.b) * root.controller.dim.a, 1.0) : "#808080"
 
   // The theme's own 16 terminal colours. Real designer-picked hues beat anything
   // synthesised from the accent, and they retrack the palette like every other role.
   readonly property var visColors: {
-    if (!root.p) return []
+    if (!root.controller) return []
     var out = []
-    for (var i = 0; i < 16; i++) out.push(root.p.shell.role("c" + i, root.p.dynamicAccent))
+    for (var i = 0; i < 16; i++) out.push(root.controller.shell.role("c" + i, root.controller.dynamicAccent))
     return out
   }
 
@@ -232,17 +240,17 @@ Item {
   function visPayload(w, h) {
     var count = 24, gap = 3
     return {
-      bands: root.p.visBands, bandsDb: root.p.visBandsDb, bandEdges: root.p.visBandEdges,
-      rawBands: root.p.visBandsRaw, bandsStereo: root.p.visBandsStereo,
-      wave: root.p.visWave, waveStereo: root.p.visWaveStereo, stereo: root.p.visStereo,
-      analysis: root.p.visAnalysis, frame: root.p.visFrame,
-      playing: root.p.isPlaying, width: w, height: h, S: 2,
+      bands: root.controller.visBands, bandsDb: root.controller.visBandsDb, bandEdges: root.controller.visBandEdges,
+      rawBands: root.controller.visBandsRaw, bandsStereo: root.controller.visBandsStereo,
+      wave: root.controller.visWave, waveStereo: root.controller.visWaveStereo, stereo: root.controller.visStereo,
+      analysis: root.controller.visAnalysis, frame: root.controller.visFrame,
+      playing: root.controller.isPlaying, width: w, height: h, S: 2,
       count: count, barW: Math.floor((w - (count - 1) * gap) / count), gap: gap,
-      accent: root.p.dynamicAccent, foreground: root.p.foreground, success: root.p.success, dim: root.visDim,
-      surface: root.p.surface, colors: root.visColors,
-      beatDrop: root.beatDropPulse, backgroundPulse: root.p.visBackgroundPulse,
-      progress: root.p.progress,
-      state: root.p._visState
+      accent: root.controller.dynamicAccent, foreground: root.controller.foreground, success: root.controller.success, dim: root.visDim,
+      surface: root.controller.surface, colors: root.visColors,
+      beatDrop: root.beatDropPulse, backgroundPulse: root.controller.visBackgroundPulse,
+      progress: root.controller.progress,
+      state: root.controller._visState
     }
   }
 
@@ -275,23 +283,23 @@ Item {
 
             Rectangle {
               width: Style.space(6); height: Style.space(6); radius: width / 2
-              color: root.p.isPlaying ? root.p.success : (root.p.isRunning ? root.p.warning : root.p.urgent)
+              color: root.controller.isPlaying ? root.controller.success : (root.controller.isRunning ? root.controller.warning : root.controller.urgent)
               anchors.verticalCenter: parent.verticalCenter
             }
 
             Text {
               text: "CLIAMP"
               color: Color.accent
-              font.family: root.p.fontFamily; font.pixelSize: Style.font.caption
+              font.family: root.controller.fontFamily; font.pixelSize: Style.font.caption
               font.bold: true; font.letterSpacing: 1
             }
           }
 
           Text {
             anchors.verticalCenter: parent.verticalCenter
-            text: root.p.timeCurrent + " / " + root.p.timeTotal
-            color: root.p.isPlaying ? root.p.success : root.p.dim
-            font.family: root.p.fontFamily; font.pixelSize: Style.font.caption; font.bold: true
+            text: root.controller.timeCurrent + " / " + root.controller.timeTotal
+            color: root.controller.isPlaying ? root.controller.success : root.controller.dim
+            font.family: root.controller.fontFamily; font.pixelSize: Style.font.caption; font.bold: true
           }
         }
 
@@ -299,8 +307,8 @@ Item {
           id: lyricsIcon
           anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
           text: "\uf10d"
-          color: root.lyricsVisible ? Color.accent : (lyricsMouse.containsMouse ? Color.accent : root.p.dim)
-          font.family: root.p.fontFamily; font.pixelSize: Style.font.caption
+          color: root.lyricsVisible ? Color.accent : (lyricsMouse.containsMouse ? Color.accent : root.controller.dim)
+          font.family: root.controller.fontFamily; font.pixelSize: Style.font.caption
           MouseArea {
             id: lyricsMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
             onClicked: root.toggleLyrics()
@@ -310,7 +318,7 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.bottom: parent.top; anchors.bottomMargin: Style.space(2)
             text: "Lyrics"; color: Color.accent
-            font.family: root.p.fontFamily; font.pixelSize: Style.font.caption * 0.7
+            font.family: root.controller.fontFamily; font.pixelSize: Style.font.caption * 0.7
           }
         }
 
@@ -318,19 +326,19 @@ Item {
           id: speedIcon
           anchors.right: lyricsIcon.left; anchors.rightMargin: Style.space(6)
           anchors.verticalCenter: parent.verticalCenter
-          text: root.p.playbackSpeed !== 1.0 ? root.p.playbackSpeed + "x" : "\uf04e"
-          color: root.p.playbackSpeed !== 1.0 ? Color.accent : (speedMouse.containsMouse ? Color.accent : root.p.dim)
-          font.family: root.p.fontFamily; font.pixelSize: Style.font.caption * 0.8; font.bold: root.p.playbackSpeed !== 1.0
+          text: root.controller.playbackSpeed !== 1.0 ? root.controller.playbackSpeed + "x" : "\uf04e"
+          color: root.controller.playbackSpeed !== 1.0 ? Color.accent : (speedMouse.containsMouse ? Color.accent : root.controller.dim)
+          font.family: root.controller.fontFamily; font.pixelSize: Style.font.caption * 0.8; font.bold: root.controller.playbackSpeed !== 1.0
           MouseArea {
             id: speedMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-            onClicked: root.p.cycleSpeed()
+            onClicked: root.controller.cycleSpeed()
           }
           Text {
             visible: speedMouse.containsMouse; z: 9999
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.bottom: parent.top; anchors.bottomMargin: Style.space(2)
             text: "Speed"; color: Color.accent
-            font.family: root.p.fontFamily; font.pixelSize: Style.font.caption * 0.7
+            font.family: root.controller.fontFamily; font.pixelSize: Style.font.caption * 0.7
           }
         }
 
@@ -338,19 +346,19 @@ Item {
           id: eqIcon
           anchors.right: speedIcon.left; anchors.rightMargin: Style.space(6)
           anchors.verticalCenter: parent.verticalCenter
-          text: (root.p.eqText && root.p.eqText !== "Flat") ? root.p.eqText : "EQ"
-          color: (root.p.eqText && root.p.eqText !== "Flat") || root.p.eqPickerOpen ? Color.accent : (eqMouse.containsMouse ? Color.accent : root.p.dim)
-          font.family: root.p.fontFamily; font.pixelSize: Style.font.caption * 0.8; font.bold: (root.p.eqText && root.p.eqText !== "Flat") || root.p.eqPickerOpen
+          text: (root.controller.eqText && root.controller.eqText !== "Flat") ? root.controller.eqText : "EQ"
+          color: (root.controller.eqText && root.controller.eqText !== "Flat") || root.controller.eqPickerOpen ? Color.accent : (eqMouse.containsMouse ? Color.accent : root.controller.dim)
+          font.family: root.controller.fontFamily; font.pixelSize: Style.font.caption * 0.8; font.bold: (root.controller.eqText && root.controller.eqText !== "Flat") || root.controller.eqPickerOpen
           MouseArea {
             id: eqMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-            onClicked: root.p.showPane(root.p.eqPickerOpen ? "" : "eq")
+            onClicked: root.controller.showPane(root.controller.eqPickerOpen ? "" : "eq")
           }
           Text {
             visible: eqMouse.containsMouse; z: 9999
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.bottom: parent.top; anchors.bottomMargin: Style.space(2)
-            text: "EQ: " + (root.p.eqText || "Flat"); color: Color.accent
-            font.family: root.p.fontFamily; font.pixelSize: Style.font.caption * 0.7
+            text: "EQ: " + (root.controller.eqText || "Flat"); color: Color.accent
+            font.family: root.controller.fontFamily; font.pixelSize: Style.font.caption * 0.7
           }
         }
       }
@@ -362,24 +370,24 @@ Item {
         BorderSurface {
           width: Style.space(36); height: Style.space(36)
           radius: Style.cornerRadius
-          color: root.p.surface
-          borderSpec: Border.flat(root.p.isPlaying ? root.p.shell.alpha(root.p.dynamicAccent, 0.5) : root.p.shell.alpha(root.p.shell.role("br", root.p.foreground), 0.25), 1)
+          color: root.controller.surface
+          borderSpec: Border.flat(root.controller.isPlaying ? root.controller.shell.alpha(root.controller.dynamicAccent, 0.5) : root.controller.shell.alpha(root.controller.shell.role("br", root.controller.foreground), 0.25), 1)
           anchors.verticalCenter: parent.verticalCenter
 
           Image {
             anchors.fill: parent; anchors.margins: 1
-            visible: root.p.artPath !== ""
-            source: root.p.artSource(root.p.artPath)
+            visible: root.controller.artPath !== ""
+            source: root.controller.artSource(root.controller.artPath)
             fillMode: Image.PreserveAspectCrop
             sourceSize.width: 72; sourceSize.height: 72
           }
 
           Text {
             anchors.centerIn: parent
-            visible: root.p.artPath === ""
+            visible: root.controller.artPath === ""
             text: "\uf001"
-            color: root.p.dynamicAccent
-            font.family: root.p.fontFamily; font.pixelSize: Style.font.caption
+            color: root.controller.dynamicAccent
+            font.family: root.controller.fontFamily; font.pixelSize: Style.font.caption
           }
         }
 
@@ -395,8 +403,8 @@ Item {
             clip: true
 
             readonly property string fullTitle: {
-              if (!root.p.isRunning) return "Daemon idle — click play to start"
-              return root.p.currentTrack || "No track loaded"
+              if (!root.controller.isRunning) return "Daemon idle — click play to start"
+              return root.controller.currentTrack || "No track loaded"
             }
 
             Item {
@@ -408,7 +416,7 @@ Item {
               readonly property real loopDistance: titleText1.implicitWidth + Style.space(40)
 
               NumberAnimation on x {
-                running: titleScroller.needsScroll && root.p.isPlaying
+                running: titleScroller.needsScroll && root.controller.isPlaying
                 loops: Animation.Infinite
                 from: 0
                 to: -titleScroller.loopDistance
@@ -422,8 +430,8 @@ Item {
                   id: titleText1
                   textFormat: Text.PlainText
                   text: titleClip.fullTitle
-                  color: root.p.isPlaying ? root.p.dynamicAccent : root.p.foreground
-                  font.family: root.p.fontFamily; font.pixelSize: Style.font.bodySmall
+                  color: root.controller.isPlaying ? root.controller.dynamicAccent : root.controller.foreground
+                  font.family: root.controller.fontFamily; font.pixelSize: Style.font.bodySmall
                   font.bold: true
                 }
 
@@ -432,8 +440,8 @@ Item {
                   visible: titleScroller.needsScroll
                   textFormat: Text.PlainText
                   text: titleClip.fullTitle
-                  color: root.p.isPlaying ? root.p.dynamicAccent : root.p.foreground
-                  font.family: root.p.fontFamily; font.pixelSize: Style.font.bodySmall
+                  color: root.controller.isPlaying ? root.controller.dynamicAccent : root.controller.foreground
+                  font.family: root.controller.fontFamily; font.pixelSize: Style.font.bodySmall
                   font.bold: true
                 }
               }
@@ -457,7 +465,7 @@ Item {
               readonly property real loopDistance: artistText1.implicitWidth + Style.space(40)
 
               NumberAnimation on x {
-                running: artistScroller.needsScroll && root.p.isPlaying
+                running: artistScroller.needsScroll && root.controller.isPlaying
                 loops: Animation.Infinite
                 from: 0
                 to: -artistScroller.loopDistance
@@ -470,18 +478,18 @@ Item {
                 Text {
                   id: artistText1
                   textFormat: Text.PlainText
-                  text: root.p ? root.p.currentArtist : ""
-                  color: root.p.dim
-                  font.family: root.p.fontFamily; font.pixelSize: Style.font.caption
+                  text: root.controller ? root.controller.currentArtist : ""
+                  color: root.controller.dim
+                  font.family: root.controller.fontFamily; font.pixelSize: Style.font.caption
                 }
 
                 Text {
                   id: artistText2
                   visible: artistScroller.needsScroll
                   textFormat: Text.PlainText
-                  text: root.p ? root.p.currentArtist : ""
-                  color: root.p.dim
-                  font.family: root.p.fontFamily; font.pixelSize: Style.font.caption
+                  text: root.controller ? root.controller.currentArtist : ""
+                  color: root.controller.dim
+                  font.family: root.controller.fontFamily; font.pixelSize: Style.font.caption
                 }
               }
 
@@ -496,15 +504,15 @@ Item {
         height: Style.space(52)
         radius: Style.cornerRadius
         clip: true
-        color: root.p.surface
-        borderSpec: Border.flat(root.p.isPlaying ? root.p.shell.alpha(root.p.dynamicAccent, 0.7) : root.p.shell.alpha(root.p.shell.role("br", root.p.foreground), 0.3), 1)
+        color: root.controller.surface
+        borderSpec: Border.flat(root.controller.isPlaying ? root.controller.shell.alpha(root.controller.dynamicAccent, 0.7) : root.controller.shell.alpha(root.controller.shell.role("br", root.controller.foreground), 0.3), 1)
 
         Canvas {
           id: nebulaCanvas
           anchors.fill: parent
           anchors.margins: Style.space(3)
           z: 3
-          visible: root.p.visBackground
+          visible: root.controller.visBackground
           opacity: root.nebulaOpacity
 
           onVisibleChanged: if (visible) requestPaint()
@@ -523,7 +531,7 @@ Item {
           z: 4
 
           Connections {
-            target: root.p
+            target: root.controller
             function onDynamicAccentChanged() { root.requestPaint() }
             function onForegroundChanged() { visCanvas.requestPaint() }
             function onSuccessChanged() { root.requestPaint() }
@@ -531,8 +539,8 @@ Item {
             function onSurfaceChanged() { root.requestPaint() }
             function onVisBackgroundPulseChanged() { root.requestPaint() }
             function onVisModeChanged() {
-              var hook = root._enterHooks[root.p.visMode]
-              if (hook) hook(root.p._visState)
+              var hook = root._enterHooks[root.controller.visMode]
+              if (hook) hook(root.controller._visState)
               visCanvas.requestPaint()
             }
           }
@@ -544,7 +552,7 @@ Item {
             ctx.clearRect(0, 0, w, h)
 
             var payload = root.visPayload(w, h)
-            var fn = root._renderers[root.p.visMode]
+            var fn = root._renderers[root.controller.visMode]
             if (fn) fn(ctx, payload)
           }
         }
@@ -555,10 +563,10 @@ Item {
           acceptedButtons: Qt.LeftButton | Qt.RightButton
           onClicked: function(mouse) {
             if (mouse.button === Qt.RightButton) {
-              root.p.showPane(root.p.visPickerOpen ? "" : "vis")
+              root.controller.showPane(root.controller.visPickerOpen ? "" : "vis")
             } else {
-              var idx = root.p.visModes.indexOf(root.p.visMode)
-              root.p.setVisMode(root.p.visModes[(idx + 1) % root.p.visModes.length])
+              var idx = root.controller.visModes.indexOf(root.controller.visMode)
+              root.controller.setVisMode(root.controller.visModes[(idx + 1) % root.controller.visModes.length])
             }
           }
         }
@@ -568,21 +576,21 @@ Item {
           anchors.margins: Style.space(3)
           width: modeText.implicitWidth + Style.space(10); height: Style.space(16)
           radius: Style.cornerRadius
-          color: root.p.visPickerOpen ? Color.menu.selectedBackground
-            : (modeMouse.containsMouse ? root.p.shell.hoverFill(1) : root.p.shell.alpha(root.p.surface, 0.75))
+          color: root.controller.visPickerOpen ? Color.menu.selectedBackground
+            : (modeMouse.containsMouse ? root.controller.shell.hoverFill(1) : root.controller.shell.alpha(root.controller.surface, 0.75))
 
           Text {
             id: modeText
             anchors.centerIn: parent
-            text: (root._modeLabels[root.p.visMode] || root.p.visMode) + " ▾"
-            color: root.p.visPickerOpen ? Color.menu.selectedText
-              : (modeMouse.containsMouse ? root.p.shell.role("hvr_fg", Color.accent) : root.p.shell.alpha(root.p.foreground, 0.8))
-            font.family: root.p.fontFamily; font.pixelSize: Style.font.caption * 0.75; font.bold: true
+            text: (root._modeLabels[root.controller.visMode] || root.controller.visMode) + " ▾"
+            color: root.controller.visPickerOpen ? Color.menu.selectedText
+              : (modeMouse.containsMouse ? root.controller.shell.role("hvr_fg", Color.accent) : root.controller.shell.alpha(root.controller.foreground, 0.8))
+            font.family: root.controller.fontFamily; font.pixelSize: Style.font.caption * 0.75; font.bold: true
           }
 
           MouseArea {
             id: modeMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-            onClicked: root.p.showPane(root.p.visPickerOpen ? "" : "vis")
+            onClicked: root.controller.showPane(root.controller.visPickerOpen ? "" : "vis")
           }
         }
       }
@@ -598,12 +606,12 @@ Item {
           anchors.fill: parent
           anchors.margins: Style.space(1)
           property var shape: root.scrubberShape
-          property bool randomShape: !!(root.p && root.p.randomizeProgressShape)
+          property bool randomShape: !!(root.controller && root.controller.randomizeProgressShape)
           onShapeChanged: requestPaint()
           onRandomShapeChanged: requestPaint()
 
           Connections {
-            target: root.p
+            target: root.controller
             function onProgressChanged() { waveScrubberCanvas.requestPaint() }
             function onDynamicAccentChanged() { waveScrubberCanvas.requestPaint() }
           }
@@ -617,7 +625,7 @@ Item {
             var totalW = count * barW + (count - 1) * gap
             var startX = Math.floor((width - totalW) / 2)
             var midY = height / 2.0
-            var playX = width * root.p.progress
+            var playX = width * root.controller.progress
 
             for (var i = 0; i < count; i++) {
               var bx = startX + i * (barW + gap)
@@ -629,12 +637,12 @@ Item {
 
               if (isPlayed) {
                 var grad = ctx.createLinearGradient(0, by, 0, by + barH)
-                grad.addColorStop(0, VisTheme.rgba(root.p.foreground, 0.95))
-                grad.addColorStop(0.4, VisTheme.rgba(root.p.dynamicAccent, 0.95))
-                grad.addColorStop(1, VisTheme.mixColor(root.p.dynamicAccent, root.p.surface, 0.3, 0.8))
+                grad.addColorStop(0, VisTheme.rgba(root.controller.foreground, 0.95))
+                grad.addColorStop(0.4, VisTheme.rgba(root.controller.dynamicAccent, 0.95))
+                grad.addColorStop(1, VisTheme.mixColor(root.controller.dynamicAccent, root.controller.surface, 0.3, 0.8))
                 ctx.fillStyle = grad
               } else {
-                ctx.fillStyle = VisTheme.rgba(root.p.foreground, 0.18)
+                ctx.fillStyle = VisTheme.rgba(root.controller.foreground, 0.18)
               }
 
               ctx.beginPath()
@@ -642,9 +650,9 @@ Item {
               ctx.fill()
             }
 
-            if (root.p.totalSecs > 0) {
+            if (root.controller.totalSecs > 0) {
               var curX = Math.max(1, Math.min(width - 1, playX))
-              ctx.fillStyle = VisTheme.rgba(root.p.foreground, 1)
+              ctx.fillStyle = VisTheme.rgba(root.controller.foreground, 1)
               ctx.beginPath()
               ctx.rect(curX - 1, 0, 2, height)
               ctx.fill()
@@ -653,19 +661,19 @@ Item {
         }
 
         Text {
-          visible: seekBar.hoverSecs >= 0 && root.p.totalSecs > 0
+          visible: seekBar.hoverSecs >= 0 && root.controller.totalSecs > 0
           text: {
             var s = seekBar.hoverSecs
             var m = Math.floor(s / 60), sec = s % 60
             return m + ":" + (sec < 10 ? "0" + sec : sec)
           }
-          color: root.p.foreground; font.family: root.p.fontFamily; font.pixelSize: Style.font.caption; font.bold: true
+          color: root.controller.foreground; font.family: root.controller.fontFamily; font.pixelSize: Style.font.caption; font.bold: true
           x: Math.max(0, Math.min(parent.width - width, seekMouse.mouseX - width / 2))
           y: -height - 4
 
           Rectangle {
             z: -1; anchors.fill: parent; anchors.margins: -2
-            radius: Style.space(2); color: root.p.surface
+            radius: Style.space(2); color: root.controller.surface
             border.color: Color.accent; border.width: 1
           }
         }
@@ -674,12 +682,12 @@ Item {
           id: seekMouse
           anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
           onPositionChanged: function(mouse) {
-            if (root.p.totalSecs > 0) seekBar.hoverSecs = Math.floor((mouse.x / width) * root.p.totalSecs)
-            if (pressed && root.p.totalSecs > 0) root.p.seekTo(Math.floor((mouse.x / width) * root.p.totalSecs))
+            if (root.controller.totalSecs > 0) seekBar.hoverSecs = Math.floor((mouse.x / width) * root.controller.totalSecs)
+            if (pressed && root.controller.totalSecs > 0) root.controller.seekTo(Math.floor((mouse.x / width) * root.controller.totalSecs))
           }
           onExited: seekBar.hoverSecs = -1
           onClicked: function(mouse) {
-            if (root.p.totalSecs > 0) root.p.seekTo(Math.floor((mouse.x / width) * root.p.totalSecs))
+            if (root.controller.totalSecs > 0) root.controller.seekTo(Math.floor((mouse.x / width) * root.controller.totalSecs))
           }
         }
       }
@@ -689,10 +697,10 @@ Item {
 
   Process {
     id: lyricsProc
-    command: ["python3", Qt.resolvedUrl("cliamp_ctl.py").toString().replace("file://", ""), "lyrics", root.p.currentTrack, root.p.currentArtist]
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
+        root.lyricsLoading = false
         try {
           var d = JSON.parse(text || "{}")
           if (d.synced) root.parseLyrics(d.synced)

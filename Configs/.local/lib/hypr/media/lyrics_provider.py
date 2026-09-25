@@ -95,7 +95,7 @@ def _choose_plain_candidate(
     if not plain_candidates:
         return None
 
-    source_priority = {name: idx for idx, (name, _) in enumerate(ordered_sources)}
+    source_priority = {name: index for index, (name, _) in enumerate(ordered_sources)}
     sorted_candidates = sorted(
         plain_candidates,
         key=lambda item: source_priority.get(str(item.get("source", "")), 999),
@@ -210,12 +210,12 @@ def fetch_lyrics(
         print("  [cache] Recent complete miss; skipping providers", file=sys.stderr)
         return None
 
-    def found(result: ProviderResult) -> str:
+    def record_lyrics_found(result: ProviderResult) -> str:
         if cache is not None:
             cache.discard(cache_key)
         return str(result["lyrics"])
 
-    def missed() -> None:
+    def record_lyrics_miss() -> None:
         if cache is not None:
             cache.put(cache_key)
 
@@ -247,7 +247,7 @@ def fetch_lyrics(
     ]
     provider_order = synced_providers + plain_providers
 
-    fetch_fn = _fetch_parallel if parallel_mode else _fetch_sequential
+    fetch_from_providers = _fetch_parallel if parallel_mode else _fetch_sequential
     mode_name = "parallel" if parallel_mode else "sequential"
     print(
         f"  [multi] mode={mode_name} prefer_synced={str(prefer_synced).lower()} "
@@ -256,21 +256,21 @@ def fetch_lyrics(
     )
 
     if synced_only:
-        synced_result, _ = fetch_fn(
+        synced_result, _ = fetch_from_providers(
             synced_providers, artist, title, album, require_synced=True
         )
         if synced_result:
-            return found(synced_result)
+            return record_lyrics_found(synced_result)
 
-        missed()
+        record_lyrics_miss()
         return None
 
     if prefer_synced:
-        synced_result, plain_candidates = fetch_fn(
+        synced_result, plain_candidates = fetch_from_providers(
             synced_providers, artist, title, album, require_synced=True
         )
         if synced_result:
-            return found(synced_result)
+            return record_lyrics_found(synced_result)
 
         plain_result = _choose_plain_candidate(plain_candidates, provider_order)
         if plain_result:
@@ -278,22 +278,22 @@ def fetch_lyrics(
                 f"  [{plain_result['source']}] Using plain lyrics fallback after synced search",
                 file=sys.stderr,
             )
-            return found(plain_result)
+            return record_lyrics_found(plain_result)
 
-        plain_direct_result, _ = fetch_fn(
+        plain_direct_result, _ = fetch_from_providers(
             plain_providers, artist, title, album, require_synced=False
         )
         if plain_direct_result:
-            return found(plain_direct_result)
+            return record_lyrics_found(plain_direct_result)
 
-        missed()
+        record_lyrics_miss()
         return None
 
-    first_result, _ = fetch_fn(
+    first_result, _ = fetch_from_providers(
         provider_order, artist, title, album, require_synced=False
     )
     if first_result:
-        return found(first_result)
+        return record_lyrics_found(first_result)
 
-    missed()
+    record_lyrics_miss()
     return None

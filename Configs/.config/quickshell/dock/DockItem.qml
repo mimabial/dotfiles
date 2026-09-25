@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import qs.Commons
@@ -220,6 +221,7 @@ Item {
     Repeater {
       model: item.maxVisibleDots
       delegate: Rectangle {
+        required property int index
         readonly property var winObj: (item.windowList && item.windowList.length > index) ? item.windowList[index] : null
         readonly property bool winMinimized: winObj ? item.isWinMinimized(winObj) : item.minimized
         readonly property bool winActive: !winMinimized && (winObj ? item.isWinActive(winObj) : (index === 0 && item.isFocused))
@@ -474,6 +476,8 @@ Item {
         model: (item.dock.advancedTooltips && item.tooltipWindows.length > 0)
           ? Math.min(item.tooltipWindows.length, 8) : 0
         delegate: Row {
+          id: tooltipRow
+          required property int index
           spacing: Style.space(5)
           // Window rows run left, so their dots, chevrons and titles line up
           // in columns instead of each row drifting with its own length. The
@@ -488,12 +492,12 @@ Item {
             radius: width / 2
             anchors.verticalCenter: parent.verticalCenter
             // Hollow when parked, matching the running indicators under the icon.
-            color: isWinParked
+            color: tooltipRow.isWinParked
               ? "transparent"
-              : (isSelected ? Color.accent : (isWinFocused ? Color.bar.active : Util.alpha(Color.tooltip.text, 0.5)))
-            border.color: isSelected
+              : (tooltipRow.isSelected ? Color.accent : (tooltipRow.isWinFocused ? Color.bar.active : Util.alpha(Color.tooltip.text, 0.5)))
+            border.color: tooltipRow.isSelected
               ? Color.accent
-              : (isWinParked ? Util.alpha(Color.tooltip.text, 0.6) : "transparent")
+              : (tooltipRow.isWinParked ? Util.alpha(Color.tooltip.text, 0.6) : "transparent")
             border.width: 1
           }
 
@@ -510,7 +514,7 @@ Item {
               anchors.centerIn: parent
               text: "›"
               textFormat: Text.PlainText
-              opacity: isSelected ? 1 : 0
+              opacity: tooltipRow.isSelected ? 1 : 0
               font.family: Style.font.family
               font.pixelSize: Math.max(10, Style.font.caption - 1)
               color: Color.accent
@@ -519,21 +523,21 @@ Item {
 
           Text {
             text: {
-              var w = item.tooltipWindows[index]
+              var w = item.tooltipWindows[tooltipRow.index]
               var str = w ? item.dock.windowRowLabel(w) : ""
               return str.length > 32 ? str.slice(0, 30) + "…" : str
             }
             textFormat: Text.PlainText
-            color: isSelected
+            color: tooltipRow.isSelected
               ? Color.accent
-              : (isWinFocused ? Color.tooltip.text : Util.alpha(Color.tooltip.text, 0.80))
+              : (tooltipRow.isWinFocused ? Color.tooltip.text : Util.alpha(Color.tooltip.text, 0.80))
             font.family: Style.font.family
             font.pixelSize: Math.max(10, Style.font.caption - 1)
             // Selection deliberately does not bolden: bold is wider, so the
             // row would still grow under the wheel even with the chevron
             // reserved. The chevron, the accent colour and the dot already
             // mark it. Focus does bolden — that does not move while scrolling.
-            font.bold: isWinFocused
+            font.bold: tooltipRow.isWinFocused
             elide: Text.ElideRight
             maximumLineCount: 1
           }

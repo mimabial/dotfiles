@@ -7,7 +7,7 @@ def target_keys(profile: dict) -> list[str]:
     enabled = [
         o.get("key", "")
         for o in profile.get("outputs", [])
-        if o.get("enabled", True) and o.get("key")
+        if o.get("enabled", True) and not o.get("mirror_of") and o.get("key")
     ]
     order = [k for k in settings.get("monitor_order", []) if k in enabled]
     return order + [k for k in enabled if k not in order]

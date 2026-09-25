@@ -18,7 +18,7 @@ setup_rofi_config() {
   local font_name
   local logical_width logical_height
   rofi_prepare_standard_context \
-    font_scale font_name font_override r_override \
+    font_scale font_name font_override window_override \
     "${ROFI_BOXDRAW_SCALE:-}" "${ROFI_BOXDRAW_FONT:-${ROFI_FONT:-}}" wallbox same
 
   read -r logical_width logical_height <<<"$(rofi_focused_monitor_logical_size)"
@@ -94,7 +94,7 @@ get_boxdraw_selection() {
       2 | grid)
         run_args=(-i "${ROFI_BOXDRAW_ARGS[@]/-multi-select/}" -display-columns 1 \
           -theme-str "listview {columns: ${boxdraw_columns}; lines: ${boxdraw_lines}; flow: horizontal; fixed-columns: true;}" \
-          -theme-str "entry { placeholder: \" 󰇟 Box Drawing\";} ${rofi_position} ${r_override}" \
+          -theme-str "entry { placeholder: \" 󰇟 Box Drawing\";} ${rofi_position} ${window_override}" \
           -theme-str "${font_override}" \
           -theme-str "${size_override}" \
           -theme-str "${boxdraw_window_theme}" \
@@ -103,7 +103,7 @@ get_boxdraw_selection() {
         ;;
       1 | list)
         run_args=(-i "${ROFI_BOXDRAW_ARGS[@]}" \
-          -theme-str "entry { placeholder: \"  Box Drawing\";} ${rofi_position} ${r_override}" \
+          -theme-str "entry { placeholder: \"  Box Drawing\";} ${rofi_position} ${window_override}" \
           -theme-str "${font_override}" \
           -theme-str "${boxdraw_window_theme}" \
           -theme "$(rofi_resolve_theme "${ROFI_BOXDRAW_STYLE:-clipboard}")" \
@@ -111,7 +111,7 @@ get_boxdraw_selection() {
         ;;
       *)
         run_args=(-i "${ROFI_BOXDRAW_ARGS[@]}" \
-          -theme-str "entry { placeholder: \" 📐 Box Drawing\";} ${rofi_position} ${r_override}" \
+          -theme-str "entry { placeholder: \" 📐 Box Drawing\";} ${rofi_position} ${window_override}" \
           -theme-str "${font_override}" \
           -theme-str "${boxdraw_window_theme}" \
           -theme "$(rofi_resolve_theme "${style_type:-${ROFI_BOXDRAW_STYLE:-clipboard}}")" \
@@ -185,9 +185,9 @@ show_category_menu() {
       ;;
   esac
 
-  selected=$(rofi -dmenu -i -display-columns 1 \
+  selected=$(rofi_with_background_theme -dmenu -i -display-columns 1 \
     "${category_rofi_args[@]}" \
-    -theme-str "entry { placeholder: \"📂 ${category}\";} ${rofi_position} ${r_override}" \
+    -theme-str "entry { placeholder: \"📂 ${category}\";} ${rofi_position} ${window_override}" \
     -theme-str "${font_override}" \
     -theme "$(rofi_resolve_theme "${theme_name}")" \
     -no-custom <"${temp_category}")

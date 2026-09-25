@@ -293,8 +293,8 @@ def scan_projects(projects_path: Path) -> dict[str, Any]:
     entry_sessions = entry["sessions"]
     for row in entry["rows"]:
       try:
-        unique_key, day_index, model_index, session_index = row[0], row[1], row[2], row[3]
-        input_tokens, output_tokens, cache_read, cache_write = (number(value) for value in row[4:8])
+        (unique_key, day_index, model_index, session_index,
+         input_tokens, output_tokens, cache_read, cache_write) = row[:8]
         day = entry_days[day_index]
         model = entry_models[model_index]
         session_key = entry_sessions[session_index]
@@ -305,7 +305,8 @@ def scan_projects(projects_path: Path) -> dict[str, Any]:
         continue
       seen.add(unique_key)
 
-      stats.add(day, session_key, model, (input_tokens, output_tokens, cache_read, cache_write))
+      stats.add(day, session_key, model, (
+        number(input_tokens), number(output_tokens), number(cache_read), number(cache_write)))
 
   return stats.export()
 

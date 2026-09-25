@@ -23,7 +23,9 @@ Options:
 USAGE
 }
 
-hypr_service_reset_cli_state
+mode=""
+declare -a forwarded_args=() cli_args=()
+declare -A cli_options=()
 
 hypr_service_parse_mode_cli usage mode forwarded_args "$@"
 hypr_service_validate_mode "${mode}" || {
@@ -31,30 +33,28 @@ hypr_service_validate_mode "${mode}" || {
   exit 2
 }
 
-hypr_service_parse_refresh_args "${forwarded_args[@]}"
-[[ "${#hypr_service_cli_args[@]}" -eq 1 ]] || {
+hypr_service_parse_refresh_args cli_options cli_args "${forwarded_args[@]}"
+[[ "${#cli_args[@]}" -eq 1 ]] || {
   usage
   exit 2
 }
 
-rel_path="${hypr_service_cli_args[0]}"
+rel_path="${cli_args[0]}"
 hypr_service_is_safe_relpath "${rel_path}" || hypr_service_die "Invalid config path: ${rel_path}"
 
-if [[ "${mode}" == "restore" && -z "${hypr_service_cli_backup_label}" ]]; then
-  hypr_service_cli_backup_label="restore-config"
+if [[ "${mode}" == "restore" && -z "${cli_options[backup_label]}" ]]; then
+  cli_options[backup_label]="restore-config"
 fi
 
 hypr_service_init
-hypr_service_apply_cli_env
+hypr_service_apply_cli_env "${cli_options[dry_run]}" "${cli_options[backup_label]}"
 
 case "${mode}" in
   refresh)
-    hypr_service_refresh_config "${rel_path}" "${hypr_service_cli_show_diff}" "${hypr_service_cli_quiet}"
+    hypr_service_refresh_config "${rel_path}" "${cli_options[show_diff]}" "${cli_options[quiet]}"
     ;;
   restore)
-    source_path="$(hypr_service_layer_source_path config "${rel_path}")"
-    target_path="${XDG_CONFIG_HOME:-$HOME/.config}/${rel_path}"
-    hypr_service_apply_file "${source_path}" "${target_path}" "${rel_path}" overwrite always "${hypr_service_cli_show_diff}" "${hypr_service_cli_quiet}"
+    hypr_service_restore_config "${rel_path}" "${cli_options[show_diff]}" "${cli_options[quiet]}"
     ;;
 esac
 

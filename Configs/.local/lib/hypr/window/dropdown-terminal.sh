@@ -25,17 +25,17 @@ dropdown_target_size() {
 show_dropdown_window() {
   local client_json="$1"
   local workspace_name="$2"
-  local addr=""
+  local window_address=""
   local window_lua=""
   local workspace_lua=""
   local target_width=""
   local target_height=""
 
-  addr="$(jq -r '.address // empty' <<<"${client_json}")"
-  [[ -n "${addr}" ]] || return 1
+  window_address="$(jq -r '.address // empty' <<<"${client_json}")"
+  [[ -n "${window_address}" ]] || return 1
   [[ -n "${workspace_name}" ]] || return 1
   IFS=$'\t' read -r target_width target_height <<<"$(dropdown_target_size)" || return 1
-  window_lua="$(hypr_lua_quote "address:${addr}")"
+  window_lua="$(hypr_lua_quote "address:${window_address}")"
   workspace_lua="$(hypr_lua_quote "${workspace_name}")"
 
   hypr_lua_batch \
@@ -48,13 +48,13 @@ show_dropdown_window() {
 
 hide_dropdown_window() {
   local client_json="$1"
-  local addr=""
+  local window_address=""
   local window_lua=""
   local workspace_lua=""
 
-  addr="$(jq -r '.address // empty' <<<"${client_json}")"
-  [[ -n "${addr}" ]] || return 1
-  window_lua="$(hypr_lua_quote "address:${addr}")"
+  window_address="$(jq -r '.address // empty' <<<"${client_json}")"
+  [[ -n "${window_address}" ]] || return 1
+  window_lua="$(hypr_lua_quote "address:${window_address}")"
   workspace_lua="$(hypr_lua_quote "$(dropdown_workspace_name)")"
 
   hypr_lua_dispatch "hl.dsp.window.move({workspace=${workspace_lua}, window=${window_lua}, silent=true})" \

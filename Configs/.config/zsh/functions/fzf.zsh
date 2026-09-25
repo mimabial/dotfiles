@@ -236,12 +236,29 @@ _check_dependencies() {
     return 0
 }
 
+_fuzzy_help() {
+    [[ "${2:-}" == -h || "${2:-}" == '--help' ]] || return 1
+    local description depth_option=''
+    case "$1" in
+        ff) description='Find and edit a file.'; depth_option=' [-d N|--depth N]' ;;
+        fj) description='Find and enter a directory.'; depth_option=' [-d N|--depth N]' ;;
+        ft) description='Search file contents and edit a match.'; depth_option=' [-d N|--depth N]' ;;
+        fh) print -r -- 'Usage: fh [query]
+Search command history and insert the selection at the prompt.'; return 0 ;;
+    esac
+    print -r -- "Usage: $1 [-H|--home|--cwd|--here|--root DIR]$depth_option [--] [query...]
+$description"
+}
+
 _fuzzy_edit_search_content() {
+    _fuzzy_help ft "$@" && return 0
     _check_dependencies || return 1
 
     _parse_fzf_scope_args "$@" || return 1
     local search_root="$_FZF_SEARCH_ROOT"
     local initial_query="$_FZF_SEARCH_QUERY"
+    local rg_depth="${_FZF_SEARCH_DEPTH:+--max-depth $_FZF_SEARCH_DEPTH}"
+    local find_depth="${_FZF_SEARCH_DEPTH:+-maxdepth $_FZF_SEARCH_DEPTH}"
     local selected_result
     local rg_globs="$(_get_rg_globs)"
     local grep_excludes="$(_get_grep_excludes)"
@@ -269,8 +286,8 @@ _fuzzy_edit_search_content() {
                 --query "$initial_query" \
                 --prompt "$_FZF_SEARCH_PROMPT" \
                 --scrollbar "$_FZF_SCROLLBAR" \
-                --bind "start:reload(if [[ -n {q} ]]; then rg --hidden --follow --line-number --column --color=always --smart-case --max-count=30 $rg_globs $rg_symlink_globs {q} 2>/dev/null; fi || true)" \
-                --bind "change:reload(sleep 0.1; if [[ -n {q} ]]; then rg --hidden --follow --line-number --column --color=always --smart-case --max-count=30 $rg_globs $rg_symlink_globs {q} 2>/dev/null || true; fi)" \
+                --bind "start:reload(if [[ -n {q} ]]; then rg --hidden --follow --line-number --column --color=always --smart-case --max-count=30 $rg_depth $rg_globs $rg_symlink_globs {q} 2>/dev/null; fi || true)" \
+                --bind "change:reload(sleep 0.1; if [[ -n {q} ]]; then rg --hidden --follow --line-number --column --color=always --smart-case --max-count=30 $rg_depth $rg_globs $rg_symlink_globs {q} 2>/dev/null || true; fi)" \
                 --header "Dynamic Search | Enter: Edit | Ctrl-O: View"
         )
     else
@@ -289,8 +306,8 @@ _fuzzy_edit_search_content() {
                 --query "$initial_query" \
                 --prompt "$_FZF_SEARCH_PROMPT" \
                 --scrollbar "$_FZF_SCROLLBAR" \
-                --bind "start:reload(if [[ -n {q} ]]; then find -L . -type f $grep_excludes $find_symlink_excludes -exec grep -Hn --color=always {q} {} + 2>/dev/null | head -500; fi || true)" \
-                --bind "change:reload(sleep 0.1; if [[ -n {q} ]]; then find -L . -type f $grep_excludes $find_symlink_excludes -exec grep -Hn --color=always {q} {} + 2>/dev/null | head -1000 || true; fi)" \
+                --bind "start:reload(if [[ -n {q} ]]; then find -L . $find_depth -type f $grep_excludes $find_symlink_excludes -exec grep -Hn --color=always {q} {} + 2>/dev/null | head -500; fi || true)" \
+                --bind "change:reload(sleep 0.1; if [[ -n {q} ]]; then find -L . $find_depth -type f $grep_excludes $find_symlink_excludes -exec grep -Hn --color=always {q} {} + 2>/dev/null | head -1000 || true; fi)" \
                 --header "Dynamic Search | Enter: Edit | Ctrl-O: View"
         )
     fi
@@ -325,6 +342,7 @@ _fuzzy_edit_search_content() {
 }
 
 _fuzzy_change_directory() {
+    _fuzzy_help fj "$@" && return 0
     _check_dependencies || return 1
 
     _parse_fzf_scope_args "$@" || return 1
@@ -391,6 +409,7 @@ _fuzzy_change_directory() {
 }
 
 _fuzzy_edit_search_file() {
+    _fuzzy_help ff "$@" && return 0
     _check_dependencies || return 1
 
     _parse_fzf_scope_args "$@" || return 1
@@ -469,6 +488,7 @@ _fuzzy_edit_search_file() {
 }
 
 _fuzzy_search_cmd_history() {
+  _fuzzy_help fh "$@" && return 0
   _check_dependencies || return 1
   
   local selected

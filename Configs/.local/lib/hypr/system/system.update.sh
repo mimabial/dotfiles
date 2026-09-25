@@ -13,7 +13,7 @@ source "${BASH_SOURCE[0]%/*}/pm.updates.lib.sh"
 
 cache_ttl="${HYPR_UPDATE_CACHE_TTL:-21600}"
 
-hypr_help_guard "Usage: hyprshell system/system.update [up|--run-upgrade|--refresh]
+hypr_help_guard "Usage: hyprshell system/system.update [up [all|pacman|aur|flatpak]|--run-upgrade [source]|--refresh]
 Report pending updates as bar JSON; 'up' opens an upgrade terminal.
 Repeat calls inside ${cache_ttl}s reuse the cached report; --refresh forces a re-check." "$@"
 
@@ -245,42 +245,64 @@ upgrade_finish() {
 
   release_idle || true
   ((report_refreshed)) || rm -f "${cache_file}" 2>/dev/null || true
+  quickshell ipc call indicators refresh updates >/dev/null 2>&1 || true
   return "${exit_code}"
 }
 
 run_updates() {
+  local source="${1:-all}"
   trap 'upgrade_finish' EXIT
   trap 'exit 130' INT
   trap 'exit 143' TERM
 
   require_update_info || return 1
   read_update_info || return 1
-  require_free_space || return 1
+  if [[ "${source}" != flatpak ]]; then
+    require_free_space || return 1
+  fi
 
   command -v fastfetch >/dev/null 2>&1 && fastfetch
   printf '[Official] %-10s\n[AUR]      %-10s\n[Flatpak]  %-10s\n' "$official" "$aur" "$flatpak"
 
-  prune_package_cache
   inhibit_idle
-  refresh_keyring
+  case "${source}" in
+    all | pacman)
+      prune_package_cache
+      refresh_keyring
+      if [[ "${source}" == all && -n "${aur_helper}" ]]; then
+        "${aur_helper}" -Syu
+      else
+        sudo pacman -Syu
+      fi
+      if [[ "${source}" == all ]] && pkg_installed flatpak; then
+        flatpak update
+      fi
+      ;;
+    aur)
+      [[ -n "${aur_helper}" ]] || { echo "No AUR helper found." >&2; return 1; }
+      "${aur_helper}" -Sua
+      ;;
+    flatpak)
+      command -v flatpak >/dev/null || { echo "Flatpak is not installed." >&2; return 1; }
+      flatpak update
+      ;;
+  esac
 
-  if [[ -n "${aur_helper}" ]]; then
-    "$aur_helper" -Syu
-  else
-    sudo pacman -Syu
-  fi
-  if pkg_installed flatpak; then
-    flatpak update
-  fi
-
-  review_orphans
+  [[ "${source}" == flatpak ]] || review_orphans
   refresh_report
-  prompt_restart
+  [[ "${source}" == flatpak ]] || prompt_restart
 }
+
+if [[ "${1:-}" == "up" || "${1:-}" == "--run-upgrade" ]]; then
+  case "${2:-all}" in
+    all | pacman | aur | flatpak) ;;
+    *) echo "Unknown update source: ${2}" >&2; exit 2 ;;
+  esac
+fi
 
 if [[ "${1:-}" == "up" ]]; then
   require_update_info || exit 1
-  exec hyprshell launch/terminal-present.sh --hypr-profile dialog --app-id "org.tui.SystemUpdate" --title "System Update" -- hyprshell system/system.update.sh --run-upgrade
+  exec hyprshell launch/terminal-present.sh --hypr-profile dialog --app-id "org.tui.SystemUpdate" --title "System Update" -- hyprshell system/system.update.sh --run-upgrade "${2:-all}"
 fi
 
 if [[ "${1:-}" != "--refresh" && "${1:-}" != "--run-upgrade" ]] && [[ -s "${cache_file}" ]] \
@@ -297,7 +319,7 @@ if [[ "${1:-}" == "--run-upgrade" ]]; then
   # shellcheck source=/dev/null
   source "${BASH_SOURCE[0]%/*}/../session/idle.state.sh"
   acquire_upgrade_lock || exit 1
-  run_updates
+  run_updates "${2:-all}"
   exit $?
 fi
 

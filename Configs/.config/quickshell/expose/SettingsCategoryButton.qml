@@ -3,19 +3,20 @@ import QtQuick
 import QtQuick.Layouts
 import qs.Commons
 
-Item {
+ThemedControl {
     id: categoryButton
     required property var controller
     property int categoryIndex: 0
     property int categoryCount: 1
     property string label: ""
-    property bool selected: false
     property bool horizontal: false
-    property bool hovered: false
+    property int navigationColumns: 1
     signal chosen(int nextIndex)
     implicitWidth: Style.space(horizontal ? 140 : 200)
     implicitHeight: Style.space(horizontal ? 52 : 48)
     activeFocusOnTab: selected
+    focused: activeFocus
+    pressed: categoryMouse.pressed
 
     signal entered()
 
@@ -23,8 +24,6 @@ Item {
         categoryButton.chosen(Math.max(0, Math.min(categoryButton.categoryCount - 1, nextIndex)));
     }
 
-    // The sidebar is a list: arrows along its axis pick a section, the
-    // arrow pointing at the content (or Enter/Space) moves focus into it.
     Keys.onPressed: function (event) {
         if (categoryButton.controller.handleSettingsTab(event))
             return;
@@ -39,6 +38,11 @@ Item {
             categoryButton.choose(0);
         else if (event.key === Qt.Key_End)
             categoryButton.choose(categoryButton.categoryCount - 1);
+        else if (categoryButton.horizontal && event.key === Qt.Key_Up)
+            categoryButton.choose(Math.max(0, categoryButton.categoryIndex - categoryButton.navigationColumns));
+        else if (categoryButton.horizontal && event.key === Qt.Key_Down
+                && categoryButton.categoryIndex + categoryButton.navigationColumns < categoryButton.categoryCount)
+            categoryButton.choose(categoryButton.categoryIndex + categoryButton.navigationColumns);
         else if (event.key === enterKey
                 || event.key === Qt.Key_Space
                 || event.key === Qt.Key_Return
@@ -49,21 +53,6 @@ Item {
             return;
         }
         event.accepted = true;
-    }
-
-    Rectangle {
-        anchors.fill: parent
-        color: Color.accent
-        opacity: categoryButton.selected ? 0.07 : (categoryButton.hovered ? 0.035 : 0)
-    }
-
-    Rectangle {
-        anchors.left: parent.left
-        anchors.bottom: parent.bottom
-        width: categoryButton.horizontal ? parent.width : Math.max(2, Style.focusBorderWidth)
-        height: categoryButton.horizontal ? Math.max(2, Style.focusBorderWidth) : parent.height
-        visible: categoryButton.selected
-        color: Color.accent
     }
 
     RowLayout {
@@ -77,8 +66,7 @@ Item {
             text: String(categoryButton.categoryIndex + 1)
             textFormat: Text.PlainText
             horizontalAlignment: Text.AlignHCenter
-            color: categoryButton.selected ? Color.accent : Color.menu.text
-            opacity: categoryButton.selected || categoryButton.hovered ? 1 : 0.45
+            color: categoryButton.stateColor
             font.family: Style.font.menuFamily
             font.pixelSize: Style.font.caption
             font.bold: categoryButton.selected
@@ -89,8 +77,7 @@ Item {
             text: categoryButton.label
             textFormat: Text.PlainText
             horizontalAlignment: Text.AlignLeft
-            color: Color.menu.text
-            opacity: categoryButton.selected || categoryButton.hovered ? 1 : 0.55
+            color: categoryButton.stateColor
             font.family: Style.font.menuFamily
             font.pixelSize: Style.font.bodySmall
             font.bold: categoryButton.selected
@@ -99,15 +86,8 @@ Item {
 
     }
 
-    Rectangle {
-        anchors.fill: parent
-        anchors.margins: Style.space(2)
-        color: "transparent"
-        border.color: categoryButton.activeFocus ? Color.accent : "transparent"
-        border.width: categoryButton.activeFocus ? Math.max(2, Style.focusBorderWidth) : 0
-    }
-
     MouseArea {
+        id: categoryMouse
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor

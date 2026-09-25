@@ -7,79 +7,79 @@ hypr_help_guard "Usage: hyprshell rofi/color-picker [-l|-j|-u|-d]
 Pick a screen colour with hyprpicker; -l lists saved colours, -j emits bar JSON,
 -u/-d cycle the displayed colour to the previous/next saved one." "$@"
 
-check() {
+command_exists() {
   command -v "$1" 1>/dev/null
 }
 
-notify() {
-  check dunstify && {
+notify_color_picker() {
+  command_exists dunstify && {
     dunstify -a "Color Picker" -t 3000 "$@"
     return
   }
   echo "$@"
 }
 
-loc="${XDG_CACHE_HOME:-$HOME/.cache}/colorpicker"
-[ -d "$loc" ] || mkdir -p "$loc"
-[ -f "$loc/colors" ] || touch "$loc/colors"
+color_cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/colorpicker"
+[ -d "$color_cache_dir" ] || mkdir -p "$color_cache_dir"
+[ -f "$color_cache_dir/colors" ] || touch "$color_cache_dir/colors"
 
-idx_file="$loc/index"
-[ -f "$idx_file" ] || echo 0 >"$idx_file"
+color_index_file="$color_cache_dir/index"
+[ -f "$color_index_file" ] || echo 0 >"$color_index_file"
 
-limit=10
+saved_color_limit=10
 
 [[ $# -eq 1 && $1 = "-l" ]] && {
-  cat "$loc/colors"
+  cat "$color_cache_dir/colors"
   exit
 }
 
 [[ $# -eq 1 && ($1 = "-u" || $1 = "-d") ]] && {
-  count=$(wc -l <"$loc/colors")
-  if [[ "$count" -gt 0 ]]; then
-    idx=$(<"$idx_file")
-    [[ "$idx" =~ ^[0-9]+$ ]] || idx=0
+  saved_color_count=$(wc -l <"$color_cache_dir/colors")
+  if [[ "$saved_color_count" -gt 0 ]]; then
+    selected_color_index=$(<"$color_index_file")
+    [[ "$selected_color_index" =~ ^[0-9]+$ ]] || selected_color_index=0
     if [[ "$1" = "-u" ]]; then
-      idx=$(((idx - 1 + count) % count))
+      selected_color_index=$(((selected_color_index - 1 + saved_color_count) % saved_color_count))
     else
-      idx=$(((idx + 1) % count))
+      selected_color_index=$(((selected_color_index + 1) % saved_color_count))
     fi
-    echo "$idx" >"$idx_file"
+    echo "$selected_color_index" >"$color_index_file"
   fi
   exit
 }
 
 [[ $# -eq 1 && $1 = "-j" ]] && {
-  if [ ! -s "$loc/colors" ]; then
+  if [ ! -s "$color_cache_dir/colors" ]; then
     echo '{"text":"","tooltip":"Click to pick a color", "class":"empty"}'
     exit
   fi
 
-  mapfile -t allcolors <"$loc/colors"
-  count=${#allcolors[@]}
+  mapfile -t saved_colors <"$color_cache_dir/colors"
+  saved_color_count=${#saved_colors[@]}
 
-  idx=$(<"$idx_file")
-  [[ "$idx" =~ ^[0-9]+$ && "$idx" -lt "$count" ]] || idx=0
+  selected_color_index=$(<"$color_index_file")
+  [[ "$selected_color_index" =~ ^[0-9]+$ && "$selected_color_index" -lt "$saved_color_count" ]] || selected_color_index=0
 
-  text="${allcolors[$idx]}"
-  tooltip="<b>   COLORS</b>\n\n"
-  for i in "${!allcolors[@]}"; do
-    c="${allcolors[$i]}"
-    if [[ "$i" -eq "$idx" ]]; then
-      tooltip+="-> <b>$c</b>  <span color='$c'></span>  \n"
+  display_color="${saved_colors[$selected_color_index]}"
+  color_tooltip="<b>   COLORS</b>\n\n"
+  for color_index in "${!saved_colors[@]}"; do
+    saved_color="${saved_colors[$color_index]}"
+    if [[ "$color_index" -eq "$selected_color_index" ]]; then
+      color_tooltip+="-> <b>$saved_color</b>  <span color='$saved_color'></span>  \n"
     else
-      tooltip+="   <b>$c</b>  <span color='$c'></span>  \n"
+      color_tooltip+="   <b>$saved_color</b>  <span color='$saved_color'></span>  \n"
     fi
   done
 
   cat <<EOF
-{ "text":"<span color='$text'></span>", "tooltip":"$tooltip" ,"class":"filled"}
+{ "text":"<span color='$display_color'></span>", "tooltip":"$color_tooltip" ,"class":"filled"}
 EOF
 
   exit
 }
 
-check hyprpicker || {
-  notify "hyprpicker is not installed"
+command_exists hyprpicker || {
+  notify_color_picker "hyprpicker is not installed"
   exit
 }
 
@@ -96,22 +96,21 @@ if [[ -z "$color" ]]; then
   if [[ "${picker_status}" -eq 0 ]] || [[ "${picker_error}" =~ [Cc]ancel|[Ee]scape ]]; then
     exit 0
   fi
-  notify "Failed to pick color${picker_error:+: ${picker_error}}"
+  notify_color_picker "Failed to pick color${picker_error:+: ${picker_error}}"
   exit 1
 fi
 
-# Validate that we got an actual color (starts with #)
 if [[ ! "$color" =~ ^#[0-9a-fA-F]{6}$ ]]; then
-  notify "Failed to pick color"
+  notify_color_picker "Failed to pick color"
   exit 1
 fi
 
-check wl-copy && {
+command_exists wl-copy && {
   echo "$color" | sed -z 's/\n//g' | wl-copy
 }
 
-prevColors=$(head -n $((limit - 1)) "$loc/colors")
-echo "$color" >"$loc/colors"
-echo "$prevColors" >>"$loc/colors"
-sed -i '/^$/d' "$loc/colors"
-echo 0 >"$idx_file"
+previous_colors=$(head -n $((saved_color_limit - 1)) "$color_cache_dir/colors")
+echo "$color" >"$color_cache_dir/colors"
+echo "$previous_colors" >>"$color_cache_dir/colors"
+sed -i '/^$/d' "$color_cache_dir/colors"
+echo 0 >"$color_index_file"

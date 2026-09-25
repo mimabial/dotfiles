@@ -19,6 +19,7 @@ class UsageRecord(TypedDict, total=False):
     name: str
     tierLabel: str
     usageStatusText: str
+    goStatus: str
     updatedAt: str
     limits: list[dict[str, Any]]
     recentDays: list[dict[str, Any]]
@@ -50,12 +51,16 @@ cache_root = Path(
     or Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "hypr"
 )
 CACHE_FILE = cache_root / "agents" / "usage.json"
+CLAUDE_CREDENTIALS = (
+    Path(os.environ.get("CLAUDE_CONFIG_DIR") or "~/.claude").expanduser() / ".credentials.json"
+)
 AGENTS = {
     "claude": AgentSpec("Claude Code", "claude", "c"),
     "codex": AgentSpec("Codex", "codex", "x"),
     "opencode": AgentSpec("OpenCode", "opencode", "o"),
 }
 TOKEN_FIELDS = (
+    "totalTokens",
     "inputTokens",
     "outputTokens",
     "cacheCreationInputTokens",
@@ -73,6 +78,7 @@ RESET_WIDTH = 10
 TOKEN_VALUE_WIDTH = 8
 RIGHT_MARGIN = 2
 USAGE_BAR_SEGMENTS = {"hourly": 5, "weekly": 7}
+USAGE_WINDOWS = ("hourly", "weekly")
 TAB_ROW = 2
 HEAD_ROW = TAB_ROW + 2
 MIN_ROWS = 24
@@ -121,6 +127,13 @@ def window_kind(limit):
     return ""
 
 
+def mtime_ns(path):
+    try:
+        return path.stat().st_mtime_ns
+    except OSError:
+        return 0
+
+
 def parse_time(value):
     try:
         parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
@@ -142,32 +155,32 @@ def limit_expired(limit):
     return bool(reset and reset <= datetime.now().astimezone())
 
 
-def window_usage(record, kind, fresh=False):
-    """Return peak usage; fresh treats expired windows as reset for recommendations."""
-    highest = -1.0
-    for limit in record.get("limits") or []:
-        percent = 0.0 if (fresh and limit_expired(limit)) else limit_percent(limit)
-        if window_kind(limit) == kind and percent >= 0:
-            highest = max(highest, min(1.0, percent))
-    return highest
+def peak_window_usage(record, kind, reset_expired=False):
+    percentages = [
+        min(1.0, 0.0 if reset_expired and limit_expired(limit) else limit_percent(limit))
+        for limit in record.get("limits") or []
+        if window_kind(limit) == kind
+    ]
+    return max((value for value in percentages if value >= 0), default=None)
 
 
-def recommendation(records: list[UsageRecord]) -> UsageRecord | None:
-    best_key = None
-    best_record = None
+def recommended_agent(records: list[UsageRecord]) -> UsageRecord | None:
+    best_score = None
+    best_agent = None
     for record in records:
-        hourly = window_usage(record, "hourly", fresh=True)
-        weekly = window_usage(record, "weekly", fresh=True)
-        known_windows = int(hourly >= 0) + int(weekly >= 0)
-        if not known_windows:
+        if record.get("id") == "opencode":
             continue
-        pressure = max(hourly, weekly)
-        total = max(0, hourly) + max(0, weekly)
-        coverage_penalty = 2 - known_windows
-        candidate_key = (pressure + coverage_penalty, total)
-        if best_key is None or candidate_key < best_key:
-            best_key, best_record = candidate_key, record
-    return best_record
+        usage = [peak_window_usage(record, kind, reset_expired=True) for kind in USAGE_WINDOWS]
+        known_usage = [value for value in usage if value is not None]
+        if not known_usage:
+            continue
+        missing_window_penalty = len(USAGE_WINDOWS) - len(known_usage)
+        penalized_peak_usage = max(known_usage) + missing_window_penalty
+        combined_usage = sum(known_usage)
+        score = (penalized_peak_usage, combined_usage)
+        if best_score is None or score < best_score:
+            best_score, best_agent = score, record
+    return best_agent
 
 
 def compact(value):
@@ -193,8 +206,8 @@ def resets_in(value):
 def usage_summary(record):
     parts = []
     for kind, label in (("hourly", "5h"), ("weekly", "weekly")):
-        value = window_usage(record, kind)
-        if value >= 0:
+        value = peak_window_usage(record, kind)
+        if value is not None:
             parts.append(f"{round(value * 100)}% {label} used")
     return " \u00b7 ".join(parts)
 
@@ -208,9 +221,15 @@ def model_totals(record):
     return sorted(models, key=lambda item: item[1], reverse=True)
 
 
+def go_limit_status(record):
+    if record.get("id") == "opencode" and not record.get("limits"):
+        return str(record.get("goStatus") or "No OpenCode Go key configured")
+    return ""
+
+
 def content_height(record, title_gap=1):
     sections = (
-        len(record.get("limits") or []),
+        len(record.get("limits") or []) or bool(go_limit_status(record)),
         len(record.get("recentDays") or []),
         len(model_totals(record)[:5]),
     )
@@ -254,18 +273,18 @@ def snapshot(records, selected_id=""):
     selected = next(
         (record for record in records if record.get("id") == selected_id), records[0]
     )
-    chosen = recommendation(records)
+    chosen = recommended_agent(records)
     lines = ["Agent Hub", "\u2500" * 72]
     tabs = [f"[{record.get('name', record.get('id', 'Agent'))}]" for record in records]
-    lines += [
-        "  ".join(tabs),
-        f"{selected.get('name', 'Agent')} \u00b7 {selected.get('tierLabel', '')} \u00b7 {usage_summary(selected)}",
-    ]
+    headline = (selected.get("name", "Agent"), selected.get("tierLabel") or selected.get("usageStatusText"), usage_summary(selected))
+    lines += ["  ".join(tabs), " \u00b7 ".join(str(part) for part in headline if part)]
     if chosen:
         lines.append(
             f"Recommended  {chosen.get('name', chosen.get('id', 'Agent'))} \u00b7 {usage_summary(chosen)}"
         )
-    lines += ["", "LIMITS"]
+    lines += ["", "GO LIMITS" if selected.get("id") == "opencode" else "LIMITS"]
+    if status := go_limit_status(selected):
+        lines.append(status)
     for limit in selected.get("limits") or []:
         percent = max(0.0, min(1.0, limit_percent(limit)))
         reset = resets_in(limit.get("resetsAt"))
@@ -302,13 +321,17 @@ class Dashboard:
         self.tab_spans = []
         self.message_error = False
         self.message_until = 0.0
-        self.last_mtime = self.cache_mtime()
+        self.last_mtime = mtime_ns(CACHE_FILE)
         self.default_agent = self.read_default_agent()
         self.agent_paths = {
             spec.command: shutil.which(spec.command) for spec in AGENTS.values()
         }
         self.configure_screen()
-        if not self.records or self.cache_age() > CACHE_MAX_AGE_SECONDS:
+        if (
+            not self.records
+            or self.cache_age() > CACHE_MAX_AGE_SECONDS
+            or self.last_mtime < mtime_ns(CLAUDE_CREDENTIALS)
+        ):
             self.refresh(force=False)
 
     def configure_screen(self):
@@ -344,13 +367,6 @@ class Dashboard:
         except OSError:
             return float("inf")
 
-    @staticmethod
-    def cache_mtime():
-        try:
-            return CACHE_FILE.stat().st_mtime_ns
-        except OSError:
-            return 0
-
     def note(self, message, seconds=4, error=False):
         self.message = message
         self.message_error = error
@@ -378,7 +394,7 @@ class Dashboard:
         if self.refresh_process and self.refresh_process.poll() is not None:
             status = self.refresh_process.returncode
             self.refresh_process = None
-        mtime = self.cache_mtime()
+        mtime = mtime_ns(CACHE_FILE)
         if mtime != self.last_mtime or status == 0:
             current_id = self.current().get("id") if self.current() else ""
             self.records = load_records()
@@ -524,7 +540,7 @@ class Dashboard:
             if part
         )
         self.put(HEAD_ROW, 1, heading, curses.A_BOLD)
-        chosen = recommendation(self.records)
+        chosen = recommended_agent(self.records)
         if chosen:
             name = chosen.get("name", chosen.get("id", "Agent"))
             self.put(
@@ -547,7 +563,10 @@ class Dashboard:
         return title_gap, 1 + min(SECTION_GAP_MAX, max(0, height - needed) // 3)
 
     def draw_limits(self, record, y, layout):
-        y = self.section(y, "LIMITS", layout.title_gap)
+        y = self.section(y, "GO LIMITS" if record.get("id") == "opencode" else "LIMITS", layout.title_gap)
+        if status := go_limit_status(record):
+            self.put(y, layout.label_x, status, layout.dim)
+            return y + 1
         reset_x = layout.width - RIGHT_MARGIN - RESET_WIDTH
         percent_x = reset_x - VALUE_WIDTH
         limit_width = max(8, percent_x - layout.bar_x - 2)
@@ -653,17 +672,17 @@ class Dashboard:
         value_x = width - RIGHT_MARGIN - TOKEN_VALUE_WIDTH
         chart_width = max(8, value_x - bar_x - 2)
         layout = DashboardLayout(
-            width,
-            height - 2,
-            label_x,
-            label_width,
-            bar_x,
-            value_x,
-            chart_width,
-            title_gap,
-            gap,
-            accent,
-            dim,
+            width=width,
+            bottom=height - 2,
+            label_x=label_x,
+            label_width=label_width,
+            bar_x=bar_x,
+            value_x=value_x,
+            chart_width=chart_width,
+            title_gap=title_gap,
+            section_gap=gap,
+            accent=accent,
+            dim=dim,
         )
         y = self.draw_limits(record, HEAD_ROW + 2 + layout.section_gap, layout)
         y = self.draw_chart(

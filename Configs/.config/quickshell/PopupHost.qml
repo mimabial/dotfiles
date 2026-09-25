@@ -34,6 +34,10 @@ Item {
         sourceComponent: Component { CliphistPopup { anchorItem: root.anchorItem; shell: root.shell; popupEnabled: root.popupsAllowed } }
     }
     Host {
+        popup: "bitwarden"; owner: "bitwarden"
+        sourceComponent: Component { BitwardenPopup { anchorItem: root.anchorItem; shell: root.shell; popupEnabled: root.popupsAllowed } }
+    }
+    Host {
         popup: "bookmarks"; owner: "menu"
         sourceComponent: Component { Bookmarks { anchorItem: root.anchorItem; shell: root.shell; popupEnabled: root.popupsAllowed } }
     }

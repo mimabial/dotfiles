@@ -12,7 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from keybinds_hint import (
     HYPRCTL_TIMEOUT_SECONDS,
-    expand_meta_data,
+    annotate_bindings_with_display_metadata,
     generate_hint,
     get_hyprctl_binds,
 )
@@ -75,9 +75,9 @@ def build_hint(name):
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
         LOG.error("layout lookup failed, showing all binds: %s", error)
         layout = None
-    expand_meta_data(binds)
+    annotate_bindings_with_display_metadata(binds)
     submap_binds = [bind for bind in binds if bind.get("submap") == name]
-    # expand_meta_data rewrites description; action_key keeps the original
+    # The annotation rewrites description; action_key keeps the original.
     submap_binds = [
         bind for bind in submap_binds if not bind.get("action_key", "").startswith(HIDDEN_MARKER)
     ]

@@ -8,6 +8,9 @@
   "backgroundDim": 6,
   "hotCornerEnabled": true,
   "hotCornerPosition": "top-left",
+  "hotCornerDelay": 0,
+  "initialWorkspaceScope": "all",
+  "workspaceLabelStyle": "full",
   "moveCursorToWindow": true,
   "multiMonitorMode": "mirrored",
   "showFooter": true

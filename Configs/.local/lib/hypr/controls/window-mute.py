@@ -158,9 +158,11 @@ def _read_proc_stat(pid: int, cache: dict[int, tuple[int, str] | None]) -> tuple
         return cache[pid]
 
     try:
-        data = Path(f"/proc/{pid}/stat").read_text(encoding="utf-8", errors="ignore")
-        right = data.rindex(")")
-        cache[pid] = (int(data[right + 2 :].split()[1]), data[data.find("(") + 1 : right])
+        stat_text = Path(f"/proc/{pid}/stat").read_text(encoding="utf-8", errors="ignore")
+        command_end = stat_text.rindex(")")
+        parent_pid = int(stat_text[command_end + 2 :].split()[1])
+        command_name = stat_text[stat_text.find("(") + 1 : command_end]
+        cache[pid] = (parent_pid, command_name)
     except (OSError, ValueError, IndexError):
         cache[pid] = None
 
@@ -199,14 +201,14 @@ def _has_name_in_lineage(pid: int, name: str, cache: dict[int, tuple[int, str] |
     return False
 
 
-def _normalize(text: str) -> str:
+def _normalize_audio_label(text: str) -> str:
     lowered = (text or "").lower()
     for char in "-_~.":
         lowered = lowered.replace(char, " ")
     return " ".join(lowered.split())
 
 
-def _find_sink_ids(
+def _find_focused_window_sink_input_ids(
     sink_inputs: list[SinkInput],
     focused_pid: int,
     app_class: str,
@@ -219,13 +221,13 @@ def _find_sink_ids(
         return ids
 
     class_lower = (app_class or "").lower()
-    title_normalized = _normalize(title)
+    title_normalized = _normalize_audio_label(title)
     for sink in sink_inputs:
         properties = sink.properties
         if (class_lower and any(
             class_lower in str(properties.get(key, "")).lower()
             for key in ("application.name", "application.id", "application.process.binary")
-        )) or (title_normalized and title_normalized in _normalize(str(properties.get("media.name", "")))):
+        )) or (title_normalized and title_normalized in _normalize_audio_label(str(properties.get("media.name", "")))):
             ids.append(sink.index)
     if ids:
         return ids
@@ -318,7 +320,7 @@ def main() -> int:
     label = str(window.get("initialTitle") or title or app_class or "window audio")
 
     sink_inputs = _list_sink_inputs()
-    sink_ids = list(dict.fromkeys(_find_sink_ids(sink_inputs, focused_pid, app_class, title)))
+    sink_ids = list(dict.fromkeys(_find_focused_window_sink_input_ids(sink_inputs, focused_pid, app_class, title)))
     if not sink_ids:
         _notify(
             "No audio stream for focused window",

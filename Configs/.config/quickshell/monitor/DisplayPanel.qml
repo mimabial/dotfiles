@@ -7,12 +7,8 @@ import "Model.js" as Model
 
 Panel {
   id: root
-  moduleName: "display-panel"
   ipcTarget: "display-panel"
   manageIpc: false
-
-  property var hostWidget: null
-  readonly property var barIdentity: hostWidget || root
 
   property string backendVersion: ""
   property bool serviceEnabled: false
@@ -33,7 +29,7 @@ Panel {
   property bool cursorActive: false
   property bool keyboardHelpOpen: false
   property string keyboardLayoutPane: "canvas"
-  property int keyboardInspectorField: 0
+  property string keyboardInspectorField: "enabled"
   property int workspaceKeyboardIndex: 0
   property bool manualWorkspaceRulesInitialized: false
   property bool execEditing: false
@@ -178,14 +174,14 @@ Panel {
   readonly property bool barIconDimmed: root.serviceStateKnown
     && !root.managedChecked
     && !root.serviceActionPending
-  readonly property color foreground: bar ? bar.foreground : Color.foreground
+  readonly property color foreground: shell.foreground
   readonly property color dim: Qt.darker(foreground, 1.5)
-  readonly property color urgent: bar ? bar.urgent : Color.urgent
+  readonly property color urgent: shell.urgent
   readonly property real unmanagedOpacity: 0.45
   // NumberField is backed by a QML int. Keep only that technical boundary;
   // workspace planning itself has no product-level maximum.
   readonly property int workspaceValueMaximum: 2147483647
-  readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
+  readonly property string fontFamily: shell.fontFamily
   readonly property var selectedOutput: Model.outputByKey(root.draftProfile, root.selectedOutputKey)
   readonly property var selectedOutputMetadata: Model.editorMetadata(root.editorDocument.displays, root.selectedOutputKey)
   readonly property var brightnessTarget: Model.brightnessTarget(root.draftProfile,
@@ -230,8 +226,8 @@ Panel {
     { value: "display", label: "Display" },
     { value: "color", label: "Color" }
   ]
-  readonly property var displayKeyboardFields: [0, 1, 2, 5, 6, 7, 8, 9]
-  readonly property var colorKeyboardFields: [3, 4, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+  readonly property var displayKeyboardFields: ["enabled", "mode", "scale", "vrr", "rotation", "positionX", "positionY", "mirror"]
+  readonly property var colorKeyboardFields: ["bitdepth", "colorManagement", "sdrBrightness", "sdrSaturation", "sdrMinLuminance", "sdrMaxLuminance", "sdrCurve", "minLuminance", "maxLuminance", "maxAverageLuminance", "forceWideColor", "forceHdr", "iccProfile"]
   readonly property var vrrOptions: [
     { value: "0", label: "Off" },
     { value: "1", label: "On" },
@@ -308,12 +304,6 @@ Panel {
     return String(message || fallback).replace(/hyprmoncfgd?/gi, "display service")
   }
 
-  function switchPanel(direction) {
-    if (root.bar && typeof root.bar.switchPanelFrom === "function")
-      return root.bar.switchPanelFrom(root.barIdentity, direction)
-    return false
-  }
-
   function refreshBrightness() {
     var connector = root.brightnessConnector
     if (!root.opened || connector === "") {
@@ -356,6 +346,7 @@ Panel {
   }
 
   function setBrightness(value) {
+    brightnessRuntime.setDebounce.stop()
     var connector = root.brightnessConnector
     if (connector === "" || !root.brightnessAvailable) return
     var percent = Model.clampBrightness(value)
@@ -607,34 +598,34 @@ Panel {
     if (!output || !root.managedChecked || root.editPending || root.previewTransaction !== "") return
     var field = root.keyboardInspectorField
     var edit = ({})
-    if (field === 0) edit.enabled = output.enabled === false
-    else if (field === 1) edit.mode = Model.cycleOptionValue(
+    if (field === "enabled") edit.enabled = output.enabled === false
+    else if (field === "mode") edit.mode = Model.cycleOptionValue(
       Model.modeOptions(root.editorDocument.displays, root.selectedOutputKey), Model.outputMode(output), delta)
-    else if (field === 2) edit.scale = root.bounded(Number(output.scale || 1) + delta * 0.05, 0.25, 4)
-    else if (field === 3) edit.bitdepth = Number(Model.cycleOptionValue(root.bitdepthOptions,
+    else if (field === "scale") edit.scale = root.bounded(Number(output.scale || 1) + delta * 0.05, 0.25, 4)
+    else if (field === "bitdepth") edit.bitdepth = Number(Model.cycleOptionValue(root.bitdepthOptions,
       String(output.bitdepth || 8), delta))
-    else if (field === 4) edit.cm = Model.cycleOptionValue(root.colorManagementOptions,
+    else if (field === "colorManagement") edit.cm = Model.cycleOptionValue(root.colorManagementOptions,
       String(output.cm || "srgb"), delta)
-    else if (field === 5) edit.vrr = Number(Model.cycleOptionValue(root.vrrOptions,
+    else if (field === "vrr") edit.vrr = Number(Model.cycleOptionValue(root.vrrOptions,
       String(output.vrr || 0), delta))
-    else if (field === 6) edit.transform = Number(Model.cycleOptionValue(root.transformOptions,
+    else if (field === "rotation") edit.transform = Number(Model.cycleOptionValue(root.transformOptions,
       String(output.transform || 0), delta))
-    else if (field === 7) edit.x = Number(output.x || 0) + delta * 10
-    else if (field === 8) edit.y = Number(output.y || 0) + delta * 10
-    else if (field === 9) edit.mirror_of = Model.cycleOptionValue(
+    else if (field === "positionX") edit.x = Number(output.x || 0) + delta * 10
+    else if (field === "positionY") edit.y = Number(output.y || 0) + delta * 10
+    else if (field === "mirror") edit.mirror_of = Model.cycleOptionValue(
       Model.mirrorOptions(root.draftProfile, root.selectedOutputKey), String(output.mirror_of || ""), delta)
-    else if (field === 10) edit.sdr_brightness = root.bounded(Number(output.sdr_brightness || 0) + delta * 0.05, 0, 3)
-    else if (field === 11) edit.sdr_saturation = root.bounded(Number(output.sdr_saturation || 0) + delta * 0.05, 0, 3)
-    else if (field === 12) edit.sdr_min_luminance = root.bounded(Number(output.sdr_min_luminance || 0) + delta * 0.005, 0, 1)
-    else if (field === 13) edit.sdr_max_luminance = root.bounded(Number(output.sdr_max_luminance || 0) + delta * 10, 0, 1000)
-    else if (field === 14) edit.sdr_eotf = Model.cycleOptionValue(displayView.sdrCurveMenu.options,
+    else if (field === "sdrBrightness") edit.sdr_brightness = root.bounded(Number(output.sdr_brightness || 0) + delta * 0.05, 0, 3)
+    else if (field === "sdrSaturation") edit.sdr_saturation = root.bounded(Number(output.sdr_saturation || 0) + delta * 0.05, 0, 3)
+    else if (field === "sdrMinLuminance") edit.sdr_min_luminance = root.bounded(Number(output.sdr_min_luminance || 0) + delta * 0.005, 0, 1)
+    else if (field === "sdrMaxLuminance") edit.sdr_max_luminance = root.bounded(Number(output.sdr_max_luminance || 0) + delta * 10, 0, 1000)
+    else if (field === "sdrCurve") edit.sdr_eotf = Model.cycleOptionValue(displayView.sdrCurveMenu.options,
       String(output.sdr_eotf || "default"), delta)
-    else if (field === 15) edit.min_luminance = root.bounded(Number(output.min_luminance || 0) + delta * 0.001, 0, 1000)
-    else if (field === 16) edit.max_luminance = root.bounded(Number(output.max_luminance || 0) + delta * 10, 0, 2000)
-    else if (field === 17) edit.max_avg_luminance = root.bounded(Number(output.max_avg_luminance || 0) + delta * 10, 0, 2000)
-    else if (field === 18) edit.supports_wide_color = Number(Model.cycleOptionValue(root.triStateOptions,
+    else if (field === "minLuminance") edit.min_luminance = root.bounded(Number(output.min_luminance || 0) + delta * 0.001, 0, 1000)
+    else if (field === "maxLuminance") edit.max_luminance = root.bounded(Number(output.max_luminance || 0) + delta * 10, 0, 2000)
+    else if (field === "maxAverageLuminance") edit.max_avg_luminance = root.bounded(Number(output.max_avg_luminance || 0) + delta * 10, 0, 2000)
+    else if (field === "forceWideColor") edit.supports_wide_color = Number(Model.cycleOptionValue(root.triStateOptions,
       String(output.supports_wide_color || 0), delta))
-    else if (field === 19) edit.supports_hdr = Number(Model.cycleOptionValue(root.triStateOptions,
+    else if (field === "forceHdr") edit.supports_hdr = Number(Model.cycleOptionValue(root.triStateOptions,
       String(output.supports_hdr || 0), delta))
     else return
     root.editOutput(edit)
@@ -643,27 +634,27 @@ Panel {
   function activateInspectorField() {
     if (!root.selectedOutput || !root.managedChecked || root.editPending) return
     var field = root.keyboardInspectorField
-    if (field === 0) root.adjustInspectorField(1)
-    else if (field === 1) displayView.modeMenu.open()
-    else if (field === 2) displayView.scaleMenu.open()
-    else if (field === 3) displayView.bitdepthMenu.open()
-    else if (field === 4) displayView.colorManagementMenu.open()
-    else if (field === 5) displayView.vrrMenu.open()
-    else if (field === 6) displayView.rotationMenu.open()
-    else if (field === 7) displayView.positionX.field.forceActiveFocus()
-    else if (field === 8) displayView.positionY.field.forceActiveFocus()
-    else if (field === 9) displayView.mirrorMenu.open()
-    else if (field === 10) displayView.sdrBrightness.input.forceActiveFocus()
-    else if (field === 11) displayView.sdrSaturation.input.forceActiveFocus()
-    else if (field === 12) displayView.sdrMinLuminance.input.forceActiveFocus()
-    else if (field === 13) displayView.sdrMaxLuminance.input.forceActiveFocus()
-    else if (field === 14) displayView.sdrCurveMenu.open()
-    else if (field === 15) displayView.minLuminance.input.forceActiveFocus()
-    else if (field === 16) displayView.maxLuminance.input.forceActiveFocus()
-    else if (field === 17) displayView.maxAverageLuminance.input.forceActiveFocus()
-    else if (field === 18) displayView.forceWideMenu.open()
-    else if (field === 19) displayView.forceHdrMenu.open()
-    else if (field === 20) displayView.iccProfile.forceActiveFocus()
+    if (field === "enabled") root.adjustInspectorField(1)
+    else if (field === "mode") displayView.modeMenu.open()
+    else if (field === "scale") displayView.scaleMenu.open()
+    else if (field === "bitdepth") displayView.bitdepthMenu.open()
+    else if (field === "colorManagement") displayView.colorManagementMenu.open()
+    else if (field === "vrr") displayView.vrrMenu.open()
+    else if (field === "rotation") displayView.rotationMenu.open()
+    else if (field === "positionX") displayView.positionX.field.forceActiveFocus()
+    else if (field === "positionY") displayView.positionY.field.forceActiveFocus()
+    else if (field === "mirror") displayView.mirrorMenu.open()
+    else if (field === "sdrBrightness") displayView.sdrBrightness.input.forceActiveFocus()
+    else if (field === "sdrSaturation") displayView.sdrSaturation.input.forceActiveFocus()
+    else if (field === "sdrMinLuminance") displayView.sdrMinLuminance.input.forceActiveFocus()
+    else if (field === "sdrMaxLuminance") displayView.sdrMaxLuminance.input.forceActiveFocus()
+    else if (field === "sdrCurve") displayView.sdrCurveMenu.open()
+    else if (field === "minLuminance") displayView.minLuminance.input.forceActiveFocus()
+    else if (field === "maxLuminance") displayView.maxLuminance.input.forceActiveFocus()
+    else if (field === "maxAverageLuminance") displayView.maxAverageLuminance.input.forceActiveFocus()
+    else if (field === "forceWideColor") displayView.forceWideMenu.open()
+    else if (field === "forceHdr") displayView.forceHdrMenu.open()
+    else if (field === "iccProfile") displayView.iccProfile.forceActiveFocus()
   }
 
   function selectSavedProfile(delta) {
@@ -1098,7 +1089,10 @@ Panel {
       return
     }
     if (envelope.type === "event") {
-      if (envelope.event === "status") root.updateDocument(envelope.data)
+      if (envelope.event === "status") {
+        root.updateDocument(envelope.data)
+        if (root.opened) root.requestEditorState()
+      }
       return
     }
 
@@ -1208,7 +1202,7 @@ Panel {
       root.cursorIndex = 0
       root.cursorActive = false
       root.keyboardLayoutPane = "canvas"
-      root.keyboardInspectorField = 0
+      root.keyboardInspectorField = "enabled"
       root.workspaceKeyboardIndex = 0
       root.checkBackend()
       root.checkServiceState()
@@ -1231,10 +1225,7 @@ Panel {
     onTriggered: root.updatePreviewClock()
   }
 
-  // Applying a profile can rebuild the shell's per-screen bar and destroy the
-  // panel that initiated the preview. The daemon keeps the transaction alive;
-  // ask the shared bar host to reopen this widget on the focused output so the
-  // replacement instance can show the same Keep/Revert choice.
+  // A preview may outlive its popup after outputs change; keep its confirmation visible.
   Timer {
     id: previewRecoveryTimer
     property int attempts: 0
@@ -1247,8 +1238,7 @@ Panel {
         stop()
         return
       }
-      if (root.bar && typeof root.bar.summonBarWidget === "function")
-        root.bar.summonBarWidget(root.moduleName)
+      root.showPopup()
       if (attempts >= 20) stop()
     }
   }

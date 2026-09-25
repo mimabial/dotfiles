@@ -10,7 +10,14 @@ PopupCard {
     property string source: "theme"
     property string mode: "dark"
     readonly property var modes: [{name:"Auto", value:"auto", icon:"󰔎"}, {name:"Dark", value:"dark", icon:""}, {name:"Light", value:"light", icon:"󰖙"}]
-    function load(raw) { const text = String(raw), sourceMatch = text.match(/(?:^|\n)selected_color_source=["']?([^"'\n]+)/), modeMatch = text.match(/(?:^|\n)selected_color_mode=["']?([^"'\n]+)/); source = sourceMatch ? sourceMatch[1] : "theme"; mode = ({"1":"auto", "2":"dark", "3":"light"})[modeMatch ? modeMatch[1] : "2"] || "dark" }
+    function load(raw) {
+        const state = String(raw)
+        const sourceMatch = state.match(/(?:^|\n)selected_color_source=["']?([^"'\n]+)/)
+        const modeMatch = state.match(/(?:^|\n)selected_color_mode=["']?([^"'\n]+)/)
+        const modeByStateValue = {"1":"auto", "2":"dark", "3":"light"}
+        source = sourceMatch ? sourceMatch[1] : "theme"
+        mode = modeByStateValue[modeMatch ? modeMatch[1] : "2"] || "dark"
+    }
     function apply(nextSource, nextMode) { if (nextSource === source && nextMode === mode) return; shell.run(["hyprshell", "theme/color-mode", "--set", nextSource, nextMode]) }
     property FileView stateFile: FileView { path: root.shell.home + "/.local/state/hypr/staterc"; watchChanges: true; onLoaded: root.load(text()); onFileChanged: reload() }
 

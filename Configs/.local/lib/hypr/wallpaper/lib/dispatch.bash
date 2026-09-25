@@ -189,16 +189,16 @@ wallpaper_refresh_inventory_if_needed() {
 
 random_wallpaper_index() {
   local count="$1"
-  local max_random=32768
+  local max_random=1073741824
   local accept_limit=0
   local candidate=0
 
   [[ "${count}" =~ ^[0-9]+$ ]] || return 1
-  ((count > 0)) || return 1
+  ((count > 0 && count <= max_random)) || return 1
 
   accept_limit=$((max_random - (max_random % count)))
   while :; do
-    candidate=${RANDOM}
+    candidate=$(((RANDOM << 15) | RANDOM))
     if ((candidate < accept_limit)); then
       printf '%s\n' $((candidate % count))
       return 0
@@ -222,12 +222,12 @@ wallpaper_select_current_or_first() {
   wallpaper_ensure_catalog
   current_wallpaper="$(wallpaper_resolve_path "${active_wallpaper_link}")"
 
-  if index="$(catalog_index_of wallList "${current_wallpaper}")"; then
-    setIndex="${index}"
+  if index="$(catalog_index_of wallpaper_paths "${current_wallpaper}")"; then
+    selected_wallpaper_index="${index}"
     return 0
   fi
 
-  setIndex=0
+  selected_wallpaper_index=0
   print_log -sec "wallpaper" -warn "${missing_message}"
 }
 
@@ -240,7 +240,7 @@ wallpaper_action_next() { wallpaper_ensure_catalog; select_adjacent_wallpaper n;
 wallpaper_action_previous() { wallpaper_ensure_catalog; select_adjacent_wallpaper p; }
 wallpaper_action_random() {
   wallpaper_ensure_catalog
-  setIndex="$(random_wallpaper_index "${#wallList[@]}")" || exit 1
+  selected_wallpaper_index="$(random_wallpaper_index "${#wallpaper_paths[@]}")" || exit 1
   apply_selected_wallpaper
 }
 wallpaper_action_set() {

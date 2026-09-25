@@ -25,7 +25,8 @@ fi
 
 hypr_runtime_load_state || exit 1
 [[ -n "${HYPR_THEME}" ]] || { echo "ERROR: unable to detect theme"; exit 1; }
-get_themes
+declare -a theme_names=() theme_wallpapers=()
+theme_catalog_load_and_repair_links_into theme_names theme_wallpapers
 theme_switch_previous_theme="${HYPR_THEME:-}"
 theme_switch_previous_color_mode="${selected_color_mode:-}"
 theme_switch_state_updated=0
@@ -103,18 +104,18 @@ select_adjacent_theme() {
   fi
 
   local index=""
-  if index="$(catalog_index_of thmList "${HYPR_THEME}")"; then
-    setIndex="$(catalog_adjacent_index "${index}" "${direction}" "${#thmList[@]}")" || return 1
+  if index="$(catalog_index_of theme_names "${HYPR_THEME}")"; then
+    selected_theme_index="$(catalog_adjacent_index "${index}" "${direction}" "${#theme_names[@]}")" || return 1
   else
     print_log -sec "theme" -warn "select_adjacent_theme" "current theme '${HYPR_THEME}' not found in theme list"
-    setIndex=0
+    selected_theme_index=0
   fi
-  themeSet="${thmList[setIndex]}"
+  selected_theme="${theme_names[selected_theme_index]}"
 }
 
 theme_notify_finish() {
   local exit_code="$1"
-  local theme_name="${themeSet:-${HYPR_THEME}}"
+  local theme_name="${selected_theme:-${HYPR_THEME}}"
   [[ -z "${exit_code}" ]] && exit_code=0
 
   if [[ "${exit_code}" -ne 0 && "${theme_switch_state_updated}" -eq 1 ]]; then
@@ -169,7 +170,7 @@ cleanup_theme_switch() {
 trap 'cleanup_theme_switch "$?"' EXIT
 
 quiet=false
-themeSet=""
+selected_theme=""
 theme_switch_selection_requested=0
 theme_switch_from_auto=0
 theme_switch_cache_args=()
@@ -213,11 +214,11 @@ parse_theme_switch_args() {
           exit 1
         fi
         theme_switch_selection_requested=1
-        themeSet="$1"
+        selected_theme="$1"
         ;;
       -s?*)
         theme_switch_selection_requested=1
-        themeSet="${1#-s}"
+        selected_theme="${1#-s}"
         ;;
       -q | --quiet)
         quiet=true
@@ -293,23 +294,23 @@ resolve_theme_selection() {
   local theme_exists=0
   local theme_name=""
 
-  for theme_name in "${thmList[@]}"; do
-    if [[ "${theme_name}" == "${themeSet}" ]]; then
+  for theme_name in "${theme_names[@]}"; do
+    if [[ "${theme_name}" == "${selected_theme}" ]]; then
       theme_exists=1
       break
     fi
   done
 
-  [[ "${theme_exists}" -eq 1 ]] || themeSet="${HYPR_THEME}"
+  [[ "${theme_exists}" -eq 1 ]] || selected_theme="${HYPR_THEME}"
 }
 
 set_active_theme() {
-  state_set "HYPR_THEME" "${themeSet}" "staterc"
+  state_set "HYPR_THEME" "${selected_theme}" "staterc"
   theme_switch_state_updated=1
-  HYPR_THEME="${themeSet}"
+  HYPR_THEME="${selected_theme}"
   HYPR_THEME_DIR="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME}"
   export HYPR_THEME HYPR_THEME_DIR
-  print_log -sec "theme" -stat "apply" "${themeSet}"
+  print_log -sec "theme" -stat "apply" "${selected_theme}"
 }
 
 prepare_active_theme_config() {
@@ -323,7 +324,7 @@ theme_switch_reconcile_color_mode() {
   local mode polarity desired
   mode="${selected_color_mode}"
   [[ "${mode}" =~ ^[1-3]$ ]] || return 0
-  polarity="$(theme_polarity "${themeSet}")"
+  polarity="$(theme_polarity "${selected_theme}")"
   [[ "${polarity}" == "light" ]] && desired=3 || desired=2
 
   if [[ "${mode}" == "1" ]]; then
